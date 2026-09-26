@@ -80,7 +80,7 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
 
 ## 2. 任务卡
 
-（当前无待派卡。）
+- **CC-14a**（架构线，lead-arena-0925c 立卡）：卡面在 `docs/mcp-r22d1-batch12-field-census.md` §5.2。**前置门：R1（`docs/REQUIREMENTS.md`）合入、src 无 cinemaUplift WIP**，未满足前不要派。
 
 ## 3. 本队列的来源：2026-09-24 OPEN-ITEMS 分诊
 

@@ -5,6 +5,7 @@
 
 ## 1. 做到哪一步
 
+- **最新交接（2026-09-26 19:2x，lead-arena-0925c）**：WSL 停摆恢复；事故落档 + AGENTS 环境安全规则 = `24bb4e9`。普查已完成，结果、分类和 CC-14a 卡见 §5。**下一步**：① CC-14a 等 R1 合入后派发（前置门见 §5.2）；② 实现 §5.3 计数棘轮（基线 821）；③ 架构文档 §5 与 OPEN-ITEMS R22-D1 标注「批 1-2 不做」并链到本文件 §2。R1（`docs/REQUIREMENTS.md`）由并行会话在做，本 lane 不碰。
 - HEAD（断线前最后实测）= `d983b5a` refactor(resource): CC-13 generic continuous-EX channel（R22-D1 批 1-1）。
   前序：`5c82c16`（CC-13 v2 卡）、`3cc3953`（CC-13 卡）、`4dd4961`（CC-D2）。工作区只有与本线无关的 `?? docs/devlog/`。
 - 架构卡（`docs/mcp-calc-core-architecture.md` §5）：CC-0…CC-13、CC-D1…D4、CC-T1 均 done；CC-5e / CC-9c 不做；CC-11b 暂缓。
@@ -58,7 +59,94 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 
 ## 5. 普查结果
 
-（待步骤 1 填写）
+（2026-09-26 19:1x，HEAD `24bb4e9`，lead-arena-0925c 实测）
+
+**脚本与口径**：WSL `/home/kaua/calc-arch/census.mjs`（不入库；已改为用 `git ls-files` 取清单，后台 + `timeout -s KILL 30` 跑，秒级完成）。
+- 扫描范围：`git ls-files 'src/core/*.ts' 'src/composables/resourceCalc/*.ts' src/composables/useResourceCalc.ts`，排除 `__tests__`，共 64 个文件、约 1MB。
+- 匹配规则：`\b(<角色前缀>)[A-Z]\w*\b`，前缀取 `src/mechanics/agents/*.ts` 文件名开头的小写词，共 58 个。
+- 代码与注释分开计数。完整明细用 `node census.mjs --json` 生成。
+
+**局限（下一个会话务必知道）**
+1. **只认角色前缀**。`zhenyuanEnergy`、`hatTrickEnergy` 这类不带角色前缀的专属字段会漏计。
+2. **有误报**。`triggerCount`（84 处）是通用的「异常触发次数」（`core/anomalyPool.ts:80` 的 `simulateTriggerCount(...).triggerCount`），不是角色扳机（Trigger）的字段，统计时必须排除。
+3. 预检时既没有超过 300k 的文件，也没有符号链接，所以第一次失控的根因**仍未查明**，见附录 A。
+
+**总量**：代码引用 **905** 处（其中误报 `triggerCount` 84 处 ⇒ 真实约 **821**），注释引用 192 处；代码里出现 185 个不同字段，分布在 33 个文件。其中 `src/core/**` 有 334 处、87 个字段。
+
+**按角色前缀（代码引用 ≥ 10）**：
+
+| 前缀 | 引用 | 字段数 |
+|---|---|---|
+| remielle | 202 | 37 |
+| trigger（含误报 triggerCount 84） | 121 | 6 |
+| alice | 90 | 23 |
+| liuyin | 59 | 11 |
+| burnice | 48 | 4 |
+| banyue | 44 | 7 |
+| norma | 42 | 14 |
+| yixuan | 37 | 9 |
+| jane | 33 | 5 |
+| velina | 29 | 9 |
+| yidhari | 28 | 9 |
+| xide | 19 | 5 |
+| lighter | 18 | 5 |
+| corin | 17 | 3 |
+| promia | 14 | 4 |
+| hugo | 11 | 5 |
+
+**按文件（前 10）**：
+
+| 文件 | 引用 | 字段数 |
+|---|---|---|
+| `composables/resourceCalc/damagePoolAnomaly.ts` | 140 | 28 |
+| `composables/resourceCalc/convergence.ts` | 86 | 33 |
+| `composables/useResourceCalc.ts` | 53 | 23 |
+| `core/anomalyPool.ts` | 53 | 9 |
+| `composables/resourceCalc/damagePoolCharExtras.ts` | 50 | 6 |
+| `core/anomalyPool/helpers.ts` | 48 | 8 |
+| `composables/resourceCalc/damagePoolDirect.ts` | 43 | 16 |
+| `core/resource/crossAgentEnergy.ts` | 39 | 11 |
+| `core/resource/helpers.ts` | 37 | 17 |
+| `core/resource/resourceIncome.ts` | 37 | 16 |
+
+### 5.1 分簇归类（A 通用化 / B 迁模块能力 / C 保留）
+
+| 簇 | 代表字段 | 类 | 依据 | 卡 |
+|---|---|---|---|---|
+| resourceIncome 命座能量 | 周期型：`normaC2TriggerInterval/EnergyPerTrigger`、`qingyiC4TriggerInterval/EnergyPerTrigger`；定值型：`lycaonC2Energy`、`billyC1Energy`、`yixuanFlashBonus`、`antonC1EnergyGift` | **A** | core 里只有「间隔×每次」和「定值」两种算式，全部由模块写入（qingyi.ts:145、lycaon.ts:238、billy.ts:114、yixuan.ts:373、anton.ts:79），core 只负责求和 | **CC-14a**（首选） |
+| resourceIncome 伊德海莉残余 | `yidhariBurnDecibel`、`yidhariDecibelPerHpPct`、`yidhariExHealMissingHpPct`、`yidhariExternalHealPct`、`yidhariChargeSlam`、`yidhariBasicFollow` | A（待逐字段核实） | 与 CC-13 同一角色、同一类「模块写数值、core 求和」的形状 | CC-14b（待立卡） |
+| 槽位定位变量 | `remielleSlot`、`aliceSlot`、`janeSlot`、`triggerSlot`、`triggerPanel`、`banyueSlot`、`xideIdx`、`liuyinIdx`、`burniceSrc`、`liuyinSrc` | **B** | 本质是在编排层按角色找槽位，等于变相的 agentId 判定 | 按角色逐卡，先从引用最少的起 |
+| 蕾米尔 remielle 机制 | `remielleCinema*`、`remielleSpecialVoidflare*`、`remielleRainbowEnd*`、`remielleRefringe*`，散布在 `core/buff.ts`、`core/panel.ts`、`core/resource/rowBuild.ts`、`rowAccounting.ts` | **B** | 角色专属逻辑深入 core 面板和行构建，引用最多（202 处、37 个字段） | 需要单独做设计稿再拆卡，不直接派 |
+| 爱丽丝 alice / 琉音 liuyin / 般岳 banyue / 诺玛 norma 专用流程 | `aliceCoweringConfig`、`aliceDisorderCount`、`liuyinPromote*`、`banyueTopUp`、`normaGiftChain` | B | 已有专用文件（`liuyinPromote.ts`、`normaHatChain.ts`），属于能力接口的下一阶段 | ⚠ `liuyinPromote` 与 `docs/mcp-liuyin-promote-source.md` W26 重设计线相交，要等那条线结束 |
+| 误报 | `triggerCount` | 排除 | 通用异常触发次数 | 棘轮计数时加入豁免表 |
+
+**结论**：CC-14a 可以直接开卡。B 类里的 remielle 和 liuyin 两簇不直接派，需要先有设计稿，或等并行线结束。
+
+### 5.2 CC-14a 任务卡：resourceIncome 命座能量项通用化（A 类，零差）
+
+- **前置门（必须满足才派）**：R1（`docs/REQUIREMENTS.md`，命座提升率多指标）已合入，且工作区里没有 `cinemaUplift.ts` 的 WIP。依据：R1 的「能量」栏很可能读取 `energySource`，两边会相交。先 `git status --short src/` 确认干净。
+- **目标**：core 不再出现 `qingyiC4*`、`normaC2*`、`lycaonC2Energy`、`billyC1Energy`、`yixuanFlashBonus`、`antonC1EnergyGift` 这些名字。
+- **输入端**：`CharacterOperationConfig` 新增 `bonusEnergyEntries?: Array<{ key: string; label: string; flat?: number; interval?: number; perTrigger?: number }>`。
+  - 模块改成往里 push：qingyi、norma 用周期型；lycaon、billy、yixuan、anton 用定值型。
+  - 每轮必须先清空，避免跨轮累加。先读 `finalizePasses.ts` 的 reset 时机，照同款处理。
+- **core**：`resourceIncome.ts` 统一求和，`floor(totalTime / interval) * perTrigger + flat`。对照原算式：interval ≤ 0 或 perTrigger ≤ 0 时记 0，不能改变取整口径。
+- **输出端**：`EnergySource` 删掉这 6 个键，新增 `bonusEntries: Array<{ key; label; value }>`。
+  - `ResourceResultCard.vue` 原来的 6 个固定行改成 `v-for`，中文标签照搬现有文案。
+  - `zhenyuanEnergy` 不属于角色前缀字段，本卡不动。
+- **闸门**：`grep -rnE 'qingyiC4|normaC2|lycaonC2Energy|billyC1Energy|yixuanFlashBonus|antonC1EnergyGift' src/core src/composables/resourceCalc src/composables/useResourceCalc.ts` 结果为 0 行（注释也要清掉或改写）。
+- **零差验证**：在 `.zc/perf/{dump,rowsnap}.perf.ts#enc` 里把 `bonusEntries` 按 key 展开回旧键名（映射加进 `KEY_ALIAS`），然后带 `PERF_KEY_ALIAS=1` 跑 dump（624 场景）和 rowsnap（637 场景），与 `dump-A` / `rows-A` 零差。
+  - 反向验证：临时把 qingyi 的 perTrigger 改成 0，DIFF 必须只出现在含青衣的场景。
+- **收尾**：`npm run build`、check-guards 全绿；带 `--verifier --coverage` 执行 `zc done`；lead 复核后不带开关重新生成基线。
+- **回退点**：单卡单提交，`git revert <sha>` 即可。
+- **派给**：dsflash 工人。提示词要求附上真实命令输出的尾部。
+
+### 5.3 计数棘轮（待做）
+
+在 `scripts/check-guards.mjs` 加一项：统计 core 读角色前缀字段的次数，只许降不许升。
+- 扫描范围与正则同上，豁免表 `['triggerCount']`。
+- 基线 = 本节实测的 **821**（905 − 84）。
+- 登记进 `RATCHET_BURNDOWN`：frozen 821，target 取 A 类全部完成后的值，due 由立卡的 lead 定。
+- 实现时先用 `node census.mjs --json` 复核这个数；如果 HEAD 已经变了，以实测为准。
 
 ## 附录：普查脚本 census.sh
 
