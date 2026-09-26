@@ -1,6 +1,7 @@
 import type { DeepReadonly } from 'vue'
 import type { Agent, AgentSkills, PanelValues, SkillDamageTarget, SkillMove } from '@/types/catalog'
 import type {
+  AnomalyEventRecord,
   AnomalyEventExecution,
   AnomalyContribution,
   AnomalyPoolResult,
@@ -647,6 +648,11 @@ export interface AgentMechanicModule {
    * ⚠ 与声明式字段 `backstageAutoFill`（后台自动补位）名字相近但语义无关。
    */
   backstageAutoRows?(input: AgentResourceInput): SkillExecution[]
+  /**
+   * 异常事件记录（CC-28，展示层）：`useResourceCalc.ts#moduleAnomalyEventRecords` 按槽位 0→2 派发并拼接，
+   * 进结果页异常事件表（`ResultPage.vue`）。原为编排层按身份 `['1581']` 的蕾米虚耀池分支。
+   */
+  anomalyEventRecords?(input: AgentAnomalyEventRecordsInput): AnomalyEventRecord[]
   /**
    * 覆盖强化特殊技（及模块生成的专属必做动作，如卢西娅 A5）的时间占用，在时间池分配前调用。
    * 返回 null 走通用公式 `exSpecialCount × exSpecialActionTime`；否则按返回值计入必做前台时间与合轴时间。
@@ -1540,4 +1546,16 @@ export interface ExtraNecessaryAction {
   actionTime: number
   comboAlignRatio: number
   decibelRecovery: number
+}
+
+/** `anomalyEventRecords` 能力入参（CC-28） */
+export interface AgentAnomalyEventRecordsInput {
+  /** 本模块角色所在槽位 */
+  slot: number
+  /** 本槽面板（`panelAt(panels, slot)`；派发侧已按判据 17 取，缺失则不派发） */
+  panel: PanelValues
+  /** 槽位 0..2 的 agentId（空槽为 undefined 或 ''），仅供文案 */
+  teamAgentIds: readonly (string | undefined)[]
+  /** 异常池逐槽触发次数（`AnomalyPoolResult.perSlotAnomalyTriggers`，缺省 []） */
+  perSlotAnomalyTriggers: readonly number[]
 }

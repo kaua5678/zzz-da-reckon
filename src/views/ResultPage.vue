@@ -831,7 +831,7 @@ const {
   specialActionBonus,
   damagePoolRows,
   damageSourceBreakdown,
-  remielleVoidflareEvents,
+  moduleAnomalyEventRecords,
   anomalyDamageEvents,
   anomalyVirtualPanels,
   agentNames,
@@ -1048,7 +1048,7 @@ const teamOverview = computed(() => {
 const anomalyEventRows = computed<AnomalyEventRecord[]>(() => {
   const rows: AnomalyEventRecord[] = [
     ...(anomalyPoolResult.value?.anomalyEvents ?? []),
-    ...remielleVoidflareEvents.value,
+    ...moduleAnomalyEventRecords.value,
     ...anomalyDamageEvents.value,
   ]
   for (const char of resourceResult.value?.characters ?? []) {

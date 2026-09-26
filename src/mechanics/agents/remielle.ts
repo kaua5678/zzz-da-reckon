@@ -3,6 +3,7 @@ import type {
   AgentMechanicModule,
   AgentPanelInput,
   AgentResourceInput,
+  AgentAnomalyEventRecordsInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentTeamPanelEffectInput,
@@ -12,7 +13,7 @@ import type {
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
-import type { CharacterOperationConfig, CharacterResourceResult, RemielleMechanicSource, SkillExecution } from '@/types/resource'
+import type { AnomalyEventRecord, CharacterOperationConfig, CharacterResourceResult, RemielleMechanicSource, SkillExecution } from '@/types/resource'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
@@ -263,6 +264,8 @@ export const remielleMechanic: AgentMechanicModule = {
   agentIds: [REMIELLE_AGENT_ID],
   // CC-26b：后台飞行状态「光辉回转」自动行（原 core/resource/rowBuild.ts 内联，逐字搬迁）
   backstageAutoRows: remielleRadiantTurnRows,
+  // CC-28：虚耀池/耀变/特殊虚耀事件记录（原 useResourceCalc.ts remielleVoidflareEvents 编排层分支，逐字搬迁）
+  anomalyEventRecords: remielleAnomalyEventRecords,
   // CC-26：一/四/六命「特殊虚耀 → 垂虹」必做动作（原 core/resource/rowBuild + helpers 内联）
   extraNecessaryAction: (cfg) => {
     const count = remielleSpecialVoidflareUseCount(cfg)
@@ -505,4 +508,72 @@ export function remielleRadiantTurnRows({ cfg, state, executions }: AgentResourc
     }
   }
   return rows
+}
+
+/**
+ * 蕾米虚耀池与耀变触发事件（CC-28 自 `useResourceCalc.ts#remielleVoidflareEvents` 迁入，文案/公式逐字保留）。
+ * 编排层按槽位派发：`slot` = 蕾米槽位，`panel` = `panelAt(panels, slot)`（判据 17 已在派发侧保证）。
+ */
+export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds, perSlotAnomalyTriggers }: AgentAnomalyEventRecordsInput): AnomalyEventRecord[] {
+  const otherSlots = [0, 1, 2].filter(slot => slot !== ownSlot)
+  const perSlotAnomaly = perSlotAnomalyTriggers
+  const voidflareTotal = otherSlots.reduce((sum, slot) => sum + Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)), 0)
+  if (voidflareTotal <= 0) return []
+
+  const remiellePanel = panel
+  const qBatches = Math.floor(voidflareTotal / 3)
+  const c6LuminizeMultiplier = 1 + Math.max(0, remiellePanel.remielleCinema6LuminizeTriggerMultiplier ?? 0)
+  const specialCount = remielleSpecialVoidflareCount(remiellePanel)
+  const perSlotText = otherSlots
+    .map(slot => `${teamAgentIds[slot] ?? slot}:${perSlotAnomaly[slot] ?? 0}`)
+    .join(' / ')
+
+  return ([
+    {
+      id: 'remielle-voidflare-pool',
+      type: 'luminize',
+      label: '蕾米虚耀池',
+      source: '其他队友异常触发',
+      count: voidflareTotal,
+      formula: 'voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]',
+      fields: ['AnomalyPoolResult.perSlotAnomalyTriggers', '蕾米槽位', perSlotText],
+      note: '每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。',
+    },
+    {
+      id: 'remielle-luminize-assist',
+      type: 'luminize',
+      label: '支援技花羽轮舞·耀变',
+      source: '不消耗虚耀',
+      count: voidflareTotal,
+      formula: 'count = 虚耀池总数；每个虚耀打一次',
+      fields: ['voidflareTotal', '1581015 luminizeMultiplier'],
+    },
+    {
+      id: 'remielle-luminize-ultimate',
+      type: 'luminize',
+      label: '终结技缭乱终幕·耀变',
+      source: '不消耗虚耀，按3个一批',
+      count: qBatches * 3,
+      formula: 'count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0',
+      fields: ['voidflareTotal', 'qBatches', 'remielle.q:{slot}'],
+    },
+    {
+      id: 'remielle-luminize-basic',
+      type: 'luminize',
+      label: '普通攻击惊鸿·耀变',
+      source: '消耗并清空虚耀',
+      count: voidflareTotal * c6LuminizeMultiplier,
+      formula: `count = voidflareTotal × ${c6LuminizeMultiplier}（6命翻倍）`,
+      fields: ['voidflareTotal', 'remielleCinema6LuminizeTriggerMultiplier', '1581008 luminizeMultiplier'],
+    },
+    {
+      id: 'remielle-special-voidflare',
+      type: 'special_voidflare',
+      label: '普通攻击垂虹·特殊虚耀',
+      source: '开局特殊虚曜点，垂虹打出并消耗',
+      count: specialCount,
+      formula: 'count = (3 + 4命补充3) × 6命翻倍；倍率 = 垂虹耀变倍率 × 2.5',
+      fields: ['remielleCinema1SpecialVoidflareCount', 'remielleCinema4SpecialVoidflareRefillCount', 'remielleCinema6SpecialVoidflareTriggerMultiplier'],
+    },
+  ] as AnomalyEventRecord[]).filter(event => event.count > 0)
 }

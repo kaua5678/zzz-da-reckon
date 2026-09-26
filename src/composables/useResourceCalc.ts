@@ -83,7 +83,7 @@ export function setCalcOutputMemoEnabled(on: boolean): void {
   calcOutputMemoEnabled = on
 }
 
-const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, remielleSpecialVoidflareCount, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays, findSlotByIdentity } = ResourceCalcHelpers
+const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays, findSlotByIdentity } = ResourceCalcHelpers
 export function useResourceCalc() {
   const configStore = useConfigStore()
   const catalogStore = useCatalogStore()
@@ -596,75 +596,24 @@ export function useResourceCalc() {
     computeWindowDuration,
   }))
 
-  /** 蕾米虚耀池与耀变触发事件 */
-  const remielleVoidflareEvents = computed<AnomalyEventRecord[]>(() => {
-    // 按身份找槽位（单一事实源 `findSlotByIdentity`；2026-09-18 round 21 夜）
-    const remielleSlot = findSlotByIdentity(configStore, catalogStore, ['1581'])
-    if (remielleSlot < 0) return []
-
-    const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
-    const perSlotAnomaly = anomalyPoolResult.value?.perSlotAnomalyTriggers ?? []
-    const voidflareTotal = otherSlots.reduce((sum, slot) => sum + Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)), 0)
-    if (voidflareTotal <= 0) return []
-
-    // ⚠ 判据 17：按盖章身份取（原 `panels.value[remielleSlot]` 空槽时错人）
-    const remiellePanel = panelAt(panels.value, remielleSlot)
-    if (!remiellePanel) return []
-    const qBatches = Math.floor(voidflareTotal / 3)
-    const c6LuminizeMultiplier = 1 + Math.max(0, remiellePanel.remielleCinema6LuminizeTriggerMultiplier ?? 0)
-    const specialCount = remielleSpecialVoidflareCount(remiellePanel)
-    const perSlotText = otherSlots
-      .map(slot => `${configStore.team[slot]?.agentId ?? slot}:${perSlotAnomaly[slot] ?? 0}`)
-      .join(' / ')
-
-    return ([
-      {
-        id: 'remielle-voidflare-pool',
-        type: 'luminize',
-        label: '蕾米虚耀池',
-        source: '其他队友异常触发',
-        count: voidflareTotal,
-        formula: 'voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]',
-        fields: ['AnomalyPoolResult.perSlotAnomalyTriggers', '蕾米槽位', perSlotText],
-        note: '每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。',
-      },
-      {
-        id: 'remielle-luminize-assist',
-        type: 'luminize',
-        label: '支援技花羽轮舞·耀变',
-        source: '不消耗虚耀',
-        count: voidflareTotal,
-        formula: 'count = 虚耀池总数；每个虚耀打一次',
-        fields: ['voidflareTotal', '1581015 luminizeMultiplier'],
-      },
-      {
-        id: 'remielle-luminize-ultimate',
-        type: 'luminize',
-        label: '终结技缭乱终幕·耀变',
-        source: '不消耗虚耀，按3个一批',
-        count: qBatches * 3,
-        formula: 'count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0',
-        fields: ['voidflareTotal', 'qBatches', 'remielle.q:{slot}'],
-      },
-      {
-        id: 'remielle-luminize-basic',
-        type: 'luminize',
-        label: '普通攻击惊鸿·耀变',
-        source: '消耗并清空虚耀',
-        count: voidflareTotal * c6LuminizeMultiplier,
-        formula: `count = voidflareTotal × ${c6LuminizeMultiplier}（6命翻倍）`,
-        fields: ['voidflareTotal', 'remielleCinema6LuminizeTriggerMultiplier', '1581008 luminizeMultiplier'],
-      },
-      {
-        id: 'remielle-special-voidflare',
-        type: 'special_voidflare',
-        label: '普通攻击垂虹·特殊虚耀',
-        source: '开局特殊虚曜点，垂虹打出并消耗',
-        count: specialCount,
-        formula: 'count = (3 + 4命补充3) × 6命翻倍；倍率 = 垂虹耀变倍率 × 2.5',
-        fields: ['remielleCinema1SpecialVoidflareCount', 'remielleCinema4SpecialVoidflareRefillCount', 'remielleCinema6SpecialVoidflareTriggerMultiplier'],
-      },
-    ] as AnomalyEventRecord[]).filter(event => event.count > 0)
+  /**
+   * 模块异常事件记录（CC-28；原 `remielleVoidflareEvents`——按身份 `['1581']` 找槽、读蕾米面板的**编排层角色分支**，
+   * 违反 AGENTS.md「禁止在 useResourceCalc 加角色分支」）。槽位 0→2 逐模块派发 `anomalyEventRecords` 并拼接；
+   * 该槽无面板 ⇒ 跳过（= 原 `panelAt` 缺失返回 []）。现仅蕾米埃尔实现（虚耀池/耀变/特殊虚耀）。
+   */
+  const moduleAnomalyEventRecords = computed<AnomalyEventRecord[]>(() => {
+    const perSlotAnomalyTriggers = anomalyPoolResult.value?.perSlotAnomalyTriggers ?? []
+    const teamAgentIds = [0, 1, 2].map(slot => configStore.team[slot]?.agentId)
+    const out: AnomalyEventRecord[] = []
+    for (let slot = 0; slot < 3; slot++) {
+      const agentId = configStore.team[slot]?.agentId
+      const hook = agentId ? getAgentMechanic(agentId)?.anomalyEventRecords : undefined
+      if (!hook) continue
+      const panel = panelAt(panels.value, slot)
+      if (!panel) continue
+      out.push(...hook({ slot, panel, teamAgentIds, perSlotAnomalyTriggers }))
+    }
+    return out
   })
 
   /** 通用异常事件：灼烧/感电/侵蚀/强击/碎冰 */
@@ -762,7 +711,7 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
     specialActionBonus,
     damagePoolRows,
     damageSourceBreakdown,
-    remielleVoidflareEvents,
+    moduleAnomalyEventRecords,
     anomalyDamageEvents,
     anomalyVirtualPanels,
     agentNames,
