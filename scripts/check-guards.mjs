@@ -341,6 +341,14 @@ export const RATCHET_BURNDOWN = [
     due: '2026-12-31',
     plan: 'CC-14e 卢西娅帷幕写回迁模块能力（census 文档 §1）→ B 类槽位定位变量按角色逐卡（remielleSlot/aliceSlot/janeSlot…）；remielle 簇需先出设计稿',
   },
+  {
+    id: 'core 角色名中缀/子目录',
+    file: 'src/core/** + src/composables/resourceCalc/** + useResourceCalc.ts（口径见 scripts/lib/core-role-field-ratchet.mjs 判据 23 段）',
+    frozen: 13,  // 2026-09-27 CC-43b 立尺（CC-43a 先零差改名 7 个纯命名项后实测）：computeLiuyinHugCounts 4 / computeRemielleEntryPanel 5 / hasLiuyin 2 / SIGRID_LANCE_SEGMENT_IDS 2
+    target: 0,
+    due: '2026-12-31',
+    plan: 'census §5.47 立卡：CC-43c 琉音转大次数（computeLiuyinHugCounts 值导入 → 模块能力）、CC-43d 蕾米入场面板（computeRemielleEntryPanel 迁模块/通用化）、CC-43e hasLiuyin 身份字面量 → 模块能力、CC-43f 希格莉德枪段 id 常量 → 模块能力',
+  },
 ]
 
 /**
@@ -731,8 +739,8 @@ export function findForbiddenTracked(trackedPaths) {
 // ⚠ 改判据口径请改 `./lib/layer-import-ratchet.mjs`，**不要在本文件重建同形函数**。
 import { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
 export { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
-import { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom } from './lib/core-role-field-ratchet.mjs'
-export { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom } from './lib/core-role-field-ratchet.mjs'
+import { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom, CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, INFIX_PREFIX_EXCLUDE, camelSegments, findRoleInfixRefs, scanCoreRoleInfix } from './lib/core-role-field-ratchet.mjs'
+export { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom, CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, INFIX_PREFIX_EXCLUDE, camelSegments, findRoleInfixRefs, scanCoreRoleInfix } from './lib/core-role-field-ratchet.mjs'
 
 
 // ---- 判据 4：实现已整段迁至 `./lib/settings-coverage.mjs`（R46 结构熵切面，纯搬运）----
@@ -1312,6 +1320,27 @@ export function runAllChecks(root = ROOT) {
         ]
         : roleField.count < CORE_ROLE_FIELD_BASELINE
           ? [`  ✗ core role-field ${CORE_ROLE_FIELD_BASELINE}→${roleField.count}：是进步，把 CORE_ROLE_FIELD_BASELINE 与 RATCHET_BURNDOWN「core 角色前缀字段」.frozen 同步下调到 ${roleField.count}（棘轮只减不增）`]
+          : [],
+    })
+  }
+
+  // ---- 判据 23：角色名中缀 / core 子目录棘轮（CC-43b；口径 scripts/lib/core-role-field-ratchet.mjs 判据 23 段） ----
+  const roleInfix = scanCoreRoleInfix(root)
+  if (roleInfix === null) {
+    results.push({ name: 'core role-infix ratchet ⚠ 非 git 环境，跳过', ok: true, detail: [] })
+  } else {
+    results.push({
+      name: `core role-infix ratchet (判据 23: 标识符中缀/子目录也不带角色名) = ${roleInfix.count}/${CORE_ROLE_INFIX_BASELINE}`,
+      ok: roleInfix.count === CORE_ROLE_INFIX_BASELINE,
+      detail: roleInfix.count > CORE_ROLE_INFIX_BASELINE
+        ? [
+          `  ✗ 含角色名段的标识符 ${CORE_ROLE_INFIX_BASELINE}→${roleInfix.count}（新增）：`,
+          '    → 纯命名的改通用名（范式 CC-43a）；逻辑专属的迁模块能力 getAgentMechanic(id)?.<能力>',
+          `    → 英文通用词撞角色名的误报加进 ROLE_INFIX_EXEMPT（现：${ROLE_INFIX_EXEMPT.join(', ')}）并写明理由`,
+          ...[...roleInfix.byFile].slice(0, 8).map(([f, r]) => `      ${f}: ${r.map(x => x.field).join(', ')}`),
+        ]
+        : roleInfix.count < CORE_ROLE_INFIX_BASELINE
+          ? [`  ✗ core role-infix ${CORE_ROLE_INFIX_BASELINE}→${roleInfix.count}：是进步，把 CORE_ROLE_INFIX_BASELINE 与 RATCHET_BURNDOWN「core 角色名中缀/子目录」.frozen 同步下调到 ${roleInfix.count}（棘轮只减不增）`]
           : [],
     })
   }

@@ -33,6 +33,13 @@ export declare const ROLE_FIELD_EXEMPT: string[]
 export declare function rolePrefixesFrom(fileNames: string[]): string[]
 export declare function findRoleFieldRefs(text: string, prefixes: string[], exempt?: string[]): { field: string; line: number }[]
 export declare function scanCoreRoleFields(root: string): { count: number; byFile: Map<string, { field: string; line: number }[]>; prefixes: string[] } | null
+// 判据 23：角色名中缀 / core 子目录棘轮（CC-43b）
+export declare const CORE_ROLE_INFIX_BASELINE: number
+export declare const ROLE_INFIX_EXEMPT: string[]
+export declare const INFIX_PREFIX_EXCLUDE: string[]
+export declare function camelSegments(id: string): string[]
+export declare function findRoleInfixRefs(text: string, prefixes: string[], exempt?: string[]): { field: string; line: number }[]
+export declare function scanCoreRoleInfix(root: string): { count: number; byFile: Map<string, { field: string; line: number }[]>; prefixes: string[] } | null
 
 // 判据 3：工作区状态防误提交
 export declare const CLAUDE_TRACKED_ALLOWLIST: string[]

@@ -69,3 +69,72 @@ export function scanCoreRoleFields(root) {
   }
   return { count, byFile, prefixes }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 判据 23（CC-43b，2026-09-27）：角色名「中缀 / 子目录」棘轮 —— 补判据 22 的两处口径盲区
+//
+// 判据 22 只数 `\b<前缀>[A-Z]`（小写前缀开头）且只扫 `src/core/*.ts` 顶层 ⇒ 以下两类看不见：
+//   ① 标识符**中间**带角色名：`applyLiuyinPromote`、`computeRemielleEntryPanel`、`AliceCoweringDotResult`；
+//   ② core 子目录：`src/core/anomalyPool/**`、`src/core/resource/**`、`src/core/stunAxis/**`。
+// CC-43a（同日）先零差改名清掉 7 个纯命名项，剩下的都是**真债**（按值导入角色模块 / 身份字面量 / 专属函数），
+// 计入 CORE_ROLE_INFIX_BASELINE，只减不增。判据 22 不动（它是 0 的硬门，扩口径会破坏硬门语义）。
+//
+// 度量口径（改口径 = 换尺，按 AGENTS 规则 17②，不与代码改动混批）：
+// - 范围：git ls-files src/core src/composables/resourceCalc src/composables/useResourceCalc.ts 中的 .ts，排除 __tests__
+// - 前缀：同判据 22（rolePrefixesFrom），但排除 INFIX_PREFIX_EXCLUDE（英文通用词：trigger）
+// - 匹配：把标识符按驼峰切段（`computeRemielleEntryPanel` → compute/Remielle/Entry/Panel），
+//   任一段小写后 === 某前缀即计 1（⇒ `teamBenefit` 的 Benefit ≠ ben，不误报）；只数代码部分，字符串字面量不计
+// - 豁免：ROLE_INFIX_EXEMPT（写明理由；不许当放宽判据用）
+export const CORE_ROLE_INFIX_BASELINE = 13
+export const INFIX_PREFIX_EXCLUDE = ['trigger']
+export const ROLE_INFIX_EXEMPT = [
+  // configStore 用户持久化配置键（「自动伊德海莉轴」开关），改名需做存档迁移，收益低于成本；编排层只读它不写
+  'autoYidhariAxis',
+]
+
+/** 驼峰切段（纯函数）：'computeRemielleEntryPanel' → ['compute','Remielle','Entry','Panel']；'xideAAActive' → ['xide','AA','Active'] */
+export function camelSegments(id) {
+  return id.match(/[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+/g) ?? []
+}
+
+/** 数一段源码里代码部分含角色名段的标识符（纯函数）；返回 [{ field, line }] */
+export function findRoleInfixRefs(text, prefixes, exempt = ROLE_INFIX_EXEMPT) {
+  const set = new Set(prefixes.filter(p => !INFIX_PREFIX_EXCLUDE.includes(p)))
+  if (set.size === 0) return []
+  const out = []
+  let inBlock = false
+  text.split('\n').forEach((line, i) => {
+    const t = line.trim()
+    const isComment = inBlock || t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')
+    if (t.startsWith('/*') && !t.includes('*/')) inBlock = true
+    if (inBlock && t.includes('*/')) inBlock = false
+    if (isComment) return
+    const code = line.split('//')[0].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, '')
+    for (const m of code.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) {
+      if (exempt.includes(m[0])) continue
+      if (camelSegments(m[0]).some(s => set.has(s.toLowerCase()))) out.push({ field: m[0], line: i + 1 })
+    }
+  })
+  return out
+}
+
+/** 扫仓库（判据 23）；非 git 环境返回 null */
+export function scanCoreRoleInfix(root) {
+  let files
+  try {
+    files = execFileSync('git', ['-C', root, 'ls-files', 'src/core', 'src/composables/resourceCalc', 'src/composables/useResourceCalc.ts'], { encoding: 'utf8' })
+      .split('\n').filter(f => f.endsWith('.ts') && !f.includes('__tests__'))
+  } catch { return null }
+  const agentsDir = join(root, 'src/mechanics/agents')
+  if (!existsSync(agentsDir)) return null
+  const prefixes = rolePrefixesFrom(readdirSync(agentsDir))
+  const byFile = new Map()
+  let count = 0
+  for (const f of files) {
+    const p = join(root, f)
+    if (!existsSync(p)) continue
+    const refs = findRoleInfixRefs(readFileSync(p, 'utf8'), prefixes)
+    if (refs.length) { byFile.set(f, refs); count += refs.length }
+  }
+  return { count, byFile, prefixes }
+}

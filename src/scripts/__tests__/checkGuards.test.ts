@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, findRoleFieldRefs, rolePrefixesFrom, scanCoreRoleFields,
+  CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, camelSegments, findRoleInfixRefs, scanCoreRoleInfix,
   DEBT_REGISTRY,
   ROOT,
   AGENT_BRANCH_BASELINE,
@@ -568,11 +569,11 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('二十二条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖****)', () => {
+  it('二十三条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖****)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(22)
+    expect(results).toHaveLength(23)
     // 判据 22：core 角色前缀字段计数棘轮（2026-09-26，docs/mcp-r22d1-batch12-field-census.md §5）——agentId 棘轮看不见 `cfg.billyC1Energy` 这类以角色命名的字段
     expect(results.some(r => r.name.startsWith('core role-field ratchet'))).toBe(true)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
@@ -1864,5 +1865,46 @@ describe('判据 22：core 角色前缀字段计数棘轮（scripts/lib/core-rol
     const r = scanCoreRoleFields(process.cwd())
     expect(r).not.toBeNull()
     expect(r!.count).toBe(CORE_ROLE_FIELD_BASELINE)
+  })
+})
+
+describe('判据 23：角色名中缀 / core 子目录棘轮（CC-43b，scripts/lib/core-role-field-ratchet.mjs）', () => {
+  it('基线常量 == RATCHET_BURNDOWN.frozen，且登记了 due/plan', () => {
+    const e = RATCHET_BURNDOWN.find(x => x.id === 'core 角色名中缀/子目录')!
+    expect(e).toBeDefined()
+    expect(e.frozen).toBe(CORE_ROLE_INFIX_BASELINE)
+    if (e.frozen > 0) expect(e.target).toBeLessThan(e.frozen)
+    else expect(e.target).toBe(0)
+    expect(e.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(e.plan.length).toBeGreaterThan(20)
+  })
+
+  it('驼峰切段', () => {
+    expect(camelSegments('computeRemielleEntryPanel')).toEqual(['compute', 'Remielle', 'Entry', 'Panel'])
+    expect(camelSegments('SIGRID_LANCE_SEGMENT_IDS')).toEqual(['SIGRID', 'LANCE', 'SEGMENT', 'IDS'])
+    expect(camelSegments('xideAAActive')).toEqual(['xide', 'AA', 'Active'])
+  })
+
+  it('检测器：中缀/前缀/全大写常量都计；撞词段（Benefit≠ben）、trigger、注释、字符串、豁免不计（正控 + 负控）', () => {
+    const prefixes = rolePrefixesFrom(['ben.ts', 'liuyin.ts', 'sigrid.ts', 'trigger.ts', 'index.ts'])
+    const src = [
+      'const a = applyLiuyinPromote(x) + liuyinHug + SIGRID_IDS // computeLiuyinInComment',
+      'const b = teamBenefit + triggerShotCount + perSlotTriggers',
+      "const s = 'computeLiuyinInString'",
+      '/* liuyinBlock',
+      ' */',
+      'const c = autoYidhariAxis + isBen',
+    ].join('\n')
+    const refs = findRoleInfixRefs(src, prefixes, ['autoYidhariAxis'])
+    expect(refs.map(r => `${r.field}@${r.line}`)).toEqual(['applyLiuyinPromote@1', 'liuyinHug@1', 'SIGRID_IDS@1', 'isBen@6'])
+    expect(ROLE_INFIX_EXEMPT).toContain('autoYidhariAxis')
+    // 负控：豁免表为空 ⇒ 仍不会误计 autoYidhariAxis 以外的东西（yidhari 前缀不在本例 prefixes 里）
+    expect(findRoleInfixRefs('const x = benBonus', prefixes, []).map(r => r.field)).toEqual(['benBonus'])
+  })
+
+  it('仓库实测读数 == 基线（同 check-guards 判据 23）', () => {
+    const r = scanCoreRoleInfix(process.cwd())
+    expect(r).not.toBeNull()
+    expect(r!.count).toBe(CORE_ROLE_INFIX_BASELINE)
   })
 })
