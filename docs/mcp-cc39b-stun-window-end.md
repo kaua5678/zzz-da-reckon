@@ -44,7 +44,7 @@
 脚本：`/home/kaua/calc-arch/cc39b.py`、`z39b.sh`、`p39b.sh`（接线探针）。
 
 ## 4. 已知坑 / 未决
-- **perf 语料对决算截断零覆盖**（佩洛伊斯、雨果都是）：以后改这条路径不能靠 dump 零差验收，必须跑 `axisStunWindowEnd` + `stunVulnSummary`。佩洛伊斯轴决算截断没有集成快照，**待补（小卡 CC-39c，可派低级模型）**：仿照 `stunVulnSummary.test.ts` 的雨果 0 命轴案例，给佩洛伊斯右分支决算建一条轴快照，锁 `verdictSecondsLost > 0`。
+- **perf 语料对决算截断零覆盖**（佩洛伊斯、雨果都是）：以后改这条路径不能靠 dump 零差验收，必须跑 `axisStunWindowEnd` + `stunVulnSummary`。佩洛伊斯轴决算截断集成快照 **已补（CC-39c `0f9f329`，`peiluoVerdictTruncation.test.ts`，census §5.43）**。原待办：仿照 `stunVulnSummary.test.ts` 的雨果 0 命轴案例，给佩洛伊斯右分支决算建一条轴快照，锁 `verdictSecondsLost > 0`。
 - 常量 `HUGO_EX_VERDICT_MOVE_ID` 等仍由 `hugo.ts` 导出供模块内和测试使用，不删。
 
 ## 5. 回退点

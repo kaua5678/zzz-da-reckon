@@ -1419,6 +1419,31 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. **遗留未决项**（见 §5.39 前各节）：莱特额外能力 buff 在默认配置下是否生效（调研）；`cfg.remielleRadiantTurnDazeBonusPct` 没有读取方、`remielleFlowerFeatherDanceCount` 没有写入方（死通道，先 grep 读写方再决定删或补）；`isRemielleAgent` 跨槽决策；W31。
 3. 可选观感收尾：类型名 `AliceCoweringDotResult`、函数 `calcAliceCoweringDot`（首字母大写或非前缀，不计入判据 22）改通用名。
 
+### 5.43 CC-39c done + 蕾米埃尔两条「死通道」复核 + CC-41 立卡（lead-arena-0925c，2026-09-27 第 56 轮）
+
+**CC-39c（`0f9f329`，verify EXIT=0，3603 条）**：新增 `src/composables/__tests__/peiluoVerdictTruncation.test.ts`。
+- 做法：队伍 1551 / 1011 / 1191，手工单轴 `[{slot:0, moveId, count:1, startTime:0}]`（预设库里没有佩洛伊斯轴），只换招式做对照：右分支决算 `1551016` 对上分支 `1551015`，读 `calc.stunCoverage`（含 `verdictSecondsLost` 的权威口径）。
+- 冻结值：窗长 25；上分支 0.2778（= 2 × 25 / 180，不截断）；决算 **0.0834**。断言：决算 < 上分支 × 0.5、> 0，并 `toBeCloseTo(0.0834, 3)`。若数值因无关口径漂移，先确认相对断言仍成立再重冻。
+- 反向：佩洛伊斯 `endsStunWindow` 置 false ⇒ 红（0.2778 不小于 0.1389）；convergence 截断调用点置 false ⇒ 红。脚本 `/home/kaua/calc-arch/z39c.sh`。
+- 至此决算截断两条路径（雨果 stunVulnSummary、佩洛伊斯本文件）都有集成覆盖。`docs/mcp-cc39b-stun-window-end.md` §4 的待补项关闭。
+
+**遗留项复核（只读 grep，结论如下）**
+1. `cfg.remielleRadiantTurnDazeBonusPct`：写入方 `remielle.ts:326`（buildCharConfig）；引擎读的是**同名面板字段** `panel.remielleRadiantTurnDazeBonusPct`（`remielle.ts:390`），cfg 副本只有 `helpersNightC.test.ts:522/531/547` 在读，那组测试把它当成「cfg 与 panel 一致」的契约。**决定：保留，不删**。依据：无害镜像，删掉要改一组契约测试而没有收益。本项关闭。
+2. `panel.remielleFlowerFeatherDanceCount`：**确认没有写入方**。`StatPanel.vue:732` 只是展示过滤集合，不是写入；`agentPanelStats.ts:27` 初值 0 ⇒ `remielle.ts:322` 的一命喧响 `DecibelPerUse(200) × Count` 恒 0。**这是建模缺口，不只是死代码**：蕾米埃尔 1 命「发动[支援技：花羽轮舞]时，获得 200 点喧响值，18 秒内最多触发 1 次」（`src/specs/agents/1581.json:47`）目前**完全没生效**。已立卡 CC-41。
+
+**CC-41（todo，中等，需 lead 或能读引擎的模型）：蕾米埃尔 1 命花羽轮舞喧响次数**
+- 目标：给 `remielleFlowerFeatherDanceCount` 找到写入方，次数 = min(本角色支援技 `1581015`「花羽轮舞」的施放次数, 冷却上限 ⌊战斗时长 / 18⌋ + 1)。只在影画 ≥ 1 生效。
+- 先查：①支援技施放次数在资源结果（`rr.characters[*]` 或 skill executions）里怎么表示，`grep -rn "1581015\|skillDamageTarget.*assist\|counterAssistOf" src`；②现在的写法是面板字段，而次数依赖资源结果，这是循环依赖（面板先于资源）。**建议改走 `moduleFeedback` 跨轮键**（参照 CC-31 / CC-40b 的 `consumedTeamEnergy`：上一轮资源结果算次数 → 下一轮 buildCharConfig 读），不要硬塞面板。
+- 验收：影画 1 队伍喧响 / 终结次数上升，影画 0 不变；dump 会出差（这是预期的口径变化，**不是零差重构**），出差键只能是含 1581 的队伍；在 `remielle.test.ts:258` 附近把「目前没有写入方」的注释和断言改成真实写入路径。
+- 风险：会改变用户可见的蕾米埃尔 1 命数值。按离线纪律，这是口径修正（原文明确），可以直接做，但要在 census 写明前后数值。
+
+**回退点**：`git revert 0f9f329`（只新增一个测试文件）。
+
+**下一步（按顺序）**
+1. **CC-41**（见上）。
+2. 调研：莱特额外能力 buff 在默认配置下是否生效；`isRemielleAgent` 跨槽决策；W31。
+3. 可选观感收尾：`AliceCoweringDotResult` / `calcAliceCoweringDot` 改通用名。
+
 ## 附录：普查脚本 census.sh
 
 ```bash
