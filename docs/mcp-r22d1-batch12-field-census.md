@@ -5,6 +5,8 @@
 
 ## 1. 做到哪一步
 
+- **最新交接（2026-09-26 22:0x，lead-arena-0925c 第 22 轮）**：CC-16 已落地 `fe8fb90`（lead 直接做，纯改名）。判据 22 从 733 降到 **712**，**提前达成 target 720 → 已重设 target 700**。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `fe8fb90`。
+  **下一步（可以直接开工）**：**CC-17 设计稿**（axis overlay 消费端的模块能力化，合计约 30 处），范围、现状和设计要点见 §5.8。先出设计稿并落盘（`docs/mcp-cc17-axis-overlay-consume.md`），再实现。如果本轮时间不够出设计，可以先做 §5.8 列出的零散小项（每项 1–2 处）。
 - **最新交接（2026-09-26 21:4x，lead-arena-0925c 第 21 轮）**：CC-15 已落地 `b1ed48e`（lead 直接实现：纯改名，用 sed 按词边界批量替换，19 个文件，另加注释 2 处和常量 2 处）。判据 22 从 759 降到 **733**，**提前达成 target 740 → 已重设 target 720**（due 2026-12-31）。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `b1ed48e`。
   **下一步（可以直接开工）**：**CC-16**（`banyueTopUp` 改为 `interactionTopUp`，A 类纯改名），卡面见 §5.7。零差基线 H2a 仍然有效（CC-15 对它零差；alias 映射只作用于新键名）。
 - **最新交接（2026-09-26 21:1x，lead-arena-0925c 第 20 轮）**：CC-14e 已落地 `1e3dc99`（dsflash 工人实现 `ee0bd8b`，lead 复核、零差、反向验证，重写提交信息）。判据 22 从 763 降到 **759**；target 740，还差 19。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `1e3dc99`。
@@ -244,6 +246,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-14c / CC-14d 后**：766（`ba6db48`）→ **763**（`e94b896`），原 target 765 已提前达成；重设 target 740、due 2026-12-31（§5.5）。
 - **2026-09-26 CC-14e 后**：**759**（`1e3dc99`）；target 740，还差 19。下一张 CC-15（§5.6）。
 - **2026-09-26 CC-15 后**：**733**（`b1ed48e`）；已低于 target 740，重设 target **720**。下一张 CC-16（§5.7）。
+- **2026-09-26 CC-16 后**：**712**（`fe8fb90`）；已低于 target 720，重设 target **700**。下一张：CC-17 设计（§5.8）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -404,6 +407,41 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - 判据 22 以实测为准，两处常量同步下调（`scripts/lib/core-role-field-ratchet.mjs` 的 BASELINE、`scripts/check-guards.mjs` 的 frozen）。若低于 720，同步重设 target。
 - 验收：`vue-tsc -b` 为 0；定向测试 `npx vitest run src/composables/__tests__ src/mechanics/__tests__/banyue* src/scripts/__tests__/checkGuards.test.ts` 全过；master 全量 verify，钉 HEAD。
 - 执行方式：纯改名一步能完成，lead 直接做即可（CC-15 实测约 10 分钟）。回退点：单卡单提交，`git revert`。
+
+### 5.8 CC-16 落地记录 + CC-17 设计候选（2026-09-26 第 22 轮 lead-arena-0925c）
+
+**CC-16（`fe8fb90`，判据 22 733→712）`banyueTopUp` 通用命名**
+- 实际范围比卡面（§5.7）**多一项、少两项**，均为现场核实后的决定：
+  - **多**：`useResourceCalc` 对外的 computed `banyueInteractionTopUp` 改为 `interactionTopUp`（计入判据 3 处）。它的实现已经是通用的，槽位由模块声明 `producesInteractionTopUp` 驱动。同步改了消费方 `src/views/TeamConfigPage.vue:1052/1054` 和 `banyue.test.ts` 里的 `calc.xxx`。
+  - **少**：类型 `BanyueInteractionTopUp`、函数 `computeBanyueInteractionTopUp` **不改**。判据正则是 `\b(角色前缀)[A-Z]…`，大写开头或以 `compute` 开头的标识符都不计入；而且它们是 banyue 模块自己的导出，改名没有收益。`convergence.ts:54` 直接从模块 import `computeBanyueInteractionTopUp`，这是编排层对角色模块的直接调用，**属于 B 类遗留**，要消除得设计一个能力（例如 `computeInteractionTopUp` 挂到 mechanic 上），不在本卡范围。
+  - **同名异物，不改**：cfg 槽位字段 `banyueInteractionTopUp`（`types/resource/agentResources.ts:714`，由 `banyue.ts:492` 写入，`banyue.ts:743/776` 的展示层读取，convergenceNightD 测试断言它）。它和上面那个 computed 同名，但含义不同。它在 types 目录里，不计入判据；改了会改变 dump 的角色结果键，收益为 0。**别对这个名字做全仓 sed。**
+- 改名：`banyueTopUp` → `interactionTopUp`，`banyueTopUpNext` → `interactionTopUpNext`，`prevBanyueTopUp` → `prevInteractionTopUp`（按词边界全仓替换，不含 `specs/agents/1471.json` 说明文字和 `check-guards.mjs`，后者的 target 注释是整行重写的），共 12 个文件。
+- 验证：
+  - `vue-tsc -b` 为 0；守卫 22/22；定向测试 6 个文件、234 条通过；
+  - 零差：对 H2a（alias 追加 `interactionTopUp: 'banyueTopUp'`），dump 625 / rowsnap 638 个键**只有 `__ms` 不同**；
+  - **反向**：`banyue.ts:487` 的 topUp 临时恒为 `{parry:0,dual:0}` → **dump 无差**，convergenceNight* / banyue 单测 **6 条红**。
+  - master 全量 `npm run verify` EXIT=0，前后 HEAD 都是 `fe8fb90`。
+- **新发现的 dump 覆盖盲区（已知坑补充）**：般岳的轴模式保底交互补齐（`interactionTopUp` 线程）**不在 dump/rowsnap 语料里**，语料没有覆盖「般岳 + 轴模式 / 保底喧响」的场景。以后改这条线，反向验证必须看单测（convergenceNightB/D、banyue.test），不能只看 dump 零差。
+- **target 重设 720→700（可逆）**：依据见下面的零散小项和 CC-17 规模。改 `scripts/check-guards.mjs` 的 target 一行即可（须 < frozen）。
+
+**剩余分布（HEAD `fe8fb90`，712 处，153 个字段）**：前几名是 burniceSrc 36、remielleSlot 20、liuyinSrc 18、triggerPanel 16、aliceSlot 16、remiellePanel 14、remielleAnomalyMultiplier 14、triggerSlot 13、janeSlot 13、janePanel 12。**大头是 `*Slot` / `*Panel` / `*Src` / `*Idx` 这类槽位定位变量**（B 类：编排层要知道「谁是 XX」，才去拿 XX 的面板和数据），需要逐角色设计能力，不能靠改名解决。统计命令：见 §5.6 的 `rf.mjs`，按字段统计的单行 node 脚本写法见本轮 lead-coordination。
+
+**CC-17 设计候选：axis overlay 消费端能力化（约 30 处）**
+- 现状：
+  - 产出端**已经模块化**：`panelPhases.ts:360+` 的 `collectAxisWindowOverlays` 遍历成员，调 `getAgentMechanic(id)?.axisWindowOverlays(...)`，把返回值里的 `banyueMingwangStacks` / `yixuanNingshenMap` / `peiluoKagerouMap` / `corinStunBonusMap`（逐个 if 拷贝，`panelPhases.ts:379-382`）装进固定形状的 overlay 对象（`panelPhases.ts:344-354`）；
+  - 透传：`useResourceCalc.ts:585-588` → `damagePool.ts:79-82` 的入参类型；
+  - 消费端**仍是角色专属计算**：`damagePoolDirect.ts:93` 解构，`:169` 冥网层数，`:183` 柯林失衡加成，`:211` 仪玄凝神。
+- 判据计数：banyueMingwangStacks 10、yixuanNingshenMap 10、corinStunBonusMap 10（peiluo 不是 agents 目录里的前缀，不计入）。
+- 设计方向（供设计稿取舍，**本轮未定稿**）：
+  - (a) overlay 改成按 agentId 分组的不透明包 `Map<agentId, unknown>`，模块新增能力 `modifyDirectRow(exec, overlayOfSelf, ctx)`，由 damagePoolDirect 在逐行循环里对「本行所属角色」调用；
+  - (b) 只做形状通用化 `moveOverlays: Record<string, Map<string, unknown>>`，消费端的计算留在原地（只减少透传层的计数，消费端的计数还在，收益约 2/3）。
+  - 倾向 (a)，但要先核实 `damagePoolDirect` 那三段计算的输入是否都能从 exec + 自身 overlay + 面板拿到（例如 `:183` 依赖 `stunOverride`）。
+- 零差风险：直伤是 dump 覆盖最好的部分，零差可证。反向验证可以对任一 overlay 乘 0。
+
+**零散小项（每项 1–2 处，可以作为 CC-17 之前的热身）**：
+- `luciaC4DecibelPerTrigger`（assembleSlot:116，可以考虑并入卢西娅的 `onFinalAssemble` 或 `bonusDecibel` 类能力）；
+- `janeAssaultCritDmgBonus`（core/damage.ts:178）；
+- remielle 的 `rowAccounting.ts` 4 处、`substatOptimizer.ts` 4 处（remielle 整体需要设计稿，**别单独动**）。
 
 ## 附录：普查脚本 census.sh
 
