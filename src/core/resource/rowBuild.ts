@@ -13,7 +13,7 @@ import type {
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
-import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
 import { EVADE_ASSIST_ACTION_TIME_SECONDS, EVADE_ASSIST_MOVE_ID } from '@/data/resourceDefaults'
 import {
@@ -403,37 +403,10 @@ export function buildExecutions(
     })
   }
 
-  // 蕾米后台飞行状态：每5秒自动释放一次 Radiant Turn；合轴100%，不占前台时间。
-  // 后台时间含无敌秒（先扣）；CD 被蕾米本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
-  // 前台块长 = 前台时间 / 切上次数（切上前台频率 × 非平A前台动作次数；蕾米暂无滑块声明，频率缺省 1，
-  // 可经 cfg['setting:remielle.frontSwitchRatio'] 覆盖）。
-  if (cfg.remielleEnabled && cfg.remielleRadiantTurnMoveId) {
-    const block = frontBlockSeconds(
-      state.frontlineTime ?? 0,
-      countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
-      Number((cfg as unknown as Record<string, unknown>)['setting:remielle.frontSwitchRatio'] ?? 1),
-      5,
-    )
-    const radiantInterval = phaseDelayedCooldown(5, state.frontlineTime, effectiveBattleTime(cfg), block)
-    const radiantTurnCount = Math.floor(effectiveBackstageTime(state.backstageTime, cfg) / radiantInterval)
-    if (radiantTurnCount > 0) {
-      executions.push({
-        moveId: cfg.remielleRadiantTurnMoveId,
-        moveName: 'Special Attack: Ode to Dawn - Radiant Turn（后台）',
-        category: 'special',
-        count: radiantTurnCount,
-        actionTime: cfg.remielleRadiantTurnActionTime ?? 0,
-        comboAlignRatio: 1,
-        totalTime: 0,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
-      decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
-      totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
-      timeBucket: 'backstage',
-    })
-    }
-  }
+  // 模块后台自动行（CC-26b，自蕾米埃尔「光辉回转」内联迁出）：**必须在此处派发**——次数依赖「构建到这一步为止」的
+  // executions（前台动作计数 countFrontActions）；挪到末尾 patchExecutions 会多数闪避反击等后续行，结果即变。
+  const backstageAutoRows = getAgentMechanic(cfg.agentId)?.backstageAutoRows?.({ cfg, state, executions, teamFrontlineSeconds })
+  if (backstageAutoRows) executions.push(...backstageAutoRows)
 
   // 闪避反击（Dodge Counter）
   if (cfg.dodgeCounterCount > 0 && cfg.dodgeCounterActionTime > 0) {

@@ -2,6 +2,7 @@ import type {
   AgentCharConfigInput,
   AgentMechanicModule,
   AgentPanelInput,
+  AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentTeamPanelEffectInput,
@@ -11,7 +12,8 @@ import type {
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
-import type { CharacterOperationConfig, CharacterResourceResult, RemielleMechanicSource } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, RemielleMechanicSource, SkillExecution } from '@/types/resource'
+import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
@@ -259,6 +261,8 @@ function buildRemielleCharConfig({ slot, agent, team, cfg }: AgentCharConfigInpu
 export const remielleMechanic: AgentMechanicModule = {
   id: 'agent:remielle',
   agentIds: [REMIELLE_AGENT_ID],
+  // CC-26b：后台飞行状态「光辉回转」自动行（原 core/resource/rowBuild.ts 内联，逐字搬迁）
+  backstageAutoRows: remielleRadiantTurnRows,
   // CC-26：一/四/六命「特殊虚耀 → 垂虹」必做动作（原 core/resource/rowBuild + helpers 内联）
   extraNecessaryAction: (cfg) => {
     const count = remielleSpecialVoidflareUseCount(cfg)
@@ -461,4 +465,44 @@ export function remielleSpecialVoidflareUseCount(cfg: CharacterOperationConfig):
   const refillRound = cfg.panel.remielleCinema4SpecialVoidflareRefillCount ?? 0
   const c6Multiplier = 1 + Math.max(0, cfg.panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
   return (firstRound + Math.max(0, refillRound)) * c6Multiplier
+}
+
+/**
+ * 光辉回转后台自动行（CC-26b 自 core/resource/rowBuild.ts#buildExecutions 迁入，计算逐字保留）。
+ * `executions` = 构建到派发点为止的执行行（只读，用于数前台动作）；返回新行由构建器 push。
+ */
+export function remielleRadiantTurnRows({ cfg, state, executions }: AgentResourceInput): SkillExecution[] {
+  const rows: SkillExecution[] = []
+  // 蕾米后台飞行状态：每5秒自动释放一次 Radiant Turn；合轴100%，不占前台时间。
+  // 后台时间含无敌秒（先扣）；CD 被蕾米本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
+  // 前台块长 = 前台时间 / 切上次数（切上前台频率 × 非平A前台动作次数；蕾米暂无滑块声明，频率缺省 1，
+  // 可经 cfg['setting:remielle.frontSwitchRatio'] 覆盖）。
+  if (cfg.remielleEnabled && cfg.remielleRadiantTurnMoveId) {
+    const block = frontBlockSeconds(
+      state.frontlineTime ?? 0,
+      countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
+      Number((cfg as unknown as Record<string, unknown>)['setting:remielle.frontSwitchRatio'] ?? 1),
+      5,
+    )
+    const radiantInterval = phaseDelayedCooldown(5, state.frontlineTime, effectiveBattleTime(cfg), block)
+    const radiantTurnCount = Math.floor(effectiveBackstageTime(state.backstageTime, cfg) / radiantInterval)
+    if (radiantTurnCount > 0) {
+      rows.push({
+        moveId: cfg.remielleRadiantTurnMoveId,
+        moveName: 'Special Attack: Ode to Dawn - Radiant Turn（后台）',
+        category: 'special',
+        count: radiantTurnCount,
+        actionTime: cfg.remielleRadiantTurnActionTime ?? 0,
+        comboAlignRatio: 1,
+        totalTime: 0,
+        totalComboAlignTime: 0,
+        energyConsume: 0,
+        totalEnergyConsume: 0,
+      decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
+      totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
+      timeBucket: 'backstage',
+    })
+    }
+  }
+  return rows
 }

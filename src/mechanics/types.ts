@@ -641,6 +641,13 @@ export interface AgentMechanicModule {
    */
   patchExecutions?(input: AgentResourceInput): void
   /**
+   * 后台自动释放行（CC-26b）：`rowBuild.ts#buildExecutions` 在闪避反击行**之前**的固定位置派发，
+   * 返回的行由构建器 push 进 executions。`input.executions` 是「构建到这一步为止」的只读快照语义
+   * （模块用它数前台动作，**不要**改它）。原为 core 内联的蕾米埃尔「光辉回转」后台行。
+   * ⚠ 与声明式字段 `backstageAutoFill`（后台自动补位）名字相近但语义无关。
+   */
+  backstageAutoRows?(input: AgentResourceInput): SkillExecution[]
+  /**
    * 覆盖强化特殊技（及模块生成的专属必做动作，如卢西娅 A5）的时间占用，在时间池分配前调用。
    * 返回 null 走通用公式 `exSpecialCount × exSpecialActionTime`；否则按返回值计入必做前台时间与合轴时间。
    */
