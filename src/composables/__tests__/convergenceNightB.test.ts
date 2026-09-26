@@ -229,14 +229,14 @@ describe('convergence 夜间批 B · 组 4 真管线（`:79` 调用点，不只�
    * 反向验证时实测到：把 `:79` 换成「取**最后一个**匹配」的错误实现（`aliceIdxs[aliceIdxs.length-1]`），
    * 16 条断言**全绿**（因为队里只有一个爱丽丝时两者同值）。
    * ⇒ 判据必须落到**端到端可观察量**上：`aliceInfo` 的 `slot` 唯一对外通道是
-   * `calcAnomalyPoolInput` 的 `giftedTriggerSlot` / `aliceCoweringConfig`
+   * `calcAnomalyPoolInput` 的 `giftedTriggerSlot` / `coweringConfig`
    * ⇒ 用「爱丽丝在**前导空槽**后的槽位」把「下标 ≠ 槽位号」放大成可见数字差。
    */
   it('★ 前导空槽 + 爱丽丝在槽 2：畏缩 DOT 仍进池（aliceInfo 不被空槽打断）', async () => {
     // 队伍 = ['', 1181, 1401]：爱丽丝在**槽 2**，槽 0 空。
     // 若 aliceInfo 的槽位查找退化成 `characters[slot]` 下标语义（或取错匹配），
     // `resourceConfig.characters.find(c => c.slot === slot)` 就取不到 ⇒ aliceInfo 返回 null
-    // ⇒ `aliceCoweringConfig` 不下发 ⇒ 畏缩 DOT 整块静默丢零。
+    // ⇒ `coweringConfig` 不下发 ⇒ 畏缩 DOT 整块静默丢零。
     const { config } = await setupHarness(['', { agentId: '1181' }, { agentId: '1401' }] as never, { recommendedBuild: true })
     config.setMechanicSetting('alice.coweringEnabled', 1)
     const calc = useResourceCalc()

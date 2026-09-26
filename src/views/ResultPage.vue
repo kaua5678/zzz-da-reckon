@@ -1106,7 +1106,7 @@ const aliceDamageSummary = computed<AliceDamageSummary | null>(() => {
   if (!hasDot && polarAssaultDamage <= 0 && cinema6Damage <= 0) return null
 
   // 畏缩紊乱加成 = 每剩余1秒物理异常 +bonusPerSec%，从紊乱公式读取
-  const disorderBonusPerSec = 18 // 默认值，来自 AliceCoweringConfig
+  const disorderBonusPerSec = 18 // 默认值，来自 CoweringConfig
 
   return {
     polarAssaultDamage,

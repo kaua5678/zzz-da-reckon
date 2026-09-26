@@ -302,8 +302,8 @@ export interface AnomalyPoolInput {
   velinaCinema2CorrosionRate?: number
   /** 蕾米异化系数倍率，乘到紊乱/乱流/异常相关伤害；默认1 */
   globalAnomalyMultiplier?: number
-  /** 爱丽丝畏缩 DOT 配置（启用时计算畏缩固定 DOT 伤害和紊乱倍率加成） */
-  aliceCoweringConfig?: AliceCoweringConfig
+  /** 畏缩配置（启用时计算畏缩固定 DOT 伤害和紊乱倍率加成；目前由爱丽丝开启） */
+  coweringConfig?: CoweringConfig
   /** 赠送异常触发次数（不消耗异常条、不产生积蓄，但参与紊乱序列和伤害计算）。
    *  如 { 'physical_polar_assault': 5 } 表示赠送 5 次极性强击触发。 */
   giftedTriggerCounts?: Record<string, number>
@@ -313,8 +313,12 @@ export interface AnomalyPoolInput {
   agentMechanics?: import('@/mechanics/types').AgentMechanicModule[]
 }
 
-/** 爱丽丝畏缩机制配置 */
-export interface AliceCoweringConfig {
+/**
+ * 畏缩机制配置（CC-24 自 `AliceCoweringConfig` 通用化）。畏缩是物理异常「强击」附带的通用状态；
+ * 引擎只按物理元素消费（紊乱倍率加成 + 畏缩 DOT），不看角色身份。目前唯一开启方是爱丽丝
+ * （`roundInputs.ts` 的 aliceInfo 按 cfg.aliceEnabled 下发，CC-25 待模块能力化）。
+ */
+export interface CoweringConfig {
   /** 畏缩 DOT：每 tick 造成强击伤害的比例（%），默认 2.5 */
   dotRatio: number
   /** 畏缩 DOT：tick 间隔（秒），默认 0.95 */
@@ -1040,7 +1044,7 @@ export interface DamageCalcConfig {
   /** 蕾米异化系数倍率，乘到所有异常相关伤害；无蕾米时为1 */
   globalAnomalyMultiplier: number
   /** 爱丽丝畏缩配置（启用时计算 DOT 和紊乱倍率加成） */
-  aliceCoweringConfig?: AliceCoweringConfig
+  coweringConfig?: CoweringConfig
 }
 
 // ============ 紊乱伤害计算（新增，无风属性时） ============
@@ -1105,10 +1109,10 @@ export function calcDisorderDamage(
       Math.floor(T / formula.tickInterval) * formula.tickMultiplier
 
     // 爱丽丝畏缩机制：紊乱覆盖物理异常时，每剩余1秒物理异常时长 +bonusPerSec%，上限 bonusMax%
-    if (getBaseElement(element) === 'physical' && config.aliceCoweringConfig) {
+    if (getBaseElement(element) === 'physical' && config.coweringConfig) {
       const coweringBonus = Math.min(
-        T * config.aliceCoweringConfig.disorderBonusPerSec,
-        config.aliceCoweringConfig.disorderBonusMax,
+        T * config.coweringConfig.disorderBonusPerSec,
+        config.coweringConfig.disorderBonusMax,
       )
       disorderMultiplier += coweringBonus
     }
@@ -1356,7 +1360,7 @@ export function calcAliceCoweringDot(
   dotCoverageTime: number,
   config: DamageCalcConfig,
 ): AliceCoweringDotResult | undefined {
-  const cc = config.aliceCoweringConfig
+  const cc = config.coweringConfig
   if (!cc) return undefined
   if (!physicalContribs || physicalContribs.length === 0) return undefined
   if (dotCoverageTime <= 0) return undefined

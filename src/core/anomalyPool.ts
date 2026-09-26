@@ -13,7 +13,7 @@ import { resolveAnomalyCorrosion } from './anomalyPool/corrosion'
 import { panelAt, emptyPanel } from './panel'
 import * as AnomalyPoolHelpers from './anomalyPool/helpers'
 import type { AnomalyPoolInput, DamageCalcConfig } from './anomalyPool/helpers'
-export type { AnomalySkillExecution, AnomalyPoolInput, AliceCoweringConfig } from './anomalyPool/helpers'
+export type { AnomalySkillExecution, AnomalyPoolInput, CoweringConfig } from './anomalyPool/helpers'
 const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcAliceCoweringDot } = AnomalyPoolHelpers
 export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const {
@@ -299,7 +299,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     stunMultiplier,
     velinaCinema2CorrosionRate,
     globalAnomalyMultiplier,
-    aliceCoweringConfig: input.aliceCoweringConfig,
+    coweringConfig: input.coweringConfig,
   }
 
   let disorderDamage: DisorderDamageResult | undefined
@@ -424,7 +424,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   // 触发条件：任何异常触发（爱丽丝 DOT 不限物理，风化吞掉畏缩也打 DOT）
   // 覆盖时间 = 总异常有效时间（扣无敌后）
   let aliceCoweringDot: AliceCoweringDotResult | undefined
-  if (input.aliceCoweringConfig && totalTriggerCount > 0 && coverage.effectiveDoTTime > 0) {
+  if (input.coweringConfig && totalTriggerCount > 0 && coverage.effectiveDoTTime > 0) {
     const physicalContribs = [
       ...(elementMap.get('physical') ?? []),
       ...(elementMap.get('physical_polar_assault') ?? []),
