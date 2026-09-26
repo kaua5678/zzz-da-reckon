@@ -295,7 +295,7 @@ export type {
  * 资源卡的「时间分配」按**最终执行行**计算——前台 = Σ前台行 `totalTime`（含装配后追加的赠送行：
  * 诺姆赠链 `chainGift` / 琉音赠大 `source==='gift'`），后台 = 战斗时间 − 前台。
  *
- * 为什么必须在这里统一：赠送行由 `applyNormaHatChain` / `applyLiuyinPromote` 在引擎返回**之后**追加，
+ * 为什么必须在这里统一：赠送行由 `applyChainGift` / `applyLiuyinPromote` 在引擎返回**之后**追加，
  * 引擎的 `timeAllocation` 看不到它们；而赠送时间的**预留**分散在 iterate 必要时间 / 折叠环行测量 /
  * 截断上限三处，各自口径略不同（轴模式琉音赠大走的是 post-hoc carve、预留为 0）——于是展示层
  * 若也各自回扣就会再次漂移（实测轴模式资源卡总计 = 180 + 赠送秒数）。此处以**最终行**为唯一口径重算，

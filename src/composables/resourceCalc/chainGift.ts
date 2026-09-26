@@ -1,39 +1,39 @@
 /**
- * 诺姆「膛温换连携」编排簇（从 useResourceCalc 抽离，纯函数化）。
+ * 装配后「赠送连携」编排簇（CC-35d-A 2026-09-27 由 `normaHatChain.ts#applyNormaHatChain` 通用化）。
  *
- * 帽子把戏触发上一位角色的快速支援→替换为连携技，连携归属上一位队友。
- * C4 时诺姆和对应代理人（上一位队友）各 +200 不可分享喧响（unshareableBonus，无伴随获取）。
+ * 提供者 = 首个实现模块能力 `chainGift` 的在队槽位（现唯一实现：诺姆「膛温换连携」——帽子把戏触发
+ * 上一位角色的快速支援→替换为该队友本人的连携技）。本文件不认角色：次数 / 招式名后缀 / 说明文案都由能力返回。
+ * 引擎侧时间预留走 crossAgentSupply 的 `gift-chain:chain` 通道（core/resource/helpers.ts 的 chainGift*），两者须同源。
  */
 import { findChainAttack } from '@/core/resource'
 import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 import type { TeamResourceResult } from '@/types/resource'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-// 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findSlotByIdentity } from './anomalyPanels'
+import { getAgentMechanic } from '@/mechanics'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById, fusedRowValue } from './skillRows'
 import { buildGiftRow } from '@/core/resource/giftRows'
 
 /**
- * 诺姆膛温换连携：帽子把戏触发上一位角色的快速支援→替换为连携技，连携归属上一位队友。
- * C4 时诺姆和对应代理人（上一位队友）各 +200 不可分享喧响（unshareableBonus，无伴随获取）。
+ * 赠送连携：提供者给「上一位队友」（`resolveUltimateTargetSlot`）赠送 N 次其本人连携技，连携归属该队友。
+ * 诺姆 C4 的 +200 不可分享喧响不在这里（资源池 calcDecibelSource 已计入）。
  */
-export function applyNormaHatChain(
+export function applyChainGift(
   base: TeamResourceResult | null,
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): TeamResourceResult | null {
   if (!base) return null
-  // 按身份找槽位（单一事实源 `findSlotByIdentity`，规则 11；2026-09-18 round 21 夜）
-  const normaIdx = findSlotByIdentity(configStore, catalogStore, ['1571'])
-  if (normaIdx < 0) return base
-  const normaResult = base.characters.find(c => c.slot === normaIdx)
-  const normaSrc = normaResult?.normaMechanicSource
-  if (!normaSrc) return base
-  const hatCount = Math.max(0, Math.floor(normaSrc.hatToChainCount))
+  // 提供者槽位 = 首个实现 `chainGift` 的在队模块（CC-35d-A；原按身份 findSlotByIdentity(['1571'])，
+  // 本库 teammateBuffId 均等于自身 id，按 agentId 派发与之等价）
+  const providerSlot = configStore.team.findIndex(m => !!m.agentId && !!getAgentMechanic(m.agentId)?.chainGift)
+  if (providerSlot < 0) return base
+  const providerResult = base.characters.find(c => c.slot === providerSlot)
+  const gift = providerResult ? getAgentMechanic(configStore.team[providerSlot].agentId)?.chainGift?.(providerResult) ?? null : null
+  if (!gift) return base
+  const hatCount = Math.max(0, Math.floor(gift.count))
   // 引擎占位行（阶段1 ②）以**池口径**为准：hatCount = 0 时撤掉占位行（同 applyLiuyinPromote）
   if (hatCount <= 0) {
     if (!base.characters.some(c => (c.executions ?? []).some(e => e.chainGift))) return base
@@ -48,13 +48,13 @@ export function applyNormaHatChain(
 
   // 上一位队友（环绕，排除自己）
   const targetSetting = configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1)
-  const targetSlot = resolveUltimateTargetSlot(normaIdx, configStore.team.length, targetSetting)
+  const targetSlot = resolveUltimateTargetSlot(providerSlot, configStore.team.length, targetSetting)
   // 帽子把戏替换的是「上一位队友的快速支援→该队友本人的连携技」（用户口径：赠送连携给上一位队友打，
   // 不是诺姆替打自己的 1571018）——连携招式 id/倍率/时长全部取目标队友技能表。
   // C4 喧响（诺姆+队友各 200×次数）已由资源池 calcDecibelSource 计入（buildResourceResult 回写
   // cfg.normaHatToChainCount → 下一轮迭代注入 extraUnshareableDecibel，真实影响终结技次数），
-  // applyNormaHatChain 只做连携赠送，不再重复注入喧响。
-  // 赠送连携行需自带倍率表值（applyNormaHatChain 在 enrich 之后执行，不走 enrich 回填；
+  // applyChainGift 只做连携赠送，不再重复注入喧响。
+  // 赠送连携行需自带倍率表值（applyChainGift 在 enrich 之后执行，不走 enrich 回填；
   // 缺倍率则伤害池按 damageMultiplier≤0 跳过、失衡池无 baseDaze——带上后伤害/失衡才进池）
   const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
   const targetSkills = catalogStore.agentSkillsByAgentMap.get(targetAgentId)
@@ -84,7 +84,7 @@ export function applyNormaHatChain(
         actionTime: chainInfo.actionTime,
         totalTime: hatCount * chainInfo.actionTime,
         totalComboAlignTime: hatCount * chainInfo.actionTime * chainInfo.comboAlignRatio,
-        moveName: `${giftedMove?.name?.zhCN || '连携技'}（诺姆膛温替换）`,
+        moveName: `${giftedMove?.name?.zhCN || '连携技'}（${gift.label}）`,
         decibelRecovery: chainInfo.decibelRecovery,
         totalDecibelRecovery: chainInfo.decibelRecovery * hatCount,
         damageMultiplier: giftedDamage,
@@ -106,7 +106,7 @@ export function applyNormaHatChain(
           damageMultiplier: giftedDamage,
           dazeMultiplier: giftedDaze,
           anomalyBuildUp: giftedAnomaly,
-          skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
+          skillTableNote: gift.note,
           chainGift: true,
         })]
       return {

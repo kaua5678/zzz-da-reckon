@@ -117,7 +117,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     //      `exMult` 表正是遍历 `charResult.executions` 里 `LIUYIN_EX_MOVE_IDS` 且有倍率的行构建的
     //      ⇒ 被跳过的行**必然**被重放（`mult(moveId) > 0` 成立）。无「两边都不算」的第三态。
     //   ③ 赠链/赠大不会把这三行搬到别人槽位：诺姆赠链搬的是**目标队友自己的连携技** moveId
-    //      （`normaHatChain.ts` 取 `findChainAttack(targetSkills)`），琉音赠大搬的是**目标队友的终结技**
+    //      （`chainGift.ts` 取 `findChainAttack(targetSkills)`），琉音赠大搬的是**目标队友的终结技**
     //      （`liuyinPromote.ts` 取 `ultimateMoveId`）——两者都取「目标自己的招」，不会产生 1481 的强特行。
     if (liuyinSrc && !isAxis && LIUYIN_EX_MOVE_IDS.has(exec.moveId)) continue
     const move = findMoveById(skills, exec.moveId)

@@ -93,7 +93,7 @@ export function runFoldLoop(
     /** 停滞判据用：历史最小残差 + 连续无改善轮数（阶段2，见下方收敛判据注释） */
     if (typeof diag.bestExcess === 'undefined') diag.bestExcess = Infinity
     if (typeof diag.stagnantPasses === 'undefined') diag.stagnantPasses = 0
-    // 诺姆膛温换连携赠链行在装配后被 applyNormaHatChain 追加、不在 buildExecutions 产物里——
+    // 诺姆膛温换连携赠链行在装配后被 applyChainGift 追加、不在 buildExecutions 产物里——
     // 行测量必须计入其时间（iterate 必要时间已按同一口径预留），否则折叠环会把预留读成
     // idle → pass0 refund 双击（与最高马力星光行同病）。
     // 供给量与落点由模块声明（`crossAgentSupply`），引擎按类别查询——本文件不再含角色 id。

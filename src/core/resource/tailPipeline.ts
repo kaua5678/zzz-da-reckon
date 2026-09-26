@@ -139,7 +139,7 @@ export function runTailPipeline(
 
   // 构建最终结果
   /**
-   * 赠送行时间（诺姆膛温赠链 / 琉音好评转大赠大）：由 `applyNormaHatChain` / `applyLiuyinPromote`
+   * 赠送行时间（诺姆膛温赠链 / 琉音好评转大赠大）：由 `applyChainGift` / `applyLiuyinPromote`
    * 在装配**之后**追加到目标槽执行计划，不在 `buildExecutions` 产物里；其时间已由 iterate 计入
    * 目标槽必要时间（GROSS 全额，见 helpers.ts Step4 两处预留）。**截断上限与前台展示必须同口径计入**，
    * 否则：① 其它行按「含赠送时间的账本」截断、再叠加赠送行 → 物化行超账本（守恒破）；

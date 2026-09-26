@@ -855,6 +855,13 @@ export interface AgentMechanicModule {
    */
   adjustTeammateBuffSource?(input: { source: SourcePanelsByOwner[string]; cinemaLevel: number }): void
   /**
+   * 装配后赠送连携（CC-35d-A 2026-09-27）：`resourceCalc/chainGift.ts#applyChainGift` 取首个实现本能力的在队槽位，
+   * 以其资源结果调用。返回 null = 本轮无来源（结果不动）；否则给「上一位队友」（`resolveUltimateTargetSlot`）
+   * 赠送 `count` 次该队友本人的连携技（count ≤ 0 时撤掉引擎占位赠送行），`label` 拼在招式名后、`note` 进技能表说明。
+   * 引擎的时间预留走 `crossAgentSupply` 的 `gift-chain:chain` 通道，两者必须同源。现唯一实现：诺姆（帽子把戏）。
+   */
+  chainGift?(result: DeepReadonly<CharacterResourceResult>): { count: number; label: string; note: string } | null
+  /**
    * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
    *
    * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.interactionTopUp`——

@@ -328,7 +328,7 @@ function iterateBody(
   // 先算总必做动作前台时间与每角色合轴（全额 + 可抵扣部分），再分配平A时间
   // 诺姆膛温换连携（C4）时间信道（2026-09-06 补账）：帽子把戏把「上一位队友」的快速支援替换为
   // 其本人连携技 hatCount 次——喧响侧已在 Step 3 extraSelfDecibel 计入，**时间侧此前漏账**：
-  // 赠链行由 applyNormaHatChain 在装配后追加、引擎必要时间没预留，实数化把时间线塞满后
+  // 赠链行由 applyChainGift 在装配后追加、引擎必要时间没预留，实数化把时间线塞满后
   // 它把净占用顶出预算（实测 billy/norma 队 +14.2s）。按同一通道把 hatCount × 目标连携
   // 时长加进目标槽必要时间（GROSS 全额，合轴比随目标连携行口径）。
   // 数量/落点/单位耗时由模块的 `crossAgentSupply` 自报（引擎不 import 角色模块、不写 id）。
@@ -412,7 +412,7 @@ function iterateBody(
       // 反制支援（控制技整组化解）与弹刀同类：必做前台时间，账本必须预留（否则物化行顶出预算被截断）
       + Math.max(0, Math.floor(cfg.counterAssistCount ?? 0)) * (cfg.counterAssistActionTime ?? 0)
       + (extraAction ? extraAction.count * extraAction.actionTime : 0)
-      // 诺姆膛温换连携赠链时间（目标槽）：装配后 applyNormaHatChain 追加的赠链行占前台，
+      // 诺姆膛温换连携赠链时间（目标槽）：装配后 applyChainGift 追加的赠链行占前台，
       // 引擎必要时间必须预留（同连携 GROSS 全额口径），否则净占用顶出预算
       + (i === chainGiftTargetIdx ? chainGiftTime : 0)
       // 琉音好评转大赠链时间（目标槽，非轴）：装配后 applyLiuyinPromote 追加的赠大行占前台，

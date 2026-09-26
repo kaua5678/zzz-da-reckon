@@ -670,6 +670,10 @@ export const normaMechanic: AgentMechanicModule = {
   },
   buildExecutions: buildNormaExecutions,
   buildResourceResult: buildNormaResourceResult,
+  // 装配后赠送连携（CC-35d-A：原 resourceCalc/normaHatChain.ts 按 id 找槽，现由编排层按能力派发）
+  chainGift: result => result.normaMechanicSource
+    ? { count: result.normaMechanicSource.hatToChainCount, label: '诺姆膛温替换', note: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）' }
+    : null,
   resourceSections: buildNormaResourceSections,
   settings,
 }

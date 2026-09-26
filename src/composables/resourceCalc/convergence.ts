@@ -34,7 +34,7 @@ import {
   buildPromoteParams,
   promoteFixpoint,
 } from './liuyinPromote'
-import { applyNormaHatChain } from './normaHatChain'
+import { applyChainGift } from './chainGift'
 import type { CalcRoundThreads } from './roundThreads'
 import * as ResourceCalcHelpers from './helpers'
 import { computeParrySplit } from '@/core/parrySplit'
@@ -899,7 +899,7 @@ export function createRunCalcRound(deps: {
 
     const adj1 = applyLiuyinPromote(rr, sp1, catalogStore)
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
-    const adj2 = applyNormaHatChain(adj1 ?? rr, configStore, catalogStore)
+    const adj2 = applyChainGift(adj1 ?? rr, configStore, catalogStore)
     // 展示层：resourceResult 也带上诺姆赠送连携（执行计划/次数在资源利用率页可见），
     // 不动点/失衡池仍用原始 rr（baseStun），避免赠送连携失衡反作用于转大收敛。
     // 琉音好评转大同样并入展示层（转大=目标队友真实打一次终结技，时间表/资源页应能看见耗时——
@@ -909,7 +909,7 @@ export function createRunCalcRound(deps: {
     // 展示口径归一：赠送行（诺姆赠链 / 琉音赠大，含轴模式 post-hoc carve 路径）在装配后追加，
     // 引擎 timeAllocation 看不到 → 按**最终行**重算前台/后台（单一展示口径，见 normalizeDisplayTime）
     const rrShown = ResourceCalcHelpers.normalizeDisplayTime(
-      applyNormaHatChain(rrShown0, configStore, catalogStore) ?? rrShown0)
+      applyChainGift(rrShown0, configStore, catalogStore) ?? rrShown0)
 
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, aliceSparkThisRound)
