@@ -134,9 +134,8 @@ export function runTailPipeline(
   // 2026-09-25 CC-6b：整块迁进引擎能力/跨槽供给（规则 6）——提供者按模块能力
   // `getAgentMechanic(cfg.agentId)?.curtainTriggers` 找槽（与 `luciaCinemaLevel` 是否在场无关，
   // 该字段写在编排层另一份 cfg 上的旧顾虑随之消失），队友开帷幕量按 `curtain-open` 收集成标量
-  // （`yidhariSlot` 仍按 `yidhariDecibelPerHpPct` 字段找，继续用于外部回血写回与 selfBurn）。
+  // （外部回血写回自 2026-09-26 CC-14c 起由模块能力 `onFinalAssemble` 在装配段完成，不再按角色字段找槽）。
   const curtain = curtainInfoOf(configs, states, totalTime)
-  const yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)
 
   // 构建最终结果
   /**
@@ -181,9 +180,9 @@ export function runTailPipeline(
     config.axisLiuyinPromote, !!config.axisMode, config.teamSize,
   )
   // S4 装配（CC-5b 外提至 `./resource/assembleSlot.ts`，纯函数）的只读上下文：闭包捕获的
-  // `states`（装配期终态）/ `curtain` / `yidhariSlot` / 赠行查询函数与行口径在此显式化。
+  // `states`（装配期终态）/ `curtain` / 赠行查询函数与行口径在此显式化。
   const slotCtx: AssembleSlotContext = {
-    configs, config, totalTime, states, curtain, yidhariSlot, giftTimeOfSlot, chainGiftRow, ultimateGiftRow,
+    configs, config, totalTime, states, curtain, giftTimeOfSlot, chainGiftRow, ultimateGiftRow,
   }
   /** 时间线截断总量（装配阶段砍掉的秒数）：= 资源允许但时间装不下的部分，上报为 overflowSeconds */
   let timeTruncatedSeconds = 0

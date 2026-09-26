@@ -5,7 +5,7 @@
  * 职责：逐槽把 `states` + `cfg` 装配成 `CharacterResourceResult`（行/资源/时间），并做时间线截断
  * （`truncateExecutionsToFrontline`：平A行不参与截断、后台行不占前台、整数装包、
  * `overflowSeconds`/`truncationCuts` 逐行上报）。同时把跨槽派生量写回 cfg
- * （`yidhariExternalHealPct`、`luciaCurtain*`）——**槽序即写序**，装配段不可重排。
+ * （模块能力 `onFinalAssemble` 的写回、`luciaCurtain*`）——**槽序即写序**，装配段不可重排。
  *
  * 与旧闭包的差别**只有机械替换**：闭包捕获的外层变量改经 `ctx` 解构读取，函数体逐字保留原
  * 表达式、顺序、常量与注释。累加器（`timeTruncatedSeconds` / `truncationCuts` /
@@ -36,7 +36,6 @@ export interface AssembleSlotContext {
   /** 装配期终态（`runTailPipeline` 在此之前已完成全部 states 重绑定） */
   states: IterationState[]
   curtain: CurtainInfo
-  yidhariSlot: number
   giftTimeOfSlot: (idx: number) => number
   chainGiftRow: { targetIdx: number; count: number }
   ultimateGiftRow: { targetIdx: number; count: number }
@@ -47,16 +46,20 @@ export interface AssembleSlotContext {
  * 返回类型由 TS 推断（与原闭包一致）：`{ result, cutSeconds, cuts, bySlotEntry }`。
  */
 export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationConfig, i: number) {
-  const { configs, config, totalTime, states, curtain, yidhariSlot, giftTimeOfSlot, chainGiftRow, ultimateGiftRow } = ctx
+  const { configs, config, totalTime, states, curtain, giftTimeOfSlot, chainGiftRow, ultimateGiftRow } = ctx
   const curtainTriggers = curtain.triggers
   const state = states[i]
   const chainCountTotal = state.chainCountTotal
 
-  // 伊德海莉外部回血按卢西娅最终终结技次数折算后写回 cfg（供喧响/展示共用精确值）
-  // 2026-09-25 CC-6b：回血源复用帷幕提供者槽（lead 裁决 §6-2；前提写死在 `./curtain.ts` 头注释）。
-  if (i === yidhariSlot && curtain.providerSlot >= 0) {
-    cfg.yidhariExternalHealPct = (cfg.yidhariExternalHealPct ?? 0)
-      + (cfg.yidhariExternalHealPerUltPct ?? 0) * (states[curtain.providerSlot]?.ultimateCount ?? 0)
+  // 装配期写回：依赖帷幕提供者**最终**终结技次数的派生量由模块能力写回本槽 cfg（供喧响/展示共用精确值；
+  // 当前唯一实现 = 外部回血按提供者终结技次数折算）。回血源复用帷幕提供者槽（2026-09-25 CC-6b，
+  // lead 裁决 §6-2；前提写死在 `./curtain.ts` 头注释）。2026-09-26 CC-14c：原 `i === <按角色字段找的槽>`
+  // 判据与写回算式迁进模块能力 `onFinalAssemble`（规则 6），调用点位置不变（槽序即写序）。
+  if (curtain.providerSlot >= 0) {
+    getAgentMechanic(cfg.agentId)?.onFinalAssemble?.({
+      cfg,
+      providerUltCount: states[curtain.providerSlot]?.ultimateCount ?? 0,
+    })
   }
   // 卢西娅4命帷幕触发总次数写回 cfg（供模块资源卡展示）
   if (i === curtain.providerSlot) {
@@ -66,7 +69,7 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
     // `curtain-open` 跨槽供给的全部提供者收集，并按各自 rawCount 比例分摊队友份额。
     // ⚠ **多提供者比例分摊是新语义、当前不可达**（唯一提供者 = 伊德海莉）：单提供者时
     // mateTotal > 0 ⇒ 比例 = 1 ⇒ triggers 与原式 `max(0, 总 − 自开)` 逐位相同；出现第二个
-    // 提供者时行为与迁移前不同（旧实现只取 yidhariSlot 一个来源），故此处**不是**逐位等价承诺。
+    // 提供者时行为与迁移前不同（旧实现只取按角色字段找到的那一个槽作来源），故此处**不是**逐位等价承诺。
     cfg.luciaCurtainSelfCount = getAgentMechanic(cfg.agentId)!.curtainTriggers!({
       cfg,
       state: states[i],

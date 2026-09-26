@@ -835,6 +835,18 @@ export interface AgentMechanicModule {
     providerUltCount: number
   }): number
   /**
+   * **装配期写回**（规则 6 引擎落点，2026-09-26 CC-14c；伊德海莉先例）。
+   *
+   * 语义：S4 装配（`core/resource/assembleSlot.ts`）逐槽开头调用，把「依赖帷幕提供者**最终**终结技
+   * 次数」的派生量写回本模块自己的 cfg（供结果装配 `selfBurnDecibel(providerUltCount: 0)` 与展示共用）。
+   * 只在队伍里有帷幕提供者（`curtain.providerSlot >= 0`）时调用；`providerUltCount` = 提供者终态
+   * `ultimateCount`。**槽序即写序**：调用点固定在 assembleSlot 开头，不可重排。
+   *
+   * 为什么单列：原先 core 用 `yidhariSlot = configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)`
+   * 认人，再在装配段直接改写 `cfg.yidhariExternalHealPct`——引擎替某个角色认人 + 写角色字段。
+   */
+  onFinalAssemble?(input: { cfg: CharacterOperationConfig; providerUltCount: number }): void
+  /**
    * **角色专属能量项**（规则 6 引擎落点，2026-09-26 CC-14a；诺姆/青衣/莱卡恩/比利/仪玄/安东先例）。
    *
    * 语义：本模块角色独有的**固定源能量**（如诺姆影画2 帽子把戏、青衣影画4 稳态电弧屏障、

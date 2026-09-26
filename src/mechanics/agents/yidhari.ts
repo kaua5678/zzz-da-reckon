@@ -473,6 +473,20 @@ function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, provider
   return (75 + exHeal + followHeal + external) * decibelPerHp
 }
 
+/**
+ * 装配期写回（2026-09-26 CC-14c，自 `core/resource/assembleSlot.ts` 逐字迁入）：外部回血（卢西娅
+ * 星光汇聚之地）按帷幕提供者**最终**终结技次数折算后累加进 `cfg.yidhariExternalHealPct`
+ * （供结果装配期 `selfBurnDecibel(providerUltCount: 0)` 与 HP 来源展示共用精确值）。
+ *
+ * 判别沿用无默认值的模块专属字段 `yidhariDecibelPerHpPct`：原 core 以
+ * `configs.findIndex(c => c.yidhariDecibelPerHpPct !== undefined)` 选槽，字段缺失时不写回——此处同款守卫，逐位等价。
+ */
+function yidhariOnFinalAssemble({ cfg, providerUltCount }: { cfg: CharacterOperationConfig; providerUltCount: number }): void {
+  if (cfg.yidhariDecibelPerHpPct === undefined) return
+  cfg.yidhariExternalHealPct = (cfg.yidhariExternalHealPct ?? 0)
+    + (cfg.yidhariExternalHealPerUltPct ?? 0) * providerUltCount
+}
+
 export const yidhariMechanic: AgentMechanicModule = {
   id: 'agent:yidhari',
   agentIds: [YIDHARI_AGENT_ID],
@@ -490,6 +504,8 @@ export const yidhariMechanic: AgentMechanicModule = {
   },
   // 自身烧血喧响（2026-09-26 CC-14b）：算式见上方 yidhariSelfBurnDecibel 注释。
   selfBurnDecibel: yidhariSelfBurnDecibel,
+  // 装配期写回（2026-09-26 CC-14c）：见上方 yidhariOnFinalAssemble 注释。
+  onFinalAssemble: yidhariOnFinalAssemble,
   /**
    * 终局整数重推（规则 6 引擎落点，2026-09-25 CC-6c）：强特次数实数化收尾。
    * `stage='tail'`（S3a 欠打回填之后、S4 装配之前）——与 preTail 不可合并（合并会改数值）；
