@@ -680,6 +680,14 @@ export interface AgentMechanicModule {
    */
   patchExecutions?(input: AgentResourceInput): void
   /**
+   * 招式级失衡**独立乘区**（CC-34c②，2026-09-27）：`resourceCalc/helpers.ts#extractSkillExecutions` 为本槽每个
+   * 非普攻招式行求 `baseDaze = 表值 × 技能等级系数 × 本返回值`（缺省 1）。`panel` 为本槽局内面板，可能为 null
+   * （部分测试路径不传面板），实现方须自行兜底。与行字段 `stunBuildUpBonus`（和面板失衡值提升**加算**）不是同一乘区。
+   * 为什么是纯函数能力而不是 `patchExecutions` 写行字段：派发点就在消费处，面板为 null / 行晚于 patch 加入等
+   * 边界与原内联分支逐字一致。首个实现：蕾米埃尔 Radiant Turn（1581010）`1 + 档位%`。
+   */
+  skillDazeMultiplier?(input: { moveId: string; panel: DeepReadonly<PanelValues> | null }): number
+  /**
    * 后台自动释放行（CC-26b）：`rowBuild.ts#buildExecutions` 在闪避反击行**之前**的固定位置派发，
    * 返回的行由构建器 push 进 executions。`input.executions` 是「构建到这一步为止」的只读快照语义
    * （模块用它数前台动作，**不要**改它）。原为 core 内联的蕾米埃尔「光辉回转」后台行。

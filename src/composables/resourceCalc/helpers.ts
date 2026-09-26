@@ -802,9 +802,8 @@ export function extractSkillExecutions(
       // 假 id/合成执行支持执行级异常积蓄覆盖（如仪玄符法千重-破 226.7，倍率行被隐藏）
       const anomaly = exec.anomalyBuildUp ?? (fusedRowValue(skills, exec.moveId, 'anomaly_buildup') ?? getRowValue(foundMove, 'anomaly_buildup'))
       const moveName = exec.moveName.replace(/（.*）/g, '').trim()
-      const radiantTurnDazeMult = foundMove.id === '1581010'
-        ? 1 + ((panel?.remielleRadiantTurnDazeBonusPct ?? 0) / 100)
-        : 1
+      // 模块能力 `skillDazeMultiplier`：招式级失衡独立乘区，缺省 1（CC-34c② 2026-09-27，原蕾米埃尔 Radiant Turn 内联分支）
+      const skillDazeMult = mechanic?.skillDazeMultiplier?.({ moveId: foundMove.id, panel }) ?? 1
 
       if (daze > 0 && count > 0) {
         stunExecs.push({
@@ -812,7 +811,7 @@ export function extractSkillExecutions(
           moveName,
           slot,
           count,
-          baseDaze: daze * dazeCoef * radiantTurnDazeMult,
+          baseDaze: daze * dazeCoef * skillDazeMult,
           element: foundElement,
           skillType: normalizeResourceSkillType(foundMove, exec.moveId),
           stunBuildUpBonus: exec.stunBuildUpBonus,

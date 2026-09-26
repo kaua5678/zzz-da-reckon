@@ -201,8 +201,8 @@ function remielleDazeBonusPct(slot: number, agent: Agent, team: ReadonlyTeam): n
  * 蕾米埃尔自己的面板块（2026-09-17 round 21 夜间批 C 自 `helpers.ts#computePanelPhases` 迁入）。
  *
  * 语义逐位保留：**只写自己那槽**，两个出口——
- * ① `panel.remielleRadiantTurnDazeBonusPct`（Radiant Turn 行失衡倍率，消费端 `helpers.ts` 的
- *    `foundMove.id === '1581010'` 分支）；
+ * ① `panel.remielleRadiantTurnDazeBonusPct`（Radiant Turn 行失衡倍率，消费端 = 本模块 `skillDazeMultiplier`
+ *    能力，由 `helpers.ts#extractSkillExecutions` 派发；CC-34c② 前是 helpers 里的 `'1581010'` 内联分支）；
  * ② `cfg.remielleRadiantTurnDazeBonusPct` 由下方 `buildCharConfig` 写（原 `:1661` 的双出口）。
  *
  * ⚠ **同一字段原先有两个写者**（`helpers.ts:757` 面板阶段 + `:1666` cfg 构建阶段各算一遍，
@@ -378,6 +378,10 @@ export const remielleMechanic: AgentMechanicModule = {
   applyPanel: applyRemiellePanel,
   teamPanelEffects: applyRemielleTeamPanelEffects,
   buildCharConfig: buildRemielleCharConfig,
+  // CC-34c②：Radiant Turn（1581010）失衡独立乘区 1 + 档位%（原 helpers.ts#extractSkillExecutions 内联，逐字迁入）
+  skillDazeMultiplier: ({ moveId, panel }) => moveId === '1581010'
+    ? 1 + ((panel?.remielleRadiantTurnDazeBonusPct ?? 0) / 100)
+    : 1,
   buildResourceResult: buildRemielleResourceResult,
   resourceSections: buildRemielleResourceSections,
   /**

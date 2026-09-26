@@ -283,3 +283,15 @@ describe('CC-34c：花羽轮舞喧响由 buildRemielleCharConfig 累加进 extra
     expect(cfg.extraSelfDecibelReward).toBe(100)
   })
 })
+
+describe('CC-34c②：Radiant Turn 失衡乘区由模块能力 skillDazeMultiplier 提供', () => {
+  const fn = remielleMechanic.skillDazeMultiplier!
+  it('1581010：1 + 档位%（35 档 → 1.35）', () => {
+    expect(fn({ moveId: '1581010', panel: { ...emptyPanel(), remielleRadiantTurnDazeBonusPct: 35 } as never })).toBeCloseTo(1.35, 12)
+  })
+  it('其他招式 → 1；面板为 null 或字段缺席 → 1', () => {
+    expect(fn({ moveId: '1581001', panel: { ...emptyPanel(), remielleRadiantTurnDazeBonusPct: 35 } as never })).toBe(1)
+    expect(fn({ moveId: '1581010', panel: null })).toBe(1)
+    expect(fn({ moveId: '1581010', panel: emptyPanel() as never })).toBe(1)
+  })
+})
