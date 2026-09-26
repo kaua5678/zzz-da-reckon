@@ -1,4 +1,5 @@
 import type {
+  AgentAnomalyEventRecordsInput,
   AgentCharConfigInput,
   AgentMechanicModule,
   AgentPanelInput,
@@ -9,7 +10,7 @@ import type {
   ExtraAnomalyRowsInput,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
-import type { CharacterResourceResult, JaneMechanicSource, MechanicSetting } from '@/types/resource'
+import type { AnomalyEventRecord, CharacterResourceResult, JaneMechanicSource, MechanicSetting } from '@/types/resource'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { calcDirectDamage } from '@/core/damage'
 import { fmt } from '@/utils/format'
@@ -247,6 +248,28 @@ function buildJaneExecutions({ cfg, executions }: AgentResourceInput): void {
   })
 }
 
+/**
+ * 简 6 命强击暴击附伤——展示层事件记录（CC-29；原 `useResourceCalc.ts#anomalyDamageEvents` 末尾按身份
+ * `findSlotByIdentity(['1261'])` 的编排层角色分支，逐字搬迁）。count = 物理强击次数 × 强击暴击率（钳 0..100）。
+ * 伤害行本体在 `extraAnomalyRows`（`jane-c6-assault-followup`），此处只出事件记录。
+ */
+export function janeAnomalyEventRecords(input: AgentAnomalyEventRecordsInput): AnomalyEventRecord[] {
+  const { panel: janePanel, cinemaLevel, perElementTriggerCounts } = input
+  if (cinemaLevel < 6) return []
+  const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
+  const critCount = (perElementTriggerCounts.physical ?? 0) * (assaultCritRate / 100)
+  if (!(critCount > 0)) return []
+  return [{
+    id: 'jane-c6-assault-followup-event',
+    type: 'anomaly_trigger',
+    label: '简6命强击暴击附伤',
+    source: '强击暴击次数',
+    count: critCount,
+    formula: 'count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%',
+    fields: ['强击次数', 'assaultCritRate', 'anomalyProficiency'],
+  }]
+}
+
 export const janeMechanic: AgentMechanicModule = {
   id: 'agent:jane',
   agentIds: [JANE_AGENT_ID],
@@ -317,5 +340,6 @@ export const janeMechanic: AgentMechanicModule = {
     }
     return groups
   },
+  anomalyEventRecords: janeAnomalyEventRecords,
   settings,
 }

@@ -1558,4 +1558,8 @@ export interface AgentAnomalyEventRecordsInput {
   teamAgentIds: readonly (string | undefined)[]
   /** 异常池逐槽触发次数（`AnomalyPoolResult.perSlotAnomalyTriggers`，缺省 []） */
   perSlotAnomalyTriggers: readonly number[]
+  /** 本槽命座（`configStore.team[slot].cinemaLevel ?? 0`；CC-29 简 6 命） */
+  cinemaLevel: number
+  /** 异常池逐属性触发次数（`AnomalyPoolResult.perElement` 按 element 取**首条** triggerCount；无该属性则缺键）（CC-29） */
+  perElementTriggerCounts: Readonly<Partial<Record<string, number>>>
 }

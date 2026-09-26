@@ -83,7 +83,7 @@ export function setCalcOutputMemoEnabled(on: boolean): void {
   calcOutputMemoEnabled = on
 }
 
-const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays, findSlotByIdentity } = ResourceCalcHelpers
+const { computePanel, computeRemielleEntryPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays } = ResourceCalcHelpers
 export function useResourceCalc() {
   const configStore = useConfigStore()
   const catalogStore = useCatalogStore()
@@ -599,11 +599,18 @@ export function useResourceCalc() {
   /**
    * 模块异常事件记录（CC-28；原 `remielleVoidflareEvents`——按身份 `['1581']` 找槽、读蕾米面板的**编排层角色分支**，
    * 违反 AGENTS.md「禁止在 useResourceCalc 加角色分支」）。槽位 0→2 逐模块派发 `anomalyEventRecords` 并拼接；
-   * 该槽无面板 ⇒ 跳过（= 原 `panelAt` 缺失返回 []）。现仅蕾米埃尔实现（虚耀池/耀变/特殊虚耀）。
+   * 该槽无面板 ⇒ 跳过（= 原 `panelAt` 缺失返回 []）。实现：蕾米埃尔（虚耀池/耀变/特殊虚耀）；
+   * 简（CC-29：6 命强击暴击附伤，原 `anomalyDamageEvents` 末尾按身份 `['1261']` 的分支——迁移后展示顺序由
+   * 「通用异常伤害事件之后」变为「之前」，已拍板接受，见 census §5.23）。
    */
   const moduleAnomalyEventRecords = computed<AnomalyEventRecord[]>(() => {
     const perSlotAnomalyTriggers = anomalyPoolResult.value?.perSlotAnomalyTriggers ?? []
     const teamAgentIds = [0, 1, 2].map(slot => configStore.team[slot]?.agentId)
+    // 逐属性触发次数：同 element 取首条（= 原 `perElement.find` 语义）
+    const perElementTriggerCounts: Partial<Record<string, number>> = {}
+    for (const prog of anomalyPoolResult.value?.perElement ?? []) {
+      if (!(prog.element in perElementTriggerCounts)) perElementTriggerCounts[prog.element] = prog.triggerCount
+    }
     const out: AnomalyEventRecord[] = []
     for (let slot = 0; slot < 3; slot++) {
       const agentId = configStore.team[slot]?.agentId
@@ -611,7 +618,8 @@ export function useResourceCalc() {
       if (!hook) continue
       const panel = panelAt(panels.value, slot)
       if (!panel) continue
-      out.push(...hook({ slot, panel, teamAgentIds, perSlotAnomalyTriggers }))
+      const cinemaLevel = configStore.team[slot]?.cinemaLevel ?? 0
+      out.push(...hook({ slot, panel, teamAgentIds, perSlotAnomalyTriggers, cinemaLevel, perElementTriggerCounts }))
     }
     return out
   })
@@ -653,26 +661,7 @@ export function useResourceCalc() {
       })
     }
 
-    // 按身份找槽位（单一事实源 `findSlotByIdentity`；2026-09-18 round 21 夜）
-    const janeSlot = findSlotByIdentity(configStore, catalogStore, ['1261'])
-    // ⚠ 判据 17：两处都改 `panelAt`（原 `panels.value[janeSlot]` 空槽时错人）
-    const janePanel = janeSlot >= 0 ? panelAt(panels.value, janeSlot) : undefined
-    if (janeSlot >= 0 && (configStore.team[janeSlot]?.cinemaLevel ?? 0) >= 6 && janePanel) {
-      const physicalProg = anomalyPoolResult.value?.perElement.find(prog => prog.element === 'physical')
-      const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
-      const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
-      if (critCount > 0) {
-        events.push({
-          id: 'jane-c6-assault-followup-event',
-          type: 'anomaly_trigger',
-          label: '简6命强击暴击附伤',
-          source: '强击暴击次数',
-          count: critCount,
-          formula: 'count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%',
-          fields: ['强击次数', 'assaultCritRate', 'anomalyProficiency'],
-        })
-      }
-    }
+    // 简 6 命强击暴击附伤事件已迁 jane 模块 `anomalyEventRecords`（CC-29），经 `moduleAnomalyEventRecords` 派发。
     return events
   })
 
