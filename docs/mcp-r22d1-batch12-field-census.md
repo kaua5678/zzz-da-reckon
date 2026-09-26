@@ -5,6 +5,8 @@
 
 ## 1. 做到哪一步
 
+- **最新交接（2026-09-26 21:4x，lead-arena-0925c 第 21 轮）**：CC-15 已落地 `b1ed48e`（lead 直接实现：纯改名，用 sed 按词边界批量替换，19 个文件，另加注释 2 处和常量 2 处）。判据 22 从 759 降到 **733**，**提前达成 target 740 → 已重设 target 720**（due 2026-12-31）。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `b1ed48e`。
+  **下一步（可以直接开工）**：**CC-16**（`banyueTopUp` 改为 `interactionTopUp`，A 类纯改名），卡面见 §5.7。零差基线 H2a 仍然有效（CC-15 对它零差；alias 映射只作用于新键名）。
 - **最新交接（2026-09-26 21:1x，lead-arena-0925c 第 20 轮）**：CC-14e 已落地 `1e3dc99`（dsflash 工人实现 `ee0bd8b`，lead 复核、零差、反向验证，重写提交信息）。判据 22 从 763 降到 **759**；target 740，还差 19。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `1e3dc99`。
   **下一步（可以直接开工）**：派 **CC-15**（赠行通用命名，A 类改名，预计减少约 25–30 处，可达成 target 740），卡面见 §5.6。零差基线 H2a（`007a6b7`）经 CC-14c/d/e 传递仍然有效；但 CC-15 要给 KEY_ALIAS 加新条目，**基线须在加 alias 之后、在原始 worktree 上带 `PERF_KEY_ALIAS=1` 重新生成**（alias 对原始代码不起作用，所以 H2a 其实也能用；稳妥起见重新生成 H3a）。
 - **最新交接（2026-09-26 20:5x，lead-arena-0925c 第 19 轮）**：CC-14c 已落地 `ba6db48`，CC-14d 已落地 `e94b896`（卡面在 §5.5，都由 lead 直接实现，每卡改 4–8 个文件）。判据 22 从 775 降到 766，再降到 **763**，**提前达成原 target 765**。因为棘轮测试要求 target < frozen，**已重设 target 740、due 2026-12-31**（决定与依据见 §5.5）。两张卡在 master 上都跑了 `npm run verify`，EXIT=0，前后都钉了 HEAD。
@@ -241,6 +243,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-14a 后**：基线与 frozen 都下调到 **775**（`285885b`）；target 765，还差 10。
 - **2026-09-26 CC-14c / CC-14d 后**：766（`ba6db48`）→ **763**（`e94b896`），原 target 765 已提前达成；重设 target 740、due 2026-12-31（§5.5）。
 - **2026-09-26 CC-14e 后**：**759**（`1e3dc99`）；target 740，还差 19。下一张 CC-15（§5.6）。
+- **2026-09-26 CC-15 后**：**733**（`b1ed48e`）；已低于 target 740，重设 target **720**。下一张 CC-16（§5.7）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -370,6 +373,37 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - 预计判据 22 降约 25–30 处，以实测为准，两处常量同步下调。若读数 < 740，**同步重设 target**（`checkGuards.test` 要求 target < frozen），参考 §5.5 的重设写法，并在本节记录新 target 的依据。
 - 验收：`vue-tsc -b` 为 0；`npx vitest run src/core/__tests__ src/composables/__tests__/liuyinAxisGiftSameSource.test.ts src/composables/__tests__/timeLedgerInvariants.test.ts src/composables/__tests__/giftMoveTimeLedger.test.ts src/mechanics/__tests__/normaSmoke.test.ts src/scripts/__tests__/checkGuards.test.ts` 全过；master 全量 verify 钉 HEAD。
 - 派给：dsflash 工人（worktree，提示词写显式 git add 路径）。回退点：单卡单提交，`git revert`。
+
+### 5.7 CC-15 落地记录 + CC-16 卡（2026-09-26 第 21 轮 lead-arena-0925c）
+
+**CC-15（`b1ed48e`，判据 22 759→733）赠行通用命名**
+- 按 §5.6 改名表执行，**没有派工人**：纯改名，sed 一步完成（`\b` 词边界，`normaGiftChainInfo` / `normaGiftChainTime` 这类更长的标识符不受影响）。依据：AGENTS 子代理纪律「一步能做完的不派」。
+- 实际改动：19 个文件（卡面列的全部，加上 `scripts/lib/agent-branch-ratchet.mjs:165` 的注释）。`execution.ts` / `team.ts` 的字段注释改写为「通用赠行字段、原名 xxx、当前唯一来源 = 诺姆/琉音」。
+- **自决：`src/specs/agents/1571.json:192` 说明文字里的 `normaGiftChain` 不改。** 依据：那是角色规格数据（给人读的机制确认记录），不是代码引用，不在判据扫描范围；改了反而动了数据文件。若要统一，直接改那一行字符串即可，无副作用。
+- `.zc/perf/{dump,rowsnap}.perf.ts` 的 KEY_ALIAS 追加 3 条（CC-15 注释标出；`.zc` 不入库，下一个 lead 若重建语料要手动补上）。
+- 验证：
+  - `vue-tsc -b` 为 0；守卫 22/22；定向测试 39 个文件、400 条通过（core/__tests__、liuyinAxisGiftSameSource、timeLedgerInvariants、giftMoveTimeLedger、giftAxisProbe、moveFusion、normaSmoke、checkGuards）；
+  - 零差：对 H2a，dump 625 个键、rowsnap 638 个键（均含 `__ms`），**只有 `__ms` 不同**；
+  - 反向：`giftRows.ts` 的 `{ chainGift: true }` 临时改成 `{}`，dump DIFF 72（不算 `__ms`），**全部是含 1571 的场景**，伤害总值也变了（该标记参与易伤处理），证明标记进了计算和哈希；cp 还原后 `cmp` 字节一致；
+  - master 全量 `npm run verify` EXIT=0（290 个测试文件，build 通过），前后 HEAD 都是 `b1ed48e`。
+- **target 重设 740→720（可逆）**。依据：剩余可见的小候选有 `banyueTopUp`（CC-16，判据内约 10+ 处，以实测为准）、`luciaC4DecibelPerTrigger`（assembleSlot 1 处）、`janeAssaultCritDmgBonus`（damage.ts 1 处）、remielle 的 `rowAccounting` 4 处 + `substatOptimizer` 4 处（需设计稿）。减 13 是保守可达值。不合适就改 `scripts/check-guards.mjs` 的 target 一行（须 < frozen）。
+
+**分簇阻塞理由更正（本轮现场核实 `docs/mcp-worker-task-queue.md` 第 56–57 行）**：旧记录写「alice/liuyin/banyue 等 W26 线结束」。实际 W26（琉音转大次数单源化）已在 lead 合入时 blocked、卡已删除，**这条线已经结束**，且 W26 只涉及琉音，从来不涉及 banyue。
+- 决定：`banyueTopUp` 改名（CC-16）不受 W26 影响，立即可做。
+- liuyin 前缀的字段（59 处）中，若涉及转大次数的读数，仍须先读 `docs/mcp-liuyin-promote-source*.md` 的结论再动，免得和 W26 blocked 的原因（timeGolden 口径）撞上。alice（90 处）没有已知阻塞，下一次挑卡时按普查分簇重新评估。
+
+**CC-16 卡：`banyueTopUp` 通用命名（A 类，纯改名，零差）**
+- 依据：它是轮内持久线程里的「交互补齐量」（`{ parry, dual, requiredSeconds, illegal }`），由模块 `banyue.ts` 产出。编排层（convergence / roundThreads / roundResult / solveTeam / useResourceCalc）只是搬运和读取，却挂着角色名。与 CC-13（yidhari ex*）同类处理。
+- 改名（**先 `grep -rnw` 找全**，含测试）：
+  - `banyueTopUp` → `interactionTopUp`（`CalcRoundResult` 字段、`RoundThreads` 字段、`calcOutput` 读数）；
+  - convergence 的局部变量 `prevBanyueTopUp` → `prevInteractionTopUp`，`banyueTopUpNext` → `interactionTopUpNext`；
+  - 类型 `BanyueInteractionTopUp` 与函数 `computeBanyueInteractionTopUp`：**先确认判据是否计入**（用 `node /home/kaua/calc-arch/rf2.mjs` 或 `scanCoreRoleFields` 看字段列表）。若计入，一并改为 `InteractionTopUp` / `computeInteractionTopUp`；若不计入，也可以改，但要写明是顺手改的。
+  - **不改**：`banyue.ts` 模块内部的实现细节，以及交互栏中文文案「弹刀 +N / 双反 +M」。
+- 零差：在 `.zc/perf/{dump,rowsnap}.perf.ts` 的 KEY_ALIAS 加 `interactionTopUp: 'banyueTopUp'`（如果 dump 哈希里出现这个键）。对 H2a 带 `PERF_KEY_ALIAS=1` 比对，只允许 `__ms` 不同。模板：`/home/kaua/calc-arch/v15.sh`（把输出名 15 改成 16）。
+- 反向：临时让 `banyue.ts:487` 的 topUp 恒为 `{ parry: 0, dual: 0 }`，DIFF 须全部落在含般岳的场景（agentId 先查 `src/specs/agents/` 或 `banyue.ts` 的 `agentId`）。模板：`/home/kaua/calc-arch/r15.sh`。
+- 判据 22 以实测为准，两处常量同步下调（`scripts/lib/core-role-field-ratchet.mjs` 的 BASELINE、`scripts/check-guards.mjs` 的 frozen）。若低于 720，同步重设 target。
+- 验收：`vue-tsc -b` 为 0；定向测试 `npx vitest run src/composables/__tests__ src/mechanics/__tests__/banyue* src/scripts/__tests__/checkGuards.test.ts` 全过；master 全量 verify，钉 HEAD。
+- 执行方式：纯改名一步能完成，lead 直接做即可（CC-15 实测约 10 分钟）。回退点：单卡单提交，`git revert`。
 
 ## 附录：普查脚本 census.sh
 
