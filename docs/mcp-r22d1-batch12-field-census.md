@@ -1223,6 +1223,37 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 3. 维琳娜 19（§5.19 / CC-27）、琉音其余（liuyinSrc / Idx / PromoteCount / MechanicSource，需设计稿）、爱丽丝 / 雨果 / 简照旧。
 4. 调研待派：花羽轮舞次数；W31。
 
+### 5.34 CC-35c-A / CC-35c-B done：异常持续时间通用规则臂、队友 buff 来源面板修正迁模块（lead-arena-0925c，2026-09-27 第 47 轮）
+
+**提交**：A 代码 `d40a62d`（8 文件，含新测试 `src/mechanics/__tests__/teamAnomalyDuration.test.ts`），B 代码 `b7b0d81`（7 文件，含新测试 `src/mechanics/__tests__/teammateBuffSourceAdjust.test.ts`）。判据 22 **134 → 130 → 125**，`CORE_ROLE_FIELD_BASELINE` / `frozen` 125，target 122（未达成）。agentId 棘轮（规则 6）保持 3/3。
+
+**CC-35c-A：`getTeamAnomalyDurationBonus` → 模块能力 `teamAnomalyDurationBonus`**
+- 原来 `anomalyPanels.ts` 里按 id 写死三条分支：柏妮思 1171 火 +3、丽娜 1211 电 +3（额外能力激活，`evalAdditionalAbility`）、简 1261 物理 +5。现在三人的模块各自实现，函数改为遍历在队槽位，对有该能力的模块求值后**取最大值**（现状每种属性至多一个提供者，与原先提前返回等价）。队伍快照只在确有提供者时才构建（每次面板计算要调 4 次）。
+- 等价依据：本库 `teammateBuffId` 全部等于自身 id（2026-09-27 用 node 解析 catalog.json 实查：1171 / 1261 / 1411 / 1511 / 1581），所以按 agentId 派发模块与原 `teamHasAgent`（agentId 或 teammateBuffId 命中）等价。丽娜的槽位 / agent 取自 `buildMechanicTeamMembers`，与原 `findSlotByIdentity` + `agentsMap.get('1211')` 相同。
+- `anomalyPanels.ts` 不再值导入 `getAgentSpec` / `evalAdditionalAbility`（改由 rina.ts 导入，mechanics 值导入 specs 有 alice / anby / claret / grace 先例）。爱芮以太 +3 仍走 spec buff 通道，类型注释里写明**不要**再实现（会双计）。
+- **踩坑（已写进代码注释）**：第一版用 `team.find(m => m.agentId === char.agentId)` 找成员，verify 在 **agentId 棘轮 3→4** 上失败（AST 把 `x.agentId === y.agentId` 计为编排层身份判定）。改成按下标 `team[i]`（`buildMechanicTeamMembers` 就是 `configStore.team.map`）后恢复为 3/3。
+- 验证：vue-tsc 0；teamAnomalyDuration / rina / burnice / jane / helpersNightC / cinemaAxisBatchR63 / anomalyPanelsShell 101/101；dump / rows 仅 `__ms` 差；**反向变异（简 5→6）dump 31 键出差**。改下标写法后重跑 verify EXIT=0（3587 passed，`/home/kaua/calc-arch/verify35c2.log`）。下标写法是纯写法调整，语义不变，没有重跑 dump。
+
+**CC-35c-B：`computePanelPhases` 队友 buff 来源面板修正 → 模块能力 `adjustTeammateBuffSource`**
+- 原来 `panelPhases.ts` 写死两块：莱特 `sourcePanelsByOwner['1161']` 局内冲击 ×1.2（喷发耗士气）；耀嘉音按 `findSlotByIdentity(['1311'])` 取命座，给来源面板写 3/5 命技能等级加成（取 max）。现在各自在模块里实现，panelPhases 遍历在队槽位，按 **本槽 agentId** 取条目调用。`addSourcePanelAliases` 让别名键（teammateBuffId）指向同一个对象，改动同步可见，逐位等价。panelPhases 不再导入 `findSlotByIdentity`。
+- 新类型依赖：`mechanics/types.ts` 用 `import type { SourcePanelsByOwner } from '@/core/buff'`。
+- **dump 覆盖不到**：莱特 ×1.2→×1.3 dump 零差。原因：莱特唯一读来源面板冲击力的 buff `lighter.additional_morale_ice_fire_dmg`（`sourceStat: impact`，`inCombat`）挂在额外能力上（可能未激活或已顶上限）；耀嘉音的队友 buff 读的是 `atk`（技能等级加成要经别的公式才起作用）。所以「移除能力 → 队友面板不变」在默认 harness 下也成立，差分测试第一版两条都红，**不可用**。
+- 最终测试：模块单测（莱特 ×1.2、耀嘉音 C0/3/5 与 max 语义）+ **包裹能力记录调用**的接线测试（以本角色来源条目调用一次；耀嘉音收到命座 5；都不在队时不调用）。反向验证：把 panelPhases 派发改成恒不调用，接线测试红 2 条；还原后绿。
+- 验证：vue-tsc 0；相关单测通过；dump / rows 仅 `__ms` 差；verify 见 `/home/kaua/calc-arch/verify35cb.log`（EXIT=0）。
+- **未决**：莱特那条 buff 在默认配置下是否真的生效（额外能力门控 / 上限）没有核实。这是口径问题，不是本次迁移引入的，可派调研。
+
+**脚本**：`/home/kaua/calc-arch/cc35c.py`、`cc35c_fix.py`、`z35c.sh`、`cc35cb.py`、`cc35cb3.py`、`z35cb.sh`。**回退点**：`git revert b7b0d81` / `git revert d40a62d`（单提交；两者都在 `mechanics/types.ts` 同一区域追加声明，先撤 B 再撤 A）。
+
+**下一步（按顺序，可直接开工）**
+1. **CC-35c-C（露西亚 C4，2 计，纯改名）**：`core/resource/helpers.ts:314` 与 `core/resource/assembleSlot.ts:116` 读 `cfg.luciaC4DecibelPerTrigger × curtainTriggers`，写入方是 `luciaElowen.ts:530`（=100）、读取方还有 `luciaElowen.ts:281`，注释在 `:515`。把 cfg 字段改名为通用的 `decibelPerCurtainTrigger`（类型在 `types/resource/config.ts:398`），全仓 `grep -rn luciaC4DecibelPerTrigger src` 逐处替换（注意别 sed 全局替换注释里刻意保留的旧名）。先查 `curtainTriggers` 的来源是否本身就是通用的「帷幕」概念（`core/resource/helpers.ts` 的 `curtain.providerSlot`）。验收：dump / rows 零差 + 反向变异（100→200）。
+2. **CC-35d**：诺玛 / 琉音赠送连携，先写共用设计稿 `docs/mcp-cc35d-gift-chain.md`（登记 README §6）。
+3. 维琳娜 19、琉音其余、爱丽丝、雨果、简照旧（见 §5.33 rf3 快照）。
+4. 调研待派：花羽轮舞次数（§5.31）、莱特额外能力 buff 默认是否生效（本节）、W31。
+
+**写给后续卡的规律**
+- 编排层 / resourceCalc 里遍历队伍时**不要**写 `a.agentId === b.agentId` 之类的比较，agentId 棘轮会计数；用下标对应或 `getAgentMechanic(char.agentId)` 派发。
+- 队友 buff 相关改动的「移除 → 结果不变」差分测试容易是空的，优先用包裹能力记录调用来锁接线。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

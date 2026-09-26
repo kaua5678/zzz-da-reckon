@@ -189,6 +189,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-34c② | review | **done** `99b945a`（判据 22 149→148，target 143 未变） | 新模块能力 `skillDazeMultiplier`（招式级失衡独立乘区）；删 helpers 里蕾米埃尔 1581010 内联分支，remielle 逐字实现；反向变异 dump 37 键 | census §5.32 |
 | CC-35a | review | **done** `c684126`（判据 22 148→146） | 新模块能力 `anomalyRefringePct`（异常虚拟面板异化度展示列）；remielle 抽 `remielleRefringePct` 作乘区与展示的唯一来源；core/resourceCalc 的 remielle\* 清零 | census §5.33 |
 | CC-35b | review | **done** `084a4e7`（判据 22 146→134，target 重设 122） | `AgentCharConfigInput` 加可选只读 `char`；仪玄 5 / 普罗米娅 1 个交互栏次数由模块 buildCharConfig 读入，删 helpers 字面量 6 行；新测试 charInputFields | census §5.33 |
+| CC-35c-A | review | **done** `d40a62d`（判据 22 134→130） | 新模块能力 `teamAnomalyDurationBonus`（全队异常持续时间通用规则臂，取最大值）；柏妮思 / 丽娜 / 简实现，删 anomalyPanels 按 id 写死分支 | census §5.34 |
+| CC-35c-B | review | **done** `b7b0d81`（判据 22 130→125） | 新模块能力 `adjustTeammateBuffSource`（队友 buff 来源面板修正）；莱特 / 耀嘉音实现，删 panelPhases 按 id 写死块；接线测试用包裹能力记录调用 | census §5.34 |
 | CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
