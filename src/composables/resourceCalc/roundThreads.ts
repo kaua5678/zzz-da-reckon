@@ -13,7 +13,7 @@
  *   —— 它们的下一轮值在 runCalcRound 内部已由 prev 兜底（如 interactionTopUpNext 初值 = prev.interactionTopUp）。
  * - 其余字段：null 轮（runCalcRound 返回 null，如无失衡行队伍）重置为初值。
  */
-import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
+import type { InteractionTopUp } from '@/mechanics/types'
 import type { ParrySplitResult } from '@/core/parrySplit'
 
 export interface CalcRoundThreads {
@@ -26,7 +26,7 @@ export interface CalcRoundThreads {
   /** 异常/紊乱/乱流喧响奖励（按槽位，上一轮异常池回填） */
   anomalyDecibelBonus: number[]
   /** 般岳轴模式自动补齐（弹刀/双反） */
-  interactionTopUp: BanyueInteractionTopUp
+  interactionTopUp: InteractionTopUp
   /** Boss 预设弹刀反推拆分（保底4失衡） */
   parrySplit: ParrySplitResult | null
   /** 后台合轴自动填充（agentId → 自动对数）：由模块 backstageAutoFill 声明驱动，编排层通用反推 */

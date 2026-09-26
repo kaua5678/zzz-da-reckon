@@ -51,7 +51,6 @@ import { getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/help
 import { calcSpecialActionBonus, PARRY_DECIBEL_BONUS } from '@/core/anomalyPool'
 import { ULTIMATE_COST_DEFAULT, calcTeamResources } from '@/core/resource'
 import { resolveUltimateTargetSlot, computeLiuyinHugCounts } from '@/mechanics/agents/liuyin'
-import { computeBanyueInteractionTopUp } from '@/mechanics/agents/banyue'
 import { isHugoEndsWindowMove, hugoMoveActionTime } from '@/mechanics/agents/hugo'
 // 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 / T67-a1 刀 A）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
@@ -192,7 +191,9 @@ export function createRunCalcRound(deps: {
     const provStunCoverage = computeStunCoverage({ stunCount }, verdictSecondsLost)
     // 般岳轴模式自动补齐（保底语义，方案 A）：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时抬双反（补嗔火）与弹刀（补喧响），
     // 有效次数 = 交互栏输入 + 补齐量（不写回 store，不覆盖用户输入）；计算轮间通过 prevInteractionTopUp 线程收敛。
-    const banyueSlot = findSlotByIdentity(configStore, catalogStore, ['1471'])
+    // CC-23：找槽改为声明式（与 useResourceCalc.ts 交互栏的 `interactionTopUp` computed 同一写法，两处判定同源），
+    // 原为按身份 `findSlotByIdentity(…, ['1471'])`。补齐求解经模块能力 `computeInteractionTopUp`。
+    const interactionTopUpSlot = configStore.team.findIndex(c => c.agentId && getAgentMechanic(c.agentId)?.producesInteractionTopUp)
     // Boss 预设弹刀反推（用户口径 2026-08）：appliedBoss 声明 parryTotal/parryNoFollowUpTotal（如 叶释渊 13 / 司祭 15）且
     // 「保底4失衡」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按保底失衡反推补齐、主C 拿剩余
     // （纯函数 core/parrySplit.ts；本轮注入上一轮拆分，收敛判据含 parrySplitSeq）。
@@ -214,11 +215,11 @@ export function createRunCalcRound(deps: {
     // 轴模式自动补齐（axisActive）之外，保底开关也可独立驱动（非轴亦生效）。
     const guaranteeFury = configStore.getMechanicSetting('guarantee.fury', 0) !== 0
     const guaranteeUltimate = configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0
-    const autoTopUp = (axisActive || guaranteeFury || guaranteeUltimate) && banyueSlot >= 0
+    const autoTopUp = (axisActive || guaranteeFury || guaranteeUltimate) && interactionTopUpSlot >= 0
       && configStore.getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0
-    // 通用保底4喧响：喧响缺口 → 弹刀（任意队伍；般岳走上面的 computeBanyueInteractionTopUp，此处排除避免双计）。
+    // 通用保底4喧响：喧响缺口 → 弹刀（任意队伍；般岳走上面的模块能力 computeInteractionTopUp，此处排除避免双计）。
     // 弹刀注入槽位 0（主C，弹刀喧响经伴随覆盖全队），轮间经 prevDecibelParry 线程收敛。
-    const decibelParryActive = guaranteeUltimate && banyueSlot < 0
+    const decibelParryActive = guaranteeUltimate && interactionTopUpSlot < 0
 
     /** 轴内某槽位捏的块次数（moveId → 总次数 = 块数 × 窗口数；赠品连携块不计） */
     const computeBanyueAxisExFor = (slot: number): Record<string, number> => {
@@ -697,27 +698,29 @@ export function createRunCalcRound(deps: {
     // 外不动点收敛时 prevInteractionTopUp 稳定（round 0 无补齐 → 本轮算出的下一轮量即最终缺口）。
     let interactionTopUpNext = prevInteractionTopUp
     if (autoTopUp) {
-      const storeChar = configStore.team[banyueSlot]
-      const ultNeed = axisUltimateNeed(resolvedAxes, stunCount, banyueSlot)
+      const storeChar = configStore.team[interactionTopUpSlot]
+      const ultNeed = axisUltimateNeed(resolvedAxes, stunCount, interactionTopUpSlot)
       // 喧响供给取般岳个人（终结技次数 = 个人喧响 / 终结技消耗，非全队总和；曾用全队总和导致
       // 队友喧响把缺口抹平 → 保底4喧响不补齐、般岳卡在 9000 出头打不满 4 大）
-      const decibelHave = rr.characters.find(c => c.slot === banyueSlot)?.decibelSource?.total ?? 0
-      interactionTopUpNext = computeBanyueInteractionTopUp({
+      const decibelHave = rr.characters.find(c => c.slot === interactionTopUpSlot)?.decibelSource?.total ?? 0
+      // 门控 autoTopUp 已含 interactionTopUpSlot >= 0 ⇒ 该槽模块声明了 producesInteractionTopUp；能力缺席时保持上一轮值
+      const computeTopUp = storeChar?.agentId ? getAgentMechanic(storeChar.agentId)?.computeInteractionTopUp : undefined
+      if (computeTopUp) interactionTopUpNext = computeTopUp({
         dodgeCount: storeChar?.dodgeCounterCount ?? 0,
         parryCount: storeChar?.parryCount ?? 0,
         blockCount: storeChar?.blockCount ?? 0,
         dualCounterCount: storeChar?.dualCounterCount ?? 0,
         cinemaLevel: storeChar?.cinemaLevel ?? 0,
-        axisEx: axisActionCountsBySlot[banyueSlot] ?? {},
+        axisEx: axisActionCountsBySlot[interactionTopUpSlot] ?? {},
         ultimateCountNeeded: Math.max(ultNeed, guaranteeUltimate ? 4 : 0),
         minRageCount: guaranteeFury ? 4 : 0,
-        ultimateCost: base.characters.find(c => c.slot === banyueSlot)?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
+        ultimateCost: base.characters.find(c => c.slot === interactionTopUpSlot)?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
         // 单次补齐弹刀的原始动作时间 = 招架支援 + 支援突击（未扣合轴）：
         // 用来判「这次补齐是不是根本打不出来」（>200s = 非法，见 banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC）
-        // ⚠ 按身份查（同 :1119；压缩数组下 `base.characters[banyueSlot]` 在空槽时会取错对象）
-        perParrySeconds: (base.characters.find(c => c.slot === banyueSlot)?.defensiveAssistActionTime ?? 0)
-          + (base.characters.find(c => c.slot === banyueSlot)?.assistFollowUpActionTime ?? 0),
+        // ⚠ 按身份查（同 :1119；压缩数组下 `base.characters[interactionTopUpSlot]` 在空槽时会取错对象）
+        perParrySeconds: (base.characters.find(c => c.slot === interactionTopUpSlot)?.defensiveAssistActionTime ?? 0)
+          + (base.characters.find(c => c.slot === interactionTopUpSlot)?.assistFollowUpActionTime ?? 0),
       })
     }
 

@@ -1,5 +1,5 @@
 import type { AnomalyPoolResult, StunAxis, TeamResourceResult, StunPoolResult, InStunAnomalySummary } from '@/types/resource'
-import type { BanyueInteractionTopUp } from '@/mechanics/agents/banyue'
+import type { InteractionTopUp } from '@/mechanics/types'
 import type { ParrySplitResult } from '@/core/parrySplit'
 import type { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import type { CalcRoundThreads } from './roundThreads'
@@ -16,7 +16,7 @@ export interface CalcRoundResult {
     stunCoverage: number
     resolvedAxes: StunAxis[]
     matchedPlanName: string | null
-    interactionTopUp: BanyueInteractionTopUp
+    interactionTopUp: InteractionTopUp
     parrySplit: ParrySplitResult
     inStunAnomalyState: InStunAnomalySummary | null
     bossAnomalyState: BossAnomalyStateResult | null

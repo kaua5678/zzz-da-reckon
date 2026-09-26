@@ -289,6 +289,8 @@ describe('convergence 夜间批 B · 组 3 保留项：cfg-merge 分支仍在（
     expect(mod.agentIds).toEqual(['1471'])
     // 该模块声明了 producesInteractionTopUp（= 编排层 :549 的 banyueSlot 查找本可走声明式）
     expect(mod.producesInteractionTopUp).toBe(true)
+    // CC-23：编排层找槽已改走本声明，补齐求解经模块能力派发（缺了它 autoTopUp 静默不补）
+    expect(typeof mod.computeInteractionTopUp, 'CC-23：般岳模块须挂出 computeInteractionTopUp').toBe('function')
   })
 
   it('★ 契约缺口可复现：`guarantee.*` 不是注册 MechanicSetting ⇒ 模块侧读不到（故 :840 的 autoTopUp 迁不动）', async () => {

@@ -771,6 +771,13 @@ export interface AgentMechanicModule {
    */
   producesInteractionTopUp?: boolean
   /**
+   * 交互补齐量求解（CC-23，与 `producesInteractionTopUp` 配套）：编排层（`convergence.ts`）在
+   * autoTopUp 门控成立时，对「声明了 producesInteractionTopUp 的那个槽位」的模块调用本能力，
+   * 求下一轮的弹刀/双反补齐量（轮间经 `threads.interactionTopUp` 收敛）。原先编排层直连
+   * import `computeBanyueInteractionTopUp`；现由模块挂出，编排层不含角色 id、不 import 角色模块。
+   */
+  computeInteractionTopUp?(opts: InteractionTopUpInput): InteractionTopUp
+  /**
    * 异常池预构建钩子：在 perElement 积蓄汇总之前调用（引擎已构建 elementMap 并预算 turbulenceCount）。
    * 模块可向 elementMap 注入额外积蓄贡献（如维琳娜风蚀替换广域），或把机制状态写入 store 供引擎消费。
    * 引擎保证：调用顺序在所有模块的 perElement 汇总之前，注入值进入所有下游（触发次数/覆盖率/note）。
@@ -1465,4 +1472,39 @@ export interface AgentNextRoundFeedbackInput {
   combatTime: number
   /** 倍率表访问（零号·安比按 moveId 现场推断 `additionalAttack`，与伤害池 infer 同口径） */
   getAgentSkills: (agentId: string) => AgentSkills | undefined
+}
+
+/** 轴模式自动补齐的交互次数（保底语义：在用户输入之上补多少，不覆盖输入）。CC-23 自 banyue.ts 迁入 */
+export interface InteractionTopUp {
+  /** 弹刀（普通弹刀 parry）补齐次数：补喧响（+215/次） */
+  parry: number
+  /** 双反补齐次数：补嗔火（+10/次） */
+  dual: number
+  /** 本次补齐需要的原始动作时间（秒，未扣合轴）；调用方未提供单次时长时为 0 */
+  requiredSeconds: number
+  /** 补齐时间超过 AUTO_TOPUP_TIME_LIMIT_SEC → 本次补齐非法（次数已清零，轴应退化） */
+  illegal: boolean
+}
+
+/** `computeInteractionTopUp` 能力入参（CC-23 自 banyue.ts `computeBanyueInteractionTopUp` 的 opts 迁入，字段逐字保留） */
+export interface InteractionTopUpInput {
+  dodgeCount: number
+  parryCount: number
+  blockCount: number
+  dualCounterCount: number
+  cinemaLevel: number
+  /** 轴内捏的块次数（moveId → 次数，含连段块） */
+  axisEx: Record<string, number>
+  /** 轴内需要的终结技总次数（块 × 窗口数） */
+  ultimateCountNeeded: number
+  /** 保底怒相（嗔火）次数下界：需求 = max(轴内怒相需求, 此值)，供保底4嗔火开关 */
+  minRageCount?: number
+  /** 终结技喧响消耗（默认 3000） */
+  ultimateCost: number
+  /** 当前喧响供给（般岳个人；终结技次数 = 个人喧响 / 终结技消耗，非全队总和） */
+  decibelHave: number
+  /** 单次补齐弹刀的原始动作时间（招架支援 + 支援突击，秒）；缺省 0 = 不做时间合法性判定 */
+  perParrySeconds?: number
+  /** 单次补齐双反的原始动作时间（秒）；cfg 暂未暴露该字段时留 0 */
+  perDualSeconds?: number
 }

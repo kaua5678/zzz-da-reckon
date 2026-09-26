@@ -1,4 +1,4 @@
-import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
+import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionTopUp, InteractionTopUpInput } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
@@ -175,17 +175,8 @@ export interface BanyueRageCycle {
 // @fact engine:banyue/补齐时间上限 口径: 自动填充交互的原始动作时间（未扣合轴）>200s 判本次填充非法——次数清零并走轴退化，而不是截断成半套 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC | 信 确认
 export const AUTO_TOPUP_TIME_LIMIT_SEC = 200
 
-/** 轴模式自动补齐的交互次数（保底语义：在用户输入之上补多少，不覆盖输入） */
-export interface BanyueInteractionTopUp {
-  /** 弹刀（普通弹刀 parry）补齐次数：补喧响（+215/次） */
-  parry: number
-  /** 双反补齐次数：补嗔火（+10/次） */
-  dual: number
-  /** 本次补齐需要的原始动作时间（秒，未扣合轴）；调用方未提供单次时长时为 0 */
-  requiredSeconds: number
-  /** 补齐时间超过 AUTO_TOPUP_TIME_LIMIT_SEC → 本次补齐非法（次数已清零，轴应退化） */
-  illegal: boolean
-}
+/** 轴模式自动补齐的交互次数（CC-23 起类型定义在 `mechanics/types.ts#InteractionTopUp`；本别名保留给测试与既有引用） */
+export type BanyueInteractionTopUp = InteractionTopUp
 
 /**
  * 轴模式自动补齐（用户口径 2026-08，方案 A 保底补齐）：
@@ -193,27 +184,7 @@ export interface BanyueInteractionTopUp {
  * - 喧响不足 → 抬弹刀：轴内终结技需求（次数 × 消耗）− 当前喧响供给 → 弹刀 = 缺口 ÷ 215。
  * 有效次数 = 用户输入 + 返回值；怒相不足/喧响不足分别由双反/弹刀单独补齐，互不干扰。
  */
-export function computeBanyueInteractionTopUp(opts: {
-  dodgeCount: number
-  parryCount: number
-  blockCount: number
-  dualCounterCount: number
-  cinemaLevel: number
-  /** 轴内捏的块次数（moveId → 次数，含连段块） */
-  axisEx: Record<string, number>
-  /** 轴内需要的终结技总次数（块 × 窗口数） */
-  ultimateCountNeeded: number
-  /** 保底怒相（嗔火）次数下界：需求 = max(轴内怒相需求, 此值)，供保底4嗔火开关 */
-  minRageCount?: number
-  /** 终结技喧响消耗（默认 3000） */
-  ultimateCost: number
-  /** 当前喧响供给（般岳个人；终结技次数 = 个人喧响 / 终结技消耗，非全队总和） */
-  decibelHave: number
-  /** 单次补齐弹刀的原始动作时间（招架支援 + 支援突击，秒）；缺省 0 = 不做时间合法性判定 */
-  perParrySeconds?: number
-  /** 单次补齐双反的原始动作时间（秒）；cfg 暂未暴露该字段时留 0 */
-  perDualSeconds?: number
-}): BanyueInteractionTopUp {
+export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): InteractionTopUp {
   const rageGroups = (opts.axisEx['banyue-combo'] ?? 0) + (opts.axisEx['banyue-combo-didong'] ?? 0)
   const rageNeeded = Math.max(Math.ceil(rageGroups / 2), opts.minRageCount ?? 0) // 每组连段 2 块 = 一次怒相
   const cycle = computeBanyueRageCycle(
@@ -1068,6 +1039,8 @@ export const banyueMechanic: AgentMechanicModule = {
    * 该 computed 的槽位查找 + 懒守卫（非本角色队伍不触发全量计算）改由编排层按本声明完成。
    */
   producesInteractionTopUp: true,
+  // CC-23：补齐求解经模块能力派发（原 convergence.ts 直连 import 本函数）
+  computeInteractionTopUp: computeBanyueInteractionTopUp,
   // 失衡轴动作块：怒相连段（论道→狮子吼·怒 / 地动→山摇·怒）= 怒相技能，山威免费（4 山威/怒相 = 2 组），
   // 不耗闪能不回嗔火；怒相内 2 组连段可在两个块间自由分配（didong 块优先占山威配额），明王触发源两者皆认领
   combos: {
