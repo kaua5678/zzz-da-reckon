@@ -989,11 +989,20 @@ describe('CC-18a：般岳 extraDirectRows（C6 摧岳附伤逐字）', () => {
     banyueC6CrushAttach: ratio,
   })
   const panel = { atk: 2000, hp: 10000, sheerForceFlat: 300 } as never
+  // CC-18b 2026-09-26：ExtraDirectRowsInput 扩 5 个必填字段；般岳只解构自己需要的字段，桩值不参与。
+  const stubs = {
+    teammateAt: () => ({ panel: undefined, agent: null }),
+    stunCount: 0,
+    promoteCount: 0,
+    getMechanicSetting: (_k: string, d: number) => d,
+    ultimateInAxisFraction: () => 0,
+  }
 
   it('无 banyueC6CrushAttach 标记 → 返回 []（非 C6 不产行）', () => {
     expect(banyueMechanic.extraDirectRows!({
       charResult: { agentId: '1471', executions: [{ moveId: '1471009', count: 4 }] } as never,
       slot: 0, panel, isAxis: false, axisStunFor: () => 0,
+      ...stubs,
     })).toEqual([])
   })
 
@@ -1004,6 +1013,7 @@ describe('CC-18a：般岳 extraDirectRows（C6 摧岳附伤逐字）', () => {
       panel,
       isAxis: false,
       axisStunFor: () => 0,
+      ...stubs,
     })
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({
@@ -1024,7 +1034,7 @@ describe('CC-18a：般岳 extraDirectRows（C6 摧岳附伤逐字）', () => {
   })
 
   it('count 向下取整且为 0 时不产行', () => {
-    const cr = (count: number) => ({ charResult: { agentId: '1471', executions: [crushExec(count)] } as never, slot: 0, panel, isAxis: false, axisStunFor: () => 0 })
+    const cr = (count: number) => ({ charResult: { agentId: '1471', executions: [crushExec(count)] } as never, slot: 0, panel, isAxis: false, axisStunFor: () => 0, ...stubs })
     expect(banyueMechanic.extraDirectRows!(cr(3.9))[0].count).toBe(3)
     expect(banyueMechanic.extraDirectRows!(cr(0))).toEqual([])
   })
@@ -1034,6 +1044,7 @@ describe('CC-18a：般岳 extraDirectRows（C6 摧岳附伤逐字）', () => {
       charResult: { agentId: '1471', executions: [crushExec(2)] } as never,
       slot: 0, panel, isAxis: true,
       axisStunFor: (moveId: string) => (moveId === 'banyue_c6_crush_attach' ? 1 : 0),
+      ...stubs,
     })
     expect(rows[0].stunOverride).toBe(1)
   })

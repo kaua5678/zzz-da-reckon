@@ -1278,6 +1278,16 @@ export interface ExtraDirectRowsInput {
   isAxis: boolean
   /** 伴随事件易伤 0/1（非轴回落全局覆盖率） */
   axisStunFor: (moveId: string) => number
+  /** 按槽位查队友：panel = panelAt(damagePanels, slot)；agent = slot >= 0 ? (team[slot]?.agentId ? agentsMap.get(team[slot].agentId) : null) : null（逐字复刻原块 2 的两行） */
+  teammateAt: (slot: number) => { panel: PanelValues | undefined; agent: Agent | null | undefined }
+  /** = stunPoolResult?.stunCount ?? 0 */
+  stunCount: number
+  /** = ctx.liuyinPromoteCount（答案层 promote，原样透传，勿改来源） */
+  promoteCount: number
+  /** = configStore.getMechanicSetting */
+  getMechanicSetting: (key: string, dflt: number) => number
+  /** = env.ultimateInAxisFraction */
+  ultimateInAxisFraction: () => number
 }
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */

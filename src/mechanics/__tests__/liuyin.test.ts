@@ -232,3 +232,132 @@ describe('琉音伤害池落地（damagePool 集成，非纯函数）', () => {
     expect((nonstun as any).count).toBeGreaterThan(0)
   })
 })
+
+// CC-18b 2026-09-26：块 2 / 4 / 5 自 `damagePoolCharExtras.ts` 迁进模块能力 `extraDirectRows`
+// （设计稿 `docs/mcp-cc18-extra-direct-rows.md` §7.1）。逐字锁 id / count / multiplier。
+describe('CC-18b：琉音 extraDirectRows（重击附加 / 非轴强特拆分 / 影画6余音逐字）', () => {
+  const liuyinSrc = (overrides: Record<string, unknown> = {}) => ({
+    exHeavyCount: 5,
+    extraAbilityActive: true,
+    previousTeammateSlot: 2,
+    cinemaLevel: 0,
+    ...overrides,
+  })
+  const input = (src: Record<string, unknown> | undefined, overrides: Record<string, unknown> = {}) => ({
+    charResult: { agentId: '1481', liuyinMechanicSource: src, executions: [] } as never,
+    slot: 0,
+    panel: undefined,
+    isAxis: false,
+    axisStunFor: () => 0,
+    teammateAt: () => ({ panel: { atk: 3000, hp: 0, sheerForceFlat: 0 } as never, agent: { name: { zhCN: '队友' }, specialty: 'attack' } as never }),
+    stunCount: 0,
+    promoteCount: 0,
+    getMechanicSetting: (_k: string, d: number) => d,
+    ultimateInAxisFraction: () => 0,
+    ...overrides,
+  })
+
+  it('无 liuyinMechanicSource → 返回 []（不产行）', () => {
+    expect(liuyinMechanic.extraDirectRows!(input(undefined))).toEqual([])
+  })
+
+  it('块 2 重击附加：id/count/multiplier 逐字（强攻队友 320% 攻击力）', () => {
+    const rows = liuyinMechanic.extraDirectRows!(input(liuyinSrc()))
+    const row = rows.find(r => r.id === 'liuyin-ex-direct-2')!
+    expect(row).toMatchObject({
+      slot: 0,
+      agentId: '1481',
+      name: '琉音额外能力·重击附加伤害',
+      element: 'physical',
+      source: '上一位队友（队友）攻击力 × 320%',
+      count: 5,
+      multiplier: 320,
+      note: '额外能力专属直伤：强攻队友 320% 攻击力',
+      skillDamageTarget: 'exSpecial',
+      basisValueOverride: 3000,
+      basisLabelOverride: '上一位队友攻击力',
+    })
+  })
+
+  it('块 4 非轴强特拆分：失衡内/非失衡行 id/count/multiplier 逐字', () => {
+    const rows = liuyinMechanic.extraDirectRows!(input(liuyinSrc(), {
+      stunCount: 2,
+      charResult: {
+        agentId: '1481',
+        liuyinMechanicSource: liuyinSrc(),
+        executions: [
+          { moveId: '1481011', damageMultiplier: 100 },
+          { moveId: '1481012', damageMultiplier: 200 },
+          { moveId: '1481013', damageMultiplier: 300 },
+        ],
+      } as never,
+    }))
+    const stun = rows.find(r => r.id === 'liuyin-ex-1481011-stun')!
+    const nsRock = rows.find(r => r.id === 'liuyin-ex-1481011-nonstun')!
+    const nsScissors = rows.find(r => r.id === 'liuyin-ex-1481012-nonstun')!
+    const nsPaper = rows.find(r => r.id === 'liuyin-ex-1481013-nonstun')!
+    // exTotal=5、stunCount=2 ⇒ 失衡内 2、非失衡 3 ⇒ 石头 1 / 剪刀 1 / 布 1
+    expect(stun).toMatchObject({ count: 2, multiplier: 100, stunOverride: 1, source: '失衡内首个强特' })
+    expect(nsRock).toMatchObject({ count: 1, multiplier: 100, stunOverride: 0, source: '非失衡 1→3 连打' })
+    expect(nsScissors).toMatchObject({ count: 1, multiplier: 200, stunOverride: 0 })
+    expect(nsPaper).toMatchObject({ count: 1, multiplier: 300, stunOverride: 0 })
+  })
+
+  it('isAxis=true → 不含块 4 的行（仍可含块 2 / 块 5）', () => {
+    const rows = liuyinMechanic.extraDirectRows!(input(liuyinSrc(), {
+      isAxis: true,
+      stunCount: 2,
+      charResult: {
+        agentId: '1481',
+        liuyinMechanicSource: liuyinSrc(),
+        executions: [
+          { moveId: '1481011', damageMultiplier: 100 },
+          { moveId: '1481012', damageMultiplier: 200 },
+          { moveId: '1481013', damageMultiplier: 300 },
+        ],
+      } as never,
+    }))
+    // 块 4 的行 id 形如 `liuyin-ex-<moveId>-stun|nonstun`；块 2 的 `liuyin-ex-direct-N` 不属于块 4
+    expect(rows.some(r => r.id.endsWith('-stun') || r.id.endsWith('-nonstun'))).toBe(false)
+  })
+
+  it('块 5 影画6余音：cinema 6 含余音行，count = promoteCount × getMechanicSetting 上限', () => {
+    const rows = liuyinMechanic.extraDirectRows!(input(liuyinSrc({ cinemaLevel: 6 }), {
+      promoteCount: 3,
+      getMechanicSetting: (_k: string, _d: number) => 4,
+    }))
+    const echo = rows.find(r => r.id === 'liuyin-c6-echo')!
+    expect(echo).toMatchObject({
+      slot: 0,
+      agentId: '1481',
+      name: '琉音影画6·余音',
+      element: 'physical',
+      source: '转大 3 次 × 4 次 × 480%',
+      count: 12,
+      multiplier: 480,
+      note: '影画6余音：队友经核心被动以终结技入场后，其攻击命中时琉音追加 480% 攻击力物理伤害（视为强特）；每转大最多 4 次（可在资源利用率页调整）。',
+      skillDamageTarget: 'exSpecial',
+    })
+    // 非轴 → stunOverride 回落 undefined
+    expect(echo.stunOverride).toBeUndefined()
+  })
+
+  it('块 5 轴模式：stunOverride = ultimateInAxisFraction()', () => {
+    const rows = liuyinMechanic.extraDirectRows!(input(liuyinSrc({ cinemaLevel: 6 }), {
+      isAxis: true,
+      promoteCount: 3,
+      getMechanicSetting: (_k: string, _d: number) => 4,
+      ultimateInAxisFraction: () => 0.75,
+    }))
+    const echo = rows.find(r => r.id === 'liuyin-c6-echo')!
+    expect(echo.stunOverride).toBe(0.75)
+  })
+
+  it('块 5 未满影画6 → 不含余音行', () => {
+    const rows = liuyinMechanic.extraDirectRows!(input(liuyinSrc({ cinemaLevel: 5 }), {
+      promoteCount: 3,
+      getMechanicSetting: (_k: string, _d: number) => 4,
+    }))
+    expect(rows.some(r => r.id === 'liuyin-c6-echo')).toBe(false)
+  })
+})

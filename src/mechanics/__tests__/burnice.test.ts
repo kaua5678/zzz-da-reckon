@@ -265,6 +265,12 @@ describe('CC-18a：柏妮思 extraDirectRows（附加直伤行逐字）', () => 
     panel: panel as never,
     isAxis: false,
     axisStunFor: () => 0,
+    // CC-18b 2026-09-26：ExtraDirectRowsInput 扩 5 个必填字段；柏妮思只解构自己需要的字段，桩值不参与。
+    teammateAt: () => ({ panel: undefined, agent: null }),
+    stunCount: 0,
+    promoteCount: 0,
+    getMechanicSetting: (_k: string, d: number) => d,
+    ultimateInAxisFraction: () => 0,
   })
 
   it('无 burniceMechanicSource → 返回 []（不产行）', () => {
@@ -274,6 +280,11 @@ describe('CC-18a：柏妮思 extraDirectRows（附加直伤行逐字）', () => 
       panel: undefined,
       isAxis: false,
       axisStunFor: () => 0,
+      teammateAt: () => ({ panel: undefined, agent: null }),
+      stunCount: 0,
+      promoteCount: 0,
+      getMechanicSetting: (_k: string, d: number) => d,
+      ultimateInAxisFraction: () => 0,
     })).toEqual([])
   })
 
@@ -359,6 +370,11 @@ describe('CC-18a：柏妮思 extraDirectRows（附加直伤行逐字）', () => 
       panel: { skillLevelBonus: 0 } as never,
       isAxis: true,
       axisStunFor: (moveId: string) => (moveId === 'burnice-c6-special-ember' ? 0.75 : 0),
+      teammateAt: () => ({ panel: undefined, agent: null }),
+      stunCount: 0,
+      promoteCount: 0,
+      getMechanicSetting: (_k: string, d: number) => d,
+      ultimateInAxisFraction: () => 0,
     })
     const c6 = rows.find(r => r.id === 'burnice-c6-special-ember')!
     expect(c6.stunOverride).toBe(0.75)
