@@ -647,7 +647,7 @@ export const FONT_SIZE_BASELINE = {
  * --wa-* 直接引用总数基线（2026-08-31 实测 449；B3 顶栏换 --app-border/--fg-2 后 447）。
  * 为什么要有这条：--wa-* 的 47 档是历史 codemod 的机械产物（原 rgba(255,255,255,α)），
  * 人记不住 `--wa-250` 是描边还是悬浮底——这是「同义色散落」的同类病根。
- * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3），
+ * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--fg-2/--fg-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
 export const WA_REF_BASELINE = 447  /* ★ 2026-09-21 UI 外壳打磨：448 → **447**（−1）。方向 = 棘轮要求的方向。
@@ -1026,7 +1026,7 @@ export function runAllChecks(root = ROOT) {
   // ---- 6. alias 棘轮 ----
   const aliasDetail = []
   if (waRefs > WA_REF_BASELINE) {
-    aliasDetail.push(`  ✗ --wa-* 直接引用 ${WA_REF_BASELINE}→${waRefs}：新代码请用语义别名（--line/--line-strong/--fill-hover/--fill-active/--text-2/--text-3）`)
+    aliasDetail.push(`  ✗ --wa-* 直接引用 ${WA_REF_BASELINE}→${waRefs}：新代码请用语义别名（--line/--line-strong/--fill-hover/--fill-active/--fg-2/--fg-3）`)
   } else if (waRefs < WA_REF_BASELINE) {
     aliasDetail.push(`  ✗ --wa-* 直接引用 ${WA_REF_BASELINE}→${waRefs}：是进步，把 WA_REF_BASELINE 下调到 ${waRefs}`)
   }
