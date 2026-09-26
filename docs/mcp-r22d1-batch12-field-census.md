@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-27 第 39 轮，lead-arena-0925c）**：**CC-31 已落地 `0b8a28a`**：`CalcRoundThreads` 的 14 个模块下一轮反馈具名字段 → 通用 `moduleFeedback` 字典（键类型 `mechanics/types.ts#ModuleFeedback`，缺键 = 0）；21 文件（10 模块 + convergence/roundThreads/panelPhases/types + 5 测试 + 2 棘轮）。判据 22 从 326 降到 **270**（−56），**target 314 已达成 → 重设 258**。verify EXIT=0。详见 §5.25。
+- **最新交接（2026-09-27 第 40 轮，lead-arena-0925c）**：**CC-32a 已落地 `0671c4c`**：`core/resource/crossAgentEnergy.ts` 席德正兵回能内联块 → 席德模块 `crossAgentSupply`（`kind: 'vanguard-energy'`，`perTargetAmounts` 出落点量 + 新可选钩子 `onOwnSlotCrossAgentEnergy` 回写 `xideVanguardEnergySpent`）；派发器泛化为 `perTargetEnergyByProvider(…, kind)`（`neighborUltEnergyByProvider` 保留为包装）。判据 22 从 270 降到 **254**，**target 258 已达成 → 重设 242**。verify EXIT=0。详见 §5.26。
+  **下一步（可以直接开工）**：**CC-32b**（`CrossAgentEnergy` 5 个角色具名展示字段 → `byDisplayKey` 字典 + 结果卡按字典渲染；顺带补上席德正兵回能在结果卡**缺失的展示行**），开工清单见 §5.26。
+- **上一轮交接（2026-09-27 第 39 轮，lead-arena-0925c）**：**CC-31 已落地 `0b8a28a`**：`CalcRoundThreads` 的 14 个模块下一轮反馈具名字段 → 通用 `moduleFeedback` 字典（键类型 `mechanics/types.ts#ModuleFeedback`，缺键 = 0）；21 文件（10 模块 + convergence/roundThreads/panelPhases/types + 5 测试 + 2 棘轮）。判据 22 从 326 降到 **270**（−56），**target 314 已达成 → 重设 258**。verify EXIT=0。详见 §5.25。
   **下一步（可以直接开工）**：**CC-32**（`core/resource/crossAgentEnergy.ts` 席德正兵回能块 → 模块能力；该文件簇判据 22 合计 29），开工清单见 §5.25。
 - **上一轮交接（2026-09-27 第 38 轮，lead-arena-0925c）**：**CC-30 已落地 `371a2c1`**（`remielleEntryPanels` → `entrySnapshotPanels` 纯改名，13 文件 21 处；判据 17 的 `COMPACTED_ARRAYS` 名单与其 fixture 测试同步改名 ⇒ 新名仍受槽位索引守卫；AGENTS.md / ARCHITECTURE.md / ENGINE_PIPELINE_GUIDE.md / MECHANICS_IMPLEMENTATION.md 现行规则文档同步）。判据 22 从 332 降到 **326**，**target 328 已达成 → 重设 314**。verify EXIT=0。详见 §5.24。
   **下一步（可以直接开工）**：**CC-31**（`CalcRoundThreads` 里 14 个「模块下一轮反馈」具名字段 → 通用 `moduleFeedback` 字典；判据 22 最大一簇，预计 −40 以上），开工清单见 §5.24。
@@ -299,6 +301,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-27 CC-29 后**：**332**（`69b53f9`）；target 328 未达成，维持。下一张：CC-30（§5.23，预计 −6 → 326 达成）。
 - **2026-09-27 CC-30 后**：**326**（`371a2c1`）；target 328 已达成 → 重设 **314**（326 − 12）。下一张：CC-31（§5.24）。
 - **2026-09-27 CC-31 后**：**270**（`0b8a28a`）；target 314 已达成 → 重设 **258**（270 − 12）。下一张：CC-32（§5.25）。
+- **2026-09-27 CC-32a 后**：**254**（`0671c4c`）；target 258 已达成 → 重设 **242**（254 − 12）。下一张：CC-32b（§5.26）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -991,6 +994,26 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
    - **CC-32b**：`CrossAgentEnergy` 5 个展示字段 → `byDisplayKey: Record<string, number>` + 显示名表（动 UI `ResourceResultCard.vue` 与类型，需 ui-check），判据 22 −~20；另立卡，先普查全部读点（grep `rinaUltEnergy` 等在 src/components、src/views、测试）。
 3. **验证**：零差（含 1461 的预设先 grep 语料确认有覆盖；无则单测固化：席德 + 正兵的 `crossAgent.xideVanguardEnergy` 与席德 cfg 的 `xideVanguardEnergySpent`）；反向（×2 应出差）；check-guards；verify；rf 若低于 target 258 必须同时重设。
 4. 其余候选（按判据 22 份量）：琉音一族 liuyinSrc/liuyinIdx/liuyinPromoteCount/liuyinMechanicSource/liuyinGift（≈32，需设计稿）；CC-27 维琳娜风蚀 velinaCorrosionSource/velinaCinema2CorrosionRate（16，§5.19）；`damagePoolDirect.ts` harumasaStunOnlyBonus / xixifuToxinInAxisFraction（各 5）。
+
+### 5.26 CC-32a 落地记录 + CC-32b 开工清单（2026-09-27 第 40 轮 lead-arena-0925c）
+
+**CC-32a（`0671c4c`，判据 22 270→254，target 258→242）**：
+- `src/mechanics/types.ts#CrossAgentSupplySpec`：新增可选钩子 `onOwnSlotCrossAgentEnergy?({ ownSlot, cfg, configs, states }): void`——`calcCrossAgentEnergy` 算提供者**自己那槽**时调用，唯一允许的副作用 = 写自己的 cfg；`kind` 注释把 `'vanguard-energy'` 从「后续批次」移入已实现。
+- `src/core/resource/crossAgentSupply.ts`：`neighborUltEnergyByProvider` 泛化为 `perTargetEnergyByProvider(configs, states, targetSlot, query, kind)`，原名保留为 `'neighbor-ult-energy'` 包装（调用方与测试不动）；新增 `runOwnSlotCrossAgentEnergyHooks(configs, states, slotIndex, kind)`。
+- `src/core/resource/crossAgentEnergy.ts`：删席德内联块（按 `xideVanguardSlot` 字段找槽的 `xideIdx`、正兵回能、回写正兵耗能），改为两行派发；返回 `xideVanguardEnergy: vanguard.byDisplayKey.xideVanguardEnergy ?? 0`，`total` 改加 `vanguard.total`（只有席德提供时二者相等）。
+- `src/mechanics/agents/xide.ts`：新增导出 `xideVanguardSupply`（`kind 'vanguard-energy'`、`displayKey 'xideVanguardEnergy'`、`supply: () => 0`、`perTargetAmounts` 与 `onOwnSlotCrossAgentEnergy` 逐字搬迁，`xideNum` = 原 `num`），模块挂 `crossAgentSupply`；description 同步。
+- 等价性：原 `xideIdx` = 首个带 `xideVanguardSlot` 字段的 cfg；新 = 模块声明 `vanguard-energy` 的槽，且 `xideVanguardSlot === undefined` 时不供给不回写（= 原找不到分支）。同队不会有两个席德。原实现对 `vanguardSlot` 为 −1 时本来就不会命中落点，新实现显式 `< 0` 返回 `{}`，等价。
+- 顺手（CC-31 遗留）：`resourceCalc/roundThreads.ts` 头注释补「模块下一轮反馈例外走 `moduleFeedback`」。
+- **验证**：vue-tsc 0；`xide` / `teamHook` / `crossAgent` 单测 40/40（`xide.test.ts:314-330` 直测正兵 40 与回写 240，`teamHook.test.ts:100-113` 走全管线）；dump 625 / rowsnap 638 仅 `__ms` 差（语料含 `auto-1461-1521-1361` 5 变体）；**反向**（回能 ×2 → ×3）单测 1 红、dump **19 键出差**（全为 1461 队），还原 cmp 一致；`npm run verify` EXIT=0（3570 passed）。脚本 `/home/kaua/calc-arch/cc32a.py`、`z32.sh`。
+- **回退点**：`git revert 0671c4c`（单提交）。
+
+**CC-32b 开工清单：`CrossAgentEnergy` 角色具名展示字段 → 字典（lead 实读 HEAD `0671c4c`）**
+1. **事实**：`src/types/resource/energy.ts:18` `CrossAgentEnergy` 有 5 个角色具名展示字段 `rinaUltEnergy / soukakuUltEnergy / lucyEnergy / lighterC4Energy / xideVanguardEnergy`（+ 通用 `supportUltimateRegen / teamUltimateFlash / total`）。读点（剥注释）：`core/resource/crossAgentEnergy.ts` 15、`components/ResourceResultCard.vue` 8（`:118-133`，**只展示 rina/soukaku/lucy/lighterC4 四行，席德正兵回能没有展示行**——数值已计入 total，但用户看不到明细，是现存 UI 缺口）、`mechanics/__tests__/teamHook.test.ts` 13、`xide.test.ts` 2、`nextRoundFeedback.test.ts` 2、模块 `displayKey` 声明 4（lucy/rina/soukaku/xide 各 1）。rf3：这 5 字段 + `lighterC4Raw` 在 crossAgentEnergy.ts 合计 **22**。
+2. **方案（已拍板）**：`CrossAgentEnergy` 删 5 个具名字段，加 `bySource: Record<string, number>`（键 = 模块 `displayKey`；合并 neighbor 与 vanguard 两个派发的 `byDisplayKey`）。莱特影画4 这条目前读 `cfg.lighterC4BurstEnergy`（模块预写的 cfg 字段，计 `lighterC4Raw` 3 + `lighterC4Energy` 4）：**本张一起改成 `crossAgentSupply` 吗？否**——莱特已有 `crossAgentSupply`？先 grep `lighter.ts` 是否已声明；若已占用，改为通用 cfg 字段 `crossAgentFlatEnergy`（任何模块预写「自己这槽额外获得的队友联动能量」）+ 通用 `crossAgentFlatEnergyKey`（展示键），引擎只读通用名。
+3. **UI**：`ResourceResultCard.vue` 四段写死的 `v-if` 行 → `v-for` 遍历 `bySource`（`> 0` 才显示），显示名由表 `CROSS_AGENT_SOURCE_LABELS: Record<string, string>` 给（放 `src/components/` 或 `src/utils/`，**不放 core**）；现有四行的中文标签原样搬进表，并**新增席德一行**（标签按游戏内叫法写「席德·正兵回能」之类，先读模块注释措辞）。表里查不到的键兜底显示键名（防新增提供者漏配时静默消失）。
+4. **验证**：dump/rowsnap 若序列化了 `energySource.crossAgent` 则会**因形状变化出差**——先查 `.zc/perf` 的 dump 取了哪些字段（grep `crossAgent`）；若出差只来自形状（值不变），需要在 cmp 前把旧基线做同样的形状映射或换基线（按规则 17② 单独一批，不与代码混提交）。UI 用 `node scripts/ui-check.mjs --step 'tab:资源利用率' --step 'click:计算'` 截图 + `eval` 读回结果卡明细行文本（含 1461 的队伍应多出席德那一行）。测试同步 teamHook/xide/nextRoundFeedback 里的 `crossAgent.<键>` → `crossAgent.bySource.<键> ?? 0`。
+5. 预计判据 22 −~20（→ ~234 < target 242 ⇒ **同时重设 target**）。
+6. 其余候选不变：琉音一族（≈32，需设计稿）、CC-27 维琳娜风蚀（16，§5.19）、`damagePoolDirect.ts` harumasaStunOnlyBonus / xixifuToxinInAxisFraction（各 5）。
 
 ## 附录：普查脚本 census.sh
 
