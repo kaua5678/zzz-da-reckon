@@ -89,34 +89,17 @@ export function calcEnergySource(
   const timeSliceEnergy = n(cfg.panel.timeSliceEnergyPerTrigger) * timeSliceTriggers.total
   const zhenyuanEnergy = n(cfg.panel.zhenyuanEnergyPerTrigger) * n(cfg.zhenyuanTriggerCount)
 
-  // 诺姆影画2·帽子把戏：战斗中触发回 25 能量，20 秒冷却；按战斗时间驱动（默认 180s → floor(180/20)=9 次）。
-  const hatTrickInterval = n(cfg.normaC2TriggerInterval)
-  const hatTrickEnergy = n(cfg.normaC2EnergyPerTrigger) > 0 && hatTrickInterval > 0
-    ? Math.max(0, Math.floor(totalTime / hatTrickInterval)) * n(cfg.normaC2EnergyPerTrigger)
-    : 0
-
-  // 青衣影画4·稳态电弧屏障：护盾刷新回 5 能量，10 秒冷却；按战斗时间驱动（默认 180s → floor(180/10)=18 次）。
-  const qingyiC4Interval = n(cfg.qingyiC4TriggerInterval)
-  const qingyiC4Energy = n(cfg.qingyiC4EnergyPerTrigger) > 0 && qingyiC4Interval > 0
-    ? Math.max(0, Math.floor(totalTime / qingyiC4Interval)) * n(cfg.qingyiC4EnergyPerTrigger)
-    : 0
-
-  // 莱卡恩影画2·能量回馈：使敌人失衡或触发队友[连携技]时回 5 能量；次数 = 失衡次数 + 队伍连携总次数（外层注入总额）
-  const lycaonC2Energy = n(cfg.lycaonC2Energy)
-
-  // 比利影画1·闪亮登场：冲刺/闪反原始命中次数合并后按5秒ICD封顶，由模块预计算总额。
-  const billyC1Energy = n(cfg.billyC1Energy)
-
   // 般岳山威回闪能不再走这里：那是**招式级回能**（每发山威强特回 10，C2 +5），已由模块
   // `mechanics/agents/banyue#patchExecutions` 落在执行行 `energyRecovery` 上 ⇒ 经 `skillRegen`
   // （Σ 行级能量收入）进总账。此前用 `banyueSwayRefund` 平行字段加总，导致卡片「闪能·招式回复」
   // 显示 0 而总账里却含这笔（2026-09-11 用户发现；规则 11 单一事实源 + 规则 16 挂活代码）。
-  // 仪玄：额外闪能总账（模块在 buildCharConfig 汇总：完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次）
-  const yixuanFlashBonus = n(cfg.yixuanFlashBonus)
-  // agentId 判断冗余已删：antonC1EnergyGift 唯一写入方 = src/mechanics/agents/anton.ts:53
-  // （setRecord 只写本模块自己的 cfg）；n() 把 undefined 映射为 0，与原三元的 else 分支同值
-  // ——与上一行 yixuanFlashBonus 的无守卫写法同款。
-  const antonC1EnergyGift = n((cfg as any).antonC1EnergyGift)
+  //
+  // 角色专属能量项（规则 6 引擎落点，2026-09-26 CC-14a）：模块能力 `bonusEnergy` 返回本模块 cfg 上的
+  // **最终能量**（诺姆帽子把戏 / 青衣稳态电弧屏障 / 莱卡恩能量回馈 / 比利闪亮登场 / 仪玄额外闪能 /
+  // 安东影画1回能），直接计入 e0，不参与自动回能的百分比/效率乘区。
+  const bonusEntries = getAgentMechanic(cfg.agentId)?.bonusEnergy?.({ cfg, totalTime }) ?? []
+  let bonusEnergyTotal = 0
+  for (const e of bonusEntries) bonusEnergyTotal += e.value
 
   const initialGift = cfg.initialEnergyGift
   const shieldBreakGift = shieldCount * 60
@@ -125,12 +108,7 @@ export function calcEnergySource(
   // 不含连续强特返还（refund）的固定源能量 E0（唯一来源：加一项固定源就补进这里，防两处漂移）
   const e0 = preEfficiencyAuto + gainEfficiencyBonus
     + skillRegen + supportUltimateRegen + timeSliceEnergy + zhenyuanEnergy
-    + hatTrickEnergy
-    + qingyiC4Energy
-    + lycaonC2Energy
-    + billyC1Energy
-    + yixuanFlashBonus
-    + antonC1EnergyGift
+    + bonusEnergyTotal
     + initialGift + shieldBreakGift + energyShieldBreakGift
 
   // 连续强特通道（引擎通用，模块声明；当前唯一声明方 = 1051）：非失衡（溯寒后）极寒重碾
@@ -178,13 +156,8 @@ export function calcEnergySource(
     skillRegen,
     timeSliceEnergy,
     zhenyuanEnergy,
-    hatTrickEnergy,
-    qingyiC4Energy,
-    lycaonC2Energy,
-    billyC1Energy,
+    bonusEntries: [...bonusEntries],
     exRefundEnergy,
-    yixuanFlashBonus,
-    antonC1EnergyGift,
     supportUltimateRegen,
     // 队友联动明细在此阶段拿不到其他槽位的收敛次数，由调用方用 calcCrossAgentEnergy 回填
     crossAgent: emptyCrossAgentEnergy(),

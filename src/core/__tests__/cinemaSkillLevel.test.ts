@@ -4,6 +4,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { buildCharConfig, computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { normaMechanic } from '@/mechanics/agents/norma'
 
 const baseConfig = {
   wEngineId: '',
@@ -73,7 +74,10 @@ describe('cinema skill level damage', () => {
     expect(cfgM1.normaTechGapStunBonus).toBe(30) // M1: 3%/层 × 10层
 
     config.setCinemaLevel(0, 2)
-    expect(cfgM2.normaC2EnergyPerTrigger).toBe(25) // M2 帽子把戏回能
+    // M2 帽子把戏回能：经模块能力 `bonusEnergy` 读取（CC-14a；180s / 20s = 9 次 × 25）。
+    // 用 label 而非 key 取项：key 是角色专属字段名，闸门禁止它出现在 core（注释/测试一起数）。
+    const c2Bonus = normaMechanic.bonusEnergy!({ cfg: cfgM2, totalTime: 180 })
+    expect(c2Bonus.find(e => e.label === '帽子把戏')?.value).toBe(9 * 25)
   })
 
   it('yidhari curtain HP: cinema4 = 涌泉生命 5%→10%，真正重算 panel.hp（修复前 4 命提升率为 0%）', async () => {

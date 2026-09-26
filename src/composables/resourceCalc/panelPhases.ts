@@ -134,7 +134,8 @@ export function applyTeamMechanics(params: {
    * **计数投影版**失衡次数（只读）。**只有 converge 相位该传**——语义/理由/门控见
    * `AgentTeamConfigInput.countStun` 头注释（`stunCount` 是实数计划值、本字段是计数通道的整数投影，
    * 难度阶梯 G4 投影打开时二者**不等价**）。
-   * 消费先例：莱卡恩 1141 的 `lycaonC2Energy` 非轴臂（round 20 C-γ，原为 convergence.ts 的 agentId 分支）。
+   * 消费先例：莱卡恩 1141 的影画2 回能非轴臂（round 20 C-γ，原为 convergence.ts 的 agentId 分支；
+   * CC-14a 后经模块能力 `bonusEnergy` 计入 core）。
    */
   countStun?: number
   teamEnergyConsumed?: number

@@ -389,4 +389,19 @@ export const qingyiMechanic: AgentMechanicModule = {
   buildExecutions: buildQingyiExecutions,
   buildResourceResult: buildQingyiResourceResult,
   resourceSections: buildQingyiResourceSections,
+  /**
+   * 影画4·稳态电弧屏障回能（2026-09-26 CC-14a）：护盾刷新回 5 能量，10 秒冷却；按战斗时间驱动
+   * （默认 180s → floor(180/10)=18 次）。算式逐字来自 `core/resource/resourceIncome.ts#calcEnergySource`。
+   */
+  bonusEnergy({ cfg, totalTime }) {
+    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
+    const per = n(cfg.qingyiC4EnergyPerTrigger)
+    const interval = n(cfg.qingyiC4TriggerInterval)
+    return [{
+      key: 'qingyiC4Energy',
+      label: '稳态电弧屏障',
+      value: per > 0 && interval > 0 ? Math.max(0, Math.floor(totalTime / interval)) * per : 0,
+      detail: '青衣影画4：5/次 × 10s 冷却（护盾刷新回能）',
+    }]
+  },
 }

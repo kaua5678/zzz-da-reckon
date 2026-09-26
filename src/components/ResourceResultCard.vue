@@ -101,15 +101,10 @@
           <span class="bd-value">{{ fmt(result.energySource.zhenyuanEnergy) }}</span>
           <span class="bd-detail">受伤/回血触发</span>
         </div>
-        <div v-if="result.energySource.hatTrickEnergy > 0" class="breakdown-row">
-          <span class="bd-label">帽子把戏</span>
-          <span class="bd-value">{{ fmt(result.energySource.hatTrickEnergy) }}</span>
-          <span class="bd-detail">影画2：25/次 × 20s 冷却（按战斗时间触发）</span>
-        </div>
-        <div v-if="result.energySource.qingyiC4Energy > 0" class="breakdown-row">
-          <span class="bd-label">稳态电弧屏障</span>
-          <span class="bd-value">{{ fmt(result.energySource.qingyiC4Energy) }}</span>
-          <span class="bd-detail">青衣影画4：5/次 × 10s 冷却（护盾刷新回能）</span>
+        <div v-for="e in result.energySource.bonusEntries.filter(x => x.value > 0)" :key="e.key" class="breakdown-row">
+          <span class="bd-label">{{ e.label }}</span>
+          <span class="bd-value">{{ fmt(e.value) }}</span>
+          <span v-if="e.detail" class="bd-detail">{{ e.detail }}</span>
         </div>
         <div v-if="result.energySource.supportUltimateRegen > 0" class="breakdown-row">
           <span class="bd-label">辅助大招</span>

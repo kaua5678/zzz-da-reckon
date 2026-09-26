@@ -186,6 +186,19 @@ export const billyMechanic: AgentMechanicModule = {
   patchExecutions: patchBillyExecutions,
   buildResourceResult: buildBillyResourceResult,
   resourceSections: buildBillyResourceSections,
+  /**
+   * 影画1·闪亮登场回能（2026-09-26 CC-14a）：冲刺/闪反原始命中次数合并后按 5s ICD 封顶，
+   * 由 `buildCharConfig` 预计算写入 `cfg.billyC1Energy`。
+   */
+  bonusEnergy({ cfg }) {
+    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
+    return [{
+      key: 'billyC1Energy',
+      label: '闪亮登场',
+      value: n(cfg.billyC1Energy),
+      detail: '比利影画1：冲刺/闪反命中按 5s ICD 封顶',
+    }]
+  },
 }
 
 export default billyMechanic

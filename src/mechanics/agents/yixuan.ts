@@ -1115,4 +1115,17 @@ export const yixuanMechanic: AgentMechanicModule = {
     }
   },
   settings,
+  /**
+   * 额外闪能总账（2026-09-26 CC-14a）：`buildCharConfig` 写「完美格挡+10/次、极限闪避+5/次、
+   * 玄墨异常+10/次」，`applyTeamConfig` 再 `+=` 极限支援落雷与影画1 落雷；此处只读最终值。
+   */
+  bonusEnergy({ cfg }) {
+    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
+    return [{
+      key: 'yixuanFlashBonus',
+      label: '额外闪能',
+      value: n(cfg.yixuanFlashBonus),
+      detail: '仪玄：完美格挡 +10/次、极限闪避 +5/次、影画1落雷 +5/次',
+    }]
+  },
 }

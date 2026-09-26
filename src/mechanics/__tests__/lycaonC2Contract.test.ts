@@ -443,7 +443,7 @@ describe('★ 真管线：难度阶梯 G4（计数投影 round）打开时的 C2
       config.setMechanicSetting('time.stunPlanProjection', projectionCode)
       const calc = useResourceCalc()
       return calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
-        .energySource.lycaonC2Energy
+        .energySource.bonusEntries.find(e => e.key === 'lycaonC2Energy')?.value ?? 0
     }
     // off（0）⇒ countStun = 3；队友连携 1 × 3 = 3 ⇒ (3 + 3) × 5 = 30
     expect(await read(0)).toBe(30)
@@ -466,7 +466,7 @@ describe('★ 真管线：难度阶梯 G4（计数投影 round）打开时的 C2
       config.setMechanicSetting('time.stunPlanProjection', projectionCode)
       const calc = useResourceCalc()
       const lycaon = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
-      return lycaon.energySource.lycaonC2Energy
+      return lycaon.energySource.bonusEntries.find(e => e.key === 'lycaonC2Energy')?.value ?? 0
     }
     // off：countStun === stunCount = 3.6 ⇒ 队友连携 2 × 3.6 = 7.2 ⇒ (3.6 + 7.2) × 5 = 54
     expect(await read(0)).toBeCloseTo(54, 8)

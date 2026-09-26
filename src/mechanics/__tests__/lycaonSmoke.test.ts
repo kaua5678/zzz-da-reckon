@@ -218,12 +218,12 @@ describe('莱卡恩命座与乘区（用户口径）', () => {
     config.team[0].chainCountPerStun = 1
     const calc = useResourceCalc()
     const lycaon = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
-    expect(lycaon.energySource.lycaonC2Energy).toBe((4 + 4) * 5) // 4 失衡 + 4 队友连携（非 8）
+    expect(lycaon.energySource.bonusEntries.find(e => e.key === 'lycaonC2Energy')?.value ?? 0).toBe((4 + 4) * 5) // 4 失衡 + 4 队友连携（非 8）
     // 0 命无回能
     await setup(0, 1)
     const calc0 = useResourceCalc()
     const lycaon0 = calc0.resourceResult.value!.characters.find(c => c.agentId === '1141')!
-    expect(lycaon0.energySource.lycaonC2Energy ?? 0).toBe(0)
+    expect(lycaon0.energySource.bonusEntries.find(e => e.key === 'lycaonC2Energy')?.value ?? 0).toBe(0)
   })
 
   it('前台普攻：全部蓄力段平均秒均 × 平A时间（玩家只打蓄力段，用户口径；失衡提升吃面板 basic 区）', async () => {

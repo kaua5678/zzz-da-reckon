@@ -382,6 +382,20 @@ export const lycaonMechanic: AgentMechanicModule = {
     }
   },
 
+  /**
+   * 影画2·能量回馈（2026-09-26 CC-14a）：使敌人失衡或触发队友[连携技]时回 5 能量；
+   * 次数 = 失衡次数 + 队伍连携总次数，由 `applyTeamConfig` 预计算写入 `cfg.lycaonC2Energy`。
+   */
+  bonusEnergy({ cfg }) {
+    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
+    return [{
+      key: 'lycaonC2Energy',
+      label: '能量回馈',
+      value: n(cfg.lycaonC2Energy),
+      detail: '莱卡恩影画2：(失衡次数 + 队伍连携总次数) × 5',
+    }]
+  },
+
   settings: [
     {
       id: 'lycaon.exHoldRatio',

@@ -4,6 +4,7 @@ import type {
   AnomalyEventExecution,
   AnomalyContribution,
   AnomalyPoolResult,
+  BonusEnergyEntry,
   CharacterOperationConfig,
   CharacterResourceResult,
   IterationState,
@@ -833,6 +834,25 @@ export interface AgentMechanicModule {
     exSpecialCount: number
     providerUltCount: number
   }): number
+  /**
+   * **角色专属能量项**（规则 6 引擎落点，2026-09-26 CC-14a；诺姆/青衣/莱卡恩/比利/仪玄/安东先例）。
+   *
+   * 语义：本模块角色独有的**固定源能量**（如诺姆影画2 帽子把戏、青衣影画4 稳态电弧屏障、
+   * 莱卡恩影画2 能量回馈……），`value` 是**最终能量**（未乘任何系数），调用方直接计入
+   * `EnergySource.e0`/`total`，不参与自动回能的百分比/效率乘区。
+   *
+   * 为什么单列一个能力：`core/resource/resourceIncome.ts#calcEnergySource` 曾住着 6 段
+   * 角色专属回能算式（`cfg.normaC2EnergyPerTrigger` / `cfg.qingyiC4EnergyPerTrigger` /
+   * `cfg.lycaonC2Energy` / `cfg.billyC1Energy` / `cfg.yixuanFlashBonus` / `cfg.antonC1EnergyGift`），
+   * 正是规则 6 要消灭的「引擎替某个角色认人」。
+   *
+   * 契约：**纯函数**，只读入参与**自己那份 cfg**（模块只报告自己 cfg 上的项）；
+   * 返回空数组 = 本模块无专属能量项。同一 agentId 至多一个模块声明。
+   */
+  bonusEnergy?(input: {
+    cfg: CharacterOperationConfig
+    totalTime: number
+  }): BonusEnergyEntry[]
   /**
    * **终局整数重推**（规则 6 引擎落点，2026-09-25 CC-6c；1531/1431/1051 先例）。
    *

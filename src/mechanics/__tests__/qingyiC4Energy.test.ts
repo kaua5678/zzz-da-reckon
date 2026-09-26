@@ -9,12 +9,12 @@
  * - 写入方 `src/mechanics/agents/qingyi.ts#buildQingyiCharConfig`：
  *     `cfg.qingyiC4EnergyPerTrigger = cinemaLevel >= 4 ? C4_ENERGY_PER_TRIGGER : 0`（C4 = 5）
  *     `cfg.qingyiC4TriggerInterval = C4_TRIGGER_INTERVAL`（10s）
- * - 消费者 `src/core/resource/resourceIncome.ts#calcEnergySource`：
- *     `qingyiC4Energy = floor(totalTime / interval) × perTrigger`，并计入 `e0`/`total`
- * - 展示 `src/components/ResourceResultCard.vue`：`result.energySource.qingyiC4Energy`
+ * - 消费者 `src/mechanics/agents/qingyi.ts#bonusEnergy`（模块能力，CC-14a）：
+ *     `value = floor(totalTime / interval) × perTrigger`，经 `calcEnergySource` 计入 `e0`/`total`
+ * - 展示 `src/components/ResourceResultCard.vue`：`result.energySource.bonusEntries`
  *
- * 断言面用 `energySource.qingyiC4Energy`（结果对象只读），`totalTime` 一律从结果对象
- * `TeamResourceResult.totalTime` 读取，**不写死 180**。
+ * 断言面用 `energySource.bonusEntries` 里的 `qingyiC4Energy` 项（结果对象只读），`totalTime`
+ * 一律从结果对象 `TeamResourceResult.totalTime` 读取，**不写死 180**。
  *
  * 为什么不锁「C4 合计 − C3 合计 == qingyiC4Energy」：实测该差值 = 89.04 而非 90——C4 的
  * 额外能量把 `exSpecialCount` 从 6 顶到 8，多打的强特改变了行级 `skillRegen`（97.422 → 96.462，
@@ -49,11 +49,11 @@ describe('青衣（1251）影画4·稳态电弧屏障回能（护盾刷新 5/10s
     const c4 = await qingyiResult(4)
 
     // ① C3（未解锁影画4）该项为 0 —— 写入方的 cinemaLevel >= 4 门控
-    expect(c3.qingyi.energySource.qingyiC4Energy).toBe(0)
+    expect(c3.qingyi.energySource.bonusEntries.find(e => e.key === 'qingyiC4Energy')?.value ?? 0).toBe(0)
 
     // ② C4 → floor(totalTime / interval) × perTrigger；totalTime 从结果对象读（不写死 180）
     const totalTime = c4.result.totalTime
     const expected = Math.floor(totalTime / 10) * 5
-    expect(c4.qingyi.energySource.qingyiC4Energy).toBe(expected)
+    expect(c4.qingyi.energySource.bonusEntries.find(e => e.key === 'qingyiC4Energy')?.value ?? 0).toBe(expected)
   })
 })

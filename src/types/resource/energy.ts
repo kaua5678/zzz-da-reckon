@@ -34,6 +34,19 @@ export interface CrossAgentEnergy {
   total: number
 }
 
+/**
+ * 角色专属能量项（模块能力 `bonusEnergy` 声明，已计入 `EnergySource.e0`/`total`）。
+ *
+ * `value` = **最终能量**（未乘任何系数，调用方直接计入 e0）；`key` 沿用旧 EnergySource 键名
+ * （零差展开与测试迁移依赖键序/键名）。
+ */
+export interface BonusEnergyEntry {
+  key: string
+  label: string
+  value: number
+  detail?: string
+}
+
 /** 能量回复来源明细 */
 export interface EnergySource {
   /** 自动回复：基础回能 × 战斗时间，不含百分比/固定/效率加成 */
@@ -58,20 +71,10 @@ export interface EnergySource {
   timeSliceEnergy: number
   /** 真元奇枢受伤/回血触发回能：当前需资源轴提供触发次数，默认0 */
   zhenyuanEnergy: number
-  /** 诺姆影画2·帽子把戏回能：战斗中触发帽子把戏回25能量，20秒冷却；按战斗时间驱动（180s→9次） */
-  hatTrickEnergy: number
-  /** 青衣影画4·稳态电弧屏障回能：护盾刷新回5能量，10秒冷却；按战斗时间驱动（180s→18次） */
-  qingyiC4Energy: number
-  /** 莱卡恩影画2·能量回馈回能：失衡或队友连携触发回5能量；次数 = 失衡次数 + 队伍连携总次数 */
-  lycaonC2Energy: number
-  /** 比利影画1：冲刺攻击/闪避反击命中回能（合并原始次数后按5秒冷却封顶） */
-  billyC1Energy: number
+  /** 角色专属能量项，由模块能力 bonusEnergy 声明，已计入 e0/total */
+  bonusEntries: BonusEnergyEntry[]
   /** 连续强特通道：超出保留/上限部分的强特返还闪能总量（当前唯一声明方 1051） */
   exRefundEnergy: number
-  /** 仪玄：额外闪能总账（完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次，模块汇总进 cfg.yixuanFlashBonus） */
-  yixuanFlashBonus: number
-  /** 安东影画1：每个实际电钻招式最多回5能量，已计入 total */
-  antonC1EnergyGift: number
   /** 辅助大招回复：辅助大招次数 × 每次回能量（= crossAgent.supportUltimateRegen，保留旧字段供界面直读） */
   supportUltimateRegen: number
   /** 队友联动回能明细（已计入 total；单一事实源 calcCrossAgentEnergy） */

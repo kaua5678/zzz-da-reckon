@@ -123,6 +123,19 @@ export const antonMechanic: AgentMechanicModule = {
   buildCharConfig: ({ cfg, cinemaLevel }) => setRecord(cfg, 'antonCinemaLevel', cinemaLevel),
   patchExecutions,
   buildAnomalyEvents: buildAntonAnomalyEvents,
+  /**
+   * 影画1 回能（2026-09-26 CC-14a）：每个实际电钻招式最多回 5 能量，由 `patchExecutions`
+   * 预计算写入 `cfg.antonC1EnergyGift`。字段未在 `CharacterOperationConfig` 声明（历史写入方只此一处）。
+   */
+  bonusEnergy({ cfg }) {
+    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
+    return [{
+      key: 'antonC1EnergyGift',
+      label: '影画1回能',
+      value: n((cfg as any).antonC1EnergyGift),
+      detail: '安东影画1：钻击招式回能（每招上限）',
+    }]
+  },
 }
 
 export default antonMechanic

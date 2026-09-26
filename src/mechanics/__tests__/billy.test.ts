@@ -121,7 +121,7 @@ describe('比利完整计算链', () => {
     config.enemy.battleTime = 20
     const calc = useResourceCalc()
     const billy = calc.resourceResult.value!.characters.find(row => row.agentId === '1081')!
-    expect(billy.energySource.billyC1Energy).toBe(BILLY_C1_ENERGY * 4)
+    expect(billy.energySource.bonusEntries.find(e => e.key === 'billyC1Energy')?.value ?? 0).toBe(BILLY_C1_ENERGY * 4)
 
     config.team[0].cinemaLevel = 3
     expect(computePanelPhases(0, config, catalog)!.inCombat.skillLevelBonus).toBe(2)

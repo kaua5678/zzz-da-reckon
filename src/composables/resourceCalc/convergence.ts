@@ -539,15 +539,16 @@ export function createRunCalcRound(deps: {
       // 符法千重次数）已于 2026-09-17 round 20 C-β 迁进 `yixuan.ts#yixuanNextRoundFeedback`
       // （产出线程值 `yixuanFuFaForJufufu`）⇒ 本文件不再有该判据。
       // ⚠ 同批的「全队终结总次数」`teamUltimateForJufufu` **刻意留在本文件**（归属论证见其定义处）。
-      // 莱卡恩 1141 的 `lycaonC2Energy`（分支的最后一个字段，**收尾批**）已于 2026-09-17
+      // 莱卡恩 1141 的影画2 回能总额（分支的最后一个字段，**收尾批**）已于 2026-09-17
       // round 20 C-γ 迁进 `lycaon.ts#applyTeamConfig`：轴臂读 `axis.chainTotalBySlot`、
       // 非轴臂读本轮新增的 `countStun` 契约（C7 计数投影版失衡次数）+ `interactions` 契约的
       // `chainCountPerStun`（**store 原值**——`characters` 上那份被 `buildCharConfig` 写过
       // `?? (isSupport ? 0 : 1)` 兜底，store 默认 0 ⇒ 读 cfg 是静默改语义）。
+      // 2026-09-26 CC-14a：该 cfg 字段已收进模块能力 `bonusEnergy`（core 不再读角色前缀字段）。
       // ⇒ 该分支整段删除、**棘轮 −1**（40 → 39），本文件 `characters.map` 里不再有 1141 判据。
       // 沿革（逐字段迁出的批次）：`lycaonStunCount`/`lycaonTotalTime`/`lycaonInvincibleTime`
       // （T26 批次 0c）→ `lycaonWindowDuration`（round 12 批次 2，走 `axis`）→
-      // `lycaonBackstageDodgeCount`（round 14 批次 4，走 `interactions`）→ `lycaonC2Energy`（本批）。
+      // `lycaonBackstageDodgeCount`（round 14 批次 4，走 `interactions`）→ 影画2 回能（本批）。
       return merged
     })
     // 南宫羽 1511 的 `nangongQuickAssistPlaced`（轴内 `1511013` 放置块计数）与

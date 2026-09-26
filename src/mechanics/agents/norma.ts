@@ -641,6 +641,21 @@ export const normaMechanic: AgentMechanicModule = {
     //   门控（影画4）在模块内判，引擎不读 normaCinemaLevel。
     decibelPerUnit: ({ cfg }) => ((cfg.normaCinemaLevel ?? 0) >= 4 ? 400 : 0),
   },
+  /**
+   * 影画2·帽子把戏回能（2026-09-26 CC-14a）：战斗中触发回 25 能量，20 秒冷却；按战斗时间驱动
+   * （默认 180s → floor(180/20)=9 次）。算式逐字来自 `core/resource/resourceIncome.ts#calcEnergySource`。
+   */
+  bonusEnergy({ cfg, totalTime }) {
+    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
+    const per = n(cfg.normaC2EnergyPerTrigger)
+    const interval = n(cfg.normaC2TriggerInterval)
+    return [{
+      key: 'hatTrickEnergy',
+      label: '帽子把戏',
+      value: per > 0 && interval > 0 ? Math.max(0, Math.floor(totalTime / interval)) * per : 0,
+      detail: '影画2：25/次 × 20s 冷却（按战斗时间触发）',
+    }]
+  },
   estimateExSpecialTime({ cfg, exSpecialCount }) {
     // 嗯呢弹幕真实前台时间（修复：通用公式只用 #1 单段 0.493s → 严重低估）：
     // 一次强特 = 点射 #1(0.493) + 弹头 #2/#3(0.74) + 长按延长（#4 0.4 + 延长弹头 0.6）/s
