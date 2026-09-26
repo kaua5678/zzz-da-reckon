@@ -4,6 +4,7 @@ import type {
   AnomalyEventExecution,
   AnomalyContribution,
   AnomalyPoolResult,
+  AnomalyProgress,
   BonusEnergyEntry,
   CharacterOperationConfig,
   CharacterResourceResult,
@@ -21,6 +22,12 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type，见设计稿
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
+// CC-19a：异常附加行返回类型与派发输入（纯类型，不构成值边）。
+import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
+import type {
+  buildAnomalyVirtualPanel as buildAnomalyVirtualPanelFn,
+  buildAnomalySettlementEntries as buildAnomalySettlementEntriesFn,
+} from '@/composables/resourceCalc/anomalyPanels'
 
 /** 队伍中某个槽位的最小上下文快照 */
 export interface MechanicTeamMember {
@@ -741,6 +748,20 @@ export interface AgentMechanicModule {
    */
   extraDirectRows?(input: ExtraDirectRowsInput): DirectRowInput[]
   /**
+   * **角色专属异常附加行**（规则 6 迁移落点，CC-19a 2026-09-26，设计稿
+   * `docs/mcp-cc19-extra-anomaly-rows.md` §2.1/§2.3）：
+   * 由行所属角色的模块生成自己的异常尾段附加行，返回**分组**（`order` 取
+   * `EXTRA_ANOMALY_ROW_ORDER` 的值），消费端（`damagePoolAnomaly.ts#emitAnomalyRows`）
+   * 跨全队按 `order` 稳定排序后展开 push。
+   *
+   * 为什么返回分组而不是直接数组：逐槽派发时行顺序会跟着队伍排列变化，而爱丽丝占 3 块
+   * 且与简交错，逐槽 push 无法复现原 `damagePoolAnomaly` 的块序（rowsnap 按数组顺序求
+   * sha256，零差验收会失效）。分组 + 稳定排序可对任意队伍排列逐位复现原顺序（设计稿 §2.1）。
+   *
+   * 返回 `[]`/缺省 = 本角色无异常附加行。
+   */
+  extraAnomalyRows?(input: ExtraAnomalyRowsInput): ExtraAnomalyRowGroup[]
+  /**
    * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
    *
    * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.interactionTopUp`——
@@ -1288,6 +1309,66 @@ export interface ExtraDirectRowsInput {
   getMechanicSetting: (key: string, dflt: number) => number
   /** = env.ultimateInAxisFraction */
   ultimateInAxisFraction: () => number
+}
+
+/**
+ * `extraAnomalyRows` 钩子返回类型（CC-19a 2026-09-26，设计稿
+ * `docs/mcp-cc19-extra-anomaly-rows.md` §2.1）。
+ */
+export interface ExtraAnomalyRowGroup {
+  /** 取 EXTRA_ANOMALY_ROW_ORDER 的值；决定跨角色的行顺序（= 原 damagePoolAnomaly 块序） */
+  order: number
+  rows: DamagePoolRow[]
+}
+
+/** 原 damagePoolAnomaly.ts 尾段块序（rowsnap 按行顺序求哈希，禁止改值） */
+export const EXTRA_ANOMALY_ROW_ORDER = {
+  burnBurstC6: 10,     // 块 1（19a）
+  polarAssault: 20,    // 块 2（19b）
+  assaultCritC6: 30,   // 块 3（19b）
+  decisiveC6: 40,      // 块 4（19b）
+  coweringDot: 50,     // 块 5（19b）
+  voidflare: 60,       // 块 6（19c）
+} as const
+
+/**
+ * `extraAnomalyRows` 钩子输入（CC-19a 2026-09-26，设计稿
+ * `docs/mcp-cc19-extra-anomaly-rows.md` §2.2）。
+ *
+ * 契约：`buildVirtualPanel` / `buildSettlementEntries` 以闭包注入，是为了让 mechanics 不按值
+ * import `composables/resourceCalc`（mechanics → composables 只允许 type 引用）；其类型用
+ * `ReturnType<typeof …>` / `Parameters<typeof …>` 推导，勿手写结构体。`calcAnomalyDamage`
+ * 由模块直接 `import { calcAnomalyDamage } from '@/core/damage'`（先例：liuyin.ts 引
+ * `calcPenetrationPower`）。
+ */
+export interface ExtraAnomalyRowsInput {
+  /** 本槽槽位号（派发循环的 slot） */
+  slot: number
+  /** = adjustedResourceResult?.characters.find(c => c.slot === slot)（原块 1 同式） */
+  charResult: CharacterResourceResult | undefined
+  /** = anomalyPoolResult?.coverage?.windCoverageRate ?? 0（尾段已有局部量 windRate） */
+  windRate: number
+  /** = (el) => anomalyPoolResult?.perElement.find(prog => prog.element === el) */
+  anomalyProgress: (element: string) => AnomalyProgress | undefined
+  /** = (prog) => buildAnomalyVirtualPanel(prog, damagePanels, configStore, catalogStore) */
+  buildVirtualPanel: (
+    prog: Parameters<typeof buildAnomalyVirtualPanelFn>[0],
+  ) => ReturnType<typeof buildAnomalyVirtualPanelFn>
+  /** = (build, count) => buildAnomalySettlementEntries(build, damagePanels, count, configStore, catalogStore) */
+  buildSettlementEntries: (
+    build: Parameters<typeof buildAnomalySettlementEntriesFn>[0],
+    count: Parameters<typeof buildAnomalySettlementEntriesFn>[2],
+  ) => ReturnType<typeof buildAnomalySettlementEntriesFn>
+  axisStunFor: (moveId: string) => number
+  /** = configStore.enemy（只读，块内用 defense / level / stunVuln） */
+  enemy: { defense: number; level: number; stunVuln: number }
+  enemyDamageRes: Record<string, number>
+  /** = ctx.remielleAnomalyMultiplier（全队异常伤害乘区；通用名） */
+  anomalyMultiplier: number
+  /** = (s) => configStore.team[s]?.agentId ?? '' */
+  teamAgentId: (slot: number) => string
+  /** = env.agentName */
+  agentName: (agentId: string, slot: number) => string
 }
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */

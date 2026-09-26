@@ -4,8 +4,9 @@
  *
  * 职责（一个域：**异常池产出行 + 角色专属附伤块**）：风属性异常事件（维琳娜风异放按轴内
  * 非风触发占比拆段）/ 乱流 / 紊乱明细 / 按元素异常累积（虚拟面板 + 按触发者分摊结算），
- * 以及 1171 柏妮思 C6 灼烧爆发、1401 极性强击、1261 简 C6、1401 爱丽丝 C6 决胜附伤、
- * 爱丽丝畏缩 DOT、1581 蕾米埃尔耀变/特殊虚耀。
+ * 以及角色专属异常附加行的**派发点**（按模块能力 `extraAnomalyRows` 收集分组、稳定排序后展开）
+ * 与仍内联的 1401 极性强击、1261 简 C6、1401 爱丽丝 C6 决胜附伤、爱丽丝畏缩 DOT、1581 蕾米埃尔
+ * 耀变/特殊虚耀。柏妮思 C6 灼烧迸发已于 CC-19a（2026-09-26）迁进 `burnice.ts#extraAnomalyRows`。
  *
  * 与外层闭包的通信面 = `AnomalyRowsEnv`：共享输出数组 `rows`（**按原顺序 push，禁止换成
  * 返回值拼接**）+ `ctx` 快照 + 只读局部量/闭包（`agentName` / `enemyDamageRes` / `isAxis` /
@@ -34,8 +35,18 @@ import {
   findSlotByIdentity,
 } from './anomalyPanels'
 import { findMoveById } from './skillRows'
+import { getAgentMechanic } from '@/mechanics'
+import type { ExtraAnomalyRowGroup } from '@/mechanics'
 // 纯类型：运行时被擦除，与 damagePool.ts 的 `emitAnomalyRows` 值导入不构成运行时环。
 import type { DamagePoolContext } from './damagePool'
+
+/**
+ * 「排序 + 展开」纯函数（CC-19a，设计稿 §4）：按 order 稳定升序排序后拼接各分组的 rows。
+ * `Array.prototype.sort` 自 ES2019 起稳定，故同 order 保持入队顺序（= 队伍槽位顺序）。
+ */
+export function flattenAnomalyRowGroups(groups: ExtraAnomalyRowGroup[]): DamagePoolRow[] {
+  return [...groups].sort((a, b) => a.order - b.order).flatMap(g => g.rows)
+}
 
 /** 尾段外提的显式环境：把原 `buildDamagePoolRows` 里被尾段读取的闭包量显式化（调用期间不变）。 */
 export interface AnomalyRowsEnv {
@@ -289,57 +300,30 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     }
   }
 
-  // ---- 柏妮思6命：双份火焰冲击命中灼烧敌人时，额外结算一次1800%灼烧伤害 ----
-  const burniceSlot = findSlotByIdentity(configStore, catalogStore, ['1171'])
-  const burniceSrc = burniceSlot >= 0
-    ? adjustedResourceResult?.characters.find(c => c.slot === burniceSlot)?.burniceMechanicSource
-    : undefined
-  const fireProg = anomalyPoolResult?.perElement.find(prog => prog.element === 'fire')
-  if (windRate < 1 && burniceSrc && burniceSrc.cinema6BurnBurstCount > 0 && fireProg && fireProg.triggerCount > 0) {
-    const fireBuild = buildAnomalyVirtualPanel(fireProg, damagePanels, configStore, catalogStore)
-    if (fireBuild) {
-      const fireEffectiveCount = fireProg.triggerCount * (1 - windRate)
-      const settlementEntries = buildAnomalySettlementEntries(fireBuild, damagePanels, fireEffectiveCount, configStore, catalogStore)
-      const burnBurstStun = axisStunFor('burnice-c6-burn-burst')
-      for (const entry of settlementEntries) {
-        if (entry.triggerCount <= 0) continue
-        const burstCount = Math.min(burniceSrc.cinema6BurnBurstCount, entry.triggerCount)
-        if (burstCount <= 0) continue
-        const burstResult = calcAnomalyDamage({
-          panel: fireBuild.panel,
-          settlementPanel: entry.panel,
-          baseMultiplier: burniceSrc.cinema6BurnBurstDamageRatio,
-          element: 'fire' as any,
-          enemyDefense: configStore.enemy.defense,
-          enemyDefReduction: 0,
-          enemyDefFlatReduction: 0,
-          enemyLevel: configStore.enemy.level,
-          enemyResistance: enemyDamageRes.fire ?? 0,
-          enemyResReduction: (entry.panel?.enemyResReduction ?? 0) + burniceSrc.cinema6FireResIgnore,
-          stunned: burnBurstStun,
-          stunMultiplier: configStore.enemy.stunVuln,
-          critMode: 'expect',
-          damageKind: 'anomaly',
-          anomalyMultiplier: remielleAnomalyMultiplier,
-        })
-        rows.push({
-          id: `burnice-c6-burn-burst-${entry.slot}`,
-          slot: entry.slot,
-          agentId: configStore.team[entry.slot]?.agentId ?? '',
-          agentName: agentName(configStore.team[entry.slot]?.agentId ?? '', entry.slot),
-          type: '灼烧',
-          name: '柏妮思6命灼烧迸发',
-          element: 'fire',
-          source: '双份火焰冲击命中灼烧敌人 · 900%额外灼烧',
-          count: burstCount,
-          perDamage: burstResult.damage,
-          totalDamage: burstResult.damage * burstCount,
-          note: `${burniceSrc.cinema6BurnBurstDamageRatio}%（灼烧基础50% × 1800%），跟随双喷轴内易伤，无视火抗${burniceSrc.cinema6FireResIgnore}%，同一目标20秒最多一次`,
-          moveId: 'burnice-c6-burn-burst',
-        })
-      }
-    }
-  }
+  // 角色专属异常附加行（CC-19a 2026-09-26，设计稿 docs/mcp-cc19-extra-anomaly-rows.md §2）：
+  // 柏妮思 C6 灼烧迸发已迁进 `burnice.ts#extraAnomalyRows`；派发点放在原块 1 的位置，只放一次。
+  // 返回分组，跨全队按 order 稳定排序后展开（rowsnap 按行顺序求哈希，故禁止改块序）。
+  const extraGroups: ExtraAnomalyRowGroup[] = []
+  configStore.team.forEach((char, slot) => {
+    const groups = char?.agentId
+      ? getAgentMechanic(char.agentId)?.extraAnomalyRows?.({
+        slot,
+        charResult: adjustedResourceResult?.characters.find(c => c.slot === slot),
+        windRate,
+        anomalyProgress: (el) => anomalyPoolResult?.perElement.find(prog => prog.element === el),
+        buildVirtualPanel: (prog) => buildAnomalyVirtualPanel(prog, damagePanels, configStore, catalogStore),
+        buildSettlementEntries: (build, count) => buildAnomalySettlementEntries(build, damagePanels, count, configStore, catalogStore),
+        axisStunFor,
+        enemy: configStore.enemy,
+        enemyDamageRes,
+        anomalyMultiplier: remielleAnomalyMultiplier,
+        teamAgentId: (s) => configStore.team[s]?.agentId ?? '',
+        agentName,
+      })
+      : undefined
+    if (groups) extraGroups.push(...groups)
+  })
+  for (const r of flattenAnomalyRowGroups(extraGroups)) rows.push(r)
 
   // ---- 极性强击伤害（赠送触发，不走虚拟面板） ----
   const polarAssaultProg = anomalyPoolResult?.perElement.find(prog => prog.element === 'physical_polar_assault')

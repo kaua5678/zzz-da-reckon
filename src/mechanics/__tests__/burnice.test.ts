@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { emptyPanel } from '@/core/panel'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import {
@@ -236,6 +237,25 @@ describe('柏妮思余烬/翻烤伤害池落地（damagePool 集成）', () => {
     expect((ember as any).count, '余烬次数应为正').toBeGreaterThan(0)
     expect((ember as any).agentId, '该行归属必须是柏妮思').toBe('1171')
   })
+
+  // CC-19a 2026-09-26：C6 灼烧迸发经 `extraAnomalyRows` 派发点进伤害池（真管线）。
+  // 这条是派发点接线（`flattenAnomalyRowGroups` 消费 + 按 entry.slot 归属）的自证锚点：
+  // 把派发点短路成空，本断言必须红。
+  it('C6 灼烧迸发行 burnice-c6-burn-burst-* 进伤害池（extraAnomalyRows 派发点接线）', async () => {
+    await setupHarness([
+      { agentId: '1171', cinemaLevel: 6 },
+      { agentId: '1101' },
+      { agentId: '1411' },
+    ])
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 60))
+    const rows = calc.damagePoolRows.value.filter(r => r.id.startsWith('burnice-c6-burn-burst-'))
+    expect(rows.length, 'C6 灼烧迸发行未进伤害池（extraAnomalyRows 派发点断了）').toBeGreaterThan(0)
+    expect(rows[0].count).toBeGreaterThan(0)
+    expect(rows[0].perDamage).toBeGreaterThan(0)
+    // 归属槽 = 异常积蓄贡献者（entry.slot），首行必是柏妮思自己
+    expect(rows[0].agentId).toBe('1171')
+  })
 })
 
 // CC-18a 2026-09-26：块 1 自 `damagePoolCharExtras.ts` 迁进模块能力 `extraDirectRows`
@@ -379,5 +399,77 @@ describe('CC-18a：柏妮思 extraDirectRows（附加直伤行逐字）', () => 
     const c6 = rows.find(r => r.id === 'burnice-c6-special-ember')!
     expect(c6.stunOverride).toBe(0.75)
     expect(c6.slot).toBe(1)
+  })
+})
+
+// CC-19a 2026-09-26：块 1 自 `damagePoolAnomaly.ts` 迁进模块能力 `extraAnomalyRows`
+// （设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §2/§5）。逐字锁 id/count/note/order。
+describe('CC-19a：柏妮思 extraAnomalyRows（C6 灼烧迸发逐字）', () => {
+  const burniceSrc = (overrides: Record<string, unknown> = {}) => ({
+    cinema6BurnBurstCount: 3,
+    cinema6BurnBurstDamageRatio: 900,
+    cinema6FireResIgnore: 25,
+    ...overrides,
+  })
+  const panel = () => ({ ...emptyPanel(), atk: 1000, anomalyProficiency: 100 })
+  const fireBuild = { panel: panel() } as never
+  const entry = (slot: number, triggerCount: number) => ({
+    slot, share: 1, triggerCount, panel: panel() as never, name: `槽${slot + 1}`,
+  })
+  const input = (overrides: Record<string, unknown> = {}) => ({
+    slot: 0,
+    charResult: { agentId: '1171', burniceMechanicSource: burniceSrc() } as never,
+    windRate: 0,
+    anomalyProgress: (el: string) => (el === 'fire' ? { element: 'fire', triggerCount: 2 } as never : undefined),
+    buildVirtualPanel: () => fireBuild,
+    buildSettlementEntries: () => [entry(0, 2), entry(1, 1)],
+    axisStunFor: () => 0.5,
+    enemy: { defense: 0, level: 60, stunVuln: 1.5 },
+    enemyDamageRes: {},
+    anomalyMultiplier: 1,
+    teamAgentId: (s: number) => (s === 0 ? '1171' : '1101'),
+    agentName: (_id: string, s: number) => (s === 0 ? '柏妮思' : '队友'),
+    ...overrides,
+  })
+
+  it('无 C6（cinema6BurnBurstCount=0）→ 返回 []', () => {
+    const groups = burniceMechanic.extraAnomalyRows!(input({
+      charResult: { agentId: '1171', burniceMechanicSource: burniceSrc({ cinema6BurnBurstCount: 0 }) } as never,
+    }))
+    expect(groups).toEqual([])
+  })
+
+  it('windRate=1 → 返回 []', () => {
+    expect(burniceMechanic.extraAnomalyRows!(input({ windRate: 1 }))).toEqual([])
+  })
+
+  it('C6 + fire 进度>0：order=10，行 id/count/note 逐字', () => {
+    const groups = burniceMechanic.extraAnomalyRows!(input())
+    expect(groups).toHaveLength(1)
+    expect(groups[0].order).toBe(10)
+    expect(groups[0].rows.map(r => r.id)).toEqual(['burnice-c6-burn-burst-0', 'burnice-c6-burn-burst-1'])
+
+    expect(groups[0].rows[0]).toMatchObject({
+      slot: 0,
+      agentId: '1171',
+      agentName: '柏妮思',
+      type: '灼烧',
+      name: '柏妮思6命灼烧迸发',
+      element: 'fire',
+      source: '双份火焰冲击命中灼烧敌人 · 900%额外灼烧',
+      count: 2, // min(cinema6BurnBurstCount=3, entry.triggerCount=2)
+      note: '900%（灼烧基础50% × 1800%），跟随双喷轴内易伤，无视火抗25%，同一目标20秒最多一次',
+      moveId: 'burnice-c6-burn-burst',
+    })
+    // 反向验证（设计稿 §4）：baseMultiplier 突变 ×0 时本断言必须红（perDamage 0）
+    expect(groups[0].rows[0].perDamage).toBeGreaterThan(0)
+    expect(groups[0].rows[0].totalDamage).toBe(groups[0].rows[0].perDamage * 2)
+    expect(groups[0].rows[1]).toMatchObject({
+      slot: 1,
+      agentId: '1101',
+      agentName: '队友',
+      count: 1, // min(3, 1)
+      note: '900%（灼烧基础50% × 1800%），跟随双喷轴内易伤，无视火抗25%，同一目标20秒最多一次',
+    })
   })
 })

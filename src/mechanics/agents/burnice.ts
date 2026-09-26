@@ -6,10 +6,14 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  ExtraAnomalyRowsInput,
 } from '../types'
+import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { AgentSkills, PanelValues, SkillMove } from '@/types/catalog'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
+import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
+import { calcAnomalyDamage } from '@/core/damage'
 import { fmt } from '@/utils/format'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
@@ -689,5 +693,67 @@ export const burniceMechanic: AgentMechanicModule = {
       })
     }
     return rows
+  },
+  /**
+   * 柏妮思专属异常附加行（CC-19a 2026-09-26，设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §2/§3）：
+   * C6 灼烧迸发。自 `damagePoolAnomaly.ts` 原块 1 逐字迁入，字段与出现顺序照抄（对象键顺序可能进
+   * rowsnap 哈希）；`charResult` 读本槽资源结果的 `burniceMechanicSource`，异常进度/面板构建/结算
+   * 分摊由消费端以闭包注入。返回分组，`order` 取 `EXTRA_ANOMALY_ROW_ORDER.burnBurstC6`。
+   */
+  extraAnomalyRows: ({
+    charResult, windRate, anomalyProgress, buildVirtualPanel, buildSettlementEntries,
+    axisStunFor, enemy, enemyDamageRes, anomalyMultiplier, teamAgentId, agentName,
+  }: ExtraAnomalyRowsInput) => {
+    // ---- 柏妮思6命：双份火焰冲击命中灼烧敌人时，额外结算一次1800%灼烧伤害 ----
+    const burniceSrc = charResult?.burniceMechanicSource
+    const fireProg = anomalyProgress('fire')
+    if (windRate < 1 && burniceSrc && burniceSrc.cinema6BurnBurstCount > 0 && fireProg && fireProg.triggerCount > 0) {
+      const fireBuild = buildVirtualPanel(fireProg)
+      if (fireBuild) {
+        const rows: DamagePoolRow[] = []
+        const fireEffectiveCount = fireProg.triggerCount * (1 - windRate)
+        const settlementEntries = buildSettlementEntries(fireBuild, fireEffectiveCount)
+        const burnBurstStun = axisStunFor('burnice-c6-burn-burst')
+        for (const entry of settlementEntries) {
+          if (entry.triggerCount <= 0) continue
+          const burstCount = Math.min(burniceSrc.cinema6BurnBurstCount, entry.triggerCount)
+          if (burstCount <= 0) continue
+          const burstResult = calcAnomalyDamage({
+            panel: fireBuild.panel,
+            settlementPanel: entry.panel,
+            baseMultiplier: burniceSrc.cinema6BurnBurstDamageRatio,
+            element: 'fire' as any,
+            enemyDefense: enemy.defense,
+            enemyDefReduction: 0,
+            enemyDefFlatReduction: 0,
+            enemyLevel: enemy.level,
+            enemyResistance: enemyDamageRes.fire ?? 0,
+            enemyResReduction: (entry.panel?.enemyResReduction ?? 0) + burniceSrc.cinema6FireResIgnore,
+            stunned: burnBurstStun,
+            stunMultiplier: enemy.stunVuln,
+            critMode: 'expect',
+            damageKind: 'anomaly',
+            anomalyMultiplier,
+          })
+          rows.push({
+            id: `burnice-c6-burn-burst-${entry.slot}`,
+            slot: entry.slot,
+            agentId: teamAgentId(entry.slot),
+            agentName: agentName(teamAgentId(entry.slot), entry.slot),
+            type: '灼烧',
+            name: '柏妮思6命灼烧迸发',
+            element: 'fire',
+            source: '双份火焰冲击命中灼烧敌人 · 900%额外灼烧',
+            count: burstCount,
+            perDamage: burstResult.damage,
+            totalDamage: burstResult.damage * burstCount,
+            note: `${burniceSrc.cinema6BurnBurstDamageRatio}%（灼烧基础50% × 1800%），跟随双喷轴内易伤，无视火抗${burniceSrc.cinema6FireResIgnore}%，同一目标20秒最多一次`,
+            moveId: 'burnice-c6-burn-burst',
+          })
+        }
+        return [{ order: EXTRA_ANOMALY_ROW_ORDER.burnBurstC6, rows }]
+      }
+    }
+    return []
   },
 }
