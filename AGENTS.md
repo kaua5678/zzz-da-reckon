@@ -222,6 +222,9 @@ Windows 侧存在若干副本（`/f/trae_output/`、`/f/claude code/`、`/f/test
 - **禁止 `wsl --terminate` / `wsl --shutdown`**（lead / 工人都不许）。事故：lead 为清理失控的 node 普查脚本执行 `wsl --terminate Ubuntu`，WSL 整体卡死 ⇒ 文件工具 EIO、`run_command` PTY 起不来（起点是 UNC 工作区根）、`wsl_exec` 丢失；只有宿主侧管理员重启 WSL 服务才能恢复，沙箱内无权自救。
 - 杀进程只杀具体进程：先 `ps -eo pid,etime,cmd | grep <模式>` 取 pid，再 `kill -9 <pid>`（`pkill -f` 会匹配到发出命令的 shell 自身）。
 - 可能耗时的 node / vitest 脚本**禁止前台跑**：`setsid bash -c 'timeout -s KILL <秒> <命令>' > <log> 2>&1 &`，再轮询 log。普查类脚本用 `git ls-files` 取文件清单，不递归 stat、不跟随符号链接。
+- **并行 lead 共用同一工作区 ⇒ 全量检查必须钉 HEAD**：跑 `npm run check` / `npm test`（约 2~3 分钟）**前后各记一次** `git rev-parse --short HEAD`；两者不同 ⇒ 本次结果**不可归因**（源码在测试进程脚下被换，读到的是半新半旧的组合，会出现假红），必须等树静下来重跑，别去调自己没碰过的代码。
+  实例（2026-09-26 19:41）：一条 lead 的全量 check 正在跑，另一条 lead 同时提交 CC-14b（`6d8a995`，同时改了 `selfBurnDecibel` 的实现与它的测试）⇒ 报 4 failed / 3500 passed，失败断言恰是被换掉的那个量；树静后在 `66ba89a` 重跑 = 3504 passed / 0 failed、exit 0。
+  看到红时的第一步：`git log -1 --format='%h %ad %s' --date=format:'%H:%M' -- <失败文件>`，看时间戳是否落在自己检查窗口内——是则先怀疑并行提交，再怀疑自己。
 - 详细经过：`docs/mcp-r22d1-batch12-field-census.md` 附录 A。
 
 ### 2. 写长文件用 apply_patch 分块

@@ -72,6 +72,11 @@
 | 诊断 | `get_diagnostics` × 4 个改动文件 | 0 error / 0 warning |
 | 实机点通 | `node scripts/ui-check.mjs --step 'tab:资源利用率' --step 'click:计算' --step 'wait:.cinema-uplift-table'` | **PASS**（零 JS 错误、无标注重叠、`tableOverflow` 与 `tableOverflowX` 均空） |
 
+**全量 `npm test` 与一次「假红」事件（必读，别重复踩）**：第一次跑全量时报 `4 failed / 3500 passed`，失败断言是 `selfBurnDecibel`（伊德海莉燃血喧响）—— **不在本轮改动面上**。
+归因：另一条 lead 会话在全量检查跑动中把 CC-14b 提交进**同一个工作区**（`6d8a995`，19:41；而检查 19:41:36 启动），同时改了实现与那个测试文件 ⇒ 测试进程读到半新半旧的源码。
+树静下来后在 `66ba89a` 重跑：**3504 passed / 0 failed、`TEST_EXIT=0`**；同一棵树上 check-guards 22/22、check-tokens 12/12、build ✓、cinemaUplift 11/11，`git status` 干净（只剩不属于本轮的 `docs/devlog/` 未跟踪）。
+纪律已写进 `AGENTS.md` §环境安全硬规则：全量检查前后各记一次 HEAD，不一致则结果不可归因、必须重跑。
+
 新增 7 测试，对应需求「测试要覆盖新增指标不恒为 0」：
 1. `CINEMA_METRICS` 覆盖需求点名的 4 个量，且 key/中文名/口径三元组唯一；
 2. 每级影画的 `metrics` 都带齐 7 项，`kind` 合法；
