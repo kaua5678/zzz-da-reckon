@@ -249,8 +249,8 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
         sourceTag: sourceTag ?? exec.source,
       })
     }
-    if (isAxis && exec.normaGiftChain) {
-      // 诺姆膛温换连携（赠送连携招式=上一位队友本人的连携技，注入时带 normaGiftChain 标记）：
+    if (isAxis && exec.chainGift) {
+      // 诺姆膛温换连携（赠送连携招式=上一位队友本人的连携技，注入时带 chainGift 标记）：
       // 吃失衡易伤的次数 = 轴内实际执行的赠块数（':gift' 后缀 key，受窗口时间门控：占时间、超窗跳过）
       // 或旧表达 norma-hat-chain 标记块；其余赠送在失衡外触发、不吃易伤。
       let giftInUnits = 0

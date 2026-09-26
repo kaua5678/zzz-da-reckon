@@ -148,16 +148,16 @@ export interface TeamResourceResult {
    */
   truncationCuts?: TruncationCut[]
   /**
-   * 琉音好评转大赠链时间预留量（非轴模式，秒）：iterate 已把 promote × 目标终结技时长计入
+   * 赠终结技时间预留量（非轴模式，秒；CC-15 原名 liuyinGiftTimeReserved，当前唯一来源 = 琉音好评转大）：iterate 已把 promote × 目标终结技时长计入
    * 必要时间（守恒由引擎成立）→ applyLiuyinPromote 见到本字段即**跳过 post-hoc carve**
    * （旧 carve 只抠 basic_attack 聚合行，目标平A时间在分段行里时会落空 → 守恒破 +7.2s）。
    * 轴模式无预留（轴内 60/90 转大次数由轴预设决定），字段缺省。
    */
-  liuyinGiftTimeReserved?: number
+  ultimateGiftTimeReserved?: number
   /**
-   * 诺姆膛温换连携赠链时间预留量（秒）：与 `liuyinGiftTimeReserved` 对称——iterate 必要时间与
+   * 赠连携时间预留量（秒；CC-15 原名 normaGiftTimeReserved，当前唯一来源 = 诺姆膛温换连携）：与 `ultimateGiftTimeReserved` 对称——iterate 必要时间与
    * 装配截断上限都按同一 `normaGiftChainInfo` 计入（单一事实源），本字段只**对外暴露该值**
    * 供机器判据核对「账本预留 == 装配赠行」（`giftMoveTimeLedger.test.ts`）。
    */
-  normaGiftTimeReserved?: number
+  chainGiftTimeReserved?: number
 }

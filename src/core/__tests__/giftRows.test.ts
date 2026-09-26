@@ -41,15 +41,15 @@ describe('赠行产物契约', () => {
     expect('dazeMultiplier' in absent).toBe(false)
     expect('dazeMultiplierOverride' in absent).toBe(false)
     expect('skillDamageTarget' in absent).toBe(false)
-    expect('normaGiftChain' in absent).toBe(false)
+    expect('chainGift' in absent).toBe(false)
     const present = buildGiftRow({
       moveId: 'x', moveName: 'x', count: 1, actionTime: 1, skillTableNote: 't',
-      dazeMultiplier: 0, skillDamageTarget: 'ultimate', normaGiftChain: true,
+      dazeMultiplier: 0, skillDamageTarget: 'ultimate', chainGift: true,
     })
     expect(present.dazeMultiplier).toBe(0)
     expect(present.dazeMultiplierOverride).toBe(false)
     expect(present.skillDamageTarget).toBe('ultimate')
-    expect(present.normaGiftChain).toBe(true)
+    expect(present.chainGift).toBe(true)
   })
 
   it('倍率覆盖开关：>0 才置 damageMultiplierOverride（0 = 交回填/伤害池跳过）', () => {

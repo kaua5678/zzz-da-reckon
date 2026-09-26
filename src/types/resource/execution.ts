@@ -97,9 +97,10 @@ export interface SkillExecution {
   basisLabelOverride?: string
   /** 动作来源：stun=失衡送的连携、gift=队友赠（诺姆连携/琉音转大）、self=自己攒（默认） */
   source?: 'stun' | 'gift' | 'self'
-  /** 诺姆膛温换连携标记：本行是帽子把戏赠送的连携（招式取上一位队友技能表），
-   *  失衡捏轴下吃易伤的次数由诺姆槽位 'norma-hat-chain' 轴内块决定（见 useResourceCalc） */
-  normaGiftChain?: boolean
+  /** 赠送的连携行标记（引擎赠链供给产出，招式取上一位队友技能表；当前唯一来源 = 诺姆膛温换连携）。
+   *  失衡捏轴下吃易伤的次数由提供者槽的 'norma-hat-chain' 轴内块决定（见 useResourceCalc；轴块 id 是数据标识，不随字段改名）。
+   *  2026-09-26 CC-15：原名 normaGiftChain。 */
+  chainGift?: boolean
   /** CD 驱动的后台自动行（如猫又超凶爪印每秒 dot）：轴模式不按捏轴认领、不进轴编辑器放置语义，
    *  改按失衡时间占比拆「占比内吃满易伤 / 其余无易伤」（非轴模式本就按全局覆盖率，不受影响） */
   autoSplitByStun?: boolean

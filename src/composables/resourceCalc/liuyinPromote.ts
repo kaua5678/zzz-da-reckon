@@ -69,12 +69,12 @@ export function applyLiuyinPromote(
   // 引擎占位行（阶段1 ②）以**池口径**为准：转大次数为 0 时撤掉占位行（引擎推导在退化配置下会多算）
   const promote = adj && adj.targetSlot >= 0 ? adj.promote : 0
   if (promote <= 0 || !adj) {
-    if (!base.characters.some(c => (c.executions ?? []).some(e => e.source === 'gift' && !e.normaGiftChain))) return base
+    if (!base.characters.some(c => (c.executions ?? []).some(e => e.source === 'gift' && !e.chainGift))) return base
     return {
       ...base,
       characters: base.characters.map(c => ({
         ...c,
-        executions: (c.executions ?? []).filter(e => !(e.source === 'gift' && !e.normaGiftChain)),
+        executions: (c.executions ?? []).filter(e => !(e.source === 'gift' && !e.chainGift)),
       })),
     }
   }
@@ -102,11 +102,11 @@ export function applyLiuyinPromote(
       // 不额外撑破战斗预算（否则会误触轴退化判定，般岳等轴测试依赖该守恒）。
       const promoteTime = ultActionTime * promote
       // 2026-09-06：非轴模式下赠链时间已由引擎预留（iterate 必要时间计入 promote × 目标终结技时长、
-      // 平A池随之收缩——守恒在引擎侧成立，见 TeamResourceResult.liuyinGiftTimeReserved）。
+      // 平A池随之收缩——守恒在引擎侧成立，见 TeamResourceResult.ultimateGiftTimeReserved）。
       // 旧 post-hoc carve 只抠 basic_attack 聚合行，目标平A时间住在分段行里时（希格莉德枪尖/
       // 般岳焚身/琉音猜拳）聚合行被抠剩 ~0 → 守恒破、净占用 +7.2s（实测 auto-1591-1481-1311）。
       // 轴模式无预留（轴内 60/90 转大次数由轴预设决定），保留旧 carve 路径。
-      const reserved = (base as { liuyinGiftTimeReserved?: number }).liuyinGiftTimeReserved ?? 0
+      const reserved = (base as { ultimateGiftTimeReserved?: number }).ultimateGiftTimeReserved ?? 0
       const basicIdx = reserved > 0 ? -1 : char.executions.findIndex(e => e.moveId === 'basic_attack')
       const basicTime = basicIdx >= 0 ? (char.executions[basicIdx].totalTime ?? 0) : 0
       const carve = reserved > 0 ? 0 : Math.max(0, Math.min(basicTime, promoteTime))

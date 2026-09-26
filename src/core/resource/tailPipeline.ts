@@ -47,7 +47,7 @@ export interface TailResult {
   truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[]
   inputStunCount: number
   chainGiftTime: number
-  liuyinGiftTimeTotal: number
+  ultimateGiftTime: number
 }
 
 /**
@@ -163,7 +163,7 @@ export function runTailPipeline(
    *
    * 现改为一律走 `ultimateGiftOf`（轴模式用 `axisLiuyinPromote.count`——编排层已按「轴声明 60 +
    * 剩余好评默认 90」算好，与 `promoteFixpoint` 同源）⇒ 预留 == 赠行 == 截断扣除，守恒恢复，
-   * `applyLiuyinPromote` 也不再需要 post-hoc carve（`liuyinGiftTimeReserved` 有值即走预留路径）。
+   * `applyLiuyinPromote` 也不再需要 post-hoc carve（`ultimateGiftTimeReserved` 有值即走预留路径）。
    */
   const ultimateGiftFinal = ultimateGiftOf(configs, states, {
     totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
@@ -205,7 +205,7 @@ export function runTailPipeline(
     states,
     tail: {
       characters, timeTruncatedSeconds, truncationCuts, truncationBySlot, inputStunCount,
-      chainGiftTime: chainGiftFinal.time, liuyinGiftTimeTotal: ultimateGiftFinal.time,
+      chainGiftTime: chainGiftFinal.time, ultimateGiftTime: ultimateGiftFinal.time,
     },
   }
 }

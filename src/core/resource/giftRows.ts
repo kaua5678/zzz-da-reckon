@@ -34,7 +34,7 @@ export interface GiftRowInput {
   skillDamageTarget?: string
   skillTableNote: string
   /** 诺姆赠连携标记（击破手对比的归因列依赖） */
-  normaGiftChain?: boolean
+  chainGift?: boolean
 }
 
 /** 构造一条赠送招式行（`source: 'gift'`）：零值字段与总量换算统一在此，调用方不再各写一份 */
@@ -72,6 +72,6 @@ export function buildGiftRow(input: GiftRowInput): SkillExecution {
     totalAnomalyBuildUp: anomalyBuildUp * count,
     ...(input.skillDamageTarget ? { skillDamageTarget: input.skillDamageTarget } : {}),
     skillTableNote: input.skillTableNote,
-    ...(input.normaGiftChain ? { normaGiftChain: true } : {}),
+    ...(input.chainGift ? { chainGift: true } : {}),
   }
 }

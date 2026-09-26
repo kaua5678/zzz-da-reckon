@@ -361,7 +361,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
 
   // 终局预留量（供 applyLiuyinPromote 判定跳过 post-hoc carve；与 iterate Step4 同一求解）
   // ——与上方 giftTimeOfSlot 同源（同一 helper、同一轴模式条件），不重算。
-  const liuyinGiftTimeTotal = tail.liuyinGiftTimeTotal
+  const ultimateGiftTime = tail.ultimateGiftTime
 
   // 收敛读数归属设施（2026-09-10 尾巴专项，`PROBE_TRACE_FOLD=1` 打开；不开则零副作用）：
   // **一次预设求值会跑 N 次 `calcTeamResources`**（外层不动点轮 + 非轴对照 + 降配二分 6×2 + 下游重算，
@@ -393,9 +393,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     overflowSeconds: config.overflowSeconds,
     truncationCuts: truncationCuts.length > 0 ? truncationCuts : undefined,
     // 琉音好评转大赠链时间已由引擎预留（非轴）→ applyLiuyinPromote 不再 post-hoc carve 守恒
-    liuyinGiftTimeReserved: liuyinGiftTimeTotal > 0 ? liuyinGiftTimeTotal : undefined,
+    ultimateGiftTimeReserved: ultimateGiftTime > 0 ? ultimateGiftTime : undefined,
     // 诺姆膛温换连携赠链时间（对称暴露，供「账本预留 == 装配赠行」机器判据核对）
-    normaGiftTimeReserved: tail.chainGiftTime > 0 ? tail.chainGiftTime : undefined,
+    chainGiftTimeReserved: tail.chainGiftTime > 0 ? tail.chainGiftTime : undefined,
     convergence: {
       timeBudgetConverged: diag.timeBudgetConverged,
       timeBudgetPasses: diag.timeBudgetPasses,

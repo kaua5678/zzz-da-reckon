@@ -143,9 +143,9 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
     expect(allyGift!.count).toBeGreaterThan(0)
     expect(allyGift!.totalDamage).toBeGreaterThan(0)
     expect(calc.teamTotalDamage.value).toBeGreaterThan(0)
-    // 展示层：赠送执行带 normaGiftChain 标记，招式名与倍率取艾莲技能表
+    // 展示层：赠送执行带 chainGift 标记，招式名与倍率取艾莲技能表
     const ally = calc.resourceResult.value!.characters.find(c => c.slot === 2)!
-    const giftExec = ally.executions.find(e => e.normaGiftChain)
+    const giftExec = ally.executions.find(e => e.chainGift)
     expect(giftExec).toBeTruthy()
     expect(giftExec!.moveId).toBe('1191016')
     expect(giftExec!.moveName).toBe('连携技：雪崩（诺姆膛温替换）')
@@ -180,10 +180,10 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
     expect(ultRow?.count ?? 0).toBe(4)
     expect(ultRow?.count ?? 0).toBe(ellen.ultimateCount)
     // 展示层（resourceResult）可见诺姆赠送连携：上一位队友 slot 2（安比）的 executions 含其本人
-    // 连携技 1011010（电磁引擎，带 normaGiftChain 标记）
+    // 连携技 1011010（电磁引擎，带 chainGift 标记）
     const rr = calc.resourceResult.value!
     const ally = rr.characters.find(c => c.slot === 2)!
-    expect(ally.executions.some(e => e.moveId === '1011010' && e.normaGiftChain)).toBe(true)
+    expect(ally.executions.some(e => e.moveId === '1011010' && e.chainGift)).toBe(true)
     expect(ally.chainCountTotal).toBeGreaterThan(0)
   })
 
@@ -215,7 +215,7 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
     const rr = calc.resourceResult.value!
     const ally = rr.characters.find(c => c.slot === 2)!
     // 普通连携 = 仅非 gift 块（1×4窗 = 4 次），gift 块不占用（chainCountTotal 另含赠送 hatCount）
-    const ownChain = ally.executions.find(e => e.moveId === '1011010' && !e.normaGiftChain)
+    const ownChain = ally.executions.find(e => e.moveId === '1011010' && !e.chainGift)
     expect(ownChain?.count).toBe(4)
     expect(ally.chainCountTotal).toBe(4 + (rr.characters.find(c => c.agentId === '1571')!.normaMechanicSource!.hatToChainCount))
     // 赠送连携行存在且按 gift 块吃易伤（4 窗 × 1 = 4 次轴内）

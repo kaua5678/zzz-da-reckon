@@ -110,12 +110,12 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
 
   // 诺姆影画4·膛温换连携喧响：`giftDecibelForCfg` 已含 `decibelPerUnit × count`
   // （400 = 诺姆+上一位队友两侧合计，门控在模块内判），引擎**不再**自己乘系数。
-  const normaC4Decibel = giftDecibelForCfg(configs, states, cfg, totalTime)
+  const giftDecibel = giftDecibelForCfg(configs, states, cfg, totalTime)
 
   const decibelSrc = calcDecibelSource(cfg, state, teammateShare, chainCountTotal, totalTime,
     (cfg.luciaC4DecibelPerTrigger ?? 0) * curtainTriggers
     // 诺姆影画4·膛温换连携：诺姆+上一位队友各 +200 不可分享喧响（计入终结技次数）
-    + normaC4Decibel,
+    + giftDecibel,
     config.specialActionDecibelBonusPerSlot?.[i] ?? 0,
     config.anomalyDecibelBonusPerSlot?.[i] ?? 0,
     teammateFrontlineSeconds)
@@ -153,7 +153,7 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
       actionTime: cfg.chainActionTime ?? 0,
       comboAlignRatio: cfg.chainComboAlignRatio ?? 0,
       skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
-      normaGiftChain: true,
+      chainGift: true,
     }))
   }
   const executions = giftRowsHere.length > 0 ? [...truncated.executions, ...giftRowsHere] : truncated.executions

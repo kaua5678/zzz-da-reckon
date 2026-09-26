@@ -301,7 +301,7 @@ export type {
 /**
  * 展示口径归一（2026-09-08 用户实测「诺姆入队后主C时间 = 180s + 诺姆连携秒数」后收口）：
  * 资源卡的「时间分配」按**最终执行行**计算——前台 = Σ前台行 `totalTime`（含装配后追加的赠送行：
- * 诺姆赠链 `normaGiftChain` / 琉音赠大 `source==='gift'`），后台 = 战斗时间 − 前台。
+ * 诺姆赠链 `chainGift` / 琉音赠大 `source==='gift'`），后台 = 战斗时间 − 前台。
  *
  * 为什么必须在这里统一：赠送行由 `applyNormaHatChain` / `applyLiuyinPromote` 在引擎返回**之后**追加，
  * 引擎的 `timeAllocation` 看不到它们；而赠送时间的**预留**分散在 iterate 必要时间 / 折叠环行测量 /
@@ -339,7 +339,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
         const targetOverride = targetOverrides?.[exec.moveId]
         // 赠行由引擎物化、倍率由编排层在 enrich 之后补：enrich 必须跳过，否则会补上生产侧
         // 刻意留空的字段（实测：琉音赠行凭空多 daze、诺姆赠行凭空多 skillDamageTarget）。
-        if (exec.source === 'gift' || exec.normaGiftChain) {
+        if (exec.source === 'gift' || exec.chainGift) {
           return targetOverride ? { ...exec, skillDamageTarget: targetOverride } : exec
         }
         let patch: Partial<SkillExecution> = {}
@@ -744,7 +744,7 @@ export function extractSkillExecutions(
     if (exec.count <= 0 && exec.totalTime <= 0) continue
     // 赠行自 2026-09-10 起由引擎物化 → 会出现在 rr 里；池侧的赠送口径仍单独结算
     // （adjustStunExecs 加 count+promote、连携经 chainCountTotal），故读「装配前 rr」时跳过赠行。
-    if (opts?.skipGift && (exec.source === 'gift' || exec.normaGiftChain)) continue
+    if (opts?.skipGift && (exec.source === 'gift' || exec.chainGift)) continue
 
     // 在倍率表中查找对应的 move
     let foundMove: SkillMove | null = null

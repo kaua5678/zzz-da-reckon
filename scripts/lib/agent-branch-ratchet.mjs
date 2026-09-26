@@ -162,7 +162,7 @@ export const CORE_AGENT_BRANCH_FILES = ['src/core/resource.ts', 'src/core/resour
  *    （resource.ts 的 yidhariContinuousPresent / yidhariFinalizeIdx；helpers.ts 的 resolveExSpecialCount
  *    refund 分支 / decibelExCount / yidhariRealUlt / exForTime / storedEx）
  *  · `normaCinemaLevel`（唯一写入方 `src/mechanics/agents/norma.ts:236`）→ 去掉 2 处守卫
- *    （resource.ts 的 normaC4Decibel；helpers.ts 的赠链喧响分支；非诺姆 cfg 恒 undefined → `?? 0` → false）
+ *    （resource.ts 的 giftDecibel；helpers.ts 的赠链喧响分支；非诺姆 cfg 恒 undefined → `?? 0` → false）
  *  · `antonC1EnergyGift`（唯一写入方 `src/mechanics/agents/anton.ts:53` 的 setRecord）→ 去掉 1 处三元守卫
  *    （`n()` 把 undefined 映射为 0，与原三元 else 分支同值；与紧邻的 yixuanFlashBonus 无守卫写法同款）
  * **有意不动**的两类（下一批候选，勿按本条口径照抄删除）：

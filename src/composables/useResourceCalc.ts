@@ -383,9 +383,9 @@ export function useResourceCalc() {
       for (const exec of char.executions) {
         const mid = exec.moveId === 'basic_attack' ? 'basic' : exec.moveId
         if (!mid || exec.count <= 0) continue
-        // 诺姆赠送连携行（normaGiftChain）不进全局池：赠送次数由膛温自动决定、吃易伤由轴内标记块计数，
+        // 诺姆赠送连携行（chainGift）不进全局池：赠送次数由膛温自动决定、吃易伤由轴内标记块计数，
         // 混进 globalPool 会把普通连携的轴内配额虚高（普通 8 + 赠送 6 = 14）
-        if (exec.normaGiftChain) continue
+        if (exec.chainGift) continue
         const key = `${slot}:${mid}`
         globalPool[key] = (globalPool[key] ?? 0) + exec.count
         if (perActionDuration[key] === undefined) perActionDuration[key] = exec.actionTime || 2

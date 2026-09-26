@@ -236,7 +236,7 @@ describe('倍率融合：全通道「一次动作」口径（用户裁决 2026-0
     config.enemy.stunCountLock = 4
     const { resourceResult } = useResourceCalc()
     const ally = resourceResult.value!.characters.find(c => c.slot === 2)!
-    const gift = ally.executions.find(e => e.normaGiftChain)
+    const gift = ally.executions.find(e => e.chainGift)
     expect(gift).toBeTruthy()
     expect(gift!.moveId).toBe('1091015')
     expect(gift!.damageMultiplier).toBeCloseTo(1258.3, 1)

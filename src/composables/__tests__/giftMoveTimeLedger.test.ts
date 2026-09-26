@@ -44,16 +44,16 @@ async function cardTotals(presetId: string) {
   return {
     totalTime: rr.totalTime,
     /** 引擎账本侧预留的琉音赠大时间（轴模式按口径为 0，见 ENGINE_PIPELINE_GUIDE 坑19①） */
-    reserved: rr.liuyinGiftTimeReserved ?? 0,
+    reserved: rr.ultimateGiftTimeReserved ?? 0,
     /** 诺姆赠链预留时间（对称字段，2026-09-10 加） */
-    normaReserved: rr.normaGiftTimeReserved ?? 0,
+    normaReserved: rr.chainGiftTimeReserved ?? 0,
     axis: calc.stackTraversalResult.value != null,
     slots: rr.characters.map(c => {
       const rows = (c.executions ?? []).filter(e => (e.totalTime ?? 0) > 0)
       const sumFront = rows.reduce((s, e) => s + (e.totalTime ?? 0), 0)
-      const gift = rows.filter(e => e.normaGiftChain || e.source === 'gift')
+      const gift = rows.filter(e => e.chainGift || e.source === 'gift')
         .reduce((s, e) => s + (e.totalTime ?? 0), 0)
-      const normaGift = rows.filter(e => e.normaGiftChain).reduce((s, e) => s + (e.totalTime ?? 0), 0)
+      const normaGift = rows.filter(e => e.chainGift).reduce((s, e) => s + (e.totalTime ?? 0), 0)
       return {
         agentId: c.agentId,
         cardTotal: sumFront + (c.timeAllocation.backstageTime ?? 0),
@@ -146,13 +146,13 @@ describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
       config.setAgent(0, solo)
       const rr = useResourceCalc().resourceResult.value!
       const gifts = rr.characters.flatMap(c => (c.executions ?? [])
-        .filter(e => e.source === 'gift' || e.normaGiftChain))
+        .filter(e => e.source === 'gift' || e.chainGift))
       expect(gifts, `${solo} 单角色不应物化赠行（否则 front 顶到 180，实测 golden 8 条 delta）`).toEqual([])
     }
   }, 180000)
 
   it('enrich 跳过赠行：琉音赠行不带 daze、诺姆赠行不带 skillDamageTarget（保真）', async () => {
-    const giftRowsOf = async (id: string, pick: (e: { source?: string; normaGiftChain?: boolean }) => boolean) => {
+    const giftRowsOf = async (id: string, pick: (e: { source?: string; chainGift?: boolean }) => boolean) => {
       const { catalog } = await setupHarness(['', '', ''])
       await catalog.loadBuildRecommendations()
       const config = useConfigStore()
@@ -168,7 +168,7 @@ describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
       expect('dazeMultiplier' in g, '琉音赠行的 daze 由失衡池侧单独结算，行上刻意留空').toBe(false)
     }
 
-    const normaGift = await giftRowsOf('auto-1021-1571-1491', e => e.normaGiftChain === true)
+    const normaGift = await giftRowsOf('auto-1021-1571-1491', e => e.chainGift === true)
     expect(normaGift.length).toBeGreaterThan(0)
     for (const g of normaGift) {
       expect('skillDamageTarget' in g, '诺姆赠连携行刻意不写定向键（写了会吃连携定向增伤）').toBe(false)

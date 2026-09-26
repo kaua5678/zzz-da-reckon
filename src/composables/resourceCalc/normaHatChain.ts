@@ -36,12 +36,12 @@ export function applyNormaHatChain(
   const hatCount = Math.max(0, Math.floor(normaSrc.hatToChainCount))
   // 引擎占位行（阶段1 ②）以**池口径**为准：hatCount = 0 时撤掉占位行（同 applyLiuyinPromote）
   if (hatCount <= 0) {
-    if (!base.characters.some(c => (c.executions ?? []).some(e => e.normaGiftChain))) return base
+    if (!base.characters.some(c => (c.executions ?? []).some(e => e.chainGift))) return base
     return {
       ...base,
       characters: base.characters.map(c => ({
         ...c,
-        executions: (c.executions ?? []).filter(e => !e.normaGiftChain),
+        executions: (c.executions ?? []).filter(e => !e.chainGift),
       })),
     }
   }
@@ -78,7 +78,7 @@ export function applyNormaHatChain(
       //
       // 阶段1 ②（2026-09-10）：**行由引擎物化**（存在/行序），本函数补倍率 + 连携计数，并把
       // 计数/时长**以池为准**写回；找不到行时兜底追加。
-      const giftIdx = (char.executions ?? []).findIndex(e => e.normaGiftChain || e.source === 'gift')
+      const giftIdx = (char.executions ?? []).findIndex(e => e.chainGift || e.source === 'gift')
       const giftPatch = {
         count: hatCount,
         actionTime: chainInfo.actionTime,
@@ -107,7 +107,7 @@ export function applyNormaHatChain(
           dazeMultiplier: giftedDaze,
           anomalyBuildUp: giftedAnomaly,
           skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
-          normaGiftChain: true,
+          chainGift: true,
         })]
       return {
         ...char,

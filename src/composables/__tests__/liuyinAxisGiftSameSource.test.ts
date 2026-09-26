@@ -34,7 +34,7 @@ import { stunAxisPresets, cloneStunAxes } from '@/data/stunAxisPresets'
 /** 装配侧赠行（琉音赠大）时间合计 —— 与「账本预留」对账的单一来源 */
 function giftRowsOf(rr: NonNullable<ReturnType<typeof useResourceCalc>['resourceResult']['value']>) {
   return rr.characters.flatMap(c => (c.executions ?? [])
-    .filter(e => e.source === 'gift' && !e.normaGiftChain)
+    .filter(e => e.source === 'gift' && !e.chainGift)
     .map(e => ({ slot: c.slot, moveId: e.moveId, count: e.count ?? 0, time: e.totalTime ?? 0 })))
 }
 
@@ -51,7 +51,7 @@ async function loadPreset(id: string) {
 
 describe('R67 琉音赠大：轴模式四处同源', () => {
   /**
-   * 轴模式队（含琉音）的**零容差**不变量：`liuyinGiftTimeReserved` == 装配赠行时间合计。
+   * 轴模式队（含琉音）的**零容差**不变量：`ultimateGiftTimeReserved` == 装配赠行时间合计。
    *
    * 为什么零容差而 `timeLedgerInvariants` 是 0.05：那个测的是**三本账**（前台/行/账本）的
    * 跨路径一致，容差要吸收折叠环的量化地板（`TIME_FOLD_CONVERGENCE_SECONDS` = 1e-3，且
@@ -66,7 +66,7 @@ describe('R67 琉音赠大：轴模式四处同源', () => {
       const calc = await loadPreset(id)
       const rr = calc.resourceResult.value
       if (!rr || calc.stackTraversalResult.value == null) continue // 只看轴模式队
-      const reserved = rr.liuyinGiftTimeReserved ?? 0
+      const reserved = rr.ultimateGiftTimeReserved ?? 0
       const gifts = giftRowsOf(rr)
       const giftTime = gifts.reduce((s, g) => s + g.time, 0)
       expect(reserved, `${id}：账本预留 ${reserved} ≠ 装配赠行 ${giftTime}（轴赠大没同源）`)
@@ -113,7 +113,7 @@ describe('R67 琉音赠大：轴模式四处同源', () => {
     // 闸门生效 ⇒ 无赠行、无预留（旧行为：凭空 4 次 90 抱拳 ⇒ 赠行 4 次 / 预留 8.732s）
     const gifts = giftRowsOf(rr!)
     expect(gifts, `轴零声明却产出赠行：${JSON.stringify(gifts)}`).toEqual([])
-    expect(rr!.liuyinGiftTimeReserved ?? 0, '轴零声明却预留了赠大时间').toBe(0)
+    expect(rr!.ultimateGiftTimeReserved ?? 0, '轴零声明却预留了赠大时间').toBe(0)
     // 决算行不被赠行挤出（坑36：轴栈说 5 就必须落地 5）
     const verdict = rr!.characters
       .flatMap(c => c.executions ?? [])
@@ -134,7 +134,7 @@ describe('R67 琉音赠大：轴模式四处同源', () => {
     expect(rr, '资源结果存在').toBeTruthy()
     const gifts = giftRowsOf(rr!)
     expect(gifts.length, '声明了 promoteVariant 却无赠行').toBeGreaterThan(0)
-    const reserved = rr!.liuyinGiftTimeReserved ?? 0
+    const reserved = rr!.ultimateGiftTimeReserved ?? 0
     expect(reserved, '声明了 promoteVariant 却没预留').toBeGreaterThan(0)
     // 同源（本条是上面全库扫描的单点复现，失败时给出更易读的读数）
     expect(reserved).toBeCloseTo(gifts.reduce((s, g) => s + g.time, 0), 9)

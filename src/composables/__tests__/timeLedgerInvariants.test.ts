@@ -60,8 +60,8 @@ describe('时间账跨路径不变量（全预设库）', () => {
       // 复用本扫描，零额外计算。
       if (calc.stackTraversalResult.value == null) {
         const giftSum = rr.characters.reduce((s, c) => s + (c.executions ?? [])
-          .reduce((t, e) => t + ((e.source === 'gift' || e.normaGiftChain) ? (e.totalTime ?? 0) : 0), 0), 0)
-        const reserved = (rr.liuyinGiftTimeReserved ?? 0) + (rr.normaGiftTimeReserved ?? 0)
+          .reduce((t, e) => t + ((e.source === 'gift' || e.chainGift) ? (e.totalTime ?? 0) : 0), 0), 0)
+        const reserved = (rr.ultimateGiftTimeReserved ?? 0) + (rr.chainGiftTimeReserved ?? 0)
         if (giftSum > 0 && Math.abs(giftSum - reserved) > TOL) {
           bad.push(`${p.id}：赠行单一口径破 —— 账本预留 ${reserved.toFixed(3)} ≠ 装配赠行 ${giftSum.toFixed(3)}`)
         }
