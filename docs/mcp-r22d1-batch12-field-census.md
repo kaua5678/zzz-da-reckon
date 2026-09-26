@@ -5,7 +5,9 @@
 
 ## 1. 做到哪一步
 
-- **最新交接（2026-09-26 23:1x，lead-arena-0925c 第 24 轮）**：CC-18a 已落地 `23470f2`（设计稿 `docs/mcp-cc18-extra-direct-rows.md`，`3b9e75c`，README 已登记；dsflash 工人实现 `6e0de26`，lead 复核）。判据 22 从 661 降到 **623**，target 重设 **611**。master 上 `npm run verify` EXIT=0，HEAD `23470f2`。
+- **最新交接（2026-09-26 第 25 轮，lead-arena-0925c）**：CC-18b 已落地 `a936127`（设计定稿见设计稿 §7.1，`583f2ea`；dsflash 工人实现 `1a8c98e`，lead 复核）。判据 22 从 623 降到 **613**，target 611 不变。master 上 `npm run verify` EXIT=0，HEAD `a936127`。详见 §5.11。
+  **下一步（可以直接开工）**：**CC-19 设计**（异常侧角色块能力化；CC-18c 柏妮思异常侧是它的第一片）。开工清单见 §5.11。
+- **上一轮交接（2026-09-26 23:1x，lead-arena-0925c 第 24 轮）**：CC-18a 已落地 `23470f2`（设计稿 `docs/mcp-cc18-extra-direct-rows.md`，`3b9e75c`，README 已登记；dsflash 工人实现 `6e0de26`，lead 复核）。判据 22 从 661 降到 **623**，target 重设 **611**。master 上 `npm run verify` EXIT=0，HEAD `23470f2`。
   **下一步（可以直接开工）**：**CC-18b**（琉音 3 块附加直伤行迁 `extraDirectRows`），开工清单见 §5.10。它是同一设计稿的第二期，不需要新设计稿，只需在设计稿 §7 补接口扩展。
 - **最新交接（2026-09-26 22:4x，lead-arena-0925c 第 23 轮）**：CC-17 已落地 `18bfd88`（设计稿 `docs/mcp-cc17-axis-overlay-consume.md`，`6038a70`；dsflash 工人实现 `df83ebd`，lead 复核）。判据 22 从 712 降到 **661**，target 重设 **649**。**顺带修了一个真 bug**：可琳扫除帮手在轴模式下经全局桶泄漏给队友的普攻行（设计稿 §2，已加泄漏锁）。master 上 `npm run verify` EXIT=0，前后 HEAD 都是 `18bfd88`。
   **下一步（可以直接开工）**：**CC-18 设计稿**（柏妮思 `burniceSrc` 簇，43 处），卡面见 §5.9。**新文档必须登记进 README §6**（坑见 §5.9）。
@@ -253,6 +255,7 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 - **2026-09-26 CC-16 后**：**712**（`fe8fb90`）；已低于 target 720，重设 target **700**。下一张：CC-17 设计（§5.8）。
 - **2026-09-26 CC-17 后**：**661**（`18bfd88`）；已低于 target 700，重设 target **649**。下一张：CC-18 设计（§5.9）。
 - **2026-09-26 CC-18a 后**：**623**（`23470f2`）；已低于 target 649，重设 target **611**。下一张：CC-18b（§5.10）。
+- **2026-09-26 CC-18b 后**：**613**（`a936127`）；target 611 不变。下一张：CC-19 设计（§5.11）。
 
 ### 5.4 CC-14b 任务卡：伊德海莉燃血喧响迁模块能力（B 类，零差）
 
@@ -503,6 +506,27 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 5. `liuyinSrc` 另有上提到 `damagePool.ts` 槽位循环头的声明（与「跳过通用强特行」共用判据，见 charExtras 块 2 上方注释）。**18b 不要动那处**，只改 charExtras 里的 3 块；damagePool / damagePoolDirect / liuyinPromote 里的 liuyinSrc 另议。
 6. 零差：琉音在语料里（例如 `banyue-liuyin-lucia/*`，以及 dump 键里其他含 1481 的场景）。反向验证：琉音余音 `count` ×0（只影响 cinema≥6，应落在 c6 变体），重击附加 `multiplier` ×0。
 7. 执行方式同 18a：lead 在设计稿补 §7 接口，再派 dsflash 工人，提示词模板 `/home/kaua/calc-arch/cc18.prompt`（worktree 路径和块号要改）；lead 做零差、反向和挑回。
+
+### 5.11 CC-18b 落地记录 + CC-19 开工清单（2026-09-26 第 25 轮 lead-arena-0925c）
+
+**CC-18b（`a936127`，判据 22 623→613）**：完整记录在设计稿 `docs/mcp-cc18-extra-direct-rows.md` §7.1 / §8。琉音 3 块已迁入 `liuyin.ts` 的 `extraDirectRows`。`ExtraDirectRowsInput` 新增 teammateAt / stunCount / promoteCount / getMechanicSetting / ultimateInAxisFraction 5 个字段（必填）。
+
+**rf3 读数（HEAD `a936127`，613 处 / 142 个字段）前列**：remielleSlot 20、triggerPanel 16、aliceSlot 16、remiellePanel 14、remielleAnomalyMultiplier 14、triggerSlot 13、janeSlot 13、janePanel 12、banyueSlot 10（convergence.ts）、aliceCoweringConfig 10。**大头集中在 `damagePoolAnomaly.ts`**。
+
+**CC-19 开工清单（异常侧角色块能力化，新设计稿 `docs/mcp-cc19-extra-anomaly-rows.md`，须登记 README §6）**
+1. `damagePoolAnomaly.ts`（661 行，HEAD `a936127` 实测）中的角色块都是**队伍级**写法：`findSlotByIdentity(configStore, catalogStore, ['<id>'])` 找槽，再算一整块。行号（开头）如下：
+   - 柏妮思 C6 燃爆 :293（= CC-18c 范围 :293–340）；
+   - 极地爱丽丝强击 :348（polarAssault*）；
+   - 简 C6 :393；
+   - 爱丽丝 C6 :442；
+   - 爱丽丝畏缩 DoT :512（读 `anomalyPoolResult.aliceCoweringDot`）；
+   - 瑞米尔 :530（带 `remielleEntryPanels`）。
+   另有 triggerSlot / triggerPanel 散在 helpers.ts / damagePool*.ts，**不在 CC-19 的范围内**。
+2. 与 CC-18（按槽 `extraDirectRows`）的区别：块内会读**异常进度**（`fireProg` / `physicalProg` / `polarAssaultProg` 的 triggerCount 与 entries）、`windRate`、`inWindowFraction(element)`、`stunCoverage`、`anomalyPoolResult`、`adjustedResourceResult`。推荐的能力形状：`extraAnomalyRows(input)`，按队伍各槽 `getAgentMechanic(agentId)` 在**原第一个角色块的位置**派发。先读各块的 push 目标（是 anomaly 行还是 direct 行，push 函数叫什么），再定 input 面（字段名不带角色前缀）。
+3. **顺序风险（设计时必须论证）**：原顺序是 柏妮思 → 极地爱丽丝 → 简 → 爱丽丝 C6 → 畏缩 → 瑞米尔，按**角色**分块，不按槽序。改成按槽派发后，行顺序会随队伍排列变化。rows 顺序是否进入 rowsnap 或 UI，要先查 cmp 的判据（18a 设计稿 §3 有论证方法）。若顺序敏感，可选「按固定角色序派发」（模块声明 `anomalyRowsOrder`），或先只迁柏妮思一块（18c）试水。
+4. 建议拆分：19a = 柏妮思（即 18c，约 48 行，最独立）；19b = 简 + 爱丽丝 C6 + 畏缩；19c = 瑞米尔（字段最多，含 entryPanels，另议）。极地爱丽丝是否为「角色块」待查（可能按元素，而非按角色）。
+5. 执行方式同 18a/18b：lead 写设计稿并提交 → worktree `r69-scratch/cc19a` → 提示词以 `/home/kaua/calc-arch/cc18b.prompt` 为模板 → `run-wt.sh` 改 cd → 零差用 `v18b.sh`，反向用 `r18b.sh`（改路径与突变点）→ cherry-pick -n → verify → 文档 → zc done。
+6. 反向注意：柏妮思 1171 只在 `auto-1561-1171-1411/*` 这一组（18a 实测 DIFF 6）；C6 相关突变只有 0 号位是柏妮思时 c6 变体才会触发，否则用单测锁住（参考本轮余音的做法）。
 
 ## 附录：普查脚本 census.sh
 

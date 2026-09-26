@@ -112,4 +112,14 @@
   两处都 cp 还原，cmp 一致。
 - 定向测试 298 条通过；`vue-tsc -b` 为 0；master 全量 `npm run verify` EXIT=0（290 个测试文件），HEAD `23470f2`。
 - 偏离：无实质偏离。`damagePoolCharExtras` 从 `@/mechanics` import `getAgentMechanic`；`panelAt` 仍被块 2 使用，保留。
-- **CC-18b / 18c 未做**，开工清单见 §7 和 census §5.10。
+- **CC-18b / 18c 未做**，开工清单见 §7 和 census §5.10。（18b 已于同日落地，见下）
+- **CC-18b 已落地 `a936127`**（2026-09-26 第 25 轮 lead-arena-0925c）：设计定稿 §7.1（`583f2ea`）。dsflash 工人在 worktree `r69-scratch/cc18b` 实现（`1a8c98e`），lead 逐行复核后 `cherry-pick -n` 挑回。8 个文件：types / liuyin / charExtras / 3 个 mechanics 单测 / 2 个棘轮常量。
+- 判据 22：623 → **613**（-10）。613 ≥ target 611，**target 不重设**。
+- 零差：dump 625 / rowsnap 638 个键，只有 `__ms` 不同。
+- 反向（liuyin.ts 内 ×0，cp 还原后 cmp 一致）：
+  - 块 2 重击附加 `multiplier: ratio` ×0 → DIFF 126，全部是含琉音的场景（21 组 × 6 个变体，包括命名预设 `banyue-liuyin-lucia/*`）；
+  - 块 4 强特拆分 `multiplier: mult(moveId)` ×0 → DIFF 106，全部含琉音（heavy / heavyGate 各 21，其余变体各 16）；
+  - 块 5 余音 `count: echoCount` ×0 → **dump 无差**（与 §7.1 预判一致：语料里琉音从不在 0 号位，c6 变体切换不到琉音的命座）。改用单测反向：同一突变下 `liuyin.test.ts`「块 5 影画6余音」用例红（1 failed / 17 passed），还原后绿。
+- 全量：master `npm run verify` EXIT=0（290 个测试文件 / 3537 条测试，22 条守卫通过），HEAD `a936127`。
+- 偏离：无。模块内用 `const liuyinSrc = charResult.liuyinMechanicSource` 承接。`DirectRowInput` 在 liuyin.ts 中用 `import type` 引自 damagePoolDirect（与 18a 的 types.ts 同一先例，守卫通过）。
+- 现状：`damagePoolCharExtras.ts` 只剩一次 `extraDirectRows` 派发（文件保留）。`CharLocals.liuyinSrc` 仍由 damagePool.ts:424 提供，供跳过通用强特行使用，本卡不动。
