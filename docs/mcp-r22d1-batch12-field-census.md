@@ -1512,6 +1512,29 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 3. 候选调研：来源面板 ×1.2 在低冲击配装下的集成覆盖（见上文「已知覆盖缺口」）；多槽同角色时 `giftedPolarAssaultCount` 的求和语义复核。
 4. 暂缓不动：CC-11b（理由见 arch 表）。
 
+### 5.46 W31 done（dsh 工人）+ W30 done（lead-arena-0925c，2026-09-27 第 59 轮）
+
+**提交**：W31 测试 `618366b`（新文件 `src/composables/__tests__/harumasaStunOnlyAxis.test.ts`）；W30 `b7f5b77`（`scripts/check-tokens.mjs` 2 处 hint 字符串 `--text-2/--text-3` → `--fg-2/--fg-3`）。回退：各自 `git revert`，互不依赖。
+
+**W31（悠真轴模式 `stunOnlyDmgBonus` 伤害池读取侧）**
+- 派发：dsh headless（自检 pong 通过），提示词 `/home/kaua/calc-arch/w31.prompt`，工人报告 `.zc/reports/W31.md`（STATUS: done，闸门通过）。
+- 工人找到的关键口径（已写进测试注释）：`harumasa.abnormalCoverage` 默认 1 ⇒ 失衡独有部分 40×(1−1)=0，路径静默为空，所以必须设 0.2（得 32）；额外能力要求队里有击破/异常（放扳机 1361）；`config.stunAxes` 要整体赋值，不能 push，否则 stunAxisResult 为 null。
+- lead 复核：①删掉多余的 `await setTimeout(2000)`（计算是同步 computed；删后用例 1.9s）；②删掉未用的类型别名 `Harness`（TS6196，导致 vue-tsc 与 verify 红）。复核后正控 2/2 绿；负控（`damagePoolDirect.ts` 的 `stunOverride > 0 ?` → `>= 0 ?`）红 1 条（断言②），还原后 `git diff src/composables/resourceCalc/` 为空；`vue-tsc -b` 0；`npm run verify` 通过（300 文件 / 3609 条，22 guards）。
+- 覆盖意义：census §5.28 记录的「悠真轴模式 perf 语料不覆盖」盲区现在有读取侧单测兜底。
+- 流程教训已写进任务队列 §0：工人验收必须跑 `vue-tsc -b`；测试里不要写 setTimeout 等待。
+
+**W30（check-tokens hint 指向不存在的令牌）**
+- 决定：不派工人，lead 直接做。依据：只改 2 处字符串，符合「一步能做完的小事不派活」。
+- 闸门：`grep -rnE '\-\-text-[23]\b' src/ scripts/ public/`（排除 check-tokens.mjs 自身）为空；`--fg-2`/`--fg-3` 定义在 `src/styles/global.css:201-202`。
+- 验收：`npm run check-tokens` 12 项通过，改前改后输出中的数字逐位相同（基线没动）；残留 0 行；diff 1 文件 2 行；check-guards 22 通过。
+
+**队列现状**：任务队列 §1 的 W 卡全部清空。架构线 CC 卡没有 todo（CC-11b 暂缓，理由见 arch 表）。
+
+**下一步（按顺序）**
+1. 可选观感收尾（lead 或工人都行）：`AliceCoweringDotResult` / `calcAliceCoweringDot` 改通用名（`grep -rnw` 全仓确认调用点；纯改名，dump/rows 应零差，基线 `/home/kaua/calc-arch/dump-41.json`、`rows-41.json`）。
+2. 候选调研：①莱特来源面板 ×1.2 在低冲击配装（局内冲击 <270）下的集成覆盖（census §5.45）；②多槽同角色时 `giftedPolarAssaultCount` 的求和语义复核。
+3. 若以上都做完：重新盘点 `docs/mcp-calc-core-architecture.md` §3 目标形态与现状的差距，再立新卡。立卡前先读 CC-11b 的暂缓理由。
+
 ## 附录：普查脚本 census.sh
 
 ```bash

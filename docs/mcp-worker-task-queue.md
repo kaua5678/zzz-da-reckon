@@ -28,6 +28,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **两个写工人并行**：第二个放进隔离 worktree（`git worktree add --detach /tmp/wt-<卡> HEAD` 后软链 `node_modules`），
   卡里写明工作区路径、禁止碰主仓库；合入 = `git -C /tmp/wt-<卡> diff > x.diff`，复核后在主仓库 `git apply`，
   再 `git worktree remove --force /tmp/wt-<卡>`（只删软链本身，主仓库依赖不受影响；2026-09-24 W7 实测）。
+- **工人自测必须含 `npx vue-tsc -b`（2026-09-27 W31 教训）**：vitest 不做类型检查，W31 工人只跑了 vitest，交回的文件有 TS6196（未用类型别名），导致 `npm run verify` 红。今后卡面「验收」一律写上 `timeout -s KILL 600 npx vue-tsc -b` 退出 0；lead 复核时也要单独跑。另外，测试里**不要写 `setTimeout` 等待**（`useResourceCalc` 是同步 computed，W31 工人加了 2s 空等，差点碰到 5s 默认超时）。
 - **负控的还原**：在有未提交改动的树上做负控，先 `cp` 备份再改、用备份还原；**不要** `git checkout -- <文件>`
   （会把工人的改动一起抹掉，2026-09-24 复核 W7 时踩过，按工人报告里的 diff 补回）。
 - **派发前先查重（2026-09-25 双 lead 事故）**：开工先 `pgrep -af '^node .*dsh --profile headless' | cut -c1-60`
@@ -58,8 +59,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 | W27 | 命座「未描述」5 条改标（原文已收到、防御 / 生存向不建模） | 数据订正 | 两份 JSON 各 5 / 4 档 + `docs/implementation-status.md`（生成） | ✅ 已合入（`749e047`；lead-arena-0925b 复核 accept：语义 diff 恰 5 + 4 档、效果句逐条对 `data/raw` 原文、正控 validate:data / modelingGaps 9/9 / check-guards 21、负控 1271 C1 改回 ⇒ 未描述 1→2，`cp` 还原后三文件 sha256 逐位一致；卡已删） |
 | W28 | 命座镜像 `cinemaImplementation` 单源化预审（62 档 status 不一致） | 只读普查 | `/tmp/w28/`、`.zc/reports/W28-mirror-census.md` | ✅ 已回收（15:43；lead-arena-0925b 复核 accept：结论 `可删`——9 处读者逐一只取已知键、独有信息 0 条；lead 隔离 worktree 删光镜像后 validate:data / modelingGaps 9/9 / check-guards 21 全绿、状态表逐字不变。更正：带镜像的是 41 角色（非 47）；漏了复数键 `cinemaImplementations`（1481）⇒ 均写进 W29；卡已删） |
 | W29 | 删命座镜像 `cinemaImplementation(s)`，单源 = constellations | 实现 | `public/static/character-mechanics.json`（只删两键）、`scripts/sync-new-role-status.mjs`、`scripts/validate-data.mjs`、`.zc/reports/W29.md` | ✅ 已合入 `798bb4d`（15:47 派发、约 6 分钟收工；lead-arena-0925b 复核：语义 diff 恰为 41 + 1 个键删除、无其它变化；正控 validate:data 366 / modelingGaps 9/9 / check-guards 21 / 状态表零 diff；负控单、复数键均红；lead 改 1 词 `信 确认→信 高`；卡已删） |
-| W30 | `check-tokens` hint 指向不存在的令牌（`--text-2`/`--text-3` 应为 `--fg-2`/`--fg-3`） | 守卫文案订正 | `scripts/check-tokens.mjs`（只改字符串）、`.zc/reports/W30.md` | ⏳ 待派（2026-09-26 lead 立卡；来源 = R1 改表格边框时撞出，证据见 `docs/mcp-cinema-uplift-multi-metric.md` §5） |
-| W31 | 悠真轴模式 `stunOnlyDmgBonus` 伤害池消费端测试（CC-33a 覆盖盲区） | 新增测试 | 新测试文件 1 个 + `.zc/reports/W31.md` | ⏳ 待派 |
+| W30 | `check-tokens` hint 指向不存在的令牌（`--text-2`/`--text-3` 应为 `--fg-2`/`--fg-3`） | 守卫文案订正 | `scripts/check-tokens.mjs`（只改字符串）、`.zc/reports/W30.md` | ✅ done `b7f5b77`（2026-09-27 第 59 轮 lead 直接做：只改 2 处字符串，不值得派工人；闸门通过，check-tokens 数字逐位不变） |
+| W31 | 悠真轴模式 `stunOnlyDmgBonus` 伤害池消费端测试（CC-33a 覆盖盲区） | 新增测试 | 新测试文件 1 个 + `.zc/reports/W31.md` | ✅ done `618366b`（2026-09-27 第 59 轮 dsh 工人产出，lead 复核修 2 处；见 census §5.46） |
 
 **drift 落盘的工具坑（2026-09-25，后续 lead 必读）**：① 批量打 `·复核@` 按**锚点**选事实，而事实可能写在 docs 里（如 `GAME_TERM_TO_CODE_FIELD.md`）——提交时别只 `git add src/`，以 `git status` 为准；
 ② 事实行可能误写**两个「据」槽**，解析器静默取后一个 ⇒ 标签打在前一个无效，应合并为单槽（`liuyinPromote.ts` 失衡次数不动点即此例）；
