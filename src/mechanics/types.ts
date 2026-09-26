@@ -17,7 +17,7 @@ import type {
   VelinaCorrosionSource,
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
-import type { AnomalySkillExecution } from '@/core/anomalyPool'
+import type { AnomalySkillExecution, CoweringConfig } from '@/core/anomalyPool'
 import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type，见设计稿
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
@@ -777,6 +777,15 @@ export interface AgentMechanicModule {
    * import `computeBanyueInteractionTopUp`；现由模块挂出，编排层不含角色 id、不 import 角色模块。
    */
   computeInteractionTopUp?(opts: InteractionTopUpInput): InteractionTopUp
+  /**
+   * 异常池入参设置（CC-25）：编排层（`roundInputs.ts` 的 `anomalyPoolSetupInfo`）找到本队第一个挂了
+   * 本能力的槽位，按 `characters.find(c => c.slot === slot)` 取**本模块自己那份 cfg** 调用；返回 null =
+   * 本轮不启用。返回的 `coweringConfig` 下发给异常池（畏缩 DOT + 紊乱倍率加成），该槽位同时作为
+   * 赠送触发（极性强击）的归属槽位 `giftedTriggerSlot`。原先编排层按身份 `findSlotByIdentity(['1401'])`
+   * 找槽并直读 `cfg.aliceEnabled` / `cfg.aliceCowering*`。
+   * ⚠ 只能读 cfg（与 resourceResult 无关）——调用点在 calcOutput 求值链里，读资源结果会成环（见 roundInputs 头注释）。
+   */
+  anomalyPoolSetup?(cfg: DeepReadonly<CharacterOperationConfig>): { coweringConfig?: CoweringConfig } | null
   /**
    * 异常池预构建钩子：在 perElement 积蓄汇总之前调用（引擎已构建 elementMap 并预算 turbulenceCount）。
    * 模块可向 elementMap 注入额外积蓄贡献（如维琳娜风蚀替换广域），或把机制状态写入 store 供引擎消费。

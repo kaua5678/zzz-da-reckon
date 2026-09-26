@@ -528,6 +528,10 @@ export const aliceMechanic: AgentMechanicModule = {
   name: '爱丽丝',
   description: '剑意专属资源：技能命中积累剑意，300点触发星芒圆舞曲#3（可合轴），生成极性强击。畏缩状态下敌人每0.95秒受到强击伤害2.5%的固定异常伤害，紊乱倍率随物理异常剩余时长提升。',
   applyPanel: applyAlicePanel,
+  // CC-25：畏缩配置（原 roundInputs.ts aliceInfo 内联，默认值逐字搬迁）；未启用爱丽丝机制 ⇒ null
+  anomalyPoolSetup: (cfg) => cfg.aliceEnabled
+    ? { coweringConfig: { dotRatio: cfg.aliceCoweringDotRatio ?? 2.5, dotInterval: cfg.aliceCoweringDotInterval ?? 0.95, disorderBonusPerSec: cfg.aliceCoweringDisorderBonusPerSec ?? 18, disorderBonusMax: cfg.aliceCoweringDisorderBonusMax ?? 180, assaultBaseMultiplier: 853 } }
+    : null,
   /**
    * CC-22：剑仪外部次数源的「下一轮注入」。原先 `convergence.ts` 直接 import
    * `aliceExternalCountsOf` + `aliceSlotOf` 现场算（编排层直连角色模块）；现走通用派发器

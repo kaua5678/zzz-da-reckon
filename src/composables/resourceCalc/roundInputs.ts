@@ -87,31 +87,35 @@ export function createConvergenceRoundInputs(deps: {
     return { hasWindChar: hasWind, windCharSlot: slot }
   })
 
-  /** 爱丽丝配置（复用）：仅承载与 resourceResult 无关的畏缩结算配置。
-   *  极性强击赠送计数不在此读——aliceInfo 读 resourceResult（= calcOutput.value.resourceResult）
+  /** 异常池入参设置（CC-25 自 aliceInfo 改名；目前唯一提供方 = 爱丽丝模块 `anomalyPoolSetup`）：仅承载与 resourceResult 无关的畏缩结算配置。
+   *  极性强击赠送计数不在此读——本 computed 读 resourceResult（= calcOutput.value.resourceResult）
    *  会在 calcOutput 自身求值内构成循环依赖（首算恒读空，曾致极性强击行整行缺失），
    *  由 calcAnomalyPoolInput 的 aliceSparkOverride 注入本轮资源结果。 */
-  const aliceInfo = computed(() => {
+  const anomalyPoolSetupInfo = computed(() => {
     // ⚠ **本行的「循环依赖」只与读 `resourceResult` 有关，与身份查找无关**（2026-09-17 夜间批 B 实测澄清）：
     // 头注释那条禁令针对的是 `aliceSlotOf(rr)` / `aliceSparkCountOf(rr)` 那族**读资源结果**的模块 helper
     // （`aliceSlotOf` 从 `rr.characters` 数槽位 ⇒ 在 `calcOutput` 自身求值内读它会首算恒空）。
     // 本行的输入只有 `configStore` + `catalogStore` 两个 store（均在本工厂的 deps 里、与 `calcOutput` 无关），
     // 故走 `findSlotByIdentity` 是**同一表达式**、不引入任何对 `resourceResult` 的读 ⇒ 不成环。
     // 判据：`convergenceNightB.test.ts` 的等价性 oracle + 前导空槽实算（爱丽丝在槽 2 仍解析出 slot）。
-    const slot = findSlotByIdentity(configStore, catalogStore, ['1401'])
+    // CC-25：找槽改为「第一个挂了 anomalyPoolSetup 能力的槽位」（原按身份 `findSlotByIdentity(…, ['1401'])`；
+    // 输入仍只有两个 store + resourceConfig ⇒ 不读 resourceResult ⇒ 不成环，上面那条澄清照样成立）。
+    const slot = configStore.team.findIndex(c => c.agentId && getAgentMechanic(c.agentId)?.anomalyPoolSetup)
     if (slot < 0) return null
+    const setup = getAgentMechanic(configStore.team[slot].agentId)?.anomalyPoolSetup
     // ⚠ 按**身份**查（`.find(c => c.slot === …)`），不用 `characters[slot]` 下标：该数组按位置
     // 压缩（`buildCharConfig` 跳过空槽），前导/中间空槽时 `characters[slot]` 取到 undefined
-    // ⇒ `aliceEnabled` 读不到 ⇒ 整个 aliceInfo 静默返回 null（畏缩 DOT 配置整块丢失）。
+    // ⇒ `aliceEnabled` 读不到 ⇒ 整个 setup 静默返回 null（畏缩 DOT 配置整块丢失）。
     const cfg = resourceConfig.value?.characters.find(c => c.slot === slot)
-    if (!cfg?.aliceEnabled) return null
-    return { slot, coweringConfig: { dotRatio: cfg.aliceCoweringDotRatio ?? 2.5, dotInterval: cfg.aliceCoweringDotInterval ?? 0.95, disorderBonusPerSec: cfg.aliceCoweringDisorderBonusPerSec ?? 18, disorderBonusMax: cfg.aliceCoweringDisorderBonusMax ?? 180, assaultBaseMultiplier: 853 } }
+    if (!cfg || !setup) return null
+    const res = setup(cfg)
+    return res ? { slot, ...res } : null
   })
 
   /** 构建积蓄池（参数化 stunCoverage + 异常 execs） */
   function calcAnomalyPoolInput(stunCov: number, execs: AnomalySkillExecution[], aliceSparkOverride?: number) {
     if (execs.length === 0) return null
-    const wind = windInfo.value; const alice = aliceInfo.value
+    const wind = windInfo.value; const setup = anomalyPoolSetupInfo.value
     const aliceSpark = aliceSparkOverride ?? 0
     return calcAnomalyPool({
       executions: execs, panels: panels.value,
@@ -124,9 +128,9 @@ export function createConvergenceRoundInputs(deps: {
       hasWindChar: wind.hasWindChar, windCharSlot: wind.windCharSlot,
       velinaCinema2CorrosionRate: configStore.getMechanicSetting('velina.cinema2CorrosionRate', 2 / 3),
       globalAnomalyMultiplier: globalAnomalyMultiplier.value,
-      coweringConfig: alice?.coweringConfig,
-      giftedTriggerCounts: alice && aliceSpark > 0 ? { 'physical_polar_assault': aliceSpark } : undefined,
-      giftedTriggerSlot: alice?.slot,
+      coweringConfig: setup?.coweringConfig,
+      giftedTriggerCounts: setup && aliceSpark > 0 ? { 'physical_polar_assault': aliceSpark } : undefined,
+      giftedTriggerSlot: setup?.slot,
       agentMechanics: getRegisteredAgentMechanics(),
     })
   }
