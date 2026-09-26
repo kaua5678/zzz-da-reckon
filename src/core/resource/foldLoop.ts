@@ -127,16 +127,19 @@ export function runFoldLoop(
         + (i === ultimateGift.targetIdx ? ultimateGift.time : 0)
       // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
       const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
-      // 真实时间压力（模块退化判据的权威信号，见 CharacterOperationConfig.timePressureSeconds）：
-      // 本槽物化行 − 队友账本净占用后剩下的可用前台。用**当轮实测行**而不是累加的折叠残差，
-      // 否则 pass0 的虚高会把「其实装得下」的队误判成超支（叶瞬光自动轴退化即为此被关掉过）。
       const teammatesLedgerNet = ctx.configs.reduce(
         (sum, _, j) => (j === i ? sum
           : sum + Math.max(0, st[j].necessaryTime - (st[j].comboAlignCredit ?? 0) + st[j].basicAttackTime)),
         0)
-      const availableFrontline = Math.max(0, (ctx.totalTime - (ctx.config.invincibleTime ?? 0)) - teammatesLedgerNet)
+      const battleWindow = ctx.totalTime - (ctx.config.invincibleTime ?? 0)
+      const availableFrontline = Math.max(0, battleWindow - teammatesLedgerNet)
       cfg.timeAvailableFrontlineSeconds = availableFrontline
-      cfg.timePressureSeconds = rowTime - availableFrontline
+      // 真实时间压力（模块退化判据的权威信号，见 CharacterOperationConfig.timePressureSeconds）：
+      // **本槽物化行 − 战斗窗口**（不减队友占用）——用户裁决 2026-09-25：退化（短轴/砍交互）只在
+      // 「自己绝对打不完」时触发。旧口径减了队友账本净占用 ⇒ 队友吃掉前台就把「其实装得下」的队
+      // 顶过阈值误退化（叶瞬光满命队 auto 退短轴、白丢灭极段伤害 −11% 即此因）。用**当轮实测行**
+      // 而不是累加的折叠残差，否则 pass0 的虚高会把「其实装得下」的队误判成超支（叶瞬光自动轴退化曾被此关掉过）。
+      cfg.timePressureSeconds = rowTime - battleWindow
       if (excess > 1e-6) {
         // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0。
         // `+=` 累加（2026-09-03 实测三语义对比）：`=` 对正反馈队（猫又/伊德海莉——模块行随

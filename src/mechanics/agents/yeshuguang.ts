@@ -142,7 +142,7 @@ function cfgNum(cfg: CharacterOperationConfig, key: string, fallback: number): n
 }
 
 /** 自动选轴的超支阈值（秒）：timeBudgetExcess 超过此值才退化，避免量化残差（~1s）误触降轴 */
-// @fact agent:1431/自动选轴 口径: 明心境轴默认自动(-1)，按**真实时间压力**（cfg.timePressureSeconds>5s，不是累加的 timeBudgetExcess）逐级退化 full→short_pair→short_mie，换轴时清零旧轴折叠残差；仍超预算由外层 interactionScale 缩交互兜底 | 据 用户@2026-09-05·复核@2026-09-08 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#cfgAxis | 信 确认
+// @fact agent:1431/自动选轴 口径: 明心境轴**滑块默认打满(0)**——R2C 用户裁决 2026-09-25：能打完的队不该退化（短轴亏灭极段伤害），故默认不自动退化。auto(-1) 的退化判据 = **本槽物化行 − 战斗窗口**（`timePressureSeconds`，**不减队友占用**，同裁决修复：旧口径减队友致满命队误退化 −11%）；仅当用户显式设 -1 且该压力 >5s 时逐级退化 full→short_pair→short_mie，换轴时清零旧轴折叠残差；仍超预算由外层 interactionScale 缩交互兜底 | 据 用户@2026-09-05·复核@2026-09-08·R2C裁决@2026-09-25 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#cfgAxis | 信 确认
 const AUTO_AXIS_DEGRADE_THRESHOLD = 5
 
 function cfgAxis(cfg: CharacterOperationConfig): YeshuguangFormAxis {
@@ -529,13 +529,13 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 
 function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: AgentExSpecialTimeInput): AgentExSpecialTimeEstimate | null {
   const record = cfg as unknown as Record<string, unknown>
-  // 自动选轴：**真实时间压力**（cfg.timePressureSeconds = 本槽物化行 − 队友占完后可用前台）
+  // 自动选轴：**真实时间压力**（cfg.timePressureSeconds = 本槽物化行 − 战斗窗口，不减队友占用）
   // 超过阈值时逐级退化 full→short_pair→short_mie，并把旧轴的折叠残差清零——否则换轴后 necessary
   // 仍被旧轴残差虚高、平A池照样被挤 0。
-  // 判据历史上用的是累加的 timeBudgetExcess，而它 pass0 会被平A池满额发放灌出一个后续再也不会
-  // 出现的巨大值（只增不减）→ 「其实装得下」的队被误判超支、一路退化到仅灭，于是 auto 被人为
-  // 关掉（default 0 打满）。改读诚实信号后 auto 重新可用（2026-09-05 用户口径：时间不够就该
-  // 自动打短轴压时间，甚至减交互，把时间弄回 180s 内）。
+  // 判据历史上用过两种错误信号：① 累加的 timeBudgetExcess（pass0 平A池满额发放灌出的只增不减
+  // 巨大值）→ 「其实装得下」的队被误判超支、一路退化到仅灭；② 减了队友账本净占用的相对压力
+  // （2026-09-25 前）→ 队友吃掉前台就把满命队顶过阈值、白丢灭极段伤害 −11%。现读「自己行绝对
+  // 超窗口」的诚实信号（用户裁决 2026-09-25：只有绝对打不完才退化，能打完不退）。
   const rawAxis = String(record[`setting:yeshuguang.formAxis`] ?? 'auto')
   const isAuto = rawAxis !== 'full' && rawAxis !== 'short_pair' && rawAxis !== 'short_mie'
     && Number(rawAxis) !== 0 && Number(rawAxis) !== 1 && Number(rawAxis) !== 2
@@ -703,7 +703,7 @@ export const yeshuguangSettings: MechanicSetting[] = [
   {
     id: 'yeshuguang.formAxis',
     label: '叶瞬光·明心境轴（-1自动/0打满/1灭极短轴/2仅灭短轴）',
-    description: '自动：按真实时间压力（本槽物化行 − 队友占完后可用前台）超 5s 时逐级退化打满→灭极→仅灭。短轴**只省时间不省资源**（每轮仍打满 6 点青溟剑势，归尘按「剑势耗尽」触发）。**暂不作默认**：轮数由资源驱动，轴变短→每轮更快→平A/回能/终结技/喧响反而供给更多轮（实测 1431/1341/1031 full 6 轮 → short_mie 9 轮，净占用不降），要真压回预算需轮数与平A池联立求解（DEBT_REGISTRY「全局实数化收敛重构」）。',
+    description: '打满(默认)：每轮 (灭#1+极)×2+扶摇+飞光+收尾，伤害最高。短轴**只省时间不省资源**（每轮仍打满 6 点青溟剑势，归尘按「剑势耗尽」触发），亏的是灭极段本身的伤害。自动(-1)：仅当本槽物化行**绝对超过战斗窗口**（不减队友占用，R2C 修复 2026-09-25）时，按真实时间压力超 5s 逐级退化打满→灭极→仅灭——能打完的队不再误退化。',
     default: 0,
     min: -1,
     max: 2,
