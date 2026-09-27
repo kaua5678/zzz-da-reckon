@@ -69,6 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 163 轮（2026-09-28，文档提交「docs: round 163」，无代码；上一轮 = 1af733aa）
+
+- **做到哪**：
+  - 第 162 轮下一步第 1 项「拆窗口内必要时间」已测完：它只解释一小部分。定位到真正的口径冲突和用户可见后果（21/104 队有失衡没连携），详见 `docs/mcp-stun-dual-source.md` §4，卡表记为 CC-139（调研）。
+  - 探针存档在 WSL `/home/kaua/calc-arch/win163/`。
+- **下一步（按顺序，可直接开工）**：
+  1. **CC-140 P1：计数通道改读物理次数**（专项文档 §4.4）。
+     - 读 `src/core/resource/helpers.ts` 第 20–30 行 `countStunOf`，以及第 246、402、605 行三处 `chainCount`；读 `src/composables/resourceCalc/convergence.ts` 约第 767 行 `stunCount: stunCountN` 的构造，以及 `solveTeam.ts` `runOuterLoop` 里 `runCalcRound(stunCount, threads, …)` 的传参链，找到把「上一轮 `out.stunPool.stunCount`」传进 `globalCfg` 的最短路径（新字段如 `stunCountPhysical`）。
+     - 原型用环境变量开关，`countStunOf` 在开关打开时返回物理次数。用 `win163/zzWin163.test.ts`（钩子补丁见 `dual162/`）对比开关前后：「物理 ≥ 1、失衡连携 < 0.5s」的队数（期望 21→约 0）、超预算队数、外层退出分布、总伤分布。
+     - 满足 §4.4 验收再去掉开关落地，跑 zd / timeGolden / timeFillRatchet / 全量 verify，逐队解释。
+  2. 洛克茜 `energyRegenOutOfCombat` 局内 3.12 / 局外 1.2 的读法疑点（§2.18 第 159 轮补充最后一条）。
+  3. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先；`src/stores/config.ts` 约 819–861 行）。
+- **本轮拍板**：
+  - 不在本轮改代码。依据：修复必然全库动数，需要原型和逐队解释；本轮先把缺陷和修复路径定清楚。
+  - 先做 P1（计数通道），不先动 P2（外层约束）。依据：P1 不碰求解器，不会引回坑 25 的阶梯 2-循环（`stunPlanProjection.ts` 文件头的语义边界）；P2 风险更大，留到 P1 落地后再评估。
+- **已知坑**（新增）：
+  - 净前台占用正好等于 180s、平 A 为 0 的队是合法的（抵扣吸收了毛超出部分），不要当成超预算。
+  - 执行行里终结技的 `category` 可能是 `chain`（例如 `chain|-|ultimate`），按 category 区分连携和终结技会混，要用 `skillDamageTarget`。
+
 ### 第 162 轮（2026-09-28，文档提交「docs: round 162」，无代码；上一轮 = 30daa4b1 / 76a5aff6）
 
 - **做到哪**：
