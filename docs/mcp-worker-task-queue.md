@@ -69,6 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 162 轮（2026-09-28，文档提交「docs: round 162」，无代码；上一轮 = 30daa4b1 / 76a5aff6）
+
+- **做到哪**：
+  - 第 161 轮下一步第 1 项「坑 25 双源」已完成测量，结论写在 `docs/mcp-stun-dual-source.md`，卡表记为 CC-138（调研）。
+  - 去掉外层第二次折算的原型**不落地**；`stunCountContinuous` 字段**不提交**（没有消费者）。
+  - 主因定位：外层必要时间约束（`solveTeam.ts` 约 210–218 行）决定了 78/104 队的规划失衡，其中 17 队为 0。
+  - 探针和补丁存档在 WSL `/home/kaua/calc-arch/dual162/`（用法见专项文档 §1）。
+- **下一步（按顺序，可直接开工）**：
+  1. **拆窗口内必要时间**（专项文档 §3 第 1 步）：在 `zzDual162.test.ts` 探针里从物化执行行求 Σ连携 / 终结技时长，得到 inWindow，算 `capNet` 并统计 78 队和 17 队的变化。只测量。若足以解释差距，按 §3 第 2 步开 CC 卡改约束。
+  2. 洛克茜 `energyRegenOutOfCombat` 局内 3.12 / 局外 1.2 的读法疑点（§2.18 第 159 轮补充最后一条）。
+  3. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先；`src/stores/config.ts` 约 819–861 行）。
+- **本轮拍板**：
+  - 原型不落地。依据：第 161 轮自定的落地条件（cycle / maxIter 明显减少）不满足，而且没有触及主要差距。回退点：无代码改动。
+  - 坑 25 归因更正已追记到 ENGINE_PIPELINE_GUIDE，原文保留，只在后面追加。
+- **已知坑**（新增，其余沿用第 161 轮）：
+  - wsl_exec 只回传约 9KB 尾部，104 行的 tsv 拉回本地会截断，要在 WSL 里用 python 分析（`/home/kaua/calc-arch/an162*.py`）。
+  - 判断规划失衡由哪一道约束决定时，容差要用 0.06 左右（外层判稳容差是 0.05）；用 2e-3 会把 80 队误判为「其他」。
+
 ### 第 161 轮（2026-09-28，测试 `30daa4b1`（CC-137）+ 本文档提交；上一轮 = 3adb3620 / ef6ecce6 / 2a57b241）
 
 - **做到哪**：
