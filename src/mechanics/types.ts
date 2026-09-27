@@ -855,6 +855,25 @@ export interface AgentMechanicModule {
    * 只允许改写**本角色登记在 `ADDITIONAL_GATE_BUFFS` 里的 buff id**（各模块 buff id 不相交 ⇒ 调用顺序无关）。
    */
   adjustAdditionalAbilityGates?(input: { team: ReadonlyTeam; slot: number; gates: Map<string, boolean> }): void
+  /**
+   * CC-130：队友 buff 的「按接收槽」**效果级**过滤（本角色 = buff 来源）。返回「接收槽 `recipientSlot` 不该吃到的
+   * 本角色 buff 效果 id」（`TeammateBuff.effects[].id`）。用于原文只给**特定队友**的拐（席德「明攻」只给[正兵]、
+   * 「围杀」只给席德与正兵）——teammate-buffs 的静态数据本身是全队生效。
+   *
+   * 契约（`panelPhases.ts#applyTeammateBuffRecipientFilters` 强制）：
+   * - 只作用于 `ownerId`/`teammateId` = 本角色 id（或其 teammateBuffId 别名）的 buff；别人的效果 id 返回了也不删；
+   * - 只作用于 `scope === 'inCombat'` 的 buff ⇒ 局外面板不受影响，`getOutOfCombatPanel` 探针因此可以安全重入；
+   * - 探针内部（重入）不再调用本能力。
+   * `getOutOfCombatPanel(slot)` = 该槽 `computePanelPhases(...).outOfCombat`（与 CC-129 build 阶段 `cfg.outOfCombatPanel` 同源）。
+   */
+  teammateBuffRecipientFilter?(input: {
+    team: ReadonlyTeam
+    /** 本角色（buff 来源）槽位 */
+    slot: number
+    /** 正在计算面板的接收槽位 */
+    recipientSlot: number
+    getOutOfCombatPanel: (slot: number) => Readonly<PanelValues> | null
+  }): readonly string[]
   /** CC-68：队伍对比难度表要补 0 值条目的角色专属交互类型（键见 teamCompare.ts#INTERACTION_LABELS；补在 slot 0）。原 teamCompare.ts 写死般岳 id。 */
   compareInteractionTypes?: readonly string[]
   /**

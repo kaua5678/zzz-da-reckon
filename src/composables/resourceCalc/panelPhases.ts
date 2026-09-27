@@ -461,6 +461,55 @@ export function evalAdditionalAbilityBuffGates(
   return gates
 }
 
+/** 局外面板探针的重入深度：>0 时 `applyTeammateBuffRecipientFilters` 直接放行（见该函数注释） */
+let recipientFilterProbeDepth = 0
+
+function outOfCombatPanelProbe(
+  slot: number,
+  configStore: ReturnType<typeof useConfigStore>,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+): PanelValues | null {
+  recipientFilterProbeDepth++
+  try {
+    return computePanelPhases(slot, configStore, catalogStore)?.outOfCombat ?? null
+  } finally {
+    recipientFilterProbeDepth--
+  }
+}
+
+/**
+ * CC-130：按接收槽做队友 buff 的**效果级**过滤（模块能力 `teammateBuffRecipientFilter`，契约见 mechanics/types.ts）。
+ * 零角色分支：遍历在队模块，收集「来源 agentId → 本接收槽要剔除的效果 id」，只剔除**来源本人**的、`inCombat` 作用域的效果。
+ * 重入保护：模块求正兵之类的选择时要读别的槽的局外面板 ⇒ 递归调用 computePanelPhases；探针内部放行不过滤。
+ * 因为只动 inCombat 效果，局外面板与是否过滤无关 ⇒ 探针结果与正式计算一致，不存在循环依赖。
+ */
+export function applyTeammateBuffRecipientFilters(
+  buffs: TeammateBuff[],
+  team: ReadonlyTeam,
+  recipientSlot: number,
+  getOutOfCombatPanel: (slot: number) => Readonly<PanelValues> | null,
+): TeammateBuff[] {
+  if (recipientFilterProbeDepth > 0) return buffs
+  const drops = new Map<string, ReadonlySet<string>>()
+  for (const member of team) {
+    const mod = member.agentId ? getAgentMechanic(member.agentId) : undefined
+    const ids = mod?.teammateBuffRecipientFilter?.({ team, slot: member.slot, recipientSlot, getOutOfCombatPanel })
+    if (!ids || ids.length === 0) continue
+    const set = new Set(ids)
+    drops.set(member.agentId, set)
+    const alias = member.agent?.teammateBuffId
+    if (alias) drops.set(alias, set)
+  }
+  if (drops.size === 0) return buffs
+  return buffs.map(buff => {
+    if (buff.scope !== 'inCombat') return buff
+    const drop = drops.get(buff.ownerId ?? '') ?? drops.get(buff.teammateId ?? '')
+    if (!drop) return buff
+    const effects = (buff.effects ?? []).filter(e => !drop.has(e.id))
+    return effects.length === (buff.effects ?? []).length ? buff : { ...buff, effects }
+  })
+}
+
 export function computePanelPhases(
   slot: number,
   configStore: ReturnType<typeof useConfigStore>,
@@ -530,8 +579,10 @@ export function computePanelPhases(
   // 2026-09-13 逐位等价迁移；原 14 个 `xxxAdditionalActive` + 17 条逐 id `.filter`）。语义偏离与注释全部保留在表侧。
   const additionalAbilityBuffGates = evalAdditionalAbilityBuffGates(
     team, id => catalogStore.agentsMap.get(id) ?? null)
-  const allTeammateBuffs = [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
-    .filter(buff => additionalAbilityBuffGates.get(buff.id) !== false)
+  const allTeammateBuffs = applyTeammateBuffRecipientFilters(
+    [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
+      .filter(buff => additionalAbilityBuffGates.get(buff.id) !== false),
+    team, slot, s => outOfCombatPanelProbe(s, configStore, catalogStore))
 
   const effectCoverageMap = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)
   for (const buff of allTeammateBuffs) {

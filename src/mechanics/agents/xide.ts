@@ -1,4 +1,4 @@
-import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, CrossAgentSupplySpec } from '../types'
+import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, CrossAgentSupplySpec, ReadonlyTeam } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
@@ -152,21 +152,50 @@ function buildXideCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfi
  */
 function applyXideTeamConfig({ characters, team, phase }: AgentTeamConfigInput): void {
   if (phase !== 'build') return
+  const vanguardSlot = pickXideVanguardSlot(team, s => characters.find(c => c.slot === s)?.outOfCombatPanel?.atk)
+  for (const c of characters) {
+    if (c.agentId === XIDE_AGENT_ID) c.xideVanguardSlot = vanguardSlot
+  }
+}
+
+/**
+ * 正兵选择（单一事实源，CC-129/CC-130）：非席德的[强攻]队友中「初始攻击力」（局外攻击）最高者，并列取槽位靠前者；
+ * 无强攻队友 ⇒ -1。只有 1 名候选时不读攻击（面板阶段省掉一次局外面板探针）。
+ * `oocAtkOf` 拿不到时回退 `level60.atkBase`（仅测试手搓 cfg / 成员会走到）。
+ * 消费：build 阶段 `cfg.xideVanguardSlot`（正兵回能 / 钢能）与面板阶段 `teammateBuffRecipientFilter`（明攻 / 围杀）。
+ */
+export function pickXideVanguardSlot(team: ReadonlyTeam, oocAtkOf: (slot: number) => number | undefined): number {
+  const candidates = [...team]
+    .filter(m => m.agentId !== XIDE_AGENT_ID && m.agent?.specialty === 'attack')
+    .sort((a, b) => a.slot - b.slot)
+  if (candidates.length <= 1) return candidates[0]?.slot ?? -1
   let vanguardSlot = -1
   let bestAtk = -1
-  for (const m of team) {
-    if (m.agentId === XIDE_AGENT_ID) continue
-    if (m.agent?.specialty !== 'attack') continue
-    const oocAtk = characters.find(c => c.slot === m.slot)?.outOfCombatPanel?.atk
-    const atk = oocAtk ?? m.agent.level60?.atkBase ?? 0
+  for (const m of candidates) {
+    const atk = oocAtkOf(m.slot) ?? m.agent?.level60?.atkBase ?? 0
     if (atk > bestAtk) {
       bestAtk = atk
       vanguardSlot = m.slot
     }
   }
-  for (const c of characters) {
-    if (c.agentId === XIDE_AGENT_ID) c.xideVanguardSlot = vanguardSlot
-  }
+  return vanguardSlot
+}
+
+/** teammate-buffs 1461 组效果 id：「明攻」只给正兵；「围杀」（含影画2 无视防御）给席德与正兵 */
+export const XIDE_BRIGHT_ATTACK_EFFECT_IDS = ['seed_core_bright_attack_atk', 'seed_core_bright_attack_crit_dmg'] as const
+export const XIDE_ENCIRCLEMENT_EFFECT_IDS = ['seed_core_encirclement_dmg', 'seed_cinema_2_encirclement_def_ignore'] as const
+
+/**
+ * CC-130：原文「[正兵]获得[明攻]……席德与[正兵]同时获得[围杀]」——静态 teammate buff 原按全队生效
+ * （实测：非正兵队友与席德本人也吃 +1000 攻击 / +30% 暴伤）。按接收槽剔除不该吃的效果。
+ */
+function xideTeammateBuffRecipientFilter({ team, slot, recipientSlot, getOutOfCombatPanel }: {
+  team: ReadonlyTeam; slot: number; recipientSlot: number; getOutOfCombatPanel: (slot: number) => { atk: number } | null
+}): readonly string[] {
+  if (recipientSlot === slot) return XIDE_BRIGHT_ATTACK_EFFECT_IDS
+  const vanguardSlot = pickXideVanguardSlot(team, s => getOutOfCombatPanel(s)?.atk)
+  if (recipientSlot === vanguardSlot) return []
+  return [...XIDE_BRIGHT_ATTACK_EFFECT_IDS, ...XIDE_ENCIRCLEMENT_EFFECT_IDS]
 }
 
 /** 钢能招式攻击数据回复：统一对「所有执行行」求和（moveId → attack_data × 次数；平A按秒均 × 时间） */
@@ -331,10 +360,11 @@ export const xideMechanic: AgentMechanicModule = {
   id: 'agent:seed',
   agentIds: [XIDE_AGENT_ID],
   name: '「席德」',
-  description: '正兵拐在 teammate-buffs（明攻/围杀，按其他强攻门控）；额外能力增伤/电抗无视招式限定在 patchExecutions（1461006/07/08/1015）；影画1 崩坠暴伤/影画6 激光在 patchExecutions；钢能消耗出口（三招落华）+ 铁萼雨幕衔接重戮在 buildExecutions；钢能资源循环（耗能/攻击数据/正兵耗能）走 spec resource；正兵回能 + 正兵耗能回写走 crossAgentSupply `vanguard-energy`（CC-32a）。',
+  description: '正兵拐在 teammate-buffs（明攻/围杀，按其他强攻门控；CC-130 teammateBuffRecipientFilter 按接收槽过滤：明攻只给正兵、围杀给席德与正兵）；额外能力增伤/电抗无视招式限定在 patchExecutions（1461006/07/08/1015）；影画1 崩坠暴伤/影画6 激光在 patchExecutions；钢能消耗出口（三招落华）+ 铁萼雨幕衔接重戮在 buildExecutions；钢能资源循环（耗能/攻击数据/正兵耗能）走 spec resource；正兵回能 + 正兵耗能回写走 crossAgentSupply `vanguard-energy`（CC-32a）。',
   applyPanel: applyXidePanel,
   buildCharConfig: buildXideCharConfig,
   applyTeamConfig: applyXideTeamConfig,
+  teammateBuffRecipientFilter: xideTeammateBuffRecipientFilter,
   crossAgentSupply: xideVanguardSupply,
   buildExecutions: buildXideExecutions,
   patchExecutions: patchXideExecutions,
