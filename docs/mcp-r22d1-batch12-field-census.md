@@ -2662,3 +2662,20 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 验证：check-guards 24 项通过；checkGuards/zc/remielle 三个测试文件共 216 条通过；verify 338 files / 3707 tests EXIT 0（`/home/kaua/calc-arch/verify106.log`）；`zc drift` 为 0 条。
 - 回退：`git revert 7481adf`（只动注释）。
 
+### 5.95 CC-88 done：状态表 7 条「部分实现」机制对照代码核实（lead-arena-0925c，2026-09-27 第 107 轮）
+
+**CC-88 `11706a1`**（只改 `public/static/character-mechanics.json`，并重新生成 `docs/implementation-status.md`）
+- 背景：`zc status` 显示的「命座 109 / 机制 45 待办条目」是这两张状态表里各条目 `pending` 数组的条数，**不是工作队列**，多数是「已实现但用了近似」的说明。真正会误导人的是标成 `partially_implemented` 的条目，这次核实了机制维度的全部 7 条，结果 **5 条的 pending 早已不成立**。
+- 结论与证据（完整证据写在各条目的 `implemented` 数组里，末尾带「2026-09-27 CC-88 对照代码核实」）：
+  - 1401 剑心双虹 → implemented：alice.ts `extraAnomalyRows` 产出 `polar-assault-damage` 和 `alice-cowering-dot`（每 0.95s 强击伤害 2.5%）两类伤害行；紊乱倍率 09-15 已复核接入。
+  - 1401 寻奇猎幽 → implemented：09-15 的两条复核属实（`applySpecAttributeConversions`、资源卡 `alice-sword-will`），pending 本来就是空的。
+  - 1561 广域气旋 → implemented：风蚀气旋异放 `velina-corrosion-*`（145%/255%）在 damagePoolAnomaly.ts 经 `pushRelease` 进伤害池；赋彩积蓄只在 `velinaCinema2` 时推入，0/1 命只有伤害。
+  - 1561 赋彩 → implemented：Sweeping Cyclone #2 ×2 进入执行计划；`velinaColorElement` 取第一个非风队友；2 命才解锁积蓄。
+  - 1561 茶会礼仪 → implemented：pendingParts「风化 DoT 总伤害池」已被 09-14 用户复核否定（风化没有 DoT）；+10（2 命再 +15）和终结技 680% 风异放（spec 事件 `velina_ultimate_wind_release`，eventType release）都在线。
+  - 1271 守望者 → implemented_approximation：伤害部分（异常精通 +100 × 持盾覆盖率）已实现，护盾本体是防御向，按 W27 惯例「防御/生存向不建模」处理，pending 保留。
+  - 1561 风华盈袖 → implemented_approximation：pending 是有意的近似（抗性削减 debuff 以乘数折算），保留。
+- 写法约定（CC-89 沿用）：`status` 与 `implementation` 两个字段**同步改**；已不成立的 pending **不直接丢**，把它的原文和否定证据写进 `implemented` 数组，然后清空 `pending` / `pendingParts`。JSON 是单行压缩格式，改之前先断言 `JSON.stringify(JSON.parse(raw)) + '\n' === raw`（脚本 `/home/kaua/calc-arch/cc88.mjs`，可以照抄）。
+- **不动的**：命座维度 1111 安东影画1/6 的 partially_implemented（爆发状态没建模，用户已裁决暂不做）、1551 影画6 和 1101 潜能觉醒两条 not_described（官方未揭示/还在改）。
+- 验证：`npm run docs:status` 重新生成后，机制维度「部分实现 7→0、待办条目 45→42」；validate-data 366 项通过；check-guards 24 项通过；verify 338 files / 3707 tests EXIT 0（`/home/kaua/calc-arch/verify107.log`）。运行档案页的建模缺口列表（modelingGaps，按 pending 非空列出）会少掉这几条，属于预期变化。
+- 回退：`git revert 11706a1`。
+
