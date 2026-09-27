@@ -1787,6 +1787,27 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
    验证：新单测对比「页面原算法」（在测试里照抄一份内联实现）与新函数，至少一队且开启一条 globalBuff；反向变异：跳过 globalBuffs 让测试变红。
 2. ImpactChart 的 impactVars / substatOptimizer、MechanicsTablePage 的 agentSpecs：逐个评估是否有编排层等价物。不要做纯转发来凑读数；做不到真正降低耦合的，就在 census 里写明保留理由，并把判据 7 的 target 调成最终值。
 3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
+### 5.58 CC-51 done：判据 7 5→3（TeamConfigPage 局外面板 → 编排层）（lead-arena-0925c，2026-09-27 第 71 轮）
+
+**提交**：`baceb72`。新文件 `src/composables/outOfCombatPanel.ts`（`computeOutOfCombatPanel(slot, configStore, catalogStore)`），测试 `src/composables/__tests__/outOfCombatPanel.test.ts`（2 条）。TeamConfigPage.vue：局外分支改为一行调用；删掉 calcPanel / applyTargetedStat / teammateBuffSourceContextFromStores 三个导入和已无调用的 `getTeammateBuffSourceContext`；statMeta 导入去掉 `statSettlementMode`（注释同步说明结算口径已搬走）。判据 7 基线与 frozen 5→3（plan 删这两项）。同批改 `src/utils/__tests__/statModeParity.test.ts` ②c：「全局 Buff 结算位必须用 statSettlementMode」这条源码锁的调用点，从 TeamConfigPage.vue 改指 `src/composables/outOfCombatPanel.ts`（正则不变）。⚠ 已知坑：第一次 verify 就是这条红的；以后搬动带源码锁的代码，先 `grep -rn '<文件名>' src/**/__tests__` 找锁。回退：`git revert baceb72`。
+
+**是否真正降低了耦合**：是。页面的两种面板模式现在都只调编排层（局内 `computePanel` / 局外 `computeOutOfCombatPanel`），页面不再知道面板怎么算、全局 Buff 按什么口径结算。算法逐行照搬，未改口径（全局 Buff 仍按结算口径 `statSettlementMode`）。
+
+**验证**：判据 7 = 3/3，24 guards；vue-tsc 0；新单测：三个槽位都与原页面内联算法逐值相等，含一条启用 + 一条禁用的全局 Buff，并断言启用的 Buff 确实改变了面板；空槽返回 null。反向变异（全局 Buff 一律跳过）⇒ 单测红，恢复后 cmp 一致。`npm run verify` 通过：308 文件 / 3638 条，24 guards（`/home/kaua/calc-arch/verify51.log`）。只改展示层取数路径，没跑 dump/rows。
+
+**判据 7 剩余 3 处及评估（拍板）**
+| 位置 | 导入 | 评估 | 决定 |
+|---|---|---|---|
+| ImpactChart.vue:~130 | `computeOptimalSubStats, getTemplate`（@/core/substatOptimizer） | 只在 `runOptimizerForSlot0`（:~365）用：取 agent/wEngine → buff 来源上下文 → getTemplate → computeOptimalSubStats。可整体收拢为编排层函数，和 CC-51 同类，能真正降低耦合 | **下一张 CC-52** |
+| ImpactChart.vue:~127 | `IMPACT_VARIABLES, readImpactVar, writeImpactVar`（@/core/impactVars） | 组件自己在做「按变量扫描 → 写 configStore → 重算」（:~190 allVars、:~222 read、:~236 write）。把扫描逻辑抽成编排层扫描函数是真实改进，但牵涉组件的渐进渲染和计时，工作量中等 | CC-53，排在 CC-52 后 |
+| MechanicsTablePage.vue:~172 | `agentSpecs`（@/specs/registry） | 只读数据注册表，用来列机制表（:~197 map、:~205 filter）。能做的只有纯转发，耦合不会降低 | **最低优先级**：CC-52/53 做完后再决定是纯转发并如实标注，还是在 RATCHET_BURNDOWN 里把 target 定为 1 并写明永久保留理由 |
+
+**下一步（CC-52，可直接开工）**
+1. 读 ImpactChart.vue 的 `runOptimizerForSlot0`（:~365 起，约 40 行）全文，确认 `computeOptimalSubStats` 的入参里哪些来自组件本地状态（进度回调、i18n 文案键 `optimizer.totalSteps*` 等）。
+2. 在 `src/composables/` 新建 `substatOptimizer.ts`，导出 `runSubstatOptimizerForSlot(slot, configStore, catalogStore, opts)`：内部完成 agent/wEngine 获取、`teammateBuffSourceContextFromStores`、`getTemplate`、`computeOptimalSubStats`；组件本地的 UI 部分（进度回调、文案）通过 opts 传入，或留在组件里。模板的 stat 数（用于选 `optimizer.totalSteps2/3/4` 文案）可作为返回值的一部分，或另导出 `substatTemplateStatCount(agent)`。
+3. ImpactChart 删掉 `@/core/substatOptimizer` 导入；判据 7 基线与 frozen 3→2（同批）。
+4. 验证：对照单测（测试里照抄原内联调用，比较结果）；反向变异；vue-tsc；verify。
+5. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
