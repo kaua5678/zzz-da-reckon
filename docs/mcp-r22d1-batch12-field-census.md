@@ -2459,3 +2459,12 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 回退：`git revert 33dc2be`。**验证**：vue-tsc 0；verify 331 files / 3689 tests，24 guards 0（`/home/kaua/calc-arch/verify95.log`）。
 - 遗留清单「teammateBuffGate 多模块合并语义」从此关闭。
 
+### 5.84 CC-77 done：莱特来源面板冲击 ×1.2 集成覆盖（lead-arena-0925c，2026-09-27 第 96 轮）
+
+- **提交 `8095ea8`**：只加测试 `src/composables/__tests__/lighterImpactSourceCc77.test.ts`，关闭遗留「×1.2 系数缺低冲击配装集成覆盖」。
+- **拍板：不换低冲击配装，改比「×1.0 vs ×1.2」**。第 96 轮实测：白板配装（`recommendedBuild: false`）来源冲击 S·1.2 < 180，公式恒 +25，×1.0..×1.3 都看不出差；推荐配装下 S ≈ 232、S·1.2 ≈ 278.49 ⇒ ×1.2 顶 75、×1.3 也 75（这就是当年 dump 零差的原因），但 **×1.0 只有 +55**——所以推荐配装本身就能证明 ×1.2 生效，只是以前拿 ×1.3 比错了方向。
+- **断言**：测试里包一层钩子记下进入时的来源冲击 S；① S×1.2 == 莱特自身局内面板冲击（`applyPanel` 的 +20% 与本钩子同一口径）；② 原钩子下艾莲冰/火伤增量 == 数据表公式 `min(75, 25 + floor(max(0, x−170)/10)·5)` 代入 S×1.2；③ 比例 1.0/1.05/1.1/1.15/1.3 逐个等于公式；④ formula(S) < formula(S×1.2)（若日后配装数据变动使该条失效，换一个 formula(S) < 75 的配装）。
+- **反向变异**：lighter.ts 钩子 ×1.2 改 ×1.0 → 红（55 vs 75），已恢复。
+- **验证**：vue-tsc 0；verify 332 files / 3690 tests，24 guards 0（`/home/kaua/calc-arch/verify96.log`）。回退：删测试文件。
+- **CC-57b 裁定：不做（除非 `docs/REQUIREMENTS.md` 提出）**。依据：§5.62 已写明给 grace/vivian/aire/yanagi/promia/nangong/phoenix 加 `releaseShare` 声明 = 新增用户可调项，属功能变更，不是架构整理；离线无人确认需求，按「只做可逆、不改产品面」原则搁置。风染挑槽 UI 开关同理（功能）。
+

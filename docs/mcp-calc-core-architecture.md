@@ -246,6 +246,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-74 | done | `788c035` | 「11号 + 平A兜底」端到端护栏测试 basicFillE2eCc74（只加测试；关闭 §5.69 perf 盲区） | census §5.81 |
 | CC-75 | done | `955ddd5` | giftedPolarAssaultCount 多提供方口径裁定 = 求和；派发收进 resourceCalc/giftedPolarAssault.ts | census §5.82 |
 | CC-76 | done | `33dc2be` | teammateBuffGate 多模块表态合并 = 逻辑与（原：第一个表态者说了算，依赖注册顺序） | census §5.83 |
+| CC-77 | done | `8095ea8` | 莱特来源面板冲击 ×1.2 集成覆盖测试（×1.0 vs ×1.2 + 比例扫描对公式） | census §5.84 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |
