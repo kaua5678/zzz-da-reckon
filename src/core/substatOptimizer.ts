@@ -23,6 +23,7 @@ import type {
 import { calcPanel } from './panel'
 import { sharpCritMultiplier } from './damage'
 import type { SourcePanelsByOwner } from './buff'
+import { getAgentMechanic } from '@/mechanics'
 
 // ============ 副词条步长表 ============
 
@@ -122,9 +123,8 @@ export interface TeammateInfo {
 }
 
 /**
- * 角色特定词条模板。
- * 按 agent.id（catalog 中的 nanoka_id，如 "1401"）索引。
- * 未配置的角色按 specialty 落入默认模板。
+ * 按 specialty 兜底的默认词条模板。
+ * 角色特例由角色模块声明 `substatTemplate`（CC-81），见 getTemplate。
  */
 const AGENT_TEMPLATES: Record<string, SubstatTemplate> = {
   // ===== 默认模板（按 specialty 兜底） =====
@@ -177,78 +177,7 @@ const AGENT_TEMPLATES: Record<string, SubstatTemplate> = {
     critRateCap: 200,
   },
 
-  // ===== 角色特例 =====
-
-  // 爱丽丝（1401）：物理异常 → 精通+攻击（异常角色暴击不如精通，6命附伤占比不足以让双爆上位）
-  '1401': {
-    stats: ['anomalyProficiency', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: true,
-    anomalyRatio: 0.7,
-  },
-
-  // 蕾米埃尔（1581）：辉光异常/辅助定位，精通转模核心 → 精通+攻击，不堆掌控
-  // 额外能力：队伍 1/2/3 名异常角色时，全队攻击 +6%/12%/40%×蕾米攻击，上限 1600
-  // 耀变/虚耀/异化用队友面板结算 → 副词条攻击对异常伤害权重 0.1
-  '1581': {
-    stats: ['anomalyProficiency', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: true,
-    anomalyRatio: 0.95,
-    teamAtkTransfer: { ratios: [0.06, 0.12, 0.40], cap: 1600 },
-    atkWeightInAnomaly: 0.1,
-    minGainRatio: 0.15,
-  },
-
-  // 简（1261）：物理异常 → 精通+攻击
-  '1261': {
-    stats: ['anomalyProficiency', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: true,
-    anomalyRatio: 0.9,
-  },
-
-  // 维琳娜（1561）：风异常/乱流 → 精通+攻击
-  '1561': {
-    stats: ['anomalyProficiency', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: true,
-    anomalyRatio: 0.75,
-  },
-
-  // 柏妮思（1171）：火异常/灼烧 → 精通+攻击
-  '1171': {
-    stats: ['anomalyProficiency', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: true,
-    anomalyRatio: 0.9,
-  },
-
-  // ===== 转模角色（辅助/击破/命破）：转模源在首位，默认吃满（局外转模与队伍/buff 无关，固定） =====
-
-  // 卢西娅（1451）：生命→全队攻击（局外）→ hpPct 优先
-  '1451': {
-    stats: ['hpPct', 'atkPct', 'defPct'],
-    dmgBonusRelevant: false,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
-  },
-
-  // 洛克茜（1621）：防御→攻击/冲击力（局内）→ defPct 优先
-  '1621': {
-    stats: ['defPct', 'atkPct', 'critRate'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
-  },
-
-  // 月城柳（1221）：电异常/极性紊乱 → 精通+攻击
-  '1221': {
-    stats: ['anomalyProficiency', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: true,
-    anomalyRatio: 0.9,
-  },
+  // 角色特例已迁至各角色模块的 substatTemplate 声明（CC-81，census §5.88）；getTemplate 先查模块，缺省按职业兜底。
 
   // 星见雅（Miyabi，待入 catalog）：直伤+异常混合型（烈霜/冰），霜寒+烈霜伤害混合
   // 将来入 catalog 时配置：
@@ -259,7 +188,7 @@ const AGENT_TEMPLATES: Record<string, SubstatTemplate> = {
 
 /** 获取角色的词条模板 */
 export function getTemplate(agent: Agent): SubstatTemplate {
-  const direct = AGENT_TEMPLATES[agent.id]
+  const direct = getAgentMechanic(agent.id)?.substatTemplate
   if (direct) return direct
   const spec = agent.specialty
   if (spec === 'anomaly') return AGENT_TEMPLATES._default_anomaly

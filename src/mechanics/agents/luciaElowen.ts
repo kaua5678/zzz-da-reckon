@@ -502,6 +502,14 @@ function luciaOnFinalAssemble({ cfg, isCurtainProvider, curtainTriggers, state, 
 export const luciaElowenMechanic: AgentMechanicModule = {
   id: 'agent:lucia_elowen',
   agentIds: ['1451'],
+  // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
+  // 卢西娅（1451）：生命→全队攻击（局外）→ hpPct 优先
+  substatTemplate: {
+    stats: ['hpPct', 'atkPct', 'defPct'],
+    dmgBonusRelevant: false,
+    anomalyRelevant: false,
+    anomalyRatio: 0,
+  },
   // 热启动精确键剔除（2026-09-26 CC-14d）：帷幕触发总次数由 core 装配段（assembleSlot，本槽 = 帷幕提供者）
   // 收敛后写回，不是输入。
   feedbackCfgKeys: ['luciaCurtainTriggerCount'],

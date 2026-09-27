@@ -275,6 +275,14 @@ export const janeMechanic: AgentMechanicModule = {
   teamAnomalyDurationBonus: ({ element }) => (element === 'physical' ? 5 : 0),
   id: 'agent:jane',
   agentIds: [JANE_AGENT_ID],
+  // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
+  // 简（1261）：物理异常 → 精通+攻击
+  substatTemplate: {
+    stats: ['anomalyProficiency', 'atkPct'],
+    dmgBonusRelevant: true,
+    anomalyRelevant: true,
+    anomalyRatio: 0.9,
+  },
   name: '简',
   description: '啮咬/狂热/强击暴击：攻击施加啮咬10秒，强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%）；萨霍夫跳（狂热1次+影画1+1次）；影画1/6 面板区。',
   applyPanel: applyJanePanel,

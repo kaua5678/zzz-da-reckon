@@ -21,6 +21,7 @@ import type {
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { SourcePanelsByOwner } from '@/core/buff'
 import type { StackActionCost } from '@/core/stunAxisStack'
+import type { SubstatTemplate } from '@/core/substatOptimizer'
 import type { AnomalySkillExecution, CoweringConfig } from '@/core/anomalyPool'
 import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type，见设计稿
@@ -975,6 +976,11 @@ export interface AgentMechanicModule {
    * 现实现：爱芮 1501 / 叶瞬光 1431（终结技 1:1）、千夏 1491（强特 1:1）、照 1341（霜寒开帷幕）。原为 teamVeil.ts 写死集合。
    */
   teamVeilCount?(input: { exCount: number; ultimateCount: number; combatTime: number }): number
+  /**
+   * **副词条优化模板**（CC-81 2026-09-27，census §5.88）。`core/substatOptimizer.ts#getTemplate`
+   * 先查本声明，缺省按职业兜底默认模板。原为 core 内按角色 id 为键的 AGENT_TEMPLATES 表。
+   */
+  substatTemplate?: SubstatTemplate
   /**
    * **本角色的轴块是否结束失衡窗口**（决算类招式；CC-39b 2026-09-27，设计稿
    * `docs/mcp-cc39b-stun-window-end.md`）。编排层经 `resourceCalc/helpers.ts#axisMoveEndsStunWindow`

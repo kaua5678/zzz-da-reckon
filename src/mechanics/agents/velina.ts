@@ -548,6 +548,14 @@ function buildVelinaCorrosionEvents(source: CorrosionSource): AnomalyEventRecord
 export const velinaMechanic: AgentMechanicModule = {
   id: 'agent:velina',
   agentIds: [VELINA_AGENT_ID],
+  // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
+  // 维琳娜（1561）：风异常/乱流 → 精通+攻击
+  substatTemplate: {
+    stats: ['anomalyProficiency', 'atkPct'],
+    dmgBonusRelevant: true,
+    anomalyRelevant: true,
+    anomalyRatio: 0.75,
+  },
   name: '维琳娜',
   // CC-66：ResourceResultCard 腐蚀状态机展示（原组件写死本角色 id / Sweeping Cyclone #1 moveId）
   resultCardCorrosion: { poolReleaseEventMarker: CORROSION_CYCLONE_RELEASE_ID_PREFIX, broadCycloneMoveId: '1561007' },

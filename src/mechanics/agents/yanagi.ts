@@ -181,6 +181,14 @@ const settings: MechanicSetting[] = [
 export const yanagiMechanic: AgentMechanicModule = {
   id: 'agent:tsukishiro_yanagi',
   agentIds: [YANAGI_AGENT_ID],
+  // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
+  // 月城柳（1221）：电异常/极性紊乱 → 精通+攻击
+  substatTemplate: {
+    stats: ['anomalyProficiency', 'atkPct'],
+    dmgBonusRelevant: true,
+    anomalyRelevant: true,
+    anomalyRatio: 0.9,
+  },
   name: '月城柳',
   description: '核心被动电伤+20%、额外能力电异常积蓄+45%、影画1异常精通+80、影画2突刺积蓄+20%+追加突刺（滑块）+极性紊乱、影画6强特+20%；紊乱倍率/识破穿透在 teammate-buffs 1221 组。',
   applyPanel: applyYanagiPanel,

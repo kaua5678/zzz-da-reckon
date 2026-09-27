@@ -425,6 +425,19 @@ export const remielleMechanic: AgentMechanicModule = {
   applyTeamConfig: applyRemielleTeamConfig,
   id: 'agent:remielle',
   agentIds: [REMIELLE_AGENT_ID],
+  // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
+  // 蕾米埃尔（1581）：辉光异常/辅助定位，精通转模核心 → 精通+攻击，不堆掌控
+  // 额外能力：队伍 1/2/3 名异常角色时，全队攻击 +6%/12%/40%×蕾米攻击，上限 1600
+  // 耀变/虚耀/异化用队友面板结算 → 副词条攻击对异常伤害权重 0.1
+  substatTemplate: {
+    stats: ['anomalyProficiency', 'atkPct'],
+    dmgBonusRelevant: true,
+    anomalyRelevant: true,
+    anomalyRatio: 0.95,
+    teamAtkTransfer: { ratios: [0.06, 0.12, 0.40], cap: 1600 },
+    atkWeightInAnomaly: 0.1,
+    minGainRatio: 0.15,
+  },
   // CC-26b：后台飞行状态「光辉回转」自动行（原 core/resource/rowBuild.ts 内联，逐字搬迁）
   backstageAutoRows: remielleRadiantTurnRows,
   // CC-28：虚耀池/耀变/特殊虚耀事件记录（原 useResourceCalc.ts remielleVoidflareEvents 编排层分支，逐字搬迁）
