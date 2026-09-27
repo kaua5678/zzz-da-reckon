@@ -203,7 +203,8 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPa
   panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + 2
 
   // 核心被动：初始暴击率超过 50% 时，每超过 1% 冲击力 +2，最多 +100（100% 暴击时封顶）。
-  // 口径 stepRounding=none（连续），与迁移前 `min(100, max(0, crit-50)×2)` 逐位一致；取整与否是未决数据口径。
+  // 口径：缺省 floor 整步（CC-134 第 158 轮，「每超过 N」统一按整步计，docs/mcp-r6-refactor-list.md §2.18）；
+  // 此前为 stepRounding=none 连续口径（迁移前 `min(100, max(0, crit-50)×2)`）。回退 = spec 1481 恢复该字段。
   // 原文「初始暴击率」⇒ 读局外面板（spec sourcePanelPhase=outOfCombat，CC-123）
   applySpecAttributeConversions(panel, getAgentSpec(LIUYIN_AGENT_ID)?.attributeConversions ?? [], 1, { outOfCombat: outOfCombatPanel })
 

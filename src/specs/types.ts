@@ -16,6 +16,8 @@ export interface AttributeConversionSpec {
    * 步数取整口径（R6 C7，第 140 轮）。缺省 'floor'：steps = ⌊超出量 / stepSize⌋（「每满 1% 才加」）。
    * 'none'：steps = 超出量 / stepSize，不取整（连续线性）。用于把手写模块的既有口径写成数据、
    * 由 spec runtime 执行，而不是在模块里再写一份常数。两者谁符合游戏是**数据口径问题**，改口径即改数值，须另开 CC 卡。
+   * **统一口径（CC-134，第 158 轮，docs/mcp-r6-refactor-list.md §2.18）**：原文「每超过 / 每拥有 N 点…提升 M」一律 floor；
+   * 现无 spec 使用 'none'，字段只保留作逐条回退手段。新录入不要写 'none'，除非原文给的是连续公式。
    */
   stepRounding?: 'floor' | 'none'
   targetStat: string

@@ -14,12 +14,11 @@
       "sourcePanelPhase": "outOfCombat",
       "threshold": 110,
       "stepSize": 1,
-      "stepRounding": "none",
       "targetStat": "impact",
       "valuePerStep": 1,
       "cap": null,
       "status": "implemented",
-      "note": "[已确认·原文] 初始异常掌控大于 110 点时，每超过 1 点使自身冲击力提升 1 点，无上限。实现位置：mechanics/agents/nangong.ts applyNangongPanel 与 computeNangongMechanic（展示值 impactFromMastery）都调 applySpecAttributeConversions 执行本条，常数只在此处（R6 C7，第 142 轮）。口径：stepRounding=none 沿用迁移前模块 max(0, 掌控−110) 的连续算法、零差；CC-123（第 150 轮）：原文「初始异常掌控」⇒ 读局外面板（面板传 sources.outOfCombat，展示值读 buildCharConfig 的 outOfCombatPanel），与 CC-118 卢西娅同口径。"
+      "note": "[已确认·原文] 初始异常掌控大于 110 点时，每超过 1 点使自身冲击力提升 1 点，无上限。实现位置：mechanics/agents/nangong.ts applyNangongPanel 与 computeNangongMechanic（展示值 impactFromMastery）都调 applySpecAttributeConversions 执行本条，常数只在此处（R6 C7，第 142 轮）。口径：【CC-134 第 158 轮】改为缺省 floor 整步（「每超过 N」统一按整步计，见 docs/mcp-r6-refactor-list.md §2.18；回退=恢复字段 stepRounding=none）。原口径：stepRounding=none 沿用迁移前模块 max(0, 掌控−110) 的连续算法、零差；CC-123（第 150 轮）：原文「初始异常掌控」⇒ 读局外面板（面板传 sources.outOfCombat，展示值读 buildCharConfig 的 outOfCombatPanel），与 CC-118 卢西娅同口径。"
     }
   ],
   "resources": [
@@ -87,12 +86,12 @@
   "verifications": [
     {
       "id": "nangong_mastery150_5_to_impact",
-      "name": "异常掌控 150.5 转冲击（钉住 stepRounding=none 的连续口径）",
+      "name": "异常掌控 150.5 转冲击（CC-134：floor 整步口径）",
       "panel": {
         "anomalyMastery": 150.5
       },
       "expected": {
-        "impact": 40.5
+        "impact": 40
       },
       "tolerance": 0.0001,
       "status": "implemented"

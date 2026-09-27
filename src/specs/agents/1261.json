@@ -14,12 +14,11 @@
       "sourcePanelPhase": "inCombat",
       "threshold": 120,
       "stepSize": 1,
-      "stepRounding": "none",
       "targetStat": "atk",
       "valuePerStep": 2,
       "cap": 600,
       "status": "implemented",
-      "note": "[已确认·原文] 狂热状态下异常精通大于 120 时每超过 1 点攻击力 +2，最多 600。实现位置：mechanics/agents/jane.ts applyJanePanel 调 applySpecAttributeConversions，coverage 传 frenzyFactor（狂热开关 × 狂热覆盖率滑块 jane.passionCoverage），runtime 先封顶再乘覆盖率；computeJaneMechanic 的展示值 atkFromMastery 经 emptyPanel 探针走同一执行器（R6 C7，第 144 轮，常数只在此处）。口径：stepRounding=none 沿用迁移前模块连续算法、零差。"
+      "note": "[已确认·原文] 狂热状态下异常精通大于 120 时每超过 1 点攻击力 +2，最多 600。实现位置：mechanics/agents/jane.ts applyJanePanel 调 applySpecAttributeConversions，coverage 传 frenzyFactor（狂热开关 × 狂热覆盖率滑块 jane.passionCoverage），runtime 先封顶再乘覆盖率；computeJaneMechanic 的展示值 atkFromMastery 经 emptyPanel 探针走同一执行器（R6 C7，第 144 轮，常数只在此处）。口径：【CC-134 第 158 轮】改为缺省 floor 整步（「每超过 N」统一按整步计，见 docs/mcp-r6-refactor-list.md §2.18；回退=恢复字段 stepRounding=none）。原口径：stepRounding=none 沿用迁移前模块连续算法、零差。"
     }
   ],
   "resources": [
@@ -70,12 +69,12 @@
   "verifications": [
     {
       "id": "jane_proficiency180_5_to_atk",
-      "name": "精通 180.5 转攻击（钉住 stepRounding=none 的连续口径）",
+      "name": "精通 180.5 转攻击（CC-134：floor 整步口径）",
       "panel": {
         "anomalyProficiency": 180.5
       },
       "expected": {
-        "atk": 121
+        "atk": 120
       },
       "tolerance": 0.0001,
       "status": "implemented"

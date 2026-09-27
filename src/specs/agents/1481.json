@@ -14,12 +14,11 @@
       "sourcePanelPhase": "outOfCombat",
       "threshold": 50,
       "stepSize": 1,
-      "stepRounding": "none",
       "targetStat": "impact",
       "valuePerStep": 2,
       "cap": 100,
       "status": "implemented",
-      "note": "[已确认·原文] 初始暴击率超过 50% 时，每超过 1% 转 2 点局内固定冲击力，100% 时转满 100 点；CC-123（第 150 轮）按原文「初始」改读局外面板（applyPanel 传 sources.outOfCombat），与 CC-118 同口径。实现位置：mechanics/agents/liuyin.ts applyLiuyinPanel 调 applySpecAttributeConversions 执行本条（R6 C7，第 140 轮起本条即唯一常数来源）。口径：stepRounding=none（超出量连续 ×2，不按整 1% 取整），沿用迁移前模块口径、零差；原文「每超过 1%」是否应取整为未决数据口径，改为取整会改数值，须另开 CC 卡（见 docs/mcp-r6-refactor-list.md §2）。"
+      "note": "[已确认·原文] 初始暴击率超过 50% 时，每超过 1% 转 2 点局内固定冲击力，100% 时转满 100 点；CC-123（第 150 轮）按原文「初始」改读局外面板（applyPanel 传 sources.outOfCombat），与 CC-118 同口径。实现位置：mechanics/agents/liuyin.ts applyLiuyinPanel 调 applySpecAttributeConversions 执行本条（R6 C7，第 140 轮起本条即唯一常数来源）。口径：【CC-134 第 158 轮】改为缺省 floor 整步（「每超过 N」统一按整步计，见 docs/mcp-r6-refactor-list.md §2.18；回退=恢复字段 stepRounding=none）。原口径：stepRounding=none（超出量连续 ×2，不按整 1% 取整），沿用迁移前模块口径、零差；原文「每超过 1%」是否应取整为未决数据口径，改为取整会改数值，须另开 CC 卡（见 docs/mcp-r6-refactor-list.md §2）。"
     }
   ],
   "resources": [
@@ -154,13 +153,13 @@
       "status": "implemented"
     },
     {
-      "id": "liuyin_crit73_6_to_impact_continuous",
-      "name": "暴击 73.6% 转冲击（钉住 stepRounding=none 的连续口径）",
+      "id": "liuyin_crit73_6_to_impact_floor",
+      "name": "暴击 73.6% 转冲击（CC-134：floor 整步口径）",
       "panel": {
         "critRate": 73.6
       },
       "expected": {
-        "impact": 47.2
+        "impact": 46
       },
       "tolerance": 0.0001,
       "status": "implemented"

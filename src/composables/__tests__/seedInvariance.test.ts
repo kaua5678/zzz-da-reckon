@@ -250,6 +250,7 @@ describe('连续松弛·落点不变性', () => {
  * 第 4 组「校准」是**实测补的**：前 3 组在本档上时间账差异为**空集**（104 队 × 3 组 = 0 条），
  * 断言② 会退化成永不触发的死判据；校准种子复现了分诊实测唯一会移动落点的那一形态
  * （`auto-1591-1571-1211`），让断言② 有真实样本，并由 `ledgerExercised > 0` 自检钉住活性。
+ * **（第 158 轮：此说法已失效——校准种子不再移动任何落点，旧自检靠浮点噪声变绿；已换成「种子改变迭代路径」自检，见文件内注释。）**
  * 覆盖面因此**只增不减**（3 → 4 组，未减任何一队）。
  *
  * **热启动缓存隔离**：`calcTeamResources` 内建收敛态缓存（`storeWarmStart`，冷调用会写）。
@@ -366,6 +367,8 @@ describe('全库预设·四种子落点不变性（债 1b 证伪闸门）', () =
     const ledgerViolations: string[] = []
     /** ② 的**活性计数**：真正落进「允许面」的槽数（0 ⇒ 断言② 是死判据，见下方自检） */
     let ledgerExercised = 0
+    /** 种子通道活性（第 158 轮替换原 `ledgerExercised > 0` 自检）：种子运行的内层迭代轮数 ≠ 冷启动的 (预设, 种子) 对数 */
+    let seedPathExercised = 0
     /** 覆盖计数：确保没有「因错误的原因通过」（预设被静默跳过 = 假绿） */
     let covered = 0
     /** 未取到 cfg 的预设（正常路径应为 0；非 0 说明捕获口径失效，必须显式红而不是静默跳过） */
@@ -437,6 +440,7 @@ describe('全库预设·四种子落点不变性（债 1b 证伪闸门）', () =
       for (const [mode, seed] of [['高', inflatedSeed], ['低', lowSeed], ['校准', calibrationSeed]] as const) {
         const rrSeeded = run(seed)
         expect(rrSeeded, `${p.name}(${p.id}) ${mode}种子无结果`).toBeTruthy()
+        if (rrSeeded!.iterations !== cold!.iterations) seedPathExercised++
         const otherCounts = countFingerprint(rrSeeded!)
         const otherLedger = timeLedger(rrSeeded!)
 
@@ -488,13 +492,18 @@ describe('全库预设·四种子落点不变性（债 1b 证伪闸门）', () =
       + `未匹配到被接受调用：${unmatched.join(', ') || '无'}）`,
     ).toEqual({ covered: presets.length, uncaptured: [], unmatched: [] })
 
-    // 判据② 的**活性自检**：断言② 是「允许差异面」的判据，若所有槽都恒等（差异集为空），
-    // 它就成了永不触发的死判据——将来真出现非守恒再分配时，无法区分「没有违规」与「判据失效」。
-    // 校准种子（见上方注释）保证至少有槽落进允许面；为 0 ⇒ 红（说明种子通道已不通，
-    // 本档整体退化成「跑 104 次恒等式」，必须先修种子通道再谈绿）。
+    // 种子通道的**活性自检**（第 158 轮 CC-134 改写，docs/mcp-r6-refactor-list.md §2.18）。
+    // 旧版要求 `ledgerExercised > 0`（至少一槽落进断言② 的允许面），想借此证明「种子通道没断」。
+    // 实测它早已空转：CC-134 前全库唯一触发的是 auto-1051-1481-1451 高种子两槽，差值 1.4e-14 / 2.8e-14
+    // （浮点末位噪声）；注释里说的校准种子（auto-1591-1571-1211）已不再移动任何落点。CC-134 让琉音冲击力
+    // 变成整数后噪声消失 ⇒ 旧自检红，但种子通道并没有坏——坏的是自检度量的东西不对。
+    // 新判据直接度量「种子被引擎用上」：种子运行的内层迭代轮数与冷启动不同的 (预设, 种子) 对数 > 0。
+    // 反向验证：让 run(seed) 丢弃 initialStates ⇒ 本条精确红（第 158 轮实测）。
+    // 断言② 本身保留为守卫（触发数写在判据③ 的失败信息里）；「没有槽落进允许面」现在是正常状态，
+    // 说明生产预设的落点不随种子移动——这正是本档想证伪的债 1b 前提。
     expect(
-      ledgerExercised,
-      '断言② 未被任何槽触发（时间账差异集为空）：种子通道可能已失效，本档退化为恒等式自证',
+      seedPathExercised,
+      '种子运行与冷启动的内层迭代轮数处处相同：initialStates 可能未被引擎读取（种子通道失效），本档退化为恒等式自证',
     ).toBeGreaterThan(0)
 
     // ★ **基准截面活性自检（round 25 新增，R24-J1）**：判据①② 只有落在**生产落点**截面上才有
@@ -520,7 +529,7 @@ describe('全库预设·四种子落点不变性（债 1b 证伪闸门）', () =
       [
         `落点随初值变的队：次数 ${countViolations.length} 条 / 时间账 ${ledgerViolations.length} 条`,
         `（覆盖 ${covered} 预设 × 4 种子 = 冷/高/低/校准；容差 TIME_BUDGET_TOLERANCE_SECONDS=${TIME_BUDGET_TOLERANCE_SECONDS}s；`
-        + `允许面实际触发 ${ledgerExercised} 槽；基准截面 chain 激活 ${baselineChainActiveSlots} 槽 / 封顶激活 ${baselineFeasibleActive} 队）`,
+        + `允许面实际触发 ${ledgerExercised} 槽；种子改变迭代路径 ${seedPathExercised} 对；基准截面 chain 激活 ${baselineChainActiveSlots} 槽 / 封顶激活 ${baselineFeasibleActive} 队）`,
         '判据① 次数落点（ex/ult/chain）逐位相等；判据② 时间账只许「basicAttackTime 与 necessaryTime 反向等量」的守恒式再分配。',
         '处置：① 次数违反队 = 批 1-2（逐模块实数化）的首批目标，按队归因到 `src/mechanics/agents/<id>.ts` 的落点封顶；',
         '② 时间账违反队 = 封顶/回填在移动落点且不守恒，先查 `core/resource/helpers.ts` 可行性封顶 + 欠打回填门控；',
