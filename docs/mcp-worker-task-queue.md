@@ -69,6 +69,41 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 159 轮（2026-09-28，代码 `0028eb01`（CC-135）+ 文档提交「docs: round 159」；上一轮 = ece87d0c / 2843ee97 / 68093b01）
+
+- **做到哪**：
+  - **CC-135**（`0028eb01`）：「每超过 N」floor 第二批，6 处由连续改为整步：青衣、扳机、柚叶公式、爱芮影画1、克拉蕾、洛克茜。§2.18 表内已无待改项。
+  - §2.18 的两条待查已结：莱特 C6 本来就是 floor；爱芮 / 薇薇安「每 10 点 → 异放比例」判定不属本规则，保持连续，理由见 §2.18 第 159 轮补充。
+  - 验证：zd `cc135` 已逐条归因（卡表 CC-135）；零差的 3 人用探针确认了原因；timeGolden 2 叶已重生成；verify184 EXIT=0（3790 passed | 29 skipped）；文档提交另跑 verify185。
+- **下一步（按顺序，可直接开工）**：
+  1. **外层不动点连续性专项**（新开文档 `docs/mcp-outer-fixedpoint-continuity.md`，同一提交登记到 README §6）。
+     - **问题**：输入的微小变化让结果大幅跳变。两个复现：
+       - 琉音例：`auto-1201-1481-1211`，槽 0 设 6 命。琉音冲击 208.8 → 208 时，`plannedStunCount` 0.70 → 1.12，总伤 +5.34%。
+       - 扳机例：`auto-1201-1361-1211`，槽 0 设 0 命。`plannedStunCount` 2.98 → 2.34，总伤 −1.74%。
+     - **第 1 步（只测量，不改代码）**：扫描曲线。探针模板在本地 `/home/user/w/up/zzProbe158.test.ts`，环境变量 `PROBE_PRESET`、`PROBE_C` 控制预设和命座；放到 `src/composables/__tests__/` 跑，用完删掉。
+       - 扫描方法：在探针里直接改内存中的 spec 对象，例如把 `getAgentSpec('1481').attributeConversions[0].valuePerStep` 从 1.90 扫到 2.10，步长 0.005。
+       - 每点记录：总伤、`resourceResult.plannedStunCount`、`convergence.outerRounds`、外层退出方式（stable / cycle / maxIter）、`stunPoolResult.totalStunBuildUp`。
+       - 预期能看到分段常数加跳变。记下跳变点，以及跳变前后的退出方式。
+     - **第 2 步（诊断）**：外层循环在 `src/composables/resourceCalc/solveTeam.ts` 约 177–240 行。嫌疑按优先级排：
+       - a) `rawNext = stunPool.stunCount` 是向下取整的整数（ENGINE_PIPELINE_GUIDE 第 145 行：答案 = floor(有效总失衡 ÷ boss 失衡值)），外层映射因此本身不连续。
+       - b) `maxFull = Math.floor(stunEffTime / stunWindowDur)` 的截断。
+       - c) 二周期判定加 `pickCanonical` 选点：选到环里的哪一个成员，取决于路径。
+       - d) `OUTER_STUN_TOLERANCE` 提前收敛。
+       - 在跳变点两侧打印每轮的 (stunCount 输入, rawNext, next, 签名)，定位是哪一条。
+     - **第 3 步（出方案，逐个跑 zd）**：候选方向包括外层映射用连续的失衡次数估计、只在发布时取整、固定选点规则、加阻尼。
+       - 验收判据：输入扰动 ε 时输出变化有界，即在扫描曲线上不再出现超过 1% 的跳变，而且不靠放宽容差实现。
+       - 禁止用「更接近投稿」当理由；timeGolden、timeFillRatchet、seedInvariance 的变化都要逐条解释。
+       - 历史背景：`docs/mcp-outer-feedback-regression.md`（二周期判环的相位修复）。
+  2. 洛克茜 `energyRegenOutOfCombat` 局内 3.12 / 局外 1.2 的读法疑点（§2.18 第 159 轮补充最后一条）。
+  3. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先；`src/stores/config.ts` 约 819–861 行）。
+- **本轮拍板**：
+  - 爱芮 / 薇薇安异放比例保持连续：比率句式不是分步句式，依据和回退见 §2.18。
+  - 洛克茜攻击去掉 `Math.round`：floor 之后步数是整数，乘 5 仍是整数，`Math.round` 已经多余。
+  - 下一步第一优先从「数据口径」换成「求值器连续性」：两轮连续出现由求值器引起、与改动本身不成比例的跳变（+5.34%、−1.74%）。不解决它，以后每一张数值卡的 zd 归因都会被它污染。
+- **已知坑**（新增，其余沿用第 158 轮）：
+  - zd 里「输入变小、伤害却大幅变化」先查 `plannedStunCount` 和外层轮数，§2.18 已记两例。
+  - teammate-buffs 公式求值器（`src/core/buff.ts` 约 591 行 `evalFormulaExpression`）用 JS `Function` 执行，作用域只有 `clamp`、`floor`、`max`、`min` 和变量 `x`、`s`、`p`。字符白名单允许字母，所以 `1e-9` 能用；写其他函数名（如 `round`、`abs`）会抛异常，被捕获后**静默返回 0**。
+
 ### 第 158 轮（2026-09-28，代码 `ece87d0c`（CC-134）+ 文档 `2843ee97` + 本回填提交；上一轮 = df8523f9 / 366212b7 / 057f0c3b）
 
 - **做到哪**：
