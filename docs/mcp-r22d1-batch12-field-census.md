@@ -2843,3 +2843,12 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
   - **裁决**：v1 的「引擎预测」给出的是公式和常数，而不是具体数字。原因是比值依赖用户实际测量时的配装，现在没法算；v2 录入时再用一次性探针算出 engineRatio（清单 §2 写明了**不要手算**）。
 - 本卡只改文档，没有动 src。
 
+### 5.105 CC-98 done：机制模块数据化盘点 + R4 接单（lead-arena-0925c，2026-09-27 第 117 轮）
+
+- **CC-98**：`docs/mcp-mechanic-dataization-census.md`。只读，扫描脚本在 `.zc/perf/mc98.mjs`（不进 git）。
+  - 62 个模块对象分布在 61 个 `.ts` 里（`specPanelBuffs.ts` 装了佩洛 1551 和橘福福 1391 两个），与 62 份 spec JSON 一一对应；91 项能力无一闲置。
+  - **推翻了 R3 提案里「按能力分档」的口径**：`buildCharConfig` 61/61 在用，`buildExecutions` 55、`buildResourceResult` 53，按过程类能力数分档会 60/61 落「不可」。改为数「spec 解释器生成不了的过程类能力」，结果 A2 / B30 / C29。
+  - 数据化的边界在钩子内部的 4 种原语：G1 无资源事件行、G2 招式补丁规则、G3 命座透传、G4 幂等回能。其中 G1 的直接原因是 `specToMechanicModule` 的 buildExecutions 有 `hasResources` 门。
+  - **扫描踩坑**：首轮只认 `key:` 和 `key(`，漏掉了简写属性 `key,`，潘引壶和妮可因此被误判为 0 能力；agentId 首轮只认字面量，62 个里只抽到 3 个。两处都已修正。
+- **R4 接单**（用户在 `19c3a13` 新增）：本轮先收尾已完成扫描的 CC-98；R4 的开工时点定为第 118 轮，并且排在最前。理由写在 REQUIREMENTS R4 条目下方。
+- 本卡只改文档，没有动 src。

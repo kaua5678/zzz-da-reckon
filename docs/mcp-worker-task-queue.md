@@ -6,6 +6,8 @@
 > **维护**：卡只由主代理写，工人不改本文件；卡经主代理复核合入后**删卡**，结论进提交说明，不在此留编年。
 > 需要用户裁决、或需要主代理先做设计的活条目不进本队列，留在 `.claude/OPEN-ITEMS.md`。
 
+> **🔝 置顶（第 117 轮，用户需求 R4）**：下一轮 lead 先做 **R4-A1 方向 A 影子内核**（`docs/REQUIREMENTS.md` R4），再做队列里的其他任何事。开工步骤见下方「第 117 轮」交接。本条不是派给工人的卡：影子内核需要 lead 级设计，不要派给 dsh。
+
 ## 0. 派发与回收
 
 在 WSL 仓库根（`/home/kaua/projects/zzz-calculator`）执行，`CARD` 换成卡号：
@@ -346,6 +348,16 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
        - 汇总覆盖率，挑出 5 个最适合迁成纯 spec 的候选（方向 C 第 2 刀用）。
        - 适合派 dsh 只读并行（例如每人 15 个模块），lead 抽查。**不改 src**。
   - 维护约定：以后的交接段落插在这一条之上。**写「下一步」之前，先在 arch 卡表里 grep 核实那张卡的状态**，上轮就是没核实才写错的。
+- **第 117 轮（2026-09-27）**：CC-98 done（`docs/mcp-mechanic-dataization-census.md`，提交号见 arch 卡表）。用户在 `19c3a13` 新增了 **R4（方向 A 影子内核）**，已接单并置顶。
+  - **下一步（第 118 轮，直接开工 R4-A1）**，全部只读，产出设计稿 `docs/mcp-timeline-shadow-kernel.md`：
+    1. 读 `docs/REQUIREMENTS.md` R4 全文，以及 `docs/LONG-TERM-DIRECTIONS.md` 方向 A（第 22–52 行）。
+    2. 摸清现引擎的两条轨：喧响轨读 `src/core/resourceTrack.ts`（种子，约 100 行）和 `src/composables/resourceCalc/` 里的喧响、大招次数；失衡轨读失衡次数的两个来源（R3 称为「失衡次数双源」），用 `timeout 40 git grep -n 'stunCount\|dazeCount' -- src/core src/composables` 定位。另外读 `resourceCalc/roundThreads.ts`（CalcRoundThreads）。
+    3. 确定 3 支对账队伍：从轴模式已覆盖的队伍里选，用 `timeout 40 git grep -ln 'axis' -- src/**/__tests__` 找现有轴测试的队伍。
+    4. 设计稿写清：事件类型、两条轨的状态机、影子内核的输入（复用现引擎的 executions 还是自己从动作序列出发）、差异表的列、归因三分类（近似 / 现引擎伪影 / 新内核 bug），以及**性能原型的测法**（单队耗时，加 16 角色组合扫描的外推值）。
+    5. 第 2 步起才写代码：新建 `src/core/timeline/`，不接 UI，不被 src 既有代码 import（可考虑加一条守卫判据保证这一点），差异报告只在测试或脚本里产出。
+  - **硬约束（R4 原文）**：影子阶段零差，不改变任何现有输出；**用新内核替换现引擎、或任何全库数值变动，都必须回来找用户裁决**。
+  - **未决项**：R3 的两点用户仍未裁决（B 是否属于「实战归档不作误差判据」的范围；A 是否接受数值变动）。R4 已明确「切换须裁决」，影子阶段不受影响。
+  - **已知坑**：CC-99（方向 C 第 2 刀）被方向 A 第 3 刀阻塞，不要提前做 G1 或 G4；只有 G3 可以在空档期做。`.zc/perf/mc98.*` 不进 git。
 - **CC-14a ✅ 已完成 `285885b`（以下为历史派单记录，勿再派；CC-14b 至 CC-14e 也都已完成，见 arch 卡表）**。原文：CC-14a 前置门已于 2026-09-26 打开（lead 现场核实）：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。
