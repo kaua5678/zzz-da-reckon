@@ -2753,9 +2753,27 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 保真证明：新文件正文去掉 2 格缩进后，与原页面 1193–1282 行加 1295–1298 行 `diff`，唯一差异是有意改动的 @fact 锚点路径。没有做 R44 那种 DOM 指纹实测，理由：搬的只是 `<script setup>` 逻辑，模板和样式一字未动，顶层解构出的 ref 在模板里照常自动解包；另外 vue-tsc 与全量测试都已通过。
 - 通用函数 `agentNameOf` / `teamNames` / `goldDetail` 留在页面，因为别的区块也用。`sweepCandidates` / `sweepMaxDamage` 只在 composable 内部使用，照样返回，但页面不解构（noUnusedLocals）。
 - 顺手修的：页面注释原写散点几何在 `views/comparePage/scatterGeometry.ts`，该文件不存在，实际在 `composables/teamCompareScatter.ts`，已改正。
-- @fact `sweepPage:第三人候选圈定`：锚点改为 `src/composables/teamCompareSweep.ts#sweepCandidates`，「据」追加 `·复核@2026-09-27（CC-92 纯搬运，口径未变）`，zc drift 清零；`CALIBER_TRIGGER_ALLOWLIST` 里的登记路径同步修改。
+- 口径条目（fact）`sweepPage:第三人候选圈定`：锚点改为 `src/composables/teamCompareSweep.ts#sweepCandidates`，「据」追加 `·复核@2026-09-27（CC-92 纯搬运，口径未变）`，zc drift 清零；`CALIBER_TRIGGER_ALLOWLIST` 里的登记路径同步修改。
 - **踩坑**：`zc.test.ts` 的结构熵用例原先断言「真实仓库 overThreshold > 0」，等于把「仓库恰好有超标文件」当作检测器可用的证据；拆完后立刻假红（体温正常反而报病）。已改为临时目录夹具自证（3 个超标文件按行数降序，`__tests__` 被排除），仓库现状只验形状，允许为 0。**同类教训：自证要靠夹具，不能靠仓库里恰好存在的病灶。**
 - 验证：vue-tsc 0；check-guards 25；verify 339 files / 3713 tests EXIT 0（`/home/kaua/calc-arch/verify111b.log`；第一次 `verify111.log` 就是上面那个假红）。
 - **页面余量只剩 38 行**（1462 / 1500）。之后往 TeamComparePage 加功能，优先写成 `src/composables/teamCompare*.ts`，页面只做组装。
 - 回退：`git revert 50e313e`。
+
+### 5.100 CC-93 done：TeamBuffSpec.target 债务销号（lead-arena-0925c，2026-09-27 第 112 轮）
+
+**CC-93 `2299223`**（validate-specs.mjs、src/specs/types.ts、guard-registries.mjs；DEBT_REGISTRY 7→6）
+- **前提核实**：`core/inCombatBuffs.ts#collectInCombatTeamBuffs` 对角色队友 buff 一律用 `includeOwner: true` 收集，全程不读 `target`，所以 team 与 enemy 在运行时完全等效。拍板时的判断成立，不需要改引擎。
+- **裁决**（依据见 §5.99 与队列 CC-92 行）：保留字段，不做运行时分流，由 validate:specs 充当消费者。
+- **规则**：
+  - 每条 teamBuff 的 `target` 必须是 team / enemy / both 之一；
+  - effect 的 `stat` 以 `enemy` 加大写字母开头时，`target` 必须是 enemy 或 both；
+  - 反空洞：全库至少 1 条敌方侧字段被校验（实测 5 条）。
+- **可红性**：把 1401 `alice_c1_enemy_def_reduction` 的 target 临时改成 team，validate-specs 精确报红；改完 `cmp` 确认已原样还原。
+- 反方向不设规则：enemy 条目允许使用「等效全队拐力」字段（如薇薇安预言下异常伤害 +16% 记为 `anomalyDamageBonus`）。
+- 与 2026-09-25 用户裁决「登记挂账，不立即重构」不冲突：本卡不改引擎，只加校验、改注释。日后若真要让 team 与 enemy 走不同通道，入口写在 `types.ts` 该字段的注释里。
+- **顺手修复（上轮遗留）**：§5.99 有一行以「@fact `sweepPage…`」开头的散文，被 @fact 解析器当成 fact 声明并判为语法不合法，导致 check-guards 的 @fact 锚点判据 146/147 变红。原因是上一轮 verify 在文档提交**之前**跑，没发现。已把那一行改成「口径条目（fact）」。**两条教训**：
+  - ① docs 里的散文不要以 `@fact ` 开头（解析器会扫 docs/*.md）；
+  - ② 文档提交之后至少再跑一次 `node scripts/check-guards.mjs`。
+- 验证：validate:specs 1100 项；check-guards 25；verify 339 files / 3713 tests EXIT 0（`/home/kaua/calc-arch/verify112.log`）。
+- 回退：`git revert 2299223`（债务条目会随之恢复）。
 

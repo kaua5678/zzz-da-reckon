@@ -278,6 +278,20 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
     4. 从 DEBT_REGISTRY 删掉这一条。check-guards 里有 debt 注册表判据，**先 grep 这张表是否有计数或基线常量需要同步下调**。
   - 验收：validate:specs、check-guards、verify 全部通过。
   - 回退：单个提交，直接 revert。
+- **CC-93** done `2299223`（§5.100）：target 字段现在由 validate:specs 校验，债务已销号。**流程约定（新增）：文档提交之后至少再跑一次 `node scripts/check-guards.mjs`**，因为 docs 里以 `@fact ` 开头的散文会被解析成 fact 声明（上一轮因此遗留一次红灯）。
+- **下一张 CC-94：清理 `zc dead-channels` 的 LS 基线存量（12 条）**。
+  - 先跑 `ZC_LANE=lead-arena-0925c npm run -s zc -- dead-channels` 拿到清单。基线常量是 `DEAD_CHANNEL_LS_BASELINE`，位于 `scripts/lib/dead-channel-ls.mjs`。判据 14 另有 `DEAD_CHANNEL_ALLOWLIST`（在 `scripts/lib/dead-channel-scan.mjs`），可能也登记了同一批字段，要一并检查。
+  - **dead-both**（零读零写，例如 `CharacterOperationConfig` 里的 `claretMaimBurialMoveId` / `claretMaimBurialDamageMultiplier` / `claretSharpnessCost` / `roxyWindCannonMoveId` / `roxyWindEyeMoveId`，`catalog.ts` 里的 `agentSkillId` / `skillLevelBonuses`）：
+    - 逐条 `git grep -nw <字段>`，确认只命中声明行，以及基线和豁免表里的登记；
+    - 再看 `git log -S<字段> --oneline | tail -3`，弄清当初为什么加这个字段。
+    - 确认无用就删掉声明，同时删掉两张基线/豁免表里的条目。
+    - **`catalog.ts` 的字段如果对应 `public/static/catalog.json` 里真实存在的数据键，就不要删**（类型声明是在描述数据形状）。这种情况改为登记「数据形状字段」豁免，并写明理由。
+  - **dead-input**（例如 `pullPlannerEngine.ts` 的 `freePoolPerSpecialty`：读取时走 `?? 默认`，全仓调用方都不传）：
+    - 如果默认值就是现行口径，就删掉这个选项，把默认值内联；
+    - 如果是有意保留的扩展点，就留着，把基线里的理由改写清楚。
+    - 逐条写下裁决。
+  - 验收：`zc dead-channels` 报「新增 0 · 待核销 0」且基线条数下降；vue-tsc -b、check-guards、verify 全部通过。
+  - 回退：按字段族分几次提交（claret 族、roxy 族、catalog、dead-input），出问题各自 revert。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。
