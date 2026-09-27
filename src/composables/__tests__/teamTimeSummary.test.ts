@@ -6,7 +6,13 @@
  * 于是出现「卡说 166.9/180 快满了、角色条却只打了 86s」的自相矛盾（折叠残差抬高
  * necessaryTime，用户只能猜时间去了哪）。
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
+// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
+vi.mock('@/core/stunPlanProjection', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
+  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
+}))
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'

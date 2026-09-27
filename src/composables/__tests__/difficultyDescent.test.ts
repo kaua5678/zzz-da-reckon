@@ -12,7 +12,13 @@
  *  ④ 曲线跑完**不改用户配置**（合轴率/弹刀/轴复位到调用前）；
  *  ⑤ 成本 = 档数（一次计算一档，不试开-回滚）——用 onPoint 回调计数验证。
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
+// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
+vi.mock('@/core/stunPlanProjection', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
+  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
+}))
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { descendDifficultyCurve, defaultDescentLevers, summarizeDescent } from '@/composables/difficultyDescent'

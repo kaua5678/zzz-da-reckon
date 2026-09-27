@@ -7,7 +7,13 @@
  *   归因经反向验证：把 statModes.impact / anomalyMastery 与 31200 2pc 改回 flat，本文件全绿。
  * perf dump/rowsnap 覆盖不到，本测试是唯一判据。覆盖：蕾米在槽 0 / 槽 2 / 前导空槽 / 不在队。
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
+// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
+vi.mock('@/core/stunPlanProjection', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
+  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
+}))
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 

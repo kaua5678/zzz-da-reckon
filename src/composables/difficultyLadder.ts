@@ -21,6 +21,7 @@
  * 判据测试：`__tests__/difficultyLadder.test.ts`（单调性 / 负收益被丢弃 / 目标契约）。
  */
 import { useConfigStore } from '@/stores/config'
+import { DEFAULT_STUN_PLAN_PROJECTION_CODE } from '@/core/stunPlanProjection'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
@@ -82,7 +83,9 @@ export const DIFFICULTY_GOALS: DifficultyGoal[] = [
   },
   {
     id: 'G4', label: '取整（失衡→计数投影）', cost: 0, mutates: false,
-    apply: ctx => { ctx.config.setMechanicSetting('time.stunPlanProjection', 2) }, // 默认 round（实测优于 ceil）
+    // 缺省为 off 时施加 round（实测优于 ceil）；缺省为 physical（CC-144，第 172 轮）时施加缺省本身，
+    // 保证阶梯顶点 = 主结果口径（round 投影的是规划值，叠在 physical 之上是退步）。「全关」仍写死 0 = 旧口径基线。
+    apply: ctx => { ctx.config.setMechanicSetting('time.stunPlanProjection', DEFAULT_STUN_PLAN_PROJECTION_CODE === 0 ? 2 : DEFAULT_STUN_PLAN_PROJECTION_CODE) },
   },
   {
     /**

@@ -24,7 +24,13 @@
  * 对全库含琉音的轴预设，`账本预留 == 装配赠行`（单一口径；`timeLedgerInvariants` 的 TOL=0.05
  * 是宽松版，这里是零容差版），并钉住**闸门**——「轴没声明 promoteVariant 块时不许发明转大次数」。
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
+// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
+vi.mock('@/core/stunPlanProjection', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
+  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
+}))
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'

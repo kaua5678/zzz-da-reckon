@@ -27,7 +27,13 @@
  *  · ⚠ **「缺字段时不伪造」**：非本角色面板该字段恒 0 ⇒ 必须回落到 `enemy.stunVuln`，
  *    下面「无 1431 的队」一组用精确值钉住（若实现改成 `?? 1.5` 之类兜底，该组精确红）。
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
+// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
+vi.mock('@/core/stunPlanProjection', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
+  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
+}))
 import { setupHarness } from '@/test/harness'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { useResourceCalc } from '@/composables/useResourceCalc'

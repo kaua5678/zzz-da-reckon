@@ -6,7 +6,13 @@
  * （与部署 A/B 差分实验同构；异常行按 1，信用偏保守——异常行不逐行暴露易伤）。
  * 集成快照：雨果 0 命轴（hugo-c0-e 预设）冻结值来自 2026-09-10 修复坑36 后的引擎输出。
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
+// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
+vi.mock('@/core/stunPlanProjection', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
+  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
+}))
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { stunAxisPresets, cloneStunAxes } from '@/data/stunAxisPresets'
