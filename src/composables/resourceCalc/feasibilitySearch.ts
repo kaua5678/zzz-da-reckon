@@ -5,7 +5,7 @@
  * 降配要在「缩交互次数」的若干档里挑**最大可行**档
  * （保留最多交互）。这里只放**纯策略**，试算本身（`runOuterLoop`）由调用方经 `evaluate` 注入。
  *
- * @fact engine:降配搜索/非下闭可行集 口径: 候选 scale 必须**由大到小逐个试**、按**两层字典序**采纳：首个绝对可行（`feasible!==false`：净占用不超预算且截断≤容差）者优先（= 该网格上真装得下的最大档），无则回退首个相对档（`accepted` 但 `feasible===false`：三臂不比基线更差且截断≤1s），全不采纳 ⇒ null 保基线；不得改「先探最小档、失败即跳过」的成本闸门——实测可行集**非 scale 下闭**（全库进入枚举 21 队中 7 队「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行），该闸门前提为假、会漏掉更大档 | 据 实测@2026-09-13（受控：同配置只变候选集/顺序；单跑 vs 混跑逐位相同 ⇒ 非状态泄漏）+ 两层字典序 R32 债 2 刀 1@2026-09-18·复核@2026-09-25 | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#selectDownscaleScale | 信 确认
+ * @fact engine:降配搜索/非下闭可行集 口径: 候选 scale 必须**由大到小逐个试**、按**两层字典序**采纳：首个绝对可行（`feasible!==false`：净占用不超预算且截断≤容差）者优先（= 该网格上真装得下的最大档），无则回退首个相对档（`accepted` 但 `feasible===false`：三臂不比基线更差且截断≤1s），无相对档 ⇒ 第三层缓解档（截断最小，CC-143@2026-09-28）⇒ 仍无才 null 保基线；不得改「先探最小档、失败即跳过」的成本闸门——实测可行集**非 scale 下闭**（全库进入枚举 21 队中 7 队「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行），该闸门前提为假、会漏掉更大档 | 据 实测@2026-09-13（受控：同配置只变候选集/顺序；单跑 vs 混跑逐位相同 ⇒ 非状态泄漏）+ 两层字典序 R32 债 2 刀 1@2026-09-18·复核@2026-09-25 | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#selectDownscaleScale | 信 确认
  */
 
 /** 降配候选档（严格递减）。顺序即语义：由大到小，首个可行即最大可行。 */
@@ -21,6 +21,14 @@ export const DOWNSCALE_SCALES: readonly number[] = [0.875, 0.75, 0.625, 0.5, 0.3
 export interface DownscaleOutcome<T> {
   accepted: boolean
   feasible?: boolean
+  /**
+   * 第三层「缓解档」（CC-143，第 166 轮）：未通过 `accepted`（截断仍 > 容差），但三臂都不比基线更差、
+   * 且截断比基线**少一个容差以上**。只在前两层全部落空时采用，取 `reliefTruncation` **最小**者（并列取较大档）。
+   * 省略 = 旧行为（不参与）。
+   */
+  relief?: boolean
+  /** 缓解档的截断秒数（`relief` 为 true 时必填，用于第三层取最小） */
+  reliefTruncation?: number
   value: T
 }
 
@@ -28,7 +36,8 @@ export interface DownscaleOutcome<T> {
  * 按传入顺序（调用方保证由大到小）选档，**两层字典序**：
  *   1. 首个 `feasible`（绝对可行）者立即采纳 = 该网格上**真装得下的最大档**；
  *   2. 无人绝对可行 ⇒ 退回首个 `accepted`（相对更好）者 = 旧语义；
- *   3. 全部不采纳 ⇒ `null`（保基线态）。
+ *   3. 无相对档 ⇒ 第三层「缓解档」（CC-143：三臂不劣、截断比基线少一个容差以上、外层 stable）中**截断最小**者；
+ *   4. 仍无 ⇒ `null`（保基线态）。
  *
  * 为什么要两层（R32 债 2 刀 1 暴露，2026-09-18）：旧单层「首个 accepted 即停」把**相对**验收当成了终点——
  * `yixuan-roxy-lucia` 在 scale=0.875 上「比基线好」（超预算 3.78→1.74s、截断 10.7→0.9s）就被采纳，
@@ -46,14 +55,28 @@ export function selectDownscaleScale<T>(
   evaluate: (scale: number) => DownscaleOutcome<T>,
 ): { scale: number; value: T } | null {
   let fallback: { scale: number; value: T } | null = null
+  let reliefFallback: { scale: number; value: T; truncation: number } | null = null
   for (const scale of scales) {
     const outcome = evaluate(scale)
-    if (!outcome.accepted) continue
+    if (!outcome.accepted) {
+      if (outcome.relief === true) {
+        const t = outcome.reliefTruncation ?? Infinity
+        // 严格小于才替换 ⇒ 并列时保留先遇到的（较大档，保留更多交互）
+        if (reliefFallback == null || t < reliefFallback.truncation) reliefFallback = { scale, value: outcome.value, truncation: t }
+      }
+      continue
+    }
     // 旧单层语义（feasible 未声明）或绝对可行：首个命中即最大档
     if (outcome.feasible !== false) return { scale, value: outcome.value }
     if (fallback == null) fallback = { scale, value: outcome.value }
   }
-  return fallback
+  // 第三层（CC-143）：全档截断都 > 容差时，旧语义「null ⇒ 保基线」会留下**满交互 + 最大截断**
+  // （实测 physical `auto-1431-1481-1491` 保基线截断 94.6s，而 0.125 档三臂不劣、截断 19.0s）。
+  // 「交互只取达成目标的最少要求」+「必须溢出才能达成目标，就不会强行往上加交互次数」⇒ 截断更少的档优先于基线。
+  // 取**截断最小**而不是「首个」：首个缓解档往往只砍掉一点交互（实测 0.875 档 94.6→61.6s），截断主体仍在。
+  // 这与 R32 否决的「最小截断优先」不冲突——那是**首选**策略（会压过真可行的大档）；这里只是全档不可行时的兜底。
+  if (fallback) return fallback
+  return reliefFallback ? { scale: reliefFallback.scale, value: reliefFallback.value } : null
 }
 
 /**

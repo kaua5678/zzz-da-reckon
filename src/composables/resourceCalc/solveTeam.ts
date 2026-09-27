@@ -371,7 +371,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         // （= 真装进 180s 的最大 scale、保留最多交互）；无绝对可行档 ⇒ 退回首个「三臂不比基线更差且
         // 截断 ≤1s」的相对档（第四版，2026-09-18 R32：相对臂降为兜底——旧版把「比基线好」当终点，
         // yixuan-roxy-lucia 在 0.875 档超预算 1.74s 就停了，真可行的 0.625 档试不到）；
-        // **无人满足 ⇒ 不动**（保基线态、截断如实上报 → 逐模块退化）。
+        // 无相对档 ⇒ 第三层「缓解档」（CC-143，2026-09-28：三臂不劣 + 截断比基线少 >1s + 外层 stable，取截断最小；
+        // 否则会留下「满交互 + 最大截断」，与「交互只取最少要求」相反）；**仍无人满足 ⇒ 不动**（保基线态、截断如实上报）。
         // **策略的单一事实源 = `resourceCalc/feasibilitySearch.ts`**（纯函数 + 回归测试；判据⑤的`@fact`在那里）。
         // **否决记录（2026-09-13 复现定性）**：曾试过「先用最小候选探一次、失败即跳过扫描」的成本闸门，实测改结果。
         // **根因不是"试算不纯/状态泄漏"**——受控实验证明每个 scale 的试算结果与它前面跑过哪些试算**无关**
@@ -412,7 +413,11 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
             stunEffTime,
             toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,
           })
-          return { accepted, feasible, value: { ...trial, scale } }
+          // CC-143 第三层「缓解档」：截断仍 > 容差（未 accepted），但三臂不劣且截断比基线少一个容差以上
+          // 另要求该档外层 stable：cycle 停点是环内选点（路径依赖），兜底档不拿它（实测不加此条 cycle 2→4）
+          const relief = !accepted && trial.outerExit === 'stable' && acceptsTrial(trial)
+            && trialTruncation < baseTruncation - TIME_BUDGET_TOLERANCE_SECONDS
+          return { accepted, feasible, relief, reliefTruncation: trialTruncation, value: { ...trial, scale } }
         })
         if (best) {
           r = best.value
