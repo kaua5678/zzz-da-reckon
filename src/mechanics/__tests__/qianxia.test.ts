@@ -113,6 +113,13 @@ describe('千夏影画拐力（teammate-buffs 按命座门控）', () => {
     expect(p0.critRate).toBeCloseTo(10)
     expect(p0.critDmg).toBeCloseTo(50)
   })
+
+  it('CC-124：影画6 暴伤按「初始攻击力」= 局外面板（局内 4000 / 局外 3000 → +90，不是 +105）', () => {
+    const panel: any = { atk: 4000, critRate: 10, critDmg: 50 }
+    const outOfCombatPanel: any = { atk: 3000 }
+    qianxiaMechanic.applyPanel!({ cinemaLevel: 6, panel, outOfCombatPanel, settings: { 'qianxia.c6FocusCoverage': 1 } } as any)
+    expect(panel.critDmg).toBeCloseTo(50 + 90)
+  })
 })
 
 describe('千夏猫的凝视触发与磨爪器（2026-08-31 建模）', () => {
