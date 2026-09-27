@@ -231,14 +231,28 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       })
     }
 
+    // 异放限定修正的来源：本角色模块（scope 缺省 self）+ 在场声明 `releaseModifierScope: 'team'` 的其他模块（CC-121）
+    const teamReleaseModules = [...new Set(configStore.team.map(c => (c?.agentId ? getAgentMechanic(c.agentId) : undefined)))]
+      .filter(m => m?.releaseModifier && m.releaseModifierScope === 'team')
+    function resolveReleaseModifier(agentId: string): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
+      const own = getAgentMechanic(agentId)
+      const sources = own?.releaseModifier ? [own, ...teamReleaseModules.filter(m => m !== own)] : teamReleaseModules
+      const acc = { enemyResReduction: 0, enemyDefReduction: 0, note: '' }
+      for (const m of sources) {
+        const r = m!.releaseModifier!({ panels: damagePanels })
+        acc.enemyResReduction += r.enemyResReduction
+        acc.enemyDefReduction += r.enemyDefReduction ?? 0
+        acc.note += r.note
+      }
+      return acc
+    }
     function pushRelease(row: { id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues; releaseCrit?: AnomalyEventExecution['releaseCrit']; stunnedOverride?: number }) {
       if (row.count <= 0 || row.multiplier <= 0) return
       const basePanel = row.panel ?? panelAt(damagePanels, row.slot)
       const settlementPanel = row.settlementPanel ?? basePanel
       if (!basePanel) return
       const element = row.element ?? 'wind'
-      const releaseMod = getAgentMechanic(row.agentId)?.releaseModifier?.({ panels: damagePanels })
-        ?? { enemyResReduction: 0, note: '' }
+      const releaseMod = resolveReleaseModifier(row.agentId)
       // 异放专属暴击（如爱芮影画1）：掌控超过阈值后每点额外加暴击率
       const critOverride = row.releaseCrit
         ? {

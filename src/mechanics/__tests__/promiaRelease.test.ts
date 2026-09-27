@@ -34,6 +34,21 @@ describe('普罗米娅（1541）绝裁异放', () => {
   })
 })
 
+describe('普罗米娅 有罪推定·全队异放无视防御（CC-121，releaseModifierScope=team）', () => {
+  it('队友（薇薇安）的异放行同样吃到有罪推定减防；无普罗米娅时没有', async () => {
+    const releaseNotes = (agentId: string) => useResourceCalc().damagePoolRows.value
+      .filter(r => r.type === '异放' && r.agentId === agentId).map(r => r.note ?? '')
+    await setupHarness([{ agentId: '1541' }, { agentId: '1331' }, { agentId: '1581' }])
+    const withPromia = releaseNotes('1331')
+    expect(withPromia.length).toBeGreaterThan(0)
+    expect(withPromia.every(n => n.includes('有罪推定'))).toBe(true)
+    await setupHarness([{ agentId: '1221' }, { agentId: '1331' }, { agentId: '1581' }])
+    const without = releaseNotes('1331')
+    expect(without.length).toBeGreaterThan(0)
+    expect(without.some(n => n.includes('有罪推定'))).toBe(false)
+  })
+})
+
 describe('普罗米娅 饮冰·全队异放增伤（formula 型 teamBuff）', () => {
   it('队友面板读取 anomalyReleaseDmgBonus = 0.35×max(0, 掌控-150)', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1541' }, { agentId: '1371' }])

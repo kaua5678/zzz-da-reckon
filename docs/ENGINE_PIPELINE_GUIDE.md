@@ -82,7 +82,7 @@ CD 上限（耀嘉音 C2/C6、柏妮思 C6 等，主源是事件/资源，封顶
 | `buildResourceResult` | buildExecutions 之后 | specResources/专属展示数据 | — |
 | `buildAnomalyEvents` | 异常事件计划构建时 | push 专属异常事件 | — |
 | `resolveExecutionDamage` | 直伤行结算时 | 覆盖该行的元素/来源/note（返回 null 走通用规则） | — |
-| `releaseModifier` | 异放/乱流释放伤害 | 减抗修正 | — |
+| `releaseModifier` | 异放/乱流释放伤害 | 减抗/减防修正；作用域由 `releaseModifierScope` 声明（缺省 `self` = 只作用于本角色的异放行；`team` = 全队异放行，多来源相加，CC-121） | — |
 | `transformAnomalyPool` | 异常池 perElement 汇总前 | 向 elementMap 注入积蓄贡献（风蚀等） | — |
 | `crossAgentSupply`（**声明式，非函数**） | 引擎**内层热循环/折叠环每个 pass**按 `kind` 查询 | 声明「我向队友送什么、送多少、送给谁、占多少秒、附带多少喧响」：`supply()` / `targetSlot()` / `secondsPerUnit()` / `decibelPerUnit()` / `axisSuppressed`。引擎侧 `crossAgentSupplyAt`/`crossAgentSuppliesOf`（`core/resource/crossAgentSupply.ts`）执行，**全程不含角色 id** | — （纯数据入参，见 `CrossAgentSupplyInput`） |
 | `resourceSections` | 展示 | 资源卡片（资源利用率页） | cfg（只读 result） |

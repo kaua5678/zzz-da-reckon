@@ -95,6 +95,18 @@ G1 的改动最小：去掉 `hasResources` 门，并允许事件的 count 来自
 
 ## 6. 下一刀（CC-99，可以直接开工）
 
+> **【第 148 轮评估结论：CC-99 按原范围不做】**（lead-arena-0925c，2026-09-27；REQUIREMENTS R4 段要求的「重新评估是否还做」）
+>
+> - **G3（命座透传）实测**：`src/mechanics/agents` 中有 61 处 `xxxCinemaLevel = cinemaLevel`，涉及 56 个键。逐键核对写入方和读取方（含 `setRecord` / `cfgNum` 字符串形式）：**没有发现真 bug**。
+>   - 安东 `antonCinemaLevel` 经 `setRecord` 写入，是正则误报；
+>   - `billyCinemaLevel` 被 `billy.ts` 与 `starlightBilly.ts` 共用，但 cfg 按槽位各一份，各读各的，不串；
+>   - 编排层和 core 里出现的键名只在注释或类型声明里，没有越层读取；
+>   - 唯一问题：`rina.ts:191` 的 `rinaCinemaLevel` 只写不读（死写，无害，留给以后顺手删）。
+>   - phoenix / promia / vivian 另把命座写进 panel 供 `releaseModifier` 读（`ReleaseModifierInput` 只有 panels）。这是已知的走私形状，但目前能用；以后如果给 `ReleaseModifierInput` 加 `team` / 命座，可以一起收掉。
+> - **结论**：统一 G3 要改 56 个模块，零差，收益只是「少一行」，属于 R6 禁止的「只为降计数」。G1 和潘引壶迁移同理：为 85 行的模块给解释器加原语（G1 要去掉 `hasResources` 门，会波及所有纯 spec 角色的路径），逻辑正确性没有收益。**不做。**
+> - **重开条件**：新角色录入时，如果能靠 G1 / G3 做到纯 spec（不写模块），那时收益是真实的，再按本节原方案做。
+> - **评估中的副产物**：发现并修复了普罗米娅有罪推定全队异放减防只对她自己生效的问题（CC-121，改数值，见卡表）。
+
 - **内容**：实现 G1（spec 无资源事件行）+ G3（命座门统一透传），把**潘引壶**迁到「spec + 最薄的 G4 胶水」。
 - **验收**：`.zc/perf/zd.sh` 零差（基线取自 HEAD，改动保持未提交时跑）；`npm run verify` 全绿；
   潘引壶模块的过程类钩子少于 3 个。

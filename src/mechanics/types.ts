@@ -746,6 +746,13 @@ export interface AgentMechanicModule {
   anomalyBuildupElement?: string
   /** 异放/乱流释放类伤害的减抗/减防修正（异放限定，不作用于普通直伤） */
   releaseModifier?(input: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string }
+  /**
+   * `releaseModifier` 的作用域（CC-121，2026-09-27）：
+   * - `'self'`（缺省）：只作用于**本角色**的异放行（派发键 = 异放行的 agentId）；
+   * - `'team'`：作用于**全队任一角色**的异放行（原文「全队角色……造成[异放]时无视 X% 防御」，如普罗米娅有罪推定 / 影画1）。
+   * 多个来源的修正相加（与面板 enemyDefReduction 同为加算）。编排层按在场模块的声明汇总，不按 agentId 分支。
+   */
+  releaseModifierScope?: 'self' | 'team'
   /** 生成资源池卡片上的通用专属资源展示段 */
   resourceSections?(input: AgentResourceSectionsInput): SpecialResourceSection[]
   /** 声明可在资源利用率页调整的机制参数 */

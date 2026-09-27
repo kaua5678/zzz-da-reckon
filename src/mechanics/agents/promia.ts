@@ -10,12 +10,13 @@
  *   模块只做展示，展示值经同一 effect 执行（CC-119，常数只在 spec）。
  * - 额外能力饮冰：其他异常/支援队友激活；发动强化特殊技时冰异常积蓄效率+30%（30秒窗口
  *   按整局常驻近似，计入通用 anomalyBuildUpEfficiency，普罗米娅仅积蓄冰异常）；
- *   有罪推定全队异放无视40%防御按自身 enemyDefReduction+40 近似（沿用旧 guilty 模块口径）。
+ *   有罪推定「全队角色对有罪推定敌人造成异放时无视40%防御」走 releaseModifier，作用域 team（CC-121：
+ *   此前按异放行 agentId 派发，只有普罗米娅自己的异放吃到，队友异放漏算）。有罪推定状态按常驻近似（额外能力激活即生效）。
  *
  * 明确未建模（异常结算区/状态机，calcAnomalyDamage 已内置精通乘区，直接叠加会重复计入精通）：
  * - 核心被动异放：处刑式·绝裁终结一击命中异常敌人触发异放，固定结算635%倍率对应属性异常伤害、
  *   消耗1点霜刑；寒蚀值积累（冻结/紊乱/乱流/强特/队友异放回复）与霜刑转化（50寒蚀→1霜刑）逐时序。
- * - 额外能力霜寒持续+3秒（全队/敌方状态）；有罪推定为全队异放限定，这里近似为自身全伤害减防。
+ * - 额外能力霜寒持续+3秒（全队/敌方状态）。
  * - 影画1 有罪推定额外无视20%防御、影画4 异放回寒蚀值、影画6 特殊异放200%与无视15%全抗。
  */
 import type {
@@ -160,7 +161,7 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
   }
 }
 
-/** 异放限定减防（有罪推定 40% + 影画1 20%）：releaseModifier 只作用于异放结算，不作用于普通直伤/异常。 */
+/** 异放限定减防（有罪推定 40% + 影画1 20%，原文均为「全队角色」）：只作用于异放结算；作用域 team（全队异放行，CC-121）。 */
 function promiaReleaseModifier({ panels }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
   const promia = panels.find(p => (p as Record<string, unknown>).promiaCinemaLevel !== undefined)
   if (!promia) return { enemyResReduction: 0, note: '' }
@@ -188,7 +189,7 @@ function buildPromiaResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '影画2精通', value: `+${cycle.c2Proficiency}`, detail: '信念飘摇' },
       { label: '全队异放增伤', value: `+${cycle.teamReleaseDmg}%`, detail: '全队向，经 spec teamBuff 写入每个队员的异放增伤' },
       { label: '冰异常积蓄效率', value: `+${cycle.additionalBuildUpEff}%`, detail: cycle.additionalActive ? '额外能力已激活' : '未激活' },
-      { label: '有罪推定无视防御', value: `+${cycle.guiltyDefIgnore}%`, detail: '全队异放限定，近似为自身减防' },
+      { label: '有罪推定无视防御', value: `+${cycle.guiltyDefIgnore}%`, detail: '全队异放限定（队友异放同样生效）' },
     ],
     footer: cycle.note,
   }]
@@ -434,6 +435,7 @@ export const promiaMechanic: AgentMechanicModule = {
   buildResourceResult: buildPromiaResourceResult,
   resourceSections: buildPromiaResourceSections,
   releaseModifier: promiaReleaseModifier,
+  releaseModifierScope: 'team',
   nextRoundFeedback: promiaNextRoundFeedback,
   settings: [
     {

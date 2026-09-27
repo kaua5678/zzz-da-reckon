@@ -174,7 +174,7 @@ L3 是当前唯一必须人肉的部分，也是未来自动化收益最高的�
 | 面板 | 谁提供 | 供哪些区 |
 |---|---|---|
 | **基础者**（`row.panel`） | dominant 元素 = 该元素异常的**主施加者**（`getMainApplierSlot`）；固定元素事件缺省 = 施放者自己 | 基础伤害 atk×倍率、通用增伤+元素伤、异常精通区、穿透 |
-| **结算者**（`settlementPanel`） | 触发异放的角色自己 | 敌方减益（防御/抗性，含 `releaseModifier` 异放限定如薇薇安C2无视15%全抗）、易伤、失衡易伤、异常增伤、异放增伤（anomalyReleaseDmgBonus）、异常暴击（或 releaseCrit override） |
+| **结算者**（`settlementPanel`） | 触发异放的角色自己 | 敌方减益（防御/抗性，含 `releaseModifier` 异放限定如薇薇安C2无视15%全抗；原文写「全队角色……造成异放时」的，模块声明 `releaseModifierScope: 'team'`，队友异放行也会叠加，如普罗米娅有罪推定，CC-121）、易伤、失衡易伤、异常增伤、异放增伤（anomalyReleaseDmgBonus）、异常暴击（或 releaseCrit override） |
 
 Type B 比例式（releaseRatio.basis=掌控/精通）的基数取**施放者自己**的面板字段（爱芮掌控/薇薇安精通，与各自文本一致）；「基础属性取主施加者」只指伤害公式的基底区。
 
