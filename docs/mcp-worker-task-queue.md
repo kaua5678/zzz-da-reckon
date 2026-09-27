@@ -69,6 +69,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 171 轮（2026-09-28，代码 `f848f72c`（CC-146）+ 文档「docs: round 171」；上一轮 = c5267bac）
+- 做到哪：CC-146 修复。`src/core/resource/foldLoop.ts` 规则 ②′（pass0 注入种子一律弃用）；`seedInvariance.test.ts` 活性自检反转为 `=== 0`；`src/core/resource.ts` 的 `@fact engine:收敛环停点规范化` 更新口径。off 下 zd `cc146e` 全库 DIFF 0，全量 verify 绿。缺省 4 下 seedInvariance 转绿。
+- 过程：先试估时插值 A′（sigrid.ts），zd 5 队变化、外层 cycle 3→6、1161-1311/c6 −6.7%，否决，未提交。插桩发现真正根因是共存吸引子（§12.2）。
+- 下一步（直接开工）：**重做 CC-144**。把 `src/core/stunPlanProjection.ts` 的 `DEFAULT_STUN_PLAN_PROJECTION_CODE` 临时改为 4 跑全量，对照 `docs/mcp-stun-dual-source.md` §9 的红清单；CC-145、CC-146 都已修，预期 A 类不变量里 seedInvariance 已绿，仍需看 outerCycleColdStart（第 169 轮 4 条）和 liuyinAxisGiftSameSource（1 条）。
+- 未决：CC-147（删死掉的热启动通道）；§8.4 两项；CC-27；副词条优化器接收槽过滤；洛克茜 energyRegen。
+- 已知坑：
+  - 探针测试放在 WSL `/home/kaua/calc-arch/s170/`（zzS170c.test.ts、zzV171.test.ts），不要留在 src/；
+  - 插桩脚本 instr171*.py 只在临时副本上用，已 `git checkout` 还原；
+  - 恢复热启动必须先证明 clean 落点与冷落点一致（§12.3）。
+
 ### 第 170 轮（2026-09-28，只提交文档「docs: round 170」，无代码；上一轮 = 6d2984ce / 6e85b26f）
 
 - **做到哪**：CC-146 根因已定位，写在 `docs/mcp-stun-dual-source.md` §11。本轮没有改代码：插桩已 `git checkout` 还原，临时测试已移到 WSL `/home/kaua/calc-arch/s170/`。
