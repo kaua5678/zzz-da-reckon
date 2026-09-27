@@ -2146,6 +2146,37 @@ ImpactChart.vue 的改动：
   - 依据：两条 lane 的 UI 差异（文案、6 命满覆盖、窗口 8s/15s、层数）大，全面数据化收益低；只把「谁拥有这条 lane」交给模块，消掉最后两个 agentId 字面量即可。
 - 测试：全角色 × 若干队伍（般岳/仪玄在 0/1/2 槽、都不在），`teamAxisWindowLaneSlot` == 原 findIndex；页面源码不含 `=== '1471'` / `=== '1371'`；反向变异删声明。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁（§5.64）。
+### 5.68 CC-62 done：StunAxisPage 专属窗口 lane 拥有者 → 模块声明 axisWindowLane（lead-arena-0925c，2026-09-27 第 81 轮）
+
+**提交**：`737b2c4`，改动 6 个文件（按 §5.67 拍板方案）：
+- `src/mechanics/types.ts`：`AgentMechanicModule` 新增可选 `axisWindowLane?: 'mingwang' | 'ningshen'`，**展示层专用，不参与计算**。只声明「谁拥有这条 lane」；banner 文案、6 命满覆盖、窗口 8s/15s、lane 位置仍由页面按种类渲染（属 UI）。
+- `src/mechanics/agents/banyue.ts`：`axisWindowLane: 'mingwang'`（紧跟 axisRageCombos）；`src/mechanics/agents/yixuan.ts`：`axisWindowLane: 'ningshen'`（紧挨 axisEditorBlockMarks 之前）。
+- `src/composables/agentMechanicView.ts`：门面 `teamAxisWindowLaneSlot(team, kind)`，第一个声明该种类的槽位，无 ⇒ -1；类型 `AxisWindowLaneKind`。
+- `src/views/StunAxisPage.vue`：:297 `banyueSlot` / :313 `yixuanSlot` 改走门面，变量名保留（下游 20 处引用不动）。顺带把 CC-48 的一行注释从「原为 `c.agentId === '1471' && …`」改写为文字描述，免得源码锁误报。
+- 新测试 `src/composables/__tests__/agentMechanicViewCc62.test.ts`（3 条）：catalog 全角色放在 0 / 2 槽 × 两种 lane，槽位 == 原 findIndex（命中恰 4）；混合队伍（含 null 空槽）逐值相等；页面源码不含 `=== '1471'` / `=== '1371'`。
+
+回退：`git revert 737b2c4`。
+
+**踩坑**：改动脚本初版断言「页面不含 `=== '1471'`」时被 CC-48 的**注释**命中而中止（未写盘）——同 CC-55 的坑：源码锁断言会扫注释，写注释时别抄原判断字面量。
+
+**验证**：24 条守卫、check-tokens、vue-tsc 均 0；新单测 3 条全过；反向变异（删 yixuan.ts 的 axisWindowLane 行）→ 变红，已恢复 cmp 一致。`npm run verify` 通过：316 files / 3655 tests，24 guards（`/home/kaua/calc-arch/verify62.log`）。
+
+**StunAxisPage 收尾状态**：`=== '<agentId>'` 形式已清零。剩余：:264/266 伊德海莉章节（some/find 1051）、:268 有琉标签（some 1481）→ CC-60（低优先级，预设数据自带档位标签）；寒冰触手 1051024、1371_c1_lightning 招式 id → 低优先级。**StunAxisPage 系列到此收口**，下一张转向编排层。
+
+**全仓展示层 / 编排层剩余写死普查（本轮 grep，排除注释与 __tests__）**
+| 位置 | 性质 | 优先级 |
+|---|---|---|
+| `src/composables/resourceCalc/roundInputs.ts:308/:317` `expandExecutedToCounts` 平A兜底：`fillerAgentId === '1051'`（伊德海莉→下砸 1051007 + 平A 1051003 循环）/ `'1041'`（11号→火力镇压 1041008，查不到时 1.828s） | **编排层**角色分支（违反「编排层不写角色分支」精神，且会影响计算） | **最高 → CC-63** |
+| `src/stores/config.ts:125/126`（蕾米埃尔 1581 / 薇薇安 1331 平A时间 0）、`:388`（蕾米埃尔 find）、`:448`（1351 pulchra 6 命陷阱追击） | store 层默认值 / buff 特判 | 中 → CC-64（先读再定，可能是 `defaultBasicAttackTime` 类声明） |
+| `src/views/TeamConfigPage.vue` 13 处（:186 般岳弹刀提示、:212 1531 格挡文案、:223/236 佩洛 1551、:249/262 般岳、:275 普罗米娅 1541、:288-342 仪玄 ×5、:1025 teamHasBanyue） | 角色专属设置表单项 | 中；方向：模块已有 `mechanicSettings`（CC-47 teamMechanicSettings），先查这些表单项能否并入 |
+| `src/components/ResourceResultCard.vue:748` 维琳娜 1561 | 展示补丁 | 低（§5.64） |
+
+**下一步（CC-63，可直接开工）**
+1. 读 `roundInputs.ts` :280–:330（`expandExecutedToCounts`，basicFillBySlot 循环），再读伊德海莉（`src/mechanics/agents/` 下 grep `1051007`）与 11号（grep `1041008`）模块，确认模块文件名。
+2. 方案：`AgentMechanicModule` 加钩子 `expandBasicFill?(input: { fillSec: number; actionTimeOf: (moveId: string) => number | undefined }): ReadonlyArray<{ moveId: string; count: number }>`（**计算相关**，不是展示层）；`actionTimeOf` 返回 undefined 表示技能表查不到（11号的 `?? 1.828` 兜底依赖这个区分，伊德海莉用 `?? 0`）。编排层改成 `const ex = getAgentMechanic(fillerAgentId)?.expandBasicFill?.({…}); if (ex) for (const e of ex) add(slot, e.moveId, e.count); else add(slot, 'basic', fillSec)`。**两个角色的算式逐字搬进模块**（1 + slam + follow 的 loopTime、`loopTime > 0 ?` 守卫、`repT > 0 ?` 守卫都要保留）。
+3. 这是**计算路径**改动，必须做 perf 零差：改前改后各跑 `PERF_KEY_ALIAS=1 PERF_OUT=<out> npx vitest run --config .zc/perf/vitest.perf.config.ts dump`，`node /home/kaua/calc-arch/cls41.mjs a b` 应 DIFF 0；另写单测直调 `createConvergenceRoundInputs().expandExecutedToCounts`（或等价入口）对照原算式，伊德海莉 / 11号 / 普通角色各一；反向变异删钩子。
+4. 注意守卫：composables 不能按值 import mechanics/agents（经 `getAgentMechanic`，文件里已在用）；check-guards 若有 agentId 棘轮计数，清掉 2 处后可能需要把基线下调（看 check-guards 输出）。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）。
 ## 附录：普查脚本 census.sh
 
 ```bash
