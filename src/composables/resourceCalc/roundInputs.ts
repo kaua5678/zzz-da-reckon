@@ -111,7 +111,7 @@ export function createConvergenceRoundInputs(deps: {
   })
 
   /** 构建积蓄池（参数化 stunCoverage + 异常 execs） */
-  function calcAnomalyPoolInput(stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number) {
+  function calcAnomalyPoolInput(stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number) {
     if (execs.length === 0) return null
     const wind = windInfo.value; const setup = anomalyPoolSetupInfo.value
     const giftedPolarAssault = giftedPolarAssaultOverride ?? 0
@@ -127,8 +127,9 @@ export function createConvergenceRoundInputs(deps: {
       cinema2CorrosionRate: configStore.getMechanicSetting('velina.cinema2CorrosionRate', 2 / 3),
       globalAnomalyMultiplier: globalAnomalyMultiplier.value,
       coweringConfig: setup?.coweringConfig,
-      giftedTriggerCounts: setup && giftedPolarAssault > 0 ? { 'physical_polar_assault': giftedPolarAssault } : undefined,
-      giftedTriggerSlot: setup?.slot,
+      // CC-78：赠送注入不再要求 anomalyPoolSetup 声明者（原 `setup &&`）；槽位 setup 优先，否则第一个有赠送的槽（giftedPolarAssault.ts 头注释）
+      giftedTriggerCounts: giftedPolarAssault > 0 ? { 'physical_polar_assault': giftedPolarAssault } : undefined,
+      giftedTriggerSlot: setup?.slot ?? giftedSlotFallback,
       agentMechanics: getRegisteredAgentMechanics(),
     })
   }

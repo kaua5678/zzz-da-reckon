@@ -15,10 +15,9 @@ let patched: { m: AgentMechanicModule; orig: Hook } | undefined
 afterEach(() => { if (patched) patched.m.giftedPolarAssaultCount = patched.orig; patched = undefined })
 
 describe('CC-75 giftedPolarAssaultCount 求和口径', () => {
-  it('现唯一声明者 = 爱丽丝 1401，且它同时声明 anomalyPoolSetup（见 giftedPolarAssault.ts 已知耦合）', () => {
+  it('现唯一声明者 = 爱丽丝 1401（CC-78 起不再要求同时声明 anomalyPoolSetup）', () => {
     const owners = getRegisteredAgentMechanics().filter(m => !!m.giftedPolarAssaultCount)
     expect(owners.flatMap(m => m.agentIds)).toEqual(['1401'])
-    expect(owners.every(m => !!m.anomalyPoolSetup)).toBe(true)
   })
 
   it('单角色 == 原表达式；空槽 / 无能力 ⇒ 0', () => {

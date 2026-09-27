@@ -6,9 +6,10 @@
  * 同角色多槽在 UI 层被过滤（stores/config.ts「队伍中已选的角色 ID（用于过滤重复选择）」），真出现时也按求和
  * （两位角色各自的星芒圆舞曲 #3 是两次独立触发）。
  *
- * ⚠ 已知耦合：注入异常池时 `roundInputs.ts#calcAnomalyPoolInput` 还要求本队有 `anomalyPoolSetup` 声明者
- * （`giftedTriggerCounts: setup && gifted > 0 ? … : undefined`）。现唯一提供方爱丽丝同时声明两者，无影响；
- * 若日后新增只声明 `giftedPolarAssaultCount` 的角色，它的赠送会被静默丢弃——届时去掉 `setup &&`（并跑 perf 零差）。
+ * 归属槽位（CC-78 解耦）：`roundInputs.ts#calcAnomalyPoolInput` 原要求本队有 `anomalyPoolSetup` 声明者才注入赠送，
+ * 槽位也取 setup.slot；现注入不再看 setup，槽位 = `setup?.slot ?? firstGiftedPolarAssaultSlot(...)`。
+ * 爱丽丝在队时 setup 恒存在（alice.ts applyTeamConfig 无条件置 `cfg.aliceEnabled = true`）且 slot 就是她 ⇒ 逐值不变；
+ * 多提供方时赠送次数求和、全部记在 setup 槽（无 setup 时记在第一个有赠送的槽）——按槽细分属日后功能，届时改 giftedTriggerCounts 结构。
  */
 import type { CharacterResourceResult } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics'
@@ -21,4 +22,9 @@ export function giftedPolarAssaultOf(c: CharacterResourceResult): number {
 /** 全队求和（注入异常池 `giftedTriggerCounts['physical_polar_assault']` 的值）。 */
 export function sumGiftedPolarAssault(chars: readonly CharacterResourceResult[]): number {
   return chars.reduce((sum, c) => sum + giftedPolarAssaultOf(c), 0)
+}
+
+/** 第一个本轮赠送次数 > 0 的角色槽位；无 ⇒ undefined（CC-78：无 anomalyPoolSetup 声明者时的赠送归属槽）。 */
+export function firstGiftedPolarAssaultSlot(chars: readonly CharacterResourceResult[]): number | undefined {
+  return chars.find(c => giftedPolarAssaultOf(c) > 0)?.slot
 }

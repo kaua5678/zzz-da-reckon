@@ -10,7 +10,7 @@ import type { StunSkillExecution } from '@/core/stunPool'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { getAgentMechanic } from '@/mechanics'
-import { sumGiftedPolarAssault } from './giftedPolarAssault'
+import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById } from './skillRows'
@@ -90,7 +90,7 @@ export function createRunCalcRound(deps: {
   buildStackAxes: (axes: StunAxis[]) => { actions: import('@/core/stunAxisStack').StackActionCost[]; count?: number; basicFillerSlot?: number }[]
   expandExecutedToCounts: (executed: Record<string, { slot: number; moveId: string; count: number }>, basicFillBySlot: Record<number, number>) => Record<string, { slot: number; moveId: string; count: number }>
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
-  calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number) => AnomalyPoolResult | null
+  calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number) => AnomalyPoolResult | null
   extractAnomalyExecsFrom: (res: TeamResourceResult, skipGift?: boolean) => AnomalySkillExecution[]
   extractStunExecsFrom: (res: TeamResourceResult, skipGift?: boolean) => StunSkillExecution[]
   autoActive: { value: boolean }
@@ -802,7 +802,9 @@ export function createRunCalcRound(deps: {
     // 本轮极性强击赠送次数：读本轮 rr 而非异常池 setup（循环依赖，见 calcAnomalyPoolInput）。
     // CC-38b：模块能力 `giftedPolarAssaultCount` 派发求和；CC-75 收进 giftedPolarAssault.ts（口径裁定 = 求和，见该文件头）。
     const giftedPolarAssaultThisRound = sumGiftedPolarAssault(rr.characters)
-    const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly, giftedPolarAssaultThisRound)
+    // CC-78：无 anomalyPoolSetup 声明者时赠送的归属槽（有 setup 时 roundInputs 仍用 setup.slot）
+    const giftedPolarAssaultSlot = firstGiftedPolarAssaultSlot(rr.characters)
+    const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly, giftedPolarAssaultThisRound, giftedPolarAssaultSlot)
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
@@ -907,7 +909,7 @@ export function createRunCalcRound(deps: {
       applyChainGift(rrShown0, configStore, catalogStore) ?? rrShown0)
 
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
-    const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, giftedPolarAssaultThisRound)
+    const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, giftedPolarAssaultThisRound, giftedPolarAssaultSlot)
 
     // 「下一轮反馈」统一派发（2026-09-16 arch 棘轮第 6 批）：普罗米娅(1541)/零号·安比(1381)/
     // 露西(1151)/薇薇安(1331)/艾莲(1191) 的算法已迁进各自模块的 `nextRoundFeedback` 钩子
