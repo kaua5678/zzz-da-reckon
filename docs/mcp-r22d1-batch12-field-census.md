@@ -2609,3 +2609,40 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 回退：`git revert 4b685c7`。
 - 结构熵现在只剩 `src/views/TeamComparePage.vue` 1553 行，按 CC-85 的裁定不拆，只观察。
 
+### 5.93 CC-87a done：手写事实 drift 机械筛查（待复核 80 → 18）（lead-arena-0925c，2026-09-27 第 105 轮）
+
+**CC-87a `023bab6`**
+- **问题**：zc 的 driftQueue 按文件粗判——锚文件的最后提交时间晚于「据」里最后一个日期就进复核队列，不看锚点符号本身变没变。CC-83～86 的拆文件、搬运把 80 条事实被动挤进了队列，大多数锚点符号其实一字没改。
+- **机械筛查**（脚本 `/home/kaua/calc-arch/drift87.mjs`，不入库）：对每条待复核事实，取「据」日期当天最后一个提交（`git rev-list -1 --before="<日期> 23:59:59" HEAD`）里的锚文件，用括号配平提取锚点符号的完整声明（含函数体），去掉空白后与当前版本比较。完全一致 ⇒ AUTO，否则 ⇒ MANUAL。
+  - 提取器踩过的两个坑：① 括号深度回到 0 就停，只截到参数表——要等大括号块闭合且后面不再接 `{`；② 返回类型写成 `{…} | null {` 时，闭合后跟的是 `|`，被当成声明结束——现在闭合后跟 `{ | & = . [` 任一就继续读。修完后逐个核对了所有小于 300 字符的 AUTO 提取结果，都是真正的短函数或常量。
+  - 包装函数单独处理：`helpers.ts#iterate` 本身没变，但两条事实（单角色前线上限、cfg/诊断量写回）说的是被包装的 iterateBody，强制归为 MANUAL。
+  - 结果：AUTO 62、MANUAL 18。
+- **新标签 `·锚未变@<日期>`**：AUTO 的 62 条在「据」段末尾追加 `·锚未变@2026-09-27`，**特意和人工复核的 `·复核@` 区分开**：`锚未变` 只说明锚点符号的源码和「据」日期那天完全一致，是机器判的，没人重读口径；`复核` 表示有人对照代码重新确认过口径。zc 只取「据」里最后一个日期，两种标签都能让事实出队。
+  - 第一次 apply 有 bug：有些条目写成 `…·复核@2026-09-25| 验`（竖线前没空格），脚本找的是 ` |`，于是戳打进了「验」或「锚」字段，2 条变成断锚。已全部回滚，改成找第一个 `|`，再重打一遍。
+- **zc 改动**（`scripts/zc.mjs`）：新增 `diffOnlyTouchesFacts`。`anchorTouchedAt` 跳过**只改了 `@fact` 声明行**的提交（最多回看 30 个）和未提交改动；driftQueue 按路径缓存结果。
+  - 为什么要改：打戳本身就是改文件，会把锚定在同一文件的**其他**旧事实连带挤进队列（实测连带出 7 条），复核会永远做不完。
+  - 保守方向：diff 里只要夹了一行非事实代码就照旧算改动；30 个提交全是纯事实提交时，退回最早那个的时间。
+  - 改完之前的 80 条仍是 80（没有误放行）；反向变异（让函数恒返回 false）后待复核从 18 涨到 20（sigrid/zhuYuan 的同文件连带），还原后回到 18。
+  - 同步改了 `scripts/zc.d.mts`（判据 14-C 要求手写声明和运行时导出一致）；`zc.test.ts` 加了 2 条单测。
+- **验证**：check-guards 24 项通过；checkGuards.test.ts + zc.test.ts 共 194 条通过；verify 338 files / 3707 tests EXIT 0（`/home/kaua/calc-arch/verify105.log`）；zc status：债务 7、事实 146、待复核 18。
+- **剩下 18 条 MANUAL 留给 CC-87b**（行号会漂，按 subject 用 grep 找）：
+  1. `engine:damage/减防通道`：事实在 `src/composables/resourceCalc/damagePool.ts`，锚 `damagePool.ts#pushDirect`，筛查结果：changed
+  2. `engine:damage/非轴失衡易伤`：事实在 `src/composables/resourceCalc/damagePool.ts`，锚 `damagePool.ts#pushDirect`，筛查结果：changed
+  3. `jane:1261/狂热面板块落点`：事实在 `src/composables/resourceCalc/panelPhases.ts`，锚 `jane.ts#applyJanePanel`，筛查结果：changed
+  4. `panelPhases:元素异常时长字段`：事实在 `src/composables/resourceCalc/panelPhases.ts`，锚 `panelPhases.ts#computePanelPhases`，筛查结果：changed
+  5. `panelPhases:侵染区归属`：事实在 `src/composables/resourceCalc/panelPhases.ts`，锚 `panelPhases.ts#computePanelPhases`，筛查结果：changed
+  6. `engine:降配档单调闸门`：事实在 `src/composables/resourceCalc/solveTeam.ts`，锚 `solveTeam.ts#stageResolveFeasibility`，筛查结果：changed
+  7. `engine:实战档位喧响计数`：事实在 `src/composables/resourceCalc/ultimatePromote.ts`，锚 `ultimatePromote.ts#applyUltimatePromote`，筛查结果：基准日文件不存在（拆出的新文件），要对照拆出前的原位置
+  8. `engine:失衡次数不动点`：事实在 `src/composables/resourceCalc/ultimatePromote.ts`，锚 `ultimatePromote.ts#promoteFixpoint`，筛查结果：同上
+  9. `yidhari:refund不动点`：事实在 `src/core/resource/helpers.ts`，锚 `helpers.ts#resolveExSpecialCount`，筛查结果：changed
+  10. `engine:单角色前线上限`：事实在 `src/core/resource/helpers.ts`，锚 `helpers.ts#iterate`，筛查结果：iterate 是包装函数，符号没变，但事实行落在 iterateBody 里，要读 iterateBody
+  11. `engine:cfg/诊断量写回`：事实在 `src/core/resource/helpers.ts`，锚 `helpers.ts#iterate`，筛查结果：同上
+  12. `engine:time/回避支援`：事实在 `src/core/resource/rowBuild.ts`，锚 `rowBuild.ts#buildExecutions`，筛查结果：changed
+  13. `engine:收敛环停点规范化`：事实在 `src/core/resource.ts`，锚 `foldLoop.ts#runFoldLoop`，筛查结果：changed
+  14. `engine:资源账本/截断`：事实在 `src/core/resource.ts`，锚 `resource.ts#calcTeamResources`，筛查结果：changed
+  15. `agent:1581/特殊虚耀×2.5独立乘区`：事实在 `src/mechanics/__tests__/remielle.test.ts`，锚 `damagePool.ts#buildDamagePoolRows`，筛查结果：changed
+  16. `agent:1491/帷幕计数`：事实在 `src/mechanics/teamVeil.ts`，锚 `teamVeil.ts#computeTeamVeilCountTotal`，筛查结果：changed（据 2026-09-02，跨度最大）
+  17. `engine:平A权重阶梯`：事实在 `src/stores/config.ts`，锚 `config.ts#defaultBasicAttackTimeWeight`，筛查结果：changed
+  18. `1581·特殊虚耀`：事实在 `docs/GAME_TERM_TO_CODE_FIELD.md`，锚 `damagePool.ts#buildDamagePoolRows`，筛查结果：changed
+- 回退：`git revert 023bab6`（戳和 zc 改动在同一个提交里；只想撤 zc 改动就还原 scripts/zc.mjs、zc.d.mts、zc.test.ts 这三个文件）。
+

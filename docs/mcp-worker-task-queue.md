@@ -204,6 +204,15 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
   - 适合派子代理：`/home/kaua/.local/node/bin/dsh --profile headless '<带上面规则和一批 15 条清单的任务>'`。派活前先自检，应输出 pong；**同一时间只派一批**，lead 不要同时编辑这些文件。
   - 每批验收：`node scripts/check-guards.mjs` 为 0（判据 6 会校验锚点和「据」的格式），`npx vitest run src/scripts/__tests__/checkGuards.test.ts src/scripts/__tests__/zc.test.ts` 通过，zc status 的待复核数下降。提交只带改过的文件路径。
   - 全部做完写 census §5.93，记下总数、改写了几条、未复核几条及原因。
+- **CC-87a** done `023bab6`（§5.93）：机械筛查后，62 条锚点符号没变的事实打了 `·锚未变@2026-09-27`；zc 不再把只改 `@fact` 行的改动当成锚改动。待复核 80→18。下一张 **CC-87b：剩下 18 条人工复核**：
+  - 清单见 census §5.93 末尾，也可以现取：`npm run -s zc -- drift 2>&1 | grep '⟳'`。
+  - 每条做法：先 `grep -n '<subject>' <事实所在文件>` 找到事实行；再看锚点代码从「据」日期到现在的改动，命令是 `git diff $(git rev-list -1 --before="<据日期> 23:59:59" HEAD) HEAD -- <锚文件>`，然后读锚点的**当前**代码。
+    - 口径成立：在 `| 据 …` 段末尾（第一个 `|` 前）追加 `·复核@<今天>`，别的字不动。**注意有些条目竖线前没空格**（`·复核@2026-09-25| 验`），不要把戳打进「验」或「锚」段。
+    - 口径不成立：按代码现状改写事实正文，「据」改成 `实测@<今天>`，同时检查「验」指向的测试是否还覆盖它。
+    - 拿不准：不打戳，在 census §5.93 下面补一行「未复核：原因」。
+  - 特殊的几条：ultimatePromote.ts 的 2 条，锚文件在「据」日期那天还不存在（是后来拆出来的），要用 `git log --follow` 或到拆出前的原文件里对照；helpers.ts#iterate 的 2 条要读被包装的 iterateBody，不是 iterate；teamVeil 那条的「据」是 2026-09-02，跨度最大，要仔细看。
+  - 可以分两批派 dsh（按锚文件分：resourceCalc/* 共 9 条一批，core/*、mechanics/*、stores/*、docs 共 9 条一批），每批验收：`node scripts/check-guards.mjs` 为 0，`npx vitest run src/scripts/__tests__/checkGuards.test.ts src/scripts/__tests__/zc.test.ts` 通过，待复核数下降。
+  - 做完之后回到功能类待办：命座 109 条、机制 45 条（`npm run -s zc -- status`）。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。
