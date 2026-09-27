@@ -69,30 +69,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 150 轮（2026-09-27，一个提交「fix(mechanics): CC-123」，提交号见 git log；上一轮 CC-122 = 66fcd79）
+### 第 151 轮（2026-09-27，提交 cfc3e63 / 862fc15 / 文档提交「docs: round 151」；上一轮 CC-123 = 4ae3d49）
 
-- **做到哪**：CC-123（改数值口径，预设内零差）。
-  - `src/specs/agents/1511.json`、`1481.json`：`sourcePanelPhase` inCombat → outOfCombat（原文均为「初始」），note 同步。
-  - `src/mechanics/agents/nangong.ts`、`liuyin.ts`：applyPanel 解构 `outOfCombatPanel` 并传 `1, { outOfCombat: outOfCombatPanel }`。
-  - 展示同口径：`src/mechanics/types.ts` `AgentCharConfigInput` 加可选 `outOfCombatPanel`；`src/composables/resourceCalc/helpers.ts` `buildCharConfig` 改为一次 `computePanelPhases` 取局内 + 局外；南宫羽新 cfg 键 `nangongInitialMastery`（资源卡读它）；`promia.ts` `promiaAnomalyMastery` 改读局外（CC-116 遗留分叉已修）。
-  - 新测试 `src/mechanics/__tests__/initialConversionCc123.test.ts`（3 条，反向验证已做）。
-  - 验证：zd `cc123` DUMP / ROWS DIFF 0；validate:specs 1120；vue-tsc 0；verify / CG 见提交。
+- **做到哪**：
+  - cfc3e63 零差清理：删 `rina.ts` `rinaCinemaLevel` 死写、`yaojiayin.ts` `yaojiayinAtk` 死写、`soukaku.ts` `applySoukakuTeamEnergyFlags` 里的自赋值（唯一读者 soukaku.ts 已 `Number(?? 0)`）。zd `cz151` DIFF 0。
+  - 862fc15 **CC-124**：千夏影画6 暴伤按初始（局外）攻击；timeGolden 仅 `agent:1491:c6.dmg` −10.09%，已逐条解释并重生成（卡表 CC-124 行）。
+  - 「全队」扫描 C 类结案（`docs/mcp-spec-resources-audit.md` §5 末）：无新数值差异；`src/specs/agents/1491.json` 过时注记订正（凝视触发与 C6 全队 +50% 已建模）。
+  - 模块「初始 X」全量核对（`docs/mcp-r6-refactor-list.md` §2.12），新登记 CC-125（爱芮）、CC-126（柚叶展示）。
+  - 验证：verify EXIT=0（3776 passed，含 CC-124 与清理）；vue-tsc 0；validate:specs 1120；文档提交另跑 CG。
 - **下一步（按顺序，可直接开工）**：
-  1. 「全队」扫描 C 类（`docs/mcp-spec-resources-audit.md` §5 末）：先派 dsh 只读分类（自检 pong 后），给出每句「实现作用域 vs 原文作用域」，再挑出真差异开 CC 卡。
-  2. 零差清理：`rina.ts:191` 死写删除；`soukaku.ts:113` 自赋值处理（先读再动，行号可能漂移）。
-  3. 其他读 `panel.*` 做展示的「初始」类模块：用 `git grep -n "初始" -- src/mechanics/agents` 逐个核对展示值口径（本轮只查了 1511 / 1541 / 1481）。
+  1. **CC-125 爱芮「每10点初始异常掌控」读局外**：开工方案写在清单 §2.12 末，按 1-5 步做。
+  2. CC-126 柚叶资源卡 `initialAtk` 改读局外（只改展示，零差；写法同 CC-123 南宫羽 `nangongInitialMastery`）。
+  3. 之后可选：R6 清单与审计文档已无未结项时，重新扫一遍 `docs/mcp-calc-core-architecture.md` 卡表里的「暂缓 / 待做」（如 CC-97），逐个判断还做不做。
 - **本轮拍板**：
-  - 以原文「初始」为准订正 spec（依据 R5、CC-118 先例；回退点：两份 spec 改回 inCombat）。
-  - 展示值新字段做成**可选**（有模块以局部参数转调基类 buildCharConfig），缺省回落局内面板。
+  - 千夏 C6 以原文「初始攻击力」为准（R5；CC-118/123 先例）。回退点：CC-124 卡行。
+  - S1491-4 判「不缺」：模块已对全部凝视触发行加 +50%，只订正注记，不开卡。按千夏面板结算是已知近似。
+  - CC-125 不在本轮做：要改 damagePool 的取源（编排层），范围比模块内改动大，单独一轮更稳。
 - **已知坑**：
-  - harness 预设默认不开局内 buff，所以「局内 vs 局外」类改动在 zd 上必然零差，必须自写阳性对照单测。
-  - 琉音 applyPanel 读 `agent.id`，直接调用时要传 `agent: { id: '1481' }`。
-  - `releaseModifier` 的派发键是异放行的 agentId（结算者），原文是全队的修正必须声明 `releaseModifierScope: 'team'`（第 148 轮）。
+  - **不要用 `pgrep -f` / `pkill -f` 杀 dsh**：模式会匹配到执行它的 shell 自身（本轮 wsl_exec 被 kill 9）。用 `ps -eo pid,etimes,args | grep '[.]local/node/bin/dsh'` 列出后，只 `kill -9` 具体 pid。**pid 8958 的 `dsh web --port 3080` 是用户常驻服务，不要杀。**
+  - dsh 逐句审 146 句要约 25 分钟，会撞上 1500s 超时；大批量任务要拆批，或要求它每处理完一个角色就追加写结果文件。
+  - harness 预设默认不开局内 buff，但**攻击力例外**：千夏局内 5564 / 局外 3243（自带核心 buff 等），所以「初始攻击」类改动未必零差。
+  - 千夏在预设里都不在 0 号位，zd `/c6` 看不到，要靠 timeGolden（单人各命座）和探针。
+  - `releaseModifier` 的派发键是异放行的 agentId（结算者），原文是全队的修正必须声明 `releaseModifierScope: 'team'`。
   - 盘点 cfg 键时要同时搜 `setRecord(cfg, 'xxx'` / `cfgNum(cfg, 'xxx'` 的字符串形式。
-  - 判断「spec 某段是否参与计算」用变异法（审计文档 §2）。
   - 预设外的角色（zd 看不到）至少有 1121、1281、1291、1081；`setupHarness` 必须传 `{ agentId }` 对象。
-  - **zd `/c6` 变体只把 0 号位设为 6 命**，非 0 号位需自写探针。
   - `BuffEffect` 在 `@/types/catalog`；vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
   - `zcWorkspace.test.ts` 在全量 verify 下偶发失败，单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
-- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）。「初始」读局外已结（CC-123）。
+- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）。

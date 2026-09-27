@@ -101,7 +101,7 @@ G1 的改动最小：去掉 `hasResources` 门，并允许事件的 count 来自
 >   - 安东 `antonCinemaLevel` 经 `setRecord` 写入，是正则误报；
 >   - `billyCinemaLevel` 被 `billy.ts` 与 `starlightBilly.ts` 共用，但 cfg 按槽位各一份，各读各的，不串；
 >   - 编排层和 core 里出现的键名只在注释或类型声明里，没有越层读取；
->   - 唯一问题：`rina.ts:191` 的 `rinaCinemaLevel` 只写不读（死写，无害，留给以后顺手删）。
+>   - 唯一问题：`rina.ts:191` 的 `rinaCinemaLevel` 只写不读（死写）——**第 151 轮已删（cfc3e63）**，同提交删了 `yaojiayinAtk` 死写与 soukaku 自赋值。
 >   - phoenix / promia / vivian 另把命座写进 panel 供 `releaseModifier` 读（`ReleaseModifierInput` 只有 panels）。这是已知的走私形状，但目前能用；以后如果给 `ReleaseModifierInput` 加 `team` / 命座，可以一起收掉。
 > - **结论**：统一 G3 要改 56 个模块，零差，收益只是「少一行」，属于 R6 禁止的「只为降计数」。G1 和潘引壶迁移同理：为 85 行的模块给解释器加原语（G1 要去掉 `hasResources` 门，会波及所有纯 spec 角色的路径），逻辑正确性没有收益。**不做。**
 > - **重开条件**：新角色录入时，如果能靠 G1 / G3 做到纯 spec（不写模块），那时收益是真实的，再按本节原方案做。

@@ -164,4 +164,10 @@
 | A. spec teamBuff `target: team` 但 `effects` 为空 | python 遍历 teamBuffs | 4 条，全部有承载者：1181 格莉丝 C1 全队回能（模块 applyTeamConfig）；1381 零号安比潜能（并入 formula 通道）；1541 核心 0.35%（formula teamBuff，第 146 轮）；1541 C1 减防（releaseModifier team，CC-121；note 已订正） |
 | B. 模块或 spec 注释自认「近似为自身 / 仅自身」 | `git grep -E '(近似为?自身\|仅作用(于)?自身\|只作用(于)?自身\|近似自身\|按自身.*近似\|仅自身)'` | 1611 克拉蕾残锋「全队[锋御]」：catalog 中锋御（specialty=sharpen）只有克拉蕾 ⇒ 自身实现与原文等价，零影响；加绊线测试（`claretSmoke.test.ts`「CC-122 绊线」），新增锋御角色时变红。1641 phoenix 影画1 +20 暴伤：注释过时，实际由 spec 全队 teamBuff 承载、模块常量只喂展示，没有双计；注释已订正。1121 本：旧注释，已由 teammate-buffs 全队承载 |
 
-**剩余（未做）**：C 类，即 145 句中其余由模块 applyPanel 直接写自身面板、但注释没有自认近似的机制。做法：逐句找承载者（spec teamBuff / catalog teammate-buffs / 模块 applyTeamConfig / releaseModifierScope），找不到的用面板探针实测队友字段（写法见第 146 轮 `cc119probe`：遍历预设，`panelAt(calc.panels.value, slot)`）。适合派 dsh 做第一遍只读分类，lead 复核后再落盘。
+**（第 151 轮已完成，见下方「C 类」）原剩余**：C 类，即 145 句中其余由模块 applyPanel 直接写自身面板、但注释没有自认近似的机制。做法：逐句找承载者（spec teamBuff / catalog teammate-buffs / 模块 applyTeamConfig / releaseModifierScope），找不到的用面板探针实测队友字段（写法见第 146 轮 `cc119probe`：遍历预设，`panelAt(calc.panels.value, slot)`）。适合派 dsh 做第一遍只读分类，lead 复核后再落盘。
+
+**C 类（第 151 轮完成）**：材料脚本对 146 句逐角色列出承载条目（spec teamBuffs / teammate-buffs.json / 专武 catalog teamBuff / 模块文件），dsh 逐句分 A 已覆盖 / B 非全队数值增益（注记、重复、对敌减益已承载、防御向）/ C 找不到承载。粗筛先确认：40 个角色每个都至少有一个全队通道（唯一「零通道」的 1621 那句讲的是专武 14162，由 catalog `teamBuff` nanoka_14162_team_dmg 承载）。dsh 结论 C 只有 2 句，lead 逐条复核：
+- S1611-2 克拉蕾残锋：已知等价（锋御仅 1 人），CC-122 绊线已守护。
+- S1491-4 千夏影画6「全队触发[猫的凝视]伤害+50%」：**不缺**。`qianxia.ts` buildExecutions 把全部凝视触发物化为千夏名下的触发行并带 `dmgBonus: 50`，所以全队触发都吃到；过时的是 spec 注记（写「未建模」），第 151 轮已订正（零差）。按千夏面板结算属于近似（原文属触发代理人伤害），记为已知近似，不开卡。
+
+**结论**：「原文写全队、实现只作用于本人」扫描 A / B / C 三类全部结案，没有新的数值差异。复跑：抽句正则见上；材料脚本思路 = 每个 spec 抽句 + 同 id 的四类承载条目并排，一页一个角色。dsh 跑 146 句约 25 分钟，结果文件没来得及写出就到了超时，结论取自其 log，已在此处落盘。

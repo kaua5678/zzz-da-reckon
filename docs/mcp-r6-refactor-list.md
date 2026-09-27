@@ -183,3 +183,28 @@
 - **顺带统一展示口径**：`AgentCharConfigInput.outOfCombatPanel`（可选，`src/mechanics/types.ts`）由 `helpers.ts buildCharConfig` 从同一次 `computePanelPhases` 传入；南宫羽资源卡、普罗米娅 `promiaAnomalyMastery` 都改读局外，面板计算与展示不再分叉。
 - **为什么零差**：harness / 预设不开局内 buff，局内 = 局外。差异只在用户开启局内暴击 / 掌控 buff 时出现，由新单测覆盖。
 - **仍未决**：「每超过 1 点 / 1%」是否取整（§2.1），未动。
+
+### 2.12 第 151 轮：模块里「初始 X」的全量核对（CC-123 的推广）
+
+方法：`git grep -n '初始' -- src/mechanics/agents`，去掉「初始化 / 初始值 / 初始层 / 初始能量 / 初始资源」等资源类用法，逐条对原文（`data/raw/nanoka_missing/full/<id>.json`）看读的是哪个面板。
+
+| 角色 | 原文 | 实现读取 | 结论 |
+|---|---|---|---|
+| 1511 南宫羽 / 1481 琉音 | 初始掌控 / 初始暴击率 | 局外（CC-123） | ✅ |
+| 1541 普罗米娅 | 初始掌控 | 局外（CC-116；展示 CC-123） | ✅ |
+| 1451 卢西娅 C6 | 初始最大生命 | 局外（CC-118） | ✅ |
+| 1611 克拉蕾 | 初始暴伤 → 初始暴击 | 局外 | ✅ |
+| 1121 本 | 初始防御 → 攻击 | 局外 | ✅ |
+| 1341 照 | 初始最大生命 → 暴击 | `outOfCombatPanel.hp` | ✅（zhao.ts:142/182 的 `cfg.panel.hp` 用于生命附伤，原文非「初始」） |
+| 1131 苍角 / 1311 耀嘉音 / 1411 柚叶 全队攻击 | 初始攻击 × 比例 | formula teammate buff（CC-96 outOfCombatAtk） | ✅ 计算正确 |
+| 1411 柚叶 资源卡展示 | 40% 初始攻击 | `cfg.panel.atk`（局内） | ❌ 仅展示 → **CC-126** |
+| 1491 千夏 C6 暴伤 | 初始攻击 × 0.03% | 原局内 | ❌ → **CC-124 已修（862fc15）** |
+| 1501 爱芮 异放比例 | 每10点初始掌控 | `damagePool.ts` `triggerPanel[rr.basis]`（局内） | ❌ → **CC-125 待做** |
+| 1331 薇薇安 异放比例 | 每10点异常精通（无「初始」） | 局内 | ✅ |
+
+**CC-125 开工方案（下一轮直接做）**：
+1. 读 `src/composables/resourceCalc/damagePool.ts` 第 290-310 行附近 `releaseRatio` 分支和 `triggerPanel` 的来源；读 `src/types/resource/execution.ts` 第 180-190 行 `releaseRatio` 类型。
+2. 给 `releaseRatio` 加可选字段 `basisPhase?: 'outOfCombat'`（缺省局内 ⇒ 薇薇安零差）；爱芮 `aire.ts` 第 196 行声明 `basisPhase: 'outOfCombat'`。
+3. damagePool 取触发者局外面板：先查同文件是否已能拿到 `computePanelPhases(...).outOfCombat` 或 panels 的局外版本；拿不到就在构造 triggerPanel 的地方并排传一份局外面板。**不得**在编排层写 agentId 分支（守卫）。
+4. 同时查爱芮 C1 `masteryThreshold`（异放暴击按掌控阈值）原文是否也写「初始」，是则同一字段处理。
+5. 验证：爱芮在预设中的位置决定 zd 能否看到；timeGolden `agent:1501:*` 预计变化，逐条解释（局内 / 局外掌控比值）后重生成；加单测（局内 ≠ 局外 → 只随局外变）。
