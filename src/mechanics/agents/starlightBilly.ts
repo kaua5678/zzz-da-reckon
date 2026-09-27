@@ -112,6 +112,8 @@ const HEAL_ROCKING = 15 // 摇曳步伐回血 %（文本数值，不在数据行
 
 // 摇曳链占付费单位（摇曳+抓地池）的比例：用户确认整局摇曳次数比较低，默认 0.1
 const DEFAULT_ROCKING_RATIO = 0.1
+/** 交互次数默认值单一事实源（用户确认：招架4/闪反0/格挡5）：模块声明 interactionDefaults 与 applyTeamConfig 兜底共用（CC-73） */
+const BILLY_INTERACTION_DEFAULTS = { parry: 4, dodge: 0, block: 5, dual: 0 } as const
 const DEFAULT_HP_DISCOUNT_RATIO = 0 // 默认没有动力压制经过普攻四段耗血降低
 
 const specBase = specToMechanicModule(getAgentSpec(AGENT_ID)!)
@@ -331,8 +333,8 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   record.billyCinemaLevel = cinemaLevel
 
   // 交互次数默认值（用户确认，主页「战斗动作次数」预填展示，与 getInteractionDefaults 一致）：格挡 5 / 招架 4 / 闪反 0
-  if (!cfg.parryCount) cfg.parryCount = 4
-  if (!cfg.blockCount) cfg.blockCount = 5
+  if (!cfg.parryCount) cfg.parryCount = BILLY_INTERACTION_DEFAULTS.parry
+  if (!cfg.blockCount) cfg.blockCount = BILLY_INTERACTION_DEFAULTS.block
   // 闪避次数 = 银河横行漂移触发（用户确认）：禁用通用闪避反击（决斗之王）执行，
   // 由模块生成 尾焰全旋（1531014）→ 衔接孤轮特技；喧响按尾焰全旋行值（银河横行数 ≤ 闪反数，略高估可接受）
   cfg.dodgeCounterActionTime = 0
@@ -867,7 +869,7 @@ export const starlightBillyMechanic: AgentMechanicModule = {
   agentIds: [AGENT_ID],
   name: '星徽·比利',
   // CC-65b：交互次数默认值（原 stores/config.ts 写死表；用户确认：招架4/闪反0/格挡5）
-  interactionDefaults: { parry: 4, dodge: 0, block: 5, dual: 0 },
+  interactionDefaults: { ...BILLY_INTERACTION_DEFAULTS },
   // CC-65b：TeamConfigPage 交互栏格挡输入框标签（原页面写死本角色 id）
   interactionInputs: { block: { label: '格挡（动力压制）' } },
   description: '主循环（动力压制→孤轮，烧血刷决意）、HP 池约束、付费强特（摇曳/抓地 60 闪能）、决意→最高马力星光、星辉、影画1/2/4/6。',
