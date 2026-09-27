@@ -2868,3 +2868,17 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
   - D6：影子内核零入边，第 1 步加判据 26 锁死；
   - core 不引用 composables，改在 types.ts 里声明 RoundProjection 结构子集。
 - 对账队伍：T1 `auto-1471-1571-1451`、T2 `auto-1371-1481-1451`、T3 `auto-1591-1571-1211`，备选 `auto-1051-1481-1451`。
+
+### 5.107 R4-A1 第 1 步：影子内核骨架 + 两条轨 + 判据 26（lead-arena-0925c，2026-09-27 第 119 轮）
+
+- 新增代码：`src/core/timeline/{types,stunTrack,decibelTrack}.ts`，以及 `__tests__/{stunTrack,decibelTrack}.test.ts`（14 条）；
+  `scripts/lib/timeline-isolation.mjs` + `.d.mts`（判据 26），测试 `src/scripts/__tests__/timelineIsolation.test.ts`（5 条）；
+  check-guards 从 25 条变为 26 条（`checkGuards.test.ts` 的 `toHaveLength` 和标题同步改了）。
+- 口径与拍板见设计稿 §7.5：溢出默认丢弃（引擎口径是结转，差异归 E1）；喧响放完保留余量；超上限先截断再释放；
+  窗口外速率不许用引擎答案。
+- 踩坑：自写的测试曾期望「2990 + 20 = 3010，放完剩 10」，与「喧响条不超过上限」矛盾。实现是对的，已改测试。
+- 验证：
+  - 新增 19 条测试通过；`vue-tsc -b` 通过；get_diagnostics 0 条；
+  - `zd.sh r119` DUMP / ROWS 都是 DIFF 0；
+  - verify120：342 files / 3733 tests，EXIT 0（比上轮多 3 个文件、19 条测试）；check-guards 26 条全绿。
+- 影子失衡轨单次 0.019 ms（30 个动作的循环、180 秒）。

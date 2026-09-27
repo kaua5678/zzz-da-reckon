@@ -70,7 +70,11 @@
 - 达到 `bossStunValue` 时开窗，窗口时长取引擎的窗口时长。窗口内不累加失衡。
 - 出窗后失衡条 = `stunRefundValue`（返还）。
 - 失衡次数 = 180 秒内开出的窗口数（整数）。末尾截断自然发生：最后一个窗口开不出来，就不算。
-- 待第 1 步核实：`inAxisStunTotal` 的语义（窗口内打出的失衡值是否在引擎里另有去向），核实结论写回本节。
+- **已核实（第 119 轮）**：`inAxisStunTotal` = 「失衡窗口内失效的失衡值合计」（`src/types/resource/pools.ts:44–45`，
+  计算在 `src/core/stunPool.ts:157–191`）。窗口内打出的失衡值**没有其他去向**，与本节「窗口内不累加」一致。
+- 现引擎闭式公式（`stunPool.ts` calcStunPool 末段）：`1 + floor((有效总失衡 + stunGift − 上限) / (上限 × (1 − 返还比例)))`。
+  它等价于「溢出失衡值**结转**到下一次」。影子失衡轨默认**丢弃**溢出（游戏里失衡触发时溢出即丢失），用
+  `carryOverflow: true` 可以切换成引擎口径。两者的差异归为 **E1**。
 
 **D4 喧响轨。**
 - 每槽独立一条喧响条，上限 `cap` 做成参数，默认等于 `ultimateCost`，所以 1391 的 +1000 默认不生效，
@@ -156,10 +160,44 @@ src/core/timeline/
   「影子自己选轴」的差异单列一行，归为 E 类还是 U 类要看实测。
 - R3 两点用户未裁决（B 的定位、A 是否接受数值变动），影子阶段不受影响。
 
+## 7.5 第 1 步落地口径（第 119 轮，代码即准）
+
+- **失衡轨** `src/core/timeline/stunTrack.ts` `simulateStunTrack`：
+  - 失衡值在**动作完成时**累加，满值就在那一刻开窗；
+  - 窗口外按 `offWindowLoop` 顺序循环执行，出窗后从中断处续上；
+  - 会越过 battleTime 的动作不完成，并置 `truncatedAction`；
+  - 窗口被战斗结束截断时 `end = battleTime`，但**计入次数**（窗口已开出）；
+  - 溢出在开窗那一刻决定去留，默认丢弃并记入 `overflowLost`，被截断的末窗也算；
+  - 有防御性步数上限 200000，异常输入时不会死循环。
+- **窗口外速率不依赖引擎答案**：速率来自动作自身的时长与失衡值，**不能**用「引擎失衡值 ÷ 引擎窗口外时间」。
+  否则就用到了引擎的失衡次数，两边自然相等，属于循环论证。第 2 步的 projection 必须遵守这一点。
+- **喧响轨** `src/core/timeline/decibelTrack.ts` `simulateSlotDecibel`：
+  - 每槽独立，上限 cap 和消耗 cost 分开设置；cap < cost 时按 cost 兜底；
+  - 放完大招**保留余量**；
+  - 瞬时获得时**先按上限截断再判定释放**（喧响条不会超过上限）；
+  - `whenFull` 策略下，被动回复的越线时刻按线性解析求出。
+- **性能（D7 的影子一半）**：30 个动作的循环、180 秒、返还 10%，实测 **0.019 ms/次**（2000 次取平均，第 119 轮单独跑
+  `npx vitest run src/core/timeline` 时的输出，平均每次 5 个窗口；verify 全量并发时会更慢，但量级不变）。比引擎单次求值（约 300 ms，待第 2 步实测）小 4 个数量级以上，D7 门槛（< 5%）显然满足。
+  引擎耗时那一半在第 2 步用 harness 实测补上。
+- **判据 26** `scripts/lib/timeline-isolation.mjs`：
+  - 入边：非测试 src 对 `core/timeline` 零引用，含类型导入、动态导入和 `export … from`；
+  - 出边：只允许依赖 `@/core`、`@/types`、`@/utils`；
+  - 反空洞：影子目录下非测试文件 ≥ 3；
+  - 有检测器自证；行为锁在 `src/scripts/__tests__/timelineIsolation.test.ts`。
+- **零差证据**：`.zc/perf/zd.sh r119` 的 DUMP 与 ROWS 都是 `DIFF 0`（基线为 HEAD 28f721c，改动未提交时跑的）。
+
 ## 8. 进度账本
 
 - [x] 第 0 步：本设计稿（第 118 轮，`e8aebae`）。
-- [ ] 第 1 步：`src/core/timeline/` 骨架 + 失衡轨 + 喧响轨纯函数单测 + 判据 26 + 性能两数。
-- [ ] 第 2 步：`projection` 适配 + shadowDiff 跑通 T1。
+- [x] 第 1 步：`src/core/timeline/` 骨架 + 失衡轨 + 喧响轨纯函数单测 + 判据 26 + 影子性能数（第 119 轮，本行所在提交；口径见 §7.5）。引擎性能数移到第 2 步。
+- [ ] 第 2 步：`projection` 适配 + shadowDiff 跑通 T1 + 引擎单次求值耗时（取 5 次中位数）。开工要点：
+  1. 用法范例：`src/composables/__tests__/timeGolden.test.ts`（`setupHarness` + `useResourceCalc` + `teamPresets`），
+     轴相关可参考 `axisPresetPreferredLabelCc79.test.ts`。先确认 T1 预设加载后 `useStunAxis` 已开启、并命中「般诺通用」轴。
+  2. 读 `calc.stunPoolResult.value.contributions`（逐招 `perHitStun`、`count`、`slot`、`moveId`、`inAxisFraction`）和每槽执行行
+     （动作时长、`decibelRecovery`），在 `types.ts` 声明 `RoundProjection` 结构子集。`projection.ts` 把它转成
+     `offWindowLoop`：每招的窗口外次数 = count × (1 − inAxisFraction)，按次数比例交错排成一个循环（近似 U1）。
+  3. 窗口模板取自已选中轴的 actions（`startTime` 作为 offset），喧响取执行行的 `decibelRecovery`。被动回复和开窗奖励
+     （`STUN_DECIBEL_BONUS` / `CHAIN_DECIBEL_BONUS`，见 `stunPool.ts`）的来源先读码核实，再决定是否进入 `onStunEnter`。
+  4. `diff.ts` 输出 D5 的差异行；shadowDiff.test.ts 默认只断言不变量，`TIMELINE_REPORT=1` 时写报告。
 - [ ] 第 3 步：T2、T3，差异表全部归因，写出 `docs/mcp-timeline-shadow-report.md`。
 - [ ] 第 4 步：对账结论和「是否值得进入模块事件钩子（方向 A 第 3 刀）」的建议，**交用户裁决**。

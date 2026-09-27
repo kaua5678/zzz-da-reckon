@@ -348,6 +348,14 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
        - 汇总覆盖率，挑出 5 个最适合迁成纯 spec 的候选（方向 C 第 2 刀用）。
        - 适合派 dsh 只读并行（例如每人 15 个模块），lead 抽查。**不改 src**。
   - 维护约定：以后的交接段落插在这一条之上。**写「下一步」之前，先在 arch 卡表里 grep 核实那张卡的状态**，上轮就是没核实才写错的。
+- **第 119 轮（2026-09-27）**：R4-A1 第 1 步完成，内容是影子内核骨架、失衡轨、喧响轨和判据 26（提交号见 arch 卡表 R4-A1 行；口径见设计稿 §7.5，记录在 census §5.107）。
+  - **下一步（第 2 步，直接开工）**：设计稿 §8「第 2 步」下写了 4 条开工要点：先用 harness 跑 T1 `auto-1471-1571-1451`，再写 projection 和 diff，最后做 shadowDiff.test.ts 并测引擎耗时。
+  - **已知坑**：
+    - projection 算窗口外速率时**不许用引擎的失衡次数或前台时间预算**，否则是循环论证（§7.5）；
+    - 新测试只能放在 `src/core/timeline/__tests__/` 或其他测试目录，非测试代码引用影子内核会让判据 26 变红；
+    - 代码里不要出现字符串 `simulateDecibelTrack`（喧响上限闸门）；
+    - 在 WSL 里新建目录后再用 `up.sh` 上传，它不会自动建目录；
+    - `zd.sh` 必须带 tag 参数。
 - **第 118 轮（2026-09-27）**：R4-A1 第 0 步完成，产出设计稿 `docs/mcp-timeline-shadow-kernel.md`（提交号见 arch 卡表 R4-A1 行）。只读，src 零改动。
   - **下一步（第 1 步，直接开工）**，按设计稿 §3 建目录：
     1. 新建 `src/core/timeline/types.ts`、`stunTrack.ts`、`decibelTrack.ts`，写纯函数；再写 `__tests__/stunTrack.test.ts` 和 `decibelTrack.test.ts`。用手搓的小输入验证：整数次数、截断、返还、上限溢出记入 wasted、两种释放策略。
