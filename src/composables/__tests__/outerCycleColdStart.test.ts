@@ -27,19 +27,14 @@
  * ⚠ 为什么用 `runOuterLoop` 的出口而不是内部轮次：判据②的读数跨越 9.48/10.06 与 10.48/10.90，
  * 只有从出口取 `yeshuguangCycle.totalForms` 才能区分「收敛到不动点」与「报过渡态成员」。
  */
-import { describe, expect, it, vi } from 'vitest'
-// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
-// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 
 /** 叶瞬光+琉音+照 + 三把 1 精专武（用户口径场景） */
-async function setupYsgTeam(cinemaLevel: number) {
+/** `projection` 给定时显式设 `time.stunPlanProjection`（CC-148：用户场景的整数档在 off 口径下核实） */
+async function setupYsgTeam(cinemaLevel: number, projection?: number) {
   const { catalog, config } = await setupHarness([
     { agentId: '1431', cinemaLevel },
     { agentId: '1481', cinemaLevel: 0 },
@@ -52,6 +47,7 @@ async function setupYsgTeam(cinemaLevel: number) {
   config.team[2].wEngineId = '14134'
   config.team[2].wEngineModLevel = 1
   config.syncTeammateBuffsFromTeam()
+  if (projection != null) config.setMechanicSetting('time.stunPlanProjection', projection)
   return { catalog, config }
 }
 
@@ -65,7 +61,9 @@ function readCycle(calc: ReturnType<typeof useResourceCalc>) {
 
 describe('外层不动点：2-循环判据要求环成员已稳态', () => {
   it('C0：叶瞬光+琉音+照 收敛到 10 次白毛（不是 9.48 瞬态）', async () => {
-    const { config } = await setupYsgTeam(0)
+    // CC-148（第 173 轮）：本用例 = 用户实测场景在 **off 口径**下的整数档（off 下核实），显式钉 off。
+    // physical 缺省下的同场景判据见文件末「physical 缺省」describe。
+    const { config } = await setupYsgTeam(0, 0)
     const calc = useResourceCalc()
     const { cycle, exit, converged } = readCycle(calc)
 
@@ -84,7 +82,7 @@ describe('外层不动点：2-循环判据要求环成员已稳态', () => {
   }, 300_000)
 
   it('C1：叶瞬光 1 命 → 11 次白毛（不是 10.48 瞬态）', async () => {
-    const { config } = await setupYsgTeam(1)
+    const { config } = await setupYsgTeam(1, 0)
     const calc = useResourceCalc()
     const { cycle, exit } = readCycle(calc)
     expect(exit).toBe('stable')
@@ -153,7 +151,7 @@ describe('反向守卫：真 2-循环判据仍在', () => {
 describe('终局整数化：照影是离散触发，余数剑势留着不打', () => {
   it('C0 三轴：轮数为整数且分项自洽（默认口径 = 10），无小数', async () => {
     for (const axis of [0, 1, 2]) {
-      const { config } = await setupYsgTeam(0)
+      const { config } = await setupYsgTeam(0, 0) // CC-148：off 口径下的整数档（physical 见文件末）
       config.setMechanicSetting('yeshuguang.formAxis', axis)
       const calc = useResourceCalc()
       const { cycle, exit } = readCycle(calc)
@@ -202,7 +200,7 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
 
   it('C1：全满轴 10 次、短轴 11 次（多出的那一轮由短轴省时装下）', async () => {
     const full = await (async () => {
-      const { config } = await setupYsgTeam(1)
+      const { config } = await setupYsgTeam(1, 0)
       config.setMechanicSetting('yeshuguang.formAxis', 0)
       return readCycle(useResourceCalc())
     })()
@@ -212,7 +210,7 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
 
     // 仅灭短轴：稳定收敛到 11（照影 6）
     const mie = await (async () => {
-      const { config } = await setupYsgTeam(1)
+      const { config } = await setupYsgTeam(1, 0)
       config.setMechanicSetting('yeshuguang.formAxis', 2)
       return readCycle(useResourceCalc())
     })()
@@ -236,7 +234,7 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
      * 取 11 还是 12 取决于环内取点，属待裁决口径（用户口径「离散轮数」未指明环内取哪一支）。
      */
     const pair = await (async () => {
-      const { config } = await setupYsgTeam(1)
+      const { config } = await setupYsgTeam(1, 0)
       config.setMechanicSetting('yeshuguang.formAxis', 1)
       return readCycle(useResourceCalc())
     })()
@@ -244,4 +242,63 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
     expect(Number.isInteger(pair.cycle!.totalForms), '离散轮数不得是小数').toBe(true)
     expect(Number.isInteger(pair.cycle!.zhaoyingForms), '离散轮数不得是小数').toBe(true)
   }, 900_000)
+})
+
+/**
+ * physical 缺省（CC-144 第 172 轮切换；CC-148 第 173 轮补钉）：同一用户场景在缺省口径下的判据。
+ *
+ * 实测（冷启动，探针 WSL `/home/kaua/calc-arch/k172/zzY173.test.ts`）：
+ *
+ * | 场景 | off（上面各用例） | physical |
+ * |---|---|---|
+ * | C0 满轴 | 10 = 2/3/5，剑势 30.38，交互档 0.5 | **10 = 2/4/4**，剑势 29.90，交互档 0.0625 |
+ * | C0 axis 1 / 2 | 10 / 10 | 11 / 12 |
+ * | C1 满轴 / 仅灭短轴 | 10 / 11 | 11 / 12 |
+ *
+ * 转大 3→4：physical 下失衡窗口按物理次数算，琉音好评够第 4 次赠大（与 CC-145 的「promote=4 才是真实值」一致）；
+ * 转大占前台 ⇒ 剑势 30.38→29.90，刚好跌破第 5 次照影门槛 30 ⇒ 照影 5→4，总数仍是用户口径的 10。
+ * 交互档 0.0625：该队 physical 下有真实溢出（`docs/mcp-stun-dual-source.md` §7.1），S3 降配压到最低档——
+ * 故 off 用例里的「交互档 ≥ 0.25」守卫不适用于 physical，这里只钉现值并注明来源（不是放宽）。
+ */
+describe('physical 缺省：同场景结构判据 + 现值', () => {
+  it('C0 满轴：stable、10 次 = 喧响 2 + 转大 4 + 照影 4', async () => {
+    await setupYsgTeam(0)
+    const { cycle, exit, converged, rr } = readCycle(useResourceCalc())
+    expect(exit).toBe('stable')
+    expect(converged).toBe(true)
+    expect([cycle!.totalForms, cycle!.decibelForms, cycle!.giftForms, cycle!.zhaoyingForms]).toEqual([10, 2, 4, 4])
+    expect(cycle!.zhaoyingForms).toBe(Math.floor(cycle!.outsideSword / 6))
+    expect(rr.convergence?.interactionScale, 'S3 真实溢出降配（§7.1），现值').toBe(0.0625)
+  }, 300_000)
+
+  it('C0 三轴：整数、分项闭合、照影 = floor(剑势/6)；总轮 10 / 11 / 12', async () => {
+    const expected = [10, 11, 12]
+    for (const axis of [0, 1, 2]) {
+      const { config } = await setupYsgTeam(0)
+      config.setMechanicSetting('yeshuguang.formAxis', axis)
+      const { cycle, exit } = readCycle(useResourceCalc())
+      expect(exit, `axis=${axis}`).toBe('stable')
+      for (const v of [cycle!.totalForms, cycle!.decibelForms, cycle!.giftForms, cycle!.zhaoyingForms]) {
+        expect(Number.isInteger(v), `axis=${axis} 必须是整数，实测 ${v}`).toBe(true)
+      }
+      expect(cycle!.decibelForms + cycle!.giftForms + cycle!.zhaoyingForms, `axis=${axis} 分项之和`).toBe(cycle!.totalForms)
+      expect(cycle!.zhaoyingForms, `axis=${axis}`).toBe(Math.floor(cycle!.outsideSword / 6))
+      expect(cycle!.totalForms, `axis=${axis} physical 现值`).toBe(expected[axis])
+    }
+  }, 600_000)
+
+  it('C1：满轴 11、仅灭短轴 12（短轴省时仍多装一轮）', async () => {
+    const run = async (axis: number) => {
+      const { config } = await setupYsgTeam(1)
+      config.setMechanicSetting('yeshuguang.formAxis', axis)
+      return readCycle(useResourceCalc())
+    }
+    const full = await run(0)
+    const mie = await run(2)
+    expect(full.exit).toBe('stable')
+    expect(mie.exit).toBe('stable')
+    expect(full.cycle!.totalForms).toBe(11)
+    expect(mie.cycle!.totalForms).toBe(12)
+    expect(mie.cycle!.totalForms, '短轴省时应多装至少一轮').toBeGreaterThan(full.cycle!.totalForms)
+  }, 600_000)
 })

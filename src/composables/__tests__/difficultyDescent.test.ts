@@ -12,13 +12,7 @@
  *  ④ 曲线跑完**不改用户配置**（合轴率/弹刀/轴复位到调用前）；
  *  ⑤ 成本 = 档数（一次计算一档，不试开-回滚）——用 onPoint 回调计数验证。
  */
-import { describe, expect, it, vi } from 'vitest'
-// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
-// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { descendDifficultyCurve, defaultDescentLevers, summarizeDescent } from '@/composables/difficultyDescent'
@@ -132,6 +126,10 @@ describe('降配档单调闸门 + 非单调归因（用户口径 2026-09-20）',
   it('单因素（合轴率）：闸门开启 ⇒ 交互档与伤害单调不增；关掉则复现反转', async () => {
     const run = async (gate: boolean) => {
       const { config, calc } = await setupTeam(0)
+      // CC-148（第 173 轮）：本用例复现的是 off 口径下的历史反转（0.20→0.10 交互档回升），显式钉 off。
+      // physical 缺省下该队交互档从 0.4 起就在最低档 0.0625，对照组复现不了；且 0.4→0.3 伤害回升 +0.06%
+      // （冷启动最大可行档 0.4/0.3/0.2 = 0.0625/0.125/0.0625，闸门压回 0.0625 后剑势 29.90→29.97）——真实缺陷，见 CC-149。
+      config.setMechanicSetting('time.stunPlanProjection', 0)
       config.setMechanicSetting('yeshuguang.formAxis', 0)
       if (gate) config.interactionScaleMonotone = true
       const rows: Array<{ cap: number; scale: number; dmg: number }> = []

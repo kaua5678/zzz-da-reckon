@@ -6,13 +6,7 @@
  * 于是出现「卡说 166.9/180 快满了、角色条却只打了 86s」的自相矛盾（折叠残差抬高
  * necessaryTime，用户只能猜时间去了哪）。
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
-// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, it, expect, beforeEach } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -82,7 +76,10 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     expect(t.basicRematerialized).toBeGreaterThan(10)
     // 修正后虚高与「真必要行」对账（模块行被排除在 nec 之外）
     const nec = t.perSlot.reduce((a, s) => a + s.necRows, 0)
-    expect(t.ledgerInflation).toBeCloseTo(t.requiredFrontline - nec, 6)
+    // 完整恒等式（与实现 `teamTimeSummary.ts` 的定义一致）：模块 basic 行**超出**池缩水的部分是资源驱动的
+    // 额外必要行，归账本侧。CC-148（第 173 轮）补上这一项：旧写法默认它为 0，physical 缺省下该队 = 0.489s。
+    const moduleSurplus = Math.max(0, t.perSlot.reduce((a, s) => a + s.basicModuleRows, 0) - t.basicRematerialized)
+    expect(t.ledgerInflation).toBeCloseTo(t.requiredFrontline - nec - moduleSurplus, 6)
     // 逐槽：模块行**不**计入 necRows（三段互斥）
     for (const s of t.perSlot) {
       expect(s.basicModuleRows).toBeGreaterThanOrEqual(0)
