@@ -2777,3 +2777,16 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 验证：validate:specs 1100 项；check-guards 25；verify 339 files / 3713 tests EXIT 0（`/home/kaua/calc-arch/verify112.log`）。
 - 回退：`git revert 2299223`（债务条目会随之恢复）。
 
+### 5.101 CC-94 done：zc dead-channels LS 基线 12→1（lead-arena-0925c，2026-09-27 第 113 轮）
+
+**CC-94 `0a7e2a8`**（config.ts、catalog.ts、dead-channel-ls.mjs、dead-channel-scan.mjs）
+- **核实方法**：对 12 个字段逐个 `git grep -nw`（非 JSON），再用 `git grep -lw -- '*.json'` 查数据。11 个 dead-both 字段只命中声明行、LS 基线登记和队列文档，JSON 数据里一处都没有。
+- **删除 11 个**（连同各自的单行 JSDoc，基线同步删 11 条）：
+  - `CharacterOperationConfig`：`roxyWindCannonMoveId` / `roxyWindEyeMoveId` / `roxyCycloneHammerMoveId` / `roxyCycloneHammerCount`、`claretMaimBurialMoveId` / `claretMaimBurialDamageMultiplier` / `claretSharpnessCost`、`normaBarrageCoverage` / `normaTechGapCoverage`；
+  - `src/types/catalog.ts`：`SkillTarget.agentSkillId`、`CoreSkillLevel.skillLevelBonuses`。catalog.json 里没有这两个键，所以不属于「描述数据形状」的字段，可以删。
+- **`freePoolPerSpecialty`（dead-input）裁决保留**。依据：`pullPlannerEngine.ts` 以默认值 1 调 `freePoolRepresentatives` 做免费池剪枝，字段注释写明「池越大 beam 求值越贵，实测 2 已分钟级」，`0` 表示全量免费池，是有意留的调参入口。判据 14 豁免里原写的「疑似旧模拟残留」与事实不符，已更正；LS 基线的 why 也已改写并写上回收条件。
+- 与卡片的偏差：卡片建议按字段族分几次提交，实际合成了一次。理由：11 处都是全仓零引用的纯删除，外加两处只改文字，vue-tsc 与全量测试都已通过，拆开提交没有回退价值。
+- 判据 14 自己的计数（A 零读零写 2 / B 只读不写 6）不受影响，那是另一张豁免表，见 CC-95。
+- 验证：vue-tsc 0；`zc dead-channels` 显示「新增 0 · 基线存量 1 · 待核销 0」；check-guards 25；verify 339 files / 3713 tests EXIT 0（`/home/kaua/calc-arch/verify113.log`）。
+- 回退：`git revert 0a7e2a8`。
+

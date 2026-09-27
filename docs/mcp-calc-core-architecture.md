@@ -264,7 +264,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-91 | done | `61fce8b` `5476250` | 薇薇安死通道：支援突击接 cfg.parryCount（原文 +2 飞羽→悬落），舞步命中显式 0 注明未建模；判据 25 无类型记录键死读（补 dead-channels 盲区，存量 0） | census §5.98 |
 | CC-92 | done | `50e313e` | TeamComparePage.vue 1552→1462：「选第三人」区块纯搬运到 composables/teamCompareSweep.ts（同名注入、逐行 diff 保真）；zc.test 结构熵用例改夹具自证 | census §5.99 |
 | CC-93 | done | `2299223` | target 债务销号：核实运行时 team/enemy 等效，保留字段，validate:specs 加「enemy* 字段 ⇒ target enemy/both」校验，DEBT 7→6 | census §5.100 |
-| CC-94 | 待做 | — | `zc dead-channels` LS 基线 12 条存量逐条复核：dead-both（零读零写声明）删字段并核销，dead-input 逐条裁决 | 队列 CC-93 行 |
+| CC-94 | done | `0a7e2a8` | LS 死通道基线 12→1：删 11 个零读零写声明（roxy/claret/norma 配置槽 + catalog 两字段），freePoolPerSpecialty 裁决保留为调参旋钮 | census §5.101 |
+| CC-95 | 待做 | — | 判据 14 `DEAD_CHANNEL_ALLOWLIST` 8 条存量逐条复核（A 零读零写 2 / B 只读不写 6），能删则删、能接则接 | 队列 CC-94 行 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |

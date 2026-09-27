@@ -292,6 +292,17 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
     - 逐条写下裁决。
   - 验收：`zc dead-channels` 报「新增 0 · 待核销 0」且基线条数下降；vue-tsc -b、check-guards、verify 全部通过。
   - 回退：按字段族分几次提交（claret 族、roxy 族、catalog、dead-input），出问题各自 revert。
+- **CC-94** done `0a7e2a8`（§5.101）：LS 死通道基线只剩 `freePoolPerSpecialty` 1 条（有意保留的调参旋钮）。
+- **下一张 CC-95：判据 14 豁免表 `DEAD_CHANNEL_ALLOWLIST` 的 8 条存量复核**（`scripts/lib/dead-channel-scan.mjs:38` 起；check-guards 行显示「A 零读零写 2 / B 只读不写 6」）。
+  - 清单：
+    - A：`runArchiveImport.ts weaknesses`、`runArchiveImport.ts hpTotal`；
+    - B：`difficultyLadder.ts minGain`、`pullPlannerEngine.ts freePoolPerSpecialty`（CC-94 已裁决保留，跳过）、`timeWeightBalancer.ts minWeight`、`runArchiveImport.ts resistances`、`core/damage.ts isRupture`、`core/effectiveTime.ts blockSeconds`。
+  - 注意 `minGain`：豁免表注释写着「修好 scanReadOnlyOptionalProps（补简写识别）后自然不再命中」，但条目仍在表里、判据也仍然计入。先确认它现在是否还会被扫出来：临时注释掉这条豁免，跑 `node scripts/check-guards.mjs`，看是否报红。若不报红，说明是过期豁免，直接删；RATCHET_BURNDOWN 里「死通道豁免清单」的 frozen 值可能要同步下调（下调要在 AGENT_ID_BURNDOWN_LOG.md 记一笔）。
+  - 每条的处理方法：
+    - `git grep -nw <字段>` 看读写点；
+    - A 类（零读零写）通常直接删字段。`runArchiveImport.ts` 是导入外部跑档数据的，**先确认字段是否对应外部 JSON 的键**（`data/raw/zzz-run-archive/runs.json`）；如果是描述外部数据形状，就保留，把豁免理由改写清楚。
+    - B 类（只读不写）按 CC-94 的口径：默认值就是现行口径的，删掉选项并内联；是调参入口的，保留并写清理由。`core/damage.ts isRupture` 属于伤害核心，改动前先跑 timeGolden，确认数值零变化。
+  - 验收：check-guards 显示的 A/B 计数下降，且 frozen 值与计数一致；vue-tsc -b、verify 全部通过。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。
