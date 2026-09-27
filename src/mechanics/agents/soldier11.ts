@@ -159,6 +159,13 @@ function applySoldier11Panel({ panel, settings, potentialLevel }: AgentPanelInpu
 export const soldier11Mechanic: AgentMechanicModule = {
   id: 'agent:soldier11',
   agentIds: [AGENT_ID],
+  // CC-63：兜底平A填充 → 普通火力镇压连打（全额时间；A45 快速循环已计入必要时间），以 #4（A4_MOVE_ID）为代表行按
+  // 「火力镇压均值 × 时间」折算；技能表查不到时按 1.828s。原在编排层 roundInputs 写死 `fillerAgentId === '1041'`，逐字搬入。
+  expandBasicFill: ({ fillSec, actionTimeOf }) => {
+    const repT = actionTimeOf(A4_MOVE_ID) ?? 1.828
+    const reps = repT > 0 ? fillSec / repT : 0
+    return [{ moveId: A4_MOVE_ID, count: reps }]
+  },
   name: '「11号」',
   description: '火力镇压增伤/燎原火伤/影画1回能/影画2叠层/影画6充能无视火抗',
   settings: [

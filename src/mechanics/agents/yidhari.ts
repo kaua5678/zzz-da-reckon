@@ -490,6 +490,13 @@ function yidhariOnFinalAssemble({ cfg, providerUltCount }: { cfg: CharacterOpera
 export const yidhariMechanic: AgentMechanicModule = {
   id: 'agent:yidhari',
   agentIds: [YIDHARI_AGENT_ID],
+  // CC-63：兜底平A填充 → 蓄力循环（basic_attack 已被改写为「蓄力烧血」无伤害/失衡），映射到 下砸 + 平A。
+  // 原在编排层 roundInputs#expandExecutedToCounts 写死 `fillerAgentId === '1051'`，算式逐字搬入（1s 蓄力 + 两段 actionTime）。
+  expandBasicFill: ({ fillSec, actionTimeOf }) => {
+    const loopTime = 1 + (actionTimeOf(CHARGE_SLAM) ?? 0) + (actionTimeOf(BASIC_FOLLOW) ?? 0)
+    const loops = loopTime > 0 ? fillSec / loopTime : 0
+    return [{ moveId: CHARGE_SLAM, count: loops }, { moveId: BASIC_FOLLOW, count: loops }]
+  },
   // CC-57：轴编辑器候选池隐藏裸极寒重碾（原 StunAxisPage 写死 `c.agentId === '1051' && moveId === '1051012'`）
   axisHiddenMoves: ['1051012'],
   name: '伊德海莉',

@@ -86,7 +86,9 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
 
 /** AGENT_BRANCH_BASELINE 的沿革（编年史）已移至 docs/AGENT_ID_BURNDOWN_LOG.md（规则 8 分层契约：编年叙事不进代码）。
  *  当前读数 = 3；口径与判据见本文件下方注释与 RATCHET_BURNDOWN 登记表。 */
-export const AGENT_BRANCH_BASELINE = 3
+export const AGENT_BRANCH_BASELINE = 1
+// ⚠ **2026-09-27 CC-63（3 → 1，−2，真清偿）**：`roundInputs.ts#expandExecutedToCounts` 的 `fillerAgentId === '1051'` / `'1041'`
+//   平A兜底迁成模块钩子 `expandBasicFill`（伊德海莉 / 11号声明）。剩 1 = `anomalyPanels.ts` 的动态比较（未变）。
 // ⚠ **2026-09-24 CC-12 换尺（口径纠正，不是退步）**：1 → **3**。
 // 旧尺（AST 三形态）系统性漏计**局部 const 身份别名**形态——`convergence.ts:301` 的
 // `const fillerAgentId = configStore.team[slot]?.agentId ?? ''`，随后 `:302/:311` 与四位数字

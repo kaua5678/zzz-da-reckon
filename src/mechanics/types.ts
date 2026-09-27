@@ -796,6 +796,13 @@ export interface AgentMechanicModule {
    */
   axisWindowLane?: 'mingwang' | 'ningshen'
   /**
+   * CC-63（2026-09-27）：兜底平A填充秒数 → 本角色的具体招式次数（**计算路径**，非展示层）。
+   * 编排层 `roundInputs.ts#expandExecutedToCounts` 按填充槽的 agentId 派发；未声明 ⇒ 通用 `basic` 秒数。
+   * `actionTimeOf(moveId)` 由编排层注入（查本槽技能表）；**返回 undefined = 技能表查不到**（各角色兜底口径不同，须区分）。
+   * 现实现：伊德海莉（蓄力循环 下砸 1051007 + 平A 1051003）、「11号」（火力镇压 #4 1041008，查不到按 1.828s）。
+   */
+  expandBasicFill?(input: { fillSec: number; actionTimeOf: (moveId: string) => number | undefined }): ReadonlyArray<{ readonly moveId: string; readonly count: number }>
+  /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
    * 声明后，资源页「异放元素分配」卡与影响分析的占比变量会为本角色出控件。

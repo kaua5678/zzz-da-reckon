@@ -279,7 +279,7 @@ export function createConvergenceRoundInputs(deps: {
   /**
    * 把栈遍历 executed（轴动作块）展开成具体招式轴内单位数：
    * - 连段展开成内部招式（如 连段·双次 → 2×极寒重碾 + …）；
-   * - 兜底平A填充按槽位映射（伊德海莉映射到蓄力循环的下砸+平A，其余映射到 basic 秒数）。
+   * - 兜底平A填充按槽位映射（模块钩子 expandBasicFill，如伊德海莉映射到蓄力循环的下砸+平A；未声明映射到 basic 秒数）。
    */
   function expandExecutedToCounts(
     executed: Record<string, { slot: number; moveId: string; count: number }>,
@@ -305,23 +305,15 @@ export function createConvergenceRoundInputs(deps: {
     for (const [slotStr, fillSec] of Object.entries(basicFillBySlot)) {
       const slot = Number(slotStr)
       const fillerAgentId = configStore.team[slot]?.agentId ?? ''
-      if (fillerAgentId === '1051') {
-        // 伊德海莉：basic_attack 已被改写为「蓄力烧血」（无伤害/失衡），兜底平A映射到蓄力循环的 下砸(1051007)+平A(1051003)
-        const skills = catalogStore.agentSkillsByAgentMap.get(fillerAgentId)
-        const slam = findMoveById(skills, '1051007')
-        const follow = findMoveById(skills, '1051003')
-        const loopTime = 1 + (slam?.actionTime ?? 0) + (follow?.actionTime ?? 0)
-        const loops = loopTime > 0 ? fillSec / loopTime : 0
-        add(slot, '1051007', loops)
-        add(slot, '1051003', loops)
-      } else if (fillerAgentId === '1041') {
-        // 「11号」可分配平A时间：普通火力镇压连打填充（全额时间；A45 快速循环已计入必要时间）。
-        // 以 #4 为代表行按「火力镇压均值 × 时间」口径折算。
-        const skills = catalogStore.agentSkillsByAgentMap.get(fillerAgentId)
-        const rep = findMoveById(skills, '1041008')
-        const repT = rep?.actionTime ?? 1.828
-        const reps = repT > 0 ? fillSec / repT : 0
-        add(slot, '1041008', reps)
+      // CC-63：角色专属平A兜底由模块钩子 expandBasicFill 展开（现：伊德海莉蓄力循环 / 「11号」火力镇压）；
+      // 原为此处 `fillerAgentId` 写死两个角色的 if/else 分支。未声明 ⇒ 通用 basic 秒数。
+      const fillSkills = catalogStore.agentSkillsByAgentMap.get(fillerAgentId)
+      const fillExpanded = getAgentMechanic(fillerAgentId)?.expandBasicFill?.({
+        fillSec,
+        actionTimeOf: id => findMoveById(fillSkills, id)?.actionTime,
+      })
+      if (fillExpanded) {
+        for (const e of fillExpanded) add(slot, e.moveId, e.count)
       } else {
         add(slot, 'basic', fillSec)
       }

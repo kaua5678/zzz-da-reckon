@@ -148,7 +148,8 @@ export const RATCHET_BURNDOWN = [
   {
     id: 'agentId 分支',
     file: 'src/composables/useResourceCalc.ts + src/composables/resourceCalc/**',  // 度量面 = listAgentBranchFiles()（2026-09-12 口径纠正：单文件会被「搬家」骗过）
-    frozen: 3,  // 2026-09-24 CC-12 **换尺** 1→**3**（口径纠正，不是退步；与 AGENT_BRANCH_BASELINE 常量同步改）。
+    frozen: 1,  // 2026-09-27 CC-63 3→**1**（真清偿：fillerAgentId 1051/1041 → 模块钩子 expandBasicFill；与 AGENT_BRANCH_BASELINE 同步）。
+    // 旧注：2026-09-24 CC-12 **换尺** 1→**3**（口径纠正，不是退步；与 AGENT_BRANCH_BASELINE 常量同步改）。
     // 新形态 = 「局部 const 由 `.agentId`/`.id`/`teammateBuffId` 初始化，随后与四位数字字面量比较」
     // ⇒ 实测新增 2 行：`convergence.ts:302`（`fillerAgentId === '1051'`）/ `:311`（`'1041'`）。
     // 依据 AGENTS 规则 17②（度量口径纠正不适用「棘轮只减不增」）+ 17⑥（先分类再定计量单位）。
