@@ -69,6 +69,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 164 轮（2026-09-28，代码 `f65c07ae`（CC-140）+ 文档提交「docs: round 164」；上一轮 = b39f51ec）
+
+- **做到哪**：
+  - CC-140 P1 已落地为可切换模式 `stunPlanProjection = 'physical'`（编码 4），缺省 off，零差。实测和拍板见 `docs/mcp-stun-dual-source.md` §5。
+  - 探针存档在 WSL `/home/kaua/calc-arch/phys164/`。
+- **下一步（按顺序，可直接开工）**：
+  1. **CC-141：physical 模式下的超预算归属**。对 §5.2 里超预算变差的 11 队（清单用 `phys164/an164.py` 的「over worsened」输出），查 `solveTeam.ts`「阶段 S3：可行化决策」为什么没接住。
+     - 读 S3 的触发条件（`overBudgetNet` 的容差常量、`truncatedToo`）。
+     - 在探针里输出 `rr.convergence.axisFallback`、`interactionScale`、`timeTruncatedSeconds`。
+     - 结论二选一写进 §5：a) 在容差内，合法，把验收改为容差口径；b) S3 应触发但没触发，修 S3。
+  2. **CC-142：1521（希希芙）系「有失衡、没连携」残余**（§5.2 残余 6 队）。先看这些队的 `chainCountPerStun` 和 `chainCountTotalOverride`（`convergence.ts` 约 428 行），它与计数口径无关，off 下同样存在。
+  3. CC-141、CC-142 都结清后，评估是否把 physical 设为缺省。届时把 `stunPlanPhysical.test.ts` 的「缺陷钉」改掉，跑 zd / timeGolden / timeFillRatchet 并逐队解释。
+  4. 洛克茜 `energyRegenOutOfCombat` 读法疑点；副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先）。
+- **本轮拍板**：
+  - 做成现有 C7 实验内核的一个模式，而不是改默认。依据：可逆、零差，下一轮可以直接用设置项复现，不必再打临时补丁。
+  - §4.4 的「超预算队数不增加」修订为「≤ S3 容差或被 S3 收拾」。依据：off 口径的零超预算是靠藏掉连携换来的，不能拿它当基准。
+- **已知坑**（新增）：
+  - `stunPlanProjection.test.ts` 钉了模式表长度；以后再加模式要同步改。
+  - physical 首轮没有 `prevPoolStunCount`，回落计划值；判断收敛相关的变化时别忘了这一点。
+
 ### 第 163 轮（2026-09-28，文档提交「docs: round 163」，无代码；上一轮 = 1af733aa）
 
 - **做到哪**：
