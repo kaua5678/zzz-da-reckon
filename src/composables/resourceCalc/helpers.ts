@@ -28,6 +28,7 @@ import {
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
 import { counterAssistOf } from '@/data/counterAssists'
+import { findWEnginePeriodicDirect } from '@/data/wEnginePeriodicDirect'
 
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentMechanic } from '@/mechanics'
@@ -510,14 +511,12 @@ export function buildCharConfig(
   // 角色类型
   const isSupport = agent.specialty === 'support'
 
-  // 加农转子（14001）：攻击命中并暴击时触发 200% 攻击力直伤事件，按精修 CD 计算本局上限。
+  // 音擎周期直伤事件（现仅加农转子）：数据表 src/data/wEnginePeriodicDirect.ts 按 id / legacyIds 查（CC-82）。
   const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : null
   const wEngineMatchesSpecialty = !!wEngine && wEngine.specialty === agent.specialty
-  const cannonRotorCooldowns = [8, 7.5, 7, 6.5, 6]
+  const periodicDirect = findWEnginePeriodicDirect(wEngine)
+  const hasCannonRotorEvent = !!periodicDirect && (!periodicDirect.requiresSpecialtyMatch || wEngineMatchesSpecialty)
   const cannonRotorModIndex = Math.max(0, Math.min(4, (char.wEngineModLevel ?? 1) - 1))
-  // 音擎 id 已统一为数字（旧 zzz_wiki_XXXX 存于 legacyIds，兼容旧 localStorage 配置）
-  const hasCannonRotorEvent = wEngineMatchesSpecialty && !!wEngine
-    && (wEngine.id === '14001' || (wEngine.legacyIds ?? []).includes('14001'))
 
   // 平A时间分配权重：优先读取用户配置；旧配置缺字段时按当前默认规则兜底
   const timeWeight = char.basicAttackTimeWeight ?? configStore.getDefaultBasicAttackTimeWeight(agent)
@@ -595,8 +594,8 @@ export function buildCharConfig(
     backstageRegenBonus: 0,
     comboAlignRegenBonus: 0,
     zhenyuanTriggerCount: 0,
-    cannonRotorDamageMultiplier: hasCannonRotorEvent ? 200 : 0,
-    cannonRotorCooldownSeconds: hasCannonRotorEvent ? cannonRotorCooldowns[cannonRotorModIndex] : 0,
+    cannonRotorDamageMultiplier: hasCannonRotorEvent ? periodicDirect!.damageMultiplier : 0,
+    cannonRotorCooldownSeconds: hasCannonRotorEvent ? periodicDirect!.cooldownByModLevel[cannonRotorModIndex] : 0,
     initialEnergyGift,
     initialDecibelGift: 1000 + (configStore.appliedBoss?.decibelGift?.slot === slot ? (configStore.appliedBoss?.decibelGift?.amount ?? 0) : 0),
     battleTime: configStore.enemy.battleTime ?? 180,
