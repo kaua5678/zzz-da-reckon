@@ -2087,6 +2087,38 @@ ImpactChart.vue 的改动：
 3. 测试：对照基准照抄原来的判断；遍历全部角色和它们的全部 combo id（经 `agentCombos(id)` 取），逐个比较 isRageCombo；反向变异是删掉声明。
 - 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b 其他 dominant 异放角色开放占比调节（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁（§5.64）。
 - **TimeChartsPage:531 复核（本轮）**：那一行在 `loadCandidatePool` 里，localStorage 恢复候选池时排除 '1371'。注释写明这个池是「仪玄演变路径的队友」种子（:521-523）。所以排除仪玄自己是有意的，不算 bug；但如果 mainAgentId 可以切换，这里不跟着变。降级为「仅当时间图支持切主角时才处理」，已从隐患列表里移除。
+### 5.66 CC-59 done：StunAxisPage 般岳怒相连段 comboId → 模块声明 axisRageCombos（lead-arena-0925c，2026-09-27 第 79 轮）
+
+**提交**：`e2e5d37`，改动 5 个文件（按 §5.65 方案 A）：
+- `src/mechanics/types.ts`：`AgentMechanicModule` 新增可选 `axisRageCombos?: { readonly primary: string; readonly didong: string }`，**展示层专用，不参与计算**。primary = 主连段（论道→狮子吼·怒），didong = 与主连段共享山威配额、优先占用的变体（地动→山摇·怒）；两个都必须是本模块 `combos` 的 key（单测锁住）。
+- `src/mechanics/agents/banyue.ts`：紧跟 `axisMoveMeta` 声明 `axisRageCombos: { primary: 'banyue-combo', didong: 'banyue-combo-didong' }`。banyue.ts 内部计算用的字面量（:188/:341/:384/:522/:910/:930 等）**本卡不动**：那是模块自己的实现细节，在模块内写自己的 id 不违反任何规则；若以后想收成常量，属模块内部重构，不影响门面。
+- `src/composables/agentMechanicView.ts`：门面 `agentAxisRageCombos(agentId)`，未声明 ⇒ undefined；类型 `AxisRageCombosDecl`。
+- `src/views/StunAxisPage.vue`：
+  - 新 computed `banyueRageCombos`（按 banyueSlot 的 agentId 查声明）；`mingwangWindowsFor` 里原 `:359` 的两个字面量改读它（声明缺失 ⇒ 返回 []，与原「般岳不在队 ⇒ []」等价，因为般岳在队必有声明）。
+  - 怒相连段块配额（原 :750/:757/:762）：`isBanyueRageCombo` 改名 `isRageCombo`，= `!!rageCombos && comboId ∈ {primary, didong}`；didong 共享配额与 primary 分支都读声明。原 agentId 臂多余（id 只在般岳身上）。
+  - 页面里已无 `'banyue-combo` 字面量（单测源码锁）。`:297 banyueSlot`（1471）保留，见下表。
+- 新测试 `src/composables/__tests__/agentMechanicViewCc59.test.ts`（3 条）：catalog 全角色 × 其全部 combo id（去重）逐值对照原判断（怒相判定 / didong 共享 / primary 分支），命中数恰为 2；般岳声明 == 原字面量且都在 combos key 中；StunAxisPage 源码不含 `'banyue-combo`。
+
+回退：`git revert e2e5d37`。
+
+**踩坑**：初版单测把 `Object.keys(combos)` 与 P、D 直接拼接，般岳的 id 重复计数（命中 4 ≠ 2）；改为 `new Set` 去重。以后写「遍历全部 id」的对照测试记得去重。
+
+**验证**：24 条守卫、check-tokens、vue-tsc 均 0；新单测 3 条全过；反向变异（删掉 banyue.ts 的 axisRageCombos 声明行）→ 单测变红，已恢复 cmp 一致。`npm run verify` 通过：314 files / 3650 tests，24 guards（`/home/kaua/calc-arch/verify59.log`）。
+
+**StunAxisPage 剩余（更新 §5.65 表）**
+| 位置 | 状态 |
+|---|---|
+| 般岳怒相连段 4 处 | **CC-59 done** |
+| :268 有琉标签、:264/266 伊德海莉章节（1051） | CC-60，低优先级（预设数据自带档位标签） |
+| :722 诺姆 1571（norma-hat-chain「诺姆转连携」占位块：actionTime 0、配额 9；注释说明自动全打 floor(膛温/80)，块只是标记）、:731 希格莉德 1591（sigrid-pozhen 破阵连段块，1591007/008/022 行动时间求和、6 命 ×0.75、配额 9） | **下一张 CC-61**：「专属轴块」声明 |
+| :297 banyueSlot（1471）、:313 yixuanSlot（1371） | 之后 CC-62：「专属窗口 lane」——两者都只用于 axisEditorBlockMarks 的 slot 与窗口条；可改为「队里声明了 axisEditorBlockMarks 的槽位」，但般岳还有 6 命不画窗口（banyueCinema ≥ 6）与 15s/8s 两种窗口条，需先读 :290–:345 再定 |
+| :~663 1371_c1_lightning、:~706 1051024 | 低优先级 |
+
+**下一步（CC-61，可直接开工）**
+1. 读 StunAxisPage.vue :715–:745（诺姆、希格莉德两块），再读 `src/mechanics/agents/` 下诺姆（grep `norma-hat-chain`）与希格莉德（grep `sigrid-pozhen`）模块，确认这两个 moveId 在计算侧由谁消费（convergence / axisEx）。
+2. 建议方案：`AgentMechanicModule` 加展示层可选声明 `axisExtraBlocks?: ReadonlyArray<{ moveId: string; label: string; quota: number | ((cinemaLevel: number) => number); actionTime: { sumOf: readonly string[]; scaleAtC6?: number } | { fixed: number } }>`（纯数据，页面按 findMove 求行动时间、按 axisTimes 统计已捏），页面两段 `if (c.agentId === …)` 合并为一段循环。**先照抄原页面的数值**（诺姆的 actionTime / remaining 口径以源码为准，别凭本文）。若读完发现两块逻辑差异大到数据描述不了，退而用可选函数 `axisExtraBlocks?(ctx: { cinemaLevel: number; actionTimeOf(mid: string): number; consumed(mid: string): number })`，同样返回候选块数组。
+3. 测试：对照基准照抄原两段逻辑，用 harness 队伍（诺姆/希格莉德 各 0 命与 6 命，加一个无关角色）比对候选块数组逐字段相等；反向变异 = 删声明。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b 其他 dominant 异放角色开放占比调节（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁（§5.64）。
 ## 附录：普查脚本 census.sh
 
 ```bash
