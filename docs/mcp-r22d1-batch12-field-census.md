@@ -2316,6 +2316,36 @@ ImpactChart.vue 的改动：
 - 测试：门面对照原 some/find × 全角色 × 槽位；页面源码锁无 `'1051'`/`'1481'`。
 - 其后 CC-66：ResourceResultCard.vue:748 维琳娜（先读 :730–:780 定方案）。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、perf 夹具缺「11号 + 平A兜底」（§5.69）、teammateBuffGate 多模块同 buff id 合并语义（§5.72）。
+### 5.75 CC-60 done：自动失衡轴「章」档位 / 「有琉优先」→ 模块声明（lead-arena-0925c，2026-09-27 第 88 轮）
+
+**提交**：`9379369`，改 8 个文件、新增 1 个测试。
+- `src/mechanics/types.ts`：`axisPresetChapterOwner?: boolean`（预设 `chapter` 按本角色影画 0→0 章 / ≥1→1 章过滤，队中第一个声明者生效）、`axisPresetPreferred?: boolean`（同队多预设时 team 含本角色的预设优先）。
+- 声明：`yidhari.ts` axisPresetChapterOwner；`liuyin.ts` axisPresetPreferred。
+- `src/data/stunAxisPresets.ts`：新增 `AutoAxisPresetHints { isChapterOwner(id); isPreferred(id) }` 与 `NO_AUTO_AXIS_PRESET_HINTS`；`selectAutoStunAxisPreset(team, cinemaBySlot, presets?, hints = NO_AUTO_AXIS_PRESET_HINTS)`。
+  - **拍板**：data 层**不** import `@/mechanics`（分层：data 在 mechanics 之下），改为调用方注入提示；**默认 = 无提示（不做章过滤/不做优先）**。唯一生产调用方 `src/composables/resourceCalc/roundInputs.ts#autoPreset` 传 `AUTO_AXIS_PRESET_HINTS`（从 `@/composables/agentMechanicView` 按值 import，守卫通过）。
+  - ⚠ 坑：以后新增 selectAutoStunAxisPreset 调用方**必须**传 `AUTO_AXIS_PRESET_HINTS`，否则章鱼队选档会退化（新测试「不传提示与原实现不同」保证默认值确实不同，别误以为可省）。
+  - `src/data/__tests__/stunAxisPresets.test.ts` 12 处调用统一补传 `undefined, AUTO_AXIS_PRESET_HINTS`，断言未改仍过。
+- `src/composables/agentMechanicView.ts`：`AUTO_AXIS_PRESET_HINTS`、`teamAxisPresetChapterOwnerSlot(team)`、`teamHasAxisPresetPreferred(team)`。
+- `src/views/StunAxisPage.vue`：`hasYidhari` → `hasChapterOwner`（3 处）、`yidhariCinema` → `chapterOwnerCinema`（按槽位读，与原 `find(...)?.cinemaLevel ?? 0` 同为第一个匹配）、`autoLiuyinLabel` 走 `teamHasAxisPresetPreferred`；横幅文字「有琉/无琉」「0章/1章」仍在页面（展示文案，现唯一声明者即琉音/伊德海莉）。
+- 新测试 `agentMechanicViewCc60.test.ts`：全角色提示/槽位/有琉对照原写死；**原 selectAutoStunAxisPreset 逐字复刻为 legacySelect**，对全部真实预设 team × 通配替换 × 额外 1051/1481 组合 × 命座 0/1/6 逐值对照；源码锁。
+- 验证：24 guards / tokens / vue-tsc 0；反向变异（删 liuyin.ts axisPresetPreferred）变红、已恢复；verify：323 files / 3668 tests passed，24 guards 0。回退：`git revert 9379369`。
+
+### 5.76 CC-66 done：ResourceResultCard 维琳娜腐蚀展示 → 模块声明 resultCardCorrosion（第 88 轮）
+
+**提交**：`5e93c6c`，改 4 个文件、新增 1 个测试。
+- `types.ts`：`resultCardCorrosion?: { poolReleaseEventMarker: string; broadCycloneMoveId: string }`（展示层）；`velina.ts` 声明 `{ 'velina-corrosion', '1561007' }`。
+- 门面 `agentResultCardCorrosion(agentId)`；`ResourceResultCard.vue` 两处：`renderCount` 的 moveId 判定改为 `cc && row.moveId === cc.broadCycloneMoveId`（`× 10` 系数仍在组件，未动）；`anomalyEventExecutionsData` 的 `agentId === '1561'` 改为 `if (cc)`、事件过滤用 `cc.poolReleaseEventMarker`。
+- 等价性：:748 仅维琳娜声明 ⇒ 同原判定。:611 原只判 moveId（不看卡片角色）；新加了「卡片角色声明了 resultCardCorrosion」前提——moveId `1561007` 以维琳娜 id 为前缀，只出现在她的卡片行里，故等价。
+- 验证：同上全套，反向变异（删 velina.ts resultCardCorrosion 行）变红；verify：324 files / 3670 tests passed（16/29 skipped），24 guards 0。回退：`git revert 5e93c6c`。
+
+**展示层（views/components）四位角色 id 至此只剩「UI 默认选中值」**（§5.74 已裁定不还）。
+
+**下一步（按优先级，第 89 轮起；已 grep `src/composables src/core src/stores src/utils` 非测试核实）**：
+1. **CC-67 panelPhases 队友额外能力表**：`src/composables/resourceCalc/panelPhases.ts:404–431` 是「agentId → 额外能力 buff id 列表」数据表（1211/1161/1031/1131/1071/1121/1491/1341/1281/1421/1521/1301/1461/1641），`:452–:453`（凯撒 1071：有其他在队队友才激活）、`:462`（菲欧妮 1641）是按 id 的激活特判。方案：模块声明 `additionalAbilityBuffIds?: string[]` + `additionalAbilityActive?(ctx)`；**先读 :380–:520 全文与其测试锁**（`grep -rn panelPhases src/**/__tests__`），注意部分角色可能还没有模块文件（要新建最小模块或放 specPanelBuffs.ts，像佩洛那样）。这是编排层写死，优先级最高。
+2. **CC-68 teamCompare.ts:271** `team.includes('1471')`（先读上下文 :250–:300 定方案）。
+3. **CC-69 编排层角色专属字符串**：`damagePoolAnomaly.ts:90` `event.id.includes('velina-corrosion')`（可复用 CC-66 的 `resultCardCorrosion.poolReleaseEventMarker`，或改为事件自带标记字段）；`roundInputs.ts:229` `act.moveId === 'yidhari-heavy-single' && cinema >= 1 ? 50`（伊德海莉 1 命单重碾能耗，应迁模块能力）。
+4. **裁定暂不还**：`pullPlannerEngine.ts:49` `FREE_SPECIAL_AGENT_IDS`、`pullValue.ts:49/51`（抽卡规划的经济数据：赠送/特殊 A 级角色名单，不是伤害计算机制；归属不在战斗模块）。若日后要还，可放 `src/data/` 独立表，从这里回退本裁定。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、perf 夹具缺「11号 + 平A兜底」（§5.69）、teammateBuffGate 多模块同 buff id 合并语义（§5.72）、specs/agents/1531.json:305 旧表名文字（§5.74）。
 ## 附录：普查脚本 census.sh
 
 ```bash
