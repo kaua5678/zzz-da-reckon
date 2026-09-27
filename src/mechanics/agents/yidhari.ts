@@ -492,6 +492,8 @@ export const yidhariMechanic: AgentMechanicModule = {
   agentIds: [YIDHARI_AGENT_ID],
   // CC-65b：不吃通用交互基准（原 stores/config.ts 写死名单；正反馈 refund 循环 carry，弹刀/闪反归击破位）
   noGenericInteraction: true,
+  // CC-60：自动失衡轴「章」档位归属（原 data/stunAxisPresets.ts#selectAutoStunAxisPreset 与 StunAxisPage 写死本角色 id）
+  axisPresetChapterOwner: true,
   // CC-63：兜底平A填充 → 蓄力循环（basic_attack 已被改写为「蓄力烧血」无伤害/失衡），映射到 下砸 + 平A。
   // 原在编排层 roundInputs#expandExecutedToCounts 写死 `fillerAgentId === '1051'`，算式逐字搬入（1s 蓄力 + 两段 actionTime）。
   expandBasicFill: ({ fillSec, actionTimeOf }) => {

@@ -6,6 +6,7 @@
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
 import { getAgentMechanic } from '@/mechanics'
+import type { AutoAxisPresetHints } from '@/data/stunAxisPresets'
 import type { AgentMechanicModule, AxisEditorBlockMark, CharacterCountInputDecl } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
 
@@ -211,4 +212,20 @@ export function agentInteractionInputs(agentId: string | null | undefined): NonN
 /** 队里是否有「保底4嗔火」开关归属角色（CC-65b；原 TeamConfigPage teamHasBanyue 写死） */
 export function teamHasGuaranteeFuryOwner(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): boolean {
   return team.some(c => !!c?.agentId && !!getAgentMechanic(c.agentId)?.ownsGuaranteeFury)
+}
+
+/** 自动失衡轴选档提示（CC-60；生产入口 roundInputs#autoPreset 传给 selectAutoStunAxisPreset） */
+export const AUTO_AXIS_PRESET_HINTS: AutoAxisPresetHints = {
+  isChapterOwner: id => !!getAgentMechanic(id)?.axisPresetChapterOwner,
+  isPreferred: id => !!getAgentMechanic(id)?.axisPresetPreferred,
+}
+
+/** 队中第一个「章」档位归属角色的槽位；无 ⇒ -1（CC-60；原 StunAxisPage 写死 some/find agentId === 伊德海莉） */
+export function teamAxisPresetChapterOwnerSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): number {
+  return team.findIndex(c => !!c?.agentId && AUTO_AXIS_PRESET_HINTS.isChapterOwner(c.agentId))
+}
+
+/** 队里是否有「预设优先」角色（CC-60；原 StunAxisPage 写死 some agentId === 琉音） */
+export function teamHasAxisPresetPreferred(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): boolean {
+  return team.some(c => !!c?.agentId && AUTO_AXIS_PRESET_HINTS.isPreferred(c.agentId))
 }

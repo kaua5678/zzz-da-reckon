@@ -511,6 +511,8 @@ export const liuyinMechanic: AgentMechanicModule = {
   ownsPromoteVariantAxisBlocks: true,
   id: 'agent:liuyin',
   agentIds: [LIUYIN_AGENT_ID],
+  // CC-60：自动失衡轴同队多预设时含本角色的预设优先（原 data/stunAxisPresets.ts 与 StunAxisPage 写死本角色 id）
+  axisPresetPreferred: true,
   name: '琉音',
   description: '好评/客诉资源、暴击转冲击、额外能力强特暴伤、4命进场能量、按上一位队友特性的专属直伤。',
   applyPanel: applyLiuyinPanel,

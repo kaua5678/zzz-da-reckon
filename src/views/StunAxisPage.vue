@@ -11,7 +11,7 @@
       </div>
 
       <!-- 通用自动轴状态（队伍匹配到预设失衡轴即自动选用） -->
-      <div class="sap-plan-banner" v-if="autoPreset || hasYidhari">
+      <div class="sap-plan-banner" v-if="autoPreset || hasChapterOwner">
         <template v-if="autoActive && autoPreset">
           <span class="sap-plan-label">自动轴</span>
           <span class="sap-plan-name">{{ autoPreset.name }}</span>
@@ -20,7 +20,7 @@
         <template v-else-if="configStore.autoYidhariAxis && !hasManualAxes">
           <span class="sap-plan-label">自动轴</span>
           <span class="sap-plan-name">未命中预设</span>
-          <span class="sap-plan-note">当前队伍没有匹配的预设失衡轴{{ hasYidhari ? `（${autoChapterLabel}·${autoLiuyinLabel}）` : '' }}；给队伍捏轴并导出预设后自动生效</span>
+          <span class="sap-plan-note">当前队伍没有匹配的预设失衡轴{{ hasChapterOwner ? `（${autoChapterLabel}·${autoLiuyinLabel}）` : '' }}；给队伍捏轴并导出预设后自动生效</span>
         </template>
         <template v-else-if="!configStore.autoYidhariAxis">
           <span class="sap-plan-label">自动轴</span>
@@ -246,7 +246,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot, teamAxisPresetChapterOwnerSlot, teamHasAxisPresetPreferred } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -261,15 +261,17 @@ const { resourceResult, stunAxisResult: axisResult, stunPoolResult, stackTravers
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 // 通用自动轴：队伍匹配到预设失衡轴即自动选用（手动配置过轴时让路）
-const hasYidhari = computed(() => configStore.team.some(c => c.agentId === '1051'))
+// CC-60：「章」档位归属 / 「预设优先」角色经模块声明（原写死伊德海莉 / 琉音 id）
+const chapterOwnerSlot = computed(() => teamAxisPresetChapterOwnerSlot(configStore.team))
+const hasChapterOwner = computed(() => chapterOwnerSlot.value >= 0)
 const hasManualAxes = computed(() => configStore.stunAxisPlans.length > 0 || configStore.stunAxes.length > 0)
-const yidhariCinema = computed(() => configStore.team.find(c => c.agentId === '1051')?.cinemaLevel ?? 0)
-const autoChapterLabel = computed(() => (yidhariCinema.value >= 1 ? '1章（≥1命）' : '0章（0命）'))
-const autoLiuyinLabel = computed(() => (configStore.team.some(c => c.agentId === '1481') ? '有琉' : '无琉'))
+const chapterOwnerCinema = computed(() => (chapterOwnerSlot.value >= 0 ? configStore.team[chapterOwnerSlot.value]?.cinemaLevel ?? 0 : 0))
+const autoChapterLabel = computed(() => (chapterOwnerCinema.value >= 1 ? '1章（≥1命）' : '0章（0命）'))
+const autoLiuyinLabel = computed(() => (teamHasAxisPresetPreferred(configStore.team) ? '有琉' : '无琉'))
 // 自动轴 banner 备注：章鱼体系显示 章×有琉，其余显示预设 note
 const autoPresetNote = computed(() => {
   if (!autoPreset.value) return ''
-  if (hasYidhari.value) return `${autoChapterLabel.value}·${autoLiuyinLabel.value}`
+  if (hasChapterOwner.value) return `${autoChapterLabel.value}·${autoLiuyinLabel.value}`
   return autoPreset.value.note || '队伍匹配预设失衡轴自动选用'
 })
 // 条件轴方案激活时，编辑器展示命中方案解析出的轴（只读展示，改动不写回方案本体）

@@ -832,6 +832,10 @@ export interface AgentMechanicModule {
   interactionInputs?: Readonly<{ block?: { label: string }; dualCounter?: { label: string } }>
   /** CC-65b：队里有本角色才显示「保底4嗔火」开关（展示层；引擎侧由模块自身消费 guarantee.fury）。 */
   ownsGuaranteeFury?: boolean
+  /** CC-60：自动失衡轴「章」档位归属（预设 `chapter` 按本角色影画 0 命 → 0 章 / ≥1 命 → 1 章过滤；队中第一个声明者生效）。原 data/stunAxisPresets.ts 与 StunAxisPage 写死伊德海莉 id。 */
+  axisPresetChapterOwner?: boolean
+  /** CC-60：自动失衡轴同队多预设时，预设 team 含本角色者优先（StunAxisPage 横幅显示「有琉/无琉」）。原写死琉音 id。 */
+  axisPresetPreferred?: boolean
   /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。

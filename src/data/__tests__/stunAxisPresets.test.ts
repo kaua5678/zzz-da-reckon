@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { matchStunAxisPresets, cloneStunAxes, presetTeamKey, normalizeAxesForExport, resolveStunAxisPlan, selectAutoStunAxisPreset, stunAxisPresets } from '@/data/stunAxisPresets'
+// CC-60：章/有琉 选档提示改由模块声明注入（生产同源 roundInputs#autoPreset）
+import { AUTO_AXIS_PRESET_HINTS } from '@/composables/agentMechanicView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 
 const sample: StunAxisPreset[] = [
@@ -157,37 +159,37 @@ describe('stunAxisPresets', () => {
     })
 
     it('0章（0命）+ 有琉（1481 槽位1）→ 0章-琉', () => {
-      const p = selectAutoStunAxisPreset(['1051', '1481', '1451'], { 0: 0 })
+      const p = selectAutoStunAxisPreset(['1051', '1481', '1451'], { 0: 0 }, undefined, AUTO_AXIS_PRESET_HINTS)
       expect(p?.id).toBe('yidhari-liuyin-0life')
     })
 
     it('0章 + 无琉 → 0章其他（常规循环轴）', () => {
-      const p = selectAutoStunAxisPreset(['1051', '1391', '1451'], { 0: 0 })
+      const p = selectAutoStunAxisPreset(['1051', '1391', '1451'], { 0: 0 }, undefined, AUTO_AXIS_PRESET_HINTS)
       expect(p?.id).toBe('0伊-任意')
     })
 
     it('1章（≥1命）+ 有琉 → 1章-琉（第三槽任意辅助均命中，通配）', () => {
-      expect(selectAutoStunAxisPreset(['1051', '1481', '1451'], { 0: 1 })?.id).toBe('1章+琉')
-      expect(selectAutoStunAxisPreset(['1051', '1481', '1421'], { 0: 1 })?.id).toBe('1章+琉')
+      expect(selectAutoStunAxisPreset(['1051', '1481', '1451'], { 0: 1 }, undefined, AUTO_AXIS_PRESET_HINTS)?.id).toBe('1章+琉')
+      expect(selectAutoStunAxisPreset(['1051', '1481', '1421'], { 0: 1 }, undefined, AUTO_AXIS_PRESET_HINTS)?.id).toBe('1章+琉')
     })
 
     it('1章 + 无琉 → 1章其他（1命按闪能分配）', () => {
-      const p = selectAutoStunAxisPreset(['1051', '1391', '1451'], { 0: 1 })
+      const p = selectAutoStunAxisPreset(['1051', '1391', '1451'], { 0: 1 }, undefined, AUTO_AXIS_PRESET_HINTS)
       expect(p?.id).toBe('1伊-其他')
     })
 
     it('同一队伍随伊德海莉命座切换章：0命 0章-琉 → 1命 1章-琉', () => {
       const team = ['1051', '1481', '1451']
-      expect(selectAutoStunAxisPreset(team, { 0: 0 })?.id).toBe('yidhari-liuyin-0life')
-      expect(selectAutoStunAxisPreset(team, { 0: 1 })?.id).toBe('1章+琉')
-      expect(selectAutoStunAxisPreset(team, { 0: 6 })?.id).toBe('1章+琉')
+      expect(selectAutoStunAxisPreset(team, { 0: 0 }, undefined, AUTO_AXIS_PRESET_HINTS)?.id).toBe('yidhari-liuyin-0life')
+      expect(selectAutoStunAxisPreset(team, { 0: 1 }, undefined, AUTO_AXIS_PRESET_HINTS)?.id).toBe('1章+琉')
+      expect(selectAutoStunAxisPreset(team, { 0: 6 }, undefined, AUTO_AXIS_PRESET_HINTS)?.id).toBe('1章+琉')
     })
 
     it('无伊德海莉 / 伊德海莉不在槽位0 / 队伍不满 → null', () => {
-      expect(selectAutoStunAxisPreset(['1391', '1481', '1451'], { 0: 0 })).toBeNull()
-      expect(selectAutoStunAxisPreset(['1481', '1051', '1451'], { 1: 0 })).toBeNull()
-      expect(selectAutoStunAxisPreset(['1051', '1481'], { 0: 0 })).toBeNull()
-      expect(selectAutoStunAxisPreset(['1051', '', '1451'], { 0: 0 })).toBeNull()
+      expect(selectAutoStunAxisPreset(['1391', '1481', '1451'], { 0: 0 }, undefined, AUTO_AXIS_PRESET_HINTS)).toBeNull()
+      expect(selectAutoStunAxisPreset(['1481', '1051', '1451'], { 1: 0 }, undefined, AUTO_AXIS_PRESET_HINTS)).toBeNull()
+      expect(selectAutoStunAxisPreset(['1051', '1481'], { 0: 0 }, undefined, AUTO_AXIS_PRESET_HINTS)).toBeNull()
+      expect(selectAutoStunAxisPreset(['1051', '', '1451'], { 0: 0 }, undefined, AUTO_AXIS_PRESET_HINTS)).toBeNull()
     })
   })
 

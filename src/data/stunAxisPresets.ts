@@ -217,10 +217,20 @@ export function matchStunAxisPresets(
  *   （预设按槽位通配匹配，不会张冠李戴）；含 1051 的队伍由章鱼体系通配预设接管。
  * - 返回 null = 不自动（队伍不完整 / 无匹配预设）。
  */
+export interface AutoAxisPresetHints {
+  /** 是否为「章」档位归属角色（CC-60：模块声明 axisPresetChapterOwner，现唯一 = 伊德海莉） */
+  isChapterOwner(agentId: string): boolean
+  /** 预设 team 含该角色时优先（CC-60：模块声明 axisPresetPreferred，现唯一 = 琉音） */
+  isPreferred(agentId: string): boolean
+}
+/** 无提示：不做章过滤、不做优先（data 层不 import mechanics；生产调用方传 `AUTO_AXIS_PRESET_HINTS`，见 composables/agentMechanicView.ts） */
+export const NO_AUTO_AXIS_PRESET_HINTS: AutoAxisPresetHints = { isChapterOwner: () => false, isPreferred: () => false }
+
 export function selectAutoStunAxisPreset(
   team: (string | undefined | null)[],
   cinemaBySlot: Record<number, number>,
   presets: StunAxisPreset[] = stunAxisPresets,
+  hints: AutoAxisPresetHints = NO_AUTO_AXIS_PRESET_HINTS,
 ): StunAxisPreset | null {
   const ids = team.slice(0, 3)
   if (ids.length < 3 || ids.some(id => !id)) return null
@@ -228,14 +238,14 @@ export function selectAutoStunAxisPreset(
   if (matched.length === 0) return null
   // 章鱼体系：队伍含伊德海莉 → 按命座过滤 chapter；无 chapter 的预设恒可匹配
   let candidates = matched
-  const yidhariSlot = ids.indexOf('1051')
-  if (yidhariSlot >= 0) {
-    const chapter = (cinemaBySlot[yidhariSlot] ?? 0) >= 1 ? 1 : 0
+  const chapterSlot = ids.findIndex(id => !!id && hints.isChapterOwner(id))
+  if (chapterSlot >= 0) {
+    const chapter = (cinemaBySlot[chapterSlot] ?? 0) >= 1 ? 1 : 0
     const filtered = matched.filter(p => p.chapter === undefined || p.chapter === chapter)
     if (filtered.length > 0) candidates = filtered
   }
   // 有琉优先：同队多预设时含琉音的预设优先（如 0章-琉 vs 0章其他）
-  const lukys = candidates.filter(p => p.team.includes('1481'))
+  const lukys = candidates.filter(p => p.team.some(pid => pid !== '*' && hints.isPreferred(pid)))
   if (lukys.length > 0) candidates = lukys
   // 条件轴优先：同队多预设时选带 plans 的条件轴（一般用途轴）而非固定轴（如般琉通用 vs 5火10大）
   const plans = candidates.filter(p => p.plans && p.plans.length > 0)
