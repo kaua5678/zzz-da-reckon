@@ -811,7 +811,7 @@ export interface AgentMechanicModule {
   defaultBasicAttackTimeWeight?: number
   /**
    * CC-64b（2026-09-27）：队友 buff 的**附加启用条件**（configStore#deriveTeammateBuffEnabled 读）。
-   * store 对每条 buff 依次询问**全部已注册模块**的本钩子；第一个返回 boolean 的生效，最终启用 = baseEnabled && 返回值；
+   * store 对每条 buff 询问**全部已注册模块**的本钩子；最终启用 = baseEnabled && 所有返回 boolean 的值（逻辑与，与注册顺序无关；CC-76）；
    * 返回 undefined = 这条 buff 不归我管。`team` = 队内查得到 Agent 的角色（槽位顺序）；模块自己在 team 里找本角色
    * （不在队也会被询问——须按「不在队」口径作答，与迁移前逐值一致）。
    * 现实现：蕾米埃尔（额外能力 tier 1..3 三条攻击 buff、核心被动 refringe_3、prismatic_buildup）；

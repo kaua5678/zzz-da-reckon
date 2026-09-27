@@ -411,12 +411,15 @@ export function deriveTeammateBuffEnabled(
     }
   }
 
+  // CC-76 口径裁定（census §5.83）：多个模块对同一条 buff 表态时 = **逻辑与**（任一返回 false 即禁用），
+  // 与模块注册顺序无关。原实现「第一个返回 boolean 的说了算」依赖注册顺序；现有两个声明者（蕾米埃尔 5 个 buff id /
+  // 波可娜 pulchra_extra_trap_followup）键不相交 ⇒ 两种口径逐值相同。
   function resolveSpecialTeammateBuffEnabled(buffId: string, baseEnabled: boolean, groupId: string, groupCinema: number | undefined): boolean {
+    if (!baseEnabled) return false
     for (const gate of buffGates) {
-      const extra = gate({ buffId, team: buffGateTeam, groupId, groupCinema })
-      if (extra !== undefined) return baseEnabled && extra
+      if (gate({ buffId, team: buffGateTeam, groupId, groupCinema }) === false) return false
     }
-    return baseEnabled
+    return true
   }
 
   const out: Array<{ id: string; enabled: boolean }> = []
