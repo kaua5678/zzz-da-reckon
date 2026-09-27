@@ -10,7 +10,8 @@ import { calcStunPool } from '@/core/stunPool'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource'
-import { computeLiuyinHugCounts, resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
+import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
+import type { AgentMechanicModule } from '@/mechanics/types'
 import type { TeamResourceResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { useConfigStore } from '@/stores/config'
@@ -159,6 +160,18 @@ export function ultimateGiftProviderSlot(configStore: ReturnType<typeof useConfi
 }
 
 /** 提供者槽位 + 本轮赠大来源（好评总量）；无提供者或本轮无来源时 null（CC-35d-B3） */
+/**
+ * CC-43c（2026-09-27）：赠大提供者模块的转大次数算法（能力 `promoteHugCounts`）；队伍无提供者或提供者未实现时 undefined。
+ * 替代原 `computeLiuyinHugCounts` 值导入（判据 23）。
+ */
+export function promoteHugCountsOf(
+  configStore: ReturnType<typeof useConfigStore>,
+): AgentMechanicModule['promoteHugCounts'] {
+  const slot = ultimateGiftProviderSlot(configStore)
+  if (slot < 0) return undefined
+  return getAgentMechanic(configStore.team[slot]?.agentId ?? '')?.promoteHugCounts
+}
+
 export function ultimateGiftSourceOf(
   configStore: ReturnType<typeof useConfigStore>,
   rr: TeamResourceResult,
@@ -291,7 +304,8 @@ export function promoteFixpoint(
     } else if (p) {
       const chainExecCount = baseExecs.find(e => e.slot === p.targetSlot && e.moveId === p.chainMoveId)?.count ?? 0
       const targetChainTotal = Math.min(p.chainCountPerStun * stunCount, chainExecCount)
-      const hug = computeLiuyinHugCounts(p.goodReviewTotal, stunCount, p.hug60Setting, targetChainTotal)
+      const hug = promoteHugCountsOf(configStore)?.(p.goodReviewTotal, stunCount, p.hug60Setting, targetChainTotal)
+        ?? { hug60: 0, hug90: 0 }  // p 非空 ⇒ 必有提供者；兜底仅防提供者未实现该能力
       hug60 = hug.hug60
       hug90 = hug.hug90
     }

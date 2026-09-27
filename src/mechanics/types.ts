@@ -830,6 +830,17 @@ export interface AgentMechanicModule {
    */
   ultimateGiftSource?(result: DeepReadonly<CharacterResourceResult>): { goodReviewTotal: number } | null
   /**
+   * CC-43c（2026-09-27）：赠大提供者的「好评 → 60/90 转大次数」算法（阈值结转贪心）。
+   * 编排层 `resourceCalc/ultimatePromote.ts#promoteHugCountsOf` 按 `ultimateGiftProviderSlot` 找到提供者后取用
+   * （promoteFixpoint 非轴路径 + convergence 轴模式「剩余好评默认 90」）。现唯一实现：琉音 `computeLiuyinHugCounts`。
+   */
+  promoteHugCounts?(
+    goodReviewTotal: number,
+    stunCount: number,
+    hug60Setting: number,
+    targetChainCountTotal?: number,
+  ): { hug60: number; hug90: number; remainingGoodReview: number }
+  /**
    * 风化（风属性异常）事件倍率加成（CC-36b 2026-09-27）：`resourceCalc/damagePoolAnomaly.ts` 结算风化事件时，
    * 按**风槽**角色调用（`panel` = 风槽面板，`triggerCount` = 风化触发次数）。返回 `pct`（%，乘到事件倍率上）与
    * 拼到公式说明末尾的 `note`；null = 无加成。现唯一实现：维琳娜 6 命（再次施加风化，按平均剩余时长 +2.5%/s，上限 40%）。

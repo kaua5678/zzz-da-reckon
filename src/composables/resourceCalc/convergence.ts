@@ -31,6 +31,7 @@ import {
   buildPromoteParams,
   promoteFixpoint,
   ultimateGiftProviderSlot,
+  promoteHugCountsOf,
   ultimateGiftSourceOf,
 } from './ultimatePromote'
 import { applyChainGift } from './chainGift'
@@ -49,7 +50,7 @@ import {
 import { getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
 import { calcSpecialActionBonus, PARRY_DECIBEL_BONUS } from '@/core/anomalyPool'
 import { ULTIMATE_COST_DEFAULT, calcTeamResources } from '@/core/resource'
-import { resolveUltimateTargetSlot, computeLiuyinHugCounts } from '@/mechanics/agents/liuyin'
+import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
 // 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 / T67-a1 刀 A）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { applyTeamMechanics, collectNextRoundFeedback } from './panelPhases'
@@ -329,13 +330,16 @@ export function createRunCalcRound(deps: {
          * ⚠ 别用 `Math.max(h60, stunCount)` 之类自造窗口数：实测把 1051 的账本残差从
          * −1.63 翻成 +0.98（少扣一次 60）再回落到 +0.40，两次都是自造口径的产物。
          */
-        const hug = computeLiuyinHugCounts(
+        // CC-43c：算法经赠大提供者模块能力 `promoteHugCounts` 取用（琉音 = computeLiuyinHugCounts，逐位同一函数）
+        const hug = promoteHugCountsOf(configStore)?.(
           prevGoodReview,
           stunCount,                 // 连携窗口数（= 本轮失衡计划值，与核心侧同源）
           Math.floor(h60),           // 60 档上限 = 轴声明的 60 抱拳计划次数（floor 成整数次）
         )
-        h60 = hug.hug60
-        h90 = hug.hug90
+        if (hug) {
+          h60 = hug.hug60
+          h90 = hug.hug90
+        }
       }
       if (h60 > 0 || h90 > 0) axisHug = { hug60: h60, hug90: h90 }
     }
