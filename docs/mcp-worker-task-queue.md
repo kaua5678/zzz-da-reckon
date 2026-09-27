@@ -69,24 +69,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 182 轮（lane lead-arena-0925c）：只提交文档，源码 = HEAD（5cab16aa 之后无代码改动）。**
-- CC-149 复测：CC-158 合入后，auto-1431-1341-1311 −8.46%、留白 +12.8 仍在，§21.3 的预期不成立，补丁已回退。
-- CC-159 定位完成，**§22.5 的归因已更正**：病根是叶瞬光终局整数重推的 k↔k+1 轮 2-循环（没有整数不动点），不在折叠环。4 个修复变体全部否决，数据与脚本见 stun-dual-source §23。
-- REQUIREMENTS 无新条目，提示词未改（md5 2aa1f517）。
+**第 183 轮（lane lead-arena-0925c）：CC-159 与 CC-149 合入（同一提交，见 `git log`，提交信息以「CC-159+CC-149」开头）。**
+- 更正 §23.4：timePressure 退轴方向不成立（它按本槽行计算，病例槽的行远小于 180s）。改为终局单量子 2-循环由模块选相，配合 CC-149 让降配吸收多出的一轮。详见 stun-dual-source §24。
+- 验证：vue-tsc 与 verify 通过（3824 passed），CG 25 项通过，两份基线已重生成，zd c183 共 15/624 条变化。
+- 新开 CC-160（终局跨盆振荡，单人叶瞬光 c4/c5/c6 留白 +5~+11s）。REQUIREMENTS 无新条目，提示词未改。
 
 **下一步（按顺序，直接开工）**
-1. **CC-159，按推荐方向做**：终局期刷新 `cfg.timePressureSeconds`，让 k+1 轮那一相触发叶瞬光自动退轴（full→short_pair）。
-   - 先读 `src/core/resource/foldLoop.ts` 中 timePressure 的写入处（约 150 行，`cfg.timePressureSeconds = rowTime - battleWindow`），以及 `yeshuguang.ts` 的 `estimateExSpecialTime` 退轴判据（`AUTO_AXIS_DEGRADE_THRESHOLD` = 5）。
-   - 验证探针：`cp /home/kaua/calc-arch/k182/zzN182.test.ts src/`（1431-1341-1031 队，输出最终逐行时间）、`k182/zzQ182.test.ts`（单人 1431 c3，输出伤害和 cycle）、`k181/zzM181.test.ts`（全库留白扫描），跑完移走。
-   - 在 estimate 出口加日志的写法见 `k182/zzy182.py`（带 ZZTMP，用完 `sed -i '/ZZTMP/d'`）。
-   - 硬约束（§23.4）：`照影 = floor(终态剑势/6)`（outerCycleColdStart 钉住）；装配行 ≡ 账本；不写 agentId。
-   - 验收：golden `agent:1431:c3`、`preset:auto-1431-1341-1311` 的伤害变化能逐条解释；棘轮两队留白 12.8 → ≤2。
-2. CC-159 通过后合入 CC-149（`git apply /home/kaua/calc-arch/k179/cc149-attempt.diff`，对 HEAD 可干净应用）。
+1. **核对 zd 下降**：default 变体 auto-1431-1341-1311 −7.49%、auto-1431-1341-1031 −3.05%。用 zd 行快照对比 c183 与基线的逐行差异（`.zc/perf/zd.sh` 的产物目录，见脚本），确认是否为「多出一轮 + 降配交互档下调」。若不是，写进 §24.4 并开卡。
+2. **CC-160**：
+   - 用探针 `cp /home/kaua/calc-arch/k183/zzQ182.test.ts src/`（`ZZ_C=4` 为单人 1431 c4），在 finalizePasses 的选择点加日志（写法见 `k183/` 下本轮的临时日志脚本，或参照 §24：打印每个环成员的 [ex, ult, 平A, nec]）；
+   - 先查终局 iterate 为什么会从折叠收敛态跳到另一个盆。
+   - 修好后，teamTimeSummary 虚高归因用例需要换样例（或改纯函数构造）。
 3. CC-156、CC-147、CC-152（可选）。
 
 **已知坑**
-- 单人叶瞬光 c3（golden `agent:1431:c3`）对终局的任何扰动都极敏感：伤害 −15%~−35%，喧响轮 3→2，外层 stable→cycle。改终局逻辑时，先用 zzQ182 看它。
-- iterate 内有大幅瞬态（平A 166、终结技次数 3→1→4），任何「取历史最大 / 首次值」的策略都会被污染（§23.3 变体 A、B）。
+- 终局 2-循环的相位选择必须由模块声明：伊德海莉取平A大者会变差（§24.3）。
+- 单量子门槛不要放宽：c3 的跨盆振荡选错相，伤害 −34.5%。
 - 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行。
 - 双向折叠的 1s 门槛不要删；refund 扣减只减不增。
 - 棘轮（setAgent）、zd（applyTeamToStore）、timeGolden（applyTeamPreset）三条路径的状态不同。

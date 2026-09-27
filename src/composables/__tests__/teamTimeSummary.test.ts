@@ -101,7 +101,12 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     // 现样例 = 叶瞬光/照/妮可（手动队默认口径 slack 12.8s = 虚高 12.8s）：外层环入环（outerExit=cycle），规范成员的
     // 叶瞬光槽在 refund 冻结后又测得估算高估，而本槽已无折叠残差可退 ⇒ 负溢出进已冻结的 refund 被丢弃（CC-159 待办）。
     // 该缺陷修好后本样例会失效——届时按上面惯例换队，或改用纯函数构造 rr。
-    const t = await summaryOf(['1431', '1341', '1031'])
+    // 2026-09-28 第 183 轮：上一句的归因有误（真因是叶瞬光终局整数重推 k↔k+1 轮 2-循环），CC-159 修掉后该队 slack 1.1 ⇒ 再换。
+    // 全库三人队虚高最大仅 3.98s，现样例 = 单人叶瞬光 4 命（golden `agent:1431:c4`：slack 12.2 = 虚高 12.2）：CC-149 放行的
+    // 降配档里终局重推落进**跨盆振荡**（强特 15↔6），停在不自洽相位（CC-160 待办）。CC-160 修好后需再换样例或改纯函数构造。
+    await setupHarness([{ agentId: '1431', cinemaLevel: 4 }] as never)
+    const rr = useResourceCalc().resourceResult.value!
+    const t = buildTeamTimeSummary({ rr, battleTime: rr.totalTime, invincibleTime: useConfigStore().enemy.invincibleTime ?? 0, nameOf: () => '' })
     expect(t.slack).toBeGreaterThan(2)
     // 池确实被分完（平A分配 ≈ 可分配池）→ 留白不来自未分配的秒数
     expect(t.basicTotal).toBeGreaterThan(t.remainingFrontlinePool - 1)

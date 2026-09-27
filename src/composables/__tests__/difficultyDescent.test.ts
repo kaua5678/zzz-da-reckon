@@ -126,10 +126,10 @@ describe('降配档单调闸门 + 非单调归因（用户口径 2026-09-20）',
   it('单因素（合轴率）：闸门开启 ⇒ 交互档与伤害单调不增；关掉则复现反转', async () => {
     const run = async (gate: boolean) => {
       const { config, calc } = await setupTeam(0)
-      // CC-148（第 173 轮）：本用例复现的是 off 口径下的历史反转（0.20→0.10 交互档回升），显式钉 off。
-      // physical 缺省下该队交互档从 0.4 起就在最低档 0.0625，对照组复现不了；且 0.4→0.3 伤害回升 +0.06%
-      // （冷启动最大可行档 0.4/0.3/0.2 = 0.0625/0.125/0.0625，闸门压回 0.0625 后剑势 29.90→29.97）——真实缺陷，见 CC-149。
-      config.setMechanicSetting('time.stunPlanProjection', 0)
+      // CC-149（第 179 轮）：去掉 CC-148 的显式 off 钉，改跑 physical 缺省。原先 physical 下 0.4 档被降配相对臂③
+      // （留白不增，基线态截断 52.6s 时无意义）否决了真可行的 0.125 档 ⇒ 冷启动最大可行档锯齿、0.4→0.3 伤害回升。
+      // 修后（solveTeam：绝对可行即接受）实测闸门开 0.125/0.125/0.0625/0.0625/0.0625、伤害严格下降；
+      // 闸门关 0.2→0.1 交互档 0.0625→0.125 回升（对照组仍复现）。docs/mcp-stun-dual-source.md §21。
       config.setMechanicSetting('yeshuguang.formAxis', 0)
       if (gate) config.interactionScaleMonotone = true
       const rows: Array<{ cap: number; scale: number; dmg: number }> = []

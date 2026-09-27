@@ -428,13 +428,19 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           const trial = runOuterLoop(true, scale)
           lastCandidateTrial = { scale, trial }
           const trialTruncation = trial.out?.resourceResult?.overflowSeconds ?? 0
-          const accepted = acceptsTrial(trial) && trialTruncation <= TIME_BUDGET_TOLERANCE_SECONDS
-          const feasible = accepted && downscaleTrialFeasible({
+          // CC-149（第 179 轮）：绝对可行**独立判定**，且绝对可行即接受。
+          // 旧写法 `feasible = accepted && …` 让兜底的相对三臂否决了首选的绝对可行——违背两层字典序
+          // （@fact engine:降配搜索/绝对可行优先）。绝对可行 ⇒ 臂①②必然满足，差别只在臂③「留白不增」：
+          // 基线态大量截断时（实测 52.6s）其「留白」是截断后的残量，不代表真实余量，拿它否决真装得下的档
+          // ⇒ 最大可行档沿合轴率锯齿（0.125/0.0625/0.125/0.0625，docs/mcp-stun-dual-source.md §21）。
+          // 回退点：改回 `const accepted = acceptsTrial(trial) && trialTruncation <= TOL; const feasible = accepted && downscaleTrialFeasible(...)`。
+          const feasible = downscaleTrialFeasible({
             trialNet: netOf(trial),
             trialTruncation,
             stunEffTime,
             toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,
           })
+          const accepted = feasible || (acceptsTrial(trial) && trialTruncation <= TIME_BUDGET_TOLERANCE_SECONDS)
           // CC-143 第三层「缓解档」：截断仍 > 容差（未 accepted），但三臂不劣且截断比基线少一个容差以上
           // 另要求该档外层 stable：cycle 停点是环内选点（路径依赖），兜底档不拿它（实测不加此条 cycle 2→4）
           const relief = !accepted && trial.outerExit === 'stable' && acceptsTrial(trial)

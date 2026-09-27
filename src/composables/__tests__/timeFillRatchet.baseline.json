@@ -332,13 +332,13 @@
   "outerExit": "stable"
  },
  "auto-1431-1341-1031": {
-  "slack": 12.8,
+  "slack": 1.1,
   "over": 0,
   "stun": 1,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1431-1341-1311": {
-  "slack": 12.8,
+  "slack": 2.9,
   "over": 0,
   "stun": 1,
   "outerExit": "stable"
@@ -350,8 +350,8 @@
   "outerExit": "stable"
  },
  "auto-1431-1481-1341": {
-  "slack": 0,
-  "over": 0.2,
+  "slack": 7.9,
+  "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },

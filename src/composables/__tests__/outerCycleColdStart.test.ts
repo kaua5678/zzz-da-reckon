@@ -268,7 +268,8 @@ describe('physical 缺省：同场景结构判据 + 现值', () => {
     expect(converged).toBe(true)
     expect([cycle!.totalForms, cycle!.decibelForms, cycle!.giftForms, cycle!.zhaoyingForms]).toEqual([10, 2, 4, 4])
     expect(cycle!.zhaoyingForms).toBe(Math.floor(cycle!.outsideSword / 6))
-    expect(rr.convergence?.interactionScale, 'S3 真实溢出降配（§7.1），现值').toBe(0.0625)
+    // CC-149（第 183 轮合入）：降配「绝对可行即接受」后，最大可行档不再被相对臂③否决 ⇒ 0.0625 → 0.125（§21.3 锯齿消除后的曲线）。
+    expect(rr.convergence?.interactionScale, 'S3 真实溢出降配（§7.1），现值').toBe(0.125)
   }, 300_000)
 
   it('C0 三轴：整数、分项闭合、照影 = floor(剑势/6)；总轮 10 / 11 / 12', async () => {

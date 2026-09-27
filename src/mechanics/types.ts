@@ -1333,6 +1333,11 @@ export interface AgentMechanicModule {
     applies(cfg: CharacterOperationConfig): boolean
     /** 置位自己的终局旗标（引擎在重推循环前调用） */
     begin(cfg: CharacterOperationConfig): void
+    /**
+     * 可选（CC-159，第 183 轮）：终局重推落进「单量子 2-循环」（无整数不动点）时的相位偏好。
+     * 入参是两环成员中**本槽**的状态；返回 true = 取 `a`。引擎只问第一个声明者；未声明 = 旧行为。
+     */
+    prefersCycleMember?(a: IterationState, b: IterationState): boolean
     /** 装配后复位（引擎在装配之后调用；不对称语义见上方说明） */
     reset(cfg: CharacterOperationConfig): void
   }

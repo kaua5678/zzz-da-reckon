@@ -822,6 +822,11 @@ export const yeshuguangMechanic: AgentMechanicModule = {
     stage: 'preTail',
     applies: cfg => Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1,
     begin: cfg => { (cfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = true },
+    // CC-159（第 183 轮）：终局 k↔k+1 轮 2-循环（平A多 ⇒ 剑势够 k+1 轮 ⇒ 必要+1轮 ⇒ 平A被挤 ⇒ 只够 k 轮）无整数不动点。
+    // 取本槽平A较大的一相：装配按其自身平A出 k+1 轮行（`照影 = floor(终态剑势/6)` 成立），多出的一轮若装不下由
+    // S3 降配（合轴率）承担——用户口径「多出的那一轮的时间由合轴率和短轴承担」（`@fact agent:1431/终局整数化`）。
+    // 另一相「账本 k+1 轮、平A被挤、装配只出 k 轮」= 虚高留白 12.8s（docs/mcp-stun-dual-source.md §23–24）。
+    prefersCycleMember: (a, b) => a.basicAttackTime > b.basicAttackTime,
     reset: cfg => {
       if (Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1) {
         (cfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = false

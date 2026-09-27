@@ -14,8 +14,9 @@ export const DOWNSCALE_SCALES: readonly number[] = [0.875, 0.75, 0.625, 0.5, 0.3
 /**
  * `selectDownscaleScale` 的单档试算产物：
  * - `accepted`：通过**相对**验收（三臂不比基线更差 + 截断 ≤ 容差）——「比现状好」；
- * - `feasible`：在 `accepted` 之上还满足**绝对**可行（`downscaleTrialFeasible`：净占用不超预算 + 截断 ≤ 容差）
- *   ——「真装得进 180s」。省略（undefined）= 沿用旧单层语义：accepted 即最终采纳。
+ * - `feasible`：**绝对**可行（`downscaleTrialFeasible`：净占用不超预算 + 截断 ≤ 容差）——「真装得进 180s」。
+ *   **调用方约定：`feasible` 为 true 时 `accepted` 也为 true**（绝对可行即接受，不受相对三臂否决；CC-149，第 179 轮——
+ *   旧约定「feasible 在 accepted 之上」让兜底臂③否决了首选层）。省略（undefined）= 沿用旧单层语义：accepted 即最终采纳。
  * - `value`：该档完整结果（供调用方使用）。
  */
 export interface DownscaleOutcome<T> {
