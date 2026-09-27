@@ -278,6 +278,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-104 | ✅ done（第 130 轮） | 见 git log「fix(CC-104)」 | R5 D20：`coverage.default` 全为 1 的数据前提钉（`coverageDefaultInvariant.test.ts`，失败时指向三处「无记录当 100%」/「fixed 不乘」的代码）；`WEngineFieldPage.vue` 覆盖率按百分比展示。无数值变化。 |
 | CC-105 | ✅ done（第 131 轮） | 见 git log「fix(CC-105)」 | R5 D21：skillTag `assistAttack` 归一到招式族 `assist`（31800 混沌爵士 4pc 支援技 +20% 修前漏算）。`core/buff.ts#SKILL_TAG_TARGET`，测试 `skillTargetsCoverage.test.ts`；zd 5 个预设（全部含 31800 装备者 1171 / 1221）伤害上升，timeGolden 5 条 dmg 更新，delta 表见 R5 账本 §9。 |
 | CC-106 | ✅ done（第 132 轮） | 见 git log「test(CC-106)」 | R5 D22：`buffModifiersIntegrity.test.ts` 钉住「catalog buffModifiers 全空」与「teammate-buffs 修饰器 operation / 引用 / 目标类型有效」，防静默失效。无数值变化。 |
+| CC-107 | ✅ done（第 133 轮） | 见 git log「test(CC-107)」 | R5 D24 / D25：`effectValueInvariant.test.ts` 钉住效果数值字段形态；`remielleSourcePhase.test.ts` 钉住 1581 异化度 / 耀变倍率按**局外**异常精通取值（口径未定，靠 buff 顺序隐式成立，见账本 D25）。无数值变化。 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |
 | R7 | ✅ done | `8a0159c` | 用户决定删除事件时间轴死代码：`src/core/timeline/`、`scripts/lib/timeline-isolation.*`、`timelineIsolation.test.ts`、判据 26（check-guards 26→25） | `docs/REQUIREMENTS.md` R7 · census §5.109 |

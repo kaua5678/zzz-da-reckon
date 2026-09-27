@@ -94,7 +94,8 @@
 - [x] 第 2 刀（第 121 轮 Z2、Z6；第 122 轮 Z4、K0、Z5、Z1；第 123 轮 Z3、Z7–Z12；第 124 轮 Z13、D14 批与字段归类 §8，**完成**）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
 - [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；第 130 轮完成 `coverage`（D20）；第 131 轮完成 `target`（D21，CC-105 已修）；第 132 轮完成 `buffModifiers`（D22）与 `formula` / `expression`（D23）。
   - 52 个字段中**已核 19 个**：`mode`、`condition`、`requirement`、`outOfCombatStat`、`specialty`（requirement 内）、`coverage`、`default`、`min`、`max`、`step`、`target`、`kind`、`skillTargets`、`skillTag`、`skillType`、`targetSkillType`、`buffModifiers`、`formula`、`expression`（其中 `specialty` 只核了 requirement 内的用法，其他出现位置随角色类字段再核）。
-  - **下一批（效果数值核心，建议一起做）**：`type`、`value`、`valuePerStack`、`maxStacks`、`defaultStacks`、`modificationValues`、`scope`；然后 `source` / `sourceStat` / `defaultValue`；最后是角色 / 招式类（`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues` 等）。
+  - 第 133 轮完成效果数值核心一批（D24：`type`、`value`、`valuePerStack`、`maxStacks`、`defaultStacks`、`modificationValues`、`scope`）与 `source` / `sourceStat` / `defaultValue`（D25）⇒ **已核 29 个**。
+  - **剩余 23 个 + `specialty` 其余位置**（角色 / 招式 / 面板类）：`actionTime`、`advancedStat`、`agentId`、`attribute`、`baseStat`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`comboAlignRatio`、`damageElement`、`energyCost`、`isTeammateOnly`、`levelValues`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`skillTags`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat`、`teammateBuffId`、`timeType`、`values`。建议顺序：面板类（`advancedStat`、`baseStat`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat`）→ 招式类（`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`）→ 身份类（其余）。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
 ## 7. 已核结论（第 2 刀起）
@@ -345,6 +346,21 @@
 - **引擎怎么读**：`core/buff.ts` `evalFormulaExpression`：字符白名单 + `Function('x','s','p','clamp','floor','max','min', …)`，求值失败返回 0。catalog 的两个表达式只用 `x`，在白名单与可用标识符内，不会静默归零。`valueUnit` 在 `src/` 中只出现在类型声明和 specs 说明里，**零读取**：引擎把表达式结果按 stat 的存储单位直接累加；catalog 两处都是 storedPercent，与 remielle 模块读取这两个 stat 的口径一致（D14）。
 - **结论**：无差异。teammate-buffs.json 里的 formula（1411 / 1211 / 1161 / 1521 等）不在 catalog 范围，其修饰器已由 D22 的测试覆盖；表达式本身的正确性属于各角色规格（src/specs），不在 R5。
 
+### D24 效果数值核心字段（`type` / `value` / `valuePerStack` / `maxStacks` / `defaultStacks` / `modificationValues` / `scope`）：全部与引擎读法一致 → **无差异**
+
+- **数据怎么写**（第 133 轮实测，脚本 `/home/kaua/calc-arch/ev1.py`）：effect 293 个，type 只有 fixed（音擎 142 / 驱动盘 70 / 角色 14 / bosses 5）、stacked（音擎 43 / 驱动盘 8 / bosses 5）、formula（角色 2）三种，无缺省、无未知值。stacked 51 个（不含 bosses）：`value` 缺省 47、`value = valuePerStack` 4，**没有把 value 写成总值的**；全部有 `valuePerStack` 与 `maxStacks`，`defaultStacks = maxStacks`（bosses 有 1 处 defaultStacks 0，无消费方）。`modificationValues` 181 个，全部长 5 且第 1 项等于基础字段；音擎 effect 只有 4 个没有 modificationValues（14155 暴击率 20、13142 三条），原文都是不随精炼变化的单值 → 正确。`scope`：effect 级 0 处；组级 角色 247 处全为 inCombat、音擎 102 处全为 inCombat、驱动盘 58 处全缺省。
+- **引擎怎么读**：`core/buff.ts` `applyEffect`：fixed = value×cov；stacked = (valuePerStack ?? value)×(defaultStacks ?? maxStacks ?? 1)×cov；derived；formula；未知 type → 0。`applyWEngineModLevel` 按精炼等级替换 value / valuePerStack。scope：`collectAgentBuffs` / `collectWEngineBuffs` / `collectDriveDiscBuffs` 一律「`scope === 'outOfCombat'` 进局外，否则进局内」；驱动盘 2 件套无论 scope 都进局外。
+- **结论**：数据形态全部落在引擎读法之内 → 无差异。stacked 满层默认（defaultStacks = maxStacks）与计算器「满配」默认一致。拍板用测试钉住形态：`src/core/__tests__/effectValueInvariant.test.ts`（CC-107）。
+
+### D25 `source` / `sourceStat` / `defaultValue`：catalog 只有 1581 蕾米埃尔两处；引擎实际按**局外**异常精通取值，数据与原文都没写口径 → **语义待定（不改数值）**
+
+- **数据怎么写**：1581 corePassive 两个 formula 效果（`x * 0.02` → remielleRefringeCoefficient、`x * 0.2` → remielleLuminizeMultiplierBonus），`sourceStat: anomalyProficiency`，`source: {variable x, defaultValue 170}`，**没有 `sourcePanelPhase`**。原文：「蕾米埃尔异化度等于自身异常精通的0.02%；……倍率额外提升自身异常精通的0.2%」，没写「初始」。
+- **引擎怎么读**：`core/buff.ts` `getEffectSourceValue`：`dynamicSourceValue ?? panel[sourceStat] ?? source.defaultValue`。自身效果没有 `dynamicSourceValue`（`cloneEffectWithSourceValue` 只处理带 `sourcePanelPhase` 的队友效果），所以 x = **应用这条效果那一刻**正在累加的面板值。`collectAllBuffs` 把角色自身 buff 排在局内列表最前，那一刻的异常精通 = 局外面板值。
+- **实测**（第 133 轮探针，已写成测试）：无音擎时 局外 170 / 局内 170，coef 3.4；装 14150（局内 AP +90）时 局内 260，coef 仍 3.4（按局内应为 5.2）；再加 34100 4pc 时 局外 200 / 局内 340，coef 4.0（按局内应为 6.8）。
+- **差在哪**：口径本身未定。仓库里同类「按自身属性折算」的数据（teammate-buffs.json）：写「初始」的一律 `sourcePanelPhase: outOfCombat`；不写「初始」的有两种——柚叶异常掌控、莱特冲击力用 inCombat，丽娜穿透率、简异常精通用 outOfCombat。没有统一约定，R5 禁止用实测或投稿定口径。另外资源卡展示用的 `mechanics/agents/remielle.ts` `computeRemielleMechanic` 读 `cfg.panel.anomalyProficiency`，与伤害管线的取值时刻不同（只影响展示）。
+- **拍板**：**不改数值**，保持当前的「局外异常精通」口径（可逆）。风险在于这个口径是**靠 buff 排列顺序隐式成立的**，调整顺序就会静默改变 1581 的伤害 → 新测试 `src/core/__tests__/remielleSourcePhase.test.ts` 钉住 coef = 0.02 × 局外 AP、bonus = 0.2 × 局外 AP。
+- **若日后确认应按局内（实时）异常精通**：给这两个 effect 补 `sourcePanelPhase: "inCombat"`，并让自身 formula 效果在局内其余效果之后再求值（两段式），改写上述测试；影响只限 1581 所在预设，按 CC 卡流程做 zd 归因与 golden delta 表。
+
 ## 9. 转卡清单（第 4 刀输入，按影响面排序）
 
 ### CC-100（D15 + D16）驱动盘词条的结算口径以源数据为准 ✅ done（第 126 轮，提交号见 git log「fix(CC-100)」）
@@ -503,6 +519,12 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
 
 - 新测试 `src/core/__tests__/buffModifiersIntegrity.test.ts`：① catalog.json 所有 `buffModifiers` 为空（>50 处）；② teammate-buffs.json 修饰器 operation 只能是 `multiplyResolvedValue`、factor 为有限数、目标 buff / effect 全部可解析、目标 type ∈ fixed / formula / derived / stacked。
 - 只加测试，不改代码与数据，未跑 zd；verify 与 check-guards 全绿。
+
+### CC-107（D24 + D25）效果数值形态钉 + 蕾米埃尔 sourceStat 口径钉 ✅ done（第 133 轮，提交号见 git log「test(CC-107)」）
+
+- 新测试 `src/core/__tests__/effectValueInvariant.test.ts`（type 四种、fixed 有 value、stacked 有 valuePerStack / maxStacks 且 value 只能等于 valuePerStack、defaultStacks ≤ maxStacks、modificationValues 长 5 且首项等于基础值）。
+- 新测试 `src/core/__tests__/remielleSourcePhase.test.ts`（3 组配置下 coef / bonus = 局外 AP × 0.02 / 0.2，且确有局内 AP 加成未计入）。
+- 只加测试，不改代码与数据；verify 与 check-guards 全绿。
 
 ### 其余（零差、界面层）
 - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。

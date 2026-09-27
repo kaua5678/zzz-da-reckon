@@ -69,22 +69,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 132 轮（2026-09-27，一个提交，提交号见 git log 中的「test(CC-106)」）
+### 第 133 轮（2026-09-27，一个提交，提交号见 git log 中的「test(CC-107)」）
 
 - **做到哪**：
-  - R5 第 3 刀完成 `buffModifiers`（账本 §7 **D22**）与 `formula` / `expression`（**D23**），都无差异。
-  - **CC-106**：新测试 `src/core/__tests__/buffModifiersIntegrity.test.ts`（数据前提钉）。
-  - 第 131 轮的产出：`48bea3f`（CC-105，D21：31800 混沌爵士 4pc 支援技 +20% 漏算，timeGolden 5 条更新）。
+  - R5 第 3 刀完成效果数值核心一批（账本 §7 **D24**，无差异）与 `source` / `sourceStat` / `defaultValue`（**D25**，语义待定，不改数值）。已核 29 / 52。
+  - **CC-107**：新测试 `src/core/__tests__/effectValueInvariant.test.ts`、`src/core/__tests__/remielleSourcePhase.test.ts`。
+  - 第 132 轮的产出：`c51e8e6`（CC-106，D22 / D23）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 3 刀续：效果数值核心一批**——`type`、`value`、`valuePerStack`、`maxStacks`、`defaultStacks`、`modificationValues`、`scope`。起点：`core/buff.ts` `applyEffect`（fixed = value×cov；stacked = (valuePerStack ?? value)×(defaultStacks ?? maxStacks ?? 1)×cov；derived；formula）与 `applyWEngineModLevel`（modificationValues.value / valuePerStack 按精炼等级替换）。要查：
-     - `type` 的全部取值是否都有分支（未知 type → value 为 0，静默）；无 type 的 effect 有多少、落到哪；
-     - stacked 同时写 value 与 valuePerStack 时两者是否一致（引擎取 valuePerStack）；defaultStacks 与 maxStacks 的关系；
-     - modificationValues 的数组长度是否都是 5、第 1 项是否等于 value（精 1 与基础值一致）；
-     - `scope` 取值（inCombat / outOfCombat / 缺省）与 `collectWEngineBuffs` 的「非 outOfCombat 一律进局内」是否一致。
-     统计脚本模板：`/home/kaua/calc-arch/bm1.py`、`tgt1.py`。
-  2. 然后 `source` / `sourceStat` / `defaultValue`；最后角色 / 招式类字段。
+  1. **R5 第 3 刀续：面板类字段**——`advancedStat`（音擎 level60.advancedStat {stat, value, mode}）、`baseStat`（驱动盘主词条？先统计位置）、`statRules.driveDisc.sRankMaxMainStat` / `sRankSubStatBaseStep`、`stat`。读取方起点：`core/panel.ts`（`timeout 40 git grep -n -E 'advancedStat|sRankMaxMainStat|sRankSubStatBaseStep|baseStat' -- src/core`）。已知：D5 已核 baseStat 规则、CC-100 已改主词条口径，别重复；重点查 advancedStat 的 mode 与 applyStat 分流是否一致（D17 只核了 effect 的 mode）。
+  2. 然后招式类（`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`），最后身份类。剩余清单见账本 §6。
   3. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
   4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
+- **本轮新增未决项**：D25 蕾米埃尔异化度 / 耀变倍率按局外还是局内异常精通——数据与原文都没写，R5 不允许用实测定口径。当前保持局外（测试钉住）；改局内的方案与影响写在账本 D25。
 - **本轮新增的已知坑**：
   - zd 的 rowsnap / dump 只存每个 key 的哈希串，看不到行级差异；归因要靠「改动影响的数据 → 哪些角色 → 哪些预设」的集合对照（本轮工具 `/home/kaua/calc-arch/zdan.mjs <base.json> <after.json>` 列出差异预设）。
   - 预设 JSON 里不写驱动盘 id，默认配装来自 `public/static/build-recommendations.json` 的 `characters.<id>.drive_disc_sets`；查「谁穿了某套」要搜这个文件。
