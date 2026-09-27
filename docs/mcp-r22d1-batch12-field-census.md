@@ -2286,6 +2286,36 @@ ImpactChart.vue 的改动：
 - `src/stores/config.ts` :164/:165 interactionDefaults 表（1531、1471）与 :232 `NO_GENERIC_INTERACTION_AGENTS = new Set(['1051'])` → 模块声明 `interactionDefaults?` / `noGenericInteraction?`（store 可按值 import `@/mechanics`）。
 - 其后 CC-60（StunAxisPage :264/266/268，低优先级）。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561、perf 夹具缺「11号 + 平A兜底」（§5.69）、teammateBuffGate 多模块同 buff id 合并语义（§5.72）。
+### 5.74 CC-65b done：交互默认值 / 通用基准排除 / 交互栏格挡·双反 / 保底4嗔火 → 模块声明（lead-arena-0925c，2026-09-27 第 87 轮）
+
+**提交**：`edae81c`，改 8 个文件、新增 1 个测试：
+- `src/mechanics/types.ts`：新增四个可选声明——`interactionDefaults?`（{parry,dodge,block,dual}）、`noGenericInteraction?`、`interactionInputs?: { block?: {label}; dualCounter?: {label} }`（展示层）、`ownsGuaranteeFury?`（展示层）。
+- 模块：`banyue.ts`（默认 6/10/20/5、格挡「金身格挡」+ 双反「双反」、ownsGuaranteeFury）；`starlightBilly.ts`（默认 4/0/5/0、格挡「格挡（动力压制）」）；`yidhari.ts`（noGenericInteraction）。
+- `src/stores/config.ts`：删 `AGENT_INTERACTION_DEFAULTS` 表与 `NO_GENERIC_INTERACTION_AGENTS` 名单；`getInteractionDefaults` 读模块声明并**返回副本**（原返回共享表对象；grep 过 5 个调用方 pullPlannerEngine/teamTimeline/charIncrement/runArchiveDeploy/TeamConfigPage 均只读）；`interactionBaselineFor` 读 `noGenericInteraction`。**已 grep 核实：config.ts 不再含 `'1531'`/`'1471'`/`'1051'`**（新测试源码锁）。
+- `src/composables/agentMechanicView.ts`：`agentInteractionInputs(agentId)`（无 ⇒ {}）、`teamHasGuaranteeFuryOwner(team)`。
+- `src/views/TeamConfigPage.vue`：格挡块 `v-if="interactionInputs.block"`、标签 `interactionInputs.block?.label`；双反块 `v-if="interactionInputs.dualCounter"`；`teamHasBanyue` → `teamHasGuaranteeFury`；`banyueTopUpForSlot` 全部改名 `interactionTopUpForSlot`；弹刀提示删掉 `agentId === '1471' &&` 前缀。**已 grep 核实：页面不再含任何 `'1xx1'` 字面量**（源码锁 `/'1\d\d1'/`）。
+- `src/core/__tests__/warmStart.test.ts`：只改一处注释里的旧名单名。
+- 新测试 `src/composables/__tests__/agentMechanicViewCc65b.test.ts`：全 catalog 角色 × getInteractionDefaults / interactionBaselineFor（× 7 种 specialty + 自身）/ 输入框声明 / 嗔火开关（× 两个槽位）对照原写死（命中数 [2,3,2]）；副本语义；两文件源码锁。既有 `roleInteractionBaseline.test.ts` 未改仍过。
+
+**等价性论证**：
+- 弹刀提示去掉角色判定：`interactionTopUpForSlot` 非空 ⇔ 选中槽位 == 队中第一个声明 `producesInteractionTopUp` 的槽位（useResourceCalc.ts:434 起）；唯一声明者是般岳 ⇒ 原条件中的 `agentId === '1471'` 恒真、冗余。以后若第二个角色声明 producesInteractionTopUp，提示会对它也显示——这正是声明的语义（它产出补齐量）。
+- 嗔火开关：`ownsGuaranteeFury` 仅般岳声明 ⇒ 与原 `some(agentId === '1471')` 逐队一致（测试覆盖）。
+- 回退：`git revert edae81c`。
+
+**已知坑 / 未改**：`src/specs/agents/1531.json:305` 的说明文字仍提到旧表名 `AGENT_INTERACTION_DEFAULTS`（spec 文本，不参与计算；为免触碰 spec 校验未改，下次动该 spec 时顺手改成「模块声明 interactionDefaults」）。`starlightBilly.ts` 的 applyTeamConfig 里仍有 `if (!cfg.parryCount) cfg.parryCount = 4` / `blockCount = 5` 的兜底（与新声明数值重复，属模块内部、非写死 id 问题；若要单一事实源可改为读 `starlightBillyMechanic.interactionDefaults`，低优先级）。
+
+**验证**：24 条守卫、check-tokens、vue-tsc -b 均 0；新单测全过；反向变异（删 starlightBilly.ts 的 interactionDefaults 行）→ 变红，已恢复 cmp 一致。`npm run verify`：322 files passed / 3665 tests passed（16/29 skipped），24 guards 0（`/home/kaua/calc-arch/verify65b.log`）。
+
+**展示层剩余四位角色 id（已 grep `src/views` `src/components` 核实）**：
+- 机制型（要还）：`StunAxisPage.vue:264/266`（hasYidhari / yidhariCinema，1051）、`:268`（autoLiuyinLabel「有琉/无琉」，1481）→ **CC-60**；`ResourceResultCard.vue:748`（`agentId === '1561'` 维琳娜补丁）→ 新卡 **CC-66**。
+- UI 默认选中值（**裁定不还**，只是下拉/示例的初始值，不是机制分支）：MultiplierCoeffPage:211、CharIncrementPage:219、TeamComparePage:1206、FreeComparePage:261-263、TimeChartsPage:431/523/531、SlotCompareChart:215/216。依据：它们不改变任何计算，只决定页面打开时预选谁；搬进模块反而语义错位。若日后要改，从这里回退本裁定。
+
+**下一步（CC-60，可直接开工）**：先读 `src/views/StunAxisPage.vue` :255–:300，查 hasYidhari / yidhariCinema / autoLiuyinLabel 的全部使用点（grep 限 src/views/StunAxisPage.vue）。方案草案：
+- hasYidhari/yidhariCinema：看它们喂给哪个开关/提示；若是「伊德海莉专属轴设置」，仿 CC-62 `axisWindowLane` 加展示层声明（如 `axisSettingOwner?: 'yidhari-...'`）+ 门面 `teamAxisSettingOwner(team, kind)` 返回 { slot, cinema }。
+- autoLiuyinLabel：看「有琉/无琉」来自哪个机制设置（可能是 teamMechanicSettings 里琉音相关项）；若已有模块 setting，用门面判断「队里是否有声明该 setting 的角色」。
+- 测试：门面对照原 some/find × 全角色 × 槽位；页面源码锁无 `'1051'`/`'1481'`。
+- 其后 CC-66：ResourceResultCard.vue:748 维琳娜（先读 :730–:780 定方案）。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、perf 夹具缺「11号 + 平A兜底」（§5.69）、teammateBuffGate 多模块同 buff id 合并语义（§5.72）。
 ## 附录：普查脚本 census.sh
 
 ```bash
