@@ -2242,6 +2242,29 @@ ImpactChart.vue 的改动：
   - 测试：既有 `teammateBuffDerivation.test.ts:85`（波可娜 C6）必须仍过；新增真实 catalog 下 1351 在队 C0..C6 × 该 buff 对照原逻辑。
 - 其后：`TeamConfigPage.vue` 13 处角色专属表单项（§5.68 表，先读能否并入 teamMechanicSettings）；CC-60（低）。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁、perf 夹具缺「11号 + 平A兜底」（§5.69）。
+### 5.72 CC-64c done：波可娜 C6 buff 互斥 → 复用 teammateBuffGate（lead-arena-0925c，2026-09-27 第 85 轮）
+
+**提交**：`a2d5b9b`，改动 4 个文件：
+- `src/mechanics/types.ts`：`teammateBuffGate` 入参加 `groupId: string`（buff 组 id）、`groupCinema: number | undefined`（`teamCinema[groupId]`，不在队 undefined）。蕾米埃尔的实现不读这两个字段，不受影响。
+- `src/mechanics/agents/pulchra.ts`：`teammateBuffGate: ({ buffId, groupId, groupCinema }) => buffId === 'pulchra_extra_trap_followup' && groupId === PULCHRA_ID ? !((groupCinema ?? -1) >= 6) : undefined`。
+- `src/stores/config.ts`：`resolveSpecialTeammateBuffEnabled` 多传 `agentId`（= group.id）与 `cinemaLevel`，删掉 1351 分支。**stores/config.ts 至此已无 `'1xxx'` 四位角色 id 写死**（CC-64 / 64b / 64c 三张清完）。
+- 新测试 `src/stores/__tests__/pulchraBuffGateCc64c.test.ts`：真实 catalog 12 个角色 × 波可娜 C0..C6 × 两种槽位 × 组 id（1351 / 其他在队角色）× (目标 buff + 对照 buff)，逐值对照原写死。既有 `teammateBuffDerivation.test.ts`「波可娜(1351) C6」用例未改仍过。
+
+**等价性论证**：原分支 `shouldEnable = false` 位于档位门控之后、通用额外能力门控之前；新写法把它并入门控，最终 = base && !(c6)。三道门控都是纯布尔「与」，顺序可交换 ⇒ 等价。`undefined >= 6` 在原写法里是 false（不禁用），新写法用 `?? -1` 保持。「第一个返回 boolean 的模块生效」：蕾米埃尔与波可娜的 buff id 不相交，无冲突（以后新增门控模块若 buff id 重叠，需改成「全部返回值取与」——已知限制，记在此）。回退：`git revert a2d5b9b`。
+
+**验证**：24 条守卫、check-tokens、vue-tsc 均 0；新单测全过；反向变异（删 pulchra.ts 的 teammateBuffGate 行）→ 变红，已恢复 cmp 一致。`npm run verify` 通过：320 files / 3659 tests，24 guards（`/home/kaua/calc-arch/verify64c.log`）。
+
+**下一步（CC-65，可直接开工）：`src/views/TeamConfigPage.vue` 角色专属计数输入框**（已读 :180–:350）
+- 现状：角色面板「交互次数」网格里有一串 `<n-gi v-if="selectedChar.agentId === '…'">` 输入框，都是「CharacterConfig 某字段 + store 的 `setXxxCount`（内部都是 `setActionCount(slot, field, v)`，`src/stores/config.ts:713`，`ActionCountField` 类型）」：
+  - 简单型（值 `?? 0`、max 99/999、可带 title）：佩洛 1551「强特完美格挡」perfectBlockCount(max 999) /「强袭训令次数」assaultOrderCount(max 999)；般岳 1471「嘲讽取消」tauntCancelCount；普罗米娅 1541「处刑式·匿影」promiaNiyingCount；仪玄 1371「2连墨痕化形」yixuanInk2Count、「墨影凝云合轴」yixuanBackstageComboCount。
+  - 「≤0=自动」型（值 >0 才显示，否则 null）：仪玄「3连墨痕化形」yixuanInk3Count、「完美格挡」yixuanPerfectBlockCount。
+  - 「-1=自动」型：仪玄「极限支援」yixuanExtremeAssistCount（默认 -1）。
+  - 特殊型（本卡**不动**）：`['1471','1531'].includes` 的格挡（label 按角色切换、默认值来自 interactionDefaults.block）、般岳「双反」（带 banyueTopUpForSlot 轴自动提示）、:186 弹刀提示、:1025 teamHasBanyue。
+- 方案：模块声明（展示层专用）`characterCountInputs?: ReadonlyArray<{ field: ActionCountField; label: string; title?: string; max: number; mode?: 'zero' | 'autoIfNonPositive' | 'autoNegOne' }>`；门面 `agentCharacterCountInputs(agentId)`；页面在原位置放一个 `v-for`，`:value` 按 mode 三种写法（逐字照抄原三种表达式），`@update:value` 统一 `configStore.setActionCount(slot, field, v ?? (mode === 'autoNegOne' ? -1 : 0))`——⚠ 先确认 `setActionCount` 是否在 store 的 return 里导出（没导出就加一行导出，别动 clamp 逻辑）；`ActionCountField` 类型要能被 mechanics/types.ts `import type`。
+  - 顺序：页面现有顺序是 1551×2 → 1471 双反(不动) → 1471 嘲讽 → 1541 → 1371×5；v-for 按角色只渲染一个角色的项，角色间顺序无关，角色内顺序按原页面。
+  - 测试：门面对照表（照抄原页面每项 label/field/max/mode）× 全角色；页面源码锁：不再含 `agentId === '1551'` / `'1541'` / `'1371'`（1471 仍有特殊型，不锁）。可逆：`git revert`。
+- 其后：TeamConfigPage 特殊型（格挡/双反/弹刀提示/teamHasBanyue）→ CC-65b；CC-60（低）。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁、perf 夹具缺「11号 + 平A兜底」（§5.69）、teammateBuffGate 多模块同 buff id 时的合并语义（本节）。
 ## 附录：普查脚本 census.sh
 
 ```bash
