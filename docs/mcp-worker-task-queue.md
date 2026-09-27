@@ -70,7 +70,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 ## 2. 最近一轮交接（每轮替换本节）
 
 ### 第 174 轮（2026-09-28，代码 `e2057bd3`（CC-150 + CC-148 6/18）+ 文档「docs: round 174」；上一轮 = 4fb7431a / e13a315a）
-- 做到哪：迁雨果系 3 个测试时发现 physical 外层 2-环下池与资源行不同源（§13.1 误判为数值钉，已更正），修为 CC-150（`src/composables/resourceCalc/solveTeam.ts` 出口池钳位 + `src/core/stunPool.ts#withStunCount`）。3 个测试迁完（hugoVerdictLanding 加 physical 同源用例；stunVulnSummary 钉 off；liuyin 闸门改为与轴栈同源）。验证：3 文件 18/18；反向验证精确 2 红；vue-tsc 0；zd `cc150` 2 条、伤害 0；verify 见本轮提交前日志 `/home/kaua/calc-arch/v174.log`。
+- 做到哪：迁雨果系 3 个测试时发现 physical 外层 2-环下池与资源行不同源（§13.1 误判为数值钉，已更正），修为 CC-150（`src/composables/resourceCalc/solveTeam.ts` 出口池钳位 + `src/core/stunPool.ts#withStunCount`）。3 个测试迁完（hugoVerdictLanding 加 physical 同源用例；stunVulnSummary 钉 off；liuyin 闸门改为与轴栈同源）。验证：3 文件 18/18；反向验证精确 2 红；vue-tsc 0；zd `cc150` 2 条、伤害 0；verify EXIT=0（3818 passed，日志 `/home/kaua/calc-arch/v174b.log`；v174.log 是重生成基线前的 2 红）。
 - 下一步（直接开工）：**CC-148 剩 12 个文件**（`timeout 40 git grep -l "vi.mock('@/core/stunPlanProjection'" -- src`），按卡片五步规程，每条红先问「两边是否本应同源」（§15.4）。其后 CC-149、CC-147。另可做一件小事：全库扫一遍 physical 下 `outerExit === 'cycle'` 的队，确认 CC-150 残差（池 < 读入）是否实际出现（探针可在 `k172/zzK172.test.ts` 上加 exit 与读入次数两列）。
 - 未决：CC-147；CC-149；CC-150 残差（池 < 读入）；§8.4 两项；CC-27；副词条优化器接收槽过滤；洛克茜 energyRegen。
 - 已知坑：
