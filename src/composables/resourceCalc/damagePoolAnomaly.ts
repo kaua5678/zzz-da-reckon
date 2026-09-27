@@ -21,7 +21,7 @@
  */
 import { calcAnomalyDamage } from '@/core/damage'
 import { panelAt } from '@/core/panel'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, resolveStatElement } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, resolveStatElement, isCorrosionCycloneRelease } from '@/core/anomalyPool/helpers'
 import type { PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution } from '@/types/resource'
 import { elementLabel, parseReleaseMultiplier, type DamagePoolRow } from './helpers'
@@ -87,7 +87,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
 
   for (const event of anomalyPoolResult?.anomalyEvents ?? []) {
     if (event.count <= 0 || windSlot < 0 || !windAgentId) continue
-    if (event.type === 'release' && event.id.includes('velina-corrosion')) {
+    if (isCorrosionCycloneRelease(event)) { // CC-69：原写死事件 id 子串
       // 风异放（微域145%/广域255%）随乱流触发：失衡轴内按「轴内非风异常触发占比」拆
       // in/out 两段（轴内异常触发→轴内乱流→轴内风异放，用户口径 2026-08）；非轴保持全局覆盖率
       const total = Math.floor(event.count)

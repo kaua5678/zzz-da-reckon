@@ -765,7 +765,8 @@ export interface AgentMechanicModule {
    */
   attachedEvents?: Record<string, string[]>
   /** 连段动作：comboId → 复合招式（特殊技+重碾打包成一个栈单位，能量按打包口径一次扣除） */
-  combos?: Record<string, { label: string; energyCost: number; moves: { moveId: string; count: number }[] }>
+  // CC-69：energyCostAtCinema = 影画 ≥ minCinema 时按 energyCost 覆盖打包能耗（roundInputs 非轴执行计划读；原写死伊德海莉单次碾 1 命 50）
+  combos?: Record<string, { label: string; energyCost: number; energyCostAtCinema?: { minCinema: number; energyCost: number }; moves: { moveId: string; count: number }[] }>
   /**
    * 轴编辑器逐块标注（CC-48 2026-09-27；**展示层专用，不参与计算**）：返回 `${axisIndex}:${actionIndex}` → 标注。
    * 展示层经 `composables/agentMechanicView.ts#agentAxisBlockMarks` 以「本角色所在槽位」调用（判据 7：页面不值导入角色模块）。

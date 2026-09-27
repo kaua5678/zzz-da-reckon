@@ -539,6 +539,8 @@ export const yidhariMechanic: AgentMechanicModule = {
     [HEAVY_SINGLE]: {
       label: '单次碾（溯寒+极寒重碾）',
       energyCost: HEAVY_SINGLE_COST_0, // 0命；1命时栈遍历按 50 覆盖（HEAVY_SINGLE_COST_1）
+      // CC-69：非轴执行计划（roundInputs）同口径 1 命 50（原在 roundInputs.ts 按 moveId 写死）
+      energyCostAtCinema: { minCinema: 1, energyCost: HEAVY_SINGLE_COST_1 },
       moves: [{ moveId: '1051011', count: 1 }, { moveId: '1051012', count: 1 }],
     },
     [HEAVY_DOUBLE]: {

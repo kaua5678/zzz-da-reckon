@@ -225,8 +225,8 @@ export function createConvergenceRoundInputs(deps: {
         let actionTime = 0
         let decibelCost = 0
         if (combo) {
-          // 连段：能量按打包口径；1命单次 60→50
-          energyCost = act.moveId === 'yidhari-heavy-single' && cinema >= 1 ? 50 : combo.energyCost
+          // 连段：能量按打包口径；影画覆盖经 combo.energyCostAtCinema（CC-69；如伊德海莉单次碾 1 命 60→50，原按 moveId 写死）
+          energyCost = combo.energyCostAtCinema && cinema >= combo.energyCostAtCinema.minCinema ? combo.energyCostAtCinema.energyCost : combo.energyCost
           for (const mv of combo.moves) {
             const m = findMoveById(skills, mv.moveId)
             actionTime += (m?.actionTime ?? 0) * mv.count

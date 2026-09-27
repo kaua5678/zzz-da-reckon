@@ -1424,3 +1424,15 @@ export function calcCoweringDot(
  * 5. 计算紊乱伤害（无风属性时）或乱流伤害（有风属性时）
  * 6. 计算喧响奖励
  */
+
+/**
+ * CC-69：风蚀状态机气旋风异放事件（微域 / 风蚀替换广域）的 id 前缀——单一事实源。
+ * 产出：`core/anomalyPool.ts` 两条 `anomalyEvents`；消费：`damagePoolAnomaly.ts` 风异放拆轴内外（原写死子串）。
+ * ⚠ 值不能改：事件 id 进入伤害池行 id（`pool-release-<id>[-in|-out]`），测试与 perf 语料按它匹配。
+ */
+export const CORROSION_CYCLONE_RELEASE_ID_PREFIX = 'velina-corrosion'
+
+/** 是否为风蚀气旋风异放事件（CC-69） */
+export function isCorrosionCycloneRelease(event: { type: string; id: string }): boolean {
+  return event.type === 'release' && event.id.includes(CORROSION_CYCLONE_RELEASE_ID_PREFIX)
+}

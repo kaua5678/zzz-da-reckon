@@ -364,7 +364,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       note: `风化覆盖率 ${round(windCoverageRate * 100, 1)}%，乱流槽位 ${turbulenceCap} 次（3秒CD，多次风化窗口合并不封顶）；乱流继承异常增伤和异常暴击，每次奖励85喧响，触发者归属风底属性提供者，队友伴随获得一半。${corrosionSource?.note ?? ''} 2命风化期望风蚀=${round(corrosionSource?.c2WindGainExpected ?? 0, 2)}，6命返还=${corrosionSource?.cinema6RefundCount ?? 0}次，强化乱流=${corrosionSource?.boostedTurbulenceCount ?? 0}次。`,
     })
     anomalyEvents.push({
-      id: 'velina-corrosion-condensed-cyclone',
+      id: `${AnomalyPoolHelpers.CORROSION_CYCLONE_RELEASE_ID_PREFIX}-condensed-cyclone`, // = 'velina-corrosion-condensed-cyclone'（CC-69）
       type: 'release',
       label: '维琳娜微域气旋风异放',
       source: '0或1个风蚀时，触发乱流获得1点风蚀并触发 Condensed Cyclone',
@@ -374,7 +374,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       note: '0或1个风蚀时，再次触发乱流会获得1点风蚀，并伴随触发微域气旋；微域气旋触发一次145%倍率风属性异放。',
     })
     anomalyEvents.push({
-      id: 'velina-corrosion-broad-cyclone',
+      id: `${AnomalyPoolHelpers.CORROSION_CYCLONE_RELEASE_ID_PREFIX}-broad-cyclone`, // = 'velina-corrosion-broad-cyclone'（CC-69）
       type: 'release',
       label: '维琳娜风蚀替换广域气旋',
       source: '2个风蚀时，再次触发乱流清空风蚀，微域气旋替换为广域气旋',
