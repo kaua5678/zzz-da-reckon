@@ -69,6 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 169 轮（2026-09-28，代码 `6d2984ce`（CC-145）+ 文档提交「docs: round 169」；上一轮 = 47869b28 / be45d0a3）
+
+- **做到哪**：
+  - CC-145 完成：physical 下叶瞬光队「账本预留 ≠ 赠行」的根因是连携被装配截断，60 转大窗口变少，编排层 promote 小于引擎预留的次数。`applyUltimatePromote` 现在退还差额。zd `cc145` DIFF 0；新测试 `ultimateGiftRefund.test.ts` 已反向验证；verify196 EXIT=0（3814 passed）；CG 25；诊断 0。详见 `docs/mcp-stun-dual-source.md` §10。
+  - CC-146 只做了调研（§10.4），未改代码。
+- **下一步（按顺序，可直接开工）**：
+  1. **CC-146**。复现：临时把 `src/core/stunPlanProjection.ts` 的 `DEFAULT_STUN_PLAN_PROJECTION_CODE` 改为 4，跑 `npx vitest run seedInvariance`（约 10s，期望只有 auto-1591-1571-1211 校准种子槽 0 红），跑完用 `cp` 备份恢复。
+     - 定位方法：参照 `seedInvariance.test.ts` 第 429–445 行的 `run(seed)`，写一个探针：用 physical 下该队的最终 cfg 分别跑冷种子和 `calibrationSeed`（同文件第 320 行），对比 1591 的 `timeAllocation` 各分量，以及 `rr.chainGiftTimeReserved`、`energySource`、`exSpecialCount`。先查 §10.4 候选 a（诺姆赠连携预留，`core/resource/helpers.ts` 第 336–338 行附近 `crossAgentSupplyAt(... 'gift-chain:chain')`），再查 b（第 396–405 行的阻尼 / `exForTime`）。
+     - 修法原则：同一份 cfg 下不同种子必须落到同一时间账（守恒式再分配除外）。不许放宽容差、不许改基线。off 必须零差。
+  2. CC-146 绿之后重做 CC-144（步骤见第 168 轮第 3 条）。D 类里的 `outerCycleColdStart`（4 条）和 `liuyinAxisGiftSameSource`「雨果 0 命轴」（1 条），在 CC-145 之后仍红，属于 physical 下的真实数值变化，到时逐条判断。
+  3. 洛克茜 `energyRegenOutOfCombat`；副词条优化器接入接收槽过滤（低优先）。
+- **本轮拍板**：
+  - CC-145 采用「退还」，不改引擎预留，也不让赠行跟随账本。依据：好评量只够 4 次（§10.2）。回退点：`git revert 6d2984ce`。
+  - 目标没有 `basic_attack` 聚合行时，差额留作空闲，不硬塞进分段平 A 行。依据：分段行由模块决定次数，塞时间会改动模块的产出。
+- **已知坑**（新增）：
+  - 叶瞬光（1431）没有 `basic_attack` 聚合行，平 A 全是模块分段行，`basicAttackTime` = 0。所有「从平 A 聚合行抠 / 补时间」的逻辑对她都不起作用。
+  - `applyUltimatePromote` 每轮外层会被调用 2–3 次（`convergence.ts` 第 806 / 902 / 910 行）。退还后输出的预留等于实际用量，再次调用时差额为 0，是幂等的。改这里时要保持幂等。
+  - 插桩调试用带断言的 Python 往源码里加 `if (process.env.X) console.log(...)`，结束后用 `git checkout -- <文件>` 还原（本轮脚本在 `/home/kaua/calc-arch/g169/instr169*.py`）。
+
 ### 第 168 轮（2026-09-28，代码 `47869b28`（CC-144 零差准备）+ 文档提交「docs: round 168」；上一轮 = 44bc4c67 / 4f50c8b0）
 
 - **做到哪**：
@@ -105,24 +124,6 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **已知坑**（新增）：
   - `convergence.ts` 里 `allocateAxisWindows(resolvedAxes, stunCount)` 有 6 处，锚文本不唯一；改哪处要带上相邻的唯一行做锚。
   - `c167/hook167.py` 会把当前 `convergence.ts` 备份到 `/tmp/cc142/convergence.ts.orig`，覆盖旧备份；恢复一律用 `git checkout -- <文件>`，别信那个备份。
-
-### 第 162 轮（2026-09-28，文档提交「docs: round 162」，无代码；上一轮 = 30daa4b1 / 76a5aff6）
-
-- **做到哪**：
-  - 第 161 轮下一步第 1 项「坑 25 双源」已完成测量，结论写在 `docs/mcp-stun-dual-source.md`，卡表记为 CC-138（调研）。
-  - 去掉外层第二次折算的原型**不落地**；`stunCountContinuous` 字段**不提交**（没有消费者）。
-  - 主因定位：外层必要时间约束（`solveTeam.ts` 约 210–218 行）决定了 78/104 队的规划失衡，其中 17 队为 0。
-  - 探针和补丁存档在 WSL `/home/kaua/calc-arch/dual162/`（用法见专项文档 §1）。
-- **下一步（按顺序，可直接开工）**：
-  1. **拆窗口内必要时间**（专项文档 §3 第 1 步）：在 `zzDual162.test.ts` 探针里从物化执行行求 Σ连携 / 终结技时长，得到 inWindow，算 `capNet` 并统计 78 队和 17 队的变化。只测量。若足以解释差距，按 §3 第 2 步开 CC 卡改约束。
-  2. 洛克茜 `energyRegenOutOfCombat` 局内 3.12 / 局外 1.2 的读法疑点（§2.18 第 159 轮补充最后一条）。
-  3. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先；`src/stores/config.ts` 约 819–861 行）。
-- **本轮拍板**：
-  - 原型不落地。依据：第 161 轮自定的落地条件（cycle / maxIter 明显减少）不满足，而且没有触及主要差距。回退点：无代码改动。
-  - 坑 25 归因更正已追记到 ENGINE_PIPELINE_GUIDE，原文保留，只在后面追加。
-- **已知坑**（新增，其余沿用第 161 轮）：
-  - wsl_exec 只回传约 9KB 尾部，104 行的 tsv 拉回本地会截断，要在 WSL 里用 python 分析（`/home/kaua/calc-arch/an162*.py`）。
-  - 判断规划失衡由哪一道约束决定时，容差要用 0.06 左右（外层判稳容差是 0.05）；用 2e-3 会把 80 队误判为「其他」。
 
 ### 第 161 轮（2026-09-28，测试 `30daa4b1`（CC-137）+ 本文档提交；上一轮 = 3adb3620 / ef6ecce6 / 2a57b241）
 
