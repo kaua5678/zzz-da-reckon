@@ -220,32 +220,6 @@
                           />
                         </div>
                       </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1551'">
-                        <div class="field" title="强化特殊技触发完美格挡的次数：每次回复日珥 10 点（下分支耀斑期间强特完美格挡回日珥）">
-                          <span class="field-label">强特完美格挡</span>
-                          <n-input-number
-                            :value="selectedChar.perfectBlockCount || 0"
-                            :min="0"
-                            :max="999"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setPerfectBlockCount(configStore.selectedSlot, v ?? 0)"
-                          />
-                        </div>
-                      </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1551'">
-                        <div class="field" title="特殊技：强袭训令的发动次数（格挡招式，伤害计入倍率表 166.4% 以太行）">
-                          <span class="field-label">强袭训令次数</span>
-                          <n-input-number
-                            :value="selectedChar.assaultOrderCount || 0"
-                            :min="0"
-                            :max="999"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setAssaultOrderCount(configStore.selectedSlot, v ?? 0)"
-                          />
-                        </div>
-                      </n-gi>
                       <n-gi v-if="selectedChar.agentId === '1471'">
                         <div class="field">
                           <span class="field-label">双反<span v-if="banyueTopUpForSlot && banyueTopUpForSlot.dual > 0" class="field-hint">+{{ banyueTopUpForSlot.dual }}（轴自动）</span></span>
@@ -259,96 +233,18 @@
                           />
                         </div>
                       </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1471'">
-                        <div class="field" title="失衡外强特连段末尾后摇的嘲讽取消次数：每连段末尾强特后摇 = 自身时长（期间不能平A，占用战场时间），一次嘲讽取消一次后摇；失衡内连段默认被连携/大招/瞬拳取消，不计">
-                          <span class="field-label">嘲讽取消</span>
+                      <!-- CC-65：角色专属计数输入框 → 模块声明 characterCountInputs（原 1551×2 / 1471 嘲讽取消 / 1541 / 1371×5 写死块） -->
+                      <n-gi v-for="inp in characterCountInputs" :key="inp.field">
+                        <div class="field" :title="inp.title">
+                          <span class="field-label">{{ inp.label }}<span v-if="inp.hint" class="field-hint">{{ inp.hint }}</span></span>
                           <n-input-number
-                            :value="selectedChar.tauntCancelCount ?? 0"
-                            :min="0"
-                            :max="99"
+                            :value="characterCountInputValue(inp, selectedChar[inp.field])"
+                            :min="ACTION_COUNT_BOUNDS[inp.field].min"
+                            :max="ACTION_COUNT_BOUNDS[inp.field].max"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setTauntCancelCount(configStore.selectedSlot, v ?? 0)"
-                          />
-                        </div>
-                      </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1541'">
-                        <div class="field" title="强特变体：耗强特能量（用户自控预算）；每次触发+10寒蚀值，之后可接特殊技「处刑式·重霜」">
-                          <span class="field-label">处刑式·匿影</span>
-                          <n-input-number
-                            :value="selectedChar.promiaNiyingCount ?? 0"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setPromiaNiyingCount(configStore.selectedSlot, v ?? 0)"
-                          />
-                        </div>
-                      </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1371'">
-                        <div class="field">
-                          <span class="field-label">2连墨痕化形</span>
-                          <n-input-number
-                            :value="selectedChar.yixuanInk2Count ?? 0"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setYixuanInk2Count(configStore.selectedSlot, v ?? 0)"
-                          />
-                        </div>
-                      </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1371'">
-                        <div class="field" title="≤0/清空 = 自动：总闪能打完失衡内消耗，剩余全部轴外打 3 连墨痕化形（60闪能/次）；填正数覆盖">
-                          <span class="field-label">3连墨痕化形<span class="field-hint">≤0=自动</span></span>
-                          <n-input-number
-                            :value="(selectedChar.yixuanInk3Count ?? 0) > 0 ? selectedChar.yixuanInk3Count : null"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            placeholder="自动"
-                            @update:value="v => configStore.setYixuanInk3Count(configStore.selectedSlot, v ?? 0)"
-                          />
-                        </div>
-                      </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1371'">
-                        <div class="field" title="≤0/清空 = 自动：全完美格挡 = 弹刀次数（每次 #2 赠送 +10 闪能）；填正数覆盖">
-                          <span class="field-label">完美格挡<span class="field-hint">≤0=自动</span></span>
-                          <n-input-number
-                            :value="(selectedChar.yixuanPerfectBlockCount ?? 0) > 0 ? selectedChar.yixuanPerfectBlockCount : null"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            placeholder="自动"
-                            @update:value="v => configStore.setYixuanPerfectBlockCount(configStore.selectedSlot, v ?? 0)"
-                          />
-                        </div>
-                      </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1371'">
-                        <div class="field" title="极限支援换场落雷（225%贯穿力+5闪能/次）；缺省 = 队友正常弹刀次数求和（上限）">
-                          <span class="field-label">极限支援</span>
-                          <n-input-number
-                            :value="(selectedChar.yixuanExtremeAssistCount ?? -1) < 0 ? -1 : selectedChar.yixuanExtremeAssistCount"
-                            :min="-1"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setYixuanExtremeAssistCount(configStore.selectedSlot, v ?? -1)"
-                          />
-                        </div>
-                      </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1371'">
-                        <div class="field" title="后台使用墨影凝云+霄云劲#5（不消耗战场时间，有倍率行调用/异常积蓄/失衡）">
-                          <span class="field-label">墨影凝云合轴</span>
-                          <n-input-number
-                            :value="selectedChar.yixuanBackstageComboCount ?? 0"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setYixuanBackstageComboCount(configStore.selectedSlot, v ?? 0)"
+                            :placeholder="inp.mode === 'autoIfNonPositive' ? '自动' : undefined"
+                            @update:value="v => configStore.setActionCount(configStore.selectedSlot, inp.field, v ?? characterCountInputClearValue(inp))"
                           />
                         </div>
                       </n-gi>
@@ -865,7 +761,7 @@ import {
   NCard, NSpace, NGrid, NGi, NSelect, NSlider, NInputNumber, NText,
   NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, NTooltip, useMessage,
 } from 'naive-ui'
-import { useConfigStore, getInteractionDefaults } from '@/stores/config'
+import { useConfigStore, getInteractionDefaults, ACTION_COUNT_BOUNDS } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useStatLabel } from '@/composables/useStatLabel'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -885,6 +781,7 @@ import { SPECIALTY_LABEL, ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 import { buildDiscEffectRows } from '@/utils/discEffectRows'
 import type { WEngine, WEngineAdvancedStat, PanelValues, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
 import type { CharacterConfig } from '@/stores/config'
+import { agentCharacterCountInputs, characterCountInputValue, characterCountInputClearValue } from '@/composables/agentMechanicView'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -1019,6 +916,8 @@ const { saveTargetPreset, saveTeamMismatch, saveStepsPreview, savePresetJson, co
   useTeamConfigPresetIO({ configStore, goldDraft, saveTargetPresetId, message })
 
 const selectedChar = computed<CharacterConfig>(() => configStore.team[configStore.selectedSlot])
+// CC-65：角色专属计数输入框（模块声明）
+const characterCountInputs = computed(() => agentCharacterCountInputs(selectedChar.value?.agentId))
 // 交互次数默认值（如星徽·比利 招架4/闪反0/格挡5）：char 未填（0）时输入框预填展示，计算侧同口径
 const interactionDefaults = computed(() => getInteractionDefaults(selectedChar.value?.agentId ?? ''))
 // ========== 保底目标（0/1 勾选；预设轴/队伍应用时自动填充） ==========

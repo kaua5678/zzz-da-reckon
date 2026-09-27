@@ -1,5 +1,5 @@
 import type { DeepReadonly } from 'vue'
-import type { CharacterConfig } from '@/stores/config'
+import type { CharacterConfig, ActionCountField } from '@/stores/config'
 import type { Agent, AgentSkills, PanelValues, SkillDamageTarget, SkillMove } from '@/types/catalog'
 import type {
   AnomalyEventRecord,
@@ -818,6 +818,12 @@ export interface AgentMechanicModule {
    */
   // CC-64c：入参加 groupId（buff 组 id = 来源角色 id 或 teammateBuffId）/ groupCinema（该组来源角色在队影画；不在队 undefined）
   teammateBuffGate?(input: { buffId: string; team: ReadonlyArray<Agent>; groupId: string; groupCinema: number | undefined }): boolean | undefined
+  /**
+   * CC-65：TeamConfigPage「角色专属计数输入框」声明（展示层；原页面按角色写死的 v-if 块）。
+   * 按数组顺序渲染在「双反」之后；min/max 取 `ACTION_COUNT_BOUNDS[field]`；写入统一走 `configStore.setActionCount`。
+   * 显示/清空口径见 `CharacterCountInputDecl.mode`（门面 `characterCountInputValue` / `characterCountInputClearValue`）。
+   */
+  characterCountInputs?: ReadonlyArray<CharacterCountInputDecl>
   /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
@@ -1856,4 +1862,20 @@ export interface AxisEditorBlockMark {
   trigger: boolean
   active: boolean
   layers: number
+}
+
+/**
+ * CC-65：角色专属计数输入框声明（见 `AgentMechanicModule.characterCountInputs`）。
+ * mode 缺省 = 显示 `值 ?? 0`、清空写 0；
+ * 'autoIfNonPositive' = 值 ≤0 显示为空（placeholder「自动」）、清空写 0；
+ * 'autoNegOne' = 负值/缺省显示 -1、清空写 -1。
+ */
+export interface CharacterCountInputDecl {
+  field: ActionCountField
+  label: string
+  /** 标签后的灰字提示（field-hint） */
+  hint?: string
+  /** 整个 field 的悬浮说明 */
+  title?: string
+  mode?: 'autoIfNonPositive' | 'autoNegOne'
 }

@@ -383,6 +383,10 @@ function promiaNextRoundFeedback({ cfg, characters, teamResult, displayResult, a
 export const promiaMechanic: AgentMechanicModule = {
   id: 'agent:promia',
   agentIds: [PROMIA_ID],
+  // CC-65：TeamConfigPage 角色专属计数输入框（展示层）
+  characterCountInputs: [
+    { field: 'promiaNiyingCount', label: '处刑式·匿影', title: '强特变体：耗强特能量（用户自控预算）；每次触发+10寒蚀值，之后可接特殊技「处刑式·重霜」' },
+  ],
   name: '普罗米娅·盗火',
   description: '异常掌控转精通、影画2精通、额外能力冰异常积蓄效率；绝裁异放已接（霜刑上限钳制），全队异放增伤 0.35%/点未接面板。',
   applyPanel: applyPromiaPanel,

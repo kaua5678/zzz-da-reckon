@@ -6,7 +6,7 @@
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
 import { getAgentMechanic } from '@/mechanics'
-import type { AgentMechanicModule, AxisEditorBlockMark } from '@/mechanics/types'
+import type { AgentMechanicModule, AxisEditorBlockMark, CharacterCountInputDecl } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
 
 /**
@@ -182,4 +182,23 @@ export type AxisWindowLaneKind = NonNullable<AgentMechanicModule['axisWindowLane
 /** 队伍里第一个声明了该种窗口 lane 的槽位；无 ⇒ -1（CC-62；原 StunAxisPage `findIndex(c => c.agentId === 1471 / 1371)`） */
 export function teamAxisWindowLaneSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>, kind: AxisWindowLaneKind): number {
   return team.findIndex(c => !!c?.agentId && getAgentMechanic(c.agentId)?.axisWindowLane === kind)
+}
+
+export type { CharacterCountInputDecl }
+
+/** 角色专属计数输入框声明（CC-65；原 TeamConfigPage 写死 v-if 块）；无 ⇒ [] */
+export function agentCharacterCountInputs(agentId: string | null | undefined): ReadonlyArray<CharacterCountInputDecl> {
+  return (agentId ? getAgentMechanic(agentId)?.characterCountInputs : undefined) ?? []
+}
+
+/** 输入框显示值（CC-65；与原页面 :value 表达式逐值一致） */
+export function characterCountInputValue(inp: Pick<CharacterCountInputDecl, 'mode'>, raw: number | null | undefined): number | null {
+  if (inp.mode === 'autoIfNonPositive') return (raw ?? 0) > 0 ? (raw as number) : null
+  if (inp.mode === 'autoNegOne') return (raw ?? -1) < 0 ? -1 : (raw as number)
+  return raw ?? 0
+}
+
+/** 输入框被清空（null）时写入的值（CC-65；原页面 `v ?? 0` / `v ?? -1`） */
+export function characterCountInputClearValue(inp: Pick<CharacterCountInputDecl, 'mode'>): number {
+  return inp.mode === 'autoNegOne' ? -1 : 0
 }

@@ -890,6 +890,10 @@ export const banyueMechanic: AgentMechanicModule = {
   id: 'agent:banyue',
   agentIds: [AGENT_ID],
   name: '般岳',
+  // CC-65：TeamConfigPage 角色专属计数输入框（展示层；弹刀/双反仍在页面，归 CC-65b）
+  characterCountInputs: [
+    { field: 'tauntCancelCount', label: '嘲讽取消', title: '失衡外强特连段末尾后摇的嘲讽取消次数：每连段末尾强特后摇 = 自身时长（期间不能平A，占用战场时间），一次嘲讽取消一次后摇；失衡内连段默认被连携/大招/瞬拳取消，不计' },
+  ],
   description: '嗔火→怒相循环（山威免费连段）、怒相增益、影画4/6 moveId 级增伤与倾山附伤。',
   applyPanel: applyBanyuePanel,
   /**

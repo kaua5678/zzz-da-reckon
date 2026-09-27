@@ -21,6 +21,11 @@ export const peiluoProminenceMechanic: AgentMechanicModule = {
   id: 'agent:peiluo_prominence',
   agentIds: ['1551'],
   name: '佩洛伊斯·日珥',
+  // CC-65：TeamConfigPage 角色专属计数输入框（展示层）
+  characterCountInputs: [
+    { field: 'perfectBlockCount', label: '强特完美格挡', title: '强化特殊技触发完美格挡的次数：每次回复日珥 10 点（下分支耀斑期间强特完美格挡回日珥）' },
+    { field: 'assaultOrderCount', label: '强袭训令次数', title: '特殊技：强袭训令的发动次数（格挡招式，伤害计入倍率表 166.4% 以太行）' },
+  ],
 }
 
 /* 佩洛伊斯终结技分支模型（用户口径）：

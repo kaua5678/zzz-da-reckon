@@ -1057,6 +1057,14 @@ export const yixuanMechanic: AgentMechanicModule = {
   id: 'agent:yixuan',
   agentIds: [AGENT_ID],
   name: '仪玄',
+  // CC-65：TeamConfigPage 角色专属计数输入框（展示层）
+  characterCountInputs: [
+    { field: 'yixuanInk2Count', label: '2连墨痕化形' },
+    { field: 'yixuanInk3Count', label: '3连墨痕化形', hint: '≤0=自动', title: '≤0/清空 = 自动：总闪能打完失衡内消耗，剩余全部轴外打 3 连墨痕化形（60闪能/次）；填正数覆盖', mode: 'autoIfNonPositive' },
+    { field: 'yixuanPerfectBlockCount', label: '完美格挡', hint: '≤0=自动', title: '≤0/清空 = 自动：全完美格挡 = 弹刀次数（每次 #2 赠送 +10 闪能）；填正数覆盖', mode: 'autoIfNonPositive' },
+    { field: 'yixuanExtremeAssistCount', label: '极限支援', title: '极限支援换场落雷（225%贯穿力+5闪能/次）；缺省 = 队友正常弹刀次数求和（上限）', mode: 'autoNegOne' },
+    { field: 'yixuanBackstageComboCount', label: '墨影凝云合轴', title: '后台使用墨影凝云+霄云劲#5（不消耗战场时间，有倍率行调用/异常积蓄/失衡）' },
+  ],
   description: '进场全回闪能(120)、交互式强特链（2连/3连墨痕化形 + 完美格挡 + 剩余全凝云，轴内凝云时长可调）、玄墨异常独立积蓄槽、失衡强特+30%、凝神 buff 轴、核心被动 60% 招式限定增伤、术法值/玄墨值 spec 资源与符法千重/玄墨极阵事件。',
   applyPanel: applyYixuanPanel,
   buildCharConfig: buildYixuanCharConfig,
