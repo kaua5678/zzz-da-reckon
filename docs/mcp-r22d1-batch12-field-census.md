@@ -2646,3 +2646,19 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
   18. `1581·特殊虚耀`：事实在 `docs/GAME_TERM_TO_CODE_FIELD.md`，锚 `damagePool.ts#buildDamagePoolRows`，筛查结果：changed
 - 回退：`git revert 023bab6`（戳和 zc 改动在同一个提交里；只想撤 zc 改动就还原 scripts/zc.mjs、zc.d.mts、zc.test.ts 这三个文件）。
 
+### 5.94 CC-87b done：剩余 18 条 drift 人工复核（待复核 18 → 0）（lead-arena-0925c，2026-09-27 第 106 轮）
+
+**CC-87b `7481adf`**（只改 `@fact` 注释行，零代码改动）
+- 分工：lead 做 resourceCalc/*、remielle.test.ts、GAME_TERM 共 10 条；dsh 子代理做 core/*、teamVeil、config 共 8 条（任务书 `/home/kaua/calc-arch/taskA.txt`，报告 `/tmp/cc87b-A.md`，未入库，要点已抄在下面）。两边改的文件不重叠。lead 抽查了 dsh 的改动：只动了 7 行 `@fact`，戳都在「据」段内；它判定不成立的那条，lead 核对代码后确认属实。
+- **15 条口径成立，打了 `·复核@2026-09-27`**：
+  - damagePool 减防通道、非轴失衡易伤：09-25 以来 pushDirect 的改动只有改名（yeshuguang*→veil*）和删希希芙专用函数；`enemyDefReduction = 面板 + row.defIgnore`、`stunOverride ?? stunCoverage` 仍在。
+  - panelPhases 3 条：jane.ts 的 `applyJanePanel` 仍读 `jane.frenzyActive` / `jane.passionCoverage`；四元素异常时长仍是 `(x ?? 0) + getTeamAnomalyDurationBonus(...)`；`infectionZoneBonus = windCharInTeam ? 10 : 0`。
+  - solveTeam 降配档单调闸门：只有 banyueTopUp→interactionTopUp 改名。
+  - ultimatePromote 2 条：文件由 liuyinPromote.ts 改名而来（R099）。拿基准日的旧文件对比代码行，只有改名和按身份查找→模块能力（ultimateGiftSourceOf / promoteHugCountsOf）；闭式不动点、gift 行不计入自攒这两点都没变。
+  - dsh 做的 7 条：yidhari refund 不动点（字段去角色名，语义没变）、单角色前线上限和 cfg 诊断量写回（读的是 iterateBody）、回避支援、收敛环停点规范化（foldLoop/innerLoop）、千夏帷幕计数（qianxia `teamVeilCount: ({ exCount }) => exCount`，catalog 里 1491007 耗能 70）、平A权重阶梯。
+- **2 条改锚**（1581 特殊虚耀：remielle.test.ts 与 GAME_TERM_TO_CODE_FIELD.md）：口径没变，但 ×2.5 的算术已经不在 damagePool 了——09-25 CC-9a 先迁到 damagePoolAnomaly.ts，09-27 CC-19c-2 再迁到 `remielle.ts` 模块能力 `extraAnomalyRows`（`rainbowMultiplier * 2.5`，全仓只有这一处，已 grep 核实）。锚改为 `src/mechanics/agents/remielle.ts#extraAnomalyRows`，「据」追加 `·实测@2026-09-27（…）`。GAME_TERM 里「唯一算术落点 damagePool.ts」和「core/damage.ts『不走直伤公式』」两句按现状改写（core/damage.ts 已经没有这句注释了；特殊虚耀走的是 `calcVoidflareDamage`）。
+- **1 条改写**（`engine:资源账本/截断`，src/core/resource.ts）：原文写「只接受 Σcut 严格变小」，但 2026-09-19 的 `e4d970a` 已改成「不增即接受（相等也接受 = 不动点态）」，见 `truncationRefold.ts:107` 的 `<=`。已按现状改写，「据」追加 `·实测@2026-09-27`。
+  - **教训**：这条 09-25 打过人工 `·复核@`，而改动发生在 09-19，也就是说**那次复核漏看了更早的改动**。复核时应该看的是从**原始**口径日期到现在的全部改动（`git log <原始据日期>..HEAD -- <锚文件>`），不能只看上次复核之后的。队列里已写进复核流程。
+- 验证：check-guards 24 项通过；checkGuards/zc/remielle 三个测试文件共 216 条通过；verify 338 files / 3707 tests EXIT 0（`/home/kaua/calc-arch/verify106.log`）；`zc drift` 为 0 条。
+- 回退：`git revert 7481adf`（只动注释）。
+

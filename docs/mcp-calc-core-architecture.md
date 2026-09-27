@@ -257,7 +257,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-85 | done | `a96ae36` | 拆 scripts/check-guards.mjs 1633→1244 行：RATCHET_BURNDOWN / DEBT_REGISTRY / CALIBER_TRIGGER_ALLOWLIST 移到 scripts/lib/guard-registries.mjs | census §5.91 |
 | CC-86 | done | `4b685c7` | 拆 src/composables/teamTimeline.ts 1515→1117 行：共享工具移到 teamTimelineStore.ts，Chart 4 菲林模拟移到 teamTimelineFilm.ts | census §5.92 |
 | CC-87a | done | `023bab6` | drift 机械筛查：锚点符号源码与「据」日期当天一致的 62 条打 `·锚未变@`；zc 只改 `@fact` 行不算锚改动；待复核 80→18 | census §5.93 |
-| CC-87b | 待做 | — | 剩下 18 条 MANUAL drift 人工复核：读事实原文和锚点当前代码，口径成立打 `·复核@`，不成立就改写 | census §5.93、队列 CC-87a 行 |
+| CC-87b | done | `7481adf` | 剩余 18 条 drift 人工复核：15 条打复核戳、1581 特殊虚耀 2 条改锚到 remielle.ts#extraAnomalyRows、资源账本/截断改写为「不增即接受」；待复核 18→0 | census §5.94 |
+| CC-88 | 待做 | — | 状态表 `public/static/character-mechanics.json` 里 7 条 partially_implemented 机制逐条对照代码核实，已实现的改状态、重新生成 implementation-status.md | 队列 CC-87b 行 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |
