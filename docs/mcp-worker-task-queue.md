@@ -69,6 +69,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 160 轮（2026-09-28，代码 `3adb3620`（CC-136）+ 文档提交「docs: round 160」；上一轮 = 0028eb01 / 8e46f748 / e4cbfc51）
+
+- **做到哪**：
+  - 外层不动点连续性专项第 1 刀已落地（CC-136）：环内选点改为逐级筛选 + ③′「`stunIn` 小者」，与检出相位无关。全过程、扫描数据、逐条影响见 `docs/mcp-outer-fixedpoint-continuity.md`。
+  - 琉音例（`auto-1201-1481-1211` c6）已连续；扳机例在当前代码下本来就连续（CC-135 后），在连续版 trigger.ts 下 7 轮段已连续。
+- **下一步（按顺序，可直接开工）**：
+  1. **第二种不连续：20 轮长周期段**（专项文档 §5）。
+     - 复现：`git show 0028eb01~1:src/mechanics/agents/trigger.ts` 临时覆盖 `src/mechanics/agents/trigger.ts`，扫 `auto-1201-1361-1211` 槽 0 的平 A 权重 w 1.04–1.07（步长 0.005）；w 1.05→1.055 规划失衡 2.2228→2.2190，伤害 −2.9%。扫完 `git checkout -- src/mechanics/agents/trigger.ts` 并 `git diff` 确认干净。
+     - 或者不改代码：`yixuan-jufufu-lucia` 默认就是 20 轮 maxIter，给 1371 的某个 spec 数值做 ±1% 扫描。
+     - 诊断：两点逐轮打印 (stunIn, rawNext, next, 签名, 各槽计数)，比对 `findOuterLongCycleLag`（`outerCycle.ts` 约第 135 行）命中的 lag 与环成员集合；嫌疑是「从 lag=3 起取第一个命中」在两点命中不同的 lag，或环成员在失衡以外的反馈状态不同。
+     - 验收：扫描曲线相邻跳变 ≤1%，不靠放宽容差；三份基线变化逐条解释。
+  2. 洛克茜 `energyRegenOutOfCombat` 局内 3.12 / 局外 1.2 的读法疑点（§2.18 第 159 轮补充最后一条）。
+  3. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先；`src/stores/config.ts` 约 819–861 行）。
+- **本轮拍板**：
+  - ③′ 取 `stunIn` 小者而不是严格时间差最小：后者对 1e-3 级噪声敏感，等于掷骰子；前者稳定，且不高估失衡收益。代价：`auto-1431-1341-1031` 留白 2→3.2s（同级容差内），已重生成棘轮基线。
+  - 两两比较改为逐级筛选：两者在 zd 全部预设上逐位相同，筛选版额外保证长周期旋转不变。
+  - yixuan 语料期望 1→0：按容差语义合规；旋转不变测试只断言「容差等价」，全同级成员走 ③ 是已知残余。
+- **已知坑**（新增，其余沿用第 159 轮）：
+  - zd 看不到 timeGolden 独有的预设（本轮 auto-1021-1481-1341、auto-1591-1161-1311 只在 timeGolden 出现），改外层逻辑必须同时重生成并用 tgdiff 核对 timeGolden。
+  - 规划失衡在同一个环里换成员时，伤害方向不固定（整数化 + 窗口装配），不要按「失衡变小 ⇒ 伤害变小」去验。
+
 ### 第 159 轮（2026-09-28，代码 `0028eb01`（CC-135）+ 文档 `8e46f748` + 本回填提交；上一轮 = ece87d0c / 2843ee97 / 68093b01）
 
 - **做到哪**：
