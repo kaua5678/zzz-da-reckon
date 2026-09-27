@@ -125,7 +125,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
 import { IMPACT_VARIABLES, readImpactVar, writeImpactVar } from '@/core/impactVars'
-import { getAgentMechanic } from '@/mechanics'
+import { teamMechanicSettings } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 import { computeOptimalSubStats, getTemplate } from '@/core/substatOptimizer'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
@@ -153,13 +153,9 @@ const estimateText = computed(() => {
   return `≈ ${pts}点 ${total.toFixed(1)}秒`
 })
 const settingMap = computed<Map<string, MechanicSetting>>(() => {
+  // CC-47：经编排层门面（判据 7）；teamMechanicSettings 已按 id 去重、先出现者优先 ⇒ 与原 `!map.has` 口径一致
   const map = new Map<string, MechanicSetting>()
-  for (const char of configStore.team) {
-    if (!char?.agentId) continue
-    for (const setting of getAgentMechanic(char.agentId)?.settings ?? []) {
-      if (!map.has(setting.id)) map.set(setting.id, setting)
-    }
-  }
+  for (const setting of teamMechanicSettings(configStore.team)) map.set(setting.id, setting)
   return map
 })
 

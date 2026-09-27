@@ -295,7 +295,7 @@ import { computed, h } from 'vue'
 import { NCard, NTag, NDataTable } from 'naive-ui'
 import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { getAgentMechanic } from '@/mechanics'
+import { agentResourceSections } from '@/composables/agentMechanicView'
 import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 
 const props = defineProps<{
@@ -352,12 +352,12 @@ const specialtyInfo = computed(() => {
 const decibelGrandTotal = computed(() => props.result.decibelSource?.total ?? 0)
 
 const specialResourceSections = computed(() =>
-  getAgentMechanic(props.result.agentId)?.resourceSections?.({
+  agentResourceSections(props.result.agentId, {  // CC-47：经编排层门面（判据 7）
     result: props.result,
     anomalyPoolResult: props.anomalyPoolResult,
     liuyinHug: props.liuyinHug ?? null,
     agentNames: props.agentNames ?? {},
-  }) ?? [],
+  }),
 )
 
 // 时间占比百分比

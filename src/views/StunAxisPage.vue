@@ -246,7 +246,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { getAgentMechanic } from '@/mechanics'
+import { agentCombos } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { computeBanyueMingwangBlocks, BANYUE_AXIS_MOVE_META } from '@/mechanics/agents/banyue'
@@ -728,7 +728,7 @@ const allMoves = computed(() => {
       out.push({ slot: c.slot, moveId: 'sigrid-pozhen', label: '破阵连段', actionTime: pzSum * pzScale, remaining: Math.max(0, 9 - consumed), key: `${c.slot}:sigrid-pozhen` })
     }
     // 连段（打包招式，如 单次/双次）：能量按打包口径一次扣（50/85），比裸强特（极寒重碾）的能量消耗更准
-    const combos = getAgentMechanic(c.agentId)?.combos
+    const combos = agentCombos(c.agentId)  // CC-47：经编排层门面（判据 7）
     if (combos) {
       for (const [comboId, combo] of Object.entries(combos)) {
         const actionTime = combo.moves.reduce((s, mv) => s + (findMove(skills, mv.moveId)?.actionTime ?? 0) * mv.count, 0)

@@ -346,7 +346,7 @@ import {
   type CinemaUpliftRow,
 } from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
-import { getAgentMechanic } from '@/mechanics'
+import { teamMechanicSettings } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
@@ -381,17 +381,8 @@ function elementLabel(element: string): string {
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 
-const mechanicSettings = computed<MechanicSetting[]>(() => {
-  const seen = new Set<string>()
-  return configStore.team.flatMap(char => {
-    const module = char.agentId ? getAgentMechanic(char.agentId) : undefined
-    return (module?.settings ?? []).filter(setting => {
-      if (seen.has(setting.id)) return false
-      seen.add(setting.id)
-      return true
-    })
-  })
-})
+// CC-47：经编排层门面读模块声明（判据 7：展示层不直接 import '@/mechanics'）
+const mechanicSettings = computed<MechanicSetting[]>(() => teamMechanicSettings(configStore.team))
 
 const remielleQSetting = computed<{
   slot: number
