@@ -14,6 +14,9 @@ import type { AnomalyEventRecord, CharacterResourceResult, JaneMechanicSource, M
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { calcDirectDamage } from '@/core/damage'
 import { fmt } from '@/utils/format'
+import { emptyPanel } from '@/core/panel'
+import { getAgentSpec } from '@/specs/registry'
+import { applySpecAttributeConversions } from '@/specs/runtime'
 
 const JANE_AGENT_ID = '1261'
 /** 普通攻击：萨霍夫跳（融合主段，见 src/data/moveFusions.ts JANE_SOMERSAULT） */
@@ -22,9 +25,25 @@ const ASSAULT_CRIT_BASE = 20
 const ASSAULT_CRIT_PER_MASTERY = 0.1
 const ASSAULT_CRIT_DMG = 50
 const FRENZY_BUILD_UP_BONUS_CORE = 25
-const MASTERY_ATK_THRESHOLD = 120
-const ATK_PER_MASTERY_OVER = 2
-const ATK_FROM_MASTERY_CAP = 600
+// 狂热「精通 > 120 每点 +2 攻击、上限 600」的常数只在 spec 1261.json `jane_proficiency_to_atk`（R6 C7，第 144 轮）；
+// 面板与展示值都经 spec runtime 执行（面板传 frenzyFactor 作覆盖率，runtime 先封顶再乘覆盖率）。
+const JANE_PROFICIENCY_TO_ATK_ID = 'jane_proficiency_to_atk'
+const janeConversions = () => getAgentSpec(JANE_AGENT_ID)?.attributeConversions ?? []
+function requireJaneProficiencyToAtk() {
+  const conversion = janeConversions().find(c => c.id === JANE_PROFICIENCY_TO_ATK_ID)
+  if (!conversion) throw new Error(`spec 1261 缺少属性转化 ${JANE_PROFICIENCY_TO_ATK_ID}`)
+  return conversion
+}
+function atkFromProficiencyOf(anomalyProficiency: number): number {
+  const probe = emptyPanel()
+  probe.anomalyProficiency = anomalyProficiency
+  applySpecAttributeConversions(probe, janeConversions())
+  return probe.atk
+}
+function janeProficiencyToAtkDetail(): string {
+  const c = requireJaneProficiencyToAtk()
+  return `精通>${c.threshold}每点+${c.valuePerStep}，上限${c.cap}`
+}
 /**
  * 潜能觉醒·致命舞步（index 0 占位，1 = I 无觉醒，2..6 = II..VI）：
  * 简触发[强击]时，该次[强击]的暴击伤害额外提升 10/15/20/25/30%。
@@ -65,7 +84,7 @@ export function computeJaneMechanic(input: {
     assaultCritRate,
     assaultCritDmgBonus: JANE_POTENTIAL_ASSAULT_CRIT_DMG[potentialLevel],
     frenzyBuildUpBonus: FRENZY_BUILD_UP_BONUS_CORE,
-    atkFromMastery: Math.min(ATK_FROM_MASTERY_CAP, Math.max(0, mastery - MASTERY_ATK_THRESHOLD) * ATK_PER_MASTERY_OVER),
+    atkFromMastery: atkFromProficiencyOf(mastery),
     frenzyActive: input.frenzyActive,
     biteSeconds: Math.max(0, input.frontlineSeconds),
     note: `啮咬：攻击命中使敌人进入状态，持续10秒；强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%），潜能觉醒按档位额外+${JANE_POTENTIAL_ASSAULT_CRIT_DMG[potentialLevel]}%强击暴伤（潜能 ${potentialLevel}）；狂热物理积蓄效率与精通转攻、额外能力痛点、影画1/6 面板区见 resourceCalc/helpers 简专属分支（jane.passionCoverage 滑块默认90%）。`,
@@ -129,10 +148,7 @@ function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, poten
 
   // 狂热：物理积蓄+25%；精通>120时每点+2攻击，最多600。
   panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + 25 * frenzyFactor
-  if (anomalyProficiency > MASTERY_ATK_THRESHOLD) {
-    panel.atk = (panel.atk ?? 0)
-      + Math.min(ATK_FROM_MASTERY_CAP, (anomalyProficiency - MASTERY_ATK_THRESHOLD) * ATK_PER_MASTERY_OVER) * frenzyFactor
-  }
+  applySpecAttributeConversions(panel, janeConversions(), frenzyFactor)
 
   // 额外能力：痛点。物理积蓄+20%；敌人处于异常状态时额外+15%（按100%覆盖）。
   // ⚠ 不吃 `frenzy` 总闸（额外能力与狂热状态无关，见函数头注释）。
@@ -185,7 +201,7 @@ function buildJaneResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '强击暴击伤害', value: '50%', detail: '强击对啮咬目标可暴击' },
       { label: '潜能强击暴伤', value: `+${source.assaultCritDmgBonus}%`, detail: '潜能觉醒：致命舞步' },
       { label: '狂热积蓄提升', value: `+${source.frenzyBuildUpBonus}%`, detail: '物理异常积蓄效率（核心，默认满覆盖）' },
-      { label: '精通转攻击', value: `+${fmt(source.atkFromMastery)}`, detail: '精通>120每点+2，上限600' },
+      { label: '精通转攻击', value: `+${fmt(source.atkFromMastery)}`, detail: janeProficiencyToAtkDetail() },
     ],
     footer: source.note,
   }]

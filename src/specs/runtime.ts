@@ -22,10 +22,14 @@ export function applySpecAttributeConversions(
     const steps = conversion.stepRounding === 'none'
       ? over / Math.max(0.0001, conversion.stepSize)
       : Math.floor((over + 1e-9) / Math.max(0.0001, conversion.stepSize))
-    let value = steps * conversion.valuePerStep * coverage * (conversion.coverage ?? 1)
+    // 先封顶、再乘覆盖率（R6 C7 §2.5-②，第 144 轮）：覆盖率是时间占比，满额值按时间加权才对；
+    // 旧写法 min(cap, 值×覆盖率) 在覆盖率<1 且超上限时偏高。改动时全仓覆盖率恒为 1（调用方不传或传 1、
+    // spec 仅 1451 lucia_c6_hp_to_atk 写 coverage:1）⇒ 逐位零差。
+    let value = steps * conversion.valuePerStep
     if (conversion.cap != null) {
       value = Math.min(conversion.cap, value)
     }
+    value = value * coverage * (conversion.coverage ?? 1)
     panel[conversion.targetStat] = (panel[conversion.targetStat] ?? 0) + value
   }
 }

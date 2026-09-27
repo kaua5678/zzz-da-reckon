@@ -9,7 +9,7 @@
 | # | 条目 | 类别 | 结论 | 状态 |
 |---|---|---|---|---|
 | C1 | core ↔ mechanics 模块环 | 可结构化 | **做** | ✅ 第 139 轮完成（R6 验收项，见 §1） |
-| C7 | spec 与模块「一处执行、一处描述」 | 可归一 | **做**（分刀） | 1481 ✅ 第 140 轮；1511 ✅ + alice 死写入删除 第 142 轮；runtime sources + 1541 ✅ 第 143 轮；1571 等不做（§2.2、§2.4）；下一刀 §2.5-② → jane |
+| C7 | spec 与模块「一处执行、一处描述」 | 可归一 | **做**（分刀） | 1481 ✅ 第 140 轮；1511 ✅ + alice 死写入删除 第 142 轮；runtime sources + 1541 ✅ 第 143 轮；runtime 封顶先于覆盖率 + 1261 ✅ 第 144 轮；1571 等不做（§2.2、§2.4）；attributeConversions 归一到此收尾（§2.7） |
 | C5 | 伤害基底两套口径 + 死参数 | 冗余可简化 | **做**（只删死参数与误导字段读法，低优先） | ✅ 第 141 轮（§3） |
 | C3 | catalog `appliesToOutOfCombatPanel` 冗余 | 冗余可简化 | **做成校验**，不删字段 | ✅ 第 141 轮（§4） |
 | C6 | 编排层实际是四层 | 可结构化 | **只改规划文档**，不挪目录 | ✅ 第 140 轮（ARCHITECTURE.md §0） |
@@ -82,7 +82,7 @@
 | nangong 1511 | ✅ **已迁** | spec 新增 `nangong_mastery_to_impact`（阈值 110、每点 +1、`stepRounding: none`、无 cap、`sourcePanelPhase: inCombat`）+ 2 条 verification（150.5 → 40.5；100 → 0）。`nangong.ts` 删 `CONTROL_THRESHOLD`；**面板**（applyNangongPanel）与**展示值**（computeNangongMechanic 的 `impactFromMastery`，经 `emptyPanel()` 探针）都调 `applySpecAttributeConversions`，两处永远同口径。zd `c7b` DIFF 0（含 `auto-1511-1561-1411/*`）；反向验证：删 stepRounding → 150.5 那条得 40 ≠ 40.5 |
 | alice 1401 `:117` | ✅ **删死写入**（不是迁移） | spec `alice_mastery_to_proficiency` 早已由 runtime 执行（缺省 floor）；`alice.ts:117` 又按**连续**公式写 `panel.aliceMasteryToProficiencyBonus`，`alice.ts:217` 写 `cfg.aliceMasteryToProficiencyRate`——`git grep` 全仓**零读取**（只有 `types/resource/config.ts` 的类型声明）。第二份常数且口径与执行不同 ⇒ 删除两处写入、常数 `MASTERY_TO_PROFICIENCY_RATE` 与类型字段。zd `c7c` DIFF 0 |
 | promia 1541 | ✅ **第 143 轮已迁**（见 §2.6）；原判：待 §2.5-① 后零差迁 | `applyPromiaPanel` 读的是 `outOfCombatPanel.anomalyMastery`（阈值 150），runtime 只能读传入的当前面板 ⇒ 现在表达不了。`PROMIA_MASTERY_THRESHOLD` 还被 `computePromiaCycle` 的展示值与导出使用，迁时一并走探针（同 nangong） |
-| jane 1261 | **暂不迁，待 §2.5-② 后零差迁** | `jane.ts:132–134`：`min(600, (精通−120)×2) × frenzyFactor`——**先封顶再乘覆盖率**；runtime 是 `min(cap, steps×vps×coverage)`——**先乘覆盖率再封顶**，frenzyFactor < 1 且超 cap 时不同。另有展示值 `jane.ts:68` 用同组常数 |
+| jane 1261 | ✅ **第 144 轮已迁**（见 §2.7）；原判：待 §2.5-② 后零差迁 | `jane.ts:132–134`：`min(600, (精通−120)×2) × frenzyFactor`——**先封顶再乘覆盖率**；runtime 是 `min(cap, steps×vps×coverage)`——**先乘覆盖率再封顶**，frenzyFactor < 1 且超 cap 时不同。另有展示值 `jane.ts:68` 用同组常数 |
 | burnice 1171 | **不做** | `burnice.ts:283–289`：一次超阈值同时写两个目标（anomalyMastery、dmgBonus），每步数值按潜能等级查表（`BURNICE_POTENTIAL_*_PER_0_1[potLv]`）；runtime 的 valuePerStep 是常数。取整口径（floor 0.1）倒是与 runtime 一致 |
 | phoenix | **不做** | `computePhoenixWeaknessCrit` 返回派生的「弱点暴击率」= 基础值 + 超阈值部分 × 比例，不写面板；runtime 只写面板字段且没有基础项 |
 | lighter 1161 | **不做** | `computeLighterMoraleDmgBonus` 是队友 buff 的软上限折算（每超 10 点冲击力加层数，再封顶、C2 ×1.2），不是属性转化 |
@@ -98,7 +98,7 @@
 
 1. **按 `sourcePanelPhase` 取源面板（opt-in）**：`applySpecAttributeConversions(panel, conversions, coverage = 1, sources?: { outOfCombat?: PanelValues })`。仅当调用方传了 `sources.outOfCombat` 且条目声明 `sourcePanelPhase: 'outOfCombat'` 时，从局外面板读 `sourceStat`；否则保持现状。然后迁 promia（它本来就读 `outOfCombatPanel`，零差）：spec 1541 加条目 + 非整数点 verification（注意 `specs/verify.ts` 的 verification 只有一张面板，要么给 verification 增加可选 `outOfCombatPanel`，要么 verification 面板同时当两张用——先读 `verify.ts` 再定）+ zd DIFF 0。**不要**顺手给卢西娅传 sources（那会改数值，见新发现 1）。
    - **✅ 第 143 轮完成**，见 §2.6。
-2. **封顶先于覆盖率**（下一刀）：先 `timeout 40 git grep -n 'applySpecAttributeConversions(' -- src` 确认没有调用方传第 3 个参数（第 142 轮核对：alice、liuyin、luciaElowen、nangong×2、velina、specs/mechanics.ts、specs/verify.ts 都没传），且 spec 里唯一带 `coverage` 字段的是 `1451 lucia_c6_hp_to_atk: 1`（第 142 轮核对）。满足则把 runtime 改成 `min(cap, steps×vps) × coverage × (conversion.coverage ?? 1)`——覆盖率是时间占比，先封顶再按时间加权才是正确语义；在上述前提下零差。然后迁 jane（传 `frenzyFactor` 作 coverage；`if (精通 > 120)` 与 `max(0, …)` 等价）。
+2. **封顶先于覆盖率**（**✅ 第 144 轮完成**，见 §2.7）：先 `timeout 40 git grep -n 'applySpecAttributeConversions(' -- src` 确认没有调用方传第 3 个参数（第 142 轮核对：alice、liuyin、luciaElowen、nangong×2、velina、specs/mechanics.ts、specs/verify.ts 都没传），且 spec 里唯一带 `coverage` 字段的是 `1451 lucia_c6_hp_to_atk: 1`（第 142 轮核对）。满足则把 runtime 改成 `min(cap, steps×vps) × coverage × (conversion.coverage ?? 1)`——覆盖率是时间占比，先封顶再按时间加权才是正确语义；在上述前提下零差。然后迁 jane（传 `frenzyFactor` 作 coverage；`if (精通 > 120)` 与 `max(0, …)` 等价）。
 
 ## 3. C5 伤害基底两套口径 —— 冗余可简化 · **做（低优先）**
 
@@ -144,4 +144,12 @@
 - **验证**：zd `c7d` DUMP / ROWS DIFF 0（含 `auto-1541-1511-1411/*`）；validate:specs 1114；`src/specs` + `src/mechanics/__tests__` 117 files / 1322 tests；反向验证两项：删 1541 的 stepRounding → verification 得 75 ≠ 75.75；把 runtime 取源改回 `panel` → 「传 sources 读局外面板」单测失败；恢复后 `cmp` 一致。
 - **回退点**：1541 spec 删条目与 verifications，`promia.ts` 恢复两个字面常量与手算；runtime 的 `sources` 参数可保留（opt-in，无调用方传时不生效）。
 - **登记的缺口（不在重构里补，数值变化须走 CC 卡）**：同段原文「每超过 1 点初始异常掌控……提升 0.35% 全队造成的[异放]伤害」**未接入计算**——`computePromiaCycle` 只算 `teamReleaseDmg` 供机制卡展示（行 detail 写「全队向，未接面板（仅展示）」），常数 `PROMIA_TEAM_RELEASE_PER_MASTERY = 0.35` 仍在模块。接入会提高含普罗米娅队伍的异放伤害，需先确认全队异放增伤在引擎中的承载字段（异放走 `releaseModifier`），另开 CC 卡。
+
+### 2.7 第 144 轮结果：runtime 先封顶再乘覆盖率 + 1261 简 ✅；attributeConversions 归一收尾
+
+- **runtime**（`src/specs/runtime.ts`）：`value = min(cap, steps × valuePerStep) × coverage × (conversion.coverage ?? 1)`（原为先乘覆盖率再封顶）。零差前提已复核：调用方只有 promia 显式传 `1`，其余都不传；spec 中带 `coverage` 字段的只有 `1451 lucia_c6_hp_to_atk: 1`。覆盖率为 1 时两种顺序逐位相等，无 cap 时乘法结合顺序不变。新增单测 3 例（`src/specs/__tests__/runtimeSourcePhase.test.ts` 的「先封顶、再乘覆盖率」段）。
+- **1261**：spec 新增 `jane_proficiency_to_atk`（`sourceStat: anomalyProficiency`、`inCombat`、阈值 120、每点 +2、`stepRounding: none`、cap 600）+ 2 条 verification（180.5 → 121；500 → 600）。`jane.ts`：面板块改为 `applySpecAttributeConversions(panel, janeConversions(), frenzyFactor)`（frenzyFactor = 狂热开关 × `jane.passionCoverage`，原公式 `min(600, (精通−120)×2) × frenzyFactor` 与新 runtime 语义逐位一致；原 `if (精通 > 120)` 守卫等价于 `max(0, …)`）；`computeJaneMechanic` 的 `atkFromMastery` 经 `emptyPanel()` 探针；机制卡 detail 文案「精通>120每点+2，上限600」改为由 spec 条目拼出。三个常数 `MASTERY_ATK_THRESHOLD / ATK_PER_MASTERY_OVER / ATK_FROM_MASTERY_CAP` 删除。
+- **验证**：zd `c7e` DUMP / ROWS DIFF 0（含 `auto-1261-1561-1411/*`，默认 passionCoverage 0.9 ⇒ 覆盖率 < 1 路径被执行）；validate:specs 1120；`src/specs` + `src/mechanics/__tests__` 117 files / 1325 tests；反向验证：删 1261 stepRounding → verification 得 120 ≠ 121；runtime 改回旧顺序 → 新单测 2 例失败；恢复后 `cmp` 一致。
+- **回退点**：runtime 恢复 `steps × vps × coverage × convCoverage` 后封顶（当前数据下零差）；1261 spec 删条目与 verifications，`jane.ts` 恢复三常数与手算。
+- **attributeConversions 归一到此收尾**：§2.3 的七个候选全部有结论（迁 4：1481、1511、1541、1261；删死写入 1：alice；不做 3：burnice、phoenix、lighter），外加 1571 不做（§2.2）。手写模块里不再有「spec 与模块各写一份」的属性转化常数（1571 的 spec 条目是标注「勿经 runtime」的纯记录）。C7 剩下的是「10 个模块 spec resources 与模块账本重复」，另行评估（全景 §6.4）。
 
