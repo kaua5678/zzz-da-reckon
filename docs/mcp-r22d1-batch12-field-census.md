@@ -1888,6 +1888,37 @@ ImpactChart.vue 的改动：
   5. 跑 guards 和 verify，把这一条写进 census §5.61。
 - 判据 7 收尾后的下一个方向：遗留项「写死角色 ID 声明化」（范围见上）。建议从柏妮思占比变量开始：在 burnice.ts 模块声明能力，经 agentMechanicView 门面查询，ImpactChart 和 ResourceUtilizationPage 共用。开工前先读 `src/composables/agentMechanicView.ts` 的现有门面写法（参照 CC-47/48）。
 - 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）。
+### 5.61 CC-54 done：判据 7 收尾（agentSpecs 永久保留，target 0→1）（lead-arena-0925c，2026-09-27 第 74 轮）
+
+**提交**：`cae6624`，只改两个守卫配置文件，没有碰 src：
+- `scripts/check-guards.mjs`：RATCHET_BURNDOWN 条目「展示层越层 import」的 target 从 0 改为 1，并加注释；plan 改写为「已收尾（CC-47~CC-53 共 14→1），剩 1 处永久保留」和理由；frozen 保持 1，due 不动（done 之后 due 不再参与判定）。
+- `scripts/lib/layer-import-ratchet.mjs`：在 `EXHIBITION_LAYER_IMPORT_BASELINE` 头注释末尾补两段，一段说明 14→1 的历程，一段写 CC-54 拍板（旧的「剩 14 处」清单保留作历史）。
+
+回退：`git revert cae6624`。
+
+**依据**
+- `computeBurndown` 的 `done = current <= target`，所以 frozen=target=1 时判 done，不 stale。
+- `src/scripts/__tests__/checkGuards.test.ts` 的 burndown 用例本来就按 `frozen > target` 区分未完成和已清零，已清零条目有恒等检查，改动后 142 条全过。
+- 探测器口径不变：`detectExhibitionLayerImport` 仍把 `@/specs/registry` 当越层，测试 :145 照样断言 true。基线 1 不上调，所以展示层以后任何新增越层导入仍然判红。这不是换尺，符合规则 17②。
+- 为什么不做纯转发：见 §5.60 的拍板。`agentSpecs` 是只读数据表，包一层只会把数字压成 0，耦合并没有降低。
+
+**验证**：check-guards 24 条全过；checkGuards.test 142 条全过；`npm run verify` 通过：310 files / 3642 tests，24 guards，checkGuards.test 142（`/home/kaua/calc-arch/verify54.log`）。
+
+**判据 7 专项到此结束**：CC-47 到 CC-54，14→1，剩下 1 处永久保留。
+
+**下一步（CC-55，写死角色 ID 声明化，从柏妮思异放占比开始）——本轮已做的只读调研**
+- 现状，同一个柏妮思判断有**两份**，都是 `agent?.id === '1171' || agent?.teammateBuffId === '1171'`：
+  - `src/composables/impactVariables.ts#buildImpactVariables`（`BURNICE_ID` 常量，CC-53 从 ImpactChart 搬过来）；
+  - `src/views/ResourceUtilizationPage.vue:~417` 的 `burniceReleaseElements` computed，还带手写控件 :~76。
+- 引擎侧**已经是通用的**：`src/composables/resourceCalc/damagePoolRelease.ts:72/133` 用 `event.eventId.split('_')[0]` 作为 releaseShare 设置的命名空间，然后读 `${ns}.releaseShare:${元素}`。也就是说，只要某个角色的异常事件 id 形如 `<ns>_…`、并走 release 权重，引擎就会读这个设置。UI 只认柏妮思，是展示层落后于引擎。
+- `FreeComparePage.vue:~261` 的 `BURNICE = '1171'` **不算债**：那是用户原话点名的默认对比对象（规则 15 已查证），不是机制分支，已从遗留清单里剔除。
+- 建议做法（先调研后定，可逆）：
+  1. 读 damagePoolRelease.ts :55–140，弄清哪些事件会走 releaseShare：条件是什么、`event.eventId` 从哪来、有没有 owner/agentId。
+  2. 若能从机制模块或 spec 里静态得出「这个角色会用 releaseShare、命名空间是 X」，就给 `AgentMechanicModule` 加一个可选声明，例如 `releaseShareNamespace?: string`，由 burnice.ts 声明 `'burnice'`。然后在 `src/composables/agentMechanicView.ts` 加门面 `teamReleaseShareNamespaces(team)`，写法参照同文件的 `agentAxisMoveMeta`，注意按 id 或 teammateBuffId 匹配的原口径。两处调用改为经门面查询，`'1171'` 从两处都消失。
+  3. ⚠ 口径保持：原判断包括 `teammateBuffId === '1171'`，即以队友 buff 身份出现的柏妮思，门面要覆盖这种情况。impactVariables 的变量 id 仍是 `setting.burnice.releaseShare:<元素>`，所以命名空间必须正好是 `burnice`，否则用户已存的设置会失效。
+  4. 测试：impactVariables.test 和新门面单测；反向变异是删掉 burnice.ts 的声明，此时柏妮思队伍的占比变量应该消失，测试变红。判据 24：composables 不能按值导入 mechanics/agents，只能经 `@/mechanics` 的 `getAgentMechanic`，门面文件已有先例。
+  5. 若第 1 步发现命名空间不能静态得出（例如只在运行时从事件流里出现），就改成退路：把 `BURNICE_ID` 收拢成一处导出常量，ResourceUtilizationPage 复用 impactVariables 的判断函数，至少消掉重复，并如实标注「未声明化」。
+- 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、StunAxisPage 写死角色 ID（另立卡，排在 CC-55 之后）。
 ## 附录：普查脚本 census.sh
 
 ```bash
