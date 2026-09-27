@@ -267,7 +267,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-94 | done | `0a7e2a8` | LS 死通道基线 12→1：删 11 个零读零写声明（roxy/claret/norma 配置槽 + catalog 两字段），freePoolPerSpecialty 裁决保留为调参旋钮 | census §5.101 |
 | CC-95 | done | `cb169a3` | 判据 14 豁免 8→1：删 6 个死字段（归档 DTO 3、minGain、minWeight、damage isRupture），blockSeconds 形参假阳性修扫描器；棘轮 7→1 | census §5.102 |
 | CC-96 | done | `4191bd0` | §38 复算对账：①数字更新 ③drift 销号，新增 ⑦ catalog 效果 basis 引擎零读取、4 条驱动盘 baseAtk 错标统一（零数值变化）；触发器顺延 2026-12-31 | census §5.103 |
-| CC-97 | done | 见本行所在提交 | 方向 B「测量清单 v1」：13 个引擎级校准原子（比值法、引擎口径出处、预测值、录入格式），A1 = 局内攻击力%基底 | `docs/mcp-calibration-atoms.md` · census §5.104 |
+| CC-97 | done | `d479d46` | 方向 B「测量清单 v1」：13 个引擎级校准原子（比值法、引擎口径出处、预测值、录入格式），A1 = 局内攻击力%基底 | `docs/mcp-calibration-atoms.md` · census §5.104 |
 | CC-98 | 待做 | — | 方向 C 第 1 刀：62 个机制模块数据化盘点（只读，产出分类与覆盖率报告，挑 5 个纯 spec 候选） | 队列第 116 轮交接 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
