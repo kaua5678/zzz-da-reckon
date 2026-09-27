@@ -2554,3 +2554,23 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 验证：perf dump/rows DIFF 0；vue-tsc 0；verify 337 files / 3703 tests EXIT 0（/home/kaua/calc-arch/z82.log）。注意：perf 语料的自动配装池里没有 14001，零差只能证明没有连带影响；14001 路径本身由集成测试和组合对照测试覆盖。
 - 回退：`git revert 75fced2`。
 
+### 5.90 CC-83 done：拆 src/mechanics/types.ts（1927 → 1309 行）（lead-arena-0925c，2026-09-27 第 102 轮）
+
+**CC-83 `037a66f`**（纯类型，零运行时行为变化）
+- 切法：原 :1314 起的卫星类型整段移出，**AgentMechanicModule 本体和前面的各种 Agent*Input 留在 types.ts**，能力清单仍集中在一处。
+  - `src/mechanics/typesRows.ts`（191 行）：DirectRowAxisSplit(Input)、DirectRowBonus(Input)、ExtraDirectRowsInput、ExtraAnomalyRowGroup、**值导出** `EXTRA_ANOMALY_ROW_ORDER`、ExtraAnomalyRowsInput。
+  - `src/mechanics/typesHooks.ts`（445 行）：CrossAgentSupplySpec/Input、AgentStunOverride(Input)、AgentAxisOverlayInput/AgentAxisOverlays/AxisScalarOverlays、AgentAnomalyTransformInput、AgentNextRoundFeedbackInput、InteractionTopUp(Input)、ExtraNecessaryAction、AgentAnomalyEventRecordsInput、AxisEditorBlockMark、CharacterCountInputDecl。
+  - **命名改了**：队列原写 `typesAxis.ts`，实际叫 `typesHooks.ts`，因为这部分不只是轴相关的类型。
+  - types.ts 末尾用 `export type {…} from` 转出，`EXTRA_ANOMALY_ROW_ORDER` 用普通 `export {} from`，28 个 `from '@/mechanics/types'` 的导入方和 4 个值导入方（alice/jane/remielle/burnice 的 EXTRA_ANOMALY_ROW_ORDER）都不用改。本体引用到的卫星类型用 `import type` 回引。
+  - 运行时没有环：新文件对 types.ts 没有依赖，typesRows 只 `import type` 自 typesHooks；types → typesRows 是唯一的值边。
+- 做法：脚本 `/home/kaua/calc-arch/cc83.py` 切片，按「去掉注释后是否实际引用」为每个文件算导入（tsconfig.app.json 开了 `noUnusedLocals`，多导一个就报错）；types.ts 头部同样裁掉不再用的导入。原头部 `// CC-19a`、`// CC-19b` 两行注释跟着对应导入挪到 typesRows 头部。
+- 逐行核对：旧 types.ts 和新三个文件按行计数对比，只差导入行（多行格式改成单行）和挪走的两行注释；多出的只有两个新文件的文件头和转出语句。**正文一行没变。**
+- 源码锁：查过 `grep -rln 'mechanics/types.ts' src scripts`，6 处都是注释，没有 readFileSync 锁。banyue.ts:178 注释指向 `InteractionTopUp`，已改为 typesHooks.ts。
+- 护栏测试 `src/mechanics/__tests__/typesSplitCc83.test.ts`：
+  - `EXTRA_ANOMALY_ROW_ORDER` 经 `@/mechanics/types` 和 `@/mechanics/typesRows` 拿到的是同一个对象；
+  - types.ts 行数 < 1400（防止再长回去）；
+  - types.ts 里有两条转出语句。
+- 验证：vue-tsc 0；verify 337 files / 3703 tests EXIT 0，含 check-guards 和 build（/home/kaua/calc-arch/verify102.log，这次 verify 在加护栏测试之前跑）；护栏测试 typesSplitCc83 单独跑 2 条通过，加上它之后 vue-tsc 仍为 0。不需要 perf 零差：只搬类型，唯一的值 `EXTRA_ANOMALY_ROW_ORDER` 逐字搬过去，4 个使用方的单测都在 verify 里。
+- 回退：`git revert 037a66f`。
+- **以后加卫星类型**：跟直伤/异常行有关的放 typesRows.ts，其余放 typesHooks.ts，然后在 types.ts 末尾的转出列表里补上名字；模块能力本身仍加在 types.ts 的 AgentMechanicModule 里。
+
