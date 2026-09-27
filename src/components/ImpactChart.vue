@@ -124,7 +124,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
-import { IMPACT_VARIABLES, readImpactVar, writeImpactVar } from '@/core/impactVars'
+import { buildImpactVariables, readImpactVariable, writeImpactVariable } from '@/composables/impactVariables'
 import { teamMechanicSettings } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
@@ -158,35 +158,9 @@ const settingMap = computed<Map<string, MechanicSetting>>(() => {
   return map
 })
 
-const dynamicVars = computed(() => {
-  const vars: typeof IMPACT_VARIABLES = []
-  for (const [id, setting] of settingMap.value) {
-    const range = setting.suffix === '%'
-      ? [(setting.min ?? 0) * 100, (setting.max ?? 100) * 100]
-      : [setting.min ?? 0, setting.max ?? 100]
-    vars.push({ id: `setting.${id}`, label: setting.label, defaultRange: range as [number, number], suffix: setting.suffix })
-  }
-  const burniceSlot = configStore.team.findIndex(char => {
-    const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return agent?.id === '1171' || agent?.teammateBuffId === '1171'
-  })
-  if (burniceSlot >= 0) {
-    const elementLabels: Record<string, string> = { physical: '物理', fire: '火', ice: '冰', electric: '电', ether: '以太', wind: '风', lumiflux: '辉光' }
-    const coverage = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
-    for (const [element, rate] of Object.entries(coverage)) {
-      if (rate <= 0) continue
-      vars.push({
-        id: `setting.burnice.releaseShare:${element}`,
-        label: `柏妮思异放·${elementLabels[element] ?? element}占比`,
-        defaultRange: [0, 100],
-        suffix: '%',
-      })
-    }
-  }
-  return vars
-})
-
-const allVars = computed(() => [...IMPACT_VARIABLES, ...dynamicVars.value])
+// CC-53：变量表（静态 + 机制设置 + 柏妮思占比）与读写口径收拢到编排层（判据 7）；组件只留 settingMap / 采样 / 渲染
+const coverageRate = computed(() => anomalyPoolResult.value?.coverage?.perElementCoverageRate)
+const allVars = computed(() => buildImpactVariables(configStore.team, settingMap.value, id => catalogStore.getAgent(id), coverageRate.value))
 const varOptions = computed(() => allVars.value.map(v => ({ label: v.label, value: v.id })))
 function renderVarLabel(option: { label: string; value: string }) {
   return h('span', { title: option.label, style: 'display:inline-block;white-space:nowrap;vertical-align:middle' }, option.label)
@@ -199,40 +173,12 @@ const errorMsg = ref('')
 const curVal = ref<number | undefined>(undefined)
 const selVar = computed(() => allVars.value.find(v => v.id === selectedVarId.value))
 
-function parseDynamicVar(id: string): { kind: 'rate' | 'cap' | 'anomaly' | 'setting'; slot?: number; actionId?: string; settingId?: string } | null {
-  let m = id.match(/^setting\.(.+)$/)
-  if (m) return { kind: 'setting', settingId: m[1] }
-  return null
-}
-
 function readVar(id: string): number {
-  const dyn = parseDynamicVar(id)
-  if (dyn?.kind === 'setting' && dyn.settingId) {
-    if (dyn.settingId.startsWith('burnice.releaseShare:')) {
-      const element = dyn.settingId.slice('burnice.releaseShare:'.length)
-      const stored = configStore.mechanicSettings[dyn.settingId]
-      const auto = (anomalyPoolResult.value?.coverage?.perElementCoverageRate[element] ?? 0) * 100
-      return stored !== undefined ? stored * 100 : auto
-    }
-    const meta = settingMap.value.get(dyn.settingId)
-    const raw = configStore.getMechanicSetting(dyn.settingId, meta?.default ?? 1)
-    return meta?.suffix === '%' ? raw * 100 : raw
-  }
-  return readImpactVar(configStore, id)
+  return readImpactVariable(id, configStore, settingMap.value, coverageRate.value)
 }
 
 function writeVar(id: string, value: number): void {
-  const dyn = parseDynamicVar(id)
-  if (dyn?.kind === 'setting' && dyn.settingId) {
-    if (dyn.settingId.startsWith('burnice.releaseShare:')) {
-      configStore.setMechanicSetting(dyn.settingId, value / 100)
-      return
-    }
-    const meta = settingMap.value.get(dyn.settingId)
-    configStore.setMechanicSetting(dyn.settingId, meta?.suffix === '%' ? value / 100 : value)
-    return
-  }
-  writeImpactVar(configStore, id, value)
+  writeImpactVariable(id, value, configStore, settingMap.value)
 }
 
 // ========== 快照 ==========
