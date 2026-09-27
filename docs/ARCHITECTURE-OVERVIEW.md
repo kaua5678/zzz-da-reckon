@@ -158,5 +158,6 @@ useResourceCalc()                         composables/useResourceCalc.ts:87
 - 典型：1481 琉音、1571 诺玛的 attributeConversions 在 spec 里写了 threshold / stepSize / valuePerStep / cap，note 自己写「实现位置：mechanics/agents/*.ts applyPanel，非 spec runtime 执行」。同一组常数存在两份，改一处另一处不会跟着变（CC-109 洛克茜就是 spec 注记与模块数值分叉的先例）。
 - 反例（已归一）：`alice.ts:115`、`luciaElowen.ts:135` 直接调 `applySpecAttributeConversions(getAgentSpec(...).attributeConversions)`，常数只在 spec 一处。
 - 转为候选 **C7**（§5）。
+- **第 147 轮复核（CC-120）**：变异法实测，上述 10 份 resources 与 3 份 events **不参与计算**，只错在展示；逐条对照后只有 1581 耀变系数 1 条是真错（已修），其余不迁移。详见 `docs/mcp-spec-resources-audit.md`。
 - 探针的局限：只按模块主文件的源码判断，模块若经其他文件（如 `specPanelBuffs.ts`）间接调用 spec，会被误记为「不调用」。第 2 步动手前逐个复核。
 - 探针写法：`src/mechanics/__tests__/` 下临时 test，`import { getAgentMechanic } from '@/mechanics'`、`import { agentSpecs } from '@/specs/registry'`，结果写 `/tmp`，跑完删除。

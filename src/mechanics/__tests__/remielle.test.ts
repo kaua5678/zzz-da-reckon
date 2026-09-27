@@ -5,6 +5,7 @@ import { buildAnomalyVirtualPanel, computePanelPhases, computeEntrySnapshotPanel
 import { emptyPanel } from '@/core/panel'
 import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
+import { getAgentSpec } from '@/specs/registry'
 
 /** 3异常队（蕾米+薇薇安+月城柳），额外能力 tier=3；globalBuffs 关掉防污染（SOP §7） */
 async function setup(cinemaLevel = 0) {
@@ -18,6 +19,13 @@ async function setup(cinemaLevel = 0) {
 }
 
 describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
+  it('CC-120：spec resources 的 luminizeMasteryRatio（仅供机制表展示，不参与计算）与模块/引擎口径一致', () => {
+    // spec 曾写 0.1（与模块 @fact 记载的旧转写错误相同）；resources 不被执行，只进机制表和逻辑编辑器，所以只错在展示
+    const ratio = getAgentSpec('1581')?.resources?.find(r => r.id === 'remielle_voidflare')?.properties.luminizeMasteryRatio
+    expect(ratio).toBe(computeRemielleMechanic({ anomalyProficiency: 100 }).luminizeMultiplierBonus / 100)
+    expect(ratio).toBe(0.2)
+  })
+
   it('异化系数 = 异常精通×0.02%；耀变倍率提升 = 异常精通×0.2%（2026-09-07 账本+原文四源校对，旧 0.1% 为转写错误）', () => {
     const s = computeRemielleMechanic({ anomalyProficiency: 500 })
     expect(s.refringeCoefficient).toBeCloseTo(10, 5)

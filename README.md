@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（62 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（63 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -131,6 +131,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-timeline-shadow-kernel.md` | **事件时间轴影子内核设计稿与进度账本（R4 · 方向 A 第 1 刀）**：两条轨（失衡、喧响）的现状、D1–D7 决定（重放收敛产物、零入边、闸门规避）、3 支对账队伍、归因分类 E / U / B、分步验收 |
 | `docs/mcp-r5-spec-impl-reconciliation.md` | **R5 规格-实现对账：差异清单与进度账本**：catalog.json 215 种字段 × 引擎读取点的粗筛方法与局限、S/D/M 字段分类框架、零读取候选 Z1–Z13 与已知差异 K0（basis）、「读了但语义不同」排查入口、差异条目格式 |
 | `docs/mcp-r6-refactor-list.md` | **R6 第 2 步：重构机会清单（做 / 不做）**：全景 C1–C7 与 A3、helpers 壳逐条给类别、出处、收益、影响面、风险与结论；C1（core 只经 registry 查询）已完成，C7 分刀步骤可直接开工 |
+| `docs/mcp-spec-resources-audit.md` | **spec resources / events 与手写模块对账（全景 §6.4，CC-120）**：10 份 resources、3 份 events 经变异法证明不参与计算（仅展示）；120 条数值逐条对照（81 一致 / 4 不一致 / 34 模块未建模），1581 耀变系数 0.1→0.2 已修；决定不迁移及理由 |
 | `docs/mcp-working-model.md` | **工作方式、分工与规则体系（R8 答复，现行口径）**：废除固定的 lead/worker 分工（单一执行者 + 按需外包机械活）；判据三分（保留 / 降级为只防增加 / 废弃）与执行项 W1–W4；工作方式改为「画地图 → 对账与找机会 → 集中重构」；R 顺序调整的理由与回退点；不采纳的建议 |
 | `docs/mcp-mechanic-dataization-census.md` | **机制模块数据化盘点（方向 C 第 1 刀，CC-98）**：62 个模块 / 62 份 spec 一一对应；按「spec 生成不了的过程类能力数」分 A2 / B30 / C29；spec 的 4 种原语缺口 G1–G4；5 个纯 spec 候选；第 2 刀被方向 A 事件钩子阻塞 |
 | `docs/LONG-TERM-DIRECTIONS.md` | **R3 长期方向提案（只提案不实施，待用户挑选）**：A 事件时间轴内核替代整局总量+不动点 / B 受控实测校准集（真值锚）/ C 机制即数据 + 版本流水线 / D 统一决策层 / E 口径与数据版本绑定；各方向的根本问题、时机、收益、不可逆点、切刀与是否与当前重构冲突，结尾给推荐顺序 |

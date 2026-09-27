@@ -69,31 +69,30 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 146 轮（2026-09-27，一个提交「refactor(1541): CC-119」，提交号见 git log；上一轮 CC-118 = 02119ce）
+### 第 147 轮（2026-09-27，一个提交「docs(C7): CC-120」，提交号见 git log；上一轮 CC-119 = d2b270c）
 
-- **做到哪**：CC-119 完成，结论是**原登记有误：普罗米娅每点掌控 +0.35% 全队异放增伤早已生效**，本轮只做零差修正（清单 §2.9）。
-  - 实测：含 1541 的 3 个预设中，队友局内面板 `anomalyReleaseDmgBonus = 34.524 = (248.64 − 150) × 0.35`。承载者是 spec `src/specs/agents/1541.json` teamBuff `promia_ice_team_release_dmg`（formula 型，读普罗米娅局外掌控），经 `stores/catalog.ts#mergeSpecTeamBuffs` 进入队友 buff，和模块无关。普罗米娅自身多出的 35 来自专武「朔月裁霜」自身效果（catalog wEngines[79]），不是重复计算。
-  - `src/mechanics/agents/promia.ts`：删除常数 `PROMIA_TEAM_RELEASE_PER_MASTERY`；展示值 `teamReleaseDmg` 改为在探针面板上用 `applyEffect` 执行同一条 spec effect；头注释、`note`、机制卡 detail、description 中的「未接 / 仅展示 / 未建模」都改为「经 spec teamBuff 生效」。
-  - `src/mechanics/__tests__/promia.test.ts`：展示值断言改为字面量 17.5；新增 1 例锁定该 teamBuff 的形状（team / formula / anomalyReleaseDmgBonus / anomalyMastery / outOfCombat）。
-  - 验证：zd `cc119` 伤害逐位相同，差异只有 resourceResult 哈希（3 个含 1541 预设 × 6 变体 = 18 条）。临时把 note 改回原文后重跑 zd `cc119b`，DUMP / ROWS DIFF 0，证明差异只来自 note 文案。反向验证：spec 0.35 → 0.36 时单测得 18 ≠ 17.5，恢复后 cmp 一致。vue-tsc 0；get_diagnostics 0；CG 25/25；verify 见提交。
+- **做到哪**：全景 §6.4「10 个模块 spec resources 与模块账本重复」评估完成（CC-120），C7 全部收尾。详见 `docs/mcp-spec-resources-audit.md`（新增，已登记 README §6，共 63 份）与清单 §2.10。
+  - 变异法实测：10 份 resources、3 份 events 不参与计算（zd DIFF 0；1091 阳性对照 DIFF 30；预设外的 1121 / 1281 / 1291 / 1081 用定向探针补测，输出逐字一致），只供机制表和逻辑编辑器展示。
+  - dsh 子代理只读盘点 120 条数值：81 一致 / 4 不一致 / 34 模块未建模；lead 逐条复核这 4 条。
+  - 修正：`src/specs/agents/1581.json` `luminizeMasteryRatio` 0.1 → 0.2（与模块 @fact 四源一致；只影响展示，零差）；`src/mechanics/__tests__/remielle.test.ts` 加「CC-120」例钉住（反向验证：改回 0.1 测试失败）。
+  - 决定不迁移模块（理由见审计文档 §1）。
 - **下一步（按顺序，可直接开工）**：
-  1. **评估全景 §6.4「10 个模块 spec resources 与模块账本重复」**（1121、1171、1261、1281、1291、1411、1471、1511、1571、1581）。只评估、只读，产出写到清单新节 §2.10。做法：
-     - 逐个打开 `src/specs/agents/<id>.json` 的 `resources` 与对应模块（`getAgentMechanic` 找源文件），列出每条 resource 的常数在模块里是否另有一份。
-     - 每条给出结论：迁（模块从 spec 读）/ spec 标「纯记录，勿经 runtime」/ 删 spec 条目 / 不做，并写理由。
-     - 注意全景 §6.4 已写明的探针局限：模块可能经 `specPanelBuffs.ts` 等文件间接用 spec，要逐个复核。
-     - 适合派 dsh 子代理做只读盘点（先自检 pong）。它输出清单后由 lead 复核再落盘，不让它写仓库文件。
-  2. 再做 CC-99（卡表）。
+  1. **先重新评估 CC-99 还做不做**（REQUIREMENTS 第 261 行明确要求重新评估；census 文档 §6 是原方案）。
+     - 要回答：迁移潘引壶 1421 到「spec + G1 / G3」，除了降低「过程类钩子数」，还有什么实际收益？原验收「钩子少于 3 个」是计数判据，R6 禁止只为降计数改动。
+     - 可以接受的收益举例：G3（命座透传，44 个模块各手写一行 `cfg.xxxCinemaLevel = cinemaLevel`）统一后，能消除一类真实易错点。先 `timeout 40 git grep -n 'CinemaLevel = cinemaLevel' -- src/mechanics/agents | wc -l` 实测，再抽查几处有没有写错或漏写。
+     - 结论写进 census 文档 §6 和卡表 CC-99 行：做（写清收益）或不做（标「不做」加理由）。拿不准时只做 G3（零差、可单独回退）。
+  2. 若 CC-99 判不做，下一个候选是 1471 格挡嗔火 4 vs 6（审计文档 §3 未决）：先查原文（`data/raw/nanoka_missing/full/1471.json` 或 catalog），确认后只改 spec 展示值（零差），或者模块确实错了就开 CC 卡（改数值）。
 - **本轮拍板**：
-  - CC-119 按「已生效」处理，不另加计算路径。依据：面板实测值与原文公式一致；再加一条路径就是双计。
-  - 展示值改为执行 spec effect，常数只留 spec 一处，与 C7 口径一致。
-  - note 文案变化会改变 resourceResult 哈希，接受；伤害零差已单独证明。
-  - 回退点：`promia.ts` 恢复常数和 `masteryExcess × 0.35`，文案恢复即可，数值不受影响。
+  - spec resources 不迁移。依据：不参与计算、结构不同、真错只有 1 条、R6 禁止只为降计数改动。回退点：无代码改动，只有 1581 一个数（改回 0.1、删单测）。
+  - 1581 / 1471 的 initialValue 差异判为语义不同，不改。
 - **已知坑**：
-  - **模块注释写「未接 / 仅展示」不等于真的没接**：spec teamBuffs 通过 catalog 合并，始终生效，与手写模块无关。登记「数值缺口」之前先用面板探针实测（写法参考 `.zc/perf/cc119probe.perf.ts`：遍历预设，用 `panelAt(calc.panels.value, slot)` 读字段）。这张卡原本被标为「改数值」，实际是误登记。
-  - **zd 差异只出现在 resourceResult 哈希、伤害不变时，先怀疑 `specResources` 里的文案字段**（note / detail）。验证方法：临时改回文案重跑 zd。
-  - **zd `/c6` 变体只把 0 号位设为 6 命**（dump.perf.ts `setCinemaLevel(0, 6)`）。非 0 号位角色的 6 命改动在 zd 下显示 DIFF 0，要自写探针（第 145 轮）。
-  - `src/core/types.ts` 不存在，`BuffEffect` 在 `@/types/catalog`。vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
-  - `sourcePanelPhase` 在 attributeConversions 里只对传了 sources 的调用点生效（promia、lucia）；teamBuff 的 formula 通道自己按来源面板读取。
+  - **判断「spec 某段是否参与计算」用变异法，不要只看源码**：`/home/kaua/calc-arch/mut147.py <ids> [键名]`，然后跑 zd，最后 `git checkout -- src/specs/agents/` 恢复；必须带阳性对照，并对预设外的角色补跑定向探针（写法见审计文档 §2）。变异期间不要让子代理读工作区。
+  - 预设外的角色（zd 看不到）至少有：1121 本、1281 派派、1291 雨果、1081 比利。
+  - `setupHarness` 收到裸字符串 id 会抛错，必须传 `{ agentId }` 对象。
+  - 模块注释写「未接」不等于真没接：spec teamBuffs 经 catalog 合并，始终生效（第 146 轮）。
+  - zd 只有 resourceResult 哈希变、伤害不变时，先怀疑 `specResources` 里的文案字段（第 146 轮）。
+  - **zd `/c6` 变体只把 0 号位设为 6 命**，非 0 号位角色的 6 命改动需要自写探针（第 145 轮）。
+  - `BuffEffect` 在 `@/types/catalog`（`src/core/types.ts` 不存在）；vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
   - `zcWorkspace.test.ts` 在全量 verify 下偶发失败，单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
-- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；nangong / liuyin 原文「初始」是否应读局外面板（和 CC-118 同样是一行修正；注意 zd 盲区）。
+- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；nangong / liuyin 原文「初始」是否应读局外面板（和 CC-118 同样是一行修正；注意 zd 盲区）；1471 格挡嗔火 4 vs 6（审计文档 §3）。
