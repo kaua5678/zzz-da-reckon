@@ -2594,3 +2594,18 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
   - verify 338 files / 3705 tests EXIT 0（/home/kaua/calc-arch/verify103.log，打复核戳之前跑的）；打复核戳之后 checkGuards.test.ts 和 zc.test.ts 共 192 条通过，check-guards 输出仍逐字相同。
 - **以后改基线、登记债务或豁免，改 `scripts/lib/guard-registries.mjs`**。改棘轮基线常量时 frozen 同步这条规矩不变，基线常量本身仍在各 `scripts/lib/*-ratchet.mjs` 或 check-guards 里。
 
+### 5.92 CC-86 done：拆 src/composables/teamTimeline.ts（1515 → 1117 行）（lead-arena-0925c，2026-09-27 第 104 轮）
+
+**CC-86 `4b685c7`**（逐字搬运，零行为变化）
+- 切成三个文件，**运行时依赖全是单向的**：teamTimeline → Store、Film；Film → Store。新文件对 teamTimeline 只用 `import type`，运行时擦除，不成环。
+  - `src/composables/teamTimelineStore.ts`（193 行）：原「现场快照/恢复」段（StoreSnapshot、snapshotStore、restoreStore）+「配装工具」段（baseWEngineFor、bestLimitedWEngineFor、baseStateFor、baseGoldOfTeam、buildBudgetAwareGoldSteps、budgetAwareStateFor、applyTeamToStore）+ yieldNow。
+  - `src/composables/teamTimelineFilm.ts`（235 行）：原 `// ========== Chart 4：菲林经济模拟` 段到文件末尾（FilmSimPoint/Options/Result、applyPeriodLayerBuffs、nextGoldStepCost、computeFilmSimulation），连同原来夹在段中的 filmEconomy、bossPreset 两行 import。
+  - teamTimeline.ts 末尾原样转出原公开名：baseGoldOfTeam、budgetAwareStateFor、computeFilmSimulation 和三个 Film 类型。12 个导入方（chartRunners、TeamComparePage 等）和 10 个相关测试都不用改。
+- 为什么不只搬影画段：它用到 5 个私有辅助函数（snapshotStore/restoreStore/buildBudgetAwareGoldSteps/applyTeamToStore/yieldNow）。单独搬影画段，就得让 teamTimeline 导出这些私有函数，同时又转出影画段，两个文件会在运行时互相导入。所以把这些辅助函数单独放进 Store 文件，由两边共同依赖。
+- **API 面变化**：Store 文件新导出了 7 个原私有函数，外加 StoreSnapshot 类型（它出现在导出函数的签名里）。这些都**没有**从 teamTimeline.ts 转出，对外公开面不变；baseWEngineFor 只在 Store 内部用，没有导出。
+- 做法：脚本 `/home/kaua/calc-arch/cc86.py` 切片，按去掉注释后的实际引用生成各文件的导入。**踩坑**：引用检测的前向排除写成了 `(?<![\w$.])`，把 `...STRONG_TEAM_PRESETS` 这种展开写法当成属性访问漏掉了，vue-tsc 报 TS2304，已手工补回这行导入。**以后复用这个脚本要把排除条件改成 `(?<![\w$])` 再单独排除 `obj.x`。**
+- 逐行核对（排除 import 行）：旧文件和新三个文件按行计数对比，只差给 8 个声明加的 `export ` 前缀；多出的是文件头、小节标题、Calc 类型别名和转出语句。**正文没变。**
+- 验证：vue-tsc 0；verify 338 files / 3705 tests EXIT 0（/home/kaua/calc-arch/verify104.log）；之后只给 slotSweep 事实打了复核戳（注释），check-guards 24 项通过，slotSweep、teamTimeline、filmSimChart 三个测试重跑通过，待复核仍为 80。不需要 perf 零差：teamTimeline 只给图表页供数（没有被 useResourceCalc 或 resourceCalc 导入，已 grep 确认），而且是逐字搬运。
+- 回退：`git revert 4b685c7`。
+- 结构熵现在只剩 `src/views/TeamComparePage.vue` 1553 行，按 CC-85 的裁定不拆，只观察。
+
