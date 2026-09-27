@@ -1,5 +1,10 @@
 # 事件时间轴影子内核 · 设计稿（R4-A1 第 0 步）
 
+> 🛑 **已停工（R4 已被用户撤销）**，依据见 `docs/REQUIREMENTS.md` 文末「R4 撤销说明」（用户提交 `3737419`，2026-09-27 16:47）。
+> 用户的结论：收敛法没有本质错误；时序模拟需要「高手临场判断」这种引擎拿不到的决策信息。**以后不要再提时序仿真或事件时间轴内核。**
+> 本文件**保留为调研记录**，不再推进。§1「两条轨现状核实」有独立价值，排查资源循环时可以参考。
+> `src/core/timeline/` 是死代码：不接入任何路径，也不扩展；**删不删由用户决定**。判据 26 保证它保持隔离。
+
 > lead-arena-0925c · 2026-09-27 第 118 轮 · 只读摸底，零代码改动。
 > 需求来源：`docs/REQUIREMENTS.md` R4；方向定义：`docs/LONG-TERM-DIRECTIONS.md` 方向 A（第 22–52 行）。
 > 本文件既是设计稿，也是 R4 的**进度账本**：每步做完在 §8 打勾，写提交号。
@@ -190,7 +195,7 @@ src/core/timeline/
 
 - [x] 第 0 步：本设计稿（第 118 轮，`e8aebae`）。
 - [x] 第 1 步：`src/core/timeline/` 骨架 + 失衡轨 + 喧响轨纯函数单测 + 判据 26 + 影子性能数（第 119 轮，`0c0289c`；口径见 §7.5）。引擎性能数移到第 2 步。
-- [ ] 第 2 步：`projection` 适配 + shadowDiff 跑通 T1 + 引擎单次求值耗时（取 5 次中位数）。开工要点：
+- [ ] ~~第 2 步~~（**作废：R4 已撤销**）：`projection` 适配 + shadowDiff 跑通 T1 + 引擎单次求值耗时（取 5 次中位数）。开工要点：
   1. 用法范例：`src/composables/__tests__/timeGolden.test.ts`（`setupHarness` + `useResourceCalc` + `teamPresets`），
      轴相关可参考 `axisPresetPreferredLabelCc79.test.ts`。先确认 T1 预设加载后 `useStunAxis` 已开启、并命中「般诺通用」轴。
   2. 读 `calc.stunPoolResult.value.contributions`（逐招 `perHitStun`、`count`、`slot`、`moveId`、`inAxisFraction`）和每槽执行行
@@ -199,5 +204,5 @@ src/core/timeline/
   3. 窗口模板取自已选中轴的 actions（`startTime` 作为 offset），喧响取执行行的 `decibelRecovery`。被动回复和开窗奖励
      （`STUN_DECIBEL_BONUS` / `CHAIN_DECIBEL_BONUS`，见 `stunPool.ts`）的来源先读码核实，再决定是否进入 `onStunEnter`。
   4. `diff.ts` 输出 D5 的差异行；shadowDiff.test.ts 默认只断言不变量，`TIMELINE_REPORT=1` 时写报告。
-- [ ] 第 3 步：T2、T3，差异表全部归因，写出 `docs/mcp-timeline-shadow-report.md`。
-- [ ] 第 4 步：对账结论和「是否值得进入模块事件钩子（方向 A 第 3 刀）」的建议，**交用户裁决**。
+- [ ] ~~第 3 步~~（**作废：R4 已撤销**）：T2、T3，差异表全部归因，写出 `docs/mcp-timeline-shadow-report.md`。
+- [ ] ~~第 4 步~~（**作废：R4 已撤销**）：对账结论和「是否值得进入模块事件钩子（方向 A 第 3 刀）」的建议，**交用户裁决**。

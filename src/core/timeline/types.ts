@@ -1,6 +1,9 @@
 /**
  * 事件时间轴影子内核 · 类型（R4-A1，设计稿 docs/mcp-timeline-shadow-kernel.md）。
  *
+ * 🛑 R4 已被用户撤销（2026-09-27，docs/REQUIREMENTS.md「R4 撤销说明」）：本目录是保留待用户决定去留的死代码，
+ * **不接入任何路径，也不扩展**。
+ *
  * ⚠ 隔离约束（判据 26 锁死）：本目录只依赖 `@/core/*` 纯函数与自身类型；**不 import**
  * composables / stores / mechanics / specs / views / components；非测试 src **不得 import** 本目录。
  * 影子阶段只产出差异报告，不改变任何既有输出（R4 硬约束 1）。

@@ -269,8 +269,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-96 | done | `4191bd0` | §38 复算对账：①数字更新 ③drift 销号，新增 ⑦ catalog 效果 basis 引擎零读取、4 条驱动盘 baseAtk 错标统一（零数值变化）；触发器顺延 2026-12-31 | census §5.103 |
 | CC-97 | done | `d479d46` | 方向 B「测量清单 v1」：13 个引擎级校准原子（比值法、引擎口径出处、预测值、录入格式），A1 = 局内攻击力%基底 | `docs/mcp-calibration-atoms.md` · census §5.104 |
 | CC-98 | done | `1279c24` | 方向 C 第 1 刀：62 个机制模块数据化盘点。能力层几乎同构，改按「spec 生成不了的过程类能力数」分 A2 / B30 / C29，归纳 4 种 spec 原语缺口 G1–G4，挑出 5 个候选 | `docs/mcp-mechanic-dataization-census.md` · census §5.105 |
-| R4-A1 | **进行中（排最前）**：第 0、1 步 done，下一步是第 2 步（projection + T1 对账） | 第 0 步 `e8aebae` · 第 1 步 `0c0289c` | 用户需求 R4：方向 A 第 1 刀，影子内核 `src/core/timeline/`，只做喧响和失衡两条轨；零差；逐项差异表加归因；≥3 支轴模式队伍；先做性能原型；**切换现引擎属于不可逆点，须用户裁决** | `docs/mcp-timeline-shadow-kernel.md`（§8 为进度账本）· census §5.106 |
-| CC-99 | 阻塞 | — | 方向 C 第 2 刀：spec 加原语 G1 / G3，迁移潘引壶 1421。被 R4-A1 之后的方向 A 第 3 刀（事件钩子接口）阻塞；空档期只允许做 G3 | census 文档 §6 |
+| R4-A1 | 🛑 **撤销**（用户 `3737419`）：第 0、1 步已完成的产出保留为调研记录和死代码，不再推进 | 第 0 步 `e8aebae` · 第 1 步 `0c0289c` | 用户需求 R4：方向 A 第 1 刀，影子内核 `src/core/timeline/`，只做喧响和失衡两条轨；零差；逐项差异表加归因；≥3 支轴模式队伍；先做性能原型；**切换现引擎属于不可逆点，须用户裁决** | `docs/mcp-timeline-shadow-kernel.md`（§8 为进度账本）· census §5.106 |
+| CC-99 | 待做（排在 R5 之后） | — | 方向 C 第 2 刀：spec 加原语 G1 / G3，迁移潘引壶 1421。原来的阻塞条件（方向 A 事件钩子）已随 R4 撤销而消失，G1–G4 可以独立推进；但它属于结构性重构，不是逻辑正确性问题，所以排在 R5 之后 | census 文档 §6 |
+| R5 | **待做（排最前）** | — | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · 队列第 119 轮交接 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |
