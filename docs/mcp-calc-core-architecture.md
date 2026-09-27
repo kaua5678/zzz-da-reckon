@@ -274,7 +274,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | 待做（排 R5 后；与 R5 独立） | — | 用户需求 R6：先写架构全景文档（建议 `docs/ARCHITECTURE-OVERVIEW.md`，写实际分层），再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 |
 | R7 | ✅ done | `8a0159c` | 用户决定删除事件时间轴死代码：`src/core/timeline/`、`scripts/lib/timeline-isolation.*`、`timelineIsolation.test.ts`、判据 26（check-guards 26→25） | `docs/REQUIREMENTS.md` R7 · census §5.109 |
-| R8 | 答复 done，执行项 W1–W4 待做（排最前） | 答复随第 119 轮续的 R8 提交 | 用户请 lead 自己决定分工与规则：结论与执行项见 `docs/mcp-working-model.md` | `docs/REQUIREMENTS.md` R8 |
+| R8 | ✅ 答复 done；W1、W2 撤回（§2.5），W3、W4 done | 答复 `8a8db00` · W3/W4 随第 121 轮文档提交 | 用户请 lead 自己决定分工与规则：结论与执行项见 `docs/mcp-working-model.md` | `docs/REQUIREMENTS.md` R8 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |

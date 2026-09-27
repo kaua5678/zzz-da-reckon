@@ -133,7 +133,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-mechanic-dataization-census.md` | **机制模块数据化盘点（方向 C 第 1 刀，CC-98）**：62 个模块 / 62 份 spec 一一对应；按「spec 生成不了的过程类能力数」分 A2 / B30 / C29；spec 的 4 种原语缺口 G1–G4；5 个纯 spec 候选；第 2 刀被方向 A 事件钩子阻塞 |
 | `docs/LONG-TERM-DIRECTIONS.md` | **R3 长期方向提案（只提案不实施，待用户挑选）**：A 事件时间轴内核替代整局总量+不动点 / B 受控实测校准集（真值锚）/ C 机制即数据 + 版本流水线 / D 统一决策层 / E 口径与数据版本绑定；各方向的根本问题、时机、收益、不可逆点、切刀与是否与当前重构冲突，结尾给推荐顺序 |
 | `docs/mcp-dev-process-speed.md` | **R2 开发流程提速（先量再改）**：一张卡的时间花在哪（实测表）、验证为何必要、已落地的零强度损失优化（tsc 增量 17→1.5s、零差四路并行 176→51s `.zc/perf/zd.sh`、文档与 verify 重叠）、**会削弱保证的选项清单（待用户裁决）** |
-| `docs/mcp-worker-task-queue.md` | **低级模型任务队列（活文档）**：可直接派给 dsh 工人的自包含任务卡（四段式 brief + 证伪闸门 + 写入白名单 + 正负控验收）、`setsid` 派发命令与主代理复核口径；卡合入即删 |
+| `docs/mcp-worker-task-queue.md` | **交接与执行纪律（活文档，原「低级模型任务队列」，2026-09-27 W3 压缩）**：置顶顺序、§0 子代理派发纪律与 R2 收尾流程、§1 长期规则（从历史交接提炼）、§2 最近一轮交接与已知坑（每轮替换，不追加）；压缩前全文见 `git show 8a8db00:docs/mcp-worker-task-queue.md` |
 | `docs/mcp-drift-triage.md` | **drift 待复核队列分诊**：CC 批次触发 102 条 ⟳ 的成因、四态复核判据（still-holds / drifted / broken-anchor / needs-user）、W13–W15 工人分批与主代理落盘纪律（按批 commit、同文件同批清、禁止无归因刷日期） |
 | `docs/mcp-liuyin-promote-source.md` | **琉音转大次数唯一来源（W21 阻塞项 lead 设计）**：同轮四读数（floor / 计划值结转 / 池不动点 / 轴声明）的证据表、planned≠pool 的口径根因、单源 = 答案层 `promote` 滞后注入的通道设计、轴模式闸门（待用户）、否决记录与证伪闸门；拆卡 W25/W26 |
 | `docs/mcp-r22d1-batch12-field-census.md` | **R22-D1 批 1-2 裁决不做 + 核心角色字段普查计划（handoff）**：批 1-2（billy/yeshuguang 终局旗标并入通用骨架）判不做理由、核心 `CharacterOperationConfig` 角色字段 census 方案（字段→写入方/读取方） |

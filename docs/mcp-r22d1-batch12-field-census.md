@@ -1,5 +1,7 @@
 # R22-D1 批 1-2 裁决 + core 角色专属字段普查（交接文档）
 
+> **🧊 已冻结（2026-09-27 第 121 轮，`docs/mcp-working-model.md` §2.3）**：本文件是 §5.1–§5.109 的逐轮编年史，不再追加。进度看 `docs/REQUIREMENTS.md` 各条状态、`docs/mcp-calc-core-architecture.md` 卡表和 git log；新的结论写进对应的专题文档。
+
 > lane `lead-arena-0925c`，2026-09-26。本文件的结论在 MCP 隧道断线期间（ERR_NGROK_3200，跨多轮会话）推出，
 > 恢复后原样落盘。**下一个会话只读本文件 + `docs/mcp-calc-core-architecture.md` 即可接着干。**
 
