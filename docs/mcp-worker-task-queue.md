@@ -69,25 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 142 轮（2026-09-27，一个提交「refactor(C7)」CC-115，提交号见 git log）
+### 第 143 轮（2026-09-27，一个提交「refactor(C7): CC-116」，提交号见 git log）
 
-- **做到哪**：C7 §2.3 七个候选全部给出结论（清单 `docs/mcp-r6-refactor-list.md` §2.4）。
-  - 已迁 nangong 1511：`src/specs/agents/1511.json` 新增 `nangong_mastery_to_impact` 与 2 条 verification；`src/mechanics/agents/nangong.ts` 面板与展示值都经 `applySpecAttributeConversions`（展示值用 `emptyPanel()` 探针），删 `CONTROL_THRESHOLD`。
-  - 删 alice 死写入：`alice.ts` 的 `panel.aliceMasteryToProficiencyBonus`、`cfg.aliceMasteryToProficiencyRate`、常数 `MASTERY_TO_PROFICIENCY_RATE`，以及 `src/types/resource/config.ts` 的类型字段（全仓零读取）。
-  - 不迁：burnice、phoenix、lighter（理由见 §2.4）；promia、jane 待 runtime 扩展后迁。
-  - 验证：zd `c7b`、`c7c` DIFF 0；反向验证（删 1511 stepRounding → verification 40 ≠ 40.5）；validate:specs 1108；verify EXIT 0；vue-tsc 0；CG 25/25；get_diagnostics 0。
+- **做到哪**：清单 §2.5-① 完成（详见 `docs/mcp-r6-refactor-list.md` §2.6）。
+  - `src/specs/runtime.ts`：`applySpecAttributeConversions` 新增可选第 4 参 `sources?: { outOfCombat?: PanelValues }`，按 `sourcePanelPhase` 取源（opt-in）；新单测 `src/specs/__tests__/runtimeSourcePhase.test.ts`（4 例）。
+  - 1541 普罗米娅：`src/specs/agents/1541.json` 新增 `promia_mastery_to_proficiency` 与 2 条 verification；`src/mechanics/agents/promia.ts` 面板经 runtime（传局外面板）、展示值走探针、导出常量从 spec 读。
+  - 验证：zd `c7d` DIFF 0；两项反向验证；validate:specs 1114；verify EXIT 0；vue-tsc 0；CG 25/25；get_diagnostics 0。
 - **下一步（按顺序，可直接开工）**：
-  1. **清单 §2.5-①**：runtime `applySpecAttributeConversions` 加可选 `sources?: { outOfCombat?: PanelValues }`，按 `sourcePanelPhase` 取源（opt-in，缺省零差），然后迁 promia 1541（`promia.ts` `applyPromiaPanel` 与 `computePromiaCycle` 的 `PROMIA_MASTERY_THRESHOLD` / `PROMIA_PROF_PER_MASTERY`）。先读 `src/specs/verify.ts` 决定 verification 怎么提供局外面板。
-  2. **清单 §2.5-②**：runtime 改为先封顶再乘覆盖率（先按清单里的两项前提复核零差），然后迁 jane 1261（`jane.ts:132–134` 与 `:68`）。
-  3. 清单 §2.4 新发现 1：卢西娅 6 命 `lucia_c6_hp_to_atk` 声明局外、实际按局内执行——开 CC 卡改数值，逐条解释 golden 差异。排在 1、2 之后。
-  4. 之后评估「10 个模块 spec resources 与模块账本重复」（全景 §6.4），再 CC-99。
+  1. **清单 §2.5-②：runtime 先封顶再乘覆盖率，然后迁 jane 1261**。先复核零差前提：`timeout 40 git grep -n 'applySpecAttributeConversions(' -- src | grep -v __tests__`，确认没有调用方传第 3 参（第 143 轮：promia 传的是 `1`，其余都不传）；用 Python 扫 `src/specs/agents/*.json` 的 attributeConversions，确认带 `coverage` 字段的只有 `1451 lucia_c6_hp_to_atk: 1`。满足后把 `src/specs/runtime.ts` 改成 `value = min(cap, steps × valuePerStep) × coverage × (conversion.coverage ?? 1)`（cap 为 null 时不封顶），补一条单测（coverage 0.5 且超 cap：结果 = cap × 0.5）。然后迁 `jane.ts:132–134`（`min(600, (精通 − 120) × 2) × frenzyFactor`，sourceStat 为 `anomalyProficiency`，`stepRounding: none`，coverage 传 `frenzyFactor`）与 `jane.ts:68` 展示值（探针）；spec 1261 加条目 + 非整数点 verification；zd DIFF 0；反向验证。
+  2. CC 卡（改数值，逐条解释 golden 差异，禁止用「更接近投稿」当理由）：① 1451 卢西娅 6 命 `lucia_c6_hp_to_atk` 声明局外、实际按局内执行——给 `luciaElowen.ts:135` 传 `sources.outOfCombat` 即可修正（清单 §2.4 新发现 1）；② 普罗米娅 0.35%/点全队异放增伤未接入（清单 §2.6 末）。先做 ①（改动一行、影响只在卢西娅 6 命）。
+  3. 之后评估「10 个模块 spec resources 与模块账本重复」（全景 §6.4），再 CC-99。
 - **本轮拍板**：
-  - alice 的两处零读取写入直接删，不迁：runtime 已执行同一机制，这两处只是口径不同（连续 vs 取整）的第二份常数。回退：`git revert` 本提交的 alice / config.ts 部分（无数值影响）。
-  - nangong 的展示值也走 runtime（探针），而不是保留一份常数给展示用——否则常数仍有两处。
+  - `sources` 做成 opt-in，而不是让 runtime 默认按 `sourcePanelPhase` 取源：默认取源会立刻改变卢西娅 6 命的数值（声明局外、现按局内），这属于数值修正，要单独走 CC 卡。回退点见清单 §2.6。
+  - 普罗米娅导出常量改为从 spec 读，而不是删掉导出：测试和展示行照旧可用，常数仍只有一处。
 - **已知坑**：
-  - `sourcePanelPhase` 在属性转化 runtime 里**不读**；spec 写 `outOfCombat` 不代表真的读局外面板（清单 §2.4 新发现 1）。
-  - spec verifications 只经 runtime 执行；只有已迁条目（alice、luciaElowen、velina、1481、1511）才被 verifications 真正覆盖。
+  - `sourcePanelPhase` 只对**传了 sources 的调用点**生效；目前只有 promia 传。其余条目的声明仍只是文档（卢西娅声明与执行不一致）。
+  - `specs/verify.ts` 的 verification 只有一张面板，不传 sources ⇒ 对 outOfCombat 条目，这张面板同时充当局内和局外面板。
+  - spec verifications 只经 runtime 执行；已迁条目：alice、luciaElowen、velina、1481、1511、1541。
   - 注册不再由「import core」隐式触发（C1）。新增 Worker 或 node 直跑 src 的脚本必须自己 `import '@/mechanics'`。
   - `zcWorkspace.test.ts` 租约过期用例在全量 verify 下偶发失败过 1 次（第 139 轮），单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
-- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（alice 取整、liuyin/nangong/norma 连续，清单 §2.4 新发现 2）；nangong / liuyin 原文「初始」是否应读局外面板。
+- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；nangong / liuyin 原文「初始」是否应读局外面板（现在有 `sources` 能力，修正是一行改动，但会改数值）。

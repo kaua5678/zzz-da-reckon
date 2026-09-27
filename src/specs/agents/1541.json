@@ -6,11 +6,51 @@
     "1541"
   ],
   "status": "implemented_approximation",
-  "attributeConversions": [],
+  "attributeConversions": [
+    {
+      "id": "promia_mastery_to_proficiency",
+      "name": "初始异常掌控转异常精通",
+      "sourceStat": "anomalyMastery",
+      "sourcePanelPhase": "outOfCombat",
+      "threshold": 150,
+      "stepSize": 1,
+      "stepRounding": "none",
+      "targetStat": "anomalyProficiency",
+      "valuePerStep": 1.5,
+      "cap": null,
+      "status": "implemented",
+      "note": "[已确认·原文] 核心被动 Lv.7：初始异常掌控大于 150 点时，每超过 1 点提升自身 1.5 点异常精通。实现位置：mechanics/agents/promia.ts applyPromiaPanel 调 applySpecAttributeConversions 并传 sources.outOfCombat（真读局外面板，与声明一致）；computePromiaCycle 展示值经 emptyPanel 探针走同一执行器；导出常量 PROMIA_MASTERY_THRESHOLD / PROMIA_PROF_PER_MASTERY 从本条读取（R6 C7，第 143 轮，常数只在此处）。口径：stepRounding=none 沿用迁移前模块连续算法、零差。同段原文「提升 0.35% 全队异放伤害」未接入计算（模块仅展示 teamReleaseDmg），登记于 docs/mcp-r6-refactor-list.md §2.6。"
+    }
+  ],
   "resources": [],
   "rowFusions": [],
   "events": [],
-  "verifications": [],
+  "verifications": [
+    {
+      "id": "promia_mastery200_5_to_proficiency",
+      "name": "初始掌控 200.5 转精通（钉住 stepRounding=none 的连续口径）",
+      "panel": {
+        "anomalyMastery": 200.5
+      },
+      "expected": {
+        "anomalyProficiency": 75.75
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
+    },
+    {
+      "id": "promia_mastery140_below_threshold",
+      "name": "初始掌控 140 低于阈值不转",
+      "panel": {
+        "anomalyMastery": 140
+      },
+      "expected": {
+        "anomalyProficiency": 0
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
+    }
+  ],
   "stateMachines": [],
   "notes": [
     "来源：nanoka.cc 3.2.1（Promeia）。",

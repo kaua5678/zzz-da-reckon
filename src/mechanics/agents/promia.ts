@@ -29,10 +29,22 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
+import { emptyPanel } from '@/core/panel'
+import { getAgentSpec } from '@/specs/registry'
+import { applySpecAttributeConversions } from '@/specs/runtime'
 
 export const PROMIA_ID = '1541'
-export const PROMIA_MASTERY_THRESHOLD = 150
-export const PROMIA_PROF_PER_MASTERY = 1.5
+// 掌控转精通的常数只在 spec 1541.json `promia_mastery_to_proficiency`（R6 C7，第 143 轮）；
+// 面板经 spec runtime 执行（传 sources.outOfCombat 真读局外面板），展示值走同一执行器，导出常量从 spec 读。
+const PROMIA_MASTERY_CONVERSION_ID = 'promia_mastery_to_proficiency'
+const promiaConversions = () => getAgentSpec(PROMIA_ID)?.attributeConversions ?? []
+function requirePromiaMasteryConversion() {
+  const conversion = promiaConversions().find(c => c.id === PROMIA_MASTERY_CONVERSION_ID)
+  if (!conversion) throw new Error(`spec 1541 缺少属性转化 ${PROMIA_MASTERY_CONVERSION_ID}`)
+  return conversion
+}
+export const PROMIA_MASTERY_THRESHOLD = requirePromiaMasteryConversion().threshold
+export const PROMIA_PROF_PER_MASTERY = requirePromiaMasteryConversion().valuePerStep
 export const PROMIA_TEAM_RELEASE_PER_MASTERY = 0.35
 export const PROMIA_C2_PROFICIENCY = 40
 export const PROMIA_ADDITIONAL_BUILDUP_EFF = 30
@@ -73,7 +85,10 @@ export function computePromiaCycle(input: {
   const cinemaLevel = whole(input.cinemaLevel)
   const anomalyMastery = Math.max(0, Number.isFinite(input.anomalyMastery) ? input.anomalyMastery : 0)
   const masteryExcess = Math.max(0, anomalyMastery - PROMIA_MASTERY_THRESHOLD)
-  const proficiencyFromMastery = masteryExcess * PROMIA_PROF_PER_MASTERY
+  const probe = emptyPanel()
+  probe.anomalyMastery = anomalyMastery
+  applySpecAttributeConversions(probe, promiaConversions(), 1, { outOfCombat: probe })
+  const proficiencyFromMastery = probe.anomalyProficiency
   const c2Proficiency = cinemaLevel >= 2 ? PROMIA_C2_PROFICIENCY : 0
   return {
     cinemaLevel,
@@ -110,9 +125,7 @@ function cycleFromCfg(cfg: unknown): PromiaCycle {
 
 /** 面板层：异常掌控转精通（复现 attributeConversions）+ 影画2精通+40 + 影画6自身异常/紊乱无视全抗 + 额外能力冰积蓄效率。 */
 function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
-  const mastery = Math.max(0, outOfCombatPanel?.anomalyMastery ?? 0)
-  const excess = Math.max(0, mastery - PROMIA_MASTERY_THRESHOLD)
-  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + excess * PROMIA_PROF_PER_MASTERY
+  applySpecAttributeConversions(panel, promiaConversions(), 1, { outOfCombat: outOfCombatPanel })
   if (cinemaLevel >= 2) {
     panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + PROMIA_C2_PROFICIENCY
   }
