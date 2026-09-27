@@ -2468,3 +2468,11 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - **验证**：vue-tsc 0；verify 332 files / 3690 tests，24 guards 0（`/home/kaua/calc-arch/verify96.log`）。回退：删测试文件。
 - **CC-57b 裁定：不做（除非 `docs/REQUIREMENTS.md` 提出）**。依据：§5.62 已写明给 grace/vivian/aire/yanagi/promia/nangong/phoenix 加 `releaseShare` 声明 = 新增用户可调项，属功能变更，不是架构整理；离线无人确认需求，按「只做可逆、不改产品面」原则搁置。风染挑槽 UI 开关同理（功能）。
 
+### 5.85 CC-78 done：赠送极性强击与 anomalyPoolSetup 解耦（lead-arena-0925c，2026-09-27 第 97 轮）
+
+- **核实（已读代码）**：`alice.ts` applyTeamConfig 无条件 `cfg.aliceEnabled = true` ⇒ 爱丽丝在队时 `anomalyPoolSetup` 恒非 null，原 `setup &&` 门控对现有唯一提供方是恒真；但耦合比 §5.82 记的更深——**归属槽 `giftedTriggerSlot` 也取自 `setup.slot`**，只删 `setup &&` 会让无 setup 的赠送记到槽 0（core/anomalyPool.ts:178 `?? 0`）。
+- **提交 `b7168da`**：`giftedPolarAssault.ts` 新增 `firstGiftedPolarAssaultSlot(chars)`（第一个赠送 > 0 的槽）；`convergence.ts` 两处 `calcAnomalyPoolInput(…, gifted, giftedPolarAssaultSlot)`（接口加可选第 4 参）；`roundInputs.ts` 注入改为 `gifted > 0 ? … : undefined`，槽位 `setup?.slot ?? giftedSlotFallback`。爱丽丝在队 ⇒ setup.slot 就是她 ⇒ 逐值不变。
+- **拍板**：多提供方时次数求和、全记在一个槽（setup 槽优先，否则第一个有赠送的槽）；按槽细分需要改 `giftedTriggerCounts` 结构，属日后功能，没有第二个提供方前不做。写进 helper 文件头。
+- **测试**：新 `giftedDecoupleCc78.test.ts`——helper 单测；整管线（1041/1141/1211，无爱丽丝）临时给 1141 挂赠送 2 ⇒ 异常池出现 physical_polar_assault 赠送条（totalBuildUp 0）triggerCount 2、全记槽 1。反向：roundInputs.ts 换回 HEAD ⇒ 红。`giftedPolarAssaultCc75` 第 1 条去掉「须同时声明 anomalyPoolSetup」断言。
+- **perf 零差**：改前基线 `dump-78a/rows-78a` vs 改后 `-78b`（`/home/kaua/calc-arch/`，语料含 1401 队），dump/rowsnap 均 DIFF 0。vue-tsc 0；verify 333 files / 3692 tests，24 guards 0（`verify78.log`）。回退：`git revert b7168da`。
+
