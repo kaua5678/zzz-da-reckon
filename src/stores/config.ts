@@ -159,15 +159,14 @@ function defaultCharacter(slot: number, agentId: string, element: string): Chara
   }
 }
 
-/** 按角色的交互次数默认值（主页「战斗动作次数」预填展示，相当于帮用户填好；用户可改） */
-export const AGENT_INTERACTION_DEFAULTS: Record<string, { parry: number; dodge: number; block: number; dual: number }> = {
-  '1531': { parry: 4, dodge: 0, block: 5, dual: 0 }, // 星徽·比利（用户确认：招架4/闪反0/格挡5）
-  '1471': { parry: 6, dodge: 10, block: 20, dual: 5 }, // 般岳（用户确认：闪反10/招架6/金身20/双反5，嗔火来源）
-}
-
-/** 读角色交互次数默认值（无条目 = 全 0） */
+/**
+ * 按角色的交互次数默认值（主页「战斗动作次数」预填展示，相当于帮用户填好；用户可改）。
+ * CC-65b：数据下沉为角色模块声明 `interactionDefaults`（星徽·比利 starlightBilly.ts、般岳 banyue.ts）；无声明 = 全 0。
+ * 返回副本（原实现返回共享表对象，调用方均只读；副本更安全）。
+ */
 export function getInteractionDefaults(agentId: string): { parry: number; dodge: number; block: number; dual: number } {
-  return AGENT_INTERACTION_DEFAULTS[agentId] ?? { parry: 0, dodge: 0, block: 0, dual: 0 }
+  const d = agentId ? getAgentMechanic(agentId)?.interactionDefaults : undefined
+  return d ? { ...d } : { parry: 0, dodge: 0, block: 0, dual: 0 }
 }
 
 /**
@@ -228,15 +227,15 @@ export function clampActionCount(field: ActionCountField, count: number): number
  * 正反馈 refund 模块不吃通用交互基准（用户口径 2026-09-04「接线」）：伊德海莉是蓄力→极寒重碾
  * 循环 carry，弹刀/闪反归击破位，给她通用弹刀6/闪反10 会失真。refund 反馈本身已由
  * resolveExSpecialCount 连续松弛修复（种子无关），此排除是玩法口径而非确定性补丁。
+ * CC-65b：名单下沉为角色模块声明 `noGenericInteraction`（yidhari.ts），见 interactionBaselineFor。
  */
-const NO_GENERIC_INTERACTION_AGENTS: ReadonlySet<string> = new Set(['1051'])
 
 /**
  * 手动队默认交互（单一事实源，setAgent 预填用）：
  * 角色专属默认（getInteractionDefaults）> 正反馈排除（0）> 职业基准（roleInteractionBaseline）。
  */
 export function interactionBaselineFor(agentId: string, specialty?: string): { parry: number; dodge: number; block: number; dual: number } {
-  if (NO_GENERIC_INTERACTION_AGENTS.has(agentId)) return { parry: 0, dodge: 0, block: 0, dual: 0 }
+  if (agentId && getAgentMechanic(agentId)?.noGenericInteraction) return { parry: 0, dodge: 0, block: 0, dual: 0 }
   const defs = getInteractionDefaults(agentId)
   const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
   return hasCustom ? defs : roleInteractionBaseline(specialty)

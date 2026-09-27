@@ -73,7 +73,7 @@ describe('热启动缓存', () => {
     expect(fingerprint(hot)).toEqual(fingerprint(cold))
     expect(hot.iterations).toBeLessThanOrEqual(cold.iterations)
     // 界按 1051 的**正确职业口径**重标定（2026-09-07）：harness 交互默认改走
-    // interactionBaselineFor 后，她按 NO_GENERIC_INTERACTION_AGENTS 拿 0 弹刀/0 闪反
+    // interactionBaselineFor 后，她按模块声明 noGenericInteraction 拿 0 弹刀/0 闪反
     // （旧 TEST_BASE_CHAR 硬发 6/10 与她「蓄力→极寒重碾 carry、弹刀闪反归击破位」的口径失真）。
     // 去掉那 16 次交互后能量/喧响输入变少，内层合法地多跑几轮：实测 41（上限 100、
     // converged=true、冷热指纹逐位一致、上一行仍锁热启动不多于冷启动）。

@@ -866,6 +866,10 @@ export const starlightBillyMechanic: AgentMechanicModule = {
   id: 'agent:starlight_billy',
   agentIds: [AGENT_ID],
   name: '星徽·比利',
+  // CC-65b：交互次数默认值（原 stores/config.ts 写死表；用户确认：招架4/闪反0/格挡5）
+  interactionDefaults: { parry: 4, dodge: 0, block: 5, dual: 0 },
+  // CC-65b：TeamConfigPage 交互栏格挡输入框标签（原页面写死本角色 id）
+  interactionInputs: { block: { label: '格挡（动力压制）' } },
   description: '主循环（动力压制→孤轮，烧血刷决意）、HP 池约束、付费强特（摇曳/抓地 60 闪能）、决意→最高马力星光、星辉、影画1/2/4/6。',
   applyPanel: applyStarlightBillyPanel,
   buildCharConfig: buildBillyCharConfig,

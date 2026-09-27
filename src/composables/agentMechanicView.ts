@@ -202,3 +202,13 @@ export function characterCountInputValue(inp: Pick<CharacterCountInputDecl, 'mod
 export function characterCountInputClearValue(inp: Pick<CharacterCountInputDecl, 'mode'>): number {
   return inp.mode === 'autoNegOne' ? -1 : 0
 }
+
+/** 交互栏专属输入框（格挡 / 双反）声明（CC-65b；原 TeamConfigPage 写死 1471/1531）；无 ⇒ {} */
+export function agentInteractionInputs(agentId: string | null | undefined): NonNullable<AgentMechanicModule['interactionInputs']> {
+  return (agentId ? getAgentMechanic(agentId)?.interactionInputs : undefined) ?? {}
+}
+
+/** 队里是否有「保底4嗔火」开关归属角色（CC-65b；原 TeamConfigPage teamHasBanyue 写死） */
+export function teamHasGuaranteeFuryOwner(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): boolean {
+  return team.some(c => !!c?.agentId && !!getAgentMechanic(c.agentId)?.ownsGuaranteeFury)
+}

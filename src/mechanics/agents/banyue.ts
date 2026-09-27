@@ -1055,6 +1055,12 @@ export const banyueMechanic: AgentMechanicModule = {
    * 该 computed 的槽位查找 + 懒守卫（非本角色队伍不触发全量计算）改由编排层按本声明完成。
    */
   producesInteractionTopUp: true,
+  // CC-65b：交互次数默认值（原 stores/config.ts 写死表；用户确认：闪反10/招架6/金身20/双反5，嗔火来源）
+  interactionDefaults: { parry: 6, dodge: 10, block: 20, dual: 5 },
+  // CC-65b：TeamConfigPage 交互栏专属输入框（原页面写死本角色 id）
+  interactionInputs: { block: { label: '金身格挡' }, dualCounter: { label: '双反' } },
+  // CC-65b：「保底4嗔火」开关归属（原页面 teamHasBanyue 写死本角色 id）
+  ownsGuaranteeFury: true,
   // CC-23：补齐求解经模块能力派发（原 convergence.ts 直连 import 本函数）
   computeInteractionTopUp: computeBanyueInteractionTopUp,
   // 失衡轴动作块：怒相连段（论道→狮子吼·怒 / 地动→山摇·怒）= 怒相技能，山威免费（4 山威/怒相 = 2 组），

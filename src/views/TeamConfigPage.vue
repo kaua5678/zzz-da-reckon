@@ -161,7 +161,7 @@
                         <span class="section-title" style="margin-right: 12px">保底目标</span>
                         <n-checkbox :checked="guaranteeStun" @update:checked="v => setGuarantee('stun', v)">保底4失衡</n-checkbox>
                         <!-- 嗔火是般岳专属资源：队里没有般岳不显示（引擎侧 banyueSlot>=0 才消费） -->
-                        <n-checkbox v-if="teamHasBanyue" :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
+                        <n-checkbox v-if="teamHasGuaranteeFury" :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
                         <n-checkbox :checked="guaranteeUltimate" @update:checked="v => setGuarantee('ultimate', v)">保底4喧响</n-checkbox>
                         <span class="muted" style="font-size: 12px; margin-left: 4px">{{ guaranteeUltimateHint }}</span>
                       </div>
@@ -183,7 +183,7 @@
                       <n-grid cols="6" :x-gap="8">
                       <n-gi>
                         <div class="field" title="对黄光的一次交互次数。招架型角色＝弹刀（轻弹刀＋支援突击）；回避型角色＝回避支援（1.166s 时停，不产伤害与失衡）＋支援突击。一个角色只能其一（用户 2026-09-15 口径）">
-                          <span class="field-label">弹刀/回避次数<span v-if="selectedChar.agentId === '1471' && banyueTopUpForSlot && banyueTopUpForSlot.parry > 0" class="field-hint">+{{ banyueTopUpForSlot.parry }}（轴自动）</span><span v-if="parrySplitForSlot" class="field-hint">{{ parrySplitForSlot.label }}</span><span v-if="counterAssistForSlot > 0" class="field-hint">（控制技 {{ counterAssistForSlot }} 组已转反制支援）</span></span>
+                          <span class="field-label">弹刀/回避次数<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.parry > 0" class="field-hint">+{{ interactionTopUpForSlot.parry }}（轴自动）</span><span v-if="parrySplitForSlot" class="field-hint">{{ parrySplitForSlot.label }}</span><span v-if="counterAssistForSlot > 0" class="field-hint">（控制技 {{ counterAssistForSlot }} 组已转反制支援）</span></span>
                           <n-input-number
                             :value="selectedChar.parryCount || interactionDefaults.parry"
                             :min="0"
@@ -207,9 +207,9 @@
                           />
                         </div>
                       </n-gi>
-                      <n-gi v-if="['1471', '1531'].includes(selectedChar.agentId)">
+                      <n-gi v-if="interactionInputs.block">
                         <div class="field">
-                          <span class="field-label">{{ selectedChar.agentId === '1531' ? '格挡（动力压制）' : '金身格挡' }}</span>
+                          <span class="field-label">{{ interactionInputs.block?.label }}</span>
                           <n-input-number
                             :value="selectedChar.blockCount || interactionDefaults.block"
                             :min="0"
@@ -220,9 +220,9 @@
                           />
                         </div>
                       </n-gi>
-                      <n-gi v-if="selectedChar.agentId === '1471'">
+                      <n-gi v-if="interactionInputs.dualCounter">
                         <div class="field">
-                          <span class="field-label">双反<span v-if="banyueTopUpForSlot && banyueTopUpForSlot.dual > 0" class="field-hint">+{{ banyueTopUpForSlot.dual }}（轴自动）</span></span>
+                          <span class="field-label">{{ interactionInputs.dualCounter?.label }}<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.dual > 0" class="field-hint">+{{ interactionTopUpForSlot.dual }}（轴自动）</span></span>
                           <n-input-number
                             :value="selectedChar.dualCounterCount || interactionDefaults.dual"
                             :min="0"
@@ -781,7 +781,7 @@ import { SPECIALTY_LABEL, ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 import { buildDiscEffectRows } from '@/utils/discEffectRows'
 import type { WEngine, WEngineAdvancedStat, PanelValues, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
 import type { CharacterConfig } from '@/stores/config'
-import { agentCharacterCountInputs, characterCountInputValue, characterCountInputClearValue } from '@/composables/agentMechanicView'
+import { agentCharacterCountInputs, characterCountInputValue, characterCountInputClearValue, agentInteractionInputs, teamHasGuaranteeFuryOwner } from '@/composables/agentMechanicView'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -918,10 +918,13 @@ const { saveTargetPreset, saveTeamMismatch, saveStepsPreview, savePresetJson, co
 const selectedChar = computed<CharacterConfig>(() => configStore.team[configStore.selectedSlot])
 // CC-65：角色专属计数输入框（模块声明）
 const characterCountInputs = computed(() => agentCharacterCountInputs(selectedChar.value?.agentId))
+// CC-65b：交互栏专属输入框（格挡/双反）
+const interactionInputs = computed(() => agentInteractionInputs(selectedChar.value?.agentId))
 // 交互次数默认值（如星徽·比利 招架4/闪反0/格挡5）：char 未填（0）时输入框预填展示，计算侧同口径
 const interactionDefaults = computed(() => getInteractionDefaults(selectedChar.value?.agentId ?? ''))
 // ========== 保底目标（0/1 勾选；预设轴/队伍应用时自动填充） ==========
-const teamHasBanyue = computed(() => configStore.team.some(c => c?.agentId === '1471'))
+// CC-65b：「保底4嗔火」开关归属走模块声明 ownsGuaranteeFury
+const teamHasGuaranteeFury = computed(() => teamHasGuaranteeFuryOwner(configStore.team))
 const guaranteeStun = computed(() => configStore.getMechanicSetting('guarantee.stun', 0) !== 0)
 const guaranteeFury = computed(() => configStore.getMechanicSetting('guarantee.fury', 0) !== 0)
 const guaranteeUltimate = computed(() => configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0)
@@ -945,9 +948,10 @@ function setComboAlignAbsorbPct(v: number) {
   const pct = Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO * 100
   configStore.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, Math.round(pct) / 100)
 }
-// 般岳轴模式自动补齐（保底语义）：弹刀/双反在交互栏输入之上补的量（懒计算，仅般岳选中时求值）
+// 轴模式自动补齐（保底语义，现唯一产出者般岳）：弹刀/双反在交互栏输入之上补的量（懒计算，仅产出者槽位选中时非空；
+// 槽位 = 声明 producesInteractionTopUp 的角色，故弹刀提示不必再判角色 id —— CC-65b）
 const { interactionTopUp, autoPreset, parrySplitResult, resourceResult } = useResourceCalc()
-const banyueTopUpForSlot = computed(() => {
+const interactionTopUpForSlot = computed(() => {
   const t = interactionTopUp.value
   return t && t.slot === configStore.selectedSlot ? t : null
 })

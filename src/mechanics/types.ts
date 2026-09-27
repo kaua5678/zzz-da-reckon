@@ -824,6 +824,14 @@ export interface AgentMechanicModule {
    * 显示/清空口径见 `CharacterCountInputDecl.mode`（门面 `characterCountInputValue` / `characterCountInputClearValue`）。
    */
   characterCountInputs?: ReadonlyArray<CharacterCountInputDecl>
+  /** CC-65b：按角色的交互次数默认值（主页「战斗动作次数」预填 + 手动队 setAgent 预填；原 stores/config.ts 写死表）。读取入口 `getInteractionDefaults`；无声明 = 全 0。 */
+  interactionDefaults?: Readonly<{ parry: number; dodge: number; block: number; dual: number }>
+  /** CC-65b：不吃通用交互基准（`interactionBaselineFor` 返回全 0；原 stores/config.ts 写死名单）。 */
+  noGenericInteraction?: boolean
+  /** CC-65b：TeamConfigPage 交互栏专属输入框（格挡 blockCount / 双反 dualCounterCount）是否显示及标签（展示层）。 */
+  interactionInputs?: Readonly<{ block?: { label: string }; dualCounter?: { label: string } }>
+  /** CC-65b：队里有本角色才显示「保底4嗔火」开关（展示层；引擎侧由模块自身消费 guarantee.fury）。 */
+  ownsGuaranteeFury?: boolean
   /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
