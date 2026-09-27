@@ -2441,3 +2441,13 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - **验证**：vue-tsc 0；verify 329 files / 3682 tests，24 guards 0（`/home/kaua/calc-arch/verify93.log`）。回退：删该测试文件即可。
 - 坑：测试靠「每次给 `config.stunAxes` 赋新数组 + 新名字」强制 computed 重算，因为替换模块钩子不是响应式的；照抄此手法时别省掉。
 
+### 5.82 CC-75 done：giftedPolarAssaultCount 多提供方口径裁定 = 求和（lead-arena-0925c，2026-09-27 第 94 轮）
+
+- **现状（已读代码）**：唯一声明者爱丽丝 1401（`alice.ts:522`，读 `aliceSwordWillSource.sparkCount`）；消费点两处——`convergence.ts` 对 `rr.characters` **求和**后经 `calcAnomalyPoolInput` 注入异常池 `giftedTriggerCounts['physical_polar_assault']`；`outerCycle.ts` 收敛签名逐角色投影。
+- **裁定：多提供方 = 求和**（维持现状）。依据：每个角色的赠送是独立触发的极性强击，互不替代；同角色多槽被 UI 过滤（`stores/config.ts`「队伍中已选的角色 ID（用于过滤重复选择）」），真出现时两位角色各自的 #3 也是两次触发，求和仍对。
+- **提交 `955ddd5`**：新文件 `src/composables/resourceCalc/giftedPolarAssault.ts`（`giftedPolarAssaultOf` / `sumGiftedPolarAssault`，文件头写裁定与耦合），`convergence.ts` / `outerCycle.ts` 两处内联表达式改调它（表达式逐字等价；outerCycle 签名字符串不变）。新测试 `giftedPolarAssaultCc75.test.ts`：声明者仅 1401 且同时声明 anomalyPoolSetup；单角色 == 原表达式；临时给 1141 挂能力 ⇒ 3+2=5；源码锁。反向变异（求和改 `Math.max`）→ 红，已恢复。
+- **已知耦合（未改，写进 helper 文件头）**：`roundInputs.ts#calcAnomalyPoolInput` 注入条件是 `setup && gifted > 0`，`setup` 来自 `anomalyPoolSetup` 声明者。现唯一提供方爱丽丝两者都声明，无影响；若日后新角色只声明 `giftedPolarAssaultCount`，赠送会被**静默丢弃**——届时去掉 `setup &&` 并跑 perf 零差。测试第 1 条会在出现这种声明者时先变红提醒。
+- 未跑 perf 零差：纯提取函数、表达式逐字等价，verify 全过。回退：`git revert 955ddd5`。
+- **验证**：vue-tsc 0；verify 330 files / 3686 tests，24 guards 0（`/home/kaua/calc-arch/verify94.log`）。
+- 遗留清单里「giftedPolarAssaultCount 多槽求和语义」从此关闭。
+

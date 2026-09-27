@@ -25,7 +25,7 @@
 - 爱丽丝实现：`(c) => c.aliceSwordWillSource?.sparkCount ?? 0`（`alice.ts` 的 `aliceMechanic`）。
 - 编排层：`convergence.ts` 对 `rr.characters` 按 `getAgentMechanic(c.agentId)` 派发并**求和**；`outerCycle.ts` 逐角色投影同一值（无此能力 ⇒ 0，与原字段缺省同形，签名字符串逐字不变）。
 - 删除导出 helper `aliceSparkCountOf`（除编排层外无调用方，grep 确认）。
-- **等价性**：原实现取队内**第一个**爱丽丝的值；队伍角色不重复 ⇒ 求和 = 该值。若日后允许同角色多槽，此处语义要复核（求和 vs 取首个）。
+- **等价性**：原实现取队内**第一个**爱丽丝的值；队伍角色不重复 ⇒ 求和 = 该值。若日后允许同角色多槽，此处语义要复核（求和 vs 取首个）。**→ 已裁定 = 求和（CC-75 `955ddd5`，census §5.82；派发收进 `resourceCalc/giftedPolarAssault.ts`）。**
 
 ### 38c 异常池输出字段 `aliceCoweringDot` → `coweringDot`（−3）
 - **推翻 CC-24（census §5.17 第 3 条 / §5.18）的「不改」口径**。当时依据是「结果对象键，被 rowsnap 消费，改了会影响 rowsnap 键」。本轮实测：`dump-H2a.json` / `rows-H2a.json` 中 `Cowering` 出现 **0 次**，perf 快照不序列化这个键；改名后 dump / rows 逐位零差（只有 `__ms` 不同）。
