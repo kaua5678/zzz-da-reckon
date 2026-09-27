@@ -1584,6 +1584,28 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. **CC-43c**：`computeLiuyinHugCounts` 被 convergence.ts 与 ultimatePromote.ts 按值导入（计 4）→ 琉音模块能力。开工前先读 `docs/mcp-liuyin-promote-source.md` 与 ultimatePromote.ts 全文，这是最复杂的一张。
 3. 可选补测：单测锁住「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」（CC-43e 的反向变异在单测层是绿的）。
 
+### 5.49 CC-43f done：希格莉德破阵展开 → 模块钩子 expandAxisAction（lead-arena-0925c，2026-09-27 第 62 轮）
+
+**提交**：`cf5f270`（mechanics/types.ts、agents/sigrid.ts、resourceCalc/roundInputs.ts、新测试 `src/mechanics/__tests__/sigridExpandAxis.test.ts`、棘轮 lib/check-guards 6→4）。回退：`git revert cf5f270`（代码与基线同提交，整体撤销不会让守卫报红）。
+
+**改法**
+- `AgentMechanicModule` 新钩子 `expandAxisAction?(input: { slot, moveId, count, startTime, cinemaLevel, actionTimeOf }): StackActionCost[] | undefined`。返回 undefined 表示「不是我的伪块」，走通用路径。`actionTimeOf` 由编排层提供，因为判据 19 禁止 mechanics 按值导入 composables，模块里不能直接调 `findMoveById`。
+- sigrid.ts 新增导出函数 `expandSigridAxisAction`：`SIGRID_POZHEN_MOVE_ID` → `SIGRID_LANCE_SEGMENT_IDS` 三段，C6 时长 ×0.75，免费。逐位照搬原内联实现。
+- roundInputs.ts：删掉 `'sigrid-pozhen'` 内联分支与 `SIGRID_LANCE_SEGMENT_IDS` 值导入，改为按 `configStore.team[act.slot].agentId` 派发钩子。
+- **语义细微差别（有意接受）**：原实现只看 moveId，破阵伪块放在非希格莉德槽位也会展开（此时查的是那个槽的技能表，时长为 0）；现在只有块所在槽是希格莉德才展开，否则走通用路径。预设和轴编辑器都把破阵块放在希格莉德槽，所以零差（见下）。若日后要恢复旧行为：在 roundInputs 按 moveId 遍历所有模块的钩子即可。
+
+**验证**
+- 判据 23 读数 4/4；23 guards；vue-tsc 0；sigrid + sigridExpandAxis 32 条（新增 4 条：C0 三段与时长、C6 ×0.75、非伪块返回 undefined、模块已挂钩子）。
+- dump/rows 对 dump-41/rows-41 零差。反向变异结论见下「语料覆盖」。
+- `npm run verify` 通过：301 文件 / 3617 条，23 guards（`/home/kaua/calc-arch/verify43f.log`）。
+
+**语料覆盖**：反向变异（钩子恒返回 undefined）后 rowsnap 出差 **8 键**，全是含希格莉德 1591 的队伍（auto-1591-1481-1211/*、auto-1591-1481-1311/* 等），语料覆盖到了这条路径；另有 4 条钩子单测直接锁定展开结果。
+
+**判据 23 剩余 4**：只剩 CC-43c（`computeLiuyinHugCounts` 被 convergence.ts:52/332 与 ultimatePromote.ts:13/294 按值导入）。
+
+**下一步**
+1. **CC-43c**（最后一张，最复杂）。开工前先读 `docs/mcp-liuyin-promote-source.md`、`src/composables/resourceCalc/ultimatePromote.ts` 全文、`src/mechanics/agents/liuyin.ts` 的 `computeLiuyinHugCounts`（约 102 行）。方向：琉音模块声明能力（如 `promoteHugCounts(goodReviewTotal, stunCount, hug60Setting, targetChainTotal)`），编排层通过「拥有 promoteVariant 的模块」取（可复用 CC-43e 的 `ownsPromoteVariantAxisBlocks` 找槽）。ultimatePromote.ts 同时导入的 `resolveUltimateTargetSlot` 不计数，但属同类债，建议一并迁。做完判据 23 归 0，然后与判据 22 一样宣布硬门（BASELINE 0 / frozen 0 / target 0，checkGuards.test 同步）。
+2. 可选补测：单测锁「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」（CC-43e 反向变异在单测层是绿的，靠 rowsnap 兜底）。
 ## 附录：普查脚本 census.sh
 
 ```bash
