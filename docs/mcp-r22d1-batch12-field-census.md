@@ -2451,3 +2451,11 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - **验证**：vue-tsc 0；verify 330 files / 3686 tests，24 guards 0（`/home/kaua/calc-arch/verify94.log`）。
 - 遗留清单里「giftedPolarAssaultCount 多槽求和语义」从此关闭。
 
+### 5.83 CC-76 done：teammateBuffGate 多模块表态合并 = 逻辑与（lead-arena-0925c，2026-09-27 第 95 轮）
+
+- **现状（已读 `stores/config.ts#deriveTeammateBuffEnabled`）**：`buffGates` 取全部已注册模块的钩子，原 `resolveSpecialTeammateBuffEnabled` 是「第一个返回 boolean 的说了算」，结果依赖模块注册顺序。声明者两个：蕾米埃尔 1581（5 个 buff id 查表）、波可娜 1351（`pulchra_extra_trap_followup` 且组 id = 1351 时 C6 禁用）——键不相交。
+- **裁定：合并 = 逻辑与**（base 关 ⇒ 关；任一模块返回 false ⇒ 关；返回 true / undefined 不改变）。依据：gate 语义是「附加启用条件」，多个条件应同时满足；与注册顺序无关，更稳。键不相交 ⇒ 与旧口径逐值相同（CC-64b/64c 两份逐值对照测试照过）。
+- **提交 `33dc2be`**：`stores/config.ts` 改写该函数（base 为假直接返回、遇 false 即返回）；`mechanics/types.ts` 钩子注释同步。新测试 `src/stores/__tests__/buffGateMergeCc76.test.ts`：声明者 = [1351, 1581]；临时给**注册表第一个模块**挂 gate 表态 true 不能盖掉波可娜 C6 的 false；表态 false ⇒ 禁用、true 不会打开 base 关闭的条。反向验证：config.ts 换回 HEAD 旧实现 → 1 条红，已恢复。
+- 回退：`git revert 33dc2be`。**验证**：vue-tsc 0；verify 331 files / 3689 tests，24 guards 0（`/home/kaua/calc-arch/verify95.log`）。
+- 遗留清单「teammateBuffGate 多模块合并语义」从此关闭。
+
