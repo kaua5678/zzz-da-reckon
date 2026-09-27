@@ -1630,6 +1630,28 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 1. 可选补测：单测锁「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」（CC-43e 遗留）。
 2. `resolveUltimateTargetSlot` 从 liuyin.ts 迁到共享位置（如 `src/mechanics/ultimateTarget.ts` 或 core/resource），4 个导入点（ultimatePromote.ts、convergence.ts、norma.ts、chainGift.ts）一起改；纯移动，dump/rows 应零差。
 3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
+### 5.51 CC-44 done：resolveUltimateTargetSlot 迁 core/resource/targetSlot.ts（lead-arena-0925c，2026-09-27 第 64 轮）
+
+**提交**：`50f09d7`。新文件 `src/core/resource/targetSlot.ts`、测试 `src/core/__tests__/targetSlot.test.ts`（3 条）；改 liuyin.ts（删定义、改为从 core 导入）、norma.ts、resourceCalc/ultimatePromote.ts、convergence.ts、chainGift.ts（导入路径）、core/resource/crossAgentSupply.ts。回退：`git revert 50f09d7`。
+
+**决定与依据**
+- 函数名保留 `resolveUltimateTargetSlot`：名字里没有角色段，判据 23 不计数；改名只会扩大改动面，不带来收益。
+- 放在 core/resource 而不是 mechanics 共享文件：它是纯槽位算术，core 的 crossAgentSupply 也要用（原来因为「引擎不 import 角色模块」只好内联了一份 `(providerSlot - 1 + teamSize) % teamSize`）。mechanics → core 按值导入是允许的方向（liuyin/norma 本来就导入 `@/core/damage`）。
+- crossAgentSupply 的缺省落点改为 `resolveUltimateTargetSlot(providerSlot, teamSize, -1)`：teamSize ≥ 1 时与原内联式逐值相同（单人队两式都得 0）。
+- liuyin.ts **不做 re-export**：旧路径全部改完（`grep -rn resolveUltimateTargetSlot src` 只剩 core 路径导入），不保留兼容层。
+
+**验证**
+- 23 guards；vue-tsc 0；targetSlot/liuyin/norma/chainGift/crossAgent 相关 40 条通过。
+- dump/rows 对 dump-41/rows-41 零差。
+- 反向变异（自动落点改为「下一位」）：rowsnap 出差 **189 键**（含诺玛 1571、琉音 1481 队伍），恢复后 cmp 一致。
+- `npm run verify` 通过：303 文件 / 3623 条，23 guards（`/home/kaua/calc-arch/verify44.log`）。
+
+**现状**：编排层（src/composables/resourceCalc）已**没有任何**对 `@/mechanics/agents/*` 的按值导入（除测试外）。复核命令：`grep -rn "from '@/mechanics/agents" src/composables src/core | grep -v __tests__`。2026-09-27 读数只有 1 条：`resourceCalc/anomalyPanels.ts:395 export type { VoidflareDamageInput } from '@/mechanics/agents/remielle'`，是纯类型转出，运行时不产生依赖，可以接受。除此之外若再出现新条目，就是新的同类债。
+
+**下一步**
+1. 可选补测（CC-43e 遗留）：单测锁「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」。入口在 `src/composables/resourceCalc/roundInputs.ts` 的 ownsPromoteVariantAxisBlocks 判定处；目前靠 rowsnap 兜底。
+2. 考虑把上面那条 grep 升格为守卫（「编排层禁止按值导入 mechanics/agents/*」）：口径只抓按值 import，排除 `import type` / `export type`，当前读数应为 0；在 scripts/check-guards.mjs 加一条硬门判据 24，同步 checkGuards.test。
+3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
