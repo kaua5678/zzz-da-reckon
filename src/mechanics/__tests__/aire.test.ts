@@ -213,3 +213,15 @@ describe('艾莲儿滑块生效差分（防守卫冻结，SOP §3.5）', () => {
     expect(on).toBeGreaterThan(off)
   })
 })
+
+describe('CC-125：「初始异常掌控」读局外面板', () => {
+  it('buildCharConfig 记局外掌控，异放事件的 basisValue / masteryValue 取它', () => {
+    const cfg: any = {}
+    aireMechanic.buildCharConfig!({ cinemaLevel: 1, cfg, panel: { anomalyMastery: 180 }, outOfCombatPanel: { anomalyMastery: 140 } } as any)
+    expect(cfg.aireInitialMastery).toBe(140)
+    const events: any[] = []
+    aireMechanic.buildAnomalyEvents!({ cfg: { ...cfg, 'setting:aire.absolutePitchCount': 8 }, state: { frontlineTime: 120, backstageTime: 60 } as any, events, totalTime: 180 })
+    expect(events[0].releaseRatio.basisValue).toBe(140)
+    expect(events[0].releaseCrit.masteryValue).toBe(140)
+  })
+})

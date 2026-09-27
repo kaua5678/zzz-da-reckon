@@ -114,9 +114,11 @@ export function computeAireCycle(input: {
   }
 }
 
-function buildAireCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.aireCinemaLevel = cinemaLevel
+  // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 局外面板（CC-125，与 CC-118/123/124 同口径）
+  record.aireInitialMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
   record.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage', 1))
   record.aireAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   if (cinemaLevel >= 4) {
@@ -163,6 +165,8 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Number(record.aireCinemaLevel ?? 0)
   const additionalActive = record.aireAdditionalActive === true
+  // 初始（局外）掌控；buildCharConfig 未跑（单测直调）时 undefined ⇒ 引擎回落局内面板
+  const initialMastery = record.aireInitialMastery === undefined ? undefined : Number(record.aireInitialMastery)
   // 绝对音准#3 次数：手动覆盖（>0）优先；否则按「应援能量/2 + 全场应援次数」自动推导
   const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 0)))
   let pitchCount = manualCount
@@ -196,6 +200,7 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
       basis: 'anomalyMastery',
       perTenByElement: AIRE_RELEASE_RATIO_PER_TEN,
       stunBonusPct: AIRE_RELEASE_STUN_BONUS_PCT,
+      basisValue: initialMastery,
     },
     releaseCrit: cinemaLevel >= 1
       ? {
@@ -203,6 +208,7 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
           dmgPct: AIRE_C1_RELEASE_CRIT_DMG,
           masteryThreshold: AIRE_C1_RELEASE_CRIT_MASTERY_THRESHOLD,
           masteryPerPointRatePct: AIRE_C1_RELEASE_CRIT_PER_POINT_RATE,
+          masteryValue: initialMastery,
         }
       : undefined,
     note: `第三段绝对音准 #3 命中异常目标触发（次数=应援能量/2+全场应援）；基底属性取基底异常元素主施加者，结算区=爱芮。全场应援≈${Math.floor(totalTime / AIRE_CHEER_CD_SECONDS)}次（6秒CD上限近似，异常触发次数通常远超上限）。`,

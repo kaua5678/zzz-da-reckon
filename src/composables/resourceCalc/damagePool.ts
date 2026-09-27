@@ -257,7 +257,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const critOverride = row.releaseCrit
         ? {
             rate: row.releaseCrit.ratePct
-              + Math.max(0, (settlementPanel?.anomalyMastery ?? 0) - (row.releaseCrit.masteryThreshold ?? 0))
+              + Math.max(0, (row.releaseCrit.masteryValue ?? settlementPanel?.anomalyMastery ?? 0) - (row.releaseCrit.masteryThreshold ?? 0))
                 * (row.releaseCrit.masteryPerPointRatePct ?? 0),
             dmg: row.releaseCrit.dmgPct,
             labelPrefix: '异放暴击',
@@ -307,7 +307,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         const stunMult = (rr.stunBonusPct ?? 0) > 0 ? 1 + ((rr.stunBonusPct ?? 0) / 100) * stunCov : 1
         // 「相对于原属性异常伤害的比例」句式（南宫羽颤音异放）：倍率 = 原异常单次倍率 × 元素比例%
         if (rr.basis === 'anomalyDamageRatio') return (ANOMALY_SINGLE_HIT_MULTIPLIER[element] ?? 0) * (perTenPct / 100) * stunMult
-        const basisValue = Number(triggerPanel[rr.basis] ?? 0)
+        // basisValue：模块按原文口径预先写入（如「初始」= 局外，CC-125）；缺省读触发者局内面板
+        const basisValue = rr.basisValue ?? Number(triggerPanel[rr.basis] ?? 0)
         return (ANOMALY_SINGLE_HIT_MULTIPLIER[element] ?? 0) * (basisValue / 10) * (perTenPct / 100) * stunMult
       }
       return parseReleaseMultiplier(event)

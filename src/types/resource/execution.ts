@@ -188,6 +188,11 @@ export interface AnomalyEventExecution {
     perTenByElement: Record<string, number>
     /** 目标失衡时，该比例额外提升 N%（如 50 = ×1.5） */
     stunBonusPct?: number
+    /**
+     * 预先确定的 basis 取值（CC-125）：原文写「每 N 点**初始** X」时，由模块在 buildCharConfig 阶段
+     * 用局外面板（`AgentCharConfigInput.outOfCombatPanel`）算好写入；缺省 = 读触发者局内面板 `[basis]`。
+     */
+    basisValue?: number
   }
   /**
    * 异放专属暴击（eventType='release' 的异常暴击，仅作用于异放结算）。
@@ -203,6 +208,8 @@ export interface AnomalyEventExecution {
     masteryThreshold?: number
     /** 掌控超过阈值后，每点额外 +的暴击率（%） */
     masteryPerPointRatePct?: number
+    /** 预先确定的掌控取值（CC-125，原文「初始异常掌控」⇒ 局外面板）；缺省 = 读结算面板局内掌控 */
+    masteryValue?: number
   }
   /**
    * 极性紊乱倍率（eventType='polar_disorder'）：本次极性紊乱 = 原本[紊乱]效果 × 该倍率。
