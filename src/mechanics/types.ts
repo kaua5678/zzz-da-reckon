@@ -790,6 +790,12 @@ export interface AgentMechanicModule {
    */
   axisExtraBlocks?(input: { cinemaLevel: number; actionTimeOf: (moveId: string) => number }): ReadonlyArray<{ readonly moveId: string; readonly label: string; readonly actionTime: number; readonly quota: number }>
   /**
+   * 轴编辑器「专属窗口 lane」种类（CC-62；展示层专用，不参与计算）：本角色拥有哪一条窗口可视化 lane。
+   * 页面按种类找槽位（`teamAxisWindowLaneSlot`），banner 文案 / 窗口长度 / lane 位置仍由页面按种类渲染（属 UI）。
+   * 现实现：般岳 'mingwang'（明王 8s 窗，6 命满覆盖）、仪玄 'ningshen'（凝神 15s 窗）。
+   */
+  axisWindowLane?: 'mingwang' | 'ningshen'
+  /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
    * 声明后，资源页「异放元素分配」卡与影响分析的占比变量会为本角色出控件。

@@ -246,7 +246,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -294,7 +294,8 @@ const maxDur = computed(() => windowDuration.value)
 const ticks = computed(() => { const t: number[] = []; for (let i = 0; i <= maxDur.value; i += 2) t.push(i); return t })
 const slotOptions = computed(() => [0, 1, 2].map(s => ({ label: agentName(s), value: s })))
 // 般岳明王时间轴可视化：怒相二连块触发 8s 窗口（2层→3层刷新），块级标注触发/落窗层数；6命满覆盖单独提示
-const banyueSlot = computed(() => configStore.team.findIndex(c => c.agentId === '1471'))
+// CC-62：lane 拥有者经模块声明 axisWindowLane（原写死 findIndex agentId === 1471）
+const banyueSlot = computed(() => teamAxisWindowLaneSlot(configStore.team, 'mingwang'))
 const banyueCinema = computed(() => (banyueSlot.value >= 0 ? configStore.team[banyueSlot.value]?.cinemaLevel ?? 0 : 0))
 // CC-48：标注经模块能力 axisEditorBlockMarks（门面 agentAxisBlockMarks；槽位空 ⇒ 空 Map，同原实现）
 // CC-59：怒相连段块 comboId 经模块声明 axisRageCombos（原写死两个连段 id 字面量）
@@ -310,7 +311,8 @@ function mingwangTag(ai: number, aii: number): { text: string; cls: string } | n
   return null
 }
 // 仪玄凝神时间轴可视化：大招块触发 15s 窗口（般岳明王式）；触发块标「凝神15s」、落窗动作标「凝神+40%」
-const yixuanSlot = computed(() => configStore.team.findIndex(c => c.agentId === '1371'))
+// CC-62：lane 拥有者经模块声明 axisWindowLane（原写死 findIndex agentId === 1371）
+const yixuanSlot = computed(() => teamAxisWindowLaneSlot(configStore.team, 'ningshen'))
 // 60/90 转大（好评把队友连携升级为终结技）：只有「转大块拥有者」（现唯一 = 琉音）在队时才给其他队友发转大块。
 // CC-58：经模块声明 ownsPromoteVariantAxisBlocks（与编排层 roundInputs#buildStackAxes 同源；原写死 findIndex agentId === 1481）
 const promoteOwnerSlot = computed(() => teamPromoteVariantOwnerSlot(configStore.team))
@@ -669,7 +671,7 @@ const allMoves = computed(() => {
       const stunExTag = agentAxisMoveSuffix(c.agentId, mid)
       let name = ((move?.name?.zhCN || rawName).slice(0, 8)) + srcTag + cdTag + stunExTag
       // 般岳怒/普分化：只写招式名（倍率随等级变不写；名字带「·怒」即 40 耗能，其余 20；连段块山威免费）
-      // CC-48：招式元数据经模块声明 axisMoveMeta（现唯一 = 般岳；原为 `c.agentId === '1471' && BANYUE_AXIS_MOVE_META[mid]`）
+      // CC-48：招式元数据经模块声明 axisMoveMeta（现唯一 = 般岳；原为按般岳 agentId 1471 查 BANYUE_AXIS_MOVE_META）
       const axisMoveMeta = agentAxisMoveMeta(c.agentId)?.[mid]
       if (axisMoveMeta) {
         const meta = axisMoveMeta

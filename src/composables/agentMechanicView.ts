@@ -176,3 +176,10 @@ export function agentAxisExtraBlocks(
 ): readonly AxisExtraBlockDecl[] {
   return (agentId ? getAgentMechanic(agentId)?.axisExtraBlocks?.(input) : undefined) ?? []
 }
+
+export type AxisWindowLaneKind = NonNullable<AgentMechanicModule['axisWindowLane']>
+
+/** 队伍里第一个声明了该种窗口 lane 的槽位；无 ⇒ -1（CC-62；原 StunAxisPage `findIndex(c => c.agentId === 1471 / 1371)`） */
+export function teamAxisWindowLaneSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>, kind: AxisWindowLaneKind): number {
+  return team.findIndex(c => !!c?.agentId && getAgentMechanic(c.agentId)?.axisWindowLane === kind)
+}

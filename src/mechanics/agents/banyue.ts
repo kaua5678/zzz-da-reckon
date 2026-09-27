@@ -885,6 +885,8 @@ export const banyueMechanic: AgentMechanicModule = {
   },
   axisMoveMeta: BANYUE_AXIS_MOVE_META,
   axisRageCombos: { primary: 'banyue-combo', didong: 'banyue-combo-didong' },
+  // CC-62：轴编辑器明王窗口 lane 拥有者（展示层）
+  axisWindowLane: 'mingwang',
   id: 'agent:banyue',
   agentIds: [AGENT_ID],
   name: '般岳',
