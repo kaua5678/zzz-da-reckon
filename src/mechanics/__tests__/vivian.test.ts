@@ -139,6 +139,24 @@ describe('薇薇安执行行与定向结算', () => {
     expect(xuanluo.element).toBe('ether')
   })
 
+  it('CC-91：支援突击次数 = 本槽 cfg.parryCount（原 vivianAssistCount 死通道已接通），计入悬落与飞羽', () => {
+    const run = (extra: Record<string, unknown>) => {
+      const executions: any[] = []
+      vivianMechanic.buildExecutions!({
+        cfg: cfgWith(0, extra),
+        state: { exSpecialCount: 8, ultimateCount: 3, chainCountTotal: 1.7 },
+        executions,
+      } as any)
+      return executions.find(r => r.moveId === VIVIAN_XUANLUO_MOVE_ID)?.count ?? 0
+    }
+    // 悬落 = E 8 + Q 3 + 连携 1 + 支援 4 = 16（差分 = 弹刀次数）
+    expect(run({ parryCount: 4 }) - run({ parryCount: 0 })).toBe(4)
+    // 旧死键不再有任何效果（防回退到读无人写入的键）
+    expect(run({ parryCount: 0, vivianAssistCount: 9, vivianDanceHit: 9 })).toBe(run({ parryCount: 0 }))
+    // 飞羽：支援突击每次 +2（原文「支援突击：裁决羽刃」回复2点飞羽）
+    expect(cycle({ assistCount: 3 }).flyFeatherTotal - cycle({ assistCount: 0 }).flyFeatherTotal).toBe(6)
+  })
+
   it('强化特殊技全部合轴：堇花悼亡 timeBucket=backstage，不占前台时间', () => {
     const ex: any = { moveId: '1331010', timeBucket: 'necessary' }
     vivianMechanic.patchExecutions!({

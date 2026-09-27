@@ -215,7 +215,7 @@
   "slack": 0,
   "over": 0,
   "stun": 2,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1261-1561-1411": {
   "slack": 0,
@@ -254,7 +254,7 @@
   "outerExit": "stable"
  },
  "auto-1331-1561-1411": {
-  "slack": 1.7,
+  "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"

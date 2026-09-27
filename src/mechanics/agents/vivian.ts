@@ -204,10 +204,15 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     teammateAnomalyCount: Number(record.vivianAnomalyTriggerTotal ?? 0),
     // 落羽生花源2 的 0.5s CD 封顶按有效战斗时间（扣 boss 无敌，core/effectiveTime.ts）
     battleTime: minusInvincibleTime(Number(record.battleTime ?? 180), cfg),
-    danceHitCount: Number(record.vivianDanceHit ?? 0),
+    // 淑女礼仪·舞步命中 +1 飞羽（原文）：迭代态无逐招式次数，无法派生 ⇒ 未建模，显式 0。
+    // 旧实现读 `record.vivianDanceHit`，全仓零写入恒 0（死通道，CC-91 2026-09-27 移除）。
+    danceHitCount: 0,
     chainCount: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
-    assistCount: Number(record.vivianAssistCount ?? 0),
+    // 支援突击次数 = 本槽弹刀次数（招架支援后接支援突击；`parryNoFollowUpCount` 不接，
+    // 与 claret.ts assistFollowUpMoveId × parryCount 同口径）。原文「支援突击：裁决羽刃」回复2点飞羽、
+    // 发动后进入裙裾浮游（→ 悬落）。旧实现读 `record.vivianAssistCount`，全仓零写入恒 0（CC-91 接通）。
+    assistCount: Math.max(0, Number(cfg.parryCount ?? 0)),
     additionalActive: record.vivianAdditionalActive === true,
     c4AtkCoverage: Number(record.vivianC4AtkCoverage ?? 1),
   })
