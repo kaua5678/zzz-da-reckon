@@ -262,7 +262,8 @@ export interface DirectDamageInput {
   panel: PanelValues
   skillMultiplier: number
   damageElement: DamageElement | undefined
-  damageBasis: 'atk' | 'def' | 'hp' | string
+  // 伤害基底（atk / def / 贯穿力…）不由调用方传：calcDirectDamage 按 profile（resolveSpecialDamageProfile 按 specialty 选）决定。
+  // R6 C5（第 141 轮）删除了原来无人读取的 `damageBasis` 参数；catalog 行上的同名字段是导入脚本合成的展示字段，引擎同样不读。
   enemyDefense: number
   enemyDefReduction: number
   enemyDefFlatReduction: number

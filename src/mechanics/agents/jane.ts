@@ -317,7 +317,6 @@ export const janeMechanic: AgentMechanicModule = {
           panel: janePanel,
           skillMultiplier: 1600,
           damageElement: 'physical',
-          damageBasis: 'atk',
           enemyDefense: enemy.defense,
           enemyDefReduction: janePanel.enemyDefReduction ?? 0,
           enemyDefFlatReduction: janePanel.enemyDefFlatReduction ?? 0,

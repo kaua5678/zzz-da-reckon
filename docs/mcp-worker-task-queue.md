@@ -69,24 +69,21 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 140 轮（2026-09-27，一个提交「refactor(C7)」，提交号见 git log）
+### 第 141 轮（2026-09-27，一个提交「refactor(C5,C3)」，提交号见 git log）
 
-- **做到哪**：
-  - R6 清单 C7 第一刀（CC-113）：`src/specs/types.ts` 的 `AttributeConversionSpec` 新增 `stepRounding?: 'floor' | 'none'`（缺省 floor）；`src/specs/runtime.ts` 加 `none` 分支；`src/specs/agents/1481.json` 声明 `none` 并新增非整数点 verification（73.6 → 47.2）；`src/mechanics/agents/liuyin.ts` 删三个常数，改调 `applySpecAttributeConversions`；`src/specs/template.json` 字段说明补一句。
-  - 1571 诺姆定为不做（理由见 `docs/mcp-r6-refactor-list.md` §2.2）。
-  - C6 + C2：`docs/ARCHITECTURE.md` §0 层次图把编排层拆成四块（管线后半段 / 应用层 / 展示几何 / 胶水）、补 logicEditor 一行、状态层写明「可调 core 纯函数，禁调编排层」。
-  - 验证：zd `c7a` DIFF 0（含琉音预设）；反向验证（删 stepRounding → 新 verification 失败）；validate:specs 1102 通过；verify EXIT 0；vue-tsc 0；CG 25/25。
+- **做到哪**：R6 清单 C5 + C3（CC-114），都零差。
+  - C5：删 `src/core/damage.ts` `DirectDamageInput.damageBasis` 死参数，及 `resourceCalc/damagePool.ts`、`mechanics/agents/alice.ts`、`jane.ts` 与两个测试文件里的传参；`src/types/catalog.ts` `SkillRow.damageBasis` 加注释「展示字段，引擎不读」；更正 `scripts/import-nanoka-v12.mjs` 头注释的误导说法。
+  - C3：`src/core/__tests__/r5DataInvariants.test.ts` 加 2 例（检测器夹具自证 + catalog `appliesToOutOfCombatPanel ≡ scope==='outOfCombat'`，95 处全同义）。
+  - 验证：zd `c5` DIFF 0；vue-tsc 0；verify EXIT 0；CG 25/25；get_diagnostics 0。
 - **下一步（按顺序，可直接开工）**：
-  1. **C5**：删 `src/core/damage.ts` `DirectDamageInput.damageBasis` 死参数及各调用点的传参（先 `timeout 40 git grep -n 'damageBasis' -- src | grep -v __tests__` 列全；catalog 字段 `src/types/catalog.ts:381` 保留，只加注释「展示用合成字段，引擎不读」）；要求 zd DIFF 0、vue-tsc 0。
-  2. **C3**：在 `src/core/__tests__/r5DataInvariants.test.ts` 加一条：catalog 里凡出现 `appliesToOutOfCombatPanel`，必须等于 `scope === 'outOfCombat'`（用夹具自证 detector，不断言仓库计数）。
-  3. **C7 §2.3**：先读 `nangong.ts:117` 与 `src/specs/agents/1511.json`，按清单 §2.3 的判断标准决定迁或不迁。
-  4. 之后 CC-99。
-- **本轮拍板**：
-  - 不直接替换 1481，而是加 `stepRounding` 字段：因为 runtime（整步取整）与模块（连续）语义不同，直接替换会改数值；加字段后零差，且把口径变成 spec 里可测的数据。回退点见清单 §2.1。
-  - 「每超过 1%」该不该取整是**未决数据口径**，登记在清单 §2.1 末尾；改它必须另开 CC 卡。
+  1. **C7 §2.3 第一个候选：nangong（1511 南宫羽）**。读 `src/mechanics/agents/nangong.ts:117` 附近（`panel.impact += max(0, anomalyMastery − CONTROL_THRESHOLD)`）与 `src/specs/agents/1511.json`（attributeConversions 目前为 `[]`）。判断：来源是否同一面板阶段、是否连续（连续 ⇒ `stepRounding: 'none'`）、有无 cap。一致就在 spec 加条目（note 写「实现位置：nangong.ts 调 applySpecAttributeConversions」）+ 一条非整数点 verification，模块改调 runtime（范例 `liuyin.ts` 的 applyLiuyinPanel），zd 要求 DIFF 0，并做反向验证（删字段 → verification 失败）。不一致就在清单 §2.3 表里写「不做 + 理由」。
+  2. 依次处理 §2.3 其余候选（promia → burnice → phoenix → jane → alice:117 → lighter），每个都给结论。
+  3. §2.3 全部有结论后，评估「10 个模块 spec resources 与模块账本重复」（全景 §6.4）。
+  4. 之后 CC-99（卡表 `docs/mcp-calc-core-architecture.md`）。
+- **本轮拍板**：C5 只删引擎死参数，**不删** catalog 行字段（删要改 3 个导入脚本（import-nanoka-beta-agent / -missing / -v12）和 scripts/resolve.mjs 并重导，收益只是少一个展示字段）；C3 做成校验而非删字段。依据与回退点见清单 §3、§4。
 - **已知坑**：
-  - spec verifications 只经 runtime 执行，不经模块；模块手写常数时 verifications 测不到模块。已迁到 runtime 的条目（alice、luciaElowen、1481）才被 verifications 真正覆盖。
+  - spec verifications 只经 runtime 执行，不经模块；只有已迁到 runtime 的条目（alice、luciaElowen、1481）才被 verifications 真正覆盖。
   - 注册不再由「import core」隐式触发（C1）。新增 Worker 或 node 直跑 src 的脚本必须自己 `import '@/mechanics'`。
-  - `zcWorkspace.test.ts` 的租约过期用例在全量 verify 下偶发失败过 1 次（第 139 轮 verify154），单独重跑 3/3 通过；再出现就把过期租约改成与时钟无关的构造（如 `at: 0`）。
-  - 第 139 轮对话汇报误写「走了 run_command 退路」；实际工具清单 16 个、`wsl_exec` 可用。以 `node /tmp/mcp.js list | wc -l` 为准。
-- **未决**：10 个模块 spec resources 与模块账本重复，是否归一待 C7 §2.3 做完后评估。
+  - `zcWorkspace.test.ts` 租约过期用例在全量 verify 下偶发失败过 1 次（第 139 轮），单独重跑可过；再出现就把过期租约改成与时钟无关的构造（如 `at: 0`）。
+  - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
+- **未决**：「每超过 1%」是否取整（清单 §2.1 末）——数据口径，改即改数值，需另开 CC 卡。

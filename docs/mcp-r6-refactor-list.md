@@ -10,8 +10,8 @@
 |---|---|---|---|---|
 | C1 | core ↔ mechanics 模块环 | 可结构化 | **做** | ✅ 第 139 轮完成（R6 验收项，见 §1） |
 | C7 | spec 与模块「一处执行、一处描述」 | 可归一 | **做**（分刀） | 1481 ✅ 第 140 轮；1571 不做（§2）；其余候选见 §2.3 |
-| C5 | 伤害基底两套口径 + 死参数 | 冗余可简化 | **做**（只删死参数与误导字段读法，低优先） | 待做 |
-| C3 | catalog `appliesToOutOfCombatPanel` 冗余 | 冗余可简化 | **做成校验**，不删字段 | 待做 |
+| C5 | 伤害基底两套口径 + 死参数 | 冗余可简化 | **做**（只删死参数与误导字段读法，低优先） | ✅ 第 141 轮（§3） |
+| C3 | catalog `appliesToOutOfCombatPanel` 冗余 | 冗余可简化 | **做成校验**，不删字段 | ✅ 第 141 轮（§4） |
 | C6 | 编排层实际是四层 | 可结构化 | **只改规划文档**，不挪目录 | ✅ 第 140 轮（ARCHITECTURE.md §0） |
 | C2 | `stores/config.ts` 调引擎 | 可归一 | **不做**（改写规划承认它） | ✅ 规划已改（第 140 轮） |
 | C4 | 局外判定读 `outOfCombatEffectFilter` | 可结构化 | **不做** | — |
@@ -81,12 +81,14 @@
 - **做什么**：删掉死参数及其调用点的传参（零差）；catalog 字段先不删（要改导入脚本），在 `types/catalog.ts` 注释写明「展示用合成字段，引擎不读」。
 - **不做什么**：不让引擎改读字段（字段本身是合成的，不是规格）。
 - **风险**：低，零差可验。
+- **第 141 轮结果 ✅**：`src/core/damage.ts` `DirectDamageInput` 删去 `damageBasis`（原处留两行注释说明基底由 profile 决定）；删除传参 3 处（`resourceCalc/damagePool.ts`、`mechanics/agents/alice.ts`、`jane.ts`）与测试里 8 处（`damage.test.ts` 6、`discSetEffects.test.ts` 2，这些测试的基底本来就由传入的 `SpecialDamageProfile` 决定）。`src/types/catalog.ts` 的 `SkillRow.damageBasis` 保留并加注释「导入合成的展示字段，引擎不读」；`scripts/import-nanoka-v12.mjs` 头注释原写「SHARPEN_DAMAGE_PROFILE 消费」，是误导（profile 按 specialty 选，不读行字段），已更正。验证：删前 `git grep damageBasis -- src` 全仓只有声明、零读取；zd `c5` DIFF 0；vue-tsc 0；verify 0。回退点：`git revert` 该提交（纯删除，无数值影响）。
 
 ## 4. C3 `appliesToOutOfCombatPanel` 冗余 —— 冗余可简化 · **做成校验，不删字段**
 
 - **为什么**：R5 Z2：与 `scope` 100% 同义，引擎不读；来源是导入脚本 `scripts/import-nanoka-wengine.mjs`。
 - **做什么**：加一条数据前提测试（与 `r5DataInvariants.test.ts` 同处）：凡出现该字段，必须等于 `scope === 'outOfCombat'`。
 - **为什么不删**：删字段要改导入脚本并重导数据，收益只是少一个同义字段；校验已足以防止两者分叉。
+- **第 141 轮结果 ✅**：实测 catalog 里该字段 95 处，全部是 `false` 且同对象 `scope: 'inCombat'`（都在 `wEngines[*].effect.selfBuff / teamBuff`，来自 `scripts/import-nanoka-wengine.mjs:272/275`）。`src/core/__tests__/r5DataInvariants.test.ts` 新增 2 例：检测器夹具自证（同义 0 条、分叉 2 条），以及 catalog 全量同义 + 非空前提。`src/types/catalog.ts:276` 字段加注释。回退点：删这 2 例。
 
 ## 5. C6 编排层四层 —— 可结构化 · **只改规划文档**
 
@@ -105,5 +107,5 @@
 
 1. ~~C7 第一刀（1481 → 1571）~~ 第 140 轮：1481 ✅、1571 不做（§2.1、§2.2）。
 2. ~~C6 规划文档 + C2 规划条款~~ ✅ 第 140 轮。
-3. C5 删死参数；C3 加校验。
+3. ~~C5 删死参数；C3 加校验~~ ✅ 第 141 轮。
 4. C7 §2.3 候选逐个判断（先 nangong）。

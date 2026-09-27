@@ -273,6 +273,7 @@ export interface BuffGroup {
   description?: LocalizedString
   effects: BuffEffect[]
   buffModifiers?: any[]
+  /** 与 `scope === 'outOfCombat'` 同义的导入冗余字段，引擎不读（局外判定只看 scope）。同义性由 r5DataInvariants.test.ts 钉住（R6 C3）。 */
   appliesToOutOfCombatPanel?: boolean
   condition?: string
   /**
@@ -378,6 +379,8 @@ export interface SkillRow {
   label: LocalizedString
   kind: string
   values: number[]
+  /** 导入脚本合成的展示字段（scripts/resolve.mjs 打印用）。**引擎不读**：伤害基底由 core/damage.ts resolveSpecialDamageProfile 按 specialty 决定；
+   *  命破角色此处写 atk 但实际按贯穿力算（R5 D6）。R6 C5 决定保留字段、不让引擎改读（字段不是规格）。 */
   damageBasis?: string
   damageElement?: DamageElement
 }

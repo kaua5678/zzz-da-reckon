@@ -8,7 +8,7 @@
  *
  * 用法：node scripts/import-nanoka-v12.mjs <id> [--write]
  *  - 按 v12 技能表重建该角色 agentSkills.categories（id/name/rows/energyCost/actionTime 全量，match 靠 id）
- *  - 1611 特殊：所有行 damageBasis='def'（锐化伤害，SHARPEN_DAMAGE_PROFILE 消费），攻击属性 electric
+ *  - 1611 特殊：所有行 damageBasis='def'（锐化伤害的展示标注；引擎不读本字段，按 specialty=sharpen 选 SHARPEN_DAMAGE_PROFILE），攻击属性 electric
  *  - 技能名 zh 来自 data/raw/nanoka_missing/full/<id>.json skill_list（v12 快照）
  *  - **v12 之后由其他管道补的行（gachabase 的 gash_buildup 残痕积累 / sharpness_gain 锐能回复）
  *    原值原下标保留**——本脚本重建整个 categories，不保留就会静默删掉引擎在消费的行

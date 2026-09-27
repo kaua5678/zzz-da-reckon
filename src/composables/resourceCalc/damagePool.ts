@@ -186,7 +186,6 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         panel,
         skillMultiplier: row.multiplier,
         damageElement: safeElement(row.element),
-        damageBasis: 'atk',
         enemyDefense: configStore.enemy.defense,
         // 减防/无视防御（GAME_TERM_TO_CODE_FIELD §4）：面板通用值（妮可 40%/叶瞬光C1 20%/席德C2 20%/
         // 伊芙琳C1/爱芮C2/千夏C1/音擎 千面日陨·索魂影眸 等）+ 行级 moveId 限定值（叶瞬光C2/C6、雨果C2、

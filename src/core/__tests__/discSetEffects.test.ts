@@ -138,7 +138,6 @@ describe('招式类型定向接线（字段对应）', () => {
     const baseInput = {
       panel: p,
       skillMultiplier: 100,
-      damageBasis: 'atk',
       enemyDefense: 1000,
       enemyDefReduction: 0,
       enemyDefFlatReduction: 0,
@@ -165,7 +164,6 @@ describe('招式类型定向接线（字段对应）', () => {
     const baseInput = {
       panel: p,
       skillMultiplier: 100,
-      damageBasis: 'atk',
       enemyDefense: 1000,
       enemyDefReduction: 0,
       enemyDefFlatReduction: 0,

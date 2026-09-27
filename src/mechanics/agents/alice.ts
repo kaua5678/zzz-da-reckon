@@ -688,7 +688,6 @@ export const aliceMechanic: AgentMechanicModule = {
             panel: alicePanel,
             skillMultiplier: 3300,
             damageElement: 'physical',
-            damageBasis: 'atk',
             enemyDefense: enemy.defense,
             enemyDefReduction: alicePanel.enemyDefReduction ?? 0,
             enemyDefFlatReduction: alicePanel.enemyDefFlatReduction ?? 0,
