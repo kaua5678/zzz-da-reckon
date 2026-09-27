@@ -36,21 +36,21 @@
       </n-card>
 
       <n-card v-if="remielleQSetting" size="small" class="mechanic-card" :bordered="true">
-        <template #header>蕾米 Q 耀变分配</template>
+        <template #header>{{ remielleQSetting.split.title }}</template>
         <div class="mechanic-row">
           <div class="mechanic-copy">
-            <div class="field-title">{{ remielleQSetting?.firstName }} 提供虚耀</div>
+            <div class="field-title">{{ remielleQSetting?.firstName }} {{ remielleQSetting?.split.firstSuffix }}</div>
             <div class="field-desc">
-              Q 每次固定打 3 个耀变；剩余 {{ 3 - (remielleQSetting?.firstCount ?? 1) }} 个由 {{ remielleQSetting?.secondName }} 提供。
+              {{ remielleQSetting?.split.batchNote }}；剩余 {{ (remielleQSetting?.split.total ?? 3) - (remielleQSetting?.firstCount ?? 1) }} 个由 {{ remielleQSetting?.secondName }} 提供。
             </div>
           </div>
           <n-input-number
             :value="remielleQSetting?.firstCount ?? 1"
             size="small"
             :min="0"
-            :max="3"
+            :max="remielleQSetting?.split.total ?? 3"
             :step="1"
-            @update:value="v => remielleQSetting && configStore.setTeamMechanicSetting(`remielle.q:${remielleQSetting.slot}`, v ?? 1)"
+            @update:value="v => remielleQSetting && configStore.setTeamMechanicSetting(`${remielleQSetting.split.settingPrefix}:${remielleQSetting.slot}`, v ?? remielleQSetting.split.defaultFirst)"
           />
         </div>
       </n-card>
@@ -346,7 +346,8 @@ import {
   type CinemaUpliftRow,
 } from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
-import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
+import { teamMechanicSettings, teamReleaseShares, teamTeammateSplit, agentExcludedFromWindInfectionPick } from '@/composables/agentMechanicView'
+import type { TeammateSplitDecl } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
@@ -384,19 +385,19 @@ const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 // CC-47：经编排层门面读模块声明（判据 7：展示层不直接 import '@/mechanics'）
 const mechanicSettings = computed<MechanicSetting[]>(() => teamMechanicSettings(configStore.team))
 
+// CC-56：原按写死蕾米埃尔 ID 1581 找槽位，改为查模块声明 teammateSplit（agentMechanicView#teamTeammateSplit）
 const remielleQSetting = computed<{
   slot: number
+  split: TeammateSplitDecl
   firstSlot: number
   secondSlot: number
   firstName: string
   secondName: string
   firstCount: number
 } | null>(() => {
-  const remielleSlot = configStore.team.findIndex(char => {
-    const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return agent?.id === '1581' || agent?.teammateBuffId === '1581'
-  })
-  if (remielleSlot < 0) return null
+  const found = teamTeammateSplit(configStore.team, id => catalogStore.getAgent(id))
+  if (!found) return null
+  const { slot: remielleSlot, split } = found
   const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
   if (otherSlots.length < 2) return null
   const [firstSlot, secondSlot] = otherSlots
@@ -408,8 +409,8 @@ const remielleQSetting = computed<{
   const secondName = secondChar?.agentId
     ? catalogStore.getAgent(secondChar.agentId)?.name?.zhCN || secondChar.agentId
     : `槽${secondSlot + 1}`
-  const firstCount = Math.max(0, Math.min(3, Math.floor(configStore.getTeamMechanicSetting(`remielle.q:${remielleSlot}`, 1))))
-  return { slot: remielleSlot, firstSlot, secondSlot, firstName, secondName, firstCount }
+  const firstCount = Math.max(0, Math.min(split.total, Math.floor(configStore.getTeamMechanicSetting(`${split.settingPrefix}:${remielleSlot}`, split.defaultFirst))))
+  return { slot: remielleSlot, split, firstSlot, secondSlot, firstName, secondName, firstCount }
 })
 
 // CC-55：原按写死的柏妮思 ID 1171 查找，改为查模块声明 releaseShare（agentMechanicView#teamReleaseShares）。
@@ -447,7 +448,7 @@ const windCharSlot = computed<number>(() => {
 const windInfectionConfig = computed<{
   autoRate: number
   coverage: number
-  candidates: { slot: number; name: string; element: string; specialty: string; isRemielle: boolean }[]
+  candidates: { slot: number; name: string; element: string; specialty: string; excludedFromPick: boolean }[]
   autoSlot: number
   targetSlot: number
 } | null>(() => {
@@ -463,13 +464,14 @@ const windInfectionConfig = computed<{
         name: agent?.name?.zhCN || char.agentId || `槽${slot + 1}`,
         element: agent?.damageElement ?? '',
         specialty: agent?.specialty ?? '',
-        isRemielle: agent?.id === '1581' || agent?.teammateBuffId === '1581',
+        // CC-56：模块声明 excludeFromWindInfectionPick（与引擎 anomalyPanels#getWindInfectionTargetSlot 同源；原写死 1581）
+        excludedFromPick: agentExcludedFromWindInfectionPick(agent),
       }
     })
     .filter(x => !!x.element)
   const autoSlot = candidates.find(x =>
     x.slot !== windSlot && x.element !== 'wind'
-    && x.specialty !== 'support' && x.specialty !== 'defense' && !x.isRemielle,
+    && x.specialty !== 'support' && x.specialty !== 'defense' && !x.excludedFromPick,
   )?.slot
     ?? candidates.find(x => x.slot !== windSlot && x.element !== 'wind')?.slot
     ?? windSlot

@@ -96,3 +96,43 @@ export function teamReleaseShares(
   }
   return out
 }
+
+type AgentIdentity = { id: string; teammateBuffId?: string }
+/** 按 `agent.id` 与 `agent.teammateBuffId` 各查一次模块（与原展示层 `agent?.id === X || agent?.teammateBuffId === X` 同口径） */
+function identityModules(agent: AgentIdentity | null | undefined): AgentMechanicModule[] {
+  if (!agent) return []
+  const out: AgentMechanicModule[] = []
+  for (const id of [agent.id, agent.teammateBuffId]) {
+    const mod = id ? getAgentMechanic(id) : undefined
+    if (mod) out.push(mod)
+  }
+  return out
+}
+
+export type TeammateSplitDecl = NonNullable<AgentMechanicModule['teammateSplit']>
+
+/**
+ * 队伍里第一个声明 `teammateSplit` 的槽位（CC-56）；无 ⇒ null。
+ * 原位置：ResourceUtilizationPage.vue `remielleQSetting` 的 `findIndex(agent?.id === '1581' || agent?.teammateBuffId === '1581')`。
+ */
+export function teamTeammateSplit(
+  team: ReadonlyArray<{ agentId?: string | null } | null | undefined>,
+  getAgent: (id: string) => AgentIdentity | null | undefined,
+): { slot: number; split: TeammateSplitDecl } | null {
+  for (let slot = 0; slot < team.length; slot++) {
+    const char = team[slot]
+    if (!char?.agentId) continue
+    for (const mod of identityModules(getAgent(char.agentId))) {
+      if (mod.teammateSplit) return { slot, split: mod.teammateSplit }
+    }
+  }
+  return null
+}
+
+/**
+ * 风化浸染默认挑槽是否排除该角色（CC-56）：模块声明 `excludeFromWindInfectionPick`（CC-42，引擎 anomalyPanels 同源）。
+ * 原位置：ResourceUtilizationPage.vue `windInfectionConfig` 的 `isRemielle: agent?.id === '1581' || …`。
+ */
+export function agentExcludedFromWindInfectionPick(agent: AgentIdentity | null | undefined): boolean {
+  return identityModules(agent).some(mod => !!mod.excludeFromWindInfectionPick)
+}

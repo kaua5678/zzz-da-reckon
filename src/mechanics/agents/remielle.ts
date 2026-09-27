@@ -369,7 +369,19 @@ function applyRemielleTeamConfig({ cfg, phase, threads }: AgentTeamConfigInput):
   cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0) + perUse * casts
 }
 
+/** CC-56：Q 耀变分摊设置（键 `remielle.q:<蕾米槽位>`）——引擎（下方 firstPerBatch）与资源页卡片共用这一处声明 */
+const REMIELLE_Q_SPLIT = {
+  settingPrefix: 'remielle.q',
+  total: 3,
+  defaultFirst: 1,
+  title: '蕾米 Q 耀变分配',
+  firstSuffix: '提供虚耀',
+  batchNote: 'Q 每次固定打 3 个耀变',
+} as const
+
 export const remielleMechanic: AgentMechanicModule = {
+  // CC-56：资源页「Q 耀变分配」卡经 agentMechanicView#teamTeammateSplit 查询（原页面写死 1581）
+  teammateSplit: REMIELLE_Q_SPLIT,
   // CC-42：风化浸染默认挑槽时排除（原 anomalyPanels 内的 isRemielleAgent 跨槽判定）
   excludeFromWindInfectionPick: true,
   // CC-41：一命花羽轮舞喧响（跨轮反馈）
@@ -469,7 +481,7 @@ export const remielleMechanic: AgentMechanicModule = {
         const secondOtherSlot = otherSlots[1]
         const firstPerBatch = otherSlots.length === 1
           ? 3
-          : Math.max(0, Math.min(3, Math.floor(getTeamMechanicSetting(`remielle.q:${remielleSlot}`, 1))))
+          : Math.max(0, Math.min(REMIELLE_Q_SPLIT.total, Math.floor(getTeamMechanicSetting(`${REMIELLE_Q_SPLIT.settingPrefix}:${remielleSlot}`, REMIELLE_Q_SPLIT.defaultFirst))))
         const secondPerBatch = Math.max(0, 3 - firstPerBatch)
         const qCountBySlot: Record<string, number> = {}
         if (otherSlots.length === 1) {

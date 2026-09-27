@@ -784,6 +784,20 @@ export interface AgentMechanicModule {
    */
   releaseShare?: { readonly namespace: string; readonly label: string }
   /**
+   * 「另两名队友分摊 N 个单位」的队伍级设置声明（CC-56 2026-09-27；**展示层专用**，引擎读同一键）：
+   * 设置键 = `${settingPrefix}:${本角色槽位}`（getTeamMechanicSetting），值 = 第一位队友每批提供的个数（0~total，缺省 defaultFirst），
+   * 第二位 = total − 第一位。资源页经 agentMechanicView#teamTeammateSplit 出卡片，文案取 title / firstSuffix / batchNote。
+   * 现唯一声明：蕾米埃尔（Q 每批 3 个耀变，键 remielle.q:<slot>；引擎侧 remielle.ts 用同一常量读取）。
+   */
+  teammateSplit?: {
+    readonly settingPrefix: string
+    readonly total: number
+    readonly defaultFirst: number
+    readonly title: string
+    readonly firstSuffix: string
+    readonly batchNote: string
+  }
+  /**
    * 失衡轴窗口覆盖声明（规则 6 迁移落点，2026-09-12 #10 真清偿）：
    * 模块按「轴内时间轴窗口」算出逐 moveId 的加权覆盖量，供伤害池消费。
    *
