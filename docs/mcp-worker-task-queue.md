@@ -69,24 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 124 轮（2026-09-27，一个文档提交，提交号见 git log 中的「docs(R5): 第 2 刀完成」）
+### 第 125 轮（2026-09-27，一个文档提交，提交号见 git log 中的「docs(R5): 第 3 刀 mode」）
 
 - **做到哪**：
-  - R5 第 2 刀**完成**，账本 `docs/mcp-r5-spec-impl-reconciliation.md`：
-    - §7 **D13**（Z13 statDisplay 属性键）：动态键造成的假零，有计算通路，无差异；
-    - §7 **D14**（levelRange / modification / rarityMaxLevel / 蕾米埃尔光耀化字段 / formula 的 variable 与 valueUnit）：与硬编码一致，无差异；默认精炼 5 与数据 defaultLevel 1 的口径不同，lead 拍板保持满配；
-    - **§8 字段归类**：215 种字段 = S 已核 23 + S 待第 3 刀 52 + K 98（新增类别：结构 / 属性键）+ D 13 + M 29。
-  - 第 123 轮的产出：`6fb0572`（D7–D12）。
+  - R5 第 3 刀开始，先做 `mode`，账本 `docs/mcp-r5-spec-impl-reconciliation.md`：
+    - **D15（真实差异，影响最大）**：6 号位冲击力、异常掌控主词条按固定值结算，源数据是百分比，影响 15 个角色的默认配装。根因是 `core/panel.ts:219` `inferStatMode` 拿展示字段 `statDisplay[k].display` 定结算口径。这推翻了 R27-J2（2026-09-18）的结论：它引用的 4 条证据都是仓库内部互相引用，没有源数据；
+    - **D16（真实差异）**：31200 震星迪斯科 2 件套导入成 `impact / flat / 6`，源数据 `data/raw/nanoka_equipment.json:52` 是 `Impact +6%`；
+    - **D17**：其余 mode 取值无影响（只有 impact / anomalyMastery / energyRegen / flashEnergyRegen 按 mode 分流）；
+    - 新增 **§9 转卡清单**；卡表 `docs/mcp-calc-core-architecture.md` 新增 **CC-100**（D15+D16）、**CC-101**（D8）。
+  - 第 124 轮的产出：`856a3db`（D13、D14、§8 归类）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 3 刀**：对账本 §8「S 待第 3 刀」的 52 个字段查「读了但语义是否相同」。先做 `mode`（取值集合 × `buff.ts` `applyStat` / `applyTargetedStat` 对 mode 的处理），再做 `condition`、`requirement`（数据写的条件，引擎是否执行、怎么执行）。每个字段一条 D 条目，写法照 §5。
-  2. **R5 第 4 刀（转卡）**：优先 D8（先写夹具复现两名队友同穿 31900，再在 `collectInCombatTeamBuffs` 按 exclusiveGroup 去重）；其次 D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测。每张卡都要求零差或逐条解释差异。
-  3. **R6 第 1 步续**：全景 §6 的 4 项；然后是 **R6 第 2 步**（清单，候选 C1–C5 在全景 §5；D10 的 catalog.bosses 可作为「冗余可简化」候选）。
+  1. **CC-100**：按账本 §9 的 5 步执行（找生成源头 → 新增 `statSettlementMode` 映射 → roughStats 同步 → 改测试和 panel.ts 头注释 → verify + zd.sh，差异逐条归因）。**lead 拍板排在第 3 刀剩余部分之前**，依据：它影响 15 个角色的默认结果，而第 3 刀剩余字段尚未发现问题。回退点：删掉 `statSettlementMode` 映射即恢复旧口径。
+  2. **CC-101**（D8）：先写夹具复现，再按 exclusiveGroup 去重。
+  3. **R5 第 3 刀续**：`condition` / `requirement`（数据写的条件，引擎是否执行、怎么执行），然后按 §8 清单继续。
+  4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
 - **未决项**：
-  - D7 的 2 个驱动盘效果是否另有入口可调未核（`panelPhases.ts:728` `mergeTeamDiscEffectCoverages`）；
+  - CC-100 会让折枝剑歌等 4 件套的门槛判定改变（低掌控角色不再达标）。这是按源数据应有的结果，不是回归；
+  - D7 的 2 个驱动盘效果是否另有入口可调未核（`panelPhases.ts:728`）；
   - D10 两份 Boss 数据是否一致未比对；
-  - CC-99（spec 原语 G1/G3 + 迁移潘引壶）排在 R6 清单之后重新评估，可能被清单吸收；
-  - CC-97（校准原子）暂缓；
-  - CC-84 是触发式任务：新增第二件周期直伤音擎时再做。
+  - CC-99 排在 R6 清单之后重新评估；CC-97 暂缓；CC-84 触发式。
 - **已知坑**（长期有效的放在这里，每轮替换时保留仍然有效的条目）：
   - 删文件后，先 `git add -- <路径>` 暂存删除，再跑 check-guards。判据 25 的扫描器用 `git ls-files` 取清单，已删未暂存的文件会让它报 ENOENT。按 AGENTS.md 规则 13，不要用无路径的 `git add -A`。
   - 用户会在轮中途提交，而且和我共用同一个工作区。**提交前务必 `git log --oneline -3`**；新文件 `git add` 和 `git commit` 放在同一条命令里，否则暂存的文件可能被用户的提交顺带卷走（第 119 轮 `2259a17` 发生过）。

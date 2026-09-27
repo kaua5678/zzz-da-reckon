@@ -92,7 +92,7 @@
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
 - [x] 第 2 刀（第 121 轮 Z2、Z6；第 122 轮 Z4、K0、Z5、Z1；第 123 轮 Z3、Z7–Z12；第 124 轮 Z13、D14 批与字段归类 §8，**完成**）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
-- [ ] 第 3 刀：核实其余 Z 类，并按 §4 做 S 类字段的取值 × 分支对照。
+- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；下一个是 `condition` / `requirement`。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
 ## 7. 已核结论（第 2 刀起）
@@ -222,6 +222,7 @@
   - `sheerForceFlat`（13014）、`sheerDmgBonus`（33100）：`buff.ts:721` 等处有 case；
   - 其余不在 case 里的键走 `applyStat` 的 default 分支按键名累加（`buff.ts:794`）；蕾米埃尔 14 项专属键由 `data/agentPanelStats.ts` 预铺初值。
 - **驱动盘口径**：`inferStatMode` 按 `display` 决定 pct / flat，2026-09-18（R27-J2）已实测穷举驱动盘主词条和副词条池 21 个属性全部登记，见 `panel.ts:188–215` 头注释与 `utils/__tests__/statModeParity.test.ts`。
+  - ⚠ **第 125 轮更正**：「全部登记」只说明不会落到兜底分支，**不说明口径对**。`display` 是展示字段，拿它决定结算口径是语义错用；6 号位 `impact` / `anomalyMastery` 因此被按固定值结算，与源数据相反。见 **D15**。
 - **数据小缺口（无影响）**：statDisplay 没有登记 7 个 `*SharpDmg` 键。标签回退到 `utils/statMeta.ts:76–82`（「电属性锐化增伤」等）；数值格式由调用方传 mode（14161 写的是 `mode: "pct"`，`AttributeConfigPage.vue:522`、`TeamConfigPage.vue:1191` 都会传），界面显示正确。不处理。
 
 ### D14 零访问的配置范围 / 蕾米埃尔 / formula 字段（归类时补核）：全部与引擎硬编码一致 → 无差异，有隐性耦合
@@ -249,4 +250,54 @@
 | **M 元数据** | 29 | `$schema`、`aliases`、`appearances`、`attackTypes`、`calculationStatus`、`defense`、`effectBuff`、`encounters`、`endDate`、`enemyIntel`、`faction`、`gameVersion`、`legacyIds`、`level60Stats`、`modeId`、`modelingNotes`、`phaseNo`、`playerBuffs`、`playerDebuffs`、`recommendedSpecialties`、`relatedAgentId`、`resistanceElements`、`resistanceOverrides`、`sources`、`startDate`、`url`、`verification`、`version`、`weaknessElements` |
 
 - 归 M 的说明：`relatedAgentId`（D12 冗余）、`attackTypes`（D11 无消费方）、Boss 那批含 `defense`（D10，catalog.bosses 整块无消费方）虽然名字像规格，但都已核实不进计算。
+- ⚠ `display` 虽归 D，但 `core/panel.ts:219` `inferStatMode` 拿它决定驱动盘词条的结算口径，这是 D15 的根因；CC-100 修完后它应回到纯展示。
 - 拿不准按 S（§2 规则）：`rarity`、`isTeammateOnly`、`teammateBuffId`、`basicBenchmarkMoveId`、`ownerAgentId` 等放在「S 待第 3 刀」。
+
+### D15 驱动盘 6 号位 `impact` / `anomalyMastery` 主词条：引擎按固定值结算，源数据是百分比 → **真实差异（影响 15 个角色的默认配装）**
+- **源数据怎么写**（R5：「数据是明牌的（nanoka / gachabase 爬取）」）：`public/static/build-recommendations.json`（nanoka 爬取）的 `main_stats` 每项带游戏内 `prop` 和 `format`：
+  - 6 号位冲击力 `prop 12202`、`format {0:0.#%}`；6 号位异常掌控 `prop 31402`、`format {0:0.#%}`；
+  - 对照：4 号位异常精通 `prop 31203`、`format {0:0}`（固定值，无 `%`）；攻击力% `12102`、生命值% `11102` 与冲击力 `12202` 同属 xx02 百分比变体；
+  - 规律无例外：所有百分比主词条的 format 都带 `%`，唯一的固定值主词条（异常精通）不带。
+- **catalog 怎么写**：`statRules.driveDisc.sRankMaxMainStat.impact = 18`、`anomalyMastery = 30`，本身不带口径；`statRules.statDisplay.impact.display` 与 `anomalyMastery.display` 都是 `"number"`。
+- **引擎怎么算**：`core/panel.ts:219` `inferStatMode` 读 `statDisplay[k].display`：`number` / `integer` 按 flat，`percent` 按 pct。于是 6 号位冲击力按 +18 点、异常掌控按 +30 点结算。`core/buff.ts:551` 的 `roughStats`（4 件套门槛粗算，如折枝剑歌异常掌控 ≥ 115）也按 `level60 + maxMain` 固定值相加，口径相同。测试把这个口径钉住了：`core/__tests__/discSetEffects.test.ts:407` 断言 6 号位冲击力增量恰为 18。
+- **差在哪（根因）**：`display` 描述的是**面板属性怎么显示**（冲击力、异常掌控在面板上显示为整数），不描述驱动盘词条按什么结算。拿展示字段当结算规格是语义错用。2026-09-18 R27-J2 的结论（`panel.ts:188–215` 头注释）引用的 4 条证据（statDisplay 的 display、roughStats、`STAT_META.anomalyMastery.mode`、测试注释「94 + 30」）全是仓库内部互相引用，没有一条来自源数据，**被本条推翻**。
+- **影响面**：build-recommendations 在 6 号位放冲击力或异常掌控的 15 个角色，默认配装全部受影响（差值 = 基础值 × 比例 − 固定值）：
+  - 冲击力（少算 4.1–6.7 点，约 3–5% 失衡效率）：1011（+6.5）、1071（+4.1）、1101（+6.1）、1141（+6.7）、1161（+6.7）、1251（+6.5）、1351（+6.5）、1361（+5.6）；
+  - 异常掌控（少算 4.8–15.3 点）：1281（+4.8）、1331（+13.2）、1401（+12.6）、1411（+7.2）、1501（+15.3）、1511（+7.8）、1541（+14.4）；
+  - 连带：4 件套门槛判定（roughStats）会随之改变；基础掌控低的角色（1111 / 1121 / 1271 / 1291，基础 86）按 pct 是 86 × 1.3 = 111.8，不再达到折枝剑歌的 115 门槛。这就是 R27-J2 当年「修掉」的现象，按源数据它本来就该不达标。
+  - `energyRegen` 的 display 是 `percent`，源数据 `prop 30502` 也带 `%`，一致，不受影响。
+- **建议**：见 §9 CC-100。
+
+### D16 驱动盘 31200 震星迪斯科 2 件套：catalog 写成 `impact / flat / 6`，源数据是 `Impact +6%` → **真实差异（导入错误）**
+- **源数据**：`data/raw/nanoka_equipment.json:52` `"desc2": "Impact +6%"`（韩文「충격력+6%」，build-recommendations 中文「冲击力+6%。」）。
+- **catalog**：`driveDiscSets[31200].twoPiece.effects[0] = {id: "effect_wiki_152_2pc", stat: "impact", value: 6, mode: "flat"}`，没有原文字段。
+- **引擎**：`core/buff.ts:439–443` 收集 2 件套，`applyStat` 的 `impact` 分支按 mode 走 `applyScalarStatBonus`（`buff.ts:241–245`），所以按 +6 点结算。**引擎忠实执行了 catalog，错在导入**（与 D6 同理：「数据可信」适用于源数据原文，不适用于导入环节产出的值）。
+- **对照组**：29 套 2 件套中，33000 法厄同之歌源数据「Anomaly Mastery +8%」，catalog 为 `anomalyMastery / pct / 8`，正确；只有 31200 错。
+- **影响面**：穿 31200 2 件套的角色（默认配装多为 4 件套，2 件套场景较少）；青衣基础冲击力 136，应 +8.16，现 +6。
+- **建议**：并入 CC-100。
+
+### D17 `mode` 的其余取值：只有 4 个属性按 mode 分流，其余混写无影响 → 无差异
+- **数据**：带 mode 的 stat 实例共 411 处（flat 276、pct 135）；17 个属性同时出现 flat 和 pct（如 `critDmg` flat 28 / pct 2、`dmgBonus` flat 38 / pct 6）。
+- **引擎**：`applyStat`（`core/buff.ts:664` 起）只在 4 个属性上看 mode：`impact`（`:688`）、`anomalyMastery`（`:691`）经 `applyScalarStatBonus`（`:241–245`，pct 乘基础值、flat 直加）；`energyRegen`（`:694–701`）、`flashEnergyRegen`（`:703–708`）分到 BonusPct / BonusFlat。其余属性都按百分点直接累加，mode 不参与；`atkPct` / `impactPct` / `impactFlat` 等名字自带口径的属性由 `CORE_STAT_BY_BONUS` / `PHASE_SCALAR_STAT_BY_BONUS`（`:159`、`:180`）按名字定口径，也不看 mode。
+- **逐条核对**：这 4 个属性在数据中共 40 处（含 `impactPct` 等名字自带口径者），除 D16 外，mode 与原文一致：14140、14141 异常掌控「提升 60 / 30 点」为 flat；14134、14145 能量回复「点 / 秒」为 flat；其余高级属性和效果为 pct。14136 `impactPct` 写了 `mode: flat`，但原文是「冲击力提升 4%」，引擎按名字走 pct，结果正确，mode 只是噪声。
+- **建议**：无需改。可在字段归类时把「对非分流属性写 mode」标为无效字段，不做数据清洗（R5 不改数据）。
+
+## 9. 转卡清单（第 4 刀输入，按影响面排序）
+
+### CC-100（D15 + D16）驱动盘词条的结算口径以源数据为准
+- **范围**：6 号位 `impact`、`anomalyMastery` 主词条改按 pct；31200 2 件套改为 `impact / pct / 6`；roughStats 同步。
+- **开工步骤**：
+  1. 找 statRules 和 31200 2 件套的生成源头：`timeout 40 git grep -n "sRankMaxMainStat\|effect_wiki_152_2pc\|statDisplay" -- scripts data`。如果 catalog 由脚本生成，就在脚本里改，并重新生成；如果是手写，直接改 catalog。
+  2. 结算口径不能再从 `display` 推断。在 `statRules.driveDisc` 下新增显式映射（建议名 `statSettlementMode`，值 `pct` / `flat`，按 build-recommendations 的 `format` 是否带 `%` 填写），`core/panel.ts` `inferStatMode` 改为先读它，缺失时再回退 `display`。回退点：删掉这个映射即恢复旧行为。新字段要同步 `src/types/catalog.ts` 的 `StatRules` 类型。
+  3. `core/buff.ts:551` roughStats：`impact` / `anomalyMastery` 按同一映射计算（pct：`level60 × (1 + maxMain / 100)`）。
+  4. 测试：改写 `discSetEffects.test.ts:407`（期望值改为 `1481 基础冲击力 × 0.18`）；新增夹具，断言 6 号位异常掌控按 pct、31200 2 件套按 pct；`statModeParity.test.ts` 按需调整。改写 `panel.ts:188–215` 头注释：写明 R27-J2 被 D15 推翻，证据是 build-recommendations 的 format 与 prop。
+  5. 验证：`npx vue-tsc -b`、`npm run verify`、check-guards、`bash .zc/perf/zd.sh cc100`。**预计非零差**，每一条 golden 差异都必须能归到「6 号位 impact / anomalyMastery」或「31200 2 件套」两个原因之一，出现无法归因的差异就停下查原因。
+- **与 R5 硬约束的关系**：这不是「顺手改数值」，而是先登记（D15、D16）再立卡；判据是源数据原文（nanoka 的 format / desc2），不是投稿或实测。
+
+### CC-101（D8）同互斥组的全队效果只计一次
+- 先写夹具复现（两名队友同穿 31900 原始朋克 4 件套 → 断言 dmgBonus 只 +15），再在 `core/inCombatBuffs.ts:164–190` 按 `group.exclusiveGroup` 去重。只影响重复穿戴场景，golden 预计零差。
+
+### 其余（零差、界面层）
+- D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。
+- D3：覆盖率按 `stackGroup ?? id` 联动。
+- D14：蕾米埃尔 canTriggerLuminize 集合与模块硬编码的一致性单测。
