@@ -69,6 +69,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 168 轮（2026-09-28，代码 `47869b28`（CC-144 零差准备）+ 文档提交「docs: round 168」；上一轮 = 44bc4c67 / 4f50c8b0）
+
+- **做到哪**：
+  - CC-144 试切 physical 默认，**结论不切**。全量 33 红，分四类：A 不变量破缺 2 条（阻塞）、B 测试写法 1 条（已修）、C 基线 3 条、D 数值钉 27 条。清单见 `docs/mcp-stun-dual-source.md` §9，日志在 WSL `/home/kaua/calc-arch/k168/vitest-default4.log`。
+  - 落地零差准备：`src/core/stunPlanProjection.ts` 新增 `DEFAULT_STUN_PLAN_PROJECTION_CODE: number = 0`；`useResourceCalc.ts` 与 `calcOutputMemo.test.ts` 都读它。验证：zd `cc144prep` DIFF 0；verify195 EXIT=0；calcOutputMemo 在常量改成 4 时反向验证 6/6 通过。
+- **下一步（按顺序，可直接开工）**：
+  1. **CC-145：叶瞬光队赠行单一口径**。复现：临时把 `DEFAULT_STUN_PLAN_PROJECTION_CODE` 改成 4，跑 `npx vitest run timeLedgerInvariants outerCycleColdStart`（期望红：auto-1431-1481-1491 / -1341 账本 5.000 ≠ 赠行 4.000；叶瞬光 giftForms 3→4）。在 `src/mechanics/agents/yeshuguang.ts` 里找「按失衡次数乘」的赠送量，看它读的是 `stunCount`（计划值）还是 `countStun`；对照 `core/resource/tailPipeline.ts` 第 209 行（账本）与 `resourceCalc/ultimatePromote.ts` 第 107 行附近（装配）各读哪个。修成都走 `countStun`；off 下必须零差（zd）。
+  2. **CC-146：auto-1591-1571-1211 种子不变性**。复现：同样临时改成 4，跑 `npx vitest run seedInvariance`。先确认是不是「首轮没有 prevPoolStunCount 回落计划值」造成的：把首轮回落改成用种子对应的物理次数估计，做原型比较。不许放宽闸门。
+  3. 两张卡都绿之后，重做 CC-144：常量改成 4，逐条处理 D 类（测机制的用例显式钉 0，测缺省产出的更新期望值并写原因）；重生成两份基线；重新考虑难度阶梯 G4（§9.4 末条）；按 §8.4 做 104 队分类表（探针草稿 `k168/zzK168.test.ts`，没跑过，先校正字段名）。
+  4. 洛克茜 `energyRegenOutOfCombat`；副词条优化器接入接收槽过滤（低优先）。
+- **本轮拍板**：
+  - 不切默认。依据：不变量破缺没有解释空间（第 167 轮交接第 4 条）。回退点：无（缺省未动）。
+  - 缺省编码收成单一常量，零差。回退点：`git revert 47869b28`。
+- **已知坑**（新增）：
+  - `export const X = 0` 会被 TS 收窄成字面量 `0`，测试里写 `X === 2` 时 vue-tsc 报 TS2367；要显式标注 `: number`（vitest 不做类型检查，只有 verify 的 build 阶段会报）。
+  - 难度阶梯的「全关」写死 0 是有意的（阶梯语义），别顺手改成读缺省常量。
+
 ### 第 167 轮（2026-09-28，代码 `44bc4c67`（CC-142）+ 文档提交「docs: round 167」；上一轮 = 98693cac / 68bd9d0c）
 
 - **做到哪**：
@@ -88,25 +105,6 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **已知坑**（新增）：
   - `convergence.ts` 里 `allocateAxisWindows(resolvedAxes, stunCount)` 有 6 处，锚文本不唯一；改哪处要带上相邻的唯一行做锚。
   - `c167/hook167.py` 会把当前 `convergence.ts` 备份到 `/tmp/cc142/convergence.ts.orig`，覆盖旧备份；恢复一律用 `git checkout -- <文件>`，别信那个备份。
-
-### 第 166 轮（2026-09-28，代码 `98693cac`（CC-143）+ 文档提交「docs: round 166」；上一轮 = d395ba79 / cf4623b3）
-
-- **做到哪**：
-  - CC-143 结清：physical 两队巨额截断的主体是真实溢出（折叠环停滞收敛、截断口径合法）；真缺陷是 S3 全档不可行时保基线。新增降配第三层「缓解档」（`src/composables/resourceCalc/feasibilitySearch.ts` `selectDownscaleScale` + `solveTeam.ts` 的 `relief` / `reliefTruncation`）。physical 截断 177.0→40.6s；默认预设零差，zd `cc143` DIFF 6 全在 off 的 c6 / heavy 变体，逐条归因见 `docs/mcp-stun-dual-source.md` §7.3。
-  - 验证：verify192 EXIT=0（3810 passed / 29 skipped）；CG 25；vue-tsc 0；诊断 0；新测试 `s3ReliefTier.test.ts` 已反向验证。
-  - 探针存档 WSL `/home/kaua/calc-arch/t166/`。
-- **下一步（按顺序，可直接开工）**：
-  1. **CC-142：1521（希希芙）系「有失衡、没连携」残余 6 队**（§5.2 名单）。先用 `s3p165/zzS3p165.test.ts` 的写法（`S3P_IDS` 选队）加一列失衡连携秒数复测 physical 下是否仍为 6 队（CC-141 / CC-143 之后没复测过）；再读这些队的 `chainCountPerStun` 与 `chainCountTotalOverride`（`src/composables/resourceCalc/convergence.ts` 约 428 行）以及轴模式（1521 多为轴队，连携次数可能由轴栈窗口数决定）。
-  2. CC-142 结清后**切 physical 默认**：步骤见 §7.4 末条。
-  3. 洛克茜 `energyRegenOutOfCombat` 读法疑点；副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先）。
-- **本轮拍板**：
-  - 第三层取「截断最小 + 外层 stable」，否决「首个缓解档」（太弱）和「不限 stable」（cycle 2→4）。依据与数字见 §7.2。
-  - 折叠环停滞判据把 71s 残差判为收敛：**不改**。依据：需求超预算时残差停滞是必然的，截断负责收尾；改判据只会多跑轮数。
-  - 默认口径下 c6 / heavy 变体的伤害上升（+6%～+43%）是有意改进：旧行为保满交互再截掉最多 220s。
-- **已知坑**（新增）：
-  - `bg.sh` 后台启动的命令末尾要带 `sleep 1`（或更久）再返回，否则 wsl_exec 返回时进程被回收、log 都不会生成（本轮踩了两次）。
-  - 后台 verify 跑的时候不要做「回退源文件做反向验证」这类操作，会污染 verify 结果；反向验证放在 verify 之前或之后。
-  - zd 的 `/heavy`、`/heavyGate` 变体在同一个 store 上顺序运行，结果带路径依赖；与冷启动单跑不一致时，以冷启动为准做归因。
 
 ### 第 162 轮（2026-09-28，文档提交「docs: round 162」，无代码；上一轮 = 30daa4b1 / 76a5aff6）
 
