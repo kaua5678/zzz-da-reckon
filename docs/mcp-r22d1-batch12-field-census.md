@@ -1679,6 +1679,27 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 1. 可选补测（CC-43e 遗留）：单测锁「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」。入口在 `src/composables/resourceCalc/roundInputs.ts` 的 `ownsPromoteVariantAxisBlocks` 判定处；目前靠 rowsnap 兜底。做法：用 setupHarness 组一个无琉音、但轴里含 promoteVariant 块的队伍（先 grep 预设 `promoteVariant` 找块形态），断言终结技行里没有转大行；再反向变异（去掉 owns 判定）看它变红。
 2. 判据 7（展示层越层 14）是剩下最大的棘轮债，但 plan 里写明全是真引擎调用，需要逐条设计，不适合机械清理。
 3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
+### 5.53 CC-46 done：补测「无转大块声明者时跳过 promoteVariant 轴块」（lead-arena-0925c，2026-09-27 第 66 轮）
+
+**提交**：`d655e9c`，新测试 `src/composables/__tests__/promoteVariantSkip.test.ts`（2 条），不改源码。回退：`git revert d655e9c`。
+
+**测法**
+- 直测 `createConvergenceRoundInputs(...).buildStackAxes(axes)`（构造方式照搬 `src/mechanics/__tests__/nextRoundFeedbackR19.test.ts`）。
+- 探针轴：slot0 般岳终结技 `1471021` 两块，一块普通（startTime 0），一块 `promoteVariant: '60'`（startTime 3）。
+- 有琉音队 [1471, 1481, 1211]：两块都保留，转大块 decibelCost = 0，普通块 > 0。
+- 无琉音队 [1471, 1311, 1211]：只剩普通块（startTime 0）。
+- 同 moveId 的普通块是对照组，证明跳过只针对 promoteVariant。
+
+**为什么不走整管线（踩坑，已实测）**：第一版用 `useResourceCalc().stackTraversalResult.executed` 断言。有琉音队里只含转大块的探针轴被求解器判为不可行（solveTeam.ts 的 overBudget / topUpIllegal 分支）⇒ `forceNoAxis` 退回非轴态 ⇒ `calcOutput.resolvedAxes = []` ⇒ `stunAxisResult`、`stackTraversalResult` 都是 null。整管线断言测到的是求解器回退，不是跳过判定。以后给轴相关判定补单测，优先直测 `buildStackAxes` / `resolveAxes`（createConvergenceRoundInputs 已导出）。
+
+**验证**
+- 反向变异 1：roundInputs.ts 跳过判定改为 `if (false && …)` ⇒「无琉音」那条红；恢复后 git diff 为空。
+- 反向变异 2：liuyin.ts `ownsPromoteVariantAxisBlocks: true → false` ⇒「有琉音」那条红；恢复后 cmp 一致。
+- vue-tsc 0；`npm run verify` 通过（`/home/kaua/calc-arch/verify46.log`，读数见 coord 第 66 轮）。
+
+**下一步（按优先级）**
+1. 剩下最大的棘轮债：判据 7「展示层越层 import」14 处（`scripts/check-guards.mjs` RATCHET_BURNDOWN 该条的 plan 列了明细：getAgentMechanic×4 / buildTeammateBuffSourceContext×2 / calcPanel / applyTargetedStat / allocateAxisWindows / computeOptimalSubStats+getTemplate / readImpactVar+writeImpactVar / agentSpecs / computeBanyueMingw…）。都是真引擎调用，做法是编排层（composables）包一层只读 API，view 改为调它。建议先挑 `getAgentMechanic×4`：逐个看 view 用它读什么，在 composables 里加一个返回纯数据的 computed，每迁一处就下调 `EXHIBITION_LAYER_IMPORT_BASELINE` 和 frozen（与代码同批提交）。
+2. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
