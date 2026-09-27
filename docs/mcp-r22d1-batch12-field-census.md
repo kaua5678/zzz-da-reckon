@@ -2201,6 +2201,28 @@ ImpactChart.vue 的改动：
 3. `:448` 波可娜 1351 C6 时禁用 `pulchra_extra_trap_followup`（防与 pulchra_cinema_6_trap_all 双计）：本质是 buff 数据互斥，方向是 teammate-buffs 数据加 `disabledAtCinema: 6` 或 `supersededBy` 字段，store 通用处理。数据结构改动，低优先级 CC-64c。
 - 其后：`TeamConfigPage.vue` 13 处角色专属表单项（§5.68 表）；CC-60（低）。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁。
+### 5.70 CC-64 done：stores/config.ts 默认平A权重写死 → 模块声明 defaultBasicAttackTimeWeight（lead-arena-0925c，2026-09-27 第 83 轮）
+
+**提交**：`ac4e8d3`，改动 5 个文件：
+- `src/mechanics/types.ts`：`AgentMechanicModule` 新增 `defaultBasicAttackTimeWeight?: number`（新上阵时的平A时间分配权重；未声明走通用口径）。
+- `src/mechanics/agents/remielle.ts`、`vivian.ts`：各声明 `defaultBasicAttackTimeWeight: 0`。
+- `src/stores/config.ts`：`defaultBasicAttackTimeWeight(agent)`（函数名保留，`@fact engine:平A权重阶梯` 的锚点指向它）两行写死换成「按 `agent.id` 查模块，查不到再按 `agent.teammateBuffId` 查」，声明优先；支援/防护 → 0、其余 → 1 的通用分支不动。
+- 新测试 `src/stores/__tests__/defaultBasicWeightCc64.test.ts`：catalog 全角色经 `config.getDefaultBasicAttackTimeWeight` 与原写死逐值相等；null ⇒ 1；构造「只靠 teammateBuffId 命中」的别名 agent 也一致。
+
+**拍板：store 直接按值 `import { getAgentMechanic } from '@/mechanics'`**（此前 store 只 `import type` mechanics）。
+- 依据：① `src/mechanics/**` 对 `@/stores` 只有 `types.ts` 一处 `import type`，无值边 ⇒ 不成环；② core（`core/resource/helpers.ts` 等）早已按值 import `@/mechanics`，而 store 本就依赖 core；③ 走 `agentMechanicView`（composables）会让状态层反向依赖编排层，更糟。守卫 24 条全过（没有规则禁止 store → mechanics）。
+- 必须从 `@/mechanics`（index，会触发全部模块注册）导入，**不要**从 `@/mechanics/registry` 直接导入（注册表可能还是空的）。
+- 回退：`git revert ac4e8d3`。
+
+**验证**：24 条守卫、check-tokens、vue-tsc 均 0；新单测全过；反向变异（删 vivian.ts 的声明行）→ 变红，已恢复 cmp 一致。`npm run verify` 通过：318 files / 3657 tests，24 guards（`/home/kaua/calc-arch/verify64.log`）。未做 perf 零差：改动只影响「新上阵时写入 char.basicAttackTimeWeight 的默认值」，单测已对全角色逐值锁定，计算管线读的是 char 上的值，与本卡无关。
+
+**下一步（CC-64b，可直接开工）：蕾米埃尔额外能力档位（`src/stores/config.ts` :390–:436，已读）**
+- 现状：`getRemielleAdditionalState()` 按 `agent.id / teammateBuffId === '1581'` 找蕾米埃尔，算 active（队友里有异常职业或同阵营）、anomalyCount（全队异常职业数）、tier = active ? clamp(anomalyCount,1,3) : 0；`resolveSpecialTeammateBuffEnabled(buffId, base)` 对 5 个 buff id 门控：`1581.additional_ability.atk_{1,2,3}_anomaly`（active && tier === N）、`1581.core_passive.refringe_3_anomaly`（tier === 3，不看 active）、`1581.additional_ability.prismatic_buildup`（active）。
+- 方案：模块钩子 `teammateBuffGate?(input: { buffId: string; baseEnabled: boolean; team: ReadonlyArray<{ agent: Agent | null }>; ownerIndex: number }): boolean | undefined`（undefined = 不归我管）。store 里：对每个 buff，找 buff 所属角色（buffId 前缀 `1581.` 或 `buff.ownerId`，先读 teammate-buffs 数据确认哪个字段可靠）→ 查该角色模块的 `teammateBuffGate`；把 active/tier 计算逐字搬进 remielle.ts。
+  - ⚠ 注意 `1581.additional_ability.*` 这些 buff 之后还会过「通用额外能力门控」（:450 起，`buff.ownerId && sourceLabel === '额外能力'` 查 aaActiveMap）——两道门控的先后顺序不能变。
+  - 测试：构造队伍（蕾米埃尔 + 0/1/2/3 个异常职业、同阵营/不同阵营）× 5 个 buff id × baseEnabled 真/假，对照原函数逐值相等；再跑 store 的 buff 开关出口（grep 调用 `resolveSpecialTeammateBuffEnabled` 的外层函数名）整体对照。
+- 其后：CC-64c 波可娜 1351 C6 buff 互斥（:448，数据字段方案，低）；`TeamConfigPage.vue` 13 处角色专属表单项（§5.68 表）；CC-60（低）。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁、perf 夹具缺「11号 + 平A兜底」场景（§5.69）。
 ## 附录：普查脚本 census.sh
 
 ```bash
