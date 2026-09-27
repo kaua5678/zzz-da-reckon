@@ -2119,6 +2119,33 @@ ImpactChart.vue 的改动：
 2. 建议方案：`AgentMechanicModule` 加展示层可选声明 `axisExtraBlocks?: ReadonlyArray<{ moveId: string; label: string; quota: number | ((cinemaLevel: number) => number); actionTime: { sumOf: readonly string[]; scaleAtC6?: number } | { fixed: number } }>`（纯数据，页面按 findMove 求行动时间、按 axisTimes 统计已捏），页面两段 `if (c.agentId === …)` 合并为一段循环。**先照抄原页面的数值**（诺姆的 actionTime / remaining 口径以源码为准，别凭本文）。若读完发现两块逻辑差异大到数据描述不了，退而用可选函数 `axisExtraBlocks?(ctx: { cinemaLevel: number; actionTimeOf(mid: string): number; consumed(mid: string): number })`，同样返回候选块数组。
 3. 测试：对照基准照抄原两段逻辑，用 harness 队伍（诺姆/希格莉德 各 0 命与 6 命，加一个无关角色）比对候选块数组逐字段相等；反向变异 = 删声明。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b 其他 dominant 异放角色开放占比调节（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁（§5.64）。
+### 5.67 CC-61 done：StunAxisPage 诺姆 / 希格莉德专属轴块 → 模块钩子 axisExtraBlocks（lead-arena-0925c，2026-09-27 第 80 轮）
+
+**提交**：`c73f7ab`，改动 6 个文件：
+- `src/mechanics/types.ts`：`AgentMechanicModule` 新增可选钩子 `axisExtraBlocks?(input: { cinemaLevel; actionTimeOf(moveId) }): ReadonlyArray<{ moveId; label; actionTime; quota }>`，**展示层专用，不参与计算**。`actionTimeOf` 由页面注入（查本槽技能表），与 CC-43f `expandAxisAction` 同范式（mechanics 不能按值导入 stores）。
+  - 拍板：用**函数钩子**而不是纯数据。依据：希格莉德的行动时间要查技能表并按影画缩放，纯数据要引入「sumOf/scaleAtC6」这类小 DSL，只为 2 个角色不值得；函数钩子与 expandAxisAction 一致。回退：`git revert c73f7ab`。
+- `src/mechanics/agents/norma.ts`：`axisExtraBlocks: () => [{ moveId: 'norma-hat-chain', label: '诺姆转连携', actionTime: 0, quota: 9 }]`（注释写明该 id 同时被 roundInputs#buildStackAxes 与 core/stunAxis 识别为 0 时长标记块）。
+- `src/mechanics/agents/sigrid.ts`：`axisExtraBlocks` = `SIGRID_POZHEN_MOVE_ID`「破阵连段」，actionTime = `SIGRID_LANCE_SEGMENT_IDS` 三段 actionTime 之和 × (影画≥6 ? `SIGRID_C6_POZHEN_TIME_FACTOR` : 1)，quota 9。**先求和再乘**，与原页面 `pzSum * pzScale` 浮点逐位一致（不要改成逐段乘再求和）。
+- `src/composables/agentMechanicView.ts`：门面 `agentAxisExtraBlocks(agentId, input)`，未声明 ⇒ []；类型 `AxisExtraBlockDecl`。
+- `src/views/StunAxisPage.vue`：两段 `if (c.agentId === '1571' / '1591')` 合并为一个循环（位置不变：寒冰触手块之后、连段块之前），remaining = max(0, quota − 已捏×轴次数)，key 仍为 `${slot}:${moveId}`。
+- 新测试 `src/composables/__tests__/agentMechanicViewCc61.test.ts`（2 条）：catalog 全角色 × 影画 0..6 逐字段对照原两段写死（命中恰 14 = 2 角色 × 7 档）；破阵块时长 > 0 且 C6 = 0.75 倍；页面源码不再含 `=== '1571'` / `=== '1591'`。
+
+**验证**：24 条守卫、check-tokens、vue-tsc 均 0；新单测 2 条全过；反向变异（删 sigrid.ts 的 axisExtraBlocks 行）→ 变红，已恢复 cmp 一致。`npm run verify` 通过：315 files / 3652 tests，24 guards（`/home/kaua/calc-arch/verify61.log`）。
+
+**StunAxisPage 剩余（更新 §5.66 表）**
+| 位置 | 状态 |
+|---|---|
+| 诺姆 / 希格莉德专属块 | **CC-61 done** |
+| :297 banyueSlot（1471）、:313 yixuanSlot（1371） | **下一张 CC-62**（见下） |
+| :268 有琉标签、:264/266 伊德海莉章节（1051） | CC-60，低优先级（预设数据自带档位标签） |
+| 寒冰触手块 `1051024`（按技能表里有没有这个招式判断，不是 agentId 判断）、:~663 `1371_c1_lightning` | 低优先级；1051024 可并入 axisExtraBlocks（伊德海莉声明 `{ moveId:'1051024', label:'寒冰触手', actionTime:0, quota:9 }`，⚠ 原 key 带 `:tentacle` 后缀，迁移要保留 key 或确认 key 只作 v-for 用） |
+
+**下一步（CC-62，可直接开工）**
+- 现状（已读）：`banyueSlot` 驱动明王 banner（:63-64，含 6 命满覆盖文案）、明王 lane（:115-117，top 84px）、`mingwangTag`/`mingwangWindowsFor`（8s 窗）；`yixuanSlot` 驱动凝神 banner（:67）、凝神 lane（:127，top 104px）、`ningshenTag`/`ningshenWindowsFor`（15s 窗）。文案、窗口长度、lane 位置全是页面自有的 UI。
+- 拍板方案（可逆）：模块声明 lane **种类**而不是 UI：`axisWindowLane?: 'mingwang' | 'ningshen'`（展示层专用）；般岳声明 'mingwang'、仪玄声明 'ningshen'；门面 `teamAxisWindowLaneSlot(team, kind)` = 第一个声明该种类的槽位，无 ⇒ -1。页面 :297/:313 改为 `teamAxisWindowLaneSlot(configStore.team, 'mingwang' / 'ningshen')`，其余不动（banner 文案、窗口长度仍按种类写在页面里，属 UI）。
+  - 依据：两条 lane 的 UI 差异（文案、6 命满覆盖、窗口 8s/15s、层数）大，全面数据化收益低；只把「谁拥有这条 lane」交给模块，消掉最后两个 agentId 字面量即可。
+- 测试：全角色 × 若干队伍（般岳/仪玄在 0/1/2 槽、都不在），`teamAxisWindowLaneSlot` == 原 findIndex；页面源码不含 `=== '1471'` / `=== '1371'`；反向变异删声明。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁（§5.64）。
 ## 附录：普查脚本 census.sh
 
 ```bash
