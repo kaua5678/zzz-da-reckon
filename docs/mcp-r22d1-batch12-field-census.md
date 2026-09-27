@@ -2720,3 +2720,29 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 验证：validate-data 366 项、check-guards 24 项、modelingGaps 9 条通过；verify 见 `/home/kaua/calc-arch/verify109.log`（338 files / 3707 tests EXIT 0）。
 - 回退：`git revert e1ef565`。
 
+### 5.98 CC-91 done：薇薇安死通道处置 + 判据 25「无类型记录键死读」（lead-arena-0925c，2026-09-27 第 110 轮）
+
+**CC-91a `61fce8b`**（vivian.ts、vivian.test、两份时间基线、1331 状态表）
+- 原文核对（`data/raw/nanoka_missing/full/1331.json`）：「支援突击：裁决羽刃」回复 2 点飞羽，发动后进入裙裾浮游；「淑女礼仪·舞步」命中回复 1 点，突进期间触发极限闪避再回 1 点（影画6 再额外 +1）。
+- **决定 1**：支援突击次数接本槽 `cfg.parryCount`。依据：招架支援之后接的就是支援突击，`parryNoFollowUpCount` 表示不接的招架；claret.ts 的 `assistFollowUpMoveId × parryCount` 是同一口径。影响：飞羽 +2×弹刀，悬落次数 +弹刀（悬落本来就计入「E/Q/支援/连携」四项）。
+- **决定 2**：舞步命中改为显式 0，并注明未建模。依据：`IterationState` 只有平A时间和强特/终结/连携次数，没有逐招式次数；src 里也没有任何地方引用舞步招式，派生会是臆造。`computeVivianCycle` 的 `danceHitCount` 参数保留，将来能派生时只需改 `cycleFromInput` 一行。
+- 数值影响（逐队写在提交说明里）：只波及含 1331 的队伍。1331 单人伤害 c0 +0.85%、c3–c6 +3.2%~+3.7%；auto-1261-1331-1581 的外层收敛从 stable 变为 cycle（基线已有 9 例 cycle，守卫只禁 maxIter）；auto-1331-1561-1411 的 slack 从 1.7 降到 0（改善）。golden 与棘轮基线已按规则 10 重生成。
+- 状态表：1331 `vivian_cycle` 的 note 原写「落羽生花追击次数显式可调」，已过时（设置项只剩三个覆盖率），改为写明两源自动推导和飞羽各来源；命座 1331 影画6 的 pending 同步改写。
+- 回退：`git revert 61fce8b`（基线随之回退）。
+
+**CC-91b `5476250`**（判据 25，check-guards 24→25 条）
+- 盲区根因：`zc dead-channels`（LS）和判据 14 只扫**类型里声明过的字段**。`record.vivianDanceHit` 是从 `cfg as unknown as Record<string, unknown>` 按字符串键读取的，没有任何类型声明，所以两者都看不见。
+- 实现：`scripts/lib/record-key-dead-reads.mjs`（口径写在头注释）。
+  - 记录变量：`as [unknown as] Record<string, unknown|any>`。
+  - 读取：遮罩注释和字符串后，收集 `X.key`（不含赋值和方法调用）。
+  - 判死：该键在全仓 src 非测试文件中（遮罩注释、保留字符串），除这些读取之外零出现。
+  - 口径**宁漏不误伤**：简写属性、setting id 字符串、类型声明等任何其他出现都算「有人用」。
+  - 遮罩保长度，保证行号准确。
+- 原型踩坑：
+  - ① 不加 `(?![\w$])` 时，遇到写入语句正则会回溯成更短的前缀，误报 327 个；
+  - ② 不遮罩字符串时，`'phoenix.chargedAttackCount'` 这类 setting id 被当成读取，误报 3 个。
+- 反空洞：detector 自证 4 组判别 fixture，另设读取数下限 `RECORD_KEY_MIN_READS = 150`（实测 388）。可红性：换回 CC-91a 之前的 vivian.ts，判据精确报出 `vivianDanceHit:207`、`vivianAssistCount:210`。
+- 当前死读 0，豁免表 `RECORD_KEY_DEAD_READ_ALLOWLIST`（guard-registries.mjs）为空，只减不增；由 check-guards.mjs 再导出，并在 check-guards.d.mts 声明。
+- 验证：vue-tsc -b 0 错误；check-guards 25 项；verify 339 files / 3713 tests EXIT 0（`/home/kaua/calc-arch/verify110.log`）。
+- 回退：`git revert 5476250`，并把 checkGuards.test 的条数改回 24（revert 会一并带回）。
+

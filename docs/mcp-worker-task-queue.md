@@ -257,6 +257,13 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
     4. 在 `scripts/zc-dead-channels.mjs` 或 check-guards 中补一个检测：`src/mechanics/agents/*.ts` 里 `record.<camelKey> ??` 这类读取的键，如果全仓（src、scripts、public/static）没有任何写入或声明，就报出来。先用这两个已知键自证能检出，再看有没有其他命中；已有存量进基线（guard-registries.mjs）。
   - 验收：vitest、vue-tsc -b、check-guards、verify 全部通过；状态表 1331 同步更新。
   - 回退：分两次提交（先修 vivian，再改守卫），出问题各自 revert。
+- **CC-91** done `61fce8b` `5476250`（§5.98）：支援突击飞羽已接通；舞步命中确认无法派生，登记为未建模；新增判据 25。**以后新增 `record.<key>` 读取时，必须同时有写入方（buildCharConfig 或编排层注入），否则 check-guards 会红。**
+- **下一张 CC-92：`src/views/TeamComparePage.vue` 拆分**（`zc status` 结构熵唯一超标：1553 行，线是 1500）。
+  - 先读 `git show 00873b3 --stat` 和提交说明，那是 R44 的纯搬运先例（逐字节保真）。
+  - 再读 `scripts/lib/guard-registries.mjs:404` 的登记项「TeamComparePage.vue sweepPage:第三人候选圈定」，确认它在判据里引用的是哪个锚点；搬运后锚点路径要同步改，否则对应判据会红。
+  - 拆法：把一段自成一体的 `<script setup>` 逻辑（例如 sweep 或第三人候选相关的 computed/函数）抽成 `src/views/teamCompare/` 下的 composable，模板不动。目标 ≤1450 行，留出余量。
+  - 验收：vue-tsc -b、check-guards（含 scoped 样式可达性判据）、verify；`npm run -s zc -- status` 不再报超标。
+  - 回退：单个提交，`git revert`。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。

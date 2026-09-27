@@ -261,7 +261,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-88 | done | `11706a1` | 状态表 7 条 partially_implemented 机制对照代码核实：5 条 → implemented（pending 已过时）、2 条 → implemented_approximation；机制部分实现 7→0 | census §5.95 |
 | CC-89 | done | `d6ef3af` | 机制维度 38 条 pending 核实（dsh 只读并行 + lead 抽查统一写入）：8 条更正（1041 潜能 → implemented 等），其余是有意近似 | census §5.96 |
 | CC-90 | done | `e1ef565` | 命座维度 109 条 pending 核实（8 批 dsh 只读并行、sched90.sh 自动补位，lead 抽查全部 STALE）：11 条更正（1031 影画1 → implemented；1271 影画2 反向失真；1331 影画6 暴露死通道） | census §5.97 |
-| CC-91 | 待做 | — | 薇薇安死通道 `vivianDanceHit`/`vivianAssistCount`（零写入恒 0）处置，并补 dead-channels 对「无类型记录字符串键只读」的盲区 | 队列 CC-90 行 |
+| CC-91 | done | `61fce8b` `5476250` | 薇薇安死通道：支援突击接 cfg.parryCount（原文 +2 飞羽→悬落），舞步命中显式 0 注明未建模；判据 25 无类型记录键死读（补 dead-channels 盲区，存量 0） | census §5.98 |
+| CC-92 | 待做 | — | 结构熵：`src/views/TeamComparePage.vue` 1553 行 > 1500，按 R44（`00873b3`）先例纯搬运拆分 | 队列 CC-91 行 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |
