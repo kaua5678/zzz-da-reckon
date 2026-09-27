@@ -92,12 +92,12 @@
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
 - [x] 第 2 刀（第 121 轮 Z2、Z6；第 122 轮 Z4、K0、Z5、Z1；第 123 轮 Z3、Z7–Z12；第 124 轮 Z13、D14 批与字段归类 §8，**完成**）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
-- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；第 130 轮完成 `coverage`（D20）；第 131 轮完成 `target`（D21，CC-105 已修）；第 132 轮完成 `buffModifiers`（D22）与 `formula` / `expression`（D23）。
+- [x] 第 3 刀（第 136 轮**完成**，52 / 52）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；第 130 轮完成 `coverage`（D20）；第 131 轮完成 `target`（D21，CC-105 已修）；第 132 轮完成 `buffModifiers`（D22）与 `formula` / `expression`（D23）。
   - 52 个字段中**已核 19 个**：`mode`、`condition`、`requirement`、`outOfCombatStat`、`specialty`（requirement 内）、`coverage`、`default`、`min`、`max`、`step`、`target`、`kind`、`skillTargets`、`skillTag`、`skillType`、`targetSkillType`、`buffModifiers`、`formula`、`expression`（其中 `specialty` 只核了 requirement 内的用法，其他出现位置随角色类字段再核）。
   - 第 133 轮完成效果数值核心一批（D24：`type`、`value`、`valuePerStack`、`maxStacks`、`defaultStacks`、`modificationValues`、`scope`）与 `source` / `sourceStat` / `defaultValue`（D25）⇒ **已核 29 个**。
   - 第 134 轮完成面板类一批（`advancedStat`、`baseStat`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat`，见 **D26 / D27**）⇒ **已核 34 个**。
   - 第 135 轮完成招式类一批（`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`，见 **D28 / D29**，另开 **D30 待核**）⇒ **已核 42 个**。
-  - **剩余 10 个 + `specialty` 其余位置**（身份类）：`agentId`、`attribute`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`isTeammateOnly`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`teammateBuffId`。
+  - 第 136 轮：**D30** 异常积蓄属性归属核完（无差异）；身份类 10 个（`agentId`、`attribute`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`isTeammateOnly`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`teammateBuffId`）+ `specialty` 其余位置核完（**D31**；音擎团队效果漏了特化门 → **CC-110 已修，零差**）⇒ **已核 52 个，第 3 刀全覆盖**（R5 验收条件「覆盖全部字段类型」满足；剩第 4 刀 D7 / D3 / D14）。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
 ## 7. 已核结论（第 2 刀起）
@@ -303,7 +303,7 @@
 
 - **数据怎么写**（脚本 `/home/kaua/calc-arch/req1.py`，非 null 共 79 处）：音擎 `effect.requirement {specialty,label}` 66；**音擎 effect 级 `{attribute}` 3（全在 14150 壳中之灵）**；驱动盘 effect 级 `{attribute}` 2、`{outOfCombatStat}` 4、`{specialty}` 1；驱动盘 teamBuff 组级 `{specialty}` 3。
 - **引擎怎么读**：
-  - 音擎 `effect.requirement.specialty`：由 `collectAllBuffs` 的 `matchSpecialty`（`wEngine.specialty === agent.specialty`）实现；`label` 是展示 → 一致。
+  - 音擎 `effect.requirement.specialty`：由 `collectAllBuffs` 的 `matchSpecialty`（`wEngine.specialty === agent.specialty`）实现；`label` 是展示 → 一致。**第 136 轮更正**：这只覆盖了自身通路；团队通路 `inCombatBuffs.ts` 漏了这道门，见 D31 / CC-110。
   - 驱动盘 selfBuff 的 effect 级（`core/buff.ts` `discRequirementMet` / `discEffectPassesRequirement`）、teamBuff 组级与 effect 级（`core/inCombatBuffs.ts` `discTeamRequirementMet`）：specialty / attribute / outOfCombatStat 三种都判定 → 一致（outOfCombatStat 口径：selfBuff 用粗算、teamBuff 用装备者精确面板，已有 @fact 注明，不在本条范围）。
   - **音擎 effect 级 requirement：修前零读取**。`collectWEngineBuffs` 只过组级 condition。
 - **差在哪**：14150 的 `etherDmg 20`、`anomalyDmgBonus 10`、`disorderDamageBonus 10` 三条限定以太装备者；非以太异常角色（简、月城柳、柏妮思、星见雅、普罗米娅、菲欧妮、维琳娜、爱丽丝、派派、格莉丝、蕾米埃尔等）装 14150 时多吃 +10% 属性异常增伤与 +10% 紊乱增伤（etherDmg 对非以太伤害本来无效）。
@@ -402,11 +402,33 @@
 - `levelValues`：只有 1581 的 4 行 `[12,14,16]`，`mechanics/agents/remielle.ts:96` 按 `indexOf(skillLevel)` 取 ⇒ 一致（与 D14 同源）。
 - `comboAlignRatio`：只有 1401012（爱丽丝 SW3）一处 0.749；`alice.ts:177` 自算 `1 - 1/actionTime` = 0.74893（actionTime 3.983）。数据是同一规则（前台 1 秒）的四舍五入值，差 7e-5 ⇒ 等价。拍板保持自算（规则比取整值精确）；若改读数据，golden 会有微小差异。
 
-### D30（待核）异常积蓄的属性：数据按招式 / 行写属性，异常侧多处按角色属性归属
+### D30（无差异，第 136 轮）异常积蓄的属性：引擎按招式属性归属
 
-- 85 个非物理角色的物理招式，其 `anomaly_buildup` 行 `damageElement = physical`（行级与招式级一致）。游戏内这类招式积蓄的是物理异常。
-- 异常侧读取方多处用 `agent.damageElement`：`resourceCalc/anomalyPanels.ts:129/138/163/234`、`damagePoolAnomaly.ts:330`、`damagePoolRelease.ts:89/131/216`、`positionCompare.ts:115/122`。**尚未确认**积蓄是否已在上游按行属性分流（例如 `damagePool.ts:188` `safeElement(row.element)`）。
-- 下一轮先查：积蓄行从 `rows[].damageElement` 到异常触发计数的完整路径；若物理行确实被记成角色属性积蓄，属于语义不同，走 CC 卡（影响所有普攻前段为物理的异常 / 紊乱角色）。
+- **数据面**（`/home/kaua/calc-arch/d30d.mjs` 全量扫描）：1150 条 `anomaly_buildup` 行，行级与招式级 `damageElement` 0 处不一致；属性 ≠ 角色属性的有 42 条，其中积蓄值 > 0 的**只有 4 条，全是 1241 朱鸢**（1241010 / 1241011 / 1241012「请勿抵抗 #4–#6」、1241019「火力压制 #2」，physical）。上一轮写的「85 个物理招式」是招式总数，绝大多数积蓄为 0（艾莲 1191、妮可 1031 的物理招式积蓄全为 0）。积蓄 > 0 却缺 `damageElement` 的行：0。
+- **积蓄路径**：`resourceCalc/helpers.ts:735` `foundElement = exec.element ?? move.damageElement ?? agent.damageElement` → `AnomalySkillExecution.element` → `core/anomalyPool/helpers.ts` 按元素累计 / `simulateTriggerCount` / `calcPerSlotAnomalyTriggers`（按贡献槽加权，不看角色属性）。平A聚合行 `helpers.ts:755` 取基准段的 `move.damageElement`；只有「模块覆盖秒均倍率」分支用角色属性（`helpers.ts:746`），而所有带积蓄的招式属性都等于角色属性（1241 除外，1241 不走覆盖分支）⇒ 等价。
+- **1241 的 4 条**：1241010–12 由 `zhuYuan.ts:174` 以 `element: 'ether'` 发放——这是「以太强化霰弹」机制（`character-mechanics.json` 1241 `zhuyuan_shells` 与模块注释），数据只收了未强化的物理版本，不是读错；1241019 无执行路径（全仓 0 引用），若用户手动计入则按数据记物理 ⇒ 一致。
+- 起点里列的其他读取方都不是积蓄归属：`anomalyPanels.ts:129–163` 是风化浸染选目标（队伍级），`damagePoolAnomaly.ts:330`、`damagePoolRelease.ts:89/131/216` 是「无状态链 / 无候选」时的兜底属性。
+- **旁注（界面层，不立卡）**：`positionCompare.ts:115–123` 用 `agent.damageElement` 判定「赠送」贡献（贡献属性 ≠ 角色属性 ⇒ 记到接收人头上）。唯一能触发的真实样本是 1241019 且队里另有物理角色，而它无内置执行路径；只影响位置对比页的积蓄展示，不进伤害。若将来要修，改成显式赠送标记（贡献来自 `yuzuhaTransfer` 等），回退点即该函数。
+- 结论：**无差异**。
+
+### D31（第 136 轮）身份类字段 + `specialty` 其余位置
+
+| 字段 | 位置 / 数据 | 引擎读取 | 结论 |
+|---|---|---|---|
+| `agentId` | `agentSkills[]`，62 条，与 `id` 全等 | `stores/catalog.ts:144` 建表键 | 一致 |
+| `attribute` | `agents[]` 62 条 | `core/buff.ts:405/420/561`、`inCombatBuffs.ts:60` requirement / 属性模板；伤害侧读 `damageElement` | 两字段 62 / 62 全等 ⇒ 冗余、无差异 |
+| `basicBenchmarkMoveId` | 1171 → 1171006、1441 → 1441009 | `skillRows.ts:126` 优先于硬编码与「第 3 段」 | 两条都指向合法的 basic #N 段（actionTime 0.877 / 0.388）⇒ 一致 |
+| `cinemaLevel` / `buff` | `combatBuffs.cinemaBuffs[]` 186 条（31 人 × 6） | `core/buff.ts:311` `cinemaLevel > 命座 ⇒ 跳过`，`buff.scope` 分流 | 一致 |
+| `isTeammateOnly` | 21 条，全 false | `multiplierCoefficients.ts:439` | 一致 |
+| `luminizeLevelValues` | 1581 的 4 个招式（招式级） | `remielle.ts:96` 读行级 `levelValues ?? luminizeLevelValues`；行级 `levelValues` 与招式级值全等（[12,14,16]） | 无差异；行级回退读的是不存在的字段（死回退），不改 |
+| `ownerAgentId` | 音擎 61 条 | 只用于对比 / 抽卡规划找专武（`freeCompare/engine.ts:94/168`、`teamCompare.ts:525`、`pullPlannerEngine.ts:94`） | 一致（专武不限制效果发动） |
+| `rarity` | 角色 62、音擎 83 | 界面、`multiplierCoefficients.ts`（系数页）、`freeCompare/engine.ts:171`（A 级默认精炼） | 一致；伤害面板用显式 `level60` 数值，不需要稀有度 |
+| `teammateBuffId` | 5 条（1171 / 1261 / 1411 / 1511 / 1581），全部等于自身 id | `agentMechanicView.ts:100/116`、`inCombatBuffs.ts` `ownerAliases` | `id` 与 `teammateBuffId` 两臂同值 ⇒ 冗余、无差异 |
+| `specialty`（角色） | 62 条 | 音擎自身通路 `buff.ts:557`、requirement（`buff.ts:404`、`inCombatBuffs.ts:59`）、伤害基底（D1 / Z1）、风化选目标 | 一致 |
+| `specialty`（音擎）/ `effect.requirement.specialty` | 83 / 66 条，两者 0 处不一致 | 自身通路：`matchSpecialty` 拦截；**团队通路 `inCombatBuffs.ts:137` 修前不拦截** | **语义不同 → CC-110 已修** |
+| `requirement.specialty`（驱动盘 teamBuff / selfBuff） | 3 + 1 条 | `inCombatBuffs.ts:59`、`buff.ts:404` | 一致 |
+
+- **D31 真实差异**：特化不符的装备者（例如强攻角色装支援音擎）不发动音擎效果——自身通路一直是这样，但团队效果仍向队友传播。21 把音擎带 teamBuff。内置预设与默认配装里没有特化不符的装备 ⇒ zd DIFF 0。
 
 ## 9. 转卡清单（第 4 刀输入，按影响面排序）
 
@@ -615,6 +637,13 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
 - **留白棘轮**（`timeFillRatchet.baseline.json` 已重生成，11 条全在洛克茜预设）：失衡次数 yixuan 4→3、yidhari / claret / banyue / billy 4→2；留白 yixuan 0→1.1s（强特少了、前台时间出现空档）、yidhari 1.7→1.6、claret 0.1→0、banyue 0.1→0；外层收敛出口 billy stable→cycle、claret cycle→stable。留白变差只有 yixuan 一条，原因同上，接受。
 - **回退点**：只需还原 `roxy.ts` 里 `cfg.exSpecialEnergyConsume` 那三行和两行 `energyConsume`，再重生成 golden 与留白棘轮基线。
 - 验证：vitest roxy 相关全绿、verify、check-guards、vue-tsc -b。
+
+### CC-110（D31）音擎团队效果按装备者特化拦截 ✅ done（第 136 轮，提交号见 git log「fix(CC-110)」）
+
+- 代码：`src/core/inCombatBuffs.ts` 团队通路加 `wEngine.specialty === agent.specialty`，与自身通路 `collectAllBuffs` 的 `matchSpecialty` 同口径。依据：数据 `effect.requirement.specialty`（66 把，与 `wEngines[].specialty` 0 处不一致）；不是实测。
+- 测试：新增 `src/core/__tests__/wengineTeamSpecialty.test.ts`（从 catalog 取第一把带无条件 teamBuff 的音擎，特化一致发放 / 不一致不发放）。反向验证：删掉那一行后「特化不一致」一例失败，恢复后 `cmp` 一致。
+- **zd**：`zd.sh cc110` DUMP DIFF 0、ROWS DIFF 0（内置预设无特化不符的装备）；golden / 留白棘轮无变化。
+- **回退点**：删掉 `inCombatBuffs.ts` 那一行条件（含三行注释）和新测试。
 
 ### 其余（零差、界面层）
 - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。

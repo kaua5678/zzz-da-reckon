@@ -69,23 +69,30 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 135 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-109)」）
+### 第 136 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-110)」）
 
 - **做到哪**：
-  - R5 第 3 刀完成招式类一批：**D28**（energyCost，洛克茜强特自旋零扣费 → **CC-109 已修**）、**D29**（其余招式字段无差异）、**D30 待核**（异常积蓄属性归属）。已核 42 / 52。
-  - CC-109 改了 `src/mechanics/agents/roxy.ts`、`src/specs/agents/1621.json`、`src/mechanics/__tests__/roxyWindEyeTiming.test.ts`，新增 `src/mechanics/__tests__/roxyExEnergyCost.test.ts`，重生成 `timeGolden.baseline.json`（10 条 delta）与 `timeFillRatchet.baseline.json`（11 条），都写进账本 CC-109。
-  - 上一轮：`075a84e`（CC-108，D26 / D27）。
+  - R5 第 3 刀**完成（52 / 52）**：**D30** 异常积蓄属性归属无差异；**D31** 身份类 10 个 + `specialty` 其余位置核完，唯一差异是音擎团队效果漏了特化门 → **CC-110 已修**（`src/core/inCombatBuffs.ts` 一行条件 + 新测试 `src/core/__tests__/wengineTeamSpecialty.test.ts`），zd DIFF 0，golden / 留白棘轮不变。
+  - 账本 §6 / §7 D30、D31 / §9 CC-110，卡表 CC-110，REQUIREMENTS R5 段已更新。
+  - 上一轮：`8909a05`（CC-109）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **D30 核查**：从 `catalog.agentSkills[].categories[].moves[].rows[kind=anomaly].damageElement` 追到异常触发计数。起点 `src/composables/resourceCalc/damagePool.ts:188`（`safeElement(row.element)`）与 `anomalyPanels.ts:129-234`。样本：1191 艾莲（冰，4 个物理招式）、1031 妮可（以太，12 个物理招式）。若积蓄按角色属性归属 ⇒ 语义不同，立 CC-110，zd + golden 表。
-  2. **R5 第 3 刀收尾：身份类 10 个**（`agentId`、`attribute`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`isTeammateOnly`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`teammateBuffId`）+ `specialty` 其余位置。做完即第 3 刀全覆盖（R5 验收条件）。
-  3. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
-  4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
-- **本轮拍板**：CC-109 是迄今最大的数值变化（洛克茜队伍 −54%～−69%）。依据：catalog 1621007「Energy Cost 10 / Energy Cost Per Second 30」、spec 1621.json 注记、模块自身风能账本都按 85/发 算；修前的 10/发 让账本耗能约为能量收入的 8 倍，属于内部矛盾，不是口径选择。回退点见账本 CC-109。
-- **未决项**：D30（见上）；D28 遗留的失衡轴 `roundInputs.ts:237` 解析口径（只影响用户自建轴）；D25 蕾米埃尔 sourceStat 局外 / 局内；D21 旁注 14150。
-- **本轮新增的已知坑**：
-  - zd 的 rowsnap / dump 只存每个 key 的哈希串，看不到行级差异；归因要靠「改动影响的数据 → 哪些角色 → 哪些预设」的集合对照（本轮工具 `/home/kaua/calc-arch/zdan.mjs <base.json> <after.json>` 列出差异预设）。
-  - 预设 JSON 里不写驱动盘 id，默认配装来自 `public/static/build-recommendations.json` 的 `characters.<id>.drive_disc_sets`；查「谁穿了某套」要搜这个文件。
+  1. **R5 第 4 刀**（都是零差界面项，做完 R5 标 `[done <commit>]`）：
+     - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变），入口先查 `panelPhases.ts:728` 与 28 个 fixed 效果的清单（账本 D7）。
+     - D3：覆盖率按 `stackGroup ?? id` 联动（账本 D3 / Z4）。
+     - D14：蕾米埃尔 canTriggerLuminize 集合与模块硬编码的一致性单测。
+  2. **R6 第 1 步续**：全景 `docs/ARCHITECTURE-OVERVIEW.md` §6 的 4 项；然后 R6 第 2 步（完成影响面最大的一项）。
+  3. 顺手可查：1251 的「Additional Energy Cost 20」、1091 与 1161 的 Follow-Up 耗能是否被模块消费。
+- **本轮拍板**：
+  - CC-110 按数据 `effect.requirement.specialty` 与自身通路现有口径补齐团队通路，不是实测；零差（内置配置里没有特化不符的装备），只影响用户手动给角色装特化不符的音擎的情况。回退点见账本 CC-110。
+  - `positionCompare.ts:115–123` 用角色属性判定「赠送」贡献，只影响位置对比页展示、且无内置触发样本，记旁注不立卡（账本 D30）。
+- **未决项**：D28 遗留的失衡轴 `roundInputs.ts:237` 解析口径（只影响用户自建轴）；D25 蕾米埃尔 sourceStat 局外 / 局内；D21 旁注 14150；D30 旁注 positionCompare。
+- **已知坑（本轮与上轮新增）**：
+  - zd 的 rowsnap / dump 只存每个 key 的哈希串，看不到行级差异；归因用 `node /home/kaua/calc-arch/zdan.mjs <base.json> <after.json>` 列出差异预设。
+  - 预设 JSON 里不写驱动盘 id，默认配装来自 `public/static/build-recommendations.json`；查「谁穿了某套」要搜这个文件。
   - `TIME_GOLDEN_UPDATE=1 npx vitest run src/composables/__tests__/timeGolden.test.ts` 重生成基线；重生成前先把 delta 表写进账本。
+  - `character-mechanics.json` 很大，`grep -o '.{0,250}关键词'` 会超时；用 Python 读文件再 `re.finditer`。
+  - 在一条管道里用 `grep -v 'X: '` 过滤时要小心把全部结果滤掉（本轮 `totalAnomalyBuildUp` 一度误判为零引用）。
+
 - **未决项**：
   - 数据自己标了「部分建模」的音擎还有 3 把：14126 `partially-modeled-anomaly-buildup-text-only`、14152 `partially-modeled-duration-extension`、14001 `partially-modeled-proc-damage`（统计见 `verification.effectBuff`）。它们是数据侧没建模的效果，不是「引擎没读对」，不属于 R5 的对账范围；R5 收尾时在账本登记为「数据侧已知缺口」，不立卡。
   - D18 的潜在风险：新数据若把属性 / 特化 / 角色限定只写进 condition 散文，会静默生效。音擎 effect 级 requirement（specialty / attribute / wearerAgentIds）已生效，录入时应写 requirement。驱动盘侧 `discRequirementMet` 不认 `wearerAgentIds`（当前 0 处），若日后出现需同步。

@@ -137,6 +137,10 @@ export function collectInCombatTeamBuffs(
       const group = wEngine?.effect?.teamBuff
       if (
         wEngine && group?.effects?.length
+        // CC-110（R5 身份类 specialty）：特化不符的装备者不发动音擎效果——与自身通路
+        // `collectAllBuffs` 的 `matchSpecialty` 同口径（数据 `effect.requirement.specialty` / 游戏规则）。
+        // 此前团队通路漏了这道门，特化不符时队友照吃团队效果。
+        && wEngine.specialty === agent.specialty
         && wEngineConditionMet(group.condition, {
           wearerAttribute: agent.attribute,
           enemyWeakness: deps.enemyWeakness,
