@@ -108,7 +108,7 @@ function buildGraceCharConfig(input: AgentCharConfigInput): void {
   record.graceCinemaLevel = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
 }
 
-// @fact agent:1181/潜能觉醒电伤 口径: 潜能觉醒·超频工程引擎（钢械交响曲 II~VI）按 `potentialLevel` 取档 10/15/20/25/30%，与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1181.json `potential_detail` + R58 四臂正交实测@2026-09-20 | 验 src/mechanics/__tests__/graceCinemaTier.test.ts | 锚 src/mechanics/agents/grace.ts#GRACE_POTENTIAL_ELECTRIC_DMG | 信 确认
+// @fact agent:1181/潜能觉醒电伤 口径: 潜能觉醒·超频工程引擎（钢械交响曲 II~VI）按 `potentialLevel` 取档 10/15/20/25/30%，与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1181.json `potential_detail` + R58 四臂正交实测@2026-09-20·锚未变@2026-09-27 | 验 src/mechanics/__tests__/graceCinemaTier.test.ts | 锚 src/mechanics/agents/grace.ts#GRACE_POTENTIAL_ELECTRIC_DMG | 信 确认
 // ⟳复核: nanoka 若刷新 1181 的 potential_detail，逐档对账 II~VI 是否仍为 10/15/20/25/30 | 到期 2027-03-31
 /** 永续面板项：潜能电伤（潜能 II~VI = 10~30%）+ AA 感电强化层数 */
 function applyGracePanel(input: AgentPanelInput): void {

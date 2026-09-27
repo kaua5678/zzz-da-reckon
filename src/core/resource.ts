@@ -77,7 +77,7 @@ export const TIME_BUDGET_TOLERANCE_SECONDS = 1
  * 复核：1s 门槛下 ratchet 绝对不变量（stun>0/outerExit≠maxIter）/runArchiveDeploy（116k 样本）/
  * allAgentsSweep（C6>C0 等不变量）/yidhariInteractionGrid 全绿，旧盆不复现（实测数字见
  * underfillRefund.test.ts 与 docs 坑19① 否决记录）。
- * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**无排除队**——1591 一族 2026-09-10 解除（该族试探现进入即被 fits 门拒，开关零差异），1051/1531 已随热启动规范种子修复放回）；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08·复核@2026-09-10（能量行级 Σ 后全链零差异）·复核@2026-09-25 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
+ * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**无排除队**——1591 一族 2026-09-10 解除（该族试探现进入即被 fits 门拒，开关零差异），1051/1531 已随热启动规范种子修复放回）；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08·复核@2026-09-10（能量行级 Σ 后全链零差异）·复核@2026-09-25·锚未变@2026-09-27 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
  */
 export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
 
@@ -92,7 +92,7 @@ export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
  * 取 32 = 实测需求（≈25）留一倍余量；代价只落在本来就要跑满的队（127 预设里 8 轮顶格 6 队，
  * 其余 121 队 ≤5 轮），且停滞判据仍在，真发散队照旧 3 轮停。
  *
- * @fact engine:折叠环上限 口径: 折叠环轮数上限缺省 32（`TIME_FOLD_MAX_PASSES`，`maxTimeIterations` 可覆写）；判据 `maxExcess ≤ 1e-3` **不放宽**——8 轮上限曾是 tbConv=false 的唯一来源（3 队尾巴全部在几何收敛，21 轮内可达标）。实测 3→0 队、留白 189.3s/超预算 2.2s 不变、棘轮零变差、golden 15 条 delta/5 队（billy 逐槽 nec ±0.35s 守恒再分配 + 1591 系 ≤3ms） | 据 用户裁决@2026-09-10「重排就重排，以长期利益为主」·复核@2026-09-25 | 验 src/composables/__tests__/convergenceProbe.test.ts + src/composables/__tests__/timeGolden.test.ts | 锚 src/core/resource.ts#TIME_FOLD_MAX_PASSES | 信 确认
+ * @fact engine:折叠环上限 口径: 折叠环轮数上限缺省 32（`TIME_FOLD_MAX_PASSES`，`maxTimeIterations` 可覆写）；判据 `maxExcess ≤ 1e-3` **不放宽**——8 轮上限曾是 tbConv=false 的唯一来源（3 队尾巴全部在几何收敛，21 轮内可达标）。实测 3→0 队、留白 189.3s/超预算 2.2s 不变、棘轮零变差、golden 15 条 delta/5 队（billy 逐槽 nec ±0.35s 守恒再分配 + 1591 系 ≤3ms） | 据 用户裁决@2026-09-10「重排就重排，以长期利益为主」·复核@2026-09-25·锚未变@2026-09-27 | 验 src/composables/__tests__/convergenceProbe.test.ts + src/composables/__tests__/timeGolden.test.ts | 锚 src/core/resource.ts#TIME_FOLD_MAX_PASSES | 信 确认
  */
 export const TIME_FOLD_MAX_PASSES = 32
 
@@ -114,7 +114,7 @@ export const TIME_FOLD_MAX_PASSES = 32
  * 为什么不直接取环的规范成员：整数量子振荡器（实测单人 1431 命座 6：ex 6↔10 / ult 1↔2 精确 2-循环，环增益 >1）
  * 的环成员账本是「本轮次数 + 上轮平A」估出来的混相位量，行与账本差 21s，折叠环随之在 84/49/29/78s 之间摆、靠停滞
  * 规则退出 ⇒ 留白 0 → 29.0s。非收敛轨迹没有「更对」的停点，只有「历史已钉」的停点；真解是 DEBT「全局实数化收敛重构」。
- * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100），第 20 轮（`INNER_LOOP_OSCILLATOR_STOP`，1051 队 = 预算本身）之后只用于收敛尝试：判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环 / 耗尽 ⇒ 回到第 20 轮状态（非收敛轨迹与旧口径逐位一致）——20 轮曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（单人 1431 c6 取环规范成员留白 29s 的反例；先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」）·复核@2026-09-25 | 验 src/core/__tests__/floatNoiseCycle.test.ts + src/core/__tests__/warmStart.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS | 信 确认
+ * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100），第 20 轮（`INNER_LOOP_OSCILLATOR_STOP`，1051 队 = 预算本身）之后只用于收敛尝试：判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环 / 耗尽 ⇒ 回到第 20 轮状态（非收敛轨迹与旧口径逐位一致）——20 轮曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（单人 1431 c6 取环规范成员留白 29s 的反例；先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」）·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/floatNoiseCycle.test.ts + src/core/__tests__/warmStart.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS | 信 确认
  * ⟳复核: 「全局实数化收敛重构」（DEBT_REGISTRY）落地或 20 轮停点语义再动时，复核「104 预设 converged=false 只剩真整数环队（当前 2 队）」+「单人 1431 c6 留白仍为 0」+「warmStart 冷/热逐位一致且 converged」（floatNoiseCycle.test + warmStart.test + timeGolden） | 到期 2026-12-31
  */
 export const INNER_LOOP_MAX_ITERATIONS = 100
@@ -239,7 +239,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
    * 4 队冷/热 slack 9.20 vs 4.86、7.57 vs 1.03、3.06 vs 6.26、0.68 vs 0.45，且门槛 10s 同样复现
    * ——与欠打回填门槛无关）。缓存机制（精确键 / LRU / 命中计数）保留，但注入种子必须与冷算同源。
    * 真正的加速要等实数化专项（落点唯一）之后才可能。
-   * @fact engine:热启动逐位透明 口径: 热启动缓存只存**规范种子**（本轮 states 初值），不存收敛末态/试探前末态——折叠 pass0 的 refund 冻结与内层落点随初值变，存末态会让同配置第二次计算换结果（实测 1431 系 4 队冷热 slack 9.20 vs 4.86 等）；改前「存试探前末态」只解决了「从已回填态出发」那一种分叉 | 据 用户实测@2026-09-08「同一队算两次结果不一样」·复核@2026-09-08·复核@2026-09-25 | 验 src/core/__tests__/warmStart.test.ts | 锚 src/core/resource.ts#warmSeedStates | 信 确认
+   * @fact engine:热启动逐位透明 口径: 热启动缓存只存**规范种子**（本轮 states 初值），不存收敛末态/试探前末态——折叠 pass0 的 refund 冻结与内层落点随初值变，存末态会让同配置第二次计算换结果（实测 1431 系 4 队冷热 slack 9.20 vs 4.86 等）；改前「存试探前末态」只解决了「从已回填态出发」那一种分叉 | 据 用户实测@2026-09-08「同一队算两次结果不一样」·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/warmStart.test.ts | 锚 src/core/resource.ts#warmSeedStates | 信 确认
    */
   const warmSeedStates: IterationState[] = states
   /**
@@ -419,8 +419,8 @@ export { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 
 // 下列两条 `@fact` 的**实现已迁** `src/core/resource/moveLookup.ts`，声明按既有惯例留在
 // re-export 壳处（同 `data/exSpecialPlans.ts` 声明 → 锚 `findExSpecial`）；**锚已随实现改指新文件**。
-// @fact engine:fusedGroupMetrics/一次动作整段量 口径: 登记融合组的「一次动作」在倍率·失衡·积蓄·喧响上 Σ 全部段、在前台时间上只 Σ countsTime≠false 的段（能力场/自动攻击段不站场）；未登记段仍取本段值 | 据 用户@2026-09-11「倍率表必须融合，因为连携本身就是打3段」+「时间通道只回头段那也不行，必须改」+「只有炮击算时间，能力场是自动攻击，不算时间」·复核@2026-09-25 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#fusedGroupMetrics | 信 确认
-// @fact engine:findChainAttack/多段连携 口径: 登记融合组的连携「一次动作」时长 = Σ 站场段 actionTime（星见雅春临 0.515+0.515+0.687=1.717s；妮可 0.25+0.25=0.5s，能量场段不计时），喧响 = Σ 全部段（雅 230.15、妮可 217.25，全体基线 168~278）；未登记连携仍取头段 | 据 nanoka full/1091.json + full/1031.json param.desc + 用户@2026-09-11·复核@2026-09-25 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#findChainAttack | 信 确认
+// @fact engine:fusedGroupMetrics/一次动作整段量 口径: 登记融合组的「一次动作」在倍率·失衡·积蓄·喧响上 Σ 全部段、在前台时间上只 Σ countsTime≠false 的段（能力场/自动攻击段不站场）；未登记段仍取本段值 | 据 用户@2026-09-11「倍率表必须融合，因为连携本身就是打3段」+「时间通道只回头段那也不行，必须改」+「只有炮击算时间，能力场是自动攻击，不算时间」·复核@2026-09-25·锚未变@2026-09-27 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#fusedGroupMetrics | 信 确认
+// @fact engine:findChainAttack/多段连携 口径: 登记融合组的连携「一次动作」时长 = Σ 站场段 actionTime（星见雅春临 0.515+0.515+0.687=1.717s；妮可 0.25+0.25=0.5s，能量场段不计时），喧响 = Σ 全部段（雅 230.15、妮可 217.25，全体基线 168~278）；未登记连携仍取头段 | 据 nanoka full/1091.json + full/1031.json param.desc + 用户@2026-09-11·复核@2026-09-25·锚未变@2026-09-27 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#findChainAttack | 信 确认
 
 // 招式表查询（`find*` 族 + 融合组「一次动作」整段量）——CC-1（2026-09-24）迁
 // `src/core/resource/moveLookup.ts`；此处 re-export 壳保持全仓调用方（`@/core/resource`）

@@ -59,7 +59,7 @@ export const CONFIDENCE = ['确认', '高', '中', '低']
  * 四个槽位里「主体 + 种类 + 内容」必填，「据（谁定的·哪天）」「验（哪条测试证明它活着）」
  * 强烈建议填 —— 缺「验」的口径就是防死数据铁律要抓的死数据。
  */
-// @fact engine:zc/语法单一定义 决: 事实语法只在解析器里定义一次，不写第二份 markdown；zc lang 打印的就是它自己 | 据 用户@2026-08-31·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#grammar | 信 确认
+// @fact engine:zc/语法单一定义 决: 事实语法只在解析器里定义一次，不写第二份 markdown；zc lang 打印的就是它自己 | 据 用户@2026-08-31·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#grammar | 信 确认
 export function parseFactLine(line) {
   if (typeof line !== 'string') return null
   const m = line.trim().match(/^@fact\s+(\S+)\s+(\S+?)\s*:\s*([\s\S]+)$/)
@@ -432,16 +432,48 @@ export function auditAuthoredFacts(root = ROOT) {
   return { scanned, violations }
 }
 
-/** 锚文件最后一次改动时间（已提交取 git 提交时间；有未提交改动取 mtime——两者取晚） */
-export function anchorTouchedAt(path, root = ROOT) {
+/**
+ * 一段 `-U0` diff 的改动行是否**全部**是 `@fact` 声明行。
+ *
+ * 为什么要区分（CC-87，2026-09-27 实测）：给某文件里的事实打 `·复核@`/`·锚未变@` 戳，
+ * 本身就是改这个文件 ⇒ 同文件里**其他**锚在此的旧事实被连带挤进复核队列（实测一次批量打戳
+ * 62 条，队列只降到 25 而非 18，多出的 7 条全是同文件连带）。打戳/改口径注释不是锚代码的改动，
+ * 不该触发复核——否则复核永远做不完（每复核一条就可能连带出新的一条）。
+ */
+export function diffOnlyTouchesFacts(diffText) {
+  const changed = diffText.split('\n').filter(l => /^[+-]/.test(l) && !/^(\+\+\+|---) (a\/|b\/|\/dev\/null)/.test(l))
+  return changed.length > 0 && changed.every(l => /(^|\s)@fact\s/.test(l.slice(1)))
+}
+
+function gitBig(cmd, root) {
+  try { return execSync('git ' + cmd, { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }).trim() } catch { return '' }
+}
+
+/**
+ * 锚文件最后一次**代码**改动时间（已提交取 git 提交时间；有未提交改动取 mtime——两者取晚）。
+ * 只改 `@fact` 声明行的提交 / 未提交改动不算（见 diffOnlyTouchesFacts）；最多回看 30 个提交，
+ * 全是纯事实提交时退回最早那个的时间（保守：宁可多报）。`cache` 按路径缓存（driftQueue 传入）。
+ */
+export function anchorTouchedAt(path, root = ROOT, cache) {
+  const key = root + '\0' + path
+  if (cache?.has(key)) return cache.get(key)
   const full = join(root, path)
   const committed = (() => {
-    const iso = git('log -1 --format=%cI -- "' + path + '"', root)
-    return iso ? Date.parse(iso) : 0
+    const log = git('log -n 30 --format=%H%x20%cI -- "' + path + '"', root)
+    if (!log) return 0
+    const lines = log.split('\n').filter(Boolean)
+    for (const l of lines) {
+      const [h, iso] = l.split(' ')
+      if (!diffOnlyTouchesFacts(gitBig('show -U0 --format= ' + h + ' -- "' + path + '"', root))) return Date.parse(iso)
+    }
+    return Date.parse(lines[lines.length - 1].split(' ')[1])
   })()
   const dirty = parsePorcelain(git('status --porcelain -- "' + path + '"', root)).length > 0
+    && !diffOnlyTouchesFacts(gitBig('diff -U0 HEAD -- "' + path + '"', root))
   const mtime = existsSync(full) ? statSync(full).mtimeMs : 0
-  return dirty ? Math.max(committed, mtime) : committed
+  const out = dirty ? Math.max(committed, mtime) : committed
+  cache?.set(key, out)
+  return out
 }
 
 /**
@@ -451,6 +483,7 @@ export function anchorTouchedAt(path, root = ROOT) {
 export function driftQueue(root = ROOT) {
   const { scanned } = auditAuthoredFacts(root)
   const rows = []
+  const touchCache = new Map()
   for (const s of scanned) {
     const fact = s.fact
     if (!fact?.anchor || !fact.provenance) continue
@@ -460,7 +493,7 @@ export function driftQueue(root = ROOT) {
     const date = dates?.[dates.length - 1]
     if (!date) continue
     const anchorPath = fact.anchor.split('#')[0]
-    const touched = anchorTouchedAt(anchorPath, root)
+    const touched = anchorTouchedAt(anchorPath, root, touchCache)
     if (touched > Date.parse(date + 'T23:59:59Z')) {
       rows.push({ subject: fact.subject, anchor: fact.anchor, since: date, touchedAt: new Date(touched).toISOString().slice(0, 10), at: s.file + ':' + s.line })
     }
@@ -539,7 +572,7 @@ export function scanDeadClaims(root = ROOT) {
   return { dead, overExported }
 }
 
-// @fact engine:zc/结构熵体检 决: zc status 只量体温不治病——自家代码最大文件行数 >1500（阈值取「降本增效体系」红线）与本地分支残留只报不红，红灯由人评估 | 据 用户@2026-09-07·复核@2026-09-08·复核@2026-09-25 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#scanStructureEntropy | 信 确认
+// @fact engine:zc/结构熵体检 决: zc status 只量体温不治病——自家代码最大文件行数 >1500（阈值取「降本增效体系」红线）与本地分支残留只报不红，红灯由人评估 | 据 用户@2026-09-07·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#scanStructureEntropy | 信 确认
 /**
  * 结构熵体检（外部「降本增效体系」4 指标里挑 2 个最便宜的落进 zc status）：
  *   A 最大文件行数：自家代码里 >1500 行的文件（屎山起点温度计，量体温不治病，不自动拆）
@@ -960,7 +993,7 @@ function appendJournal(entry) {
   appendFileSync(JOURNAL_FILE, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n')
 }
 
-// @fact engine:zc/收工落盘 决: 规则 9 的 verifier+coverage 必须经 zc done 进 .zc/journal.jsonl，只写在聊天里等于没写（全仓 'verifier' 曾只出现 2 次） | 据 实测@2026-08-31·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#verbDone | 信 确认
+// @fact engine:zc/收工落盘 决: 规则 9 的 verifier+coverage 必须经 zc done 进 .zc/journal.jsonl，只写在聊天里等于没写（全仓 'verifier' 曾只出现 2 次） | 据 实测@2026-08-31·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/scripts/__tests__/zc.test.ts | 锚 scripts/zc.mjs#verbDone | 信 确认
 function verbDone(args) {
   if (!args.verifier || !args.coverage) {
     return envelope('done', false, {}, 'zc done --verifier "<证明它生效的命令/测试>" --coverage "<影响到哪些角色/页面/文件>" [--deps <新增依赖> --risk <可能崩点>]（规则 9）')

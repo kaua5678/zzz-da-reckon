@@ -259,7 +259,7 @@ export function applyDriveDiscConfig(
 
   // 1、2、3 号位固定主词条（S级+15：HP 2200 / ATK 316 / DEF 184，数值唯一来源=statRules.sRankMaxMainStat）。
   // 此前缺 316 ATK 导致全库伤害系统性偏低 12-16%（实战对比远低于最低金击杀）。
-  // @fact engine:driveDisc/固定主词条 口径: 1/2/3号位固定主词条对全员无条件建模（S级+15），4/5/6号位走用户配置 | 据 用户@2026-09-05·复核@2026-09-25 | 验 discSetEffects.test.ts | 锚 src/core/panel.ts#applyDriveDiscConfig | 信 高
+  // @fact engine:driveDisc/固定主词条 口径: 1/2/3号位固定主词条对全员无条件建模（S级+15），4/5/6号位走用户配置 | 据 用户@2026-09-05·复核@2026-09-25·锚未变@2026-09-27 | 验 discSetEffects.test.ts | 锚 src/core/panel.ts#applyDriveDiscConfig | 信 高
   for (const stat of ['hpFlat', 'atkFlat', 'defFlat'] as const) {
     const value = maxMain[stat]
     if (value) applyStat(result, stat, value, 'flat')

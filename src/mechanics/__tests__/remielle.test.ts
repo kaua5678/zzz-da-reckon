@@ -39,7 +39,7 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
     expect(p.remielleRefringeCoefficient).toBeCloseTo(ap * 0.02, 5)
   })
 
-  // @fact agent:1581/异化C2加算单写者 口径: C2 异化+20 唯一写者=catalog cinemaBuffs 自身buff；teammate-buffs 条 remielle_c2_team_refringe_coefficient_bonus_pct 以 effect 级 excludeTargetAgentIds 排除蕾米本人（曾双通道双计：3异常队 C2 面板 BonusPct=50，正确 30=3异常的10+C2的20；同 buff 的 Prismatic 无视15%防御不排除、她本人照吃） | 据 账本校对@2026-09-07·复核@2026-09-25 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/core/buff.ts#isExcludedForTarget | 信 确认
+  // @fact agent:1581/异化C2加算单写者 口径: C2 异化+20 唯一写者=catalog cinemaBuffs 自身buff；teammate-buffs 条 remielle_c2_team_refringe_coefficient_bonus_pct 以 effect 级 excludeTargetAgentIds 排除蕾米本人（曾双通道双计：3异常队 C2 面板 BonusPct=50，正确 30=3异常的10+C2的20；同 buff 的 Prismatic 无视15%防御不排除、她本人照吃） | 据 账本校对@2026-09-07·复核@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/core/buff.ts#isExcludedForTarget | 信 确认
   it('C2 命座差分：3异常队 BonusPct 精确 10→30（+20 单写者，双计修复回归）；本人吃 Prismatic 无视15%防御；队友侧全队口径 30 不变', async () => {
     const c0 = await setup(0)
     const p0 = computePanelPhases(0, c0.config, c0.catalog)!.inCombat

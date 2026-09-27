@@ -72,7 +72,8 @@ export declare function auditAuthoredFacts(root?: string): {
   scanned: AuthoredFact[]
   violations: (AuthoredFact & { problem: string })[]
 }
-export declare function anchorTouchedAt(path: string, root?: string): number
+export declare function diffOnlyTouchesFacts(diffText: string): boolean
+export declare function anchorTouchedAt(path: string, root?: string, cache?: Map<string, number>): number
 export declare function driftQueue(root?: string): {
   subject: string
   anchor: string

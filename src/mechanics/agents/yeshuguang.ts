@@ -68,7 +68,7 @@ export const YESHUGUANG_FULL_STUN_MOVES = new Set<string>([
   '1431034', '1431035',
 ])
 
-// @fact agent:1431/帷幕易伤 口径: 帷幕基于开帷幕时的失衡易伤倍率，玩家先把易伤buff上满再开 ⇒ 取「boss基础失衡易伤 + 全部失衡易伤加成」，再按影画封顶（C0-3 = 2.1 / C4+ = 3.0） | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#veilStunMultiplier | 信 确认
+// @fact agent:1431/帷幕易伤 口径: 帷幕基于开帷幕时的失衡易伤倍率，玩家先把易伤buff上满再开 ⇒ 取「boss基础失衡易伤 + 全部失衡易伤加成」，再按影画封顶（C0-3 = 2.1 / C4+ = 3.0） | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#veilStunMultiplier | 信 确认
 
 /**
  * 帷幕易伤的最终失衡倍率。
@@ -142,7 +142,7 @@ function cfgNum(cfg: CharacterOperationConfig, key: string, fallback: number): n
 }
 
 /** 自动选轴的超支阈值（秒）：timeBudgetExcess 超过此值才退化，避免量化残差（~1s）误触降轴 */
-// @fact agent:1431/自动选轴 口径: 明心境轴**滑块默认打满(0)**——R2C 用户裁决 2026-09-25：能打完的队不该退化（短轴亏灭极段伤害），故默认不自动退化。auto(-1) 的退化判据 = **本槽物化行 − 战斗窗口**（`timePressureSeconds`，**不减队友占用**，同裁决修复：旧口径减队友致满命队误退化 −11%）；仅当用户显式设 -1 且该压力 >5s 时逐级退化 full→short_pair→short_mie，换轴时清零旧轴折叠残差；仍超预算由外层 interactionScale 缩交互兜底 | 据 用户@2026-09-05·复核@2026-09-08·R2C裁决@2026-09-25 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#cfgAxis | 信 确认
+// @fact agent:1431/自动选轴 口径: 明心境轴**滑块默认打满(0)**——R2C 用户裁决 2026-09-25：能打完的队不该退化（短轴亏灭极段伤害），故默认不自动退化。auto(-1) 的退化判据 = **本槽物化行 − 战斗窗口**（`timePressureSeconds`，**不减队友占用**，同裁决修复：旧口径减队友致满命队误退化 −11%）；仅当用户显式设 -1 且该压力 >5s 时逐级退化 full→short_pair→short_mie，换轴时清零旧轴折叠残差；仍超预算由外层 interactionScale 缩交互兜底 | 据 用户@2026-09-05·复核@2026-09-08·R2C裁决@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#cfgAxis | 信 确认
 const AUTO_AXIS_DEGRADE_THRESHOLD = 5
 
 function cfgAxis(cfg: CharacterOperationConfig): YeshuguangFormAxis {
@@ -203,9 +203,9 @@ export interface YeshuguangCycleResult {
   c6AttachCount: number
 }
 
-// @fact agent:1431/短轴资源 口径: 三档轴（打满/灭极/仅灭）**每轮都消耗满 6 点青溟剑势**——归尘触发条件是「青溟剑势耗尽」、飞光是「持续消耗直至耗尽」，所以短轴只省段数与时间，不省资源也不省观止（C2+ 观止/轮 = 2+6 = 8 三档相同）；旧实现按 6/3/2 递减，与它自己的注释「剩余资源压进观止→飞光」相反 | 据 用户@2026-09-05 + nanoka 1431 招式原文·复核@2026-09-08·复核@2026-09-25 | 验 src/mechanics/__tests__/yeshuguang.test.ts#三档轴每轮资源消耗相同 | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
-// @fact agent:1431/轮数实数化 口径: 明心境轮数（喧响进轮/转大赠轮/照影轮）与定风波时间**迭代期**一律以**实数**参与收敛（模块内不 floor；终局由引擎置 `finalizeForms` 后取整一次，见 `agent:1431/终局整数化`） —— 局外剑势 ∝ 平A时间，`floor(剑势/6)` 一次翻转就是一整轮（full 轴 ≈10.9s），是「平A→剑势→轮数→必要时间→平A」环增益 >1 的原产地；实数化语义 = 最后一轮只打 0.4 轮、段数/观止/飞光/收尾同比例兑现（实战 180s 到点）。手动滑块 zhaoyingCount 仍取整（用户显式指定的次数，非资源推导量） | 据 用户@2026-09-05「实数化确实很好…做吧」·复核@2026-09-08·复核@2026-09-25（W14 drifted：终局整数化后本条限定为迭代期） | 验 src/mechanics/__tests__/yeshuguang.test.ts#轮数实数化 | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
-// @fact agent:1431/终局整数化 口径: 引擎收敛后置 `finalizeForms=true` 重推一次——照影轮、喧响进轮、转大赠轮各 floor 一次（离散触发只兑现装得下的部分，余数剑势留着不打），多出的那一轮时间由合轴率与短轴分担；迭代期实数语义不变（见 `agent:1431/轮数实数化`）；手动滑块 zhaoyingCount 本就取整 | 据 用户@2026-09-20「余数剑势本来就该留着不打…离散轮数被换成短轴分担了」·复核@2026-09-25（此前 3 处引用、0 处声明，W14 补登） | 验 src/mechanics/__tests__/mechanicSettingsEffect.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
+// @fact agent:1431/短轴资源 口径: 三档轴（打满/灭极/仅灭）**每轮都消耗满 6 点青溟剑势**——归尘触发条件是「青溟剑势耗尽」、飞光是「持续消耗直至耗尽」，所以短轴只省段数与时间，不省资源也不省观止（C2+ 观止/轮 = 2+6 = 8 三档相同）；旧实现按 6/3/2 递减，与它自己的注释「剩余资源压进观止→飞光」相反 | 据 用户@2026-09-05 + nanoka 1431 招式原文·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/yeshuguang.test.ts#三档轴每轮资源消耗相同 | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
+// @fact agent:1431/轮数实数化 口径: 明心境轮数（喧响进轮/转大赠轮/照影轮）与定风波时间**迭代期**一律以**实数**参与收敛（模块内不 floor；终局由引擎置 `finalizeForms` 后取整一次，见 `agent:1431/终局整数化`） —— 局外剑势 ∝ 平A时间，`floor(剑势/6)` 一次翻转就是一整轮（full 轴 ≈10.9s），是「平A→剑势→轮数→必要时间→平A」环增益 >1 的原产地；实数化语义 = 最后一轮只打 0.4 轮、段数/观止/飞光/收尾同比例兑现（实战 180s 到点）。手动滑块 zhaoyingCount 仍取整（用户显式指定的次数，非资源推导量） | 据 用户@2026-09-05「实数化确实很好…做吧」·复核@2026-09-08·复核@2026-09-25（W14 drifted：终局整数化后本条限定为迭代期）·锚未变@2026-09-27 | 验 src/mechanics/__tests__/yeshuguang.test.ts#轮数实数化 | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
+// @fact agent:1431/终局整数化 口径: 引擎收敛后置 `finalizeForms=true` 重推一次——照影轮、喧响进轮、转大赠轮各 floor 一次（离散触发只兑现装得下的部分，余数剑势留着不打），多出的那一轮时间由合轴率与短轴分担；迭代期实数语义不变（见 `agent:1431/轮数实数化`）；手动滑块 zhaoyingCount 本就取整 | 据 用户@2026-09-20「余数剑势本来就该留着不打…离散轮数被换成短轴分担了」·复核@2026-09-25（此前 3 处引用、0 处声明，W14 补登）·锚未变@2026-09-27 | 验 src/mechanics/__tests__/mechanicSettingsEffect.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
 // ⟳复核: 叶瞬光原文改版（明心境进轮/赠轮/照影条件或剑势消耗变动）或「连携/破阵按实际失衡次数」改造开工时，复核终局取整的范围与分担方式 | 到期 2026-12-31
 export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangCycleResult {
   const cinema = Math.max(0, Math.floor(input.cinemaLevel || 0))
@@ -315,8 +315,8 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
   }
 }
 
-// @fact agent:1431/载物 未建模: 载物只是青溟剑势的溢出暂存，而总量计算器天然不做上限截断，溢出本就不丢 ⇒ 建模它没有任何数值意义，不补 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
-// @fact agent:1431/局外连接段 决: **局外**（非明心境）连接段不建执行行——它的占用时间就是平A池（basicAttackTime，按 atk0PerSec 攒青溟剑势）；明心境内的连接段（斩流光灭/极/扶摇）**照常建行**。总量计算器按资源算招式而非按连段顺序 | 据 用户@2026-09-01·复核@2026-09-05（主体加限定词：曾被读成"明心境连接段不建行"并输出错误归因）·复核@2026-09-08·复核@2026-09-25 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
+// @fact agent:1431/载物 未建模: 载物只是青溟剑势的溢出暂存，而总量计算器天然不做上限截断，溢出本就不丢 ⇒ 建模它没有任何数值意义，不补 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
+// @fact agent:1431/局外连接段 决: **局外**（非明心境）连接段不建执行行——它的占用时间就是平A池（basicAttackTime，按 atk0PerSec 攒青溟剑势）；明心境内的连接段（斩流光灭/极/扶摇）**照常建行**。总量计算器按资源算招式而非按连段顺序 | 据 用户@2026-09-01·复核@2026-09-05（主体加限定词：曾被读成"明心境连接段不建行"并输出错误归因）·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
 export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   basicAttackTime?: number
   exSpecialCount?: number

@@ -41,6 +41,7 @@ import {
   scanAuthoredFacts,
   auditAuthoredFacts,
   driftQueue,
+  diffOnlyTouchesFacts,
   scanDeadClaims,
   scanStructureEntropy,
   scanOpenItemsHygiene,
@@ -563,4 +564,17 @@ describe('漂移队列：复核时间戳可让口径出队，但不改写原始�
       expect(Date.parse(row.touchedAt)).toBeGreaterThan(Date.parse(row.since))
     }
   }, 60000)
+})
+
+describe('漂移判定：只改 @fact 声明行不算锚改动（CC-87）', () => {
+  const hdr = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -3 +3 @@\n'
+  it('纯打戳 diff ⇒ true（代码注释与 docs 列表项两种写法）', () => {
+    expect(diffOnlyTouchesFacts(hdr + '-// @fact a:1 口径: x | 据 u@2026-09-01 | 锚 x.ts#f\n+// @fact a:1 口径: x | 据 u@2026-09-01·锚未变@2026-09-27 | 锚 x.ts#f')).toBe(true)
+    expect(diffOnlyTouchesFacts(hdr + '-- @fact a:1 口径: x | 据 u@2026-09-01\n+- @fact a:1 口径: x | 据 u@2026-09-01·复核@2026-09-27')).toBe(true)
+  })
+  it('夹带任意代码行 / 空 diff ⇒ false（保守：宁可多报）', () => {
+    expect(diffOnlyTouchesFacts(hdr + '+// @fact a:1 口径: x | 据 u@2026-09-01\n-  return 1\n+  return 2')).toBe(false)
+    expect(diffOnlyTouchesFacts(hdr + '+const s = "@factory"')).toBe(false)
+    expect(diffOnlyTouchesFacts('')).toBe(false)
+  })
 })

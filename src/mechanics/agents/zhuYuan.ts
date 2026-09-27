@@ -8,7 +8,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
  * 朱鸢（1241，以太·强攻，新艾利都治安局）—— 自身机制模块。
  * 机制文本来源：nanoka 3.2.3+18244196 zh character/1241.json。
  *
- * @fact agent:1241朱鸢特化 口径: 特化=强攻(attack)，不是击破——原文 data/raw/nanoka_missing/full/1241.json 的 weapon_type=强攻，专武 14124 防暴者Ⅵ型 specialty 与 requirement 都是 attack；catalog 曾错标 stun，而音擎 buff 收集以「音擎 specialty === 角色 specialty」为总开关（core/buff.ts）→ 错标期间她装专武的整条音擎效果（暴击率+15%、平A/冲刺充能增伤）被静默丢弃 | 据 用户 2026-09-08「朱鸢是强攻啊，查一下是项目写错了吗」+ nanoka 原文 + 专武同源印证·复核@2026-09-25 | 验 src/mechanics/__tests__/zhuYuan.test.ts + src/core/__tests__/catalogData.test.ts | 锚 src/core/buff.ts#collectAllBuffs | 信 确认
+ * @fact agent:1241朱鸢特化 口径: 特化=强攻(attack)，不是击破——原文 data/raw/nanoka_missing/full/1241.json 的 weapon_type=强攻，专武 14124 防暴者Ⅵ型 specialty 与 requirement 都是 attack；catalog 曾错标 stun，而音擎 buff 收集以「音擎 specialty === 角色 specialty」为总开关（core/buff.ts）→ 错标期间她装专武的整条音擎效果（暴击率+15%、平A/冲刺充能增伤）被静默丢弃 | 据 用户 2026-09-08「朱鸢是强攻啊，查一下是项目写错了吗」+ nanoka 原文 + 专武同源印证·复核@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/zhuYuan.test.ts + src/core/__tests__/catalogData.test.ts | 锚 src/core/buff.ts#collectAllBuffs | 信 确认
  * 修复/校验入口：node scripts/fix-agent-specialty.mjs（读 raw weapon_type 对齐 catalog，幂等）。
  *
  * 朱鸢机制全部自身向，无团队 buff（1241 teammate-buffs 组原为误挂的橘福福旧版

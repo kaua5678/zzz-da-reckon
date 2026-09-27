@@ -722,7 +722,7 @@ function teamDiscs(configStore: ReturnType<typeof useConfigStore>): Array<DriveD
  * 两处调用：buildCharConfig（资源/伤害管线）+ computePanelPhases（面板页）。
  * 无覆盖率记录的效果也写入（100%）→ 统一走 applyEffect 的 coverage 覆盖。
  *
- * @fact disc:覆盖率并入范围 口径: 必须并**全队三人**盘上的效果 id，不能只并本槽位的——4pc 全队段（teamBuff）由装备者供给、全队受益，覆盖率属于「效果」而非属于「受益者」；只并本槽位时装备者自己的山大王/月光骑士颂全队段滑块对队友面板是死控件（实测差值 +0） | 据 用户 2026-09-08「4件套没给属性滑块，是不是属性都没做」引发的可见性修复·复核@2026-09-25 | 验 src/core/__tests__/discSetEffects.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#mergeTeamDiscEffectCoverages | 信 确认
+ * @fact disc:覆盖率并入范围 口径: 必须并**全队三人**盘上的效果 id，不能只并本槽位的——4pc 全队段（teamBuff）由装备者供给、全队受益，覆盖率属于「效果」而非属于「受益者」；只并本槽位时装备者自己的山大王/月光骑士颂全队段滑块对队友面板是死控件（实测差值 +0） | 据 用户 2026-09-08「4件套没给属性滑块，是不是属性都没做」引发的可见性修复·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/discSetEffects.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#mergeTeamDiscEffectCoverages | 信 确认
  * @param slotDiscs 全队各槽位的驱动盘配置（含空槽，自动跳过）
  */
 function mergeTeamDiscEffectCoverages(

@@ -126,7 +126,7 @@ export function feasibleRows(
  * 首次结果被消费后 **0 次被改写**；`iterate` 85,779 次调用 **0 次改写入参 states**。
  * 键用身份比较（cfg/state 对象 + 3 个数值 `Object.is`）：cfg 字段被改写而对象身份不变的情形不可能发生在单次
  * `iterate` 内（上述隔离）；作用域退出即清空，不跨调用持有引用。
- * @fact engine:物化行作用域记忆 口径: `feasibleRows` 仅在 `withFeasibleRowsMemo` 作用域（= 单次 `iterate`）内按「cfg/state 同对象 + chain/teamFrontline/rowTimeLimit `Object.is` 相等」复用上一次结果（单槽），作用域外恒重算；前提 = 作用域内 cfg/state 不被改写、消费者不改写行（纯度探针实测 0 违规） | 据 mcp-engine-r2 纯度探针@2026-09-23·复核@2026-09-25 | 验 src/core/__tests__/feasibleRowsMemo.test.ts | 锚 src/core/resource/rowBuild.ts#withFeasibleRowsMemo | 信 高
+ * @fact engine:物化行作用域记忆 口径: `feasibleRows` 仅在 `withFeasibleRowsMemo` 作用域（= 单次 `iterate`）内按「cfg/state 同对象 + chain/teamFrontline/rowTimeLimit `Object.is` 相等」复用上一次结果（单槽），作用域外恒重算；前提 = 作用域内 cfg/state 不被改写、消费者不改写行（纯度探针实测 0 违规） | 据 mcp-engine-r2 纯度探针@2026-09-23·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/feasibleRowsMemo.test.ts | 锚 src/core/resource/rowBuild.ts#withFeasibleRowsMemo | 信 高
  * ⟳复核: iterate 内新增「改写 cfg/state」或「就地改写行」的消费者时，重跑 `.zc/perf/purity.perf.ts`（iterMutated / rowsMutated 须仍为 0）+ feasibleRowsMemo.test A/B | 到期 2026-12-31
  */
 const feasibleRowsMemo: {
