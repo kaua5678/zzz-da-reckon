@@ -31,6 +31,11 @@ const allowedStatuses = new Set([
 
 let failed = 0
 let checks = 0
+// CC-93（2026-09-27）：TeamBuffSpec.target 的校验消费者——敌方侧字段（stat 以 enemy+大写开头）只允许出现在
+// target=enemy/both 的条目里。运行时不按 target 分流（敌方 debuff 对全体攻击者等效，collectInCombatTeamBuffs
+// 一律 includeOwner:true 收集），本字段是**受校验的元数据**。反空洞计数见文件末尾。
+const TEAM_BUFF_TARGETS = new Set(['team', 'enemy', 'both'])
+let enemyStatChecked = 0
 
 function check(name, condition, detail = '') {
   checks++
@@ -175,6 +180,18 @@ for (const file of files) {
   check(`${label}: verifications is array`, Array.isArray(spec.verifications))
   check(`${label}: stateMachines is array`, Array.isArray(spec.stateMachines))
   check(`${label}: teamBuffs is array when present`, spec.teamBuffs == null || Array.isArray(spec.teamBuffs))
+  for (const buff of Array.isArray(spec.teamBuffs) ? spec.teamBuffs : []) {
+    check(`${label}: teamBuff ${buff?.id} target ∈ team/enemy/both`, TEAM_BUFF_TARGETS.has(buff?.target), String(buff?.target))
+    const enemyStats = (buff?.effects ?? []).map(e => e?.stat).filter(s => typeof s === 'string' && /^enemy[A-Z]/.test(s))
+    if (enemyStats.length > 0) {
+      enemyStatChecked++
+      check(
+        `${label}: teamBuff ${buff.id} 含敌方侧字段 ⇒ target 为 enemy/both`,
+        buff.target === 'enemy' || buff.target === 'both',
+        `${enemyStats.join(',')} 标在 target=${buff.target} 下：敌方 debuff 应标 enemy（运行时不分流，但分类是给读者与审计的契约）`,
+      )
+    }
+  }
   check(`${label}: additionalAbility has teamConditions when present`, spec.additionalAbility == null || Array.isArray(spec.additionalAbility.teamConditions))
 
   const localIds = new Set()
@@ -272,6 +289,8 @@ for (const file of files) {
     }
   }
 }
+
+check('teamBuff target 一致性规则扫描面非空（至少 1 条敌方侧字段被校验）', enemyStatChecked >= 1, `实际 ${enemyStatChecked}`)
 
 console.log(failed === 0 ? `\n${checks} spec checks passed` : `\n${failed} spec check(s) failed`)
 process.exit(failed === 0 ? 0 : 1)
