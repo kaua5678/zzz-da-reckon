@@ -1042,6 +1042,8 @@ function yixuanNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): M
 }
 
 export const yixuanMechanic: AgentMechanicModule = {
+  // CC-57：凝云术/墨烬影消命中失衡敌人 +30%（额外能力）——轴编辑器块名后缀（原 StunAxisPage 写死 1371 + 两个 moveId）
+  axisMoveSuffix: { '1371022': '·+30%失衡', '1371026': '·+30%失衡' },
   // CC-48：轴编辑器凝神标注（经 composables/agentMechanicView 门面；StunAxisPage 不再值导入本模块）
   axisEditorBlockMarks: ({ axes, slot }) => {
     const out = new Map<string, AxisEditorBlockMark>()

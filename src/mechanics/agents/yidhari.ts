@@ -490,6 +490,8 @@ function yidhariOnFinalAssemble({ cfg, providerUltCount }: { cfg: CharacterOpera
 export const yidhariMechanic: AgentMechanicModule = {
   id: 'agent:yidhari',
   agentIds: [YIDHARI_AGENT_ID],
+  // CC-57：轴编辑器候选池隐藏裸极寒重碾（原 StunAxisPage 写死 `c.agentId === '1051' && moveId === '1051012'`）
+  axisHiddenMoves: ['1051012'],
   name: '伊德海莉',
   description: '蓄力循环（1s烧血→霜寒拥覆#3→碎惘沉击#4）+ 极寒重碾（失衡内2/非失衡回15闪能）+ 低血增伤100%覆盖。',
   applyPanel: applyYidhariPanel,

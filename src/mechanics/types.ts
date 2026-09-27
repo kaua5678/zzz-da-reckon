@@ -774,6 +774,10 @@ export interface AgentMechanicModule {
   axisEditorBlockMarks?(input: { axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>; slot: number; cinemaLevel: number }): Map<string, AxisEditorBlockMark>
   /** 轴编辑器招式元数据（CC-48；展示层专用）：moveId → { tag 名称前缀, cost 单次耗能 }。现唯一实现：般岳 `BANYUE_AXIS_MOVE_META` */
   axisMoveMeta?: Readonly<Record<string, { tag: string; cost: number }>>
+  /** 轴编辑器候选池隐藏的招式（CC-57；展示层专用）。现唯一：伊德海莉 1051012 裸极寒重碾（用连段表达能量消耗更准，避免误导闪能计算） */
+  axisHiddenMoves?: readonly string[]
+  /** 轴编辑器候选块名后缀（CC-57；展示层专用）：moveId → 后缀。现唯一：仪玄 1371022/1371026「·+30%失衡」（额外能力：命中失衡敌人 +30%） */
+  axisMoveSuffix?: Readonly<Record<string, string>>
   /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。

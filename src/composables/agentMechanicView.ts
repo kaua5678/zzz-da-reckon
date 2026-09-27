@@ -69,6 +69,16 @@ export function agentAxisMoveMeta(agentId: string | null | undefined): AgentMech
   return agentId ? getAgentMechanic(agentId)?.axisMoveMeta : undefined
 }
 
+/** 轴编辑器候选池隐藏的招式（CC-57）：模块声明 `axisHiddenMoves`；原位置 StunAxisPage.vue 写死 1051/1051012 */
+export function agentAxisHiddenMoves(agentId: string | null | undefined): readonly string[] {
+  return (agentId ? getAgentMechanic(agentId)?.axisHiddenMoves : undefined) ?? []
+}
+
+/** 轴编辑器候选块名后缀（CC-57）：模块声明 `axisMoveSuffix`；未声明 ⇒ ''。原位置 StunAxisPage.vue 写死 1371 + 1371022/1371026 */
+export function agentAxisMoveSuffix(agentId: string | null | undefined, moveId: string): string {
+  return (agentId ? getAgentMechanic(agentId)?.axisMoveSuffix?.[moveId] : undefined) ?? ''
+}
+
 export type ReleaseShareDecl = NonNullable<AgentMechanicModule['releaseShare']>
 
 /**

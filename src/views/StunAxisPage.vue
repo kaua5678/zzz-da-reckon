@@ -246,7 +246,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -643,8 +643,8 @@ const allMoves = computed(() => {
     }
     for (const exec of c.executions) {
       if (exec.moveId === 'basic_attack') continue
-      // 伊德海莉的裸极寒重碾(1051012)从池里隐藏：用连段(单次/双次)表达能量消耗更准，避免误导闪能计算
-      if (c.agentId === '1051' && exec.moveId === '1051012') continue
+      // 模块声明隐藏的招式（CC-57，现唯一 = 伊德海莉裸极寒重碾 1051012：用连段表达能量消耗更准，避免误导闪能计算）
+      if (agentAxisHiddenMoves(c.agentId).includes(exec.moveId)) continue
       // 固定轴：资源不足（count 0）的招式也显示为 ×0 灰色块，供轴放置/标记 60/90 转大；
       // 连携/赠送动作的可用数按失衡次数兜底（连携可用 = 失衡次数）。
       const mid = exec.moveId
@@ -660,7 +660,8 @@ const allMoves = computed(() => {
       // 仪玄影画1落雷：按 CD（6s）自动算次数（轴模式按轴内时间，非轴按战斗时间）
       const cdTag = mid === '1371_c1_lightning' ? '·CD6s自动' : ''
       // 失衡强特增伤（额外能力）：凝云术/墨烬影消命中失衡敌人 +30%（轴内行 dmgBonus = 60核心被动 + 30失衡）
-      const stunExTag = c.agentId === '1371' && (mid === '1371022' || mid === '1371026') ? '·+30%失衡' : ''
+      // CC-57：块名后缀经模块声明 axisMoveSuffix（现唯一 = 仪玄 1371022/1371026「·+30%失衡」）
+      const stunExTag = agentAxisMoveSuffix(c.agentId, mid)
       let name = ((move?.name?.zhCN || rawName).slice(0, 8)) + srcTag + cdTag + stunExTag
       // 般岳怒/普分化：只写招式名（倍率随等级变不写；名字带「·怒」即 40 耗能，其余 20；连段块山威免费）
       // CC-48：招式元数据经模块声明 axisMoveMeta（现唯一 = 般岳；原为 `c.agentId === '1471' && BANYUE_AXIS_MOVE_META[mid]`）
