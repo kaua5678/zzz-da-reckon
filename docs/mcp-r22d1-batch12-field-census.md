@@ -1808,6 +1808,36 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 3. ImpactChart 删掉 `@/core/substatOptimizer` 导入；判据 7 基线与 frozen 3→2（同批）。
 4. 验证：对照单测（测试里照抄原内联调用，比较结果）；反向变异；vue-tsc；verify。
 5. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
+### 5.59 CC-52 done：判据 7 3→2（ImpactChart 副词条优化器 → 编排层）（lead-arena-0925c，2026-09-27 第 72 轮）
+
+**提交**：`789a27e`。新文件 `src/composables/substatOptimizer.ts`，导出 `computeSubstatAllocationForSlot(slot, configStore, catalogStore)`，返回 `DriveDiscConfig['subStatAllocation'] | null`；测试 `src/composables/__tests__/substatOptimizer.test.ts`（2 条）。ImpactChart.vue：`runOptimizerForSlot0` 缩成 3 行（调用后若非 null 就整体替换 `char.driveDisc.subStatAllocation`）；删掉 `@/core/substatOptimizer` 和 `teammateBuffContext` 两个导入。判据 7 基线与 frozen 3→2，plan 文案同步。回退：`git revert 789a27e`。
+
+**拍板**
+- 函数名用 `computeSubstatAllocationForSlot`，没用 §5.58 草拟的 `runSubstatOptimizerForSlot(…, opts)`。依据：原函数没有进度回调，也没有 UI 文案，`optimizer.totalSteps2/3/4` 是机制设置键而不是 i18n 键，所以 opts 用不上；改成**纯计算、不写 store**，写回留在组件，测试不用碰 store 的副作用。
+- 口径逐行照搬：空槽、无角色、查不到角色或引擎抛错时返回 null，组件不改分配（原来是 `catch { skip }`）；`getTemplate` 和依赖组装仍在 try 外面，抛错照样向上冒泡；只保留 n>0 的键，夹到 [0,54]。原来是「先置 {} 再逐键写」，现在是「整体替换」，两者等价。
+- **没有**合并 `stores/config.ts:~800` 的整队优化。那条路径同样按 totalSteps2/3/4 选键，但 store 层不能反向依赖 composables；这件事已写进新文件头注释。以后要统一，两处步数口径得一起改。
+
+**是否真正降低了耦合**：是。组件不再知道优化器的入参怎么组装（模板 stat 数怎么映射到步数键、队友 buff 来源、上限设置、夹值范围），只负责把结果写回 store。
+
+**验证**：判据 7 为 2/2，24 条守卫全过；vue-tsc 0 错误。新单测覆盖三个槽位（1161/1311/1211，推荐配装），每个都和照抄的原内联算法逐值相等，且结果非空；空槽返回 null。反向变异两种都让单测变红：① `teammateBuffs: []` ② 夹值后 +1。恢复后 cmp 一致。`npm run verify` 通过：309 files / 3640 tests，24 guards（`/home/kaua/calc-arch/verify52.log`）。只改了展示层取数路径，没跑 dump/rows。
+
+**判据 7 剩余 2 处**
+| 位置 | 导入 | 决定 |
+|---|---|---|
+| ImpactChart.vue:~127 | `IMPACT_VARIABLES, readImpactVar, writeImpactVar`（@/core/impactVars） | **下一张 CC-53** |
+| MechanicsTablePage.vue:~172 | `agentSpecs`（@/specs/registry） | 最后处理（见 §5.58 表） |
+
+**下一步（CC-53，可直接开工）**
+1. 先读 ImpactChart.vue :155–236。涉及的代码是：`settingMap`（经 `teamMechanicSettings` 门面）、`dynamicVars`（机制设置变量，加上柏妮思 `releaseShare:<元素>` 变量，后者读 `anomalyPoolResult.coverage.perElementCoverageRate`）、`allVars = [...IMPACT_VARIABLES, ...dynamicVars]`、`parseDynamicVar`、`readVar`、`writeVar`（`setting.*` 走 configStore 的 mechanicSetting，其余走 readImpactVar/writeImpactVar）。
+2. 新建 `src/composables/impactVariables.ts`，导出三个纯函数，签名建议如下：
+   - `buildImpactVariables(team, settingMap, getAgent, coverageRate)`，返回 `ImpactVariable[]`，内容为静态变量加动态变量，**顺序不变**；
+   - `readImpactVariable(id, configStore, settingMap, coverageRate)`；
+   - `writeImpactVariable(id, value, configStore, settingMap)`。
+   `ImpactVariable` 类型用 `import type` 从 core/impactVars 转出；组件如需要，从 composable 拿类型。组件保留 settingMap、采样循环、渐进渲染和计时，只把这三个函数接进 computed/函数里。
+3. ⚠ 组件 :172 有柏妮思写死的 `'1171'`（`agent?.id === '1171' || agent?.teammateBuffId === '1171'`）。搬进 composables 前，先查 agentId 棘轮（`scripts/check-guards.mjs` 里 agentId 那条，现为 3/3）和判据 22/23/24 的扫描范围覆不覆盖 `src/composables/*.ts`。若覆盖：原样留在组件里，把 burniceSlot 的判断结果作为参数传进 `buildImpactVariables`（本卡只动判据 7，不换尺）。若不覆盖：可以搬过去，但要在文件头注释里写明「写死角色 ID，待机制声明化」，并登记到遗留项「StunAxisPage/ImpactChart 写死角色 ID 需单独立卡」。
+4. 测试：对照单测，把原 dynamicVars/readVar/writeVar 照抄进测试逐值比较，至少覆盖一个带 `%` 后缀的机制设置变量；柏妮思变量可在 harness 里放 1171，构造 coverage。反向变异：去掉 `%` 的 ×100。判据 7 基线与 frozen 2→1，同批改。跑 vue-tsc 和 verify。
+5. 搬代码前先执行 `grep -rn 'ImpactChart' src/**/__tests__ scripts`，看有没有写死路径的源码锁（第 71 轮踩过）。已知 `scripts/check-tokens.mjs:516` 有 `'src/components/ImpactChart.vue': 4`，那是设计 token 计数，删 JS 不影响，改完照常跑 guards 确认。
+6. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash

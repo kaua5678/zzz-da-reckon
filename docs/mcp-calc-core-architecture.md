@@ -218,6 +218,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-49 | done | `b285a4f` | 判据 7 8→6：TeamConfigPage + ImpactChart 逐字相同的 buildTeammateBuffSourceContext 依赖组装 → `src/composables/teammateBuffContext.ts#teammateBuffSourceContextFromStores` | census §5.56 |
 | CC-50 | done | `7cf440d` | 判据 7 6→5：StunAxisPage `allocateAxisWindows` → `src/composables/stunAxisView.ts#axisWindowCounts`（纯转发，如实标注）；页面 axisTimes 改 computed 缓存 | census §5.57 |
 | CC-51 | done | `baceb72` | 判据 7 5→3：TeamConfigPage 局外面板（calcPanel + 全局 Buff applyTargetedStat）→ `src/composables/outOfCombatPanel.ts#computeOutOfCombatPanel`，与局内 computePanel 对称 | census §5.58 |
+| CC-52 | done | `789a27e` | 判据 7 3→2：ImpactChart `runOptimizerForSlot0` 的入参组装 + computeOptimalSubStats/getTemplate + 夹值 → `src/composables/substatOptimizer.ts#computeSubstatAllocationForSlot`，组件只写回 store | census §5.59 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |
