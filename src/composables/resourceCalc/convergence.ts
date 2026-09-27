@@ -143,7 +143,7 @@ export function createRunCalcRound(deps: {
      * `stunPlanProjection='off'` 时恒等于 `stunCount`（现行口径 0 delta）；打开则把计划值投影成整数，
      * **只影响把它当次数乘的地方**（连携/喧响/能量）。时间账与不动点迭代继续用实数的 `stunCount`。
      */
-    const countStun = projectStunPlanForCounts(stunCount, base.stunPlanProjection ?? 'off')
+    const countStun = projectStunPlanForCounts(stunCount, base.stunPlanProjection ?? 'off', threads.prevPoolStunCount)
     // 条件轴：按上一轮收敛出的好评/闪能（首轮缺省 → 条件方案未命中走兜底）解析生效轴
     const { axes: resolvedAxes, planName } = resolveAxes(stunCount, prevGoodReview, prevEnergyBySlot)
     // forceNoAxis（轴退化）：跳过轴注入（轴块/连携覆盖/自动补齐全关），退回 chainCountPerStun 兜底的一般循环
@@ -659,6 +659,8 @@ export function createRunCalcRound(deps: {
       ...base,
       characters,
       stunCount,
+      // CC-140：只在 stunPlanProjection='physical' 时被计数通道读（缺省模式下无读者 ⇒ 0 delta）
+      ...(threads.prevPoolStunCount != null ? { stunCountPhysical: threads.prevPoolStunCount } : {}),
       axisOverlapSeconds,
       axisOverlapByAction,
       ...(axisUltimatePromote ? { axisUltimatePromote } : {}),

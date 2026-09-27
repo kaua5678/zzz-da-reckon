@@ -45,9 +45,10 @@ describe('失衡计划值 → 计数投影', () => {
     expect(stunPlanProjectionFromCode(1)).toBe('floor')
     expect(stunPlanProjectionFromCode(2)).toBe('round')
     expect(stunPlanProjectionFromCode(3)).toBe('ceil')
-    expect(stunPlanProjectionFromCode(4)).toBe('off')
+    expect(stunPlanProjectionFromCode(4)).toBe('physical') // CC-140：编码 4 = physical（上一外层轮池物理次数）
+    expect(stunPlanProjectionFromCode(5)).toBe('off')
     expect(stunPlanProjectionFromCode(-1)).toBe('off')
     expect(stunPlanProjectionFromCode(2.7)).toBe('round')
-    expect(STUN_PLAN_PROJECTION_MODES).toHaveLength(4)
+    expect(STUN_PLAN_PROJECTION_MODES).toHaveLength(5)
   })
 })

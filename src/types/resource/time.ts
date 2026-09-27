@@ -49,7 +49,7 @@ export type TimeWeightMode = 'static' | 'balanced' | 'joint'
  * 失衡计划值（外层不动点实数）→ **计数** 的投影方式（见 `ResourceCalcConfig.stunPlanProjection`）。
  * `'off'` = 现行口径（实数直接当次数用）；其余把「离散动作的次数」投影成整数，时间账保持实数。
  */
-export type StunPlanProjection = 'off' | 'floor' | 'round' | 'ceil'
+export type StunPlanProjection = 'off' | 'floor' | 'round' | 'ceil' | 'physical'
 
 export interface IterationState {
   /** 平A时间 */

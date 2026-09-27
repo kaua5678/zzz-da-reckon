@@ -767,7 +767,7 @@ export interface ResourceCalcConfig {
    *
    * **语义边界**：只影响「把计划值当次数用」的地方（连携/喧响/能量等计数通道）；
    * 时间账（失衡窗口分配、覆盖率、`stunSeconds`）与不动点迭代**仍用实数**——那里实数才是对的。
-   * 实验开关（`configStore` 机制参数 `time.stunPlanProjection`，0=off/1=floor/2=round/3=ceil）。
+   * 实验开关（`configStore` 机制参数 `time.stunPlanProjection`，0=off/1=floor/2=round/3=ceil/4=physical）。
    */
   stunPlanProjection?: StunPlanProjection
   /** boss 无敌时间（秒，扣减平A可分配池） */
@@ -833,6 +833,11 @@ export interface ResourceCalcConfig {
   initialStates?: IterationState[]
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */
   stunCount?: number
+  /**
+   * 上一外层轮失衡池的**物理次数**（`threads.prevPoolStunCount`，floor(N*)）；只在
+   * `stunPlanProjection = 'physical'` 时被计数通道读取（CC-140，docs/mcp-stun-dual-source.md §5）。首轮缺省。
+   */
+  stunCountPhysical?: number
   /**
    * 时间轴喧响轨（对轴模块，用户口径 2026-08-31）：窗口时序推演出的「实际可放大招数」
    * 按 slot 给定（轴模式注入；缺省 = 不启用，按总量口径 floor(喧响/3000)）。

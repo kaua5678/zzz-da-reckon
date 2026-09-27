@@ -25,7 +25,7 @@ import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
  * 见 `core/stunPlanProjection.ts`。
  */
 function countStunOf(globalCfg: ResourceCalcConfig): number {
-  return projectStunPlanForCounts(globalCfg.stunCount ?? 0, globalCfg.stunPlanProjection ?? 'off')
+  return projectStunPlanForCounts(globalCfg.stunCount ?? 0, globalCfg.stunPlanProjection ?? 'off', globalCfg.stunCountPhysical)
 }
 
 // ============================================================================

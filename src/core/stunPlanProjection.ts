@@ -20,7 +20,7 @@
 import type { StunPlanProjection } from '@/types/resource'
 
 /** 投影方式全集（顺序 = `configStore` 机制参数 `time.stunPlanProjection` 的编码 0..3） */
-export const STUN_PLAN_PROJECTION_MODES: readonly StunPlanProjection[] = ['off', 'floor', 'round', 'ceil'] as const
+export const STUN_PLAN_PROJECTION_MODES: readonly StunPlanProjection[] = ['off', 'floor', 'round', 'ceil', 'physical'] as const
 
 /** 机制参数（整数编码）→ 投影方式；越界回落 `'off'`（现行口径，安全降级） */
 export function stunPlanProjectionFromCode(code: number): StunPlanProjection {
@@ -34,10 +34,14 @@ export function stunPlanProjectionFromCode(code: number): StunPlanProjection {
  * · `'floor'`：只算**打完整**的失衡窗（保守；末窗被战斗时间切断时不给连携）
  * · `'round'`：半窗以上算一次
  * · `'ceil'`：只要进了失衡就给一次（乐观；时间缺口靠合轴率/预算宽容吸收）
+ * · `'physical'`（CC-140，第 164 轮）：改用上一外层轮失衡池的**物理次数**（`physical` 参数 = floor(N*)）；
+ *   缺省（首轮）回落计划值。为什么：外层计划值被必要时间约束压低（78/104 队），21/104 队出现「失衡 N 次、
+ *   失衡连携 0 次」；本模式把计数通道对齐到伤害侧读的物理次数。实测与未决项见 docs/mcp-stun-dual-source.md §5。
  */
-export function projectStunPlanForCounts(plan: number, mode: StunPlanProjection = 'off'): number {
+export function projectStunPlanForCounts(plan: number, mode: StunPlanProjection = 'off', physical?: number): number {
   if (!Number.isFinite(plan)) return plan
   switch (mode) {
+    case 'physical': return physical != null && Number.isFinite(physical) ? physical : plan
     case 'floor': return Math.floor(plan)
     case 'round': return Math.round(plan)
     case 'ceil': return Math.ceil(plan)
