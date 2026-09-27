@@ -69,6 +69,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 174 轮（2026-09-28，代码 `e2057bd3`（CC-150 + CC-148 6/18）+ 文档「docs: round 174」；上一轮 = 4fb7431a / e13a315a）
+- 做到哪：迁雨果系 3 个测试时发现 physical 外层 2-环下池与资源行不同源（§13.1 误判为数值钉，已更正），修为 CC-150（`src/composables/resourceCalc/solveTeam.ts` 出口池钳位 + `src/core/stunPool.ts#withStunCount`）。3 个测试迁完（hugoVerdictLanding 加 physical 同源用例；stunVulnSummary 钉 off；liuyin 闸门改为与轴栈同源）。验证：3 文件 18/18；反向验证精确 2 红；vue-tsc 0；zd `cc150` 2 条、伤害 0；verify 见本轮提交前日志 `/home/kaua/calc-arch/v174.log`。
+- 下一步（直接开工）：**CC-148 剩 12 个文件**（`timeout 40 git grep -l "vi.mock('@/core/stunPlanProjection'" -- src`），按卡片五步规程，每条红先问「两边是否本应同源」（§15.4）。其后 CC-149、CC-147。另可做一件小事：全库扫一遍 physical 下 `outerExit === 'cycle'` 的队，确认 CC-150 残差（池 < 读入）是否实际出现（探针可在 `k172/zzK172.test.ts` 上加 exit 与读入次数两列）。
+- 未决：CC-147；CC-149；CC-150 残差（池 < 读入）；§8.4 两项；CC-27；副词条优化器接收槽过滤；洛克茜 energyRegen。
+- 已知坑：
+  - 迁移红测试时不要只看断言值——先对照本应同源的量（§15.4）；
+  - 上传 Python 补丁后记得执行（本轮一次漏执行，靠 vue-tsc 的 TS2305 发现）；
+  - 探针 zzH174 在 WSL `/home/kaua/calc-arch/k174/`。
+
 ### 第 173 轮（2026-09-28，代码 `4fb7431a`（CC-148 3/18）+ 文档「docs: round 173」；上一轮 = 71452ad2 / aa90a6f2 / aaf3fd96）
 - 做到哪：CC-148 前 3 个文件迁 physical（outerCycleColdStart 加 physical describe + off 场景显式钉；teamTimeSummary 补全账本虚高恒等式；difficultyDescent 单因素闸门显式钉 off）。新发现 CC-149（physical 下合轴率单调破缺 +0.06%）。验证：三文件 24/24；反向验证（常量改 0 ⇒ 仅 3 条 physical 新钉红）；vue-tsc 0；verify EXIT=0；CG 25/25。详见 `docs/mcp-stun-dual-source.md` §14。
 - 下一步（直接开工）：**CC-148 剩 15 个文件**，按卡片里的五步规程逐文件做（适合派子代理：一次一个文件，子代理不碰 docs/）。建议顺序：hugoVerdictLanding、stunVulnSummary、liuyinAxisGiftSameSource（同因：physical 下雨果 0 命轴窗口 5→4，见 §13.1，大概率「机制场景钉 off + physical 结构判据」）；其余按 git grep 顺序。之后 CC-149，再 CC-147。

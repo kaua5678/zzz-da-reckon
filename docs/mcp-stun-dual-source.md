@@ -398,7 +398,7 @@ CC-141 / CC-143 之后复测 physical：仍是 §5.2 那 6 队，**全部是轴�
 
 ### 13.1 试切复测
 - 缺省常量临时改 4 跑全量：**30 红 / 3784 绿**（第 168 轮 33 红）。A 类不变量（seedInvariance、timeLedgerInvariants）已全部转绿（CC-145、CC-146 生效），calcOutputMemo 已在第 168 轮修好。剩下：C 类基线 3 条（timeGolden 1、timeFillRatchet 2），D 类数值钉 27 条（18 个文件）。日志 WSL `/home/kaua/calc-arch/k172/vitest-default4.log`。
-- 曾怀疑 `liuyinAxisGiftSameSource` 闸门（雨果 0 命轴决算行 5→4）是赠行挤出：**不是**。同一用例的「零赠行、零预留」断言都过了；决算行少一条是因为 physical 下物理池只失衡 4 次，轴分窗按 CC-143 读 `countStun` ⇒ 1 块 × 4 窗。hugoVerdictLanding、stunVulnSummary B/D 同因。坑36「轴栈说 5 就必须落地 5」的前提是窗口数 = 5，在 physical 下窗口数本身变成 4，不冲突。
+- ⚠ **本条归因有误，第 174 轮已更正，见 §15**：实际是外层 2-环下资源行（4）与池 / 轴栈（5）不同源，属 A 类不变量破缺，已由 CC-150 修复。原文：曾怀疑 `liuyinAxisGiftSameSource` 闸门（雨果 0 命轴决算行 5→4）是赠行挤出：**不是**。同一用例的「零赠行、零预留」断言都过了；决算行少一条是因为 physical 下物理池只失衡 4 次，轴分窗按 CC-143 读 `countStun` ⇒ 1 块 × 4 窗。hugoVerdictLanding、stunVulnSummary B/D 同因。坑36「轴栈说 5 就必须落地 5」的前提是窗口数 = 5，在 physical 下窗口数本身变成 4，不冲突。
 
 ### 13.2 全库变化与归因
 - zd（tag `cc144b`）：602 个变体条目变化；`/default` 104 队中 90 队变化 > 0.1%（>+5% 28 队、+1~5% 36、+0.1~1% 10、−0.1~−1% 6、−1~−5% 6、<−5% 4）。
@@ -426,3 +426,33 @@ physical 下叶瞬光+琉音+照（1 精专武）实测（探针 WSL `/home/kaua
 **CC-149（新发现，真实缺陷，小）**：physical 缺省下该队的难度曲线沿合轴率单调性破缺。冷启动最大可行交互档随合轴率 0.4 / 0.3 / 0.2 = 0.0625 / **0.125** / 0.0625（不单调）；闸门把 0.3 档压回 0.0625 后，同交互档下剑势 29.90→29.97、伤害 26600186→26616874（+0.06%）——用户口径「合轴降低 ⇒ 伤害不升」被破。探针 `k172/zzD173.test.ts`（顺序跑）与 `zzD173b.test.ts`（冷启动）。
 
 **坑**：`npm run verify` 不拦 TS6133（未使用的 `vi` 导入），删 mock 块后必须同时删 `vi` 导入并单独跑 `npx vue-tsc -b`。
+
+## 15. 第 174 轮：CC-150 physical 外层 2-环的池同源（代码 `e2057bd3`）+ 更正 §13.1
+
+### 15.1 发现
+迁 CC-148 的雨果系三个文件时，`hugoVerdictLanding` 的 `poolCount ≥ 5` 在 physical 下**通过**、决算行却是 4——与 §13.1「physical 下只失衡 4 次」矛盾。探针（WSL `/home/kaua/calc-arch/k174/zzH174.test.ts` + 插桩 `instr174.py`，已还原）：
+
+| | off | physical（修前） |
+|---|---|---|
+| 外层退出 | stable | **cycle** |
+| 逐轮 读入物理次数 → 池 | 5→5 稳定 | 5→4、4→5、5→4 交替 |
+| 池 / 轴栈决算 / 资源行决算 | 5 / 5 / 5 | **5 / 5 / 4** |
+
+规范成员 = 「读入 4、池 5」那轮：引擎按 4 分配时间与计数（hugo 决算读 `threads.prevPoolStunCount` = 4），池与下游轴栈 / 伤害侧读 5。**同一结果两个来源，坑36 同源不变量破**。§13.1 把它当成 D 类数值钉是误判（当时只看了断言值，没对照池）。
+
+### 15.2 修法与拍板
+- 整数映射 f(5)=4、f(4)=5，无不动点（与 CC-146 同类）。取**最大自洽可行整数** K：按 K 分配时池撑得住 ≥ K（这里 K=4）。第 K+1 次没有分配时间，不兑现。
+- `src/composables/resourceCalc/solveTeam.ts#runOuterLoop` 出口：physical 且 `outerExit === 'cycle'` 且规范成员池 > 读入（= `outPrev.stunPool.stunCount`）时，报告池钳到读入值，派生字段由新函数 `src/core/stunPool.ts#withStunCount` 重算（返还值、总连携、喧响奖励）。池、轴栈（`stackTraversalResult` 读 `stunPoolResult`）、伤害侧随之同源。
+- 未处理的一侧：「池 < 读入」（引擎多分配了窗口）不钳，留作残差；现行 pickCanonical 在本例已选可行成员。
+- 影响：zd `cc150` 全库仅 2 个变体条目变化（`auto-1201-1361-1211/c6`、`auto-1201-1361-1311/w`），伤害 0.000%，只有失衡哈希变。hugo-c0-e 是轴预设，不在 zd 队列里：physical 下决算 5→4（池 5→4）。
+- 时间基线（冷启动，与 zd 顺序跑路径不同）：只有失衡次数变、伤害与时间量零变化——timeGolden 5 条（yixuan-jufufu-lucia 4→3、agent:1301 c3/c4 2→1、agent:1391 c5/c6 4→3），timeFillRatchet 4 条（auto-1091-1511-1211、auto-1091-1511-1311、auto-1021-1481-1341、auto-1191-1481-1311 均 3→2），已重生成。均为外层 2-环下报告池由 K+1 钳到读入 K。
+- 回退点：删 `solveTeam.ts` 的 CC-150 块、`withStunCount` 与其 import。
+
+### 15.3 测试（CC-148 雨果系 3 个文件）
+- hugoVerdictLanding：原用例显式钉 off（精确值 5）；新增「physical 缺省：池 == 轴栈 == 资源行」（现值 4）。
+- stunVulnSummary：案例 B/D 为 off 冻结快照，夹具显式钉 off。
+- liuyinAxisGiftSameSource 闸门：`决算 == 5` 改为 `决算 == 轴栈决算`（坑36 的原意，模式无关，且更强）。
+- 反向验证：钳位条件改 `false &&` ⇒ 恰好新 physical 用例与琉音闸门 2 条红；恢复后 18/18。
+
+### 15.4 教训（已写进 CC-148 规程）
+迁移时每条红先问「断言比较的两边是不是本应同源的两个量」——是，就按不变量处理（查机理），不是口径值。只看断言值会把不变量破缺误分为数值钉（§13.1 的错误）。
