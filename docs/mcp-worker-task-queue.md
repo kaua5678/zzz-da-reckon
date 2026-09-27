@@ -69,30 +69,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 184 轮（lane lead-arena-0925c）：只提交文档，源码 = cc53864e。**
-- 核对了 zd c183 的两队下降（stun-dual-source §24.6）：
-  - 1031 队 −3.05%：可以接受（旧版超预算 2.14s，新版去掉超预算）。
-  - **1311 队 −7.49%：真实损失，属于策略缺口。** 旧版在 zd 路径上靠「k+1 相超预算 ⇒ S3 降配到 0.5 ⇒ 装下 8 轮」得到自洽的好结果；新版取了自洽的 7 轮，S3 不再触发。
-  - 开 CC-161（需设计）。§24.4 中「降配承担 ⇒ 伤害降」的推测已在 §24.6 更正。
-- CC-160 写入假设：终局执行器用裸 iterate，缺内层环的阻尼和规范停点。
-- REQUIREMENTS 无新条目，提示词未改（md5 2aa1f517）。
+**第 185 轮（lane lead-arena-0925c）：只提交文档，源码 = cc53864e（上一文档提交 bf3bd9c5）。**
+- CC-160 已定位，未修（stun-dual-source §24.7）。
+  - 第 184 轮的「终局缺阻尼、改用 runInnerLoop」假设读代码即否定：runInnerLoop 也没有阻尼。
+  - 振荡机制是 Jacobi 同步迭代叠加递减高增益映射；入口残差为 0 的档同样振荡。
+  - 否决了 3 个变体：照影封顶常数、只推一轮、可行判据加残差。
+- REQUIREMENTS 无新条目（文件自 e000e53e 起未动）；提示词未改（md5 2aa1f517）；dsh 返回 pong。
 
 **下一步（按顺序，直接开工）**
-1. **CC-160（先做，它比 CC-161 更基础）**：验证卡表中的假设。
-   - 把 `src/core/resource/finalizePasses.ts#runFinalizePasses` 中「≤12 次 iterate + bitEqual」改成复用 `src/core/resource/innerLoop.ts#runInnerLoop`（读它的 ctx 签名：configs/config/maxIter/oscillatorStop，调用方在 resource.ts 构造 innerCtx）；
-   - 先只对 preTail 阶段试，看单人 1431 c3/c4 的环成员是否还跨盆（探针 `k183/zzQ182.test.ts`，`ZZ_C=3/4`）；
-   - 再跑全量、两份基线和 zd，比利（1531）与伊德海莉（1051）的变化要逐条解释；
-   - 若影响面过大或变差，回退并在 §24.5 记录否决。
-2. **CC-161（设计先行）**：在 stun-dual-source 新开 §25，写清目标函数：
-   - 何时在满档可行时也尝试降配（候选信号：finalizePasses 发生了单量子选相，且被舍弃的一相轮数更多）；
-   - 择优依据（伤害？轮数？）；
-   - 与 `@fact engine:降配搜索/绝对可行优先`、用户口径「交互只取达成目标的最少要求」如何对齐。
-   - 病例与数据见 §24.6，探针 `k184/zzS184.test.ts`（zd 同款路径）。
+1. **CC-160 旋钮二分实验**（设计草案见卡表 CC-160 行）：
+   - 在 `src/core/resource/finalizePasses.ts#runFinalizePasses` 的周期 2 分支里，若不满足 `oneQuantumApart`，就用临时环境变量开关做二分；
+   - 临时旋钮写在 `src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle` 的 `if (finalizeForms)` 块之后：读 `cfg.yeshuguangFormsCap`（经 `resolveCycle` 传入），有值时 `totalForms = min(totalForms, cap)`，先扣照影；
+   - 验证用 `k183/zzQ182.test.ts`（`ZZ_C=3..6`）看留白是否降到 2 以下，再用 `k184/zzS184.test.ts` 跑 zd 两队（`ZZ_P=auto-1431-1341-1311,auto-1431-1341-1031`）；
+   - 有效就落成 `finalizePass.cycleCap` 接口（`mechanics/types.ts` 约 :1330）、写 `@fact`、跑全量测试和两份基线；
+   - 无效就在 §24.7 追加否决记录。
+2. **CC-161**（设计先行，§25）：若 CC-160 的二分落地，1311 队的 k↔k+1 单量子环也可能改由同一台机器处理，先复测再设计。
 3. CC-156、CC-147、CC-152（可选）。
 
 **已知坑**
-- 三条路径（棘轮 setAgent / zd applyTeamToStore / golden applyTeamPreset）初态不同，同一队可能落在不同的终局相。判断修复效果要三条路径都看（本轮就是 zd 路径暴露了 golden 路径看不到的损失）。
+- 本轮的临时仪表（行尾 `// ZZTMP`）已用 `sed -i '/ZZTMP/d'` 清掉，src 下的 zz 探针已删。
+- 三条建队路径（棘轮 / zd / golden）初态不同，修复效果三条都要看。
 - 终局 2-循环的相位选择必须由模块声明（伊德海莉取平A大者会变差）；单量子门槛不要放宽（c3 −34.5%）。
-- zd 的 rowsnap/dump 只存哈希，要看逐行数据得写探针（参照 `k184/zzS184.test.ts`）。
-- 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行。
-- 双向折叠的 1s 门槛不要删；refund 扣减只减不增。
+- 降配档选择对终局结果极敏感（封顶实验里每换一个 cap，档就跟着变）；做实验时要同时打印 `interactionScale`，否则会误判因果。
+- 远端 bash 会执行 heredoc 里的反引号：代码和文档一律写 .py 文件，用 up.sh 上传后执行。
