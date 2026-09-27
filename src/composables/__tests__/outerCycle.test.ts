@@ -124,6 +124,34 @@ describe('环内选点：pickOuterCycleMember（与数值基线无关的纯函�
       .toEqual({ index: 1, pickedEarlier: false })
   })
 
+  it('⓪″ CC-153：有可行成员时不可行成员不参选（即便它时间更优），pickedEarlier = true', () => {
+    // idx1 时间自洽 0 < idx0 的 5，若参选会在 ② 胜出；feasible:false 必须把它排除
+    expect(pickOuterCycleMember([{ ...m(1, 1, 0, 5), feasible: true }, { ...m(1, 1, 0, 0), feasible: false }], TOL))
+      .toEqual({ index: 0, pickedEarlier: true })
+  })
+
+  it('⓪″ 全员不可行时照旧全体参选', () => {
+    expect(pickOuterCycleMember([{ ...m(1, 1, 0, 5), feasible: false }, { ...m(1, 1, 0, 0), feasible: false }], TOL))
+      .toEqual({ index: 1, pickedEarlier: false })
+  })
+
+  it('⓪ CC-153：给了 windowsIn（physical 读入物理次数）时按它判零窗，不按规划 stunIn', () => {
+    // idx1 规划 0.015 < tol.stun，但读入 2 次 = 带窗；可行 ⇒ 胜出（auto-1401-1511-1411 形态）
+    expect(pickOuterCycleMember([
+      { ...m(0.311, 0.015, 0, 0), feasible: false, windowsIn: 3 },
+      { ...m(0.015, 0.311, 0, 0), feasible: true, windowsIn: 2 },
+    ], TOL)).toEqual({ index: 1, pickedEarlier: true })
+    // windowsIn = 0 的冷启动瞬态成员仍按零窗剔除（即便可行）
+    expect(pickOuterCycleMember([
+      { ...m(0.5, 0.6, 0, 0), feasible: true, windowsIn: 2 },
+      { ...m(0.5, 0.4, 0, 0), feasible: true, windowsIn: 0 },
+    ], TOL)).toEqual({ index: 0, pickedEarlier: true })
+  })
+
+  it('⓪″ 缺省 feasible（非 physical 调用方不传）零影响', () => {
+    expect(pickOuterCycleMember([m(1, 1, 0, 5), m(1, 1, 0, 0)], TOL)).toEqual({ index: 1, pickedEarlier: false })
+  })
+
   it('disc / time 同为 Infinity 时 NaN 比较全 false，保持取末轮', () => {
     // Infinity − Infinity = NaN ⇒ better 三项全 false（原实现行为，不许"修"）
     const inf = Number.POSITIVE_INFINITY

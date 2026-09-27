@@ -53,6 +53,16 @@ export function isOuterTwoCycle(input: OuterTwoCycleInput): boolean {
 
 /** 环内停点选点的输入成员：只带选点需要的四个量（失衡输入/输出、离散截断、时间自洽度）。 */
 export interface OuterCyclePickMember {
+  /**
+   * CC-153（第 176 轮）：physical 计数下「池 ≥ 读入」为可行；`false` = 不可行（引擎按读入 K 分配了 K 个窗，池却撑不住）。
+   * 缺省（undefined）视为可行 ⇒ 非 physical 调用方不传即零影响。判据见 pickOuterCycleMember ⓪″。
+   */
+  feasible?: boolean
+  /**
+   * CC-153：physical 下成员实际的失衡窗数 = 读入的物理次数 K（引擎按 K 分配窗口），⓪ 零窗判据用它而不是规划值 `stunIn`
+   * （实测 auto-1401-1511-1411：可行成员读入 2 次、规划 stunIn 0.015 被 ⓪ 误判零窗剔除）。缺省 = 用 `stunIn`（非 physical 零影响）。
+   */
+  windowsIn?: number
   /** 该轮输入的失衡次数（环内映射的自变量）。 */
   stunIn: number
   /** 该轮输出的失衡次数（= 下一轮输入）。 */
@@ -83,6 +93,10 @@ export interface OuterCyclePickResult {
  * 判据按序（规则来历与实测反例见 `useResourceCalc` 内 `pickCanonical` 的长注释）：
  *   ⓪ **零窗成员不参选**：`stunIn >= tol.stun` 的为带窗成员；有带窗成员时只在带窗成员里选
  *      （过滤掉任何成员即 `pickedEarlier = true`），全员零窗（真 0 失衡队）则全体参选。
+ *      physical 下「窗数」取 `windowsIn`（读入的物理次数 K；CC-153），缺省取 `stunIn`。
+ *   ⓪″ **不可行成员不参选**（CC-153，第 176 轮，CC-150 残差的对称侧）：`feasible === false` 的成员（physical 下池 < 读入）
+ *      在还有可行成员时剔除（同样计入 `pickedEarlier`）；全员不可行则照旧参选。实测 yixuan-trigger-lucia 读入 4 → 池 3
+ *      被选中 ⇒ 资源行连携 4、池 / 轴栈 3（同源破）。回退：删本级过滤。
  *   以下各级都是「相对当前池内最优」的筛选（CC-136 起；此前为带容差的两两比较，不传递、依赖成员排列）：
  *   ① **失衡自洽度** `|next − stunIn|`：保留 ≤ 池内最小值 + tol.stun 的成员（容差与判稳/判环同源）。
  *   ⓪′ **离散自洽度**：再保留截断秒数 ≤ 最小值 + tol.disc 的成员。
@@ -105,9 +119,12 @@ export function pickOuterCycleMember(
 ): OuterCyclePickResult {
   const candidateIdx: number[] = []
   for (let i = 0; i < members.length; i++) {
-    if (members[i].stunIn >= tol.stun) candidateIdx.push(i)
+    if ((members[i].windowsIn ?? members[i].stunIn) >= tol.stun) candidateIdx.push(i)
   }
-  const idx = candidateIdx.length > 0 ? candidateIdx : members.map((_, i) => i)
+  const idx0 = candidateIdx.length > 0 ? candidateIdx : members.map((_, i) => i)
+  // ⓪″ CC-153：physical 不可行成员不参选（有可行成员时）
+  const feasibleIdx = idx0.filter(i => members[i].feasible !== false)
+  const idx = feasibleIdx.length > 0 ? feasibleIdx : idx0
   // CC-136：以「当前最优」为基准逐级筛选（全序，与成员排列/轮次相位无关），取代原两两比较
   // （带容差的两两比较不传递，结果随检出轮次的旋转而变）。回退：换回两两比较循环。
   let pool = idx

@@ -166,8 +166,19 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * 门槛 = 判稳容差（≈0），**不是** 1：小数失衡（如 0.84 窗）是合法状态，按 1 划线会把 agent:1301 一类 0.84 ↔ 1.82 的环
        * 误判成「零窗 vs 带窗」而改落点。全员零窗（真 0 失衡队）时照旧全体参选。
        */
+      // ⓪″ CC-153（第 176 轮，CC-150 残差的对称侧）：physical 下「池 < 读入」的成员不可行——引擎按读入 K（= 成员前一轮池
+      // `m.prev.stunPool`，即 `threads.prevPoolStunCount`）分配了 K 个窗，池却撑不住（实测 yixuan-trigger-lucia 读入 4 → 池 3，
+      // 资源行连携 4 / 池与轴栈 3）。判据在纯函数 outerCycle.ts#pickOuterCycleMember ⓪″；这里只算 `feasible`（非 physical 不传）。
+      // 同理 physical 下 ⓪ 零窗判据的「窗数」= 读入 K（`windowsIn`），不是规划值 stunIn（实测 auto-1401-1511-1411 可行成员读入 2、规划 0.015）。
+      const physical = resourceConfig?.stunPlanProjection === 'physical'
+      const feasibleOf = (m: OuterCycleMember): boolean | undefined => {
+        if (!physical) return undefined
+        const kIn = m.prev?.stunPool?.stunCount
+        const pool = m.out?.stunPool?.stunCount
+        return kIn === undefined || pool === undefined || pool >= kIn
+      }
       const picked = pickOuterCycleMember(
-        all.map(m => ({ stunIn: m.stunIn, next: m.next, disc: discreteInconsistencyOf(m), time: timeInconsistencyOf(m) })),
+        all.map(m => ({ stunIn: m.stunIn, next: m.next, disc: discreteInconsistencyOf(m), time: timeInconsistencyOf(m), feasible: feasibleOf(m), windowsIn: physical ? m.prev?.stunPool?.stunCount : undefined })),
         { stun: OUTER_STUN_TOLERANCE, disc: TIME_BUDGET_TOLERANCE_SECONDS, time: AXIS_FALLBACK_TOLERANCE_SEC },
       )
       const best = all[picked.index]
@@ -278,7 +289,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     // 读入 5 → 池 4、读入 4 → 池 5）。规范成员的引擎按读入 K（= 其前一轮池 `outPrev.stunPool`，即
     // `threads.prevPoolStunCount`）分配时间与计数，池却报 K+1 ⇒ 资源行（决算 4）与池 / 轴栈 / 伤害侧（5）不同源。
     // 取读入 K（按 K 分配时池撑得住 ≥ K，即最大自洽可行整数），报告池同步钳到 K；K+1 那次没有分配时间，不兑现。
-    // 只处理「池 > 读入」的一侧；「池 < 读入」（引擎多分配了窗口）不在此钳，留作残差（docs/mcp-stun-dual-source.md §15）。
+    // 只处理「池 > 读入」的一侧；「池 < 读入」（引擎多分配了窗口）的成员已在 pickOuterCycleMember ⓪″（CC-153）排除出参选。
     // 回退点：删本块与 `core/stunPool.ts#withStunCount`。
     if (outerExit === 'cycle' && resourceConfig?.stunPlanProjection === 'physical' && out?.stunPool && outPrev?.stunPool) {
       const kIn = outPrev.stunPool.stunCount
