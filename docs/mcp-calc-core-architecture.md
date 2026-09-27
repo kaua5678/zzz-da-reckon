@@ -251,6 +251,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-79 | done | `03ba536` | StunAxisPage 横幅有琉/无琉 → axisPresetPreferredLabel（声明 axisPresetPreferredShort） | census §5.86 |
 | CC-80 | done | `8b8564d` | mechanics/teamVeil.ts 帷幕来源写死 4 个角色 id → 模块能力 teamVeilCount | census §5.87 |
 | CC-81 | done | `f338b47` | core/substatOptimizer.ts AGENT_TEMPLATES 8 个角色 → 模块声明 substatTemplate | census §5.88 |
+| CC-82 | done | `75fced2` | 角色 id 全仓复查无新增；helpers.ts 加农转子 `'14001'` 写死判定 → src/data/wEnginePeriodicDirect.ts 查表 | census §5.89 |
+| CC-83 | 待做 | — | 拆 src/mechanics/types.ts（1928 行，结构熵超 1500 线）：卫星输入/输出类型移到同级文件，由 types.ts 转出 | 队列 CC-82 行 |
+| CC-84 | 触发式（低） | — | 出现第二件周期直伤音擎时，把 cfg 的 cannonRotor* 字段和 rowBuild 事件泛化为数组 | census §5.89 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |

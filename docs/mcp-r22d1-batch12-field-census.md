@@ -2529,3 +2529,28 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 
 **§5.86 复查里新发现的两处到此都已完成（CC-80、CC-81）。** 队列后续见 `docs/mcp-worker-task-queue.md` 的 CC-81 行。
 
+### 5.89 CC-82：角色 id 全仓复查无新增 + 音擎 14001 写死判定改为数据表（lead-arena-0925c，2026-09-27 第 101 轮）
+
+**复查（HEAD `aba3546`，命令与 §5.86 相同）**：共 133 行，比 §5.86 的 144 行少 11 行，正好是 CC-80 的 3 行加 CC-81 的 8 行。按文件：versionTimeline 50、moveFusions 19、strongTeamPresets 18、panelPhases 14、standardMultiplierTable 9、sustainedEx 6、TimeChartsPage 3、FreeComparePage 3、pullValue 2、SlotCompareChart 2；TeamComparePage、MultiplierCoeffPage、CharIncrementPage、logicEditor、exSpecialPlans、counterAssists、pullPlannerEngine 各 1。
+- **§5.86 的更正**：`src/data/versionTimeline.ts`（50 行，S 级角色实装版本数据表，006327b 之前就有）当时混在「其余各 1」里没有点名，144 行的总数没错。它属于数据表，不动。
+- 分类结论：**没有新的计算路径角色集合**。
+  - 数据表（`src/data/**`，包括 counterAssists 克拉蕾、exSpecialPlans 千夏）：不动；
+  - panelPhases 那 14 行全在 ADDITIONAL_GATE_BUFFS 里（§5.77）；
+  - 页面默认值和候选池（MultiplierCoeff、CharIncrement、TeamCompare、FreeCompare 的柏妮思/菲欧妮/维琳娜示例、TimeCharts、SlotCompareChart）按 §5.74 不动；
+  - `stores/logicEditor.ts:121` 是「新增倍率融合」按钮的默认样例值（agentId 1561 / moveId 1561007，enabled:false），属于 UI 默认值，不动；
+  - pullValue 和 pullPlannerEngine 按 §5.76 不动。
+- `node scripts/report-agent-identity.mjs --md` 结果：执行尺 1 行（anomalyPanels.ts:108 动态 teammateBuffId，无法自动分类，存量），业务判定 0。
+- **顺带发现并处理**：非角色 `.id` 观察项里有 `composables/resourceCalc/helpers.ts:520 wEngine.id === '14001'`（加农转子），这是编排层里写死的音擎 id 分支。又把 core、composables、mechanics、stores 里的 5 位 id 扫了一遍：其余只有 `pullPlannerEngine.ts:65-73`（抽卡规划默认音擎）和 `teamCompare.ts:54 DEFAULT_AUTO_ENGINE_POOL`（自动配装候选池），都是默认值，不动。
+
+**CC-82 `75fced2`（音擎 14001 判定改为数据表）**
+- 决定：新建数据表 `src/data/wEnginePeriodicDirect.ts`（`W_ENGINE_PERIODIC_DIRECT` 和 `findWEnginePeriodicDirect`），不给音擎建模块体系。依据：仓库没有音擎机制模块，现在只有这一件，为它单独建注册表不划算；数据表可以随时回退。
+- helpers.ts 改为查表：按 id 查，查不到再按 legacyIds 查；职业匹配规则由表里的 `requiresSpecialtyMatch` 决定；倍率和各精修等级的 CD 从表里读。原来写死的 `'14001'` 和 CD 数组都删了。
+- **有意不做**：cfg 字段名 `cannonRotorDamageMultiplier/CooldownSeconds`、core/resource/rowBuild.ts 的事件 id `cannon_rotor_crit_proc` 和名称「加农转子额外伤害」保持不变。等出现第二件同类音擎再泛化（队列里的 CC-84 触发式卡），不然这次就得动 core、types 和集成测试的断言。
+- 测试 `src/data/__tests__/wEnginePeriodicDirectCc82.test.ts`：
+  - id、legacyIds、职业、精修（含 undefined、0、6 越界）全组合共 832 组，与逐字复刻的原判定相等；
+  - 源码锁：helpers.ts 里不再有 `'14001'`。
+  - 集成测试用现有的 `specialMechanics.test.ts`「加农转子直伤事件」。
+  - 反向验证：表里倍率 200 改成 150 后 2 条变红（本测试和集成测试），已恢复。
+- 验证：perf dump/rows DIFF 0；vue-tsc 0；verify 337 files / 3703 tests EXIT 0（/home/kaua/calc-arch/z82.log）。注意：perf 语料的自动配装池里没有 14001，零差只能证明没有连带影响；14001 路径本身由集成测试和组合对照测试覆盖。
+- 回退：`git revert 75fced2`。
+
