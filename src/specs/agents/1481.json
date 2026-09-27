@@ -11,7 +11,7 @@
       "id": "liuyin_crit_to_impact",
       "name": "暴击率转冲击力",
       "sourceStat": "critRate",
-      "sourcePanelPhase": "inCombat",
+      "sourcePanelPhase": "outOfCombat",
       "threshold": 50,
       "stepSize": 1,
       "stepRounding": "none",
@@ -19,7 +19,7 @@
       "valuePerStep": 2,
       "cap": 100,
       "status": "implemented",
-      "note": "[已确认] 超过 50% 的每 1% 暴击率转 2 点局内固定冲击力，100% 暴击时转满 100 点。实现位置：mechanics/agents/liuyin.ts applyLiuyinPanel 调 applySpecAttributeConversions 执行本条（R6 C7，第 140 轮起本条即唯一常数来源）。口径：stepRounding=none（超出量连续 ×2，不按整 1% 取整），沿用迁移前模块口径、零差；原文「每超过 1%」是否应取整为未决数据口径，改为取整会改数值，须另开 CC 卡（见 docs/mcp-r6-refactor-list.md §2）。"
+      "note": "[已确认·原文] 初始暴击率超过 50% 时，每超过 1% 转 2 点局内固定冲击力，100% 时转满 100 点；CC-123（第 150 轮）按原文「初始」改读局外面板（applyPanel 传 sources.outOfCombat），与 CC-118 同口径。实现位置：mechanics/agents/liuyin.ts applyLiuyinPanel 调 applySpecAttributeConversions 执行本条（R6 C7，第 140 轮起本条即唯一常数来源）。口径：stepRounding=none（超出量连续 ×2，不按整 1% 取整），沿用迁移前模块口径、零差；原文「每超过 1%」是否应取整为未决数据口径，改为取整会改数值，须另开 CC 卡（见 docs/mcp-r6-refactor-list.md §2）。"
     }
   ],
   "resources": [

@@ -122,10 +122,11 @@ export function computeNangongMechanic(input: {
   }
 }
 
-function applyNangongPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void {
+function applyNangongPanel({ panel, outOfCombatPanel, cinemaLevel, settings }: AgentPanelInput): void {
   const coverage = clampRatio(settings['nangong.coreBuffCoverage'] ?? 1)
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + MASTERY_BONUS + (cinemaLevel >= 4 ? C4_MASTERY_BONUS : 0)
-  applySpecAttributeConversions(panel, masteryConversions())
+  // 原文「初始异常掌控」⇒ 读局外面板（spec sourcePanelPhase=outOfCombat，CC-123）
+  applySpecAttributeConversions(panel, masteryConversions(), 1, { outOfCombat: outOfCombatPanel })
   // 核心被动命中增益（30s 刷新）：自身积蓄效率 / 自身失衡值（C6 追加 +50）
   panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + CORE_EFFICIENCY_BONUS * coverage
   panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + (CORE_BUILD_UP_BONUS + (cinemaLevel >= 6 ? C6_BUILD_UP_BONUS : 0)) * coverage
@@ -133,11 +134,13 @@ function applyNangongPanel({ panel, cinemaLevel, settings }: AgentPanelInput): v
   if (cinemaLevel >= 1) panel.enemyResReduction = (panel.enemyResReduction ?? 0) + C1_ALL_RES_REDUCTION
 }
 
-function buildNangongCharConfig({ skills, cinemaLevel, cfg, getRowValue }: AgentCharConfigInput): void {
+function buildNangongCharConfig({ skills, cinemaLevel, cfg, getRowValue, panel, outOfCombatPanel }: AgentCharConfigInput): void {
   const t2 = findMoveById(skills, MINE2_MOVE_ID)?.actionTime ?? 0
   const t3 = findMoveById(skills, MINE3_MOVE_ID)?.actionTime ?? 0
   const record = cfg as unknown as Record<string, unknown>
   record.nangongCinemaLevel = cinemaLevel
+  // 展示值「掌控转冲击」与面板同口径：初始（局外）掌控（CC-123）
+  record.nangongInitialMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
   record.nangongMinePairSeconds = t2 + t3
   // 影画4：地雷撞 #2/#3 行的**表值积蓄**在此预存（`enrichExecutionPlan` 会从倍率表回填
   // `anomalyBuildUp` ⇒ `patchExecutions` 阶段读不到表值；先例 `yuzuha.ts:117` / `seth.ts:98`）。
@@ -395,7 +398,7 @@ function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): P
   const releaseCoverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
   const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
   const source = computeNangongMechanic({
-    anomalyMastery: cfg.panel.anomalyMastery ?? 0,
+    anomalyMastery: Number(record.nangongInitialMastery ?? cfg.panel.anomalyMastery ?? 0),
     frontlineSeconds: frontline,
     battleTime,
     beatInitial,

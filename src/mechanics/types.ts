@@ -150,6 +150,11 @@ export interface AgentCharConfigInput {
    * 一处（诺姆 C1 减抗）是永不生效的死写。面板字段一律写在 `applyPanel`；本钩子唯一出口 = `cfg`。
    */
   panel: DeepReadonly<PanelValues>
+  /**
+   * 本槽局外面板（只读，CC-123）：供「初始 X」类转化的**展示值**读取，与 applyPanel 的 `outOfCombatPanel` 同源。
+   * 可选：少数模块以局部参数转调基类 buildCharConfig，不带本字段。
+   */
+  outOfCombatPanel?: DeepReadonly<PanelValues>
   cfg: CharacterOperationConfig
   getRowValue: (move: SkillMove | null | undefined, rowId: string) => number
   /**

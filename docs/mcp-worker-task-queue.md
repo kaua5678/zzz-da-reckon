@@ -69,34 +69,30 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 149 轮（2026-09-27，一个提交「docs(spec): CC-122」，提交号见 git log；上一轮 CC-121 = a3d3205）
+### 第 150 轮（2026-09-27，一个提交「fix(mechanics): CC-123」，提交号见 git log；上一轮 CC-122 = 66fcd79）
 
-- **做到哪**：CC-122（零差，zd DIFF 0）。
-  - `src/specs/agents/1471.json`：`banyue_fury_from_block` 改为 `blockCount × 6`。catalog 原文：「成功招架回复4点，完美格挡改为6点，每1秒最多一次」；模块 `FURY_BLOCK = 6` 对应金身弹刀（完美格挡）次数，普通弹刀走 parryCount × 4，所以模块正确、spec 过时。审计文档 §3 的未决项已结。
-  - 「原文写全队、实现只作用于本人」扫描完成 A / B 两类（`docs/mcp-spec-resources-audit.md` §5）：
-    - `src/specs/agents/1541.json` C1 note 订正（team 作用域）；
-    - `src/mechanics/agents/phoenix.ts` 影画1 过时注释订正（实际由 spec 全队 teamBuff 承载，没有双计）；
-    - `src/mechanics/agents/claret.ts` 残锋注释 + `src/mechanics/__tests__/claretSmoke.test.ts` 绊线（锋御只有克拉蕾一人，所以自身实现与原文等价；新增锋御角色时绊线变红）。
-  - 验证：zd `cc122` DIFF 0；validate:specs 1120；vue-tsc / CG / verify 见提交。
+- **做到哪**：CC-123（改数值口径，预设内零差）。
+  - `src/specs/agents/1511.json`、`1481.json`：`sourcePanelPhase` inCombat → outOfCombat（原文均为「初始」），note 同步。
+  - `src/mechanics/agents/nangong.ts`、`liuyin.ts`：applyPanel 解构 `outOfCombatPanel` 并传 `1, { outOfCombat: outOfCombatPanel }`。
+  - 展示同口径：`src/mechanics/types.ts` `AgentCharConfigInput` 加可选 `outOfCombatPanel`；`src/composables/resourceCalc/helpers.ts` `buildCharConfig` 改为一次 `computePanelPhases` 取局内 + 局外；南宫羽新 cfg 键 `nangongInitialMastery`（资源卡读它）；`promia.ts` `promiaAnomalyMastery` 改读局外（CC-116 遗留分叉已修）。
+  - 新测试 `src/mechanics/__tests__/initialConversionCc123.test.ts`（3 条，反向验证已做）。
+  - 验证：zd `cc123` DUMP / ROWS DIFF 0；validate:specs 1120；vue-tsc 0；verify / CG 见提交。
 - **下一步（按顺序，可直接开工）**：
-  1. **CC-123（改数值）：南宫羽 1511、琉音 1481 的「初始」属性转化改读局外面板**，与 CC-118（卢西娅）同一口径：原文「初始 X」= 局外面板，spec 若声明 `sourcePanelPhase: outOfCombat` 则以 spec 为准。
-     - 先读 `src/specs/agents/1511.json`、`1481.json` 的 attributeConversions（看 `sourcePanelPhase` 与原文措辞），再读 `src/mechanics/agents/nangong.ts`、`liuyin.ts` 的 `applySpecAttributeConversions` 调用点（第 140 / 141 轮迁入，目前不传 sources）。
-     - 改法同 CC-118：解构 `outOfCombatPanel`，调用加 `1, { outOfCombat: outOfCombatPanel }`；spec status 改为 implemented。
-     - **zd 盲区**：`/c6` 只作用于 0 号位。这两项不依赖命座，default 变体能覆盖在场预设，但仍要看差异是否只出现在含 1511 / 1481 的预设里。timeGolden 逐条解释后重生成。
-     - 若 spec 声明的是 inCombat 而原文写「初始」：以原文为准并在 spec 订正（R5：数据可信，这里的数据指原文 / catalog）。
-  2. 「全队」扫描 C 类（审计文档 §5 末），先派 dsh 做只读分类。
+  1. 「全队」扫描 C 类（`docs/mcp-spec-resources-audit.md` §5 末）：先派 dsh 只读分类（自检 pong 后），给出每句「实现作用域 vs 原文作用域」，再挑出真差异开 CC 卡。
+  2. 零差清理：`rina.ts:191` 死写删除；`soukaku.ts:113` 自赋值处理（先读再动，行号可能漂移）。
+  3. 其他读 `panel.*` 做展示的「初始」类模块：用 `git grep -n "初始" -- src/mechanics/agents` 逐个核对展示值口径（本轮只查了 1511 / 1541 / 1481）。
 - **本轮拍板**：
-  - 1471 以原文 + 模块为准订正 spec（零差；回退点：恢复 spec 旧文本）。
-  - 残锋不改实现，只加绊线。依据：锋御仅 1 人，改成 teamBuff 是零收益的结构改动；绊线保证前提失效时会被发现。
+  - 以原文「初始」为准订正 spec（依据 R5、CC-118 先例；回退点：两份 spec 改回 inCombat）。
+  - 展示值新字段做成**可选**（有模块以局部参数转调基类 buildCharConfig），缺省回落局内面板。
 - **已知坑**：
+  - harness 预设默认不开局内 buff，所以「局内 vs 局外」类改动在 zd 上必然零差，必须自写阳性对照单测。
+  - 琉音 applyPanel 读 `agent.id`，直接调用时要传 `agent: { id: '1481' }`。
   - `releaseModifier` 的派发键是异放行的 agentId（结算者），原文是全队的修正必须声明 `releaseModifierScope: 'team'`（第 148 轮）。
   - 盘点 cfg 键时要同时搜 `setRecord(cfg, 'xxx'` / `cfgNum(cfg, 'xxx'` 的字符串形式。
-  - 判断「spec 某段是否参与计算」用变异法（审计文档 §2）。spec resources / events 的 10 + 3 份已证明不参与计算，改它们必然零差。
-  - 预设外的角色（zd 看不到）至少有 1121、1281、1291、1081。
-  - `setupHarness` 收到裸字符串 id 会抛错，必须传 `{ agentId }` 对象。
-  - 模块注释写「未接 / 近似为自身」都要实测再下结论：本轮 phoenix 注释写「自身」，实际是全队。
-  - **zd `/c6` 变体只把 0 号位设为 6 命**，非 0 号位角色的 6 命改动需要自写探针。
+  - 判断「spec 某段是否参与计算」用变异法（审计文档 §2）。
+  - 预设外的角色（zd 看不到）至少有 1121、1281、1291、1081；`setupHarness` 必须传 `{ agentId }` 对象。
+  - **zd `/c6` 变体只把 0 号位设为 6 命**，非 0 号位需自写探针。
   - `BuffEffect` 在 `@/types/catalog`；vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
   - `zcWorkspace.test.ts` 在全量 verify 下偶发失败，单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
-- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；南宫羽 / 琉音「初始」读局外（下一步 1，已定口径待执行）。
+- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）。「初始」读局外已结（CC-123）。

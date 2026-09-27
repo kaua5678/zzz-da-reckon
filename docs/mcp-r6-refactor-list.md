@@ -176,3 +176,10 @@
 - **逐条对照**：81 条一致；4 条不一致（1 条真错已修：1581 `luminizeMasteryRatio` 0.1 → 0.2；2 条语义不同；1 条未决：1471 格挡 4 vs 6）；34 条在模块里没有对应（模块按覆盖率或恒满建模）。
 - **不迁移的理由**：结构不同（状态机描述 vs 覆盖率模型），强行对接要么改数值、要么造只为对接的字段；而且真错只有 1 条，收益低；R6 禁止只为降计数的改动。
 - 细节、复跑方法和原始表见 `docs/mcp-spec-resources-audit.md`。**C7 至此全部收尾。**
+
+### 2.11 第 150 轮结果：CC-123 南宫羽 / 琉音「初始」转化改读局外 ✅（改数值，预设内零差）
+
+- **结论**：本清单与队列里的未决项「南宫羽 / 琉音『初始』是否读局外」**已结**。原文（`data/raw/nanoka_missing/full/1511.json`、`1481.json`）都写「初始」，两份 spec 却声明 `sourcePanelPhase: "inCombat"`；按 R5「数据可信（原文）」订正为 outOfCombat，模块传 `sources.outOfCombat`（写法同 §2.8 CC-118）。
+- **顺带统一展示口径**：`AgentCharConfigInput.outOfCombatPanel`（可选，`src/mechanics/types.ts`）由 `helpers.ts buildCharConfig` 从同一次 `computePanelPhases` 传入；南宫羽资源卡、普罗米娅 `promiaAnomalyMastery` 都改读局外，面板计算与展示不再分叉。
+- **为什么零差**：harness / 预设不开局内 buff，局内 = 局外。差异只在用户开启局内暴击 / 掌控 buff 时出现，由新单测覆盖。
+- **仍未决**：「每超过 1 点 / 1%」是否取整（§2.1），未动。

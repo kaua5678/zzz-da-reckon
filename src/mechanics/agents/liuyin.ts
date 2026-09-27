@@ -193,7 +193,7 @@ export function computeLiuyinSource(input: LiuyinSourceInput): LiuyinMechanicSou
   }
 }
 
-function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, settings }: AgentPanelInput): void {
+function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
   // 额外能力触发条件由 spec.additionalAbility 声明式统一判定写入 panel.additionalAbilityActive；
   // 兜底走硬编码（spec 未声明时）。
   const extraAbilityActive = (panel.additionalAbilityActive ?? 0) > 0
@@ -204,7 +204,8 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, settings }: A
 
   // 核心被动：初始暴击率超过 50% 时，每超过 1% 冲击力 +2，最多 +100（100% 暴击时封顶）。
   // 口径 stepRounding=none（连续），与迁移前 `min(100, max(0, crit-50)×2)` 逐位一致；取整与否是未决数据口径。
-  applySpecAttributeConversions(panel, getAgentSpec(LIUYIN_AGENT_ID)?.attributeConversions ?? [])
+  // 原文「初始暴击率」⇒ 读局外面板（spec sourcePanelPhase=outOfCombat，CC-123）
+  applySpecAttributeConversions(panel, getAgentSpec(LIUYIN_AGENT_ID)?.attributeConversions ?? [], 1, { outOfCombat: outOfCombatPanel })
 
   // 额外能力：强化特殊技伤害暴击伤害 +50%（技能专属 buff，仅强化特殊技生效）。
   if (extraAbilityActive) {

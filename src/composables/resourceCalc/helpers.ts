@@ -458,7 +458,9 @@ export function buildCharConfig(
   const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
   if (!agent || !skills) return null
 
-  const panel = computePanel(slot, configStore, catalogStore)
+  // 同一次 computePanelPhases 同时取局内（= 原 computePanel）与局外面板；局外面板只读转给模块（CC-123：「初始」类展示值）
+  const panelPhases = computePanelPhases(slot, configStore, catalogStore)
+  const panel = panelPhases?.inCombat ?? null
   if (!panel) return null
 
   // 「本槽是不是蕾米埃尔」+ 面板盖章 + cfg 三字段（`remielleEnabled` / `remielleRadiantTurnDazeBonusPct`
@@ -627,6 +629,7 @@ export function buildCharConfig(
     wEngineModLevel: char.wEngineModLevel ?? 1,
     team: buildMechanicTeamMembers(configStore, catalogStore),
     panel,
+    outOfCombatPanel: panelPhases?.outOfCombat,
     cfg,
     getRowValue,
     char,

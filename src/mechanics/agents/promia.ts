@@ -118,12 +118,13 @@ export function computePromiaCycle(input: {
   }
 }
 
-function buildPromiaCharConfig({ cinemaLevel, cfg, panel, char }: AgentCharConfigInput): void {
+function buildPromiaCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, char }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   // 处刑式·匿影次数（交互栏用户输入；CC-35b 2026-09-27 由 helpers.ts cfg 字面量迁入）
   cfg.promiaNiyingCount = char?.promiaNiyingCount ?? 0
   record.promiaCinemaLevel = cinemaLevel
-  record.promiaAnomalyMastery = panel.anomalyMastery ?? 0
+  // 展示值与面板 / teamBuff 同口径：初始（局外）掌控（CC-123 订正 CC-116 遗留的局内口径）
+  record.promiaAnomalyMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
   record.promiaAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
 }
 
