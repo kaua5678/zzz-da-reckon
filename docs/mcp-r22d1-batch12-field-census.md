@@ -1838,6 +1838,56 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 4. 测试：对照单测，把原 dynamicVars/readVar/writeVar 照抄进测试逐值比较，至少覆盖一个带 `%` 后缀的机制设置变量；柏妮思变量可在 harness 里放 1171，构造 coverage。反向变异：去掉 `%` 的 ×100。判据 7 基线与 frozen 2→1，同批改。跑 vue-tsc 和 verify。
 5. 搬代码前先执行 `grep -rn 'ImpactChart' src/**/__tests__ scripts`，看有没有写死路径的源码锁（第 71 轮踩过）。已知 `scripts/check-tokens.mjs:516` 有 `'src/components/ImpactChart.vue': 4`，那是设计 token 计数，删 JS 不影响，改完照常跑 guards 确认。
 6. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）。
+### 5.60 CC-53 done：判据 7 2→1（ImpactChart 影响变量 → 编排层）（lead-arena-0925c，2026-09-27 第 73 轮）
+
+**提交**：`eee038f`。新文件 `src/composables/impactVariables.ts`，导出三个函数和两个类型：
+- `buildImpactVariables(team, settingMap, getAgent, coverageRate)`
+- `readImpactVariable(id, configStore, settingMap, coverageRate)`
+- `writeImpactVariable(id, value, configStore, settingMap)`
+- 类型 `ImpactVariable`（type 转出）、`ElementCoverageRate`
+
+测试 `src/composables/__tests__/impactVariables.test.ts`（2 条）。
+
+ImpactChart.vue 的改动：
+- 删掉 `dynamicVars` 和 `parseDynamicVar`；
+- 新增 `coverageRate` computed，取自 `anomalyPoolResult.coverage.perElementCoverageRate`；
+- `allVars` 改为调用 `buildImpactVariables`；
+- `readVar` / `writeVar` 各缩成一行，签名不变，模板里 ResponseSurface3D 的 props 不用动；
+- 删掉 `@/core/impactVars` 导入，组件里已经没有 `'1171'`。
+
+判据 7 的基线和 frozen 同批改为 2→1，plan 文案同步。回退：`git revert eee038f`。
+
+**拍板**
+- 组件保留 settingMap（经 agentMechanicView 门面）、采样循环、渐进渲染和计时，只把「有哪些变量、怎么读写、单位怎么换算」搬走。依据：采样时的让出主线程和进度回调属于 UI 调度，不是计算口径。
+- **柏妮思写死的 `'1171'` 随代码搬进 composable**，文件里写作 `BURNICE_ID` 常量，头注释已写明。依据：`scripts/lib/agent-branch-ratchet.mjs#listAgentBranchFiles` 的度量面只有 `useResourceCalc.ts` 加 `resourceCalc/*.ts`，判据 22/23 只管 `core/**`、`resourceCalc/**` 和 `useResourceCalc.ts`，判据 24 只管按值导入 mechanics/agents；`src/composables/impactVariables.ts` 都不在里面，所以不用换尺，符合规则 17②。
+- 遗留项「写死角色 ID 需单独立卡」的范围扩大为：StunAxisPage、`src/composables/impactVariables.ts`、`ResourceUtilizationPage.vue:~420`（和原 ImpactChart 同款的柏妮思判断）、`FreeComparePage.vue:~261`（`BURNICE = '1171'`）。以后的正解是柏妮思模块声明「异放占比变量」能力，编排层再经门面查询。
+- 口径逐行照搬，行为没改：变量顺序是静态 → 机制设置 → 柏妮思元素占比；`%` 机制设置读 ×100、写 ÷100；柏妮思占比有存值就读存值，没有就取覆盖率，两者都 ×100。`coverageRate` 缺省时按 `{}` 处理，和原来的 `?? {}` 等价。
+
+**是否真正降低了耦合**：是。组件不再知道影响变量有哪些、单位怎么换算、柏妮思占比的自动值从哪里来。
+
+**验证**：判据 7 为 1/1，24 条守卫全过，check-tokens 通过，vue-tsc 0 错误。新单测：
+- 队伍 1171/1311/1211、推荐配装，构造覆盖率 fire 0.6 / ice 0 / electric 0.4：
+  - 变量表和照抄的原算法逐值相等，含 fire、electric 占比，不含 ice，且至少有一个 `%` 机制设置变量；
+  - 每个变量的读取都逐值相等（electric 设了存值 0.3，fire 走自动值，分别断言 30 和 60）；
+  - 每个变量的写入，都和原算法写后的 store 快照相等（mechanicSettings、enemy、各槽 basicAttackTimeWeight），中间先写一个不同值，防止「根本没写」也能通过；
+  - `%` 变量写 50，store 里是 0.5。
+- 队伍里没有柏妮思时不出占比变量，覆盖率缺省时读取返回 0。
+
+反向变异两种都让单测变红：① 去掉 `%` 的 ×100 ② `rate <= 0` 改成 `< 0`。恢复后 cmp 一致。`npm run verify` 通过：310 files / 3642 tests，24 guards（`/home/kaua/calc-arch/verify53.log`）。只改展示层取数路径，没跑 dump/rows。
+
+**判据 7 剩余 1 处：MechanicsTablePage.vue:172 `agentSpecs`（@/specs/registry）——拍板：永久保留，不做纯转发**
+- 依据：
+  - `agentSpecs` 是 `import.meta.glob('./agents/*.json')` 读出来的**只读 JSON 数据表**，没有任何计算。页面只拿它做下拉选项（:~193 map）和关键词过滤（:~200 filter）。
+  - 包一层纯转发只会让数字变成 0，耦合并没有降低，等于「搬家骗过尺子」，违背 2026-09-12 口径纠正的精神。
+  - 同一个注册表，mechanics/*、stores/*、logicEditor/*、resourceCalc/panelPhases.ts 都在直接用，它本来就是数据层。
+- **下一步（CC-54，可直接开工，单独成批，只改守卫配置，不改 src）**：
+  1. 先读 `scripts/check-guards.mjs` 里 RATCHET_BURNDOWN 的 id `'展示层越层 import'` 条目（:~220），以及校验 burndown 的逻辑和测试（搜 `target`、`due`、`清零`，以及 `scripts/__tests__` 或 `src/**/__tests__` 里的 check-guards 相关测试），确认 target 从 0 改成 1 后，不会触发「未到期、有进展、清零」三个用例里的误报。
+  2. 把 target 改成 1，plan 改写为「剩 1 处 = agentSpecs 只读数据注册表，永久保留，理由见 census §5.60」；due 视校验逻辑决定保留还是改掉。frozen 保持 1。
+  3. 在 `scripts/lib/layer-import-ratchet.mjs` 的 `EXHIBITION_LAYER_IMPORT_BASELINE` 头注释写明：剩 1 处是只读数据表，永久保留；以后新增的展示层越层导入仍然判红（基线 1 不上调）。
+  4. 可选，而且更彻底：如果判据 7 的禁用目标清单能按模块豁免 `@/specs/registry`（它是数据层，不是引擎），也可以改成豁免加基线 0。但这属于**换尺**，必须单独成批，并写明口径变化。拿不准就选上面第 1–3 步的方案，它可以直接回退。
+  5. 跑 guards 和 verify，把这一条写进 census §5.61。
+- 判据 7 收尾后的下一个方向：遗留项「写死角色 ID 声明化」（范围见上）。建议从柏妮思占比变量开始：在 burnice.ts 模块声明能力，经 agentMechanicView 门面查询，ImpactChart 和 ResourceUtilizationPage 共用。开工前先读 `src/composables/agentMechanicView.ts` 的现有门面写法（参照 CC-47/48）。
+- 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
