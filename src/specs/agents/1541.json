@@ -100,7 +100,7 @@
       "coverage": 1,
       "effects": [],
       "status": "implemented_approximation",
-      "note": "影画1 异放无视20%防御改走 releaseModifier（异放限定，见 promia.ts promiaReleaseModifier）。"
+      "note": "影画1 异放无视20%防御改走 releaseModifier（异放限定，作用域 team：全队异放行生效，CC-121；见 promia.ts promiaReleaseModifier）。"
     },
     {
       "id": "promia_ice_team_release_dmg",

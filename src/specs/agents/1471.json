@@ -35,12 +35,12 @@
         },
         {
           "id": "banyue_fury_from_block",
-          "trigger": "闪避：不动如山成功招架",
-          "countSource": "parryCount",
-          "amountPerCount": 4,
-          "formula": "格挡次数 × 4（完美格挡6；平均按4近似，1秒最多1次）",
+          "trigger": "闪避：不动如山完美格挡（金身弹刀）",
+          "countSource": "blockCount",
+          "amountPerCount": 6,
+          "formula": "金身弹刀次数 × 6（1秒最多1次）",
           "status": "implemented_approximation",
-          "note": "[猜测·中] 普通格挡4/完美格挡6，1s CD；与招架支援同源 parryCount，整局合并近似（默认按 4 点/次）。"
+          "note": "[已确认·原文] 通过[闪避：不动如山]成功招架回复4点，完美格挡改为6点，每1秒最多一次。实现（banyue.ts FURY_BLOCK=6）：交互栏 blockCount = 金身弹刀（完美格挡）次数 × 6；普通弹刀走 parryCount × 4（招架支援同值）；双反（完美闪避+金身）另计 dualCounterCount × 10。本条原写 parryCount × 4 平均近似，与模块不符，CC-122 按原文与模块订正（resources 不参与计算，零差）。"
         },
         {
           "id": "banyue_fury_from_dodge",

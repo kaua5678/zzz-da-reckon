@@ -401,3 +401,11 @@ describe('克拉蕾初始暴伤→暴击率转化（核心被动：每 1% 初始
     expect(panelWith(0, 35).critRate).toBeCloseTo(19.4 + 30, 5)
   })
 })
+
+describe('CC-122 绊线：残锋「全队[锋御]」按自身面板实现的前提', () => {
+  it('当前数据面锋御（specialty=sharpen）只有克拉蕾一人；新增锋御角色时本例失败 ⇒ 残锋改为 spec teamBuff + specialty 条件', () => {
+    const catalog = JSON.parse(readFileSync(join(process.cwd(), 'public/static/catalog.json'), 'utf-8'))
+    const agents: Array<{ id: string; specialty?: string }> = Array.isArray(catalog.agents) ? catalog.agents : Object.values(catalog.agents)
+    expect(agents.filter(a => a.specialty === 'sharpen').map(a => a.id)).toEqual(['1611'])
+  })
+})

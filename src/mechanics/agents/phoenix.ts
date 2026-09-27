@@ -39,7 +39,7 @@ export const PHOENIX_WEAKNESS_MASTERY_THRESHOLD = 145
 export const PHOENIX_WEAKNESS_PER_POINT_RATE = 0.7
 /** 额外能力：队伍异常角色数 2/3 → 脆弱暴伤提升为 25/40（门控 additionalAbilityActive） */
 export const PHOENIX_WEAKNESS_CRIT_DMG_BY_COUNT: Record<number, number> = { 1: 15, 2: 25, 3: 40 }
-/** 影画1：脆弱目标异常伤害触发暴击时暴伤 +20（近似为自身异常暴伤面板 +20） */
+/** 影画1：脆弱目标异常伤害触发暴击时暴伤 +20。实际承载 = spec teamBuff `phoenix.cinema1_weakness_crit_dmg`（全队 anomalyCritDmg +20，与脆弱异常暴击同为通用机制）；本常量只喂资源卡展示（CC-122 订正旧注释「近似为自身」）。 */
 export const PHOENIX_C1_CRIT_DMG = 20
 /** 影画1：燃烧攻击余火获取效率 +15% */
 export const PHOENIX_C1_EMBER_EFFICIENCY = 15

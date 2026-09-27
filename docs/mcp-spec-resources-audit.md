@@ -28,7 +28,7 @@
 | 1581 | `remielle_voidflare.properties.luminizeMasteryRatio` | 0.1 | `remielle.ts` `LUMINIZE_MULTIPLIER_PER_AP = 0.2` | **spec 错，已改为 0.2**。模块 @fact 有四源核对（原文、nanoka、账本 Q10、catalog 公式 x*0.2），0.1 是旧的转写错误；伤害管线一直走 catalog 公式 0.2 |
 | 1581 | `remielle_voidflare.initialValue` | 0 | `VOIDFLARE_INITIAL = 3` | **语义不同，不改**。spec 描述开局 0 个；模块展示的是稳态满储存（资源卡「最多储存 3 个」） |
 | 1471 | `banyue_fury.initialValue` | 0 | `INITIAL_FURY = 115` | **语义不同，不改**。115 是用户确认的操作假设（开局场外烧血攒到 115，不满 120 避免自动入怒相）；spec 描述游戏开局 |
-| 1471 | `banyue_fury_from_block.amountPerCount` | 4 | `FURY_BLOCK = 6`（另有 `FURY_PARRY = 4`） | **未决，不改**。spec 把普通格挡 4 / 完美格挡 6 合并为平均 4（自注「猜测·中」）；模块拆开，金身弹刀（完美格挡）按 6。没有证据说明哪边错；要改需先查原文或实测 |
+| 1471 | `banyue_fury_from_block.amountPerCount` | 4 | `FURY_BLOCK = 6`（另有 `FURY_PARRY = 4`） | **✅ 第 149 轮已结（CC-122）：模块正确，spec 已订正为 `blockCount × 6`**。catalog 原文：「通过[闪避：不动如山]成功招架敌人攻击时，回复4点[嗔火]，若触发完美格挡，则改为回复6点[嗔火]，每1秒最多触发一次」；模块的 blockCount 就是金身弹刀（完美格挡）次数，普通弹刀走 parryCount × 4。以下为原判：**未决，不改**。spec 把普通格挡 4 / 完美格挡 6 合并为平均 4（自注「猜测·中」）；模块拆开，金身弹刀（完美格挡）按 6。没有证据说明哪边错；要改需先查原文或实测 |
 
 ## 4. 原始对照表（dsh 子代理只读盘点，第 147 轮，模块行号基于 d2b270c）
 
@@ -152,3 +152,16 @@
 | 1581 | remielle_voidflare | gainRules[voidflare_from_teammate_reaction].amount | 1 | — | — | 模块中找不到对应（虚曜总数由异常池 perSlotAnomalyTriggers 汇总，不建逐次 +1） |
 | 1581 | remielle_voidflare | spendRules[voidflare_luminize].cost | 3 | src/mechanics/agents/remielle.ts:375,528 | 3 | 一致 |
 | 1581 | remielle_voidflare | properties.luminizeMasteryRatio | 0.1 | src/mechanics/agents/remielle.ts:42 | 0.2 | 不一致 |
+
+## 5. 「原文写全队、实现只作用于本人」扫描（第 149 轮，CC-122；CC-121 的推广）
+
+**抽句脚本**（可复跑，输出不进仓库）：对 `src/specs/agents/*.json`，把 `\\n` 替换成句号后，用正则 `[^。；"]*(全队|队伍中所有角色|队伍中全部角色|所有队友|队伍内所有)[^。；"]*` 抽句，按（id，前 60 字）去重。第 149 轮共抽出 145 句 / 40 个角色（包含实现注记里的重复）。
+
+**已完成的两类**：
+
+| 类别 | 方法 | 结果 |
+|---|---|---|
+| A. spec teamBuff `target: team` 但 `effects` 为空 | python 遍历 teamBuffs | 4 条，全部有承载者：1181 格莉丝 C1 全队回能（模块 applyTeamConfig）；1381 零号安比潜能（并入 formula 通道）；1541 核心 0.35%（formula teamBuff，第 146 轮）；1541 C1 减防（releaseModifier team，CC-121；note 已订正） |
+| B. 模块或 spec 注释自认「近似为自身 / 仅自身」 | `git grep -E '(近似为?自身\|仅作用(于)?自身\|只作用(于)?自身\|近似自身\|按自身.*近似\|仅自身)'` | 1611 克拉蕾残锋「全队[锋御]」：catalog 中锋御（specialty=sharpen）只有克拉蕾 ⇒ 自身实现与原文等价，零影响；加绊线测试（`claretSmoke.test.ts`「CC-122 绊线」），新增锋御角色时变红。1641 phoenix 影画1 +20 暴伤：注释过时，实际由 spec 全队 teamBuff 承载、模块常量只喂展示，没有双计；注释已订正。1121 本：旧注释，已由 teammate-buffs 全队承载 |
+
+**剩余（未做）**：C 类，即 145 句中其余由模块 applyPanel 直接写自身面板、但注释没有自认近似的机制。做法：逐句找承载者（spec teamBuff / catalog teammate-buffs / 模块 applyTeamConfig / releaseModifierScope），找不到的用面板探针实测队友字段（写法见第 146 轮 `cc119probe`：遍历预设，`panelAt(calc.panels.value, slot)`）。适合派 dsh 做第一遍只读分类，lead 复核后再落盘。

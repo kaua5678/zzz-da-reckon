@@ -69,37 +69,34 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 148 轮（2026-09-27，一个提交「fix(1541): CC-121」，提交号见 git log；上一轮 CC-120 = af31a5e）
+### 第 149 轮（2026-09-27，一个提交「docs(spec): CC-122」，提交号见 git log；上一轮 CC-121 = a3d3205）
 
-- **做到哪**：
-  1. **CC-99 重新评估：按原范围不做**（结论与重开条件写在 `docs/mcp-mechanic-dataization-census.md` §6 顶部；卡表 CC-99 行已改）。命座透传 61 处 / 56 键逐键核对，没有真 bug（仅 `rina.ts:191` 一处无害死写）。
-  2. **CC-121（改数值）：普罗米娅有罪推定全队异放减防改为真正的全队生效**。
-     - `src/mechanics/types.ts`：`AgentMechanicModule.releaseModifierScope?: 'self' | 'team'`。
-     - `src/composables/resourceCalc/damagePool.ts`：`resolveReleaseModifier` 汇总本角色模块和在场声明 team 的模块（去重，相加）。
-     - `src/mechanics/agents/promia.ts`：声明 `releaseModifierScope: 'team'`，删除「近似为自身」的注释和文案。
-     - `src/specs/agents/1541.json`：2 处 note 同步更新。
-     - `src/mechanics/__tests__/promiaRelease.test.ts`：新增 1 例（普罗米娅 + 薇薇安 + 蕾米埃尔：薇薇安的异放行 note 含「有罪推定」；换成月城柳后没有）。反向验证：删掉 scope 后该例失败，恢复后 cmp 一致。
-     - 数值：zd 16 处变化，全部是含 1541 的预设，+0.54% ~ +4.74%，与事先用临时补丁测得的数值逐位相同。timeGolden 3 条已重生成（见卡表 CC-121），word-diff 确认只改了这 3 个数。
-     - 文档口径：`docs/ENGINE_PIPELINE_GUIDE.md`（releaseModifier 行）、`docs/MECHANIC_PATTERNS.md`（结算者行）。
-     - 验证：vue-tsc 0；get_diagnostics 0；CG 25/25；verify 见提交。
+- **做到哪**：CC-122（零差，zd DIFF 0）。
+  - `src/specs/agents/1471.json`：`banyue_fury_from_block` 改为 `blockCount × 6`。catalog 原文：「成功招架回复4点，完美格挡改为6点，每1秒最多一次」；模块 `FURY_BLOCK = 6` 对应金身弹刀（完美格挡）次数，普通弹刀走 parryCount × 4，所以模块正确、spec 过时。审计文档 §3 的未决项已结。
+  - 「原文写全队、实现只作用于本人」扫描完成 A / B 两类（`docs/mcp-spec-resources-audit.md` §5）：
+    - `src/specs/agents/1541.json` C1 note 订正（team 作用域）；
+    - `src/mechanics/agents/phoenix.ts` 影画1 过时注释订正（实际由 spec 全队 teamBuff 承载，没有双计）；
+    - `src/mechanics/agents/claret.ts` 残锋注释 + `src/mechanics/__tests__/claretSmoke.test.ts` 绊线（锋御只有克拉蕾一人，所以自身实现与原文等价；新增锋御角色时绊线变红）。
+  - 验证：zd `cc122` DIFF 0；validate:specs 1120；vue-tsc / CG / verify 见提交。
 - **下一步（按顺序，可直接开工）**：
-  1. **1471 般岳格挡嗔火 4 vs 6**（`docs/mcp-spec-resources-audit.md` §3 未决）。先读原文：`python3` 在 `public/static/catalog.json` 与 `data/raw/nanoka_missing/full/1471.json`（若存在）里搜「格挡」「不动如山」「嗔火」。
-     - 原文区分普通格挡 4 / 完美格挡 6：模块正确，把 spec 的 `banyue_fury_from_block` 改成与模块一致的描述（resources 不参与计算，零差），并在审计文档 §3 标已结。
-     - 原文只有一个值且与模块不同：开 CC 卡（改数值），按 CC-118 / CC-121 的流程做。
-  2. **同类扫描：原文写「全队角色……」但实现只作用于本人的机制**（CC-121 的推广）。在 `src/specs/agents/*.json` 的原文段落里搜「全队角色」「队伍中所有角色」「全队」，对照实现是 teamBuff（全队）还是模块 applyPanel / releaseModifier（本人）。只登记差异、附出处，改数值的走 CC 卡。**不要**凭注释判断是否生效，先用面板或伤害池实测（见已知坑）。
+  1. **CC-123（改数值）：南宫羽 1511、琉音 1481 的「初始」属性转化改读局外面板**，与 CC-118（卢西娅）同一口径：原文「初始 X」= 局外面板，spec 若声明 `sourcePanelPhase: outOfCombat` 则以 spec 为准。
+     - 先读 `src/specs/agents/1511.json`、`1481.json` 的 attributeConversions（看 `sourcePanelPhase` 与原文措辞），再读 `src/mechanics/agents/nangong.ts`、`liuyin.ts` 的 `applySpecAttributeConversions` 调用点（第 140 / 141 轮迁入，目前不传 sources）。
+     - 改法同 CC-118：解构 `outOfCombatPanel`，调用加 `1, { outOfCombat: outOfCombatPanel }`；spec status 改为 implemented。
+     - **zd 盲区**：`/c6` 只作用于 0 号位。这两项不依赖命座，default 变体能覆盖在场预设，但仍要看差异是否只出现在含 1511 / 1481 的预设里。timeGolden 逐条解释后重生成。
+     - 若 spec 声明的是 inCombat 而原文写「初始」：以原文为准并在 spec 订正（R5：数据可信，这里的数据指原文 / catalog）。
+  2. 「全队」扫描 C 类（审计文档 §5 末），先派 dsh 做只读分类。
 - **本轮拍板**：
-  - CC-99 不做（依据：没有真 bug，只降计数；回退点：重开即按 census §6 原方案）。
-  - CC-121 按原文改为全队生效。依据：原文两处都明确写「全队角色」（R5：数据可信）。有罪推定状态仍按常驻近似（额外能力激活即生效），与原口径一致。多来源修正按相加处理，与面板 enemyDefReduction 的加算一致。回退点：删掉 promia 的 `releaseModifierScope: 'team'` 一行即回到旧数值（damagePool 的汇总在没有 team 模块时与旧逻辑等价）。
+  - 1471 以原文 + 模块为准订正 spec（零差；回退点：恢复 spec 旧文本）。
+  - 残锋不改实现，只加绊线。依据：锋御仅 1 人，改成 teamBuff 是零收益的结构改动；绊线保证前提失效时会被发现。
 - **已知坑**：
-  - `releaseModifier` 的派发键是**异放行的 agentId**（结算者），不是 buff 来源。原文是全队的修正必须声明 `releaseModifierScope: 'team'`。
-  - 盘点命座透传这类键时，要同时搜 `setRecord(cfg, 'xxx'` 和 `cfgNum(cfg, 'xxx'` 的字符串形式，否则会误报「无写入方」。
-  - 判断「spec 某段是否参与计算」用变异法（`/home/kaua/calc-arch/mut147.py` + zd + 阳性对照，见 `docs/mcp-spec-resources-audit.md` §2）。
+  - `releaseModifier` 的派发键是异放行的 agentId（结算者），原文是全队的修正必须声明 `releaseModifierScope: 'team'`（第 148 轮）。
+  - 盘点 cfg 键时要同时搜 `setRecord(cfg, 'xxx'` / `cfgNum(cfg, 'xxx'` 的字符串形式。
+  - 判断「spec 某段是否参与计算」用变异法（审计文档 §2）。spec resources / events 的 10 + 3 份已证明不参与计算，改它们必然零差。
   - 预设外的角色（zd 看不到）至少有 1121、1281、1291、1081。
   - `setupHarness` 收到裸字符串 id 会抛错，必须传 `{ agentId }` 对象。
-  - 模块注释写「未接」不等于真没接（spec teamBuffs 经 catalog 合并，始终生效）。
-  - zd 只有 resourceResult 哈希变、伤害不变时，先怀疑 `specResources` 里的文案字段。
+  - 模块注释写「未接 / 近似为自身」都要实测再下结论：本轮 phoenix 注释写「自身」，实际是全队。
   - **zd `/c6` 变体只把 0 号位设为 6 命**，非 0 号位角色的 6 命改动需要自写探针。
-  - `BuffEffect` 在 `@/types/catalog`（`src/core/types.ts` 不存在）；vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
+  - `BuffEffect` 在 `@/types/catalog`；vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
   - `zcWorkspace.test.ts` 在全量 verify 下偶发失败，单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
-- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；nangong / liuyin 原文「初始」是否应读局外面板（注意 zd 盲区）；1471 格挡嗔火 4 vs 6（下一步 1）。
+- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；南宫羽 / 琉音「初始」读局外（下一步 1，已定口径待执行）。
