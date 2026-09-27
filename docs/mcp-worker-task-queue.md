@@ -85,4 +85,5 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **已知坑**：
   - 注册不再由「import core」隐式触发。以后新增 Web Worker 或用 tsx / vite-node 直接跑 src 的 node 脚本，必须自己 `import '@/mechanics'`，否则 `getAgentMechanic` 全返回 undefined（静默少算）。
   - 组件 / composables 仍 import `@/mechanics`，这是允许的（编排层不在环上）。
+  - **偶发失败**：`src/scripts/__tests__/zcWorkspace.test.ts`「真 CLI 收工/释放后，仅自己活跃租约覆盖的变化属于自己」在全量 verify 下出现过 1 次（verify154：`ownedPaths` 多出 `expired.ts`），单独跑 3/3 通过，紧接着全量 verify155 通过。该用例用 `at: time - 2000, ttlMs: 1000` 构造过期租约，由子进程 `zc.mjs done` 以自身 `Date.now()` 判过期；怀疑与高负载下的时钟 / 进程时序有关，未定位。遇到时先单独重跑确认，不要为此改业务代码；再次出现就把过期租约改为 `at: 0` 之类与时钟无关的构造。
 - **未决**：10 个模块 spec resources 与模块账本重复，是否归一待 C7 两刀做完后评估。
