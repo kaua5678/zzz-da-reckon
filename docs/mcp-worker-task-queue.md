@@ -69,6 +69,33 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 158 轮（2026-09-28，代码 `ece87d0c`（CC-134）+ 文档提交「docs: round 158」；上一轮 = df8523f9 / 366212b7 / 057f0c3b）
+
+- **做到哪**：
+  - **「每超过 N」取整口径定了：统一 floor 整步**。依据、全量清单（26 条机制、实现位置、现状）写在清单 §2.18。
+  - **CC-134**（`ece87d0c`）：spec 里 4 条 `stepRounding: "none"`（简 / 琉音 / 南宫羽 / 普罗米娅）回到缺省 floor；verifications 按 floor 重算。`src/specs/types.ts`、`src/specs/template.json`、`liuyin.ts` 的注释同步写明新口径（新录入不要写 none）。
+  - zd、timeGolden 的逐条归因见卡表 CC-134 与 §2.18。
+  - 验证：verify181 EXIT=1，唯一失败是 seedInvariance 活性自检，归因和改写见 §2.18 末段；改写后 verify182 EXIT=0（3790 passed | 29 skipped）；CG 25 项通过；文档提交另跑 verify183。
+- **下一步（按顺序，可直接开工）**：
+  1. **CC-135：模块和公式里剩下的 6 处连续实现改成 floor**（§2.18 表中标「CC-135 待改」的行）：
+     - `src/mechanics/agents/qingyi.ts` 约 127 行：`over` 改为 `Math.floor(over + 1e-9)`。
+     - `src/mechanics/agents/trigger.ts` 约 212 行：`overCrit` 同上。
+     - `public/static/teammate-buffs.json` 柚叶 `1411.additional_ability.anomaly_damage_bonus`：公式改为 `clamp(floor(max(0, x - 100) + 1e-9) * 0.2, 0, 20)`。先确认公式求值器支持 `floor` 和 `max`（照、莱特的公式已在用）。改前断言「读→写」逐字节还原。
+     - 爱芮影画1：`src/composables/resourceCalc/damagePool.ts` 约 260 行，`max(0, mastery - threshold)` 外套 floor。
+     - `src/mechanics/agents/claret.ts` 195 行：`initialCritDmg` 改为 `Math.floor(initialCritDmg + 1e-9)`。
+     - `src/mechanics/agents/roxy.ts` 305–306 行：`regen / 0.01` 改为 `Math.floor(regen / 0.01 + 1e-9)`，攻击去掉 `Math.round`。注意 0.01 的浮点问题，例如 1.23 − 1.2 = 0.0299999…，所以一定要加 1e-9。
+     - 每处跑 `bash .zc/perf/zd.sh <tag>` 并逐条归因。遇到「输入变小、伤害大涨」按 §2.18「已知坑」先查 `plannedStunCount`。两份时间基线逐条解释后重生成。
+  2. §2.18 两条「待查」：莱特「每超过 1 点冲击力，火焰冲击倍率 +5%」的实现；爱芮 / 薇薇安「每 10 点掌控 / 精通 → 异放比例」要先核薇薇安原文措辞，再决定是否 floor。
+  3. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先；`src/stores/config.ts` 约 819–861 行）。
+- **本轮拍板**：
+  - 取整口径选 floor，依据见 §2.18 四条。可逆性靠保留 `stepRounding` 字段和逐条回退。
+  - 分两批：先做只改数据的 spec 四条（CC-134）；模块和公式六处留给 CC-135，每处都要单独归因。
+  - `seedInvariance` 活性自检改写（§2.18 末段）：旧判据靠浮点噪声变绿，按 R8「已成形式的判据直接改」处理，新判据做了反向验证。
+  - `auto-1201-1481-1211/c6` 的 +5.34% 不算 CC-134 的错：它是外层不动点路径依赖，已记为已知坑，不在本卡修。
+- **已知坑**（新增，其余沿用第 157 轮）：
+  - spec JSON 的 note 里**不要写未转义的双引号**。第 158 轮写入 `"stepRounding": "none"` 字样导致 JSON 解析失败，zd 的 after 两路 rc=1，报 ENOENT 找不到 after.json。zd 出现 ENOENT 时先看 `/home/kaua/calc-arch/zd-<tag>-dump-after.out`。
+  - zd 的 dump 只有哈希；要看细节就用探针（§2.18 末尾）。
+
 ### 第 157 轮（2026-09-28，代码 `df8523f9`（CC-132）+ `366212b7`（CC-133）+ 文档 `057f0c3b` + 回填 `5da9f22c` 及其修正提交；上一轮文档 = 7090a58d / 77212f3e）
 
 - **做到哪**：
