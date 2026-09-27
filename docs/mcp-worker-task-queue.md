@@ -69,6 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 170 轮（2026-09-28，只提交文档「docs: round 170」，无代码；上一轮 = 6d2984ce / 6e85b26f）
+
+- **做到哪**：CC-146 根因已定位，写在 `docs/mcp-stun-dual-source.md` §11。本轮没有改代码：插桩已 `git checkout` 还原，临时测试已移到 WSL `/home/kaua/calc-arch/s170/`。
+- **下一步（按顺序，可直接开工）**：
+  1. **CC-146 修法 A**（§11.4）：
+     - a) 读 `src/mechanics/agents/sigrid.ts` 第 195 行 `countBasicFinisherHits` 与 `sigridChuqiangFromState`（约第 437 行），以及 `sigridLanceCounts` 里 `solveSpend` 的 `Math.floor`。
+     - b) 给估时路径（`estimateExSpecialTime` → `sigridLanceCounts`）加「迭代期实数」开关：命中数取连续值，spend 不 floor；物化路径（`buildExecutions` / patch 行）保持整数。怎么区分迭代期和终局，参考伊德海莉：`src/mechanics/agents/yidhari.ts` 的 `finalizePass` 能力，以及 `core/resource.ts` 里 `runFinalizePasses(configs, states, 'tail', ...)` 那段注释。
+     - c) 验证：用 `s170/zzS170c.test.ts`（放到 `src/`，缺省常量临时改 4）确认校准种子与冷启动的账本一致；缺省 off 下跑 zd（预期希格莉德队有 diff，逐队解释）、`seedInvariance`、`timeLedgerInvariants`、`sigrid.test.ts`；需要时重生成 timeGolden / timeFillRatchet。
+     - d) 如果 A 在 off 下的改动面太大（比如超过 15 队，或者有无法解释的 diff），退而求其次：只在估时侧对 prev 平 A 做 `(prev + new) / 2` 阻尼，让 2-循环收敛到中点，并写明取舍。
+  2. CC-146 绿之后重做 CC-144（第 168 轮第 3 条）。
+  3. 洛克茜 `energyRegenOutOfCombat`；副词条优化器接入接收槽过滤（低优先）。
+- **本轮拍板**：
+  - CC-146 不改判据，也不做「挑环成员」（§11.4 B、C 否决的理由）。
+  - 本轮不落地修法 A。依据：它会改变默认口径的数值，需要一整轮做 zd 归因。回退点：无（没有代码改动）。
+- **已知坑**（新增）：
+  - `seedInvariance` 的失败只在跑完整的全库顺序时复现；单跑一队或改预设筛选都会变绿（被测 cfg 依赖前面各队留下的 store 历史）。复现一律用原测试或原样副本。
+  - 希格莉德的「剩余平 A」只有 1–2s，正好在一个段循环的阈值附近，任何让平 A 池小幅移动的改动都可能改变她的命中档位。改平 A 池分配时要特别留意 1591 队。
+
 ### 第 169 轮（2026-09-28，代码 `6d2984ce`（CC-145）+ 文档提交「docs: round 169」；上一轮 = 47869b28 / be45d0a3）
 
 - **做到哪**：
@@ -124,25 +142,6 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **已知坑**（新增）：
   - `convergence.ts` 里 `allocateAxisWindows(resolvedAxes, stunCount)` 有 6 处，锚文本不唯一；改哪处要带上相邻的唯一行做锚。
   - `c167/hook167.py` 会把当前 `convergence.ts` 备份到 `/tmp/cc142/convergence.ts.orig`，覆盖旧备份；恢复一律用 `git checkout -- <文件>`，别信那个备份。
-
-### 第 161 轮（2026-09-28，测试 `30daa4b1`（CC-137）+ 本文档提交；上一轮 = 3adb3620 / ef6ecce6 / 2a57b241）
-
-- **做到哪**：
-  - 第 160 轮下一步第 1 项「第二种不连续」已结案：物理失衡次数的整数台阶，不修。trace、全曲线核对和判据修订见 `docs/mcp-outer-fixedpoint-continuity.md` §5。
-  - 护栏 `src/composables/__tests__/outerContinuity.test.ts`（CC-137），零数值变化。
-- **下一步（按顺序，可直接开工）**：
-  1. **坑 25 双源：规划失衡 vs 物理次数**（ENGINE_PIPELINE_GUIDE 坑 25「已知残差」和第 177 行；专项文档 §5.3）。本轮已拍板：先量后定，只做测量、不改数值。
-     - a) `promoteFixpoint`（`src/composables/resourceCalc/ultimatePromote.ts` 第 259 行；闭式 N* 在约第 332 行）目前只返回 `floor` 后的 `stunCount`。给 `StunPoolResult`（`src/types/resource/pools.ts` 第 37 行）加可选字段 `stunCountContinuous`（= N*），零差，用 zd 验 DIFF 0。
-     - b) 探针原型（不提交）：`solveTeam.ts` `runOuterLoop` 里 `next = rawNext * (1 - coverage)`（约第 199–209 行）改成 `next = stunPool.stunCountContinuous`，再保留原来的时间可行截断。跑 zd，记录 125 队的规划失衡、物理次数、总伤和留白变化，以及外层 stable / cycle / maxIter 的比例变化。预期不动点更容易存在，cycle 变少。
-     - c) 结论写进新文档 `docs/mcp-stun-dual-source.md`（登记 README §6 → 65 份）：选哪个口径、依据、影响面、回退点。只有「cycle / maxIter 明显减少，且变化能逐队解释」时才落地为 CC 卡。禁止用「更接近投稿」当理由。
-  2. 洛克茜 `energyRegenOutOfCombat` 局内 3.12 / 局外 1.2 的读法疑点（§2.18 第 159 轮补充最后一条）。
-  3. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先；`src/stores/config.ts` 约 819–861 行）。
-- **本轮拍板**：
-  - 连续性验收判据改为「同物理次数的相邻跳变 ≤1%」。依据：唯一剩下的大跳变是 floor 台阶；原判据会逼人抹平真实的整数效应。回退：恢复原判据，那就得去改 floor 口径，而这与 CC-134 / CC-135 冲突。
-  - 护栏选琉音 c6 而不是扳机例：当前代码下扳机例已连续，而琉音例反向验证能红，护栏才有活性。
-- **已知坑**（新增，其余沿用第 160 轮）：
-  - 外层轮次历史没有对外暴露；诊断要靠临时 trace 钩子（做法见专项文档 §5.1），用完 cp 恢复并 `git diff` 确认。
-  - 扫描不必关心轮数：20 轮 maxIter 在这里只是伴随现象，要看的是 `stunPoolResult.stunCount` 是否变化。
 
 ### 第 160 轮（2026-09-28，代码 `3adb3620`（CC-136）+ 文档 `ef6ecce6` + 本回填提交；上一轮 = 0028eb01 / 8e46f748 / e4cbfc51）
 
