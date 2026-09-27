@@ -95,7 +95,8 @@
 - [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；第 130 轮完成 `coverage`（D20）；第 131 轮完成 `target`（D21，CC-105 已修）；第 132 轮完成 `buffModifiers`（D22）与 `formula` / `expression`（D23）。
   - 52 个字段中**已核 19 个**：`mode`、`condition`、`requirement`、`outOfCombatStat`、`specialty`（requirement 内）、`coverage`、`default`、`min`、`max`、`step`、`target`、`kind`、`skillTargets`、`skillTag`、`skillType`、`targetSkillType`、`buffModifiers`、`formula`、`expression`（其中 `specialty` 只核了 requirement 内的用法，其他出现位置随角色类字段再核）。
   - 第 133 轮完成效果数值核心一批（D24：`type`、`value`、`valuePerStack`、`maxStacks`、`defaultStacks`、`modificationValues`、`scope`）与 `source` / `sourceStat` / `defaultValue`（D25）⇒ **已核 29 个**。
-  - **剩余 23 个 + `specialty` 其余位置**（角色 / 招式 / 面板类）：`actionTime`、`advancedStat`、`agentId`、`attribute`、`baseStat`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`comboAlignRatio`、`damageElement`、`energyCost`、`isTeammateOnly`、`levelValues`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`skillTags`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat`、`teammateBuffId`、`timeType`、`values`。建议顺序：面板类（`advancedStat`、`baseStat`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat`）→ 招式类（`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`）→ 身份类（其余）。
+  - 第 134 轮完成面板类一批（`advancedStat`、`baseStat`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat`，见 **D26 / D27**）⇒ **已核 34 个**。
+  - **剩余 18 个 + `specialty` 其余位置**：招式类 `actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`（建议下一批一起做）；身份类 `agentId`、`attribute`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`isTeammateOnly`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`teammateBuffId`。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
 ## 7. 已核结论（第 2 刀起）
@@ -361,6 +362,22 @@
 - **拍板**：**不改数值**，保持当前的「局外异常精通」口径（可逆）。风险在于这个口径是**靠 buff 排列顺序隐式成立的**，调整顺序就会静默改变 1581 的伤害 → 新测试 `src/core/__tests__/remielleSourcePhase.test.ts` 钉住 coef = 0.02 × 局外 AP、bonus = 0.2 × 局外 AP。
 - **若日后确认应按局内（实时）异常精通**：给这两个 effect 补 `sourcePanelPhase: "inCombat"`，并让自身 formula 效果在局内其余效果之后再求值（两段式），改写上述测试；影响只限 1581 所在预设，按 CC 卡流程做 zd 归因与 golden delta 表。
 
+### D26 4 件套 `outOfCombatStat` 门槛的取值面板漏掉音擎与局外 buff（审 `advancedStat` / `baseStat` 时发现）→ **语义不同，已修（CC-108）**
+
+- **数据怎么写**：34200 荆棘玫瑰 4pc「装备者**初始防御力**大于等于1000/1800点时，暴击率提升8/16%」，selfBuff.condition「暴击率按装备者**最终局外防御力**自动判定」；32700 折枝剑歌 4pc 异常掌控 ≥115 同类。音擎 `level60.baseStat = def` 3 把（14161 猩红渴望 431、13017 / 13021 各 356，白值加到防御），`advancedStat` 含 defPct 4 把、anomalyMastery pct 4 把。
+- **引擎怎么算（修前）**：`core/buff.ts` `collectAllBuffs` 自算 `roughStats`：def = 角色白值 × (1 + 4/5/6 号位防% + 防%副词条) + 184 + 防御副词条；anomalyMastery = 角色白值（× 1.3 若 6 号位掌控）。**漏掉**：音擎白值（baseStat=def）、音擎副属性、本套 2 件套防御 +16%、局外 buff。第 3 刀 requirement 那条（D-requirement，第 305 行）当时把这一口径标为「不在本条范围」。
+- **差在哪**：数据写的是最终局外面板，引擎用的是缺项的粗算。例：1611 克拉蕾 + 专武 14161、空副词条，精确局外防御 1614.3（应给第一档 +8% 暴击），粗算 625.1（不给）。同一文件的 teamBuff 侧（山大王 critRate≥50）早已读精确面板，两侧口径不一。round 30 注释说两侧「不得统一」，理由是**粗算值是错的**（漏音擎副属性）——现在改成两侧都读精确面板，该理由不再成立。
+- **修法（CC-108）**：删 `roughStats`；`calcPanel` 两段式——第一段不带门槛数据收集 buff（带属性门槛的效果一律不发）并算出局外面板；若 4 件套 selfBuff 带 `outOfCombatStat` 门槛（`discSelfBuffNeedsOutOfCombatPanel`），第二段用第一段局外面板判定门槛、重新收集并重算局外面板。门槛效果都在局内组，第一段面板即「门槛效果之前」的局外面板，不自指。
+- **影响面**：zd DIFF 12（dump / rowsnap 各 12），只有 claret-roxy-rina、claret-koleda-rina 两个预设各 6 个变体。golden delta 见 CC-108。
+- **口径注记**：局外 buff 包括队友的局外组效果（与 teamBuff 侧 `wearerPanel` 相同）。若日后认定「初始防御力」不含队友局外效果，改 `calcPanel` 第一段传入的面板即可。
+
+### D27 面板类其余字段：`advancedStat.mode` / `target`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat` → **无差异**
+
+- `advancedStat`：83 把音擎全有，`{stat, value, mode}`，13 把多一个 `target: {kind: default}`，引擎（`panel.ts` `calcPanel`）只拷 stat/value/mode，`target` 零读取但全部是缺省值 → 等价。mode 只对 `impact` / `anomalyMastery` / `energyRegen` 有分流（`applyStat`），这三者在音擎副属性里全是 pct，与游戏「冲击力% / 异常掌控% / 能量自动回复%」一致；critRate / critDmg / penRatio 标 flat 但 `applyStat` 对它们不看 mode。
+- `baseStat`：只有 def（3 把），缺省 atk；`calcBasePanel` 按 def / hp / atk 分流 → 一致（门槛侧的遗漏见 D26）。
+- `sRankMaxMainStat` / `sRankSubStatBaseStep` / `subStatPool` / `statModes`：`applyDriveDiscConfig` 读 4/5/6 主词条、1/2/3 固定主词条、副词条（只收 subStatPool 内的键，值 = 步长 × 步数），mode 按 statModes（CC-100）→ 一致。`substatOptimizer.ts:822` 读同一步长表。
+- `stat`：catalog + teammate-buffs 共 87 个不同 stat 键（第 134 轮探针）。78 个是 `emptyPanel()` 已有字段；9 个由 `applyStat` default 分支动态建键：7 个元素分项（`{element}SheerDmg` / `CritDmg` / `SharpDmg`）由 `damage.ts:112/192/197` 按元素拼键读取；`enemy{attribute}AnomalyResReduction` 在收集期按装备者属性落键（D-requirement）；**`shieldAppliedBonus`（14107 奔袭獠牙）零读取**，`utils/statMeta.ts:52` 已标「暂不实现」，计算器不算护盾量 → 不影响伤害，不立卡。
+
 ## 9. 转卡清单（第 4 刀输入，按影响面排序）
 
 ### CC-100（D15 + D16）驱动盘词条的结算口径以源数据为准 ✅ done（第 126 轮，提交号见 git log「fix(CC-100)」）
@@ -525,6 +542,24 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
 - 新测试 `src/core/__tests__/effectValueInvariant.test.ts`（type 四种、fixed 有 value、stacked 有 valuePerStack / maxStacks 且 value 只能等于 valuePerStack、defaultStacks ≤ maxStacks、modificationValues 长 5 且首项等于基础值）。
 - 新测试 `src/core/__tests__/remielleSourcePhase.test.ts`（3 组配置下 coef / bonus = 局外 AP × 0.02 / 0.2，且确有局内 AP 加成未计入）。
 - 只加测试，不改代码与数据；verify 与 check-guards 全绿。
+
+### CC-108（D26）4 件套属性门槛改读精确局外面板 ✅ done（第 134 轮，提交号见 git log「fix(CC-108)」）
+
+- 代码：`core/buff.ts` 删 `roughStats` 粗算与 `driveDiscStatMode` 导入，`DiscSetRequirementContext.roughStats` → `outOfCombatStats`，新增导出 `discSelfBuffNeedsOutOfCombatPanel`；`collectAllBuffs` 新增 `config.outOfCombatStats`；`core/panel.ts` `calcPanel` 两段式。注释同步：`inCombatBuffs.ts` `discTeamRequirementMet`、`wengineConditions.ts`、`docs/ENTITY_CARDS.md`。
+- 测试（`discSetEffects.test.ts`）：
+  - 1071 凯撒无防主词条：753.9 × 1.16 + 184 = 1058.5 ⇒ 第一档 +8（原断言 0，原因是粗算漏本套 2pc）。
+  - 跨阈改为 1561 防%副词条 4 步（1012.2 发）/ 3 步（982.8 不发），184 与 2pc 16% 各自决定结果。
+  - 新增 1611 + 14161（音擎白值与副属性，1614.3 ⇒ 只发第一档）、1111 + 14151 + 6 号位掌控（137.6 ≥115 ⇒ 4pc 暴伤 30 发放）。
+  - 删除「`roughStats` 不得再有 critRate 键」的源码形状用例（对象已删除；它防的「粗算值错」问题随粗算一起消失，山大王行为用例保留）。
+- **zd**：DIFF 12，全部在 claret-roxy-rina / claret-koleda-rina。
+- **golden delta**（timeGolden 已重生成）：
+
+| 预设 | 伤害 | 变化 | 解释 |
+|---|---|---|---|
+| claret-roxy-rina | 151327785 → 152559072 | +0.814% | 1611 克拉蕾带 14161 + 34200：局外防御 ≈1614 ⇒ 荆棘玫瑰第一档暴击率 +8% 生效（修前粗算 625 不生效）；时间账零变化 |
+| claret-koleda-rina | 31590551 → 32450899 | +2.723% | 同一原因；队伍总伤小得多（洛克茜队总伤约为本队 5 倍），克拉蕾占比高，涨幅更大 |
+
+- 验证：vitest discSetEffects 31/31、verify、check-guards 25/25、vue-tsc -b 通过。
 
 ### 其余（零差、界面层）
 - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。

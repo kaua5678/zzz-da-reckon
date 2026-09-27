@@ -69,18 +69,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 133 轮（2026-09-27，一个提交，提交号见 git log 中的「test(CC-107)」）
+### 第 134 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-108)」）
 
 - **做到哪**：
-  - R5 第 3 刀完成效果数值核心一批（账本 §7 **D24**，无差异）与 `source` / `sourceStat` / `defaultValue`（**D25**，语义待定，不改数值）。已核 29 / 52。
-  - **CC-107**：新测试 `src/core/__tests__/effectValueInvariant.test.ts`、`src/core/__tests__/remielleSourcePhase.test.ts`。
-  - 第 132 轮的产出：`c51e8e6`（CC-106，D22 / D23）。
+  - R5 第 3 刀完成面板类一批：**D26**（4 件套属性门槛取值面板漏音擎与局外 buff，语义不同 → **CC-108 已修**）、**D27**（advancedStat / baseStat / sRank 常量 / stat 无差异）。已核 34 / 52。
+  - CC-108 改了 `src/core/buff.ts`、`src/core/panel.ts`、`src/core/__tests__/discSetEffects.test.ts`、`timeGolden.baseline.json`（2 条 delta 已写进账本 CC-108）。
+  - 上一轮：`82a7ad3`（CC-107，D24 / D25）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 3 刀续：面板类字段**——`advancedStat`（音擎 level60.advancedStat {stat, value, mode}）、`baseStat`（驱动盘主词条？先统计位置）、`statRules.driveDisc.sRankMaxMainStat` / `sRankSubStatBaseStep`、`stat`。读取方起点：`core/panel.ts`（`timeout 40 git grep -n -E 'advancedStat|sRankMaxMainStat|sRankSubStatBaseStep|baseStat' -- src/core`）。已知：D5 已核 baseStat 规则、CC-100 已改主词条口径，别重复；重点查 advancedStat 的 mode 与 applyStat 分流是否一致（D17 只核了 effect 的 mode）。
-  2. 然后招式类（`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`），最后身份类。剩余清单见账本 §6。
+  1. **R5 第 3 刀续：招式类字段**——`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`，都在 `catalog.agentSkills`。先用 python 统计每个字段的出现位置、取值分布，再 `timeout 40 git grep -n -E '<字段>' -- src ':!**/__tests__/**'` 找读取方。重点：`levelValues` 取哪一级（技能等级 / skillLevelBonus 如何叠加）、`damageElement` 与角色属性不同时的分流、`energyCost` 在 useResourceCalc 的用法。
+  2. 然后身份类 10 个（清单见账本 §6 第 3 刀进度）。
   3. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
   4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
-- **本轮新增未决项**：D25 蕾米埃尔异化度 / 耀变倍率按局外还是局内异常精通——数据与原文都没写，R5 不允许用实测定口径。当前保持局外（测试钉住）；改局内的方案与影响写在账本 D25。
+- **本轮拍板**：D26 把「初始防御力」解释为装备者完整局外面板（含音擎、本套 2pc、局外 buff，也包括队友的局外组效果），依据是数据 condition「按装备者最终局外防御力自动判定」以及 teamBuff 侧的既有做法。回退点：`calcPanel` 4b 段传入的面板。
+- **未决项**：D25（蕾米埃尔 sourceStat 局外还是局内）仍未决；D21 旁注（14150 anomalyDmgBonus 是否与紊乱重复）待核。
 - **本轮新增的已知坑**：
   - zd 的 rowsnap / dump 只存每个 key 的哈希串，看不到行级差异；归因要靠「改动影响的数据 → 哪些角色 → 哪些预设」的集合对照（本轮工具 `/home/kaua/calc-arch/zdan.mjs <base.json> <after.json>` 列出差异预设）。
   - 预设 JSON 里不写驱动盘 id，默认配装来自 `public/static/build-recommendations.json` 的 `characters.<id>.drive_disc_sets`；查「谁穿了某套」要搜这个文件。

@@ -64,7 +64,7 @@
   （消费端 `buff.ts collectDriveDiscBuffs` + `inCombatBuffs.ts`；生效测试 `discSetEffects.test.ts`）。
   例：折枝剑歌(32700) 2pc=暴击伤害+16%；啄木鸟电音(31000) 2pc=暴击率+8。
 - 套装 requirement 门槛（`EffectRequirement`，2026-09 起消费）：
-  `outOfCombatStat:{stat,min}`（selfBuff 侧粗算口径=基础值+主词条+副词条步数，teamBuff 侧用装备者源面板精确值）、
+  `outOfCombatStat:{stat,min}`（两侧都读装备者精确局外面板：selfBuff 侧由 `calcPanel` 两段式求得〔CC-108〕，teamBuff 侧用源面板）、
   `specialty`/`attribute`（装备者特化/属性）。生效中：荆棘玫瑰 def≥1000/1800、折枝剑歌 掌控≥115、
   山大王 4pc 二段 critRate≥50 + 击破限定、月光骑士颂=支援、雪兔=防护、拂晓行纪/谶羽之誓=属性限定。
 - stat 模板：`enemy{attribute}AnomalyResReduction` 按装备者属性替换（首字母大写落 stat 名，自由蓝调 4pc）。

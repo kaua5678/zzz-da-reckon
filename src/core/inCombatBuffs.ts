@@ -47,8 +47,8 @@ function ownerAliases(agent: Agent): string[] {
 }
 
 /**
- * 驱动盘 teamBuff 门槛：装备者特化/属性 + 局外面板属性（区别于 selfBuff 侧的粗算口径——
- * 这里装备者源面板已算好，用精确值；面板缺失时门槛按不满足处理）。
+ * 驱动盘 teamBuff 门槛：装备者特化/属性 + 局外面板属性（装备者源面板已算好，用精确值；面板缺失时门槛按不满足处理）。
+ * selfBuff 侧自 CC-108（R5 D26）起也读精确局外面板（`calcPanel` 两段式），两侧口径相同。
  */
 function discTeamRequirementMet(
   req: EffectRequirement | undefined,

@@ -281,11 +281,11 @@ describe('驱动盘 2pc 补录', () => {
 })
 
 describe('requirement 门槛', () => {
-  it('荆棘玫瑰 4pc：防御<1000 零档，双防主词条+副词条过 1800 双档', () => {
-    // 凯撒 defBase=754：无防主词条 → 粗算 def=754 <1000 → 两档都不给
+  it('荆棘玫瑰 4pc：1000 档 / 1800 档按精确局外防御判定', () => {
+    // 凯撒 defBase=753.9：局外防御 = 753.9 × (1 + 本套 2pc 16%) + 3 号位 184 = 1058.5 ≥1000 → 第一档 +8（CC-108 前粗算漏 2pc，判 937.9 不给）
     const none = panelFor('1071', disc({ fourPieceSetId: '34200' })).inCombat
     const baseNone = panelFor('1071', EMPTY).inCombat
-    expect(none.critRate - baseNone.critRate).toBe(0)
+    expect(none.critRate - baseNone.critRate).toBe(8)
     // 双防%主词条 + 防%副词条 → ≥1800 → 两档 +16
     const both = panelFor('1071', disc({
       fourPieceSetId: '34200',
@@ -325,22 +325,46 @@ describe('requirement 门槛', () => {
    * **一条判据要能看见门槛输入，必须至少有一条臂落在「改前不过、改后过」的跨阈区**。
    * 下面两例就是按这个口径挑的（穷举 62 角色 × 配置后取最近阈值的一对）。
    */
-  it('★ 荆棘玫瑰 4pc：3号位固定主词条 184 必须计入 `roughStats.def`（用跨阈配置，非达标/非全不达标）', () => {
-    // 1561 维琳娜 defBase=612.6；防%副词条 7 步 ⇒ 无 184 时 818.4 <1000、有 184 时 1002.4 ≥1000。
-    // ⇒ 这一对配置让「184 是否计入」直接决定第一档发放与否。
-    const straddle = { fourPieceSetId: '34200', subStatAllocation: { defPct: 7 } }
+  it('★ 荆棘玫瑰 4pc：门槛读精确局外防御（含 3 号位 184 与本套 2pc 16%，用跨阈配置）', () => {
+    // 1561 维琳娜 defBase=612.6；防%副词条 4 步 ⇒ 612.6 × (1 + 16% + 19.2%) + 184 = 1012.2 ≥1000。
+    // 少 184 ⇒ 828.2；少 2pc 16%（CC-108 前的粗算）⇒ 914.2 ⇒ 两个加数都各自决定第一档发放与否。
+    const straddle = { fourPieceSetId: '34200', subStatAllocation: { defPct: 4 } }
     const withSet = panelFor('1561', disc(straddle)).inCombat
-    const base = panelFor('1561', disc({ subStatAllocation: { defPct: 7 } })).inCombat
-    // 有 184 ⇒ 常规增伤 15 + 1000 档暴击率 8；1800 档仍不达（1002.4 <1800）
-    expect(withSet.critRate - base.critRate, '1000 档必须发放（184 计入后 1002.4）').toBe(8)
+    const base = panelFor('1561', disc({ subStatAllocation: { defPct: 4 } })).inCombat
+    expect(withSet.critRate - base.critRate, '1000 档必须发放（1012.2）').toBe(8)
     expect(withSet.dmgBonus - base.dmgBonus, '常驻 15% 增伤段').toBe(15)
-    // 负控：砍掉 1 步副词条 ⇒ 612.6×1.288 = 789.0，即使有 184 也只有 973.0 <1000 ⇒ 零档
-    const below = panelFor('1561', disc({ fourPieceSetId: '34200', subStatAllocation: { defPct: 6 } })).inCombat
-    const belowBase = panelFor('1561', disc({ subStatAllocation: { defPct: 6 } })).inCombat
-    expect(below.critRate - belowBase.critRate, '973.0 <1000 ⇒ 第一档也不发').toBe(0)
+    // 负控：3 步 ⇒ 612.6 × 1.304 + 184 = 982.8 <1000 ⇒ 零档
+    const below = panelFor('1561', disc({ fourPieceSetId: '34200', subStatAllocation: { defPct: 3 } })).inCombat
+    const belowBase = panelFor('1561', disc({ subStatAllocation: { defPct: 3 } })).inCombat
+    expect(below.critRate - belowBase.critRate, '982.8 <1000 ⇒ 第一档也不发').toBe(0)
   })
 
-  it('★ 折枝剑歌 4pc：门槛吃 `roughStats`（百分比口径，CC-100），用「pct 不过 / flat 过」的跨阈角色', () => {
+  /**
+   * ★ CC-108（R5 D26）：门槛吃**音擎**——音擎白值（baseStat=def）与音擎副属性都在「初始防御力」里。
+   * 1611 克拉蕾 + 专武 14161 猩红渴望（防御白值 431、副属性防御 +48%），空副词条：
+   * (441.1 + 431) × (1 + 48% + 16%) + 184 = 1614.3 ⇒ 第一档发放、1800 档不发。CC-108 前的粗算 = 625.1 ⇒ 零档。
+   */
+  it('★ 荆棘玫瑰 4pc：音擎防御白值与副属性计入门槛（1611 + 14161）', () => {
+    const w = cat.wEngines.find((x: any) => String(x.id) === '14161')
+    const run = (d: any) => calcPanel(getAgent('1611'), w, d, setsMap, [], statRules, { cinemaLevel: 0, wEngineModLevel: 1 })
+    const withSet = run(disc({ fourPieceSetId: '34200' }))
+    const base = run(EMPTY)
+    expect(withSet.outOfCombat.def).toBeGreaterThan(1600)
+    expect(withSet.outOfCombat.def).toBeLessThan(1800)
+    expect(withSet.inCombat.critRate - base.inCombat.critRate, '1000 档发放、1800 档不发').toBe(8)
+  })
+
+  it('★ 折枝剑歌 4pc：门槛吃音擎副属性异常掌控（1111 + 14151 副属性掌控 +30%）', () => {
+    // 1111 基础 86：6 号位掌控主词条 + 音擎副属性各 30% ⇒ 86 × 1.6 = 137.6 ≥115；只有主词条时 111.8 <115（上一条）。
+    const w = cat.wEngines.find((x: any) => String(x.id) === '14151')
+    const run = (d: any) => calcPanel(getAgent('1111'), w, d, setsMap, [], statRules, { cinemaLevel: 0, wEngineModLevel: 1 })
+    const withSet = run(disc({ fourPieceSetId: '32700', mainStats: { 6: 'anomalyMastery' } }))
+    const base = run(disc({ mainStats: { 6: 'anomalyMastery' } }))
+    expect(withSet.outOfCombat.anomalyMastery).toBeCloseTo(86 * 1.6, 6)
+    expect(withSet.inCombat.critDmg - base.inCombat.critDmg, '137.6 ≥115 ⇒ 2pc 16 + 4pc 30').toBe(30 + 16)
+  })
+
+  it('★ 折枝剑歌 4pc：门槛按百分比口径的局外掌控（CC-100），用「pct 不过 / flat 过」的跨阈角色', () => {
     // 1111 安东基础掌控 86：pct 口径 86×1.3 = 111.8 <115；flat 口径 86+30 = 116 ≥115。
     // ⇒ 这一例对「门槛用什么口径算掌控」**直接可见**。CC-100（R5 D15）起按源数据的百分比口径 ⇒ 不达标。
     const withSet = panelFor('1111', disc({ fourPieceSetId: '32700', mainStats: { 6: 'anomalyMastery' } })).inCombat
@@ -350,7 +374,7 @@ describe('requirement 门槛', () => {
     const hi = panelFor('1481', disc({ fourPieceSetId: '32700', mainStats: { 6: 'anomalyMastery' } })).inCombat
     const hiBase = panelFor('1481', disc({ mainStats: { 6: 'anomalyMastery' } })).inCombat
     expect(hi.critDmg - hiBase.critDmg, '122.2 ≥115 ⇒ 4pc 暴伤段发放').toBe(30 + 16)
-    // 负控：不装 6 号位掌控 ⇒ roughStats.anomalyMastery = 86 <115 ⇒ 只有 2pc 的 16
+    // 负控：不装 6 号位掌控 ⇒ 局外掌控 = 86 <115 ⇒ 只有 2pc 的 16
     const noMain = panelFor('1111', disc({ fourPieceSetId: '32700' })).inCombat
     const noMainBase = panelFor('1111', EMPTY).inCombat
     expect(noMain.critDmg - noMainBase.critDmg, '86 <115 ⇒ 4pc 段不发').toBe(16)
@@ -368,7 +392,7 @@ describe('requirement 门槛', () => {
     // 1481 琉音：基础 94 → 94 × 1.3 = 122.2
     const am = panelFor('1481', disc({ mainStats: { 6: 'anomalyMastery' } })).inCombat
     expect(am.anomalyMastery).toBeCloseTo(94 * 1.3, 9)
-    // 低掌控侧：基础 86 → 111.8（<115，与 4pc 门槛的 roughStats 同口径，两处不再矛盾）
+    // 低掌控侧：基础 86 → 111.8（<115，与 4pc 门槛读的局外面板同一个值）
     for (const id of ['1111', '1121', '1271', '1291']) {
       const a = getAgent(id)
       expect(a.level60.anomalyMastery, `${id} 基础掌控应为 86`).toBe(86)
@@ -494,31 +518,6 @@ describe('teamBuff 装备者门槛', () => {
       noEngine.target.inCombat.critDmg - noEngine.baseline.target.inCombat.critDmg,
       '43.4 <50 ⇒ 二段不发（同时证明上面那条 30 不是恒发放）',
     ).toBeCloseTo(15, 5)
-  })
-
-  /**
-   * ★ round 30 结构性证明：`buff.ts#collectAllBuffs` 的 `roughStats` 里**不得**再有 `critRate` 键。
-   *
-   * 前一条用例钉的是**行为**（门槛结论正确）；这一条钉的是**形状**（死键没有被"预留"回来）。
-   * 两条缺一不可：形状判据单独存在时，一个「键还在但没人读」的回归仍会绿（那正是 round 29
-   * 的困境——注入丢加数 ⇒ 0 红）；行为判据单独存在时，键被接回 selfBuff 侧（今天无害、
-   * 明天加一个 critRate 主词条门槛就错）也看不出来。
-   *
-   * ⚠ 读源码断言**只针对这一处**（仓库既有先例：`statModeParity.test.ts` 判据②c 断言真实调用点源码）。
-   */
-  it('★ `roughStats` 不得再声明 `critRate` 键（死键 + 错值，接回门槛即陷阱）', () => {
-    const src = readFileSync(new URL('../buff.ts', import.meta.url), 'utf8')
-    const decl = src.match(/const roughStats: Record<string, number> = \{([\s\S]*?)\n {2}\}/)
-    expect(decl, 'roughStats 对象字面量仍在（找不到说明结构变了，本条需同步复核）').toBeTruthy()
-    const body = decl![1]
-    // 只认「键: 值」形态，避免把注释里提到的 critRate 当成键（注释里确实会提到，见上面的裁决说明）
-    expect(
-      /^\s*critRate\s*:/m.test(body),
-      'roughStats 里不应再有 critRate 键：它零消费者，且粗算式漏音擎副属性 ⇒ 值是错的（会算成 43.4 而非 67.4）',
-    ).toBe(false)
-    // 正控：另外两个键必须还在（防「把整个对象删空」也算过）
-    expect(/^\s*def\s*:/m.test(body), 'def 键必须保留（荆棘玫瑰 1000/1800 门槛在用）').toBe(true)
-    expect(/^\s*anomalyMastery\s*:/m.test(body), 'anomalyMastery 键必须保留（折枝剑歌 115 门槛在用）').toBe(true)
   })
 
   it('月光骑士颂 4pc：支援位传播全队伤害+18%，强攻位不传播', () => {

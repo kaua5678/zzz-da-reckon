@@ -4,7 +4,7 @@
 import type {
   Agent, WEngine, DriveDiscSet, PanelValues, DriveDiscConfig, TeammateBuff, BuffEffect, StatId,
 } from '@/types/catalog'
-import { applyBuffs, applyEffect, applyStat, collectAllBuffs, finalizeCoreStatBonuses, type CollectedBuffs } from './buff'
+import { applyBuffs, applyEffect, applyStat, collectAllBuffs, discSelfBuffNeedsOutOfCombatPanel, finalizeCoreStatBonuses, type CollectedBuffs } from './buff'
 import { agentPanelStatInitials } from '@/data/agentPanelStats'
 import type { StatRules } from '@/types/catalog'
 import { driveDiscStatMode } from './discStatMode'
@@ -284,22 +284,32 @@ export function calcPanel(
   // 2. 应用音擎进阶属性 + 驱动盘词条
   const withDiscs = applyDriveDiscConfig(base, driveDiscConfig, statRules, wEngineAdvancedStats)
 
-  // 3. 收集所有 buff（statRules 传入供套装 requirement 门槛粗算）
-  const buffs = collectAllBuffs(agent, wEngine, driveDiscConfig, setsMap, teammateBuffs, {
+  // 3. 收集所有 buff。
+  const collect = (outOfCombatStats?: Readonly<Record<string, number>>) => collectAllBuffs(agent, wEngine, driveDiscConfig, setsMap, teammateBuffs, {
     cinemaLevel: config.cinemaLevel,
     wEngineModLevel: config.wEngineModLevel,
     sourcePanelsByOwner: config.sourcePanelsByOwner,
     statRules,
     enemyWeakness: config.enemyWeakness,
+    outOfCombatStats,
   })
 
   // 4. 局外面板 = 基础白值 + 音擎高级词条 + 驱动盘主副词条 + 局外 buff。
   // 攻击/生命/防御局外段：基础数据 × (1 + Σ局外百分比加成) + Σ局外固定值。
-  const outOfCombat = applyBuffs(
-    applyDriveDiscConfig(base, driveDiscConfig, statRules, wEngineAdvancedStats, buffs.outOfCombat),
+  const outOfCombatOf = (b: CollectedBuffs) => applyBuffs(
+    applyDriveDiscConfig(base, driveDiscConfig, statRules, wEngineAdvancedStats, b.outOfCombat),
     [],
     config.effectCoverageMap,
   )
+  let buffs = collect()
+  let outOfCombat = outOfCombatOf(buffs)
+  // 4b. 两段式（CC-108，R5 D26）：4 件套「装备者初始防御力 ≥1000」这类门槛按第一段的**精确局外面板**判定
+  // （第一段不发放任何带属性门槛的效果，所以它就是「门槛效果之前」的局外面板），再重新收集。
+  // 数据里门槛效果都在局内组；若日后出现局外组门槛效果，门槛仍按第一段面板判定，不会自指。
+  if (discSelfBuffNeedsOutOfCombatPanel(driveDiscConfig, setsMap)) {
+    buffs = collect(outOfCombat as unknown as Readonly<Record<string, number>>)
+    outOfCombat = outOfCombatOf(buffs)
+  }
 
   // 5. 局内面板 = 局外总属性 × (1 + Σ局内百分比加成) + Σ局内固定值加成。
   // 音擎被动、驱动4件套、队友战斗 buff 等触发型效果默认属于局内。
