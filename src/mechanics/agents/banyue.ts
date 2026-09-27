@@ -1061,6 +1061,8 @@ export const banyueMechanic: AgentMechanicModule = {
   interactionInputs: { block: { label: '金身格挡' }, dualCounter: { label: '双反' } },
   // CC-65b：「保底4嗔火」开关归属（原页面 teamHasBanyue 写死本角色 id）
   ownsGuaranteeFury: true,
+  // CC-68：队伍对比难度表的专属交互类型（原 teamCompare.ts#completeInteractionList 写死本角色 id）
+  compareInteractionTypes: ['banyueGoldenParry', 'banyueDualCounter'],
   // CC-23：补齐求解经模块能力派发（原 convergence.ts 直连 import 本函数）
   computeInteractionTopUp: computeBanyueInteractionTopUp,
   // 失衡轴动作块：怒相连段（论道→狮子吼·怒 / 地动→山摇·怒）= 怒相技能，山威免费（4 山威/怒相 = 2 组），

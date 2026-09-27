@@ -234,3 +234,12 @@ export function teamHasAxisPresetPreferred(team: ReadonlyArray<{ agentId?: strin
 export function agentResultCardCorrosion(agentId: string | null | undefined): AgentMechanicModule['resultCardCorrosion'] {
   return agentId ? getAgentMechanic(agentId)?.resultCardCorrosion : undefined
 }
+
+/** 队伍对比难度表的角色专属交互类型（CC-68；按队伍顺序去重；原 teamCompare.ts 写死般岳） */
+export function teamCompareInteractionTypes(team: ReadonlyArray<string | null | undefined>): string[] {
+  const out: string[] = []
+  for (const id of team) {
+    for (const t of (id ? getAgentMechanic(id)?.compareInteractionTypes : undefined) ?? []) if (!out.includes(t)) out.push(t)
+  }
+  return out
+}

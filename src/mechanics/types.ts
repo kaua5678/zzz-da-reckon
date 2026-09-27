@@ -848,6 +848,8 @@ export interface AgentMechanicModule {
    * 只允许改写**本角色登记在 `ADDITIONAL_GATE_BUFFS` 里的 buff id**（各模块 buff id 不相交 ⇒ 调用顺序无关）。
    */
   adjustAdditionalAbilityGates?(input: { team: ReadonlyTeam; slot: number; gates: Map<string, boolean> }): void
+  /** CC-68：队伍对比难度表要补 0 值条目的角色专属交互类型（键见 teamCompare.ts#INTERACTION_LABELS；补在 slot 0）。原 teamCompare.ts 写死般岳 id。 */
+  compareInteractionTypes?: readonly string[]
   /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。

@@ -21,6 +21,7 @@
  */
 import { STANDARD_S_AGENT_IDS, STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
+import { teamCompareInteractionTypes } from '@/composables/agentMechanicView'
 import { useConfigStore, type CharacterConfig, type EnemyConfig } from '@/stores/config'
 import type { SkillDamageTarget } from '@/types/catalog'
 import { useCatalogStore } from '@/stores/catalog'
@@ -268,10 +269,9 @@ function completeInteractionList(interactions: InteractionItem[], team: (string 
   for (const t of ['parry', 'dodge', 'quickAssist'] as const) {
     if (!present.has(t)) out.push({ type: t, count: 0 })
   }
-  if (team.includes('1471')) {
-    for (const t of ['banyueGoldenParry', 'banyueDualCounter'] as const) {
-      if (!present.has(t)) out.push({ type: t, count: 0, slot: 0 })
-    }
+  // CC-68：角色专属交互类型经模块声明 compareInteractionTypes（原写死般岳 id）
+  for (const t of teamCompareInteractionTypes(team)) {
+    if (!present.has(t)) out.push({ type: t, count: 0, slot: 0 })
   }
   return out
 }
