@@ -69,18 +69,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 175 轮（lane lead-arena-0925c）**
-- 提交：`4ca262f1`（代码 CC-151 + CC-148 收尾），文档随后提交。verify 日志：`/home/kaua/calc-arch/v175b.log`（EXIT=0；v175.log 是首版过宽修法，1 红）。
-- CC-151：锁定失衡次数被 physical 绕过，已修，见 stun-dual-source §16.1。
-- CC-148：18/18 审完，见 §16.2；发现 X 类取舍（潜能高、伤害低 0.002%），见 §16.3。
-- REQUIREMENTS 没有新条目。
+**第 176 轮（lane lead-arena-0925c）**
+- 提交：`d2c89e1e`（代码 CC-153），文档随后提交。verify 日志：`/home/kaua/calc-arch/v176b.log`（EXIT=0，3824 passed）。
+- CC-153：CC-150 残差闭合，pickOuterCycleMember 新增 ⓪″，⓪ 零窗按读入物理次数判。详见 stun-dual-source §17，zd 与基线变化已逐条解释（§17.3）。
+- REQUIREMENTS 没有新条目（最后一次改动在 e000e53e）。
 
 **下一步（按顺序，直接开工）**
-1. CC-150 残差：physical 外层 2-环里「池 < 读入」一侧。先扫全库 physical 下外层以 cycle 结束的队（遍历 teamPresets，看 `resourceResult.convergence.outerExit`），列出池 ≠ 读入的方向与幅度，再决定是否对称钳位。
+1. **CC-154 审计**（§17.4）。方法：
+   - `timeout 40 git grep -n -e 'stunIn' -e 'plannedStunCount' -e 'stunCount' -- src/composables/resourceCalc src/core src/composables/useResourceCalc.ts`，逐处标注读的是规划值还是物理次数，以及该处在 physical 下该读哪个；
+   - 重点查：`timeInconsistencyOf`、outer 迭代中 coverage / maxFull / 非失衡时间充足性约束（solveTeam 约 200–220 行，用的是规划 `stunCount`）、pickOuterCycleMember ③′（stunIn 小者）、stageResolveFeasibility 与降配；
+   - 每处写结论：同源 / 有意（写依据）/ 缺陷（开卡）。结论写进 stun-dual-source §18。
+   - 同源不变量探针可以复用 `outerCyclePhysicalFeasible.test.ts` 的写法（池 vs 每人连携行）：全库 104 队跑一遍「每人连携 == 池」（不出连携的角色跳过），先拿全景再逐个查。
 2. CC-149：physical 冷启动下最大可行降配档随合轴率不单调；复现探针 `/home/kaua/calc-arch/k172/zzD173b`。
 3. CC-147；CC-152（可选）。
 
 **已知坑**
-- 本轮探针 `k175/zzR175.test.ts`（DefDown 异放 off/physical 对比）可复用：放进 src/ 跑完移走。
-- `npm run verify` 不拦 TS6133，改测试导入后单跑 `npx vue-tsc -b`。
-- 锁定路径（stunCountLock）现为 off 口径：新增锁定相关功能时，不要再读 physical 池次数。
+- 临时插桩一律带 `// ZZTMP` 标记，用完 `sed -i '/ZZTMP/d'`，并用 `git diff --stat` 确认恢复。不要用 git stash。
+- 过滤类判据要放进纯函数，不要在调用方裁剪成员表（index 和 pickedEarlier 会错位，outerCyclePick 接线测试会红）。
+- 棘轮（setAgent 路径）和 zd（applyTeamToStore 路径）、timeGolden（applyTeamPreset 路径）状态不同；另有 warm-start 缓存的路径依赖。扫描要覆盖三条路径。
+- 修同源破缺后，伤害可能升也可能降（§17.3），不能按方向判对错。

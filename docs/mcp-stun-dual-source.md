@@ -482,3 +482,31 @@ physical 下叶瞬光+琉音+照（1 精专武）实测（探针 WSL `/home/kaua
 
 ### 16.3 X 类发现：潜能更高、伤害反而更低
 physical 下莱卡恩潜能 VI 比潜能 I 总伤低 0.002%。机理：冲击力更高 → 物理失衡次数更多 → 连携挤占前台时间。这是离散次数带来的真实取舍，不是缺陷；面板比值断言照常通过。端到端同向断言只在 off（连续规划）口径下成立，所以文件钉 off。
+
+## 17. CC-153 外层环「池 < 读入」一侧：不可行成员不参选（第 176 轮，`d2c89e1e`；CC-150 残差闭合）
+
+### 17.1 扫描（冷启动与暖序各跑一遍 104 队，结果一致）
+- 出口为 cycle、且规范成员「池 < 读入」的队只有 **yixuan-trigger-lucia**：读入 4 → 池 3；资源行仪玄连携 1371013 = 4，池 / 轴栈 = 3，同源破。
+- 其他环队：yixuan-jufufu-lucia 为「池 > 读入」，已由 CC-150 钳位；auto-1541-1511-1411 环内次数恒为 3（在环的是别的量）。
+- 扫描方法：在 solveTeam 出口前临时插一行 `globalThis.__cc150` 记录（带 ZZTMP 标记，扫完 `sed -i '/ZZTMP/d'`）。探针在 `/home/kaua/calc-arch/k175/`：zzS176（暖序）、zzS176b（冷启动 + 执行行导出）、zzH176（zd heavy 变体）、zzK176（棘轮 setAgent 路径）、zzJ176（resourceResult 全量对比），配套 jd.py、zdcmp.py（`python3 zdcmp.py <zd tag>`）。
+
+### 17.2 修法（纯函数 `outerCycle.ts#pickOuterCycleMember`，solveTeam 只负责算入参）
+- **⓪″ 不可行成员不参选**：成员新增可选字段 `feasible`。physical 下取 `池 ≥ 读入`，其中读入为 `m.prev.stunPool.stunCount`，即 `threads.prevPoolStunCount`。有可行成员时剔除不可行成员，全员不可行时照旧参选。依据和 CC-150 相同：取「按 K 分配时池 ≥ K」的最大自洽整数。
+- **⓪ 零窗判据的窗数改用读入物理次数**：成员新增可选字段 `windowsIn`，physical 下取读入 K，判据变为 `(windowsIn ?? stunIn) ≥ tol.stun`。实测 auto-1401-1511-1411 的可行成员读入 2 次，规划 stunIn 只有 0.015，被⓪误判为零窗剔除，结果仍落在不可行成员上。physical 下引擎按 K 分配窗口，规划值不代表窗数。冷启动读入为 0 的瞬态成员仍按零窗剔除（有单测）。
+- 非 physical 下两个字段都不传，逐位零影响。
+- 走过的弯路（勿重复）：
+  - 第一版在 solveTeam 里先裁剪成员表再传给纯函数。这样 index 和 pickedEarlier 都变成相对子集，outerCyclePick 接线测试红（长环成员数 ≥3 → 2）。
+  - 放进纯函数后，pickedEarlier 沿用原约定「过滤掉任何成员即 true」。
+- 回退点：删掉⓪″过滤，并把⓪的 `windowsIn ??` 去掉；solveTeam 中 `feasible` / `windowsIn` 两个入参随之删除。
+
+### 17.3 影响面（逐条已解释）
+- zd（`/home/kaua/calc-arch/zd-cc153c.out`）：
+  - yixuan-trigger-lucia default / c0：伤害 63.91M → 57.47M（−10.08%），连携 4→3 同源。
+  - yixuan-jufufu-lucia heavy / heavyGate：66.55M → 77.74M（+16.81%）。基线落在不可行成员（读入 4 → 池 3，资源行连携 4、伤害侧失衡 3），修后落在自洽成员（读入 4 → 池 4）。伤害上升，是因为原来按 4 窗分配了时间，伤害侧却只结算 3 窗。
+  - auto-1201-1361-1311/w：伤害与池零变化，只有 `convergence.outerCyclePickedEarlier` 由未设置变为 true。选中成员不变，⓪″剔除了一个本来就会输的成员，按约定记 true（用 zzJ176 实测对比 resourceResult，唯一差异就是该字段）。
+- timeGolden：只有 yixuan-trigger-lucia 变。连携 4→3，1 号位强化特殊技 5→6，留白 1.133→2.267，伤害 63.63M→63.17M（golden 路径配置与 zd 不同）。已重生成。
+- timeFillRatchet：auto-1091-1511-1411 留白 1.7→6（同源修正：连携 3→2 = 池 2，伤害 +7.0%）；auto-1401-1511-1411 留白 6→2（⓪误判修正：连携 3→2 = 池 2，伤害 +14.3%）。已重生成。棘轮基线的旧值受 warm-start 缓存的路径依赖影响，单跑探针的数值见 zzK176。
+- 回归：新增 `outerCyclePhysicalFeasible.test.ts`，2 条同源不变量（池 == 轴栈 == 资源行 / 每人连携 == 池），各自做过反向验证。outerCycle.test.ts 新增 4 条纯函数用例。
+
+### 17.4 教训：physical 口径下读规划值的判据是一类系统性缺陷
+CC-151（锁定路径读池次数）和 17.2 的⓪（零窗读规划值）是同一类问题：**physical 下计数来自物理次数，但判据仍读规划值（或反过来）**。这类问题逐个撞见效率太低，登记 CC-154 做一次全量审计，见卡表。
