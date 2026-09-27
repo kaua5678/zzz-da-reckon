@@ -69,6 +69,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 173 轮（2026-09-28，代码 `4fb7431a`（CC-148 3/18）+ 文档「docs: round 173」；上一轮 = 71452ad2 / aa90a6f2 / aaf3fd96）
+- 做到哪：CC-148 前 3 个文件迁 physical（outerCycleColdStart 加 physical describe + off 场景显式钉；teamTimeSummary 补全账本虚高恒等式；difficultyDescent 单因素闸门显式钉 off）。新发现 CC-149（physical 下合轴率单调破缺 +0.06%）。验证：三文件 24/24；反向验证（常量改 0 ⇒ 仅 3 条 physical 新钉红）；vue-tsc 0；verify EXIT=0；CG 25/25。详见 `docs/mcp-stun-dual-source.md` §14。
+- 下一步（直接开工）：**CC-148 剩 15 个文件**，按卡片里的五步规程逐文件做（适合派子代理：一次一个文件，子代理不碰 docs/）。建议顺序：hugoVerdictLanding、stunVulnSummary、liuyinAxisGiftSameSource（同因：physical 下雨果 0 命轴窗口 5→4，见 §13.1，大概率「机制场景钉 off + physical 结构判据」）；其余按 git grep 顺序。之后 CC-149，再 CC-147。
+- 未决：CC-147；CC-149；§8.4 两项；CC-27；副词条优化器接收槽过滤；洛克茜 energyRegen。
+- 已知坑：
+  - `npm run verify` 不拦 TS6133，删 mock 后必须删 `vi` 导入并单独跑 `npx vue-tsc -b`；
+  - 删 mock 用 `k172/unmock173.py`（正则匹配 CC-144 注释块，断言恰 1 处）；
+  - 探针 zzY173 / zzD173 / zzD173b 在 WSL `/home/kaua/calc-arch/k172/`，不在 src/。
+
 ### 第 172 轮（2026-09-28，代码 `71452ad2`（CC-144）+ 文档「docs: round 172」；上一轮 = f848f72c / 0154f27e）
 - 做到哪：**缺省失衡投影切为 physical**（`src/core/stunPlanProjection.ts` 常量 = 4）。难度阶梯 G4 随缺省（`src/composables/difficultyLadder.ts`）；timeGolden、timeFillRatchet 重生成；18 个 off 口径机制钉测试文件级 vi.mock 钉回 0。全库归因 `docs/mcp-cc144-team-deltas.md`，决策 `docs/mcp-stun-dual-source.md` §13。
 - 下一步（直接开工）：**CC-147**（删死掉的热启动通道）或 **CC-148**（18 个测试迁 physical，可派给子代理，一文件一提交）。建议先 CC-148 的前 3 个文件（outerCycleColdStart、difficultyDescent、teamTimeSummary：测缺省产出，最该有 physical 精确钉），再做 CC-147。

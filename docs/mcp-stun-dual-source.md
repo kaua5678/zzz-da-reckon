@@ -410,3 +410,19 @@ CC-141 / CC-143 之后复测 physical：仍是 §5.2 那 6 队，**全部是轴�
 - C 类：timeGolden、timeFillRatchet 重生成。
 - D 类 18 个文件：文件级 `vi.mock('@/core/stunPlanProjection')` 把缺省钉回 0。依据：这些精确值在 off 口径下逐条核实，测的是机制本身；钉回 0 保住原语义。代价：这些机制在 physical 口径下暂时没有精确钉 ⇒ 立卡 **CC-148** 逐条迁移（缺省产出类更新期望并写原因，机制类保持 0 钉但注明）。physical 下的缺省产出由 timeGolden / timeFillRatchet / seedInvariance / timeLedgerInvariants 覆盖。
 - 回退点：常量改回 0，重生成两份基线；18 个文件里的 mock 块在缺省为 0 时是空操作，可留可删。
+
+## 14. 第 173 轮：CC-148 前 3 个文件迁 physical（`4fb7431a`）+ 新发现 CC-149
+
+去掉文件级 mock 后 physical 缺省下 6 红，逐条处置（**无一条放宽容差**）：
+
+| 文件 | 红 | 性质 | 处置 |
+|---|---|---|---|
+| outerCycleColdStart | 4（C0/C1 整数档） | 用户实测场景在 off 下核实的整数档 | 4 条用例经夹具 `setupYsgTeam(c, 0)` 显式钉 off；新增 describe「physical 缺省」3 条：结构判据（stable、整数、分项闭合、照影 = floor(剑势/6)、短轴多一轮）+ 现值 |
+| teamTimeSummary | 1（账本虚高恒等式） | **测试恒等式不完整**：实现定义 `ledgerInflation = requiredFrontline − necRows − 模块行超出部分`，测试漏了最后一项（off 下该队恰为 0，physical 下 0.489s = 差额） | 补全恒等式 |
+| difficultyDescent | 1（单因素闸门） | 该用例复现的是 off 下的历史反转；physical 下对照组复现不了 | 用例内显式钉 off；physical 下的单调破缺立 CC-149 |
+
+physical 下叶瞬光+琉音+照（1 精专武）实测（探针 WSL `/home/kaua/calc-arch/k172/zzY173.test.ts`）：C0 满轴 10 = 喧响 2 + 转大 4 + 照影 4（off 为 2/3/5），剑势 30.38→29.90 刚好跌破第 5 次照影门槛；交互档 0.5→0.0625（该队 physical 真实溢出，§7.1）；C0 axis1/axis2 = 11/12；C1 满轴/仅灭短轴 = 11/12。**用户口径「C0 = 10 次白毛」在 physical 下总数仍成立。**
+
+**CC-149（新发现，真实缺陷，小）**：physical 缺省下该队的难度曲线沿合轴率单调性破缺。冷启动最大可行交互档随合轴率 0.4 / 0.3 / 0.2 = 0.0625 / **0.125** / 0.0625（不单调）；闸门把 0.3 档压回 0.0625 后，同交互档下剑势 29.90→29.97、伤害 26600186→26616874（+0.06%）——用户口径「合轴降低 ⇒ 伤害不升」被破。探针 `k172/zzD173.test.ts`（顺序跑）与 `zzD173b.test.ts`（冷启动）。
+
+**坑**：`npm run verify` 不拦 TS6133（未使用的 `vi` 导入），删 mock 块后必须同时删 `vi` 导入并单独跑 `npx vue-tsc -b`。
