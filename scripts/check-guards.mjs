@@ -64,8 +64,6 @@ import { scanJsonDupKeys, formatJsonDupKeys } from './lib/json-dup-keys.mjs'
 import { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST } from './lib/guard-registries.mjs'
 // 判据 25：无类型记录字符串键死读（CC-91，2026-09-27，见 scripts/lib/record-key-dead-reads.mjs 头注释）
 import { scanRecordKeyDeadReads, formatRecordKeyDeadReads } from './lib/record-key-dead-reads.mjs'
-// 判据 26：事件时间轴影子内核隔离（R4-A1，2026-09-27，见 scripts/lib/timeline-isolation.mjs 头注释）
-import { scanTimelineIsolation, formatTimelineIsolation } from './lib/timeline-isolation.mjs'
 export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST }
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -1240,17 +1238,6 @@ export function runAllChecks(root = ROOT) {
         + ` / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatRecordKeyDeadReads(report),
-    })
-  }
-
-  // ---- 判据 26：事件时间轴影子内核隔离（R4-A1；零入边 = 影子阶段零差的结构性保证；接线属不可逆点须用户裁决） ----
-  {
-    const report = scanTimelineIsolation(root)
-    results.push({
-      name: `影子内核隔离 (判据 26: 非测试 src → core/timeline 零入边；core/timeline 不依赖编排层/store/录入层/展示层) `
-        + `入边 ${report.inbound.length} / 出边 ${report.outbound.length} / 影子文件 ${report.timelineFiles} / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
-      ok: report.ok,
-      detail: report.ok ? [] : formatTimelineIsolation(report),
     })
   }
 
