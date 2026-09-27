@@ -1700,6 +1700,29 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 **下一步（按优先级）**
 1. 剩下最大的棘轮债：判据 7「展示层越层 import」14 处（`scripts/check-guards.mjs` RATCHET_BURNDOWN 该条的 plan 列了明细：getAgentMechanic×4 / buildTeammateBuffSourceContext×2 / calcPanel / applyTargetedStat / allocateAxisWindows / computeOptimalSubStats+getTemplate / readImpactVar+writeImpactVar / agentSpecs / computeBanyueMingw…）。都是真引擎调用，做法是编排层（composables）包一层只读 API，view 改为调它。建议先挑 `getAgentMechanic×4`：逐个看 view 用它读什么，在 composables 里加一个返回纯数据的 computed，每迁一处就下调 `EXHIBITION_LAYER_IMPORT_BASELINE` 和 frozen（与代码同批提交）。
 2. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
+### 5.54 CC-47 done：判据 7 展示层越层 14→10（getAgentMechanic×4 → 编排层门面）（lead-arena-0925c，2026-09-27 第 67 轮）
+
+**提交**：`79f0f6b`。新文件 `src/composables/agentMechanicView.ts`、测试 `src/composables/__tests__/agentMechanicView.test.ts`（3 条）；改 ResourceUtilizationPage.vue（mechanicSettings）、ImpactChart.vue（settingMap）、StunAxisPage.vue（combos）、ResourceResultCard.vue（specialResourceSections）；`EXHIBITION_LAYER_IMPORT_BASELINE` 与 RATCHET_BURNDOWN「展示层越层 import」.frozen 14→10（同批），plan 里删掉 `getAgentMechanic×4`。回退：`git revert 79f0f6b`。
+
+**做法**：门面只转发模块的**声明式数据**，不计算、不缓存。
+- `teamMechanicSettings(team)`：按 setting.id 去重、先出现的槽位优先。原来两处（ResourceUtilizationPage 的 flatMap+seen、ImpactChart 的 `!map.has`）口径相同，合成一份。
+- `agentCombos(agentId)`：返回模块 combos 的同一引用。
+- `agentResourceSections(agentId, input)`：按方法调用 `mod?.resourceSections?.(input) ?? []`，保留 this 绑定。
+- 类型仍可 `import type` 自 '@/mechanics/types'，判据 7 豁免 type-only。
+
+**验证**：判据 7 读数 10/10，24 guards；vue-tsc 0；新单测 3 条（与注册表直读逐位对比）；`npm run verify` 通过：305 文件 / 3631 条，24 guards（`/home/kaua/calc-arch/verify47.log`）。纯转发改写，运行时计算路径不变（这 4 处都只在展示层读声明），所以没跑 dump/rows。
+
+**判据 7 剩余 10 处（2026-09-27 实测，复核脚本 `/home/kaua/calc-arch/ex7.mjs`，调用 layer-import-ratchet 的 detectExhibitionLayerImport 逐行扫）**
+- MechanicsTablePage.vue:172 `agentSpecs`（@/specs/registry）
+- StunAxisPage.vue:251 `allocateAxisWindows`（@/core/stunAxisStack）；:252 `computeBanyueMingwangBlocks, BANYUE_AXIS_MOVE_META`（@/mechanics/agents/banyue）；:253 `computeYixuanNingshenBlocks`（@/mechanics/agents/yixuan）
+- TeamConfigPage.vue:876 `calcPanel`；:877 `applyTargetedStat`；:878 `buildTeammateBuffSourceContext`
+- ImpactChart.vue:127 `IMPACT_VARIABLES, readImpactVar, writeImpactVar`；:130 `computeOptimalSubStats, getTemplate`；:131 `buildTeammateBuffSourceContext`
+
+**下一步（按性价比）**
+1. **StunAxisPage 的两个角色模块导入**（banyue/yixuan，:252/:253）：页面直接调角色专属函数画轴块，本质是角色分支长在页面里。做法：在 types.ts 加模块能力（例如 `axisOverlayBlocks?(input)`，返回块列表），banyue/yixuan 实现，门面加 `agentAxisOverlayBlocks`，页面按槽位派发。先读 StunAxisPage 里这两个函数的调用点和入参（grep computeBanyueMingwangBlocks / computeYixuanNingshenBlocks），确认入参是否能统一。`BANYUE_AXIS_MOVE_META` 是常量，可经模块声明字段暴露。每清一处，判据 7 基线同批下调。
+2. `buildTeammateBuffSourceContext` ×2（TeamConfigPage + ImpactChart）：同一函数，可在编排层包一层后两处一起迁，−2。
+3. 其余（calcPanel / applyTargetedStat / substatOptimizer / impactVars / allocateAxisWindows / agentSpecs）逐个评估，大多可以原样经 composables 转出。注意这种「转出」只是挪位置；要写清它是否真正降低了耦合，不要只为降读数而转出。
+4. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
