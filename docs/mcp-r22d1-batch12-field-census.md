@@ -2574,3 +2574,23 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 回退：`git revert 037a66f`。
 - **以后加卫星类型**：跟直伤/异常行有关的放 typesRows.ts，其余放 typesHooks.ts，然后在 types.ts 末尾的转出列表里补上名字；模块能力本身仍加在 types.ts 的 AgentMechanicModule 里。
 
+### 5.91 CC-85 done：拆 scripts/check-guards.mjs（1633 → 1244 行），登记数据表移到 scripts/lib/guard-registries.mjs（lead-arena-0925c，2026-09-27 第 103 轮）
+
+**CC-85 `a96ae36`**
+- 移走的三张表逐字搬过去，连同上方注释和沿革长注释（AGENTS 规则 17 要求保留沿革）：
+  - `RATCHET_BURNDOWN`（原 :139-353）；
+  - `DEBT_REGISTRY`（原 :758-837）；
+  - `CALIBER_TRIGGER_ALLOWLIST`（原 :1072-1172）。
+- check-guards.mjs 顶部 `import` 这三张表并原样 `export`，测试（`checkGuards.test.ts`）和 `zc.mjs`（`g.CALIBER_TRIGGER_ALLOWLIST`）都照旧从 check-guards 取，不用改。原位置各留一行指针注释。
+- 小常量（`DEBT_SCAN_SELF_REFERENTIAL`、`CALIBER_NON_GAME_SUBJECTS/KINDS`、`MANUAL_DENSITY_CEILINGS` 等）和判据逻辑留在原文件，它们要么很短，要么紧贴使用它们的扫描函数。
+- **目标从「< 1000 行」改成「低于结构熵线 1500」**：想压到 1000 以下只能把 runAllChecks（约 400 行判据逻辑）也拆出去，那是改逻辑结构而不是搬数据，风险收益不划算。现在 1244 行，已退出结构熵点名。回退：`git revert a96ae36`。
+- **自指豁免**：债务标记扫描器原本按文件名跳过 check-guards.mjs，DEBT_REGISTRY 的登记文本不算 debt 标记。新文件已加进 `DEBT_SCAN_SELF_REFERENTIAL`，行为和原来一样。
+- 现行指引改成了新路径：check-guards 未登记债务的报错提示、`src/core/resource/timeTruncation.ts:11`、`docs/AGENT_ID_BURNDOWN_LOG.md:5`、`docs/mcp-calc-core-architecture.md:326`、`docs/mcp-agent-development-roadmap.md:182`、`docs/mechanism-reference.md` 两处。`.claude/` 下的交接和归档、以及其余历史文档里「check-guards.mjs 的 DEBT_REGISTRY」之类的字样**不改**，它们记录的是当时的事实，靠原位置的指针注释也能找到。
+- **手写事实复核**：改动 check-guards.mjs 让 `engine:guards/自指豁免` 和 `engine:guards/手册密度` 两条进了 drift 待复核队列（80 → 82）。已复核：前者清单多了新文件，符合口径；后者这次没动。两条的「据」都追加了 `·复核@2026-09-27`。
+- 验证：
+  - `node scripts/check-guards.mjs` 的输出与改前**逐字相同**（改前存 /tmp/g0.txt，改后 diff 为空，25 行）；
+  - 逐行计数核对：只差被替换的两行（豁免清单和报错提示），其余是新增的文件头和指针注释；
+  - zc status：债务 7 条和手写事实 146 条都没变；
+  - verify 338 files / 3705 tests EXIT 0（/home/kaua/calc-arch/verify103.log，打复核戳之前跑的）；打复核戳之后 checkGuards.test.ts 和 zc.test.ts 共 192 条通过，check-guards 输出仍逐字相同。
+- **以后改基线、登记债务或豁免，改 `scripts/lib/guard-registries.mjs`**。改棘轮基线常量时 frozen 同步这条规矩不变，基线常量本身仍在各 `scripts/lib/*-ratchet.mjs` 或 check-guards 里。
+
