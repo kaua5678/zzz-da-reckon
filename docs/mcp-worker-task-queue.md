@@ -69,18 +69,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 126 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-100)」）
+### 第 127 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-101)」）
 
 - **做到哪**：
-  - **CC-100 完成**（R5 D15 + D16）：
-    - 数据：`public/static/catalog.json` 新增 `statRules.driveDisc.statModes`（20 个键），31200 2 件套 mode 改为 pct；
-    - 代码：新模块 `src/core/discStatMode.ts`；`src/core/panel.ts` 的 `inferStatMode` 委托给它；`src/core/buff.ts` 的 roughStats 按同一口径计算 6 号位掌控；`src/types/catalog.ts` 新增字段类型；
-    - 测试：`discSetEffects` / `discSubstats` / `statModeParity` 按新口径改写；`timeGolden.baseline.json`、`moduleAnomalyEventRecords`、`damagePoolBatchR17c` 基线更新。
-  - 差异：zd.sh DUMP 306 / ROWS 316；**反向验证 DIFF 0**（脚本 `/home/kaua/calc-arch/cc100/zdrev.sh`，不进 git），归因与 delta 表见账本 §9 CC-100。
-  - 第 125 轮的产出：`70711f4`（D15–D17、§9、CC-100/101 立卡）。
+  - **CC-101 完成**（R5 D8）：`src/core/inCombatBuffs.ts` 按 `exclusiveGroup` 去重，`src/types/catalog.ts` `BuffGroup` 新增该字段，新测试 `src/core/__tests__/discExclusiveGroup.test.ts`（修前实测 +30 复现，修后 +15）。zd.sh DIFF 0。范围口径与回退点见账本 §9 CC-101。
+  - 第 126 轮的产出：`c1251fc`（CC-100，D15 + D16）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **CC-101**（D8）：在 `src/core/__tests__/` 新建夹具测试，两名队友同穿 31900 原始朋克 4 件套 ⇒ 断言全队 dmgBonus 只 +15；然后在 `src/core/inCombatBuffs.ts:164–190` 按 `group.exclusiveGroup` 去重（同组只保留一个）。预计零差，跑 `zd.sh cc101` 确认。
-  2. **R5 第 3 刀续**：`condition` / `requirement`（数据写的条件，引擎是否执行、怎么执行），然后按账本 §8「S 待第 3 刀」清单继续。
+  1. **R5 第 3 刀续：`condition`**。起点数据（第 127 轮实测）：catalog 中 `condition` 共 118 处，其中字符串 105 处（音擎 61 处 / 52 种取值，驱动盘 44 处 / 36 种取值），null 13 处。读取方只有 `src/core/wengineConditions.ts:30` `wEngineConditionMet`（被 `core/buff.ts:343`、`core/inCombatBuffs.ts:140` 调用），它**只识别 `attributeCounter`**（`:32`）。要查清：
+     - 其余字符串 condition 在引擎里是被当作「恒满足」还是被忽略，是否一律由 coverage 兜底；
+     - 驱动盘的 44 处 condition 有没有任何读取方（`timeout 40 git grep -n "condition" -- src/core/buff.ts src/core/inCombatBuffs.ts`）；
+     - 逐类归纳：纯描述性文本（由 coverage 表达）vs 引擎应该执行的门槛（如「装备者为某属性」「敌人弱点」）。后者若未执行即为差异。每类写一条 D 条目。
+  2. **R5 第 3 刀续：`requirement`**。共 79 处：音擎 `{label, specialty}` 66、`{attribute}` 3；驱动盘 `{outOfCombatStat}` 4、`{attribute}` 2、`{specialty}` 4。读取方：`core/buff.ts:394` `discRequirementMet`、`:403` `discEffectPassesRequirement`、`core/inCombatBuffs.ts:53` `discTeamRequirementMet`，音擎侧看 `collectWEngineBuffs` 的 `matchSpecialty`。逐形态核对是否都被执行。
   3. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
   4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
 - **未决项**：

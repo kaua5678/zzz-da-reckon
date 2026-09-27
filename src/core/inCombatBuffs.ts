@@ -121,6 +121,10 @@ export function collectInCombatTeamBuffs(
     buffs.push({ ...buff, effects, includeOwner: true })
   }
 
+  // CC-101（R5 D8）：已发放的 exclusiveGroup。同组全队效果只计一次（先到先得：按槽位顺序，
+  // 取第一个通过门槛的穿戴者）。只对数据显式标了 exclusiveGroup 的组生效，不推断其他套装互斥。
+  const grantedExclusiveGroups = new Set<string>()
+
   for (const char of team) {
     if (!char?.agentId) continue
     const agent = deps.getAgent(char.agentId)
@@ -173,7 +177,9 @@ export function collectInCombatTeamBuffs(
           .map(e => (e.stat as string).includes('{attribute}')
             ? { ...e, stat: resolveAttributeTemplateStat(e.stat as string, agent.attribute) }
             : e)
-        if (effects.length) {
+        const exclusive = group.exclusiveGroup
+        if (effects.length && !(exclusive && grantedExclusiveGroups.has(exclusive))) {
+          if (exclusive) grantedExclusiveGroups.add(exclusive)
           buffs.push({
             id: `drivedisc-team-${set.id}`,
             source: { zhCN: '驱动盘' },

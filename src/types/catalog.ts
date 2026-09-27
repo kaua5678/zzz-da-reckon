@@ -283,6 +283,11 @@ export interface BuffGroup {
   singleSourced?: boolean
   /** 组级生效门槛（驱动盘 teamBuff 的装备者特化限定等），对该组全部 effect 生效 */
   requirement?: EffectRequirement
+  /**
+   * 互斥组：同组的全队效果**只计一次**（「同名被动效果之间不可叠加」）。目前只有 31900 原始朋克
+   * 4 件套 teamBuff 标了。消费方：`core/inCombatBuffs.ts#collectInCombatTeamBuffs`（CC-101，R5 D8）。
+   */
+  exclusiveGroup?: string
 }
 
 // ============ 队友 Buff ============

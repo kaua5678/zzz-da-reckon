@@ -190,7 +190,7 @@
 - **不做的修法**：按持续时间 / 冷却推算覆盖率。这需要时序仿真，R4 已撤销，不再提。
 - **建议（转卡，零差）**：界面判定改为 `hasCoverage || durationSeconds != null`（效果级或组级），让滑块出现，默认值仍为 1。只影响界面可调性，默认数值不变。
 
-### D8 `exclusiveGroup`（Z7）：零读取，同套驱动盘 4pc 全队效果多人穿戴时重复叠加 → 真实差异（仅重复穿戴场景）
+### D8 `exclusiveGroup`（Z7）：零读取，同套驱动盘 4pc 全队效果多人穿戴时重复叠加 → 真实差异（仅重复穿戴场景） ✅ 已由 CC-101 修复（第 127 轮）
 - **数据怎么写**：只有原始朋克 31900 的 `fourPiece.teamBuff` 带 `exclusiveGroup: "proto_punk_4pc_team_dmg"`，原文「全队角色造成的伤害提升15%，持续10秒，同名被动效果之间不可叠加」。
 - **引擎怎么算**：`core/inCombatBuffs.ts:164–190` 对**每个**穿 4pc 的队友各推入一个 id 为 `drivedisc-team-${set.id}` 的 buff；下游 `teammateBuffSource.ts:78` → `panelPhases.ts:533`（直接拼接）→ `core/buff.ts:502` `collectTeammateBuffs`（逐条展开）全程没有按 id 或互斥组去重。
 - **影响面**：两名队友都穿原始朋克 4pc 时，全队 `dmgBonus` 为 +30%（数据为 +15% 且不可叠加）。默认配置和单人穿戴不受影响。证据是读码，尚未用夹具复现。
@@ -375,7 +375,16 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
   5. 验证：`npx vue-tsc -b`、`npm run verify`、check-guards、`bash .zc/perf/zd.sh cc100`。**预计非零差**，每一条 golden 差异都必须能归到「6 号位 impact / anomalyMastery」或「31200 2 件套」两个原因之一，出现无法归因的差异就停下查原因。
 - **与 R5 硬约束的关系**：这不是「顺手改数值」，而是先登记（D15、D16）再立卡；判据是源数据原文（nanoka 的 format / desc2），不是投稿或实测。
 
-### CC-101（D8）同互斥组的全队效果只计一次
+### CC-101（D8）同互斥组的全队效果只计一次 ✅ done（第 127 轮，提交号见 git log「fix(CC-101)」）
+
+**实际做法**：
+- 先红后绿：新建 `src/core/__tests__/discExclusiveGroup.test.ts`（三人队 1411 / 1241 / 1031），修前「两人同穿 31900」实测全队 `[30, 30, 30]`，复现 D8；修后 `[15, 15, 15]`。
+- `src/types/catalog.ts` `BuffGroup` 新增 `exclusiveGroup?: string`。
+- `src/core/inCombatBuffs.ts` `collectInCombatTeamBuffs`：队伍循环外维护 `grantedExclusiveGroups`，同组第二次出现时不再推入。先到先得：按槽位顺序，取第一个**通过门槛**的穿戴者（去重在门槛判定之后）。
+- 范围口径（拍板）：只对数据显式标了 `exclusiveGroup` 的组去重。其余 6 套带 teamBuff 的 4 件套数据没标，**不**推断互斥；测试钉住「摇摆爵士两人同穿 = +30」与「只有 31900 标了 exclusiveGroup」两条前提。若日后数据给其他套装补标，代码无需改动；若要改成「所有同名 4 件套 teamBuff 都互斥」，回退点是把 `exclusive` 的取值改为 `group.exclusiveGroup ?? set.id`，并改写该测试。
+- 验证：`zd.sh cc101` DUMP DIFF 0 / ROWS DIFF 0（现有预设没有同穿原始朋克的队伍），vue-tsc 0，verify 与 check-guards 全绿。
+
+**原计划**：
 - 先写夹具复现（两名队友同穿 31900 原始朋克 4 件套 → 断言 dmgBonus 只 +15），再在 `core/inCombatBuffs.ts:164–190` 按 `group.exclusiveGroup` 去重。只影响重复穿戴场景，golden 预计零差。
 
 ### 其余（零差、界面层）
