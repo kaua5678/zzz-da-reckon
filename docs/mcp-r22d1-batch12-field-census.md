@@ -2362,6 +2362,26 @@ ImpactChart.vue 的改动：
 1. `src/composables/resourceCalc/roundInputs.ts:229`：`energyCost = act.moveId === 'yidhari-heavy-single' && cinema >= 1 ? 50 : combo.energyCost`（伊德海莉 1 命单次重碾能耗 60→50）。方案：在模块 `combos` 的 combo 声明类型上加可选 `energyCostAtCinema?: { minCinema: number; energyCost: number }`（先 `grep -n 'combos?' src/mechanics/types.ts` 找 combo 类型），yidhari.ts 的 `yidhari-heavy-single` combo 声明 `{ minCinema: 1, energyCost: 50 }`，roundInputs 改成 `combo.energyCostAtCinema && cinema >= combo.energyCostAtCinema.minCinema ? combo.energyCostAtCinema.energyCost : combo.energyCost`。⚠ 先 grep `yidhari-heavy-single` 全仓，确认 convergence.ts:364 等其他使用点是否也有同一 1 命特判（有则一并改）；测试：全 combo × 命座 0..6 对照原表达式 + 源码锁；这是计算路径，额外跑 perf 零差（census Key：`PERF_KEY_ALIAS=1 PERF_OUT=… npx vitest run --config .zc/perf/vitest.perf.config.ts dump` + rowsnap，前后 `cls41.mjs` DIFF 0；若语料无伊德海莉 1 命，用单测反向变异兜底）。
 2. `src/composables/resourceCalc/damagePoolAnomaly.ts:90`：`event.type === 'release' && event.id.includes('velina-corrosion')`（风异放拆轴内外）。方案：复用 CC-66 的 `resultCardCorrosion.poolReleaseEventMarker`（按 `windAgentId` 取模块声明）——但那是展示层声明，编排层读它语义错位；更好的是给该声明改名/新增编排层字段 `poolWindReleaseEventMarker`，或让 core/anomalyPool.ts:367/377 产出的事件带 `windRelease: true` 标记。**先读 damagePoolAnomaly.ts:60–:160 与 anomalyPool.ts:350–:390 再定**，选可逆方案。
 - 其余沿用（见 §5.76 第 4 条裁定、遗留未决列表）。
+### 5.78 CC-69 done：编排层角色专属字符串两处（lead-arena-0925c，2026-09-27 第 90 轮）
+
+**提交 `6da5838`**，改 6 个文件、新增 1 个测试：
+- **① 单次碾 1 命能耗**：`mechanics/types.ts` 的 `combos` 值类型加可选 `energyCostAtCinema?: { minCinema; energyCost }`；`yidhari.ts` 的 `yidhari-heavy-single` 声明 `{ minCinema: 1, energyCost: HEAVY_SINGLE_COST_1 }`（=50，与该模块栈遍历 :420 同一常量）；`roundInputs.ts:229` 改读声明。roundInputs.ts 不再含 `'yidhari-heavy-single'`（源码锁）。等价性：测试遍历**全部注册模块的全部 combo × 影画 0..6** 对照原表达式，覆盖点恰 6 个（单次碾 × 影画 1..6）。
+- **② 风蚀气旋异放**：`core/anomalyPool/helpers.ts` 新增 `CORROSION_CYCLONE_RELEASE_ID_PREFIX = 'velina-corrosion'` 与 `isCorrosionCycloneRelease(event)`；`core/anomalyPool.ts` 两条气旋事件 id 改由前缀拼出（值不变，行尾注释写明原值）；`damagePoolAnomaly.ts:90` 改用 `isCorrosionCycloneRelease(event)`，文件不再含该子串。
+  - **拍板**：没把它做成模块声明（按 windAgentId 取），因为产出这两条事件的是 core 的风蚀状态机（`core/anomalyPool.ts` + `anomalyPool/corrosion.ts`），事件 id 属于 core 的产出契约；让「产出方导出判定函数」比「消费方去读角色模块」更贴近事实源。⚠ 前缀值不可改：进入伤害池行 id `pool-release-<id>[-in|-out]`，`inStunAttribution.test.ts`、`ccD3D1Verdict.test.ts`、`anomalyPool.test.ts` 与 perf 语料都按它匹配。
+  - CC-66 的展示层声明 `velina.ts#resultCardCorrosion.poolReleaseEventMarker` 仍是同一字面量（两处独立）；若要合一，可让 velina.ts 从 `@/core/anomalyPool/helpers` import 该常量（mechanics → core 按值 import 允许）。低优先级，未做。
+- 未跑 perf 零差：两处改动都是逐值等价（测试穷举了 combo × 影画、事件判定真值表），且 verify 里 `ccD3D1Verdict` / `inStunAttribution` 等覆盖维琳娜风异放行的集成测试全绿。
+- 验证：24 guards / tokens / vue-tsc 0；反向变异（删 yidhari.ts energyCostAtCinema 行）变红，已恢复；verify：327 files / 3678 tests passed（16/29 skipped），24 guards 0。回退：`git revert 6da5838`。
+
+**盘点结论（已 grep 核实，第 90 轮）**：`src/` 非 `mechanics/agents/`、非测试的 `===/!==/includes(/has(/get(` + 四位角色 id 形态，**只剩注释**（沿革说明）和 `TimeChartsPage.vue:531`（UI 默认候选池排除默认主角，§5.74 裁定不还）。「写死角色 id」这条债基本清完。
+
+**下一步（新方向，按优先级）**：
+1. **CC-70 盘点 core/** 里的角色专属数学（非 agentId 判定）** —— 适合派给低级模型的只读任务：
+   - 目标：列出 `src/core/**` 中按角色机制写的逻辑（例：`core/anomalyPool.ts` 维琳娜风蚀状态机与两条气旋事件、`core/anomalyPool/corrosion.ts`、`core/resource/curtain.ts` 卢西娅帷幕 `computeLuciaCurtainTriggers`、以及含角色名/角色专属 cfg 字段如 `billy*`/`yidhari*`/`velina*`/`lucia*` 的分支）。
+   - 输出：写成 `docs/mcp-core-agent-math-census.md`（新 docs 须同提交登记 docs/README §6），表格列 `文件:行 | 角色 | 逻辑摘要 | 读哪些 cfg 字段 | 建议（留 core 作为通用引擎能力 / 迁 mechanics 模块能力）`。只读，不改 src。
+   - 命令提示：`grep -rnE "billy|yidhari|velina|lucia|corrosion|curtain|banyue|yixuan" src/core --include=*.ts | grep -v __tests__`。
+   - 之后按盘点结果开 CC-71+ 逐项迁移（每项仿 CC-67：模块能力 + legacy 逐字复刻对照测试 + 反向变异）。
+2. 顺手项：`src/specs/agents/1531.json:305` 旧表名文字（§5.74）；velina.ts 引用 core 常量合一（本节）；starlightBilly.ts 交互默认值兜底改读自身声明（§5.74）。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、perf 夹具缺「11号 + 平A兜底」（§5.69）、teammateBuffGate 多模块同 buff id 合并语义（§5.72）、ADDITIONAL_GATE_BUFFS 保留裁定（§5.77）。
 ## 附录：普查脚本 census.sh
 
 ```bash
