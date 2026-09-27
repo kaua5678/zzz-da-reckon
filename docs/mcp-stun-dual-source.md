@@ -510,3 +510,46 @@ physical 下莱卡恩潜能 VI 比潜能 I 总伤低 0.002%。机理：冲击力
 
 ### 17.4 教训：physical 口径下读规划值的判据是一类系统性缺陷
 CC-151（锁定路径读池次数）和 17.2 的⓪（零窗读规划值）是同一类问题：**physical 下计数来自物理次数，但判据仍读规划值（或反过来）**。这类问题逐个撞见效率太低，登记 CC-154 做一次全量审计，见卡表。
+
+## 18. CC-154 physical 下模块读计划值当次数：applyTeamConfig 与 axis.windows 改走计数通道（第 177 轮，`a0860502`）
+
+### 18.1 审计（三组读点；原始明细 `/home/kaua/calc-arch/k177/audit-agents.md`，共 257 行，由子代理 dsflash 产出、lead 复核）
+判据：读的是计划值 `stunCount`（或由它派生、或由它分配的 `axis.windows`），用途却是**计数**。physical 下计划值可以远小于池物理次数（例如 0.71 对 2），这类读点会系统性少算。
+- **A. applyTeamConfig 入参 `stunCount`**（converge 与 postRound 两个派发都透传计划值）：违约读点 15 组，涉及 anby 183、corin 172、ellen 259、lycaon 238（失衡项）、nangong 168–407、norma 140/155/312/491、qingyi 191/197、sigrid 256/303、specPanelBuffs 128/134/176、xixifu 83/102、yaojiayin 210/237、yidhari 168–415、zhendou 139、starlightBilly 305/640。
+  - 合规对照：lycaon 231 读 `countStun`，hugo 363 读 `prevPoolStunCount`，liuyin 631 读池物理次数，helpers 246/402/605 读 `countStunOf`。
+- **B. `axis.windows`**（convergence.ts `allocateAxisWindows(resolvedAxes, stunCount)`）：同一快照里 `actionCountsBySlot`、`chainTotal`、`ultimateTotal` 已经走 `countStun`，只有 windows 用计划值，**快照内部口径不一致**。7 个计数读点：harumasa 230、nangong 190、sigrid 265、starlightBilly 286、yidhari 423、yixuan 461、zhuYuan 120。
+- **C. 编排层**：convergence.ts 338–342（轴 60/90 转大次数）、982（失衡内异常 v2 代表窗数）、1078（线程 stunsTotal）。三处都不经过模块契约，改动面和验证方式都不同，**拆到 CC-155**。
+- 待判：zhendou 141 只写不读（死写）；lycaon 187/290 计数与时间混用；覆盖率派生（时间）再折成次数的间接影响面，随 A/B 修复一起生效。
+
+### 18.2 方案 C（选定）
+- 做法：convergence.ts 三处由 `stunCount` 改为 `countStun`，即 converge 派发、postRound 派发和 `axis.windows`；types.ts / typesHooks.ts 契约注释同步说明「模块拿到的 stunCount 就是计数通道值」。off 口径下 countStun 与计划值相同，逐位零差。
+- 为什么不逐个模块改：15 组加 7 个读点逐个换成 countStun，是在调用方分散打补丁，以后新增模块还会再犯。在派发处统一，契约只剩一个口径（更简单、更通用）。需要时间口径的模块仍可读 `plannedStunCount` 等时间账字段（§4.4 口径不变：计数通道读物理次数，时间账读规划值）。
+- 否决的方案：A 为逐模块替换（理由同上）；B 为在契约里新增 `countStun` 字段，让模块自选，这会让契约里有两个都叫「失衡次数」的字段，模块仍可能读错。
+- **回退点**：把三处 `countStun` 改回 `stunCount`（每处都有 `CC-154` 注释），再用 TIME_GOLDEN_UPDATE / TIME_RATCHET_UPDATE 重生成两份基线，第 177 轮修订的 8 个测试文件一并 revert。
+
+### 18.3 逐处还原定位（临时开关 ZZ_A / ZZ_W / ZZ_P，带 ZZTMP 标记，已删除）
+全量测试 12 条红，逐处还原后归因如下；每条都已按「是修复带来的正确变化」或「夹具前提失效」处理，**没有为了变绿而改判据**：
+- **雅 C2 滑块（readFrost）**：不是滑块缺陷。C 项为 ⌊平A时间/2⌋ × C。physical 下青衣醉花轮数按物理次数计算后，青衣必要时间从 42s 增至 55s，雅的平 A 时间从 5.8s 降到 3.5s；RICH 配装下平 A 小于 2s，C 项恒为 0，测试失去区分力。处置：readFrost 夹具钉 off，逐条补夹具前提断言（⌊平A/2⌋ > 0、强特 > 0）。
+- **archiveDeployStun**（归档 72db6dc3，1371+1481+1451）：该队规划失衡为 0。修前 windows 分到 0 窗，块计数却按物理 4 次，快照自相矛盾，轴退化，池 4，伤害比 66.6%。修后轴保住，伤害比 75.4%，N* = 3.84，池 3，即弹刀 8 次预算内保底 4 不可达。处置：测试钉 off，保底是否应上报用户另开 **CC-156**。
+- **outerCyclePhysicalFeasible**：现值改为 3。
+- **lycaonC2Contract**：round 期望 60，即 (4+8)×5。原先连携项读 countStun、失衡项读计划值的不对称已取消。
+- **adjustableEffect 振斗**：录制值改为 0/500/1000（影画6 炽心来源 75×失衡次数，改读计数通道）。
+- **dynamicComboAlign ③**：旧判据「≤20 支」只是计数上限，没有语义，改为逐队检查「溢出量 > 0」这一不变量。实测吸收队 23 支；「≥5 支」和「包含 1371-1481-1451」两条保留。
+- **outerCyclePick**：setupYixuanPreset 钉 off（physical 下该队变成 2-环，不再有长环，而该测试针对的是长环接线）。
+- **yixuanSmoke**：队友终结 [3,3]→[3,4]，队友终结闪能 120→140（7×20）。自动 3 连一条：青衣必要时间增加，再次触发降配，有效弹刀 6→5，#2 行同步 5。
+
+### 18.4 影响面
+- 原型 zd（只改 converge 一处）：default 变体 49/104 队变化，范围 −6.64% 到 +13.51%（`/home/kaua/calc-arch/zd-c154.out`）。
+- timeGolden 重生成：415 条中 119 条变化，其中 111 条伤害变化，范围 −4.45%（yidhari-qingyi-lucia）到 +16.95%（auto-1371-1251-1451）。
+  - 降幅前 4：yidhari-qingyi-lucia −4.45、yixuan-trigger-lucia −2.46、auto-1051-1141-1451 −1.20、yixuan-roxy-lucia −1.06。
+  - 升幅前 5：auto-1371-1251-1451 +16.95、agent 1511 c6 +15.11、banyue-qingyi-lucia +12.01、auto-1591-1481-1211 +9.52、auto-1511-1561-1411 +9.04。
+  - 解释：升幅队都含南宫羽（1511）、青衣（1251）或希格莉德（1591），正是 §18.1 A 组里被少算次数的模块（physical 下物理次数大于计划值，计数随之上调）。
+    - 降幅 4 队中 3 队含青衣或仪玄，推测是醉花轮数与电压需求改按物理次数后，必要时间增加，挤占主 C 前台时间。
+    - auto-1051-1141-1451 含莱卡恩，推测与影画2 失衡项改读计数通道有关。
+    - 以上降幅归因**未逐队插桩验证**。§17.3 已说明，伤害升降不能用来判对错。
+- timeFillRatchet 重生成：19 队变化，其中留白增加 12 队、减少 7 队，**超预算新增 0 队**。留白增加的 12 队中，含伊德海莉 5 队、仪玄 3 队、南宫羽 3 队、青衣 1 队（推测都是计数上调后必要时间增加，未逐队验证）；绝对不变量测试仍为绿。
+- 对比脚本：`/home/kaua/calc-arch/k177/basecmp.py`（对比 HEAD 基线与工作区基线，提交前运行）。
+
+### 18.5 新开卡
+- **CC-155**：编排层 3 处计数读计划值（convergence.ts 338–342、982、1078），方法同本节，逐处还原定位。
+- **CC-156**：archive 保底不可达（弹刀预算内达不到用户填写的保底失衡次数）目前被静默降级。是否应上报用户（诊断或提示），待定。复现：archiveDeployStun，physical 口径。

@@ -325,7 +325,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-151 | ✅ done（第 175 轮） | `4ca262f1` | 锁定失衡次数（stunCountLock≥0）时 physical 投影读池的物理次数、绕过锁定：锁定 + physical 回落 off，其他投影照常（useResourceCalc 约 124 行）。预设不设锁定，zd 与基线零变化。回退点：删 IIFE 里的锁定判断。§16.1 |
 | CC-152 | ⏸ 可选（低优） | — | 把 CC-148 剩下的 8 个文件级 off 钉细化为逐用例钉，让同文件其他用例跑 physical |
 | CC-153 | ✅ done（第 176 轮） | `d2c89e1e` | CC-150 残差（外层环「池 < 读入」一侧）：pickOuterCycleMember 新增 ⓪″（physical 下不可行成员不参选），⓪ 零窗按读入物理次数判（windowsIn）。zd 5 条逐条解释；timeGolden 1 队、棘轮 2 队重生成。stun-dual-source §17 |
-| CC-154 | ⬜ 待做（下一轮第一优先） | — | 审计：physical 口径下，凡按**规划失衡值**（stunIn / plannedStunCount / 连续 next）做判定或分配、而引擎实际按**物理次数**（prevPoolStunCount / 池）计数的地方，逐处列出并判断是否同源。已知两例：CC-151（锁定）、CC-153 ⓪。方法见交接 |
+| CC-154 | ✅ done（第 177 轮） | `a0860502` | physical 下模块读计划值当次数：审计三组读点（applyTeamConfig 入参 15 组、axis.windows 7 个读点、编排层 3 处）。方案 C：converge / postRound 派发和 axis.windows 统一改走计数通道 countStun（off 下零差）。12 条红逐处还原归因（夹具钉 off 4 条、期望修订、判据 ③ 改为不变量）；timeGolden 119/415、棘轮 19 队重生成，超预算新增 0。详见 stun-dual-source §18 |
+| CC-155 | ⬜ 待做（下一轮第一优先） | — | CC-154 拆出：编排层 3 处计数读计划值（convergence.ts 338–342 轴 60/90 转大次数、982 失衡内异常 v2 代表窗数、1078 线程 stunsTotal）。方法见 stun-dual-source §18.5 |
+| CC-156 | ⬜ 待做（待定） | — | archive 保底失衡次数在弹刀预算内不可达时被静默降级（archiveDeployStun：保底 4 → N*=3.84，池 3）。是否上报用户（诊断 / 提示）。stun-dual-source §18.3 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |
 | R7 | ✅ done | `8a0159c` | 用户决定删除事件时间轴死代码：`src/core/timeline/`、`scripts/lib/timeline-isolation.*`、`timelineIsolation.test.ts`、判据 26（check-guards 26→25） | `docs/REQUIREMENTS.md` R7 · census §5.109 |
