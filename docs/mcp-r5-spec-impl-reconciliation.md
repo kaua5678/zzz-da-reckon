@@ -92,7 +92,9 @@
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
 - [x] 第 2 刀（第 121 轮 Z2、Z6；第 122 轮 Z4、K0、Z5、Z1；第 123 轮 Z3、Z7–Z12；第 124 轮 Z13、D14 批与字段归类 §8，**完成**）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
-- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；第 130 轮完成 `coverage`（D20）；第 131 轮完成 `target`（D21，CC-105 已修）；下一个是 §8「S 待第 3 刀」里剩下的 48 个字段（建议顺序：`buffModifiers`、`formula`/`expression`，都是直接决定数值的）。
+- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；第 130 轮完成 `coverage`（D20）；第 131 轮完成 `target`（D21，CC-105 已修）；第 132 轮完成 `buffModifiers`（D22）与 `formula` / `expression`（D23）。
+  - 52 个字段中**已核 19 个**：`mode`、`condition`、`requirement`、`outOfCombatStat`、`specialty`（requirement 内）、`coverage`、`default`、`min`、`max`、`step`、`target`、`kind`、`skillTargets`、`skillTag`、`skillType`、`targetSkillType`、`buffModifiers`、`formula`、`expression`（其中 `specialty` 只核了 requirement 内的用法，其他出现位置随角色类字段再核）。
+  - **下一批（效果数值核心，建议一起做）**：`type`、`value`、`valuePerStack`、`maxStacks`、`defaultStacks`、`modificationValues`、`scope`；然后 `source` / `sourceStat` / `defaultValue`；最后是角色 / 招式类（`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues` 等）。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
 ## 7. 已核结论（第 2 刀起）
@@ -330,6 +332,19 @@
   5. **31800 混沌爵士 4pc** `effect_chaos_jazz_4pc_skill_dmg`（dmgBonus 20，原文「[强化特殊技]和[支援攻击]造成的伤害提升20%」）：skillTargets = [skillTag exSpecial, skillTag **assistAttack**]，后者不在白名单被丢弃 ⇒ 只有强化特殊技 +20，**支援技漏算** → **真实差异**。因为 exSpecial 仍被识别，结果非空，不会退化成全招式。
 - **修法**：见 §9 CC-105。
 
+### D22 `buffModifiers`：catalog 里 85 处全是空数组 → **无差异**；真正的修饰器在 teammate-buffs.json，引用全部可解析
+
+- **数据怎么写**（第 132 轮实测，脚本 `/home/kaua/calc-arch/bm1.py`）：catalog.json 共 85 处 `buffModifiers`（角色 7、音擎 44、驱动盘 26、bosses 8），**全部为 `[]`**。非空修饰器只在 `public/static/teammate-buffs.json`（不属于 catalog，但同为规格数据）：11 条，全部 `operation: multiplyResolvedValue`，分布在 1411 / 1211 / 1161 / 1251 / 1071 / 1521 / 1421 / 1571 的影画 buff 上。
+- **引擎怎么读**：`core/inCombatBuffs.ts:84` 只从**已启用、非 singleSourced 的角色队友拐**收集修饰器，`:89` 只处理 `multiplyResolvedValue`，按 formula / derived（ratio 与 cap 同乘）/ stacked（value 与 valuePerStack 同乘）/ 其他（value）四个分支放大。音擎 / 驱动盘 teamBuff 的 `buffModifiers`（`:153`、`:191`）只被原样搬进 buff 对象，**没有读取方**。
+- **核对**：11 条的 `targetBuffIds` / `targetEffectIds` 全部能解析到存在的 buff / effect；目标 effect 类型为 formula 7、stacked 2、fixed 1、derived 1，都有分支；修饰器与目标 buff 都属于同一角色，都不是 singleSourced。
+- **结论**：无差异。风险是两类「静默失效」：catalog 出现非空修饰器（无读取方）、teammate-buffs 出现悬空 id 或新 operation。拍板用测试钉住：`src/core/__tests__/buffModifiersIntegrity.test.ts`（CC-106）。回退点：删掉该测试。
+
+### D23 `formula` / `expression`：catalog 只有 2 个 formula 效果 + 8 个招式倍率字符串，都已核 → **无差异**；`valueUnit` 零读取
+
+- **数据怎么写**（脚本 `/home/kaua/calc-arch/fx1.py`）：effect 级 `formula {expression, valueUnit}` 只有 2 处，都在 1581 蕾米埃尔 corePassive（`x * 0.02` → remielleRefringeCoefficient、`x * 0.2` → remielleLuminizeMultiplierBonus，sourceStat = anomalyProficiency，valueUnit = storedPercent）。另有 8 处字符串 `formula`（`100 + skillLevel * 5` 等），在 1581 的招式行 `luminize_multiplier` 与 `remielleLuminizeMultipliers`，D14 已核与模块硬编码一致。
+- **引擎怎么读**：`core/buff.ts` `evalFormulaExpression`：字符白名单 + `Function('x','s','p','clamp','floor','max','min', …)`，求值失败返回 0。catalog 的两个表达式只用 `x`，在白名单与可用标识符内，不会静默归零。`valueUnit` 在 `src/` 中只出现在类型声明和 specs 说明里，**零读取**：引擎把表达式结果按 stat 的存储单位直接累加；catalog 两处都是 storedPercent，与 remielle 模块读取这两个 stat 的口径一致（D14）。
+- **结论**：无差异。teammate-buffs.json 里的 formula（1411 / 1211 / 1161 / 1521 等）不在 catalog 范围，其修饰器已由 D22 的测试覆盖；表达式本身的正确性属于各角色规格（src/specs），不在 R5。
+
 ## 9. 转卡清单（第 4 刀输入，按影响面排序）
 
 ### CC-100（D15 + D16）驱动盘词条的结算口径以源数据为准 ✅ done（第 126 轮，提交号见 git log「fix(CC-100)」）
@@ -483,6 +498,11 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
   柏妮思队涨幅最大，因为它的支援技行占比高于月城柳队；每条都是「31800 装备者的支援技行 +20% 增伤 × 覆盖率 1」。
 - 验证：vue-tsc 0；verify 与 check-guards 全绿。
 - **回退点**：从 `SKILL_TAG_TARGET` 删掉 `assistAttack` 这一行，并还原 `timeGolden.baseline.json` 的 5 个 dmg。
+
+### CC-106（D22）buffModifiers 数据前提钉 ✅ done（第 132 轮，提交号见 git log「test(CC-106)」）
+
+- 新测试 `src/core/__tests__/buffModifiersIntegrity.test.ts`：① catalog.json 所有 `buffModifiers` 为空（>50 处）；② teammate-buffs.json 修饰器 operation 只能是 `multiplyResolvedValue`、factor 为有限数、目标 buff / effect 全部可解析、目标 type ∈ fixed / formula / derived / stacked。
+- 只加测试，不改代码与数据，未跑 zd；verify 与 check-guards 全绿。
 
 ### 其余（零差、界面层）
 - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。

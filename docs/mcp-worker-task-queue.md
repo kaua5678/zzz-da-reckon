@@ -69,16 +69,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 131 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-105)」）
+### 第 132 轮（2026-09-27，一个提交，提交号见 git log 中的「test(CC-106)」）
 
 - **做到哪**：
-  - R5 第 3 刀完成 `target`（账本 §7 **D21**）。
-  - **CC-105 完成**：`src/core/buff.ts` `SKILL_TAG_TARGET` 补 `assistAttack → assist`；新测试 `src/core/__tests__/skillTargetsCoverage.test.ts`；`src/composables/__tests__/timeGolden.baseline.json` 5 条 dmg 更新（delta 表与归因见账本 §9 CC-105）。
-  - 第 130 轮的产出：`0f119be`（CC-104，D20）。
+  - R5 第 3 刀完成 `buffModifiers`（账本 §7 **D22**）与 `formula` / `expression`（**D23**），都无差异。
+  - **CC-106**：新测试 `src/core/__tests__/buffModifiersIntegrity.test.ts`（数据前提钉）。
+  - 第 131 轮的产出：`48bea3f`（CC-105，D21：31800 混沌爵士 4pc 支援技 +20% 漏算，timeGolden 5 条更新）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 3 刀续：`buffModifiers`**。先统计 `buffModifiers[].operation` × 其余键 × 位置（模板 `/home/kaua/calc-arch/tgt1.py`），再读取方：`timeout 40 git grep -n -E 'buffModifiers|operation ===' -- src/core src/composables`（已知 `core/inCombatBuffs.ts` 只处理 `multiplyResolvedValue`）。查：每种 operation 是否有分支；音擎 / 驱动盘上的 buffModifiers 是否有读取方（inCombatBuffs 只对角色队友拐收集修饰器）。之后 `formula` / `expression`。
-  2. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
-  3. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
+  1. **R5 第 3 刀续：效果数值核心一批**——`type`、`value`、`valuePerStack`、`maxStacks`、`defaultStacks`、`modificationValues`、`scope`。起点：`core/buff.ts` `applyEffect`（fixed = value×cov；stacked = (valuePerStack ?? value)×(defaultStacks ?? maxStacks ?? 1)×cov；derived；formula）与 `applyWEngineModLevel`（modificationValues.value / valuePerStack 按精炼等级替换）。要查：
+     - `type` 的全部取值是否都有分支（未知 type → value 为 0，静默）；无 type 的 effect 有多少、落到哪；
+     - stacked 同时写 value 与 valuePerStack 时两者是否一致（引擎取 valuePerStack）；defaultStacks 与 maxStacks 的关系；
+     - modificationValues 的数组长度是否都是 5、第 1 项是否等于 value（精 1 与基础值一致）；
+     - `scope` 取值（inCombat / outOfCombat / 缺省）与 `collectWEngineBuffs` 的「非 outOfCombat 一律进局内」是否一致。
+     统计脚本模板：`/home/kaua/calc-arch/bm1.py`、`tgt1.py`。
+  2. 然后 `source` / `sourceStat` / `defaultValue`；最后角色 / 招式类字段。
+  3. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
+  4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
 - **本轮新增的已知坑**：
   - zd 的 rowsnap / dump 只存每个 key 的哈希串，看不到行级差异；归因要靠「改动影响的数据 → 哪些角色 → 哪些预设」的集合对照（本轮工具 `/home/kaua/calc-arch/zdan.mjs <base.json> <after.json>` 列出差异预设）。
   - 预设 JSON 里不写驱动盘 id，默认配装来自 `public/static/build-recommendations.json` 的 `characters.<id>.drive_disc_sets`；查「谁穿了某套」要搜这个文件。
