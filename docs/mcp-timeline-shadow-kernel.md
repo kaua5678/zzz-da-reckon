@@ -189,7 +189,7 @@ src/core/timeline/
 ## 8. 进度账本
 
 - [x] 第 0 步：本设计稿（第 118 轮，`e8aebae`）。
-- [x] 第 1 步：`src/core/timeline/` 骨架 + 失衡轨 + 喧响轨纯函数单测 + 判据 26 + 影子性能数（第 119 轮，本行所在提交；口径见 §7.5）。引擎性能数移到第 2 步。
+- [x] 第 1 步：`src/core/timeline/` 骨架 + 失衡轨 + 喧响轨纯函数单测 + 判据 26 + 影子性能数（第 119 轮，`0c0289c`；口径见 §7.5）。引擎性能数移到第 2 步。
 - [ ] 第 2 步：`projection` 适配 + shadowDiff 跑通 T1 + 引擎单次求值耗时（取 5 次中位数）。开工要点：
   1. 用法范例：`src/composables/__tests__/timeGolden.test.ts`（`setupHarness` + `useResourceCalc` + `teamPresets`），
      轴相关可参考 `axisPresetPreferredLabelCc79.test.ts`。先确认 T1 预设加载后 `useStunAxis` 已开启、并命中「般诺通用」轴。
