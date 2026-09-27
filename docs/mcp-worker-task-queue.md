@@ -69,7 +69,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 160 轮（2026-09-28，代码 `3adb3620`（CC-136）+ 文档提交「docs: round 160」；上一轮 = 0028eb01 / 8e46f748 / e4cbfc51）
+### 第 160 轮（2026-09-28，代码 `3adb3620`（CC-136）+ 文档 `ef6ecce6` + 本回填提交；上一轮 = 0028eb01 / 8e46f748 / e4cbfc51）
 
 - **做到哪**：
   - 外层不动点连续性专项第 1 刀已落地（CC-136）：环内选点改为逐级筛选 + ③′「`stunIn` 小者」，与检出相位无关。全过程、扫描数据、逐条影响见 `docs/mcp-outer-fixedpoint-continuity.md`。
