@@ -2020,6 +2020,40 @@ ImpactChart.vue 的改动：
 4. 测试：对照基准照抄原来的两个判断，枚举全部 catalog 角色和它们的全部招式，逐个比较。反向变异是删掉声明。
 5. 仪玄的 `'1371_c1_lightning'` CD 标签（:659，不看 agentId，只按招式 ID）和 1051024 触手块，看能不能一起并进 axisMoveSuffix 或同类声明。拿不准就先不动，在本表里标注。
 - 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b 其他 dominant 异放角色开放占比调节（见 §5.62，属功能变更）、TimeChartsPage:531 隐患（见上表）。
+### 5.64 CC-57 done：StunAxisPage 招式级写死 → 模块声明（lead-arena-0925c，2026-09-27 第 77 轮）
+
+**提交**：`de68f86`，改动 6 个文件：
+- `src/mechanics/types.ts`：新增两个展示层专用的可选声明：`axisHiddenMoves?: readonly string[]` 和 `axisMoveSuffix?: Readonly<Record<string, string>>`。
+- `src/mechanics/agents/yidhari.ts`：声明 `axisHiddenMoves: ['1051012']`。
+- `src/mechanics/agents/yixuan.ts`：声明 `axisMoveSuffix: { '1371022': '·+30%失衡', '1371026': '·+30%失衡' }`。
+- `src/composables/agentMechanicView.ts`：新增门面 `agentAxisHiddenMoves(agentId)`（没有声明时返回 []）和 `agentAxisMoveSuffix(agentId, moveId)`（没有声明时返回 ''），写法照 `agentAxisMoveMeta`。
+- `src/views/StunAxisPage.vue`：:647 的隐藏判断和 :663 的 `stunExTag` 都改走门面，这两行不再写死 '1051'/'1371'。
+- 新测试 `src/composables/__tests__/agentMechanicViewCc57.test.ts`：枚举 catalog 全部角色和空 id，每个角色配 9 个招式 id 逐个比较，包括同形跨角色 id（`${id}012/022/026`）来查误报，还有 1371_c1_lightning、1051024、basic；对照基准照抄原页面的写死判断；并断言确实有命中。
+
+回退：`git revert de68f86`。
+
+**拍板**：没有扩展般岳专用的 `axisMoveMeta`，它的形态是 `{ tag, cost }`，而且会改名字前缀；另开两个语义单一的声明。仪玄 `'1371_c1_lightning'` 的「·CD6s自动」标签（:659）和 '1051024' 寒冰触手块（:~702）**本卡没动**。原因：这两处判断不看 agentId，只看技能表里有没有这个招式；它们确实写死了招式 ID，但不会误判到别的角色。以后如果要改，同样可以并进 axisMoveSuffix 或新增「专属轴块」声明，已列在下表。
+
+**验证**：24 条守卫全过，check-tokens 通过，vue-tsc 0 错误，定向单测 6 条全过。反向变异两种都让单测变红：① 删掉伊德海莉的 axisHiddenMoves ② 仪玄的声明去掉 1371026。都已恢复并 cmp 一致。`npm run verify` 通过：312 files / 3645 tests，24 guards（`/home/kaua/calc-arch/verify57.log`）。
+
+**StunAxisPage 剩余写死（在 §5.63 表的基础上更新）**
+| 位置 | 用途 | 方案 |
+|---|---|---|
+| :313 `liuyinSlot`（1481）+ :699 `c.agentId !== '1481'` | 队里有琉音时，给**其他**队友出「转大·60/90」候选块 | **下一张 CC-58**：琉音模块已经声明 `ownsPromoteVariantAxisBlocks: true`（CC-43e，liuyin.ts:~511），引擎 `roundInputs.ts#buildStackAxes` 就是按它决定 promoteVariant 块是否生效，UI 应该用同一个声明 |
+| :268 `autoLiuyinLabel`（1481「有琉/无琉」） | 伊德海莉自动轴预设的章节标签 | 和 CC-58 一起：改用同一个门面判断「有没有转大块的拥有者」。⚠ 语义上这是「预设按琉音分档」，要先读 autoPreset 的匹配逻辑，确认预设是按琉音本人分档，还是按转大机制分档 |
+| :264/266 `hasYidhari`、`yidhariCinema`（1051） | 自动轴 banner：章鱼体系「0章/1章」标签 | 待定：这是预设命名，可能要让预设数据自带标签，不是模块声明 |
+| :297 `banyueSlot`（1471）、:311 `yixuanSlot`（1371） | 明王/凝神两条专属时间轴 lane 和 banner | 待定：两者都已声明 `axisEditorBlockMarks`，但 lane 的文案和 CSS 各不相同。可以考虑「专属轴 lane」声明（label、cls），工作量中等 |
+| :748 `isBanyueRageCombo`（1471 + comboId） | 怒连段判定 | comboId 本身是般岳专用（`banyue-combo*`），`c.agentId === '1471'` 这一臂多余，可以直接去掉。要先确认 comboId 不会在别的角色上重名：grep `banyue-combo` |
+| :716 诺姆 1571、:725 希格莉德 1591 | 专属轴块（转连携、破阵连段） | 待定：「专属轴块」声明 |
+| :659 `1371_c1_lightning`、:~702 `1051024` | 招式 ID 写死（不看 agentId） | 低优先级，见上 |
+
+**下一步（CC-58，可直接开工）**
+1. 读 `src/mechanics/types.ts` 里 `ownsPromoteVariantAxisBlocks` 的注释（:~972），以及 `src/composables/resourceCalc/roundInputs.ts#buildStackAxes` 里消费它的地方，确认引擎的口径（「队里有任何声明者」还是「按槽位」）。
+2. 在 `agentMechanicView.ts` 加门面 `teamPromoteVariantOwnerSlot(team)`：返回第一个声明 `ownsPromoteVariantAxisBlocks` 的槽位，没有则返回 -1。
+3. StunAxisPage :313 改为 `const liuyinSlot = computed(() => teamPromoteVariantOwnerSlot(configStore.team))`，变量名可以改成 `promoteOwnerSlot`，但要用 `grep -rnw liuyinSlot src/views/StunAxisPage.vue` 逐一改完。:699 改为 `c.slot !== promoteOwnerSlot.value`。⚠ 原来是按 agentId 比较，如果队里有两个琉音，两者结果会不同；实际上同一角色不能重复上阵，可以视为等价，但要写进文档。
+4. :268 按上表的 ⚠ 先核实，再决定改不改。
+5. 测试：对照基准写三种队伍（有琉音、没有琉音、琉音在槽 0/1/2），槽位和原 findIndex 相等；反向变异：删掉 liuyin.ts 的 `ownsPromoteVariantAxisBlocks`。⚠ 这个声明引擎也在用，删掉会让引擎测试变红，属于预期；恢复后要 cmp。
+- 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b 其他 dominant 异放角色开放占比调节（§5.62）、TimeChartsPage:531 隐患（§5.63）、`ResourceResultCard.vue:748` 维琳娜 1561：给腐蚀状态机补异放事件，是 components 层的角色专属数据补丁，要先读上下文再定。
 ## 附录：普查脚本 census.sh
 
 ```bash
