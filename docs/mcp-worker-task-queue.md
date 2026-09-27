@@ -69,21 +69,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 177 轮（lane lead-arena-0925c）**
-- 提交：`a0860502`（代码与测试，CC-154），文档随后提交。verify 日志：`/home/kaua/calc-arch/v177.log`（含 VERIFY_EXIT 与 TSC_EXIT）。
-- CC-154：physical 下 applyTeamConfig 的 stunCount 和 axis.windows 改走计数通道。审计、方案、逐处还原归因和影响面见 stun-dual-source §18。
-- REQUIREMENTS 没有新条目（最后一次改动在 e000e53e）。提示词本轮已重读，未改。
+**第 178 轮（lane lead-arena-0925c）**
+- 提交：`d030a2ff`（代码与基线，CC-155），文档随后提交。verify 日志：`/home/kaua/calc-arch/v178.log`（含 VERIFY_EXIT 与 TSC_EXIT）。
+- CC-155：编排层 3 处改走计数通道。审计、定位、影响面见 stun-dual-source §19，新开 CC-157（§19.3）。
+- REQUIREMENTS 没有新条目（最后一次改动在 e000e53e）。提示词本轮已重读，未改（没有发现阻碍决策的条款）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-155**：编排层 convergence.ts 338–342、982、1078 三处，把计划值 stunCount 换成计数通道值（338–342 可对照装配侧 promoteFixpoint 用的池不动点值）。
-   - 每处单独做还原实验：带 `// ZZTMP` 标记的环境变量开关，用完 `sed -i '/ZZTMP/d'`。
-   - 看 zd 与两份基线，逐条解释后再决定合并。
-   - 探针模板：`/home/kaua/calc-arch/k177/zzF177`（frost）、`zzG177`（archive）；基线对比脚本 `k177/basecmp.py`。
+1. **CC-157：琉音赠送的终结技进入时间预算。**
+   - 复现：`/home/kaua/calc-arch/k178/zzH178.test.ts`，复制到 `src/` 下运行，**跑完移出**。auto-1591-1481-1311 的留白为 −1.665，而 timeBudgetIdleSeconds 为 0.766。
+   - 先定位：赠大终结技行在哪里物化（`ultimatePromote.ts` 的 promote、`core/resource/tailPipeline.ts` 的赠行预留），以及时间预算器（timeBudget 相关，grep `timeBudgetIdleSeconds`）读的是不是物化前的行集。
+   - 修法方向：让时间预算看到赠行（优先），或在赠大时按剩余时间封顶。选前者，因为时间账只有一个出口，更简单。
+   - 验收：两份基线里含 1481 的队不再超预算；zd 逐条解释。
 2. CC-149：physical 冷启动下最大可行降配档随合轴率不单调；复现探针 `/home/kaua/calc-arch/k172/zzD173b`。
-3. CC-156（先写判断：保底不可达是否上报，可逆方案优先，例如只加诊断字段）；CC-147；CC-152（可选）。
+3. CC-156（保底不可达是否上报，可逆方案优先，例如只加诊断字段）；CC-147；CC-152（可选）。
 
 **已知坑**
-- physical 下判据读规划值还是物理次数，是一类系统性缺陷：CC-151、CC-153、CC-154 都属此类。新增判据时先问：这里要的是次数还是时间。
-- 夹具依赖「平 A 时间 > 2s」一类前提的测试，physical 修复后可能失去区分力。钉 off 的同时补前提断言（见 §18.3 readFrost），不要只改期望值。
+- physical 下判据读规划值还是物理次数，是一类系统性缺陷：CC-151、CC-153、CC-154、CC-155 都属此类。「规划失衡为 0、池却为 3–4」的队（多为琉音、仪玄队）是高发区。现已知的读计划值当计数的地方都已清完；新增判据时先问：这里要的是次数还是时间。
+- 基线里已有超预算记录（CC-157），修 CC-157 时基线会回收，这是预期变化。
 - 棘轮（setAgent 路径）、zd（applyTeamToStore 路径）、timeGolden（applyTeamPreset 路径）三者状态不同，另有 warm-start 缓存的路径依赖。
-- 修同源破缺后，伤害可能升也可能降，不能按方向判对错。
+- 修同源破缺后，伤害可能升也可能降，不能按方向判对错（§19.2 c6 −9.15% 是消除超预算后的正确结果）。
