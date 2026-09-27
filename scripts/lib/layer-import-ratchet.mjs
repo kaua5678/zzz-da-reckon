@@ -72,7 +72,7 @@ export const EXHIBITION_LAYER_FORBIDDEN = /@\/(?:core|mechanics|specs)(?:\/|['"]
  * ⚠ 与 :763 的 `sharpCritMultiplier` 先例同型——**纯函数搬走后 import 自然消失**，
  * 无需注册表/编排层透出。下面这 14 处仍是真引擎调用，别照此法硬搬。
  */
-export const EXHIBITION_LAYER_IMPORT_BASELINE = 8   // 2026-09-27 CC-48 10→8（StunAxisPage 的 banyue/yixuan 值导入 → 模块能力 axisEditorBlockMarks/axisMoveMeta）；CC-47 14→10（getAgentMechanic×4 → composables/agentMechanicView.ts）
+export const EXHIBITION_LAYER_IMPORT_BASELINE = 6   // 2026-09-27 CC-49 8→6（buildTeammateBuffSourceContext×2 → composables/teammateBuffContext.ts）；CC-48 10→8（StunAxisPage 的 banyue/yixuan 值导入 → 模块能力 axisEditorBlockMarks/axisMoveMeta）；CC-47 14→10（getAgentMechanic×4 → composables/agentMechanicView.ts）
 
 // ---- 判据 12：引擎层「静态依赖具体角色模块」棘轮 ----
 //

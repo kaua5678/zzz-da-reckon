@@ -875,7 +875,7 @@ import CharacterCard from '@/components/CharacterCard.vue'
 import StatPanel from '@/components/StatPanel.vue'
 import { calcPanel } from '@/core/panel'
 import { applyTargetedStat } from '@/core/buff'
-import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
+import { teammateBuffSourceContextFromStores } from '@/composables/teammateBuffContext'
 import { getImageUrl } from '@/utils/image'
 // ⚠ 两个谓词量的是两件事：`isPctStat` = **展示**口径（UI 显示 % 还是绝对值），
 // `statSettlementMode` = **结算**口径（`applyStat` 的 mode 实参）。全局 Buff 要的是后者——
@@ -1095,16 +1095,9 @@ const currentAgent = computed(() => {
   return id ? catalogStore.getAgent(id) ?? null : null
 })
 const selectedAgentDefaultTimeWeight = computed(() => configStore.getDefaultBasicAttackTimeWeight(currentAgent.value))
+// CC-49：依赖组装收拢到编排层（判据 7；与 ImpactChart 原为逐字相同的两份）
 function getTeammateBuffSourceContext() {
-  return buildTeammateBuffSourceContext(configStore.team, {
-    teammateBuffGroups: catalogStore.teammateBuffGroups,
-    driveDiscSetsMap: catalogStore.driveDiscSetsMap,
-    statRules: catalogStore.statRules,
-    getAgent: (id) => catalogStore.getAgent(id),
-    getWEngine: (id) => catalogStore.getWEngine(id),
-    isTeammateBuffEnabled: (id) => configStore.isTeammateBuffEnabled(id),
-    enemyWeakness: configStore.enemy.weakness,
-  })
+  return teammateBuffSourceContextFromStores(configStore, catalogStore)
 }
 
 

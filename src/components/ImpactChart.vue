@@ -128,7 +128,7 @@ import { IMPACT_VARIABLES, readImpactVar, writeImpactVar } from '@/core/impactVa
 import { teamMechanicSettings } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 import { computeOptimalSubStats, getTemplate } from '@/core/substatOptimizer'
-import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
+import { teammateBuffSourceContextFromStores } from '@/composables/teammateBuffContext'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -369,15 +369,8 @@ function runOptimizerForSlot0() {
   const agent = catalogStore.getAgent(char.agentId)
   if (!agent) return
   const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
-  const setInfo = buildTeammateBuffSourceContext(configStore.team, {
-    teammateBuffGroups: catalogStore.teammateBuffGroups,
-    driveDiscSetsMap: catalogStore.driveDiscSetsMap,
-    statRules: catalogStore.statRules,
-    getAgent: (id: string) => catalogStore.getAgent(id),
-    getWEngine: (id: string) => catalogStore.getWEngine(id),
-    isTeammateBuffEnabled: (id: string) => configStore.isTeammateBuffEnabled(id),
-    enemyWeakness: configStore.enemy.weakness,
-  })
+  // CC-49：依赖组装收拢到编排层（判据 7；与 TeamConfigPage 原为逐字相同的两份）
+  const setInfo = teammateBuffSourceContextFromStores(configStore, catalogStore)
   const tmpl = getTemplate(agent)
   const sc = tmpl.stats.length
   const tsk = sc <= 2 ? 'optimizer.totalSteps2' : sc === 3 ? 'optimizer.totalSteps3' : 'optimizer.totalSteps4'
