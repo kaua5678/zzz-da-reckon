@@ -779,6 +779,11 @@ export interface AgentMechanicModule {
   /** 轴编辑器候选块名后缀（CC-57；展示层专用）：moveId → 后缀。现唯一：仪玄 1371022/1371026「·+30%失衡」（额外能力：命中失衡敌人 +30%） */
   axisMoveSuffix?: Readonly<Record<string, string>>
   /**
+   * 轴编辑器「怒相连段块」comboId 声明（CC-59；展示层专用）：primary = 主连段，didong = 与主连段共享配额、优先占用的变体连段。
+   * 两者都是本模块 `combos` 的 key。StunAxisPage 用它画明王窗口条、按山威配额（怒相次数 × 2）算可放次数。现唯一：般岳。
+   */
+  axisRageCombos?: { readonly primary: string; readonly didong: string }
+  /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
    * 声明后，资源页「异放元素分配」卡与影响分析的占比变量会为本角色出控件。

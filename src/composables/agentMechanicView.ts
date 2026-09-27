@@ -159,3 +159,10 @@ export function agentOwnsPromoteVariantAxisBlocks(agentId: string | null | undef
 export function teamPromoteVariantOwnerSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): number {
   return team.findIndex(c => agentOwnsPromoteVariantAxisBlocks(c?.agentId))
 }
+
+export type AxisRageCombosDecl = NonNullable<AgentMechanicModule['axisRageCombos']>
+
+/** 轴编辑器怒相连段块声明（CC-59）：模块声明 `axisRageCombos`；未声明 ⇒ undefined。原位置 StunAxisPage 写死 1471 + 两个连段 comboId */
+export function agentAxisRageCombos(agentId: string | null | undefined): AxisRageCombosDecl | undefined {
+  return agentId ? getAgentMechanic(agentId)?.axisRageCombos : undefined
+}

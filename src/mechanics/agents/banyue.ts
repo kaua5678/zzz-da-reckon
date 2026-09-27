@@ -884,6 +884,7 @@ export const banyueMechanic: AgentMechanicModule = {
     return out
   },
   axisMoveMeta: BANYUE_AXIS_MOVE_META,
+  axisRageCombos: { primary: 'banyue-combo', didong: 'banyue-combo-didong' },
   id: 'agent:banyue',
   agentIds: [AGENT_ID],
   name: '般岳',

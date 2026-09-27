@@ -246,7 +246,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -297,6 +297,8 @@ const slotOptions = computed(() => [0, 1, 2].map(s => ({ label: agentName(s), va
 const banyueSlot = computed(() => configStore.team.findIndex(c => c.agentId === '1471'))
 const banyueCinema = computed(() => (banyueSlot.value >= 0 ? configStore.team[banyueSlot.value]?.cinemaLevel ?? 0 : 0))
 // CC-48：标注经模块能力 axisEditorBlockMarks（门面 agentAxisBlockMarks；槽位空 ⇒ 空 Map，同原实现）
+// CC-59：怒相连段块 comboId 经模块声明 axisRageCombos（原写死两个连段 id 字面量）
+const banyueRageCombos = computed(() => agentAxisRageCombos(configStore.team[banyueSlot.value]?.agentId))
 const banyueMingwangBlocks = computed(() => agentAxisBlockMarks(configStore.team[banyueSlot.value]?.agentId,
   { axes: axes.value, slot: banyueSlot.value, cinemaLevel: banyueCinema.value }))
 function mingwangTag(ai: number, aii: number): { text: string; cls: string } | null {
@@ -353,10 +355,12 @@ function mingwangWindowsFor(ai: number): { key: string; layers: number; leftPct:
   if (banyueSlot.value < 0 || banyueCinema.value >= 6) return []
   const axis = axes.value[ai]
   if (!axis) return []
+  const rc = banyueRageCombos.value
+  if (!rc) return []
   const win: { key: string; layers: number; leftPct: number; widthPct: number }[] = []
   for (const [aii, act] of axis.actions.entries()) {
     if (act.slot !== banyueSlot.value) continue
-    if (act.moveId !== 'banyue-combo' && act.moveId !== 'banyue-combo-didong') continue
+    if (act.moveId !== rc.primary && act.moveId !== rc.didong) continue
     const start = act.startTime ?? 0
     const info = banyueMingwangBlocks.value.get(`${ai}:${aii}`)
     win.push({
@@ -747,23 +751,25 @@ const allMoves = computed(() => {
         }, 0) || 1
         // 般岳怒相连段块：山威配额（怒相次数 × 2 组）替代 exSpecialCount 估算，不被反馈闭环锁 0；
         // 论道/地动山摇两个连段块共享配额（didong 优先占：论道可再放 = 配额 − 已捏didong − 已捏论道）
-        const isBanyueRageCombo = c.agentId === '1471' && (comboId === 'banyue-combo' || comboId === 'banyue-combo-didong')
+        // CC-59：经模块声明 axisRageCombos（原写死 agentId 1471 + 两个 comboId 字面量）
+        const rageCombos = agentAxisRageCombos(c.agentId)
+        const isRageCombo = !!rageCombos && (comboId === rageCombos.primary || comboId === rageCombos.didong)
         let consumed = 0
         let didongConsumed = 0
         axes.value.forEach((ax, ai) => {
           for (const a of ax.actions) {
             if (a.slot !== c.slot) continue
             if (a.moveId === comboId) consumed += a.count * axisTimes(ai)
-            if (comboId === 'banyue-combo' && a.moveId === 'banyue-combo-didong') didongConsumed += a.count * axisTimes(ai)
+            if (rageCombos && comboId === rageCombos.primary && a.moveId === rageCombos.didong) didongConsumed += a.count * axisTimes(ai)
           }
         })
         const rageQuota = c.banyueRageCycle ? c.banyueRageCycle.rageCount * 2 : 0
-        const available = isBanyueRageCombo && c.banyueRageCycle
-          ? comboId === 'banyue-combo'
+        const available = isRageCombo && c.banyueRageCycle
+          ? comboId === rageCombos?.primary
             ? Math.max(0, rageQuota - didongConsumed - consumed)
             : Math.max(0, rageQuota - consumed)
           : Math.floor((c.exSpecialCount ?? 0) / exPerCombo)
-        const comboLabel = isBanyueRageCombo
+        const comboLabel = isRageCombo
           ? `[怒]${combo.label}`
           : combo.label
         out.push({ slot: c.slot, moveId: comboId, label: comboLabel, actionTime, remaining: Math.max(0, available - consumed), key: `${c.slot}:${comboId}:combo` })
