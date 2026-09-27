@@ -326,6 +326,17 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
     - 如果某条复算命令本身已失效（路径搬家等），先修命令再对账，把「命令已修」写进条目。
     - 可以用 dsh 只读并行跑命令，但写文档由 lead 独自完成。
     - 文档提交后必须重跑 check-guards（手册密度棘轮、@fact 解析都会扫 docs）。
+- **第 115 轮（2026-09-27）**：CC-96 done `4191bd0`（§5.103）；用户新增 R2、R3，**均已完成**。R2 `d91bcf8` 见流程文档；R3 见 `docs/LONG-TERM-DIRECTIONS.md`，只提案。
+  - **收尾流程已改**，见本文 §0.R2：tsc 已开增量；零差用 `.zc/perf/zd.sh`（并行，约 50 秒）；verify 只跑一次，等待期间起草文档，EXIT 后再落盘；文档提交后必须重跑 check-guards。
+  - **下一步优先级**：
+    1. 先读 `docs/REQUIREMENTS.md`。如果用户已经针对 R3 挑了方向或回答了裁决点，按他的选择立卡。
+    2. 否则派或做 **CC-14a**（前置门已开，下一条有说明）。
+    3. 再否则做 **CC-97**：方向 B 的「测量清单 v1」，纯文档，写进 `docs/mcp-calibration-atoms.md`（新文件，要在 README §6 登记）。
+       - 每个原子写：测什么、训练场怎么测（配装快照、敌人、动作）、预期区间与引擎当前输出（用一次性 vitest 探针读取）、对应的 @fact 或 ⟳ 行号。
+       - 驱动盘 `basis`（雷暴重金属 28% 攻击力，按局外攻击力还是基础攻击力）排第一。
+  - 已知坑：
+    - 手册 §4 行数棘轮 frozen 718，`ENGINE_PIPELINE_GUIDE.md` §4 净增 1 行就会打红 `checkGuards.test`。取证写 census，手册只写口径。
+    - 在 bg.sh 的命令里写 `exit` 会导致日志缺少 EXIT 行。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。

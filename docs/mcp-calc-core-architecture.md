@@ -266,7 +266,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-93 | done | `2299223` | target 债务销号：核实运行时 team/enemy 等效，保留字段，validate:specs 加「enemy* 字段 ⇒ target enemy/both」校验，DEBT 7→6 | census §5.100 |
 | CC-94 | done | `0a7e2a8` | LS 死通道基线 12→1：删 11 个零读零写声明（roxy/claret/norma 配置槽 + catalog 两字段），freePoolPerSpecialty 裁决保留为调参旋钮 | census §5.101 |
 | CC-95 | done | `cb169a3` | 判据 14 豁免 8→1：删 6 个死字段（归档 DTO 3、minGain、minWeight、damage isRupture），blockSeconds 形参假阳性修扫描器；棘轮 7→1 | census §5.102 |
-| CC-96 | 待做 | — | ENGINE_PIPELINE_GUIDE §38「静默不算」清单按复算命令重跑对账（⟳ 触发器 2026-10-15 到期） | 队列 CC-95 行 |
+| CC-96 | done | `4191bd0` | §38 复算对账：①数字更新 ③drift 销号，新增 ⑦ catalog 效果 basis 引擎零读取、4 条驱动盘 baseAtk 错标统一（零数值变化）；触发器顺延 2026-12-31 | census §5.103 |
+| CC-97 | 待做 | — | 长期方向 B 的「测量清单 v1」（纯文档，受控实测原子 10–20 个，驱动盘 basis 排第一）——**仅在用户未另选方向、且无更高优先级卡时做**；或 CC-14a（可派） | 队列 CC-96 行 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |

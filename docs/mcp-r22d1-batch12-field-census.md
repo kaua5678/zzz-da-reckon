@@ -2812,3 +2812,23 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 验证：vue-tsc 0；check-guards 25；verify 339 files / 3714 tests EXIT 0（新增 1 条测试，`verify114.log`）；zc drift 待复核 0。
 - 回退：`git revert cb169a3`。只想恢复某个选项时，在对应接口加回可选字段，并把内联常量改回 `opts.x ?? 默认`。
 
+### 5.103 CC-96 done + R2/R3（lead-arena-0925c，2026-09-27 第 115 轮）
+
+**CC-96 `4191bd0`**：ENGINE_PIPELINE_GUIDE §38「静默不算」复算对账
+- ① `pending` 条目数：命座 105（108 项）、机制 39（40 项）。09-10 的快照是 104 / 41。复算命令补上了「条目数」输出（原来只数项数）。
+- ② `validate-specs` WARN 为 0。`teammate-buffs.json` 里的 `basis` 为 0，当年删掉的 4 条没有复活。catalog.json 里的 22 处 `basis` 是装备效果字段，与那 4 条无关，见 ⑦。
+- ③ `shortAxisFeiguangCount` 已不存在；邦布告警在 `runArchiveImport.ts:252`；spec `debt:` 扫描在 check-guards 第 579 行；「`zc drift` 待复核」已清零（CC-95 附带的 `5430062`）→ 销号。
+- ④ 留白复算：104 队 / 94.6 秒；`moveFusions.ts` 头注释与 `damageSplitFrontierProbe.test.ts` 都还在。
+- ⑤⑥ 引用的判据、`chart-blocks.css`、`scopedStyleReach.test.ts` 都在。
+- **新增 ⑦（取证）**：
+  - catalog 效果上的 `basis`（`types/catalog.ts:256`）在引擎层（core / stores / composables / mechanics / utils）**零读取**，全仓 `git grep -nw basis` 只命中展示层的 derived 文案（FinalPanel / DebugPage / TeamConfigPage / WEngineFieldPage）和 ResourceRow 的另一种 `basis`（damagePool:296–297，与此无关）。
+  - fixed/stacked 的 `atkPct` 按 `core/buff.ts` 的 `CORE_STAT_BY_BONUS` 累积，基底是首次触达时的面板值。
+  - 分布：20 × `outOfCombatAtk`（统一后）、2 × `outOfCombatHp`。统一前有 4 × `baseAtk`：如影相随 `effect_shadow_harmony_4pc_atk_pct`、啄木鸟电音 `effect_k4p9x1nd`、河豚电音 `effect_puffer_electro_4pc_atk_pct`、雷暴重金属 `effect_thunder_metal_4pc_atk_pct`。
+  - nanoka_equipment.json 的原文都写作「装备者的攻击力提升X%」，与标 `outOfCombatAtk` 的效果写法相同。
+  - **裁决**：统一为 `outOfCombatAtk`，零数值变化，verify115b 通过。
+  - **回退**：把这 4 处改回 `baseAtk`。若实测证明应按基础攻击力计算，要**先让引擎认 basis**，只改标签没有意义。这一点已列为 `docs/LONG-TERM-DIRECTIONS.md` 方向 B 的第一个校准原子。
+- 手册 §4 行数棘轮（718）：第一版 ⑦ 写了 7 行，导致 `checkGuards.test` 报「725 > 718」。改成 ⑦ 压成一行、① 并掉一行，净增 0 行。**手册只写口径，取证写在本节。**
+
+**R2 `d91bcf8`**：流程提速，详见 `docs/mcp-dev-process-speed.md`；REQUIREMENTS R2 已标 done。
+**R3**：`docs/LONG-TERM-DIRECTIONS.md`，只提案；REQUIREMENTS R3 已标 done，等待用户挑选方向。
+
