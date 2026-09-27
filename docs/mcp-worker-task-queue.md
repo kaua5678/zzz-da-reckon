@@ -69,22 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 121 轮（2026-09-27）
+### 第 121 轮（2026-09-27，两个文档提交）
 
 - **做到哪**（本轮一个文档提交，提交号见 `docs/mcp-calc-core-architecture.md` 卡表 R8 行）：
   - **W1、W2 撤回**。读码发现：判据 12/22/23/24 的基线已经是 0，改成「≤」没有区别；非零的等号基线（agent 分支 1、展示层越层 1、check-tokens 各项）有实证价值。手册 §4 行数条目早已达标且只报不红；id 密度判据有实测依据，成本约为零。依据写在 `docs/mcp-working-model.md` §2.5。
   - **W3 完成**：本文件从 427 行压到约 110 行；census 头部加了冻结横幅。
   - **W4 完成**：AGENTS.md 没有成段的分工规则，不用改；本文件头部的「卡只由主代理写、工人不改」认领纪律已改为指向 working-model。
-- **下一步（R6 第 1 步，可以直接开工）**：
-  1. 读 `docs/ARCHITECTURE.md`、`docs/ENGINE_PIPELINE_GUIDE.md`、`docs/FEATURES_GUIDE.md`、`docs/GAME_TERM_TO_CODE_FIELD.md`、`AGENTS.md`。**只读规划文档是不够的**，要对照代码。
-  2. 画出 `src/` 的实际依赖图：`find src -maxdepth 2 -type d`；每个顶层目录用 `git grep -h "from '@/" -- src/<dir>` 统计它 import 哪些目录；数据入口从 `stores/catalog.ts`（catalog.json 加载）追到 `core/panel.ts`、`core/buff.ts`、`core/damage.ts`、`composables/resourceCalc/*`。
-  3. 写 `docs/ARCHITECTURE-OVERVIEW.md`，同一提交登记 README §6（份数 60→61）。内容：数据从哪进；经过哪些层；每层的职责和**实际**依赖方向（与 ARCHITECTURE.md 声称的不一致处单列）；效果管线（catalog 效果 → buff 汇总 → 局内/局外面板 → 伤害）画到函数级，因为 R5 第 2 刀要用。
-  4. 地图完成后做 R5 第 2 刀：
-     1. 复跑 `node .zc/perf/r5scan.mjs > .zc/perf/r5scan.out`（脚本丢了就按账本 §1 重写）。
-     2. 核实 **Z4 `stackGroup`**：用 `node -e` 列出 catalog 中带 stackGroup 的 23 条效果并按组聚合；`timeout 40 git grep -n stackGroup -- src` 确认零读取；读 `src/core/buff.ts` 和 `src/core/inCombatBuffs.ts` 的叠加逻辑，看同组效果会不会重复计入；写成 D1 条目（账本 §5 格式）。
-     3. 核实 **Z6 `outOfCombatEffectFilter`**、**Z2 `appliesToOutOfCombatPanel`** 和 **K0 `basis`**：读 statRules.calculation 的规则原文，找引擎决定「局外面板计入哪些效果」的代码，判断三者是否同一根因，是就合并成一个 D 条目。
-     4. 215 种字段按账本 §2 归 S / D / M 类。
-     5. **只登记，不修。**
+  - **R6 第 1 步 v1 完成**：新文档 `docs/ARCHITECTURE-OVERVIEW.md`，README §6 共 61 份。测量脚本在 `.zc/perf/archmap.mjs`。
+  - **R5 第 2 刀部分完成**：Z2 已核无差异（冗余字段），Z6 已核为潜在差异，见账本 §7 D1、D2。
+- **下一步（按顺序，每项都可以直接开工）**：
+  1. **R5 第 2 刀续：Z4 `stackGroup`**
+     1. 用 `node -e` 列出 catalog 中带 stackGroup 的 23 条效果，按组聚合，看同组是哪些音擎或驱动盘、各自的 stat。
+     2. `timeout 40 git grep -n stackGroup -- src` 确认零读取。
+     3. 读 `core/buff.ts` 的 applyBuffs、applyEffect（stacked 分支）和 `core/inCombatBuffs.ts`，判断同组效果同时生效时会不会重复叠加。
+     4. 写成账本 §7 D3。
+  2. **R5：K0 `basis`**：从 census §5.103（CC-96）的结论起步，写成 D4，并标明是否有数值影响、影响哪几个驱动盘。
+  3. **R5：Z5 基础属性规则**：`baseAttackRule` 等规则与 `core/panel.ts:158 calcBasePanel` 逐项对照。
+  4. **R6 第 1 步续**：做全景 §6 的 4 项（生命周期核对、A4 计算 / 胶水分类、展示层 fan-in、spec 与 TS 双实现）。
+  5. 然后是 **R6 第 2 步**：三类清单，每条写做 / 不做。候选 C1–C4 已在全景 §5。
 - **未决项**：
   - CC-99（spec 原语 G1/G3 + 迁移潘引壶）排在 R6 清单之后重新评估，可能被清单吸收；
   - CC-97（校准原子）暂缓；

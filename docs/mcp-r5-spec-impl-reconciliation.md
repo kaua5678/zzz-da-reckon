@@ -48,11 +48,11 @@
 | # | 字段 | 所在 | catalog 出现次数 | 访问 / 提及 | 疑点（待核） | 状态 |
 |---|---|---|---|---|---|---|
 | Z1 | `damageBasis` | agentSkills 的倍率行 | 2490 | 0 / 4 | 伤害按什么属性结算（攻击 / 生命 / 防御 / 贯穿力等）。引擎若按别的来源判定，就要核对两者是否一致 | 待核 |
-| Z2 | `appliesToOutOfCombatPanel` | 音擎 selfBuff / teamBuff | 95 | 0 / 0 | 这条 buff 是否计入局外面板。引擎完全不读，靠别的逻辑决定，**与 basis 问题同源** | 待核 |
+| Z2 | `appliesToOutOfCombatPanel` | 音擎 selfBuff / teamBuff | 95 | 0 / 0 | 这条 buff 是否计入局外面板。引擎完全不读，靠别的逻辑决定，**与 basis 问题同源** | **已核：无差异（冗余字段）**，见 §7 D1 |
 | Z3 | `durationSeconds` | 音擎 / 驱动盘 / Boss 效果 | 80 | 1 / 3（只有 piper.ts） | 持续时间。引擎可能用 `coverage`（覆盖率）代替。要确认两者口径是否一致，还是持续时间被忽略了 | 待核 |
 | Z4 | `stackGroup` | 效果 | 23 | 0 / 0 | 同组效果是否互斥或共享层数。**完全不读就可能重复叠加** | 待核（优先） |
 | Z5 | `statRules.calculation.baseAttackRule` / `baseHpRule` / `baseDefRule` | statRules | 各 1 | 0 / 0 | 基础属性的计算规则。引擎可能自有实现，要对照规则文本 | 待核 |
-| Z6 | `statRules.calculation.outOfCombatEffectFilter` | statRules | 1 | 0 / 0 | 哪些效果计入局外面板的过滤规则。**与 Z2、basis 是同一个问题** | 待核（优先） |
+| Z6 | `statRules.calculation.outOfCombatEffectFilter` | statRules | 1 | 0 / 0 | 哪些效果计入局外面板的过滤规则。**与 Z2、basis 是同一个问题** | **已核：当前数据等价，潜在差异**，见 §7 D2 |
 | Z7 | `exclusiveGroup` | 驱动盘 teamBuff | 1 | 0 / 0 | 互斥组。与 Z4 类似 | 待核 |
 | Z8 | `settlementType` | 音擎 target | 4 | 0 / 1 | 结算类型 | 待核 |
 | Z9 | `cooldownSeconds` | 音擎 / 驱动盘效果 | 3 | 0 / 3 | 冷却。引擎可能用覆盖率吸收了 | 待核 |
@@ -91,6 +91,25 @@
 ## 6. 进度账本
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
-- [ ] 第 2 刀：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
+- [~] 第 2 刀（进行中，第 121 轮完成 Z2、Z6，见 §7；剩余 Z4、K0 和字段归类）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
 - [ ] 第 3 刀：核实其余 Z 类，并按 §4 做 S 类字段的取值 × 分支对照。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
+
+## 7. 已核结论（第 2 刀起）
+
+效果管线的函数级图见 `docs/ARCHITECTURE-OVERVIEW.md` §4。
+
+### D1 `appliesToOutOfCombatPanel`：零读取，但与 scope 完全同义 → 无行为差异
+- **数据怎么写**：音擎 `selfBuff` 76 处、`teamBuff` 19 处，共 95 处，取值**全部为 `false`**；同一对象上的 `scope` **全部为 `inCombat`**。递归遍历 catalog，`(scope === 'outOfCombat') !== (appliesToOutOfCombatPanel === true)` 的对象为 **0 个**。
+- **引擎怎么算**：`core/buff.ts:337–353`，音擎 / 驱动盘组按 `group.scope === 'outOfCombat'` 分入局外，否则局内；不读 appliesToOutOfCombatPanel。
+- **差在哪**：零读取，但语义与 scope 重复，当前数据下结果一致。
+- **影响面**：无数值影响。
+- **建议**：不改引擎。可选做法是 R6 候选 C3：导入脚本校验两者一致，或者删掉这个冗余字段。**不开修复卡。**
+
+### D2 `statRules.calculation.outOfCombatEffectFilter`：引擎写死了规则的一半 → 潜在差异
+- **数据怎么写**：`{ "scope": "outOfCombat", "condition": null }`。字面含义是「scope 为局外**且**无条件的效果才计入局外面板」。
+- **引擎怎么算**：`core/buff.ts:286–353` 只判断 `scope === 'outOfCombat'`，不看 condition，也不读这条规则。
+- **差在哪**：条件那一半没有实现。递归遍历 catalog，scope 为局外且自身或其 effects 带非空 condition 的对象为 **0 个**，所以当前数据下等价。
+- **影响面**：目前为零；将来数据若新增「局外 + 条件」的效果，会被错误计入局外面板。
+- **建议修法**：R6 候选 C4，局外判定改为读这条规则，同时判断 condition，当前数据下零差。优先级低；R5 第 4 刀转卡时排在有数值影响的条目之后。
+- 同批的 `baseAttackRule`（`agent.atkBase + wEngine.atkBase`）、`baseHpRule`、`baseDefRule`（Z5）还没有和 `calcBasePanel`（`core/panel.ts:158`）逐项对照，第 2 刀续做。
