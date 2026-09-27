@@ -85,7 +85,7 @@ core/inCombatBuffs.ts  collectInCombatTeamBuffs   局内「给全队 / 队友」
 
 ## 5. R6 候选（初稿，第 2 步正式评估「做 / 不做」）
 
-> **第 2 步结论（第 139 轮）**：逐条「做 / 不做」见 `docs/mcp-r6-refactor-list.md`。**C1 已完成**（R6 验收项）：12 个 core 文件改 import `@/mechanics/registry`，注册由 `src/main.ts` 与 `vite.config.ts` `test.setupFiles` 负责，守卫测试 `src/core/__tests__/coreMechanicsRegistryOnly.test.ts`。回退点：12 处 import 改回 `@/mechanics`，删 setupFiles 一行与该测试。C7 做（下一刀 1481 / 1571）；C5、C3 低优先做；C6 只改规划；C2、C4 不做。下表保留为初稿记录。
+> **第 2 步结论（第 139 轮）**：逐条「做 / 不做」见 `docs/mcp-r6-refactor-list.md`。**C1 已完成**（R6 验收项）：12 个 core 文件改 import `@/mechanics/registry`，注册由 `src/main.ts` 与 `vite.config.ts` `test.setupFiles` 负责，守卫测试 `src/core/__tests__/coreMechanicsRegistryOnly.test.ts`。回退点：12 处 import 改回 `@/mechanics`，删 setupFiles 一行与该测试。C7 做：1481 已完成（第 140 轮，spec 新增 `stepRounding` 字段承载连续口径），1571 不做；C6、C2 的规划条款已写进 `docs/ARCHITECTURE.md` §0（第 140 轮）；C5、C3 低优先做；C4 不做。下表保留为初稿记录。
 
 | 候选 | 类别 | 为什么 | 初步风险 |
 |---|---|---|---|

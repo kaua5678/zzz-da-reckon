@@ -9,11 +9,11 @@
 | # | 条目 | 类别 | 结论 | 状态 |
 |---|---|---|---|---|
 | C1 | core ↔ mechanics 模块环 | 可结构化 | **做** | ✅ 第 139 轮完成（R6 验收项，见 §1） |
-| C7 | spec 与模块「一处执行、一处描述」 | 可归一 | **做**（分刀） | 下一刀：1481 / 1571 attributeConversions |
+| C7 | spec 与模块「一处执行、一处描述」 | 可归一 | **做**（分刀） | 1481 ✅ 第 140 轮；1571 不做（§2）；其余候选见 §2.3 |
 | C5 | 伤害基底两套口径 + 死参数 | 冗余可简化 | **做**（只删死参数与误导字段读法，低优先） | 待做 |
 | C3 | catalog `appliesToOutOfCombatPanel` 冗余 | 冗余可简化 | **做成校验**，不删字段 | 待做 |
-| C6 | 编排层实际是四层 | 可结构化 | **只改规划文档**，不挪目录 | 待做 |
-| C2 | `stores/config.ts` 调引擎 | 可归一 | **不做**（改写规划承认它） | 规划待改 |
+| C6 | 编排层实际是四层 | 可结构化 | **只改规划文档**，不挪目录 | ✅ 第 140 轮（ARCHITECTURE.md §0） |
+| C2 | `stores/config.ts` 调引擎 | 可归一 | **不做**（改写规划承认它） | ✅ 规划已改（第 140 轮） |
 | C4 | 局外判定读 `outOfCombatEffectFilter` | 可结构化 | **不做** | — |
 | N1 | `resourceCalc/helpers.ts` 的 re-export 壳 | 冗余可简化 | **不做** | — |
 | N2 | `data/moveTableQueries` 读全局 fusion 状态（A3） | 可结构化 | **不做** | — |
@@ -43,6 +43,38 @@
 - **暂不做**：10 个模块的 resources 重复（spec resources 驱动 `resourceSections` 展示）。这些要逐个判断 spec 解释器能否表达模块的资源账本；先做 attributeConversions 这种语义简单的，再评估。
 - **风险**：低；zd 可验。**回退点**：模块恢复手写那段。
 
+### 2.1 第 140 轮结果：1481 琉音 ✅（不是直接替换，而是先把口径差异写成数据）
+
+- **发现的语义差异**：`src/specs/runtime.ts` 的 `applySpecAttributeConversions` 按 `steps = ⌊(超出量+1e-9)/stepSize⌋` **整步取整**；琉音模块原写 `min(100, max(0, crit−50) × 2)`，**连续不取整**（暴击率 73.6% 时模块 47.2、runtime 46）。spec 的两条 verifications 只测整数点（80 → 60、100 → 100），所以两边分叉一直没被发现。诺姆模块（`norma.ts:204–210`）同样是连续口径。
+- **决定**：给 `AttributeConversionSpec` 加可选字段 `stepRounding?: 'floor' | 'none'`（`src/specs/types.ts`；缺省 floor，alice / luciaElowen / 1561 / spec 生成模块全部不变）。1481 spec 声明 `"stepRounding": "none"`，`liuyin.ts` 删掉三个常数，改调 `applySpecAttributeConversions(panel, getAgentSpec(LIUYIN_AGENT_ID)?.attributeConversions ?? [])`（放在原位置，执行顺序不变）。spec 新增 verification `liuyin_crit73_6_to_impact_continuous`（73.6 → 47.2），钉住非整数点。`src/specs/template.json` 字段说明补 stepRounding。
+- **依据**：R5 / R6 硬约束「不顺手改数值」。取整与否是**数据口径**，不是重构能决定的；先让口径成为 spec 里一个看得见、可测的字段，常数只剩一处。
+- **验证**：zd `c7a` DUMP / ROWS DIFF 0（dump 含 `auto-1371-1481-1451/*` 等琉音预设，哈希前后一致）；`validate:specs` 1102 条通过；`src/specs` + `src/mechanics/__tests__` 116 files / 1318 tests 通过；反向验证：删掉 `stepRounding` 后新 verification 失败（46 ≠ 47.2），恢复后 `cmp` 一致。
+- **回退点**：删 1481 的 `stepRounding` 字段与新 verification，`liuyin.ts` 恢复三个常数与四行手算；runtime 的 `none` 分支可保留（缺省不生效）。
+- **未决（数据口径，不在重构里改）**：技能原文「初始暴击率超过 50% 时，每超过 1%……」是否意味着按整 1% 取整。若日后确认取整：把 1481 的 `stepRounding` 删掉（回到缺省 floor），73.6 那条 verification 改为 46，并对诺姆模块做同样的改动——这会改数值，必须另开 CC 卡、逐条解释 golden 差异。禁止用「更接近投稿」当理由。
+
+### 2.2 1571 诺姆：**不做**（本条即结论）
+
+- `norma_crit_to_stun`：模块把失衡加成分别写到 `stunBuildUpBonus__exSpecial / __special / __ultimate` 三个定向字段，runtime 只有单个 `targetStat`，表达不了。
+- `norma_pen_to_atk`：来源是 `calcPenetrationPower(panel)`（`src/core/damage.ts`），不是面板上的某个字段。要表达只能给 runtime 加 `sourceValue: 'penetrationPower'` 并让 `specs/runtime.ts` import core——这会重建 C1 刚拆掉的环（core → mechanics/registry → specs → core），不可接受。
+- `norma_crit_to_critdmg` 单独可以迁（加 `stepRounding: 'none'` 即零差），但会把诺姆的三条转化拆到两处（一条在 spec 执行、两条在模块），可读性比现在差；而且 note 写明 valuePerStep 随核心技能等级变化（Lv1 0.86 → Lv7 1.7），模块固定按 Lv7。
+- 所以三条都留在模块，spec 条目保持「实现位置：……勿经 spec runtime 应用」的纯记录状态（`validate-specs.mjs` 的死数据检查按 note 放行）。**回退 / 重开条件**：runtime 支持多目标 `targetStats[]` 且有不依赖 core 的贯穿力来源时再议。
+
+### 2.3 C7 其余候选（下一刀按此开工，逐个判断，**不适用就写不做**）
+
+粗筛（`git grep -nE 'Math\.max\(0, *\(?(panel\.|[a-zA-Z]+ *-)' -- src/mechanics/agents`）得到的、模块里手写「超出阈值 × 系数」并**写回面板**的候选：
+
+| 模块 | 位置 | 形态 | 初判 |
+|---|---|---|---|
+| nangong（1511 南宫羽） | `nangong.ts:117` | `panel.impact += max(0, 异常掌控 − CONTROL_THRESHOLD)` | 最像 1481：单来源、单目标、连续。spec 目前 attributeConversions 为空 ⇒ 迁移意味着在 spec 里新增条目（`stepRounding: 'none'`），收益是常数单一来源 + 机制表页自动展示 |
+| promia（1541 普罗米娅） | `promia.ts:75`、`:114` | 异常精通超 PROMIA_MASTERY_THRESHOLD 的部分 | spec notes 自称「模块复现原 attributeConversions」，先读清为什么当初从 spec 挪到模块（可能与面板阶段有关） |
+| burnice（1171 柏妮思） | `burnice.ts:283` | 能量回复超阈值 | 先确认写回面板还是写资源结果；runtime 有 `sourceValue: 'energyRegenTotal'` |
+| phoenix | `phoenix.ts:132` | 精通超阈值 × 比例 | 先确认目标是不是面板字段 |
+| jane（1261 简） | `jane.ts:68` | `atkFromMastery`，有 cap | 写进结果对象而非面板，大概率不适用 |
+| alice | `alice.ts:117` | `aliceMasteryToProficiencyBonus` | 写的是自定义键；alice 已调 runtime 处理其余转化，这一条是否能并入要看目标键是否被 runtime 以外的代码读 |
+| lighter（1161 莱特） | `lighter.ts:116` | 冲击力超软上限每 10 点 | 是软上限折算，不是加成，大概率不适用 |
+
+每迁一个：spec 加条目（note 写「实现位置：<模块> 调 applySpecAttributeConversions」）+ 至少一条非整数点 verification + zd DIFF 0。**判断标准不是「降低模块行数」**，而是「这个常数改动时，是否只需要改一个地方」。
+
 ## 3. C5 伤害基底两套口径 —— 冗余可简化 · **做（低优先）**
 
 - **为什么**：R5 D6 / Z1：`src/core/damage.ts:265` `DirectDamageInput.damageBasis` 是死参数（引擎按 specialty 经 `resolveSpecialDamageProfile` 决定），catalog 行上的 `damageBasis`（`src/types/catalog.ts:381`，导入脚本合成）与实际计算不符（命破 5 人写 atk，实际贯穿力）。
@@ -71,6 +103,7 @@
 
 ## 7. 后续顺序（写进队列 §2）
 
-1. C7 第一刀（1481 → 1571）。
-2. C6 规划文档 + C2 规划条款（一次改 `docs/ARCHITECTURE.md` §0）。
+1. ~~C7 第一刀（1481 → 1571）~~ 第 140 轮：1481 ✅、1571 不做（§2.1、§2.2）。
+2. ~~C6 规划文档 + C2 规划条款~~ ✅ 第 140 轮。
 3. C5 删死参数；C3 加校验。
+4. C7 §2.3 候选逐个判断（先 nangong）。

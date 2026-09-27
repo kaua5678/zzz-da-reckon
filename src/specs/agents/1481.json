@@ -14,11 +14,12 @@
       "sourcePanelPhase": "inCombat",
       "threshold": 50,
       "stepSize": 1,
+      "stepRounding": "none",
       "targetStat": "impact",
       "valuePerStep": 2,
       "cap": 100,
       "status": "implemented",
-      "note": "[已确认] 超过 50% 的每 1% 暴击率转 2 点局内固定冲击力，100% 暴击时转满 100 点。实现位置：mechanics/agents/liuyin.ts applyPanel（面板直加 impact），非 spec runtime 执行。"
+      "note": "[已确认] 超过 50% 的每 1% 暴击率转 2 点局内固定冲击力，100% 暴击时转满 100 点。实现位置：mechanics/agents/liuyin.ts applyLiuyinPanel 调 applySpecAttributeConversions 执行本条（R6 C7，第 140 轮起本条即唯一常数来源）。口径：stepRounding=none（超出量连续 ×2，不按整 1% 取整），沿用迁移前模块口径、零差；原文「每超过 1%」是否应取整为未决数据口径，改为取整会改数值，须另开 CC 卡（见 docs/mcp-r6-refactor-list.md §2）。"
     }
   ],
   "resources": [
@@ -151,15 +152,27 @@
       },
       "tolerance": 0.0001,
       "status": "implemented"
+    },
+    {
+      "id": "liuyin_crit73_6_to_impact_continuous",
+      "name": "暴击 73.6% 转冲击（钉住 stepRounding=none 的连续口径）",
+      "panel": {
+        "critRate": 73.6
+      },
+      "expected": {
+        "impact": 47.2
+      },
+      "tolerance": 0.0001,
+      "status": "implemented"
     }
   ],
   "stateMachines": [],
   "teamBuffs": [],
   "notes": [
     "来源：nanoka.cc 3.2.1（Dialyn/琉音，1481，击破/物理/坎卜斯黑枝）。",
-    "基础属性与技能倍率已由脚本导入 catalog；专属机制由 TS 模块 liuyin.ts 实现，本 spec 的 attributeConversions/resources 仅作结构化留档。",
+    "基础属性与技能倍率已由脚本导入 catalog；专属机制由 TS 模块 liuyin.ts 实现；attributeConversions 由模块调 spec runtime 执行（第 140 轮起），resources 仅作结构化留档。",
     "团队/敌人 buff 已在 teammate-buffs.json 录好(4条)：额外能力·好评如潮(dmgBonus40)、核心被动·恶意投诉(stunDmgMultiplierBonus30)、影画1(enemyResReduction15)、影画2(dmgBonus15+stunDmgMultiplierBonus20)。spec 不重复录入，避免二次计数。",
-    "[已确认] 暴击转冲击：超过 50% 每 1% 转 2 点局内固定冲击力，100% 暴击转满 100 点。实现：liuyin.ts applyPanel。",
+    "[已确认] 暴击转冲击：超过 50% 每 1% 转 2 点局内固定冲击力，100% 暴击转满 100 点。实现：liuyin.ts applyLiuyinPanel → applySpecAttributeConversions（常数只在本 spec）。",
     "[已确认] 额外能力·强特暴伤 +50%：新增技能专属暴伤 critDmg__exSpecial（core/buff.ts TARGETABLE_STATS 已扩展 + damage.ts 暴击乘区按 skillDamageTarget 定向读取），仅强化特殊技生效。",
     "[已确认] 额外能力·专属直伤：读上一位队友面板，强攻=320%攻击力、命破=400%贯穿力；提供 liuyin.previousTeammateSlot 设置项防止自动认定错误。实现：useResourceCalc.ts damagePool 走 basisValueOverride。",
     "[已确认] 等效总量规则（用户确认）：转大次数 = floor(好评总量/90)（好评满 90 开窗即可抱拳转大，60/90 分配在 promoteFixpoint 按连携窗口拆）；抱拳次数（送客长按 1481009）= 转大次数 + 琉音终结技次数（终结技送客诉→抱拳不转大，纯伤害）。整局总量结算，不按客诉单条上限 1 截断。",

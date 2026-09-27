@@ -12,6 +12,12 @@ export interface AttributeConversionSpec {
   sourcePanelPhase: 'outOfCombat' | 'inCombat'
   threshold: number
   stepSize: number
+  /**
+   * 步数取整口径（R6 C7，第 140 轮）。缺省 'floor'：steps = ⌊超出量 / stepSize⌋（「每满 1% 才加」）。
+   * 'none'：steps = 超出量 / stepSize，不取整（连续线性）。用于把手写模块的既有口径写成数据、
+   * 由 spec runtime 执行，而不是在模块里再写一份常数。两者谁符合游戏是**数据口径问题**，改口径即改数值，须另开 CC 卡。
+   */
+  stepRounding?: 'floor' | 'none'
   targetStat: string
   valuePerStep: number
   cap: number | null

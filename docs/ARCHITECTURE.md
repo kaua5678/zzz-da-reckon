@@ -9,14 +9,20 @@
 
 ```
 数据层   public/static/*.json        唯一事实源（倍率/属性/buff/boss/音擎/驱动盘），只经 scripts/ 导入，不手改（中间产物 data/raw/ 的目录约定见 data/raw/README.md）
-状态层   src/stores/                  configStore（队伍/敌人/设置/滑块，可变）· catalogStore（只读数据快照）
-编排层   src/composables/             useResourceCalc.ts（一次计算的总管线，页面与引擎之间的胶水）+ resourceCalc/ 子模块（panelPhases/helpers/roundThreads/ultimatePromote/normaHatChain/damagePool）
+状态层   src/stores/                  configStore（队伍/敌人/设置/滑块，可变）· catalogStore（只读数据快照）；可调 core/ 纯函数（calcPanel / substatOptimizer 等只读计算），禁调编排层、禁写引擎状态（R6 C2）
+编排层   src/composables/             实际是四块（R6 C6，全景 docs/ARCHITECTURE-OVERVIEW.md §6.2）：
+         ├ 管线后半段  useResourceCalc.ts + resourceCalc/（solveTeam → convergence 外层不动点 → panelPhases → damagePool*）——**最终伤害在 resourceCalc/damagePool*.ts 算**，core/ 只算到执行行
+         ├ 应用层      多次调用整条管线的分析器 / 优化器（teamCompare、teamTimeline、difficultyCurve、pullPlannerEngine、freeCompare/*）
+         ├ 展示几何    图表 / 坐标 / 悬浮卡纯函数（*Chart.ts、charts/hover*.ts）
+         └ 胶水        store ↔ 页面 / 引擎适配、导入导出（teamTimelineStore、runArchive*、teammateBuffContext）
+逻辑编辑 src/logicEditor/             用户自定义规则：类型 / 校验 / 本地存储 / 转 spec；fusion.ts 持有行融合规则的全局快照（唯一写入方 stores/logicEditor.ts，计算入口 useResourceCalc 取快照进缓存键）
 引擎层   src/core/                    纯函数引擎：resource（资源池）/ damage（伤害乘区）/ panel / stunPool / anomalyPool / buff
 录入层   src/specs/ + src/mechanics/  角色机制：声明式 spec（agents/*.json）+ TS 机制模块（agents/*.ts）
 展示层   src/views/ + src/components/ 页面与卡片（读编排层产物）
 ```
 
 依赖方向：展示 → 编排 → 引擎；录入层被编排/引擎经 registry 消费；数据层被状态层加载。
+（编排层目录**不按四块拆分**：挪约 60 个文件的 import、行为零变化；「管线后半段并入 core」的前提是 resourceCalc/ 先不再直读 store（helpers.ts、panelPhases.ts 仍 import stores），不在 R6 内开。决定见 docs/mcp-r6-refactor-list.md §5。）
 **引擎只查询、不注册**：`src/core/**` 取角色模块只许 `import { getAgentMechanic } from '@/mechanics/registry'`，不许按值 import `@/mechanics`（index，会加载并注册全部角色模块，而角色模块又 import core ⇒ 环）；注册副作用只在入口：浏览器 `src/main.ts` 的 `import '@/mechanics'`，测试 `vite.config.ts` `test.setupFiles`。新增运行入口（Worker / node 脚本）必须自己 import `@/mechanics`。守卫：`src/core/__tests__/coreMechanicsRegistryOnly.test.ts`（R6 C1，第 139 轮）。
 **录入层对编排层只许 `import type`**（值边必成环：R35 实测 `claret → resourceCalc/helpers → mechanics/index → claret`）；
 录入层要用编排层的纯函数一律**下沉 `src/data/`**（`data/moveTableQueries.ts` 先例——招式查找 / 行值 / 融合行值 / 平A 第 3 段；

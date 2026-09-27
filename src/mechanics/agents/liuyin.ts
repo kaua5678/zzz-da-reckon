@@ -13,6 +13,8 @@ import type { CharacterResourceResult, LiuyinMechanicSource, MechanicSetting } f
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
 import { resolveUltimateTargetSlot } from '@/core/resource/targetSlot'
+import { getAgentSpec } from '@/specs/registry'
+import { applySpecAttributeConversions } from '@/specs/runtime'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 
@@ -37,10 +39,7 @@ export const HUG60_COST = 60
 /** 90 档转大消耗的好评（导出理由同上） */
 export const HUG90_COST = 90
 
-// —— 核心被动：暴击率转冲击力 ——
-const CRIT_TO_IMPACT_THRESHOLD = 50
-const CRIT_TO_IMPACT_PER_PCT = 2
-const CRIT_TO_IMPACT_CAP = 100
+// —— 核心被动：暴击率转冲击力 —— 常数只在 spec 1481.json `liuyin_crit_to_impact`（R6 C7），applyLiuyinPanel 经 spec runtime 执行。
 
 // —— 额外能力：强化特殊技暴伤 ——
 const EX_SPECIAL_CRIT_DMG_BONUS = 50
@@ -204,10 +203,8 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, settings }: A
   panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + 2
 
   // 核心被动：初始暴击率超过 50% 时，每超过 1% 冲击力 +2，最多 +100（100% 暴击时封顶）。
-  const critRate = panel.critRate ?? 0
-  const over = Math.max(0, critRate - CRIT_TO_IMPACT_THRESHOLD)
-  const impactBonus = Math.min(CRIT_TO_IMPACT_CAP, over * CRIT_TO_IMPACT_PER_PCT)
-  if (impactBonus > 0) panel.impact = (panel.impact ?? 0) + impactBonus
+  // 口径 stepRounding=none（连续），与迁移前 `min(100, max(0, crit-50)×2)` 逐位一致；取整与否是未决数据口径。
+  applySpecAttributeConversions(panel, getAgentSpec(LIUYIN_AGENT_ID)?.attributeConversions ?? [])
 
   // 额外能力：强化特殊技伤害暴击伤害 +50%（技能专属 buff，仅强化特殊技生效）。
   if (extraAbilityActive) {

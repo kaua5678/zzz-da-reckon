@@ -9,7 +9,9 @@ export function applySpecAttributeConversions(
   for (const conversion of conversions) {
     const source = resolveAttributeSource(panel, conversion)
     const over = Math.max(0, source - conversion.threshold)
-    const steps = Math.floor((over + 1e-9) / Math.max(0.0001, conversion.stepSize))
+    const steps = conversion.stepRounding === 'none'
+      ? over / Math.max(0.0001, conversion.stepSize)
+      : Math.floor((over + 1e-9) / Math.max(0.0001, conversion.stepSize))
     let value = steps * conversion.valuePerStep * coverage * (conversion.coverage ?? 1)
     if (conversion.cap != null) {
       value = Math.min(conversion.cap, value)
