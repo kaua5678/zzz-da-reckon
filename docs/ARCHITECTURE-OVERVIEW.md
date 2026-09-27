@@ -1,6 +1,6 @@
 # 架构全景（实测版）
 
-> R6 第 1 步产出 · lead-arena-0925c · 2026-09-27 第 121 轮 · **v1**（§6 列出还没画到的部分）。
+> R6 第 1 步产出 · lead-arena-0925c · 2026-09-27 第 121 轮 · **v1**；第 138 轮补 §6（v2：生命周期核对、编排层分类、展示层边、spec↔模块），新增候选 C6 / C7。
 > 与 `docs/ARCHITECTURE.md` 的分工：那份是**规划与决策树**（任务 → 文件）；本文件记录**代码实际是什么样**，由脚本测量，并逐条对照规划，差异单独列出。
 > 两者冲突时，以代码为准；本文件负责把冲突写出来。
 
@@ -92,10 +92,69 @@ core/inCombatBuffs.ts  collectInCombatTeamBuffs   局内「给全队 / 队友」
 | C3 删除 catalog 冗余字段 `appliesToOutOfCombatPanel`，或在导入脚本里校验它和 scope 一致 | 冗余可简化 | 与 scope 100% 同义，引擎不读（R5 Z2） | 低：数据是爬取产物，改导入脚本而不是手改 JSON |
 | C5 伤害基底只保留一个来源：删掉 agentSkills 行上的 `damageBasis`（导入合成字段）和 `DirectDamageInput.damageBasis` 死参数，只保留 `resolveSpecialDamageProfile` 按 specialty 决定；或者反过来让引擎读字段（R5 D6） | 可归一 | 目前字段与引擎各说一套，命破 5 人的字段值（atk）与实际计算（贯穿力）不符，会误导维护者 | 低：零差；要同步改 3 个导入脚本 |
 | C4 局外判定改为读 `statRules.calculation.outOfCombatEffectFilter`，不再在 buff.ts 里写死 `scope === 'outOfCombat'` | 可结构化 | 规则数据化，同时补上 condition 条件（R5 Z6 的潜在差异） | 低：当前数据下零差 |
+| C6 承认编排层实际是四层，按层分目录 / 写进规划（A4，§6.2） | 可结构化 | `composables/` 20 900 行里只有约 2 000 行是规划说的「胶水」；伤害管线后半段（约 7 200 行）与上层分析器（约 9 400 行）混在同一层名下，新人按规划找不到伤害在哪算 | 低（纯文档）→ 中（若挪目录：约 60 个文件的 import 路径，零差但 diff 大） |
+| C7 spec 与模块「一处执行、一处描述」的机制归一（§6.4） | 可归一 | 26 个模块完全不调用 spec 解释器，但它们的 spec 里仍写着 resources / events / attributeConversions；例：1481 琉音、1571 诺玛的 attributeConversions 在 spec 里写了阈值 / 步长 / 上限，注释自称「非 spec runtime 执行」，模块里又硬编码一遍 | 低：先对「spec 能表达」的条目改为模块调用 `applySpecAttributeConversions`（alice / luciaElowen 已这样做），零差可验 |
 
-## 6. v1 还没画到的部分（下一轮续）
+## 6. v2 补全（第 138 轮，原「v1 还没画到的部分」4 项）
 
-1. **§1 生命周期逐步核对**：`docs/ARCHITECTURE.md` §1 的调用链（useResourceCalc → runCalcRound → calcTeamResources → …）逐个函数确认还存在、顺序是否一致。
-2. **A4**：composables/resourceCalc 与 composables 顶层按「计算 / 胶水」分类。
-3. **views / components 的 fan-in**：哪些页面直接调 core 而绕过编排层（`views → core` 的值边在本次测量中为 0，要确认 components 也是如此）。
-4. **specs 与 mechanics 的关系**：62 个 TS 模块和 spec JSON 是否存在同一机制两处实现（CC-98 的分档表是入口）。
+测量脚本在 `/home/kaua/calc-arch/`（不进 git）：`a4.mjs`（composables 逐文件 import 画像，输出 `a4.out`）、`a4b.py`（分桶求和）；§6.4 用的是临时 vitest 探针（加载 `@/mechanics` 后逐 spec 查注册的模块，用完即删，写法见 §6.4 末）。
+
+### 6.1 一次计算的生命周期：逐函数核对
+
+实际调用链（全部 `git grep` 定位过）：
+
+```
+useResourceCalc()                         composables/useResourceCalc.ts:87
+  resourceConfig                          :104 buildCharConfig ×3（resourceCalc/helpers.ts:449）→ :113 applyTeamMechanics(phase 'build')（resourceCalc/panelPhases.ts:126）
+  calcOutput（computed :207）→ solveTeam  resourceCalc/solveTeam.ts:72：失衡次数外层循环 + S3 stageResolveFeasibility（:301）
+    runCalcRound                          resourceCalc/convergence.ts:104（createRunCalcRound 闭包，useResourceCalc.ts:447 注入）
+      applyTeamMechanics(converge)        convergence.ts:563 / :948
+      calcTeamResources                   core/resource.ts:148（外面包一层 enrichExecutionPlan，convergence.ts:658）
+        S1 runInnerLoop                   core/resource/innerLoop.ts:42 → iterate
+        S2 runFoldLoop                    core/resource/foldLoop.ts:47
+        S3a 尾段管线 → S4 assembleSlot     core/resource/assembleSlot.ts:49（buildExecutions = core/resource/rowBuild.ts:194；模块钩子 buildResourceResult 在 :172 派发）
+        截断                              core/resource/timeTruncation.ts:50 truncateExecutionsToFrontline
+      extractAnomalyExecsFrom / Stun      resourceCalc/roundInputs.ts → extractSkillExecutions（helpers.ts:689）
+      calcAnomalyPoolInput                convergence.ts:807 / :912
+  damagePoolRows（computed :575）          → resourceCalc/damagePool.ts:94 buildDamagePoolRows
+```
+
+与 `docs/ARCHITECTURE.md` §1 的差异（本轮已同步改掉规划文档与 `core/resource.ts` 阶段表的两个过时单元格）：
+- L1：规划写「calcOutput: runCalcRound」，漏了 `solveTeam` 这一层；S3 可行化决策在 `solveTeam.ts`，不在 useResourceCalc。
+- L2：`core/resource.ts` 阶段表 S0 / S3 写的是 `useResourceCalc#runCalcRound` / `useResourceCalc#stageResolveFeasibility`，两者早已外提，已改。
+- L3：规划把 `buildResourceResult` 画成引擎步骤，实际是模块钩子，由 `assembleSlot` 派发。
+- 顺序本身与规划一致。
+
+### 6.2 A4：编排层逐文件分类（78 个文件，20 871 行）
+
+判据：看文件做什么（导出名 + import 画像），不是只看是否 import core。
+
+| 桶 | 文件数 | 行数 | 是什么 | 代表文件 |
+|---|---|---|---|---|
+| E 伤害管线后半段 | 21 | 7 217 | 外层不动点、单轮编排、异常 / 失衡池输入、**伤害池（最终伤害在这里算）** | `resourceCalc/convergence.ts`、`solveTeam.ts`、`damagePool*.ts`、`panelPhases.ts`、`useResourceCalc.ts` |
+| A 上层分析器 / 优化器 | 24 | 9 418 | 多次调用整条管线做搜索或对比（组队对比、时间权重、难度曲线、抽卡规划、位置对比……） | `teamCompare.ts`、`teamTimeline.ts`、`difficultyCurve.ts`、`pullPlannerEngine.ts`、`freeCompare/*` |
+| P 展示几何 / 图表纯函数 | 17 | 2 275 | 坐标轴、SVG 命中、悬浮卡行 | `*Chart.ts`、`versionChartGeometry.ts`、`charts/hover*.ts` |
+| G 胶水 | 16 | 1 961 | store ↔ 页面 / 引擎适配、导入导出、小型汇总 | `teamTimelineStore.ts`、`runArchive*.ts`、`teammateBuffContext.ts` |
+
+结论：
+- 规划说「编排层 = 胶水」，实际只有 G（约 9%）是胶水。**E 才是计算核心的后一半**：`core/` 算到执行行为止，伤害池、异常池输入、外层收敛都在 composables。「引擎层 = core」这句话只对了一半。
+- A 是规划里没有的第四层（「应用层」）：它们站在整条管线之上反复调用，性质上和页面更近。
+- 不算问题的：P、G 放在 composables 合理。
+- 转为候选 **C6**（§5）。第 2 步评估时要回答：E 是否挪进 `core/`（它读 store 的地方要先变成参数），还是只改规划文档承认现状。
+
+### 6.3 views / components → core 的值边
+
+- `git grep -E "from '@/(core|mechanics)[^']*'" -- src/components src/views`，去掉 `import type` 后**为 0**（唯一命中是 `ResultPage.vue:920` 的注释，记录一次已迁走的越层）。
+- 展示层只经 composables / stores 进引擎。仍存在的间接越层是 A2（`stores/config.ts` 直接调引擎），不在本项范围。
+- 结论：这一条与规划一致，无候选。
+
+### 6.4 specs ↔ mechanics：同一机制是否两处实现
+
+实测（探针：对 62 份 spec 逐个 `getAgentMechanic(agentIds[0])`，按模块 id 找到源文件，查它是否调用 `getAgentSpec` / `specToMechanicModule` / `computeSpecResources` / `buildSpecEventExecutions` / `buildSpecAnomalyEvents`）：
+- 注册规则（`mechanics/index.ts:138–142`）：**有手写模块时，spec 不会自动执行**；只有 `settings` 会合并进模块（`mechanics/registry.ts:25–33`），`teamBuffs` 由 `stores/catalog.ts#mergeSpecTeamBuffs` 并入队友 buff（与模块无关，始终生效），`additionalAbility` 由 `panelPhases.ts:448/567` 与 `stores/config.ts:408` 直接读。
+- 62 份 spec 中，**26 个对应模块完全不调用 spec 解释器**。这 26 个里，spec 仍写着 resources 的有 10 个（1121、1171、1261、1281、1291、1411、1471、1511、1571、1581），写着 events 的有 3 个（1081、1331、1471），写着 attributeConversions 的有 1571（3 条）。这些 spec 条目**不被执行**，只供 `MechanicsTablePage` 与逻辑编辑器展示；真实行为在模块里手写。
+- 典型：1481 琉音、1571 诺玛的 attributeConversions 在 spec 里写了 threshold / stepSize / valuePerStep / cap，note 自己写「实现位置：mechanics/agents/*.ts applyPanel，非 spec runtime 执行」。同一组常数存在两份，改一处另一处不会跟着变（CC-109 洛克茜就是 spec 注记与模块数值分叉的先例）。
+- 反例（已归一）：`alice.ts:115`、`luciaElowen.ts:135` 直接调 `applySpecAttributeConversions(getAgentSpec(...).attributeConversions)`，常数只在 spec 一处。
+- 转为候选 **C7**（§5）。
+- 探针的局限：只按模块主文件的源码判断，模块若经其他文件（如 `specPanelBuffs.ts`）间接调用 spec，会被误记为「不调用」。第 2 步动手前逐个复核。
+- 探针写法：`src/mechanics/__tests__/` 下临时 test，`import { getAgentMechanic } from '@/mechanics'`、`import { agentSpecs } from '@/specs/registry'`，结果写 `/tmp`，跑完删除。

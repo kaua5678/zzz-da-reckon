@@ -28,13 +28,14 @@
 ```
 useResourceCalc()                      编排层入口（composables/useResourceCalc.ts）
   resourceConfig: buildCharConfig ×3   每角色 cfg（面板 + 招式数据 + 机制模块注入）
-  calcOutput: runCalcRound             外层固定点：失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励（收敛；跨轮反馈量集合在 resourceCalc/roundThreads.ts 的 CalcRoundThreads——新增反馈=加字段+初值+轮内读写，不动 runCalcRound 签名；`enemy.stunCountLock>=0` 时失衡次数固定不回填，其余反馈仍收敛，命座对比固定场景用）
+  calcOutput → solveTeam               外层循环 + S3 可行化决策（composables/resourceCalc/solveTeam.ts；`stageResolveFeasibility` 在此，不在 useResourceCalc）
+   runCalcRound                        单轮（composables/resourceCalc/convergence.ts#createRunCalcRound，由 useResourceCalc 注入）：外层固定点：失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励（收敛；跨轮反馈量集合在 resourceCalc/roundThreads.ts 的 CalcRoundThreads——新增反馈=加字段+初值+轮内读写，不动 runCalcRound 签名；`enemy.stunCountLock>=0` 时失衡次数固定不回填，其余反馈仍收敛，命座对比固定场景用）
     calcTeamResources                  core/resource.ts：iterate 多轮收敛（能量→强特→喧响→终结→时间）+ 时间预算收敛外层循环（测执行行前台时间，超出战斗时间的部分折入 necessaryTime 压缩平A池）；喧响含特殊动作/异常奖励注入（specialAction/anomalyDecibelBonusPerSlot，参与终结技次数推导）
       → buildExecutions                从收敛态生成执行计划（通用动作 + 模块专属 + patchExecutions 修正）
-      → buildResourceResult            角色资源结果（specResources / 专属 cycle）
+      → buildResourceResult（模块钩子，core/resource/assembleSlot.ts 派发）            角色资源结果（specResources / 专属 cycle）
     enrichExecutionPlan                从倍率表回填 damage/daze/decibel/anomaly（覆盖 name/note！）
     extractSkillExecutions             失衡池 / 异常积蓄池输入
-  → 失衡池 / 异常池 / 伤害池            最终伤害与覆盖率（damagePoolRows）
+  → 失衡池 / 异常池 / 伤害池            最终伤害与覆盖率（damagePoolRows）；伤害行 = useResourceCalc 的 `damagePoolRows` → resourceCalc/damagePool.ts#buildDamagePoolRows（2026-09-27 R6 第 1 步 v2 实测校正，见 ARCHITECTURE-OVERVIEW §6.1）
 ```
 
 关键对象流转：`configStore.team` → `CharacterOperationConfig`（cfg，可被模块改写）→ `TeamResourceResult`（characters[].executions/energySource/...）→ `damagePoolRows`（展示行）。

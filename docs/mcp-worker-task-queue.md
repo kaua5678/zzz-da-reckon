@@ -69,30 +69,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 137 轮（2026-09-27，`0bd64a1` feat(CC-111) + 其后一个「docs: R5 done」提交）
+### 第 138 轮（2026-09-27，一个提交，提交号见 git log 中的「docs(R6)」）
 
 - **做到哪**：
-  - **R5 完成**：第 4 刀由 CC-111 收尾（D3 滑块按 stackGroup 联动、D7 带持续时间的效果给滑块、D14 蕾米埃尔一致性单测、D2 / D4 数据前提钉），zd DIFF 0。REQUIREMENTS R5 标 done，验收对照写在 R5 状态段末。
-  - 改动：`src/utils/stackGroupCoverage.ts`（新）、`src/utils/discEffectRows.ts`、`src/views/TeamConfigPage.vue`；测试 `src/utils/__tests__/stackGroupCoverage.test.ts`、`src/mechanics/__tests__/remielleLuminizeDataParity.test.ts`、`src/core/__tests__/r5DataInvariants.test.ts`（均新）。
-  - 上一轮：`332883d`（CC-110）。
+  - R6 第 1 步 v2：`docs/ARCHITECTURE-OVERVIEW.md` §6 四项补齐（6.1 生命周期 / 6.2 编排层四桶 / 6.3 展示层边 / 6.4 spec↔模块），§5 新增 C6、C7。顺手修正 `docs/ARCHITECTURE.md` §1 调用链与 `src/core/resource.ts` 阶段表 S0 / S3 的过时出处（只改注释）。
+  - 上一轮：`0bd64a1`（CC-111）+ `9d56de8`（R5 done）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R6 第 1 步续**：`docs/ARCHITECTURE-OVERVIEW.md` §6 的 4 项，逐项写进全景文档：
-     1. §1 生命周期：按 `docs/ARCHITECTURE.md` §1 的调用链（useResourceCalc → runCalcRound → calcTeamResources → …）逐个 `git grep -n 'function <名>'` 确认存在与顺序，差异写进全景 §3。
-     2. A4：`src/composables/resourceCalc/*.ts` 与 `src/composables/*.ts` 逐文件标「计算 / 胶水」（判据：是否 import `@/core` 且产出数值）。
-     3. views / components → core 的值边：`git grep -n "from '@/core" -- src/components src/views`，区分 type-only。
-     4. specs ↔ mechanics：62 个模块与 `src/specs/agents/*.json` 是否同一机制两处实现（从 CC-98 的 A2 / B30 / C29 分档表入手）。
-  2. **R6 第 2 步**：全景 §5 的 C1–C5 正式评估「做 / 不做」，写三类清单（冗余可简化 / 可归一 / 可结构化，每条附文件行号、收益、影响面、风险），完成影响面最大的一项。C4（局外判定读规则）现在有 `r5DataInvariants.test.ts` 兜底，风险已降。
+  1. **R6 第 2 步：三类清单 + 做 / 不做**。新建 `docs/mcp-r6-refactor-list.md`（登记 README §6，份数 +1），对全景 §5 的 C1–C7 逐条写：类别（冗余可简化 / 可归一 / 可结构化）、为什么（文件行号）、收益、影响面、风险、**做 / 不做 + 理由**。另外补查三类里还没有的条目（例如 `resourceCalc/helpers.ts` 与 `skillRows.ts` 的 re-export 壳、`data/moveTableQueries.ts` 的全局状态 A3）。
+  2. **选影响面最大的一项做完**（R6 验收）。lead 倾向（未定，第 2 步评估后可推翻）：C7 的第一刀——琉音 1481 的 attributeConversions 改为模块调 `applySpecAttributeConversions`（alice / luciaElowen 同款），零差可由 zd 验证；再按同一模式处理 1571。若评估认为 C1（core ↔ mechanics 环）影响面更大，就做 C1。
   3. 顺手可查：1251 的「Additional Energy Cost 20」、1091 与 1161 的 Follow-Up 耗能是否被模块消费。
 - **本轮拍板**：
-  - D3 选「滑块联动」不选「改覆盖率键为 stackGroup」：改键会让用户已存的覆盖率失效，引擎侧零收益；联动可逆。
-  - D7 的 34100 lumiflux 条保持无滑块（门槛规则例外，见账本 CC-111）。
-  - R5 标 done：验收三条逐条对照写在 REQUIREMENTS R5 状态段末；遗留在账本 §9 末尾，均不影响默认计算。
-- **未决项**：账本 §9「R5 收尾后的遗留」（D28 自建轴、D25、D21 旁注、D30 旁注、D7 例外）。
+  - 编排层分桶的判据是「文件做什么」（导出名 + import 画像），不是「是否 import core」；分桶清单在 `/home/kaua/calc-arch/a4b.py`（不进 git，丢了按全景 §6.2 的代表文件重建）。
+  - 改了 `docs/ARCHITECTURE.md` §1：代码为准（全景文档头部的约定）。
+- **未决项**：账本 §9「R5 收尾后的遗留」；全景 §6.4 探针只看模块主文件，C7 动手前逐个复核。
 - **已知坑（本轮与上轮新增）**：
-  - `setsid bg.sh` 与别的命令用 `;` 串在同一条 wsl_exec 里时，本轮出现过没启动的情况（无 `bg … pid` 输出）；单独一条命令启动最稳，启动后确认有 pid 行。
+  - `setsid bg.sh` 最好单独一条命令启动，启动后确认有 `bg … pid` 行。
   - catalog 是单行 JSON，`grep -o '.{0,80}关键词'` 会超时；用 Python / node 解析后再查。
-  - zd 的 rowsnap / dump 只存哈希；归因用 `node /home/kaua/calc-arch/zdan.mjs <base.json> <after.json>`。
-  - `TIME_GOLDEN_UPDATE=1 npx vitest run src/composables/__tests__/timeGolden.test.ts` 重生成基线；重生成前先把 delta 表写进账本。
+  - 判断「模块是否用 spec」不能只按 `agentIds: ['id']` 正则找文件（很多模块用常量）；要在 vitest 里加载 `@/mechanics` 查注册表。
 
 - **未决项**：
   - 数据自己标了「部分建模」的音擎还有 3 把：14126 `partially-modeled-anomaly-buildup-text-only`、14152 `partially-modeled-duration-extension`、14001 `partially-modeled-proc-damage`（统计见 `verification.effectBuff`）。它们是数据侧没建模的效果，不是「引擎没读对」，不属于 R5 的对账范围；R5 收尾时在账本登记为「数据侧已知缺口」，不立卡。

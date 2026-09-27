@@ -131,10 +131,10 @@ const INNER_LOOP_OSCILLATOR_STOP = 20
  *
  * | 阶段 | 名字 | 位置 | 输入 → 输出 | 判据/不变量 |
  * |---|---|---|---|---|
- * | S0 | 输入装配 | `useResourceCalc#runCalcRound`（`buildCharConfig` + `applyTeamMechanics`） | store/catalog → `cfg[]` | 规则 6：队伍级机制走 `applyTeamConfig` |
+ * | S0 | 输入装配 | `composables/resourceCalc/convergence.ts#createRunCalcRound` 产出的 runCalcRound（`buildCharConfig` + `applyTeamMechanics`） | store/catalog → `cfg[]` | 规则 6：队伍级机制走 `applyTeamConfig` |
  * | S1 | 资源账本预解（内层不动点） | `runInnerLoop` → `iterate`（`helpers.ts#iterate`，四步见其函数头） | `cfg[]` + 种子 → `IterationState[]` | 判稳 = 强特/终结次数 + `basicAttackTime` **严格相等**；跑满/入环 → 规范停点（冷热解耦） |
  * | S2 | 时间预算折叠（外层不动点） | `runFoldLoop` | states → states（`cfg.timeBudgetExcess`/`timeBudgetRefund` 折入） | `Σ前台行 ≡ 账本`；`+=` 折正超出、负差 refund 回填；上限 `TIME_FOLD_MAX_PASSES` |
- * | S3 | 可行化决策 | `useResourceCalc#stageResolveFeasibility`（轴退化 + 降配，2026-09-11 抽出） | 整轮结果 → `{r, axisFallback, interactionScale}` | 三臂不更差（截断/超预算/留白各 1s）+ 枚举取最大可行；锁窗一律不动 |
+ * | S3 | 可行化决策 | `composables/resourceCalc/solveTeam.ts#stageResolveFeasibility`（轴退化 + 降配，2026-09-11 抽出） | 整轮结果 → `{r, axisFallback, interactionScale}` | 三臂不更差（截断/超预算/留白各 1s）+ 枚举取最大可行；锁窗一律不动 |
  * | S4 | 装配 + 可行化截断 | `core/resource/assembleSlot.ts#assembleSlot`（#8 分刀自逐槽 `configs.map` 抽出，CC-5b 外提；截断在 `truncateExecutionsToFrontline`） | states + cfg → `characters[]`（行/资源/时间） | 平A行不参与截断；后台行不占前台；整数装包；`overflowSeconds`/`truncationCuts` 逐行上报 |
  * | S5 | 物化输出 | 本函数尾部的 `return` | 上面各阶段 → `TeamResourceResult` | 资源/计数取**未截断账本**、伤害/失衡取**截断后行**（二者不自洽是已知债务，见 DEBT_REGISTRY「截断不回灌资源循环」） |
  *
