@@ -1919,6 +1919,54 @@ ImpactChart.vue 的改动：
   4. 测试：impactVariables.test 和新门面单测；反向变异是删掉 burnice.ts 的声明，此时柏妮思队伍的占比变量应该消失，测试变红。判据 24：composables 不能按值导入 mechanics/agents，只能经 `@/mechanics` 的 `getAgentMechanic`，门面文件已有先例。
   5. 若第 1 步发现命名空间不能静态得出（例如只在运行时从事件流里出现），就改成退路：把 `BURNICE_ID` 收拢成一处导出常量，ResourceUtilizationPage 复用 impactVariables 的判断函数，至少消掉重复，并如实标注「未声明化」。
 - 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、StunAxisPage 写死角色 ID（另立卡，排在 CC-55 之后）。
+### 5.62 CC-55 done：柏妮思异放占比声明化（lead-arena-0925c，2026-09-27 第 75 轮）
+
+**提交**：`8fec4fb`，改动 7 个文件：
+- `src/mechanics/types.ts`：`AgentMechanicModule` 新增可选声明 `releaseShare?: { namespace, label }`，只给展示层用，不参与计算。文档注释写明了 namespace 必须和 eventId 首段一致。
+- `src/mechanics/agents/burnice.ts`：声明 `releaseShare: { namespace: 'burnice', label: '柏妮思异放' }`。
+- `src/composables/agentMechanicView.ts`：新增类型 `ReleaseShareDecl` 和门面 `teamReleaseShares(team, getAgent)`。按槽位顺序遍历，每个角色用 `agent.id` 和 `agent.teammateBuffId` 各查一次模块，按 namespace 去重。
+- `src/composables/impactVariables.ts`：
+  - `buildImpactVariables(settingMap, releaseShares, coverageRate)` 签名变了，去掉了 team 和 getAgent，改传声明列表；
+  - `BURNICE_ID` 删除；
+  - 读写时识别占比变量，从 `startsWith('burnice.releaseShare:')` 改为正则 `/^([^.]+)\.releaseShare:(.+)$/`；
+  - 变量 label 用 `<decl.label>·<元素>占比`，柏妮思的结果和原来逐字相同。
+- `src/components/ImpactChart.vue`：新增 computed `releaseShares`，数据来自门面。
+- `src/views/ResourceUtilizationPage.vue`：`burniceReleaseElements` 改为取 `teamReleaseShares(...)[0]`，返回值多了 namespace 和 label。卡片标题改为 `{{ label }}元素分配`，柏妮思显示的还是「柏妮思异放元素分配」；设置键改为 `${namespace}.releaseShare:`。
+- `src/composables/__tests__/impactVariables.test.ts`：改为经门面取声明，并断言柏妮思队伍得到 `[{burnice, 柏妮思异放}]`、无柏妮思队伍得到 `[]`。对照基准 inline* **保留原来写死 '1171' 的写法**，所以这条测试同时证明「声明化」和「写死判断」逐值等价。
+
+回退：`git revert 8fec4fb`。
+
+**拍板**
+- 声明放在模块的**静态字段**上，不从事件流推导。依据：release 事件是在 `buildAnomalyEvents` 运行时才生成的，而 namespace 是每个模块固定的常量，静态声明最简单。坑：声明和 eventId 可能漂移，已写进 types.ts 的注释。
+- 以 `teammateBuffId` 身份出现的柏妮思仍然覆盖到：门面用两个 id 各查一次。实测 catalog 里没有 teammateBuffId 和自身 id 不同的角色，所以两种写法当前等价。
+- 资源页**只取第一个声明**，卡片形态不变；目前也只有柏妮思声明。
+- 识别占比变量改用正则后，范围比原前缀宽。现有 MechanicSetting 里没有其他 id 形如 `*.releaseShare:*`，所以行为不变。
+- 判据 24 不受影响：composables 只经 `@/mechanics` 的 `getAgentMechanic` 取模块，没有按值导入 mechanics/agents。
+
+**验证**：24 条守卫全过；check-tokens 通过；vue-tsc 0 错误；impactVariables.test 和 agentMechanicView.test 共 7 条全过。反向变异：删掉 burnice.ts 的 releaseShare 声明，单测变红；恢复后 cmp 一致。`npm run verify` 通过：310 files / 3642 tests，24 guards（`/home/kaua/calc-arch/verify55.log`）。只改了展示取数，没跑 dump/rows。
+
+**未决项（本卡新发现）**
+- 引擎对**所有** dominant 异放事件都读 `<eventId 首段>.releaseShare:<元素>`，涉及 grace、vivian、aire、yanagi（polar_disorder 走另一分支，要先核实）、promia、nangong、phoenix；但 UI 只为柏妮思开放。给它们加 `releaseShare` 声明，就等于新增用户可调项，是**功能变更**。另外资源页现在只显示第一个声明，多声明时要改成每个声明一张卡。这件事暂不做，列为候选 CC-57b，要先确认各角色的 eventId 首段是否就是角色名（vivian 有 `vivian_luoyu_release` 和 `vivian_xuanluo_c6_release`，首段都是 vivian，应该可以）。
+
+**下一步（CC-56：展示层写死角色 ID 普查，先量后改）**
+- 本轮已用 `grep -rnE "'1[0-9]{3}'" src/views src/components --include=*.vue` 粗查过。展示层还有不少写死的角色 ID，分两类：
+  - **合法（用户指定的默认选择，不是机制分支）**：
+    - `FreeComparePage.vue:~261-263`（BURNICE / PHOENIX / VELINA）
+    - `MultiplierCoeffPage.vue:~211`（'1401'）
+    - `CharIncrementPage.vue:~219`（'1451'）
+    - `TimeChartsPage.vue:~431/523/531`
+    - `TeamComparePage.vue:~1206`
+  - **机制分支（是债）**：
+    - `StunAxisPage.vue` :264/266（1051 伊德海莉）、:268/313/698（1481 琉音）、:297/748（1471 般岳）、:311/663（1371 仪玄）、:647（1051 招式过滤）、:716（1571 诺玛）、:725（1591 希格莉德）
+    - `ResourceUtilizationPage.vue` :~397/466（1581 蕾米埃尔，写法和柏妮思同款：`agent?.id === '1581' || agent?.teammateBuffId === '1581'`）
+    - `TeamConfigPage.vue` :186/210/212/223/236/249（1471、1531、1551 的专属输入框）
+- 第一步：写一个普查脚本，用 `grep -rnE "(agentId|\.id|teammateBuffId)\s*[!=]==\s*'1[0-9]{3}'|\['1[0-9]{3}'"` 逐条列出，按上面两类人工分类，把结果写成 census §5.63 的表。
+- 第二步：只有在分类稳定之后，才考虑新增「展示层 agentId 字面量」棘轮。它属于新判据，必须**单独成批**，按规则 17②，还要同步 `scripts/check-guards.d.mts` 和 checkGuards.test。合法项要么用白名单，要么写成具名常量豁免。
+- 第三步：逐个还款，建议按收益排序：
+  1. ResourceUtilizationPage 的 1581，完全照搬 CC-55 的套路：看它用在什么地方，给蕾米埃尔模块加对应声明或复用已有设置；
+  2. StunAxisPage 的 1051、1371 招式标签，可能适合参照 `axisMoveMeta` 扩展声明；
+  3. TeamConfigPage 的专属输入框，工作量最大，最后做。
+- 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（见上）。
 ## 附录：普查脚本 census.sh
 
 ```bash

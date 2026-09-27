@@ -221,6 +221,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-52 | done | `789a27e` | 判据 7 3→2：ImpactChart `runOptimizerForSlot0` 的入参组装 + computeOptimalSubStats/getTemplate + 夹值 → `src/composables/substatOptimizer.ts#computeSubstatAllocationForSlot`，组件只写回 store | census §5.59 |
 | CC-53 | done | `eee038f` | 判据 7 2→1：ImpactChart 影响变量表（静态 + 机制设置 + 柏妮思占比）与读写口径 → `src/composables/impactVariables.ts`（buildImpactVariables / readImpactVariable / writeImpactVariable） | census §5.60 |
 | CC-54 | done | `cae6624` | 判据 7 收尾：剩下的 1 处 agentSpecs（只读 JSON 注册表）拍板永久保留，RATCHET_BURNDOWN target 0→1，只改守卫配置和注释，探测器口径不变 | census §5.61 |
+| CC-55 | done | `8fec4fb` | 柏妮思异放占比声明化：新增模块声明 `AgentMechanicModule.releaseShare`（burnice 声明 namespace burnice）和门面 `agentMechanicView#teamReleaseShares`；impactVariables 与 ResourceUtilizationPage 里两份写死的 1171 已消掉 | census §5.62 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |
