@@ -69,16 +69,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 130 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-104)」）
+### 第 131 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-105)」）
 
 - **做到哪**：
-  - R5 第 3 刀完成 `coverage`（账本 §7 **D20**）：无数值差异；拍板不改代码，改用 `src/core/__tests__/coverageDefaultInvariant.test.ts` 钉「default 全为 1」的前提。
-  - **CC-104**：`src/views/WEngineFieldPage.vue` 覆盖率按百分比展示。
-  - 第 129 轮的产出：`8553230`（CC-103，D18）。
+  - R5 第 3 刀完成 `target`（账本 §7 **D21**）。
+  - **CC-105 完成**：`src/core/buff.ts` `SKILL_TAG_TARGET` 补 `assistAttack → assist`；新测试 `src/core/__tests__/skillTargetsCoverage.test.ts`；`src/composables/__tests__/timeGolden.baseline.json` 5 条 dmg 更新（delta 表与归因见账本 §9 CC-105）。
+  - 第 130 轮的产出：`0f119be`（CC-104，D20）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 3 刀续：`target`**（effect 上的 `target: {kind, settlementType?, ...}`）。先用 Python 统计 `target.kind` × 其余键 × 位置（模板 `/home/kaua/calc-arch/cov1.py`），再读取方：`timeout 40 git grep -n -E 'target\?*\.kind|effectSkillDamageTargets' -- src/core`（`core/buff.ts` `applyEffect` 末尾 `effectSkillDamageTargets`）。查每种 kind 是否都有分支、未知 kind 是否被静默当 default。之后依次 `buffModifiers`、`formula` / `expression`。
+  1. **R5 第 3 刀续：`buffModifiers`**。先统计 `buffModifiers[].operation` × 其余键 × 位置（模板 `/home/kaua/calc-arch/tgt1.py`），再读取方：`timeout 40 git grep -n -E 'buffModifiers|operation ===' -- src/core src/composables`（已知 `core/inCombatBuffs.ts` 只处理 `multiplyResolvedValue`）。查：每种 operation 是否有分支；音擎 / 驱动盘上的 buffModifiers 是否有读取方（inCombatBuffs 只对角色队友拐收集修饰器）。之后 `formula` / `expression`。
   2. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
   3. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
+- **本轮新增的已知坑**：
+  - zd 的 rowsnap / dump 只存每个 key 的哈希串，看不到行级差异；归因要靠「改动影响的数据 → 哪些角色 → 哪些预设」的集合对照（本轮工具 `/home/kaua/calc-arch/zdan.mjs <base.json> <after.json>` 列出差异预设）。
+  - 预设 JSON 里不写驱动盘 id，默认配装来自 `public/static/build-recommendations.json` 的 `characters.<id>.drive_disc_sets`；查「谁穿了某套」要搜这个文件。
+  - `TIME_GOLDEN_UPDATE=1 npx vitest run src/composables/__tests__/timeGolden.test.ts` 重生成基线；重生成前先把 delta 表写进账本。
 - **未决项**：
   - 数据自己标了「部分建模」的音擎还有 3 把：14126 `partially-modeled-anomaly-buildup-text-only`、14152 `partially-modeled-duration-extension`、14001 `partially-modeled-proc-damage`（统计见 `verification.effectBuff`）。它们是数据侧没建模的效果，不是「引擎没读对」，不属于 R5 的对账范围；R5 收尾时在账本登记为「数据侧已知缺口」，不立卡。
   - D18 的潜在风险：新数据若把属性 / 特化 / 角色限定只写进 condition 散文，会静默生效。音擎 effect 级 requirement（specialty / attribute / wearerAgentIds）已生效，录入时应写 requirement。驱动盘侧 `discRequirementMet` 不认 `wearerAgentIds`（当前 0 处），若日后出现需同步。

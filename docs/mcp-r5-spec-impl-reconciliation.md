@@ -92,7 +92,7 @@
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
 - [x] 第 2 刀（第 121 轮 Z2、Z6；第 122 轮 Z4、K0、Z5、Z1；第 123 轮 Z3、Z7–Z12；第 124 轮 Z13、D14 批与字段归类 §8，**完成**）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
-- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；第 130 轮完成 `coverage`（D20）；下一个是 §8「S 待第 3 刀」里剩下的 49 个字段（建议顺序：`target`、`buffModifiers`、`formula`/`expression`，都是直接决定数值的）。
+- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；第 130 轮完成 `coverage`（D20）；第 131 轮完成 `target`（D21，CC-105 已修）；下一个是 §8「S 待第 3 刀」里剩下的 48 个字段（建议顺序：`buffModifiers`、`formula`/`expression`，都是直接决定数值的）。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
 ## 7. 已核结论（第 2 刀起）
@@ -318,6 +318,18 @@
   2. 展示：`views/WEngineFieldPage.vue` 把 0..1 比例直接接「%」，显示成「覆盖 1%（0-1，步进0.1）」→ 真实展示错误，CC-104 改为按百分比显示（「覆盖 100%（0-100%，步进10%）」）。
 - **结论**：`coverage` 无数值差异；未带 coverage 的效果是否需要滑块已登记在 D7，不重复。
 
+### D21 `target`：引擎不读 `target.kind`，只读 `skillTargets`；skillTag `assistAttack` 被静默丢弃 → **真实差异** ✅ 已修（CC-105，第 131 轮）
+
+- **数据怎么写**（第 131 轮实测，脚本 `/home/kaua/calc-arch/tgt1.py`）：effect 级 `target` 的 kind 有 4 种：`default`（音擎 137、驱动盘 21、bosses 10）、`self`（角色 16）、`skill`（带 `skillTargets`，音擎 19、驱动盘 9）、`anomaly`（带 `settlementType` wind / turbulence / attribute / disorder，14156、14150 共 4 处）。bosses 顶层另有一种 `target {defense, weaknessElements, …}`，是 Boss 属性，catalog.bosses 无消费方（D10）。`skillTargets` 取值：skillType ∈ basic / exSpecial / ultimate / chain / dashAttack / dodgeCounter / additionalAttack；skillTag ∈ exSpecial / dashAttack / **assistAttack**。
+- **引擎怎么读**：`core/buff.ts` `effectSkillDamageTargets`：`targetSkillType` 优先，否则遍历 `target.skillTargets`；skillType 经 `normalizeSkillDamageTarget`（`src/data/skillDamageTargets.ts`，未知值 → 'all'）；skillTag **只认** exSpecial / dashAttack / additionalAttack。结果为空时回落 `['all']`。`applyTargetedStat` 对 `TARGETABLE_STATS` 内的 stat 写 `<stat>__<target>`。`target.kind` 与 `settlementType` **零读取**。
+- **逐类结论**：
+  1. `kind` default / self：等价于「全招式」，与引擎回落一致 → 无差异。
+  2. `kind: anomaly` + `settlementType`：stat 名已编码结算类型（windAnomalyDmgBonus / turbulenceDamageBonus / anomalyDmgBonus / disorderDamageBonus），与 D9 同理 → 无差异。另：`src/types/catalog.ts` `EffectTarget.kind` 的联合类型里没有 `'anomaly'`（catalog 以 JSON 读入，类型不校验，不影响运行）；不改。
+  3. `targetSkillType` 与 `skillTargets` 同时存在的 13 处：全部一致（单目标且相等）→ 无差异。
+  4. 数据里出现的 stat（dmgBonus、electricDmg、skillDmgBonus、stunBuildUpBonus、enemyDefReduction、enemyFireResReduction、etherSheerDmg）都在 `TARGETABLE_STATS` 内，定向生效 → 无差异（新测试逐条钉住）。
+  5. **31800 混沌爵士 4pc** `effect_chaos_jazz_4pc_skill_dmg`（dmgBonus 20，原文「[强化特殊技]和[支援攻击]造成的伤害提升20%」）：skillTargets = [skillTag exSpecial, skillTag **assistAttack**]，后者不在白名单被丢弃 ⇒ 只有强化特殊技 +20，**支援技漏算** → **真实差异**。因为 exSpecial 仍被识别，结果非空，不会退化成全招式。
+- **修法**：见 §9 CC-105。
+
 ## 9. 转卡清单（第 4 刀输入，按影响面排序）
 
 ### CC-100（D15 + D16）驱动盘词条的结算口径以源数据为准 ✅ done（第 126 轮，提交号见 git log「fix(CC-100)」）
@@ -451,6 +463,26 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
 - 新测试 `src/core/__tests__/coverageDefaultInvariant.test.ts`：递归 wEngines / driveDiscSets / agents，断言 `coverage.default` 全为 1（>100 处）。
 - `src/views/WEngineFieldPage.vue` `stackCoverageText`：新增 `pctText`，coverage 的 default / min / max / step 乘 100 显示。
 - 不触及计算路径，未跑 zd；vue-tsc 0，verify 与 check-guards 全绿。
+
+### CC-105（D21）skillTag `assistAttack` 归一到招式族 `assist` ✅ done（第 131 轮，提交号见 git log「fix(CC-105)」）
+
+**实际做法**：
+- 先红后绿：新测试 `src/core/__tests__/skillTargetsCoverage.test.ts` 遍历 catalog 中所有带 `skillTargets`（且无 `targetSkillType`）的效果（14 个），对每个效果调 `applyEffect`，断言只写 `<stat>__<target>` 键、目标集合与数据一致；另断言数据里出现的每个目标都在 `SKILL_DMG_TARGETS` 内。修前唯一失败项 `effect_chaos_jazz_4pc_skill_dmg: got=exSpecial want=assist,exSpecial`。
+- `src/core/buff.ts`：三行 skillTag 判断改为表 `SKILL_TAG_TARGET`（exSpecial / dashAttack / additionalAttack / **assistAttack → assist**）。口径依据：`core/damage.ts:52` categoryId `assist` → 招式族 `assist`，即「支援技」行（快速支援 / 招架支援 / 支援突击）。
+- **零差比对**：`zd.sh cc105` DUMP DIFF 30 / ROWS DIFF 32，涉及 5 个预设：`auto-1091-1221-1581`、`auto-1221-1511-1211`、`auto-1221-1511-1411`、`auto-1221-1561-1411`、`auto-1561-1171-1411`。归因：build-recommendations 里 4 件套推荐 31800 的只有 1171 柏妮思、1221 月城柳；全库含 1171 或 1221 的预设**恰好就是这 5 个**，一一对应，且全部为伤害上升。代码改动只影响 skillTag = assistAttack 的效果，catalog 中仅此 1 处，因此不需要反向验证。
+- **golden 更新**（`timeGolden.baseline.json`，时间账零变化，只有 dmg 变）：
+
+| 预设 | 旧 dmg | 新 dmg | 变化 |
+|---|---|---|---|
+| auto-1091-1221-1581 | 97130917 | 97159283 | +0.029% |
+| auto-1221-1511-1211 | 88654941 | 88689156 | +0.039% |
+| auto-1221-1511-1411 | 80818649 | 80851208 | +0.040% |
+| auto-1221-1561-1411 | 48385896 | 48414872 | +0.060% |
+| auto-1561-1171-1411 | 48462037 | 48916388 | +0.938% |
+
+  柏妮思队涨幅最大，因为它的支援技行占比高于月城柳队；每条都是「31800 装备者的支援技行 +20% 增伤 × 覆盖率 1」。
+- 验证：vue-tsc 0；verify 与 check-guards 全绿。
+- **回退点**：从 `SKILL_TAG_TARGET` 删掉 `assistAttack` 这一行，并还原 `timeGolden.baseline.json` 的 5 个 dmg。
 
 ### 其余（零差、界面层）
 - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。

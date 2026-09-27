@@ -65,6 +65,18 @@ const TARGETABLE_STATS = new Set([
   ...LEGACY_ENEMY_DEBUFF_STAT_IDS,
 ])
 
+/**
+ * skillTag → 招式族。CC-105（R5 D21）：补 `assistAttack → assist`（31800 混沌爵士 4pc「[支援攻击]伤害提升」
+ * 修前被静默丢弃）。未登记的 tag 仍被忽略——`skillTargetsCoverage.test.ts` 会对 catalog 中出现的
+ * 每个 tag 报错，新增 tag 时在这里登记。
+ */
+const SKILL_TAG_TARGET: Record<string, SkillDamageTarget> = {
+  exSpecial: 'exSpecial',
+  dashAttack: 'dashAttack',
+  additionalAttack: 'additionalAttack',
+  assistAttack: 'assist',
+}
+
 function effectSkillDamageTargets(effect: BuffEffect): SkillDamageTarget[] {
   const explicit = effect.targetSkillType
   if (explicit) return [normalizeSkillDamageTarget(explicit)]
@@ -73,9 +85,7 @@ function effectSkillDamageTargets(effect: BuffEffect): SkillDamageTarget[] {
   const result: SkillDamageTarget[] = []
   for (const target of targets) {
     if (target.kind === 'skillType' && target.skillType) result.push(normalizeSkillDamageTarget(target.skillType))
-    if (target.kind === 'skillTag' && target.skillTag === 'exSpecial') result.push('exSpecial')
-    if (target.kind === 'skillTag' && target.skillTag === 'dashAttack') result.push('dashAttack')
-    if (target.kind === 'skillTag' && target.skillTag === 'additionalAttack') result.push('additionalAttack')
+    if (target.kind === 'skillTag' && target.skillTag && SKILL_TAG_TARGET[target.skillTag]) result.push(SKILL_TAG_TARGET[target.skillTag])
   }
   const unique = Array.from(new Set(result))
   return unique.length > 0 ? unique : ['all']
