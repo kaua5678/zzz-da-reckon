@@ -69,7 +69,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 154 轮（2026-09-28，代码 `850246fc` + 文档提交「docs: round 154」；上一轮文档 = d53c14f3 / 5b4b9f09）
+### 第 154 轮（2026-09-28，代码 `850246fc` + 文档 `e0c5273e` + 本回填提交；上一轮文档 = d53c14f3 / 5b4b9f09）
 
 - **做到哪**：
   - **CC-129 席德选正兵**（`850246fc`）：`src/mechanics/agents/xide.ts` applyXideTeamConfig 改按队友局外攻击 `cfg.outOfCombatPanel.atk` 选；`CharacterOperationConfig` 新增可选只读字段 `outOfCombatPanel`（`src/types/resource/config.ts`），由 `buildCharConfig`（`src/composables/resourceCalc/helpers.ts`）通用挂载。zd 零差；新单测 `src/mechanics/__tests__/vanguardInitialAtkCc129.test.ts`（反向验证 2 条红）。
