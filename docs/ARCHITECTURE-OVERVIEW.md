@@ -53,7 +53,7 @@
 
 | # | 规划怎么说 | 代码实际 | 证据 | 判断 |
 |---|---|---|---|---|
-| A1 | 「录入层被编排 / 引擎经 **registry** 消费」 | core 直接按值 import **`@/mechanics`（index.ts）**，而 index.ts 一次性 import 全部 62 个角色模块并逐个注册。形成模块环：core → mechanics/index → agents/*.ts → core | `core/resource/` 下 11 个文件加 `core/substatOptimizer.ts` 都写 `import { getAgentMechanic } from '@/mechanics'`；全仓 core、composables、mechanics、stores 共 31 处；`src/mechanics/index.ts` 开头是 62 行 import | 精神上符合（按能力查询，不写 id），但实现上是「靠副作用注册 + 环」。后果：core 的任何单测都会加载全部角色模块；ESM 环依赖对初始化顺序敏感。**是 R6 候选**（见 §5） |
+| A1 ✅ 已修（第 139 轮，=C1） | 「录入层被编排 / 引擎经 **registry** 消费」 | core 直接按值 import **`@/mechanics`（index.ts）**，而 index.ts 一次性 import 全部 62 个角色模块并逐个注册。形成模块环：core → mechanics/index → agents/*.ts → core | `core/resource/` 下 11 个文件加 `core/substatOptimizer.ts` 都写 `import { getAgentMechanic } from '@/mechanics'`；全仓 core、composables、mechanics、stores 共 31 处；`src/mechanics/index.ts` 开头是 62 行 import | 精神上符合（按能力查询，不写 id），但实现上是「靠副作用注册 + 环」。后果：core 的任何单测都会加载全部角色模块；ESM 环依赖对初始化顺序敏感。**是 R6 候选**（见 §5） |
 | A2 | 状态层 = 「队伍 / 敌人 / 设置 / 滑块（可变）、只读数据快照」 | `stores/config.ts` 直接调用引擎：`calcPanel`、`computeOptimalSubStats`（`core/substatOptimizer`）、`buildTeammateBuffSourceContext`，还查询 mechanics 注册表 | `stores/config.ts:9–14` | 状态层掺了计算。**是 R6 候选**：计算应该上移到编排层，或者明确承认 store 可以调用引擎，并写进规划 |
 | A3 | `src/data/` 是「各层都可依赖的公共底」 | data 并不全是常量。`data/moveTableQueries.ts` 依赖 `logicEditor/fusion.ts` 的全局 `shallowRef`，这个状态由 `stores/logicEditor.ts` 写入（`setActiveRowFusionRules`）。「公共底」读的是运行时可变的全局状态 | `data/moveTableQueries.ts:26`、`logicEditor/fusion.ts:1`、`stores/logicEditor.ts:4` | 隐式全局状态。已核实**不成环**：`logicEditor/fusion.ts` 只依赖 vue；specs → core 只出现在校验工具 `specs/verify.ts`。影响面待 R6 第 2 步评估 |
 | A4 | 编排层 = 「页面与引擎之间的胶水」 | composables 合计约 20 900 行，大于引擎层的约 11 400 行；resourceCalc/ 下有 damagePool 等计算模块 | §1 | **待查**：哪些是计算、哪些是胶水。这是 R6「可归一」最可能出现的地方 |
@@ -84,6 +84,8 @@ core/inCombatBuffs.ts  collectInCombatTeamBuffs   局内「给全队 / 队友」
 **已用这张图核实的 R5 条目**（结论写在账本 `docs/mcp-r5-spec-impl-reconciliation.md` §7）：Z2、Z6。
 
 ## 5. R6 候选（初稿，第 2 步正式评估「做 / 不做」）
+
+> **第 2 步结论（第 139 轮）**：逐条「做 / 不做」见 `docs/mcp-r6-refactor-list.md`。**C1 已完成**（R6 验收项）：12 个 core 文件改 import `@/mechanics/registry`，注册由 `src/main.ts` 与 `vite.config.ts` `test.setupFiles` 负责，守卫测试 `src/core/__tests__/coreMechanicsRegistryOnly.test.ts`。回退点：12 处 import 改回 `@/mechanics`，删 setupFiles 一行与该测试。C7 做（下一刀 1481 / 1571）；C5、C3 低优先做；C6 只改规划；C2、C4 不做。下表保留为初稿记录。
 
 | 候选 | 类别 | 为什么 | 初步风险 |
 |---|---|---|---|

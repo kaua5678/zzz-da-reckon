@@ -18,7 +18,7 @@ import type {
   ResourceCalcConfig, CharacterOperationConfig, IterationState,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 import { runInnerLoop, type InnerLoopContext } from './innerLoop'
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, ultimateGiftOf } from './crossAgentSupply'
 import { materializeRows } from './helpers'

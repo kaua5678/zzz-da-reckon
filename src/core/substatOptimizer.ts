@@ -23,7 +23,7 @@ import type {
 import { calcPanel } from './panel'
 import { sharpCritMultiplier } from './damage'
 import type { SourcePanelsByOwner } from './buff'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 
 // ============ 副词条步长表 ============
 

@@ -10,7 +10,7 @@
  * 不得 import `core/resource.ts`（防循环依赖）。
  */
 import type { CharacterOperationConfig, IterationState, SkillExecution } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 import { buildExecutions } from './helpers'
 
 export function buildExecutionsWithPhase(

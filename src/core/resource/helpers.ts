@@ -13,7 +13,7 @@ import type {
   ResourceCalcConfig, CharacterOperationConfig,
   EnergySource, IterationState,
 } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, ultimateGiftOf, giftDecibelForCfg } from './crossAgentSupply'
 import { curtainInfoOf } from './curtain'
 import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'

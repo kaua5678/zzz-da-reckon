@@ -11,7 +11,7 @@
  * `@fact engine:热启动逐位透明`，搬迁不得重排。
  */
 import type { ResourceCalcConfig, CharacterOperationConfig, IterationState } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 
 // ============ 热启动缓存 ============
 /**

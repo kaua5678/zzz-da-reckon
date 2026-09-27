@@ -69,37 +69,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 138 轮（2026-09-27，一个提交，提交号见 git log 中的「docs(R6)」）
+### 第 139 轮（2026-09-27，两个提交：「refactor(R6)」C1 + 清单；「docs(R6)」回填 done）
 
 - **做到哪**：
-  - R6 第 1 步 v2：`docs/ARCHITECTURE-OVERVIEW.md` §6 四项补齐（6.1 生命周期 / 6.2 编排层四桶 / 6.3 展示层边 / 6.4 spec↔模块），§5 新增 C6、C7。顺手修正 `docs/ARCHITECTURE.md` §1 调用链与 `src/core/resource.ts` 阶段表 S0 / S3 的过时出处（只改注释）。
-  - 上一轮：`0bd64a1`（CC-111）+ `9d56de8`（R5 done）。
-- **下一步（按顺序，每项都可以直接开工）**：
-  1. **R6 第 2 步：三类清单 + 做 / 不做**。新建 `docs/mcp-r6-refactor-list.md`（登记 README §6，份数 +1），对全景 §5 的 C1–C7 逐条写：类别（冗余可简化 / 可归一 / 可结构化）、为什么（文件行号）、收益、影响面、风险、**做 / 不做 + 理由**。另外补查三类里还没有的条目（例如 `resourceCalc/helpers.ts` 与 `skillRows.ts` 的 re-export 壳、`data/moveTableQueries.ts` 的全局状态 A3）。
-  2. **选影响面最大的一项做完**（R6 验收）。lead 倾向（未定，第 2 步评估后可推翻）：C7 的第一刀——琉音 1481 的 attributeConversions 改为模块调 `applySpecAttributeConversions`（alice / luciaElowen 同款），零差可由 zd 验证；再按同一模式处理 1571。若评估认为 C1（core ↔ mechanics 环）影响面更大，就做 C1。
-  3. 顺手可查：1251 的「Additional Energy Cost 20」、1091 与 1161 的 Follow-Up 耗能是否被模块消费。
-- **本轮拍板**：
-  - 编排层分桶的判据是「文件做什么」（导出名 + import 画像），不是「是否 import core」；分桶清单在 `/home/kaua/calc-arch/a4b.py`（不进 git，丢了按全景 §6.2 的代表文件重建）。
-  - 改了 `docs/ARCHITECTURE.md` §1：代码为准（全景文档头部的约定）。
-- **未决项**：账本 §9「R5 收尾后的遗留」；全景 §6.4 探针只看模块主文件，C7 动手前逐个复核。
-- **已知坑（本轮与上轮新增）**：
-  - `setsid bg.sh` 最好单独一条命令启动，启动后确认有 `bg … pid` 行。
-  - catalog 是单行 JSON，`grep -o '.{0,80}关键词'` 会超时；用 Python / node 解析后再查。
-  - 判断「模块是否用 spec」不能只按 `agentIds: ['id']` 正则找文件（很多模块用常量）；要在 vitest 里加载 `@/mechanics` 查注册表。
-
-- **未决项**：
-  - 数据自己标了「部分建模」的音擎还有 3 把：14126 `partially-modeled-anomaly-buildup-text-only`、14152 `partially-modeled-duration-extension`、14001 `partially-modeled-proc-damage`（统计见 `verification.effectBuff`）。它们是数据侧没建模的效果，不是「引擎没读对」，不属于 R5 的对账范围；R5 收尾时在账本登记为「数据侧已知缺口」，不立卡。
-  - D18 的潜在风险：新数据若把属性 / 特化 / 角色限定只写进 condition 散文，会静默生效。音擎 effect 级 requirement（specialty / attribute / wearerAgentIds）已生效，录入时应写 requirement。驱动盘侧 `discRequirementMet` 不认 `wearerAgentIds`（当前 0 处），若日后出现需同步。
-  - 旁注待查：`helpers.ts:905` 把 turbulence 并入 anomalyDmgBonus，是否与 statRules 口径一致未核。
-  - 34100 谶羽之誓 `modelingNotes` 写「15% 流明异常增伤不参与计算」，但 effects 里有 `anomalyDmgBonus 15`（requirement lumiflux）且引擎会计入。按 R5「数据可信」以 effects 为准，notes 疑似过时；未改，查 `modelingNotes` 时一并确认。
-  - CC-100 之后，基础掌控 86 的角色（1111 / 1121 / 1271 / 1291）装 6 号位掌控不再达到折枝剑歌 115 门槛，是应有结果；
-  - D7 的 2 个驱动盘效果是否另有入口可调未核（`panelPhases.ts:728`）；D10 两份 Boss 数据是否一致未比对；
-  - CC-99 排在 R6 清单之后重新评估；CC-97 暂缓；CC-84 触发式。
-- **已知坑**（长期有效的放在这里，每轮替换时保留仍然有效的条目）：
-  - 删文件后，先 `git add -- <路径>` 暂存删除，再跑 check-guards。判据 25 的扫描器用 `git ls-files` 取清单，已删未暂存的文件会让它报 ENOENT。按 AGENTS.md 规则 13，不要用无路径的 `git add -A`。
-  - 用户会在轮中途提交，而且和我共用同一个工作区。**提交前务必 `git log --oneline -3`**；新文件 `git add` 和 `git commit` 放在同一条命令里，否则暂存的文件可能被用户的提交顺带卷走（第 119 轮 `2259a17` 发生过）。
-  - `grep -r` 在仓库里会超时，一律用 `timeout 40 git grep`。
-  - **MCP 的 `apply_patch` 在 WSL 的 UNC 路径上不可靠**（第 126 轮实测）：新建文件因依赖硬链接失败（ENOTSUP），且会把同一 patch 里其他已存在文件的权限从 755 改成 644，同时报告「nothing was written」。新建文件用 `up.sh` 上传，编辑用上传的 Python 脚本（先断言再写盘）；事后 `git status` / `git diff` 检查权限变化（`old mode 100755`）。
-  - 长任务（verify 约 150 秒）用 `setsid /home/kaua/calc-arch/bg.sh <名> '<命令>'` 放后台，轮询日志末行 `EXIT=`。verify 期间不要改 docs 和 src。
-  - vitest 通过不等于类型正确，要跑 `npx vue-tsc -b`。
-  - 触及计算路径的改动要做零差：`bash .zc/perf/zd.sh <tag>`，必须带 tag，要求 DIFF 0。
+  - R6 第 2 步：新建 `docs/mcp-r6-refactor-list.md`（C1–C7、A3、helpers 壳逐条做 / 不做）。
+  - R6 验收项 C1 完成（CC-112）：`src/core/resource/` 11 个文件 + `src/core/substatOptimizer.ts` 改 `import { getAgentMechanic } from '@/mechanics/registry'`；`vite.config.ts` 加 `test.setupFiles: ['./src/mechanics/index.ts']`；守卫测试 `src/core/__tests__/coreMechanicsRegistryOnly.test.ts`。规则写进 `docs/ARCHITECTURE.md` §0。R6 标 done。
+  - 验证：zd `r6c1` DIFF 0；verify EXIT 0（含 build）；vue-tsc 0；CG 25/25；新测试反向验证（substatOptimizer 改回 `@/mechanics` → 失败 1 例）。
+- **下一步（按顺序，可直接开工）**：
+  1. **C7 第一刀**：`src/mechanics/agents/liuyin.ts` applyPanel 的暴击 → 冲击力段，对照 `src/specs/agents/1481.json` `liuyin_crit_to_impact` 与 `src/specs/runtime.ts` `applySpecAttributeConversions` 语义（sourcePanelPhase、取整、cap），**完全一致才替换**成 `applySpecAttributeConversions(panel, getAgentSpec(1481)?.attributeConversions ?? [])`（范例 `alice.ts:115`、`luciaElowen.ts:135`）；zd 要求 DIFF 0；改 spec note。不一致就把差异写进清单 §2，不替换。
+  2. 同法 1571 诺姆三条（`norma_crit_to_critdmg` / `norma_crit_to_stun` / `norma_pen_to_atk`；valuePerStep 随等级变化的条目若 runtime 表达不了就留在模块并写明）。
+  3. C6 + C2 规划条款：一次改 `docs/ARCHITECTURE.md` §0（编排层拆四层；状态层可调 core 纯函数、禁调编排层）。
+  4. C5 删 `src/core/damage.ts` `DirectDamageInput.damageBasis` 死参数（零差）；C3 在 `r5DataInvariants.test.ts` 加 `appliesToOutOfCombatPanel === (scope==='outOfCombat')` 校验。
+  5. 之后 CC-99。
+- **本轮拍板**：影响面最大的一项定为 C1，不是上一轮倾向的 C7。依据：C1 改的是整个引擎层对录入层的依赖方向（12 个 core 文件、全部 core 测试的加载方式），且是真实的、对初始化顺序敏感的 ESM 环；C7 只涉及一个机制族。回退点见清单 §1。
+- **已知坑**：
+  - 注册不再由「import core」隐式触发。以后新增 Web Worker 或用 tsx / vite-node 直接跑 src 的 node 脚本，必须自己 `import '@/mechanics'`，否则 `getAgentMechanic` 全返回 undefined（静默少算）。
+  - 组件 / composables 仍 import `@/mechanics`，这是允许的（编排层不在环上）。
+- **未决**：10 个模块 spec resources 与模块账本重复，是否归一待 C7 两刀做完后评估。

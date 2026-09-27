@@ -56,6 +56,10 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // R6 C1（2026-09-27）：core 只依赖 `@/mechanics/registry`（查询接口），不再按值 import `@/mechanics`
+    // 目录入口（它 import 全部角色模块 ⇒ core → index → agents/* → core 模块环）。注册副作用
+    // 由应用入口 `src/main.ts` 与这里的 setupFiles 负责——测试进程与浏览器入口看到同一张注册表。
+    setupFiles: ['./src/mechanics/index.ts'],
     // 重负载集成用例（全库 pass / 权重分配搜索 / 难度变体）在本机满套件并发下 30~80s：
     // 默认 30s 会让它们随机超时（测的是机器负载，不是断言）。**真正的性能判据**已改为
     // 「同进程参照量归一化」的比值（见 `charIncrementInt.test.ts`），这里只放开基础设施超时。

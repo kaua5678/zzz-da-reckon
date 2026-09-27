@@ -12,7 +12,7 @@ import type {
   CharacterOperationConfig, SkillExecution, IterationState, AnomalyEventExecution,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
 import { EVADE_ASSIST_ACTION_TIME_SECONDS, EVADE_ASSIST_MOVE_ID } from '@/data/resourceDefaults'

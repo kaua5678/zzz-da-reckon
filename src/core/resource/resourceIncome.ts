@@ -15,7 +15,7 @@ import type {
   CharacterOperationConfig, EnergySource, DecibelSource, IterationState,
 } from '@/types/resource'
 import { emptyCrossAgentEnergy } from './crossAgentEnergy'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 import {
   decibelEfficiencyMultiplier, timeSliceTriggerCounts, rowEnergyTotal, rowDecibelTotal,
 } from './rowAccounting'

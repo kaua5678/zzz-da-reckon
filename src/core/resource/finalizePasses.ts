@@ -30,7 +30,7 @@ import type {
   IterationState,
   ResourceCalcConfig,
 } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 
 /** 终局重推轮数上限（原两处闭包同值） */
 const FINALIZE_MAX_PASSES = 12

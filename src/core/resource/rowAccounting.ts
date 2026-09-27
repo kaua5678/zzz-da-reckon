@@ -16,7 +16,7 @@
 import type {
   CharacterOperationConfig, SkillExecution, IterationState, AnomalyEventExecution,
 } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 import type { ExtraNecessaryAction } from '@/mechanics/types'
 
 // ============ 单角色喧响计算 ============

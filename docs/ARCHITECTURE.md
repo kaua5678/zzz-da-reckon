@@ -17,6 +17,7 @@
 ```
 
 依赖方向：展示 → 编排 → 引擎；录入层被编排/引擎经 registry 消费；数据层被状态层加载。
+**引擎只查询、不注册**：`src/core/**` 取角色模块只许 `import { getAgentMechanic } from '@/mechanics/registry'`，不许按值 import `@/mechanics`（index，会加载并注册全部角色模块，而角色模块又 import core ⇒ 环）；注册副作用只在入口：浏览器 `src/main.ts` 的 `import '@/mechanics'`，测试 `vite.config.ts` `test.setupFiles`。新增运行入口（Worker / node 脚本）必须自己 import `@/mechanics`。守卫：`src/core/__tests__/coreMechanicsRegistryOnly.test.ts`（R6 C1，第 139 轮）。
 **录入层对编排层只许 `import type`**（值边必成环：R35 实测 `claret → resourceCalc/helpers → mechanics/index → claret`）；
 录入层要用编排层的纯函数一律**下沉 `src/data/`**（`data/moveTableQueries.ts` 先例——招式查找 / 行值 / 融合行值 / 平A 第 3 段；
 `src/data/` 是各层都可依赖的公共底），原位置留 import + export 两行壳。机器面 = 判据 19 `layer-inversion`

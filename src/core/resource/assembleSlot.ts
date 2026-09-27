@@ -19,7 +19,7 @@ import type {
   ResourceCalcConfig, CharacterOperationConfig, IterationState, SkillExecution,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 import {
   calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation,
   buildAnomalyEventExecutions, calcCrossAgentEnergy, truncateExecutionsToFrontline,

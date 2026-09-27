@@ -20,7 +20,7 @@
  */
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 import { resolveUltimateTargetSlot } from './targetSlot'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 
 export interface CrossAgentSupplyInfo {
   /** 提供者槽位（未提供 = -1） */

@@ -18,7 +18,7 @@
  * 不能继续复用 `providerSlot`——否则外部回血会按错误的槽位算。
  */
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic } from '@/mechanics/registry'
 import { crossAgentSupplyCountOf, findCrossAgentSupplySlots } from './crossAgentSupply'
 
 export interface CurtainInfo {
