@@ -568,13 +568,13 @@
  "claret-koleda-rina": {
   "slack": 0,
   "over": 0,
-  "stun": 4,
+  "stun": 3,
   "outerExit": "stable"
  },
  "claret-roxy-rina": {
   "slack": 0,
   "over": 0,
-  "stun": 3,
+  "stun": 2,
   "outerExit": "stable"
  },
  "yidhari-jufufu-lucia": {
