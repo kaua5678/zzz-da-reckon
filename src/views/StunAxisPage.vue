@@ -248,7 +248,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
-import { allocateAxisWindows } from '@/core/stunAxisStack'
+import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
 import type { StunAxisAction, StunAxisPlan, StunAxis } from '@/types/resource'
@@ -622,9 +622,11 @@ function exportPreset() {
 
 // ===== 动作池 =====
 /** 轴实际分配到的窗口数（count 缺省 = 兜底吃剩余，与栈引擎同口径） */
+// CC-50：整组分配缓存为 computed（原为每次调用都重算整组，且在 allMoves 的逐动作循环里被反复调用）；
+// 分配函数经编排层 composables/stunAxisView（判据 7）。
+const axisWindowCountList = computed(() => axisWindowCounts(axes.value, stunPoolResult.value?.stunCount ?? 0))
 function axisTimes(ai: number): number {
-  const stunCount = stunPoolResult.value?.stunCount ?? 0
-  return allocateAxisWindows(axes.value, stunCount)[ai] ?? 0
+  return axisWindowCountList.value[ai] ?? 0
 }
 const allMoves = computed(() => {
   const out: { slot: number; moveId: string; label: string; actionTime: number; remaining: number; key: string; promoteVariant?: '60' | '90'; sourceTag?: 'gift' }[] = []
