@@ -253,7 +253,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // `runFoldLoop`（S2 时间预算折叠环）已迁 `src/core/resource/foldLoop.ts`（CC-4，2026-09-25，纯函数）。
   // 下列 `@fact` 的**实现已迁**该文件，声明按既有惯例留在 re-export 壳处（同 CC-3 `innerLoop.ts` 的处理）；
   // **锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:收敛环停点规范化`）不变。
-  // @fact engine:收敛环停点规范化 口径: 注入种子（热启动/显式 initialStates）的收敛轨迹若属非正常收敛（跑满上限或全状态签名精确重复=入极限环），该停点含瞬态相位成分 → 弃用并从默认零种子**规范重跑**；重跑仍入环则取环内 JSON 字典序最小成员为规范停点（相位无关，冷/热进同一环成员集合相同）。正常收敛照旧接受（不动点唯一性 = 2026-09-04 连续松弛教义）。结果 = f(默认种子, 迭代映射)，与注入种子彻底解耦 | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
+  // @fact engine:收敛环停点规范化 口径: 注入种子（热启动/显式 initialStates）的收敛轨迹若属非正常收敛（跑满上限或全状态签名精确重复=入极限环），该停点含瞬态相位成分 → 弃用并从默认零种子**规范重跑**；重跑仍入环则取环内 JSON 字典序最小成员为规范停点（相位无关，冷/热进同一环成员集合相同）。正常收敛照旧接受（不动点唯一性 = 2026-09-04 连续松弛教义）。结果 = f(默认种子, 迭代映射)，与注入种子彻底解耦 | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25·复核@2026-09-27 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
   /**
    * S2 时间预算折叠环（CC-4 外提至 `./resource/foldLoop.ts`，纯函数）的只读上下文与包装。
    * ⚠ 包装**每次调用时读 `diag`**（禁止 `const d = diag` 缓存——重折环会换新对象，缓存会写到旧对象）。
@@ -349,7 +349,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   //       进度（2026-09-19 R37-J2，批 2-1）：上方 rowTimeLimit 重折环已落地「装不下就重收敛」的外环形态（只接受 Σcut 严格变小，
   //       ≤3 轮）；刀 1 后全库仅 1431 簇两队有初装截断，其余 103 队默认路径逐位 0 delta。**未销号**：结构性溢出队重折后
   //       仍可能残留截断（如实上报），「直到截断为 0」要等实数化专项 + 用户终验。
-  // @fact engine:资源账本/截断 口径: 资源池能量/喧响收入按 feasibleRows 计（cfg.rowTimeLimit 缺省 = 未截断行；初装截断 > 容差时重折环按每槽装配 kept 注入、从 S2 入口重跑到装配，只接受 Σcut 严格变小、≤3 轮、拒绝即整体回滚、返回前删键），装配期截断只削招式行（伤害/失衡随之降）；残留截断如实上报（overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 · 债2批2-1@2026-09-19 R37·复核@2026-09-25 | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
+  // @fact engine:资源账本/截断 口径: 资源池能量/喧响收入按 feasibleRows 计（cfg.rowTimeLimit 缺省 = 未截断行；初装截断 > 容差时重折环按每槽装配 kept 注入、从 S2 入口重跑到装配，Σcut **不增**即接受（相等也接受——那正是「账本按真装得下的行计」的不动点态，接受后不动点即停机；实现 `src/core/resource/truncationRefold.ts`）、≤3 轮、拒绝即整体回滚、返回前删键），装配期截断只削招式行（伤害/失衡随之降）；残留截断如实上报（overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 · 债2批2-1@2026-09-19 R37·复核@2026-09-25·实测@2026-09-27（接受判据按 e4d970a「严格变小→不增」与 truncationRefold.ts 现状改写） | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
   // ⟳复核: 重折环上限 / 接受判据 / kept 口径再动时，复核「默认路径（cut ≤ 1s 队）逐位 0 delta」+「1431 簇两队 Σcut 只减不增、cfg 无 rowTimeLimit 残留」（truncationRefold.test.ts + timeGolden） | 到期 2026-12-31
   config.overflowSeconds = timeTruncatedSeconds
 

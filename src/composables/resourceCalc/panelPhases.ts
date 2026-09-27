@@ -620,7 +620,7 @@ export function computePanelPhases(
   // ★ 原块在本行的位置正是 `applyPanel` 派发点（`:597`）**之后** ⇒ 当时靠「后写覆盖」生效；
   // 迁入模块后由派发点统一调用，顺序天然一致（本处**不得**再留任何简分支，否则双计）。
   // 原 `⟳复核 … 到期 2026-12-31`（「jane.passionCoverage 是否注册」）**已兑现**，标记随块删除。
-  // @fact jane:1261/狂热面板块落点 口径: 简的狂热/精通转攻/痛点/影画1/6 面板区在 `jane.ts#applyJanePanel`（走 `AgentPanelInput.settings` 读 `jane.frenzyActive` 总闸与 `jane.passionCoverage` 覆盖率），**不再**在 panelPhases.ts#computePanelPhases 里保留 agentId 分支 | 据 用户裁决@2026-09-20（R51 「一并注册成 MechanicSetting」） | 验 src/mechanics/__tests__/mechanicSettingsEffect.test.ts | 锚 src/mechanics/agents/jane.ts#applyJanePanel | 信 确认
+  // @fact jane:1261/狂热面板块落点 口径: 简的狂热/精通转攻/痛点/影画1/6 面板区在 `jane.ts#applyJanePanel`（走 `AgentPanelInput.settings` 读 `jane.frenzyActive` 总闸与 `jane.passionCoverage` 覆盖率），**不再**在 panelPhases.ts#computePanelPhases 里保留 agentId 分支 | 据 用户裁决@2026-09-20（R51 「一并注册成 MechanicSetting」）·复核@2026-09-27 | 验 src/mechanics/__tests__/mechanicSettingsEffect.test.ts | 锚 src/mechanics/agents/jane.ts#applyJanePanel | 信 确认
   // ⟳复核: 用户在面板上拖 `jane.frenzyActive` / `jane.passionCoverage` 看「物理积蓄/攻击/增伤」是否随之变化；若简块又出现在编排层或两个入口同时出控件（双滑块），说明本落点被回退 | 到期 2027-06-30
 
   // 蕾米强特 Radiant Turn 的“相变时流”：全队增伤，按技能等级 12/14/16 对应 18%/21%/24%。
@@ -646,7 +646,7 @@ export function computePanelPhases(
   // ⚠ 每个元素的**唯一**通用来源仍是 `getTeamAnomalyDurationBonus`（规则 11 单一事实源）——
   // 它只负责 1171/1211/1261 三臂；1501 的以太臂**已删除**（曾写作陈旧别名 `'aria'`，
   // 全库无任何 `agentId`/`teammateBuffId` 命中 ⇒ 死臂；其语义由 spec teamBuff 单源承载）。
-  // @fact panelPhases:元素异常时长字段 口径: `physical/fire/electric/etherAnomalyDurationBonusSeconds` 由「通用规则 `getTeamAnomalyDurationBonus`」与「buff 通道（spec teamBuffs / applyStat）」**两路相加**写入面板，通用规则侧必须用 `+=`；任一元素的两路若描述同一效果即为双计 | 据 R63 实测 `calcPanel` 前 3 → `computePanelPhases` 后 0（`aire_extra_erosion_duration` 被覆写清零）@2026-09-20·复核@2026-09-25 | 验 src/mechanics/__tests__/cinemaAxisBatchR63.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
+  // @fact panelPhases:元素异常时长字段 口径: `physical/fire/electric/etherAnomalyDurationBonusSeconds` 由「通用规则 `getTeamAnomalyDurationBonus`」与「buff 通道（spec teamBuffs / applyStat）」**两路相加**写入面板，通用规则侧必须用 `+=`；任一元素的两路若描述同一效果即为双计 | 据 R63 实测 `calcPanel` 前 3 → `computePanelPhases` 后 0（`aire_extra_erosion_duration` 被覆写清零）@2026-09-20·复核@2026-09-25·复核@2026-09-27 | 验 src/mechanics/__tests__/cinemaAxisBatchR63.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
   // ⟳复核: 跑 `npx vitest run cinemaAxisBatchR63` —— 若 `etherAnomalyDurationBonusSeconds` 在 1501 在场时又变回 0（或通用规则侧被改回 `=`），说明覆写回来了 | 到期 2027-03-31
   panel.physicalAnomalyDurationBonusSeconds = (panel.physicalAnomalyDurationBonusSeconds ?? 0)
     + getTeamAnomalyDurationBonus(configStore, catalogStore, 'physical')
@@ -658,7 +658,7 @@ export function computePanelPhases(
     + getTeamAnomalyDurationBonus(configStore, catalogStore, 'ether')
 
   // 风化侵染区：10% 独立乘区，仅风属性与染色属性直伤生效
-  // @fact panelPhases:侵染区归属 口径: `infectionZoneBonus` 是**风队通用机制**（判据 = 队伍里有 `damageElement === 'wind'` 的角色，任何风角色都触发，**与是不是维琳娜无关**）；系数 10% 的唯一来源 = 本行赋值 + 编排层 `useResourceCalc` 的覆盖率折算，**禁止**再用 spec `teamBuffs` 声明该 stat —— spec 声明会被本行赋值覆写，属性配置页会出现拨不动的**死控件**（R64 实测三档恒 10） | 据 R64 实测：队内换成 1621/1631 同样给 10，故非维琳娜拐力；docs/mechanism-reference.md §8.6 按风属性定义@2026-09-20·复核@2026-09-25 | 验 src/mechanics/__tests__/specTeamBuffSingleSource.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
+  // @fact panelPhases:侵染区归属 口径: `infectionZoneBonus` 是**风队通用机制**（判据 = 队伍里有 `damageElement === 'wind'` 的角色，任何风角色都触发，**与是不是维琳娜无关**）；系数 10% 的唯一来源 = 本行赋值 + 编排层 `useResourceCalc` 的覆盖率折算，**禁止**再用 spec `teamBuffs` 声明该 stat —— spec 声明会被本行赋值覆写，属性配置页会出现拨不动的**死控件**（R64 实测三档恒 10） | 据 R64 实测：队内换成 1621/1631 同样给 10，故非维琳娜拐力；docs/mechanism-reference.md §8.6 按风属性定义@2026-09-20·复核@2026-09-25·复核@2026-09-27 | 验 src/mechanics/__tests__/specTeamBuffSingleSource.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
   // ⟳复核: 跑 `npx vitest run specTeamBuffSingleSource` —— 若全库又有 spec 用 `teamBuffs` 声明 `infectionZoneBonus`（不变量条红），说明有人把误归属的重复声明加回来了；同时确认 1621/1631 在队仍给 10（归属判据） | 到期 2027-03-31
   const windCharInTeam = configStore.team.some(char => {
     const member = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null

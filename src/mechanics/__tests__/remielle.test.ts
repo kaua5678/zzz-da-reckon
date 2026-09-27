@@ -70,7 +70,7 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
       .toBeCloseTo(row.remielleMechanicSource!.refringeCoefficient * 10, 5)
   })
 
-  // @fact agent:1581/特殊虚耀×2.5独立乘区 口径: 特殊虚耀（开局虚耀·垂虹载体·全吃进场记录面板）伤害 = 垂虹耀变倍率 ×2.5 的独立乘区，只作用于特殊虚耀行 remielle-special-voidflare；普通虚耀（花羽轮舞/缭乱终幕/惊鸿载体·基础区=触发队友面板）不吃该乘区——两者基础区来源不同（特殊=蕾米自供偏低故补偿 2.5 倍、普通=队友供偏高） | 据 用户@2026-08-26（原文见 src/specs/agents/1581.json 口径行）+ 用户@2026-09-14「引擎没有就造一个乘区」·复核@2026-09-25 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/composables/resourceCalc/damagePool.ts#buildDamagePoolRows | 信 确认
+  // @fact agent:1581/特殊虚耀×2.5独立乘区 口径: 特殊虚耀（开局虚耀·垂虹载体·全吃进场记录面板）伤害 = 垂虹耀变倍率 ×2.5 的独立乘区，只作用于特殊虚耀行 remielle-special-voidflare；普通虚耀（花羽轮舞/缭乱终幕/惊鸿载体·基础区=触发队友面板）不吃该乘区——两者基础区来源不同（特殊=蕾米自供偏低故补偿 2.5 倍、普通=队友供偏高） | 据 用户@2026-08-26（原文见 src/specs/agents/1581.json 口径行）+ 用户@2026-09-14「引擎没有就造一个乘区」·复核@2026-09-25·实测@2026-09-27（×2.5 算术落点已随 CC-9a 迁 damagePoolAnomaly.ts、再随 CC-19c-2 迁 remielle.ts 模块能力 extraAnomalyRows，口径未变） | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/mechanics/agents/remielle.ts#extraAnomalyRows | 信 确认
   // ⟳复核: 若 ×2.5 落点迁移（如搬去 core/anomalyPool）或特殊虚耀基础区口径变化，确认全仓只保留一处 ×2.5（防 ×6.25 双计：grep -rn "rainbowMultiplier \* 2.5" src 应恰好 1 处） | 到期 2026-12-31
   it('特殊虚耀 ×2.5 独立乘区生效（2026-09-15 复核：乘区自初始提交即在线，2026-09-14「引擎零实现」审计系误判）；普通虚耀逐字不吃 ×2.5', async () => {
     const { config, catalog } = await setup(6)

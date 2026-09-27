@@ -120,7 +120,7 @@ function defaultDriveDisc(element: string): DriveDiscConfig {
   }
 }
 
-// @fact engine:平A权重阶梯 口径: 不设职业统一阶梯（强攻/异常/击破默认同为1）——用户裁决「不同情况不同权重，不能一概而论」，抬权重归角色级滑块/预设 | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25 | 锚 src/stores/config.ts#defaultBasicAttackTimeWeight | 信 确认
+// @fact engine:平A权重阶梯 口径: 不设职业统一阶梯（强攻/异常/击破默认同为1）——用户裁决「不同情况不同权重，不能一概而论」，抬权重归角色级滑块/预设 | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27 | 锚 src/stores/config.ts#defaultBasicAttackTimeWeight | 信 确认
 function defaultBasicAttackTimeWeight(agent?: Agent | null): number {
   if (!agent) return 1
   // CC-64：角色级默认值经模块声明 defaultBasicAttackTimeWeight（现：蕾米埃尔 / 薇薇安 = 0）；按 id 与 teammateBuffId 各查一次

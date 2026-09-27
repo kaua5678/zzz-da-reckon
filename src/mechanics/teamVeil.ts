@@ -23,7 +23,7 @@ import { getAgentMechanic } from '@/mechanics'
 // CC-80：各角色的帷幕开启口径改由模块能力 `teamVeilCount` 声明（aire / yeshuguang / qianxia / zhao），
 // 本文件只求和；原为此处写死的角色 id 集合 + 照的 id 分支。
 
-// @fact agent:1491/帷幕计数 决: 千夏开帷幕 = 泡泡糖轰炸(70能量)→免费特别拍照技巧→1帷幕，即 70能量=1帷幕；特别拍照技巧不耗能、不计入 exSpecialCount，故 teamVeilCountTotal 千夏贡献 = 强特次数(70能量/次) 1:1 | 据 用户@2026-09-02 | 验 src/mechanics/__tests__/teamVeil.test.ts | 锚 src/mechanics/teamVeil.ts#computeTeamVeilCountTotal | 信 确认
+// @fact agent:1491/帷幕计数 决: 千夏开帷幕 = 泡泡糖轰炸(70能量)→免费特别拍照技巧→1帷幕，即 70能量=1帷幕；特别拍照技巧不耗能、不计入 exSpecialCount，故 teamVeilCountTotal 千夏贡献 = 强特次数(70能量/次) 1:1 | 据 用户@2026-09-02·复核@2026-09-27 | 验 src/mechanics/__tests__/teamVeil.test.ts | 锚 src/mechanics/teamVeil.ts#computeTeamVeilCountTotal | 信 确认
 
 export function computeTeamVeilCountTotal(
   characters: CharacterOperationConfig[],

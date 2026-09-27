@@ -179,7 +179,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 - **特殊虚耀**：垂虹（1581007）耀变倍率 × **2.5 独立乘区**——全仓唯一算术落点 `damagePool.ts` `specialMultiplier = rainbowMultiplier * 2.5`；吃蕾米**进场记录面板**（自身被动/命座/装备，**不吃**队友战内拐力）。普通虚耀三载体行（支援/终结/普攻）**无 ×2.5**。
   ⚠ 易误读：`core/damage.ts` 对该行「不走直伤公式、只计次数」的注释是**防双计**（core 直伤面板路径不重复结算），不是未实现——照字面再建一处乘区 = ×6.25 双计。
   证据：实测 C6 3 异常队垂虹 180% ⇒ 基础区 450%，行 perDamage 与独立重算逐位相等（回归锁 `src/mechanics/__tests__/remielle.test.ts`）。
-- @fact 1581·特殊虚耀 口径: 特殊虚耀 = 垂虹耀变倍率 ×2.5 独立乘区（唯一算术落点 damagePool.ts），吃进场面板、不吃队友拐；普通虚耀三载体行不吃 ×2.5；core/damage.ts「不走直伤公式」是防双计不是未实现 | 据 用户@2026-08-26·复核@2026-09-15·复核@2026-09-25 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/composables/resourceCalc/damagePool.ts#buildDamagePoolRows | 信 确认
+- @fact 1581·特殊虚耀 口径: 特殊虚耀 = 垂虹耀变倍率 ×2.5 独立乘区（唯一算术落点 `src/mechanics/agents/remielle.ts` 模块能力 `extraAnomalyRows` 的 `rainbowMultiplier * 2.5`），吃进场面板、不吃队友拐；普通虚耀三载体行不吃 ×2.5；特殊虚耀走 `calcVoidflareDamage` 而不走直伤公式是防双计，不是未实现 | 据 用户@2026-08-26·复核@2026-09-15·复核@2026-09-25·实测@2026-09-27（×2.5 算术落点已随 CC-9a 迁 damagePoolAnomaly.ts、再随 CC-19c-2 迁 remielle.ts 模块能力 extraAnomalyRows，口径未变） | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/mechanics/agents/remielle.ts#extraAnomalyRows | 信 确认
   ⟳复核: 游戏内实伤对表一次，确认 ×2.5 独立乘区与进场面板口径 | 到期 2026-12-31
 
 ### 8.2 风化状态与风蚀
