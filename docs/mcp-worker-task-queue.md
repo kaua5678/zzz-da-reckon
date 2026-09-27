@@ -69,6 +69,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 167 轮（2026-09-28，代码 `44bc4c67`（CC-142）+ 文档提交「docs: round 167」；上一轮 = 98693cac / 68bd9d0c）
+
+- **做到哪**：
+  - CC-142 结清（`docs/mcp-stun-dual-source.md` §8）：残余 6 队全是轴模式。4 支希希芙队 = 轴数据没写连携（不是缺陷，`stunPlanAxisWindows.test.ts` 钉住）；2 队 = 轴内块次数分窗仍读计划值，已改为 `countStun`（`src/composables/resourceCalc/convergence.ts` 四处）。off 零差（zd `cc142` DIFF 0）。
+  - 探针存档 WSL `/home/kaua/calc-arch/c167/`。
+- **下一步（可直接开工）**：
+  1. **CC-144：切 physical 为默认**。引擎阻塞项已清空，剩切换本身。
+     - 找缺省：`timeout 40 git grep -n "stunPlanProjection" -- src/stores src/data src/types`，把 `time.stunPlanProjection` 的缺省编码 0 改为 4。先**只改缺省、不提交**，跑 `bash .zc/perf/zd.sh cc144`、`npx vitest run timeGolden timeFillRatchet` 看变化面。
+     - 逐队解释：用 `c167/zzC167.test.ts` 的写法（两模式对比，含失衡连携秒数 / 超预算 / 截断 / 外层退出 / 总伤）出全表，按原因分四类：a) 计数通道补回连携（off 下失衡连携 0 或偏少）；b) S3 降配档变化；c) 外层退出变化（stable↔cycle）；d) 物理次数变化。每类给队数和代表队；c 类逐队看（已知 `yixuan-trigger-lucia`）。
+     - 然后改 `stunPlanPhysical.test.ts` 的缺陷钉（缺省下也应有失衡连携），`TIME_GOLDEN_UPDATE=1` / `TIME_RATCHET_UPDATE=1` 重生成两份基线，全量 verify。
+     - 若 c 类（cycle 增加）或某一类解释不通：不切，写明原因，保持可切换模式。
+  2. 洛克茜 `energyRegenOutOfCombat` 读法疑点；副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先）。
+- **本轮拍板**：
+  - 希希芙单 C 轴 0 连携按轴数据口径处理，不改轴。依据：轴 note 明确列出窗内动作；「数据本身可信」（R5 硬约束）。若日后认为轴应补连携，改 `src/data/stunAxisPresets/希单c.json` 并同步改钉测试。
+  - 计数用途分窗读 `countStun`，时间用途（决算截断、窗内积蓄）保持计划值。依据：`core/stunPlanProjection.ts` 的语义边界「投影不回灌时间账」。
+  - 「有失衡没连携」验收修订为「除轴里没写连携块的队外为 0」。
+- **已知坑**（新增）：
+  - `convergence.ts` 里 `allocateAxisWindows(resolvedAxes, stunCount)` 有 6 处，锚文本不唯一；改哪处要带上相邻的唯一行做锚。
+  - `c167/hook167.py` 会把当前 `convergence.ts` 备份到 `/tmp/cc142/convergence.ts.orig`，覆盖旧备份；恢复一律用 `git checkout -- <文件>`，别信那个备份。
+
 ### 第 166 轮（2026-09-28，代码 `98693cac`（CC-143）+ 文档提交「docs: round 166」；上一轮 = d395ba79 / cf4623b3）
 
 - **做到哪**：
@@ -87,23 +107,6 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - `bg.sh` 后台启动的命令末尾要带 `sleep 1`（或更久）再返回，否则 wsl_exec 返回时进程被回收、log 都不会生成（本轮踩了两次）。
   - 后台 verify 跑的时候不要做「回退源文件做反向验证」这类操作，会污染 verify 结果；反向验证放在 verify 之前或之后。
   - zd 的 `/heavy`、`/heavyGate` 变体在同一个 store 上顺序运行，结果带路径依赖；与冷启动单跑不一致时，以冷启动为准做归因。
-
-### 第 165 轮（2026-09-28，代码 `d395ba79`（CC-141）+ 文档提交「docs: round 165」；上一轮 = c9d19881）
-
-- **做到哪**：
-  - CC-141 结清：physical 超预算的主因是 CC-140 漏改的计数通道（琉音赠大 / 诺姆赠链的 5 处消费点 + 种子仍读计划值），不是 S3。新增 `stunCountForCountChannel`（`src/core/stunPlanProjection.ts`）统一入口。off 零差（zd `cc141` DIFF 0，verify190 EXIT=0，3805 passed）。实测和拍板见 `docs/mcp-stun-dual-source.md` §6。
-  - 新测试 `src/composables/__tests__/stunPlanGiftChannel.test.ts`（已反向验证）。探针存档 WSL `/home/kaua/calc-arch/s3p165/`（`zzS3p165.test.ts` 用 `S3P_IDS` / `S3P_TAG` 环境变量选队和输出名，输出 `out-<tag>.tsv`；`an165.py` 对比 `out-head` 与 `out-fix`）。
-- **下一步（按顺序，可直接开工）**：
-  1. **CC-143：physical 下 1431+1481 两队巨额截断**（`auto-1431-1481-1341` 82.5s、`auto-1431-1481-1491` 94.6s）。开工指引见专项文档 §6.5：先在 `tailPipeline` 截断前打点拆需求（282s vs off 227s），查叶瞬光的失衡相关资源放大和 `applyTeamMechanics` 的规划值 `stunCount`；再决定 S3「无人满足」兜底，改前跑 off 104 队确认零差。
-  2. **CC-142：1521（希希芙）系「有失衡、没连携」残余**（§5.2 残余 6 队；本轮修复没有针对它，数字未复测）。先看 `chainCountPerStun` 与 `chainCountTotalOverride`（`convergence.ts` 约 428 行）。
-  3. CC-142、CC-143 结清后评估切 physical 默认：改 `stunPlanPhysical.test.ts` 的缺陷钉，跑 zd / timeGolden / timeFillRatchet 并逐队解释；评估指标**必须含装配截断**（`rr.overflowSeconds`），第 164 轮漏看了它。
-  4. 洛克茜 `energyRegenOutOfCombat` 读法疑点；副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先）。
-- **本轮拍板**：
-  - CC-141 结论不是交接里预设的 a / b 二选一，而是「源头口径分裂」：超出与交互档无关，S3 本来就接不住，修源头。依据：S3 八档试算净占用逐档相同；超出秒数与一行赠大逐位相等。
-  - 验收「超预算单队 ≤ S3 容差或被 S3 收拾」已满足，但因 CC-143 仍不切默认。
-- **已知坑**（新增）：
-  - 凡是「失衡次数 × 每次的量」的消费点（尤其是赠送供给 `crossAgentSupplyAt` / `ultimateGiftOf` 的 `stunCount` 查询参数）一律用 `stunCountForCountChannel`，不要直接读 `config.stunCount`；否则非 off 模式下账本与物化行分裂。时间账（窗口 / 覆盖率 / `stunSeconds`）仍读实数 `config.stunCount`。
-  - 评估 physical 时看 slack 不够，截断会把超出「藏」进按比例砍行里。
 
 ### 第 162 轮（2026-09-28，文档提交「docs: round 162」，无代码；上一轮 = 30daa4b1 / 76a5aff6）
 
