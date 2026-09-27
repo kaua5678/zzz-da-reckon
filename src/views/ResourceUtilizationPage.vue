@@ -56,7 +56,7 @@
       </n-card>
 
       <n-card v-if="burniceReleaseElements" size="small" class="mechanic-card" :bordered="true">
-        <template #header>柏妮思异放元素分配</template>
+        <template #header>{{ burniceReleaseElements.label }}元素分配</template>
         <div v-if="burniceReleaseElements.elements.length === 0" class="field-desc">
           当前没有异常覆盖，异放按火属性兜底。
         </div>
@@ -73,7 +73,7 @@
               :max="100"
               :step="5"
               suffix="%"
-              @update:value="v => configStore.setMechanicSetting(`burnice.releaseShare:${item.element}`, (v ?? 0) / 100)"
+              @update:value="v => configStore.setMechanicSetting(`${burniceReleaseElements!.namespace}.releaseShare:${item.element}`, (v ?? 0) / 100)"
             />
           </div>
         </div>
@@ -346,7 +346,7 @@ import {
   type CinemaUpliftRow,
 } from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
-import { teamMechanicSettings } from '@/composables/agentMechanicView'
+import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
@@ -412,14 +412,15 @@ const remielleQSetting = computed<{
   return { slot: remielleSlot, firstSlot, secondSlot, firstName, secondName, firstCount }
 })
 
+// CC-55：原按写死的柏妮思 ID 1171 查找，改为查模块声明 releaseShare（agentMechanicView#teamReleaseShares）。
+// 只取第一个声明（现唯一声明 = 柏妮思），卡片形态不变；多声明时如何展示见 census §5.62 未决项。
 const burniceReleaseElements = computed<{
+  namespace: string
+  label: string
   elements: { element: string; label: string; autoRatio: number; userValue: number }[]
 } | null>(() => {
-  const burniceSlot = configStore.team.findIndex(char => {
-    const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return agent?.id === '1171' || agent?.teammateBuffId === '1171'
-  })
-  if (burniceSlot < 0) return null
+  const decl = teamReleaseShares(configStore.team, id => catalogStore.getAgent(id))[0]
+  if (!decl) return null
   const coverage = anomalyPoolResult.value?.coverage?.perElementCoverageRate ?? {}
   const elements = Object.entries(coverage)
     .filter(([, rate]) => rate > 0)
@@ -427,9 +428,9 @@ const burniceReleaseElements = computed<{
       element,
       label: ELEMENT_LABELS[element] ?? element,
       autoRatio,
-      userValue: configStore.getMechanicSetting(`burnice.releaseShare:${element}`, autoRatio),
+      userValue: configStore.getMechanicSetting(`${decl.namespace}.releaseShare:${element}`, autoRatio),
     }))
-  return { elements }
+  return { namespace: decl.namespace, label: decl.label, elements }
 })
 
 // ⚠ `janePassionSlot` 手写卡片已删（2026-09-20 round 51，用户裁决）：`jane.passionCoverage`

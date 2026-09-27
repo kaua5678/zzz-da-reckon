@@ -68,3 +68,31 @@ export function agentAxisBlockMarks(
 export function agentAxisMoveMeta(agentId: string | null | undefined): AgentMechanicModule['axisMoveMeta'] {
   return agentId ? getAgentMechanic(agentId)?.axisMoveMeta : undefined
 }
+
+export type ReleaseShareDecl = NonNullable<AgentMechanicModule['releaseShare']>
+
+/**
+ * 队伍里声明了「异放占比可调」的角色（CC-55）：按槽位顺序、按 namespace 去重；空槽 / catalog 查不到跳过。
+ * 每个角色同时按 `agent.id` 与 `agent.teammateBuffId` 查模块——与原展示层写死判断
+ * `agent?.id === '1171' || agent?.teammateBuffId === '1171'`（ResourceUtilizationPage / ImpactChart）同口径。
+ */
+export function teamReleaseShares(
+  team: ReadonlyArray<{ agentId?: string | null } | null | undefined>,
+  getAgent: (id: string) => { id: string; teammateBuffId?: string } | null | undefined,
+): ReleaseShareDecl[] {
+  const out: ReleaseShareDecl[] = []
+  const seen = new Set<string>()
+  for (const char of team) {
+    if (!char?.agentId) continue
+    const agent = getAgent(char.agentId)
+    if (!agent) continue
+    for (const id of [agent.id, agent.teammateBuffId]) {
+      if (!id) continue
+      const decl = getAgentMechanic(id)?.releaseShare
+      if (!decl || seen.has(decl.namespace)) continue
+      seen.add(decl.namespace)
+      out.push(decl)
+    }
+  }
+  return out
+}

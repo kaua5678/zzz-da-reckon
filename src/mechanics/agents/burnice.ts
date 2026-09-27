@@ -602,6 +602,8 @@ export const burniceMechanic: AgentMechanicModule = {
   teamAnomalyDurationBonus: ({ element }) => (element === 'fire' ? 3 : 0),
   id: 'agent:burnice',
   agentIds: [BURNICE_AGENT_ID],
+  // CC-55：异放占比可调（展示层经 agentMechanicView#teamReleaseShares 查询；namespace = eventId 'burnice_flowfire_release' 首段）
+  releaseShare: { namespace: 'burnice', label: '柏妮思异放' },
   name: '柏妮思',
   description: '强特按全局次数×可调时长近似：单双喷默认均分，持续倍率按时长缩放，时长为0不放；燃点/余烬按全局获得与消耗结算。',
   applyPanel: applyBurnicePanel,

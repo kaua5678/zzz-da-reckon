@@ -125,7 +125,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
 import { buildImpactVariables, readImpactVariable, writeImpactVariable } from '@/composables/impactVariables'
-import { teamMechanicSettings } from '@/composables/agentMechanicView'
+import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 
@@ -160,7 +160,8 @@ const settingMap = computed<Map<string, MechanicSetting>>(() => {
 
 // CC-53：变量表（静态 + 机制设置 + 柏妮思占比）与读写口径收拢到编排层（判据 7）；组件只留 settingMap / 采样 / 渲染
 const coverageRate = computed(() => anomalyPoolResult.value?.coverage?.perElementCoverageRate)
-const allVars = computed(() => buildImpactVariables(configStore.team, settingMap.value, id => catalogStore.getAgent(id), coverageRate.value))
+const releaseShares = computed(() => teamReleaseShares(configStore.team, id => catalogStore.getAgent(id)))  // CC-55：模块声明（原写死 1171）
+const allVars = computed(() => buildImpactVariables(settingMap.value, releaseShares.value, coverageRate.value))
 const varOptions = computed(() => allVars.value.map(v => ({ label: v.label, value: v.id })))
 function renderVarLabel(option: { label: string; value: string }) {
   return h('span', { title: option.label, style: 'display:inline-block;white-space:nowrap;vertical-align:middle' }, option.label)

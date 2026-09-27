@@ -775,6 +775,15 @@ export interface AgentMechanicModule {
   /** 轴编辑器招式元数据（CC-48；展示层专用）：moveId → { tag 名称前缀, cost 单次耗能 }。现唯一实现：般岳 `BANYUE_AXIS_MOVE_META` */
   axisMoveMeta?: Readonly<Record<string, { tag: string; cost: number }>>
   /**
+   * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
+   * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
+   * 声明后，资源页「异放元素分配」卡与影响分析的占比变量会为本角色出控件。
+   * ⚠ `namespace` 必须 == 本模块 dominant 异放事件 eventId 的首段（burnice_flowfire_release ⇒ 'burnice'），否则 UI 写的键引擎读不到；
+   *   改名会让用户已存的设置失效。label 用于控件标题（「<label>元素分配」「<label>·<元素>占比」）。
+   * 现唯一声明：柏妮思。引擎侧对 grace/vivian/aire/yanagi/promia/nangong/phoenix 的 dominant 事件同样读该键，但 UI 未开放（见 census §5.62 未决项）。
+   */
+  releaseShare?: { readonly namespace: string; readonly label: string }
+  /**
    * 失衡轴窗口覆盖声明（规则 6 迁移落点，2026-09-12 #10 真清偿）：
    * 模块按「轴内时间轴窗口」算出逐 moveId 的加权覆盖量，供伤害池消费。
    *

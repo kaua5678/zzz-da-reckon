@@ -1,10 +1,11 @@
 /**
  * CC-53：impactVariables 三个函数与原 ImpactChart（789a27e :161–236）内联算法逐值一致。
+ * CC-55：柏妮思判断改为模块声明（teamReleaseShares）；下面的 inline* 仍保留原写死 '1171' 的写法当对照基准。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { IMPACT_VARIABLES, readImpactVar, writeImpactVar } from '@/core/impactVars'
-import { teamMechanicSettings } from '@/composables/agentMechanicView'
+import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 import { buildImpactVariables, readImpactVariable, writeImpactVariable } from '@/composables/impactVariables'
 
@@ -77,9 +78,10 @@ describe('impactVariables（CC-53）', () => {
     const h = await setupHarness([{ agentId: '1171' }, { agentId: '1311' }, { agentId: '1211' }], { recommendedBuild: true })
     const settingMap = mapOf(h)
     const coverage = { fire: 0.6, ice: 0, electric: 0.4 }
-    const getAgent = (id: string) => h.catalog.getAgent(id)
+    const shares = teamReleaseShares(h.config.team, id => h.catalog.getAgent(id))
+    expect(shares).toEqual([{ namespace: 'burnice', label: '柏妮思异放' }])  // CC-55：模块声明替代写死 1171
 
-    const vars = buildImpactVariables(h.config.team, settingMap, getAgent, coverage)
+    const vars = buildImpactVariables(settingMap, shares, coverage)
     expect(vars).toEqual(inlineAllVars(h, settingMap, coverage))
     const ids = vars.map(v => v.id)
     expect(ids).toContain('setting.burnice.releaseShare:fire')
@@ -108,7 +110,9 @@ describe('impactVariables（CC-53）', () => {
   it('队伍无柏妮思 ⇒ 不出占比变量；覆盖率缺省也不崩', async () => {
     const h = await setupHarness([{ agentId: '1161' }, { agentId: '1311' }, { agentId: '1211' }])
     const settingMap = mapOf(h)
-    const vars = buildImpactVariables(h.config.team, settingMap, id => h.catalog.getAgent(id), { fire: 1 })
+    const shares = teamReleaseShares(h.config.team, id => h.catalog.getAgent(id))
+    expect(shares).toEqual([])
+    const vars = buildImpactVariables(settingMap, shares, { fire: 1 })
     expect(vars.some(v => v.id.includes('releaseShare'))).toBe(false)
     expect(vars).toEqual(inlineAllVars(h, settingMap, { fire: 1 }))
     expect(readImpactVariable('setting.burnice.releaseShare:fire', h.config, settingMap, undefined)).toBe(0)
