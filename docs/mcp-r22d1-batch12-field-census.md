@@ -2177,6 +2177,30 @@ ImpactChart.vue 的改动：
 3. 这是**计算路径**改动，必须做 perf 零差：改前改后各跑 `PERF_KEY_ALIAS=1 PERF_OUT=<out> npx vitest run --config .zc/perf/vitest.perf.config.ts dump`，`node /home/kaua/calc-arch/cls41.mjs a b` 应 DIFF 0；另写单测直调 `createConvergenceRoundInputs().expandExecutedToCounts`（或等价入口）对照原算式，伊德海莉 / 11号 / 普通角色各一；反向变异删钩子。
 4. 注意守卫：composables 不能按值 import mechanics/agents（经 `getAgentMechanic`，文件里已在用）；check-guards 若有 agentId 棘轮计数，清掉 2 处后可能需要把基线下调（看 check-guards 输出）。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）。
+### 5.69 CC-63 done：编排层平A兜底写死 → 模块钩子 expandBasicFill（lead-arena-0925c，2026-09-27 第 82 轮）
+
+**提交**：`51b1cb3`，改动 8 个文件（含棘轮基线 2 个脚本）；编年日志在 docs 提交：
+- `src/mechanics/types.ts`：`AgentMechanicModule` 新增 `expandBasicFill?(input: { fillSec; actionTimeOf(moveId): number | undefined }): ReadonlyArray<{ moveId; count }>`，**计算路径**。`actionTimeOf` 返回 undefined 表示技能表查不到——两个角色兜底口径不同（伊德海莉 `?? 0`、11号 `?? 1.828`），所以不能像 expandAxisAction 那样返回 0。
+- `src/mechanics/agents/yidhari.ts`：`expandBasicFill` = 蓄力循环，loopTime = 1 + actionTime(CHARGE_SLAM 1051007) + actionTime(BASIC_FOLLOW 1051003)，loops = loopTime > 0 ? fillSec / loopTime : 0，返回 [下砸, 平A] 各 loops（顺序与原 add 顺序一致）。
+- `src/mechanics/agents/soldier11.ts`：`expandBasicFill` = [A4_MOVE_ID 1041008 × fillSec / repT]，repT = actionTime ?? 1.828，`repT > 0` 守卫保留。
+- `src/composables/resourceCalc/roundInputs.ts`：`expandExecutedToCounts` 的 if/else 换成 `getAgentMechanic(fillerAgentId)?.expandBasicFill?.(…)`，未声明 ⇒ `add(slot, 'basic', fillSec)`。编排层已无 `fillerAgentId === '…'`。
+- 新测试 `src/composables/__tests__/expandBasicFillCc63.test.ts`：直调 `createConvergenceRoundInputs().expandExecutedToCounts`（不走整管线），对照基准照抄原 if/else：固定队 [1051, 1041, 1211] 键集合与数值精确相等；已有 executed 同 key 累加；catalog 全角色轮流放 0 槽逐个相等（查别名误报）。
+
+回退：`git revert 51b1cb3`。
+
+**验证**：
+- 24 条守卫、check-tokens、vue-tsc 均 0；新单测全过。
+- perf 零差（改前 HEAD 现跑基线 `dump-63a/rows-63a` vs 改后 `dump-63b/rows-63b`，`/home/kaua/calc-arch/`）：dump/rowsnap DIFF 0。
+- 反向变异：把 soldier11 的 repT 改成 99 → 单测变红；但 rowsnap 对基线**仍 DIFF 0** ⇒ perf 夹具里没有「11号 + 平A兜底」场景，这条路径只靠新单测兜底（已知盲区，本轮不补夹具；若以后补，加一个含 1041 且有 basicFillerSlot 的轴预设队）。已恢复 cmp 一致。
+- **棘轮下调（真清偿）**：check-guards 判据 2「agentId 分支」读数 3 → 1，按其提示同步改 `scripts/lib/agent-branch-ratchet.mjs` 的 `AGENT_BRANCH_BASELINE = 1` 与 `scripts/check-guards.mjs` 的 `RATCHET_BURNDOWN['agentId 分支'].frozen = 1`（两处必须同改，否则 checkGuards.test 红），编年记入 `docs/AGENT_ID_BURNDOWN_LOG.md`。剩余 1 = `anomalyPanels.ts` 的动态比较。首轮 verify 因棘轮未下调而红，下调后重跑通过。
+- `npm run verify` 通过：317 files / 3656 tests，24 guards（`/home/kaua/calc-arch/verify63.log`）。
+
+**下一步（CC-64，可直接开工）：`src/stores/config.ts` 角色写死**（已读，行号为本轮 HEAD）
+1. `:122-128 defaultBasicAttackTimeWeight(agent)`：蕾米埃尔 1581、薇薇安 1331 返回 0（按 `agent.id` **或** `agent.teammateBuffId` 判）。方案：模块声明 `defaultBasicAttackTimeWeight?: number`（两者声明 0），store 里按 id 与 teammateBuffId 各查一次模块（同 CC-55 teamReleaseShares 双查口径）；支援/防护职业返回 0 的通用分支保留。⚠ 先确认 store 能否 import `@/mechanics`（getAgentMechanic）——grep check-guards.mjs 里对 `src/stores` 的层级规则；不允许就把判定放进 `agentMechanicView.ts` 门面，store 调门面。
+2. `:388 getRemielleAdditionalState`：蕾米埃尔额外能力（同阵营计数等）整块在 store 里；体量大，先读完再决定是否并入模块 `additionalAbility` / specs 的 evalAdditionalAbility（store 已 import `@/specs/teamCondition`），可单独成卡 CC-64b。
+3. `:448` 波可娜 1351 C6 时禁用 `pulchra_extra_trap_followup`（防与 pulchra_cinema_6_trap_all 双计）：本质是 buff 数据互斥，方向是 teammate-buffs 数据加 `disabledAtCinema: 6` 或 `supersededBy` 字段，store 通用处理。数据结构改动，低优先级 CC-64c。
+- 其后：`TeamConfigPage.vue` 13 处角色专属表单项（§5.68 表）；CC-60（低）。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁。
 ## 附录：普查脚本 census.sh
 
 ```bash

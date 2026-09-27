@@ -583,3 +583,9 @@ A9 1391 / A10 1551 / A11 1481 / A12 1571）。零新契约（`AgentPanelInput` �
 「分支被直接删掉」这种形态**仍有判据**（删掉后标量为 `undefined` ⇒ 红），不是把护栏拆了。
 ⚠ 真管线判据（含「行级配对比例**真被消费端乘上**」——该点**只能**在真管线测，
 单测 `patchExecutions` 再断言字段值**证明不了**消费端乘了它）在 `damagePoolNightA.test.ts`。
+
+## 2026-09-27 CC-63：3 → 1（−2，真清偿）
+
+- 清掉 `src/composables/resourceCalc/roundInputs.ts#expandExecutedToCounts` 的局部 const 别名判定 `fillerAgentId === '1051'`（伊德海莉蓄力循环）与 `'1041'`（「11号」火力镇压），迁成模块钩子 `expandBasicFill`（`src/mechanics/agents/yidhari.ts` / `soldier11.ts`）。
+- `AGENT_BRANCH_BASELINE` 与 check-guards `RATCHET_BURNDOWN['agentId 分支'].frozen` 同步 3 → 1。剩余 1 = `anomalyPanels.ts` 动态比较。
+- perf 零差（dump / rowsnap DIFF 0），详见 `docs/mcp-r22d1-batch12-field-census.md` §5.69。
