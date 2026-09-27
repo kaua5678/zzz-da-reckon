@@ -246,7 +246,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -718,25 +718,21 @@ const allMoves = computed(() => {
       })
       out.push({ slot: c.slot, moveId: '1051024', label: '寒冰触手', actionTime: 0, remaining: Math.max(0, 9 - consumed), key: `${c.slot}:1051024:tentacle` })
     }
-    // 诺姆膛温换连携（自动全打 floor(膛温/80)，块为轴内标记/占位，不控制次数）
-    if (c.agentId === '1571') {
-      let consumed = 0
-      axes.value.forEach((ax, ai) => {
-        for (const a of ax.actions) if (a.slot === c.slot && a.moveId === 'norma-hat-chain') consumed += a.count * axisTimes(ai)
+    // CC-61：角色专属轴块经模块声明 axisExtraBlocks（现：诺姆转连携 norma-hat-chain / 希格莉德破阵连段 sigrid-pozhen；
+    // 原为两段写死 c.agentId 1571 / 1591 的 if 块，数值口径逐字搬进各自模块）
+    {
+      const exSkills = catalogStore.getAgentSkills(c.agentId)
+      const extraBlocks = agentAxisExtraBlocks(c.agentId, {
+        cinemaLevel: configStore.team[c.slot]?.cinemaLevel ?? 0,
+        actionTimeOf: mid => findMove(exSkills, mid)?.actionTime ?? 0,
       })
-      out.push({ slot: c.slot, moveId: 'norma-hat-chain', label: '诺姆转连携', actionTime: 0, remaining: Math.max(0, 9 - consumed), key: `${c.slot}:norma-hat-chain` })
-    }
-    // 希格莉德破阵连段：连携命中失衡敌人后长按连放敛枪式一至三段（免费，不耗闪能/喧响）。
-    // C6 加快 25% → 块时长 ×0.75；窗口时间门控自动决定「失衡内打了几段」（超窗段不吃易伤）。
-    if (c.agentId === '1591') {
-      const pzSkills = catalogStore.getAgentSkills(c.agentId)
-      const pzSum = ['1591007', '1591008', '1591022'].reduce((sum, mid) => sum + (findMove(pzSkills, mid)?.actionTime ?? 0), 0)
-      const pzScale = (configStore.team[c.slot]?.cinemaLevel ?? 0) >= 6 ? 0.75 : 1
-      let consumed = 0
-      axes.value.forEach((ax, ai) => {
-        for (const a of ax.actions) if (a.slot === c.slot && a.moveId === 'sigrid-pozhen') consumed += a.count * axisTimes(ai)
-      })
-      out.push({ slot: c.slot, moveId: 'sigrid-pozhen', label: '破阵连段', actionTime: pzSum * pzScale, remaining: Math.max(0, 9 - consumed), key: `${c.slot}:sigrid-pozhen` })
+      for (const blk of extraBlocks) {
+        let consumed = 0
+        axes.value.forEach((ax, ai) => {
+          for (const a of ax.actions) if (a.slot === c.slot && a.moveId === blk.moveId) consumed += a.count * axisTimes(ai)
+        })
+        out.push({ slot: c.slot, moveId: blk.moveId, label: blk.label, actionTime: blk.actionTime, remaining: Math.max(0, blk.quota - consumed), key: `${c.slot}:${blk.moveId}` })
+      }
     }
     // 连段（打包招式，如 单次/双次）：能量按打包口径一次扣（50/85），比裸强特（极寒重碾）的能量消耗更准
     const combos = agentCombos(c.agentId)  // CC-47：经编排层门面（判据 7）

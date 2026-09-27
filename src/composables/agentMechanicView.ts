@@ -166,3 +166,13 @@ export type AxisRageCombosDecl = NonNullable<AgentMechanicModule['axisRageCombos
 export function agentAxisRageCombos(agentId: string | null | undefined): AxisRageCombosDecl | undefined {
   return agentId ? getAgentMechanic(agentId)?.axisRageCombos : undefined
 }
+
+export type AxisExtraBlockDecl = ReturnType<NonNullable<AgentMechanicModule['axisExtraBlocks']>>[number]
+
+/** 轴编辑器角色专属块（CC-61）：模块声明 `axisExtraBlocks`；未声明 ⇒ []。原位置 StunAxisPage 写死 1571（诺姆转连携）/ 1591（破阵连段） */
+export function agentAxisExtraBlocks(
+  agentId: string | null | undefined,
+  input: { cinemaLevel: number; actionTimeOf: (moveId: string) => number },
+): readonly AxisExtraBlockDecl[] {
+  return (agentId ? getAgentMechanic(agentId)?.axisExtraBlocks?.(input) : undefined) ?? []
+}

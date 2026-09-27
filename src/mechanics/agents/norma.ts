@@ -590,6 +590,9 @@ export function computeNormaHatToChainCount(
 export const normaMechanic: AgentMechanicModule = {
   id: 'agent:norma',
   agentIds: [NORMA_AGENT_ID],
+  // CC-61：轴编辑器「诺姆转连携」标记块（展示层；膛温换连携自动全打 floor(膛温/80)，块只是轴内标记/占位）。
+  // 'norma-hat-chain' 同时被编排层 roundInputs#buildStackAxes 与 core/stunAxis 识别为 0 时长标记块。
+  axisExtraBlocks: () => [{ moveId: 'norma-hat-chain', label: '诺姆转连携', actionTime: 0, quota: 9 }],
   // 热启动精确键剔除（2026-09-26 CC-14d）：膛温换连携次数由本模块收敛后回写（C4 喧响注入），不是输入。
   feedbackCfgKeys: ['normaHatToChainCount'],
   name: '诺姆',

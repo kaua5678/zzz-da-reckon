@@ -642,6 +642,8 @@ export function expandSigridAxisAction(input: {
 export const sigridMechanic: AgentMechanicModule = {
   // CC-43f：轴内破阵伪块展开
   expandAxisAction: expandSigridAxisAction,
+  // CC-61：轴编辑器破阵连段块（展示层；行动时间口径与 expandAxisAction 同：三段 actionTime 和 × C6 0.75）
+  axisExtraBlocks: ({ cinemaLevel, actionTimeOf }) => [{ moveId: SIGRID_POZHEN_MOVE_ID, label: '破阵连段', actionTime: SIGRID_LANCE_SEGMENT_IDS.reduce((sum, mid) => sum + actionTimeOf(mid), 0) * (cinemaLevel >= 6 ? SIGRID_C6_POZHEN_TIME_FACTOR : 1), quota: 9 }],
   id: 'agent:sigrid',
   agentIds: [SIGRID_AGENT_ID],
   name: '希格莉德',

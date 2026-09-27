@@ -784,6 +784,12 @@ export interface AgentMechanicModule {
    */
   axisRageCombos?: { readonly primary: string; readonly didong: string }
   /**
+   * 轴编辑器「角色专属块」（CC-61；展示层专用，不参与计算）：在候选池里追加的伪块（moveId 由编排层 / core 各自识别）。
+   * `actionTimeOf(moveId)` 由展示层注入（查本槽技能表；mechanics 不能按值导入 stores）。quota = 候选块「可放」提示上限。
+   * 现实现：诺姆（norma-hat-chain「诺姆转连携」标记块，0 时长）、希格莉德（sigrid-pozhen「破阵连段」，三段行动时间和，C6 ×0.75）。
+   */
+  axisExtraBlocks?(input: { cinemaLevel: number; actionTimeOf: (moveId: string) => number }): ReadonlyArray<{ readonly moveId: string; readonly label: string; readonly actionTime: number; readonly quota: number }>
+  /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
    * 声明后，资源页「异放元素分配」卡与影响分析的占比变量会为本角色出控件。
