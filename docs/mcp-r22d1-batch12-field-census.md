@@ -1723,6 +1723,28 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 2. `buildTeammateBuffSourceContext` ×2（TeamConfigPage + ImpactChart）：同一函数，可在编排层包一层后两处一起迁，−2。
 3. 其余（calcPanel / applyTargetedStat / substatOptimizer / impactVars / allocateAxisWindows / agentSpecs）逐个评估，大多可以原样经 composables 转出。注意这种「转出」只是挪位置；要写清它是否真正降低了耦合，不要只为降读数而转出。
 4. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
+### 5.55 CC-48 done：判据 7 10→8（StunAxisPage 角色模块值导入 → 模块能力）（lead-arena-0925c，2026-09-27 第 68 轮）
+
+**提交**：`d98cfaf`。改 mechanics/types.ts（新能力 `axisEditorBlockMarks?(input: { axes, slot, cinemaLevel }) => Map<string, AxisEditorBlockMark>`、新声明 `axisMoveMeta?: Record<moveId, { tag, cost }>`、文件末尾新接口 `AxisEditorBlockMark { trigger, active, layers }`）；banyue.ts / yixuan.ts 挂实现（包装原 computeBanyueMingwangBlocks / computeYixuanNingshenBlocks，**原函数不动**）；composables/agentMechanicView.ts 新增 `agentAxisBlockMarks` / `agentAxisMoveMeta`；StunAxisPage.vue 删两行角色模块导入、三处调用改走门面；判据 7 基线与 frozen 10→8（plan 同步删掉这两项）；agentMechanicView.test.ts +2 条。回退：`git revert d98cfaf`。
+
+**决定与依据**
+- 统一标注形状 `{ trigger, active, layers }`：般岳映射为 active = layers > 0；仪玄 layers = 0。页面原来读般岳的 `info.layers`、仪玄的 `info.active`/`info.trigger`，字段都还在，页面逻辑一行不改。
+- 门面按「该槽的 agentId」派发（`configStore.team[banyueSlot]?.agentId`），不写角色字面量；槽位为 -1 时拿到 undefined，返回空 Map（与原函数在 slot -1 时结果一致）。
+- `axisMoveMeta` 的 tag 在通用类型里放宽为 string（原为 '怒' | '普'）。页面只做 `=== '怒'` 比较，不受影响。
+- 页面里 `c.agentId === '1471'` 这类**角色字面量**仍大量存在（横幅、泳道、banyueSlot/yixuanSlot 查找）。这不是判据 7 的度量面，本卡不动。页面级角色分支属于 UI 设计问题，要清需要单独立卡（把横幅/泳道也做成模块声明）。
+
+**验证**：判据 7 = 8/8，判据 24 = 0/0，24 guards；vue-tsc 0；新增单测把门面结果与原函数逐块对比（般岳 C0 / C6 满覆盖返回空、仪玄、未声明角色、空 id）；`npm run verify` 通过：305 文件 / 3633 条，24 guards（`/home/kaua/calc-arch/verify48.log`）；dump/rows 对 41 基线结果见 coord 第 68 轮（能力只供展示层用，预期零差）。
+
+**判据 7 剩余 8 处**
+- StunAxisPage.vue `allocateAxisWindows`（@/core/stunAxisStack）
+- TeamConfigPage.vue `calcPanel` / `applyTargetedStat` / `buildTeammateBuffSourceContext`
+- ImpactChart.vue `IMPACT_VARIABLES, readImpactVar, writeImpactVar` / `computeOptimalSubStats, getTemplate` / `buildTeammateBuffSourceContext`
+- MechanicsTablePage.vue `agentSpecs`
+
+**下一步**
+1. `buildTeammateBuffSourceContext` ×2（TeamConfigPage.vue:~876 与 ImpactChart.vue:~131）：先读两处调用的入参和用途。若两处都是「拿 configStore 构造 → 传给 calcPanel/面板计算」，就在编排层（例如 `src/composables/panelContext.ts`）提供 `teammateBuffSourceContextFor(configStore, slot)` 之类的函数，两处一起改，判据 7 8→6。注意这只是挪位置，要在 census 里写明它是否真正降低了耦合。
+2. `allocateAxisWindows`：useResourceCalc 已在用它，看能不能把「轴 → 各轴窗口数」作为 useResourceCalc 的 computed 暴露，页面直接读结果（真正降低耦合，−1）。
+3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
