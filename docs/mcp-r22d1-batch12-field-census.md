@@ -2054,6 +2054,39 @@ ImpactChart.vue 的改动：
 4. :268 按上表的 ⚠ 先核实，再决定改不改。
 5. 测试：对照基准写三种队伍（有琉音、没有琉音、琉音在槽 0/1/2），槽位和原 findIndex 相等；反向变异：删掉 liuyin.ts 的 `ownsPromoteVariantAxisBlocks`。⚠ 这个声明引擎也在用，删掉会让引擎测试变红，属于预期；恢复后要 cmp。
 - 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b 其他 dominant 异放角色开放占比调节（§5.62）、TimeChartsPage:531 隐患（§5.63）、`ResourceResultCard.vue:748` 维琳娜 1561：给腐蚀状态机补异放事件，是 components 层的角色专属数据补丁，要先读上下文再定。
+### 5.65 CC-58 done：StunAxisPage 转大块拥有者 → 已有声明 ownsPromoteVariantAxisBlocks（lead-arena-0925c，2026-09-27 第 78 轮）
+
+**提交**：`f7d1a1a`，改动 3 个文件：
+- `src/composables/agentMechanicView.ts`：新增门面 `agentOwnsPromoteVariantAxisBlocks(agentId)`，判定条件是 `getAgentMechanic(id)?.ownsPromoteVariantAxisBlocks === true`，和编排层 `roundInputs.ts#buildStackAxes:182` 逐字同口径；另新增 `teamPromoteVariantOwnerSlot(team)`，没有拥有者时返回 -1。
+- `src/views/StunAxisPage.vue`：
+  - `liuyinSlot` 改名为 `promoteOwnerSlot`，改走门面（原来有 2 处引用，已全部改完）；
+  - 「转大·60/90」块的条件从 `c.agentId !== '1481'` 改为 `!agentOwnsPromoteVariantAxisBlocks(c.agentId)`，仍然按 agentId 判断，所以没有「同角色重复上阵」的语义差异。
+- 新测试 `src/composables/__tests__/agentMechanicViewCc58.test.ts`：catalog 全部角色逐个比较，拥有者判定 == `id === '1481'`；另有琉音在槽 0、1、2 以及不在队四种队伍，槽位 == 原 findIndex。
+
+回退：`git revert f7d1a1a`。
+
+**拍板**：`:268 autoLiuyinLabel`（「有琉/无琉」）**保留写死 1481**，本卡不改。依据：它是伊德海莉章鱼体系自动轴 banner 上的**预设档位标签**。`stores/config.ts:520` 和 `roundInputs.ts:136` 的注释都写明，预设是「按槽位通配匹配、章 × 有琉 选档」，预设数据本身按琉音这个**角色**区分，而不是按「转大机制拥有者」区分。改成声明判断在语义上不对。以后正确的做法是让预设数据自带档位标签，banner 直接显示预设给的标签；做这一步时 hasYidhari/yidhariCinema（1051）会一起消掉。
+
+**验证**：24 条守卫全过，check-tokens 通过，vue-tsc 0 错误，新单测 2 条全过。反向变异：删掉 liuyin.ts 的 `ownsPromoteVariantAxisBlocks: true`，单测变红；已恢复，cmp 一致。`npm run verify` 通过：313 files / 3647 tests，24 guards（`/home/kaua/calc-arch/verify58.log`）。
+
+**StunAxisPage 剩余（更新 §5.64 表）**
+| 位置 | 状态 |
+|---|---|
+| :313/:699 琉音转大 | **CC-58 done** |
+| :268 有琉标签、:264/266 伊德海莉章节（1051） | 保留；方向是「预设数据自带档位标签」（见上），属于预设数据结构改动，单独立卡 CC-60，优先级低 |
+| :750 `isBanyueRageCombo = c.agentId === '1471' && (comboId === 'banyue-combo' ‖ 'banyue-combo-didong')` | **下一张 CC-59**：已 grep 确认 `banyue-combo*` 这些 id 只出现在 banyue.ts（combos 声明和注释）、specs/1471.json（注释）和 StunAxisPage 里，所以 agentId 那一臂是多余的。⚠ 但是 :359 也有同样的 comboId 判断（`act.moveId !== 'banyue-combo' && …`），更彻底的做法是让般岳模块声明「怒相连段 comboId 集合」，例如 `axisRageComboIds` 或并入 axisMoveMeta，页面两处都查声明，:757/:762 的 'banyue-combo' 字面量一起消掉 |
+| :297 banyueSlot（1471）、:311 yixuanSlot（1371） | 待定：「专属轴 lane」声明 |
+| :716 诺姆 1571、:725 希格莉德 1591 | 待定：「专属轴块」声明 |
+| :659 1371_c1_lightning、:~702 1051024 | 低优先级 |
+
+**下一步（CC-59，可直接开工）**
+1. 读 StunAxisPage.vue :350–365（:359 的明王统计）和 :740–775（怒相连段块的配额），再读 banyue.ts 里 `combos` 声明（grep `banyue-combo'`）和 `BANYUE_AXIS_MOVE_META`。
+2. 方案二选一，**建议选 A**：
+   - A：给 `AgentMechanicModule` 加 `axisRageCombos?: { readonly primary: string; readonly didong: string }`，展示层专用；般岳声明 `{ primary: 'banyue-combo', didong: 'banyue-combo-didong' }`；门面 `agentAxisRageCombos(agentId)`；页面 :359、:750、:757、:762 都改成读声明。
+   - B：只删掉 :750 的 agentId 臂，最小改动，但字面量还留着。
+3. 测试：对照基准照抄原来的判断；遍历全部角色和它们的全部 combo id（经 `agentCombos(id)` 取），逐个比较 isRageCombo；反向变异是删掉声明。
+- 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b 其他 dominant 异放角色开放占比调节（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁（§5.64）。
+- **TimeChartsPage:531 复核（本轮）**：那一行在 `loadCandidatePool` 里，localStorage 恢复候选池时排除 '1371'。注释写明这个池是「仪玄演变路径的队友」种子（:521-523）。所以排除仪玄自己是有意的，不算 bug；但如果 mainAgentId 可以切换，这里不跟着变。降级为「仅当时间图支持切主角时才处理」，已从隐患列表里移除。
 ## 附录：普查脚本 census.sh
 
 ```bash

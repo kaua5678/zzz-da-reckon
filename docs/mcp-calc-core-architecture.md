@@ -224,6 +224,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-55 | done | `8fec4fb` | 柏妮思异放占比声明化：新增模块声明 `AgentMechanicModule.releaseShare`（burnice 声明 namespace burnice）和门面 `agentMechanicView#teamReleaseShares`；impactVariables 与 ResourceUtilizationPage 里两份写死的 1171 已消掉 | census §5.62 |
 | CC-56 | done | `3978312` | 展示层写死角色 ID 普查（census §5.63 表）+ 首笔还款：ResourceUtilizationPage 两处写死 1581 改为模块声明 `teammateSplit`（新增）和 `excludeFromWindInfectionPick`（CC-42 已有），经门面 teamTeammateSplit / agentExcludedFromWindInfectionPick 查询 | census §5.63 |
 | CC-57 | done | `de68f86` | StunAxisPage 招式级写死 → 模块声明：`axisHiddenMoves`（伊德海莉 1051012）+ `axisMoveSuffix`（仪玄 1371022/026「·+30%失衡」），门面 agentAxisHiddenMoves / agentAxisMoveSuffix | census §5.64 |
+| CC-58 | done | `f7d1a1a` | StunAxisPage 转大块拥有者（原写死 1481×2）改走已有模块声明 `ownsPromoteVariantAxisBlocks`，与编排层 buildStackAxes 同源；门面 agentOwnsPromoteVariantAxisBlocks / teamPromoteVariantOwnerSlot | census §5.65 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |
