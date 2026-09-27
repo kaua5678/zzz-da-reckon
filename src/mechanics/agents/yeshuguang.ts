@@ -759,6 +759,8 @@ export const yeshuguangMechanic: AgentMechanicModule = {
   nextRoundFeedback: yeshuguangNextRoundFeedback,
   id: 'agent:yeshuguang',
   agentIds: [YESHUGUANG_ID],
+  // CC-80：终结技开启帷幕 1:1（原 mechanics/teamVeil.ts 写死集合）
+  teamVeilCount: ({ ultimateCount }) => ultimateCount,
   name: '叶瞬光·明心境',
   description: '白毛明心境：打满/两条提速短轴；满易伤；C6 明灯愿强化与 1500% 收尾附伤。',
   settings: yeshuguangSettings,

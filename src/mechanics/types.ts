@@ -970,6 +970,12 @@ export interface AgentMechanicModule {
    */
   giftedPolarAssaultCount?(char: CharacterResourceResult): number
   /**
+   * CC-80：本角色本轮**开启以太帷幕的次数**（`mechanics/teamVeil.ts#computeTeamVeilCountTotal` 对在队角色求和，
+   * 经收敛线程 teamVeilCountTotal 注入下一轮各 cfg）。入参已 floor 且 ≥ 0。
+   * 现实现：爱芮 1501 / 叶瞬光 1431（终结技 1:1）、千夏 1491（强特 1:1）、照 1341（霜寒开帷幕）。原为 teamVeil.ts 写死集合。
+   */
+  teamVeilCount?(input: { exCount: number; ultimateCount: number; combatTime: number }): number
+  /**
    * **本角色的轴块是否结束失衡窗口**（决算类招式；CC-39b 2026-09-27，设计稿
    * `docs/mcp-cc39b-stun-window-end.md`）。编排层经 `resourceCalc/helpers.ts#axisMoveEndsStunWindow`
    * 按轴块所在槽的角色派发：convergence 决算截断剩余失衡秒数 + roundInputs 给轴栈打 `endsStunWindow`。

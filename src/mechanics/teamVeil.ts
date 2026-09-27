@@ -18,13 +18,10 @@
  * 经 CalcRoundThreads.teamVeilCountTotal 收敛线程传递，下一轮 characters map 统一注入各 cfg。
  */
 import type { CharacterOperationConfig } from '@/types/resource'
-import { computeZhaoVeilCount } from './agents/zhao'
+import { getAgentMechanic } from '@/mechanics'
 
-/** 爱芮 / 叶瞬光终结技开启帷幕（1:1） */
-const ULT_OPEN_AGENT_IDS = new Set(['1501', '1431'])
-/** 千夏：泡泡糖轰炸（70 能量）→ 免费特别拍照技巧 → 1 帷幕 = 强特次数 1:1 */
-const EX_OPEN_AGENT_IDS = new Set(['1491'])
-const ZHAO_ID = '1341'
+// CC-80：各角色的帷幕开启口径改由模块能力 `teamVeilCount` 声明（aire / yeshuguang / qianxia / zhao），
+// 本文件只求和；原为此处写死的角色 id 集合 + 照的 id 分支。
 
 // @fact agent:1491/帷幕计数 决: 千夏开帷幕 = 泡泡糖轰炸(70能量)→免费特别拍照技巧→1帷幕，即 70能量=1帷幕；特别拍照技巧不耗能、不计入 exSpecialCount，故 teamVeilCountTotal 千夏贡献 = 强特次数(70能量/次) 1:1 | 据 用户@2026-09-02 | 验 src/mechanics/__tests__/teamVeil.test.ts | 锚 src/mechanics/teamVeil.ts#computeTeamVeilCountTotal | 信 确认
 
@@ -38,13 +35,7 @@ export function computeTeamVeilCountTotal(
   characters.forEach((mate, index) => {
     const ex = Math.max(0, Math.floor(exCounts[index] ?? 0))
     const ult = Math.max(0, Math.floor(ultimateCounts?.[index] ?? 0))
-    if (mate.agentId === ZHAO_ID) {
-      veilTotal += computeZhaoVeilCount(ex, ult, combatTime)
-    } else if (ULT_OPEN_AGENT_IDS.has(mate.agentId)) {
-      veilTotal += ult
-    } else if (EX_OPEN_AGENT_IDS.has(mate.agentId)) {
-      veilTotal += ex
-    }
+    veilTotal += (mate.agentId ? getAgentMechanic(mate.agentId)?.teamVeilCount?.({ exCount: ex, ultimateCount: ult, combatTime }) : 0) ?? 0
   })
   return veilTotal
 }

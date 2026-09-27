@@ -291,6 +291,8 @@ function applyQianxiaPanel({ cinemaLevel, panel, settings }: AgentPanelInput): v
 export const qianxiaMechanic: AgentMechanicModule = {
   id: 'agent:qianxia',
   agentIds: [QIANXIA_AGENT_ID],
+  // CC-80：泡泡糖轰炸 → 免费特别拍照技巧 → 1 帷幕 = 强特次数 1:1（原 mechanics/teamVeil.ts 写死集合）
+  teamVeilCount: ({ exCount }) => exCount,
   name: '千夏',
   description: '进场回能15（额外能力门控）；猫的凝视触发（强攻150%/异常240%倍率+必暴，影画2倍率提升）；磨爪器循环+泡泡后场追击；影画6 潜心创作自身必暴/暴伤+全队凝视伤害+50%；拐力主体在 teammate-buffs 1491 组。',
   settings: [

@@ -214,6 +214,8 @@ function buildResourceSections({ result }: AgentResourceSectionsInput) {
 export const zhaoMechanic: AgentMechanicModule = {
   id: 'agent:zhao',
   agentIds: [ZHAO_ID],
+  // CC-80：霜寒值满开帷幕（原 mechanics/teamVeil.ts 按 id 分支调 computeZhaoVeilCount）
+  teamVeilCount: ({ exCount, ultimateCount, combatTime }) => computeZhaoVeilCount(exCount, ultimateCount, combatTime),
   name: '照·最佳同事',
   description: '初始生命转暴击、影画2自身增攻、影画4开帷幕喧响与指定招式暴伤、霜寒值循环开帷幕、最终裁决蓄力生命附伤（影画6×1.4）。',
   applyPanel,

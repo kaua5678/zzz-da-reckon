@@ -245,6 +245,8 @@ function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
 export const aireMechanic: AgentMechanicModule = {
   id: 'agent:aire',
   agentIds: [AIRE_ID],
+  // CC-80：终结技开启帷幕 1:1（原 mechanics/teamVeil.ts 写死集合）
+  teamVeilCount: ({ ultimateCount }) => ultimateCount,
   name: '爱芮·控场核心',
   description: '异常精通+90、影画1以太积蓄抗性无视+异放暴击、影画2无视防御、影画4异放回能/喧响、影画6进场喧响+强化直伤；核心异放已按异常比例结算。',
   settings: [
