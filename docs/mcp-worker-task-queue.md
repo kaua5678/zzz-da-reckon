@@ -164,6 +164,12 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
   - `teamVeil.ts#computeTeamVeilCountTotal` 改为 `getAgentMechanic(mate.agentId)?.teamVeilCount?.(…) ?? 0` 求和；**先查循环依赖**：teamVeil.ts 在 mechanics 目录里，从 `@/mechanics` index 值导入可能成环（index 若 import teamVeil）——成环就让 convergence 传入 resolver，或把派发挪进 convergence（编排层可按值导入 @/mechanics）。
   - 测试：catalog 全角色 × ex/ult 若干组对照原集合实现（逐字复刻进测试）；源码锁 teamVeil.ts 无四位 id；反向变异删一个声明。跑 perf 零差（帷幕进喧响/伤害）。写 census §5.87。
   - 其后 CC-81（低，见 §5.86）。
+- **CC-80** done `8b8564d`（帷幕来源改为模块能力 teamVeilCount，§5.87）。下一张 **CC-81（低）：substatOptimizer 副词条模板移出 core**：
+  - `src/core/substatOptimizer.ts` 的 AGENT_TEMPLATES（约 :183-260）按 id 存了 8 个角色（1401/1581/1261/1561/1171/1451/1621/1221）的模板；`getTemplate`（约 :261）先按 id 查表，查不到再按职业兜底。
+  - 方案 A：在 types.ts 加 `substatTemplate?`，由各模块声明，getTemplate 改为查 `getAgentMechanic(agent.id)?.substatTemplate`。**先查** core 能不能按值 import `@/mechanics`（§5.70 记录过 core/resource/helpers.ts 有先例），还要跑 check-guards。
+  - 方案 B（A 不行时用）：把表搬到 `src/data/substatTemplates.ts`，core 从 data 导入。
+  - 1621、1221 可能没有模块，用 grep `agentIds: \['1621'\]` 核实；没有模块的只能走 B。
+  - 测试：8 个角色加若干非表内角色，比对 getTemplate 前后深相等；加源码锁；做反向变异。不涉及伤害管线，但仍要跑一次 perf 零差，确认副词条优化不影响 dump。写 census §5.88。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。

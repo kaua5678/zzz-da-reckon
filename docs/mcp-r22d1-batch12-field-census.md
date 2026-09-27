@@ -2488,3 +2488,21 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - **新发现 ①（计算路径，建议做）`src/mechanics/teamVeil.ts:24-27`**：`computeTeamVeilCountTotal` 用写死集合判帷幕来源——爱芮 1501 / 叶瞬光 1431 按大招次数、千夏 1491 按强特次数、照 1341 走 `computeZhaoVeilCount`。唯一调用方 `convergence.ts:947`。新增帷幕角色必须改这个非模块文件 ⇒ 开卡 CC-80。
 - **新发现 ②（core 里的角色数据表，低）`src/core/substatOptimizer.ts` AGENT_TEMPLATES**：8 个角色（1401/1581/1261/1561/1171/1451/1621/1221）的副词条模板，`getTemplate(agent)` 先按 `agent.id` 查表、再按职业兜底。是查表不是分支，core agentId 棘轮不计；但新角色要改 core。开卡 CC-81（低）：模板搬进模块声明 `substatTemplate`，getTemplate 改查 `getAgentMechanic(agent.id)?.substatTemplate`——**先查 core 能否值导入 `@/mechanics`**（core/resource/helpers.ts 已按值导入过，§5.70 记录），不行就搬到 `src/data/substatTemplates.ts`。
 
+### 5.87 CC-80 done：帷幕来源写死 4 个角色 id → 模块能力 teamVeilCount（lead-arena-0925c，2026-09-27 第 99 轮）
+
+**CC-80 `8b8564d`**
+- `mechanics/types.ts` 新增可选 `teamVeilCount?(input: { exCount, ultimateCount, combatTime }): number`。入参由调用方先做 floor 和取非负，与原实现一致。
+- 声明：`aire.ts`(1501)、`yeshuguang.ts`(1431) 返回 ultimateCount；`qianxia.ts`(1491) 返回 exCount；`zhao.ts`(1341) 返回 `computeZhaoVeilCount(...)`。
+- `teamVeil.ts#computeTeamVeilCountTotal` 删掉写死的 id 集合和对 zhao 的 import，改为对 `getAgentMechanic(agentId)?.teamVeilCount?.(…) ?? 0` 求和。函数名和 @fact 注释保留。循环依赖已核实：只有 convergence 和测试 import teamVeil，mechanics index 没有 import 它，所以不成环。
+- 测试 `teamVeilCc80.test.ts`（3 条）：
+  - 声明者集合恰好是 1341/1431/1491/1501；
+  - catalog 全角色单人队加 4 组多人队，在多组 ex/ult/combatTime 下，与逐字复刻的原实现逐值相等；
+  - 源码锁：teamVeil.ts 里没有四位角色 id。
+  - 反向验证：删掉千夏的声明后 2 条变红，已恢复。
+- 验证：
+  - perf 零差 dump 和 rows 都是 DIFF 0，语料覆盖 1341/1431/1491/1501 的队伍，见 `/home/kaua/calc-arch/z80.log`；
+  - vue-tsc 0；
+  - verify 335 files / 3698 tests，EXIT 0。
+- 回退：`git revert 8b8564d`。
+- 以后新增帷幕角色，只需在该角色模块里声明 `teamVeilCount`，不用再改 teamVeil.ts。
+
