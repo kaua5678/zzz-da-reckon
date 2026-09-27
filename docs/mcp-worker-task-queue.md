@@ -69,24 +69,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 121 轮（2026-09-27，两个文档提交）
+### 第 122 轮（2026-09-27，一个文档提交，提交号见 git log 中的「docs(R5): 第 2 刀」）
 
-- **做到哪**（本轮一个文档提交，提交号见 `docs/mcp-calc-core-architecture.md` 卡表 R8 行）：
-  - **W1、W2 撤回**。读码发现：判据 12/22/23/24 的基线已经是 0，改成「≤」没有区别；非零的等号基线（agent 分支 1、展示层越层 1、check-tokens 各项）有实证价值。手册 §4 行数条目早已达标且只报不红；id 密度判据有实测依据，成本约为零。依据写在 `docs/mcp-working-model.md` §2.5。
-  - **W3 完成**：本文件从 427 行压到约 110 行；census 头部加了冻结横幅。
-  - **W4 完成**：AGENTS.md 没有成段的分工规则，不用改；本文件头部的「卡只由主代理写、工人不改」认领纪律已改为指向 working-model。
-  - **R6 第 1 步 v1 完成**：新文档 `docs/ARCHITECTURE-OVERVIEW.md`，README §6 共 61 份。测量脚本在 `.zc/perf/archmap.mjs`。
-  - **R5 第 2 刀部分完成**：Z2 已核无差异（冗余字段），Z6 已核为潜在差异，见账本 §7 D1、D2。
+- **做到哪**：
+  - R5 第 2 刀又核完 3 项，写进账本 `docs/mcp-r5-spec-impl-reconciliation.md` §7：
+    - **D3**（Z4 stackGroup）：默认无差异；界面覆盖率滑块没有按组联动，属于潜在差异；
+    - **D4**（K0 basis）：零读取，但引擎的批次规则隐式实现了它，无差异；建议加取值校验；
+    - **D5**（Z5 基础属性规则）：数据内部不一致，引擎按逐件 `baseStat` 实现，lead 拍板以逐件字段为准；
+    - **D6**（Z1 damageBasis）：导入脚本合成的字段，引擎按 specialty 决定；`DirectDamageInput.damageBasis` 是死参数；新增 R6 候选 C5。
+  - 更正了 working-model §2.5 的错误：手册 §4 行数**有单测硬断言**（`checkGuards.test.ts:1797`），净增 0 仍然有效。
+  - 第 121 轮的产出：`7f568db`（W 系列收尾）、`2aff02f`（架构全景 v1 + D1/D2）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 2 刀续：Z4 `stackGroup`**
-     1. 用 `node -e` 列出 catalog 中带 stackGroup 的 23 条效果，按组聚合，看同组是哪些音擎或驱动盘、各自的 stat。
-     2. `timeout 40 git grep -n stackGroup -- src` 确认零读取。
-     3. 读 `core/buff.ts` 的 applyBuffs、applyEffect（stacked 分支）和 `core/inCombatBuffs.ts`，判断同组效果同时生效时会不会重复叠加。
-     4. 写成账本 §7 D3。
-  2. **R5：K0 `basis`**：从 census §5.103（CC-96）的结论起步，写成 D4，并标明是否有数值影响、影响哪几个驱动盘。
-  3. **R5：Z5 基础属性规则**：`baseAttackRule` 等规则与 `core/panel.ts:158 calcBasePanel` 逐项对照。
-  4. **R6 第 1 步续**：做全景 §6 的 4 项（生命周期核对、A4 计算 / 胶水分类、展示层 fan-in、spec 与 TS 双实现）。
-  5. 然后是 **R6 第 2 步**：三类清单，每条写做 / 不做。候选 C1–C4 已在全景 §5。
+  1. **R5 Z3 `durationSeconds`**（80 处）：确认引擎用 coverage 代替持续时间是否有依据（看 coverage 的默认值来源），写成 D7。
+  2. **R5 Z7–Z13**：逐条核实，其中 Z12、Z13 很可能归到 D / M 类。
+  3. **R5 字段归类**：215 种字段按账本 §2 归 S / D / M。
+  4. **R5 第 3 刀**：账本 §4 的「读了但语义不同」排查，从 `mode`、`condition` 做起。
+  5. **R6 第 1 步续**：全景 §6 的 4 项；然后是 **R6 第 2 步**（清单，候选 C1–C5 在全景 §5）。
 - **未决项**：
   - CC-99（spec 原语 G1/G3 + 迁移潘引壶）排在 R6 清单之后重新评估，可能被清单吸收；
   - CC-97（校准原子）暂缓；

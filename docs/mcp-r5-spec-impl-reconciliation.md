@@ -47,11 +47,11 @@
 
 | # | 字段 | 所在 | catalog 出现次数 | 访问 / 提及 | 疑点（待核） | 状态 |
 |---|---|---|---|---|---|---|
-| Z1 | `damageBasis` | agentSkills 的倍率行 | 2490 | 0 / 4 | 伤害按什么属性结算（攻击 / 生命 / 防御 / 贯穿力等）。引擎若按别的来源判定，就要核对两者是否一致 | 待核 |
+| Z1 | `damageBasis` | agentSkills 的倍率行 | 2490 | 0 / 4 | 伤害按什么属性结算（攻击 / 生命 / 防御 / 贯穿力等）。引擎若按别的来源判定，就要核对两者是否一致 | **已核：导入合成字段；引擎按 specialty 决定，1611 一致，命破 5 人与字段值不符但字段不是规格**，见 §7 D6 |
 | Z2 | `appliesToOutOfCombatPanel` | 音擎 selfBuff / teamBuff | 95 | 0 / 0 | 这条 buff 是否计入局外面板。引擎完全不读，靠别的逻辑决定，**与 basis 问题同源** | **已核：无差异（冗余字段）**，见 §7 D1 |
 | Z3 | `durationSeconds` | 音擎 / 驱动盘 / Boss 效果 | 80 | 1 / 3（只有 piper.ts） | 持续时间。引擎可能用 `coverage`（覆盖率）代替。要确认两者口径是否一致，还是持续时间被忽略了 | 待核 |
-| Z4 | `stackGroup` | 效果 | 23 | 0 / 0 | 同组效果是否互斥或共享层数。**完全不读就可能重复叠加** | 待核（优先） |
-| Z5 | `statRules.calculation.baseAttackRule` / `baseHpRule` / `baseDefRule` | statRules | 各 1 | 0 / 0 | 基础属性的计算规则。引擎可能自有实现，要对照规则文本 | 待核 |
+| Z4 | `stackGroup` | 效果 | 23 | 0 / 0 | 同组效果是否互斥或共享层数。**完全不读就可能重复叠加** | **已核：默认无差异，UI 有潜在差异**，见 §7 D3 |
+| Z5 | `statRules.calculation.baseAttackRule` / `baseHpRule` / `baseDefRule` | statRules | 各 1 | 0 / 0 | 基础属性的计算规则。引擎可能自有实现，要对照规则文本 | **已核：数据内部不一致，引擎按逐件字段实现**，见 §7 D5 |
 | Z6 | `statRules.calculation.outOfCombatEffectFilter` | statRules | 1 | 0 / 0 | 哪些效果计入局外面板的过滤规则。**与 Z2、basis 是同一个问题** | **已核：当前数据等价，潜在差异**，见 §7 D2 |
 | Z7 | `exclusiveGroup` | 驱动盘 teamBuff | 1 | 0 / 0 | 互斥组。与 Z4 类似 | 待核 |
 | Z8 | `settlementType` | 音擎 target | 4 | 0 / 1 | 结算类型 | 待核 |
@@ -60,7 +60,7 @@
 | Z11 | `attackTypes` | agents | 62 | 0 / 0 | 攻击类型（斩击、打击等）。影响某些条件效果 | 待核 |
 | Z12 | `relatedAgentId` | 音擎 | 5 | 0 / 0 | 专属音擎对应的角色。可能只影响推荐，不影响计算 | 待核（可能是 D / M 类） |
 | Z13 | `statRules.statDisplay.*SheerDmg` / `*CritDmg` 等 | statRules | 各 1 | 0 / 1–5 | 名字像展示配置，但字段名是属性名。要确认引擎有没有对应的属性 | 待核（可能是 D 类） |
-| K0 | `basis` | 音擎 / 驱动盘效果 | 22 | 6 / 11（同名假非零） | **已知差异**：CC-96 确认引擎不读 catalog 效果的 basis，按首次触达时的面板值累积。R5 原文把它列为起点 | 已知，待写修复卡 |
+| K0 | `basis` | 音擎 / 驱动盘效果 | 22 | 6 / 11（同名假非零） | **已知差异**：CC-96 确认引擎不读 catalog 效果的 basis，按首次触达时的面板值累积。R5 原文把它列为起点 | **已核：零读取，但引擎的批次规则隐式实现了该语义，无差异**，见 §7 D4 |
 
 **第一批优先核实**：Z4、Z6、Z2 加 K0。它们都直接影响面板数值，而且 Z2、Z6、K0 很可能是同一个根因（「局外 / 局内面板」的界定没有按数据规格实现），可以合并成一张卡。
 
@@ -91,7 +91,7 @@
 ## 6. 进度账本
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
-- [~] 第 2 刀（进行中，第 121 轮完成 Z2、Z6，见 §7；剩余 Z4、K0 和字段归类）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
+- [~] 第 2 刀（进行中：第 121 轮完成 Z2、Z6；第 122 轮完成 Z4、K0、Z5、Z1，见 §7；剩余 Z3、Z7–Z13 和字段归类）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
 - [ ] 第 3 刀：核实其余 Z 类，并按 §4 做 S 类字段的取值 × 分支对照。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
@@ -113,3 +113,68 @@
 - **影响面**：目前为零；将来数据若新增「局外 + 条件」的效果，会被错误计入局外面板。
 - **建议修法**：R6 候选 C4，局外判定改为读这条规则，同时判断 condition，当前数据下零差。优先级低；R5 第 4 刀转卡时排在有数值影响的条目之后。
 - 同批的 `baseAttackRule`（`agent.atkBase + wEngine.atkBase`）、`baseHpRule`、`baseDefRule`（Z5）还没有和 `calcBasePanel`（`core/panel.ts:158`）逐项对照，第 2 刀续做。
+
+### D3 `stackGroup`：零读取；层数不会错，但覆盖率滑块没有按组联动 → 潜在差异（UI 层）
+- **数据怎么写**：19 个组，共 23 条效果。15 个组只有 1 个成员（此时 stackGroup 只是标签）。多成员组有 4 个：
+  - 青溟笼舍 14137 `qingming_companion`：以太伤害、两条以太贯穿伤害，都是 vps 8/10/10，max 2，def 2；
+  - 焰心桂冠 14116 `effect_wiki_951_team_crit_dmg_element_values`：冰暴伤、火暴伤，vps 1.5，max 20，def 20；
+  - 淬锋钳刺 14126 `hunting_intent`：物理伤害（叠层，max 3，def 3），加上 `…_anomaly_buildup_efficiency_full_stack`（固定值 40，**满层时**才生效）；
+  - 如影相随 32900 `shadow_harmony_stacks`：攻击力%、暴击率，vps 4，max 3，def 3。
+  - 语义：同组效果共享同一个叠层状态。
+- **引擎怎么算**：
+  - `core/buff.ts:648`：`stacks = effect.defaultStacks ?? effect.maxStacks ?? 1`，**按单个效果**取数据里写死的层数，运行时没有层数输入。
+  - 覆盖率按 `effect.id` 存：`core/buff.ts:811` `coverageMap.get(e.id)`；来源 `stores/config.ts:954` `setWEngineEffectCoverage(effectId, …)`。
+  - 界面 `views/TeamConfigPage.vue:1153` 规定 `hasCoverage = type === 'stacked' || !!coverage`，所以**每个叠层效果各有一个滑块**（`:372`）。
+- **差在哪**：
+  - 层数：同组成员的 defaultStacks 相同，层数不能在运行时调，**不会出现组内层数不一致**。
+  - 淬锋钳刺的「满层才生效」：同组叠层效果默认就是满层（def 3 = max 3），所以默认计算与规格一致。
+  - **覆盖率**：同组成员各有一个独立滑块，用户可以调出规格上不可能出现的组合，例如青溟笼舍「以太伤害 100%、以太贯穿 0%」。
+- **影响面**：默认配置（覆盖率全是 100%）零影响。只有用户单独拖动组内某个滑块时才会出错，涉及 4 个多成员组共 9 条效果。
+- **建议修法**（R5 第 4 刀转卡，零差）：覆盖率的键改成 `stackGroup ?? effect.id`，或者在 `setWEngineEffectCoverage` 里联动同组成员；界面每组只显示一个滑块。默认值不变，所以零差。驱动盘（如影相随）走 `mergeTeamDiscEffectCoverages`（`resourceCalc/panelPhases.ts:720`），这条路径的键还没有核实，转卡时一并查。
+
+### D4 `basis`（K0）：零读取，但引擎的批次规则隐式实现了它 → 无差异，有隐性耦合
+- **数据怎么写**：22 处，全部在局内组里：
+  - 音擎 selfBuff 9 处（攻击力%），scope 全是 `inCombat`；
+  - 音擎 teamBuff 6 处（攻击力% 4 处、生命值% 2 处），scope 全是 `inCombat`；
+  - 驱动盘 4 件套 selfBuff 7 处（攻击力%），scope 未写，引擎按局内处理。
+  - 取值：20 处 `outOfCombatAtk`，2 处 `outOfCombatHp`。
+- **引擎怎么算**：
+  - `core/buff.ts:193–215`：在一次 `applyBuffs` 批次内，攻击 / 生命 / 防御的百分比先汇总，再乘在**批次开始时**的面板值上（`getCoreAccumState` 首次触达时记下基底），最后加固定值；`finalizeCoreStatBonuses` 在批次结束时清掉累计状态。
+  - `core/panel.ts:338`：局内批次是 `applyBuffs(outOfCombat, buffs.inCombat, …)`，基底就是局外面板。
+  - 队友 buff 经 `collectTeammateBuffs` 并入同一个 `collectAllBuffs`（`core/buff.ts:502–585`），也在这个批次内。
+  - `resourceCalc/panelPhases.ts` 里 applyEffect / applyStat 只出现在注释中，**没有**在 calcPanel 之外另开批次。
+- **差在哪**：没有行为差异。22 处的基底都是局外攻击力或局外生命值，与数据一致。
+- **隐性耦合**：一致性依赖两个没有写明的不变量：①所有局内效果在同一个批次里施加；②数据里 basis 只出现 `outOfCombatAtk` 和 `outOfCombatHp`。一旦出现别的取值（例如 CC-96 之前那 4 处 `baseAtk`），引擎会**静默忽略**。
+- **建议**（R5 第 4 刀转卡，零差，低成本）：加一条数据校验（`validate-data` 或单测），断言 catalog 里 basis 的取值集合 ⊆ {`outOfCombatAtk`, `outOfCombatHp`}，出现新值就报错，提醒先让引擎支持。**不改引擎。**
+
+### D5 基础属性规则（Z5）：数据内部不一致，引擎按逐件字段实现 → 不是引擎问题
+- **数据怎么写**：
+  - `statRules.calculation`：`baseAttackRule = "agent.atkBase + wEngine.atkBase"`、`baseHpRule = "agent.hpBase"`、`baseDefRule = "agent.defBase"`，也就是音擎基础值只加到攻击力上。
+  - 但有 3 件音擎的 `level60.baseStat = "def"`：猩红渴望 14161（431）、喵运当头 13017（356）、血髓秘匣 13021（356）。它们的基础值是防御，字段名却仍然叫 `atkBase`。
+- **引擎怎么算**：`core/panel.ts:178–183` 按 `wEngine.level60.baseStat ?? 'atk'`，把音擎基础值加到对应属性上；这 3 件加到防御。
+- **差在哪**：通用规则文本没有覆盖「防御基础值音擎」，与逐件字段冲突。
+- **lead 拍板（可逆）**：以逐件的 `baseStat` 为准。依据：字段级数据比通用规则文本更具体，而且 `baseStat` 是后来随新音擎加入的，规则文本显然没有随之更新。**不改引擎，不开修复卡。**
+- **回退点**：如果日后确认应以通用规则为准，把 `core/panel.ts:179–182` 改成只加到攻击力即可。这会改变 3 件音擎的面板，需要单独开卡说明数值变动。
+- **给用户的一条信息**：statRules 的 `baseDefRule` / `baseHpRule` 文本已经落后于数据，建议在数据导入脚本里补上 baseStat 的说明。
+
+### D6 `damageBasis`（Z1）：导入脚本合成的字段，引擎按 specialty 决定伤害基底 → 不是引擎差异；字段本身有误导性
+- **数据怎么写**：agentSkills 各行共 2490 处，其中 `atk` 2465 处，`def` 25 处，**def 全部属于克拉蕾 1611**。
+- **字段来源（关键）**：这个字段是**导入脚本合成的**，不是源数据给出的规格：
+  - `scripts/import-nanoka-missing.mjs:116–117` 无条件写 `damageBasis: 'atk'`；
+  - `scripts/import-nanoka-beta-agent.mjs:223` 也写死 `'atk'`；
+  - `scripts/import-nanoka-v12.mjs:128` 只在 `isSharp`（1611）时写 `'def'`；
+  - `data/recordings/` 只有 4 个旧文件，62 个角色的主体数据不经过它。
+  - 所以 R5 的前提「数据可信」适用于源数据（nanoka / gachabase 原文），**不适用于导入脚本填的默认值**。
+- **引擎怎么算**：
+  - `core/damage.ts:254–258` `resolveSpecialDamageProfile(agent)`：`specialty === 'rupture'` → 贯穿力基底（攻击×0.3 + 生命×0.1 + 贯穿力提升，`calcPenetrationPower`）；`sharpen` / 锋御 → 防御基底；其余 → 攻击基底。
+  - `composables/resourceCalc/damagePool.ts:213` 把 profile 传给 `calcDirectDamage`。
+  - **`DirectDamageInput.damageBasis`（`core/damage.ts:265`）是死参数**：声明了但函数内部从不读取；`damagePool.ts:189` 传的是写死的 `'atk'`。
+- **逐人比对**：
+  - 锋御：只有 1611 一个角色，按 specialty 得到防御基底，与数据里 25 行 `def` 完全重合，**一致**。
+  - 命破 5 人（1051 伊德海莉、1371 仪玄、1441 振斗、1471 般岳、1531 星徽·比利）：数据写 `atk`，引擎用贯穿力。由于 `atk` 是导入默认值，**不构成规格冲突**，引擎按游戏的命破规则（贯穿力）计算。
+  - 其余 56 人：`atk`，一致。
+- **影响面**：无数值影响。问题在于同一件事有两个来源：字段说一套，引擎按 specialty 算另一套。以后的维护者读字段会被误导，比如把命破角色的伤害当成按攻击力结算。
+- **建议**（R6 候选 C5，「可归一」）：二选一。
+  - (a) 引擎改读 damageBasis，导入脚本按 specialty 填写（命破填 `sheerForce`）；
+  - (b) 删掉这个字段和 `DirectDamageInput.damageBasis` 死参数，只保留 specialty 这一个来源。
+  - lead 倾向 (b)：数据源本身不提供逐行基底，specialty 才是真实的决定因素，删掉更简单。零差。

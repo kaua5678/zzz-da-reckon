@@ -90,6 +90,7 @@ core/inCombatBuffs.ts  collectInCombatTeamBuffs   局内「给全队 / 队友」
 | C1 core 改为 import `@/mechanics/registry`，注册放到应用入口和测试 setup（A1） | 可结构化 | 去掉 core ↔ mechanics 模块环，core 单测不再加载 62 个模块 | 中：所有依赖「import index 即注册」的测试都要补 setup；需要确认 vite 的 tree-shaking 不会丢掉注册副作用 |
 | C2 `stores/config.ts` 里的引擎调用上移到编排层（A2） | 可归一 | 状态层只存状态，计算入口集中在编排层 | 中：store 的 action 被多个页面调用 |
 | C3 删除 catalog 冗余字段 `appliesToOutOfCombatPanel`，或在导入脚本里校验它和 scope 一致 | 冗余可简化 | 与 scope 100% 同义，引擎不读（R5 Z2） | 低：数据是爬取产物，改导入脚本而不是手改 JSON |
+| C5 伤害基底只保留一个来源：删掉 agentSkills 行上的 `damageBasis`（导入合成字段）和 `DirectDamageInput.damageBasis` 死参数，只保留 `resolveSpecialDamageProfile` 按 specialty 决定；或者反过来让引擎读字段（R5 D6） | 可归一 | 目前字段与引擎各说一套，命破 5 人的字段值（atk）与实际计算（贯穿力）不符，会误导维护者 | 低：零差；要同步改 3 个导入脚本 |
 | C4 局外判定改为读 `statRules.calculation.outOfCombatEffectFilter`，不再在 buff.ts 里写死 `scope === 'outOfCombat'` | 可结构化 | 规则数据化，同时补上 condition 条件（R5 Z6 的潜在差异） | 低：当前数据下零差 |
 
 ## 6. v1 还没画到的部分（下一轮续）
