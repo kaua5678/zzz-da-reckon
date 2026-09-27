@@ -170,6 +170,12 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
   - 方案 B（A 不行时用）：把表搬到 `src/data/substatTemplates.ts`，core 从 data 导入。
   - 1621、1221 可能没有模块，用 grep `agentIds: \['1621'\]` 核实；没有模块的只能走 B。
   - 测试：8 个角色加若干非表内角色，比对 getTemplate 前后深相等；加源码锁；做反向变异。不涉及伤害管线，但仍要跑一次 perf 零差，确认副词条优化不影响 dump。写 census §5.88。
+- **CC-81** done `f338b47`（副词条模板改为模块声明 substatTemplate，§5.88）。§5.86 复查发现的两处都已完成。
+  - **下一步（lead 自选，写到可以直接开工）：CC-82 复查剩余的角色 id 字面量。**
+    - 命令：`node scripts/report-agent-identity.mjs --md`，再加 §5.86 那条 grep（去掉测试、`src/mechanics/agents/`、`src/specs/` 和纯注释行）。
+    - 把结果对照 §5.86 的分类表：已裁定不动的（数据表、ADDITIONAL_GATE_BUFFS、UI 默认值、抽卡规划）直接跳过；**出现新的计算路径集合**就照 CC-80 的套路开卡（模块能力 + 与逐字复刻的旧实现对照 + 源码锁 + 反向变异 + perf 零差）。
+    - 若没有新增，就在 census 写 §5.89「复查无新增」，并把队列转到暂缓的 CC-11b，或 check-guards 棘轮 burn-down 里到期的项（`npm run zc -- status` 会点名）。
+  - 已知坑：`zc done` / `release` 要带 `ZC_LANE=<本会话 lane>`（scripts/zc.mjs:629 依次取 --lane、ZC_LANE、DSH_SESSION_ID，都没有就记成 `pid-xxxx`，第 99 轮发生过）；`git commit` 要带 `-- <路径>`（AGENTS 规则 13）。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。

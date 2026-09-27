@@ -2506,3 +2506,26 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 回退：`git revert 8b8564d`。
 - 以后新增帷幕角色，只需在该角色模块里声明 `teamVeilCount`，不用再改 teamVeil.ts。
 
+### 5.88 CC-81 done：core/substatOptimizer.ts 的 AGENT_TEMPLATES 角色特例移到模块声明 substatTemplate（lead-arena-0925c，2026-09-27 第 100 轮）
+
+**CC-81 `f338b47`**
+- 选了方案 A（模块声明），没用方案 B（搬到 src/data）。依据：
+  - 8 个角色（1401 alice / 1581 remielle / 1261 jane / 1561 velina / 1171 burnice / 1451 luciaElowen / 1621 roxy / 1221 yanagi）都有模块，1621 和 1221 也有，用 grep 核实过；
+  - core 按值导入 `@/mechanics` 的 index 已有先例（core/resource/curtain.ts、warmStart.ts、rowAccounting.ts、underfillProbe.ts 等），守卫只禁止 core 导入 `@/mechanics/agents/*`（frozen 0），这次不涉及；
+  - mechanics index 的依赖链里没有 core/substatOptimizer，所以不成环。
+- 改动：
+  - `mechanics/types.ts` 新增 `substatTemplate?: SubstatTemplate`（`import type` 自 core，只导类型）；
+  - 8 个模块在 `agentIds` 行后声明模板，内容和原注释逐字搬过去；
+  - `getTemplate` 改为先查 `getAgentMechanic(agent.id)?.substatTemplate`，查不到再按职业兜底，兜底逻辑没变；
+  - AGENT_TEMPLATES 只剩 `_default_*`，星见雅的预留注释保留。
+- 测试 `src/mechanics/__tests__/substatTemplateCc81.test.ts`（3 条）：
+  - 声明者恰好是原表 8 个角色；
+  - 全部已注册角色加 `9999` 和空 id，每个配 8 种职业：表内角色与逐字复刻的原表深相等，表外角色等于职业兜底；
+  - 源码锁：substatOptimizer.ts 里没有 `'dddd':` 形式的键。
+  - 反向验证：roxy 模板首位改成 hpPct 后 2 条变红（本测试和 core/__tests__/substatOptimizer.test.ts），已恢复。
+- 验证：perf dump/rows DIFF 0；vue-tsc 0；verify 336 files / 3701 tests EXIT 0（/home/kaua/calc-arch/z81.log）
+- 回退：`git revert f338b47`。
+- 以后新增角色的副词条特例，只需在该角色模块里写 `substatTemplate`，不用再改 core。
+
+**§5.86 复查里新发现的两处到此都已完成（CC-80、CC-81）。** 队列后续见 `docs/mcp-worker-task-queue.md` 的 CC-81 行。
+
