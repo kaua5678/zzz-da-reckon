@@ -518,6 +518,8 @@ export const velinaMechanic: AgentMechanicModule = {
   id: 'agent:velina',
   agentIds: [VELINA_AGENT_ID],
   name: '维琳娜',
+  // CC-66：ResourceResultCard 腐蚀状态机展示（原组件写死本角色 id / Sweeping Cyclone #1 moveId）
+  resultCardCorrosion: { poolReleaseEventMarker: 'velina-corrosion', broadCycloneMoveId: '1561007' },
   description: '风华/风蚀专属资源、广域/微域气旋、赋彩属性与风化乱流命座机制。',
   applyPanel: applyVelinaPanel,
   buildCharConfig: buildVelinaCharConfig,

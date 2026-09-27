@@ -837,6 +837,12 @@ export interface AgentMechanicModule {
   /** CC-60：自动失衡轴同队多预设时，预设 team 含本角色者优先（StunAxisPage 横幅显示「有琉/无琉」）。原写死琉音 id。 */
   axisPresetPreferred?: boolean
   /**
+   * CC-66：ResourceResultCard 腐蚀状态机展示（展示层；原组件写死维琳娜 id 与 moveId）。
+   * - `poolReleaseEventMarker`：异常池 release 事件 id 含此串者补入本角色「异常事件执行」表（资源层拿不到的池后算事件）；
+   * - `broadCycloneMoveId`：该 moveId 行的次数列附加 `anomalyPoolResult.corrosionSource.broadCycloneCount × 10`。
+   */
+  resultCardCorrosion?: Readonly<{ poolReleaseEventMarker: string; broadCycloneMoveId: string }>
+  /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
    * 声明后，资源页「异放元素分配」卡与影响分析的占比变量会为本角色出控件。

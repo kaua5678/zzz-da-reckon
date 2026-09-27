@@ -229,3 +229,8 @@ export function teamAxisPresetChapterOwnerSlot(team: ReadonlyArray<{ agentId?: s
 export function teamHasAxisPresetPreferred(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): boolean {
   return team.some(c => !!c?.agentId && AUTO_AXIS_PRESET_HINTS.isPreferred(c.agentId))
 }
+
+/** ResourceResultCard 腐蚀状态机展示声明（CC-66；原组件写死维琳娜）；无 ⇒ undefined */
+export function agentResultCardCorrosion(agentId: string | null | undefined): AgentMechanicModule['resultCardCorrosion'] {
+  return agentId ? getAgentMechanic(agentId)?.resultCardCorrosion : undefined
+}

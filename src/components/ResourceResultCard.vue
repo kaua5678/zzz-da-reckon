@@ -295,7 +295,7 @@ import { computed, h } from 'vue'
 import { NCard, NTag, NDataTable } from 'naive-ui'
 import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { agentResourceSections } from '@/composables/agentMechanicView'
+import { agentResourceSections, agentResultCardCorrosion } from '@/composables/agentMechanicView'
 import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 
 const props = defineProps<{
@@ -608,7 +608,8 @@ function executionValue(row: any, key: string, totalKey?: string): string {
 function renderCount(row: any): any {
   const base = row.count ?? 0
   const corrosion = props.anomalyPoolResult?.corrosionSource as any
-  if (row.moveId === '1561007' && corrosion?.broadCycloneCount) {
+  const cc = agentResultCardCorrosion(props.result.agentId) // CC-66
+  if (cc && row.moveId === cc.broadCycloneMoveId && corrosion?.broadCycloneCount) {
     const extra = corrosion.broadCycloneCount * 10
     return h('span', { title: `${base}（风华触发） + ${extra}（风蚀替换广域）` }, `${base + extra}`)
   }
@@ -744,10 +745,12 @@ const anomalyEventColumns = [
 
 const anomalyEventExecutionsData = computed(() => {
   const base = props.result.anomalyEventExecutions ?? []
-  // 维琳娜专属：腐蚀状态机的微域/风蚀替换广域异放事件由异常池后算（资源层拿不到），从 anomalyPoolResult 补入执行计划
-  if (props.result.agentId === '1561') {
+  // 腐蚀状态机（现唯一声明者维琳娜）：微域/风蚀替换广域异放事件由异常池后算（资源层拿不到），从 anomalyPoolResult 补入执行计划
+  // CC-66：归属与事件 id 标记经模块声明 resultCardCorrosion（原写死维琳娜 id + 事件 id 子串）
+  const cc = agentResultCardCorrosion(props.result.agentId)
+  if (cc) {
     const poolReleases = (props.anomalyPoolResult?.anomalyEvents ?? [])
-      .filter(e => e.count > 0 && e.type === 'release' && e.id.includes('velina-corrosion'))
+      .filter(e => e.count > 0 && e.type === 'release' && e.id.includes(cc.poolReleaseEventMarker))
       .map(e => ({
         eventId: e.id,
         eventName: e.label,
