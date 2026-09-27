@@ -2431,3 +2431,13 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - **验证**：vue-tsc 0；verify 328 files / 3681 tests，24 guards 0（`/home/kaua/calc-arch/verify92.log`）。反向变异：常量改 parry 3 / block 6 → 3 个既有测试变红（agentMechanicViewCc65b、roleInteractionBaseline、dynamicComboAlign 1531 队），已恢复。未新增测试（既有测试同时锁住声明值和兜底值）。
 - 回退：`git revert 074ee50`。
 
+### 5.81 CC-74 done：「11号 + 平A兜底」端到端护栏（lead-arena-0925c，2026-09-27 第 93 轮）
+
+- **提交 `788c035`**：新测试 `src/composables/__tests__/basicFillE2eCc74.test.ts`（只加测试，不动 src 逻辑）。关闭 §5.69 盲区「perf 夹具没有带 basicFillerSlot 的轴 ⇒ 11号兜底改坏 rowsnap 仍 DIFF 0」。
+- **拍板：不往 `.zc/perf/` 加夹具，改写进仓库的 vitest**。依据：`.zc/` 被 gitignore（`.gitignore:42`），夹具不随仓库走，下个会话/别的机器看不到；另外 `src/data/stunAxisPresets` 里没有任何预设带 `basicFillerSlot`（只在注释示例里），perf 遍历预设永远碰不到这条路径。
+- **做法**：整管线（setupHarness + useResourceCalc，队 1041/1141/1211，轴模式，轴里放莱卡恩 1141011 一次，`basicFillerSlot: 0`），测试内临时缩放 11号 模块的 `expandBasicFill` 输出（afterEach 还原），看伤害池 `direct-0-1041008` / `-out` 两行。断言：① 有填充总伤 > 无填充；② 钩子 ×0 与无填充逐位相同；③ 线性区（×0.1 / ×0.05）轴内 count == 钩子产出（按实测 fill ÷ A4 actionTime 算）；④ 轴内 + 轴外 count 守恒 == 无填充总次数；⑤ 轴内每次伤害在各比例下相同。
+- **实测口径（写进测试头注释）**：无填充 7 次 / ≈107208；钩子原样 7 次全部落失衡内 / ≈161686。钩子产出超过 7 被夹紧属**设计内**：`convergence.ts#inAxisFractionProvider` 用 `min(1, 轴内次数 / e.count)` 算占比，平A填充只改轴内占比、**不新增执行次数**。若日后认为「填充时间多出来的 A4 应该额外计伤害」，那是口径变更，要单独立卡，本测试 ④ 会跟着红。
+- **反向变异两条（均已恢复，git status 干净）**：soldier11.ts `repT = 99` → ① 红（7466 < 107208）；useResourceCalc.ts:526 把 `basicFillBySlot` 换成 `{}` → ① 红（相等）。
+- **验证**：vue-tsc 0；verify 329 files / 3682 tests，24 guards 0（`/home/kaua/calc-arch/verify93.log`）。回退：删该测试文件即可。
+- 坑：测试靠「每次给 `config.stunAxes` 赋新数组 + 新名字」强制 computed 重算，因为替换模块钩子不是响应式的；照抄此手法时别省掉。
+
