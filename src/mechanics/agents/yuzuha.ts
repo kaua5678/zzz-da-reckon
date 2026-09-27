@@ -108,7 +108,9 @@ function findAssistFollowUpMove(skills: AgentCharConfigInput['skills'], moveId: 
   return assist?.moves?.find(m => String(m.id) === String(moveId)) ?? null
 }
 
-function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue }: AgentCharConfigInput): void {
+function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, outOfCombatPanel }: AgentCharConfigInput): void {
+  // 原文「40%初始攻击力」⇒ 展示值读局外面板（CC-126，与计算侧 outOfCombatAtk 同口径）
+  cfg.yuzuhaInitialAtk = (outOfCombatPanel ?? panel)?.atk ?? 0
   // 滑块必须经 buildCharConfig 落到 cfg，buildResourceResult 阶段才读得到（applyPanel 早于 cfg 构建拿不到 settings）
   cfg.yuzuhaChainEntryCount = Math.max(0, Math.floor(cfgSetting(cfg, 'yuzuha.chainEntryCount', 0)))
   cfg.yuzuhaCinemaLevel = cinemaLevel
@@ -161,7 +163,7 @@ function buildYuzuhaTeamConfig({ slot, characters, team, anomalyBuildupElementBy
 function yuzuhaSourceFromCfg(cfg: AgentResourceInput['cfg']): YuzuhaMechanicSource {
   const effectiveSeconds = Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
   return computeYuzuhaMechanic({
-    initialAtk: cfg.panel.atk ?? 0,
+    initialAtk: cfg.yuzuhaInitialAtk ?? cfg.panel.atk ?? 0,
     chainEntryCount: cfg.yuzuhaChainEntryCount ?? 0,
     cinemaLevel: cfg.yuzuhaCinemaLevel ?? 0,
     parryCount: cfg.parryCount ?? 0,

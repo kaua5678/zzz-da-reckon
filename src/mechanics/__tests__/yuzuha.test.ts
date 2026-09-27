@@ -221,3 +221,11 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
     for (const exec of executions) expect((exec as any).element).toBe('fire')
   })
 })
+
+describe('CC-126：资源卡攻击力加成按初始（局外）攻击', () => {
+  it('buildCharConfig 记 yuzuhaInitialAtk = 局外攻击', () => {
+    const cfg: any = {}
+    yuzuhaMechanic.buildCharConfig!({ cinemaLevel: 0, cfg, skills: [], getRowValue: () => 0, panel: { atk: 4000 }, outOfCombatPanel: { atk: 2500 } } as any)
+    expect(cfg.yuzuhaInitialAtk).toBe(2500)
+  })
+})
