@@ -467,6 +467,8 @@ function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool, pre
 export const vivianMechanic: AgentMechanicModule = {
   id: 'agent:vivian',
   agentIds: [VIVIAN_ID],
+  // CC-64：新上阵默认不分配平A时间（后台/合轴快切，基本不平A；原 stores/config.ts 写死 1331）
+  defaultBasicAttackTimeWeight: 0,
   name: '薇薇安·命运悲歌',
   description: '落羽生花追击、护羽/飞羽折算、影画4必暴与影画6以太增伤；核心异放/预言DoT已接入（releaseRatio 框架）。',
   settings: [

@@ -803,6 +803,12 @@ export interface AgentMechanicModule {
    */
   expandBasicFill?(input: { fillSec: number; actionTimeOf: (moveId: string) => number | undefined }): ReadonlyArray<{ readonly moveId: string; readonly count: number }>
   /**
+   * CC-64（2026-09-27）：新上阵时的默认「平A时间分配权重」（configStore#defaultBasicAttackTimeWeight 读）。
+   * 未声明 ⇒ 走通用口径（支援/防护 0，其余 1）。store 按 `agent.id` 与 `agent.teammateBuffId` 各查一次模块。
+   * 现实现：蕾米埃尔 0、薇薇安 0（后台/合轴快切，基本不平A）。
+   */
+  defaultBasicAttackTimeWeight?: number
+  /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
    * 声明后，资源页「异放元素分配」卡与影响分析的占比变量会为本角色出控件。

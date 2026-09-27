@@ -382,6 +382,8 @@ const REMIELLE_Q_SPLIT = {
 export const remielleMechanic: AgentMechanicModule = {
   // CC-56：资源页「Q 耀变分配」卡经 agentMechanicView#teamTeammateSplit 查询（原页面写死 1581）
   teammateSplit: REMIELLE_Q_SPLIT,
+  // CC-64：新上阵默认不分配平A时间（原 stores/config.ts#defaultBasicAttackTimeWeight 写死 1581）
+  defaultBasicAttackTimeWeight: 0,
   // CC-42：风化浸染默认挑槽时排除（原 anomalyPanels 内的 isRemielleAgent 跨槽判定）
   excludeFromWindInfectionPick: true,
   // CC-41：一命花羽轮舞喧响（跨轮反馈）
