@@ -1652,6 +1652,33 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 1. 可选补测（CC-43e 遗留）：单测锁「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」。入口在 `src/composables/resourceCalc/roundInputs.ts` 的 ownsPromoteVariantAxisBlocks 判定处；目前靠 rowsnap 兜底。
 2. 考虑把上面那条 grep 升格为守卫（「编排层禁止按值导入 mechanics/agents/*」）：口径只抓按值 import，排除 `import type` / `export type`，当前读数应为 0；在 scripts/check-guards.mjs 加一条硬门判据 24，同步 checkGuards.test。
 3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
+### 5.52 CC-45 done：判据 24 — 编排层 + core 禁按值依赖角色模块（硬门）（lead-arena-0925c，2026-09-27 第 65 轮）
+
+**提交**：`bf971b3`（scripts/lib/layer-import-ratchet.mjs 末段新增 `findRoleModuleValueDeps` / `scanRoleModuleValueDeps` / `ROLE_MODULE_DEP_DIRS` / `ROLE_MODULE_DEP_BASELINE=0`；scripts/check-guards.mjs 接线 + 转出；scripts/check-guards.d.mts 声明；src/scripts/__tests__/checkGuards.test.ts 条数 23→24 + 新 describe 3 条）。回退：`git revert bf971b3`（纯守卫，不碰 src 运行时代码）。
+
+**为什么要立（判据 12 不够的两点）**
+1. 判据 12 只量 `src/core/**`；编排层 `src/composables/**` 对 `@/mechanics/agents/*` 的值导入以前没人看守。CC-43c/CC-44 清完后实测为 0，趁 0 立硬门，防止回潮。
+2. 判据 12 的正则 `CORE_ROLE_IMPORT_RE` 是**单行**的（`import` 与 `from` 必须同行），多行 `import {\n a,\n} from '…'` 看不见。判据 24 按**整条语句**匹配（字符类 `[^;'"]` 可跨行），并计入 `export … from`、裸 `import '…'`、动态 `import('…')`、相对路径 `../mechanics/agents/`。
+- 与判据 12 在 core 上重叠：决定**保留判据 12 不动**（改它的正则属于换尺，按规则 17② 要单独成批，而判据 24 已覆盖其盲区，收益为零）。日后若想合并，把判据 12 改为调用 `scanRoleModuleValueDeps` 并限定到 `src/core` 即可。
+
+**口径细节（拍板）**
+- 豁免：`import type` / `export type`（整条语句级 type-only）、注释行、测试文件（`__tests__` / `.test.ts`）。
+- `import { type X } from '…agents/…'`（内联 type 修饰）**仍计**：保守口径，要豁免就整条写 `import type`。
+- `@/mechanics`（注册表）和 `@/mechanics/types` 不计，只有 `mechanics/agents/<角色>` 才计。
+- 当前唯一的 type-only 条目：`resourceCalc/anomalyPanels.ts:395 export type { VoidflareDamageInput } from '@/mechanics/agents/remielle'`，豁免。
+- 只扫 `.ts`：`src/composables` 下目前没有 `.vue`；展示层（views/components）由判据 7 管。
+
+**验证**
+- check-guards：24 guards，`role-module value-dep gate … = 0/0`。
+- 反向：往 chainGift.ts 末尾追加一条**多行**值导入 → 判据 24 报红 `1/0` 并定位到 `chainGift.ts:120 [import]`；恢复后 cmp 一致。
+- 单测：检测器正控 6 条、负控 6 条（type-only 单行/多行、export type、注释、注册表、types）+ 临时目录扫描器 + 仓库读数 == 0。
+- 第一次跑时死通道判据 C 类报 4 条「.d.mts 漂移」，tsc 报 TS2305：**check-guards.mjs 新增转出必须同步 `scripts/check-guards.d.mts`**（已补）。这是已知坑，写在这里备查。
+- vue-tsc 0；`npm run verify` 通过：303 文件 / 3626 条，24 guards（`/home/kaua/calc-arch/verify45.log`）。
+
+**下一步**
+1. 可选补测（CC-43e 遗留）：单测锁「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」。入口在 `src/composables/resourceCalc/roundInputs.ts` 的 `ownsPromoteVariantAxisBlocks` 判定处；目前靠 rowsnap 兜底。做法：用 setupHarness 组一个无琉音、但轴里含 promoteVariant 块的队伍（先 grep 预设 `promoteVariant` 找块形态），断言终结技行里没有转大行；再反向变异（去掉 owns 判定）看它变红。
+2. 判据 7（展示层越层 14）是剩下最大的棘轮债，但 plan 里写明全是真引擎调用，需要逐条设计，不适合机械清理。
+3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
