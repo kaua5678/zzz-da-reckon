@@ -248,6 +248,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-76 | done | `33dc2be` | teammateBuffGate 多模块表态合并 = 逻辑与（原：第一个表态者说了算，依赖注册顺序） | census §5.83 |
 | CC-77 | done | `8095ea8` | 莱特来源面板冲击 ×1.2 集成覆盖测试（×1.0 vs ×1.2 + 比例扫描对公式） | census §5.84 |
 | CC-78 | done | `b7168da` | 赠送极性强击注入/归属槽与 anomalyPoolSetup 解耦（firstGiftedPolarAssaultSlot） | census §5.85 |
+| CC-79 | done | `03ba536` | StunAxisPage 横幅有琉/无琉 → axisPresetPreferredLabel（声明 axisPresetPreferredShort） | census §5.86 |
+| CC-80 | 待做 | — | mechanics/teamVeil.ts 帷幕来源写死 4 个角色 id → 模块能力 | census §5.86 |
+| CC-81 | 待做（低） | — | core/substatOptimizer.ts AGENT_TEMPLATES 8 角色 → 模块声明或 src/data | census §5.86 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |

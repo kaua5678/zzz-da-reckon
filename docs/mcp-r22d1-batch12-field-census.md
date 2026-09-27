@@ -2476,3 +2476,15 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - **测试**：新 `giftedDecoupleCc78.test.ts`——helper 单测；整管线（1041/1141/1211，无爱丽丝）临时给 1141 挂赠送 2 ⇒ 异常池出现 physical_polar_assault 赠送条（totalBuildUp 0）triggerCount 2、全记槽 1。反向：roundInputs.ts 换回 HEAD ⇒ 红。`giftedPolarAssaultCc75` 第 1 条去掉「须同时声明 anomalyPoolSetup」断言。
 - **perf 零差**：改前基线 `dump-78a/rows-78a` vs 改后 `-78b`（`/home/kaua/calc-arch/`，语料含 1401 队），dump/rowsnap 均 DIFF 0。vue-tsc 0；verify 333 files / 3692 tests，24 guards 0（`verify78.log`）。回退：`git revert b7168da`。
 
+### 5.86 CC-79 done + 全仓复查：横幅有琉/无琉 → 声明者简称；新发现 2 处角色 id 集合（lead-arena-0925c，2026-09-27 第 98 轮）
+
+**CC-79 `03ba536`**
+- `mechanics/types.ts` 新增可选 `axisPresetPreferredShort?: string`；`liuyin.ts` 声明 `'琉'`；`agentMechanicView.ts` 新增 `axisPresetPreferredLabel(team)`：在队声明者 ⇒ `有` + 简称（去重、槽位序、'/' 连接）；都不在 ⇒ `无` + 全部已注册声明者简称。简称缺省依次取 `name` → `agentIds[0]` → `id`（`name` 在类型里是可选的，1141 等模块没写）。`StunAxisPage.vue:270` 改调它（原写死 `'有琉' : '无琉'`）。现唯一声明者琉音 ⇒ 文案逐字不变。
+- 测试 `axisPresetPreferredLabelCc79.test.ts`：catalog 全角色单人队与原三元表达式逐值相等；临时给 1141 挂声明 ⇒ `有狼/琉`、`无` 后列 2 个；源码锁。反向：简称改 '柳' ⇒ 2 红，已恢复。
+- 验证：vue-tsc 0；verify 334 files / 3695 tests，24 guards 0（`/home/kaua/calc-arch/verify98.log`）。回退：`git revert 03ba536`。
+
+**全仓复查（本轮，HEAD `03ba536`）**：`grep -rnE "['\"]1[0-9]{2}1['\"]" src --include=*.ts --include=*.vue`，去掉测试 / `src/mechanics/agents/` / `src/specs/` / 纯注释行，共 144 行，按文件：moveFusions 19、strongTeamPresets 18、panelPhases 14、standardMultiplierTable 9、substatOptimizer 8、sustainedEx 6、TimeChartsPage 3、FreeComparePage 3、teamVeil 3、pullValue 2、SlotCompareChart 2、其余各 1。守卫读数：agentId 棘轮 1/1、core agentId 棘轮 0/0、展示层棘轮 1/1。
+- **已有裁定、不动**：`src/data/**` 按角色 id 为键的数据表（预设、招式融合、标准倍率、持续强特等——数据本来就按角色分）；`panelPhases.ts` ADDITIONAL_GATE_BUFFS（§5.77 保留）；各页面默认选中角色 / 候选池（UI 默认值，§5.74 裁定不还）；pullPlannerEngine / pullValue（§5.76）。
+- **新发现 ①（计算路径，建议做）`src/mechanics/teamVeil.ts:24-27`**：`computeTeamVeilCountTotal` 用写死集合判帷幕来源——爱芮 1501 / 叶瞬光 1431 按大招次数、千夏 1491 按强特次数、照 1341 走 `computeZhaoVeilCount`。唯一调用方 `convergence.ts:947`。新增帷幕角色必须改这个非模块文件 ⇒ 开卡 CC-80。
+- **新发现 ②（core 里的角色数据表，低）`src/core/substatOptimizer.ts` AGENT_TEMPLATES**：8 个角色（1401/1581/1261/1561/1171/1451/1621/1221）的副词条模板，`getTemplate(agent)` 先按 `agent.id` 查表、再按职业兜底。是查表不是分支，core agentId 棘轮不计；但新角色要改 core。开卡 CC-81（低）：模板搬进模块声明 `substatTemplate`，getTemplate 改查 `getAgentMechanic(agent.id)?.substatTemplate`——**先查 core 能否值导入 `@/mechanics`**（core/resource/helpers.ts 已按值导入过，§5.70 记录），不行就搬到 `src/data/substatTemplates.ts`。
+
