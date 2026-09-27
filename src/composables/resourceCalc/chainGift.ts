@@ -6,7 +6,7 @@
  * 引擎侧时间预留走 crossAgentSupply 的 `gift-chain:chain` 通道（core/resource/helpers.ts 的 chainGift*），两者须同源。
  */
 import { findChainAttack } from '@/core/resource'
-import { resolveUltimateTargetSlot } from '@/mechanics/agents/liuyin'
+import { resolveUltimateTargetSlot } from '@/core/resource/targetSlot'
 import type { TeamResourceResult } from '@/types/resource'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'

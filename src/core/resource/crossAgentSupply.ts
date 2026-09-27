@@ -19,6 +19,7 @@
  *   · `axisSuppressed`   —— 该类别在轴模式下不出数（琉音赠大：轴内次数由轴预设决定，见 docs 坑19①）
  */
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
+import { resolveUltimateTargetSlot } from './targetSlot'
 import { getAgentMechanic } from '@/mechanics'
 
 export interface CrossAgentSupplyInfo {
@@ -77,9 +78,9 @@ export function crossAgentSupplyAt(
   const teamSize = query.teamSize ?? configs.length
   const targetIdx = spec.targetSlot
     ? spec.targetSlot({ ownSlot: providerSlot, teamSize, cfg })
-    // 缺省落点 = 上一位队友（环绕）——与 `resolveUltimateTargetSlot` 的自动口径一致，
-    // 但引擎不 import 角色模块：需要该语义的模块用 targetSlot() 显式声明。
-    : (providerSlot - 1 + teamSize) % teamSize
+    // 缺省落点 = 上一位队友（环绕），与赠大/赠连携同一函数（CC-44 起该函数位于 core/resource/targetSlot.ts）。
+    // teamSize ≥ 1 时与原内联式 `(providerSlot - 1 + teamSize) % teamSize` 逐值相同。
+    : resolveUltimateTargetSlot(providerSlot, teamSize, -1)
   const targetCfg = configs[targetIdx]
   if (!targetCfg) return empty
   const count = Math.max(0, Math.floor(spec.supply({

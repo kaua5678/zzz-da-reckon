@@ -12,6 +12,7 @@ import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, LiuyinMechanicSource, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
+import { resolveUltimateTargetSlot } from '@/core/resource/targetSlot'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 
@@ -66,16 +67,6 @@ const EX_MOVES = [
 ] as const
 export const LIUYIN_EX_MOVE_IDS: Set<string> = new Set(EX_MOVES.map(m => m.id))
 
-/**
- * 解析"下一位出场角色"槽位（好评转大的目标队友）：
- * - 自动（-1）：取队伍顺序中琉音上一个槽位（环绕），排除自己。
- * - 手动：直接使用用户设置。
- */
-export function resolveUltimateTargetSlot(ownSlot: number, teamLength: number, setting: number): number {
-  if (setting >= 0 && setting < teamLength && setting !== ownSlot) return setting
-  const prev = (ownSlot - 1 + teamLength) % teamLength
-  return prev === ownSlot ? (ownSlot + 1) % teamLength : prev
-}
 
 /**
  * 好评 60/90 抱拳次数拆分（抱拳→转大因果链）：
