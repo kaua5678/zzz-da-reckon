@@ -179,7 +179,7 @@
 
 ### 5.3 债务闭环登记（Debt Registry）
 * 探索性开发中发现的技术债务（如暂未建模的次要分支、近似估算），严禁以无主注释留存。
-* 必须在源码标注 `debt: <天花板>, <升级路径>`，并在 `scripts/check-guards.mjs` 的 `DEBT_REGISTRY` 正式登记，还清后严格注销。
+* 必须在源码标注 `debt: <天花板>, <升级路径>`，并在 `scripts/lib/guard-registries.mjs` 的 `DEBT_REGISTRY`（CC-85 前在 check-guards.mjs）正式登记，还清后严格注销。
 
 ---
 

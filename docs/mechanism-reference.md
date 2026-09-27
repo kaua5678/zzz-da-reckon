@@ -135,7 +135,7 @@
 > 的 `@fact engine:time/无敌≠秽盾` 与 `docs/ENGINE_PIPELINE_GUIDE.md` 的无敌时间口径段。
 > 本计算器**尚未建模**秽盾本体（四通道：防御/减伤乘区、削盾量、破盾回能/净除伤害），
 > 挂账见 `docs/MECHANICS_IMPLEMENTATION.md` §3.05 与 check-guards 的 DEBT_REGISTRY。
-> **挂账与销号口径以 `scripts/check-guards.mjs` DEBT_REGISTRY 的 `src/core/effectiveTime.ts:秽盾机制`
+> **挂账与销号口径以 `scripts/lib/guard-registries.mjs` DEBT_REGISTRY 的 `src/core/effectiveTime.ts:秽盾机制`
 > 条目为准**（本节以下数值为理论参考，落地以该专项立项的判据为准，勿在本档维护）。
 
 - 秽盾是怪物的护盾机制
@@ -234,5 +234,5 @@
 ## 10. 计算器实现映射
 
 已实现机制清单以 `docs/implementation-status.md`（自动生成）与各节「实现唯一事实源」指针为准；
-待完善机制挂账见 `docs/MECHANICS_IMPLEMENTATION.md` §3.05 与 `scripts/check-guards.mjs` DEBT_REGISTRY。
+待完善机制挂账见 `docs/MECHANICS_IMPLEMENTATION.md` §3.05 与 `scripts/lib/guard-registries.mjs` DEBT_REGISTRY。
 （本节原「已实现/待完善/关键常量速查」三张表与代码重复，2026-09-14 瘦身删除。）

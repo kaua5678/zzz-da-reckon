@@ -8,7 +8,7 @@
  *
  * ⚠ 随本段迁来的两条 `@fact`（`engine:时间线截断` / `engine:时间线截断/入口容差`）
  * 「锚」已同步改指本文件——**路径跟随，不是销号**（口径内容一字未改）；`engine:时间线截断`
- * 在 `scripts/check-guards.mjs` 的 `CALIBER_TRIGGER_ALLOWLIST` 键同步改指本文件。
+ * 在 `scripts/lib/guard-registries.mjs` 的 `CALIBER_TRIGGER_ALLOWLIST`（CC-85 自 check-guards.mjs 拆出） 键同步改指本文件。
  */
 import type { SkillExecution, TruncationCut } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'

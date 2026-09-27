@@ -323,7 +323,7 @@ DoT 表 `{ 百分比, 间隔, tick 数 }` 逐项与 `STANDARD_DOT_CONFIG` 对照
 - 闸门复核：4 块里只有 1451 需要读别的槽位中间态（yidhari 的 `ultimateCount`）⇒ 必须先收集成标量（`crossAgentSupply` 新 kind），能力函数只吃标量；
   走 `applyTeamConfig` 拿不到 iterate 的 `prevStates`，会改数值，不可行。
 - **每步必须同批下调棘轮**：`scripts/lib/agent-branch-ratchet.mjs` 的 `CORE_AGENT_BRANCH_BASELINE`、`scripts/lib/layer-import-ratchet.mjs` 的
-  `CORE_ROLE_IMPORT_BASELINE`、`scripts/check-guards.mjs` 的 `RATCHET_BURNDOWN.frozen` 三处一起改（只改基线不改 frozen ⇒ verify 红；计数低于基线 check-guards 也红）。
+  `CORE_ROLE_IMPORT_BASELINE`、`scripts/lib/guard-registries.mjs` 的 `RATCHET_BURNDOWN.frozen`（CC-85 前在 check-guards.mjs）三处一起改（只改基线不改 frozen ⇒ verify 红；计数低于基线 check-guards 也红）。
 - 每步带**反向验证**：临时删掉新能力声明 ⇒ dump 必须精确变红（证明引擎真的在走能力，而不是恰好算出同一个数）。
 
 ### CC-6a · 1471 强特次数迁引擎能力（review）

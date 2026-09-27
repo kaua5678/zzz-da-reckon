@@ -2,7 +2,7 @@
 
 > 本文件是 `scripts/check-guards.mjs` 中 `AGENT_BRANCH_BASELINE` 常量的**沿革编年史**（逐轮对账、逐队归因、实验过程）。
 > 按 AGENTS.md 规则 8 分层契约，编年叙事进 git 历史与账本、不进代码，故从该文件搬出。
-> **当前读数、口径与判据以 `scripts/check-guards.mjs` 为唯一事实源**（该常量旁的指针注释 + `RATCHET_BURNDOWN` 登记表）。
+> **当前读数、口径与判据以 `scripts/check-guards.mjs` 为唯一事实源**（该常量旁的指针注释 + `RATCHET_BURNDOWN` 登记表，CC-85 起在 `scripts/lib/guard-registries.mjs`）。
 
 ---
 2026-08-30 冻结基线：规则 6 生效前的历史存量（按「含 agentId ===/!== 的行数」计）。
