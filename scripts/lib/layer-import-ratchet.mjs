@@ -197,3 +197,57 @@ export function scanExhibitionLayerImports(root = ROOT) {
   for (const d of EXHIBITION_LAYER_DIRS) rec(join(root, d))
   return { count: sites.length, sites }
 }
+
+// ---- 判据 24：编排层 + core → 角色模块的值依赖（CC-45，2026-09-27；硬门 0） ----
+//
+// 为什么在判据 12 之外再立一条：
+//   ① 判据 12 只量 `src/core/**`；编排层 `src/composables/**` 对 `@/mechanics/agents/*` 的值导入无人看守。
+//      CC-43c（computeLiuyinHugCounts）/ CC-44（resolveUltimateTargetSlot）清完后实测读数为 0，趁 0 立硬门。
+//   ② 判据 12 的正则是**单行**的（`import` 与 `from` 须同行），多行 `import {\n a,\n} from '…'` 看不见；
+//      本判据按**整条语句**匹配（`[^;'"]` 可跨行），并计入 `export … from`、裸 `import '…'`、动态 `import('…')`。
+// 豁免：`import type` / `export type`（纯类型不产生运行时依赖，与判据 7/12 同款）；注释行；测试文件。
+// ⚠ `import { type X } from` 内联 type 修饰**仍计**（保守；要豁免请整条写 `import type`）。
+// 修法：模块能力（types.ts 加可选能力 → 角色模块实现 → 编排层 getAgentMechanic(agentId)?.<能力>，范式 CC-43c），
+//       或把无角色语义的纯函数迁 src/core（范式 CC-44 core/resource/targetSlot.ts）。
+export const ROLE_MODULE_DEP_DIRS = ['src/core', 'src/composables']
+export const ROLE_MODULE_DEP_BASELINE = 0
+const ROLE_MODULE_SPEC = String.raw`(?:@\/mechanics\/agents\/|(?:\.\.\/)+mechanics\/agents\/)[^'"]+`
+
+/** 文本内对角色模块的值依赖 → [{ line, kind, spec }]（kind = import | export | side-effect | dynamic） */
+export function findRoleModuleValueDeps(text) {
+  const out = []
+  const lineOf = (idx) => text.slice(0, idx).split('\n').length
+  const stmt = new RegExp(String.raw`(^|\n)([ \t]*)(import|export)\b([^;'"]*?)\bfrom\s*['"](${ROLE_MODULE_SPEC})['"]`, 'g')
+  for (const m of text.matchAll(stmt)) {
+    if (/^\s*type\b/.test(m[4])) continue
+    out.push({ line: lineOf(m.index + m[1].length), kind: m[3], spec: m[5] })
+  }
+  const bare = new RegExp(String.raw`(^|\n)[ \t]*import\s*['"](${ROLE_MODULE_SPEC})['"]`, 'g')
+  for (const m of text.matchAll(bare)) out.push({ line: lineOf(m.index + m[1].length), kind: 'side-effect', spec: m[2] })
+  const dyn = new RegExp(String.raw`\bimport\(\s*['"](${ROLE_MODULE_SPEC})['"]`, 'g')
+  for (const m of text.matchAll(dyn)) {
+    const ln = lineOf(m.index)
+    const t = text.split('\n')[ln - 1].trim()
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue
+    out.push({ line: ln, kind: 'dynamic', spec: m[1] })
+  }
+  return out.sort((a, b) => a.line - b.line)
+}
+
+/** 扫 ROLE_MODULE_DEP_DIRS 下 .ts（不含 .d.ts 与测试）→ { count, sites: [{ file, line, kind, spec }] } */
+export function scanRoleModuleValueDeps(root = ROOT) {
+  const sites = []
+  const rec = (dir) => {
+    if (!existsSync(dir)) return
+    for (const n of readdirSync(dir)) {
+      const p = join(dir, n)
+      if (statSync(p).isDirectory()) { rec(p); continue }
+      if (!n.endsWith('.ts') || n.endsWith('.d.ts')) continue
+      const rel = relative(root, p).split(sep).join('/')
+      if (rel.includes('__tests__') || rel.endsWith('.test.ts')) continue
+      for (const d of findRoleModuleValueDeps(readFileSync(p, 'utf8'))) sites.push({ file: rel, ...d })
+    }
+  }
+  for (const d of ROLE_MODULE_DEP_DIRS) rec(join(root, d))
+  return { count: sites.length, sites }
+}

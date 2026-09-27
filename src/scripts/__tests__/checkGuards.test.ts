@@ -13,6 +13,7 @@ import { join } from 'node:path'
 import {
   CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, findRoleFieldRefs, rolePrefixesFrom, scanCoreRoleFields,
   CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, camelSegments, findRoleInfixRefs, scanCoreRoleInfix,
+  ROLE_MODULE_DEP_BASELINE, ROLE_MODULE_DEP_DIRS, findRoleModuleValueDeps, scanRoleModuleValueDeps,
   DEBT_REGISTRY,
   ROOT,
   AGENT_BRANCH_BASELINE,
@@ -569,11 +570,12 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('二十三条判据全绿（fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖****)', () => {
+  it('二十四条判据全绿（判据 24 角色模块值依赖 ' + ROLE_MODULE_DEP_BASELINE + ' / fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖****)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(23)
+    expect(results).toHaveLength(24)
+    expect(results.some(r => r.name.startsWith('role-module value-dep gate'))).toBe(true)
     // 判据 22：core 角色前缀字段计数棘轮（2026-09-26，docs/mcp-r22d1-batch12-field-census.md §5）——agentId 棘轮看不见 `cfg.billyC1Energy` 这类以角色命名的字段
     expect(results.some(r => r.name.startsWith('core role-field ratchet'))).toBe(true)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')
@@ -1906,5 +1908,46 @@ describe('判据 23：角色名中缀 / core 子目录棘轮（CC-43b，scripts/
     const r = scanCoreRoleInfix(process.cwd())
     expect(r).not.toBeNull()
     expect(r!.count).toBe(CORE_ROLE_INFIX_BASELINE)
+  })
+})
+
+describe('判据 24：编排层 + core → 角色模块值依赖（CC-45 硬门）', () => {
+  it('检测器：单行/多行值导入、export from、裸 import、动态 import、相对路径都计；type-only、注释、注册表路径不计（正控 + 负控）', () => {
+    const src = [
+      "import { a } from '@/mechanics/agents/liuyin'",            // 1 计
+      'import {',                                                  // 2 计（多行）
+      '  b,',
+      '  c,',
+      "} from '@/mechanics/agents/norma'",
+      "import type { T } from '@/mechanics/agents/sigrid'",        // 6 不计
+      "export type { U } from '@/mechanics/agents/remielle'",      // 7 不计
+      "export { d } from '@/mechanics/agents/velina'",             // 8 计
+      "import '@/mechanics/agents/side'",                          // 9 计
+      "const m = await import('@/mechanics/agents/lazy')",         // 10 计
+      "// import { e } from '@/mechanics/agents/commented'",       // 11 不计
+      "import { getAgentMechanic } from '@/mechanics'",            // 12 不计（注册表）
+      "import { f } from '../../mechanics/agents/rel'",            // 13 计
+      "import { g } from '@/mechanics/types'",                     // 14 不计
+    ].join('\n')
+    expect(findRoleModuleValueDeps(src).map(d => `${d.line}:${d.kind}`)).toEqual([
+      '1:import', '2:import', '8:export', '9:side-effect', '10:dynamic', '13:import',
+    ])
+    expect(findRoleModuleValueDeps("import type {\n  X,\n} from '@/mechanics/agents/a'")).toEqual([])
+  })
+
+  it('扫描器：临时目录里放一条多行值导入 ⇒ 计 1；测试文件不计', () => {
+    const root = mkdtempSync(join(tmpdir(), 'rmdep-'))
+    mkdirSync(join(root, 'src/composables/x/__tests__'), { recursive: true })
+    writeFileSync(join(root, 'src/composables/x/a.ts'), "import {\n  z,\n} from '@/mechanics/agents/liuyin'\n")
+    writeFileSync(join(root, 'src/composables/x/__tests__/a.test.ts'), "import { z } from '@/mechanics/agents/liuyin'\n")
+    const r = scanRoleModuleValueDeps(root)
+    expect(r.count).toBe(1)
+    expect(r.sites[0]).toMatchObject({ file: 'src/composables/x/a.ts', line: 1, kind: 'import' })
+  })
+
+  it('仓库实测读数 == 基线 0（同 check-guards 判据 24）', () => {
+    expect(ROLE_MODULE_DEP_DIRS).toEqual(['src/core', 'src/composables'])
+    expect(ROLE_MODULE_DEP_BASELINE).toBe(0)
+    expect(scanRoleModuleValueDeps(process.cwd()).count).toBe(ROLE_MODULE_DEP_BASELINE)
   })
 })

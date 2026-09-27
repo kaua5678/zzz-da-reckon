@@ -207,6 +207,16 @@ export declare function scanCoreRoleImports(root?: string): {
   sites: { file: string; line: number; text: string }[]
 }
 
+// 判据 24：编排层 + core → 角色模块值依赖（CC-45 硬门；多行语句感知，type-only 豁免）
+export type RoleModuleDepKind = 'import' | 'export' | 'side-effect' | 'dynamic'
+export declare const ROLE_MODULE_DEP_DIRS: string[]
+export declare const ROLE_MODULE_DEP_BASELINE: number
+export declare function findRoleModuleValueDeps(text: string): { line: number; kind: RoleModuleDepKind; spec: string }[]
+export declare function scanRoleModuleValueDeps(root?: string): {
+  count: number
+  sites: { file: string; line: number; kind: RoleModuleDepKind; spec: string }[]
+}
+
 // 判据 13：名词表三态对账（防「数据在源里但没人消费」）
 export declare const NOUN_TRIAGE_FILE: string
 export declare const NOUN_SOURCE_FILE: string

@@ -737,8 +737,8 @@ export function findForbiddenTracked(trackedPaths) {
 // ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**
 // （R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
 // ⚠ 改判据口径请改 `./lib/layer-import-ratchet.mjs`，**不要在本文件重建同形函数**。
-import { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
-export { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
+import { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, scanRoleModuleValueDeps, findRoleModuleValueDeps, ROLE_MODULE_DEP_DIRS, ROLE_MODULE_DEP_BASELINE, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
+export { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, scanRoleModuleValueDeps, findRoleModuleValueDeps, ROLE_MODULE_DEP_DIRS, ROLE_MODULE_DEP_BASELINE, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
 import { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom, CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, INFIX_PREFIX_EXCLUDE, camelSegments, findRoleInfixRefs, scanCoreRoleInfix } from './lib/core-role-field-ratchet.mjs'
 export { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom, CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, INFIX_PREFIX_EXCLUDE, camelSegments, findRoleInfixRefs, scanCoreRoleInfix } from './lib/core-role-field-ratchet.mjs'
 
@@ -1344,6 +1344,19 @@ export function runAllChecks(root = ROOT) {
           : [],
     })
   }
+
+  // ---- 判据 24：编排层 + core → 角色模块值依赖（CC-45；多行 import/export、裸 import、动态 import 均计；type-only 豁免；硬门 0） ----
+  const roleDeps = scanRoleModuleValueDeps(root)
+  results.push({
+    name: `role-module value-dep gate (判据 24: ${ROLE_MODULE_DEP_DIRS.join(' + ')} → @/mechanics/agents/* 值依赖) = ${roleDeps.count}/${ROLE_MODULE_DEP_BASELINE}`,
+    ok: roleDeps.count === ROLE_MODULE_DEP_BASELINE,
+    detail: roleDeps.count === ROLE_MODULE_DEP_BASELINE ? [] : [
+      `  ✗ 编排层/core 对具体角色模块的值依赖 ${ROLE_MODULE_DEP_BASELINE}→${roleDeps.count}：`,
+      '    → 逻辑专属：types.ts 加可选能力、角色模块实现、编排层 getAgentMechanic(agentId)?.<能力> 派发（范式 CC-43c promoteHugCounts）',
+      '    → 无角色语义的纯函数：迁 src/core（范式 CC-44 core/resource/targetSlot.ts）；纯类型改 import type / export type',
+      ...roleDeps.sites.slice(0, 8).map(s => `      ${s.file}:${s.line} [${s.kind}] ${s.spec}`),
+    ],
+  })
 
   const settings = scanSettingsCoverage(root)
   // ⚠ 冻结清单按 id 本体匹配（`module::id` 里的 id 部分）——见 settings-coverage.mjs 的注释：
