@@ -221,9 +221,9 @@ export const RATCHET_BURNDOWN = [
     id: '展示层越层 import',
     file: 'src/views + src/components',
     frozen: 1,  // 2026-09-27 CC-53 2→1（ImpactChart 影响变量表 + 读写 → 编排层 src/composables/impactVariables.ts，含柏妮思占比变量与 % 换算口径）。CC-52 3→2（ImpactChart runOptimizerForSlot0 的 computeOptimalSubStats + getTemplate → 编排层 src/composables/substatOptimizer.ts#computeSubstatAllocationForSlot）。CC-51 5→3（TeamConfigPage 局外面板 calcPanel + applyTargetedStat → 编排层 src/composables/outOfCombatPanel.ts#computeOutOfCombatPanel，与局内 computePanel 对称）。CC-50 6→5（StunAxisPage 的 allocateAxisWindows → 编排层 src/composables/stunAxisView.ts#axisWindowCounts；纯转发，页面侧改 computed 缓存）。CC-49 8→6（TeamConfigPage + ImpactChart 的 buildTeammateBuffSourceContext 依赖组装 → 编排层 src/composables/teammateBuffContext.ts）。CC-48 10→8（StunAxisPage 的 banyue/yixuan 值导入 → 模块能力 axisEditorBlockMarks / 声明 axisMoveMeta，经 agentMechanicView 门面）。CC-47 14→10（展示层 getAgentMechanic×4 → 编排层门面 src/composables/agentMechanicView.ts）。2026-09-11 评审冻结 23 → 15（2026-09-13 T7 首次真清偿 −8：纯常量/纯函数下沉 src/data，原位置改 re-export + 展示层改 import 路径，vue-tsc 0 错、@fact 锚 93/93 不变）→ **14**（2026-09-20 round 44：结果页失衡易伤可见化搬进 composables/stunVulnDisplay.ts，calcStunMultiplier 越层 import 随实现上移；同 sharpCritMultiplier 先例）。下沉清单与「剩 14 处为何不能下沉」见 EXHIBITION_LAYER_IMPORT_BASELINE 头注释
-    target: 0,
+    target: 1,  // 2026-09-27 CC-54 0→1：剩下 1 处 = MechanicsTablePage 的 agentSpecs（只读 JSON 注册表），拍板永久保留，理由见 plan 与 census §5.61；frozen=target ⇒ burndown 判 done。探测器口径不变（agentSpecs 仍会被计数，新增越层 import 照样判红）
     due: '2026-12-31',
-    plan: '剩 14 处全是**真引擎调用**（仅剩 MechanicsTablePage 的 agentSpecs 只读注册表；computeOptimalSubStats+getTemplate 于 CC-52、impactVars 于 CC-53 收拢），无纯常量可下沉；正解是经编排层（composables/resourceCalc）透出面板/引擎产物，属架构改动，逐条独立立项。纯函数类已全部下沉完毕（23→14）',
+    plan: '**已收尾**（CC-47~CC-53 共 14→1）。剩 1 处 = MechanicsTablePage.vue 的 `agentSpecs`（@/specs/registry）：import.meta.glob 读出的只读 JSON 数据表，页面只做下拉选项与关键词过滤，无任何计算；包一层纯转发只会把数字压成 0 而耦合不降（= 2026-09-12 口径纠正所反对的「搬家骗尺」），且 mechanics/stores/logicEditor/resourceCalc 同样直接读它 ⇒ 永久保留（target=1）。若日后判据 7 改为按模块豁免 @/specs/registry（数据层），属换尺，须单独成批并把 frozen/target/基线一起改成 0',
   },
   {
     id: '手册 §4 行数',
