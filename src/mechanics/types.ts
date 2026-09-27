@@ -813,9 +813,11 @@ export interface AgentMechanicModule {
    * store 对每条 buff 依次询问**全部已注册模块**的本钩子；第一个返回 boolean 的生效，最终启用 = baseEnabled && 返回值；
    * 返回 undefined = 这条 buff 不归我管。`team` = 队内查得到 Agent 的角色（槽位顺序）；模块自己在 team 里找本角色
    * （不在队也会被询问——须按「不在队」口径作答，与迁移前逐值一致）。
-   * 现实现：蕾米埃尔（额外能力 tier 1..3 三条攻击 buff、核心被动 refringe_3、prismatic_buildup）。
+   * 现实现：蕾米埃尔（额外能力 tier 1..3 三条攻击 buff、核心被动 refringe_3、prismatic_buildup）；
+   * 波可娜（C6 禁用 pulchra_extra_trap_followup，防与 pulchra_cinema_6_trap_all 双计；CC-64c）。
    */
-  teammateBuffGate?(input: { buffId: string; team: ReadonlyArray<Agent> }): boolean | undefined
+  // CC-64c：入参加 groupId（buff 组 id = 来源角色 id 或 teammateBuffId）/ groupCinema（该组来源角色在队影画；不在队 undefined）
+  teammateBuffGate?(input: { buffId: string; team: ReadonlyArray<Agent>; groupId: string; groupCinema: number | undefined }): boolean | undefined
   /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。

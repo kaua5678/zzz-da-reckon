@@ -412,9 +412,9 @@ export function deriveTeammateBuffEnabled(
     }
   }
 
-  function resolveSpecialTeammateBuffEnabled(buffId: string, baseEnabled: boolean): boolean {
+  function resolveSpecialTeammateBuffEnabled(buffId: string, baseEnabled: boolean, groupId: string, groupCinema: number | undefined): boolean {
     for (const gate of buffGates) {
-      const extra = gate({ buffId, team: buffGateTeam })
+      const extra = gate({ buffId, team: buffGateTeam, groupId, groupCinema })
       if (extra !== undefined) return baseEnabled && extra
     }
     return baseEnabled
@@ -431,11 +431,8 @@ export function deriveTeammateBuffEnabled(
       const sourceLabel = buff.source?.zhCN ?? buff.sourceLabel?.zhCN ?? ''
       const requiredCinema = parseCinemaRequirement(sourceLabel)
       const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema
-      let shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable)
-      // 波可娜 C6：困迹增伤从「仅追加攻击」扩展为「全伤害」——base 条在 C6 时禁用，防与 pulchra_cinema_6_trap_all 双计
-      if (agentId === '1351' && buff.id === 'pulchra_extra_trap_followup' && cinemaLevel >= 6) {
-        shouldEnable = false
-      }
+      // CC-64c：波可娜 C6 base 条互斥也经 teammateBuffGate（pulchra.ts 声明；原为此处写死 1351 分支）
+      let shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable, agentId, cinemaLevel)
       // 通用额外能力门控：若 buff 来源为"额外能力"且来源角色额外能力未激活，则自动禁用
       if (shouldEnable && buff.ownerId && sourceLabel === '额外能力') {
         const aaActive = aaActiveMap.get(buff.ownerId)
