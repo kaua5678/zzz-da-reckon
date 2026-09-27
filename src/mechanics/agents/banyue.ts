@@ -175,7 +175,7 @@ export interface BanyueRageCycle {
 // @fact engine:banyue/补齐时间上限 口径: 自动填充交互的原始动作时间（未扣合轴）>200s 判本次填充非法——次数清零并走轴退化，而不是截断成半套 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC | 信 确认
 export const AUTO_TOPUP_TIME_LIMIT_SEC = 200
 
-/** 轴模式自动补齐的交互次数（CC-23 起类型定义在 `mechanics/types.ts#InteractionTopUp`；本别名保留给测试与既有引用） */
+/** 轴模式自动补齐的交互次数（CC-23 起类型定义在 `mechanics/typesHooks.ts#InteractionTopUp`（CC-83 拆出，经 types.ts 转出）；本别名保留给测试与既有引用） */
 export type BanyueInteractionTopUp = InteractionTopUp
 
 /**
