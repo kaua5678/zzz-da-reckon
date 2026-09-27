@@ -530,9 +530,9 @@
   "outerExit": "stable"
  },
  "banyue-roxy-lucia": {
-  "slack": 0.1,
+  "slack": 0,
   "over": 0,
-  "stun": 4,
+  "stun": 2,
   "outerExit": "stable"
  },
  "banyue-trigger-lucia": {
@@ -556,8 +556,8 @@
  "billy-roxy-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 4,
-  "outerExit": "stable"
+  "stun": 2,
+  "outerExit": "cycle"
  },
  "billy-trigger-lucia": {
   "slack": 0,
@@ -572,10 +572,10 @@
   "outerExit": "stable"
  },
  "claret-roxy-rina": {
-  "slack": 0.1,
+  "slack": 0,
   "over": 0,
-  "stun": 4,
-  "outerExit": "cycle"
+  "stun": 2,
+  "outerExit": "stable"
  },
  "yidhari-jufufu-lucia": {
   "slack": 1.4,
@@ -596,9 +596,9 @@
   "outerExit": "stable"
  },
  "yidhari-roxy-lucia": {
-  "slack": 1.7,
+  "slack": 1.6,
   "over": 0,
-  "stun": 4,
+  "stun": 2,
   "outerExit": "stable"
  },
  "yidhari-trigger-lucia": {
@@ -614,9 +614,9 @@
   "outerExit": "stable"
  },
  "yixuan-roxy-lucia": {
-  "slack": 0,
+  "slack": 1.1,
   "over": 0,
-  "stun": 4,
+  "stun": 3,
   "outerExit": "stable"
  },
  "yixuan-trigger-lucia": {

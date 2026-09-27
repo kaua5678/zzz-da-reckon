@@ -92,6 +92,19 @@ function getRowValue(move: SkillMove | null | undefined, rowId: string): number 
   return move.rows.find(row => row.id === rowId)?.values[0] ?? 0
 }
 
+/**
+ * 小心风寒（1621007）耗能（CC-109，R5 D28）：catalog `energyCost` 的「Energy Cost」= 启动耗能，
+ * 「Energy Cost Per Second」= 自旋每秒耗能（v12：10 + 30/s）。解析失败回落 10 / 30。
+ */
+export function roxyExEnergyCost(move: SkillMove | null | undefined): { start: number; perSecond: number } {
+  const raw = (move?.energyCost ?? {}) as Record<string, string>
+  const num = (k: string, fb: number) => {
+    const n = parseFloat(raw[k] ?? '')
+    return Number.isFinite(n) && n >= 0 ? n : fb
+  }
+  return { start: num('Energy Cost', 10), perSecond: num('Energy Cost Per Second', 30) }
+}
+
 function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
   const record = cfg as unknown as Record<string, unknown>
   const value = record[`setting:${id}`]
@@ -247,6 +260,13 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   record.roxyMegaTornadoMoveId = findMoveById(skills, MEGA_TORNADO_MOVE_ID)?.id ?? ''
   record.roxySendOffMoveId = findMoveById(skills, SEND_OFF_MOVE_ID)?.id ?? ''
   record.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2))
+  // CC-109（R5 D28）：一次强特 = 小心风寒启动 + 自旋 spinSeconds 秒，耗能按 catalog 两项合计。
+  // 修前沿用通用 findExSpecial 的「Energy Cost」10（只算启动），自旋 30/s 零扣费 ⇒ 强特次数按 能量/10 推，
+  // 而风能账本 computeRoxyWindEnergy 按 10 + 30×秒 记耗能，两本账不一致。
+  const exCost = roxyExEnergyCost(findMoveById(skills, EX_CHILL_MOVE_ID))
+  record.roxyExStartEnergy = exCost.start
+  record.roxySpinEnergyPerSecond = exCost.perSecond
+  cfg.exSpecialEnergyConsume = exCost.start + exCost.perSecond * Number(record.roxySpinSeconds)
   record.roxySpinSecondDamage = getRowValue(findMoveById(skills, SPIN_SECOND_MOVE_ID), 'damage')
   // 自旋喧响表值（1621008 decibel_recovery，每秒口径——与同行 damage 已录的「每秒 × spinSeconds」口径一致；
   // 行值经 decibelRecoveryOverride 跳过表值回填，见 buildRoxyExecutions）
@@ -334,7 +354,7 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
       moveId: EX_CHILL_MOVE_ID, moveName: '强化特殊技：小心风寒', category: 'special',
       count: exCount, actionTime: 0, comboAlignRatio: 0,
       totalTime: 0, totalComboAlignTime: 0,
-      energyConsume: 10, totalEnergyConsume: exCount * 10,
+      energyConsume: Number(record.roxyExStartEnergy ?? 10), totalEnergyConsume: exCount * Number(record.roxyExStartEnergy ?? 10),
       energyRecovery: 0, totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
@@ -346,7 +366,8 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
         moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（每秒，耗能 30/s）', category: 'special',
         count: exCount, actionTime: 0, comboAlignRatio: 0,
         totalTime: 0, totalComboAlignTime: 0,
-        energyConsume: 0, totalEnergyConsume: 0,
+        energyConsume: Number(record.roxySpinEnergyPerSecond ?? 30) * source.spinSeconds,
+        totalEnergyConsume: exCount * Number(record.roxySpinEnergyPerSecond ?? 30) * source.spinSeconds,
         decibelRecovery: spinDecibelPerSec * source.spinSeconds,
         totalDecibelRecovery: exCount * spinDecibelPerSec * source.spinSeconds,
         decibelRecoveryOverride: true,

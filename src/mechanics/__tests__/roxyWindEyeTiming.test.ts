@@ -149,18 +149,25 @@ describe('R52 风眼时序：逐事件 FIFO 队列 vs 引擎总量口径', () =>
 
   it('★ 负控 B：`spinSeconds`=0.5（单发 <3）时余留眼让 `mini` **必须**分叉；9 上限仍不咬合', async () => {
     const failures: string[] = []
-    const r = await probe({ [SPIN]: 0.5, [EYE_RATE]: 1 })
-    if (!(r.perCast < SEND_OFF_BURST_MAX)) {
-      failures.push(`spinSeconds=0.5 时单发应 <3（实到 ${r.perCast.toFixed(3)}）`)
+    // CC-109（R5 D28）起强特按 10 + 30/s×自旋秒 扣能量，强特次数大幅下降，单一采样点的余数可能恰为 0；
+    // 改为在多个单发 <3 的采样点里**至少一个**分叉（负控仍然必须可观测）。
+    const seen: string[] = []
+    let diverged = 0
+    for (const spin of [0.5, 1, 1.5, 2]) {
+      const r = await probe({ [SPIN]: spin, [EYE_RATE]: 1 })
+      if (!(r.perCast < SEND_OFF_BURST_MAX)) {
+        failures.push(`spinSeconds=${spin} 时单发应 <3（实到 ${r.perCast.toFixed(3)}）`)
+      }
+      const fifo = windEyeFifo(spreadEyes(r.ex, r.eyes, r.front))
+      seen.push(`spin=${spin}: 现行式 mini=${r.mini} / FIFO mini=${fifo.mini}`)
+      if (fifo.mini !== r.mini) diverged++
+      // ★ 但 9 上限在单发 <3 时**仍然**不可达（这是结构性论证的一半）
+      if (fifo.overflow !== 0) {
+        failures.push(`spin=${spin} 单发 ${r.perCast.toFixed(3)}<3 时 9 上限竟咬合了 ${fifo.overflow} 次 ⇒ 结构性论证有误`)
+      }
     }
-    const fifo = windEyeFifo(spreadEyes(r.ex, r.eyes, r.front))
-    if (fifo.mini === r.mini) {
-      failures.push(`单发 ${r.perCast.toFixed(3)}<3 时小旋风应分叉（现行式 mini=${r.mini} / FIFO mini=${fifo.mini}）`
-        + ' ⇒ 天花板必须可观测，否则「边界」是空话')
-    }
-    // ★ 但 9 上限在单发 <3 时**仍然**不可达（这是结构性论证的一半）
-    if (fifo.overflow !== 0) {
-      failures.push(`单发 ${r.perCast.toFixed(3)}<3 时 9 上限竟咬合了 ${fifo.overflow} 次 ⇒ 结构性论证有误`)
+    if (diverged === 0) {
+      failures.push(`单发 <3 时小旋风应至少在一个采样点分叉（${seen.join('；')}） ⇒ 天花板必须可观测，否则「边界」是空话`)
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)
@@ -203,8 +210,10 @@ describe('R52 风眼时序：逐事件 FIFO 队列 vs 引擎总量口径', () =>
 
   it('③ 闭式恒等式：`sendOff×3 + mini ≡ 风眼总数`，且 C6 `mega = sendOff×(1+余响)`', async () => {
     const failures: string[] = []
+    let bigSample = 0
     for (const spin of [2.25, 2.5, 4]) {
       const r = await probe({ [SPIN]: spin, [EYE_RATE]: 1 })
+      if (r.eyes > WIND_EYE_MAX) bigSample++
       if (r.sendOff * SEND_OFF_BURST_MAX + r.mini !== r.eyes) {
         failures.push(`spin=${spin}: ${r.sendOff}×3 + ${r.mini} ≠ ${r.eyes}（账本不闭合）`)
       }
@@ -214,10 +223,12 @@ describe('R52 风眼时序：逐事件 FIFO 队列 vs 引擎总量口径', () =>
       const expectMega = r.sendOff * (1 + ROXY_C6_ECHO_BURSTS)
       if (r.mega !== expectMega) failures.push(`spin=${spin}: C6 mega 应 ${expectMega}，实到 ${r.mega}`)
       // 风眼数走的是「消耗的风能点数」而不是「按总量钳到 9」——后者会让 sendOff 塌成 ≤3
-      if (!(r.sendOff > WIND_EYE_MAX / SEND_OFF_BURST_MAX)) {
+      // CC-109 起强特次数按真实耗能推（spin=4 时一发 130 能量），总眼数可能 ≤9；只在总眼数 >9 时这条才有判别力。
+      if (r.eyes > WIND_EYE_MAX && !(r.sendOff > WIND_EYE_MAX / SEND_OFF_BURST_MAX)) {
         failures.push(`spin=${spin}: sendOff=${r.sendOff} 疑似被当成「9 总量上限」（应远大于 ${WIND_EYE_MAX / SEND_OFF_BURST_MAX}）`)
       }
     }
+    if (bigSample === 0) failures.push('没有任何采样点总眼数 >9 ⇒「不按 9 总量钳」这条失去判别力')
     expect(failures, failures.join('\n')).toEqual([])
   }, 600000)
 

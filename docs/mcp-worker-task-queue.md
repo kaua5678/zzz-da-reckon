@@ -69,19 +69,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 134 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-108)」）
+### 第 135 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-109)」）
 
 - **做到哪**：
-  - R5 第 3 刀完成面板类一批：**D26**（4 件套属性门槛取值面板漏音擎与局外 buff，语义不同 → **CC-108 已修**）、**D27**（advancedStat / baseStat / sRank 常量 / stat 无差异）。已核 34 / 52。
-  - CC-108 改了 `src/core/buff.ts`、`src/core/panel.ts`、`src/core/__tests__/discSetEffects.test.ts`、`timeGolden.baseline.json`（2 条 delta 已写进账本 CC-108）。
-  - 上一轮：`82a7ad3`（CC-107，D24 / D25）。
+  - R5 第 3 刀完成招式类一批：**D28**（energyCost，洛克茜强特自旋零扣费 → **CC-109 已修**）、**D29**（其余招式字段无差异）、**D30 待核**（异常积蓄属性归属）。已核 42 / 52。
+  - CC-109 改了 `src/mechanics/agents/roxy.ts`、`src/specs/agents/1621.json`、`src/mechanics/__tests__/roxyWindEyeTiming.test.ts`，新增 `src/mechanics/__tests__/roxyExEnergyCost.test.ts`，重生成 `timeGolden.baseline.json`（10 条 delta）与 `timeFillRatchet.baseline.json`（11 条），都写进账本 CC-109。
+  - 上一轮：`075a84e`（CC-108，D26 / D27）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 3 刀续：招式类字段**——`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`，都在 `catalog.agentSkills`。先用 python 统计每个字段的出现位置、取值分布，再 `timeout 40 git grep -n -E '<字段>' -- src ':!**/__tests__/**'` 找读取方。重点：`levelValues` 取哪一级（技能等级 / skillLevelBonus 如何叠加）、`damageElement` 与角色属性不同时的分流、`energyCost` 在 useResourceCalc 的用法。
-  2. 然后身份类 10 个（清单见账本 §6 第 3 刀进度）。
+  1. **D30 核查**：从 `catalog.agentSkills[].categories[].moves[].rows[kind=anomaly].damageElement` 追到异常触发计数。起点 `src/composables/resourceCalc/damagePool.ts:188`（`safeElement(row.element)`）与 `anomalyPanels.ts:129-234`。样本：1191 艾莲（冰，4 个物理招式）、1031 妮可（以太，12 个物理招式）。若积蓄按角色属性归属 ⇒ 语义不同，立 CC-110，zd + golden 表。
+  2. **R5 第 3 刀收尾：身份类 10 个**（`agentId`、`attribute`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`isTeammateOnly`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`teammateBuffId`）+ `specialty` 其余位置。做完即第 3 刀全覆盖（R5 验收条件）。
   3. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
   4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
-- **本轮拍板**：D26 把「初始防御力」解释为装备者完整局外面板（含音擎、本套 2pc、局外 buff，也包括队友的局外组效果），依据是数据 condition「按装备者最终局外防御力自动判定」以及 teamBuff 侧的既有做法。回退点：`calcPanel` 4b 段传入的面板。
-- **未决项**：D25（蕾米埃尔 sourceStat 局外还是局内）仍未决；D21 旁注（14150 anomalyDmgBonus 是否与紊乱重复）待核。
+- **本轮拍板**：CC-109 是迄今最大的数值变化（洛克茜队伍 −54%～−69%）。依据：catalog 1621007「Energy Cost 10 / Energy Cost Per Second 30」、spec 1621.json 注记、模块自身风能账本都按 85/发 算；修前的 10/发 让账本耗能约为能量收入的 8 倍，属于内部矛盾，不是口径选择。回退点见账本 CC-109。
+- **未决项**：D30（见上）；D28 遗留的失衡轴 `roundInputs.ts:237` 解析口径（只影响用户自建轴）；D25 蕾米埃尔 sourceStat 局外 / 局内；D21 旁注 14150。
 - **本轮新增的已知坑**：
   - zd 的 rowsnap / dump 只存每个 key 的哈希串，看不到行级差异；归因要靠「改动影响的数据 → 哪些角色 → 哪些预设」的集合对照（本轮工具 `/home/kaua/calc-arch/zdan.mjs <base.json> <after.json>` 列出差异预设）。
   - 预设 JSON 里不写驱动盘 id，默认配装来自 `public/static/build-recommendations.json` 的 `characters.<id>.drive_disc_sets`；查「谁穿了某套」要搜这个文件。

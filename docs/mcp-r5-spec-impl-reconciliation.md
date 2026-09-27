@@ -96,7 +96,8 @@
   - 52 个字段中**已核 19 个**：`mode`、`condition`、`requirement`、`outOfCombatStat`、`specialty`（requirement 内）、`coverage`、`default`、`min`、`max`、`step`、`target`、`kind`、`skillTargets`、`skillTag`、`skillType`、`targetSkillType`、`buffModifiers`、`formula`、`expression`（其中 `specialty` 只核了 requirement 内的用法，其他出现位置随角色类字段再核）。
   - 第 133 轮完成效果数值核心一批（D24：`type`、`value`、`valuePerStack`、`maxStacks`、`defaultStacks`、`modificationValues`、`scope`）与 `source` / `sourceStat` / `defaultValue`（D25）⇒ **已核 29 个**。
   - 第 134 轮完成面板类一批（`advancedStat`、`baseStat`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat`，见 **D26 / D27**）⇒ **已核 34 个**。
-  - **剩余 18 个 + `specialty` 其余位置**：招式类 `actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`（建议下一批一起做）；身份类 `agentId`、`attribute`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`isTeammateOnly`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`teammateBuffId`。
+  - 第 135 轮完成招式类一批（`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`，见 **D28 / D29**，另开 **D30 待核**）⇒ **已核 42 个**。
+  - **剩余 10 个 + `specialty` 其余位置**（身份类）：`agentId`、`attribute`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`isTeammateOnly`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`teammateBuffId`。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
 ## 7. 已核结论（第 2 刀起）
@@ -378,6 +379,35 @@
 - `sRankMaxMainStat` / `sRankSubStatBaseStep` / `subStatPool` / `statModes`：`applyDriveDiscConfig` 读 4/5/6 主词条、1/2/3 固定主词条、副词条（只收 subStatPool 内的键，值 = 步长 × 步数），mode 按 statModes（CC-100）→ 一致。`substatOptimizer.ts:822` 读同一步长表。
 - `stat`：catalog + teammate-buffs 共 87 个不同 stat 键（第 134 轮探针）。78 个是 `emptyPanel()` 已有字段；9 个由 `applyStat` default 分支动态建键：7 个元素分项（`{element}SheerDmg` / `CritDmg` / `SharpDmg`）由 `damage.ts:112/192/197` 按元素拼键读取；`enemy{attribute}AnomalyResReduction` 在收集期按装备者属性落键（D-requirement）；**`shieldAppliedBonus`（14107 奔袭獠牙）零读取**，`utils/statMeta.ts:52` 已标「暂不实现」，计算器不算护盾量 → 不影响伤害，不立卡。
 
+### D28 `energyCost`：三个解析器口径不一；洛克茜强特自旋 30/s 零扣费 → **语义不同，已修（CC-109）**
+
+- **数据怎么写**：115 个招式带 `energyCost`（字符串值的字典），19 种键。单键「Energy Cost」75 处；多键 / 持续型：1031「Charged Attack Energy Cost 20 Energy/sec + Bombard 60」、1281「20 Energy/s」、1621「Energy Cost 10 + Energy Cost Per Second 30」、1171「12.5/s」、1061 三段等；闪能键「Flash Energy Cost」11 处（1371 / 1441 / 1471）。
+- **引擎怎么读（三处）**：
+  1. `core/resource/moveLookup.ts` `findExSpecial`：优先键「Energy Cost / Activation Energy Cost / Energy Cost to Use」，否则第一个可解析数字（`parseFloat('20 Energy/sec') = 20`）；键含 flash ⇒ 闪能。资源计算的默认单发耗能来自这里。
+  2. `composables/multiplierCoefficients.ts` `parseEnergyCost`：跳过 `/s`、`/sec` 值，取第一个非持续项（只用于倍率系数页）。
+  3. `composables/resourceCalc/roundInputs.ts:237`（失衡轴动作）：第一个正数。
+- **逐角色核对**（第 135 轮探针：60 个有强特的角色逐个比 1 与 2、3）：只有 1031、1281 不同（1 取 20，2 取 60 / 无）。这两人与 1061 由 `data/sustainedEx.ts` `SUSTAINED_EX_SPECS` 接管（固定耗能 + 每秒 × 秒数），覆盖 1 的结果 → 资源侧一致。闪能：命破角色的槽位能量本身就是闪能（`resourceIncome.ts` isFlash），轴里扣闪能即扣该槽能量 → 一致。其余多键角色（1171 / 1141 / 1131 / 1161 / 1091 / 1121 / 1251 / 1051 / 1211 …）要么优先键就是单发耗能，要么模块自设 `exSpecialEnergyConsume`（grep 共 18 个模块）。
+- **差在哪**：**1621 洛克茜**。模块 `skipGenericExSpecial = true`，但没有设 `exSpecialEnergyConsume` ⇒ 沿用 1 的「Energy Cost」10；自旋执行行 `energyConsume: 0`（行名却写「耗能 30/s」）。于是强特次数 = 能量 / 10（默认预设约 80 发 / 180s），而同一模块的风能账本 `computeRoxyWindEnergy` 按每发 10 + 30 × 自旋秒（默认 2.5 ⇒ 85）记耗能——账本耗能是能量总收入的约 8 倍。spec `1621.json` 与模块注释都写「10 能量启动 + 30/s 自旋」。
+- **修法（CC-109）**：`roxy.ts` 新增 `roxyExEnergyCost`（从 catalog 1621007 读「Energy Cost」与「Energy Cost Per Second」，缺省 10 / 30），`buildRoxyCharConfig` 设 `cfg.exSpecialEnergyConsume = 启动 + 每秒 × spinSeconds`；小心风寒行扣启动、自旋行扣 每秒 × 秒。
+- **影响面**：zd DIFF 30 = 含洛克茜的 5 个预设 × 6 变体，无其他预设。伤害大幅下降（见 CC-109 表）。**这是本项目迄今最大的一次数值变化**，依据只有数据与 spec 的耗能原文，没有用实测或投稿。
+- **遗留（不立卡，记录）**：失衡轴 `roundInputs.ts:237` 仍按「第一个正数」解析，用户自建轴里放 1031 / 1061 / 1281 的强特块时只扣首项（20）；内置轴预设不含这些块（`git grep` src/data/stunAxisPresets 为 0）。若要统一，改成复用 `findExSpecial` 的键优先级 + `SUSTAINED_EX_SPECS`，需要先定「一个轴块代表一整次强特还是一段」。
+
+### D29 招式类其余字段 → **无差异**（`comboAlignRatio` 等价但不读数据）
+
+- `actionTime`：1352 个招式，null 40、0 29；所有读取方都是 `?? 0` 或 `> 0` 守卫 ⇒ null 按 0 秒，一致。
+- `timeType`：normal 1198 / ultimate 72 / parry 50 / dodgeCounter 32。`damage.ts:42`、`resourceCalc/helpers.ts:436`、`moveLookup.ts:234` 读 dodgeCounter，`multiplierCoefficients.ts:47` 读 ultimate；parry 零读取，招架次数来自配置 `parryCount`，招式归属由 category 决定 ⇒ 等价。
+- `skillTags`：15 个招式，只有 `additionalAttack`；`damage.ts` `inferSkillDamageTarget` 读 ⇒ 一致（buff 侧的 skillTag 见 D21）。
+- `damageElement`：行级与招式级 0 处不一致；85 个招式是物理（非物理角色的普攻前段等）。直伤 `damagePoolDirect.ts:143/306` 取「行 → 招式 → 角色」⇒ 一致。异常侧见 D30。
+- `values`：7455 行，除 1581 的 4 行耀变倍率外全部单值（= Lv12，`levelRange.default` 12）；技能等级提升由 `core/skillLevel.ts` `getSkillLevelCoef` 按系数放大 ⇒ 设计如此，一致。
+- `levelValues`：只有 1581 的 4 行 `[12,14,16]`，`mechanics/agents/remielle.ts:96` 按 `indexOf(skillLevel)` 取 ⇒ 一致（与 D14 同源）。
+- `comboAlignRatio`：只有 1401012（爱丽丝 SW3）一处 0.749；`alice.ts:177` 自算 `1 - 1/actionTime` = 0.74893（actionTime 3.983）。数据是同一规则（前台 1 秒）的四舍五入值，差 7e-5 ⇒ 等价。拍板保持自算（规则比取整值精确）；若改读数据，golden 会有微小差异。
+
+### D30（待核）异常积蓄的属性：数据按招式 / 行写属性，异常侧多处按角色属性归属
+
+- 85 个非物理角色的物理招式，其 `anomaly_buildup` 行 `damageElement = physical`（行级与招式级一致）。游戏内这类招式积蓄的是物理异常。
+- 异常侧读取方多处用 `agent.damageElement`：`resourceCalc/anomalyPanels.ts:129/138/163/234`、`damagePoolAnomaly.ts:330`、`damagePoolRelease.ts:89/131/216`、`positionCompare.ts:115/122`。**尚未确认**积蓄是否已在上游按行属性分流（例如 `damagePool.ts:188` `safeElement(row.element)`）。
+- 下一轮先查：积蓄行从 `rows[].damageElement` 到异常触发计数的完整路径；若物理行确实被记成角色属性积蓄，属于语义不同，走 CC 卡（影响所有普攻前段为物理的异常 / 紊乱角色）。
+
 ## 9. 转卡清单（第 4 刀输入，按影响面排序）
 
 ### CC-100（D15 + D16）驱动盘词条的结算口径以源数据为准 ✅ done（第 126 轮，提交号见 git log「fix(CC-100)」）
@@ -560,6 +590,31 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
 | claret-koleda-rina | 31590551 → 32450899 | +2.723% | 同一原因；队伍总伤小得多（洛克茜队总伤约为本队 5 倍），克拉蕾占比高，涨幅更大 |
 
 - 验证：vitest discSetEffects 31/31、verify、check-guards 25/25、vue-tsc -b 通过。
+
+### CC-109（D28）洛克茜强特耗能按 10 + 30/s × 自旋秒扣 ✅ done（第 135 轮，提交号见 git log「fix(CC-109)」）
+
+- 代码：`src/mechanics/agents/roxy.ts`（`roxyExEnergyCost`；`buildRoxyCharConfig` 设 `cfg.exSpecialEnergyConsume`；小心风寒 / 自旋两行的耗能）。spec `src/specs/agents/1621.json` 注记同步。
+- 测试：新增 `src/mechanics/__tests__/roxyExEnergyCost.test.ts`（解析值 10 / 30；管线单发耗能 = 10 + 30 × spin，spin 2.5 与 1 两点；执行行耗能合计 = 次数 × 单发耗能且 ≤ 能量总收入）。反向验证：换回修前 roxy.ts ⇒ 「expected 10 to be close to 85」红。
+  `roxyWindEyeTiming.test.ts` 两条采样假设随强特次数下降而失效，已改：负控 B 改为 spin 0.5 / 1 / 1.5 / 2 至少一个分叉；③ 的「sendOff > 3」只在总眼数 > 9 时判定，并要求至少一个采样点总眼数 > 9。
+- **zd**：DIFF 30，全部是含洛克茜的 5 个预设。
+- **golden delta**（timeGolden 已重生成）。共同原因：洛克茜强特次数 ≈80 → ≈10（每发耗能 10 → 85），随之失衡次数、喧响 / 终结技次数、队友的失衡窗口伤害都下降；空出的前台时间转为普攻。
+
+| 条目 | 伤害 | 变化 | 失衡次数 | 洛克茜强特次数 |
+|---|---|---|---|---|
+| agent:1621:c0 | 11806314 → 2141782 | −81.9% | 4 → 2 | 79.07 → 10.25 |
+| agent:1621:c3 | 17275923 → 3012697 | −82.6% | 4 → 2 | 79.07 → 10.25 |
+| agent:1621:c4 | 17774882 → 3040796 | −82.9% | 4 → 2 | 81.67 → 10.56 |
+| agent:1621:c5 | 19204163 → 3280981 | −82.9% | 4 → 2 | 81.67 → 10.56 |
+| agent:1621:c6 | 29567487 → 4398273 | −85.1% | 5 → 2 | 81.17 → 10.56 |
+| preset:yixuan-roxy-lucia | 134512142 → 61694634 | −54.1% | 5 → 3 | 77.17 → 9.02 |
+| preset:yidhari-roxy-lucia | 126948040 → 47766232 | −62.4% | 4 → 2 | 83.26 → 10.15 |
+| preset:billy-roxy-lucia | 129190388 → 48597051 | −62.4% | 5 → 2 | 77.17 → 9.28 |
+| preset:banyue-roxy-lucia | 112533258 → 38458479 | −65.8% | 5 → 2 | 74.91 → 8.86 |
+| preset:claret-roxy-rina | 152559072 → 47295670 | −69.0% | 5 → 2 | 87.10 → 10.58 |
+
+- **留白棘轮**（`timeFillRatchet.baseline.json` 已重生成，11 条全在洛克茜预设）：失衡次数 yixuan 4→3、yidhari / claret / banyue / billy 4→2；留白 yixuan 0→1.1s（强特少了、前台时间出现空档）、yidhari 1.7→1.6、claret 0.1→0、banyue 0.1→0；外层收敛出口 billy stable→cycle、claret cycle→stable。留白变差只有 yixuan 一条，原因同上，接受。
+- **回退点**：只需还原 `roxy.ts` 里 `cfg.exSpecialEnergyConsume` 那三行和两行 `energyConsume`，再重生成 golden 与留白棘轮基线。
+- 验证：vitest roxy 相关全绿、verify、check-guards、vue-tsc -b。
 
 ### 其余（零差、界面层）
 - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。
