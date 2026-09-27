@@ -24,13 +24,7 @@
  * 对全库含琉音的轴预设，`账本预留 == 装配赠行`（单一口径；`timeLedgerInvariants` 的 TOL=0.05
  * 是宽松版，这里是零容差版），并钉住**闸门**——「轴没声明 promoteVariant 块时不许发明转大次数」。
  */
-import { describe, expect, it, vi } from 'vitest'
-// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
-// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -124,7 +118,12 @@ describe('R67 琉音赠大：轴模式四处同源', () => {
     const verdict = rr!.characters
       .flatMap(c => c.executions ?? [])
       .find(e => e.moveId === '1291_ex_verdict_final')
-    expect(verdict?.count, '决算行被赠行挤出 ⇒ 截断额度被凭空扣除').toBe(5)
+    // CC-148（第 174 轮）：原写死 5（off 口径下的轴栈值）；改为与轴栈同源比较——「轴栈说几就落地几」才是坑36 的判据，
+    // physical 缺省下轴栈 = 4（CC-150 池钳位），写死 5 会把口径变化误报成「被赠行挤出」。
+    const stackVerdict = (calc.stackTraversalResult.value as { executed?: Record<string, { count: number }> } | null)
+      ?.executed?.['0:1291_ex_verdict_final']?.count
+    expect(stackVerdict, '轴栈决算次数存在').toBeGreaterThan(0)
+    expect(verdict?.count, '决算行被赠行挤出 ⇒ 截断额度被凭空扣除').toBe(stackVerdict)
   }, 120_000)
 
   /**

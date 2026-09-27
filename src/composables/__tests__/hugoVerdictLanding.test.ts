@@ -9,13 +9,7 @@
  *   `resourceResult.characters[0].executions` 的 `1291_ex_verdict_final` count
  *   应等于轴认领块数 × 窗口数（= 轴栈 executed 同键计数）。
  */
-import { describe, expect, it, vi } from 'vitest'
-// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
-// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { stunAxisPresets, cloneStunAxes } from '@/data/stunAxisPresets'
@@ -37,6 +31,8 @@ describe('雨果决算轴内块数落地（坑36 回归）', () => {
     config.setCinemaLevel(0, 0)
     config.stunAxes.push(...cloneStunAxes(axes))
     config.useStunAxis = true
+    // CC-148（第 174 轮）：精确值 5 在 off 口径下核实，显式钉 off；physical 缺省见下一条用例（同源判据）
+    config.setMechanicSetting('time.stunPlanProjection', 0)
 
     const calc = useResourceCalc()
     const poolCount = calc.stunPoolResult.value?.stunCount ?? 0
@@ -58,5 +54,31 @@ describe('雨果决算轴内块数落地（坑36 回归）', () => {
     const normalRow = execs.find(e => e.moveId === HUGO_EX_NORMAL_MOVE_ID)?.count ?? 0
     expect(verdictRow?.count ?? 0 + normalRow).toBeLessThanOrEqual(exSpecial)
     expect(exSpecial).toBeGreaterThanOrEqual(verdictRow?.count ?? 0 + normalRow)
+  })
+
+  /**
+   * physical 缺省（CC-150，第 174 轮）：该轴外层 2-环、整数物理次数无不动点（读入 5 → 池 4、读入 4 → 池 5）。
+   * 修前：资源行决算 4（引擎按读入 4 分配），池 / 轴栈 5 ⇒ 坑36 同源破。修后池钳到读入值 ⇒ 三处同为 4。
+   * 判据只钉**同源**（池 == 轴栈 == 资源行），外加现值 4。反向验证：删 `solveTeam.ts` 的 CC-150 块 ⇒ 本条红（4 vs 5）。
+   */
+  it('physical 缺省：池 == 轴栈 == 资源行（CC-150 同源）', async () => {
+    const { config } = await setupHarness(
+      [{ agentId: '1291' }, { agentId: '1481' }, { agentId: '1161' }],
+      { recommendedBuild: true },
+    )
+    const axes = stunAxisPresets.find(p => p.id === 'hugo-c0-e')!.axes!
+    config.autoYidhariAxis = false
+    config.stunAxisPlans.splice(0)
+    config.stunAxes.splice(0)
+    config.useStunAxis = false
+    config.setCinemaLevel(0, 0)
+    config.stunAxes.push(...cloneStunAxes(axes))
+    config.useStunAxis = true
+    const calc = useResourceCalc()
+    const pool = calc.stunPoolResult.value?.stunCount ?? -1
+    const stack = (calc.stackTraversalResult.value as { executed?: Record<string, { count: number }> } | null)?.executed?.[`0:${HUGO_EX_VERDICT_MOVE_ID}`]?.count ?? -1
+    const row = calc.resourceResult.value?.characters?.[0]?.executions?.find(e => e.moveId === HUGO_EX_VERDICT_MOVE_ID)?.count ?? -1
+    expect({ pool, stack, row }, '池 / 轴栈 / 资源行必须同源').toEqual({ pool: row, stack: row, row })
+    expect(row, 'physical 现值').toBe(4)
   })
 })

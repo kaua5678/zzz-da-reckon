@@ -19,6 +19,7 @@
  */
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { netFrontlineOccupation } from '@/core/resource/helpers'
+import { withStunCount } from '@/core/stunPool'
 import type { ResourceCalcConfig } from '@/types/resource'
 import { initialCalcRoundThreads, threadsAfterNullRound } from './roundThreads'
 import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
@@ -273,6 +274,16 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     // 非环停点（stable / 真 maxIter）：前一轮 = 历史末项（stable 的本轮未入历史；maxIter 的本轮是历史末项，取其前一项）
     if (outerExit === 'stable') outPrev = outerOutHistory[outerOutHistory.length - 1] ?? null
     else if (outerExit === 'maxIter') outPrev = outerOutHistory[outerOutHistory.length - 2] ?? null
+    // CC-150（第 174 轮）：physical 计数下外层 2-环 = 整数物理次数无不动点（实测雨果 0 命轴 hugo-c0-e：
+    // 读入 5 → 池 4、读入 4 → 池 5）。规范成员的引擎按读入 K（= 其前一轮池 `outPrev.stunPool`，即
+    // `threads.prevPoolStunCount`）分配时间与计数，池却报 K+1 ⇒ 资源行（决算 4）与池 / 轴栈 / 伤害侧（5）不同源。
+    // 取读入 K（按 K 分配时池撑得住 ≥ K，即最大自洽可行整数），报告池同步钳到 K；K+1 那次没有分配时间，不兑现。
+    // 只处理「池 > 读入」的一侧；「池 < 读入」（引擎多分配了窗口）不在此钳，留作残差（docs/mcp-stun-dual-source.md §15）。
+    // 回退点：删本块与 `core/stunPool.ts#withStunCount`。
+    if (outerExit === 'cycle' && resourceConfig?.stunPlanProjection === 'physical' && out?.stunPool && outPrev?.stunPool) {
+      const kIn = outPrev.stunPool.stunCount
+      if (out.stunPool.stunCount > kIn) out = { ...out, stunPool: withStunCount(out.stunPool, kIn) }
+    }
     return { out, outPrev, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier }
   }
 

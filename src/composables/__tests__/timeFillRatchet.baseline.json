@@ -22,7 +22,7 @@
  "auto-1021-1481-1341": {
   "slack": 0,
   "over": 0,
-  "stun": 3,
+  "stun": 2,
   "outerExit": "cycle"
  },
  "auto-1021-1571-1491": {
@@ -94,13 +94,13 @@
  "auto-1091-1511-1211": {
   "slack": 1.7,
   "over": 0,
-  "stun": 3,
+  "stun": 2,
   "outerExit": "cycle"
  },
  "auto-1091-1511-1311": {
   "slack": 1.7,
   "over": 0,
-  "stun": 3,
+  "stun": 2,
   "outerExit": "cycle"
  },
  "auto-1091-1511-1411": {
@@ -142,7 +142,7 @@
  "auto-1191-1481-1311": {
   "slack": 1.1,
   "over": 0,
-  "stun": 3,
+  "stun": 2,
   "outerExit": "cycle"
  },
  "auto-1201-1361-1211": {
