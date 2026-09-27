@@ -246,7 +246,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot, teamAxisPresetChapterOwnerSlot, teamHasAxisPresetPreferred } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -267,7 +267,8 @@ const hasChapterOwner = computed(() => chapterOwnerSlot.value >= 0)
 const hasManualAxes = computed(() => configStore.stunAxisPlans.length > 0 || configStore.stunAxes.length > 0)
 const chapterOwnerCinema = computed(() => (chapterOwnerSlot.value >= 0 ? configStore.team[chapterOwnerSlot.value]?.cinemaLevel ?? 0 : 0))
 const autoChapterLabel = computed(() => (chapterOwnerCinema.value >= 1 ? '1章（≥1命）' : '0章（0命）'))
-const autoLiuyinLabel = computed(() => (teamHasAxisPresetPreferred(configStore.team) ? '有琉' : '无琉'))
+// CC-79：「有琉/无琉」文案由声明者简称拼出（多声明者时列全）
+const autoLiuyinLabel = computed(() => axisPresetPreferredLabel(configStore.team))
 // 自动轴 banner 备注：章鱼体系显示 章×有琉，其余显示预设 note
 const autoPresetNote = computed(() => {
   if (!autoPreset.value) return ''

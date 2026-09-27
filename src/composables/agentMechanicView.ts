@@ -5,7 +5,7 @@
  * settings（机制设置表）/ combos（轴连段定义）/ resourceSections（资源卡专属分区）。
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import type { AutoAxisPresetHints } from '@/data/stunAxisPresets'
 import type { AgentMechanicModule, AxisEditorBlockMark, CharacterCountInputDecl } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
@@ -228,6 +228,23 @@ export function teamAxisPresetChapterOwnerSlot(team: ReadonlyArray<{ agentId?: s
 /** 队里是否有「预设优先」角色（CC-60；原 StunAxisPage 写死 some agentId === 琉音） */
 export function teamHasAxisPresetPreferred(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): boolean {
   return team.some(c => !!c?.agentId && AUTO_AXIS_PRESET_HINTS.isPreferred(c.agentId))
+}
+
+/**
+ * StunAxisPage 自动轴横幅的「有X/无X」标签（CC-79；原页面写死 '有琉' / '无琉'）。
+ * 在队的「预设优先」声明者 ⇒ `有` + 各自简称（去重，按槽位序，'/' 连接）；
+ * 一个都不在 ⇒ `无` + 全部已注册声明者简称（按注册序）。现唯一声明者琉音 ⇒ 与原文案逐字相同。
+ */
+export function axisPresetPreferredLabel(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): string {
+  const shortOf = (m: AgentMechanicModule): string => m.axisPresetPreferredShort ?? m.name ?? m.agentIds[0] ?? m.id
+  const present: string[] = []
+  for (const c of team) {
+    const m = c?.agentId ? getAgentMechanic(c.agentId) : undefined
+    if (m?.axisPresetPreferred && !present.includes(shortOf(m))) present.push(shortOf(m))
+  }
+  if (present.length > 0) return `有${present.join('/')}`
+  const all = [...new Set(getRegisteredAgentMechanics().filter(m => m.axisPresetPreferred).map(shortOf))]
+  return `无${all.join('/')}`
 }
 
 /** ResourceResultCard 腐蚀状态机展示声明（CC-66；原组件写死维琳娜）；无 ⇒ undefined */
