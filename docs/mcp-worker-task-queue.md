@@ -69,25 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 179 轮（lane lead-arena-0925c）：本轮无代码提交，只提交文档。**
-- CC-157 结案，不做：原推测是错的，超预算来自整数次终结技的量化，属轴模式 2s 设计容差，timeGolden 中 over > 0 的 10 条全部 ≤ 2s。见 stun-dual-source §20（并更正 §19.3）。
-- CC-149 定位完成，**阻塞于新卡 CC-158**：修复补丁存在 `/home/kaua/calc-arch/k179/cc149-attempt.diff`，未合入，原因与数字见 §21。
-- REQUIREMENTS 没有新条目（最后一次改动在 e000e53e）。提示词本轮已重读，未改（没有发现阻碍决策的条款）。
+**第 180 轮（lane lead-arena-0925c）：本轮无代码提交，只提交文档。**
+- CC-158 定位完成：根因是 foldLoop 的折叠残差只增不减，且收敛判据只看正溢出，叶瞬光模块本身没有问题。补丁在 `/home/kaua/calc-arch/k180/cc158-unfold.diff`，未合入，原因是 11 条非基线测试尚未归因。见 stun-dual-source §22。
+- REQUIREMENTS 没有新条目（最后一次改动在 e000e53e）。提示词本轮已重读，未改。
 
 **下一步（按顺序，直接开工）**
-1. **CC-158：叶瞬光（1431）账本虚高。**
-   - 复现：
-     - `git apply /home/kaua/calc-arch/k179/cc149-attempt.diff`（打补丁后，auto-1431-1341-1311 会选中 scale 0.125）；
-     - `cp /home/kaua/calc-arch/k179/zzJ179.test.ts src/`；
-     - `ZZ_IDS=auto-1431-1341-1311 npx vitest run src/zzJ179.test.ts`，看 slot0 的 requiredFrontline 143.465 与 necRows + basicModuleRows 124.577 的差；
-     - 跑完移走探针。
-   - 定位方向：叶瞬光模块（`src/mechanics/agents/` 下 grep 1431 或 yeshuguang）的 necessary 估算，与物化行（剑势、形态、灭极段）在交互档缩放时是否同源；另外查 foldLoop 的折叠为什么没把 18.9s 折回（refund 冻结语义，foldLoop.ts 约 175 行之后）。
-   - 验收：打补丁后该队的 ledgerInflation 回到 ≤ 约 2s，且伤害不低于 HEAD。然后正式合入 CC-149 补丁（difficultyDescent 同时去掉 off 钉，补丁里已含），重生成两份基线并逐条解释。
-2. CC-156（保底不可达是否上报，可逆方案优先，例如只加诊断字段）；CC-147；CC-152（可选）。
+1. **CC-158 收尾**：`git apply /home/kaua/calc-arch/k180/cc158-unfold.diff`，然后按 §22.3 的清单逐条归因 11 条失败：
+   - ① inStunAttribution × 5：先用 `k180/zzL180.test.ts`（复制到 `src/`，跑完移走）确认轴态修后净占用 185.1。倾向于缩小夹具的轴内动作次数（例如 1181005 18→12），让轴在新口径下也装得下，因为测试意图是异常归因，不是时间预算。改夹具时补一条前提断言：`axisFallback === false`。
+   - ② teamTimeSummary 虚高归因：夹具本意是「有虚高时归因正确」，换成一个修后仍有虚高的构造，或直接用纯函数构造 rr。
+   - ③ underfillRefund ①：读该测试的前提；refund 变为 0 若属设计内（负溢出先退回本槽），就改前提或夹具。
+   - ④ adjustableEffect 米卡：换一个让雅平 A ≥ 2s 的配装或时间设定。
+   - ⑤ peilou、stunVulnSummary：核对是平 A 变化引起的快照漂移后更新快照值，并写 CC-158 注释。
+   - 另查棘轮 auto-1431-1341-1031 留白 3.4→12.8。
+   - 全绿后重生成两份基线，跑 zd 逐条解释，再提交。
+2. **CC-149 合入**：`git apply /home/kaua/calc-arch/k179/cc149-attempt.diff`，重测 auto-1431-1341-1311（§21.3 的 −8.34%、留白 +9.4 应消失），重生成基线并解释。
+3. CC-156、CC-147、CC-152（可选）。
 
 **已知坑**
-- 用 `timeBudgetIdleSeconds` 判断「预算是否看见某行」是错的：它只记录负溢出的最大值。要用 teamTimeSummary 的四项闭合分解（`slack = ledgerInflation + basicUnspent + poolResidual + comboAlignDeduction`，探针 zzJ179）。
-- 轴模式按设计容忍 ≤ 2s 超预算（`AXIS_FALLBACK_TOLERANCE_SEC`），非轴降配容差是 1s。两个容差并存是有意保留，见 §20.3。
-- 降配相对臂③会掩盖模块账本虚高：修选档逻辑之前，先看被拒档的 ledgerInflation。
-- 探针里用 `process.env.X ? … : …` 作标签时，`'0'` 也为真（本轮踩过）。
-- 棘轮（setAgent 路径）、zd（applyTeamToStore 路径）、timeGolden（applyTeamPreset 路径）三者状态不同，另有 warm-start 缓存的路径依赖。
+- 远端 bash 会执行 python heredoc 里的反引号（本轮一段注释因此被吞）。代码和文档一律写成 .py 文件，用 up.sh 上传后再执行，不要内联。
+- 双向折叠不设门槛会产生量化 2-循环（±0.8s），被停滞判据截停在中途时会留下截断。门槛 1s 不要删。
+- 用 `timeBudgetIdleSeconds` 判断「预算是否看见某行」是错的，要用 teamTimeSummary 的四项分解（探针 k178/zzJ179）。
+- 棘轮（setAgent 路径）、zd（applyTeamToStore 路径）、timeGolden（applyTeamPreset 路径）三者状态不同。
