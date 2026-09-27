@@ -69,19 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 154 轮（2026-09-28，代码 `850246fc` + 文档 `e0c5273e` + 本回填提交；上一轮文档 = d53c14f3 / 5b4b9f09）
+### 第 155 轮（2026-09-28，代码 `0ed6ffc5` + 文档提交「docs: round 155」；上一轮文档 = e0c5273e / 1d7dcb56）
 
 - **做到哪**：
-  - **CC-129 席德选正兵**（`850246fc`）：`src/mechanics/agents/xide.ts` applyXideTeamConfig 改按队友局外攻击 `cfg.outOfCombatPanel.atk` 选；`CharacterOperationConfig` 新增可选只读字段 `outOfCombatPanel`（`src/types/resource/config.ts`），由 `buildCharConfig`（`src/composables/resourceCalc/helpers.ts`）通用挂载。zd 零差；新单测 `src/mechanics/__tests__/vanguardInitialAtkCc129.test.ts`（反向验证 2 条红）。
-  - **字段语义误读扫描完成**（`docs/mcp-r6-refactor-list.md` §2.15）：除 CC-129 外无新误读；顺手修正 `velina.ts` 一处过时注释（零差）。
-  - 验证：vue-tsc 0；verify176 全绿（3784 passed）；CG 见提交。
+  - **CC-130 席德明攻 / 围杀作用对象**（`0ed6ffc5`）：探针实测原来三个槽都吃 +1000 攻击 / +30% 暴伤 / +25% 增伤 / 20% 无视防御。新增通用模块能力 `teammateBuffRecipientFilter`（`src/mechanics/types.ts`），编排层 `src/composables/resourceCalc/panelPhases.ts#applyTeammateBuffRecipientFilters` 应用；`src/mechanics/agents/xide.ts` 抽出 `pickXideVanguardSlot` 共用。3 个席德预设伤害 −8%~−20%，每条都能解释（卡表 CC-130 行）；timeGolden 3 叶已重生成。
+  - 新单测 `src/mechanics/__tests__/vanguardBuffRecipientCc130.test.ts`；`public/static/teammate-buffs.json` 1461 说明文字同步。
+  - 同类扫描写进 `docs/mcp-r6-refactor-list.md` §2.16。
+  - 验证：vue-tsc 0；verify177 见提交；CG 通过。
 - **下一步（按顺序，可直接开工）**：
-  1. **核对席德「正兵专属」buff 的作用对象**：`public/static/teammate-buffs.json` 1461 组 `seed.core_vanguard_bright_attack`（明攻 攻击 / 暴伤）效果的 `target.kind` 是 `default`，原文只给[正兵]（1 人）。先查 `default` 在 `src/core/teammateBuffSource.ts` / `src/core/buff.ts` 里怎么解析（全队？当前被计算的槽？），再看 1461 组有没有别的机制把它限定到正兵（如 `panelPhases.ts` 427 行附近的门控、xide.ts）。若会发给非正兵的强攻 / 其他队友，开 CC-130：改成只给 `xideVanguardSlot`（面板阶段拿不到 cfg 时，可以仿照 CC-129 在面板阶段按队友局外攻击重算正兵槽位，注意别产生循环依赖）。「围杀」增伤同样核对。验证：zd（席德预设），探针看非正兵队友面板攻击是否含 +明攻。
-  2. 若 1 无问题：处理未决项「每超过 X 是否取整」（见下方未决），先列出所有「每超过」机制的现行取整方式成表，写进清单，再决定是否开卡。
+  1. **卢西娅影画2「破暗」作用对象**（清单 §2.16 待核行）：读 `data/raw/nanoka_missing/full/1451.json` 里影画 2 与[破暗]的原文，确认谁获得破暗。若不是全队，在 `src/mechanics/agents/luciaElowen.ts`（先 `ls src/mechanics/agents | grep -i lucia` 确认文件名）实现 `teammateBuffRecipientFilter`，剔除 `lucia_elowen.cinema_2_darkbreaker_sheer_dmg` 的效果；探针写法照抄 vanguardBuffRecipientCc130.test.ts 的 `deltas()`。
+  2. **原文侧反查单体拐**（§2.16 局限）：在 raw 文本里搜单体措辞（「[xx]状态的代理人」「当前操作角色」「视为」「指定」），逐条对照 teammate-buffs 同角色组的效果是否全队生效。结果追加到 §2.16 表。可以派 dsh 分批做（每批约 10 个角色、边做边写结果文件）。
+  3. 低优先：副词条优化器（`src/stores/config.ts` 约 819-861 行）仍用未过滤的 enabledTeammateBuffs，只影响优化建议。要统一的话，把 `applyTeammateBuffRecipientFilters` 接进去（需要该处能拿到 team 与接收槽）。
+  4. 未决项「每超过 X 是否取整」（见下方）。
 - **本轮拍板**：
-  - 局外面板挂在 cfg 上而不是给 applyTeamConfig 另加参数：依据是 build 阶段模块本来就遍历 `characters`，且 panelPhases 已在 buildCharConfig 里算好，零额外计算；无角色分支，不违反编排层规则。回退点：删字段 + xide 回退两行。
-  - 局外攻击缺失时回退 `level60.atkBase` 而不是 0：保证手搓 cfg 的老测试语义不变。
+  - 按效果过滤而不是拆 buff：拆成两条 buff 要改 id，预设里存的开关就失效了；按效果过滤保留界面开关与覆盖率滑块。回退点见卡表。
+  - 正兵在面板阶段现算（局外面板探针），而不是读 cfg：面板在 buildCharConfig 之前算，拿不到 `cfg.xideVanguardSlot`。两处共用 `pickXideVanguardSlot`，口径一致。
+  - 奥菲丝作为正兵时攻击 +1200（不是 +1000）：多出的 200 来自奥菲丝自身机制按攻击放大，属于下游联动，测试对正兵攻击只断言 ≥ 1000。
 - **已知坑**：
+  - **teammate buff 没有接收者字段**：同一份 enabledTeammateBuffs 下发给每个槽（含来源本人）。单体拐必须走模块能力 `teammateBuffRecipientFilter`（CC-130），不要在编排层按 agentId 过滤。
+  - teammate buff 默认**关闭**（`teammateBuffEnabledOf` 无记录 = false），预设会打开；探针里要手动 `config.teammateBuffSelections[id] = { enabled: true, coverage: 100 }`。
   - **往 wsl_exec 命令里内联含反引号的文本会被外层 shell 当命令替换吞掉**（第 153 轮卡表行丢字）：改文档一律写成脚本文件上传后执行，不要内联 heredoc。
   - **改到失衡 / 时间分配的数值时有两份基线**：timeGolden（`TIME_GOLDEN_UPDATE=1`）和 `timeFillRatchet.baseline.json`（`TIME_RATCHET_UPDATE=1 npx vitest run timeFillRatchet`），两份都要逐条解释后重生成；后者只在全量 verify 里才暴露。
   - `PanelValues.energyRegen` 是**基础**回能（恒 1.2，柏妮思 1.56）；总回能看 `energyRegenOutOfCombat` / `energyRegenTotal`。

@@ -262,3 +262,19 @@
 **结论**：除 CC-129（已修）外没有新的误读。顺手修正零差注释 `src/mechanics/agents/velina.ts` 回能转模一处：原注释写「加成只体现在 energyRegenTotal」，与实际 spec `sourceValue: energyRegenOutOfCombat` 不符，已改为说明读局外总回能。
 
 **方法沉淀**：build 阶段（`applyTeamConfig`）需要队友「初始属性」时，读 `characters.find(c => c.slot === s)?.outOfCombatPanel`（CC-129 起编排层通用挂载），不要读 `agent.level60.*`。
+
+### 2.16 队友 buff 作用对象核对（第 155 轮，CC-130）
+
+**问题类别**：teammate-buffs.json 的效果没有「接收者」字段（`target.kind` 只管技能范围：default / skill / teammate / self），编排层对每个接收槽下发**同一份** `enabledTeammateBuffs`，**来源本人也会吃到自己那组**。原文只给特定队友的拐，静态数据只能按全队近似。
+
+**通道（CC-130 起）**：模块能力 `teammateBuffRecipientFilter`（契约见 `src/mechanics/types.ts`）。按接收槽返回要剔除的本人 inCombat 效果 id；需要比较队友「初始属性」时用入参 `getOutOfCombatPanel(slot)`。首个消费者是席德 1461。
+
+**全库扫描**（conditionLabel / description 匹配「全队生效近似 / 多吃 / 按全队 / 全队近似 / 指定队友 / 一名队友 / 当前操作角色 / 前台角色」）：
+
+| buff | 标注 | 判断 |
+|---|---|---|
+| 1461 `seed.core_vanguard_bright_attack` / `seed.cinema_2_encirclement_def_ignore` | 按全队近似，第三人多吃 | ❌ → ✅ CC-130 已修 |
+| 1451 `lucia_elowen.cinema_2_darkbreaker_sheer_dmg` | 「破暗随每次合唱重挂且持续 20 秒，按全队近似」 | ⏳ 待核：先读原文确认谁获得[破暗]；若只给部分队友，按 CC-130 通道过滤 |
+| 1341 `zhao.cinema_1.off_field_res_ignore` | 原文「使全队角色」 | ✅ 全队本来就对 |
+
+**局限**：这次扫描只抓到**标注了近似**的条目。原文是单体、但录入时没标注的 buff 扫不出来，要从原文侧反查（raw 文本里「[某状态]的代理人 / 当前操作角色 / 指定」这类单体措辞，对照 teammate-buffs 效果）。
