@@ -69,7 +69,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 137 轮（2026-09-27，提交号见 git log 中的「feat(CC-111)」与其后的「docs: R5 done」）
+### 第 137 轮（2026-09-27，`0bd64a1` feat(CC-111) + 其后一个「docs: R5 done」提交）
 
 - **做到哪**：
   - **R5 完成**：第 4 刀由 CC-111 收尾（D3 滑块按 stackGroup 联动、D7 带持续时间的效果给滑块、D14 蕾米埃尔一致性单测、D2 / D4 数据前提钉），zd DIFF 0。REQUIREMENTS R5 标 done，验收对照写在 R5 状态段末。
