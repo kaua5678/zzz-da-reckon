@@ -69,24 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 181 轮（lane lead-arena-0925c）：CC-158 已合入。** 提交号见 `git log`，提交信息为「CC-158: 折叠残差可退回 + refund 双计修正」。
-- 代码只改 `src/core/resource/foldLoop.ts`：§22.2 补丁原样应用，另加退回时扣减冻结 refund 的 3 行。另改了 6 个测试（按意图归因，未放宽判据），重生成了两份基线。详见 stun-dual-source §22.5。
-- 验证：vue-tsc 与 verify 通过（3824 passed），CG 25 项通过，zd c181 已逐项解释。
-- REQUIREMENTS 没有新条目，提示词未改。
+**第 182 轮（lane lead-arena-0925c）：只提交文档，源码 = HEAD（5cab16aa 之后无代码改动）。**
+- CC-149 复测：CC-158 合入后，auto-1431-1341-1311 −8.46%、留白 +12.8 仍在，§21.3 的预期不成立，补丁已回退。
+- CC-159 定位完成，**§22.5 的归因已更正**：病根是叶瞬光终局整数重推的 k↔k+1 轮 2-循环（没有整数不动点），不在折叠环。4 个修复变体全部否决，数据与脚本见 stun-dual-source §23。
+- REQUIREMENTS 无新条目，提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-149 合入**：
-   - `git apply /home/kaua/calc-arch/k179/cc149-attempt.diff`（只改 solveTeam.ts，与 CC-158 不冲突）；
-   - 重测 auto-1431-1341-1311（§21.3 的 −8.34%、留白 +9.4 应该消失，因为叶瞬光账本虚高已由 CC-158 修掉）；
-   - 重生成两份基线，跑 zd（`.zc/perf/zd.sh <tag>` + `python3 /home/kaua/calc-arch/k177/zdsum.py <tag>`），逐条解释后提交。
-2. **CC-159**（冻结后残余负溢出丢失，病例棘轮 auto-1431-1341-1031 留白 12.8）：
-   - 探针 `k181/zzM181.test.ts`（复制到 `src/` 下，用 `ZZ_F=队伍键` 过滤，跑完移走）；
-   - 逐槽日志的写法见 `k181/zzf181.py`（插入的是带 ZZTMP 的一行，用完需用 `sed -i '/ZZTMP/d'` 删除）；
-   - 修好后，teamTimeSummary「留白被归因到账本虚高」需要换样例。
+1. **CC-159，按推荐方向做**：终局期刷新 `cfg.timePressureSeconds`，让 k+1 轮那一相触发叶瞬光自动退轴（full→short_pair）。
+   - 先读 `src/core/resource/foldLoop.ts` 中 timePressure 的写入处（约 150 行，`cfg.timePressureSeconds = rowTime - battleWindow`），以及 `yeshuguang.ts` 的 `estimateExSpecialTime` 退轴判据（`AUTO_AXIS_DEGRADE_THRESHOLD` = 5）。
+   - 验证探针：`cp /home/kaua/calc-arch/k182/zzN182.test.ts src/`（1431-1341-1031 队，输出最终逐行时间）、`k182/zzQ182.test.ts`（单人 1431 c3，输出伤害和 cycle）、`k181/zzM181.test.ts`（全库留白扫描），跑完移走。
+   - 在 estimate 出口加日志的写法见 `k182/zzy182.py`（带 ZZTMP，用完 `sed -i '/ZZTMP/d'`）。
+   - 硬约束（§23.4）：`照影 = floor(终态剑势/6)`（outerCycleColdStart 钉住）；装配行 ≡ 账本；不写 agentId。
+   - 验收：golden `agent:1431:c3`、`preset:auto-1431-1341-1311` 的伤害变化能逐条解释；棘轮两队留白 12.8 → ≤2。
+2. CC-159 通过后合入 CC-149（`git apply /home/kaua/calc-arch/k179/cc149-attempt.diff`，对 HEAD 可干净应用）。
 3. CC-156、CC-147、CC-152（可选）。
 
 **已知坑**
-- 远端 bash 会执行 python heredoc 里的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后再执行。
-- 双向折叠的 1s 门槛不要删（量化 2-循环）。
-- refund 扣减只减不增；若要改成可增（CC-159），必须同时评估伊德海莉、艾莲这类强依赖队的抖动（冻结语义的由来见 foldLoop 注释）。
-- 棘轮（setAgent）、zd（applyTeamToStore）、timeGolden（applyTeamPreset）三条路径的状态不同；外层入环的队，路径不同时可能落在不同成员上。
+- 单人叶瞬光 c3（golden `agent:1431:c3`）对终局的任何扰动都极敏感：伤害 −15%~−35%，喧响轮 3→2，外层 stable→cycle。改终局逻辑时，先用 zzQ182 看它。
+- iterate 内有大幅瞬态（平A 166、终结技次数 3→1→4），任何「取历史最大 / 首次值」的策略都会被污染（§23.3 变体 A、B）。
+- 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行。
+- 双向折叠的 1s 门槛不要删；refund 扣减只减不增。
+- 棘轮（setAgent）、zd（applyTeamToStore）、timeGolden（applyTeamPreset）三条路径的状态不同。
