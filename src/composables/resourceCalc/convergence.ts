@@ -569,7 +569,11 @@ export function createRunCalcRound(deps: {
       catalogStore,
       phase: 'converge',
       combatTime: base.totalTime ?? 180,
-      stunCount,
+      // CC-154（第 177 轮）：模块拿到的 `stunCount` = **计数通道**失衡次数（= `countStun`；off 下 ≡ 计划值 ⇒ 零差）。
+      // 审计（docs/mcp-stun-dual-source.md §18）：applyTeamConfig 的全部读点都是计数或「窗数 × 窗长」一类计数派生量，
+      // 读计划值是违约（types.ts 契约：当次数用的必须走计数通道）；physical 下计划 0.71 / 物理 2 这类差会系统性少算。
+      // 回退点：改回 `stunCount,`（postRound 派发与 `axis.windows` 同步改回）。
+      stunCount: countStun,
       teamEnergyConsumed: Math.max(0, threads.moduleFeedback.consumedTeamEnergy || 0),
       // 上一轮收敛线程快照（2026-09-15 arch 棘轮第 2 批）：跨轮反馈的通用通道。
       // 原先这些量（1381/1391/1431/1151/1541/1331/1161/1181/1191 共 9 处）是在本文件
@@ -590,7 +594,7 @@ export function createRunCalcRound(deps: {
         // `CalcRoundResult.resolvedAxes`（`forceNoAxis` 退化时被清空）语义不同，这是设计卡 §7-E7
         // 的待定点，本批选定「递局部 + active 标志」。
         axes: resolvedAxes,
-        windows: allocateAxisWindows(resolvedAxes, stunCount),
+        windows: allocateAxisWindows(resolvedAxes, countStun), // CC-154：与同快照 actionCounts/chainTotal/ultimateTotal 同源（原为计划值）
         windowSeconds: computeWindowDuration(),
         actionCountsBySlot: axisActionCountsBySlot,
         ultimateTotalBySlot: axisUltimateTotal,
@@ -958,7 +962,7 @@ export function createRunCalcRound(deps: {
         combatTime: base.totalTime ?? 180,
         exCounts,
         ultimateCounts,
-        stunCount,
+        stunCount: countStun, // CC-154：同 converge 派发（计数通道）
       })
     }
 

@@ -124,7 +124,7 @@ const LINEAR_CASES: Array<[string, string, string, [string, string], number[], n
   // [settingId, resource, gain, 队友, 三点 rate, 三点期望绝对值]
   ['1021.nekomata_purr.nekomata_ex_gain.rate', 'nekomata_purr', 'nekomata_ex_gain', ['1381', '1211'], [0, 1, 2], [0, 65, 130]],
   ['1021.nekomata_purr.nekomata_ultimate_gain.rate', 'nekomata_purr', 'nekomata_ultimate_gain', ['1381', '1211'], [0, 1, 2], [0, 60, 120]],
-  ['1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_special_heartfire_gain', ['1011', '1211'], [0, 1, 2], [0, 600, 1200]],
+  ['1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_special_heartfire_gain', ['1011', '1211'], [0, 1, 2], [0, 500, 1000]], // CC-154：physical 下心火来源随计数通道失衡次数变（600→500），线性不变
   ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, 170, 340]],
   ['1301.orphie_xuyan.xuyan_shiguang_gain.rate', 'orphie_xuyan', 'xuyan_shiguang_gain', ['1011', '1211'], [0, 0.5, 1], [0, 360, 720]],
   ['1521.xixifu_toxin.toxin_duya_hold.rate', 'xixifu_toxin', 'toxin_duya_hold', ['1011', '1211'], [0, 0.5, 1], [0, 13.5, 30]],
@@ -275,6 +275,10 @@ describe('spec adjustable（Form-E）第二批：米卡以落霜三滑块（闭�
       { agentId: '1171', cinemaLevel: 6 },
     ] as never)
     for (const buff of config.globalBuffs) buff.enabled = false
+    // CC-154（第 177 轮）：C 项 = ⌊雅平A时间/2⌋ × C，需要平A ≥ 2s。physical 下青衣醉花轮数按物理失衡次数计 ⇒
+    // 青衣前台变长、雅平A被挤到 < 2s ⇒ C 项恒 0，「逐条独立消费」会误报 c2flower 静默失效。本 describe 测接线与闭式恒等式，
+    // 夹具钉 off（计划值口径下平A充足）；前提另由「逐条独立消费」里的夹具断言守住。
+    config.setMechanicSetting('time.stunPlanProjection', 0)
     const calc = useResourceCalc()
     for (const [k, v] of Object.entries(settings)) config.setMechanicSetting(k, v)
     await new Promise(r => setTimeout(r, 0))
@@ -333,6 +337,9 @@ describe('spec adjustable（Form-E）第二批：米卡以落霜三滑块（闭�
       const vals: number[] = []
       for (const v of [0, 1, 2]) {
         const r = await readFrost({ [id]: v })
+        // 夹具前提（CC-154 补）：C 项需要 ⌊平A/2⌋ > 0，D/F 项需要强特 > 0；否则「三点恒同」是夹具失效而不是滑块失效
+        expect(r.basic, `夹具前提：雅 ⌊平A时间/2⌋ 须 > 0（实为平A ${r.raw}s）`).toBeGreaterThan(0)
+        expect(r.ex, '夹具前提：雅强特次数须 > 0').toBeGreaterThan(0)
         vals.push(r.total!)
       }
       if (vals.some(v => v === undefined || Number.isNaN(v))) {

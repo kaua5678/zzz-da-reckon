@@ -37,6 +37,11 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     expect(configStore.appliedBoss?.parryTotal).toBe(8)
     expect(configStore.getMechanicSetting('guarantee.stun', 0)).toBe(1)
 
+    // CC-154（第 177 轮）：本条钉 off。physical 下本队规划失衡 = 0（必要时间约束），修前 `axis.windows` 按规划值分到 0 窗、
+    // 块计数却按物理 4 次 ⇒ 快照自相矛盾 ⇒ 轴可行性误判、退化非轴 ⇒ 池 4。修后同源：轴保住、伤害 66.6%→75.4% 击杀线，
+    // 但 N* = 3.84 ⇒ 池 3（弹刀 8 次预算内保底 4 不可达）。本条钉的是「弹刀反推链不断」，场景值属 off 口径；
+    // physical 下的「保底 4 不可达」另记 CC-156（docs/mcp-stun-dual-source.md §18）。
+    configStore.setMechanicSetting('time.stunPlanProjection', 0)
     const sp = calc.stunPoolResult.value
     expect(sp, '失衡池有结果').toBeTruthy()
     expect(sp!.stunCount, '4 次失衡打完整').toBeGreaterThanOrEqual(4)

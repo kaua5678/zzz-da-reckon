@@ -470,7 +470,9 @@ describe('★ 真管线：难度阶梯 G4（计数投影 round）打开时的 C2
     }
     // off：countStun === stunCount = 3.6 ⇒ 队友连携 2 × 3.6 = 7.2 ⇒ (3.6 + 7.2) × 5 = 54
     expect(await read(0)).toBeCloseTo(54, 8)
-    // round：countStun = 4 ⇒ 队友连携 2 × 4 = 8 ⇒ (3.6 + 8) × 5 = 58（**与 off 精确可分辨**）
-    expect(await read(2)).toBeCloseTo(58, 8)
+    // round：countStun = 4 ⇒ 队友连携 2 × 4 = 8；CC-154（第 177 轮）起派发器递给模块的 stunCount 也是计数通道值 4
+    // （原来失衡项用实数 3.6 是 round 20 迁移时「逐位保留」的不对称，与 types.ts 契约「当次数用走计数通道」相悖，已取消）
+    // ⇒ (4 + 8) × 5 = 60（仍与 off 的 54 精确可分辨）
+    expect(await read(2)).toBeCloseTo(60, 8)
   })
 })

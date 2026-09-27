@@ -118,7 +118,7 @@ export interface CrossAgentSupplyInput {
   targetCfg?: CharacterOperationConfig
   /** 供给落点槽的状态（同上；部分类别按落点次数折算） */
   targetState?: Readonly<IterationState>
-  /** 失衡次数（计划值；部分类别按它折算窗口数） */
+  /** 失衡次数（**计数通道**：引擎各调用点传 `stunCountForCountChannel` / `countStunOf`，CC-141 起；少数只要单位量的调用点传 0） */
   stunCount: number
   /** 战斗总时长（秒） */
   totalTime: number

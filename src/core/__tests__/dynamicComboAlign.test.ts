@@ -177,12 +177,19 @@ describe('动态合轴 · 操作角色不动、队友前台按溢出量被合轴
   it('③ 吸收只发生在溢出队：全库预设口径（缺省上限）终态里带 dynamicComboAlignSeconds 的队 5~20 支（实测 13），含 1371-1481-1451；单人 sweep 永不吸收（无队友）', async () => {
     const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
     const absorbed: string[] = []
+    const notOverflowing: string[] = []
     for (const p of presets) {
       const r = await evalPreset(p.id)
-      if (r.slots.some(s => s.dynamic > 0)) absorbed.push(p.id)
+      if (r.slots.some(s => s.dynamic > 0)) {
+        absorbed.push(p.id)
+        // 不变量本体：吸收只发生在溢出队（Σ 吸收前净必要 > 预算）
+        const overflow = r.slots.reduce((sum, s) => sum + s.necessary - (s.credit - s.dynamic), 0) - r.budget
+        if (!(overflow > 0)) notOverflowing.push(`${p.id} 溢出 ${overflow.toFixed(2)}s`)
+      }
     }
-    // 实测 ratio=1 时 16/105、缺省 0.4 时 13/105（1431 簇溢出 > 容量 ⇒ 落到无吸收不动点，不在内）；> 20 = 触发条件写宽了
-    expect(absorbed.length).toBeLessThanOrEqual(20)
+    // 判据修订（CC-154，第 177 轮）：原「≤ 20 支」是「触发条件写宽了」的代理（按当时实测 13 支校准）。模块计数改读计数通道后
+    // 真溢出的队增多（必要时间↑，实测 23 支）而触发条件未改 ⇒ 代理误报。改为直接断言不变量：每支吸收队都真溢出。
+    expect(notOverflowing, `有吸收却不溢出（触发条件写宽了）：${notOverflowing.join('；')}`).toEqual([])
     expect(absorbed.length).toBeGreaterThanOrEqual(5)
     expect(absorbed).toContain('auto-1371-1481-1451')
     const { config } = await setupHarness([{ agentId: '1431', cinemaLevel: 0 }])

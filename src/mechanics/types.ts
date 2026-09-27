@@ -265,7 +265,12 @@ export interface AgentTeamConfigInput {
   exCounts: number[]
   /** 各槽位终结技次数（build/converge 阶段全 0；postRound 为上一轮收敛值，与 exCounts 同序） */
   ultimateCounts?: number[]
-  /** 失衡次数（build 阶段 0） */
+  /**
+   * 失衡次数（build 阶段 0）。**CC-154（第 177 轮）起 = 计数通道值**（converge / postRound 均由派发器递
+   * `countStun`：off 下 ≡ 外层计划值，physical 下 = 上一轮池物理次数，round 等下为投影值）。
+   * 模块把它当次数乘、取整成事件次数、或「窗数 × 窗长」算覆盖都直接用本字段。外层计划实数只留在编排层
+   * （时间账 / 外层迭代），不下发给模块。审计与依据见 docs/mcp-stun-dual-source.md §18。
+   */
   stunCount: number
 
   /**

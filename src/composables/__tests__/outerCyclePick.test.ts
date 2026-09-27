@@ -69,6 +69,9 @@ async function setupYixuanPreset() {
   const team: [string, string, string] = ['1371', '1391', '1451']
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
   config.applyTeamPreset(team)
+  // CC-154（第 177 轮）：本文件测「长环分支的接线」，需要一个真出长环的场景。physical 下模块计数改读计数通道后本队外层
+  // 收敛为 2-环（不再有长环）⇒ 钉 off（机制钉，非不变量；场景口径同 CC-148 第 2 类）。
+  config.setMechanicSetting('time.stunPlanProjection', 0)
   return { calc, config }
 }
 

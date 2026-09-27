@@ -44,6 +44,7 @@ describe('CC-153 physical 外层 2-环：不可行成员不参选', () => {
     const pool = calc.stunPoolResult.value?.stunCount ?? -1
     const chains = team.map((a, i) => calc.resourceResult.value?.characters?.[i]?.executions?.find(e => e.moveId === `${a}${a === '1401' ? '015' : '011'}`)?.count ?? -1)
     expect({ pool, chains }, '每人连携必须与池同源').toEqual({ pool, chains: [pool, pool, pool] })
-    expect(pool, 'physical 现值').toBe(2)
+    // CC-154（第 177 轮）：模块计数改读计数通道后本队收敛到 3（同源断言不变、仍通过；只是现值变）
+    expect(pool, 'physical 现值').toBe(3)
   })
 })
