@@ -1967,6 +1967,59 @@ ImpactChart.vue 的改动：
   2. StunAxisPage 的 1051、1371 招式标签，可能适合参照 `axisMoveMeta` 扩展声明；
   3. TeamConfigPage 的专属输入框，工作量最大，最后做。
 - 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（见上）。
+### 5.63 CC-56 done：展示层写死角色 ID 普查 + ResourceUtilizationPage 1581 还款（lead-arena-0925c，2026-09-27 第 76 轮）
+
+**提交**：`3978312`，改动 5 个文件：
+- `src/mechanics/types.ts`：`AgentMechanicModule` 新增可选声明 `teammateSplit?: { settingPrefix, total, defaultFirst, title, firstSuffix, batchNote }`，用于「另两名队友分摊 N 个单位」的队伍级设置，展示层专用，引擎读的是同一个键。
+- `src/mechanics/agents/remielle.ts`：新增常量 `REMIELLE_Q_SPLIT`（remielle.q / 3 / 1 / 文案），在模块上声明 `teammateSplit: REMIELLE_Q_SPLIT`。引擎侧 firstPerBatch 那行（原 :472）也改为读这个常量，拼出来的字符串和数值都和原来相同，所以引擎和 UI 只剩一处声明。
+- `src/composables/agentMechanicView.ts`：
+  - 新增内部函数 `identityModules(agent)`：用 id 和 teammateBuffId 各查一次模块，这是原「id 或 teammateBuffId 等于某 ID」判断的统一实现；
+  - 新增门面 `teamTeammateSplit(team, getAgent)`，返回第一个声明槽位的 `{ slot, split }`，没有则返回 null；
+  - 新增门面 `agentExcludedFromWindInfectionPick(agent)`，读的是 CC-42 已有的模块声明，引擎 `anomalyPanels#getWindInfectionTargetSlot` 用的也是它，所以 UI 和引擎同源。
+  - 注：CC-55 的 `teamReleaseShares` 没有改用 identityModules，行为相同，下次顺手统一即可。
+- `src/views/ResourceUtilizationPage.vue`：
+  - `remielleQSetting` 改走 `teamTeammateSplit`，返回值多了 `split`；卡片标题、「提供虚耀」、「Q 每次固定打 3 个耀变」、max 3 和设置键都取自声明，显示文字和原来逐字相同。
+  - `windInfectionConfig` 的候选字段 `isRemielle` 改名为 `excludedFromPick`，改走门面。
+  - 页面里已经没有 `'1581'`。
+- 新测试 `src/composables/__tests__/agentMechanicViewCc56.test.ts`（2 条），对照基准保留原来写死 1581 的判断：
+  - catalog 里全部角色逐个比较「是否排除」，都和原判断相等，且至少有一个为 true；
+  - 三种队伍（蕾米在槽 1、在槽 0、队里没有蕾米）下，槽位都和原 findIndex 相等，声明内容和引擎口径一致。
+
+回退：`git revert 3978312`。
+
+**验证**：24 条守卫全过，check-tokens 通过，vue-tsc 0 错误。定向单测 29 条全过，包括 remielle.test 和 agentMechanicView.test。反向变异两种都让单测变红：① 删掉 remielle 的 teammateSplit 声明 ② 删掉 excludeFromWindInfectionPick。恢复后 cmp 一致。`npm run verify` 通过：311 files / 3644 tests，24 guards（`/home/kaua/calc-arch/verify56.log`）。只改了展示取数，引擎只做常量替换，没跑 dump/rows；②的变异也覆盖了引擎挑槽用的同一个声明。
+
+**普查表**
+- 命令：`grep -rnE "(agentId|\.id|teammateBuffId|Id\.value)\s*[!=]==?\s*'1[0-9]{3}'|\['1[0-9]{3}'|'1[0-9]{3}'\s*[!=]==|ref(<[^>]*>)?\('1[0-9]{3}'\)|= '1[0-9]{3}'" src/views src/components --include=*.vue --include=*.ts`
+- 局限：只按单引号和这几种形态抓；招式 ID（如 '1051012'）只在同一行出现时才被带出，招式 ID 本身没有单独普查。
+
+| 类别 | 位置 | 说明 | 处置 |
+|---|---|---|---|
+| 合法·默认选择 | FreeComparePage.vue:261-263 | BURNICE/PHOENIX/VELINA，用户点名的对比对象（规则 15 已查证） | 保留 |
+| 合法·默认选择 | MultiplierCoeffPage.vue:211 `'1401'`、CharIncrementPage.vue:219 `'1451'`、TimeChartsPage.vue:431 `'1371'`、:523 候选池、TeamComparePage.vue:1206、charts/SlotCompareChart.vue:215-216 | 页面默认值，大多有「用户指定」注释 | 保留 |
+| 合法·默认选择的衍生 | TimeChartsPage.vue:531 `id !== '1371'` | 候选池排除当前默认主角 | 保留，但它是个隐患：主角换了之后这里不跟着变，属于 UI 逻辑 bug 候选，不是机制债。可以改成 `id !== mainAgentId.value`，但要先读上下文 |
+| **债·已还** | ResourceUtilizationPage.vue 两处 1581 | 见上 | CC-56 done |
+| 债 | ResourceResultCard.vue:748 `result.agentId === '1561'`（维琳娜） | 未读上下文 | 待查 |
+| 债 | StunAxisPage.vue:264/266 1051（伊德海莉：hasYidhari / yidhariCinema） | 页面专属提示 | 待查 |
+| 债 | StunAxisPage.vue:268/313/698 1481（琉音：有琉标签、liuyinSlot、「转大·60/90」块，且排除琉音自己） | 轴编辑器候选块 | 待查 |
+| 债 | StunAxisPage.vue:297/748 1471（般岳 slot、怒连段判定） | CC-48 已声明化了一部分 | 待查 |
+| 债 | StunAxisPage.vue:311/663 1371（仪玄 slot、招式 1371022/1371026 的「·+30%失衡」标签） | 招式标签 | **下一张 CC-57** |
+| 债 | StunAxisPage.vue:647 1051 + 招式 1051012 从候选池隐藏 | 招式过滤 | **下一张 CC-57** |
+| 债 | StunAxisPage.vue:~702 招式 '1051024' 寒冰触手块（不看 agentId，按技能表里有没有这个招式判断） | 招式 ID 写死 | CC-57 顺带评估 |
+| 债 | StunAxisPage.vue:716 1571（诺姆转连携块）、:725 1591（希格莉德破阵连段块） | 角色专属轴块 | 待查，可能要新增「专属轴块」声明 |
+| 债 | TeamConfigPage.vue:186/210/212/223/236/249/262/275/288/301/315/329/342、:1025 | 1471/1531/1551/1541/1371 的专属输入框（模板 v-if） | 工作量最大，最后做。方向是模块声明「配置页专属字段」，由通用渲染器渲染 |
+
+**拍板**
+- 普查**先不上棘轮**。依据：模板 v-if 里的写法和合法默认值混在一起，现在的 grep 口径还不稳定；新增判据要单独成批，还要同步 check-guards.d.mts 和 checkGuards.test。等债项还到只剩 TeamConfigPage 时，再按「views 与 components 里 `agentId === '1xxx'` 形态计数，外加合法项白名单」上棘轮。
+- 新声明 `teammateSplit` 没有写成蕾米专用（例如 remielleQ），用的是泛化字段名加文案字段。依据：卡片的形态本身是通用的「另两人分摊 N 个」；文案放在声明里，页面就不用写角色专用的字。
+
+**下一步（CC-57：StunAxisPage 招式级写死 → 模块声明）**
+1. 先读 StunAxisPage.vue :630–700，也就是候选块列表的构造过程，和 `src/mechanics/types.ts` 里的 `axisMoveMeta` 声明（:~776）及其门面 `agentAxisMoveMeta`。
+2. 给 `AgentMechanicModule` 加两个可选的展示层声明：`axisHiddenMoves?: readonly string[]`（伊德海莉声明 `['1051012']`，理由见原注释：用连段表达能量消耗更准）和 `axisMoveSuffix?: Readonly<Record<string, string>>`（仪玄声明 `{ '1371022': '·+30%失衡', '1371026': '·+30%失衡' }`）。也可以扩展 `axisMoveMeta` 的形态，但它现在是般岳专用的 `{ tag, cost }`，而且会改名字前缀，**建议不要混用**。门面仿照 `agentAxisMoveMeta`。
+3. 页面 :647 改为 `agentAxisHiddenMoves(c.agentId)?.includes(exec.moveId)`，:663 改为 `agentAxisMoveSuffix(c.agentId)?.[mid] ?? ''`。
+4. 测试：对照基准照抄原来的两个判断，枚举全部 catalog 角色和它们的全部招式，逐个比较。反向变异是删掉声明。
+5. 仪玄的 `'1371_c1_lightning'` CD 标签（:659，不看 agentId，只按招式 ID）和 1051024 触手块，看能不能一起并进 axisMoveSuffix 或同类声明。拿不准就先不动，在本表里标注。
+- 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b 其他 dominant 异放角色开放占比调节（见 §5.62，属功能变更）、TimeChartsPage:531 隐患（见上表）。
 ## 附录：普查脚本 census.sh
 
 ```bash
