@@ -69,6 +69,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 172 轮（2026-09-28，代码 `71452ad2`（CC-144）+ 文档「docs: round 172」；上一轮 = f848f72c / 0154f27e）
+- 做到哪：**缺省失衡投影切为 physical**（`src/core/stunPlanProjection.ts` 常量 = 4）。难度阶梯 G4 随缺省（`src/composables/difficultyLadder.ts`）；timeGolden、timeFillRatchet 重生成；18 个 off 口径机制钉测试文件级 vi.mock 钉回 0。全库归因 `docs/mcp-cc144-team-deltas.md`，决策 `docs/mcp-stun-dual-source.md` §13。
+- 下一步（直接开工）：**CC-147**（删死掉的热启动通道）或 **CC-148**（18 个测试迁 physical，可派给子代理，一文件一提交）。建议先 CC-148 的前 3 个文件（outerCycleColdStart、difficultyDescent、teamTimeSummary：测缺省产出，最该有 physical 精确钉），再做 CC-147。
+- 未决：ENGINE_PIPELINE_GUIDE 第 177 行已改为「半收口」（时间分配仍用计划值，坑 25 残差仍在）；§8.4 两项（栈引擎窗口数来源；耀嘉音、诺姆 stunCount 读规划值）；CC-27；副词条优化器接收槽过滤；洛克茜 energyRegen。
+- 已知坑：
+  - physical 首轮没有 prevPoolStunCount，会回落规划值（仍存在，现已不影响不变量）；
+  - 探针 zzK172 在 WSL `/home/kaua/calc-arch/k172/`，不在 src/；
+  - 冷启动探针与 zd 百分比有出入（路径依赖），归因以探针为准。
+
 ### 第 171 轮（2026-09-28，代码 `f848f72c`（CC-146）+ 文档「docs: round 171」；上一轮 = c5267bac）
 - 做到哪：CC-146 修复。`src/core/resource/foldLoop.ts` 规则 ②′（pass0 注入种子一律弃用）；`seedInvariance.test.ts` 活性自检反转为 `=== 0`；`src/core/resource.ts` 的 `@fact engine:收敛环停点规范化` 更新口径。off 下 zd `cc146e` 全库 DIFF 0，全量 verify 绿。缺省 4 下 seedInvariance 转绿。
 - 过程：先试估时插值 A′（sigrid.ts），zd 5 队变化、外层 cycle 3→6、1161-1311/c6 −6.7%，否决，未提交。插桩发现真正根因是共存吸引子（§12.2）。

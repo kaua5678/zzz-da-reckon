@@ -174,7 +174,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 | **账本必要时间** | iterate Step4 估时 + 折叠残差 + 赠送预留 | `state.necessaryTime`（cfg 字段） | ✅ 单一 |
 | **截断上限** | 装配层按账本截断 | 账本 − 本槽赠送行时间 | ✅ 已收口（坑 28） |
 | **赠送时间**（诺姆赠链/琉音赠大） | iterate 预留 / 折叠环行测量 / 截断上限 / 展示 | `giftTimeOfSlot`（`core/resource.ts`）+ 展示按最终行 | ✅ 已收口 |
-| **失衡次数** | 池（`promoteFixpoint` 连续不动点）/ 外层不动点 `stunCount`（喂连携/喧响账本） | 池 = 答案；外层 = 计划值 | ⚠ **仍双源**（坑 25 已知残差，待裁决） |
+| **失衡次数** | 池（`promoteFixpoint` 连续不动点）/ 外层不动点 `stunCount`（喂连携/喧响账本） | 池 = 答案；外层 = 计划值 | ⚠ 半收口：**计数通道缺省读池的物理次数**（`time.stunPlanProjection` 缺省 physical，CC-144 第 172 轮，`docs/mcp-stun-dual-source.md` §13）；时间分配仍用外层计划值（坑 25 残差仍在） |
 | **连携次数** | `state.chainCountTotal` / 池 `chainCountPerStun × stunCount` / 轴 `chainCountTotalOverride` | `chainCountTotal`（三处派生同一字段） | ⚠ 与外层 stunCount 耦合 |
 | **喧响收入** | 行级 Σ `rowDecibelTotal` / 旧聚合通道（已删） | 行级 Σ（`@fact engine:喧响收入行级Σ`） | ✅ 已收口 |
 | **能量** | `energySource.total` / `derivedEnergy` | 同一函数同一入参（坑 14） | ✅ 已收口 |
