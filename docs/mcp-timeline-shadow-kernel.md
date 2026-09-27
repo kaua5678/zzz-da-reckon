@@ -158,7 +158,7 @@ src/core/timeline/
 
 ## 8. 进度账本
 
-- [x] 第 0 步：本设计稿（第 118 轮）。
+- [x] 第 0 步：本设计稿（第 118 轮，`e8aebae`）。
 - [ ] 第 1 步：`src/core/timeline/` 骨架 + 失衡轨 + 喧响轨纯函数单测 + 判据 26 + 性能两数。
 - [ ] 第 2 步：`projection` 适配 + shadowDiff 跑通 T1。
 - [ ] 第 3 步：T2、T3，差异表全部归因，写出 `docs/mcp-timeline-shadow-report.md`。
