@@ -231,7 +231,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-63 | done | `51b1cb3` | 编排层 roundInputs#expandExecutedToCounts 平A兜底写死（`fillerAgentId === '1051'` / `'1041'`）→ 模块钩子 `expandBasicFill({fillSec, actionTimeOf})`（计算路径；actionTimeOf 返回 undefined = 查不到）；perf 零差 dump/rowsnap DIFF 0；agentId 棘轮 3→1 | census §5.69 |
 | CC-64 | done | `ac4e8d3` | stores/config.ts `defaultBasicAttackTimeWeight` 写死（1581 / 1331 按 id 或 teammateBuffId → 0）→ 模块声明 `defaultBasicAttackTimeWeight?: number`；store 首次按值 import `@/mechanics`（getAgentMechanic） | census §5.70 |
 | CC-64b | done | `5dd0d0f` | stores/config.ts deriveTeammateBuffEnabled 的蕾米埃尔额外能力档位（getRemielleAdditionalState 写死 1581 + 5 个 buff id 分支）→ 模块钩子 `teammateBuffGate({buffId, team})`，store 询问全部已注册模块 | census §5.71 |
-| CC-64c | done | `a2d5b9b` | stores/config.ts 波可娜 C6 base 条互斥（写死 1351）→ 复用 teammateBuffGate（入参加 groupId / groupCinema），pulchra.ts 声明；stores/config.ts 已无四位角色 id 写死 | census §5.72 |
+| CC-64c | done | `a2d5b9b` | stores/config.ts 波可娜 C6 base 条互斥（写死 1351）→ 复用 teammateBuffGate（入参加 groupId / groupCinema），pulchra.ts 声明；stores/config.ts 已无角色 id 分支判定（剩 3 处数据表，见 §5.72 更正） | census §5.72 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |
