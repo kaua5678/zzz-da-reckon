@@ -146,7 +146,8 @@ function buildXideCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfi
 /**
  * 额外能力·为正兵回能：席德作为操作角色造成伤害时为正兵回 2 能量/秒（1秒至多1次）。
  * 操作时间 = 前台时间 − 合轴时间（后台与自动追加攻击不计）。build 阶段确定正兵槽位 =
- * 初始攻击（level60.atkBase）最高的强攻队友，写入席德自身 cfg；
+ * 「初始攻击力」最高的强攻队友（CC-129：读队友 cfg.outOfCombatPanel.atk 局外攻击；缺失时回退
+ * level60.atkBase，仅测试手搓 cfg 会走到），写入席德自身 cfg；
  * 能量结算在 core/resource/helpers.ts calcCrossAgentEnergy（单一事实源）。
  */
 function applyXideTeamConfig({ characters, team, phase }: AgentTeamConfigInput): void {
@@ -156,7 +157,8 @@ function applyXideTeamConfig({ characters, team, phase }: AgentTeamConfigInput):
   for (const m of team) {
     if (m.agentId === XIDE_AGENT_ID) continue
     if (m.agent?.specialty !== 'attack') continue
-    const atk = m.agent.level60?.atkBase ?? 0
+    const oocAtk = characters.find(c => c.slot === m.slot)?.outOfCombatPanel?.atk
+    const atk = oocAtk ?? m.agent.level60?.atkBase ?? 0
     if (atk > bestAtk) {
       bestAtk = atk
       vanguardSlot = m.slot

@@ -205,7 +205,8 @@ function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelI
     panel.enemyWindResReduction = (panel.enemyWindResReduction ?? 0) + 20
   }
 
-  // 回能转模：真实回能 = energyRegen × (1 + bonusPct/100) + flat（加成只体现在 energyRegenTotal，未写回 energyRegen 字段）
+  // 回能转模：原文「初始能量自动回复」⇒ spec sourceValue = energyRegenOutOfCombat（局外总回能 = 基础 × (1 + 局外%) + 局外固定，
+  // panelPhases 在 applyPanel 前写入）；不是 energyRegen（恒为基础值）也不是含局内 buff 的 energyRegenTotal。
   applySpecAttributeConversions(
     panel,
     getAgentSpec(VELINA_AGENT_ID)?.attributeConversions ?? [],

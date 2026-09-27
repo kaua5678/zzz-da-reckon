@@ -538,6 +538,7 @@ export function buildCharConfig(
     agentId: char.agentId,
     isFlashUser: isFlash,
     panel,
+    outOfCombatPanel: panelPhases?.outOfCombat,
     basicAttackRegenPerSec: basicRegen.energyPerSec,
     basicAttackDecibelPerSec: basicRegen.decibelPerSec,
     // 蕾米埃尔 cfg 字段（垂虹 4 项 / Radiant Turn 3 项 / `remielleEnabled` / `remielleRadiantTurnDazeBonusPct`）

@@ -58,6 +58,12 @@ export interface CharacterOperationConfig {
   isFlashUser: boolean
   /** 面板（来自 panel.ts 的计算结果） */
   panel: PanelValues
+  /**
+   * 局外面板（未合并局内 buff，只读；CC-129）。供 build 阶段 applyTeamConfig 按队友「初始属性」
+   * 做选择（如席德按「初始攻击力最高的强攻队友」选正兵）。与 AgentPanelInput.outOfCombatPanel 同源
+   * （同一次 computePanelPhases）。可选：测试直接构造的 cfg 不带它，读者须回退。
+   */
+  outOfCombatPanel?: Readonly<PanelValues>
   /** 平A秒均回能（能量/闪能，预计算值） */
   basicAttackRegenPerSec: number
   /** 平A秒均喧响（预计算值） */
