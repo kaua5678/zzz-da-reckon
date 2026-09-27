@@ -209,7 +209,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-42 | done | `d57c0c3` | 风化浸染默认挑槽的蕾米埃尔排除（跨槽决策）→ 模块能力 `excludeFromWindInfectionPick`；anomalyPanels 不再值导入 `@/mechanics/agents/remielle`；dump/rows 对 dump-41 零差 | census §5.45 |
 | CC-43a | done | `d573b4a` | 编排层/core 纯命名项去角色名 7 个（映射见 census §5.47），dump/rows 零差 | census §5.47 |
 | CC-43b | done | `6a6c6d7` | 新增判据 23：角色名中缀 / core 子目录棘轮（驼峰切段），基线 13 | census §5.47 |
-| CC-43c | todo | — | 琉音转大次数 `computeLiuyinHugCounts` 被编排层按值导入（convergence、ultimatePromote，判据 23 计 4）→ 模块能力 | census §5.47 |
+| CC-43c | done | `4f3d1ea` | 琉音转大次数 `computeLiuyinHugCounts` 值导入 → 模块能力 `promoteHugCounts`（编排层 `promoteHugCountsOf` 按赠大提供者槽位取）；零差，判据 23 4→0 **转硬门** | census §5.50 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |

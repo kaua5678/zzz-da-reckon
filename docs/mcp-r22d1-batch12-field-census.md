@@ -1606,6 +1606,30 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 **下一步**
 1. **CC-43c**（最后一张，最复杂）。开工前先读 `docs/mcp-liuyin-promote-source.md`、`src/composables/resourceCalc/ultimatePromote.ts` 全文、`src/mechanics/agents/liuyin.ts` 的 `computeLiuyinHugCounts`（约 102 行）。方向：琉音模块声明能力（如 `promoteHugCounts(goodReviewTotal, stunCount, hug60Setting, targetChainTotal)`），编排层通过「拥有 promoteVariant 的模块」取（可复用 CC-43e 的 `ownsPromoteVariantAxisBlocks` 找槽）。ultimatePromote.ts 同时导入的 `resolveUltimateTargetSlot` 不计数，但属同类债，建议一并迁。做完判据 23 归 0，然后与判据 22 一样宣布硬门（BASELINE 0 / frozen 0 / target 0，checkGuards.test 同步）。
 2. 可选补测：单测锁「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」（CC-43e 反向变异在单测层是绿的，靠 rowsnap 兜底）。
+### 5.50 CC-43c done：琉音转大次数算法 → 模块能力 promoteHugCounts；判据 23 清零转硬门（lead-arena-0925c，2026-09-27 第 63 轮）
+
+**提交**：`4f3d1ea`（mechanics/types.ts、agents/liuyin.ts、resourceCalc/ultimatePromote.ts、resourceCalc/convergence.ts、新测试 `src/composables/__tests__/promoteHugCapability.test.ts`、棘轮 lib/check-guards 4→0）。回退：`git revert 4f3d1ea`（代码与基线同提交）。
+
+**改法**
+- `AgentMechanicModule` 新能力 `promoteHugCounts?(goodReviewTotal, stunCount, hug60Setting, targetChainCountTotal?) => { hug60, hug90, remainingGoodReview }`。琉音模块直接挂 `computeLiuyinHugCounts`（同一函数引用 ⇒ 逐位零差）。
+- ultimatePromote.ts 新导出 `promoteHugCountsOf(configStore)`：用 `ultimateGiftProviderSlot`（CC-35 能力 `ultimateGiftSource` 找槽）取提供者模块的 `promoteHugCounts`；无提供者返回 undefined。
+- 调用点一 promoteFixpoint（非轴路径）：`promoteHugCountsOf(configStore)?.(...) ?? { hug60: 0, hug90: 0 }`。p 非空意味着一定有提供者，兜底只防提供者没实现该能力。
+- 调用点二 convergence 轴模式「剩余好评默认 90」：`hug` 为 undefined 时 h60/h90 保持轴声明值（不覆盖）；有琉音时与原实现一致。
+- **找槽口径的选择**：用「赠大提供者」（ultimateGiftSource）而不用 CC-43e 的 `ownsPromoteVariantAxisBlocks`，理由是好评本来就来自提供者，promoteFixpoint 的 p 也由它构建，两者同源。现在两者都只有琉音实现，没有差别。
+- **不动的部分**：`resolveUltimateTargetSlot` 仍从 liuyin.ts 按值导入（ultimatePromote、convergence、norma.ts、chainGift.ts）。它不计入判据 23（名字里没有角色段），但属同类债，见「下一步」2。
+
+**验证**
+- 判据 23 读数 0/0，23 guards；vue-tsc 0；promoteHugCapability 3 条 + liuyin 等相关 30 条通过。
+- dump/rows 对 dump-41/rows-41 零差（DIFF 0）。
+- 反向变异（琉音模块 `promoteHugCounts: undefined`）：rowsnap 出差 **118 键**，全是含琉音 1481 的队伍（auto-1371-1481-1451/* 等）；新单测 2/3 失败。恢复后 cmp 一致。
+- `npm run verify` 通过：302 文件 / 3620 条，23 guards（`/home/kaua/calc-arch/verify43c.log`）。
+
+**判据 23 状态**：清零，与判据 22 一样是硬门。以后新增任何带角色前缀段的标识符（编排层 / core），check-guards 会直接报红，改用模块能力。
+
+**下一步**（CC-43 系列已全部完成）
+1. 可选补测：单测锁「队里无 promoteVariant 声明者时，轴里的 promoteVariant 块不产出终结技行」（CC-43e 遗留）。
+2. `resolveUltimateTargetSlot` 从 liuyin.ts 迁到共享位置（如 `src/mechanics/ultimateTarget.ts` 或 core/resource），4 个导入点（ultimatePromote.ts、convergence.ts、norma.ts、chainGift.ts）一起改；纯移动，dump/rows 应零差。
+3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
