@@ -69,26 +69,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 185 轮（lane lead-arena-0925c）：只提交文档，源码 = cc53864e（上一文档提交 bf3bd9c5）。**
-- CC-160 已定位，未修（stun-dual-source §24.7）。
-  - 第 184 轮的「终局缺阻尼、改用 runInnerLoop」假设读代码即否定：runInnerLoop 也没有阻尼。
-  - 振荡机制是 Jacobi 同步迭代叠加递减高增益映射；入口残差为 0 的档同样振荡。
-  - 否决了 3 个变体：照影封顶常数、只推一轮、可行判据加残差。
-- REQUIREMENTS 无新条目（文件自 e000e53e 起未动）；提示词未改（md5 2aa1f517）；dsh 返回 pong。
+**第 186 轮（lane lead-arena-0925c）：只提交文档，源码 = cc53864e（上一文档提交 df44bd2e）。**
+- CC-160 根因已更正（stun-dual-source §24.8）：主因是终局沿用了实数期的折叠残差（c4 实测 27.93s），跨盆 2-循环是次因。
+- 实现并实测了 cycleCap 上限二分（否决）和终局后重折（部分有效，c3 回归，不合入）；源码已 `git checkout` 回退。
+- REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）；dsh 返回 pong。
 
 **下一步（按顺序，直接开工）**
-1. **CC-160 旋钮二分实验**（设计草案见卡表 CC-160 行）：
-   - 在 `src/core/resource/finalizePasses.ts#runFinalizePasses` 的周期 2 分支里，若不满足 `oneQuantumApart`，就用临时环境变量开关做二分；
-   - 临时旋钮写在 `src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle` 的 `if (finalizeForms)` 块之后：读 `cfg.yeshuguangFormsCap`（经 `resolveCycle` 传入），有值时 `totalForms = min(totalForms, cap)`，先扣照影；
-   - 验证用 `k183/zzQ182.test.ts`（`ZZ_C=3..6`）看留白是否降到 2 以下，再用 `k184/zzS184.test.ts` 跑 zd 两队（`ZZ_P=auto-1431-1341-1311,auto-1431-1341-1031`）；
-   - 有效就落成 `finalizePass.cycleCap` 接口（`mechanics/types.ts` 约 :1330）、写 `@fact`、跑全量测试和两份基线；
-   - 无效就在 §24.7 追加否决记录。
-2. **CC-161**（设计先行，§25）：若 CC-160 的二分落地，1311 队的 k↔k+1 单量子环也可能改由同一台机器处理，先复测再设计。
+1. **CC-160 候选 1「一次取整 + 冻结 + 重折」**：
+   - 旗标：在 `src/mechanics/agents/yeshuguang.ts` 的 `finalizePass.begin` 里，按入口态 `resolveCycle(cfg, state)`（`finalizeForms=true`）记下整数照影/喧响轮数，写入 cfg 冻结字段；`computeYeshuguangCycle` 在冻结字段存在时直接用它们，不再从平A重推；`reset` 时清除。`begin` 目前拿不到 state，接口要加参数：`begin(cfg, state?)`，由 `runFinalizePasses` 传入 `states[idx]`。
+   - 终结技次数：看 `helpers.ts#iterate` 中 `ultimateCount = floor(decibels/cost)` 在冻结后是否仍振荡；若振荡，冻结范围扩到终结技（需引擎通用接口，先做实验）。
+   - 重折：`src/core/resource.ts#runPreTailFinalize` 在 `runFinalizePasses` 之后再跑一次 `runFoldLoop`，截断重折环的 rerun 共用同一个包装。本轮实验只在 `fp.touched` 时重折（执行器需返回是否实际跑过）。
+   - 验证：`k185/zzQ186.test.ts`（逐行 totalTime，看 ΣtotalTime 与账本差），`k183/zzQ182.test.ts`（看 conv 的 outerExit）；`k185/mx.sh` 是多变体矩阵脚本（按环境变量切换，需要时照改）。
+2. CC-161（设计先行，§25）：等 CC-160 修完再复测 1311 队，结论可能改变。
 3. CC-156、CC-147、CC-152（可选）。
 
 **已知坑**
-- 本轮的临时仪表（行尾 `// ZZTMP`）已用 `sed -i '/ZZTMP/d'` 清掉，src 下的 zz 探针已删。
-- 三条建队路径（棘轮 / zd / golden）初态不同，修复效果三条都要看。
-- 终局 2-循环的相位选择必须由模块声明（伊德海莉取平A大者会变差）；单量子门槛不要放宽（c3 −34.5%）。
-- 降配档选择对终局结果极敏感（封顶实验里每换一个 cap，档就跟着变）；做实验时要同时打印 `interactionScale`，否则会误判因果。
+- 看留白要分清「账本前台」（`necessaryTime + basicAttackTime`）和「装配前台」（Σ行 totalTime，`assembleSlot.ts` 约 :165），留白 = 180 − 装配前台。
+- `cfg.timeBudgetExcess` 是折叠残差，会被加进 `helpers.ts#iterate` 的 necessary；`convergence.timeBudgetResidualSeconds` 是另一个量（未消化的残差），两者别混。
+- 降配档选择对终局结果极敏感，实验时要同时打印 `interactionScale`。
+- 用 `sed -i '/ZZTMP/d'` 清理时，如果某行是「改写过的原行」带 ZZTMP，删掉会丢原代码。清理后一律 `git diff` 确认，或直接 `git checkout` 相关文件。
 - 远端 bash 会执行 heredoc 里的反引号：代码和文档一律写 .py 文件，用 up.sh 上传后执行。
