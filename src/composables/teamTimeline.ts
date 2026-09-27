@@ -27,20 +27,19 @@
  * - Boss 一次应用（applyBossPreset）；当期可选 buff 牌不参与（与「队伍对比」的「不使用」一致）。
  * - 计算现场快照/恢复，跑完不留痕（同 computeTeamComparePoints）。
  */
-import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
+import { useConfigStore } from '@/stores/config'
 import { equalizeTimeWeights } from '@/composables/timeWeightBalancer'
-import { applyBossLayerBuffs } from '@/composables/runArchiveDeploy'
 import { useCatalogStore } from '@/stores/catalog'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
 import { indexForDate } from '@/composables/bossSchedule'
-import { isLimitedAgent, isLimitedWEngine, applyGoldSteps } from '@/composables/teamCompare'
+import { isLimitedAgent, isLimitedWEngine } from '@/composables/teamCompare'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
-import type { Agent } from '@/types/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
+import { snapshotStore, restoreStore, bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
 type Calc = ReturnType<typeof useResourceCalc>
 
@@ -179,40 +178,6 @@ export interface TeamTimelineOptions {
   optimalGold?: boolean
 }
 
-// ========== 现场快照 / 恢复 ==========
-
-interface StoreSnapshot {
-  team: unknown[]
-  enemy: unknown
-  appliedBoss: unknown
-  stunAxes: unknown[]
-  stunAxisPlans: unknown[]
-  useStunAxis: boolean
-  globalBuffs: unknown[]
-}
-
-function snapshotStore(configStore: ReturnType<typeof useConfigStore>): StoreSnapshot {
-  return {
-    team: JSON.parse(JSON.stringify(configStore.team)),
-    enemy: JSON.parse(JSON.stringify(configStore.enemy)),
-    appliedBoss: configStore.appliedBoss,
-    stunAxes: JSON.parse(JSON.stringify(configStore.stunAxes)),
-    stunAxisPlans: JSON.parse(JSON.stringify(configStore.stunAxisPlans)),
-    useStunAxis: configStore.useStunAxis,
-    globalBuffs: JSON.parse(JSON.stringify(configStore.globalBuffs)),
-  }
-}
-
-function restoreStore(configStore: ReturnType<typeof useConfigStore>, snap: StoreSnapshot) {
-  configStore.team.splice(0, configStore.team.length, ...(snap.team as never[]))
-  configStore.setEnemy(snap.enemy as never)
-  configStore.appliedBoss = snap.appliedBoss as never
-  configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(snap.stunAxes as never[]))
-  configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(snap.stunAxisPlans as never[]))
-  configStore.useStunAxis = snap.useStunAxis
-  configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...(snap.globalBuffs as never[]))
-}
-
 // ========== 配装工具 ==========
 
 function teamKey(main: string, a: string, b: string): string {
@@ -232,148 +197,6 @@ export const SWAP_UPGRADE_UPLIFT_PCT = 10
 export function classifySwapUplift(prevDamage: number, curDamage: number): { kind: SwapKind; pct: number } {
   const pct = prevDamage > 0 ? Math.round(((curDamage - prevDamage) / prevDamage) * 1000) / 10 : 0
   return { kind: pct >= SWAP_UPGRADE_UPLIFT_PCT ? 'upgrade' : 'lateral', pct }
-}
-
-/** 基础音擎（0 金档）：
- * - 限定 S 角色：基础档直接带专属音擎（限定 → 计 1 金，与「队伍对比」基础档 = 0命1精+专武 同口径）；
- * - 非限定槽位：只选不占金的音擎（专属优先，其次同职业常驻/A 级）。 */
-function baseWEngineFor(agent: Agent | null | undefined, catalog: ReturnType<typeof useCatalogStore>): string {
-  if (!agent) return ''
-  const ws = catalog.displayWEngines
-  const sig = ws.find(w => w.ownerAgentId === agent.id)
-  if (isLimitedAgent(agent.id)) {
-    if (sig) return sig.id
-    return bestLimitedWEngineFor(agent, catalog) ?? ''
-  }
-  if (sig && !isLimitedWEngine(sig.id)) return sig.id
-  const freeSpec = ws.find(w => w.specialty === agent.specialty && !isLimitedWEngine(w.id))
-  if (freeSpec) return freeSpec.id
-  if (sig) return sig.id
-  const sameSpec = ws.find(w => w.specialty === agent.specialty)
-  return sameSpec?.id ?? ws[0]?.id ?? ''
-}
-
-/** 槽位最佳限定音擎（花 1 金获取的候选；非限定槽位也可佩戴） */
-function bestLimitedWEngineFor(agent: Agent | null | undefined, catalog: ReturnType<typeof useCatalogStore>): string | null {
-  if (!agent) return null
-  const ws = catalog.displayWEngines
-  const sig = ws.find(w => w.ownerAgentId === agent.id)
-  if (sig && isLimitedWEngine(sig.id)) return sig.id
-  const sameSpec = ws.find(w => w.specialty === agent.specialty && isLimitedWEngine(w.id))
-  return sameSpec?.id ?? null
-}
-
-function baseStateFor(team: [string, string, string], catalog: ReturnType<typeof useCatalogStore>): TeamGoldState {
-  return {
-    cinemas: [0, 0, 0],
-    wengineMods: [1, 1, 1],
-    wEngines: [
-      baseWEngineFor(catalog.getAgent(team[0]), catalog),
-      baseWEngineFor(catalog.getAgent(team[1]), catalog),
-      baseWEngineFor(catalog.getAgent(team[2]), catalog),
-    ],
-  }
-}
-
-/** 队伍基础总限定金 = 限定 S 角色本体 + 基础档限定音擎（各 1 金） */
-export function baseGoldOfTeam(team: [string, string, string], catalog: ReturnType<typeof useCatalogStore>): number {
-  let gold = 0
-  for (let s = 0; s < 3; s++) {
-    if (isLimitedAgent(team[s])) gold += 1
-    const w = baseWEngineFor(catalog.getAgent(team[s]), catalog)
-    if (w && isLimitedWEngine(w)) gold += 1
-  }
-  return gold
-}
-
-/**
- * 预算感知的确定性加金步清单（主C优先：主C影画1..6 → 主C精炼2..5 → 队友1 → 队友2）。
- * 供「搜索排名」用：每队按目标金数做一次确定性分配（1 次伤害求值），
- * 排名即「所选金数下的大致强度」，比基础金排名更贴近最优加金结果（换人时机正确）。
- * 与 applyGoldSteps 同口径（总限定金、钳制到 [基础金, 基础金+步数]）。
- */
-function buildBudgetAwareGoldSteps(
-  team: [string, string, string],
-  catalog: ReturnType<typeof useCatalogStore>,
-): { steps: Parameters<typeof applyGoldSteps>[0]; baseWEngines: [string, string, string] } {
-  const steps: Parameters<typeof applyGoldSteps>[0] = []
-  const baseWEngines = baseStateFor(team, catalog).wEngines
-  for (let s = 0; s < 3; s++) {
-    const agent = catalog.getAgent(team[s])
-    if (!agent) continue
-    const name = agent.name.zhCN ?? agent.name.en ?? `槽位${s + 1}`
-    if (isLimitedAgent(team[s])) {
-      for (let c = 1; c <= 6; c++) steps.push({ label: `${name} ${c}命`, slot: s, kind: 'cinema' as const, value: c })
-    }
-    const baseW = baseWEngines[s]
-    if (baseW && isLimitedWEngine(baseW)) {
-      for (let m = 2; m <= 5; m++) steps.push({ label: `${name} 精炼${m}`, slot: s, kind: 'wengine' as const, value: m })
-    }
-  }
-  return { steps, baseWEngines }
-}
-
-/** 预算感知确定性分配（applyGoldSteps 封装）：返回可直接 applyTeamToStore 的配装态 */
-export function budgetAwareStateFor(
-  team: [string, string, string],
-  budget: number,
-  catalog: ReturnType<typeof useCatalogStore>,
-): { state: TeamGoldState; totalGold: number; label: string } {
-  const { steps, baseWEngines } = buildBudgetAwareGoldSteps(team, catalog)
-  const base = baseGoldOfTeam(team, catalog)
-  const applied = applyGoldSteps(steps, budget, base, [], baseWEngines)
-  return {
-    state: {
-      cinemas: applied.cinemas,
-      wengineMods: applied.wengineMods,
-      wEngines: applied.wEngines,
-    },
-    totalGold: applied.totalGold,
-    label: applied.label,
-  }
-}
-
-/**
- * 装配队伍到 store：推荐配装 + 显式覆盖（音擎/命座/精炼/交互基准）。
- *
- * autoBuild=false（轻量速算，默认）：跳过推荐/优化器，只用 setAgent 兜底配装
- * （专属音擎、兜底套装、5号位主词条），并清掉上一队残留的 4/6 号主词条与副词条分配
- * （setAgent 不重置它们，不清会跨队泄漏）。
- */
-function applyTeamToStore(
-  configStore: ReturnType<typeof useConfigStore>,
-  team: [string, string, string],
-  state: TeamGoldState,
-  autoBuild = false,
-) {
-  if (autoBuild) {
-    configStore.applyTeamPreset(team)
-  } else {
-    for (let s = 0; s < 3; s++) configStore.setAgent(s, team[s], { defer: true })
-    configStore.syncTeammateBuffsFromTeam()
-    for (let s = 0; s < 3; s++) {
-      const char = configStore.team[s]
-      if (!char) continue
-      const m5 = char.driveDisc.mainStats[5]
-      char.driveDisc.mainStats = { 5: m5 } as typeof char.driveDisc.mainStats
-      char.driveDisc.subStatAllocation = {}
-    }
-  }
-  for (let s = 0; s < 3; s++) {
-    configStore.setCinemaLevel(s, state.cinemas[s])
-    configStore.setWEngineModLevel(s, state.wengineMods[s])
-    if (state.wEngines[s]) configStore.setWEngine(s, state.wEngines[s])
-    // 交互基准：角色专属默认（般岳/星徽·比利等）> 通用职业基准（支援/防护不交互，击破只弹刀，主C弹刀+闪反）
-    const defs = getInteractionDefaults(team[s])
-    const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
-    const base = hasCustom ? defs : roleInteractionBaseline(useCatalogStore().getAgent(team[s])?.specialty)
-    configStore.setParryCount(s, base.parry)
-    configStore.setDodgeCounterCount(s, base.dodge)
-    configStore.setBlockCount(s, base.block)
-    configStore.setDualCounterCount(s, base.dual)
-    configStore.setQuickAssistCount(s, 3)
-    configStore.setChainCountPerStun(s, 1)
-  }
 }
 
 // ========== 平A时间权重·边际均衡（默认「均衡」而非 1:1） ==========
@@ -543,10 +366,6 @@ export function computeOptimalTeamAllocation(
 }
 
 // ========== 主流程：队伍演变时间线 ==========
-
-function yieldNow(): Promise<void> {
-  return new Promise(r => setTimeout(r, 0))
-}
 
 /**
  * 计算主C从实装节点到最新版本的队伍演变时间线。
@@ -1178,7 +997,7 @@ export async function computeSlotComparePoints(calc: Calc, opts: SlotCompareOpti
 // Chart 7 只能比「预设里恰好凑成同两槽的 A/B 两队」，这里把同款求值推广到任意三元组：
 // 求值 = evalTeamByBudget 单一事实源（预算感知确定性分配 / 逐金贪婪），maxIter 未收敛跳过；
 // 不含当期 buff 牌与自动下位（与 Chart 7 /「队伍对比·不使用」一致）；快照/恢复不留痕。
-// @fact slotSweep:选第三人求值口径 口径: 候选=candidateIds 覆盖（缺省=catalog 可见角色−固定2人，页面层用职业筛选/手选收窄）；求值=evalTeamByBudget（预算感知确定性分配或逐金贪婪，maxIter 跳过）；槽位语义 0=主C/1=击破/2=支援，固定队友按其余两槽槽位序 | 据 用户 2026-09-13「对比固定2个队友，然后选第三个人。目前的都是预设队伍，不太自由」+ 同日「第三人不是海选，是选定部分角色」·复核@2026-09-25 | 验 src/composables/__tests__/slotSweep.test.ts | 锚 src/composables/teamTimeline.ts#computeSlotSweepPoints | 信 确认
+// @fact slotSweep:选第三人求值口径 口径: 候选=candidateIds 覆盖（缺省=catalog 可见角色−固定2人，页面层用职业筛选/手选收窄）；求值=evalTeamByBudget（预算感知确定性分配或逐金贪婪，maxIter 跳过）；槽位语义 0=主C/1=击破/2=支援，固定队友按其余两槽槽位序 | 据 用户 2026-09-13「对比固定2个队友，然后选第三个人。目前的都是预设队伍，不太自由」+ 同日「第三人不是海选，是选定部分角色」·复核@2026-09-25·复核@2026-09-27 | 验 src/composables/__tests__/slotSweep.test.ts | 锚 src/composables/teamTimeline.ts#computeSlotSweepPoints | 信 确认
 // ⟳复核: 若把「选第三人」改成吃当期 buff 牌/自动下位（向散点页口径靠）时，确认本口径「与 Chart 7 同口径、不含 buff/下位」是否仍成立并改写条目 | 到期 2026-12-31
 
 /** 组出「固定两槽 + 候选补海选槽」的队伍三元组（纯函数；fixed 按其余两槽的槽位序） */
@@ -1291,225 +1110,8 @@ export async function computeSlotSweepPoints(calc: Calc, opts: SlotSweepOptions)
   }
 }
 
-// ========== Chart 4：菲林经济模拟（选定 Boss + 主C，逐期菲林投放 → 加金 → 当期 Boss 强度） ==========
-//
-// 用户口径（2026-08-23 修订）：
-// - 横轴 = 危局期数（含日期）；纵轴 = 队伍强度（伤害/该期 Boss 血量 %）。
-// - **选的是主C不是队伍**：加金可让队友换人（如 琉音换青衣、卢西娅换潘引壶——主C 固定，
-//   队友 = 候选池内「当前总限定金下伤害最高」的双人组，随金数增长自动换队）。
-// - 每个版本有菲林投放（默认 ≈ 1 金 = 15000 菲林，可编辑）；按「消耗占比」决定每期花多少
-//   抽卡、存多少（如给 1 金用半金 = 0.5）；「目标卡池」期把银行菲林全部投入抽卡加金。
-// - 抽卡成本按期望（萌百·游戏内调频详情）：命座金 = 93.75 抽 = 15000 菲林；
-//   音擎金 = 62.5 抽 = 10000 菲林（角色池 1.6% 综率 × 50/50 保底；音擎池 2% 综率 × 75/25 保底）。
-// - **充值 = 用户只输入每版本预算（元），按性价比固定分配**（汇率不可改）：
-//   月卡（30 元 → 3300 菲林）> 大月卡（68 元 → ≈2600 菲林）> 直充（10 菲林/元），
-//   见 data/filmEconomy.ts allocateTopUpFilm。
-// - 买金顺序 = 当前最优队的主C 优先步（buildBudgetAwareGoldSteps：主C 影画 1-6 → 主C 精炼
-//   2-5 → 队友…）；初始金数可设定（低于基础金自动钳制到 0 命 1 精带专武）。
-// - **起点 = 主C 首次 UP 之后的 Boss 初登场**（axisNodes 按主C 实装日期裁剪）。
-// - 每期只算「当前期数」的 Boss 血量与关卡固有 buff（layer_buff，期视图有数据才应用）+ 队伍。
-
-import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION, allocateTopUpFilm } from '@/data/filmEconomy'
-import type { PhaseBossBrief, PhaseView } from '@/types/bossPreset'
-
-/** 模拟一个点的结果（一个危局期数） */
-export interface FilmSimPoint {
-  periodId: string
-  seq: number
-  label: string
-  date: string
-  team: [string, string, string]
-  /** 该期总限定金（初始金 + 已购金步） */
-  totalGold: number
-  /** 该期配装明细（budgetAware label） */
-  goldLabel: string
-  /** 期初累计剩余菲林 */
-  filmBank: number
-  /** 本期投入抽卡的菲林 */
-  filmSpent: number
-  /** 累计已投入抽卡的菲林 */
-  filmInvestedTotal: number
-  damage: number
-  hpRatio: number
-}
-
-export interface FilmSimulationOptions {
-  boss: BossPreset
-  /** 危局期数轴（id = phaseId；label/date 由页面从 bossSchedule 构造） */
-  axisNodes: TimelineAxisNode[]
-  /** 期视图（当期关卡固有 buff 数据；缺省空 = 老期无 buff） */
-  periodViews: PhaseView[]
-  /** 主C（固定；队友从候选池搜最优） */
-  mainAgentId: string
-  /** 队友候选池（用户策展；主C 自动排除；每期按当前总限定金搜最优双人组） */
-  candidatePool: string[]
-  /** 初始总限定金（低于基础金自动钳制） */
-  initialGold: number
-  /** 每版本免费菲林（默认 15000 ≈ 1 金） */
-  filmPerVersion: number
-  /** 消耗占比 0-1：每期菲林花多少抽卡（其余存银行） */
-  spendRatio: number
-  /** 每版本充值预算（元，0 = 不充）——按性价比固定分配（月卡→大月卡→直充，汇率不可改） */
-  budgetYuanPerVersion: number
-  /** 目标卡池期（期 id）：该期把银行菲林全部投入抽卡 */
-  targetPeriodId?: string
-  /** 自动配装（推荐驱动盘 + 词条优化器）；缺省 false = 轻量速算 */
-  autoBuild?: boolean
-  onProgress?: (p: { pct: number; text: string }) => void
-}
-
-export interface FilmSimulationResult {
-  points: FilmSimPoint[]
-  stats: { nonConverged: number; durationMs: number }
-}
-
-/** 期视图里选定 Boss 的关卡固有 buff → 写入全局 Buff 表（先清旧 layer-buff:，复用 runArchiveDeploy.applyBossLayerBuffs 唯一实现） */
-function applyPeriodLayerBuffs(
-  configStore: ReturnType<typeof useConfigStore>,
-  periodViews: PhaseView[],
-  periodId: string,
-  boss: BossPreset,
-) {
-  // 无论 view/brief 是否存在都先清旧（applyBossLayerBuffs 内部清旧 + brief 为空只清不写）
-  const view = periodViews.find(v => v.phaseId === periodId)
-  const brief = view ? ([view.criticalAssault, ...(view.defense ?? [])].filter(Boolean) as PhaseBossBrief[])
-    .find(b => b.presetId === boss.id) ?? null : null
-  applyBossLayerBuffs(configStore, brief)
-}
-
-/** 下一个待购金步的成本（主C 优先顺序）：影画 = 命座金，音擎（本体/精炼）= 音擎金 */
-function nextGoldStepCost(
-  team: [string, string, string],
-  totalGold: number,
-  catalog: ReturnType<typeof useCatalogStore>,
-): number | null {
-  const base = baseGoldOfTeam(team, catalog)
-  const { steps } = buildBudgetAwareGoldSteps(team, catalog)
-  const idx = totalGold - base
-  if (idx < 0 || idx >= steps.length) return null
-  return steps[idx].kind === 'cinema' ? CINEMA_GOLD_FILM : WEAPON_GOLD_FILM
-}
-
-/**
- * 菲林经济模拟：主C 固定，每期发菲林（+预算按性价比折算）→ 按占比花/存 →
- * 抽卡资金按当前最优队的主C 优先步买金 → 用「当前期数」Boss 数值 + 关卡固有 buff，
- * 在候选池内搜「当前总限定金下伤害最高」的双队友组合求队伍强度（队友随金数增长可换人）。
- */
-export async function computeFilmSimulation(calc: Calc, opts: FilmSimulationOptions): Promise<FilmSimulationResult> {
-  const configStore = useConfigStore()
-  const catalog = useCatalogStore()
-  const snap = snapshotStore(configStore)
-  const t0 = Date.now()
-  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
-  try {
-    // 起点 = 主C 首次 UP 之后的 Boss 登场期（用户口径；主C 实装前的期不算）
-    const mainRelease = releaseNodeOf(opts.mainAgentId)
-    const mainDate = mainRelease ? VERSION_NODES[nodeIndexOf(mainRelease)]?.date : undefined
-    const axis = opts.axisNodes.filter(n => !mainDate || (n.date ?? '') >= mainDate)
-    if (axis.length === 0) {
-      report(1, '主C 首次 UP 之后无该 Boss 登场期')
-      return { points: [], stats: { nonConverged: 0, durationMs: Date.now() - t0 } }
-    }
-
-    // 候选双队友（主C 排除；至多 1 击破；预算感知配装）
-    const isStun = (id: string) => (catalog.getAgent(id)?.specialty ?? '') === 'stun'
-    const stunBudget = isStun(opts.mainAgentId) ? 0 : 1
-    const candidates = opts.candidatePool.filter(id => id !== opts.mainAgentId && catalog.getAgent(id))
-    const pairs: [string, string][] = []
-    for (let i = 0; i < candidates.length; i++) {
-      for (let j = i + 1; j < candidates.length; j++) {
-        const a = candidates[i]
-        const b = candidates[j]
-        if ((isStun(a) ? 1 : 0) + (isStun(b) ? 1 : 0) > stunBudget) continue
-        pairs.push([a, b])
-      }
-    }
-    if (pairs.length === 0) {
-      report(1, '候选池不足（至少 2 名非主C队友）')
-      return { points: [], stats: { nonConverged: 0, durationMs: Date.now() - t0 } }
-    }
-
-    /** 在当期 Boss/buff（已应用）下搜「当前总限定金」的最优双队友组合（预算感知 + 收敛过滤） */
-    const searchBest = (totalGold: number): { team: [string, string, string]; damage: number; budgetAware: ReturnType<typeof budgetAwareStateFor> } | null => {
-      let best: { team: [string, string, string]; damage: number; budgetAware: ReturnType<typeof budgetAwareStateFor> } | null = null
-      for (const [a, b] of pairs) {
-        const team: [string, string, string] = [opts.mainAgentId, a, b]
-        if (baseGoldOfTeam(team, catalog) > totalGold) continue // 买不起
-        const budgetAware = budgetAwareStateFor(team, totalGold, catalog)
-        applyTeamToStore(configStore, team, budgetAware.state, opts.autoBuild === true)
-        const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
-        if (conv === 'maxIter') continue
-        const dmg = calc.teamTotalDamage.value
-        if (!best || dmg > best.damage + 1e-9) best = { team, damage: dmg, budgetAware }
-      }
-      return best
-    }
-
-    const minPairBase = Math.min(...pairs.map(([a, b]) => baseGoldOfTeam([opts.mainAgentId, a, b], catalog)))
-    let totalGold = Math.max(opts.initialGold, minPairBase) // 初始金低于最便宜队基础金 → 钳到最便宜队
-    let bank = 0
-    let filmWallet = 0 // 抽卡资金（累计投入，买金步前先攒）
-    let filmInvestedTotal = 0
-    const topUpFilm = allocateTopUpFilm(opts.budgetYuanPerVersion)
-    const filmPerPeriod = (opts.filmPerVersion + topUpFilm) / PERIODS_PER_VERSION
-    const points: FilmSimPoint[] = []
-    let nonConverged = 0
-    const total = axis.length
-    for (let i = 0; i < total; i++) {
-      const node = axis[i]
-      // 当前期数 Boss + 关卡固有 buff 一次应用（本期所有候选队共用）
-      const phase = opts.boss.phases.find(p => p.phaseId === node.id)
-        ?? opts.boss.phases.find(p => p.begin.slice(0, 10) === (node.date ?? '').slice(0, 10))
-      if (!phase) continue
-      configStore.applyBossPreset({ id: opts.boss.id }, phase, opts.boss.monster, opts.boss.defaults)
-      applyPeriodLayerBuffs(configStore, opts.periodViews, node.id, opts.boss)
-      // ---- 经济：收入 → 存/花 ----
-      const ratio = Math.max(0, Math.min(1, opts.spendRatio))
-      bank += filmPerPeriod * (1 - ratio)
-      let spend = filmPerPeriod * ratio
-      if (node.id === opts.targetPeriodId && bank > 0) {
-        spend += bank
-        bank = 0
-      }
-      filmWallet += spend
-      filmInvestedTotal += spend
-      // ---- 买金：按当前最优队的下一步成本；换队时累计金数按新队主C 优先重新解释 ----
-      let guard = 0
-      while (guard++ < 40) {
-        const best = searchBest(totalGold)
-        if (!best) break
-        const cost = nextGoldStepCost(best.team, totalGold, catalog)
-        if (cost == null || filmWallet < cost) break
-        filmWallet -= cost
-        totalGold++
-      }
-      // ---- 最终最优队 + 本期强度 ----
-      const best = searchBest(totalGold)
-      if (!best) {
-        nonConverged++
-        continue
-      }
-      points.push({
-        periodId: node.id,
-        seq: i + 1,
-        label: node.label,
-        date: node.date,
-        team: best.team,
-        totalGold,
-        goldLabel: best.budgetAware.label,
-        filmBank: Math.round(bank),
-        filmSpent: Math.round(spend),
-        filmInvestedTotal: Math.round(filmInvestedTotal),
-        damage: best.damage,
-        hpRatio: phase.hp > 0 ? Math.round((best.damage / phase.hp) * 10000) / 100 : 0,
-      })
-      report((i + 1) / total, `期 ${node.label}：${totalGold} 金（${filmInvestedTotal.toFixed(0)} 菲林投入）…`)
-      if (i % 2 === 0) await yieldNow()
-    }
-    report(1, `完成：${points.length} 期`)
-    return { points, stats: { nonConverged, durationMs: Date.now() - t0 } }
-  } finally {
-    restoreStore(configStore, snap)
-  }
-}
-
+// CC-86（2026-09-27，census §5.92）：配装/现场工具拆到 ./teamTimelineStore，Chart 4 菲林经济模拟拆到
+// ./teamTimelineFilm；这里原样转出，导入方继续写 `from '@/composables/teamTimeline'`。
+export { baseGoldOfTeam, budgetAwareStateFor } from './teamTimelineStore'
+export { computeFilmSimulation } from './teamTimelineFilm'
+export type { FilmSimPoint, FilmSimulationOptions, FilmSimulationResult } from './teamTimelineFilm'
