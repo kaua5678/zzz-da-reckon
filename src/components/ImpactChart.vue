@@ -127,8 +127,7 @@ import { fmt } from '@/utils/format'
 import { IMPACT_VARIABLES, readImpactVar, writeImpactVar } from '@/core/impactVars'
 import { teamMechanicSettings } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
-import { computeOptimalSubStats, getTemplate } from '@/core/substatOptimizer'
-import { teammateBuffSourceContextFromStores } from '@/composables/teammateBuffContext'
+import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -363,33 +362,10 @@ const ttH = computed(() => (hoverTips.value.length) * 13)
 
 /** 对当前配置跑一轮优化（仅槽0），应用到 store 副分配 */
 function runOptimizerForSlot0() {
-  const slot = 0
-  const char = configStore.team[slot]
-  if (!char?.agentId) return
-  const agent = catalogStore.getAgent(char.agentId)
-  if (!agent) return
-  const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
-  // CC-49：依赖组装收拢到编排层（判据 7；与 TeamConfigPage 原为逐字相同的两份）
-  const setInfo = teammateBuffSourceContextFromStores(configStore, catalogStore)
-  const tmpl = getTemplate(agent)
-  const sc = tmpl.stats.length
-  const tsk = sc <= 2 ? 'optimizer.totalSteps2' : sc === 3 ? 'optimizer.totalSteps3' : 'optimizer.totalSteps4'
-  try {
-    const result = computeOptimalSubStats({
-      agent, wEngine,
-      driveDiscConfig: char.driveDisc,
-      setsMap: catalogStore.driveDiscSetsMap,
-      teammateBuffs: setInfo.enabledTeammateBuffs,
-      statRules: catalogStore.statRules,
-      statCap: configStore.getMechanicSetting('optimizer.substatCap', 20),
-      totalSteps: configStore.getMechanicSetting(tsk, 0),
-      config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, enemyWeakness: configStore.enemy.weakness },
-    })
-    char.driveDisc.subStatAllocation = {}
-    for (const [s, n] of Object.entries(result.subStatAllocation)) {
-      if (n > 0) char.driveDisc.subStatAllocation[s] = Math.max(0, Math.min(54, n))
-    }
-  } catch { /* skip */ }
+  // CC-52：入参组装 + 引擎调用 + 夹值收拢到编排层（判据 7）；这里只负责写回 store。null = 空槽/无角色/引擎抛错 ⇒ 不改分配（原口径）
+  const char = configStore.team[0]
+  const alloc = computeSubstatAllocationForSlot(0, configStore, catalogStore)
+  if (char && alloc) char.driveDisc.subStatAllocation = alloc
 }
 
 function readDamageSnapshot(): DataPoint {
