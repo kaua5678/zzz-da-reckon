@@ -110,8 +110,6 @@ export function applySoukakuTeamEnergyFlags(characters: CharacterOperationConfig
   for (const ch of characters) {
     ;(ch as any).soukakuEnergyPerSoukakuUlt = energy[ch.slot] ?? 0
   }
-  ;(sk as any).soukakuCinemaLevel = (sk as any).soukakuCinemaLevel
-    ?? Number((sk as any).soukakuCinemaLevel ?? 0)
 }
 
 function clampSwings(cfg: unknown): number {

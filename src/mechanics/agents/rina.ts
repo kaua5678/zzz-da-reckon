@@ -186,9 +186,8 @@ function combatTimeOf(state: AgentResourceInput['state'], cfg: AgentResourceInpu
   return minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)
 }
 
-function buildCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
+function buildCharConfig({ skills, cfg }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
-  record.rinaCinemaLevel = cinemaLevel ?? 0
   // 晨间清扫：三段倍率之和作为单次发动总倍率
   record.rinaSweepComboDmg =
     rowVal(findMove(skills, MOVE_SWEEP_1), 'damage')

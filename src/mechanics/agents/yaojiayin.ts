@@ -292,7 +292,6 @@ function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharCon
   const record = cfg as unknown as Record<string, unknown>
   record.yaojiayinCinemaLevel = cinema
   record.yaojiayinAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0 ? 1 : 0
-  record.yaojiayinAtk = panel.atk ?? 0
   record.yaojiayinTremoloDmg = rowVal(findMove(skills, MOVE_TREMOLO), 'damage')
   record.yaojiayinClusterDmg = rowVal(findMove(skills, MOVE_CLUSTER), 'damage')
   record.yaojiayinCapriccioDmg = rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage')
