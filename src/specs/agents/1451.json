@@ -18,8 +18,8 @@
       "valuePerStep": 0.02,
       "cap": null,
       "coverage": 1,
-      "status": "implemented_approximation",
-      "note": "六命：处于任意[以太帷幕]内时按初始最大生命值（局外生命）2%提升自身攻击力（局内小攻击）。引擎 applyPanel 收到的为局内面板，按局内生命近似（涌泉+5%差异约5%，可接受）。"
+      "status": "implemented",
+      "note": "六命：处于任意[以太帷幕]内时按初始最大生命值（局外生命）2%提升自身攻击力（局内小攻击）。实现：luciaElowen.ts applyLuciaPanel 调 applySpecAttributeConversions 并传 sources.outOfCombat，按本条 sourcePanelPhase=outOfCombat 读局外生命（CC-118，第 145 轮；此前按局内生命近似）。"
     }
   ],
   "resources": [

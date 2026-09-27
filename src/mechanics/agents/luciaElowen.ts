@@ -128,11 +128,12 @@ function buildLuciaCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   cfg.luciaA5ActionTime = a5Move?.actionTime ?? 1.887
 }
 
-function applyLuciaPanel({ panel, cinemaLevel }: AgentPanelInput): void {
+function applyLuciaPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelInput): void {
   // 影画6·永不结束的旅途：处于任意[以太帷幕]内时，按初始最大生命值（局外生命）的2%提升自身攻击力。
-  // 面板为局内生命（含涌泉+5%），局外/局内差异约5%，近似接受。
+  // CC-118（第 145 轮）：spec `lucia_c6_hp_to_atk` 声明 sourcePanelPhase=outOfCombat，经 sources.outOfCombat 真读局外生命；
+  // 此前按局内生命（含涌泉 +5% 等局内生命加成）执行并注释「近似接受」，属规格与实现不一致（R5 口径：数据可信）。
   if (cinemaLevel >= 6) {
-    applySpecAttributeConversions(panel, getAgentSpec(LUCIA_AGENT_ID)?.attributeConversions ?? [])
+    applySpecAttributeConversions(panel, getAgentSpec(LUCIA_AGENT_ID)?.attributeConversions ?? [], 1, { outOfCombat: outOfCombatPanel })
   }
 }
 

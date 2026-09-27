@@ -165,6 +165,19 @@ describe('卢西娅6命属性转模', () => {
     applySpecAttributeConversions(panel2, getAgentSpec('1451')?.attributeConversions ?? [])
     expect(panel2.atk).toBeCloseTo(240)
   })
+
+  it('CC-118：模块按局外生命转攻击（spec 声明 sourcePanelPhase=outOfCombat），不读局内生命', () => {
+    const run = (cinemaLevel: number) => {
+      const panel = emptyPanel()
+      panel.hp = 12000 // 局内（含局内生命加成）
+      const outOfCombatPanel = emptyPanel()
+      outOfCombatPanel.hp = 10000 // 局外
+      luciaElowenMechanic.applyPanel!({ panel, outOfCombatPanel, cinemaLevel } as unknown as Parameters<NonNullable<typeof luciaElowenMechanic.applyPanel>>[0])
+      return panel.atk
+    }
+    expect(run(6)).toBeCloseTo(200) // 10000 × 2%，旧实现按局内得 240
+    expect(run(5)).toBe(0)
+  })
 })
 
 describe('patchExecutions（[合唱]行专属修正）', () => {

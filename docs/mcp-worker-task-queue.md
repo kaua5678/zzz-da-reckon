@@ -69,26 +69,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 144 轮（2026-09-27，一个提交「refactor(C7): CC-117」，提交号见 git log）
+### 第 145 轮（2026-09-27，一个提交「fix(1451): CC-118」，提交号见 git log）
 
-- **做到哪**：清单 §2.5-② 完成，attributeConversions 归一收尾（`docs/mcp-r6-refactor-list.md` §2.7）。
-  - `src/specs/runtime.ts`：先封顶再乘覆盖率；单测 3 例追加到 `src/specs/__tests__/runtimeSourcePhase.test.ts`。
-  - 1261 简：`src/specs/agents/1261.json` 新增 `jane_proficiency_to_atk` 与 2 条 verification；`src/mechanics/agents/jane.ts` 面板（coverage = frenzyFactor）、展示值（探针）、机制卡文案都从 spec 来，删三个常数。
-  - 验证：zd `c7e` DIFF 0；两项反向验证；validate:specs 1120；verify EXIT 0；vue-tsc 0；CG 25/25；get_diagnostics 0。
+- **做到哪**：CC-118 完成，卢西娅 6 命 `lucia_c6_hp_to_atk` 改为读局外生命（清单 §2.8）。
+  - `src/mechanics/agents/luciaElowen.ts`：`applyLuciaPanel` 解构 `outOfCombatPanel`，调用 `applySpecAttributeConversions(panel, …, 1, { outOfCombat: outOfCombatPanel })`。
+  - `src/specs/agents/1451.json`：该条 status 改为 implemented，note 写明 CC-118。
+  - 单测：`src/mechanics/__tests__/luciaElowen.test.ts`「卢西娅6命属性转模」段加 1 例（局内 12000 / 局外 10000，6 命 → +200，5 命 → 0）。
+  - golden：`timeGolden.baseline.json` 只有 1 条变化，`agent:1451:c6.dmg` 1175132 → 1169281（-0.498%），时间账零变化，已重生成。
+  - 验证：vue-tsc 0；CG 25/25；get_diagnostics 0；反向验证（去掉 sources → 得 240 ≠ 200，恢复后 cmp 一致）；verify 仅 timeGolden 这 1 条预期差异，重生成后该文件 9/9。
 - **下一步（按顺序，可直接开工）**：
-  1. **CC-118（改数值）：卢西娅 6 命 `lucia_c6_hp_to_atk` 改读局外生命**（清单 §2.4 新发现 1）。依据：spec `src/specs/agents/1451.json` 声明 `sourcePanelPhase: outOfCombat`，原文「按初始最大生命值（局外生命）的 2%」，而 `src/mechanics/agents/luciaElowen.ts:131–136` 现按局内面板执行并注释「近似接受」——这是规格与实现不一致（R5 口径：数据可信），不是「更接近投稿」。做法：
-     - `applyLuciaPanel` 的解构加上 `outOfCombatPanel`，调用改为 `applySpecAttributeConversions(panel, getAgentSpec(LUCIA_AGENT_ID)?.attributeConversions ?? [], 1, { outOfCombat: outOfCombatPanel })`；删掉「近似接受」注释，改写为依据。
-     - 跑 `bash .zc/perf/zd.sh cc118`（**预期非零**），用 `node /home/kaua/calc-arch/zdan.mjs <base.json> <after.json>` 列出差异预设：必须**只**出现含 1451 且 6 命的预设（名字里有 `/c6`），伤害应**下降**约 5%×攻击力占比（局内生命含涌泉 +5%）。出现任何其他预设的差异都要先解释清楚再继续。
-     - 跑全量 verify；若 `src/composables/__tests__/timeGolden.test.ts` 或其他 golden 变红，逐条写出新旧值与原因再更新期望值，不加容差。
-     - spec 1451 该条 note 补上「实现：luciaElowen.ts 传 sources.outOfCombat（CC-118）」；清单 §2.4 新发现 1 标已修；卡表登记 CC-118。
-  2. **CC-119（改数值）：普罗米娅每点掌控 +0.35% 全队异放伤害接入计算**（清单 §2.6 末）。先读异放伤害怎么结算（`releaseModifier`，`promia.ts` 已有 releaseModifier 钩子处理「有罪推定」减防），确定承载字段后再动；是否全队生效、是否受 `outOfCombatPanel` 掌控约束都要按原文写。
-  3. 评估「10 个模块 spec resources 与模块账本重复」（全景 §6.4），再 CC-99。
-- **本轮拍板**：runtime 改为先封顶再乘覆盖率。依据：覆盖率是时间占比，满额值按时间加权才对；旧顺序在覆盖率 < 1 且超上限时偏高。改动时全仓覆盖率恒为 1，零差。回退点见清单 §2.7。
+  1. **CC-119（改数值）：普罗米娅每点掌控 +0.35% 全队异放伤害接入计算**（清单 §2.6 末）。先读异放伤害怎么结算（`releaseModifier`；`promia.ts` 已有 releaseModifier 钩子处理「有罪推定」减防），确定承载字段后再动；是否全队生效、是否受 `outOfCombatPanel` 掌控约束都按原文写。**注意 zd 盲区**（见已知坑）：1541 不在 0 号位的预设，6 命、影画类改动 zd 看不到，要自写探针。
+  2. 评估「10 个模块 spec resources 与模块账本重复」（全景 §6.4），再 CC-99。
+- **本轮拍板**：按 spec 声明和原文「初始最大生命值」改读局外面板（R5 口径：数据可信；依据不是「更接近投稿」）。影响：只有卢西娅 6 命，组队全队总伤害 -0.04% ~ -0.26%（25 个预设 / 槽位组合），单人 golden -0.498%；0 命不变。回退点：调用去掉第 3、4 个参数，spec status 改回 implemented_approximation。
 - **已知坑**：
-  - `sourcePanelPhase` 只对传了 sources 的调用点生效（目前只有 promia）。
+  - **zd `/c6` 变体只把 0 号位设为 6 命**（dump.perf.ts `setCinemaLevel(0, 6)`）。非 0 号位角色的 6 命改动在 zd 下显示 DIFF 0，这是盲区，不代表零影响。本轮自写探针：遍历含该角色的预设，找到其槽位，分别设 0 命 / 6 命，记录 teamTotalDamage；在 HEAD worktree 和工作区各跑一次再对比。可选改进：给 dump 加「所有槽 c6」变体（会改基线键集，需单独提交）。
+  - `sourcePanelPhase` 只对传了 sources 的调用点生效（目前是 promia、lucia）。
   - `specs/verify.ts` 的 verification 只有一张面板，不传 sources、不传 coverage。
-  - spec verifications 只经 runtime 执行；已迁条目：alice、luciaElowen、velina、1481、1511、1541、1261。
   - 注册不再由「import core」隐式触发（C1）。新增 Worker 或 node 直跑 src 的脚本必须自己 `import '@/mechanics'`。
-  - `zcWorkspace.test.ts` 租约过期用例在全量 verify 下偶发失败过 1 次（第 139 轮），单独重跑可过。
+  - `zcWorkspace.test.ts` 租约过期用例在全量 verify 下偶发失败过（第 139 轮），单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
-- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；nangong / liuyin 原文「初始」是否应读局外面板（有 sources 能力，一行修正，但改数值）。
+- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；nangong / liuyin 原文「初始」是否应读局外面板（和 CC-118 同样是一行修正；注意 zd 盲区）。

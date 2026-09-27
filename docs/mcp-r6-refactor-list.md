@@ -87,7 +87,7 @@
 | phoenix | **不做** | `computePhoenixWeaknessCrit` 返回派生的「弱点暴击率」= 基础值 + 超阈值部分 × 比例，不写面板；runtime 只写面板字段且没有基础项 |
 | lighter 1161 | **不做** | `computeLighterMoraleDmgBonus` 是队友 buff 的软上限折算（每超 10 点冲击力加层数，再封顶、C2 ×1.2），不是属性转化 |
 
-**新发现 1（规格与实现不一致，登记待办）**：`AttributeConversionSpec.sourcePanelPhase` 在 runtime **从不读取**（`resolveAttributeSource` 只读传入面板）。全量 10 条转化里：
+**新发现 1（规格与实现不一致；卢西娅部分 ✅ 第 145 轮 CC-118 已修，见 §2.8）**：`AttributeConversionSpec.sourcePanelPhase` 在 runtime **从不读取**（`resolveAttributeSource` 只读传入面板）。全量 10 条转化里：
 - `1451 lucia_c6_hp_to_atk` 声明 `outOfCombat`，实际按局内面板执行（`luciaElowen.ts:131` 注释自称「局外/局内差异约 5%，近似接受」）。**这是数值差异**，修正会改卢西娅 6 命的伤害 ⇒ 必须另开 CC 卡、逐条解释 golden 差异，不在重构里改。
 - `1561 velina_regen_to_dmg / velina_regen_to_mastery` 声明 `outOfCombat`，经 `sourceValue` 读回能（需确认用的是 `energyRegenOutOfCombat` 还是 `energyRegenTotal`，与声明是否一致）。
 - 其余 7 条声明 `inCombat`，与执行一致。
@@ -153,3 +153,10 @@
 - **回退点**：runtime 恢复 `steps × vps × coverage × convCoverage` 后封顶（当前数据下零差）；1261 spec 删条目与 verifications，`jane.ts` 恢复三常数与手算。
 - **attributeConversions 归一到此收尾**：§2.3 的七个候选全部有结论（迁 4：1481、1511、1541、1261；删死写入 1：alice；不做 3：burnice、phoenix、lighter），外加 1571 不做（§2.2）。手写模块里不再有「spec 与模块各写一份」的属性转化常数（1571 的 spec 条目是标注「勿经 runtime」的纯记录）。C7 剩下的是「10 个模块 spec resources 与模块账本重复」，另行评估（全景 §6.4）。
 
+### 2.8 第 145 轮结果：CC-118 卢西娅 6 命改读局外生命 ✅（改数值）
+
+- **改动**：`luciaElowen.ts` `applyLuciaPanel` 传 `{ outOfCombat: outOfCombatPanel }`；`1451.json` 的 `lucia_c6_hp_to_atk` status 改为 implemented。依据：spec `sourcePanelPhase: outOfCombat`，原文「初始最大生命值」（R5：数据可信）。
+- **数值**：自写探针（HEAD worktree 与工作区对比，所有含 1451 的预设分别在其槽位设 0 命、6 命）：50 个键里 25 个变化，全部是 6 命，全队总伤害 -0.042% ~ -0.262%（如 yixuan-trigger-lucia 80766976 → 80601508，-0.205%；banyue-trigger -0.262%；auto-1371-1571-1451 -0.042%）；0 命零变化。timeGolden 仅 `agent:1451:c6.dmg` 1175132 → 1169281（-0.498%，单人场景攻击占比更高，所以跌幅更大）。
+- **zd 盲区**：`zd cc118` DIFF 0，因为 `/c6` 变体只设 0 号位 6 命，而卢西娅在所有预设里都在 2 号位。
+- **验证**：新单测（局内 12000 / 局外 10000 → +200）；反向验证（去 sources 得 240）；vue-tsc 0；CG 25/25；verify（仅上述 golden 1 条）。
+- **回退点**：去掉调用的第 3、4 参数，spec status 改回 implemented_approximation，恢复 golden 该值。
