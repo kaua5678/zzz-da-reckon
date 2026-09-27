@@ -2790,3 +2790,25 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 验证：vue-tsc 0；`zc dead-channels` 显示「新增 0 · 基线存量 1 · 待核销 0」；check-guards 25；verify 339 files / 3713 tests EXIT 0（`/home/kaua/calc-arch/verify113.log`）。
 - 回退：`git revert 0a7e2a8`。
 
+### 5.102 CC-95 done：判据 14 死通道豁免清单 8→1，棘轮 frozen 7→1（lead-arena-0925c，2026-09-27 第 114 轮）
+
+**CC-95 `cb169a3`**（另有 drift 复核 `5430062`）
+- **逐条裁决**（以 `git grep -nw` 读写点为据）：
+
+  | 条目 | 裁决 | 依据 |
+  |---|---|---|
+  | A `runArchiveImport.ts` weaknesses / hpTotal | 删 | bootstrap.json 有这些键，但模块零消费；TS 结构类型对多余键无约束，不声明不影响解析。**这里修正了 CC-94 时的口径**：「JSON 有键 ⇒ 保留」只适用于有消费者的数据形状；外部原始数据里没被消费的键不必声明。 |
+  | B `runArchiveImport.ts` resistances（namesake 样本） | 删 | 同上；字段删掉后不再有名字撞车。仓库里同名的 `EnemyConfig.resistances` 在 stores 下，不在扫描面内 |
+  | B `difficultyLadder.ts` minGain | 删，改成 `Math.max(0, base×minGainRatio)` | 零调用方传值；默认值 0 就是现行口径（09-15 当成简写误报销号过，但后来调用点的简写没了，被重新登记） |
+  | B `timeWeightBalancer.ts` minWeight | 删，内联 `const minWeight = 0` | 零调用方；代码注释里写了回退方法 |
+  | B `core/damage.ts` isRupture | 删，缺省用 `NORMAL_DAMAGE_PROFILE` | 全仓调用点早已改传 `specialDamageProfile`（`resolveSpecialDamageProfile`），测试里也不传；verify（含 timeGolden）零差 |
+  | B `core/effectiveTime.ts` blockSeconds | **假阳性，修扫描器** | 它是 `phaseDelayedCooldown` 的**位置形参**，luciaElowen:413、remielle:669、specPanelBuffs:482 都传了值 |
+  | B `pullPlannerEngine.ts` freePoolPerSpecialty | 保留 | CC-94 已裁决 |
+
+- **扫描器修复**：`scanReadOnlyOptionalProps` 新增 `lineStartDelimiterTops`，在保留换行的遮罩文本上计算每行行首的定界符栈顶。当栈顶是 `(` **且**该行以 `,` 或 `)` 收尾时，判为函数形参并跳过。两个条件同时满足才跳过，这样可以防止把真接口属性错误放过（那会造成死通道漏报）。实测全仓跳过 30 处，逐条看过，全部是函数形参。新增测试同时覆盖三点：形参被跳过、接口属性照报、括号内对象类型字面量的属性照报。
+- **测试去仓库依赖**：`applyDeadChannelAllowlist` 增加可选的第三参数 `allowlist`（d.mts 已同步）。「显式段 + 空候选 ⇒ 全 stale」和「namesake 不计 workload」两条测试改为夹具自证；原来它们断言「仓库 A 段非空」「恰有 1 条 namesake」，随清偿必然变红。
+- 棘轮：`RATCHET_BURNDOWN['死通道豁免清单'].frozen` 7→1，AGENT_ID_BURNDOWN_LOG.md 已记一笔。判据 14 现为「A 0 / B 1 / C 0」。
+- 顺带修掉 zc drift 的 2 条 ⟳：死通道LS / 死导出LS 两条 @fact 的锚点文件在 CC-94 被改动过，但只动了基线表，口径不变，已追加 `·复核@2026-09-27`。
+- 验证：vue-tsc 0；check-guards 25；verify 339 files / 3714 tests EXIT 0（新增 1 条测试，`verify114.log`）；zc drift 待复核 0。
+- 回退：`git revert cb169a3`。只想恢复某个选项时，在对应接口加回可选字段，并把内联常量改回 `opts.x ?? 默认`。
+
