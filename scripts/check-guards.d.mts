@@ -335,6 +335,8 @@ export declare function isEngineeringAnchor(file: string): boolean
 /** 工程元口径 = subject 前缀命中 **且** 锚文件在工程位（单看前缀是可逃逸白名单） */
 export declare function isEngineeringFact(fact: { subject: string }, file: string): boolean
 export declare const CALIBER_TRIGGER_ALLOWLIST: string[]
+/** 判据 25 豁免：无类型记录键「只读不写」的有意存量 `{ key: 理由 }`（CC-91，建立时为空；登记在 lib/guard-registries.mjs） */
+export declare const RECORD_KEY_DEAD_READ_ALLOWLIST: Record<string, string>
 export interface CaliberTriggerRow {
   file: string
   line: number

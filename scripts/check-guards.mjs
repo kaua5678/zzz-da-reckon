@@ -61,8 +61,10 @@ import { countIdentityBranchLines, countIdentityBranchLinesInFiles } from './lib
 import { scanJsonDupKeys, formatJsonDupKeys } from './lib/json-dup-keys.mjs'
 // CC-85：登记数据表（棘轮 burn-down / 技术债 / 口径触发器豁免）独立成数据文件；判据逻辑留在本文件。
 // 改基线、登记债务、登记豁免 ⇒ 改 scripts/lib/guard-registries.mjs。
-import { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST } from './lib/guard-registries.mjs'
-export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST }
+import { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST } from './lib/guard-registries.mjs'
+// 判据 25：无类型记录字符串键死读（CC-91，2026-09-27，见 scripts/lib/record-key-dead-reads.mjs 头注释）
+import { scanRecordKeyDeadReads, formatRecordKeyDeadReads } from './lib/record-key-dead-reads.mjs'
+export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST }
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
@@ -1224,6 +1226,18 @@ export function runAllChecks(root = ROOT) {
         + ` / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatJsonDupKeys(report),
+    })
+  }
+
+  // ---- 判据 25：无类型记录字符串键死读（CC-91；事故 = vivian.ts record.vivianDanceHit / vivianAssistCount 全仓零写入） ----
+  {
+    const report = scanRecordKeyDeadReads(root, RECORD_KEY_DEAD_READ_ALLOWLIST)
+    results.push({
+      name: `无类型记录键死读 (判据 25: Record<string, unknown> 按键读取却全仓零写入/声明 ⇒ 恒取缺省) `
+        + `死读 ${report.fresh.length} 处 / 记录读取 ${report.reads} 处 / 豁免 ${Object.keys(RECORD_KEY_DEAD_READ_ALLOWLIST).length}`
+        + ` / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+      ok: report.ok,
+      detail: report.ok ? [] : formatRecordKeyDeadReads(report),
     })
   }
 

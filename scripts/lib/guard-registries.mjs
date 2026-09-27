@@ -405,3 +405,10 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "scripts/import-nanoka-bosses.mjs data:bossBodySize",
   "scripts/import-nanoka-v12.mjs data:1611/反制支援两行秽盾基数",
 ]
+
+/**
+ * 判据 25 豁免：无类型记录字符串键「只读不写」的**有意**存量（CC-91，2026-09-27 建立时为空）。
+ * 形如 `{ someKey: '理由 + 日期 + 回收条件' }`。只减不增；豁免失效（已不再死读）时判据会要求删除。
+ */
+export const RECORD_KEY_DEAD_READ_ALLOWLIST = {}
+
