@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { resolveAnomalyCorrosionEvents } from '@/core/anomalyPool/corrosion'
 import type { CorrosionSource } from '@/types/resource'
+import { emptyPanel } from '@/core/panel'
 
 function legacy(src: CorrosionSource | undefined) {
   return [
@@ -52,5 +53,18 @@ describe('CC-71 风蚀气旋事件 → anomalyCorrosionEvents', () => {
     expect(src).not.toContain('维琳娜微域气旋风异放')
     expect(src).not.toContain('维琳娜风蚀替换广域气旋')
     expect(src).toContain('resolveAnomalyCorrosionEvents(input.agentMechanics, corrosionSource)')
+  })
+
+  it('CC-72：core 不再补 cinema2CorrosionRate 默认值；模块兜底 = 2/3 与显式 2/3 等价', () => {
+    const core = readFileSync(resolve(__dirname, '../../core/anomalyPool.ts'), 'utf-8')
+    expect(core).not.toMatch(/cinema2CorrosionRate = 2 \/ 3/)
+    const vel = readFileSync(resolve(__dirname, '../../mechanics/agents/velina.ts'), 'utf-8')
+    expect(vel).toContain('cinema2CorrosionRate = 2 / 3,')
+    const velina = getAgentMechanic('1561')!
+    const panels = [emptyPanel(), emptyPanel(), emptyPanel()]
+    for (const [t, w] of [[0, 0], [6, 3], [12, 9]]) {
+      expect(velina.anomalyCorrosion!({ panels, turbulenceCount: t, windTriggerCount: w, fallbackRate: undefined }))
+        .toEqual(velina.anomalyCorrosion!({ panels, turbulenceCount: t, windTriggerCount: w, fallbackRate: 2 / 3 }))
+    }
   })
 })

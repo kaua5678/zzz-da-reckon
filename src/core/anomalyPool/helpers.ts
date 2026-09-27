@@ -316,7 +316,7 @@ export interface AnomalyPoolInput {
 /**
  * 畏缩机制配置（CC-24 自 `AliceCoweringConfig` 通用化）。畏缩是物理异常「强击」附带的通用状态；
  * 引擎只按物理元素消费（紊乱倍率加成 + 畏缩 DOT），不看角色身份。目前唯一开启方是爱丽丝
- * （`roundInputs.ts` 的 aliceInfo 按 cfg.aliceEnabled 下发，CC-25 待模块能力化）。
+ * （`roundInputs.ts#anomalyPoolSetupInfo` 取第一个声明 `anomalyPoolSetup` 能力的模块下发，CC-25 已完成）。
  */
 export interface CoweringConfig {
   /** 畏缩 DOT：每 tick 造成强击伤害的比例（%），默认 2.5 */
@@ -1041,7 +1041,8 @@ export interface DamageCalcConfig {
   enemyResReduction: number
   stunned: boolean | number
   stunMultiplier: number
-  cinema2CorrosionRate: number
+  /** C2 风蚀利用率；`undefined` ⇒ 模块侧兜底（CC-72） */
+  cinema2CorrosionRate?: number
   /** 蕾米异化系数倍率，乘到所有异常相关伤害；无蕾米时为1 */
   globalAnomalyMultiplier: number
   /** 爱丽丝畏缩配置（启用时计算 DOT 和紊乱倍率加成） */
