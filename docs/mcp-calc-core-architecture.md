@@ -215,6 +215,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-46 | done | `d655e9c` | 补测：无 promoteVariant 声明者时 buildStackAxes 跳过转大块（CC-43e 遗留，原仅 rowsnap 兜底）；双向反向变异均红 | census §5.53 |
 | CC-47 | done | `79f0f6b` | 判据 7 展示层越层 14→10：views/components 的 `getAgentMechanic`×4 → 编排层门面 `src/composables/agentMechanicView.ts`（teamMechanicSettings / agentCombos / agentResourceSections，纯转发） | census §5.54 |
 | CC-48 | done | `d98cfaf` | 判据 7 10→8：StunAxisPage 的 banyue/yixuan 值导入 → 模块能力 `axisEditorBlockMarks` + 声明 `axisMoveMeta`（门面 agentAxisBlockMarks / agentAxisMoveMeta） | census §5.55 |
+| CC-49 | done | `b285a4f` | 判据 7 8→6：TeamConfigPage + ImpactChart 逐字相同的 buildTeammateBuffSourceContext 依赖组装 → `src/composables/teammateBuffContext.ts#teammateBuffSourceContextFromStores` | census §5.56 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |

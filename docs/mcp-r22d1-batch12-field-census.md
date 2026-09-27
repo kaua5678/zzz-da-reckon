@@ -1745,6 +1745,28 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 1. `buildTeammateBuffSourceContext` ×2（TeamConfigPage.vue:~876 与 ImpactChart.vue:~131）：先读两处调用的入参和用途。若两处都是「拿 configStore 构造 → 传给 calcPanel/面板计算」，就在编排层（例如 `src/composables/panelContext.ts`）提供 `teammateBuffSourceContextFor(configStore, slot)` 之类的函数，两处一起改，判据 7 8→6。注意这只是挪位置，要在 census 里写明它是否真正降低了耦合。
 2. `allocateAxisWindows`：useResourceCalc 已在用它，看能不能把「轴 → 各轴窗口数」作为 useResourceCalc 的 computed 暴露，页面直接读结果（真正降低耦合，−1）。
 3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
+### 5.56 CC-49 done：判据 7 8→6（队友 buff 来源上下文的依赖组装收拢到编排层）（lead-arena-0925c，2026-09-27 第 69 轮）
+
+**提交**：`b285a4f`。新文件 `src/composables/teammateBuffContext.ts`（`teammateBuffSourceContextFromStores(configStore, catalogStore)`），测试 `src/composables/__tests__/teammateBuffContext.test.ts`（1 条）；TeamConfigPage.vue `getTeammateBuffSourceContext` 与 ImpactChart.vue `runOptimizerForSlot0` 改为调用它；判据 7 基线与 frozen 8→6（plan 同步删掉该项）。回退：`git revert b285a4f`。
+
+**是否真正降低了耦合（按 §5.54 的要求写明）**：是。两个页面原来各写一份**逐字相同**的 7 项依赖组装（catalog 的 teammateBuffGroups / driveDiscSetsMap / statRules / getAgent / getWEngine + config 的 isTeammateBuffEnabled / enemy.weakness），现在「依赖从哪取」只剩一处；页面不再知道引擎函数的依赖结构。
+
+**有意不动的两处（拍板）**
+- `resourceCalc/panelPhases.ts:485`：用 `agentsMap.get` 与**快照过的** `teammateBuffEnabledOf(buffSelections, …)`，和页面口径不同，而且在计算热路径上。统一它需要先证明两种开关判断等价，收益小、风险有，不做。
+- `stores/config.ts:832`：store 层不能反向依赖 composables。
+
+**验证**：判据 7 = 6/6，24 guards；vue-tsc 0；新单测把结果与原内联组装逐值比对（[1161, 1311, 1211] 推荐配装，来源面板非空）；反向变异（新函数里 isTeammateBuffEnabled 恒 false）：单测红 1/1，恢复后 cmp 一致；`npm run verify` 通过：306 文件 / 3634 条，24 guards（`/home/kaua/calc-arch/verify49.log`）。只动展示层调用点，计算路径未变，没跑 dump/rows。
+
+**判据 7 剩余 6 处**
+- StunAxisPage.vue `allocateAxisWindows`（@/core/stunAxisStack）
+- TeamConfigPage.vue `calcPanel`（@/core/panel）/ `applyTargetedStat`（@/core/buff）
+- ImpactChart.vue `IMPACT_VARIABLES, readImpactVar, writeImpactVar`（@/core/impactVars）/ `computeOptimalSubStats, getTemplate`（@/core/substatOptimizer）
+- MechanicsTablePage.vue `agentSpecs`（@/specs/registry）
+
+**下一步**
+1. `allocateAxisWindows`（StunAxisPage.vue:~251，调用点在 `axisTimes(ai)` 附近 `allocateAxisWindows(axes.value, stunCount)[ai]`）：先确认 useResourceCalc / convergence 里是否已按同样入参算过（convergence.ts:156/218 有 `allocateAxisWindows(resolvedAxes, stunCount)`）。注意页面用的是**编辑中的 axes**，不一定等于求解用的 resolvedAxes。若不同，就在 composables 里加纯转发 `axisWindowCounts(axes, stunCount)`，并在 census 写明「只是挪位置」；若相同，就由 useResourceCalc 暴露 computed，页面读结果（真正降低耦合）。
+2. TeamConfigPage 的 `calcPanel` + `applyTargetedStat`（:1167 / :1187）：先读这段在做什么（疑似页面自己算「开关某 buff 后的面板」预览）。若 useResourceCalc 已有等价面板，就改读它；否则收拢成编排层函数，同样要写明耦合是否真的降低。
+3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
