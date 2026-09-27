@@ -456,3 +456,29 @@ physical 下叶瞬光+琉音+照（1 精专武）实测（探针 WSL `/home/kaua
 
 ### 15.4 教训（已写进 CC-148 规程）
 迁移时每条红先问「断言比较的两边是不是本应同源的两个量」——是，就按不变量处理（查机理），不是口径值。只看断言值会把不变量破缺误分为数值钉（§13.1 的错误）。
+
+## 16. CC-151 锁定失衡次数被 physical 绕过 + CC-148 收尾（第 175 轮，`4ca262f1`）
+
+### 16.1 CC-151（真缺陷）
+- 现象：`enemy.stunCountLock ≥ 0`（锁定失衡次数）时，physical 缺省下 `countStun` 仍读池的物理次数，锁定值被绕过。adjustableEffect 中 lock=3 与 lock=4 算出的连携数相同（都是 4）。仪玄 `lock:3`（mechanicSettingsEffect）、normaSmoke、damagePoolNightA 同源红。
+- 依据：锁定的语义是「stunCount 为固定输入，计数一律用锁定值」，命座对比页的 cinemaUplift 依赖这一口径。physical 投影本身会改写计数，两者不能同时生效。
+- 修法：`src/composables/useResourceCalc.ts` 读 `stunPlanProjection` 处，**锁定且投影为 physical** 时回落为 `'off'`（计数即锁定值）；其他投影（round 等）作用于锁定值本身，照常生效。
+- 首版修得过宽（锁定一律强制 off），全量 verify 里 lycaonC2Contract「lock 3.6：off 用实数、round 用投影值」红，说明「锁定 + round」有明确契约，于是收窄到只处理 physical。
+- 影响面：预设和数据里都不设 `stunCountLock`，zd 队列与两份时间基线**按构造零变化**（只走未锁定分支），全量 verify 基线未动。
+- 回退点：删掉 IIFE 里的锁定判断。
+
+### 16.2 CC-148 收尾（18/18 审完）
+- 删 mock 后在 physical 下全绿、已迁移：damagePoolNightA、mechanicSettingsEffect、normaSmoke（依赖 16.1）；以及前几轮的 6 个文件。
+- adjustableEffect：只在「17 条滑块接线」用例内显式钉 off（1351 援护狩猎增益随失衡计数变：off 5 / physical 8；该用例测接线，不测计数），其余用例在 physical 下跑。
+- 8 个文件恢复文件级 off 钉，注释写明为机制钉，逐条理由：
+  - convergenceNightD「保底4喧响+般岳 补齐量精确值」：parry 12 是 off 场景下的精确补齐量（physical 为 3）。
+  - damagePoolBatchR17c / R18d：叶瞬光 stunMult 成对值、帷幕封顶 3 条、雨果 [2,4]，都是 off 下录制的精确锚点。
+  - damagePoolDefDown「异放行吃减防」：需要存在异放的场景。physical 下以太触发 13→12，唯一一次颤音异放掉档（1→0），离散门槛事件，不是通道缺陷。
+  - moduleAnomalyEventRecords r0：EXPECTED 为 off 快照。
+  - timeWeightAllocation ⑤：依赖「均衡把失衡 4→3」这一 off 场景。
+  - nextRoundFeedback 露西 C6：58 是「有钩子 58 / 摘钩子 30」的反向验证锚点（physical 为 60）。
+  - potentialAxisBatchB②「端到端同向」：见 16.3。
+- 没有任何用例放宽容差或改期望迁就。细化为逐用例钉 = CC-152（可选，低优）。
+
+### 16.3 X 类发现：潜能更高、伤害反而更低
+physical 下莱卡恩潜能 VI 比潜能 I 总伤低 0.002%。机理：冲击力更高 → 物理失衡次数更多 → 连携挤占前台时间。这是离散次数带来的真实取舍，不是缺陷；面板比值断言照常通过。端到端同向断言只在 off（连续规划）口径下成立，所以文件钉 off。
