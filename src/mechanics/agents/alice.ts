@@ -56,7 +56,6 @@ const COWERING_DISORDER_BONUS_PER_SEC = 18
 const COWERING_DISORDER_BONUS_MAX = 180
 /** 畏缩全局物理异常积蓄效率 +% */
 const COWERING_BUILD_UP_EFFICIENCY = 25
-const MASTERY_TO_PROFICIENCY_RATE = 1.6
 /** 六命：每轮决胜状态最大额外攻击次数 */
 const C6_MAX_TRIGGERS_PER_STATE = 6
 /** 六命：额外攻击基础倍率 = 异常精通 × 3300%（小数 33） */
@@ -114,7 +113,9 @@ function applyAlicePanel({ slot, agent: _agent, cinemaLevel, team, panel }: Agen
     panel,
     getAgentSpec(ALICE_AGENT_ID)?.attributeConversions ?? [],
   )
-  panel.aliceMasteryToProficiencyBonus = Math.max(0, (panel.anomalyMastery ?? 0) - 140) * MASTERY_TO_PROFICIENCY_RATE
+  // 掌控转精通（>140 每点 +1.6）只由上面 spec `alice_mastery_to_proficiency` 执行（缺省 floor 整步）。
+  // R6 C7（第 142 轮）删除了原来零读取的 `panel.aliceMasteryToProficiencyBonus`（连续公式）与 `cfg.aliceMasteryToProficiencyRate`：
+  // 它们是同一机制的第二份常数，且口径（连续）与实际执行（取整）不同，只会误导。
 }
 
 // ============ buildCharConfig ============
@@ -214,7 +215,6 @@ function buildAliceCharConfig({
   cfg.aliceCoweringDisorderBonusPerSec = COWERING_DISORDER_BONUS_PER_SEC
   cfg.aliceCoweringDisorderBonusMax = COWERING_DISORDER_BONUS_MAX
   cfg.aliceCoweringBuildUpEfficiency = COWERING_BUILD_UP_EFFICIENCY
-  cfg.aliceMasteryToProficiencyRate = MASTERY_TO_PROFICIENCY_RATE
 }
 
 // ============ buildExecutions ============

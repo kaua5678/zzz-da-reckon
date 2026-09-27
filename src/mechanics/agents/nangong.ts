@@ -11,6 +11,9 @@ import type {
 import type { SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting, NangongMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { emptyPanel } from '@/core/panel'
+import { getAgentSpec } from '@/specs/registry'
+import { applySpecAttributeConversions } from '@/specs/runtime'
 
 /**
  * 南宫羽（1511）战斗逻辑（nanoka 原文满级被动 1511055 自主分析，2026-08）：
@@ -31,7 +34,15 @@ import { fmt } from '@/utils/format'
 const NANGONG_AGENT_ID = '1511'
 const MASTERY_BONUS = 120
 const C4_MASTERY_BONUS = 40
-const CONTROL_THRESHOLD = 110
+// 掌控转冲击（阈值 110、每点 +1、连续）的常数只在 spec 1511.json `nangong_mastery_to_impact`（R6 C7），
+// 面板与展示值都经 spec runtime 执行，保证两处永远同一口径。
+const masteryConversions = () => getAgentSpec(NANGONG_AGENT_ID)?.attributeConversions ?? []
+function impactFromMasteryOf(anomalyMastery: number): number {
+  const probe = emptyPanel()
+  probe.anomalyMastery = anomalyMastery
+  applySpecAttributeConversions(probe, masteryConversions())
+  return probe.impact
+}
 const BEAT_INITIAL = 30
 const BEAT_CAP = 100
 const BEAT_PER_SEC = 3.8
@@ -92,7 +103,7 @@ export function computeNangongMechanic(input: {
   vibratoStacks: number
   releaseCount: number
 }): NangongMechanicSource {
-  const impactFromMastery = Math.max(0, input.anomalyMastery - CONTROL_THRESHOLD)
+  const impactFromMastery = impactFromMasteryOf(input.anomalyMastery)
   // 重拍收入累进（持有上限只延迟消耗不吞收入）：初始 + 接战 3.8/s + 队友异常 12/次（CD 上限近似）
   const anomalyProcs = Math.floor(Math.max(0, input.battleTime) / ANOMALY_PROC_CD)
   const beatRegen = Math.max(0, input.frontlineSeconds) * BEAT_PER_SEC + anomalyProcs * BEAT_PER_ANOMALY
@@ -114,7 +125,7 @@ export function computeNangongMechanic(input: {
 function applyNangongPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void {
   const coverage = clampRatio(settings['nangong.coreBuffCoverage'] ?? 1)
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + MASTERY_BONUS + (cinemaLevel >= 4 ? C4_MASTERY_BONUS : 0)
-  panel.impact = (panel.impact ?? 0) + Math.max(0, (panel.anomalyMastery ?? 0) - CONTROL_THRESHOLD)
+  applySpecAttributeConversions(panel, masteryConversions())
   // 核心被动命中增益（30s 刷新）：自身积蓄效率 / 自身失衡值（C6 追加 +50）
   panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + CORE_EFFICIENCY_BONUS * coverage
   panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + (CORE_BUILD_UP_BONUS + (cinemaLevel >= 6 ? C6_BUILD_UP_BONUS : 0)) * coverage

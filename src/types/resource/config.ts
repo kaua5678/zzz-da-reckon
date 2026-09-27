@@ -328,8 +328,6 @@ export interface CharacterOperationConfig {
   aliceCoweringDisorderBonusMax?: number
   /** 爱丽丝畏缩物理异常积蓄效率加成（%），默认 25 */
   aliceCoweringBuildUpEfficiency?: number
-  /** 爱丽丝异常掌控转精通：掌控>140时超出部分转化率，默认 1.6 */
-  aliceMasteryToProficiencyRate?: number
   /** 爱丽丝二命：终结技命中触发极性强击（额外 spark） */
   aliceCinema2UltSpark?: boolean
   /** 爱丽丝六命：决胜状态额外攻击已启用 */

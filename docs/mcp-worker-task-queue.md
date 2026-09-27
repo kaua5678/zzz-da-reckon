@@ -69,21 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 141 轮（2026-09-27，一个提交「refactor(C5,C3)」，提交号见 git log）
+### 第 142 轮（2026-09-27，一个提交「refactor(C7)」CC-115，提交号见 git log）
 
-- **做到哪**：R6 清单 C5 + C3（CC-114），都零差。
-  - C5：删 `src/core/damage.ts` `DirectDamageInput.damageBasis` 死参数，及 `resourceCalc/damagePool.ts`、`mechanics/agents/alice.ts`、`jane.ts` 与两个测试文件里的传参；`src/types/catalog.ts` `SkillRow.damageBasis` 加注释「展示字段，引擎不读」；更正 `scripts/import-nanoka-v12.mjs` 头注释的误导说法。
-  - C3：`src/core/__tests__/r5DataInvariants.test.ts` 加 2 例（检测器夹具自证 + catalog `appliesToOutOfCombatPanel ≡ scope==='outOfCombat'`，95 处全同义）。
-  - 验证：zd `c5` DIFF 0；vue-tsc 0；verify EXIT 0；CG 25/25；get_diagnostics 0。
+- **做到哪**：C7 §2.3 七个候选全部给出结论（清单 `docs/mcp-r6-refactor-list.md` §2.4）。
+  - 已迁 nangong 1511：`src/specs/agents/1511.json` 新增 `nangong_mastery_to_impact` 与 2 条 verification；`src/mechanics/agents/nangong.ts` 面板与展示值都经 `applySpecAttributeConversions`（展示值用 `emptyPanel()` 探针），删 `CONTROL_THRESHOLD`。
+  - 删 alice 死写入：`alice.ts` 的 `panel.aliceMasteryToProficiencyBonus`、`cfg.aliceMasteryToProficiencyRate`、常数 `MASTERY_TO_PROFICIENCY_RATE`，以及 `src/types/resource/config.ts` 的类型字段（全仓零读取）。
+  - 不迁：burnice、phoenix、lighter（理由见 §2.4）；promia、jane 待 runtime 扩展后迁。
+  - 验证：zd `c7b`、`c7c` DIFF 0；反向验证（删 1511 stepRounding → verification 40 ≠ 40.5）；validate:specs 1108；verify EXIT 0；vue-tsc 0；CG 25/25；get_diagnostics 0。
 - **下一步（按顺序，可直接开工）**：
-  1. **C7 §2.3 第一个候选：nangong（1511 南宫羽）**。读 `src/mechanics/agents/nangong.ts:117` 附近（`panel.impact += max(0, anomalyMastery − CONTROL_THRESHOLD)`）与 `src/specs/agents/1511.json`（attributeConversions 目前为 `[]`）。判断：来源是否同一面板阶段、是否连续（连续 ⇒ `stepRounding: 'none'`）、有无 cap。一致就在 spec 加条目（note 写「实现位置：nangong.ts 调 applySpecAttributeConversions」）+ 一条非整数点 verification，模块改调 runtime（范例 `liuyin.ts` 的 applyLiuyinPanel），zd 要求 DIFF 0，并做反向验证（删字段 → verification 失败）。不一致就在清单 §2.3 表里写「不做 + 理由」。
-  2. 依次处理 §2.3 其余候选（promia → burnice → phoenix → jane → alice:117 → lighter），每个都给结论。
-  3. §2.3 全部有结论后，评估「10 个模块 spec resources 与模块账本重复」（全景 §6.4）。
-  4. 之后 CC-99（卡表 `docs/mcp-calc-core-architecture.md`）。
-- **本轮拍板**：C5 只删引擎死参数，**不删** catalog 行字段（删要改 3 个导入脚本（import-nanoka-beta-agent / -missing / -v12）和 scripts/resolve.mjs 并重导，收益只是少一个展示字段）；C3 做成校验而非删字段。依据与回退点见清单 §3、§4。
+  1. **清单 §2.5-①**：runtime `applySpecAttributeConversions` 加可选 `sources?: { outOfCombat?: PanelValues }`，按 `sourcePanelPhase` 取源（opt-in，缺省零差），然后迁 promia 1541（`promia.ts` `applyPromiaPanel` 与 `computePromiaCycle` 的 `PROMIA_MASTERY_THRESHOLD` / `PROMIA_PROF_PER_MASTERY`）。先读 `src/specs/verify.ts` 决定 verification 怎么提供局外面板。
+  2. **清单 §2.5-②**：runtime 改为先封顶再乘覆盖率（先按清单里的两项前提复核零差），然后迁 jane 1261（`jane.ts:132–134` 与 `:68`）。
+  3. 清单 §2.4 新发现 1：卢西娅 6 命 `lucia_c6_hp_to_atk` 声明局外、实际按局内执行——开 CC 卡改数值，逐条解释 golden 差异。排在 1、2 之后。
+  4. 之后评估「10 个模块 spec resources 与模块账本重复」（全景 §6.4），再 CC-99。
+- **本轮拍板**：
+  - alice 的两处零读取写入直接删，不迁：runtime 已执行同一机制，这两处只是口径不同（连续 vs 取整）的第二份常数。回退：`git revert` 本提交的 alice / config.ts 部分（无数值影响）。
+  - nangong 的展示值也走 runtime（探针），而不是保留一份常数给展示用——否则常数仍有两处。
 - **已知坑**：
-  - spec verifications 只经 runtime 执行，不经模块；只有已迁到 runtime 的条目（alice、luciaElowen、1481）才被 verifications 真正覆盖。
+  - `sourcePanelPhase` 在属性转化 runtime 里**不读**；spec 写 `outOfCombat` 不代表真的读局外面板（清单 §2.4 新发现 1）。
+  - spec verifications 只经 runtime 执行；只有已迁条目（alice、luciaElowen、velina、1481、1511）才被 verifications 真正覆盖。
   - 注册不再由「import core」隐式触发（C1）。新增 Worker 或 node 直跑 src 的脚本必须自己 `import '@/mechanics'`。
-  - `zcWorkspace.test.ts` 租约过期用例在全量 verify 下偶发失败过 1 次（第 139 轮），单独重跑可过；再出现就把过期租约改成与时钟无关的构造（如 `at: 0`）。
+  - `zcWorkspace.test.ts` 租约过期用例在全量 verify 下偶发失败过 1 次（第 139 轮），单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
-- **未决**：「每超过 1%」是否取整（清单 §2.1 末）——数据口径，改即改数值，需另开 CC 卡。
+- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（alice 取整、liuyin/nangong/norma 连续，清单 §2.4 新发现 2）；nangong / liuyin 原文「初始」是否应读局外面板。
