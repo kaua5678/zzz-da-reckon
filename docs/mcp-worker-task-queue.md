@@ -69,13 +69,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 156 轮（2026-09-28，代码 `4d657d75` + 文档提交「docs: round 156」；上一轮文档 = 6acea376 / bdd3d21b）
+### 第 156 轮（2026-09-28，代码 `4d657d75` + 文档 `7090a58d` + 本回填提交；上一轮文档 = 6acea376 / bdd3d21b）
 
 - **做到哪**：
   - 卢西娅影画2「破暗」核对：原文就是全队，**不改**（清单 §2.16）。
   - **全库队友 buff 作用对象实测**（29 组，清单 §2.16 第 156 轮补充）：来源本人普遍吃自己那组；原文单体 / 非全队的条目逐条判断。
   - **CC-131 克拉蕾**（`4d657d75`）：删除 v12 原文里不存在的测试服残留 buff `claret.gleaming_edge_teammate`。2 个克拉蕾预设 −15.3%~−15.6%、单人克拉蕾 −10.9%~−22.1%，每条可解释；timeGolden 9 条 + timeFillRatchet 2 条已重生成；新单测 `src/mechanics/__tests__/claretStaleBuffCc131.test.ts`。
-  - 验证：verify178 见提交；CG 通过。
+  - 验证：verify178 EXIT=0（3789 passed）；CG 通过。
 - **下一步（按顺序，可直接开工）**：
   1. **teammate buff 数值 ↔ 原文对账**（找更多测试服残留）：写脚本遍历 `public/static/teammate-buffs.json` 每组每个效果：取 `value`（或 `ratio` / `cap` / `valuePerStack`），在 `data/raw/nanoka_missing/full/<组id>.json` 去掉 `<color>` 标签后的文本里搜「<值>%」「<值>点」及 `{CAL:...}` 模板（CAL 模板里的数值要按技能 12 级算，搜不到时先列为嫌疑，不要直接判错）。输出嫌疑表写进清单 §2.17，逐条人工核；确认是残留的开 CC 卡删除 / 订正（同 CC-131 的做法与回退点）。
   2. 1421 潘引壶通窍排除本人（§2.16 表），预计零差。
