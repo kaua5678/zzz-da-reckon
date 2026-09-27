@@ -69,22 +69,30 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 183 轮（lane lead-arena-0925c）：CC-159 与 CC-149 合入（同一提交，见 `git log`，提交信息以「CC-159+CC-149」开头）。**
-- 更正 §23.4：timePressure 退轴方向不成立（它按本槽行计算，病例槽的行远小于 180s）。改为终局单量子 2-循环由模块选相，配合 CC-149 让降配吸收多出的一轮。详见 stun-dual-source §24。
-- 验证：vue-tsc 与 verify 通过（3824 passed），CG 25 项通过，两份基线已重生成，zd c183 共 15/624 条变化。
-- 新开 CC-160（终局跨盆振荡，单人叶瞬光 c4/c5/c6 留白 +5~+11s）。REQUIREMENTS 无新条目，提示词未改。
+**第 184 轮（lane lead-arena-0925c）：只提交文档，源码 = cc53864e。**
+- 核对了 zd c183 的两队下降（stun-dual-source §24.6）：
+  - 1031 队 −3.05%：可以接受（旧版超预算 2.14s，新版去掉超预算）。
+  - **1311 队 −7.49%：真实损失，属于策略缺口。** 旧版在 zd 路径上靠「k+1 相超预算 ⇒ S3 降配到 0.5 ⇒ 装下 8 轮」得到自洽的好结果；新版取了自洽的 7 轮，S3 不再触发。
+  - 开 CC-161（需设计）。§24.4 中「降配承担 ⇒ 伤害降」的推测已在 §24.6 更正。
+- CC-160 写入假设：终局执行器用裸 iterate，缺内层环的阻尼和规范停点。
+- REQUIREMENTS 无新条目，提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **核对 zd 下降**：default 变体 auto-1431-1341-1311 −7.49%、auto-1431-1341-1031 −3.05%。用 zd 行快照对比 c183 与基线的逐行差异（`.zc/perf/zd.sh` 的产物目录，见脚本），确认是否为「多出一轮 + 降配交互档下调」。若不是，写进 §24.4 并开卡。
-2. **CC-160**：
-   - 用探针 `cp /home/kaua/calc-arch/k183/zzQ182.test.ts src/`（`ZZ_C=4` 为单人 1431 c4），在 finalizePasses 的选择点加日志（写法见 `k183/` 下本轮的临时日志脚本，或参照 §24：打印每个环成员的 [ex, ult, 平A, nec]）；
-   - 先查终局 iterate 为什么会从折叠收敛态跳到另一个盆。
-   - 修好后，teamTimeSummary 虚高归因用例需要换样例（或改纯函数构造）。
+1. **CC-160（先做，它比 CC-161 更基础）**：验证卡表中的假设。
+   - 把 `src/core/resource/finalizePasses.ts#runFinalizePasses` 中「≤12 次 iterate + bitEqual」改成复用 `src/core/resource/innerLoop.ts#runInnerLoop`（读它的 ctx 签名：configs/config/maxIter/oscillatorStop，调用方在 resource.ts 构造 innerCtx）；
+   - 先只对 preTail 阶段试，看单人 1431 c3/c4 的环成员是否还跨盆（探针 `k183/zzQ182.test.ts`，`ZZ_C=3/4`）；
+   - 再跑全量、两份基线和 zd，比利（1531）与伊德海莉（1051）的变化要逐条解释；
+   - 若影响面过大或变差，回退并在 §24.5 记录否决。
+2. **CC-161（设计先行）**：在 stun-dual-source 新开 §25，写清目标函数：
+   - 何时在满档可行时也尝试降配（候选信号：finalizePasses 发生了单量子选相，且被舍弃的一相轮数更多）；
+   - 择优依据（伤害？轮数？）；
+   - 与 `@fact engine:降配搜索/绝对可行优先`、用户口径「交互只取达成目标的最少要求」如何对齐。
+   - 病例与数据见 §24.6，探针 `k184/zzS184.test.ts`（zd 同款路径）。
 3. CC-156、CC-147、CC-152（可选）。
 
 **已知坑**
-- 终局 2-循环的相位选择必须由模块声明：伊德海莉取平A大者会变差（§24.3）。
-- 单量子门槛不要放宽：c3 的跨盆振荡选错相，伤害 −34.5%。
+- 三条路径（棘轮 setAgent / zd applyTeamToStore / golden applyTeamPreset）初态不同，同一队可能落在不同的终局相。判断修复效果要三条路径都看（本轮就是 zd 路径暴露了 golden 路径看不到的损失）。
+- 终局 2-循环的相位选择必须由模块声明（伊德海莉取平A大者会变差）；单量子门槛不要放宽（c3 −34.5%）。
+- zd 的 rowsnap/dump 只存哈希，要看逐行数据得写探针（参照 `k184/zzS184.test.ts`）。
 - 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行。
 - 双向折叠的 1s 门槛不要删；refund 扣减只减不增。
-- 棘轮（setAgent）、zd（applyTeamToStore）、timeGolden（applyTeamPreset）三条路径的状态不同。
