@@ -69,23 +69,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 145 轮（2026-09-27，一个提交「fix(1451): CC-118」，提交号见 git log）
+### 第 146 轮（2026-09-27，一个提交「refactor(1541): CC-119」，提交号见 git log；上一轮 CC-118 = 02119ce）
 
-- **做到哪**：CC-118 完成，卢西娅 6 命 `lucia_c6_hp_to_atk` 改为读局外生命（清单 §2.8）。
-  - `src/mechanics/agents/luciaElowen.ts`：`applyLuciaPanel` 解构 `outOfCombatPanel`，调用 `applySpecAttributeConversions(panel, …, 1, { outOfCombat: outOfCombatPanel })`。
-  - `src/specs/agents/1451.json`：该条 status 改为 implemented，note 写明 CC-118。
-  - 单测：`src/mechanics/__tests__/luciaElowen.test.ts`「卢西娅6命属性转模」段加 1 例（局内 12000 / 局外 10000，6 命 → +200，5 命 → 0）。
-  - golden：`timeGolden.baseline.json` 只有 1 条变化，`agent:1451:c6.dmg` 1175132 → 1169281（-0.498%），时间账零变化，已重生成。
-  - 验证：vue-tsc 0；CG 25/25；get_diagnostics 0；反向验证（去掉 sources → 得 240 ≠ 200，恢复后 cmp 一致）；verify 仅 timeGolden 这 1 条预期差异，重生成后该文件 9/9。
+- **做到哪**：CC-119 完成，结论是**原登记有误：普罗米娅每点掌控 +0.35% 全队异放增伤早已生效**，本轮只做零差修正（清单 §2.9）。
+  - 实测：含 1541 的 3 个预设中，队友局内面板 `anomalyReleaseDmgBonus = 34.524 = (248.64 − 150) × 0.35`。承载者是 spec `src/specs/agents/1541.json` teamBuff `promia_ice_team_release_dmg`（formula 型，读普罗米娅局外掌控），经 `stores/catalog.ts#mergeSpecTeamBuffs` 进入队友 buff，和模块无关。普罗米娅自身多出的 35 来自专武「朔月裁霜」自身效果（catalog wEngines[79]），不是重复计算。
+  - `src/mechanics/agents/promia.ts`：删除常数 `PROMIA_TEAM_RELEASE_PER_MASTERY`；展示值 `teamReleaseDmg` 改为在探针面板上用 `applyEffect` 执行同一条 spec effect；头注释、`note`、机制卡 detail、description 中的「未接 / 仅展示 / 未建模」都改为「经 spec teamBuff 生效」。
+  - `src/mechanics/__tests__/promia.test.ts`：展示值断言改为字面量 17.5；新增 1 例锁定该 teamBuff 的形状（team / formula / anomalyReleaseDmgBonus / anomalyMastery / outOfCombat）。
+  - 验证：zd `cc119` 伤害逐位相同，差异只有 resourceResult 哈希（3 个含 1541 预设 × 6 变体 = 18 条）。临时把 note 改回原文后重跑 zd `cc119b`，DUMP / ROWS DIFF 0，证明差异只来自 note 文案。反向验证：spec 0.35 → 0.36 时单测得 18 ≠ 17.5，恢复后 cmp 一致。vue-tsc 0；get_diagnostics 0；CG 25/25；verify 见提交。
 - **下一步（按顺序，可直接开工）**：
-  1. **CC-119（改数值）：普罗米娅每点掌控 +0.35% 全队异放伤害接入计算**（清单 §2.6 末）。先读异放伤害怎么结算（`releaseModifier`；`promia.ts` 已有 releaseModifier 钩子处理「有罪推定」减防），确定承载字段后再动；是否全队生效、是否受 `outOfCombatPanel` 掌控约束都按原文写。**注意 zd 盲区**（见已知坑）：1541 不在 0 号位的预设，6 命、影画类改动 zd 看不到，要自写探针。
-  2. 评估「10 个模块 spec resources 与模块账本重复」（全景 §6.4），再 CC-99。
-- **本轮拍板**：按 spec 声明和原文「初始最大生命值」改读局外面板（R5 口径：数据可信；依据不是「更接近投稿」）。影响：只有卢西娅 6 命，组队全队总伤害 -0.04% ~ -0.26%（25 个预设 / 槽位组合），单人 golden -0.498%；0 命不变。回退点：调用去掉第 3、4 个参数，spec status 改回 implemented_approximation。
+  1. **评估全景 §6.4「10 个模块 spec resources 与模块账本重复」**（1121、1171、1261、1281、1291、1411、1471、1511、1571、1581）。只评估、只读，产出写到清单新节 §2.10。做法：
+     - 逐个打开 `src/specs/agents/<id>.json` 的 `resources` 与对应模块（`getAgentMechanic` 找源文件），列出每条 resource 的常数在模块里是否另有一份。
+     - 每条给出结论：迁（模块从 spec 读）/ spec 标「纯记录，勿经 runtime」/ 删 spec 条目 / 不做，并写理由。
+     - 注意全景 §6.4 已写明的探针局限：模块可能经 `specPanelBuffs.ts` 等文件间接用 spec，要逐个复核。
+     - 适合派 dsh 子代理做只读盘点（先自检 pong）。它输出清单后由 lead 复核再落盘，不让它写仓库文件。
+  2. 再做 CC-99（卡表）。
+- **本轮拍板**：
+  - CC-119 按「已生效」处理，不另加计算路径。依据：面板实测值与原文公式一致；再加一条路径就是双计。
+  - 展示值改为执行 spec effect，常数只留 spec 一处，与 C7 口径一致。
+  - note 文案变化会改变 resourceResult 哈希，接受；伤害零差已单独证明。
+  - 回退点：`promia.ts` 恢复常数和 `masteryExcess × 0.35`，文案恢复即可，数值不受影响。
 - **已知坑**：
-  - **zd `/c6` 变体只把 0 号位设为 6 命**（dump.perf.ts `setCinemaLevel(0, 6)`）。非 0 号位角色的 6 命改动在 zd 下显示 DIFF 0，这是盲区，不代表零影响。本轮自写探针：遍历含该角色的预设，找到其槽位，分别设 0 命 / 6 命，记录 teamTotalDamage；在 HEAD worktree 和工作区各跑一次再对比。可选改进：给 dump 加「所有槽 c6」变体（会改基线键集，需单独提交）。
-  - `sourcePanelPhase` 只对传了 sources 的调用点生效（目前是 promia、lucia）。
-  - `specs/verify.ts` 的 verification 只有一张面板，不传 sources、不传 coverage。
-  - 注册不再由「import core」隐式触发（C1）。新增 Worker 或 node 直跑 src 的脚本必须自己 `import '@/mechanics'`。
-  - `zcWorkspace.test.ts` 租约过期用例在全量 verify 下偶发失败过（第 139 轮），单独重跑可过。
+  - **模块注释写「未接 / 仅展示」不等于真的没接**：spec teamBuffs 通过 catalog 合并，始终生效，与手写模块无关。登记「数值缺口」之前先用面板探针实测（写法参考 `.zc/perf/cc119probe.perf.ts`：遍历预设，用 `panelAt(calc.panels.value, slot)` 读字段）。这张卡原本被标为「改数值」，实际是误登记。
+  - **zd 差异只出现在 resourceResult 哈希、伤害不变时，先怀疑 `specResources` 里的文案字段**（note / detail）。验证方法：临时改回文案重跑 zd。
+  - **zd `/c6` 变体只把 0 号位设为 6 命**（dump.perf.ts `setCinemaLevel(0, 6)`）。非 0 号位角色的 6 命改动在 zd 下显示 DIFF 0，要自写探针（第 145 轮）。
+  - `src/core/types.ts` 不存在，`BuffEffect` 在 `@/types/catalog`。vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
+  - `sourcePanelPhase` 在 attributeConversions 里只对传了 sources 的调用点生效（promia、lucia）；teamBuff 的 formula 通道自己按来源面板读取。
+  - `zcWorkspace.test.ts` 在全量 verify 下偶发失败，单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
 - **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；nangong / liuyin 原文「初始」是否应读局外面板（和 CC-118 同样是一行修正；注意 zd 盲区）。

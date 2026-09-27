@@ -5,6 +5,9 @@
  * - 核心被动盗火：初始异常掌控>150时每超1点提升1.5异常精通（等价复现 spec
  *   attributeConversions prometheus_mastery_to_proficiency，模块注册后由其承接）。
  * - 影画2 信念飘摇：异常精通提升40点计入面板。
+ * - 核心被动「每超1点掌控提升0.35%全队异放伤害」：**已生效**，由 spec 1541 teamBuff
+ *   `promia_ice_team_release_dmg`（formula，读普罗米娅局外掌控）写入每个队员的 anomalyReleaseDmgBonus；
+ *   模块只做展示，展示值经同一 effect 执行（CC-119，常数只在 spec）。
  * - 额外能力饮冰：其他异常/支援队友激活；发动强化特殊技时冰异常积蓄效率+30%（30秒窗口
  *   按整局常驻近似，计入通用 anomalyBuildUpEfficiency，普罗米娅仅积蓄冰异常）；
  *   有罪推定全队异放无视40%防御按自身 enemyDefReduction+40 近似（沿用旧 guilty 模块口径）。
@@ -12,7 +15,6 @@
  * 明确未建模（异常结算区/状态机，calcAnomalyDamage 已内置精通乘区，直接叠加会重复计入精通）：
  * - 核心被动异放：处刑式·绝裁终结一击命中异常敌人触发异放，固定结算635%倍率对应属性异常伤害、
  *   消耗1点霜刑；寒蚀值积累（冻结/紊乱/乱流/强特/队友异放回复）与霜刑转化（50寒蚀→1霜刑）逐时序。
- * - 核心被动「每超1点掌控提升0.35%全队异放伤害」：全队向异放增伤，模块仅作用自身面板。
  * - 额外能力霜寒持续+3秒（全队/敌方状态）；有罪推定为全队异放限定，这里近似为自身全伤害减防。
  * - 影画1 有罪推定额外无视20%防御、影画4 异放回寒蚀值、影画6 特殊异放200%与无视15%全抗。
  */
@@ -30,6 +32,8 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import { emptyPanel } from '@/core/panel'
+import { applyEffect } from '@/core/buff'
+import type { BuffEffect } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 
@@ -45,7 +49,14 @@ function requirePromiaMasteryConversion() {
 }
 export const PROMIA_MASTERY_THRESHOLD = requirePromiaMasteryConversion().threshold
 export const PROMIA_PROF_PER_MASTERY = requirePromiaMasteryConversion().valuePerStep
-export const PROMIA_TEAM_RELEASE_PER_MASTERY = 0.35
+// 全队异放增伤（0.35%/点）的常数只在 spec 1541.json teamBuff `promia_ice_team_release_dmg`（CC-119）；
+// 实际生效走 spec teamBuffs 通道（每个队员面板），展示值在探针面板上执行同一条 effect。
+const PROMIA_TEAM_RELEASE_BUFF_ID = 'promia_ice_team_release_dmg'
+function requirePromiaTeamReleaseEffect(): BuffEffect {
+  const effect = getAgentSpec(PROMIA_ID)?.teamBuffs?.find(b => b.id === PROMIA_TEAM_RELEASE_BUFF_ID)?.effects[0]
+  if (!effect) throw new Error(`spec 1541 缺少 teamBuff ${PROMIA_TEAM_RELEASE_BUFF_ID}`)
+  return effect as unknown as BuffEffect
+}
 export const PROMIA_C2_PROFICIENCY = 40
 export const PROMIA_ADDITIONAL_BUILDUP_EFF = 30
 export const PROMIA_GUILTY_DEF_IGNORE = 40
@@ -89,6 +100,7 @@ export function computePromiaCycle(input: {
   probe.anomalyMastery = anomalyMastery
   applySpecAttributeConversions(probe, promiaConversions(), 1, { outOfCombat: probe })
   const proficiencyFromMastery = probe.anomalyProficiency
+  applyEffect(probe, requirePromiaTeamReleaseEffect(), 1)
   const c2Proficiency = cinemaLevel >= 2 ? PROMIA_C2_PROFICIENCY : 0
   return {
     cinemaLevel,
@@ -98,10 +110,10 @@ export function computePromiaCycle(input: {
     proficiencyFromMastery,
     c2Proficiency,
     totalProficiency: proficiencyFromMastery + c2Proficiency,
-    teamReleaseDmg: masteryExcess * PROMIA_TEAM_RELEASE_PER_MASTERY,
+    teamReleaseDmg: probe.anomalyReleaseDmgBonus,
     additionalBuildUpEff: input.additionalActive ? PROMIA_ADDITIONAL_BUILDUP_EFF : 0,
     guiltyDefIgnore: input.additionalActive ? PROMIA_GUILTY_DEF_IGNORE : 0,
-    note: '寒蚀值/霜刑/异放结算与全队异放增伤属异常结算区/全队向，未建模。',
+    note: '寒蚀值/霜刑按总量回复端近似；全队异放增伤经 spec teamBuff 生效（此处为展示值）。',
   }
 }
 
@@ -174,7 +186,7 @@ function buildPromiaResourceSections({ result }: AgentResourceSectionsInput) {
     rows: [
       { label: '掌控转精通', value: `+${cycle.proficiencyFromMastery}`, detail: `掌控${cycle.anomalyMastery}，超${PROMIA_MASTERY_THRESHOLD}部分×${PROMIA_PROF_PER_MASTERY}` },
       { label: '影画2精通', value: `+${cycle.c2Proficiency}`, detail: '信念飘摇' },
-      { label: '全队异放增伤', value: `+${cycle.teamReleaseDmg}%`, detail: '全队向，未接面板（仅展示）' },
+      { label: '全队异放增伤', value: `+${cycle.teamReleaseDmg}%`, detail: '全队向，经 spec teamBuff 写入每个队员的异放增伤' },
       { label: '冰异常积蓄效率', value: `+${cycle.additionalBuildUpEff}%`, detail: cycle.additionalActive ? '额外能力已激活' : '未激活' },
       { label: '有罪推定无视防御', value: `+${cycle.guiltyDefIgnore}%`, detail: '全队异放限定，近似为自身减防' },
     ],
@@ -401,7 +413,7 @@ export const promiaMechanic: AgentMechanicModule = {
     { field: 'promiaNiyingCount', label: '处刑式·匿影', title: '强特变体：耗强特能量（用户自控预算）；每次触发+10寒蚀值，之后可接特殊技「处刑式·重霜」' },
   ],
   name: '普罗米娅·盗火',
-  description: '异常掌控转精通、影画2精通、额外能力冰异常积蓄效率；绝裁异放已接（霜刑上限钳制），全队异放增伤 0.35%/点未接面板。',
+  description: '异常掌控转精通、影画2精通、额外能力冰异常积蓄效率；绝裁异放已接（霜刑上限钳制），全队异放增伤 0.35%/点经 spec teamBuff 生效。',
   applyPanel: applyPromiaPanel,
   buildCharConfig: buildPromiaCharConfig,
   /**

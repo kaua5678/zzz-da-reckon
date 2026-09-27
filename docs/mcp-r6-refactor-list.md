@@ -143,7 +143,7 @@
 - **1541**：spec 新增 `promia_mastery_to_proficiency`（`sourcePanelPhase: outOfCombat`、阈值 150、每点 1.5、`stepRounding: none`、无 cap）+ 2 条 verification（200.5 → 75.75；140 → 0）。`promia.ts`：`applyPromiaPanel` 改为 `applySpecAttributeConversions(panel, promiaConversions(), 1, { outOfCombat: outOfCombatPanel })`（迁移前就读 `outOfCombatPanel.anomalyMastery`，所以零差，且现在 spec 的声明与执行一致）；`computePromiaCycle` 的 `proficiencyFromMastery` 经 `emptyPanel()` 探针走同一执行器；导出常量 `PROMIA_MASTERY_THRESHOLD` / `PROMIA_PROF_PER_MASTERY` 改为从 spec 条目读取（缺条目时模块加载即抛错），`promia.test.ts` 与展示行无需改动。
 - **验证**：zd `c7d` DUMP / ROWS DIFF 0（含 `auto-1541-1511-1411/*`）；validate:specs 1114；`src/specs` + `src/mechanics/__tests__` 117 files / 1322 tests；反向验证两项：删 1541 的 stepRounding → verification 得 75 ≠ 75.75；把 runtime 取源改回 `panel` → 「传 sources 读局外面板」单测失败；恢复后 `cmp` 一致。
 - **回退点**：1541 spec 删条目与 verifications，`promia.ts` 恢复两个字面常量与手算；runtime 的 `sources` 参数可保留（opt-in，无调用方传时不生效）。
-- **登记的缺口（不在重构里补，数值变化须走 CC 卡）**：同段原文「每超过 1 点初始异常掌控……提升 0.35% 全队造成的[异放]伤害」**未接入计算**——`computePromiaCycle` 只算 `teamReleaseDmg` 供机制卡展示（行 detail 写「全队向，未接面板（仅展示）」），常数 `PROMIA_TEAM_RELEASE_PER_MASTERY = 0.35` 仍在模块。接入会提高含普罗米娅队伍的异放伤害，需先确认全队异放增伤在引擎中的承载字段（异放走 `releaseModifier`），另开 CC 卡。
+- **登记的缺口 ——【第 146 轮更正：误登记，早已生效，见 §2.9】**（不在重构里补，数值变化须走 CC 卡）：同段原文「每超过 1 点初始异常掌控……提升 0.35% 全队造成的[异放]伤害」**未接入计算**——`computePromiaCycle` 只算 `teamReleaseDmg` 供机制卡展示（行 detail 写「全队向，未接面板（仅展示）」），常数 `PROMIA_TEAM_RELEASE_PER_MASTERY = 0.35` 仍在模块。接入会提高含普罗米娅队伍的异放伤害，需先确认全队异放增伤在引擎中的承载字段（异放走 `releaseModifier`），另开 CC 卡。
 
 ### 2.7 第 144 轮结果：runtime 先封顶再乘覆盖率 + 1261 简 ✅；attributeConversions 归一收尾
 
@@ -160,3 +160,12 @@
 - **zd 盲区**：`zd cc118` DIFF 0，因为 `/c6` 变体只设 0 号位 6 命，而卢西娅在所有预设里都在 2 号位。
 - **验证**：新单测（局内 12000 / 局外 10000 → +200）；反向验证（去 sources 得 240）；vue-tsc 0；CG 25/25；verify（仅上述 golden 1 条）。
 - **回退点**：去掉调用的第 3、4 参数，spec status 改回 implemented_approximation，恢复 golden 该值。
+
+### 2.9 第 146 轮结果：CC-119 普罗米娅全队异放增伤——误登记，早已生效（零差修正）
+
+- **实测**：`.zc/perf/cc119probe.perf.ts`（不进 git）遍历含 1541 的预设（auto-1541-1511-1411、auto-1541-1561-1411、auto-1541-1331-1581），用 `panelAt(calc.panels.value, slot)` 读局内面板：两名队友 `anomalyReleaseDmgBonus` 都是 34.524 = (248.64 − 150) × 0.35；普罗米娅自身 69.524，多出的 35 来自专武「朔月裁霜」自身效果（catalog wEngines[79]）。
+- **承载者**：spec 1541 teamBuff `promia_ice_team_release_dmg`（formula 型，`sourceStat: anomalyMastery`，`sourcePanelPhase: outOfCombat`，`clamp((x − 150) × 0.35, 0, 999)`），经 `stores/catalog.ts#mergeSpecTeamBuffs` → `core/buff.ts#collectTeammateBuffs` 进入每个队员面板。§2.6 末把它登记为缺口，原因是模块文案写着「未接面板（仅展示）」，而 spec teamBuffs 通道与模块无关、始终生效。
+- **改动**（零差）：删除 `PROMIA_TEAM_RELEASE_PER_MASTERY`；`computePromiaCycle` 的 `teamReleaseDmg` 改为在探针面板上用 `applyEffect` 执行同一条 effect（与 `max(0, x − 150) × 0.35` 的 IEEE 运算顺序相同）；4 处文案更正；单测 +1。
+- **验证**：zd `cc119` 伤害逐位相同，仅 resourceResult 哈希 18 条差异；临时改回 note 后 zd `cc119b` DIFF 0，证明差异来自文案。反向验证：spec 0.35 → 0.36 时单测红。
+- **回退点**：恢复常数与乘法、恢复文案即可；数值不受影响。
+- **教训**：登记「数值缺口」之前，先用面板探针实测字段；不要只凭模块注释判断。

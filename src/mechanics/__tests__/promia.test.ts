@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { getAgentSpec } from '@/specs/registry'
 import {
   PROMIA_ADDITIONAL_BUILDUP_EFF,
   PROMIA_C1_DEF_IGNORE,
@@ -8,7 +9,6 @@ import {
   PROMIA_GUILTY_DEF_IGNORE,
   PROMIA_MASTERY_THRESHOLD,
   PROMIA_PROF_PER_MASTERY,
-  PROMIA_TEAM_RELEASE_PER_MASTERY,
   computePromiaCycle,
   promiaMechanic,
 } from '@/mechanics/agents/promia'
@@ -33,11 +33,22 @@ function cycle(overrides: Partial<Parameters<typeof computePromiaCycle>[0]> = {}
 }
 
 describe('普罗米娅（1541）总量', () => {
+  it('CC-119：全队异放增伤由 spec teamBuff 承载（全队、formula、读局外掌控），模块不再持有常数', () => {
+    const buff = getAgentSpec('1541')?.teamBuffs?.find(b => b.id === 'promia_ice_team_release_dmg')
+    expect(buff?.target).toBe('team')
+    const effect = buff?.effects[0] as unknown as Record<string, unknown> | undefined
+    expect(effect?.type).toBe('formula')
+    expect(effect?.stat).toBe('anomalyReleaseDmgBonus')
+    expect(effect?.sourceStat).toBe('anomalyMastery')
+    expect(effect?.sourcePanelPhase).toBe('outOfCombat')
+  })
+
   it('掌控>150每超1点转1.5精通，并折算全队异放增伤', () => {
     const c = cycle({ anomalyMastery: 200 })
     expect(c.masteryExcess).toBe(200 - PROMIA_MASTERY_THRESHOLD)
     expect(c.proficiencyFromMastery).toBe((200 - PROMIA_MASTERY_THRESHOLD) * PROMIA_PROF_PER_MASTERY)
-    expect(c.teamReleaseDmg).toBe((200 - PROMIA_MASTERY_THRESHOLD) * PROMIA_TEAM_RELEASE_PER_MASTERY)
+    expect(c.teamReleaseDmg).toBeCloseTo(17.5) // (200 − 150) × 0.35，常数只在 spec teamBuff（CC-119）
+    expect(cycle({ anomalyMastery: 120 }).teamReleaseDmg).toBe(0)
     expect(cycle({ anomalyMastery: 120 }).masteryExcess).toBe(0)
     expect(cycle({ anomalyMastery: 120 }).proficiencyFromMastery).toBe(0)
   })
