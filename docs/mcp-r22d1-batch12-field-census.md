@@ -2265,6 +2265,27 @@ ImpactChart.vue 的改动：
   - 测试：门面对照表（照抄原页面每项 label/field/max/mode）× 全角色；页面源码锁：不再含 `agentId === '1551'` / `'1541'` / `'1371'`（1471 仍有特殊型，不锁）。可逆：`git revert`。
 - 其后：TeamConfigPage 特殊型（格挡/双反/弹刀提示/teamHasBanyue）+ stores/config.ts 交互默认值数据表（:164/:165/:232）→ CC-65b；CC-60（低）。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁、perf 夹具缺「11号 + 平A兜底」（§5.69）、teammateBuffGate 多模块同 buff id 时的合并语义（本节）。
+### 5.73 CC-65 done：TeamConfigPage 角色专属计数输入框 → 模块声明 characterCountInputs（lead-arena-0925c，2026-09-27 第 86 轮）
+
+**提交**：`0b3633f`，改 7 个文件、新增 1 个测试：
+- `src/mechanics/types.ts`：`AgentMechanicModule.characterCountInputs?: ReadonlyArray<CharacterCountInputDecl>`；文件尾新增 `CharacterCountInputDecl { field: ActionCountField; label; hint?; title?; mode?: 'autoIfNonPositive' | 'autoNegOne' }`（`ActionCountField` 从 `@/stores/config` **import type**，守卫允许）。
+  - 与 §5.72 草案的差异（自定）：不声明 `max`——min/max 直接取 `ACTION_COUNT_BOUNDS[field]`（原页面写死的 min/max 与 bounds 逐项一致，测试锁住）；缺省 mode 即原「zero」；新增 `hint` 承载「≤0=自动」灰字。
+- 模块声明（顺序 = 原页面角色内顺序）：`specPanelBuffs.ts` 佩洛 1551（perfectBlockCount、assaultOrderCount）；`banyue.ts` 1471（tauntCancelCount）；`promia.ts` 1541（promiaNiyingCount）；`yixuan.ts` 1371（yixuanInk2Count、yixuanInk3Count[autoIfNonPositive]、yixuanPerfectBlockCount[autoIfNonPositive]、yixuanExtremeAssistCount[autoNegOne]、yixuanBackstageComboCount）。title 从原页面逐字抽取（脚本正则抽取，非手抄）。
+- `src/composables/agentMechanicView.ts`：`agentCharacterCountInputs(agentId)`（无 ⇒ []）、`characterCountInputValue(inp, raw)`（三种 :value 表达式）、`characterCountInputClearValue(inp)`（清空写 0 / -1）。
+- `src/views/TeamConfigPage.vue`：删 9 个 v-if 块，在原「嘲讽取消」位置（双反之后）放一个 `v-for="inp in characterCountInputs"`；`:min/:max` 取 `ACTION_COUNT_BOUNDS`；placeholder 仅 autoIfNonPositive 为「自动」；写入 `configStore.setActionCount(selectedSlot, inp.field, v ?? characterCountInputClearValue(inp))`。脚本断言被删块之间只夹着 1471/1531 门控块 ⇒ 每个角色可见项的相对顺序不变。
+- 新测试 `src/composables/__tests__/agentMechanicViewCc65.test.ts`：全 catalog 角色 × 声明对照表（原页面 9 项，命中数 = 9）；显示值 × raw ∈ {undefined,-5,-1,0,1,3,99,999} 对照原表达式、清空值、bounds == 原 min/max；页面源码锁（无 `agentId === '1551'/'1541'/'1371'`，含 v-for 与 setActionCount）。
+
+**等价性论证 / 已知细微差**：佩洛两项原为 `x || 0`，现统一 `x ?? 0`，仅 raw = NaN 时不同（n-input-number 清空给 null，store 不会存 NaN）；测试 raw 集合不含 NaN。命名 setter（setPerfectBlockCount 等）内部就是 `setActionCount(slot, field, v)`（config.ts:713 注释），写入路径等价；命名 setter 本身保留未删（其他消费方仍用）。回退：`git revert 0b3633f`。
+
+**验证**：24 条守卫、check-tokens、vue-tsc -b 均 0；新单测全过；反向变异（删 yixuan.ts 的 yixuanInk3Count 声明行）→ 变红，已恢复 cmp 一致。`npm run verify`：321 files passed / 3662 tests passed（16/29 skipped），24 guards 0（`/home/kaua/calc-arch/verify65.log`）。
+
+**TeamConfigPage 剩余写死（已 grep 核实）**：:186 弹刀标签 `agentId === '1471'` 的 banyueTopUpForSlot 提示；:210/:212 `['1471','1531'].includes` 格挡（label 按角色切换）；:223 般岳双反块；:924 `teamHasBanyue`。
+
+**下一步（CC-65b，可直接开工）**：
+- 页面特殊型：可在同一 `CharacterCountInputDecl` 上扩展 `labelFn`/`defaultFrom: 'interactionDefaults.block'|'dual'`、`topUpHint: 'parry'|'dual'`（轴自动 +N 提示）；或新增模块标记 `interactionBlockLabel?: string`（1471 金身格挡 / 1531 格挡（动力压制））+ `banyueTopUp` 改成门面 `agentAxisTopUpOwner`。先读 :180–:240 与 :900–:940（banyueTopUpForSlot / teamHasBanyue 的来源）再定。
+- `src/stores/config.ts` :164/:165 interactionDefaults 表（1531、1471）与 :232 `NO_GENERIC_INTERACTION_AGENTS = new Set(['1051'])` → 模块声明 `interactionDefaults?` / `noGenericInteraction?`（store 可按值 import `@/mechanics`）。
+- 其后 CC-60（StunAxisPage :264/266/268，低优先级）。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561、perf 夹具缺「11号 + 平A兜底」（§5.69）、teammateBuffGate 多模块同 buff id 合并语义（§5.72）。
 ## 附录：普查脚本 census.sh
 
 ```bash
