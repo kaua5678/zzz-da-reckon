@@ -440,7 +440,7 @@
   "outerExit": "stable"
  },
  "auto-1531-1481-1451": {
-  "slack": 6.1,
+  "slack": 11.7,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -494,13 +494,13 @@
   "outerExit": "stable"
  },
  "auto-1591-1481-1211": {
-  "slack": 1.2,
-  "over": 0,
+  "slack": 0,
+  "over": 0.5,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1591-1481-1311": {
-  "slack": 0.3,
+  "slack": 1.8,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"

@@ -328,16 +328,18 @@ export function createRunCalcRound(deps: {
       const declaredBlocks = h60 + h90
       if (declaredBlocks > 0 && prevGoodReview > 0) {
         /**
-         * 窗口预算用本轮的 `stunCount`（外层不动点喂进来的**计划值**，与核心侧
-         * `promoteFixpoint` 的入口同源），`targetChainCountTotal` 交给函数自己按
-         * `stunCount` 推导（不传 = 用它内部的 `floor(stunCount)` 口径）。
+         * 窗口预算用本轮的**计数通道**失衡次数 `countStun`（CC-155，第 178 轮；off 下 ≡ 计划值 `stunCount` ⇒ 零差）。
+         * 核心侧 `promoteFixpoint` 按**池**的 `pool.stunCount` 推导连携窗口（physical 下 = 物理次数），
+         * 旧注释「计划值与核心侧同源」在 CC-144 缺省 physical 后已不成立（docs/mcp-stun-dual-source.md §19）。
+         * `targetChainCountTotal` 交给函数自己按窗口数推导（不传 = 用它内部的 `floor(窗口数)` 口径）。
+         * 回退点：下面实参改回 `stunCount`。
          * ⚠ 别用 `Math.max(h60, stunCount)` 之类自造窗口数：实测把 1051 的账本残差从
          * −1.63 翻成 +0.98（少扣一次 60）再回落到 +0.40，两次都是自造口径的产物。
          */
         // CC-43c：算法经赠大提供者模块能力 `promoteHugCounts` 取用（琉音 = computeLiuyinHugCounts，逐位同一函数）
         const hug = promoteHugCountsOf(configStore)?.(
           prevGoodReview,
-          stunCount,                 // 连携窗口数（= 本轮失衡计划值，与核心侧同源）
+          countStun,                 // 连携窗口数（CC-155：计数通道，与核心侧池口径同源）
           Math.floor(h60),           // 60 档上限 = 轴声明的 60 抱拳计划次数（floor 成整数次）
         )
         if (hug) {
@@ -983,7 +985,7 @@ export function createRunCalcRound(deps: {
       if (contribMap.size > 0) {
         // 单次失衡表达（v3.2 用户裁决）：每条生效轴条目模拟一个代表窗；该段打几次由
         // 「失衡次数」统计表达，不再逐窗展开、也无跨窗继承（窗口外未建模）。
-        const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(stunCount))
+        const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(countStun)) // CC-155：代表窗分配属计数通道（原为计划值）
         const thresholdCoeff = (configStore.enemy.anomalyCoeff ?? 1) * (configStore.enemy.bossAnomalyCoeff ?? 1)
         const windows: InStunWindowInput[] = []
         const windowEntryIdx: number[] = []
@@ -1079,7 +1081,7 @@ export function createRunCalcRound(deps: {
             // 条目边界注入：敌方以声明状态进入该段失衡（不记紊乱）
             boundaryStates,
           }),
-          stunsTotal: Math.max(1, Math.round(stunCount)),
+          stunsTotal: Math.max(1, Math.round(countStun)), // CC-155：事件次数加权的失衡总数属计数通道（原为计划值）
           windowDuration: bossWindowDur,
           // 代表窗→条目映射：结算端事件次数按条目失衡数加权取样用
           windowEntryIdx: windowEntryIdx,
