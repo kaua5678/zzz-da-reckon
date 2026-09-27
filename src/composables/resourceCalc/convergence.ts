@@ -10,6 +10,7 @@ import type { StunSkillExecution } from '@/core/stunPool'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { getAgentMechanic } from '@/mechanics'
+import { sumGiftedPolarAssault } from './giftedPolarAssault'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById } from './skillRows'
@@ -799,9 +800,8 @@ export function createRunCalcRound(deps: {
     const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio)
     const adj0 = applyUltimatePromote(rr, sp0, catalogStore)
     // 本轮极性强击赠送次数：读本轮 rr 而非异常池 setup（循环依赖，见 calcAnomalyPoolInput）。
-    // CC-38b 2026-09-27：改由模块能力 `giftedPolarAssaultCount` 派发求和（原按身份取首个提供方；队内角色不重复 ⇒ 等价）。
-    const giftedPolarAssaultThisRound = rr.characters.reduce((sum, c) =>
-      sum + ((c.agentId ? getAgentMechanic(c.agentId)?.giftedPolarAssaultCount?.(c) : 0) ?? 0), 0)
+    // CC-38b：模块能力 `giftedPolarAssaultCount` 派发求和；CC-75 收进 giftedPolarAssault.ts（口径裁定 = 求和，见该文件头）。
+    const giftedPolarAssaultThisRound = sumGiftedPolarAssault(rr.characters)
     const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly, giftedPolarAssaultThisRound)
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
