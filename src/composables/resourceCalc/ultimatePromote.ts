@@ -77,7 +77,9 @@ export function applyUltimatePromote(
     }
   }
   const { targetSlot, ultimateMoveId } = adj
-  return {
+  /** CC-145：实际留给赠行的秒数（退还后）；undefined = 未触发退还，沿用引擎值 */
+  let reservedUsed: number | undefined
+  const out: TeamResourceResult = {
     ...base,
     characters: base.characters.map(char => {
       if (char.slot !== targetSlot) return char
@@ -105,16 +107,29 @@ export function applyUltimatePromote(
       // 般岳焚身/琉音猜拳）聚合行被抠剩 ~0 → 守恒破、净占用 +7.2s（实测 auto-1591-1481-1311）。
       // 轴模式无预留（轴内 60/90 转大次数由轴预设决定），保留旧 carve 路径。
       const reserved = (base as { ultimateGiftTimeReserved?: number }).ultimateGiftTimeReserved ?? 0
-      const basicIdx = reserved > 0 ? -1 : char.executions.findIndex(e => e.moveId === 'basic_attack')
+      // CC-145（第 169 轮）**预留退还**：引擎账本按 `ultimateGiftOf`（目标连携数 = cps × 计数失衡，
+      // 装配截断**之前**的量）预留赠行，本处 `promote` 按池口径（`promoteFixpoint` 的目标连携数取
+      // 上一轮**装配后**的连携行数）。连携被截断时 60 转大窗口变少 ⇒ promote < 引擎次数，多留的秒数
+      // 既不在赠行里、也不在平A里 ⇒ 「账本预留 ≠ 装配赠行」（实测 physical 下 auto-1431-1481-1491：
+      // 预留 5 次 / 好评 363 只够 2×60+2×90，第 5 次不可行）。差额退回目标平A行（与下方 carve 对称），
+      // 并把输出的 `ultimateGiftTimeReserved` 改成实际用量 ⇒ 预留 ≡ 赠行。目标没有 `basic_attack` 聚合行
+      // （叶瞬光：平A全是模块分段行、`basicAttackTime` = 0）时差额留作空闲（前台 < 账本，行 ≤ 账本照样成立）。
+      // 反向（promote > 引擎次数）不在此处理：那会让行超账本，交给截断口径。
+      const refundWanted = reserved > 0 ? Math.max(0, reserved - promoteTime) : 0
+      const basicIdx = reserved > 0
+        ? (refundWanted > 1e-9 ? char.executions.findIndex(e => e.moveId === 'basic_attack') : -1)
+        : char.executions.findIndex(e => e.moveId === 'basic_attack')
       const basicTime = basicIdx >= 0 ? (char.executions[basicIdx].totalTime ?? 0) : 0
       const carve = reserved > 0 ? 0 : Math.max(0, Math.min(basicTime, promoteTime))
+      const refund = reserved > 0 && basicIdx >= 0 ? refundWanted : 0
+      if (refundWanted > 1e-9) reservedUsed = reserved - refundWanted
       // 轴即最终次数：连携次数已从轴直接读出（N），60/90 转大只叠加赠送大招，不再「连携-1 大招+1」改写。
       // 转大白送的终结技独立成行（source='gift'），不并入目标原始终结技行——否则赠送归因（击破手对比的 gift 列）会丢失。
       // 阶段1 ②（2026-09-10）：**行由引擎物化**（存在/行序），本函数补倍率 + carve，并把
       // 计数/时长**以池为准**写回（引擎推导在退化配置下会与池不同）；找不到行时兜底追加。
       const giftIdx = char.executions.findIndex(e => e.source === 'gift' && e.moveId === ultimateMoveId)
       const patched = char.executions.map((e, i) => {
-        if (i === basicIdx) return { ...e, totalTime: Math.max(0, (e.totalTime ?? 0) - carve) }
+        if (i === basicIdx) return { ...e, totalTime: Math.max(0, (e.totalTime ?? 0) - carve + refund) }
         if (i !== giftIdx) return e
         return {
           ...e,
@@ -149,6 +164,7 @@ export function applyUltimatePromote(
       }
     }),
   }
+  return reservedUsed === undefined ? out : { ...out, ultimateGiftTimeReserved: reservedUsed }
 }
 
 /**
