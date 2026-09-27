@@ -69,7 +69,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 153 轮（2026-09-27，提交「fix(1621): CC-127」+ 文档提交「docs: round 153」；上一轮文档 = 9c5ef715）
+### 第 153 轮（2026-09-27，提交 6d713c26（CC-127/128）+ 文档 d53c14f3 + 本回填提交；上一轮文档 = 9c5ef715）
 
 - **做到哪**：
   - 「初始」原文侧反查完成（`docs/mcp-r6-refactor-list.md` §2.14，38 条）。
