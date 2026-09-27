@@ -2892,3 +2892,18 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
   - 设计稿、LONG-TERM 方向 A、arch 卡表、队列置顶、ARCHITECTURE 决策树都已标为停工或作废，并写明「以后不要再提时序仿真」。
 - **lead 拍板（可逆）**：方向 B（CC-97 实测清单）按 R5 口径**暂缓**，不是否决；CC-99 的阻塞已解除，但排在 R5 之后。
 - **教训**：长轮次里，提交前要再跑一次 `git log --oneline -3`，检查用户有没有新提交，尤其是 REQUIREMENTS.md。已写进队列的已知坑。
+
+### 5.109 R7 删除 timeline 死代码 + R5 第 1 刀粗筛（lead-arena-0925c，2026-09-27 第 119 轮续）
+
+- 用户在 `1ba7b83` 新增 R6（先建立架构全貌，再按重构机会清单改；判据是工具不是目标）和 R7（删除 timeline 死代码）。
+- **R7 done `8a0159c`**（原子提交）：
+  - 删除 `src/core/timeline/`（5 个文件）、`scripts/lib/timeline-isolation.{mjs,d.mts}`、`src/scripts/__tests__/timelineIsolation.test.ts`；
+  - check-guards 去掉判据 26（26→25），`checkGuards.test.ts` 同步；
+  - 删除 ARCHITECTURE 决策树对应行；设计稿标「代码已删」。
+  - verify：339 files / 3714 tests，EXIT 0，回到 R4 之前的数字。
+  - 坑：判据 25 的扫描器按 `git ls-files` 取清单，删文件后要先暂存。
+- **R5 第 1 刀**：
+  - 粗筛 catalog.json 215 种字段 × 非测试 src 的属性访问：61 种零访问，36 种零提及。
+  - 候选 Z1–Z13 和已知 K0（basis）写进新文档 `docs/mcp-r5-spec-impl-reconciliation.md`（README §6 共 59 份）。
+  - 第一批待核：Z4 stackGroup、Z6 outOfCombatEffectFilter、Z2 appliesToOutOfCombatPanel、K0。
+- 本节 §5.108 里「src/core/timeline 保留为死代码、判据 26 保留」的处置，已被 R7 取代。
