@@ -299,7 +299,9 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
 
 function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 核心被动转模（v12）：初始能量回复 >1.2 → 每 0.01：攻击 +5（上限960）、冲击 +0.4（上限76.8）
-  const regen = Math.max(0, Number((panel as any).energyRegen ?? 1.2) - 1.2)
+  // 「初始能量自动回复」= 局外总回能（基础 × 局外加成 + 固定，panelPhases 写入 energyRegenOutOfCombat）。
+  // CC-127：原读 `panel.energyRegen`——那是**基础**回能（恒 1.2，catalog.ts PanelValues 注释），转模从未触发。
+  const regen = Math.max(0, Number(panel.energyRegenOutOfCombat ?? panel.energyRegen ?? 1.2) - 1.2)
   const atkBonus = Math.min(ROXY_REGEN_ATK_CAP, Math.round((regen / 0.01) * ROXY_REGEN_ATK_PER_0_01))
   const impactBonus = Math.min(ROXY_REGEN_IMPACT_CAP, (regen / 0.01) * ROXY_REGEN_IMPACT_PER_0_01)
   if (atkBonus > 0) panel.atk = (panel.atk ?? 0) + atkBonus

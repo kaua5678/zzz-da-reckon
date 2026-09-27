@@ -198,9 +198,10 @@ function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
   }
 }
 
-function applyNormaPanel({ slot: _slot, team: _team, agent, panel }: AgentPanelInput): void {
-  // 核心被动：暴击>50% → 暴伤（每1% +1.7，cap 85）
-  const critRate = panel.critRate ?? 0
+function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPanel }: AgentPanelInput): void {
+  // 核心被动：初始暴击>50% → 暴伤（每1% +1.7，cap 85）
+  // 原文「初始暴击率超过50%」⇒ 读局外面板（CC-128，与 CC-118/123 同口径）；未传局外面板时回落局内
+  const critRate = (outOfCombatPanel ?? panel).critRate ?? 0
   const over = Math.max(0, critRate - 50)
   if (over > 0) {
     panel.critDmg = (panel.critDmg ?? 0) + Math.min(CRIT_TO_CRITDMG_CAP, over * CRIT_TO_CRITDMG_PER_PCT)

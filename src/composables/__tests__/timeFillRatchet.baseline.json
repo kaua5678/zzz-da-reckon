@@ -532,7 +532,7 @@
  "banyue-roxy-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "banyue-trigger-lucia": {
@@ -556,7 +556,7 @@
  "billy-roxy-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "cycle"
  },
  "billy-trigger-lucia": {
@@ -574,7 +574,7 @@
  "claret-roxy-rina": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "yidhari-jufufu-lucia": {
