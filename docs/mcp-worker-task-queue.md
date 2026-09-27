@@ -236,6 +236,17 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
     - 是有意的近似或防御向说明：保留 pending，status 用 implemented_approximation。
   - lead 验收：抽查每批至少 3 条的代码证据；`npm run docs:status` 重新生成；validate-data、check-guards、`npx vitest run src/utils/__tests__/modelingGaps.test.ts` 都要通过；最后跑一次 verify。
   - 做完之后才轮到命座维度的 109 条（同一方法，量更大，多数是有意近似，优先级更低）。
+- **CC-89** done `d6ef3af`（§5.96）：38 条里 8 条过时并已更正。**以后改角色机制实现的提交，顺手 grep 一下 `public/static/character-mechanics.json` 和 `character-constellations.json` 里该角色的 pending，过时就同步改**（这次过时的根因就是实现提交没回写状态表）。
+- **下一张 CC-90：命座维度 109 条 pending 核实**（`public/static/character-constellations.json`，`characters.<id>.cinemas[]`，每条带 cinema 档位、status、pending）。
+  - 流程照搬 CC-89（§5.96）：
+    1. 复制 `/home/kaua/calc-arch/t89.txt` 为 t90.txt，把 JSON 文件名、`mechanics/specialResources` 改成 `cinemas`，报告里的条目标识改成 `<id> 影画<cinema>`。
+    2. 列出含 pending 的角色：`node -e "const c=require('./public/static/character-constellations.json');const o={};for(const[id,ch]of Object.entries(c.characters))for(const m of ch.cinemas||[])if((m.pending||[]).length)o[id]=(o[id]||0)+m.pending.length;console.log(JSON.stringify(o))"`，按条数切成每批不超过 15 条，约 8 批。
+    3. 并行派 dsh（只读），**同时跑的不要超过 4 个**（WSL 负载），报告写 `/tmp/cc90-<批>.md`。
+    4. lead 每批抽查至少 2 条 STALE 的证据，再写一个 cc90.mjs 统一写入（照抄 cc89.mjs 的往返断言、`rewrite()` 写法，status 与 implementation 同步改——命座条目如果没有 implementation 字段就只改 status）。
+  - 排除：1111 安东影画1/6（爆发状态没建模，用户已裁决暂不做）、1551 影画6（官方未揭示）。
+  - 命座里「防御/生存向不建模」按 W27 惯例属 APPROX，保留。
+  - 验收：`npm run docs:status`；validate-data、check-guards、`npx vitest run src/utils/__tests__/modelingGaps.test.ts` 都要通过（命座下限目前是 104，清掉 pending 就同步下调并在注释里写明是哪几条）；最后跑 verify。
+  - 做完 CC-90 以后，状态表线就收尾了。之后的方向写在 arch 文档，没有新卡时，先跑 `npm run -s zc -- status` 看有没有新的漂移、债务或需求。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。

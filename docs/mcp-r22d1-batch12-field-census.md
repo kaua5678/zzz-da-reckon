@@ -2679,3 +2679,23 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 验证：`npm run docs:status` 重新生成后，机制维度「部分实现 7→0、待办条目 45→42」；validate-data 366 项通过；check-guards 24 项通过；verify 338 files / 3707 tests EXIT 0（`/home/kaua/calc-arch/verify107.log`）。运行档案页的建模缺口列表（modelingGaps，按 pending 非空列出）会少掉这几条，属于预期变化。
 - 回退：`git revert 11706a1`。
 
+### 5.96 CC-89 done：机制维度 pending 说明对照代码核实（lead-arena-0925c，2026-09-27 第 108 轮）
+
+**CC-89 `d6ef3af`**（改了 `public/static/character-mechanics.json`，重新生成 implementation-status.md，并下调 modelingGaps.test.ts 的一个下限）
+- **流程调整**（取代队列里原写的「三批串行派 dsh，由 dsh 直接改 JSON」）：三批 dsh **只读**、**并行**出报告（任务模板 `/home/kaua/calc-arch/t89.txt`，报告 `/tmp/cc89-A|B|C.md`），lead 抽查证据后用一个脚本统一写入（`/home/kaua/calc-arch/cc89.mjs`）。理由：三批都要改同一个单行 JSON，串行太慢；并行又会互相覆盖。改成只读后可以并行，写入只有 lead 一处，每条改动都经过 lead 核对。CC-90 沿用这个流程。
+- 核实范围：38 条（1101、1111 按约定排除）。dsh 判定：A 批 10 条（4 STALE / 6 APPROX），B 批 15 条（全部 APPROX），C 批 14 条（2 STALE、2 HOLDS、10 APPROX）。lead 抽查了 A 批 3 条（soldier11 潜能数组、billy 已无 ultimateStacks、corin 面板级增伤）和 C 批 3 条（1381 spec 的 team 条目、sigridPozhenTimeFactor、getWindInfectionCoverage 缺省值），全部属实。
+- **8 条更正**（原文和证据写进各条目的 `implemented` 数组，末尾带「2026-09-27 CC-89 对照代码核实」）：
+  - 1041 potential → **implemented**：`SOLDIER11_POTENTIAL_CRIT_DMG = [0,0,16,24,32,40,48]` 逐档取值（R59 `93af5ce`），pending 清空。
+  - 1381 additional_ability：spec 条目 `anby_zero_extra_team_followup`（target team）已单列全队通道，pending 清空。status 保持 implemented_approximation（可逆，没有证据证明别处不再有近似）。
+  - 1041 core_passive：删掉「失衡轴内精确计算待接入」（`fedc17d` 起轴模式经捏轴精确），只留非轴覆盖率近似。
+  - 1061 core_passive：「按普攻聚合行近似」→「按全招式面板增伤近似」（`9318f05` 已迁为面板级）。
+  - 1081 additional_ability：「层数滑块」→「连携总次数×50% 均摊」（`bab8c18` 起，已无 ultimateStacks）。
+  - 1591 core_passive：删掉「破阵更快发动不建模」（影画6 ×0.75 已实现）。
+  - 1591 additional_ability：「默认100%」→「默认取风化覆盖率，可手动覆盖」。
+  - 1581 special_voidflare：只更正 pending 里的落点路径（damagePool.ts → remielle.ts#extraAnomalyRows）。
+- **不改的**：HOLDS 两条（1581 耀变虚耀、特殊虚耀）缺的是「游戏内实伤对表」，不是代码缺口，保留；其余 APPROX 都是有意的时序或覆盖率近似。
+- 过时的共同原因（A 批报告的发现）：pending 文本写在前（8 月），后续实现提交没有同步回写状态表。**以后改机制实现的提交，要顺手 grep 一下 `public/static/character-mechanics.json` 里该角色的 pending**。这一条已写进队列。
+- `src/utils/__tests__/modelingGaps.test.ts` 的机制缺口下限从 41 调到 39（清掉了 2 条 pending），注释写明了是哪两条。这是防数据被整体清空的下限，不要为了过测试往 pending 里塞内容。
+- 验证：validate-data 366 项、check-guards 24 项、modelingGaps 9 条通过；implementation-status 机制待办条目 42→40；verify 见 `/home/kaua/calc-arch/verify108.log`（338 files / 3707 tests EXIT 0）。
+- 回退：`git revert d6ef3af`。
+
