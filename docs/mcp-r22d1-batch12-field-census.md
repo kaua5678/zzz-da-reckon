@@ -1767,6 +1767,26 @@ CC-13 已证明这类读取可以零 delta 通用化。断线前已观测到的�
 1. `allocateAxisWindows`（StunAxisPage.vue:~251，调用点在 `axisTimes(ai)` 附近 `allocateAxisWindows(axes.value, stunCount)[ai]`）：先确认 useResourceCalc / convergence 里是否已按同样入参算过（convergence.ts:156/218 有 `allocateAxisWindows(resolvedAxes, stunCount)`）。注意页面用的是**编辑中的 axes**，不一定等于求解用的 resolvedAxes。若不同，就在 composables 里加纯转发 `axisWindowCounts(axes, stunCount)`，并在 census 写明「只是挪位置」；若相同，就由 useResourceCalc 暴露 computed，页面读结果（真正降低耦合）。
 2. TeamConfigPage 的 `calcPanel` + `applyTargetedStat`（:1167 / :1187）：先读这段在做什么（疑似页面自己算「开关某 buff 后的面板」预览）。若 useResourceCalc 已有等价面板，就改读它；否则收拢成编排层函数，同样要写明耦合是否真的降低。
 3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
+### 5.57 CC-50 done：判据 7 6→5（StunAxisPage allocateAxisWindows → 编排层）（lead-arena-0925c，2026-09-27 第 70 轮）
+
+**提交**：`7cf440d`。新文件 `src/composables/stunAxisView.ts`（`axisWindowCounts`），测试 `src/composables/__tests__/stunAxisView.test.ts`（2 条）；StunAxisPage.vue：导入改为 stunAxisView，`axisTimes(ai)` 改读 computed `axisWindowCountList`；判据 7 基线与 frozen 6→5（plan 删 allocateAxisWindows）。回退：`git revert 7cf440d`。
+
+**是否真正降低了耦合（如实写）**：**没有**，`axisWindowCounts` 是纯转发，只是把依赖挪到编排层。改不成「读 useResourceCalc 现成结果」的原因：页面 `axes` 在手动模式下是**编辑中的** `configStore.stunAxes`（StunAxisPage.vue:~281），而求解侧 `calcOutput.resolvedAxes` 在求解器回退（forceNoAxis）时会被清空，两者不总相等。
+**顺带的实际改进**：原 `axisTimes(ai)` 每次调用都重算整组分配，而且在 `allMoves` 的逐动作循环里被调用了 8 处；现在缓存为 computed，每次渲染只算一次，结果逐值相同。
+
+**验证**：判据 7 = 5/5，24 guards；vue-tsc 0；新单测 2 条（口径 + 与 core 逐值一致）；`npm run verify` 通过：307 文件 / 3636 条，24 guards（`/home/kaua/calc-arch/verify50.log`）。只改展示层，计算路径未变，没跑 dump/rows。
+
+**判据 7 剩余 5 处**
+- TeamConfigPage.vue:~876 `calcPanel`（@/core/panel）、:~877 `applyTargetedStat`（@/core/buff）
+- ImpactChart.vue `IMPACT_VARIABLES, readImpactVar, writeImpactVar`（@/core/impactVars）、`computeOptimalSubStats, getTemplate`（@/core/substatOptimizer）
+- MechanicsTablePage.vue `agentSpecs`（@/specs/registry）
+
+**下一步（已读过代码，可以直接开工）**
+1. **TeamConfigPage 局外面板 → 编排层（判据 7 −2，真正降低耦合）**。`currentPanel` computed（TeamConfigPage.vue:~1146）分两支：局内已调用编排层 `computePanel(configStore.selectedSlot, configStore, catalogStore)`（`@/composables/resourceCalc/helpers` 转出，定义在 panelPhases.ts:92）；**局外**这支是页面自己算的：`getTeammateBuffSourceContext()` → `calcPanel(agent, wEngine, char.driveDisc, driveDiscSetsMap, enabledTeammateBuffs, statRules, { cinemaLevel, wEngineModLevel, sourcePanelsByOwner, effectCoverageMap: configStore.getWEngineEffectCoverageMap(), enemyWeakness })` → 取 `.outOfCombat` 拷贝 → 对 `configStore.globalBuffs` 中 enabled 的逐条 `applyTargetedStat(panel, stat, value, statSettlementMode(stat), targetSkillType)`。
+   做法：在 panelPhases.ts 的 computePanel 旁边新增 `computeOutOfCombatPanel(slot, configStore, catalogStore): PanelValues | null`，把这段逐行搬过去（buff 来源上下文用 CC-49 的 `teammateBuffSourceContextFromStores`；`statSettlementMode` 先查它从哪来，在页面 import 里找），经 helpers.ts 转出；页面局外分支改成一行调用，删掉 calcPanel/applyTargetedStat 两个导入，判据 7 5→3（基线与 frozen 同批）。
+   验证：新单测对比「页面原算法」（在测试里照抄一份内联实现）与新函数，至少一队且开启一条 globalBuff；反向变异：跳过 globalBuffs 让测试变红。
+2. ImpactChart 的 impactVars / substatOptimizer、MechanicsTablePage 的 agentSpecs：逐个评估是否有编排层等价物。不要做纯转发来凑读数；做不到真正降低耦合的，就在 census 里写明保留理由，并把判据 7 的 target 调成最终值。
+3. 遗留未决：giftedPolarAssaultCount 多槽求和语义、×1.2 系数低冲击配装集成覆盖、CC-11b（暂缓）。
 ## 附录：普查脚本 census.sh
 
 ```bash
