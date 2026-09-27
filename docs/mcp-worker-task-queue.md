@@ -117,7 +117,7 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
 - **断言**：① 至少一条悠真直伤行 note 含 `失衡增伤+`，且该行 id **不以** `-out` 结尾；② 所有 id 以 `-out` 结尾的悠真直伤行 note **都不含** `失衡增伤+`。
 - **验收**：新测试绿；**负控**：把 `damagePoolDirect.ts` 里 `stunOnlyDmgBonus = stunOverride > 0 ?` 临时改成 `>= 0 ?`，新测试必须变红，然后还原（`git diff src/composables/resourceCalc/` 为空）。报告按 `AGENTS.md` §5 四段式写，附正控、负控两段命令输出的尾部。
 
-- **CC-14a**（架构线，lead-arena-0925c 立卡）：卡面在 `docs/mcp-r22d1-batch12-field-census.md` §5.2。**前置门：R1（`docs/REQUIREMENTS.md`）合入、src 无 cinemaUplift WIP**，未满足前不要派。（2026-09-26：R1 已完成 `ce307a0` / `4d80086`，**前置门已开**，派发前按 census 文档 §4 重新生成基线。） **2026-09-26 第 18 轮：卡面已修订为 §5.2-v2（模块能力 bonusEnergy，输入端不动），已派发，worktree /home/kaua/r67-scratch/cc14a。** ✅ **CC-14a done `285885b`（判据 22 803→775）。**
+- **CC-14a** ✅ done `285885b`（第 116 轮补标；以下为立卡时的原文）（架构线，lead-arena-0925c 立卡）：卡面在 `docs/mcp-r22d1-batch12-field-census.md` §5.2。**前置门：R1（`docs/REQUIREMENTS.md`）合入、src 无 cinemaUplift WIP**，未满足前不要派。（2026-09-26：R1 已完成 `ce307a0` / `4d80086`，**前置门已开**，派发前按 census 文档 §4 重新生成基线。） **2026-09-26 第 18 轮：卡面已修订为 §5.2-v2（模块能力 bonusEnergy，输入端不动），已派发，worktree /home/kaua/r67-scratch/cc14a。** ✅ **CC-14a done `285885b`（判据 22 803→775）。**
 - **CC-14c** ✅ `ba6db48`、**CC-14d** ✅ `e94b896`（lead 直接实现，判据 22 →763）。**CC-14e** ✅ `1e3dc99`（判据 22 →759）：适合派 dsflash 工人，在 worktree 里做，零差/反向由 lead 复核。
 - **CC-15** ✅ `b1ed48e`（判据 22 →733，target 重设 720；lead 直接实现，没派工人）。
 - **CC-16** ✅ `fe8fb90`（判据 22 →712，target 重设 700）。
@@ -330,14 +330,23 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
   - **收尾流程已改**，见本文 §0.R2：tsc 已开增量；零差用 `.zc/perf/zd.sh`（并行，约 50 秒）；verify 只跑一次，等待期间起草文档，EXIT 后再落盘；文档提交后必须重跑 check-guards。
   - **下一步优先级**：
     1. 先读 `docs/REQUIREMENTS.md`。如果用户已经针对 R3 挑了方向或回答了裁决点，按他的选择立卡。
-    2. 否则派或做 **CC-14a**（前置门已开，下一条有说明）。
+    2. ~~否则派或做 CC-14a~~ ——**更正（第 116 轮）：CC-14a 早已完成 `285885b`（第 18 轮），上一轮照着过时条目误写了**。
     3. 再否则做 **CC-97**：方向 B 的「测量清单 v1」，纯文档，写进 `docs/mcp-calibration-atoms.md`（新文件，要在 README §6 登记）。
        - 每个原子写：测什么、训练场怎么测（配装快照、敌人、动作）、预期区间与引擎当前输出（用一次性 vitest 探针读取）、对应的 @fact 或 ⟳ 行号。
        - 驱动盘 `basis`（雷暴重金属 28% 攻击力，按局外攻击力还是基础攻击力）排第一。
   - 已知坑：
     - 手册 §4 行数棘轮 frozen 718，`ENGINE_PIPELINE_GUIDE.md` §4 净增 1 行就会打红 `checkGuards.test`。取证写 census，手册只写口径。
     - 在 bg.sh 的命令里写 `exit` 会导致日志缺少 EXIT 行。
-- **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
+- **第 116 轮（2026-09-27）**：CC-97 done（`docs/mcp-calibration-atoms.md`，提交号见 arch 卡表），内容是 13 个校准原子，A1 = 局内攻击力%基底。**更正了队列里 3 处把 CC-14a 写成「可派」的过时条目**（它早在 `285885b` 就完成了）。
+  - **下一步优先级**：
+    1. 先读 `docs/REQUIREMENTS.md`。如果用户对 R3 挑了方向、裁决了 B 或 A 的问题、或者交回了测量数据，按他的选择走。交回测量数据时，按测量清单 §2 录入。
+    2. 否则做 **CC-98：方向 C 第 1 刀，机制模块盘点（只读）**。产出 `docs/mcp-mechanic-dataization-census.md`（新文件，要在 README §6 登记）：
+       - 对 `src/mechanics/agents/*.ts` 的 62 个模块，逐个列出实现了 `AgentMechanicModule` 的哪些能力（读 `src/mechanics/types.ts` 的能力清单）、行数，以及是否有对应的 spec JSON；
+       - 按「可纯数据化 / 部分 / 不可」三档归类，并写依据：只用条件 buff、叠层、固定倍率的算「可」；有跨轮反馈、自定义执行行、时序的算「不可」；
+       - 汇总覆盖率，挑出 5 个最适合迁成纯 spec 的候选（方向 C 第 2 刀用）。
+       - 适合派 dsh 只读并行（例如每人 15 个模块），lead 抽查。**不改 src**。
+  - 维护约定：以后的交接段落插在这一条之上。**写「下一步」之前，先在 arch 卡表里 grep 核实那张卡的状态**，上轮就是没核实才写错的。
+- **CC-14a ✅ 已完成 `285885b`（以下为历史派单记录，勿再派；CC-14b 至 CC-14e 也都已完成，见 arch 卡表）**。原文：CC-14a 前置门已于 2026-09-26 打开（lead 现场核实）：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。
 - **CC-14b** ✅ done `6d8a995`（架构线，lead-arena-0925c）：卡面在 `docs/mcp-r22d1-batch12-field-census.md` §5.4。在 worktree `/home/kaua/r66-scratch/cc14b` 里做，不碰主仓库；与 R1 不相交。

@@ -2832,3 +2832,14 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 **R2 `d91bcf8`**：流程提速，详见 `docs/mcp-dev-process-speed.md`；REQUIREMENTS R2 已标 done。
 **R3**：`docs/LONG-TERM-DIRECTIONS.md`，只提案；REQUIREMENTS R3 已标 done，等待用户挑选方向。
 
+### 5.104 CC-97 done：校准原子测量清单 v1 + 队列过时条目更正（lead-arena-0925c，2026-09-27 第 116 轮）
+
+- REQUIREMENTS 没有新条目，用户也还没对 R3 挑方向，所以按队列优先级执行。
+- **更正**：上一轮交接写了「否则派或做 CC-14a」。实际上 CC-14a 早在第 18 轮就完成了（`285885b`，判据 22 从 803 降到 775），CC-14b 至 CC-14e 也都已完成（arch 卡表第 158–162 行）。错误的原因是照抄了队列里一条停留在「前置门已开，可直接派」的历史条目，没有去 arch 卡表核实。队列里 3 处过时条目已补标 done，并新增约定：写「下一步」之前先 grep arch 卡表核实状态。
+- **CC-97**：`docs/mcp-calibration-atoms.md`。
+  - 13 个原子都是引擎级的局部可观测量，采用比值法（只改变一个因素，让其余乘区全部约掉），误差预算 ±1%。
+  - 引擎口径逐条读码并标注出处，包括：`core/buff.ts` CORE_STAT_BY_BONUS；`core/damage.ts:70–92`（794 防御区）、`:186`（calcPenetrationPower）、`:502`（calcAnomalyDamage）；`anomalyPool/helpers.ts` 中的 ANOMALY_DURATION（:173）、DISORDER_FORMULAS（:194）、STANDARD_DOT_CONFIG（:1338）、ANOMALY_SINGLE_HIT_MULTIPLIER（:1350）；`anomalyPool.ts:446` PARRY_DECIBEL_BONUS；boss-presets 中 stunVuln 的分布为 1.5 ×17 / 2 ×3 / 1.25 ×3。
+  - 排序依据是「影响面 × 不确定性」。A1（局内攻击力%基底）排第一，它承接 CC-96 的 ⑦。
+  - **裁决**：v1 的「引擎预测」给出的是公式和常数，而不是具体数字。原因是比值依赖用户实际测量时的配装，现在没法算；v2 录入时再用一次性探针算出 engineRatio（清单 §2 写明了**不要手算**）。
+- 本卡只改文档，没有动 src。
+
