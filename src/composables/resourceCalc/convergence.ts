@@ -216,7 +216,8 @@ export function createRunCalcRound(deps: {
     const computeAxisActionCountsFor = (slot: number): Record<string, number> => {
       const out: Record<string, number> = {}
       if (!axisActive) return out
-      const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+      // CC-142：块计数属计数通道 ⇒ 窗口数读 countStun（off 下 ≡ stunCount）
+      const winAlloc = allocateAxisWindows(resolvedAxes, countStun)
       resolvedAxes.forEach((axis, ai) => {
         const wins = winAlloc[ai] ?? 0
         for (const act of axis.actions) {
@@ -251,7 +252,9 @@ export function createRunCalcRound(deps: {
     /** 轴内终结技块总次数（× 窗口数，与 axisUltimateNeed 同口径）：通用注入 cfg.axisUltimateTotal 供模块消费（希希芙影画2 等） */
     const axisUltimateTotal: Record<number, number> = {}
     if (axisActive) {
-      const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+      // CC-142：轴内连携 / 终结技总次数属计数通道 ⇒ 窗口数读 countStun（off 下 ≡ stunCount）。
+      // physical 模式下旧写法按计划值分窗：auto-1531-1481-1451 计划 0 ⇒ 0 窗 ⇒ 轴声明的连携一次也不给，而池物理 3 次。
+      const winAlloc = allocateAxisWindows(resolvedAxes, countStun)
       resolvedAxes.forEach((axis, ai) => {
         const wins = winAlloc[ai] ?? 0
         for (const act of axis.actions) {
@@ -289,7 +292,7 @@ export function createRunCalcRound(deps: {
     let axisHug: { hug60: number; hug90: number } | null = null
     if (axisActive) {
       let h60 = 0; let h90 = 0
-      const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+      const winAlloc = allocateAxisWindows(resolvedAxes, countStun) // CC-142：转大块次数属计数通道
       resolvedAxes.forEach((axis, ai) => {
         const wins = winAlloc[ai] ?? 0
         for (const act of axis.actions) {
@@ -695,7 +698,7 @@ export function createRunCalcRound(deps: {
     let interactionTopUpNext = prevInteractionTopUp
     if (autoTopUp) {
       const storeChar = configStore.team[interactionTopUpSlot]
-      const ultNeed = axisUltimateNeed(resolvedAxes, stunCount, interactionTopUpSlot)
+      const ultNeed = axisUltimateNeed(resolvedAxes, countStun, interactionTopUpSlot) // CC-142：计数通道
       // 喧响供给取般岳个人（终结技次数 = 个人喧响 / 终结技消耗，非全队总和；曾用全队总和导致
       // 队友喧响把缺口抹平 → 保底4喧响不补齐、般岳卡在 9000 出头打不满 4 大）
       const decibelHave = rr.characters.find(c => c.slot === interactionTopUpSlot)?.decibelSource?.total ?? 0
