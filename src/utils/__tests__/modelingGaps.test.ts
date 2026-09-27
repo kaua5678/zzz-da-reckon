@@ -125,6 +125,9 @@ describe('部署建模缺口清单', () => {
     }
     // 判据 C：存量规模（2026-09-10 实测：命座 104 + 机制 42 + 未描述 6+1）
     expect(cinemaHints.length).toBeGreaterThanOrEqual(104)
-    expect(mechanicHints.length).toBeGreaterThanOrEqual(41)
+    // 2026-09-27 CC-89：41 → 39——1041 潜能逐档、1381 额外能力全队通道两条 pending 经代码核实已不成立而清空
+    // （证据写进 character-mechanics.json 各条目 implemented 数组；census §5.96）。这是下限（防数据被整体清空），
+    // 以后因核实清掉 pending 时同步下调并写明是哪几条，不要为了过测试往 pending 里塞内容。
+    expect(mechanicHints.length).toBeGreaterThanOrEqual(39)
   })
 })
