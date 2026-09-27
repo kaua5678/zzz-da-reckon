@@ -4,7 +4,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { activeRowFusionRulesSnapshot } from '@/logicEditor/fusion'
 import { INNER_LOOP_MAX_ITERATIONS } from '@/core/resource'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
-import { stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
+import { DEFAULT_STUN_PLAN_PROJECTION_CODE, stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
@@ -122,7 +122,7 @@ export function useResourceCalc() {
       energyShieldCount: configStore.enemy.energyShield,
       maxIterations: INNER_LOOP_MAX_ITERATIONS,
       // 失衡计划值 → 计数的投影方式（C7 实验开关，默认 off = 现行口径；见 core/stunPlanProjection.ts）
-      stunPlanProjection: stunPlanProjectionFromCode(configStore.getMechanicSetting('time.stunPlanProjection', 0)),
+      stunPlanProjection: stunPlanProjectionFromCode(configStore.getMechanicSetting('time.stunPlanProjection', DEFAULT_STUN_PLAN_PROJECTION_CODE)),
       // 动态合轴吸收上限（全局变量，用户口径 2026-09-19 v3；见 data/resourceDefaults#DEFAULT_COMBO_ALIGN_ABSORB_RATIO）
       comboAlignAbsorbRatio: configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
       // 降配档单向闸门（用户口径 2026-09-20；缺省 ceiling=1 / monotone=false ⇒ 普通计算路径逐位不变）

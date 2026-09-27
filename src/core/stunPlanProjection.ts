@@ -22,6 +22,14 @@ import type { StunPlanProjection } from '@/types/resource'
 /** 投影方式全集（顺序 = `configStore` 机制参数 `time.stunPlanProjection` 的编码 0..3） */
 export const STUN_PLAN_PROJECTION_MODES: readonly StunPlanProjection[] = ['off', 'floor', 'round', 'ceil', 'physical'] as const
 
+/**
+ * 机制参数 `time.stunPlanProjection` 未设置时的**缺省编码**（单一来源；0 = `'off'`）。
+ * CC-144（第 168 轮）试切 4 = `'physical'` 未落地：全量 33 条红，其中两条是不变量破缺
+ * （seedInvariance 种子路径依赖、timeLedgerInvariants 叶瞬光队赠行单一口径），见 docs/mcp-stun-dual-source.md §9。
+ * 以后要切只改这里；测试需要「回到缺省」时也读这里，别写死 0。
+ */
+export const DEFAULT_STUN_PLAN_PROJECTION_CODE: number = 0
+
 /** 机制参数（整数编码）→ 投影方式；越界回落 `'off'`（现行口径，安全降级） */
 export function stunPlanProjectionFromCode(code: number): StunPlanProjection {
   const i = Math.trunc(code)

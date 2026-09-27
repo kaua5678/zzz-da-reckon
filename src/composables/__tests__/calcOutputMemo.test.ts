@@ -15,6 +15,7 @@ import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
 import { teamPresets } from '@/data/teamPresets'
 import { clearWarmStartCache } from '@/core/resource'
+import { DEFAULT_STUN_PLAN_PROJECTION_CODE } from '@/core/stunPlanProjection'
 
 beforeEach(() => { newPinia(); mockStaticFetch(); clearWarmStartCache() })
 afterEach(() => { setCalcOutputMemoEnabled(true); setActiveRowFusionRules([]) })
@@ -33,9 +34,11 @@ async function runSearch(memo: boolean, presetId: string) {
   trail.push(calc.teamTotalDamage.value)
   // 手工回滚循环：改机制参数再改回，读数必须回到原值
   const before = calc.teamTotalDamage.value
-  config.setMechanicSetting('time.stunPlanProjection', 2)
+  // 改走再改回：「回」= 缺省编码（不写死 0，否则切缺省时本用例误红，CC-144 第 168 轮）
+  const alt = DEFAULT_STUN_PLAN_PROJECTION_CODE === 2 ? 3 : 2
+  config.setMechanicSetting('time.stunPlanProjection', alt)
   trail.push(calc.teamTotalDamage.value)
-  config.setMechanicSetting('time.stunPlanProjection', 0)
+  config.setMechanicSetting('time.stunPlanProjection', DEFAULT_STUN_PLAN_PROJECTION_CODE)
   trail.push(calc.teamTotalDamage.value)
   expect(calc.teamTotalDamage.value).toBe(before)
   const rr = calc.resourceResult.value!
