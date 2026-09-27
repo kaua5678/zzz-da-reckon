@@ -1112,6 +1112,11 @@ export interface AgentMechanicModule {
     fallbackRate?: number
   }): CorrosionSource | undefined
   /**
+   * CC-71：风蚀气旋异放事件记录（微域 / 风蚀替换广域）——由认领风蚀（`anomalyCorrosion` 有结果）的模块产出，
+   * 引擎在 `core/anomalyPool.ts` 原位置追加（原写死维琳娜文案与倍率字段）。
+   */
+  anomalyCorrosionEvents?(source: CorrosionSource): AnomalyEventRecord[]
+  /**
    * **本轮已收敛 → 算出「下一轮反馈」**（规则 6 在编排层的落点，2026-09-16 立项）。
    *
    * 存在的理由：`convergence.ts` 曾住着 5 个 `compute*NextRoundFeedback` 纯函数

@@ -6,7 +6,7 @@ import type {
   CorrosionSource,
   CoweringDotResult,
 } from '@/types/resource'
-import { resolveAnomalyCorrosion } from './anomalyPool/corrosion'
+import { resolveAnomalyCorrosion, resolveAnomalyCorrosionEvents } from './anomalyPool/corrosion'
 
 // ============ 喧响奖励常量 ============
 
@@ -335,8 +335,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       windTriggerCount,
       cinema2CorrosionRate,
     )
-    const broadFromCorrosionCount = corrosionSource?.broadCycloneCount ?? 0
-    const microCycloneCount = corrosionSource?.microCycloneCount ?? 0
 
     anomalyEvents.push({
       id: 'turbulence-events',
@@ -363,26 +361,9 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       ],
       note: `风化覆盖率 ${round(windCoverageRate * 100, 1)}%，乱流槽位 ${turbulenceCap} 次（3秒CD，多次风化窗口合并不封顶）；乱流继承异常增伤和异常暴击，每次奖励85喧响，触发者归属风底属性提供者，队友伴随获得一半。${corrosionSource?.note ?? ''} 2命风化期望风蚀=${round(corrosionSource?.c2WindGainExpected ?? 0, 2)}，6命返还=${corrosionSource?.cinema6RefundCount ?? 0}次，强化乱流=${corrosionSource?.boostedTurbulenceCount ?? 0}次。`,
     })
-    anomalyEvents.push({
-      id: `${AnomalyPoolHelpers.CORROSION_CYCLONE_RELEASE_ID_PREFIX}-condensed-cyclone`, // = 'velina-corrosion-condensed-cyclone'（CC-69）
-      type: 'release',
-      label: '维琳娜微域气旋风异放',
-      source: '0或1个风蚀时，触发乱流获得1点风蚀并触发 Condensed Cyclone',
-      count: microCycloneCount,
-      formula: 'microCount = 风蚀状态机中“0或1风蚀触发乱流”的次数；每次微域气旋触发一次145%倍率风属性异放',
-      fields: ['corrosion<2', 'turbulenceCount', 'Condensed Cyclone', 'releaseMultiplier=145%'],
-      note: '0或1个风蚀时，再次触发乱流会获得1点风蚀，并伴随触发微域气旋；微域气旋触发一次145%倍率风属性异放。',
-    })
-    anomalyEvents.push({
-      id: `${AnomalyPoolHelpers.CORROSION_CYCLONE_RELEASE_ID_PREFIX}-broad-cyclone`, // = 'velina-corrosion-broad-cyclone'（CC-69）
-      type: 'release',
-      label: '维琳娜风蚀替换广域气旋',
-      source: '2个风蚀时，再次触发乱流清空风蚀，微域气旋替换为广域气旋',
-      count: broadFromCorrosionCount,
-      formula: 'broadCount = 风蚀状态机中“2风蚀触发乱流”的次数；本次微域气旋替换为广域气旋，触发255%风异放，并使本次乱流倍率区 += 150%',
-      fields: ['corrosion=2', 'Sweeping Cyclone #1×10 + #2×2', 'releaseMultiplier=255', 'turbulenceMultiplier+150%'],
-      note: '2个风蚀时，再次触发乱流会清空风蚀；本该触发的微域气旋替换为广域气旋，同时把这次触发的乱流倍率提高150%。强化次数会继续分配到各个非风属性乱流伤害事件。',
-    })
+    // CC-71：两条风蚀气旋异放事件（微域 / 风蚀替换广域）由认领风蚀的模块产出（原在此写死维琳娜文案与倍率字段）；
+    // 无认领（队里没有维琳娜）⇒ 不追加——原实现此时追加 count=0 的两条、再被末尾 count>0 过滤掉，结果相同。
+    if (corrosionSource) anomalyEvents.push(...resolveAnomalyCorrosionEvents(input.agentMechanics, corrosionSource))
   }
 
   // 非风时间窗内的紊乱：紊乱需要2种以上元素交替触发（新异常覆盖老异常），wind不参与

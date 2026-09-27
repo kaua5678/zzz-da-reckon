@@ -19,7 +19,7 @@
  * 其面板无 `velinaEnabled` ⇒ 两边都是 `undefined`（逐位等价）。
  */
 import type { PanelValues } from '@/types/catalog'
-import type { CorrosionSource } from '@/types/resource'
+import type { CorrosionSource, AnomalyEventRecord } from '@/types/resource'
 import type { AgentMechanicModule } from '@/mechanics/types'
 
 /**
@@ -43,4 +43,18 @@ export function resolveAnomalyCorrosion(
     if (result !== undefined) return result
   }
   return undefined
+}
+
+/**
+ * CC-71：风蚀气旋异放事件记录——取第一个声明 `anomalyCorrosionEvents` 的在队模块（现唯一 = 维琳娜）；无 ⇒ []。
+ * 调用方只在 `resolveAnomalyCorrosion` 有结果时调用。
+ */
+export function resolveAnomalyCorrosionEvents(
+  agentMechanics: readonly AgentMechanicModule[] | undefined,
+  source: CorrosionSource,
+): AnomalyEventRecord[] {
+  for (const mech of agentMechanics ?? []) {
+    if (mech.anomalyCorrosionEvents) return mech.anomalyCorrosionEvents(source)
+  }
+  return []
 }

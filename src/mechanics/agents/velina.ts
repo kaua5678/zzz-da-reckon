@@ -19,8 +19,10 @@ import type {
   SpecialResourceSection,
   CorrosionSource,
   VelinaFloriaSource,
+  AnomalyEventRecord,
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '@/core/panel'
+import { CORROSION_CYCLONE_RELEASE_ID_PREFIX } from '@/core/anomalyPool/helpers'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
@@ -513,13 +515,42 @@ function buildVelinaResourceSections({ result, anomalyPoolResult }: AgentResourc
   }
   return sections
 }
+/**
+ * CC-71：风蚀气旋异放事件记录（原 `core/anomalyPool.ts` 写死，id / label / source / formula / fields / note 逐字搬入）。
+ * 引擎在 anomalyPool 同一位置追加（`core/anomalyPool/corrosion.ts#resolveAnomalyCorrosionEvents`），末尾 count>0 过滤不变。
+ * id 前缀取 core 单一事实源（进入伤害池行 id，值不可改，见 CC-69）。
+ */
+function buildVelinaCorrosionEvents(source: CorrosionSource): AnomalyEventRecord[] {
+  return [
+    {
+      id: `${CORROSION_CYCLONE_RELEASE_ID_PREFIX}-condensed-cyclone`,
+      type: 'release',
+      label: '维琳娜微域气旋风异放',
+      source: '0或1个风蚀时，触发乱流获得1点风蚀并触发 Condensed Cyclone',
+      count: source.microCycloneCount ?? 0,
+      formula: 'microCount = 风蚀状态机中“0或1风蚀触发乱流”的次数；每次微域气旋触发一次145%倍率风属性异放',
+      fields: ['corrosion<2', 'turbulenceCount', 'Condensed Cyclone', 'releaseMultiplier=145%'],
+      note: '0或1个风蚀时，再次触发乱流会获得1点风蚀，并伴随触发微域气旋；微域气旋触发一次145%倍率风属性异放。',
+    },
+    {
+      id: `${CORROSION_CYCLONE_RELEASE_ID_PREFIX}-broad-cyclone`,
+      type: 'release',
+      label: '维琳娜风蚀替换广域气旋',
+      source: '2个风蚀时，再次触发乱流清空风蚀，微域气旋替换为广域气旋',
+      count: source.broadCycloneCount ?? 0,
+      formula: 'broadCount = 风蚀状态机中“2风蚀触发乱流”的次数；本次微域气旋替换为广域气旋，触发255%风异放，并使本次乱流倍率区 += 150%',
+      fields: ['corrosion=2', 'Sweeping Cyclone #1×10 + #2×2', 'releaseMultiplier=255', 'turbulenceMultiplier+150%'],
+      note: '2个风蚀时，再次触发乱流会清空风蚀；本该触发的微域气旋替换为广域气旋，同时把这次触发的乱流倍率提高150%。强化次数会继续分配到各个非风属性乱流伤害事件。',
+    },
+  ]
+}
 
 export const velinaMechanic: AgentMechanicModule = {
   id: 'agent:velina',
   agentIds: [VELINA_AGENT_ID],
   name: '维琳娜',
   // CC-66：ResourceResultCard 腐蚀状态机展示（原组件写死本角色 id / Sweeping Cyclone #1 moveId）
-  resultCardCorrosion: { poolReleaseEventMarker: 'velina-corrosion', broadCycloneMoveId: '1561007' },
+  resultCardCorrosion: { poolReleaseEventMarker: CORROSION_CYCLONE_RELEASE_ID_PREFIX, broadCycloneMoveId: '1561007' },
   description: '风华/风蚀专属资源、广域/微域气旋、赋彩属性与风化乱流命座机制。',
   applyPanel: applyVelinaPanel,
   buildCharConfig: buildVelinaCharConfig,
@@ -543,6 +574,8 @@ export const velinaMechanic: AgentMechanicModule = {
   // `fallbackRate` **原样透传**（含 undefined）——默认 2/3 由 `resolveVelinaCorrosion` 兜底。
   anomalyCorrosion: ({ panels, turbulenceCount, windTriggerCount, fallbackRate }) =>
     resolveVelinaCorrosion(panels, turbulenceCount, windTriggerCount, fallbackRate),
+  // CC-71：风蚀气旋异放事件记录（原写死在 core/anomalyPool.ts）
+  anomalyCorrosionEvents: buildVelinaCorrosionEvents,
   resolveExecutionDamage: resolveVelinaExecutionDamage,
   releaseModifier: velinaReleaseModifier,
   resourceSections: buildVelinaResourceSections,
