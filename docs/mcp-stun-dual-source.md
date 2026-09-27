@@ -581,9 +581,80 @@ CC-151（锁定路径读池次数）和 17.2 的⓪（零窗读规划值）是�
   - auto-1591-1481-1211：**超预算 0→0.5**（见 CC-157）。
 - 全量测试除两份基线外无其他失败（3821 通过，3 条基线红，重生成后见 verify）。
 
-### 19.3 新发现 CC-157：琉音赠送的终结技没有进入时间预算
+### 19.3 新发现 CC-157：琉音赠送的终结技没有进入时间预算（**⚠ 第 179 轮更正：此推测是错的，见 §20**）
 - 证据：auto-1591-1481-1311 修后主 C 多 1 次终结，必要时间 +2.406s，留白从 +0.751 变为 −1.665；但 `convergence.timeBudgetIdleSeconds` 前后都是 0.766，**没变**。
 - 旧代码下已有同类现象：auto-1531-1481-1451 超出 0.574s，而 timeBudgetIdle 为 27.9s；1051-1481-1451 c6 超出 0.867s。
 - 推测：赠大加出的终结技行是在时间预算器之后物化的（ultimatePromote / tailPipeline 赠行）。时间预算器看不到，所以超预算无法被降配吸收。
 - 本轮决定：**不在 CC-155 里修**。CC-155 只让计数同源，它把这个既有缺陷多暴露了 1–2 个队，没有制造新缺陷。两份基线如实记录现状（超预算写进基线），由 CC-157 修复后回收。
 - 回退点：若判定 CC-155 暴露出的超预算不可接受，可单独回退 342 行（986/1082 零影响，可以保留）。
+
+## 20. CC-157 结案：不是缺陷，是轴模式 2s 设计容差内的量化残差（第 179 轮，无代码改动；**更正 §19.3**）
+
+### 20.1 §19.3 的推测是错的
+§19.3 推测「琉音赠送的终结技没进入时间预算」，依据是 `timeBudgetIdleSeconds` 前后不变。这个依据读错了字段：idle 只记录负溢出（账本 > 物化行）的最大值，和「是否超预算」无关。
+- 探针 `/home/kaua/calc-arch/k178/zzJ179.test.ts`（applyTeamPreset 路径）输出 teamTimeSummary 的四项闭合分解：`slack = ledgerInflation + basicUnspent + poolResidual + comboAlignDeduction`。
+- auto-1591-1481-1311 在 CC-155 之前 / 之后：
+  - slot0 账本 `necessaryTime` 106.037 → 108.443，物化必要行 53.646 → 56.062（+2.416）。**赠大终结技进了账本，也进了行**（ultimateGiftOf 四处同源成立）。
+  - ledgerInflation 0.802 → 0.792，几乎不变。
+  - **poolResidual = 180 − Σ必要 − 平A = −0.051 → −2.457**：必要时间之和本身超出预算，平 A 已为 0。
+- 所以超预算来自「整数次终结技（一次约 2.4s）装不进剩余时间」，是量化问题，不是赠行漏记。
+
+### 20.2 为什么没被截断或回退（均为设计）
+- 核心 iterate（`core/resource/helpers.ts`，rawScale 一行）：`!axisMode && Σ吸收后必要 > 预算` 时才做可行化封顶，**轴模式不封顶**，由编排层负责。
+- 装配截断（`assembleSlot.ts#truncateExecutionsToFrontline`）的上限是每槽自己的账本，行 ≤ 账本就不截。
+- 编排层 `solveTeam.ts#stageResolveFeasibility` 的轴回退判据：`净占用 > 有效时间 + AXIS_FALLBACK_TOLERANCE_SEC`，其中 `AXIS_FALLBACK_TOLERANCE_SEC = 2`，注释说明为「收敛后仍留约 2s 合轴可覆盖的量化残差（与 timeLedger 测试口径一致）」。
+  - 1.665s 与 0.5s 都 < 2s，按设计不回退。
+  - auto-1531-1481-1451 修后超过 2s，于是触发了回退（§19.2），说明判据在工作。
+- 全库复核：timeGolden 415 条中 over > 0 的有 10 条，**最大 1.665s，全部 ≤ 2s**。棘轮的绝对不变量测试为绿。
+
+### 20.3 决定
+- CC-157 **不做**（设计内）。基线里的 over 如实保留，不是待回收的债。
+- 顺带记录，**不改**：非轴降配用 `TIME_BUDGET_TOLERANCE_SECONDS = 1`（core/resource.ts），轴回退用 `AXIS_FALLBACK_TOLERANCE_SEC = 2`（solveTeam.ts），两个容差并存。
+  - 统一成一个会改变行为：轴队在 1–2s 区间会改为回退，丢掉轴。
+  - 这是口径问题，没有架构收益（常量只是少一个），不做。若日后要统一，从 solveTeam.ts 第 78 行入手，并重生成两份基线。
+- 教训（写进交接已知坑）：用 `timeBudgetIdleSeconds` 判断「预算是否看见某行」是错的，要用 teamTimeSummary 的四项分解。
+
+## 21. CC-149 定位完成：降配相对臂③否决了绝对可行档；修复被叶瞬光账本虚高阻塞 → CC-158（第 179 轮，**未合入代码**）
+
+### 21.1 现象（当前 HEAD 仍复现）
+- 探针为 `k172/zzD173b.test.ts` 的扩展版 `/home/kaua/calc-arch/k179/zzD179.test.ts`：叶瞬光 + 琉音 + 照，1 精专武，formAxis 0，physical，闸门开，逐个合轴率冷启动。
+- 合轴率 0.5 / 0.4 / 0.3 / 0.2 / 0.1 时，最大可行交互档为 0.125 / **0.0625** / 0.125 / 0.0625 / 0.0625，呈锯齿。
+- 同一交互档下伤害逐位相同（0.125 档 26715938，0.0625 档 26600186），合轴率只通过选档影响伤害。
+
+### 21.2 根因（solveTeam.ts `stageResolveFeasibility` 降配试算回调，临时 ZZTMP 日志，已删）
+- 合轴率 0.4 时，0.125 档的试算：净占用 173.049 < 180，截断 0，**绝对可行**。但它被拒了：
+  - HEAD 写法是 `feasible = accepted && downscaleTrialFeasible(...)`，绝对可行被相对三臂门控；
+  - 第③臂「试算留白 ≤ 基线留白 + 1s」：试算留白 6.951，基线留白 3.627，上限 4.627，不通过；
+  - 于是落到 0.0625 档（净占用 180.208）。
+- 基线态截断 52.645s，它的「留白」是截断之后的残量，不代表真实余量。
+- 合轴率 0.3 时基线留白 1.925，0.125 档留白 1.011，通过。锯齿由此产生。
+- 这与 feasibilitySearch.ts 的 `@fact engine:降配搜索/绝对可行优先`（两层字典序：绝对可行优先，相对臂只是兜底）不一致。推导：绝对可行意味着臂①②必然满足，所以差别只在臂③。
+
+### 21.3 尝试的修复（已回退；补丁全文 `/home/kaua/calc-arch/k179/cc149-attempt.diff`，共 61 行）
+- 代码（solveTeam.ts 试算回调）：
+  ```ts
+  const feasible = downscaleTrialFeasible({ trialNet: netOf(trial), trialTruncation, stunEffTime, toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS })
+  const accepted = feasible || (acceptsTrial(trial) && trialTruncation <= TIME_BUDGET_TOLERANCE_SECONDS)
+  ```
+  另外把 feasibilitySearch.ts 中 `DownscaleOutcome.feasible` 的注释改为「feasible ⇒ accepted（调用方约定）」。
+- 效果：
+  - CC-149 队的 physical 冷启动曲线变为 0.25/0.125/0.125/0.125/0.0625（合轴率 0.6 到 0.2），锯齿消失。
+  - difficultyDescent 单因素用例去掉 off 钉后通过：闸门开时伤害 26.767→26.716→26.600→26.360→25.556M，严格下降；闸门关时仍复现 0.2→0.1 回升。
+- **全库副作用（拒绝合入的原因）**：
+  - timeGolden 4 条变化：
+    - agent:1431:c6 +18.78%，留白 1.3→6.7；
+    - agent:1431:c4 / c5 −0.13%，留白 1.3→8.3；
+    - **preset:auto-1431-1341-1311 −8.34%，留白 0→9.444**。
+  - 棘轮：auto-1431-1481-1341 留白 0→7.9。
+  - outerCycleColdStart「S3 真实溢出降配」现值 0.0625→0.125。
+- auto-1431-1341-1311 的四项分解（探针 `k179/zzJ179.test.ts`，`ZZ_IDS=<队>`）：
+  - 修前：ledgerInflation 1.302，slack −0.122；
+  - 修后：**ledgerInflation 18.889**，slack 9.444，idle = refund = 9.444，poolResidual −9.444；
+  - slot0 叶瞬光账本必要时间 143.465，实际物化行 81.702 + 42.875 = 124.577。
+- 结论：更大的交互档让**叶瞬光模块的必要时间估算比物化行虚高约 19s**，refund 又冻结，回填不了，全部变成留白。第③臂拦的其实是这个虚高，只是拦的理由（与截断后的基线比较）不对。
+
+### 21.4 决定
+- **不合入**。原因：直接合入会让 1 个预设伤害 −8.34%、留白 +9.4s，它用一种错误（选档）换出了另一种错误（账本虚高）的暴露。
+- 先修 CC-158（叶瞬光账本虚高），再重新应用 §21.3 的补丁（`git apply /home/kaua/calc-arch/k179/cc149-attempt.diff`）。届时预期虚高消失，第③臂不再有东西可拦，两层字典序与实现一致。
+- CC-149 状态改为「阻塞于 CC-158」。difficultyDescent 用例仍钉 off（未改）。
+- 回退点：本轮无代码改动，无需回退。

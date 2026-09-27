@@ -69,22 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 178 轮（lane lead-arena-0925c）**
-- 提交：`d030a2ff`（代码与基线，CC-155），文档随后提交。verify 日志：`/home/kaua/calc-arch/v178.log`（含 VERIFY_EXIT 与 TSC_EXIT）。
-- CC-155：编排层 3 处改走计数通道。审计、定位、影响面见 stun-dual-source §19，新开 CC-157（§19.3）。
+**第 179 轮（lane lead-arena-0925c）：本轮无代码提交，只提交文档。**
+- CC-157 结案，不做：原推测是错的，超预算来自整数次终结技的量化，属轴模式 2s 设计容差，timeGolden 中 over > 0 的 10 条全部 ≤ 2s。见 stun-dual-source §20（并更正 §19.3）。
+- CC-149 定位完成，**阻塞于新卡 CC-158**：修复补丁存在 `/home/kaua/calc-arch/k179/cc149-attempt.diff`，未合入，原因与数字见 §21。
 - REQUIREMENTS 没有新条目（最后一次改动在 e000e53e）。提示词本轮已重读，未改（没有发现阻碍决策的条款）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-157：琉音赠送的终结技进入时间预算。**
-   - 复现：`/home/kaua/calc-arch/k178/zzH178.test.ts`，复制到 `src/` 下运行，**跑完移出**。auto-1591-1481-1311 的留白为 −1.665，而 timeBudgetIdleSeconds 为 0.766。
-   - 先定位：赠大终结技行在哪里物化（`ultimatePromote.ts` 的 promote、`core/resource/tailPipeline.ts` 的赠行预留），以及时间预算器（timeBudget 相关，grep `timeBudgetIdleSeconds`）读的是不是物化前的行集。
-   - 修法方向：让时间预算看到赠行（优先），或在赠大时按剩余时间封顶。选前者，因为时间账只有一个出口，更简单。
-   - 验收：两份基线里含 1481 的队不再超预算；zd 逐条解释。
-2. CC-149：physical 冷启动下最大可行降配档随合轴率不单调；复现探针 `/home/kaua/calc-arch/k172/zzD173b`。
-3. CC-156（保底不可达是否上报，可逆方案优先，例如只加诊断字段）；CC-147；CC-152（可选）。
+1. **CC-158：叶瞬光（1431）账本虚高。**
+   - 复现：
+     - `git apply /home/kaua/calc-arch/k179/cc149-attempt.diff`（打补丁后，auto-1431-1341-1311 会选中 scale 0.125）；
+     - `cp /home/kaua/calc-arch/k179/zzJ179.test.ts src/`；
+     - `ZZ_IDS=auto-1431-1341-1311 npx vitest run src/zzJ179.test.ts`，看 slot0 的 requiredFrontline 143.465 与 necRows + basicModuleRows 124.577 的差；
+     - 跑完移走探针。
+   - 定位方向：叶瞬光模块（`src/mechanics/agents/` 下 grep 1431 或 yeshuguang）的 necessary 估算，与物化行（剑势、形态、灭极段）在交互档缩放时是否同源；另外查 foldLoop 的折叠为什么没把 18.9s 折回（refund 冻结语义，foldLoop.ts 约 175 行之后）。
+   - 验收：打补丁后该队的 ledgerInflation 回到 ≤ 约 2s，且伤害不低于 HEAD。然后正式合入 CC-149 补丁（difficultyDescent 同时去掉 off 钉，补丁里已含），重生成两份基线并逐条解释。
+2. CC-156（保底不可达是否上报，可逆方案优先，例如只加诊断字段）；CC-147；CC-152（可选）。
 
 **已知坑**
-- physical 下判据读规划值还是物理次数，是一类系统性缺陷：CC-151、CC-153、CC-154、CC-155 都属此类。「规划失衡为 0、池却为 3–4」的队（多为琉音、仪玄队）是高发区。现已知的读计划值当计数的地方都已清完；新增判据时先问：这里要的是次数还是时间。
-- 基线里已有超预算记录（CC-157），修 CC-157 时基线会回收，这是预期变化。
+- 用 `timeBudgetIdleSeconds` 判断「预算是否看见某行」是错的：它只记录负溢出的最大值。要用 teamTimeSummary 的四项闭合分解（`slack = ledgerInflation + basicUnspent + poolResidual + comboAlignDeduction`，探针 zzJ179）。
+- 轴模式按设计容忍 ≤ 2s 超预算（`AXIS_FALLBACK_TOLERANCE_SEC`），非轴降配容差是 1s。两个容差并存是有意保留，见 §20.3。
+- 降配相对臂③会掩盖模块账本虚高：修选档逻辑之前，先看被拒档的 ledgerInflation。
+- 探针里用 `process.env.X ? … : …` 作标签时，`'0'` 也为真（本轮踩过）。
 - 棘轮（setAgent 路径）、zd（applyTeamToStore 路径）、timeGolden（applyTeamPreset 路径）三者状态不同，另有 warm-start 缓存的路径依赖。
-- 修同源破缺后，伤害可能升也可能降，不能按方向判对错（§19.2 c6 −9.15% 是消除超预算后的正确结果）。
