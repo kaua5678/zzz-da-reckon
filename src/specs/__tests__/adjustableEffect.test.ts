@@ -1,10 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
-// CC-144（第 172 轮）：本文件的精确值在 off 口径下录制/核实（机制钉），缺省已切 physical ⇒ 文件级钉回 0。
-// 迁移到 physical 口径见 CC-148（docs/mcp-calc-core-architecture.md）；删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getRegisteredMechanicSettings } from '@/mechanics'
@@ -372,6 +366,9 @@ describe('spec adjustable（Form-E）经真管线生效：rate 0 / 1 / 2 三点�
         { agentId: a2, cinemaLevel: 6 },
       ] as never)
       for (const buff of config.globalBuffs) buff.enabled = false
+      // CC-148（第 175 轮）：基准值表在 off 口径下录制（1351 援护狩猎增益随失衡计数变：off 5 / physical 8）；
+      // 本用例测「滑块接线 0/1/2 线性」，显式钉 off。其余用例在 physical 缺省下跑。
+      config.setMechanicSetting('time.stunPlanProjection', 0)
       const calc = useResourceCalc()
       const readGain = async (rate: number) => {
         config.setMechanicSetting(id, rate)

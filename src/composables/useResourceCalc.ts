@@ -122,7 +122,14 @@ export function useResourceCalc() {
       energyShieldCount: configStore.enemy.energyShield,
       maxIterations: INNER_LOOP_MAX_ITERATIONS,
       // 失衡计划值 → 计数的投影方式（C7 实验开关，默认 off = 现行口径；见 core/stunPlanProjection.ts）
-      stunPlanProjection: stunPlanProjectionFromCode(configStore.getMechanicSetting('time.stunPlanProjection', DEFAULT_STUN_PLAN_PROJECTION_CODE)),
+      // CC-151（第 175 轮）：锁定失衡次数（`enemy.stunCountLock ≥ 0`，命座对比「操作够就能打 N 次」口径）时，physical 投影
+      // 读的是池的物理次数，锁定值被绕过（实测 adjustableEffect：lock=3/4 连携都按池 2 次算 = 4）⇒ 锁定 + physical 回落 off
+      // （countStun ≡ 锁定值）。其他投影（round/floor…）作用于锁定值本身，照常生效（lycaonC2Contract lock 3.6 + round 契约）。
+      // 回退点：删去本 IIFE 的锁定判断，恢复直接读机制参数。
+      stunPlanProjection: (() => {
+        const proj = stunPlanProjectionFromCode(configStore.getMechanicSetting('time.stunPlanProjection', DEFAULT_STUN_PLAN_PROJECTION_CODE))
+        return proj === 'physical' && (configStore.enemy.stunCountLock ?? -1) >= 0 ? 'off' : proj
+      })(),
       // 动态合轴吸收上限（全局变量，用户口径 2026-09-19 v3；见 data/resourceDefaults#DEFAULT_COMBO_ALIGN_ABSORB_RATIO）
       comboAlignAbsorbRatio: configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
       // 降配档单向闸门（用户口径 2026-09-20；缺省 ceiling=1 / monotone=false ⇒ 普通计算路径逐位不变）
