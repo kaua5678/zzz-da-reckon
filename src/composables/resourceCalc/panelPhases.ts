@@ -392,7 +392,7 @@ export function collectAxisWindowOverlays(
  * 的 `source === '额外能力'` buff、spec `teamBuffs` 的 `source === '额外能力'` 条目一一对应。
  *
  * ⚠ 三条不可机械等同的登记（2026-09-13 自散落注释收敛，语义逐位保留）：
- * - 1071 凯撒：同阵营之外「其他可招架支援角色」以「有任意队友」近似满足（见 evalAdditionalAbilityBuffGates）。
+ * - 1071 凯撒：同阵营之外「其他可招架支援角色」以「有任意队友」近似满足（CC-67 起在 caesar.ts#adjustAdditionalAbilityGates）。
  * - 1461 席德：两条 buff 来源是核心被动/影画二（非「额外能力」），但与 spec additionalAbility
  *   同条件（spec 注明「核心被动与影画2 同条件，两条 buff 一并门控」）。
  * - 1421 潘引壶 cinema_1（影画一）随额外能力同条件门控；1281 派派与 1641 菲欧妮的 buff
@@ -447,23 +447,16 @@ export function evalAdditionalAbilityBuffGates(
     activeByAgent.set(agentId, slot >= 0
       && evalAdditionalAbility(team, slot, getCatalogAgent(agentId), getAgentSpec(agentId)?.additionalAbility) === true)
   }
-  // 凯撒 1071 修正：同阵营（上式）之外，「其他可招架支援角色」以「有任意队友」近似满足
-  {
-    const slot = slotByAgentId.get('1071') ?? -1
-    if (slot >= 0 && team.some(m => m.slot !== slot && !!m.agentId)) activeByAgent.set('1071', true)
-  }
   // 第二步：展平为 buffId → active
   const gates = new Map<string, boolean>()
   for (const [agentId, buffIds] of Object.entries(ADDITIONAL_GATE_BUFFS)) {
     for (const buffId of buffIds) gates.set(buffId, activeByAgent.get(agentId) === true)
   }
-  // 菲欧妮 1641 修正：tier3 另需队伍 [异常] 角色数 ≥3（含她自己；影画6 需求-1 = 有效数+1，2026-09-12 组队对账落地）
-  {
-    const slot = slotByAgentId.get('1641') ?? -1
-    const cinemaLevel = slot >= 0 ? (team[slot]?.cinemaLevel ?? 0) : 0
-    const anomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (cinemaLevel >= 6 ? 1 : 0)
-    const tier3 = 'phoenix.weakness_anomaly_crit_dmg_tier3'
-    gates.set(tier3, gates.get(tier3) === true && anomalyCount >= 3)
+  // 第三步（CC-67）：在队角色的专属修正经模块能力 adjustAdditionalAbilityGates（凯撒「有任意队友」、菲欧妮 tier3「异常数≥3」；
+  // 原在此按 id 写死）。各模块只改自己登记的 buff id ⇒ 顺序无关。
+  for (const member of team) {
+    const mod = member.agentId ? getAgentMechanic(member.agentId) : undefined
+    mod?.adjustAdditionalAbilityGates?.({ team, slot: member.slot, gates })
   }
   return gates
 }

@@ -843,6 +843,12 @@ export interface AgentMechanicModule {
    */
   resultCardCorrosion?: Readonly<{ poolReleaseEventMarker: string; broadCycloneMoveId: string }>
   /**
+   * CC-67：额外能力门控的角色专属修正（`panelPhases.ts#evalAdditionalAbilityBuffGates` 展平 buffId → active 之后、返回之前调用；
+   * 只对在队角色调用，`slot` = 本角色槽位）。原在编排层按 id 写死：凯撒「有任意队友即满足」、菲欧妮 tier3「异常数≥3」。
+   * 只允许改写**本角色登记在 `ADDITIONAL_GATE_BUFFS` 里的 buff id**（各模块 buff id 不相交 ⇒ 调用顺序无关）。
+   */
+  adjustAdditionalAbilityGates?(input: { team: ReadonlyTeam; slot: number; gates: Map<string, boolean> }): void
+  /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
    * 声明后，资源页「异放元素分配」卡与影响分析的占比变量会为本角色出控件。

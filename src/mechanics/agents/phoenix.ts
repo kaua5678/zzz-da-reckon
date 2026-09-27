@@ -529,6 +529,14 @@ const settings: MechanicSetting[] = [
 export const phoenixMechanic: AgentMechanicModule = {
   id: 'agent:phoenix',
   agentIds: [PHOENIX_ID],
+  // CC-67：额外能力门控修正——tier3 另需队伍 [异常] 角色数 ≥3（含自己；影画6 需求-1 = 有效数+1，2026-09-12 组队对账落地）
+  // （原 panelPhases.ts#evalAdditionalAbilityBuffGates 按本角色 id 写死，逐位搬入）
+  adjustAdditionalAbilityGates: ({ team, slot, gates }) => {
+    const cinemaLevel = team[slot]?.cinemaLevel ?? 0
+    const anomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (cinemaLevel >= 6 ? 1 : 0)
+    const tier3 = 'phoenix.weakness_anomaly_crit_dmg_tier3'
+    gates.set(tier3, gates.get(tier3) === true && anomalyCount >= 3)
+  },
   name: '菲欧妮·脆弱',
   description: '⚠️3.3 测试服临时录入：核心异常精通+40、影画2 积蓄效率×覆盖率；脆弱异常暴击走 spec teamBuffs 通用承载（公式读源面板掌控，自体+队友同吃 EV 乘区）；长按普攻/终结/影画6 异放（固定 releaseMultiplier）；余火→长按普攻计数；终结入场=每次终结后点按一次（1641019 计数=终结次数）；[消亡]消费：连携积蓄+30%×min(终结,连携)/连携占比；影画4 喧响、蓄能附加攻击。',
   applyPanel: applyPhoenixPanel,

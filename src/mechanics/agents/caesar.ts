@@ -102,6 +102,11 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 export const caesarMechanic: AgentMechanicModule = {
   id: 'agent:caesar',
   agentIds: [CAESAR_ID],
+  // CC-67：额外能力门控修正——同阵营（spec additionalAbility）之外，「其他可招架支援角色」以「有任意队友」近似满足
+  // （原 panelPhases.ts#evalAdditionalAbilityBuffGates 按本角色 id 写死，逐位搬入：置本角色登记的全部 buff 为 true）
+  adjustAdditionalAbilityGates: ({ team, slot, gates }) => {
+    if (team.some(m => m.slot !== slot && !!m.agentId)) gates.set('caesar.additional_battle_spirit_dmg', true)
+  },
   name: '凯撒·荣光之盾',
   description: '荣光之盾攻击拐、战意增伤、影画1减抗、影画2效率与攻击×1.5、影画4支援点代替强特、影画6盾击暴击增伤。',
   settings: [
