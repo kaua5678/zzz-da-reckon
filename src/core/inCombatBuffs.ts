@@ -148,7 +148,7 @@ export function collectInCombatTeamBuffs(
           description: group.description ?? wEngine.effect?.description,
           scope: group.scope,
           effects: group.effects
-            .filter(e => e && e.stat && wEngineEffectRequirementMet(e.requirement, { wearerAttribute: agent.attribute, wearerSpecialty: agent.specialty }))
+            .filter(e => e && e.stat && wEngineEffectRequirementMet(e.requirement, { wearerAttribute: agent.attribute, wearerSpecialty: agent.specialty, wearerAgentId: agent.id }))
             .map(e => applyWEngineModLevel(e, char.wEngineModLevel ?? 1)),
           buffModifiers: group.buffModifiers ?? [],
           sourceType: 'teammate',

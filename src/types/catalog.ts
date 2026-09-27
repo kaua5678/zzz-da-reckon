@@ -225,6 +225,11 @@ export interface EffectRequirement {
   specialty?: Specialty
   /** 属性限定：装备者 attribute 匹配才生效（如拂晓行纪 4pc 暴伤=以太） */
   attribute?: string
+  /**
+   * 装备者限定（CC-103 / R5 D18）：装备者 agent.id 在名单内才生效（如 14155 日冕遗蜕以太抗性无视=佩洛伊斯 1551）。
+   * 数据声明、引擎通用判定——core 不写具体角色 id。当前只有音擎 effect 级读取。
+   */
+  wearerAgentIds?: string[]
 }
 
 export interface BuffEffect {

@@ -69,22 +69,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 128 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-102)」）
+### 第 129 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-103)」）
 
 - **做到哪**：
-  - R5 第 3 刀完成 `condition`（账本 §7 **D18**）与 `requirement`（**D19**）。
-  - **CC-102 完成**（D19）：音擎 effect 级 requirement 生效。改动 `src/core/wengineConditions.ts`（`wEngineEffectRequirementMet`、ctx 新增 `wearerSpecialty`）、`src/core/buff.ts`、`src/core/inCombatBuffs.ts`；新测试 `src/core/__tests__/wengineEffectRequirement.test.ts`（修前简装 14150 异常增伤 +10 复现，修后 0）。zd.sh DIFF 0。回退点见账本 §9 CC-102。
-  - 立卡 **CC-103**（D18，14155 佩洛伊斯限定），方案写在账本 §9。
-  - 第 127 轮的产出：`fa9087b`（CC-101，D8）。
+  - **CC-103 完成**（R5 D18）：`src/types/catalog.ts` `EffectRequirement.wearerAgentIds`；`src/core/wengineConditions.ts` 名单判定；`src/core/buff.ts`、`src/core/inCombatBuffs.ts` 传 `wearerAgentId`；`public/static/catalog.json` 14155 以太抗性无视 effect 补 `requirement.wearerAgentIds: ["1551"]`；新测试 `src/core/__tests__/wengineWearerAgent.test.ts`（修前朱鸢 +16 复现，修后 0）。zd.sh DIFF 0。回退点见账本 §9 CC-103。
+  - 第 128 轮的产出：`a8f4ecc`（CC-102，D19；D18 立卡）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **CC-103**：按账本 §9 方案做。先 `sed -n` 读 `scripts/check-guards.mjs` 中 agentId 相关判据，确认读数据字段不触发；再写测试（朱鸢 1241 装 14155 → `enemyEtherResReduction` 不含 16；佩洛伊斯 1551 含 16），先红后绿；改 `src/types/catalog.ts` `EffectRequirement`、`wengineConditions.ts`、`collectAllBuffs` 传 `wearerAgentId`，catalog.json 14155 该 effect 补 `requirement.wearerAgentIds`（单行 JSON，用 node/python 解析改写并比对只有一处变化）。跑 `zd.sh cc103`。
-  2. **R5 第 3 刀续**：§8「S 待第 3 刀」剩余 50 个字段，建议顺序 `coverage` → `target` → `buffModifiers` → `formula` / `expression`。方法同本轮：先用 Python 在 WSL 里统计取值 × 位置（参考 `/home/kaua/calc-arch/cond1.py`、`req1.py`），再逐个读取方读码，每类写 D 条目。
-  3. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
-  4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
+  1. **R5 第 3 刀续**：§8「S 待第 3 刀」剩余 50 个字段，先做 `coverage` → `target` → `buffModifiers` → `formula` / `expression`。方法：在 WSL 用 Python 统计取值 × 位置（模板 `/home/kaua/calc-arch/cond1.py`、`req1.py`：递归遍历 catalog，按键名收集取值与路径），再逐个读取方读码（`timeout 40 git grep -n '<字段>' -- src/core src/composables src/mechanics`），每类写一条 D 条目（格式见账本 §5）。真实差异立 CC 卡、先红后绿、zd 零差或逐条归因。
+  2. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
+  3. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
 - **未决项**：
-  - D18 的潜在风险：新数据若把属性 / 特化限定只写进 condition 散文，会静默生效；录入时应写 requirement（音擎 effect 级 requirement 现已生效）。
+  - 数据自己标了「部分建模」的音擎还有 3 把：14126 `partially-modeled-anomaly-buildup-text-only`、14152 `partially-modeled-duration-extension`、14001 `partially-modeled-proc-damage`（统计见 `verification.effectBuff`）。它们是数据侧没建模的效果，不是「引擎没读对」，不属于 R5 的对账范围；R5 收尾时在账本登记为「数据侧已知缺口」，不立卡。
+  - D18 的潜在风险：新数据若把属性 / 特化 / 角色限定只写进 condition 散文，会静默生效。音擎 effect 级 requirement（specialty / attribute / wearerAgentIds）已生效，录入时应写 requirement。驱动盘侧 `discRequirementMet` 不认 `wearerAgentIds`（当前 0 处），若日后出现需同步。
   - 旁注待查：`helpers.ts:905` 把 turbulence 并入 anomalyDmgBonus，是否与 statRules 口径一致未核。
-  - 34100 谶羽之誓 `modelingNotes` 写「15% 流明异常增伤不参与计算」，但 effects 里有 `anomalyDmgBonus 15`（requirement lumiflux）且引擎会计入。按 R5「数据可信」以 effects 为准，notes 疑似过时；未改，第 3 刀查 `modelingNotes` 时一并确认。
+  - 34100 谶羽之誓 `modelingNotes` 写「15% 流明异常增伤不参与计算」，但 effects 里有 `anomalyDmgBonus 15`（requirement lumiflux）且引擎会计入。按 R5「数据可信」以 effects 为准，notes 疑似过时；未改，查 `modelingNotes` 时一并确认。
   - CC-100 之后，基础掌控 86 的角色（1111 / 1121 / 1271 / 1291）装 6 号位掌控不再达到折枝剑歌 115 门槛，是应有结果；
   - D7 的 2 个驱动盘效果是否另有入口可调未核（`panelPhases.ts:728`）；D10 两份 Boss 数据是否一致未比对；
   - CC-99 排在 R6 清单之后重新评估；CC-97 暂缓；CC-84 触发式。

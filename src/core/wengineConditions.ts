@@ -13,6 +13,8 @@ export interface WEngineConditionContext {
   wearerAttribute?: string
   /** 装备者特化（attack/anomaly/…），effect 级 requirement.specialty 用 */
   wearerSpecialty?: string
+  /** 装备者 agent.id，effect 级 requirement.wearerAgentIds 用（CC-103） */
+  wearerAgentId?: string
   /**
    * 当前敌人弱点（中文，与 Boss 预设 phase.weakness 同口径）。
    * 缺省或空 = 未声明，不拦截（未选 Boss / 测试夹具保持原行为）。
@@ -38,12 +40,13 @@ export function wEngineConditionMet(condition: string | undefined, ctx: WEngineC
 
 /**
  * 音擎 effect 级 requirement（CC-102 / R5 D19）：按装备者 specialty / attribute 判定，
- * 与驱动盘 discRequirementMet 同口径。装备者信息缺省 = 不拦截（测试夹具保持原行为）。
+ * 与驱动盘 discRequirementMet 同口径；另支持 wearerAgentIds 装备者名单（CC-103）。装备者信息缺省 = 不拦截（测试夹具保持原行为）。
  * outOfCombatStat 门槛当前音擎数据 0 处，这里不判定（返回 true）；若日后出现需接粗算面板。
  */
 export function wEngineEffectRequirementMet(req: EffectRequirement | undefined, ctx: WEngineConditionContext = {}): boolean {
   if (!req) return true
   if (req.specialty && ctx.wearerSpecialty && ctx.wearerSpecialty !== req.specialty) return false
   if (req.attribute && ctx.wearerAttribute && ctx.wearerAttribute !== req.attribute) return false
+  if (req.wearerAgentIds?.length && ctx.wearerAgentId && !req.wearerAgentIds.includes(ctx.wearerAgentId)) return false
   return true
 }

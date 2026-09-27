@@ -542,6 +542,7 @@ export function collectAllBuffs(
     ? collectWEngineBuffs(wEngine, config.wEngineModLevel, matchSpecialty, {
         wearerAttribute: agent.attribute,
         wearerSpecialty: agent.specialty,
+        wearerAgentId: agent.id,
         enemyWeakness: config.enemyWeakness,
       })
     : { outOfCombat: [] as BuffEffect[], inCombat: [] as BuffEffect[] }

@@ -290,7 +290,7 @@
   1. **已执行**：`attributeCounter`（1 处）。
   2. **触发 / 状态类散文或机器名**（招式命中、层数、前后台、敌方异常状态、HP 降低等，约 94 处）：引擎没有这些战斗状态，文件头注释写明的设计口径是「恒满足，由覆盖率滑块近似」。与数据约定（coverage 默认 1）一致 → **无差异**。没有滑块的 28 个 fixed 效果已登记在 D7，不重复。
   3. **可静态判定、但已由同一对象上的 `requirement` 执行**（9 处）：34000「以太属性代理人…」（effect requirement.attribute=ether）、34100「装备者为流明属性」（attribute=lumiflux）、33300「强攻角色…」（specialty=attack）、33200「击破位装备者…」（组 requirement.specialty=stun + effect outOfCombatStat critRate≥50）、33400「支援位装备者…」（specialty=support）、32700 `anomalyMasteryAtLeast115Or150`（effect outOfCombatStat anomalyMastery≥115）、34200「暴击率按局外防御力自动判定」（outOfCombatStat def≥1000/1800）→ condition 只是说明文字，**无差异**。
-  4. **可静态判定、没有任何执行**（1 处）：**14155 日冕遗蜕** effect `effect_wiki_2031_self_ether_res_ignore`（`enemyEtherResReduction` 16）condition「装备者为佩洛伊斯且处于日蚀效果」。前半句是角色限定（1551 佩洛伊斯），数据里没有对应的机器可读 requirement；数据自己在 `verification.effectBuff` 标了 `partially-modeled-agent-restriction`。影响：非佩洛伊斯的以太强攻角色（当前只有 1241 朱鸢）装 14155 时多吃 16% 以太抗性无视（只作用于以太伤害）。→ **真实差异（窄）**，立卡 CC-103，见 §9。
+  4. **可静态判定、没有任何执行**（1 处）：**14155 日冕遗蜕** effect `effect_wiki_2031_self_ether_res_ignore`（`enemyEtherResReduction` 16）condition「装备者为佩洛伊斯且处于日蚀效果」。前半句是角色限定（1551 佩洛伊斯），数据里没有对应的机器可读 requirement；数据自己在 `verification.effectBuff` 标了 `partially-modeled-agent-restriction`。影响：非佩洛伊斯的以太强攻角色（当前只有 1241 朱鸢）装 14155 时多吃 16% 以太抗性无视（只作用于以太伤害）。→ **真实差异（窄）**，立卡 CC-103，见 §9。✅ 已修（CC-103，第 129 轮）。
 - **结论**：condition 这一字段「读了但语义不同」只有第 4 类 1 处。effect 级 condition 零读取本身不是差异（第 2、3 类都由 coverage 或 requirement 表达）。
 - **潜在风险（不立卡）**：新数据若把「装备者为 X 属性」只写进 condition 而不写 requirement，会静默生效。防线：CC-102 之后音擎 effect 级 requirement 已生效，录入时应写 requirement。
 
@@ -419,13 +419,18 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
 - 验证：`zd.sh cc102` DUMP DIFF 0 / ROWS DIFF 0（现有预设没有非以太角色装 14150）；vue-tsc 0；verify 与 check-guards 全绿。
 - **回退点**：删掉 `collectWEngineBuffs` 和 inCombatBuffs 里那一行 `wEngineEffectRequirementMet` 过滤即可恢复原行为。
 
-### CC-103（D18）14155 日冕遗蜕以太抗性无视限定佩洛伊斯 · 待做
+### CC-103（D18）14155 日冕遗蜕以太抗性无视限定佩洛伊斯 ✅ done（第 129 轮，提交号见 git log「fix(CC-103)」）
 
-- **问题**：见 D18 第 4 类。数据只有散文 condition，没有机器可读的角色限定。
-- **拍板的方向（可逆）**：在数据上加机器可读限定，引擎按数据通用判定，**不在 core 写 agentId 分支**。方案：`EffectRequirement` 新增 `wearerAgentIds?: string[]`，14155 该 effect 写 `["1551"]`，`wEngineEffectRequirementMet` 判定时 ctx 需带 `wearerAgentId`（`collectAllBuffs` 有 `agent.id`）。开工前先确认 `scripts/check-guards.mjs` 里「core/** 禁写 agentId 判定」判据只匹配字面量比较（如 `=== '1551'`），读数据字段不触发；若触发，改用数据侧标记而不是改判据。
-- 「处于日蚀效果」后半句是状态，仍由覆盖率兜底。
-- 预期差异：只影响非 1551 的以太强攻角色装 14155（朱鸢 1241）；zd 预计 0 或极少，逐条归因。
-- 不做的替代：不把 condition 字符串做关键词解析（脆弱，且违背「数据写机器名」的既有约定）。
+**实际做法**：
+- 先红后绿：新建 `src/core/__tests__/wengineWearerAgent.test.ts`，修前朱鸢 1241 装 14155 实测 `enemyEtherResReduction` +16（复现 D18），修后 0；佩洛伊斯 1551 仍 +16，两人暴击率 +20 不变。
+- `src/types/catalog.ts` `EffectRequirement` 新增 `wearerAgentIds?: string[]`（装备者名单，数据声明、引擎通用判定）。
+- `src/core/wengineConditions.ts`：ctx 新增 `wearerAgentId`；`wEngineEffectRequirementMet` 增加名单判定（ctx 缺省不拦截）。
+- `src/core/buff.ts` `collectAllBuffs` 与 `src/core/inCombatBuffs.ts` 音擎 teamBuff 通道补传 `wearerAgentId: agent.id`。
+- `public/static/catalog.json`：14155 effect `effect_wiki_2031_self_ether_res_ignore` 补 `"requirement":{"wearerAgentIds":["1551"]}`（node 解析改写，断言单行格式不变、锚点唯一且原无 requirement，+42 字节）。
+- **守卫核对**：core agentId 棘轮只扫 `src/core/resource.ts`、`src/core/resource/helpers.ts`（`scripts/lib/agent-branch-ratchet.mjs:157`），且度量的是字面身份判定；本改动在 core 里只比较数据给出的名单，不含任何角色 id 字面量，符合棘轮提示的「engine 读字段、不读 agentId」。
+- 验证：`zd.sh cc103` DUMP DIFF 0 / ROWS DIFF 0（现有预设没有非 1551 角色装 14155）；vue-tsc 0；verify 与 check-guards 全绿。
+- **拍板**：14155 的 `verification.effectBuff = "partially-modeled-agent-restriction"` 未改——「处于日蚀效果」仍由覆盖率兜底，仍属部分建模，标签继续成立。
+- **回退点**：删掉 catalog 里那一个 `requirement` 即恢复原数值；类型与判定函数是纯增量，可保留。
 
 ### 其余（零差、界面层）
 - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。
