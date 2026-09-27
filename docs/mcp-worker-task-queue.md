@@ -69,23 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 155 轮（2026-09-28，代码 `0ed6ffc5` + 文档 `6acea376` + 本回填提交；上一轮文档 = e0c5273e / 1d7dcb56）
+### 第 156 轮（2026-09-28，代码 `4d657d75` + 文档提交「docs: round 156」；上一轮文档 = 6acea376 / bdd3d21b）
 
 - **做到哪**：
-  - **CC-130 席德明攻 / 围杀作用对象**（`0ed6ffc5`）：探针实测原来三个槽都吃 +1000 攻击 / +30% 暴伤 / +25% 增伤 / 20% 无视防御。新增通用模块能力 `teammateBuffRecipientFilter`（`src/mechanics/types.ts`），编排层 `src/composables/resourceCalc/panelPhases.ts#applyTeammateBuffRecipientFilters` 应用；`src/mechanics/agents/xide.ts` 抽出 `pickXideVanguardSlot` 共用。3 个席德预设伤害 −8%~−20%，每条都能解释（卡表 CC-130 行）；timeGolden 3 叶已重生成。
-  - 新单测 `src/mechanics/__tests__/vanguardBuffRecipientCc130.test.ts`；`public/static/teammate-buffs.json` 1461 说明文字同步。
-  - 同类扫描写进 `docs/mcp-r6-refactor-list.md` §2.16。
-  - 验证：vue-tsc 0；verify177 EXIT=0（3787 passed）；CG 通过。
+  - 卢西娅影画2「破暗」核对：原文就是全队，**不改**（清单 §2.16）。
+  - **全库队友 buff 作用对象实测**（29 组，清单 §2.16 第 156 轮补充）：来源本人普遍吃自己那组；原文单体 / 非全队的条目逐条判断。
+  - **CC-131 克拉蕾**（`4d657d75`）：删除 v12 原文里不存在的测试服残留 buff `claret.gleaming_edge_teammate`。2 个克拉蕾预设 −15.3%~−15.6%、单人克拉蕾 −10.9%~−22.1%，每条可解释；timeGolden 9 条 + timeFillRatchet 2 条已重生成；新单测 `src/mechanics/__tests__/claretStaleBuffCc131.test.ts`。
+  - 验证：verify178 见提交；CG 通过。
 - **下一步（按顺序，可直接开工）**：
-  1. **卢西娅影画2「破暗」作用对象**（清单 §2.16 待核行）：读 `data/raw/nanoka_missing/full/1451.json` 里影画 2 与[破暗]的原文，确认谁获得破暗。若不是全队，在 `src/mechanics/agents/luciaElowen.ts`（先 `ls src/mechanics/agents | grep -i lucia` 确认文件名）实现 `teammateBuffRecipientFilter`，剔除 `lucia_elowen.cinema_2_darkbreaker_sheer_dmg` 的效果；探针写法照抄 vanguardBuffRecipientCc130.test.ts 的 `deltas()`。
-  2. **原文侧反查单体拐**（§2.16 局限）：在 raw 文本里搜单体措辞（「[xx]状态的代理人」「当前操作角色」「视为」「指定」），逐条对照 teammate-buffs 同角色组的效果是否全队生效。结果追加到 §2.16 表。可以派 dsh 分批做（每批约 10 个角色、边做边写结果文件）。
-  3. 低优先：副词条优化器（`src/stores/config.ts` 约 819-861 行）仍用未过滤的 enabledTeammateBuffs，只影响优化建议。要统一的话，把 `applyTeammateBuffRecipientFilters` 接进去（需要该处能拿到 team 与接收槽）。
-  4. 未决项「每超过 X 是否取整」（见下方）。
+  1. **teammate buff 数值 ↔ 原文对账**（找更多测试服残留）：写脚本遍历 `public/static/teammate-buffs.json` 每组每个效果：取 `value`（或 `ratio` / `cap` / `valuePerStack`），在 `data/raw/nanoka_missing/full/<组id>.json` 去掉 `<color>` 标签后的文本里搜「<值>%」「<值>点」及 `{CAL:...}` 模板（CAL 模板里的数值要按技能 12 级算，搜不到时先列为嫌疑，不要直接判错）。输出嫌疑表写进清单 §2.17，逐条人工核；确认是残留的开 CC 卡删除 / 订正（同 CC-131 的做法与回退点）。
+  2. 1421 潘引壶通窍排除本人（§2.16 表），预计零差。
+  3. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先，只影响优化建议）。
+  4. 未决项「每超过 X 是否取整」。
 - **本轮拍板**：
-  - 按效果过滤而不是拆 buff：拆成两条 buff 要改 id，预设里存的开关就失效了；按效果过滤保留界面开关与覆盖率滑块。回退点见卡表。
-  - 正兵在面板阶段现算（局外面板探针），而不是读 cfg：面板在 buildCharConfig 之前算，拿不到 `cfg.xideVanguardSlot`。两处共用 `pickXideVanguardSlot`，口径一致。
-  - 奥菲丝作为正兵时攻击 +1200（不是 +1000）：多出的 200 来自奥菲丝自身机制按攻击放大，属于下游联动，测试对正兵攻击只断言 ≥ 1000。
+  - 删 buff 而不是把 coverage 调成 0：原文不存在的效果不应留在数据里误导后来者；1611 组保留为空组，避免组 id 消失影响界面。依据写进单测的「依据仍成立」断言，原文若更新会提示重评。
+  - 不顺手做 1421：零差的纯正确性修改单独做，避免和有数值变化的卡混在一个提交里。
 - **已知坑**：
+  - **来源本人会吃自己那组 teammate buff**（第 156 轮实测）：原文写「队友 / 其他」的拐要声明 `excludeTargetAgentIds`，单体拐走 `teammateBuffRecipientFilter`。
+  - zd 结果文件在 `/home/kaua/calc-arch/zd-<tag>-dump-{base,after}.json`（不是 `.zc/perf/`）。
+  - Python 里 `'...%s...' % x` 的模板若含「−8%~」这类百分号会报错，要写成 `%%` 或改用 f-string / 拼接。
   - **teammate buff 没有接收者字段**：同一份 enabledTeammateBuffs 下发给每个槽（含来源本人）。单体拐必须走模块能力 `teammateBuffRecipientFilter`（CC-130），不要在编排层按 agentId 过滤。
   - teammate buff 默认**关闭**（`teammateBuffEnabledOf` 无记录 = false），预设会打开；探针里要手动 `config.teammateBuffSelections[id] = { enabled: true, coverage: 100 }`。
   - **往 wsl_exec 命令里内联含反引号的文本会被外层 shell 当命令替换吞掉**（第 153 轮卡表行丢字）：改文档一律写成脚本文件上传后执行，不要内联 heredoc。
