@@ -236,6 +236,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-65b | done | `edae81c` | stores/config.ts 交互默认值表（1531/1471）与通用基准排除名单（1051）→ 模块声明 interactionDefaults / noGenericInteraction；TeamConfigPage 格挡/双反输入框、弹刀轴自动提示、保底4嗔火开关 → interactionInputs / ownsGuaranteeFury / producesInteractionTopUp 槽位；TeamConfigPage.vue 与 stores/config.ts 均已无四位角色 id 字面量（源码锁） | census §5.74 |
 | CC-60 | done | `9379369` | 自动失衡轴「章」档位（1051）/「有琉优先」（1481）→ 模块声明 axisPresetChapterOwner / axisPresetPreferred；data/stunAxisPresets.ts#selectAutoStunAxisPreset 改收注入提示（AutoAxisPresetHints，data 层不 import mechanics），生产入口 roundInputs 传 AUTO_AXIS_PRESET_HINTS；StunAxisPage 脚本无四位 id | census §5.75 |
 | CC-66 | done | `5e93c6c` | ResourceResultCard 维琳娜腐蚀展示（:611 moveId 1561007、:748 agentId 1561 + 事件 id 子串）→ 模块声明 resultCardCorrosion + 门面 agentResultCardCorrosion | census §5.76 |
+| CC-67 | done | `b942cb2` | panelPhases.ts#evalAdditionalAbilityBuffGates 凯撒 1071「有任意队友」/ 菲欧妮 1641 tier3「异常数≥3」修正 → 模块能力 adjustAdditionalAbilityGates（caesar.ts / phoenix.ts）；ADDITIONAL_GATE_BUFFS 登记表**保留**（裁定见 §5.77） | census §5.77 |
+| CC-68 | done | `b3a4e70` | teamCompare.ts#completeInteractionList 般岳 1471 专属交互类型 → 模块声明 compareInteractionTypes + 门面 teamCompareInteractionTypes | census §5.77 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |

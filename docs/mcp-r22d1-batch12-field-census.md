@@ -2346,6 +2346,22 @@ ImpactChart.vue 的改动：
 3. **CC-69 编排层角色专属字符串**：`damagePoolAnomaly.ts:90` `event.id.includes('velina-corrosion')`（可复用 CC-66 的 `resultCardCorrosion.poolReleaseEventMarker`，或改为事件自带标记字段）；`roundInputs.ts:229` `act.moveId === 'yidhari-heavy-single' && cinema >= 1 ? 50`（伊德海莉 1 命单重碾能耗，应迁模块能力）。
 4. **裁定暂不还**：`pullPlannerEngine.ts:49` `FREE_SPECIAL_AGENT_IDS`、`pullValue.ts:49/51`（抽卡规划的经济数据：赠送/特殊 A 级角色名单，不是伤害计算机制；归属不在战斗模块）。若日后要还，可放 `src/data/` 独立表，从这里回退本裁定。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、perf 夹具缺「11号 + 平A兜底」（§5.69）、teammateBuffGate 多模块同 buff id 合并语义（§5.72）、specs/agents/1531.json:305 旧表名文字（§5.74）。
+### 5.77 CC-67 / CC-68 done（lead-arena-0925c，2026-09-27 第 89 轮）
+
+**CC-67 提交 `b942cb2`**：额外能力门控的两处角色专属修正 → 模块能力。
+- `src/mechanics/types.ts`：`adjustAdditionalAbilityGates?(input: { team: ReadonlyTeam; slot: number; gates: Map<string, boolean> }): void`——在 `evalAdditionalAbilityBuffGates` 展平 buffId→active 之后、返回之前，对**在队**角色逐个调用；约定只改本角色登记在 `ADDITIONAL_GATE_BUFFS` 的 buff id（各模块 buff id 不相交 ⇒ 顺序无关）。
+- `caesar.ts`：`team.some(m => m.slot !== slot && !!m.agentId)` ⇒ `gates.set('caesar.additional_battle_spirit_dmg', true)`。等价性：原实现是在展平前把 activeByAgent['1071'] 置 true，其效果恰是把 1071 登记的唯一 buff 置 true；与菲欧妮修正作用的 buff 不相交，前后移动无影响。⚠ 若日后给 1071 在 ADDITIONAL_GATE_BUFFS 加第二个 buff，要同步加进 caesar.ts 这条修正。
+- `phoenix.ts`：tier3 算式逐字搬入（`team[slot]?.cinemaLevel`、异常数 + 影画6 补 1、≥3）。原实现在菲欧妮不在队时也执行，但那时 tier3 已在展平阶段为 false，`false && …` 仍 false ⇒ 只在在队时调用等价。
+- `panelPhases.ts`：删两段写死块，换成「在队模块 adjustAdditionalAbilityGates」循环；`evalAdditionalAbilityBuffGates` 函数体已无 `'1071'`/`'1641'`（源码锁）。
+- **裁定：`ADDITIONAL_GATE_BUFFS`（agentId → buff id 列表）保留在 panelPhases.ts，不迁模块**。依据：①它是规则 6 / SOP §6.2 指定的「唯一登记处」，`additionalGate.test.ts` 把它与 catalog `teammate-buffs.json`、spec `teamBuffs` 做一一对应护栏，`panelPhasesShell.test.ts` 与 check-guards 的沿革注释都引用它；②14 个登记角色里不少没有模块文件，迁移要新建一批空模块，收益低；③它是纯数据表（id → buff id），不是分支逻辑。若日后要迁：给模块加 `additionalAbilityBuffIds?: string[]`，panelPhases 从注册表派生本表，并同步改 additionalGate.test.ts 的护栏——从这里回退本裁定。
+- 新测试 `agentMechanicViewCc67.test.ts`：只有 1071/1641 声明；**原 evalAdditionalAbilityBuffGates 逐字复刻为 legacy**，凯撒/菲欧妮 × 全 catalog 角色 × 影画 0/6 逐 buff 对照；源码锁。既有 `additionalGate.test.ts`（凯撒/菲欧妮用例）未改仍过，反向变异（删 caesar.ts 修正行）⇒ 变红。verify：325 files / 3673 tests passed，24 guards 0。回退：`git revert b942cb2`。
+
+**CC-68 提交 `b3a4e70`**：`teamCompare.ts#completeInteractionList` 的 `team.includes('1471')` → 模块声明 `compareInteractionTypes: ['banyueGoldenParry', 'banyueDualCounter']`（banyue.ts）+ 门面 `teamCompareInteractionTypes(team)`（按队伍顺序去重）。补条目仍 `slot: 0`、顺序不变。teamCompare.ts 不再含 `'1471'`（源码锁）。反向变异（删声明行）⇒ 变红。verify：326 files / 3675 tests passed（16/29 skipped），24 guards 0。回退：`git revert b3a4e70`。
+
+**下一步（CC-69，可直接开工；已读上下文）**：
+1. `src/composables/resourceCalc/roundInputs.ts:229`：`energyCost = act.moveId === 'yidhari-heavy-single' && cinema >= 1 ? 50 : combo.energyCost`（伊德海莉 1 命单次重碾能耗 60→50）。方案：在模块 `combos` 的 combo 声明类型上加可选 `energyCostAtCinema?: { minCinema: number; energyCost: number }`（先 `grep -n 'combos?' src/mechanics/types.ts` 找 combo 类型），yidhari.ts 的 `yidhari-heavy-single` combo 声明 `{ minCinema: 1, energyCost: 50 }`，roundInputs 改成 `combo.energyCostAtCinema && cinema >= combo.energyCostAtCinema.minCinema ? combo.energyCostAtCinema.energyCost : combo.energyCost`。⚠ 先 grep `yidhari-heavy-single` 全仓，确认 convergence.ts:364 等其他使用点是否也有同一 1 命特判（有则一并改）；测试：全 combo × 命座 0..6 对照原表达式 + 源码锁；这是计算路径，额外跑 perf 零差（census Key：`PERF_KEY_ALIAS=1 PERF_OUT=… npx vitest run --config .zc/perf/vitest.perf.config.ts dump` + rowsnap，前后 `cls41.mjs` DIFF 0；若语料无伊德海莉 1 命，用单测反向变异兜底）。
+2. `src/composables/resourceCalc/damagePoolAnomaly.ts:90`：`event.type === 'release' && event.id.includes('velina-corrosion')`（风异放拆轴内外）。方案：复用 CC-66 的 `resultCardCorrosion.poolReleaseEventMarker`（按 `windAgentId` 取模块声明）——但那是展示层声明，编排层读它语义错位；更好的是给该声明改名/新增编排层字段 `poolWindReleaseEventMarker`，或让 core/anomalyPool.ts:367/377 产出的事件带 `windRelease: true` 标记。**先读 damagePoolAnomaly.ts:60–:160 与 anomalyPool.ts:350–:390 再定**，选可逆方案。
+- 其余沿用（见 §5.76 第 4 条裁定、遗留未决列表）。
 ## 附录：普查脚本 census.sh
 
 ```bash
