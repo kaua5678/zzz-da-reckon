@@ -264,6 +264,20 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
   - 拆法：把一段自成一体的 `<script setup>` 逻辑（例如 sweep 或第三人候选相关的 computed/函数）抽成 `src/views/teamCompare/` 下的 composable，模板不动。目标 ≤1450 行，留出余量。
   - 验收：vue-tsc -b、check-guards（含 scoped 样式可达性判据）、verify；`npm run -s zc -- status` 不再报超标。
   - 回退：单个提交，`git revert`。
+- **CC-92** done `50e313e`（§5.99）：TeamComparePage.vue 降到 1462 行（余量 38 行），**之后给该页加功能，写到 `src/composables/teamCompare*.ts`**。结构熵超标已清零。
+- **下一张 CC-93：债务「`src/specs/types.ts`:声明了 team/enemy/both 定向」裁决与销号**（登记在 `scripts/lib/guard-registries.mjs` DEBT_REGISTRY，since 2026-09-25，写的是「裁决走向后销号」）。
+  - **已拍板**（lead 2026-09-27 第 111 轮）：**保留字段，不做运行时分流，改为加校验消费者**。依据：
+    1. 全库 38 条 teamBuffs 中 team 29 条、enemy 9 条、both 0 条。
+    2. enemy 的 9 条用的都是敌方侧字段（`enemyXxxResReduction` / `enemyDefReduction`），或「等效全队拐力」字段（如薇薇安的预言下异常伤害 +16% 记为 `anomalyDamageBonus`）。这类 debuff 本来就对所有攻击者等效生效，运行时分流后结果不变，白增复杂度。
+    3. team 的 29 条没有一条用 `enemy*` 字段。说明这个字段的分类是准确的，是有价值的元数据；删掉会丢失「这是敌方 debuff」这层可读信息。
+    4. 缺的只是一个消费者，所以给它加校验规则，把死通道变成受校验的元数据，这和规则 16 的精神一致。
+  - 步骤：
+    1. 先读 `src/core/inCombatBuffs.ts#collectInCombatTeamBuffs`，确认 team 与 enemy 条目的收集方式确实相同（owner 是否计入由 `includeOwner` 决定，与 target 无关）。**如果发现 enemy 条目被错误地排除了 owner，或有别的差异，就停下，改为立卡修引擎。**
+    2. 在 validate:specs（`npm run validate:specs` 对应的脚本，先 `grep -n validate:specs package.json`）里加规则：任何 effect 的 stat 以 `enemy` 开头 ⇒ 所在 buff 的 target 必须是 `enemy` 或 `both`。再加反空洞：全库至少有 1 条 enemy 条目被检查到。用一个临时改坏的 spec 验证规则能红，验完还原。
+    3. 改 `src/specs/types.ts` 中 `target` 上方的 debt 注释：写明它现在是「受 validate:specs 校验的元数据：运行时不分流，因为敌方 debuff 对全体攻击者等效」。
+    4. 从 DEBT_REGISTRY 删掉这一条。check-guards 里有 debt 注册表判据，**先 grep 这张表是否有计数或基线常量需要同步下调**。
+  - 验收：validate:specs、check-guards、verify 全部通过。
+  - 回退：单个提交，直接 revert。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。

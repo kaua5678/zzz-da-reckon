@@ -2746,3 +2746,16 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 验证：vue-tsc -b 0 错误；check-guards 25 项；verify 339 files / 3713 tests EXIT 0（`/home/kaua/calc-arch/verify110.log`）。
 - 回退：`git revert 5476250`，并把 checkGuards.test 的条数改回 24（revert 会一并带回）。
 
+### 5.99 CC-92 done：TeamComparePage.vue 结构熵切面（lead-arena-0925c，2026-09-27 第 111 轮）
+
+**CC-92 `50e313e`**（页面 1552→1462 行；`zc status` 结构熵超标 ×1→×0）
+- 切面：「选第三人」区块（sweep 状态、候选圈定、`runSweep`、结果条形比例）搬到 `src/composables/teamCompareSweep.ts#useSlotSweep`。依赖用**同名参数**注入（`catalogStore` / `calc` / `selectedBoss` / `selectedPhase` / `progress` / `computing`），保证正文逐行相同；先例是 R44 `00873b3` 的 `teamCompareScatter.ts#useScatterGeometry`。`progress` 和 `computing` 是页面级共享状态（曲线计算等也会写），所以注入，不在 composable 里新建。
+- 保真证明：新文件正文去掉 2 格缩进后，与原页面 1193–1282 行加 1295–1298 行 `diff`，唯一差异是有意改动的 @fact 锚点路径。没有做 R44 那种 DOM 指纹实测，理由：搬的只是 `<script setup>` 逻辑，模板和样式一字未动，顶层解构出的 ref 在模板里照常自动解包；另外 vue-tsc 与全量测试都已通过。
+- 通用函数 `agentNameOf` / `teamNames` / `goldDetail` 留在页面，因为别的区块也用。`sweepCandidates` / `sweepMaxDamage` 只在 composable 内部使用，照样返回，但页面不解构（noUnusedLocals）。
+- 顺手修的：页面注释原写散点几何在 `views/comparePage/scatterGeometry.ts`，该文件不存在，实际在 `composables/teamCompareScatter.ts`，已改正。
+- @fact `sweepPage:第三人候选圈定`：锚点改为 `src/composables/teamCompareSweep.ts#sweepCandidates`，「据」追加 `·复核@2026-09-27（CC-92 纯搬运，口径未变）`，zc drift 清零；`CALIBER_TRIGGER_ALLOWLIST` 里的登记路径同步修改。
+- **踩坑**：`zc.test.ts` 的结构熵用例原先断言「真实仓库 overThreshold > 0」，等于把「仓库恰好有超标文件」当作检测器可用的证据；拆完后立刻假红（体温正常反而报病）。已改为临时目录夹具自证（3 个超标文件按行数降序，`__tests__` 被排除），仓库现状只验形状，允许为 0。**同类教训：自证要靠夹具，不能靠仓库里恰好存在的病灶。**
+- 验证：vue-tsc 0；check-guards 25；verify 339 files / 3713 tests EXIT 0（`/home/kaua/calc-arch/verify111b.log`；第一次 `verify111.log` 就是上面那个假红）。
+- **页面余量只剩 38 行**（1462 / 1500）。之后往 TeamComparePage 加功能，优先写成 `src/composables/teamCompare*.ts`，页面只做组装。
+- 回退：`git revert 50e313e`。
+
