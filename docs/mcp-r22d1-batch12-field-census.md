@@ -2416,3 +2416,11 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 4. `wsl_exec` 缺失时的退路：`run_command` + `wsl -d Ubuntu -e bash -lc "cd <项目> && ..."`（仍在 WSL 内执行）。WSL 本身卡死时这条退路也无效，只能由宿主侧管理员重启 WSL 服务。
 
 **失控根因**：未查明。怀疑是超大文件或符号链接环。重跑普查前先执行 `find src/core src/composables/resourceCalc -name '*.ts' -size +300k` 和 `find ... -type l`。
+### 5.79 CC-70/71/72 done：core 角色专属数学盘点与收口（lead-arena-0925c，2026-09-27 第 91 轮）
+
+- **CC-70（盘点，只读）**：结论表在 `docs/mcp-core-agent-math-census.md`。core 里只剩一处「角色文案/倍率写死」（维琳娜两条气旋事件）和一处「默认值与注释矛盾」；帷幕、风蚀派发器、真元奇枢、加农转子裁定留 core。
+- **CC-71 `81acc14`**：`mechanics/types.ts` 加可选能力 `anomalyCorrosionEvents(source)`；`velina.ts#buildVelinaCorrosionEvents` 逐字搬入两条事件（id 前缀 import core 常量，`resultCardCorrosion.poolReleaseEventMarker` 也改用该常量）；`core/anomalyPool/corrosion.ts#resolveAnomalyCorrosionEvents` 派发，`core/anomalyPool.ts` 原位追加（顺序不变），只在 `corrosionSource` 有值时追加（原实现无值时追加 count=0 两条再被末尾 count>0 滤掉，结果相同）。测试 `agentMechanicViewCc71.test.ts`：声明者仅 1561；4 组次数下输出 toEqual 原写死对象；源码锁；反向变异（删能力行）MUT1=1。
+- **CC-72 `da6f203`**：删 `core/anomalyPool.ts` 解构默认 `cinema2CorrosionRate = 2 / 3`（与 types.ts「引擎不补默认值」注释矛盾），`helpers.ts` 字段改可选；模块 `resolveVelinaCorrosion` 仍默认 2/3，测试断言 undefined 与 2/3 结果相等。顺手改过时 CC-25 注释。
+- 未跑 perf 零差：理由是改动面只有事件对象来源，逐字对照测试 + anomalyPool 集成测试 + ccD3D1Verdict 已覆盖；若日后怀疑，入口 = 回退 `81acc14`。
+- 验证：vue-tsc 0；verify 328 files / 3680 tests（CC-71 时）、CC-72 后 328 files / 3681 tests。
+
