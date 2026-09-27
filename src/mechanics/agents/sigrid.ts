@@ -9,6 +9,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
+import type { StackActionCost } from '@/core/stunAxisStack'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
@@ -623,7 +624,24 @@ const settings: MechanicSetting[] = [
   },
 ]
 
+/**
+ * CC-43f：破阵连段伪块展开（原在 roundInputs.ts 内联）。连携命中失衡敌人后长按连放敛枪式一至三段：
+ * 展开成真实三段 id 进时间门控——窗内放得下几套就几套（超窗段被跳过 = 不吃易伤）；C6 加快 25% → 时长 ×0.75。免费（不耗闪能/喧响）。
+ */
+export function expandSigridAxisAction(input: {
+  slot: number; moveId: string; count: number; startTime: number; cinemaLevel: number; actionTimeOf: (moveId: string) => number
+}): StackActionCost[] | undefined {
+  if (input.moveId !== SIGRID_POZHEN_MOVE_ID) return undefined
+  const scale = input.cinemaLevel >= 6 ? 0.75 : 1
+  return SIGRID_LANCE_SEGMENT_IDS.map(segId => ({
+    slot: input.slot, moveId: segId, count: input.count, actionTime: input.actionTimeOf(segId) * scale,
+    energyCost: 0, decibelCost: 0, startTime: input.startTime,
+  }))
+}
+
 export const sigridMechanic: AgentMechanicModule = {
+  // CC-43f：轴内破阵伪块展开
+  expandAxisAction: expandSigridAxisAction,
   id: 'agent:sigrid',
   agentIds: [SIGRID_AGENT_ID],
   name: '希格莉德',

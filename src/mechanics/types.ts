@@ -20,6 +20,7 @@ import type {
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { SourcePanelsByOwner } from '@/core/buff'
+import type { StackActionCost } from '@/core/stunAxisStack'
 import type { AnomalySkillExecution, CoweringConfig } from '@/core/anomalyPool'
 import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type，见设计稿
@@ -927,6 +928,20 @@ export interface AgentMechanicModule {
    * 声明式（同 `producesInteractionTopUp` 范式），替代原身份判定 `findSlotByIdentity(['1481'])`。现实现：琉音。
    */
   ownsPromoteVariantAxisBlocks?: boolean
+  /**
+   * CC-43f（2026-09-27）：把本角色的**轴内伪块**展开成真实栈动作（进失衡窗口时间门控）。
+   * 编排层 `roundInputs.ts#buildStackAxes` 按轴块所在槽的 agentId 派发；返回 `undefined` = 不是我的伪块，走通用路径。
+   * `actionTimeOf(moveId)` 由编排层提供（查本槽技能表的 actionTime；mechanics 不能按值导入 composables）。
+   * 现实现：希格莉德（破阵连段 `sigrid-pozhen` → 敛枪式三段，C6 时长 ×0.75，免费）。
+   */
+  expandAxisAction?(input: {
+    slot: number
+    moveId: string
+    count: number
+    startTime: number
+    cinemaLevel: number
+    actionTimeOf: (moveId: string) => number
+  }): StackActionCost[] | undefined
   /**
    * 交互补齐量求解（CC-23，与 `producesInteractionTopUp` 配套）：编排层（`convergence.ts`）在
    * autoTopUp 门控成立时，对「声明了 producesInteractionTopUp 的那个槽位」的模块调用本能力，

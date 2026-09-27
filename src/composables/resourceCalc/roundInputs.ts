@@ -22,7 +22,6 @@ import type { PanelValues } from '@/types/catalog'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
-import { SIGRID_LANCE_SEGMENT_IDS } from '@/mechanics/agents/sigrid'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
@@ -199,17 +198,23 @@ export function createConvergenceRoundInputs(deps: {
           }
           continue
         }
-        // 希格莉德破阵连段（连携命中失衡敌人后长按连放敛枪式一至三段）：
-        // 展开成真实三段 id 进时间门控——窗内放得下几套就几套（超窗段被跳过=不吃易伤）；
-        // C6 加快 25% → 块时长 ×0.75。免费（不耗闪能/喧响）。
-        if (act.moveId === 'sigrid-pozhen') {
-          const pzSkills = catalogStore.agentSkillsByAgentMap.get(configStore.team[act.slot]?.agentId ?? '')
-          const pzScale = (configStore.team[act.slot]?.cinemaLevel ?? 0) >= 6 ? 0.75 : 1
-          for (const segId of SIGRID_LANCE_SEGMENT_IDS) {
-            const segMove = findMoveById(pzSkills, segId)
-            axisActions.push({ slot: act.slot, moveId: segId, count: act.count, actionTime: (segMove?.actionTime ?? 0) * pzScale, energyCost: 0, decibelCost: 0, startTime: act.startTime ?? 0 })
+        // CC-43f（2026-09-27）：角色轴内伪块由模块钩子 `expandAxisAction` 展开（现实现：希格莉德破阵连段 → 三段）。
+        // 按本块所在槽的 agentId 派发；原为 `act.moveId === 'sigrid-pozhen'` 内联 + 希格莉德常量值导入。
+        {
+          const exAgentId = configStore.team[act.slot]?.agentId ?? ''
+          const exSkills = catalogStore.agentSkillsByAgentMap.get(exAgentId)
+          const expanded = getAgentMechanic(exAgentId)?.expandAxisAction?.({
+            slot: act.slot,
+            moveId: act.moveId,
+            count: act.count,
+            startTime: act.startTime ?? 0,
+            cinemaLevel: configStore.team[act.slot]?.cinemaLevel ?? 0,
+            actionTimeOf: id => findMoveById(exSkills, id)?.actionTime ?? 0,
+          })
+          if (expanded) {
+            axisActions.push(...expanded)
+            continue
           }
-          continue
         }
         const agentId = configStore.team[act.slot]?.agentId ?? ''
         const skills = catalogStore.agentSkillsByAgentMap.get(agentId)
