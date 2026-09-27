@@ -139,7 +139,7 @@ describe('环内选点：pickOuterCycleMember（与数值基线无关的纯函�
  */
 const CORPUS_TOL = { stun: 0.05, disc: 1, time: 2 }
 const CORPUS: Array<[string, number[][], number]> = [
-  ['yixuan-jufufu-lucia', [[0.37, 0.5385, 0, 1.1335], [0.5385, 0.6584, 0, 0], [0.6584, 0.37, 0, 1.1335]], 1],
+  ['yixuan-jufufu-lucia', [[0.37, 0.5385, 0, 1.1335], [0.5385, 0.6584, 0, 0], [0.6584, 0.37, 0, 1.1335]], 0], // CC-136：①里 0.1685 与 0.1199 同级、②同级 ⇒ ③′ 取 stunIn 最小（旧规则按两两比较顺序得 1）
   ['claret-roxy-rina', [[2.0961, 2.2078, 0, 0.0828], [2.2078, 2.0094, 0, 0.1423], [2.0094, 2.0961, 0, 0.0842]], 2],
   ['auto-1431-1341-1311', [[0.2672, 0.888, 0, 13.9173], [0.888, 0.9211, 0, 3.9311], [0.9211, 0.2672, 0, 4.9203]], 1],
   ['般岳 4-环（1471 单人 + 1481）', [[0, 2, 0, 0.766], [2, 1.6, 0, 45.894], [1.6, 0, 0, 79.615], [0, 0, 0, 13.289]], 1],
@@ -151,6 +151,28 @@ describe('环内选点：语料实测（lead 2026-09-24 @8fc2d3c）', () => {
   it.each(CORPUS)('%s', (_name, rows, expected) => {
     const members = rows.map(([stunIn, next, disc, time]) => m(stunIn, next, disc, time))
     expect(pickOuterCycleMember(members, CORPUS_TOL).index).toBe(expected)
+  })
+})
+
+describe('环内选点：旋转不变（CC-136）', () => {
+  // 同一个环从不同相位检出 = 成员数组的循环旋转；选中的成员必须容差等价（按内容比对）。
+  it.each(CORPUS)('%s', (_name, rows) => {
+    const members = rows.map(([stunIn, next, disc, time]) => m(stunIn, next, disc, time))
+    const picked = members[pickOuterCycleMember(members, CORPUS_TOL).index]
+    for (let r = 1; r < members.length; r++) {
+      const rot = [...members.slice(r), ...members.slice(0, r)]
+      const p = rot[pickOuterCycleMember(rot, CORPUS_TOL).index]
+      // 容差等价即可：各维全同级的成员（如叶瞬光 C1 两个 time 差 0.06s 的成员）只能走 ③ 取最后一轮，这是已知残余
+      expect(Math.abs(p.stunIn - picked.stunIn)).toBeLessThanOrEqual(CORPUS_TOL.stun)
+      expect(Math.abs(Math.abs(p.next - p.stunIn) - Math.abs(picked.next - picked.stunIn))).toBeLessThanOrEqual(CORPUS_TOL.stun)
+      expect(Math.abs(p.disc - picked.disc)).toBeLessThanOrEqual(CORPUS_TOL.disc)
+      expect(Math.abs(p.time - picked.time)).toBeLessThanOrEqual(CORPUS_TOL.time)
+    }
+  })
+  it('2-环两成员 ①② 同级：不论谁在最后都选 stunIn 小者', () => {
+    const a = m(1.2, 2.0, 0, 0.5), b = m(2.0, 1.2, 0, 1.4)
+    expect(pickOuterCycleMember([a, b], CORPUS_TOL).index).toBe(0)
+    expect(pickOuterCycleMember([b, a], CORPUS_TOL).index).toBe(1)
   })
 })
 

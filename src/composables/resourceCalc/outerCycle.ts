@@ -83,13 +83,21 @@ export interface OuterCyclePickResult {
  * 判据按序（规则来历与实测反例见 `useResourceCalc` 内 `pickCanonical` 的长注释）：
  *   ⓪ **零窗成员不参选**：`stunIn >= tol.stun` 的为带窗成员；有带窗成员时只在带窗成员里选
  *      （过滤掉任何成员即 `pickedEarlier = true`），全员零窗（真 0 失衡队）则全体参选。
- *   ① **失衡自洽度** `|next − stunIn|` 最小：差 < −tol.stun 时胜出（容差与判稳/判环同源）。
- *   ⓪′ **离散自洽度**：失衡同级时，截断秒数差 < −tol.disc 的成员胜出。
- *   ② **时间自洽度**：前两条同级时，时间差须 > tol.time 才分高下（≤ 视为同级）。
- *   ③ 同级取最后一轮（与旧行为一致）。
+ *   以下各级都是「相对当前池内最优」的筛选（CC-136 起；此前为带容差的两两比较，不传递、依赖成员排列）：
+ *   ① **失衡自洽度** `|next − stunIn|`：保留 ≤ 池内最小值 + tol.stun 的成员（容差与判稳/判环同源）。
+ *   ⓪′ **离散自洽度**：再保留截断秒数 ≤ 最小值 + tol.disc 的成员。
+ *   ② **时间自洽度**：再保留 ≤ 最小值 + tol.time 的成员（2s 以内视为同级）。
+ *   ③′ **输入失衡次数小者**（CC-136，第 160 轮）：再保留 `stunIn` ≤ 最小值 + tol.stun 的成员。
+ *      为什么：2-循环两成员在 ① 上恒相等、② 又常落在 2s 同级容差内，旧 ③「取最后一轮」让结果取决于
+ *      **循环在第几轮被识别**（奇偶性）——扫描实测 auto-1201-1481-1211/c6 在琉音转模系数 1.90..2.10 的 41 个点上，
+ *      38 个点落 3 轮 / 规划失衡 0.70，3 个孤立点（1.91 / 1.955 / 2.0）落 4 轮 / 1.1186，总伤差 +5.34%。
+ *      ③′ 只看成员自身的输入、筛选是全序 ⇒ 同一个环（不论从哪个相位检出）永远选同一个成员。
+ *      取「小」= 不高估失衡收益（与 CC-134 floor 同向的保守口径）。
+ *      详见 docs/mcp-outer-fixedpoint-continuity.md。回退：换回两两比较循环（git show 0028eb01:本文件）。
+ *   ③ 仍同级（如只有反馈签名在交替的周期）取池内最后一轮（与旧行为一致）。
  *
- * ⚠ `disc`/`time` 允许为 `+Infinity`（无结果成员）：差值为 `Infinity − Infinity = NaN` 时所有比较
- * 为 false ⇒ 保持「无结果成员永不因该维度胜出」的既有行为。不要改写比较式来"修" NaN。
+ * `disc`/`time` 允许为 `+Infinity`（无结果成员）：有有限值成员时 Infinity 自然被筛掉；
+ * 全员 Infinity 时 `Infinity <= Infinity + t` 为真 ⇒ 全员保留、该维度不分高下（与旧语义一致）。
  */
 export function pickOuterCycleMember(
   members: readonly OuterCyclePickMember[],
@@ -100,18 +108,20 @@ export function pickOuterCycleMember(
     if (members[i].stunIn >= tol.stun) candidateIdx.push(i)
   }
   const idx = candidateIdx.length > 0 ? candidateIdx : members.map((_, i) => i)
-  let pickedEarlier = idx.length < members.length
-  let bestIdx = idx[idx.length - 1]
-  for (let j = idx.length - 2; j >= 0; j--) {
-    const c = members[idx[j]]
-    const best = members[bestIdx]
-    const dStun = Math.abs(c.next - c.stunIn) - Math.abs(best.next - best.stunIn)
-    const dDisc = c.disc - best.disc
-    const better = dStun < -tol.stun
-      || (dStun <= tol.stun && dDisc < -tol.disc)
-      || (dStun <= tol.stun && dDisc <= tol.disc && c.time < best.time - tol.time)
-    if (better) { bestIdx = idx[j]; pickedEarlier = true }
+  // CC-136：以「当前最优」为基准逐级筛选（全序，与成员排列/轮次相位无关），取代原两两比较
+  // （带容差的两两比较不传递，结果随检出轮次的旋转而变）。回退：换回两两比较循环。
+  let pool = idx
+  const keep = (key: (m: OuterCyclePickMember) => number, t: number) => {
+    const best = Math.min(...pool.map(i => key(members[i])))
+    pool = pool.filter(i => key(members[i]) <= best + t)
   }
+  keep(m => Math.abs(m.next - m.stunIn), tol.stun) // ① 失衡自洽
+  keep(m => m.disc, tol.disc) // ⓪′ 离散自洽
+  keep(m => m.time, tol.time) // ② 时间自洽
+  keep(m => m.stunIn, tol.stun) // ③′ 输入失衡次数小者
+  // ③ 仍同级：取最后一轮
+  const bestIdx = pool[pool.length - 1]
+  const pickedEarlier = idx.length < members.length || bestIdx !== idx[idx.length - 1]
   return { index: bestIdx, pickedEarlier }
 }
 
