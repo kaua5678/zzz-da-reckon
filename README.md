@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（57 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（58 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -127,6 +127,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-logic-editor-history.md` | **逻辑编辑器可逆试改**：会话级撤销/重做、无效草稿恢复、独立快照与输入框快捷键边界 |
 | `docs/mcp-r65j1-decibel-cap-verdict.md` | **R65-J1 首案裁决备忘**：橘福福「喧响上限+1000」在整局总量口径下零消费者（不是缺口）；证据链、护栏判据 decibelCapVerdict.test.ts 与未来喧响时间轨接入时的重裁决步骤 |
 | `docs/mcp-calibration-atoms.md` | **校准原子测量清单 v1（方向 B 第 1 刀，CC-97）**：13 个引擎级局部可观测量（A1 局内攻击力%基底 / 防御区 / 失衡易伤 / 异常倍率与时长 / 紊乱公式 / 贯穿力 / 弹刀喧响 / 特殊虚耀 / 余火标度）的比值法测量步骤、引擎当前口径出处与预测值、录入格式与 v2 开工粒度 |
+| `docs/mcp-timeline-shadow-kernel.md` | **事件时间轴影子内核设计稿与进度账本（R4 · 方向 A 第 1 刀）**：两条轨（失衡、喧响）的现状、D1–D7 决定（重放收敛产物、零入边、闸门规避）、3 支对账队伍、归因分类 E / U / B、分步验收 |
 | `docs/mcp-mechanic-dataization-census.md` | **机制模块数据化盘点（方向 C 第 1 刀，CC-98）**：62 个模块 / 62 份 spec 一一对应；按「spec 生成不了的过程类能力数」分 A2 / B30 / C29；spec 的 4 种原语缺口 G1–G4；5 个纯 spec 候选；第 2 刀被方向 A 事件钩子阻塞 |
 | `docs/LONG-TERM-DIRECTIONS.md` | **R3 长期方向提案（只提案不实施，待用户挑选）**：A 事件时间轴内核替代整局总量+不动点 / B 受控实测校准集（真值锚）/ C 机制即数据 + 版本流水线 / D 统一决策层 / E 口径与数据版本绑定；各方向的根本问题、时机、收益、不可逆点、切刀与是否与当前重构冲突，结尾给推荐顺序 |
 | `docs/mcp-dev-process-speed.md` | **R2 开发流程提速（先量再改）**：一张卡的时间花在哪（实测表）、验证为何必要、已落地的零强度损失优化（tsc 增量 17→1.5s、零差四路并行 176→51s `.zc/perf/zd.sh`、文档与 verify 重叠）、**会削弱保证的选项清单（待用户裁决）** |

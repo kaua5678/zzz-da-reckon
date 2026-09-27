@@ -6,7 +6,7 @@
 > **维护**：卡只由主代理写，工人不改本文件；卡经主代理复核合入后**删卡**，结论进提交说明，不在此留编年。
 > 需要用户裁决、或需要主代理先做设计的活条目不进本队列，留在 `.claude/OPEN-ITEMS.md`。
 
-> **🔝 置顶（第 117 轮，用户需求 R4）**：下一轮 lead 先做 **R4-A1 方向 A 影子内核**（`docs/REQUIREMENTS.md` R4），再做队列里的其他任何事。开工步骤见下方「第 117 轮」交接。本条不是派给工人的卡：影子内核需要 lead 级设计，不要派给 dsh。
+> **🔝 置顶（用户需求 R4，第 118 轮更新）**：lead 先推进 **R4-A1 方向 A 影子内核**，再做队列里的其他任何事。**进度和下一步以 `docs/mcp-timeline-shadow-kernel.md` §8 账本为准**，开工细节见下方「第 118 轮」交接。本条不是派给工人的卡：影子内核需要 lead 级设计，不要派给 dsh。
 
 ## 0. 派发与回收
 
@@ -348,6 +348,13 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
        - 汇总覆盖率，挑出 5 个最适合迁成纯 spec 的候选（方向 C 第 2 刀用）。
        - 适合派 dsh 只读并行（例如每人 15 个模块），lead 抽查。**不改 src**。
   - 维护约定：以后的交接段落插在这一条之上。**写「下一步」之前，先在 arch 卡表里 grep 核实那张卡的状态**，上轮就是没核实才写错的。
+- **第 118 轮（2026-09-27）**：R4-A1 第 0 步完成，产出设计稿 `docs/mcp-timeline-shadow-kernel.md`（提交号见 arch 卡表 R4-A1 行）。只读，src 零改动。
+  - **下一步（第 1 步，直接开工）**，按设计稿 §3 建目录：
+    1. 新建 `src/core/timeline/types.ts`、`stunTrack.ts`、`decibelTrack.ts`，写纯函数；再写 `__tests__/stunTrack.test.ts` 和 `decibelTrack.test.ts`。用手搓的小输入验证：整数次数、截断、返还、上限溢出记入 wasted、两种释放策略。
+    2. 在 `scripts/check-guards.mjs` 加判据 26：非测试 src 不得 import `core/timeline`；`core/timeline` 不得 import composables、stores、mechanics。同步修改 `checkGuards.test.ts` 的 `toHaveLength`，并做检测器自证。
+    3. 性能两数：先用小输入测影子耗时，引擎耗时放到第 2 步用 harness 测，都写进设计稿 §8。
+    4. 跑全量 verify 和 `vue-tsc -b`。影子零入边，所以 `zd.sh` 和 `timeGolden` 必然零差，但仍要跑一次 zd.sh 作证。
+  - **已知坑**：代码和注释里都不要出现字符串 `simulateDecibelTrack`（闸门按字符串匹配）；`inAxisStunTotal` 的语义要在第 1 步核实后写回设计稿 D3。
 - **第 117 轮（2026-09-27）**：CC-98 done（`docs/mcp-mechanic-dataization-census.md`，提交号见 arch 卡表）。用户在 `19c3a13` 新增了 **R4（方向 A 影子内核）**，已接单并置顶。
   - **下一步（第 118 轮，直接开工 R4-A1）**，全部只读，产出设计稿 `docs/mcp-timeline-shadow-kernel.md`：
     1. 读 `docs/REQUIREMENTS.md` R4 全文，以及 `docs/LONG-TERM-DIRECTIONS.md` 方向 A（第 22–52 行）。

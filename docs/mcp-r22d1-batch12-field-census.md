@@ -2852,3 +2852,19 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
   - **扫描踩坑**：首轮只认 `key:` 和 `key(`，漏掉了简写属性 `key,`，潘引壶和妮可因此被误判为 0 能力；agentId 首轮只认字面量，62 个里只抽到 3 个。两处都已修正。
 - **R4 接单**（用户在 `19c3a13` 新增）：本轮先收尾已完成扫描的 CC-98；R4 的开工时点定为第 118 轮，并且排在最前。理由写在 REQUIREMENTS R4 条目下方。
 - 本卡只改文档，没有动 src。
+
+### 5.106 R4-A1 第 0 步：事件时间轴影子内核设计稿（lead-arena-0925c，2026-09-27 第 118 轮）
+
+- 产出：`docs/mcp-timeline-shadow-kernel.md`，只读，没有动 src。
+- 读码核实的要点：
+  - 失衡次数 = floor(有效总失衡 ÷ Boss 失衡值)，由 `solveTeam` 外层不动点求解（上限 20 轮，有 2-循环 / 长环选点）；
+  - 大招次数 = floor(总喧响 ÷ ultimateCost)，没有上限；
+  - `simulateDecibelTrack` 在非测试代码里零调用，并受 `decibelCapVerdict.test.ts` 形状面闸门看守（字符串匹配）；
+  - 轴预设窗口内有逐动作 startTime，窗口外是总量；
+  - `src/core/**` 目前零处 import composables。
+- 关键决定：
+  - D1：第 1 刀重放收敛产物，不从头模拟，保证归因干净；
+  - D4：影子内核自带按槽分开、带上限参数的喧响轨，不引用 `simulateDecibelTrack`，免得误触闸门；
+  - D6：影子内核零入边，第 1 步加判据 26 锁死；
+  - core 不引用 composables，改在 types.ts 里声明 RoundProjection 结构子集。
+- 对账队伍：T1 `auto-1471-1571-1451`、T2 `auto-1371-1481-1451`、T3 `auto-1591-1571-1211`，备选 `auto-1051-1481-1451`。
