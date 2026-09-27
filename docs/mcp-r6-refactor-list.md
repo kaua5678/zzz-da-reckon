@@ -236,13 +236,29 @@
 | 1071 凯撒 / 1271 赛斯 | 冲击力 / 攻击力 → 护盾 | 护盾不影响伤害 | 不适用 |
 | **1621 洛克茜** | 能量自动回复 | 原读基础回能 `energyRegen` | ❌ → **CC-127 已修**（真 bug） |
 | **1571 诺姆** | 暴击率 | 原读局内 | ❌ → **CC-128 已修** |
-| **1461 席德** | 攻击力（选正兵） | `level60.atkBase` | ❌ → **CC-129 待做** |
+| **1461 席德** | 攻击力（选正兵） | ~~`level60.atkBase`~~ → `cfg.outOfCombatPanel.atk` | ✅ CC-129 `850246fc` |
 
 **结论**：「初始」这一类在模块侧（§2.12）和原文侧（本节）都已查完。除 CC-129 外，全部口径正确或有意近似。
 
-**CC-129 开工方案**：
+**CC-129 开工方案**（✅ 第 154 轮已按第 2 步「能拿到」分支完成，`850246fc`；以下保留为记录）：
 1. 读 `src/mechanics/agents/xide.ts` 的 `applyXideTeamConfig`（build 阶段）与 `AgentTeamConfigInput`（`src/mechanics/types.ts`），确认 build 阶段能否拿到各队友的局外面板（team 成员上可能有 panel / outOfCombat 字段；没有就看 `sourcePanelsByOwner` 之类的现成结构）。
 2. 能拿到：改为按队友局外 `atk` 选；拿不到：改为 `level60.atkBase + 音擎 level60.atkBase`（仍是近似，但更接近「初始攻击力」），并在注释写明。
 3. 验证：zd（席德预设里若只有 1 名强攻队友则零差）+ 探针（两名强攻队友、装备差异使选人翻转）。
 
 **方法沉淀（字段语义）**：`PanelValues.energyRegen` 是**基础**回能，局外总回能在 `energyRegenOutOfCombat`，teammate formula 用 `sourceStat: energyRegenTotal`。以后写「按回能」的机制一律读后两者。
+
+### 2.15 字段语义误读扫描（第 154 轮，洛克茜 CC-127 的同类排查）
+
+**范围**：`PanelValues` 中注释标「基础」语义的字段（`src/types/catalog.ts` 第 42-60 行：`energyRegen`、`flashEnergyRegen`），两组加成字段（`energyRegenBonusPct/Flat`、`flashEnergyRegenBonusPct/Flat`），以及机制 / spec / core / 编排层对 `agent.level60.*` 的直接读取。方法：`timeout 40 git grep -n <字段> -- src | grep -v __tests__`，逐处判断「想要基础值还是总值」。
+
+| 字段 | 读取点 | 判断 |
+|---|---|---|
+| `energyRegen` | 第 153 轮已查：resourceIncome 基础×加成、StatPanel「基础自动回复」、buff.ts / runtime.ts 的 `energyRegenTotal` 合成、1561 spec 走 `energyRegenOutOfCombat` | ✅（洛克茜 CC-127 是唯一误读，已修） |
+| `flashEnergyRegen` | `core/resource/resourceIncome.ts:44` 基础×加成；`core/buff.ts:479` `flashEnergyRegenTotal` 合成；StatPanel / FinalPanel / DebugPage 展示（标「基础」或旁边有加成行） | ✅ 全部有意取基础 |
+| `energyRegenBonusPct/Flat` | `panelPhases.ts:563` 合成局外总回能；buff.ts / runtime.ts 合成；burnice.ts:293 优先读 `energyRegenOutOfCombat`、回退自算；rina.ts:374 写入 | ✅ |
+| `energyRegenTotal`（teammate formula） | 1301 奥菲丝、1521 希希芙，原文「初始能量自动回复」，source 面板为局外（§2.14 已判） | ✅ |
+| `level60.*` | `core/panel.ts` 面板构建本身；`helpers.ts:475` 命破判定；claret.ts 锐能基础累积 `sharpnessRegen`（无加成来源）；xide.ts 选正兵 | ✅；xide 已由 CC-129 修正 |
+
+**结论**：除 CC-129（已修）外没有新的误读。顺手修正零差注释 `src/mechanics/agents/velina.ts` 回能转模一处：原注释写「加成只体现在 energyRegenTotal」，与实际 spec `sourceValue: energyRegenOutOfCombat` 不符，已改为说明读局外总回能。
+
+**方法沉淀**：build 阶段（`applyTeamConfig`）需要队友「初始属性」时，读 `characters.find(c => c.slot === s)?.outOfCombatPanel`（CC-129 起编排层通用挂载），不要读 `agent.level60.*`。

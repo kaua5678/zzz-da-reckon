@@ -6,10 +6,10 @@
 > **分工**：固定的 lead / worker 分工已废除（`docs/mcp-working-model.md` §1）。每个会话都是完整执行者。子代理（dsh）只外包输入输出能写死的机械活，派活时仍按 §0 的纪律。
 > 需要用户裁决的事写进对应专题文档；用户的新需求在 `docs/REQUIREMENTS.md`，**每轮先读**。
 
-> **🔝 置顶（第 121 轮更新）**：
-> 1. **R6 第 1 步**：画架构地图，写 `docs/ARCHITECTURE-OVERVIEW.md`。
-> 2. **R5 第 2 刀**：步骤见 §2。账本在 `docs/mcp-r5-spec-impl-reconciliation.md` §6。
-> 3. **R6 第 2 步**：重构机会清单。
+> **🔝 置顶（第 154 轮更新）**：
+> 1. `docs/REQUIREMENTS.md` 的 R1–R8 已全部处理完（R4 被用户撤销）。有新 R 条目时先做新条目。
+> 2. 没有新需求时，按 §2「下一步」推进。当前主线是「规格-实现对账」的尾项：逐条核对原文口径与实现（「初始」、字段语义、buff 作用对象），发现差异就开 CC 卡，卡表在 `docs/mcp-calc-core-architecture.md`。
+> 3. 原第 121 轮置顶的三项（R6 第 1 步、R5 第 2 刀、R6 第 2 步）都已完成（R5 `9d56de8`，R6 `6db533b`）。
 >
 > 其他状态：
 > - R8 执行项：W1、W2 已**撤回**（读码后前提不成立，见 `docs/mcp-working-model.md` §2.5）；W3、W4 已完成（第 121 轮）。
@@ -69,20 +69,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 153 轮（2026-09-27，提交 6d713c26（CC-127/128）+ 文档 d53c14f3 + 本回填提交；上一轮文档 = 9c5ef715）
+### 第 154 轮（2026-09-28，代码 `850246fc` + 文档提交「docs: round 154」；上一轮文档 = d53c14f3 / 5b4b9f09）
 
 - **做到哪**：
-  - 「初始」原文侧反查完成（`docs/mcp-r6-refactor-list.md` §2.14，38 条）。
-  - **CC-127 洛克茜真 bug**：`src/mechanics/agents/roxy.ts` 回能转模改读 `energyRegenOutOfCombat`（原读基础回能，转模从未触发）。5 个洛克茜预设伤害 +5.7%~+14.9%，timeGolden 19 叶已逐条解释并重生成（卡表 CC-127 行）。
-  - **CC-128 诺姆**：`src/mechanics/agents/norma.ts` 初始暴击读局外，预设内零差。
-  - 新单测 `src/mechanics/__tests__/initialRegenCritCc127.test.ts`；`src/specs/agents/1621.json` 注记同步。
-  - 验证：verify / vue-tsc / CG 见提交；zd 差异只在 5 个洛克茜预设；反向验证旧实现 3 条全红。
+  - **CC-129 席德选正兵**（`850246fc`）：`src/mechanics/agents/xide.ts` applyXideTeamConfig 改按队友局外攻击 `cfg.outOfCombatPanel.atk` 选；`CharacterOperationConfig` 新增可选只读字段 `outOfCombatPanel`（`src/types/resource/config.ts`），由 `buildCharConfig`（`src/composables/resourceCalc/helpers.ts`）通用挂载。zd 零差；新单测 `src/mechanics/__tests__/vanguardInitialAtkCc129.test.ts`（反向验证 2 条红）。
+  - **字段语义误读扫描完成**（`docs/mcp-r6-refactor-list.md` §2.15）：除 CC-129 外无新误读；顺手修正 `velina.ts` 一处过时注释（零差）。
+  - 验证：vue-tsc 0；verify176 全绿（3784 passed）；CG 见提交。
 - **下一步（按顺序，可直接开工）**：
-  1. **CC-129 席德选正兵按初始攻击**：开工方案在清单 §2.14 末。
-  2. 同类「字段语义误读」扫描（洛克茜的教训）：`PanelValues` 里带「基础」语义的字段（`energyRegen`、`atkBase` 类、`flashEnergyRegen` 等，见 `src/types/catalog.ts` 第 30-60 行注释）逐个 `git grep` 读取点，确认每处想要的是基础值还是总值。先读 catalog.ts 列出基础语义字段清单，再逐个查。
+  1. **核对席德「正兵专属」buff 的作用对象**：`public/static/teammate-buffs.json` 1461 组 `seed.core_vanguard_bright_attack`（明攻 攻击 / 暴伤）效果的 `target.kind` 是 `default`，原文只给[正兵]（1 人）。先查 `default` 在 `src/core/teammateBuffSource.ts` / `src/core/buff.ts` 里怎么解析（全队？当前被计算的槽？），再看 1461 组有没有别的机制把它限定到正兵（如 `panelPhases.ts` 427 行附近的门控、xide.ts）。若会发给非正兵的强攻 / 其他队友，开 CC-130：改成只给 `xideVanguardSlot`（面板阶段拿不到 cfg 时，可以仿照 CC-129 在面板阶段按队友局外攻击重算正兵槽位，注意别产生循环依赖）。「围杀」增伤同样核对。验证：zd（席德预设），探针看非正兵队友面板攻击是否含 +明攻。
+  2. 若 1 无问题：处理未决项「每超过 X 是否取整」（见下方未决），先列出所有「每超过」机制的现行取整方式成表，写进清单，再决定是否开卡。
 - **本轮拍板**：
-  - 洛克茜按原文改（R5 数据可信；原实现读错字段属于 bug，不是口径选择）。数值升幅大，但每条差异都能解释到「攻击 +960 / 冲击 +76.8 双封顶」。
-  - CC-129 不在本轮做：build 阶段能否拿到局外面板还没查，且只影响多强攻队伍的选人。
+  - 局外面板挂在 cfg 上而不是给 applyTeamConfig 另加参数：依据是 build 阶段模块本来就遍历 `characters`，且 panelPhases 已在 buildCharConfig 里算好，零额外计算；无角色分支，不违反编排层规则。回退点：删字段 + xide 回退两行。
+  - 局外攻击缺失时回退 `level60.atkBase` 而不是 0：保证手搓 cfg 的老测试语义不变。
 - **已知坑**：
   - **往 wsl_exec 命令里内联含反引号的文本会被外层 shell 当命令替换吞掉**（第 153 轮卡表行丢字）：改文档一律写成脚本文件上传后执行，不要内联 heredoc。
   - **改到失衡 / 时间分配的数值时有两份基线**：timeGolden（`TIME_GOLDEN_UPDATE=1`）和 `timeFillRatchet.baseline.json`（`TIME_RATCHET_UPDATE=1 npx vitest run timeFillRatchet`），两份都要逐条解释后重生成；后者只在全量 verify 里才暴露。
