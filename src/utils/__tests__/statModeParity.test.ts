@@ -147,7 +147,8 @@ describe('判据 19：stat 结算口径单一事实源（statSettlementMode）',
   it('②c 真实调用点一律用结算口径（防视图层回退到 isPctStat，端到端测不到）', () => {
     const callSites: Array<[string, RegExp, RegExp]> = [
       // [文件, 必须是结算口径的那行, 该文件里「结算位上出现展示口径」的回退形态]
-      ['src/views/TeamConfigPage.vue',
+      // CC-51（2026-09-27）：局外面板的全局 Buff 结算自 TeamConfigPage.vue 搬到编排层 outOfCombatPanel.ts，锁跟着搬
+      ['src/composables/outOfCombatPanel.ts',
         /applyTargetedStat\(panel,\s*buff\.stat,\s*buff\.value,\s*statSettlementMode\(buff\.stat\)/,
         /applyTargetedStat\([^)]*isPctStat\(/],
       ['src/views/DebugPage.vue',

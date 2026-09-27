@@ -873,14 +873,12 @@ import { computePanel } from '@/composables/resourceCalc/helpers'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import CharacterCard from '@/components/CharacterCard.vue'
 import StatPanel from '@/components/StatPanel.vue'
-import { calcPanel } from '@/core/panel'
-import { applyTargetedStat } from '@/core/buff'
-import { teammateBuffSourceContextFromStores } from '@/composables/teammateBuffContext'
+import { computeOutOfCombatPanel } from '@/composables/outOfCombatPanel'
 import { getImageUrl } from '@/utils/image'
-// ⚠ 两个谓词量的是两件事：`isPctStat` = **展示**口径（UI 显示 % 还是绝对值），
-// `statSettlementMode` = **结算**口径（`applyStat` 的 mode 实参）。全局 Buff 要的是后者——
-// 用展示口径会让同一份 Buff 在预览与引擎算出两个面板（实测 anomalyMastery 178 vs 192.4）。
-import { isPctStat, phaseStatLabel, statSettlementMode } from '@/utils/statMeta'
+// ⚠ `isPctStat` = **展示**口径（UI 显示 % 还是绝对值）；全局 Buff 结算要的是 `statSettlementMode`（结算口径）——
+// CC-51 起局外面板的全局 Buff 结算已搬到 composables/outOfCombatPanel.ts（那里用 statSettlementMode，
+// 用展示口径会让同一份 Buff 在预览与引擎算出两个面板，实测 anomalyMastery 178 vs 192.4）。
+import { isPctStat, phaseStatLabel } from '@/utils/statMeta'
 import { localized } from '@/utils/format'
 import { discSetGapLabel } from '@/utils/modelingGaps'
 import { SPECIALTY_LABEL, ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
@@ -1095,10 +1093,6 @@ const currentAgent = computed(() => {
   return id ? catalogStore.getAgent(id) ?? null : null
 })
 const selectedAgentDefaultTimeWeight = computed(() => configStore.getDefaultBasicAttackTimeWeight(currentAgent.value))
-// CC-49：依赖组装收拢到编排层（判据 7；与 ImpactChart 原为逐字相同的两份）
-function getTeammateBuffSourceContext() {
-  return teammateBuffSourceContextFromStores(configStore, catalogStore)
-}
 
 
 /** 图片加载失败状态（切换角色/音擎/套装时重置） */
@@ -1149,38 +1143,8 @@ const currentPanel = computed<PanelValues | null>(() => {
   if (panelMode.value === 'inCombat') {
     return computePanel(configStore.selectedSlot, configStore, catalogStore)
   }
-  const agent = catalogStore.getAgent(char.agentId)
-  if (!agent) return null
-
-  const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
-
-  const { enabledTeammateBuffs, sourcePanelsByOwner } = getTeammateBuffSourceContext()
-
-  // 计算基础面板
-  const result = calcPanel(
-    agent,
-    wEngine,
-    char.driveDisc,
-    catalogStore.driveDiscSetsMap,
-    enabledTeammateBuffs,
-    catalogStore.statRules,
-    {
-      cinemaLevel: char.cinemaLevel,
-      wEngineModLevel: char.wEngineModLevel,
-      sourcePanelsByOwner,
-      effectCoverageMap: configStore.getWEngineEffectCoverageMap(),
-      enemyWeakness: configStore.enemy.weakness,
-    }
-  )
-
-  // 应用全局 buff
-  const panel = { ...result.outOfCombat }
-  for (const buff of configStore.globalBuffs) {
-    if (!buff.enabled) continue
-    applyTargetedStat(panel, buff.stat, buff.value, statSettlementMode(buff.stat), buff.targetSkillType)
-  }
-
-  return panel
+  // CC-51：局外面板（基础面板 + 全局 Buff）搬到编排层，与局内 computePanel 对称（判据 7）
+  return computeOutOfCombatPanel(configStore.selectedSlot, configStore, catalogStore)
 })
 
 // 特化/属性中文名：定义已外置到 utils/agentLabelMaps.ts（角色下拉标签 + 套装效果门槛标签共用同一份）
