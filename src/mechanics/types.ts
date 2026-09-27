@@ -809,6 +809,14 @@ export interface AgentMechanicModule {
    */
   defaultBasicAttackTimeWeight?: number
   /**
+   * CC-64b（2026-09-27）：队友 buff 的**附加启用条件**（configStore#deriveTeammateBuffEnabled 读）。
+   * store 对每条 buff 依次询问**全部已注册模块**的本钩子；第一个返回 boolean 的生效，最终启用 = baseEnabled && 返回值；
+   * 返回 undefined = 这条 buff 不归我管。`team` = 队内查得到 Agent 的角色（槽位顺序）；模块自己在 team 里找本角色
+   * （不在队也会被询问——须按「不在队」口径作答，与迁移前逐值一致）。
+   * 现实现：蕾米埃尔（额外能力 tier 1..3 三条攻击 buff、核心被动 refringe_3、prismatic_buildup）。
+   */
+  teammateBuffGate?(input: { buffId: string; team: ReadonlyArray<Agent> }): boolean | undefined
+  /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。
    * 声明后，资源页「异放元素分配」卡与影响分析的占比变量会为本角色出控件。

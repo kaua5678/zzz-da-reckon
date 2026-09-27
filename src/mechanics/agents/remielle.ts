@@ -379,9 +379,43 @@ const REMIELLE_Q_SPLIT = {
   batchNote: 'Q 每次固定打 3 个耀变',
 } as const
 
+/**
+ * CC-64b：蕾米埃尔额外能力档位（原 stores/config.ts#deriveTeammateBuffEnabled 内 getRemielleAdditionalState，逐字搬入）。
+ * active = 其余队友里有异常职业或与蕾米埃尔同阵营；anomalyCount = 全队异常职业数（含本人）；tier = active ? clamp(anomalyCount, 1, 3) : 0。
+ * 按 `agent.id` 或 `agent.teammateBuffId` 识别本人；不在队 ⇒ { active: false, anomalyCount: 0, tier: 0 }。
+ */
+export function remielleAdditionalState(team: ReadonlyArray<Agent>): { active: boolean; anomalyCount: number; tier: number } {
+  const selfIdx = team.findIndex(agent => agent?.id === REMIELLE_AGENT_ID || agent?.teammateBuffId === REMIELLE_AGENT_ID)
+  if (selfIdx < 0) return { active: false, anomalyCount: 0, tier: 0 }
+  const remielleFaction = team[selfIdx].faction
+  const otherAgents = team.filter((_, i) => i !== selfIdx)
+  const active = otherAgents.some(agent =>
+    agent?.specialty === 'anomaly' || (!!remielleFaction && agent?.faction === remielleFaction)
+  )
+  const anomalyCount = team.filter(agent => agent?.specialty === 'anomaly').length
+  const tier = active ? Math.max(1, Math.min(3, anomalyCount)) : 0
+  return { active, anomalyCount, tier }
+}
+
+/** CC-64b：受档位门控的 buff id → 附加条件（原 store resolveSpecialTeammateBuffEnabled 的 5 个分支） */
+const REMIELLE_BUFF_GATES: Readonly<Record<string, (st: ReturnType<typeof remielleAdditionalState>) => boolean>> = {
+  '1581.additional_ability.atk_1_anomaly': st => st.active && st.tier === 1,
+  '1581.additional_ability.atk_2_anomaly': st => st.active && st.tier === 2,
+  '1581.additional_ability.atk_3_anomaly': st => st.active && st.tier === 3,
+  '1581.core_passive.refringe_3_anomaly': st => st.tier === 3,
+  '1581.additional_ability.prismatic_buildup': st => st.active,
+}
+
+function remielleTeammateBuffGate(input: { buffId: string; team: ReadonlyArray<Agent> }): boolean | undefined {
+  const gate = REMIELLE_BUFF_GATES[input.buffId]
+  return gate ? gate(remielleAdditionalState(input.team)) : undefined
+}
+
 export const remielleMechanic: AgentMechanicModule = {
   // CC-56：资源页「Q 耀变分配」卡经 agentMechanicView#teamTeammateSplit 查询（原页面写死 1581）
   teammateSplit: REMIELLE_Q_SPLIT,
+  // CC-64b：额外能力档位门控队友 buff（原 stores/config.ts 写死 1581 + 5 个 buff id）
+  teammateBuffGate: remielleTeammateBuffGate,
   // CC-64：新上阵默认不分配平A时间（原 stores/config.ts#defaultBasicAttackTimeWeight 写死 1581）
   defaultBasicAttackTimeWeight: 0,
   // CC-42：风化浸染默认挑槽时排除（原 anomalyPanels 内的 isRemielleAgent 跨槽判定）

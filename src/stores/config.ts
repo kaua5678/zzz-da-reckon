@@ -11,7 +11,7 @@ import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { calcPanel } from '@/core/panel'
 import { useCatalogStore } from './catalog'
 import { getAgentSpec } from '@/specs/registry'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AppliedBossPreset } from '@/types/bossPreset'
@@ -387,24 +387,10 @@ export function deriveTeammateBuffEnabled(
     }
   }
 
-  const getRemielleAdditionalState = () => {
-    const remielleItem = teamAgents.find(({ agent }) => agent?.id === '1581' || agent?.teammateBuffId === '1581')
-    if (!remielleItem?.agent) return { active: false, anomalyCount: 0, tier: 0 }
-
-    const remielleFaction = remielleItem.agent.faction
-    const otherAgents = teamAgents
-      .filter(item => item !== remielleItem)
-      .map(item => item.agent)
-      .filter(Boolean)
-    const active = otherAgents.some(agent =>
-      agent?.specialty === 'anomaly' || (!!remielleFaction && agent?.faction === remielleFaction)
-    )
-    const anomalyCount = teamAgents.filter(({ agent }) => agent?.specialty === 'anomaly').length
-    const tier = active ? Math.max(1, Math.min(3, anomalyCount)) : 0
-    return { active, anomalyCount, tier }
-  }
-
-  const remielleAdditional = getRemielleAdditionalState()
+  // CC-64b：角色级队友 buff 附加条件经模块钩子 teammateBuffGate（现：蕾米埃尔额外能力档位）；原为此处
+  // getRemielleAdditionalState 写死 1581 + 下方 resolveSpecialTeammateBuffEnabled 的 5 个 buff id 分支。
+  const buffGateTeam = teamAgents.map(({ agent }) => agent!)
+  const buffGates = getRegisteredAgentMechanics().flatMap(m => (m.teammateBuffGate ? [m.teammateBuffGate] : []))
 
   // 构建 MechanicTeamMember[] 用于额外能力条件统一判定
   const mechanicTeam: MechanicTeamMember[] = teamAgents.map(({ char, agent }) => ({
@@ -427,11 +413,10 @@ export function deriveTeammateBuffEnabled(
   }
 
   function resolveSpecialTeammateBuffEnabled(buffId: string, baseEnabled: boolean): boolean {
-    if (buffId === '1581.additional_ability.atk_1_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 1
-    if (buffId === '1581.additional_ability.atk_2_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 2
-    if (buffId === '1581.additional_ability.atk_3_anomaly') return baseEnabled && remielleAdditional.active && remielleAdditional.tier === 3
-    if (buffId === '1581.core_passive.refringe_3_anomaly') return baseEnabled && remielleAdditional.tier === 3
-    if (buffId === '1581.additional_ability.prismatic_buildup') return baseEnabled && remielleAdditional.active
+    for (const gate of buffGates) {
+      const extra = gate({ buffId, team: buffGateTeam })
+      if (extra !== undefined) return baseEnabled && extra
+    }
     return baseEnabled
   }
 
