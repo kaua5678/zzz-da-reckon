@@ -2223,6 +2223,25 @@ ImpactChart.vue 的改动：
   - 测试：构造队伍（蕾米埃尔 + 0/1/2/3 个异常职业、同阵营/不同阵营）× 5 个 buff id × baseEnabled 真/假，对照原函数逐值相等；再跑 store 的 buff 开关出口（grep 调用 `resolveSpecialTeammateBuffEnabled` 的外层函数名）整体对照。
 - 其后：CC-64c 波可娜 1351 C6 buff 互斥（:448，数据字段方案，低）；`TeamConfigPage.vue` 13 处角色专属表单项（§5.68 表）；CC-60（低）。
 - 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁、perf 夹具缺「11号 + 平A兜底」场景（§5.69）。
+### 5.71 CC-64b done：蕾米埃尔额外能力档位 → 模块钩子 teammateBuffGate（lead-arena-0925c，2026-09-27 第 84 轮）
+
+**提交**：`5dd0d0f`，改动 4 个文件：
+- `src/mechanics/types.ts`：`AgentMechanicModule` 新增 `teammateBuffGate?(input: { buffId; team: ReadonlyArray<Agent> }): boolean | undefined`——队友 buff 的**附加启用条件**，最终启用 = baseEnabled && 返回值；undefined = 不归我管。
+- `src/mechanics/agents/remielle.ts`：新增导出 `remielleAdditionalState(team)`（原 store `getRemielleAdditionalState` 逐字搬入：按 id 或 teammateBuffId 识别本人，active / anomalyCount / tier）、`REMIELLE_BUFF_GATES`（5 个 buff id → 条件，原 `resolveSpecialTeammateBuffEnabled` 的 5 个分支）、模块声明 `teammateBuffGate: remielleTeammateBuffGate`。
+- `src/stores/config.ts`（`deriveTeammateBuffEnabled`）：删掉 getRemielleAdditionalState；`resolveSpecialTeammateBuffEnabled` 改为依次询问 `getRegisteredAgentMechanics()` 里声明了 teammateBuffGate 的模块，第一个返回 boolean 的生效。store 已无 `'1581'`。
+- 新测试 `src/stores/__tests__/remielleBuffGateCc64b.test.ts`：**真实 catalog 角色**两两组队 + 蕾米埃尔（放 0 槽 / 1 槽）× 5 个门控 buff + 1 个对照 buff，对照原逻辑逐值相等；另测「buff 组所属角色在队、蕾米埃尔不在」（base 真 ⇒ 门控条必须 false）。既有 `teammateBuffDerivation.test.ts` 的合成用例（雷米尔分层）不改仍全过。
+
+**拍板：询问「全部已注册模块」，而不是「队里角色的模块」**。依据：原逻辑在蕾米埃尔**不在队**时也会对这 5 个 buff 返回 false（`baseEnabled && active…`，active = false）；若只问在队角色，这种情况会退回 baseEnabled，行为可能变。询问全部模块 + 模块自己在 team 里找本人，才逐值等价。代价是每条 buff 多一次遍历（模块数 ~40，buff 条数百级，可忽略）。回退：`git revert 5dd0d0f`。
+
+**验证**：24 条守卫、check-tokens、vue-tsc 均 0；新单测全过；反向变异（删 remielle.ts 的 teammateBuffGate 行）→ 变红，已恢复 cmp 一致。`npm run verify` 通过：319 files / 3658 tests，24 guards（`/home/kaua/calc-arch/verify64b.log`）。
+
+**下一步（CC-64c，可直接开工）：波可娜 1351 C6 buff 互斥（`src/stores/config.ts` :436 附近，已读）**
+- 现状：`for (const group of groups)` 里 `const agentId = group.id; const cinemaLevel = teamCinema[agentId]`，在 `resolveSpecialTeammateBuffEnabled` 之后有 `if (agentId === '1351' && buff.id === 'pulchra_extra_trap_followup' && cinemaLevel >= 6) shouldEnable = false`（C6 时 base 条禁用，防与 `pulchra_cinema_6_trap_all` 双计）。buff 定义在 `src/specs/agents/1351.json:79`；模块 `src/mechanics/agents/pulchra.ts`。
+- 方案（改 CC-64c 原「数据字段」方向为复用本卡钩子，改动更小）：给 `teammateBuffGate` 入参加 `groupId: string; groupCinema: number | undefined`（`group.id` 与 `teamCinema[group.id]`），store 调用处传入；pulchra 声明 `teammateBuffGate: ({ buffId, groupId, groupCinema }) => (buffId === 'pulchra_extra_trap_followup' && groupId === '1351' ? !((groupCinema ?? -1) >= 6) : undefined)`；删掉 store 的 1351 分支。
+  - 等价性：原分支是 `shouldEnable = false`（在门控后、额外能力门控前），新写法是 `base && !(c6)`；三者都是纯布尔「与」，顺序可交换 ⇒ 等价。`undefined >= 6` 为 false，保持。
+  - 测试：既有 `teammateBuffDerivation.test.ts:85`（波可娜 C6）必须仍过；新增真实 catalog 下 1351 在队 C0..C6 × 该 buff 对照原逻辑。
+- 其后：`TeamConfigPage.vue` 13 处角色专属表单项（§5.68 表，先读能否并入 teamMechanicSettings）；CC-60（低）。
+- 遗留未决（沿用）：giftedPolarAssaultCount 多槽求和语义、×1.2 系数缺低冲击配装的集成覆盖、CC-11b（暂缓）、CC-57b（§5.62）、ResourceResultCard.vue:748 维琳娜 1561 补丁、perf 夹具缺「11号 + 平A兜底」（§5.69）。
 ## 附录：普查脚本 census.sh
 
 ```bash
