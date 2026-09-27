@@ -69,20 +69,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 123 轮（2026-09-27，一个文档提交，提交号见 git log 中的「docs(R5): 第 2 刀续」）
+### 第 124 轮（2026-09-27，一个文档提交，提交号见 git log 中的「docs(R5): 第 2 刀完成」）
 
 - **做到哪**：
-  - R5 第 2 刀又核完 7 项（Z3、Z7–Z12），写进账本 `docs/mcp-r5-spec-impl-reconciliation.md` §7：
-    - **D7**（Z3 + Z9）：持续时间 / 冷却零读取，引擎用覆盖率代替；数据所有 coverage.default 都是 1，默认一致；28 个 fixed 且无 coverage 的效果没有滑块（UI 潜在差异）；
-    - **D8**（Z7 exclusiveGroup）：**真实差异**——两名队友同穿原始朋克 31900 时全队增伤 +30%（应为 +15%）；只在重复穿戴时出现，证据是读码；
-    - **D9**（Z8）、**D10**（Z10）、**D11**（Z11）、**D12**（Z12）：无差异。
-  - 第 122 轮的产出：`020854b`（D3–D6）。
+  - R5 第 2 刀**完成**，账本 `docs/mcp-r5-spec-impl-reconciliation.md`：
+    - §7 **D13**（Z13 statDisplay 属性键）：动态键造成的假零，有计算通路，无差异；
+    - §7 **D14**（levelRange / modification / rarityMaxLevel / 蕾米埃尔光耀化字段 / formula 的 variable 与 valueUnit）：与硬编码一致，无差异；默认精炼 5 与数据 defaultLevel 1 的口径不同，lead 拍板保持满配；
+    - **§8 字段归类**：215 种字段 = S 已核 23 + S 待第 3 刀 52 + K 98（新增类别：结构 / 属性键）+ D 13 + M 29。
+  - 第 123 轮的产出：`6fb0572`（D7–D12）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 Z13**：`statRules.statDisplay.*SheerDmg` / `*CritDmg`，先 `timeout 40 git grep -n statDisplay -- src` 找消费方，判断是展示配置还是属性规格，写成 D13。
-  2. **R5 字段归类**：215 种字段按账本 §2 归 S / D / M。
-  3. **R5 第 3 刀**：账本 §4 的「读了但语义不同」排查，从 `mode`、`condition` 做起。
-  4. **R5 第 4 刀（转卡）**：优先 D8（先写夹具复现，再按 exclusiveGroup 去重）；其次 D7 滑块、D3 覆盖率按组联动。每张卡都要求零差或逐条解释差异。
-  5. **R6 第 1 步续**：全景 §6 的 4 项；然后是 **R6 第 2 步**（清单，候选 C1–C5 在全景 §5；D10 的 catalog.bosses 可作为「冗余可简化」候选）。
+  1. **R5 第 3 刀**：对账本 §8「S 待第 3 刀」的 52 个字段查「读了但语义是否相同」。先做 `mode`（取值集合 × `buff.ts` `applyStat` / `applyTargetedStat` 对 mode 的处理），再做 `condition`、`requirement`（数据写的条件，引擎是否执行、怎么执行）。每个字段一条 D 条目，写法照 §5。
+  2. **R5 第 4 刀（转卡）**：优先 D8（先写夹具复现两名队友同穿 31900，再在 `collectInCombatTeamBuffs` 按 exclusiveGroup 去重）；其次 D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测。每张卡都要求零差或逐条解释差异。
+  3. **R6 第 1 步续**：全景 §6 的 4 项；然后是 **R6 第 2 步**（清单，候选 C1–C5 在全景 §5；D10 的 catalog.bosses 可作为「冗余可简化」候选）。
 - **未决项**：
   - D7 的 2 个驱动盘效果是否另有入口可调未核（`panelPhases.ts:728` `mergeTeamDiscEffectCoverages`）；
   - D10 两份 Boss 数据是否一致未比对；

@@ -59,7 +59,7 @@
 | Z10 | `weaknessElements` / `resistanceElements` / `resistanceOverrides` | Boss target | 各 7 | 0 / 0–2 | Boss 的弱点与抗性。引擎可能读的是别处的敌人配置，要确认两个来源一致 | **已核：catalog.bosses 整块无消费方；引擎读 boss-presets.json**，见 §7 D10 |
 | Z11 | `attackTypes` | agents | 62 | 0 / 0 | 攻击类型（斩击、打击等）。影响某些条件效果 | **已核：零读取、无消费方、53/62 为空 → 无差异**，见 §7 D11 |
 | Z12 | `relatedAgentId` | 音擎 | 5 | 0 / 0 | 专属音擎对应的角色。可能只影响推荐，不影响计算 | **已核：与 ownerAgentId 冗余 → 无差异**，见 §7 D12 |
-| Z13 | `statRules.statDisplay.*SheerDmg` / `*CritDmg` 等 | statRules | 各 1 | 0 / 1–5 | 名字像展示配置，但字段名是属性名。要确认引擎有没有对应的属性 | 待核（可能是 D 类） |
+| Z13 | `statRules.statDisplay.*SheerDmg` / `*CritDmg` 等 | statRules | 各 1 | 0 / 1–5 | 名字像展示配置，但字段名是属性名。要确认引擎有没有对应的属性 | **已核：动态键造成的假零；有计算通路、口径一致 → 无差异**，见 §7 D13 |
 | K0 | `basis` | 音擎 / 驱动盘效果 | 22 | 6 / 11（同名假非零） | **已知差异**：CC-96 确认引擎不读 catalog 效果的 basis，按首次触达时的面板值累积。R5 原文把它列为起点 | **已核：零读取，但引擎的批次规则隐式实现了该语义，无差异**，见 §7 D4 |
 
 **第一批优先核实**：Z4、Z6、Z2 加 K0。它们都直接影响面板数值，而且 Z2、Z6、K0 很可能是同一个根因（「局外 / 局内面板」的界定没有按数据规格实现），可以合并成一张卡。
@@ -91,7 +91,7 @@
 ## 6. 进度账本
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
-- [~] 第 2 刀（进行中：第 121 轮完成 Z2、Z6；第 122 轮完成 Z4、K0、Z5、Z1；第 123 轮完成 Z3、Z7–Z12，见 §7；剩余 Z13 和字段归类）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
+- [x] 第 2 刀（第 121 轮 Z2、Z6；第 122 轮 Z4、K0、Z5、Z1；第 123 轮 Z3、Z7–Z12；第 124 轮 Z13、D14 批与字段归类 §8，**完成**）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
 - [ ] 第 3 刀：核实其余 Z 类，并按 §4 做 S 类字段的取值 × 分支对照。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
@@ -212,3 +212,41 @@
 
 ### D12 `relatedAgentId`（Z12）：与 `ownerAgentId` 冗余 → 无差异
 - 5 把音擎（14143、14109、14140、14137、14150）带 `relatedAgentId`（角色 slug），它们同时都有 `ownerAgentId`。专武判定读的是 `ownerAgentId`（`composables/freeCompare/engine.ts:93`，与 `teamCompare.ts:359` 同口径）。归 M 类，可在字段归类时标冗余。
+
+### D13 `statRules.statDisplay` 下的属性键（Z13，`*SheerDmg` / `*CritDmg` / `remielle*` 等）：动态键造成的假零 → 无差异
+- **粗筛为什么报零**：statDisplay 是「属性 id → {label, display}」字典，按 `statDisplay[stat]` 动态读取（`composables/useStatLabel.ts:16`、`:25`；`core/panel.ts:219` `inferStatMode`），粗筛统计不到键名。
+- **计算通路**：数据里用到这些属性的 10 处效果都有计算通路：
+  - `${元素}SheerDmg`：`core/damage.ts:192`（命破贯穿伤害）；来源 14153、14147、14105、14137×2；
+  - `${元素}SharpDmg`：`core/damage.ts:197`，只在 `usesSharpDmgBonus`（锋御 1611）时计入；来源 14161 猩红渴望，是 1611 的专武 selfBuff，受益者一致；
+  - `${元素}CritDmg`：`core/damage.ts:112`；来源 14116 焰心桂冠 teamBuff；
+  - `sheerForceFlat`（13014）、`sheerDmgBonus`（33100）：`buff.ts:721` 等处有 case；
+  - 其余不在 case 里的键走 `applyStat` 的 default 分支按键名累加（`buff.ts:794`）；蕾米埃尔 14 项专属键由 `data/agentPanelStats.ts` 预铺初值。
+- **驱动盘口径**：`inferStatMode` 按 `display` 决定 pct / flat，2026-09-18（R27-J2）已实测穷举驱动盘主词条和副词条池 21 个属性全部登记，见 `panel.ts:188–215` 头注释与 `utils/__tests__/statModeParity.test.ts`。
+- **数据小缺口（无影响）**：statDisplay 没有登记 7 个 `*SharpDmg` 键。标签回退到 `utils/statMeta.ts:76–82`（「电属性锐化增伤」等）；数值格式由调用方传 mode（14161 写的是 `mode: "pct"`，`AttributeConfigPage.vue:522`、`TeamConfigPage.vue:1191` 都会传），界面显示正确。不处理。
+
+### D14 零访问的配置范围 / 蕾米埃尔 / formula 字段（归类时补核）：全部与引擎硬编码一致 → 无差异，有隐性耦合
+- `agentSkills[].categories[].levelRange` = `{min 1, max 12, default 12}`：引擎写死技能等级 12 + 加成（`core/skillLevel.ts:39`），与数据一致。
+- `wEngines[].modification` = `{minLevel 1, maxLevel 5, defaultLevel 1}`、`agents[].coreSkill.defaultLevel = "max"`：界面配置范围。**默认值口径不同**：`stores/config.ts:134–141` `defaultCharacter` 默认影画 6、精炼 5（计算器有意的「满配」默认），而数据 `defaultLevel` 为 1。数据的 defaultLevel 描述的是配置范围提示，不是游戏计算规则，**lead 拍板保持满配默认，不改**；回退点是 `config.ts:141`。
+- `statRules.driveDisc.rarityMaxLevel` = `{S 15, A 12, B 9}`：引擎只支持 S 级驱动盘（主词条数值唯一来源 `sRankMaxMainStat`，`panel.ts:248`、`buff.ts:551`），A / B 两项无消费方。与界面只提供 S 级一致。
+- 蕾米埃尔 1581：
+  - `canTriggerLuminize`（4 个招式 1581007 / 008 / 015 / 016）：`mechanics/agents/remielle.ts:267`、`:546`、`:552`、`:558`、`:604` 按 id 硬编码的正是这 4 个，集合一致；
+  - `remielleLuminizeLevels = [12, 14, 16]`：与 `remielle.ts` `getRemielleLevelValue` 的兜底阈值（14、16）一致；
+  - `luminizeFormula` / `remielleLuminizeMultipliers[*].formula`：结果已预算写在 `values` 里，公式文本只起说明作用。
+  - 隐性耦合：数据改了招式或阈值，模块不会跟着变。建议在第 4 刀加一条一致性单测（数据中 canTriggerLuminize 的集合等于模块的硬编码集合），零差。
+- `combatBuffs…effects[].source.variable = "x"`、`formula.valueUnit = "storedPercent"`（全仓唯一一处，蕾米埃尔折射系数 `x * 0.02`）：`buff.ts:619` `evalFormulaEffect` 用 `expression` 求值，`x` 取 `sourceStat` 的值，`valueUnit` 不参与计算；结果按百分点存储（170 × 0.02 = 3.4，界面 `formatPercent` 显示 3.4%），与引擎全局的百分点口径一致。
+
+## 8. 字段归类（第 2 刀收尾，第 124 轮）
+
+来源：`.zc/perf/r5scan.out` 的 215 种字段名。脚本断言：四类互斥、合计 215。**口径决定**：在 §2 的 S / D / M 之外加第 4 类 **K（结构 / 键名）**。依据：容器字段（`effects`、`fourPiece`……）和「属性 id 作键」的字段（statDisplay、level60 等字典里的 `critDmg`……）没有独立语义，值的语义由内层字段或按键名的通用通路（`buff.ts` `applyStat` 的 default 分支、`damage.ts` 模板键、`panel.ts` `inferStatMode`，见 D13）覆盖。硬归 S 会让 S 清单失去筛选作用。回退点：把 K 并回 S 即可，本节列表不变。
+
+| 类别 | 数量 | 字段 |
+|---|---|---|
+| **S 已核**（有 D 条目） | 23 | `appliesToOutOfCombatPanel`(D1)、`baseAttackRule`(D5)、`baseDefRule`(D5)、`baseHpRule`(D5)、`basis`(D4)、`canTriggerLuminize`(D14)、`cooldownSeconds`(D7)、`damageBasis`(D6)、`defaultLevel`(D14)、`durationSeconds`(D7)、`exclusiveGroup`(D8)、`levelRange`(D14)、`luminizeFormula`(D14)、`maxLevel`(D14)、`minLevel`(D14)、`outOfCombatEffectFilter`(D2)、`rarityMaxLevel`(D14)、`remielleLuminizeLevels`(D14)、`remielleLuminizeMultipliers`(D14)、`settlementType`(D9)、`stackGroup`(D3)、`valueUnit`(D14)、`variable`(D14) |
+| **S 待第 3 刀**（有读取，查「读了但语义是否相同」） | 52 | `actionTime`、`advancedStat`、`agentId`、`attribute`、`baseStat`、`basicBenchmarkMoveId`、`buff`、`buffModifiers`、`cinemaLevel`、`comboAlignRatio`、`condition`、`coverage`、`damageElement`、`default`、`defaultStacks`、`defaultValue`、`energyCost`、`expression`、`formula`、`isTeammateOnly`、`kind`、`levelValues`、`luminizeLevelValues`、`max`、`maxStacks`、`min`、`mode`、`modificationValues`、`outOfCombatStat`、`ownerAgentId`、`rarity`、`requirement`、`scope`、`skillTag`、`skillTags`、`skillTargets`、`skillType`、`source`、`sourceStat`、`specialty`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat`、`step`、`target`、`targetSkillType`、`teammateBuffId`、`timeType`、`type`、`value`、`valuePerStack`、`values` |
+| **K 容器 / 结构键** | 32 | `A`、`additionalAbility`、`agents`、`agentSkills`、`B`、`bosses`、`calculation`、`categories`、`cinemaBuffs`、`combatBuffs`、`corePassive`、`coreSkill`、`driveDisc`、`driveDiscSets`、`effect`、`effects`、`fourPiece`、`id`、`level60`、`levels`、`mainStatPools`、`modification`、`moves`、`rows`、`S`、`selfBuff`、`statDisplay`、`statRules`、`subStatPool`、`teamBuff`、`twoPiece`、`wEngines` |
+| **K 属性 id 键**（语义见 D13 与 `applyStat`） | 66 | `anomalyMastery`、`anomalyProficiency`、`anomalyReleaseDmgBonus`、`atkBase`、`atkFlat`、`atkPct`、`critDmg`、`critRate`、`defBase`、`defFlat`、`defPct`、`dmgBonus`、`electricCritDmg`、`electricDmg`、`electricSheerDmg`、`enemyAnomalyDefReduction`、`enemyDefFlatReduction`、`enemyDefReduction`、`enemyElectricDefReduction`、`enemyElectricResReduction`、`enemyEtherDefReduction`、`enemyEtherResReduction`、`enemyFireDefReduction`、`enemyFireResReduction`、`enemyIceDefReduction`、`enemyIceResReduction`、`enemyPhysicalDefReduction`、`enemyPhysicalResReduction`、`enemyResReduction`、`enemyWindDefReduction`、`enemyWindResReduction`、`energyMax`、`energyRegen`、`etherCritDmg`、`etherDmg`、`etherSheerDmg`、`fireCritDmg`、`fireDmg`、`fireSheerDmg`、`flashEnergyMax`、`flashEnergyRegen`、`hpBase`、`hpFlat`、`hpPct`、`iceCritDmg`、`iceDmg`、`iceSheerDmg`、`impact`、`penFlat`、`penRatio`、`physicalCritDmg`、`physicalDmg`、`physicalSheerDmg`、`remielleCinema4LuminizeMultiplierBonus`、`remielleCinema6FleetingGraceVoidflareTriggerMultiplier`、`remielleCinema6SpecialVoidflareTriggerMultiplier`、`remielleLuminizeMultiplierBonus`、`remielleRefringeCoefficient`、`sharpCritDmg`、`sharpnessRegen`、`sheerDmgBonus`、`sheerForce`、`sheerForceFlat`、`windCritDmg`、`windDmg`、`windSheerDmg` |
+| **D 展示** | 13 | `cinemaName`、`conditionLabel`、`description`、`display`、`effectText`、`en`、`hidden`、`icon`、`images`、`label`、`name`、`stackLabel`、`zhCN` |
+| **M 元数据** | 29 | `$schema`、`aliases`、`appearances`、`attackTypes`、`calculationStatus`、`defense`、`effectBuff`、`encounters`、`endDate`、`enemyIntel`、`faction`、`gameVersion`、`legacyIds`、`level60Stats`、`modeId`、`modelingNotes`、`phaseNo`、`playerBuffs`、`playerDebuffs`、`recommendedSpecialties`、`relatedAgentId`、`resistanceElements`、`resistanceOverrides`、`sources`、`startDate`、`url`、`verification`、`version`、`weaknessElements` |
+
+- 归 M 的说明：`relatedAgentId`（D12 冗余）、`attackTypes`（D11 无消费方）、Boss 那批含 `defense`（D10，catalog.bosses 整块无消费方）虽然名字像规格，但都已核实不进计算。
+- 拿不准按 S（§2 规则）：`rarity`、`isTeammateOnly`、`teammateBuffId`、`basicBenchmarkMoveId`、`ownerAgentId` 等放在「S 待第 3 刀」。
