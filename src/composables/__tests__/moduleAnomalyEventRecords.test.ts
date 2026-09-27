@@ -2,6 +2,9 @@
  * CC-28 · 模块异常事件记录（原 useResourceCalc `remielleVoidflareEvents` 编排层角色分支 → 蕾米埃尔模块能力
  * `anomalyEventRecords`）。EXPECTED = **迁移前旧实现**在同一 harness 下的输出（2026-09-27 采集，
  * `/home/kaua/calc-arch/cc28-base.json`），逐字段 toEqual ⇒ 迁移逐位等价；这些记录只进展示层，
+ * ⚠ CC-100（R5 D15，2026-09-27）更新 r2 / lead-empty / jr 三组：6 号位异常掌控改按源数据百分比口径后，
+ *   1331 / 1501 的掌控升高 ⇒ 同战斗时长内多触发 1 次异常 ⇒ 虚耀池 +1、支援技 +1、普攻 +2（终结技按 3 个一批不变）。
+ *   归因经反向验证：把 statModes.impact / anomalyMastery 与 31200 2pc 改回 flat，本文件全绿。
  * perf dump/rowsnap 覆盖不到，本测试是唯一判据。覆盖：蕾米在槽 0 / 槽 2 / 前导空槽 / 不在队。
  */
 import { describe, it, expect } from 'vitest'
@@ -76,12 +79,12 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "蕾米虚耀池",
       "source": "其他队友异常触发",
-      "count": 21,
+      "count": 22,
       "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
       "fields": [
         "AnomalyPoolResult.perSlotAnomalyTriggers",
         "蕾米槽位",
-        "1261:10 / 1331:11"
+        "1261:10 / 1331:12"
       ],
       "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
     },
@@ -90,7 +93,7 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "支援技花羽轮舞·耀变",
       "source": "不消耗虚耀",
-      "count": 21,
+      "count": 22,
       "formula": "count = 虚耀池总数；每个虚耀打一次",
       "fields": [
         "voidflareTotal",
@@ -115,7 +118,7 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      "count": 42,
+      "count": 44,
       "formula": "count = voidflareTotal × 2（6命翻倍）",
       "fields": [
         "voidflareTotal",
@@ -130,12 +133,12 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "蕾米虚耀池",
       "source": "其他队友异常触发",
-      "count": 12,
+      "count": 13,
       "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
       "fields": [
         "AnomalyPoolResult.perSlotAnomalyTriggers",
         "蕾米槽位",
-        ":0 / 1501:12"
+        ":0 / 1501:13"
       ],
       "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
     },
@@ -144,7 +147,7 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "支援技花羽轮舞·耀变",
       "source": "不消耗虚耀",
-      "count": 12,
+      "count": 13,
       "formula": "count = 虚耀池总数；每个虚耀打一次",
       "fields": [
         "voidflareTotal",
@@ -169,7 +172,7 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      "count": 24,
+      "count": 26,
       "formula": "count = voidflareTotal × 2（6命翻倍）",
       "fields": [
         "voidflareTotal",
@@ -301,12 +304,12 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "蕾米虚耀池",
         "source": "其他队友异常触发",
-        "count": 22,
+        "count": 23,
         "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
         "fields": [
           "AnomalyPoolResult.perSlotAnomalyTriggers",
           "蕾米槽位",
-          "1261:11 / 1331:11"
+          "1261:11 / 1331:12"
         ],
         "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
       },
@@ -315,7 +318,7 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "支援技花羽轮舞·耀变",
         "source": "不消耗虚耀",
-        "count": 22,
+        "count": 23,
         "formula": "count = 虚耀池总数；每个虚耀打一次",
         "fields": [
           "voidflareTotal",
@@ -340,7 +343,7 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "普通攻击惊鸿·耀变",
         "source": "消耗并清空虚耀",
-        "count": 44,
+        "count": 46,
         "formula": "count = voidflareTotal × 2（6命翻倍）",
         "fields": [
           "voidflareTotal",

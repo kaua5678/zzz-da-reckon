@@ -521,6 +521,13 @@ export interface StatRules {
     sRankMaxMainStat: Record<string, number>
     subStatPool: StatId[]
     sRankSubStatBaseStep: Record<string, number>
+    /**
+     * 驱动盘主词条 / 副词条的**结算口径**（pct = 按基础值百分比；flat = 固定值加点）。
+     * 来源：nanoka 爬取的 `build-recommendations.json` `main_stats[*].format`（带 `%` ⇒ pct），
+     * 副词条池里的 *Flat / anomalyProficiency 为 flat。CC-100（R5 D15）新增；缺失时回退 statDisplay.display。
+     * 命名刻意避开 `utils/statMeta.ts#statSettlementMode`（全局 Buff 通路，语义不同）。
+     */
+    statModes?: Record<string, 'pct' | 'flat'>
   }
   calculation: {
     baseAttackRule: string

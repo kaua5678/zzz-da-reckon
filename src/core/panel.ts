@@ -7,6 +7,7 @@ import type {
 import { applyBuffs, applyEffect, applyStat, collectAllBuffs, finalizeCoreStatBonuses, type CollectedBuffs } from './buff'
 import { agentPanelStatInitials } from '@/data/agentPanelStats'
 import type { StatRules } from '@/types/catalog'
+import { driveDiscStatMode } from './discStatMode'
 
 /** 创建空面板 */
 export function emptyPanel(): PanelValues {
@@ -186,45 +187,12 @@ export function calcBasePanel(agent: Agent, wEngine: WEngine | undefined): Panel
 }
 
 /**
- * 驱动盘主词条/副词条的**结算口径**（`applyStat` 的 `mode` 实参）。
- *
- * 驱动盘数值的语义由 **catalog 外部数据** 决定：`statRules.statDisplay[k].display`
- * （`percent` ⇒ 按基础值的百分比、`number`/`integer` ⇒ 固定值加点）。名字后缀启发式**只作未登记字段的兜底**
- * （与 `utils/statMeta.ts#statSettlementMode` 同形），不再对已登记字段生效。
- *
- * **为什么必须读 catalog 而不是猜名字**（2026-09-18 round 28 实测，R27-J2 结案）：
- * 名字启发式对 `anomalyMastery`（`display = "number"`，即 +30 加点）判错成 pct
- * ⇒ 6 号位掌控主词条把 `94` 算成 `94×1.3 = 122.2`，而四处独立来源都说该是 `94 + 30 = 124`：
- * ① `statDisplay.anomalyMastery.display = "number"`；② `buff.ts#collectAllBuffs` 的 `roughStats`
- * （`level60.anomalyMastery + maxMain`，即 4pc 折枝剑歌门槛用的那套）；③ `STAT_META.anomalyMastery.mode = 'flat'`；
- * ④ `discSetEffects.test.ts` 注释「94 + 30 主词条 = 124」。
- * 用户可见后果（修前实测）：低掌控角色（1111/1121/1271/1291，基础 86）带 6 号位掌控 ⇒ 面板 `86×1.3 = 111.8`
- * **< 115**，但 4pc 折枝剑歌门槛按 `roughStats` 的 `86+30 = 116 ≥ 115` 判达标 ⇒ 套装已发放、面板却不到门槛，
- * **两个口径在同一份数据上互相矛盾**。修后两处一致（`116`）。
- *
- * ⚠ **可达面已实测穷举**：驱动盘 4/5/6 号位主词条池 + 副词条池共 **21 个 statId 全部登记**
- * （`statDisplay` 无缺失键）⇒ 兜底分支在**生产数据下不可达**（`mainStats` 由 `REC_MAIN_STAT_MAP`
- * 从 `build-recommendations.json` 映射，而该文件的 `main_stats.name` 全集（16 个）100% 命中该映射表）。
- * 两个池子里**唯一**会翻面的字段就是 `anomalyMastery`（`impact` 因小写 `i` 早已落在启发式的 flat 侧）。
- *
- * ⚠⚠ **本函数仍不是全局 Buff 那条通路的口径，两者不能合并**（2026-09-18 round 27 实测）：
- * 全局 Buff 走 `utils/statMeta.ts#statSettlementMode`（读 `STAT_META.mode`），与 `display` **不同义**。
- * 实测反例：`energyRegen` 的 `display = "percent"`（6 号位 = **+60%** 回能，本函数按 pct 处理 ✅），
- * 而 `STAT_META.energyRegen.mode = 'flat'` 描述的是**基础回能字段本身**（1.2 点/秒）
- * ⇒ 把两者合并会把 `+60%` 变成 `+60 点/秒`（round 27 实测踩到并回退）。
- * 反向同理：本函数**不得**改读 `STAT_META.mode`。两条通路各自的口径与证据见
- * `statSettlementMode` 头注释 + `src/utils/__tests__/statModeParity.test.ts` 判据 ②。
+ * 驱动盘主词条/副词条的**结算口径**（`applyStat` 的 `mode` 实参）。实现与依据见 `./discStatMode.ts`：
+ * 以 `statRules.driveDisc.statModes` 为准（CC-100，R5 D15）。旧口径按展示字段 `statDisplay.display`
+ * 推断，把 6 号位冲击力 / 异常掌控当成固定值（R27-J2，2026-09-18），与源数据百分比口径相反，已推翻。
  */
 function inferStatMode(stat: string, statRules: StatRules | null): 'pct' | 'flat' {
-  const display = statRules?.statDisplay?.[stat]?.display
-  if (display === 'percent') return 'pct'
-  if (display === 'number' || display === 'integer') return 'flat'
-  // 未登记字段（生产数据不可达，见上）兜底：沿用历史名字后缀启发式
-  return stat.endsWith('Pct') || stat.endsWith('Rate') || stat.endsWith('Dmg')
-    || stat.endsWith('Ratio') || stat.endsWith('Mastery') || stat.endsWith('Regen')
-    || stat.endsWith('Impact') || stat.endsWith('Efficiency') || stat.endsWith('Bonus')
-    ? 'pct'
-    : 'flat'
+  return driveDiscStatMode(stat, statRules)
 }
 
 export function applyDriveDiscConfig(

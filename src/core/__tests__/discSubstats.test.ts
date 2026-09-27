@@ -20,6 +20,10 @@ const disc = (overrides: Partial<DriveDiscConfig> = {}): DriveDiscConfig => ({
 const displayAs = (stat: StatId, display: 'percent' | 'integer', source = rules): StatRules => ({
   ...source, statDisplay: { ...source.statDisplay, [stat]: { ...source.statDisplay[stat], display } },
 })
+// CC-100（R5 D15）：驱动盘结算口径以 `driveDisc.statModes` 为准，`display` 只在缺失时回退。
+const modeAs = (stat: StatId, mode: 'pct' | 'flat', source = rules): StatRules => ({
+  ...source, driveDisc: { ...source.driveDisc, statModes: { ...source.driveDisc.statModes, [stat]: mode } },
+})
 function run(config: DriveDiscConfig, source = rules) {
   return applyDriveDiscConfig(base(), config, source)
 }
@@ -71,7 +75,8 @@ describe('驱动盘副词条：可观察的数值与池契约', () => {
     expect(run(config, source)).toEqual(run(disc(), source))
     const admitted: StatRules = { ...source, driveDisc: { ...source.driveDisc,
       subStatPool: [...source.driveDisc.subStatPool, 'anomalyMastery'] } }
-    expect(run(config, admitted).anomalyMastery).toBe(base().anomalyMastery + 20)
+    // statModes.anomalyMastery = pct（源数据百分比口径，CC-100）⇒ 2 步 × 10 = +20%
+    expect(run(config, admitted).anomalyMastery).toBeCloseTo(base().anomalyMastery * 1.2, 9)
   })
 
   // 合成扩展池仅是仪器正控，不新增游戏数据；防“删掉 mode 推导也全绿”。
@@ -80,9 +85,12 @@ describe('驱动盘副词条：可观察的数值与池契约', () => {
       subStatPool: [...rules.driveDisc.subStatPool, stat],
       sRankSubStatBaseStep: { ...rules.driveDisc.sRankSubStatBaseStep, [stat]: 10 } } }
     const config = disc({ subStatAllocation: { [stat]: 2 } })
-    const flat = run(config, displayAs(stat, 'integer', source))
-    const pct = run(config, displayAs(stat, 'percent', source))
+    const flat = run(config, modeAs(stat, 'flat', source))
+    const pct = run(config, modeAs(stat, 'pct', source))
     expect(flat).not.toEqual(pct)
+    // 显式 statModes 存在时，只改展示字段 display 不得改变结算（防优先级被改回 display）
+    expect(run(config, displayAs(stat, 'percent', modeAs(stat, 'flat', source)))).toEqual(flat)
+    expect(run(config, displayAs(stat, 'integer', modeAs(stat, 'pct', source)))).toEqual(pct)
     if (stat === 'anomalyMastery') {
       expect(flat.anomalyMastery).toBe(base().anomalyMastery + 20)
       expect(pct.anomalyMastery).toBeCloseTo(base().anomalyMastery * 1.2, 9)

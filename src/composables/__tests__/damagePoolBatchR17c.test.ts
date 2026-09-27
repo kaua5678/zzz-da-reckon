@@ -268,7 +268,9 @@ describe('R15-c 跳②：轴模式下**未进轴槽位**仍落兜底臂 ⇒ 叶�
     expect(ult.length).toBe(1)
     // 1.2333… = 全局覆盖率的折扣值（**不是** 1.5）——这正是与叶瞬光的不对称：
     // 同步跑叶瞬光同态（上一例）得 1.5，两处**必须不同**。
-    expect(ult[0].stunMult).toBe(1.2333333333333334)
+    // CC-100（R5 D15，2026-09-27）：1161 的 6 号位冲击力改按 +18% 后失衡节奏变化 ⇒ 全局覆盖率 0.4667 → 0.5833
+    // （1.2333 → 1.2917；反向验证：statModes 改回 flat 即恢复 1.2333）。判据本意「≠ 1.5、走覆盖率折扣」不变。
+    expect(ult[0].stunMult).toBe(1.2916666666666667)
     expect(ult[0].stunMult).not.toBe(1.5)
     expect(ult[0].note).not.toContain('失衡内（连携/决算满易伤）')
     expect(ult[0].note).not.toContain('失衡外（无易伤）')

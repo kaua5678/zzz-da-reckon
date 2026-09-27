@@ -16,6 +16,7 @@ import { wEngineConditionMet, type WEngineConditionContext } from '@/core/wengin
 // 此处 re-export 保持引擎侧既有调用点与 `@/core/buff` 引用零改动；展示层改 import `@/data/…`。
 export { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
+import { driveDiscStatMode } from '@/core/discStatMode'
 
 function targetedStatKey(stat: string, target?: string): string {
   const normalized = normalizeSkillDamageTarget(target)
@@ -576,7 +577,12 @@ export function collectAllBuffs(
   //   **不得"统一成一条路"**。
   const roughStats: Record<string, number> = {
     def: roughDef,
-    anomalyMastery: agent.level60.anomalyMastery + (hasAmMain ? maxMain.anomalyMastery ?? 30 : 0),
+    // 6 号位异常掌控主词条按驱动盘结算口径（CC-100，R5 D15：源数据为百分比 ⇒ 基础值 × (1 + 30%)）。
+    anomalyMastery: !hasAmMain
+      ? agent.level60.anomalyMastery
+      : driveDiscStatMode('anomalyMastery', discStatRules) === 'pct'
+        ? agent.level60.anomalyMastery * (1 + (maxMain.anomalyMastery ?? 30) / 100)
+        : agent.level60.anomalyMastery + (maxMain.anomalyMastery ?? 30),
   }
 
   const discBuffs = collectDriveDiscBuffs(driveDiscConfig, setsMap, { agent, roughStats })

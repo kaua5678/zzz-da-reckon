@@ -340,13 +340,16 @@ describe('requirement 门槛', () => {
     expect(below.critRate - belowBase.critRate, '973.0 <1000 ⇒ 第一档也不发').toBe(0)
   })
 
-  it('★ 折枝剑歌 4pc：门槛吃 `roughStats`（加点口径），用「pct 不过 / flat 过」的跨阈角色', () => {
+  it('★ 折枝剑歌 4pc：门槛吃 `roughStats`（百分比口径，CC-100），用「pct 不过 / flat 过」的跨阈角色', () => {
     // 1111 安东基础掌控 86：pct 口径 86×1.3 = 111.8 <115；flat 口径 86+30 = 116 ≥115。
-    // ⇒ 这一例对「门槛用什么口径算掌控」**直接可见**（1481 的 94 在两种口径下都 ≥115，看不见）。
+    // ⇒ 这一例对「门槛用什么口径算掌控」**直接可见**。CC-100（R5 D15）起按源数据的百分比口径 ⇒ 不达标。
     const withSet = panelFor('1111', disc({ fourPieceSetId: '32700', mainStats: { 6: 'anomalyMastery' } })).inCombat
     const base = panelFor('1111', disc({ mainStats: { 6: 'anomalyMastery' } })).inCombat
-    // 4pc 暴伤 30 段必须发放（门槛按 86+30 = 116 ≥115），2pc 暴伤 16 照常
-    expect(withSet.critDmg - base.critDmg, '116 ≥115 ⇒ 4pc 暴伤段发放').toBe(30 + 16)
+    expect(withSet.critDmg - base.critDmg, '111.8 <115 ⇒ 只有 2pc 的 16').toBe(16)
+    // 正臂：1481 基础 94 ⇒ 94×1.3 = 122.2 ≥115 ⇒ 4pc 暴伤 30 段发放
+    const hi = panelFor('1481', disc({ fourPieceSetId: '32700', mainStats: { 6: 'anomalyMastery' } })).inCombat
+    const hiBase = panelFor('1481', disc({ mainStats: { 6: 'anomalyMastery' } })).inCombat
+    expect(hi.critDmg - hiBase.critDmg, '122.2 ≥115 ⇒ 4pc 暴伤段发放').toBe(30 + 16)
     // 负控：不装 6 号位掌控 ⇒ roughStats.anomalyMastery = 86 <115 ⇒ 只有 2pc 的 16
     const noMain = panelFor('1111', disc({ fourPieceSetId: '32700' })).inCombat
     const noMainBase = panelFor('1111', EMPTY).inCombat
@@ -354,42 +357,33 @@ describe('requirement 门槛', () => {
   })
 
   /**
-   * ★ round 28（R27-J2 结案）：6 号位掌控主词条的数值口径 —— **加点（flat）而非乘基础值（pct）**。
+   * ★ 6 号位掌控主词条的数值口径 —— **乘基础值（pct）**（CC-100，R5 D15，2026-09-27）。
    *
-   * ⚠⚠ **为什么必须钉**：上面那条断言（`critDmg − critDmg === 46`）**算术上抓不到这个 bug**：
-   * 4pc 门槛吃的是 `buff.ts#collectAllBuffs` 的 `roughStats`（口径恒为 `level60.anomalyMastery + maxMain`，
-   * **无论 `inferStatMode` 怎么判**），而 1481 基础 94 在**两种口径下都 ≥115**
-   * （pct: `94×1.3 = 122.2` / flat: `94+30 = 124`）⇒ 套装照常发放、断言照常绿。
-   * 修前实测：`inferStatMode` 把 `display = "number"` 的 `anomalyMastery` 当 pct ⇒ **全仓无一条测试断言过面板绝对值**
-   * ⇒ 「已发放的基线」在修前是**假绿**的（口径错但判据全绿）。
-   * ⇒ 本条直接钉**面板绝对值**，与 `statDisplay.display` 的语义绑定。
-   *
-   * 四个独立来源一致指向 `94 + 30 = 124`：
-   * ① `statDisplay.anomalyMastery.display = "number"`（＝加点）；② 上面的 `roughStats`；
-   * ③ `STAT_META.anomalyMastery.mode = 'flat'`；④ `docs/GAME_TERM_TO_CODE_FIELD.md` §11.2。
+   * 源数据证据：`build-recommendations.json`（nanoka 爬取）6 号位异常掌控 `prop 31402`、`format {0:0.#%}`；
+   * 唯一的固定值主词条异常精通 `prop 31203` 是 `{0:0}`。
+   * round 28（R27-J2）曾按展示字段 `statDisplay.display = "number"` 钉成加点 +30，其「四个来源」
+   * 全是仓库内部互相引用，已被 D15 推翻。本条钉**面板绝对值**，与 `driveDisc.statModes` 绑定。
    */
-  it('6号位掌控主词条 = 加点（+30）而非乘基础值（×1.3）—— 与 statDisplay.display="number" 同口径', () => {
-    // 1481 琉音：基础 94 → 94 + 30 = 124（pct 口径会得 94×1.3 = 122.2）
+  it('6号位掌控主词条 = 乘基础值（×1.3）—— 与 driveDisc.statModes 同口径', () => {
+    // 1481 琉音：基础 94 → 94 × 1.3 = 122.2
     const am = panelFor('1481', disc({ mainStats: { 6: 'anomalyMastery' } })).inCombat
-    expect(am.anomalyMastery).toBe(124)
-    expect(am.anomalyMastery).not.toBeCloseTo(94 * 1.3, 5)
-    // 低掌控侧：基础 86 → 86 + 30 = 116（**≥115 门槛**；pct 口径的 111.8 会让面板与 4pc 门槛自相矛盾）
+    expect(am.anomalyMastery).toBeCloseTo(94 * 1.3, 9)
+    // 低掌控侧：基础 86 → 111.8（<115，与 4pc 门槛的 roughStats 同口径，两处不再矛盾）
     for (const id of ['1111', '1121', '1271', '1291']) {
       const a = getAgent(id)
       expect(a.level60.anomalyMastery, `${id} 基础掌控应为 86`).toBe(86)
       const p = panelFor(id, disc({ mainStats: { 6: 'anomalyMastery' } })).inCombat
-      expect(p.anomalyMastery, `${id} 6号位掌控主词条`).toBe(116)
+      expect(p.anomalyMastery, `${id} 6号位掌控主词条`).toBeCloseTo(86 * 1.3, 9)
     }
-    // 2pc 异常掌控 +8% 仍是 **pct**（display="percent"）⇒ 两处口径在同一面板上并存且互不干扰
     const amPct = panelFor('1481', disc({ mainStats: { 6: 'anomalyMastery' } })).withDiscs
-    expect(amPct.anomalyMastery).toBe(124)
+    expect(amPct.anomalyMastery).toBeCloseTo(94 * 1.3, 9)
   })
 
   /**
    * ★ round 28：**反向**钉住 `inferStatMode` 不得改读 `STAT_META.mode`（防后人「统一口径」时把
    * `energyRegen` 的 6 号位 `+60%` 变成 `+60 点/秒`）。
    *
-   * ⚠ 这里必须读 `statDisplay.display`（catalog），**不能**读 `STAT_META`：
+   * ⚠ 这里必须读 catalog（CC-100 起为 `driveDisc.statModes`，缺失回退 `statDisplay.display`），**不能**读 `STAT_META`：
    * 两者对 `energyRegen` 结论相反（display=percent / STAT_META.mode=flat）。
    * ⚠⚠ 注意 `energyRegen` 的口径错**在面板字段上看不见**（`energyRegenBonusPct` vs `BonusFlat`
    * 是两个不同的字段），所以本判据直接钉**字段落点**，而不是钉 `panel.energyRegen`。
@@ -397,14 +391,16 @@ describe('requirement 门槛', () => {
   it('6号位能量回复主词条 = percent 口径（落 BonusPct 字段），未与 STAT_META.flat 合并', () => {
     const pct = panelFor('1481', disc({ mainStats: { 6: 'energyRegen' } })).inCombat
     const none = panelFor('1481', EMPTY).inCombat
-    // display="percent" ⇒ maxMain.energyRegen = 60 走 pct 累加器
+    // statModes.energyRegen = pct ⇒ maxMain.energyRegen = 60 走 pct 累加器
     expect(pct.energyRegenBonusPct - none.energyRegenBonusPct).toBe(60)
     expect(pct.energyRegenBonusFlat - none.energyRegenBonusFlat).toBe(0)
   })
 
-  it('6号位冲击力/异常精通 = 固定值加点（display="number"/"integer"）', () => {
+  it('6号位冲击力 = 乘基础值（+18%，CC-100）；4号位异常精通 = 固定值加点（+92）', () => {
+    // 源数据：6 号位冲击力 prop 12202、format {0:0.#%}（百分比）；异常精通 prop 31203、format {0:0}（固定值）
     const impact = panelFor('1481', disc({ mainStats: { 6: 'impact' } })).withDiscs
-    expect(impact.impact - panelFor('1481', EMPTY).withDiscs.impact).toBe(18)
+    const impactBase = getAgent('1481').level60.impact
+    expect(impact.impact - panelFor('1481', EMPTY).withDiscs.impact).toBeCloseTo(impactBase * 0.18, 9)
     const prof = panelFor('1481', disc({ mainStats: { 4: 'anomalyProficiency' } })).withDiscs
     expect(prof.anomalyProficiency - panelFor('1481', EMPTY).withDiscs.anomalyProficiency).toBe(92)
   })

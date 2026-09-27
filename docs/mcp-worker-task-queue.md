@@ -69,22 +69,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 125 轮（2026-09-27，一个文档提交，提交号见 git log 中的「docs(R5): 第 3 刀 mode」）
+### 第 126 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-100)」）
 
 - **做到哪**：
-  - R5 第 3 刀开始，先做 `mode`，账本 `docs/mcp-r5-spec-impl-reconciliation.md`：
-    - **D15（真实差异，影响最大）**：6 号位冲击力、异常掌控主词条按固定值结算，源数据是百分比，影响 15 个角色的默认配装。根因是 `core/panel.ts:219` `inferStatMode` 拿展示字段 `statDisplay[k].display` 定结算口径。这推翻了 R27-J2（2026-09-18）的结论：它引用的 4 条证据都是仓库内部互相引用，没有源数据；
-    - **D16（真实差异）**：31200 震星迪斯科 2 件套导入成 `impact / flat / 6`，源数据 `data/raw/nanoka_equipment.json:52` 是 `Impact +6%`；
-    - **D17**：其余 mode 取值无影响（只有 impact / anomalyMastery / energyRegen / flashEnergyRegen 按 mode 分流）；
-    - 新增 **§9 转卡清单**；卡表 `docs/mcp-calc-core-architecture.md` 新增 **CC-100**（D15+D16）、**CC-101**（D8）。
-  - 第 124 轮的产出：`856a3db`（D13、D14、§8 归类）。
+  - **CC-100 完成**（R5 D15 + D16）：
+    - 数据：`public/static/catalog.json` 新增 `statRules.driveDisc.statModes`（20 个键），31200 2 件套 mode 改为 pct；
+    - 代码：新模块 `src/core/discStatMode.ts`；`src/core/panel.ts` 的 `inferStatMode` 委托给它；`src/core/buff.ts` 的 roughStats 按同一口径计算 6 号位掌控；`src/types/catalog.ts` 新增字段类型；
+    - 测试：`discSetEffects` / `discSubstats` / `statModeParity` 按新口径改写；`timeGolden.baseline.json`、`moduleAnomalyEventRecords`、`damagePoolBatchR17c` 基线更新。
+  - 差异：zd.sh DUMP 306 / ROWS 316；**反向验证 DIFF 0**（脚本 `/home/kaua/calc-arch/cc100/zdrev.sh`，不进 git），归因与 delta 表见账本 §9 CC-100。
+  - 第 125 轮的产出：`70711f4`（D15–D17、§9、CC-100/101 立卡）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **CC-100**：按账本 §9 的 5 步执行（找生成源头 → 新增 `statSettlementMode` 映射 → roughStats 同步 → 改测试和 panel.ts 头注释 → verify + zd.sh，差异逐条归因）。**lead 拍板排在第 3 刀剩余部分之前**，依据：它影响 15 个角色的默认结果，而第 3 刀剩余字段尚未发现问题。回退点：删掉 `statSettlementMode` 映射即恢复旧口径。
-  2. **CC-101**（D8）：先写夹具复现，再按 exclusiveGroup 去重。
-  3. **R5 第 3 刀续**：`condition` / `requirement`（数据写的条件，引擎是否执行、怎么执行），然后按 §8 清单继续。
+  1. **CC-101**（D8）：在 `src/core/__tests__/` 新建夹具测试，两名队友同穿 31900 原始朋克 4 件套 ⇒ 断言全队 dmgBonus 只 +15；然后在 `src/core/inCombatBuffs.ts:164–190` 按 `group.exclusiveGroup` 去重（同组只保留一个）。预计零差，跑 `zd.sh cc101` 确认。
+  2. **R5 第 3 刀续**：`condition` / `requirement`（数据写的条件，引擎是否执行、怎么执行），然后按账本 §8「S 待第 3 刀」清单继续。
+  3. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
   4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
 - **未决项**：
-  - CC-100 会让折枝剑歌等 4 件套的门槛判定改变（低掌控角色不再达标）。这是按源数据应有的结果，不是回归；
+  - CC-100 之后，基础掌控 86 的角色（1111 / 1121 / 1271 / 1291）装 6 号位掌控不再达到折枝剑歌 115 门槛。这是源数据口径下的应有结果，不是回归；
   - D7 的 2 个驱动盘效果是否另有入口可调未核（`panelPhases.ts:728`）；
   - D10 两份 Boss 数据是否一致未比对；
   - CC-99 排在 R6 清单之后重新评估；CC-97 暂缓；CC-84 触发式。
@@ -92,6 +92,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - 删文件后，先 `git add -- <路径>` 暂存删除，再跑 check-guards。判据 25 的扫描器用 `git ls-files` 取清单，已删未暂存的文件会让它报 ENOENT。按 AGENTS.md 规则 13，不要用无路径的 `git add -A`。
   - 用户会在轮中途提交，而且和我共用同一个工作区。**提交前务必 `git log --oneline -3`**；新文件 `git add` 和 `git commit` 放在同一条命令里，否则暂存的文件可能被用户的提交顺带卷走（第 119 轮 `2259a17` 发生过）。
   - `grep -r` 在仓库里会超时，一律用 `timeout 40 git grep`。
+  - **MCP 的 `apply_patch` 在 WSL 的 UNC 路径上不可靠**（第 126 轮实测）：新建文件因依赖硬链接失败（ENOTSUP），且会把同一 patch 里其他已存在文件的权限从 755 改成 644，同时报告「nothing was written」。新建文件用 `up.sh` 上传，编辑用上传的 Python 脚本（先断言再写盘）；事后 `git status` / `git diff` 检查权限变化（`old mode 100755`）。
   - 长任务（verify 约 150 秒）用 `setsid /home/kaua/calc-arch/bg.sh <名> '<命令>'` 放后台，轮询日志末行 `EXIT=`。verify 期间不要改 docs 和 src。
   - vitest 通过不等于类型正确，要跑 `npx vue-tsc -b`。
   - 触及计算路径的改动要做零差：`bash .zc/perf/zd.sh <tag>`，必须带 tag，要求 DIFF 0。

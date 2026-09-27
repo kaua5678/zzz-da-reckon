@@ -15,7 +15,7 @@
  *   - 全局 Buff `energyRegen = 0.5` ⇒ 实算进 `energyRegenBonusPct`（×1.5）而不是 `BonusFlat`（+0.5）。
  *
  * ⚠ **驱动盘通路不适用本判据**（别把两者合并）：驱动盘数值语义由 catalog 外部数据
- * `statRules.statDisplay[k].display` 决定（`percent` = 按基础值百分比 / `number`、`integer` = 固定值加点），
+ * `statRules.driveDisc.statModes`（CC-100 起；缺失回退 `statRules.statDisplay[k].display`）决定（`percent` = 按基础值百分比 / `number`、`integer` = 固定值加点），
  * 与 `STAT_META.mode` **不同义**。实测反例：`energyRegen` 的 `display = "percent"`（6 号位 = +60% 回能）
  * 而 `STAT_META.energyRegen.mode = 'flat'`（描述基础回能字段本身 = 1.2 点/秒）⇒ 合并会把 +60% 变成 +60/s
  * （round 27 实测踩到并回退）。该通路的「`anomalyMastery` 主词条被当 pct」缺陷另立候选，见 OPEN-ITEMS。
@@ -113,23 +113,19 @@ describe('判据 19：stat 结算口径单一事实源（statSettlementMode）',
 
   it('② core/panel.ts#inferStatMode 是**驱动盘专用**口径，未与 Buff 口径合并（防误合并两个通路）', () => {
     const src = readFileSync(new URL('../../core/panel.ts', import.meta.url), 'utf8')
-    // 驱动盘数值的语义由 catalog 外部数据 `statDisplay.display` 决定，与 STAT_META.mode 不同义
-    // （实测：anomalyMastery display=number 而 STAT_META.mode=flat 一致；energyRegen display=percent
-    //  而 STAT_META.mode=flat 描述的是「基础回能字段本身」⇒ 拿后者当驱动盘口径会把 +60% 变成 +60/s）。
-    // ⇒ 本判据钉的是「**不要**把 statSettlementMode 接进 inferStatMode」，并保留对该函数的口径注解。
-    //
-    // ⚠ round 28：签名加了 `statRules` 形参（驱动盘口径改为真读 `display`，见该函数头注释），
-    // 故这里断言的形态同步放宽为「接受第二形参」。**语义未放宽**——下面两条仍然逐字生效：
-    //   ① 权威面必须是 catalog 的 `display`（而不是 STAT_META）；
-    //   ② 仍不得出现 `statSettlementMode(stat)`。
-    expect(src).toMatch(/function inferStatMode\(stat: string(?:, statRules: StatRules \| null)?\)/)
-    expect(src).toMatch(/驱动盘数值的语义由 \*\*catalog 外部数据\*\*/)
-    // 只有真读了 catalog 的 display 才允许去掉形参（防「改回纯名字启发式」时本判据静默变绿）
-    if (!/statRules: StatRules \| null/.test(src.match(/function inferStatMode\([^)]*\)/)![0])) {
-      expect(src).toMatch(/statRules\?\.statDisplay\?\.\[stat\]\?\.display/)
-    }
-    // 若有人把两个通路合并（无论哪个方向）都会命中下面这条
-    expect(src).not.toMatch(/function inferStatMode\(stat: string(?:, statRules: StatRules \| null)?\)[\s\S]{0,900}?statSettlementMode\(stat\)/)
+    const disc = readFileSync(new URL('../../core/discStatMode.ts', import.meta.url), 'utf8')
+    // CC-100（R5 D15，2026-09-27）：驱动盘口径实现移到 `core/discStatMode.ts#driveDiscStatMode`，
+    // 权威面由展示字段 `statDisplay.display` 改为显式结算规格 `statRules.driveDisc.statModes`
+    // （display 只作缺失回退）。判据语义不变：驱动盘口径以 catalog 为准，**不得**接入 Buff 通路的
+    // `statSettlementMode(stat)` / STAT_META（energyRegen：驱动盘 +60% vs 基础回能字段 1.2 点/秒）。
+    expect(src).toMatch(/function inferStatMode\(stat: string, statRules: StatRules \| null\)[\s\S]{0,120}?driveDiscStatMode\(stat, statRules\)/)
+    expect(disc).toMatch(/驱动盘数值的语义由 \*\*catalog 外部数据\*\*/)
+    expect(disc).toMatch(/statRules\?\.driveDisc\?\.statModes\?\.\[stat\]/)
+    expect(disc).toMatch(/statRules\?\.statDisplay\?\.\[stat\]\?\.display/)
+    // 若有人把两个通路合并（无论哪个方向）都会命中下面这些
+    expect(disc).not.toMatch(/statSettlementMode\(/)
+    expect(disc).not.toMatch(/from '@\/utils\/statMeta'/)
+    expect(src).not.toMatch(/function inferStatMode\([^)]*\)[\s\S]{0,300}?statSettlementMode\(stat\)/)
   })
 
   it('②b 三份副本只剩一份（resourceCalc/helpers.ts 的 isPctStat 副本已删）', () => {

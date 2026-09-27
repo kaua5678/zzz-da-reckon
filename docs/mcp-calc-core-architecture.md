@@ -271,7 +271,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-98 | done | `1279c24` | 方向 C 第 1 刀：62 个机制模块数据化盘点。能力层几乎同构，改按「spec 生成不了的过程类能力数」分 A2 / B30 / C29，归纳 4 种 spec 原语缺口 G1–G4，挑出 5 个候选 | `docs/mcp-mechanic-dataization-census.md` · census §5.105 |
 | R4-A1 | 🛑 **撤销**（用户 `3737419`）：设计稿保留为调研记录，代码已按 R7 删除（`8a0159c`），不再推进 | 第 0 步 `e8aebae` · 第 1 步 `0c0289c` | 用户需求 R4：方向 A 第 1 刀，影子内核 `src/core/timeline/`，只做喧响和失衡两条轨；零差；逐项差异表加归因；≥3 支轴模式队伍；先做性能原型；**切换现引擎属于不可逆点，须用户裁决** | `docs/mcp-timeline-shadow-kernel.md`（§8 为进度账本）· census §5.106 |
 | CC-99 | 待做（排在 R5 之后） | — | 方向 C 第 2 刀：spec 加原语 G1 / G3，迁移潘引壶 1421。原来的阻塞条件（方向 A 事件钩子）已随 R4 撤销而消失，G1–G4 可以独立推进；但它属于结构性重构，不是逻辑正确性问题，所以排在 R5 之后 | census 文档 §6 |
-| CC-100 | **待做（排最前）** | — | R5 D15 + D16：驱动盘 6 号位 `impact` / `anomalyMastery` 主词条与 31200 2 件套改按源数据的百分比口径结算；`inferStatMode` 不再从展示字段 `display` 推断口径。预计非零差，差异必须全部可归因。开工步骤见 R5 账本 §9 | `docs/mcp-r5-spec-impl-reconciliation.md` §7 D15–D16、§9 |
+| CC-100 | ✅ done（第 126 轮） | 见 git log「fix(CC-100)」 | R5 D15 + D16：驱动盘 6 号位 `impact` / `anomalyMastery` 主词条与 31200 2 件套改按源数据的百分比口径结算；`inferStatMode` 不再从展示字段 `display` 推断口径。预计非零差，差异必须全部可归因。开工步骤见 R5 账本 §9 | `docs/mcp-r5-spec-impl-reconciliation.md` §7 D15–D16、§9 |
 | CC-101 | 待做 | — | R5 D8：同 `exclusiveGroup` 的全队效果只计一次（原始朋克 4 件套多人穿戴重复叠加）。先写夹具复现再去重，预计零差 | 同上 §7 D8、§9 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |
