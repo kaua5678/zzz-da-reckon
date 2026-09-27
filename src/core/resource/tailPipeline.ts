@@ -16,6 +16,7 @@
  * （`./underfillProbe` / `./finalizePasses` / `./warmStart` / `./assembleSlot` /
  * `./crossAgentSupply` / `./curtain` / `./helpers`）。
  */
+import { stunCountForCountChannel } from '@/core/stunPlanProjection'
 import type {
   ResourceCalcConfig, CharacterOperationConfig, CharacterResourceResult,
   IterationState, TruncationCut,
@@ -147,7 +148,7 @@ export function runTailPipeline(
    * 轴模式同样计入（次数走 `ultimateGiftOf` 的轴分支，见下方；旧注释「轴模式不预留」已作废）。
    */
   const chainGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
-    totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+    totalTime, stunCount: stunCountForCountChannel(config), teamSize: config.teamSize,
   })
   /**
    * 琉音赠大（装配侧：**截断上限 + 前台展示 + 赠行时间预留**）——四处同源之一（单一事实源 =
@@ -166,7 +167,7 @@ export function runTailPipeline(
    * `applyUltimatePromote` 也不再需要 post-hoc carve（`ultimateGiftTimeReserved` 有值即走预留路径）。
    */
   const ultimateGiftFinal = ultimateGiftOf(configs, states, {
-    totalTime, stunCount: config.stunCount ?? 0, teamSize: config.teamSize,
+    totalTime, stunCount: stunCountForCountChannel(config), teamSize: config.teamSize,
     axisMode: config.axisMode, axisPromote: config.axisUltimatePromote,
   })
   const giftTimeOfSlot = (idx: number): number =>
@@ -176,7 +177,7 @@ export function runTailPipeline(
   // 目标槽按 `config.teamSize`（编排层队长）解析——与账本口径 `configs.length` 解耦，见 giftRowTargetSlot。
   const chainGiftRow = chainGiftRowSpec(configs, states, totalTime, config.teamSize)
   const ultimateGiftRow = ultimateGiftRowSpec(
-    configs, states, totalTime, config.stunCount ?? 0,
+    configs, states, totalTime, stunCountForCountChannel(config),
     config.axisUltimatePromote, !!config.axisMode, config.teamSize,
   )
   // S4 装配（CC-5b 外提至 `./resource/assembleSlot.ts`，纯函数）的只读上下文：闭包捕获的

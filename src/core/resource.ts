@@ -3,7 +3,7 @@ import type {
   TeamResourceResult,
   IterationState,
 } from '@/types/resource'
-import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
+import { stunCountForCountChannel } from '@/core/stunPlanProjection'
 
 import {
   crossAgentSupplyAt,
@@ -189,7 +189,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 默认零种子快照：规范重跑用（种子注入的轨迹若未正常收敛 = 停点含瞬态相位成分，弃掉重跑冷轨迹）
   // **计数通道**：`stunPlanProjection` 打开时把失衡计划值投影成整数再乘进连携数（默认 off = 现状，
   // 见 `core/stunPlanProjection.ts`）；时间账（窗口/覆盖率/`stunSeconds`）继续用实数 `config.stunCount`。
-  const countStunPlan = projectStunPlanForCounts(config.stunCount ?? 0, config.stunPlanProjection ?? 'off')
+  const countStunPlan = stunCountForCountChannel(config) // CC-141：physical 模式种子也读物理次数
   const defaultSeedStates: IterationState[] = configs.map(cfg => ({
     basicAttackTime: totalWeight > 0
       ? totalTime * (cfg.timeWeight / totalWeight)

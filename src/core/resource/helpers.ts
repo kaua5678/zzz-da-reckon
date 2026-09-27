@@ -17,7 +17,7 @@ import { getAgentMechanic } from '@/mechanics/registry'
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, ultimateGiftOf, giftDecibelForCfg } from './crossAgentSupply'
 import { curtainInfoOf } from './curtain'
 import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
-import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
+import { stunCountForCountChannel } from '@/core/stunPlanProjection'
 
 /**
  * 计数通道用的失衡次数（C7 投影；`globalCfg.stunPlanProjection='off'` 时**恒等** ⇒ 0 delta）。
@@ -25,7 +25,7 @@ import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
  * 见 `core/stunPlanProjection.ts`。
  */
 function countStunOf(globalCfg: ResourceCalcConfig): number {
-  return projectStunPlanForCounts(globalCfg.stunCount ?? 0, globalCfg.stunPlanProjection ?? 'off', globalCfg.stunCountPhysical)
+  return stunCountForCountChannel(globalCfg)
 }
 
 // ============================================================================
@@ -335,7 +335,7 @@ function iterateBody(
   // CC-35c-D 2026-09-27：赠链局部量去角色名（原 normaGift*/liuyinGift*）——取值早已走通用供给通道
   // `gift-chain:chain`（赠连携）/ `ultimateGiftOf`（赠终结技），名字里的角色只是历史残留。
   const chainGift = crossAgentSupplyAt(configs, prevStates, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
-    totalTime, stunCount: globalCfg.stunCount ?? 0,
+    totalTime, stunCount: countStunOf(globalCfg), // CC-141：赠送供给属计数通道
   })
   const chainGiftTargetIdx = chainGift.count > 0 ? chainGift.targetIdx : -1
   const chainGiftTime = chainGift.time
@@ -364,7 +364,7 @@ function iterateBody(
   // @fact engine:赠送时间/轴模式四处同源 口径: 琉音赠大（`gift-chain:ultimate`）在轴模式下的**次数与时长必须四处同源**（`ultimateGiftOf` 单一事实源）：① 本处 `iterate` 账本必要时间预留 ② S2 折叠环 `rowTime` 测量 ③ `frontlineRowsOf` 试探测量 ④ `giftTimeOfSlot` 装配截断上限。四处缺任一（尤其①与②）都会破守恒——实测雨果 0 命轴只做④不做①②时，截断额度被扣 8.732s 而账本/折叠都没涨 ⇒ **双重计费**、决算行被整数装包砍掉一整次（5→4）| 据 用户@2026-09-20「同一个量转大次数，在轴模式下显示制定了部分好评值的用途，剩余好评应该默认 90」·复核@2026-09-25（W19：③ frontlineRowsOf 内联轴分支已收敛到 ultimateGiftOf）·锚未变@2026-09-27 | 验 src/composables/__tests__/timeLedgerInvariants.test.ts + src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/core/resource/crossAgentSupply.ts#ultimateGiftOf | 信 确认
   // ⟳复核: 再增/删琉音赠大的消费点（尤其绕过 `ultimateGiftOf` 直调 `crossAgentSupplyAt`）时，复核「四处同源」覆盖面与 `Σ非赠行 + 赠行 ≡ 账本`（timeLedgerInvariants 全绿）；`axisUltimatePromote` 的产生改为非编排层时一并重核 | 到期 2027-03-31
   const ultGift = ultimateGiftOf(configs, prevStates, {
-    totalTime, stunCount: globalCfg.stunCount ?? 0,
+    totalTime, stunCount: countStunOf(globalCfg), // CC-141：赠送供给属计数通道
     axisMode: !!globalCfg.axisMode,
     axisPromote: globalCfg.axisUltimatePromote,
   })

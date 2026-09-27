@@ -38,6 +38,21 @@ export function stunPlanProjectionFromCode(code: number): StunPlanProjection {
  *   缺省（首轮）回落计划值。为什么：外层计划值被必要时间约束压低（78/104 队），21/104 队出现「失衡 N 次、
  *   失衡连携 0 次」；本模式把计数通道对齐到伤害侧读的物理次数。实测与未决项见 docs/mcp-stun-dual-source.md §5。
  */
+/**
+ * **计数通道失衡次数的单一入口**（CC-141，第 165 轮）：按 `config` 的投影模式取计数用的失衡次数。
+ * 所有「把失衡次数当次数乘」的消费点（连携数、赠送供给 `crossAgentSupplyAt` / `ultimateGiftOf`、
+ * 赠行规格 `ultimateGiftRowSpec`）必须走这里，否则 `'physical'` 模式下账本预留与物化行口径分裂
+ * （实测 auto-1321-1481-1491：账本按计划值 0.69 预留 4 次琉音赠大，物化按物理 4 次失衡给 5 次 ⇒ 净占用超预算 2.37s，
+ * 与交互降配档无关，S3 无杠杆）。`'off'` 下恒等 ⇒ 0 delta。
+ */
+export function stunCountForCountChannel(config: {
+  stunCount?: number
+  stunPlanProjection?: StunPlanProjection
+  stunCountPhysical?: number
+}): number {
+  return projectStunPlanForCounts(config.stunCount ?? 0, config.stunPlanProjection ?? 'off', config.stunCountPhysical)
+}
+
 export function projectStunPlanForCounts(plan: number, mode: StunPlanProjection = 'off', physical?: number): number {
   if (!Number.isFinite(plan)) return plan
   switch (mode) {
