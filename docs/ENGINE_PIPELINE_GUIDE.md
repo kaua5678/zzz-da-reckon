@@ -769,12 +769,11 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 
 38. **「静默不算」清单：哪些缺口在界面上永远不出现（2026-09-10 快照 + 复算命令；多数条目同日已修）**：
     用户问「还有多少静默不算的」。**数字是快照会漂移，命令不会**——每条都给出复算命令，别照抄数字。
-    ⟳复核: 快照数字过期后按本条各复算命令重跑对账（清完的销号、新静默补条） | 到期 2026-10-15
-    · **① 已声明但 UI 不显示 → 已修（2026-09-10）**：部署页缺口清单（`utils/modelingGaps.ts`）判据
-    从「只按 status 过滤」改为「**pending[] 非空即列**」（status 只定措辞：未接入计算/已实现·遗留待办），
-    存量 104 命座 + 41 机制带 pending 的条目全部现形（原仅 6+1 可见），列表超 8 条自动折叠可展开；
+    ⟳复核: 快照数字过期后按本条各复算命令重跑对账（清完的销号、新静默补条；上次全量对账 2026-09-27 CC-96） | 到期 2026-12-31
+    · **① 已声明但 UI 不显示 → 已修（2026-09-10）**：部署页缺口清单（`utils/modelingGaps.ts`）判据从「只按 status 过滤」改为「**pending[] 非空即列**」（status 只定措辞：未接入计算/已实现·遗留待办），
+    存量带 pending 的条目全部现形（原仅 6+1 可见；2026-09-10 快照 104 命座 + 41 机制 → 2026-09-27 复算 105 条目/108 项 + 39 条目/40 项），列表超 8 条自动折叠可展开；
     数据驱动断言见 `modelingGaps.test.ts`（真实账本逐条对账，pending 非空必在清单里）。复算：
-    `node -e "const fs=require('fs');for(const [f,k] of [['character-constellations','cinemas'],['character-mechanics','mechanics']]){const j=JSON.parse(fs.readFileSync('public/static/'+f+'.json','utf8'));let t=0,h=0;for(const e of Object.values(j.characters))for(const i of e[k]||[]){const p=(i.pending||[]).length;if(p)t+=p}console.log(f,'pending',t)}"`
+    `node -e "const fs=require('fs');for(const [f,k] of [['character-constellations','cinemas'],['character-mechanics','mechanics']]){const j=JSON.parse(fs.readFileSync('public/static/'+f+'.json','utf8'));let t=0,n=0;for(const e of Object.values(j.characters))for(const i of e[k]||[]){const p=(i.pending||[]).length;if(p){t+=p;n++}}console.log(f,'entries',n,'pending',t)}"`
     · **② 声明了但引擎零消费 → 已清（2026-09-10）**：**16 条 spec `adjustable` 真死滑块已删除**（8 角色
     1171/1181/1261/1281/1291/1411/1511/1581——模块存在但不调 spec 资源解释器、`specToMechanicModule` 从不
     注册 ⇒ 零消费者，只在设置页当摆设）；**另 36 条经查是误报**：模块调 `computeSpecResources`/
@@ -788,7 +787,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     被「三档轴每轮消耗满 6 点青溟剑势」取代，原注释自标「未接线」）；归档 `bangbooId` 解析后**现在告警**
     （`submissionToDeploy` 推「该投稿带邦布：计算器无邦布位」到部署警告，页面已渲染）；spec JSON 的 `debt:`
     **已纳入 check-guards 扫描并登记**（1411 柚叶转积蓄施加者近似）；剩余：逐招耀变行不进队伍总伤
-    （口径不同源，已在 MECHANICS_IMPLEMENTATION.md 如实记录，不做误差判据）、`zc drift` 待复核口径。
+    （口径不同源，已在 MECHANICS_IMPLEMENTATION.md 如实记录，不做误差判据）；`zc drift` 待复核口径 → **2026-09-27 清零**（复算：`npm run -s zc -- drift | head -1` 看「待复核 N 条」）。
     · **④ 量级已登记的偏低主因**（不是本次新发现）：倍率融合缺段（`data/moveFusions.ts` 头注释自称
     「低估主因之一，最低金+3 前沿 80% fn 定位到此」）、最低金+3 前沿低估最重组仅 32%/39%
     （`damageSplitFrontierProbe` 头注释）、面板 316 ATK（曾全库 −12~16%，已修）、邦布无位、动作覆盖
@@ -799,6 +798,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     · **⑥ 第五类＝渲染侧静默（2026-09-14 新增判据 16「scoped 样式可达性」）**：抽组件把 DOM 搬进子组件、规则留在页面 `<style scoped>`
       ⇒ 选择器带的是**页面的** `data-v-*`、组件元素只带自己的 ⇒ **规则静默失配**（编译过 / 2295 例测试全绿 / ui-check 也 PASS，症状只是少一条线）。
       实测 3 条真回归与**唯一合法修法**（跨块共享类进 `styles/chart-blocks.css`，各块 `<style scoped src>` 载入 ⇒ 特异性不变、源码一份；复制两份必漂：`.dd-caption` 已漂 11 vs 11.5px）在判据 16 头注释 + `scopedStyleReach.test.ts`（含两条反向闸门：注释里的 `<style scoped src>` 字样、嵌套 `<template #slot>` 截断）。
+    · **⑦ 数据侧「标了但引擎不认」（2026-09-27 CC-96）**：catalog 效果 `basis` 引擎层零读取（仅 derived 展示用；fixed/stacked `atkPct` 一律按 `core/buff.ts` CORE_STAT_BY_BONUS 乘局外面板）；4 条驱动盘 4 件套错标 `baseAtk`（原文与 `outOfCombatAtk` 同形）已统一，零数值变化；若实测证明某件套按基础攻击力算，**先让引擎认 basis 再改标签**。复算：`grep -o '"basis":"[a-zA-Z]*"' public/static/catalog.json | sort | uniq -c`（期望只有 outOfCombat*）。取证与同类判据（21/25、`zc dead-channels`）见 census §5.103。
 
 39. **「基线绿」不等于「改动生效」：数据订正类改动必须反向 A/B 证伪（2026-09-12 两条实测）**：
     **症状**：改了 catalog 数值，`timeGolden` 全绿零 delta → 极易被读成「改动没生效 / 漏改了」。三个成因：
