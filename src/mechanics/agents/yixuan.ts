@@ -1,4 +1,4 @@
-import type { AgentMechanicModule, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
+import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { ModuleFeedback } from '../types'
 import type { CharacterResourceResult, MechanicSetting, YixuanExChain } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
@@ -1042,6 +1042,14 @@ function yixuanNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): M
 }
 
 export const yixuanMechanic: AgentMechanicModule = {
+  // CC-48：轴编辑器凝神标注（经 composables/agentMechanicView 门面；StunAxisPage 不再值导入本模块）
+  axisEditorBlockMarks: ({ axes, slot }) => {
+    const out = new Map<string, AxisEditorBlockMark>()
+    for (const [k, v] of computeYixuanNingshenBlocks(axes, slot)) {
+      out.set(k, { trigger: v.trigger, active: v.active, layers: 0 })
+    }
+    return out
+  },
   id: 'agent:yixuan',
   agentIds: [AGENT_ID],
   name: '仪玄',

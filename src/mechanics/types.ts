@@ -767,6 +767,14 @@ export interface AgentMechanicModule {
   /** 连段动作：comboId → 复合招式（特殊技+重碾打包成一个栈单位，能量按打包口径一次扣除） */
   combos?: Record<string, { label: string; energyCost: number; moves: { moveId: string; count: number }[] }>
   /**
+   * 轴编辑器逐块标注（CC-48 2026-09-27；**展示层专用，不参与计算**）：返回 `${axisIndex}:${actionIndex}` → 标注。
+   * 展示层经 `composables/agentMechanicView.ts#agentAxisBlockMarks` 以「本角色所在槽位」调用（判据 7：页面不值导入角色模块）。
+   * 现实现：般岳（明王窗口，computeBanyueMingwangBlocks）、仪玄（凝神窗口，computeYixuanNingshenBlocks）。
+   */
+  axisEditorBlockMarks?(input: { axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>; slot: number; cinemaLevel: number }): Map<string, AxisEditorBlockMark>
+  /** 轴编辑器招式元数据（CC-48；展示层专用）：moveId → { tag 名称前缀, cost 单次耗能 }。现唯一实现：般岳 `BANYUE_AXIS_MOVE_META` */
+  axisMoveMeta?: Readonly<Record<string, { tag: string; cost: number }>>
+  /**
    * 失衡轴窗口覆盖声明（规则 6 迁移落点，2026-09-12 #10 真清偿）：
    * 模块按「轴内时间轴窗口」算出逐 moveId 的加权覆盖量，供伤害池消费。
    *
@@ -1771,4 +1779,14 @@ export interface AgentAnomalyEventRecordsInput {
   cinemaLevel: number
   /** 异常池逐属性触发次数（`AnomalyPoolResult.perElement` 按 element 取**首条** triggerCount；无该属性则缺键）（CC-29） */
   perElementTriggerCounts: Readonly<Partial<Record<string, number>>>
+}
+
+/**
+ * 轴编辑器逐块标注（CC-48，`AgentMechanicModule.axisEditorBlockMarks` 的值类型）。
+ * trigger = 触发块（自身不享受窗口）；active = 落在窗口内；layers = 层数（无层数概念的实现给 0）。
+ */
+export interface AxisEditorBlockMark {
+  trigger: boolean
+  active: boolean
+  layers: number
 }

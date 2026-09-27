@@ -1,4 +1,4 @@
-import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionTopUp, InteractionTopUpInput } from '../types'
+import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionTopUp, InteractionTopUpInput } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
@@ -875,6 +875,15 @@ const settings: MechanicSetting[] = [
 ]
 
 export const banyueMechanic: AgentMechanicModule = {
+  // CC-48：轴编辑器展示层标注 / 招式元数据（经 composables/agentMechanicView 门面；StunAxisPage 不再值导入本模块）
+  axisEditorBlockMarks: ({ axes, slot, cinemaLevel }) => {
+    const out = new Map<string, AxisEditorBlockMark>()
+    for (const [k, v] of computeBanyueMingwangBlocks(axes, slot, cinemaLevel)) {
+      out.set(k, { trigger: v.trigger, active: v.layers > 0, layers: v.layers })
+    }
+    return out
+  },
+  axisMoveMeta: BANYUE_AXIS_MOVE_META,
   id: 'agent:banyue',
   agentIds: [AGENT_ID],
   name: '般岳',

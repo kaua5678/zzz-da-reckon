@@ -6,7 +6,7 @@
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
 import { getAgentMechanic } from '@/mechanics'
-import type { AgentMechanicModule } from '@/mechanics/types'
+import type { AgentMechanicModule, AxisEditorBlockMark } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
 
 /**
@@ -48,4 +48,23 @@ export function agentResourceSections(
 ): AgentResourceSections {
   const mod = agentId ? getAgentMechanic(agentId) : undefined
   return mod?.resourceSections?.(input) ?? []
+}
+
+export type AgentAxisBlockMarksInput = Parameters<NonNullable<AgentMechanicModule['axisEditorBlockMarks']>>[0]
+
+/**
+ * 轴编辑器逐块标注（CC-48）：模块能力 `axisEditorBlockMarks`；未声明或空 id ⇒ 空 Map。
+ * 原位置：StunAxisPage.vue 直调 computeBanyueMingwangBlocks / computeYixuanNingshenBlocks。
+ */
+export function agentAxisBlockMarks(
+  agentId: string | null | undefined,
+  input: AgentAxisBlockMarksInput,
+): Map<string, AxisEditorBlockMark> {
+  const mod = agentId ? getAgentMechanic(agentId) : undefined
+  return mod?.axisEditorBlockMarks?.(input) ?? new Map()
+}
+
+/** 轴编辑器招式元数据（CC-48）：模块声明 `axisMoveMeta`；原位置 StunAxisPage.vue 读 BANYUE_AXIS_MOVE_META */
+export function agentAxisMoveMeta(agentId: string | null | undefined): AgentMechanicModule['axisMoveMeta'] {
+  return agentId ? getAgentMechanic(agentId)?.axisMoveMeta : undefined
 }

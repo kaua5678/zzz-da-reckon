@@ -246,11 +246,9 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
-import { computeBanyueMingwangBlocks, BANYUE_AXIS_MOVE_META } from '@/mechanics/agents/banyue'
-import { computeYixuanNingshenBlocks } from '@/mechanics/agents/yixuan'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
 import type { StunAxisAction, StunAxisPlan, StunAxis } from '@/types/resource'
@@ -298,7 +296,9 @@ const slotOptions = computed(() => [0, 1, 2].map(s => ({ label: agentName(s), va
 // 般岳明王时间轴可视化：怒相二连块触发 8s 窗口（2层→3层刷新），块级标注触发/落窗层数；6命满覆盖单独提示
 const banyueSlot = computed(() => configStore.team.findIndex(c => c.agentId === '1471'))
 const banyueCinema = computed(() => (banyueSlot.value >= 0 ? configStore.team[banyueSlot.value]?.cinemaLevel ?? 0 : 0))
-const banyueMingwangBlocks = computed(() => computeBanyueMingwangBlocks(axes.value, banyueSlot.value, banyueCinema.value))
+// CC-48：标注经模块能力 axisEditorBlockMarks（门面 agentAxisBlockMarks；槽位空 ⇒ 空 Map，同原实现）
+const banyueMingwangBlocks = computed(() => agentAxisBlockMarks(configStore.team[banyueSlot.value]?.agentId,
+  { axes: axes.value, slot: banyueSlot.value, cinemaLevel: banyueCinema.value }))
 function mingwangTag(ai: number, aii: number): { text: string; cls: string } | null {
   if (banyueSlot.value < 0 || banyueCinema.value >= 6) return null
   const info = banyueMingwangBlocks.value.get(`${ai}:${aii}`)
@@ -311,7 +311,8 @@ function mingwangTag(ai: number, aii: number): { text: string; cls: string } | n
 const yixuanSlot = computed(() => configStore.team.findIndex(c => c.agentId === '1371'))
 // 60/90 转大（好评把队友连携升级为终结技）是琉音专属机制，只有琉音在队时才给其他队友发转大块
 const liuyinSlot = computed(() => configStore.team.findIndex(c => c.agentId === '1481'))
-const yixuanNingshenBlocks = computed(() => computeYixuanNingshenBlocks(axes.value, yixuanSlot.value))
+const yixuanNingshenBlocks = computed(() => agentAxisBlockMarks(configStore.team[yixuanSlot.value]?.agentId,
+  { axes: axes.value, slot: yixuanSlot.value, cinemaLevel: configStore.team[yixuanSlot.value]?.cinemaLevel ?? 0 }))
 function ningshenTag(ai: number, aii: number): { text: string; cls: string } | null {
   if (yixuanSlot.value < 0) return null
   const info = yixuanNingshenBlocks.value.get(`${ai}:${aii}`)
@@ -660,15 +661,17 @@ const allMoves = computed(() => {
       const stunExTag = c.agentId === '1371' && (mid === '1371022' || mid === '1371026') ? '·+30%失衡' : ''
       let name = ((move?.name?.zhCN || rawName).slice(0, 8)) + srcTag + cdTag + stunExTag
       // 般岳怒/普分化：只写招式名（倍率随等级变不写；名字带「·怒」即 40 耗能，其余 20；连段块山威免费）
-      if (c.agentId === '1471' && BANYUE_AXIS_MOVE_META[mid]) {
-        const meta = BANYUE_AXIS_MOVE_META[mid]
+      // CC-48：招式元数据经模块声明 axisMoveMeta（现唯一 = 般岳；原为 `c.agentId === '1471' && BANYUE_AXIS_MOVE_META[mid]`）
+      const axisMoveMeta = agentAxisMoveMeta(c.agentId)?.[mid]
+      if (axisMoveMeta) {
+        const meta = axisMoveMeta
         name = `[${meta.tag}]${move?.name?.zhCN || rawName}`
       }
       // 般岳 [普]/[怒] 强特：remaining 用资源预算推导（闪能/山威），不被「已捏反馈」锁成 0——
       // 玩家捏轴时看到的是「还能拉几个」，拉了才扣预算（普通强特耗闪能回嗔火，连段块耗山威免费）。
       let remaining = 0
       const cycle = c.banyueRageCycle
-      const banyueMeta = c.agentId === '1471' ? BANYUE_AXIS_MOVE_META[mid] : undefined
+      const banyueMeta = axisMoveMeta
       if (cycle && banyueMeta) {
         if (banyueMeta.tag === '怒') {
           // 连段块：山威配额 = 怒相次数 × 2 组（4 山威/怒相；官方预设自觉遵守，不硬限制）
