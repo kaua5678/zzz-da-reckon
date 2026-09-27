@@ -302,8 +302,10 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 「初始能量自动回复」= 局外总回能（基础 × 局外加成 + 固定，panelPhases 写入 energyRegenOutOfCombat）。
   // CC-127：原读 `panel.energyRegen`——那是**基础**回能（恒 1.2，catalog.ts PanelValues 注释），转模从未触发。
   const regen = Math.max(0, Number(panel.energyRegenOutOfCombat ?? panel.energyRegen ?? 1.2) - 1.2)
-  const atkBonus = Math.min(ROXY_REGEN_ATK_CAP, Math.round((regen / 0.01) * ROXY_REGEN_ATK_PER_0_01))
-  const impactBonus = Math.min(ROXY_REGEN_IMPACT_CAP, (regen / 0.01) * ROXY_REGEN_IMPACT_PER_0_01)
+  // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18（原：攻击 = 连续步数×5 再 Math.round，冲击连续）。+1e-9 防 1.23−1.2=0.0299… 少算一步
+  const regenSteps = Math.floor(regen / 0.01 + 1e-9)
+  const atkBonus = Math.min(ROXY_REGEN_ATK_CAP, regenSteps * ROXY_REGEN_ATK_PER_0_01)
+  const impactBonus = Math.min(ROXY_REGEN_IMPACT_CAP, regenSteps * ROXY_REGEN_IMPACT_PER_0_01)
   if (atkBonus > 0) panel.atk = (panel.atk ?? 0) + atkBonus
   if (impactBonus > 0) panel.impact = (panel.impact ?? 0) + impactBonus
   // 额外能力：自身伤害 +80%（Lv60 上限；门控由团队条件，面板统一施加——无强攻/命破/锋御队略高估，note）

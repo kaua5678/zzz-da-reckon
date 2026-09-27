@@ -124,7 +124,8 @@ function applyQingyiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
     panel.stunBuildUpBonus__basic = (panel.stunBuildUpBonus__basic ?? 0) + 20
     // 冲击力 >120 每超 1 点攻击 +6，最多 +600
     const impact = panel.impact ?? 0
-    const over = Math.max(0, impact - 120)
+    // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18（原连续 over×6）
+    const over = Math.floor(Math.max(0, impact - 120) + 1e-9)
     const atkGain = Math.min(600, over * 6)
     if (atkGain > 0) panel.atk = (panel.atk ?? 0) + atkGain
   }

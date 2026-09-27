@@ -257,7 +257,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const critOverride = row.releaseCrit
         ? {
             rate: row.releaseCrit.ratePct
-              + Math.max(0, (row.releaseCrit.masteryValue ?? settlementPanel?.anomalyMastery ?? 0) - (row.releaseCrit.masteryThreshold ?? 0))
+              // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18（原连续）
+              + Math.floor(Math.max(0, (row.releaseCrit.masteryValue ?? settlementPanel?.anomalyMastery ?? 0) - (row.releaseCrit.masteryThreshold ?? 0)) + 1e-9)
                 * (row.releaseCrit.masteryPerPointRatePct ?? 0),
             dmg: row.releaseCrit.dmgPct,
             labelPrefix: '异放暴击',

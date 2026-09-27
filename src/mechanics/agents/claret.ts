@@ -192,7 +192,8 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
   // 初始口径 → 只读局外面板（珂蕾妲潜能等局内暴伤拐不参与转化）；基础暴伤 50（锋御同模板，见 `@fact agent:1611/初始暴伤转暴击`），其余来自副/主词条与驱动盘。
   const initialCritDmg = Number(outOfCombatPanel?.critDmg ?? 0)
   if (initialCritDmg > 0) {
-    panel.critRate = (panel.critRate ?? 0) + initialCritDmg * INITIAL_CRIT_DMG_TO_CRIT_RATE
+    // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18：「每拥有 1% 初始暴伤」按整 1% 计（原连续）
+    panel.critRate = (panel.critRate ?? 0) + Math.floor(initialCritDmg + 1e-9) * INITIAL_CRIT_DMG_TO_CRIT_RATE
   }
   // 核心被动 Lv.7：猩红铭刻/连携/终结/无垢熔锋期间 暴击率 +30%（状态高频维持，满覆盖近似）
   panel.critRate = (panel.critRate ?? 0) + CORE_CRIT_RATE

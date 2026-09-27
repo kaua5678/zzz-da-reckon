@@ -209,7 +209,8 @@ export function computeTriggerCycle(input: {
 
 function applyTriggerPanel({ panel }: AgentPanelInput): void {
   if ((panel.additionalAbilityActive ?? 0) <= 0) return
-  const overCrit = Math.max(0, (panel.critRate ?? 0) - TRIGGER_CRIT_THRESHOLD)
+  // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18（原连续）
+  const overCrit = Math.floor(Math.max(0, (panel.critRate ?? 0) - TRIGGER_CRIT_THRESHOLD) + 1e-9)
   panel.triggerAdditionalStunBuildUp = Math.min(
     TRIGGER_STUN_BUILD_CAP,
     overCrit * TRIGGER_STUN_BUILD_PER_CRIT,
