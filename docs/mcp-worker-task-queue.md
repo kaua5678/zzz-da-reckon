@@ -69,26 +69,32 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 152 轮（2026-09-27，提交 bf6d184 / 941f597 / 文档提交「docs: round 152」；上一轮文档 = 90c23c6）
+### 第 153 轮（2026-09-27，提交「fix(1621): CC-127」+ 文档提交「docs: round 153」；上一轮文档 = 9c5ef715）
 
 - **做到哪**：
-  - bf6d184 **CC-125** 爱芮异放比例与影画1 异放暴击按初始（局外）掌控：事件预算值 `releaseRatio.basisValue` / `releaseCrit.masteryValue`（`src/types/resource/execution.ts`），`src/mechanics/agents/aire.ts` 填写，`src/composables/resourceCalc/damagePool.ts` 两处 `??` 回落。预设伤害零差，变异对照证明生效。
-  - 941f597 **CC-126** 柚叶资源卡展示读局外攻击（`yuzuhaInitialAtk`），伤害零差。
-  - 验证：verify EXIT=0（3778 passed）；vue-tsc 0；validate:specs 1120；zd 伤害差 0（仅含 1501 的预设 resourceResult 哈希变，已解释）；timeGolden 零差。
-- **下一步（可直接开工）**：「初始」原文侧反查，步骤写在 `docs/mcp-r6-refactor-list.md` §2.13 末（抽句 → 对实现 → §2.14 表 → 读局内的开 CC-127 起）。
+  - 「初始」原文侧反查完成（`docs/mcp-r6-refactor-list.md` §2.14，38 条）。
+  - **CC-127 洛克茜真 bug**：`src/mechanics/agents/roxy.ts` 回能转模改读 `energyRegenOutOfCombat`（原读基础回能，转模从未触发）。5 个洛克茜预设伤害 +5.7%~+14.9%，timeGolden 19 叶已逐条解释并重生成（卡表 CC-127 行）。
+  - **CC-128 诺姆**：`src/mechanics/agents/norma.ts` 初始暴击读局外，预设内零差。
+  - 新单测 `src/mechanics/__tests__/initialRegenCritCc127.test.ts`；`src/specs/agents/1621.json` 注记同步。
+  - 验证：verify / vue-tsc / CG 见提交；zd 差异只在 5 个洛克茜预设；反向验证旧实现 3 条全红。
+- **下一步（按顺序，可直接开工）**：
+  1. **CC-129 席德选正兵按初始攻击**：开工方案在清单 §2.14 末。
+  2. 同类「字段语义误读」扫描（洛克茜的教训）：`PanelValues` 里带「基础」语义的字段（`energyRegen`、`atkBase` 类、`flashEnergyRegen` 等，见 `src/types/catalog.ts` 第 30-60 行注释）逐个 `git grep` 读取点，确认每处想要的是基础值还是总值。先读 catalog.ts 列出基础语义字段清单，再逐个查。
 - **本轮拍板**：
-  - CC-125 用「事件携带预算值」而不是让 damagePool 取局外面板。依据：编排层当前没有局外面板，引入要动 damagePanels 的构造链，范围大；预算值是可选字段，缺省行为不变，可逆。回退点：aire.ts 不填字段。
-  - zd 的 resourceResult 哈希差不算数值差：判据是第 1 字段（总伤害）与第 3 字段（失衡池哈希）全等；第 2 字段会因新增 cfg 键 / 事件字段变化。
+  - 洛克茜按原文改（R5 数据可信；原实现读错字段属于 bug，不是口径选择）。数值升幅大，但每条差异都能解释到「攻击 +960 / 冲击 +76.8 双封顶」。
+  - CC-129 不在本轮做：build 阶段能否拿到局外面板还没查，且只影响多强攻队伍的选人。
 - **已知坑**：
-  - **zd 输出怎么读**：`value = 总伤害|resourceResult哈希|失衡池哈希|闸门`（`.zc/perf/dump.perf.ts`）。只加 cfg 键也会让第 2 段变；判断数值变化看第 1、3 段。
-  - zd dump 用裸装（`recommendedBuild: false`），很多「局内 vs 局外」差异在裸装下看不到，必须写阳性对照（变异或单测）。
+  - **往 wsl_exec 命令里内联含反引号的文本会被外层 shell 当命令替换吞掉**（第 153 轮卡表行丢字）：改文档一律写成脚本文件上传后执行，不要内联 heredoc。
+  - **改到失衡 / 时间分配的数值时有两份基线**：timeGolden（`TIME_GOLDEN_UPDATE=1`）和 `timeFillRatchet.baseline.json`（`TIME_RATCHET_UPDATE=1 npx vitest run timeFillRatchet`），两份都要逐条解释后重生成；后者只在全量 verify 里才暴露。
+  - `PanelValues.energyRegen` 是**基础**回能（恒 1.2，柏妮思 1.56）；总回能看 `energyRegenOutOfCombat` / `energyRegenTotal`。
+  - **zd 输出怎么读**：`value = 总伤害|resourceResult哈希|失衡池哈希|闸门`；数值变化看第 1、3 段。
+  - zd dump 起手裸装，但 `applyTeamToStore(preset)` 会装上预设装备，所以预设装备下的差异能看到；timeGolden 的 `agent:*:cN` 是单人裸装，`preset:*` 才带装备。
   - 不要用 `pgrep -f` / `pkill -f` 杀 dsh（会匹配自身 shell）；用 `ps -eo pid,etimes,args | grep '[.]local/node/bin/dsh'` 找 pid 再 `kill -9`。pid 8958 的 `dsh web --port 3080` 是用户常驻服务，不要杀。
   - dsh 大批量任务要分批、边做边写结果文件（1500s 超时）。
-  - 千夏在预设里都不在 0 号位，zd `/c6` 看不到，要靠 timeGolden 和探针。
   - `releaseModifier` 的派发键是异放行的 agentId（结算者），原文是全队的修正必须声明 `releaseModifierScope: 'team'`。
   - 盘点 cfg 键时要同时搜 `setRecord(cfg, 'xxx'` / `cfgNum(cfg, 'xxx'` 的字符串形式。
   - 预设外的角色（zd 看不到）至少有 1121、1281、1291、1081；`setupHarness` 必须传 `{ agentId }` 对象。
   - vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
   - `zcWorkspace.test.ts` 在全量 verify 下偶发失败，单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
-- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）。CC-27 维琳娜风蚀状态机仍是「待设计」，本轮未评估。
+- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）；洛克茜 `Math.round` 攻击取整也属同一问题。CC-27 维琳娜风蚀状态机仍是「待设计」。

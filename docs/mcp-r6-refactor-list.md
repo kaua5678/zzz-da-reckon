@@ -218,3 +218,31 @@
   2. 每条对实现：spec attributeConversions 的 `sourcePanelPhase`、catalog 效果的 formula basis（CC-96 outOfCombatAtk 口径）、模块 applyPanel / buildCharConfig 读的面板。
   3. 结果表写进本清单 §2.14；读局内的开 CC 卡（CC-127 起），走 CC-123 ~ CC-125 的模式（原文为准、阳性对照单测、zd + timeGolden 逐条解释）。
   4. 规模预估：句子上百条，可派 dsh，但**要按角色分批**（每批 ≤ 10 个角色）并要求边做边追加结果文件，避免 1500s 超时丢结果（第 151 轮教训）。
+
+### 2.14 第 153 轮：「初始」原文侧反查结果
+
+抽句脚本（输出不进仓库）：对 `data/raw/nanoka_missing/full/*.json`、catalog `wEngines` / `driveDiscSets`、`teammate-buffs.json` 去标签后匹配 `初始(攻击力|最大生命值|生命值|防御力|暴击率|暴击伤害|异常掌控|异常精通|冲击力|能量自动回复|穿透率|贯穿力)`，按（来源 id，属性）去重，得 38 条。
+
+| 来源 | 属性 | 实现 | 结论 |
+|---|---|---|---|
+| 1121 / 1341 / 1451 / 1481 / 1491 / 1501 / 1511 / 1541 / 1611 | 各类 | 局外（CC-116/118/123/124/125 等） | ✅ |
+| 1131 / 1311 / 1411 / 1421 / 1581 全队 buff（teammate-buffs） | 攻击力 | derived/formula `sourcePanelPhase: outOfCombat` | ✅ |
+| 1391 橘福福虎啸 | 攻击力 ≥2800 | teammate formula，outOfCombat | ✅ |
+| 1301 奥菲丝 / 1521 希希芙 | 能量自动回复 | teammate formula，`sourceStat: energyRegenTotal` + outOfCombat | ✅ |
+| 1561 维琳娜 | 能量自动回复 | spec `sourceValue: energyRegenOutOfCombat` | ✅ |
+| 1171 柏妮思 | 能量自动回复 | `panel.energyRegenOutOfCombat` | ✅ |
+| 1151 露西 | 攻击力 | 直接取封顶 600（fixed） | ✅ 有意近似 |
+| D34200 荆棘玫瑰 4 件 | 防御力 ≥1000/1800 | `requirement.outOfCombatStat` | ✅ |
+| 1071 凯撒 / 1271 赛斯 | 冲击力 / 攻击力 → 护盾 | 护盾不影响伤害 | 不适用 |
+| **1621 洛克茜** | 能量自动回复 | 原读基础回能 `energyRegen` | ❌ → **CC-127 已修**（真 bug） |
+| **1571 诺姆** | 暴击率 | 原读局内 | ❌ → **CC-128 已修** |
+| **1461 席德** | 攻击力（选正兵） | `level60.atkBase` | ❌ → **CC-129 待做** |
+
+**结论**：「初始」这一类在模块侧（§2.12）和原文侧（本节）都已查完。除 CC-129 外，全部口径正确或有意近似。
+
+**CC-129 开工方案**：
+1. 读 `src/mechanics/agents/xide.ts` 的 `applyXideTeamConfig`（build 阶段）与 `AgentTeamConfigInput`（`src/mechanics/types.ts`），确认 build 阶段能否拿到各队友的局外面板（team 成员上可能有 panel / outOfCombat 字段；没有就看 `sourcePanelsByOwner` 之类的现成结构）。
+2. 能拿到：改为按队友局外 `atk` 选；拿不到：改为 `level60.atkBase + 音擎 level60.atkBase`（仍是近似，但更接近「初始攻击力」），并在注释写明。
+3. 验证：zd（席德预设里若只有 1 名强攻队友则零差）+ 探针（两名强攻队友、装备差异使选人翻转）。
+
+**方法沉淀（字段语义）**：`PanelValues.energyRegen` 是**基础**回能，局外总回能在 `energyRegenOutOfCombat`，teammate formula 用 `sourceStat: energyRegenTotal`。以后写「按回能」的机制一律读后两者。
