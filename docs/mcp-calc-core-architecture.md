@@ -273,6 +273,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-99 | 待做（排在 R5 之后） | — | 方向 C 第 2 刀：spec 加原语 G1 / G3，迁移潘引壶 1421。原来的阻塞条件（方向 A 事件钩子）已随 R4 撤销而消失，G1–G4 可以独立推进；但它属于结构性重构，不是逻辑正确性问题，所以排在 R5 之后 | census 文档 §6 |
 | CC-100 | ✅ done（第 126 轮） | 见 git log「fix(CC-100)」 | R5 D15 + D16：驱动盘 6 号位 `impact` / `anomalyMastery` 主词条与 31200 2 件套改按源数据的百分比口径结算；`inferStatMode` 不再从展示字段 `display` 推断口径。预计非零差，差异必须全部可归因。开工步骤见 R5 账本 §9 | `docs/mcp-r5-spec-impl-reconciliation.md` §7 D15–D16、§9 |
 | CC-101 | ✅ done（第 127 轮） | 见 git log「fix(CC-101)」 | R5 D8：同 `exclusiveGroup` 的全队效果只计一次（原始朋克 4 件套多人穿戴重复叠加）。先写夹具复现再去重，预计零差 | 同上 §7 D8、§9 |
+| CC-102 | ✅ done（第 128 轮） | 见 git log「fix(CC-102)」 | R5 D19：音擎 effect 级 `requirement` 生效（14150 壳中之灵三条以太限定效果修前对所有装备者生效）。`core/wengineConditions.ts#wEngineEffectRequirementMet`，测试 `wengineEffectRequirement.test.ts` 先红后绿，zd DIFF 0。 |
+| CC-103 | 待做 | — | R5 D18：14155 日冕遗蜕 `enemyEtherResReduction` 16 限定佩洛伊斯（1551），数据只有散文 condition。方案：`EffectRequirement.wearerAgentIds` + 14155 数据补标，按数据通用判定，不写 agentId 分支。详见 R5 账本 §9 CC-103。 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |
 | R7 | ✅ done | `8a0159c` | 用户决定删除事件时间轴死代码：`src/core/timeline/`、`scripts/lib/timeline-isolation.*`、`timelineIsolation.test.ts`、判据 26（check-guards 26→25） | `docs/REQUIREMENTS.md` R7 · census §5.109 |

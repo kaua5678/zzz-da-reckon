@@ -92,7 +92,7 @@
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
 - [x] 第 2 刀（第 121 轮 Z2、Z6；第 122 轮 Z4、K0、Z5、Z1；第 123 轮 Z3、Z7–Z12；第 124 轮 Z13、D14 批与字段归类 §8，**完成**）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
-- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；下一个是 `condition` / `requirement`。
+- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；下一个是 §8「S 待第 3 刀」里剩下的 50 个字段（建议顺序：`coverage`、`target`、`buffModifiers`、`formula`/`expression`，都是直接决定数值的）。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
 ## 7. 已核结论（第 2 刀起）
@@ -282,6 +282,28 @@
 - **逐条核对**：这 4 个属性在数据中共 40 处（含 `impactPct` 等名字自带口径者），除 D16 外，mode 与原文一致：14140、14141 异常掌控「提升 60 / 30 点」为 flat；14134、14145 能量回复「点 / 秒」为 flat；其余高级属性和效果为 pct。14136 `impactPct` 写了 `mode: flat`，但原文是「冲击力提升 4%」，引擎按名字走 pct，结果正确，mode 只是噪声。
 - **建议**：无需改。可在字段归类时把「对非分流属性写 mode」标为无效字段，不做数据清洗（R5 不改数据）。
 
+### D18 `condition`：只有 1 种取值被执行，其余 104 处字符串一律「恒满足 + 覆盖率兜底」；其中 1 处是引擎能判定却没判定的角色限定 → **真实差异（窄）**
+
+- **数据怎么写**（第 128 轮实测，脚本 `/home/kaua/calc-arch/cond1.py`）：118 处 `condition`，null 13 处（与缺省等价），字符串 105 处。位置分三类：音擎组级（`effect.selfBuff/teamBuff.condition`）、驱动盘组级（`fourPiece.selfBuff/teamBuff.condition`）、**effect 级**（`effects[i].condition`，音擎与驱动盘都有）。取值两种写法：camelCase 机器名约 40 种（`exSpecial`、`hpReduced`、`offField`、`enemyHasAnomaly`、`anomalyMasteryAtLeast115Or150`…），其余是中文散文。
+- **引擎怎么读**：唯一读取方 `src/core/wengineConditions.ts:30` `wEngineConditionMet`，只在**音擎组级**被调用（`core/buff.ts` `collectWEngineBuffs`、`core/inCombatBuffs.ts` 音擎 teamBuff 通道），只识别 `attributeCounter`（14002 一处），其余返回 true。**驱动盘组级 condition 与所有 effect 级 condition 零读取**。
+- **逐类归纳**（105 处全部归入下列之一）：
+  1. **已执行**：`attributeCounter`（1 处）。
+  2. **触发 / 状态类散文或机器名**（招式命中、层数、前后台、敌方异常状态、HP 降低等，约 94 处）：引擎没有这些战斗状态，文件头注释写明的设计口径是「恒满足，由覆盖率滑块近似」。与数据约定（coverage 默认 1）一致 → **无差异**。没有滑块的 28 个 fixed 效果已登记在 D7，不重复。
+  3. **可静态判定、但已由同一对象上的 `requirement` 执行**（9 处）：34000「以太属性代理人…」（effect requirement.attribute=ether）、34100「装备者为流明属性」（attribute=lumiflux）、33300「强攻角色…」（specialty=attack）、33200「击破位装备者…」（组 requirement.specialty=stun + effect outOfCombatStat critRate≥50）、33400「支援位装备者…」（specialty=support）、32700 `anomalyMasteryAtLeast115Or150`（effect outOfCombatStat anomalyMastery≥115）、34200「暴击率按局外防御力自动判定」（outOfCombatStat def≥1000/1800）→ condition 只是说明文字，**无差异**。
+  4. **可静态判定、没有任何执行**（1 处）：**14155 日冕遗蜕** effect `effect_wiki_2031_self_ether_res_ignore`（`enemyEtherResReduction` 16）condition「装备者为佩洛伊斯且处于日蚀效果」。前半句是角色限定（1551 佩洛伊斯），数据里没有对应的机器可读 requirement；数据自己在 `verification.effectBuff` 标了 `partially-modeled-agent-restriction`。影响：非佩洛伊斯的以太强攻角色（当前只有 1241 朱鸢）装 14155 时多吃 16% 以太抗性无视（只作用于以太伤害）。→ **真实差异（窄）**，立卡 CC-103，见 §9。
+- **结论**：condition 这一字段「读了但语义不同」只有第 4 类 1 处。effect 级 condition 零读取本身不是差异（第 2、3 类都由 coverage 或 requirement 表达）。
+- **潜在风险（不立卡）**：新数据若把「装备者为 X 属性」只写进 condition 而不写 requirement，会静默生效。防线：CC-102 之后音擎 effect 级 requirement 已生效，录入时应写 requirement。
+
+### D19 `requirement`：音擎 effect 级 requirement 零读取 → **真实差异** ✅ 已修（CC-102，第 128 轮）
+
+- **数据怎么写**（脚本 `/home/kaua/calc-arch/req1.py`，非 null 共 79 处）：音擎 `effect.requirement {specialty,label}` 66；**音擎 effect 级 `{attribute}` 3（全在 14150 壳中之灵）**；驱动盘 effect 级 `{attribute}` 2、`{outOfCombatStat}` 4、`{specialty}` 1；驱动盘 teamBuff 组级 `{specialty}` 3。
+- **引擎怎么读**：
+  - 音擎 `effect.requirement.specialty`：由 `collectAllBuffs` 的 `matchSpecialty`（`wEngine.specialty === agent.specialty`）实现；`label` 是展示 → 一致。
+  - 驱动盘 selfBuff 的 effect 级（`core/buff.ts` `discRequirementMet` / `discEffectPassesRequirement`）、teamBuff 组级与 effect 级（`core/inCombatBuffs.ts` `discTeamRequirementMet`）：specialty / attribute / outOfCombatStat 三种都判定 → 一致（outOfCombatStat 口径：selfBuff 用粗算、teamBuff 用装备者精确面板，已有 @fact 注明，不在本条范围）。
+  - **音擎 effect 级 requirement：修前零读取**。`collectWEngineBuffs` 只过组级 condition。
+- **差在哪**：14150 的 `etherDmg 20`、`anomalyDmgBonus 10`、`disorderDamageBonus 10` 三条限定以太装备者；非以太异常角色（简、月城柳、柏妮思、星见雅、普罗米娅、菲欧妮、维琳娜、爱丽丝、派派、格莉丝、蕾米埃尔等）装 14150 时多吃 +10% 属性异常增伤与 +10% 紊乱增伤（etherDmg 对非以太伤害本来无效）。
+- **修法**：见 §9 CC-102。
+
 ## 9. 转卡清单（第 4 刀输入，按影响面排序）
 
 ### CC-100（D15 + D16）驱动盘词条的结算口径以源数据为准 ✅ done（第 126 轮，提交号见 git log「fix(CC-100)」）
@@ -386,6 +408,24 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
 
 **原计划**：
 - 先写夹具复现（两名队友同穿 31900 原始朋克 4 件套 → 断言 dmgBonus 只 +15），再在 `core/inCombatBuffs.ts:164–190` 按 `group.exclusiveGroup` 去重。只影响重复穿戴场景，golden 预计零差。
+
+### CC-102（D19）音擎 effect 级 requirement 生效 ✅ done（第 128 轮，提交号见 git log「fix(CC-102)」）
+
+**实际做法**：
+- 先红后绿：新建 `src/core/__tests__/wengineEffectRequirement.test.ts`，修前「简 1261 装 14150」实测 anomalyDmgBonus +10（复现 D19），修后 0；爱芮 1501 仍 +10 / +10 / +90。
+- `src/core/wengineConditions.ts`：`WEngineConditionContext` 新增 `wearerSpecialty`；新增 `wEngineEffectRequirementMet(req, ctx)`，按装备者 specialty / attribute 判定，与驱动盘同口径。装备者信息缺省时不拦截（与本文件「未声明不拦截」的既有口径一致，测试夹具不受影响）。`outOfCombatStat` 在音擎数据中 0 处，不判定。
+- `src/core/buff.ts` `collectWEngineBuffs`：逐 effect 过 requirement；`collectAllBuffs` 调用处补传 `wearerSpecialty`。
+- `src/core/inCombatBuffs.ts` 音擎 teamBuff 通道：同样按**装备者**过 effect 级 requirement（当前数据 0 处，零差，只为口径统一）。
+- 验证：`zd.sh cc102` DUMP DIFF 0 / ROWS DIFF 0（现有预设没有非以太角色装 14150）；vue-tsc 0；verify 与 check-guards 全绿。
+- **回退点**：删掉 `collectWEngineBuffs` 和 inCombatBuffs 里那一行 `wEngineEffectRequirementMet` 过滤即可恢复原行为。
+
+### CC-103（D18）14155 日冕遗蜕以太抗性无视限定佩洛伊斯 · 待做
+
+- **问题**：见 D18 第 4 类。数据只有散文 condition，没有机器可读的角色限定。
+- **拍板的方向（可逆）**：在数据上加机器可读限定，引擎按数据通用判定，**不在 core 写 agentId 分支**。方案：`EffectRequirement` 新增 `wearerAgentIds?: string[]`，14155 该 effect 写 `["1551"]`，`wEngineEffectRequirementMet` 判定时 ctx 需带 `wearerAgentId`（`collectAllBuffs` 有 `agent.id`）。开工前先确认 `scripts/check-guards.mjs` 里「core/** 禁写 agentId 判定」判据只匹配字面量比较（如 `=== '1551'`），读数据字段不触发；若触发，改用数据侧标记而不是改判据。
+- 「处于日蚀效果」后半句是状态，仍由覆盖率兜底。
+- 预期差异：只影响非 1551 的以太强攻角色装 14155（朱鸢 1241）；zd 预计 0 或极少，逐条归因。
+- 不做的替代：不把 condition 字符串做关键词解析（脆弱，且违背「数据写机器名」的既有约定）。
 
 ### 其余（零差、界面层）
 - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。

@@ -7,7 +7,7 @@ import type {
   PanelValues, StatId, TeammateBuff, DriveDiscConfig, SkillDamageTarget, BuffScope, EffectRequirement, StatRules
 } from '@/types/catalog'
 import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normalizeEnemyDebuffStatAlias } from '@/utils/enemyDebuffStats'
-import { wEngineConditionMet, type WEngineConditionContext } from '@/core/wengineConditions'
+import { wEngineConditionMet, wEngineEffectRequirementMet, type WEngineConditionContext } from '@/core/wengineConditions'
 
 /** 收集的 buff 列表 */
 
@@ -342,6 +342,7 @@ function collectWEngineBuffs(
   const addEffects = (group: BuffGroup | null) => {
     if (!wEngineConditionMet(group?.condition, gate)) return
     for (let e of extractEffects(group)) {
+      if (!wEngineEffectRequirementMet(e.requirement, gate)) continue
       e = applyWEngineModLevel(e, modLevel)
       if (group?.scope === 'outOfCombat') out.push(e)
       else inCombat.push(e)
@@ -540,6 +541,7 @@ export function collectAllBuffs(
   const wEngineBuffs = wEngine
     ? collectWEngineBuffs(wEngine, config.wEngineModLevel, matchSpecialty, {
         wearerAttribute: agent.attribute,
+        wearerSpecialty: agent.specialty,
         enemyWeakness: config.enemyWeakness,
       })
     : { outOfCombat: [] as BuffEffect[], inCombat: [] as BuffEffect[] }

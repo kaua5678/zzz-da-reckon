@@ -69,23 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 127 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-101)」）
+### 第 128 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-102)」）
 
 - **做到哪**：
-  - **CC-101 完成**（R5 D8）：`src/core/inCombatBuffs.ts` 按 `exclusiveGroup` 去重，`src/types/catalog.ts` `BuffGroup` 新增该字段，新测试 `src/core/__tests__/discExclusiveGroup.test.ts`（修前实测 +30 复现，修后 +15）。zd.sh DIFF 0。范围口径与回退点见账本 §9 CC-101。
-  - 第 126 轮的产出：`c1251fc`（CC-100，D15 + D16）。
+  - R5 第 3 刀完成 `condition`（账本 §7 **D18**）与 `requirement`（**D19**）。
+  - **CC-102 完成**（D19）：音擎 effect 级 requirement 生效。改动 `src/core/wengineConditions.ts`（`wEngineEffectRequirementMet`、ctx 新增 `wearerSpecialty`）、`src/core/buff.ts`、`src/core/inCombatBuffs.ts`；新测试 `src/core/__tests__/wengineEffectRequirement.test.ts`（修前简装 14150 异常增伤 +10 复现，修后 0）。zd.sh DIFF 0。回退点见账本 §9 CC-102。
+  - 立卡 **CC-103**（D18，14155 佩洛伊斯限定），方案写在账本 §9。
+  - 第 127 轮的产出：`fa9087b`（CC-101，D8）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 3 刀续：`condition`**。起点数据（第 127 轮实测）：catalog 中 `condition` 共 118 处，其中字符串 105 处（音擎 61 处 / 52 种取值，驱动盘 44 处 / 36 种取值），null 13 处。读取方只有 `src/core/wengineConditions.ts:30` `wEngineConditionMet`（被 `core/buff.ts:343`、`core/inCombatBuffs.ts:140` 调用），它**只识别 `attributeCounter`**（`:32`）。要查清：
-     - 其余字符串 condition 在引擎里是被当作「恒满足」还是被忽略，是否一律由 coverage 兜底；
-     - 驱动盘的 44 处 condition 有没有任何读取方（`timeout 40 git grep -n "condition" -- src/core/buff.ts src/core/inCombatBuffs.ts`）；
-     - 逐类归纳：纯描述性文本（由 coverage 表达）vs 引擎应该执行的门槛（如「装备者为某属性」「敌人弱点」）。后者若未执行即为差异。每类写一条 D 条目。
-  2. **R5 第 3 刀续：`requirement`**。共 79 处：音擎 `{label, specialty}` 66、`{attribute}` 3；驱动盘 `{outOfCombatStat}` 4、`{attribute}` 2、`{specialty}` 4。读取方：`core/buff.ts:394` `discRequirementMet`、`:403` `discEffectPassesRequirement`、`core/inCombatBuffs.ts:53` `discTeamRequirementMet`，音擎侧看 `collectWEngineBuffs` 的 `matchSpecialty`。逐形态核对是否都被执行。
+  1. **CC-103**：按账本 §9 方案做。先 `sed -n` 读 `scripts/check-guards.mjs` 中 agentId 相关判据，确认读数据字段不触发；再写测试（朱鸢 1241 装 14155 → `enemyEtherResReduction` 不含 16；佩洛伊斯 1551 含 16），先红后绿；改 `src/types/catalog.ts` `EffectRequirement`、`wengineConditions.ts`、`collectAllBuffs` 传 `wearerAgentId`，catalog.json 14155 该 effect 补 `requirement.wearerAgentIds`（单行 JSON，用 node/python 解析改写并比对只有一处变化）。跑 `zd.sh cc103`。
+  2. **R5 第 3 刀续**：§8「S 待第 3 刀」剩余 50 个字段，建议顺序 `coverage` → `target` → `buffModifiers` → `formula` / `expression`。方法同本轮：先用 Python 在 WSL 里统计取值 × 位置（参考 `/home/kaua/calc-arch/cond1.py`、`req1.py`），再逐个读取方读码，每类写 D 条目。
   3. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
   4. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
 - **未决项**：
-  - CC-100 之后，基础掌控 86 的角色（1111 / 1121 / 1271 / 1291）装 6 号位掌控不再达到折枝剑歌 115 门槛。这是源数据口径下的应有结果，不是回归；
-  - D7 的 2 个驱动盘效果是否另有入口可调未核（`panelPhases.ts:728`）；
-  - D10 两份 Boss 数据是否一致未比对；
+  - D18 的潜在风险：新数据若把属性 / 特化限定只写进 condition 散文，会静默生效；录入时应写 requirement（音擎 effect 级 requirement 现已生效）。
+  - 旁注待查：`helpers.ts:905` 把 turbulence 并入 anomalyDmgBonus，是否与 statRules 口径一致未核。
+  - 34100 谶羽之誓 `modelingNotes` 写「15% 流明异常增伤不参与计算」，但 effects 里有 `anomalyDmgBonus 15`（requirement lumiflux）且引擎会计入。按 R5「数据可信」以 effects 为准，notes 疑似过时；未改，第 3 刀查 `modelingNotes` 时一并确认。
+  - CC-100 之后，基础掌控 86 的角色（1111 / 1121 / 1271 / 1291）装 6 号位掌控不再达到折枝剑歌 115 门槛，是应有结果；
+  - D7 的 2 个驱动盘效果是否另有入口可调未核（`panelPhases.ts:728`）；D10 两份 Boss 数据是否一致未比对；
   - CC-99 排在 R6 清单之后重新评估；CC-97 暂缓；CC-84 触发式。
 - **已知坑**（长期有效的放在这里，每轮替换时保留仍然有效的条目）：
   - 删文件后，先 `git add -- <路径>` 暂存删除，再跑 check-guards。判据 25 的扫描器用 `git ls-files` 取清单，已删未暂存的文件会让它报 ENOENT。按 AGENTS.md 规则 13，不要用无路径的 `git add -A`。

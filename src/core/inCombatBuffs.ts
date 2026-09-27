@@ -16,7 +16,7 @@ import type {
 } from '@/types/catalog'
 import { applyWEngineModLevel, parseStatRequirement, resolveAttributeTemplateStat } from './buff'
 import type { SourcePanelsByOwner } from './buff'
-import { wEngineConditionMet } from './wengineConditions'
+import { wEngineConditionMet, wEngineEffectRequirementMet } from './wengineConditions'
 
 export interface InCombatTeamBuff extends TeammateBuff {
   includeOwner: boolean
@@ -147,7 +147,9 @@ export function collectInCombatTeamBuffs(
           source: { zhCN: '音擎' },
           description: group.description ?? wEngine.effect?.description,
           scope: group.scope,
-          effects: group.effects.filter(e => e && e.stat).map(e => applyWEngineModLevel(e, char.wEngineModLevel ?? 1)),
+          effects: group.effects
+            .filter(e => e && e.stat && wEngineEffectRequirementMet(e.requirement, { wearerAttribute: agent.attribute, wearerSpecialty: agent.specialty }))
+            .map(e => applyWEngineModLevel(e, char.wEngineModLevel ?? 1)),
           buffModifiers: group.buffModifiers ?? [],
           sourceType: 'teammate',
           sourceCategory: 'wEngine',

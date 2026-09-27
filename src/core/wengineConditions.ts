@@ -5,11 +5,14 @@
  * 仍由覆盖率滑块近似，这里返回 true，避免把没读懂的被动静默清零。
  * 新音擎只要把 condition 写成已登记的机器名，不用再加角色分支。
  */
+import type { EffectRequirement } from '@/types/catalog'
 import { ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 
 export interface WEngineConditionContext {
   /** 装备者属性（ice/fire/…） */
   wearerAttribute?: string
+  /** 装备者特化（attack/anomaly/…），effect 级 requirement.specialty 用 */
+  wearerSpecialty?: string
   /**
    * 当前敌人弱点（中文，与 Boss 预设 phase.weakness 同口径）。
    * 缺省或空 = 未声明，不拦截（未选 Boss / 测试夹具保持原行为）。
@@ -30,5 +33,17 @@ export function attributeCounterMet(attribute: string | undefined, weakness: rea
 export function wEngineConditionMet(condition: string | undefined, ctx: WEngineConditionContext = {}): boolean {
   if (!condition) return true
   if (condition === 'attributeCounter') return attributeCounterMet(ctx.wearerAttribute, ctx.enemyWeakness)
+  return true
+}
+
+/**
+ * 音擎 effect 级 requirement（CC-102 / R5 D19）：按装备者 specialty / attribute 判定，
+ * 与驱动盘 discRequirementMet 同口径。装备者信息缺省 = 不拦截（测试夹具保持原行为）。
+ * outOfCombatStat 门槛当前音擎数据 0 处，这里不判定（返回 true）；若日后出现需接粗算面板。
+ */
+export function wEngineEffectRequirementMet(req: EffectRequirement | undefined, ctx: WEngineConditionContext = {}): boolean {
+  if (!req) return true
+  if (req.specialty && ctx.wearerSpecialty && ctx.wearerSpecialty !== req.specialty) return false
+  if (req.attribute && ctx.wearerAttribute && ctx.wearerAttribute !== req.attribute) return false
   return true
 }
