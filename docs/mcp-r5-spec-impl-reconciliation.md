@@ -98,7 +98,7 @@
   - 第 134 轮完成面板类一批（`advancedStat`、`baseStat`、`sRankMaxMainStat`、`sRankSubStatBaseStep`、`stat`，见 **D26 / D27**）⇒ **已核 34 个**。
   - 第 135 轮完成招式类一批（`actionTime`、`energyCost`、`timeType`、`skillTags`、`damageElement`、`levelValues`、`values`、`comboAlignRatio`，见 **D28 / D29**，另开 **D30 待核**）⇒ **已核 42 个**。
   - 第 136 轮：**D30** 异常积蓄属性归属核完（无差异）；身份类 10 个（`agentId`、`attribute`、`basicBenchmarkMoveId`、`buff`、`cinemaLevel`、`isTeammateOnly`、`luminizeLevelValues`、`ownerAgentId`、`rarity`、`teammateBuffId`）+ `specialty` 其余位置核完（**D31**；音擎团队效果漏了特化门 → **CC-110 已修，零差**）⇒ **已核 52 个，第 3 刀全覆盖**（R5 验收条件「覆盖全部字段类型」满足；剩第 4 刀 D7 / D3 / D14）。
-- [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
+- [x] 第 4 刀（第 137 轮**完成**）：差异清单已按影响面转成 CC-100–111（卡表 `docs/mcp-calc-core-architecture.md`），全部 done；零差界面项 D3 / D7 与数据前提钉 D2 / D4 / D14 由 CC-111 一次收尾。**R5 完成**。
 
 ## 7. 已核结论（第 2 刀起）
 
@@ -111,7 +111,7 @@
 - **影响面**：无数值影响。
 - **建议**：不改引擎。可选做法是 R6 候选 C3：导入脚本校验两者一致，或者删掉这个冗余字段。**不开修复卡。**
 
-### D2 `statRules.calculation.outOfCombatEffectFilter`：引擎写死了规则的一半 → 潜在差异
+### D2 `statRules.calculation.outOfCombatEffectFilter`：引擎写死了规则的一半 → 潜在差异 （数据前提已由 CC-111 钉住）
 - **数据怎么写**：`{ "scope": "outOfCombat", "condition": null }`。字面含义是「scope 为局外**且**无条件的效果才计入局外面板」。
 - **引擎怎么算**：`core/buff.ts:286–353` 只判断 `scope === 'outOfCombat'`，不看 condition，也不读这条规则。
 - **差在哪**：条件那一半没有实现。递归遍历 catalog，scope 为局外且自身或其 effects 带非空 condition 的对象为 **0 个**，所以当前数据下等价。
@@ -119,7 +119,7 @@
 - **建议修法**：R6 候选 C4，局外判定改为读这条规则，同时判断 condition，当前数据下零差。优先级低；R5 第 4 刀转卡时排在有数值影响的条目之后。
 - 同批的 `baseAttackRule`（`agent.atkBase + wEngine.atkBase`）、`baseHpRule`、`baseDefRule`（Z5）还没有和 `calcBasePanel`（`core/panel.ts:158`）逐项对照，第 2 刀续做。
 
-### D3 `stackGroup`：零读取；层数不会错，但覆盖率滑块没有按组联动 → 潜在差异（UI 层）
+### D3 `stackGroup`：零读取；层数不会错，但覆盖率滑块没有按组联动 → 潜在差异（UI 层） ✅ 已由 CC-111 处理（第 137 轮）
 - **数据怎么写**：19 个组，共 23 条效果。15 个组只有 1 个成员（此时 stackGroup 只是标签）。多成员组有 4 个：
   - 青溟笼舍 14137 `qingming_companion`：以太伤害、两条以太贯穿伤害，都是 vps 8/10/10，max 2，def 2；
   - 焰心桂冠 14116 `effect_wiki_951_team_crit_dmg_element_values`：冰暴伤、火暴伤，vps 1.5，max 20，def 20；
@@ -137,7 +137,7 @@
 - **影响面**：默认配置（覆盖率全是 100%）零影响。只有用户单独拖动组内某个滑块时才会出错，涉及 4 个多成员组共 9 条效果。
 - **建议修法**（R5 第 4 刀转卡，零差）：覆盖率的键改成 `stackGroup ?? effect.id`，或者在 `setWEngineEffectCoverage` 里联动同组成员；界面每组只显示一个滑块。默认值不变，所以零差。驱动盘（如影相随）走 `mergeTeamDiscEffectCoverages`（`resourceCalc/panelPhases.ts:720`），这条路径的键还没有核实，转卡时一并查。
 
-### D4 `basis`（K0）：零读取，但引擎的批次规则隐式实现了它 → 无差异，有隐性耦合
+### D4 `basis`（K0）：零读取，但引擎的批次规则隐式实现了它 → 无差异，有隐性耦合 （数据前提已由 CC-111 钉住）
 - **数据怎么写**：22 处，全部在局内组里：
   - 音擎 selfBuff 9 处（攻击力%），scope 全是 `inCombat`；
   - 音擎 teamBuff 6 处（攻击力% 4 处、生命值% 2 处），scope 全是 `inCombat`；
@@ -184,7 +184,7 @@
   - (b) 删掉这个字段和 `DirectDamageInput.damageBasis` 死参数，只保留 specialty 这一个来源。
   - lead 倾向 (b)：数据源本身不提供逐行基底，specialty 才是真实的决定因素，删掉更简单。零差。
 
-### D7 `durationSeconds` / `cooldownSeconds`（Z3、Z9）：引擎用覆盖率代替持续时间，默认 100% 与数据约定一致；28 个效果没有滑块 → 潜在差异（UI 层）
+### D7 `durationSeconds` / `cooldownSeconds`（Z3、Z9）：引擎用覆盖率代替持续时间，默认 100% 与数据约定一致；28 个效果没有滑块 → 潜在差异（UI 层） ✅ 已由 CC-111 处理（第 137 轮，34100 谶羽之誓 4pc 的 lumiflux 条例外，见 CC-111）
 - **引擎怎么读**：catalog 的 `durationSeconds` 零读取。`src/mechanics/agents/piper.ts` 里的同名字段是派派模块自己的动力持续时间，与 catalog 无关。`cooldownSeconds` 同样零读取。
 - **引擎怎么代替**：按效果的覆盖率（`effectCoverageMap`，键为 effect.id，`core/buff.ts:811`）折算；没有覆盖率条目时按 100%。队友 buff 的整体覆盖率（`panelPhases.ts:536–539`）只作用于角色的队友 buff，不覆盖音擎和驱动盘。
 - **数据约定**：数据里**所有** `coverage.default` 都是 1，与持续时长、冷却无关（例：混沌爵士 31800 持续 5 秒、冷却 7.5 秒，default 仍为 1）。所以「无覆盖率条目按 100%」与数据约定一致，**默认无差异**。R5 硬约束「数据可信」，这里不改任何默认值。
@@ -230,7 +230,7 @@
   - ⚠ **第 125 轮更正**（第 126 轮补：主词条池与副词条池的并集实为 **20** 个属性，旧注释的「21」是误记）：「全部登记」只说明不会落到兜底分支，**不说明口径对**。`display` 是展示字段，拿它决定结算口径是语义错用；6 号位 `impact` / `anomalyMastery` 因此被按固定值结算，与源数据相反。见 **D15**。
 - **数据小缺口（无影响）**：statDisplay 没有登记 7 个 `*SharpDmg` 键。标签回退到 `utils/statMeta.ts:76–82`（「电属性锐化增伤」等）；数值格式由调用方传 mode（14161 写的是 `mode: "pct"`，`AttributeConfigPage.vue:522`、`TeamConfigPage.vue:1191` 都会传），界面显示正确。不处理。
 
-### D14 零访问的配置范围 / 蕾米埃尔 / formula 字段（归类时补核）：全部与引擎硬编码一致 → 无差异，有隐性耦合
+### D14 零访问的配置范围 / 蕾米埃尔 / formula 字段（归类时补核）：全部与引擎硬编码一致 → 无差异，有隐性耦合 （一致性单测已由 CC-111 补上）
 - `agentSkills[].categories[].levelRange` = `{min 1, max 12, default 12}`：引擎写死技能等级 12 + 加成（`core/skillLevel.ts:39`），与数据一致。
 - `wEngines[].modification` = `{minLevel 1, maxLevel 5, defaultLevel 1}`、`agents[].coreSkill.defaultLevel = "max"`：界面配置范围。**默认值口径不同**：`stores/config.ts:134–141` `defaultCharacter` 默认影画 6、精炼 5（计算器有意的「满配」默认），而数据 `defaultLevel` 为 1。数据的 defaultLevel 描述的是配置范围提示，不是游戏计算规则，**lead 拍板保持满配默认，不改**；回退点是 `config.ts:141`。
 - `statRules.driveDisc.rarityMaxLevel` = `{S 15, A 12, B 9}`：引擎只支持 S 级驱动盘（主词条数值唯一来源 `sRankMaxMainStat`，`panel.ts:248`、`buff.ts:551`），A / B 两项无消费方。与界面只提供 S 级一致。
@@ -645,7 +645,19 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
 - **zd**：`zd.sh cc110` DUMP DIFF 0、ROWS DIFF 0（内置预设无特化不符的装备）；golden / 留白棘轮无变化。
 - **回退点**：删掉 `inCombatBuffs.ts` 那一行条件（含三行注释）和新测试。
 
-### 其余（零差、界面层）
-- D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。
-- D3：覆盖率按 `stackGroup ?? id` 联动。
-- D14：蕾米埃尔 canTriggerLuminize 集合与模块硬编码的一致性单测。
+### CC-111（D3 + D7 + D14，附 D2 / D4 数据前提钉）R5 第 4 刀零差收尾 ✅ done（第 137 轮，提交号见 git log「feat(CC-111)」）
+
+- **D3 覆盖率按 stackGroup 联动**：新增 `src/utils/stackGroupCoverage.ts#stackGroupPeerIds`；`TeamConfigPage.vue` 的音擎滑块改调 `setWEngineCoverageLinked`、驱动盘滑块改调 `setDiscCoverageLinked`（同套、可调的行），拖一个滑块写同组全部 id。引擎仍按 `effect.id` 读覆盖率，**不改键**（改键会让已存的用户覆盖率失效，且引擎侧零收益）。`discEffectRows.ts` 行上带出 `stackGroup`。选了「联动」而没选「每组只留一个滑块」：改动更小、可逆，用户看得到同组一起动。
+- **D7 带持续时间的效果给滑块**：音擎 `hasCoverage` 增加「效果级或组级 `durationSeconds != null`」；驱动盘 `adjustable` 同样增加这一条。`core/buff.ts` `applyEffect` 对 fixed 同样乘覆盖率（已核），默认 100% 不变。26 个音擎效果 + 31600 四件套 teamBuff 现在可调。
+  - **例外（不改）**：34100 四件套的 `effect_chant_vow_4pc_lumiflux` 带 `requirement.attribute`，`discEffectRows` 的既有规则是「有门槛就不给滑块」（防止面板门槛与覆盖率双重打折）。属性门槛其实不会双重打折，但放开要改门槛规则本身，收益只有这一条，记为遗留。回退点 / 入口：`discEffectRows.ts` `adjustable` 那一行。
+- **D14**：新增 `src/mechanics/__tests__/remielleLuminizeDataParity.test.ts`：数据 `canTriggerLuminize` 集合 = `remielle.ts` 里带引号的 1581xxx 字面量（扣除登记的非耀变字面量 1581010）；`remielleLuminizeMultipliers` 与招式行 values / levelValues 一致；去掉 levelValues 后兜底阈值在 12 / 14 / 16 取到同一档。反向验证：把模块里的 `'1581016'` 改成 `'1581099'`，第一例失败，恢复后 `cmp` 一致。
+- **D2 / D4**：新增 `src/core/__tests__/r5DataInvariants.test.ts`：局外 + 带 condition 的对象为 0；`basis` 取值 ⊆ {outOfCombatAtk, outOfCombatHp}。出现新数据时先改引擎再改测试。
+- 测试：`src/utils/__tests__/stackGroupCoverage.test.ts`（纯函数 4 例 + 数据前提 2 例 + D7 的 31600 一例；D7 那一例在去掉新条件后失败，已反向验证）。
+- **zd**：`zd.sh cc111` DUMP DIFF 0、ROWS DIFF 0（只动界面与测试）。
+- **回退点**：页面两个 `set*CoverageLinked` 改回直接调 store；`hasCoverage` / `adjustable` 去掉 durationSeconds 条件；删新文件。
+
+### R5 收尾后的遗留（都不影响默认计算）
+- D28：失衡轴 `roundInputs.ts:237` energyCost 解析取首个正数，只影响用户自建轴。
+- D25：1581 sourceStat 局外 / 局内口径（已用测试钉住当前口径）。
+- D21 旁注 14150、D30 旁注 positionCompare、D7 例外 34100 lumiflux。
+- 数据侧已知缺口：14126 / 14152 / 14001 标了 partially-modeled。

@@ -369,7 +369,7 @@
                             :step="5"
                             size="small"
                             style="flex: 1"
-                            @update:value="v => configStore.setWEngineEffectCoverage(effect.id, v)"
+                            @update:value="v => setWEngineCoverageLinked(effect.id, v)"
                           />
                           <span class="coverage-value">{{ configStore.getWEngineEffectCoverage(effect.id) }}%</span>
                         </div>
@@ -443,7 +443,7 @@
                           :step="5"
                           size="small"
                           style="flex: 1"
-                          @update:value="v => configStore.setDiscEffectCoverage(r.key, v)"
+                          @update:value="v => setDiscCoverageLinked(r.setId, r.key, v)"
                         />
                         <span v-else style="flex: 1" />
                         <span class="coverage-value">
@@ -779,6 +779,7 @@ import { localized } from '@/utils/format'
 import { discSetGapLabel } from '@/utils/modelingGaps'
 import { SPECIALTY_LABEL, ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 import { buildDiscEffectRows } from '@/utils/discEffectRows'
+import { stackGroupPeerIds } from '@/utils/stackGroupCoverage'
 import type { WEngine, WEngineAdvancedStat, PanelValues, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
 import type { CharacterConfig } from '@/stores/config'
 import { agentCharacterCountInputs, characterCountInputValue, characterCountInputClearValue, agentInteractionInputs, teamHasGuaranteeFuryOwner } from '@/composables/agentMechanicView'
@@ -1150,7 +1151,9 @@ function collectWEngineGroupEffects(group: BuffGroup | null | undefined, source:
       label: phaseStatLabel(effect.stat, group?.scope ?? 'inCombat'),
       valueText: effectValueText(effect),
       stackText,
-      hasCoverage: effect.type === 'stacked' || !!effect.coverage,
+      // CC-111（R5 D7）：带持续时间（效果级或组级）的 fixed 效果也给滑块（引擎 applyEffect 对 fixed 同样乘覆盖率；默认 100% 不变）
+      hasCoverage: effect.type === 'stacked' || !!effect.coverage
+        || (effect as any).durationSeconds != null || (group as any)?.durationSeconds != null,
     }
   })
 }
@@ -1162,6 +1165,16 @@ const wEngineLogicEffects = computed(() => {
     ...collectWEngineGroupEffects(wengine.value.effect?.teamBuff, '团队'),
   ]
 })
+
+// CC-111（R5 D3）：同 stackGroup 的效果共享叠层状态 ⇒ 覆盖率滑块联动（引擎仍按 effect.id 读）。
+function setWEngineCoverageLinked(effectId: string, v: number) {
+  const members = wEngineLogicEffects.value.filter(e => !!e.id).map(e => ({ id: e.id as string, stackGroup: (e as any).stackGroup }))
+  for (const id of stackGroupPeerIds(members, effectId)) configStore.setWEngineEffectCoverage(id, v)
+}
+function setDiscCoverageLinked(setId: string, key: string, v: number) {
+  const members = discEffectRows.value.filter(r => r.setId === setId && r.adjustable).map(r => ({ id: r.key, stackGroup: r.stackGroup }))
+  for (const id of stackGroupPeerIds(members, key)) configStore.setDiscEffectCoverage(id, v)
+}
 
 function mainStatOptions(slot: number) {
   const pool = catalogStore.statRules?.driveDisc?.mainStatPools?.[String(slot)] ?? []

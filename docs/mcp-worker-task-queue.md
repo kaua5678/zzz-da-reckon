@@ -69,29 +69,30 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 136 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-110)」）
+### 第 137 轮（2026-09-27，提交号见 git log 中的「feat(CC-111)」与其后的「docs: R5 done」）
 
 - **做到哪**：
-  - R5 第 3 刀**完成（52 / 52）**：**D30** 异常积蓄属性归属无差异；**D31** 身份类 10 个 + `specialty` 其余位置核完，唯一差异是音擎团队效果漏了特化门 → **CC-110 已修**（`src/core/inCombatBuffs.ts` 一行条件 + 新测试 `src/core/__tests__/wengineTeamSpecialty.test.ts`），zd DIFF 0，golden / 留白棘轮不变。
-  - 账本 §6 / §7 D30、D31 / §9 CC-110，卡表 CC-110，REQUIREMENTS R5 段已更新。
-  - 上一轮：`8909a05`（CC-109）。
+  - **R5 完成**：第 4 刀由 CC-111 收尾（D3 滑块按 stackGroup 联动、D7 带持续时间的效果给滑块、D14 蕾米埃尔一致性单测、D2 / D4 数据前提钉），zd DIFF 0。REQUIREMENTS R5 标 done，验收对照写在 R5 状态段末。
+  - 改动：`src/utils/stackGroupCoverage.ts`（新）、`src/utils/discEffectRows.ts`、`src/views/TeamConfigPage.vue`；测试 `src/utils/__tests__/stackGroupCoverage.test.ts`、`src/mechanics/__tests__/remielleLuminizeDataParity.test.ts`、`src/core/__tests__/r5DataInvariants.test.ts`（均新）。
+  - 上一轮：`332883d`（CC-110）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 4 刀**（都是零差界面项，做完 R5 标 `[done <commit>]`）：
-     - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变），入口先查 `panelPhases.ts:728` 与 28 个 fixed 效果的清单（账本 D7）。
-     - D3：覆盖率按 `stackGroup ?? id` 联动（账本 D3 / Z4）。
-     - D14：蕾米埃尔 canTriggerLuminize 集合与模块硬编码的一致性单测。
-  2. **R6 第 1 步续**：全景 `docs/ARCHITECTURE-OVERVIEW.md` §6 的 4 项；然后 R6 第 2 步（完成影响面最大的一项）。
+  1. **R6 第 1 步续**：`docs/ARCHITECTURE-OVERVIEW.md` §6 的 4 项，逐项写进全景文档：
+     1. §1 生命周期：按 `docs/ARCHITECTURE.md` §1 的调用链（useResourceCalc → runCalcRound → calcTeamResources → …）逐个 `git grep -n 'function <名>'` 确认存在与顺序，差异写进全景 §3。
+     2. A4：`src/composables/resourceCalc/*.ts` 与 `src/composables/*.ts` 逐文件标「计算 / 胶水」（判据：是否 import `@/core` 且产出数值）。
+     3. views / components → core 的值边：`git grep -n "from '@/core" -- src/components src/views`，区分 type-only。
+     4. specs ↔ mechanics：62 个模块与 `src/specs/agents/*.json` 是否同一机制两处实现（从 CC-98 的 A2 / B30 / C29 分档表入手）。
+  2. **R6 第 2 步**：全景 §5 的 C1–C5 正式评估「做 / 不做」，写三类清单（冗余可简化 / 可归一 / 可结构化，每条附文件行号、收益、影响面、风险），完成影响面最大的一项。C4（局外判定读规则）现在有 `r5DataInvariants.test.ts` 兜底，风险已降。
   3. 顺手可查：1251 的「Additional Energy Cost 20」、1091 与 1161 的 Follow-Up 耗能是否被模块消费。
 - **本轮拍板**：
-  - CC-110 按数据 `effect.requirement.specialty` 与自身通路现有口径补齐团队通路，不是实测；零差（内置配置里没有特化不符的装备），只影响用户手动给角色装特化不符的音擎的情况。回退点见账本 CC-110。
-  - `positionCompare.ts:115–123` 用角色属性判定「赠送」贡献，只影响位置对比页展示、且无内置触发样本，记旁注不立卡（账本 D30）。
-- **未决项**：D28 遗留的失衡轴 `roundInputs.ts:237` 解析口径（只影响用户自建轴）；D25 蕾米埃尔 sourceStat 局外 / 局内；D21 旁注 14150；D30 旁注 positionCompare。
+  - D3 选「滑块联动」不选「改覆盖率键为 stackGroup」：改键会让用户已存的覆盖率失效，引擎侧零收益；联动可逆。
+  - D7 的 34100 lumiflux 条保持无滑块（门槛规则例外，见账本 CC-111）。
+  - R5 标 done：验收三条逐条对照写在 REQUIREMENTS R5 状态段末；遗留在账本 §9 末尾，均不影响默认计算。
+- **未决项**：账本 §9「R5 收尾后的遗留」（D28 自建轴、D25、D21 旁注、D30 旁注、D7 例外）。
 - **已知坑（本轮与上轮新增）**：
-  - zd 的 rowsnap / dump 只存每个 key 的哈希串，看不到行级差异；归因用 `node /home/kaua/calc-arch/zdan.mjs <base.json> <after.json>` 列出差异预设。
-  - 预设 JSON 里不写驱动盘 id，默认配装来自 `public/static/build-recommendations.json`；查「谁穿了某套」要搜这个文件。
+  - `setsid bg.sh` 与别的命令用 `;` 串在同一条 wsl_exec 里时，本轮出现过没启动的情况（无 `bg … pid` 输出）；单独一条命令启动最稳，启动后确认有 pid 行。
+  - catalog 是单行 JSON，`grep -o '.{0,80}关键词'` 会超时；用 Python / node 解析后再查。
+  - zd 的 rowsnap / dump 只存哈希；归因用 `node /home/kaua/calc-arch/zdan.mjs <base.json> <after.json>`。
   - `TIME_GOLDEN_UPDATE=1 npx vitest run src/composables/__tests__/timeGolden.test.ts` 重生成基线；重生成前先把 delta 表写进账本。
-  - `character-mechanics.json` 很大，`grep -o '.{0,250}关键词'` 会超时；用 Python 读文件再 `re.finditer`。
-  - 在一条管道里用 `grep -v 'X: '` 过滤时要小心把全部结果滤掉（本轮 `totalAnomalyBuildUp` 一度误判为零引用）。
 
 - **未决项**：
   - 数据自己标了「部分建模」的音擎还有 3 把：14126 `partially-modeled-anomaly-buildup-text-only`、14152 `partially-modeled-duration-extension`、14001 `partially-modeled-proc-damage`（统计见 `verification.effectBuff`）。它们是数据侧没建模的效果，不是「引擎没读对」，不属于 R5 的对账范围；R5 收尾时在账本登记为「数据侧已知缺口」，不立卡。

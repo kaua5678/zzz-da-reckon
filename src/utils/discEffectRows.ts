@@ -28,12 +28,15 @@ interface EffectLike {
   coverage?: unknown
   requirement?: unknown
   target?: unknown
+  stackGroup?: string
+  durationSeconds?: number | null
 }
 
 interface PieceLike {
   effects?: EffectLike[] | null
   condition?: string | null
   requirement?: unknown
+  durationSeconds?: number | null
 }
 
 export interface DiscSetLike {
@@ -68,6 +71,8 @@ export interface DiscEffectRow {
   targeted?: boolean
   /** 该 piece 有官方文本但无数值效果 */
   unmodeled?: boolean
+  /** 数据 stackGroup：同组共享叠层状态，页面覆盖率滑块联动（CC-111 / R5 D3） */
+  stackGroup?: string
 }
 
 export interface DiscRowLabels {
@@ -129,10 +134,12 @@ function rowsOfPiece(
       label: labels.stat ? labels.stat(statId) : getStatMeta(statId).label,
       valueText: valueTextOf(e),
       // 门槛类由引擎按面板自动判定，再挂 uptime 滑块会双重打折 → 不给
-      adjustable: !gate && !!e.id && (!!e.condition || !!e.maxStacks || !!e.coverage),
+      // CC-111（R5 D7）：带持续时间（效果级或组级）的效果也给滑块——引擎按 effect.id 读覆盖率、fixed 同样乘；默认 100% 不变
+      adjustable: !gate && !!e.id && (!!e.condition || !!e.maxStacks || !!e.coverage || e.durationSeconds != null || piece?.durationSeconds != null),
       ...(gate ? { gateText: gate } : {}),
       ...(condition ? { condition } : {}),
       ...(e.target ? { targeted: true } : {}),
+      ...(e.stackGroup ? { stackGroup: e.stackGroup } : {}),
     }
   })
 }
