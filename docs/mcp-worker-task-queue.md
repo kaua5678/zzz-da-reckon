@@ -69,6 +69,28 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 157 轮（2026-09-28，代码 `df8523f9`（CC-132）+ `366212b7`（CC-133）+ 文档提交「docs: round 157」；上一轮文档 = 7090a58d / 77212f3e）
+
+- **做到哪**：
+  - **队友 buff 数值与原文对账完成**（清单 §2.17）：106 个数值字段只有 1 条对不上；15 个 formula 的常数逐条核过，都是推导值。
+  - **CC-132 柚叶**（`df8523f9`）：「狸之愿」增伤 15.04 → 15（原文 15%）。19 个柚叶预设 −0.013%~−0.019%，timeGolden 24 叶已重生成。
+  - **新常驻测试** `src/mechanics/__tests__/teammateBuffRawNumbers.test.ts`：队友 buff 数值必须能在原文找到（反向验证：放回 15.04 时精确报出该条）。
+  - **CC-133 潘引壶**（`366212b7`）：通窍排除本人，逐位零差。
+  - 验证：verify179 EXIT=0（3790 passed | 29 skipped，本轮 +1 条常驻测试，基于代码最终状态）；CC-132 中间状态单独复验 teammateBuffRawNumbers + timeGolden 10/10；CG 通过；文档提交另跑 verify180。
+- **下一步（按顺序，可直接开工）**：
+  1. **未决项「每超过 X 是否取整」定口径**（拖了很多轮，本轮起排第一）：
+     a) `timeout 40 git grep -n "每超过" -- src/specs public/static/teammate-buffs.json data/raw/nanoka_missing/full` 找全部原文措辞；再在实现里找对应代码（spec `attributeConversions` 的 `stepRounding`，见 `src/specs/types.ts`；teammate formula 里的 `floor(`；模块里的 `Math.floor` / `Math.round`，如洛克茜 roxy.ts 约 302 行）。
+     b) 列表写进清单新节 §2.18：机制 / 原文措辞 / 现行取整（floor / round / 不取整）/ 出处行号。
+     c) 定口径并写依据。建议默认：原文「每超过 N，提升 M」⇒ `floor`（游戏常规按整步计），除非原文给了连续公式；和现行不一致的开 CC 卡，逐条 zd。拿不准的条目保持现状并写明。
+  2. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先，只影响优化建议；`src/stores/config.ts` 约 819-861 行）。
+- **本轮拍板**：
+  - 对账脚本固化为常驻测试，而不是只留一次性报告：依据是 CC-131 / CC-132 都是初始提交时的录入问题，后续录入新角色时同类错误会再发生。变红时的处理写在测试头注释里（先查原文，不许加白名单绕过）。
+  - CC-133 零差也做：纯正确性修改，成本低，避免后来者被「本人也吃」误导；单独提交，不和有数值变化的 CC-132 混在一起。
+- **已知坑**（新增，其余沿用第 156 轮）：
+  - **不要执行 `git add -N .` / `git add .`**：会把不属于本 lane 的 `docs/devlog/` 一并加入（第 157 轮误操作，已用 `git reset -q -- docs/devlog` 撤回）。一律按路径 add。
+  - zd 永远比较 HEAD 与工作区：同一轮叠了两处改动时，要单独看后一处，就直接比较两次 zd 的 after 文件（`/home/kaua/calc-arch/zd-<tag>-{dump,rowsnap}-after.json`）。
+  - teammate-buffs.json 是单行紧凑 JSON（`separators=(',', ':')`、`ensure_ascii=False`），改它先断言「读→写」逐字节还原，再改；同文件两处改动要分提交时，用临时副本分两次放回。
+
 ### 第 156 轮（2026-09-28，代码 `4d657d75` + 文档 `7090a58d` + 本回填提交；上一轮文档 = 6acea376 / bdd3d21b）
 
 - **做到哪**：
