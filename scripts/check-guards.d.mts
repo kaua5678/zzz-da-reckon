@@ -320,6 +320,7 @@ export declare function extractRuntimeExports(
 export declare function applyDeadChannelAllowlist(
   candidates: DeadChannelCandidate[] | DtsDriftRow[],
   segment?: string | null,
+  allowlist?: Record<string, DeadChannelEntry>,
 ): {
   fresh: (DeadChannelCandidate | DtsDriftRow)[]
   allowlisted: (DeadChannelCandidate | DtsDriftRow)[]

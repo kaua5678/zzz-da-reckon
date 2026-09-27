@@ -589,3 +589,10 @@ A9 1391 / A10 1551 / A11 1481 / A12 1571）。零新契约（`AgentPanelInput` �
 - 清掉 `src/composables/resourceCalc/roundInputs.ts#expandExecutedToCounts` 的局部 const 别名判定 `fillerAgentId === '1051'`（伊德海莉蓄力循环）与 `'1041'`（「11号」火力镇压），迁成模块钩子 `expandBasicFill`（`src/mechanics/agents/yidhari.ts` / `soldier11.ts`）。
 - `AGENT_BRANCH_BASELINE` 与 check-guards `RATCHET_BURNDOWN['agentId 分支'].frozen` 同步 3 → 1。剩余 1 = `anomalyPanels.ts` 动态比较。
 - perf 零差（dump / rowsnap DIFF 0），详见 `docs/mcp-r22d1-batch12-field-census.md` §5.69。
+
+## 2026-09-27 CC-95：死通道豁免清单 7 → 1（−6，真清偿 5 + 检测器假阳性 1）
+
+- 删死字段：`runArchiveImport.ts` ArchiveRoom 的 weaknesses / hpTotal / resistances（resistances 原为 namesake 样本、不计 workload）、`difficultyLadder.ts` LadderOpts.minGain、`timeWeightBalancer.ts` minWeight、`core/damage.ts` DirectDamageInput.isRupture。
+- 假阳性：`effectiveTime.ts` phaseDelayedCooldown 的 blockSeconds 是位置形参（有 3 个调用点传值），扫描器新增「函数形参跳过」后不再命中。
+- `RATCHET_BURNDOWN['死通道豁免清单'].frozen` 7 → 1；剩余 1 = freePoolPerSpecialty（CC-94 裁决保留）。详见 `docs/mcp-r22d1-batch12-field-census.md` §5.102。
+

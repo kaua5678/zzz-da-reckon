@@ -47,9 +47,8 @@ export interface ArchiveRoom {
   bossNameZh?: string
   primaryEnemy?: string
   primaryEnemyZh?: string
-  weaknesses?: string[]
-  resistances?: string[]
-  hpTotal?: string
+  // bootstrap.json 的房间还带 weaknesses / resistances / hpTotal，本模块不消费，故不声明
+  // （CC-95 删除；TS 结构类型对多余键无约束，要用时加回可选字段即可）
 }
 
 /** boss-presets.json 里匹配所需的最小子集（不必引完整资源类型）。 */

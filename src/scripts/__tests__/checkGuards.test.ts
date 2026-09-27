@@ -1234,6 +1234,28 @@ describe('scanReadOnlyOptionalProps（判据 14-B：invincibleTime 模式）', (
     expect(ro[0].writes).toBe(0)
   })
 
+  // CC-95：函数**位置形参** `x?: T,` 的写入是调用点的位置实参，按名计数恒 0 ⇒ 必误报；须跳过。
+  // 反向：同文件的接口可选属性、以及括号内**对象类型字面量**的属性（行不以 `,`/`)` 收尾）仍须照报。
+  it('★ 函数形参 `x?: T,` 不算可选项；接口属性与括号内对象类型字面量属性照报', () => {
+    const root = fixture({
+      'src/core/effectiveTime.ts': [
+        'export function f(',
+        '  cd: number,',
+        '  blockSeconds?: number,',
+        '): number {',
+        '  return blockSeconds ?? cd',
+        '}',
+        'interface Cfg {',
+        '  deadProp?: number',
+        '}',
+        'export function g(c: Cfg, o: {',
+        '  inParenProp?: number',
+        '}) { return (c.deadProp ?? 0) + (o.inParenProp ?? 0) }',
+      ].join('\n'),
+    })
+    expect(scanReadOnlyOptionalProps(root).map(d => d.name).sort()).toEqual(['deadProp', 'inParenProp'])
+  })
+
   it('块注释/行注释被剥，但真写入点与代码本体不受影响', () => {
     const stripped = stripCommentsAndStrings([
       '// inc: 1',
@@ -1362,8 +1384,12 @@ describe('applyDeadChannelAllowlist（判据 14 的豁免与 burn-down）', () =
   // 「修好了但忘了销号」恰恰是本判据要抓的形态，却因为修好了而看不见。
   // 现改为：段集合取自**清单自身**，空候选集 ⇒ 全清单 stale（红）。
   it('★ 显式段 + 空候选集 = 该段清单全 stale（段清干净了就必须销号，否则永久留存）', () => {
+    // 夹具清单自证（CC-95：仓库 A 段已清零，原先断言「仓库 A 段非空」随清偿必红）
+    const e = { since: '2026-01-01', due: '2026-12-31', action: 'x', why: 'x' }
+    const list = { 'A|src/a.ts x': e, 'A|src/b.ts y': e, 'B|src/c.ts z': e }
+    expect(applyDeadChannelAllowlist([], 'A', list).stale).toEqual(['A|src/a.ts x', 'A|src/b.ts y'])
+    // 仓库现状：A 段条目（若有）在空候选下同样全 stale
     const aKeys = Object.keys(DEAD_CHANNEL_ALLOWLIST).filter(k => k.startsWith('A|'))
-    expect(aKeys.length).toBeGreaterThan(0)
     expect(applyDeadChannelAllowlist([], 'A').stale).toEqual(aKeys)
   })
 
@@ -1410,14 +1436,13 @@ describe('applyDeadChannelAllowlist（判据 14 的豁免与 burn-down）', () =
   // 永远不会 stale。把它算进 burn-down ⇒ 棘轮**永远还不完**（假「有存量」）；
   // 把它从清单删掉 ⇒ 判据又会对它误报 fresh。正解：留在清单、但不计工作量（kind:'namesake'）。
   it('★ namesake 记录不计入 burn-down 工作量（否则棘轮永远还不完）', () => {
-    const all = Object.keys(DEAD_CHANNEL_ALLOWLIST).length
-    const workload = countDeadChannelWorkload()
-    expect(workload).toBeLessThan(all)                       // 确有 namesake 被排除
-    expect(workload).toBe(all - 1)                           // 现状恰好 1 条
-    const namesake = Object.entries(DEAD_CHANNEL_ALLOWLIST).filter(([, v]) => v.kind === 'namesake')
-    expect(namesake).toHaveLength(1)
-    // namesake 条目仍留在清单里（删掉会让判据对它误报 fresh）
-    expect(Object.keys(DEAD_CHANNEL_ALLOWLIST)).toContain(namesake[0][0])
+    // 夹具清单自证（CC-95：仓库唯一的 namesake 样本 runArchiveImport.resistances 随字段删除而销号）
+    const e = { since: '2026-01-01', due: '2026-12-31', action: 'x', why: 'x' }
+    const list = { 'B|src/a.ts x': e, 'B|src/b.ts y': { ...e, kind: 'namesake' as const }, 'A|src/c.ts z': e }
+    expect(countDeadChannelWorkload(list)).toBe(2)           // namesake 被排除
+    // 仓库现状：workload = 非 namesake 条数
+    const real = Object.values(DEAD_CHANNEL_ALLOWLIST).filter(v => v.kind !== 'namesake').length
+    expect(countDeadChannelWorkload()).toBe(real)
   })
 
   it('★ 死通道棘轮的 frozen 等于 workload（不是 allowlist 总长）', () => {

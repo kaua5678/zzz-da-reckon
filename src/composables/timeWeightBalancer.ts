@@ -21,8 +21,6 @@ export interface TimeWeightEqualizeOptions {
   maxIter?: number
   /** 边际差收敛阈值：max 边际 − min 边际 < eps 即停 */
   eps?: number
-  /** 槽位权重下限（shift 时不低于它，避免把支援/防护或必要槽压到 0 后无法恢复） */
-  minWeight?: number
 }
 
 export interface TimeWeightEqualizeResult {
@@ -56,7 +54,9 @@ export function equalizeTimeWeights(
   const shiftStep = opts.shiftStep ?? 1
   const maxIter = opts.maxIter ?? 8
   const eps = opts.eps ?? 1e-6
-  const minWeight = opts.minWeight ?? 0
+  // 槽位权重下限 = 0（CC-95 删除了从未有人传的 `opts.minWeight`；要恢复「不压到 0」的保护，
+  // 把它改回 `opts.minWeight ?? 0` 并在 opts 接口加回字段即可）
+  const minWeight = 0
 
   const weights = initial.map(w => Math.max(0, w))
   // 可调槽位 = 初值 > 0（支援/防护 weight=0 不参与）

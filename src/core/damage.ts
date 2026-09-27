@@ -273,9 +273,7 @@ export interface DirectDamageInput {
   stunned: boolean | number
   critMode: 'expect' | 'crit' | 'nonCrit'
   count: number
-  /** 旧接口：命破/裂御角色使用贯穿力，且不走防御区 */
-  isRupture?: boolean
-  /** 特殊职业伤害接口；优先级高于 isRupture */
+  /** 特殊职业伤害接口（命破走贯穿力、不走防御区等；调用方经 resolveSpecialDamageProfile 取得）；缺省 = 普通直伤 */
   specialDamageProfile?: SpecialDamageProfile
   /** 当前直伤对应的招式类型，用于匹配招式类型增伤 */
   skillDamageTarget?: SkillDamageTarget
@@ -312,7 +310,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
   const breakdown: DamageBreakdownItem[] = []
 
   // 1. 攻击力/贯穿力/防御力区
-  const profile = input.specialDamageProfile ?? (input.isRupture ? RUPTURE_DAMAGE_PROFILE : NORMAL_DAMAGE_PROFILE)
+  const profile = input.specialDamageProfile ?? NORMAL_DAMAGE_PROFILE
   const isRupture = profile.kind === 'rupture'
   const basisValue = input.basisValueOverride ?? profile.calcBasisValue(p)
   breakdown.push({

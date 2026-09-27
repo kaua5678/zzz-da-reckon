@@ -41,31 +41,14 @@ export const DEAD_CHANNEL_ALLOWLIST = {
   // **完全接通的活通道**，因读判定漏了「裸标识符 + 位置实参」形态而被误记成死通道
   // （详见 scanDeadOptionalProps 头注的取证）。修检测器后这 3 条自然不再命中 ⇒ 从清单删除
   // （棘轮只减不增：留着即 stale 红）。
-  'A|src/composables/runArchiveImport.ts weaknesses': {
-    since: '2026-09-13',
-    action: '归档导入的弱点字段未消费——归档只做单条部署对照（用户裁决 2026-09），确认无用途后删',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '归档导入 DTO 的展示字段；按用户裁决归档不作误差判据，可能永远不需要',
-  },
-  'A|src/composables/runArchiveImport.ts hpTotal': {
-    since: '2026-09-13',
-    action: '同 weaknesses，随归档导入 DTO 一并处置',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '归档导入 DTO 字段，无消费点',
-  },
   // 段 B：可选项只读不写（invincibleTime 模式；`?? 默认值` 兜底 ⇒ 静默走默认）
-  'B|src/composables/difficultyLadder.ts minGain': {
-    since: '2026-09-13',
-    action: 'LadderOpts.minGain 无人传（minGainRatio 才是活通道）——确认为无用则删，或接上调用点后销号',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '只读不写：实现读 `opts.minGain ?? 0`，全仓零写入点（同族的 minGainRatio 有调用点）',
-  },
+  // ⚠ 2026-09-27 CC-95 销号 7 条（census §5.102）：
+  //   · 真删字段 6 条：runArchiveImport 的 weaknesses/hpTotal（A）与 resistances（原 namesake 样本；bootstrap.json
+  //     有键但本模块零消费 ⇒ 不声明即可）、difficultyLadder.minGain（`Math.max(0, …)` 内联）、
+  //     timeWeightBalancer.minWeight（内联 0）、damage.ts DirectDamageInput.isRupture（全仓调用点早改传
+  //     specialDamageProfile，缺省改为 NORMAL_DAMAGE_PROFILE，timeGolden 零差）。
+  //   · 假阳性 1 条：effectiveTime.ts phaseDelayedCooldown 的 blockSeconds 是**函数形参**，3 个调用点按位置实参传入；
+  //     修扫描器（lineStartDelimiterTops：栈顶 `(` 且行以 `,`/`)` 收尾 ⇒ 形参，跳过）后不再命中。
   // 2026-09-20 销号：`B|src/composables/difficultyLadder.ts maxSteps` —— 棘轮报告「已不再命中」。
   // 复核：`opts.maxSteps` 仍在 `climbDifficultyLadder` 里被读（`:293` 走 `?? 24`），但扫描器不再把它
   // 判为「可选项只读不写」（R46 结构熵切面 refactor 后判据形态变化）⇒ 该豁免已失效。
@@ -82,43 +65,6 @@ export const DEAD_CHANNEL_ALLOWLIST = {
     // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
     due: '2026-12-31',
     why: '只读不写（走 `?? 1`）。CC-94 核实：并非旧模拟残留——pullPlannerEngine.ts 以默认 1 调 freePoolRepresentatives 做免费池剪枝（字段注释：池越大 beam 求值越贵，实测 2 已分钟级），0 = 全量；属调参入口',
-  },
-  'B|src/composables/timeWeightBalancer.ts minWeight': {
-    since: '2026-09-13',
-    action: 'minWeight 只读不写——确认默认值即唯一口径则删字段',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '只读不写（走 `?? 默认`）',
-  },
-  // ⚠ 本条是**扫描器已知盲区的产物**，登记理由与上面几条（真死通道）不同：见 why + kind。
-  // kind: 'namesake' ⇒ 它是「名字撞车」的记录，不是「待处置的死通道」——
-  // 故**不进 burn-down 计数**（见 countDeadChannelWorkload）：它的 reads 恒 > 0，候选永远不会消失，
-  // 拿它当待办会让棘轮永远还不完（T15 审计 #13）。真正的处置对象是上面那些 kind 缺省的条目。
-  'B|src/composables/runArchiveImport.ts resistances': {
-    kind: 'namesake',
-    since: '2026-09-13',
-    action: '归档 DTO 的 resistances 字段——与 weaknesses/hpTotal 同族（活动/归档 JSON 契约面），随归档 DTO 一并确认删留',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '**名字撞车导致的误报**（实测核实）：本扫描器按字段名全仓计数，reads=21 全部来自 src/stores/config.ts 的**同名但无关**字段 `EnemyConfig.resistances`（旧版单表抗性，:1068/:1285 有兼容读取）；归档的 `ArchiveRoom.resistances` 自身零消费者（run-archive.json 实测 0 处出现该键）。这是 T10 报告的盲区②「跨类型同名结构写入」的样本——判据 14 是字段名级启发式，不是符号级引用分析。**留着这条登记而非删掉判据**：它如实记录了「此处有一个名字撞车的字段」，且 T10 用 TypeScript LanguageService 复核过同族字段（weaknesses/hpTotal 真为零读零写）。',
-  },
-  'B|src/core/damage.ts isRupture': {
-    since: '2026-09-13',
-    action: 'DirectDamageInput.isRupture 零写入——函数体内已用 profile 判贯穿，确认冗余后删',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '只读不写：`input.isRupture ? RUPTURE_DAMAGE_PROFILE : …` 的兼容入参，全仓调用点都改传 specialDamageProfile（resolveSpecialDamageProfile），该入参已成死通道',
-  },
-  'B|src/core/effectiveTime.ts blockSeconds': {
-    since: '2026-09-13',
-    action: 'phaseDelayedCooldown 的 blockSeconds 形参无人传（走 `?? c` 旧口径）——接上 frontBlockSeconds 或删形参',
-    // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
-    // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
-    due: '2026-12-31',
-    why: '只读不写；注意 frontBlockSeconds 是被测试与调用方用的活通道，死的是 phaseDelayedCooldown 的这个形参',
   },
   // ⚠ 2026-09-15 销号 2 条（**假阳性**）：`stunAxisPresets` 的 chapter / guarantee 被判「只读不写、
   // 预设数据里没人填」，但实测**数据就在 JSON 里**：`src/data/stunAxisPresets/{0章-琉,0章其他,
@@ -284,6 +230,28 @@ function scanDeadOptionalPropsUncached(root) {
  * 与判据 10（catalog/raw 对账）同族：**数值的唯一事实源常在 JSON 而非 TS**，
  * 只看 TS 会把「数据驱动」误判成「通道空转」。
  */
+/**
+ * 每行**行首**处的定界符栈顶（`(`/`{`/`[` 或 undefined）。在「保留换行」的遮罩文本上算：
+ * 注释与字符串内容替换成空格（换行保留），故行号与原文一致——`stripCommentsAndStrings`
+ * 会把块注释压成单个空格、行号错位，不能直接用。CC-95 给「函数形参 ≠ 可选项」判定用。
+ */
+export function lineStartDelimiterTops(text) {
+  const blank = (m) => m.replace(/[^\n]/g, ' ')
+  const masked = text
+    .replace(/\/\*[\s\S]*?\*\//g, blank)
+    .replace(/(^|[^:])(\/\/[^\n]*)/g, (_, a, b) => a + blank(b))
+    .replace(/`(?:\\[\s\S]|[^\\`])*`|'(?:\\.|[^\\'\n])*'|"(?:\\.|[^\\"\n])*"/g, blank)
+  const tops = []
+  const stack = []
+  tops.push(undefined)
+  for (const ch of masked) {
+    if (ch === '\n') tops.push(stack[stack.length - 1])
+    else if (ch === '(' || ch === '{' || ch === '[') stack.push(ch)
+    else if (ch === ')' || ch === '}' || ch === ']') stack.pop()
+  }
+  return tops
+}
+
 export function scanReadOnlyOptionalProps(root = ROOT) {
   return memoScan('B', root, () => scanReadOnlyOptionalPropsUncached(root))
 }
@@ -310,9 +278,16 @@ function scanReadOnlyOptionalPropsUncached(root) {
   for (const [rel, text] of texts) {
     if (rel.includes('__tests__')) continue
     if (!/^src\/(core|composables|data)\//.test(rel)) continue
+    const lineTops = lineStartDelimiterTops(text)
     text.split('\n').forEach((ln, i) => {
       const m = ln.match(/^\s{2,4}(\w+)\?\s*:\s*\S/)
-      if (m) decls.push({ file: rel, line: i + 1, name: m[1] })
+      if (!m) return
+      // CC-95（2026-09-27）：**函数形参**不是「可选项」。`phaseDelayedCooldown(cd, f, w, blockSeconds?: number,)`
+      // 的写入是调用点的**位置实参**（luciaElowen/remielle/specPanelBuffs 都传了），按字段名计数永远 0 写 ⇒
+      // 必然误报。判据 = 行首处定界符栈顶是 `(` **且**行形如形参（以 `,` 或 `)` 收尾）——两条同时成立才跳，
+      // 因为误跳的方向是「真接口属性被放过 = 死通道漏报」（本判据最坏的失效方向）。
+      if (lineTops[i] === '(' && /[,)]\s*$/.test(ln)) return
+      decls.push({ file: rel, line: i + 1, name: m[1] })
     })
   }
   const count = (name, excludeFile, excludeLine) => {
@@ -525,8 +500,9 @@ export function countDeadChannelWorkload(allowlist = DEAD_CHANNEL_ALLOWLIST) {
  * 不传 `segment` 时退回「从候选推断段」（`fresh`/`allowlisted` 仍然正确，`stale` 在空候选时为
  * 空数组）——**只给不理解 scope 的旧调用方兜底**，生产接线一律显式传。
  */
-export function applyDeadChannelAllowlist(candidates, segment = null) {
-  const keys = Object.keys(DEAD_CHANNEL_ALLOWLIST)
+export function applyDeadChannelAllowlist(candidates, segment = null, allowlist = DEAD_CHANNEL_ALLOWLIST) {
+  // `allowlist` 参数（CC-95）：给测试喂夹具清单自证语义，别让单测依赖仓库清单的现存条数
+  const keys = Object.keys(allowlist)
   const fresh = candidates.filter(c => !keys.includes(c.key))
   const allowlisted = candidates.filter(c => keys.includes(c.key))
   const hit = new Set(candidates.map(c => c.key))

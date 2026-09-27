@@ -6,7 +6,7 @@
  *  ② 点 = **累积开启的优化目标**（"达成某个目标算一次"），档位数 = 目标数；
  *  ③ 开启顺序由**贪心**（单位难度收益最高者优先）决定 ⇒ 曲线 = 该队的最优提升路径。
  *
- * **只录取有实际增益的目标**（`gain > max(minGain, base×minGainRatio)`，默认相对门槛 0.01%）：曲线因此**单调不减**，"全开"= 已录取目标的并集，
+ * **只录取有实际增益的目标**（`gain > max(0, base×minGainRatio)`，默认相对门槛 0.01%）：曲线因此**单调不减**，"全开"= 已录取目标的并集，
  * 而不是"所有目标全开"——实测有目标在特定队是负收益（G4 `ceil` 在 2 队 −3.5~−4.5%、G3 保底在 2 队 −5%），
  * 把它们硬塞进阶梯只会让曲线掉头。被丢弃的目标进 `dropped`，如实上报。
  *
@@ -227,13 +227,11 @@ export interface LadderResult {
 
 export interface LadderOpts {
   goals?: DifficultyGoal[]
-  /** 绝对门槛（伤害） */
-  minGain?: number
   /**
    * **相对门槛**（占全关伤害的比例，缺省 1e-4 = 0.01%）。
    * 为什么需要：实测有目标在特定队是 **Δ=0 的平台**（如 `auto-1041-1571-1031` 四个目标全 0.0M）——
    * 只判 `gain > 0` 会把它们全录进来 ⇒ 曲线出现"难度涨了、伤害不涨"的平台段，对"难易强度"比较有害。
-   * 故录取条件 = `gain > max(minGain, base × minGainRatio)`（**严格正**且超过噪声量级）。
+   * 故录取条件 = `gain > max(0, base × minGainRatio)`（**严格正**且超过噪声量级）。
    */
   minGainRatio?: number
   /**
@@ -276,10 +274,9 @@ export function climbDifficultyLadder(
   opts: LadderOpts = {},
 ): LadderResult {
   const goals = opts.goals ?? DIFFICULTY_GOALS
-  const minGain = opts.minGain ?? 0
   const minGainRatio = opts.minGainRatio ?? 1e-4
   const base = opts.base ? opts.base(ctx, team) : resetDifficultyGoals(ctx, team)
-  const acceptAt = Math.max(minGain, base * minGainRatio)
+  const acceptAt = Math.max(0, base * minGainRatio)
   let dmg = base
   let x = 0
   const opened: string[] = []
