@@ -115,7 +115,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-layer-inversion-claret.md` | **录入层 → 编排层值倒置修复备忘**（R35-J2）：克拉蕾模块唯一反向值边的取证（SCC / 判据 7·12 盲区）、下沉 `data/moveTableQueries.ts` 的选项裁决、判据 19 `layer-inversion` 成对口径与三组注入反验、`timeGolden`/`allAgentsSweep` 零 delta 实测 |
 | `docs/mcp-debt2-blade1-feasibility-v4.md` | **协作者 WIP 接管备忘**：债 2 刀 1（截断入口容差与折叠环同源，消灭假截断）+ 降配搜索 v4（绝对可行优先）的拆分落地、`timeGolden`/`timeFillRatchet` 逐队 delta 归因表、满套件 4 红收口、未合入的债 2 批 2-1 半成品去向与正解 |
 | `docs/mcp-outer-feedback-regression.md` | **外层反馈回归（R67-J1）**：当前快照/二周期相位修复、机制测试正反对照、12 场景 A/B 与数值影响；逐字段证据 `docs/mcp-outer-feedback-deltas.csv` |
-| `docs/mcp-outer-fixedpoint-continuity.md` | **外层不动点连续性（CC-136 起）**：输入微动导致环内选点跳成员的扫描复现、根因（检出相位 / 两两比较不传递）、逐级筛选 + ③′ 方案、逐条影响；第二种不连续（20 轮长周期段）待修 |
+| `docs/mcp-outer-fixedpoint-continuity.md` | **外层不动点连续性（CC-136 起）**：输入微动导致环内选点跳成员的扫描复现、根因（检出相位 / 两两比较不传递）、逐级筛选 + ③′ 方案、逐条影响；第二种不连续判定为物理失衡次数的整数台阶（护栏 `outerContinuity.test.ts`） |
 | `docs/mcp-substat-contract.md` | **副词条契约（R28-J2）**：合法池 mode 可观测性、步长/步数/混合结算与白名单反控；不以等价注入冒充缺测 |
 | `docs/mcp-workspace-integrity.md` | **共享工作区完整性**：Git 路径无损读取、收工快照与归属分离、隔离 CLI 回归及兼容策略 |
 | `docs/mcp-cc17-axis-overlay-consume.md` | **CC-17 设计稿**：axis overlay 消费端能力化（按槽归属 + `directRowBonus`），修可琳 `basic_attack` 轴模式泄漏；含接口/逐模块迁移表/零差论证/测试 |

@@ -69,6 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
+### 第 161 轮（2026-09-28，测试 `30daa4b1`（CC-137）+ 本文档提交；上一轮 = 3adb3620 / ef6ecce6 / 2a57b241）
+
+- **做到哪**：
+  - 第 160 轮下一步第 1 项「第二种不连续」已结案：物理失衡次数的整数台阶，不修。trace、全曲线核对和判据修订见 `docs/mcp-outer-fixedpoint-continuity.md` §5。
+  - 护栏 `src/composables/__tests__/outerContinuity.test.ts`（CC-137），零数值变化。
+- **下一步（按顺序，可直接开工）**：
+  1. **坑 25 双源：规划失衡 vs 物理次数**（ENGINE_PIPELINE_GUIDE 坑 25「已知残差」和第 177 行；专项文档 §5.3）。本轮已拍板：先量后定，只做测量、不改数值。
+     - a) `promoteFixpoint`（`src/composables/resourceCalc/ultimatePromote.ts` 第 259 行；闭式 N* 在约第 332 行）目前只返回 `floor` 后的 `stunCount`。给 `StunPoolResult`（`src/types/resource/pools.ts` 第 37 行）加可选字段 `stunCountContinuous`（= N*），零差，用 zd 验 DIFF 0。
+     - b) 探针原型（不提交）：`solveTeam.ts` `runOuterLoop` 里 `next = rawNext * (1 - coverage)`（约第 199–209 行）改成 `next = stunPool.stunCountContinuous`，再保留原来的时间可行截断。跑 zd，记录 125 队的规划失衡、物理次数、总伤和留白变化，以及外层 stable / cycle / maxIter 的比例变化。预期不动点更容易存在，cycle 变少。
+     - c) 结论写进新文档 `docs/mcp-stun-dual-source.md`（登记 README §6 → 65 份）：选哪个口径、依据、影响面、回退点。只有「cycle / maxIter 明显减少，且变化能逐队解释」时才落地为 CC 卡。禁止用「更接近投稿」当理由。
+  2. 洛克茜 `energyRegenOutOfCombat` 局内 3.12 / 局外 1.2 的读法疑点（§2.18 第 159 轮补充最后一条）。
+  3. 副词条优化器接入 `applyTeammateBuffRecipientFilters`（低优先；`src/stores/config.ts` 约 819–861 行）。
+- **本轮拍板**：
+  - 连续性验收判据改为「同物理次数的相邻跳变 ≤1%」。依据：唯一剩下的大跳变是 floor 台阶；原判据会逼人抹平真实的整数效应。回退：恢复原判据，那就得去改 floor 口径，而这与 CC-134 / CC-135 冲突。
+  - 护栏选琉音 c6 而不是扳机例：当前代码下扳机例已连续，而琉音例反向验证能红，护栏才有活性。
+- **已知坑**（新增，其余沿用第 160 轮）：
+  - 外层轮次历史没有对外暴露；诊断要靠临时 trace 钩子（做法见专项文档 §5.1），用完 cp 恢复并 `git diff` 确认。
+  - 扫描不必关心轮数：20 轮 maxIter 在这里只是伴随现象，要看的是 `stunPoolResult.stunCount` 是否变化。
+
 ### 第 160 轮（2026-09-28，代码 `3adb3620`（CC-136）+ 文档 `ef6ecce6` + 本回填提交；上一轮 = 0028eb01 / 8e46f748 / e4cbfc51）
 
 - **做到哪**：
