@@ -401,7 +401,7 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/stores/config.ts engine:平A权重阶梯",
   "src/stores/config.ts engine:交互基准",
   "src/types/resource/team.ts engine:收敛读数归属",
-  "src/views/TeamComparePage.vue sweepPage:第三人候选圈定",
+  "src/composables/teamCompareSweep.ts sweepPage:第三人候选圈定",
   "scripts/import-nanoka-bosses.mjs data:bossBodySize",
   "scripts/import-nanoka-v12.mjs data:1611/反制支援两行秽盾基数",
 ]

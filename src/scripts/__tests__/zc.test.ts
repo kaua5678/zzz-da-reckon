@@ -265,10 +265,31 @@ describe('仓库级：索引真的建得起来', () => {
   })
 
   it('结构熵体检：只量体温不治病（超阈值文件降序列出、本地分支只报不红）', () => {
+    // ① 夹具自证（CC-92 2026-09-27 改）：旧写法断言「真实仓库 overThreshold > 0」，把**仓库恰好有超标文件**
+    //    当成 detector 可用的证据 —— CC-92 拆掉唯一超标的 TeamComparePage.vue 后假红（体温正常反而报病）。
+    //    现在可红性由夹具证明，仓库现状允许为 0。
+    const fx = mkdtempSync(join(tmpdir(), 'zc-entropy-'))
+    try {
+      const put = (rel: string, n: number) => {
+        const p = join(fx, rel)
+        mkdirSync(join(p, '..'), { recursive: true })
+        writeFileSync(p, 'x\n'.repeat(n))
+      }
+      put('src/big.ts', 1700)
+      put('src/views/mid.vue', 1550)
+      put('scripts/tool.mjs', 1600)
+      put('src/small.ts', 10)
+      put('src/__tests__/huge.test.ts', 3000) // __tests__ 必须排除
+      const f = scanStructureEntropy(fx)
+      expect(f.maxFileLines).toBe(1500)
+      expect(f.overThreshold.map(o => o.file)).toEqual(['src/big.ts', 'scripts/tool.mjs', 'src/views/mid.vue'])
+    } finally {
+      rmSync(fx, { recursive: true, force: true })
+    }
+    // ② 仓库现状：只验形状（全部 >1500、降序），条数可为 0
     const e = scanStructureEntropy()
     expect(e.maxFileLines).toBe(1500)
-    expect(e.overThreshold.length).toBeGreaterThan(0)
-    expect(e.overThreshold[0].lines).toBeGreaterThan(1500)
+    for (const o of e.overThreshold) expect(o.lines).toBeGreaterThan(1500)
     for (let i = 1; i < e.overThreshold.length; i++) {
       expect(e.overThreshold[i].lines).toBeLessThanOrEqual(e.overThreshold[i - 1].lines)
     }
