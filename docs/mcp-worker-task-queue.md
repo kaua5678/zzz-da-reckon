@@ -247,6 +247,16 @@ headless 工人无法中途向 lead 申请时段 ⇒ 派发时在 brief 末尾�
   - 命座里「防御/生存向不建模」按 W27 惯例属 APPROX，保留。
   - 验收：`npm run docs:status`；validate-data、check-guards、`npx vitest run src/utils/__tests__/modelingGaps.test.ts` 都要通过（命座下限目前是 104，清掉 pending 就同步下调并在注释里写明是哪几条）；最后跑 verify。
   - 做完 CC-90 以后，状态表线就收尾了。之后的方向写在 arch 文档，没有新卡时，先跑 `npm run -s zc -- status` 看有没有新的漂移、债务或需求。
+- **CC-90** done `e1ef565`（§5.97）：命座 109 条里 11 条过时并已更正，状态表线到此收尾。**pending 里不许写「已建模/已接入」，这类内容应写进 implemented。**
+- **下一张 CC-91：薇薇安死通道 + dead-channels 盲区**（R 需求优先；没有 R 时先做这张）。
+  - 事实：`src/mechanics/agents/vivian.ts` 中 `danceHitCount: Number(record.vivianDanceHit ?? 0)` 与 `assistCount: Number(record.vivianAssistCount ?? 0)` 全仓零写入（`grep -rn 'vivianDanceHit\|vivianAssistCount' src scripts public` 只有这两行），所以飞羽里「舞步命中 / 极限闪避 +1」和「支援突击」两个来源恒为 0。`zc dead-channels` 只扫类型里声明过的字段，这两个是从无类型记录按字符串键读取的，扫不到。
+  - 步骤：
+    1. 先读 `src/specs/agents/1331.json` 原文，确认飞羽的各个来源。
+    2. 支援突击次数：检查 state 或 cfg 里有没有现成的 parry/assist 计数（参考 zhendou.ts 的 `parryCount` 来源），有就直接接上并补测试；没有就删掉这个读取，把这一来源写进 1331 机制 pending。
+    3. 舞步命中：按原文判断能否从动作序列派生，不能就删掉读取，并如实登记 pending（影画6 那条已改为「未建模…见 CC-91」，处置后同步改写）。
+    4. 在 `scripts/zc-dead-channels.mjs` 或 check-guards 中补一个检测：`src/mechanics/agents/*.ts` 里 `record.<camelKey> ??` 这类读取的键，如果全仓（src、scripts、public/static）没有任何写入或声明，就报出来。先用这两个已知键自证能检出，再看有没有其他命中；已有存量进基线（guard-registries.mjs）。
+  - 验收：vitest、vue-tsc -b、check-guards、verify 全部通过；状态表 1331 同步更新。
+  - 回退：分两次提交（先修 vivian，再改守卫），出问题各自 revert。
 - **CC-14a 前置门已于 2026-09-26 打开（lead 现场核实，可直接派）**：R1 已合入（提交号见 `docs/REQUIREMENTS.md` R1 行末 `[done <sha>]`；方案与证据见 `docs/mcp-cinema-uplift-multi-metric.md`），`git status --short src/` 干净、无 cinemaUplift WIP。
   **相交点已核，派单时必须带这三句**：① R1 的「能量」栏读的是 `energyTotal`，**不是** CC-14a 要删的 6 个键之一，但 CC-14a 的零差闸门（dump 624 / rowsnap 637）覆盖 `energyTotal` ⇒ 该栏受零差保护；② R1 新增的另 6 个指标（`totalStunBuildUp`/`anomBuildUp`/`decibelTotal`/`exSpecial`/`anomTriggers`/`coverage`）**不在 perf 语料里**，其回归网 = `src/composables/__tests__/cinemaUplift.test.ts`（11 测试，其中「不恒 0」「锁下仍会动」两条专门钉口径）+ `allAgentsSweep.test.ts`（311）⇒ **CC-14a 收尾必须额外跑这两个文件**，只跑 perf 零差会漏；③ R1 已把命座分析的「锁定场景读数」收敛到 `cinemaUplift.ts` 的 `readScene()` 一处，CC-14a 若动 `EnergySource` 结构，改动面就在那一个函数里，别全文件搜。
   **④ 卡面已被修订，派单前先读 §5.2-v2**（`docs/mcp-r22d1-batch12-field-census.md`，2026-09-26 第 18 轮 lead-arena-0925c，**取代旧 §5.2 的「输入端 / core / 零差验证」三条**）：改用模块能力 `bonusEnergy`、**输入端不动**；`EnergySource` 要删的 6 键是 `hatTrickEnergy`/`qingyiC4Energy`/`lycaonC2Energy`/`billyC1Energy`/`yixuanFlashBonus`/`antonC1EnergyGift`，新增 `bonusEntries`；零差基线换成 `/home/kaua/calc-arch/{dump,rows}-H1a.json`（在 `66ba89a` 上带 `PERF_KEY_ALIAS=1` 生成，remap 已按旧键序原位展开 `bonusEntries`）。上面 ①②③ 在 v2 下**仍然成立**（`energyTotal` 不在被删 6 键里、新 6 指标仍不在 perf 语料、改动面仍收敛在 `readScene()`），故不必重写，只需连 ④ 一起交给工人。

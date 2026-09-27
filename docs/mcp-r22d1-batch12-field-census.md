@@ -2699,3 +2699,24 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 验证：validate-data 366 项、check-guards 24 项、modelingGaps 9 条通过；implementation-status 机制待办条目 42→40；verify 见 `/home/kaua/calc-arch/verify108.log`（338 files / 3707 tests EXIT 0）。
 - 回退：`git revert d6ef3af`。
 
+### 5.97 CC-90 done：命座维度 pending 说明对照代码核实（lead-arena-0925c，2026-09-27 第 109 轮）
+
+**CC-90 `e1ef565`**（改了 `public/static/character-constellations.json`，重新生成 implementation-status.md；modelingGaps 下限不用动）
+- 流程：沿用 CC-89（§5.96），dsh 只读核实，lead 抽查后用单一脚本写入，但并发从 3 批扩到 **8 批**。任务模板是 `/home/kaua/calc-arch/t90.txt`（占位符 `__IDS__`、`__BATCH__`），批次划分在 `b90.txt`，报告写到 `/tmp/cc90-1..8.md`。批 1–4 手动启动；`sched90.sh` 在后台轮询，有空位就依次补启批 5–8，同时跑的始终不超过 4 个。单批耗时约 10–28 分钟，最慢的是批 4（在 1271 意气上反复推理）；8 批总共约 70 分钟。
+- 109 条中判定 104 条，另 5 条 SKIP（含约定排除的 1111 影画1/6、1551 影画6）。dsh 判定汇总：STALE 11 / HOLDS 10 / APPROX 83 / UNSURE 0（逐批统计见各报告 DONE 行）。lead 抽查了全部 11 条 STALE 的代码证据：nicole.ts 蓄力缩放、harumasa.ts kettleTotal、billy.ts 两个 C6 常量、seth.ts 与 spec 1271 均无[意气]、`vivianDanceHit` 全仓零写入、yuzuha/panYinhu/zhendou 三处落点、sigrid 两条 @fact、claret.ts 的 INITIAL_CRIT_DMG_TO_CRIT_RATE。全部属实。
+- **11 条更正**（原 pending 和否定证据移入 `implemented`，末尾带「2026-09-27 CC-90 对照代码核实」）：
+  - 1031 影画1 → **implemented**：蓄力延长能量场已实现，pending 清空。
+  - 1081 影画6：「层数滑块」→ 固定满 5 层（+30%），`bab8c18` 删滑块；implemented 同步更正。
+  - 1201 影画1：「可调总量输入」→ 按资源来源自动折算（`8bc5e16`）。dsh 顺带提的「巡弋减少电壶未建模」没有证据，不采用。
+  - 1271 影画2：**反向失真**，pending 和 implemented 都声称「意气资源展示」，但代码里没有这项。已删掉 implemented 里的这半句，pending 改为「[意气]完全未建模」。
+  - 1331 影画6：「并入舞步命中计数近似」失真。`danceHitCount` 读的 `cfg.vivianDanceHit` 全仓零写入，恒为 0，所以其实是未计入；由此发现死通道，立卡 **CC-91**。
+  - 1411 影画2：整条都是「已建模」声明，改写为如实的近似口径（floor(有效时间/20) 顶格）。status 保持近似，不清空 pending。
+  - 1411 影画6、1421 影画2、1441 影画2：后半句是已实现事实，移入 implemented，pending 只留仍未建模的前半句。
+  - 1591 影画1：括号里的「前台命中 1 次/秒」已过时（改为出枪式命中计数，第三段送机会经定点迭代），pending 只留段数状态机。
+  - 1611 影画1：「初始暴伤转暴击未建模」已不成立，删去这半句。
+- **不改的**：HOLDS 10 条确实仍未建模；APPROX 83 条是有意的时序、覆盖率或防御向近似（W27 惯例）。
+- 过时的共同原因与 CC-89 相同：实现提交没有回写状态表。批 6 报告还指出一种新形态：pending 里夹着「已建模」的自我声明。**今后在 pending 里写「已建模/已接入」一律视为错误，应写进 implemented。**
+- 状态表线到此收尾：命座待办条目 109→108（只有 1031 清空；其余是改写，条数不变），机制 40。
+- 验证：validate-data 366 项、check-guards 24 项、modelingGaps 9 条通过；verify 见 `/home/kaua/calc-arch/verify109.log`（338 files / 3707 tests EXIT 0）。
+- 回退：`git revert e1ef565`。
+
