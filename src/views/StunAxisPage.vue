@@ -246,7 +246,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -309,8 +309,9 @@ function mingwangTag(ai: number, aii: number): { text: string; cls: string } | n
 }
 // 仪玄凝神时间轴可视化：大招块触发 15s 窗口（般岳明王式）；触发块标「凝神15s」、落窗动作标「凝神+40%」
 const yixuanSlot = computed(() => configStore.team.findIndex(c => c.agentId === '1371'))
-// 60/90 转大（好评把队友连携升级为终结技）是琉音专属机制，只有琉音在队时才给其他队友发转大块
-const liuyinSlot = computed(() => configStore.team.findIndex(c => c.agentId === '1481'))
+// 60/90 转大（好评把队友连携升级为终结技）：只有「转大块拥有者」（现唯一 = 琉音）在队时才给其他队友发转大块。
+// CC-58：经模块声明 ownsPromoteVariantAxisBlocks（与编排层 roundInputs#buildStackAxes 同源；原写死 findIndex agentId === 1481）
+const promoteOwnerSlot = computed(() => teamPromoteVariantOwnerSlot(configStore.team))
 const yixuanNingshenBlocks = computed(() => agentAxisBlockMarks(configStore.team[yixuanSlot.value]?.agentId,
   { axes: axes.value, slot: yixuanSlot.value, cinemaLevel: configStore.team[yixuanSlot.value]?.cinemaLevel ?? 0 }))
 function ningshenTag(ai: number, aii: number): { text: string; cls: string } | null {
@@ -696,7 +697,7 @@ const allMoves = computed(() => {
   for (const c of chars) {
     const skills = catalogStore.getAgentSkills(c.agentId)
     const ultMove = findMoveByEn(skills, 'ultimate')
-    if (ultMove && liuyinSlot.value >= 0 && c.agentId !== '1481') {
+    if (ultMove && promoteOwnerSlot.value >= 0 && !agentOwnsPromoteVariantAxisBlocks(c.agentId)) {
       for (const v of ['60', '90'] as const) {
         let consumed = 0
         axes.value.forEach((ax, ai) => {

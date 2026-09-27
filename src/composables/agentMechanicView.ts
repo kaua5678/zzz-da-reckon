@@ -146,3 +146,16 @@ export function teamTeammateSplit(
 export function agentExcludedFromWindInfectionPick(agent: AgentIdentity | null | undefined): boolean {
   return identityModules(agent).some(mod => !!mod.excludeFromWindInfectionPick)
 }
+
+/**
+ * 角色是否「拥有」轴预设里的 60/90 转大块（CC-58）：模块声明 `ownsPromoteVariantAxisBlocks`（CC-43e），
+ * 与编排层 `roundInputs.ts#buildStackAxes` 同源（按 agentId 派发，=== true）。现唯一声明：琉音。
+ */
+export function agentOwnsPromoteVariantAxisBlocks(agentId: string | null | undefined): boolean {
+  return !!agentId && getAgentMechanic(agentId)?.ownsPromoteVariantAxisBlocks === true
+}
+
+/** 队伍里第一个转大块拥有者的槽位；无 ⇒ -1（CC-58；原 StunAxisPage `findIndex(c => c.agentId === '1481')`） */
+export function teamPromoteVariantOwnerSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): number {
+  return team.findIndex(c => agentOwnsPromoteVariantAxisBlocks(c?.agentId))
+}
