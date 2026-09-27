@@ -69,13 +69,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 155 轮（2026-09-28，代码 `0ed6ffc5` + 文档提交「docs: round 155」；上一轮文档 = e0c5273e / 1d7dcb56）
+### 第 155 轮（2026-09-28，代码 `0ed6ffc5` + 文档 `6acea376` + 本回填提交；上一轮文档 = e0c5273e / 1d7dcb56）
 
 - **做到哪**：
   - **CC-130 席德明攻 / 围杀作用对象**（`0ed6ffc5`）：探针实测原来三个槽都吃 +1000 攻击 / +30% 暴伤 / +25% 增伤 / 20% 无视防御。新增通用模块能力 `teammateBuffRecipientFilter`（`src/mechanics/types.ts`），编排层 `src/composables/resourceCalc/panelPhases.ts#applyTeammateBuffRecipientFilters` 应用；`src/mechanics/agents/xide.ts` 抽出 `pickXideVanguardSlot` 共用。3 个席德预设伤害 −8%~−20%，每条都能解释（卡表 CC-130 行）；timeGolden 3 叶已重生成。
   - 新单测 `src/mechanics/__tests__/vanguardBuffRecipientCc130.test.ts`；`public/static/teammate-buffs.json` 1461 说明文字同步。
   - 同类扫描写进 `docs/mcp-r6-refactor-list.md` §2.16。
-  - 验证：vue-tsc 0；verify177 见提交；CG 通过。
+  - 验证：vue-tsc 0；verify177 EXIT=0（3787 passed）；CG 通过。
 - **下一步（按顺序，可直接开工）**：
   1. **卢西娅影画2「破暗」作用对象**（清单 §2.16 待核行）：读 `data/raw/nanoka_missing/full/1451.json` 里影画 2 与[破暗]的原文，确认谁获得破暗。若不是全队，在 `src/mechanics/agents/luciaElowen.ts`（先 `ls src/mechanics/agents | grep -i lucia` 确认文件名）实现 `teammateBuffRecipientFilter`，剔除 `lucia_elowen.cinema_2_darkbreaker_sheer_dmg` 的效果；探针写法照抄 vanguardBuffRecipientCc130.test.ts 的 `deltas()`。
   2. **原文侧反查单体拐**（§2.16 局限）：在 raw 文本里搜单体措辞（「[xx]状态的代理人」「当前操作角色」「视为」「指定」），逐条对照 teammate-buffs 同角色组的效果是否全队生效。结果追加到 §2.16 表。可以派 dsh 分批做（每批约 10 个角色、边做边写结果文件）。
