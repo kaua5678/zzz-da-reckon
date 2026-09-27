@@ -48,51 +48,7 @@ export const REPO_ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..'
 export const DEAD_CHANNEL_LS_BASELINE = {
   'src/composables/pullPlannerEngine.ts:375 freePoolPerSpecialty': {
     since: '2026-09-14',
-    why: 'dead-input：实现读 `opts.freePoolPerSpecialty ?? 默认`（:417），全仓（CharIncrementPage/TimeChartsPage 等调用方）零传入；判据 14 正则版同条已登记（B|…freePoolPerSpecialty），LS 版符号级复核一致',
-  },
-  'src/types/catalog.ts:191 agentSkillId': {
-    since: '2026-09-14',
-    why: 'dead-both：全仓 grep -w 仅命中本声明行（SkillTarget.agentSkillId 零读零写）',
-  },
-  'src/types/catalog.ts:293 skillLevelBonuses': {
-    since: '2026-09-14',
-    why: 'dead-both：全仓仅命中声明行（CoreSkillLevel.skillLevelBonuses 零读零写）',
-  },
-  'src/types/resource/config.ts:257 roxyWindCannonMoveId': {
-    since: '2026-09-14',
-    why: 'dead-both：CharacterOperationConfig 的仪玄风炮槽位——全仓仅命中声明行，模块（yixuan.ts）用别的字段名取数，此槽零读零写',
-  },
-  'src/types/resource/config.ts:259 roxyWindEyeMoveId': {
-    since: '2026-09-14',
-    why: 'dead-both：同 roxy 族，全仓仅命中声明行',
-  },
-  'src/types/resource/config.ts:263 roxyCycloneHammerMoveId': {
-    since: '2026-09-14',
-    why: 'dead-both：同 roxy 族，全仓仅命中声明行',
-  },
-  'src/types/resource/config.ts:265 roxyCycloneHammerCount': {
-    since: '2026-09-14',
-    why: 'dead-both：同 roxy 族，全仓仅命中声明行',
-  },
-  'src/types/resource/config.ts:277 claretMaimBurialMoveId': {
-    since: '2026-09-14',
-    why: 'dead-both：克拉蕾残痕族槽位，全仓仅命中声明行（模块未接此槽）',
-  },
-  'src/types/resource/config.ts:285 claretMaimBurialDamageMultiplier': {
-    since: '2026-09-14',
-    why: 'dead-both：同 claret 族，全仓仅命中声明行',
-  },
-  'src/types/resource/config.ts:317 claretSharpnessCost': {
-    since: '2026-09-14',
-    why: 'dead-both：同 claret 族（残痕消耗值在实现里另有来源，此配置槽零读零写）',
-  },
-  'src/types/resource/config.ts:449 normaBarrageCoverage': {
-    since: '2026-09-14',
-    why: 'dead-both：诺姆弹幕覆盖率槽，全仓仅命中声明行',
-  },
-  'src/types/resource/config.ts:451 normaTechGapCoverage': {
-    since: '2026-09-14',
-    why: 'dead-both：同 norma 族，全仓仅命中声明行',
+    why: 'dead-input（**有意保留的调参旋钮**，CC-94 2026-09-27 裁决）：生产调用方都不传，走 `?? 1`（每职业 1 个免费池代表 = 现行性能剪枝口径）；`0` = 全量免费池，是实测「2 已分钟级」时留的调参入口，删了会丢失该入口。回收条件：抽卡规划器重写或确认永不调参时删字段并内联 1',
   },
 }
 

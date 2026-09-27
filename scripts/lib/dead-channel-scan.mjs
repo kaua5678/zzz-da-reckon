@@ -77,11 +77,11 @@ export const DEAD_CHANNEL_ALLOWLIST = {
   // `zeroEnergyRow` 证据链：`:146` 计算 → `:149` 用它打标 → `:164` 简写写入 → `:299` 消费。
   'B|src/composables/pullPlannerEngine.ts freePoolPerSpecialty': {
     since: '2026-09-13',
-    action: '抽卡规划器的 freePoolPerSpecialty 无人传——接上 UI 或删除',
+    action: '有意保留的性能剪枝调参旋钮（CC-94 2026-09-27 裁决保留）：生产走 `?? 1`；需要全量免费池时传 0',
     // 到期日与 RATCHET_BURNDOWN「死通道豁免清单」的 due 同源（2026-09-14 补：原先 due 是散文、
     // 全仓零日期解析 ⇒ 15 条冻结豁免零到期压力，正是「冻结 = 永久豁免」要防的形态，T15 审计 #6）
     due: '2026-12-31',
-    why: '只读不写（走 `?? 默认`）；抽卡价值只用期望值口径（用户裁决 2026-09-01），该字段疑似旧模拟残留',
+    why: '只读不写（走 `?? 1`）。CC-94 核实：并非旧模拟残留——pullPlannerEngine.ts 以默认 1 调 freePoolRepresentatives 做免费池剪枝（字段注释：池越大 beam 求值越贵，实测 2 已分钟级），0 = 全量；属调参入口',
   },
   'B|src/composables/timeWeightBalancer.ts minWeight': {
     since: '2026-09-13',

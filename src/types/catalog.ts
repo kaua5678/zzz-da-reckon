@@ -203,7 +203,6 @@ export interface SkillTarget {
   kind: 'skillType' | 'skillTag' | 'specific'
   skillType?: string
   skillTag?: string
-  agentSkillId?: string
   categoryId?: string
   moveId?: string
   rowId?: string
@@ -317,7 +316,6 @@ export interface CoreSkillLevel {
   level: string
   label?: LocalizedString
   stats?: { stat: StatId; value: number; mode: StatMode; target?: string }[]
-  skillLevelBonuses?: { skill: string; value: number }[]
 }
 
 export interface CoreSkill {

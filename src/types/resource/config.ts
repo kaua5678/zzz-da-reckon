@@ -262,16 +262,8 @@ export interface CharacterOperationConfig {
   aliceTeamAssaultCount?: number
   /** 爱丽丝剑仪：**全队紊乱次数**（上一轮异常池收敛值）。对应 spec `alice_disorder_gain` */
   aliceDisorderCount?: number
-  /** 洛克茜风炮 move id */
-  roxyWindCannonMoveId?: string
-  /** 洛克茜风眼 move id */
-  roxyWindEyeMoveId?: string
   /** 洛克茜小旋风 move id */
   roxyMiniTornadoMoveId?: string
-  /** 洛克茜旋风锤 move id */
-  roxyCycloneHammerMoveId?: string
-  /** 洛克茜旋风锤引爆风眼次数；0 表示自动按风眼数全部引爆 */
-  roxyCycloneHammerCount?: number
   /** 洛克茜小旋风持续秒数，默认 5 */
   roxyMiniTornadoSeconds?: number
   /** 克拉蕾斩金断铁使用次数（残痕消耗来源之一） */
@@ -282,16 +274,12 @@ export interface CharacterOperationConfig {
   claretMaimMoveId?: string
   /** 克拉蕾葬血强袭 move id */
   claretBloodBurialMoveId?: string
-  /** 克拉蕾葬血强袭的毁伤伤害倍率 move id */
-  claretMaimBurialMoveId?: string
   /** 克拉蕾秘血铸锋（锐能强特）单次动作时长（秒，倍率表） */
   claretExActionTime?: number
   /** 克拉蕾秘血铸锋（锐能强特）单次喧响回复（倍率表行） */
   claretExDecibelRecovery?: number
   /** 克拉蕾葬血强袭基础伤害倍率（倍率表 1611014 damage 行） */
   claretBloodBurialDamageMultiplier?: number
-  /** 克拉蕾葬血强袭的毁伤伤害倍率基础值（倍率表 1611015 damage 行） */
-  claretMaimBurialDamageMultiplier?: number
   /** 跳过通用强特执行，由机制模块自行生成强特执行（柏妮思等可变耗能强特） */
   skipGenericExSpecial?: boolean
   /** 强特次数强制取整（默认 skipGenericExSpecial 时按小数期望值模型）；琉音等真实次数强特需开启 */
@@ -324,8 +312,6 @@ export interface CharacterOperationConfig {
   burniceTossingActionTimeSeconds?: number
   /** 机制模块引用的倍率表基础值（moveId → 行值），供事件→倍率表映射使用 */
   mechanicRowValues?: Record<string, number>
-  /** 克拉蕾锐能消耗（秘血铸锋 60/次） */
-  claretSharpnessCost?: number
   /** 克拉蕾命中残痕状态覆盖率（0-1，默认 1） */
   claretGashCoverage?: number
   /** 克拉蕾命座等级（用于二命锐能额外回复） */
@@ -482,10 +468,6 @@ export interface CharacterOperationConfig {
   normaCinemaLevel?: number
   /** 诺姆额外能力是否触发（队伍有强攻/命破/同阵营） */
   normaAdditionalAbilityActive?: boolean
-  /** 诺姆嗯呢弹幕覆盖率（0-1，手动可调；0=自动按 32s×次数/战斗时间） */
-  normaBarrageCoverage?: number
-  /** 诺姆技术鸿沟覆盖率（0-1，默认 1） */
-  normaTechGapCoverage?: number
   /** 诺姆技术鸿沟失衡易伤（额外能力触发时，+3%/层×10层） */
   normaTechGapStunBonus?: number
   /** 诺姆额外能力攻击提升（44~870，随等级） */
