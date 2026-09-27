@@ -69,23 +69,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 122 轮（2026-09-27，一个文档提交，提交号见 git log 中的「docs(R5): 第 2 刀」）
+### 第 123 轮（2026-09-27，一个文档提交，提交号见 git log 中的「docs(R5): 第 2 刀续」）
 
 - **做到哪**：
-  - R5 第 2 刀又核完 3 项，写进账本 `docs/mcp-r5-spec-impl-reconciliation.md` §7：
-    - **D3**（Z4 stackGroup）：默认无差异；界面覆盖率滑块没有按组联动，属于潜在差异；
-    - **D4**（K0 basis）：零读取，但引擎的批次规则隐式实现了它，无差异；建议加取值校验；
-    - **D5**（Z5 基础属性规则）：数据内部不一致，引擎按逐件 `baseStat` 实现，lead 拍板以逐件字段为准；
-    - **D6**（Z1 damageBasis）：导入脚本合成的字段，引擎按 specialty 决定；`DirectDamageInput.damageBasis` 是死参数；新增 R6 候选 C5。
-  - 更正了 working-model §2.5 的错误：手册 §4 行数**有单测硬断言**（`checkGuards.test.ts:1797`），净增 0 仍然有效。
-  - 第 121 轮的产出：`7f568db`（W 系列收尾）、`2aff02f`（架构全景 v1 + D1/D2）。
+  - R5 第 2 刀又核完 7 项（Z3、Z7–Z12），写进账本 `docs/mcp-r5-spec-impl-reconciliation.md` §7：
+    - **D7**（Z3 + Z9）：持续时间 / 冷却零读取，引擎用覆盖率代替；数据所有 coverage.default 都是 1，默认一致；28 个 fixed 且无 coverage 的效果没有滑块（UI 潜在差异）；
+    - **D8**（Z7 exclusiveGroup）：**真实差异**——两名队友同穿原始朋克 31900 时全队增伤 +30%（应为 +15%）；只在重复穿戴时出现，证据是读码；
+    - **D9**（Z8）、**D10**（Z10）、**D11**（Z11）、**D12**（Z12）：无差异。
+  - 第 122 轮的产出：`020854b`（D3–D6）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 Z3 `durationSeconds`**（80 处）：确认引擎用 coverage 代替持续时间是否有依据（看 coverage 的默认值来源），写成 D7。
-  2. **R5 Z7–Z13**：逐条核实，其中 Z12、Z13 很可能归到 D / M 类。
-  3. **R5 字段归类**：215 种字段按账本 §2 归 S / D / M。
-  4. **R5 第 3 刀**：账本 §4 的「读了但语义不同」排查，从 `mode`、`condition` 做起。
-  5. **R6 第 1 步续**：全景 §6 的 4 项；然后是 **R6 第 2 步**（清单，候选 C1–C5 在全景 §5）。
+  1. **R5 Z13**：`statRules.statDisplay.*SheerDmg` / `*CritDmg`，先 `timeout 40 git grep -n statDisplay -- src` 找消费方，判断是展示配置还是属性规格，写成 D13。
+  2. **R5 字段归类**：215 种字段按账本 §2 归 S / D / M。
+  3. **R5 第 3 刀**：账本 §4 的「读了但语义不同」排查，从 `mode`、`condition` 做起。
+  4. **R5 第 4 刀（转卡）**：优先 D8（先写夹具复现，再按 exclusiveGroup 去重）；其次 D7 滑块、D3 覆盖率按组联动。每张卡都要求零差或逐条解释差异。
+  5. **R6 第 1 步续**：全景 §6 的 4 项；然后是 **R6 第 2 步**（清单，候选 C1–C5 在全景 §5；D10 的 catalog.bosses 可作为「冗余可简化」候选）。
 - **未决项**：
+  - D7 的 2 个驱动盘效果是否另有入口可调未核（`panelPhases.ts:728` `mergeTeamDiscEffectCoverages`）；
+  - D10 两份 Boss 数据是否一致未比对；
   - CC-99（spec 原语 G1/G3 + 迁移潘引壶）排在 R6 清单之后重新评估，可能被清单吸收；
   - CC-97（校准原子）暂缓；
   - CC-84 是触发式任务：新增第二件周期直伤音擎时再做。

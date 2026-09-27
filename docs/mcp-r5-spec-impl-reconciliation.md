@@ -49,16 +49,16 @@
 |---|---|---|---|---|---|---|
 | Z1 | `damageBasis` | agentSkills 的倍率行 | 2490 | 0 / 4 | 伤害按什么属性结算（攻击 / 生命 / 防御 / 贯穿力等）。引擎若按别的来源判定，就要核对两者是否一致 | **已核：导入合成字段；引擎按 specialty 决定，1611 一致，命破 5 人与字段值不符但字段不是规格**，见 §7 D6 |
 | Z2 | `appliesToOutOfCombatPanel` | 音擎 selfBuff / teamBuff | 95 | 0 / 0 | 这条 buff 是否计入局外面板。引擎完全不读，靠别的逻辑决定，**与 basis 问题同源** | **已核：无差异（冗余字段）**，见 §7 D1 |
-| Z3 | `durationSeconds` | 音擎 / 驱动盘 / Boss 效果 | 80 | 1 / 3（只有 piper.ts） | 持续时间。引擎可能用 `coverage`（覆盖率）代替。要确认两者口径是否一致，还是持续时间被忽略了 | 待核 |
+| Z3 | `durationSeconds` | 音擎 / 驱动盘 / Boss 效果 | 80 | 1 / 3（只有 piper.ts） | 持续时间。引擎可能用 `coverage`（覆盖率）代替。要确认两者口径是否一致，还是持续时间被忽略了 | **已核：默认 100% 与数据约定一致；28 个 fixed 且无 coverage 的效果没有滑块 = 潜在差异（UI）**，见 §7 D7 |
 | Z4 | `stackGroup` | 效果 | 23 | 0 / 0 | 同组效果是否互斥或共享层数。**完全不读就可能重复叠加** | **已核：默认无差异，UI 有潜在差异**，见 §7 D3 |
 | Z5 | `statRules.calculation.baseAttackRule` / `baseHpRule` / `baseDefRule` | statRules | 各 1 | 0 / 0 | 基础属性的计算规则。引擎可能自有实现，要对照规则文本 | **已核：数据内部不一致，引擎按逐件字段实现**，见 §7 D5 |
 | Z6 | `statRules.calculation.outOfCombatEffectFilter` | statRules | 1 | 0 / 0 | 哪些效果计入局外面板的过滤规则。**与 Z2、basis 是同一个问题** | **已核：当前数据等价，潜在差异**，见 §7 D2 |
-| Z7 | `exclusiveGroup` | 驱动盘 teamBuff | 1 | 0 / 0 | 互斥组。与 Z4 类似 | 待核 |
-| Z8 | `settlementType` | 音擎 target | 4 | 0 / 1 | 结算类型 | 待核 |
-| Z9 | `cooldownSeconds` | 音擎 / 驱动盘效果 | 3 | 0 / 3 | 冷却。引擎可能用覆盖率吸收了 | 待核 |
-| Z10 | `weaknessElements` / `resistanceElements` / `resistanceOverrides` | Boss target | 各 7 | 0 / 0–2 | Boss 的弱点与抗性。引擎可能读的是别处的敌人配置，要确认两个来源一致 | 待核 |
-| Z11 | `attackTypes` | agents | 62 | 0 / 0 | 攻击类型（斩击、打击等）。影响某些条件效果 | 待核 |
-| Z12 | `relatedAgentId` | 音擎 | 5 | 0 / 0 | 专属音擎对应的角色。可能只影响推荐，不影响计算 | 待核（可能是 D / M 类） |
+| Z7 | `exclusiveGroup` | 驱动盘 teamBuff | 1 | 0 / 0 | 互斥组。与 Z4 类似 | **已核：真实差异——同套 4pc teamBuff 多人穿戴时重复叠加**，见 §7 D8 |
+| Z8 | `settlementType` | 音擎 target | 4 | 0 / 1 | 结算类型 | **已核：无差异（stat 名已编码结算类型）**，见 §7 D9 |
+| Z9 | `cooldownSeconds` | 音擎 / 驱动盘效果 | 3 | 0 / 3 | 冷却。引擎可能用覆盖率吸收了 | **已核：与 Z3 同类，并入 D7** |
+| Z10 | `weaknessElements` / `resistanceElements` / `resistanceOverrides` | Boss target | 各 7 | 0 / 0–2 | Boss 的弱点与抗性。引擎可能读的是别处的敌人配置，要确认两个来源一致 | **已核：catalog.bosses 整块无消费方；引擎读 boss-presets.json**，见 §7 D10 |
+| Z11 | `attackTypes` | agents | 62 | 0 / 0 | 攻击类型（斩击、打击等）。影响某些条件效果 | **已核：零读取、无消费方、53/62 为空 → 无差异**，见 §7 D11 |
+| Z12 | `relatedAgentId` | 音擎 | 5 | 0 / 0 | 专属音擎对应的角色。可能只影响推荐，不影响计算 | **已核：与 ownerAgentId 冗余 → 无差异**，见 §7 D12 |
 | Z13 | `statRules.statDisplay.*SheerDmg` / `*CritDmg` 等 | statRules | 各 1 | 0 / 1–5 | 名字像展示配置，但字段名是属性名。要确认引擎有没有对应的属性 | 待核（可能是 D 类） |
 | K0 | `basis` | 音擎 / 驱动盘效果 | 22 | 6 / 11（同名假非零） | **已知差异**：CC-96 确认引擎不读 catalog 效果的 basis，按首次触达时的面板值累积。R5 原文把它列为起点 | **已核：零读取，但引擎的批次规则隐式实现了该语义，无差异**，见 §7 D4 |
 
@@ -91,7 +91,7 @@
 ## 6. 进度账本
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
-- [~] 第 2 刀（进行中：第 121 轮完成 Z2、Z6；第 122 轮完成 Z4、K0、Z5、Z1，见 §7；剩余 Z3、Z7–Z13 和字段归类）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
+- [~] 第 2 刀（进行中：第 121 轮完成 Z2、Z6；第 122 轮完成 Z4、K0、Z5、Z1；第 123 轮完成 Z3、Z7–Z12，见 §7；剩余 Z13 和字段归类）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
 - [ ] 第 3 刀：核实其余 Z 类，并按 §4 做 S 类字段的取值 × 分支对照。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
@@ -178,3 +178,37 @@
   - (a) 引擎改读 damageBasis，导入脚本按 specialty 填写（命破填 `sheerForce`）；
   - (b) 删掉这个字段和 `DirectDamageInput.damageBasis` 死参数，只保留 specialty 这一个来源。
   - lead 倾向 (b)：数据源本身不提供逐行基底，specialty 才是真实的决定因素，删掉更简单。零差。
+
+### D7 `durationSeconds` / `cooldownSeconds`（Z3、Z9）：引擎用覆盖率代替持续时间，默认 100% 与数据约定一致；28 个效果没有滑块 → 潜在差异（UI 层）
+- **引擎怎么读**：catalog 的 `durationSeconds` 零读取。`src/mechanics/agents/piper.ts` 里的同名字段是派派模块自己的动力持续时间，与 catalog 无关。`cooldownSeconds` 同样零读取。
+- **引擎怎么代替**：按效果的覆盖率（`effectCoverageMap`，键为 effect.id，`core/buff.ts:811`）折算；没有覆盖率条目时按 100%。队友 buff 的整体覆盖率（`panelPhases.ts:536–539`）只作用于角色的队友 buff，不覆盖音擎和驱动盘。
+- **数据约定**：数据里**所有** `coverage.default` 都是 1，与持续时长、冷却无关（例：混沌爵士 31800 持续 5 秒、冷却 7.5 秒，default 仍为 1）。所以「无覆盖率条目按 100%」与数据约定一致，**默认无差异**。R5 硬约束「数据可信」，这里不改任何默认值。
+- **缺口**：带持续时间的效果共 96 个，其中 68 个有滑块（`stacked` 或有 `coverage`），**28 个没有滑块**（`fixed` 且无 `coverage`）。界面判定在 `TeamConfigPage.vue` 的 `collectWEngineGroupEffects`：`hasCoverage: effect.type === 'stacked' || !!effect.coverage`。音擎区没有整组开关，所以这 28 个效果用户无法下调，只能按常驻计算：
+  - 26 个音擎效果：14143×2、14118、13128×3、14153、14147、14105、13019、13144×2、13012×2、14156、13004、14119×2、13108、13111、14120、13015×2、14129（减防，只持续 3 秒）、14155、14136；
+  - 2 个驱动盘：34100 四件套、31600 四件套 teamBuff。驱动盘走 `mergeTeamDiscEffectCoverages`（`panelPhases.ts:728`）另一条路径，是否另有入口可调**未核**，转卡时先核。
+  - `cooldownSeconds` 的 3 处（13111、14130、31800）：14130 是 stacked，31800 有 coverage，只有 13111 在上面 28 个之中。
+- **不做的修法**：按持续时间 / 冷却推算覆盖率。这需要时序仿真，R4 已撤销，不再提。
+- **建议（转卡，零差）**：界面判定改为 `hasCoverage || durationSeconds != null`（效果级或组级），让滑块出现，默认值仍为 1。只影响界面可调性，默认数值不变。
+
+### D8 `exclusiveGroup`（Z7）：零读取，同套驱动盘 4pc 全队效果多人穿戴时重复叠加 → 真实差异（仅重复穿戴场景）
+- **数据怎么写**：只有原始朋克 31900 的 `fourPiece.teamBuff` 带 `exclusiveGroup: "proto_punk_4pc_team_dmg"`，原文「全队角色造成的伤害提升15%，持续10秒，同名被动效果之间不可叠加」。
+- **引擎怎么算**：`core/inCombatBuffs.ts:164–190` 对**每个**穿 4pc 的队友各推入一个 id 为 `drivedisc-team-${set.id}` 的 buff；下游 `teammateBuffSource.ts:78` → `panelPhases.ts:533`（直接拼接）→ `core/buff.ts:502` `collectTeammateBuffs`（逐条展开）全程没有按 id 或互斥组去重。
+- **影响面**：两名队友都穿原始朋克 4pc 时，全队 `dmgBonus` 为 +30%（数据为 +15% 且不可叠加）。默认配置和单人穿戴不受影响。证据是读码，尚未用夹具复现。
+- **范围口径**：数据只给 31900 标了互斥组。其余 6 套带 teamBuff 的 4pc（33700、33400、33200、32800、31600、31300）数据没有标，按「数据可信」**不**推断它们也互斥。
+- **建议（转卡）**：先写夹具复现（两名队友同穿 31900 → 断言只计一次），再在 `collectInCombatTeamBuffs` 按 `group.exclusiveGroup` 去重（同组只保留一个）。数值变化只出现在重复穿戴场景，golden 预计零差；有差时逐条解释。
+
+### D9 `settlementType`（Z8）：零读取，但 stat 名已经编码了结算类型 → 无差异
+- **数据**：4 处，都在音擎效果的 `target: {kind: 'anomaly', settlementType}` 上：琳琅鎏心 14156 的 `windAnomalyDmgBonus`（wind）、`turbulenceDamageBonus`（turbulence）；壳中之灵 14150 的 `anomalyDmgBonus`（attribute）、`disorderDamageBonus`（disorder）。
+- **引擎**：`core/buff.ts:67–80` `effectSkillDamageTargets` 只认 `skillType` / `skillTag`，`kind: 'anomaly'` 落到 `['all']`，按通用加成施加。
+- **为什么无差异**：结算类型已由 stat 决定。唯一需要确认的是 `attribute`（属性异常，不含紊乱）：引擎明确规定紊乱不继承 `anomalyDmgBonus`（`core/damage.ts:604`、`core/anomalyPool/helpers.ts:785`、`:1129`），与数据语义一致。
+
+### D10 Boss 的 `weaknessElements` / `resistanceElements` / `resistanceOverrides`（Z10）：catalog.bosses 整块无消费方 → 无引擎差异，是死数据
+- catalog.bosses 共 7 个，全部没有 `phases`；`stores/catalog.ts:163` 导出了 `bosses`，但 `src` 里没有任何使用方。
+- 选 Boss 的界面和引擎读的是另一份数据 `public/static/boss-presets.json`（`components/BossSelectCard.vue:153`），敌人弱点来自其中的 `phase.weakness`（`stores/config.ts:1229`）。
+- 两份 Boss 数据是否一致**未比对**（不影响计算，因为引擎只读 boss-presets）。建议归入 R6「冗余可简化」：删掉 catalog.bosses，或标注它不是计算来源。
+
+### D11 `attackTypes`（Z11）：零读取，无消费方 → 无差异
+- 62 个角色中 53 个为空数组（有值的：slash 5、strike 3、pierce 1）。`src/core`、`src/composables`、`src/stores` 中没有 attackType / slash / strike 的任何引用，也没有效果依赖攻击类型。归 M（元数据）类。
+
+### D12 `relatedAgentId`（Z12）：与 `ownerAgentId` 冗余 → 无差异
+- 5 把音擎（14143、14109、14140、14137、14150）带 `relatedAgentId`（角色 slug），它们同时都有 `ownerAgentId`。专武判定读的是 `ownerAgentId`（`composables/freeCompare/engine.ts:93`，与 `teamCompare.ts:359` 同口径）。归 M 类，可在字段归类时标冗余。
