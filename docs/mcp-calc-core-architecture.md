@@ -242,6 +242,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-70 | done | —（docs） | core/** 角色专属数学盘点 → docs/mcp-core-agent-math-census.md | census §5.79 |
 | CC-71 | done | `81acc14` | core/anomalyPool.ts 维琳娜两条风蚀气旋事件 → 模块能力 anomalyCorrosionEvents | census §5.79 |
 | CC-72 | done | `da6f203` | core 不再补 cinema2CorrosionRate 默认值（模块兜底）+ 过时 CC-25 注释 | census §5.79 |
+| CC-73 | done | `074ee50` | starlightBilly 交互默认值 → 模块常量 BILLY_INTERACTION_DEFAULTS（声明与兜底共用）；1531 spec 旧表名文字 | census §5.80 |
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |

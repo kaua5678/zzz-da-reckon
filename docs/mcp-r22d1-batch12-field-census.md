@@ -2424,3 +2424,10 @@ done | awk -F: '{print $1" "$3}' | sort | uniq -c
 - 未跑 perf 零差：理由是改动面只有事件对象来源，逐字对照测试 + anomalyPool 集成测试 + ccD3D1Verdict 已覆盖；若日后怀疑，入口 = 回退 `81acc14`。
 - 验证：vue-tsc 0；verify 328 files / 3680 tests（CC-71 时）、CC-72 后 328 files / 3681 tests。
 
+### 5.80 CC-73 done：星徽·比利交互默认值单一事实源 + 1531 spec 旧表名（lead-arena-0925c，2026-09-27 第 92 轮）
+
+- **提交 `074ee50`**：`starlightBilly.ts` 新增模块常量 `BILLY_INTERACTION_DEFAULTS = { parry: 4, dodge: 0, block: 5, dual: 0 }`；模块声明 `interactionDefaults: { ...BILLY_INTERACTION_DEFAULTS }`，applyTeamConfig 兜底 `if (!cfg.parryCount)` / `if (!cfg.blockCount)` 改读该常量（`!` 语义不变：0 也会被兜底成默认，与原行为一致）。`specs/agents/1531.json:305` notes 的旧表名 `AGENT_INTERACTION_DEFAULTS` 改为指向模块常量（纯文字，不参与计算）。
+- 关闭 §5.74 两条「已知坑 / 未改」。velina.ts 前缀常量合一已在 CC-71 做掉（§5.79）。
+- **验证**：vue-tsc 0；verify 328 files / 3681 tests，24 guards 0（`/home/kaua/calc-arch/verify92.log`）。反向变异：常量改 parry 3 / block 6 → 3 个既有测试变红（agentMechanicViewCc65b、roleInteractionBaseline、dynamicComboAlign 1531 队），已恢复。未新增测试（既有测试同时锁住声明值和兜底值）。
+- 回退：`git revert 074ee50`。
+
