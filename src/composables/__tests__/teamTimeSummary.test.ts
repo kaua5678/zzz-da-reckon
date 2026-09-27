@@ -97,7 +97,11 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     // 现样例 = 爱丽丝/柚叶/妮可（默认口径 slack 6.0s、账本虚高 15.9s、平A行缩水 0）：爱丽丝星芒圆舞曲等模块行随平A池增长
     // （正反馈），折叠环 pass0 冻结的 refund 追不上后续 idle，账本停在虚高态。本用例只钉「归因到账本虚高而非池没分完」，
     // 不是留白绝对量判据；这 6s 本身是折叠环「refund 一次性冻结」口径的待办（docs §19.6）。
-    const t = await summaryOf(['1401', '1411', '1031'])
+    // 2026-09-28 CC-158（第 181 轮，折叠残差可退回 + 退回扣 refund）修掉了它：该队 slack 0 / 虚高 0 ⇒ 不再是样例。
+    // 现样例 = 叶瞬光/照/妮可（手动队默认口径 slack 12.8s = 虚高 12.8s）：外层环入环（outerExit=cycle），规范成员的
+    // 叶瞬光槽在 refund 冻结后又测得估算高估，而本槽已无折叠残差可退 ⇒ 负溢出进已冻结的 refund 被丢弃（CC-159 待办）。
+    // 该缺陷修好后本样例会失效——届时按上面惯例换队，或改用纯函数构造 rr。
+    const t = await summaryOf(['1431', '1341', '1031'])
     expect(t.slack).toBeGreaterThan(2)
     // 池确实被分完（平A分配 ≈ 可分配池）→ 留白不来自未分配的秒数
     expect(t.basicTotal).toBeGreaterThan(t.remainingFrontlinePool - 1)

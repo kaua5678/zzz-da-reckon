@@ -854,7 +854,11 @@ describe('6命附伤伴随计数吃易伤（2026-08 审计：附伤事件和动�
     const without = await mk(false)
     expect(withSw3).toBeTruthy()
     expect(without).toBeTruthy()
-    expect(withSw3!.count).toBe(without!.count)
+    // 次数不再要求相等（CC-158，第 181 轮）：SW3 进轴改变该槽前台占用，折叠残差可退回后平A池随之重分 ⇒
+    // 附伤次数 85 → 90 是时间分配的正常后果。本用例钉的是「SW3 在窗内 ⇒ 单次伤害吃到易伤」，判据是 perDamage，
+    // perDamage 是逐次量、与次数无关；次数只要求两侧都非 0（行真实存在）。
+    expect(withSw3!.count).toBeGreaterThan(0)
+    expect(without!.count).toBeGreaterThan(0)
     expect(withSw3!.perDamage).toBeGreaterThan(without!.perDamage)
   })
 

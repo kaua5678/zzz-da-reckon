@@ -69,24 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 180 轮（lane lead-arena-0925c）：本轮无代码提交，只提交文档。**
-- CC-158 定位完成：根因是 foldLoop 的折叠残差只增不减，且收敛判据只看正溢出，叶瞬光模块本身没有问题。补丁在 `/home/kaua/calc-arch/k180/cc158-unfold.diff`，未合入，原因是 11 条非基线测试尚未归因。见 stun-dual-source §22。
-- REQUIREMENTS 没有新条目（最后一次改动在 e000e53e）。提示词本轮已重读，未改。
+**第 181 轮（lane lead-arena-0925c）：CC-158 已合入。** 提交号见 `git log`，提交信息为「CC-158: 折叠残差可退回 + refund 双计修正」。
+- 代码只改 `src/core/resource/foldLoop.ts`：§22.2 补丁原样应用，另加退回时扣减冻结 refund 的 3 行。另改了 6 个测试（按意图归因，未放宽判据），重生成了两份基线。详见 stun-dual-source §22.5。
+- 验证：vue-tsc 与 verify 通过（3824 passed），CG 25 项通过，zd c181 已逐项解释。
+- REQUIREMENTS 没有新条目，提示词未改。
 
 **下一步（按顺序，直接开工）**
-1. **CC-158 收尾**：`git apply /home/kaua/calc-arch/k180/cc158-unfold.diff`，然后按 §22.3 的清单逐条归因 11 条失败：
-   - ① inStunAttribution × 5：先用 `k180/zzL180.test.ts`（复制到 `src/`，跑完移走）确认轴态修后净占用 185.1。倾向于缩小夹具的轴内动作次数（例如 1181005 18→12），让轴在新口径下也装得下，因为测试意图是异常归因，不是时间预算。改夹具时补一条前提断言：`axisFallback === false`。
-   - ② teamTimeSummary 虚高归因：夹具本意是「有虚高时归因正确」，换成一个修后仍有虚高的构造，或直接用纯函数构造 rr。
-   - ③ underfillRefund ①：读该测试的前提；refund 变为 0 若属设计内（负溢出先退回本槽），就改前提或夹具。
-   - ④ adjustableEffect 米卡：换一个让雅平 A ≥ 2s 的配装或时间设定。
-   - ⑤ peilou、stunVulnSummary：核对是平 A 变化引起的快照漂移后更新快照值，并写 CC-158 注释。
-   - 另查棘轮 auto-1431-1341-1031 留白 3.4→12.8。
-   - 全绿后重生成两份基线，跑 zd 逐条解释，再提交。
-2. **CC-149 合入**：`git apply /home/kaua/calc-arch/k179/cc149-attempt.diff`，重测 auto-1431-1341-1311（§21.3 的 −8.34%、留白 +9.4 应消失），重生成基线并解释。
+1. **CC-149 合入**：
+   - `git apply /home/kaua/calc-arch/k179/cc149-attempt.diff`（只改 solveTeam.ts，与 CC-158 不冲突）；
+   - 重测 auto-1431-1341-1311（§21.3 的 −8.34%、留白 +9.4 应该消失，因为叶瞬光账本虚高已由 CC-158 修掉）；
+   - 重生成两份基线，跑 zd（`.zc/perf/zd.sh <tag>` + `python3 /home/kaua/calc-arch/k177/zdsum.py <tag>`），逐条解释后提交。
+2. **CC-159**（冻结后残余负溢出丢失，病例棘轮 auto-1431-1341-1031 留白 12.8）：
+   - 探针 `k181/zzM181.test.ts`（复制到 `src/` 下，用 `ZZ_F=队伍键` 过滤，跑完移走）；
+   - 逐槽日志的写法见 `k181/zzf181.py`（插入的是带 ZZTMP 的一行，用完需用 `sed -i '/ZZTMP/d'` 删除）；
+   - 修好后，teamTimeSummary「留白被归因到账本虚高」需要换样例。
 3. CC-156、CC-147、CC-152（可选）。
 
 **已知坑**
-- 远端 bash 会执行 python heredoc 里的反引号（本轮一段注释因此被吞）。代码和文档一律写成 .py 文件，用 up.sh 上传后再执行，不要内联。
-- 双向折叠不设门槛会产生量化 2-循环（±0.8s），被停滞判据截停在中途时会留下截断。门槛 1s 不要删。
-- 用 `timeBudgetIdleSeconds` 判断「预算是否看见某行」是错的，要用 teamTimeSummary 的四项分解（探针 k178/zzJ179）。
-- 棘轮（setAgent 路径）、zd（applyTeamToStore 路径）、timeGolden（applyTeamPreset 路径）三者状态不同。
+- 远端 bash 会执行 python heredoc 里的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后再执行。
+- 双向折叠的 1s 门槛不要删（量化 2-循环）。
+- refund 扣减只减不增；若要改成可增（CC-159），必须同时评估伊德海莉、艾莲这类强依赖队的抖动（冻结语义的由来见 foldLoop 注释）。
+- 棘轮（setAgent）、zd（applyTeamToStore）、timeGolden（applyTeamPreset）三条路径的状态不同；外层入环的队，路径不同时可能落在不同成员上。

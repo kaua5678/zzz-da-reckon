@@ -38,6 +38,7 @@ describe('CC-39c 集成快照：佩洛伊斯右分支决算截断失衡窗口', 
     expect(upper.cov).toBeCloseTo(2 * 25 / 180, 3)
     expect(verdict.cov).toBeLessThan(upper.cov * 0.5)
     expect(verdict.cov).toBeGreaterThan(0)
-    expect(verdict.cov).toBeCloseTo(0.0834, 3)
+    // 重冻 2026-09-28（CC-158 第 181 轮，折叠残差可退回改变动作时长分配）：0.0834 → 0.0788；上方相对断言均不变。
+    expect(verdict.cov).toBeCloseTo(0.0788, 3)
   })
 })

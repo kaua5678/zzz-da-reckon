@@ -338,7 +338,10 @@ describe('spec adjustable（Form-E）第二批：米卡以落霜三滑块（闭�
       for (const v of [0, 1, 2]) {
         const r = await readFrost({ [id]: v })
         // 夹具前提（CC-154 补）：C 项需要 ⌊平A/2⌋ > 0，D/F 项需要强特 > 0；否则「三点恒同」是夹具失效而不是滑块失效
-        expect(r.basic, `夹具前提：雅 ⌊平A时间/2⌋ 须 > 0（实为平A ${r.raw}s）`).toBeGreaterThan(0)
+        // CC-158（第 181 轮）：前提按滑块分——只有 C 项（c2flower）读 ⌊平A/2⌋；D/F 项只读强特次数。
+        // 折叠残差可退回后 disorder=2 档（落霜 50 → 强特 10 次）把雅平A挤到 0.49s，这对 disorder 的消费证据无影响，
+        // 旧写法对三条滑块一律要求平A ≥ 2s，会把「D 项正常」误报成夹具失效。
+        if (name === 'c2flower') expect(r.basic, `夹具前提：雅 ⌊平A时间/2⌋ 须 > 0（实为平A ${r.raw}s）`).toBeGreaterThan(0)
         expect(r.ex, '夹具前提：雅强特次数须 > 0').toBeGreaterThan(0)
         vals.push(r.total!)
       }

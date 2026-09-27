@@ -28,6 +28,12 @@ import { buildExecutionsWithPhase } from './phaseExecutions'
 import { TIME_FOLD_CONVERGENCE_SECONDS } from './helpers'
 import type { SolveDiagnostics } from './solveDiagnostics'
 
+/**
+ * CC-158：负溢出退回本槽折叠残差的最小量（秒）。值同 `core/resource.ts#TIME_BUDGET_TOLERANCE_SECONDS`
+ * （1s 量化地板）；本文件不得 import core/resource.ts（循环依赖），故本地声明。
+ */
+const UNFOLD_MIN_SECONDS = 1
+
 /** 折叠环的只读上下文：把 `calcTeamResources` 里原先的闭包变量显式化（调用期间不变）。 */
 export interface FoldLoopContext {
   configs: CharacterOperationConfig[]
@@ -132,7 +138,7 @@ export function runFoldLoop(
       ) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
         + (i === ultimateGift.targetIdx ? ultimateGift.time : 0)
       // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
-      const excess = rowTime - (state.necessaryTime + state.basicAttackTime)
+      let excess = rowTime - (state.necessaryTime + state.basicAttackTime)
       const teammatesLedgerNet = ctx.configs.reduce(
         (sum, _, j) => (j === i ? sum
           : sum + Math.max(0, st[j].necessaryTime - (st[j].comboAlignCredit ?? 0) + st[j].basicAttackTime)),
@@ -164,7 +170,34 @@ export function runFoldLoop(
         //   （累加负 excess，与正向折叠同一口径），省下的时间下一轮由它自己的平A池吸收；仍记入 maxExcess 视为未自洽、继续折叠。
         //   用户口径：最后一点时间给平A；留白太多 = 引擎没把资源回复消耗算完备，不是可容忍残差。
         const atSingleCap = state.necessaryTime + state.basicAttackTime >= (ctx.totalTime - (ctx.config.invincibleTime ?? 0)) - 1e-6
-        if (atSingleCap) {
+        // CC-158（第 180 轮）：**先退回本槽自己折进去的残差**（夹在 ≥ 0，necessary 不会变负），退回量计入 maxExcess
+        // 让环继续迭代——折叠残差由「只增不减」变成不动点迭代 acc' = max(0, acc + excess)。
+        // 病例（auto-1431-1341-1311，叶瞬光剑势来自平A = 正反馈）：acc=0 时平A池 45s ⇒ 行超账本 +17.8 折入；
+        // 下一轮平A被挤到 0 ⇒ 行缩回、负溢出 −21.6，旧逻辑只进团队 refund（已冻结）且不计入收敛判据 ⇒
+        // 停在账本虚高 18.9s / 留白 9.4s。收敛条件：模块行对平A时间的斜率 < 1（叶瞬光 ≈ 0.32）。
+        // 门槛 UNFOLD_MIN_SECONDS（= 1s 量化地板）：负溢出 ≤ 1s 不退回——整数行阶跃会让 excess 在 ±0.8s 间 2-循环
+        // （实测南宫羽+格莉丝手写轴：acc 6.6↔7.4，被停滞判据截停在中途、留下 2.08s 截断），与上方「量化残差 ~1s
+        // 属合轴可覆盖，不追求精确 0」同一口径。
+        // 退回之后仍剩的负溢出照旧走下方分支（贴顶折回 / 团队 refund）。docs/mcp-stun-dual-source.md §22。
+        // 回退点：删除本块（到 `if (atSingleCap)` 之前）。
+        const ownFolded = cfg.timeBudgetExcess ?? 0
+        if (ownFolded > 1e-9 && -excess > UNFOLD_MIN_SECONDS) {
+          const back = Math.min(ownFolded, -excess)
+          cfg.timeBudgetExcess = ownFolded - back
+          if (back > maxExcess) maxExcess = back
+          excess += back
+          // 退回的秒数回到团队平A池；refund 已冻结时先从 refund 里扣（夹 ≥ 0），否则同一份空闲被补偿两次：
+          // pass0 该槽的估算高估量已进 refund 冻结，之后同一槽先折入、再退回 ⇒ 平A池 = 预算 + refund + 合轴，
+          // 净占用 ≈ 预算 + refund（实测南宫羽+格莉丝手写轴 184.75 = 180 + ~5.1 ⇒ 被误判轴太厚而退化）。
+          // refund 是 pass0 的粗修正、退回是逐槽的精修正，二者不叠加；只减不增 ⇒ 不引入冻结语义要防的抖动。
+          if (diag.refundFrozen && (ctx.config.timeBudgetRefund ?? 0) > 0) {
+            ctx.config.timeBudgetRefund = Math.max(0, (ctx.config.timeBudgetRefund ?? 0) - back)
+            diag.timeBudgetRefundedSeconds = ctx.config.timeBudgetRefund // 诊断量跟随实际生效值
+          }
+        }
+        if (-excess <= 1e-6) {
+          // 负溢出已被本槽残差完全吸收
+        } else if (atSingleCap) {
           cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
           if (-excess > maxExcess) maxExcess = -excess
         } else {
