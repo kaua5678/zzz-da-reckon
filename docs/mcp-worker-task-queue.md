@@ -69,31 +69,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 151 轮（2026-09-27，提交 cfc3e63 / 862fc15 / 文档提交「docs: round 151」；上一轮 CC-123 = 4ae3d49）
+### 第 152 轮（2026-09-27，提交 bf6d184 / 941f597 / 文档提交「docs: round 152」；上一轮文档 = 90c23c6）
 
 - **做到哪**：
-  - cfc3e63 零差清理：删 `rina.ts` `rinaCinemaLevel` 死写、`yaojiayin.ts` `yaojiayinAtk` 死写、`soukaku.ts` `applySoukakuTeamEnergyFlags` 里的自赋值（唯一读者 soukaku.ts 已 `Number(?? 0)`）。zd `cz151` DIFF 0。
-  - 862fc15 **CC-124**：千夏影画6 暴伤按初始（局外）攻击；timeGolden 仅 `agent:1491:c6.dmg` −10.09%，已逐条解释并重生成（卡表 CC-124 行）。
-  - 「全队」扫描 C 类结案（`docs/mcp-spec-resources-audit.md` §5 末）：无新数值差异；`src/specs/agents/1491.json` 过时注记订正（凝视触发与 C6 全队 +50% 已建模）。
-  - 模块「初始 X」全量核对（`docs/mcp-r6-refactor-list.md` §2.12），新登记 CC-125（爱芮）、CC-126（柚叶展示）。
-  - 验证：verify EXIT=0（3776 passed，含 CC-124 与清理）；vue-tsc 0；validate:specs 1120；文档提交另跑 CG。
-- **下一步（按顺序，可直接开工）**：
-  1. **CC-125 爱芮「每10点初始异常掌控」读局外**：开工方案写在清单 §2.12 末，按 1-5 步做。
-  2. CC-126 柚叶资源卡 `initialAtk` 改读局外（只改展示，零差；写法同 CC-123 南宫羽 `nangongInitialMastery`）。
-  3. 之后可选：R6 清单与审计文档已无未结项时，重新扫一遍 `docs/mcp-calc-core-architecture.md` 卡表里的「暂缓 / 待做」（如 CC-97），逐个判断还做不做。
+  - bf6d184 **CC-125** 爱芮异放比例与影画1 异放暴击按初始（局外）掌控：事件预算值 `releaseRatio.basisValue` / `releaseCrit.masteryValue`（`src/types/resource/execution.ts`），`src/mechanics/agents/aire.ts` 填写，`src/composables/resourceCalc/damagePool.ts` 两处 `??` 回落。预设伤害零差，变异对照证明生效。
+  - 941f597 **CC-126** 柚叶资源卡展示读局外攻击（`yuzuhaInitialAtk`），伤害零差。
+  - 验证：verify EXIT=0（3778 passed）；vue-tsc 0；validate:specs 1120；zd 伤害差 0（仅含 1501 的预设 resourceResult 哈希变，已解释）；timeGolden 零差。
+- **下一步（可直接开工）**：「初始」原文侧反查，步骤写在 `docs/mcp-r6-refactor-list.md` §2.13 末（抽句 → 对实现 → §2.14 表 → 读局内的开 CC-127 起）。
 - **本轮拍板**：
-  - 千夏 C6 以原文「初始攻击力」为准（R5；CC-118/123 先例）。回退点：CC-124 卡行。
-  - S1491-4 判「不缺」：模块已对全部凝视触发行加 +50%，只订正注记，不开卡。按千夏面板结算是已知近似。
-  - CC-125 不在本轮做：要改 damagePool 的取源（编排层），范围比模块内改动大，单独一轮更稳。
+  - CC-125 用「事件携带预算值」而不是让 damagePool 取局外面板。依据：编排层当前没有局外面板，引入要动 damagePanels 的构造链，范围大；预算值是可选字段，缺省行为不变，可逆。回退点：aire.ts 不填字段。
+  - zd 的 resourceResult 哈希差不算数值差：判据是第 1 字段（总伤害）与第 3 字段（失衡池哈希）全等；第 2 字段会因新增 cfg 键 / 事件字段变化。
 - **已知坑**：
-  - **不要用 `pgrep -f` / `pkill -f` 杀 dsh**：模式会匹配到执行它的 shell 自身（本轮 wsl_exec 被 kill 9）。用 `ps -eo pid,etimes,args | grep '[.]local/node/bin/dsh'` 列出后，只 `kill -9` 具体 pid。**pid 8958 的 `dsh web --port 3080` 是用户常驻服务，不要杀。**
-  - dsh 逐句审 146 句要约 25 分钟，会撞上 1500s 超时；大批量任务要拆批，或要求它每处理完一个角色就追加写结果文件。
-  - harness 预设默认不开局内 buff，但**攻击力例外**：千夏局内 5564 / 局外 3243（自带核心 buff 等），所以「初始攻击」类改动未必零差。
-  - 千夏在预设里都不在 0 号位，zd `/c6` 看不到，要靠 timeGolden（单人各命座）和探针。
+  - **zd 输出怎么读**：`value = 总伤害|resourceResult哈希|失衡池哈希|闸门`（`.zc/perf/dump.perf.ts`）。只加 cfg 键也会让第 2 段变；判断数值变化看第 1、3 段。
+  - zd dump 用裸装（`recommendedBuild: false`），很多「局内 vs 局外」差异在裸装下看不到，必须写阳性对照（变异或单测）。
+  - 不要用 `pgrep -f` / `pkill -f` 杀 dsh（会匹配自身 shell）；用 `ps -eo pid,etimes,args | grep '[.]local/node/bin/dsh'` 找 pid 再 `kill -9`。pid 8958 的 `dsh web --port 3080` 是用户常驻服务，不要杀。
+  - dsh 大批量任务要分批、边做边写结果文件（1500s 超时）。
+  - 千夏在预设里都不在 0 号位，zd `/c6` 看不到，要靠 timeGolden 和探针。
   - `releaseModifier` 的派发键是异放行的 agentId（结算者），原文是全队的修正必须声明 `releaseModifierScope: 'team'`。
   - 盘点 cfg 键时要同时搜 `setRecord(cfg, 'xxx'` / `cfgNum(cfg, 'xxx'` 的字符串形式。
   - 预设外的角色（zd 看不到）至少有 1121、1281、1291、1081；`setupHarness` 必须传 `{ agentId }` 对象。
-  - `BuffEffect` 在 `@/types/catalog`；vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
+  - vitest 会忽略错误的类型导入，只有 vue-tsc 能发现。
   - `zcWorkspace.test.ts` 在全量 verify 下偶发失败，单独重跑可过。
   - 工具是否齐全以 `node /tmp/mcp.js list | wc -l` 为准（16 = 有 wsl_exec）。
-- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）。
+- **未决（数据口径，改即改数值，需 CC 卡）**：「每超过 1 点/1%」是否取整（清单 §2.4 新发现 2）。CC-27 维琳娜风蚀状态机仍是「待设计」，本轮未评估。

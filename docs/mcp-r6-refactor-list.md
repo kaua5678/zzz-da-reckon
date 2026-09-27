@@ -197,9 +197,9 @@
 | 1121 本 | 初始防御 → 攻击 | 局外 | ✅ |
 | 1341 照 | 初始最大生命 → 暴击 | `outOfCombatPanel.hp` | ✅（zhao.ts:142/182 的 `cfg.panel.hp` 用于生命附伤，原文非「初始」） |
 | 1131 苍角 / 1311 耀嘉音 / 1411 柚叶 全队攻击 | 初始攻击 × 比例 | formula teammate buff（CC-96 outOfCombatAtk） | ✅ 计算正确 |
-| 1411 柚叶 资源卡展示 | 40% 初始攻击 | `cfg.panel.atk`（局内） | ❌ 仅展示 → **CC-126** |
+| 1411 柚叶 资源卡展示 | 40% 初始攻击 | 原 `cfg.panel.atk`（局内） | ✅ **CC-126 已修（941f597）** |
 | 1491 千夏 C6 暴伤 | 初始攻击 × 0.03% | 原局内 | ❌ → **CC-124 已修（862fc15）** |
-| 1501 爱芮 异放比例 | 每10点初始掌控 | `damagePool.ts` `triggerPanel[rr.basis]`（局内） | ❌ → **CC-125 待做** |
+| 1501 爱芮 异放比例 + 影画1 异放暴击 | 每10点初始掌控 / 初始掌控>100 | 原 damagePool 读局内 | ✅ **CC-125 已修（bf6d184）** |
 | 1331 薇薇安 异放比例 | 每10点异常精通（无「初始」） | 局内 | ✅ |
 
 **CC-125 开工方案（下一轮直接做）**：
@@ -208,3 +208,13 @@
 3. damagePool 取触发者局外面板：先查同文件是否已能拿到 `computePanelPhases(...).outOfCombat` 或 panels 的局外版本；拿不到就在构造 triggerPanel 的地方并排传一份局外面板。**不得**在编排层写 agentId 分支（守卫）。
 4. 同时查爱芮 C1 `masteryThreshold`（异放暴击按掌控阈值）原文是否也写「初始」，是则同一字段处理。
 5. 验证：爱芮在预设中的位置决定 zd 能否看到；timeGolden `agent:1501:*` 预计变化，逐条解释（局内 / 局外掌控比值）后重生成；加单测（局内 ≠ 局外 → 只随局外变）。
+
+### 2.13 第 152 轮结果：CC-125 / CC-126 ✅；「初始」模块侧核对收口
+
+- CC-125 没有改 damagePool 的取源（编排层拿不到局外面板），而是让事件携带**预算值**：`releaseRatio.basisValue`、`releaseCrit.masteryValue`（可选，缺省局内）。以后其他角色的异放若原文写「初始」，照爱芮写法在 buildCharConfig 记局外值、事件里填字段即可，不必改编排层。
+- §2.12 表里的 ❌ 已全部修完。
+- **下一步：从原文侧反查**（§2.12 只查了「模块注释里写了初始」的地方，可能漏掉原文写「初始」但注释没写的实现）：
+  1. 脚本抽取 `data/raw/nanoka_missing/full/*.json` 与 `public/static/catalog.json`（agents 技能、wEngines、driveDiscSets 描述）里匹配 `初始(攻击力|生命值|最大生命值|防御力|暴击率|暴击伤害|异常掌控|异常精通|冲击力|能量自动回复|穿透率)` 的句子，按（id，属性）去重。
+  2. 每条对实现：spec attributeConversions 的 `sourcePanelPhase`、catalog 效果的 formula basis（CC-96 outOfCombatAtk 口径）、模块 applyPanel / buildCharConfig 读的面板。
+  3. 结果表写进本清单 §2.14；读局内的开 CC 卡（CC-127 起），走 CC-123 ~ CC-125 的模式（原文为准、阳性对照单测、zd + timeGolden 逐条解释）。
+  4. 规模预估：句子上百条，可派 dsh，但**要按角色分批**（每批 ≤ 10 个角色）并要求边做边追加结果文件，避免 1500s 超时丢结果（第 151 轮教训）。
