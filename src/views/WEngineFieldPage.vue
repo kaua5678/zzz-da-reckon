@@ -160,10 +160,14 @@ function valueText(effect: BuffEffect): string {
   if (effect.type === 'formula') return effect.formula?.expression ?? '公式'
   return `${effect.value ?? 0}`
 }
+function pctText(v: number | undefined): string {
+  return v == null ? '?' : String(Math.round(v * 1000) / 10)
+}
 function stackCoverageText(effect: BuffEffect): string {
   const parts: string[] = []
   if (effect.type === 'stacked') parts.push(`${localized((effect as any).stackLabel) || '叠层'} ${effect.defaultStacks ?? effect.maxStacks ?? 1}/${effect.maxStacks ?? effect.defaultStacks ?? 1}`)
-  if (effect.coverage) parts.push(`覆盖 ${effect.coverage.default}%（${effect.coverage.min}-${effect.coverage.max}，步进${effect.coverage.step}）`)
+  // coverage 在数据里是 0..1 的比例（R5 D20），展示成百分比
+  if (effect.coverage) parts.push(`覆盖 ${pctText(effect.coverage.default)}%（${pctText(effect.coverage.min)}-${pctText(effect.coverage.max)}%，步进${pctText(effect.coverage.step)}%）`)
   else if (effect.type === 'stacked') parts.push('覆盖默认 100%')
   if (effect.targetSkillType) parts.push(`招式目标 ${effect.targetSkillType}`)
   return parts.join('；') || '-'

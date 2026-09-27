@@ -92,7 +92,7 @@
 
 - [x] 第 1 刀：粗筛，列出零读取候选 Z1–Z13 和已知 K0（第 119 轮，本文件首次提交）。
 - [x] 第 2 刀（第 121 轮 Z2、Z6；第 122 轮 Z4、K0、Z5、Z1；第 123 轮 Z3、Z7–Z12；第 124 轮 Z13、D14 批与字段归类 §8，**完成**）：215 种字段按 §2 归类（S / D / M），并逐条核实 Z4、Z6、Z2、K0，写成 D 条目。
-- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；下一个是 §8「S 待第 3 刀」里剩下的 50 个字段（建议顺序：`coverage`、`target`、`buffModifiers`、`formula`/`expression`，都是直接决定数值的）。
+- [~] 第 3 刀（进行中）：按 §4 对 §8「S 待第 3 刀」的 52 个字段做取值 × 分支对照。第 125 轮完成 `mode`（D15–D17）；第 128 轮完成 `condition`（D18）与 `requirement`（D19，已由 CC-102 修复）；第 130 轮完成 `coverage`（D20）；下一个是 §8「S 待第 3 刀」里剩下的 49 个字段（建议顺序：`target`、`buffModifiers`、`formula`/`expression`，都是直接决定数值的）。
 - [ ] 第 4 刀：差异清单按影响面排序，转成 CC 卡（写进 `docs/mcp-calc-core-architecture.md` 卡表），R5 标 done。
 
 ## 7. 已核结论（第 2 刀起）
@@ -304,6 +304,20 @@
 - **差在哪**：14150 的 `etherDmg 20`、`anomalyDmgBonus 10`、`disorderDamageBonus 10` 三条限定以太装备者；非以太异常角色（简、月城柳、柏妮思、星见雅、普罗米娅、菲欧妮、维琳娜、爱丽丝、派派、格莉丝、蕾米埃尔等）装 14150 时多吃 +10% 属性异常增伤与 +10% 紊乱增伤（etherDmg 对非以太伤害本来无效）。
 - **修法**：见 §9 CC-102。
 
+### D20 `coverage`：引擎只读 `default`，且全部数据 default = 1；三处「无记录当 100%」与之等价 → **无数值差异**；1 处展示错误 ✅ 已修（CC-104）
+
+- **数据怎么写**（第 130 轮实测，脚本 `/home/kaua/calc-arch/cov1.py`）：127 处，全部是 effect 级。形状 `{default,min,max,step}` 126 处（音擎 81、驱动盘 35、bosses 10），`{default}` 1 处（14126）。取值：`(1,0,1,0.1)` 125、`(1,0,1,0.01)` 1、`(1,-,-,-)` 1 ⇒ **default 全为 1**。另有 162 个 effect 不带 coverage（音擎 fixed 78 / stacked 25，驱动盘 fixed 41 / stacked 2，角色 16）。
+- **引擎怎么读**：
+  - `core/buff.ts:638` `applyEffect`：`coverage 参数 ?? effect.coverage?.default ?? 1`，fixed / derived / stacked / formula 四型都乘。参数来自 `applyBuffs` 的 `coverageMap`（effect.id → 0..1）。
+  - 用户记录（0–100）→ 0..1：音擎 `stores/selectionReads.ts:32` `wEngineEffectCoverageMapOf`（只含有记录的，缺省回落 data default）；驱动盘 `composables/resourceCalc/panelPhases.ts:747` 对全队盘上**每个** effect 写 `discEffectCoverageOf(...) / 100`（**无记录 = 100，不读 data default**）；队友 buff `teammateBuffCoverageOf` 无记录 = 100。
+  - `core/substatOptimizer.ts:226` `decomposeEffect`：读 default，但 `type === 'fixed'` 时**不乘**（applyEffect 会乘）。
+  - `min` / `max` / `step`：只有 `views/WEngineFieldPage.vue` 展示读取；滑块组件统一 0–100，**不读**数据的 min/max/step（1 处 step 0.01 的效果界面仍按组件步进）。
+  - bosses 的 10 处：catalog.bosses 整块无消费方（D10）。
+- **差在哪**：
+  1. 数值：上述「无记录当 100%」和「fixed 不乘」两类语义与 applyEffect 不同，但 **default 全为 1 ⇒ 当前等价**。拍板**不改代码**（改了也是零差，且驱动盘界面默认值 `stores/config.ts:477` 要同步改，收益为零），改为钉数据前提：新测试 `src/core/__tests__/coverageDefaultInvariant.test.ts` 断言所有 default = 1，失败信息指向这三处。回退点：删掉该测试即可。
+  2. 展示：`views/WEngineFieldPage.vue` 把 0..1 比例直接接「%」，显示成「覆盖 1%（0-1，步进0.1）」→ 真实展示错误，CC-104 改为按百分比显示（「覆盖 100%（0-100%，步进10%）」）。
+- **结论**：`coverage` 无数值差异；未带 coverage 的效果是否需要滑块已登记在 D7，不重复。
+
 ## 9. 转卡清单（第 4 刀输入，按影响面排序）
 
 ### CC-100（D15 + D16）驱动盘词条的结算口径以源数据为准 ✅ done（第 126 轮，提交号见 git log「fix(CC-100)」）
@@ -431,6 +445,12 @@ preset:auto-1331-1561-1411.slot1: ex 17.0000→18.0000 (1.000), ult 4.0000→5.0
 - 验证：`zd.sh cc103` DUMP DIFF 0 / ROWS DIFF 0（现有预设没有非 1551 角色装 14155）；vue-tsc 0；verify 与 check-guards 全绿。
 - **拍板**：14155 的 `verification.effectBuff = "partially-modeled-agent-restriction"` 未改——「处于日蚀效果」仍由覆盖率兜底，仍属部分建模，标签继续成立。
 - **回退点**：删掉 catalog 里那一个 `requirement` 即恢复原数值；类型与判定函数是纯增量，可保留。
+
+### CC-104（D20）coverage 数据前提钉 + 音擎字段页覆盖率展示修正 ✅ done（第 130 轮，提交号见 git log「fix(CC-104)」）
+
+- 新测试 `src/core/__tests__/coverageDefaultInvariant.test.ts`：递归 wEngines / driveDiscSets / agents，断言 `coverage.default` 全为 1（>100 处）。
+- `src/views/WEngineFieldPage.vue` `stackCoverageText`：新增 `pctText`，coverage 的 default / min / max / step 乘 100 显示。
+- 不触及计算路径，未跑 zd；vue-tsc 0，verify 与 check-guards 全绿。
 
 ### 其余（零差、界面层）
 - D7：带 `durationSeconds` 的 fixed 效果显示覆盖率滑块（默认值不变）。

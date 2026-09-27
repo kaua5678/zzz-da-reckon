@@ -69,13 +69,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-### 第 129 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-103)」）
+### 第 130 轮（2026-09-27，一个提交，提交号见 git log 中的「fix(CC-104)」）
 
 - **做到哪**：
-  - **CC-103 完成**（R5 D18）：`src/types/catalog.ts` `EffectRequirement.wearerAgentIds`；`src/core/wengineConditions.ts` 名单判定；`src/core/buff.ts`、`src/core/inCombatBuffs.ts` 传 `wearerAgentId`；`public/static/catalog.json` 14155 以太抗性无视 effect 补 `requirement.wearerAgentIds: ["1551"]`；新测试 `src/core/__tests__/wengineWearerAgent.test.ts`（修前朱鸢 +16 复现，修后 0）。zd.sh DIFF 0。回退点见账本 §9 CC-103。
-  - 第 128 轮的产出：`a8f4ecc`（CC-102，D19；D18 立卡）。
+  - R5 第 3 刀完成 `coverage`（账本 §7 **D20**）：无数值差异；拍板不改代码，改用 `src/core/__tests__/coverageDefaultInvariant.test.ts` 钉「default 全为 1」的前提。
+  - **CC-104**：`src/views/WEngineFieldPage.vue` 覆盖率按百分比展示。
+  - 第 129 轮的产出：`8553230`（CC-103，D18）。
 - **下一步（按顺序，每项都可以直接开工）**：
-  1. **R5 第 3 刀续**：§8「S 待第 3 刀」剩余 50 个字段，先做 `coverage` → `target` → `buffModifiers` → `formula` / `expression`。方法：在 WSL 用 Python 统计取值 × 位置（模板 `/home/kaua/calc-arch/cond1.py`、`req1.py`：递归遍历 catalog，按键名收集取值与路径），再逐个读取方读码（`timeout 40 git grep -n '<字段>' -- src/core src/composables src/mechanics`），每类写一条 D 条目（格式见账本 §5）。真实差异立 CC 卡、先红后绿、zd 零差或逐条归因。
+  1. **R5 第 3 刀续：`target`**（effect 上的 `target: {kind, settlementType?, ...}`）。先用 Python 统计 `target.kind` × 其余键 × 位置（模板 `/home/kaua/calc-arch/cov1.py`），再读取方：`timeout 40 git grep -n -E 'target\?*\.kind|effectSkillDamageTargets' -- src/core`（`core/buff.ts` `applyEffect` 末尾 `effectSkillDamageTargets`）。查每种 kind 是否都有分支、未知 kind 是否被静默当 default。之后依次 `buffModifiers`、`formula` / `expression`。
   2. **R5 第 4 刀其余**：D7 滑块、D3 覆盖率按组联动、D14 蕾米埃尔一致性单测（都是零差）。
   3. **R6 第 1 步续**：全景 §6 的 4 项；然后是 R6 第 2 步。
 - **未决项**：
