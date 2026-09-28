@@ -1,8 +1,6 @@
 import type { AgentMechanicModule } from './types'
 import type { MechanicSetting } from '@/types/resource'
 import type { AutoAxisPresetHints } from '@/data/stunAxisPresets'
-import { agentSpecs } from '@/specs/registry'
-import { specToMechanicModule } from '@/specs/mechanics'
 
 const agentMechanics = new Map<string, AgentMechanicModule>()
 const settingDefaults = new Map<string, MechanicSetting>()
@@ -23,16 +21,9 @@ export function registerAgentMechanic(module: AgentMechanicModule): void {
     agentMechanics.set(agentId, module)
   }
 
-  const spec = agentSpecs.find(item => item.agentIds.some(id => module.agentIds.includes(id)))
-  if (spec) {
-    const specSettings = specToMechanicModule(spec).settings ?? []
-    const existingIds = new Set((module.settings ?? []).map(setting => setting.id))
-    const merged = [
-      ...(module.settings ?? []),
-      ...specSettings.filter(setting => !existingIds.has(setting.id)),
-    ]
-    if (merged.length > 0) module.settings = merged
-  }
+  // spec 声明的 settings 合并已移至注册入口 mechanics/index.ts#registerWithSpecSettings（CC-247：
+  // 本文件保持纯叶子——core 按 C1 只认 registry，registry 若值导入 specs 会把 specs 运行时 / data 行查询 /
+  // logicEditor 全局快照带进 core 运行时闭包；锁 coreRuntimeDeps.test）。
 
   for (const setting of module.settings ?? []) {
     if (!setting?.id) throw new Error(`[mechanics] module ${module.id} contains setting without id`)

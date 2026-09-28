@@ -1,3 +1,4 @@
+import type { AgentMechanicModule } from './types'
 import { getAgentMechanic, registerAgentMechanic } from './registry'
 import { velinaMechanic } from './agents/velina'
 import { aliceMechanic } from './agents/alice'
@@ -69,75 +70,94 @@ import { xideMechanic } from './agents/xide'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
-registerAgentMechanic(velinaMechanic)
-registerAgentMechanic(aliceMechanic)
-registerAgentMechanic(roxyMechanic)
-registerAgentMechanic(claretMechanic)
-registerAgentMechanic(janeMechanic)
-registerAgentMechanic(burniceMechanic)
-registerAgentMechanic(yuzuhaMechanic)
-registerAgentMechanic(nangongMechanic)
-registerAgentMechanic(remielleMechanic)
-registerAgentMechanic(yidhariMechanic)
-registerAgentMechanic(graceMechanic)
-registerAgentMechanic(nekomataMechanic)
-registerAgentMechanic(piperMechanic)
-registerAgentMechanic(hugoMechanic)
-registerAgentMechanic(pulchraMechanic)
-registerAgentMechanic(billyMechanic)
+/**
+ * 注册 + 合并同角色 spec 声明的 settings（模块自带优先，按 id 去重，spec 补缺）。
+ * CC-247：自 registry.registerAgentMechanic 迁出（语义逐位不变：合并原本就在写 settingDefaults 之前），
+ * 使 mechanics/registry.ts 不再值导入 specs。
+ */
+function registerWithSpecSettings(module: AgentMechanicModule): void {
+  const spec = agentSpecs.find(item => item.agentIds.some(id => module.agentIds.includes(id)))
+  if (spec) {
+    const specSettings = specToMechanicModule(spec).settings ?? []
+    const existingIds = new Set((module.settings ?? []).map(setting => setting.id))
+    const merged = [
+      ...(module.settings ?? []),
+      ...specSettings.filter(setting => !existingIds.has(setting.id)),
+    ]
+    if (merged.length > 0) module.settings = merged
+  }
+  registerAgentMechanic(module)
+}
+
+registerWithSpecSettings(velinaMechanic)
+registerWithSpecSettings(aliceMechanic)
+registerWithSpecSettings(roxyMechanic)
+registerWithSpecSettings(claretMechanic)
+registerWithSpecSettings(janeMechanic)
+registerWithSpecSettings(burniceMechanic)
+registerWithSpecSettings(yuzuhaMechanic)
+registerWithSpecSettings(nangongMechanic)
+registerWithSpecSettings(remielleMechanic)
+registerWithSpecSettings(yidhariMechanic)
+registerWithSpecSettings(graceMechanic)
+registerWithSpecSettings(nekomataMechanic)
+registerWithSpecSettings(piperMechanic)
+registerWithSpecSettings(hugoMechanic)
+registerWithSpecSettings(pulchraMechanic)
+registerWithSpecSettings(billyMechanic)
 // registerAgentMechanic(benGuardShieldMechanic) — replaced by benMechanic
-registerAgentMechanic(ellenMechanic)
-registerAgentMechanic(evelynMechanic)
-registerAgentMechanic(vivianMechanic)
-registerAgentMechanic(harumasaMechanic)
+registerWithSpecSettings(ellenMechanic)
+registerWithSpecSettings(evelynMechanic)
+registerWithSpecSettings(vivianMechanic)
+registerWithSpecSettings(harumasaMechanic)
 // sigridLanceMechanic 已由 agents/sigrid.ts 替代（出枪式/巡空枪势/影画，面板块在 computePanelPhases）
-registerAgentMechanic(sigridMechanic)
-registerAgentMechanic(qianxiaMechanic)
-registerAgentMechanic(panYinhuMechanic)
-registerAgentMechanic(triggerMechanic)
-registerAgentMechanic(xixifuMechanic)
-registerAgentMechanic(yanagiMechanic)
-registerAgentMechanic(orphieMechanic)
-registerAgentMechanic(zhuYuanMechanic)
-registerAgentMechanic(xideMechanic)
-registerAgentMechanic(koledaMechanic)
-registerAgentMechanic(anbyMechanic)
-registerAgentMechanic(corinMechanic)
-registerAgentMechanic(miyabiMechanic)
-registerAgentMechanic(liuyinMechanic)
-registerAgentMechanic(normaMechanic)
-registerAgentMechanic(zhendouMechanic)
-registerAgentMechanic(antonMechanic)
-registerAgentMechanic(yeshuguangMechanic)
-registerAgentMechanic(lucyMechanic)
-registerAgentMechanic(rinaMechanic)
-registerAgentMechanic(lighterMechanic)
-registerAgentMechanic(yaojiayinMechanic)
-registerAgentMechanic(nicoleMechanic)
-registerAgentMechanic(soukakuMechanic)
-registerAgentMechanic(caesarMechanic)
-registerAgentMechanic(zhaoMechanic)
-registerAgentMechanic(benMechanic)
-registerAgentMechanic(aireMechanic)
-registerAgentMechanic(promiaMechanic)
+registerWithSpecSettings(sigridMechanic)
+registerWithSpecSettings(qianxiaMechanic)
+registerWithSpecSettings(panYinhuMechanic)
+registerWithSpecSettings(triggerMechanic)
+registerWithSpecSettings(xixifuMechanic)
+registerWithSpecSettings(yanagiMechanic)
+registerWithSpecSettings(orphieMechanic)
+registerWithSpecSettings(zhuYuanMechanic)
+registerWithSpecSettings(xideMechanic)
+registerWithSpecSettings(koledaMechanic)
+registerWithSpecSettings(anbyMechanic)
+registerWithSpecSettings(corinMechanic)
+registerWithSpecSettings(miyabiMechanic)
+registerWithSpecSettings(liuyinMechanic)
+registerWithSpecSettings(normaMechanic)
+registerWithSpecSettings(zhendouMechanic)
+registerWithSpecSettings(antonMechanic)
+registerWithSpecSettings(yeshuguangMechanic)
+registerWithSpecSettings(lucyMechanic)
+registerWithSpecSettings(rinaMechanic)
+registerWithSpecSettings(lighterMechanic)
+registerWithSpecSettings(yaojiayinMechanic)
+registerWithSpecSettings(nicoleMechanic)
+registerWithSpecSettings(soukakuMechanic)
+registerWithSpecSettings(caesarMechanic)
+registerWithSpecSettings(zhaoMechanic)
+registerWithSpecSettings(benMechanic)
+registerWithSpecSettings(aireMechanic)
+registerWithSpecSettings(promiaMechanic)
 // ⚠️ 3.3 测试服临时录入（nanoka 3.3.2+18895034；正式服改版后需重抓重核）
-registerAgentMechanic(severianMechanic)
-registerAgentMechanic(phoenixMechanic)
-registerAgentMechanic(peiluoProminenceMechanic)
-registerAgentMechanic(sethMechanic)
-registerAgentMechanic(anbyZeroMechanic)
-registerAgentMechanic(jufufuTigerRoarMechanic)
-registerAgentMechanic(qingyiMechanic)
-registerAgentMechanic(luciaElowenMechanic)
-registerAgentMechanic(banyueMechanic)
-registerAgentMechanic(starlightBillyMechanic)
-registerAgentMechanic(yixuanMechanic)
-registerAgentMechanic(lycaonMechanic)
-registerAgentMechanic(soldier11Mechanic)
+registerWithSpecSettings(severianMechanic)
+registerWithSpecSettings(phoenixMechanic)
+registerWithSpecSettings(peiluoProminenceMechanic)
+registerWithSpecSettings(sethMechanic)
+registerWithSpecSettings(anbyZeroMechanic)
+registerWithSpecSettings(jufufuTigerRoarMechanic)
+registerWithSpecSettings(qingyiMechanic)
+registerWithSpecSettings(luciaElowenMechanic)
+registerWithSpecSettings(banyueMechanic)
+registerWithSpecSettings(starlightBillyMechanic)
+registerWithSpecSettings(yixuanMechanic)
+registerWithSpecSettings(lycaonMechanic)
+registerWithSpecSettings(soldier11Mechanic)
 
 for (const spec of agentSpecs) {
   if (spec.agentIds.every(id => !getAgentMechanic(id))) {
-    registerAgentMechanic(specToMechanicModule(spec))
+    registerWithSpecSettings(specToMechanicModule(spec))
   }
 }
 
