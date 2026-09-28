@@ -74,8 +74,8 @@ export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove)
 /** 元素暴击伤害加成（属性数值口径经 resolveStatElement：frostfire 按冰读 iceCritDmg）。
  * 消费端=焰心桂冠等音擎的 XCritDmg 团队效果（此前全仓无读取端，纯死数据）。 */
 function getElementCritDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: SkillDamageTarget): number {
-  if (!element) return 0
-  return getTargetedStat(panel, `${resolveStatElement(element)}CritDmg`, targetSkillType)
+  const key = elementStatKey('critDmg', element) // CC-225 单一来源（经 resolveStatElement；无元素 / 未知 ⇒ 0）
+  return key ? getTargetedStat(panel, key, targetSkillType) : 0
 }
 
 /** 暴击乘区 */
@@ -154,13 +154,13 @@ export function calcPenetrationPower(panel: PanelValues): number {
 }
 
 function getElementSheerDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  if (!element) return 0
-  return getTargetedStat(panel, `${resolveStatElement(element)}SheerDmg`, targetSkillType)
+  const key = elementStatKey('sheerDmg', element) // CC-225 单一来源（经 resolveStatElement；无元素 / 未知 ⇒ 0）
+  return key ? getTargetedStat(panel, key, targetSkillType) : 0
 }
 
 function getElementSharpDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  if (!element) return 0
-  return getTargetedStat(panel, `${resolveStatElement(element)}SharpDmg`, targetSkillType)
+  const key = elementStatKey('sharpDmg', element) // CC-225 单一来源（经 resolveStatElement；无元素 / 未知 ⇒ 0）
+  return key ? getTargetedStat(panel, key, targetSkillType) : 0
 }
 
 export type SpecialDamageProfileKind = 'normal' | 'rupture' | 'sharpen'

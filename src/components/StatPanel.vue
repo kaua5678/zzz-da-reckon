@@ -505,7 +505,9 @@ import { getStatMeta, isPctStat } from '@/utils/statMeta'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { elementAnomalyBuildUpEfficiency } from '@/data/anomalyElement'
-import { elementStatKey } from '@/utils/elementStatKeys'
+import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'
+import { ELEMENT_FIELD_PREFIX } from '@/utils/enemyDebuffStats'
+import { damageElementLabel } from '@/utils/agentLabelMaps'
 
 const props = defineProps<{
   panel: PanelValues
@@ -572,16 +574,6 @@ const totalDmgBonus = computed(() => {
 })
 
 const penetrationPower = computed(() => props.panel.atk * 0.3 + props.panel.hp * 0.1 + (props.panel.sheerForceFlat ?? 0))
-
-const ELEMENT_FIELD_PREFIX_BY_ELEMENT: Record<string, string> = {
-  physical: 'Physical',
-  fire: 'Fire',
-  ice: 'Ice',
-  electric: 'Electric',
-  ether: 'Ether',
-  wind: 'Wind',
-  lumiflux: 'Lumiflux',
-}
 
 const ELEMENT_NAME_BY_ELEMENT: Record<string, string> = {
   physical: '物理',
@@ -725,31 +717,15 @@ const allPanelRows = computed(() => {
 })
 
 // ========== 敌方减益 ==========
-const ELEMENT_DEBUFF_LABELS = [
-  ['Physical', '物理'],
-  ['Fire', '火'],
-  ['Ice', '冰'],
-  ['Electric', '电'],
-  ['Ether', '以太'],
-  ['Wind', '风'],
-  ['Lumiflux', '辉光'],
-] as const
+const currentElementPrefix = computed(() => props.damageElement ? ELEMENT_FIELD_PREFIX[props.damageElement] : undefined)
 
-const currentElementPrefix = computed(() => props.damageElement ? ELEMENT_FIELD_PREFIX_BY_ELEMENT[props.damageElement] : undefined)
-
-const elementDefReductionSummary = computed(() => ELEMENT_DEBUFF_LABELS
-  .filter(([key]) => key === currentElementPrefix.value)
-  .map(([key, label]) => ({ label, value: props.panel[`enemy${key}DefReduction`] ?? 0 }))
-  .filter(item => item.value !== 0)
-  .map(item => `${item.label}${formatPercent(item.value)}`)
-  .join(' / '))
-
-const elementResReductionSummary = computed(() => ELEMENT_DEBUFF_LABELS
-  .filter(([key]) => key === currentElementPrefix.value)
-  .map(([key, label]) => ({ label, value: props.panel[`enemy${key}ResReduction`] ?? 0 }))
-  .filter(item => item.value !== 0)
-  .map(item => `${item.label}${formatPercent(item.value)}`)
-  .join(' / '))
+// CC-225：旧写法遍历 7 元素标签表再过滤出当前元素，等价于直接读当前元素字段（标签走 DAMAGE_ELEMENT_LABEL，7 基础元素逐字相同）
+function currentElementDebuffSummary(kind: 'enemyDef' | 'enemyRes'): string {
+  const value = panelElementStat(props.panel, kind, props.damageElement)
+  return value !== 0 && props.damageElement ? `${damageElementLabel(props.damageElement)}${formatPercent(value)}` : ''
+}
+const elementDefReductionSummary = computed(() => currentElementDebuffSummary('enemyDef'))
+const elementResReductionSummary = computed(() => currentElementDebuffSummary('enemyRes'))
 
 const hasElementDefReduction = computed(() => elementDefReductionSummary.value.length > 0)
 const hasElementResReduction = computed(() => elementResReductionSummary.value.length > 0)

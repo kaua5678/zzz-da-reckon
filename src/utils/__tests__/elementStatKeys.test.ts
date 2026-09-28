@@ -54,4 +54,21 @@ describe('元素 → 面板字段名单一来源（CC-224）', () => {
       .filter(rel => rel !== 'utils/elementStatKeys.ts' && RE.test(readFileSync(join(SRC, rel), 'utf8')))
     expect(hits).toEqual([])
   })
+  it('源码锁（CC-225）：不许手拼元素字段名、不许复制元素 → 字段前缀表（注释行除外）', () => {
+    const CONCAT = /\$\{[^}]*\}(?:Dmg|CritDmg|SheerDmg|SharpDmg)\b|enemy\$\{[^}]*\}(?:Res|Def)Reduction\b/
+    const PREFIX_TABLE = /\bphysical\s*:\s*'Physical'|\[\s*'Physical'\s*,/
+    const ALLOW = new Set(['utils/elementStatKeys.ts', 'utils/enemyDebuffStats.ts'])
+    const hits: string[] = []
+    for (const p of walk(SRC)) {
+      const rel = relative(SRC, p).replace(/\\/g, '/')
+      if (ALLOW.has(rel)) continue
+      readFileSync(p, 'utf8').split('\n').forEach((line, i) => {
+        const t = line.trim()
+        if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return
+        const code = line.replace(/\/\/.*$/, '')
+        if (CONCAT.test(code) || PREFIX_TABLE.test(code)) hits.push(`${rel}:${i + 1}`)
+      })
+    }
+    expect(hits).toEqual([])
+  })
 })

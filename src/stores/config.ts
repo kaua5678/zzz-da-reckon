@@ -15,6 +15,7 @@ import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AppliedBossPreset } from '@/types/bossPreset'
 import { counterAssistOf } from '@/data/counterAssists'
 import { localized } from '@/utils/format'
+import { elementStatKey } from '@/utils/elementStatKeys'
 import {
   discEffectCoverageOf,
   mechanicSettingOf,
@@ -111,7 +112,7 @@ function defaultDriveDisc(element: string): DriveDiscConfig {
     twoPieceSetId: '',
     mainStats: {
       4: 'atkPct' as any,
-      5: `${element}Dmg` as any || 'atkPct' as any,
+      5: (elementStatKey('dmg', element) ?? 'atkPct') as any, // CC-225：旧 `${element}Dmg` || 'atkPct' 的回落是死代码（模板串恒真）
       6: 'critRate' as any,
     },
     subStatAllocation: {},
@@ -610,9 +611,9 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
       }
 
       // 自动设置驱动盘5号位主词条
-      const dmgEl = agent.damageElement
-      if (dmgEl && char.driveDisc.mainStats) {
-        char.driveDisc.mainStats[5] = `${dmgEl}Dmg` as any
+      const dmgKey = elementStatKey('dmg', agent.damageElement) // CC-225 单一来源
+      if (dmgKey && char.driveDisc.mainStats) {
+        char.driveDisc.mainStats[5] = dmgKey as any
       }
 
       // 自动设置平A时间分配权重：蕾米埃尔、支援、防护默认不分配平A时间
