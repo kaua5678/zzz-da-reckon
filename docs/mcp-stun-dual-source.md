@@ -1898,3 +1898,32 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 源码锁：两个展示点必须调用 `resolveSlotPanelBuffInputs(`，且不能出现「`teammateBuffGroups` 后 200 字符内跟着 `isTeammateBuffEnabled(`」的重筛写法。旧代码两处都会被这条锁拦下。
 - **影响面**：只改展示，计算零改动；golden 零差。verify EXIT=0（3894 passed / 29 skipped）；vue-tsc 0。
 - **回退点**：`git revert 03680c60`。
+
+### 24.56 第 232 轮：CC-209 局内生命构成拆解迁出视图，与引擎同口径并给出差额（2a88f81d）
+
+- **起点**（第 231 轮交接第 1 项）：`FinalPanel.vue` 的「局内生命构成」核对表是视图里约 150 行的缩小版 buff 引擎，逐项对照引擎后有 4 处分叉：
+  1. **覆盖率**只读 `effect.coverage.default`，不读引擎实际用的 `effectCoverageMap`（队友滑块、音擎效果滑块、全队驱动盘滑块）。用户拖滑块后，公式行的 Σ 与引擎局内 hp 对不上。
+  2. **全局 Buff** 被包成没有 `scope` 的伪分组，`hpPhase` 会把 hpPct 判为「局外」；而引擎把全局 Buff 当局内（`resolveSlotPanelBuffInputs` 的 `scope: 'inCombat'`）。
+  3. **覆盖率显示**：coverage 是 0–1 的小数，旧代码 `pct(cov)` 把 50% 显示成「0.5%」。
+  4. **不可列出的来源**：模块 `applyPanel` / `teamPanelEffects` 在 calcPanel 之后直接写面板，转模 / 公式条目也只标注、不计数，所以逐条相加本来就不保证等于引擎值，公式行却写成等式。
+- **为什么不改成从引擎收集结果出表**：`calcPanel` 返回的 `buffs.inCombat` 是扁平的效果列表，**不带来源标签**，而这张表的用途恰恰是回答「谁提供的」。给效果加上来源元数据要改 core 的收集链路，收益只落在一张核对表上，不值得。所以采用折中：保留视图侧的来源枚举，数值口径（覆盖率、全局 Buff 的阶段、队友 buff 列表）对齐引擎，剩余差额显式列出。
+- **改法**：
+  - 拆解逻辑迁到新文件 `src/composables/hpSourceBreakdown.ts`，导出：
+    - `collectHpSources(slot, configStore, catalogStore)`；
+    - `hpBreakdownTotals(rows, outHp, inHp) → { inHpPctTotal, inHpFlatTotal, residualHp }`。
+  - 覆盖率 = `effectCoverageMap.get(id) ?? coverage.default ?? 1`，与 `core/buff.ts#applyEffect` 同一个式子。
+  - 队友 buff 和全局 Buff 都取 `resolveSlotPanelBuffInputs(...).teammateBuffs`（全局 Buff 按 `sourceKind === 'global'` 单列）。
+  - `residualHp` = 引擎局内 hp −（局外 hp × (1 + Σ% / 100) + Σ固定）。|差额| ≥ 0.5 时，公式行追加「+ 未逐条列出」，表格也追加一行，公式恒等于引擎值。
+  - FinalPanel 净删约 140 行，只负责渲染。
+- **为什么值得做**：数值口径只剩引擎一处（更简单）；以后新增的覆盖率或过滤会自动生效（更通用）；逻辑离开视图后可以用 harness 测试（此前零测试）。
+- **测试** `hpSourceBreakdownCc209.test.ts`，队伍为卢西娅 1451 + 11 号 1041，被测条目是 `lucia_elowen.core_dream_song`（局内 hpPct 5）：
+  - 默认：差额 ≈ 0；
+  - 滑块 50%：引擎局内 hp 确实下降（判别性对照），条目折半为 2.5，差额 ≈ 0；
+  - 全局 Buff hpPct 10：按局内列出，差额 ≈ 0。
+  - **反证**：覆盖率临时改回只读 `coverage.default`，滑块那条测试失败，随后已恢复。全局 Buff 阶段那条的反证没跑，旧代码的问题是按代码推理得出的。
+  - CC-208 的源码锁随迁：锁的对象从 FinalPanel.vue 改为 hpSourceBreakdown.ts；另加一条：FinalPanel 本体不得出现 `teammateBuffGroups`，且必须经 `collectHpSources(slot, configStore, catalogStore)` 取数。
+- **影响面**：只改展示，计算零改动；golden 零差。verify EXIT=0（3898 passed / 29 skipped）；vue-tsc 0。
+- **已知限制**：
+  - 差额行只给一个 hp 总数，不区分百分比和固定值，也不指明是哪个模块写的。要细分，得让模块钩子上报贡献，不值得为核对表做。
+  - 队友 4 件套全队段落在本槽的部分，本表没有逐条列（只列本槽自己的盘），会落进差额行。
+- **回退点**：`git revert 2a88f81d`。
