@@ -29,7 +29,11 @@ export interface SpecEventExecutionInput {
   counts?: Record<string, number>
   /** 动态倍率/次数覆盖：key 为 event.id */
   overrides?: Record<string, { count?: number; multiplier?: number }>
-  /** 读取倍率表行值（moveId → rowId） */
+  /**
+   * 读取事件 base 行值（moveId, rowId）。缺省 = `cfg.mechanicRowValues[moveId]`——即 specToMechanicModule.buildCharConfig
+   * 按事件自身 `multiplierRowId` 经 data getRowValue（吃行规则）预取的值（CC-250：原 4 处调用方各抄一份只放行 damage 行的
+   * lambda，非 damage 行被静默读成 0；现统一为缺省读取器，调用方无需再传）。仅测试注入自定义值。
+   */
   getRowValue?: (moveId: string, rowId: string) => number
 }
 
@@ -86,10 +90,12 @@ export function buildSpecEventExecutions(
     if (count <= 0) continue
 
     const rowId = event.multiplierRowId ?? 'damage'
-    const base = input.getRowValue?.(moveId, rowId) ?? 0
+    const base = input.getRowValue ? input.getRowValue(moveId, rowId) : (input.cfg.mechanicRowValues?.[moveId] ?? 0)
     const ratio = event.multiplierRatio ?? 1
     const multiplier = override?.multiplier ?? base * ratio
-    const usesOverride = override?.multiplier != null || ratio !== 1
+    // 非 damage 行必须以 base 作倍率覆盖：否则 damageMultiplierOverride=false，enrichExecutionPlan 按 moveId 回填的是
+    // damage 行（helpers.ts enrichExecutionPlan），声明的 multiplierRowId 被静默忽略（CC-250）。damage 行不覆盖 ⇒ 回填含命座技能等级。
+    const usesOverride = override?.multiplier != null || ratio !== 1 || rowId !== 'damage'
     if (multiplier <= 0 && !usesOverride) continue
 
     executions.push({
@@ -143,8 +149,8 @@ export function specToMechanicModule(spec: AgentMechanicSpec): AgentMechanicModu
         // mechanicRowValues 即事件 base（无二次乘）。生效面（第 263 轮探针）：下游仅在 usesOverride（ratio≠1 或 cinema override）
         //   时把 base 当倍率；否则 damageMultiplierOverride=false、rowBuild 按 moveId 重读行（本就吃规则），此处只作 >0 闸。
         //   现存 spec 无 multiplierRatio → 当前生产零差；本改动为单一来源归一 + 防将来 ratio 事件绕过规则。
-        // ⚠ 下方 buildExecutions 注入的 getRowValue 只放行 rowId === 'damage'：现存 spec 的 multiplierRowId 全为 damage，
-        //   将来声明非 damage 行时须同时改那道闸（否则读成 0）。
+        // 按 moveId 存「该事件 multiplierRowId 行」的值，buildSpecEventExecutions 缺省读取器直接取用（CC-250 去掉了只放行 damage 的闸）。
+        //   同一 moveId 被两个事件以不同行引用时会互相覆盖——现存 spec 无此情形，出现时须把键改为 moveId+rowId。
         const move = findMoveById(skills, moveId)
         if (!move) continue
         rowValues[moveId] = getRowValue(move, event.multiplierRowId ?? 'damage')
@@ -161,7 +167,6 @@ export function specToMechanicModule(spec: AgentMechanicSpec): AgentMechanicModu
         cfg,
         state,
         counts,
-        getRowValue: (moveId, rowId) => rowId === 'damage' ? (cfg.mechanicRowValues?.[moveId] ?? 0) : 0,
       })
       executions.push(...generated)
     },

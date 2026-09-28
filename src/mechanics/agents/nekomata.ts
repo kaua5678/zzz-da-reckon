@@ -234,7 +234,6 @@ function buildNekoExecutions({ cfg, state, executions }: AgentResourceInput): vo
     cfg,
     state,
     counts,
-    getRowValue: (moveId, rowId) => rowId === 'damage' ? (cfg.mechanicRowValues?.[moveId] ?? 0) : 0,
   }))
 
   // [超凶爪印]：肉球突袭永续 → 每秒自动一次 30% 攻击力物理（后台行，不占前台时间）；

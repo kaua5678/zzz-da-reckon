@@ -377,7 +377,6 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
       roxyMiniTornadoSeconds: source.miniTornadoSeconds,
       roxyMegaTornadoCount: source.megaTornadoCount,
     },
-    getRowValue: (moveId, rowId) => (rowId === 'damage' ? ((cfg as any).mechanicRowValues?.[moveId] ?? 0) : 0),
   })
   executions.push(...generated)
 }

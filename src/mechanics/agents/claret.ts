@@ -761,7 +761,6 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
       claret_maim: { multiplier: Number(record.claretMaimDamageMultiplier ?? 1625.6) * (cinemaLevel >= 1 ? C1_MAIM_MULT : 1) },
       claret_blood_burial: { multiplier: Number(record.claretBloodBurialDamageMultiplier ?? 626.3) },
     },
-    getRowValue: (moveId, rowId) => (rowId === 'damage' ? Number((cfg as any).mechanicRowValues?.[moveId] ?? 0) : 0),
   })
   executions.push(...generated)
 }
