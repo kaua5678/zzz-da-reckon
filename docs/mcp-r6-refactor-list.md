@@ -391,3 +391,4 @@
 | 239 | 职业名 `SPECIALTY_LABEL` 副本 | 7 处已收（CC-215，`7eb7c11a`），修了两处可见缺项；展示层 code→中文名这一类到此收完 | 源码锁拦截新副本；其他「code→中文」类映射（稀有度颜色、职业颜色等）未查，见队列 §2 |
 | 240 | `stores/config.ts` 的 computed / getter 与引擎是否在算同一个量 | `effectiveTime` 写死 180（CC-216，`95901f50`，已收）；`counterAssistSlot`、`selectedChar/Agent/WEngine`、`usedAgentIds` 是纯选择读取，不重复；CC-206/207 已收 buff 门控。**stores/catalog.ts（14 个 computed）与 logicEditor.ts 没查** | 查 catalog / logicEditor 的 computed |
 | 241 | `stores/catalog.ts`（14 个 computed）、`stores/logicEditor.ts`（6 个） | 无重复（§24.65）。顺带收了失衡窗口占比 4 份副本（CC-217，`3ba7af41`）。stores 这条线查完 | — |
+| 242 | `core/effectiveTime.ts` 其余口径的手写副本；core @fact 算式；暴击期望 | 窗口时长、扣无敌秒各 1 份已收（CC-218，`90f51ade`），effectiveTime 收口；暴击期望只有 1 处；@fact 多为行为口径，没有可 grep 的算式 | 新增时间类公式时锁测试会拦 |

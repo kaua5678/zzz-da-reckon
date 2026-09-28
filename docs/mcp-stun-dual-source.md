@@ -2102,3 +2102,19 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 源码锁：`src/core/__tests__/effectiveTimeSingleSource.test.ts` 新增 CC-217 用例（`stunCount * …window/Dur… /` 与 `Math.min(1, stunSeconds /`）。**反例验证**：只撤源码、保留新测试时，锁报出全部 4 份旧副本。（第一次反例做错了：`git stash` 把测试文件也撤了，跑的是旧测试。要用 `git stash push -- <源码文件>`。）
 
 **影响**：零数值差（verify 的 golden 在「catalog 未改 ⇒ 纯伤害回归判据」下通过）。**回退点**：revert 本提交。
+
+### 24.66 第 242 轮：CC-218 失衡窗口时长 / 扣无敌秒单一来源；effectiveTime.ts 收口（90f51ade）
+
+**副本**
+- `useResourceCalc#computeWindowDuration` 手写 `(stunTime ?? 12) + 4 + 全队延时加成`，而 ultimatePromote 的攒条折算走 core `stunWindowDuration`。两处是同一个窗口时长：一处用于覆盖率 / 轴编辑器，一处用于攒条折算。
+- `yuzuha.ts:154`（影画 2 强制连携）手写 `max(0, combatTime − invincibleTime)`，即 core `minusInvincibleTime`。
+
+**等价性**：core 版比手写版多两层夹紧（延时加成夹到 ≥ 0，结果夹到 ≥ 0）。`stunDurationBonusSeconds` 只有三处写入（面板初始化 0、buff `+= value`、莱特溃败加成），数据来源都是正值，所以严格等价。yuzuha 那处逐字等价。
+
+**改动**：两处改调 core；锁测试（`effectiveTimeSingleSource.test.ts`）新增 `?? 12) + 4` 与 `Math.max(0, x - (….invincibleTime ?? 0))` 两条特征。注释里写的是 `stunTime + 4 +`，不会误报；foldLoop 那处没有 `Math.max`，它按 §24.64 登记为不动。**反例**：`git stash push -- 两个源码文件` 后，两条新用例分别报出 useResourceCalc 与 yuzuha。
+
+**收口**：`core/effectiveTime.ts` 的 5 个函数（effectiveBattleTime、stunWindowDuration、stunWindowFraction、effectiveBackstageTime、minusInvincibleTime）在 core 以外都不再有手写副本，4 类特征都有锁。
+
+**顺带核对（没有副本）**：暴击期望 `1 + 暴击率 × 暴伤` 全仓只在 `core/damage.ts:129` 出现一次。core 的 `@fact` 锚点大多是行为口径（判稳、截断、热启动），没有可 grep 的算式；沿 @fact 找副本这条路到此收益递减。
+
+**影响**：零数值差（golden 严格判据通过）。**回退点**：revert 本提交。

@@ -71,18 +71,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 241 轮（lane lead-arena-0925c）：stores 扫描无重复；CC-217 完成（3ba7af41），文档见本提交。push 结果见 git log / rev-list。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.65；r6 清单 §8 追加了一行。stores 这条线查完。
-- 前几轮：240 CC-216（95901f50）；239 CC-215（7eb7c11a）；238 CC-214（361abc6f）。
+**第 242 轮（lane lead-arena-0925c）：CC-218 完成（90f51ade），文档见本提交。push 结果见 git log / rev-list。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.66。`core/effectiveTime.ts` 全部收口，锁在 `src/core/__tests__/effectiveTimeSingleSource.test.ts`。
+- 前几轮：241 CC-217（3ba7af41）；240 CC-216（95901f50）；239 CC-215（7eb7c11a）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. **同族继续：`core/effectiveTime.ts` 里其他「@fact 口径」的公式有没有手写副本**。CC-216、CC-217 都是 @fact 声明了单一口径，代码里却另写一份。做法：
-   - `grep -rn '@fact' src/core/*.ts src/core/**/*.ts | head -80`，挑出有明确公式的口径（例如 `stunWindowDuration` 的「失衡时间 + 4 秒 + 延时加成」）；
-   - 对每条公式 grep 它的算式特征（例如 `+ 4 +`、`?? 12) + 4`），找 core 以外的手写副本；
-   - 真有副本就照 CC-217 做（改调 + 源码锁 + 只撤源码的反例验证）。一轮做一两条，不要一次铺开。
-2. 查完没有，就在 r6 清单 §8 追加一行后收尾。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-217）。
+1. **伤害公式乘区的手写副本**（同 CC-216 ~ 218 的做法）。按算式特征 grep core 以外的副本，每个乘区先找到 core 里的正式实现：
+   - 防御乘区：`grep -rnE 'levelCoeff|等级系数|defense\s*\*\s*\(1\s*-' src --include=*.ts --include=*.vue | grep -v __tests__`；
+   - 抗性乘区：`grep -rnE '1\s*-\s*[\w.?()]*[rR]es(istance)?\w*\s*/\s*100\s*\+' src ...`；
+   - 失衡易伤：`grep -rnE 'stunVuln\w*\s*-\s*1|1\s*\+\s*\([\w.]*stunVuln' src ...`。
+   - 只有真在算同一个量才动（展示层可能有「近似说明」类计算，先读用途）。一轮收一两个乘区。
+2. 都没有副本，就在 r6 清单 §8 追加一行后收尾。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-218）。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色暂用 default（§24.63）。
 
 **探针（优化器相关改动的验收）**
