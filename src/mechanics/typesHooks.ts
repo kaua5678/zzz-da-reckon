@@ -398,7 +398,8 @@ export interface ExtraNecessaryAction {
   moveName: string
   actionTime: number
   comboAlignRatio: number
-  decibelRecovery: number
+  /** 单次喧响。undefined（CC-197）⇒ 行不写喧响字段，展示层 enrich 与账本 rowAccounting 均回落倍率表；显式 0 = 禁用 */
+  decibelRecovery?: number
 }
 
 /** `anomalyEventRecords` 能力入参（CC-28） */

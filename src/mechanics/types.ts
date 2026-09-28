@@ -1121,8 +1121,12 @@ export interface AgentMechanicModule {
    * 返回非 null ⇒ ① `helpers.ts` 必要时间/合轴时间按 `count × actionTime`（× comboAlignRatio）预留；
    * ② `rowBuild.ts#buildExecutions` 在 `moveId` 非空时补一行（category basic，timeBucket necessary）。
    * 原为 core 内联的蕾米埃尔一/四/六命「特殊虚耀 → 垂虹」逻辑。count <= 0 时应返回 null。
+   * CC-197 扩展：可返回数组（同一资源驱动动作的多种形态，如爱芮普通/强化第三段）；`state` 为派发侧的迭代态
+   * （helpers 预留时 = 上一轮 prevState、rowBuild 补行时 = 本轮 state，收敛后同值），次数依赖资源次数的模块读它。
+   * 与「buildExecutions 推 necessary 行 + 折叠残差」相比，本通道的时间**进入账本估计**（Σnecessary），装不下时由
+   * 团队级 feasibleScale 等比封顶 + 装配截断——不经 timeBudgetExcess `+=`，没有「占用→池缩→上限缩」的减半问题。
    */
-  extraNecessaryAction?(cfg: CharacterOperationConfig): ExtraNecessaryAction | null
+  extraNecessaryAction?(cfg: CharacterOperationConfig, state?: Readonly<IterationState>): ExtraNecessaryAction | readonly ExtraNecessaryAction[] | null
   /**
    * 异常池预构建钩子：在 perElement 积蓄汇总之前调用（引擎已构建 elementMap 并预算 turbulenceCount）。
    * 模块可向 elementMap 注入额外积蓄贡献（如维琳娜风蚀替换广域），或把机制状态写入 store 供引擎消费。

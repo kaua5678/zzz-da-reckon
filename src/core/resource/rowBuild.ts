@@ -225,8 +225,8 @@ export function buildExecutions(
   // 模块专属必做动作行（CC-26，自蕾米埃尔一/四命内联迁出）：如特殊虚耀跟随「普通攻击：垂虹」触发，需补入垂虹动作。
   // 次数/时长/喧响由模块能力 `extraNecessaryAction` 给出；无 moveId 时不补行（与原 `&& cfg.remielleRainbowEndMoveId` 等价），
   // 但时间合计（helpers.ts）照旧按 count × actionTime 预留——与迁移前口径一致。
-  const extraAction = extraNecessaryActionOf(cfg)
-  if (extraAction && extraAction.moveId) {
+  for (const extraAction of extraNecessaryActionOf(cfg, state)) {
+    if (!extraAction.moveId) continue
     const car = extraAction.comboAlignRatio
     executions.push({
       moveId: extraAction.moveId,
@@ -239,8 +239,10 @@ export function buildExecutions(
       totalComboAlignTime: extraAction.count * extraAction.actionTime * car,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: extraAction.decibelRecovery,
-      totalDecibelRecovery: extraAction.count * extraAction.decibelRecovery,
+      ...(extraAction.decibelRecovery === undefined ? {} : {
+        decibelRecovery: extraAction.decibelRecovery,
+        totalDecibelRecovery: extraAction.count * extraAction.decibelRecovery,
+      }),
       timeBucket: 'necessary',
     })
   }

@@ -394,7 +394,7 @@
  "auto-1501-1511-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 3,
+  "stun": 2,
   "outerExit": "stable"
  },
  "auto-1501-1511-1411": {

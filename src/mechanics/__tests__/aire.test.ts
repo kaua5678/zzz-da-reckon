@@ -214,8 +214,9 @@ describe('艾莲儿滑块生效差分（防守卫冻结，SOP §3.5）', () => {
     const on = pitchOf()
     config.setMechanicSetting('aire.cheerEnergyBonus', 0)
     const off = pitchOf()
-    // +200 应援能量 → +100 次绝对音准（每次耗 2）
-    expect(on - off).toBe(100)
+    // +200 应援能量 → 直接 +100 次绝对音准（每次耗 2）。CC-197 起直伤行按倍率表回能（#3 3.6/次）
+    // ⇒ 多出的能量换更多强特 → 更多应援能量，真管线差值 ≥ 100（精确 +100 由纯函数用例钉住）
+    expect(on - off).toBeGreaterThanOrEqual(100)
     expect(on).toBeGreaterThan(off)
   })
 

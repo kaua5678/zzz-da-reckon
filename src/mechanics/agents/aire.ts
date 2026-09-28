@@ -28,8 +28,9 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  ExtraNecessaryAction,
 } from '../types'
-import { basicComboCycleSeconds } from '@/data/moveTableQueries'
+import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
 
 export const AIRE_ID = '1501'
 export const AIRE_CORE_PROFICIENCY = 90
@@ -64,6 +65,10 @@ export const AIRE_C4_CD_SECONDS = 10
 /** 影画6 强化绝对音准/终结技以太伤害 +40% */
 export const AIRE_C6_ETHANOL_DMG_BONUS = 40
 export const AIRE_ULTIMATE_MOVE_ID = '1501016'
+/** 影画6 / 妄想时刻内的强化版第三段绝对音准（倍率表 #5，642.1%）。#4（1501022，0s 83.1%）归属不明，不计（CC-197） */
+export const AIRE_ENHANCED_PITCH_MOVE_ID = '1501008'
+/** 妄想时刻最大持续（秒）：期间第三段绝对音准提升为强化版 */
+export const AIRE_DELUSION_SECONDS = 15
 /** 普攻甜心律动第四段：命中后生成 1 个应援能量（原文 skill.basic.description.0） */
 export const AIRE_SWEET_BASIC4_MOVE_ID = '1501004'
 export const AIRE_CHEER_BASIC4 = 1
@@ -139,10 +144,13 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
   }
   // CC-196：甜心律动 #4 应援能量按普攻时长折算（CC-195 通用口径 basicComboCycleSeconds）
   record.aireBasicCheerCycleSeconds = basicComboCycleSeconds(skills, AIRE_SWEET_BASIC4_MOVE_ID)
+  // CC-197：绝对音准直伤行动作时长（倍率表）
+  record.airePitchActionTime = findMoveById(skills, AIRE_ABSOLUTE_PITCH_MOVE_ID)?.actionTime ?? 1
+  record.aireEnhancedPitchActionTime = findMoveById(skills, AIRE_ENHANCED_PITCH_MOVE_ID)?.actionTime ?? 1
 }
 
 /**
- * 第三段绝对音准次数（纯函数，CC-196 抽出；直伤行 CC-197 接入时须与异放事件同源）。
+ * 第三段绝对音准次数（纯函数，CC-196 抽出）——异放事件与直伤行（CC-197 extraNecessaryAction）同源。
  * 手动覆盖（>0）优先；否则 = floor(应援能量 / 2) + 全场应援次数。
  * 应援能量：强特 +3、连携 +4、甜心律动 #4 +1（普攻时长 / 甜心律动整套时长，CC-196 补）、
  * 额外能力下每次帷幕 +4（含队友帷幕，teamVeilCountTotal）、滑块补充。
@@ -174,6 +182,40 @@ export function aireAbsolutePitchCount(
     ? Math.floor(totalTime / AIRE_CHEER_CD_SECONDS) + (ultCount > 0 ? 3 : 0)
     : 3 * ultCount
   return Math.floor(cheerEnergy / 2) + cheerGain
+}
+
+/** 强化版占比：影画6 妄想时刻不退出 ⇒ 1；否则 = min(1, 终结次数 × 15s / 战斗时长)（CC-197 可逆近似） */
+export function aireEnhancedPitchShare(cinemaLevel: number, ultimateCount: number, totalTime: number): number {
+  if (cinemaLevel >= 6) return 1
+  if (!(totalTime > 0)) return 0
+  return clampRatio(Math.max(0, ultimateCount) * AIRE_DELUSION_SECONDS / totalTime)
+}
+
+/**
+ * 绝对音准直伤行（CC-197）：走引擎通用「模块必做动作」通道 `extraNecessaryAction`——时间进入账本估计
+ * （Σnecessary），装不下由团队级 feasibleScale 等比封顶 + 装配截断；**不**在 buildExecutions 推 necessary 行
+ * （那条路经折叠残差 `+=`，正反馈时前台 Σ 溢出 213s/180s，按自身普攻池封顶又系统性减半，见 §24.43）。
+ * 次数 = aireAbsolutePitchCount（与异放事件同源）；强化占比见 aireEnhancedPitchShare；回能/喧响交倍率表回填。
+ * 影画6 +40% 经 patchAireExecutions 命中 1501008 行。回退：删本能力即可（异放事件不受影响）。
+ */
+export function aireExtraNecessaryActions(cfg: AgentResourceInput['cfg'], state?: Readonly<AgentResourceInput['state']>): ExtraNecessaryAction[] | null {
+  if (!state) return null
+  const record = cfg as unknown as Record<string, unknown>
+  const totalTime = Number(cfg.battleTime ?? 180)
+  const pitch = aireAbsolutePitchCount(cfg, state, totalTime)
+  if (pitch <= 0) return null
+  const share = aireEnhancedPitchShare(Number(record.aireCinemaLevel ?? 0), Number(state.ultimateCount ?? 0), totalTime)
+  const enhanced = Math.round(pitch * share)
+  const rows: ExtraNecessaryAction[] = []
+  if (pitch - enhanced > 0) {
+    rows.push({ count: pitch - enhanced, moveId: AIRE_ABSOLUTE_PITCH_MOVE_ID, moveName: '普通攻击：绝对音准 #3',
+      actionTime: Number(record.airePitchActionTime ?? 1), comboAlignRatio: 0 })
+  }
+  if (enhanced > 0) {
+    rows.push({ count: enhanced, moveId: AIRE_ENHANCED_PITCH_MOVE_ID, moveName: '普通攻击：绝对音准（强化·妄想时刻）',
+      actionTime: Number(record.aireEnhancedPitchActionTime ?? 1), comboAlignRatio: 0 })
+  }
+  return rows
 }
 
 function cycleFromCfg(cfg: unknown): AireCycle {
@@ -293,6 +335,8 @@ export const aireMechanic: AgentMechanicModule = {
   buildCharConfig: buildAireCharConfig,
   buildAnomalyEvents: buildAireAnomalyEvents,
   patchExecutions: patchAireExecutions,
+  // CC-197：绝对音准直伤行（通用必做动作通道，时间进账本估计）
+  extraNecessaryAction: aireExtraNecessaryActions,
   buildResourceResult: buildAireResourceResult,
   resourceSections: buildAireResourceSections,
 }

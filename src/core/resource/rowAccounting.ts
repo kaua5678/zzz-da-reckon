@@ -31,8 +31,12 @@ export function decibelEfficiencyMultiplier(cfg: CharacterOperationConfig): numb
  * `remielleSpecialVoidflareUseCount`（公式已迁 `mechanics/agents/remielle.ts`）。
  * 消费方：`rowBuild.ts#buildExecutions`（补行）与 `helpers.ts` 的必要时间/合轴时间合计（预留）。
  */
-export function extraNecessaryActionOf(cfg: CharacterOperationConfig): ExtraNecessaryAction | null {
-  return getAgentMechanic(cfg.agentId)?.extraNecessaryAction?.(cfg) ?? null
+export function extraNecessaryActionOf(cfg: CharacterOperationConfig, state?: IterationState): readonly ExtraNecessaryAction[] {
+  // CC-197：统一成数组（模块可返回单个或数组）；count ≤ 0 的项丢弃
+  const got = getAgentMechanic(cfg.agentId)?.extraNecessaryAction?.(cfg, state)
+  if (!got) return []
+  const list = Array.isArray(got) ? got as readonly ExtraNecessaryAction[] : [got as ExtraNecessaryAction]
+  return list.filter(a => a.count > 0)
 }
 
 /** 强化特殊技（及模块专属必做动作）前台时间：优先走角色机制模块覆盖（如卢西娅计划内E+A5），否则按通用公式 */
