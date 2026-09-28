@@ -71,30 +71,34 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 250 轮（lane lead-arena-0925c）：CC-226 完成（f9be411d），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.74。
-- 前几轮：249 CC-225（f361972f）；248 CC-224（f1db965e）；247 CC-223（7eb4eace）。
+**第 251 轮（lane lead-arena-0925c）：CC-227 完成（661133cd），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.75。
+- 前几轮：250 CC-226（f9be411d）；249 CC-225（f361972f）；248 CC-224（f1db965e）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**纯规则单一来源一览（新写代码请直接用这些）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`；
-- `src/utils/elementStatKeys`、`src/utils/enemyDebuffStats`、`src/utils/agentLabelMaps`；
-- `src/core/damageMultipliers`、`src/core/effectiveTime`；
-- 失衡易伤区：`calcStunMultiplier`（core/anomalyPool/helpers.ts）；
-- 展示侧行级易伤：`composables/stunVulnSummary#rowAppliedStunMultOf`。
+**本线（展示与引擎一致性）的有效方法**：CC-226 和 CC-227 都是「展示层用 store 原值或反推，重建了引擎的输入」。**引擎实际用的是注入后的 cfg**：
+- 交互缩放 `Math.round(x × scale)`；
+- Boss 弹刀反推拆分；
+- 般岳补齐；
+- 帷幕基数。
 
-**下一步（直接开工）**：继续「展示层重算与 core 口径一致性」，本轮查完了 stunVulnSummary、stunVulnDisplay、difficultyRatio。
-1. `src/composables/difficultyCurve.ts`（620 行）：列出其中每个公式，找它在 core 或 teamCompare 里的对应。重点是 `computeDifficulty`、`liveInteractions` 的调用，以及有没有自己算时间或次数（应走 `core/effectiveTime` 和引擎的 `stunCoverage`）。
-2. 用同样的方法扫 `src/composables/` 下其他「展示用」模块：`grep -lE 'calcStunMultiplier|effectiveBattleTime|stunWindowFraction|critMultiplier' src/composables/*.ts`，看有没有在 core 结果之外自己重算。
-3. 方法（本轮验证有效）：先找「编码 → 解码」形式的往返。展示层如果从引擎输出反推引擎的输入，往往假设了错误的基数或口径。优先改为让引擎把原值写在结果上。
-- 判据：只收「同一公式两处实现」或「反推有误」；展示特意简化的，写「不做」并附理由。
-- 开工前**先查卡表**（最新 CC-226），并 `grep -rn 反锁 src`。
-- **量化影响的探针写法**：在 `src/composables/__tests__/tmp_*.test.ts` 用 `setupHarness(team.map(agentId => ({agentId})), { recommendedBuild: true })` 加 `useResourceCalc()`，console.log 出结果，跑完 `rm` 掉，**不要提交**。
+修法一律是：引擎把本轮实际值挂到 `CalcRoundResult` 或结果行上，展示层直读，再加单调用点源码锁。
+
+**下一步（直接开工）**
+1. `composables/resourceCalc/ultimatePromote.ts:286` 直接读 store 的 `configStore.team.reduce(… c.chainCountPerStun …)`。这在引擎侧，要核实：它是否应当读注入后的 cfg（`characters`）？注入过程会不会改写 chainCountPerStun 或 chainCountTotalOverride？读 convergence.ts 里 characters 的构建过程（约 430-640 行）确认。
+   - 若口径不同：写探针量化，改为读 cfg；
+   - 若 chainCountPerStun 不会被注入改写：写「不做」并说明依据。
+2. 系统性扫一遍：`grep -rnE 'configStore\.team\b' src/composables src/views src/components | grep -v __tests__`，逐条判断每处读的是「输入侧」（参数框、配置页，合理）还是「当作引擎用量」（可疑）。可疑的逐条用探针对比引擎实值。
+3. 这条线收尾后换方向。候选：ResultPage 其余卡片里写死的规则文字（例如 `215/次 · 伴随107.5`），可以考虑让结果类型带上单价（§24.75「不做」里有分析）。
+- 开工前**先查卡表**（最新 CC-227），并 `grep -rn 反锁 src`。
+- **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(team.map(agentId => ({agentId})), { recommendedBuild: true })` 加 `useResourceCalc()`。
+  - Boss 取自 `public/static/boss-presets.json`，用 `readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url))`，写法照抄 parrySplitInt.test.ts 的 bossById，再 `config.applyBossPreset(...)`；
+  - 跑完 `rm`，**不要提交**。
 - **已知坑**：
   - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；
-  - 删文件要 `git rm`；
-  - 转出壳（resourceCalc/helpers.ts、skillRows.ts）删符号时两处都要改。
-- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62；agentLabelMaps 两种叫法都有）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）。
+  - `ParrySplitResult` 的 `mainDpsParry + mainDpsNoFollowUp` 已是主 C 的**全部**弹刀，不是「配置 + 拆分」，本轮写测试时踩过；
+  - 删文件要 `git rm`；转出壳删符号时两处都要改。
+- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

@@ -2314,3 +2314,42 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 **不做（已评估）**
 - 行级生效易伤改用「本行所属槽位的面板加成」，而不是槽 0：槽 0 是 @fact 记录在案的展示约定（与逐招矩阵探针同口径）；失衡易伤加成多为全队 buff，各槽大多相同。等出现「非槽 0 成员自带失衡易伤加成」的具体队伍再评估。
 - 从引擎结果里直接取失衡乘数（calcDirectDamage 只写在 breakdown 文案里）：得改 core 的返回类型，收益与本卡重叠。
+
+### 24.75 第 251 轮：CC-227 特殊动作喧响展示直读引擎（661133cd）
+
+**排查**（接 §24.74）：
+- `composables/difficultyCurve.ts` 全部委托 `computeDifficulty`、`stunWindowRatioOf`、`interactionSurvivalBySlot`，关键计数读的是引擎结果（resourceResult、stunPool、anomalyPool、模块自报的 resourceSections），**没有自己重算，不动**。
+- 顺着交互次数查到了本卡的问题。
+
+**问题**：特殊动作喧响（弹刀 215 / 连携 10 / 闪反 10 / 快支 20，含伴随 50%）的每槽输入次数被组装了**两份**：
+- **引擎**：`composables/resourceCalc/convergence.ts`（约 660-675 行）。弹刀取注入后 cfg 的 `parryCount + parryNoFollowUpCount + parryDecibelOnlyCount`（含交互缩放 `Math.round(x × scale)`、Boss 弹刀反推拆分、只给喧响弹刀、般岳补齐）；连携取 `chainCountTotalOverride ?? chainCountPerStun × countStun`。
+- **展示**：`useResourceCalc.ts#specialActionBonus` 用 store 原值、topUp、parrySplit 另拼每槽弹刀，规则是 `s === 0 && parryCount <= 0` 时才采用主 C 的拆分结果；连携取结果里的 chainCountTotal。
+- 另外，ResultPage 弹刀、闪反、快支的「(N次)」标签读的是第三份，即 store 配置合计。
+
+**实测**：临时探针，已删除。5 支队伍 × 4 个 Boss 场景（默认、30033、30009、30038）共 20 种情况，**11 种不一致**：
+
+| 队伍 / Boss | 每槽弹刀：引擎 vs 旧展示 | 喧响合计：引擎 vs 旧展示 | 原因 |
+|---|---|---|---|
+| 1431-1481-1491 / 默认 | 1/1/0 vs 6/6/0 | 900 vs 3050 | 旧展示没考虑交互缩放 |
+| 1431-1481-1491 / 30009 | 0/0/0 vs 6/6/0 | 470 vs 3050 | 同上 |
+| 1371-1471-1311 / 默认 | 3/3/0 vs 6/6/0 | 1730 vs 3020 | 同上 |
+| 1291-1481-1161 / 30033 | 13/14/6 vs 6/14/6 | 7725 vs 6220 | 主 C 配了 6 次弹刀，旧规则不采用拆分结果 13 |
+
+- 1091-1221-1581、1611-1411-1311 两队在 4 个场景下都一致。
+- 连携在全部 20 种情况下都一致（这些情况里规划值等于结果值），但两处的口径定义不同，属于潜在漂移。
+
+**改动**
+- `CalcRoundResult` 新增 `specialActionBonus`；convergence 保留 `calcSpecialActionBonus` 的整份结果并随本轮返回。
+- `useResourceCalc#specialActionBonus` 改为直接读 `calcOutput.value?.specialActionBonus`，删除展示侧的拼装。
+- ResultPage 喧响卡的 4 个次数标签改为 `sumOf(specialActionBonus.perSlotXxx)`，与喧响值同源。参数区只读框（`totalParryCount` 等）仍显示**输入侧**配置值，注释已标明。
+
+**锁**：新增 `src/composables/__tests__/specialActionBonusSingleSource.test.ts`：
+- ①源码锁：`calcSpecialActionBonus(` 只允许在 convergence.ts 调用；
+- ②雨果队配 30033：主 C 的 `perSlotParry` 等于拆分结果 13，且不等于配置值 6。
+- **反例**：stash useResourceCalc.ts 后两例都失败。
+- 现有 `parrySplitInt.test.ts` 的 `perSlotParry[1] = 8 / 5` 两个断言在引擎值下照常通过。
+
+**影响**：verify 全绿（3936 passed，golden 零差）；新测试单跑 2/2 通过，parrySplitInt、calcOutputMemo 同跑共 18 例通过。引擎零变化，只改结果页「特殊动作喧响」卡的数值与次数。**回退点**：revert 661133cd。
+
+**不做**
+- 喧响卡的说明文字 `215/次 · 伴随107.5` 仍然写死在页面上：视图层禁止值导入 core（`PARRY_DECIBEL_BONUS` 在 core/anomalyPool.ts）；常量变动时锁测试不会报。如果要做，可以让 `SpecialActionBonusResult` 带上单价字段。收益小，暂不做。
