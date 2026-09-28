@@ -313,7 +313,7 @@
             <div class="pool-stat bonus">
               <span class="pool-stat-label">喧响奖励</span>
               <span class="pool-stat-value">+{{ fmt(anomalyPoolResult.decibelBonus) }}</span>
-              <span class="pool-stat-detail">按触发角色归属</span>
+              <span class="pool-stat-detail">各触发者完整奖励之和；下方各角色 = 个人获得（含队友伴随50%）</span>
             </div>
             <div class="pool-per-slot">
               <span v-for="(val, i) in anomalyPoolResult.perSlotBonus" :key="i" class="slot-chip">
@@ -547,6 +547,7 @@
             <div class="pool-stat bonus">
               <span class="pool-stat-label">总计</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.total) }}</span>
+              <span class="pool-stat-detail">完整奖励之和；下方各角色 = 个人获得（含队友伴随50%）</span>
             </div>
             <div class="pool-per-slot">
               <span v-for="(val, i) in specialActionBonus.perSlotBonus" :key="i" class="slot-chip">
@@ -593,7 +594,7 @@
 
         <!-- 3D 团队伤害构成图表 -->
         <TeamDamage3DChart
-          :total-damage="totalDamageWithDisorder"
+          :total-damage="teamTotalDamage"
           :categories="damageShareCategories"
           :characters="characterDamageShares"
           style="margin-bottom: 14px;"
@@ -601,7 +602,7 @@
 
         <div class="damage-share-summary">
           <span>团队总伤害</span>
-          <b>{{ fmt(totalDamageWithDisorder, 0) }}</b>
+          <b>{{ fmt(teamTotalDamage, 0) }}</b>
         </div>
         <div class="share-category-row">
           <div v-for="cat in damageShareCategories" :key="cat.key" class="share-category-chip">
@@ -629,7 +630,7 @@
         <template #header>
           <div class="damage-pool-header">
             <span>伤害来源分解</span>
-            <span class="damage-pool-total">总伤害 {{ fmt(damagePoolTotal, 0) }} ≈ 直伤倍率×属性区 + 异常倍率×属性区</span>
+            <span class="damage-pool-total">总伤害 {{ fmt(teamTotalDamage, 0) }} ≈ 直伤倍率×属性区 + 异常倍率×属性区</span>
           </div>
         </template>
         <div class="damage-source-table">
@@ -668,7 +669,7 @@
         <template #header>
           <div class="damage-pool-header">
             <span>伤害池</span>
-            <span class="damage-pool-total">总伤害 {{ fmt(damagePoolTotal, 0) }}</span>
+            <span class="damage-pool-total">总伤害 {{ fmt(teamTotalDamage, 0) }}</span>
           </div>
         </template>
         <div class="damage-pool-table">
@@ -834,6 +835,7 @@ const {
   anomalyPoolResult,
   specialActionBonus,
   damagePoolRows,
+  teamTotalDamage,
   damageSourceBreakdown,
   moduleAnomalyEventRecords,
   anomalyDamageEvents,
@@ -905,9 +907,7 @@ function getSpecialty(agentId: string): string {
 // 元素中文标签
 
 
-const damagePoolTotal = computed(() =>
-  damagePoolRows.value.reduce((sum, row) => sum + row.totalDamage, 0),
-)
+// CC-234：队伍总伤害直读 useResourceCalc#teamTotalDamage（此前本页另算 damagePoolTotal = 同式求和，并挂残留别名 totalDamageWithDisorder）
 
 // ===== 失衡易伤可见化（账本 Open #2）=====
 // 计算整体搬到 composables/stunVulnDisplay.ts（纯展示映射，函数体逐字节保真）；本文件只注入依赖并渲染。
@@ -915,8 +915,6 @@ const damagePoolTotal = computed(() =>
 const { appliedVulnOf, stunVulnClassOf, stunVulnTitleOf, stunVulnSummary, stunVulnPerSlot } =
   useStunVulnDisplay({ configStore, panels, damagePoolRows })
 
-// 紊乱伤害已纳入 damagePoolRows，无需额外加算
-const totalDamageWithDisorder = computed(() => damagePoolTotal.value)
 
 interface DamageShareCategory {
   key: string
@@ -940,7 +938,7 @@ const damageShareCategories = computed<DamageShareCategory[]>(() => {
     totals.set(row.type, (totals.get(row.type) ?? 0) + row.totalDamage)
   }
   // 紊乱伤害已纳入 damagePoolRows（type='紊乱'），无需额外加算
-  const total = totalDamageWithDisorder.value
+  const total = teamTotalDamage.value
   return [...totals.entries()]
     .map(([label, damage]) => ({
       key: label,
@@ -968,7 +966,7 @@ const characterDamageShares = computed<CharacterDamageShare[]>(() => {
   }
   // 紊乱伤害已纳入 damagePoolRows（type='紊乱'），无需从 details 额外加算
 
-  const total = totalDamageWithDisorder.value
+  const total = teamTotalDamage.value
   return configStore.team
     .map((char, slot) => {
       const categories = perAgent.get(char.agentId) ?? new Map<string, number>()
@@ -994,7 +992,7 @@ const characterDamageShares = computed<CharacterDamageShare[]>(() => {
 })
 
 const teamOverview = computed(() => {
-  const damageTotal = totalDamageWithDisorder.value
+  const damageTotal = teamTotalDamage.value
   const stunTotal = stunPoolResult.value?.totalStunBuildUp ?? 0
   // 按 slot 汇总积蓄；异属性赠送/赋彩贡献（贡献元素 ≠ 角色伤害元素）记在接收人头上（该元素同属性主贡献者槽），不记赠送者
   const perSlotBuildUp: number[] = [0, 0, 0]
