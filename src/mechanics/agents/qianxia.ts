@@ -6,6 +6,8 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
+import { basicComboCycleSeconds } from '@/data/moveTableQueries'
+import { basicSummarySeconds } from '@/types/resource'
 
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
@@ -55,6 +57,8 @@ export const QIANXIA_SCRATCHER_CD_SECONDS = 10
 export const QIANXIA_SCRATCHER_PER_ULT = 6
 /** 泡泡自动攻击倍率（后场消耗 1 磨爪器；继承千夏初始攻击力） */
 export const QIANXIA_BUBBLE_MULTIPLIER = 100
+/** 普攻标记段：鬼马流星锤 #4。引擎普攻只有一条汇总行（基准段 #3 秒均），按整套时长折算（CC-195） */
+export const QIANXIA_BASIC_MARK_MOVE_ID = '1491004'
 /** 千夏标记招式（命中添加猫的凝视；倍率表真实行） */
 export const QIANXIA_GAZE_MARK_MOVE_IDS = new Set([
   '1491004', // 普通攻击：鬼马流星锤 #4
@@ -133,9 +137,11 @@ function computeQianxiaGazeCycle(input: {
   }
 }
 
-function buildQianxiaCharConfig({ cfg, cinemaLevel, team, panel }: AgentCharConfigInput): void {
+function buildQianxiaCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.qianxiaCinemaLevel = cinemaLevel
+  // CC-195：普攻 #4 标记折算用——鬼马流星锤 #1–#4 一整套时长（每套出一次 #4）
+  record.qianxiaBasicMarkCycleSeconds = basicComboCycleSeconds(skills, QIANXIA_BASIC_MARK_MOVE_ID)
   // 凝视触发者：队内强攻/异常角色数（千夏自己是支援不计；team 缺省容错空数组）
   const members = team ?? []
   const attackAgents = members.filter(m => m.agent?.specialty === 'attack').length
@@ -184,11 +190,28 @@ function pushQianxiaExecution(executions: AgentResourceInput['executions'], inpu
   })
 }
 
-function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): QianxiaGazeCycle {
+/**
+ * 标记供给（纯函数）：千夏标记招式执行行命中数 + 普攻 #4 折算。
+ * CC-195：原先写回 `cfg.qianxiaMarkSupply` 供装配期读，属 `AgentResourceResultInput.preModuleExecutions`
+ * 头注释点名的反模式（多 pass 下最后写入者 ≠ 装配时的 state ⇒ 展示与行不同源）；现两处各自对同一批
+ * 「钩子派发前」的行重算。
+ */
+function markSupplyOf(cfg: AgentResourceInput['cfg'], executions: readonly AgentResourceInput['executions'][number][]): number {
+  const record = cfg as unknown as Record<string, unknown>
+  let markSupply = 0
+  for (const exec of executions) {
+    if (exec.moveId && QIANXIA_GAZE_MARK_MOVE_IDS.has(exec.moveId)) markSupply += whole(exec.count)
+  }
+  // CC-195：普攻 #4 不会以独立行出现（普攻 = 一条汇总行），按「每打满一套鬼马流星锤出一次 #4」折算。
+  // 此前普攻对标记供给恒为 0，而凝视次数 = min(标记供给, 触发者命中) 默认就等于供给。
+  const markCycle = Number(record.qianxiaBasicMarkCycleSeconds ?? 0)
+  if (markCycle > 0) markSupply += Math.floor(basicSummarySeconds(executions) / markCycle)
+  return markSupply
+}
+
+function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state'], markSupply: number): QianxiaGazeCycle {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = whole(Number(record.qianxiaCinemaLevel ?? 0))
-  // 标记供给：千夏标记招式执行行命中数（物化行直数；普攻第四段按 count，强特/连携/终结同理）
-  const markSupply = whole(Number(record.qianxiaMarkSupply ?? 0))
   return computeQianxiaGazeCycle({
     cinemaLevel,
     markSupply,
@@ -209,13 +232,8 @@ function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput[
 function buildQianxiaExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = whole(Number(record.qianxiaCinemaLevel ?? 0))
-  // 标记供给 = 千夏标记招式命中数（真实执行行直数，含连携/终结由倍率表物化）
-  let markSupply = 0
-  for (const exec of executions) {
-    if (exec.moveId && QIANXIA_GAZE_MARK_MOVE_IDS.has(exec.moveId)) markSupply += whole(exec.count)
-  }
-  record.qianxiaMarkSupply = markSupply
-  const cycle = cycleFromCfg(cfg, state)
+  // 标记供给 = 千夏标记招式命中数（真实执行行直数，含连携/终结由倍率表物化）+ 普攻 #4 折算
+  const cycle = cycleFromCfg(cfg, state, markSupplyOf(cfg, executions))
   const c6Bonus = cinemaLevel >= 6 ? QIANXIA_C6_GAZE_DMG_BONUS : 0
   // 强攻触发行（150%/350%）
   pushQianxiaExecution(executions, {
@@ -244,8 +262,8 @@ function buildQianxiaExecutions({ cfg, state, executions }: AgentResourceInput):
   })
 }
 
-function buildQianxiaResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { qianxia_gaze: cycleFromCfg(cfg, state) } }
+function buildQianxiaResourceResult({ cfg, state, preModuleExecutions }: AgentResourceResultInput) {
+  return { specResources: { qianxia_gaze: cycleFromCfg(cfg, state, markSupplyOf(cfg, preModuleExecutions ?? [])) } }
 }
 
 function buildQianxiaResourceSections({ result }: AgentResourceSectionsInput) {

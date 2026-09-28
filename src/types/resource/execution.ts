@@ -132,6 +132,16 @@ export function isFrontlineExecution(e: { timeBucket?: 'necessary' | 'basic' | '
  * 模块按普攻段 moveId 匹配时直接 `set.has(exec.moveId)` 永远碰不到它（第 216 轮普查：安东打桩/C6、振斗耗血暴伤因此恒不生效）。
  * 本函数把汇总行按其 `benchmarkMoveId` 参与匹配：基准段在集合里 ⇒ 整条平A行视为该段。
  */
+/**
+ * 执行行里汇总平A行（`moveId: 'basic_attack'`）的总时长（秒）——CC-195。
+ * 与 `data/moveTableQueries#basicComboCycleSeconds` 配对，把「平A时长」折算成某普攻段的命中次数。
+ */
+export function basicSummarySeconds(executions: readonly { moveId?: string; totalTime?: number }[]): number {
+  let t = 0
+  for (const e of executions) if (e.moveId === 'basic_attack') t += e.totalTime ?? 0
+  return t
+}
+
 export function execMatchesMove(e: { moveId: string; benchmarkMoveId?: string }, ids: ReadonlySet<string>): boolean {
   if (ids.has(e.moveId)) return true
   return e.moveId === 'basic_attack' && !!e.benchmarkMoveId && ids.has(e.benchmarkMoveId)

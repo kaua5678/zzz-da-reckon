@@ -78,3 +78,31 @@ export function pickThirdNamedBasicSegment(moves: readonly SkillMove[]): SkillMo
   if (named.length === 0) return null
   return named[Math.min(2, named.length - 1)]
 }
+
+/**
+ * 某普攻段所在「同名 `#N` 连段」打满一整套的动作时长（秒）——CC-195。
+ *
+ * 为什么需要：引擎把普攻合成**一条**汇总行（`moveId: 'basic_attack'`，count=0、按时长，倍率取基准段秒均），
+ * 模块按段 id 数命中（千夏 #4 标记、佩洛伊斯余晖日珥）永远数不到。统一口径：汇总时长里每打满一整套
+ * 同名连段出一次该段 ⇒ 命中次数 = floor(`basicSummarySeconds(executions)` / 本值)。
+ *
+ * 同名 = 去掉 ` #N` 后中文名（缺则英文名）相同；只计 basic 分类里 `actionTime > 0` 的段。
+ * 找不到该段或它不带 `#N` 时返回 0（调用方按「无折算」处理）。
+ */
+export function basicComboCycleSeconds(skills: AgentSkills | undefined, moveId: string): number {
+  const basic = skills?.categories.find(c => c.id === 'basic')
+  if (!basic) return 0
+  const stem = (m: SkillMove): string | null => {
+    const name = m.name?.zhCN || m.name?.en || ''
+    const hit = name.match(/^(.*?)\s*#\d+\s*$/)
+    return hit ? hit[1] : null
+  }
+  const target = basic.moves.find(m => m.id === moveId)
+  const key = target ? stem(target) : null
+  if (!key) return 0
+  let total = 0
+  for (const m of basic.moves) {
+    if (stem(m) === key && (m.actionTime ?? 0) > 0) total += m.actionTime ?? 0
+  }
+  return total
+}

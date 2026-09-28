@@ -5,6 +5,8 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { getAgentSpec } from '@/specs/registry'
+import { basicComboCycleSeconds } from '@/data/moveTableQueries'
+import { basicSummarySeconds } from '@/types/resource'
 import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
@@ -133,7 +135,9 @@ peiluoProminenceMechanic.applyTeamConfig = ({ cfg: cfgIn, phase, cinemaLevel, st
   // 门控 ⇒ 轴模式行为静默改变（timeGolden 未覆盖该路径、不红）——已改回逐位等价。
   cfg.peiluoVerdictCount = stunCount
 }
-peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel }: any) => {
+peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel, skills }: any) => {
+  // CC-195：日珥账本折算普攻用——余晖 #1–#3 一整套时长（引擎普攻基准段 = 余晖 #3）
+  cfg.peiluoBasicCycleSeconds = basicComboCycleSeconds(skills, '1551003')
   // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
   if ((cinemaLevel ?? 0) >= 1) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + 1000
@@ -242,6 +246,8 @@ const PEILUO_PROMINENCE_SPEND: Record<string, number> = {
   '1551006': 14.6107, // 天光 #3（连段）
   '1551007': 11.8234, // 天光 #4（连段）
 }
+/** 余晖 #1+#2+#3 一整套的日珥回复（CC-195 普攻汇总行折算） */
+const PEILUO_BASIC_GAIN_PER_LOOP = PEILUO_PROMINENCE_GAIN['1551001'] + PEILUO_PROMINENCE_GAIN['1551002'] + PEILUO_PROMINENCE_GAIN['1551003']
 const PEILUO_CHAIN_COST = PEILUO_PROMINENCE_SPEND['1551006'] + PEILUO_PROMINENCE_SPEND['1551007'] // a3+a4 连段单价 26.4341
 
 const peiluoUltBranchPatch = peiluoProminenceMechanic.patchExecutions!
@@ -265,7 +271,12 @@ peiluoProminenceMechanic.patchExecutions = (input: any) => {
       else lowSpend += s * n
     }
   }
-  cfg.peiluoProminenceLedger = { hitGain, spend, lowSpend, a3, a4 }
+  // CC-195：普攻汇总行里的余晖命中（按整套折算；每套回 余晖#1+#2+#3）。天光 a1–a4 不折算：
+  // 引擎普攻基准段是余晖 #3，计划里不存在天光连段 ⇒ 消耗恒 0 与计划一致（仅展示账本，不影响伤害）。
+  const cycle = Number(cfg.peiluoBasicCycleSeconds ?? 0)
+  const basicLoops = cycle > 0 ? Math.floor(basicSummarySeconds(executions) / cycle) : 0
+  hitGain += basicLoops * PEILUO_BASIC_GAIN_PER_LOOP
+  cfg.peiluoProminenceLedger = { hitGain, spend, lowSpend, a3, a4, basicLoops }
 }
 
 peiluoProminenceMechanic.buildResourceResult = ({ cfg, state }: any) => {
@@ -315,7 +326,7 @@ peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) 
       summary: `回复 ${pf(totalGain)} · 消耗 ${pf(ledger.spend)} · ${affordable ? `结余 ${pf(surplus)}` : `缺口 ${pf(-surplus)}`}`,
       rows: [
         { label: '回复·入场+被动+大招侧', value: pf(entry + passive + upper + block), detail: `入场30 / 被动固定60 / 上分支×30 / 完美格挡×10` },
-        { label: '回复·技能命中', value: pf(ledger.hitGain), detail: '余晖/旭日/朝晖/EX日华/快支/支援突击 按段回复（attack_data_0）' },
+        { label: '回复·技能命中', value: pf(ledger.hitGain), detail: `余晖/旭日/朝晖/EX日华/快支/支援突击 按段回复（attack_data_0）；普攻汇总行按余晖整套折算 ${ledger.basicLoops ?? 0} 套` },
         { label: '消耗·天光连段', value: pf(ledger.spend - ledger.lowSpend), detail: `a3×${ledger.a3}（14.61）+ a4×${ledger.a4}（11.82），连段 ${chainPairs} 组（单价 ${pf(PEILUO_CHAIN_COST)}）` },
         { label: '消耗·天光低段', value: pf(ledger.lowSpend), detail: 'a1（1.50）+ a2（2.05）' },
         { label: '核对结论', value: affordable ? '日珥足够' : '日珥不足', detail: affordable ? '循环打得起当前 a3/a4 配置' : '消耗超出回复，实战需减少天光连段或等待被动回复' },
