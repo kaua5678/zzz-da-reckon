@@ -69,21 +69,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 201 轮（lane lead-arena-0925c）：CC-177（8fc869d0）、CC-178（9daca673）完成；立卡 CC-179。文档见本提交。**
-- CC-177：异常伤害入参拼装收口到 `calcPoolAnomalyDamage`；直伤 / 异常两个拼装函数都在 `src/composables/resourceCalc/poolDamage.ts`（原 `poolDirectDamage.ts`，已 `git mv`），环境类型 `PoolDamageEnv`。纯重构，zd DIFF 0。
-- CC-178：删除合轴节省团队总量 `axisOverlapSeconds` 与两处只被测试走的兜底（`timeOccupation.ts` teamLevel、`helpers.ts#iterate` 的 hasByAction），按块分摊 `axisOverlapByAction` 成为唯一表示。零差（证明见 stun-dual-source §24.24）。
-- 前几轮：200 CC-176（542884bc）；199 CC-175（be822bc6）；198 CC-173 / 174（e0426398）。
+**第 202 轮（lane lead-arena-0925c）：CC-179 完成（8aba58f5）；立卡 CC-180、CC-181。文档见本提交。**
+- CC-179：`AnomalyPoolInput.agentMechanics` 等改必填（缺省曾静默跳过 transformAnomalyPool 钩子与风蚀）；账本 `resource/helpers.ts#iterate` 的赠送供给补传 `teamSize: globalCfg.teamSize`，与 foldLoop / underfillProbe / tailPipeline 同源；`axisMode` 不做。详见 stun-dual-source §24.26（含退化配置探针表）。
+- 前几轮：201 CC-177（8fc869d0）/ CC-178（9daca673）；200 CC-176（542884bc）；199 CC-175（be822bc6）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-179：core 输入「可选只为测试方便」的字段普查**。
-   - 起点：`AnomalyPoolInput.agentMechanics`（`core/anomalyPool/helpers.ts:311`，缺省 ⇒ 不结算风蚀；生产唯一调用方 `composables/resourceCalc/roundInputs.ts:118` 始终会传）。
-   - 找更多：对 core 导出函数 / 输入接口的可选字段，统计生产调用方是否**全部**都传（脚本思路同 `/home/kaua/calc-arch/k198/scan175.mjs`，它已列出 ≥2 调用文件的函数；本卡还要覆盖**只有 1 个生产调用方**的函数，那正是 scan175 漏掉的）。
-   - 判据：缺省值会静默改变结果（关闭某个机制、兜底成常数）⇒ 改必填，测试显式传；缺省只是写法便利、不改变结果 ⇒ 不动，在 §24.25 后写「不做」加理由。不要为降低可选字段数量而改。
-   - 验证：改必填是类型层改动，zd 应 DIFF 0；vue-tsc 会列出所有要补的测试调用点。
-2. CC-166 仍暂缓（需规格）。
+1. **CC-180：赠送目标改在槽位空间解析**。
+   - 起点：`src/core/resource/crossAgentSupply.ts`（目标解析，`crossAgentSupplyAt` / `ultimateGiftOf`），以及 `grep -rn teamSize src/core src/mechanics` 的全部读取点（苍角 / 露西 / 丽娜的 `perTargetAmounts`、`neighborUltEnergy`）。
+   - 做法：由 `cfg.slot` 算「上一位队友」所在槽位，再在 `configs` 里按 slot 找回下标；找不到就不赠。空槽规则（跳过还是落空）先查 catalog 原文，拿不准选「跳过空槽」，写回退点。
+   - 验证：满编 zd 应 DIFF 0；退化配置用 `/home/kaua/calc-arch/k202/probe202.test.ts` 复跑（临时复制到 `src/composables/__tests__/zztmp/`，`PROBE_OUT=… npx vitest run …`，跑完删掉），对比 §24.26 表。
+2. CC-181：CC-179 余项（清单在 §24.26 末与 `k202/scan.tsv`）。
+3. CC-166 仍暂缓（需规格）。
 
 **已知坑**
+- core 输入加可选字段前先想：缺省会不会静默改变结果？会就做成必填（CC-179 判据）。普查可复用 `/home/kaua/calc-arch/k202/scan179.cjs`。
+- 跨槽位量（赠送目标、邻位能量）的队长一律用 `config.teamSize`（含空槽），不要用 `configs.length`；但注意它和 `configs` 下标空间不对齐（CC-180 待修）。
 - zd 的 dump 第 2 段是整个 `resourceResult` 的哈希：**删 / 改名结果对象字段**会让几乎所有预设 DIFF，即使数值零差。用 `ZD_DROP=<键1>,<键2> bash .zc/perf/zd.sh <tag>` 在两边都排除这些键再比（第 201 轮加在 `.zc/perf/dump.perf.ts` / `rowsnap.perf.ts` 第 26 行的 `KEY_DROP`；`.zc/` 不进 git，若被重置，就把 `...(process.env.ZD_DROP ?? '').split(',').filter(Boolean)` 重新加回那个 Set）。先用逐段统计确认只有第 2 段变，再用 ZD_DROP 证明零差。
 - `git mv` 过的文件，提交时 `git add` 只写新路径（旧路径已不存在，写上会让整条 add 失败）。
 - 伤害池伤害一律走 `src/composables/resourceCalc/poolDamage.ts`（CC-176 / 177）：直伤 `calcPoolDirectDamage`、异常 `calcPoolAnomalyDamage`。新环境量加进 `PoolDamageEnv`，新行级字段加进对应 Row；模块里用 `ExtraAnomalyRowsInput.directDamage` / `.anomalyDamage`，不要 import core 伤害函数自拼（自拼就会漏掉正路后加的量，比如侵染染色属性）。异常行的减防减抗只传面板**之外**的额外量。

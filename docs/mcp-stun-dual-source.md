@@ -1236,3 +1236,27 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - `timeOccupation.ts`：本轮 CC-178 已删，命中的是新注释本身；
   - `core/anomalyPool/helpers.ts:1189`：`calcTurbulenceDamage` 的 `agentMechanics` 缺省时不结算风蚀。生产唯一调用链是 `roundInputs.ts:118` → `calcAnomalyPool`（传 `getRegisteredAgentMechanics()`）→ `anomalyPool.ts:314`，始终会传；`corrosion.ts` 头注释已登记为「已知语义差，可接受」。无问题，但属于「缺省值静默改变结果」一类，列入 CC-179；
   - `mechanics/agents/xide.ts:150/164`：`oocAtkOf` 拿不到时回退 `level60.atkBase`，只有测试手搓 cfg 会走到。无问题。
+
+### 24.26 CC-179：core 输入「可选只为测试方便」的字段普查（第 202 轮，8aba58f5）
+- **扫描器**：`/home/kaua/calc-arch/k202/scan179.cjs`（cwd = 仓库根，`node … > scan.tsv`，约 5s）。对 core 导出函数 / 输入接口的每个可选字段，统计**全部**生产调用方是否都传（含只有 1 个生产调用方的函数——scan175 漏的那类）。分类：ALL 146（都传）/ NONE 14（都不传）/ SOME 27（部分传）/ SPREAD 15（经展开传入、静态看不出）。SOME 与 SPREAD 已逐条看完。不进 scripts/（一次性普查工具，进仓库就要维护、要过 CG；需要时从 calc-arch 复制，回退成本零）。
+- **判据**（沿用卡面）：缺省会静默改变结果 ⇒ 改必填，测试显式传；缺省不改变结果 ⇒ 不动，写「不做」加理由。
+- **结论 1：`AnomalyPoolInput.agentMechanics` 改必填（做）**。缺省不仅不结算风蚀，还会**静默跳过全部 `transformAnomalyPool` 钩子**（`anomalyPool.ts` 原 `?? []`）。连带：`calcTurbulenceDamage`、`corrosion.ts` 的 `resolveAnomalyCorrosionSource` / `resolveAnomalyCorrosionEvents` 参数去掉 `| undefined` 与 `if (!agentMechanics)`；`corrosion.ts` 头注释的「已知语义差」改为「已必填、已消除」。测试补 `agentMechanics: []`（onStunBuildup ×2；agentMechanicViewCc71 的 `undefined` 用例改 `[]`）。anomalyPool.test 各调用已经传了，不用补。
+- **结论 2：`CrossAgentSupplyQuery.teamSize`：账本补传（做）**。
+  - 现状：赠送目标槽共有四处消费。`foldLoop`、`underfillProbe`、`tailPipeline`（以及行口径 `chainGiftRowSpec` / `ultimateGiftRowSpec`）都传 `config.teamSize`；只有账本 `resource/helpers.ts#iterate` 的 `crossAgentSupplyAt` / `ultimateGiftOf` 没传，回落到 `configs.length`。
+  - 两者差在哪：`configs` 是压缩数组，只含已配置角色（`useResourceCalc.ts:106`）；`teamSize = configStore.team.length`，含空槽（`convergence.ts:673`）。满编时相等；退化配置时不同。
+  - 修法：`iterate` 两处传 `teamSize: globalCfg.teamSize`，四处同源，与编排层 `chainGift.ts:51`、`ultimatePromote.ts:212` 一致。顺带改正 `types/resource/config.ts#teamSize` 注释（原说「账本 / 试探仍用 configs.length」，实际只有账本如此；引用的 `giftRowTargetSlot` 已不存在）和 `tailPipeline.ts` 两处同类注释。
+  - **退化配置探针**（`k202/probe202.test.ts`，临时放进仓库跑完即删；无推荐配装）：
+
+    | 队伍 | 旧：总伤 / 艾莲 nec | 新：总伤 / 艾莲 nec | 行数 |
+    |---|---|---|---|
+    | 琉音 / 空 / 空 | 697096 | 697096（同） | 15 = 15 |
+    | 琉音 / 艾莲 / 空 | 2040657 / 77.807 | 2041086 / 77.435 | 29 = 29 |
+    | 空 / 琉音 / 艾莲 | 2040657 / 77.807 | 2041086 / 77.435 | 29 = 29 |
+    | 艾莲 / 琉音 / 空 | 2302721 | 2302721（同） | 32 = 32 |
+
+    解读：旧版账本按 2 人环绕，把琉音的赠大算给艾莲、给她扣了必要时间；行口径按 3 人环绕，目标下标 2 不存在，赠行从未出现（两版行数相同）⇒ **账本给不存在的行预留时间**。新版两边一致（都不赠），总伤 +0.02%。单角色时两版逐位相同（自赠已由别处挡住）。
+  - **仍然错的部分转 CC-180**：在 `configs` 下标空间里用含空槽的队长做环绕，本身就不对（上表第 2、3 行赠送丢失；第 3 行在槽位空间里「上一位」是空槽 0，是否该环绕到槽 2 需按规格定）。修法：在槽位空间（`cfg.slot`）解析目标，再映射回下标；同批覆盖苍角 / 露西 / 丽娜的 `perTargetAmounts` 与 `neighborUltEnergy` 相关 teamSize 读法。
+- **结论 3：`CrossAgentSupplyQuery.axisMode`：不做**。只有琉音 `gift-chain:ultimate` 声明了 `axisSuppressed`，`ultimateGiftOf` 的 4 处调用都传了 axisMode；`crossAgentSupplyAt` 的 4 处调用只查 `gift-chain:chain`（诺姆），不声明 axisSuppressed，缺省不改变结果。**隐患**：将来若有 chain 类提供者声明 `axisSuppressed`，这 4 处会静默失效——加这类提供者时必须同时给 4 处补传 `axisMode`（或届时改必填）。
+- **余项（未判，转 CC-181）**：`calcStunPool` 输入的 `enemyStunResistance`（单数）生产从未传，疑似遗留字段；wEngine ctx 中未传的若干字段；`guaranteeStunShortfall` 的 `target` / `minGainRatio`、`decomposeSet` 的 `coverage` 为默认参数，需确认默认值合理。清单在 `k202/scan.tsv` 的 NONE / SOME 行。
+- **验证**：vue-tsc 无新错误；zd（cc179）dump / rows 均 DIFF 0（满编预设 teamSize = configs.length）；verify VRC=0；CG 25 项通过。
+- **回退点**：revert 8aba58f5。只回退 teamSize 部分：删 `resource/helpers.ts#iterate` 的两行 `teamSize:`。
