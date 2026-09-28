@@ -1681,3 +1681,17 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **已知近似**：异放事件次数取资源次数，不跟随装配截断；目前各队截断均为 0，若将来出现截断，行次数会小于事件次数（新测试的「行合计 = 事件次数」会报红，届时按物理次数改事件侧）。甜心律动 #4 的应援能量按整段普攻池折算，没有扣掉第三段占用的时间，属于轻微高估。
 - **验证**：独立 worktree `/home/kaua/calc-arch/wt220`（HEAD + 本卡文件；主工作区里另一个 lane 正在改 `src/stores/catalog.ts` 的加载状态，套预设的测试会抛 `buildRecsLoaded=false`）。vue-tsc 0；新测试 `src/mechanics/__tests__/airePitchRowsCc197.test.ts` 4 条（同源、C6 强化 +40%、派发器数组化、1501-1511-1411 净占用 overflow 0）；aire / inStunAttribution 全绿；golden 与留白棘轮逐条解释后重生成；`moduleAnomalyEventRecords.test.ts` 四组含爱芮的期望更新（r0 爱芮触发 10→15、lead-empty 13→17 ⇒ 蕾米虚耀池同增；j0c6 / j2c6 简 6 命附伤 10→8，爱芮第三段占前台），头注释写明归因；verify EXIT=0（3845）。
 - **回退点**：`git revert 2af8c466`。只撤爱芮：删掉 aire.ts 模块里的 `extraNecessaryAction: aireExtraNecessaryActions` 一行即可（通用扩展对蕾米埃尔零差，可以保留）。
+
+### 24.45 CC-198：千夏 1491008「特别拍照技巧」计入凝视标记——新增通用行快照 `prePatchExecutions`（第 221 轮，3d0217e3）
+
+- **起点**：§24.42「已知缺口 1」。1491008 是引擎的额外强特行（`src/data/exSpecialPlans.ts`），在 `core/resource/rowBuild.ts` 里于模块 `buildExecutions` **之后**才物化，千夏在 buildExecutions 里数标记供给时看不到它，标记恒少计。
+- **做法（方案 a）**：
+  - **通用**：`rowBuild.ts#buildExecutions` 与 `phaseExecutions.ts#buildExecutionsWithPhase` 加可选出参 `patchInputRows`，在调用 `patchExecutions` 前快照；`assembleSlot.ts` 把它作为 `AgentResourceResultInput.prePatchExecutions` 传给 `buildResourceResult`。这与现有的 `moduleInputRows` → `preModuleExecutions`（buildExecutions 钩子看到的行）完全对称：「钩子在哪个阶段产行，展示层就读哪个阶段的行快照」。快照是浅拷贝（数组新建、行对象共享），只能读 moveId / count / 时长，不要读 patch 会改写的字段（类型注释已写明）。其他调用方不传就不受影响。
+  - **千夏**（`mechanics/agents/qianxia.ts`）：凝视 / 泡泡产行从 `buildExecutions` 挪到 `patchExecutions`（这些行都是 backstage、totalTime 0、倍率自带，放在末尾不影响时间或计数通道）；`buildResourceResult` 改读 `prePatchExecutions`，产行与展示仍对同一批行调用同一个纯函数 `markSupplyOf`。
+- **没选方案 (b)**（模块自己按 `resolveExtraExCount` 复算 1491008 次数）：重复引擎逻辑，窗口口径一改就会分叉。
+- **影响**：
+  - harness（推荐配装）：千夏-妮可-猫又 供给 16→20；悠真-千夏-耀嘉音 14→18、凝视 14→18、总伤 +0.21%；雅-千夏-青衣 8→12、+0.56%。
+  - golden：6 支千夏队伤害 +0.05%～+0.11%（auto-1321-1481-1491、1431-1491-1341、1431-1491-1311、1431-1481-1491、1201-1481-1491、1021-1571-1491），时间账零变化，其他条目零差；留白棘轮和 moduleAnomalyEventRecords 全绿。注意：golden 的预设里**有**千夏队，zd 的 625 个预设里**没有**。
+- **测试**：`qianxia.test.ts` 三处单测直调改为 `patchExecutions!`；`basicSegmentFoldCc195.test.ts` 的 cardHits 补上 1491008。后者断言「展示层供给 = 按最终行数出来的期望值」，同时守住展示与产行同源。
+- **验证**：vue-tsc 0；verify EXIT=0（3845，在 worktree `/home/kaua/calc-arch/wt221` 里跑，排除主工作区里其他 lane 的未跟踪测试）；check-guards 通过。
+- **回退点**：`git revert 3d0217e3`。只撤千夏：把 `patchExecutions: buildQianxiaExecutions` 改回 `buildExecutions:`、展示改回读 `preModuleExecutions`（通用快照没有消费者也无害，可以保留）。
