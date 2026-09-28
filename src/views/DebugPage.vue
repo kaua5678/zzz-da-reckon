@@ -105,6 +105,7 @@ import { computePanel, resolveSlotPanelBuffInputs } from '@/composables/resource
 import { effectAtModLevel, wEngineEffectBlockReason } from '@/composables/wEngineEffectDisplay'
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt, pct, localized } from '@/utils/format'
+import { elementStatKey } from '@/utils/elementStatKeys'
 // `isPctStat` = **展示**口径（lineValue 的格式化），`statSettlementMode` = **结算**口径（全局 Buff 的 mode 实参）
 import { getStatMeta, isPctStat, phaseStatLabel, statSettlementMode } from '@/utils/statMeta'
 import type { BuffEffect, BuffGroup, PanelValues, TeammateBuff } from '@/types/catalog'
@@ -326,24 +327,16 @@ function lineValue(stat: string): string {
 }
 
 function elementDmgKey(): string {
-  const element = selectedAgent.value?.damageElement
-  const map: Record<string, string> = {
-    physical: 'physicalDmg',
-    fire: 'fireDmg',
-    ice: 'iceDmg',
-    electric: 'electricDmg',
-    ether: 'etherDmg',
-    wind: 'windDmg',
-    lumiflux: 'lumifluxDmg',
-  }
-  return element ? map[element] ?? 'dmgBonus' : 'dmgBonus'
+  // CC-224：单一来源 utils/elementStatKeys（调试页保留旧回落 dmgBonus）
+  return elementStatKey('dmg', selectedAgent.value?.damageElement) ?? 'dmgBonus'
 }
 
 function elementSheerDmgBonus(): number {
   const p = currentPanel.value
   const element = selectedAgent.value?.damageElement
   if (!p || !element) return 0
-  return p[`${element}SheerDmg`] ?? 0
+  const key = elementStatKey('sheerDmg', element)
+  return key ? p[key] ?? 0 : 0
 }
 
 const attributeFormulaSections = computed(() => {

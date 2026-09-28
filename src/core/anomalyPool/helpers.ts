@@ -51,7 +51,8 @@ import type {
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
-import { VARIANT_ELEMENT_TO_BASE, getBaseElement, elementAnomalyBuildUpEfficiency } from '@/data/anomalyElement'
+import { VARIANT_ELEMENT_TO_BASE, getBaseElement, elementAnomalyBuildUpEfficiency, resolveStatElement } from '@/data/anomalyElement'
+import { elementStatKey } from '@/utils/elementStatKeys'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { LEVEL_COEFF_60, LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
@@ -558,35 +559,15 @@ export function round(value: number, decimals = 2): number {
   return Number(fmt(value, decimals).replace(/,/g, ''))
 }
 
-/**
- * 属性数值口径的元素解析（用户口径 2026-09-05）：雅的烈霜(frostfire)在一切【元素→数值】查找里
- * 按冰族读——冰伤/敌方冰抗/冰减抗/冰积蓄效率等全同冰（此前 frostfire 在 damage.ts 的增伤表与
- * ELEMENT_FIELD_PREFIX 里缺位，冰伤冰抗全部落空）。烈霜的特别之处只在异常身份：独立积蓄槽、
- * 可与冰互相紊乱（而非同种覆盖）——身份判断（覆盖/紊乱/持续时间/阈值）继续用 getBaseElement /
- * 精确元素 key，不经过本映射。与 VARIANT_ELEMENT_TO_BASE 的区别：后者是"继承基础元素公式"的
- * 变种登记表（会把身份语义一并带过去），frostfire 有独立的持续时间/紊乱公式，不进那张表。
- */
-export function resolveStatElement(element?: string): string | undefined {
-  if (!element) return element
-  const base = getBaseElement(element)
-  return base === 'frostfire' ? 'ice' : base
-}
+// resolveStatElement：单一来源 `@/data/anomalyElement`（CC-224，utils/elementStatKeys 与展示层也要用），此处原名转出
+export { resolveStatElement }
 
 /**
  * 获取元素伤害加成对应的 PanelValues 字段名
  */
 export function getElementDmgKey(element: string): string {
-  const statElement = resolveStatElement(element)
-  switch (statElement) {
-    case 'physical':  return 'physicalDmg'
-    case 'fire':      return 'fireDmg'
-    case 'ice':       return 'iceDmg'
-    case 'electric':  return 'electricDmg'
-    case 'ether':     return 'etherDmg'
-    case 'wind':      return 'windDmg'
-    case 'lumiflux':  return 'lumifluxDmg'
-    default:          return (statElement ?? '') + 'Dmg'
-  }
+  // CC-224：查表走 utils/elementStatKeys；未知元素保留旧回落 `${statElement}Dmg`（面板无此字段 ⇒ 读 0，逐位等价）
+  return elementStatKey('dmg', element) ?? ((resolveStatElement(element) ?? '') + 'Dmg')
 }
 
 /** 获取面板中指定元素的伤害加成（百分比） */

@@ -8,7 +8,7 @@
  *   ② 招式查找 `findMoveById`（壳）/ `findMoveByEnglishName` + 平A基准段挑选
  *      `pickThirdNamedBasicSegment`（壳）/ `getBasicComboMoves` / `averageBasicRows`
  *   ③ 行分类与派生量 `isHealingRow` / `getHealingAmount` / `getSpecialResourceRecovery`
- *   ④ 元素 → 面板键映射表 `ELEMENT_DMG_KEYS` / `ELEMENT_DEF_REDUCTION_KEYS` / `ELEMENT_RES_REDUCTION_KEYS`
+ *   ④（已删，CC-224）元素 → 面板键映射表：现为 `@/utils/elementStatKeys`
  *
  * 迁移纪律：逐字节剪切，算式/常量值/条件/求值顺序零改动（搬迁的两段在源文件里不连续，
  * 中间隔着 D 簇「异常虚拟面板」——本刀**只**取 C 簇，不碰 D 簇）。
@@ -37,11 +37,7 @@ import type { SkillExecution } from '@/types/resource'
 import { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment } from '@/data/moveTableQueries'
 export { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment }
 
-// ---- 3 张元素键映射表的定义已下沉 `core/elementKeys.ts`（CC-19c-1，2026-09-26），这里是壳 ----
-// ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**（同上方 4 个纯查询的教训）。
-// ⚠ 改这三张表请去 `core/elementKeys.ts`，不要在本文件重建同形常量。
-import { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS } from '@/core/elementKeys'
-export { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS }
+// ---- 元素 → 面板字段名：CC-224 起单一来源 `@/utils/elementStatKeys`（原 3 张表与本壳已删，不要在此重建） ----
 
 export function isHealingRow(row: any): boolean {
   const id = String(row.id ?? '').toLowerCase()

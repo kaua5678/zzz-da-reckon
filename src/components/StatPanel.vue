@@ -505,6 +505,7 @@ import { getStatMeta, isPctStat } from '@/utils/statMeta'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { elementAnomalyBuildUpEfficiency } from '@/data/anomalyElement'
+import { elementStatKey } from '@/utils/elementStatKeys'
 
 const props = defineProps<{
   panel: PanelValues
@@ -582,16 +583,6 @@ const ELEMENT_FIELD_PREFIX_BY_ELEMENT: Record<string, string> = {
   lumiflux: 'Lumiflux',
 }
 
-const ELEMENT_DMG_KEY_BY_ELEMENT: Record<string, string> = {
-  physical: 'physicalDmg',
-  fire: 'fireDmg',
-  ice: 'iceDmg',
-  electric: 'electricDmg',
-  ether: 'etherDmg',
-  wind: 'windDmg',
-  lumiflux: 'lumifluxDmg',
-}
-
 const ELEMENT_NAME_BY_ELEMENT: Record<string, string> = {
   physical: '物理',
   fire: '火属性',
@@ -612,16 +603,6 @@ const ELEMENT_DMG_LABELS: Record<string, string> = {
   lumifluxDmg: '辉光属性伤害加成',
 }
 
-const ELEMENT_SHEER_DMG_KEY_BY_ELEMENT: Record<string, string> = {
-  physical: 'physicalSheerDmg',
-  fire: 'fireSheerDmg',
-  ice: 'iceSheerDmg',
-  electric: 'electricSheerDmg',
-  ether: 'etherSheerDmg',
-  wind: 'windSheerDmg',
-  lumiflux: 'lumifluxSheerDmg',
-}
-
 const ELEMENT_SHEER_DMG_LABELS: Record<string, string> = {
   physicalSheerDmg: '物理贯穿增伤',
   fireSheerDmg: '火属性贯穿增伤',
@@ -633,7 +614,7 @@ const ELEMENT_SHEER_DMG_LABELS: Record<string, string> = {
 }
 
 const elementDmg = computed(() => {
-  const key = props.damageElement ? ELEMENT_DMG_KEY_BY_ELEMENT[props.damageElement] : undefined
+  const key = elementStatKey('dmg', props.damageElement)
   if (key) return props.panel[key] ?? 0
   const p = props.panel
   return Math.max(p.physicalDmg, p.fireDmg, p.iceDmg,
@@ -642,7 +623,7 @@ const elementDmg = computed(() => {
 
 const elementDmgRows = computed(() => {
   const p = props.panel
-  const currentKey = props.damageElement ? ELEMENT_DMG_KEY_BY_ELEMENT[props.damageElement] : undefined
+  const currentKey = elementStatKey('dmg', props.damageElement)
   return Object.entries(ELEMENT_DMG_LABELS)
     .filter(([key]) => !compactPreview.value || !currentKey || key === currentKey)
     .map(([key, label]) => ({ key, label, value: p[key] ?? 0 }))
@@ -655,7 +636,7 @@ const dmgMultiplier = computed(() => {
 
 const elementSheerDmgRows = computed(() => {
   const p = props.panel
-  const currentKey = props.damageElement ? ELEMENT_SHEER_DMG_KEY_BY_ELEMENT[props.damageElement] : undefined
+  const currentKey = elementStatKey('sheerDmg', props.damageElement)
   return Object.entries(ELEMENT_SHEER_DMG_LABELS)
     .filter(([key]) => !currentKey || key === currentKey)
     .map(([key, label]) => ({ key, label, value: p[key] ?? 0 }))

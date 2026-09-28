@@ -11,20 +11,12 @@ import { defenseMultiplierDetail, resistanceMultiplierDetail } from './damageMul
 import { getSkillDmgBonus, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
 import { fmt } from '@/utils/format'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
+import { elementStatKey } from '@/utils/elementStatKeys'
 
 /** 获取元素伤害加成（属性数值口径经 resolveStatElement：frostfire 按冰） */
 function getElementDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
   if (!element) return 0
-  const map: Record<string, string> = {
-    physical: 'physicalDmg',
-    fire: 'fireDmg',
-    ice: 'iceDmg',
-    electric: 'electricDmg',
-    ether: 'etherDmg',
-    wind: 'windDmg',
-    lumiflux: 'lumifluxDmg',
-  }
-  const stat = map[resolveStatElement(element) ?? '']
+  const stat = elementStatKey('dmg', element) // CC-224 单一来源（内部已 resolveStatElement）
   return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
 }
 

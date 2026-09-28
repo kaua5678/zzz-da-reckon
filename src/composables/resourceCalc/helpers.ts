@@ -211,9 +211,6 @@ export const elementLabel = damageElementLabel
 import {
   getRowValue,
   fusedRowValue,
-  ELEMENT_DMG_KEYS,
-  ELEMENT_DEF_REDUCTION_KEYS,
-  ELEMENT_RES_REDUCTION_KEYS,
   findMoveById,
   findMoveByEnglishName,
   isHealingRow,
@@ -227,9 +224,6 @@ import {
 export {
   getRowValue,
   fusedRowValue,
-  ELEMENT_DMG_KEYS,
-  ELEMENT_DEF_REDUCTION_KEYS,
-  ELEMENT_RES_REDUCTION_KEYS,
   findMoveById,
   findMoveByEnglishName,
   isHealingRow,

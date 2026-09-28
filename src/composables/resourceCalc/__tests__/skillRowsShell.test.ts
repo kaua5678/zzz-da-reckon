@@ -27,9 +27,7 @@ import { join } from 'node:path'
 const C_EXPORTS = [
   'getRowValue',
   'fusedRowValue',
-  'ELEMENT_DMG_KEYS',
-  'ELEMENT_DEF_REDUCTION_KEYS',
-  'ELEMENT_RES_REDUCTION_KEYS',
+  // CC-224：3 张元素键表已删（单一来源 utils/elementStatKeys），不再经壳转出
   'findMoveById',
   'findMoveByEnglishName',
   'isHealingRow',

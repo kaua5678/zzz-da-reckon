@@ -23,7 +23,7 @@ import { fmt } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
-import { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS } from '@/core/elementKeys'
+import { panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById } from '@/data/moveTableQueries'
 import { channelMetricsOf } from '@/core/resource/moveLookup'
 
@@ -88,7 +88,7 @@ function buildRemielleResourceSections({ result }: AgentResourceSectionsInput) {
 // 自 `composables/resourceCalc/anomalyPanels.ts` 逐字迁入（算式/常量值/条件/求值顺序零改动）。
 // `anomalyPanels.ts` 保留 import + export 壳 ⇒ `helpers.ts` / `useResourceCalc.ts` /
 // `damagePoolAnomaly.ts` / 既有测试的 import 路径零改动。依赖只有 `@/core/skillLevel` /
-// `@/core/elementKeys` / `@/utils/format` / `@/types/catalog` 类型。
+// `@/utils/elementStatKeys`（CC-224 前为 `@/core/elementKeys`）/ `@/utils/format` / `@/types/catalog` 类型。
 // ============================================================================
 export function getRemielleLevelValue(row: SkillMove['rows'][number] | undefined, skillLevelBonus: number): number {
   if (!row) return 0
@@ -150,13 +150,13 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
   const { sourcePanel: source, remiellePanel: remielle, multiplier, element, enemyDefense, enemyResistances, stunMultiplier, stunned, cinema1ResIgnore } = input
 
   const baseDmg = source.atk * (multiplier / 100)
-  const elementDmg = source[ELEMENT_DMG_KEYS[element]] ?? 0
+  const elementDmg = panelElementStat(source, 'dmg', element)
   const dmgMult = 1 + ((source.dmgBonus ?? 0) + elementDmg) / 100
   const profMult = (source.anomalyProficiency ?? 0) / 100
 
   const remielleDefReduction = (remielle.enemyDefReduction ?? 0)
     + (remielle.enemyAnomalyDefReduction ?? 0)
-    + (remielle[ELEMENT_DEF_REDUCTION_KEYS[element]] ?? 0)
+    + panelElementStat(remielle, 'enemyDef', element)
   // 防御 / 抗性乘区与等级系数：单一来源 core/damageMultipliers（CC-219，原手写同式）
   const { multiplier: defMult } = defenseMultiplierDetail(
     enemyDefense, remielleDefReduction, remielle.enemyDefFlatReduction ?? 0, source.penRatio ?? 0, source.penFlat ?? 0,
@@ -166,7 +166,7 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
 
   const baseRes = enemyResistances[element] ?? 0
   const sourceResReduction = (source.enemyResReduction ?? 0)
-    + (source[ELEMENT_RES_REDUCTION_KEYS[element]] ?? 0)
+    + panelElementStat(source, 'enemyRes', element)
     + cinema1ResIgnore
   const resMult = resistanceMultiplierDetail(baseRes, sourceResReduction).multiplier
 

@@ -105,6 +105,7 @@ import { collectHpSources, hpBreakdownTotals } from '@/composables/hpSourceBreak
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { clampCritRatePct, expectedCritMultiplier } from '@/data/critMultiplier'
 import { isPctStat } from '@/utils/statMeta'
+import { elementStatKey } from '@/utils/elementStatKeys'
 import { fmt, pct } from '@/utils/format'
 import type { PanelValues } from '@/types/catalog'
 
@@ -117,23 +118,6 @@ onMounted(async () => {
 })
 
 /** 元素 → 面板增伤字段 */
-const ELEMENT_DMG_KEYS: Record<string, string> = {
-  physical: 'physicalDmg', fire: 'fireDmg', ice: 'iceDmg', electric: 'electricDmg',
-  ether: 'etherDmg', wind: 'windDmg', lumiflux: 'lumifluxDmg',
-}
-const ELEMENT_RES_KEYS: Record<string, string> = {
-  physical: 'enemyPhysicalResReduction', fire: 'enemyFireResReduction', ice: 'enemyIceResReduction',
-  electric: 'enemyElectricResReduction', ether: 'enemyEtherResReduction', wind: 'enemyWindResReduction',
-  lumiflux: 'enemyLumifluxResReduction',
-}
-const ELEMENT_SHEER_KEYS: Record<string, string> = {
-  physical: 'physicalSheerDmg', fire: 'fireSheerDmg', ice: 'iceSheerDmg',
-  electric: 'electricSheerDmg', ether: 'etherSheerDmg', wind: 'windSheerDmg', lumiflux: 'lumifluxSheerDmg',
-}
-const ELEMENT_SHARP_KEYS: Record<string, string> = {
-  physical: 'physicalSharpDmg', fire: 'fireSharpDmg', ice: 'iceSharpDmg',
-  electric: 'electricSharpDmg', ether: 'etherSharpDmg', wind: 'windSharpDmg', lumiflux: 'lumifluxSharpDmg',
-}
 
 interface FinalRow { stat: string; label: string; out: string; in: string; delta: number; deltaText: string }
 interface ZoneSummary { title: string; main: string; lines: string[] }
@@ -174,10 +158,11 @@ const panels = computed(() => {
     const agent = catalogStore.getAgent(char.agentId)
     const name = agent?.name?.zhCN || char.agentId
     const element = agent?.damageElement ?? ''
-    const elementDmgKey = ELEMENT_DMG_KEYS[element] ?? 'dmgBonus'
-    const elementResKey = ELEMENT_RES_KEYS[element] ?? 'enemyResReduction'
-    const elementSheerKey = ELEMENT_SHEER_KEYS[element] ?? ''
-    const elementSharpKey = ELEMENT_SHARP_KEYS[element] ?? ''
+    // CC-224：单一来源 utils/elementStatKeys（经 resolveStatElement）。无元素 ⇒ undefined，不再回落通用字段（旧 `?? 'dmgBonus'` 会把通用增伤算两遍）
+    const elementDmgKey = elementStatKey('dmg', element)
+    const elementResKey = elementStatKey('enemyRes', element)
+    const elementSheerKey = elementStatKey('sheerDmg', element) ?? ''
+    const elementSharpKey = elementStatKey('sharpDmg', element) ?? ''
     const isRupture = agent?.specialty === 'rupture'
     const isSharpen = agent?.specialty === 'sharpen'
     const penPower = pIn.atk * 0.3 + pIn.hp * 0.1 + (pIn.sheerForceFlat ?? 0)
@@ -210,7 +195,7 @@ const panels = computed(() => {
     // 直伤增伤区：只有通用/元素/招式三类（锐化/贯穿/异常/紊乱是独立乘区）
     const dmgRows: FinalRow[] = [
       makeRow(pOut, pIn, 'dmgBonus', '通用增伤'),
-      makeRow(pOut, pIn, elementDmgKey, `元素增伤（${element}）`),
+      ...(elementDmgKey ? [makeRow(pOut, pIn, elementDmgKey, `元素增伤（${element}）`)] : []),
       makeRow(pOut, pIn, 'skillDmgBonus', '全招式增伤'),
     ]
     for (const r of skillTargeted) {
@@ -222,18 +207,14 @@ const panels = computed(() => {
 
     // 锐化增伤区（锋御独立乘区，直伤公式 3.5）
     const sharpRows: FinalRow[] = [makeRow(pOut, pIn, 'sharpDmgBonus', '锐化增伤（通用）')]
-    for (const [el, key] of Object.entries(ELEMENT_SHARP_KEYS)) {
-      if (el === element) sharpRows.push(makeRow(pOut, pIn, key, `元素锐化增伤（${el}）`))
-    }
+    if (elementSharpKey) sharpRows.push(makeRow(pOut, pIn, elementSharpKey, `元素锐化增伤（${element}）`))
 
     // 贯穿增伤区（命破独立乘区，直伤公式 4）
     const sheerRows: FinalRow[] = [
       makeRow(pOut, pIn, 'penDmgBonus', '贯穿增伤'),
       makeRow(pOut, pIn, 'sheerDmgBonus', '贯穿伤害提升'),
     ]
-    for (const [el, key] of Object.entries(ELEMENT_SHEER_KEYS)) {
-      if (el === element) sheerRows.push(makeRow(pOut, pIn, key, `元素贯穿增伤（${el}）`))
-    }
+    if (elementSheerKey) sheerRows.push(makeRow(pOut, pIn, elementSheerKey, `元素贯穿增伤（${element}）`))
 
     // 暴击区（直伤暴击；异常暴击在异常区）
     const critRows = [
@@ -246,7 +227,7 @@ const panels = computed(() => {
 
     const debuffRows = [
       makeRow(pOut, pIn, 'enemyResReduction', '全属性减抗'),
-      makeRow(pOut, pIn, elementResKey, `元素减抗（${element}）`),
+      ...(elementResKey ? [makeRow(pOut, pIn, elementResKey, `元素减抗（${element}）`)] : []),
       makeRow(pOut, pIn, 'enemyDefReduction', '减防（%）'),
       makeRow(pOut, pIn, 'enemyDefFlatReduction', '减防（固定）'),
       makeRow(pOut, pIn, 'enemyDamageTakenBonus', '敌人受伤害提升（易伤）'),
@@ -295,7 +276,8 @@ const panels = computed(() => {
     ]
 
     // ---- 乘区数值汇总（直伤链 / 异常链，按公式位置） ----
-    const elementDmg = pIn[elementDmgKey] ?? 0
+    const elementDmg = elementDmgKey ? pIn[elementDmgKey] ?? 0 : 0
+    const elementRes = elementResKey ? pIn[elementResKey] ?? 0 : 0
     const skillDmg = pIn.skillDmgBonus ?? 0
     const dmgTotal = (pIn.dmgBonus ?? 0) + elementDmg + skillDmg
     const critRateRaw = pIn.critRate ?? 0
@@ -306,7 +288,7 @@ const panels = computed(() => {
       : expectedCritMultiplier(critRateRaw, pIn.critDmg ?? 0)
     const sharpTotal = (pIn.sharpDmgBonus ?? 0) + (elementSharpKey ? (pIn[elementSharpKey] ?? 0) : 0)
     const penDmgTotal = (pIn.penDmgBonus ?? 0) + (pIn.sheerDmgBonus ?? 0) + (elementSheerKey ? (pIn[elementSheerKey] ?? 0) : 0)
-    const resTotal = (pIn.enemyResReduction ?? 0) + (pIn[elementResKey] ?? 0)
+    const resTotal = (pIn.enemyResReduction ?? 0) + elementRes
     const stunMultTotal = (pIn.stunDmgMultiplierBonus ?? 0) + (pIn.stunDmgMultiplierBonusAlways ?? 0)
     // CC-223：风异常增伤只对风属性异常生效（引擎按异常元素判定：damage.ts / anomalyPool helpers），不并入通用异常增伤，单列
     const anomalyDmgTotal = pIn.anomalyDmgBonus ?? 0
@@ -355,7 +337,7 @@ const panels = computed(() => {
           },
       {
         title: '抗性削减 / 易伤 / 失衡',
-        main: `全 ${pct(pIn.enemyResReduction ?? 0)} + ${element} ${pct(pIn[elementResKey] ?? 0)} = ${pct(resTotal)}`,
+        main: `全 ${pct(pIn.enemyResReduction ?? 0)} + ${element} ${pct(elementRes)} = ${pct(resTotal)}`,
         lines: [
           `敌人受伤害 +${pct(pIn.enemyDamageTakenBonus ?? 0)} · 失衡易伤 +${pct(stunMultTotal)} · 暴击易伤 +${pct(pIn.enemyCritDmgTakenBonus ?? 0)}`,
           `冲击力 ${fmt(pIn.impact, 0)} · 失衡值提升 ${pct(pIn.stunBuildUpBonus ?? 0)}${stunTargeted.map(r => ` + ${r.label} ${pct(r.value)}`).join('')} · 失衡时长 +${fmt(pIn.stunDurationBonusSeconds ?? 0, 1)}s`,

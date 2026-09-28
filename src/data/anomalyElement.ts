@@ -25,6 +25,20 @@ export function getBaseElement(element: string): string {
   return VARIANT_ELEMENT_TO_BASE[element] ?? element
 }
 
+/**
+ * 属性数值口径的元素解析（用户口径 2026-09-05）：雅的烈霜(frostfire)在一切【元素→数值】查找里
+ * 按冰族读——冰伤/敌方冰抗/冰减抗/冰积蓄效率等全同冰。烈霜的特别之处只在异常身份：独立积蓄槽、
+ * 可与冰互相紊乱（而非同种覆盖）——身份判断（覆盖/紊乱/持续时间/阈值）继续用 getBaseElement /
+ * 精确元素 key，不经过本映射。与 VARIANT_ELEMENT_TO_BASE 的区别：后者是"继承基础元素公式"的
+ * 变种登记表（会把身份语义一并带过去），frostfire 有独立的持续时间/紊乱公式，不进那张表。
+ * （CC-224 自 core/anomalyPool/helpers.ts 逐字迁入，helpers 原名转出。）
+ */
+export function resolveStatElement(element?: string): string | undefined {
+  if (!element) return element
+  const base = getBaseElement(element)
+  return base === 'frostfire' ? 'ice' : base
+}
+
 /** 元素限定的异常积蓄效率（百分点；按基础元素读 `<元素>AnomalyBuildUpEfficiency`，无该字段的元素为 0） */
 export function elementAnomalyBuildUpEfficiency(panel: PanelValues, element: string): number {
   const baseElement = getBaseElement(element)

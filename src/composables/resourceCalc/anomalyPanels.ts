@@ -29,7 +29,7 @@ import { getAgentMechanic } from '@/mechanics'
 import type { AnomalyProgress } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块直接指真实现
-import { ELEMENT_DMG_KEYS, ELEMENT_RES_REDUCTION_KEYS } from './skillRows'
+import { panelElementStat } from '@/utils/elementStatKeys'
 // 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 刀 A）——同目录兄弟模块直接指真实现。
 // ⚠ 本 import 让 `panelPhases ↔ anomalyPanels` 成环（那边也取本文件的
 // `getTeamAnomalyDurationBonus` / `findSlotByIdentity`）：**两边全是函数声明（提升）且模块初始化期
@@ -229,7 +229,8 @@ export function buildAnomalyVirtualPanel(
       const panel = panelAt(panels, slot) ?? emptyPanel()
       const agentId = configStore.team[slot]?.agentId ?? ''
       const agent = agentId ? catalogStore.agentsMap.get(agentId) : null
-      const dmgBonus = (panel.dmgBonus ?? 0) + (panel[ELEMENT_DMG_KEYS[prog.element]] ?? 0)
+      // CC-224：经 resolveStatElement（旧表缺 ether_ink / frostfire ⇒ 玄墨、烈霜虚拟面板漏元素增伤 / 元素减抗）
+      const dmgBonus = (panel.dmgBonus ?? 0) + panelElementStat(panel, 'dmg', prog.element)
       // 同属性角色才可参与结算/面板加权
       const settlementEligible = agent?.damageElement === prog.element
       return {
@@ -250,7 +251,7 @@ export function buildAnomalyVirtualPanel(
         enemyAnomalyDefReduction: panel.enemyAnomalyDefReduction ?? 0,
         enemyDefFlatReduction: panel.enemyDefFlatReduction ?? 0,
         enemyResReduction: panel.enemyResReduction ?? 0,
-        elementResReduction: panel[ELEMENT_RES_REDUCTION_KEYS[prog.element]] ?? 0,
+        elementResReduction: panelElementStat(panel, 'enemyRes', prog.element),
         penRatio: panel.penRatio ?? 0,
         penFlat: panel.penFlat ?? 0,
         refringe: refringeProviders.reduce((sum, mod) => sum + mod!.anomalyRefringePct!(panel), 0),
@@ -384,7 +385,7 @@ export function buildAnomalySettlementEntries(
 // 蕾米埃尔专属异常辅助函数（`getRemielleLevelValue` / `remielleSpecialVoidflareCount` /
 // `VoidflareDamageInput` / `calcVoidflareDamage`）已于 CC-19c-1（2026-09-26）逐字迁至
 // `@/mechanics/agents/remielle`（设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.2）——
-// 因为 `calcVoidflareDamage` 需要 `core/elementKeys` 的三张表，而判据 19 禁止 mechanics
+// 因为 `calcVoidflareDamage` 需要元素键表（当时在 `core/elementKeys`，CC-224 起为 `utils/elementStatKeys`），而判据 19 禁止 mechanics
 // 按值 import `@/composables`。本块是 **re-export 壳**：`helpers.ts` / `useResourceCalc.ts` /
 // `damagePoolAnomaly.ts` / 既有测试的 import 路径零改动。
 // ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**。

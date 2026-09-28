@@ -331,6 +331,7 @@ import {
   type CinemaUpliftRow,
 } from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
+import { panelElementStat } from '@/utils/elementStatKeys'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
 import { teamMechanicSettings, teamReleaseShares, teamTeammateSplit, agentExcludedFromWindInfectionPick } from '@/composables/agentMechanicView'
 import type { TeammateSplitDecl } from '@/composables/agentMechanicView'
@@ -345,12 +346,6 @@ const axisActiveForUplift = computed(() =>
 )
 
 // 元素减抗 key 映射（从 useResourceCalc 复制）
-const ELEMENT_RES_REDUCTION_KEYS: Record<string, string> = {
-  physical: 'enemyPhysicalResReduction', fire: 'enemyFireResReduction',
-  ice: 'enemyIceResReduction', electric: 'enemyElectricResReduction',
-  ether: 'enemyEtherResReduction', wind: 'enemyWindResReduction',
-  lumiflux: 'enemyLumifluxResReduction',
-}
 
 
 
@@ -483,7 +478,7 @@ function settlementRows(vp: any): any[] {
       enemyAnomalyDefReduction: panel?.enemyAnomalyDefReduction ?? 0,
       enemyAssaultDefReduction: panel?.enemyAssaultDefReduction ?? 0,
       enemyResReduction: panel?.enemyResReduction ?? 0,
-      elementResReduction: panel?.[ELEMENT_RES_REDUCTION_KEYS[vp.element]] ?? 0,
+      elementResReduction: panel ? panelElementStat(panel, 'enemyRes', vp.element) : 0,
     }
   })
 }
