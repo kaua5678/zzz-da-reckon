@@ -64,6 +64,7 @@ for (const agent of catalog.agents ?? []) {
 // 模块来源 = src/mechanics/agents/*.ts 里声明的 agentIds（含 const 解析）。
 // attributeConversions 必须可证明被消费，否则 FAIL：
 //   ① 模块文件显式调用 applySpecAttributeConversions；或
+//   ①′ 模块调用 specConversionAmount 且源码里出现该条目 id（逐条证据；模块自取来源 / 落点、常数读 spec，CC-212）；或
 //   ② 条目 note 标注「实现位置：」（纯记录条目）。
 // adjustable 资源（滑块）给出 WARN（无可靠静态证据，先警示不打断）。
 const mechanicsDir = join(root, 'src', 'mechanics', 'agents')
@@ -224,9 +225,13 @@ for (const file of files) {
       /applySpecAttributeConversions\s*\(/.test(moduleSourceByAgent.get(id) ?? ''))
     for (const conv of spec.attributeConversions ?? []) {
       const noteMarked = typeof conv.note === 'string' && conv.note.includes('实现位置：')
+      const readsById = spec.agentIds.some(id => {
+        const src = moduleSourceByAgent.get(id) ?? ''
+        return /specConversionAmount\s*\(/.test(src) && src.includes(`'${conv.id}'`)
+      })
       check(
-        `${label}: conversion ${conv.id} 有消费者（模块显式调用 applySpecAttributeConversions 或 note 标注「实现位置：」）`,
-        moduleCallsConverter || noteMarked,
+        `${label}: conversion ${conv.id} 有消费者（模块调用 applySpecAttributeConversions / 按 id 经 specConversionAmount 读取 / note 标注「实现位置：」）`,
+        moduleCallsConverter || readsById || noteMarked,
         `自定义模块角色的 attributeConversions 不会被 spec 解释器消费（死数据）。机制须在模块实现并在 note 写「实现位置：<模块/函数>」，或删除该条目（防双计，参见般岳 hp→贯穿力 修复）。`
       )
     }
