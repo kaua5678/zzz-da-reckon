@@ -11,6 +11,7 @@ import { computeOptimalSubStats, getTemplate } from '@/core/substatOptimizer'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
+import { useResourceCalc } from '@/composables/useResourceCalc'
 
 describe('computeSubstatAllocationForSlot', () => {
   it('与内联算法逐值相等（三个槽位；队友 buff 输入 = 伤害管线同源），且结果非空', async () => {
@@ -73,5 +74,31 @@ describe('副词条优化器的队友 buff 输入与伤害管线同源（第 194
     expect(brightIds.length).toBeGreaterThan(0) // 原始上下文里有明攻：否则本用例无判别力
     const piped = effectIds(resolveSlotPanelBuffInputs(1, config, catalog).teammateBuffs)
     for (const id of brightIds) expect(piped.has(id), id).toBe(false)
+  }, 60000)
+
+  // CC-183（第 206 轮）：真实伤害精修。1591 在第 206 轮探针中引擎近似分配偏离最多（+20% 精修收益），用作判别样本。
+  it('refine：真实伤害不低于纯引擎分配、恢复原分配、maxEvals 封顶', async () => {
+    const { config, catalog } = await setupHarness([{ agentId: '1591' }, '', ''], { recommendedBuild: true })
+    const calc = useResourceCalc()
+    const original = JSON.stringify(config.team[0]!.driveDisc.subStatAllocation)
+    const damageOf = (a: Record<string, number>) => {
+      const keep = config.team[0]!.driveDisc.subStatAllocation
+      config.team[0]!.driveDisc.subStatAllocation = { ...a }
+      const d = calc.teamTotalDamage.value ?? 0
+      config.team[0]!.driveDisc.subStatAllocation = keep
+      return d
+    }
+    const plain = computeSubstatAllocationForSlot(0, config, catalog)!
+    let evals = 0
+    const refined = computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => { evals++; return calc.teamTotalDamage.value ?? 0 } })!
+    expect(JSON.stringify(config.team[0]!.driveDisc.subStatAllocation)).toBe(original)
+    expect(evals).toBeGreaterThan(1)
+    expect(evals).toBeLessThanOrEqual(80)
+    const sum = (a: Record<string, number>) => Object.values(a).reduce((x, y) => x + y, 0)
+    expect(sum(refined)).toBe(sum(plain)) // 只挪步不增步
+    expect(damageOf(refined)).toBeGreaterThan(damageOf(plain)) // 本样本有严格改进，否则用例无判别力
+    let capped = 0
+    computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => { capped++; return calc.teamTotalDamage.value ?? 0 }, maxEvals: 5 })
+    expect(capped).toBeLessThanOrEqual(5)
   }, 60000)
 })

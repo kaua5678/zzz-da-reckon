@@ -22,10 +22,69 @@ import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
 
+/**
+ * CC-183（第 206 轮）：真实伤害精修。
+ * 引擎打分（computeExpectedScore）是「攻击 × 暴击 × 增伤 / 攻击 × 精通」的闭式近似，看不到技能级乘区
+ * （技能专属暴击/增伤/倍率、异常与直伤真实占比、转模…），实测系统性高估暴击/精通、低估攻击。
+ * 与其逐项校准近似式，不如让伤害管线本身裁决：以引擎结果为起点，在模板词条间做「挪 k 步」爬山
+ * （k=4→2→1，首个改进即接受），评估 = 写入分配后读 `readDamage()`（useResourceCalc.teamTotalDamage，
+ * 惰性 computed + state memo；与 teamCompare 的「改 store → 读 → 恢复现场」同一模式）。
+ * 结束时恢复原分配；调用方按返回值整体替换。maxEvals 封顶耗时（单人队约 25ms/次）。
+ */
+export interface SubstatRefineOptions {
+  readDamage: () => number
+  maxEvals?: number
+}
+
+function refineWithRealDamage(
+  slot: number,
+  configStore: ReturnType<typeof useConfigStore>,
+  seed: Record<string, number>,
+  stats: readonly string[],
+  statCap: number,
+  opts: SubstatRefineOptions,
+): Record<string, number> {
+  const disc = configStore.team[slot].driveDisc
+  const original = disc.subStatAllocation
+  const maxEvals = opts.maxEvals ?? 80
+  let evals = 0
+  const evalAlloc = (a: Record<string, number>): number => {
+    evals++
+    disc.subStatAllocation = { ...a }
+    return opts.readDamage()
+  }
+  let best = { ...seed }
+  for (const s of stats) best[s] = best[s] ?? 0
+  try {
+    let bestDmg = evalAlloc(best)
+    for (const k of [4, 2, 1]) {
+      let improved = true
+      while (improved && evals < maxEvals) {
+        improved = false
+        for (const from of stats) {
+          if ((best[from] ?? 0) < k) continue
+          for (const to of stats) {
+            if (to === from || (best[to] ?? 0) + k > statCap) continue
+            if (evals >= maxEvals) break
+            const cand = { ...best, [from]: best[from] - k, [to]: (best[to] ?? 0) + k }
+            const d = evalAlloc(cand)
+            if (d > bestDmg * (1 + 1e-9)) { best = cand; bestDmg = d; improved = true; break }
+          }
+          if (improved) break
+        }
+      }
+    }
+  } finally {
+    disc.subStatAllocation = original
+  }
+  return best
+}
+
 export function computeSubstatAllocationForSlot(
   slot: number,
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  refine?: SubstatRefineOptions,
 ): DriveDiscConfig['subStatAllocation'] | null {
   const char = configStore.team[slot]
   if (!char?.agentId) return null
@@ -52,8 +111,12 @@ export function computeSubstatAllocationForSlot(
   } catch {
     return null
   }
+  let chosen: Record<string, number> = result.subStatAllocation
+  if (refine) {
+    chosen = refineWithRealDamage(slot, configStore, chosen, tmpl.stats, configStore.getMechanicSetting('optimizer.substatCap', 20), refine)
+  }
   const alloc: DriveDiscConfig['subStatAllocation'] = {}
-  for (const [s, n] of Object.entries(result.subStatAllocation)) {
+  for (const [s, n] of Object.entries(chosen)) {
     if (n > 0) alloc[s] = Math.max(0, Math.min(54, n))
   }
   return alloc
