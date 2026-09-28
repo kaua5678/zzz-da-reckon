@@ -6,7 +6,7 @@
  */
 
 import type { DecibelSource, EnergySource } from './energy'
-import type { AnomalyEventExecution, SkillExecution, SpecialResourceSection } from './execution'
+import type { AnomalyEventExecution, SkillExecution } from './execution'
 import type { TimeAllocation } from './time'
 
 // ============ 维琳娜专属资源 ============
@@ -711,9 +711,7 @@ export interface CharacterResourceResult {
   billyChain?: BillyChain
   /** 仪玄强特链明细（墨痕化形链/凝云术链） */
   yixuanExChain?: YixuanExChain
-  /** 通用专属资源展示段（由角色机制模块提供） */
-  specialResources?: SpecialResourceSection[]
-  /** 閫氱敤 spec 璧勬簮璁＄畻缁撴灉锛?key = spec resource.id */
+  /** 通用 spec 资源计算结果：key = spec resource.id */
   specResources?: Record<string, any>
 
   // --- 连携 ---

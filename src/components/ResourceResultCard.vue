@@ -135,6 +135,12 @@
           <span class="bd-value">{{ fmt(result.energySource.energyShieldBreakGift) }}</span>
           <span class="bd-detail">30/个</span>
         </div>
+        <!-- CC-233：连续强特返还计入 total（core/resource/resourceIncome total = e0 + exRefundEnergy），此前卡片漏列（1051 少 45~135） -->
+        <div v-if="(result.energySource.exRefundEnergy ?? 0) > 0" class="breakdown-row">
+          <span class="bd-label">连续强特返还</span>
+          <span class="bd-value">{{ fmt(result.energySource.exRefundEnergy) }}</span>
+          <span class="bd-detail">溢出强特每发回能（模块声明）</span>
+        </div>
       </div>
       <div class="usage-bar">
         <span>强特 {{ result.exSpecialCount }} 次</span>
@@ -182,6 +188,12 @@
           <span class="bd-label">特殊动作</span>
           <span class="bd-value">{{ fmt(result.decibelSource.specialActionBonus) }}</span>
           <span class="bd-detail">弹刀/闪避/快支 · 含队友伴随50% · 已计入次数</span>
+        </div>
+        <!-- CC-233：不可分享额外喧响计入 total（resourceIncome），此前卡片漏列（1051 自身烧血少 3000~4000、1541 少 2700） -->
+        <div v-if="(result.decibelSource.unshareableBonus ?? 0) > 0" class="breakdown-row">
+          <span class="bd-label">专属额外</span>
+          <span class="bd-value">{{ fmt(result.decibelSource.unshareableBonus) }}</span>
+          <span class="bd-detail">{{ (result.decibelSource.selfBurnDecibel ?? 0) > 0 ? `含自身烧血 ${fmt(result.decibelSource.selfBurnDecibel)} · ` : '' }}不分给队友</span>
         </div>
       </div>
       <div class="usage-bar">
