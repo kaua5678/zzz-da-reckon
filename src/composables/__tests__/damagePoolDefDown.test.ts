@@ -13,13 +13,7 @@
  * （同字段加算）」「防御力降低 X 点 → enemyDefFlatReduction」；`docs/mechanism-reference.md`
  * 结算区含减防。面板通用值与行级 moveId 限定值加算，不重复。
  */
-import { describe, expect, it, vi } from 'vitest'
-// CC-148 审计（第 175 轮）：本文件的精确值 / 场景在 off 口径下核实，physical 缺省下属机制钉（非不变量），文件级钉回 off。
-// 逐条理由见 docs/mcp-stun-dual-source.md §16；细化为逐用例钉 = CC-152（可选）。删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 

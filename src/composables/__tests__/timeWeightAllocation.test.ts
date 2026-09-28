@@ -12,12 +12,6 @@
  *     `DEEP_TIME_WEIGHT_STRATEGY_ID`（默认已不是 C）。
  */
 import { describe, it, expect, vi } from 'vitest'
-// CC-148 审计（第 175 轮）：本文件的精确值 / 场景在 off 口径下核实，physical 缺省下属机制钉（非不变量），文件级钉回 off。
-// 逐条理由见 docs/mcp-stun-dual-source.md §16；细化为逐用例钉 = CC-152（可选）。删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
 import { effectScope, nextTick } from 'vue'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
@@ -99,6 +93,8 @@ describe('平A池权重·分配策略', () => {
     const { catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
+    // CC-152 逐用例钉：依赖「均衡把失衡 4→3」这一 off 场景
+    config.setMechanicSetting('time.stunPlanProjection', 0)
     const calc = useResourceCalc()
     // auto-1591-1481-1311：实测均衡解会把失衡 4→3 同时 +10.1% 伤害。
     // 用户口径 2026-09-10 修正：「最终目的是总伤提高，失衡四舍五入不一定让总伤提高」→

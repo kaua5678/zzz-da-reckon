@@ -7,13 +7,7 @@
  *   归因经反向验证：把 statModes.impact / anomalyMastery 与 31200 2pc 改回 flat，本文件全绿。
  * perf dump/rowsnap 覆盖不到，本测试是唯一判据。覆盖：蕾米在槽 0 / 槽 2 / 前导空槽 / 不在队。
  */
-import { describe, it, expect, vi } from 'vitest'
-// CC-148 审计（第 175 轮）：本文件的精确值 / 场景在 off 口径下核实，physical 缺省下属机制钉（非不变量），文件级钉回 off。
-// 逐条理由见 docs/mcp-stun-dual-source.md §16；细化为逐用例钉 = CC-152（可选）。删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, it, expect } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
@@ -193,7 +187,9 @@ const EXPECTED: Record<string, unknown[]> = {
 describe('CC-28 moduleAnomalyEventRecords（迁移前后逐字段等价）', () => {
   for (const [key, team] of Object.entries(TEAMS)) {
     it(key, async () => {
-      await setupHarness(team as never, { recommendedBuild: true })
+      const { config } = await setupHarness(team as never, { recommendedBuild: true })
+      // CC-152 逐用例钉：EXPECTED.r0 为 off 快照
+      if (key === 'r0') config.setMechanicSetting('time.stunPlanProjection', 0)
       const calc = useResourceCalc()
       expect(calc.moduleAnomalyEventRecords.value).toEqual(EXPECTED[key])
     }, 60000)

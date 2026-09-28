@@ -27,13 +27,7 @@
  *  · ⚠ **「缺字段时不伪造」**：非本角色面板该字段恒 0 ⇒ 必须回落到 `enemy.stunVuln`，
  *    下面「无 1431 的队」一组用精确值钉住（若实现改成 `?? 1.5` 之类兜底，该组精确红）。
  */
-import { describe, expect, it, vi } from 'vitest'
-// CC-148 审计（第 175 轮）：本文件的精确值 / 场景在 off 口径下核实，physical 缺省下属机制钉（非不变量），文件级钉回 off。
-// 逐条理由见 docs/mcp-stun-dual-source.md §16；细化为逐用例钉 = CC-152（可选）。删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -73,7 +67,7 @@ const YSG_TEAM: Array<{ agentId: string; cinemaLevel?: number }> = [
 
 async function calcOf(
   team: Array<{ agentId: string; cinemaLevel?: number }>,
-  opts: { stunVuln?: number; cinema?: number; mode?: 'nonaxis' | 'axis-no-slot0' } = {},
+  opts: { stunVuln?: number; cinema?: number; mode?: 'nonaxis' | 'axis-no-slot0'; stunPlanOff?: boolean } = {},
 ) {
   // ⚠ 命座只推给**槽 0**（叶瞬光自己）：队友也设同命座会各自带上自己的失衡易伤加成
   // （如 1481/1311 的 C4），把 `panel.stunDmgMultiplierBonus` 从 60 改掉 ⇒ 帷幕基数跟着变，
@@ -87,6 +81,8 @@ async function calcOf(
   if (opts.mode === 'axis-no-slot0') axisWithoutSlot0(config)
   else forceNonAxis(config)
   if (opts.stunVuln !== undefined) config.enemy.stunVuln = opts.stunVuln
+  // CC-152 逐用例钉：帷幕封顶成对精确值为 off 录制锚点
+  if (opts.stunPlanOff) config.setMechanicSetting('time.stunPlanProjection', 0)
   const calc = useResourceCalc()
   await new Promise(r => setTimeout(r, 80))
   return { calc, config, catalog }
@@ -203,7 +199,7 @@ describe('R15-d 跳③：applyPanel 盖章（唯一写入方 = 本角色模块�
 // ── 跳①：真管线（boss 易伤推高 ⇒ 封顶咬合 ⇒ 与回落值必须不同） ────────────────────
 describe('R15-d 跳①：叶瞬光帷幕封顶 —— 成对精确值（默认 1.5 下巧合，必须推高 boss 易伤）', () => {
   it('★ C0 / boss 2.5：白名单招 1.5（封顶咬合）；非白名单招 1.15（回落覆盖率）——两者必须不同', async () => {
-    const { calc } = await calcOf(YSG_TEAM, { stunVuln: 2.5 })
+    const { calc } = await calcOf(YSG_TEAM, { stunVuln: 2.5, stunPlanOff: true })
     const wl = rowsOf(calc, 0, '1431', '1431013')
     expect(wl.length).toBe(1)
     expect(wl[0].stunMult).toBe(1.5)
@@ -223,7 +219,7 @@ describe('R15-d 跳①：叶瞬光帷幕封顶 —— 成对精确值（默认 1
   })
 
   it('★ C4 / boss 3.5：白名单招 2.4（C4 封顶 3.0 咬合）；非白名单招 1.42——影画档位真的分叉', async () => {
-    const { calc } = await calcOf(YSG_TEAM, { stunVuln: 3.5, cinema: 4 })
+    const { calc } = await calcOf(YSG_TEAM, { stunVuln: 3.5, cinema: 4, stunPlanOff: true })
     const wl = rowsOf(calc, 0, '1431', '1431013')
     expect(wl.length).toBe(1)
     expect(wl[0].stunMult).toBeCloseTo(2.4, 10)
@@ -234,14 +230,14 @@ describe('R15-d 跳①：叶瞬光帷幕封顶 —— 成对精确值（默认 1
     expect(wlV).not.toBeCloseTo(nonwlV, 6)
 
     // ★ C0 同 boss：封顶 2.1 咬合得更早 ⇒ 1.5，与 C4 的 2.4 必须不同（防「cap 硬编码」）
-    const { calc: c0 } = await calcOf(YSG_TEAM, { stunVuln: 3.5, cinema: 0 })
+    const { calc: c0 } = await calcOf(YSG_TEAM, { stunVuln: 3.5, cinema: 0, stunPlanOff: true })
     const wlC0 = rowsOf(c0, 0, '1431', '1431013')
     expect(wlC0[0].stunMult).toBe(1.5)
     expect(wlC0[0].stunMult as number).not.toBeCloseTo(wlV, 6)
   })
 
   it('★ boss 2.0 / C4：封顶未咬合 ⇒ 2（= boss 裸值，但走的是帷幕路径）', async () => {
-    const { calc } = await calcOf(YSG_TEAM, { stunVuln: 2.0, cinema: 4 })
+    const { calc } = await calcOf(YSG_TEAM, { stunVuln: 2.0, cinema: 4, stunPlanOff: true })
     const wl = rowsOf(calc, 0, '1431', '1431013')
     // ⚠ 用 toBeCloseTo 不用 toBe：`min(2 + 0.6, 3) − 0.6` 有固有浮点残差
     // （实测 1.9999999999999998）——这是算式本身的性质，不是缺陷，别为它改成 toBe(2)。

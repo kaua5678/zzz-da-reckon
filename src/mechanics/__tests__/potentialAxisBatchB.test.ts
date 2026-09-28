@@ -25,13 +25,7 @@
  *
  * ⚠ 断言前先剥颜色标签：raw 的 `<color=…>` 会把 `toContain` 绊红（红的是格式不是语义）。
  */
-import { describe, expect, it, vi } from 'vitest'
-// CC-148 审计（第 175 轮）：本文件的精确值 / 场景在 off 口径下核实，physical 缺省下属机制钉（非不变量），文件级钉回 off。
-// 逐条理由见 docs/mcp-stun-dual-source.md §16；细化为逐用例钉 = CC-152（可选）。删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'

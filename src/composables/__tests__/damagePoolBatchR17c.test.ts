@@ -25,13 +25,7 @@
  *    并以「同一 moveId 在白名单内/外给出不同的 `stunMult`」成对断言（1.5 vs 1.2916…），
  *    使「短路后恰好落回同一个数」无法伪装。
  */
-import { describe, expect, it, vi } from 'vitest'
-// CC-148 审计（第 175 轮）：本文件的精确值 / 场景在 off 口径下核实，physical 缺省下属机制钉（非不变量），文件级钉回 off。
-// 逐条理由见 docs/mcp-stun-dual-source.md §16；细化为逐用例钉 = CC-152（可选）。删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { yeshuguangMechanic } from '@/mechanics/agents/yeshuguang'
@@ -63,11 +57,13 @@ function axisWithoutSlot0(config: Awaited<ReturnType<typeof setupHarness>>['conf
   config.useStunAxis = true
 }
 
-async function calcOf(team: Parameters<typeof setupHarness>[0], mode: 'nonaxis' | 'axis-no-slot0') {
+async function calcOf(team: Parameters<typeof setupHarness>[0], mode: 'nonaxis' | 'axis-no-slot0', opts: { stunPlanOff?: boolean } = {}) {
   const { config } = await setupHarness(team, { recommendedBuild: true })
   isolate(config)
   if (mode === 'nonaxis') forceNonAxis(config)
   else axisWithoutSlot0(config)
+  // CC-152 逐用例钉：成对精确值是 off 下录制的覆盖率锚点
+  if (opts.stunPlanOff) config.setMechanicSetting('time.stunPlanProjection', 0)
   const calc = useResourceCalc()
   await new Promise(r => setTimeout(r, 80))
   return { calc, config }
@@ -139,6 +135,7 @@ describe('R15-c 跳①：叶瞬光非轴 —— 白名单满易伤 / 非白名�
     const { calc } = await calcOf(
       [{ agentId: '1431', cinemaLevel: 0 }, { agentId: '1481', cinemaLevel: 0 }, { agentId: '1311', cinemaLevel: 0 }],
       'nonaxis',
+      { stunPlanOff: true },
     )
     // stunMult = 1 + (stunVuln − 1) × stunForThis ⇒ 1.5 表示 stunForThis = 1（吃满）
     const full = rowsOf(calc, 0, '1431', '1431013')
@@ -199,6 +196,7 @@ describe('R15-c 跳①：雨果非轴 —— 白名单 1.5 / 非白名单精确 
     const { calc } = await calcOf(
       [{ agentId: '1291', cinemaLevel: 0 }, { agentId: '1481', cinemaLevel: 0 }, { agentId: '1161', cinemaLevel: 0 }],
       'nonaxis',
+      { stunPlanOff: true },
     )
     const chain = rowsOf(calc, 0, '1291', '1291015')
     expect(chain.length).toBe(1)

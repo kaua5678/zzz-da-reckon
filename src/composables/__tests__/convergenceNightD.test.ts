@@ -33,13 +33,7 @@
  *
  * ⚠ 脚手架未入库（一次性，跑完即删；复现方法 = 重建同结构 dump 测试比对目录）。
  */
-import { describe, expect, it, vi } from 'vitest'
-// CC-148 审计（第 175 轮）：本文件的精确值 / 场景在 off 口径下核实，physical 缺省下属机制钉（非不变量），文件级钉回 off。
-// 逐条理由见 docs/mcp-stun-dual-source.md §16；细化为逐用例钉 = CC-152（可选）。删掉本块即回到缺省口径。
-vi.mock('@/core/stunPlanProjection', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/core/stunPlanProjection')>()),
-  DEFAULT_STUN_PLAN_PROJECTION_CODE: 0,
-}))
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentMechanic, getRegisteredMechanicSettings } from '@/mechanics'
@@ -433,11 +427,13 @@ describe('夜D · 层③ 真管线端到端', () => {
    * ⇒ 它在本测试的队形下**结构性不可能**非 null。这是既有设计（首页交互栏懒守卫），
    * 与本批迁移无关 ⇒ 本组改钉「模块写入的 cfg 字段」这一层，另加一条真管线读数。
    */
-  const readBanyueCfg = async (guaranteeUltimate: number, guaranteeFury = 0) => {
+  const readBanyueCfg = async (guaranteeUltimate: number, guaranteeFury = 0, stunPlanOff = false) => {
     const { config } = await setupHarness(
       [{ agentId: '1471' }, { agentId: '1481' }, { agentId: '1451' }] as never, { recommendedBuild: true })
     config.setMechanicSetting('guarantee.ultimate', guaranteeUltimate)
     config.setMechanicSetting('guarantee.fury', guaranteeFury)
+    // CC-152 逐用例钉：parry 精确补齐量是 off 场景录制值，physical 为 3
+    if (stunPlanOff) config.setMechanicSetting('time.stunPlanProjection', 0)
     const calc = useResourceCalc()
     const res = calc.resourceResult.value as unknown as {
       characters: Array<{ slot: number; banyueInteractionTopUp?: { parry: number; dual: number } }>
@@ -460,7 +456,7 @@ describe('夜D · 层③ 真管线端到端', () => {
     // 旧落点（4 弹刀）来自「0↔7 的 2-环里那个仍带 33.0s 截断的成员」；闸门把落点移到**装得下的成员**：
     // 降配到 scale 0.5、截断 33.0 → **0**、补齐量按新时间面重算 = 12 次弹刀（27.996s），伤害 56.98M → 66.36M。
     // 这是「补齐线程与时间面自洽」的正确落点（补齐是**模块自报的必做需求**，装不下就不该按装得下记账）。
-    expect(await readBanyueCfg(1)).toEqual({ parry: 12, dual: 0, requiredSeconds: 27.996000000000002, illegal: false })
+    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 12, dual: 0, requiredSeconds: 27.996000000000002, illegal: false })
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 6 不是恒写）', async () => {
