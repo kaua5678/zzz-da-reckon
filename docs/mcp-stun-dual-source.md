@@ -1304,3 +1304,22 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **验证**：vue-tsc 无新错误；zd（cc181）dump / rows DIFF 0；verify VRC=0；CG 25 项通过。
 - **顺带修复第 203 轮留下的红灯**：203 轮在 `ENGINE_PIPELINE_GUIDE.md` 第 32 条追加了 3 行，让 §4 从 718 行涨到 721 行，打红 `checkGuards.test`（判据 11 棘轮）。当轮 verify 是在**提交文档之前**跑的，所以没发现。现已把第 32 条那段就地改写（删掉过时的 teamSize 句子），行数回到 718，没有改登记表。教训已写进 worker-queue 已知坑。
 - **回退点**：revert e0fdf806。三处删除都逐位等价；只有排名阈值一处会改变非零差场景的行为。
+
+### 24.29 CC-182：副词条优化器只为已装备套装分配（第 205 轮，85956a53）
+- **卡面原问题（覆盖率）核实后不成立为主因**：
+  - 伤害管线的覆盖率口径 = `effectCoverageMap.get(id) ?? effect.coverage.default ?? 1`（`buff.ts#applyEffect`）。catalog 30 套驱动盘、78 个效果里有 35 个带 `coverage`，`default` **全部是 1**。
+  - `mergeTeamDiscEffectCoverages` 只为**已装备**套装写 map（用户没设时是 100%）。
+  - ⇒ 默认状态下，优化器「按 100% 分解」与伤害管线一致；只有用户调低已装备套装的覆盖率时才有差。
+- **读代码时发现的真问题（比覆盖率大）**：`computeOptimalSubStats` 的 `basePanel = computeNoSubstatPanel(input)` 只清空副词条，**保留当前 4+2**，是带套装效果的局内面板。Top-K 套装排名和最终贪心又在它之上叠加候选套装的等效词条 ⇒
+  - 当前套装在「当前组合」里被计两次；
+  - 其他组合 = 已装备 + 候选两套同时生效；
+  - 最终分配是为 `topCombos[0]` 算的，但 `chosenSet` **生产零读取**（grep 仅 core 自身），套装不会被换 ⇒ 按钮输出的是一个**不存在面板**的最优分配。
+- **修法**：已装备任一套装 ⇒ 直接在 `basePanel`（真实面板，覆盖率已由 calcPanel 按 map 计入）上贪心，候选分解为空；`chosenSet` = 已装备。只有一件套装都没装时才走套装搜索（此时 basePanel 不含套装效果，不重复）。覆盖率问题随之消失（已装备走 calcPanel；搜索路径没有已装备套装，map 里没有条目 ⇒ 默认 1 = catalog default）。
+- **影响面**：只影响贪心路径——配置页自动分配按钮（`composables/substatOptimizer.ts#computeSubstatAllocationForSlot`）、`ImpactChart.vue`、store 整队贪心（仅 `optimizer.useDefault=0`）。预设与 zd 走 `useDefault` 快速路径，zd DIFF 0。
+- **按实际伤害对照**（`/home/kaua/calc-arch/k205/probe205.test.ts`：62 个角色单人队、推荐配装，把优化结果写回副词条后读 `teamTotalDamage`；数据在 `k205/old.tsv`、`k205/new.tsv`，列 = id、套装、推荐副词条伤害、优化后伤害、分配）：
+  - 48 个角色分配不变；14 个变化：6 升 8 降，平均 −0.77%。最差 1091 星见雅 −5.8%、1541 普罗米娅 −3.1%；最好 1281 +0.49%。
+  - 相对「推荐配装自带副词条」：旧版平均 +3.15%（36 胜 18 负），新版 +2.96%（37 胜 17 负）⇒ **整体持平**。
+  - 降的 8 个里 7 个是异常角色，新版都把攻击挪去精通 ⇒ 打分函数 `computeExpectedScore` 对异常角色高估精通、低估攻击。旧版的双计恰好把它们往攻击推。
+- **决定：合入**。依据：结构上正确且更简单（不再叠加幻影套装，已装备时跳过整个套装搜索）；按目的指标（实际伤害）持平；旧版在个别角色上的优势来自偶然偏差，不可依赖。打分函数与伤害管线的偏差另立 **CC-183**，用本探针做验收。
+- **验证**：vue-tsc 无新错误；zd（cc182）dump / rows DIFF 0；verify VRC=0；docs 改完跑 checkGuards.test。
+- **回退点**：revert 85956a53（只改 `core/substatOptimizer.ts` 一处分支）。

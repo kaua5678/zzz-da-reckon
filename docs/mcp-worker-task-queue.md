@@ -69,18 +69,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 204 轮（lane lead-arena-0925c）：CC-181 完成（e0fdf806）；立卡 CC-182。文档见本提交。**
-- CC-181：可选参数普查余项收尾，删了 3 个无人使用的缺省，统一了套装排名阈值，并记下扫描器误报的类型。详见 stun-dual-source §24.28。
-- 顺带修复：203 轮文档让 `checkGuards.test` 变红（ENGINE_PIPELINE_GUIDE §4 721 > 718），已就地改写回 718。
-- 前几轮：203 CC-180（7f320498）；202 CC-179（8aba58f5）；201 CC-177 / 178。
+**第 205 轮（lane lead-arena-0925c）：CC-182 完成（85956a53）；立卡 CC-183。文档见本提交。**
+- CC-182：副词条优化器已装备套装时只为已装备套装分配（原先在含当前套装的面板上又叠加候选套装，且选出的套装没人用）；按实伤 62 角色对照整体持平，详见 stun-dual-source §24.29。
+- 前几轮：204 CC-181（e0fdf806）；203 CC-180（7f320498）；202 CC-179（8aba58f5）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-182：副词条优化器套装覆盖率**（卡表有做法）。先测变化面再决定做不做：把 `k204/probe204.test.ts` 扩成全角色（catalog 全部 agentId，取推荐队伍或「该角色 + 两名同属性队友」），比较 `computeSubstatAllocationForSlot` 在「cov = 1」和「cov = effectCoverageMap」两版下的分配差异。
-   - 若只有个别角色变化、且变化方向和伤害管线一致（选出的套装在伤害管线里确实更高），就做，并写明「优化器与伤害管线同口径」。
-   - 若变化面大或拿不准，写「暂缓」加理由，不改。
+1. **CC-183：优化器打分函数校准**（卡表列了 3 个候选原因与验收）。
+   - 跑法：`cp /home/kaua/calc-arch/k205/probe205.test.ts src/composables/__tests__/zztmp/`，`PROBE_OUT=<out.tsv> npx vitest run src/composables/__tests__/zztmp/probe205.test.ts`（62 角色约 5s），跑完删 zztmp。对比脚本思路见 §24.29：按 id 合并两份 tsv，比第 4 列 / 第 3 列。
+   - 先试 ①（攻击% 乘基础攻击）：看 `PanelValues` 有没有基础攻击字段（grep `atkBase` / `baseAtk`），没有就从 `computeNoSubstatPanel` 的局外面板取。
+   - 每处改动单独测，只合入实伤均值与最差个例都不变差的；都不行就写「不做」加数据。
 2. CC-166 仍暂缓（需规格）。
-3. 可选参数普查（CC-179 → 181）已结束。以后新增 core 输入可选字段时按 worker-queue 已知坑第一条自查，不再立普查卡。
 
 **已知坑**
 - **改完 docs 也要跑 `npx vitest run src/scripts/__tests__/checkGuards.test.ts`（约 25s）**：它读 `docs/ENGINE_PIPELINE_GUIDE.md`，§4（`## 4.` 到 `## 5.`）行数有棘轮（冻结 718），多一行变红，少一行也红（要求结算登记表）。改 §4 一律就地改写、净增 0 行。第 203 轮把 verify 放在文档提交之前，漏了这一点。
