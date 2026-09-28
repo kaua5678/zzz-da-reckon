@@ -36,7 +36,7 @@ import {
   ultimateGiftSourceOf,
 } from './ultimatePromote'
 import { applyChainGift } from './chainGift'
-import type { CalcRoundThreads } from './roundThreads'
+import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
 import * as ResourceCalcHelpers from './helpers'
 import { computeParrySplit, GUARANTEE_STUN_TARGET } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
@@ -561,6 +561,20 @@ export function createRunCalcRound(deps: {
     // ——经下面 dispatch 的 `axis` / `threads` 契约快照读取 ⇒ 本 map 里不再有这些分支
     // （棘轮 34 → 32 → **29**）。1141 的 `lycaonWindowDuration` 也走同一 `axis` 契约
     // （该分支已于 round 20 C-γ 整段迁空，见上方沿革）。
+    // CC-194：队伍级机制·postRound 相位——用**上一轮收敛**的次数对本轮新克隆的 cfg 派发
+    // （「本轮收敛 → 下一轮注入」的真正落点）。旧实现在轮末对本轮克隆派发，下一轮重新克隆即丢失。
+    if (threads.postRoundInput) {
+      applyTeamMechanics({
+        characters,
+        configStore,
+        catalogStore,
+        phase: 'postRound',
+        combatTime: base.totalTime ?? 180,
+        exCounts: threads.postRoundInput.exCounts,
+        ultimateCounts: threads.postRoundInput.ultimateCounts,
+        stunCount: threads.postRoundInput.stunCount, // CC-154：计数通道（上一轮 countStun）
+      })
+    }
     // 队伍级机制·converge 阶段：带上一轮收敛量（莱特按上一轮全队能量消耗重算喷发回能；
     // 耀嘉音按失衡次数汇总全队连携入场）。各角色的具体口径在自己的模块里。
     applyTeamMechanics({
@@ -941,6 +955,7 @@ export function createRunCalcRound(deps: {
     // `consumedTeamEnergy` 的**计算与写 cfg** 都已回到莱特模块自己的 `applyTeamConfig`（postRound）
     // 与 `nextRoundFeedback`（返回值 → threadsNext），编排层只 merge。
     let teamVeilCountTotalNext = 0
+    let postRoundInputNext: PostRoundInput | null = null
     {
       const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
       const ultByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.ultimateCount ?? 0]))
@@ -951,16 +966,8 @@ export function createRunCalcRound(deps: {
       // 自然满足；估计式同一入参口径，见该钩子注释的逐位等价论证）。
       // 全队帷幕次数（下一轮注入）：照霜寒开帷幕 + 爱芮/叶瞬光终结技 + 千夏强特，按本轮收敛次数算。
       teamVeilCountTotalNext = computeTeamVeilCountTotal(characters, exCounts, ultimateCounts, base.totalTime ?? 180)
-      applyTeamMechanics({
-        characters,
-        configStore,
-        catalogStore,
-        phase: 'postRound',
-        combatTime: base.totalTime ?? 180,
-        exCounts,
-        ultimateCounts,
-        stunCount: countStun, // CC-154：同 converge 派发（计数通道）
-      })
+      // CC-194：只记录入参，派发挪到下一轮 converge 之前（见上方 `threads.postRoundInput`）
+      postRoundInputNext = { exCounts, ultimateCounts, stunCount: countStun }
     }
 
     // 薇薇安落羽生花双源 / 普罗米娅·霜刑回复端的「下一轮注入」已迁进各自模块的
@@ -1120,6 +1127,7 @@ export function createRunCalcRound(deps: {
         moduleFeedback: { ...feedbackNext },
         inStunWindowTriggers: inStunWindowTriggersNext,
         teamVeilCountTotal: teamVeilCountTotalNext,
+        postRoundInput: postRoundInputNext,
         decibelParry: decibelParryNext,
         // 轨推演输入（喧响产出）单调不减：轨削减大招 → 大招回响数据行减少 → 产出下滑
         // → 下一轮轨更紧 → 恶性循环（实测可螺旋到 0）。取 max(上一轮, 本轮) 锁定基准。

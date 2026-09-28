@@ -50,7 +50,8 @@ const CASES: Array<[string, string, string, number]> = [
   ['1441.zhendou_heartfire.zhendou_parry_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_parry_heartfire_gain', 600],
   ['1441.zhendou_remnant_flame.zhendou_chain_remnant_gain.rate', 'zhendou_remnant_flame', 'zhendou_chain_remnant_gain', 12],
   ['1441.zhendou_remnant_flame.zhendou_ult_remnant_gain.rate', 'zhendou_remnant_flame', 'zhendou_ult_remnant_gain', 24],
-  ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 20],
+  // CC-194：默认队友含安比 C6 ⇒ 影画4 电荷传导回能首次真正注入（旧 postRound 写入被下一轮重克隆丢弃），20 → 18；线性不变
+  ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 18],
   ['1531.billy_radiant_star.billy_radiant_basic4_gain.rate', 'billy_radiant_star', 'billy_radiant_basic4_gain', 1],
   ['1531.billy_radiant_star.billy_radiant_ex_gain.rate', 'billy_radiant_star', 'billy_radiant_ex_gain', 21],
   ['1531.billy_star_glow.billy_star_basic4_gain.rate', 'billy_star_glow', 'billy_star_basic4_gain', 1],
@@ -127,8 +128,8 @@ const LINEAR_CASES: Array<[string, string, string, [string, string], number[], n
   ['1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_special_heartfire_gain', ['1011', '1211'], [0, 1, 2], [0, 500, 1000]], // CC-154：physical 下心火来源随计数通道失衡次数变（600→500），线性不变
   ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, 170, 340]],
   ['1301.orphie_xuyan.xuyan_shiguang_gain.rate', 'orphie_xuyan', 'xuyan_shiguang_gain', ['1011', '1211'], [0, 0.5, 1], [0, 360, 720]],
-  ['1521.xixifu_toxin.toxin_duya_hold.rate', 'xixifu_toxin', 'toxin_duya_hold', ['1011', '1211'], [0, 0.5, 1], [0, 13.5, 30]],
-  ['1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate', 'xixifu_toxin', 'toxin_tuxin_stunned_bonus', ['1011', '1211'], [0, 0.5, 1], [0, 5, 10]],
+  ['1521.xixifu_toxin.toxin_duya_hold.rate', 'xixifu_toxin', 'toxin_duya_hold', ['1011', '1211'], [0, 0.5, 1], [0, 15, 30]], // CC-194：安比 C4 回能真正注入，13.5 → 15（恰成线性）
+  ['1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate', 'xixifu_toxin', 'toxin_tuxin_stunned_bonus', ['1011', '1211'], [0, 0.5, 1], [0, 4.5, 9]], // CC-194：安比 C4 回能真正注入，10 → 9（线性不变）
 ]
 
 /**

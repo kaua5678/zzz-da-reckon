@@ -602,9 +602,9 @@
   "outerExit": "stable"
  },
  "yidhari-trigger-lucia": {
-  "slack": 0.6,
+  "slack": 3.6,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "yixuan-jufufu-lucia": {

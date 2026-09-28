@@ -5,7 +5,6 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  AgentTeamConfigInput,
 } from '../types'
 
 /**
@@ -149,17 +148,6 @@ function buildQianxiaCharConfig({ cfg, cinemaLevel, team, panel }: AgentCharConf
   if ((panel?.additionalAbilityActive ?? 0) > 0) {
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + QIANXIA_FIELD_ENTRY_ENERGY
   }
-}
-
-/** postRound：上一轮收敛的标记供给/帷幕/异常触发计数写入自身 cfg（凝视/磨爪器消费） */
-function applyQianxiaTeamConfig({ slot, characters, phase, exCounts, ultimateCounts }: AgentTeamConfigInput): void {
-  if (phase !== 'postRound') return
-  const own = characters.find(c => c.slot === slot)
-  if (!own) return
-  const idx = characters.findIndex(c => c.slot === slot)
-  const record = own as unknown as Record<string, unknown>
-  record.qianxiaExCount = Math.max(0, Math.floor(exCounts[idx] ?? 0))
-  record.qianxiaUltimateCount = Math.max(0, Math.floor(ultimateCounts?.[idx] ?? 0))
 }
 
 function pushQianxiaExecution(executions: AgentResourceInput['executions'], input: {
@@ -320,7 +308,6 @@ export const qianxiaMechanic: AgentMechanicModule = {
   ],
   applyPanel: applyQianxiaPanel,
   buildCharConfig: buildQianxiaCharConfig,
-  applyTeamConfig: applyQianxiaTeamConfig,
   buildExecutions: buildQianxiaExecutions,
   buildResourceResult: buildQianxiaResourceResult,
   resourceSections: buildQianxiaResourceSections,

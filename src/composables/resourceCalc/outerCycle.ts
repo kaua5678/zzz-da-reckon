@@ -23,6 +23,8 @@ export function outerFeedbackSignature(out: CalcRoundResult): string {
     // 剑仪反馈可能只改变执行行而不改变终结次数，必须独立监测。
     // CC-38b：经模块能力 giftedPolarAssaultCount 派发（无此能力的角色记 0，与原字段缺省同形）。
     chars.map(giftedPolarAssaultOf).join(','),
+    // CC-194：postRound 注入（下一轮生效）读全队强特次数——强特变化而终结不变时也须再跑一轮。
+    (out.threadsNext.postRoundInput?.exCounts ?? []).map(v => v.toFixed(3)).join(','),
   ].join('|')
 }
 
