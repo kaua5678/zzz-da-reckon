@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
+import { ATTRIBUTE_LABEL, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import { computed, ref, watch } from 'vue'
 import { NTag, NIcon, NSelect, NButton, NDropdown } from 'naive-ui'
 import { MusicalNotesOutline, ChevronDownOutline } from '@vicons/ionicons5'
@@ -169,16 +169,6 @@ const rarityTagType = computed(() => {
   const r = agent.value?.rarity
   return r === 'S' ? 'warning' : r === 'A' ? 'success' : 'default'
 })
-
-const SPECIALTY_LABEL: Record<string, string> = {
-  attack: '强攻',
-  stun: '击破',
-  anomaly: '异常',
-  support: '支援',
-  defense: '防护',
-  rupture: '命破',
-  sharpen: '锋御',
-}
 
 const specialtyLabel = computed(() => {
   if (!agent.value) return ''

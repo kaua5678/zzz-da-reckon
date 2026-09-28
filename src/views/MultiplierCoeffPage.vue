@@ -98,6 +98,7 @@ import { computed, h, ref } from 'vue'
 import { NCard, NDataTable, NSelect, NTag } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
+import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import {
   MOVE_TYPE_LABELS,
   STANDARD_MULTIPLIER_TABLE,
@@ -118,16 +119,6 @@ const catalogStore = useCatalogStore()
 const report = computed(() =>
   deriveCoefficientReport(catalogStore.catalog?.agents ?? [], catalogStore.catalog?.agentSkills ?? []),
 )
-
-const SPECIALTY_LABELS: Record<string, string> = {
-  attack: '强攻',
-  stun: '击破',
-  anomaly: '异常',
-  support: '支援',
-  defense: '防护',
-  rupture: '命破',
-  sharpen: '锋御',
-}
 
 const ROW_LABELS: Record<StandardRowId, string> = {
   damage: '伤害',
@@ -193,7 +184,7 @@ function verticalCell(rowId: StandardRowId) {
 const verticalColumns: DataTableColumns<AgentVerticalRow> = [
   { title: '角色', key: 'name', width: 150, render: (r) => `${r.agentName} (${r.agentId})` },
   { title: '稀有度', key: 'rarity', width: 70 },
-  { title: '职业', key: 'specialty', width: 80, render: (r) => SPECIALTY_LABELS[r.specialty] ?? r.specialty },
+  { title: '职业', key: 'specialty', width: 80, render: (r) => SPECIALTY_LABEL[r.specialty] ?? r.specialty },
   { title: '失衡', key: 'daze', width: 90, render: verticalCell('daze') },
   { title: '喧响', key: 'decibel', width: 90, render: verticalCell('decibel_recovery') },
   { title: '积蓄', key: 'anomaly', width: 90, render: verticalCell('anomaly_buildup') },

@@ -91,6 +91,7 @@ import { NAlert, NButton, NCard, NEmpty, NGi, NGrid, NInput, NSpace, NTag } from
 import { useCatalogStore } from '@/stores/catalog'
 import { getStatMeta, phaseStatLabel } from '@/utils/statMeta'
 import { localized } from '@/utils/format'
+import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import type { BuffEffect, BuffGroup, Specialty, WEngine, WEngineAdvancedStat } from '@/types/catalog'
 
 interface FieldRow { id: string; source: string; stat: string; label: string; zone: string; mode: string; type: string; valueText: string; stackCoverageText: string; note: string }
@@ -100,9 +101,10 @@ const keyword = ref('')
 const rarityFilter = ref<'all' | 'S' | 'A'>('all')
 const specialtyFilter = ref<'all' | Specialty>('all')
 const rarityFilters = [{ label: '全部稀有度', value: 'all' as const }, { label: 'S级', value: 'S' as const }, { label: 'A级', value: 'A' as const }]
-const specialtyFilters = [
-  { label: '全部职业', value: 'all' as const }, { label: '强攻', value: 'attack' as const }, { label: '击破', value: 'stun' as const },
-  { label: '异常', value: 'anomaly' as const }, { label: '支援', value: 'support' as const }, { label: '防护', value: 'defense' as const }, { label: '命破', value: 'rupture' as const },
+// 职业筛选项由 SPECIALTY_LABEL 生成（CC-215：原手写 7 项缺「锋御」，3 把锋御音擎筛不出来）
+const specialtyFilters: Array<{ label: string; value: 'all' | Specialty }> = [
+  { label: '全部职业', value: 'all' },
+  ...(Object.entries(SPECIALTY_LABEL) as Array<[Specialty, string]>).map(([value, label]) => ({ label, value })),
 ]
 
 const engines = computed(() => catalogStore.displayWEngines.filter(e => e.rarity === 'S' || e.rarity === 'A').slice().sort((a, b) => {
@@ -128,7 +130,7 @@ const summary = computed(() => ({
   effectCount: engines.value.reduce((sum, engine) => sum + collectRows(engine).length, 0),
 }))
 
-function specialtyLabel(specialty: string): string { return ({ attack: '强攻', stun: '击破', anomaly: '异常', support: '支援', defense: '防护', rupture: '命破', sharpen: '锋御' } as Record<string, string>)[specialty] ?? specialty }
+function specialtyLabel(specialty: string): string { return SPECIALTY_LABEL[specialty] ?? specialty }
 function statLabel(stat: string): string {
   const mode = stat === 'impact' ? 'impactPct' : stat
   return phaseStatLabel(mode, 'outOfCombat')

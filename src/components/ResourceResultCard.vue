@@ -295,7 +295,7 @@ import { computed, h } from 'vue'
 import { NCard, NTag, NDataTable } from 'naive-ui'
 import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
+import { damageElementLabel as elementLabel, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import { agentResourceSections, agentResultCardCorrosion } from '@/composables/agentMechanicView'
 import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 
@@ -313,13 +313,13 @@ const props = defineProps<{
   agentNames?: Record<string, string>
 }>()
 
-// 特性标签
-const SPECIALTY_MAP: Record<string, { label: string; type: string }> = {
-  attack: { label: '强攻', type: 'error' },
-  stun: { label: '击破', type: 'warning' },
-  anomaly: { label: '异常', type: 'info' },
-  support: { label: '支援', type: 'success' },
-  defense: { label: '防护', type: 'default' },
+// 职业标签：文案走 SPECIALTY_LABEL（CC-215：原表缺命破 / 锋御，这 6 个角色标签为空）；颜色是本卡自己的展示选择，未列出的职业用 default
+const SPECIALTY_TAG_TYPE: Record<string, string> = {
+  attack: 'error',
+  stun: 'warning',
+  anomaly: 'info',
+  support: 'success',
+  defense: 'default',
 }
 
 /**
@@ -346,7 +346,8 @@ const crossAgentSourceRows = computed<Array<{ key: string; label: string; detail
 })
 
 const specialtyInfo = computed(() => {
-  return SPECIALTY_MAP[props.specialty ?? ''] ?? { label: '', type: 'default' }
+  const sp = props.specialty ?? ''
+  return { label: SPECIALTY_LABEL[sp] ?? '', type: SPECIALTY_TAG_TYPE[sp] ?? 'default' }
 })
 
 /** 喧响总览 = decibelSource.total（异常/特殊动作奖励已并入，含效率乘数），与终结技次数推导同口径 */

@@ -56,7 +56,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { getImageUrl } from '@/utils/image'
 import { localized } from '@/utils/format'
-import { ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
+import { ATTRIBUTE_LABEL, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import type { SkillCategory, SkillMove, Agent } from '@/types/catalog'
 
 const catalogStore = useCatalogStore()
@@ -115,15 +115,6 @@ const rarityTagType = computed(() => {
   return r === 'S' ? 'warning' : r === 'A' ? 'success' : 'default'
 })
 
-const SPECIALTY_LABEL: Record<string, string> = {
-  attack: '强攻',
-  stun: '击破',
-  anomaly: '异常',
-  support: '支援',
-  defense: '防护',
-  rupture: '命破',
-  sharpen: '锋御',
-}
 const specialtyLabel = computed(() => {
   if (!currentAgent.value) return ''
   return SPECIALTY_LABEL[currentAgent.value.specialty] ?? currentAgent.value.specialty

@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import { DAMAGE_ELEMENT_LABEL, damageElementLabel } from '@/utils/agentLabelMaps'
+import { DAMAGE_ELEMENT_LABEL, damageElementLabel, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 
 const SRC = join(__dirname, '..', '..')
 const ALLOWED = new Set([
@@ -30,6 +30,19 @@ function walk(dir: string, out: string[] = []): string[] {
   }
   return out
 }
+
+describe('职业中文名映射单一来源（CC-215）', () => {
+  it('只有 utils/agentLabelMaps.ts 定义「attack → 强攻」映射（含 label: \'强攻\' 这种组合写法）', () => {
+    const hits = walk(SRC)
+      .filter(p => /attack:\s*'强攻'|label:\s*'强攻'|attack:\s*\{\s*label:\s*'强攻'/.test(readFileSync(p, 'utf8')))
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+    expect(hits).toEqual(['utils/agentLabelMaps.ts'])
+  })
+
+  it('职业表覆盖全部 7 个职业', () => {
+    expect(Object.keys(SPECIALTY_LABEL).sort()).toEqual(['anomaly', 'attack', 'defense', 'rupture', 'sharpen', 'stun', 'support'])
+  })
+})
 
 describe('元素中文名映射单一来源（CC-214）', () => {
   it('只有登记过的文件定义「physical → 物理」映射', () => {

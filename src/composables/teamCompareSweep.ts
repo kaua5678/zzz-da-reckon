@@ -4,6 +4,7 @@ import type { useCatalogStore } from '@/stores/catalog'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import type { BossPreset } from '@/types/bossPreset'
 import type { Specialty } from '@/types/catalog'
+import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 
 /**
  * 「选第三人」区块：候选圈定 + 试算调度 + 结果条形比例。
@@ -24,8 +25,8 @@ export function useSlotSweep(opts: {
   const { catalogStore, calc, selectedBoss, selectedPhase, progress, computing } = opts
 
   // 求值口径在 teamTimeline.ts#computeSlotSweepPoints（@fact slotSweep），页面只做候选圈定与展示。
-  /** 职业中文标签（与 WEngineFieldPage/ResourcePage 同款映射；specialty 联合类型单源在 types/catalog） */
-  const SWEEP_SPEC_LABELS = { attack: '强攻', stun: '击破', anomaly: '异常', support: '支援', defense: '防护', rupture: '命破', sharpen: '锋御' } as const
+  /** 职业中文标签：单一来源 `@/utils/agentLabelMaps#SPECIALTY_LABEL`（CC-215）；specialty 联合类型单源在 types/catalog */
+  const SWEEP_SPEC_LABELS = SPECIALTY_LABEL
   const SLOT_LABELS = ['主C位', '击破位', '支援位'] as const
   const slotLabels = SLOT_LABELS
   const sweepSlot = ref<SlotCompareSlot>(1)
