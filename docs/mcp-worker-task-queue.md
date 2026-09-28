@@ -86,6 +86,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- `git push` 单次可能要 50s 以上（第 213 轮实测）：别和 zc done / release 挤在同一条 wsl_exec 里，也别用 `timeout 90`。单独执行 `timeout 150 git push origin master`，推完用 `git rev-list --count origin/master..master` 确认结果为 0。第 213 轮第一次推送就因为和 zc 挤在一起超时，没推上去。
 - 按名字的死通道扫描（`dead-channel-scan.mjs`）对常见名是瞎的：只要名字在别处被读过，就会被判「有读取」。查「某个字段到底有没有人读」要用符号级引用（`scripts/audit-write-only-props.cjs`，或 LSP 的 find references），再补一次名字兜底（.vue 和字符串键动态读取 TS 看不见）。
 - 结构类型参数（`cfg: { foo?: number }`）让 TS 的 findReferences 连不到接口属性上：接口属性显示零引用，不等于零读取。
 - 「往注册表加一行」式的 UI（freeCompare 的 AXES / METRICS 等）：加一项时必须同时有一条**真引擎行为测试**，证明选了它结果真的会变。只测「能枚举出档位」测不出假选项（CC-189）。
