@@ -235,13 +235,12 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 15. **收敛状态要看三层**：`ConvergenceReport` 区分预算层与失衡外层；`cycle` 是容差内环代表，非严格固定点；`maxIter` 可疑。
     快照/二周期单源 `resourceCalc/outerCycle.ts`：本轮快照 → 判稳/判环 → 追加历史，不得混用陈旧签名。
     判据 `outerCycle.test.ts` / `outerFeedbackRegression.test.ts`；全角色不变量 `allAgentsSweep`。
-16. **异步数据就绪门（2026-08）**：teammate-buffs 由 `useResourceCalc` 工厂**不 await** 地触发加载，
-    面板在数据未就绪时照算 → 首算无队友 buff、fetch 返回后数值漂移（曾致同配置两次全新计算
-    给出 12/3,9/1 vs 12/4,8/1）；`setAgent → syncTeammateBuffsFromTeam` 同样时机敏感（数据晚到 =
-    整队漏 buff）。现在：`resourceConfig` 在 `teammateBuffsReady` 前返回 **null**（失败也置就绪，
-    空数据语义），config store 在数据晚到时 watch 自动重同步。**新测试只 `await catalog.load()`
-    会在就绪门上拿到 null**——必须补 `await catalog.loadTeammateBuffs()`（或直接用 setupHarness）。
-    回归：`determinism.test.ts`（双全新会话逐位一致）。
+16. **异步数据就绪门**：症状 = 首算缺队友 Buff、迟到数据改变结果；若失败也标 ready，还会把缺数据算成完整结果且无法重试。
+    就绪只表示成功；[catalog loader](src/stores/catalog.ts) 去重在途请求，合并 Buff 前先取得目录，失败保留 error，显式重试成功才放行。
+    [计算读取者](src/composables/useResourceCalc.ts) 只在 idle 自动触发加载；`resourceConfig` 在 catalog/Buff 未就绪时返回 **null**，不以空数据降级。
+    [启动 Adapter](src/composables/calculatorStartup.ts) 等目录/Buff/推荐齐备才开放编辑；[config Model](src/stores/config.ts) 自身保护已编辑队伍，迟到推荐/重试/重挂载不能重置。
+    测试须 `await catalog.loadTeammateBuffs()` 或用公共 harness；只 await catalog 会得到 null。判据：[加载恢复](src/stores/__tests__/catalogReadiness.test.ts)、[初始化保护](src/composables/__tests__/calculatorStartup.test.ts)、[确定性](src/composables/__tests__/determinism.test.ts)。
+    否决记录：失败在 finally 标 ready 的方案，HTTP 503 后实测 ready=true、二次请求被跳过；改为错误阻断与显式 retry，不再掩盖输入不完整。
 17. **连续松弛终局整数化（2026-08）**：强特/终结次数在迭代期以**实数**参与（`iterate` 的
     `finalCounts` 参数供终局覆盖），收敛判据 ε=1e-9（次数+平A时间）；终局「floor 基线 + 小数
     降序预算内加回」贪心装包 + 整数态重推抬升（≤3 轮）。floor 滞回曾致同输入不同初值落到相邻
