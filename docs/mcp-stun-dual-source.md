@@ -2610,3 +2610,43 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 有 ⇒ 这是真实缺陷，模块绕过了融合。按 R5 纪律开 CC 卡（附出处与影响面），**不能顺手改数值**；
   - 没有 ⇒ 在 data 立一个显式的 `rawRowValue`（不融合），把 (b) 收过去，让「不融合」成为有名字的选择。
 - (c) 是否也收成 data 的 `rowValueAtLevel12` 之类，视调用点语义再定。
+
+### 24.84 第 260 轮：CC-237 角色模块取行值收到 data getRowValue（逻辑编辑器行乘数对这些模块生效）；引擎内联原始读取清单（a6471949）
+
+**① 语义裁决（§24.83 ④ 的答案）**：
+- data 版 `getRowValue` 乘的 `getRowFusionMultiplier` **不是** `data/moveFusions.ts` 的多段融合表（那张表归 `fusedRowValue`），而是 `logicEditor/fusion.ts` 的**用户逻辑编辑器行规则**（`RowFusionRule`：moveId + rowId + multiplier；未启用时乘数恒为 1）。
+- **先例**：claret R37-J1（2026-09-19，`claretSmoke.test.ts`）已把「模块私有 `getRowValue` 漏乘行规则」判定为「与引擎其余路径分裂」的缺陷，当时只修了 claret。
+- 其余 16 份私有副本（15 个文件）属同一病型：
+  - (b) 类 12 份：`values[0]`；
+  - (c) 类 4 份（lucy / rina / yaojiayin / yeshuguang）：`values[11] ?? 末项`。catalog 里 7451 行 values 长度为 1，只有 4 行长度为 3（全是 1581 的 `luminize_multiplier`，这 4 个模块不读），所以在当前数据上等价于 `values[0]`。「取 12 级」是针对多等级数组的死泛化。
+- **不是故意取原始值**：
+  - burnice 的 `rawRowValue` 和 `getRowValue` 函数体完全相同，都来自初始提交（1a1f8c65），没有写意图；行乘数也来自同一个初始提交，所以「副本早于该概念」的说法不成立；
+  - `getRowFusionMultiplier` 在全仓只有 `getRowValue` 一个调用方 ⇒ 改用后不存在重复乘的风险。
+- **与 R5 的关系**：不改 catalog 数值，也不引入实测；只让用户的逻辑编辑器规则在这些模块上生效。默认零差（verify 全绿，golden 不动）。
+
+**② 改法**：
+- 15 个文件删掉私有定义，改为别名导入 `import { …, getRowValue [as rowValue|rowVal] } from '@/data/moveTableQueries'`，调用点不动；
+- burnice 删掉误导性的 `rawRowValue` 名字，3 个调用点改为 `getRowValue(`；
+- 用 p259b 清掉 12 处变成未使用的 `SkillMove` 类型导入；
+- 16 个文件，+85/−124（含锁）。
+- 引擎给模块的入参 `AgentCharConfigInput.getRowValue`（evelyn / liuyin / nangong / seth / yuzuha 在用）就是 helpers → skillRows → data 的同一个函数，与直接 import 口径一致，**不动**（入参注入是合法通道）。
+
+**③ 锁**：`src/data/__tests__/rowValueSource.test.ts`：
+- ① 形状：除 owner 外不许定义 `rowValue` / `rowVal` / `getRowValue` / `rawRowValue`。`git grep HEAD` 反例 16 处；
+- ② 行为：直接调 `lucyMechanic.buildCharConfig`，行规则（1151026 / damage ×2）⇒ `lucySpinDmg` 恰好 ×2，规则禁用时逐位不变。
+- 反例：只 stash lucy.ts 源码后两条都变红。
+- 回退点：revert a6471949。
+
+**④ 新发现：引擎本身也有内联原始读取（下一轮做「行规则作用面」裁决）**。
+- claret 先例写的「引擎其余路径全走带乘数版」**并不完全成立**。本轮 grep `values?.[0]`（mechanics / specs / core / composables 非测试）共 30 处。与行值相关的有：
+  - core：`core/resource/moveLookup.ts:158/189/358/360/361/367`（喧响、能量、闪避能量、伤害行）；
+  - composables：
+    - `resourceCalc/damagePoolDirect.ts:300`、`ultimatePromote.ts:94/218`、`chainGift.ts:68`、`panelPhases.ts:212`；
+    - `resourceCalc/skillRows.ts:54/64/74`（平A均值族）；
+    - `multiplierCoefficients.ts:63/127/148`；
+  - specs：`specs/mechanics.ts:146`；
+  - 角色模块内联：`phoenix.ts:216/217/225/235`、`severian.ts:205`、`sigrid.ts:168`、`norma.ts:253`、`xide.ts:94`；
+  - **不相干**：`remielle.ts:101-106` 按技能等级选 luminize 值，是另一种语义；`teamCompare.ts:232` 是档位表，不是招式行。
+- 待裁决：
+  - 行规则的产品语义是「作用于该招式该行的一切读取」，还是只作用于伤害执行路径？
+  - `logicEditor/fusion` 依赖 Vue 的 shallowRef，core 经 data 间接引入它是否违反分层？先查 ARCHITECTURE 的分层规则和 `scripts/lib/*` 的守卫。

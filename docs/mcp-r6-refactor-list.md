@@ -409,3 +409,4 @@
 | 257 | 各页「明细 vs 总数」；视图重算 useResourceCalc 导出聚合量 | 明细只有结果卡（CC-233 已锁）；ResultPage 另算队伍总伤害，改为直读（CC-234，`09575566`）；stunCoverage 无近似副本；**视图重算线结项** | useResourceCalc 新增导出聚合量 |
 | 258 | 换层：resourceCalc 内部与 mechanics/agents 之间的重复 helper（跨文件同形扫描，29 组） | resourceCalc 没有真实重复（结项）；agents 的 `setting:${id}` 读取协议 37 份、4 种变体，收拢到 utils/mechanicSettingCfg（CC-235，`960c00d3`）；findMoveById / rowValue 待核；clamp / whole 倾向不做 | agents 新增私有 cfg 读取器（锁会拦） |
 | 259 | agents 重复 helper 第 2 族：findMoveById / findMove | 25 个模块 + StunAxisPage 的副本收拢到 data（CC-236，`51f52f7e`）；抄写理由「避免依赖 composables」已失效；rowValue 族有 3 种语义（含融合 / 不融合 / 取 12 级），不能直接合并，下一轮先查不融合调用点有没有碰到融合登记的招式 | agents 新增私有招式查找（锁会拦） |
+| 260 | agents 重复 helper 第 3 族：rowValue 族 | 行乘数来自逻辑编辑器，不是 moveFusions；私有副本漏乘，与 R37-J1 同型 ⇒ 收拢到 data getRowValue（CC-237，`a6471949`）；新发现引擎（core moveLookup、resourceCalc 多处、specs）也有约 30 处内联原始读取，下一轮裁决行规则作用面 | 新增私有取行值函数（锁会拦） |

@@ -71,34 +71,42 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 259 轮（lane lead-arena-0925c）：CC-236 完成（51f52f7e），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.83。
-- 前几轮：258 CC-235 机制设置 cfg 键（960c00d3）；257 CC-234（09575566）；256 CC-233（2e7e2c4c）。
+**第 260 轮（lane lead-arena-0925c）：CC-237 完成（a6471949），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.84。
+- 前几轮：259 CC-236 findMoveById（51f52f7e）；258 CC-235 机制设置 cfg 键（960c00d3）；257 CC-234（09575566）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **纯规则 / 引擎结果单一来源一览（新写代码直接用）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`、**`moveTableQueries`**（`findMoveById` 为结构化泛型并带运行时容错，`getRowValue` 含融合，`fusedRowValue`）；
-- `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`、`mechanicSettingCfg`（角色模块读机制滑块一律用 `cfgMechanicSetting`）；
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`、**`moveTableQueries`**：
+  - `findMoveById`：结构化泛型，带运行时容错；
+  - `getRowValue`：含逻辑编辑器行乘数，角色模块取招式行值一律用它；
+  - `fusedRowValue`；
+- `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`、`mechanicSettingCfg`；
 - `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`；
 - 引擎结果直读：`useResourceCalc#teamTotalDamage / stunCoverage`、`CalcRoundResult.specialActionBonus / decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`。
 
-**下一步（直接开工）**：rowValue 族的语义裁决（§24.83 ④）。
-1. 读 `src/data/moveFusions.ts`，列出登记了融合的 `moveId` 和对应 rowId。
-2. 对 (b) 类 12 份「不融合 `values[0]`」副本，逐个模块 grep 调用点（`rowValue(` / `getRowValue(` / `rawRowValue(`），弄清传入的 move 从哪个 moveId 来，与第 1 步的清单求交集：
-   - 交集非空 ⇒ **不改代码**，开 CC 卡写明「模块 X 的招式 Y 绕过了融合」，附出处与影响面（R5 纪律：数据可信，差异要走卡，不能顺手改数）；
-   - 交集为空 ⇒ 在 `data/moveTableQueries.ts` 新增 `export function rawRowValue(move, rowId)`（`values[0]`，不融合），12 份副本改为别名导入；锁的写法参照 `src/data/__tests__/findMoveByIdSource.test.ts`。
-3. (c) 类 `rowVal`（lucy / rina / yaojiayin / yeshuguang，取 `values[11]`）：先确认调用点的语义，看是否等同「取 12 级值」、catalog 的 values 是否按等级排列；是的话收成 data 的具名函数，不是就记「不做」。
-4. clamp / whole：倾向不做（纯算术，收了只是降计数）。
-- 可复用脚本：
-  - `/home/kaua/calc-arch/k229/p259a.py`：按函数名删私有定义，并入或新增 import；
-  - `/home/kaua/calc-arch/k229/p259b.py`：读 `/tmp/tsc259.txt`（`npx vue-tsc -b > /tmp/tsc259.txt`），按 TS6133/6196/6192 清理未使用导入；
-  - `/home/kaua/calc-arch/dupfn.mjs`：跨文件同形函数扫描。
+**下一步（直接开工）**：「逻辑编辑器行规则作用面」裁决（§24.84 ④）。
+1. 读 `src/logicEditor/`（types.ts、fusion.ts）和逻辑编辑器页面 `src/views/LogicEditorPage.vue`，弄清产品语义：
+   - 规则的 rowId 能选哪些行（只有 damage，还是任意行）；
+   - 界面文案怎么描述规则的作用范围。
+2. 查分层：ARCHITECTURE.md 对 core → logicEditor（间接经 data）的规定，以及 `scripts/lib/` 下的守卫（layer-inversion 只管录入层 → 编排层）。
+3. 按第 1 步的语义，逐条标注 §24.84 ④ 清单：「应吃规则、现在漏吃」/「本就不该吃」/「不相干」。
+   - 应吃且不违反分层 ⇒ 改为 `getRowValue`，一类一个提交；每个提交带行为锁（规则 ×2 ⇒ 对应量 ×2），默认零差；
+   - core 内的（moveLookup）如果受分层限制，就考虑由编排层传入乘数，或记「不做」并写明理由；
+   - 规则语义只针对伤害 ⇒ 非伤害行（喧响 / 能量 / 积蓄）的内联读取记「本就不该吃」。这时要反过来检查 CC-237 是否让模块的非伤害行多吃了规则。目前 CC-237 碰到的非伤害行只有 yeshuguang 的 `attack_data_0`；若确认不该吃，就 revert 相应部分，或换成 data 新增的「不乘规则」读法。
+4. 角色重复 helper 里剩下的 clamp / whole 家族：**倾向不做**（纯算术，收了只是降计数）。
+- 可复用脚本：`k229/p260a.py`（删私有函数 + 并入 import）、`k229/p259b.py`（按 tsc 报错清理未使用导入）、`/home/kaua/calc-arch/dupfn.mjs`（跨文件同形函数扫描）。
 - **已知坑**：
-  - **函数体同形不等于语义相同**：`?.`、`?? []`、默认值、NaN 要逐个比对（本轮 nangong 就漏了，靠 verify 才发现）；
+  - 函数体同形不等于语义相同（`?.`、`?? []`、默认值、NaN 要逐个比对）；
+  - 模块级状态（`setActiveRowFusionRules`）在测试里要 `afterEach` 清空；
   - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；
-  - 源码锁要排除注释行，并在 HEAD 上用 `git grep` 核对反例命中数；
-  - 删函数后跑 `npx vue-tsc -b`；被删函数上方的 JSDoc 会变成孤儿注释，要检查。
-- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）；「进入失衡 +20 喧响」是否真实机制（§24.79 ①）。
+  - 源码锁要在 HEAD 上用 `git grep` 核对反例数，行为锁用 `git stash push -- <源码>` 做反例。
+- **未决项**：
+  - 1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；
+  - lumiflux 叫「辉光」还是「流明」（§24.62）；
+  - ResourceResultCard 命破 / 锋御标签颜色（§24.63）；
+  - 「进入失衡 +20 喧响」是否真实机制（§24.79 ①）；
+  - 逻辑编辑器行规则作用面（§24.84 ④，下一轮做）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
