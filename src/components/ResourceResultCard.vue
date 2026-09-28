@@ -297,7 +297,6 @@ import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult } from 
 import { fmt } from '@/utils/format'
 import { damageElementLabel as elementLabel, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import { agentResourceSections, agentResultCardCorrosion } from '@/composables/agentMechanicView'
-import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 
 const props = defineProps<{
   result: CharacterResourceResult
@@ -558,25 +557,17 @@ const myDisorderCount = computed(() => props.anomalyPoolResult?.perSlotDisorderT
 /** 本角色归属的乱流次数 */
 const myTurbulenceCount = computed(() => props.anomalyPoolResult?.perSlotTurbulenceTriggers?.[props.result.slot] ?? 0)
 
-/** 喧响个人获得拆解：自己完整奖励 + 其他队友奖励的 50% 伴随（异常/紊乱/乱流常量见 anomalyPool/helpers） */
+/**
+ * 喧响个人获得拆解：自己触发 + 队友伴随（CC-230：直读引擎 perSlotOwnBonus / perSlotBonus，
+ * 不再在展示层重算 170/85/85 × 次数 与 50% 伴随；伴随规则单一来源 data/decibelCompanion）
+ */
 const anomalyBonusBreakdown = computed(() => {
   const pool = props.anomalyPoolResult
   if (!pool) return null
   const slot = props.result.slot
-  const slotCount = Math.max(3, pool.perSlotAnomalyTriggers?.length ?? 3)
-  const own = (pool.perSlotAnomalyTriggers?.[slot] ?? 0) * ANOMALY_DECIBEL_BONUS
-    + (pool.perSlotDisorderTriggers?.[slot] ?? 0) * DISORDER_DECIBEL_BONUS
-    + (pool.perSlotTurbulenceTriggers?.[slot] ?? 0) * TURBULENCE_DECIBEL_BONUS
-  let companion = 0
-  for (let j = 0; j < slotCount; j++) {
-    if (j === slot) continue
-    companion += (
-      (pool.perSlotAnomalyTriggers?.[j] ?? 0) * ANOMALY_DECIBEL_BONUS
-      + (pool.perSlotDisorderTriggers?.[j] ?? 0) * DISORDER_DECIBEL_BONUS
-      + (pool.perSlotTurbulenceTriggers?.[j] ?? 0) * TURBULENCE_DECIBEL_BONUS
-    ) * 0.5
-  }
-  return { own, companion }
+  const own = pool.perSlotOwnBonus?.[slot] ?? 0
+  const total = pool.perSlotBonus?.[slot] ?? 0
+  return { own, companion: total - own }
 })
 
 // ============ 招式执行计划表格 ============

@@ -13,8 +13,9 @@ import { resolveAnomalyCorrosion, resolveAnomalyCorrosionEvents } from './anomal
 import { panelAt, emptyPanel } from './panel'
 import * as AnomalyPoolHelpers from './anomalyPool/helpers'
 import type { AnomalyPoolInput, DamageCalcConfig } from './anomalyPool/helpers'
+import { withCompanionShare } from '@/data/decibelCompanion'
 export type { AnomalySkillExecution, AnomalyPoolInput, CoweringConfig } from './anomalyPool/helpers'
-const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyDecibelBonus, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcCoweringDot } = AnomalyPoolHelpers
+const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyOwnDecibel, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcCoweringDot } = AnomalyPoolHelpers
 export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const {
     executions,
@@ -392,11 +393,12 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     // 乱流喧响触发者归属风底属性提供者；其他队友在 perSlotBonus 中按50%伴随获得。
     perSlotTurbulenceTriggers[windCharSlot] = turbulenceCount
   }
-  const perSlotBonus = calcPerSlotAnomalyDecibelBonus(
+  const perSlotOwnBonus = calcPerSlotAnomalyOwnDecibel(
     perSlotAnomalyTriggers,
     perSlotDisorderTriggers,
     perSlotTurbulenceTriggers,
   )
+  const perSlotBonus = withCompanionShare(perSlotOwnBonus)
 
   // ---- 7. 畏缩 DOT 伤害 ----
   // 触发条件：任何异常触发（爱丽丝 DOT 不限物理，风化吞掉畏缩也打 DOT）
@@ -426,6 +428,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     perSlotAnomalyTriggers,
     perSlotDisorderTriggers,
     perSlotTurbulenceTriggers,
+    perSlotOwnBonus,
     perSlotBonus,
     coverage,
     disorderDamage,
@@ -476,15 +479,7 @@ export function calcSpecialActionBonus(
     + (perSlotDodgeCounter[slot] ?? 0) * 10
     + (perSlotQuickAssist[slot] ?? 0) * 20
 
-  const perSlotBonus: number[] = []
-  for (let i = 0; i < slotCount; i++) {
-    let companion = 0
-    for (let j = 0; j < slotCount; j++) {
-      if (j === i) continue
-      companion += ownReward(j) * 0.5
-    }
-    perSlotBonus.push(ownReward(i) + companion)
-  }
+  const perSlotBonus = withCompanionShare(Array.from({ length: slotCount }, (_, i) => ownReward(i)))
 
   return {
     parry,

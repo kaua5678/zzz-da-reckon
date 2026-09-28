@@ -402,7 +402,8 @@ export function calcPerSlotDisorderTriggers(
   return perSlot
 }
 
-export function calcPerSlotAnomalyDecibelBonus(
+/** 各槽「自己触发」的异常/紊乱/乱流喧响（不含队友伴随；CC-230 随 AnomalyPoolResult.perSlotOwnBonus 带出供展示拆解） */
+export function calcPerSlotAnomalyOwnDecibel(
   perSlotAnomalyTriggers: number[],
   perSlotDisorderTriggers: number[],
   perSlotTurbulenceTriggers: number[] = [],
@@ -412,25 +413,10 @@ export function calcPerSlotAnomalyDecibelBonus(
     perSlotDisorderTriggers.length,
     perSlotTurbulenceTriggers.length,
   )
-  const perSlotBonus: number[] = []
-
-  for (let i = 0; i < slotCount; i++) {
-    const ownAnomaly = (perSlotAnomalyTriggers[i] ?? 0) * ANOMALY_DECIBEL_BONUS
-    const ownDisorder = (perSlotDisorderTriggers[i] ?? 0) * DISORDER_DECIBEL_BONUS
-    const ownTurbulence = (perSlotTurbulenceTriggers[i] ?? 0) * TURBULENCE_DECIBEL_BONUS
-    let companion = 0
-
-    for (let j = 0; j < slotCount; j++) {
-      if (j === i) continue
-      companion += (perSlotAnomalyTriggers[j] ?? 0) * ANOMALY_DECIBEL_BONUS * 0.5
-      companion += (perSlotDisorderTriggers[j] ?? 0) * DISORDER_DECIBEL_BONUS * 0.5
-      companion += (perSlotTurbulenceTriggers[j] ?? 0) * TURBULENCE_DECIBEL_BONUS * 0.5
-    }
-
-    perSlotBonus.push(ownAnomaly + ownDisorder + ownTurbulence + companion)
-  }
-
-  return perSlotBonus
+  return Array.from({ length: slotCount }, (_, i) =>
+    (perSlotAnomalyTriggers[i] ?? 0) * ANOMALY_DECIBEL_BONUS
+    + (perSlotDisorderTriggers[i] ?? 0) * DISORDER_DECIBEL_BONUS
+    + (perSlotTurbulenceTriggers[i] ?? 0) * TURBULENCE_DECIBEL_BONUS)
 }
 
 // ============ 积蓄计算函数（原有，保持不变） ============

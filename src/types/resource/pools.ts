@@ -116,7 +116,9 @@ export interface AnomalyPoolResult {
   perSlotDisorderTriggers: number[]
   /** 各角色归属的乱流触发次数（触发者为风底属性提供者） */
   perSlotTurbulenceTriggers: number[]
-  /** 各角色获得的异常/紊乱/乱流喧响奖励（含队友伴随） */
+  /** 各角色自己触发的异常/紊乱/乱流喧响（不含队友伴随；CC-230，供 ResourceResultCard「自己 + 队友伴随」拆解直读） */
+  perSlotOwnBonus: number[]
+  /** 各角色获得的异常/紊乱/乱流喧响奖励（含队友伴随，= withCompanionShare(perSlotOwnBonus)） */
   perSlotBonus: number[]
   /** 异常状态覆盖率分析 */
   coverage: AnomalyCoverageResult
