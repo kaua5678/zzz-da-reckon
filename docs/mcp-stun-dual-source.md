@@ -1339,3 +1339,15 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **未覆盖**：store 整队贪心（config.ts:~802，store 不反向依赖 composables，见 CC-173）和默认 useDefault 快速路径都不精修。预设和 zd 走 useDefault，zd 不受影响。1611 −25% 的原因不在打分：模板只有 critRate 和 defPct，步数预算也和推荐配装不同，另立 CC-184。
 - **验证**：vue-tsc 通过；新用例 `substatOptimizer.test.ts`「refine：…」钉住以下几点：1591 严格改进、恢复原分配、步数总和不变、maxEvals 封顶。verify EXIT=0，3833 个用例通过。zd 未跑：core 和 useDefault 路径零改动，预设和 zd 都不经过 refine。
 - **回退点**：revert 20a47df3（改 composable、ImpactChart、测试三个文件；core 未改）。
+
+### 24.31 CC-184：贪心分配补满步数预算（第 207 轮，ae935755）
+
+- **定位**（临时探针 `/home/kaua/calc-arch/k207/p1611.test.ts`）：1611 克拉蕾，模板 `[critRate, defPct, critDmg]`，锋御。推荐配装走 useDefault 快速路径，结果 `{critRate:20, defPct:19}` = 39 步；贪心结果 `{critRate:20}` 只有 **20 步**，精修只能挪步，最多挪成 11+9。1441 同理：推荐 39 步，贪心 35 步（hpPct 为 0）。
+- **根因**：打分式只认攻击，克拉蕾吃防御、1441 等吃生命，这些属性的边际恒为 0。暴击填满后所有边际都是 0，`greedyAllocate` 触发 `minGainRatio` 提前终止（或每步 bestStat 为空），剩余预算就浪费了。这不是个例：凡是主属性不是攻击的角色，贪心都会少分步数。
+- **修复**：`core/substatOptimizer.ts greedyAllocate` 在贪心循环结束后，把剩余预算按模板优先序补满（每个词条不超过 statCap），口径和 useDefault 快速路径「按模板优先序填到上限」一致。依据：游戏里副词条不会空着，未分配的步数在现实中必然落到某个词条；边际确实接近 0 时，补满也不会让结果变差。`minGainRatio` 保留，但语义从「停止分配」变为「停止按打分式分配」。
+- **实测**（62 个角色，探针同 §24.30）：
+  - 开精修（`k207/r1.tsv` 对比 `k206/c2r.tsv`）：平均 +4.85% → **+6.47%**，47 → **54 胜**，最差 1611 −25.17% → **0.00%**（所有角色都不低于推荐配装），22 个角色分配改变，10 升 0 降。1611 +35.5%；1121 +12.7%；1531、1051、1371、1471 各升 10% 以上。
+  - 不开精修（`k207/n1.tsv` 对比 `k205/new.tsv`，即 store 整队贪心路径）：平均 +2.96% → +3.63%，最差 −28.01% → −10.94%（1531），3 升 0 降。
+- **影响面**：只影响贪心路径（配置页按钮 / ImpactChart / store `optimizer.useDefault=0`）。useDefault 快速路径、预设、zd 都不经过 greedyAllocate，所以不跑 zd。
+- **验证**：vue-tsc 通过；新用例 `substatOptimizer.test.ts`「贪心分配用满步数预算」（1611 贪心总步数 = 推荐 39 步）；verify EXIT=0。
+- **回退点**：revert ae935755（core 一处循环后补段加一个测试）。
