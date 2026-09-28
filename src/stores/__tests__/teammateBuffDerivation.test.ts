@@ -17,7 +17,7 @@ import type { Agent, TeammateBuff, TeammateBuffGroup } from '@/types/catalog'
 const mkAgent = (id: string, extra: Record<string, unknown> = {}): Agent =>
   ({ id, specialty: 'attack', faction: 'fx', ...extra }) as unknown as Agent
 
-/** 造一个队友 buff（判定只读 id / sourceLabel / ownerId） */
+/** 造一个队友 buff（判定只读 id / sourceLabel；额外能力门控按组 id 查拥有者，不读 ownerId —— CC-199） */
 const mkBuff = (id: string, sourceLabelZhCN: string, ownerId = ''): TeammateBuff =>
   ({ id, sourceLabel: { zhCN: sourceLabelZhCN }, source: { zhCN: sourceLabelZhCN }, ownerId }) as unknown as TeammateBuff
 
@@ -106,7 +106,8 @@ describe('deriveTeammateBuffEnabled（角色特例分支）', () => {
     }
     const getAgent = (id: string) => agents[id]
     const run = (others: string[]) =>
-      Object.fromEntries(deriveTeammateBuffEnabled([slot('1581', 0), ...others.map(a => slot(a, 0))], groups, getAgent)
+      // 槽位必须互异：额外能力判定按 slot 排除自身（CC-199 起通用门控对本组生效）
+      Object.fromEntries(deriveTeammateBuffEnabled([slot('1581', 0), ...others.map(a => slot(a, 0))].map((s, i) => ({ ...s, slot: i })), groups, getAgent)
         .map(o => [o.id, o.enabled]))
 
     // 1 个异常队友 → tier1

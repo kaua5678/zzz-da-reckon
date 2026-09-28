@@ -38,5 +38,13 @@
     "  核心被动失衡提升对前台蓄力段/闪反/冲刺攻击的覆盖。",
     "  命座 C1 满月蓄势（强特失衡+12%，蓄力额外+10%）/ C2 能量回馈（失衡或连携触发回 5 能量）/ C4 保持风度（受击护盾）/ C6 冷酷猎手（蓄力攻击命中叠自身增伤）——均为自身机制。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "sameAttributeAsSelf" },
+      { "type": "sameFactionAsSelf" },
+      { "type": "specialty", "values": ["anomaly"] }
+    ],
+    "note": "队伍中存在与自身属性或阵营相同的角色或其他[异常]角色时触发（teammate-buffs.json lycaon.additional_graceful_pack_stun_multiplier 原文）：失衡易伤倍率 +35%。门控走 stores/config.ts#deriveTeammateBuffEnabled 的通用「额外能力」判定（CC-199）。"
+  }
 }

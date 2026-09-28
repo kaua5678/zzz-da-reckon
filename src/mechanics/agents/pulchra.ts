@@ -18,14 +18,14 @@ import { specToMechanicModule } from '@/specs/mechanics'
  * - 核心被动·猎手本能（Lv.7）：强特/支援突击/连携/终结进入[猎步]，失衡值 +30%
  *   （spec resource `pulchra_hunt_step` 供资源卡；失衡 +30% 由 applyPanel 恒常挂，猎步不断触发）。
  * - 额外能力·业务搭档[困迹]：波可娜 5 招命中施加困迹(15s)，困迹下全队[追加攻击]伤害 +30%
- *   ——用户确认困迹全覆盖（后台招式 15s 内续上不会断）。走 spec teamBuffs
+ *   ——用户确认困迹全覆盖（后台招式 15s 内续上不会断）。触发条件 spec.additionalAbility（CC-199），走 spec teamBuffs
  *   `pulchra_extra_trap_followup`（target=team，effect skillDmgBonus targetSkillType=additionalAttack）。
  *
  * 本轮补录（2026-08-27 用户口径）：
  * - **核心循环·噬爪·噩梦袭影**：猎步进入次数 = 强特 + 支援突击(≈招架) + 连携 + 终结；
  *   每次进入猎步打这个[后台追加攻击]特殊技——0 命 = 第一行(1351006)×5 + 终结一击(1351007)×1，
  *   6 命 = 第一行×7 + 终结一击×1（buildExecutions，timeBucket=backstage 不占前台）。
- * - 影画1·利己主义：困迹敌人自身暴击率 +10%（困迹全覆盖 → critRate +10 全覆盖）。
+ * - 影画1·利己主义：困迹敌人自身暴击率 +10%（困迹全覆盖 → critRate +10 全覆盖；额外能力未触发 = 无困迹 = 不加，CC-199）。
  * - 影画2·借势而为：猎步状态自身攻击力 +10%（猎步恒常 → atk ×1.1）。
  * - 影画4·狩猎乐趣：强特·噬爪瞬步能量消耗 -5（buildCharConfig cfg.exSpecialEnergyConsume -5）。
  * - 影画6·面具之下：①噬爪·噩梦袭影 伤害 +15%（patchExecutions）；②第一行次数 +2（buildExecutions）；
@@ -64,7 +64,8 @@ export function computePulchraHuntStepCount(i: PulchraHuntStepInput): number {
 function applyPulchraPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 猎步：恒常（强特/连携/终结不断触发，6s 刷新 → 失衡值 +30% 常驻）
   panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + PULCHRA_HUNT_STEP_STUN
-  if (cinemaLevel >= 1) {
+  // 影画1 原文「对被施加[困迹]效果的敌人造成伤害时」——困迹来自额外能力，未触发则无困迹（CC-199）
+  if (cinemaLevel >= 1 && (panel.additionalAbilityActive ?? 0) > 0) {
     panel.critRate = (panel.critRate ?? 0) + PULCHRA_C1_CRIT_RATE
   }
   if (cinemaLevel >= 2) {

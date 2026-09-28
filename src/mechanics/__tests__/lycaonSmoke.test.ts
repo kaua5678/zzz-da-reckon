@@ -17,15 +17,17 @@ describe('莱卡恩（1141）拐力生效（teammate-buffs.json 承载，spec �
     mockStaticFetch()
   })
 
-  // 安比（1011）无自定义机制、无 teammate-buffs 组，是干净的拐力接收者
-  async function setup(withLycaon: boolean) {
+  // 安比（1011）无自定义机制、无 teammate-buffs 组，是干净的拐力接收者。
+  // CC-199：失衡易伤 +35 是**额外能力**（同属性/同阵营/其他异常触发），安比（电·狡兔屋）不满足 ⇒
+  // 第 3 槽默认放艾莲（1191，冰·维多利亚家政，同时满足同属性与同阵营）让额外能力触发。
+  async function setup(withLycaon: boolean, third = withLycaon ? '1191' : '') {
     const catalog = useCatalogStore()
     await catalog.load()
     await catalog.loadTeammateBuffs()
     const config = useConfigStore()
     config.team[0] = { slot: 0, agentId: withLycaon ? '1141' : '1011', cinemaLevel: 0, ...baseConfig } as any
     config.team[1] = { slot: 1, agentId: '1011', cinemaLevel: 0, ...baseConfig } as any
-    config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.team[2] = { slot: 2, agentId: third, cinemaLevel: 0, ...baseConfig } as any
     config.syncTeammateBuffsFromTeam()
     return { catalog, config }
   }
@@ -40,6 +42,15 @@ describe('莱卡恩（1141）拐力生效（teammate-buffs.json 承载，spec �
       expect(ally[stat]).toBe(30)
     }
     expect(ally.stunDmgMultiplierBonus).toBe(35)
+  })
+
+  it('CC-199 额外能力未触发（只有安比：异属性、异阵营、非异常）：核心被动照常，失衡易伤 +35 不给', async () => {
+    const { catalog, config } = await setup(true, '')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const ally = computePanelPhases(1, config, catalog)!.inCombat as any
+    expect(ally.enemyIceResReduction).toBe(25)
+    expect(ally.physicalDmg).toBe(30)
+    expect(ally.stunDmgMultiplierBonus ?? 0).toBe(0)
   })
 
   it('防死数据：莱卡恩不在队时上述字段全为 0（效果确由莱卡恩提供）', async () => {

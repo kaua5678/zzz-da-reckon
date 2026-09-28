@@ -114,5 +114,12 @@
       "status": "implemented_approximation",
       "note": "困迹 +30% 扩展为全伤害（无 targetSkillType = all）；Cinema6 门控，base 条同刻禁用。"
     }
-  ]
+  ],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "specialty", "values": ["attack", "rupture"] },
+      { "type": "sameFactionAsSelf" }
+    ],
+    "note": "业务搭档：队伍中存在[强攻]或[命破]角色或自身阵营（卡吕冬之子）相同的角色时触发——5 招命中施加[困迹]。困迹是 pulchra_extra_trap_followup / 影画6 pulchra_cinema_6_trap_all / 影画1 暴击率三者的共同前提（CC-199）。"
+  }
 }

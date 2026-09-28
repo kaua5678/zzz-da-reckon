@@ -429,6 +429,9 @@ export const ADDITIONAL_GATE_BUFFS: Record<string, readonly string[]> = {
   // 菲欧妮（1641，⚠️3.3 测试服临时录入）额外能力：队伍存在其他[异常]/同阵营角色时触发
   // ——脆弱暴伤档位（spec teamBuffs，SOP §6.2 接线）；tier3 附加条件见 evalAdditionalAbilityBuffGates
   '1641': ['phoenix.weakness_anomaly_crit_dmg_tier2', 'phoenix.weakness_anomaly_crit_dmg_tier3'],
+  // 波可娜额外能力·业务搭档：队伍存在[强攻]/[命破]或同阵营（卡吕冬之子）角色时触发——[困迹]的前提。
+  // 影画6「困迹对追加攻击以外也生效」同样以困迹为前提 ⇒ 同门控（先例：1421 cinema_1）。CC-199。
+  '1351': ['pulchra_extra_trap_followup', 'pulchra_cinema_6_trap_all'],
 }
 
 /**
@@ -577,7 +580,7 @@ export function resolveSlotPanelBuffInputs(
       teammateName: { zhCN: b.name },
     }))
   const team = buildMechanicTeamMembers(configStore, catalogStore)
-  // 额外能力门控簇（14 角色 / 17 条 buff）：slot 查找 + evalAdditionalAbility 求值 + 按 buff id 过滤
+  // 额外能力门控簇（15 角色 / 19 条 buff）：slot 查找 + evalAdditionalAbility 求值 + 按 buff id 过滤
   // 已收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates（规则 6 棘轮 burn-down 第 1 批，
   // 2026-09-13 逐位等价迁移；原 14 个 `xxxAdditionalActive` + 17 条逐 id `.filter`）。语义偏离与注释全部保留在表侧。
   const additionalAbilityBuffGates = evalAdditionalAbilityBuffGates(

@@ -405,7 +405,10 @@ export function deriveTeammateBuffEnabled(
     if (!mtm.agent) continue
     const aaSpec = getAgentSpec(mtm.agentId)?.additionalAbility
     if (aaSpec) {
-      aaActiveMap.set(mtm.agentId, evalAdditionalAbility(mechanicTeam, mtm.slot, mtm.agent, aaSpec) === true)
+      const aaActive = evalAdditionalAbility(mechanicTeam, mtm.slot, mtm.agent, aaSpec) === true
+      aaActiveMap.set(mtm.agentId, aaActive)
+      // 仅队友角色的 buff 组 id 是 teammateBuffId（与上面 teamCinema 的双键同理）
+      if (mtm.agent.teammateBuffId) aaActiveMap.set(mtm.agent.teammateBuffId, aaActive)
     }
   }
 
@@ -433,9 +436,11 @@ export function deriveTeammateBuffEnabled(
       const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema
       // CC-64c：波可娜 C6 base 条互斥也经 teammateBuffGate（pulchra.ts 声明；原为此处写死 1351 分支）
       let shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable, agentId, cinemaLevel)
-      // 通用额外能力门控：若 buff 来源为"额外能力"且来源角色额外能力未激活，则自动禁用
-      if (shouldEnable && buff.ownerId && sourceLabel === '额外能力') {
-        const aaActive = aaActiveMap.get(buff.ownerId)
+      // 通用额外能力门控：若 buff 来源为"额外能力"且来源角色额外能力未激活，则自动禁用。
+      // CC-199：按组 id（= 拥有者）查，不按 buff.ownerId——catalog 里 1411/1581/1511 的 ownerId 是拼音 slug
+      // （youye/remielle/nangongyu），按它查恒 undefined ⇒ 柚叶额外能力曾无条件生效。
+      if (shouldEnable && sourceLabel === '额外能力') {
+        const aaActive = aaActiveMap.get(agentId)
         if (aaActive === false) shouldEnable = false
       }
       out.push({ id: buff.id, enabled: shouldEnable })
