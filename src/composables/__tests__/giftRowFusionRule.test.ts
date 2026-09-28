@@ -18,8 +18,6 @@ afterEach(() => setActiveRowFusionRules([]))
 
 /** resourceCalc/ 下允许的内联原始行读取（每处须有裁决）：文件 → 允许条数 */
 const RAW_ROW_READ_ALLOW: Record<string, number> = {
-  // 平A均值族（averageBasicRows 等），下一轮裁决（交接 §2）
-  'skillRows.ts': 3,
   // 按元素累加 anomaly_buildup 判定角色积蓄属性——分类启发式而非计算量，用户倍率规则不应翻转属性（§24.86 不做）
   'panelPhases.ts': 1,
 }

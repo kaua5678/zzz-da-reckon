@@ -51,7 +51,8 @@ export function getHealingAmount(move: SkillMove): number {
   let total = 0
   for (const row of move.rows as any[]) {
     if (!isHealingRow(row)) continue
-    total += row.values?.[0] ?? 0
+    // CC-240：吃逻辑编辑器行规则（按 row.id 取；catalog 1352 招行 id 唯一、无缺 id）
+    total += getRowValue(move, row.id)
   }
   return total
 }
@@ -61,7 +62,7 @@ export function getSpecialResourceRecovery(move: SkillMove): number {
   // attack_data_1/2… 是其他通道（如回血），不混入本字段；观察：attack_data_0 秒均 ≈ 11（钢能）。
   for (const row of move.rows as any[]) {
     if (String((row as any).kind ?? '') === 'special') {
-      return row.values?.[0] ?? 0
+      return getRowValue(move, row.id) // CC-240：吃逻辑编辑器行规则
     }
   }
   // 兜底：非标准 recovery 行（旧式专属回复）求和
@@ -71,7 +72,7 @@ export function getSpecialResourceRecovery(move: SkillMove): number {
     if (!id.includes('recovery')) continue
     if (id === 'energy_recovery' || id === 'decibel_recovery') continue
     if (isHealingRow(row)) continue
-    total += row.values?.[0] ?? 0
+    total += getRowValue(move, row.id) // CC-240
   }
   return total
 }
