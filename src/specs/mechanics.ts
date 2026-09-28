@@ -11,6 +11,7 @@ import type {
   IterationState,
   SkillExecution,
 } from '@/types/resource'
+import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { applySpecAttributeConversions } from './runtime'
 import { computeSpecResources, type SpecResourceResult } from './resources'
 import type { AgentMechanicSpec, EventSpec, ResourceRuleSpec } from './types'
@@ -138,14 +139,15 @@ export function specToMechanicModule(spec: AgentMechanicSpec): AgentMechanicModu
           ? String((cfg as unknown as Record<string, unknown>)[event.carrierField] ?? '')
           : event.carrierMoveId ?? ''
         if (!moveId) continue
-        for (const category of skills?.categories ?? []) {
-          const move = category.moves.find(item => item.id === moveId)
-          if (!move) continue
-          const rowId = event.multiplierRowId ?? 'damage'
-          const row = move.rows.find(item => item.id === rowId)
-          rowValues[moveId] = row?.values?.[0] ?? 0
-          break
-        }
+        // CC-241：取值走 data getRowValue（吃逻辑编辑器行规则，作用面见 docs/mcp-stun-dual-source.md §24.85 ④）。
+        // mechanicRowValues 即事件 base（无二次乘）。生效面（第 263 轮探针）：下游仅在 usesOverride（ratio≠1 或 cinema override）
+        //   时把 base 当倍率；否则 damageMultiplierOverride=false、rowBuild 按 moveId 重读行（本就吃规则），此处只作 >0 闸。
+        //   现存 spec 无 multiplierRatio → 当前生产零差；本改动为单一来源归一 + 防将来 ratio 事件绕过规则。
+        // ⚠ 下方 buildExecutions 注入的 getRowValue 只放行 rowId === 'damage'：现存 spec 的 multiplierRowId 全为 damage，
+        //   将来声明非 damage 行时须同时改那道闸（否则读成 0）。
+        const move = findMoveById(skills, moveId)
+        if (!move) continue
+        rowValues[moveId] = getRowValue(move, event.multiplierRowId ?? 'damage')
       }
       if (Object.keys(rowValues).length) {
         cfg.mechanicRowValues = { ...(cfg.mechanicRowValues ?? {}), ...rowValues }
