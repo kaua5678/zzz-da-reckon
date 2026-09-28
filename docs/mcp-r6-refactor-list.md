@@ -397,3 +397,4 @@
 | 245 | 角色模块自带伤害公式；`stunned` 真假判断残留 | mechanics 与 resourceCalc 没有另一份手写伤害公式；core/damage.ts 两处展示按乘数判定（CC-221，`253257e4`，零数值差）；伤害公式线收尾 | — |
 | 246 | 暴击期望 / 暴击率钳制副本 | 8 处收进 `src/data/critMultiplier.ts`（CC-222，`f4e45890`）；伤害公式线至此无尾巴 | 锁测试拦新增内联 |
 | 247 | 展示层（FinalPanel / StatPanel）乘区与引擎对账 | 2 处口径不同已修（CC-223，`7eb4eace`）；失衡 cap 字段无写入方，不修；展示层对账线收尾 | 结构锁 anomalyElement.test |
+| 248 | 元素 → 面板字段名映射表 | 10 份收进 `src/utils/elementStatKeys.ts`（CC-224，`f1db965e`），`core/elementKeys.ts` 删除 | 源码锁 elementStatKeys.test |

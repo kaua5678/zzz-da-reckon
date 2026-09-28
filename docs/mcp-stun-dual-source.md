@@ -2213,3 +2213,30 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 **影响**：引擎零数值差（函数逐字迁移，golden 通过）；只有展示变化。**回退点**：revert 本提交。
 
 **结论**：展示层乘区对账到此收尾，伤害公式与展示两条线都已结项。
+
+### 24.72 第 248 轮：CC-224 元素 → 面板字段名单一来源 `src/utils/elementStatKeys.ts`（f1db965e）
+
+**副本（10 份）**
+- `core/elementKeys.ts` 三张表（伤害 / 减防 / 减抗），经 `composables/resourceCalc/skillRows.ts` 和 `resourceCalc/helpers.ts` 两层壳转出。表里**缺 ether_ink 和 frostfire**。
+- `core/damage.ts#getElementDmgBonus` 局部表；`core/anomalyPool/helpers.ts#getElementDmgKey` switch。这两处已经先经 `resolveStatElement` 解析元素。
+- `components/FinalPanel.vue` 4 张：伤害、减抗、贯穿、锐化。
+- `components/StatPanel.vue` 2 张：伤害、贯穿。
+- `views/ResourceUtilizationPage.vue` 1 张：减抗。
+- `views/DebugPage.vue` 1 张：伤害；另有一处 `${element}SheerDmg` 直接拼接，没有先解析元素。
+
+**口径依据**：`resolveStatElement` 的注释写明（用户口径 2026-09-05），烈霜在一切「元素 → 数值」查找里都按冰读，变种元素读基础元素。core 的两处遵守了这条，而 `core/elementKeys.ts` 与展示层副本没有。
+
+**实际缺陷**：`composables/resourceCalc/anomalyPanels.ts#buildAnomalyVirtualPanel` 用 `ELEMENT_DMG_KEYS[prog.element]`。遇到仪玄玄墨 `ether_ink` 或雅烈霜 `frostfire` 时键为 undefined，于是虚拟面板的增伤漏掉元素增伤，元素减抗也读成 0。影响面已查：标准异常伤害池 `damagePoolAnomaly.ts` 的 `anomalyDamageSpecs` 只含 6 个基础元素，这两个元素不走该路径；`buildVirtualPanel` 能力只有柏妮思在用（火）。⇒ 实际只影响 `useResourceCalc.ts:644` 的异常虚拟面板**展示**。
+**潜在缺陷**：FinalPanel `?? 'dmgBonus'` / `?? 'enemyResReduction'` 的回落，一旦元素查不到，就会把通用增伤、全属性减抗算两遍（`dmgTotal`、`resTotal`，以及 dmgRows、debuffRows 里重复的行）。
+
+**改动**
+- `resolveStatElement` 自 helpers 逐字迁入 `src/data/anomalyElement.ts`（helpers 原名转出）。
+- 新增 `src/utils/elementStatKeys.ts`：`elementStatKey(kind, element)`，kind 为 dmg / critDmg / sheerDmg / sharpDmg / enemyRes / enemyDef；另有 `panelElementStat(panel, kind, element)`。两者都先经 `resolveStatElement`，减抗、减防的键复用 `utils/enemyDebuffStats#enemyDebuffElementStatId`。查不到时返回 undefined 或 0，**不回落通用字段**。
+- 放在 utils，是因为 core（damage.ts 已在 import utils/enemyDebuffStats）、mechanics 和展示层都能 import utils。
+- 10 份副本都改为调用它。`core/elementKeys.ts` 以及两层壳里的转出已删除，壳测试 `skillRowsShell.test.ts` 的符号表同步删掉这 3 项。
+- `getElementDmgKey` 保留导出与未知元素的旧回落 `${statElement}Dmg`：面板上没有这个字段，读到的仍是 0，逐位等价。
+- DebugPage 保留 `?? 'dmgBonus'` 回落（调试页，不改其语义）。
+
+**锁**：`src/utils/__tests__/elementStatKeys.test.ts` 含三部分：①7 个基础元素 × 5 类键逐字断言，且字段在 `emptyPanel()` 里真实存在；②变种、烈霜、未知元素；③源码锁，除本来源外不许出现 `physical: 'physicalDmg' | 'enemyPhysicalResReduction' …` 形式的对照表，或 `case 'physical': return 'physicalDmg'`。**反例**：`git stash push -- DebugPage.vue FinalPanel.vue` 后，锁报出这两个文件。
+
+**影响**：verify 全绿（3932 passed），golden 零差（catalog 未改，R23-N2 纯伤害回归判据启用），引擎数值零变化；只修展示层。**回退点**：revert 本提交（`core/elementKeys.ts` 会随之恢复）。

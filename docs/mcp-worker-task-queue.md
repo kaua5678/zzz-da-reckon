@@ -71,21 +71,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 247 轮（lane lead-arena-0925c）：CC-223 完成（7eb4eace），文档见本提交。push 结果见 git log / rev-list。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.71。引擎零数值差，只有展示变化。
-- 前几轮：246 CC-222（f4e45890）；245 CC-221（253257e4）；244 CC-220（dc096e98，蕾米 −11～16%）。
+**第 248 轮（lane lead-arena-0925c）：CC-224 完成（f1db965e），文档见本提交。push 结果见 git log / rev-list。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.72。
+- 前几轮：247 CC-223（7eb4eace）；246 CC-222（f4e45890）；245 CC-221（253257e4）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**已收尾的线**：时间口径 CC-216 ~ 218；伤害乘区 CC-219 ~ 222；展示层乘区对账 CC-223。`src/data/` 现有 3 个供引擎和展示共用的纯规则文件：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`。
+**纯规则单一来源一览（新写代码请直接用这些，不要自建表）**：
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`（暴击率钳制 / 期望暴击）、`anomalyElement`（变种 → 基础、`resolveStatElement`、元素积蓄效率）；
+- `src/utils/elementStatKeys`：元素 → 面板字段名；
+- `src/utils/enemyDebuffStats`：敌方减益字段；
+- `src/core/damageMultipliers`：防御 / 抗性 / 等级；
+- `src/core/effectiveTime`：时间口径。
 
 **下一步（直接开工）**
-1. **元素 → 字段键映射的归并**：`components/StatPanel.vue` 自带 `ELEMENT_DMG_KEY_BY_ELEMENT` / `ELEMENT_SHEER_DMG_KEY_BY_ELEMENT` 等「元素 → 面板字段名」表；`core/elementKeys.ts` 有 `ELEMENT_DMG_KEYS` / `ELEMENT_DEF_REDUCTION_KEYS` / `ELEMENT_RES_REDUCTION_KEYS`；FinalPanel **自带** 4 张（`ELEMENT_DMG_KEYS` / `ELEMENT_RES_KEYS` / `ELEMENT_SHEER_KEYS` / `ELEMENT_SHARP_KEYS`，约 120-136 行），`views/ResourceUtilizationPage.vue:348` 自带 `ELEMENT_RES_REDUCTION_KEYS`。本轮已预查：`core/elementKeys.ts` 零 import，是纯表；各表的 lumiflux 都齐全，没有现存 bug。
-   - 这些是**字段键**，不是 CC-214 那类显示标签，CC-214 的锁不覆盖。
-   - 若 `core/elementKeys.ts` 是零依赖的纯表，可评估把它下沉到 `src/data/`（core 原名转出），让展示层删掉自带副本。**判据**：字段键表以后新增元素（如 lumiflux）时，只需改一处。
-   - **潜在风险（真正的收益点）**：FinalPanel 写的是 `ELEMENT_DMG_KEYS[element] ?? 'dmgBonus'`，变种元素（frostfire / ether_ink）查不到键时会回落到 `dmgBonus`，于是 `dmgTotal` 把通用增伤算两遍。引擎先经 `resolveStatElement` 把 frostfire 按冰读。目前 catalog 的 `damageElement` 只有 7 种基础元素，所以没有触发。归并时应顺带提供「先解析元素再取键」的 data 函数，并把 `resolveStatElement` 的纯部分一起下沉。
-2. 以上都不值得做时，另找一条线：可以查 `src/utils/` 与 `src/composables/` 中「展示用重算」的地方（例如 `stunVulnSummary`、`difficultyRatio`），看是否与 core 口径一致。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-223）。
-- **已知坑**：积蓄抗性区、失衡抗性区已裁决不归一；叶瞬光 `veilStunBase` 是独立机制；`1 + x/100` 增伤、精通区和「必暴」不抽函数；查副本按算式形状搜，不按变量名搜；失衡 cap 字段目前没有写入方（§24.71）。
+1. **元素限定字段的其余直接拼接**：CC-224 只收了「对照表」形式。执行 `grep -rnE '\$\{[^}]*[eE]lement[^}]*\}(Dmg|SheerDmg|SharpDmg|CritDmg|AnomalyBuildUpEfficiency|ResReduction)' src`，找出直接拼字段名的地方（例如 `core/damage.ts#getElementCritDmgBonus` 写的是 `${resolveStatElement(element)}CritDmg`，**这处已解析，语义正确**，可以改为调用 `elementStatKey('critDmg', …)` 统一写法，但**不是 bug**）。**优先查没经 `resolveStatElement` 的拼接**：变种元素会拼出不存在的字段而读到 0，这才是真 bug。
+2. 查完这条，元素相关的单一来源线就收尾，改为另找方向（例如 `src/utils/` 与 composables 里「展示用重算」是否与 core 口径一致：`stunVulnSummary`、`difficultyRatio`）。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-224）。
+- **已知坑**：`composables/resourceCalc/helpers.ts` 与 `skillRows.ts` 都是「import + export」转出壳，删符号时两处都要改，并同步 `skillRowsShell.test.ts` 的符号表（本轮就踩了：vue-tsc 报 TS2305）。多行 import 按 `grep "import"` 搜会漏，要按符号名搜全 src。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色暂用 default（§24.63）。
 
 **探针（优化器相关改动的验收）**
