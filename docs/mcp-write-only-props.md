@@ -73,7 +73,9 @@
 | `soukakuEnergyPerSoukakuUlt` | `src/types/resource/config.ts:696` | `src/mechanics/agents/soukaku.ts:111` | 0 | [done 9e0d4adf]
 | `timeFeasibleScale` | `src/types/resource/config.ts:815` | `src/core/resource/helpers.ts:212`, `src/core/resource/helpers.ts:536`, `src/core/resource/helpers.ts:550`, `src/core/resource/helpers.ts:551` | 0 | **保留**：挂着登记的 `@fact`（诊断量写回口径，有复核到期），是有意保留的诊断量
 
-### T2 · 结果 / 中间对象的死字段（74 条，**未做**）
+### T2 · 结果 / 中间对象的死字段（74 条，**进行中**：诺姆 3 条已删，CC-192 10817931）
+
+> 第 215 轮裁决：T2 只是无害的展示载荷，删除收益小，**不再占 lead 整轮**。适合派给子代理（dsflash）逐批做，由 lead 做 zd / verify 验收；测试读取数 > 0 的默认保留。
 
 **误报比例明显更高**：图表布局对象（`directDamageChart` 的 `lefts` / `centers`…）常被 .vue 以同名局部变量解构后使用；只被测试读的诊断字段（测试读取数 > 0）**默认保留**，除非测试本身只是在断言这个字段存在。第 213 轮抽查过的三组：
 - `anbyZero.teamFollowupDmgBonus`：额外能力已经走 spec teamBuffs 生效，这个字段是死的展示副本；
@@ -98,9 +100,9 @@
 | `impactFromMastery` | `src/types/resource/agentResources.ts:306` | `src/mechanics/agents/nangong.ts:106`, `src/mechanics/agents/nangong.ts:112` | 2 |
 | `vibratoMax` | `src/types/resource/agentResources.ts:308` | `src/mechanics/agents/nangong.ts:114` | 0 |
 | `beatCap` | `src/types/resource/agentResources.ts:314` | `src/mechanics/agents/nangong.ts:120` | 0 |
-| `hatToChainCost` | `src/types/resource/agentResources.ts:417` | `src/mechanics/agents/norma.ts:175` | 0 |
-| `barrageSeconds` | `src/types/resource/agentResources.ts:419` | `src/mechanics/agents/norma.ts:135`, `src/mechanics/agents/norma.ts:176` | 0 |
-| `barrageCoverage` | `src/types/resource/agentResources.ts:421` | `src/mechanics/agents/norma.ts:134`, `src/mechanics/agents/norma.ts:135`, `src/mechanics/agents/norma.ts:177` | 0 |
+| `hatToChainCost` | `src/types/resource/agentResources.ts:417` | `src/mechanics/agents/norma.ts:175` | 0 | [done 10817931]
+| `barrageSeconds` | `src/types/resource/agentResources.ts:419` | `src/mechanics/agents/norma.ts:135`, `src/mechanics/agents/norma.ts:176` | 0 | [done 10817931]
+| `barrageCoverage` | `src/types/resource/agentResources.ts:421` | `src/mechanics/agents/norma.ts:134`, `src/mechanics/agents/norma.ts:135`, `src/mechanics/agents/norma.ts:177` | 0 | [done 10817931]
 | `yisha4NecessaryTime` | `src/types/resource/agentResources.ts:471` | `src/mechanics/agents/qingyi.ts:250` | 3 |
 | `zuiHuaTime` | `src/types/resource/agentResources.ts:473` | `src/mechanics/agents/qingyi.ts:92`, `src/mechanics/agents/qingyi.ts:93`, `src/mechanics/agents/qingyi.ts:110`, `src/mechanics/agents/qingyi.ts:239` … | 0 |
 | `dreamTarget` | `src/types/resource/agentResources.ts:482` | `src/mechanics/agents/luciaElowen.ts:301` | 0 |

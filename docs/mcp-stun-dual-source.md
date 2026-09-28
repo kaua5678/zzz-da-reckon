@@ -1515,3 +1515,34 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - zd：用 HEAD 版 1401.json 跑，DUMP / ROWS 均为 DIFF 0，证明代码零差。用新版 1401.json 跑，爱丽丝队 DIFF 24 / 28，差异来自 C6 事件展示字符串 `note` / `fields` 的哈希。
   - verify EXIT=0（3827：苍角写字段测试 −1，crossAgentSupply 声明断言 +1）。
 - **回退点**：`git revert 9e0d4adf`。
+
+### 24.39 CC-192：机制设置动态普查——安东额外能力门控缺声明（生产路径恒不触发）+ 滑块 0% 读成 100%（第 215 轮，10817931）
+
+- **为什么做这件事而不是 T2**：T2 剩余条目只是无害的展示载荷，删除的架构收益很小（按唯一判据，适合低级模型慢慢推进）。CC-189 的教训是「注册了、但不起作用」的假选项；CC-187 的 mechanicSetting 普查是静态的（有没有被读），看不见「读了但被门控挡死」。本轮改做**动态**普查。
+- **工具**：`.zc/perf/sweep.perf.ts`（本地，不入库；`PERF_OUT=<tsv> npx vitest run --config .zc/perf/vitest.perf.config.ts sweep`，约 85s）。对每个模块 `settings` 项，取含该角色的前 3 个预设（没有预设的角色：取前 3 个预设、把 0 号位换成它），在 {当前, C0, C6} 下把设置切到 min / max / default+3·step / default÷2，比对 `teamTotalDamage` 和 resourceResult / stunPool 哈希；另检查「显式写入声明 default」是否等于「不设置」（兜底一致性）。
+- **结果**（179 项）：168 项有效；兜底不一致 0 项；无效 11 项，逐条分类如下。
+
+| 设置 | 分类 | 依据 |
+|---|---|---|
+| `anton.additionalShockRatio` | **bug，已修** | 见下文 |
+| `hugo.exVerdictRatio` / `hugo.ultimateVerdictRatio` | 轴模式下被轴覆盖（设计如此） | 单人（非轴）普查有效；放进带失衡轴的队伍后改由轴决定（hugo.ts:396 按 `!== undefined` 选通路） |
+| `corin.additionalStunCoverage` | 同上 | 标签本身就写着「（非轴）」 |
+| `yixuan.ningshenCoverage` | 同上 | 只有非轴分支读取（yixuan.ts:1118/1137），3 个预设都在轴模式 |
+| `1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate` | 同上 | 只参与失衡内毒素占比（xixifu.ts:264，轴内分摊） |
+| `banyue.autoTopUpInteractions` | 场景依赖 | 只在资源不足时才补齐；3 个预设都不缺 |
+| `1531.billy_star_glow…rate` / `1531.billy_radiant_star…rate` | 饱和 | 星辉 2 层封顶、煊赫星辉按上限裁剪（starlightBilly.ts:660/701），其他来源已经能叠满 |
+| `qianxia.gazeTriggerHits` | 语义为「只减不增」 | `min(markSupply, triggerHits)`（qianxia.ts:115），0 表示自动；只有设成小于标记供给的值才有效，本次试的 30 不够小 |
+| `1551.peiluo_prominence.peiluo_perfect_block_gain.rate` | 场景依赖 | 完美格挡次数默认 0，换进去的队伍里没有格挡来源 |
+
+- **修复 1（接线缺失，影响面最大）**：`src/specs/agents/1111.json` 没有 `additionalAbility` 声明 ⇒ `panelPhases.ts:646-648` 从不把 `additionalAbilityActive` 置 1 ⇒ `anton.ts` 的「通力合作·感电追加」事件在生产路径上**永远不会产生**。单测直接构造了 `panel: { additionalAbilityActive: 1 }`，所以一直是绿的。按 catalog 原文（「队伍中存在与自身属性或阵营相同的角色时触发」）补上 `teamConditions: [sameAttributeAsSelf, sameFactionAsSelf]`，写法与柯林 1061 相同。这是接线修复，不是改数值：模块算式、倍率一字未动。集成测试 `src/composables/__tests__/antonGateHarnessCc192.test.ts` 走 harness 真队伍，断言 [安东, 格莉丝, 艾莲] 门控为 1、[安东, 艾莲, 星见雅] 为 0。
+- **修复 2**：`anton.ts` 原来是 `clampRatio(cfgSetting(...) || 1)`，滑块 0% 被读成 100%（`if (ratio <= 0) return` 因此是死代码）。`setting:*` 由 `resourceCalc/helpers.ts:617` 按声明 default 注入，所以改为「缺键（单测直接构造 cfg）才回落 1」。删掉了已无人使用的 `cfgSetting`。
+- **结构守卫**：新增 `src/mechanics/__tests__/additionalAbilityGate.test.ts`：凡是模块源码读 `panel(?).additionalAbilityActive`，其 agentIds 的 spec 必须声明 `additionalAbility.teamConditions`（目前 35 个模块，缺失清单为空）。自带判定的模块（velina / alice / miyabi 的 `isAdditionalAbilityActive`）不读面板标记，不受约束。
+- **顺带（T2 三条 + 过期说明）**：诺姆 `barrageCoverage`（恒为 1）/ `barrageSeconds` / `hatToChainCost` 只写不读，已删；1571.json 说明里的「norma.barrageCoverage 可调」「按覆盖率折算」早已过期（覆盖率滑块已移除，`git log -S`），已改正。
+- **更深一层（CC-193，下一轮第 1 项）**：门控修好后总伤仍然不变。harness 实测（[安东, 格莉丝, 艾莲]，含普攻权重 3）：安东的生产执行行只有 `basic_attack`（通用普攻行）/ 1111011 / 017 / 016 / 014 / 020 / 023，**没有任何爆发状态招式行**（006-008 打桩、010/015/019 钻击）。模块里的 `ANTON_PILE_MOVE_IDS` / `ANTON_DRILL_MOVE_IDS` / `ANTON_C6_MOVE_IDS` 与 catalog 一致，但碰不到任何行 ⇒ 核心被动 +24% / +40%、C1 回能、C6 增伤、感电追加在生产路径上可能**全部不生效**，单测都是手工构造行，所以一直是绿的。要先弄清通用 `basic_attack` 行按什么展开、哪些角色会展开成逐招式行，再判断这是安东个例还是一类问题。
+- **未做、记为后续**：还有 7 个 spec 没有 `additionalAbility` 声明（1141 / 1151 / 1171 / 1351 / 1441 / 1511 / 1611；1401 走自定义判定）。它们的额外能力要么无条件生效，要么走别的门控，需要逐个对照 catalog 原文的触发条件，看有没有「本该有条件却恒生效」的情况。
+- **验证**：
+  - vue-tsc 0。
+  - zd（用 HEAD 版 1571.json，`ZD_DROP=barrageSeconds,barrageCoverage,hatToChainCost`）：DUMP / ROWS 均为 DIFF 0。预设里没有安东，所以零差符合预期；安东所在队伍的数值会变化，这正是修复本身。
+  - 修复后重跑普查（k215/sweep3.tsv）：`anton.additionalShockRatio` **仍然无效**，原因见下一条。
+  - verify EXIT=0（3831：安东单测 +1、门控守卫 +1、harness 门控 +2）。
+- **回退点**：`git revert 10817931`。
