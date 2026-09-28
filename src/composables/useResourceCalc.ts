@@ -484,6 +484,8 @@ export function useResourceCalc() {
   // CC-227：直读引擎本轮实际用于喧响的那份（convergence 的 calcSpecialActionBonus 结果）。
   // 旧写法在此用 store 原值 + topUp + parrySplit 另拼每槽弹刀、连携取结果 chainCountTotal——与引擎（注入后 cfg、规划连携）是两套口径。
   const specialActionBonus = computed<SpecialActionBonusResult | null>(() => calcOutput.value?.specialActionBonus ?? null)
+  /** 通用保底4喧响的引擎决策（CC-229）：TeamConfigPage 提示直读，不再用收敛后喧响重算缺口 */
+  const decibelGuaranteeResult = computed(() => calcOutput.value?.decibelGuarantee ?? null)
 
 
 
@@ -721,6 +723,7 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
     interactionTopUp,
     parrySplitResult,
     guaranteeStunShortfallResult,
+    decibelGuaranteeResult,
     ultPromoteCount,
     ultPromoteHug60,
   }

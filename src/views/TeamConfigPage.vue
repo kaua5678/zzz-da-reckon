@@ -782,7 +782,7 @@ import { useStatLabel } from '@/composables/useStatLabel'
 import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanel } from '@/composables/resourceCalc/helpers'
-import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import CharacterCard from '@/components/CharacterCard.vue'
 import StatPanel from '@/components/StatPanel.vue'
 import { computeOutOfCombatPanel } from '@/composables/outOfCombatPanel'
@@ -953,15 +953,23 @@ const teamHasGuaranteeFury = computed(() => teamHasGuaranteeFuryOwner(configStor
 const guaranteeStun = computed(() => configStore.getMechanicSetting('guarantee.stun', 0) !== 0)
 const guaranteeFury = computed(() => configStore.getMechanicSetting('guarantee.fury', 0) !== 0)
 const guaranteeUltimate = computed(() => configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0)
-/** 保底4喧响·诚实显示（用户 2026-09-03）：四舍五入要露出来——「缺口 X → ⌈X/215⌉=N 次（X/215≈Y 取整）」 */
+/**
+ * 保底4喧响·诚实显示（用户 2026-09-03）：四舍五入要露出来——「缺口 X → ⌈X/215⌉=N 次（X/215≈Y 取整）」。
+ * CC-229：直读引擎决策（convergence 的 decibelGuarantee）。旧写法用**收敛后**主C喧响重算缺口——那时注入的弹刀喧响已在内，
+ * 显示的是补后剩余缺口、N 与引擎实补次数不符；且没看「补齐角色（般岳）在队 ⇒ 通用口径不生效」。
+ */
 const guaranteeUltimateHint = computed(() => {
   if (!guaranteeUltimate.value) return '（未启用保底4喧响）'
-  const mainDpsDecibel = resourceResult.value?.characters.find(c => c.slot === 0)?.decibelSource?.total ?? 0
-  const short = Math.max(0, 4 * ULTIMATE_COST_DEFAULT - mainDpsDecibel)
-  if (short > 1500) return `（喧响缺口 ${Math.round(short)} > 1500，实战打不出下一次大 → 不硬凑）`
-  const raw = short / 215
-  const n = Math.ceil(raw)
-  return `（保底4喧响：缺口 ${Math.round(short)} 喧响 → 补弹刀 ⌈${short}÷215⌉ = ${n} 次，${raw.toFixed(2)} 次四舍五入取整）`
+  const g = decibelGuaranteeResult.value
+  if (!g) return ''
+  if (!g.active) return '（本队由补齐角色负责补弹刀，通用保底4喧响不生效）'
+  if (g.parry <= 0) {
+    return g.roundable
+      ? '（保底4喧响：主C喧响已够 4 次终结技，无需补弹刀）'
+      : `（喧响缺口 ${Math.round(g.residualShort)} > 1500，实战打不出下一次大 → 不硬凑）`
+  }
+  const raw = g.basisShort / g.perParry
+  return `（保底4喧响：缺口 ${Math.round(g.basisShort)} 喧响 → 补只给喧响弹刀 ⌈${Math.round(g.basisShort)}÷${g.perParry}⌉ = ${g.parry} 次，${raw.toFixed(2)} 次向上取整）`
 })
 function setGuarantee(kind: 'stun' | 'fury' | 'ultimate', v: boolean) {
   configStore.setMechanicSetting(`guarantee.${kind}`, v ? 1 : 0)
@@ -975,7 +983,7 @@ function setComboAlignAbsorbPct(v: number) {
 }
 // 轴模式自动补齐（保底语义，现唯一产出者般岳）：弹刀/双反在交互栏输入之上补的量（懒计算，仅产出者槽位选中时非空；
 // 槽位 = 声明 producesInteractionTopUp 的角色，故弹刀提示不必再判角色 id —— CC-65b）
-const { interactionTopUp, autoPreset, parrySplitResult, resourceResult, guaranteeStunShortfallResult } = useResourceCalc()
+const { interactionTopUp, autoPreset, parrySplitResult, guaranteeStunShortfallResult, decibelGuaranteeResult } = useResourceCalc()
 /** 保底4失衡·未达成如实显示（CC-156）：弹刀预算内补不满时引擎按实际池计数算，这里把降级露出来 */
 const guaranteeStunHint = computed(() => {
   const s = guaranteeStunShortfallResult.value

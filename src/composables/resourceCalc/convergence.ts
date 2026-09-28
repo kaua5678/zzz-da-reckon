@@ -131,6 +131,7 @@ export function createRunCalcRound(deps: {
       // 已作为死写删除（判死依据见该处注释）；1511 模块经 `threads` 契约自取（round 12 批次 2）。
       teamVeilCountTotal: prevTeamVeilCountTotal,
       decibelParry: prevDecibelParry,
+      decibelParryBasisShort: prevDecibelParryBasisShort,
       decibelRegenBySlot: prevDecibelRegenBySlot,
       // 2026-09-17 round 21 夜D：`prevPoolStunCount` 也不再在此解构——它唯一的读点
       // （雨果轴内决算块数落地，坑36）已整块迁进 `hugo.ts#applyHugoTeamConfig`，
@@ -749,12 +750,23 @@ export function createRunCalcRound(deps: {
     // 单调不减（max 夹住上一轮）：215 是弹刀个人喧响奖励、实际每刀喧响含伴随/轻弹刀数据行更高，
     // 直接重算会在「缺口÷215」与「0」之间振荡——单调夹住后收敛到首轮估计，稳定且确定。
     let decibelParryNext = prevDecibelParry
+    // CC-229：同时记下「使次数取到当前值的缺口」（与 decibelParry 同进退）+ 本轮剩余缺口，随结果交给展示层
+    let decibelParryBasisShortNext = prevDecibelParryBasisShort
+    let decibelResidualShort = 0
+    let decibelRoundable = true
     if (decibelParryActive) {
       const mainDpsDecibel = rr.characters.find(c => c.slot === 0)?.decibelSource?.total ?? 0
       const decibelShort = Math.max(0, 4 * ULTIMATE_COST_DEFAULT - mainDpsDecibel)
       const roundable = decibelShort <= DECIBEL_ROUND_THRESHOLD
+      decibelResidualShort = decibelShort
+      decibelRoundable = roundable
       if (roundable) {
-        decibelParryNext = Math.max(prevDecibelParry, Math.ceil(decibelShort / PARRY_DECIBEL_BONUS))
+        // 等价于旧写法 max(prev, ⌈short/215⌉)，只是在「增大」分支顺手记下 basis
+        const need = Math.ceil(decibelShort / PARRY_DECIBEL_BONUS)
+        if (need > prevDecibelParry) {
+          decibelParryNext = need
+          decibelParryBasisShortNext = decibelShort
+        }
       }
     }
     // 赠行由引擎物化 → rr 里已有赠行；池侧赠送口径单独结算，故基准提取跳过赠行（防双计）
@@ -1108,6 +1120,14 @@ export function createRunCalcRound(deps: {
       interactionTopUp: interactionTopUpNext,
       parrySplit: parrySplitNext,
       specialActionBonus: specialActionBonusRound as SpecialActionBonusResult,
+      decibelGuarantee: {
+        active: decibelParryActive,
+        parry: decibelParryActive ? prevDecibelParry : 0,
+        basisShort: decibelParryActive ? prevDecibelParryBasisShort : 0,
+        residualShort: decibelResidualShort,
+        roundable: decibelRoundable,
+        perParry: PARRY_DECIBEL_BONUS,
+      },
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
       threadsNext: {
@@ -1132,6 +1152,7 @@ export function createRunCalcRound(deps: {
         teamVeilCountTotal: teamVeilCountTotalNext,
         postRoundInput: postRoundInputNext,
         decibelParry: decibelParryNext,
+        decibelParryBasisShort: decibelParryBasisShortNext,
         // 轨推演输入（喧响产出）单调不减：轨削减大招 → 大招回响数据行减少 → 产出下滑
         // → 下一轮轨更紧 → 恶性循环（实测可螺旋到 0）。取 max(上一轮, 本轮) 锁定基准。
         decibelRegenBySlot: Object.fromEntries(

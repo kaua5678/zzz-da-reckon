@@ -20,6 +20,23 @@ export interface CalcRoundResult {
     parrySplit: ParrySplitResult
     /** 本轮实际用于喧响的特殊动作奖励（calcSpecialActionBonus 整份，含每槽次数）。CC-227：展示直读，不再在 useResourceCalc 另拼一份 */
     specialActionBonus: SpecialActionBonusResult
+    /**
+     * 通用保底4喧响的本轮决策（CC-229，TeamConfigPage 提示直读；此前页面用收敛后的主C喧响重算缺口 = 补后剩余缺口，与引擎决策不同）。
+     * active=false ⇒ 未勾选或本队由补齐角色（producesInteractionTopUp，如般岳）负责，通用口径不生效。
+     */
+    decibelGuarantee: {
+      active: boolean
+      /** 本轮结果里实际注入主C 的「只给喧响」弹刀次数 */
+      parry: number
+      /** 决策缺口：使 parry 取到当前值的那一轮的缺口（parry = ⌈basisShort / perParry⌉） */
+      basisShort: number
+      /** 本轮结果（已含注入）上的剩余缺口 */
+      residualShort: number
+      /** 剩余缺口 ≤ 1500（可补档） */
+      roundable: boolean
+      /** 单次弹刀个人喧响（PARRY_DECIBEL_BONUS） */
+      perParry: number
+    }
     inStunAnomalyState: InStunAnomalySummary | null
     bossAnomalyState: BossAnomalyStateResult | null
     threadsNext: CalcRoundThreads

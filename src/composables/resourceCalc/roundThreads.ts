@@ -9,7 +9,7 @@
  * 同步评估终止判据并补真实管线测试。“字段传到了下一轮”不代表求解器会等到它稳定。
  *
  * 语义约定（与旧位置参数版逐字段等价）：
- * - 轮内持久（null 轮不清零）：goodReview / energyBySlot / interactionTopUp / parrySplit / decibelParry
+ * - 轮内持久（null 轮不清零）：goodReview / energyBySlot / interactionTopUp / parrySplit / decibelParry / decibelParryBasisShort
  *   —— 它们的下一轮值在 runCalcRound 内部已由 prev 兜底（如 interactionTopUpNext 初值 = prev.interactionTopUp）。
  * - 其余字段：null 轮（runCalcRound 返回 null，如无失衡行队伍）重置为初值。
  */
@@ -52,6 +52,12 @@ export interface CalcRoundThreads {
   teamVeilCountTotal: number
   /** 通用保底4喧响：弹刀补齐量（非般岳队伍） */
   decibelParry: number
+  /**
+   * 通用保底4喧响：使 `decibelParry` 取到当前值的那一轮的喧响缺口（恒有 decibelParry = ⌈basis / 215⌉）。
+   * CC-229：只在 decibelParry 增大时随之更新 ⇒ 是 decibelParry 的从属量、不独立变化，
+   * 故不必进 outerCycle#outerFeedbackSignature（decibelParry 已在其中）。供 TeamConfigPage「诚实显示」直读。
+   */
+  decibelParryBasisShort: number
   /** 时间轴喧响轨：各槽上一轮收敛的喧响产出（slot → 点；首轮空对象 = 轨未启动） */
   decibelRegenBySlot: Record<number, number>
   /**
@@ -79,6 +85,7 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     inStunWindowTriggers: 0,
     teamVeilCountTotal: 0,
     decibelParry: 0,
+    decibelParryBasisShort: 0,
     decibelRegenBySlot: {},
     prevPoolStunCount: undefined,
     postRoundInput: null,
@@ -98,5 +105,6 @@ export function threadsAfterNullRound(prev: CalcRoundThreads): CalcRoundThreads 
     parrySplit: prev.parrySplit,
     backstageAuto: prev.backstageAuto,
     decibelParry: prev.decibelParry,
+    decibelParryBasisShort: prev.decibelParryBasisShort,
   }
 }
