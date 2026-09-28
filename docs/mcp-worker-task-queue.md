@@ -70,15 +70,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 232 轮（lane lead-arena-0925c）：CC-209 完成（2a88f81d）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-209：局内生命构成与引擎同口径并给出差额，详见 `docs/mcp-stun-dual-source.md` §24.56。
-- 前几轮：231 CC-208（03680c60）；230 CC-207（fb0b8205）；229 CC-206（a119557d）。
+**第 233 轮（lane lead-arena-0925c）：CC-210 完成（bdc03f72）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-210：展示层音擎精炼取值与引擎同源，详见 `docs/mcp-stun-dual-source.md` §24.57（含本轮判为不做的扫描点）。
+- 前几轮：232 CC-209（2a88f81d）；231 CC-208（03680c60）；230 CC-207（fb0b8205）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. 展示层「视图里的缩小版引擎」继续扫：`grep -rn 'coverage?.default\|coverage\.default' src/views src/components src/composables`，以及 `grep -rn 'modificationValues' src/views src/components`。重点看是否还有视图或 composable 自己算效果数值 / 覆盖率而不读引擎的 `effectCoverageMap`。判据同 CC-209：**分叉会让核对表误导**才做；只是写法不同、结果一致的，不做。
-2. 可选：AttributeConfigPage 把被引擎否决的队友 buff 置灰（额外能力门控 / `teammateBuffGateBlocks`），要经 composable 暴露，展示层禁止值导入 mechanics。
-3. 若扫描无可做项，写「本轮扫描无可做项」加扫描范围，不要为了降计数硬做。
+1. 展示层「视图里的缩小版引擎」剩余扫描面：
+   - `grep -rn 'defaultStacks ?? ' src/views src/components src/composables`：stacked 层数口径，引擎是 `defaultStacks ?? maxStacks ?? 1`，看是否一致；
+   - `grep -rn 'specialty === agent.specialty\|matchSpecialty' src/views src/components src/composables`：音擎职业匹配。引擎 `collectWEngineBuffs` 还有 wearerAttribute / enemyWeakness 条件，看展示点是否只判断了职业。
+   - 判据同前：**分叉会让核对表误导**才做。
+2. 若以上都无可做项，这条「展示层 vs 引擎」线可以结项：写「展示层扫描结项」加扫描范围，然后转向 `docs/ARCHITECTURE-OVERVIEW.md` 的重构清单，看是否有新的高收益项。
+3. 可选：AttributeConfigPage 把被引擎否决的队友 buff 置灰。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）。
 
@@ -86,6 +89,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **catalog store 没有 `wEngines` 数组**，要用 `catalog.wEnginesMap.values()`（含 legacyIds 别名，会有重复条目）。
 - **覆盖率单位**：`effect.coverage.default` 和 `effectCoverageMap` 的值都是 0–1 的小数（applyEffect 直接相乘），队友滑块 store 值是 0–100。展示时用 `pct(cov * 100)`（CC-209 修过一次「0.5%」误写）。
 - **「已勾选」≠「生效」**：展示层要列生效的队友 buff，一律取 `resolveSlotPanelBuffInputs(slot, …).teammateBuffs`（经 helpers 壳导入），不要遍历 `teammateBuffGroups` 再看 `isTeammateBuffEnabled`（CC-208 有源码锁）。
 - **修 bug 的测试要做反证**：临时撤掉修复（先 cp 备份），确认新测试失败，再恢复。否则测试可能在修复前也能通过（CC-207 做过）。

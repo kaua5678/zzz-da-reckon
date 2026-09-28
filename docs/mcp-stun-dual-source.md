@@ -1927,3 +1927,25 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 差额行只给一个 hp 总数，不区分百分比和固定值，也不指明是哪个模块写的。要细分，得让模块钩子上报贡献，不值得为核对表做。
   - 队友 4 件套全队段落在本槽的部分，本表没有逐条列（只列本槽自己的盘），会落进差额行。
 - **回退点**：`git revert 2a88f81d`。
+
+### 24.57 第 233 轮：CC-210 展示层音擎精炼取值统一走引擎 applyWEngineModLevel（bdc03f72）
+
+- **扫描**（第 232 轮交接第 1 项）：
+  - `coverage.default`：命中 MechanicsTablePage:263 和 WEngineFieldPage:170，展示的都是**数据定义**（默认覆盖率、覆盖率范围），不代表用户当前状态，不会误导，**不做**。AttributeConfigPage:550 只判断有没有覆盖率字段，**不做**。
+  - `modificationValues`：命中 3 处展示点，各自按精炼等级替换数值：
+    - DebugPage `effectValue`：只替换 `value`，**漏掉 `valuePerStack`**；
+    - hpSourceBreakdown `hpEffectValue`（CC-209 从 FinalPanel 照搬）：同样漏掉；
+    - TeamConfigPage `effectValueText`：两个都替换，但是独立实现。
+  - 引擎口径是 `core/buff.ts#applyWEngineModLevel`，两个字段都替换。数据里有 181 条音擎效果带 modificationValues，其中 **43 条按精炼改每层值**（如 13115 atkPct、14109 iceDmg）。精炼 ≠ 1 时，DebugPage 显示的是原值。
+  - WEngineFieldPage:152 展示整条精炼数值序列，属于数据定义页，**不做**。
+- **改法**：
+  - 新增 `src/composables/wEngineEffectDisplay.ts#effectAtModLevel(effect, modLevel)`，内部就是 `applyWEngineModLevel`；modLevel 缺省时原样返回。展示层不能值导入 core，所以经 composable 暴露，与 CC-47~53 的做法相同。
+  - 三处展示点改为先取「引擎实际用的 effect」再格式化，不再自己索引 modificationValues。hpSourceBreakdown 的 stacked 行也带上「（精炼N）」前缀。
+- **为什么值得做**：精炼取值只剩引擎一处实现（更简单），少了一处与引擎的实际分叉（DebugPage、生命构成表的每层值）。
+- **测试** `wEngineEffectDisplayCc210.test.ts`：
+  - 全部按精炼改每层值的效果在精炼 5 时都取到第 5 档；判别性对照：确有条目精炼 5 与原值不同；
+  - modLevel 缺省时原样返回；
+  - 源码锁：三处展示点不得出现 `modificationValues?.value|valuePerStack`，且必须调用 `effectAtModLevel(`。
+- **影响面**：只改展示，计算零改动；golden 零差。verify EXIT=0（3901 passed / 29 skipped）；vue-tsc 0。
+- TeamConfigPage 有一处细微变化：旧写法在效果带 modificationValues.valuePerStack 时，不论 type 都显示成「× 层」；新写法按 type 格式化（与引擎 applyEffect 的分支一致）。数据里这类效果都是 stacked，实际显示不变。
+- **回退点**：`git revert bdc03f72`。
