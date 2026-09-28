@@ -2471,3 +2471,36 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **至此喧响规则全部单一来源**：单价在 `data/anomalyDecibelBonuses`，伴随比例在 `data/decibelCompanion`，引擎结果带 own/total（CC-230），保底4喧响决策（CC-229），特殊动作卡（CC-227）。**喧响线结项**。
 
 **本轮新病型（值得推广）**：「结果类型里有字段、生产方在算，但全仓没有引擎读者，只有页面显示」。这类字段会让页面展示引擎并未采用的口径。§24.78 的 grep 只盯算式，抓不到这一类。
+
+### 24.80 第 256 轮：结果字段读者扫描；CC-233 结果卡明细补齐两项漏列（2e7e2c4c）
+
+**① 扫描方法**（§24.79 交接）：一次性脚本 `/home/kaua/calc-arch/fieldscan.mjs`（不进 git）。
+- 解析 `types/resource/{pools,agentResources,energy}.ts` 各 interface 的顶层字段，共 570 个；
+- 对每个字段统计 `.字段` 的读取次数，分为引擎侧（core、composables、mechanics、stores、utils、data、specs、scripts）和展示侧（views、components），不含测试和 types；
+- 引擎读取为 0 的有 66 个，再逐个 `grep -rlw` 查全部出现位置（含测试和字符串形式）。
+- 局限：常见名（total、count）会被别的类型的读取掩盖，只漏报、不误报。
+
+**② 分类与结论**
+| 类 | 字段 | 结论 |
+|---|---|---|
+| 角色模块诊断字段（只有模块写、测试读） | Roxy windEnergyCap/miniTornadoCount；Jane assaultCrit*×2；Burnice tossingMoveId/cinema6*×3；Nangong ×4；青衣 yisha4NecessaryTime/zuiHuaTime；Lucia dreamTarget；般岳 axisExSpend(StunAxisPage 有读)/axisComboCount/rageDiDongComboCount；仪玄 inkCycles/cloudCycles/cloudChargeSeconds | **不做**：记录模块中间量，供测试断言，不显示也不误导；删了不会让架构更简单，只是降计数 |
+| 有生产方、只有测试读 | StunPoolResult.stunRefundValue（注释写「用于展示」，实际无展示）、StunContribution.inAxisStun、AnomalyCoverageResult.perElementDoTTime、CoweringDotResult.assaultDamagePerTrigger、StunAxisResult.allocation、EnergySource.exRefundEnergy（原无展示）、DecibelSource.unshareableBonus（原无展示） | 前 5 个**不做**：引擎内部可观测量，单测在用；后 2 个见 ③ |
+| 从未写入的类型字段 | CharacterResourceResult.specialResources（专属资源段实际走 `agentResourceSections()`） | **删**（本提交），顺手修正下一行 `specResources` 的乱码注释 |
+| 只有展示读者的组成项 | EnergySource 各组成项、DecibelSource.initialGift/teammateShare/anomalyBonus、SpecialActionBonusResult.perSlot*、StunAxisResult 展示字段 | 属纯展示派生量，保留；组成项是否齐全由 ③ 的锁保证 |
+
+**③ CC-233：结果卡片的能量 / 喧响明细，各行之和 ≠ 标题总数。**
+- `core/resource/resourceIncome.ts` 中：能量 `total = e0 + exRefundEnergy`；喧响 `total = … + unshareableBonus + …`。`ResourceResultCard.vue` 的明细区列出了其余所有组成项，唯独漏了这两项。
+- 探针（10 队，推荐配装）：
+  - 1051 伊德海莉：能量少 135 / 45（连续强特返还）；喧响少 **4172.5 / 3177.5**（自身烧血，超过一次终结技的耗费）；
+  - 1541 普罗米娅：喧响少 2700（不可分享的额外喧响）；
+  - 其余 26 个槽位各行之和等于总数；crossAgent 在 `assembleSlot.ts:95` 计入 total，口径一致。
+- 改法：卡片补两行，即能量「连续强特返还」和喧响「专属额外」（`selfBurnDecibel > 0` 时注明「含自身烧血 X」）。
+- 锁：`src/composables/__tests__/resourceCardBreakdown.test.ts`
+  - 测试里列出卡片显示的组成项清单（能量 14 个数值字段 + bonusEntries + crossAgent 列表行；喧响 7 个）；
+  - 真队 1051、1541、1451 各槽：清单之和等于 total；
+  - 源码锁：卡片模板引用清单里的每个字段。
+  - **引擎新增 total 组成项时，本测试的求和会红**，提醒同时补卡片和清单。
+  - 反例：补丁前源码锁报 `energySource.exRefundEnergy` 缺失。
+- 零数值差（只改展示与类型）。回退点：revert 2e7e2c4c。
+
+**④ 留给下一轮的小项**：ResultPage 积蓄池卡片「喧响奖励 +X」= `AnomalyPoolResult.decibelBonus`（各触发者自己那份之和），下面各角色芯片却是 `perSlotBonus`（含队友伴随 50%，3 人队约为 2 倍），说明文字只写了「按触发角色归属」。特殊动作卡同理（total 注释为「仅完整奖励」，芯片是 perSlotBonus）。只需改说明文字，不改数值。
