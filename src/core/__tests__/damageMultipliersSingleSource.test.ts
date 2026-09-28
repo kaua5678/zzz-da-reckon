@@ -49,3 +49,16 @@ describe('通用乘区单一来源（CC-219）', () => {
     expect(resistanceMultiplierDetail(20, 10, 5).effectiveRes).toBe(5)
   })
 })
+
+describe('失衡易伤区单一来源（CC-220）', () => {
+  // 来源：core/anomalyPool/helpers.ts#calcStunMultiplier。CC-220 前 remielle 耀变手写 `stunned ? max(0, vuln + bonus/100) : 1`，
+  // 把覆盖率当布尔 ⇒ 覆盖率 > 0 即吃满额易伤。叶瞬光帷幕 veilStunBase 是另一套封顶机制（min(…, 2.1/3.0)），不在此列。
+  const STUN_OWNER = 'core/anomalyPool/helpers.ts'
+  const STUN_RE = /Math\.max\(\s*0\s*,\s*[\w.]*[sS]tun\w*\s*\+\s*[\w.]*\s*\/\s*100\s*\)|stunned\s*\?\s*Math\.max/
+  it(`除 ${STUN_OWNER} 外没有内联失衡易伤区`, () => {
+    const hits = walk(SRC)
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+      .filter(rel => rel !== STUN_OWNER && STUN_RE.test(code(readFileSync(join(SRC, rel), 'utf8'))))
+    expect(hits).toEqual([])
+  })
+})

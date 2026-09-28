@@ -66,6 +66,19 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
     expect(mate.remielleRefringeCoefficientBonusPct).toBeCloseTo(30, 5)
   })
 
+  it('CC-220：耀变失衡易伤区按覆盖率加权（与 calcStunMultiplier 同源；覆盖率不再被当布尔吃满额）', () => {
+    const panel = { atk: 3000, anomalyProficiency: 300, stunDmgMultiplierBonus: 20, stunDmgMultiplierBonusAlways: 0, stunDmgMultiplierBonusCapAlways: 0 } as any
+    const dmg = (stunned: boolean | number) => calcVoidflareDamage({
+      sourcePanel: panel, remiellePanel: panel, multiplier: 100, element: 'lumiflux',
+      enemyDefense: 953, enemyResistances: {}, stunMultiplier: 1.5, stunned, cinema1ResIgnore: 0,
+    }).damage
+    const off = dmg(false)
+    const full = dmg(true)
+    expect(full / off).toBeCloseTo(1.7, 12) // 1.5 + 20/100
+    expect(dmg(0.3)).toBeCloseTo(off * (1 + 0.7 * 0.3), 6) // 旧实现 = full（覆盖率被当 truthy）
+    expect(dmg(0)).toBeCloseTo(off, 9)
+  })
+
   it('完整计算链：资源池带 remielleMechanicSource，虚耀账本随精通缩放', async () => {
     await setup()
     const calc = useResourceCalc()
@@ -101,7 +114,8 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
       enemyDefense: config.enemy.defense,
       enemyResistances: (config.enemy as any).damageResistances ?? (config.enemy as any).resistances ?? {},
       stunMultiplier: config.enemy.stunVuln,
-      stunned: true,
+      // CC-220：行级传的是全局失衡覆盖率（0-1），耀变失衡区与其余伤害同走 calcStunMultiplier 加权
+      stunned: calc.stunCoverage.value,
       cinema1ResIgnore: 50,
     }).damage
 

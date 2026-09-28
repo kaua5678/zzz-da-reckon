@@ -22,6 +22,7 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
+import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS } from '@/core/elementKeys'
 import { findMoveById } from '@/data/moveTableQueries'
 import { channelMetricsOf } from '@/core/resource/moveLookup'
@@ -176,10 +177,15 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
   const refringeMult = 1 + ((remielle.remielleRefringeCoefficient ?? 0) + (remielle.remielleRefringeCoefficientBonusPct ?? 0)) / 100
 
   const dmgTakenMult = 1 + (remielle.enemyDamageTakenBonus ?? 0) / 100
-  let stunBonus = (remielle.stunDmgMultiplierBonus ?? 0) + (remielle.stunDmgMultiplierBonusAlways ?? 0)
-  const stunCap = remielle.stunDmgMultiplierBonusCapAlways ?? 0
-  if (stunCap > 0) stunBonus = Math.min(stunBonus, stunCap)
-  const stunMult = stunned ? Math.max(0, stunMultiplier + stunBonus / 100) : 1
+  // 失衡易伤区：单一来源 core calcStunMultiplier（CC-220）。此前手写 `stunned ? 满乘区 : 1`，
+  // 把覆盖率（0-1 小数）当布尔用 ⇒ 覆盖率 > 0 即吃满额易伤；且非失衡时漏掉 Always 通道。
+  const stunMult = calcStunMultiplier(
+    stunMultiplier,
+    remielle.stunDmgMultiplierBonus ?? 0,
+    remielle.stunDmgMultiplierBonusAlways ?? 0,
+    remielle.stunDmgMultiplierBonusCapAlways ?? 0,
+    stunned,
+  )
 
   const damage = mass * resMult * anomalyDmgMult * luminizeMult * refringeMult * stunMult * dmgTakenMult
   const formula = `基础 ${fmt(source.atk)}×${fmt(multiplier)}% × 增伤(1+${fmt((source.dmgBonus ?? 0) + elementDmg)}%) × 精通(${fmt(source.anomalyProficiency ?? 0)}/100) × 防御(${fmt(defMult, 4)}) × 等级(${levelMult}) × 抗性(${fmt(resMult, 4)}) × 异化(${fmt(refringeMult, 4)}) × 异常增伤(1+${fmt(remielle.anomalyDmgBonus ?? 0)}%) × 耀变被动(${fmt(passiveLuminizeMult, 4)}) × 4命(${fmt(cinema4LuminizeMult, 4)}) × 失衡(${fmt(stunMult, 4)}) × 易伤(${fmt(dmgTakenMult, 4)})`
