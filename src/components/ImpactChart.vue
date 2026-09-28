@@ -311,7 +311,7 @@ const ttH = computed(() => (hoverTips.value.length) * 13)
 function runOptimizerForSlot0() {
   // CC-52：入参组装 + 引擎调用 + 夹值收拢到编排层（判据 7）；这里只负责写回 store。null = 空槽/无角色/引擎抛错 ⇒ 不改分配（原口径）
   const char = configStore.team[0]
-  // CC-183：以真实伤害（teamTotalDamage）精修引擎近似分配，见 composables/substatOptimizer.ts refineWithRealDamage
+  // CC-183/185：useDefault 快速分配作起点，以真实伤害（teamTotalDamage）精修，见 composables/substatOptimizer.ts
   const alloc = computeSubstatAllocationForSlot(0, configStore, catalogStore, { readDamage: () => teamTotalDamage.value ?? 0 })
   if (char && alloc) char.driveDisc.subStatAllocation = alloc
 }

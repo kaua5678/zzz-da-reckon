@@ -15,6 +15,11 @@
  *    store 层不反向依赖 composables。若日后要统一，两处步数口径需一起改。
  *    CC-173（第 198 轮）决定**不统一**：整队贪心只在用户关闭 optimizer.useDefault 时生效，允许与管线不同源，
  *    理由与重开条件见 stores/config.ts 该分支注释、docs/mcp-stun-dual-source.md §24.20。
+ *
+ * **CC-185（第 208 轮）起只有一种模式：useDefault 快速分配作起点 → 真实伤害精修（readDamage 必填）。**
+ * 实测起点换成打分式贪心，精修结果零差（62 个角色单人队 + 7 支三人队 21 个槽位），评估次数相当。
+ * 因此编排层不再调贪心 / 打分模型；core 贪心只剩 store `optimizer.useDefault=0` 分支（及其 marginalGains 展示）在用。
+ * 详见 docs/mcp-stun-dual-source.md §24.32。
  */
 import { computeOptimalSubStats, getTemplate } from '@/core/substatOptimizer'
 import type { DriveDiscConfig } from '@/types/catalog'
@@ -26,7 +31,7 @@ import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhas
  * CC-183（第 206 轮）：真实伤害精修。
  * 引擎打分（computeExpectedScore）是「攻击 × 暴击 × 增伤 / 攻击 × 精通」的闭式近似，看不到技能级乘区
  * （技能专属暴击/增伤/倍率、异常与直伤真实占比、转模…），实测系统性高估暴击/精通、低估攻击。
- * 与其逐项校准近似式，不如让伤害管线本身裁决：以引擎结果为起点，在模板词条间做「挪 k 步」爬山
+ * 与其逐项校准近似式，不如让伤害管线本身裁决：以 useDefault 快速分配为起点（CC-185），在模板词条间做「挪 k 步」爬山
  * （k=4→2→1，首个改进即接受），评估 = 写入分配后读 `readDamage()`（useResourceCalc.teamTotalDamage，
  * 惰性 computed + state memo；与 teamCompare 的「改 store → 读 → 恢复现场」同一模式）。
  * 结束时恢复原分配；调用方按返回值整体替换。maxEvals 封顶耗时（单人队约 25ms/次）。
@@ -84,7 +89,7 @@ export function computeSubstatAllocationForSlot(
   slot: number,
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
-  refine?: SubstatRefineOptions,
+  refine: SubstatRefineOptions,
 ): DriveDiscConfig['subStatAllocation'] | null {
   const char = configStore.team[slot]
   if (!char?.agentId) return null
@@ -106,15 +111,13 @@ export function computeSubstatAllocationForSlot(
       statRules: catalogStore.statRules,
       statCap: configStore.getMechanicSetting('optimizer.substatCap', 20),
       totalSteps: configStore.getMechanicSetting(tsk, 0),
+      useDefault: true, // CC-185：只要起点，打分式贪心对精修结果零贡献
       config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, potentialLevel: char.potentialLevel, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: configStore.enemy.weakness },
     })
   } catch {
     return null
   }
-  let chosen: Record<string, number> = result.subStatAllocation
-  if (refine) {
-    chosen = refineWithRealDamage(slot, configStore, chosen, tmpl.stats, configStore.getMechanicSetting('optimizer.substatCap', 20), refine)
-  }
+  const chosen = refineWithRealDamage(slot, configStore, result.subStatAllocation, tmpl.stats, configStore.getMechanicSetting('optimizer.substatCap', 20), refine)
   const alloc: DriveDiscConfig['subStatAllocation'] = {}
   for (const [s, n] of Object.entries(chosen)) {
     if (n > 0) alloc[s] = Math.max(0, Math.min(54, n))

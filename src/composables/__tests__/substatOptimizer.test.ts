@@ -1,9 +1,7 @@
 /**
- * CC-52：computeSubstatAllocationForSlot 与原 ImpactChart `runOptimizerForSlot0` 内联算法逐值一致。
- * 第 194 轮：优化器的队友 buff 输入改为与伤害管线同源（`resolveSlotPanelBuffInputs`：门控 / 接收槽过滤 / 全局 Buff /
- *   覆盖率 / 来源面板修正）。
- * 第 195 轮：原始上下文组装 `composables/teammateBuffContext.ts` 已无生产消费方，删除；第一条用例的内联算法改为新口径
- *   （队友 buff 输入 = `resolveSlotPanelBuffInputs`），末尾用例的「原始集合」直接调 core `buildTeammateBuffSourceContext`。
+ * CC-52：computeSubstatAllocationForSlot 收拢 ImpactChart 的优化器调用。
+ * 第 194 轮：队友 buff 输入与伤害管线同源（`resolveSlotPanelBuffInputs`）。
+ * CC-183 / 185（第 206 / 208 轮）：只有一种模式——core useDefault 快速分配作起点 → 真实伤害精修（readDamage 必填）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -13,46 +11,53 @@ import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
-describe('computeSubstatAllocationForSlot', () => {
-  it('与内联算法逐值相等（三个槽位；队友 buff 输入 = 伤害管线同源），且结果非空', async () => {
-    const { config, catalog } = await setupHarness([{ agentId: '1161' }, { agentId: '1311' }, { agentId: '1211' }], { recommendedBuild: true })
+type Harness = Awaited<ReturnType<typeof setupHarness>>
+const sum = (a: Record<string, number>) => Object.values(a).reduce((x, y) => x + y, 0)
+function damageOf(h: Harness, slot: number, a: Record<string, number>): number {
+  const calc = useResourceCalc()
+  const disc = h.config.team[slot]!.driveDisc
+  const keep = disc.subStatAllocation
+  disc.subStatAllocation = { ...a }
+  const d = calc.teamTotalDamage.value ?? 0
+  disc.subStatAllocation = keep
+  return d
+}
+const realDamage = () => { const calc = useResourceCalc(); return { readDamage: () => calc.teamTotalDamage.value ?? 0 } }
 
-    // 照抄原 ImpactChart.vue runOptimizerForSlot0（baceb72），只把「写 store」换成「返回分配」；第 194 轮起队友 buff 输入换源
-    const inline = (slot: number) => {
+describe('computeSubstatAllocationForSlot', () => {
+  it('起点 = core useDefault 分配（队友 buff 同源）；精修后真实伤害不低于起点、总步数不变（三个槽位）', async () => {
+    const h = await setupHarness([{ agentId: '1161' }, { agentId: '1311' }, { agentId: '1211' }], { recommendedBuild: true })
+    const { config, catalog } = h
+    const seed = (slot: number) => {
       const char = config.team[slot]!
       const agent = catalog.getAgent(char.agentId!)!
-      const wEngine = char.wEngineId ? catalog.getWEngine(char.wEngineId) : undefined
       const setInfo = resolveSlotPanelBuffInputs(slot, config, catalog)
-      const tmpl = getTemplate(agent)
-      const sc = tmpl.stats.length
+      const sc = getTemplate(agent).stats.length
       const tsk = sc <= 2 ? 'optimizer.totalSteps2' : sc === 3 ? 'optimizer.totalSteps3' : 'optimizer.totalSteps4'
-      const result = computeOptimalSubStats({
-        agent, wEngine,
-        driveDiscConfig: char.driveDisc,
-        setsMap: catalog.driveDiscSetsMap,
-        teammateBuffs: setInfo.teammateBuffs,
-        statRules: catalog.statRules,
-        statCap: config.getMechanicSetting('optimizer.substatCap', 20),
-        totalSteps: config.getMechanicSetting(tsk, 0),
-        config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: config.enemy.weakness },
-      })
-      const out: Record<string, number> = {}
-      for (const [s, n] of Object.entries(result.subStatAllocation)) {
-        if (n > 0) out[s] = Math.max(0, Math.min(54, n))
-      }
-      return out
+      return computeOptimalSubStats({
+        agent, wEngine: char.wEngineId ? catalog.getWEngine(char.wEngineId) : undefined,
+        driveDiscConfig: char.driveDisc, setsMap: catalog.driveDiscSetsMap,
+        teammateBuffs: setInfo.teammateBuffs, statRules: catalog.statRules,
+        statCap: config.getMechanicSetting('optimizer.substatCap', 20), totalSteps: config.getMechanicSetting(tsk, 0),
+        useDefault: true,
+        config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, potentialLevel: char.potentialLevel, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: config.enemy.weakness },
+      }).subStatAllocation
     }
-
     for (const slot of [0, 1, 2]) {
-      const got = computeSubstatAllocationForSlot(slot, config, catalog)
-      expect(got).toEqual(inline(slot))
-      expect(Object.keys(got!).length).toBeGreaterThan(0)
+      const s0 = seed(slot)
+      // maxEvals=1 ⇒ 只评估起点、不挪步：返回值即起点本身（钉「起点 = useDefault」）
+      expect(computeSubstatAllocationForSlot(slot, config, catalog, { ...realDamage(), maxEvals: 1 })).toEqual(
+        Object.fromEntries(Object.entries(s0).filter(([, n]) => n > 0)))
+      const got = computeSubstatAllocationForSlot(slot, config, catalog, realDamage())!
+      expect(Object.keys(got).length).toBeGreaterThan(0)
+      expect(sum(got)).toBe(sum(s0))
+      expect(damageOf(h, slot, got)).toBeGreaterThanOrEqual(damageOf(h, slot, s0))
     }
   }, 60000)
 
   it('空槽 ⇒ null', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1161' }, '', ''])
-    expect(computeSubstatAllocationForSlot(1, config, catalog)).toBeNull()
+    expect(computeSubstatAllocationForSlot(1, config, catalog, { readDamage: () => 0 })).toBeNull()
   }, 60000)
 })
 
@@ -76,38 +81,36 @@ describe('副词条优化器的队友 buff 输入与伤害管线同源（第 194
     for (const id of brightIds) expect(piped.has(id), id).toBe(false)
   }, 60000)
 
-  // CC-183（第 206 轮）：真实伤害精修。1591 在第 206 轮探针中引擎近似分配偏离最多（+20% 精修收益），用作判别样本。
-  it('refine：真实伤害不低于纯引擎分配、恢复原分配、maxEvals 封顶', async () => {
-    const { config, catalog } = await setupHarness([{ agentId: '1591' }, '', ''], { recommendedBuild: true })
+  // CC-183（第 206 轮）：真实伤害精修。1591 精修相对推荐分配（= useDefault 起点）严格改进，用作判别样本。
+  it('refine：真实伤害严格高于推荐分配、恢复原分配、maxEvals 封顶', async () => {
+    const h = await setupHarness([{ agentId: '1591' }, '', ''], { recommendedBuild: true })
+    const { config, catalog } = h
+    const original = { ...config.team[0]!.driveDisc.subStatAllocation }
     const calc = useResourceCalc()
-    const original = JSON.stringify(config.team[0]!.driveDisc.subStatAllocation)
-    const damageOf = (a: Record<string, number>) => {
-      const keep = config.team[0]!.driveDisc.subStatAllocation
-      config.team[0]!.driveDisc.subStatAllocation = { ...a }
-      const d = calc.teamTotalDamage.value ?? 0
-      config.team[0]!.driveDisc.subStatAllocation = keep
-      return d
-    }
-    const plain = computeSubstatAllocationForSlot(0, config, catalog)!
     let evals = 0
     const refined = computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => { evals++; return calc.teamTotalDamage.value ?? 0 } })!
-    expect(JSON.stringify(config.team[0]!.driveDisc.subStatAllocation)).toBe(original)
+    expect(config.team[0]!.driveDisc.subStatAllocation).toEqual(original)
     expect(evals).toBeGreaterThan(1)
     expect(evals).toBeLessThanOrEqual(80)
-    const sum = (a: Record<string, number>) => Object.values(a).reduce((x, y) => x + y, 0)
-    expect(sum(refined)).toBe(sum(plain)) // 只挪步不增步
-    expect(damageOf(refined)).toBeGreaterThan(damageOf(plain)) // 本样本有严格改进，否则用例无判别力
+    expect(sum(refined)).toBe(sum(original)) // 只挪步不增步
+    expect(damageOf(h, 0, refined)).toBeGreaterThan(damageOf(h, 0, original)) // 本样本有严格改进，否则用例无判别力
     let capped = 0
     computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => { capped++; return calc.teamTotalDamage.value ?? 0 }, maxEvals: 5 })
     expect(capped).toBeLessThanOrEqual(5)
   }, 60000)
 
   // CC-184（第 207 轮）：打分式看不到的属性（克拉蕾吃防御）边际恒 0，旧版贪心提前终止只分 20/39 步。
-  it('贪心分配用满步数预算（与推荐快速路径同总步数）', async () => {
+  // CC-185 起编排层不走贪心，此用例改钉 core 贪心本身（store useDefault=0 分支仍用它）。
+  it('core 贪心分配用满步数预算（与推荐快速路径同总步数）', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1611' }, '', ''], { recommendedBuild: true })
-    const sum = (a: Record<string, number>) => Object.values(a).reduce((x, y) => x + y, 0)
-    const rec = sum(config.team[0]!.driveDisc.subStatAllocation ?? {})
+    const char = config.team[0]!
+    const rec = sum(char.driveDisc.subStatAllocation ?? {})
     expect(rec).toBe(39)
-    expect(sum(computeSubstatAllocationForSlot(0, config, catalog)!)).toBe(rec)
+    const greedy = computeOptimalSubStats({
+      agent: catalog.getAgent('1611')!, wEngine: char.wEngineId ? catalog.getWEngine(char.wEngineId) : undefined,
+      driveDiscConfig: char.driveDisc, setsMap: catalog.driveDiscSetsMap, teammateBuffs: [], statRules: catalog.statRules,
+      config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, potentialLevel: char.potentialLevel, enemyWeakness: config.enemy.weakness },
+    }).subStatAllocation
+    expect(sum(greedy)).toBe(rec)
   }, 60000)
 })
