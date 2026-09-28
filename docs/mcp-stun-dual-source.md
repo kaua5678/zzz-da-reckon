@@ -1323,3 +1323,19 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **决定：合入**。依据：结构上正确且更简单（不再叠加幻影套装，已装备时跳过整个套装搜索）；按目的指标（实际伤害）持平；旧版在个别角色上的优势来自偶然偏差，不可依赖。打分函数与伤害管线的偏差另立 **CC-183**，用本探针做验收。
 - **验证**：vue-tsc 无新错误；zd（cc182）dump / rows DIFF 0；verify VRC=0；docs 改完跑 checkGuards.test。
 - **回退点**：revert 85956a53（只改 `core/substatOptimizer.ts` 一处分支）。
+
+### 24.30 CC-183：副词条优化器以真实伤害精修（第 206 轮，20a47df3）
+
+- **问题**：打分函数 `core/substatOptimizer.ts computeExpectedScore` 是闭式近似（直伤 = 攻击 × 暴击 × 增伤，异常 = 攻击 × 精通），和伤害管线有偏差：CC-182 探针显示它高估精通和暴击、低估攻击。
+- **逐个候选实测**（探针 `k205/probe205.test.ts`：62 个角色单人队、推荐配装，读 `teamTotalDamage`；基线 `k205/new.tsv` = 相对推荐副词条平均 +2.96%、37 胜，最差 1611 −28.01%）：
+  - ① 百分比副词条改乘基础值（`calcBasePanel`：角色 + 音擎基础攻击）：平均 +2.21%、21 胜，最差非 1611 个例 1581 −16.2%。**不做**。原因：伤害管线口径是「局内攻击 = 局外攻击 ×（1 + Σ局内攻击%）+ 固定」（`buff.ts recalcCoreStat`），副词条攻击% 进局外层，还会被局内攻击% 再放大一次；① 漏了这层放大，比旧版乘最终攻击偏得更远。
+  - ①′ 面板增量改由 calcPanel 探针得出（每个词条 +10 步取平均，逐字段线性叠加，与伤害管线同源；补丁留在 `/home/kaua/calc-arch/k206/p206b.diff`）：平均 +2.35%、30 胜。**不做**。面板已经精确，结果还是差，说明偏差在打分式本身：它看不到技能级乘区（技能专属暴击 / 增伤 / 倍率、直伤与异常的真实占比）。
+  - ②（异常线性）、③（写死的 anomalyRatio）**不再逐个校准**：它们都属于「近似式看不到的伤害管线结构」，逐项补就要把伤害管线重写一遍。
+- **采用**：编排层 `composables/substatOptimizer.ts computeSubstatAllocationForSlot` 新增可选参数 `refine: { readDamage, maxEvals? }`。以引擎分配为起点，在模板词条间「挪 k 步」爬山：k 依次取 4、2、1，找到第一个改进就接受；默认最多评估 80 次。评估方式是写入分配后读 `teamTotalDamage`（惰性 computed 加 state memo，和 teamCompare 的「改 store → 读 → 恢复现场」是同一模式），结束时恢复原分配。唯一的生产调用方 `ImpactChart.vue runOptimizerForSlot0` 已接入，并把 ETA 改为 0.3 秒 / 点。
+  - 实测（`k206/c2r.tsv` 与 `k206/c0r.tsv`）：平均 **+4.85%、47 胜，最差 1611 −25.17%**；36 个角色分配改变，**36 升 0 降**。最大提升：1591 +20.2%、1431 +11.3%、1581 +10.8%、1571 +10.1%、1321 +9.9%、1091 +7.7%。
+  - 精修后，核心打分用旧版还是 ①′，结果只差 1 行，伤害相同 ⇒ 核心近似只影响起点，因此 ①′ 不合入。没有精修的路径（store 整队贪心，`optimizer.useDefault=0`）上 ①′ 会变差。
+  - 耗时：62 个角色从 3.3 秒增到 16.1 秒，即单人队每个角色约多 0.26 秒。
+- **为什么这样做更通用**：以后伤害管线怎么改，副词条分配都自动跟着走，不用再维护一套平行的近似式；core 层不感知角色，也不需要按角色校准。
+- **未覆盖**：store 整队贪心（config.ts:~802，store 不反向依赖 composables，见 CC-173）和默认 useDefault 快速路径都不精修。预设和 zd 走 useDefault，zd 不受影响。1611 −25% 的原因不在打分：模板只有 critRate 和 defPct，步数预算也和推荐配装不同，另立 CC-184。
+- **验证**：vue-tsc 通过；新用例 `substatOptimizer.test.ts`「refine：…」钉住以下几点：1591 严格改进、恢复原分配、步数总和不变、maxEvals 封顶。verify EXIT=0，3833 个用例通过。zd 未跑：core 和 useDefault 路径零改动，预设和 zd 都不经过 refine。
+- **回退点**：revert 20a47df3（改 composable、ImpactChart、测试三个文件；core 未改）。

@@ -69,19 +69,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 205 轮（lane lead-arena-0925c）：CC-182 完成（85956a53）；立卡 CC-183。文档见本提交。**
-- CC-182：副词条优化器已装备套装时只为已装备套装分配（原先在含当前套装的面板上又叠加候选套装，且选出的套装没人用）；按实伤 62 角色对照整体持平，详见 stun-dual-source §24.29。
-- 前几轮：204 CC-181（e0fdf806）；203 CC-180（7f320498）；202 CC-179（8aba58f5）。
+**第 206 轮（lane lead-arena-0925c）：CC-183 完成（20a47df3）；立卡 CC-184。文档见本提交。**
+- CC-183：副词条优化器改为「引擎近似给起点，真实伤害挪步精修」（编排层 refine 参数，ImpactChart 已接入）。62 个角色平均 +2.96% → +4.85%，36 升 0 降。候选 ① 和 ①′ 都更差，已写「不做」加数据，见 stun-dual-source §24.30。
+- 前几轮：205 CC-182（85956a53）；204 CC-181（e0fdf806）；203 CC-180（7f320498）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-183：优化器打分函数校准**（卡表列了 3 个候选原因与验收）。
-   - 跑法：`cp /home/kaua/calc-arch/k205/probe205.test.ts src/composables/__tests__/zztmp/`，`PROBE_OUT=<out.tsv> npx vitest run src/composables/__tests__/zztmp/probe205.test.ts`（62 角色约 5s），跑完删 zztmp。对比脚本思路见 §24.29：按 id 合并两份 tsv，比第 4 列 / 第 3 列。
-   - 先试 ①（攻击% 乘基础攻击）：看 `PanelValues` 有没有基础攻击字段（grep `atkBase` / `baseAtk`），没有就从 `computeNoSubstatPanel` 的局外面板取。
-   - 每处改动单独测，只合入实伤均值与最差个例都不变差的；都不行就写「不做」加数据。
-2. CC-166 仍暂缓（需规格）。
+1. **CC-184：优化器最差个例 1611（比推荐副词条低 25%）**。
+   - 跑法：`REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k206/<out>.tsv`（输出路径必须是绝对路径，脚本会先 cd 到仓库；约 18 秒）。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base.tsv> <cand.tsv>`。当前基线是 `k206/c2r.tsv`。
+   - 先看推荐配装里 1611 的副词条和步数（`recommendedBuild`），和 `getTemplate` 的 stats 以及 totalSteps 对比。
+2. 可选：store 整队贪心（config.ts:~802，`optimizer.useDefault=0`）还没精修。store 不能依赖 composables；如果要做，把 readDamage 从调用方注入。
+3. CC-166 仍暂缓（需规格）。
 
 **已知坑**
+- 优化器改动一律用实伤探针验收（`k206/probe2.sh`，REFINE=1 开精修），不要只看打分函数：CC-183 里「更符合游戏口径」的面板改动在打分上合理，实伤反而变差。
 - **改完 docs 也要跑 `npx vitest run src/scripts/__tests__/checkGuards.test.ts`（约 25s）**：它读 `docs/ENGINE_PIPELINE_GUIDE.md`，§4（`## 4.` 到 `## 5.`）行数有棘轮（冻结 718），多一行变红，少一行也红（要求结算登记表）。改 §4 一律就地改写、净增 0 行。第 203 轮把 verify 放在文档提交之前，漏了这一点。
 - core 输入加可选字段前先想：缺省会不会静默改变结果？会就做成必填（CC-179 判据）。普查可复用 `/home/kaua/calc-arch/k202/scan179.cjs`。
 - 「上一位 / 下一位队友」一律用 `resolveTeammateTargetSlot(编队槽, 已上场槽位, 设置)`（CC-180）：已上场槽位在引擎取 `configs.map(c => c.slot)`、编排层取资源结果 `characters.map(c => c.slot)`、模块钩子取 `team.filter(m => m.agentId && m.agent)`。不要用 `team.length` 或 `% 3`：`configStore.team` 和机制 `team` 都是定长 3 槽、含空槽。`configs` 下标和编队槽位只在满编时相同，存槽位的字段（如 `axisUltimatePromote.targetSlot`）进引擎要 `findIndex(c => c.slot === …)` 映射。
