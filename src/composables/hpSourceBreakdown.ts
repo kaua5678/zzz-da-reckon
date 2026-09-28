@@ -16,7 +16,7 @@ import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
 import { isPctStat } from '@/utils/statMeta'
-import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
+import { effectAtModLevel, wEngineEffectBlockReason } from '@/composables/wEngineEffectDisplay'
 import { fmt, pct, localized } from '@/utils/format'
 
 /** 生命类 buff 字段（局内大生命 = inCombatHpPct / 局内 hpPct，局内小生命 = inCombatHpFlat / 局内 hpFlat） */
@@ -79,8 +79,9 @@ export function collectHpSources(
   if (!agent) return rows
   const { teammateBuffs, effectCoverageMap } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore)
 
-  const add = (source: string, item: string, group: BuffGroup | null | undefined, modLevel?: number) => {
+  const add = (source: string, item: string, group: BuffGroup | null | undefined, modLevel?: number, keep: (effect: BuffEffect) => boolean = () => true) => {
     for (const effect of group?.effects ?? []) {
+      if (!keep(effect)) continue
       const phase = hpPhase(effect, group)
       if (!phase) continue
       const cov = effectCoverageMap.get(effect.id) ?? effect.coverage?.default ?? 1
@@ -104,12 +105,14 @@ export function collectHpSources(
     add(`${localized(buff.ownerName) || buff.ownerId}`, localized(buff.sourceLabel) || buff.id, buff)
   }
 
-  // 3. 音擎（职业匹配才生效；数值按精炼等级取 modificationValues）
+  // 3. 音擎：逐条按引擎发放口径（职业 / 组条件 / 效果限定，CC-211）；数值按精炼等级取（CC-210）
   const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
-  if (wEngine && wEngine.specialty === agent.specialty) {
+  if (wEngine) {
     const modLevel = Math.max(1, Math.min(5, char.wEngineModLevel ?? 1))
-    add(localized(wEngine.name) || wEngine.id, '自身效果', wEngine.effect?.selfBuff, modLevel)
-    add(localized(wEngine.name) || wEngine.id, '团队效果', wEngine.effect?.teamBuff, modLevel)
+    const weakness = configStore.enemy.weakness
+    for (const [item, group] of [['自身效果', wEngine.effect?.selfBuff], ['团队效果', wEngine.effect?.teamBuff]] as const) {
+      add(localized(wEngine.name) || wEngine.id, item, group, modLevel, e => wEngineEffectBlockReason(wEngine, group, e, agent, weakness) === null)
+    }
   }
 
   // 4. 驱动盘套装

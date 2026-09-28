@@ -102,7 +102,7 @@ import { NAlert, NCard, NGi, NGrid, NSelect, NSpace, NTag } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computePanel, resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
-import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
+import { effectAtModLevel, wEngineEffectBlockReason } from '@/composables/wEngineEffectDisplay'
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt, pct, localized } from '@/utils/format'
 // `isPctStat` = **展示**口径（lineValue 的格式化），`statSettlementMode` = **结算**口径（全局 Buff 的 mode 实参）
@@ -199,10 +199,11 @@ function effectValue(raw: BuffEffect, modLevel?: number): number | string {
   return effect.value
 }
 
-function addEffectRows(rows: DebugRow[], source: string, item: string, group: BuffGroup | null | undefined, modLevel?: number, extraNote = '') {
+function addEffectRows(rows: DebugRow[], source: string, item: string, group: BuffGroup | null | undefined, modLevel?: number, extraNoteOf: string | ((effect: BuffEffect) => string) = '') {
   const phase = group?.scope ?? 'outOfCombat'
   for (const effect of group?.effects ?? []) {
     if (!effect?.stat) continue
+    const extraNote = typeof extraNoteOf === 'function' ? extraNoteOf(effect) : extraNoteOf
     rows.push(row(
       source,
       item,
@@ -245,14 +246,13 @@ function addWEngineRows(rows: DebugRow[]) {
     const adv = w.level60.advancedStat
     rows.push(row('音擎', `${localized(w.name)} 进阶属性`, adv.stat, adv.value, adv.mode, '音擎 60 级高级词条，属于局外属性', phaseStatLabel(adv.stat, 'outOfCombat')))
   }
-  const match = w.specialty === agent.specialty
-  const note = (condition: string | undefined) => {
-    if (!match) return '职业不匹配，当前计算不会生效'
-    if (condition === 'attributeCounter') return '职业匹配。还要装备者克制当前弱点才生效'
-    return '职业匹配，当前会生效'
+  // CC-211：逐条按引擎发放口径判定（职业 / 组条件 / 效果限定），此前只看职业，限定装备者的条目也写「会生效」
+  const note = (group: BuffGroup | null | undefined) => (effect: BuffEffect) => {
+    const reason = wEngineEffectBlockReason(w, group, effect, agent, configStore.enemy.weakness)
+    return reason ? `${reason}，当前计算不会生效` : '当前会生效'
   }
-  addEffectRows(rows, '音擎', `${localized(w.name)} 自身效果`, w.effect?.selfBuff, char.wEngineModLevel, note(w.effect?.selfBuff?.condition))
-  addEffectRows(rows, '音擎', `${localized(w.name)} 团队效果`, w.effect?.teamBuff, char.wEngineModLevel, note(w.effect?.teamBuff?.condition))
+  addEffectRows(rows, '音擎', `${localized(w.name)} 自身效果`, w.effect?.selfBuff, char.wEngineModLevel, note(w.effect?.selfBuff))
+  addEffectRows(rows, '音擎', `${localized(w.name)} 团队效果`, w.effect?.teamBuff, char.wEngineModLevel, note(w.effect?.teamBuff))
 }
 
 function addDriveRows(rows: DebugRow[]) {
