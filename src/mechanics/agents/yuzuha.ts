@@ -8,7 +8,7 @@ import type {
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting, YuzuhaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { effectiveBattleTime } from '@/core/effectiveTime'
+import { effectiveBattleTime, minusInvincibleTime } from '@/core/effectiveTime'
 
 const YUZUHA_AGENT_ID = '1411'
 const SWEETNESS_INITIAL = 3
@@ -151,7 +151,7 @@ function buildYuzuhaTeamConfig({ slot, characters, team, anomalyBuildupElementBy
     ?? target?.agent?.damageElement
   // 影画2 强制连携：全队生效（强制连携=正常连携技，阵营全员入场）
   if ((cinemaLevel ?? 0) >= 2) {
-    const effective = Math.max(0, combatTime - (mine.invincibleTime ?? 0))
+    const effective = minusInvincibleTime(combatTime, mine)
     const forced = Math.floor(effective / YUZUHA_C2_CHAIN_CD)
     if (forced > 0) {
       for (const char of characters) {

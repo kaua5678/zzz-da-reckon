@@ -25,6 +25,24 @@ function walk(dir: string, out: string[] = []): string[] {
 
 const WINDOW_FRACTION = /[sS]tunCount\s*\*\s*[\w.()]*(?:[wW]indow|Dur)[\w.()]*\s*(?:-\s*\w+\s*)?\)?\s*\/|Math\.min\(1,\s*\w*[sS]tunSeconds\s*\//
 
+const WINDOW_DURATION = /\?\?\s*12\)\s*\+\s*4\b/
+const MINUS_INVINCIBLE = /Math\.max\(0,\s*[\w.]+\s*-\s*\([\w.]*invincibleTime\s*\?\?\s*0\)\)/
+
+describe('失衡窗口时长 / 扣无敌秒单一来源（CC-218）', () => {
+  it('除 core/effectiveTime.ts 外没有内联「失衡时间 + 4 + 延时加成」', () => {
+    const hits = walk(SRC)
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+      .filter(rel => rel !== 'core/effectiveTime.ts' && WINDOW_DURATION.test(readFileSync(join(SRC, rel), 'utf8')))
+    expect(hits).toEqual([])
+  })
+  it('除 core/effectiveTime.ts 外没有内联「max(0, 秒数 − 无敌时间)」', () => {
+    const hits = walk(SRC)
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+      .filter(rel => rel !== 'core/effectiveTime.ts' && MINUS_INVINCIBLE.test(readFileSync(join(SRC, rel), 'utf8')))
+    expect(hits).toEqual([])
+  })
+})
+
 describe('失衡窗口占比单一来源（CC-217）', () => {
   it('除 core/effectiveTime.ts 外没有内联「失衡次数 × 单窗 ÷ 有效时长」', () => {
     const hits = walk(SRC)

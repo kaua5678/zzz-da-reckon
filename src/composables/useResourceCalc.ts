@@ -31,7 +31,7 @@ import type {
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { panelAt } from '@/core/panel'
-import { effectiveBattleTime, stunWindowFraction } from '@/core/effectiveTime'
+import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import * as ResourceCalcHelpers from './resourceCalc/helpers'
 import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
 
@@ -339,7 +339,8 @@ export function useResourceCalc() {
   /** 单次失衡窗口时长（秒）= stunTime + 连携窗口(4) + 全队角色级失衡持续时间延长（琉音+2/般岳C1+2等） */
   function computeWindowDuration(): number {
     const teamStunDurationBonus = panels.value.reduce((sum, p) => sum + (p.stunDurationBonusSeconds ?? 0), 0)
-    return (configStore.enemy.stunTime ?? 12) + 4 + teamStunDurationBonus
+    // 单一来源 core/effectiveTime#stunWindowDuration（CC-218；ultimatePromote 的攒条折算用的也是它）
+    return stunWindowDuration(configStore.enemy.stunTime, teamStunDurationBonus)
   }
   /** 轴编辑器同口径：当前失衡窗口时长（含全队失衡延时） */
   const windowDuration = computed<number>(() => computeWindowDuration())
