@@ -991,3 +991,51 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - `anomalyPool.test` 删掉 3 处已不存在的入参。
 - **验证**：zd DUMP / ROWS 都是 0 差异（104 个预设，滑块取缺省值）；`npm run verify` rc=0（内含全量 3817 passed）；CG 25 项通过；vue-tsc 无新错误。独立并行跑的全量测试里有 3 条死通道耗时断言超限（67.9s > 60s），单跑 19/19 通过，属于负载偶发。
 - **回退点**：`git revert 948a1444`。
+
+### 24.15 CC-164 死读排查（零发现）→ 顺藤查出 CC-165：蕾米埃尔 6 命加成字段初值双计 + 特殊虚耀单位错（第 193 轮，提交 90a7eb79）
+- **CC-164（CC-27 的同类排查），结论：`PanelValues` 上零死读。**
+  - 扫法一（按读取点）：`src/mechanics/**`（非测试）里 `panel|p|values|pv` 的 `.字段` / `['字段']` 读取共 125 个键，逐个在 `src`（非测试）找写入（赋值 / 对象字面量键 / 简写）。零写入的只有 `aliceMasteryToProficiencyBonus`、`banyueRageCoverage` 两个，都只出现在注释里（R6 C7 与般岳早已修过），不是真读。
+  - 扫法二（按声明）：`types/catalog.ts#PanelValues` 的 120 个声明字段，排除 `core/panel.ts` 缺省工厂后统计读写。结果分三类，都不是死读：
+    - 敌方 `enemy<El>StunResReduction` / `AnomalyResReduction` 等：按属性拼键动态读写（`stunPool.ts:31`、`anomalyPool/helpers.ts:623`），字面扫描看不到；
+    - `enemyLumiflux*` 两个：通用属性维度，目前没有来源，不算死读；
+    - 蕾米埃尔 13 个专属字段：写入方是 catalog buff 的 stat 键，经 `core/buff.ts#applyStat` default 分支按键名累加（`data/agentPanelStats.ts` 头注释）。
+  - 扫描脚本在 WSL `/home/kaua/calc-arch/k192/scan164.py`、`scan164b.py`（仓库外，一次性工具，不入库）。**不做 CG 判据**：零发现，写判据只会增加维护面。
+- **CC-164 第二项：滑块「只有纯函数覆盖」排查，结论：无 CC-27 类风险，不补测。**
+  - 口径：运行时注册表（`scripts/dump-mechanic-registry.mjs`）共 179 个滑块。引用它的测试里有 `setMechanicSetting` / `useResourceCalc` 的算真管线：160 个；其余 19 个只被模块单测引用（脚本 `k192/scan164c.py`）。
+  - 逐个核对这 19 个的读法：全部走标准通道——charConfig 相位 `cfg['setting:<id>']`（由 `resourceCalc/helpers.ts:620` 盖章，含 `cfgNum` / `cfgSetting` 包装），面板相位 `input.settings[id]`。单测注入用的也是同一个键。
+  - CC-27 的病因是「值作为函数参数从另一条通道传入」，这 19 个都没有这种形态。逐条补真管线测试只会让计数好看，没有架构收益，所以**不做**。
+  - 旁证：CG 判据 4 只按 id 子串计数（标题 / 注释里出现也算），看不出通道对不对；但通道本身已由 `mechanicSettingsEffect` 的多条真管线探针覆盖。
+  - 可归一候选（未立卡，**不做**）：滑块读取有 6 种写法并存（`cfgNum`、`cfgSetting`、`(cfg as any)['setting:x']`、`record[...]`、`settings[...]`、`getTeamMechanicSetting`）。收为一个带类型的访问器能去掉 `as any`，但要改约 50 个模块，而它们今天读得都对，收益不足以抵消改动面。若日后有人在这里踩坑，再立卡。
+- **CC-165（扫法二的副产品）：蕾米埃尔 6 命三个 `*TriggerMultiplier` 字段初值双计，特殊虚耀个数单位错。**
+  - 发现：初值表里 `remielleCinema6LuminizeTriggerMultiplier` / `SpecialVoidflareTriggerMultiplier` / `FleetingGraceVoidflareTriggerMultiplier` 的初值都是 1（CC-34a 原样搬自最初的 emptyPanel，头注释写着「倍率类初值为 1」），而模块一律按 `1 + max(0, x)` 读。catalog effect id 是 `remielle_c6_*_multiplier_bonus`，是加成语义 ⇒ 0 命已是 ×2，6 命（+1）成了 ×3。
+  - 特殊虚耀：`remielleCinema1SpecialVoidflareCount = 1` 是**轮次**（catalog buff 描述「特殊虚耀触发轮次」），`remielleCinema4SpecialVoidflareRefillCount = 3` 是**个数**（「补充3个特殊虚曜点」），代码直接相加。
+  - 口径依据（三处仓库内来源一致，不是「更接近投稿」）：
+    - `character-constellations.json` 1581：1 命「开局3个特殊虚耀」，4 命「次数变为6次（6命为12次）」，6 命「惊鸿耀变次数翻倍」；
+    - catalog 6 命原文「1命+4命的2轮变为4轮」；
+    - 模块自己的事件公式文案 `count = (3 + 4命补充3) × 6命翻倍`。
+  - 读数：
+
+| | 规格 | 修前 | 修后 |
+|---|---|---|---|
+| 特殊虚耀 1 命 / 4 命 / 6 命 | 3 / 6 / 12 | 2 / 8 / 12 | 3 / 6 / 12 |
+| 惊鸿耀变 0 命 / 6 命 | ×1 / ×2 | ×2 / ×3 | ×1 / ×2 |
+
+  - 修法：
+    - `data/agentPanelStats.ts` 三个字段初值 1 → 0，并改头注释（初值一律 0；按 catalog 语义和模块读法定初值，不要按名字里的 Multiplier 猜）；
+    - `remielle.ts`：新增 `REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND = 3`，`remielleSpecialVoidflareCount = (3×轮次 + 补充个数) × (1 + 加成)`；原先逐字相同的 `remielleSpecialVoidflareUseCount` 改为委托，两份公式收成一处；
+    - 惊鸿行由 `remielleFleetingGraceMultiplier` 计算，读 FleetingGrace 字段（其声明就是「六命惊鸿关联虚耀」）；
+    - 公式文案、`DebugPage` 说明、状态表同步。
+  - **译名坑（已核实）**：6 命原文的「虹之终幕 / 瞬逝优雅」就是垂虹（Rainbow's End，1581007，代码字段 `remielleRainbowEnd*`）/ 惊鸿（Fleeting Grace，1581008）的另一译名，catalog 里没有叫这两个名字的招式。所以 `LuminizeTrigger` 本来就作用在垂虹 / 惊鸿上；它和另两条「翻倍」是否叠乘见 CC-166。修前惊鸿读 LuminizeTrigger 也说得通，两字段 6 命同为 +1，**6 命读数修前修后都是 ×2**。
+  - 数值影响（timeGolden 9 条，全部是 1581 相关）：
+    - 6 个 0 命预设伤害 −12.1% ~ −15.7%，时间账零变化：`auto-1091-1221-1581` 97.46M→84.13M、`auto-1541-1331-1581` 218.47M→192.07M、`auto-1181-1561-1581` 124.11M→104.66M、`auto-1261-1561-1581` 174.44M→148.87M、`auto-1261-1331-1581` 212.77M→184.46M、`auto-1581-1501-1561` 193.35M→167.07M；
+    - 单人 1581：c3 必做动作 +1.5s（特殊虚耀 2→3，垂虹载体 +1）；c4 / c5 必做动作 −3s（8→6，载体 −2）；c6 不变（12→12）。
+  - 归因（反向验证）：临时把惊鸿倍率恢复成旧的 ×2（其余修正保留），只跑 timeGolden ⇒ 6 条伤害差异全部消失，只剩 3 条 c3/c4/c5 时间差异。伤害下降 100% 来自惊鸿双计的修正。已用 `TIME_GOLDEN_UPDATE=1` 重生成基线。
+  - 测试：
+    - `remielle.test` 惊鸿计数 4/6 → 2/3、1 命特殊虚耀 2 → 3；新增口径用例：特殊虚耀 3/6/12、惊鸿 ×1/×2、空面板三个加成初值 `[0,0,0]`。旧公式下这两条断言分别是 `[2,8,12]`、`[1,1,1]`，反向必红。
+    - `moduleAnomalyEventRecords` 4 组惊鸿块：count 减半，字段名与公式文案同步（文件头已记 CC-165）。
+  - 验证：zd DUMP 36 处 / ROWS 42 处差异，全部在含 1581 的队伍（NON1581 = 0）；蕾米埃尔相关 36 个测试文件 604 条通过；全量在 timeGolden 重生成前唯一失败项为 timeGolden；`npm run verify` rc=0（内含全量 3818 passed）（首轮因状态表非紧凑 JSON 红，`minify:static` 后通过）；CG 通过；vue-tsc 无新错误。
+  - 回退点：`git revert <CC-165 代码提交>`；golden 随同一提交回退。
+- **CC-166（立卡，未做）**：蕾米埃尔 6 命两处未决。
+  - (a) 叠乘歧义：「垂虹 / 惊鸿耀变触发2次」（LuminizeTrigger）与「特殊虚耀再次翻倍」「惊鸿关联虚耀翻倍」在同一载体上是 ×4 还是 ×2。当前 ×2、LuminizeTrigger 不读。
+  - (b) 普攻第 4 段（蹁跹 #4，1581005）命中获得 3 个特殊虚耀、伤害为开局特殊虚耀的 25%（`remielleCinema6SpecialVoidflareCount` / `DamageRatio`）：零读取，未建模。要先定「每次普攻 4 段都给 3 个，还是受储存上限 3 约束」以及触发频率来源（轴里 1581005 的次数）。
+  - 两项都会改数值，而且需要语义判断，原文无法消歧。按 R5（数据可信、不凭推测改数）暂缓，等有更明确的规格来源再做。状态表 1581 c6 的 pending 已登记。

@@ -69,22 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 192 轮（lane lead-arena-0925c）：CC-27 已完成（提交 948a1444）；文档见本提交。**
-- 维琳娜 2 命风蚀利用率改为模块内闭环（applyPanel 读 settings 盖章 → 风蚀能力读回），删除从编排层到 core 的专属穿线；zd 零差（stun-dual-source §24.14）。
-- 新增 `mechanicSettingsEffect` 真管线探针（velina.cinema2CorrosionRate），并做了反向验证。
-- 验证：全量测试与 verify 通过、CG 25 项通过、vue-tsc 无新错误。
-- 前几轮：191 CC-152（c6795167）；190 CC-156（e542a005）；189 CC-147（08b4d40d）。
+**第 193 轮（lane lead-arena-0925c）：CC-164 完成（零发现）；顺藤查出并完成 CC-165（代码提交 90a7eb79）；立卡 CC-166（暂缓）。文档见本提交。**
+- CC-164：`PanelValues` 死读零发现；19 个只有单测覆盖的滑块都走标准通道，不补测（stun-dual-source §24.15）。
+- CC-165：蕾米埃尔 6 命加成字段初值双计、特殊虚耀单位错，已修；0 命 1581 预设伤害 −12~16%，已做归因反向验证；timeGolden 已重生成。
+- 前几轮：192 CC-27（948a1444）；191 CC-152（c6795167）；190 CC-156（e542a005）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **同类排查（CC-27 的推广，建议立卡 CC-164）**：找出「模块读自己的面板字段，但全仓零写入」的死读。CC-27 的 `velinaCinema2CorrosionRate` 就是这一类；CG 判据 25 只查 `Record<string, unknown>` 的键，没抓到 `PanelValues` 上的 `as number` 读法。
-   - 做法：对 `src/mechanics/agents/*.ts` 中所有 `panel.<字段>` / `panel.<字段> as` 读取，逐个 `grep -rn "<字段>\s*=" src` 找写入方；零写入的列出来。
-   - 判定：零写入且有回落值 ⇒ 要么删掉死读，要么像 CC-27 那样补上写入方（看口径：该值应由谁提供）。
-   - 若数量多，可以把检测做成 CG 判据（扩展判据 25 覆盖 PanelValues 字段），这属于架构收益，不是计数。
-2. 同类排查二：`src/mechanics/__tests__/*` 与 `src/specs` 里「只直调纯函数」的滑块覆盖。settings-coverage 只按 id 字符串计数；逐个核对哪些滑块的真管线路径没有被测试覆盖。
-3. 其余：副词条优化器接收槽过滤；洛克茜 energyRegen（先在卡表或 census 中找原始描述）。
+1. **同类排查三（CC-165 的推广）**：其他「加成语义字段初值却是 1」的双计。做法：
+   - 在 `src/mechanics/agents/*.ts` 里 grep `1 + Math.max(0, <panel>.X` 和 `1 + (<panel>.X`；
+   - 对每个 X 查它在 `core/panel.ts` / `data/agentPanelStats.ts` 的初值；初值非 0 就是嫌疑；
+   - 再对照 catalog effect id（`*_bonus` = 加成）和状态表口径下结论。只修有规格依据的，数值差异要做归因。
+2. 副词条优化器接收槽过滤；洛克茜 energyRegen（先在卡表或 census 中找原始描述）。
+3. CC-166 暂缓；除非出现新的规格来源（比如 catalog 或状态表补了叠乘说明），否则不要动。
 
 **已知坑**
+- 6 命原文里的「虹之终幕 / 瞬逝优雅」就是垂虹 / 惊鸿（英文名的另一译法），catalog 里没有这两个招式名。写「某载体未建模」之前先查招式 id。
+- 初值不要按字段名里的 Multiplier 猜：看 catalog effect id（`*_bonus`）和模块读法（`1 + x` ⇒ 初值 0）。
+- 手改 `public/static/*.json`（比如状态表）后要跑 `npm run -s minify:static`：verify 的 data check 要求紧凑 JSON，数组里的 `", "` 空格就会让它红。
 - 模块给异常池能力传角色参数的唯一写法：模块 `applyPanel` 读 `input.settings[id]` 盖章到自己的面板字段，能力函数读回；不要给 `AnomalyPoolInput` 加角色专属字段。
 - 滑块探针断言要用逐点闭式（带当点的实测读数），不要断言跨点严格比例：有反馈时读数会漂移（维琳娜：风化 8 → 7 次）。
 - 口径钉的唯一写法：用例内 `config.setMechanicSetting('time.stunPlanProjection', 0)`，放在读取任何 `calc.*.value` 之前。
