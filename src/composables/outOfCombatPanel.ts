@@ -1,57 +1,25 @@
 /**
- * 局外面板（CC-51，2026-09-27，判据 7 还款）：基础面板 `calcPanel(...).outOfCombat` + 启用的全局 Buff。
+ * 局外面板（配置页「局外」模式）。
  *
- * 原位置：TeamConfigPage.vue `currentPanel` 的「局外」分支（页面直接 import @/core/panel 与 @/core/buff）。
- * 与局内面板 `computePanel`（resourceCalc/panelPhases.ts）对称：页面两种模式都只调编排层函数。
- * 算法逐行照搬原页面实现，未改口径：
- *   · 队友 buff 来源上下文 = `teammateBuffSourceContextFromStores`（CC-49，与原页面同一份依赖组装）；
- *   · 全局 Buff 按 **结算口径** `statSettlementMode(stat)` 施加（不是展示口径 isPctStat，见 statMeta 注释）。
+ * 第 195 轮（CC-169）：直接取引擎的局外面板 `computePanelPhases(slot).outOfCombat`，删掉本文件原先的独立组装。
+ * - 为什么：各角色「初始 X」转化（applyPanel / buildCharConfig 的 `outOfCombatPanel`，20+ 个模块）读的就是这个面板；
+ *   用户看「局外」就是为了核对这些「初始属性」。原实现（CC-51 照搬初始提交的页面写法）另起一份组装：
+ *   队友 buff 用原始上下文（缺门控 / 接收槽过滤 / 来源修正）、覆盖率只含音擎表，并把启用的全局 Buff
+ *   **事后叠加到局外**——而引擎把全局 Buff 当**局内**效果（`resolveSlotPanelBuffInputs` 里 `scope: 'inCombat'`）。
+ *   于是「局外」展示的数值不是引擎拿去做转化的数值。
+ * - 口径变化：启用的全局 Buff 不再出现在「局外」，只出现在「局内」（与引擎一致）。伤害零影响（纯展示）。
+ * - 回退点：revert 该提交（或恢复「对 result.outOfCombat 逐条 applyTargetedStat 全局 Buff」的循环）。
  */
-import { calcPanel } from '@/core/panel'
-import { applyTargetedStat } from '@/core/buff'
-import { statSettlementMode } from '@/utils/statMeta'
 import type { PanelValues } from '@/types/catalog'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import { teammateBuffSourceContextFromStores } from './teammateBuffContext'
+import { computePanelPhases } from './resourceCalc/panelPhases'
 
 export function computeOutOfCombatPanel(
   slot: number,
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): PanelValues | null {
-  const char = configStore.team[slot]
-  if (!char?.agentId) return null
-  const agent = catalogStore.getAgent(char.agentId)
-  if (!agent) return null
-
-  const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
-
-  const { enabledTeammateBuffs, sourcePanelsByOwner } = teammateBuffSourceContextFromStores(configStore, catalogStore)
-
-  // 计算基础面板
-  const result = calcPanel(
-    agent,
-    wEngine,
-    char.driveDisc,
-    catalogStore.driveDiscSetsMap,
-    enabledTeammateBuffs,
-    catalogStore.statRules,
-    {
-      cinemaLevel: char.cinemaLevel,
-      wEngineModLevel: char.wEngineModLevel,
-      sourcePanelsByOwner,
-      effectCoverageMap: configStore.getWEngineEffectCoverageMap(),
-      enemyWeakness: configStore.enemy.weakness,
-    },
-  )
-
-  // 应用全局 buff
-  const panel = { ...result.outOfCombat }
-  for (const buff of configStore.globalBuffs) {
-    if (!buff.enabled) continue
-    applyTargetedStat(panel, buff.stat, buff.value, statSettlementMode(buff.stat), buff.targetSkillType)
-  }
-
-  return panel
+  const phases = computePanelPhases(slot, configStore, catalogStore)
+  return phases ? { ...phases.outOfCombat } : null
 }

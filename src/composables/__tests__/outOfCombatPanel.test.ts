@@ -1,47 +1,33 @@
 /**
- * CC-51：computeOutOfCombatPanel 与原 TeamConfigPage「局外」分支内联算法逐值一致（含一条启用的全局 Buff）。
+ * CC-51 → CC-169（第 195 轮）：配置页「局外」面板 = 引擎局外面板 `computePanelPhases(slot).outOfCombat`。
+ * 旧版本测的是「与原页面内联算法逐值相等（含事后叠加的全局 Buff）」；口径已改，见 composables/outOfCombatPanel.ts 头注释。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { calcPanel } from '@/core/panel'
-import { applyTargetedStat } from '@/core/buff'
-import { statSettlementMode } from '@/utils/statMeta'
-import { teammateBuffSourceContextFromStores } from '@/composables/teammateBuffContext'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { computeOutOfCombatPanel } from '@/composables/outOfCombatPanel'
 
 describe('computeOutOfCombatPanel', () => {
-  it('与原页面内联算法逐值相等；启用的全局 Buff 生效、禁用的不生效', async () => {
+  it('与引擎局外面板逐值相等（三个槽位）；启用的全局 Buff 只进局内、不进局外', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1161' }, { agentId: '1311' }, { agentId: '1211' }], { recommendedBuild: true })
-    config.globalBuffs.push({ id: 't-on', name: '测试开', stat: 'atkPct', value: 0.2, enabled: true, targetSkillType: 'all' })
-    config.globalBuffs.push({ id: 't-off', name: '测试关', stat: 'critRate', value: 0.5, enabled: false, targetSkillType: 'all' })
+    const before = computeOutOfCombatPanel(0, config, catalog)!
+    const inBefore = computePanelPhases(0, config, catalog)!.inCombat
+    config.globalBuffs.push({ id: 't-on', name: '测试开', stat: 'atkPct', value: 20, enabled: true, targetSkillType: 'all' })
+    config.globalBuffs.push({ id: 't-off', name: '测试关', stat: 'critRate', value: 50, enabled: false, targetSkillType: 'all' })
 
-    const inline = (slot: number) => {
-      const char = config.team[slot]!
-      const agent = catalog.getAgent(char.agentId!)!
-      const wEngine = char.wEngineId ? catalog.getWEngine(char.wEngineId) : undefined
-      const { enabledTeammateBuffs, sourcePanelsByOwner } = teammateBuffSourceContextFromStores(config, catalog)
-      const result = calcPanel(agent, wEngine, char.driveDisc, catalog.driveDiscSetsMap, enabledTeammateBuffs, catalog.statRules, {
-        cinemaLevel: char.cinemaLevel,
-        wEngineModLevel: char.wEngineModLevel,
-        sourcePanelsByOwner,
-        effectCoverageMap: config.getWEngineEffectCoverageMap(),
-        enemyWeakness: config.enemy.weakness,
-      })
-      const panel = { ...result.outOfCombat }
-      for (const buff of config.globalBuffs) {
-        if (!buff.enabled) continue
-        applyTargetedStat(panel, buff.stat, buff.value, statSettlementMode(buff.stat), buff.targetSkillType)
-      }
-      return panel
-    }
+    for (const slot of [0, 1, 2]) expect(computeOutOfCombatPanel(slot, config, catalog)).toEqual(computePanelPhases(slot, config, catalog)!.outOfCombat)
 
-    for (const slot of [0, 1, 2]) expect(computeOutOfCombatPanel(slot, config, catalog)).toEqual(inline(slot))
+    // 全局 Buff 是局内效果：局外不变、局内确实变了（否则上面的相等可能只是「都没施加」）
+    expect(computeOutOfCombatPanel(0, config, catalog)).toEqual(before)
+    expect(computePanelPhases(0, config, catalog)!.inCombat.atk).toBeGreaterThan(inBefore.atk)
+  }, 60000)
 
-    // 启用的 Buff 确实改变了面板（否则上面的相等可能只是「都没施加」）
-    const withBuff = computeOutOfCombatPanel(0, config, catalog)!
-    config.globalBuffs.forEach(b => { b.enabled = false })
-    const without = computeOutOfCombatPanel(0, config, catalog)!
-    expect(withBuff).not.toEqual(without)
+  it('返回副本：改返回值不影响下一次计算', async () => {
+    const { config, catalog } = await setupHarness([{ agentId: '1161' }, '', ''], { recommendedBuild: true })
+    const a = computeOutOfCombatPanel(0, config, catalog)!
+    const atk = a.atk
+    a.atk = -1
+    expect(computeOutOfCombatPanel(0, config, catalog)!.atk).toBe(atk)
   }, 60000)
 
   it('空槽 / 无角色 ⇒ null', async () => {

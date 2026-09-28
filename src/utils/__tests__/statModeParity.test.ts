@@ -143,10 +143,8 @@ describe('判据 19：stat 结算口径单一事实源（statSettlementMode）',
   it('②c 真实调用点一律用结算口径（防视图层回退到 isPctStat，端到端测不到）', () => {
     const callSites: Array<[string, RegExp, RegExp]> = [
       // [文件, 必须是结算口径的那行, 该文件里「结算位上出现展示口径」的回退形态]
-      // CC-51（2026-09-27）：局外面板的全局 Buff 结算自 TeamConfigPage.vue 搬到编排层 outOfCombatPanel.ts，锁跟着搬
-      ['src/composables/outOfCombatPanel.ts',
-        /applyTargetedStat\(panel,\s*buff\.stat,\s*buff\.value,\s*statSettlementMode\(buff\.stat\)/,
-        /applyTargetedStat\([^)]*isPctStat\(/],
+      // CC-169（第 195 轮）：局外面板改为直接取引擎 computePanelPhases().outOfCombat，不再自己结算全局 Buff
+      // ⇒ 原 `src/composables/outOfCombatPanel.ts` 这一行锁删除；全局 Buff 的结算位只剩下面的 panelPhases.ts。
       ['src/views/DebugPage.vue',
         /row\('全局 Buff',\s*buff\.name,\s*buff\.stat,\s*buff\.value,\s*statSettlementMode\(buff\.stat\)/,
         /row\('全局 Buff'[^)]*isPctStat\(/],
@@ -165,6 +163,8 @@ describe('判据 19：stat 结算口径单一事实源（statSettlementMode）',
 })
 
 describe('判据 19：全局 Buff 的预览面与引擎面必须同值（端到端）', () => {
+  // CC-169（第 195 轮）：配置页「局外」已改为直接取引擎局外面板，页面上不再有独立结算的「预览面」；
+  // 本组保留为「结算口径 statSettlementMode 与引擎逐字段一致」的端到端锁（预览面 = 用同一调用形态手工复现）。
   beforeEach(() => { newPinia(); mockStaticFetch() })
 
   async function enginePanel(stat: string, value: number): Promise<PanelValues> {
