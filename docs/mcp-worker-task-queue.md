@@ -71,23 +71,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 239 轮（lane lead-arena-0925c）：CC-215 完成（7eb7c11a），文档见本提交。push 结果见 git log / rev-list。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.63；r6 清单 §8 追加了一行。展示层元素 / 属性 / 职业名映射都已单一来源，并有源码锁（`src/utils/__tests__/elementLabelSingleSource.test.ts`）。
-- 前几轮：238 CC-214（361abc6f）；237 纯扫描（dfdf29c1）；236 CC-213（cd9a7486）。
+**第 240 轮（lane lead-arena-0925c）：CC-216 完成（95901f50），文档见本提交。push 结果见 git log / rev-list。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.64；r6 清单 §8 追加了一行。
+- 前几轮：239 CC-215（7eb7c11a）；238 CC-214（361abc6f）；237 纯扫描（dfdf29c1）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. **r6 清单 §8 里还没扫的区域：`stores/` 与 `composables/` 之间重复的派生计算**（CC-206/207 已收了 buff 门控，其余未查）。
-   - 做法：列出 `src/stores/*.ts` 里的 computed / getter，逐个看 composables 或 core 是否算同一个量。只有两处真在算同一个量、且可能分叉，才立卡。
-   - 查完没有，就在 §8 追加一行后收尾。
-2. 低优先的小项（看到再做，别专门立轮）：CharacterCard 与 ResourcePage 各有一份稀有度颜色映射（`r === 'S' ? 'warning' : …`），以及职业颜色映射（ResourcePage 的 `specialtyTagColor`）。这属于展示选择，不是口径，没有分叉就不必动。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-215）。
-- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62，文案口径，没改）；ResourceResultCard 命破 / 锋御的标签颜色暂用 default（§24.63）。
+1. **接着扫 `src/stores/catalog.ts`（14 个 computed）和 `stores/logicEditor.ts`（6 个）**：逐个看 composables / core / specs 是否算同一个量（例如 catalog 里的 buff 合并、招式查询是否与 `data/moveTableQueries` 或 `mergeSpecTeamBuffs` 重复）。只有两处真在算同一个量，才立卡；做法参考 CC-216（改调单一来源 + 源码锁 + 反例验证）。
+2. 查完没有，就在 r6 清单 §8 追加一行后收尾。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-216）。
+- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色暂用 default（§24.63）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **单一来源改造先写源码锁再收尾**：CC-214 与 CC-216 都是锁测试抓出了 grep 漏掉的副本（紧凑写法、另一个模块）。写锁时顺便 stash 掉改动跑一次，确认锁能报出旧代码（反例）。
 - **找映射副本别只靠一种 grep 写法**：CC-214 按 `physical: '物理'` 只找到 8 处，紧凑的单行写法和跨行写法又藏了 4 处，是源码锁测试扫全 src 才抓出来的。先写锁测试，再以它的失败清单为准。
 - **validate-specs 的 note 通道**：note 含「实现位置：」就直接放行，不核对代码。新的归一条目应该走能被逐条证明的读取方式（`applySpecAttributeConversions` 或按 id 调 `specConversionAmount`），不要只靠 note（CC-213）。
 - **结论表里「实现 = spec」要核对模块是否真的调用 spec 解释器**：带「实现位置：」note 的 spec 条目不执行，依据它下的结论可能从未落到计算上（CC-212：CC-134 的 floor 裁决漏了 1571 长达 77 轮）。

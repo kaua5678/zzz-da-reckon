@@ -2062,3 +2062,24 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 **影响**：零计算影响。可见变化：音擎页多一个「锋御」筛选按钮；命破 / 锋御角色的资源结果卡显示职业标签。
 **回退点**：revert 本提交。
+
+### 24.64 第 240 轮：CC-216 有效战斗时间单一来源（95901f50）
+
+**来源**：交接下一步「stores 与 composables 之间重复的派生计算」。扫 `stores/config.ts` 的 computed / getter 时发现 `effectiveTime` 写的是 `max(0, 180 − invincibleTime)`：**写死了 180，不读 `enemy.battleTime`**。而 `battleTime` 由 Boss 预设写入（`applyBossPreset` 取 `defaults.battleTime`），引擎经 `core/effectiveTime#effectiveBattleTime` 读它。
+
+**现状**：23 个 Boss 预设的 battleTime 都是 180，所以这是潜在分叉，还没有表现出来。一旦出现非 180 的预设，属性配置页与结果页顶栏的「有效时间」就会和引擎的时间预算不一致。
+
+**同一个量的副本（改前 7 份）**：stores/config `effectiveTime`（写死 180）、useResourceCalc 两处（失衡有效时长、失衡覆盖率分母）、teamTimeSummary `budget`、yixuan C1 雷击基准、yuzuha 两处。后面 6 份公式正确，只是内联抄写。**yuzuha 两处是源码锁抓出来的**，最初 grep `invincibleTime` 时漏看了。
+
+**改动**
+- 7 份副本全部改调 `effectiveBattleTime`。store 调 core 纯函数符合 C2 裁决（状态层允许调用 core 纯函数）；mechanics 调 `@/core/effectiveTime` 已有 7 个先例。
+- 属性配置页说明文字「有效时间 (秒) = 180 - 无敌时间」改为「= 战斗时间 − 无敌时间」。
+- 源码锁 `src/core/__tests__/effectiveTimeSingleSource.test.ts`：除 core/effectiveTime.ts 外，不允许出现 `battleTime ?? 180) - …` 或 `180 - …invincibleTime`。反例已验证：stash 掉改动后，锁报出旧代码里的全部副本文件。
+
+**不动的**
+- core 内部按参数 `ctx.totalTime - invincibleTime` 计算的几处（foldLoop ×2、underfillProbe、anomalyPool）：不读 store、没写死 180；其中 foldLoop 不夹 0 下限，换成 effectiveBattleTime 会改变病态输入（无敌 > 战斗时间）下的行为。不在本卡范围。
+- RunArchivePage 与 TeamComparePage 各有一份 `战斗时长 × 100 / hpRatio` 的击杀时间（算的是另一个量）：两份公式相同，属于展示层小重复，不改。
+- ResultPage 顶栏把有效时间标成「总时间」：只是文字，不改。
+
+**影响**：现有数据下零数值差（battleTime 全是 180），golden 未变。
+**回退点**：revert 本提交。
