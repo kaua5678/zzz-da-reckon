@@ -195,13 +195,6 @@ function buildAliceCharConfig({
   // 爱丽丝特殊开局喧响：入场立即获得额外 1000 点（在通用 1000 之上）
   cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 1000) + ALICE_INITIAL_DECIBEL_BONUS
 
-  // 六命配置
-  if (cinemaLevel >= 6) {
-    cfg.aliceCinema6Enabled = true
-    cfg.aliceCinema6MaxTriggers = C6_MAX_TRIGGERS_PER_STATE
-    cfg.aliceCinema6DamageRatio = C6_DAMAGE_RATIO
-  }
-
   // 畏缩机制配置
   cfg.aliceTeamAssaultSwordWill = TEAM_ASSAULT_SWORD_WILL
   cfg.aliceDisorderSwordWill = DISORDER_SWORD_WILL
@@ -669,7 +662,7 @@ export const aliceMechanic: AgentMechanicModule = {
           const result = directDamage({
             panel: alicePanel,
             element: 'physical',
-            skillMultiplier: 3300,
+            skillMultiplier: C6_DAMAGE_RATIO * 100,
             stunned: stateFrac,
             critMode: 'crit',
             count: totalTriggers,
@@ -723,7 +716,7 @@ export const aliceMechanic: AgentMechanicModule = {
       description: '每次进入决胜状态（星芒圆舞曲#3 或终结技），额外攻击最多触发 6 次（1 秒 CD）。默认 5 次（考虑 CD 空转）。轴短或操作密集可调高到 6；浪费较多可调低。',
       default: 5,
       min: 0,
-      max: 6,
+      max: C6_MAX_TRIGGERS_PER_STATE,
       step: 1,
       suffix: '次',
     },

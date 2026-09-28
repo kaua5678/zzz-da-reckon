@@ -46,7 +46,6 @@ function axisOf(o: {
     windows: o.windows,
     windowSeconds: o.windowSeconds ?? 16,
     actionCountsBySlot: {},
-    ultimateTotalBySlot: {},
     chainTotalBySlot: {},
   }
 }

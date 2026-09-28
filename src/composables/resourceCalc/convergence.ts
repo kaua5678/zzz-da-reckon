@@ -597,7 +597,6 @@ export function createRunCalcRound(deps: {
         windows: allocateAxisWindows(resolvedAxes, countStun), // CC-154：与同快照 actionCounts/chainTotal/ultimateTotal 同源（原为计划值）
         windowSeconds: computeWindowDuration(),
         actionCountsBySlot: axisActionCountsBySlot,
-        ultimateTotalBySlot: axisUltimateTotal,
         chainTotalBySlot: axisChainTotal,
       },
       // 全队**未缩放**交互次数快照（round 14 新增的只读通道）。数据源 = `configStore.team`
@@ -1077,7 +1076,6 @@ export function createRunCalcRound(deps: {
             // 条目边界注入：敌方以声明状态进入该段失衡（不记紊乱）
             boundaryStates,
           }),
-          stunsTotal: Math.max(1, Math.round(countStun)), // CC-155：事件次数加权的失衡总数属计数通道（原为计划值）
           windowDuration: bossWindowDur,
           // 代表窗→条目映射：结算端事件次数按条目失衡数加权取样用
           windowEntryIdx: windowEntryIdx,

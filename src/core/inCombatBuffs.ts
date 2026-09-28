@@ -7,8 +7,10 @@
  *   - 驱动盘 4 件套 teamBuff
  *
  * 统一输出成 TeammateBuff 结构，由 buff.ts 的 collectTeammateBuffs 应用到每个目标。
- * includeOwner=false 表示该来源已并入装备者自身的 buff 收集（如音擎团队效果），
- * 传播时用 excludeTargetAgentIds 排除装备者，避免重复。
+ * 已并入装备者自身 buff 收集的来源（如音擎团队效果）传播时用 excludeTargetAgentIds 排除装备者，避免重复；
+ * 不设 excludeTargetAgentIds 即装备者本人同样吃到（角色队友 buff、驱动盘 4 件套 teamBuff）。
+ * （原 `includeOwner` 布尔标签从无读取方，是上述行为的冗余描述，第 213 轮 CC-190 删除——
+ *   只改标签而不设 excludeTargetAgentIds 不会有任何效果，留着会误导。）
  */
 import type {
   Agent, WEngine, DriveDiscSet, DriveDiscConfig, TeammateBuff, TeammateBuffGroup,
@@ -18,9 +20,7 @@ import { applyWEngineModLevel, parseStatRequirement, resolveAttributeTemplateSta
 import type { SourcePanelsByOwner } from './buff'
 import { wEngineConditionMet, wEngineEffectRequirementMet } from './wengineConditions'
 
-export interface InCombatTeamBuff extends TeammateBuff {
-  includeOwner: boolean
-}
+export type InCombatTeamBuff = TeammateBuff
 
 export interface InCombatBuffSourceDeps {
   teammateBuffGroups: TeammateBuffGroup[]
@@ -118,7 +118,7 @@ export function collectInCombatTeamBuffs(
       }
       return resolved
     })
-    buffs.push({ ...buff, effects, includeOwner: true })
+    buffs.push({ ...buff, effects })
   }
 
   // CC-101（R5 D8）：已发放的 exclusiveGroup。同组全队效果只计一次（先到先得：按槽位顺序，
@@ -164,7 +164,6 @@ export function collectInCombatTeamBuffs(
           teammateId: agent.teammateBuffId ?? agent.id,
           teammateName: agent.name,
           excludeTargetAgentIds: aliases,
-          includeOwner: false,
         } as InCombatTeamBuff)
       }
     }
@@ -201,7 +200,6 @@ export function collectInCombatTeamBuffs(
             ownerName: agent.name,
             teammateId: agent.teammateBuffId ?? agent.id,
             teammateName: agent.name,
-            includeOwner: true,
           } as InCombatTeamBuff)
         }
       }

@@ -56,7 +56,6 @@ export function calcPoolDirectDamage(env: PoolDamageEnv, row: PoolDirectRow): Re
     // 静默丢弃（直伤整条通道失效，实测 妮可队 -21%、席德+妮可队 -29%）。
     enemyDefReduction: (panel.enemyDefReduction ?? 0) + (row.defIgnore ?? 0),
     enemyDefFlatReduction: panel.enemyDefFlatReduction ?? 0,
-    enemyLevel: env.enemy.level,
     enemyResistance: env.enemyDamageRes[resolveStatElement(row.element) ?? ''] ?? 0,
     enemyResReduction: (panel.enemyResReduction ?? 0) + (row.resIgnore ?? 0),
     stunMultiplier: row.stunMultiplier ?? env.enemy.stunVuln,
@@ -101,7 +100,6 @@ export function calcPoolAnomalyDamage(env: PoolDamageEnv, row: PoolAnomalyRow): 
     enemyDefReduction: row.extraDefReduction ?? 0,
     // 面板外的固定减防来源目前没有；面板固定减防由 calcAnomalyDamage 内部读（CC-175 ③）
     enemyDefFlatReduction: 0,
-    enemyLevel: env.enemy.level,
     enemyResistance: env.enemyDamageRes[resolveStatElement(row.element) ?? ''] ?? 0,
     enemyResReduction: row.extraResReduction ?? 0,
     stunned: row.stunned,

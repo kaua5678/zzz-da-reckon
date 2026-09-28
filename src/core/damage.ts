@@ -267,7 +267,6 @@ export interface DirectDamageInput {
   enemyDefense: number
   enemyDefReduction: number
   enemyDefFlatReduction: number
-  enemyLevel: number
   enemyResistance: number
   enemyResReduction: number
   stunMultiplier: number
@@ -489,7 +488,6 @@ export interface AnomalyDamageInput {
    */
   enemyDefReduction: number
   enemyDefFlatReduction: number
-  enemyLevel: number
   enemyResistance: number
   enemyResReduction: number
   /** 敌人是否处于失衡状态 */

@@ -68,7 +68,6 @@ function axisOf(over: Record<string, unknown> = {}) {
     windows: [],
     windowSeconds: 20,
     actionCountsBySlot: {},
-    ultimateTotalBySlot: {},
     chainTotalBySlot: {},
     ...over,
   } as never

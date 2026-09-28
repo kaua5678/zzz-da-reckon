@@ -209,8 +209,6 @@ export interface AgentAxisContext {
   windowSeconds: number
   /** 各槽位轴内捏块总次数（= `characters[i].axisActionCounts` 的同源快照，按 slot 键控） */
   actionCountsBySlot: Readonly<Record<number, Readonly<Record<string, number>>>>
-  /** 各槽位轴内终结技块总次数（= `axisUltimateTotal`；按实际执行集合，含赠送块） */
-  ultimateTotalBySlot: Readonly<Record<number, number>>
   /** 各槽位轴内连携块总次数（= `runCalcRound` 的 `axisChainTotal`；供「队友连携」类读） */
   chainTotalBySlot: Readonly<Record<number, number>>
 }

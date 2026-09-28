@@ -153,12 +153,11 @@ export interface TeamBuffSpec {
   /**
    * 作用对象分类（**受校验的元数据**，CC-93 2026-09-27 裁决；原为 debt「声明了但运行时零消费」）。
    * - 运行时**不按 target 分流**：`core/inCombatBuffs.ts#collectInCombatTeamBuffs` 对角色队友 buff 一律
-   *   `includeOwner: true` 收集——敌方 debuff（减抗/减防/受伤加深）对全体攻击者等效，分流结果不变。
+   *   含装备者本人收集（不设 excludeTargetAgentIds）——敌方 debuff（减抗/减防/受伤加深）对全体攻击者等效，分流结果不变。
    * - 消费者 = `scripts/validate-specs.mjs`：effect 的 stat 以 `enemy`+大写开头 ⇒ target 必须 enemy/both
    *   （2026-09-27 全库 38 条：team 29 / enemy 9 / both 0，team 条目零敌方字段）。
    * - `enemy` 条目也可用「等效全队拐力」字段（如薇薇安预言下异常伤害 +16% 记 anomalyDamageBonus），合法。
    * - 若日后真要让 team/enemy 走不同通道（例如单体 vs 群体目标），从这里改并连带 validate-specs 规则。
-   * 注：接口里本就没有 `includeOwner`；同名活跃字段在 `src/core/inCombatBuffs.ts`。
    */
   target: 'team' | 'enemy' | 'both'
   coverage: number

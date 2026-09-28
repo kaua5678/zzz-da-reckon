@@ -86,7 +86,6 @@ export function crossAgentSupplyAt(
     cfg,
     state,
     targetCfg,
-    targetState: states[targetIdx],
     stunCount: query.stunCount,
     totalTime: query.totalTime,
   }) || 0))

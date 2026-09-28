@@ -338,12 +338,6 @@ export interface CharacterOperationConfig {
   aliceCoweringBuildUpEfficiency?: number
   /** 爱丽丝二命：终结技命中触发极性强击（额外 spark） */
   aliceCinema2UltSpark?: boolean
-  /** 爱丽丝六命：决胜状态额外攻击已启用 */
-  aliceCinema6Enabled?: boolean
-  /** 爱丽丝六命：单轮最大触发次数（默认 6） */
-  aliceCinema6MaxTriggers?: number
-  /** 爱丽丝六命：伤害倍率 = 异常精通 × 3300%（小数形式 33） */
-  aliceCinema6DamageRatio?: number
   /** 开局赠送能量（普通人40，仪玄120闪能等） */
   initialEnergyGift: number
   /** 开局赠送喧响（默认1000，部分命座额外） */

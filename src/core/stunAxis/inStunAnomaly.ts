@@ -244,11 +244,6 @@ export interface BossAnomalyStateResult {
   windOverlayPerWindow: BossStateSegment[][]
   /** 替换型紊乱点：time=相对该窗口起点的秒；element = **被替换的原状态**元素（「当前时点的状态」口径，如需改新状态一行可翻） */
   disorders: Array<{ windowIndex: number; time: number; element: string }>
-  /**
-   * 接线层注入（纯函数不填）：本轮失衡总次数。轴条目按「代表窗」模拟，
-   * 事件总次数按 stunsTotal 缩放回代表窗取样。
-   */
-  stunsTotal?: number
   /** 接线层注入（纯函数不填）：构建状态链用的窗口时长；消费端取样必须用同一值，禁止重算 */
   windowDuration?: number
   /** 接线层注入（纯函数不填）：每个代表窗属于哪条轴条目（索引对齐窗口序）——事件次数按条目失衡数加权取样用 */
