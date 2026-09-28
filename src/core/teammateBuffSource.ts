@@ -24,6 +24,12 @@ export interface TeammateBuffSourceDeps {
   isTeammateBuffEnabled: (id: string) => boolean
   /** 当前敌人弱点。缺省 = 不拦截 attributeCounter。 */
   enemyWeakness?: readonly string[]
+  /**
+   * 来源角色**自身**条件效果（音擎 / 驱动盘）的覆盖率表（effectId → 0..1）。CC-172（第 197 轮）：
+   * 此前来源面板不传 ⇒ 自身条件效果按 100% 算，与该角色自己槽位的面板（按覆盖率算）口径分裂。
+   * 缺省 = 全 100%（与旧行为相同；store 层整队贪心仍不传）。
+   */
+  effectCoverageMap?: Map<string, number>
 }
 
 export interface TeammateBuffSourceContext {
@@ -67,6 +73,7 @@ export function buildTeammateBuffSourceContext(
         wEngineModLevel: char.wEngineModLevel,
         potentialLevel: char.potentialLevel,
         enemyWeakness: deps.enemyWeakness,
+        effectCoverageMap: deps.effectCoverageMap,
       },
     )
     addSourcePanelAliases(sourcePanelsByOwner, agent, {

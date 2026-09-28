@@ -526,6 +526,8 @@ export function resolveSlotPanelBuffInputs(
 ): { teammateBuffs: TeammateBuff[]; sourcePanelsByOwner: ReturnType<typeof buildTeammateBuffSourceContext>['sourcePanelsByOwner']; effectCoverageMap: Map<string, number>; team: ReadonlyTeam } {
   const buffSelections = configStore.teammateBuffSelections
   const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(configStore.team, {
+    // CC-172（第 197 轮）：来源面板 = 角色自身配置（不带队友 buff），覆盖率口径与进场快照面板相同
+    effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore),
     teammateBuffGroups: catalogStore.teammateBuffGroups,
     driveDiscSetsMap: catalogStore.driveDiscSetsMap,
     statRules: catalogStore.statRules,
@@ -775,11 +777,7 @@ export function computeEntrySnapshotPanel(
       wEngineModLevel: char.wEngineModLevel ?? 1,
       potentialLevel: char.potentialLevel, // CC-171：与 computePanelPhases 同口径
       enemyWeakness: configStore.enemy.weakness,
-      effectCoverageMap: (() => {
-        const map = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)
-        mergeTeamDiscEffectCoverages(map, configStore, catalogStore, teamDiscs(configStore))
-        return map
-      })(),
+      effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore),
     },
   )
   const panel = { ...result.inCombat }
@@ -789,6 +787,20 @@ export function computeEntrySnapshotPanel(
   }
   return panel
 }
+/**
+ * 「角色自身」条件效果覆盖率表 = 音擎覆盖率记录 + 全队驱动盘效果覆盖率（不含队友 buff 覆盖率）。
+ * CC-172（第 197 轮）抽出：进场快照面板与队友 buff 来源面板共用（两者都是「不带队友 buff 的自身面板」）。
+ * 每次调用返回新 Map（调用方可能继续 set）。
+ */
+function selfEffectCoverageMap(
+  configStore: ReturnType<typeof useConfigStore>,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+): Map<string, number> {
+  const map = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)
+  mergeTeamDiscEffectCoverages(map, configStore, catalogStore, teamDiscs(configStore))
+  return map
+}
+
 /** 全队各槽位的驱动盘配置（覆盖率并入用；空槽为 undefined 由 merge 侧跳过）。 */
 function teamDiscs(configStore: ReturnType<typeof useConfigStore>): Array<DriveDiscConfig | undefined> {
   return (configStore.team ?? []).map(c => (c as { driveDisc?: DriveDiscConfig } | undefined)?.driveDisc)
