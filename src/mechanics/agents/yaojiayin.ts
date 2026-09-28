@@ -27,9 +27,10 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
 import { minusInvincibleTime } from '@/core/effectiveTime'
+import { findMoveById as findMove } from '@/data/moveTableQueries'
 
 export const YAOJIAYIN_ID = '1311'
 
@@ -124,15 +125,6 @@ export function computeYaojiayinTremolos(input: YaojiayinTremoloInput): Yaojiayi
     energyUsed: paidTremolos * YAOJIAYIN_ENERGY_PER_TREMOLO,
     entries,
   }
-}
-
-function findMove(skills: AgentSkills | undefined, id: string): SkillMove | null {
-  if (!skills) return null
-  for (const c of skills.categories) {
-    const m = c.moves.find(x => x.id === id)
-    if (m) return m
-  }
-  return null
 }
 
 function rowVal(move: SkillMove | null | undefined, rowId: string): number {

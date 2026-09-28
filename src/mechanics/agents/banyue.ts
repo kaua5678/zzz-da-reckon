@@ -5,6 +5,7 @@ import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect
 import { calcPenetrationPower } from '@/core/damage'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { findMoveById } from '@/data/moveTableQueries'
 
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
@@ -403,16 +404,6 @@ export function computeBanyueMingwangBlocks(
     }
   })
   return out
-}
-
-function findMoveById(skills: { categories: { moves: SkillMove[] }[] } | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    for (const m of cat.moves) {
-      if (m.id === moveId) return m
-    }
-  }
-  return null
 }
 
 function rowValue(move: SkillMove | null, rowId: string): number {

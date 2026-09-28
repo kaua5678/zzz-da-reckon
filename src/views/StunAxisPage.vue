@@ -253,6 +253,7 @@ import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
 import type { StunAxisAction, StunAxisPlan, StunAxis } from '@/types/resource'
 import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/data/bossEntryAnomalyOptions'
+import { findMoveById as findMove } from '@/data/moveTableQueries'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -804,11 +805,6 @@ function moveOptions(s: number) {
   }).map(m => ({ label: m.label + (m.remaining <= 0 ? ' (×0)' : ''), value: m.moveId }))
 }
 function moveLabel(mid: string) { return allMoves.value.find(m => m.moveId === mid)?.label ?? mid }
-function findMove(skills: any, mid: string): any {
-  if (!skills) return null
-  for (const cat of skills.categories ?? []) for (const m of cat.moves ?? []) if (m.id === mid) return m
-  return null
-}
 function findMoveByEn(skills: any, enPart: string): any {
   if (!skills) return null
   for (const cat of skills.categories ?? []) for (const m of cat.moves ?? []) if ((m.name?.en ?? '').toLowerCase().includes(enPart)) return m

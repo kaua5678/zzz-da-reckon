@@ -8,6 +8,7 @@ import type {
 import type { SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { findMoveById } from '@/data/moveTableQueries'
 
 /**
  * 莱卡恩（1141）战斗逻辑（用户确认口径，2026-08）：
@@ -461,15 +462,6 @@ function pushEx(
     ...(stunBuildUpBonus > 0 ? { stunBuildUpBonus } : {}),
     ...(stunBuildUpBonus > 0 ? { skillTableNote: `影画1强化：失衡值提升 +${stunBuildUpBonus}%（乘区加算）` } : {}),
   })
-}
-
-function findMoveById(skills: { categories: { moves: SkillMove[] }[] } | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const found = cat.moves.find(m => m.id === moveId)
-    if (found) return found
-  }
-  return null
 }
 
 function rowValue(move: SkillMove | null | undefined, rowId: string): number {

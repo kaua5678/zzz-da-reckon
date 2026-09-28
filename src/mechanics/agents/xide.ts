@@ -1,9 +1,10 @@
 import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, CrossAgentSupplySpec, ReadonlyTeam } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { SkillMove } from '@/types/catalog'
 import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { findMoveById as findMove } from '@/data/moveTableQueries'
 
 /**
  * 「席德」（1461，电·强攻，新艾利都防卫军）—— 正兵拐 + 自身机制 + 钢能消耗出口模块。
@@ -85,14 +86,6 @@ const XIDE_STEEL_BENGZHUI_COST_C1 = 100
 const XIDE_STEEL_RESOURCE_ID = 'xide_steel_energy'
 /** 钢能 attack_data 平A四段（用于平A秒均折算） */
 const XIDE_BASIC_MOVE_IDS = ['1461001', '1461002', '1461003', '1461004']
-
-function findMove(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  for (const cat of skills?.categories ?? []) {
-    const m = cat.moves.find(m => m.id === moveId)
-    if (m) return m
-  }
-  return null
-}
 
 /** 招式钢能 = attack_data_0（kind=special 第一行；attack_data_1/2 是其他通道，不混入；秒均 ≈ 11） */
 function getAttackData0(move: SkillMove | null | undefined): number {

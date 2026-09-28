@@ -8,7 +8,7 @@ import type {
   ReadonlyTeam,
   AgentTeamConfigInput,
 } from '../types'
-import type { AgentSkills, SkillMove, PanelValues } from '@/types/catalog'
+import type { SkillMove, PanelValues } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting, NormaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
@@ -17,6 +17,7 @@ import { specConversionAmount } from '@/specs/runtime'
 import type { AttributeConversionSpec } from '@/specs/types'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -78,15 +79,6 @@ const C6_MISSILE_COOLDOWN = 30
 // 影画6：技能专属加成（只作用于破甲/高爆弹头，对应倍率表专属行）
 const C6_ARMOR_PIERCE_DAZE_BONUS = 30 // 破甲弹头失衡值 +30%
 const C6_HIGH_EXPLOSIVE_DMG_BONUS = 30 // 高爆弹头伤害 +30%
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const category of skills.categories) {
-    const move = category.moves.find(item => item.id === moveId)
-    if (move) return move
-  }
-  return null
-}
 
 /** 额外能力触发条件由 spec.additionalAbility 声明式统一判定写入 panel.additionalAbilityActive；
  *  本模块只读标记开关，不硬编码条件（条件见 src/specs/agents/1571.json）。 */

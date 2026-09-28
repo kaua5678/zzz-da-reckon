@@ -11,7 +11,7 @@ import type {
   ExtraNecessaryAction,
   ReadonlyTeam,
 } from '../types'
-import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
+import type { Agent } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
@@ -21,6 +21,7 @@ import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const MIYABI_AGENT_ID = '1091'
 /** 烈霜元素（独立元素，可在紊乱中与冰互紊） */
@@ -63,15 +64,6 @@ const FROST_MOON_1_ACTION_TIME = 0.4
 const FROST_MOON_2_ACTION_TIME = 0.567
 /** 霜月 #3 合轴锁定时间（秒）：非6命蓄力1秒后即可合轴 */
 const FROST_MOON_3_LOCK_SECONDS = 1.0
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const move = cat.moves.find(m => m.id === moveId)
-    if (move) return move
-  }
-  return null
-}
 
 /**
  * 额外能力·同沐霜雪：队伍中存在「支援」、与自身**同阵营**或「异常」角色时触发。

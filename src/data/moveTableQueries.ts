@@ -51,10 +51,17 @@ export function fusedRowValue(skills: AgentSkills | undefined, moveId: string, r
   return sum
 }
 
-export function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const move = cat.moves.find(m => m.id === moveId)
+/**
+ * 按招式 id 取招式（分类顺序中的第一个）——**单一来源**（CC-236：此前 25 个角色模块各抄一份）。
+ * 结构化泛型签名：`AgentSkills`、`{ categories: { moves: SkillMove[] }[] }` 或更窄的招式形状都能传入。
+ */
+export function findMoveById<M extends { id: string } = SkillMove>(
+  skills: { readonly categories: readonly { readonly moves: readonly M[] }[] } | undefined,
+  moveId: string,
+): M | null {
+  // 运行时容错缺 categories / moves（原 nangong / StunAxisPage 副本的语义；夹具与不完整数据返回 null 而非抛错）
+  for (const cat of skills?.categories ?? []) {
+    const move = (cat.moves ?? []).find(m => m.id === moveId)
     if (move) return move
   }
   return null

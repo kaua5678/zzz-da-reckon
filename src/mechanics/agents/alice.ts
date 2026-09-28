@@ -24,6 +24,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applySpecAttributeConversions } from '@/specs/runtime'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const ALICE_AGENT_ID = '1401'
 const SWORD_WILL_COST = 300
@@ -64,15 +65,6 @@ function getRowValue(move: SkillMove | null | undefined, rowId: string): number 
   if (!move) return 0
   const row = move.rows.find(r => r.id === rowId)
   return row?.values[0] ?? 0
-}
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const move = cat.moves.find(m => m.id === moveId)
-    if (move) return move
-  }
-  return null
 }
 
 /** 爱丽丝额外能力：队伍中存在另一名「异常」或「支援」角色 */

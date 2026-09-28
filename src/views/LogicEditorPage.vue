@@ -183,6 +183,7 @@
 </template>
 
 <script setup lang="ts">
+import { findMoveById } from '@/data/moveTableQueries'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   NAlert,
@@ -246,14 +247,11 @@ onMounted(async () => {
   }
 })
 
-function findMove(moveId: string): SkillMove | null {
+/** 在全部展示角色的倍率表里按 id 找招式（跨角色；单角色查找用 data/moveTableQueries#findMoveById） */
+function findMoveInAnyAgent(moveId: string): SkillMove | null {
   for (const agentId of catalogStore.displayAgents.map(agent => agent.id)) {
-    const skills = catalogStore.getAgentSkills(agentId)
-    if (!skills) continue
-    for (const category of skills.categories) {
-      const move = category.moves.find(item => item.id === moveId)
-      if (move) return move
-    }
+    const move = findMoveById(catalogStore.getAgentSkills(agentId), moveId)
+    if (move) return move
   }
   return null
 }
@@ -270,7 +268,7 @@ function moveOptionsFor(agentId: string): Array<{ label: string; value: string }
 }
 
 function rowOptionsFor(moveId: string): Array<{ label: string; value: string }> {
-  const move = findMove(moveId)
+  const move = findMoveInAnyAgent(moveId)
   if (!move) return []
   return move.rows.map(row => ({
     label: `${row.id} · ${row.values?.[0] ?? ''}`,
@@ -295,7 +293,7 @@ function onMoveChange(rule: RowFusionRule, moveId: string): void {
 }
 
 function fusionPreview(rule: RowFusionRule): { base: number; result: number } | null {
-  const move = findMove(rule.moveId)
+  const move = findMoveInAnyAgent(rule.moveId)
   const row = move?.rows.find(item => item.id === rule.rowId)
   if (!row || row.values?.[0] == null) return null
   const base = row.values[0]

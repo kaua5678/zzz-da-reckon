@@ -34,10 +34,11 @@ import type {
   AgentStunOverrideInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, MechanicSetting, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { findMoveById as findMove } from '@/data/moveTableQueries'
 
 export const YESHUGUANG_ID = '1431'
 
@@ -120,15 +121,6 @@ const ZHAOYING_COST = 6
 const C6_ATTACH_MULT = 1500
 const C6_MINGDENG_ENTRY = 2
 const C6_MINGDENG_CAP_NOTE = 4
-
-function findMove(skills: AgentSkills | undefined, id: string): SkillMove | null {
-  if (!skills) return null
-  for (const c of skills.categories) {
-    const m = c.moves.find(x => x.id === id)
-    if (m) return m
-  }
-  return null
-}
 
 function rowVal(move: SkillMove | null | undefined, rowId: string): number {
   const row = move?.rows?.find(r => r.id === rowId)

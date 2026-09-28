@@ -8,7 +8,6 @@ import type {
   AgentResourceSectionsInput,
   ReadonlyTeam,
 } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, LiuyinMechanicSource, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
@@ -18,17 +17,9 @@ import { applySpecAttributeConversions } from '@/specs/runtime'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const LIUYIN_AGENT_ID = '1481'
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const category of skills.categories) {
-    const move = category.moves.find(item => item.id === moveId)
-    if (move) return move
-  }
-  return null
-}
 
 // —— 好评（Good Review）——
 const GOOD_REVIEW_INITIAL = 60

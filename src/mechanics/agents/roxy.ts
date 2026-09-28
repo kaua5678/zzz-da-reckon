@@ -7,12 +7,13 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, RoxyWindEnergySource } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgSetting, cfgMechanicSetting as cfgRate } from '@/utils/mechanicSettingCfg'
+import { findMoveById } from '@/data/moveTableQueries'
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -78,15 +79,6 @@ export const ROXY_REGEN_ATK_PER_0_01 = 5
 export const ROXY_REGEN_ATK_CAP = 960
 export const ROXY_REGEN_IMPACT_PER_0_01 = 0.4
 export const ROXY_REGEN_IMPACT_CAP = 76.8
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const category of skills.categories) {
-    const move = category.moves.find(item => item.id === moveId)
-    if (move) return move
-  }
-  return null
-}
 
 function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
   if (!move) return 0

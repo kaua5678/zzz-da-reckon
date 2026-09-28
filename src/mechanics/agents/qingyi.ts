@@ -10,6 +10,7 @@ import type {
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, QingyiMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const QINGYI_AGENT_ID = '1251'
 
@@ -38,15 +39,6 @@ const C2_STUN_COVERAGE = 0.5
 // 影画4·稳态电弧屏障：护盾刷新回 5 能量，10 秒冷却
 const C4_ENERGY_PER_TRIGGER = 5
 const C4_TRIGGER_INTERVAL = 10
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const move = cat.moves.find(m => m.id === moveId)
-    if (move) return move
-  }
-  return null
-}
 
 function rowValue(move: SkillMove | null, rowId: string): number {
   if (!move) return 0

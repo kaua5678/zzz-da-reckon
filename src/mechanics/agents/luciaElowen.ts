@@ -1,12 +1,12 @@
 import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting, SkillExecution } from '@/types/resource'
 import type { LuciaMechanicSource } from '@/types/resource'
-import type { SkillMove } from '@/types/catalog'
 import { fmt } from '@/utils/format'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { findMoveById } from '@/data/moveTableQueries'
 
 /**
  * 卢西娅·艾洛温（1451）战斗逻辑（用户确认口径）：
@@ -107,16 +107,6 @@ export function computeLuciaCurtainTriggers(
 export function computeLuciaHealPctPerUlt(skillLevelBonus = 0): number {
   const ultLevel = 12 + Math.max(0, Math.floor(skillLevelBonus))
   return HEAL_SECONDS * (HEAL_RATE_PCT_BASE + HEAL_RATE_PCT_PER_LEVEL * ultLevel)
-}
-
-function findMoveById(skills: { categories: { moves: SkillMove[] }[] } | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    for (const m of cat.moves) {
-      if (m.id === moveId) return m
-    }
-  }
-  return null
 }
 
 function buildLuciaCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {

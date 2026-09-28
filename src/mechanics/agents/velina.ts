@@ -29,17 +29,9 @@ import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 import { simulateCounterStateMachine } from '@/specs/stateMachine'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const VELINA_AGENT_ID = '1561'
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const move = cat.moves.find(m => m.id === moveId)
-    if (move) return move
-  }
-  return null
-}
 
 function findMoveByEnglishName(skills: AgentSkills | undefined, englishName: string): SkillMove | null {
   if (!skills) return null

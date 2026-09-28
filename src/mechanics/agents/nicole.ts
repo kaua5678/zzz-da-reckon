@@ -20,7 +20,8 @@ import type {
   AgentMechanicModule,
   AgentResourceInput,
 } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { SkillMove } from '@/types/catalog'
+import { findMoveById as findMove } from '@/data/moveTableQueries'
 
 export const NICOLE_ID = '1031'
 
@@ -38,15 +39,6 @@ export const NICOLE_CHARGE_MOVE = '1031103'
 export const NICOLE_ENERGY_FIELD_MOVE = '1031106'
 /** 影画1：每蓄力 1 秒 → 能量场持续时间 +1.5 秒（0.1s→0.15s） */
 export const NICOLE_C1_FIELD_SECONDS_PER_CHARGE_SECOND = 1.5
-
-function findMove(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const m = cat.moves.find((x) => x.id === moveId)
-    if (m) return m
-  }
-  return null
-}
 
 function rowValue(move: SkillMove | null, rowId: string): number {
   const row = move?.rows.find((r) => r.id === rowId)

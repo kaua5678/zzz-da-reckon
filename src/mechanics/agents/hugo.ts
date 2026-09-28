@@ -22,6 +22,7 @@ import type {
 } from '../types'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { findMoveById as findMove } from '@/data/moveTableQueries'
 
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
@@ -393,20 +394,6 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
   record.hugoRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))
   record.hugoAxisExVerdictCount = exVerdictBlocks
   record.hugoAxisUltVerdictCount = ultVerdictBlocks
-}
-
-/** 倍率表查表（与 `skillRows.ts#findMoveById` 同义；本模块内联以避免 mechanics → composables 运行时依赖） */
-function findMove(
-  skills: { categories: { moves: { id: string; actionTime?: number }[] }[] } | undefined,
-  moveId: string,
-): { id: string; actionTime?: number } | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    for (const m of cat.moves) {
-      if (m.id === moveId) return m
-    }
-  }
-  return null
 }
 
 function buildHugoResourceSections({ result }: AgentResourceSectionsInput) {

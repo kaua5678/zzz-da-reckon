@@ -25,8 +25,8 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { findMoveById as findMove } from '@/data/moveTableQueries'
 
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
@@ -120,14 +120,6 @@ export function computeEvelynCycle(input: {
     c6FollowUpCount: cinemaLevel >= 6 ? whole(input.c6FollowUpCount) : 0,
     note: '绞勒式次数显式可调 + C2 燎火返还每25s白嫖一次；燎索点按绞勒式+终结技各+1折算追加连携；牵缠禁制/禁锢逐状态未建模。',
   }
-}
-
-function findMove(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  for (const category of skills?.categories ?? []) {
-    const move = category.moves.find(item => item.id === moveId)
-    if (move) return move
-  }
-  return null
 }
 
 function buildEvelynCharConfig({ cinemaLevel, skills, cfg, panel, getRowValue }: AgentCharConfigInput): void {

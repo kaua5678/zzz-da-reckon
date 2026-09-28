@@ -23,8 +23,8 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { findMoveById as findMove } from '@/data/moveTableQueries'
 
 export const SETH_ID = '1271'
 export const SETH_SHIELD_PROFICIENCY = 100
@@ -50,15 +50,6 @@ function clampRatio(value: number): number {
 
 function whole(value: number): number {
   return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
-}
-
-function findMove(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills || !moveId) return null
-  for (const category of skills.categories) {
-    const move = category.moves.find(item => item.id === moveId)
-    if (move) return move
-  }
-  return null
 }
 
 export function computeSethCycle(input: {

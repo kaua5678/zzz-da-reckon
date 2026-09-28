@@ -9,7 +9,7 @@ import type {
   ExtraAnomalyRowsInput,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
-import type { AgentSkills, PanelValues, SkillMove } from '@/types/catalog'
+import type { PanelValues, SkillMove } from '@/types/catalog'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
@@ -17,6 +17,7 @@ import { fmt } from '@/utils/format'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -100,15 +101,6 @@ function getRowValue(move: SkillMove | null | undefined, rowId: string): number 
 function rawRowValue(move: SkillMove | null | undefined, rowId: string): number {
   if (!move) return 0
   return move.rows.find(row => row.id === rowId)?.values[0] ?? 0
-}
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const category of skills.categories) {
-    const move = category.moves.find(item => item.id === moveId)
-    if (move) return move
-  }
-  return null
 }
 
 /**

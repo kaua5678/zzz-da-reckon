@@ -17,9 +17,10 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { findMoveById as findMove } from '@/data/moveTableQueries'
 
 export const LUCY_ID = '1151'
 const MOVE_SPIN = '1151026' // 亲卫队小猪：回旋挥击！
@@ -32,15 +33,6 @@ const MOVE_BOAR_3 = '1151025'
 export const LUCY_BOAR_CD_DEFAULT = 4
 export const LUCY_BOAR_CD_MIN = 4
 export const LUCY_BOAR_CD_MAX = 6
-
-function findMove(skills: AgentSkills | undefined, id: string): SkillMove | null {
-  if (!skills) return null
-  for (const c of skills.categories) {
-    const m = c.moves.find(x => x.id === id)
-    if (m) return m
-  }
-  return null
-}
 
 function rowVal(move: SkillMove | null | undefined, rowId: string): number {
   const row = move?.rows?.find(r => r.id === rowId)

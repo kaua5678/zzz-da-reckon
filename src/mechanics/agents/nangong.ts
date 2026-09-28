@@ -8,13 +8,13 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting, NangongMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { findMoveById } from '@/data/moveTableQueries'
 
 /**
  * 南宫羽（1511）战斗逻辑（nanoka 原文满级被动 1511055 自主分析，2026-08）：
@@ -77,14 +77,6 @@ const RELEASE_RATIOS: Record<string, number> = {
   wind: 36,
 }
 const MINE_COST_PER_PAIR = 100 // #2/#3 各耗 50 重拍
-
-function findMoveById(skills: { categories: { moves: SkillMove[] }[] } | undefined, moveId: string): SkillMove | null {
-  for (const cat of skills?.categories ?? []) {
-    const mv = cat.moves.find(m => String(m.id) === moveId)
-    if (mv) return mv
-  }
-  return null
-}
 
 function clampRatio(value: number): number {
   return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))

@@ -16,6 +16,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { findMoveById } from '@/data/moveTableQueries'
 
 export type { BillyChain }
 
@@ -216,16 +217,6 @@ export function computeBillyHpModel(
   const hpCostPct = avgCost * chain
   const hpFloorPct = Math.max(0, Math.min(100, 100 - hpCostPct + healPct))
   return { chain, hpCostPct, healPct, hpFloorPct }
-}
-
-function findMoveById(skills: { categories: { moves: SkillMove[] }[] } | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    for (const m of cat.moves) {
-      if (m.id === moveId) return m
-    }
-  }
-  return null
 }
 
 function rowValue(move: SkillMove | null, rowId: string): number {

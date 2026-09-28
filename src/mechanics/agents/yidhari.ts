@@ -7,12 +7,13 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, CharacterResourceResult, IterationState, YidhariHpSource, YidhariLoopMove } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const YIDHARI_AGENT_ID = '1051'
 
@@ -45,15 +46,6 @@ function yidhariProps() {
     decibelPerHpPct: Number(props.decibelPerHpPct ?? 10) || 10,
     cinema4DecibelBonusPct: Number(props.cinema4DecibelBonusPct ?? 10) || 10,
   }
-}
-
-function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const move = cat.moves.find(m => m.id === moveId)
-    if (move) return move
-  }
-  return null
 }
 
 function rowValue(move: SkillMove | null, rowId: string): number {
