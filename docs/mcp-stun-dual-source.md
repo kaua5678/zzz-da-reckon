@@ -2504,3 +2504,27 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 零数值差（只改展示与类型）。回退点：revert 2e7e2c4c。
 
 **④ 留给下一轮的小项**：ResultPage 积蓄池卡片「喧响奖励 +X」= `AnomalyPoolResult.decibelBonus`（各触发者自己那份之和），下面各角色芯片却是 `perSlotBonus`（含队友伴随 50%，3 人队约为 2 倍），说明文字只写了「按触发角色归属」。特殊动作卡同理（total 注释为「仅完整奖励」，芯片是 perSlotBonus）。只需改说明文字，不改数值。
+
+### 24.81 第 257 轮：池卡片说明文字；CC-234 队伍总伤害单一定义；「视图重算引擎聚合量」线结项（09575566）
+
+**① §24.80 ④ 小项（同一提交）**：ResultPage 积蓄池卡片「喧响奖励」的说明改为「各触发者完整奖励之和；下方各角色 = 个人获得（含队友伴随50%）」；特殊动作卡「总计」补上同样的说明。只改文字。
+
+**② 明细 vs 总数（CC-233 病型推广）**：
+- 能量 / 喧响的分项只有 ResourceResultCard 在显示（已由 CC-233 锁住），其他视图只读 `total`（ResultPage:1035-1036 队伍概览）；
+- 时间账有 `teamTimeSummary.test.ts`，伤害来源拆分有 `damageSourceBreakdown.test.ts`；
+- ⇒ 无新缺口。
+
+**③ CC-234**：ResultPage 另算 `damagePoolTotal = Σ damagePoolRows.totalDamage`，与 `useResourceCalc#teamTotalDamage`（:679，存档页、对比页、资源利用页都用它）公式完全相同，还挂了个残留别名 `totalDamageWithDisorder`：
+- 名字来自「紊乱伤害另加」的年代，代码注释自己写着「紊乱伤害已纳入 damagePoolRows，无需额外加算」，现在只是原样转发。
+- 一个「队伍总伤害」在同一页有 3 个名字、2 份定义，以后有人往其中一处加项就会分叉。
+- **改法**：ResultPage 解构 `teamTotalDamage`，9 处引用改为读它，删掉两个本地 computed。
+- **锁**：`src/composables/__tests__/teamTotalDamageSource.test.ts`，views 和 components（去掉注释行后）不许出现 `damagePoolRows.value.reduce(… + x.totalDamage)` 的整体求和，也不许出现 `totalDamageWithDisorder`。`positionCompare.ts` 那几处是按条件过滤后求和，是不同的量，不受限。
+  - 反例：stash ResultPage 后报出 2 处命中。
+  - 踩坑：第一版锁没排除注释行，被新写的说明注释误伤（坑已知，再次记录）。
+- 零数值差。回退点：revert 09575566。
+
+**④ 「视图重算 useResourceCalc 已导出的聚合量」**：
+- 逐个对照导出清单：teamTotalDamage 已修（③）；
+- `stunCoverage` 在视图里没有「次数 × 窗长」的近似；
+- resourceResult 读者在第 253 轮已查过，都是直读；
+- ⇒ **这条线结项**。重开条件：useResourceCalc 新增导出的聚合量。

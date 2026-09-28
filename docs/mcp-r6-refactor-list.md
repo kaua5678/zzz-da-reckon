@@ -406,3 +406,4 @@
 | 254 | 展示层 `* 0.x` 全量与 resourceResult 读者；喧响队友伴随规则 3 份 | `* 0.x` 除卡片外都是绘图 / 估时；resourceResult 读者都是直读。伴随规则收进 data/decibelCompanion（CC-230，`f49a183f`）；**「展示层手写引擎公式」线结项** | 新增展示代码出现与 core 同形算式 |
 | 255 | 喧响单价的全部读者 | 失衡池 decibelBonus 是无引擎消费者的展示字段，删（CC-231，`6b99e293`）；单价 215/10/10/20 下沉 data，结果页说明文字改为生成（CC-232，`70cddc3c`）；**喧响线结项** | 新增喧响来源 |
 | 256 | 结果接口 570 个字段的读者分类（fieldscan.mjs） | 模块诊断字段、测试可观测量不做；死字段 specialResources 删；卡片明细漏列两项已补（CC-233，`2e7e2c4c`），并加「明细之和 = 总数」锁 | 引擎新增 total 组成项（锁会红） |
+| 257 | 各页「明细 vs 总数」；视图重算 useResourceCalc 导出聚合量 | 明细只有结果卡（CC-233 已锁）；ResultPage 另算队伍总伤害，改为直读（CC-234，`09575566`）；stunCoverage 无近似副本；**视图重算线结项** | useResourceCalc 新增导出聚合量 |

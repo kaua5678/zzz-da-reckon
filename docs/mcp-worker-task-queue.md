@@ -71,32 +71,33 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 256 轮（lane lead-arena-0925c）：CC-233 完成（2e7e2c4c），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.80。
-- 前几轮：255 CC-231/232（6b99e293 / 70cddc3c）；254 CC-230（f49a183f）；253 CC-229（4e03fc6f）。
+**第 257 轮（lane lead-arena-0925c）：CC-234 完成（09575566），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.81。
+- 前几轮：256 CC-233（2e7e2c4c）；255 CC-231/232（6b99e293 / 70cddc3c）；254 CC-230（f49a183f）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
-- **结项**：「无引擎读者的结果字段」扫描（§24.80 ②，逐类结论已写）。
+- **结项**：「视图重算引擎聚合量」线（§24.81 ④）；「明细 vs 总数」无新缺口（§24.81 ②）。
 
 **纯规则 / 引擎结果单一来源一览（新写代码直接用）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`（全部喧响单价）、`decibelCompanion`；
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`；
 - `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`；
 - `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`（anomalyPool/helpers）；
 - 展示侧行级易伤：`composables/stunVulnSummary#rowAppliedStunMultOf`；
-- 引擎结果直读：`CalcRoundResult.specialActionBonus`、`CalcRoundResult.decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`；
+- 引擎结果直读：`CalcRoundResult.specialActionBonus`、`CalcRoundResult.decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`、`useResourceCalc#teamTotalDamage`、`useResourceCalc#stunCoverage`；
 - 结果卡明细与总数：`resourceCardBreakdown.test.ts` 的清单。
 
-**下一步（直接开工）**
-1. **小项（§24.80 ④）**：改 `views/ResultPage.vue` 积蓄池卡片「喧响奖励」（约 :313-317）和特殊动作卡「总计」（约 :546）的说明文字，写明「标题 = 各触发者完整奖励之和；下方各角色 = 含队友伴随 50% 的个人获得」。只改文字，零差；可以不加锁。
-2. 然后按「让架构更通用 / 更简单」自选。候选（先读 r6 §8 表，避免重复扫）：
-   - 其他展示卡的「明细 vs 总数」：`ResultPage` 各池卡片、`ResourceUtilizationPage` 的分项表，是否存在分项之和 ≠ 总数（CC-233 的病型推广）。做法同 CC-233：探针量差额，有差就补行加锁；
-   - 若无收获，在 r6 §8 表记一行。
-- 开工前**先查卡表**（最新 CC-233），并 `grep -rn 反锁 src`。
-- **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(...)` 加 `useResourceCalc()`；跑完 `rm`，不提交。
+**下一步（直接开工）**：展示层这一大片（第 250–257 轮：公式副本、结果直读、字段读者、明细总数、聚合量）都已结项。下一轮换层，按「让架构更通用 / 更简单」自选，先读 r6 §8 表避免重复：
+1. **候选 A：`composables/resourceCalc/*` 内部的重复小函数**（§8 表里还没扫过这一层）。方法：
+   - 列出各文件的非导出函数与箭头函数（`grep -nE '^(const|function) \w+' src/composables/resourceCalc/*.ts`）；
+   - 按函数体找同形实现，例如各自写的 clamp、按 slot 取 cfg、`?? 0` 求和等；
+   - 同形且语义相同 ⇒ 收成一处；语义不同 ⇒ 记「不做」。
+2. **候选 B：`src/mechanics/agents/*` 之间的重复 helper**（例如各模块自写的覆盖率计算、`Math.min(1, x / y)`）。方法同上；注意规则：core 不许判 agentId，跨角色共享的 helper 应放 `mechanics/shared` 一类的位置（先看现有目录再决定）。
+- 两个都无收获：在 r6 §8 表记一行，这一轮不改代码也可以（用户明确不要「只为有事做」的改动）。
+- 开工前**先查卡表**（最新 CC-234），并 `grep -rn 反锁 src`。
 - **已知坑**：
   - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；
   - 新文件先 `git add` 再 verify；
-  - 删类型字段后另跑 `npx vue-tsc -b`（TS6196 未使用的类型导入，verify 不拦）；
-  - 两刀改同一文件时，先 verify 并提交第一刀，再做第二刀。
+  - 源码锁要排除注释行（本轮又踩一次）；
+  - 删类型或函数后另跑 `npx vue-tsc -b`；deadChannelLs 棘轮可能报新死导出。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）；「进入失衡 +20 喧响」是否真实机制（§24.79 ①）。
 
 **探针（优化器相关改动的验收）**
