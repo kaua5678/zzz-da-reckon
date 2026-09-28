@@ -59,6 +59,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 1. 长期规则（从 2026-09-27 以前的逐轮交接里提炼，压缩时逐条保留）
 
+- **没有排定项时不造活**（第 237 轮）：REQUIREMENTS 无新条目、交接也没有下一步时，按 `docs/mcp-r6-refactor-list.md` §8 的扫描记录，只查表里没有的区域；查完仍没有满足「更通用 / 更简单」的项，就在 §8 追加扫描范围，然后收尾（写交接、push、zc done）。依据：用户明确不要只为降计数或凑工作量的改动。回退：删掉本条。
 - **每轮收尾必须 `git push origin master`**（提示词 c2）：commit 不等于 push。2026-09-27 用户发现本地积压 436 个提交、远端停在 09-21。推送失败要写进交接，不能静默跳过。
 - **登记债务、豁免或改 burn-down**：改 `scripts/lib/guard-registries.mjs`，不要改 check-guards 本体（CC-85）。
 - **改角色机制实现的提交**：顺手 grep `public/static/character-mechanics.json` 和 `character-constellations.json` 里该角色的 pending，过时就同步改。状态表过时的根因，就是实现提交没回写（CC-89）。
@@ -70,16 +71,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 236 轮（lane lead-arena-0925c）：CC-213 完成（cd9a7486），文档见本提交。push 结果见 git log / rev-list。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.60。「实现位置：」纯记录条目 21 条全部核对完，除 1571（CC-212 已修）外没有分叉，**本线结项**。ARCHITECTURE-OVERVIEW §6.4 已补 1571 的更新。
-- 前几轮：235 CC-212（7b2af5ce）；234 CC-211（b96bbaa0）；233 CC-210（bdc03f72）。
+**第 237 轮（lane lead-arena-0925c）：自选扫描，没有满足判据的项，本轮不改代码（纯文档提交，提交号见 git log）。**
+- 扫描范围与结论见 `docs/mcp-r6-refactor-list.md` §8（新增）；队列 §1 新增长期规则「没有排定项时不造活」。
+- 前几轮：236 CC-213（cd9a7486）；235 CC-212（7b2af5ce）；234 CC-211（b96bbaa0）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. 没有排定的线。先重读 `docs/REQUIREMENTS.md`，有新 R 条目就按规则 8 优先做。
-2. 若没有新需求，从 `docs/mcp-r6-refactor-list.md` 找还没标 ✅ / 不做 的条目；都结项的话，按「让架构更通用或更简单」的判据自选一处，并先写选择依据。不要为了降计数改动。
-3. 已裁决、不要重开：外层不动点里物理失衡次数的整数台阶（`docs/mcp-outer-fixedpoint-continuity.md` §5）；1051 的 hp→贯穿力条目归一。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）。
+1. 重读 `docs/REQUIREMENTS.md`，有新 R 条目就按规则 8 优先做。
+2. 否则先读 r6 清单 §8，**只查表里没有的区域**。尚未扫过、可以考虑的方向：
+   - `src/composables/resourceCalc/` 下超过 800 行的文件里，是否有两处在算同一个物理量；
+   - `src/stores/` 与 `src/composables/` 之间是否还有重复的派生计算（CC-206/207 已收了 buff 门控，其余未查）。
+   没找到满足判据的项，就在 §8 追加一行后收尾。
+3. 最早的真实到期项：坑 25 ⟳，2026-10-31。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-213）。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）。
 
 **探针（优化器相关改动的验收）**

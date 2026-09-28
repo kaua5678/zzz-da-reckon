@@ -2022,3 +2022,7 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - 为什么：1571 在 CC-212 后已真实读 spec，但检查仍只能靠 note 标记放行；note 是人写的，正是 CC-212 那次误判的源头。现在是逐条的代码证据，只有 1051 这类引擎公式条目还走 note 通道。
 - 反例验证：把 1571 三条 note 的「实现位置：」去掉，检查仍然 0 FAIL（靠逐条证据）；再把 `norma.ts` 里一处 `normaConversion('norma_pen_to_atk')` 的 id 改坏，`norma_pen_to_atk` 报 FAIL。两处临时改动都已还原。
 - 零数值影响（只改校验脚本）。回退点：还原 `scripts/validate-specs.mjs` 这两处（注释①′ 与 `readsById`）。
+
+### 24.61 第 237 轮：自选扫描，没有可做项
+
+r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区域（外层台阶、双源残差、坑 37、LONG-TERM A–E、pending 账本、轴 / 覆盖率重复、⟳ 到期），都不满足「更通用 / 更简单」的判据，不改代码。扫描表放在 `docs/mcp-r6-refactor-list.md` §8，以后无排定项的轮次都往那里追加。
