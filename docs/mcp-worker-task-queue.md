@@ -69,24 +69,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 197 轮（lane lead-arena-0925c）：CC-172 完成（代码提交 8bbefaed）；立卡 CC-173。文档见本提交。**
-- CC-172：来源面板自身条件效果按覆盖率计算（与进场快照面板共用 `selfEffectCoverageMap`），缺省零差（stun-dual-source §24.19）。
-- 前几轮：196 CC-171（c727c369）；195 CC-169（af1c9e86）；194 CC-168（3336f873）。
-- 至此 calcPanel 的 5 个生产调用点里，4 个口径已理清（主面板 / 进场快照 / 来源面板同源；优化器起点由调用方给）；只剩 store 整队贪心。
+**第 198 轮（lane lead-arena-0925c）：CC-173 定案（不迁移），CC-174 完成（代码提交 e0426398）；立卡 CC-175。文档见本提交。**
+- CC-173：整队贪心允许与管线不同源，理由和重开条件见 stun-dual-source §24.20、store 分支注释。
+- CC-174：calcPanel 生产调用点必须显式写 potentialLevel / effectCoverageMap（契约测试）。
+- 前几轮：197 CC-172（8bbefaed）；196 CC-171（c727c369）；195 CC-169（af1c9e86）。
+- calcPanel 口径线（CC-168 → CC-174）至此收尾。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-173：整队贪心的归属与口径**（先定方案，写进卡表再动手）。
-   - 现状：
-     - `stores/config.ts#applyBuildRecommendationForSlot`（:760）是 store 动作，store 内部有 4 个调用者（:645 换角色、:1274 / :1296 / :1335 预设载入），另有 `TeamConfigPage.vue:680` 按钮和 `src/test/harness.ts:137`。
-     - 非缺省分支（`optimizer.useDefault` = 0 且为 attack / anomaly / rupture 角色，~815–870）自己组装原始队友上下文，并对每个队友 calcPanel 估伤。缺少 CC-168 列的 5 步加工（来源修正 / 全局 Buff / 额外能力门控 / 接收槽过滤 / 覆盖率），也没传潜能。
-     - store 不能依赖 composables（分层），所以当初没改。
-   - 候选方案：
-     - (a) 把「推荐配装 + 副词条分配」整个编排迁到 `composables/`（与单槽版 `composables/substatOptimizer.ts` 合并），store 只保留纯数据写入。难点：store 内部 4 个调用点要改成由编排层触发（预设载入流程在 store 里）。
-     - (b) store 暴露注入点（如 `setSubstatAllocator(fn)`），由编排层在应用启动时注册；store 调注入函数，缺省回落到 useDefault 路径。改动小，但是「隐式依赖」，测试 harness 要注册。
-     - (c) 不改，只在代码和卡表里写明「整队贪心是用户手动开启的近似估值，允许与管线不同源」。
-   - 选择判据：哪个让架构更简单。倾向 (a)（store 不再 import core 计算），但若 4 个内部调用点迁移牵连过大，选 (c) 并写理由。
-   - 做 (a) / (b) 时：非缺省分支对缺省预设不生效（useDefault 缺省为 1），zd 应零差；要另写探针，在 useDefault = 0 下对比新旧分配。
+1. **CC-175：core 公共函数可选入参的缺省兜底普查**（CC-170 方法推广）。
+   - 列候选：`grep -nE "^export function \w+\(" src/core/*.ts src/core/**/*.ts`，挑最后一个参数是对象、且含 `?:` 可选字段的；优先看被 ≥2 个生产调用点调用的。已知候选：`computeOptimalSubStats`（`OptimizeSubstatsInput`，store 分支已知不传 effectCoverageMap，属 CC-173 允许范围）、`collectInCombatTeamBuffs`、`buildTeammateBuffSourceContext`（deps.effectCoverageMap，store 不传属 CC-173）、伤害 / 失衡入口的 options。
+   - 对每个函数的每个可选字段：哪些生产调用点传、哪些不传？不传的调用点缺省值是否就是它想要的口径？
+   - 判定：漏传的补上（伤害路径上要跑 zd 并做归因）；有意不传的，在调用点写一行注释说明原因；不值得锁的写「不做」。
+   - 若发现第二个和 calcPanel 同样高风险的函数（多调用点、缺省值会静默改口径），再考虑给它加契约测试。不要为每个函数都加。
 2. CC-166 仍暂缓（需规格）。
 
 **已知坑**

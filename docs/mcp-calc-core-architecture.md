@@ -343,7 +343,9 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-170 | ✅ done c727c369 | lead-arena-0925c | calcPanel 调用方口径普查：生产调用点实为 5 个（表见 stun-dual-source §24.18）；发现 CC-171（已修）、CC-172（open）。 | — |
 | CC-171 | ✅ done c727c369 | lead-arena-0925c | `computePanelPhases` / `computeEntrySnapshotPanel` 漏传 `potentialLevel` → `cfg.panel.potentialLevel` 恒为 6（柏妮思 / 简资源结果按满潜显示）。补传两行，伤害零变化（潜能伤害走 applyPanel，一直是正确档位）。§24.18 | — |
 | CC-172 | ✅ done 8bbefaed | lead-arena-0925c | 来源面板传「角色自身覆盖率表」（`selfEffectCoverageMap`，与进场快照面板共用）：此前来源角色自身条件效果按 100% 算，与其主面板口径分裂。缺省配置零差（覆盖率缺省 100）。§24.19 | — |
-| CC-173 | open（下一轮第一项，先做方案） | — | 整队贪心（`stores/config.ts#applyBuildRecommendationForSlot` 非 useDefault 分支 ~815–870）是 store 里唯一还直接调 core `calcPanel` / `buildTeammateBuffSourceContext` 的计算编排，用原始队友上下文，与管线不同源（CC-168 未决项）。方案取舍见 worker-task-queue §2。 | — |
+| CC-173 | ✅ done（决定：不迁移） e0426398 | lead-arena-0925c | 整队贪心选 (c)：允许与管线不同源（store 禁调编排层；迁出牵连 4 个 store 流程；注入点不更简单）。重开条件：useDefault 缺省改 0，或要求自动分配 = 按钮逐值一致。§24.20 | — |
+| CC-174 | ✅ done e0426398 | lead-arena-0925c | calcPanel 生产调用点输入契约测试 `core/__tests__/calcPanelCallContract.test.ts`：清单 = KNOWN，每处显式写 potentialLevel / effectCoverageMap。优化器输入加 potentialLevel 透传。零差。§24.20 | — |
+| CC-175 | open（下一轮第一项） | — | 把 CC-170 的方法扩到 core 其他带可选配置对象的公共函数：逐个核对生产调用点的缺省兜底是否有意。做法见 worker-task-queue §2。 | — |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |

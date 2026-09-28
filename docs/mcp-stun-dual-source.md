@@ -1132,3 +1132,24 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 这条恒等式本身就是判据：来源面板 ≡ 进场快照面板（不含 skillLevelBonus 影画补正、来源修正钩子）。
 - **验证**：`npm run verify` rc=0（3823 passed）；vue-tsc 无新错误；CG 25 项通过；zd 零差（DUMP 与 ROWS 两段 DIFF 0）。
 - **回退点**：revert 本提交；或只删 `resolveSlotPanelBuffInputs` 里传给 buildTeammateBuffSourceContext 的 `effectCoverageMap` 一行（回到来源面板满覆盖，`selfEffectCoverageMap` 抽取保留，零差）。
+
+### 24.20 CC-173 整队贪心不迁移（决定）+ CC-174 calcPanel 生产调用点输入契约（第 198 轮，提交 e0426398）
+- **CC-173 决定：选 (c)，不迁移，允许不同源**。对象是 `stores/config.ts#applyBuildRecommendationForSlot` 的非 useDefault 分支（整队贪心，仅当 `optimizer.useDefault` = 0 且为 attack / anomaly / rupture 角色时生效），它用原始队友上下文。
+  - 依据：
+    1. `ARCHITECTURE.md:12`（R6 C2）规定 store 可调 core、禁调编排层；5 步加工（来源修正 / 全局 Buff / 额外能力门控 / 接收槽过滤 / 覆盖率）依赖 mechanics / specs，无法下沉 core。
+    2. (a) 迁出 store：`applyBuildRecommendationForSlot` 在 store 内有 4 个调用流程（`setAgent` :645、初始化 :1274、`applyTeamPreset` :1296、优化器设置 watcher :1335），全要迁；为一个非缺省路径付出的改动面过大。
+    3. (b) 注入点：多一个隐式依赖，未注册时仍回落原始路径，两条路径照旧，不更简单。
+    4. 缺省路径（useDefault 分支）不读队友 buff；全部预设、zd、测试 harness 都走它，所以伤害基线不受影响。
+  - 代价（已知、接受）：用户关闭默认词条后，自动分配与配置页按钮（`composables/substatOptimizer.ts`，同源但无队友估值）可能给出不同分配。
+  - 重开条件：useDefault 缺省改为 0；或需要「自动分配 = 按钮」逐值一致。届时做 (a)。
+  - 落地：store 分支和 composables/substatOptimizer.ts 头注释都写了决定与重开条件。顺手在两处给 calcPanel / 优化器补传角色真实潜能（估值不读面板潜能，零差）。
+- **CC-174 输入契约**：CC-171、CC-172 都是 calcPanel 的 config 可选字段漏传、被缺省值静默兜底，类型拦不住。
+  - 不改成类型必填（会让 25 处测试调用补 `undefined` 噪音），改为锁**生产**调用点：新增 `src/core/__tests__/calcPanelCallContract.test.ts`。
+    - 生产调用点清单 = KNOWN（panelPhases × 2、teammateBuffSource、substatOptimizer、stores/config）。新增调用点会失败，要先对照 `computePanelPhases` 的参数表核对口径再登记。
+    - 每个调用点必须**显式写出** `potentialLevel` 与 `effectCoverageMap`（有意不传写 `undefined` + 注释）。
+    - 探测器自检。
+  - 配套：`OptimizeSubstatsInput.config` 加可选 `potentialLevel`，透传给无副词条起点面板；单槽优化器与 store 两分支都传角色潜能。
+  - 已确认旧代码（HEAD 版三文件）上报 3 处缺键；CC-171 / 172 修复前的状态也会被它拦下。
+  - 这是判据不是棘轮：它锁的是「口径必须显式」这条结构约束，没有计数。若日后 calcPanel 的 config 改为类型必填，本测试可废。
+- **验证**：`npm run verify` rc=0（3826 passed）；vue-tsc 无新错误；CG 25 项通过；zd 零差（DUMP 与 ROWS 两段 DIFF 0）。
+- **回退点**：revert 本提交；契约测试可单独删除，不影响计算。
