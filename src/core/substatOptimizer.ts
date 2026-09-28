@@ -266,8 +266,8 @@ function decomposeSet(
   const set = setsMap.get(setId)
   if (!set) return result
 
-  // CC-181：原可选形参 coverage 全仓无人传（恒 1）已删。⚠ 已知近似（CC-182）：套装效果按 100% 生效分解，
-  // 伤害管线则按 effectCoverageMap 打折 ⇒ 条件型 4 件套在排名里被高估
+  // CC-181 删了恒 1 的 coverage 形参。按 100% 分解与伤害管线默认一致（catalog 驱动盘效果 coverage.default 全为 1）；
+  // 本函数只在「未装备任何套装」的搜索路径用于排名（CC-182），已装备套装走 calcPanel 的真实覆盖率
   const cov = 1
 
   // 2 件套效果
@@ -847,7 +847,25 @@ export function computeOptimalSubStats(input: OptimizeSubstatsInput): OptimizeSu
   // 阈值优先级：模板 > 用户覆盖 > 全局默认 0.05
   const minGainRatio = template.minGainRatio ?? input.minGainRatio ?? 0.05
 
-  // 7. 剪枝 + 贪心 → 最优组合
+  // CC-182（第 205 轮）：已装备套装 ⇒ 只为**已装备**套装分配副词条。
+  // `basePanel`（computeNoSubstatPanel）= calcPanel 带当前 4+2 的局内面板：套装效果已按 effectCoverageMap 计入。
+  // 旧路径在它之上再叠加 Top-K 候选套装的等效词条 ⇒ 当前套装被计两次 / 分配面板 = 已装备 + 推荐两套同时生效，
+  // 而 `chosenSet` 生产零读取（套装不会被换）⇒ 输出的是一个不存在面板的最优分配。
+  // 只有一件套装都没装时才走套装搜索（此时 basePanel 不含套装效果，候选分解不重复）。
+  const equippedFour = input.driveDiscConfig.fourPieceSetId
+  const equippedTwo = input.driveDiscConfig.twoPieceSetId
+  if (equippedFour || equippedTwo) {
+    const none: SetBonusDecomposition = { equivalentSteps: {}, multipliers: {} }
+    const greedy = greedyAllocate(basePanel, none, template, subStep, totalSteps, teammates, atkTransfer, statCap, minGainRatio)
+    return {
+      subStatAllocation: greedy.allocation,
+      expectedDamage: greedy.expectedScore,
+      marginalGains: greedy.marginalGains,
+      chosenSet: { fourPieceId: equippedFour, twoPieceId: equippedTwo, decomposition: decomposeFourPlusTwo(equippedFour, equippedTwo, input.setsMap) },
+    }
+  }
+
+  // 7. 剪枝 + 贪心 → 最优组合（仅未装备任何套装时）
   const topCombos = pruneAndRankSets(allSetIds, input.setsMap, basePanel, template, subStep, 5, teammates, atkTransfer, statCap, totalSteps, minGainRatio)
 
   // 回退函数：对指定套装跑贪心
