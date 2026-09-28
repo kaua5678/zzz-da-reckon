@@ -2118,3 +2118,18 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 **顺带核对（没有副本）**：暴击期望 `1 + 暴击率 × 暴伤` 全仓只在 `core/damage.ts:129` 出现一次。core 的 `@fact` 锚点大多是行为口径（判稳、截断、热启动），没有可 grep 的算式；沿 @fact 找副本这条路到此收益递减。
 
 **影响**：零数值差（golden 严格判据通过）。**回退点**：revert 本提交。
+
+### 24.67 第 243 轮：CC-219 防御 / 抗性乘区单一来源（257e042c）
+
+**副本（3 份）**
+- `core/damage.ts`（直伤）：本地 `LEVEL_COEFF_60 = 794`、`calcDefenseMultiplier`（返回 {multiplier, effectiveDef}）、`calcResistanceMultiplier(base, red, ignore)`。
+- `core/anomalyPool/helpers.ts`（异常 / 紊乱 / 乱流）：导出的 `LEVEL_COEFF_60`、`LEVEL_MULT_60 = 2`、`calcDefenseMultiplier`（返回 number，表达式与 damage.ts 逐字相同）、`calcResistanceMultiplier(base, red)`。
+- `mechanics/agents/remielle.ts`（耀变 calcVoidflareDamage）：手写 `794 / (794 + effectiveDef)`、`levelMult = 2`、`1 - (baseRes - red) / 100`。
+
+**改动**：新增叶子模块 `src/core/damageMultipliers.ts`（`LEVEL_COEFF_60`、`LEVEL_MULT_60`、`defenseMultiplierDetail`、`resistanceMultiplierDetail(base, red, ignore = 0)`），三处都改为调用它。helpers 保留 `calcDefenseMultiplier` / `calcResistanceMultiplier` 的导出名与签名（内部转调 `.multiplier`），常量也原名转出，调用方不用改。源码锁在 `src/core/__tests__/damageMultipliersSingleSource.test.ts`，两条特征：`794 / (794` 或 `LEVEL_COEFF_60 /(`、`= 1 - effectiveRes / 100` 或 `= 1 - (xRes - y) / 100`。锁跳过注释行，另附一条逐位数值断言。
+
+**等价性**：防御表达式逐字相同，包括 remielle 的 `penFlat + 固定减防` 加法顺序；抗性区 `x - 0 === x`。**反例**：`git stash push -- 三个源码文件` 后，两条锁都报出 damage / helpers / remielle。
+
+**不归一（裁决）**：异常积蓄抗性区（`anomalyPool/helpers.ts` 的 `afterEff * (1 - effectiveRes / 100)`）和失衡抗性区（`core/stunPool.ts:139`）式子同形，但属于另一套游戏机制（积蓄 / 失衡值，不是伤害）。合并只会把互不相关的口径耦合在一起，所以不做，锁正则也刻意不覆盖这两处。
+
+**影响**：零数值差（verify golden 严格判据通过）。**回退点**：revert 本提交。
