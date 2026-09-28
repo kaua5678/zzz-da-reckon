@@ -104,12 +104,31 @@ export function getRemielleLevelValue(row: SkillMove['rows'][number] | undefined
   return values[0] ?? 0
 }
 
+/** 一命「开局特殊虚耀」每轮个数（状态表 1 命：开局 3 个；6 命原文「1命+4命的2轮变为4轮」⇒ 1 轮 = 3 个） */
+export const REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND = 3
+
+/**
+ * 特殊虚耀个数（CC-165 口径）：`(3 × 一命轮次 + 四命补充个数) × (1 + 六命翻倍加成)`。
+ * - `remielleCinema1SpecialVoidflareCount` = **轮次**（catalog buff 描述「特殊虚耀触发轮次」，值 1）；
+ * - `remielleCinema4SpecialVoidflareRefillCount` = **个数**（「补充3个特殊虚曜点」，值 3 = 1 轮）；
+ * - `remielleCinema6SpecialVoidflareTriggerMultiplier` = **加成**（初值 0，6 命 +1 ⇒ ×2）。
+ * 读数：1 命 3 / 4 命 6 / 6 命 12（与 character-constellations 状态表、6 命原文一致）。
+ */
 export function remielleSpecialVoidflareCount(panel: PanelValues): number {
   const firstRound = panel.remielleCinema1SpecialVoidflareCount ?? 0
   if (firstRound <= 0) return 0
-  const refillRound = panel.remielleCinema4SpecialVoidflareRefillCount ?? 0
+  const refill = Math.max(0, panel.remielleCinema4SpecialVoidflareRefillCount ?? 0)
   const c6Multiplier = 1 + Math.max(0, panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
-  return (firstRound + Math.max(0, refillRound)) * c6Multiplier
+  return (firstRound * REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND + refill) * c6Multiplier
+}
+
+/**
+ * 「普通攻击：惊鸿」关联虚耀触发倍率 = 1 + 六命加成（CC-165：初值曾为 1 与 `1 + x` 叠成 0 命 ×2 / 6 命 ×3）。
+ * 读 FleetingGrace 字段（其声明即「六命惊鸿关联虚耀」）；原文「瞬逝优雅（Fleeting Grace）耀变触发2次」
+ * 的 `remielleCinema6LuminizeTriggerMultiplier` 与本条是否叠乘未定，当前只乘一次（CC-166）。
+ */
+export function remielleFleetingGraceMultiplier(panel: PanelValues): number {
+  return 1 + Math.max(0, panel.remielleCinema6FleetingGraceVoidflareTriggerMultiplier ?? 0)
 }
 
 export interface VoidflareDamageInput {
@@ -466,7 +485,7 @@ export const remielleMechanic: AgentMechanicModule = {
         carrierMoveId: cfg.remielleRainbowEndMoveId,
         carrierMoveName: '普通攻击：垂虹',
         count: remielleRainbowEndCount,
-        formula: 'count = (remielleCinema1SpecialVoidflareCount + remielleCinema4SpecialVoidflareRefillCount) × remielleCinema6SpecialVoidflareTriggerMultiplier',
+        formula: 'count = (3 × remielleCinema1SpecialVoidflareCount + remielleCinema4SpecialVoidflareRefillCount) × (1 + remielleCinema6SpecialVoidflareTriggerMultiplier)',
         fields: [
           'remielleCinema1SpecialVoidflareCount',
           'remielleCinema4SpecialVoidflareRefillCount',
@@ -524,7 +543,7 @@ export const remielleMechanic: AgentMechanicModule = {
       if (voidflareTotal > 0 && remielleSkills) {
         const skillLevelBonus = remiellePanel.skillLevelBonus ?? 0
         const c1ResIgnore = (remiellePanel.remielleCinema1SpecialVoidflareCount ?? 0) > 0 ? 50 : 0
-        const c6LuminizeMultiplier = 1 + Math.max(0, remiellePanel.remielleCinema6LuminizeTriggerMultiplier ?? 0)
+        const fleetingGraceMultiplier = remielleFleetingGraceMultiplier(remiellePanel)
         const qBatches = Math.floor(voidflareTotal / 3)
         const firstOtherSlot = otherSlots[0]
         const secondOtherSlot = otherSlots[1]
@@ -556,7 +575,7 @@ export const remielleMechanic: AgentMechanicModule = {
             id: 'remielle-luminize-basic',
             name: '普通攻击惊鸿·耀变',
             moveId: '1581008',
-            countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count * c6LuminizeMultiplier])),
+            countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count * fleetingGraceMultiplier])),
           },
         ]
 
@@ -642,11 +661,8 @@ export const remielleMechanic: AgentMechanicModule = {
 
 /** 特殊虚耀使用次数（CC-26 自 core/resource/rowAccounting.ts 迁入，公式逐字保留） */
 export function remielleSpecialVoidflareUseCount(cfg: CharacterOperationConfig): number {
-  const firstRound = cfg.panel.remielleCinema1SpecialVoidflareCount ?? 0
-  if (firstRound <= 0) return 0
-  const refillRound = cfg.panel.remielleCinema4SpecialVoidflareRefillCount ?? 0
-  const c6Multiplier = 1 + Math.max(0, cfg.panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
-  return (firstRound + Math.max(0, refillRound)) * c6Multiplier
+  // CC-165：与 remielleSpecialVoidflareCount 原为逐字相同的两份公式，收为一处
+  return remielleSpecialVoidflareCount(cfg.panel)
 }
 
 /**
@@ -701,7 +717,7 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
 
   const remiellePanel = panel
   const qBatches = Math.floor(voidflareTotal / 3)
-  const c6LuminizeMultiplier = 1 + Math.max(0, remiellePanel.remielleCinema6LuminizeTriggerMultiplier ?? 0)
+  const fleetingGraceMultiplier = remielleFleetingGraceMultiplier(remiellePanel)
   const specialCount = remielleSpecialVoidflareCount(remiellePanel)
   const perSlotText = otherSlots
     .map(slot => `${teamAgentIds[slot] ?? slot}:${perSlotAnomaly[slot] ?? 0}`)
@@ -741,9 +757,9 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
       type: 'luminize',
       label: '普通攻击惊鸿·耀变',
       source: '消耗并清空虚耀',
-      count: voidflareTotal * c6LuminizeMultiplier,
-      formula: `count = voidflareTotal × ${c6LuminizeMultiplier}（6命翻倍）`,
-      fields: ['voidflareTotal', 'remielleCinema6LuminizeTriggerMultiplier', '1581008 luminizeMultiplier'],
+      count: voidflareTotal * fleetingGraceMultiplier,
+      formula: `count = voidflareTotal × ${fleetingGraceMultiplier}${fleetingGraceMultiplier > 1 ? '（6命翻倍）' : ''}`,
+      fields: ['voidflareTotal', 'remielleCinema6FleetingGraceVoidflareTriggerMultiplier', '1581008 luminizeMultiplier'],
     },
     {
       id: 'remielle-special-voidflare',
@@ -751,7 +767,7 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
       label: '普通攻击垂虹·特殊虚耀',
       source: '开局特殊虚曜点，垂虹打出并消耗',
       count: specialCount,
-      formula: 'count = (3 + 4命补充3) × 6命翻倍；倍率 = 垂虹耀变倍率 × 2.5',
+      formula: 'count = (3 × 一命轮次 + 4命补充3) × (1 + 6命翻倍加成)；倍率 = 垂虹耀变倍率 × 2.5',
       fields: ['remielleCinema1SpecialVoidflareCount', 'remielleCinema4SpecialVoidflareRefillCount', 'remielleCinema6SpecialVoidflareTriggerMultiplier'],
     },
   ] as AnomalyEventRecord[]).filter(event => event.count > 0)

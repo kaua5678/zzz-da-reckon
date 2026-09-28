@@ -3,7 +3,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { buildAnomalyVirtualPanel, computePanelPhases, computeEntrySnapshotPanel, findMoveById } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
-import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts } from '@/mechanics/agents/remielle'
+import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts, remielleFleetingGraceMultiplier, remielleSpecialVoidflareCount } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 
@@ -209,9 +209,9 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     expect(groups[0].rows[1]).toMatchObject({ id: 'remielle-luminize-assist-2', count: 3 })
     expect(groups[0].rows[2]).toMatchObject({ id: 'remielle-luminize-ultimate-1', count: 1 })
     expect(groups[0].rows[3]).toMatchObject({ id: 'remielle-luminize-ultimate-2', count: 2 })
-    // 惊鸿按 c6LuminizeMultiplier（emptyPanel 默认 remielleCinema6LuminizeTriggerMultiplier=1 ⇒ ×2）
-    expect(groups[0].rows[4]).toMatchObject({ id: 'remielle-luminize-basic-1', count: 4 })
-    expect(groups[0].rows[5]).toMatchObject({ id: 'remielle-luminize-basic-2', count: 6 })
+    // 惊鸿 × (1 + remielleCinema6FleetingGraceVoidflareTriggerMultiplier)；emptyPanel 初值 0 ⇒ 0 命 ×1（CC-165）
+    expect(groups[0].rows[4]).toMatchObject({ id: 'remielle-luminize-basic-1', count: 2 })
+    expect(groups[0].rows[5]).toMatchObject({ id: 'remielle-luminize-basic-2', count: 3 })
   })
 
   it('C1（remielleCinema1SpecialVoidflareCount>0）时含 remielle-special-voidflare 行', () => {
@@ -224,8 +224,21 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     expect(special).toMatchObject({
       slot: 0, agentId: '1581', type: '特殊虚耀',
       name: '普通攻击垂虹·特殊虚耀', element: 'lumiflux',
-      source: '蕾米进场记录面板 × 2.5 特殊独立乘区', count: 2,
+      source: '蕾米进场记录面板 × 2.5 特殊独立乘区', count: 3,
     })
+  })
+
+  it('CC-165：特殊虚耀个数 1 命 3 / 4 命 6 / 6 命 12，惊鸿 0 命 ×1 / 6 命 ×2（状态表与 6 命原文口径）', () => {
+    const e = emptyPanel()
+    expect(remielleSpecialVoidflareCount(e)).toBe(0)
+    const c1 = { ...e, remielleCinema1SpecialVoidflareCount: 1 }
+    const c4 = { ...c1, remielleCinema4SpecialVoidflareRefillCount: 3 }
+    const c6 = { ...c4, remielleCinema6SpecialVoidflareTriggerMultiplier: 1, remielleCinema6FleetingGraceVoidflareTriggerMultiplier: 1 }
+    expect([c1, c4, c6].map(remielleSpecialVoidflareCount)).toEqual([3, 6, 12])
+    expect(remielleFleetingGraceMultiplier(e)).toBe(1)
+    expect(remielleFleetingGraceMultiplier(c6)).toBe(2)
+    // 6 命三个 TriggerMultiplier 是加成语义：空面板初值必须为 0（否则与 1 + x 叠成双计）
+    expect([e.remielleCinema6LuminizeTriggerMultiplier, e.remielleCinema6SpecialVoidflareTriggerMultiplier, e.remielleCinema6FleetingGraceVoidflareTriggerMultiplier]).toEqual([0, 0, 0])
   })
 
   it('无 C1 → 不含特殊虚耀行（普通耀变行仍在）', () => {

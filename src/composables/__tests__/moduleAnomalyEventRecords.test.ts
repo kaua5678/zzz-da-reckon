@@ -5,6 +5,8 @@
  * ⚠ CC-100（R5 D15，2026-09-27）更新 r2 / lead-empty / jr 三组：6 号位异常掌控改按源数据百分比口径后，
  *   1331 / 1501 的掌控升高 ⇒ 同战斗时长内多触发 1 次异常 ⇒ 虚耀池 +1、支援技 +1、普攻 +2（终结技按 3 个一批不变）。
  *   归因经反向验证：把 statModes.impact / anomalyMastery 与 31200 2pc 改回 flat，本文件全绿。
+ * ⚠ CC-165（第 193 轮）更新 4 组「普通攻击惊鸿·耀变」：6 命惊鸿翻倍改读 FleetingGrace 加成字段且初值 0
+ *   ⇒ 0 命 ×1（原 ×2 = 初值 1 与 `1 + x` 叠加的双计），count 减半、字段名与公式文案同步。
  * perf dump/rowsnap 覆盖不到，本测试是唯一判据。覆盖：蕾米在槽 0 / 槽 2 / 前导空槽 / 不在队。
  */
 import { describe, it, expect } from 'vitest'
@@ -64,11 +66,11 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      "count": 48,
-      "formula": "count = voidflareTotal × 2（6命翻倍）",
+      "count": 24,
+      "formula": "count = voidflareTotal × 1",
       "fields": [
         "voidflareTotal",
-        "remielleCinema6LuminizeTriggerMultiplier",
+        "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
         "1581008 luminizeMultiplier"
       ]
     }
@@ -118,11 +120,11 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      "count": 44,
-      "formula": "count = voidflareTotal × 2（6命翻倍）",
+      "count": 22,
+      "formula": "count = voidflareTotal × 1",
       "fields": [
         "voidflareTotal",
-        "remielleCinema6LuminizeTriggerMultiplier",
+        "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
         "1581008 luminizeMultiplier"
       ]
     }
@@ -172,11 +174,11 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      "count": 26,
-      "formula": "count = voidflareTotal × 2（6命翻倍）",
+      "count": 13,
+      "formula": "count = voidflareTotal × 1",
       "fields": [
         "voidflareTotal",
-        "remielleCinema6LuminizeTriggerMultiplier",
+        "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
         "1581008 luminizeMultiplier"
       ]
     }
@@ -345,11 +347,11 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "普通攻击惊鸿·耀变",
         "source": "消耗并清空虚耀",
-        "count": 46,
-        "formula": "count = voidflareTotal × 2（6命翻倍）",
+        "count": 23,
+        "formula": "count = voidflareTotal × 1",
         "fields": [
           "voidflareTotal",
-          "remielleCinema6LuminizeTriggerMultiplier",
+          "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
           "1581008 luminizeMultiplier"
         ]
       }
