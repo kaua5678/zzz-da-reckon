@@ -18,10 +18,17 @@ describe('CC-208 展示层队友 buff 列表与引擎同源', () => {
   })
 
   it('源码锁：两个展示点经 resolveSlotPanelBuffInputs 取列表，不再遍历 teammateBuffGroups 按勾选重筛', () => {
-    for (const rel of ['components/FinalPanel.vue', 'views/DebugPage.vue']) {
+    // CC-209：FinalPanel 生命构成拆解迁至 composables/hpSourceBreakdown.ts，锁随迁；FinalPanel 本体也不得回到自筛
+    for (const rel of ['composables/hpSourceBreakdown.ts', 'views/DebugPage.vue']) {
       const src = readFileSync(new URL('../../' + rel, import.meta.url), 'utf8')
       expect({ rel, usesEngine: /resolveSlotPanelBuffInputs\(/.test(src) }).toEqual({ rel, usesEngine: true })
       expect({ rel, reFilters: /teammateBuffGroups[\s\S]{0,200}isTeammateBuffEnabled\(/.test(src) }).toEqual({ rel, reFilters: false })
     }
+  })
+
+  it('源码锁：FinalPanel 本体不再遍历 teammateBuffGroups 自筛（CC-209 后经 hpSourceBreakdown 取）', () => {
+    const src = readFileSync(new URL('../../components/FinalPanel.vue', import.meta.url), 'utf8')
+    expect(/teammateBuffGroups/.test(src)).toBe(false)
+    expect(/collectHpSources\(slot, configStore, catalogStore\)/.test(src)).toBe(true)
   })
 })

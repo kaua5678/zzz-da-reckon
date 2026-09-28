@@ -35,7 +35,7 @@
               <template v-if="group.name === 'hp-sources'">
                 <!-- 局内生命构成：来源明细 -->
                 <div class="fp-hp-formula">
-                  局外 hp {{ fmt(item.outHp, 0) }} × (1 + Σ局内生命% {{ pct(item.inHpPctTotal) }}) + Σ局内生命固定 {{ fmt(item.inHpFlatTotal, 0) }}
+                  局外 hp {{ fmt(item.outHp, 0) }} × (1 + Σ局内生命% {{ pct(item.inHpPctTotal) }}) + Σ局内生命固定 {{ fmt(item.inHpFlatTotal, 0) }}<template v-if="Math.abs(item.residualHp) >= 0.5"> + 未逐条列出 {{ fmt(item.residualHp, 0) }}</template>
                   = 局内 hp <b class="fp-in">{{ fmt(item.inHp, 0) }}</b>
                 </div>
                 <table class="fp-table">
@@ -50,7 +50,14 @@
                       <td class="fp-num fp-in">{{ r.value }}</td>
                       <td><span class="zone-pill" :class="r.phase === 'in' ? 'fp-phase-in' : ''">{{ r.phase === 'in' ? '局内' : '局外' }}</span></td>
                     </tr>
-                    <tr v-if="item.hpSources.length === 0">
+                    <tr v-if="Math.abs(item.residualHp) >= 0.5">
+                      <td><span class="fp-stat-label">未逐条列出</span></td>
+                      <td class="fp-note-cell">模块直写 / 转模 / 公式条目（引擎局内 hp − 按上表重建值）</td>
+                      <td><span class="fp-stat-id">hp</span></td>
+                      <td class="fp-num fp-in">{{ fmt(item.residualHp, 0) }}</td>
+                      <td><span class="zone-pill fp-phase-in">局内</span></td>
+                    </tr>
+                    <tr v-if="item.hpSources.length === 0 && Math.abs(item.residualHp) < 0.5">
                       <td colspan="5" class="fp-empty-cell">无生命类 buff 来源</td>
                     </tr>
                   </tbody>
@@ -93,11 +100,12 @@ import { computed, onMounted, ref } from 'vue'
 import { NCard, NCollapse, NCollapseItem, NGi, NGrid, NTabPane, NTabs } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { computePanelPhases, resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { collectHpSources, hpBreakdownTotals } from '@/composables/hpSourceBreakdown'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { isPctStat } from '@/utils/statMeta'
-import { fmt, pct, localized } from '@/utils/format'
-import type { BuffEffect, BuffGroup, PanelValues } from '@/types/catalog'
+import { fmt, pct } from '@/utils/format'
+import type { PanelValues } from '@/types/catalog'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -126,13 +134,8 @@ const ELEMENT_SHARP_KEYS: Record<string, string> = {
   electric: 'electricSharpDmg', ether: 'etherSharpDmg', wind: 'windSharpDmg', lumiflux: 'lumifluxSharpDmg',
 }
 
-/** 生命类 buff 字段（局内大生命 = inCombatHpPct / 局内 hpPct，局内小生命 = inCombatHpFlat / 局内 hpFlat） */
-const HP_PCT_STATS = new Set(['hpPct', 'inCombatHpPct'])
-const HP_FLAT_STATS = new Set(['hpFlat', 'inCombatHpFlat'])
-
 interface FinalRow { stat: string; label: string; out: string; in: string; delta: number; deltaText: string }
 interface ZoneSummary { title: string; main: string; lines: string[] }
-interface HpSourceRow { key: string; source: string; item: string; stat: string; value: string; num: number; phase: 'in' | 'out' }
 
 function num(p: PanelValues | null, stat: string): number {
   return p ? (p[stat] ?? 0) : 0
@@ -159,130 +162,6 @@ function targetedRows(pIn: PanelValues, prefix: string, labelOf: (t: string) => 
     .map(([key, v]) => ({ stat: key, label: `${labelOf(key.replace(`${prefix}__`, ''))}（定向）`, value: v as number }))
 }
 
-/** effect 是否生命类及其阶段（局内/局外）；非生命类返回 null */
-function hpPhase(effect: BuffEffect, group: BuffGroup | null | undefined): 'in' | 'out' | null {
-  const stat = effect.stat
-  if (!stat) return null
-  if (stat === 'inCombatHpPct' || stat === 'inCombatHpFlat') return 'in'
-  if (HP_PCT_STATS.has(stat) || HP_FLAT_STATS.has(stat)) {
-    return group?.scope === 'inCombat' ? 'in' : 'out'
-  }
-  return null
-}
-
-/** effect 数值展示 + 实际生效数值（fixed 按精炼等级取 modificationValues × 覆盖率；derived/formula 标注动态，num=0） */
-function hpEffectValue(effect: BuffEffect, modLevel?: number): { text: string; num: number } {
-  const cov = effect.coverage?.default ?? 1
-  // 全局 buff 等无 type 的项按 fixed 处理
-  if (!effect.type || effect.type === 'fixed') {
-    const mod = (effect as any).modificationValues?.value as number[] | undefined
-    let v = effect.value ?? 0
-    let suffix = ''
-    if (mod && modLevel && mod[modLevel - 1] != null) {
-      v = mod[modLevel - 1]
-      suffix = `（精炼${modLevel}）`
-    }
-    const text = `${suffix}${isPctStat(effect.stat) ? pct(v) : fmt(v, 0)}${cov < 1 ? ` × 覆盖率${pct(cov)}` : ''}`
-    return { text, num: v * cov }
-  }
-  if (effect.type === 'stacked') {
-    const per = effect.valuePerStack ?? effect.value ?? 0
-    const stacks = effect.defaultStacks ?? effect.maxStacks ?? 1
-    return { text: `${per} × ${stacks}层${cov < 1 ? ` × 覆盖率${pct(cov)}` : ''}`, num: per * stacks * cov }
-  }
-  if (effect.type === 'derived') {
-    return {
-      text: `转模 ${pct(effect.ratio ?? 0)}×${localized((effect as any).sourceLabel) || effect.basis || '来源'}` + (effect.cap != null ? `（上限 ${fmt(effect.cap, 0)}）` : ''),
-      num: 0,
-    }
-  }
-  if (effect.type === 'formula') {
-    return { text: `公式${effect.formula?.expression ? `：${effect.formula.expression.slice(0, 40)}` : ''}`, num: 0 }
-  }
-  return { text: String(effect.value ?? 0), num: Number(effect.value ?? 0) }
-}
-
-/** 从一组 buff effects 收集生命来源行（modLevel 供音擎精炼等级取值） */
-function collectHpFromGroup(
-  rows: HpSourceRow[],
-  source: string,
-  item: string,
-  group: BuffGroup | null | undefined,
-  modLevel?: number,
-): void {
-  for (const effect of group?.effects ?? []) {
-    const phase = hpPhase(effect, group)
-    if (!phase) continue
-    const { text, num } = hpEffectValue(effect, modLevel)
-    rows.push({
-      key: `${source}-${item}-${effect.stat}-${rows.length}`,
-      source,
-      item,
-      stat: effect.stat,
-      value: text,
-      num,
-      phase,
-    })
-  }
-}
-
-/**
- * 收集当前角色的全部生命类 buff 来源（局内大/小生命、局外生命），
- * 供"局内生命构成"核对：谁提供了局内生命、提供多少。
- */
-function collectHpSources(slot: number): HpSourceRow[] {
-  const rows: HpSourceRow[] = []
-  const char = configStore.team[slot]
-  if (!char?.agentId) return rows
-  const agent = catalogStore.getAgent(char.agentId)
-  if (!agent) return rows
-
-  // 1. 角色自身 combatBuffs（核心被动/额外能力/命座）
-  collectHpFromGroup(rows, agent.name?.zhCN || agent.id, '核心被动', agent.combatBuffs?.corePassive)
-  collectHpFromGroup(rows, agent.name?.zhCN || agent.id, '额外能力', agent.combatBuffs?.additionalAbility)
-  for (const cinema of agent.combatBuffs?.cinemaBuffs ?? []) {
-    if (cinema.cinemaLevel <= (char.cinemaLevel ?? 0)) {
-      collectHpFromGroup(rows, agent.name?.zhCN || agent.id, `影画${cinema.cinemaLevel}`, cinema.buff)
-    }
-  }
-
-  // 2. 队友 buff：取引擎同一份输入（CC-208）——拥有者在队 / 额外能力门控 / 模块钩子否决 / 接收槽过滤 /
-  //    修饰器改写后的数值，与面板计算逐条一致。此前按勾选状态自己重筛，会列出引擎实际丢弃的条目。
-  //    全局 Buff 由第 5 步单列，这里排除。
-  for (const buff of resolveSlotPanelBuffInputs(slot, configStore, catalogStore).teammateBuffs) {
-    if (buff.sourceKind === 'global') continue
-    collectHpFromGroup(rows, `${localized(buff.ownerName) || buff.ownerId}`, localized(buff.sourceLabel) || buff.id, buff)
-  }
-
-  // 3. 音擎（职业匹配才生效；数值按精炼等级取 modificationValues）
-  const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
-  if (wEngine && wEngine.specialty === agent.specialty) {
-    const modLevel = Math.max(1, Math.min(5, char.wEngineModLevel ?? 1))
-    collectHpFromGroup(rows, localized(wEngine.name) || wEngine.id, '自身效果', wEngine.effect?.selfBuff, modLevel)
-    collectHpFromGroup(rows, localized(wEngine.name) || wEngine.id, '团队效果', wEngine.effect?.teamBuff, modLevel)
-  }
-
-  // 4. 驱动盘套装
-  const four = char.driveDisc?.fourPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.fourPieceSetId) : undefined
-  const two = char.driveDisc?.twoPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.twoPieceSetId) : undefined
-  if (four) {
-    collectHpFromGroup(rows, localized(four.name) || four.id, '2件套', four.twoPiece as any)
-    collectHpFromGroup(rows, localized(four.name) || four.id, '4件套自身', four.fourPiece?.selfBuff)
-    collectHpFromGroup(rows, localized(four.name) || four.id, '4件套团队', four.fourPiece?.teamBuff)
-  }
-  if (two && two.id !== four?.id) {
-    collectHpFromGroup(rows, localized(two.name) || two.id, '2件套', two.twoPiece as any)
-  }
-
-  // 5. 全局 buff（属性配置页手动添加）
-  for (const buff of configStore.globalBuffs) {
-    if (!buff.enabled) continue
-    collectHpFromGroup(rows, '全局 Buff', buff.name, { effects: [buff] } as any)
-  }
-
-  return rows
-}
-
 const panels = computed(() => {
   return [0, 1, 2].map(slot => {
     const char = configStore.team[slot]
@@ -306,13 +185,9 @@ const panels = computed(() => {
     const stunTargeted = targetedRows(pIn, 'stunBuildUpBonus', t => t)
 
     // ---- 生命构成（局内大生命来源） ----
-    const hpSources = collectHpSources(slot)
-    const inHpPctTotal = hpSources
-      .filter(r => r.phase === 'in' && HP_PCT_STATS.has(r.stat))
-      .reduce((sum, r) => sum + r.num, 0)
-    const inHpFlatTotal = hpSources
-      .filter(r => r.phase === 'in' && HP_FLAT_STATS.has(r.stat))
-      .reduce((sum, r) => sum + r.num, 0)
+    // CC-209：拆解逻辑迁至 composables/hpSourceBreakdown.ts（覆盖率与引擎同表 + 差额行）
+    const hpSources = collectHpSources(slot, configStore, catalogStore)
+    const { inHpPctTotal, inHpFlatTotal, residualHp } = hpBreakdownTotals(hpSources, pOut.hp ?? 0, pIn.hp ?? 0)
 
     // ---- 属性表分组 ----
     const baseRows: FinalRow[] = [
@@ -499,6 +374,7 @@ const panels = computed(() => {
       inHp: pIn.hp ?? 0,
       inHpPctTotal,
       inHpFlatTotal,
+      residualHp,
       hpSources,
       summary: [
         { label: '攻击', value: fmt(pIn.atk, 0) },
