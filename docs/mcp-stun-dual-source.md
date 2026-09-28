@@ -1783,3 +1783,26 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **验证**：vue-tsc 0；verify EXIT=0（3881 passed）；check-guards 通过。
 - **回退点**：`git revert 11bf2ac8`；或只删 `miyabiMechanic` 里的 `extraNecessaryAction` 登记（回到折叠追认）。
 - **这条线的收尾判断**：按 §24.48 判据（只迁有合轴的模块前台行），§24.47 普查表里有合轴的两处（苍角 CC-200、雅 CC-202）已处理完；席德、艾莲、克拉蕾、洛克茜、月城柳均判不做。**「模块必做行时间预留」这条线到此结束**，除非日后新模块产出带合轴的前台行——届时照 CC-202 的写法（预留函数 + spy 同源测试）。
+
+### 24.50 CC-203：额外能力两道门控归一——一张派生表，引擎与 store 共读（第 226 轮，fb64de6f）
+
+- **起点**：§24.46 末条的观察。两道门：① 引擎硬门控 `evalAdditionalAbilityBuffGates`（用户强行勾上也拦），按手写表 `ADDITIONAL_GATE_BUFFS`（15 角色 / 19 条）；② store 默认门控 `deriveTeammateBuffEnabled`（只决定默认勾不勾），按来源标签「额外能力」。两道门用同一个 `evalAdditionalAbility`，**只是「哪些 buff 受门控」各有一份答案**。
+- **先回答的问题：未触发时用户能否手动打开？** 不能。依据：`lighterAdditionalGate.test.ts` 头注释明写既定口径「强行勾上后面板层仍拦住」（census §5.45）；手写表里的 19 条一直如此。⇒ 硬门控是口径，没进表的反而是漏网。
+- **探针结论（全 catalog 分组 × 表）**：
+  - 15 条「额外能力」buff 只有软门控，未触发时强行勾上照样生效：1481、1411、1581×4、1141、1451、1391、1181、1271、1331、1381、1501、1541。
+  - 反方向：跨来源条目（1461 核心被动 / 影画二、1421 影画一、1351 影画六）store 不认，**默认勾上、引擎静默丢弃**（UI 显示已勾，实际不生效）。c0 下只有席德核心被动暴露（影画条目被影画门槛挡住），c6 下三处都会。
+  - 1511 南宫羽：无 additionalAbility 声明，两道门都不门控（未决项不变，见 `AA_OWNER_EXEMPT`）。
+- **改法**：新文件 `src/specs/additionalGate.ts`：
+  - `additionalGateBuffTable(groups)`：来源（`source.zhCN ?? sourceLabel.zhCN`）为「额外能力」且拥有者（**组 id**）spec 有 `additionalAbility` 的 buff，加上跨来源登记 `ADDITIONAL_GATE_CROSS_SOURCE_BUFFS`（只剩 1461×2、1421 影画一、1351 影画六）。按 groups 数组身份 WeakMap 缓存。
+  - 引擎 `evalAdditionalAbilityBuffGates(team, getCatalogAgent, groups)` 多一个 groups 参数，调用方传 `catalogStore.teammateBuffGroups`；凯撒 / 菲欧妮专属修正仍走 `adjustAdditionalAbilityGates`，不动。
+  - store `deriveTeammateBuffEnabled` 的判据从「标签 === 额外能力」改成「在这张表里」。
+  - `ADDITIONAL_GATE_BUFFS` 删除（helpers 壳与 panelPhasesShell 契约改为导出 `additionalGateBuffTable`）。放在 specs 层是因为 store 与 composables 都要读，specs 已被两边引用、无环。
+- **为什么值得做（按唯一判据）**：更通用——新角色的「额外能力」buff 自动被两道门门控，不用再手动登记（原表头「必须在此登记，否则门控静默失效」这个陷阱没了）；更简单——「哪些 buff 随额外能力门控」只剩一份答案，两道门不可能再分叉。
+- **测试**（`additionalGate.test.ts`）：
+  - 表内 id 全可解析回拥有者分组、拥有者全有声明；来源「额外能力」全员在表（豁免只有 AA_OWNER_EXEMPT）。
+  - 莱卡恩未触发时引擎拦、触发时放行（改前这里是放行）。
+  - **同口径守卫**：全员拥有者 × 任一队友 × 影画 0/6（>1000 组）断言「引擎关 ⇒ store 默认不勾」。已知的有意偏差只有菲欧妮 tier3（引擎另需异常数≥3，store 只看额外能力），列在 `KNOWN_STRICTER`。
+  - `substatOptimizer.test.ts` 席德明攻用例：原本依赖「store 默认勾上、引擎剔除」这个不一致来获得判别力；改为先断言默认不勾，再强行勾上验证引擎剔除。
+- **影响面**：数值零差——默认配置下两道门结果本来一致（store 已软关的 15 条引擎也拿不到；跨来源条目引擎本来就丢）。timeGolden / 留白棘轮不变。行为变化只在两处：用户强行勾上 15 条之一时不再生效；席德 / 潘引壶 / 波可娜的跨来源条目在未触发时 UI 默认不再勾上。
+- **验证**：vue-tsc 0；verify EXIT=0（3883 passed）；check-guards 通过。
+- **回退点**：`git revert fb64de6f`。若日后决定「额外能力允许手动强开」：只改引擎侧（`evalAdditionalAbilityBuffGates` 只对 `ADDITIONAL_GATE_CROSS_SOURCE_BUFFS` 与专属修正生效），store 仍读表做默认。

@@ -70,24 +70,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 225 轮（lane lead-arena-0925c）：CC-202 完成（11bf2ac8）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-202：雅霜月时间进账本（只预留、含合轴）。详见 `docs/mcp-stun-dual-source.md` §24.49。「模块必做行时间预留」这条线已收尾（§24.49 末条）。
-- 前几轮：224 CC-201（结论卡，无代码）；223 CC-200（d5e18595）；222 CC-199（99282fdf）。
+**第 226 轮（lane lead-arena-0925c）：CC-203 完成（fb64de6f）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-203：额外能力两道门控归一。详见 `docs/mcp-stun-dual-source.md` §24.50。
+- 前几轮：225 CC-202（11bf2ac8，雅霜月预留；「模块必做行时间预留」线已收尾）；224 CC-201（结论卡）；223 CC-200（d5e18595）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（按顺序，直接开工）**
-1. **额外能力两道门控是否归一**（§24.46 末条）：硬表 `ADDITIONAL_GATE_BUFFS`（`src/composables/resourceCalc/panelPhases.ts`，用户开关压不过）与 store 默认门控 `deriveTeammateBuffEnabled`（`src/stores/config.ts`，可被用户覆盖）职责重叠。先回答「额外能力未触发时，用户能否手动打开该 buff」：读 `src/utils/teammateBuffRows.ts` 与其组件、`syncTeammateBuffsFromTeam` 合并用户选择的逻辑，再 `git log -S'ADDITIONAL_GATE_BUFFS' --oneline | tail -3` 看引入动机。
-   - 若「未触发时不许手动开」是既定口径 ⇒ 硬表应改成通用规则（来源＝额外能力 ⇒ 按拥有者声明硬门控），表里只留跨来源（影画/核心被动随额外能力：1421 cinema_1、1461 两条、1351 C6）与特殊修正（凯撒、菲欧妮 tier3）。要证明零差：golden + `additionalGate.test.ts` 全绿。
-   - 若允许手动开 ⇒ 硬表里「来源＝额外能力」的条目反而是 bug（压过了用户选择），需要单独立卡并写清口径依据。
-   - 两者都拿不准 ⇒ 写「不做」加理由。
-2. T2 剩余 71 条（子代理 dsflash，lead 验收）；freeCompare `higherBetter` 着色评估。
+1. **freeCompare `higherBetter` 着色评估**（`docs/mcp-write-only-props.md` 第 29 行与第 160 行）：`MetricDef.higherBetter` 零读取，但它是真实的方向元数据（含 3 个 false）；注释声称有「表格胜负着色」，这个功能并不存在。二选一：
+   - (a) 实现着色：在 freeCompare 结果表按 `higherBetter` 标出每列最优。先读 `src/composables/freeCompare/metrics.ts` 和渲染表格的组件（`grep -rn freeCompare src/components src/views`）。必须附一条行为测试，证明 false 的指标取最小值为最优（见本文件已知坑 CC-189 条）。
+   - (b) 不做着色：把注释改成实话，并在 write-only-props 表里标「保留：方向元数据，无消费方」。
+   - 判据：用户能否从着色中直接获益。freeCompare 本身就是对比页，(a) 是低成本的真实功能，倾向 (a)。
+2. T2 剩余 71 条（`docs/mcp-write-only-props.md` §T2）：派子代理 dsflash 逐批删，lead 做 verify 验收。按第 215 轮裁决不占 lead 整轮。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`），再查 `docs/MECHANICS_IMPLEMENTATION.md` 的角色段和 `grep -rn 反锁 src`。
-- **未决项**：1511 南宫羽额外能力原文无触发条件（`AA_OWNER_EXEMPT`），数据补上后删例外。
+- **未决项**：1511 南宫羽额外能力原文无触发条件（`AA_OWNER_EXEMPT`），数据补上后删例外，CC-203 的派生表会自动接管。
+- **已知的有意偏差**：菲欧妮 tier3，引擎另需异常数≥3，store 默认只看额外能力（UI 可能显示已勾但不生效）。若要消除，需给 store 也接 `adjustAdditionalAbilityGates`；本轮未做，因为 store 侧没有 ReadonlyTeam 形态的输入。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **MCP `read_files` 会分页**：大文件（如 `src/mechanics/types.ts` 900+ 行）一次只返回前一段，要看 `has_more` / `next_start_line`。据此拉到本地改完再上传会**截掉文件尾**（第 226 轮踩过，esbuild 报「Expected */」）。大文件改动一律在 WSL 端用 python 精确替换。
+- **测试判别力依赖两处口径不一致时**：修掉不一致，测试会变成「无判别力」而失败（CC-203 substatOptimizer 席德明攻）。改法是显式构造那个状态（强行勾上），不要回退修复。
 - **截取引擎内部的 cfg/state 做同源测试**：`vi.spyOn(<模块>Mechanic, 'buildExecutions')` 可行（CC-202），拿 `spy.mock.calls.at(-1)[0]` 的 cfg/state 调预留或估时函数，再与实际行逐项比对。用完 `mockRestore()`。
 - **（CC-201 修订：只迁有合轴的行——残差大本身不是理由，无合轴的行折叠结果与预留一致；滞后估计进账本还可能把单人推进截断，见 §24.48）** 模块前台行的时间通道选择（CC-200）：行次数 = 强特次数 ⇒ `estimateExSpecialTime`（按次估时，估时函数与产行共用一个纯函数）；次数来自其他资源 ⇒ `extraNecessaryAction`。两者都不做 ⇒ 时间靠 `timeBudgetExcess` 折叠追认，行上的**合轴抵扣会丢失**（苍角打年糕#3 就是这样多挤了 21s 平A池）。找对象看残差：插桩脚本 `/home/kaua/calc-arch/k222/p223inst.py`。
 - **enrich 会按倍率表改写 `moveName`**：测试/探针里别用模块写的 moveName 认行（苍角两行 1131011 回填后都叫「扇走蚊虫 #1」），用 moveId + 出现顺序或 count/actionTime。

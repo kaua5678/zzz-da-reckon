@@ -363,7 +363,7 @@
 ### 波可娜（pulchra / 1351）—— 猎手本能·击破
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/pulchra.ts` + spec `1351.json` teamBuffs；测试 `src/mechanics/__tests__/pulchra.test.ts` 7 例）。含：核心被动猎步（失衡 +30% 恒常）、核心循环噬爪·噩梦袭影（后台追加攻击特殊技）、额外能力困迹（全队追加攻击 +30%，C6 扩展全伤害）、影画 1/2/4/6。
 - **额外能力·业务搭档[困迹]**：波可娜 5 招命中施加困迹(15s)，困迹下全队[追加攻击]伤害 +30%——困迹全覆盖（用户口径 2026-08-27），spec teamBuffs `pulchra_extra_trap_followup`（skillDmgBonus targetSkillType=additionalAttack）。
-- **额外能力触发条件（CC-199）**：spec `1351.json` `additionalAbility`（强攻/命破/同阵营）。未触发 ⇒ 无困迹 ⇒ `pulchra_extra_trap_followup`、影画6 `pulchra_cinema_6_trap_all`（均登记在 `ADDITIONAL_GATE_BUFFS`）与影画1 暴击率 +10% 一并关闭。此前缺声明，三者无条件生效。
+- **额外能力触发条件（CC-199）**：spec `1351.json` `additionalAbility`（强攻/命破/同阵营）。未触发 ⇒ 无困迹 ⇒ `pulchra_extra_trap_followup`、影画6 `pulchra_cinema_6_trap_all`（均在额外能力门控表 `src/specs/additionalGate.ts`，影画6 属跨来源登记；CC-203 前为 `ADDITIONAL_GATE_BUFFS`）与影画1 暴击率 +10% 一并关闭。此前缺声明，三者无条件生效。
 - **模块**：`src/mechanics/agents/pulchra.ts`（接管原 specPanelBuffs pulchraHuntStepMechanic）。
 
 ### 真斗（manato / 1441）—— 熔锋之势·命破
