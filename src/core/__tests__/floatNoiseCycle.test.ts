@@ -4,10 +4,10 @@
  * - 引擎面：1431/1341/1031（估计/行单源后内层是 ρ≈0.17 的连续收缩、浮点无精确不动点）冷算必须 converged=true
  *   ——2026-09-19 前该队 iter=20 撞顶 / 进环后按旧口径 clean=false（详见 floatNoiseCycle.ts 头注释）。
  */
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { calcTeamResources, clearWarmStartCache, INNER_LOOP_MAX_ITERATIONS } from '@/core/resource'
+import { calcTeamResources, INNER_LOOP_MAX_ITERATIONS } from '@/core/resource'
 import { isFloatNoiseCycle } from '@/core/resource/floatNoiseCycle'
 import type { IterationState } from '@/types/resource'
 
@@ -49,7 +49,6 @@ describe('浮点噪声环判据', () => {
 })
 
 describe('内层连续收缩队的收敛标志', () => {
-  beforeEach(() => clearWarmStartCache())
 
   it('1431/1341/1031：冷算 converged=true，且不是靠撞上限（iterations < 上限）', async () => {
     await setupHarness([{ agentId: '1431' }, { agentId: '1341' }, { agentId: '1031' }])

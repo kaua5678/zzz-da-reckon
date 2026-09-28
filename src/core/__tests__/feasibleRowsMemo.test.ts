@@ -16,10 +16,9 @@ import { applyTeamToStore } from '@/composables/teamCompare'
 import { resolveMechanicSettings } from '@/composables/resourceCalc/panelPhases'
 import { getRegisteredMechanicSettings } from '@/mechanics'
 import { teamPresets } from '@/data/teamPresets'
-import { clearWarmStartCache } from '@/core/resource'
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 
-beforeEach(() => { newPinia(); mockStaticFetch(); clearWarmStartCache() })
+beforeEach(() => { newPinia(); mockStaticFetch() })
 
 const enc = (v: unknown) => JSON.stringify(v, (_k, x) =>
   typeof x === 'number' ? (Number.isNaN(x) ? '#NaN' : !Number.isFinite(x) ? `#${x}` : Object.is(x, -0) ? '#-0' : x) : x)
@@ -91,7 +90,6 @@ describe('feasibleRows 作用域记忆', () => {
         const p = teamPresets.find(x => x.id === id)
         expect(p, id).toBeTruthy()
         for (const c of [0, 6]) {
-          clearWarmStartCache()
           applyTeamToStore(config, p!)
           config.setCinemaLevel(0, c)
           // 命座→队友 buff 的重同步走异步 watch；同步读之前显式同步，否则会继承上一预设同槽命座的残留 buff
@@ -102,7 +100,6 @@ describe('feasibleRows 作用域记忆', () => {
         // 交互加码 ⇒ 逼出非轴降配扫描（多档 runOuterLoop）
         config.team[0]!.parryCount = (config.team[0]!.parryCount ?? 0) + 25
         config.team[0]!.dodgeCounterCount = (config.team[0]!.dodgeCounterCount ?? 0) + 25
-        clearWarmStartCache()
         trail.push(`${calc.teamTotalDamage.value}|${enc(calc.resourceResult.value)}`)
       }
       return trail

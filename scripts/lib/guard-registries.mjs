@@ -349,7 +349,6 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/core/resource/helpers.ts engine:单角色前线上限",
   "src/core/resource.ts engine:欠打回填",
   "src/core/resource.ts engine:折叠环上限",
-  "src/core/resource.ts engine:热启动逐位透明",
   "src/core/resource.ts engine:判稳含平A时间",
   "src/core/resource.ts engine:收敛环停点规范化",
   "src/core/resource.ts engine:fusedGroupMetrics/一次动作整段量",

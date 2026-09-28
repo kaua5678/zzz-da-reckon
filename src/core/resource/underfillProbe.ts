@@ -167,9 +167,6 @@ export function runUnderfillProbe(
       }
     }
     diag.timeBudgetIdleSeconds = Math.max(0, underfill)
-    // 热启动缓存**不存**试探前末态（2026-09-08 修）：折叠 pass0 的 refund 冻结与内层落点随初值变，
-    // 存末态会让同配置第二次计算换结果（1431 系 4 队冷/热 9.20 vs 4.86 等）。缓存存的是本轮的
-    // **规范种子**（见 warmSeedStates 声明处 @fact）——牺牲加速，换「同配置连续计算不许变」。
   }
   return states
 }

@@ -41,14 +41,6 @@ import { runTruncationRefold } from './resource/truncationRefold'
 export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf }
 export type { CrossAgentSupplyInfo }
 
-// 热启动缓存已迁 src/core/resource/warmStart.ts（CC-2）；此处 re-export 壳保持既有
-// `@/core/resource` 引用（测试 / dump / 编排层）零改动。
-// `storeWarmStart` 随尾段管线迁 `./resource/tailPipeline.ts`（CC-5c），本文件不再直接调用。
-import {
-  warmStartExactKey,
-  lookupWarmStart,
-} from './resource/warmStart'
-export { clearWarmStartCache, getWarmStartStats } from './resource/warmStart'
 
 // ============ 单角色能量计算 ============
 
@@ -114,8 +106,8 @@ export const TIME_FOLD_MAX_PASSES = 32
  * 为什么不直接取环的规范成员：整数量子振荡器（实测单人 1431 命座 6：ex 6↔10 / ult 1↔2 精确 2-循环，环增益 >1）
  * 的环成员账本是「本轮次数 + 上轮平A」估出来的混相位量，行与账本差 21s，折叠环随之在 84/49/29/78s 之间摆、靠停滞
  * 规则退出 ⇒ 留白 0 → 29.0s。非收敛轨迹没有「更对」的停点，只有「历史已钉」的停点；真解是 DEBT「全局实数化收敛重构」。
- * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100），第 20 轮（`INNER_LOOP_OSCILLATOR_STOP`，1051 队 = 预算本身）之后只用于收敛尝试：判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环 / 耗尽 ⇒ 回到第 20 轮状态（非收敛轨迹与旧口径逐位一致）——20 轮曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（单人 1431 c6 取环规范成员留白 29s 的反例；先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」）·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/floatNoiseCycle.test.ts + src/core/__tests__/warmStart.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS | 信 确认
- * ⟳复核: 「全局实数化收敛重构」（DEBT_REGISTRY）落地或 20 轮停点语义再动时，复核「104 预设 converged=false 只剩真整数环队（当前 2 队）」+「单人 1431 c6 留白仍为 0」+「warmStart 冷/热逐位一致且 converged」（floatNoiseCycle.test + warmStart.test + timeGolden） | 到期 2026-12-31
+ * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100），第 20 轮（`INNER_LOOP_OSCILLATOR_STOP`，1051 队 = 预算本身）之后只用于收敛尝试：判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环 / 耗尽 ⇒ 回到第 20 轮状态（非收敛轨迹与旧口径逐位一致）——20 轮曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（单人 1431 c6 取环规范成员留白 29s 的反例；先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」）·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/floatNoiseCycle.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS | 信 确认
+ * ⟳复核: 「全局实数化收敛重构」（DEBT_REGISTRY）落地或 20 轮停点语义再动时，复核「104 预设 converged=false 只剩真整数环队（当前 2 队）」+「单人 1431 c6 留白仍为 0」（floatNoiseCycle.test + timeGolden；warmStart 冷/热档随 CC-147 删热启动通道删除） | 到期 2026-12-31
  */
 export const INNER_LOOP_MAX_ITERATIONS = 100
 
@@ -175,18 +167,13 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   //    别再按它去找代码。仍由 `timeLedgerInvariants` 持续兜住越账。
   //  · 1051 伊德海莉 / 1531 星徽·比利：**2026-09-08 已放回**——它们当初被排除是因为热启动缓存注入
   //    收敛末态导致冷/热落点分叉（0.009s / 0.0015s），而「缓存只存规范种子」修好后同配置计算逐位
-  //    稳定，两族试探全绿（seedInvariance / warmStart / yidhariInteractionGrid / timeLedgerInvariants）。
+  //    稳定，两族试探全绿（seedInvariance / warmStart / yidhariInteractionGrid / timeLedgerInvariants；
+  //    前两者随 CC-147 删热启动通道一并删除）。
 
-  // 热启动：无显式种子时查缓存，命中则从上次收敛态出发（逐位透明，见块注释）
-  const warmExactKey = config.initialStates ? '' : warmStartExactKey(config)
-  const warmSeed = lookupWarmStart(config, warmExactKey)
-
-  // 初始 state：平A时间按权重分配，强特/大招次数初始为0（initialStates 注入：测试/热启动用）
+  // 初始 state：平A时间按权重分配，强特/大招次数初始为0。
+  // CC-147（2026-09-28）：注入种子（显式 initialStates / 热启动缓存）通道已删——CC-146 起折叠环 pass0
+  // 一律从默认种子起跑，注入值在任何路径上都不参与计算（死输入）。起点恒为下面的默认零种子。
   const totalWeight = configs.reduce((a, c) => a + c.timeWeight, 0)
-  const injectedStates = config.initialStates && config.initialStates.length === configs.length
-    ? config.initialStates
-    : warmSeed?.states
-  // 默认零种子快照：规范重跑用（种子注入的轨迹若未正常收敛 = 停点含瞬态相位成分，弃掉重跑冷轨迹）
   // **计数通道**：`stunPlanProjection` 打开时把失衡计划值投影成整数再乘进连携数（默认 off = 现状，
   // 见 `core/stunPlanProjection.ts`）；时间账（窗口/覆盖率/`stunSeconds`）继续用实数 `config.stunCount`。
   const countStunPlan = stunCountForCountChannel(config) // CC-141：physical 模式种子也读物理次数
@@ -205,9 +192,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     comboAlignTime: 0,
     comboAlignCredit: 0,
   }))
-  let states: IterationState[] = injectedStates
-    ? injectedStates.map(s => ({ ...s }))
-    : defaultSeedStates.map(s => ({ ...s }))
+  let states: IterationState[] = defaultSeedStates
 
   // 时间预算收敛（外层）+ 资源收敛（内层）：
   // 模块 buildExecutions 会物化出占用前台、但未计入 estimateExSpecialTime 的动作行
@@ -232,17 +217,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 重折环 `resetDiagnostics` = 换新对象；被接受态存引用、拒绝时整体换回（口径 `engine:收敛读数归属`）。
   let diag = createSolveDiagnostics()
   /**
-   * 热启动种子 = **规范种子**（本轮 `states` 的初值：默认零种子或注入种子本身），**不是收敛末态**。
-   * 为什么不能存末态（2026-09-08 修，用户实测「同一队算两次结果不一样」）：折叠 pass0 的 refund
-   * 冻结（`teamRefund`）与内层落点都随初值变——非实数化队的落点本就随初值漂移（seedInvariance
-   * 的「游戏等价」档），存末态等于把本轮落点带进下一轮：同配置第二次计算换结果（实测 1431 系
-   * 4 队冷/热 slack 9.20 vs 4.86、7.57 vs 1.03、3.06 vs 6.26、0.68 vs 0.45，且门槛 10s 同样复现
-   * ——与欠打回填门槛无关）。缓存机制（精确键 / LRU / 命中计数）保留，但注入种子必须与冷算同源。
-   * 真正的加速要等实数化专项（落点唯一）之后才可能。
-   * @fact engine:热启动逐位透明 口径: 热启动缓存只存**规范种子**（本轮 states 初值），不存收敛末态/试探前末态——折叠 pass0 的 refund 冻结与内层落点随初值变，存末态会让同配置第二次计算换结果（实测 1431 系 4 队冷热 slack 9.20 vs 4.86 等）；改前「存试探前末态」只解决了「从已回填态出发」那一种分叉 | 据 用户实测@2026-09-08「同一队算两次结果不一样」·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/warmStart.test.ts | 锚 src/core/resource.ts#warmSeedStates | 信 确认
-   */
-  const warmSeedStates: IterationState[] = states
-  /**
    * 内层次数收敛 + 停点规范化（环检测 + 字典序规范停点）已迁 `src/core/resource/innerLoop.ts`
    * （CC-3，纯函数）：折叠循环与欠打回填试探共用同一台机器。此处只注入只读 ctx
    * （configs/config/maxIter/oscillatorStop），经 `foldCtx` / `probeCtx` 传给两个调用方。
@@ -253,7 +227,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // `runFoldLoop`（S2 时间预算折叠环）已迁 `src/core/resource/foldLoop.ts`（CC-4，2026-09-25，纯函数）。
   // 下列 `@fact` 的**实现已迁**该文件，声明按既有惯例留在 re-export 壳处（同 CC-3 `innerLoop.ts` 的处理）；
   // **锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:收敛环停点规范化`）不变。
-  // @fact engine:收敛环停点规范化 口径: 折叠环 pass0 的注入种子（热启动/显式 initialStates）**一律弃用**，从默认零种子起跑（②′，2026-09-28 CC-146：原口径只在非正常收敛时重跑、正常收敛照旧接受，实测注入种子可 clean 收敛到冷种子到不了的共存不动点，「clean ⇒ 唯一」不成立）；入环则取环内 JSON 字典序最小成员为规范停点（相位无关）。结果 = f(默认种子, 迭代映射)，与注入种子在构造上解耦 | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25·复核@2026-09-27·CC-146 反例@2026-09-28 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts + src/composables/__tests__/seedInvariance.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
+  // @fact engine:收敛环停点规范化 口径: calcTeamResources 恒从默认零种子起跑（CC-146 先令 pass0 弃用注入种子——实测注入种子可 clean 收敛到冷种子到不了的共存不动点；CC-147 随即删除注入通道本身：显式 initialStates 与热启动缓存）；入环则取环内 JSON 字典序最小成员为规范停点（相位无关）。结果 = f(默认种子, 迭代映射) | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25·复核@2026-09-27·CC-146 反例@2026-09-28·CC-147 删注入通道@2026-09-28 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
   /**
    * S2 时间预算折叠环（CC-4 外提至 `./resource/foldLoop.ts`，纯函数）的只读上下文与包装。
    * ⚠ 包装**每次调用时读 `diag`**（禁止 `const d = diag` 缓存——重折环会换新对象，缓存会写到旧对象）。
@@ -261,7 +235,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
    */
   const foldCtx: FoldLoopContext = {
     configs, config, totalTime, maxTimeIter,
-    injected: !!injectedStates, defaultSeedStates, innerCtx,
+    innerCtx,
   }
   const runFoldLoop = (from: IterationState[]): IterationState[] => runFoldLoopPure(foldCtx, diag, from)
   /**
@@ -311,7 +285,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // `accepted.states` 快照 / 拒绝还原依赖它（两个调用点逐字不改）。判据 = timeGolden / timeFillRatchet
   // delta 0（规则 10）；先例 = #8 分刀 `assembleSlot`。
   const tailCtx: TailPipelineContext = {
-    configs, config, totalTime, probeCtx, warmExactKey, warmSeedStates,
+    configs, config, totalTime, probeCtx,
   }
   const runTailPipeline = () => {
     const r = runTailPipelinePure(tailCtx, diag, states)

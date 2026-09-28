@@ -14,12 +14,11 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { iterate, netFrontlineOccupation } from '@/core/resource/helpers'
-import { calcTeamResources, clearWarmStartCache } from '@/core/resource'
+import { calcTeamResources } from '@/core/resource'
 import { DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import type { ResourceCalcConfig, IterationState, TeamResourceResult } from '@/types/resource'
 
 beforeEach(() => {
-  clearWarmStartCache()
 })
 
 function deepCopy<T>(x: T): T {

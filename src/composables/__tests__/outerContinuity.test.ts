@@ -18,11 +18,10 @@ import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { setCalcOutputMemoEnabled, useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
-import { clearWarmStartCache } from '@/core/resource'
 import { getAgentSpec } from '@/specs/registry'
 
 it('琉音 c6 转换系数扫描：同失衡次数的相邻点总伤跳变 ≤ 1%', async () => {
-  newPinia(); mockStaticFetch(); clearWarmStartCache()
+  newPinia(); mockStaticFetch()
   const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
   await catalog.loadBuildRecommendations()
   const calc = useResourceCalc()
@@ -38,7 +37,6 @@ it('琉音 c6 转换系数扫描：同失衡次数的相邻点总伤跳变 ≤ 1
     for (let i = 0; i <= 20; i++) {
       const v = +(1.90 + i * 0.01).toFixed(2)
       conv!.valuePerStep = v
-      clearWarmStartCache()
       config.setCinemaLevel(0, 5); config.setCinemaLevel(0, 6) // 强制重算
       pts.push({ v, dmg: calc.teamTotalDamage.value, stun: calc.stunPoolResult.value?.stunCount ?? NaN })
     }

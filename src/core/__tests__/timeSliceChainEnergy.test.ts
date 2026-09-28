@@ -9,7 +9,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { calcTeamResources, clearWarmStartCache } from '@/core/resource'
+import { calcTeamResources } from '@/core/resource'
 import { iterate } from '@/core/resource/helpers'
 import type { CharacterOperationConfig, IterationState, ResourceCalcConfig } from '@/types/resource'
 
@@ -78,7 +78,6 @@ function minimalTimeSliceConfig(): { configs: CharacterOperationConfig[]; states
 
 describe('时光切片连携触发回能进循环', () => {
   beforeEach(() => {
-    clearWarmStartCache()
   })
 
   it('iterate：连携臂能量精确计入 totalEnergy（stunCount 0→4 差值 = 4 × 每次回能）', () => {

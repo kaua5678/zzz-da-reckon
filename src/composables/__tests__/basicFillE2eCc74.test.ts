@@ -16,7 +16,6 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentMechanic } from '@/mechanics'
 import type { AgentMechanicModule } from '@/mechanics/types'
-import { clearWarmStartCache } from '@/core/resource'
 import { findMoveById } from '@/composables/resourceCalc/skillRows'
 import { setupHarness } from '@/test/harness'
 
@@ -41,7 +40,6 @@ describe('CC-74 11号平A兜底端到端', () => {
     let seq = 0
     const run = (filler: number | undefined, scale: number | null) => {
       mod().expandBasicFill = scale === null ? orig : (i) => orig(i).map(x => ({ ...x, count: x.count * scale }))
-      clearWarmStartCache()
       // 每次换新数组 + 新名字，强制 computed 重算（钩子替换本身不是响应式的）
       config.stunAxes = [{ name: `cc74-${seq++}`, count: 2, actions: [{ slot: 1, moveId: '1141011', count: 1 }], basicFillerSlot: filler }]
       const row = calc.damagePoolRows.value.find(r => r.id === ROW_ID)

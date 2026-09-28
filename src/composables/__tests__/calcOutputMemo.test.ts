@@ -14,15 +14,14 @@ import { applyTeamToStore } from '@/composables/teamCompare'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
 import { teamPresets } from '@/data/teamPresets'
-import { clearWarmStartCache } from '@/core/resource'
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE } from '@/core/stunPlanProjection'
 
-beforeEach(() => { newPinia(); mockStaticFetch(); clearWarmStartCache() })
+beforeEach(() => { newPinia(); mockStaticFetch() })
 afterEach(() => { setCalcOutputMemoEnabled(true); setActiveRowFusionRules([]) })
 
 async function runSearch(memo: boolean, presetId: string) {
   setCalcOutputMemoEnabled(memo)
-  newPinia(); mockStaticFetch(); clearWarmStartCache()
+  newPinia(); mockStaticFetch()
   const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
   await catalog.loadBuildRecommendations()
   const calc = useResourceCalc()
@@ -104,7 +103,7 @@ describe('calcOutput 记忆化', () => {
   it('清空热启动缓存后，同配置记忆化开/关逐位相同（命中不依赖热启动种子）', async () => {
     const read = async (memo: boolean) => {
       setCalcOutputMemoEnabled(memo)
-      newPinia(); mockStaticFetch(); clearWarmStartCache()
+      newPinia(); mockStaticFetch()
       const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
       await catalog.loadBuildRecommendations()
       const calc = useResourceCalc()
@@ -114,7 +113,6 @@ describe('calcOutput 记忆化', () => {
       // 换一个配置再回来：memo 开 ⇒ 命中；memo 关 ⇒ 热启动种子重算。两边必须相同
       config.setMechanicSetting('time.stunPlanProjection', 2)
       void calc.teamTotalDamage.value
-      clearWarmStartCache()
       config.setMechanicSetting('time.stunPlanProjection', 0)
       return [first, calc.teamTotalDamage.value, JSON.stringify(calc.resourceResult.value?.characters.map(c => [c.exSpecialCount, c.ultimateCount]))]
     }

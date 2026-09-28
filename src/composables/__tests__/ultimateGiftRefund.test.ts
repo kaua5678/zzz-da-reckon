@@ -12,10 +12,9 @@ import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
-import { clearWarmStartCache } from '@/core/resource'
 
 async function giftLedger(presetId: string, mode: number) {
-  newPinia(); mockStaticFetch(); clearWarmStartCache()
+  newPinia(); mockStaticFetch()
   const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
   await catalog.loadBuildRecommendations()
   const calc = useResourceCalc()

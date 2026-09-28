@@ -18,7 +18,6 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { setCalcOutputMemoEnabled, useResourceCalc } from '@/composables/useResourceCalc'
 import { setRowFastPathsEnabled } from '@/core/resource/rowBuild'
-import { clearWarmStartCache } from '@/core/resource'
 
 const catalogData = JSON.parse(readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8'))
 const agentIds: string[] = (catalogData.agents ?? []).map((a: { id: number | string }) => String(a.id))
@@ -35,7 +34,6 @@ describe(`全角色护栏（${agentIds.length} 角色 × 命座 0/6 × 交互加
     const read = () => `${calc.teamTotalDamage.value}|${enc(calc.resourceResult.value)}`
     const arm = (on: boolean) => {
       setRowFastPathsEnabled(on)
-      clearWarmStartCache()
       config.refreshTrigger++
       const base = read()
       const pc = config.team[0]!.parryCount, dc = config.team[0]!.dodgeCounterCount

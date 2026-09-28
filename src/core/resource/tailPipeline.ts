@@ -3,17 +3,17 @@
  * （CC-5c，2026-09-25）。
  *
  * 职责：末轮欠打回填（`runUnderfillProbe`）→ 伊德海莉 tail 终局整数重推（`runFinalizePasses`，
- * `stage='tail'`）→ 热启动落缓存（`storeWarmStart`）→ 帷幕 / 赠链 / 赠大折算 → S4 装配
+ * `stage='tail'`）→ 帷幕 / 赠链 / 赠大折算 → S4 装配
  * （`assembleSlot` 逐槽累加）。顺序不可交换：**tail 终推 → 热启动落缓存 → 帷幕/赠链** 是
  * `@fact engine:热启动逐位透明` 的前提，搬迁不得重排。
  *
  * 与外层闭包的通信面 = `states`（入 `from` / 出 `states`）+ `diag` + `TailPipelineContext`
- * （configs/config/totalTime/probeCtx/warmExactKey/warmSeedStates）。函数**不** import
+ * （configs/config/totalTime/probeCtx）。函数**不** import
  * `core/resource.ts`（防循环依赖），也不重绑定 `calcTeamResources` 的外层变量——重绑定由
  * `resource.ts` 的保语义包装完成（重折环的 `accepted.states` 快照 / 拒绝还原依赖它）。
  *
  * 依赖方向：本文件不得 import `core/resource.ts`；只依赖类型与引擎子模块
- * （`./underfillProbe` / `./finalizePasses` / `./warmStart` / `./assembleSlot` /
+ * （`./underfillProbe` / `./finalizePasses` / `./assembleSlot` /
  * `./crossAgentSupply` / `./curtain` / `./helpers`）。
  */
 import { stunCountForCountChannel } from '@/core/stunPlanProjection'
@@ -26,7 +26,6 @@ import { curtainInfoOf } from './curtain'
 import { runFinalizePasses } from './finalizePasses'
 import { runUnderfillProbe, type UnderfillProbeContext } from './underfillProbe'
 import { iterate } from './helpers'
-import { storeWarmStart } from './warmStart'
 import { assembleSlot, type AssembleSlotContext } from './assembleSlot'
 import type { SolveDiagnostics } from './solveDiagnostics'
 
@@ -36,8 +35,6 @@ export interface TailPipelineContext {
   config: ResourceCalcConfig
   totalTime: number
   probeCtx: UnderfillProbeContext
-  warmExactKey: string
-  warmSeedStates: IterationState[]
 }
 
 /** 尾段管线产物：原闭包返回对象逐字段保留（`characters` / 截断账 / 赠行时间）。 */
@@ -97,7 +94,7 @@ export function runTailPipeline(
   from: IterationState[],
 ): { states: IterationState[]; tail: TailResult } {
   let states = from
-  const { configs, config, totalTime, probeCtx, warmExactKey, warmSeedStates } = ctx
+  const { configs, config, totalTime, probeCtx } = ctx
   // ===== 末轮欠打回填（可行性门控，2026-09-05）=====
   // 实现已迁 `src/core/resource/underfillProbe.ts#runUnderfillProbe`（CC-5a，2026-09-25，纯函数；
   // 详细口径与否决记录随实现搬去该文件头 JSDoc）。此处只注入只读 ctx 并**每次调用时读 `diag`**
@@ -127,9 +124,6 @@ export function runTailPipeline(
     states = fp.states
     if (fp.converged) diag.converged = true
   }
-
-  // 热启动回写：本轮末态（无论是否完全收敛，同配置下次都从它出发）
-  if (!config.initialStates) storeWarmStart(warmExactKey, warmSeedStates)
 
   // 收敛后按最终状态折算跨角色联动：卢西娅4命帷幕触发次数（含伊德海莉大招开帷幕）、回血按卢西娅大招次数
   // 2026-09-25 CC-6b：整块迁进引擎能力/跨槽供给（规则 6）——提供者按模块能力

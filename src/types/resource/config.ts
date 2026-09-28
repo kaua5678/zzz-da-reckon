@@ -7,7 +7,7 @@
 
 import type { PanelValues } from '../catalog'
 import type { YidhariLoopMove } from './agentResources'
-import type { IterationState, StunPlanProjection } from './time'
+import type { StunPlanProjection } from './time'
 
 // ============ 计算输入 ============
 
@@ -834,8 +834,6 @@ export interface ResourceCalcConfig {
    * convergence.timeTruncatedSeconds 而不是未收敛的 rr.overflowSeconds。
    */
   overflowSeconds?: number
-  /** 迭代初值注入（测试/热启动用）：连续松弛下收敛态与初值无关，任意种子应得同解；长度不符时忽略 */
-  initialStates?: IterationState[]
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */
   stunCount?: number
   /**

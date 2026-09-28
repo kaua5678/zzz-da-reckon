@@ -6,15 +6,13 @@
  * 于是出现「卡说 166.9/180 快满了、角色条却只打了 86s」的自相矛盾（折叠残差抬高
  * necessaryTime，用户只能猜时间去了哪）。
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { clearWarmStartCache } from '@/core/resource'
 import { buildTeamTimeSummary, poolFillText, slackHint, truncationHint } from '@/composables/teamTimeSummary'
 import { fmt } from '@/utils/format'
 
-beforeEach(() => clearWarmStartCache())
 
 async function summaryOf(team: string[], enemy: { invincibleTime?: number; stunCountLock?: number } = {}, opts: { applyPreset?: boolean } = {}) {
   const { catalog } = await setupHarness(['', '', ''])

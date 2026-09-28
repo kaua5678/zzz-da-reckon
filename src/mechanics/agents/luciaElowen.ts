@@ -511,9 +511,6 @@ export const luciaElowenMechanic: AgentMechanicModule = {
     anomalyRelevant: false,
     anomalyRatio: 0,
   },
-  // 热启动精确键剔除（2026-09-26 CC-14d）：帷幕触发总次数由 core 装配段（assembleSlot，本槽 = 帷幕提供者）
-  // 收敛后写回，不是输入。
-  feedbackCfgKeys: ['luciaCurtainTriggerCount'],
   name: '卢西娅·艾洛温',
   description: '梦境值计划（500点→20次追加攻击）、计划外强特合轴0秒、[合唱]最后一段固定伤害/2命增伤/6命必暴暴伤、4命帷幕喧响、星光汇聚之地回血接入伊德海莉。',
   /**

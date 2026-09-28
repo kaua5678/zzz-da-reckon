@@ -40,10 +40,6 @@ export interface FoldLoopContext {
   config: ResourceCalcConfig
   totalTime: number
   maxTimeIter: number
-  /** 原 `injectedStates` 的真值判断（显式种子或热启动命中） */
-  injected: boolean
-  /** 默认零种子快照：种子轨迹未正常收敛时的规范重跑起点 */
-  defaultSeedStates: IterationState[]
   /** 内层不动点只读上下文（与欠打回填试探共用同一台机器） */
   innerCtx: InnerLoopContext
 }
@@ -74,23 +70,15 @@ export function runFoldLoop(
     // 同一环——均值桥接不了共存吸引子，否决）。停点必须与种子无关，规则三层：
     // ① 逐轮记录全状态签名，签名精确重复 = 进入极限环 → 取环内 JSON 字典序最小成员为规范停点
     //    （相位无关：冷/热从不同瞬态段进入同一个环，成员集合相同，规范选择必然相同）；
-    // ② 注入种子（显式 initialStates / 热启动缓存）的轨迹若非正常收敛（跑满上限或入环）= 停点
-    //    含瞬态相位成分 → 弃用并**规范重跑**：从默认零种子重启，逐位复刻冷启动轨迹；重跑仍入环
-    //    则按①取字典序规范——重跑结果是（默认种子, 迭代映射）的纯函数，与注入种子彻底解耦；
+    // ② （CC-147 删）注入种子通道（显式 initialStates / 热启动缓存）已不存在：起点 = 调用方给的 st
+    //    （主路径 = 默认零种子；截断重折 = 默认零种子快照；终局重折 = 终局态）。
     // ③ 正常收敛（次数严格相等判稳）的轨迹直接接受——不动点唯一性由既有连续松弛教义保证
     //    （2026-09-04），冷/热正常收敛落点逐位一致是 determinism.test 的既有约定。
     // 下游（折叠残差累计/欠打回填/终局整数重推/装配）全部是停点的确定性函数；pass>0 的起点
     // 冷热已同，其上限停点亦同，冷热逐位一致由归纳保持。
-    // ②′ CC-146（2026-09-28）：pass0 的注入种子**一律**弃用、从默认种子起跑——原 ② 只在种子轨迹非 clean
-    // 时重跑，③ 假设「clean ⇒ 唯一不动点」；实测反例（希格莉德+诺姆+丽娜，缺省投影=4 校准种子）：
-    // 注入种子 clean 收敛到不动点 b=5.79，冷种子入 2-环 {7.10,4.62}——同一映射不动点与环共存，
-    // 冷种子到不了该不动点 ⇒ ③ 接受的落点随种子变。pass0 恒从默认种子跑 ⇒ 停点是（默认种子, 映射）
-    // 的纯函数，与注入种子在构造上解耦；pass>0 起点冷热相同，归纳保持。代价：热启动不再省 pass0 轮数。
-    // 回退点：还原为「let inner = runInnerLoop(st, …); if (!inner.clean && timePass === 0 && ctx.injected) 重跑」。
-    let inner = runInnerLoop(
-      timePass === 0 && ctx.injected ? ctx.defaultSeedStates.map(s => ({ ...s })) : st,
-      ctx.innerCtx,
-    )
+    // ②′ CC-146 曾令 pass0 弃用注入种子（反例：注入种子 clean 收敛到冷种子到不了的共存不动点）；
+    // CC-147（2026-09-28）把注入通道整体删掉，此分支随之消失。回退点：git revert CC-147 提交。
+    let inner = runInnerLoop(st, ctx.innerCtx)
     st = inner.end
     diag.iterations = inner.iterations // 诊断量 `iterations` 只记折叠环的内层轮数（欠打回填试探复用 runInnerLoop 但不覆盖它）
     if (inner.clean) diag.converged = true

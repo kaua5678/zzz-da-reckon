@@ -519,8 +519,6 @@ export const yidhariMechanic: AgentMechanicModule = {
   selfBurnDecibel: yidhariSelfBurnDecibel,
   // 装配期写回（2026-09-26 CC-14c）：见上方 yidhariOnFinalAssemble 注释。
   onFinalAssemble: yidhariOnFinalAssemble,
-  // 热启动精确键剔除（2026-09-26 CC-14d）：外部回血由 onFinalAssemble 收敛后累加写回，不是输入。
-  feedbackCfgKeys: ['yidhariExternalHealPct'],
   /**
    * 终局整数重推（规则 6 引擎落点，2026-09-25 CC-6c）：强特次数实数化收尾。
    * `stage='tail'`（S3a 欠打回填之后、S4 装配之前）——与 preTail 不可合并（合并会改数值）；

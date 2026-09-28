@@ -12,16 +12,15 @@
  *    试探只会把外层推进吸引盆（09-05 runArchiveDeploy 前例）；
  * ④ 被拒试探不留副作用（冷/热启动逐位一致）。
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { clearWarmStartCache, calcTeamResources } from '@/core/resource'
+import { calcTeamResources } from '@/core/resource'
 import { UNDERFILL_PROBE_THRESHOLD_SECONDS, TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { EVADE_ASSIST_ACTION_TIME_SECONDS } from '@/data/resourceDefaults'
 import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
 
-beforeEach(() => clearWarmStartCache())
 
 async function summary(team: string[]) {
   await setupHarness(['', '', ''])
@@ -105,7 +104,6 @@ describe('末轮欠打回填', () => {
     const pick = (rr: ReturnType<typeof calcTeamResources>) => JSON.stringify(
       rr?.characters.map(c => [c.exSpecialCount, c.ultimateCount,
         c.timeAllocation.basicAttackTime, c.timeAllocation.necessaryTime]))
-    clearWarmStartCache()
     const cold = pick(calcTeamResources(copy(cfg)))
     // 第二次同配置：命中热启动缓存（试探前末态作初值）——回填试探若在被拒轮留下 cfg 副作用、
     // 或把回填后的末态写进缓存，这里就会分叉（实测 1241/1191 队曾因此由一致变不一致）。
