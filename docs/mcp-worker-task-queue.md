@@ -69,23 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 190 轮（lane lead-arena-0925c）：CC-156 已完成（代码提交 e542a005）；文档见本提交。**
-- 「保底4失衡」未达成时，页面现在会如实提示原因（stun-dual-source §24.12）；数值零变化。原病例归档 72db6dc3 已不复现（池 4），归档测试已去掉 off 钉。
-- 验证：全量测试 3816 passed、`npm run verify` rc=0、`vue-tsc -b` 无新错误、CG 25 项通过。
-- 上一轮（189）：CC-147 删除热启动通道（08b4d40d），CC-162 关闭（不做），见 §24.11。
-- REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）；dsh 返回 pong。
+**第 191 轮（lane lead-arena-0925c）：CC-152 已完成（提交 c6795167）；文档见本提交。**
+- 8 个文件级 off 钉细化为逐用例钉：111 条用例中 102 条回到缺省 physical 口径，9 条保留 off 并逐条写明理由（stun-dual-source §24.13）。只改了测试文件，期望值零改动。
+- 改写由子代理 dsh 执行、我复核；子代理这次表现可靠（机械性、多文件、判据明确的活适合派出）。
+- 验证：8 个文件 111/111 通过、全量测试与 verify 通过、CG 25 项通过、vue-tsc 无新错误。
+- 前两轮：190 CC-156（e542a005，保底4失衡未达成提示）；189 CC-147（08b4d40d，删热启动通道）、CC-162 关闭。
+- REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-152**（可选，低优）：把 CC-148 剩下的 8 个文件级 off 钉（stun-dual-source §16.2 列有文件名与理由）细化为逐用例钉，让同文件其他用例跑 physical。
-   - 做法：逐文件去掉 `vi.mock` 的文件级钉，跑该文件，只给红的用例加 `configStore.setMechanicSetting('time.stunPlanProjection', 0)`，并写明机制理由。
-   - 判据：没有用例因「更接近投稿」而改期望；红的用例要逐条归因。
-   - 若某文件逐用例拆分后注释比代码还长、收益只是计数下降，就写「不做」并说明理由（唯一判据：架构更通用或更简单）。
-2. **CC-27**（待设计）：维琳娜风蚀状态机模块化，先读 census §5.19 和 `core/anomalyPool.ts#resolveAnomalyCorrosion`。
-3. 其余：副词条优化器接收槽过滤；洛克茜 energyRegen。
+1. **CC-27**（待设计）：维琳娜风蚀状态机模块化。
+   - 先读 census §5.19，以及 `core/anomalyPool.ts#resolveAnomalyCorrosion`、`velinaCorrosionSource` 输出、`velinaCinema2CorrosionRate` 的全部读写点（`grep -rn "velina\|Corrosion" src --include=*.ts`）。
+   - 目标：core 里不再有维琳娜专属的状态机逻辑，改为模块能力（参照已有的 `finalizePass` / `crossAgentSupply` 等能力的声明方式）。卡片写明「不可只改名」：必须把状态机本体迁进 `mechanics/agents/velina*.ts`，core 只按能力查询。
+   - 判据：zd（`.zc/perf/zd.sh <tag>`）全部 104 个预设零差、golden 与棘轮零差；若有差异，要像 CC-147 那样实证归因。
+   - 若设计后发现迁移只是把代码挪个位置、core 仍需知道风蚀语义，就写「不做」并说明理由。
+2. 其余：副词条优化器接收槽过滤；洛克茜 energyRegen（先在卡表或 census 中找原始描述）。
 
 **已知坑**
-- 展示层（views/components）禁止值导入 `@/core` / `@/mechanics` / `@/specs`（CG 展示层越层棘轮，当前 1 处是既有的）：新诊断要经 `useResourceCalc` 暴露。
+- 口径钉的唯一写法：用例内 `config.setMechanicSetting('time.stunPlanProjection', 0)`，放在读取任何 `calc.*.value` 之前；不要再用 `vi.mock` 改 `DEFAULT_STUN_PLAN_PROJECTION_CODE`。
+- 展示层（views/components）禁止值导入 `@/core` / `@/mechanics` / `@/specs`：新诊断要经 `useResourceCalc` 暴露。
 - `@/core/resource` 不再导出 `clearWarmStartCache`；`ResourceCalcConfig.initialStates` 已删除。
-- `configStore.appliedBoss` 可以直接改 `parryTotal` 做实验（响应式），`archiveDeployStun.test.ts` 末段就是这么做的。
-- 判断「分支是否还有用」时，要测禁用后的最终结果差异，不能只看触发次数。
+- 派 dsh 的方式：任务书写成文件，再用 `setsid /home/kaua/calc-arch/bg.sh <名> '/home/kaua/.local/node/bin/dsh --profile headless "$(cat 任务书)" > 输出文件 2>&1'` 后台执行（约 5 分钟）；事后必须自己复核 diff，重点检查 expect 行有没有改。
 - 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行。

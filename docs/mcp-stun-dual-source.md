@@ -949,3 +949,22 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - `archiveDeployStun.test.ts` 去掉第 177 轮的 off 钉，回到缺省 physical 口径，另加「parryTotal=6 ⇒ parry-exhausted、池 3」一段。
 - **验证**：全量测试 3816 passed；vue-tsc 无新错误；CG 25 项通过；`npm run verify` rc=0。
 - **回退点**：`git revert e542a005`。提示只是展示，回退不影响任何数值。
+
+### 24.13 CC-152：8 个文件级 off 钉细化为逐用例钉（第 191 轮，提交 c6795167）
+- **测量（决定做之前）**：临时去掉 8 个文件的文件级钉（让 `DEFAULT_STUN_PLAN_PROJECTION_CODE` 恢复缺省），逐文件跑，共 111 条用例，physical 下只有 9 条红。
+  - 文件级钉让 102 条本可以跑缺省口径的用例一直测 off，缺省路径（用户实际使用的口径）在这些文件里没有覆盖。
+  - 决定：做。收益是覆盖面回到缺省口径，不是计数下降。
+- **逐文件结果**（格式：用例总数 / physical 下红的条数 → 处置）：
+  - convergenceNightD 24/1 → `readBanyueCfg(…, stunPlanOff)` 参数只给「补齐量精确值」用例钉 off（parry 12 为 off 录制值，physical 为 3）；
+  - damagePoolBatchR17c 14/2 → `calcOf(…, { stunPlanOff })`：叶瞬光与雨果两条成对精确值；
+  - damagePoolBatchR18d 16/3 → `calcOf` 的 opts 加 `stunPlanOff`：帷幕封顶 3 条 ★（C4 用例里的 c0 对照也同钉）；
+  - moduleAnomalyEventRecords 11/1 → 只在 `key === 'r0'` 时钉（EXPECTED.r0 为 off 快照）；
+  - timeWeightAllocation 14/1 → ⑤ 钉（依赖「均衡把失衡 4→3」这一 off 场景）；
+  - nextRoundFeedback 20/1 → 露西 C6 钉（58 是「有钩子 58 / 摘钩子 30」的反向验证锚点，physical 为 60）；
+  - **damagePoolDefDown 3/0、potentialAxisBatchB 9/0 → 整块删掉钉**。§16.2 写的钉的理由（颤音异放 1→0 掉档、端到端同向）在当前 HEAD 已不会让用例变红，后续轮次的修复已消除这些现象。
+- **钉的写法统一**为真实开关 `config.setMechanicSetting('time.stunPlanProjection', 0)`，与 archiveDeployStun 的先例一致；不再用 `vi.mock` 改模块常量。每处钉旁都有一句「CC-152 逐用例钉：理由」。
+- **没有改任何期望值或容差**：diff 中唯一的 expect 行变化是给 `readBanyueCfg` 加了钉参数。
+- **执行方式**：改写派给子代理 dsh（任务书在 `/home/kaua/calc-arch/k191/task191.txt`），我复核了 diff（钉不跨用例泄漏：`readBanyueCfg` / `calcOf` 每次调用都新建 harness）。
+- **验证**：8 个文件 111/111 通过；全量测试与 `npm run verify` 见提交说明；CG 25 项通过；vue-tsc 无新错误。
+- **回退点**：`git revert c6795167`（只动测试文件）。
+- 仓库里剩余的 `stunPlanProjection` 文件级 `vi.mock` 钉：0 处（outerCyclePick 的 mock 是接线包装，不是口径钉；它的 setupYixuanPreset 用例级 off 见 §18.3）。
