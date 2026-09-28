@@ -402,3 +402,4 @@
 | 250 | 失衡易伤展示反推（stunVulnSummary / stunVulnDisplay 各一份，且基数假设错） | 行携带引擎实值，反推收成单一回落（CC-226，`f9be411d`） | stunVulnSummary.test CC-226 三例 |
 | 251 | 特殊动作喧响每槽次数两处组装（引擎 convergence / 展示 useResourceCalc） | 展示直读引擎结果（CC-227，`661133cd`） | specialActionBonusSingleSource.test |
 | 252 | 贯穿力公式 4 份（core 1 + 展示 3） | 下沉 data/penetrationPower（CC-228，`2ba355d0`） | penetrationPower.test 源码锁 |
+| 253 | 保底4喧响提示在展示层重算缺口（口径与引擎不同） | 引擎结果带出 decibelGuarantee，展示直读（CC-229，`4e03fc6f`） | decibelGuarantee.test 源码锁 + 真队断言 |

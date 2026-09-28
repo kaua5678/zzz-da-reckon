@@ -2378,3 +2378,34 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **影响**：verify 全绿（3940 passed，golden 零差），零数值差。**回退点**：revert 2ba355d0。
 
 **常量粗扫（为下一轮找线索）**：在 views、components 里搜 1.2、0.5、1.5、0.35、215、1.1、2.1 等与 core 共有的常量，命中基本是注释、界面文字或绘图参数。唯一可疑的是 `views/TeamConfigPage.vue:956-964` 的「保底4喧响」提示：展示层自己算 `⌈缺口 ÷ 215⌉` 次补弹刀。
+
+### 24.77 第 253 轮：CC-229 保底4喧响提示直读引擎决策（4e03fc6f）
+
+**问题**：`views/TeamConfigPage.vue` 的 `guaranteeUltimateHint`（「保底4喧响·诚实显示」）在展示层自己算 `⌈(12000 − 主C喧响) ÷ 215⌉`，与引擎（`composables/resourceCalc/convergence.ts` 的 decibelParry 线程）口径有三处不同：
+1. 它读的是**收敛后**的 `resourceResult` 主C `decibelSource.total`，里面已经含引擎注入的「只给喧响」弹刀，算出来的是**补后剩余缺口**，不是决策缺口，N 也不是引擎实际注入的次数；
+2. 没有判断 `decibelParryActive`（`guaranteeUltimate && interactionTopUpSlot < 0`），般岳这类补齐角色在队时，通用口径不生效，它仍会显示；
+3. 没有引擎那样的单调 max。
+
+**探针**（7 队，推荐配装，开 guarantee.ultimate=1）：
+| 队伍 | 旧显示 | 引擎 |
+|---|---|---|
+| 1291-1481-1161 | 缺口 0 → 0 次（「已够」） | 注入 7 次，决策缺口 1473 |
+| 1191-1211-1311 | 缺口 0 → 0 次 | 注入 3 次，决策缺口 514 |
+| 1371-1471-1311 | 缺口 0 | active=false（般岳负责） |
+| 1431-1481-1491 / 1611-1411-1311 | 缺口 >1500 不凑 | 一致（parry=0，剩余 4259 / 3887） |
+| 1091-1221-1581 / 1221-1541-1331 | 已够 | 一致 |
+⇒ 凡是引擎真补了弹刀的队，旧提示都显示「已够 / 0 次」，恰好在最需要「诚实显示」的场景失真。
+
+**改法**（CC-227 的模式：引擎把决策挂在结果上，展示直读）：
+- `roundThreads.ts` 新增轮内持久字段 `decibelParryBasisShort`，即使 decibelParry 取到当前值的那一轮的缺口；初值 0，null 轮保留。它只在 decibelParry 增大时跟着更新，是**从属量**，所以**不进** `outerCycle#outerFeedbackSignature`（decibelParry 已经在里面），已在注释中写明。
+- `convergence.ts`：把 `max(prev, ⌈short/215⌉)` 改写成等价的「need > prev 时 next=need、basis=short」，同时记录本轮剩余缺口和 roundable。`CalcRoundResult.decibelGuarantee = {active, parry（本轮实际注入）, basisShort, residualShort, roundable, perParry}`（类型见 `roundResult.ts`）。
+- `useResourceCalc` 导出 `decibelGuaranteeResult`；TeamConfigPage 的提示按以下分支显示：未启用 / 补齐角色负责 / 已够 / 缺口 >1500 不凑 / `缺口 B → ⌈B÷215⌉ = N 次（raw 向上取整）`。措辞里原来的「四舍五入」改为「向上取整」（引擎本来就是 ceil）。
+- 删掉页面上不再使用的 `ULTIMATE_COST_DEFAULT` import 和 `resourceResult` 解构。
+
+**锁**：`src/composables/__tests__/decibelGuarantee.test.ts`
+- 真队 1291-1481-1161：`parry > 0` 且 `parry === ⌈basisShort/perParry⌉`；
+- 般岳队：active=false；
+- 源码锁：页面（去掉注释行后）不许出现 `/ 215`、`÷215`、`ULTIMATE_COST_DEFAULT`。
+- **反例**：只 stash 页面源码后，源码锁变红（1 failed）。
+
+**影响**：只改展示与结果字段，引擎数值零差（verify 全绿，golden 零差）。**回退点**：revert 4e03fc6f。

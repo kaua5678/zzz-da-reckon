@@ -71,31 +71,28 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 252 轮（lane lead-arena-0925c）：CC-228 完成（2ba355d0），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.76。
-- 前几轮：251 CC-227（661133cd）；250 CC-226（f9be411d）；249 CC-225（f361972f）。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
-- **结项**：「展示把 store 原值当引擎用量」线（§24.76 ②）。ultimatePromote:286 判「不做」，依据是 round 20 C-γ 契约。
+**第 253 轮（lane lead-arena-0925c）：CC-229 完成（4e03fc6f），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.77。
+- 前几轮：252 CC-228（2ba355d0）；251 CC-227（661133cd）；250 CC-226（f9be411d）。
+- REQUIREMENTS 无新条目；提示词未改。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**纯规则单一来源一览（新写代码直接用）**：
+**纯规则 / 引擎结果单一来源一览（新写代码直接用）**：
 - `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`；
 - `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`；
 - `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`（anomalyPool/helpers）；
 - 展示侧行级易伤：`composables/stunVulnSummary#rowAppliedStunMultOf`；
-- 特殊动作喧响：`CalcRoundResult.specialActionBonus`。
+- 引擎结果直读：`CalcRoundResult.specialActionBonus`（特殊动作喧响）、`CalcRoundResult.decibelGuarantee`（保底4喧响）。
 
 **下一步（直接开工）**
-1. `views/TeamConfigPage.vue:956-964` 的「保底4喧响·诚实显示」自己算 `⌈缺口 ÷ 215⌉`。核对它与引擎的保底4喧响弹刀反推是否同一口径：
-   - 在 convergence.ts 里 grep `decibelParryActive`、`guaranteeUltimate`、`PARRY_DECIBEL_BONUS`；`core/anomalyPool.ts` 里 PARRY_DECIBEL_BONUS 的注释写着「通用保底4喧响反推同引」。
-   - 若展示自算且口径不同：让引擎把反推出的次数或缺口挂在结果上，展示直读（CC-227 的模式）；
-   - 若只是重复一个常量：215 可以随 `SpecialActionBonusResult` 或 parrySplit 结果带出，或下沉到 data（视图层不能值导入 core）。
-2. 继续找「展示层手写引擎公式」：`grep -rnE '\*\s*0\.[0-9]+' src/components src/views | grep -v -E 'px|opacity|//'`，逐条对照 core。命中后按 CC-228 的模式处理：下沉 data、core 原名转出、加源码锁。
-- 开工前**先查卡表**（最新 CC-228），并 `grep -rn 反锁 src`。
-- **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(...)` 加 `useResourceCalc()`；Boss 读 `public/static/boss-presets.json`（照抄 parrySplitInt.test.ts 的 bossById）；跑完 `rm`，不提交。
+1. 继续找「展示层手写引擎公式」：`grep -rnE '\*\s*0\.[0-9]+' src/components src/views | grep -v -E 'px|opacity|//'`，逐条对照 core。命中后，纯公式按 CC-228 处理（下沉 data、core 原名转出、源码锁）；依赖收敛状态的按 CC-229 处理（引擎结果带出、展示直读）。
+2. 同一族的旁支：在 views、components 里查「读收敛后 resourceResult 再反推引擎决策」的写法，例如 grep `resourceResult.value?.characters` 后接算术的地方。它们都可能是补后值被当成补前值用（CC-229 的病型）。
+- 开工前**先查卡表**（最新 CC-229），并 `grep -rn 反锁 src`。
+- **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(...)` 加 `useResourceCalc()`，开保底用 `config.setMechanicSetting('guarantee.ultimate',1)`；跑完 `rm`，不提交。
 - **已知坑**：
   - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；
-  - 新文件先 `git add` 再 verify（守卫的 `git ls-files`）；删文件用 `git rm`；
-  - ParrySplitResult 的 `mainDpsParry + mainDpsNoFollowUp` 已是主 C 的全部弹刀。
+  - 新文件先 `git add` 再 verify；
+  - 新增收敛线程字段要评估 outerFeedbackSignature（从属量可以不进，但要写注释）；
+  - verify 不拦 TS6133，另跑 `npx vue-tsc -b`。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）。
 
 **探针（优化器相关改动的验收）**
