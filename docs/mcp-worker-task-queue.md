@@ -70,25 +70,29 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 226 轮（lane lead-arena-0925c）：CC-203 完成（fb64de6f）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-203：额外能力两道门控归一。详见 `docs/mcp-stun-dual-source.md` §24.50。
-- 前几轮：225 CC-202（11bf2ac8，雅霜月预留；「模块必做行时间预留」线已收尾）；224 CC-201（结论卡）；223 CC-200（d5e18595）。
+**第 227 轮（lane lead-arena-0925c）：CC-204 完成（9aed3fc4）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-204：freeCompare 汇总表胜负着色，外加格式化改读 `result.metricId` 的 bug 修复。详见 `docs/mcp-stun-dual-source.md` §24.51。
+- 前几轮：226 CC-203（fb64de6f，额外能力两道门控归一）；225 CC-202（11bf2ac8）；224 CC-201（结论卡）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（按顺序，直接开工）**
-1. **freeCompare `higherBetter` 着色评估**（`docs/mcp-write-only-props.md` 第 29 行与第 160 行）：`MetricDef.higherBetter` 零读取，但它是真实的方向元数据（含 3 个 false）；注释声称有「表格胜负着色」，这个功能并不存在。二选一：
-   - (a) 实现着色：在 freeCompare 结果表按 `higherBetter` 标出每列最优。先读 `src/composables/freeCompare/metrics.ts` 和渲染表格的组件（`grep -rn freeCompare src/components src/views`）。必须附一条行为测试，证明 false 的指标取最小值为最优（见本文件已知坑 CC-189 条）。
-   - (b) 不做着色：把注释改成实话，并在 write-only-props 表里标「保留：方向元数据，无消费方」。
-   - 判据：用户能否从着色中直接获益。freeCompare 本身就是对比页，(a) 是低成本的真实功能，倾向 (a)。
-2. T2 剩余 71 条（`docs/mcp-write-only-props.md` §T2）：派子代理 dsflash 逐批删，lead 做 verify 验收。按第 215 轮裁决不占 lead 整轮。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`），再查 `docs/MECHANICS_IMPLEMENTATION.md` 的角色段和 `grep -rn 反锁 src`。
-- **未决项**：1511 南宫羽额外能力原文无触发条件（`AA_OWNER_EXEMPT`），数据补上后删例外，CC-203 的派生表会自动接管。
-- **已知的有意偏差**：菲欧妮 tier3，引擎另需异常数≥3，store 默认只看额外能力（UI 可能显示已勾但不生效）。若要消除，需给 store 也接 `adjustAdditionalAbilityGates`；本轮未做，因为 store 侧没有 ReadonlyTeam 形态的输入。
+1. **T2 第 1 批**（`docs/mcp-write-only-props.md` §T2，表中剩 73 条，其中 higherBetter 已出表）：先删第 213 轮已抽查确认可删的三组：
+   - `anbyZero.teamFollowupDmgBonus`（额外能力已走 spec teamBuffs，这个字段是死的展示副本）；
+   - `phoenix` 的 `c1CritDmg` / `emberGain`（specResources 诊断字段，emberGain 恒为 0）；
+   - `yeshuguang.feiguangPerForm`（`@deprecated` 兼容字段）。
+   - 做法：`grep -rn <字段> src` 确认只剩声明和写入点（.vue 同名局部解构属误报），删掉声明和写入，再跑 `npx vue-tsc -b`、相关测试和 verify。
+   - 可以派 dsflash 子代理（先自检 pong），lead 验收；也可以 lead 自己做（量小）。做完在 T2 表里逐条标「已删 <commit>」。
+   - **按唯一判据**：T2 只是无害的展示载荷，别为降计数整轮刷。第 1 批做完后，若没有别的架构收益项，再评估 T2 剩余部分要不要整体标「不做」。
+2. 队列里没有其他架构项时，从 `docs/ARCHITECTURE-OVERVIEW.md` 的三类重构清单（R6 产物）里挑一条未做、影响面最大的，先写清「为什么值得做」再动手。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）。
+- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；菲欧妮 tier3 在 store 与引擎之间仍有已知偏差（§24.50）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **token 棘轮**：`npm run verify` 第二步 check-tokens 会拦下 var() 总数的变化。新增语义令牌引用是进步方向，把 `scripts/check-tokens.mjs` 的 `VAR_TOTAL_BASELINE` 上调，并在注释头补一句「日期 / CC / 原因」（CC-204 797→799）。
+- **页面格式化要跟着结果走**：freeCompare 这类「先选参数再点计算」的页面，渲染结果时读结果自带的参数（`result.metricId`），不要读控件的当前值（CC-204）。
 - **MCP `read_files` 会分页**：大文件（如 `src/mechanics/types.ts` 900+ 行）一次只返回前一段，要看 `has_more` / `next_start_line`。据此拉到本地改完再上传会**截掉文件尾**（第 226 轮踩过，esbuild 报「Expected */」）。大文件改动一律在 WSL 端用 python 精确替换。
 - **测试判别力依赖两处口径不一致时**：修掉不一致，测试会变成「无判别力」而失败（CC-203 substatOptimizer 席德明攻）。改法是显式构造那个状态（强行勾上），不要回退修复。
 - **截取引擎内部的 cfg/state 做同源测试**：`vi.spyOn(<模块>Mechanic, 'buildExecutions')` 可行（CC-202），拿 `spy.mock.calls.at(-1)[0]` 的 cfg/state 调预留或估时函数，再与实际行逐项比对。用完 `mockRestore()`。

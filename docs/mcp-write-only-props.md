@@ -26,7 +26,7 @@
 | `InCombatTeamBuff.includeOwner` | 冗余标签：排除装备者**实际由 `excludeTargetAgentIds` 实现**。只改这个标签不会有任何效果，是个会误导人的假开关 | 删掉；`InCombatTeamBuff` 改为 `TeammateBuff` 别名；头注释改写为真实机制；`specs/types.ts` 注释同步 |
 | `BossAnomalyStateResult.stunsTotal` | 注释声称「事件总次数按 stunsTotal 缩放」，实际消费端 `damagePoolRelease.ts` 按 `windowEntryIdx` 逐条目加权，从来不读它。CC-155（第 178 轮）改过它的来源，当时文档已记下「1082 零影响」 | 删掉字段和注入 |
 | 爱丽丝 6 命 `C6_DAMAGE_RATIO` / `C6_MAX_TRIGGERS_PER_STATE` | **常量与字面量双源**：伤害行写死 `skillMultiplier: 3300`，设置项写死 `max: 6`，同名常量只写进 cfg 的 3 个死字段。改常量不会生效 | 伤害行改为 `C6_DAMAGE_RATIO * 100`，设置项改为 `max: C6_MAX_TRIGGERS_PER_STATE`；删掉 cfg 死写和 `config.ts` 3 个字段 |
-| freeCompare `MetricDef.higherBetter` | 零读取，但它是**真实的方向元数据**（含 3 个 false）；注释声称「表格胜负着色」，这个功能并不存在 | **保留**，注释改实话（标明无消费方）。要做着色时直接用它 |
+| freeCompare `MetricDef.higherBetter` | 零读取，但它是**真实的方向元数据**（含 3 个 false）；注释声称「表格胜负着色」，这个功能并不存在 | **保留**，注释改实话（标明无消费方）。要做着色时直接用它 → **CC-204（第 227 轮）已实现着色，现有消费方 `bestSeriesIndexByLevel`** |
 
 验证：vue-tsc 0；zd（`.zc/perf/zd.sh k213`）DUMP / ROWS 均为 DIFF 0；verify EXIT=0（3827 passed，用例数不变）。
 
@@ -157,7 +157,7 @@
 | `filteredCards` | `src/composables/pullValueChart.ts:84` | `src/composables/pullValueChart.ts:130`, `src/composables/pullValueChart.ts:133`, `src/composables/pullValueChart.ts:198` | 2 |
 | `gradeFilteredCards` | `src/composables/pullValueChart.ts:86` | `src/composables/pullValueChart.ts:133`, `src/composables/pullValueChart.ts:135`, `src/composables/pullValueChart.ts:198` | 1 |
 | `barMaxW` | `src/composables/pullValueChart.ts:99` | `src/composables/pullValueChart.ts:152`, `src/composables/pullValueChart.ts:182`, `src/composables/pullValueChart.ts:199` | 2 |
-| `higherBetter` | `src/composables/freeCompare/metrics.ts:67` | `src/composables/freeCompare/metrics.ts:119`, `src/composables/freeCompare/metrics.ts:126`, `src/composables/freeCompare/metrics.ts:133`, `src/composables/freeCompare/metrics.ts:140` … | 0 |
+| `higherBetter` | `src/composables/freeCompare/metrics.ts:67` | `src/composables/freeCompare/metrics.ts:119`, `src/composables/freeCompare/metrics.ts:126`, `src/composables/freeCompare/metrics.ts:133`, `src/composables/freeCompare/metrics.ts:140` … | 0 · **已消费（CC-204），出表** |
 | `verificationId` | `src/specs/verify.ts:7` | `src/specs/verify.ts:50` | 0 |
 | `targeted` | `src/utils/discEffectRows.ts:71` | `src/core/resource/tailPipeline.ts:110`, `src/utils/discEffectRows.ts:141`, `src/mechanics/agents/starlightBilly.ts:181`, `src/mechanics/agents/starlightBilly.ts:406` … | 0 |
 

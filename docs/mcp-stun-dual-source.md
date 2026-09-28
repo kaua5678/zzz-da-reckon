@@ -1806,3 +1806,19 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **影响面**：数值零差——默认配置下两道门结果本来一致（store 已软关的 15 条引擎也拿不到；跨来源条目引擎本来就丢）。timeGolden / 留白棘轮不变。行为变化只在两处：用户强行勾上 15 条之一时不再生效；席德 / 潘引壶 / 波可娜的跨来源条目在未触发时 UI 默认不再勾上。
 - **验证**：vue-tsc 0；verify EXIT=0（3883 passed）；check-guards 通过。
 - **回退点**：`git revert fb64de6f`。若日后决定「额外能力允许手动强开」：只改引擎侧（`evalAdditionalAbilityBuffGates` 只对 `ADDITIONAL_GATE_CROSS_SOURCE_BUFFS` 与专属修正生效），store 仍读表做默认。
+
+### 24.51 CC-204：freeCompare 汇总表胜负着色 + 格式化改读结果自带的指标（第 227 轮，9aed3fc4）
+
+- **起点**：`MetricDef.higherBetter` 零读取（write-only-props 表，第 213 轮 CC-190 保留为「方向元数据」），注释却声称已有「表格胜负着色」。二选一：实现，或把注释改成实话。**选实现**。依据：自由对比页本身就是对比工具，每档谁赢是用户读表时的第一个问题；元数据已经就位（含 3 个越小越好的时间指标），代价只有一个纯函数加一个 class。
+- **改法**：
+  - `metrics.ts` 新增纯函数 `bestSeriesIndexByLevel(def, series)`：每个 x 档按方向取最优系列下标集合。并列全标（相对差 ≤1e-9）；null 不参与；可比系列少于 2 个时不标（没有对手就没有胜负）；全员并列也不标。
+  - `FreeComparePage.vue` 汇总表：最优格加 `fc-best`（`--c-success` 字色 + `--c-success-soft` 底色，加粗）；多系列时表上方一行说明「绿底 = 该档最优（本指标越小越好 / 越大越好）」。
+  - **顺手修的真 bug**：表格、折线、纵轴的格式化原本读下拉框的**当前值** `metricId`。对比完再切换指标，旧结果会按新指标的单位和小数位显示，比如切到百分比指标后数字被 ×100。改为读 `resultDef = metricDef(result.metricId)`。着色也按结果自带的指标算，否则切换指标时方向会错。
+  - `scripts/check-tokens.mjs` 的 `VAR_TOTAL_BASELINE` 797 → 799：新增两处语义令牌引用，脚本本身提示这是进步方向。
+- **测试**（`freeCompare.test.ts` 3 条）：
+  - 同一组数据在两个方向下结果相反；
+  - 边界：并列、全员并列、null、单系列；
+  - 注册表里越小越好的指标恰好是 frontlineTime / timeBudgetResidual / overflowSeconds，并用真实 `overflowSeconds` 定义跑一次。
+  - 没有写组件测试：着色逻辑全在纯函数里，组件只做 class 绑定，由 vue-tsc 与 build 兜底。
+- **验证**：vue-tsc 0；verify EXIT=0（3886 passed，build 通过）。
+- **回退点**：`git revert 9aed3fc4`。只撤着色、保留格式化修复：删掉 td 的 `:class` 和说明行即可。
