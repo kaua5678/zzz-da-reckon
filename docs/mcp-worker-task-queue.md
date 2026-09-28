@@ -69,22 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 200 轮（lane lead-arena-0925c）：CC-176 完成（代码提交 542884bc）；立卡 CC-177。文档见本提交。**
-- CC-176：伤害池直伤入参拼装收口到 `composables/resourceCalc/poolDirectDamage.ts#calcPoolDirectDamage`，正路 pushDirect 与简 / 爱丽丝 6 命附伤共用（模块经 `ExtraAnomalyRowsInput.directDamage`）；修附伤漏侵染区（2 个预设 +0.01~0.02%）。其余普查候选已查无问题，清单见 stun-dual-source §24.22。
-- 前几轮：199 CC-175（be822bc6）；198 CC-173 / 174（e0426398）；197 CC-172（8bbefaed）。
+**第 201 轮（lane lead-arena-0925c）：CC-177（8fc869d0）、CC-178（9daca673）完成；立卡 CC-179。文档见本提交。**
+- CC-177：异常伤害入参拼装收口到 `calcPoolAnomalyDamage`；直伤 / 异常两个拼装函数都在 `src/composables/resourceCalc/poolDamage.ts`（原 `poolDirectDamage.ts`，已 `git mv`），环境类型 `PoolDamageEnv`。纯重构，zd DIFF 0。
+- CC-178：删除合轴节省团队总量 `axisOverlapSeconds` 与两处只被测试走的兜底（`timeOccupation.ts` teamLevel、`helpers.ts#iterate` 的 hasByAction），按块分摊 `axisOverlapByAction` 成为唯一表示。零差（证明见 stun-dual-source §24.24）。
+- 前几轮：200 CC-176（542884bc）；199 CC-175（be822bc6）；198 CC-173 / 174（e0426398）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-177：异常伤害入参拼装收口（要求 zd DIFF 0、timeGolden 零变化）**。
-   - 调用点：`grep -rn 'calcAnomalyDamage(' src --include=*.ts | grep -v __tests__`。已知 4 处：`composables/resourceCalc/damagePoolAnomaly.ts`（标准异常，约 :250–270）、`damagePool.ts`（pushRelease 异放，约 :270–290）、`mechanics/agents/alice.ts`（极性紊乱，约 :619）、`mechanics/agents/burnice.ts`（6 命灼烧迸发）。
-   - 仿 CC-176：在 `poolDirectDamage.ts` 旁建同构的 `calcPoolAnomalyDamage(env, row)`（或放同一文件，文件名可顺手改成 `poolDamage.ts`，改名要 `git mv` 并更新 import）。env 复用 `PoolDirectEnv`（敌人、抗性表）；row 只带面板 / 结算面板 / 行级额外量（releaseMod 减抗减防、柏妮思 6 命无视火抗）。契约沿用 CC-175：结算面板上的减防减抗由 `calcAnomalyDamage` 内部读，拼装点不再读面板。
-   - 模块侧经 `ExtraAnomalyRowsInput` 新字段（如 `anomalyDamage`）调用；四个模块测试桩（jane / alice / burnice / remielle）要一起补，模式同本轮 `directDamage`。
-   - 纯重构：zd 必须 DIFF 0（`__ms` 计时键除外）、timeGolden 不动。若出现差异 = 某处拼装与其他处不一致，先归因再决定（可能又是一个真 bug，按 CC-175 / 176 的方式处理）。
-   - 顺带：查 `core/resource/timeOccupation.ts:70` `frontlineOccupationBreakdown` 的 `teamLevel` 兜底分支生产是否还会走到（在分支里临时加 `// ZZTMP` 计数，跑 zd 看是否为 0）。若为 0 且只剩测试依赖，评估删除 + 改测试；否则写注释说明谁在走。
+1. **CC-179：core 输入「可选只为测试方便」的字段普查**。
+   - 起点：`AnomalyPoolInput.agentMechanics`（`core/anomalyPool/helpers.ts:311`，缺省 ⇒ 不结算风蚀；生产唯一调用方 `composables/resourceCalc/roundInputs.ts:118` 始终会传）。
+   - 找更多：对 core 导出函数 / 输入接口的可选字段，统计生产调用方是否**全部**都传（脚本思路同 `/home/kaua/calc-arch/k198/scan175.mjs`，它已列出 ≥2 调用文件的函数；本卡还要覆盖**只有 1 个生产调用方**的函数，那正是 scan175 漏掉的）。
+   - 判据：缺省值会静默改变结果（关闭某个机制、兜底成常数）⇒ 改必填，测试显式传；缺省只是写法便利、不改变结果 ⇒ 不动，在 §24.25 后写「不做」加理由。不要为降低可选字段数量而改。
+   - 验证：改必填是类型层改动，zd 应 DIFF 0；vue-tsc 会列出所有要补的测试调用点。
 2. CC-166 仍暂缓（需规格）。
 
 **已知坑**
-- 伤害池直伤一律走 `calcPoolDirectDamage`（CC-176）：新环境量加进 `PoolDirectEnv`，新行级字段加进 `PoolDirectRow`；模块里要算直伤用 `ExtraAnomalyRowsInput.directDamage`，不要 import `calcDirectDamage` 自拼（自拼就会漏掉正路后加的量，比如侵染染色属性）。
+- zd 的 dump 第 2 段是整个 `resourceResult` 的哈希：**删 / 改名结果对象字段**会让几乎所有预设 DIFF，即使数值零差。用 `ZD_DROP=<键1>,<键2> bash .zc/perf/zd.sh <tag>` 在两边都排除这些键再比（第 201 轮加在 `.zc/perf/dump.perf.ts` / `rowsnap.perf.ts` 第 26 行的 `KEY_DROP`；`.zc/` 不进 git，若被重置，就把 `...(process.env.ZD_DROP ?? '').split(',').filter(Boolean)` 重新加回那个 Set）。先用逐段统计确认只有第 2 段变，再用 ZD_DROP 证明零差。
+- `git mv` 过的文件，提交时 `git add` 只写新路径（旧路径已不存在，写上会让整条 add 失败）。
+- 伤害池伤害一律走 `src/composables/resourceCalc/poolDamage.ts`（CC-176 / 177）：直伤 `calcPoolDirectDamage`、异常 `calcPoolAnomalyDamage`。新环境量加进 `PoolDamageEnv`，新行级字段加进对应 Row；模块里用 `ExtraAnomalyRowsInput.directDamage` / `.anomalyDamage`，不要 import core 伤害函数自拼（自拼就会漏掉正路后加的量，比如侵染染色属性）。异常行的减防减抗只传面板**之外**的额外量。
 - 查「某字段全仓零写入」时，不要用会命中赋值右侧的排除模式（第 200 轮用 `grep -v 'enemy\.'` 滤噪音，把 `battleTime: configStore.enemy.battleTime` 这类写入行也滤掉，差点误报）。先无过滤搜 `字段名:`，再看构造点。
 - 伤害函数契约：`calcDirectDamage` 由调用方传面板通用减防 / 减抗；`calcAnomalyDamage` 由函数内读结算面板，调用方只传额外量。新写旁路伤害调用要照对应契约，写反就会双计或漏计（CC-175）。
 - 伤害变化的基线更新：timeGolden 用 `TIME_GOLDEN_UPDATE=1`。更新前先 `git diff --numstat` 基线文件，确认只有 `dmg` 行变化、没有时间账变化；断言报错信息只列部分条目，不要据此判断全貌。

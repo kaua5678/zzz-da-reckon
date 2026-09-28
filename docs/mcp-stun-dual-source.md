@@ -1205,3 +1205,34 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **判据**：`src/mechanics/__tests__/jane.test.ts`「CC-176：附伤经 input.directDamage 拼装，染色属性=物理时吃侵染区 ×1.1，=风时不吃」。旧 `jane.ts` 上该用例失败（已验证）。四个模块测试的输入桩补了 `directDamage`（简 / 爱丽丝 / 柏妮思用真实 `calcPoolDirectDamage` + 桩环境；蕾米埃尔不产直伤，桩直接抛错）。
 - **验证**：`npm run verify` rc=0（3830 passed）；vue-tsc 无新错误；CG 25 项通过；zd 见上。
 - **回退点**：revert 542884bc。若只想撤掉侵染区修正而保留收口，在 `damagePoolAnomaly.ts` 派发点给 `directDamage` 传一个 `infectionElement: ''` 的 env 副本即可（零差回到旧数值）。
+
+### 24.23 CC-177：异常伤害入参拼装收口（第 201 轮，提交 8fc869d0）
+- **做了什么**：`calcAnomalyDamage` 的 4 个调用点（伤害池标准异常 `damagePoolAnomaly.ts`、异放 `damagePool.ts#pushRelease`、爱丽丝极性强击、柏妮思 6 命灼烧迸发）改走 `calcPoolAnomalyDamage(env, row)`。
+  - 与 CC-176 的 `calcPoolDirectDamage` 放同一文件：`src/composables/resourceCalc/poolDirectDamage.ts` 用 `git mv` 改名为 **`poolDamage.ts`**（§24.22 里的旧文件名是历史记录，以本节为准）。
+  - 环境类型 `PoolDirectEnv` 改名 **`PoolDamageEnv`**，并收进 `anomalyMultiplier`（= `globalAnomalyMultiplier`；4 处原本都传这个值）。`damagePool.ts` 的局部量 `directEnv` 改名 `poolEnv`。
+  - `PoolAnomalyRow` 只带面板 / 结算面板 / 倍率 / 失衡覆盖 / 异放暴击覆盖，以及**面板之外**的 `extraDefReduction` / `extraResReduction`。敌人防御 / 等级 / 抗性 / 失衡易伤、`critMode: 'expect'`、固定减防 0 都由拼装点给出。
+  - 模块经新字段 `ExtraAnomalyRowsInput.anomalyDamage` 调用；`alice.ts` / `burnice.ts` 不再 import `calcAnomalyDamage`，也不再解构 `enemy` / `enemyDamageRes` / `anomalyMultiplier`。四个模块测试共用桩环境 `STUB_ENV`（jane / alice / burnice 用真实拼装函数，remielle 桩直接抛错）。
+- **依据**：CC-175 的三个 bug 都出在「各调用点自拼入参」上。收口后，异常伤害的契约（面板减防减抗由函数内读，调用方只传额外量）落在唯一一处，新增环境量只改 `PoolDamageEnv`。
+- **验证**：纯重构，zd 的 dump 与 rows 都是 DIFF 0；verify rc=0（3830 passed）；vue-tsc 无新错误；CG 25 项通过。
+- **回退点**：revert 8fc869d0（会连同改名一起回退；CC-176 的收口不受影响）。
+
+### 24.24 CC-178：删除合轴节省团队级总量 `axisOverlapSeconds` 及两处兜底（第 201 轮，提交 9daca673）
+- **发现**（CC-177 顺带项）：合轴节省有两份表示，团队总量 `axisOverlapSeconds` 和按块分摊 `axisOverlapByAction`。两处读取点在「分摊为空」时回落到团队总量：
+  - `core/resource/timeOccupation.ts#frontlineOccupationBreakdown`：`teamLevel` 分支；
+  - `core/resource/helpers.ts#iterate`：`hasByAction` 为假时，`reliefSeconds = max(Σ抵扣, 团队总量)`。
+- **为什么走不到（静态证明）**：栈引擎 `core/stunAxisStack.ts:241–245` 在同一循环里同时累加 `overlapSeconds += share` 和 `overlapByAction[key] += share`（Σ 分摊 = 总量）。编排层 `convergence.ts` 把两者从同一个栈结果取出。所以生产中不存在「总量 > 0 而分摊为空」的状态：
+  - `teamLevel` 分支只有 `comboAlignBudget.test.ts` 手搓的结果对象在走；
+  - `iterate` 兜底在分摊为空时，团队总量也恒为 0，两个公式都退化成 Σ 抵扣，逐位等价。
+- **做了什么**：删除两处兜底；删除团队总量字段（`ResourceCalcConfig` / `TeamResourceResult` 类型、`convergence.ts` 注入、`resource.ts` 上报）。删除后它只写不读，全仓（含 .vue、perf 脚本、基线 JSON）零读者。按块分摊成为唯一表示，要总量就求和。测试删掉「只有团队总量」的子用例。栈引擎内部的 `overlapSeconds`（`StackTraversalResult`）保留：它是栈的输出，探针测试在读。
+- **依据**：同一物理量只留一份表示，删除只为测试存在的分支（架构更简单）。不是为了降计数。
+- **验证**：
+  - zd 直跑 DIFF 624。原因是 dump 第 2 段哈希覆盖整个 `resourceResult`，删字段本身就改变哈希；伤害数值和另两段哈希都没变（逐段统计：只有第 2 段变）。
+  - 给 zd 加了 `ZD_DROP` 后重跑 `ZD_DROP=axisOverlapSeconds bash .zc/perf/zd.sh cc178d`：dump 与 rows 都是 DIFF 0。
+  - verify rc=0（3830 passed）；vue-tsc 无新错误；CG 25 项通过。
+- **回退点**：revert 9daca673（纯删除，无数值影响）。
+
+### 24.25 普查顺带：注释自称「老路径 / 测试兜底」的缺省（第 201 轮，未改代码）
+- `grep -e 老注入 -e 老路径 -e 旧路径 -e 仅测试 -e 只有测试 -e 测试兜底 -e 老调用 -e 旧调用方 src`（非测试），命中 4 处：
+  - `timeOccupation.ts`：本轮 CC-178 已删，命中的是新注释本身；
+  - `core/anomalyPool/helpers.ts:1189`：`calcTurbulenceDamage` 的 `agentMechanics` 缺省时不结算风蚀。生产唯一调用链是 `roundInputs.ts:118` → `calcAnomalyPool`（传 `getRegisteredAgentMechanics()`）→ `anomalyPool.ts:314`，始终会传；`corrosion.ts` 头注释已登记为「已知语义差，可接受」。无问题，但属于「缺省值静默改变结果」一类，列入 CC-179；
+  - `mechanics/agents/xide.ts:150/164`：`oocAtkOf` 拿不到时回退 `level60.atkBase`，只有测试手搓 cfg 会走到。无问题。
