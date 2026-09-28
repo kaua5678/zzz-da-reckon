@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { mockStaticFetch, newPinia } from '@/test/harness'
+import { mockStaticFetch, newPinia, resolveTeammateBuffsOnEmptyPanel } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases, getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/helpers'
@@ -8,7 +8,6 @@ import {
   applyRinaTeamEnergyFlags,
   assignRinaUltNeighborEnergy,
   computeRinaBangboo,
-  computeRinaCorePenRatio,
   RINA_POTENTIAL_PEN_RATIO,
   RINA_SPOTLESS_DURATION,
   rinaMechanic,
@@ -34,10 +33,17 @@ async function setup(cinemaLevel = 0, mateId = '1081') {
 }
 
 describe('丽娜纯函数', () => {
-  it('核心穿透封顶且影画1提升到130%', () => {
-    expect(computeRinaCorePenRatio(40, 0)).toBe(22)
-    expect(computeRinaCorePenRatio(72, 0)).toBe(30)
-    expect(computeRinaCorePenRatio(72, 1)).toBe(39)
+  it('核心穿透封顶且影画1提升到130%（走生产通道：teammate-buffs 公式 + C1 buffModifiers，CC-188）', async () => {
+    newPinia(); mockStaticFetch()
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const core = ['rina.core_pen_ratio']
+    const c1 = [...core, 'rina.cinema_1.core_pen_ratio_amplify']
+    expect(resolveTeammateBuffsOnEmptyPanel(core, 40).penRatio).toBeCloseTo(22, 9)
+    expect(resolveTeammateBuffsOnEmptyPanel(core, 72).penRatio).toBeCloseTo(30, 9)
+    expect(resolveTeammateBuffsOnEmptyPanel(core, 80).penRatio).toBeCloseTo(30, 9) // 80×0.25+12=32 ⇒ 封顶 30（72 恰好 =30，测不出上限）
+    expect(resolveTeammateBuffsOnEmptyPanel(c1, 72).penRatio).toBeCloseTo(39, 9)
   })
 
   it('终结技邻位回能按30/10分配', () => {

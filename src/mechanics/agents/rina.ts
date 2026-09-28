@@ -65,12 +65,6 @@ function rowVal(move: SkillMove | null | undefined, rowId: string): number {
   return Number(vals[11] ?? vals[vals.length - 1] ?? 0) || 0
 }
 
-/** 满级核心被动穿透增益；影画1在封顶后的结果上提升至130%。 */
-export function computeRinaCorePenRatio(sourcePenRatio: number, cinemaLevel = 0): number {
-  const base = Math.min(30, Math.max(0, sourcePenRatio) * 0.25 + 12)
-  return base * (cinemaLevel >= 1 ? 1.3 : 1)
-}
-
 export interface RinaBangbooInput {
   exSpecialCount: number
   chainCountTotal: number

@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
+import { mockStaticFetch, newPinia, resolveTeammateBuffsOnEmptyPanel, setupHarness } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import {
   computeAriaBonuses,
-  computeYaojiayinCoreAtkBonus,
   computeYaojiayinTremolos,
   MOVE_CLUSTER,
   MOVE_TREMOLO,
@@ -45,12 +44,17 @@ describe('耀嘉音纯函数', () => {
     expect(computeAriaBonuses(16)).toEqual({ dmgBonus: 24, critDmg: 31 })
   })
 
-  it('核心攻击 35%/1200 与 C2 54%/1600', () => {
-    expect(computeYaojiayinCoreAtkBonus(3000, 0)).toBeCloseTo(1050)
-    expect(computeYaojiayinCoreAtkBonus(4000, 0)).toBe(1200)
-    expect(computeYaojiayinCoreAtkBonus(3000, 2)).toBeCloseTo(1620 > 1600 ? 1600 : 1620)
-    expect(computeYaojiayinCoreAtkBonus(3000, 2)).toBe(1600)
-    expect(computeYaojiayinCoreAtkBonus(2000, 2)).toBeCloseTo(1080)
+  it('核心攻击 35%/1200 与 C2 54%/1600（走生产通道：teammate-buffs 派生 + C2 差额公式，CC-188）', async () => {
+    newPinia(); mockStaticFetch()
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const core = ['yaojiayin.core_andante_atk']
+    const c2 = [...core, 'yaojiayin.cinema_2.core_andante_atk_bonus']
+    expect(resolveTeammateBuffsOnEmptyPanel(core, 3000).atk).toBeCloseTo(1050, 9)
+    expect(resolveTeammateBuffsOnEmptyPanel(core, 4000).atk).toBeCloseTo(1200, 9)
+    expect(resolveTeammateBuffsOnEmptyPanel(c2, 3000).atk).toBeCloseTo(1600, 9)
+    expect(resolveTeammateBuffsOnEmptyPanel(c2, 2000).atk).toBeCloseTo(1080, 9)
   })
 
   it('震音：付费受能量与入场双限；额外能力与C2追加', () => {

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { classifyPreset } from '../../../scripts/lib/presetCategories.mjs'
-import { teamPresets, teamPresetGroupOptions, UNGROUPED_LABEL, PRESET_UNGROUPED_SUB, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
+import { teamPresets, presetGroupLabels, UNGROUPED_LABEL, PRESET_UNGROUPED_SUB, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
 const catalog = JSON.parse(catalogText) as {
@@ -100,26 +100,25 @@ describe('预设分组（两级下拉：分类 → 队伍）', () => {
   it('每个预设都有非空 group，不落「未分组」（新预设必须归类）', () => {
     for (const preset of teamPresets)
       expect(preset.group?.trim(), `${preset.id} 缺一级分类 group（下拉第一级）`).toBeTruthy()
-    expect(teamPresetGroupOptions.some(o => 'label' in o && o.label === UNGROUPED_LABEL)).toBe(false)
+    expect(presetGroupLabels).not.toContain(UNGROUPED_LABEL)
   })
 
-  it('分组 options 恰好覆盖全部预设，组内成员与 preset.group 一致且无空组', () => {
-    type Option = (typeof teamPresetGroupOptions)[number]
-    const isGroup = (o: Option): o is { type: 'group'; label: string; children: { value: string; label: string }[] } =>
-      (o as { type?: unknown }).type === 'group'
-    const groups = teamPresetGroupOptions.filter(isGroup)
-    expect(groups.length).toBeGreaterThan(0)
-    const ids = groups.flatMap(g => g.children.map(c => c.value)).sort()
-    expect(ids).toEqual(teamPresets.map(p => p.id).sort())
-    for (const g of groups) {
-      expect(g.children.length).toBeGreaterThan(0)
-      for (const c of g.children) {
-        const preset = teamPresets.find(p => p.id === c.value)!
-        expect(preset, `选项 ${c.value} 无对应预设`).toBeTruthy()
-        expect(c.label).toBe(preset.name)
-        expect(g.label, `${preset.id} 归组与 preset.group/subgroup 合成不一致`).toBe([preset.group, preset.subgroup].filter(Boolean).join(' · '))
+  it('三级筛选恰好覆盖全部预设：每条预设只落在一个（职业, 属性）格里，且与 preset.group/subgroup 一致（CC-188 改测生产筛选）', () => {
+    const seen: string[] = []
+    for (const g of presetGroupLabels) {
+      const subs = presetSubgroupLabelsFor(g)
+      expect(subs.length, `${g} 无二级`).toBeGreaterThan(0)
+      for (const sub of subs) {
+        const list = presetsForFilter(g, sub)
+        expect(list.length, `${g}·${sub} 是空格`).toBeGreaterThan(0)
+        for (const p of list) {
+          expect(p.group?.trim() || UNGROUPED_LABEL).toBe(g)
+          expect(p.subgroup?.trim() || PRESET_UNGROUPED_SUB).toBe(sub)
+          seen.push(p.id)
+        }
       }
     }
+    expect(seen.sort()).toEqual(teamPresets.map(p => p.id).sort())
   })
 
   // 用户裁决 2026-09-08：一级分类只允许「输出定位」的队名；击破/支援/防护是辅助位，

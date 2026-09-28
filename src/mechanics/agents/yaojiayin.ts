@@ -126,13 +126,6 @@ export function computeYaojiayinTremolos(input: YaojiayinTremoloInput): Yaojiayi
   }
 }
 
-/** 核心攻击拐：0命 35%/1200；C2 54%/1600 */
-export function computeYaojiayinCoreAtkBonus(sourceAtk: number, cinemaLevel: number): number {
-  const atk = Math.max(0, Number(sourceAtk) || 0)
-  if (cinemaLevel >= 2) return Math.min(1600, atk * 0.54)
-  return Math.min(1200, atk * 0.35)
-}
-
 function findMove(skills: AgentSkills | undefined, id: string): SkillMove | null {
   if (!skills) return null
   for (const c of skills.categories) {

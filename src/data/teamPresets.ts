@@ -65,7 +65,6 @@
  * 同一队伍的高难度轴（如 般琉卢 的 10大轴）作为难度曲线的「切轴」目标档（爬梯按增益录取，
  * 见 difficultyCurve.ts#makeAltAxisGoal），一条队伍一条曲线分段——不再拆变体预设。
  */
-import type { SelectGroupOption, SelectOption } from 'naive-ui'
 import type { TeamPreset } from '@/types/teamPreset'
 
 export interface TeamPresetFile extends TeamPreset {
@@ -115,33 +114,6 @@ export const teamPresets: TeamPreset[] = Object.values(jsonModules)
 
 /** 未填 group 的预设归入的兜底分类（测试锁「不出现」——新预设必须归类） */
 export const UNGROUPED_LABEL = '未分组'
-
-/** n-select 单条选项 */
-export interface TeamPresetOption {
-  value: string
-  label: string
-}
-
-/**
- * 分组下拉选项（两级：分类 → 队伍；分类名 = 一级分类 + 二级分类合成
- * 「一级 · 二级」——2026-09-03 用户「太多了需要二级分类」）。
- * 三个消费点（首页预设下拉/保存弹窗、队伍对比页、击破对比页）共用。组名按
- * localeCompare 排序、「未分组」恒排最后，组内沿用 teamPresets 的名称序。
- */
-export const teamPresetGroupOptions: Array<SelectOption | SelectGroupOption> = (() => {
-  const groups = new Map<string, TeamPresetOption[]>()
-  for (const p of teamPresets) {
-    const label = [p.group?.trim() || UNGROUPED_LABEL, p.subgroup?.trim()].filter(Boolean).join(' · ')
-    if (!groups.has(label)) groups.set(label, [])
-    groups.get(label)!.push({ value: p.id, label: p.name })
-  }
-  return [...groups.entries()]
-    .sort(([a], [b]) =>
-      a === UNGROUPED_LABEL ? 1 : b === UNGROUPED_LABEL ? -1 : a.localeCompare(b),
-    )
-    .map(([label, children]) => ({ type: 'group' as const, label, key: label, children }))
-})()
-
 
 // ========== 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多——先选职业、再选属性、后出队伍） ==========
 

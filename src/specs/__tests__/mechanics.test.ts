@@ -4,7 +4,6 @@ import { getAgentSpec } from '@/specs/registry'
 import {
   buildSpecAnomalyEvents,
   buildSpecEventExecutions,
-  buildSpecResourceSections,
   specToMechanicModule,
 } from '@/specs/mechanics'
 import { nekomataMechanic } from '@/mechanics/agents/nekomata'
@@ -12,9 +11,9 @@ import type { AgentMechanicSpec } from '@/specs/types'
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 
 describe('spec mechanics interpreter', () => {
-  it('builds resource sections from spec resources', () => {
+  it('builds resource sections from spec resources（无结果时的静态兜底，走生产 resourceSections，CC-188）', () => {
     const spec = getAgentSpec('1561')!
-    const sections = buildSpecResourceSections(spec)
+    const sections = specToMechanicModule(spec).resourceSections!({ result: undefined } as never)
 
     expect(sections.some(section => section.id === 'velina_floria')).toBe(true)
     expect(sections.some(section => section.id === 'velina_corrosion')).toBe(true)

@@ -10,7 +10,6 @@ import type {
   CharacterOperationConfig,
   IterationState,
   SkillExecution,
-  SpecialResourceSection,
 } from '@/types/resource'
 import { applySpecAttributeConversions } from './runtime'
 import { computeSpecResources, type SpecResourceResult } from './resources'
@@ -31,29 +30,6 @@ export interface SpecEventExecutionInput {
   overrides?: Record<string, { count?: number; multiplier?: number }>
   /** 读取倍率表行值（moveId → rowId） */
   getRowValue?: (moveId: string, rowId: string) => number
-}
-
-export function buildSpecResourceSections(spec: AgentMechanicSpec): SpecialResourceSection[] {
-  return spec.resources.map(resource => ({
-    id: resource.id,
-    title: `${spec.name}·${resource.name}`,
-    summary: `初始 ${resource.initialValue ?? 0}`,
-    rows: [
-      ...resource.gainRules.map(rule => ({
-        label: '获取',
-        value: String(rule.amount ?? ''),
-        detail: rule.formula ?? rule.trigger,
-      })),
-      ...resource.spendRules.map(rule => ({
-        label: '消耗',
-        value: String(rule.cost ?? ''),
-        detail: rule.result ?? rule.trigger,
-      })),
-    ],
-    footer: resource.gainRules
-      .map(rule => `${rule.trigger}: ${rule.formula ?? rule.amount ?? ''}`)
-      .join('；') || undefined,
-  }))
 }
 
 export function buildSpecAnomalyEvents(

@@ -17,6 +17,10 @@ import { createPinia, setActivePinia } from 'pinia'
 import { vi } from 'vitest'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore, interactionBaselineFor } from '@/stores/config'
+import { collectInCombatTeamBuffs } from '@/core/inCombatBuffs'
+import { applyEffect } from '@/core/buff'
+import { emptyPanel } from '@/core/panel'
+import type { PanelValues } from '@/types/catalog'
 
 const catalogText = readFileSync(new URL('../../public/static/catalog.json', import.meta.url), 'utf8')
 const teammateBuffsText = readFileSync(new URL('../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
@@ -137,4 +141,27 @@ export async function setupHarness(
     for (let i = 0; i < 3; i++) if (team[i]) config.applyBuildRecommendationForSlot(i)
   }
   return { catalog, config }
+}
+
+/**
+ * 走**生产通道**解一组队友 buff 的数值（CC-188）：`collectInCombatTeamBuffs`（含 `buffModifiers`，
+ * 如丽娜 C1 ×1.3）→ `applyEffect`，源面板量 x 以 `dynamicSourceValue` 注入，结果叠在 `emptyPanel()` 上。
+ * 用途：断言 `teammate-buffs.json` 里公式 / 派生 effect 的数值，而不是在模块里手抄一份公式再测副本。
+ * 前置：`catalog.load()` + `catalog.loadTeammateBuffs()` 已完成。
+ */
+export function resolveTeammateBuffsOnEmptyPanel(enabledBuffIds: readonly string[], sourceValue: number): PanelValues {
+  const catalog = useCatalogStore()
+  const buffs = collectInCombatTeamBuffs([], {
+    teammateBuffGroups: catalog.teammateBuffGroups,
+    driveDiscSetsMap: catalog.driveDiscSetsMap,
+    getAgent: id => catalog.getAgent(id),
+    getWEngine: id => catalog.getWEngine(id),
+    isTeammateBuffEnabled: id => enabledBuffIds.includes(id),
+  })
+  const panel = emptyPanel()
+  for (const buff of buffs) {
+    if (!enabledBuffIds.includes(buff.id)) continue
+    for (const effect of buff.effects ?? []) applyEffect(panel, { ...effect, dynamicSourceValue: sourceValue })
+  }
+  return panel
 }
