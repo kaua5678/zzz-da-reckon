@@ -620,6 +620,9 @@ export function computePanelPhases(
     {
       cinemaLevel: char.cinemaLevel,
       wEngineModLevel: char.wEngineModLevel,
+      // CC-171（第 196 轮）：此前漏传 ⇒ core/panel.ts 缺省盖章 6，cfg.panel.potentialLevel 与潜能滑块脱钩
+      // （柏妮思 buildExecutions / 简、柏妮思资源结果按满潜算）。来源面板（teammateBuffSource）一直有传。
+      potentialLevel: char.potentialLevel,
       sourcePanelsByOwner,
       effectCoverageMap,
       enemyWeakness: configStore.enemy.weakness,
@@ -770,6 +773,7 @@ export function computeEntrySnapshotPanel(
     {
       cinemaLevel: char.cinemaLevel ?? 0,
       wEngineModLevel: char.wEngineModLevel ?? 1,
+      potentialLevel: char.potentialLevel, // CC-171：与 computePanelPhases 同口径
       enemyWeakness: configStore.enemy.weakness,
       effectCoverageMap: (() => {
         const map = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)

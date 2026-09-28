@@ -182,7 +182,7 @@ function buildJaneResourceResult({ cfg, state }: AgentResourceResultInput): Part
       frenzyActive: true,
       frontlineSeconds: state.frontlineTime,
       // cfg.panel 是**局内盖章面板**，potentialLevel 由 core/panel.ts 写入（`:353`），
-      // 与 applyPanel 的 `input.potentialLevel` 同源同值。
+      // 与 applyPanel 的 `input.potentialLevel` 同源同值（CC-171 第 196 轮前 computePanelPhases 漏传，恒为 6）。
       potentialLevel: cfg.panel.potentialLevel ?? 6,
     }),
   }
