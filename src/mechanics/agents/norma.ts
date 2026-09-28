@@ -12,6 +12,9 @@ import type { AgentSkills, SkillMove, PanelValues } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting, NormaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
+import { getAgentSpec } from '@/specs/registry'
+import { specConversionAmount } from '@/specs/runtime'
+import type { AttributeConversionSpec } from '@/specs/types'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 
 const NORMA_AGENT_ID = '1571'
@@ -29,12 +32,14 @@ const EX_SPECIAL_ENERGY_COST = 40 // 嗯呢弹幕激活耗能（网站 API：Ene
 const HOLD_ENERGY_PER_SEC = 20 // 嗯呢弹幕长按额外耗能/秒
 
 // —— 核心被动转模 ——
-const CRIT_TO_CRITDMG_PER_PCT = 1.7 // Lv7
-const CRIT_TO_CRITDMG_CAP = 85
-const CRIT_TO_STUN_PER_PCT = 0.8 // Lv7
-const CRIT_TO_STUN_CAP = 40
-const PEN_TO_ATK_PER_POINT = 1.25
-const PEN_TO_ATK_CAP = 1200
+// CC-212（第 235 轮）：阈值 / 每步值 / 上限 / 步数口径只在 spec `1571.json` attributeConversions 一处，
+// 模块只负责来源（局外暴击、贯穿力）与落点（定向失衡）——这两样 spec runtime 表达不了（r6 §2.2）。
+// 此前模块另写一份常数且按连续计算，CC-134 的「每超过 N 一律 floor」裁决因 spec 条目不执行而从未落到 1571。
+function normaConversion(id: string): AttributeConversionSpec {
+  const conv = getAgentSpec(NORMA_AGENT_ID)?.attributeConversions?.find(c => c.id === id)
+  if (!conv) throw new Error(`[norma] spec 1571 缺少 attributeConversions.${id}`)
+  return conv
+}
 
 // —— 嗯呢弹幕 ——
 const BARRAGE_TEAM_DMG_BONUS = 20
@@ -196,21 +201,21 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
   // 核心被动：初始暴击>50% → 暴伤（每1% +1.7，cap 85）
   // 原文「初始暴击率超过50%」⇒ 读局外面板（CC-128，与 CC-118/123 同口径）；未传局外面板时回落局内
   const critRate = (outOfCombatPanel ?? panel).critRate ?? 0
-  const over = Math.max(0, critRate - 50)
-  if (over > 0) {
-    panel.critDmg = (panel.critDmg ?? 0) + Math.min(CRIT_TO_CRITDMG_CAP, over * CRIT_TO_CRITDMG_PER_PCT)
+  const critDmgBonus = specConversionAmount(normaConversion('norma_crit_to_critdmg'), critRate)
+  if (critDmgBonus > 0) {
+    panel.critDmg = (panel.critDmg ?? 0) + critDmgBonus
   }
   // 核心被动：暴击>50% → 强特/特/终结失衡（每1% +0.8，cap 40）—— 定向招式失衡值
-  if (over > 0) {
-    const stunBonus = Math.min(CRIT_TO_STUN_CAP, over * CRIT_TO_STUN_PER_PCT)
+  const stunBonus = specConversionAmount(normaConversion('norma_crit_to_stun'), critRate)
+  if (stunBonus > 0) {
     panel.stunBuildUpBonus__exSpecial = (panel.stunBuildUpBonus__exSpecial ?? 0) + stunBonus
     panel.stunBuildUpBonus__special = (panel.stunBuildUpBonus__special ?? 0) + stunBonus
     panel.stunBuildUpBonus__ultimate = (panel.stunBuildUpBonus__ultimate ?? 0) + stunBonus
   }
   // 核心被动：贯穿力→攻击（1.25/点，cap 1200）
-  const penPower = calcPenetrationPower(panel)
-  if (penPower > 0) {
-    panel.atk = (panel.atk ?? 0) + Math.min(PEN_TO_ATK_CAP, penPower * PEN_TO_ATK_PER_POINT)
+  const atkBonus = specConversionAmount(normaConversion('norma_pen_to_atk'), calcPenetrationPower(panel))
+  if (atkBonus > 0) {
+    panel.atk = (panel.atk ?? 0) + atkBonus
   }
   // 额外能力·集群优势：持[技术鸿沟]敌人失衡持续时间 +2 秒（命中即叠全程生效，用户确认）。
   // 放 applyPanel（而非 buildCharConfig）：computeWindowDuration 读展示面板（computePanelPhases），
