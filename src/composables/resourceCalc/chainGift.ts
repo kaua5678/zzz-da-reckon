@@ -13,7 +13,7 @@ import type { useCatalogStore } from '@/stores/catalog'
 import { getAgentMechanic } from '@/mechanics'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findMoveById, fusedRowValue } from './skillRows'
+import { findMoveById, fusedRowValue, getRowValue } from './skillRows'
 import { buildGiftRow } from '@/core/resource/giftRows'
 
 /**
@@ -65,7 +65,7 @@ export function applyChainGift(
   // 否则赠送行只算了第一段（377.6% vs 1258.3%）——与倍率侧同一口径（用户 2026-09-11）。
   const fusedOf = (rowId: string) =>
     fusedRowValue(targetSkills, chainInfo.moveId, rowId)
-    ?? giftedMove?.rows?.find(r => r.id === rowId)?.values?.[0] ?? 0
+    ?? getRowValue(giftedMove, rowId) // CC-239：单段回落也吃逻辑编辑器行规则（与 fusedRowValue 分段取值、helpers 主执行同源）
   const giftedDamage = fusedOf('damage')
   const giftedDaze = fusedOf('daze')
   const giftedAnomaly = fusedOf('anomaly_buildup')

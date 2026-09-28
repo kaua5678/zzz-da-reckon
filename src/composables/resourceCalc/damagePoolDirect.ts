@@ -21,7 +21,7 @@ import { getSkillLevelCoef } from '@/core/skillLevel'
 import type { Agent, AgentSkills, PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
 import type { DirectRowAxisSplit } from '@/mechanics/types'
-import { findMoveById } from './skillRows'
+import { findMoveById, getRowValue } from './skillRows'
 import { buildMechanicTeamMembers } from './panelPhases'
 import type { DamagePoolRow } from './helpers'
 // 纯类型：运行时被擦除，与 damagePool.ts 的 `emitCharDirectRows` 值导入不构成运行时环。
@@ -297,7 +297,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
       if (count <= 0) continue
       const move = findMoveById(tblSkills, mid)
       const dmgRow = (move?.rows ?? []).find((r: any) => r.kind === 'damageMultiplier')
-      const mult = Number(dmgRow?.values?.[0] ?? 0)
+      const mult = dmgRow ? getRowValue(move, dmgRow.id) : 0 // CC-239：吃逻辑编辑器行规则
       if (!move || !(mult > 0)) continue
       pushDirect({
         id: `direct-${slot}-${mid}-table`,

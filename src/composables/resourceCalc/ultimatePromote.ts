@@ -18,7 +18,7 @@ import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findMoveById, fusedRowValue } from './skillRows'
+import { findMoveById, fusedRowValue, getRowValue } from './skillRows'
 import { buildGiftRow } from '@/core/resource/giftRows'
 import { getAgentMechanic } from '@/mechanics'
 
@@ -91,7 +91,7 @@ export function applyUltimatePromote(
       // 妮可 特制以太榴弹 炮击+能量场）必须取整段倍率与站场时长，只取主段=赠送了半招。
       const fusedOf = (rowId: string) =>
         fusedRowValue(skills, ultimateMoveId, rowId)
-        ?? ultMoveDef?.rows.find(r => r.id === rowId)?.values[0] ?? 0
+        ?? getRowValue(ultMoveDef, rowId) // CC-239：单段回落也吃逻辑编辑器行规则（与 fusedRowValue 分段取值、helpers 主执行同源）
       const ultMult = fusedOf('damage')
       const ultBuildUp = fusedOf('anomaly_buildup')
       const ultActionTime = (skills ? fusedGroupActionTime(skills, ultimateMoveId) : null)
@@ -215,7 +215,7 @@ export function buildPromoteParams(
   const targetSkills = targetAgentId ? catalogStore.agentSkillsByAgentMap.get(targetAgentId) : undefined
   const ult = targetSkills ? findUltimate(targetSkills) : null
   const ultMove = ult?.moveId ? findMoveById(targetSkills, ult.moveId) : null
-  const ultDaze = ultMove?.rows.find(r => r.id === 'daze')?.values[0] ?? 0
+  const ultDaze = getRowValue(ultMove, 'daze')
   const chain = targetSkills ? findChainAttack(targetSkills) : null
   const ultElement = (targetAgentId && catalogStore.agentsMap.get(targetAgentId)?.damageElement) || 'physical'
   return {
