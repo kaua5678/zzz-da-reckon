@@ -71,35 +71,32 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 264 轮（lane lead-arena-0925c）：CC-242（79951791）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.88。要点：5 个角色模块的预存行值改为吃规则，**真实生效**（席德钢能规则原先完全无效）；生产零差。multiplierCoefficients 裁决不做。
-- 前几轮：263 CC-241（652c7c18，生产零差，只做归一）；262 CC-239/240；261 CC-238。
+**第 265 轮（lane lead-arena-0925c）：CC-243（a5df49c4）、CC-244（275ec8b4）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.89。**行规则作用面整线结项**：resourceCalc、specs、mechanics/agents、core/moveLookup 四层全部吃规则并各有锁。
+- 前几轮：264 CC-242（79951791）；263 CC-241（652c7c18）；262 CC-239/240。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **单一来源一览（新写代码直接用）**：
-- `src/data/moveTableQueries`：`findMoveById`；`getRowValue`（含行规则）；`rawRowValue`（只用于模块自算融合、且默认规则已表达同一融合的场景，现存仅焰烈）；`fusedRowValue`。
-- 默认启用的行规则只有 `burnice_stirring_fusion`（1171007/damage），由 `defaultRowFusionRules.test` 绊线守护。
-- 行规则锁：
-  - `giftRowFusionRule.test#RAW_ROW_READ_ALLOW`（resourceCalc）；
-  - `skillRowsFusionRule.test`；
-  - `specEventRowFusionRule.test`（specs 禁 `.values[0]`）；
-  - `agentModuleRowFusionRule.test#RAW_ROW_READ_ALLOW`（mechanics/agents 只允许 remielle）。
+- `src/data/moveTableQueries`：
+  - `findMoveById`；
+  - `getRowValue`（含行规则）；
+  - `fusedRowReader`（给 core `RowValueReader` 注入点用）；
+  - `rawRowValue`（只用于模块自算融合、且默认规则已表达同一融合的场景，现存仅焰烈）；
+  - `fusedRowValue`（多段 / 融合组「一次完整动作」，优先于单段）。
+- core 中需要吃规则的取值一律用 `RowValueReader` 参数注入（默认 rawRowReader），**不许在 core 里 import getRowValue**。
+- 行规则锁：giftRowFusionRule、skillRowsFusionRule、specEventRowFusionRule、agentModuleRowFusionRule、moveLookupRowFusionRule；融合口径锁：ultimatePromoteFusedDaze。
 
-**下一步（直接开工）**：`core/resource/moveLookup.ts` 喧响通道与平 A 回能，按 §24.88 ⑥ 的步骤 (a)→(b)/(c) 走：
-1. 探针（模板见第 263 / 264 轮写法，放 `src/composables/__tests__/tmp_*.test.ts`，跑完删除）：选 1091 雅，给 1091018 等连携 / 终结招式的 decibel_recovery 配 ×2 规则，看 teamTotalDamage 和终结技次数。
-2. 如果变了（编排层已另行吃规则），记「不做」并写明覆盖者；如果不变，就按 (b) 注入。注入点必须在 composables 层；core 不能 import getRowValue；强化平 A 分类判定保持原始值。
-3. 行为锁加 stash 反例，并做修复前后的管线对比。
-
-之后可选：
-- 行规则作用面到此基本收尾。之后回到 R6 清单里「可归一 / 可结构化」尚未处理的条目（见 `docs/mcp-r6-refactor-list.md`），挑架构收益最大的一条做。
-- ultimatePromote:218 赠送失衡值未走 fusedRowValue，要查与第 94 行的口径差异。
+**下一步（直接开工）**：没有排定项，按 `docs/mcp-r6-refactor-list.md` §8 自选（先读 §8 表，已查过的范围不要重扫）。本轮建议的扫描方向，按架构收益排序：
+1. **「一次完整动作」口径一致性**：CC-244 说明融合组（`data/moveFusions.ts`）口径可能还有别的孤立偏差。grep `getRowValue(` 在 composables/resourceCalc 与 mechanics 的调用，凡取的是终结技 / 连携 / 强化特殊技这类可能登记融合组的 moveId、却没先走 `fusedRowValue` 的，逐条判断。判据：同一动作在主执行里走 fused，其他地方也应走 fused。每条都要做修复前后对比，并写明生效面。
+2. **C6 前提：resourceCalc 直接读 store**（`helpers.ts`、`panelPhases.ts` 等 import stores）。先只做清点，写进 r6 §8：列出每个 store 读取点、读的是什么；判断能否改成由 roundInputs 注入，并估算改动面。不值得就写「不做」和理由。
+3. 如果都不满足判据，就按第 237 轮的先例记「本轮不改代码」，这是允许的。
 
 **已知坑**：
 - 命名带 raw 的函数是意图信号（CC-237 教训）；
-- verify 看不到生产默认行规则；**单元锁变红不等于管线生效**，每张卡都要做修复前后的管线对比（第 263 轮：spec 事件零差；第 264 轮：模块预存值真实生效，两者不同）；
-- spec buildExecutions 的 getRowValue 只放行 damage 行（§24.87 ④）；
+- verify 看不到生产默认行规则；**单元锁变红不等于管线生效**，每张卡都要做修复前后的管线对比（第 263 轮零差、第 264 轮生效、第 265 轮 CC-244 零差，各不相同）；
 - 测试里调用模块 buildCharConfig 要传 `team: [], slot: 0`；
 - 测试中模块级规则状态要 `afterEach(() => setActiveRowFusionRules([]))`；新测试先单独跑 `npx vue-tsc -b`；
+- 做「先量」实验时可以临时改源码，但必须 `git checkout -- <文件>` 还原，并确认 git status 干净后再做正式修改；
 - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；临时探针跑完删掉再 verify。
 
 **未决项**：
@@ -107,7 +104,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）；
 - 「进入失衡 +20 喧响」是否真实机制（§24.79 ①）；
 - 测试 harness 是否默认加载 spec 默认行规则（§24.85，暂不改）；
-- ultimatePromote:218 口径差异待查。
+- spec buildExecutions 的 getRowValue 只放行 damage 行（§24.87 ④，将来声明非 damage 行时再改）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

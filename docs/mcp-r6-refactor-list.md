@@ -414,3 +414,4 @@
 | 262 | 行规则作用面候选 1：resourceCalc 内联原始读取 | 赠送 / 手放行（CC-239，`01889e4d`）、治疗 / 专属回复（CC-240，`97404d67`）改吃规则；panelPhases 积蓄属性判定不做；登记表锁防止新增内联读取 | resourceCalc 新增 `.values[0]`（登记表锁会拦） |
 | 263 | 行规则作用面候选 1：specs/mechanics 事件载体原始读取 | CC-241（`652c7c18`）改走 data 单一来源；生产零差（仅 usesOverride 时 base 生效，现存 spec 无 ratio）；源码锁拦截 specs 新增 `.values[0]` | 将来声明非 damage 的 multiplierRowId 会撞上 buildExecutions 的 damage 闸 |
 | 264 | 行规则作用面候选 2：角色模块内联原始读取 | CC-242（`79951791`）5 个模块改走 getRowValue，登记表锁；multiplierCoefficients 不做（系数分析需要原表）；moveLookup 已给出设计，待量 | 喧响通道（channelMetricsOf）仍读原值，见 §24.88 ⑥ |
+| 265 | 行规则作用面候选 3：core/moveLookup；未决项 ultimatePromote:218 | CC-243（`a5df49c4`）注入式吃规则；CC-244（`275ec8b4`）赠送终结技失衡取融合组。全仓扫描后**行规则作用面结项**（§24.89 ④） | 新增绕开 getRowValue / fusedRowReader 的取值（各层锁会拦） |

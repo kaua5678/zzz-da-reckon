@@ -2797,3 +2797,35 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 - 验证：`npm run verify` EXIT=0（3973 passed | 29 skipped）；`npx vue-tsc -b` 干净。
 - 回退点：revert 79951791。
+
+### 24.89 第 265 轮：CC-243 moveLookup 行取值注入（a5df49c4）；CC-244 转大赠送终结技失衡取融合组（275ec8b4）；行规则作用面收尾
+
+**① 先量（按 §24.88 ⑥ (a)）**：雅 1091、艾莲 1191、月城柳 1221 三队（X+1211+1311），对该角色全部招式的 decibel_recovery 或 energy_recovery 配 ×2 规则：
+- `decibelSource.skillRegen` 只放大 ×1.74–1.96，`energySource.skillRegen` 只放大 ×1.48 左右，说明编排层只有一部分吃规则。
+- 一次性实验：临时在 moveLookup 的 3 个函数里乘上 `getRowFusionMultiplier`（不提交，已 checkout 还原），喧响放大到 ×1.93–1.98、能量到 ×1.82–2.04（剩余差异来自循环结构变化），证实缺口就在 moveLookup。
+- 雅的 energy_recovery 规则：总伤害 +5.54% → +12.34%。
+
+**② CC-243 改动（设计 (b)）**：
+- `core/resource/moveLookup.ts`：新增 `RowValueReader` 类型和 `rawRowReader`（默认，原始首列，core 保持纯函数，不 import 逻辑编辑器）。以下函数加可选末参 `rowValue` 并向下透传：6 个 `find*`（ExSpecial / Ultimate / ChainAttack / DodgeCounter / DefensiveAssist / AssistFollowUp）、`findCounterAssist`、`fusedGroupMetrics`、`channelMetricsOf`、`calcBasicAttackRegenPerSec`。`fusedGroupActionTime` 只取时长，不需要该参数。
+- 强化平 A 的 `damage>200` 判定属于**分类**，保持原始值（同 panelPhases:212 的裁决）。
+- `data/moveTableQueries.ts`：新增 `fusedRowReader`，是 getRowValue 的结构化适配，参数只要求 id + rows，不依赖 core 类型。
+- 注入点（11 处）：`resourceCalc/helpers.ts` 467–480 共 8 处、`ultimatePromote.ts` 216/219、`chainGift.ts` 61、`remielle.ts` 297/322。
+- 探针：生产默认规则下 1171-1211-1311、1091-1331-1401、1611-1621-1561 三队新旧读数逐位相同（生产零差）；用户启用喧响 / 能量规则时，新代码与实验读数完全一致。
+- 锁 `src/composables/__tests__/moveLookupRowFusionRule.test.ts`：
+  - 行为（1091 / 1191）：注入后连携 / 终结喧响 ×2、平 A 能量秒均 ×2；不注入时保持原值；damage 规则 ×100 不改变平 A 回能结果（分类判定不吃规则）；
+  - 源码：moveLookup 非注释行的 `values[0]` 只允许 rawRowReader 和强化平 A 分类两处；
+  - 调用点：composables/ 与 mechanics/ 调用上述函数的行必须带 `fusedRowReader`；
+  - 反例：保留 data 适配器、只 stash 另外 5 个源文件，6 条全红。
+
+**③ CC-244**：`ultimatePromote.ts` buildPromoteParams 的 `ultDaze` 原先只取主段 `getRowValue(ultMove,'daze')`，而同文件的伤害（fusedOf）、helpers:389/786 主执行、chainGift:71 赠送连携都是 `fusedRowValue ?? getRowValue`，这是孤立的口径偏差（§24.88 未决项「ultimatePromote:218」）。改为融合组整段。
+- 照 1341014：242.8 → 304。锁 `ultimatePromoteFusedDaze.test.ts`，stash 后变红。
+- **生效面**：1341 / 1031 / 1591 / 1191 与 1481 组队，总伤害新旧一致。ultDaze 只在 `adjustStunExecs` 中、且失衡执行表里还没有终结技行时，才补一行「好评转大·队友终结技」，所以影响限于失衡轴手放表的这一分支。价值是消除口径分叉。
+
+**④ 行规则作用面收尾**：全仓扫描非注释 `values[0]`，剩余的都有裁决：
+- views/StunAxisPage:789（存在性判断）、ResourcePage:193（展示）、LogicEditorPage:274/298（编辑器显示 base，必须用原值）；
+- remielle:101–106（按技能等级选列）、teamCompare:232（档位表，不是倍率表）、multiplierCoefficients（系数分析）、panelPhases:212（分类）；
+- moveLookup 两处（见上）、data/moveTableQueries 本身。
+- 结论：「行规则作用于该招式该行的一切计算取值」这一裁决（§24.85 ④）已在 resourceCalc、specs、mechanics/agents、core/moveLookup 四层全部落地，并各有锁。**这条线结项**。重开条件：新增绕开 getRowValue / fusedRowReader 的取值（锁会拦）。
+
+- 验证：v265 verify EXIT=0（3979 passed）；v265b verify EXIT=0（3980 passed | 29 skipped）；两次 vue-tsc 干净。
+- 回退点：revert 275ec8b4（CC-244，独立）/ revert a5df49c4（CC-243）。
