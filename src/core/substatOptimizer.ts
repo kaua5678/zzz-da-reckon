@@ -569,6 +569,16 @@ function greedyAllocate(
     }
   }
 
+  // CC-184（第 207 轮）：提前终止 / 全部边际为 0 时，剩余预算按模板优先序补满（与 useDefault 快速路径同口径）。
+  // 游戏里副词条不会空着；打分式看不到的属性（如克拉蕾吃防御、1441 吃生命）边际恒 0，旧版直接把步数浪费掉
+  // （1611 只分 20/39 步，比推荐低 25%）。补满后再由编排层真实伤害精修（refine）决定去向。
+  let leftover = totalSteps - Object.values(allocation).reduce((a, b) => a + b, 0)
+  for (const stat of template.stats) {
+    if (leftover <= 0) break
+    const add = Math.min(statCap - allocation[stat], leftover)
+    if (add > 0) { allocation[stat] += add; leftover -= add }
+  }
+
   // 最后一步时各词条的边际增量（即使已到 cap 也显示真实边际，供用户对比各词条收益）
   const marginalGains: Record<string, number> = {}
   const finalAlloc = { ...allocation }

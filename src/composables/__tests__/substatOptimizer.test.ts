@@ -101,4 +101,13 @@ describe('副词条优化器的队友 buff 输入与伤害管线同源（第 194
     computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => { capped++; return calc.teamTotalDamage.value ?? 0 }, maxEvals: 5 })
     expect(capped).toBeLessThanOrEqual(5)
   }, 60000)
+
+  // CC-184（第 207 轮）：打分式看不到的属性（克拉蕾吃防御）边际恒 0，旧版贪心提前终止只分 20/39 步。
+  it('贪心分配用满步数预算（与推荐快速路径同总步数）', async () => {
+    const { config, catalog } = await setupHarness([{ agentId: '1611' }, '', ''], { recommendedBuild: true })
+    const sum = (a: Record<string, number>) => Object.values(a).reduce((x, y) => x + y, 0)
+    const rec = sum(config.team[0]!.driveDisc.subStatAllocation ?? {})
+    expect(rec).toBe(39)
+    expect(sum(computeSubstatAllocationForSlot(0, config, catalog)!)).toBe(rec)
+  }, 60000)
 })
