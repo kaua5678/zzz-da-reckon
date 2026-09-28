@@ -48,7 +48,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { additionalGateBuffTable } from '@/specs/additionalGate'
 // CC-206：求值函数迁到 mechanics 层，store 默认门控与引擎共用同一个函数；本文件 re-export 保持壳契约（同一绑定）
-import { evalAdditionalAbilityBuffGates } from '@/mechanics/additionalAbilityGates'
+import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
 export { additionalGateBuffTable, evalAdditionalAbilityBuffGates }
 import type {
   CharacterOperationConfig,
@@ -507,9 +507,12 @@ export function resolveSlotPanelBuffInputs(
   // 额外能力硬门控（CC-203：表从 catalog 分组派生，来源「额外能力」全员覆盖；跨来源条目与专属修正见 additionalGateBuffTable）
   const additionalAbilityBuffGates = evalAdditionalAbilityBuffGates(
     team, id => catalogStore.agentsMap.get(id) ?? null, catalogStore.teammateBuffGroups)
+  // CC-207：模块钩子 teammateBuffGate 的正确性约束（蕾米埃尔互斥档位、波可娜 C6 防双计）引擎也执行——
+  // 此前只作用于 store 默认值，用户强行勾上时引擎照算
+  const gateBlockedBuffs = teammateBuffGateBlocks(team, catalogStore.teammateBuffGroups)
   const allTeammateBuffs = applyTeammateBuffRecipientFilters(
     [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
-      .filter(buff => additionalAbilityBuffGates.get(buff.id) !== false),
+      .filter(buff => additionalAbilityBuffGates.get(buff.id) !== false && !gateBlockedBuffs.has(buff.id)),
     team, slot, s => outOfCombatPanelProbe(s, configStore, catalogStore))
 
   const effectCoverageMap = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)

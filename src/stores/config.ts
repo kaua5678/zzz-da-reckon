@@ -8,8 +8,8 @@ import type {
 } from '@/types/catalog'
 import { computeDefaultSubStatAllocation, getTemplate } from '@/core/substatOptimizer'
 import { useCatalogStore } from './catalog'
-import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
-import { evalAdditionalAbilityBuffGates } from '@/mechanics/additionalAbilityGates'
+import { getAgentMechanic } from '@/mechanics'
+import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
 import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AppliedBossPreset } from '@/types/bossPreset'
 import { counterAssistOf } from '@/data/counterAssists'
@@ -383,11 +383,6 @@ export function deriveTeammateBuffEnabled(
     }
   }
 
-  // CC-64b：角色级队友 buff 附加条件经模块钩子 teammateBuffGate（现：蕾米埃尔额外能力档位）；原为此处
-  // getRemielleAdditionalState 写死 1581 + 下方 resolveSpecialTeammateBuffEnabled 的 5 个 buff id 分支。
-  const buffGateTeam = teamAgents.map(({ agent }) => agent!)
-  const buffGates = getRegisteredAgentMechanics().flatMap(m => (m.teammateBuffGate ? [m.teammateBuffGate] : []))
-
   // 构建 MechanicTeamMember[] 用于额外能力条件统一判定
   const mechanicTeam: MechanicTeamMember[] = teamAgents.map(({ char, agent }) => ({
     slot: char.slot,
@@ -402,17 +397,8 @@ export function deriveTeammateBuffEnabled(
   // 此前这里另算一份 aaActiveMap（只看 spec 声明、不经模块修正）⇒ 凯撒有异阵营队友时引擎放行、这里默认不勾；
   // 菲欧妮 tier3 异常数不足时这里默认勾上、引擎丢弃。现在「默认勾不勾」==「引擎认不认」。
   const aaGates = evalAdditionalAbilityBuffGates(mechanicTeam, aid => getAgent(aid) ?? null, groups)
-
-  // CC-76 口径裁定（census §5.83）：多个模块对同一条 buff 表态时 = **逻辑与**（任一返回 false 即禁用），
-  // 与模块注册顺序无关。原实现「第一个返回 boolean 的说了算」依赖注册顺序；现有两个声明者（蕾米埃尔 5 个 buff id /
-  // 波可娜 pulchra_extra_trap_followup）键不相交 ⇒ 两种口径逐值相同。
-  function resolveSpecialTeammateBuffEnabled(buffId: string, baseEnabled: boolean, groupId: string, groupCinema: number | undefined): boolean {
-    if (!baseEnabled) return false
-    for (const gate of buffGates) {
-      if (gate({ buffId, team: buffGateTeam, groupId, groupCinema }) === false) return false
-    }
-    return true
-  }
+  // CC-64b / CC-207：模块钩子 teammateBuffGate（蕾米埃尔档位、波可娜 C6 互斥）——与引擎共用 teammateBuffGateBlocks
+  const gateBlocked = teammateBuffGateBlocks(mechanicTeam, groups)
 
   const out: Array<{ id: string; enabled: boolean }> = []
   // 遍历所有队友 buff 组（保持 groups 顺序 = 抽取前写入对象键序）
@@ -426,7 +412,7 @@ export function deriveTeammateBuffEnabled(
       const requiredCinema = parseCinemaRequirement(sourceLabel)
       const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema
       // CC-64c：波可娜 C6 base 条互斥也经 teammateBuffGate（pulchra.ts 声明；原为此处写死 1351 分支）
-      let shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable, agentId, cinemaLevel)
+      let shouldEnable = baseShouldEnable && !gateBlocked.has(buff.id)
       // 通用额外能力门控（CC-203 表 + CC-206 同一求值函数）：引擎门控关 ⇒ 默认不勾。
       // CC-199：按组 id（= 拥有者）查，不按 buff.ownerId——catalog 里 1411/1581/1511 的 ownerId 是拼音 slug
       // （youye/remielle/nangongyu），按它查恒 undefined ⇒ 柚叶额外能力曾无条件生效。
