@@ -8,11 +8,13 @@ import {
   ANBY_ZERO_ADDITIONAL_CRIT_RATE,
   ANBY_ZERO_CORE_DMG,
   ANBY_ZERO_RAIJITU_MOVE_ID,
+  ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL,
   ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID,
   computeAnbyZeroCycle,
   anbyZeroMechanic,
 } from '@/mechanics/agents/anbyZero'
 import { setupHarness } from '@/test/harness'
+import { getAgentSpec } from '@/specs/registry'
 
 async function setup(mateId = '1141', cinemaLevel = 0, potentialLevel = 6) {
   const result = await setupHarness([
@@ -141,6 +143,25 @@ describe('零号·安比完整计算链', () => {
 })
 
 describe('零号·安比全队追加攻击增伤（teamBuff 全队通道）', () => {
+  it('第 228 轮：展示表 ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL 与 spec 公式逐档相等；结果卡字段不乘银星覆盖率', () => {
+    const effect = getAgentSpec('1381')!.teamBuffs!.find(b => b.id === 'anby_zero_extra_team_followup')!.effects![0] as any
+    // 公式文本被改 ⇒ 本断言红，提醒同步展示表
+    expect(effect.formula.expression).toBe('25 + min(1, max(0, x - 1)) * (4*x + 1)')
+    for (let x = 1; x <= 6; x++) {
+      expect(ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL[x], `潜能 ${x}`).toBe(25 + Math.min(1, Math.max(0, x - 1)) * (4 * x + 1))
+      expect(cycle({ potentialLevel: x, silverStarCoverage: 0.5 }).teamFollowupDmgBonus).toBe(ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL[x])
+    }
+    expect(cycle({ additionalActive: false }).teamFollowupDmgBonus).toBe(0)
+  })
+
+  it('第 228 轮：引擎生效值随潜能变化——队友面板满潜比 1 潜多 25（50 vs 25）', async () => {
+    const hi = await setup('1141', 0, 6)
+    const v6 = (computePanelPhases(1, hi.config, hi.catalog)!.inCombat as any).dmgBonus__additionalAttack
+    const lo = await setup('1141', 0, 1)
+    const v1 = (computePanelPhases(1, lo.config, lo.catalog)!.inCombat as any).dmgBonus__additionalAttack
+    expect(v6 - v1).toBeCloseTo(25, 6)
+  })
+
   it('额外能力电极化：全队 dmgBonus__additionalAttack +25%（teamBuff 合并）', async () => {
     const { catalog, config } = await setup('1141', 0)
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any

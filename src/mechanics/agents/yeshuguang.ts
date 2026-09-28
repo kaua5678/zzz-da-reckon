@@ -192,8 +192,6 @@ export interface YeshuguangCycleResult {
   guanzhiPerForm: number
   /** 全局飞光：总观止/6（满档倍率当量，线性） */
   feiguangFullCasts: number
-  /** @deprecated 兼容旧字段，= feiguangFullCasts */
-  feiguangPerForm: number
   feiguangScaleEach: number
   miePerForm: number
   jiPerForm: number
@@ -281,7 +279,6 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
   // 飞光全局线性：总观止/6 × 满档倍率行（表值=耗 6 观止）；不再拆多次 hit
   const guanzhiTotal = guanzhiPerForm * totalForms
   const feiguangFullCasts = guanzhiTotal / FEIGUANG_FULL_GUANZHI
-  const feiguangPerForm = totalForms > 0 ? feiguangFullCasts / totalForms : 0
   const feiguangScaleEach = 1 // 行上直接用满档倍率 × feiguangFullCasts 当 count 缩放
 
   // 基础收尾
@@ -309,7 +306,6 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
     swordSpentPerForm,
     guanzhiPerForm,
     feiguangFullCasts,
-    feiguangPerForm,
     feiguangScaleEach,
     miePerForm,
     jiPerForm,

@@ -112,10 +112,8 @@ export interface PhoenixCycle {
   coreProficiency: number
   weaknessCritRate: number
   weaknessCritDmg: number
-  c1CritDmg: number
   teamAnomalyCount: number
   c2BuildUpEff: number
-  emberGain: number
   chargedCount: number
   note: string
 }
@@ -464,10 +462,8 @@ function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput) {
         coreProficiency: PHOENIX_CORE_PROFICIENCY,
         weaknessCritRate: Math.round(weakness.rate * 100) / 100,
         weaknessCritDmg: weakness.dmg,
-        c1CritDmg: cinema >= 1 ? PHOENIX_C1_CRIT_DMG : 0,
         teamAnomalyCount: 2,
         c2BuildUpEff: cinema >= 2 ? PHOENIX_C2_BUILDUP_EFF : 0,
-        emberGain: 0,
         chargedCount,
         note: '脆弱暴击承载 = spec teamBuffs（含队友受益）；重生/消亡状态机未建模；余火按总量口径。',
       } as PhoenixCycle,

@@ -16,7 +16,8 @@
  * - 核心被动「银星使追加攻击暴击伤害额外提升=自身暴伤×35%（30%+延伸5%）」：经 spec teamBuffs
  *   derived 通道全队生效（sourceStat=critDmg 取安比自身局内暴伤，targetSkillType=additionalAttack）。
  * - 额外能力「全队追加攻击对银星敌人+25%」：经 spec teamBuffs fixed 通道全队生效
- *   （dmgBonus__additionalAttack）；潜能电脉冲 34-50% 档位待 teamBuff 通道支持 potentialLevel，暂以基线 25 建模。
+ *   （dmgBonus__additionalAttack）；潜能电脉冲档位由 spec 公式 `25 + min(1, max(0, x-1))·(4x+1)`（x = potentialLevel）给出，
+ *   即 25/34/38/42/46/50。`ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL` 是同一张表的展示副本（结果卡读），anbyZero.test 锁两者逐档相等。
  * - 影画2（用户口径 2026-08）：终结技 6 电鸣等效白雷直接计入总量；苍光·临界速度加快 50%
  *   （每 3 层电鸣一招，动作时间 ÷1.5，按电鸣配额折算均摊）。
  * - 苍光·临界（1381023）：每轮 3 层白雷打完后接一招收尾，499.1%、真实动作时间 0.867s 占前台。
@@ -52,7 +53,8 @@ export const ANBY_ZERO_C2_THUNDER_PER_ULT = 6
 /** 影画2：每消耗 3 层电鸣，下一次苍光·临界速度加快 50%（动作时间 ÷1.5） */
 export const ANBY_ZERO_C2_CRITICAL_SPEEDUP = 1.5
 export const ANBY_ZERO_C6_VORTEX_MULTIPLIER = 1000
-/** 额外能力电极化「全队追加攻击对银星敌人伤害提升」按潜能等级（index 0 占位，1=I=25% … 6=VI=50%） */
+/** 额外能力电极化「全队追加攻击对银星敌人伤害提升」按潜能等级（index 0 占位，1=I=25% … 6=VI=50%）。
+ * 引擎生效值走 spec 1381.json 的 formula；本表只给结果卡展示，anbyZero.test 锁与 spec 公式逐档相等（第 228 轮）。 */
 export const ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL = [0, 25, 34, 38, 42, 46, 50] as const
 
 export interface AnbyZeroCycle {
@@ -147,9 +149,8 @@ export function computeAnbyZeroCycle(input: {
     criticalFastCount,
     criticalActionTime,
     coreDmgBonus: ANBY_ZERO_CORE_DMG * silverStarCoverage,
-    teamFollowupDmgBonus: input.additionalActive
-      ? ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL[potentialLevel] * silverStarCoverage
-      : 0,
+    // 第 228 轮：去掉 ×silverStarCoverage——引擎侧 spec teamBuff 不乘银星覆盖率（只乘 buff 自身覆盖率），展示与生效值对齐
+    teamFollowupDmgBonus: input.additionalActive ? ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL[potentialLevel] : 0,
     c4ResIgnore: cinemaLevel >= 4 ? ANBY_ZERO_C4_RES_IGNORE * silverStarCoverage : 0,
     critRateGain: (input.additionalActive ? ANBY_ZERO_ADDITIONAL_CRIT_RATE : 0)
       + (cinemaLevel >= 2 ? ANBY_ZERO_C2_CRIT_RATE : 0),
@@ -274,7 +275,7 @@ function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '雷殛', value: `${cycle.raijituCount} 次`, detail: '同一敌人每3次白雷额外伤害触发' },
       { label: '电磁涡流', value: `${cycle.vortexCount} 次`, detail: '影画6每6次白雷触发1000%攻击力电伤' },
       { label: '银星增伤', value: `+${cycle.coreDmgBonus}%`, detail: '对银星标记敌人，按覆盖率折算' },
-      { label: '全队追攻增伤', value: `+25%`, detail: '额外能力电极化（teamBuff 全队通道 dmgBonus__additionalAttack）；潜能电脉冲 34-50% 档位待 teamBuff 支持 potentialLevel' },
+      { label: '全队追攻增伤', value: `+${cycle.teamFollowupDmgBonus}%`, detail: '额外能力电极化（teamBuff 全队通道 dmgBonus__additionalAttack），按潜能电脉冲档位 25/34/38/42/46/50；未触发额外能力为 0；再乘该 buff 的覆盖率' },
       { label: '影画4电抗无视', value: `+${cycle.c4ResIgnore}%`, detail: '命中银星敌人，按覆盖率折算' },
       { label: '暴击率', value: `+${cycle.critRateGain}%`, detail: '额外能力+10，影画2+12' },
     ],
