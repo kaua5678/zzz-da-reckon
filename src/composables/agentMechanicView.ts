@@ -5,8 +5,7 @@
  * settings（机制设置表）/ combos（轴连段定义）/ resourceSections（资源卡专属分区）。
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
-import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
-import type { AutoAxisPresetHints } from '@/data/stunAxisPresets'
+import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import type { AgentMechanicModule, AxisEditorBlockMark, CharacterCountInputDecl } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
 
@@ -214,11 +213,7 @@ export function teamHasGuaranteeFuryOwner(team: ReadonlyArray<{ agentId?: string
   return team.some(c => !!c?.agentId && !!getAgentMechanic(c.agentId)?.ownsGuaranteeFury)
 }
 
-/** 自动失衡轴选档提示（CC-60；生产入口 roundInputs#autoPreset 传给 selectAutoStunAxisPreset） */
-export const AUTO_AXIS_PRESET_HINTS: AutoAxisPresetHints = {
-  isChapterOwner: id => !!getAgentMechanic(id)?.axisPresetChapterOwner,
-  isPreferred: id => !!getAgentMechanic(id)?.axisPresetPreferred,
-}
+// AUTO_AXIS_PRESET_HINTS 已迁至 mechanics/registry.ts（CC-246：管线层 roundInputs 不再反向依赖本展示门面）
 
 /** 队中第一个「章」档位归属角色的槽位；无 ⇒ -1（CC-60；原 StunAxisPage 写死 some/find agentId === 伊德海莉） */
 export function teamAxisPresetChapterOwnerSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): number {

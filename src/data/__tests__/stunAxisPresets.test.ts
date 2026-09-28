@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { matchStunAxisPresets, cloneStunAxes, presetTeamKey, normalizeAxesForExport, resolveStunAxisPlan, selectAutoStunAxisPreset, stunAxisPresets } from '@/data/stunAxisPresets'
 // CC-60：章/有琉 选档提示改由模块声明注入（生产同源 roundInputs#autoPreset）
-import { AUTO_AXIS_PRESET_HINTS } from '@/composables/agentMechanicView'
+import { AUTO_AXIS_PRESET_HINTS } from '@/mechanics'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 
 const sample: StunAxisPreset[] = [

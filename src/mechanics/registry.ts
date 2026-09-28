@@ -1,5 +1,6 @@
 import type { AgentMechanicModule } from './types'
 import type { MechanicSetting } from '@/types/resource'
+import type { AutoAxisPresetHints } from '@/data/stunAxisPresets'
 import { agentSpecs } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 
@@ -44,6 +45,16 @@ export function registerAgentMechanic(module: AgentMechanicModule): void {
 
 export function getAgentMechanic(agentId: string): AgentMechanicModule | undefined {
   return agentMechanics.get(agentId)
+}
+
+/**
+ * 自动失衡轴选档提示（CC-60；CC-246 自 composables/agentMechanicView 迁入）：由注册表派生的纯声明读取，
+ * 生产入口 resourceCalc/roundInputs#autoPreset 传给 data `selectAutoStunAxisPreset`（data 层不 import mechanics）。
+ * 放在 mechanics 而非展示门面：管线层不得反向依赖展示层 composable（锁 resourceCalcStoreDeps.test）。
+ */
+export const AUTO_AXIS_PRESET_HINTS: AutoAxisPresetHints = {
+  isChapterOwner: id => !!getAgentMechanic(id)?.axisPresetChapterOwner,
+  isPreferred: id => !!getAgentMechanic(id)?.axisPresetPreferred,
 }
 
 export function getRegisteredAgentMechanics(): AgentMechanicModule[] {

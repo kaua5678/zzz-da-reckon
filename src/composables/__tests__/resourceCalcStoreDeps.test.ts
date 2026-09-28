@@ -12,6 +12,8 @@ import { dirname, join, relative, resolve } from 'node:path'
 
 const SRC = resolve(__dirname, '../..')
 const ALLOWED = new Set(['stores/selectionReads.ts'])
+/** CC-246：管线层也不得运行时依赖 resourceCalc/ 以外的 composables（展示门面 / 分析器等上层） */
+const isUpperComposable = (rel: string) => rel.startsWith('composables/') && !rel.startsWith('composables/resourceCalc/')
 
 function resolveSpec(from: string, spec: string): string | null {
   let p: string
@@ -23,7 +25,7 @@ function resolveSpec(from: string, spec: string): string | null {
 }
 
 describe('CC-245 resourceCalc 运行时不依赖 pinia store', () => {
-  it('依赖闭包（排除 import type）进入 stores/ 的只允许 selectionReads', () => {
+  it('依赖闭包（排除 import type）进入 stores/ 的只允许 selectionReads；不进入 resourceCalc/ 以外的 composables（CC-246）', () => {
     const seen = new Set<string>()
     const offenders = new Map<string, string>()
     const walk = (file: string, chain: string[]) => {
@@ -34,7 +36,7 @@ describe('CC-245 resourceCalc 运行时不依赖 pinia store', () => {
         const target = resolveSpec(file, m[1])
         if (!target) continue
         const rel = relative(SRC, target).replace(/\\/g, '/')
-        if (rel.startsWith('stores/') && !ALLOWED.has(rel) && !offenders.has(rel)) {
+        if (((rel.startsWith('stores/') && !ALLOWED.has(rel)) || isUpperComposable(rel)) && !offenders.has(rel)) {
           offenders.set(rel, [...chain, file].map(f => relative(SRC, f)).join(' > '))
         }
         walk(target, [...chain, file])

@@ -223,7 +223,7 @@ export interface AutoAxisPresetHints {
   /** 预设 team 含该角色时优先（CC-60：模块声明 axisPresetPreferred，现唯一 = 琉音） */
   isPreferred(agentId: string): boolean
 }
-/** 无提示：不做章过滤、不做优先（data 层不 import mechanics；生产调用方传 `AUTO_AXIS_PRESET_HINTS`，见 composables/agentMechanicView.ts） */
+/** 无提示：不做章过滤、不做优先（data 层不 import mechanics；生产调用方传 `AUTO_AXIS_PRESET_HINTS`，见 mechanics/registry.ts） */
 export const NO_AUTO_AXIS_PRESET_HINTS: AutoAxisPresetHints = { isChapterOwner: () => false, isPreferred: () => false }
 
 export function selectAutoStunAxisPreset(

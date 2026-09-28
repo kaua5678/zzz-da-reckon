@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { AUTO_AXIS_PRESET_HINTS, teamAxisPresetChapterOwnerSlot, teamHasAxisPresetPreferred } from '@/composables/agentMechanicView'
+import { teamAxisPresetChapterOwnerSlot, teamHasAxisPresetPreferred } from '@/composables/agentMechanicView'
+import { AUTO_AXIS_PRESET_HINTS } from '@/mechanics'
 import { matchStunAxisPresets, selectAutoStunAxisPreset, stunAxisPresets, type StunAxisPreset } from '@/data/stunAxisPresets'
 
 /** 原实现逐字（写死 id） */
