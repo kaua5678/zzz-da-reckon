@@ -87,6 +87,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **提交只 add 明确列出的文件，绝不用 `git diff --name-only` 批量取**（第 221 轮事故）：CC-198 代码提交 3d0217e3 这样取文件，把另一个 lane 在我开 worktree 之后才改的 `src/stores/config.ts`（默认队伍只初始化一次，配套测试未提交）一起提交并 push 了。已用 3cb3b846 在历史里撤回、工作区副本原样保留（备份 `/home/kaua/calc-arch/k221/config.ts.otherlane`）。以后提交前先 `git diff --cached --stat` 核对清单，和 worktree 里验证过的文件逐一对上。
 - **模块在哪个阶段产行，展示层就读哪个阶段的行快照**（CC-198）：`preModuleExecutions` = buildExecutions 钩子看到的行（不含额外强特行等后物化行）；`prePatchExecutions` = patchExecutions 钩子看到的行。两者都是浅拷贝。golden 预设里有千夏队（6 支），zd 的 625 个预设里没有。
 - **判断超预算别看 golden 的逐槽 front**（CC-197 订正 CC-196 的误判）：它是毛时间（necessary 按 GROSS 含合轴段），逐槽相加可以 > 180。要看 `buildTeamTimeSummary(...)` 的 `rowsNet` / `overflow` / `slack`（留白棘轮同口径）与 `rr.convergence.timeTruncatedSeconds`。
 - **资源驱动的额外必做动作用 `extraNecessaryAction`**（CC-197）：时间进账本估计、可读 state、可返回多行、喧响不填就回落倍率表；不要在 buildExecutions 里推 necessary 行再靠折叠残差追认。

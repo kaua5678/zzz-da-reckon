@@ -1694,4 +1694,5 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - golden：6 支千夏队伤害 +0.05%～+0.11%（auto-1321-1481-1491、1431-1491-1341、1431-1491-1311、1431-1481-1491、1201-1481-1491、1021-1571-1491），时间账零变化，其他条目零差；留白棘轮和 moduleAnomalyEventRecords 全绿。注意：golden 的预设里**有**千夏队，zd 的 625 个预设里**没有**。
 - **测试**：`qianxia.test.ts` 三处单测直调改为 `patchExecutions!`；`basicSegmentFoldCc195.test.ts` 的 cardHits 补上 1491008。后者断言「展示层供给 = 按最终行数出来的期望值」，同时守住展示与产行同源。
 - **验证**：vue-tsc 0；verify EXIT=0（3845，在 worktree `/home/kaua/calc-arch/wt221` 里跑，排除主工作区里其他 lane 的未跟踪测试）；check-guards 通过。
-- **回退点**：`git revert 3d0217e3`。只撤千夏：把 `patchExecutions: buildQianxiaExecutions` 改回 `buildExecutions:`、展示改回读 `preModuleExecutions`（通用快照没有消费者也无害，可以保留）。
+- **事故与修正**：3d0217e3 误带了其他 lane 的 `src/stores/config.ts` 改动（未经本卡验证），已由 3cb3b846 撤回，工作区副本原样保留。3cb3b846 之后 `git diff 599be93b HEAD -- src/stores/config.ts` 为空。
+- **回退点**：`git revert 3d0217e3`。（要连同 3cb3b846 一起看：单独 revert 3d0217e3 会把 config.ts 反向改一次，需先 revert 3cb3b846 或手工排除 config.ts。）只撤千夏：把 `patchExecutions: buildQianxiaExecutions` 改回 `buildExecutions:`、展示改回读 `preModuleExecutions`（通用快照没有消费者也无害，可以保留）。
