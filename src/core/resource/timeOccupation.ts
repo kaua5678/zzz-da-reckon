@@ -75,7 +75,6 @@ export function frontlineOccupationBreakdown(rr: TeamResourceResult): FrontlineO
     if (Number.isFinite(slot)) overlapBySlot[slot] = (overlapBySlot[slot] ?? 0) + sec
   }
   let total = 0
-  let totalCredit = 0
   let totalRowNet = 0
   let gross = 0
   let axisOverlap = 0
@@ -92,16 +91,16 @@ export function frontlineOccupationBreakdown(rr: TeamResourceResult): FrontlineO
     // 合轴抵扣只再扣超出轴内节省的增量（max 口径，防双重扣减）
     const extraCredit = Math.max(0, (ch.timeAllocation.comboAlignCredit ?? 0) - (overlapBySlot[ch.slot] ?? 0))
     total += Math.max(0, rowNet - extraCredit)
-    totalCredit += ch.timeAllocation.comboAlignCredit ?? 0
     totalRowNet += rowNet
   }
-  // 兜底：只有团队级 axisOverlapSeconds、无按块分摊（老注入路径/测试）→ 团队级 max 口径
-  const teamLevel = Object.keys(overlap).length === 0 && (rr.axisOverlapSeconds ?? 0) > 0
-  const net = teamLevel ? Math.max(0, totalRowNet - Math.max(totalCredit, rr.axisOverlapSeconds ?? 0)) : total
+  // CC-178（第 201 轮）：删掉「只有团队级 axisOverlapSeconds、无按块分摊」兜底分支——栈引擎
+  // （core/stunAxisStack.ts）逐块同时累加团队总量与按块分摊（Σ 分摊 = 总量），生产中不存在
+  // 「总量 > 0 而分摊为空」的状态，该分支只有测试在走；团队总量字段随之删除（按块分摊是唯一表示）。
+  const net = total
   return {
     grossFrontline: gross,
-    axisOverlap: teamLevel ? Math.max(0, gross - totalRowNet) : axisOverlap,
-    creditApplied: teamLevel ? Math.max(0, totalRowNet - net) : Math.max(0, totalRowNet - total),
+    axisOverlap,
+    creditApplied: Math.max(0, totalRowNet - total),
     net,
     saved: Math.max(0, gross - net),
   }

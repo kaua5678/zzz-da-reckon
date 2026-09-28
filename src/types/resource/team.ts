@@ -126,13 +126,11 @@ export interface TeamResourceResult {
   /** 三层不动点的收敛诊断（见 ConvergenceReport） */
   convergence: ConvergenceReport
   /**
-   * 轴内合轴节省（秒，团队级）：失衡窗口内跨角色块并行（如般岳强特时琉音抱拳）只计一次前台，
-   * 节省 = 轴内块时长和 − 块区间并集（栈引擎 overlapSeconds）。**前台净占用口径**：
-   * Σ物化前台行 totalTime − 本值 = 时间轴净占用（iterate 平A池吃进、折叠循环/队伍对比超时判定按净占用）。
-   * 非轴模式 / 无并行块 = 0。
+   * 轴内合轴节省按块分摊（`${slot}:${moveId}` → 秒）：失衡窗口内跨角色块并行（如般岳强特时琉音抱拳）只计一次前台，
+   * Σ 值 = 轴内块时长和 − 块区间并集（栈引擎 overlapSeconds）。**前台净占用口径**见
+   * core/resource/timeOccupation.ts#frontlineOccupationBreakdown。非轴模式 / 无并行块 = 空。
+   * 团队级总量字段 axisOverlapSeconds 已于 CC-178 删除（只写不读；要总量就对本表求和）。
    */
-  axisOverlapSeconds?: number
-  /** 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：单角色行级扣减用，Σ 值 = axisOverlapSeconds */
   axisOverlapByAction?: Record<string, number>
   /**
    * 时间线溢出＝**被截断掉的秒数**（合轴抵扣后，轴模式抵扣与栈引擎节省取 max）：资源允许的

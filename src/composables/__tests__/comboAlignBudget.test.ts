@@ -179,13 +179,11 @@ describe('netFrontlineOccupation（超时判定单一事实源）', () => {
     opts: {
       creditBySlot?: Record<number, number>
       overlapByAction?: Record<string, number>
-      overlapSeconds?: number
     } = {},
   ): TeamResourceResult {
     const slots = [...new Set(rows.map(r => r.slot))]
     return {
       axisOverlapByAction: opts.overlapByAction,
-      axisOverlapSeconds: opts.overlapSeconds,
       characters: slots.map(slot => ({
         slot,
         executions: rows.filter(r => r.slot === slot).map(r => ({
@@ -213,7 +211,7 @@ describe('netFrontlineOccupation（超时判定单一事实源）', () => {
     expect(netFrontlineOccupation(rr2)).toBeCloseTo(30, 6)
   })
 
-  it('非轴模式：只扣招式抵扣；后台行不计；无分摊时团队级 max 兜底', () => {
+  it('非轴模式：只扣招式抵扣；后台行不计', () => {
     const rr = fakeRR(
       [
         { slot: 0, moveId: 'm1', totalTime: 50 },
@@ -222,12 +220,7 @@ describe('netFrontlineOccupation（超时判定单一事实源）', () => {
       { creditBySlot: { 0: 6 } },
     )
     expect(netFrontlineOccupation(rr)).toBeCloseTo(44, 6)
-    // 只有 axisOverlapSeconds（老注入路径/测试）：抵扣与节省取 max，不叠加
-    const scalar = fakeRR(
-      [{ slot: 0, moveId: 'm1', totalTime: 50 }],
-      { creditBySlot: { 0: 6 }, overlapSeconds: 10 },
-    )
-    expect(netFrontlineOccupation(scalar)).toBeCloseTo(40, 6)
+    // CC-178：原「只有团队级 axisOverlapSeconds」兜底子用例随分支删除（生产中该状态不存在，见 timeOccupation.ts 注释）
   })
 })
 

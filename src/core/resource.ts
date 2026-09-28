@@ -366,7 +366,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     characters,
     iterations: diag.iterations,
     converged: diag.converged,
-    axisOverlapSeconds: config.axisOverlapSeconds,
     axisOverlapByAction: config.axisOverlapByAction,
     overflowSeconds: config.overflowSeconds,
     truncationCuts: truncationCuts.length > 0 ? truncationCuts : undefined,

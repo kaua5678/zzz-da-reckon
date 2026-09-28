@@ -795,12 +795,10 @@ export interface ResourceCalcConfig {
    */
   timeBudgetRefund?: number
   /**
-   * 轴内合轴节省（秒，团队级，输入）：失衡窗口内跨角色块并行（般岳强特时琉音抱拳）只计一次前台。
-   * 由 useResourceCalc 用栈引擎算好传入（StackTraversalResult.overlapSeconds）；iterate 平A池吃进、
-   * 折叠循环 excess 测量与结果上报（TeamResourceResult.axisOverlapSeconds）共用同一值。
+   * 轴内合轴节省按块分摊（`${slot}:${moveId}` → 秒，输入）：失衡窗口内跨角色块并行（般岳强特时琉音抱拳）只计一次前台。
+   * 由编排层用栈引擎算好传入（StackTraversalResult.overlapByAction，Σ = overlapSeconds）；iterate 平A池、
+   * 折叠循环按行扣减、结果上报共用同一值。团队级总量字段 axisOverlapSeconds 已于 CC-178 删除（按块分摊是唯一表示，要总量就求和）。
    */
-  axisOverlapSeconds?: number
-  /** 合轴节省按块分摊（`${slot}:${moveId}` → 秒）：折叠循环按行扣减用 */
   axisOverlapByAction?: Record<string, number>
   /**
    * 轴模式琉音赠大计数（编排层注入，`useResourceCalc` 按轴预设 promoteVariant 块 × 窗口数加权）：

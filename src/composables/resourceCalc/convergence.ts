@@ -376,7 +376,6 @@ export function createRunCalcRound(deps: {
     // 轴内合轴检测（2026-08-30，用户口径）：窗口内跨角色块并行（如般岳强特时琉音抱拳）只计一次前台。
     // 栈引擎按执行块区间并集算 overlap；前台净占用 = Σ物化前台行 − overlap，iterate 平A池吃进节省。
     // 固定轴的执行只取决于窗口数 + 时间门控（资源不足照样执行只记警告）→ 无需能量/喧响输入。
-    let axisOverlapSeconds = 0
     let axisOverlapByAction: Record<string, number> = {}
     if (axisActive) {
       const overlapStack = calcStunAxisStack({
@@ -384,7 +383,6 @@ export function createRunCalcRound(deps: {
         stunCount,
         windowDuration: computeWindowDuration(),
       })
-      axisOverlapSeconds = overlapStack.overlapSeconds
       axisOverlapByAction = overlapStack.overlapByAction
     }
     // 轴内**实际执行**集合（资源门控后）= `axisActionCounts` / `axisUltimateTotal` 的**唯一来源**
@@ -670,7 +668,6 @@ export function createRunCalcRound(deps: {
       stunCount,
       // CC-140：只在 stunPlanProjection='physical' 时被计数通道读（缺省模式下无读者 ⇒ 0 delta）
       ...(threads.prevPoolStunCount != null ? { stunCountPhysical: threads.prevPoolStunCount } : {}),
-      axisOverlapSeconds,
       axisOverlapByAction,
       ...(axisUltimatePromote ? { axisUltimatePromote } : {}),
       teamSize: configStore.team.length,
