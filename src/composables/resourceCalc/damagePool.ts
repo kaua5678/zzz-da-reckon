@@ -11,11 +11,11 @@
  * 依赖注入：全部输入经 DamagePoolContext 快照传入（computed 在 useResourceCalc 侧解包），
  * computeWindowDuration 为例外（需要 configStore 实时窗口时长，函数注入保持单一职责）。
  */
-import { calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
-import { calcPoolDirectDamage, type PoolDirectEnv } from './poolDirectDamage'
+import { resolveSpecialDamageProfile } from '@/core/damage'
+import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from './poolDamage'
 // 面板数组按位置压缩（下标 ≠ 槽位号）⇒ 一律 panelAt 按身份取，不用 damagePanels[slot]（见 core/panel.ts）。
 import { panelAt } from '@/core/panel'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, resolveStatElement } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement } from '@/core/anomalyPool/helpers'
 import { getAgentMechanic } from '@/mechanics'
 import type { AgentAxisOverlays, AxisScalarOverlays } from '@/mechanics'
 // 2026-09-16 round 17（R15-c）：`YESHUGUANG_FULL_STUN_MOVES` 与 `HUGO_FULL_STUN_MOVES` 的 import
@@ -114,8 +114,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       return agentNames[agentId] || catalogStore.agentsMap.get(agentId)?.name?.zhCN || `槽${slot + 1}`
     }
     const infectionElement = getWindInfectionElement(configStore, catalogStore)
-    // CC-176：直伤入参拼装的环境量（正路 pushDirect 与模块 extraAnomalyRows.directDamage 共用）
-    const directEnv: PoolDirectEnv = { enemy: configStore.enemy, enemyDamageRes, infectionElement }
+    // CC-176/177：直伤 / 异常入参拼装的环境量（正路 pushDirect / pushRelease / 标准异常与模块 extraAnomalyRows 共用）
+    const poolEnv: PoolDamageEnv = { enemy: configStore.enemy, enemyDamageRes, infectionElement, anomalyMultiplier: globalAnomalyMultiplier }
     const windSlot = configStore.team.findIndex(c => {
       const agent = c.agentId ? catalogStore.agentsMap.get(c.agentId) : null
       return agent?.damageElement === 'wind'
@@ -184,7 +184,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         ? 1 + (stunBase - 1) * stunForThis
         : 1
       const rowAgent = catalogStore.agentsMap.get(row.agentId)
-      const result = calcPoolDirectDamage(directEnv, {
+      const result = calcPoolDirectDamage(poolEnv, {
         panel,
         element: row.element,
         skillMultiplier: row.multiplier,
@@ -256,24 +256,17 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
             labelPrefix: '异放暴击',
           }
         : undefined
-      const result = calcAnomalyDamage({
+      // 异放同样吃面板通用减防（结算区口径：docs/mechanism-reference.md §异常结算区含减防）——面板减防减抗由
+      // calcAnomalyDamage 内部读取（CC-175）；这里只传异放限定 releaseModifier
+      const result = calcPoolAnomalyDamage(poolEnv, {
         panel: basePanel,
         settlementPanel,
         baseMultiplier: row.multiplier,
-        element: element as any,
-        enemyDefense: configStore.enemy.defense,
-        // 异放同样吃面板通用减防（结算区口径：docs/mechanism-reference.md §异常结算区含减防）——CC-175 起面板减防由
-        // calcAnomalyDamage 内部读取；这里只传异放限定 releaseModifier（此前连面板值一起传 ⇒ 固定减防双计）
-        enemyDefReduction: releaseMod.enemyDefReduction ?? 0,
-        enemyDefFlatReduction: 0,
-        enemyLevel: configStore.enemy.level,
-        enemyResistance: enemyDamageRes[resolveStatElement(element) ?? ''] ?? 0,
-        enemyResReduction: releaseMod.enemyResReduction, // CC-175：只传面板之外的异放限定量；面板减抗由 calcAnomalyDamage 内部读取
+        element,
+        extraDefReduction: releaseMod.enemyDefReduction ?? 0,
+        extraResReduction: releaseMod.enemyResReduction,
         stunned: row.stunnedOverride ?? stunCoverage,
-        stunMultiplier: configStore.enemy.stunVuln,
-        critMode: 'expect',
         damageKind: 'release',
-        anomalyMultiplier: globalAnomalyMultiplier,
         anomalyCritOverride: critOverride,
       })
       rows.push({
@@ -412,7 +405,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     emitAnomalyRows({
-      ctx, rows, agentName, enemyDamageRes, isAxis: Boolean(isAxis), windSlot, directEnv,
+      ctx, rows, agentName, enemyDamageRes, isAxis: Boolean(isAxis), windSlot, poolEnv,
       inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
       axisStunFor, pushRelease,
     })

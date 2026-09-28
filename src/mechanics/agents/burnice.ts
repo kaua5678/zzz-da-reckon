@@ -13,7 +13,6 @@ import type { AgentSkills, PanelValues, SkillMove } from '@/types/catalog'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
-import { calcAnomalyDamage } from '@/core/damage'
 import { fmt } from '@/utils/format'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
@@ -714,7 +713,7 @@ export const burniceMechanic: AgentMechanicModule = {
    */
   extraAnomalyRows: ({
     charResult, windRate, anomalyProgress, buildVirtualPanel, buildSettlementEntries,
-    axisStunFor, enemy, enemyDamageRes, anomalyMultiplier, teamAgentId, agentName,
+    axisStunFor, teamAgentId, agentName, anomalyDamage,
   }: ExtraAnomalyRowsInput) => {
     // ---- 柏妮思6命：双份火焰冲击命中灼烧敌人时，额外结算一次1800%灼烧伤害 ----
     const burniceSrc = charResult?.burniceMechanicSource
@@ -730,22 +729,14 @@ export const burniceMechanic: AgentMechanicModule = {
           if (entry.triggerCount <= 0) continue
           const burstCount = Math.min(burniceSrc.cinema6BurnBurstCount, entry.triggerCount)
           if (burstCount <= 0) continue
-          const burstResult = calcAnomalyDamage({
+          // 只传面板之外的 6 命无视火抗；面板减抗由 calcAnomalyDamage 内部读取（CC-175；CC-177 走 input.anomalyDamage）
+          const burstResult = anomalyDamage({
             panel: fireBuild.panel,
             settlementPanel: entry.panel,
             baseMultiplier: burniceSrc.cinema6BurnBurstDamageRatio,
-            element: 'fire' as any,
-            enemyDefense: enemy.defense,
-            enemyDefReduction: 0,
-            enemyDefFlatReduction: 0,
-            enemyLevel: enemy.level,
-            enemyResistance: enemyDamageRes.fire ?? 0,
-            enemyResReduction: burniceSrc.cinema6FireResIgnore, // CC-175：只传面板之外的 6 命无视火抗；面板减抗由 calcAnomalyDamage 内部读取
+            element: 'fire',
+            extraResReduction: burniceSrc.cinema6FireResIgnore,
             stunned: burnBurstStun,
-            stunMultiplier: enemy.stunVuln,
-            critMode: 'expect',
-            damageKind: 'anomaly',
-            anomalyMultiplier,
           })
           rows.push({
             id: `burnice-c6-burn-burst-${entry.slot}`,

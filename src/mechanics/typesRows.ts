@@ -7,7 +7,7 @@ import type { Agent, AgentSkills, PanelValues } from '@/types/catalog'
 import type { AnomalyProgress, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
-import type { calcPoolDirectDamage as calcPoolDirectDamageFn, PoolDirectRow } from '@/composables/resourceCalc/poolDirectDamage'
+import type { calcPoolAnomalyDamage as calcPoolAnomalyDamageFn, calcPoolDirectDamage as calcPoolDirectDamageFn, PoolAnomalyRow, PoolDirectRow } from '@/composables/resourceCalc/poolDamage'
 import type { buildAnomalyVirtualPanel as buildAnomalyVirtualPanelFn, buildAnomalySettlementEntries as buildAnomalySettlementEntriesFn } from '@/composables/resourceCalc/anomalyPanels'
 import type { AgentAxisOverlays, AxisScalarOverlays } from './typesHooks'
 
@@ -190,8 +190,13 @@ export interface ExtraAnomalyRowsInput {
   /** = elementLabel（helpers.ts:205，闭包注入以绕开判据 19） */
   elementLabel: (element: string) => string
   /**
-   * = (row) => calcPoolDirectDamage(directEnv, row)（CC-176）：模块内的直伤（简 / 爱丽丝 6 命附伤）一律走它，
+   * = (row) => calcPoolDirectDamage(poolEnv, row)（CC-176）：模块内的直伤（简 / 爱丽丝 6 命附伤）一律走它，
    * 与伤害池正路 pushDirect 同一入参拼装（面板通用减防减抗、敌人、侵染染色属性）。不要在模块里直接调 calcDirectDamage。
    */
   directDamage: (row: PoolDirectRow) => ReturnType<typeof calcPoolDirectDamageFn>
+  /**
+   * = (row) => calcPoolAnomalyDamage(poolEnv, row)（CC-177）：模块内的异常伤害（爱丽丝极性强击、柏妮思 6 命灼烧迸发）一律走它。
+   * 只传面板之外的额外减防减抗（extraDefReduction / extraResReduction），结算面板上的由 calcAnomalyDamage 内部读。
+   */
+  anomalyDamage: (row: PoolAnomalyRow) => ReturnType<typeof calcPoolAnomalyDamageFn>
 }

@@ -19,10 +19,9 @@
  * 依赖方向：本文件不得 import `./damagePool`（值）；只依赖类型与同目录兄弟模块
  * （`./anomalyPanels` / `./skillRows` / `./helpers`）与引擎子模块（`@/core/damage` 等）。
  */
-import { calcAnomalyDamage } from '@/core/damage'
-import { calcPoolDirectDamage, type PoolDirectEnv } from './poolDirectDamage'
+import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from './poolDamage'
 import { panelAt } from '@/core/panel'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, resolveStatElement, isCorrosionCycloneRelease } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, isCorrosionCycloneRelease } from '@/core/anomalyPool/helpers'
 import type { PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution } from '@/types/resource'
 import { elementLabel, parseReleaseMultiplier, type DamagePoolRow } from './helpers'
@@ -56,8 +55,8 @@ export interface AnomalyRowsEnv {
   /** 调用处传 `Boolean(isAxis)`（尾段只作真值判断） */
   isAxis: boolean
   windSlot: number
-  /** CC-176：直伤入参拼装环境（= damagePool.ts 的 directEnv），经 `ExtraAnomalyRowsInput.directDamage` 交给模块 */
-  directEnv: PoolDirectEnv
+  /** CC-176/177：伤害入参拼装环境（= damagePool.ts 的 poolEnv），经 `ExtraAnomalyRowsInput.directDamage` / `.anomalyDamage` 交给模块 */
+  poolEnv: PoolDamageEnv
   inWindowFraction: (element: string) => number
   nonWindInAxisFraction: () => number
   ultimateInAxisFraction: (slot?: number) => number
@@ -80,7 +79,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     entrySnapshotPanels, globalAnomalyMultiplier,
   } = env.ctx
   const {
-    rows, agentName, enemyDamageRes, isAxis, windSlot, directEnv,
+    rows, agentName, enemyDamageRes, isAxis, windSlot, poolEnv,
     inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
     axisStunFor, pushRelease,
   } = env
@@ -255,22 +254,13 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
 
     for (const entry of settlementEntries) {
       if (entry.triggerCount <= 0) continue
-      const result = calcAnomalyDamage({
+      // 结算面板减防减抗由 calcAnomalyDamage 内部读取（CC-175）；标准异常没有面板外额外量
+      const result = calcPoolAnomalyDamage(poolEnv, {
         panel: build.panel,
         settlementPanel: entry.panel,
         baseMultiplier: multiplier,
-        element: prog.element as any,
-        enemyDefense: configStore.enemy.defense,
-        enemyDefReduction: 0,
-        enemyDefFlatReduction: 0,
-        enemyLevel: configStore.enemy.level,
-        enemyResistance: enemyDamageRes[resolveStatElement(prog.element) ?? ''] ?? 0,
-        enemyResReduction: 0, // CC-175：结算面板减抗由 calcAnomalyDamage 内部读取（此前在此再传一次 ⇒ 双计）
+        element: prog.element,
         stunned: stunCoverage,
-        stunMultiplier: configStore.enemy.stunVuln,
-        critMode: 'expect',
-        damageKind: 'anomaly',
-        anomalyMultiplier: globalAnomalyMultiplier,
       })
 
       const perDamage = result.damage
@@ -333,7 +323,8 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         teamElement: (s) => catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement ?? 'physical',
         getTeamMechanicSetting: (k, d) => configStore.getTeamMechanicSetting(k, d),
         elementLabel,
-        directDamage: (row) => calcPoolDirectDamage(directEnv, row),
+        directDamage: (row) => calcPoolDirectDamage(poolEnv, row),
+        anomalyDamage: (row) => calcPoolAnomalyDamage(poolEnv, row),
       })
       : undefined
     if (groups) extraGroups.push(...groups)

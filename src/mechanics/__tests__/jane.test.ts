@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
-import { calcPoolDirectDamage, type PoolDirectRow } from '@/composables/resourceCalc/poolDirectDamage'
+import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolAnomalyRow, type PoolDirectRow } from '@/composables/resourceCalc/poolDamage'
+
+// CC-176/177 模块测试桩环境：与各用例 input 里的 enemy / anomalyMultiplier 桩值一致
+const STUB_ENV = { enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {}, infectionElement: 'wind', anomalyMultiplier: 1 }
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { computeJaneMechanic, janeMechanic } from '@/mechanics/agents/jane'
@@ -168,7 +171,9 @@ describe('CC-19b：简 extraAnomalyRows（C6 强击暴击附伤逐字）', () =>
     getTeamMechanicSetting: (_k: string, d: number) => d,
     elementLabel: (el: string) => el,
     // CC-176：模块内直伤走 input.directDamage（与伤害池正路同一拼装）；桩环境无侵染（emptyPanel 侵染加成 0）。
-    directDamage: (row: PoolDirectRow) => calcPoolDirectDamage({ enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {}, infectionElement: 'wind' }, row),
+    directDamage: (row: PoolDirectRow) => calcPoolDirectDamage(STUB_ENV, row),
+    // CC-177：模块内异常伤害走 input.anomalyDamage（同一拼装）。
+    anomalyDamage: (row: PoolAnomalyRow) => calcPoolAnomalyDamage(STUB_ENV, row),
     ...overrides,
   })
 
@@ -198,7 +203,7 @@ describe('CC-19b：简 extraAnomalyRows（C6 强击暴击附伤逐字）', () =>
   // 旧写法（模块内自拼 calcDirectDamage、漏传 infectionElement）下「染物理」一条会红（×1.0 而非 ×1.1）。
   it('CC-176：附伤经 input.directDamage 拼装，染色属性=物理时吃侵染区 ×1.1，=风时不吃', () => {
     const infPanel = () => ({ ...panel(), infectionZoneBonus: 10 }) as never
-    const env = (infectionElement: string) => ({ enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {}, infectionElement })
+    const env = (infectionElement: string) => ({ ...STUB_ENV, infectionElement })
     const dmg = (infectionElement: string) => janeMechanic.extraAnomalyRows!(input({
       panel: infPanel(),
       directDamage: (row: PoolDirectRow) => calcPoolDirectDamage(env(infectionElement), row),

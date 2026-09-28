@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
-import { calcPoolDirectDamage, type PoolDirectRow } from '@/composables/resourceCalc/poolDirectDamage'
+import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolAnomalyRow, type PoolDirectRow } from '@/composables/resourceCalc/poolDamage'
+
+// CC-176/177 模块测试桩环境：与各用例 input 里的 enemy / anomalyMultiplier 桩值一致
+const STUB_ENV = { enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {}, infectionElement: 'wind', anomalyMultiplier: 1 }
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import {
@@ -448,7 +451,9 @@ describe('CC-19a：柏妮思 extraAnomalyRows（C6 灼烧迸发逐字）', () =>
     getTeamMechanicSetting: (_k: string, d: number) => d,
     elementLabel: (el: string) => el,
     // CC-176：模块内直伤走 input.directDamage（与伤害池正路同一拼装）；桩环境无侵染（emptyPanel 侵染加成 0）。
-    directDamage: (row: PoolDirectRow) => calcPoolDirectDamage({ enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {}, infectionElement: 'wind' }, row),
+    directDamage: (row: PoolDirectRow) => calcPoolDirectDamage(STUB_ENV, row),
+    // CC-177：模块内异常伤害走 input.anomalyDamage（同一拼装）。
+    anomalyDamage: (row: PoolAnomalyRow) => calcPoolAnomalyDamage(STUB_ENV, row),
     ...overrides,
   })
 

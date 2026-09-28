@@ -18,7 +18,6 @@ import type {
   IterationState,
   SpecialResourceSection,
 } from '@/types/resource'
-import { calcAnomalyDamage } from '@/core/damage'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
@@ -598,7 +597,7 @@ export const aliceMechanic: AgentMechanicModule = {
   extraAnomalyRows: ({
     slot, charResult, panel, cinemaLevel, isAxis, stunCoverage,
     anomalyProgress, ultimateInAxisFraction, axisInUnits, getMechanicSetting, anomalyPool,
-    axisStunFor, enemy, enemyDamageRes, anomalyMultiplier, teamAgentId, agentName, directDamage,
+    axisStunFor, teamAgentId, agentName, directDamage, anomalyDamage,
   }: ExtraAnomalyRowsInput) => {
     const groups: ExtraAnomalyRowGroup[] = []
 
@@ -616,22 +615,13 @@ export const aliceMechanic: AgentMechanicModule = {
       const polarStunFor = polarAssaultProg.triggerCount > 0
         ? (sw3Count * sw3Frac + ultExtra * ultimateInAxisFraction(polarAssaultSlot)) / polarAssaultProg.triggerCount
         : stunCoverage
-      const result = calcAnomalyDamage({
+      // 结算面板减防减抗由 calcAnomalyDamage 内部读取（CC-175）；极性强击没有面板外额外量（CC-177 走 input.anomalyDamage）
+      const result = anomalyDamage({
         panel: polarAlicePanel,
         settlementPanel: polarAlicePanel,
         baseMultiplier: ANOMALY_SINGLE_HIT_MULTIPLIER.physical,
-        element: 'physical' as any,
-        enemyDefense: enemy.defense,
-        enemyDefReduction: 0,
-        enemyDefFlatReduction: 0,
-        enemyLevel: enemy.level,
-        enemyResistance: enemyDamageRes.physical ?? 0,
-        enemyResReduction: 0, // CC-175：结算面板减抗由 calcAnomalyDamage 内部读取
+        element: 'physical',
         stunned: polarStunFor,
-        stunMultiplier: enemy.stunVuln,
-        critMode: 'expect',
-        damageKind: 'anomaly',
-        anomalyMultiplier,
       })
       const perDamage = result.damage
       groups.push({ order: EXTRA_ANOMALY_ROW_ORDER.polarAssault, rows: [{
