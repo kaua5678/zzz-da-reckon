@@ -2570,3 +2570,43 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 另有 9 行变体 4 份（banyue / luciaElowen / starlightBilly / yixuan）、burnice / liuyin / norma / roxy 一组、`findMove`（lucy / rina / yaojiayin / yeshuguang / nicole），都要先比对语义再收。
 - `rowValue` / `rowVal`：可能与 `data/moveTableQueries#getRowValue` 重复，待核。
 - `clampRatio` / `clamp01` / `whole`：纯算术，收拢只降计数，**倾向不做**。若做，必须保留 NaN 语义的两种变体，不能合并成一个。
+
+### 24.83 第 259 轮：CC-236 findMoveById 单一来源；rowValue 族语义裁决（留给下一轮）（51f52f7e）
+
+**① 为什么做**：「按招式 id 取招式」在 `data/moveTableQueries.ts` 早有共享实现（composables 经 `skillRows.ts` 转出使用），但 25 个角色模块和 `views/StunAxisPage.vue` 各自抄了一份。
+- 写法有 5 种，函数名有 `findMoveById` / `findMove` 两种。
+- hugo 模块的注释写明了抄写的理由：「与 skillRows.ts#findMoveById 同义；本模块内联以避免 mechanics → composables 运行时依赖」。
+- 这个理由在实现下沉到 data 层后就失效了，后续模块却一直照着抄。收拢以后，新模块也没有理由再抄。
+
+**② 改法**：
+- `data/moveTableQueries#findMoveById` 改为结构化泛型签名：`<M extends { id: string } = SkillMove>(skills: { categories: readonly { moves: readonly M[] }[] } | undefined, moveId): M | null`。
+  - `AgentSkills`、`{ categories: { moves: SkillMove[] }[] }`、hugo 的窄类型 `{ id; actionTime? }` 都能直接传；
+  - 已有调用方的类型推断不变（M 推断为 SkillMove）。
+- **运行时容错**：`skills?.categories ?? []`、`cat.moves ?? []`。
+  - 第一次 verify 挂在 `initialConversionCc123.test`：nangong 的私有版本本来就能容忍缺 categories 的夹具，data 版会抛 `skills.categories is not iterable`；
+  - 裁决：共享实现取「容错」语义。它是原有各版本的超集，只是把「抛错」变成「返回 null」，不改变任何原本能跑通的路径；
+  - 回退点：只要撤掉这两个 `??`，但 nangong 夹具会变红。
+- 25 个模块删掉私有定义，改为 `import { findMoveById [as findMove] } from '@/data/moveTableQueries'`，已有该 import 的就并入原语句；调用点不动。
+- StunAxisPage 同样改为导入（原副本的参数是 `any`、带 `?? []`，语义被容错版覆盖）。
+- **LogicEditorPage 的 `findMove` 语义不同**（在全部展示角色里查找），不删；改名为 `findMoveInAnyAgent`，内部复用 `findMoveById`，2 个调用点跟着改名。
+- 删掉 hugo 那段已失效的抄写理由注释；用 `vue-tsc` 的 TS6133/6196/6192 列表清理 18 处变成未使用的类型导入（脚本 `k229/p259b.py`）。
+- 29 个文件，+106/−263（含锁测试）。零差：verify 3957 passed。
+- **锁**：`src/data/__tests__/findMoveByIdSource.test.ts`：
+  - ① 除 owner 外，非测试 ts/vue 不许定义 `findMove` / `findMoveById`（函数或 const）；
+  - ② 语义边界表：第一个匹配、缺失返回 null、skills 为 undefined、缺 categories / moves、结构化窄类型。
+  - 反例：`git grep HEAD` 命中 27 处（25 个模块 + 2 个视图，其中 LogicEditorPage 那处靠改名解决）。
+- 回退点：revert 51f52f7e。
+
+**③ 教训（写入交接的已知坑）**：扫描脚本「函数体去空白后相同或相近」只能发现候选，**不等于语义相同**。
+- 空值容错（`?.`、`?? []`）、默认值、NaN 处理都要逐个比对；
+- 边界写进锁测试的语义表；
+- 本轮 nangong 的差异就是这样漏掉的，靠 verify 才发现。
+
+**④ rowValue 族（下一轮做，本轮只做语义裁决的准备）**：私有副本分三种语义，**不能直接并进 data 的 `getRowValue`**：
+- (a) data 版 `getRowValue(move, rowId) = values[0] × getRowFusionMultiplier(move.id, rowId)`，**含倍率融合**（融合登记在 `data/moveFusions.ts`）；
+- (b) 12 份返回**未融合**的 `values[0]`：banyue / starlightBilly / qingyi / yixuan / yidhari 的 `rowValue`，lycaon、nicole、yanagi 的 `rowValue`，alice、roxy 的 `getRowValue`，burnice 的 `getRowValue` 和 `rawRowValue`（同一文件两份，函数体完全相同）；
+- (c) lucy / rina / yaojiayin / yeshuguang 的 `rowVal`：取 `values[11]`，缺失时取末项，再 `Number(...) || 0`，与 (a)(b) 语义不同。
+- 下一轮要先回答的语义问题：(b) 的调用点所查的 moveId 有没有在 moveFusions 里登记？
+  - 有 ⇒ 这是真实缺陷，模块绕过了融合。按 R5 纪律开 CC 卡（附出处与影响面），**不能顺手改数值**；
+  - 没有 ⇒ 在 data 立一个显式的 `rawRowValue`（不融合），把 (b) 收过去，让「不融合」成为有名字的选择。
+- (c) 是否也收成 data 的 `rowValueAtLevel12` 之类，视调用点语义再定。

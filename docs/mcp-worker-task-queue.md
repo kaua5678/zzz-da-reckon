@@ -71,32 +71,33 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 258 轮（lane lead-arena-0925c）：CC-235 完成（960c00d3），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.82。
-- 前几轮：257 CC-234（09575566）；256 CC-233（2e7e2c4c）；255 CC-231/232。
+**第 259 轮（lane lead-arena-0925c）：CC-236 完成（51f52f7e），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.83。
+- 前几轮：258 CC-235 机制设置 cfg 键（960c00d3）；257 CC-234（09575566）；256 CC-233（2e7e2c4c）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
-- **结项**：候选 A「resourceCalc 内部重复小函数」没有真实重复。
 
 **纯规则 / 引擎结果单一来源一览（新写代码直接用）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`、`moveTableQueries`（findMoveById / getRowValue / fusedRowValue）；
-- `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`、**`mechanicSettingCfg`**（角色模块读机制滑块一律用 `cfgMechanicSetting(cfg, id, fallback)`）；
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`、**`moveTableQueries`**（`findMoveById` 为结构化泛型并带运行时容错，`getRowValue` 含融合，`fusedRowValue`）；
+- `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`、`mechanicSettingCfg`（角色模块读机制滑块一律用 `cfgMechanicSetting`）；
 - `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`；
 - 引擎结果直读：`useResourceCalc#teamTotalDamage / stunCoverage`、`CalcRoundResult.specialActionBonus / decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`。
 
-**下一步（直接开工）**：继续候选 B 的其余家族，一族一个提交：
-1. **findMoveById**：
-   - 先用 `node /home/kaua/calc-arch/dupfn.mjs` 重跑扫描；
-   - 与 `data/moveTableQueries#findMoveById` 同形的 5 个模块（alice / miyabi / qingyi / velina / yidhari），删掉私有定义，改从 data 导入；
-   - 9 行变体（banyue / luciaElowen / starlightBilly / yixuan）、burnice / liuyin / norma / roxy 组、`findMove` 组，先 `sed -n` 比对函数体：语义相同就收，不同就记「不做」并写明差异。
-2. **rowValue / rowVal / getRowValue**：与 `moveTableQueries#getRowValue` 比对，方法同上。
-3. clamp / whole：倾向不做（纯算术，只降计数）；若做，NaN 语义的两种变体必须分开。
-- 可以参考第 258 轮的脚本 `/home/kaua/calc-arch/k229/p258a.py`：用正则识别函数形状、删除私有定义、在最后一个 import 后插入别名导入。之后用 p258d/e 折叠删除留下的连续空行（只处理 HEAD 版本没有连续空行的文件）。
+**下一步（直接开工）**：rowValue 族的语义裁决（§24.83 ④）。
+1. 读 `src/data/moveFusions.ts`，列出登记了融合的 `moveId` 和对应 rowId。
+2. 对 (b) 类 12 份「不融合 `values[0]`」副本，逐个模块 grep 调用点（`rowValue(` / `getRowValue(` / `rawRowValue(`），弄清传入的 move 从哪个 moveId 来，与第 1 步的清单求交集：
+   - 交集非空 ⇒ **不改代码**，开 CC 卡写明「模块 X 的招式 Y 绕过了融合」，附出处与影响面（R5 纪律：数据可信，差异要走卡，不能顺手改数）；
+   - 交集为空 ⇒ 在 `data/moveTableQueries.ts` 新增 `export function rawRowValue(move, rowId)`（`values[0]`，不融合），12 份副本改为别名导入；锁的写法参照 `src/data/__tests__/findMoveByIdSource.test.ts`。
+3. (c) 类 `rowVal`（lucy / rina / yaojiayin / yeshuguang，取 `values[11]`）：先确认调用点的语义，看是否等同「取 12 级值」、catalog 的 values 是否按等级排列；是的话收成 data 的具名函数，不是就记「不做」。
+4. clamp / whole：倾向不做（纯算术，收了只是降计数）。
+- 可复用脚本：
+  - `/home/kaua/calc-arch/k229/p259a.py`：按函数名删私有定义，并入或新增 import；
+  - `/home/kaua/calc-arch/k229/p259b.py`：读 `/tmp/tsc259.txt`（`npx vue-tsc -b > /tmp/tsc259.txt`），按 TS6133/6196/6192 清理未使用导入；
+  - `/home/kaua/calc-arch/dupfn.mjs`：跨文件同形函数扫描。
 - **已知坑**：
-  - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；
-  - **新文件先 `git add` 再 verify**；
-  - 源码锁要排除注释行；
-  - 删函数后要跑 `npx vue-tsc -b`，查被带成未使用的类型导入（本轮 lycaon）；
-  - 被删函数上方的 JSDoc 会变成孤儿注释，要逐个处理。
+  - **函数体同形不等于语义相同**：`?.`、`?? []`、默认值、NaN 要逐个比对（本轮 nangong 就漏了，靠 verify 才发现）；
+  - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；
+  - 源码锁要排除注释行，并在 HEAD 上用 `git grep` 核对反例命中数；
+  - 删函数后跑 `npx vue-tsc -b`；被删函数上方的 JSDoc 会变成孤儿注释，要检查。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）；「进入失衡 +20 喧响」是否真实机制（§24.79 ①）。
 
 **探针（优化器相关改动的验收）**
