@@ -1337,11 +1337,6 @@ export interface AgentMechanicModule {
      */
     begin(cfg: CharacterOperationConfig, entry: IterationState): void
     /**
-     * 可选（CC-159，第 183 轮）：终局重推落进「单量子 2-循环」（无整数不动点）时的相位偏好。
-     * 入参是两环成员中**本槽**的状态；返回 true = 取 `a`。引擎只问第一个声明者；未声明 = 旧行为。
-     */
-    prefersCycleMember?(a: IterationState, b: IterationState): boolean
-    /**
      * 可选（CC-160，第 187 轮）：终局重推后由引擎**重折一次**（`runFoldLoop`），按整数行重算 S2 折叠残差。
      * 适用：整数化会让本槽物化行明显缩短/伸长（叶瞬光少一轮 ≈ 10.9s），实数期残差原样留下即虚高留白。
      * 未声明 = 不重折（比利实测重折会改 golden/adjustable 且未归因，第 187 轮暂不开，见 stun-dual-source §24.9）。
