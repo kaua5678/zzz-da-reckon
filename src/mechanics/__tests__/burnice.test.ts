@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
+import { calcPoolDirectDamage, type PoolDirectRow } from '@/composables/resourceCalc/poolDirectDamage'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import {
@@ -446,6 +447,8 @@ describe('CC-19a：柏妮思 extraAnomalyRows（C6 灼烧迸发逐字）', () =>
     teamElement: () => 'physical',
     getTeamMechanicSetting: (_k: string, d: number) => d,
     elementLabel: (el: string) => el,
+    // CC-176：模块内直伤走 input.directDamage（与伤害池正路同一拼装）；桩环境无侵染（emptyPanel 侵染加成 0）。
+    directDamage: (row: PoolDirectRow) => calcPoolDirectDamage({ enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {}, infectionElement: 'wind' }, row),
     ...overrides,
   })
 

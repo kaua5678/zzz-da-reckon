@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
+import { calcPoolDirectDamage, type PoolDirectRow } from '@/composables/resourceCalc/poolDirectDamage'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { computeJaneMechanic, janeMechanic } from '@/mechanics/agents/jane'
@@ -166,6 +167,8 @@ describe('CC-19b：简 extraAnomalyRows（C6 强击暴击附伤逐字）', () =>
     teamElement: () => 'physical',
     getTeamMechanicSetting: (_k: string, d: number) => d,
     elementLabel: (el: string) => el,
+    // CC-176：模块内直伤走 input.directDamage（与伤害池正路同一拼装）；桩环境无侵染（emptyPanel 侵染加成 0）。
+    directDamage: (row: PoolDirectRow) => calcPoolDirectDamage({ enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {}, infectionElement: 'wind' }, row),
     ...overrides,
   })
 
@@ -189,5 +192,17 @@ describe('CC-19b：简 extraAnomalyRows（C6 强击暴击附伤逐字）', () =>
 
   it('cinemaLevel<6 → 不产行', () => {
     expect(janeMechanic.extraAnomalyRows!(input({ cinemaLevel: 5 }))).toEqual([])
+  })
+
+  // CC-176（2026-09-28）：6 命附伤是物理直伤，必须与伤害池正路同一入参拼装——染色目标为物理时吃侵染区。
+  // 旧写法（模块内自拼 calcDirectDamage、漏传 infectionElement）下「染物理」一条会红（×1.0 而非 ×1.1）。
+  it('CC-176：附伤经 input.directDamage 拼装，染色属性=物理时吃侵染区 ×1.1，=风时不吃', () => {
+    const infPanel = () => ({ ...panel(), infectionZoneBonus: 10 }) as never
+    const env = (infectionElement: string) => ({ enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {}, infectionElement })
+    const dmg = (infectionElement: string) => janeMechanic.extraAnomalyRows!(input({
+      panel: infPanel(),
+      directDamage: (row: PoolDirectRow) => calcPoolDirectDamage(env(infectionElement), row),
+    }))[0].rows[0].totalDamage
+    expect(dmg('physical') / dmg('wind')).toBeCloseTo(1.1, 10)
   })
 })

@@ -7,6 +7,7 @@ import type { Agent, AgentSkills, PanelValues } from '@/types/catalog'
 import type { AnomalyProgress, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
+import type { calcPoolDirectDamage as calcPoolDirectDamageFn, PoolDirectRow } from '@/composables/resourceCalc/poolDirectDamage'
 import type { buildAnomalyVirtualPanel as buildAnomalyVirtualPanelFn, buildAnomalySettlementEntries as buildAnomalySettlementEntriesFn } from '@/composables/resourceCalc/anomalyPanels'
 import type { AgentAxisOverlays, AxisScalarOverlays } from './typesHooks'
 
@@ -188,4 +189,9 @@ export interface ExtraAnomalyRowsInput {
   getTeamMechanicSetting: (key: string, dflt: number) => number
   /** = elementLabel（helpers.ts:205，闭包注入以绕开判据 19） */
   elementLabel: (element: string) => string
+  /**
+   * = (row) => calcPoolDirectDamage(directEnv, row)（CC-176）：模块内的直伤（简 / 爱丽丝 6 命附伤）一律走它，
+   * 与伤害池正路 pushDirect 同一入参拼装（面板通用减防减抗、敌人、侵染染色属性）。不要在模块里直接调 calcDirectDamage。
+   */
+  directDamage: (row: PoolDirectRow) => ReturnType<typeof calcPoolDirectDamageFn>
 }

@@ -11,7 +11,8 @@
  * 依赖注入：全部输入经 DamagePoolContext 快照传入（computed 在 useResourceCalc 侧解包），
  * computeWindowDuration 为例外（需要 configStore 实时窗口时长，函数注入保持单一职责）。
  */
-import { calcDirectDamage, calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
+import { calcAnomalyDamage, resolveSpecialDamageProfile } from '@/core/damage'
+import { calcPoolDirectDamage, type PoolDirectEnv } from './poolDirectDamage'
 // 面板数组按位置压缩（下标 ≠ 槽位号）⇒ 一律 panelAt 按身份取，不用 damagePanels[slot]（见 core/panel.ts）。
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement, resolveStatElement } from '@/core/anomalyPool/helpers'
@@ -28,7 +29,6 @@ import type { PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution } from '@/types/resource'
 import {
   parseReleaseMultiplier,
-  safeElement,
   type DamagePoolRow,
 } from './helpers'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
@@ -114,6 +114,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       return agentNames[agentId] || catalogStore.agentsMap.get(agentId)?.name?.zhCN || `槽${slot + 1}`
     }
     const infectionElement = getWindInfectionElement(configStore, catalogStore)
+    // CC-176：直伤入参拼装的环境量（正路 pushDirect 与模块 extraAnomalyRows.directDamage 共用）
+    const directEnv: PoolDirectEnv = { enemy: configStore.enemy, enemyDamageRes, infectionElement }
     const windSlot = configStore.team.findIndex(c => {
       const agent = c.agentId ? catalogStore.agentsMap.get(c.agentId) : null
       return agent?.damageElement === 'wind'
@@ -182,23 +184,14 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         ? 1 + (stunBase - 1) * stunForThis
         : 1
       const rowAgent = catalogStore.agentsMap.get(row.agentId)
-      const result = calcDirectDamage({
+      const result = calcPoolDirectDamage(directEnv, {
         panel,
+        element: row.element,
         skillMultiplier: row.multiplier,
-        damageElement: safeElement(row.element),
-        enemyDefense: configStore.enemy.defense,
-        // 减防/无视防御（GAME_TERM_TO_CODE_FIELD §4）：面板通用值（妮可 40%/叶瞬光C1 20%/席德C2 20%/
-        // 伊芙琳C1/爱芮C2/千夏C1/音擎 千面日陨·索魂影眸 等）+ 行级 moveId 限定值（叶瞬光C2/C6、雨果C2、
-        // 雅1命、席德…），两者同字段加算。**2026-09-08 修**：此前只传行级 `row.defIgnore`，面板通用值被
-        // 静默丢弃（直伤整条通道失效，实测 妮可队 -21%、席德+妮可队 -29%）。
-        enemyDefReduction: (panel.enemyDefReduction ?? 0) + (row.defIgnore ?? 0),
-        enemyDefFlatReduction: panel.enemyDefFlatReduction ?? 0,
-        enemyLevel: configStore.enemy.level,
-        enemyResistance: enemyDamageRes[resolveStatElement(row.element) ?? ''] ?? 0,
-        enemyResReduction: (panel.enemyResReduction ?? 0) + (row.resIgnore ?? 0),
+        defIgnore: row.defIgnore,
+        resIgnore: row.resIgnore,
         stunMultiplier: stunBase,
         stunned: stunForThis,
-        critMode: 'expect',
         count: row.count,
         skillDamageTarget: row.skillDamageTarget,
         critRateBonus: row.critRateBonus,
@@ -206,7 +199,6 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         dmgBonus: row.dmgBonus,
         sheerDmgBonus: row.sheerDmgBonus,
         flatDamageBonus: row.flatDamageBonus,
-        infectionElement,
         basisValueOverride: row.basisValueOverride,
         basisLabelOverride: row.basisLabelOverride,
         specialDamageProfile: rowAgent ? resolveSpecialDamageProfile(rowAgent) : undefined,
@@ -420,7 +412,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     emitAnomalyRows({
-      ctx, rows, agentName, enemyDamageRes, isAxis: Boolean(isAxis), windSlot,
+      ctx, rows, agentName, enemyDamageRes, isAxis: Boolean(isAxis), windSlot, directEnv,
       inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
       axisStunFor, pushRelease,
     })

@@ -20,6 +20,7 @@
  * （`./anomalyPanels` / `./skillRows` / `./helpers`）与引擎子模块（`@/core/damage` 等）。
  */
 import { calcAnomalyDamage } from '@/core/damage'
+import { calcPoolDirectDamage, type PoolDirectEnv } from './poolDirectDamage'
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, resolveStatElement, isCorrosionCycloneRelease } from '@/core/anomalyPool/helpers'
 import type { PanelValues } from '@/types/catalog'
@@ -55,6 +56,8 @@ export interface AnomalyRowsEnv {
   /** 调用处传 `Boolean(isAxis)`（尾段只作真值判断） */
   isAxis: boolean
   windSlot: number
+  /** CC-176：直伤入参拼装环境（= damagePool.ts 的 directEnv），经 `ExtraAnomalyRowsInput.directDamage` 交给模块 */
+  directEnv: PoolDirectEnv
   inWindowFraction: (element: string) => number
   nonWindInAxisFraction: () => number
   ultimateInAxisFraction: (slot?: number) => number
@@ -77,7 +80,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     entrySnapshotPanels, globalAnomalyMultiplier,
   } = env.ctx
   const {
-    rows, agentName, enemyDamageRes, isAxis, windSlot,
+    rows, agentName, enemyDamageRes, isAxis, windSlot, directEnv,
     inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
     axisStunFor, pushRelease,
   } = env
@@ -330,6 +333,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         teamElement: (s) => catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement ?? 'physical',
         getTeamMechanicSetting: (k, d) => configStore.getTeamMechanicSetting(k, d),
         elementLabel,
+        directDamage: (row) => calcPoolDirectDamage(directEnv, row),
       })
       : undefined
     if (groups) extraGroups.push(...groups)

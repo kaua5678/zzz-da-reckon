@@ -18,7 +18,7 @@ import type {
   IterationState,
   SpecialResourceSection,
 } from '@/types/resource'
-import { calcAnomalyDamage, calcDirectDamage } from '@/core/damage'
+import { calcAnomalyDamage } from '@/core/damage'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
@@ -598,7 +598,7 @@ export const aliceMechanic: AgentMechanicModule = {
   extraAnomalyRows: ({
     slot, charResult, panel, cinemaLevel, isAxis, stunCoverage,
     anomalyProgress, ultimateInAxisFraction, axisInUnits, getMechanicSetting, anomalyPool,
-    axisStunFor, enemy, enemyDamageRes, anomalyMultiplier, teamAgentId, agentName,
+    axisStunFor, enemy, enemyDamageRes, anomalyMultiplier, teamAgentId, agentName, directDamage,
   }: ExtraAnomalyRowsInput) => {
     const groups: ExtraAnomalyRowGroup[] = []
 
@@ -681,20 +681,13 @@ export const aliceMechanic: AgentMechanicModule = {
             ? (smSrc.sparkCount * sw3Frac + ultimateCount * ultFrac) / stateEntries
             : stunCoverage
           // 乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(3300%)两个基础区，
-          // 其余增伤/防御/抗性/易伤/暴击乘区全吃（同简 6 命附伤）→ 走 calcDirectDamage 标准管线；
+          // 其余增伤/防御/抗性/易伤/暴击乘区全吃（同简 6 命附伤）→ 走伤害池直伤同一入参拼装（input.directDamage，CC-176：含侵染区）；
           // 攻击本体必定暴击（原文：额外攻击必定暴击）→ critMode='crit'
           const proficiency = alicePanel.anomalyProficiency ?? 0
-          const result = calcDirectDamage({
+          const result = directDamage({
             panel: alicePanel,
+            element: 'physical',
             skillMultiplier: 3300,
-            damageElement: 'physical',
-            enemyDefense: enemy.defense,
-            enemyDefReduction: alicePanel.enemyDefReduction ?? 0,
-            enemyDefFlatReduction: alicePanel.enemyDefFlatReduction ?? 0,
-            enemyLevel: enemy.level,
-            enemyResistance: enemyDamageRes['physical'] ?? 0,
-            enemyResReduction: alicePanel.enemyResReduction ?? 0,
-            stunMultiplier: enemy.stunVuln,
             stunned: stateFrac,
             critMode: 'crit',
             count: totalTriggers,

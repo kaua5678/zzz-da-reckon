@@ -12,7 +12,6 @@ import type {
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { AnomalyEventRecord, CharacterResourceResult, JaneMechanicSource, MechanicSetting } from '@/types/resource'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
-import { calcDirectDamage } from '@/core/damage'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
@@ -313,7 +312,7 @@ export const janeMechanic: AgentMechanicModule = {
    */
   extraAnomalyRows: ({
     slot, panel, cinemaLevel, isAxis, stunCoverage,
-    anomalyProgress, inWindowFraction, enemy, enemyDamageRes, teamAgentId, agentName,
+    anomalyProgress, inWindowFraction, teamAgentId, agentName, directDamage,
   }: ExtraAnomalyRowsInput) => {
     const groups: ExtraAnomalyRowGroup[] = []
     const janeSlot = slot
@@ -327,21 +326,13 @@ export const janeMechanic: AgentMechanicModule = {
         // 附伤随强击暴击触发 → 轴内易伤跟随物理强击触发轴内占比（用户口径 2026-08：
         // 6命附伤事件和动作绑定，理应该伴随计数并且吃易伤）；非轴回落全局覆盖率。
         // 乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(1600%)两个基础区，
-        // 其余增伤/防御/抗性/易伤/暴击乘区全吃（爱丽丝 6 命附伤同款）→ 走 calcDirectDamage 标准管线
+        // 其余增伤/防御/抗性/易伤/暴击乘区全吃（爱丽丝 6 命附伤同款）→ 走伤害池直伤同一入参拼装（input.directDamage，CC-176：含侵染区）
         const janeStun = isAxis ? inWindowFraction('physical') : stunCoverage
-        const result = calcDirectDamage({
+        const result = directDamage({
           panel: janePanel,
+          element: 'physical',
           skillMultiplier: 1600,
-          damageElement: 'physical',
-          enemyDefense: enemy.defense,
-          enemyDefReduction: janePanel.enemyDefReduction ?? 0,
-          enemyDefFlatReduction: janePanel.enemyDefFlatReduction ?? 0,
-          enemyLevel: enemy.level,
-          enemyResistance: enemyDamageRes['physical'] ?? 0,
-          enemyResReduction: janePanel.enemyResReduction ?? 0,
-          stunMultiplier: enemy.stunVuln,
           stunned: janeStun,
-          critMode: 'expect',
           count: critCount,
           basisValueOverride: janePanel.anomalyProficiency ?? 0,
           basisLabelOverride: '异常精通',

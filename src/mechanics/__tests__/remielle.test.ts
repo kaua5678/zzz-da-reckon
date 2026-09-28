@@ -171,6 +171,8 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     teamElement: () => 'electric',
     getTeamMechanicSetting: (_k: string, d: number) => d,
     elementLabel: (el: string) => (el === 'electric' ? '电' : el),
+    // CC-176：蕾米埃尔不产直伤行，桩不参与。
+    directDamage: () => { throw new Error('remielle extraAnomalyRows 不应调用 directDamage') },
     ...overrides,
   })
 
