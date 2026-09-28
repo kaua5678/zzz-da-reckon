@@ -2353,3 +2353,28 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 **不做**
 - 喧响卡的说明文字 `215/次 · 伴随107.5` 仍然写死在页面上：视图层禁止值导入 core（`PARRY_DECIBEL_BONUS` 在 core/anomalyPool.ts）；常量变动时锁测试不会报。如果要做，可以让 `SpecialActionBonusResult` 带上单价字段。收益小，暂不做。
+
+### 24.76 第 252 轮：ultimatePromote 读 store 原值「不做」；「展示把 store 当引擎用量」线结项；CC-228 贯穿力下沉 data（2ba355d0）
+
+**① `composables/resourceCalc/ultimatePromote.ts:286`（§24.75 交接第 1 项）：不做。** 它读 `configStore.team.reduce(… chainCountPerStun …)`，不读 cfg。理由：
+1. store 与 cfg 的差异只在 store 字段缺失（`undefined`）时出现：store 取 `?? 0`，cfg 取 `buildCharConfig` 的 `?? (isSupport ? 0 : 1)`（`composables/resourceCalc/helpers.ts:553`）。store 默认值为 `0`（`stores/config.ts:156`），而 `0 ?? 1 === 0`，所以显式为 0 时两份相同。
+2. 「chainCountPerStun 必须读 store 原值」是 round 20 C-γ 的书面契约（`mechanics/types.ts` 的 `AgentInteractionSnapshot` 注释，含受控实验），莱卡恩、仪玄同属这一族。
+3. 在 `calcStunPool` 中它只进入输出的 `chainCountTotal = stunCount × chainCountPerStun`，不影响失衡次数。
+
+**② 系统扫描 `configStore.team` 读交互次数的地方**（composables、views、components，convergence 除外）：
+- `timeWeightAllocation.ts`：时间权重优化器，本来就读写 store 次数，属于输入侧；
+- ResultPage:873-879 和 AttributeConfigPage:94：参数区只读框；
+- BossCard：读 agentId。
+- **全部合理 ⇒ 「展示把 store 原值当引擎用量」这条线结项**（CC-226、CC-227 是其中的真 bug）。
+
+**③ CC-228**：贯穿力 `atk × 0.3 + hp × 0.1 + sheerForceFlat` 共 4 份。
+- 引擎有一份 `core/damage.ts#calcPenetrationPower`；
+- 展示层手写 3 份：FinalPanel:168、StatPanel:576、DebugPage:346。视图层禁止值导入 core，所以只能复制。
+- 与 CC-222（暴击）、CC-223（异常元素）同一种情况，做法相同：
+  - 下沉到 `src/data/penetrationPower.ts`，入参用最小结构类型 `{ atk; hp; sheerForceFlat? }`；
+  - `core/damage.ts` 以原名转出，琉音、般岳、诺姆模块的 import 路径不变；
+  - 3 处展示副本改为调用它。
+- 锁：`src/data/__tests__/penetrationPower.test.ts`，包括公式断言、core 转出与 data 为同一函数，以及源码锁（除 data 外不许出现 `atk * 0.3`）。**反例**：stash 3 个展示文件后，锁报出 FinalPanel:168、StatPanel:576、DebugPage:346。
+- **影响**：verify 全绿（3940 passed，golden 零差），零数值差。**回退点**：revert 2ba355d0。
+
+**常量粗扫（为下一轮找线索）**：在 views、components 里搜 1.2、0.5、1.5、0.35、215、1.1、2.1 等与 core 共有的常量，命中基本是注释、界面文字或绘图参数。唯一可疑的是 `views/TeamConfigPage.vue:956-964` 的「保底4喧响」提示：展示层自己算 `⌈缺口 ÷ 215⌉` 次补弹刀。

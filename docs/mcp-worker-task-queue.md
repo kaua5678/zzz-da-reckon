@@ -71,33 +71,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 251 轮（lane lead-arena-0925c）：CC-227 完成（661133cd），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.75。
-- 前几轮：250 CC-226（f9be411d）；249 CC-225（f361972f）；248 CC-224（f1db965e）。
+**第 252 轮（lane lead-arena-0925c）：CC-228 完成（2ba355d0），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.76。
+- 前几轮：251 CC-227（661133cd）；250 CC-226（f9be411d）；249 CC-225（f361972f）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
+- **结项**：「展示把 store 原值当引擎用量」线（§24.76 ②）。ultimatePromote:286 判「不做」，依据是 round 20 C-γ 契约。
 
-**本线（展示与引擎一致性）的有效方法**：CC-226 和 CC-227 都是「展示层用 store 原值或反推，重建了引擎的输入」。**引擎实际用的是注入后的 cfg**：
-- 交互缩放 `Math.round(x × scale)`；
-- Boss 弹刀反推拆分；
-- 般岳补齐；
-- 帷幕基数。
-
-修法一律是：引擎把本轮实际值挂到 `CalcRoundResult` 或结果行上，展示层直读，再加单调用点源码锁。
+**纯规则单一来源一览（新写代码直接用）**：
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`；
+- `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`；
+- `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`（anomalyPool/helpers）；
+- 展示侧行级易伤：`composables/stunVulnSummary#rowAppliedStunMultOf`；
+- 特殊动作喧响：`CalcRoundResult.specialActionBonus`。
 
 **下一步（直接开工）**
-1. `composables/resourceCalc/ultimatePromote.ts:286` 直接读 store 的 `configStore.team.reduce(… c.chainCountPerStun …)`。这在引擎侧，要核实：它是否应当读注入后的 cfg（`characters`）？注入过程会不会改写 chainCountPerStun 或 chainCountTotalOverride？读 convergence.ts 里 characters 的构建过程（约 430-640 行）确认。
-   - 若口径不同：写探针量化，改为读 cfg；
-   - 若 chainCountPerStun 不会被注入改写：写「不做」并说明依据。
-2. 系统性扫一遍：`grep -rnE 'configStore\.team\b' src/composables src/views src/components | grep -v __tests__`，逐条判断每处读的是「输入侧」（参数框、配置页，合理）还是「当作引擎用量」（可疑）。可疑的逐条用探针对比引擎实值。
-3. 这条线收尾后换方向。候选：ResultPage 其余卡片里写死的规则文字（例如 `215/次 · 伴随107.5`），可以考虑让结果类型带上单价（§24.75「不做」里有分析）。
-- 开工前**先查卡表**（最新 CC-227），并 `grep -rn 反锁 src`。
-- **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(team.map(agentId => ({agentId})), { recommendedBuild: true })` 加 `useResourceCalc()`。
-  - Boss 取自 `public/static/boss-presets.json`，用 `readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url))`，写法照抄 parrySplitInt.test.ts 的 bossById，再 `config.applyBossPreset(...)`；
-  - 跑完 `rm`，**不要提交**。
+1. `views/TeamConfigPage.vue:956-964` 的「保底4喧响·诚实显示」自己算 `⌈缺口 ÷ 215⌉`。核对它与引擎的保底4喧响弹刀反推是否同一口径：
+   - 在 convergence.ts 里 grep `decibelParryActive`、`guaranteeUltimate`、`PARRY_DECIBEL_BONUS`；`core/anomalyPool.ts` 里 PARRY_DECIBEL_BONUS 的注释写着「通用保底4喧响反推同引」。
+   - 若展示自算且口径不同：让引擎把反推出的次数或缺口挂在结果上，展示直读（CC-227 的模式）；
+   - 若只是重复一个常量：215 可以随 `SpecialActionBonusResult` 或 parrySplit 结果带出，或下沉到 data（视图层不能值导入 core）。
+2. 继续找「展示层手写引擎公式」：`grep -rnE '\\*\\s*0\\.[0-9]+' src/components src/views | grep -v -E 'px|opacity|//|\\*'`，逐条对照 core。命中后按 CC-228 的模式处理：下沉 data、core 原名转出、加源码锁。
+- 开工前**先查卡表**（最新 CC-228），并 `grep -rn 反锁 src`。
+- **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(...)` 加 `useResourceCalc()`；Boss 读 `public/static/boss-presets.json`（照抄 parrySplitInt.test.ts 的 bossById）；跑完 `rm`，不提交。
 - **已知坑**：
   - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；
-  - `ParrySplitResult` 的 `mainDpsParry + mainDpsNoFollowUp` 已是主 C 的**全部**弹刀，不是「配置 + 拆分」，本轮写测试时踩过；
-  - 删文件要 `git rm`；转出壳删符号时两处都要改。
+  - 新文件先 `git add` 再 verify（守卫的 `git ls-files`）；删文件用 `git rm`；
+  - ParrySplitResult 的 `mainDpsParry + mainDpsNoFollowUp` 已是主 C 的全部弹刀。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）。
 
 **探针（优化器相关改动的验收）**

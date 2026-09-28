@@ -401,3 +401,4 @@
 | 249 | 元素字段名手拼 / StatPanel 前缀表副本 | 并入 utils/elementStatKeys（CC-225，`f361972f`），元素线结项 | 源码锁 elementStatKeys.test 第 4 例 |
 | 250 | 失衡易伤展示反推（stunVulnSummary / stunVulnDisplay 各一份，且基数假设错） | 行携带引擎实值，反推收成单一回落（CC-226，`f9be411d`） | stunVulnSummary.test CC-226 三例 |
 | 251 | 特殊动作喧响每槽次数两处组装（引擎 convergence / 展示 useResourceCalc） | 展示直读引擎结果（CC-227，`661133cd`） | specialActionBonusSingleSource.test |
+| 252 | 贯穿力公式 4 份（core 1 + 展示 3） | 下沉 data/penetrationPower（CC-228，`2ba355d0`） | penetrationPower.test 源码锁 |
