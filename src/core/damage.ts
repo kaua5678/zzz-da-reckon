@@ -12,6 +12,7 @@ import { getSkillDmgBonus, getTargetedStat, getTargetedStatExtra, normalizeSkill
 import { fmt } from '@/utils/format'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
 import { elementStatKey } from '@/utils/elementStatKeys'
+import { calcPenetrationPower } from '@/data/penetrationPower'
 
 /** 获取元素伤害加成（属性数值口径经 resolveStatElement：frostfire 按冰） */
 function getElementDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
@@ -149,9 +150,8 @@ function getAnomalyCritStats(panel: PanelValues, element: DamageElement | undefi
   }
 }
 
-export function calcPenetrationPower(panel: PanelValues): number {
-  return panel.atk * 0.3 + panel.hp * 0.1 + (panel.sheerForceFlat ?? 0)
-}
+// 贯穿力：单一来源 `@/data/penetrationPower`（CC-228，展示层也要用），此处原名转出（mechanics 的 import 路径不变）
+export { calcPenetrationPower }
 
 function getElementSheerDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
   const key = elementStatKey('sheerDmg', element) // CC-225 单一来源（经 resolveStatElement；无元素 / 未知 ⇒ 0）

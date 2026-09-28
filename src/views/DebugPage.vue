@@ -106,6 +106,7 @@ import { effectAtModLevel, wEngineEffectBlockReason } from '@/composables/wEngin
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt, pct, localized } from '@/utils/format'
 import { elementStatKey } from '@/utils/elementStatKeys'
+import { calcPenetrationPower } from '@/data/penetrationPower'
 // `isPctStat` = **展示**口径（lineValue 的格式化），`statSettlementMode` = **结算**口径（全局 Buff 的 mode 实参）
 import { getStatMeta, isPctStat, phaseStatLabel, statSettlementMode } from '@/utils/statMeta'
 import type { BuffEffect, BuffGroup, PanelValues, TeammateBuff } from '@/types/catalog'
@@ -343,7 +344,7 @@ const attributeFormulaSections = computed(() => {
   const p = currentPanel.value
   if (!p) return []
   const elementKey = elementDmgKey()
-  const penetrationPower = p.atk * 0.3 + p.hp * 0.1 + (p.sheerForceFlat ?? 0)
+  const penetrationPower = calcPenetrationPower(p)
   const penDmg = (p.penDmgBonus ?? 0) + (p.sheerDmgBonus ?? 0) + elementSheerDmgBonus()
   const skillTargeted = Object.entries(p)
     .filter(([key, value]) => key.startsWith('skillDmgBonus__') && value)

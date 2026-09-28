@@ -504,6 +504,7 @@ import type { DamageElement, PanelValues } from '@/types/catalog'
 import { getStatMeta, isPctStat } from '@/utils/statMeta'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
+import { calcPenetrationPower } from '@/data/penetrationPower'
 import { elementAnomalyBuildUpEfficiency } from '@/data/anomalyElement'
 import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'
 import { ELEMENT_FIELD_PREFIX } from '@/utils/enemyDebuffStats'
@@ -573,7 +574,7 @@ const totalDmgBonus = computed(() => {
   return p.dmgBonus + elementDmg.value + totalSkillDmgBonusForPanel.value
 })
 
-const penetrationPower = computed(() => props.panel.atk * 0.3 + props.panel.hp * 0.1 + (props.panel.sheerForceFlat ?? 0))
+const penetrationPower = computed(() => calcPenetrationPower(props.panel))
 
 const ELEMENT_NAME_BY_ELEMENT: Record<string, string> = {
   physical: '物理',

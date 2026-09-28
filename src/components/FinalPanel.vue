@@ -104,6 +104,7 @@ import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { collectHpSources, hpBreakdownTotals } from '@/composables/hpSourceBreakdown'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { clampCritRatePct, expectedCritMultiplier } from '@/data/critMultiplier'
+import { calcPenetrationPower } from '@/data/penetrationPower'
 import { isPctStat } from '@/utils/statMeta'
 import { elementStatKey } from '@/utils/elementStatKeys'
 import { fmt, pct } from '@/utils/format'
@@ -165,7 +166,7 @@ const panels = computed(() => {
     const elementSharpKey = elementStatKey('sharpDmg', element) ?? ''
     const isRupture = agent?.specialty === 'rupture'
     const isSharpen = agent?.specialty === 'sharpen'
-    const penPower = pIn.atk * 0.3 + pIn.hp * 0.1 + (pIn.sheerForceFlat ?? 0)
+    const penPower = calcPenetrationPower(pIn)
 
     const skillTargeted = targetedRows(pIn, 'skillDmgBonus', t => t)
     const stunTargeted = targetedRows(pIn, 'stunBuildUpBonus', t => t)
