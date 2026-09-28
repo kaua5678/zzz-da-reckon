@@ -2893,3 +2893,27 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 值不值得：生产行为零变化。specs 在运行时闭包层面不再依赖引擎，「specs 不能导入 core」从注释约定变为锁，测试执行器也回到 src/test/。不是降计数。
 - 验证：迁移后三个相关测试 4 passed；`npx vue-tsc -b` 干净；v268 verify EXIT=0（3986 passed | 29 skipped）。
 - 回退点：revert 7c8567c9（单一提交，含 git mv）。
+
+### 24.93 第 269 轮：mechanics 闭包测量（无越界、不加锁）；CC-249 测试态 / 生产态行规则一致性锁（9c037acf）
+
+**① mechanics 运行时闭包测量**（§24.92 交接方向 1，一次性探针，已删）：
+- 68 个非测试文件的传递闭包进入 composables / stores / views / components 的都是 **0 条**；
+- 唯一进入 logicEditor 的是 `fusion.ts`（`agents/aire.ts > data/moveTableQueries`），属于 N2 例外；
+- 进入 core 的有 13 个文件（panel、buff、damage、anomalyPool/*、resource/moveLookup 等）。**这是允许的方向**：core 只经纯叶子 `mechanics/registry` 接触 mechanics（由 coreRuntimeDeps 锁住），不构成环。
+- 裁决：**不加锁**。间接越界的路径只可能经过 core / data / specs，而这三层各自已有闭包锁，组合起来已经覆盖；再加一个锁属于为锁而锁。
+
+**② CC-249（§24.85 未决项「harness 是否默认加载 spec 行规则」裁决）**：
+- 裁决：**harness 不全局加载默认规则**，改为加一条自动化的一致性锁。
+- 依据：
+  - 全局加载要把十余个测试文件的 `afterEach(() => setActiveRowFusionRules([]))` 改成复位到默认规则；rowValueSource 等单元锁本来就断言原始值，也要跟着改。代价大，而且让「测试的规则前提」变得隐式。
+  - 这个未决项真正要防的是「测试态与生产态悄悄分歧」。以前靠人工纪律「涉及 getRowValue 的改动须在默认规则下补验」来防，CC-237 就是在这条纪律上漏网的。
+- 改动：新增 `src/composables/__tests__/productionRuleParity.test.ts`。
+  - 从 `createDefaultLogicEditorState().rowFusions` 动态推导「拥有默认规则的角色」（moveId 前 4 位，当前为 1171、1561）；
+  - 每个角色组一队（补位 1211 / 1311 / 1481），断言空规则与生产默认规则下 `teamTotalDamage` 逐位相同；
+  - 新增默认规则时，对应角色自动纳入。
+- 反例：把 burnice.ts 的 `rawRowValue` 临时换成 `getRowValue`（重现 CC-237），1171 这一队变红，CC-238 单元锁也同时变红；恢复后变绿。
+- 影响：原「已知坑」里的人工补验纪律降级为**只在新增默认规则、或改动不经整队读数的取值时**才需要手工补验；其余由 verify 自动覆盖。
+- 若日后某条默认规则**有意**改变整队读数：把该队期望改为显式记录差值并注明规则 id，不要删锁。
+- 值不值得：零生产变化，把一条人工纪律变成机器检查，架构上消除了「测试态绿 ≠ 生产态对」这个盲区里最常见的一类。
+- 验证：新锁 3 passed；vue-tsc 干净；v269 verify EXIT=0（3989 passed | 29 skipped）。
+- 回退点：revert 9c037acf（只新增一个测试文件）。
