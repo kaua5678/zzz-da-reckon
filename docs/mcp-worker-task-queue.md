@@ -69,24 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 187 轮（lane lead-arena-0925c）：CC-160 已完成，代码提交 3db6e605，文档见本提交。**
-- 修法：叶瞬光终局照影按入口态 floor 一次并冻结（`finalizePass.begin(cfg, entry)` 签名变更），新增能力 `finalizePass.refoldAfter`，终局后重折以消除过期折叠残差（stun-dual-source §24.9）。
-- 单人 1431 c0–c6 全部 stable、留白 0；golden 与棘轮已重生成（差异全在 1431 队）；4 处测试逐条归因后修改。
-- 验证：全量测试 3824 passed、`npm run verify` rc=0、CG 25 项通过。
+**第 188 轮（lane lead-arena-0925c）：CC-163 已完成（代码提交 58d0143d），CC-161 关闭；文档见本提交。**
+- 删除了 CC-159 的单量子选相死分支（stun-dual-source §24.10）：禁用前后 golden、棘轮、zd 全部 104 个预设、单人 1431、全量测试逐位相同。
+- 验证：全量测试 3824 passed、`npm run verify` rc=0、`vue-tsc -b` 无新错误、CG 25 项通过。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）；dsh 返回 pong。
 
 **下一步（按顺序，直接开工）**
-1. **CC-163（简化，优先）**：
-   - 在 `src/core/resource/finalizePasses.ts#runFinalizePasses` 的周期 2 分支（`oneQuantumApart` 那段）加一行临时 `console.log`（行尾 `// ZZTMP`）；
-   - 跑 `npx vitest run src/composables/__tests__/timeGolden.test.ts timeFillRatchet`，再跑 zd 探针 `k184/zzS184.test.ts`（`ZZ_P=` 取 1431 的全部预设 id）；
-   - 一次都不触发 ⇒ 删掉该分支、`oneQuantumApart`、`prefersCycleMember`（types.ts、yeshuguang.ts），更新 §24 与卡表；有触发 ⇒ 记下病例，保留。
-2. **CC-161 复核**：多半能随 CC-163 的扫描一起关闭（见卡表）。
-3. **CC-162**：比利是否声明 refoldAfter，以及锁窗夹具重折被拒的问题（步骤见卡表）。
-4. CC-156、CC-147、CC-152（可选）。
+1. **CC-162**：比利（1531）是否声明 `finalizePass.refoldAfter`。
+   - 在 `src/mechanics/agents/starlightBilly.ts` 约 :888 的 `finalizePass` 里临时加 `refoldAfter: true`；
+   - 跑 `npx vitest run src/specs/__tests__/adjustableEffect.test.ts src/composables/__tests__/timeGolden.test.ts`；
+   - 第 187 轮现象：`billy_radiant_basic4_gain` / `billy_star_basic4_gain` rate=1/2 实到 0，要查 basic4 行为什么在重折后消失（从 `helpers.ts#iterate` 的 necessary 分项和比利 `buildExecutions` 的 basic4 行入手）；
+   - 若比利的整数链数同样带过期残差，就修成可声明，并逐条归因 golden。
+   - 附带：锁窗 3 夹具 1431-1481-1491 的重折环被拒（最终截断 94.6 → 103.4s）。可试「截断重折环内冻结值沿用第一遍的值」，看 kept 振荡能否消失。
+2. CC-156、CC-147、CC-152（可选）：先读卡表对应行再决定。
+3. 周期 2 仍然存在（1431 preTail 199 次、1531 25 次、1051 tail 44 次），但目前对结果无影响；若以后出现「停点影响结果」的病例，从 §24.10 的扫描方法入手（临时仪表 + 三路径）。
 
 **已知坑**
-- `finalizePass.begin` 现在有第二个参数（入口态，只读）；新模块声明 begin 时，若需要入口态推导量就从这里取，不要读相位缓存（`record.yeshuguangCycle` 可能滞后）。
-- 截断重折环 `restoreCfgs(s2EntryCfgs)` 会清掉冻结字段，这是预期行为：begin 每次都会重算。`runFinalizePasses` 开头不需要额外清理。
-- 留白要看装配前台（Σ行 totalTime），不要看账本前台；`cfg.timeBudgetExcess`（折叠残差）与 `convergence.timeBudgetResidualSeconds` 是两个不同的量。
-- 全量测试在后台高负载下 `zcWorkspace.test.ts` 会偶发失败，单跑能通过。
-- 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行；带 ZZTMP 的「改写原行」不能用 sed 删，清理后要 `git diff` 确认。
+- `finalizePass.begin(cfg, entry)` 的第二个参数是只读入口态；`prefersCycleMember` 已删除，不要再引用（旧文档 §23–24.4 中的描述已成历史）。
+- 判断「分支是否还有用」时，要测**禁用后的最终结果差异**，不能只看触发次数（本轮：触发 199 次，影响为零）。
+- 看留白要看装配前台（Σ行 totalTime），不要看账本前台；`cfg.timeBudgetExcess` 与 `convergence.timeBudgetResidualSeconds` 是不同的量。
+- 全量测试在高负载下 `zcWorkspace.test.ts` 会偶发失败，单跑能通过。
+- 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行；带 ZZTMP 的「改写原行」不能用 sed 删，要 `git checkout` 该文件。
