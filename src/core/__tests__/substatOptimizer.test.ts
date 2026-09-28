@@ -4,15 +4,9 @@ import type { Agent } from '@/types/catalog'
 
 const dpsTemplate: SubstatTemplate = {
   stats: ['critRate', 'critDmg', 'atkPct', 'penFlat'],
-  dmgBonusRelevant: true,
-  anomalyRelevant: false,
-  anomalyRatio: 0,
 }
 const anomalyTemplate: SubstatTemplate = {
   stats: ['anomalyProficiency', 'atkPct'],
-  dmgBonusRelevant: true,
-  anomalyRelevant: true,
-  anomalyRatio: 0.85,
 }
 
 function mockAgent(id: string, specialty: string): Agent {

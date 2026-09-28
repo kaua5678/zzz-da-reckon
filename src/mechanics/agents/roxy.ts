@@ -491,9 +491,6 @@ export const roxyMechanic: AgentMechanicModule = {
   // 洛克茜（1621）：防御→攻击/冲击力（局内）→ defPct 优先
   substatTemplate: {
     stats: ['defPct', 'atkPct', 'critRate'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
   },
   name: '洛克茜',
   description: 'v12：风能（25能量/点+终结+1）→ 敬请安息（消耗全部，每点额外段+1风眼）→ 风眼爆鸣/恕不远送（引爆至多3 → 巨旋风或小旋风）+ 自旋每秒伤害；核心转模（能量回复>1.2→攻击/冲击）；C1 全抗-15%/暴伤+40%、C2 易伤+30%、C4 回能+终结+20%、C6 风抗15%+巨旋风×250%。',

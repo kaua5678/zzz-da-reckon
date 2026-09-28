@@ -514,14 +514,6 @@ export function aliceSlotOf(rr: { characters: Array<{ slot?: number; agentId?: s
 export const aliceMechanic: AgentMechanicModule = {
   id: 'agent:alice',
   agentIds: [ALICE_AGENT_ID],
-  // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
-  // 爱丽丝（1401）：物理异常 → 精通+攻击（异常角色暴击不如精通，6命附伤占比不足以让双爆上位）
-  substatTemplate: {
-    stats: ['anomalyProficiency', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: true,
-    anomalyRatio: 0.7,
-  },
   name: '爱丽丝',
   description: '剑意专属资源：技能命中积累剑意，300点触发星芒圆舞曲#3（可合轴），生成极性强击。畏缩状态下敌人每0.95秒受到强击伤害2.5%的固定异常伤害，紊乱倍率随物理异常剩余时长提升。',
   applyPanel: applyAlicePanel,

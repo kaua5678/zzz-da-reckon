@@ -1,48 +1,27 @@
 /**
- * 套装等效词条 + 副词条融合贪心优化器
+ * 副词条默认分配（按角色模板优先序填词条）。
  *
- * 替代 substatAlloc.ts 的固定步数启发式（computeRecommendedSubStats）。
- * ⚠ R34：`substatAlloc.ts` 已**整文件删除**（旧启发式「100% 暴击封顶」已过期；
- * 本文件是唯一活实现，暴击封顶走 `critRateCap`，锋御锐暴 200%）。
- * ⇒ 本条已从「替代 X」改写成「X 已删」留痕，别再按旧指针去找那个文件（规则 16）。
- * 将套装效果拆分为等效词条和独立乘区，然后用融合贪心在 39 步词条预算下
- * 最大化伤害期望。
- *
- * 核心流程：
- * 1. 角色词条模板 → 确定优化哪些副词条
- * 2. 套装效果分解 → 等效词条（可折算为副词条步长的属性）+ 独立乘区（增伤类）
- * 3. 套装剪枝 → 排除与模板无关的套装，Top-K 进贪心
- * 4. 融合贪心 → 39 步，每步选 ∂E/∂stat 最大者
+ * CC-186（第 209 轮）：原「套装等效词条 + 融合贪心」打分模型（computeExpectedScore / greedyAllocate /
+ * pruneAndRankSets / 拐力 / 套装分解，约 700 行）已退役：
+ * - 它的唯一生产入口是 store `optimizer.useDefault=0` 分支，而该设置自引入（5c087473，2026-08-30）起
+ *   **从无任何写入点**（无 UI、无导入、无持久化）⇒ 生产中不可达；它写的 `perSlotMarginalGains` 永远为空，
+ *   两处展示卡片永远显示「（未计算）」。
+ * - 真正「求最优」的路径已是编排层 `composables/substatOptimizer.ts`：本文件的默认分配作起点 → 读真实
+ *   `teamTotalDamage` 挪步精修（CC-183/185）。实测起点换成打分式贪心，精修结果零差（§24.32）。
+ * 详见 docs/mcp-stun-dual-source.md §24.33。回退点：revert 本卡提交。
+ * ⚠ R34：旧 `substatAlloc.ts`（computeRecommendedSubStats）已整文件删除，别按旧指针找它。
  */
 
 import type {
   Agent, WEngine, DriveDiscSet, PanelValues,
-  DriveDiscConfig, TeammateBuff, BuffEffect,
-  StatRules,
+  DriveDiscConfig, TeammateBuff, StatRules,
 } from '@/types/catalog'
 import { calcPanel } from './panel'
-import { sharpCritMultiplier } from './damage'
 import type { SourcePanelsByOwner } from './buff'
 import { getAgentMechanic } from '@/mechanics/registry'
 
-// ============ 副词条步长表 ============
-
-/** 副词条池：可出现在驱动盘副词条中的属性 */
-const SUBSTAT_POOL: Record<string, number> = {
-  hpFlat: 112,
-  atkFlat: 19,
-  defFlat: 15,
-  hpPct: 3,
-  atkPct: 3,
-  defPct: 4.8,
-  critRate: 2.4,
-  critDmg: 4.8,
-  anomalyProficiency: 9,
-  penFlat: 9,
-}
-
-/** 副词条属性 Set（快速查找） */
-const SUBSTAT_SET = new Set(Object.keys(SUBSTAT_POOL))
+/** 暴击率副词条步长（S 级 +2.4%/步；原 SUBSTAT_POOL.critRate，只剩「百暴」缺口在用） */
+const CRIT_RATE_STEP = 2.4
 
 /**
  * 按有效词条数自动计算总步数。
@@ -55,135 +34,38 @@ function getDefaultTotalSteps(statsCount: number): number {
   return 39
 }
 
-// ============ 非副词条增伤乘区属性 ============
-
-/**
- * 这些属性不在副词条池中，但直接进入伤害公式乘区，
- * 不能折算为等效词条，需归入「独立乘区」。
- */
-const MULTIPLIER_STATS = new Set<string>([
-  'dmgBonus',
-  'anomalyDmgBonus',
-  'disorderDamageBonus',
-  'penRatio',
-  'physicalDmg', 'fireDmg', 'iceDmg', 'electricDmg', 'etherDmg', 'windDmg', 'lumifluxDmg',
-  'anomalyMastery',
-  'anomalyBuildUpEfficiency',
-  'physicalAnomalyBuildUpEfficiency',
-  'electricAnomalyBuildUpEfficiency',
-  'windAnomalyDmgBonus',
-  'turbulenceDamageBonus',
-  'anomalyCritRate',
-  'anomalyCritDmg',
-  'assaultCritRate',
-  'assaultCritDmg',
-  'anomalyReleaseDmgBonus',
-])
-
 // ============ 角色词条模板 ============
 
-/** 词条模板：定义优化范围和伤害组成 */
+/** 词条模板：自动分配的词条范围与优先序 */
 export interface SubstatTemplate {
-  /** 优先优化的副词条列表（有序） */
+  /** 优先分配的副词条列表（有序：默认分配按此顺序填到上限；精修只在这些词条间挪步） */
   stats: string[]
-  /** 普通增伤乘区是否计入目标函数 */
-  dmgBonusRelevant: boolean
-  /** 异常伤害是否计入目标函数 */
-  anomalyRelevant: boolean
-  /** 异常伤害占比（0-1），用于混合伤害期望的加权 */
-  anomalyRatio: number
-  /** 全队攻击转模配置（可选）。设置后，atkPct 词条的边际收益会包含队友伤害增量。
-   *  ratios = [1名异常, 2名异常, 3名异常] 时的转模比例。cap = 转模上限。 */
-  teamAtkTransfer?: { ratios: [number, number, number]; cap: number }
-  /** 攻击在异常伤害项中的权重（默认 1）。<1 时副词条攻击增量对异常伤害的贡献按比例衰减。
-   *  蕾米=0.1（耀变/虚耀用队友面板，不吃自己攻击）。主C异常角色保持默认 1。 */
-  atkWeightInAnomaly?: number
-  /** 角色级贪心提前终止阈值。undefined=用全局默认 0.01。
-   *  蕾米=0.15：攻击残余边际 < 初始最大×15% 时停止，只堆拐力收益期几步。 */
-  minGainRatio?: number
   /** 暴击率封顶（默认 100）。锋御=200：100% 以上每 1% 是一次「额外锐暴判定」的概率，
    *  锐暴乘算（见 core/damage.ts sharpCritMultiplier，用户口径 2026-09-09）。 */
   critRateCap?: number
 }
 
 /**
- * 队友信息（用于计算拐力收益）。
- * 调用方传入队友的当前面板伤害估算，贪心优化时攻击词条的边际收益
- * 会包含「自身攻击提升 → 全队拐力增加」的部分。
- */
-export interface TeammateInfo {
-  /** 队友的角色 ID（用于匹配特定机制） */
-  agentId: string
-  /** 队友当前面板攻击力 */
-  atk: number
-  /** 队友当前伤害期望（与目标函数同量纲） */
-  expectedDamage: number
-  /** 队友是否以异常伤害为主（影响异常增伤拐力计算） */
-  anomalyRelevant: boolean
-}
-
-/**
  * 按 specialty 兜底的默认词条模板。
  * 角色特例由角色模块声明 `substatTemplate`（CC-81），见 getTemplate。
+ * CC-186：模板只剩 stats / critRateCap；与兜底相同的模块声明已删除（简 / 蕾米埃尔 / 柏妮思 / 维琳娜 / 爱丽丝 / 月城柳）。
  */
 const AGENT_TEMPLATES: Record<string, SubstatTemplate> = {
-  // ===== 默认模板（按 specialty 兜底） =====
-  _default_dps: {
-    stats: ['critRate', 'critDmg', 'atkPct', 'penFlat'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
-  },
-  _default_anomaly: {
-    stats: ['anomalyProficiency', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: true,
-    anomalyRatio: 0.85,
-  },
-  _default_support: {
-    stats: ['atkPct', 'hpPct', 'defPct'],  // 辅助不优化伤害，保生存/面板
-    dmgBonusRelevant: false,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
-  },
-  _default_stun: {
-    stats: ['critRate', 'critDmg', 'atkPct', 'penFlat'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
-  },
-  _default_defense: {
-    stats: ['hpPct', 'defPct', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
-  },
+  _default_dps: { stats: ['critRate', 'critDmg', 'atkPct', 'penFlat'] },
+  _default_anomaly: { stats: ['anomalyProficiency', 'atkPct'] },
+  _default_support: { stats: ['atkPct', 'hpPct', 'defPct'] }, // 辅助不优化伤害，保生存/面板
+  _default_stun: { stats: ['critRate', 'critDmg', 'atkPct', 'penFlat'] },
+  _default_defense: { stats: ['hpPct', 'defPct', 'atkPct'] },
   // 命破（rupture）：暴击是乘区（贯穿伤害吃暴击/爆伤），生命是贯穿基底 atk×0.3+hp×0.1 的加法项 → 暴击→爆伤→生命
-  _default_rupture: {
-    stats: ['critRate', 'critDmg', 'hpPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
-  },
+  _default_rupture: { stats: ['critRate', 'critDmg', 'hpPct'] },
   // 锋御（sharpen）：伤害走引擎 SHARPEN_DAMAGE_PROFILE（basisFormula=def、calcBasisValue=panel.def）
   // → defPct 是**伤害词条**而不是生存词条，不能落 _default_dps 吃 atkPct。首个实例克拉蕾（1611，
   // 锐化伤害/残痕/毁伤全 def 基底）此前落 _default_dps → 自动副词条给攻击力不给防御力（2026-09-09 用户抓到）。
   // 顺序按邦布精灵推荐：暴击率 → 防御力 → 暴击伤害；暴击率封顶 200（锐暴 100% 以上可额外判定，乘算）。
   _default_sharpen: {
     stats: ['critRate', 'defPct', 'critDmg'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
     critRateCap: 200,
   },
-
-  // 角色特例已迁至各角色模块的 substatTemplate 声明（CC-81，census §5.88）；getTemplate 先查模块，缺省按职业兜底。
-
-  // 星见雅（Miyabi，待入 catalog）：直伤+异常混合型（烈霜/冰），霜寒+烈霜伤害混合
-  // 将来入 catalog 时配置：
-  //   stats: ['anomalyProficiency', 'atkPct', 'critRate', 'critDmg'],
-  //   anomalyRatio: ~0.5,
-  // 直伤占比高所以双爆收益大，异常占比低但仍需精通保证紊乱伤害。
 }
 
 /** 获取角色的词条模板 */
@@ -201,537 +83,7 @@ export function getTemplate(agent: Agent): SubstatTemplate {
   return AGENT_TEMPLATES._default_dps
 }
 
-// ============ 套装效果分解 ============
-
-/** 套装效果分解结果 */
-export interface SetBonusDecomposition {
-  /** 等效副词条：statId → 等效步数（如 atkPct: 3.33 表示 10%/3% = 3.33 步） */
-  equivalentSteps: Record<string, number>
-  /** 独立乘区：statId → 值（百分比模式，如 dmgBonus: 15 表示 +15%） */
-  multipliers: Record<string, number>
-}
-
-/**
- * 将单个 BuffEffect 拆分为等效词条或独立乘区。
- * 条件效果按覆盖率折算。
- */
-function decomposeEffect(effect: BuffEffect): SetBonusDecomposition {
-  const result: SetBonusDecomposition = { equivalentSteps: {}, multipliers: {} }
-  if (!effect?.stat) return result
-
-  const stat = effect.stat
-  let value = effect.value ?? 0
-
-  // 覆盖率折算（条件效果）
-  const coverage = effect.coverage?.default ?? 1
-  if (coverage < 1 && effect.type !== 'fixed') {
-    value *= coverage
-  }
-
-  // Stacked 效果：取满层值
-  if (effect.type === 'stacked' && effect.valuePerStack && effect.maxStacks) {
-    value = effect.valuePerStack * (effect.defaultStacks ?? effect.maxStacks)
-    if (coverage < 1) value *= coverage
-  }
-
-  if (value === 0) return result
-
-  // 副词条池属性 → 等效词条
-  if (SUBSTAT_SET.has(stat)) {
-    const step = SUBSTAT_POOL[stat] ?? 1
-    result.equivalentSteps[stat] = (result.equivalentSteps[stat] ?? 0) + value / step
-    return result
-  }
-
-  // 增伤/乘区属性 → 独立乘区
-  if (MULTIPLIER_STATS.has(stat)) {
-    result.multipliers[stat] = (result.multipliers[stat] ?? 0) + value
-    return result
-  }
-
-  // 其他属性（影响防御/抗性减益等）→ 暂不折算，记录为乘区
-  // 如 enemyDefReduction、enemyResReduction 等间接影响伤害的属性
-
-  return result
-}
-
-/**
- * 分解套装效果为等效词条和独立乘区。
- */
-function decomposeSet(
-  setId: string,
-  setsMap: Map<string, DriveDiscSet>,
-): SetBonusDecomposition {
-  const result: SetBonusDecomposition = { equivalentSteps: {}, multipliers: {} }
-  const set = setsMap.get(setId)
-  if (!set) return result
-
-  // CC-181 删了恒 1 的 coverage 形参。按 100% 分解与伤害管线默认一致（catalog 驱动盘效果 coverage.default 全为 1）；
-  // 本函数只在「未装备任何套装」的搜索路径用于排名（CC-182），已装备套装走 calcPanel 的真实覆盖率
-  const cov = 1
-
-  // 2 件套效果
-  for (const e of set.twoPiece?.effects ?? []) {
-    const d = decomposeEffect(e)
-    for (const [k, v] of Object.entries(d.equivalentSteps)) {
-      result.equivalentSteps[k] = (result.equivalentSteps[k] ?? 0) + v * cov
-    }
-    for (const [k, v] of Object.entries(d.multipliers)) {
-      result.multipliers[k] = (result.multipliers[k] ?? 0) + v * cov
-    }
-  }
-
-  // 4 件套效果
-  for (const e of set.fourPiece?.selfBuff?.effects ?? []) {
-    const d = decomposeEffect(e)
-    for (const [k, v] of Object.entries(d.equivalentSteps)) {
-      result.equivalentSteps[k] = (result.equivalentSteps[k] ?? 0) + v * cov
-    }
-    for (const [k, v] of Object.entries(d.multipliers)) {
-      result.multipliers[k] = (result.multipliers[k] ?? 0) + v * cov
-    }
-  }
-
-  return result
-}
-
-/**
- * 分解 4+2 套装组合。
- */
-function decomposeFourPlusTwo(
-  fourPieceId: string,
-  twoPieceId: string,
-  setsMap: Map<string, DriveDiscSet>,
-): SetBonusDecomposition {
-  const four = decomposeSet(fourPieceId, setsMap)
-  const two = decomposeSet(twoPieceId, setsMap)
-
-  const equiv: Record<string, number> = { ...four.equivalentSteps }
-  for (const [k, v] of Object.entries(two.equivalentSteps)) {
-    equiv[k] = (equiv[k] ?? 0) + v
-  }
-  const mult: Record<string, number> = { ...four.multipliers }
-  for (const [k, v] of Object.entries(two.multipliers)) {
-    mult[k] = (mult[k] ?? 0) + v
-  }
-
-  return { equivalentSteps: equiv, multipliers: mult }
-}
-
-// ============ 伤害期望目标函数 ============
-
-/**
- * 从基础面板 + 副词条分配 + 套装等效/乘区 计算伤害期望。
- *
- * 期望 E = (1-anomalyRatio) × E_direct + anomalyRatio × E_anomaly
- *
- * E_direct ∝ ATK × (1 + CR×CD/10000) × (1 + Σdmg/100)
- * E_anomaly ∝ ATK × (anomalyProficiency/100) × (1 + Σdmg/100) × (1 + anomalyDmg/100)
- *
- * 防御/抗性因子为常数（不随副词条变化），省略。
- *
- * @param basePanel   基础面板（不含副词条、不含套装效果）
- * @param allocation  副词条分配 { statId: stepCount }
- * @param setBonus    套装等效词条和独立乘区
- * @param template    角色词条模板
- * @param subStep     副词条步长表
- */
-function computeExpectedScore(
-  basePanel: PanelValues,
-  allocation: Record<string, number>,
-  setBonus: SetBonusDecomposition,
-  template: SubstatTemplate,
-  subStep: Record<string, number>,
-): number {
-  const stepTable = subStep || SUBSTAT_POOL
-
-  // --- 合并副词条 + 套装等效词条 → 实际属性值 ---
-  const mergedAlloc: Record<string, number> = {}
-  for (const stat of template.stats) {
-    const stepVal = stepTable[stat] ?? 0
-    const allocSteps = allocation[stat] ?? 0
-    const bonusSteps = setBonus.equivalentSteps[stat] ?? 0
-    mergedAlloc[stat] = (allocSteps + bonusSteps) * stepVal
-  }
-  // 非模板词条的等效词条（套装可能给不优化的词条）也算入面板
-  for (const [stat, steps] of Object.entries(setBonus.equivalentSteps)) {
-    if (mergedAlloc[stat] != null) continue  // 已在上面处理
-    const stepVal = stepTable[stat] ?? 0
-    mergedAlloc[stat] = (mergedAlloc[stat] ?? 0) + steps * stepVal
-  }
-
-  // --- 构建实际面板 ---
-  const p = { ...basePanel }
-
-  // ATK：baseATK × (1 + atkPct/100) + atkFlat
-  const baseAtk = basePanel.atk
-  const atkPctVal = (mergedAlloc['atkPct'] ?? 0)
-  const atkFlatVal = (mergedAlloc['atkFlat'] ?? 0)
-  p.atk = baseAtk * (1 + atkPctVal / 100) + atkFlatVal
-
-  // HP / DEF（penFlat 与防御相关但这里不优化，只承载）
-  const hpPctVal = (mergedAlloc['hpPct'] ?? 0)
-  const hpFlatVal = (mergedAlloc['hpFlat'] ?? 0)
-  p.hp = basePanel.hp * (1 + hpPctVal / 100) + hpFlatVal
-
-  const defPctVal = (mergedAlloc['defPct'] ?? 0)
-  const defFlatVal = (mergedAlloc['defFlat'] ?? 0)
-  p.def = basePanel.def * (1 + defPctVal / 100) + defFlatVal
-
-  // 暴击
-  p.critRate = basePanel.critRate + (mergedAlloc['critRate'] ?? 0)
-  p.critDmg = basePanel.critDmg + (mergedAlloc['critDmg'] ?? 0)
-
-  // 精通 + 套装独立乘区
-  p.anomalyProficiency = basePanel.anomalyProficiency + (mergedAlloc['anomalyProficiency'] ?? 0) + (setBonus.multipliers['anomalyProficiency'] ?? 0)
-  p.penFlat = basePanel.penFlat + (mergedAlloc['penFlat'] ?? 0)
-
-  // 增伤乘区：来自面板本身 + 副词条（副词条没有增伤）+ 套装独立乘区
-  const totalDmgBonus = (basePanel.dmgBonus ?? 0) + (setBonus.multipliers['dmgBonus'] ?? 0)
-  const totalAnomalyDmg = (basePanel.anomalyDmgBonus ?? 0) + (setBonus.multipliers['anomalyDmgBonus'] ?? 0)
-
-  // 副词条攻击增量（与基础攻击分开，用于异常项衰减）
-  const substatAtkIncrement = baseAtk * (atkPctVal / 100) + atkFlatVal
-
-  // --- 直伤期望（攻击全权重） ---
-  let scoreDirect = 0
-  if (template.anomalyRatio < 1) {
-    const cd = p.critDmg
-    // 锋御：锐暴 200% 封顶 + 额外锐暴乘算（critRateCap>100 即锋御模板）
-    const critMult = (template.critRateCap ?? 100) > 100
-      ? sharpCritMultiplier(p.critRate, p.sharpCritDmg ?? 0)
-      : 1 + (Math.min(100, Math.max(0, p.critRate)) / 100) * (cd / 100)
-    const dmgMult = 1 + totalDmgBonus / 100
-    scoreDirect = p.atk * critMult * dmgMult
-  }
-
-  // --- 异常伤害期望（攻击权重 = atkWeightInAnomaly，默认1） ---
-  let scoreAnomaly = 0
-  if (template.anomalyRelevant && template.anomalyRatio > 0) {
-    const atkWeight = template.atkWeightInAnomaly ?? 1
-    const effectiveAnomalyATK = baseAtk + substatAtkIncrement * atkWeight
-    const profMult = (p.anomalyProficiency ?? 0) / 100
-    const dmgMult = 1 + totalDmgBonus / 100
-    const anomalyDmgMult = 1 + totalAnomalyDmg / 100
-    scoreAnomaly = effectiveAnomalyATK * profMult * dmgMult * anomalyDmgMult
-  }
-
-  return (1 - template.anomalyRatio) * scoreDirect + template.anomalyRatio * scoreAnomaly
-}
-
-// ============ 融合贪心 ============
-
-/** 贪心优化结果 */
-export interface GreedyResult {
-  /** 最终副词条分配 { statId: stepCount } */
-  allocation: Record<string, number>
-  /** 最终伤害期望评分 */
-  expectedScore: number
-  /** 各词条再加 1 步的边际伤害增量（贪心最后一步时各候选词条的 ΔE） */
-  marginalGains: Record<string, number>
-}
-
-/** 攻击拐力配置（从蕾米额外能力等全队攻击 buff 计算） */
-interface AtkTransferConfig {
-  /** 转模比例（如 0.06 / 0.12 / 0.40） */
-  ratio: number
-  /** 转模上限（默认 1600） */
-  cap: number
-}
-
-/**
- * 计算蕾米攻击拐力给全队的伤害增量。
- * 只有 atkPct 词条增加攻击时，全队攻击 buff 才会变大（其他词条不影响）。
- *
- * @param sourceATK        转模来源（当前唯一 = 蕾米埃尔）当前攻击力（CC-34a 前名为蕾米埃尔专名）
- * @param baseATK          蕾米基础攻击力（不含 atkPct 副词条）
- * @param atkPctVal        当前 atkPct 副词条总百分比值
- * @param stepTable        副词条步长表
- * @param teammates        队友信息列表
- * @param transfer         攻击转模配置
- * @returns 加一步 atkPct 的拐力增量（伤害期望量纲）
- */
-function computeAtkTeamBenefit(
-  sourceATK: number,
-  baseATK: number,
-  _atkPctVal: number,
-  stepTable: Record<string, number>,
-  teammates: TeammateInfo[],
-  transfer: AtkTransferConfig,
-): number {
-  if (!teammates || teammates.length === 0) return 0
-  if (transfer.ratio <= 0) return 0
-
-  // 检查是否已达转模上限（边际为 0）
-  if (sourceATK * transfer.ratio >= transfer.cap) return 0
-
-  // 加一步 atkPct 后的新攻击力：增量 = 基础攻击 × 步长%，叠加到当前面板攻击上
-  // （面板其他攻击来源——音擎/主词条/套装——不随副词条变化，保持一致基数）
-  const atkPctStep = stepTable['atkPct'] ?? 3
-  const atkDelta = baseATK * (atkPctStep / 100)
-  const newATK = sourceATK + atkDelta
-
-  // 拐力增量 = 新转模量 - 旧转模量（同一口径：当前面板攻击 × 比例）
-  const oldTransfer = Math.min(sourceATK * transfer.ratio, transfer.cap)
-  const newTransfer = Math.min(newATK * transfer.ratio, transfer.cap)
-  const deltaTransfer = Math.max(0, newTransfer - oldTransfer)
-
-  if (deltaTransfer <= 0) return 0
-
-  // 队友伤害弹性 = expectedDamage / ATK（线性近似）
-  let teamBenefit = 0
-  for (const tm of teammates) {
-    if (tm.atk <= 0) continue
-    const elasticity = tm.expectedDamage / tm.atk
-    teamBenefit += elasticity * deltaTransfer
-  }
-  return teamBenefit
-}
-
-/**
- * 融合贪心：在 39 步预算内，每步贪心选择边际收益最大的词条。
- *
- * @param basePanel   基础面板（面板计算结果的 inCombat 面板，subStatAllocation 置空）
- * @param setBonus    套装等效词条 + 独立乘区
- * @param template    角色词条模板
- * @param subStep     副词条步长表
- * @param totalSteps  总步数
- * @param teammates   队友信息（可选，用于攻击拐力计算）
- * @param atkTransfer 攻击拐力配置（可选，非蕾米角色不传）
- */
-function greedyAllocate(
-  basePanel: PanelValues,
-  setBonus: SetBonusDecomposition,
-  template: SubstatTemplate,
-  subStep: Record<string, number>,
-  totalSteps: number,
-  teammates: TeammateInfo[] | undefined,
-  atkTransfer: AtkTransferConfig | undefined,
-  statCap: number = 20,
-  minGainRatio: number = 0.05,
-): GreedyResult {
-  const allocation: Record<string, number> = {}
-  for (const stat of template.stats) allocation[stat] = 0
-
-  // 追踪当前 atkPct 总量（用于拐力计算）
-  const stepTable = subStep || SUBSTAT_POOL
-  let currentAtkPctVal = (setBonus.equivalentSteps['atkPct'] ?? 0) * (stepTable['atkPct'] ?? 3)
-
-  // 初始最大边际（第一步时记录，用于提前终止阈值判断）
-  let maxGain0 = 0
-  let stepCount = 0
-
-  for (let step = 0; step < totalSteps; step++) {
-    let bestStat = ''
-    let bestGain = 0
-
-    const baseScore = computeExpectedScore(basePanel, allocation, setBonus, template, subStep)
-
-    for (const stat of template.stats) {
-      // 单词条步数已达上限，跳过
-      if (allocation[stat] >= statCap) continue
-
-      // 尝试加一步
-      allocation[stat]++
-      let score = computeExpectedScore(basePanel, allocation, setBonus, template, subStep)
-
-      // 攻击词条的拐力收益
-      if (stat === 'atkPct' && teammates && atkTransfer) {
-        const panelATK = computePanelAtk(basePanel, allocation, setBonus, stepTable)
-        score += computeAtkTeamBenefit(panelATK, basePanel.atk, currentAtkPctVal, stepTable, teammates, atkTransfer)
-      }
-
-      allocation[stat]--
-
-      const gain = score - baseScore
-      if (gain > bestGain) {
-        bestGain = gain
-        bestStat = stat
-      }
-    }
-
-    // 第一步记录初始最大边际
-    if (step === 0 && bestGain > 0) {
-      maxGain0 = bestGain
-    }
-
-    // 提前终止：最佳边际已衰减到初始值的 minGainRatio 以下
-    if (stepCount > 0 && maxGain0 > 0 && bestGain < maxGain0 * minGainRatio) {
-      break
-    }
-
-    if (bestStat) {
-      allocation[bestStat]++
-      if (bestStat === 'atkPct') {
-        currentAtkPctVal += (stepTable['atkPct'] ?? 3)
-      }
-      stepCount++
-    }
-  }
-
-  // CC-184（第 207 轮）：提前终止 / 全部边际为 0 时，剩余预算按模板优先序补满（与 useDefault 快速路径同口径）。
-  // 游戏里副词条不会空着；打分式看不到的属性（如克拉蕾吃防御、1441 吃生命）边际恒 0，旧版直接把步数浪费掉
-  // （1611 只分 20/39 步，比推荐低 25%）。补满后再由编排层真实伤害精修（refine）决定去向。
-  let leftover = totalSteps - Object.values(allocation).reduce((a, b) => a + b, 0)
-  for (const stat of template.stats) {
-    if (leftover <= 0) break
-    const add = Math.min(statCap - allocation[stat], leftover)
-    if (add > 0) { allocation[stat] += add; leftover -= add }
-  }
-
-  // 最后一步时各词条的边际增量（即使已到 cap 也显示真实边际，供用户对比各词条收益）
-  const marginalGains: Record<string, number> = {}
-  const finalAlloc = { ...allocation }
-  const baseFinalScore = computeExpectedScore(basePanel, finalAlloc, setBonus, template, subStep)
-  for (const stat of template.stats) {
-    finalAlloc[stat]++
-    let marginalScore = computeExpectedScore(basePanel, finalAlloc, setBonus, template, subStep)
-    if (stat === 'atkPct' && teammates && atkTransfer) {
-      const panelATK = computePanelAtk(basePanel, finalAlloc, setBonus, stepTable)
-      marginalScore += computeAtkTeamBenefit(panelATK, basePanel.atk, currentAtkPctVal, stepTable, teammates, atkTransfer)
-    }
-    finalAlloc[stat]--
-    marginalGains[stat] = Math.max(0, marginalScore - baseFinalScore)
-  }
-
-  return { allocation, expectedScore: baseFinalScore, marginalGains }
-}
-
-/** 从分配计算面板攻击力（用于拐力计算，避免重复计算整个面板） */
-function computePanelAtk(
-  basePanel: PanelValues,
-  allocation: Record<string, number>,
-  setBonus: SetBonusDecomposition,
-  stepTable: Record<string, number>,
-): number {
-  const atkPctSteps = (allocation['atkPct'] ?? 0) + (setBonus.equivalentSteps['atkPct'] ?? 0)
-  const atkPctVal = atkPctSteps * (stepTable['atkPct'] ?? 3)
-  const atkFlatVal = ((allocation['atkFlat'] ?? 0) + (setBonus.equivalentSteps['atkFlat'] ?? 0)) * (stepTable['atkFlat'] ?? 19)
-  return basePanel.atk * (1 + atkPctVal / 100) + atkFlatVal
-}
-
-// ============ 套装剪枝 ============
-
-/**
- * 检查套装是否与角色模板相关。
- *
- * 剪枝条件（满足任一即保留）：
- * 1. 套装等效词条中有模板 stats 中的属性
- * 2. 套装独立乘区中有 dmgBonus / anomalyDmgBonus 且模板标记了 dmgBonusRelevant
- * 3. 套装独立乘区中有 anomaly 相关乘区且模板标记了 anomalyRelevant
- */
-function isSetRelevant(
-  decomposition: SetBonusDecomposition,
-  template: SubstatTemplate,
-): boolean {
-  // 等效词条与模板 stats 交集
-  for (const stat of template.stats) {
-    if ((decomposition.equivalentSteps[stat] ?? 0) > 0) return true
-  }
-  // 独立乘区中如果有增伤类且模板需要
-  if (template.dmgBonusRelevant) {
-    const dmgStats = ['dmgBonus', 'physicalDmg', 'fireDmg', 'iceDmg', 'electricDmg', 'etherDmg', 'windDmg', 'lumifluxDmg']
-    for (const s of dmgStats) {
-      if ((decomposition.multipliers[s] ?? 0) > 0) return true
-    }
-  }
-  // 异常相关乘区
-  if (template.anomalyRelevant) {
-    const anomalyStats = ['anomalyDmgBonus', 'anomalyProficiency', 'anomalyMastery', 'anomalyCritRate', 'anomalyCritDmg', 'assaultCritRate', 'assaultCritDmg']
-    for (const s of anomalyStats) {
-      if ((decomposition.multipliers[s] ?? 0) > 0) return true
-    }
-  }
-  return false
-}
-
-/**
- * 对所有候选套装组合做剪枝，返回 Top-K 组合。
- */
-function pruneAndRankSets(
-  allSetIds: string[],
-  setsMap: Map<string, DriveDiscSet>,
-  basePanel: PanelValues,
-  template: SubstatTemplate,
-  subStep: Record<string, number>,
-  topK: number = 5,
-  teammates?: TeammateInfo[],
-  atkTransfer?: AtkTransferConfig,
-  statCap?: number,
-  totalSteps?: number,
-  minGainRatio?: number,
-): { fourPieceId: string; twoPieceId: string; decomposition: SetBonusDecomposition; baseScore: number }[] {
-  // 生成 4+2 组合
-  const combinations: { fourPieceId: string; twoPieceId: string; decomposition: SetBonusDecomposition }[] = []
-
-  for (const fourId of allSetIds) {
-    for (const twoId of allSetIds) {
-      if (twoId === fourId) continue
-      const decomp = decomposeFourPlusTwo(fourId, twoId, setsMap)
-      if (!isSetRelevant(decomp, template)) continue
-      combinations.push({ fourPieceId: fourId, twoPieceId: twoId, decomposition: decomp })
-    }
-  }
-
-  // 对每个组合跑一次贪心，取分数排序。CC-181：排名与最终分配用**同一**提前终止阈值（原排名漏传 ⇒ 固定 0.05，
-  // 模板覆盖如蕾米埃尔 0.15 只在最终分配生效 ⇒ Top-K 按另一套停止规则选出）
-  const scored = combinations.map(c => {
-    const result = greedyAllocate(basePanel, c.decomposition, template, subStep, totalSteps!, teammates, atkTransfer, statCap, minGainRatio)
-    return { ...c, baseScore: result.expectedScore }
-  })
-
-  scored.sort((a, b) => b.baseScore - a.baseScore)
-  return scored.slice(0, topK)
-}
-
-// ============ 主入口 ============
-
-/** 优化器输入 */
-export interface OptimizeSubstatsInput {
-  agent: Agent
-  wEngine: WEngine | undefined
-  driveDiscConfig: DriveDiscConfig
-  setsMap: Map<string, DriveDiscSet>
-  teammateBuffs: TeammateBuff[]
-  statRules: StatRules | null
-  config: {
-    cinemaLevel: number
-    wEngineModLevel: number
-    sourcePanelsByOwner?: SourcePanelsByOwner
-    /** 效果覆盖率表（effect id → 0~1），与伤害管线 calcPanel 同口径；缺省 = 全部按 100%（第 194 轮） */
-    /** 角色潜能档（1..6），透传给起点面板盖章（CC-174：calcPanel 生产调用点须显式给出）。缺省 = 6。 */
-    potentialLevel?: number
-    effectCoverageMap?: Map<string, number>
-    enemyWeakness?: readonly string[]
-  }
-  /** 队友信息（可选）。提供后攻击词条的拐力收益会计入目标函数。 */
-  teammates?: TeammateInfo[]
-  /** 单词条分配上限（步数），防止所有步数堆一个属性。默认 20。 */
-  statCap?: number
-  /** 总步数覆盖。0（默认）= 自动按有效词条数（2→32/3→39/4→43）。>0 时强制使用。 */
-  totalSteps?: number
-  /** 贪心提前终止阈值。当最佳边际 < 初始最大边际 × minGainRatio 时停止。默认 0.05（5%）。 */
-  minGainRatio?: number
-  /** 快速默认分配（跳过贪心 + 套装剪枝）。true 时按模板优先序直接填词条：
-   *  暴击→面板暴击 100%，其余词条→上限。用于实战对比等热路径加速。 */
-  useDefault?: boolean
-}
-
-/** 优化器输出 */
-export interface OptimizeSubstatsOutput {
-  /** 副词条分配 { statId: stepCount } */
-  subStatAllocation: Record<string, number>
-  /** 最终伤害期望评分 */
-  expectedDamage: number
-  /** 选中的套装信息 */
-  chosenSet: {
-    fourPieceId: string
-    twoPieceId: string
-    decomposition: SetBonusDecomposition
-  }
-  /** 各词条再加 1 步的边际伤害增量（贪心最后一步数据留底） */
-  marginalGains: Record<string, number>
-}
+// ============ 默认分配 ============
 
 /**
  * 快速默认副词条分配（用户口径 2026-08：最优队伍词条选择固定）。
@@ -754,10 +106,9 @@ export function computeDefaultSubStats(
     if (remaining <= 0) break
     let target = statCap
     if (stat === 'critRate') {
-      const step = SUBSTAT_POOL['critRate'] ?? 2.4
       // 锋御锐暴封顶 200%（template.critRateCap），其余角色 100%
       const cap = template.critRateCap ?? 100
-      const stepsToCap = Math.floor(Math.max(0, cap - baseCritRate) / step)
+      const stepsToCap = Math.floor(Math.max(0, cap - baseCritRate) / CRIT_RATE_STEP)
       target = Math.min(statCap, stepsToCap)
     }
     const steps = Math.min(remaining, target)
@@ -767,16 +118,36 @@ export function computeDefaultSubStats(
   return allocation
 }
 
-/**
- * 计算不含副词条的基础面板。
- * 用于贪心优化的起点（面板中副词条相关属性为初始值）。
- */
-function computeNoSubstatPanel(input: OptimizeSubstatsInput): PanelValues {
+/** 默认分配输入 */
+export interface DefaultSubStatInput {
+  agent: Agent
+  wEngine: WEngine | undefined
+  driveDiscConfig: DriveDiscConfig
+  setsMap: Map<string, DriveDiscSet>
+  teammateBuffs: TeammateBuff[]
+  statRules: StatRules | null
+  config: {
+    cinemaLevel: number
+    wEngineModLevel: number
+    sourcePanelsByOwner?: SourcePanelsByOwner
+    /** 角色潜能档（1..6），透传给起点面板盖章（CC-174：calcPanel 生产调用点须显式给出）。缺省 = 6。 */
+    potentialLevel?: number
+    /** 效果覆盖率表（effect id → 0~1），与伤害管线 calcPanel 同口径；缺省 = 全部按 100%（第 194 轮） */
+    effectCoverageMap?: Map<string, number>
+    enemyWeakness?: readonly string[]
+  }
+  /** 单词条分配上限（步数）。默认 20。 */
+  statCap?: number
+  /** 总步数覆盖。0（默认）= 自动按有效词条数（2→32/3→39/4→43）。>0 时强制使用。 */
+  totalSteps?: number
+}
+
+/** 不含副词条的局内面板（只用于「百暴」缺口：暴击率） */
+function computeNoSubstatPanel(input: DefaultSubStatInput): PanelValues {
   const emptySubConfig: DriveDiscConfig = {
     ...input.driveDiscConfig,
     subStatAllocation: {},
   }
-
   const result = calcPanel(
     input.agent,
     input.wEngine,
@@ -797,119 +168,15 @@ function computeNoSubstatPanel(input: OptimizeSubstatsInput): PanelValues {
 }
 
 /**
- * 套装等效词条 + 副词条融合贪心优化主入口。
- *
- * 替代 computeRecommendedSubStats（该函数与其所在文件 `substatAlloc.ts` 已于 R34 删除）。
- *
- * 流程：
- * 1. 获取角色词条模板
- * 2. 构建基础面板（subStatAllocation 置空）
- * 3. 读取当前驱动盘套装 ID（4件套 + 2件套）
- * 4. 读取所有候选套装（catalog 中的 driveDiscSets）
- * 5. 套装剪枝 → Top-5 跑贪心
- * 6. 返回最优分配 + 评分
+ * 角色默认副词条分配：模板 → 无副词条面板暴击率 → computeDefaultSubStats。
+ * 调用方：store 配装推荐（全部预设 / zd / 测试 harness 走它）、编排层优化器起点（随后真实伤害精修）。
  */
-export function computeOptimalSubStats(input: OptimizeSubstatsInput): OptimizeSubstatsOutput {
-  // 1. 角色模板
+export function computeDefaultSubStatAllocation(input: DefaultSubStatInput): Record<string, number> {
   const template = getTemplate(input.agent)
-
-  // 2. 基础面板（无副词条）——默认路径也要它算「百暴缺口」（暴击填到 ≤100%）
   const basePanel = computeNoSubstatPanel(input)
-
   const statCap = input.statCap ?? 20
   const totalSteps = input.totalSteps && input.totalSteps > 0
     ? input.totalSteps
     : getDefaultTotalSteps(template.stats.length)
-
-  // 快速默认路径：跳过套装剪枝 + 贪心，按固定优先序直接填词条（热路径加速）。
-  if (input.useDefault) {
-    const currentFour = input.driveDiscConfig.fourPieceSetId
-    const currentTwo = input.driveDiscConfig.twoPieceSetId
-    return {
-      subStatAllocation: computeDefaultSubStats(template, basePanel.critRate, totalSteps, statCap),
-      expectedDamage: 0,
-      marginalGains: {},
-      chosenSet: {
-        fourPieceId: currentFour,
-        twoPieceId: currentTwo,
-        decomposition: decomposeFourPlusTwo(currentFour, currentTwo, input.setsMap),
-      },
-    }
-  }
-
-  // 3. 副词条步长表
-  const subStep = (input.statRules?.driveDisc?.sRankSubStatBaseStep ?? {}) as Record<string, number>
-
-  // 5. 攻击拐力配置：从模板 teamAtkTransfer 读取（通用化，不再特判 agent.id）
-  let atkTransfer: AtkTransferConfig | undefined
-  const teammates = input.teammates
-  if (teammates && teammates.length > 0 && template.teamAtkTransfer) {
-    const anomalyCount = 1 + teammates.filter(t => t.anomalyRelevant).length
-    // 取 ratios[0/1/2] 对应 1/2/3 名异常角色
-    const idx = Math.min(anomalyCount, template.teamAtkTransfer.ratios.length) - 1
-    const ratio = template.teamAtkTransfer.ratios[Math.max(0, idx)]
-    atkTransfer = { ratio, cap: template.teamAtkTransfer.cap }
-  }
-
-  // 6. 收集所有候选套装
-  const allSetIds = Array.from(input.setsMap.keys())
-
-  // 阈值优先级：模板 > 用户覆盖 > 全局默认 0.05
-  const minGainRatio = template.minGainRatio ?? input.minGainRatio ?? 0.05
-
-  // CC-182（第 205 轮）：已装备套装 ⇒ 只为**已装备**套装分配副词条。
-  // `basePanel`（computeNoSubstatPanel）= calcPanel 带当前 4+2 的局内面板：套装效果已按 effectCoverageMap 计入。
-  // 旧路径在它之上再叠加 Top-K 候选套装的等效词条 ⇒ 当前套装被计两次 / 分配面板 = 已装备 + 推荐两套同时生效，
-  // 而 `chosenSet` 生产零读取（套装不会被换）⇒ 输出的是一个不存在面板的最优分配。
-  // 只有一件套装都没装时才走套装搜索（此时 basePanel 不含套装效果，候选分解不重复）。
-  const equippedFour = input.driveDiscConfig.fourPieceSetId
-  const equippedTwo = input.driveDiscConfig.twoPieceSetId
-  if (equippedFour || equippedTwo) {
-    const none: SetBonusDecomposition = { equivalentSteps: {}, multipliers: {} }
-    const greedy = greedyAllocate(basePanel, none, template, subStep, totalSteps, teammates, atkTransfer, statCap, minGainRatio)
-    return {
-      subStatAllocation: greedy.allocation,
-      expectedDamage: greedy.expectedScore,
-      marginalGains: greedy.marginalGains,
-      chosenSet: { fourPieceId: equippedFour, twoPieceId: equippedTwo, decomposition: decomposeFourPlusTwo(equippedFour, equippedTwo, input.setsMap) },
-    }
-  }
-
-  // 7. 剪枝 + 贪心 → 最优组合（仅未装备任何套装时）
-  const topCombos = pruneAndRankSets(allSetIds, input.setsMap, basePanel, template, subStep, 5, teammates, atkTransfer, statCap, totalSteps, minGainRatio)
-
-  // 回退函数：对指定套装跑贪心
-  const runGreedy = (fourId: string, twoId: string): GreedyResult => {
-    const decomp = decomposeFourPlusTwo(fourId, twoId, input.setsMap)
-    return greedyAllocate(basePanel, decomp, template, subStep, totalSteps, teammates, atkTransfer, statCap, minGainRatio)
-  }
-
-  if (topCombos.length === 0) {
-    // 无候选套装匹配模板，回退到当前套装贪心
-    const currentFour = input.driveDiscConfig.fourPieceSetId
-    const currentTwo = input.driveDiscConfig.twoPieceSetId
-    const fourId = currentFour || allSetIds[0] || ''
-    const twoId = currentTwo || allSetIds.find(id => id !== fourId) || allSetIds[0] || ''
-    const greedy = runGreedy(fourId, twoId)
-    return {
-      subStatAllocation: greedy.allocation,
-      expectedDamage: greedy.expectedScore,
-      marginalGains: greedy.marginalGains,
-      chosenSet: { fourPieceId: fourId, twoPieceId: twoId, decomposition: decomposeFourPlusTwo(fourId, twoId, input.setsMap) },
-    }
-  }
-
-  const best = topCombos[0]
-  const greedy = runGreedy(best.fourPieceId, best.twoPieceId)
-
-  return {
-    subStatAllocation: greedy.allocation,
-    expectedDamage: greedy.expectedScore,
-    marginalGains: greedy.marginalGains,
-    chosenSet: {
-      fourPieceId: best.fourPieceId,
-      twoPieceId: best.twoPieceId,
-      decomposition: best.decomposition,
-    },
-  }
+  return computeDefaultSubStats(template, basePanel.critRate, totalSteps, statCap)
 }

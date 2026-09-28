@@ -24,16 +24,6 @@
           </tbody>
         </table>
       </div>
-
-      <!-- 副词条边际效用 -->
-      <div v-if="marginalBySlot.length > 0" class="marginal-sub">
-        <div class="marginal-sub-title">副词条边际效用（再加 1 步的伤害增量）</div>
-        <div v-for="mg in marginalBySlot" :key="mg.slot" class="marginal-sub-row">
-          <span class="msr-name">{{ mg.name }}</span>
-          <span v-for="(gain, stat) in mg.sorted" :key="stat" class="msr-chip">{{ statLabel(String(stat)) }} +{{ fmt(Number(gain), 1) }}/步</span>
-          <span v-if="!mg.hasAny" class="msr-none">（未计算）</span>
-        </div>
-      </div>
     </n-card>
   </div>
 </template>
@@ -147,23 +137,6 @@ async function run() {
   ]
 }
 
-/** 从 configStore 读取各槽位副词条边际效用 */
-const marginalBySlot = computed(() => {
-  const gains = configStore.perSlotMarginalGains
-  return configStore.team.map((char, slot) => {
-    if (!char?.agentId) return null
-    const raw = gains[slot] ?? {}
-    const entries = Object.entries(raw as Record<string, number>).filter(([_, v]) => v > 0)
-    const sorted = Object.fromEntries(entries.sort((a, b) => b[1] - a[1]))
-    const agent = catalogStore.getAgent(char.agentId)
-    return {
-      slot,
-      name: agent?.name?.zhCN || `槽${slot + 1}`,
-      sorted,
-      hasAny: entries.length > 0,
-    }
-  }).filter((x): x is { slot: number; name: string; sorted: Record<string, number>; hasAny: boolean } => !!x)
-})
 </script>
 
 <style scoped>
@@ -174,10 +147,4 @@ const marginalBySlot = computed(() => {
 .marginal-table th, .marginal-table td { padding: 4px 8px; border-bottom: 1px solid var(--wa-60); text-align: left; color: var(--wa-700); }
 .marginal-table th { color: var(--wa-500); font-weight: 600; }
 .current-row td { color: #f0a020; font-weight: 600; }
-.marginal-sub { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--wa-60); }
-.marginal-sub-title { font-size: 12px; color: var(--wa-500); margin-bottom: 8px; }
-.marginal-sub-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.msr-name { font-size: 11px; color: var(--wa-700); min-width: 60px; }
-.msr-chip { font-size: 10px; color: var(--fg-2); background: var(--wa-40); padding: 1px 6px; border-radius: 3px; }
-.msr-none { font-size: 10px; color: var(--wa-250); }
 </style>

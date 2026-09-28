@@ -601,14 +601,6 @@ export const burniceMechanic: AgentMechanicModule = {
   teamAnomalyDurationBonus: ({ element }) => (element === 'fire' ? 3 : 0),
   id: 'agent:burnice',
   agentIds: [BURNICE_AGENT_ID],
-  // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
-  // 柏妮思（1171）：火异常/灼烧 → 精通+攻击
-  substatTemplate: {
-    stats: ['anomalyProficiency', 'atkPct'],
-    dmgBonusRelevant: true,
-    anomalyRelevant: true,
-    anomalyRatio: 0.9,
-  },
   // CC-55：异放占比可调（展示层经 agentMechanicView#teamReleaseShares 查询；namespace = eventId 'burnice_flowfire_release' 首段）
   releaseShare: { namespace: 'burnice', label: '柏妮思异放' },
   name: '柏妮思',

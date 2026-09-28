@@ -62,7 +62,7 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
 /** 容量 16：难度爬梯单队 G2 实测 12 个不同配置（8 装不下、命中率掉一半）；每个 useResourceCalc 实例各一份 */
 const CALC_OUTPUT_MEMO_MAX = 16
 /** 不进 calcOutput 记忆化键的 state 字段（见上）。新增字段**默认进键**；只有确认引擎不读的纯 UI 态才可加到这里。 */
-const CALC_MEMO_KEY_EXCLUDE: ReadonlySet<string> = new Set(['refreshTrigger', 'activeTab', 'selectedSlot', 'perSlotMarginalGains'])
+const CALC_MEMO_KEY_EXCLUDE: ReadonlySet<string> = new Set(['refreshTrigger', 'activeTab', 'selectedSlot'])
 /** 对象身份 → 序号（目录数据进键用；WeakMap 不阻止回收） */
 const memoIdentity = new WeakMap<object, number>()
 let memoIdentitySeq = 0

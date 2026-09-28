@@ -6,9 +6,7 @@ import { ref, computed, watch } from 'vue'
 import type {
   Agent, WEngine, DriveDiscConfig, SkillDamageTarget, CharacterBuildRecommendation, TeammateBuffGroup,
 } from '@/types/catalog'
-import { computeOptimalSubStats, getTemplate, type OptimizeSubstatsOutput, type TeammateInfo } from '@/core/substatOptimizer'
-import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
-import { calcPanel } from '@/core/panel'
+import { computeDefaultSubStatAllocation, getTemplate } from '@/core/substatOptimizer'
 import { useCatalogStore } from './catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
@@ -539,9 +537,6 @@ export const useConfigStore = defineStore('config', () => {
     timeWeightStrategy.value = v === 'static' || v === 'joint' ? v : 'balanced'
   }
 
-  // 融合贪心边际收益（按槽位存储，用于 UI 展示）
-  const perSlotMarginalGains = ref<Record<number, Record<string, number>>>({})
-
   // 当前 Tab
   const activeTab = ref<string>('team')
 
@@ -592,7 +587,7 @@ export const useConfigStore = defineStore('config', () => {
   /**
    * 换人 + 自动推荐。
    * opts.defer = 批量换人（applyTeamPreset）时挂起同步/推荐副作用，
-   * 避免 3 次 setAgent 各跑一遍融合贪心优化器导致卡顿；由调用方最后统一触发。
+   * 避免 3 次 setAgent 各跑一遍配装推荐（副词条默认分配）；由调用方最后统一触发。
    */
   function setAgent(slot: number, agentId: string, opts?: { defer?: boolean }) {
     const char = team.value[slot]
@@ -786,112 +781,27 @@ export const useConfigStore = defineStore('config', () => {
       const agent = catalogStore.getAgent(char.agentId)
       const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
       if (agent) {
-        // 使用融合贪心优化器（替代旧的固定步数启发式）
-        const statCap = getMechanicSetting('optimizer.substatCap', 20)
-        // 按有效词条数取对应档的总步数设置：0=自动使用该档默认值
-        const tmpl = getTemplate(agent)
-        const statsCount = tmpl.stats.length
-        const totalStepsKey = statsCount <= 2 ? 'optimizer.totalSteps2'
-          : statsCount === 3 ? 'optimizer.totalSteps3'
+        // 默认分配（用户口径 2026-08：按模板优先序填词条，暴击填到「百暴」）；0 = 该档默认总步数。
+        // CC-186（第 209 轮）：原 `optimizer.useDefault=0` 整队贪心分支已删——该设置自引入起从无写入点（无 UI / 导入 / 持久化），
+        // 分支生产不可达，它写的 perSlotMarginalGains 永远为空。求最优走编排层真实伤害精修（composables/substatOptimizer.ts）。
+        // 详见 docs/mcp-stun-dual-source.md §24.33。
+        const statCount = getTemplate(agent).stats.length
+        const totalStepsKey = statCount <= 2 ? 'optimizer.totalSteps2'
+          : statCount === 3 ? 'optimizer.totalSteps3'
           : 'optimizer.totalSteps4'
-        const totalSteps = getMechanicSetting(totalStepsKey, 0)
-
-        // 快速默认路径（用户口径 2026-08：最优词条固定——暴击叠满、其余按序顶上限；跳过贪心 + 队友面板）。
-        // 辅助/防护/击破伤害影响小、不跑贪心（击破「不一定给」——默认不给，转模源在模板首位吃满即可）。
-        const isDpsSpecialty = agent.specialty === 'attack' || agent.specialty === 'anomaly' || agent.specialty === 'rupture'
-        const useDefault = getMechanicSetting('optimizer.useDefault', 1) === 1 || !isDpsSpecialty
-
-        let optResult: OptimizeSubstatsOutput
-        if (useDefault) {
-          optResult = computeOptimalSubStats({
-            agent,
-            wEngine,
-            driveDiscConfig: char.driveDisc,
-            setsMap: catalogStore.driveDiscSetsMap,
-            teammateBuffs: [],
-            statRules: catalogStore.statRules,
-            statCap,
-            totalSteps,
-            useDefault: true,
-            config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, potentialLevel: char.potentialLevel, enemyWeakness: enemy.value.weakness },
-          })
-        } else {
-          // CC-173（第 198 轮）决定：本分支（整队贪心，仅 optimizer.useDefault=0 且输出位角色）**允许**与伤害管线不同源——
-          // 用原始队友上下文，缺 resolveSlotPanelBuffInputs 的 5 步加工（来源修正 / 全局 Buff / 额外能力门控 / 接收槽过滤 / 覆盖率）。
-          // 理由：store 禁调编排层（ARCHITECTURE.md R6 C2），5 步加工依赖 mechanics/specs 无法下沉 core；把本编排迁出 store
-          // 要连带迁 setAgent / 初始化 / applyTeamPreset / 优化器设置 watcher 四个流程，对一个非缺省路径得不偿失；注入点方案
-          // 仍要保留回落路径，两条路径照旧，不更简单。缺省路径（上面 useDefault 分支，全部预设 / zd / 测试 harness 走它）不读队友 buff。
-          // 重开条件：useDefault 缺省改为 0，或需要「自动分配 = 配置页按钮（composables/substatOptimizer.ts）」逐值一致。
-          // 详见 docs/mcp-stun-dual-source.md §24.20。
-          const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(team.value, {
-            teammateBuffGroups: catalogStore.teammateBuffGroups,
-            driveDiscSetsMap: catalogStore.driveDiscSetsMap,
-            statRules: catalogStore.statRules,
-            getAgent: (id) => catalogStore.getAgent(id),
-            getWEngine: (id) => catalogStore.getWEngine(id),
-            isTeammateBuffEnabled: (id) => isTeammateBuffEnabled(id),
-            enemyWeakness: enemy.value.weakness,
-          })
-
-          // 构建队友信息（用于拐力计算）
-          const teammates: TeammateInfo[] = []
-          for (let i = 0; i < team.value.length; i++) {
-            if (i === slot) continue
-            const otherChar = team.value[i]
-            if (!otherChar?.agentId) continue
-            const otherAgent = catalogStore.getAgent(otherChar.agentId)
-            if (!otherAgent) continue
-            const otherWEngine = otherChar.wEngineId ? catalogStore.getWEngine(otherChar.wEngineId) : undefined
-            try {
-              const otherPanel = calcPanel(otherAgent, otherWEngine, otherChar.driveDisc,
-                catalogStore.driveDiscSetsMap, enabledTeammateBuffs, catalogStore.statRules,
-                {
-                  cinemaLevel: otherChar.cinemaLevel ?? 0, wEngineModLevel: otherChar.wEngineModLevel ?? 1,
-                  potentialLevel: otherChar.potentialLevel,
-                  effectCoverageMap: undefined, // CC-173：本分支允许不同源（store 拿不到全队盘覆盖率组装，那在编排层）
-                  enemyWeakness: enemy.value.weakness,
-                })
-              const p = otherPanel.inCombat
-              const cr = Math.min(100, Math.max(0, p.critRate)) / 100
-              const directEst = p.atk * (1 + cr * (p.critDmg / 100)) * (1 + (p.dmgBonus ?? 0) / 100)
-              const anomalyEst = p.atk * ((p.anomalyProficiency ?? 0) / 100) * (1 + (p.dmgBonus ?? 0) / 100)
-              const isAnomaly = otherAgent.specialty === 'anomaly'
-              teammates.push({
-                agentId: otherChar.agentId,
-                atk: p.atk,
-                expectedDamage: isAnomaly ? anomalyEst : directEst,
-                anomalyRelevant: isAnomaly,
-              })
-            } catch { /* 面板计算失败时跳过该队友 */ }
-          }
-
-          optResult = computeOptimalSubStats({
-            agent,
-            wEngine,
-            driveDiscConfig: char.driveDisc,
-            setsMap: catalogStore.driveDiscSetsMap,
-            teammateBuffs: enabledTeammateBuffs,
-            statRules: catalogStore.statRules,
-            statCap,
-            totalSteps,
-            teammates: teammates.length > 0 ? teammates : undefined,
-            config: {
-              cinemaLevel: char.cinemaLevel,
-              wEngineModLevel: char.wEngineModLevel,
-              potentialLevel: char.potentialLevel,
-              sourcePanelsByOwner,
-              enemyWeakness: enemy.value.weakness,
-            },
-          })
-        }
-
-        for (const [statId, count] of Object.entries(optResult.subStatAllocation)) {
+        const alloc = computeDefaultSubStatAllocation({
+          agent,
+          wEngine,
+          driveDiscConfig: char.driveDisc,
+          setsMap: catalogStore.driveDiscSetsMap,
+          teammateBuffs: [],
+          statRules: catalogStore.statRules,
+          statCap: getMechanicSetting('optimizer.substatCap', 20),
+          totalSteps: getMechanicSetting(totalStepsKey, 0),
+          config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, potentialLevel: char.potentialLevel, enemyWeakness: enemy.value.weakness },
+        })
+        for (const [statId, count] of Object.entries(alloc)) {
           if (count > 0) char.driveDisc.subStatAllocation[statId] = Math.max(0, Math.min(54, count))
-        }
-        // 存储边际收益供 UI 展示
-        perSlotMarginalGains.value = {
-          ...perSlotMarginalGains.value,
-          [slot]: optResult.marginalGains,
         }
       }
     }
@@ -1289,7 +1199,7 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   /** 一键套用预设队伍（按槽位 0/1/2 的 agentId）。
-   *  批量模式：defer 掉 setAgent 内的同步/推荐（各跑一遍融合贪心优化器很重），
+   *  批量模式：defer 掉 setAgent 内的同步/推荐（各跑一遍配装推荐），
    *  换完三人后统一 sync + 推荐一次，与手动逐个换的总计算量一致。 */
   function applyTeamPreset(agentIds: [string, string, string]) {
     // 配装推荐没加载就套预设 = **静默留在 setAgent 兜底盘上**（34200 荆棘玫瑰，2件套防御+16%），
@@ -1335,7 +1245,7 @@ export const useConfigStore = defineStore('config', () => {
     }
   )
 
-  // 监听优化器设置变化，自动重新执行融合贪心
+  // 监听副词条设置变化，自动重算默认分配
   watch(
     () => [
       mechanicSettings.value['optimizer.substatCap'],
@@ -1427,7 +1337,6 @@ export const useConfigStore = defineStore('config', () => {
     resetResourceUtilization,
     getMechanicSetting,
     setMechanicSetting,
-    perSlotMarginalGains,
     stunAxes,
     stunAxisPlans,
     useStunAxis,

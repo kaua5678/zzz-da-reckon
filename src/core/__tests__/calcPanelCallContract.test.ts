@@ -17,7 +17,7 @@ const KNOWN: Record<string, number> = {
   'src/composables/resourceCalc/panelPhases.ts': 2, // computePanelPhases、computeEntrySnapshotPanel
   'src/core/teammateBuffSource.ts': 1,              // 队友 buff 来源面板
   'src/core/substatOptimizer.ts': 1,                // 无副词条起点（输入由调用方给）
-  'src/stores/config.ts': 1,                        // 整队贪心的队友估值（CC-173：允许不同源）
+  // src/stores/config.ts 的整队贪心调用点随 CC-186 删除（该分支生产不可达，见 stun-dual-source §24.33）
 }
 
 /** 从 `calcPanel(` 起按括号深度取到匹配的 `)`（跳过字符串 / 注释足够粗：调用实参里不含括号字符串） */

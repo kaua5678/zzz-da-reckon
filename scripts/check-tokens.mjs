@@ -650,7 +650,10 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--fg-2/--fg-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 447  /* ★ 2026-09-21 UI 外壳打磨：448 → **447**（−1）。方向 = 棘轮要求的方向。
+export const WA_REF_BASELINE = 437  /* ★ 2026-09-28 CC-186（第 209 轮）：447 → **437**（−10）。纯删除：ResourceUtilizationPage「全队边际收益」卡片与
+   MarginalUtilityCard「副词条边际效用」区永远显示「（未计算）」（数据源 perSlotMarginalGains 生产不可写），随 core 打分模型退役删除；
+   没有任何变量改回字面量。VAR_TOTAL_BASELINE 同步 808 → 797（同一批删除）。
+   ★ 2026-09-21 UI 外壳打磨：448 → **447**（−1）。方向 = 棘轮要求的方向。
    归因：`AppHeader` 的 `.tab-section-label` 从裸文字升级为胶囊贴片后，墨色由 `--wa-420`
    换成 `--app-text` —— 该元素此后**自带底色**（`--shell-chip-bg`），墨必须按贴片底选，
    实测 `--app-text-dim` 只有 dark 4.42 / light 3.27（< 4.5，tinted-contrast 判据红）。
@@ -690,7 +693,9 @@ export const WA_REF_BASELINE = 447  /* ★ 2026-09-21 UI 外壳打磨：448 → 
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 808  /* ★ 2026-09-26 R1 命座提升率多指标栏（docs/REQUIREMENTS.md R1）：801 → **808**（+7）。
+export const VAR_TOTAL_BASELINE = 797  /* ★ 2026-09-28 CC-186（第 209 轮）：808 → **797**（−11）。纯删除（同 WA_REF_BASELINE 447→437 那条）：两块永远显示
+                                        * 「未计算」的副词条边际收益 UI 连同其样式删掉；不是字面量回退，模板与样式里没有新增字面色。
+                                        * ★ 2026-09-26 R1 命座提升率多指标栏（docs/REQUIREMENTS.md R1）：801 → **808**（+7）。
                                         * 归因：ResourceUtilizationPage.vue 新增 .cinema-uplift-* 表格样式 8 处 var()
                                         * （--line ×1 / --fg-2 ×4 / --c-success / --c-danger / --wa-700 ×1），同时删掉模板里 1 处内联
                                         * var(--wa-700)（搬进 class）⇒ 净 +7。全部语义别名，无新增字面色；--wa-* 直引数保持

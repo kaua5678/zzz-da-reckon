@@ -1,11 +1,11 @@
 /**
  * CC-52：computeSubstatAllocationForSlot 收拢 ImpactChart 的优化器调用。
  * 第 194 轮：队友 buff 输入与伤害管线同源（`resolveSlotPanelBuffInputs`）。
- * CC-183 / 185（第 206 / 208 轮）：只有一种模式——core useDefault 快速分配作起点 → 真实伤害精修（readDamage 必填）。
+ * CC-183 / 185 / 186（第 206 / 208 / 209 轮）：只有一种模式——core 默认分配（computeDefaultSubStatAllocation）作起点 → 真实伤害精修（readDamage 必填）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { computeOptimalSubStats, getTemplate } from '@/core/substatOptimizer'
+import { computeDefaultSubStatAllocation, getTemplate } from '@/core/substatOptimizer'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
@@ -25,7 +25,7 @@ function damageOf(h: Harness, slot: number, a: Record<string, number>): number {
 const realDamage = () => { const calc = useResourceCalc(); return { readDamage: () => calc.teamTotalDamage.value ?? 0 } }
 
 describe('computeSubstatAllocationForSlot', () => {
-  it('起点 = core useDefault 分配（队友 buff 同源）；精修后真实伤害不低于起点、总步数不变（三个槽位）', async () => {
+  it('起点 = core 默认分配（队友 buff 同源）；精修后真实伤害不低于起点、总步数不变（三个槽位）', async () => {
     const h = await setupHarness([{ agentId: '1161' }, { agentId: '1311' }, { agentId: '1211' }], { recommendedBuild: true })
     const { config, catalog } = h
     const seed = (slot: number) => {
@@ -34,14 +34,13 @@ describe('computeSubstatAllocationForSlot', () => {
       const setInfo = resolveSlotPanelBuffInputs(slot, config, catalog)
       const sc = getTemplate(agent).stats.length
       const tsk = sc <= 2 ? 'optimizer.totalSteps2' : sc === 3 ? 'optimizer.totalSteps3' : 'optimizer.totalSteps4'
-      return computeOptimalSubStats({
+      return computeDefaultSubStatAllocation({
         agent, wEngine: char.wEngineId ? catalog.getWEngine(char.wEngineId) : undefined,
         driveDiscConfig: char.driveDisc, setsMap: catalog.driveDiscSetsMap,
         teammateBuffs: setInfo.teammateBuffs, statRules: catalog.statRules,
         statCap: config.getMechanicSetting('optimizer.substatCap', 20), totalSteps: config.getMechanicSetting(tsk, 0),
-        useDefault: true,
         config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, potentialLevel: char.potentialLevel, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: config.enemy.weakness },
-      }).subStatAllocation
+      })
     }
     for (const slot of [0, 1, 2]) {
       const s0 = seed(slot)
@@ -97,20 +96,5 @@ describe('副词条优化器的队友 buff 输入与伤害管线同源（第 194
     let capped = 0
     computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => { capped++; return calc.teamTotalDamage.value ?? 0 }, maxEvals: 5 })
     expect(capped).toBeLessThanOrEqual(5)
-  }, 60000)
-
-  // CC-184（第 207 轮）：打分式看不到的属性（克拉蕾吃防御）边际恒 0，旧版贪心提前终止只分 20/39 步。
-  // CC-185 起编排层不走贪心，此用例改钉 core 贪心本身（store useDefault=0 分支仍用它）。
-  it('core 贪心分配用满步数预算（与推荐快速路径同总步数）', async () => {
-    const { config, catalog } = await setupHarness([{ agentId: '1611' }, '', ''], { recommendedBuild: true })
-    const char = config.team[0]!
-    const rec = sum(char.driveDisc.subStatAllocation ?? {})
-    expect(rec).toBe(39)
-    const greedy = computeOptimalSubStats({
-      agent: catalog.getAgent('1611')!, wEngine: char.wEngineId ? catalog.getWEngine(char.wEngineId) : undefined,
-      driveDiscConfig: char.driveDisc, setsMap: catalog.driveDiscSetsMap, teammateBuffs: [], statRules: catalog.statRules,
-      config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, potentialLevel: char.potentialLevel, enemyWeakness: config.enemy.weakness },
-    }).subStatAllocation
-    expect(sum(greedy)).toBe(rec)
   }, 60000)
 })

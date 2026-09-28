@@ -118,7 +118,7 @@
         <template #header>副词条单属性上限</template>
         <div class="mechanic-row">
           <div class="mechanic-copy">
-            <div class="field-desc">融合贪心优化器每个副词条最多分配的步数。默认 20 步，运气不好副产物少可调低到 15 或 10。</div>
+            <div class="field-desc">副词条自动分配时每个词条最多分配的步数。默认 20 步，运气不好副产物少可调低到 15 或 10。</div>
           </div>
           <n-input-number
             :value="configStore.getMechanicSetting('optimizer.substatCap', 20)"
@@ -178,21 +178,6 @@
         </div>
       </n-card>
 
-      <n-card v-if="marginalGainsBySlot.length > 0" size="small" class="mechanic-card" :bordered="true">
-        <template #header>全队边际收益（各词条再 +1 步的伤害期望增量）</template>
-        <div style="font-size:11px;color:var(--wa-450);padding:0 0 8px;line-height:1.5">
-          量纲说明：数值是优化器内部 fast 评分的<b>相对量纲</b>（非真实伤害），含义 = 该词条再分配 1 步（如攻击 +3%、精通 +9）带来的期望伤害增量；蕾米等转模角色的攻击词条含全队拐力收益。<b>只用于比较词条优先级</b>：各词条边际接近 → 已接近最优；差距大 → 优先堆高的词条（直到单词条上限）。
-        </div>
-        <div v-for="mg in marginalGainsBySlot" :key="mg.slot" style="margin-bottom:6px">
-          <div style="font-size:12px;color:var(--wa-700);margin-bottom:2px">{{ mg.name }}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px">
-            <span v-for="(gain, stat) in mg.sortedGains" :key="stat" style="font-size:11px;color:var(--wa-550);background:var(--wa-40);padding:2px 6px;border-radius:3px">
-              {{ statLabel(String(stat)) }} +{{ fmt(Number(gain), 1) }}/步
-            </span>
-            <span v-if="Object.keys(mg.sortedGains).length === 0" style="font-size:11px;color:var(--wa-300)">（未计算）</span>
-          </div>
-        </div>
-      </n-card>
 
       <n-card size="small" class="mechanic-card" :bordered="true">
         <template #header>
@@ -519,29 +504,6 @@ function vpTotalTriggers(vp: any): number {
   return prog?.triggerCount ?? 0
 }
 
-const STAT_LABELS: Record<string, string> = {
-  anomalyProficiency: '精通', atkPct: '攻击%', critRate: '暴击率', critDmg: '暴伤',
-  penFlat: '穿透值', hpPct: '生命%', defPct: '防御%',
-}
-function statLabel(stat: string): string { return STAT_LABELS[stat] ?? stat }
-
-const marginalGainsBySlot = computed(() => {
-  const gains = configStore.perSlotMarginalGains
-  return configStore.team
-    .map((char, slot) => {
-      if (!char?.agentId) return null
-      const raw = gains[slot] ?? {}
-      const sorted = Object.entries(raw as Record<string, number>)
-        .filter(([_, v]) => v > 0)
-        .sort(([_, a], [__, b]) => b - a)
-      return {
-        slot,
-        name: agentNames.value[char.agentId] || catalogStore.getAgent(char.agentId)?.name?.zhCN || `槽${slot + 1}`,
-        sortedGains: Object.fromEntries(sorted),
-      }
-    })
-    .filter((x): x is { slot: number; name: string; sortedGains: Record<string, number> } => !!x)
-})
 
 // 类型与算法同源于 composables/cinemaUplift.ts（勿在此另抄一份）
 const cinemaGains = ref<CinemaUpliftRow[]>([])

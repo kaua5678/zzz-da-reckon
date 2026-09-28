@@ -507,9 +507,6 @@ export const luciaElowenMechanic: AgentMechanicModule = {
   // 卢西娅（1451）：生命→全队攻击（局外）→ hpPct 优先
   substatTemplate: {
     stats: ['hpPct', 'atkPct', 'defPct'],
-    dmgBonusRelevant: false,
-    anomalyRelevant: false,
-    anomalyRatio: 0,
   },
   name: '卢西娅·艾洛温',
   description: '梦境值计划（500点→20次追加攻击）、计划外强特合轴0秒、[合唱]最后一段固定伤害/2命增伤/6命必暴暴伤、4命帷幕喧响、星光汇聚之地回血接入伊德海莉。',

@@ -74,7 +74,7 @@ export const DEAD_CHANNEL_LS_BASELINE = {
  *     `coverageTriggerCounts` 按变体自身元素统计，`helpers.ts` 头注释原文「变种元素之间在紊乱
  *     系统中视为不同元素」）。⇒ 读它的人会得出**与活实现相反**的紊乱资格结论。
  *   · `substatAlloc.ts` 两条 + 整个文件：旧固定步数启发式（100% 暴击封顶），活实现是
- *     `substatOptimizer.ts#computeOptimalSubStats`（`critRateCap` 200%，锋御锐暴）；
+ *     `substatOptimizer.ts#computeDefaultSubStatAllocation`（CC-186 前名 computeOptimalSubStats；`critRateCap` 200%，锋御锐暴）；
  *     其 `computeBaseCritRate` 与活 `computeNoSubstatPanel` **同形但分叉**（后者不读 globalBuffs、
  *     不吃 `critRate` 特判）⇒ 同 `roughStats.critRate` 型陷阱：值会算偏。
  *   ⇒ 基线现在是**空对象**（这是目标态，不是失败）：任何**新**死导出都会被判 fresh 而红。
