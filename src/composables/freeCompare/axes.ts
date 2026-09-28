@@ -53,11 +53,6 @@ export function setupCodeLabel(c: SetupCode): string {
   return c.wengine === 0 ? `${c.cinema}命 无专武` : `${c.cinema}命 精${c.wengine}`
 }
 
-/** 该配置码占用的总限定金（无专武 = 0 金，精炼 1 = 0 金本体，每级精炼/命座 +1） */
-export function setupCodeGold(c: SetupCode): number {
-  return c.cinema + (c.wengine > 0 ? c.wengine - 1 : 0)
-}
-
 // ========== 系列规格 ==========
 
 /**
@@ -83,7 +78,12 @@ export interface SeriesSpec {
 
 // ========== x 轴维度 ==========
 
-export type AxisId = 'setupCode' | 'cinema' | 'wengine' | 'gold' | 'period' | 'difficulty'
+/**
+ * CC-189：原先还有 'gold'（总限定金）与 'difficulty'（操作难度档）两个维度——下拉可选，但求值器从不读它们的
+ * 覆盖字段 ⇒ 每档装配相同、画出一条平线（假维度）。两者都没有现成口径（金怎么分给三人 / 难度档映射哪些旋钮），
+ * 已删除。要加回来：先定口径并在 engine.ts 装配段消费 override，再加一行 AXES。
+ */
+export type AxisId = 'setupCode' | 'cinema' | 'wengine' | 'period'
 
 /**
  * x 轴维度定义。**加维度 = 加一行**。
@@ -117,12 +117,8 @@ export interface AxisLevel {
 export interface LevelOverride {
   cinema?: number
   wengine?: number
-  /** 目标总限定金（gold 维度用） */
-  gold?: number
-  /** 期数/Boss 期 id（period 维度用） */
+  /** 危局期 id（= boss-presets 里所选 Boss 的 `phaseId`；period 维度用，求值器按它装配该期 Boss） */
   periodId?: string
-  /** 操作难度档 0..N（difficulty 维度用，映射交互次数缩放） */
-  difficulty?: number
 }
 
 export interface AxisOptions {
@@ -130,11 +126,7 @@ export interface AxisOptions {
   cinemaMax?: number
   /** 精炼上限（wengine 维度用，默认 5） */
   wengineMax?: number
-  /** 金数范围（gold 维度用） */
-  goldRange?: [number, number]
-  /** 难度档上限（difficulty 维度用，默认 5） */
-  difficultyMax?: number
-  /** 期数清单（period 维度用） */
+  /** 期数清单（period 维度用）：所选 Boss 的各期危局，id = `phaseId`，建议按时间从旧到新 */
   periods?: Array<{ id: string; label: string }>
   /** 配置码维度：要跑哪几个码（默认 `DEFAULT_SETUP_CODES`） */
   setupCodes?: string[]
@@ -188,40 +180,14 @@ export const AXES: AxisDef[] = [
     },
   },
   {
-    id: 'gold',
-    label: '总限定金',
-    hint: '横轴 = 队伍总限定金（限定S本体1 + 限定音擎本体1 + 影画/精炼每级1；常驻/A 不计）',
-    levels: (_spec, opts) => {
-      const [lo, hi] = opts.goldRange ?? [0, 8]
-      const out: AxisLevel[] = []
-      for (let g = Math.max(0, lo); g <= hi; g++) {
-        out.push({ x: g, label: `${g}金`, override: { gold: g } })
-      }
-      return out
-    },
-  },
-  {
     id: 'period',
     label: 'Boss 期数',
-    hint: '横轴 = 危局期数（换 Boss = 换抗性/弱点/血量）—— 「这队能打几期」',
+    hint: '横轴 = 所选 Boss 的各期危局（换期 = 换血量/抗性/弱点）—— 「这队能打几期」；需先在条件里选 Boss',
     levels: (_spec, opts) => (opts.periods ?? []).map((p, i) => ({
       x: i,
       label: p.label,
       override: { periodId: p.id },
     })),
-  },
-  {
-    id: 'difficulty',
-    label: '操作难度档',
-    hint: '横轴 = 操作难度档（缩放弹刀/闪反等交互次数）—— 「手残 vs 手法哥差多少」',
-    levels: (_spec, opts) => {
-      const max = Math.max(1, opts.difficultyMax ?? 5)
-      return Array.from({ length: max + 1 }, (_, v) => ({
-        x: v,
-        label: `D${v}`,
-        override: { difficulty: v },
-      }))
-    },
   },
 ]
 

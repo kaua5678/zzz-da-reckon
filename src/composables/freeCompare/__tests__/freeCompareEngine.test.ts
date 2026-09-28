@@ -39,6 +39,27 @@ describe('自由对比求值器（真引擎）', () => {
     await catalog.loadBuildRecommendations()
   })
 
+  it('★ 期数轴真的换期，且血量比按「该期」血量算（CC-189：此前期数覆盖从不被读、env.hp 在装配前就读死）', async () => {
+    const res = await fetch('/static/boss-presets.json')
+    const boss = (await res.json()).bosses.find((b: { id: string }) => b.id === '30007') // 恶名·死路屠夫：各期血量不同
+    expect(boss, 'boss-presets 里应有 30007').toBeTruthy()
+    const [p1, p2] = boss.phases as Array<{ phaseId: string; label: string; hp: number }>
+    expect(Math.round(p1.hp), '选两期血量不同的，否则本条测不出东西').not.toBe(Math.round(p2.hp))
+    const run = (metricId: string) => computeFreeCompare(useResourceCalc(), {
+      series: [{ id: 'a', kind: 'agent', members: [BURNICE], code: code('01') }],
+      axisId: 'period',
+      axisOptions: { periods: [p1, p2].map(p => ({ id: p.phaseId, label: p.label })) },
+      metricId,
+      constraints: { boss, baseTeammates: [VELINA, ''] },
+    })
+    const dmg = (await run('teamTotalDamage')).series[0].values
+    const ratio = (await run('dmgBossHpRatio')).series[0].values
+    expect(dmg.every(v => typeof v === 'number' && v > 0)).toBe(true)
+    // 血量比 × 该期血量 = 总伤：两期各自成立 ⇒ 装配确实换到了该期，且 env 是装配后读的
+    expect(ratio[0]! * Math.round(p1.hp)).toBeCloseTo(dmg[0]!, -2)
+    expect(ratio[1]! * Math.round(p2.hp)).toBeCloseTo(dmg[1]!, -2)
+  })
+
   it('★ 跑完不留痕：队伍/Boss/命座全部还原（防污染用户当前配置）', async () => {
     const config = useConfigStore()
     const calc = useResourceCalc()

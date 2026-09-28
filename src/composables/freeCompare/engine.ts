@@ -276,7 +276,6 @@ export async function computeFreeCompare(
 
   const snap = snapshotStore(configStore)
   const cs = options.constraints ?? {}
-  const env: MetricEnv = { hp: configStore.enemy.hp ?? 0 }
 
   const series = options.series
   // 档位按第一个系列枚举（x 维度与系列无关 ⇒ 取任一即可，取第一个保证 label 稳定）
@@ -305,7 +304,8 @@ export async function computeFreeCompare(
         const level = levels[li]
 
         // ---- 装配：约束 → 系列成员 → x 档位覆盖 ----
-        applyConstraintBaseline(configStore, catalog, spec, cs)
+        // period 维度：档位的 periodId 覆盖约束里的 phaseId（CC-189；此前该覆盖从未被读 ⇒ 期数轴是假轴）
+        applyConstraintBaseline(configStore, catalog, spec, cs, level.override.periodId ?? cs.phaseId)
         const code: SetupCode = {
           cinema: level.override.cinema ?? spec.code.cinema,
           wengine: level.override.wengine ?? spec.code.wengine,
@@ -344,6 +344,8 @@ export async function computeFreeCompare(
         }
 
         // ---- 求值 ----
+        // env 必须在装配之后读：Boss / 期数由装配段写入，提前读会拿到用户页面原来那个 Boss 的血量（CC-189 修）
+        const env: MetricEnv = { hp: configStore.enemy.hp ?? 0 }
         const value = readMetric(calc, m, env, spec)
         evaluations++
         if (value === null) { skipped++; out[si].skipped++; out[si].values[li] = null }
@@ -400,10 +402,11 @@ function applyConstraintBaseline(
   catalog: ReturnType<typeof useCatalogStore>,
   spec: SeriesSpec,
   cs: ConstraintSpec,
+  phaseId: string | undefined,
 ): void {
   // Boss 装配失败不该炸掉整轮对比（预设数据缺字段时如实跳过，而不是让工作台白屏）
   if (cs.boss) {
-    const phase = cs.boss.phases.find(p => p.phaseId === cs.phaseId) ?? cs.boss.phases[0]
+    const phase = cs.boss.phases.find(p => p.phaseId === phaseId) ?? cs.boss.phases[0]
     if (phase) {
       try {
         configStore.applyBossPreset({ id: cs.boss.id }, phase, cs.boss.monster, cs.boss.defaults)

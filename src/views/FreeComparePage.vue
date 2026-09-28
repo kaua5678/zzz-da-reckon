@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>自由对比工作台</span>
           <span class="muted">
-            系列 = 自选实体 × 自选配置码 · x = 自选维度 · y = 自选指标 · 其余一切（Boss/金数/难度/队友）都是条件
+            系列 = 自选实体 × 自选配置码 · x = 自选维度 · y = 自选指标 · 其余（Boss/队友/锁定角色/配装）都是条件
           </span>
         </div>
       </template>
@@ -303,6 +303,10 @@ function addCondition() {
 const agentOptions = computed(() =>
   catalog.displayAgents.map(a => ({ value: a.id, label: `${a.name.zhCN ?? a.id}（${a.rarity}）` })))
 const bossOptions = computed(() => bossPresets.value.map(b => ({ value: b.id, label: b.name })))
+/** period 维度的档位：所选 Boss 的各期危局，按时间从旧到新（数据里是新→旧） */
+const periodOptions = computed(() => [...(bossPresets.value.find(b => b.id === bossId.value)?.phases ?? [])]
+  .reverse()
+  .map(p => ({ id: p.phaseId, label: p.label })))
 const metricOpts = metricOptions()
 const axisOptions = buildAxisOptions()
 const axisHint = computed(() => AXIS_BY_ID.get(axisId.value)?.hint ?? '')
@@ -337,7 +341,7 @@ const setupCodes = computed(() => parseSetupCodesText())
 const costHint = computed(() => {
   const levels = AXIS_BY_ID.get(axisId.value)?.levels(
     { id: '', kind: 'agent', members: [], code: { cinema: 0, wengine: 1 } },
-    { cinemaMax: cinemaMax.value, setupCodes: setupCodes.value ?? [] },
+    { cinemaMax: cinemaMax.value, setupCodes: setupCodes.value ?? [], periods: periodOptions.value },
   ).length ?? 0
   const n = levels * series.value.filter(s => s.agentId).length
   if (n === 0) return ''
@@ -364,6 +368,8 @@ async function runCompare() {
     if (setupCodes.value.length === 0) { error.value = '配置码序列是空的'; return }
   }
 
+  if (axisId.value === 'period' && periodOptions.value.length === 0) { error.value = 'x = Boss 期数时，先在「条件」里选一个 Boss（期数 = 该 Boss 的各期危局）'; return }
+
   computing.value = true
   progress.value = null
   abortFlag = false
@@ -371,7 +377,7 @@ async function runCompare() {
     result.value = await computeFreeCompare(calc, {
       series: specs,
       axisId: axisId.value,
-      axisOptions: { cinemaMax: cinemaMax.value, setupCodes: setupCodes.value ?? [] },
+      axisOptions: { cinemaMax: cinemaMax.value, setupCodes: setupCodes.value ?? [], periods: periodOptions.value },
       metricId: metricId.value,
       constraints: {
         boss: bossPresets.value.find(b => b.id === bossId.value),

@@ -17,7 +17,6 @@ import {
   type SeriesSpec,
   parseSetupCode,
   formatSetupCode,
-  setupCodeGold,
   setupCodeLabel,
 } from '@/composables/freeCompare/axes'
 import {
@@ -49,16 +48,6 @@ describe('配置码（用户口径：左=影画 0-6，右=专武精炼 1-5，右
     const c = parseSetupCode('20')!
     expect(c).toEqual({ cinema: 2, wengine: 0 })
     expect(setupCodeLabel(c)).toBe('2命 无专武')
-  })
-
-  it('金数：无专武 0 金、精炼1 = 本体 0 金、每级 +1（与团队对比「限定金」口径一致）', () => {
-    expect(setupCodeGold(parseSetupCode('01')!)).toBe(0)
-    expect(setupCodeGold(parseSetupCode('11')!)).toBe(1)
-    expect(setupCodeGold(parseSetupCode('21')!)).toBe(2)
-    // 20：2 命 = 2 金，无专武 = 0 金
-    expect(setupCodeGold(parseSetupCode('20')!)).toBe(2)
-    // 25：2 命 + 精炼5（精炼1是本体，故精炼只算 4 金）
-    expect(setupCodeGold(parseSetupCode('25')!)).toBe(6)
   })
 
   it('非法码返回 null 不抛（UI 直接标红，不让工作台白屏）', () => {
@@ -112,14 +101,10 @@ describe('x 维度注册表（加维度 = 加一行）', () => {
     for (const l of levels) expect(l.override.cinema).toBeUndefined()
   })
 
-  it('金数/期数/难度维度按参数枚举', () => {
-    expect(AXIS_BY_ID.get('gold')!.levels(spec(['1171'], '21'), { goldRange: [2, 5] }))
-      .toHaveLength(4)
+  it('期数维度按参数枚举（金数 / 难度两个假维度已随 CC-189 删除）', () => {
     const periods = [{ id: 'p1', label: '第1期' }, { id: 'p2', label: '第2期' }]
     expect(AXIS_BY_ID.get('period')!.levels(spec(['1171'], '21'), { periods })
       .map(l => l.override.periodId)).toEqual(['p1', 'p2'])
-    expect(AXIS_BY_ID.get('difficulty')!.levels(spec(['1171'], '21'), { difficultyMax: 3 }))
-      .toHaveLength(4)
   })
 
   it('★ 每个维度的 id 唯一且都能枚举（防复制粘贴改漏 id）', () => {
@@ -204,10 +189,9 @@ describe('约束（用户原话「维琳娜 0命1命2命」是条件不是系列
   it('摘要把条件角色渲染出来', () => {
     const nameOf = (id: string) => (id === '1561' ? '维琳娜' : id)
     const s = constraintSummary(
-      { conditions: [{ agentId: '1561', cinema: 2 }], gold: 6 },
+      { conditions: [{ agentId: '1561', cinema: 2 }] },
       nameOf,
     )
     expect(s).toContain('维琳娜 2命')
-    expect(s).toContain('6金')
   })
 })

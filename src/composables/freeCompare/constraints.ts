@@ -30,8 +30,6 @@ export interface ConstraintSpec {
    * 整队系列时忽略。
    */
   baseTeammates?: [string, string]
-  /** 目标总限定金（约束而非 x 维度时用） */
-  gold?: number
   /** 自动配装（推荐驱动盘 + 副词条优化器）；缺省 false = 轻量速算（快很多） */
   autoBuild?: boolean
   /**
@@ -54,7 +52,6 @@ export function constraintSummary(
 ): string {
   const parts: string[] = []
   if (cs.boss) parts.push(cs.boss.name ?? '')
-  if (cs.gold !== undefined) parts.push(`${cs.gold}金`)
   for (const c of cs.conditions ?? []) parts.push(conditionLabel({ ...c, cinema: c.cinema }, nameOf))
   parts.push(cs.autoBuild ? '推荐配装' : '轻量速算')
   return parts.join(' · ')
