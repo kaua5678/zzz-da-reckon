@@ -23,6 +23,17 @@ function walk(dir: string, out: string[] = []): string[] {
   return out
 }
 
+const WINDOW_FRACTION = /[sS]tunCount\s*\*\s*[\w.()]*(?:[wW]indow|Dur)[\w.()]*\s*(?:-\s*\w+\s*)?\)?\s*\/|Math\.min\(1,\s*\w*[sS]tunSeconds\s*\//
+
+describe('失衡窗口占比单一来源（CC-217）', () => {
+  it('除 core/effectiveTime.ts 外没有内联「失衡次数 × 单窗 ÷ 有效时长」', () => {
+    const hits = walk(SRC)
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+      .filter(rel => rel !== 'core/effectiveTime.ts' && WINDOW_FRACTION.test(readFileSync(join(SRC, rel), 'utf8')))
+    expect(hits).toEqual([])
+  })
+})
+
 describe('有效战斗时间单一来源（CC-216）', () => {
   it('除 core/effectiveTime.ts 外没有内联「战斗时间 − 无敌时间」', () => {
     const hits = walk(SRC)

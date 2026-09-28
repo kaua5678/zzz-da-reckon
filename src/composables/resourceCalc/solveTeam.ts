@@ -20,6 +20,7 @@
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { netFrontlineOccupation } from '@/core/resource/helpers'
 import { withStunCount } from '@/core/stunPool'
+import { stunWindowFraction } from '@/core/effectiveTime'
 import type { ResourceCalcConfig } from '@/types/resource'
 import { initialCalcRoundThreads, threadsAfterNullRound } from './roundThreads'
 import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
@@ -209,7 +210,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
       let next = rawNext
       if (!locked && stunWindowDur > 0 && stunEffTime > 0) {
-        const coverage = Math.min(1, stunCount * stunWindowDur / stunEffTime)
+        const coverage = stunWindowFraction(stunCount, stunWindowDur, stunEffTime)
         next = rawNext * (1 - coverage)
         const maxFull = Math.floor(stunEffTime / stunWindowDur)
         if (next > maxFull) {

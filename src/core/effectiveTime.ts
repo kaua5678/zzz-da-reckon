@@ -45,10 +45,14 @@ export function stunWindowDuration(stunTime: number | undefined, teamStunDuratio
  * 失衡窗口占有效战斗时间的比例（0-1）。
  * 它同时是易伤覆盖率与「攒条无效时间」的占比——同一段时间只能算一次：
  * 窗口里打的招式吃易伤（覆盖率），但打出的失衡值不进下一条（攒条折算）。
+ *
+ * `lostSeconds`：决算截断损失的失衡秒数（佩洛伊斯右分支做完即清空剩余失衡时间），只有易伤覆盖率要扣，缺省 0。
+ * CC-217 起这是全仓唯一实现：useResourceCalc#computeStunCoverage、solveTeam 净失衡缩放、stunAxis 覆盖率、
+ * difficultyRatio 回退路径原先各写一份（源码锁 `__tests__/effectiveTimeSingleSource.test.ts`）。
  */
-export function stunWindowFraction(stunCount: number, windowDuration: number, effectiveTime: number): number {
+export function stunWindowFraction(stunCount: number, windowDuration: number, effectiveTime: number, lostSeconds = 0): number {
   if (effectiveTime <= 0 || stunCount <= 0 || windowDuration <= 0) return 0
-  return Math.max(0, Math.min(1, (stunCount * windowDuration) / effectiveTime))
+  return Math.max(0, Math.min(1, Math.max(0, stunCount * windowDuration - lostSeconds) / effectiveTime))
 }
 
 /** 有效后台时间（秒）= 后台时间 − boss 无敌时间（下限 0）。后台自动招式按 CD 折算用这个。 */

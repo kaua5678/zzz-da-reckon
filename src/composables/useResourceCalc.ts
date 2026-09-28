@@ -31,7 +31,7 @@ import type {
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { panelAt } from '@/core/panel'
-import { effectiveBattleTime } from '@/core/effectiveTime'
+import { effectiveBattleTime, stunWindowFraction } from '@/core/effectiveTime'
 import * as ResourceCalcHelpers from './resourceCalc/helpers'
 import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
 
@@ -345,13 +345,8 @@ export function useResourceCalc() {
   const windowDuration = computed<number>(() => computeWindowDuration())
 
   function computeStunCoverage(sp: any, lostSeconds = 0): number {
-    const stunCount = sp?.stunCount ?? 0
-    if (stunCount <= 0) return 0
-    const effectiveTime = effectiveBattleTime(configStore.enemy)
-    if (effectiveTime <= 0) return 0
     // 决算截断：有效失衡时长 = 窗口总时长 − 截断损失秒数（佩洛伊斯右分支做完即清空剩余失衡时间）
-    const stunSeconds = Math.max(0, stunCount * computeWindowDuration() - lostSeconds)
-    return Math.min(1, stunSeconds / effectiveTime)
+    return stunWindowFraction(sp?.stunCount ?? 0, computeWindowDuration(), effectiveBattleTime(configStore.enemy), lostSeconds)
   }
 
   /** 失衡易伤覆盖率：固定来自 calcOutput 收敛结果（捏轴只决定哪些动作吃易伤，不改变覆盖率） */

@@ -18,6 +18,7 @@
 
 import type { StunAxis, StunAxisResult } from '@/types/resource'
 import { allocateAxisWindows } from './stunAxisStack'
+import { effectiveBattleTime, stunWindowFraction } from './effectiveTime'
 
 /** 全局资源池：`${slot}:${moveId}` → 全局可用次数/秒（basic='basic'→秒，其他→次数） */
 export interface GlobalActionPool {
@@ -149,8 +150,7 @@ export function calcStunAxis(input: CalcStunAxisInput): StunAxisResult {
     globalWarnings.push(...warnings.map(w => `${axis.name}: ${w}`))
   })
 
-  const effectiveTime = Math.max(0, battleTime - invTime)
-  const coverage = effectiveTime > 0 ? Math.min(1, (stunCount * windowDuration) / effectiveTime) : 0
+  const coverage = stunWindowFraction(stunCount, windowDuration, effectiveBattleTime({ battleTime, invincibleTime: invTime }))
 
   return { totalInAxisStun, stunCount, totalAxisRounds, stunCoverage: coverage, allocation, axisDetails, globalWarnings }
 }
