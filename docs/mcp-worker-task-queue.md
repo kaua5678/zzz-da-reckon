@@ -70,20 +70,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 227 轮（lane lead-arena-0925c）：CC-204 完成（9aed3fc4）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-204：freeCompare 汇总表胜负着色，外加格式化改读 `result.metricId` 的 bug 修复。详见 `docs/mcp-stun-dual-source.md` §24.51。
-- 前几轮：226 CC-203（fb64de6f，额外能力两道门控归一）；225 CC-202（11bf2ac8）；224 CC-201（结论卡）。
+**第 228 轮（lane lead-arena-0925c）：CC-205 完成（d95a2957）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-205：T2 第 1 批。零号安比结果卡的写死值修成读字段，删 3 个死字段。详见 `docs/mcp-stun-dual-source.md` §24.52。
+- 前几轮：227 CC-204（9aed3fc4，freeCompare 着色）；226 CC-203（fb64de6f，额外能力门控归一）；225 CC-202（11bf2ac8）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（按顺序，直接开工）**
-1. **T2 第 1 批**（`docs/mcp-write-only-props.md` §T2，表中剩 73 条，其中 higherBetter 已出表）：先删第 213 轮已抽查确认可删的三组：
-   - `anbyZero.teamFollowupDmgBonus`（额外能力已走 spec teamBuffs，这个字段是死的展示副本）；
-   - `phoenix` 的 `c1CritDmg` / `emberGain`（specResources 诊断字段，emberGain 恒为 0）；
-   - `yeshuguang.feiguangPerForm`（`@deprecated` 兼容字段）。
-   - 做法：`grep -rn <字段> src` 确认只剩声明和写入点（.vue 同名局部解构属误报），删掉声明和写入，再跑 `npx vue-tsc -b`、相关测试和 verify。
-   - 可以派 dsflash 子代理（先自检 pong），lead 验收；也可以 lead 自己做（量小）。做完在 T2 表里逐条标「已删 <commit>」。
-   - **按唯一判据**：T2 只是无害的展示载荷，别为降计数整轮刷。第 1 批做完后，若没有别的架构收益项，再评估 T2 剩余部分要不要整体标「不做」。
-2. 队列里没有其他架构项时，从 `docs/ARCHITECTURE-OVERVIEW.md` 的三类重构清单（R6 产物）里挑一条未做、影响面最大的，先写清「为什么值得做」再动手。
+1. **T2 剩余条目分类**（`docs/mcp-write-only-props.md` §T2 表，未标「已删 / 不删」的约 69 条）。**先分类，不要直接删**：
+   - 分成 (a) 纯死 → 删；(b) 对应写死 / 过时的展示值或注释承诺 → 让展示读字段；(c) 仅测试读 → 保留。
+   - 适合派 dsflash 子代理只做分类，不改代码。先自检 pong，再下达：「读 docs/mcp-write-only-props.md §T2 表，对每个未标处理的字段：grep 字段名，并 grep 它语义对应的 label 文本或常量，判断 (a)/(b)/(c)；输出 `字段 | 分类 | 证据 文件:行` 表，不要改任何文件」。
+   - lead 抽查 (b) 类的证据，逐条修（每条修复都要有测试），(a) 类一批删，然后 verify。
+   - (b) 类才是真价值；如果分类后 (b) 为 0、(a) 只剩零碎，就把 T2 整体标「不做：剩余为无害载荷」并结束这条线。
+2. 队列里没有其他架构项时，从 `docs/ARCHITECTURE-OVERVIEW.md` 的三类重构清单里挑一条未做、影响面最大的，先写清「为什么值得做」。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；菲欧妮 tier3 在 store 与引擎之间仍有已知偏差（§24.50）。
 
@@ -91,6 +89,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **「零读取」≠「可删」**：先 grep 字段语义对应的展示文本或常量，看有没有写死的过时值（CC-205 零号安比 +25% 实为 50%）。
+- **沙箱重置后 `/home/user/mcp-tools/*.sh` 会丢执行权限**：先 `chmod +x`，或用 `bash up.sh ...` 调用。
 - **token 棘轮**：`npm run verify` 第二步 check-tokens 会拦下 var() 总数的变化。新增语义令牌引用是进步方向，把 `scripts/check-tokens.mjs` 的 `VAR_TOTAL_BASELINE` 上调，并在注释头补一句「日期 / CC / 原因」（CC-204 797→799）。
 - **页面格式化要跟着结果走**：freeCompare 这类「先选参数再点计算」的页面，渲染结果时读结果自带的参数（`result.metricId`），不要读控件的当前值（CC-204）。
 - **MCP `read_files` 会分页**：大文件（如 `src/mechanics/types.ts` 900+ 行）一次只返回前一段，要看 `has_more` / `next_start_line`。据此拉到本地改完再上传会**截掉文件尾**（第 226 轮踩过，esbuild 报「Expected */」）。大文件改动一律在 WSL 端用 python 精确替换。

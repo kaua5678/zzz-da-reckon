@@ -1822,3 +1822,21 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 没有写组件测试：着色逻辑全在纯函数里，组件只做 class 绑定，由 vue-tsc 与 build 兜底。
 - **验证**：vue-tsc 0；verify EXIT=0（3886 passed，build 通过）。
 - **回退点**：`git revert 9aed3fc4`。只撤着色、保留格式化修复：删掉 td 的 `:class` 和说明行即可。
+
+### 24.52 CC-205：T2 第 1 批——一个「死字段」其实是展示写死的真值（第 228 轮，d95a2957）
+
+- **零号安比 `teamFollowupDmgBonus`：不删，改为让结果卡读它**。
+  - 结果卡「全队追攻增伤」写死 `+25%`，anbyZero.ts 头注释和卡片说明都写着「潜能电脉冲 34-50% 档位待 teamBuff 通道支持 potentialLevel，暂以基线 25 建模」。
+  - 实际上 spec `1381.json` 的 `anby_zero_extra_team_followup` 早就是 formula：`25 + min(1, max(0, x-1))·(4x+1)`（x = potentialLevel），即 25/34/38/42/46/50，引擎满潜生效 50%。卡片与注释是过时的。
+  - 死字段算的恰恰是正确值（常量表 `ANBY_ZERO_TEAM_FOLLOWUP_DMG_BY_POTENTIAL` 与公式逐档相等），只是没人读。
+  - 改法：卡片改读字段，未触发额外能力时显示 0；去掉字段里的 ×silverStarCoverage（引擎侧这条 teamBuff 只乘自身覆盖率，不乘银星覆盖率，原字段即使被读也是错值）；注释改实话。
+  - 测试（anbyZero.test.ts 两条）：① 常量表与 spec 公式逐档相等，并锁住公式文本（公式一改就红，提醒同步展示表），字段不随银星覆盖率变化；② 真引擎：队友面板满潜比 1 潜 `dmgBonus__additionalAttack` 多 25。
+  - 为什么保留两份（常量表 + spec 公式）而不做单源：让模块在展示时求 spec 公式，需要引入公式求值器的依赖，对一张 6 格的表不划算；用同源测试锁住即可。回退点：要单源时删掉常量表，卡片改为从面板读 `dmgBonus__additionalAttack` 的来源分量。
+- **删除**：菲欧妮 `PhoenixCycle.c1CritDmg` 和 `emberGain`（后者恒为 0；`PHOENIX_C1_CRIT_DMG` 仍被脆弱暴击计算使用，保留）；叶瞬光 `feiguangPerForm`（`@deprecated`，等于 `feiguangFullCasts / totalForms`，零读取）。
+- **影响面**：引擎数值零差（只动展示与死字段）；verify EXIT=0（3888 passed，build 通过）；vue-tsc 0。
+- **教训，改变 T2 的做法**：「零读取」不等于「可删」。字段零读取，可能是因为展示层绕开它写死了一个过时的值。T2 剩余条目先分类再动手：
+  - (a) 纯死字段 → 删；
+  - (b) 字段对应某处**写死 / 过时的展示值或注释承诺** → 改为让展示读字段（这是真 bug）；
+  - (c) 只被测试读的诊断字段 → 按第 215 轮裁决默认保留。
+  - 分类方法：grep 字段名的语义关键词（label 文本、常量名），看结果卡 / 页面里有没有写死同一个量。
+- **回退点**：`git revert d95a2957`。

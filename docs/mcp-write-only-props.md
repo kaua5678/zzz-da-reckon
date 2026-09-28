@@ -84,6 +84,8 @@
 
 这三组都可以删。
 
+> **第 228 轮（CC-205，d95a2957）**：这三组已处理，但 `anbyZero.teamFollowupDmgBonus` **最终没删**：结果卡写死了过时的 +25%，死字段算的才是真值（满潜 50%），改为让卡片读它。⇒ **剩余条目先分类再动手**：(a) 纯死 → 删；(b) 对应某处写死 / 过时的展示或注释 → 让展示读字段（真 bug）；(c) 仅测试读 → 保留。详见 `mcp-stun-dual-source.md` §24.52。
+
 | 字段 | 声明 | 其余出现点（非测试） | 测试读取数 |
 |---|---|---|---|
 | `withDiscs` | `src/core/panel.ts:258` | `src/core/panel.ts:285`, `src/core/panel.ts:323` | 6 |
@@ -124,14 +126,14 @@
 | `followUpMoveId` | `src/data/counterAssists.ts:27` | `src/data/counterAssists.ts:36` | 4 |
 | `dashCount` | `src/mechanics/agents/ellen.ts:104` | `src/mechanics/agents/ellen.ts:173`, `src/mechanics/agents/ellen.ts:174`, `src/mechanics/agents/ellen.ts:192`, `src/mechanics/agents/ellen.ts:395` | 0 |
 | `extraBursts` | `src/mechanics/agents/ellen.ts:111` | `src/mechanics/agents/ellen.ts:168`, `src/mechanics/agents/ellen.ts:199` | 2 |
-| `teamFollowupDmgBonus` | `src/mechanics/agents/anbyZero.ts:75` | `src/mechanics/agents/anbyZero.ts:150` | 0 |
+| `teamFollowupDmgBonus` | `src/mechanics/agents/anbyZero.ts:75` | `src/mechanics/agents/anbyZero.ts:150` | 0 · **不删**：结果卡改读它（原写死 +25%）CC-205 |
 | `masteryExcess` | `src/mechanics/agents/promia.ts:78` | `src/mechanics/agents/promia.ts:99`, `src/mechanics/agents/promia.ts:110` | 2 |
-| `feiguangPerForm` | `src/mechanics/agents/yeshuguang.ts:196` | `src/mechanics/agents/yeshuguang.ts:284`, `src/mechanics/agents/yeshuguang.ts:312` | 0 |
+| `feiguangPerForm` | `src/mechanics/agents/yeshuguang.ts:196` | `src/mechanics/agents/yeshuguang.ts:284`, `src/mechanics/agents/yeshuguang.ts:312` | 0 · 已删 CC-205 |
 | `feiguangScaleEach` | `src/mechanics/agents/yeshuguang.ts:197` | `src/mechanics/agents/yeshuguang.ts:285`, `src/mechanics/agents/yeshuguang.ts:313` | 0 |
 | `dmgPerSec` | `src/mechanics/agents/qingyi.ts:73` | `src/mechanics/agents/qingyi.ts:111`, `src/types/resource/config.ts:552` | 0 |
 | `rageDiDongComboCount` | `src/mechanics/agents/banyue.ts:129` | `src/mechanics/agents/banyue.ts:130`, `src/mechanics/agents/banyue.ts:132`, `src/mechanics/agents/banyue.ts:303`, `src/types/resource/agentResources.ts:535` … | 2 |
-| `c1CritDmg` | `src/mechanics/agents/phoenix.ts:115` | `src/mechanics/agents/phoenix.ts:467` | 0 |
-| `emberGain` | `src/mechanics/agents/phoenix.ts:118` | `src/mechanics/agents/phoenix.ts:470` | 0 |
+| `c1CritDmg` | `src/mechanics/agents/phoenix.ts:115` | `src/mechanics/agents/phoenix.ts:467` | 0 · 已删 CC-205 |
+| `emberGain` | `src/mechanics/agents/phoenix.ts:118` | `src/mechanics/agents/phoenix.ts:470` | 0 · 已删 CC-205 |
 | `deltaVsBest` | `src/composables/teamCompare.ts:761` | `src/composables/teamCompare.ts:751`, `src/composables/teamCompare.ts:954` | 2 |
 | `totalGoldA` | `src/composables/teamTimeline.ts:894` | `src/composables/teamTimeline.ts:977` | 0 |
 | `totalGoldB` | `src/composables/teamTimeline.ts:895` | `src/composables/teamTimeline.ts:978` | 0 |
