@@ -2083,3 +2083,22 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 **影响**：现有数据下零数值差（battleTime 全是 180），golden 未变。
 **回退点**：revert 本提交。
+
+### 24.65 第 241 轮：stores/catalog、logicEditor 扫描无重复；CC-217 失衡窗口占比单一来源（3ba7af41）
+
+**扫描（交接下一步 1）**
+- `stores/catalog.ts` 的 14 个 computed 都是索引 Map、显示列表、加载状态。全 src 没有绕过 store 按 id 查 `wEngines` / `driveDiscSets` 的地方（绕过的话 legacyIds 兼容会失效）。MultiplierCoeffPage、TimeChartsPage 把完整列表交给纯函数推导，不是查表。**无重复**。
+- `stores/logicEditor.ts` 的 6 个 computed 都是撤销 / 重做与草稿状态，不涉及计算。**无重复**。
+
+**CC-217（顺着 CC-216 的有效时长找到的同族问题）**
+- `core/effectiveTime.ts` 的 `@fact engine:stun/时间守恒` 写明：失衡窗口占比「同时是易伤覆盖率与攒条无效时间的占比——同一段时间只能算一次」。可「次数 × 单窗 ÷ 有效时长（上限 1）」在代码里有 5 份：core `stunWindowFraction`（攒条折算用）、useResourceCalc `computeStunCoverage`（易伤覆盖率，多扣决算截断秒）、solveTeam 外层净失衡缩放、core/stunAxis 轴模式覆盖率、difficultyRatio 回退近似（注释自称「本地等价实现，避免引 core 依赖」）。
+- 改动：`stunWindowFraction` 加可选参数 `lostSeconds`（缺省 0，原调用逐位不变），其余 4 份改调它。stunAxis 与 difficultyRatio 顺带把自算的有效时长换成 `effectiveBattleTime`；difficultyRatio 那处写成 `enemy.battleTime ?? rr.totalTime ?? 180`，躲过了 CC-216 的锁。
+- 等价性逐条核对：
+  - computeStunCoverage：次数 ≤ 0 / 有效时长 ≤ 0 时原先提前返回 0，新实现也是 0；单窗 ≤ 0 时原先 max(0, 非正 − lost) = 0，新实现直接返回 0。**严格等价**。
+  - stunAxis：只在次数或单窗为负时不同（原先会返回负数），这两个量不会为负。
+  - solveTeam：外层已保证单窗 > 0、有效时长 > 0，次数是规划失衡（≥ 0）。等价。
+  - difficultyRatio：原本就是 stunWindowFraction 的逐字复制。
+- difficultyRatio 头注释要求本模块是「无依赖叶子」：`core/effectiveTime.ts` 只依赖 `@/types/resource`，引入后仍然是叶子。
+- 源码锁：`src/core/__tests__/effectiveTimeSingleSource.test.ts` 新增 CC-217 用例（`stunCount * …window/Dur… /` 与 `Math.min(1, stunSeconds /`）。**反例验证**：只撤源码、保留新测试时，锁报出全部 4 份旧副本。（第一次反例做错了：`git stash` 把测试文件也撤了，跑的是旧测试。要用 `git stash push -- <源码文件>`。）
+
+**影响**：零数值差（verify 的 golden 在「catalog 未改 ⇒ 纯伤害回归判据」下通过）。**回退点**：revert 本提交。
