@@ -93,7 +93,7 @@ import { computed, onMounted, ref } from 'vue'
 import { NCard, NCollapse, NCollapseItem, NGi, NGrid, NTabPane, NTabs } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases, resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { isPctStat } from '@/utils/statMeta'
 import { fmt, pct, localized } from '@/utils/format'
@@ -246,12 +246,12 @@ function collectHpSources(slot: number): HpSourceRow[] {
     }
   }
 
-  // 2. 队友 buff（teammate-buffs.json，启用且当前命座达标）
-  for (const group of catalogStore.teammateBuffGroups) {
-    for (const buff of group.buffs ?? []) {
-      if (!configStore.isTeammateBuffEnabled(buff.id)) continue
-      collectHpFromGroup(rows, `${localized(buff.ownerName) || buff.ownerId}`, localized(buff.sourceLabel) || buff.id, buff)
-    }
+  // 2. 队友 buff：取引擎同一份输入（CC-208）——拥有者在队 / 额外能力门控 / 模块钩子否决 / 接收槽过滤 /
+  //    修饰器改写后的数值，与面板计算逐条一致。此前按勾选状态自己重筛，会列出引擎实际丢弃的条目。
+  //    全局 Buff 由第 5 步单列，这里排除。
+  for (const buff of resolveSlotPanelBuffInputs(slot, configStore, catalogStore).teammateBuffs) {
+    if (buff.sourceKind === 'global') continue
+    collectHpFromGroup(rows, `${localized(buff.ownerName) || buff.ownerId}`, localized(buff.sourceLabel) || buff.id, buff)
   }
 
   // 3. 音擎（职业匹配才生效；数值按精炼等级取 modificationValues）

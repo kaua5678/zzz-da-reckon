@@ -101,7 +101,7 @@ import { computed, onMounted } from 'vue'
 import { NAlert, NCard, NGi, NGrid, NSelect, NSpace, NTag } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { computePanel } from '@/composables/resourceCalc/helpers'
+import { computePanel, resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt, pct, localized } from '@/utils/format'
 // `isPctStat` = **展示**口径（lineValue 的格式化），`statSettlementMode` = **结算**口径（全局 Buff 的 mode 实参）
@@ -140,14 +140,12 @@ const slotOptions = computed(() => configStore.team.map((char, index) => {
   }
 }))
 
+// CC-208：本槽实际生效的队友 buff = 引擎面板输入（门控 / 钩子否决 / 接收槽过滤 / 修饰器改写均已生效），
+// 不再按勾选状态自己重筛（旧写法会列出引擎丢弃的条目）。全局 Buff 由 addGlobalRows 单列，这里排除。
 const enabledTeammateBuffs = computed<TeammateBuff[]>(() => {
-  const result: TeammateBuff[] = []
-  for (const group of catalogStore.teammateBuffGroups) {
-    for (const buff of group.buffs ?? []) {
-      if (configStore.isTeammateBuffEnabled(buff.id)) result.push(buff)
-    }
-  }
-  return result
+  if (!configStore.team[configStore.selectedSlot]?.agentId) return []
+  return resolveSlotPanelBuffInputs(configStore.selectedSlot, configStore, catalogStore).teammateBuffs
+    .filter(buff => buff.sourceKind !== 'global')
 })
 
 const currentPanel = computed<PanelValues | null>(() => {
@@ -287,7 +285,7 @@ function addTeamBuffRows(rows: DebugRow[]) {
       `${localized(buff.ownerName)} · ${localized(buff.sourceLabel) || buff.id}`,
       buff,
       undefined,
-      `配置页滑块为 ${coverage}%；请注意现有面板计算主要读取 Buff 数据自身的默认 coverage`,
+      `覆盖率 ${coverage}%（配置页滑块，引擎按此比例折算本条效果）`,
     )
   }
 }

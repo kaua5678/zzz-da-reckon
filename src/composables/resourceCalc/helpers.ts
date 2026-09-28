@@ -71,8 +71,11 @@ import {
   collectAxisWindowOverlays,
   additionalGateBuffTable,
   evalAdditionalAbilityBuffGates,
+  resolveSlotPanelBuffInputs,
 } from './panelPhases'
 export {
+  // CC-208：展示层（FinalPanel 生命构成 / DebugPage 队友 Buff 行）列「本槽实际生效的队友 buff」一律取这里，不自己按勾选重筛
+  resolveSlotPanelBuffInputs,
   buildMechanicTeamMembers,
   computePanel,
   computePanelPhases,
