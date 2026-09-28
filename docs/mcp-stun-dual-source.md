@@ -1463,3 +1463,22 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - `setupCodeGold`：另有疑点（见交接下一步：gold 轴的 `override.gold` 可能从未被消费），留给那张卡一起看。
 - **验证**：vue-tsc 通过；4 个相关测试文件 41 个用例通过；变异检验如上；CG 25 项全过；verify EXIT=0（3827 passed，与上轮相同：测试是一换一）。数值零改动（只删副本、测试改道，生产代码路径不变），所以不跑 zd 和探针。
 - **回退点**：`git revert 378c1c17`。
+
+### 24.36 CC-189：自由对比的三个假 x 轴维度 + 血量比读错 Boss（第 211→212 轮交接指定，ad9a9321）
+
+- **查明**：自由对比页（`src/views/FreeComparePage.vue`）的「x 轴维度」下拉由 `axes.ts#axisOptions()` 列出全部 6 个维度，但求值器 `engine.ts#computeFreeCompare` 的装配段只读 `level.override.cinema / wengine`：
+  - **总限定金（gold）**、**操作难度档（difficulty）**：每档装配完全相同 ⇒ 画出一条平线，用户会误以为「金数 / 难度对这队没影响」。
+  - **Boss 期数（period）**：页面从不传 `axisOptions.periods` ⇒ 零个档位，图是空的；`override.periodId` 也从未被读。
+  - 自 7394ce68（2026-09-15 建工作台）以来一直如此。测试只测了「按参数枚举出档位」，没测「档位真的改变了装配」。
+- **顺带查出第二个 bug**：`env.hp`（「Boss 血量比」指标的分母）在循环开始前、Boss 装配之前就读死了 ⇒ 只要在条件里选了 Boss，血量比除的就是**用户页面原来那个 Boss** 的血量。
+- **决定与依据**（唯一判据：让架构更诚实、更简单；不为降计数）：
+  - **期数轴：接线**。boss-presets 的每个 Boss 有多期危局（`phases`，各期血量 / 抗性 / 弱点不同），「这队能打几期」语义清楚。装配复用现成的 `applyBossPreset`，引擎原本就有 `ConstraintSpec.phaseId` 这个概念（页面从没设置过）。实现：页面把所选 Boss 的 phases **按时间从旧到新**（数据里是新→旧）作为 `periods` 传入；engine 用 `level.override.periodId ?? cs.phaseId` 选期；没选 Boss 时页面直接报错提示，不画空图。
+  - **金数轴、难度轴：删除**（连同 `LevelOverride.gold/difficulty`、`AxisOptions.goldRange/difficultyMax`、`setupCodeGold`，以及同样从未生效的约束字段 `ConstraintSpec.gold`）。两者都**没有现成口径**：金数要决定 g 金怎么分给三人（teamCompare 的 `computeOptimalGoldAllocations` 是另一套搜索），难度要决定 D0～D5 映射哪些旋钮（仓库里的「难度」是 G1～G6 目标阶梯，不是单一档位）。接线等于发明新口径，没人提过这个需求。删掉假选项是可逆的；要加回来，先定口径、在装配段消费 override，再往 AXES 加一行（axes.ts 的 `AxisId` 上方已写注释）。
+  - `env` 改为每次读指标前、装配之后再读。
+  - 页头文案「其余一切（Boss/金数/难度/队友）都是条件」改为「其余（Boss/队友/锁定角色/配装）都是条件」：金数、难度在条件区同样没有实现。
+- **测试**：
+  - 新增真引擎判据（`freeCompareEngine.test.ts`「★ 期数轴真的换期…」）：取 30007（死路屠夫）两期血量不同的危局作期数轴，同时跑总伤与血量比，断言每一档都满足「血量比 × 该期血量 = 总伤」。**变异检验**：让 engine 不读 `periodId`、或把 env 改回装配前读，这条都会红。
+  - 删掉金数枚举与 `setupCodeGold` 的纯函数测试；约束摘要测试去掉 `gold`。
+- **验证**：vue-tsc 通过；freeCompare 3 个测试文件 26 个用例通过；vite build 通过；CG 25 项全过；verify EXIT=0（3827 passed：删 1 加 1）。不碰引擎与数值，所以不跑 zd 和探针。
+- **教训（已写进交接已知坑）**：「加维度 = 往注册表加一行」这种设计，很容易出现「注册表里声明了、求值器没消费」的假选项。现有死通道扫描抓的是「只读不写」，**抓不到「只写不读」**：`LevelOverride.gold` 在 AXES 里被写、从没被读。
+- **回退点**：`git revert ad9a9321`。

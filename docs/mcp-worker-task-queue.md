@@ -70,22 +70,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 211 轮（lane lead-arena-0925c）：CC-188 完成（378c1c17）。文档见本提交。已 push。**
-- CC-188：§24.34 表里的 10 条平行副本逐条复核，做了 4 条：丽娜 / 耀嘉音核心被动公式副本、`buildSpecResourceSections`、旧两级预设下拉 `teamPresetGroupOptions`。测试改走生产通道，新增 `src/test/harness.ts#resolveTeammateBuffsOnEmptyPanel`。其余条目逐条写了「不做」理由（stun-dual-source §24.35）。**死导出这条线到此收尾**，不要再按导出计数去删。
-- 前几轮：210 CC-187（00e50d4e）；209 CC-186（4d6f13d0）；208 CC-185（0e4e7ecf）。
+**第 212 轮（lane lead-arena-0925c）：CC-189 完成（ad9a9321）。文档见本提交。已 push。**
+- CC-189：自由对比页 x 轴 6 个维度里有 3 个是假的（求值器只读 cinema / wengine）。期数轴已接线（所选 Boss 的各期危局）；金数、难度两轴删除（无现成口径，接线等于发明口径）；顺带修 `env.hp` 在装配前读死的问题（选 Boss 约束时血量比除错 Boss）。详见 stun-dual-source §24.36。
+- 前几轮：211 CC-188（378c1c17）；210 CC-187（00e50d4e）；209 CC-186（4d6f13d0）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **查 freeCompare 的 gold 轴是不是死控件。** 子代理在 §24.34 表里报告：`src/composables/freeCompare/axes.ts:57 setupCodeGold` 只有测试在用，而且 gold 轴的 `override.gold` 在 `src/composables/freeCompare/engine.ts` 里从未被消费。先只读：
-   - 在 FreeComparePage 上用户能不能选 gold 轴或 gold 约束（`constraints.ts` 的 `cs.gold`）；
-   - 选了之后结果会不会变（grep `gold` 在 `freeCompare/*.ts` 与 `views/FreeComparePage.vue` 的读写）。
-   若界面可选却不生效 = 用户可见的死控件：能按限定金口径接线（单源 `limitedGold.ts#memberLimitedGold`）就接，不能就删掉该选项，连同 `setupCodeGold`。若界面根本选不到，就是死代码，直接删。结论写进 stun-dual-source 新一节。
-2. 以上做完、仍无新需求时：回到 LONG-TERM-DIRECTIONS 的方向 C 第 2 刀（先读该节原文再定范围）。
+1. **LONG-TERM-DIRECTIONS 方向 C 第 2 刀试点：迁 1 个角色成纯 spec，要求零差。** 原文写「第 2 刀排在方向 A 事件钩子接口定稿之后」，方向 A 已否决，这个前置条件不再成立，现在就可以做。做法：
+   - 读 `docs/mcp-mechanic-dataization-census.md`（CC-98 盘点，口径已修订为数「spec 生成…」，先读原文），挑**一个**被判为完全可数据化、且 TS 模块最短的角色；
+   - 把它的 TS 模块能力逐项改成 spec 表达（先例：佩洛 1551 纯 spec，`specToMechanicModule` + `computeSpecResources`）；
+   - 验收：zd DIFF 0（`bash .zc/perf/zd.sh <tag>`）+ timeGolden 零差 + verify；
+   - **退出条件**（方向 C 原文）：某项能力要在 spec 里新增超过 N 行特殊语法，就留在 TS，把「为什么没迁」写进盘点文档。
+   - 只迁 1 个，不是 5 个。先看 spec 的表达力缺口有多大，再决定要不要继续。
+2. （低优先，先评估成本再做）死通道扫描只抓「只读不写」，抓不到「只写不读」（CC-189 的 `LevelOverride.gold` 就是在注册表里写、从没被读）。若能在 `scripts/lib/dead-channel-scan.mjs` 以低噪音加一个「可选接口字段只写不读」模式就加；噪音大就不做，写明理由。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- 「往注册表加一行」式的 UI（freeCompare 的 AXES / METRICS 等）：加一项时必须同时有一条**真引擎行为测试**，证明选了它结果真的会变。只测「能枚举出档位」测不出假选项（CC-189）。
+- freeCompare 求值器里，凡是依赖装配结果的量（血量等）都必须在装配之后读，不能在循环外预读（CC-189 env.hp）。
 - 断言封顶时要选一个**越过**上限的输入：丽娜 x=72 算出来恰好 =30，上限写成 31 也测不出来（第 211 轮补了 x=80）。
 - 删掉唯一使用者后，`vue-tsc -b` 会报 TS6192 / TS6196（导入或类型未使用），verify 不拦，要单独跑 vue-tsc。
 - 死导出扫描（`k210/dx210.cjs`）按词边界数引用，前导 `.` 被排除，所以看不见 `ns.foo` 命名空间访问、`...foo` 展开和 `import.meta.glob`（第 210 轮因此误报 2 条）。结果里的「零引用」必须人工核对后再删。
