@@ -1,11 +1,10 @@
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionTopUp, InteractionTopUpInput } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
-import type { SkillMove } from '@/types/catalog'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { calcPenetrationPower } from '@/core/damage'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
@@ -404,12 +403,6 @@ export function computeBanyueMingwangBlocks(
     }
   })
   return out
-}
-
-function rowValue(move: SkillMove | null, rowId: string): number {
-  if (!move) return 0
-  const row = move.rows.find(r => r.id === rowId)
-  return row?.values?.[0] ?? 0
 }
 
 /**

@@ -1,8 +1,7 @@
 import type { AgentCharConfigInput, AgentEventInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
-import type { SkillMove } from '@/types/catalog'
 import type { AnomalyEventExecution, MechanicSetting } from '@/types/resource'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
-import { findMoveById as findMove } from '@/data/moveTableQueries'
+import { findMoveById as findMove, getRowValue as rowValue } from '@/data/moveTableQueries'
 
 /**
  * 月城柳（1221，电·异常，对空洞特别行动部第六课）—— 核心被动/额外能力/影画面板区（薄模块）。
@@ -46,11 +45,6 @@ const YANAGI_EXTRA_THRUST_ENERGY_C6 = 5
 /** 影画2 极性紊乱倍率额外提升触发上限 2 次；影画6 提升至 4 次 */
 const YANAGI_EXTRA_THRUST_MAX_C2 = 2
 const YANAGI_EXTRA_THRUST_MAX_C6 = 4
-
-function rowValue(move: SkillMove | null, rowId: string): number {
-  const row = move?.rows.find((r) => r.id === rowId)
-  return row?.values[0] ?? 0
-}
 
 function buildYanagiCharConfig({ cfg, cinemaLevel, skills }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>

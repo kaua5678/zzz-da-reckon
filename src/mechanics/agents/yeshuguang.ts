@@ -34,11 +34,10 @@ import type {
   AgentStunOverrideInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, MechanicSetting, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
-import { findMoveById as findMove } from '@/data/moveTableQueries'
+import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 
 export const YESHUGUANG_ID = '1431'
 
@@ -121,13 +120,6 @@ const ZHAOYING_COST = 6
 const C6_ATTACH_MULT = 1500
 const C6_MINGDENG_ENTRY = 2
 const C6_MINGDENG_CAP_NOTE = 4
-
-function rowVal(move: SkillMove | null | undefined, rowId: string): number {
-  const row = move?.rows?.find(r => r.id === rowId)
-  const vals = row?.values ?? []
-  if (!vals.length) return 0
-  return Number(vals[11] ?? vals[vals.length - 1] ?? 0) || 0
-}
 
 /** 自动选轴的超支阈值（秒）：timeBudgetExcess 超过此值才退化，避免量化残差（~1s）误触降轴 */
 // @fact agent:1431/自动选轴 口径: 明心境轴**滑块默认打满(0)**——R2C 用户裁决 2026-09-25：能打完的队不该退化（短轴亏灭极段伤害），故默认不自动退化。auto(-1) 的退化判据 = **本槽物化行 − 战斗窗口**（`timePressureSeconds`，**不减队友占用**，同裁决修复：旧口径减队友致满命队误退化 −11%）；仅当用户显式设 -1 且该压力 >5s 时逐级退化 full→short_pair→short_mie，换轴时清零旧轴折叠残差；仍超预算由外层 interactionScale 缩交互兜底 | 据 用户@2026-09-05·复核@2026-09-08·R2C裁决@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#cfgAxis | 信 确认

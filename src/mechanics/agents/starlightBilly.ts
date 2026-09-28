@@ -10,13 +10,12 @@ import type {
 } from '../types'
 import type { BillyChain, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
-import type { SkillMove } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 
 export type { BillyChain }
 
@@ -217,12 +216,6 @@ export function computeBillyHpModel(
   const hpCostPct = avgCost * chain
   const hpFloorPct = Math.max(0, Math.min(100, 100 - hpCostPct + healPct))
   return { chain, hpCostPct, healPct, hpFloorPct }
-}
-
-function rowValue(move: SkillMove | null, rowId: string): number {
-  if (!move) return 0
-  const row = move.rows.find(r => r.id === rowId)
-  return row?.values?.[0] ?? 0
 }
 
 /**

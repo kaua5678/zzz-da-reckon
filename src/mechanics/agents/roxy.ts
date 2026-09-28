@@ -13,7 +13,7 @@ import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgSetting, cfgMechanicSetting as cfgRate } from '@/utils/mechanicSettingCfg'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -79,11 +79,6 @@ export const ROXY_REGEN_ATK_PER_0_01 = 5
 export const ROXY_REGEN_ATK_CAP = 960
 export const ROXY_REGEN_IMPACT_PER_0_01 = 0.4
 export const ROXY_REGEN_IMPACT_CAP = 76.8
-
-function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
-  if (!move) return 0
-  return move.rows.find(row => row.id === rowId)?.values[0] ?? 0
-}
 
 /**
  * 小心风寒（1621007）耗能（CC-109，R5 D28）：catalog `energyCost` 的「Energy Cost」= 启动耗能，

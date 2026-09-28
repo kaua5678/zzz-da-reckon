@@ -12,7 +12,7 @@ import type {
   ReadonlyTeam,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { AgentSkills } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
@@ -24,7 +24,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applySpecAttributeConversions } from '@/specs/runtime'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 
 const ALICE_AGENT_ID = '1401'
 const SWORD_WILL_COST = 300
@@ -60,12 +60,6 @@ const COWERING_BUILD_UP_EFFICIENCY = 25
 const C6_MAX_TRIGGERS_PER_STATE = 6
 /** 六命：额外攻击基础倍率 = 异常精通 × 3300%（小数 33） */
 const C6_DAMAGE_RATIO = 33
-
-function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
-  if (!move) return 0
-  const row = move.rows.find(r => r.id === rowId)
-  return row?.values[0] ?? 0
-}
 
 /** 爱丽丝额外能力：队伍中存在另一名「异常」或「支援」角色 */
 function isAdditionalAbilityActive(team: ReadonlyTeam, slot: number): boolean {

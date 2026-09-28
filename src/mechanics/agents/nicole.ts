@@ -20,8 +20,7 @@ import type {
   AgentMechanicModule,
   AgentResourceInput,
 } from '../types'
-import type { SkillMove } from '@/types/catalog'
-import { findMoveById as findMove } from '@/data/moveTableQueries'
+import { findMoveById as findMove, getRowValue as rowValue } from '@/data/moveTableQueries'
 
 export const NICOLE_ID = '1031'
 
@@ -39,11 +38,6 @@ export const NICOLE_CHARGE_MOVE = '1031103'
 export const NICOLE_ENERGY_FIELD_MOVE = '1031106'
 /** 影画1：每蓄力 1 秒 → 能量场持续时间 +1.5 秒（0.1s→0.15s） */
 export const NICOLE_C1_FIELD_SECONDS_PER_CHARGE_SECOND = 1.5
-
-function rowValue(move: SkillMove | null, rowId: string): number {
-  const row = move?.rows.find((r) => r.id === rowId)
-  return row?.values[0] ?? 0
-}
 
 // @fact agent:1031/影画1能量场 口径: 影画1「每多蓄力0.1秒→能量场持续+0.15秒」=能量场(1031106)倍率行等比延长，scale=1+1.5×蓄力秒/能量场基准秒(actionTime) | 据 nanoka full/1031.json + 用户@2026-09 | 验 src/mechanics/__tests__/nicole.test.ts | 锚 src/mechanics/agents/nicole.ts#NICOLE_C1_FIELD_SECONDS_PER_CHARGE_SECOND | 信 确认
 

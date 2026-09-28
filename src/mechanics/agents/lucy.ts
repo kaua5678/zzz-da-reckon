@@ -17,10 +17,9 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
-import type { SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
-import { findMoveById as findMove } from '@/data/moveTableQueries'
+import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 
 export const LUCY_ID = '1151'
 const MOVE_SPIN = '1151026' // 亲卫队小猪：回旋挥击！
@@ -33,13 +32,6 @@ const MOVE_BOAR_3 = '1151025'
 export const LUCY_BOAR_CD_DEFAULT = 4
 export const LUCY_BOAR_CD_MIN = 4
 export const LUCY_BOAR_CD_MAX = 6
-
-function rowVal(move: SkillMove | null | undefined, rowId: string): number {
-  const row = move?.rows?.find(r => r.id === rowId)
-  const vals = row?.values ?? []
-  if (!vals.length) return 0
-  return Number(vals[11] ?? vals[vals.length - 1] ?? 0) || 0
-}
 
 export interface LucyCheerInput {
   cinemaLevel: number

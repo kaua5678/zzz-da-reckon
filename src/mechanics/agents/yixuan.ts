@@ -1,14 +1,13 @@
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { ModuleFeedback } from '../types'
 import type { CharacterResourceResult, MechanicSetting, YixuanExChain } from '@/types/resource'
-import type { SkillMove } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { fmt } from '@/utils/format'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
@@ -297,12 +296,6 @@ export function computeYixuanNingshenBlocks(
     }
   })
   return out
-}
-
-function rowValue(move: SkillMove | null, rowId: string): number {
-  if (!move) return 0
-  const row = move.rows.find(r => r.id === rowId)
-  return row?.values?.[0] ?? 0
 }
 
 function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {

@@ -5,10 +5,9 @@ import type {
   AgentPanelInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 
 /**
  * 莱卡恩（1141）战斗逻辑（用户确认口径，2026-08）：
@@ -462,11 +461,6 @@ function pushEx(
     ...(stunBuildUpBonus > 0 ? { stunBuildUpBonus } : {}),
     ...(stunBuildUpBonus > 0 ? { skillTableNote: `影画1强化：失衡值提升 +${stunBuildUpBonus}%（乘区加算）` } : {}),
   })
-}
-
-function rowValue(move: SkillMove | null | undefined, rowId: string): number {
-  const row = move?.rows?.find(r => r.id === rowId)
-  return row?.values?.[0] ?? 0
 }
 
 function clamp01(v: number): number {

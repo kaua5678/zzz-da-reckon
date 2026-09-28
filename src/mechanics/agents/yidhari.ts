@@ -13,7 +13,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 
 const YIDHARI_AGENT_ID = '1051'
 
@@ -46,12 +46,6 @@ function yidhariProps() {
     decibelPerHpPct: Number(props.decibelPerHpPct ?? 10) || 10,
     cinema4DecibelBonusPct: Number(props.cinema4DecibelBonusPct ?? 10) || 10,
   }
-}
-
-function rowValue(move: SkillMove | null, rowId: string): number {
-  if (!move) return 0
-  const row = move.rows.find(r => r.id === rowId)
-  return row?.values?.[0] ?? 0
 }
 
 function loopMove(move: SkillMove | null, dmgBonusPct = 0): YidhariLoopMove {

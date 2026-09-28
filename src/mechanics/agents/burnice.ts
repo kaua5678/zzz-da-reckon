@@ -9,7 +9,7 @@ import type {
   ExtraAnomalyRowsInput,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
-import type { PanelValues, SkillMove } from '@/types/catalog'
+import type { PanelValues } from '@/types/catalog'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
@@ -17,7 +17,7 @@ import { fmt } from '@/utils/format'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -91,16 +91,6 @@ const STANDARD_EX_COST = (
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
-}
-
-function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
-  if (!move) return 0
-  return move.rows.find(row => row.id === rowId)?.values[0] ?? 0
-}
-
-function rawRowValue(move: SkillMove | null | undefined, rowId: string): number {
-  if (!move) return 0
-  return move.rows.find(row => row.id === rowId)?.values[0] ?? 0
 }
 
 /**
@@ -295,10 +285,10 @@ function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInp
   cfg.burniceDoubleSpraySeconds = clamp(cfgSetting(cfg, 'burnice.doubleSpraySeconds', DOUBLE_SPRAY_MAX_SECONDS), 0, doubleSprayMax)
   cfg.burniceStirringCount = Math.max(0, Math.floor(cfgSetting(cfg, 'burnice.stirringCount', 0)))
   cfg.burniceFlowCountUtilization = clamp(cfgSetting(cfg, 'burnice.flowCountUtilization', 1), 0, 1)
-  const blend1Damage = rawRowValue(findMoveById(skills, MIXED_FLAME_BLEND_1_MOVE), 'damage') || 250.8
-  const blend2Damage = rawRowValue(findMoveById(skills, MIXED_FLAME_BLEND_2_MOVE), 'damage') || 466
+  const blend1Damage = getRowValue(findMoveById(skills, MIXED_FLAME_BLEND_1_MOVE), 'damage') || 250.8
+  const blend2Damage = getRowValue(findMoveById(skills, MIXED_FLAME_BLEND_2_MOVE), 'damage') || 466
   cfg.burniceStirringDamageRatio = blend1Damage * 0.5 + blend2Damage
-  cfg.burniceTossingDamageRatio = rawRowValue(findMoveById(skills, TOSSING_MOVE_ID), 'damage') || TOSSING_DAMAGE_FALLBACK
+  cfg.burniceTossingDamageRatio = getRowValue(findMoveById(skills, TOSSING_MOVE_ID), 'damage') || TOSSING_DAMAGE_FALLBACK
   cfg.burniceStirringActionTimeSeconds = findMoveById(skills, MIXED_FLAME_BLEND_2_MOVE)?.actionTime ?? 0
   cfg.burniceTossingActionTimeSeconds = findMoveById(skills, TOSSING_MOVE_ID)?.actionTime ?? 0
   cfg.skipGenericExSpecial = true
