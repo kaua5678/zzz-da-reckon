@@ -59,6 +59,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 1. 长期规则（从 2026-09-27 以前的逐轮交接里提炼，压缩时逐条保留）
 
+- **每轮收尾必须 `git push origin master`**（提示词 c2）：commit 不等于 push。2026-09-27 用户发现本地积压 436 个提交、远端停在 09-21。推送失败要写进交接，不能静默跳过。
 - **登记债务、豁免或改 burn-down**：改 `scripts/lib/guard-registries.mjs`，不要改 check-guards 本体（CC-85）。
 - **改角色机制实现的提交**：顺手 grep `public/static/character-mechanics.json` 和 `character-constellations.json` 里该角色的 pending，过时就同步改。状态表过时的根因，就是实现提交没回写（CC-89）。
 - **新增 `record.<key>` 读取**：必须同时有写入方（buildCharConfig 或编排层注入），否则判据 25 会红（CC-91）。
@@ -69,22 +70,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 209 轮（lane lead-arena-0925c）：CC-186 完成（4d6f13d0）。文档见本提交。**
-- CC-186：core 副词条打分模型退役（唯一入口 store `optimizer.useDefault=0` 从引入起无写入点，生产不可达）。core/substatOptimizer.ts 915 行减到约 190 行，入口改名 `computeDefaultSubStatAllocation`。zd DIFF 0，探针零差。详见 stun-dual-source §24.33。
-- 副词条优化器这条线（CC-182～186）到此收尾：自动分配 = 默认分配 + 真实伤害精修，62 个角色平均比推荐配装 +6.47%，没有一个低于推荐。
-- 前几轮：208 CC-185（0e4e7ecf）；207 CC-184（ae935755）；206 CC-183（20a47df3）。
+**第 210 轮（lane lead-arena-0925c）：CC-187 完成（00e50d4e）。文档见本提交。已 push。**
+- 开工先 push 了第 209 轮积压的 2 个提交（b0db8605..11bc7062）。提示词 c2（每轮 `git push origin master`）早已写在提示词里，第 209 轮漏做；已写进 §1 长期规则。
+- 普查一「只读不写的 mechanicSetting key」结果为零：25 个 key 全部有生产写入点，这条方向结束。
+- 普查二「生产零引用的值导出」：25 个，逐条定性见 stun-dual-source §24.34。
+- CC-187：删除 `core/resourceTrack.ts`（时间轴喧响轨原型，已否决方向 A 的种子）及测试；decibelCapVerdict 形状面判据删除，闸门改由行为判据承担。verify 3827 passed。
+- 前几轮：209 CC-186（4d6f13d0）；208 CC-185（0e4e7ecf）；207 CC-184（ae935755）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. 卡表已没有 open 的 CC 卡（CC-166 暂缓，需规格）。下一轮自选方向，按唯一判据只做能让架构更通用或更简单的事。**本轮的方法值得复用：找「生产不可达的分支」**。CC-186 就是靠「设置只读不写」一眼定位的。
-   - 做法：列出全部 `getMechanicSetting('<字面量 key>'` 的 key，对每个 key 查写入点（`setMechanicSetting('<key>'`、模块 settings 注册的 id、`.vue` 输入框）。只读不写、缺省值恒定的 key ⇒ 它守护的非缺省分支就是死代码。先只读出清单写进文档（每条附读取行号和守护分支的行数），再挑影响面最大的一条退役。注意模块 `settings` 数组里注册的 id 会被 ResourceUtilizationPage 的通用渲染器渲染，这些不算只读。
-   - 同类：store 里其他按 `mechanicSettings` 分叉的逻辑。
-2. ARCHITECTURE-OVERVIEW A2（store 直接调用引擎）经 CC-186 已缩小；剩余调用（getAgentMechanic、getAgentSpec 等）是否值得继续上移，仍按 R6 结论（C2 规划条款已写进 ARCHITECTURE.md §0），不单独开卡。
+1. 按 §24.34 定性表处理类别 **C（生产逻辑的平行副本）**：典型是 `computeRinaCorePenRatio`、`computeYaojiayinCoreAtkBonus` 这类「模块里手抄一遍 JSON 公式、只有测试调用」的函数。做法：删副本，把对应测试改成走生产路径（`setupHarness` 编队后读面板或队友 buff 结果），断言数值不变（原测试的期望值直接搬过来）。一个提交处理全部 C 类，前提是每条都是「删副本 + 测试改测生产」同一模式；有例外的单列。判据：只有「测试从测副本改成测生产」这一点架构收益；若某条副本还承载了生产没有的口径（说明生产漏实现），那是另一张卡，不要顺手改数值。
+2. 类别 **D（纯死代码）** 顺带删；类别 **T（测试钩子）** 保留，不动；类别 **F（未接线功能）** 逐条评估要不要接：没人要就删，不要为了降计数去接线。
+3. 以上都做完，还没有新需求时：ARCHITECTURE-OVERVIEW A2 剩余部分按 R6 结论不单独开卡；可以回到 LONG-TERM-DIRECTIONS 的方向 C 第 2 刀。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- 死导出扫描（`k210/dx210.cjs`）按词边界数引用，前导 `.` 被排除，所以看不见 `ns.foo` 命名空间访问、`...foo` 展开和 `import.meta.glob`（第 210 轮因此误报 2 条）。结果里的「零引用」必须人工核对后再删。
+- 删测试文件后 verify 的用例数会下降，属正常；交接里写清少了几个、来自哪里，下一轮才不会误判为测试丢失。
 - 死通道扫描（`scripts/lib/dead-channel-scan.mjs`）按行识别字段写入：把 `critRateCap: 200` 压进单行对象字面量 `{ stats: [...], critRateCap: 200 }` 会被判成「只读不写」，报红（第 209 轮踩过）。可选字段的赋值保持独占一行。
 - 判断「某个分支 / 设置是否有用户」时，先查写入点再谈迁移：CC-173（第 198 轮）花了一整轮论证整队贪心「迁移得不偿失」，其实它从引入起就不可达（CC-186）。查法：`grep -rn "'<key>'" src public scripts`，再加 `git log -S'<key>'`。
 - 删 UI 会让 `scripts/check-tokens.mjs` 的 alias ratchet 报红：`VAR_TOTAL_BASELINE` 是「≥」型棘轮，删样式时 var() 总数下降会被误读成「改回了字面量」。纯删除时两个基线（WA_REF / VAR_TOTAL）照实下调，并在注释里写明归因（第 209 轮：447→437 / 808→797）。

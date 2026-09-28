@@ -17,6 +17,9 @@
 
 ## 2. 证据链（全部 2026-09-22 实测）
 
+> ⚠ **CC-187（00e50d4e，2026-09-28）已删除 `src/core/resourceTrack.ts`**（含 `simulateDecibelTrack` / `DECIBEL_TRACK_CAP`），「形状面」判据同删，闸门改由 `decibelCapVerdict.test.ts` 的行为判据承担。下文提到它的地方是当时的记录；将来若做上限口径，要在新实现里建模上限。
+
+
 ### 2.1 整局总量口径无上限项（裁决核心）
 
 - `src/core/resource/helpers.ts:391/605`：`ultimateCount = Math.floor(decibels[i] / cfg.ultimateCost)`。
@@ -78,6 +81,9 @@
    归因注释已写进代码。
 
 ## 4. 未来接入喧响时间轨时的步骤（形状面判据会先红）
+
+> ⚠ **CC-187（00e50d4e，2026-09-28）已删除 `src/core/resourceTrack.ts`**（含 `simulateDecibelTrack` / `DECIBEL_TRACK_CAP`），「形状面」判据同删，闸门改由 `decibelCapVerdict.test.ts` 的行为判据承担。下文提到它的地方是当时的记录；将来若做上限口径，要在新实现里建模上限。
+
 
 1. **先裁决角色级上限口径**：`simulateDecibelTrack` 加 `cap` 参数（默认
    `DECIBEL_TRACK_CAP`；大招判定从「攒满清空」改为「≥ 消耗(3000) 即放、余量保留」——

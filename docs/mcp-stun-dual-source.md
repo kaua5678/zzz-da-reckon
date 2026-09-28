@@ -1391,3 +1391,57 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 编排层测试改用新入口；CC-184 的贪心预算用例随贪心删除（默认分配按设计就会填满预算，core 测试「预算不足」等用例覆盖）。
 - **验证**：vue-tsc 通过；相关 18 个用例通过；探针（`k209/final.tsv` 对比 `k208/final.tsv`）变化 0；zd（cc186）DIFF 0（预设和 zd 走 store 默认分配，改写后必须零差）；verify EXIT=0。
 - **以后若要「词条边际收益」展示**：不要复活打分模型。在编排层按 refine 同一模式，对每个模板词条 +1 步读 `teamTotalDamage` 的真实差分，经 useResourceCalc 或 composable 暴露（展示层禁止值导入 core）。没人要就不做。
+
+### 24.34 CC-187：删除时间轴喧响轨原型 core/resourceTrack.ts ＋ 两份普查（第 210 轮，00e50d4e）
+
+- **普查一：只读不写的 mechanicSetting key（第 209 轮交接指定的方向）——结果为零。**
+  - 方法：列出全部 `getMechanicSetting('<字面量>'`（25 个 key），逐个查写入点（`setMechanicSetting('<key>'`、模块 `settings` 注册的 `id:`、`.vue` 输入框、`guarantee.${kind}` 等动态写入）。脚本 `/home/kaua/calc-arch/k210/ms210.sh`。
+  - 25 个 key 全部有生产写入点（界面输入框或模块 settings 注册、被通用渲染器渲染）。`optimizer.useDefault` 那种「只读不写」的死开关已随 CC-186 清掉，没有第二个。⇒ 这条方向到此结束，以后不用再扫。
+- **普查二：生产零引用的值导出。**
+  - 方法：`/home/kaua/calc-arch/k210/dx210.cjs`（一次性，不进 CI）。对 src 非测试文件的 `export function/const/class/enum`，统计其他生产文件里的词边界引用数；本文件内也没有其他用法的才算。结果 `k210/dx.tsv`：291 个生产文件，扫出 25 个「生产零引用」，子代理复核后 **2 条是误报**（`computeDamageSourceBreakdown` 经命名空间 `ResourceCalcHelpers.xxx` 调用；`XIDE_ENCIRCLEMENT_EFFECT_IDS` 以 `...xxx` 展开使用），**实际 23 个**：`simulateDecibelTrack`（本卡删除）+ 下表 22 条（类别 T 测试钩子 6、C 平行副本 10、F 未接线功能 2、D 纯死代码 4）。
+  - 注意：扫描的词边界正则排除了前导 `.`，因此看不见 `ns.foo` 命名空间访问和 `...foo` 展开，也不识别 `import.meta.glob` 动态导入（`data/stunAxisPresets.ts`、`data/teamPresets.ts`、`specs/registry.ts` 用了 glob），定性前要人工核对。
+  - 逐条定性（子代理 dsh 只读产出，主会话抽查了 resourceTrack 与丽娜两条）：
+
+# k210 · src 零生产引用导出裁定（第4列为 0 的行，24 条）
+
+> 输入：`dx.tsv`（`export` 值导出，生产引用数 = 0）。类别：T=测试钩子（保留）｜C=生产逻辑平行副本（测试测副本，应改测生产）｜F=未接线功能（应接线）｜D=纯死代码（应删）。
+> 说明：`dx210.cjs` 的 own/prod 计数用 `(?<![\w$.])` 前瞻，**会把 `...NAME` 展开与 `NS.NAME` 命名空间调用漏计**，故有 2 条误报（下表标 `—(误报)`）；其余 22 条经 `grep -rn` 复核确实零生产引用。
+
+| 导出名 | 文件:行 | 类别 | 依据 | 建议 |
+|---|---|---|---|---|
+| teamHasAxisPresetPreferred | src/composables/agentMechanicView.ts:229 | C | 生产由 `axisPresetPreferredLabel`（同文件:238）内联同一判定、`AUTO_AXIS_PRESET_HINTS.isPreferred`（:220）提供谓词；本函数只被 `agentMechanicViewCc60.test.ts:48`、`axisPresetPreferredLabelCc79.test.ts:23` 当 oracle。 | 删除并把测试改测 `axisPresetPreferredLabel`/`isPreferred`（或让 :238 复用它） |
+| setupCodeGold | src/composables/freeCompare/axes.ts:57 | C | 限定金口径生产单源在 `limitedGold.ts:37 memberLimitedGold` / `teamTimelineStore.ts:89 baseGoldOfTeam`；本函数只被 `freeCompare.test.ts:55-61` 测，且 gold 轴 `override.gold` 在 `freeCompare/engine.ts` 从未被消费。 | 删除并把测试改测 `memberLimitedGold`；顺带接线或删 gold 轴 |
+| constraintSummary | src/composables/freeCompare/constraints.ts:51 | F | 头注释「图表副标题用」，但 `FreeComparePage.vue` 未 import、无副标题渲染，生产无等价实现。 | 接线到 FreeComparePage 图表副标题，或删除（连同 `freeCompare.test.ts:206`） |
+| deflateScoreByInflation | src/composables/inflationCurve.ts:315 | F | 头注释「把膨胀接进兑现读数的展示层换算」，但 `PullValueChart.vue:291-320` 只算 `inflationCtx`/`avgInflationIndex` 文案，从不调用它。 | 接线到 PullValueChart 的兑现分数读数，或删除（连同 `inflationCurve.test.ts:260-269`） |
+| setCachedFreezeEnabled | src/composables/resourceCalc/freezeCached.ts:23 | D | 全仓（含测试）零引用；`freezeCached.ts:40` 才是被 `useResourceCalc.ts:153/219/241` 消费的机制。 | 删除（若确需性能探针则补测试） |
+| isCachedFreezeEnabled | src/composables/resourceCalc/freezeCached.ts:27 | D | 全仓零引用（仅 :27 声明），无任何测试或探针读它。 | 删除 |
+| computeDamageSourceBreakdown | src/composables/resourceCalc/helpers.ts:152 | —(误报) | 生产经命名空间调用 `useResourceCalc.ts:708 ResourceCalcHelpers.computeDamageSourceBreakdown`，结果由 `ResultPage.vue:632` 渲染；扫描器漏计 `NS.NAME`。 | 保留（非死代码） |
+| getCalcOutputMemoStats | src/composables/useResourceCalc.ts:78 | T | 记忆化命中/未命中诊断读数，仅 `calcOutputMemo.test.ts` 用来验证命中语义；生产恒开（:82）。 | 保留 |
+| setCalcOutputMemoEnabled | src/composables/useResourceCalc.ts:83 | T | 记忆化 A/B 开关，被 `calcOutputMemo.test.ts`、`outerContinuity.test.ts:28`、`allAgentsGuards.test.ts:33`、`feasibleRowsMemo.test.ts:85` 做逐位对照；生产恒 true。 | 保留 |
+| chart3YStepOf | src/composables/versionChartGeometry.ts:54 | T | 与 `hpRatioYStepOf` 的委托别名，`hpRatioAxis.test.ts:78` 用引用相等钉「三图同源」结构契约；生产只用 Max/Of/Grid/Label。 | 保留（结构判据需要） |
+| getFeasibleRowsMemoHits | src/core/resource/rowBuild.ts:162 | T | 行物化记忆命中计数，仅 `feasibleRowsMemo.test.ts` 读它证明命中/未命中。 | 保留 |
+| setRowFastPathsEnabled | src/core/resource/rowBuild.ts:172 | T | 行快路径 A/B 总开关，被 `feasibleRowsMemo.test.ts`、`allAgentsGuards.test.ts:36` 做全角色开/关逐位对照；生产恒开（:171）。 | 保留 |
+| presetTeamKey | src/data/stunAxisPresets.ts:190 | D | 生产匹配走 `matchStunAxisPresets`（:198，按槽位 `every` 比较，不建 key），本函数只被 `stunAxisPresets.test.ts:33-36` 测，且文件内零自用。 | 删除（连同该测试；匹配语义已由 matchStunAxisPresets 覆盖） |
+| teamPresetGroupOptions | src/data/teamPresets.ts:131 | C | 生产三页改用三级筛选 `presetGroupLabels`/`presetSubgroupLabelsFor`/`presetsForFilter`（:150/:155/:165，见 `PositionComparePage.vue:190`、`TeamComparePage.vue:811`、`TeamConfigPage.vue:809`）；本函数只被 `teamPresets.test.ts:103-121` 当生产测。 | 删除并把测试收敛到三级筛选（已有覆盖） |
+| nodesFrom | src/data/versionTimeline.ts:178 | C | 生产 `teamTimeline.ts:394/405` 用 `VERSION_NODES.map` + `fullAxis.slice(mainAxisIdx)` 自建轴；本函数仅 `teamTimeline.test.ts:94/173` 当 oracle。 | 删除并把测试期望改为直接 `VERSION_NODES` 切片 |
+| computeRinaCorePenRatio | src/mechanics/agents/rina.ts:69 | C | 生产数值由 `public/static/teammate-buffs.json` 的 `rina.core_pen_ratio` formula `clamp(x*0.25+12,0,30)` + `rina.cinema_1.core_pen_ratio_amplify`(×1.3) 驱动；单测 `rina.test.ts:38-40` 测的是 TS 副本。 | 删除并把测试改测 teammate-buffs→引擎管线（范式见 `specTeamBuffDeadControl.test.ts`） |
+| XIDE_ENCIRCLEMENT_EFFECT_IDS | src/mechanics/agents/xide.ts:186 | —(误报) | 同文件 `xide.ts:198` 以展开 `...XIDE_ENCIRCLEMENT_EFFECT_IDS` 消费，进入 `xideTeammateBuffRecipientFilter`→`panelPhases.ts:496` 生产路径；扫描器漏计 `...NAME`。 | 保留（非死代码） |
+| computeYaojiayinCoreAtkBonus | src/mechanics/agents/yaojiayin.ts:130 | C | 生产数值由 `teammate-buffs.json` 的 `yaojiayin.core_andante_atk`（derived 35%/cap1200）+ `yaojiayin.cinema_2.core_andante_atk_bonus`（`clamp(x*0.54,0,1600)-clamp(x*0.35,0,1200)`）驱动；单测 `yaojiayin.test.ts:49-53` 测的是 TS 副本。 | 删除并把测试改测 teammate-buffs→引擎管线 |
+| buildSpecResourceSections | src/specs/mechanics.ts:36 | C | 生产资源区由 `specToMechanicModule(...).resourceSections`（同文件:200-228）现算；本函数只被 `specs/__tests__/mechanics.test.ts:17` 测。 | 删除并把测试改测 `specToMechanicModule(spec).resourceSections`（或让 :200 复用它） |
+| verifyAllSpecs | src/specs/verify.ts:65 | T | 唯一调用者是 `specs/__tests__/verify.test.ts:7`（跑全 spec 的 panel+expected 可执行校验）；`validate:specs` 脚本只做结构校验、未接它。 | 保留（单测已在 CI 执行）；可选并入 `validate:specs` |
+| STANDARD_ENEMY_DEBUFF_ELEMENTS | src/utils/enemyDebuffStats.ts:6 | D | 生产一律用 7 元素 `DAMAGE_ELEMENTS`（`statMeta.ts:150`、`buff.ts:63`）；本常量（去 lumiflux 的 6 元素）只被 `enemyDebuffStats.test.ts:103` 自测。 | 删除（连同该断言） |
+| isEnemyDebuffStat | src/utils/enemyDebuffStats.ts:129 | C | 生产的归属判断在 `core/buff.ts:63-64`（GENERATED+LEGACY 集合）与 `statMeta.ts:287`（`LEGACY…includes`）另写；本函数只被 `enemyDebuffStats.test.ts:109-116` 测。 | 删除并把测试改测生产集合（或反向让 buff/statMeta 复用本函数以收敛单源） |
+| interactiveTeammateBuffs | src/utils/teammateBuffRows.ts:86 | C | 渲染面 `AttributeConfigPage.vue:552` 直接用 `isTeammateBuffInteractive` 逐行过滤，未用本批处理包装；本函数只被 `teammateBuffRows.test.ts:70`、`specTeamBuffDeadControl.test.ts:123` 测。 | 删除并把测试改为直接测 `isTeammateBuffInteractive`（或让页面改用本函数） |
+| declaredOnlyTeammateBuffs | src/utils/teammateBuffRows.ts:96 | C | 同上是 `isTeammateBuffInteractive` 的取反包装，生产页面逐行用 `!isTeammateBuffInteractive`；只被 `teammateBuffRows.test.ts:71`、`specTeamBuffDeadControl.test.ts:124/201` 测。 | 删除并把测试改为直接测 `isTeammateBuffInteractive` |
+
+**最值得做的一条**：`computeRinaCorePenRatio` / `computeYaojiayinCoreAtkBonus` 这类 C —— 生产数值由 `public/static/teammate-buffs.json` 的 formula 驱动，单测却在断言这两个 TS 平行副本，JSON/公式一漂移测试仍全绿、生产静默错值（正是规则 16「死口径」风险）。
+做法：删掉两个函数，把 `rina.test.ts:38-40`、`yaojiayin.test.ts:49-53` 改为跑 teammate-buffs→引擎的数值断言（管线范式见 `specTeamBuffDeadControl.test.ts`）。
+同批可顺手清掉零引用的 `setCachedFreezeEnabled`/`isCachedFreezeEnabled` 与已死的 `STANDARD_ENEMY_DEBUFF_ELEMENTS`。
+
+  - 主会话抽查结论：`computeRinaCorePenRatio`（`mechanics/agents/rina.ts`）是 `teammate-buffs.json` 里 `rina.core_pen_ratio` 公式 `clamp(x*0.25+12,0,30)` 和影画 1 `buffModifiers` ×1.3 的手抄副本，测试测的是副本不是生产。一度怀疑生产漏了影画 1——实际走 `multiplyResolvedValue` 修饰器（`core/inCombatBuffs.ts:83`），生产是对的。
+- **CC-187 决定：删除 `src/core/resourceTrack.ts`（100 行）与 `src/core/__tests__/resourceTrack.test.ts`。**
+  - 依据：`simulateDecibelTrack` 生产零调用；头注释自称「对轴模块第一步」，是方向 A（事件时间轴内核）的种子，而方向 A 已否决（R4 撤销）。它放在 core 里会让人误以为是引擎的一部分（LONG-TERM-DIRECTIONS 曾把它列为「种子」，ARCHITECTURE 工具表曾列为「验收读数」工具）；唯一看守它的测试只是在断言「别接它」。删掉后 core 少一个平行模型，没有功能损失。
+  - `decibelCapVerdict.test.ts`：「形状面」字符串判据随之删除。闸门作用由同文件的**行为判据**承担：「大招次数 = floor(总喧响/ultimateCost)」，谁引入喧响上限口径它就会红。头注释已改口径。
+  - 同步：`src/specs/agents/1391.json` note、`yixuanSmoke.test.ts` 历史注释、`docs/ARCHITECTURE.md` 工具表（删掉该项）、`mcp-r65j1-decibel-cap-verdict.md` / `mcp-timeline-shadow-kernel.md` / `LONG-TERM-DIRECTIONS.md` 加注。`mcp-r22d1-batch12-field-census.md` 是时点记录，不改。
+  - 验证：vue-tsc 通过；verify EXIT=0（3827 passed，比上轮少 7 个 = 删掉的 resourceTrack 测试 6 个 + 形状面 1 个）；CG 25 项全过。纯删除、零生产调用，所以不跑 zd 和探针。
+  - 回退点：`git revert 00e50d4e`。若将来真要做喧响上限口径，按 `mcp-r65j1-decibel-cap-verdict.md` §4 在新实现里建模，不要复活这个文件。

@@ -40,6 +40,7 @@
 
 - 大招次数 `ultimateCount = floor(decibels[i] / cfg.ultimateCost)`（`core/resource/helpers.ts`，行号见
   `decibelCapVerdict.test.ts` 头注释），没有上限项；`ultimateCost` 是角色级的（默认 3000，佩洛伊斯 2000）。
+- ⚠ 2026-09-28 CC-187（00e50d4e）已删除下面说的种子与闸门（方向 A 否决后它没有用途）；本节是当时的记录。
 - 种子 `src/core/resourceTrack.ts`（100 行）`simulateDecibelTrack`：单一池、均匀回复、上限 3000、进窗时够 3000 才放大招。
   **非测试代码零调用**。
 - ⚠ **闸门**：`src/composables/__tests__/decibelCapVerdict.test.ts` 的「形状面」判据断言：非测试 src 中
