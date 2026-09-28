@@ -1840,3 +1840,19 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - (c) 只被测试读的诊断字段 → 按第 215 轮裁决默认保留。
   - 分类方法：grep 字段名的语义关键词（label 文本、常量名），看结果卡 / 页面里有没有写死同一个量。
 - **回退点**：`git revert d95a2957`。
+
+### 24.53 第 229 轮：T2 收尾（不做）+ CC-206 store 默认门控直接调引擎求值函数（a119557d）
+
+- **T2 收尾**：全量分类后整体不做，理由与分类表见 `docs/mcp-write-only-props.md`「T2 收尾（第 229 轮）」。
+- **CC-206 起点**：CC-203 统一了门控表，但 store `deriveTeammateBuffEnabled` 仍自己算一份 `aaActiveMap`（只看 spec `additionalAbility` 声明），不经模块修正 `adjustAdditionalAbilityGates`。结果两道门在两个方向上仍会分叉：
+  - 凯撒 1071（模块把「其他可招架支援角色」近似成「有任意队友」）：配异阵营、非支援队友时，引擎放行，store 默认不勾，用户看到的伤害里没有这条；
+  - 菲欧妮 1641 tier3（模块另需异常数 ≥3）：异常数不足时 store 默认勾上，引擎丢弃（UI 显示已勾、实际不生效）。
+  - 第 226 轮交接写「store 侧没有 ReadonlyTeam 形态的输入」是**错的**：`deriveTeammateBuffEnabled` 里本来就构造了 `mechanicTeam: MechanicTeamMember[]`。
+- **改法**：
+  - `evalAdditionalAbilityBuffGates` 逐字迁到新文件 `src/mechanics/additionalAbilityGates.ts`。放 mechanics 层是因为 store 值导入 panelPhases 会成环（`resourceCalc/helpers.ts` 值导入 stores/config），而该函数的依赖两边都已在用；从 `./registry` 取 `getAgentMechanic`，避免与角色模块互相 import。panelPhases re-export，壳契约（同一绑定）不变。
+  - store 删掉 `aaActiveMap` 及 `evalAdditionalAbility` / `additionalGateBuffTable` / `getAgentSpec` 三个导入，改为 `aaGates = evalAdditionalAbilityBuffGates(mechanicTeam, …, groups)`，判据 `aaGates.get(buff.id) === false ⇒ 默认不勾`。**「默认勾不勾」==「引擎认不认」**，按构造成立。
+- **为什么值得做**：同一个判断只剩一处实现（更简单）；以后新模块的门控修正自动同时作用于默认值和引擎（更通用）。
+- **测试**（`additionalGate.test.ts`）：同口径守卫去掉 `KNOWN_STRICTER` 豁免（全员 × 任一队友 × 影画 0/6，无例外）；新增凯撒 + 安比默认勾上、菲欧妮 + 简 tier2 勾 / tier3 不勾。CC-67 源码锁改指向新文件。
+- **影响面**：timeGolden / 留白棘轮零差（现有预设里的凯撒队都满足原始声明条件）。行为变化只出现在「凯撒 + 异阵营非支援队友」（默认多勾一条）和「菲欧妮异常数不足」（tier3 默认不勾，引擎本来就丢）。verify EXIT=0（3889 passed）；vue-tsc 0。
+- **回退点**：`git revert a119557d`。
+- **同类遗留 → 下一轮 CC-207**：store 里还有只在 store 生效的钩子 `teammateBuffGate`（`pulchra.ts:158`、`remielle.ts:437`）。其中波可娜是**正确性约束**：6 命时基础条 `pulchra_extra_trap_followup` 必须关掉，防止与 `pulchra_cinema_6_trap_all` 重复计算。但它只作用于默认值，用户强行勾上时引擎会算两遍。与 CC-203 / CC-206 是同一类问题的镜像（默认层有约束、引擎层没有）。

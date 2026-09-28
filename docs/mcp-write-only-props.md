@@ -163,6 +163,129 @@
 | `verificationId` | `src/specs/verify.ts:7` | `src/specs/verify.ts:50` | 0 |
 | `targeted` | `src/utils/discEffectRows.ts:71` | `src/core/resource/tailPipeline.ts:110`, `src/utils/discEffectRows.ts:141`, `src/mechanics/agents/starlightBilly.ts:181`, `src/mechanics/agents/starlightBilly.ts:406` … | 0 |
 
+### T2 收尾（第 229 轮）：全量分类后整体「不做」
+
+- **分类**：由 dsflash 子代理只读完成（66 行，逐字段 grep 字段与其语义对应的展示文本），lead 抽查了 b 类全部和 a 类若干。结果：a 纯死 16 / b 展示写死 7 / c 仅测试读 43 / d 误报 0。
+- **b 类 7 条都不是 bug**：`windEnergyCap`（上限 3）、`assaultCritBaseRate` / `assaultCritRatePerMastery`（20% / 0.1%）、`vibratoMax`（4）、`beatCap`（100）、`dreamTarget`（500 点）、`cloudChargeSeconds`（满蓄 2s）。写死的都是稳定的游戏常量，数值与字段当前值全部相等，没有 CC-205 那种已经过时的值。改成插值只是把一处字面量换成另一处引用，按唯一判据没有架构收益。
+- **决定：T2 整体不做**。a 类 16 条是一两行的诊断载荷，删除不让架构更通用或更简单，不单独立卡；**顺手改到所在文件时可以一并删**（名单见下表的 a 类）。c 类按第 215 轮裁决保留。
+- 回退点：若日后要删 a 类，直接按下表逐条删，每条只涉及声明与写入两处。
+
+#### T2 字段分类（k229）
+
+口径：`docs/mcp-write-only-props.md` §T2 表（91–164 行）。跳过末尾已标「已删 / 不删 / 出表」的 5 行
+（`teamFollowupDmgBonus` 不删、`feiguangPerForm`/`c1CritDmg`/`emberGain` 已删 CC-205、`higherBetter` 出表 CC-204）
+以及 CC-192 已删的诺姆 3 行（`hatToChainCost`/`barrageSeconds`/`barrageCoverage`，section 头注明「诺姆 3 条已删」）。
+分类：a=纯死字段可删；b=展示层写死/过时（真 bug）；c=只被测试读；d=其实有非测试读取（本批未发现 d）。
+
+| 字段 | 声明文件:行 | 分类 | 证据（文件:行 + 一句话） |
+|---|---|---|---|
+| `withDiscs` | `src/core/panel.ts:258` | c | 非测试零读；测试读 6 处（`core/__tests__/discSetEffects.test.ts:398`、`panelProbe.test.ts:89`）。 |
+| `exRefundEnergy` | `src/types/resource/energy.ts:73` | c | 非测试零读；测试读 1 处（`core/__tests__/energyRowParity.test.ts:130`）。 |
+| `skillTableResolved` | `src/types/resource/execution.ts:63` | c | 非测试零读；测试读 2 处（`mechanics/__tests__/trigger.test.ts:272`、`panYinhu.test.ts:144`）。 |
+| `truncatedRatio` | `src/types/resource/execution.ts:122` | c | 非测试零读；测试/probe 读 3 处（`timeTruncation.test.ts:37`）。 |
+| `cutEnergyRecovery` | `src/types/resource/execution.ts:169` | c | 非测试零读；测试读 1 处（`timeTruncation.test.ts:87`）。 |
+| `cutDecibelRecovery` | `src/types/resource/execution.ts:171` | c | 非测试零读；测试读 2 处（`timeTruncation.test.ts:88-89`）。 |
+| `windEnergyCap` | `src/types/resource/agentResources.ts:86` | b | 卡片写死「存量上限 3」（`mechanics/agents/roxy.ts:453`），字段算于 `roxy.ts:236`。 |
+| `assaultCritBaseRate` | `src/types/resource/agentResources.ts:192` | b | 卡片写死「基础20%」（`mechanics/agents/jane.ts:199`），字段算于 `jane.ts:81`。 |
+| `assaultCritRatePerMastery` | `src/types/resource/agentResources.ts:193` | b | 卡片写死「×0.1%」（`mechanics/agents/jane.ts:199`），字段算于 `jane.ts:82`。 |
+| `cinema6SpecialEmberTotalDamage` | `src/types/resource/agentResources.ts:252` | c | 非测试零读；测试读 1 处（`specialMechanics.test.ts:430`）；卡片只显示 count×ratio。 |
+| `anomalyProficiencyBonus` | `src/types/resource/agentResources.ts:305` | c | 非测试零读；测试读 1 处（`nangongSmoke.test.ts:31`）；模块 description 提「精通+120」但不渲染。 |
+| `impactFromMastery` | `src/types/resource/agentResources.ts:306` | c | 非测试零读；测试读 2 处（`nangongSmoke.test.ts:30`、`specialMechanics.test.ts:534`）。 |
+| `vibratoMax` | `src/types/resource/agentResources.ts:308` | b | 卡片写死「滑块可调 0-4」（`nangong.ts:433`）与设置 `max: 4`（`nangong.ts:458`），字段算于 `nangong.ts:114`。 |
+| `beatCap` | `src/types/resource/agentResources.ts:314` | b | 卡片写死「上限 100」（`nangong.ts:421`），字段算于 `nangong.ts:120`。 |
+| `yisha4NecessaryTime` | `src/types/resource/agentResources.ts:466` | c | 非测试零读；测试读 3 处（`qingyi.test.ts:57/66/107`）。 |
+| `zuiHuaTime` | `src/types/resource/agentResources.ts:468` | a | 非测试零读、测试零读；计算于 `qingyi.ts:239/251`，卡片只显示合计 `necessaryTime`。 |
+| `dreamTarget` | `src/types/resource/agentResources.ts:477` | b | 卡片标题写死「（500点）」（`luciaElowen.ts:375`），字段算于 `luciaElowen.ts:301`。 |
+| `rageDiDongComboCount` | `src/types/resource/agentResources.ts:530` | c | 非测试零读；测试读 3 处（`banyue.test.ts:56/71/334`）；卡片读同值 `diDongRageCount`。 |
+| `inkCycles` | `src/types/resource/agentResources.ts:574` | a | 非测试零读、测试零读；计算于 `yixuan.ts:206`，卡片只列 ink1/ink3/ink4。 |
+| `cloudCycles` | `src/types/resource/agentResources.ts:576` | a | 非测试零读、测试零读；计算于 `yixuan.ts:207`。 |
+| `cloudChargeSeconds` | `src/types/resource/agentResources.ts:590` | b | 卡片写死「满蓄 2s/次」（`yixuan.ts:949`），字段算于 `yixuan.ts:214`。 |
+| `derivedEnergy` | `src/types/resource/agentResources.ts:660` | c | 非测试零读；测试读 9 处（`energyConsistency.test.ts:19` 等）。 |
+| `perSlotParry` | `src/types/resource/agentResources.ts:747` | c | 非测试零读；测试读 2 处（`parrySplitInt.test.ts:186/235`）。 |
+| `perSlotDodgeCounter` | `src/types/resource/agentResources.ts:751` | a | 非测试零读、测试零读；`ResultPage.vue:556` 只读 `perSlotBonus`。 |
+| `inAxisFraction` | `src/types/resource/pools.ts:29` | c | 非测试零读；测试读 3 处（`liuyinPromote.test.ts:40` 等）。 |
+| `inAxisStun` | `src/types/resource/pools.ts:31` | c | 非测试零读；测试读 2 处（`stunPool.test.ts:55` 等）。 |
+| `stunRefundValue` | `src/types/resource/pools.ts:53` | c | 非测试零读；测试读 1 处（`stunPool.test.ts:72`）。 |
+| `truncationBeforeRefoldSeconds` | `src/types/resource/team.ts:68` | c | 非测试零读；测试读 2 处（`truncationRefold.test.ts:61` 等）。 |
+| `chainGiftTimeReserved` | `src/types/resource/team.ts:160` | c | 非测试零读；测试读 2 处（`timeLedgerInvariants.test.ts:64`、`giftMoveTimeLedger.test.ts:49`）。 |
+| `teammateOpenCount` | `src/core/resource/curtain.ts:30` | a | `CurtainInfo` 字段无任何读取（`:46` 的局部量传给了 `curtainTriggers`，字段本身零读）。 |
+| `grossFrontline` | `src/core/resource/timeOccupation.ts:48` | c | 非测试零读；测试读 1 处（`difficultyCurve.test.ts:253`）。 |
+| `creditApplied` | `src/core/resource/timeOccupation.ts:52` | c | 非测试零读；测试读 1 处（`difficultyCurve.test.ts:254`）。 |
+| `followUpMoveId` | `src/data/counterAssists.ts:27` | c | 非测试零读；测试读 4 处（`counterAssist.test.ts:79` 等）；生产只读同表的 `moveId`。 |
+| `dashCount` | `src/mechanics/agents/ellen.ts:104` | a | 非测试零读、测试零读（仅注释提及）；返回同值 `dashChargedCount` 被卡片使用。 |
+| `extraBursts` | `src/mechanics/agents/ellen.ts:111` | c | 非测试零读；测试读 2 处（`ellen.test.ts:86/101`）。 |
+| `masteryExcess` | `src/mechanics/agents/promia.ts:78` | c | 非测试零读；测试读 2 处（`promia.test.ts:48/52`）。 |
+| `feiguangScaleEach` | `src/mechanics/agents/yeshuguang.ts:195` | a | 非测试零读、测试零读；计算于 `yeshuguang.ts:282`，卡片只显示 `feiguangFullCasts`。 |
+| `dmgPerSec` | `src/mechanics/agents/qingyi.ts:73` | a | 非测试零读、测试零读；计算于 `qingyi.ts:111`（`config.ts:522` 是同名内联声明）。 |
+| `rageDiDongComboCount` | `src/mechanics/agents/banyue.ts:129` | c | 与 `agentResources.ts:530` 同字段的模块内声明；非测试零读，测试读 3 处（`banyue.test.ts:56/71/334`）。 |
+| `deltaVsBest` | `src/composables/teamCompare.ts:761` | c | 非测试零读；测试读 2 处（`teamCompare.test.ts:639/642`）；页面读 `lossPct`/`isBest`。 |
+| `totalGoldA` | `src/composables/teamTimeline.ts:894` | c | 非测试零读；测试读 1 处（`timeChartsPresentation.test.ts:184`）。 |
+| `totalGoldB` | `src/composables/teamTimeline.ts:895` | a | 非测试零读、测试零读；`SlotCompareChart.vue` 汇总表不渲染金数。 |
+| `goldLabelA` | `src/composables/teamTimeline.ts:896` | c | 非测试零读；测试读 1 处（`teamTimeline.test.ts:510`）。 |
+| `goldLabelB` | `src/composables/teamTimeline.ts:897` | c | 非测试零读；测试读 1 处（`teamTimeline.test.ts:511`）。 |
+| `bankBefore` | `src/composables/pullPlanner.ts:246` | c | 非测试零读；测试读 1 处（`pullPlanner.test.ts:160`）。 |
+| `bankAfter` | `src/composables/pullPlanner.ts:247` | c | 非测试零读；测试读 2 处（`pullPlanner.test.ts:159/160`）。 |
+| `changedFields` | `src/composables/cinemaUplift.ts:46` | c | 非测试零读；测试读 1 处（`cinemaUplift.test.ts:104`）；页面读 `warn`。 |
+| `basicRows` | `src/composables/teamTimeSummary.ts:33` | c | 非测试零读；测试读 1 处（`teamTimeSummary.test.ts:44`）。 |
+| `idle` | `src/composables/teamTimeSummary.ts:85` | a | 非测试零读、测试零读（`convergenceProbe` 的 `idle` 是它自己的局部量）；`ResultPage.vue` 不显示。 |
+| `usedLevels` | `src/composables/difficultyDescent.ts:115` | a | 非测试零读、测试零读；面板用 `DescentPoint.levels`（`DifficultyDescentPanel.vue:273`）。 |
+| `lefts` | `src/composables/directDamageChart.ts:115` | c | 非测试零读；测试读 1 处（`directDamageChart.test.ts:90`）。 |
+| `centers` | `src/composables/directDamageChart.ts:116` | a | 非测试零读、测试零读；内部 `cx` 用局部量，返回对象字段零消费。 |
+| `plotSpan` | `src/composables/directDamageChart.ts:118` | c | 非测试零读；测试读 5 处（`directDamageChart.test.ts:56` 等）。 |
+| `labelSlots` | `src/composables/directDamageChart.ts:133` | a | 非测试零读、测试零读；内部 `labelY` 用局部量，返回对象字段零消费。 |
+| `strengthVsEnvironment` | `src/composables/inflationCurve.ts:113` | c | 非测试零读；测试读 2 处（`inflationCurve.test.ts:162/176`）；注释明示「保留但勿用作结论」。 |
+| `cumulativePct` | `src/composables/inflationCurve.ts:123` | c | 非测试零读；测试读 5 处（`inflationCurve.test.ts:44` 等）。 |
+| `clamped` | `src/composables/inflationCurve.ts:271` | c | 非测试零读；测试读 3 处（`inflationCurve.test.ts:232` 等）；`PullValueChart.vue:297` 仅注释。 |
+| `teamLanes` | `src/composables/pullPlannerChart.ts:66` | c | 非测试零读；测试读 9 处（`pullPlannerChart.test.ts:80` 等）；页面用 `visibleTeamLanes`。 |
+| `authorCount` | `src/composables/pullValue.ts:97` | c | 非测试零读；测试读 1 处（`pullValue.test.ts:279`）。 |
+| `medianScore` | `src/composables/pullValue.ts:99` | a | 非测试零读、测试零读；卡片无对应展示。 |
+| `capCount` | `src/composables/pullValue.ts:100` | c | 非测试零读；测试读 3 处（`pullValue.test.ts:109` 等）。 |
+| `filteredCards` | `src/composables/pullValueChart.ts:84` | c | 非测试零读；测试读 2 处（`pullValueChart.test.ts:45/46`）。 |
+| `gradeFilteredCards` | `src/composables/pullValueChart.ts:86` | c | 非测试零读；测试读 1 处（`pullValueChart.test.ts:53`）。 |
+| `barMaxW` | `src/composables/pullValueChart.ts:99` | c | 非测试零读；测试读 2 处（`pullValueChart.test.ts:133/134`）。 |
+| `verificationId` | `src/specs/verify.ts:7` | a | 非测试零读、测试零读；`SpecVerificationResult` 由测试消费但从不读该字段。 |
+| `targeted` | `src/utils/discEffectRows.ts:71` | a | 非测试零读、测试零读；`TeamConfigPage.vue:448` 只渲染 `condition`/`gateText`。 |
+
+#### b 类详细说明（展示层写死同一量 → 应让展示读字段）
+
+1. **`windEnergyCap`**（声明 `src/types/resource/agentResources.ts:86`；字段计算 `src/mechanics/agents/roxy.ts:236`）
+   - 语义：洛克茜[风能]存量上限（`WIND_ENERGY_MAX = 3`）。
+   - 写死处：`src/mechanics/agents/roxy.ts:453` 结果卡「风能获取」detail = `'存量上限 3（每发敬请安息至多消耗 3）'`（字面 3）。
+   - 修法：detail 改读 `source.windEnergyCap`（或常量插值），字段接入展示。
+
+2. **`assaultCritBaseRate`**（声明 `src/types/resource/agentResources.ts:192`；字段计算 `src/mechanics/agents/jane.ts:81`）
+   - 语义：简的强击暴击基础率（`ASSAULT_CRIT_BASE = 20`）。
+   - 写死处：`src/mechanics/agents/jane.ts:199` 结果卡「强击暴击率」detail = `` `基础20% + 异常精通×0.1%` ``（字面 20）。
+   - 修法：detail 用 `${source.assaultCritBaseRate}%` 插值。
+
+3. **`assaultCritRatePerMastery`**（声明 `src/types/resource/agentResources.ts:193`；字段计算 `src/mechanics/agents/jane.ts:82`）
+   - 语义：简的强击暴击率每点异常精通加成（`ASSAULT_CRIT_PER_MASTERY = 0.1`）。
+   - 写死处：同 `src/mechanics/agents/jane.ts:199` 的「×0.1%」（字面 0.1）。
+   - 修法：detail 用 `${source.assaultCritRatePerMastery}%` 插值。
+
+4. **`vibratoMax`**（声明 `src/types/resource/agentResources.ts:308`；字段计算 `src/mechanics/agents/nangong.ts:114`）
+   - 语义：南宫羽颤音层数上限（`VIBRATO_MAX = 4`）。
+   - 写死处：`src/mechanics/agents/nangong.ts:433` 结果卡 detail = `` `当前按 ${source.vibratoStacks} 层近似（滑块可调 0-4）` ``（字面 4）；另 `nangong.ts:458` 设置项 `max: 4` 同源。
+   - 修法：detail 与设置 `max` 改读/插值 `source.vibratoMax`。
+
+5. **`beatCap`**（声明 `src/types/resource/agentResources.ts:314`；字段计算 `src/mechanics/agents/nangong.ts:120`）
+   - 语义：南宫羽重拍持有上限（`BEAT_CAP = 100`）。
+   - 写死处：`src/mechanics/agents/nangong.ts:421` 结果卡「进场」detail = `'上限 100'`（字面 100）。
+   - 修法：detail 改读 `source.beatCap`。
+
+6. **`dreamTarget`**（声明 `src/types/resource/agentResources.ts:477`；字段计算 `src/mechanics/agents/luciaElowen.ts:301`）
+   - 语义：卢西娅·艾洛温梦境值全局目标（`DREAM_TARGET = 500`）。
+   - 写死处：`src/mechanics/agents/luciaElowen.ts:375` 结果卡标题 = `'卢西娅·梦境值计划（500点）'`（字面 500）。
+   - 修法：标题改读 `source.dreamTarget`。
+
+7. **`cloudChargeSeconds`**（声明 `src/types/resource/agentResources.ts:590`；字段计算 `src/mechanics/agents/yixuan.ts:214`）
+   - 语义：仪玄凝云术蓄力秒数（轴内按轴时长，轴外满蓄 `CLOUD_MAX_SECONDS = 2`）。
+   - 写死处：`src/mechanics/agents/yixuan.ts:949` 结果卡「凝云术链（轴外）」detail = `'剩余闪能全打凝云，满蓄 2s/次（60闪能/循环）'`（字面 2）。
+   - 修法：detail 改读 `source.cloudChargeSeconds`（轴外分支即该值）。
+
+> 说明：b 类中「写死量」与字段当前取值均相等，属**双源漂移隐患**（改常量后展示不跟随），修法统一为「展示读字段」；本批未发现像 CC-205 `teamFollowupDmgBonus` 那样写死值与字段值**已经不等**的过时项。
+> 另：`cutEnergyRecovery`/`cutDecibelRecovery` 对应 `teamTimeSummary.ts:209` 的「被砍招式的回能/喧响仍计在账本里（待 A 项修）」——该缺口有登记的 debt（`core/resource.ts:322`），非过时文案，故仍归 c。
+
 ### T3 · 数据类型字段（5 条）· **不做**
 
 描述 JSON 数据形状的接口字段，由数据或导入脚本提供、代码不读，这是正常的。删掉类型字段不会删数据，只会让类型失真。（第 213 轮这里有 31 条，补 JSON 语料后大部分被识别为「数据里有」，不再出现。）

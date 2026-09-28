@@ -70,25 +70,29 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 228 轮（lane lead-arena-0925c）：CC-205 完成（d95a2957）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-205：T2 第 1 批。零号安比结果卡的写死值修成读字段，删 3 个死字段。详见 `docs/mcp-stun-dual-source.md` §24.52。
-- 前几轮：227 CC-204（9aed3fc4，freeCompare 着色）；226 CC-203（fb64de6f，额外能力门控归一）；225 CC-202（11bf2ac8）。
+**第 229 轮（lane lead-arena-0925c）：T2 收尾（不做）+ CC-206 完成（a119557d）。文档见本提交。push 结果见 git log / rev-list。**
+- T2：子代理全量分类后整体不做，a 类名单留在 `docs/mcp-write-only-props.md`「T2 收尾」，顺手改到时可删。
+- CC-206：store 默认门控直接调引擎求值函数。详见 `docs/mcp-stun-dual-source.md` §24.53。
+- 前几轮：228 CC-205（d95a2957）；227 CC-204（9aed3fc4）；226 CC-203（fb64de6f）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**下一步（按顺序，直接开工）**
-1. **T2 剩余条目分类**（`docs/mcp-write-only-props.md` §T2 表，未标「已删 / 不删」的约 69 条）。**先分类，不要直接删**：
-   - 分成 (a) 纯死 → 删；(b) 对应写死 / 过时的展示值或注释承诺 → 让展示读字段；(c) 仅测试读 → 保留。
-   - 适合派 dsflash 子代理只做分类，不改代码。先自检 pong，再下达：「读 docs/mcp-write-only-props.md §T2 表，对每个未标处理的字段：grep 字段名，并 grep 它语义对应的 label 文本或常量，判断 (a)/(b)/(c)；输出 `字段 | 分类 | 证据 文件:行` 表，不要改任何文件」。
-   - lead 抽查 (b) 类的证据，逐条修（每条修复都要有测试），(a) 类一批删，然后 verify。
-   - (b) 类才是真价值；如果分类后 (b) 为 0、(a) 只剩零碎，就把 T2 整体标「不做：剩余为无害载荷」并结束这条线。
-2. 队列里没有其他架构项时，从 `docs/ARCHITECTURE-OVERVIEW.md` 的三类重构清单里挑一条未做、影响面最大的，先写清「为什么值得做」。
+**下一步（直接开工）**
+1. **CC-207：store-only 钩子 `teammateBuffGate` 的约束下沉**（§24.53 末条）。
+   - 读 `src/mechanics/types.ts` 中 `teammateBuffGate` 的契约（约 828 行起），以及两个实现：`pulchra.ts:158`（6 命时基础条关掉，防与影画六条重复计算）、`remielle.ts` 的 `remielleTeammateBuffGate`（额外能力分档，约 402 行起）。
+   - 逐个判断它是「默认值偏好」还是「正确性约束」（强行勾上后引擎会算错 / 重复计算）：
+     - 正确性约束 ⇒ 引擎也要执行。首选做法：在 panelPhases 面板阶段对 `enabledTeammateBuffs` 用同一个钩子过滤，也就是把 `teammateBuffGate` 从「只 store 读」改为「store + 引擎共读」，和 CC-206 同构（引擎侧在 `resolveSlotPanelBuffInputs` 里 `additionalAbilityBuffGates` 过滤的旁边加一道）。
+     - 默认值偏好 ⇒ 保持现状，并在契约注释里写明「只影响默认值，用户可覆盖」。
+   - 零差判据：默认配置下 golden 不变（store 默认已经关掉这些条目）。测试：波可娜 6 命时强行勾上基础条，队友面板追加攻击增伤不增加。
+2. 队列暂无其他架构项。CC-207 做完后，自己挑一个「同一判断多处实现」的点继续（本轮的经验：两层都在算同一件事时，往往一层带修正、另一层不带）。可以用 `grep -rn 'evalAdditionalAbility(' src` 这类方法找重复求值点。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）。
-- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；菲欧妮 tier3 在 store 与引擎之间仍有已知偏差（§24.50）。
+- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **wsl_exec 里后台起 dsh**：`nohup bash -c '…' &` 会随调用退出被杀、连日志都不生成。要写成脚本文件，用 `setsid nohup script.sh >/dev/null 2>&1 < /dev/null &` 启动（第 229 轮）。dsh 做 66 条的只读分类约需 30 分钟。
+- **store 值导入 composables/resourceCalc 会成环**（helpers.ts 值导入 stores/config）。两边共用的函数放 mechanics 或 specs 层（CC-206）。
 - **「零读取」≠「可删」**：先 grep 字段语义对应的展示文本或常量，看有没有写死的过时值（CC-205 零号安比 +25% 实为 50%）。
 - **沙箱重置后 `/home/user/mcp-tools/*.sh` 会丢执行权限**：先 `chmod +x`，或用 `bash up.sh ...` 调用。
 - **token 棘轮**：`npm run verify` 第二步 check-tokens 会拦下 var() 总数的变化。新增语义令牌引用是进步方向，把 `scripts/check-tokens.mjs` 的 `VAR_TOTAL_BASELINE` 上调，并在注释头补一句「日期 / CC / 原因」（CC-204 797→799）。
