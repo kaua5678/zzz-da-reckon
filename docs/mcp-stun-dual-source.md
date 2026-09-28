@@ -1071,3 +1071,22 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
     - 候选 CC-169：`composables/outOfCombatPanel.ts`（配置页「局外」面板展示）也用原始上下文，并把全局 Buff 事后加到局外面板上，而主管线把全局 Buff 当局内 buff 处理。只影响展示，未立卡实施；做之前要先确认「局外」展示页是否有意包含全局 Buff（CC-51 照搬原页面口径）。
   - 回退点：`git revert 3336f873`（CC-168 与局外回能盖章同一提交；若只退其一，手工还原 `panelPhases.ts` 对应段）。
 - **验证**：两次 zd（局外回能盖章后 / CC-168 后）DUMP / ROWS 均 0 差异；`npm run verify` rc=0（内含全量 3820 passed，新增 2 条）；vue-tsc 无新错误；CG 见提交。
+
+### 24.17 CC-169：配置页「局外」面板直接取引擎局外面板；删除无生产消费方的原始队友 buff 上下文组装（第 195 轮，提交 af1c9e86）
+- **发现**：`composables/outOfCombatPanel.ts#computeOutOfCombatPanel`（唯一消费方 `TeamConfigPage.vue:1060` 的「局外」模式）是一份独立组装，和引擎局外面板 `computePanelPhases(slot).outOfCombat` 有三处口径差：
+  1. 队友 buff 用原始上下文（缺额外能力门控、CC-130 接收槽过滤、`adjustTeammateBuffSource` 来源修正）；
+  2. 覆盖率只含音擎效果表（缺队友 buff 覆盖率、队伍驱动盘）；
+  3. 把启用的全局 Buff **事后叠加到局外**，而引擎把全局 Buff 当**局内**效果（`resolveSlotPanelBuffInputs` 中 `scope: 'inCombat'`）。
+  - 20 多个模块的「初始 X」转化（applyPanel / buildCharConfig 的 `outOfCombatPanel`，如照、本、真斗、薇薇安、克拉蕾、诺姆、柚叶……）读的是引擎局外面板。所以用户在「局外」看到的「初始属性」，未必是引擎做转化用的值。
+  - 历史：两种写法都来自初始提交（`git log -S` 两者都止于 1a1f8c65），CC-51 只是把页面写法原样搬进编排层，并不是后来修复时漏掉的，也没有记录说是有意的用户口径。
+- **决定**：局外展示 = 引擎局外面板（`computePanelPhases(...).outOfCombat` 的副本），删掉独立组装。
+  - 依据：局外展示的用途就是核对「初始属性」；展示一个引擎不用的值会误导人。这也消除了「全局 Buff 两处结算」：判据 19（statModeParity）曾经抓到过两处结算口径分裂（isPctStat）。
+  - 口径变化：启用的全局 Buff 不再出现在「局外」，只出现在「局内」（与引擎一致）；队友 buff 门控 / 过滤 / 覆盖率随之一致。伤害零影响（纯展示，`computePanelPhases` 未改）。
+  - 回退点：revert 本提交；或在 `outOfCombatPanel.ts` 里恢复「对 `result.outOfCombat` 逐条 `applyTargetedStat` 全局 Buff」的循环（此时要把 statModeParity ②c 的锁行加回来）。
+- **连带删除**：`composables/teammateBuffContext.ts`（CC-49 的 `teammateBuffSourceContextFromStores`）。CC-168 与本卡之后它已零生产消费方；它唯一的作用就是组装缺 5 步加工的原始上下文，留着只会诱导误用。其测试 `teammateBuffContext.test.ts` 一并删除。
+- **测试**：
+  - `outOfCombatPanel.test` 重写：三槽与 `computePanelPhases().outOfCombat` 逐值相等；启用全局 Buff 后局外不变、局内 atk 上升；返回的是副本；空槽为 null。
+  - `statModeParity` ②c 删掉 `outOfCombatPanel.ts` 的结算位锁（该文件已不结算），全局 Buff 结算位只剩 `panelPhases.ts`；判据 19 端到端组注明「预览面」现为手工复现的调用形态。
+  - `substatOptimizer.test`：CC-52 内联算法改为新口径（`resolveSlotPanelBuffInputs` + `effectCoverageMap`）；「明攻」用例的原始集合改为直接调 core `buildTeammateBuffSourceContext`。
+- **验证**：CC-169 部分 `npm run verify` rc=0（3821 passed）；删除 teammateBuffContext 后再跑 verify rc=0（3820 passed，少的 1 条即被删测试）；vue-tsc 无新错误；CG 25 项通过。没跑 zd：`computePanelPhases` 与伤害管线未改，本卡只动展示层。
+- **已知坑**：删 src 文件要用 `git rm`（或提交后再跑 CG）。判据 25 `record-key-dead-reads.mjs` 用 `git ls-files` 列文件再 `readFileSync`，工作区已删但索引里还在的文件会让 CG 直接 ENOENT 崩溃。

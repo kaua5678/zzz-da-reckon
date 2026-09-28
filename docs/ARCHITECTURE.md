@@ -14,7 +14,7 @@
          ├ 管线后半段  useResourceCalc.ts + resourceCalc/（solveTeam → convergence 外层不动点 → panelPhases → damagePool*）——**最终伤害在 resourceCalc/damagePool*.ts 算**，core/ 只算到执行行
          ├ 应用层      多次调用整条管线的分析器 / 优化器（teamCompare、teamTimeline、difficultyCurve、pullPlannerEngine、freeCompare/*）
          ├ 展示几何    图表 / 坐标 / 悬浮卡纯函数（*Chart.ts、charts/hover*.ts）
-         └ 胶水        store ↔ 页面 / 引擎适配、导入导出（teamTimelineStore、runArchive*、teammateBuffContext）
+         └ 胶水        store ↔ 页面 / 引擎适配、导入导出（teamTimelineStore、runArchive*）
 逻辑编辑 src/logicEditor/             用户自定义规则：类型 / 校验 / 本地存储 / 转 spec；fusion.ts 持有行融合规则的全局快照（唯一写入方 stores/logicEditor.ts，计算入口 useResourceCalc 取快照进缓存键）
 引擎层   src/core/                    纯函数引擎：resource（资源池）/ damage（伤害乘区）/ panel / stunPool / anomalyPool / buff
 录入层   src/specs/ + src/mechanics/  角色机制：声明式 spec（agents/*.json）+ TS 机制模块（agents/*.ts）

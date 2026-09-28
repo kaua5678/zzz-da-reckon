@@ -69,23 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 194 轮（lane lead-arena-0925c）：CC-167 完成（零发现）；洛克茜 energyRegen 旁支关闭；CC-168 完成（代码提交 3336f873）；登记候选 CC-169。文档见本提交。**
-- CC-167：CC-165 那类加成初值双计是孤例。
-- 洛克茜：局外回能 160% 全是局外加成，读数正确；顺手把局外总回能也盖到局外面板上（防 CC-127 同类陷阱，zd 零差）。
-- CC-168：单槽副词条优化器与伤害管线共用 `resolveSlotPanelBuffInputs`（门控 / 接收槽过滤 / 全局 Buff / 覆盖率 / 来源修正），zd 零差。
-- 前几轮：193 CC-165（90a7eb79）；192 CC-27（948a1444）；191 CC-152（c6795167）。
+**第 195 轮（lane lead-arena-0925c）：CC-169 完成（代码提交 af1c9e86）；立卡 CC-170。文档见本提交。**
+- CC-169：配置页「局外」面板 = 引擎局外面板（全局 Buff 只进局内）；删除零生产消费方的 `composables/teammateBuffContext.ts`（stun-dual-source §24.17）。
+- 前几轮：194 CC-168（3336f873）；193 CC-165（90a7eb79）；192 CC-27（948a1444）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-169（先判断口径再动手）**：读 `composables/outOfCombatPanel.ts` 与它的页面消费方（TeamConfigPage「局外」模式），以及 CC-51 的提交说明。判定「局外面板展示」是否应等于 `computePanelPhases(slot).outOfCombat`：
-   - 若是：改为直接复用 `computePanelPhases(...).outOfCombat`（或 `resolveSlotPanelBuffInputs`），删掉重复组装；
-   - 若全局 Buff 是有意叠加在局外展示上的（用户口径），就在文件头写明，并只把队友 buff 输入换成 `resolveSlotPanelBuffInputs`。
-   - 验收：展示层测试逐值对照；zd 应零差（展示不进伤害）。
-2. store 层整队贪心与管线同源（CC-168 未决项）：只有在确实要用整队贪心时才做，做法见 stun-dual-source §24.16。
+1. **CC-170：calcPanel 调用方口径普查**。
+   - 列清单：`grep -rn "calcPanel(" src --include=*.ts --include=*.vue | grep -v __tests__`。
+   - 对每个调用点回答三问：它要的是「引擎局内 / 局外面板」还是有意不同的面板（如 `stores/config.ts` useDefault 的「无队友 buff」起点、`core/substatOptimizer` 的「无副词条」起点）？队友 buff / 覆盖率 / 全局 Buff 从哪来？和 `resolveSlotPanelBuffInputs` 差在哪？
+   - 判定：本应是引擎面板的，改为复用 `computePanelPhases` 或 `resolveSlotPanelBuffInputs`（要有逐值测试）；有意不同的，在调用点写一行注释说明为什么不同。
+   - 已知两处有意不同，**不要改**：`core/substatOptimizer.ts#computeNoSubstatPanel`（无副词条起点，输入由调用方给）；`stores/config.ts` useDefault 分支（用户口径：不看队友 buff）。
+   - 已知一处未决：`stores/config.ts` ~819 的整队贪心（含 teammates 的 calcPanel）用原始上下文，store 层不能依赖 composables（CC-168 未决项）。
+   - 伤害路径上的调用点（`resourceCalc/helpers.ts`、`anomalyPanels.ts`）若改，必须跑 zd 并做差异归因。
+2. store 层整队贪心与管线同源（CC-168 未决项）：只有确实要用整队贪心时才做。
 3. CC-166 仍暂缓（需规格）。
 
 **已知坑**
-- 给 calcPanel 组装队友 buff 输入，一律走 `resolveSlotPanelBuffInputs`（`composables/resourceCalc/panelPhases.ts`），不要再用 `teammateBuffSourceContextFromStores` 的原始 `enabledTeammateBuffs`：后者缺门控、接收槽过滤、全局 Buff、覆盖率和来源修正。
+- 给 calcPanel 组装队友 buff 输入，一律走 `resolveSlotPanelBuffInputs`（`composables/resourceCalc/panelPhases.ts`）。直接用 core `buildTeammateBuffSourceContext` 的原始 `enabledTeammateBuffs` 会缺门控、接收槽过滤、全局 Buff、覆盖率和来源修正（旧包装 `teammateBuffSourceContextFromStores` 已于第 195 轮删除）。
+- 删 src 文件要用 `git rm`：判据 25 用 `git ls-files` 列文件，工作区已删、索引还在的文件会让 CG 直接 ENOENT 崩溃。
 - 面板字段写在局内对象上时，想想局外对象上是否也该有同一个值（第 194 轮 `energyRegenOutOfCombat`）。
 - 6 命原文里的「虹之终幕 / 瞬逝优雅」就是垂虹 / 惊鸿（英文名的另一译法），catalog 里没有这两个招式名。写「某载体未建模」之前先查招式 id。
 - 初值不要按字段名里的 Multiplier 猜：看 catalog effect id（`*_bonus`）和模块读法（`1 + x` ⇒ 初值 0）。

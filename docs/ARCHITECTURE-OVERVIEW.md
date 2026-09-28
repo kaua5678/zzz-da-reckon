@@ -78,7 +78,7 @@ core/panel.ts
 core/inCombatBuffs.ts  collectInCombatTeamBuffs   局内「给全队 / 队友」的 buff：角色 teammate-buffs、音擎 teamBuff、4 件套 teamBuff
   ← core/teammateBuffSource.ts buildTeammateBuffSourceContext ← resourceCalc/panelPhases.ts、stores/config.ts
 伤害侧读面板：core/damage.ts getTargetedStat / getTargetedStatExtra / getSkillDmgBonus；失衡侧：core/stunPool.ts getStunBuildUpBonus
-局外面板展示：composables/outOfCombatPanel.ts computeOutOfCombatPanel = calcPanel(...).outOfCombat + 启用的全局 Buff
+局外面板展示：composables/outOfCombatPanel.ts computeOutOfCombatPanel = computePanelPhases(...).outOfCombat 的副本（CC-169 第 195 轮；全局 Buff 是局内效果，不进局外）
 ```
 
 **已用这张图核实的 R5 条目**（结论写在账本 `docs/mcp-r5-spec-impl-reconciliation.md` §7）：Z2、Z6。
@@ -136,7 +136,7 @@ useResourceCalc()                         composables/useResourceCalc.ts:87
 | E 伤害管线后半段 | 21 | 7 217 | 外层不动点、单轮编排、异常 / 失衡池输入、**伤害池（最终伤害在这里算）** | `resourceCalc/convergence.ts`、`solveTeam.ts`、`damagePool*.ts`、`panelPhases.ts`、`useResourceCalc.ts` |
 | A 上层分析器 / 优化器 | 24 | 9 418 | 多次调用整条管线做搜索或对比（组队对比、时间权重、难度曲线、抽卡规划、位置对比……） | `teamCompare.ts`、`teamTimeline.ts`、`difficultyCurve.ts`、`pullPlannerEngine.ts`、`freeCompare/*` |
 | P 展示几何 / 图表纯函数 | 17 | 2 275 | 坐标轴、SVG 命中、悬浮卡行 | `*Chart.ts`、`versionChartGeometry.ts`、`charts/hover*.ts` |
-| G 胶水 | 16 | 1 961 | store ↔ 页面 / 引擎适配、导入导出、小型汇总 | `teamTimelineStore.ts`、`runArchive*.ts`、`teammateBuffContext.ts` |
+| G 胶水 | 16 | 1 961 | store ↔ 页面 / 引擎适配、导入导出、小型汇总 | `teamTimelineStore.ts`、`runArchive*.ts`（`teammateBuffContext.ts` 已于第 195 轮删除） |
 
 结论：
 - 规划说「编排层 = 胶水」，实际只有 G（约 9%）是胶水。**E 才是计算核心的后一半**：`core/` 算到执行行为止，伤害池、异常池输入、外层收敛都在 composables。「引擎层 = core」这句话只对了一半。
