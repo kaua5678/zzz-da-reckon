@@ -173,6 +173,11 @@ export interface YeshuguangCycleInput {
    * 缺省 false = 迭代期实数，正反馈环的收敛语义逐位不变（既有模块测试直调不带此字段）。
    */
   finalizeForms?: boolean
+  /**
+   * CC-160：终局冻结的照影轮数（`finalizePass.begin` 按入口态 floor 一次写入）。仅 finalizeForms 时生效；
+   * 存在时不再从局外剑势重推照影——切断「平A→剑势→轮数→必要→平A」在整数态下的跨盆 2-循环。
+   */
+  frozenZhaoying?: number
 }
 
 export interface YeshuguangCycleResult {
@@ -236,6 +241,8 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
   const autoZhao = finalizeForms ? Math.floor(autoZhaoRaw) : autoZhaoRaw
   const zhaoSetting = Math.floor(input.zhaoyingCountSetting)
   let zhaoyingForms = Math.max(0, zhaoSetting >= 0 ? Math.min(zhaoSetting, autoZhao) : autoZhao)
+  // CC-160：终局照影 = 入口态实数轮数 floor 一次后冻结（余数剑势留着不打；装不下由重折/截断/降配承担）
+  if (finalizeForms && input.frozenZhaoying != null) zhaoyingForms = Math.max(0, input.frozenZhaoying)
   // 喧响进轮 / 转大赠轮同样是离散事件（一次终结技 = 一轮），终局一并取整
   if (finalizeForms) {
     decibelForms = Math.floor(decibelForms)
@@ -398,6 +405,7 @@ function resolveCycle(cfg: CharacterOperationConfig, state: {
     battleTime: cfg.battleTime ?? 180,
     // 终局整数化旗标（引擎在收敛后置位；见 cfg.yeshuguangFinalizeForms 的语义说明）
     finalizeForms: Number(record.yeshuguangFinalizeForms ?? 0) > 0,
+    frozenZhaoying: typeof record.yeshuguangFrozenZhaoying === 'number' ? record.yeshuguangFrozenZhaoying : undefined,
     formAxis: cfgAxis(cfg),
   })
 }
@@ -821,7 +829,18 @@ export const yeshuguangMechanic: AgentMechanicModule = {
   finalizePass: {
     stage: 'preTail',
     applies: cfg => Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1,
-    begin: cfg => { (cfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = true },
+    // CC-160（第 187 轮）：先按入口态（实数期，旗标未置）算照影轮数并 floor 一次冻结，再置旗标。
+    // 旧行为 = 终局每轮都从上一态平A重推照影，整数态下增益 >1 ⇒ 跨盆 2-循环（c3–c6：强特 15↔6、平A 18↔165），
+    // 停点与账本不自洽。冻结后终局只剩终结技/平A随资源变化，配合引擎终局后重折消掉过期折叠残差。
+    // `@fact agent:1431/终局整数化`「各 floor 一次」的字面实现。回退点：删冻结两行。docs/mcp-stun-dual-source.md §24.9。
+    begin: (cfg, entry) => {
+      const record = cfg as unknown as Record<string, unknown>
+      record.yeshuguangFinalizeForms = false
+      delete record.yeshuguangFrozenZhaoying
+      record.yeshuguangFrozenZhaoying = Math.floor(resolveCycle(cfg, entry).zhaoyingForms + 1e-9)
+      record.yeshuguangFinalizeForms = true
+    },
+    refoldAfter: true,
     // CC-159（第 183 轮）：终局 k↔k+1 轮 2-循环（平A多 ⇒ 剑势够 k+1 轮 ⇒ 必要+1轮 ⇒ 平A被挤 ⇒ 只够 k 轮）无整数不动点。
     // 取本槽平A较大的一相：装配按其自身平A出 k+1 轮行（`照影 = floor(终态剑势/6)` 成立），多出的一轮若装不下由
     // S3 降配（合轴率）承担——用户口径「多出的那一轮的时间由合轴率和短轴承担」（`@fact agent:1431/终局整数化`）。
@@ -830,6 +849,7 @@ export const yeshuguangMechanic: AgentMechanicModule = {
     reset: cfg => {
       if (Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1) {
         (cfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = false
+        delete (cfg as unknown as Record<string, unknown>).yeshuguangFrozenZhaoying
       }
     },
   },

@@ -332,43 +332,43 @@
   "outerExit": "stable"
  },
  "auto-1431-1341-1031": {
-  "slack": 1.1,
+  "slack": 0,
   "over": 0,
   "stun": 1,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "auto-1431-1341-1311": {
-  "slack": 2.9,
+  "slack": 0,
   "over": 0,
   "stun": 1,
   "outerExit": "stable"
  },
  "auto-1431-1481-1311": {
   "slack": 0,
-  "over": 0.1,
+  "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1431-1481-1341": {
-  "slack": 7.9,
+  "slack": 1.2,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1431-1481-1491": {
-  "slack": 0.2,
+  "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
  "auto-1431-1491-1311": {
-  "slack": 1.1,
+  "slack": 0,
   "over": 0,
   "stun": 1,
   "outerExit": "stable"
  },
  "auto-1431-1491-1341": {
-  "slack": 2.2,
+  "slack": 2.5,
   "over": 0,
   "stun": 1,
   "outerExit": "stable"

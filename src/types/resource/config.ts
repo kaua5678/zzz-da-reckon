@@ -667,6 +667,11 @@ export interface CharacterOperationConfig {
    * 旗标在最终装配后才复位（与 1531 同款：装配行必须按终局语义出账）。
    */
   yeshuguangFinalizeForms?: boolean
+  /**
+   * CC-160：终局冻结的照影轮数 = 终局入口态实数照影轮数 floor 一次（`finalizePass.begin` 写入、`reset` 清除）。
+   * 存在时终局重推不再从平A重推照影（`@fact agent:1431/终局整数化`「floor 一次」）。
+   */
+  yeshuguangFrozenZhaoying?: number
   /** 丽娜终结技每次给本槽位的能量（邻位30/10） */
   rinaEnergyPerRinaUlt?: number
   /** 露西终结技每次给本槽位的能量（邻位 30/10） */

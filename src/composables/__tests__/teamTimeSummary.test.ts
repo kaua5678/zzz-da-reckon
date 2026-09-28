@@ -104,14 +104,20 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     // 2026-09-28 第 183 轮：上一句的归因有误（真因是叶瞬光终局整数重推 k↔k+1 轮 2-循环），CC-159 修掉后该队 slack 1.1 ⇒ 再换。
     // 全库三人队虚高最大仅 3.98s，现样例 = 单人叶瞬光 4 命（golden `agent:1431:c4`：slack 12.2 = 虚高 12.2）：CC-149 放行的
     // 降配档里终局重推落进**跨盆振荡**（强特 15↔6），停在不自洽相位（CC-160 待办）。CC-160 修好后需再换样例或改纯函数构造。
-    await setupHarness([{ agentId: '1431', cinemaLevel: 4 }] as never)
+    // 2026-09-28 第 187 轮：CC-160（终局照影 floor 一次冻结 + 终局后重折）修掉了单人 1431 的跨盆虚高（c4 slack 12.2 → 0）⇒ 再换。
+    // 全库扫描（预设 + 默认口径各一遍，k185/zzTS187.test.ts）虚高最大 = 爱丽丝/南宫羽/柚叶默认口径 slack 3.98 = 虚高 3.98、
+    // 池分完（平A − 可分配池 = 0）；已无虚高 > 10s 的队 ⇒ 阈值随样例降到 2s（判据不变：留白 ≈ 虚高、池已分完）。
+    await setupHarness(['', '', ''])
+    const cs = useConfigStore()
+    for (const [i, id] of ['1401', '1511', '1411'].entries()) cs.setAgent(i, id)
     const rr = useResourceCalc().resourceResult.value!
     const t = buildTeamTimeSummary({ rr, battleTime: rr.totalTime, invincibleTime: useConfigStore().enemy.invincibleTime ?? 0, nameOf: () => '' })
     expect(t.slack).toBeGreaterThan(2)
     // 池确实被分完（平A分配 ≈ 可分配池）→ 留白不来自未分配的秒数
     expect(t.basicTotal).toBeGreaterThan(t.remainingFrontlinePool - 1)
     // 留白几乎全部 = 账本必要时间高于物化必要行
-    expect(t.ledgerInflation).toBeGreaterThan(10)
+    expect(t.ledgerInflation).toBeGreaterThan(2)
+    expect(t.ledgerInflation).toBeGreaterThan(t.slack - 0.5)
     expect(slackHint(t, fmt)).toContain('账本虚高')
   })
 

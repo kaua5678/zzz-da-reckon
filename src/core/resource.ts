@@ -288,7 +288,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   const runPreTailFinalize = (from: IterationState[]): IterationState[] => {
     const fp = runFinalizePasses(configs, from, 'preTail', iterate, config)
     if (fp.converged) diag.converged = true
-    return fp.states
+    // CC-160（第 187 轮）：终局后**重折一次**。S2 折叠残差 `cfg.timeBudgetExcess` 是实数期「行 − 估时」的差，
+    // 整数化后行变了（叶瞬光少一轮 ≈ 10.9s）而残差原样留在账本 ⇒ 虚高留白（单人 1431 c4 实测残差 27.93s、
+    // 留白 28.6s）。折叠环自 CC-158 起可双向退回，按整数行重算即可；只在参与者声明 `finalizePass.refoldAfter` 时跑。
+    // 回退点：删掉本行重折（恢复为 `return fp.states`）。docs/mcp-stun-dual-source.md §24.9。
+    return fp.refold ? runFoldLoop(fp.states) : fp.states
   }
 
   // 正常轨迹：折叠 + 比利重推

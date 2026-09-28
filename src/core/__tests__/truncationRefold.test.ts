@@ -143,7 +143,10 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
   const KNOWN_LEDGER_ROW_GAP: Record<string, { decibel: number }> = {}
   it('④ 到达不动点的重折队：账本收入 == 保住行的行级 Σ（振荡队若出现须如实上报 rejected，账本按上一次接受态计）', async () => {
     let fixedPointTeams = 0
-    for (const id of OVERFLOW_FIXTURES) {
+    // 第 187 轮 CC-160（叶瞬光终局照影冻结 + 终局后重折）：两支 1481 夹具在锁窗下重折环都被拒（冻结值随入口态/rowTimeLimit
+    // 变 ⇒ kept 两态振荡，如实上报 rejected），恒等式失去样本 ⇒ 追加同簇 `auto-1431-1491-1341`（锁窗 3：2 轮到不动点、
+    // 结构性截断 31.6s，全库扫描 k185/zzScan187.test.ts）作样本；恒等式本身不放宽。
+    for (const id of [...OVERFLOW_FIXTURES, 'auto-1431-1491-1341']) {
       const r = await evalPreset(id, OVERFLOW_FIXTURE_STUN_LOCK)
       expect(r.passes, `${id} 应进重折环`).toBeGreaterThanOrEqual(1)
       if (r.rejected) continue // 振荡队：账本按上一次接受态的 kept 计，与最终 kept 差一截，恒等式不适用（如实上报即可）

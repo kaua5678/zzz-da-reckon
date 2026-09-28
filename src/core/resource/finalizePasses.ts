@@ -66,7 +66,7 @@ function allBitEqual(a: IterationState[], b: IterationState[]): boolean {
  * 跑一个 stage 的终局整数重推。
  *
  * 契约：
- *   · `targets` 为空直接返回 `{ states, converged: false }`，**不调 `iterate`**（与旧式
+ *   · `targets` 为空直接返回 `{ states, converged: false, refold: false }`，**不调 `iterate`**（与旧式
  *     `if (billyFinalizeConfigs.length > 0 || …)` 守卫等价）；
  *   · 对每个 target 调 `begin`（只碰自己那份 cfg），随后 ≤12 轮 `iterate`，全状态逐位稳定才收敛；
  *   · 返回的 `converged` 由调用点以 `if (fp.converged) converged = true` 合并（**不许**写成
@@ -78,14 +78,14 @@ export function runFinalizePasses(
   stage: 'preTail' | 'tail',
   iterate: (cfgs: CharacterOperationConfig[], st: IterationState[], config: ResourceCalcConfig) => IterationState[],
   config: ResourceCalcConfig,
-): { states: IterationState[]; converged: boolean } {
+): { states: IterationState[]; converged: boolean; refold: boolean } {
   const targets = configs.filter(c => {
     const fp = getAgentMechanic(c.agentId)?.finalizePass
     return fp?.stage === stage && fp.applies(c)
   })
-  if (targets.length === 0) return { states, converged: false }
+  if (targets.length === 0) return { states, converged: false, refold: false }
   for (const cfg of targets) {
-    getAgentMechanic(cfg.agentId)?.finalizePass?.begin(cfg)
+    getAgentMechanic(cfg.agentId)?.finalizePass?.begin(cfg, states[configs.indexOf(cfg)])
   }
   let st = states
   let prev2: IterationState[] | null = null
@@ -120,7 +120,9 @@ export function runFinalizePasses(
       break
     }
   }
-  return { states: st, converged: stable }
+  // CC-160：任一参与者声明 `refoldAfter` ⇒ 调用点重折一次（见 `finalizePass.refoldAfter`）
+  const refold = targets.some(c => getAgentMechanic(c.agentId)?.finalizePass?.refoldAfter === true)
+  return { states: st, converged: stable, refold }
 }
 
 /**

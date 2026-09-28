@@ -299,7 +299,8 @@ describe('physical 缺省：同场景结构判据 + 现值', () => {
     expect(full.exit).toBe('stable')
     expect(mie.exit).toBe('stable')
     expect(full.cycle!.totalForms).toBe(11)
-    expect(mie.cycle!.totalForms).toBe(12)
+    // 第 187 轮 CC-160（终局照影 floor 一次冻结 + 终局后重折）：仅灭短轴 12 → 13（过期折叠残差退回后多装一轮；外层仍 stable）
+    expect(mie.cycle!.totalForms).toBe(13)
     expect(mie.cycle!.totalForms, '短轴省时应多装至少一轮').toBeGreaterThan(full.cycle!.totalForms)
   }, 600_000)
 })
