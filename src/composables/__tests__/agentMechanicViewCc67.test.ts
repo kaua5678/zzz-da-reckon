@@ -60,7 +60,8 @@ describe('CC-67 额外能力门控修正 → adjustAdditionalAbilityGates', () =
   }, 120000)
 
   it('源码锁：evalAdditionalAbilityBuffGates 函数体不再写死 1071 / 1641', () => {
-    const src = readFileSync(resolve(__dirname, '../resourceCalc/panelPhases.ts'), 'utf-8')
+    // CC-206：函数迁到 mechanics/additionalAbilityGates.ts
+    const src = readFileSync(resolve(__dirname, '../../mechanics/additionalAbilityGates.ts'), 'utf-8')
     const k = src.indexOf('export function evalAdditionalAbilityBuffGates')
     const body = src.slice(k, src.indexOf('\n}\n', k))
     for (const id of ['1071', '1641']) expect(body).not.toContain(`'${id}'`)

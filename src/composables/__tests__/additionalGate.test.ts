@@ -50,6 +50,18 @@ describe('CC-203 额外能力硬门控表：从数据派生、与 store 默认�
     expect(table['1581']).toContain('1581.additional_ability.prismatic_buildup')
   })
 
+  it('CC-206：store 默认门控经模块修正——凯撒 + 异阵营队友默认勾上；菲欧妮 tier3 异常数不足默认不勾', async () => {
+    const enabledFor = async (team: Array<{ agentId: string } | ''>, id: string) => {
+      const { catalog, config } = await setupHarness(team)
+      return deriveTeammateBuffEnabled(config.team, catalog.teammateBuffGroups, aid => catalog.getAgent(aid)).find(r => r.id === id)?.enabled
+    }
+    // 安比（狡兔屋/电）与凯撒不同阵营：spec 声明本身不满足，凯撒模块「有任意队友」近似放行
+    expect(await enabledFor([{ agentId: '1071' }, { agentId: '1011' }, ''], 'caesar.additional_battle_spirit_dmg')).toBe(true)
+    // 菲欧妮 + 简：额外能力触发（tier2 开），异常数 2 < 3 ⇒ tier3 默认不勾
+    expect(await enabledFor([{ agentId: '1641' }, { agentId: '1261' }, ''], 'phoenix.weakness_anomaly_crit_dmg_tier2')).toBe(true)
+    expect(await enabledFor([{ agentId: '1641' }, { agentId: '1261' }, ''], 'phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(false)
+  })
+
   it('莱卡恩 1141：额外能力未触发时强行勾上也被引擎拦住；触发时放行', async () => {
     const off = await gatesFor([{ agentId: '1141' }, { agentId: '1071' }, ''])
     expect(off.get('lycaon.additional_graceful_pack_stun_multiplier')).toBe(false)
@@ -62,9 +74,8 @@ describe('CC-203 额外能力硬门控表：从数据派生、与 store 默认�
     const table = additionalGateBuffTable(catalog.teammateBuffGroups)
     const getA = (id: string) => catalog.getAgent(id) ?? null
     const ids = [...catalog.agentsMap.keys()]
-    // 已知的有意偏差：菲欧妮 tier3 另需异常数≥3（引擎侧 adjustAdditionalAbilityGates），store 默认只看额外能力。
-    // CC-203 前另有跨来源条目（席德核心被动 / 潘引壶影画一 / 波可娜影画六）store 默认勾上、引擎丢弃——现 store 共读同一张表。
-    const KNOWN_STRICTER: ReadonlySet<string> = new Set(['phoenix.weakness_anomaly_crit_dmg_tier3'])
+    // CC-203 前跨来源条目（席德核心被动 / 潘引壶影画一 / 波可娜影画六）store 默认勾上、引擎丢弃；
+    // CC-206 前菲欧妮 tier3 同样如此（store 不经模块修正）。现在 store 直接调引擎求值函数 ⇒ 无豁免。
     const bad: string[] = []
     let n = 0
     for (const owner of Object.keys(table)) {
@@ -76,7 +87,6 @@ describe('CC-203 额外能力硬门控表：从数据派生、与 store 默认�
         const gates = evalAdditionalAbilityBuffGates(team.filter(m => m.agentId) as never, getA, catalog.teammateBuffGroups)
         const store = new Map(deriveTeammateBuffEnabled(team, catalog.teammateBuffGroups, getA).map(r => [r.id, r.enabled]))
         for (const id of table[owner]) {
-          if (KNOWN_STRICTER.has(id)) continue
           if (gates.get(id) === false && store.get(id) === true) bad.push(`${owner}c${cin}+${mate || '-'}:${id}`)
         }
         n++

@@ -8,10 +8,8 @@ import type {
 } from '@/types/catalog'
 import { computeDefaultSubStatAllocation, getTemplate } from '@/core/substatOptimizer'
 import { useCatalogStore } from './catalog'
-import { getAgentSpec } from '@/specs/registry'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
-import { evalAdditionalAbility } from '@/specs/teamCondition'
-import { additionalGateBuffTable } from '@/specs/additionalGate'
+import { evalAdditionalAbilityBuffGates } from '@/mechanics/additionalAbilityGates'
 import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AppliedBossPreset } from '@/types/bossPreset'
 import { counterAssistOf } from '@/data/counterAssists'
@@ -400,18 +398,10 @@ export function deriveTeammateBuffEnabled(
     wEngineId: char.wEngineId ?? '',
     wEngineModLevel: char.wEngineModLevel ?? 1,
   }))
-  // 预计算每个角色的额外能力是否激活（agentId → boolean）
-  const aaActiveMap = new Map<string, boolean>()
-  for (const mtm of mechanicTeam) {
-    if (!mtm.agent) continue
-    const aaSpec = getAgentSpec(mtm.agentId)?.additionalAbility
-    if (aaSpec) {
-      const aaActive = evalAdditionalAbility(mechanicTeam, mtm.slot, mtm.agent, aaSpec) === true
-      aaActiveMap.set(mtm.agentId, aaActive)
-      // 仅队友角色的 buff 组 id 是 teammateBuffId（与上面 teamCinema 的双键同理）
-      if (mtm.agent.teammateBuffId) aaActiveMap.set(mtm.agent.teammateBuffId, aaActive)
-    }
-  }
+  // CC-206：额外能力门控直接调引擎同一个求值函数（含凯撒「有任意队友」、菲欧妮 tier3「异常数≥3」等模块修正）。
+  // 此前这里另算一份 aaActiveMap（只看 spec 声明、不经模块修正）⇒ 凯撒有异阵营队友时引擎放行、这里默认不勾；
+  // 菲欧妮 tier3 异常数不足时这里默认勾上、引擎丢弃。现在「默认勾不勾」==「引擎认不认」。
+  const aaGates = evalAdditionalAbilityBuffGates(mechanicTeam, aid => getAgent(aid) ?? null, groups)
 
   // CC-76 口径裁定（census §5.83）：多个模块对同一条 buff 表态时 = **逻辑与**（任一返回 false 即禁用），
   // 与模块注册顺序无关。原实现「第一个返回 boolean 的说了算」依赖注册顺序；现有两个声明者（蕾米埃尔 5 个 buff id /
@@ -424,9 +414,6 @@ export function deriveTeammateBuffEnabled(
     return true
   }
 
-  // CC-203：「哪些 buff 随额外能力门控」与引擎硬门控共读一张表（specs/additionalGate.ts）——含跨来源条目
-  // （席德核心被动 / 潘引壶影画一 / 波可娜影画六），此前本函数只认来源标签「额外能力」，这些条目默认勾上、引擎却丢弃。
-  const aaGateTable = additionalGateBuffTable(groups)
   const out: Array<{ id: string; enabled: boolean }> = []
   // 遍历所有队友 buff 组（保持 groups 顺序 = 抽取前写入对象键序）
   for (const group of groups) {
@@ -440,13 +427,10 @@ export function deriveTeammateBuffEnabled(
       const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema
       // CC-64c：波可娜 C6 base 条互斥也经 teammateBuffGate（pulchra.ts 声明；原为此处写死 1351 分支）
       let shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable, agentId, cinemaLevel)
-      // 通用额外能力门控：buff 在额外能力门控表里（CC-203）且来源角色额外能力未激活，则自动禁用。
+      // 通用额外能力门控（CC-203 表 + CC-206 同一求值函数）：引擎门控关 ⇒ 默认不勾。
       // CC-199：按组 id（= 拥有者）查，不按 buff.ownerId——catalog 里 1411/1581/1511 的 ownerId 是拼音 slug
       // （youye/remielle/nangongyu），按它查恒 undefined ⇒ 柚叶额外能力曾无条件生效。
-      if (shouldEnable && aaGateTable[agentId]?.includes(buff.id)) {
-        const aaActive = aaActiveMap.get(agentId)
-        if (aaActive === false) shouldEnable = false
-      }
+      if (shouldEnable && aaGates.get(buff.id) === false) shouldEnable = false
       out.push({ id: buff.id, enabled: shouldEnable })
     }
   }
