@@ -1501,3 +1501,17 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 重开条件是**新角色录入时，若能靠 G1 / G3 做到纯 spec**。
   - 第 212 轮只看了 LONG-TERM-DIRECTIONS，没看卡表。已在 LONG-TERM-DIRECTIONS 的更新注记里改正。
 - **回退点**：`git revert f516e95f`（纯删除 + 注释，零差）。
+
+### 24.38 CC-191：T1 cfg 死暂存清理 + 审计脚本漏扫 JSON 勘误（第 214 轮，9e0d4adf）
+
+- **勘误**：第 213 轮审计脚本的名字兜底没扫 JSON。spec 解释器按字符串键读 cfg，键名只在 `src/specs/agents/*.json` 里，结果 T1 的 37 条里 17 条其实被 spec 读取。脚本已补 JSON 语料，148 条降到 100 条；T1/T2/T3 表重新生成。
+  - **追查第 213 轮已删的字段**：`aliceCinema6MaxTriggers` / `DamageRatio` 出现在 1401.json，但只是 C6 事件的 `fields` 展示元数据（`specs/mechanics.ts:57` 原样透传），不参与计算，所以 CC-190 的零差结论成立。1401.json 的过期 `fields` / `note` 已改正。
+- **清理**：T1 删 20 条，保留 `timeFeasibleScale`（`@fact` 登记的诊断量）。
+  - 丽娜 / 苍角的 `applyTeamConfig` 整条删除：只写从无读取方的邻位回能字段，真实通道是 `crossAgentSupply`。`teamHook.test.ts` 的声明名单改为露西 / 耀嘉音 / 莱特，丽娜 / 苍角改为断言 `crossAgentSupply.kind`。
+  - 诺姆 C4 的三处过期注释改正：C4 已走 `decibelPerUnit`。
+  - 逐条核查了注释暗示本该被读的几条（诺姆 C4、丽娜 / 苍角 / 露西回能、琉音 60 档设置、强特资源成本），**都不是 bug**。删完后没有机制常量变成未使用。
+- **验证**：
+  - vue-tsc 0；CG 25。
+  - zd：用 HEAD 版 1401.json 跑，DUMP / ROWS 均为 DIFF 0，证明代码零差。用新版 1401.json 跑，爱丽丝队 DIFF 24 / 28，差异来自 C6 事件展示字符串 `note` / `fields` 的哈希。
+  - verify EXIT=0（3827：苍角写字段测试 −1，crossAgentSupply 声明断言 +1）。
+- **回退点**：`git revert 9e0d4adf`。

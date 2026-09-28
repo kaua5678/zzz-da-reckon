@@ -70,23 +70,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 213 轮（lane lead-arena-0925c）：CC-190 完成（f516e95f）。文档见本提交。已 push。**
-- CC-190：接口属性「只写不读」普查（新脚本 `scripts/audit-write-only-props.cjs`）。删掉 5 个假契约字段，修掉爱丽丝 6 命常量双源，没有数值 bug。详见 `docs/mcp-write-only-props.md`、stun-dual-source §24.37。
-- **更正**：第 212 轮交接的「方向 C 第 2 刀试点」撤回，它就是 CC-99，第 148 轮已判不做（见 §24.37）。
-- 前几轮：212 CC-189（ad9a9321）；211 CC-188（378c1c17）；210 CC-187（00e50d4e）。
+**第 214 轮（lane lead-arena-0925c）：CC-191 完成（9e0d4adf）。文档见本提交。已 push。**
+- CC-191：T1（cfg 死暂存）清理完成，删 20 条，保留 1 条；丽娜 / 苍角的死 `applyTeamConfig` 整条删除；诺姆 C4 过期注释改正。**勘误**：第 213 轮审计脚本漏扫 JSON，原 T1 有 17 条误报；脚本已补，表已重新生成。详见 `docs/mcp-write-only-props.md`、stun-dual-source §24.38。
+- 前几轮：213 CC-190（f516e95f）；212 CC-189（ad9a9321）；211 CC-188（378c1c17）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **`docs/mcp-write-only-props.md` §2 T1（37 条 cfg 死暂存）清理**：低级模型或 lead 都可以做，按 §2 的通用规程逐批（≤10 条）删掉，每批 vue-tsc + zd DIFF 0，最后 verify。适合派给子代理，但**不要让子代理和你同时写同一个模块文件**。
-2. T2（80 条结果死字段）：误报率更高，每条先读消费方组件。只被测试读的诊断字段默认保留。
-3. 没有 REQUIREMENTS、T1/T2 也做完时：先重新跑 `node scripts/audit-write-only-props.cjs` 确认清单收敛。之后可以看 freeCompare 的 `higherBetter` 表格胜负着色（元数据已备好，没有消费方）是否值得做。判据是它是否让比较更好读；不值得就写「不做」。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）有没有同一件事的历史裁决，别只看 LONG-TERM-DIRECTIONS（第 212 轮就是因此把已否决的 CC-99 又列成了下一步）。
+1. **`docs/mcp-write-only-props.md` §2 T2（74 条结果 / 中间对象死字段）**：按 §2 通用规程逐批做。误报率高，每条先读消费方（含 .vue 解构）；测试读取数 > 0 的默认保留。适合派给子代理，但**不要让子代理和你同时写同一个文件**。
+2. T2 做完后重跑 `node scripts/audit-write-only-props.cjs`（约 2–3 分钟），确认清单收敛到只剩「保留」项和 T3。
+3. 之后没有 REQUIREMENTS 时：可以评估 freeCompare `higherBetter` 表格胜负着色（元数据已备好，没有消费方）是否值得做；不值得就写「不做」。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）有没有同一件事的历史裁决。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
-- `git push` 单次可能要 50s 以上（第 213 轮实测）：别和 zc done / release 挤在同一条 wsl_exec 里，也别用 `timeout 90`。单独执行 `timeout 150 git push origin master`，推完用 `git rev-list --count origin/master..master` 确认结果为 0。第 213 轮第一次推送就因为和 zc 挤在一起超时，没推上去。
+- **查「字段有没有人读」必须连 JSON 一起查**：spec 解释器按字符串键读 cfg（`countField` / `initialValueField` / `enabledField`…，`src/specs/types.ts`），键名只出现在 `src/specs/agents/*.json`。`grep -rnw <字段> src` 默认会扫到 .json，但 `--include=*.ts` 会漏（第 213 轮就是这样漏的）。
+- **zd 报差、但只改了数据文件里的展示字符串**（spec 事件 `note` / `fields`）时：把该文件临时换回 `git show HEAD:<path>` 版本再跑一次 zd，DIFF 0 就证明代码零差，然后放回新版本（CC-191）。展示字符串会进入结果哈希。
+- 删掉一个角色的 `applyTeamConfig` 后，同步 `src/mechanics/__tests__/teamHook.test.ts` 的「已迁移角色必须声明 applyTeamConfig」名单。
+- `git push` 单次可能要 50s 以上（第 213 轮实测）：别和 zc done / release 挤在同一条 wsl_exec 里，也别用 `timeout 90`。单独执行 `timeout 150 git push origin master`，推完用 `git rev-list --count origin/master..master` 确认结果为 0。
 - 按名字的死通道扫描（`dead-channel-scan.mjs`）对常见名是瞎的：只要名字在别处被读过，就会被判「有读取」。查「某个字段到底有没有人读」要用符号级引用（`scripts/audit-write-only-props.cjs`，或 LSP 的 find references），再补一次名字兜底（.vue 和字符串键动态读取 TS 看不见）。
 - 结构类型参数（`cfg: { foo?: number }`）让 TS 的 findReferences 连不到接口属性上：接口属性显示零引用，不等于零读取。
 - 「往注册表加一行」式的 UI（freeCompare 的 AXES / METRICS 等）：加一项时必须同时有一条**真引擎行为测试**，证明选了它结果真的会变。只测「能枚举出档位」测不出假选项（CC-189）。
