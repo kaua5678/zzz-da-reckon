@@ -387,3 +387,4 @@
 | 237 | ⟳ 复核触发器是否有已到期项 | 只有测试夹具里的日期；真实最早到期 2026-10-31（坑 25） | 2026-10-31 |
 
 **第 237 轮决定**：以上都不满足判据，本轮不改代码。依据：用户明确不要「只为有事做 / 降计数」的改动。影响：无。回退点：无（纯文档）。
+| 238 | 展示层「code → 中文名」映射副本 | 元素 / 属性名 12 处副本已收（CC-214，`361abc6f`）；**职业名 `SPECIALTY_LABEL` 还有 6 份**（agentLabelMaps、ResourcePage、WEngineFieldPage、MultiplierCoeffPage、teamCompareSweep、CharacterCard），见队列 §2 下一步 1 | 职业名收完后，再有新副本由源码锁拦下 |

@@ -71,25 +71,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 237 轮（lane lead-arena-0925c）：自选扫描，没有满足判据的项，本轮不改代码（纯文档提交，提交号见 git log）。**
-- 扫描范围与结论见 `docs/mcp-r6-refactor-list.md` §8（新增）；队列 §1 新增长期规则「没有排定项时不造活」。
-- 前几轮：236 CC-213（cd9a7486）；235 CC-212（7b2af5ce）；234 CC-211（b96bbaa0）。
+**第 238 轮（lane lead-arena-0925c）：CC-214 完成（361abc6f），文档见本提交。push 结果见 git log / rev-list。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.62；r6 清单 §8 追加了一行。
+- 前几轮：237 纯扫描（dfdf29c1）；236 CC-213（cd9a7486）；235 CC-212（7b2af5ce）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. 重读 `docs/REQUIREMENTS.md`，有新 R 条目就按规则 8 优先做。
-2. 否则先读 r6 清单 §8，**只查表里没有的区域**。尚未扫过、可以考虑的方向：
-   - `src/composables/resourceCalc/` 下超过 800 行的文件里，是否有两处在算同一个物理量；
-   - `src/stores/` 与 `src/composables/` 之间是否还有重复的派生计算（CC-206/207 已收了 buff 门控，其余未查）。
-   没找到满足判据的项，就在 §8 追加一行后收尾。
-3. 最早的真实到期项：坑 25 ⟳，2026-10-31。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-213）。
-- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）。
+1. **职业名映射单一来源（CC-215，照 CC-214 做）**：`attack: '强攻'` 这种映射有 6 份：`utils/agentLabelMaps.ts#SPECIALTY_LABEL`（单一来源）、`views/ResourcePage.vue`、`views/WEngineFieldPage.vue`、`views/MultiplierCoeffPage.vue`、`composables/teamCompareSweep.ts`、`components/CharacterCard.vue`。
+   - 先逐份对比键集与文案；键集不同是否是有意的（例如只列部分职业），对比后再决定。
+   - 副本改为导入 `SPECIALTY_LABEL`。文案不同时，以 agentLabelMaps 为准，并把差异逐条写进文档（文案变动要写明）。
+   - 给 `elementLabelSingleSource.test.ts` 加一个同样的用例（`attack:\s*'强攻'`），或新建同形测试。
+   - 验证：`npx vue-tsc -b`（verify 拦不住未使用变量）+ `npm run verify`。
+2. 做完后，再按 r6 清单 §8 找没扫过的区域（`stores/` 与 `composables/` 间的重复派生计算还没查）。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-214）。
+- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62，文案口径，没改）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **找映射副本别只靠一种 grep 写法**：CC-214 按 `physical: '物理'` 只找到 8 处，紧凑的单行写法和跨行写法又藏了 4 处，是源码锁测试扫全 src 才抓出来的。先写锁测试，再以它的失败清单为准。
 - **validate-specs 的 note 通道**：note 含「实现位置：」就直接放行，不核对代码。新的归一条目应该走能被逐条证明的读取方式（`applySpecAttributeConversions` 或按 id 调 `specConversionAmount`），不要只靠 note（CC-213）。
 - **结论表里「实现 = spec」要核对模块是否真的调用 spec 解释器**：带「实现位置：」note 的 spec 条目不执行，依据它下的结论可能从未落到计算上（CC-212：CC-134 的 floor 裁决漏了 1571 长达 77 轮）。
 - **catalog store 没有 `wEngines` 数组**，要用 `catalog.wEnginesMap.values()`（含 legacyIds 别名，会有重复条目）。

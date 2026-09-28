@@ -2026,3 +2026,23 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 ### 24.61 第 237 轮：自选扫描，没有可做项
 
 r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区域（外层台阶、双源残差、坑 37、LONG-TERM A–E、pending 账本、轴 / 覆盖率重复、⟳ 到期），都不满足「更通用 / 更简单」的判据，不改代码。扫描表放在 `docs/mcp-r6-refactor-list.md` §8，以后无排定项的轮次都往那里追加。
+
+### 24.62 第 238 轮：CC-214 元素 / 属性中文名映射单一来源 + Boss 效果描述去重（361abc6f）
+
+**问题**：「元素 / 属性 code → 中文名」映射在 src 里各写了一份，共 12 处，分属 3 个语义域，同一域内的副本已经分叉：
+- 伤害元素（伤害行 / 异常进度的 `element`，含变种）：resourceCalc/helpers 有全集（含 `physical_polar_assault`、`ether_ink`、`frostfire`）。ResultPage、ResourceUtilizationPage、ResourceResultCard、impactVariables 的副本缺变种，BossCard / BossSelectCard 各有一份 6 元素的 `EL_ZH`。**可见后果**：仪玄的所有执行 element 都是 `ether_ink`，ResultPage 第 305 行、ResourceResultCard 的积蓄进度直接显示原始 id。
+- 角色属性（catalog `agent.attribute`）：`utils/agentLabelMaps#ATTRIBUTE_LABEL` 有全集。ResourcePage、CharacterCard 的副本缺 `lumiflux` / `frostfire`。**可见后果**：蕾米埃尔（1581，attribute = lumiflux）的角色卡与资源页显示原始 id「lumiflux」。
+- 另有两种有意的其他用途：`utils/enemyDebuffStats#ELEMENT_LABEL`（「火属性」后缀，用来拼减抗标签）与 StatPanel 乘区说明（同样的后缀风格）；StunAxisPage 进窗异常下拉是有意的子集。
+
+**改动**
+- `utils/agentLabelMaps.ts` 新增 `DAMAGE_ELEMENT_LABEL` / `damageElementLabel`（从 helpers 搬过来，内容不变）。`resourceCalc/helpers#elementLabel` 改为转出它，名字保留，现有 8 个消费者不改。
+- ResultPage、ResourceUtilizationPage、ResourceResultCard、impactVariables 删掉本地表，改为导入。
+- ResourcePage、CharacterCard 删掉本地 ATTRIBUTE_LABEL，改为导入 `agentLabelMaps`。
+- BossCard / BossSelectCard 里逐字相同的 30 行（`effectLabel` + `STAT_LABELS` + `statLabelOf` + `EL_ZH`）抽成 `utils/bossEffectLabel.ts#bossBuffEffectLabel`，元素名走 `damageElementLabel`。
+- 源码锁 `src/utils/__tests__/elementLabelSingleSource.test.ts`：只允许白名单文件定义 `physical: '物理'` 映射（agentLabelMaps、enemyDebuffStats、StunAxisPage、StatPanel，理由写在测试头）；另外断言变种元素都有中文名。
+- **锁的价值当场得到验证**：最初按 grep `physical: '物理'` 只找到 8 处，锁测试又抓出 BossCard、BossSelectCard、CharacterCard、StatPanel 共 4 处（紧凑写法与跨行写法都漏了）。
+
+**口径未动**：lumiflux 在伤害元素域叫「辉光」，在角色属性域叫「流明」，enemyDebuffStats 里是「辉光/耀变」。catalog 原文两种都有（音擎原文「装备者为流明属性」；耀变相关原文「无视/降低目标50%辉光抗性」）。统一叫法属于文案口径，CC-214 不改，各域沿用原值。若日后统一，改 `agentLabelMaps.ts` 的两张表和 enemyDebuffStats 即可。
+
+**影响**：零计算影响（只改展示文字；引擎读的 `elementLabel` 输出不变，因为用的是同一张表）。可见变化只有三类：变种元素、lumiflux、frostfire 从原始 id 变成中文名。
+**回退点**：revert 本提交。
