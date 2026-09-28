@@ -406,7 +406,8 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
   const afterStun = afterDmgTaken * stunMult
   breakdown.push({
     label: '失衡乘区',
-    formula: input.stunned ? fmt(stunMult) : '1 (未失衡)',
+    // CC-221：按乘数本身展示。未失衡但有 Always 通道（扳机类）时乘数 = 1 + always/100 ≠ 1，旧文案写死「1 (未失衡)」与计算不符
+    formula: !input.stunned && stunMult === 1 ? '1 (未失衡)' : fmt(stunMult),
     value: afterStun, displayValue: fmt(afterStun),
   })
 
@@ -564,7 +565,8 @@ export function calcAnomalyDamage(
     stunned,
   )
   const afterStun = afterDmgTaken * stunMult
-  if (stunned) {
+  // CC-221：乘数 ≠ 1 也要出行（未失衡时 Always 通道仍生效），否则分解累积值在此处无说明地跳变
+  if (stunned || stunMult !== 1) {
     breakdown.push({
       label: '失衡乘区', formula: fmt(stunMult),
       value: afterStun, displayValue: fmt(afterStun),

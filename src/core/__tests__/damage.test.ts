@@ -311,3 +311,43 @@ describe('calcAnomalyDamage', () => {
     expect(result.damage).toBeCloseTo(4500 * 2)
   })
 })
+
+describe('失衡乘区分解展示与乘数一致（CC-221）', () => {
+  // 未失衡时 calcStunMultiplier 仍返回 Always 通道 1 + always/100（扳机类），旧展示按 stunned 真假判定：
+  // 直伤写死「1 (未失衡)」、异常整行不出 ⇒ 分解与实际计算不符
+  const alwaysPanel = () => {
+    const p = emptyPanel()
+    p.atk = 1000
+    p.anomalyProficiency = 100
+    p.stunDmgMultiplierBonusAlways = 35
+    return p
+  }
+  it('直伤：未失衡 + Always 35% ⇒ 失衡乘区文案 = 实际乘数 1.35', () => {
+    const { breakdown } = calcDirectDamage({
+      panel: alwaysPanel(), skillMultiplier: 100, damageElement: 'physical', enemyDefense: 0,
+      enemyDefReduction: 0, enemyDefFlatReduction: 0, enemyResistance: 0, enemyResReduction: 0,
+      stunMultiplier: 1.5, stunned: false, critMode: 'nonCrit', count: 1,
+    } as never)
+    const row = breakdown.find(b => b.label === '失衡乘区')!
+    expect(row.formula).not.toContain('未失衡')
+    expect(Number(row.formula)).toBeCloseTo(1.35, 6)
+  })
+  it('直伤：未失衡且无 Always ⇒ 仍显示「1 (未失衡)」', () => {
+    const p = alwaysPanel(); p.stunDmgMultiplierBonusAlways = 0
+    const { breakdown } = calcDirectDamage({
+      panel: p, skillMultiplier: 100, damageElement: 'physical', enemyDefense: 0,
+      enemyDefReduction: 0, enemyDefFlatReduction: 0, enemyResistance: 0, enemyResReduction: 0,
+      stunMultiplier: 1.5, stunned: false, critMode: 'nonCrit', count: 1,
+    } as never)
+    expect(breakdown.find(b => b.label === '失衡乘区')!.formula).toBe('1 (未失衡)')
+  })
+  it('异常：未失衡 + Always 35% ⇒ 分解出现失衡乘区行，且相邻累积比 = 1.35', () => {
+    const { breakdown } = calcAnomalyDamage({
+      panel: alwaysPanel(), baseMultiplier: 100, element: 'physical', enemyDefense: 0, enemyDefReduction: 0,
+      enemyDefFlatReduction: 0, enemyResistance: 0, enemyResReduction: 0, stunMultiplier: 1.5, stunned: false,
+    })
+    const i = breakdown.findIndex(b => b.label === '失衡乘区')
+    expect(i).toBeGreaterThan(0)
+    expect(breakdown[i].value / breakdown[i - 1].value).toBeCloseTo(1.35, 9)
+  })
+})
