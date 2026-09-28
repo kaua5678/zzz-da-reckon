@@ -71,32 +71,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 265 轮（lane lead-arena-0925c）：CC-243（a5df49c4）、CC-244（275ec8b4）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.89。**行规则作用面整线结项**：resourceCalc、specs、mechanics/agents、core/moveLookup 四层全部吃规则并各有锁。
-- 前几轮：264 CC-242（79951791）；263 CC-241（652c7c18）；262 CC-239/240。
+**第 266 轮（lane lead-arena-0925c）：融合组口径扫描（无偏差）+ CC-245（99e1be54）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.90；扫描记录在 `docs/mcp-r6-refactor-list.md` §8 第 266 行（两行）。
+- 前几轮：265 CC-243/244（行规则作用面结项）；264 CC-242；263 CC-241。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **单一来源一览（新写代码直接用）**：
-- `src/data/moveTableQueries`：
-  - `findMoveById`；
-  - `getRowValue`（含行规则）；
-  - `fusedRowReader`（给 core `RowValueReader` 注入点用）；
-  - `rawRowValue`（只用于模块自算融合、且默认规则已表达同一融合的场景，现存仅焰烈）；
-  - `fusedRowValue`（多段 / 融合组「一次完整动作」，优先于单段）。
-- core 中需要吃规则的取值一律用 `RowValueReader` 参数注入（默认 rawRowReader），**不许在 core 里 import getRowValue**。
+- `src/data/moveTableQueries`：`findMoveById`、`getRowValue`（含行规则）、`fusedRowReader`（core 注入用）、`rawRowValue`（仅焰烈）、`fusedRowValue`（一次完整动作优先）。
+- core 需要吃规则的取值用 `RowValueReader` 参数注入；**resourceCalc/ 不许值导入 stores**，只能 `import type`（selectionReads 除外），由 `resourceCalcStoreDeps.test` 锁住。
 - 行规则锁：giftRowFusionRule、skillRowsFusionRule、specEventRowFusionRule、agentModuleRowFusionRule、moveLookupRowFusionRule；融合口径锁：ultimatePromoteFusedDaze。
 
-**下一步（直接开工）**：没有排定项，按 `docs/mcp-r6-refactor-list.md` §8 自选（先读 §8 表，已查过的范围不要重扫）。本轮建议的扫描方向，按架构收益排序：
-1. **「一次完整动作」口径一致性**：CC-244 说明融合组（`data/moveFusions.ts`）口径可能还有别的孤立偏差。grep `getRowValue(` 在 composables/resourceCalc 与 mechanics 的调用，凡取的是终结技 / 连携 / 强化特殊技这类可能登记融合组的 moveId、却没先走 `fusedRowValue` 的，逐条判断。判据：同一动作在主执行里走 fused，其他地方也应走 fused。每条都要做修复前后对比，并写明生效面。
-2. **C6 前提：resourceCalc 直接读 store**（`helpers.ts`、`panelPhases.ts` 等 import stores）。先只做清点，写进 r6 §8：列出每个 store 读取点、读的是什么；判断能否改成由 roundInputs 注入，并估算改动面。不值得就写「不做」和理由。
-3. 如果都不满足判据，就按第 237 轮的先例记「本轮不改代码」，这是允许的。
+**下一步（直接开工）**：目前没有排定项。上两轮建议的方向已全部查完，查过的范围不要重扫，详见 r6 §8。可选方向，按架构收益排序：
+1. **`composables/agentMechanicView` → resourceCalc 的反向依赖**（roundInputs:25 取 `AUTO_AXIS_PRESET_HINTS`）：展示侧 composable 被管线层引用，方向是反的。先读 agentMechanicView 中 AUTO_AXIS_PRESET_HINTS 的定义：如果它只是由 mechanics 注册表派生的纯数据，就把它挪到 `mechanics/` 或 `data/stunAxisPresets` 旁边，roundInputs 和 agentMechanicView 都从新位置引用，并给 resourceCalc 加一条「不值导入 composables/ 非 resourceCalc 模块」的闭包锁（可复用 resourceCalcStoreDeps.test 的 walker）。改动小、方向明确，适合下一轮直接做。
+2. 如果 1 做完没有别的候选，按第 237 轮先例记「本轮不改代码」即可，不要为了有事做而改。
 
 **已知坑**：
 - 命名带 raw 的函数是意图信号（CC-237 教训）；
-- verify 看不到生产默认行规则；**单元锁变红不等于管线生效**，每张卡都要做修复前后的管线对比（第 263 轮零差、第 264 轮生效、第 265 轮 CC-244 零差，各不相同）；
-- 测试里调用模块 buildCharConfig 要传 `team: [], slot: 0`；
-- 测试中模块级规则状态要 `afterEach(() => setActiveRowFusionRules([]))`；新测试先单独跑 `npx vue-tsc -b`；
-- 做「先量」实验时可以临时改源码，但必须 `git checkout -- <文件>` 还原，并确认 git status 干净后再做正式修改；
+- verify 看不到生产默认行规则；**单元锁变红不等于管线生效**，取值类改动必须做修复前后的管线对比；
+- 纯 import 类改动（如 CC-245）零行为变化，验证靠依赖闭包锁加 verify，不需要管线探针；
+- 测试里调用模块 buildCharConfig 要传 `team: [], slot: 0`；模块级规则状态要 `afterEach(() => setActiveRowFusionRules([]))`；新测试先单独跑 `npx vue-tsc -b`；
+- 「先量」实验可以临时改源码，但必须 `git checkout -- <文件>` 还原；
 - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；临时探针跑完删掉再 verify。
 
 **未决项**：
@@ -104,7 +98,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）；
 - 「进入失衡 +20 喧响」是否真实机制（§24.79 ①）；
 - 测试 harness 是否默认加载 spec 默认行规则（§24.85，暂不改）；
-- spec buildExecutions 的 getRowValue 只放行 damage 行（§24.87 ④，将来声明非 damage 行时再改）。
+- spec buildExecutions 的 getRowValue 只放行 damage 行（§24.87 ④）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

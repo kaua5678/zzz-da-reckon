@@ -415,3 +415,5 @@
 | 263 | 行规则作用面候选 1：specs/mechanics 事件载体原始读取 | CC-241（`652c7c18`）改走 data 单一来源；生产零差（仅 usesOverride 时 base 生效，现存 spec 无 ratio）；源码锁拦截 specs 新增 `.values[0]` | 将来声明非 damage 的 multiplierRowId 会撞上 buildExecutions 的 damage 闸 |
 | 264 | 行规则作用面候选 2：角色模块内联原始读取 | CC-242（`79951791`）5 个模块改走 getRowValue，登记表锁；multiplierCoefficients 不做（系数分析需要原表）；moveLookup 已给出设计，待量 | 喧响通道（channelMetricsOf）仍读原值，见 §24.88 ⑥ |
 | 265 | 行规则作用面候选 3：core/moveLookup；未决项 ultimatePromote:218 | CC-243（`a5df49c4`）注入式吃规则；CC-244（`275ec8b4`）赠送终结技失衡取融合组。全仓扫描后**行规则作用面结项**（§24.89 ④） | 新增绕开 getRowValue / fusedRowReader 的取值（各层锁会拦） |
+| 266 | 融合组「一次完整动作」口径：19 个组头的全仓引用 + resourceCalc 直取 getRowValue | 无剩余真实偏差（千夏 extraExPlans 数据等价；手放表直伤潜在但触发不到；yanagi 追加突刺故意取头段）（§24.90 ①） | 融合组后段出现喧响 / 时长，或手放融合组头段成为常见用法 |
+| 266 | C6 前提：resourceCalc 读 store | 从不调用 useXStore；唯一值导入 helpers:17-18 改 type-only（CC-245，`99e1be54`），闭包锁；并入 core 裁决**不做**：剩余依赖 mechanics / fusion / agentMechanicView，并入会重建 C1 已拆的 core→mechanics 环（§24.90 ③） | 需要在无 Vue / pinia 环境跑管线（worker、CLI 批量） |

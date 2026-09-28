@@ -415,6 +415,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-242 | done | 79951791 | 诺姆 / 菲欧妮 / 赛维里安 / 希格莉德 / 席德模块预存行值改走 getRowValue；锁 agentModuleRowFusionRule.test（5 条行为锁 + mechanics/agents 原始读取登记表，仅 remielle）；探针：用户规则真实生效（席德钢能 0%→9.07%），生产零差（§24.88） |
 | CC-243 | done | a5df49c4 | moveLookup find* 族喧响 / 融合组喧响 / 平 A 回能以 RowValueReader 注入吃行规则（core 默认原始读取，编排层注入 data fusedRowReader，11 处）；锁 moveLookupRowFusionRule.test（行为 + 源码 + 调用点）；生产零差，雅能量规则 +5.54%→+12.34%（§24.89） |
 | CC-244 | done | 275ec8b4 | 转大赠送终结技失衡值取融合组整段（照 242.8→304），与伤害 / 主执行 / chainGift 同口径；总伤害零差，只影响失衡轴手放补行分支；锁 ultimatePromoteFusedDaze.test（§24.89） |
+| CC-245 | done | 99e1be54 | resourceCalc/helpers 对 stores 改 type-only，管线后半段运行时闭包进入 stores/ 只剩纯函数 selectionReads；锁 resourceCalcStoreDeps.test；ARCHITECTURE §0 并入 core 前提更新为准确清单（§24.90） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |

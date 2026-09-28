@@ -2829,3 +2829,25 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 - 验证：v265 verify EXIT=0（3979 passed）；v265b verify EXIT=0（3980 passed | 29 skipped）；两次 vue-tsc 干净。
 - 回退点：revert 275ec8b4（CC-244，独立）/ revert a5df49c4（CC-243）。
+
+### 24.90 第 266 轮：「一次完整动作」口径扫描（无偏差）；CC-245 resourceCalc 运行时不依赖 store（99e1be54）
+
+**① 融合组口径扫描（§24.89 交接方向 1）结论：无剩余真实偏差，不改代码。**
+- 方法：取 `data/moveFusions.ts` 的 19 个组头 moveId，grep 全仓非测试引用，再逐条核对 resourceCalc 中不先走 fusedRowValue 就直接 `getRowValue` 的调用。
+- 逐条结论：
+  - `helpers.ts:662` extraExPlans（千夏 1491008）的 actionTime / decibelRecovery 只取头段。但后段 1491019 的喧响为 0、actionTime 为空，所以融合组整段值等于头段值，**数据上等价，零差**，记不做。重开条件：该组后段出现喧响或时长，或 exSpecialPlans 新增融合组条目。
+  - `helpers.ts:649–651` sustainedEx 持续段：分段结构本身（opener / sustain / finisher），不是融合组头段。
+  - `helpers.ts:749` 平 A 基准段秒均：不是融合组。
+  - `damagePoolDirect.ts:300` 手放表直伤：`stunAxisPresets` 中没有任何融合组头段 moveId。用户手放融合组头段时只算头段，属于潜在偏差，但当前数据触发不到。重开条件：预设或用户手放融合组头段成为常见用法。
+  - 模块：koleda 1101005、jane 1261007 发出不带 override 的头段行，由 enrichExecutionPlan 按融合组回填，正确。yanagi 1221022 追加突刺按原文「倍率与首段突刺一致」，故意用头段值加 override，语义正确。qianxia / zhao / zhendou / xixifu / counterAssists 只把它当 id 集合或门控，不涉及取值。
+
+**② CC-245：管线后半段运行时不依赖 pinia store**
+- 清点（§24.89 交接方向 2，C6 前提）：resourceCalc/ **从不调用** `useXStore()`，store 实例一律由 useResourceCalc 入口作为参数注入。9 个文件只 `import type`。唯一的运行时越界边是 `helpers.ts:17-18` 值导入 useConfigStore / useCatalogStore，而且只在 `ReturnType<typeof …>` 的类型位置使用。
+- 改动：这两行改为 `import type`。
+- 结果：resourceCalc 运行时依赖闭包进入 stores/ 的只剩纯函数 `stores/selectionReads.ts`（无 pinia）。
+- 锁 `src/composables/__tests__/resourceCalcStoreDeps.test.ts`：从 resourceCalc/*.ts 出发，沿非 type import 递归求闭包，进入 stores/ 的只允许 selectionReads。修改前红（报出 config / catalog 及其链路），修改后绿。
+- 文档：`docs/ARCHITECTURE.md` §0 第 25 行原写「helpers.ts、panelPhases.ts 仍 import stores」，已过时（panelPhases 早已是 type 加 selectionReads）。改为：前提 ① store 依赖已清零；② 仍未满足的是运行时闭包依赖 mechanics 注册表加 61 个角色模块、`logicEditor/fusion`（经 data/moveTableQueries）、`composables/agentMechanicView`（roundInputs:25 取 AUTO_AXIS_PRESET_HINTS）。
+- 值不值得：零行为变化，但它让「resourceCalc 可脱离 pinia 加载」从不成立变为成立并被锁住，也把 ARCHITECTURE 中过时的前提改成可核对的准确清单，符合「让架构更简单 / 可验证」的判据，不是降计数。
+- 验证：verify EXIT=0（3981 passed | 29 skipped）；vue-tsc 干净。回退点：revert 99e1be54。
+
+**③ 「管线后半段并入 core」本轮不开**，理由：剩余三类依赖（mechanics 注册表、fusion 全局快照、agentMechanicView）都要改成注入。mechanics 是角色模块层，resourceCalc 本来就是它的消费者，并入 core 意味着 core 反向依赖 mechanics，而 C1 刚拆掉这个环。只有先把「按 agentId 查模块」做成参数注入（像 C1 那样由入口注册），才谈得上并入。收益仅是目录归属，风险与改动面都大。**裁决：不做**，除非出现具体需求（例如需要在无 Vue / pinia 环境跑管线：worker 线程、CLI 批量对比）。重开条件同上。
