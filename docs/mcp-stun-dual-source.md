@@ -1726,3 +1726,27 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **验证**：vue-tsc 0；相关 15 文件 102 条全过；verify EXIT=0（3875）；check-guards 通过。
 - **回退点**：`git revert 99282fdf`。只撤 store 按组 id：把 `aaActiveMap.get(agentId)` 改回 `buff.ownerId && … get(buff.ownerId)`（1411 恢复恒开）；只撤波可娜：删 1351.json 的 `additionalAbility` 与表里 `'1351'` 行、撤 pulchra 影画1 门控。
 - **留给后续的架构观察（未做，写进队列）**：两道门控（① 硬表、② store 默认）职责重叠。② 修好后，① 中「来源＝额外能力、条件＝声明本身」的条目理论上可由一条通用规则替代，只保留跨来源（影画/核心被动随额外能力）与特殊修正（凯撒、菲欧妮 tier3）。但 ① 是「用户开关压不过」的硬门控、② 是可被用户覆盖的默认值，语义不同——合并前要先定「额外能力未触发时用户能不能手动打开」。
+
+### 24.47 CC-200：模块必做行的时间预留普查 + 苍角强特子动作改走 `estimateExSpecialTime`（第 223 轮，d5e18595）
+
+- **起点**：交接队列第 1 项「评估其他模块是否迁到 `extraNecessaryAction`」。
+- **判据（本轮定下，写进已知坑）**：模块产的前台必做行，时间要么进账本估计，要么靠 `timeBudgetExcess` 事后折叠。折叠是外层不动点、能收敛，但账本不诚实：合轴抵扣丢失、团队 feasibleScale 看不到这部分需求。通道选择——
+  - 行次数 = 强特次数（每次强特多几个子动作）⇒ `estimateExSpecialTime`（按次估时，已有 14 个模块在用）；
+  - 行次数来自别的资源（绝对音准、虚耀等，与强特次数无关）⇒ `extraNecessaryAction`（CC-26 / CC-197）。
+  - 所以「迁到 extraNecessaryAction」这个问题本身问窄了：普查按「残差大小」找对象，再按上面两条选通道。
+- **普查方法**：临时插桩 `src/core/resource/helpers.ts` 必要时间公式处，把各槽最后一轮 `cfg.timeBudgetExcess` 写进 `globalThis.__zzex`，探针读出（脚本 `/home/kaua/calc-arch/k222/p223inst.py`，探针 `/home/user` 侧 `zzprobe223*.test.ts`；跑完 `git checkout helpers.ts` 并删探针）。
+- **普查结果（残差秒 / 该槽 necessary 行合计秒）**：
+  - 1131 苍角：47.9/71.6（雅-苍角-丽娜）、41.9/64.5（苍角-艾莲-耀嘉音）——**本卡处理**。
+  - 1461 席德：34.7/114.5、31.2/107.6——下一张卡。
+  - 1091 雅：24–31；1191 艾莲：22–25（不在 grep 清单里：它们的行没显式写 `timeBucket: 'necessary'`，但同样有残差；helpers.ts 注释提过「雅霜月架势」）——排队评估。
+  - 1611 克拉蕾：2.4（量化残差，`affordableExCount` 来自锐能）⇒ 不做。
+  - 1621 洛克茜、1221 月城柳：necessary 行 `totalTime` 全为 0（挂伤害的附带行，不占时间）、残差 0 ⇒ 不做。
+- **苍角的问题**：通用强特行（扇子第 1 击）按 `exSpecialActionTime` 预留；模块每次强特再补扇子第 2 击 1.16 + 风团 2×0.271 + 下砸 1.25 + 霜染冲刺 0.4 + 打年糕#3 2.632（全合轴）≈ 5.98s，账本不知道，8 次强特 ≈ 47.9s 全靠折叠——与实测残差完全吻合。而且折叠路径让打年糕#3 的合轴抵扣**丢失**：模块头注释的用户口径（2026-09-05）是「全合轴，不占前台」，实际却挤了平A池。
+- **改法**：`soukaku.ts` 新增纯函数 `soukakuPerExExtraTime(cfg)`（和产行按同一套读法：击数、体型、劈斩），登记 `estimateExSpecialTime` = 通用强特（实数次数）+ floor(次数) × 补行；合轴 = 通用强特合轴 + 打年糕#3。产行代码没动。
+- **影响面**：
+  - 苍角残差 47.9→0、41.9→0。
+  - 实测：雅-苍角-丽娜 14639868→16477080（+12.6%），苍角-艾莲-耀嘉音 11625375→13463880（+15.8%）。来源：打年糕#3 的合轴抵扣回到账本，≈21s 团队预算让给队友（雅强特 13→14、丽娜 7→8）。这是把实现拉回用户口径，不是新口径。
+  - golden：只有 `agent:1131:c0/c3-c6` 的 slack 0→34.216（= 13 次 × 2.632s）。单人没有队友可并行，合轴抵扣出的时间只能留白；先例：卢西娅单人 slack 163.6。伤害与逐槽时间账零差；golden/zd 的预设里没有苍角队，所以组队影响只在上面两支探针队里可见。留白棘轮绿。
+- **测试**：`src/mechanics/__tests__/soukakuExTimeCc200.test.ts`：真队伍断言「模块补行 Σ时长 = 强特次数 × soukakuPerExExtraTime」（改产行不改估时会红），分支单测（劈斩 / 小体型 / 1 击），估时公式单测。
+- **验证**：vue-tsc 0；verify EXIT=0（3878）；check-guards 通过。
+- **回退点**：`git revert d5e18595`；或只删 `soukakuMechanic.estimateExSpecialTime` 那一段（回到折叠追认，golden 的 5 条 slack 回 0）。
