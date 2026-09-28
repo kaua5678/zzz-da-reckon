@@ -2240,3 +2240,40 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 **锁**：`src/utils/__tests__/elementStatKeys.test.ts` 含三部分：①7 个基础元素 × 5 类键逐字断言，且字段在 `emptyPanel()` 里真实存在；②变种、烈霜、未知元素；③源码锁，除本来源外不许出现 `physical: 'physicalDmg' | 'enemyPhysicalResReduction' …` 形式的对照表，或 `case 'physical': return 'physicalDmg'`。**反例**：`git stash push -- DebugPage.vue FinalPanel.vue` 后，锁报出这两个文件。
 
 **影响**：verify 全绿（3932 passed），golden 零差（catalog 未改，R23-N2 纯伤害回归判据启用），引擎数值零变化；只修展示层。**回退点**：revert 本提交（`core/elementKeys.ts` 会随之恢复）。
+
+### 24.73 第 249 轮：CC-225 元素字段名手拼并入 `utils/elementStatKeys`，元素线收尾（f361972f）
+
+**排查**（按 §24.72 交接）：用 grep 搜 `${…}(Dmg|CritDmg|SheerDmg|SharpDmg|AnomalyBuildUpEfficiency|ResReduction|DefReduction)` 这类手工拼接，共 9 处：
+- `core/damage.ts` getElementCritDmgBonus / getElementSheerDmgBonus / getElementSharpDmgBonus：已先经 `resolveStatElement`，语义正确；
+- `stores/config.ts:114` defaultDriveDisc 的 `` `${element}Dmg` || 'atkPct' ``：`||` 是死代码，模板串恒为真；调用方只传 `'physical'`，所以没有实际错误；
+- `stores/config.ts:615`：选角色时自动设 5 号位主词条；
+- `StatPanel.vue`：699 行的积蓄效率过滤，742、749 行的元素减防、减抗摘要。
+
+**真 bug 数量：0。** 依据：`public/static/catalog.json` 里所有 `damageElement` 取值只有 7 个基础元素（physical 1071、fire 776、electric 677、ice 555、ether 506、wind 176、lumiflux 65），变种元素不会进入这些拼接。
+
+**仍然做了**：CC-224 的锁只防对照表，防不住手拼，元素字段名因此仍有两种写法。统一后元素 → 字段名只有一个来源。
+- damage.ts 3 处改为 `elementStatKey(kind, element)`，键为空时返回 0（旧写法拼出 `undefinedCritDmg` 再读到 0，逐位等价）。
+- config.ts 2 处改为 `elementStatKey('dmg', …)`；`?? 'atkPct'` 回落从此真正生效。
+- StatPanel：
+  - 删除 `ELEMENT_FIELD_PREFIX_BY_ELEMENT`（`utils/enemyDebuffStats#ELEMENT_FIELD_PREFIX` 的副本，改为 import 原表）；
+  - 删除 `ELEMENT_DEBUFF_LABELS`（旧写法遍历 7 元素后过滤出当前元素，等价于直接读当前元素）；
+  - 两个减益摘要改用 `panelElementStat` 加 `damageElementLabel`。`DAMAGE_ELEMENT_LABEL` 的 7 个基础元素标签与旧表逐字相同，lumiflux 仍为「辉光」，不触及 §24.62 未决项。
+
+**锁**：`elementStatKeys.test.ts` 新增第 4 例，逐行扫描、跳过注释行：
+- 禁止 `${…}(Dmg|CritDmg|SheerDmg|SharpDmg)`；
+- 禁止 `enemy${…}(Res|Def)Reduction`；
+- 禁止出现 `physical: 'Physical'` 或 `['Physical',` 形式的前缀表。
+- 白名单：elementStatKeys.ts、enemyDebuffStats.ts。
+- **反例**：只 stash 三个源码文件（保留新测试），锁逐行报出全部 9 处。
+
+**不做**
+- StatPanel `isOtherElementSpecificField` 里硬编码元素名的正则：这是按字段名形状匹配，不是元素 → 数值的查找表，改成动态拼正则只会更难读。
+- StatPanel:699 的 `${props.damageElement}AnomalyBuildUpEfficiency`：同属字段名过滤，积蓄效率的取值已走 `data/anomalyElement#elementAnomalyBuildUpEfficiency`。
+
+**影响**：verify 全绿（3933 passed），golden 零差，引擎数值零变化。**回退点**：revert f361972f。
+
+**元素相关的单一来源线至此结项。**已有来源：
+- `data/anomalyElement`：变种 → 基础、resolveStatElement、积蓄效率；
+- `utils/elementStatKeys`：字段名；
+- `utils/enemyDebuffStats`：敌方减益字段与前缀；
+- `utils/agentLabelMaps`：标签。

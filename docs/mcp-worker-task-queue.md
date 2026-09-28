@@ -71,24 +71,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 248 轮（lane lead-arena-0925c）：CC-224 完成（f1db965e），文档见本提交。push 结果见 git log / rev-list。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.72。
-- 前几轮：247 CC-223（7eb4eace）；246 CC-222（f4e45890）；245 CC-221（253257e4）。
+**第 249 轮（lane lead-arena-0925c）：CC-225 完成（f361972f），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.73。
+- 前几轮：248 CC-224（f1db965e）；247 CC-223（7eb4eace）；246 CC-222（f4e45890）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**纯规则单一来源一览（新写代码请直接用这些，不要自建表）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`（暴击率钳制 / 期望暴击）、`anomalyElement`（变种 → 基础、`resolveStatElement`、元素积蓄效率）；
-- `src/utils/elementStatKeys`：元素 → 面板字段名；
-- `src/utils/enemyDebuffStats`：敌方减益字段；
+**纯规则单一来源一览（新写代码请直接用这些，不要自建表或手拼字段名；源码锁会拦）**：
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`（变种 → 基础、`resolveStatElement`、元素积蓄效率）；
+- `src/utils/elementStatKeys`：`elementStatKey`、`panelElementStat`；
+- `src/utils/enemyDebuffStats`：敌方减益字段、`ELEMENT_FIELD_PREFIX`；
+- `src/utils/agentLabelMaps`：`damageElementLabel`；
 - `src/core/damageMultipliers`：防御 / 抗性 / 等级；
 - `src/core/effectiveTime`：时间口径。
 
-**下一步（直接开工）**
-1. **元素限定字段的其余直接拼接**：CC-224 只收了「对照表」形式。执行 `grep -rnE '\$\{[^}]*[eE]lement[^}]*\}(Dmg|SheerDmg|SharpDmg|CritDmg|AnomalyBuildUpEfficiency|ResReduction)' src`，找出直接拼字段名的地方（例如 `core/damage.ts#getElementCritDmgBonus` 写的是 `${resolveStatElement(element)}CritDmg`，**这处已解析，语义正确**，可以改为调用 `elementStatKey('critDmg', …)` 统一写法，但**不是 bug**）。**优先查没经 `resolveStatElement` 的拼接**：变种元素会拼出不存在的字段而读到 0，这才是真 bug。
-2. 查完这条，元素相关的单一来源线就收尾，改为另找方向（例如 `src/utils/` 与 composables 里「展示用重算」是否与 core 口径一致：`stunVulnSummary`、`difficultyRatio`）。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-224）。
-- **已知坑**：`composables/resourceCalc/helpers.ts` 与 `skillRows.ts` 都是「import + export」转出壳，删符号时两处都要改，并同步 `skillRowsShell.test.ts` 的符号表（本轮就踩了：vue-tsc 报 TS2305）。多行 import 按 `grep "import"` 搜会漏，要按符号名搜全 src。
-- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色暂用 default（§24.63）。
+**下一步（直接开工）**：元素线已结项，转向「展示层重算与 core 口径一致性」。
+1. 读 `src/composables/stunVulnSummary.ts`、`src/composables/stunVulnDisplay.ts`、`src/composables/difficultyRatio.ts`、`src/composables/difficultyCurve.ts`。逐个公式找出它们在 core 里的对应（`calcStunMultiplier` 在 core/anomalyPool/helpers.ts；时间口径在 core/effectiveTime.ts；失衡窗口在 CC-217、CC-218 改过的函数里）。
+2. 分两类处理：
+   - **自己重算**的：改为调 core 或 data 的纯函数，并加源码锁，参照 CC-220、CC-221 的做法；
+   - **读引擎结果**的：只核对字段读法对不对。
+3. 判据：只收「同一公式两处实现」的，不为降计数去抽函数。如果发现口径本来就不同（例如展示特意用了简化式），写「不做」并附理由。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-225），并 `grep -rn 反锁 src`。
+- **已知坑**：
+  - 后台 verify 要用 `setsid ./bg.sh … & sleep 2`，不 sleep 的话 wsl_exec 返回时后台进程会被带走（本轮第一次就没起来）；
+  - 删文件要 `git rm`，否则守卫的 `git ls-files` 仍会列出它，读取时报 ENOENT；
+  - 转出壳（resourceCalc/helpers.ts、skillRows.ts）删符号时两处都要改。
+- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62；agentLabelMaps 里两种都有：第 23 行是「流明」，`DAMAGE_ELEMENT_LABEL` 是「辉光」）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

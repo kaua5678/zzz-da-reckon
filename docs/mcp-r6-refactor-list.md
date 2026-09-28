@@ -398,3 +398,4 @@
 | 246 | 暴击期望 / 暴击率钳制副本 | 8 处收进 `src/data/critMultiplier.ts`（CC-222，`f4e45890`）；伤害公式线至此无尾巴 | 锁测试拦新增内联 |
 | 247 | 展示层（FinalPanel / StatPanel）乘区与引擎对账 | 2 处口径不同已修（CC-223，`7eb4eace`）；失衡 cap 字段无写入方，不修；展示层对账线收尾 | 结构锁 anomalyElement.test |
 | 248 | 元素 → 面板字段名映射表 | 10 份收进 `src/utils/elementStatKeys.ts`（CC-224，`f1db965e`），`core/elementKeys.ts` 删除 | 源码锁 elementStatKeys.test |
+| 249 | 元素字段名手拼 / StatPanel 前缀表副本 | 并入 utils/elementStatKeys（CC-225，`f361972f`），元素线结项 | 源码锁 elementStatKeys.test 第 4 例 |
