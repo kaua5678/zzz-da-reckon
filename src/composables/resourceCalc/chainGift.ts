@@ -6,6 +6,7 @@
  * 引擎侧时间预留走 crossAgentSupply 的 `gift-chain:chain` 通道（core/resource/helpers.ts 的 chainGift*），两者须同源。
  */
 import { findChainAttack } from '@/core/resource'
+import { fusedRowReader } from '@/data/moveTableQueries'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import type { TeamResourceResult } from '@/types/resource'
 import type { useConfigStore } from '@/stores/config'
@@ -58,7 +59,7 @@ export function applyChainGift(
   // 缺倍率则伤害池按 damageMultiplier≤0 跳过、失衡池无 baseDaze——带上后伤害/失衡才进池）
   const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
   const targetSkills = catalogStore.agentSkillsByAgentMap.get(targetAgentId)
-  const chainInfo = targetSkills ? findChainAttack(targetSkills) : null
+  const chainInfo = targetSkills ? findChainAttack(targetSkills, fusedRowReader) : null
   if (!chainInfo) return base
   const giftedMove = findMoveById(targetSkills, chainInfo.moveId)
   // 赠送的是「一次完整连携」：多段招式（登记融合组，如雅 春临 #1~#3）必须取整段倍率，

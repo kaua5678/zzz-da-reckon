@@ -10,6 +10,7 @@ import { calcStunPool } from '@/core/stunPool'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource'
+import { fusedRowReader } from '@/data/moveTableQueries'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import type { AgentMechanicModule } from '@/mechanics/types'
 import type { TeamResourceResult, StunPoolResult } from '@/types/resource'
@@ -213,10 +214,10 @@ export function buildPromoteParams(
   const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
   const targetChar = rr.characters.find(c => c.slot === targetSlot)
   const targetSkills = targetAgentId ? catalogStore.agentSkillsByAgentMap.get(targetAgentId) : undefined
-  const ult = targetSkills ? findUltimate(targetSkills) : null
+  const ult = targetSkills ? findUltimate(targetSkills, fusedRowReader) : null
   const ultMove = ult?.moveId ? findMoveById(targetSkills, ult.moveId) : null
   const ultDaze = getRowValue(ultMove, 'daze')
-  const chain = targetSkills ? findChainAttack(targetSkills) : null
+  const chain = targetSkills ? findChainAttack(targetSkills, fusedRowReader) : null
   const ultElement = (targetAgentId && catalogStore.agentsMap.get(targetAgentId)?.damageElement) || 'physical'
   return {
     goodReviewTotal: gift.goodReviewTotal,

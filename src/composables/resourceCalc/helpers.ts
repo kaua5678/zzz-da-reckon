@@ -29,6 +29,8 @@ import {
   calcBasicAttackRegenPerSec,
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
+// CC-243：find* 族 / 平A回能的行取值注入（吃逻辑编辑器行规则；core 默认原始读取）
+import { fusedRowReader } from '@/data/moveTableQueries'
 import { counterAssistOf } from '@/data/counterAssists'
 import { findWEnginePeriodicDirect } from '@/data/wEnginePeriodicDirect'
 
@@ -464,20 +466,20 @@ export function buildCharConfig(
   const isFlash = !!(agent.level60.flashEnergyRegen && agent.level60.flashEnergyRegen > 0)
 
   // 提取技能数据
-  const exSpecial = findExSpecial(skills as AgentSkills)
-  const ultimate = findUltimate(skills as AgentSkills)
-  const chainAttack = findChainAttack(skills as AgentSkills)
-  const defensiveAssist = findDefensiveAssist(skills as AgentSkills)
-  const assistFollowUp = findAssistFollowUp(skills as AgentSkills)
+  const exSpecial = findExSpecial(skills as AgentSkills, fusedRowReader)
+  const ultimate = findUltimate(skills as AgentSkills, fusedRowReader)
+  const chainAttack = findChainAttack(skills as AgentSkills, fusedRowReader)
+  const defensiveAssist = findDefensiveAssist(skills as AgentSkills, fusedRowReader)
+  const assistFollowUp = findAssistFollowUp(skills as AgentSkills, fusedRowReader)
   // 反制支援（Counter Assist）：按登记表取行（克拉蕾 = 1611028 寸铁不让 + 1611030 琢形，
   // 融合成「一次动作」），有登记 ≠ 一定发动——次数由 boss 控制技组与替换开关决定。
   const counterAssistDecl = counterAssistOf(char.agentId)
-  const counterAssist = counterAssistDecl ? findCounterAssist(skills as AgentSkills, counterAssistDecl.moveId) : null
+  const counterAssist = counterAssistDecl ? findCounterAssist(skills as AgentSkills, counterAssistDecl.moveId, fusedRowReader) : null
   const counterAssistCount = counterAssist && configStore.counterAssistSlot === slot
     ? (configStore.appliedBoss?.counterAssistGroups?.length ?? 0)
     : 0
-  const dodgeCounter = findDodgeCounter(skills as AgentSkills)
-  const basicRegen = calcBasicAttackRegenPerSec(skills as AgentSkills)
+  const dodgeCounter = findDodgeCounter(skills as AgentSkills, fusedRowReader)
+  const basicRegen = calcBasicAttackRegenPerSec(skills as AgentSkills, fusedRowReader)
 
   // 倍率表 decibel_recovery / energy_recovery 全量预存（喧响+能量收入行级化 Σ 切换的前置）：
   // 核心层 calcRawDecibelParts / calcEnergySource 无 catalog 访问权，按此表复刻 enrichExecutionPlan

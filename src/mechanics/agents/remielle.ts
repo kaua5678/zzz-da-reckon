@@ -24,7 +24,7 @@ import { getSkillLevelCoef } from '@/core/skillLevel'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import { panelElementStat } from '@/utils/elementStatKeys'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { channelMetricsOf } from '@/core/resource/moveLookup'
 
 const REMIELLE_AGENT_ID = '1581'
@@ -294,7 +294,7 @@ export function findRemielleRainbowEnd(agentSkills: {
   if (!move) return null
 
   // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
-  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move, fusedRowReader)
 
   return {
     moveId: move.id,
@@ -319,7 +319,7 @@ export function findRemielleRadiantTurn(agentSkills: {
   if (!move) return null
 
   // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
-  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move, fusedRowReader)
 
   return {
     moveId: move.id,

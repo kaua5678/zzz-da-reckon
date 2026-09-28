@@ -11,6 +11,15 @@
 import type { ExSpecialCostType } from '@/types/resource'
 import { moveFusionByMoveId } from '@/data/moveFusions'
 
+/**
+ * 行取值器（CC-243）：`find*` 族 / 融合组 / 平A回能取倍率表行值的注入点。
+ * core 为纯函数、禁止 import 逻辑编辑器（fusion.ts 为全局可变快照）⇒ 默认 {@link rawRowReader}（原始首列）；
+ * 编排层（composables/resourceCalc）注入 `data/moveTableQueries#fusedRowReader`（吃逻辑编辑器行规则）。
+ * 作用面裁决见 docs/mcp-stun-dual-source.md §24.85 ④ / §24.89。
+ */
+export type RowValueReader = (move: { id: string; rows?: { id: string; values: number[] }[] }, rowId: string) => number
+export const rawRowReader: RowValueReader = (move, rowId) => move.rows?.find(r => r.id === rowId)?.values[0] || 0
+
 /** 从倍率表数据提取强特信息
  *  在 special category 中找 "EX Special Attack" 的 move
  *  energyCost 从 move.energyCost 字段提取（如 {"Energy Cost": "60"}）
@@ -20,7 +29,7 @@ import { moveFusionByMoveId } from '@/data/moveFusions'
  */
 export function findExSpecial(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string }; energyCost?: Record<string, string>; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; energyConsume: number; costType: ExSpecialCostType; costAmount: number; resourceId?: string; actionTime: number; decibelRecovery: number; energyCostRaw?: Record<string, string>; comboAlignRatio: number } | null {
+}, rowValue: RowValueReader = rawRowReader): { moveId: string; energyConsume: number; costType: ExSpecialCostType; costAmount: number; resourceId?: string; actionTime: number; decibelRecovery: number; energyCostRaw?: Record<string, string>; comboAlignRatio: number } | null {
   const special = agentSkills.categories.find(c => c.id === 'special')
   if (!special) return null
 
@@ -74,7 +83,7 @@ export function findExSpecial(agentSkills: {
 
   // 多段强特（登记融合组，如雅·飞雪斩击 = #1+#2）：时间与喧响按一次动作取整段；
   // **耗能不动**——nanoka 把耗能写在前缀项上，一次动作只计一次（坑 31）。
-  const { actionTime: exActionTime, decibelRecovery: exDecibel } = channelMetricsOf(agentSkills, fallbackMove)
+  const { actionTime: exActionTime, decibelRecovery: exDecibel } = channelMetricsOf(agentSkills, fallbackMove, rowValue)
 
   return {
     moveId: fallbackMove.id,
@@ -96,7 +105,7 @@ export function findExSpecial(agentSkills: {
  */
 export function findUltimate(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
   const chain = agentSkills.categories.find(c => c.id === 'chain')
   if (!chain) return null
 
@@ -108,7 +117,7 @@ export function findUltimate(agentSkills: {
 
   // 多段终结技（登记组，如妮可 特制以太榴弹 = 炮击 + 能量场）：倍率/喧响取整段，
   // 时间只取站场段（能量场是自动攻击）。
-  const { actionTime: ultActionTime, decibelRecovery: ultDecibel } = channelMetricsOf(agentSkills, ultMove)
+  const { actionTime: ultActionTime, decibelRecovery: ultDecibel } = channelMetricsOf(agentSkills, ultMove, rowValue)
 
   return {
     moveId: ultMove.id,
@@ -141,10 +150,11 @@ export function fusedGroupMetrics(
     }[]
   },
   moveId: string,
+  rowValue: RowValueReader = rawRowReader,
 ): { actionTime: number; decibelRecovery: number } | null {
   const group = moveFusionByMoveId.get(moveId)
   if (!group) return null
-  const segments = new Map<string, { actionTime?: number | null; rows?: { id: string; values: number[] }[] }>()
+  const segments = new Map<string, { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] }>()
   for (const cat of agentSkills.categories) {
     for (const m of cat.moves ?? []) segments.set(String(m.id), m)
   }
@@ -154,8 +164,7 @@ export function fusedGroupMetrics(
     const seg = segments.get(term.moveId)
     if (!seg) return null
     if (term.countsTime !== false) actionTime += (seg.actionTime ?? 0) * term.count
-    const row = seg.rows?.find(r => r.id === 'decibel_recovery')
-    decibelRecovery += (row?.values[0] || 0) * term.count
+    decibelRecovery += rowValue(seg, 'decibel_recovery') * term.count
   }
   return { actionTime, decibelRecovery }
 }
@@ -181,12 +190,13 @@ export function channelMetricsOf(
     }[]
   },
   move: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] },
+  rowValue: RowValueReader = rawRowReader,
 ): { actionTime: number; decibelRecovery: number } {
-  const fused = fusedGroupMetrics(agentSkills, move.id)
+  const fused = fusedGroupMetrics(agentSkills, move.id, rowValue)
   if (fused) return fused
   return {
     actionTime: move.actionTime ?? 0,
-    decibelRecovery: move.rows?.find(r => r.id === 'decibel_recovery')?.values[0] || 0,
+    decibelRecovery: rowValue(move, 'decibel_recovery'),
   }
 }
 
@@ -198,7 +208,7 @@ export function channelMetricsOf(
 // 口径声明 `engine:findChainAttack/多段连携` 随 re-export 壳留在 `core/resource.ts`，锚改指本函数。
 export function findChainAttack(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
   const chain = agentSkills.categories.find(c => c.id === 'chain')
   if (!chain) return null
 
@@ -208,7 +218,7 @@ export function findChainAttack(agentSkills: {
   })
   if (!chainMove) return null
 
-  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, chainMove)
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, chainMove, rowValue)
 
   return {
     moveId: chainMove.id,
@@ -224,7 +234,7 @@ export function findChainAttack(agentSkills: {
 /** 从倍率表提取闪避反击（Dodge Counter）信息 */
 export function findDodgeCounter(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number; timeType?: string }[] }[]
-}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
   const dodge = agentSkills.categories.find(c => c.id === 'dodge' || c.id === 'dodgecounter')
   if (!dodge) return null
 
@@ -236,7 +246,7 @@ export function findDodgeCounter(agentSkills: {
   if (!move) return null
 
   // 一次动作可能被 catalog 拆成多段（登记融合组）：前台时间与喧响都走融合口径（坑 31）。
-  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move, rowValue)
 
   return {
     moveId: move.id,
@@ -248,7 +258,7 @@ export function findDodgeCounter(agentSkills: {
 
 export function findDefensiveAssist(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
   const assist = agentSkills.categories.find(c => c.id === 'assist')
   if (!assist) return null
 
@@ -266,7 +276,7 @@ export function findDefensiveAssist(agentSkills: {
   if (!move) return null
 
   // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
-  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move, rowValue)
 
   return {
     moveId: move.id,
@@ -281,7 +291,7 @@ export function findDefensiveAssist(agentSkills: {
  */
 export function findAssistFollowUp(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
   const assist = agentSkills.categories.find(c => c.id === 'assist')
   if (!assist) return null
 
@@ -292,7 +302,7 @@ export function findAssistFollowUp(agentSkills: {
   if (!move) return null
 
   // 一次动作可能被 catalog 拆成多段（登记融合组）：时间与喧响走融合口径（坑 31）。
-  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move, rowValue)
 
   return {
     moveId: move.id,
@@ -310,7 +320,7 @@ export function findAssistFollowUp(agentSkills: {
  */
 export function findCounterAssist(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}, moveId: string): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+}, moveId: string, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
   let move: { id: string; actionTime?: number | null; comboAlignRatio?: number; rows: { id: string; values: number[] }[] } | null = null
   for (const cat of agentSkills.categories) {
     const hit = cat.moves.find(m => String(m.id) === String(moveId))
@@ -318,7 +328,7 @@ export function findCounterAssist(agentSkills: {
   }
   if (!move) return null
 
-  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move)
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move, rowValue)
 
   return {
     moveId: move.id,
@@ -334,7 +344,7 @@ export function findCounterAssist(agentSkills: {
  */
 export function calcBasicAttackRegenPerSec(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string }; actionTime?: number | null; rows: { id: string; values: number[] }[] }[] }[]
-}): { energyPerSec: number; decibelPerSec: number } {
+}, rowValue: RowValueReader = rawRowReader): { energyPerSec: number; decibelPerSec: number } {
   const basic = agentSkills.categories.find(c => c.id === 'basic')
   if (!basic) return { energyPerSec: 0, decibelPerSec: 0 }
 
@@ -355,15 +365,16 @@ export function calcBasicAttackRegenPerSec(agentSkills: {
     let energy = 0
     let decibel = 0
     for (const row of move.rows) {
-      if (row.id === 'energy_recovery') energy = row.values[0] || 0
+      if (row.id === 'energy_recovery') energy = rowValue(move, row.id)
       // 命破角色用闪能：平A回复读 flash_energy_recovery（能量回复读 energy_recovery，二者互斥）
-      if (row.id === 'flash_energy_recovery') energy = row.values[0] || 0
-      if (row.id === 'decibel_recovery') decibel = row.values[0] || 0
+      if (row.id === 'flash_energy_recovery') energy = rowValue(move, row.id)
+      if (row.id === 'decibel_recovery') decibel = rowValue(move, row.id)
     }
 
     // 排除强化平A：倍率异常高（强化平A伤害通常是普通平A的2-3倍以上）
     let damage = 0
     for (const row of move.rows) {
+      // 强化平A判定是**分类**，保持原始倍率（不吃行规则；同 panelPhases:212 裁决）
       if (row.id === 'damage') damage = row.values[0] || 0
     }
     // 简单判定：伤害倍率 > 200% 可能是强化平A（后续可调）

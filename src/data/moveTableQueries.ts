@@ -41,6 +41,17 @@ export function getRowValue(move: SkillMove | null | undefined, rowId: string): 
 }
 
 /**
+ * {@link getRowValue} 的结构化适配（CC-243）：供 core `RowValueReader` 注入点使用
+ * （core/resource/moveLookup 的 `find*` 族 / 融合组 / 平A回能），参数只要求 id + rows。
+ */
+export function fusedRowReader(
+  move: { id: string; rows?: readonly { id: string; values: readonly number[] }[] } | null | undefined,
+  rowId: string,
+): number {
+  return move?.rows ? getRowValue(move as SkillMove, rowId) : 0
+}
+
+/**
  * 倍率表**原始**行值（不乘逻辑编辑器行规则）。仅用于「模块内按分段原始倍率自算融合」的场景，防止与默认启用的
  * 同义行规则重复计入。现存用例：焰烈 1171 搅拌式 = Blend#1×0.5 + Blend#2，而 spec 规则 `burnice_stirring_fusion`
  * （1171007/damage ×1.2689，enabled）在编辑器里表达同一融合（CC-238：CC-237 曾把此处误并入 getRowValue，
