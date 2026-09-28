@@ -1696,3 +1696,33 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **验证**：vue-tsc 0；verify EXIT=0（3845，在 worktree `/home/kaua/calc-arch/wt221` 里跑，排除主工作区里其他 lane 的未跟踪测试）；check-guards 通过。
 - **事故与修正**：3d0217e3 误带了其他 lane 的 `src/stores/config.ts` 改动（未经本卡验证），已由 3cb3b846 撤回，工作区副本原样保留。3cb3b846 之后 `git diff 599be93b HEAD -- src/stores/config.ts` 为空。
 - **回退点**：`git revert 3d0217e3`。（要连同 3cb3b846 一起看：单独 revert 3d0217e3 会把 config.ts 反向改一次，需先 revert 3cb3b846 或手工排除 config.ts。）只撤千夏：把 `patchExecutions: buildQianxiaExecutions` 改回 `buildExecutions:`、展示改回读 `preModuleExecutions`（通用快照没有消费者也无害，可以保留）。
+
+### 24.46 CC-199：额外能力门控补全——通用门控改按组 id 查拥有者，1351/1141 补声明，护栏扩到全员（第 222 轮，99282fdf）
+
+- **起点**：交接队列第 1 项「additionalAbility 声明普查」（1141/1151/1171/1351/1441/1511/1611）。普查脚本 `/home/kaua/calc-arch/k222/aa222*.cjs`。
+- **现状（先读后判）**：「额外能力」buff 有两道门控——
+  - ① 引擎硬门控 `ADDITIONAL_GATE_BUFFS`（`composables/resourceCalc/panelPhases.ts`），按表登记 buff id，用户开关压不过；
+  - ② store 通用门控 `stores/config.ts#deriveTeammateBuffEnabled`：来源为「额外能力」的 buff，按拥有者 `spec.additionalAbility` 求值决定默认启用。
+  - 护栏 `additionalGate.test.ts` 只查**已登记**角色 ⇒ 未登记的拥有者整片看不见。
+- **发现的缺陷**：
+  1. **1351 波可娜**：spec 无 `additionalAbility` ⇒ ② 的 `aaActive` 为 undefined ⇒ 困迹 +30%（追加攻击）、影画6 全伤害扩展、影画1 暴击率 +10% **无条件生效**。原文条件「队伍中存在[强攻]或[命破]角色或自身阵营相同的角色」。
+  2. **1141 莱卡恩**：同上，失衡易伤 +35% 无条件生效。原文条件「与自身属性或阵营相同的角色或其他[异常]角色」。
+  3. **1411 柚叶**：spec 有声明，但 ② 用 `buff.ownerId` 查拥有者，catalog 里她的 ownerId 是拼音 slug `youye` ⇒ 恒 undefined ⇒ 额外能力（异常伤害/紊乱/积蓄效率）无条件生效。同类 slug：1581 `remielle`（她自带 `teammateBuffGate` 且条件与声明完全一致，改后零差）、1511 `nangongyu`。
+- **改法（让规则更通用，而不是再加一条登记）**：
+  - ② 改按**组 id**（= 拥有者 agentId；仅队友角色的组 id 是 teammateBuffId，已同步双键）查，不再依赖数据里写法不统一的 `ownerId`。修 1411，1581 零差。
+  - 1351、1141 spec 补 `additionalAbility.teamConditions`（照原文，不猜）。
+  - 1351 两条 buff 登记进 ①：影画6「困迹对追加攻击以外也生效」以困迹为前提，与基础条同门控（先例 1421 cinema_1）；`pulchra.ts` 影画1 暴击率加 `additionalAbilityActive` 门控（原文「对被施加[困迹]效果的敌人」）。
+  - 护栏扩到全员：`additionalGate.test.ts` 新增「拥有『额外能力』buff ⇒ 组 id 的 spec 必须声明」，例外表 `AA_OWNER_EXEMPT` 只有 1511；再加「catalog `combatBuffs.additionalAbility.effects` 全员为空」——`core/buff.ts#collectAgentBuffs` 对它**无门控施加**，目前全员为空所以无害，数据一旦填数值就会静默恒开，断言提示先接门控。另加 1351/1141/1411 三条行为测试。
+- **不做 / 未决**：
+  - **1511 南宫羽**：teammate-buffs `buff_ce11acbda2` 原文**没有触发条件**，只写效果。R5 硬约束「不猜数据」⇒ 不编条件，列入 `AA_OWNER_EXEMPT`；补数据时删掉例外即被护栏接管。
+  - **1441 真斗**：额外能力只有「残焰回血」，无伤害/资源消费者，声明了也没人读 ⇒ 不做。
+  - **1171 / 1611 / 1151 / 1401**：catalog 无额外能力条目、无「额外能力」来源 buff ⇒ 无需声明（1401 走 alice.ts 自定义判定，1151 已有声明）。
+- **影响面（golden，时间账只 1 支预设变）**：
+  - 单角色基准（无队友 ⇒ 条件不满足）：1141 c0 −7.6% / c3-6 −9.6%；1351 c0 −4.5% / c3-5 −8.7～−8.8% / c6 −23.0%（影画6 全伤害扩展也关）；1411 c0 −0.4% / c3-6 −1.9～−2.1%。
+  - 预设 `auto-1381-1361-1411`（零号安比/扳机/柚叶：无异常、无怪啖屋 ⇒ 柚叶额外能力不触发）：−7.8%；且 slot0 终结技 4→3、普攻 +1.26s——柚叶额外能力含**属性异常积蓄效率**，关掉后异常次数变化连带喧响，属直接物理后果。
+  - 其余条目零差；留白棘轮绿。golden 已用 TIME_GOLDEN_UPDATE=1 重生成（18 行）。
+- **连带修的测试夹具**：`teammateBuffDerivation.test.ts` 的 `slot()` 给所有队员 slot 0，额外能力判定按 slot 排除自身 ⇒ 永远判不触发；过去因为 mkBuff 的 ownerId 为空、门控被跳过而没暴露。改为队员槽位互异。
+- **测试口径订正**：`lycaonSmoke.test.ts` 原用「莱卡恩 + 安比」断言失衡易伤 +35——安比不满足额外能力条件，旧断言恰恰锁住了缺陷。改为第 3 槽放艾莲（1191，冰·维多利亚家政）使其触发，另加反向用例「只有安比：核心被动照常、+35 不给」。
+- **验证**：vue-tsc 0；相关 15 文件 102 条全过；verify EXIT=0（3875）；check-guards 通过。
+- **回退点**：`git revert 99282fdf`。只撤 store 按组 id：把 `aaActiveMap.get(agentId)` 改回 `buff.ownerId && … get(buff.ownerId)`（1411 恢复恒开）；只撤波可娜：删 1351.json 的 `additionalAbility` 与表里 `'1351'` 行、撤 pulchra 影画1 门控。
+- **留给后续的架构观察（未做，写进队列）**：两道门控（① 硬表、② store 默认）职责重叠。② 修好后，① 中「来源＝额外能力、条件＝声明本身」的条目理论上可由一条通用规则替代，只保留跨来源（影画/核心被动随额外能力）与特殊修正（凯撒、菲欧妮 tier3）。但 ① 是「用户开关压不过」的硬门控、② 是可被用户覆盖的默认值，语义不同——合并前要先定「额外能力未触发时用户能不能手动打开」。

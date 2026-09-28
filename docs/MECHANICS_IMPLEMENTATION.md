@@ -191,6 +191,7 @@
 
 ### 莱卡恩（lycaon / 1141）—— 冰击破拐力 + 后台围猎
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/lycaon.ts` + `public/static/teammate-buffs.json` 1141 组拐力 + spec `1141.json`；测试 `src/mechanics/__tests__/lycaonSmoke.test.ts` 12 例）。含：核心被动拐力（冰抗 -25 / 非冰六元素增伤 30 / 失衡易伤 35，2.6 潜能激发口径，includeOwner 自身也吃）、围猎后台自动释放（次数=失衡次数，双冰舞×2+后台闪反+蓄力平A，后台时间预算随无敌占用收缩）、面板乘区 basic/dodgeCounter/dashAttack 失衡 +80 与局内冲击 ×(1+5/7.5/10/12.5/15%)（**潜能觉醒·掠冰按 `potentialLevel` 取档 II~VI**）、影画1 强特长按组 stunBonus 12/22 与长按占比滑块 exHoldRatio、影画2 回能 =(失衡次数+队友连携总次数)×5 排除自身、影画6 自身 dmgBonus +50 全覆盖。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口；近似与忽略项见下。
+- **额外能力触发条件（CC-199）**：spec `1141.json` `additionalAbility`（同属性/同阵营/其他异常）；失衡易伤 +35%（teammate-buffs `lycaon.additional_graceful_pack_stun_multiplier`）由 `deriveTeammateBuffEnabled` 通用门控按它决定默认启用。此前缺声明，恒开。
 - 近似点：狂猎时刻/复仇反扑命中等触发来源未建模为事件，触发类增益按整局总量口径默认覆盖率 100%（结果页可调）；后台闪反次数 = 队友 dodgeCounterCount 之和的整局近似；前台普攻按全蓄力段平均秒均 × 平A 时间（用户口径）。
 - 忽略项（用户确认）：影画4·保持风度护盾不建模；围猎提前结束每剩余 1s → 下次冰舞失衡 +6% 忽略；招架支援强化（黄光弹刀 2→1）不建模。
 - **模块**：`src/mechanics/agents/lycaon.ts` + `lycaon.json`。
@@ -361,6 +362,7 @@
 ### 波可娜（pulchra / 1351）—— 猎手本能·击破
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/pulchra.ts` + spec `1351.json` teamBuffs；测试 `src/mechanics/__tests__/pulchra.test.ts` 7 例）。含：核心被动猎步（失衡 +30% 恒常）、核心循环噬爪·噩梦袭影（后台追加攻击特殊技）、额外能力困迹（全队追加攻击 +30%，C6 扩展全伤害）、影画 1/2/4/6。
 - **额外能力·业务搭档[困迹]**：波可娜 5 招命中施加困迹(15s)，困迹下全队[追加攻击]伤害 +30%——困迹全覆盖（用户口径 2026-08-27），spec teamBuffs `pulchra_extra_trap_followup`（skillDmgBonus targetSkillType=additionalAttack）。
+- **额外能力触发条件（CC-199）**：spec `1351.json` `additionalAbility`（强攻/命破/同阵营）。未触发 ⇒ 无困迹 ⇒ `pulchra_extra_trap_followup`、影画6 `pulchra_cinema_6_trap_all`（均登记在 `ADDITIONAL_GATE_BUFFS`）与影画1 暴击率 +10% 一并关闭。此前缺声明，三者无条件生效。
 - **模块**：`src/mechanics/agents/pulchra.ts`（接管原 specPanelBuffs pulchraHuntStepMechanic）。
 
 ### 真斗（manato / 1441）—— 熔锋之势·命破
@@ -450,6 +452,7 @@
 - **作者拒绝实现：影画6蓄能炮弹**（2026-08-30 用户决断）：实时蓄能/受击自动闪避/逐发触发·极复杂度不成比例；甜度终身预算全部让给硬糖射击。C6 保留：招架+1甜度、紊乱倍率 buff（teammate-buffs）。
 - **未建模**：C6 炮弹命中触发·极（随拒绝一并搁置）、强制连携的逐命中条件（重击是否命中非失衡敌按 20s CD 顶格近似：全队 `chainCountTotalExtra` + floor(有效战斗时间/20)，甜度点 +1/次同源）。转积蓄施加者判定条件已证伪（2026-09-02 探针：柚叶单发 17.6 积蓄 vs 异常角色数百/发，占比恒小不翻转），债务销号。
 - 实现：`src/mechanics/agents/yuzuha.ts`（口径见其头注释）+ spec `src/specs/agents/1411.json` notes。
+- **额外能力门控（CC-199）**：catalog 里她的 buff `ownerId` 是 `youye`，旧通用门控按 ownerId 查 spec 查不到 ⇒ 额外能力恒开；现按组 id 查，队伍无[异常]且无怪啖屋角色时关闭（例：零号安比/扳机/柚叶 −7.8%）。
 
 ### 蕾米埃尔（remielle / 1581）—— 虚曜·耀变·异化（异常结算区全局乘子）
 - **当前实现状态 [已实现·近似 2026-09-07 账本校对]**（实现位置：`src/composables/resourceCalc/damagePool.ts` 耀变/特殊虚耀伤害行 + `src/composables/resourceCalc/anomalyPanels.ts`（calcVoidflareDamage）+ `src/composables/resourceCalc/panelPhases.ts`（computeEntrySnapshotPanel/resolveRemielleDazeBonus 已迁）+ `src/core/anomalyPool/helpers.ts`（globalAnomalyMultiplier 异化区）+ `src/composables/useResourceCalc.ts`（remielleAnomalyMultiplier/entrySnapshotPanels/虚耀事件账本）+ catalog combatBuffs（核心被动公式 精通×0.02/×0.2 与命座字段）+ teammate-buffs 组 1581（转攻/积蓄/C1/C2 七条）+ `src/mechanics/agents/remielle.ts`（资源卡展示层）；测试 `src/mechanics/__tests__/remielle.test.ts`）。含：虚曜池/耀变结算、异化全局乘子、额外能力三档转攻/飞行失衡/幻色积蓄、影画 1-6。

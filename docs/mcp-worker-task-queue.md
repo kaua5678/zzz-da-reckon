@@ -70,23 +70,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 221 轮（lane lead-arena-0925c）：CC-198 完成（3d0217e3）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-198：千夏 1491008 计入凝视标记；新增通用行快照 `AgentResourceResultInput.prePatchExecutions`。详见 `docs/mcp-stun-dual-source.md` §24.45。
-- 前几轮：220 CC-197（2af8c466）；219 CC-196（e862fbd3）；218 CC-195（f5a28e56）。
+**第 222 轮（lane lead-arena-0925c）：CC-199 完成（99282fdf）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-199：额外能力门控补全。store 通用门控改按组 id 查拥有者（修 1411 柚叶）；1351 波可娜、1141 莱卡恩补 spec 声明；护栏扩到全员。详见 `docs/mcp-stun-dual-source.md` §24.46。
+- 前几轮：221 CC-198（3d0217e3，另有误带文件的撤回 3cb3b846）；220 CC-197（2af8c466）；219 CC-196（e862fbd3）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。
+- 其他 lane 在第 221 轮之后提交了 76f202ff / 9b523a0a / a38bad4e / 7a57e89e（静态数据加载、批任务原语、config 装配），主工作区已干净（只剩别人未跟踪的 `docs/devlog/`，不要 add）。本轮 verify 直接在主工作区跑。
 
 **下一步（按顺序，直接开工）**
-1. **additionalAbility 声明普查**：1141 / 1151 / 1171 / 1351 / 1441 / 1511 / 1611。逐个读 `src/specs/teamCondition.ts:21` 附近的判定与 raw 原文「额外能力」条件，核对模块是否读 `panel.additionalAbilityActive`、条件是否与原文一致；差异走 CC 卡并跑 golden。
-2. **评估其他模块是否迁到 `extraNecessaryAction`**（CC-197 扩展后的通用通道）：先 `grep -rn "timeBucket: 'necessary'" src/mechanics` 列清单，逐个判断是否资源驱动、时间是否靠折叠残差追认（没有 `estimateExSpecialTime` 预留）。只迁这一类，迁移须 golden 逐条解释；不值得的写「不做」并附理由。
+1. **评估其他模块是否迁到 `extraNecessaryAction`**（CC-197 扩展后的通用通道）：先 `grep -rn "timeBucket: 'necessary'" src/mechanics` 列清单，逐个判断是否资源驱动、时间是否靠折叠残差追认（没有 `estimateExSpecialTime` 预留）。只迁这一类，迁移须 golden 逐条解释；不值得的写「不做」并附理由。
+2. **额外能力两道门控是否归一**（§24.46 末条）：先回答「额外能力未触发时用户能否手动打开该 buff」——读 UI 的 buff 开关（`src/utils/teammateBuffRows.ts` 及其组件）与 `syncTeammateBuffsFromTeam` 的合并逻辑，查硬表 `ADDITIONAL_GATE_BUFFS` 的引入提交（`git log -S'ADDITIONAL_GATE_BUFFS'`）看当初为何要硬门控。若语义可统一，把硬表缩到「跨来源 + 特殊修正」；否则写「不做」加理由。
 3. T2 剩余 71 条：派子代理（dsflash），由 lead 验收。
 4. freeCompare `higherBetter` 着色：评估，不值得就写「不做」。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`），再查 `docs/MECHANICS_IMPLEMENTATION.md` 的角色段和 `grep -rn 反锁 src`。
-- **未决项**：主工作区里仍有其他 lane 的进行中改动（`M src/stores/catalog.ts`，未跟踪的 `catalogReadiness.test.ts`、`calculatorStartup.test.ts`、`batchTask.ts`、`batchTask.test.ts`）。本轮中途它们已经能通过类型检查、golden 也能在主工作区跑，但 verify 仍放在 worktree 里跑，避免把别人的测试结果算进来。不要 add、不要改。worktree `/home/kaua/calc-arch/wt221` 已在本轮收尾删除。
+- **未决项**：1511 南宫羽额外能力 buff 原文无触发条件（`AA_OWNER_EXEMPT`），数据补上后删例外；本轮不猜。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **按 `buff.ownerId` 找拥有者不可靠**：catalog teammate-buffs 里有拼音 slug（`youye` / `remielle` / `nangongyu`）。找拥有者用 buff 组 id（仅队友角色是 teammateBuffId）。CC-199 就是这么修出柚叶额外能力恒开。
+- **合成队伍夹具必须给互异 slot**：额外能力等团队条件按 `m.slot === ownSlot` 排除自身，全 0 的夹具会让条件永远不满足（`teammateBuffDerivation.test.ts` 曾如此，CC-199 修）。
+- **只查「已登记」的护栏看不见未登记者**：写完备性断言时从数据侧全员出发，不要从登记表出发（CC-199：`additionalGate.test.ts` 只遍历 `ADDITIONAL_GATE_BUFFS`，漏了 1351/1141）。
 - **提交只 add 明确列出的文件，绝不用 `git diff --name-only` 批量取**（第 221 轮事故）：CC-198 代码提交 3d0217e3 这样取文件，把另一个 lane 在我开 worktree 之后才改的 `src/stores/config.ts`（默认队伍只初始化一次，配套测试未提交）一起提交并 push 了。已用 3cb3b846 在历史里撤回、工作区副本原样保留（备份 `/home/kaua/calc-arch/k221/config.ts.otherlane`）。以后提交前先 `git diff --cached --stat` 核对清单，和 worktree 里验证过的文件逐一对上。
 - **模块在哪个阶段产行，展示层就读哪个阶段的行快照**（CC-198）：`preModuleExecutions` = buildExecutions 钩子看到的行（不含额外强特行等后物化行）；`prePatchExecutions` = patchExecutions 钩子看到的行。两者都是浅拷贝。golden 预设里有千夏队（6 支），zd 的 625 个预设里没有。
 - **判断超预算别看 golden 的逐槽 front**（CC-197 订正 CC-196 的误判）：它是毛时间（necessary 按 GROSS 含合轴段），逐槽相加可以 > 180。要看 `buildTeamTimeSummary(...)` 的 `rowsNet` / `overflow` / `slack`（留白棘轮同口径）与 `rr.convergence.timeTruncatedSeconds`。
