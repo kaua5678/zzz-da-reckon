@@ -54,6 +54,8 @@
 
 ### 2.2 1571 诺姆：**不做**（本条即结论）
 
+> **第 235 轮更新（CC-212，`7b2af5ce`）**：下面「spec runtime 表达不了」的判断仍然成立，但当时漏了第三条路：模块负责来源和落点，常数与步数口径从 spec 读（`specs/runtime.ts#specConversionAmount`）。现已按这条路归一：常数只在 spec 一处，模块只负责取来源和写落点。下面保留原记录。
+
 - `norma_crit_to_stun`：模块把失衡加成分别写到 `stunBuildUpBonus__exSpecial / __special / __ultimate` 三个定向字段，runtime 只有单个 `targetStat`，表达不了。
 - `norma_pen_to_atk`：来源是 `calcPenetrationPower(panel)`（`src/core/damage.ts`），不是面板上的某个字段。要表达只能给 runtime 加 `sourceValue: 'penetrationPower'` 并让 `specs/runtime.ts` import core——这会重建 C1 刚拆掉的环（core → mechanics/registry → specs → core），不可接受。
 - `norma_crit_to_critdmg` 单独可以迁（加 `stepRounding: 'none'` 即零差），但会把诺姆的三条转化拆到两处（一条在 spec 执行、两条在模块），可读性比现在差；而且 note 写明 valuePerStep 随核心技能等级变化（Lv1 0.86 → Lv7 1.7），模块固定按 Lv7。
@@ -351,7 +353,7 @@
 | 1521 希希芙 | 回能 >1.4 超过部分每超过 0.12 | teammate-buffs 公式 floor | floor | ✅ floor |
 | 1541 普罗米娅 | 掌控 >150 每超过 1 点，精通 +1.5 | spec | none | ✅ **CC-134 → floor** |
 | 1561 维琳娜 | 回能 >1.2 超过部分每超过 0.01 | spec | floor | ✅ floor |
-| 1571 诺姆 | 暴击 >50% 每超过 1% | spec | floor | ✅ floor |
+| 1571 诺姆 | 暴击 >50% 每超过 1% | ~~spec~~ 实为 `norma.ts` 连续计算（spec 条目不执行，本行原记录有误） | 连续 | ✅ **CC-212 → floor**（`7b2af5ce`，第 235 轮：模块改为经 `specConversionAmount` 读 spec，口径才真正生效；`auto-1371-1571-1451` −3.94% 属悬崖效应，见 stun-dual-source §24.59） |
 | 1611 克拉蕾 核心 | 每拥有 1% 初始暴伤，初始暴击率 +0.35% | `claret.ts` 195 行 `initialCritDmg * 0.35` | 连续 | ✅ **CC-135 → floor**（零差：预设局外暴伤 = 50） |
 | 1621 洛克茜 | 回能 >1.2 超过部分每超过 0.01，攻击 +5、冲击 +0.4 | `roxy.ts` 305–306 行（攻击为连续值再 `Math.round`，冲击连续） | 连续 | ✅ **CC-135 → floor**（`0028eb01`；零差：攻击和冲击都已封顶） |
 

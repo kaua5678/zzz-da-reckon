@@ -70,15 +70,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 234 轮（lane lead-arena-0925c）：CC-211 完成（b96bbaa0）；「展示层 vs 引擎」线结项（CC-208 ~ 211）。文档见本提交。push 结果见 git log / rev-list。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.58（含结项结论和判为不做的点）。
-- 前几轮：233 CC-210（bdc03f72）；232 CC-209（2a88f81d）；231 CC-208（03680c60）。
+**第 235 轮（lane lead-arena-0925c）：CC-212 完成（7b2af5ce）。文档见本提交。push 结果见 git log / rev-list。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.59，r6 清单 §2.2 与 §2.18 的 1571 行已订正。
+- **更正上一轮交接**：第 234 轮交接写的「r6 清单 C5、C3 低优先做」是错的，两项在第 141 轮已完成（清单表格标 ✅）。
+- 前几轮：234 CC-211（b96bbaa0）；233 CC-210（bdc03f72）；232 CC-209（2a88f81d）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. **转向引擎层的「同一机制两处实现」**：读 `docs/ARCHITECTURE-OVERVIEW.md` §6.4「specs ↔ mechanics：同一机制是否两处实现」，逐条复核当时的结论是否仍然成立（那是第 138 轮的快照，之后又做了 70 多张卡）。找出仍在两处实现、且会分叉的机制，立 CC-212。做法参照 CC-206 / 207：合并成 mechanics 或 specs 层的纯函数，默认配置下 golden 零差。
-2. 其次：`docs/mcp-r6-refactor-list.md` 里标「低优先做」的 C5、C3，先读条目，重新评估是否仍值得做（判据：让架构更通用或更简单）。值得就做，不值得就改标「不做」加理由。
-3. 两项都无可做时，写「本轮扫描无可做项」加扫描范围，不要为了降计数硬做。
+1. **同类陷阱「记录说 X、执行的是 Y」扩大扫描**：本轮的根因是一张结论表把不执行的 spec 条目当成了实现依据。
+   - 找出 spec 里所有带「实现位置：」的纯记录条目：`grep -n '实现位置：' src/specs/agents/*.json`，覆盖 resources / events / attributeConversions 等全部字段。
+   - 逐条核对：记录的常数、相位、口径与模块实际代码是否一致。
+   - 常数不一致的，照 CC-212 的做法让模块从 spec 读；不适合读取的（散文规则、结构不匹配），至少订正 spec 记录。
+   - CC-120 做过 resources / events 的审计（`docs/mcp-spec-resources-audit.md`），先读它，避免重复。
+2. 可选：给 `scripts/validate-specs.mjs` 的死数据检查加一条：模块调用 `specConversionAmount(` 也算消费者。目前 1571 靠 note 里的「实现位置：」放行，能过但证据弱。
+3. 若无可做项，写「本轮扫描无可做项」加扫描范围。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）。
 
@@ -86,6 +91,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **结论表里「实现 = spec」要核对模块是否真的调用 spec 解释器**：带「实现位置：」note 的 spec 条目不执行，依据它下的结论可能从未落到计算上（CC-212：CC-134 的 floor 裁决漏了 1571 长达 77 轮）。
 - **catalog store 没有 `wEngines` 数组**，要用 `catalog.wEnginesMap.values()`（含 legacyIds 别名，会有重复条目）。
 - **覆盖率单位**：`effect.coverage.default` 和 `effectCoverageMap` 的值都是 0–1 的小数（applyEffect 直接相乘），队友滑块 store 值是 0–100。展示时用 `pct(cov * 100)`（CC-209 修过一次「0.5%」误写）。
 - **「已勾选」≠「生效」**：展示层要列生效的队友 buff，一律取 `resolveSlotPanelBuffInputs(slot, …).teammateBuffs`（经 helpers 壳导入），不要遍历 `teammateBuffGroups` 再看 `isTeammateBuffEnabled`（CC-208 有源码锁）。

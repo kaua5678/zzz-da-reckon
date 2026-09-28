@@ -1973,3 +1973,31 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 音擎发放 → `wengineConditions`。
   - 剩下的 `coverage.default` / `modificationValues` 读取点都在数据定义页（MechanicsTablePage、WEngineFieldPage），展示的是数据本身，不代表用户当前状态，**不做**。
   - 以后若新增展示点要列「生效的效果」，先找引擎对应函数，经 composable 暴露。
+
+### 24.59 第 235 轮：CC-212 诺姆 1571 转模常数单一来源 = spec，补齐 CC-134 floor（7b2af5ce）
+
+- **起点**：复核 `ARCHITECTURE-OVERVIEW.md` §6.4「同一机制两处实现」。当时剩下的 1571 诺姆 3 条 attributeConversions 在第 140 轮判「不做」（r6 §2.2）：spec runtime 表达不了定向失衡落点和贯穿力来源。所以 spec 条目是纯记录，模块 `norma.ts` 另写 6 个常数。复核发现三处**已经分叉**：
+  1. **步数口径**：CC-134（第 158 轮）裁决「每超过 N 一律 floor」，§2.18 表把 1571 记为「spec｜floor｜✅」。但 spec 条目不执行，模块一直是 `over × 1.7` 连续计算，**裁决从未落到 1571 的计算上**。
+  2. **来源相位**：spec 两条暴击转化记着 `sourcePanelPhase: inCombat`，模块从 CC-128 起读局外面板。机制表页展示的是 spec，与计算不一致。
+  3. **validate-specs 的放行条件**只是 note 里有「实现位置：」，不核对数值，漂移没人拦。
+- **第三条路**：第 140 轮只考虑了「spec runtime 执行」和「模块自持常数」两种。其实可以**模块负责来源和落点，常数与步数口径从 spec 读**：不用扩展 runtime，也不会成环（mechanics → specs 是允许的方向，alice.ts 已有先例）。
+- **改法**：
+  - `src/specs/runtime.ts` 抽出纯函数 `specConversionAmount(conversion, sourceValue)`：超出阈值 → 步数（按 stepRounding）→ × valuePerStep → 封顶。`applySpecAttributeConversions` 改为调用它，其余调用点逐位不变。
+  - `norma.ts` 删掉 6 个常数，新增 `normaConversion(id)` 从 spec 取条目（缺失即抛错），三处都走 `specConversionAmount`。
+  - `1571.json`：两条暴击转化的 `sourcePanelPhase` 改为 `outOfCombat`；note 写明「常数与步数口径以本条目为唯一来源」；pen_to_atk 的 note 写明 sourceStat `penRatio` 只是占位，来源是 `calcPenetrationPower`。
+- **数值变化（决定：采用 floor）**：
+  - 依据：CC-134 的统一裁决明确列了 1571，这次是补执行，不是新的口径决定。
+  - timeGolden 共 15 条变化，已逐条解释后用 `TIME_GOLDEN_UPDATE=1` 更新：
+    - 13 个含 1571 的预设伤害下降 0.05% ~ 0.09%，时间账零变化。这是暴击率、贯穿力的小数部分不再计入的预期量级。
+    - `auto-1371-1571-1451`：伤害 −3.94%，失衡 4 → 3，三槽连携 / 终结次数随之减少。原因是定向失衡加成取整后少了不到 0.8%，这个预设正好卡在失衡次数临界点，少一次失衡带出级联。这是离散失衡计数的悬崖效应，与 §2.18「外层不动点对微小输入敏感」是同类，不是改动本身有问题。
+  - **回退**：在 spec 三条上加 `stepRounding: "none"` 即可逐位恢复（这正是该字段保留的用途）。
+- **测试** `normaSpecSingleSourceCc212.test.ts`：
+  - 暴击 67.3 时按 17 步计（旧连续写法会得 17.3 步，测试失败）；
+  - 暴击 100 时封顶 85 / 40；
+  - 贯穿力 400.3 取 400 步 × 1.25；
+  - spec 暴击两条都声明局外来源；
+  - 源码锁：norma.ts 不得出现 `CRIT_TO_ / PEN_TO_ATK`，并且恰好 3 处调用 `normaConversion('norma_`。
+- **§2.18 表全量复核**：「实现 = spec」的 7 行（1401、1451 C6、1481、1511、1541、1561、1571）中，其余 6 个模块都真实调用 `applySpecAttributeConversions`，**只有 1571 这一行是假的**，现已订正。
+- 1051 伊德海莉的「hp → 贯穿力 0.1」也是纯记录条目，但它记的是引擎对全体命破角色通用的贯穿力公式（`core/damage.ts#calcPenetrationPower`），不是角色模块私有的常数，**不做**。
+- verify EXIT=0（3908 passed / 29 skipped）；vue-tsc 0；validate-specs 1120 项通过。
+- **回退点**：`git revert 7b2af5ce`（含 golden）；或只回退口径，按上面加 `stepRounding: "none"`。
