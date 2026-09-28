@@ -1644,10 +1644,40 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - C0 下降的原因是撤掉了无门控的约 30 层全场应援（按原文属于 C6 专属），不是回归。
 - **直伤行为什么拆出去（CC-197）**：
   - 完整实现已经写好，备份在 WSL `/home/kaua/calc-arch/k219/aire.rows.ts`，配套测试为 `airePitchRowsCc196.test.ts` 与 `aire.test.rows.ts`。内容：推 1501007 / 1501008 两种行（`timeBucket: 'necessary'`，耗时 = 次数 × 倍率表 actionTime；回能和喧响交给倍率表回填；强化占比非 C6 取 `min(1, 终结 × 15 / t)`、C6 取 1），C6 +40% 经 `patchAireExecutions` 生效。
-  - **阻塞点：模块的 necessary 行缺少团队级时间封顶**。
+  - **阻塞点：模块的 necessary 行缺少团队级时间封顶**。（⚠ 第 220 轮订正：**本条是误判**，见 §24.44「订正」——213s 是逐槽毛前台，净占用恰为 180s、overflow 0。）
     - 不封顶时：每次第三段回 3.6 能量 → 强化特殊技变多 → 应援能量变多 → 第三段再变多，形成正反馈环。普攻池挤到 0 以后前台合计溢出，golden 实测 1501-1511-1411 为 213s，超过 180s；1501-1561-1411 为 219.6s。
     - 仿照 11 号先例 `min(资源, floor(state.basicAttackTime / 单次时长))` 封顶时：`basicAttackTime` 只是爱芮自己分到的份额（全队普攻池按 `timeWeight` 水填分配，helpers.ts `basicAlloc`），均衡点会把次数压到约等于自身普攻池（14–17 次），总伤 −15%~−32%。第三段是爱芮的核心输出，实际打法会优先于队友的填充普攻，所以这个上限不合理。
   - **CC-197 的设计方向**：给 `AgentResourceInput` 加通用只读字段「全队剩余普攻池秒数」（core 侧通用，不写 agentId）。上限 = (全队剩余池 + 本槽上一 pass 已折入的 `timeBudgetExcess`) / 单次时长，避免「占用后池变小 → 上限变小」导致的系统性减半。11 号、格莉丝等按 `basicAttackTime` 封顶的模块也可以受益，这是让架构更通用的改动，值得单独做。
 - **验证**：vue-tsc 0（剩余报错都在其他 lane 的未跟踪文件 `catalogReadiness.test.ts` / `batchTask.test.ts` 里）；aire、inStunAttribution、timeFillRatchet 全绿；golden 逐条解释后已重生成；verify EXIT=0（3841）。
   - **全部在独立 worktree `/home/kaua/calc-arch/wt219`（HEAD + 本卡文件）中完成**：本轮主工作区的 `src/stores/catalog.ts` 被其他 lane 改到中间态，所有队伍都算不出结果（`资源池未产出结果`），主仓库不可用来验证。所以 zd 未跑（它依赖主工作区），由 golden 的 105 个预设覆盖。
 - **回退点**：`git revert e862fbd3`。只想回退门控时，把 `aireAbsolutePitchCount` 里的 `cheerGain` 改回 `Math.floor(totalTime / AIRE_CHEER_CD_SECONDS)`。
+
+### 24.44 CC-197：爱芮绝对音准直伤行接入通用「模块必做动作」通道；订正 §24.43 的溢出误判（第 220 轮，2af8c466）
+
+- **订正（先读）**：§24.43 说直伤行「前台合计 213s > 180s，溢出」——**误判**。golden 的逐槽 `front` 是**毛时间**（necessary 按 GROSS 计入合轴段），逐槽相加本来就可以 > 180。判断超预算要看 `buildTeamTimeSummary`（留白棘轮的口径）：1501-1511-1411 动作毛前台 195s、合轴抵扣 15s、净 `rowsNet = 180`、`overflow = 0`、截断 0、外层 stable；1501-1561-1411 为 201.7 − 21.7；1581-1501-1561 为 209.1 − 29.1，都恰为 180。上一轮「不封顶版」其实也没溢出，本卡结果与它逐位相同。「按自身普攻池封顶会系统性减半」这条分析仍成立（所以不要走 11 号那种封顶）。
+- **为什么仍然值得做（架构理由，不是数值理由）**：
+  - 旧写法（buildExecutions 推 necessary 行）的时间要靠折叠环 `timeBudgetExcess +=` 事后追认进账本；新写法让时间**直接进入账本估计** Σnecessary（helpers.ts `iterateBody`），装不下时由团队级 `feasibleScale` 等比封顶、装配期截断——与强化特殊技等资源驱动动作走同一条路。
+  - 通用通道 `extraNecessaryAction`（CC-26，原本只服务蕾米埃尔垂虹）扩展后，其他「资源驱动的额外必做动作」模块可以直接复用，不必再各写一份 buildExecutions + 自估时间。
+- **通用改动**（core 里无 agentId）：
+  - `mechanics/types.ts`：`extraNecessaryAction?(cfg, state?)`，可返回单个或数组。`state` 在 helpers 预留时为上一轮 prevState、在 rowBuild 补行时为本轮 state，收敛后同值。
+  - `mechanics/typesHooks.ts`：`ExtraNecessaryAction.decibelRecovery` 改可选；undefined ⇒ 行不写喧响字段，展示层 enrich 与账本 rowAccounting 都回落倍率表（显式 0 仍是禁用）。
+  - `core/resource/rowAccounting.ts#extraNecessaryActionOf(cfg, state?)` 统一返回数组并丢弃 count ≤ 0；`helpers.ts` 按数组累加时间与合轴时间；`rowBuild.ts` 按数组逐个补行。
+  - 蕾米埃尔仍返回单个对象、显式喧响值，行为逐位不变（只加通用部分时 golden 零差已实测）。
+- **爱芮**（`mechanics/agents/aire.ts`）：导出 `aireExtraNecessaryActions(cfg, state)`（无 state ⇒ null），次数 = `aireAbsolutePitchCount`（与异放事件同源），按 `aireEnhancedPitchShare` 拆成 1501007（普通 #3）与 1501008（强化，#5 642.1%）。强化占比：C6 为 1，其他命座为 min(1, 终结 × 15 / t)。动作时长在 buildCharConfig 从倍率表读取；回能和喧响交给倍率表回填（3.6 / 27.5）。影画6 +40% 经原有 `patchAireExecutions` 首次命中。1501022（#4，0s，83.1%）归属不明，不计。
+- **影响**（golden 相对 CC-196 基线；时间账变化只在爱芮条目）：
+
+| 条目 | CC-196 | CC-197 |
+|---|---|---|
+| auto-1501-1511-1411 | 92432349 | 111746214（+20.9%） |
+| auto-1501-1511-1311 | 71765251 | 72661855（+1.2%；stun 3→2，南宫羽槽普攻 26.6→3.3s） |
+| auto-1501-1561-1411 | 75503069 | 100912058（+33.7%） |
+| auto-1581-1501-1561 | 159238781 | 193580797（+21.6%） |
+| agent:1501 c0 / c3 / c4 / c5 | — | +6.4% / +8.1% / +8.4% / +8.8% |
+| agent:1501 c6 | 2625087 | 3238461（+23.4%） |
+
+  - harness 探针（推荐配装）：爱芮-柳-耀嘉音 C0 67.65M→63.66M（−5.9%），C6 101.27M→110.62M（+9.2%）；雅-爱芮-耀嘉音 C0 46.40M→50.62M（+9.1%）。
+  - 柳队 C0 下降是真实代价：每次第三段占 1s 爱芮前台，时间从柳那里挤出来；旧模型让第三段零耗时，等于白送时间。
+  - 正反馈（第三段回能 → 强特 → 应援能量 → 第三段）收敛健康：timeBudgetPasses 2、外层 stable、截断 0。
+- **已知近似**：异放事件次数取资源次数，不跟随装配截断；目前各队截断均为 0，若将来出现截断，行次数会小于事件次数（新测试的「行合计 = 事件次数」会报红，届时按物理次数改事件侧）。甜心律动 #4 的应援能量按整段普攻池折算，没有扣掉第三段占用的时间，属于轻微高估。
+- **验证**：独立 worktree `/home/kaua/calc-arch/wt220`（HEAD + 本卡文件；主工作区里另一个 lane 正在改 `src/stores/catalog.ts` 的加载状态，套预设的测试会抛 `buildRecsLoaded=false`）。vue-tsc 0；新测试 `src/mechanics/__tests__/airePitchRowsCc197.test.ts` 4 条（同源、C6 强化 +40%、派发器数组化、1501-1511-1411 净占用 overflow 0）；aire / inStunAttribution 全绿；golden 与留白棘轮逐条解释后重生成；`moduleAnomalyEventRecords.test.ts` 四组含爱芮的期望更新（r0 爱芮触发 10→15、lead-empty 13→17 ⇒ 蕾米虚耀池同增；j0c6 / j2c6 简 6 命附伤 10→8，爱芮第三段占前台），头注释写明归因；verify EXIT=0（3845）。
+- **回退点**：`git revert 2af8c466`。只撤爱芮：删掉 aire.ts 模块里的 `extraNecessaryAction: aireExtraNecessaryActions` 一行即可（通用扩展对蕾米埃尔零差，可以保留）。

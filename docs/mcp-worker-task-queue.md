@@ -70,24 +70,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 219 轮（lane lead-arena-0925c）：CC-196 完成（e862fbd3）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-196：爱芮绝对音准次数按原文订正（全场应援做命座门控，甜心律动 #4 计入应援能量），抽纯函数 `aireAbsolutePitchCount`；直伤行拆到 CC-197。详见 `docs/mcp-stun-dual-source.md` §24.43。
-- 前几轮：218 CC-195（f5a28e56）；217 CC-194（062af638）；216 CC-193（4ddd4f78）。
+**第 220 轮（lane lead-arena-0925c）：CC-197 完成（2af8c466）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-197：通用「模块必做动作」通道 `extraNecessaryAction` 扩展（可读 state、可返回数组、喧响可缺省），爱芮绝对音准直伤行经它接入；订正 §24.43 的溢出误判。详见 `docs/mcp-stun-dual-source.md` §24.44。
+- 前几轮：219 CC-196（e862fbd3）；218 CC-195（f5a28e56）；217 CC-194（062af638）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-197 团队级时间封顶 + 爱芮直伤行**（§24.43）：先在 core 侧通用地给 `AgentResourceInput` 加「全队剩余普攻池秒数」（找 `teamFrontlineSeconds` 的注入点照着加，core 里不写 agentId）。然后把 `/home/kaua/calc-arch/k219/aire.rows.ts` 里的 `aireFeasiblePitchCount` 上限换成「(全队剩余池 + 本槽 timeBudgetExcess) / 单次时长」。验收：golden 前台合计 ≤ 180s，爱芮队不再出现 −15% 以上的塌陷；异放事件次数 = 行次数合计（测试见 k219/airePitchRowsCc196.test.ts）。
-2. **千夏 1491008 额外强特不计标记**（§24.42 已知缺口 1）：方案 (a)，同步改 `basicSegmentFoldCc195.test.ts` 的 cardHits。
-3. **additionalAbility 声明普查**：1141 / 1151 / 1171 / 1351 / 1441 / 1511 / 1611。
+1. **千夏 1491008 额外强特不计标记**（§24.42 已知缺口 1）：方案 (a)——千夏凝视产行挪到 `patchExecutions`（它能看到 rowBuild :379 物化的额外强特行），并给 `AgentResourceResultInput` 补「钩子全部派发后的行」供展示同源；同步改 `basicSegmentFoldCc195.test.ts` 的 cardHits。先 harness 打印 1491-1031-1211 队的行确认 1491008 存在。
+2. **additionalAbility 声明普查**：1141 / 1151 / 1171 / 1351 / 1441 / 1511 / 1611。
+3. **考虑把其他「buildExecutions 推 necessary 行 + 自估时间」的模块迁到 `extraNecessaryAction`**：先 `grep -rn "timeBucket: 'necessary'" src/mechanics` 列清单，逐个判断是否资源驱动、是否已有 `estimateExSpecialTime` 预留；只迁「时间靠折叠残差追认」的，迁移须 golden 逐条解释。不值得的写「不做」。
 4. T2 剩余 71 条：派子代理（dsflash），由 lead 验收。
 5. freeCompare `higherBetter` 着色：评估，不值得就写「不做」。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`），再查 `docs/MECHANICS_IMPLEMENTATION.md` 的角色段和 `grep -rn 反锁 src`。
-- **未决项**：本轮主工作区里有其他 lane 的进行中改动（`M src/stores/catalog.ts`，未跟踪的 `src/stores/__tests__/catalogReadiness.test.ts`、`src/composables/batchTask.ts`、`batchTask.test.ts`），会让所有队伍算不出结果。不要 add，也不要改；开工时先看 `git status`，还在的话就用 worktree 验证（见已知坑）。worktree `/home/kaua/calc-arch/wt219` 用完可以 `git worktree remove --force` 掉。
+- **未决项**：主工作区里仍有其他 lane 的进行中改动（`M src/stores/catalog.ts`，未跟踪的 `catalogReadiness.test.ts`、`batchTask.ts`、`batchTask.test.ts`），会让套预设的测试抛 `buildRecsLoaded=false`，vue-tsc 也会在这两个文件报错。不要 add、不要改；开工时看 `git status`，还在就用 worktree 验证（见已知坑）。worktree `/home/kaua/calc-arch/wt220` 已在本轮收尾删除。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **判断超预算别看 golden 的逐槽 front**（CC-197 订正 CC-196 的误判）：它是毛时间（necessary 按 GROSS 含合轴段），逐槽相加可以 > 180。要看 `buildTeamTimeSummary(...)` 的 `rowsNet` / `overflow` / `slack`（留白棘轮同口径）与 `rr.convergence.timeTruncatedSeconds`。
+- **资源驱动的额外必做动作用 `extraNecessaryAction`**（CC-197）：时间进账本估计、可读 state、可返回多行、喧响不填就回落倍率表；不要在 buildExecutions 里推 necessary 行再靠折叠残差追认。
 - **主工作区被其他 lane 弄坏时用 worktree 验证**（CC-196）：`git worktree add --detach /home/kaua/calc-arch/wtNNN HEAD`，再 `ln -s <repo>/node_modules wtNNN/node_modules`，拷入自己的文件后在里面跑 vitest / verify（bg.sh 会先 cd 到主仓库，所以命令里再 `cd wtNNN &&`）；golden 在 worktree 里重生成后，把 baseline 拷回主仓库再提交。
 - **模块前台 necessary 行 + 回能 = 正反馈**（CC-196）：新增带倍率表回能的模块前台行，必须看 golden 的逐槽前台合计是否超过战斗时长；按 `state.basicAttackTime` 封顶只算自己那份池，均衡点约为自身池（等于系统性减半），见 §24.43。
 - **按普攻段数命中**（CC-195）：普攻只有一条汇总行，要用 `basicComboCycleSeconds(skills, 段id)`（在 buildCharConfig 里取 skills 算好存进 cfg）加上 `basicSummarySeconds(executions)` 折算，不要 `SET.has(moveId)`。
