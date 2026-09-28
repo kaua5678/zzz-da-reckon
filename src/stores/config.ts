@@ -813,9 +813,16 @@ export const useConfigStore = defineStore('config', () => {
             statCap,
             totalSteps,
             useDefault: true,
-            config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, enemyWeakness: enemy.value.weakness },
+            config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, potentialLevel: char.potentialLevel, enemyWeakness: enemy.value.weakness },
           })
         } else {
+          // CC-173（第 198 轮）决定：本分支（整队贪心，仅 optimizer.useDefault=0 且输出位角色）**允许**与伤害管线不同源——
+          // 用原始队友上下文，缺 resolveSlotPanelBuffInputs 的 5 步加工（来源修正 / 全局 Buff / 额外能力门控 / 接收槽过滤 / 覆盖率）。
+          // 理由：store 禁调编排层（ARCHITECTURE.md R6 C2），5 步加工依赖 mechanics/specs 无法下沉 core；把本编排迁出 store
+          // 要连带迁 setAgent / 初始化 / applyTeamPreset / 优化器设置 watcher 四个流程，对一个非缺省路径得不偿失；注入点方案
+          // 仍要保留回落路径，两条路径照旧，不更简单。缺省路径（上面 useDefault 分支，全部预设 / zd / 测试 harness 走它）不读队友 buff。
+          // 重开条件：useDefault 缺省改为 0，或需要「自动分配 = 配置页按钮（composables/substatOptimizer.ts）」逐值一致。
+          // 详见 docs/mcp-stun-dual-source.md §24.20。
           const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(team.value, {
             teammateBuffGroups: catalogStore.teammateBuffGroups,
             driveDiscSetsMap: catalogStore.driveDiscSetsMap,
@@ -838,7 +845,12 @@ export const useConfigStore = defineStore('config', () => {
             try {
               const otherPanel = calcPanel(otherAgent, otherWEngine, otherChar.driveDisc,
                 catalogStore.driveDiscSetsMap, enabledTeammateBuffs, catalogStore.statRules,
-                { cinemaLevel: otherChar.cinemaLevel ?? 0, wEngineModLevel: otherChar.wEngineModLevel ?? 1, enemyWeakness: enemy.value.weakness })
+                {
+                  cinemaLevel: otherChar.cinemaLevel ?? 0, wEngineModLevel: otherChar.wEngineModLevel ?? 1,
+                  potentialLevel: otherChar.potentialLevel,
+                  effectCoverageMap: undefined, // CC-173：本分支允许不同源（store 拿不到全队盘覆盖率组装，那在编排层）
+                  enemyWeakness: enemy.value.weakness,
+                })
               const p = otherPanel.inCombat
               const cr = Math.min(100, Math.max(0, p.critRate)) / 100
               const directEst = p.atk * (1 + cr * (p.critDmg / 100)) * (1 + (p.dmgBonus ?? 0) / 100)
@@ -866,6 +878,7 @@ export const useConfigStore = defineStore('config', () => {
             config: {
               cinemaLevel: char.cinemaLevel,
               wEngineModLevel: char.wEngineModLevel,
+              potentialLevel: char.potentialLevel,
               sourcePanelsByOwner,
               enemyWeakness: enemy.value.weakness,
             },

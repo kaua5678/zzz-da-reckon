@@ -686,6 +686,8 @@ export interface OptimizeSubstatsInput {
     wEngineModLevel: number
     sourcePanelsByOwner?: SourcePanelsByOwner
     /** 效果覆盖率表（effect id → 0~1），与伤害管线 calcPanel 同口径；缺省 = 全部按 100%（第 194 轮） */
+    /** 角色潜能档（1..6），透传给起点面板盖章（CC-174：calcPanel 生产调用点须显式给出）。缺省 = 6。 */
+    potentialLevel?: number
     effectCoverageMap?: Map<string, number>
     enemyWeakness?: readonly string[]
   }
@@ -772,6 +774,7 @@ function computeNoSubstatPanel(input: OptimizeSubstatsInput): PanelValues {
     {
       cinemaLevel: input.config.cinemaLevel,
       wEngineModLevel: input.config.wEngineModLevel,
+      potentialLevel: input.config.potentialLevel,
       sourcePanelsByOwner: input.config.sourcePanelsByOwner,
       effectCoverageMap: input.config.effectCoverageMap,
       enemyWeakness: input.config.enemyWeakness,

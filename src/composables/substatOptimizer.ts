@@ -13,6 +13,8 @@
  *
  * ⚠ 与 `stores/config.ts` 里的整队优化（:~800，同样按 totalSteps2/3/4 选键）是**两条独立路径**，本函数不替代它；
  *    store 层不反向依赖 composables。若日后要统一，两处步数口径需一起改。
+ *    CC-173（第 198 轮）决定**不统一**：整队贪心只在用户关闭 optimizer.useDefault 时生效，允许与管线不同源，
+ *    理由与重开条件见 stores/config.ts 该分支注释、docs/mcp-stun-dual-source.md §24.20。
  */
 import { computeOptimalSubStats, getTemplate } from '@/core/substatOptimizer'
 import type { DriveDiscConfig } from '@/types/catalog'
@@ -45,7 +47,7 @@ export function computeSubstatAllocationForSlot(
       statRules: catalogStore.statRules,
       statCap: configStore.getMechanicSetting('optimizer.substatCap', 20),
       totalSteps: configStore.getMechanicSetting(tsk, 0),
-      config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: configStore.enemy.weakness },
+      config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, potentialLevel: char.potentialLevel, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: configStore.enemy.weakness },
     })
   } catch {
     return null
