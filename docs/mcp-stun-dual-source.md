@@ -2917,3 +2917,28 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 值不值得：零生产变化，把一条人工纪律变成机器检查，架构上消除了「测试态绿 ≠ 生产态对」这个盲区里最常见的一类。
 - 验证：新锁 3 passed；vue-tsc 干净；v269 verify EXIT=0（3989 passed | 29 skipped）。
 - 回退点：revert 9c037acf（只新增一个测试文件）。
+
+### 24.94 第 270 轮：CC-250 spec 事件 multiplierRowId 端到端生效（60d35e7f）——§24.87 ④ 未决项结项
+
+**问题**：`multiplierRowId` 被 MECHANICS_IMPLEMENTATION.md:94 与展示页 MechanicsTablePage.vue:150 当作通用字段对外宣称（「指定调用倍率表的哪一行」），但通用 spec 路径上非 damage 行两头都被丢弃：
+- ① ratio 或覆盖路径：`buildSpecEventExecutions` 的 getRowValue 由调用方注入，而 4 处调用方（`specs/mechanics.ts` specToMechanicModule.buildExecutions、`mechanics/agents/roxy.ts`、`claret.ts`、`nekomata.ts`）各抄了一份同样的 `rowId === 'damage' ? mechanicRowValues[moveId] : 0`，非 damage 行读成 0，却仍推出一条 0 倍率的执行（usesOverride 为真）；
+- ② 默认路径（无 ratio）：`damageMultiplierOverride=false`，`resourceCalc/helpers.ts#enrichExecutionPlan` 按 moveId 回填的是 **damage** 行，声明的行被静默忽略。
+
+**裁决：修，不收窄字段**（选项「把类型收窄为字面量 'damage'」被否决：该字段已作为 spec 声明式接口对外文档化，收窄等于删功能。修复只需 2 处逻辑改动，还顺带删掉 4 份重复 lambda）。
+
+**改动**（`src/specs/mechanics.ts`）：
+- `buildSpecEventExecutions` 的 getRowValue 改为可选，缺省读 `cfg.mechanicRowValues[moveId]`。这个值由 buildCharConfig 按事件自身 `multiplierRowId`、经 data getRowValue（吃行规则）预取。4 处调用方删掉 lambda，只有测试注入自定义值；
+- `usesOverride` 增加 `|| rowId !== 'damage'`：非 damage 行必须以 base 作倍率覆盖；damage 行无 ratio 仍交 enrich 回填，以保留命座技能等级；
+- 注释写明已知限制：`mechanicRowValues` 按 moveId 存，同一 moveId 被两个事件以不同行引用时会互相覆盖。现存 spec 没有这种情形，出现时要把键改成 moveId+rowId。
+
+**生产零差（推理，不需要管线探针）**：
+- 现存 6 处 multiplierRowId（1021/1091/1371/1451/1471/1531）全是 damage，其余事件缺省也是 damage ⇒ usesOverride 不变；
+- 缺省读取器与原 lambda 在 damage 行上逐字等价（claret 原有 `Number()` 包装，mechanicRowValues 本来就是 number）；
+- verify 中 roxy / claret / nekomata 的 golden 与整队读数全绿。
+
+**锁** `src/specs/__tests__/specEventRowId.test.ts`（4 条）：缺省读取器；damage 行无 ratio 不覆盖；非 damage 行取预存值并强制覆盖；源码锁要求 mechanics/agents 下不再出现 `getRowValue: (… mechanicRowValues …` lambda。反例：修复前 4 条全红。
+
+- MECHANICS_IMPLEMENTATION.md:94 同步写明两种路径的口径。
+- 验证：相关 4 个测试文件 15 passed；vue-tsc 干净；v270 verify EXIT=0（3993 passed | 29 skipped）。
+- 回退点：revert 60d35e7f。
+- 值不值得：声明式接口从「文档说能用、实际读 0」变为真正通用；4 份重复实现归一为 1 份缺省实现。不是降计数。

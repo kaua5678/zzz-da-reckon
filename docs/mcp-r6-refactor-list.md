@@ -420,3 +420,4 @@
 | 267 | 管线层 → 展示门面反向依赖；core 运行时传递闭包 | CC-246（`d9d5e4ed`）AUTO_AXIS_PRESET_HINTS 迁入 registry；CC-247（`1f2ee896`）registry 成纯叶子，core 闭包去掉 specs / fusion；两层都有闭包锁（§24.91） | 新增分层违规会被 importClosure 锁拦截；其他层（specs → core 禁止、展示层禁止值导入 core / mechanics / specs）还没有闭包锁，见交接下一步 |
 | 268 | specs → core 越界（verify.ts）；specs / data 分层无锁 | CC-248（`7c8567c9`）verify.ts 迁至 src/test/specVerify.ts；specs / data 闭包锁；ARCHITECTURE 分层规则表（§24.92） | 口头分层规则已全部落成锁（7 条对应 7 个锁）；展示层规则确认已有判据 7 覆盖 |
 | 269 | mechanics 闭包（测量）；测试态 / 生产态行规则盲区 | mechanics 无越界、不加锁；CC-249（`9c037acf`）一致性锁（§24.93） | 「涉及 getRowValue 须在默认规则下补验」由人工纪律转为 verify 自动检查 |
+| 270 | spec 声明式字段 multiplierRowId 只对 damage 生效（4 份重复闸 + enrich 回填 damage 行） | CC-250（`60d35e7f`）缺省读取器归一，非 damage 行强制覆盖（§24.94） | §24.87 ④ 未决项结项 |

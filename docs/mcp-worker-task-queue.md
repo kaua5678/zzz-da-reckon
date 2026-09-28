@@ -71,34 +71,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 269 轮（lane lead-arena-0925c）：CC-249（9c037acf）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.93。要点：
-  - mechanics 闭包已测，无越界，不加锁；
-  - §24.85 未决项已裁决（harness 不全局加载默认规则），代之以 `src/composables/__tests__/productionRuleParity.test.ts`，自动比对空规则与生产默认规则下的整队读数。
-- 前几轮：268 CC-248（specs / data 闭包锁，ARCHITECTURE 分层规则表）；267 CC-246/247；266 CC-245。
+**第 270 轮（lane lead-arena-0925c）：CC-250（60d35e7f）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.94。要点：spec 事件 `multiplierRowId` 端到端生效；`buildSpecEventExecutions` 缺省读 `cfg.mechanicRowValues`，调用方**不要再传** getRowValue lambda（源码锁 `specs/__tests__/specEventRowId.test.ts`）。§24.87 ④ 结项。
+- 前几轮：269 CC-249（生产态规则一致性锁）；268 CC-248（specs / data 闭包锁）；267 CC-246/247。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**分层锁**：见 ARCHITECTURE.md §0「分层规则 → 锁」表。分层线已收口，不要再加分层锁。
+**分层锁**：见 ARCHITECTURE.md §0「分层规则 → 锁」表。分层线已收口。
 
-**下一步（直接开工，按优先级排）**：
-1. **裁决 §24.87 ④「spec buildExecutions 的 getRowValue 只放行 damage 行」**：先读 §24.87 ④ 与 `src/specs/` 下的 buildExecutions（grep `getRowValue`），弄清其他行（失衡 / 喧响 / 能量）不吃规则是**有意**（这些行由别处取值）还是遗漏。
-   - 若是遗漏：放行后用 productionRuleParity 与规则单元锁验证，并写 CC 卡；
-   - 若是有意：在代码注释与文档写明理由，从未决项里移除。
-2. 回到 R6 清单（`docs/mcp-r6-refactor-list.md`）挑影响面最大的「可归一 / 可结构化」项。开工前先 grep 卡表与本文件「已否决方向」。
+**下一步（直接开工）**：行规则 / spec 取值线的未决项已清空，回到 R6 清单（`docs/mcp-r6-refactor-list.md`）。
+1. 先读 r6 清单的「可归一 / 可结构化」两类，列出状态不是 done / 不做的条目。每条先 grep 卡表（`docs/mcp-calc-core-architecture.md`）与本文件「已否决方向」，排除已裁决的。
+2. 从剩下的条目里挑**影响面最大**的一项，按「先测量、再判断值不值得」执行。写 CC-251。
+3. 若清单已无可做项：用一次性探针扫 `src/mechanics/agents/*.ts` 里跨文件重复 ≥3 份的同形 lambda 或辅助函数（本轮 4 份 getRowValue lambda 就是这样发现的）。**同形不等于同义**：逐个比对 `?.`、`?? []`、默认值、Number() 包装，以及函数名里的 raw 等意图信号（CC-237 教训）。
 
 **已知坑**：
-- 命名带 raw 的函数是意图信号（CC-237 教训）；
-- 整队读数的生产默认规则一致性已由 productionRuleParity 自动覆盖。**新增默认规则**，或改动**不经整队读数**的取值（编辑器展示、单模块 cfg）时，仍需手工在 `setActiveRowFusionRules(createDefaultLogicEditorState().rowFusions)` 下补验；
+- 命名带 raw 的函数是意图信号；
+- 整队读数的生产默认规则一致性由 productionRuleParity 自动覆盖；新增默认规则时仍要手工补验；
+- `mechanicRowValues` 按 moveId 存，同一 moveId 被多个事件以不同行引用时会冲突（注释已写明，现存无此情形）；
 - 上传多个文件时逐行调用 `up.sh`，**不要在 bash for 循环里拼 `${...}`**；
 - 测试里调用模块 buildCharConfig 要传 `team: [], slot: 0`；模块级规则状态要 `afterEach(() => setActiveRowFusionRules([]))`；新测试先单独跑 `npx vue-tsc -b`；
-- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；临时探针跑完删掉再 verify；反例用临时 sed 加 `git checkout <文件>` 恢复。
+- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；反例用「先上传测试、跑红、再打补丁」或临时 sed 加 `git checkout <文件>`。
 
 **未决项**：
 - 1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；
 - lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）；
-- 「进入失衡 +20 喧响」是否真实机制（§24.79 ①）；
-- spec buildExecutions 的 getRowValue 只放行 damage 行（§24.87 ④，下一步 1）。
-- （§24.85 harness 默认规则：第 269 轮已裁决，移出。）
+- 「进入失衡 +20 喧响」是否真实机制（§24.79 ①）。
+- 以上 3 项都依赖游戏事实或用户审美，不是架构问题，不要为它们开卡。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

@@ -91,7 +91,7 @@
 倍率表里少部分行不是“一个招式对应一行”，而是被多个事件按关系复用。用事件来定义“实际招式调用哪一行倍率”：
 
 - `executionKind: "execution"`：该事件会生成实际招式执行，进入伤害池。
-- `carrierMoveId` + `multiplierRowId`：指定调用倍率表的哪一行（默认 `damage`）。
+- `carrierMoveId` + `multiplierRowId`：指定调用倍率表的哪一行（默认 `damage`）。damage 行且无 `multiplierRatio` 时交 enrich 按 moveId 回填（含命座技能等级）；非 damage 行或带 ratio 时以预取行值（吃逻辑编辑器行规则）作倍率覆盖（CC-250）。
 - `multiplierRatio`：复用时的缩放系数，例如风炮 = 起风倍率 × 0.3 + 风炮爆炸倍率。
 - `countField`：次数由机制模块通过 `counts` 上下文传入，支持非内置 countSource。
 - `overrides`：模块可对事件动态覆盖倍率（例如葬血强袭按消耗个人资源每点 +6.5%）。
