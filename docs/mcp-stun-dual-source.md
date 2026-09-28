@@ -1546,3 +1546,29 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 修复后重跑普查（k215/sweep3.tsv）：`anton.additionalShockRatio` **仍然无效**，原因见下一条。
   - verify EXIT=0（3831：安东单测 +1、门控守卫 +1、harness 门控 +2）。
 - **回退点**：`git revert 10817931`。
+
+### 24.40 CC-193：汇总平A行对模块不可见 + 新角色普攻伤害恒 0（第 216 轮，4ddd4f78）
+
+- **起因**：§24.39 发现安东门控修好后总伤仍不变。harness 实测：普攻在引擎里恒为**一条**汇总行（`core/resource/rowBuild.ts` 的 `moveId: 'basic_attack'`，`count: 0`、按时长），倍率取「基准段」的秒均值（`skillRows.ts#getBasicComboMoves`：catalog `basicBenchmarkMoveId` → 硬编码 override → 默认第 3 个带 `#N` 的普攻段）。模块用 `SET.has(exec.moveId)` 按普攻段 id 匹配时**永远碰不到**这条行。
+- **普查**（`.zc/perf/moveids.perf.ts`，本地不入库，约 50s；比对脚本 `/home/kaua/calc-arch/k216/mvcmp.py`，输出 `k216/mvcmp.out`）：全部预设 × {当前, C0, C6}，外加无预设角色的换位队伍，收集每个角色生产行里出现过的 moveId；再抽出模块源码里属于本角色的 7 位 moveId 字面量对照。结果：374 个里有 124 个从未出现在生产行，其中 75 个是普攻段。
+  - **非普攻的缺失**（非强化特殊技、冲刺攻击、快速支援、部分变体）：引擎的计划本来就不排这些动作，属于「写了但碰不到、也不影响结果」，**不做**。
+  - **普攻段的缺失**分两类：一类只是用来查倍率表、构造自定义行（露西、丽娜、柏妮思、叶瞬光、席德、克拉蕾等），**没问题**；另一类用来**匹配行**，这才是 bug，见下文。
+- **修复 1（通用接线）**：cfg 新增 `basicBenchmarkMoveId`（`helpers.ts` 构建 cfg 时由 `getBasicComboMoves` 算出），`rowBuild` 把它写进汇总平A行的 `benchmarkMoveId`；`@/types/resource` 新增 `execMatchesMove(exec, ids)`：普通行按 moveId 匹配，汇总平A行按基准段匹配。**以后模块按普攻段匹配，一律用 `execMatchesMove`，不要写 `SET.has(exec.moveId)`。**
+- **安东：先改后撤回（按用户历史裁决）**：一开始把 catalog 1111 的 `basicBenchmarkMoveId` 设成了爆发 #3（1111008）。verify 里 `cinemaAxisBatchA.test.ts` 的边界反锁测试红了，它引用的是 `docs/MECHANICS_IMPLEMENTATION.md` 安东段「已知缺口」：**用户 2026-08 裁决爆发状态建模复杂度高，暂不做**。改基准段实质上就是在建模爆发状态，所以**撤回**，只保留通用接线：安东模块的打桩 / C6 改用 `execMatchesMove`，常态基准段 1111003 不在集合里，行为与裁决一致。harness 用例改成裁决反锁（基准段 1111003、平A行打桩加成为 0）。**日后若裁决改为建模**：在 catalog 配 `basicBenchmarkMoveId = 1111008`，同时改这条用例和 cinemaAxisBatchA 的反锁即可（试算：golden 里安东单人伤害约 +105%~+128%，失衡次数 1→2）。教训：开工前除了卡表，还要查 MECHANICS_IMPLEMENTATION 的「已知缺口 / 用户裁决」。
+- **修复 3（振斗）**：耗血暴伤 +50% 本来就针对胧切段，而用户在 f99751fa 里设定的基准段正是胧切 #1（烧血高伤），匹配却一直失败；改用 `execMatchesMove`。golden：振斗单人伤害 +3.5%。
+- **修复 4（赛维里安 1631 / 菲欧妮 1641，影响最大）**：这两个新角色在新版 catalog 里的普攻段名不带 `#N`，`getBasicComboMoves` 返回 null ⇒ 汇总平A行**没有任何倍率** ⇒ 普攻伤害恒为 0（harness 实测：菲欧妮 45s、赛维里安 40s 的普攻时长，dm 为空）。而且旧写法把数据配置也放在 `#N` 过滤之后，连 `basicBenchmarkMoveId` 都会被否决。改为：数据配置优先，在全部 actionTime > 0 的普攻招式里查找，不受命名启发式约束；catalog 补 1631 → 1631003、1641 → 1641003（第 3 段，与模块 `*_BASIC_SEGMENT_IDS` 四段连击一致）。赛维里安 C1「普攻暴伤 +60%」同步改用 `execMatchesMove`。两个模块只用普攻时长算资源收入（流息 / 余火），不给汇总行定价，不会重复计算。harness（[x, 格莉丝, 耀嘉音]，普攻权重 3）：菲欧妮队 31.65M → 35.15M（+11%），赛维里安队 31.46M → 39.30M（+25%）。
+- **结构守卫**：`src/composables/__tests__/basicBenchmarkMatchCc193.test.ts`，包括：
+  - `execMatchesMove` 单测；
+  - 振斗、赛维里安、菲欧妮的汇总平A行 harness 行为测试，以及安东的裁决反锁；
+  - **catalog 全部角色 `getBasicComboMoves` 非空**：以后新角色的普攻名如果不带 `#N`，这条会红，此时在 catalog 里配 `basicBenchmarkMoveId` 即可。
+- **数值影响面**：只影响振斗、赛维里安、菲欧妮所在的队伍（都不在预设里）。catalog 只多了 1631 / 1641 两个键（按 JSON 结构比对确认）。time golden 已重生成（`TIME_GOLDEN_UPDATE=1`），判红的 6 条全部可以解释：赛维里安 C6、菲欧妮 C5/C6 的普攻行以前连失衡值也是 0，补上后失衡 1→2、连携 +1，约 2.2–2.4s 从普攻挪到必做动作。伤害信息项：赛维里安 +31%~+44%，菲欧妮 +56%~+72%，振斗 +3.5%。
+- **剩余逐角色建模欠账（未做，按优先级）**：
+  0. ~~安东 C1 回能 / 感电追加 / 打桩 / C6~~：**用户 2026-08 裁决不做**（爆发状态建模），不列入待办。重开时的做法见上面「安东」一条。
+  2. **千夏**凝视标记里有普攻 #4（1491004），而普攻时长不计标记供给，标记数偏少。
+  3. **佩洛伊斯**按 1551006 / 007（天光 #3 / #4 连段）计 a3 / a4，但这些行从不出现，连段花费恒为 0（`specPanelBuffs.ts:263`）。
+  4. **扳机**冥狱段 1361020 / 022、**爱芮**绝对音准 1501005–008 / 022、**苍角**霜染刃旗 1131004 / 005：都是状态型普攻，基准段是常态第 3 段，所以匹配不到。每个都要先判断「该状态是不是主形态」，再决定改基准段还是折算。
+- **验证**：
+  - vue-tsc 0。
+  - zd（`ZD_DROP=benchmarkMoveId,basicBenchmarkMoveId`）：DUMP / ROWS 均为 DIFF 0。两个新键会进所有预设的哈希，所以要剔除；剔除后零差，证明预设数值没变。
+  - verify EXIT=0（3837：新增 basicBenchmarkMatchCc193 共 6 例）。
+- **回退点**：`git revert 4ddd4f78`。只想回退某个角色的基准段时，删掉 catalog 里对应的 `basicBenchmarkMoveId`，再跑 `npm run minify:static`。

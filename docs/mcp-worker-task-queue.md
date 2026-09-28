@@ -70,22 +70,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 215 轮（lane lead-arena-0925c）：CC-192 完成（10817931）。文档见本提交。已 push。**
-- CC-192：**机制设置动态普查**（`.zc/perf/sweep.perf.ts`，本地不入库）。179 项里有效 168、无效 11，11 项已逐条分类（轴覆盖 / 饱和 / 场景依赖 / 只减不增）。唯一的 bug 是**安东**：1111.json 缺 `additionalAbility` 声明，生产路径上「通力合作·感电追加」恒不触发；另有滑块 0% 读成 100%。两处都已修，并新增结构守卫 `additionalAbilityGate.test.ts` 和 harness 门控测试。**但总伤仍不变**：安东的生产计划里没有爆发状态招式行，模块按 moveId 的增伤可能全不命中，列为 CC-193（下一步第 1 项）。顺带删了诺姆 3 个只写字段（T2），改正 1571 过期说明。详见 stun-dual-source §24.39。
-- 前几轮：214 CC-191（9e0d4adf）；213 CC-190（f516e95f）；212 CC-189（ad9a9321）。
+**第 216 轮（lane lead-arena-0925c）：CC-193 完成（4ddd4f78）。文档见本提交。已 push。**
+- CC-193：普攻在引擎里是一条汇总行（`moveId: 'basic_attack'`），模块按普攻段 id 匹配永远落空。本轮加了通用接线：汇总行带 `benchmarkMoveId`，匹配统一用 `execMatchesMove`（在 `@/types/resource`）。另外修了**赛维里安 1631 / 菲欧妮 1641 普攻伤害恒为 0**（普攻名不带 `#N`，找不到基准段），并加守卫：全部角色都必须能解析出基准段。安东爆发基准段试过又撤回了：用户 2026-08 裁决爆发状态不建模（MECHANICS_IMPLEMENTATION 安东段）。详见 stun-dual-source §24.40。
+- 前几轮：215 CC-192（10817931）；214 CC-191（9e0d4adf）；213 CC-190（f516e95f）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-193：模块 moveId 集合在生产行中的命中普查**（§24.39「更深一层」）。先定位安东：生产计划里为什么没有爆发状态招式行（普攻是通用 `basic_attack` 行，查 `core/resource/rowBuild.ts:187/206` 附近和 skillRows 的展开逻辑）。再做通用普查：把每个模块源码里 `new Set(['<agentId>0xx', …])` 这类 moveId 集合、`exec.moveId === '…'` 这类比较抽出来，统计它们在全部预设（和换位队伍）的生产执行行里命中了多少次，命中 0 的逐个判定是 bug 还是场景依赖。复用 `.zc/perf/sweep.perf.ts` 的 harness 骨架。修复若改变数值，走 CC 卡并写清依据（catalog 原文），预设里没有安东，所以 zd 可能看不到差异，要靠新的 harness 行为测试证明。
-2. **additionalAbility 声明普查**（§24.39 未做项）：1141 / 1151 / 1171 / 1351 / 1441 / 1511 / 1611 这 7 个 spec 没有 `additionalAbility`。逐个对照 catalog 原文的触发条件（`public/static/catalog.json` 里各角色的 `additionalAbility.description`），查额外能力效果在代码里是否无条件生效。「本该有条件却恒生效」算 bug，走 CC 卡；原文本身就无条件的写「不做」。
-3. **T2 剩余 71 条**：派子代理（`dsh --profile headless`，先自检 pong）逐批做（每批 ≤ 10 条，只删测试读取数为 0 的），lead 负责 zd（结果字段要带 `ZD_DROP=<字段,…>`）和 verify 验收。不要和子代理同时写同一个文件。
-4. freeCompare `higherBetter` 着色：评估是否值得做，不值得就写「不做」。
+1. **§24.40「剩余逐角色建模欠账」第 2–4 项**：千夏普攻 #4 标记（`qianxia.ts:61`，标记供给不含普攻时长）、佩洛伊斯 a3 / a4 连段（`specPanelBuffs.ts:263`，连段花费恒为 0）、扳机 / 爱芮 / 苍角的状态型普攻。**先查 `docs/MECHANICS_IMPLEMENTATION.md` 对应角色段有没有「已知缺口 / 用户裁决」**（安东就是这样撞上的），有裁决就照办，并在 §24.40 写明。没有裁决的，逐个判断「状态是不是主形态」，是就配 `basicBenchmarkMoveId` 并改用 `execMatchesMove`，不是就写「不做」加理由。改 catalog 后 time golden 会报时间账变化，要逐条解释后再 `TIME_GOLDEN_UPDATE=1`。
+2. 千夏标记这类「按普攻时长折算次数」的需求，如果不止一个角色有，可以考虑在 `execMatchesMove` 旁边提供一个通用的「汇总平A行 → 基准段次数」换算（totalTime / 基准段 actionTime），而不是各模块各写一遍。
+3. **additionalAbility 声明普查**（§24.39 未做项）：1141 / 1151 / 1171 / 1351 / 1441 / 1511 / 1611 这 7 个 spec 没有 `additionalAbility`，要对照 catalog 原文的触发条件。
+4. T2 剩余 71 条：派子代理（dsflash）逐批做，由 lead 验收。
+5. freeCompare `higherBetter` 着色：评估，不值得就写「不做」。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）有没有同一件事的历史裁决。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **普攻恒为一条汇总行**（`moveId: 'basic_attack'`，按基准段秒均结算）：模块按普攻段 id 匹配时必须用 `execMatchesMove(exec, SET)`（`@/types/resource`），`SET.has(exec.moveId)` 碰不到它。基准段由 catalog `basicBenchmarkMoveId` 决定，缺省为第 3 个带 `#N` 的段；状态型主形态（爆发、烧血等）要显式配置（CC-193）。
+- **新角色录入**：catalog 普攻段名不带 `#N` 时必须配 `basicBenchmarkMoveId`，否则普攻伤害为 0。`basicBenchmarkMatchCc193.test.ts` 的守卫会红（CC-193：赛维里安 / 菲欧妮就是这样漏的）。改 catalog 用 node 读入、改字段、再调 `scripts/lib/jsonio.mjs#writeJsonCompact` 写回，然后跑 `npm run minify:static`，最后按 JSON 结构比对确认只改了目标键。
+- **开工前查裁决**：除了卡表，还要查 `docs/MECHANICS_IMPLEMENTATION.md` 各角色段的「已知缺口（用户裁决不做）」，以及测试里的「边界反锁」（`grep -rn 反锁 src`）。CC-193 就因为漏查，先改了安东爆发基准段又撤回。
+- **只看「设置有没有效果」测不出整片失效**：CC-192 的动态普查说安东滑块无效，真正的原因要一路追到「生产行里根本没有对应招式行」。怀疑模块效果不生效时，先用 harness 打印生产执行行的 moveId（参考 `.zc/perf/moveids.perf.ts`）。
 - **单测直接构造门控值，看不见生产接线**：`panel: { additionalAbilityActive: 1 }` 这类手写 cfg 会让模块测试永远是绿的，即使生产路径上从不置位（CC-192 安东）。门控类功能至少要有一条经由 harness（`setupHarness` + 真队伍）的行为测试，或者一条结构守卫。动态普查工具：`.zc/perf/sweep.perf.ts`。
 - `bg.sh` 后台启动最稳的写法：`setsid ./bg.sh <名> '<cmd>' </dev/null; sleep 3; ls <名>.log`。第 215 轮两次省掉 sleep，进程都没起来。
 - **查「字段有没有人读」必须连 JSON 一起查**：spec 解释器按字符串键读 cfg（`countField` / `initialValueField` / `enabledField`…，`src/specs/types.ts`），键名只出现在 `src/specs/agents/*.json`。`grep -rnw <字段> src` 默认会扫到 .json，但 `--include=*.ts` 会漏（第 213 轮就是这样漏的）。
