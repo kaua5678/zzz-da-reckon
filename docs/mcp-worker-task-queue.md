@@ -70,23 +70,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 218 轮（lane lead-arena-0925c）：CC-195 完成（f5a28e56）。文档见本提交。已 push。**
-- CC-195：新增通用的「普攻汇总行 → 段命中」折算（`basicComboCycleSeconds` + `basicSummarySeconds`）。千夏普攻 #4 进入凝视标记供给；佩洛伊斯日珥账本补上余晖回复；苍角不做。详见 `docs/mcp-stun-dual-source.md` §24.42。
-- 前几轮：217 CC-194（062af638，postRound 跨轮）；216 CC-193（4ddd4f78）；215 CC-192（10817931）。
+**第 219 轮（lane lead-arena-0925c）：CC-196 完成（e862fbd3）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-196：爱芮绝对音准次数按原文订正（全场应援做命座门控，甜心律动 #4 计入应援能量），抽纯函数 `aireAbsolutePitchCount`；直伤行拆到 CC-197。详见 `docs/mcp-stun-dual-source.md` §24.43。
+- 前几轮：218 CC-195（f5a28e56）；217 CC-194（062af638）；216 CC-193（4ddd4f78）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **爱芮绝对音准直伤**（§24.42 已知缺口 2）：在 `aire.ts` 的 buildExecutions 里按 `pitchCount` 推 1501005 / 1501006 / 1501007 表行（参考 `trigger.ts#pushTableExecution`），前台耗时挤占普攻池。可逆：删掉推行即可回退。做之前先在 `docs/MECHANICS_IMPLEMENTATION.md` 爱芮段再确认一次没有相反的用户口径；做完跑 time golden，逐条解释时间账变化。
-2. **千夏 1491008 额外强特不计标记**（§24.42 已知缺口 1）：倾向方案 (a)，同步改 `basicSegmentFoldCc195.test.ts` 的 cardHits。
+1. **CC-197 团队级时间封顶 + 爱芮直伤行**（§24.43）：先在 core 侧通用地给 `AgentResourceInput` 加「全队剩余普攻池秒数」（找 `teamFrontlineSeconds` 的注入点照着加，core 里不写 agentId）。然后把 `/home/kaua/calc-arch/k219/aire.rows.ts` 里的 `aireFeasiblePitchCount` 上限换成「(全队剩余池 + 本槽 timeBudgetExcess) / 单次时长」。验收：golden 前台合计 ≤ 180s，爱芮队不再出现 −15% 以上的塌陷；异放事件次数 = 行次数合计（测试见 k219/airePitchRowsCc196.test.ts）。
+2. **千夏 1491008 额外强特不计标记**（§24.42 已知缺口 1）：方案 (a)，同步改 `basicSegmentFoldCc195.test.ts` 的 cardHits。
 3. **additionalAbility 声明普查**：1141 / 1151 / 1171 / 1351 / 1441 / 1511 / 1611。
 4. T2 剩余 71 条：派子代理（dsflash），由 lead 验收。
 5. freeCompare `higherBetter` 着色：评估，不值得就写「不做」。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`），再查 `docs/MECHANICS_IMPLEMENTATION.md` 的角色段和 `grep -rn 反锁 src`。
+- **未决项**：本轮主工作区里有其他 lane 的进行中改动（`M src/stores/catalog.ts`，未跟踪的 `src/stores/__tests__/catalogReadiness.test.ts`、`src/composables/batchTask.ts`、`batchTask.test.ts`），会让所有队伍算不出结果。不要 add，也不要改；开工时先看 `git status`，还在的话就用 worktree 验证（见已知坑）。worktree `/home/kaua/calc-arch/wt219` 用完可以 `git worktree remove --force` 掉。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **主工作区被其他 lane 弄坏时用 worktree 验证**（CC-196）：`git worktree add --detach /home/kaua/calc-arch/wtNNN HEAD`，再 `ln -s <repo>/node_modules wtNNN/node_modules`，拷入自己的文件后在里面跑 vitest / verify（bg.sh 会先 cd 到主仓库，所以命令里再 `cd wtNNN &&`）；golden 在 worktree 里重生成后，把 baseline 拷回主仓库再提交。
+- **模块前台 necessary 行 + 回能 = 正反馈**（CC-196）：新增带倍率表回能的模块前台行，必须看 golden 的逐槽前台合计是否超过战斗时长；按 `state.basicAttackTime` 封顶只算自己那份池，均衡点约为自身池（等于系统性减半），见 §24.43。
 - **按普攻段数命中**（CC-195）：普攻只有一条汇总行，要用 `basicComboCycleSeconds(skills, 段id)`（在 buildCharConfig 里取 skills 算好存进 cfg）加上 `basicSummarySeconds(executions)` 折算，不要 `SET.has(moveId)`。
 - **模块钩子看不到的行**：额外强特行（`exSpecialPlans`）在 `buildExecutions` **之后**物化，只有 `patchExecutions` 看得到；装配期的 `preModuleExecutions` 是 buildExecutions 派发前的行。模块派生量不要回写 cfg 给装配期读（多 pass 下最后写入者赢），应在装配期用同一纯函数重算。
 - **postRound 写入的是下一轮的 cfg**（CC-194 起）：`applyTeamConfig({phase:'postRound'})` 在**下一轮** converge 前、用上一轮收敛的次数对新克隆派发（`threads.postRoundInput`）。**本轮末尾**写 cfg 没有意义，`runCalcRound` 每轮都会从 `base.characters` 重新克隆。新增跨轮反馈，要么走 postRound，要么走 `nextRoundFeedback`；并检查 `outerFeedbackSignature` 是否覆盖了它的输入。
