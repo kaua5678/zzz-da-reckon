@@ -1856,3 +1856,23 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **影响面**：timeGolden / 留白棘轮零差（现有预设里的凯撒队都满足原始声明条件）。行为变化只出现在「凯撒 + 异阵营非支援队友」（默认多勾一条）和「菲欧妮异常数不足」（tier3 默认不勾，引擎本来就丢）。verify EXIT=0（3889 passed）；vue-tsc 0。
 - **回退点**：`git revert a119557d`。
 - **同类遗留 → 下一轮 CC-207**：store 里还有只在 store 生效的钩子 `teammateBuffGate`（`pulchra.ts:158`、`remielle.ts:437`）。其中波可娜是**正确性约束**：6 命时基础条 `pulchra_extra_trap_followup` 必须关掉，防止与 `pulchra_cinema_6_trap_all` 重复计算。但它只作用于默认值，用户强行勾上时引擎会算两遍。与 CC-203 / CC-206 是同一类问题的镜像（默认层有约束、引擎层没有）。
+
+### 24.54 第 230 轮：CC-207 模块钩子 teammateBuffGate 由 store 与引擎共读（fb0b8205）
+
+- **起点**：`teammateBuffGate` 原契约是「只 store 读、只影响默认值」。现有两个实现逐个判断后，**都属于正确性约束，不是默认值偏好**：
+  - 波可娜 1351（`pulchra.ts:158`）：6 命时基础条 `pulchra_extra_trap_followup` 必须关掉，否则与 `pulchra_cinema_6_trap_all` 重复计算；
+  - 蕾米埃尔 1581（`remielle.ts` 的 `REMIELLE_BUFF_GATES`）：`atk_1/2/3` 是互斥档位，`refringe_3` 只在 3 档成立，prismatic 需要额外能力触发。
+  - 用户强行勾上被否决的条目时，引擎照样计入：波可娜会双计，蕾米埃尔会多档叠加。与 CC-203 / CC-206 是同一类问题（默认层有约束，引擎层没有）。
+- **改法**：
+  - `src/mechanics/additionalAbilityGates.ts` 新增纯函数 `teammateBuffGateBlocks(team, groups) → Set<buffId>`：遍历已注册模块的钩子，按 agentId 与 teammateBuffId 建立 cinemaByGroup，多个钩子之间取逻辑与。
+  - store `deriveTeammateBuffEnabled` 删掉自建的 `buffGateTeam` / `buffGates` / `resolveSpecialTeammateBuffEnabled`，改为 `!gateBlocked.has(buff.id)`；
+  - 引擎 `resolveSlotPanelBuffInputs` 在额外能力门控旁边加一道同源过滤 `!gateBlockedBuffs.has(buff.id)`。
+  - `mechanics/types.ts` 契约注释改为「store 与引擎共读，只放正确性约束」。默认值偏好不该放进这个钩子（用户勾选应当生效）。
+- **为什么值得做**：同一个判断只剩一处实现（更简单）；以后的新钩子自动两层同时生效（更通用）。
+- **测试** `teammateBuffGateEngineCc207.test.ts`：
+  - 波可娜 C6 配艾莲：强行勾上基础条，队友面板逐字节不变；判别性对照：关掉影画六条后面板变化；C0 时基础条不被否决。
+  - 蕾米埃尔配简：三档加 refringe_3 全部强行勾上，面板不变；判别性对照：关掉当前档后面板变化。
+  - **反证**：临时去掉 panelPhases 那道过滤，波可娜和蕾米埃尔两条测试都失败（证实改前确实双计 / 叠档），随后已恢复。
+- **影响面**：默认配置下 store 本来就关掉了这些条目，所以 timeGolden / 棘轮零差。行为变化只出现在用户手动强行勾选的场景：结果变得与 UI 语义一致（被否决的条目不再生效）。verify EXIT=0（3892 passed / 29 skipped）；vue-tsc 0。
+- **已知限制**：UI 仍允许勾选被否决的条目，只是不生效。如需在 UI 上置灰，后续可让面板读 `teammateBuffGateBlocks`（纯展示改动，不影响计算）。
+- **回退点**：`git revert fb0b8205`。

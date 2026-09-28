@@ -70,20 +70,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 229 轮（lane lead-arena-0925c）：T2 收尾（不做）+ CC-206 完成（a119557d）。文档见本提交。push 结果见 git log / rev-list。**
-- T2：子代理全量分类后整体不做，a 类名单留在 `docs/mcp-write-only-props.md`「T2 收尾」，顺手改到时可删。
-- CC-206：store 默认门控直接调引擎求值函数。详见 `docs/mcp-stun-dual-source.md` §24.53。
-- 前几轮：228 CC-205（d95a2957）；227 CC-204（9aed3fc4）；226 CC-203（fb64de6f）。
+**第 230 轮（lane lead-arena-0925c）：CC-207 完成（fb0b8205）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-207：`teammateBuffGate` 改为 store 与引擎共读，详见 `docs/mcp-stun-dual-source.md` §24.54。
+- 前几轮：229 CC-206（a119557d）加 T2 收尾；228 CC-205（d95a2957）；227 CC-204（9aed3fc4）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. **CC-207：store-only 钩子 `teammateBuffGate` 的约束下沉**（§24.53 末条）。
-   - 读 `src/mechanics/types.ts` 中 `teammateBuffGate` 的契约（约 828 行起），以及两个实现：`pulchra.ts:158`（6 命时基础条关掉，防与影画六条重复计算）、`remielle.ts` 的 `remielleTeammateBuffGate`（额外能力分档，约 402 行起）。
-   - 逐个判断它是「默认值偏好」还是「正确性约束」（强行勾上后引擎会算错 / 重复计算）：
-     - 正确性约束 ⇒ 引擎也要执行。首选做法：在 panelPhases 面板阶段对 `enabledTeammateBuffs` 用同一个钩子过滤，也就是把 `teammateBuffGate` 从「只 store 读」改为「store + 引擎共读」，和 CC-206 同构（引擎侧在 `resolveSlotPanelBuffInputs` 里 `additionalAbilityBuffGates` 过滤的旁边加一道）。
-     - 默认值偏好 ⇒ 保持现状，并在契约注释里写明「只影响默认值，用户可覆盖」。
-   - 零差判据：默认配置下 golden 不变（store 默认已经关掉这些条目）。测试：波可娜 6 命时强行勾上基础条，队友面板追加攻击增伤不增加。
-2. 队列暂无其他架构项。CC-207 做完后，自己挑一个「同一判断多处实现」的点继续（本轮的经验：两层都在算同一件事时，往往一层带修正、另一层不带）。可以用 `grep -rn 'evalAdditionalAbility(' src` 这类方法找重复求值点。
+1. 找下一个「同一判断多处实现」的点：`grep -rn 'evalAdditionalAbility(' src`、`grep -rn 'getRegisteredAgentMechanics()' src/stores src/composables`，逐个看 store 层和引擎层是否各算一份、其中一层带修正而另一层不带。找到就立 CC-208，按 CC-206 / CC-207 的同构方式合并到 mechanics 层的纯函数（store 不能值导入 composables/resourceCalc）。零差判据：默认配置下 golden 不变。
+2. 若找不到值得做的点，写「本轮扫描无可做项」加扫描范围，不要为了降计数硬做。
+3. 可选的纯展示小项：UI 对被 `teammateBuffGateBlocks` 否决的条目置灰（§24.54「已知限制」）。展示层禁止值导入 mechanics，要经 store 暴露。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）。
 
@@ -91,6 +86,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **修 bug 的测试要做反证**：临时撤掉修复（先 cp 备份），确认新测试失败，再恢复。否则测试可能在修复前也能通过（CC-207 做过）。
 - **wsl_exec 里后台起 dsh**：`nohup bash -c '…' &` 会随调用退出被杀、连日志都不生成。要写成脚本文件，用 `setsid nohup script.sh >/dev/null 2>&1 < /dev/null &` 启动（第 229 轮）。dsh 做 66 条的只读分类约需 30 分钟。
 - **store 值导入 composables/resourceCalc 会成环**（helpers.ts 值导入 stores/config）。两边共用的函数放 mechanics 或 specs 层（CC-206）。
 - **「零读取」≠「可删」**：先 grep 字段语义对应的展示文本或常量，看有没有写死的过时值（CC-205 零号安比 +25% 实为 50%）。
