@@ -51,6 +51,7 @@ import type {
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
+import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { LEVEL_COEFF_60, LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
 import { resolveAnomalyCorrosion } from './corrosion'
@@ -731,8 +732,7 @@ export function calcAnomalyCritExpect(
     ? 0
     : (assaultSource.selfAssaultCritDmgBonus ?? 0)
   const critDmg = (panel.anomalyCritDmg ?? 0) + (isAssault ? (assaultSource.assaultCritDmg ?? 0) + selfAssaultBonus : 0)
-  const critRate = Math.min(100, Math.max(0, critRateRaw))
-  return 1 + (critRate / 100) * (critDmg / 100)
+  return expectedCritMultiplier(critRateRaw, critDmg)
 }
 
 /**

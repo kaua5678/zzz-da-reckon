@@ -99,8 +99,7 @@ function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCr
       return { multiplier: 1, label: '不暴击' }
     case 'expect':
     default: {
-      const critRate = Math.min(100, Math.max(0, critRateRaw)) / 100
-      const mult = 1 + critRate * (critDmg / 100)
+      const mult = expectedCritMultiplier(critRateRaw, critDmg)
       return { multiplier: mult, label: `期望 (暴击率${fmt(critRateRaw)}% × 暴伤${fmt(critDmg)}%)` }
     }
   }
@@ -110,6 +109,7 @@ function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCr
 // 保持引擎侧调用点（本文件 calcSharpCritMultiplier、substatOptimizer）与文档引用零改动；
 // 展示层（FinalPanel / StatPanel）改 import `@/data/…`。改公式只改 src/data 那一处。
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
+import { expectedCritMultiplier } from '@/data/critMultiplier'
 export { sharpCritMultiplier }
 
 function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget): { multiplier: number; label: string } {
@@ -623,8 +623,7 @@ export function calcAnomalyDamage(
         break
       case 'expect':
       default: {
-        const rate = Math.min(100, Math.max(0, anomalyCritRate)) / 100
-        critMult = 1 + rate * (anomalyCritDmg / 100)
+        critMult = expectedCritMultiplier(anomalyCritRate, anomalyCritDmg)
         critLabel = `期望 (暴击率${fmt(anomalyCritRate)}% × 暴伤${fmt(anomalyCritDmg)}%)`
         break
       }

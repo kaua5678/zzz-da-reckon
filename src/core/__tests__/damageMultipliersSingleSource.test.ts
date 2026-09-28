@@ -62,3 +62,24 @@ describe('失衡易伤区单一来源（CC-220）', () => {
     expect(hits).toEqual([])
   })
 })
+
+describe('暴击期望单一来源（CC-222）', () => {
+  // 来源：src/data/critMultiplier.ts（clampCritRatePct / expectedCritMultiplier）。CC-222 前 6 份期望算式 + 2 份钳制。
+  const CRIT_OWNER = 'data/critMultiplier.ts'
+  const CRIT_RE = /Math\.min\(\s*100\s*,\s*(?:Math\.max\(\s*0\s*,\s*)?[\w.]*[cC]rit|[cC]rit\w*Rate\w*\s*\/\s*100\s*\)?\s*\*/  // 「必暴」1 + 暴伤/100 是百分比换算，不算副本
+  it(`除 ${CRIT_OWNER} 外没有内联暴击率钳制 / 期望暴击算式`, () => {
+    const hits = walk(SRC)
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+      .filter(rel => rel !== CRIT_OWNER && CRIT_RE.test(code(readFileSync(join(SRC, rel), 'utf8'))))
+    expect(hits).toEqual([])
+  })
+  it('数值口径（与 CC-222 前引擎实现逐位一致）', async () => {
+    const { expectedCritMultiplier, clampCritRatePct } = await import('@/data/critMultiplier')
+    for (const [r, d] of [[65, 150], [120, 88.8], [-5, 100], [37.3, 211.7]]) {
+      const old = 1 + (Math.min(100, Math.max(0, r)) / 100) * (d / 100)
+      expect(expectedCritMultiplier(r, d)).toBe(old)
+    }
+    expect(clampCritRatePct(130)).toBe(100)
+    expect(clampCritRatePct(-3)).toBe(0)
+  })
+})

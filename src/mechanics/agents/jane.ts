@@ -16,6 +16,7 @@ import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
+import { clampCritRatePct } from '@/data/critMultiplier'
 
 const JANE_AGENT_ID = '1261'
 /** 普通攻击：萨霍夫跳（融合主段，见 src/data/moveFusions.ts JANE_SOMERSAULT） */
@@ -271,7 +272,7 @@ function buildJaneExecutions({ cfg, executions }: AgentResourceInput): void {
 export function janeAnomalyEventRecords(input: AgentAnomalyEventRecordsInput): AnomalyEventRecord[] {
   const { panel: janePanel, cinemaLevel, perElementTriggerCounts } = input
   if (cinemaLevel < 6) return []
-  const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
+  const assaultCritRate = clampCritRatePct(janePanel.assaultCritRate ?? 0)
   const critCount = (perElementTriggerCounts.physical ?? 0) * (assaultCritRate / 100)
   if (!(critCount > 0)) return []
   return [{
@@ -312,7 +313,7 @@ export const janeMechanic: AgentMechanicModule = {
     const janePanel = panel
     if (janeCinema >= 6 && janePanel) {
       const physicalProg = anomalyProgress('physical')
-      const assaultCritRate = Math.min(100, Math.max(0, janePanel.assaultCritRate ?? 0))
+      const assaultCritRate = clampCritRatePct(janePanel.assaultCritRate ?? 0)
       const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
       if (critCount > 0) {
         // 附伤随强击暴击触发 → 轴内易伤跟随物理强击触发轴内占比（用户口径 2026-08：

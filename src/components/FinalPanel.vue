@@ -103,6 +103,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { collectHpSources, hpBreakdownTotals } from '@/composables/hpSourceBreakdown'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
+import { clampCritRatePct, expectedCritMultiplier } from '@/data/critMultiplier'
 import { isPctStat } from '@/utils/statMeta'
 import { fmt, pct } from '@/utils/format'
 import type { PanelValues } from '@/types/catalog'
@@ -298,18 +299,19 @@ const panels = computed(() => {
     const skillDmg = pIn.skillDmgBonus ?? 0
     const dmgTotal = (pIn.dmgBonus ?? 0) + elementDmg + skillDmg
     const critRateRaw = pIn.critRate ?? 0
-    const critRate = Math.min(100, critRateRaw)
+    const critRate = clampCritRatePct(critRateRaw)
     // 锋御：锐暴 200% 封顶 + 额外锐暴乘算（用户口径 2026-09-09）
     const critMult = isSharpen
       ? sharpCritMultiplier(critRateRaw, pIn.sharpCritDmg ?? 0)
-      : 1 + critRate / 100 * (pIn.critDmg ?? 0) / 100
+      : expectedCritMultiplier(critRateRaw, pIn.critDmg ?? 0)
     const sharpTotal = (pIn.sharpDmgBonus ?? 0) + (elementSharpKey ? (pIn[elementSharpKey] ?? 0) : 0)
     const penDmgTotal = (pIn.penDmgBonus ?? 0) + (pIn.sheerDmgBonus ?? 0) + (elementSheerKey ? (pIn[elementSheerKey] ?? 0) : 0)
     const resTotal = (pIn.enemyResReduction ?? 0) + (pIn[elementResKey] ?? 0)
     const stunMultTotal = (pIn.stunDmgMultiplierBonus ?? 0) + (pIn.stunDmgMultiplierBonusAlways ?? 0)
     const anomalyDmgTotal = (pIn.anomalyDmgBonus ?? 0) + (pIn.windAnomalyDmgBonus ?? 0)
-    const anomalyCritRate = Math.min(100, pIn.anomalyCritRate ?? 0)
-    const anomalyCritMult = 1 + anomalyCritRate / 100 * (pIn.anomalyCritDmg ?? 0) / 100
+    // CC-222：与引擎同源（此前只钳上限、负暴击率不按 0，且运算顺序与引擎不同）
+    const anomalyCritRate = clampCritRatePct(pIn.anomalyCritRate ?? 0)
+    const anomalyCritMult = expectedCritMultiplier(pIn.anomalyCritRate ?? 0, pIn.anomalyCritDmg ?? 0)
 
     const zoneSummaries: ZoneSummary[] = [
       {

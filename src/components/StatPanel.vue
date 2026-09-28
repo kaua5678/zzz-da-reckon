@@ -503,6 +503,7 @@ import { NCollapse, NCollapseItem } from 'naive-ui'
 import type { DamageElement, PanelValues } from '@/types/catalog'
 import { getStatMeta, isPctStat } from '@/utils/statMeta'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
+import { expectedCritMultiplier } from '@/data/critMultiplier'
 
 const props = defineProps<{
   panel: PanelValues
@@ -540,9 +541,7 @@ const isSharp = computed(() => (props.panel.sharpCritDmg ?? 0) > 0)
 const critMultiplier = computed(() => {
   const p = props.panel
   if (isSharp.value) return sharpCritMultiplier(p.critRate ?? 0, p.sharpCritDmg ?? 0)
-  const rate = Math.min(100, Math.max(0, p.critRate)) / 100
-  const dmg = p.critDmg / 100
-  return 1 + rate * dmg
+  return expectedCritMultiplier(p.critRate, p.critDmg)
 })
 
 // ========== 增伤乘区 ==========
