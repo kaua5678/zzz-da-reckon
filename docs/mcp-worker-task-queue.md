@@ -69,24 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 188 轮（lane lead-arena-0925c）：CC-163 已完成（代码提交 58d0143d），CC-161 关闭；文档见本提交。**
-- 删除了 CC-159 的单量子选相死分支（stun-dual-source §24.10）：禁用前后 golden、棘轮、zd 全部 104 个预设、单人 1431、全量测试逐位相同。
-- 验证：全量测试 3824 passed、`npm run verify` rc=0、`vue-tsc -b` 无新错误、CG 25 项通过。
+**第 189 轮（lane lead-arena-0925c）：CC-162 关闭（不做）；CC-147 已完成（代码提交 08b4d40d）；文档见本提交。**
+- CC-162：比利没有虚高留白，声明重折反而导致退化 ⇒ 不声明（stun-dual-source §24.11）。
+- CC-147：删除热启动 / 注入种子通道（warmStart.ts、`initialStates`、`injected`、`feedbackCfgKeys`、两个测试文件）。
+  - zd 差异 2 处（1431-1491-1311 heavy / heavyGate），已实证等于「HEAD 缓存永不命中」⇒ 删掉的是缓存历史依赖缺陷。
+- 验证：全量测试 3812 passed、`npm run verify` rc=0、`vue-tsc -b` 无新错误、CG 25 项通过。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）；dsh 返回 pong。
 
 **下一步（按顺序，直接开工）**
-1. **CC-162**：比利（1531）是否声明 `finalizePass.refoldAfter`。
-   - 在 `src/mechanics/agents/starlightBilly.ts` 约 :888 的 `finalizePass` 里临时加 `refoldAfter: true`；
-   - 跑 `npx vitest run src/specs/__tests__/adjustableEffect.test.ts src/composables/__tests__/timeGolden.test.ts`；
-   - 第 187 轮现象：`billy_radiant_basic4_gain` / `billy_star_basic4_gain` rate=1/2 实到 0，要查 basic4 行为什么在重折后消失（从 `helpers.ts#iterate` 的 necessary 分项和比利 `buildExecutions` 的 basic4 行入手）；
-   - 若比利的整数链数同样带过期残差，就修成可声明，并逐条归因 golden。
-   - 附带：锁窗 3 夹具 1431-1481-1491 的重折环被拒（最终截断 94.6 → 103.4s）。可试「截断重折环内冻结值沿用第一遍的值」，看 kept 振荡能否消失。
-2. CC-156、CC-147、CC-152（可选）：先读卡表对应行再决定。
-3. 周期 2 仍然存在（1431 preTail 199 次、1531 25 次、1051 tail 44 次），但目前对结果无影响；若以后出现「停点影响结果」的病例，从 §24.10 的扫描方法入手（临时仪表 + 三路径）。
+1. **CC-156**（待定）：archive 保底失衡次数在弹刀预算内不可达时被静默降级（保底 4 → N*=3.84，池 3）。
+   - 先读 stun-dual-source §18.3，判断是否已有诊断字段可复用（`convergence.*`）。
+   - 若只需补一个诊断量，就做成通用诊断，不要按角色分支；若需要 UI 提示，写明口径后做可逆的最小实现。
+2. CC-152（可选，低优）：把 CC-148 剩下的 8 个文件级 off 钉细化为逐用例钉。
+3. CC-27（待设计）：维琳娜风蚀状态机模块化，先读 census §5.19。
+4. 其余：副词条优化器接收槽过滤；洛克茜 energyRegen。
 
 **已知坑**
-- `finalizePass.begin(cfg, entry)` 的第二个参数是只读入口态；`prefersCycleMember` 已删除，不要再引用（旧文档 §23–24.4 中的描述已成历史）。
-- 判断「分支是否还有用」时，要测**禁用后的最终结果差异**，不能只看触发次数（本轮：触发 199 次，影响为零）。
-- 看留白要看装配前台（Σ行 totalTime），不要看账本前台；`cfg.timeBudgetExcess` 与 `convergence.timeBudgetResidualSeconds` 是不同的量。
+- `@/core/resource` 已不再导出 `clearWarmStartCache` / `getWarmStartStats`；旧探针或 perf 脚本若引用它们会编译失败，直接删掉调用即可（已不存在缓存）。
+- `ResourceCalcConfig.initialStates` 已删除；想做种子实验，只能在 `runFoldLoop` 的起点加临时仪表。
+- 判断「分支是否还有用」时，要测禁用后的最终结果差异，不能只看触发次数。
+- `cfg.timeBudgetExcess` 与 `convergence.timeBudgetResidualSeconds` 是不同的量；看留白要看装配前台（Σ行 totalTime）。
 - 全量测试在高负载下 `zcWorkspace.test.ts` 会偶发失败，单跑能通过。
-- 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行；带 ZZTMP 的「改写原行」不能用 sed 删，要 `git checkout` 该文件。
+- 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行。

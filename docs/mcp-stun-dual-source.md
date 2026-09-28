@@ -904,3 +904,29 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 解读：CC-160 之后，终局停在周期 2 的哪一相已不影响最终结果——`refoldAfter` 重折按整数行重算残差并收口，两相最终汇到同一结果。选相分支因此成为**死分支**（触发但无效果）。
 - **决定：删除**。`finalizePasses.ts` 的 `oneQuantumApart`、周期 2 分支、`prev2` 跟踪；`finalizePass.prefersCycleMember` 接口（types.ts）及叶瞬光声明。执行器回到「≤12 轮 iterate + 逐位判稳 + refold 标志」。依据：架构更简单（少一个模块能力、少一种引擎分支），且零数值影响。回退点：`git revert 58d0143d`。
 - **CC-161 关闭**：原病例 zd 1431-1341-1311 在 CC-160 后为 73.19M、留白 0、stable、满档可行。旧版 74.78M 靠「k+1 相超预算 ⇒ 降到 0.5 档」得到，而且本身带 0.12s 超预算；新口径下 S3 不触发是正确的（满档可行）。剩下 −2.1% 是「满档 7 轮自洽」与「0.5 档 8 轮微超」之间的口径差，不属于缺陷。若将来想要「满档可行时也试降配、按伤害择优」，那是新的目标函数设计（与「交互只取达成目标的最少要求」冲突），需要用户口径，不在引擎待办里。
+
+### 24.11 CC-162 关闭（比利不声明 refoldAfter）；CC-147 删除热启动/注入种子通道（第 189 轮，代码提交 08b4d40d；日志 `/home/kaua/calc-arch/k189/`）
+- **CC-162 决定：不声明，关闭**。
+  - 依据：比利（1531）没有可修的虚高留白。golden 中 agent:1531 c0/c3–c6 与两支 1531 队的留白和超预算都是 0.000；zd 路径 auto-1531-1481-1451 留白 0.00、auto-1531-1571-1451 留白 1.07；棘轮 0.6 / 0。全部在容差量级，外层 stable。
+  - 第 187 轮实测：给比利加 `refoldAfter` 会让 `billy_*_basic4_gain` 的 rate=1/2 实到 0，是真退化。没有收益、只有退化 ⇒ 不做。
+  - 「basic4 行在重折后消失」的根因没有深挖：它只在声明重折时出现，而当前不声明，所以不是现存缺陷。以后若有比利留白病例需要重折，从这里接着查（`helpers.ts#iterate` 的 necessary 分项 + 比利 `buildExecutions` 的 basic4 行）。
+  - 附带项「锁窗 3 夹具 1431-1481-1491 截断重折被拒（94.6 → 103.4s）」也不做：它只出现在人为锁定失衡次数的场景，默认口径不受影响；要修得给截断重折环加一套跨轮沿用冻结值的专门机制，架构变复杂，收益只在人造场景上，不符合判据。
+- **CC-147：删除热启动缓存与 `initialStates` 注入通道**。
+  - 死输入的论证：CC-146 起，折叠环 pass0 只要 `injected` 为真就改从默认种子起跑，注入值在任何路径上都不参与计算；缓存存的「规范种子」本身就等于默认种子。
+  - 删除内容：
+    - `core/resource/warmStart.ts` 整个文件（精确键、LRU、统计、`clearWarmStartCache` / `getWarmStartStats`）；
+    - `ResourceCalcConfig.initialStates`；
+    - `FoldLoopContext.injected` / `defaultSeedStates` 与 pass0 替换分支；
+    - `TailPipelineContext.warmExactKey` / `warmSeedStates` 与写缓存；
+    - 模块能力 `feedbackCfgKeys`（只为热启动键存在）以及卢西娅、诺姆、伊德海莉三处声明；
+    - `@fact engine:热启动逐位透明` 及其 guard 豁免键；
+    - 测试 `warmStart.test.ts`、`seedInvariance.test.ts`（全库四种子闸门在 CC-146 后已钉成「种子改变轮数 = 0」，删通道后没有可测对象）；
+    - `yidhariInteractionGrid` 的「冷 vs 高种子」一档（保留「收敛 + 整数次数」）；
+    - 11 个测试与 11 个 `.zc/perf` 脚本里的 `clearWarmStartCache` 调用。
+  - **zd 结果：2 处差异，均在 auto-1431-1491-1311 的 heavy / heavyGate**，79.44M → 73.65M。
+    - 归因（已实证）：HEAD 的 worktree 里让 `lookupWarmStart` 永不命中后，与改后**全部配置逐位零差**。
+    - 机制：HEAD 上缓存命中时 `ctx.injected` 为真，于是 CC-160 的终局重折 `runFoldLoop(fp.states)`（以及截断重折）在 pass0 被**换成默认种子**。同一配置的结果因此依赖之前算过什么，属于缓存历史依赖缺陷，由 CC-146 的 injected 分支和 CC-160 的重折叠加而成。
+    - 删除后结果恒等于冷算，golden 与棘轮不动。
+  - 验证：全量测试 3812 passed（−12 为删掉的用例）；golden 与棘轮未更新就通过；`vue-tsc -b` 无新错误；CG 25 项通过；`npm run verify` rc=0。
+  - 回退点：`git revert 08b4d40d`（`.zc/perf` 不入库，回退后需在 perf 脚本中补回 `clearWarmStartCache`，否则只丢缓存隔离，不影响结果）。
+  - 影响面：引擎入口签名少一个可选字段；没有生产写入方（只有测试写入）。加速收益本来就是 0（CC-146 起热启动不省任何轮数）。
