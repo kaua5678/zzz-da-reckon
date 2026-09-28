@@ -71,28 +71,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 267 轮（lane lead-arena-0925c）：CC-246（d9d5e4ed）、CC-247（1f2ee896）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.91。要点：管线层不再依赖展示层；core 的**传递**运行时闭包不再进入 specs 和逻辑编辑器状态；两层都有闭包锁，共用 `src/test/importClosure.ts`。
-- 前几轮：266 CC-245；265 CC-243/244（行规则结项）；264 CC-242。
+**第 268 轮（lane lead-arena-0925c）：CC-248（7c8567c9）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.92。要点：specs 运行时闭包不再依赖 core（verify.ts 迁到 `src/test/specVerify.ts`）；specs / data 加上闭包锁；ARCHITECTURE.md §0 新增「分层规则 → 锁」表（7 条规则对应 7 个锁）。
+- 前几轮：267 CC-246/247；266 CC-245；265 CC-243/244（行规则结项）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**分层锁一览（新写代码会被拦）**：
-- `core/__tests__/coreMechanicsRegistryOnly.test`（C1，直接 import）+ `core/__tests__/coreRuntimeDeps.test`（CC-247，传递闭包；registry 必须是纯叶子）；
-- `composables/__tests__/resourceCalcStoreDeps.test`（CC-245/246：resourceCalc 闭包不进入 stores〔selectionReads 除外〕与上层 composables）；
-- 行规则锁五件套和融合口径锁见 §24.89，不变。
-- 新增角色模块注册要调用 `mechanics/index.ts` 的 `registerWithSpecSettings`，不要直接调用 registry 的 `registerAgentMechanic`，否则 spec settings 不会合并。
+**分层锁**：见 ARCHITECTURE.md §0「分层规则 → 锁」表（唯一事实源，本节不再复述）。新增角色模块注册走 `mechanics/index.ts#registerWithSpecSettings`。`verifyAllSpecs` 现位于 `src/test/specVerify.ts`。
 
-**下一步（直接开工）**：用 `runtimeImportOffenders` 把其余口头分层规则逐条变成闭包锁。先用一次性脚本测量，有违规就判断修不修，没有违规就直接加锁：
-1. **specs 不能导入 core**（AGENTS / 本文件「已知坑」中的分层规则）：入口为 `sourceFilesUnder('specs')`，禁止 `^core/`。
-2. **展示层禁止值导入 core / mechanics / specs**：入口为 views/ 和 components/ 下的 `.vue`。注意 `sourceFilesUnder` 只收 `.ts`，要扩展成也收 `.vue`，并从 `<script>` 块里抽取 import（正则同样可用）。展示层经由 composables 间接到达 core 是**允许的**（composables 是门面），所以这里只锁**直接** import，不锁闭包。先看已有的展示层锁（grep「判据 7」或 `displayLayer`），避免重复。
-3. **data 不 import mechanics**（stunAxisPresets.ts:226 的注释约定）：入口为 `sourceFilesUnder('data')`，禁止 `^(mechanics|composables|stores|logicEditor)/`。注意 data/moveTableQueries 本来就 import logicEditor/fusion（N2 裁决不做），要作为唯一例外写进白名单并注明理由。
-- 每条锁都要做反例（临时加一条违规 import，确认变红再删掉）。三条都做完就可以把「分层规则」一节写成表格，放进 ARCHITECTURE.md，每条规则对应一个锁文件名。
+**下一步（直接开工，按优先级排）**：分层线已收口，不再为了锁而加锁。候选方向：
+1. 用 `runtimeImportOffenders` 测量 **mechanics/agents/*.ts 的运行时闭包**是否进入 composables（判据 19 只锁直接 import，间接经 data 以外的路径是否存在尚未测量）。先测量：有越界再判断修不修，没有就只在文档里记一行「已测、无越界」，**不为此加锁**，除非发现真实路径。
+2. 重新审视未决项里是否有可以自己拍板的（例如 §24.85「harness 是否默认加载 spec 行规则」：评估切换成本，写出裁决，可逆）。
+3. 两条都不值得做时，回到 R6 清单（`docs/mcp-r6-refactor-list.md`）挑影响面最大的「可归一 / 可结构化」项，先查卡表里的否决记录。
 
 **已知坑**：
 - 命名带 raw 的函数是意图信号（CC-237 教训）；取值类改动必须做修复前后的管线对比；纯 import 类改动靠闭包锁加 verify 即可；
-- 上传多个文件时逐行调用 `up.sh`，**不要在 bash for 循环里拼 `${...}`**（第 267 轮在仓库根目录生成了垃圾文件）；
+- 上传多个文件时逐行调用 `up.sh`，**不要在 bash for 循环里拼 `${...}`**；
 - 测试里调用模块 buildCharConfig 要传 `team: [], slot: 0`；模块级规则状态要 `afterEach(() => setActiveRowFusionRules([]))`；新测试先单独跑 `npx vue-tsc -b`；
-- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；临时探针跑完删掉再 verify。
+- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；迁移文件用 `git mv`；临时探针跑完删掉再 verify。
 
 **未决项**：
 - 1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；

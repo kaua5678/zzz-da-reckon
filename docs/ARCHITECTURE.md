@@ -30,6 +30,21 @@
 （`scripts/lib/layer-inversion.mjs` 头注释是口径唯一事实源：值导入 0 + 反空洞下限 + `claret.ts` 形状锁）。
 **新 AI 读代码的捷径：从上往下读一遍调用链（页面 → useResourceCalc → core），每个文件头注释就是它的职责声明。**
 
+**分层规则 → 锁**（CC-248 汇总；每条口头规则都有对应的机器锁，新写代码违反时 verify 变红。闭包锁共用 `src/test/importClosure.ts#runtimeImportOffenders`，只计值 import，跳过 `import type`）：
+
+| 规则 | 口径 | 锁 |
+|---|---|---|
+| core 取角色模块只经 registry | 直接 import | `src/core/__tests__/coreMechanicsRegistryOnly.test.ts` |
+| core 纯函数层：闭包不进入 specs / logicEditor / composables / stores / 展示层；mechanics/registry 是纯叶子 | 传递闭包 | `src/core/__tests__/coreRuntimeDeps.test.ts` |
+| 管线后半段 resourceCalc 不进入 stores（selectionReads 除外）和上层 composables | 传递闭包 | `src/composables/__tests__/resourceCalcStoreDeps.test.ts` |
+| specs 不进入 core / mechanics / composables / stores / 展示层（只白名单 logicEditor/fusion，经 data 带入） | 传递闭包 | `src/specs/__tests__/specsRuntimeDeps.test.ts` |
+| data 是公共底：不进入任何上层（只白名单 logicEditor/fusion，N2 裁决） | 传递闭包 | `src/data/__tests__/dataRuntimeDeps.test.ts` |
+| 展示层（views / components）不值导入 core / mechanics / specs | 直接 import | check-guards 判据 7 `detectExhibitionLayerImport` |
+| 录入层（mechanics / specs）对编排层只许 import type | 直接 import | check-guards 判据 19 `scripts/lib/layer-inversion.mjs` |
+
+新增分层约束时优先加闭包锁（照抄上面任一 `*RuntimeDeps.test.ts`），并做反例：临时加一条违规 import，确认变红。
+
+
 ## 1. 一次计算的生命周期（点「计算」→ 出图）
 
 ```

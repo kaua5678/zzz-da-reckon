@@ -1428,7 +1428,7 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 | XIDE_ENCIRCLEMENT_EFFECT_IDS | src/mechanics/agents/xide.ts:186 | —(误报) | 同文件 `xide.ts:198` 以展开 `...XIDE_ENCIRCLEMENT_EFFECT_IDS` 消费，进入 `xideTeammateBuffRecipientFilter`→`panelPhases.ts:496` 生产路径；扫描器漏计 `...NAME`。 | 保留（非死代码） |
 | computeYaojiayinCoreAtkBonus | src/mechanics/agents/yaojiayin.ts:130 | C | 生产数值由 `teammate-buffs.json` 的 `yaojiayin.core_andante_atk`（derived 35%/cap1200）+ `yaojiayin.cinema_2.core_andante_atk_bonus`（`clamp(x*0.54,0,1600)-clamp(x*0.35,0,1200)`）驱动；单测 `yaojiayin.test.ts:49-53` 测的是 TS 副本。 | 删除并把测试改测 teammate-buffs→引擎管线 |
 | buildSpecResourceSections | src/specs/mechanics.ts:36 | C | 生产资源区由 `specToMechanicModule(...).resourceSections`（同文件:200-228）现算；本函数只被 `specs/__tests__/mechanics.test.ts:17` 测。 | 删除并把测试改测 `specToMechanicModule(spec).resourceSections`（或让 :200 复用它） |
-| verifyAllSpecs | src/specs/verify.ts:65 | T | 唯一调用者是 `specs/__tests__/verify.test.ts:7`（跑全 spec 的 panel+expected 可执行校验）；`validate:specs` 脚本只做结构校验、未接它。 | 保留（单测已在 CI 执行）；可选并入 `validate:specs` |
+| verifyAllSpecs | src/test/specVerify.ts:66（CC-248 自 src/specs/verify.ts:65 迁入） | T | 唯一调用者是 `specs/__tests__/verify.test.ts:7`（跑全 spec 的 panel+expected 可执行校验）；`validate:specs` 脚本只做结构校验、未接它。 | 保留（单测已在 CI 执行）；可选并入 `validate:specs` |
 | STANDARD_ENEMY_DEBUFF_ELEMENTS | src/utils/enemyDebuffStats.ts:6 | D | 生产一律用 7 元素 `DAMAGE_ELEMENTS`（`statMeta.ts:150`、`buff.ts:63`）；本常量（去 lumiflux 的 6 元素）只被 `enemyDebuffStats.test.ts:103` 自测。 | 删除（连同该断言） |
 | isEnemyDebuffStat | src/utils/enemyDebuffStats.ts:129 | C | 生产的归属判断在 `core/buff.ts:63-64`（GENERATED+LEGACY 集合）与 `statMeta.ts:287`（`LEGACY…includes`）另写；本函数只被 `enemyDebuffStats.test.ts:109-116` 测。 | 删除并把测试改测生产集合（或反向让 buff/statMeta 复用本函数以收敛单源） |
 | interactiveTeammateBuffs | src/utils/teammateBuffRows.ts:86 | C | 渲染面 `AttributeConfigPage.vue:552` 直接用 `isTeammateBuffInteractive` 逐行过滤，未用本批处理包装；本函数只被 `teammateBuffRows.test.ts:70`、`specTeamBuffDeadControl.test.ts:123` 测。 | 删除并把测试改为直接测 `isTeammateBuffInteractive`（或让页面改用本函数） |
@@ -2876,3 +2876,20 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 验证：v267（CC-246）verify EXIT=0（3981 passed）；v267b（CC-247）verify EXIT=0（3983 passed | 29 skipped）；两次 vue-tsc 干净。
 - 回退点：revert 1f2ee896（CC-247，独立）/ revert d9d5e4ed（CC-246）。
 - 踩坑：上传脚本的 for 循环里写了 `\${f%%:*}`，被 bash 转义成字面量，在仓库根目录生成了一个名为字面量 `${f#*:}` 的空文件。已 `rm` 并确认 git status 干净。**上传多个文件时逐行调用 up.sh，不要写循环。**
+
+### 24.92 第 268 轮：CC-248 specs / data 运行时闭包锁；verify.ts 迁到测试基础设施（7c8567c9）
+
+§24.91 交接列了三个方向，先用一次性探针测量（`runtimeImportOffenders`，跑完已删）：
+- **方向 2（展示层禁止值导入 core / mechanics / specs）已有覆盖**：check-guards 判据 7 `detectExhibitionLayerImport`（测试见 `src/scripts/__tests__/checkGuards.test.ts:141`），不再新增锁。交接里说的「先 grep 判据 7」查证属实。
+- **specs → core**：唯一越界是 `specs/verify.ts:1` 导入 `emptyPanel from '@/core/panel'`。
+  - 裁决：迁移 verify.ts，不迁 emptyPanel。
+  - 依据：verify.ts 是「拿引擎面板跑 spec expected」的**测试执行器**，唯一调用者是 `specs/__tests__/verify.test.ts`，生产代码不引用（§24 死导出表早已把 verifyAllSpecs 标为 T 类）。emptyPanel 是引擎面板默认值，有 16 个生产文件在用，下沉到 data 是为迁而迁。
+  - 改动：`git mv src/specs/verify.ts src/test/specVerify.ts`；相对 import 改为 `@/specs/runtime`、`@/specs/types`；加头注释；verify.test.ts 改为从 `@/test/specVerify` 导入。死导出表中该行的路径已同步更新。
+- **data → 上层**：唯一越界是 `data/moveTableQueries → logicEditor/fusion`，属于 N2 已裁决的例外，写进白名单。
+- 新锁（共用 `src/test/importClosure.ts`）：
+  - `src/specs/__tests__/specsRuntimeDeps.test.ts`：specs 运行时闭包不进入 core / composables / stores / views / components / mechanics / logicEditor（白名单只有 `logicEditor/fusion.ts`，经 data 带入）；反空洞要求文件数 ≥ 8。**迁移前运行变红，报出 verify.ts → core/panel 链路，这就是反例验证。**
+  - `src/data/__tests__/dataRuntimeDeps.test.ts`：data 闭包不进入上层，同样只白名单 fusion.ts，文件数 ≥ 20；另有一条断言 fusion.ts 自身闭包不外溢（防止白名单成为后门）。
+- ARCHITECTURE.md §0 新增「分层规则 → 锁」对照表，把口头规则全部对应到机器锁。至此交接中三个方向全部结项。
+- 值不值得：生产行为零变化。specs 在运行时闭包层面不再依赖引擎，「specs 不能导入 core」从注释约定变为锁，测试执行器也回到 src/test/。不是降计数。
+- 验证：迁移后三个相关测试 4 passed；`npx vue-tsc -b` 干净；v268 verify EXIT=0（3986 passed | 29 skipped）。
+- 回退点：revert 7c8567c9（单一提交，含 git mv）。
