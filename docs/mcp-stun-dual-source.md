@@ -2192,3 +2192,24 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 **更正**：§24.66 的「暴击期望只在 damage.ts 一处」是按变量名搜导致的漏搜。**教训**：查副本要按**算式形状**搜（钳制、百分比乘积），不要按变量名搜。
 
 **影响**：零数值差。**回退点**：revert 本提交。
+
+### 24.71 第 247 轮：CC-223 展示层乘区与引擎对账（元素积蓄效率单一来源 + 风异常增伤单列；7eb4eace）
+
+**对账范围**：`components/FinalPanel.vue` 的「乘区数值汇总」（约 296-320 行）与 `components/StatPanel.vue` 的各乘区 computed，逐项对照 `core/damage.ts` / `core/anomalyPool/helpers.ts` 实际读取的字段。
+
+**修（展示与引擎算的不是同一个量）**
+1. **StatPanel「异常积蓄乘区」只认 electric**：旧写法 `damageElement === 'electric' ? electricAnomalyBuildUpEfficiency : 0`。引擎 `calcPerHitBuildUp` 经 `getElementAnomalyBuildUpEfficiency` 读 electric / physical / ether 三种，并先把变种元素归到基础元素。而物理与以太字段都有真实写入方：简 `jane.ts` +15～60，派派 `piper.ts` 最多 +120，爱丽丝 `alice.ts`，薇薇安 `vivian.ts` C2 +25。⇒ 这些角色的积蓄乘数显示偏低。
+   **改**：新增 `src/data/anomalyElement.ts`，内含 `VARIANT_ELEMENT_TO_BASE`、`getBaseElement`、`elementAnomalyBuildUpEfficiency`，由 helpers.ts 原样迁来。helpers 以原名转出前两个，core 里既有的 import 零改动；本地函数删除，改为调用 data 版。StatPanel 也改为调用它。
+2. **FinalPanel 异常链把 `windAnomalyDmgBonus` 无条件并入异常增伤**：引擎在 damage.ts:586 / helpers.ts:899 **按异常元素**判定 `element === 'wind'`。薇琳娜会把这项写进队友面板，非风属性角色也可能打出风属性异常（风染），所以不能改成按角色元素判定。**改**：从通用异常增伤里拿出来，单列为「风属性异常另 +X%」。
+
+**不修（有依据）**
+- 失衡易伤合计未按 `stunDmgMultiplierBonusCapAlways` 封顶：这个字段在 catalog 里 0 处、specs 里 0 处，只有 buff.ts 能接收，全仓没有数据写入，展示与引擎不会出现可见差异。等以后有写入方再补，届时要把 `calcStunMultiplier` 的纯部分下沉到 data。
+- FinalPanel 直伤增伤区只列「通用 + 元素 + 全招式」：标题写明了范围，定向增伤另起行列出，属于有意为之的口径。
+- FinalPanel `resTotal` 已含元素抗性降低，已核实。
+- StatPanel 失衡积蓄乘数 `impact/100 × (1 + stunBuildUpBonus/100)` 是面板侧部分，受失衡提升、失衡抗性在 Boss 侧，文案里已说明。
+
+**锁**：新增 `src/data/__tests__/anomalyElement.test.ts`，是结构锁：从 `emptyPanel()` 枚举所有 `<元素>AnomalyBuildUpEfficiency` 字段，逐个断言 `elementAnomalyBuildUpEfficiency` 都能读到。以后新增元素字段却忘改函数时，引擎和展示会一起漏读，这条测试会变红。另附变种归并断言，以及「helpers 转出的是同一对象」断言。
+
+**影响**：引擎零数值差（函数逐字迁移，golden 通过）；只有展示变化。**回退点**：revert 本提交。
+
+**结论**：展示层乘区对账到此收尾，伤害公式与展示两条线都已结项。
