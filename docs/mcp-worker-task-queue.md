@@ -71,28 +71,32 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 253 轮（lane lead-arena-0925c）：CC-229 完成（4e03fc6f），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.77。
-- 前几轮：252 CC-228（2ba355d0）；251 CC-227（661133cd）；250 CC-226（f9be411d）。
-- REQUIREMENTS 无新条目；提示词未改。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
+**第 254 轮（lane lead-arena-0925c）：CC-230 完成（f49a183f），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.78。
+- 前几轮：253 CC-229（4e03fc6f）；252 CC-228（2ba355d0）；251 CC-227（661133cd）。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
+- **结项**：「展示层手写引擎公式」线（§24.78 ①）。
 
 **纯规则 / 引擎结果单一来源一览（新写代码直接用）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`；
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`；
 - `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`；
 - `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`（anomalyPool/helpers）；
 - 展示侧行级易伤：`composables/stunVulnSummary#rowAppliedStunMultOf`；
-- 引擎结果直读：`CalcRoundResult.specialActionBonus`（特殊动作喧响）、`CalcRoundResult.decibelGuarantee`（保底4喧响）。
+- 引擎结果直读：`CalcRoundResult.specialActionBonus`、`CalcRoundResult.decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`。
 
 **下一步（直接开工）**
-1. 继续找「展示层手写引擎公式」：`grep -rnE '\*\s*0\.[0-9]+' src/components src/views | grep -v -E 'px|opacity|//'`，逐条对照 core。命中后，纯公式按 CC-228 处理（下沉 data、core 原名转出、源码锁）；依赖收敛状态的按 CC-229 处理（引擎结果带出、展示直读）。
-2. 同一族的旁支：在 views、components 里查「读收敛后 resourceResult 再反推引擎决策」的写法，例如 grep `resourceResult.value?.characters` 后接算术的地方。它们都可能是补后值被当成补前值用（CC-229 的病型）。
-- 开工前**先查卡表**（最新 CC-229），并 `grep -rn 反锁 src`。
-- **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(...)` 加 `useResourceCalc()`，开保底用 `config.setMechanicSetting('guarantee.ultimate',1)`；跑完 `rm`，不提交。
+1. **喧响奖励单价归到一处**（小刀，先判断值不值再做）：
+   - 现状：`data/anomalyDecibelBonuses.ts` 有 170/85/85；`core/anomalyPool.ts:445` 有 `PARRY_DECIBEL_BONUS = 215`；`calcSpecialActionBonus` 里连携 10、闪反 10、快支 20 是魔法数字（:471-478）。
+   - 做法：全部挪进 `data/anomalyDecibelBonuses.ts` 作为具名常量，core 原名转出，`convergence.ts:52` 的 import 不变。
+   - 判据：只有展示层或其他模块需要这些单价时才算架构收益（例如喧响卡想写「连携 ×10」）。若 grep 下来除 anomalyPool 外无人需要 ⇒ 写「不做」加理由，别为整洁而做。
+2. 若第 1 项判「不做」：读 `docs/mcp-r6-refactor-list.md` §8 扫描记录表，挑一个还没扫过的层（候选：`src/mechanics/agents/*` 之间的重复 helper，或 `composables/resourceCalc/*` 内的重复小函数），按「让架构更通用 / 更简单」自选；扫完无收获也要在 §8 表里记一行。
+- 开工前**先查卡表**（最新 CC-230），并 `grep -rn 反锁 src`。
+- **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(...)` 加 `useResourceCalc()`；跑完 `rm`，不提交。
 - **已知坑**：
   - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；
   - 新文件先 `git add` 再 verify；
-  - 新增收敛线程字段要评估 outerFeedbackSignature（从属量可以不进，但要写注释）；
-  - verify 不拦 TS6133，另跑 `npx vue-tsc -b`。
+  - verify 不拦 TS6133，另跑 `npx vue-tsc -b`；
+  - `decibelSource.anomalyBonus` 取的是上一轮线程值（convergence:679），收敛后与本轮 `pool.perSlotBonus` 相等（§24.78 ②），不要把它当成分叉。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）。
 
 **探针（优化器相关改动的验收）**

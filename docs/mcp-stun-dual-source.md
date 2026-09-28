@@ -2409,3 +2409,38 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **反例**：只 stash 页面源码后，源码锁变红（1 failed）。
 
 **影响**：只改展示与结果字段，引擎数值零差（verify 全绿，golden 零差）。**回退点**：revert 4e03fc6f。
+
+### 24.78 第 254 轮：「展示层手写引擎公式」线结项；CC-230 喧响队友伴随规则单一来源（f49a183f）
+
+**① 按 §24.77 交接的两条 grep 扫描**
+- `* 0.x`：views、components 共 22 处命中（排除 px、opacity、注释），逐条看过。
+  - 图表几何或拖拽灵敏度：DifficultyCurve3D、ResponseSurface3D、TeamDamage3D、DifficultyDescentPanel、FreeComparePage:423、TeamComparePage:1251；
+  - FreeComparePage:354 是求值耗时估算（约 0.35s/次），不是引擎公式；
+  - **唯一的引擎公式副本**是 `ResourceResultCard.vue` 的 `anomalyBonusBreakdown`（见 ③）。
+- 「读收敛后 resourceResult 再倒推引擎决策」：StunAxisPage:643、ResourceUtilizationPage:501/585/623、ResultPage:1020/1045 都是直接展示或求和，没有倒推，**无 CC-229 病型**。
+- 喧响单价（215、170、85、10、20）在展示层无副本。
+- ⇒ **「展示层手写引擎公式」这条线结项**。重开条件：新增展示代码出现与 core 同形的算式（已有的源码锁会拦大部分）。
+
+**② 探针**（12 队，推荐配装）：卡片显示的 `decibelSource.anomalyBonus`（来自上一轮线程值 convergence:679）、卡片重算的 own+companion、引擎 `pool.perSlotBonus` 三者，36 个槽位全部相等 ⇒ **不是数值 bug**，是规则重复。
+
+**③ CC-230**：「奖励喧响的其余队友各按 50% 伴随获得」这条游戏规则写了 3 份：
+- `core/anomalyPool/helpers.ts#calcPerSlotAnomalyDecibelBonus`（异常 / 紊乱 / 乱流）；
+- `core/anomalyPool.ts#calcSpecialActionBonus`（弹刀 / 连携 / 闪反 / 快支）；
+- `components/ResourceResultCard.vue`（「自己 + 队友伴随」拆解；slotCount 取 `max(3, 异常数组长度)`，与引擎取三数组最大长度不同，是潜在分叉点）。
+
+**改法**：
+- 新建 `src/data/decibelCompanion.ts`：`DECIBEL_COMPANION_RATIO = 0.5` 和 `withCompanionShare(perSlotOwn)`。放在 data 层，展示层也能合法引用；
+- helpers 新增 `calcPerSlotAnomalyOwnDecibel`（各槽自己触发的喧响）；`core/anomalyPool.ts` 改为 `perSlotBonus = withCompanionShare(perSlotOwnBonus)`；原 `calcPerSlotAnomalyDecibelBonus` 因此成为死导出（被 deadChannelLs 棘轮拦下），已删除；
+- `calcSpecialActionBonus` 改为 `withCompanionShare(ownReward[])`；
+- `AnomalyPoolResult` 新增 `perSlotOwnBonus`（types/resource/pools.ts）；
+- 卡片直读 `own = perSlotOwnBonus[slot]`、`companion = perSlotBonus[slot] − own`，删掉 170/85/85 的 import 和重算。
+
+**锁**：`src/data/__tests__/decibelCompanion.test.ts`
+- 规则断言 `[170,340,0] → [340,425,255]`；
+- 真队 1261-1401-1331：`perSlotBonus = withCompanionShare(perSlotOwnBonus)`，且 own 之和等于 `decibelBonus`；
+- 源码锁：core 两文件和卡片（去掉注释行后）不许出现 `companion +=`，卡片不许出现 `DECIBEL_BONUS`。
+- **反例**：stash 3 个源码文件后，源码锁变红。
+
+**影响**：零数值差（乘数都是 0.5 × 整数，浮点精确；verify 全绿，golden 零差）。**回退点**：revert f49a183f。
+
+**判据说明**：这不是为降计数。同一条游戏规则原来有 3 处独立实现，其中一处的槽位数取法已经和引擎不同；收口后规则只有一处，展示层读引擎结果，这是结构上的简化。
