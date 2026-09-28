@@ -89,7 +89,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
    - 在 convergence.ts 里 grep `decibelParryActive`、`guaranteeUltimate`、`PARRY_DECIBEL_BONUS`；`core/anomalyPool.ts` 里 PARRY_DECIBEL_BONUS 的注释写着「通用保底4喧响反推同引」。
    - 若展示自算且口径不同：让引擎把反推出的次数或缺口挂在结果上，展示直读（CC-227 的模式）；
    - 若只是重复一个常量：215 可以随 `SpecialActionBonusResult` 或 parrySplit 结果带出，或下沉到 data（视图层不能值导入 core）。
-2. 继续找「展示层手写引擎公式」：`grep -rnE '\\*\\s*0\\.[0-9]+' src/components src/views | grep -v -E 'px|opacity|//|\\*'`，逐条对照 core。命中后按 CC-228 的模式处理：下沉 data、core 原名转出、加源码锁。
+2. 继续找「展示层手写引擎公式」：`grep -rnE '\*\s*0\.[0-9]+' src/components src/views | grep -v -E 'px|opacity|//'`，逐条对照 core。命中后按 CC-228 的模式处理：下沉 data、core 原名转出、加源码锁。
 - 开工前**先查卡表**（最新 CC-228），并 `grep -rn 反锁 src`。
 - **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(...)` 加 `useResourceCalc()`；Boss 读 `public/static/boss-presets.json`（照抄 parrySplitInt.test.ts 的 bossById）；跑完 `rm`，不提交。
 - **已知坑**：
