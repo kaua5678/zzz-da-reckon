@@ -104,6 +104,26 @@ function clampSwings(cfg: unknown): number {
   return Math.min(SOUKAKU_SWINGS_MAX, Math.max(SOUKAKU_SWINGS_MIN, raw))
 }
 
+/**
+ * 每次强特由本模块**补行**的前台秒数（CC-200）：扇子第 2 击 + 风团 + 下砸 + 霜染冲刺 + 打年糕#3（全合轴）。
+ * `buildSoukakuExecutions` 产行与 `estimateExSpecialTime` 账本估时按同一套读法——原先账本只按通用强特时长预留，
+ * 其余 ≈6s/次全靠 `timeBudgetExcess` 事后折叠追认（实测 雅-苍角-丽娜 8 强特 ≈ 47.9s）。
+ * 改产行时同步本函数；`soukakuExTimeCc200.test.ts` 用真队伍断言两边相等。
+ */
+export function soukakuPerExExtraTime(cfg: unknown): { necessaryTime: number; comboAlignTime: number } {
+  const record = cfg as Record<string, unknown>
+  const swings = clampSwings(cfg)
+  const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[String(record.bodySize ?? 'large')] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
+  const chop = Math.round(Number(record['setting:soukaku.chopSlam'] ?? 0)) >= 1
+  const fan2 = swings >= 2 ? SOUKAKU_FAN_ACTION_TIME : 0
+  const balls = hits > 0 ? swings * SOUKAKU_WIND_BALL_ACTION_TIME : 0
+  const slam = chop ? SOUKAKU_CHOP_SLAM_ACTION_TIME : SOUKAKU_SLAM_ACTION_TIME
+  return {
+    necessaryTime: fan2 + balls + slam + SOUKAKU_FROST_DASH_ACTION_TIME + SOUKAKU_FROST_BASIC3_ACTION_TIME,
+    comboAlignTime: SOUKAKU_FROST_BASIC3_ACTION_TIME * SOUKAKU_FROST_BASIC3_COMBO_ALIGN,
+  }
+}
+
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.soukakuCinemaLevel = cinemaLevel ?? 0
@@ -297,6 +317,17 @@ export const soukakuMechanic: AgentMechanicModule = {
   ],
   buildCharConfig,
   buildExecutions: buildSoukakuExecutions,
+  // CC-200：账本估时 = 通用强特（首击扇子）+ 本模块每次强特补行（与 buildSoukakuExecutions 同源）。
+  // 补行次数取 floor（产行按 floor(state.exSpecialCount)），通用部分沿用通用公式的实数次数。
+  estimateExSpecialTime: ({ cfg, exSpecialCount }) => {
+    const extra = soukakuPerExExtraTime(cfg)
+    const exRows = Math.max(0, Math.floor(exSpecialCount))
+    const base = exSpecialCount * cfg.exSpecialActionTime
+    return {
+      necessaryTime: base + exRows * extra.necessaryTime,
+      comboAlignTime: base * cfg.exSpecialComboAlignRatio + exRows * extra.comboAlignTime,
+    }
+  },
   patchExecutions,
 }
 
