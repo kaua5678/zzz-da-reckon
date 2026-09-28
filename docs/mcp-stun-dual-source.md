@@ -1445,3 +1445,21 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 同步：`src/specs/agents/1391.json` note、`yixuanSmoke.test.ts` 历史注释、`docs/ARCHITECTURE.md` 工具表（删掉该项）、`mcp-r65j1-decibel-cap-verdict.md` / `mcp-timeline-shadow-kernel.md` / `LONG-TERM-DIRECTIONS.md` 加注。`mcp-r22d1-batch12-field-census.md` 是时点记录，不改。
   - 验证：vue-tsc 通过；verify EXIT=0（3827 passed，比上轮少 7 个 = 删掉的 resourceTrack 测试 6 个 + 形状面 1 个）；CG 25 项全过。纯删除、零生产调用，所以不跑 zd 和探针。
   - 回退点：`git revert 00e50d4e`。若将来真要做喧响上限口径，按 `mcp-r65j1-decibel-cap-verdict.md` §4 在新实现里建模，不要复活这个文件。
+
+### 24.35 CC-188：删除只被测试调用的生产逻辑副本，测试改走生产通道（第 211 轮，378c1c17）
+
+- **起点**：§24.34 定性表的类别 C（平行副本）共 10 条。按唯一判据逐条复核，**只做「副本会和生产悄悄走偏」或「会误导人」的**。其余只为减少导出数的删除一律不做，理由逐条写在下面。本节的最终结论覆盖 §24.34 表里的「建议」列。
+- **做了（4 条）**：
+  - `computeRinaCorePenRatio`（丽娜）、`computeYaojiayinCoreAtkBonus`（耀嘉音）：生产数值来自 `public/static/teammate-buffs.json`（丽娜 `rina.core_pen_ratio` 公式 + C1 `buffModifiers` ×1.3；耀嘉音 `core_andante_atk` 派生 35%/1200 + C2 差额公式），模块里各手抄了一份，测试测的是手抄件。**变异检验**：把 JSON 里的上限改成 31 / 1300，旧测试照样全绿，新测试两条都红。改后测试走 `collectInCombatTeamBuffs`（修饰器在这里生效）→ `applyEffect`，期望值原样搬过来。丽娜另补了 x=80 一点：原来的 x=72 算出来恰好 =30，测不出上限。
+  - 新增共享测试工具 `src/test/harness.ts#resolveTeammateBuffsOnEmptyPanel(buffIds, x)`：走生产通道解一组队友 buff 的数值，叠在 `emptyPanel()` 上。以后要断言 teammate-buffs 公式的数值就用它，**不要再在模块里抄公式**。
+  - `buildSpecResourceSections`（`specs/mechanics.ts`）：它是生产 `specToMechanicModule(spec).resourceSections` 在「无结果」时那个分支的逐字副本。删除后测试改调生产 `resourceSections({ result: undefined })`。
+  - `teamPresetGroupOptions`（`data/teamPresets.ts`，连同只为它存在的 `TeamPresetOption` 接口和 naive-ui 类型导入）：旧的两级下拉，头注释写着「三个消费点共用」，实际零消费（三个页面早已改用三级筛选）。`FEATURES_GUIDE.md` 里同样过时的一句一并改正。它的测试里「每个预设必须有分类」保留；「分组恰好覆盖全部预设」改测生产的三级筛选：每条预设恰好落在一个（职业, 属性）格里。
+- **不做（附理由）**：
+  - `interactiveTeammateBuffs` / `declaredOnlyTeammateBuffs` / `nodesFrom` / `teamHasAxisPresetPreferred`：都是 1～3 行、对生产谓词（`isTeammateBuffInteractive` / `VERSION_NODES` / `AUTO_AXIS_PRESET_HINTS.isPreferred`）的组合。测它们就等于测谓词，没有走偏风险，删了是纯折腾。
+  - `isEnemyDebuffStat`：复核后不是副本。`core/buff.ts` 用的是一个更大的集合，判断的不是同一件事。它只是个没人用的 4 行谓词，删了只降计数。
+  - `setCachedFreezeEnabled` / `isCachedFreezeEnabled`：头注释写明是「测试需要可写缓存时的临时开关」，属于有意留的安全阀，零成本，保留。
+  - 类别 F 的 `constraintSummary` / `deflateScoreByInflation`：小、自洽、有测试。删了没有架构收益，要用时直接接上即可。
+  - 类别 D 的 `presetTeamKey`、`STANDARD_ENEMY_DEBUFF_ELEMENTS`：各 1～5 行，删了只降计数，不做。
+  - `setupCodeGold`：另有疑点（见交接下一步：gold 轴的 `override.gold` 可能从未被消费），留给那张卡一起看。
+- **验证**：vue-tsc 通过；4 个相关测试文件 41 个用例通过；变异检验如上；CG 25 项全过；verify EXIT=0（3827 passed，与上轮相同：测试是一换一）。数值零改动（只删副本、测试改道，生产代码路径不变），所以不跑 zd 和探针。
+- **回退点**：`git revert 378c1c17`。

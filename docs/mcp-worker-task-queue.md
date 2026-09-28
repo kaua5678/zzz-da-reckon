@@ -70,23 +70,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 210 轮（lane lead-arena-0925c）：CC-187 完成（00e50d4e）。文档见本提交。已 push。**
-- 开工先 push 了第 209 轮积压的 2 个提交（b0db8605..11bc7062）。提示词 c2（每轮 `git push origin master`）早已写在提示词里，第 209 轮漏做；已写进 §1 长期规则。
-- 普查一「只读不写的 mechanicSetting key」结果为零：25 个 key 全部有生产写入点，这条方向结束。
-- 普查二「生产零引用的值导出」：25 个，逐条定性见 stun-dual-source §24.34。
-- CC-187：删除 `core/resourceTrack.ts`（时间轴喧响轨原型，已否决方向 A 的种子）及测试；decibelCapVerdict 形状面判据删除，闸门改由行为判据承担。verify 3827 passed。
-- 前几轮：209 CC-186（4d6f13d0）；208 CC-185（0e4e7ecf）；207 CC-184（ae935755）。
+**第 211 轮（lane lead-arena-0925c）：CC-188 完成（378c1c17）。文档见本提交。已 push。**
+- CC-188：§24.34 表里的 10 条平行副本逐条复核，做了 4 条：丽娜 / 耀嘉音核心被动公式副本、`buildSpecResourceSections`、旧两级预设下拉 `teamPresetGroupOptions`。测试改走生产通道，新增 `src/test/harness.ts#resolveTeammateBuffsOnEmptyPanel`。其余条目逐条写了「不做」理由（stun-dual-source §24.35）。**死导出这条线到此收尾**，不要再按导出计数去删。
+- 前几轮：210 CC-187（00e50d4e）；209 CC-186（4d6f13d0）；208 CC-185（0e4e7ecf）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. 按 §24.34 定性表处理类别 **C（生产逻辑的平行副本）**：典型是 `computeRinaCorePenRatio`、`computeYaojiayinCoreAtkBonus` 这类「模块里手抄一遍 JSON 公式、只有测试调用」的函数。做法：删副本，把对应测试改成走生产路径（`setupHarness` 编队后读面板或队友 buff 结果），断言数值不变（原测试的期望值直接搬过来）。一个提交处理全部 C 类，前提是每条都是「删副本 + 测试改测生产」同一模式；有例外的单列。判据：只有「测试从测副本改成测生产」这一点架构收益；若某条副本还承载了生产没有的口径（说明生产漏实现），那是另一张卡，不要顺手改数值。
-2. 类别 **D（纯死代码）** 顺带删；类别 **T（测试钩子）** 保留，不动；类别 **F（未接线功能）** 逐条评估要不要接：没人要就删，不要为了降计数去接线。
-3. 以上都做完，还没有新需求时：ARCHITECTURE-OVERVIEW A2 剩余部分按 R6 结论不单独开卡；可以回到 LONG-TERM-DIRECTIONS 的方向 C 第 2 刀。
+1. **查 freeCompare 的 gold 轴是不是死控件。** 子代理在 §24.34 表里报告：`src/composables/freeCompare/axes.ts:57 setupCodeGold` 只有测试在用，而且 gold 轴的 `override.gold` 在 `src/composables/freeCompare/engine.ts` 里从未被消费。先只读：
+   - 在 FreeComparePage 上用户能不能选 gold 轴或 gold 约束（`constraints.ts` 的 `cs.gold`）；
+   - 选了之后结果会不会变（grep `gold` 在 `freeCompare/*.ts` 与 `views/FreeComparePage.vue` 的读写）。
+   若界面可选却不生效 = 用户可见的死控件：能按限定金口径接线（单源 `limitedGold.ts#memberLimitedGold`）就接，不能就删掉该选项，连同 `setupCodeGold`。若界面根本选不到，就是死代码，直接删。结论写进 stun-dual-source 新一节。
+2. 以上做完、仍无新需求时：回到 LONG-TERM-DIRECTIONS 的方向 C 第 2 刀（先读该节原文再定范围）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- 断言封顶时要选一个**越过**上限的输入：丽娜 x=72 算出来恰好 =30，上限写成 31 也测不出来（第 211 轮补了 x=80）。
+- 删掉唯一使用者后，`vue-tsc -b` 会报 TS6192 / TS6196（导入或类型未使用），verify 不拦，要单独跑 vue-tsc。
 - 死导出扫描（`k210/dx210.cjs`）按词边界数引用，前导 `.` 被排除，所以看不见 `ns.foo` 命名空间访问、`...foo` 展开和 `import.meta.glob`（第 210 轮因此误报 2 条）。结果里的「零引用」必须人工核对后再删。
 - 删测试文件后 verify 的用例数会下降，属正常；交接里写清少了几个、来自哪里，下一轮才不会误判为测试丢失。
 - 死通道扫描（`scripts/lib/dead-channel-scan.mjs`）按行识别字段写入：把 `critRateCap: 200` 压进单行对象字面量 `{ stats: [...], critRateCap: 200 }` 会被判成「只读不写」，报红（第 209 轮踩过）。可选字段的赋值保持独占一行。
