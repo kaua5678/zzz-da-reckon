@@ -930,3 +930,22 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 验证：全量测试 3812 passed（−12 为删掉的用例）；golden 与棘轮未更新就通过；`vue-tsc -b` 无新错误；CG 25 项通过；`npm run verify` rc=0。
   - 回退点：`git revert 08b4d40d`（`.zc/perf` 不入库，回退后需在 perf 脚本中补回 `clearWarmStartCache`，否则只丢缓存隔离，不影响结果）。
   - 影响面：引擎入口签名少一个可选字段；没有生产写入方（只有测试写入）。加速收益本来就是 0（CC-146 起热启动不省任何轮数）。
+
+### 24.12 CC-156：「保底4失衡」未达成改为如实提示（第 190 轮，代码提交 e542a005）
+- **复测原病例**：归档 72db6dc3（1371+1481+1451），缺省 physical 口径下现在池 = 4（有效失衡 66829 ≥ 4×16647），伤害 66.6% 击杀线。§18.3 记录的「N*=3.84、池 3」已被 CC-158…CC-147 的修复消除，原病例不再复现。
+- **一般问题仍在**：把 Boss 弹刀预算压到 6 次，6 次全部反推给击破位（topUp 封顶）后池只有 3 次，页面没有任何提示，属于静默降级。`ParrySplitResult.reached` 本意是做这个诊断，但全仓零读取，而且比的是单轮池计数。
+- **决定：上报，采用最小实现，不改任何数值**。
+  - 依据：用户勾选了一个目标，引擎达不到时应当说明。页面已有先例：「保底4喧响」旁的 `guaranteeUltimateHint` 会如实显示取整过程。
+  - 引擎行为不变：仍按实际池计数计算，不硬凑。
+- **实现**：
+  - `core/parrySplit.ts`：
+    - 新增 `GUARANTEE_STUN_TARGET = 4`，作为单一事实源，替换 `convergence.ts` 里写死的 `targetStunCount: 4`；
+    - 删除零读取的 `reached`；
+    - 新增纯函数 `guaranteeStunShortfall(stunCount, split)`，按**最终**池计数判定，原因分三种：`parry-exhausted`（预算用满）/ `no-parry-budget`（拆分未激活）/ `other`。
+  - `useResourceCalc`：暴露 `guaranteeStunShortfallResult`（未勾选、无池结果或已达成时为 null）。展示层不能直接 import `@/core`，这是 CG 展示层越层棘轮的要求，所以判定放在编排层。
+  - `TeamConfigPage.vue`：在「保底4失衡」旁显示「（未达成：失衡池 N 次，Boss 弹刀 X 次已全部反推给击破位仍不够）」。
+- **测试**：
+  - `parrySplit.test.ts` 新增 4 条（三种原因 + 达成）；
+  - `archiveDeployStun.test.ts` 去掉第 177 轮的 off 钉，回到缺省 physical 口径，另加「parryTotal=6 ⇒ parry-exhausted、池 3」一段。
+- **验证**：全量测试 3816 passed；vue-tsc 无新错误；CG 25 项通过；`npm run verify` rc=0。
+- **回退点**：`git revert e542a005`。提示只是展示，回退不影响任何数值。
