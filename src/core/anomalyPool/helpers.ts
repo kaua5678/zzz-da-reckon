@@ -307,8 +307,12 @@ export interface AnomalyPoolInput {
   giftedTriggerCounts?: Record<string, number>
   /** 赠送触发归属的槽位（用于 per-slot 统计和紊乱 applier 归属），默认 0 */
   giftedTriggerSlot?: number
-  /** 角色机制模块列表（transformAnomalyPool 钩子调用，perElement 前注入积蓄） */
-  agentMechanics?: import('@/mechanics/types').AgentMechanicModule[]
+  /**
+   * 角色机制模块列表（transformAnomalyPool 钩子注入积蓄 + 风蚀 anomalyCorrosion 查询）。生产 = `getRegisteredAgentMechanics()`（roundInputs.ts）。
+   * CC-179（第 202 轮）改为**必填**：缺省曾静默跳过全部模块钩子（不注入积蓄、不结算风蚀），结果被悄悄改变；
+   * 测试不需要模块时显式传 `[]`。
+   */
+  agentMechanics: readonly import('@/mechanics/types').AgentMechanicModule[]
 }
 
 /**
@@ -1185,8 +1189,7 @@ export function calcDisorderDamage(
  * @param windSlot 风属性角色slot（用于乱流结算区）
  * @param panels 各角色面板
  * @param config 伤害计算全局配置
- * @param agentMechanics 已注册角色机制模块列表（风蚀状态经 `anomalyCorrosion` 能力查询；
- *   缺省 = 旧调用方未传 ⇒ 不结算风蚀，见 `./corrosion` 头注释的已知语义差）
+ * @param agentMechanics 已注册角色机制模块列表（风蚀状态经 `anomalyCorrosion` 能力查询；CC-179 起必填）
  */
 export function calcTurbulenceDamage(
   nonWindElements: { element: string; triggerCount: number; applierSlot: number }[],
@@ -1195,7 +1198,7 @@ export function calcTurbulenceDamage(
   config: DamageCalcConfig,
   windTriggerCount = 0,
   maxCount = Number.POSITIVE_INFINITY,
-  agentMechanics?: readonly AgentMechanicModule[],
+  agentMechanics: readonly AgentMechanicModule[],
 ): TurbulenceDamageResult | undefined {
   if (nonWindElements.length === 0) return undefined
 

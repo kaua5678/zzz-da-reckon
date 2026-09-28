@@ -93,7 +93,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     const preCap = Math.floor(preWindTime / TURBULENCE_CD_SECONDS)
     return Math.min(nonWindPreTrigSum * preWindRate, preCap)
   })()
-  for (const mech of input.agentMechanics ?? []) {
+  for (const mech of input.agentMechanics) {
     mech.transformAnomalyPool?.({
       elementMap,
       panels,

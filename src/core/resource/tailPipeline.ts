@@ -52,7 +52,7 @@ export interface TailResult {
  * 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
  *
  * 下面两个薄包装只是把「账本口径」（`crossAgentSupplyAt`，带秒数）转成「行口径」（带次数），
- * 并统一按 `config.teamSize`（编排层队长）解析目标槽——与账本口径 `configs.length` 解耦。
+ * 并统一按 `config.teamSize`（编排层队长）解析目标槽——CC-179 起账本 `iterate` 也读同一值（四处同源）。
  */
 function chainGiftRowSpec(
   configs: CharacterOperationConfig[], states: IterationState[], totalTime: number, teamSize: number | undefined,
@@ -168,7 +168,7 @@ export function runTailPipeline(
     (idx === chainGiftFinal.targetIdx ? chainGiftFinal.time : 0)
     + (idx === ultimateGiftFinal.targetIdx ? ultimateGiftFinal.time : 0)
   // 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
-  // 目标槽按 `config.teamSize`（编排层队长）解析——与账本口径 `configs.length` 解耦，见 giftRowTargetSlot。
+  // 目标槽按 `config.teamSize`（编排层队长）解析——与账本 / 折叠 / 探针同源（CC-179；见 types/resource/config.ts#teamSize）。
   const chainGiftRow = chainGiftRowSpec(configs, states, totalTime, config.teamSize)
   const ultimateGiftRow = ultimateGiftRowSpec(
     configs, states, totalTime, stunCountForCountChannel(config),

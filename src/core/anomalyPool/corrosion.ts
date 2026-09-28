@@ -13,10 +13,8 @@
  * 本文件不写 agentId 字面量、不 import 角色模块（两条 core 棘轮盯着）；只 `import type`
  * 角色相关类型。
  *
- * ⚠ **已知语义差（lead 已核，可接受）**：调用方**不传** `agentMechanics` 且面板带
- * `velinaEnabled` 时，旧式（直接调 `resolveVelinaCorrosion`）仍会结算风蚀、新式不结算。
- * 仓库内唯一不传的调用方是 `src/core/anomalyPool/__tests__/onStunBuildup.test.ts`，
- * 其面板无 `velinaEnabled` ⇒ 两边都是 `undefined`（逐位等价）。
+ * CC-179（第 202 轮）：`agentMechanics` 在 `AnomalyPoolInput` 上改为必填，原「调用方不传 ⇒ 不结算风蚀」的
+ * 已知语义差随之消失（不传会编译报错；测试不需要模块时显式传 `[]`）。
  */
 import type { PanelValues } from '@/types/catalog'
 import type { CorrosionSource, AnomalyEventRecord } from '@/types/resource'
@@ -25,16 +23,15 @@ import type { AgentMechanicModule } from '@/mechanics/types'
 /**
  * 解析本队风蚀状态：按模块注册顺序取第一个认领的 `anomalyCorrosion` 结果。
  *
- * @param agentMechanics 已注册角色机制模块列表；`undefined` = 调用方未提供 ⇒ 返回 `undefined`
+ * @param agentMechanics 已注册角色机制模块列表（CC-179 起必填）
  * @returns 风蚀状态；无模块认领（队里没有维琳娜）⇒ `undefined`
  */
 export function resolveAnomalyCorrosion(
-  agentMechanics: readonly AgentMechanicModule[] | undefined,
+  agentMechanics: readonly AgentMechanicModule[],
   panels: readonly PanelValues[],
   turbulenceCount: number,
   windTriggerCount: number,
 ): CorrosionSource | undefined {
-  if (!agentMechanics) return undefined
   for (const mech of agentMechanics) {
     const result = mech.anomalyCorrosion?.({ panels, turbulenceCount, windTriggerCount })
     if (result !== undefined) return result
@@ -47,10 +44,10 @@ export function resolveAnomalyCorrosion(
  * 调用方只在 `resolveAnomalyCorrosion` 有结果时调用。
  */
 export function resolveAnomalyCorrosionEvents(
-  agentMechanics: readonly AgentMechanicModule[] | undefined,
+  agentMechanics: readonly AgentMechanicModule[],
   source: CorrosionSource,
 ): AnomalyEventRecord[] {
-  for (const mech of agentMechanics ?? []) {
+  for (const mech of agentMechanics) {
     if (mech.anomalyCorrosionEvents) return mech.anomalyCorrosionEvents(source)
   }
   return []

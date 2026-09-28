@@ -45,7 +45,8 @@ describe('CC-71 风蚀气旋事件 → anomalyCorrosionEvents', () => {
       expect(resolveAnomalyCorrosionEvents([velina], src)).toEqual(legacy(src))
       expect(resolveAnomalyCorrosionEvents([getAgentMechanic('1211')!, velina], src)).toEqual(legacy(src))
     }
-    expect(resolveAnomalyCorrosionEvents(undefined, {} as CorrosionSource)).toEqual([])
+    // CC-179：agentMechanics 改必填后「不传」不再合法；空列表 ⇒ 无事件
+    expect(resolveAnomalyCorrosionEvents([], {} as CorrosionSource)).toEqual([])
   })
 
   it('源码锁：core/anomalyPool.ts 不再含维琳娜事件文案', () => {
