@@ -17,7 +17,7 @@ import { fmt } from '@/utils/format'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
-import { findMoveById, getRowValue } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue, rawRowValue } from '@/data/moveTableQueries'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -285,10 +285,12 @@ function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInp
   cfg.burniceDoubleSpraySeconds = clamp(cfgSetting(cfg, 'burnice.doubleSpraySeconds', DOUBLE_SPRAY_MAX_SECONDS), 0, doubleSprayMax)
   cfg.burniceStirringCount = Math.max(0, Math.floor(cfgSetting(cfg, 'burnice.stirringCount', 0)))
   cfg.burniceFlowCountUtilization = clamp(cfgSetting(cfg, 'burnice.flowCountUtilization', 1), 0, 1)
-  const blend1Damage = getRowValue(findMoveById(skills, MIXED_FLAME_BLEND_1_MOVE), 'damage') || 250.8
-  const blend2Damage = getRowValue(findMoveById(skills, MIXED_FLAME_BLEND_2_MOVE), 'damage') || 466
+  // 原始分段倍率（rawRowValue）：默认启用的 spec 行规则 burnice_stirring_fusion（1171007/damage ×1.2689）已在编辑器里
+  // 表达同一融合，这里若读带规则值会重复计入（CC-238；CC-237 误并入 getRowValue 的回归）。
+  const blend1Damage = rawRowValue(findMoveById(skills, MIXED_FLAME_BLEND_1_MOVE), 'damage') || 250.8
+  const blend2Damage = rawRowValue(findMoveById(skills, MIXED_FLAME_BLEND_2_MOVE), 'damage') || 466
   cfg.burniceStirringDamageRatio = blend1Damage * 0.5 + blend2Damage
-  cfg.burniceTossingDamageRatio = getRowValue(findMoveById(skills, TOSSING_MOVE_ID), 'damage') || TOSSING_DAMAGE_FALLBACK
+  cfg.burniceTossingDamageRatio = rawRowValue(findMoveById(skills, TOSSING_MOVE_ID), 'damage') || TOSSING_DAMAGE_FALLBACK
   cfg.burniceStirringActionTimeSeconds = findMoveById(skills, MIXED_FLAME_BLEND_2_MOVE)?.actionTime ?? 0
   cfg.burniceTossingActionTimeSeconds = findMoveById(skills, TOSSING_MOVE_ID)?.actionTime ?? 0
   cfg.skipGenericExSpecial = true

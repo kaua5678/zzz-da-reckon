@@ -27,11 +27,28 @@ import { getRowFusionMultiplier } from '@/logicEditor/fusion'
 import { moveFusionByMoveId } from '@/data/moveFusions'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 
-/** 从 SkillMove 的 rows 中提取指定 row 的值 */
+/**
+ * 从 SkillMove 的 rows 中提取指定 row 的值——**含逻辑编辑器行规则乘数**（`logicEditor/fusion`）。
+ *
+ * ⚠ 行规则不只是用户覆盖：**spec 可声明默认启用的规则**（`specs/agents/*.json#rowFusions` →
+ * `logicEditor/defaults.ts`，生产开箱即生效；测试 harness 不实例化逻辑编辑器 store ⇒ 测试态规则为空）。
+ * 取值默认用本函数；模块**自己按分段原始倍率算融合**、而默认规则已为编辑器展示表达了同一融合时，用 `rawRowValue`。
+ */
 export function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
   if (!move) return 0
   const row = move.rows.find(r => r.id === rowId)
   return (row?.values[0] ?? 0) * getRowFusionMultiplier(move.id, rowId)
+}
+
+/**
+ * 倍率表**原始**行值（不乘逻辑编辑器行规则）。仅用于「模块内按分段原始倍率自算融合」的场景，防止与默认启用的
+ * 同义行规则重复计入。现存用例：焰烈 1171 搅拌式 = Blend#1×0.5 + Blend#2，而 spec 规则 `burnice_stirring_fusion`
+ * （1171007/damage ×1.2689，enabled）在编辑器里表达同一融合（CC-238：CC-237 曾把此处误并入 getRowValue，
+ * 生产态搅拌式倍率 591.4% → ≈716.7%）。新增用例须在调用点注释写明对应的默认规则 id。
+ */
+export function rawRowValue(move: SkillMove | null | undefined, rowId: string): number {
+  if (!move) return 0
+  return move.rows.find(r => r.id === rowId)?.values[0] ?? 0
 }
 
 /**
