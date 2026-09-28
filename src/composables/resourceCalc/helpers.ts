@@ -111,6 +111,10 @@ export type DamagePoolRow = {
   sourceTag?: 'gift' | 'stun' | 'self'
   /** 失衡易伤乘数（轴启用时按轴内位置分配，默认 1） */
   stunMult?: number
+  /** 直伤行：引擎本行实际用的失衡覆盖率（= damagePool 的 stunForThis，0..1）。CC-226：展示层直接用它，不再由 stunMult 反推 */
+  stunCoverage?: number
+  /** 直伤行：引擎本行实际用的失衡易伤基数（Boss stunVuln；叶瞬光帷幕行 = veilStunVulnBase）。CC-226 */
+  stunVulnBase?: number
   /** 单次倍率（%，直伤=招式倍率、异放=releaseMultiplier、紊乱=disorderMultiplier、
    *  DoT=perTick×tick数 等；秒均行 count 已折算成总秒数 → count×multiplier = 该行总倍率）。
    *  供「伤害来源分解」诊断：总倍率 = Σ(count×multiplier)，属性区 = 总伤害/(总倍率/100)。 */

@@ -11,7 +11,9 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { stunAxisPresets, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
-import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMult } from '@/composables/stunVulnSummary'
+import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMult, rowAppliedStunMultOf, rowFullStunMultOf, rowStunCoverage } from '@/composables/stunVulnSummary'
+import { readFileSync as readSrcFile, readdirSync as readSrcDir, statSync as statSrc } from 'node:fs'
+import { join as joinSrc, relative as relSrc } from 'node:path'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 
 describe('rowAppliedStunMult（行级分量 → 生效易伤）', () => {
@@ -177,5 +179,43 @@ describe('computeStunVulnBySlot（逐人增幅，用户 2026-09-13）', () => {
     const one = computeStunVulnBySlot([{ slot: 2, totalDamage: 100, appliedStunMult: 1.05 }], 2.1)
     expect(one).toHaveLength(1)
     expect(one[0].coverageRate).toBeCloseTo(0.05 / 1.1, 3)
+  })
+})
+
+describe('CC-226：行级覆盖率 / 基数取引擎实值（不再由 stunMult 反推）', () => {
+  const p = { vuln: 1.5, bonus: 100, always: 0, cap: 0 }
+  it('叶瞬光帷幕行触顶（基数 1.1 < stunVuln 1.5）：满覆盖 ⇒ 生效 2.1，覆盖率 100%', () => {
+    const veilRow = { stunMult: 1 + (1.1 - 1) * 1, stunCoverage: 1, stunVulnBase: 1.1 }
+    expect(rowStunCoverage(veilRow, p.vuln)).toBe(1)
+    expect(rowAppliedStunMultOf(veilRow, p)).toBeCloseTo(2.1, 9)
+    expect(rowFullStunMultOf(veilRow, p)).toBeCloseTo(2.1, 9)
+    // 反例：旧反推路径（不带新字段）把同一行读成 20% 覆盖
+    expect(rowStunCoverage({ stunMult: veilRow.stunMult }, p.vuln)).toBeCloseTo(0.2, 9)
+    expect(rowAppliedStunMultOf({ stunMult: veilRow.stunMult }, p)).not.toBeCloseTo(2.1, 3)
+  })
+  it('普通行：新字段与旧反推逐位等价', () => {
+    for (const cov of [0, 0.25, 0.5, 1]) {
+      const row = { stunMult: 1 + (p.vuln - 1) * cov, stunCoverage: cov, stunVulnBase: p.vuln }
+      expect(rowAppliedStunMultOf(row, p)).toBeCloseTo(rowAppliedStunMult(row.stunMult, p.vuln, p.bonus, 0, 0), 12)
+    }
+    expect(rowAppliedStunMultOf({}, p)).toBe(1)
+    expect(rowStunCoverage({}, p.vuln)).toBeUndefined()
+  })
+  it('源码锁：由 stunMult 反推覆盖率的式子全仓只有 stunVulnSummary.ts 一处', () => {
+    const SRC = joinSrc(__dirname, '..', '..')
+    const RE = /\(\s*[\w.]*stunMult\s*-\s*1\s*\)\s*\/\s*\(\s*[\w.]+\s*-\s*1\s*\)/
+    const hits: string[] = []
+    const walk = (d: string) => {
+      for (const n of readSrcDir(d)) {
+        const f = joinSrc(d, n)
+        if (statSrc(f).isDirectory()) { if (n !== '__tests__' && n !== 'node_modules') walk(f); continue }
+        if (!/\.(ts|vue)$/.test(n)) continue
+        readSrcFile(f, 'utf8').split('\n').forEach((line, i) => {
+          if (RE.test(line) && !line.trim().startsWith('//') && !line.trim().startsWith('*')) hits.push(`${relSrc(SRC, f).replace(/\\/g, '/')}:${i + 1}`)
+        })
+      }
+    }
+    walk(SRC)
+    expect(hits.map(h => h.split(':')[0])).toEqual(['composables/stunVulnSummary.ts'])
   })
 })

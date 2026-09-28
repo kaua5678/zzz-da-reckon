@@ -16,7 +16,18 @@
 // @fact engine:失衡易伤可见化/加权信用 口径: 行级 stunMult = Boss 失衡易伤分量（满额=stunVuln、零=1、跨窗部分中间值），生效易伤 = calcStunMultiplier(vuln, 面板失衡增伤, frac)；加权信用 = Σ(伤害×生效易伤)/Σ伤害 − 1，与部署 A/B 差分同构（archiveStunVulnProbe 实测 0.1966），异常行按 1 计、信用偏保守；满额参照 = 槽0 面板 | 据 实测@2026-09-10（archiveStunVulnProbe A/B 差分）+ 用户@2026-09-10 方案听取·复核@2026-09-25 | 验 src/composables/__tests__/stunVulnSummary.test.ts | 锚 src/composables/stunVulnSummary.ts#computeStunVulnSummary | 信 确认
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 
-/** 行级 stunMult（vuln 分量）→ 生效易伤（含面板失衡增伤；异常行 undefined → 1） */
+/**
+ * 由行级 stunMult 反推覆盖率——**只作回落**（行没带 `stunCoverage` 时：测试夹具 / 旧数据）。全仓唯一实现（CC-226 源码锁）。
+ * 反推假设本行基数 = Boss stunVuln；叶瞬光帷幕行的基数是 `veilStunVulnBase`（触顶时 < stunVuln），
+ * 用 stunVuln 反推会把覆盖率压低（例：基数 1.1、stunVuln 1.5 ⇒ 满覆盖被读成 20%）——这正是 CC-226 让行直接携带覆盖率与基数的原因。
+ */
+function coverageFromStunMult(stunMult: number, vuln: number): number {
+  return vuln > 1 + 1e-9
+    ? Math.max(0, Math.min(1, (stunMult - 1) / (vuln - 1)))
+    : (stunMult >= 1 ? 1 : 0)
+}
+
+/** 行级 stunMult（vuln 分量）→ 生效易伤（含面板失衡增伤；异常行 undefined → 1）。旧签名，按「基数 = vuln」反推 */
 export function rowAppliedStunMult(
   stunMult: number | undefined,
   vuln: number,
@@ -25,10 +36,39 @@ export function rowAppliedStunMult(
   stunCapAlways: number,
 ): number {
   if (stunMult === undefined) return 1
-  const frac = vuln > 1 + 1e-9
-    ? Math.max(0, Math.min(1, (stunMult - 1) / (vuln - 1)))
-    : (stunMult >= 1 ? 1 : 0)
-  return calcStunMultiplier(vuln, stunBonus, stunBonusAlways, stunCapAlways, frac)
+  return calcStunMultiplier(vuln, stunBonus, stunBonusAlways, stunCapAlways, coverageFromStunMult(stunMult, vuln))
+}
+
+/** 按行计算所需的最小行形状（DamagePoolRow 的子集） */
+export interface StunRowLike {
+  stunMult?: number
+  stunCoverage?: number
+  stunVulnBase?: number
+}
+/** 满额参照所用的面板失衡加成（槽 0 惯例）+ Boss stunVuln */
+export interface StunPanelBonus {
+  vuln: number
+  bonus: number
+  always: number
+  cap: number
+}
+
+/** 行的失衡覆盖率：优先引擎实值 `stunCoverage`，缺失才反推；异常行（无 stunMult）→ undefined */
+export function rowStunCoverage(row: StunRowLike, vuln: number): number | undefined {
+  if (row.stunMult === undefined) return undefined
+  return row.stunCoverage ?? coverageFromStunMult(row.stunMult, vuln)
+}
+
+/** 行级生效易伤（CC-226）：用本行真实基数（`stunVulnBase`，缺失 = vuln）与覆盖率；异常行 → 1 */
+export function rowAppliedStunMultOf(row: StunRowLike, p: StunPanelBonus): number {
+  const cov = rowStunCoverage(row, p.vuln)
+  if (cov === undefined) return 1
+  return calcStunMultiplier(row.stunVulnBase ?? p.vuln, p.bonus, p.always, p.cap, cov)
+}
+
+/** 本行满覆盖时的生效易伤（用本行基数；叶瞬光帷幕行触顶时低于全队满额参照） */
+export function rowFullStunMultOf(row: StunRowLike, p: StunPanelBonus): number {
+  return calcStunMultiplier(row.stunVulnBase ?? p.vuln, p.bonus, p.always, p.cap, true)
 }
 
 export interface StunVulnSummary {

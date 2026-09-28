@@ -217,6 +217,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         totalDamage: result.damage,
         note: row.note ?? '',
         stunMult: stunMultVal,
+        stunCoverage: stunForThis,
+        stunVulnBase: stunBase,
         moveId: row.moveId,
         sourceTag: row.sourceTag,
         multiplier: row.multiplier,

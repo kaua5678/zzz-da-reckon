@@ -2,7 +2,7 @@ import { computed, type ComputedRef } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import type { PanelValues } from '@/types/catalog'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
-import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMult } from '@/composables/stunVulnSummary'
+import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMultOf, rowFullStunMultOf, rowStunCoverage } from '@/composables/stunVulnSummary'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 
 /**
@@ -31,37 +31,35 @@ export function useStunVulnDisplay(opts: {
       cap: p0?.stunDmgMultiplierBonusCapAlways ?? 0,
     }
   }
+  // CC-226：行级覆盖率 / 基数直接取引擎写在行上的 stunCoverage / stunVulnBase（旧写法用 Boss stunVuln 反推，
+  // 叶瞬光帷幕行触顶时基数 < stunVuln ⇒ 覆盖率被压低、生效易伤漏掉封顶后的值）。本段不再与 R44 搬迁原文逐字节相同。
   function appliedVulnOf(row: DamagePoolRow): string {
     if (row.stunMult === undefined) return '—'
-    const { vuln, bonus, always, cap } = stunVulnPanelOf()
-    return rowAppliedStunMult(row.stunMult, vuln, bonus, always, cap).toFixed(3)
+    return rowAppliedStunMultOf(row, stunVulnPanelOf()).toFixed(3)
   }
   function stunVulnClassOf(row: DamagePoolRow): string {
     if (row.stunMult === undefined) return 'stun-vuln-na'
-    const { vuln, bonus, always, cap } = stunVulnPanelOf()
-    const m = rowAppliedStunMult(row.stunMult, vuln, bonus, always, cap)
-    const full = calcStunMultiplier(vuln, bonus, always, cap, true)
+    const p = stunVulnPanelOf()
+    const m = rowAppliedStunMultOf(row, p)
+    const full = rowFullStunMultOf(row, p)
     if (m >= full - 1e-6) return 'stun-vuln-full'
     if (m <= 1 + 1e-6) return 'stun-vuln-zero'
     return 'stun-vuln-partial'
   }
   function stunVulnTitleOf(row: DamagePoolRow): string {
     if (row.stunMult === undefined) return '异常行：易伤已在结算内部，不逐行暴露'
-    const vuln = configStore.enemy.stunVuln ?? 0
-    const frac = vuln > 1 + 1e-9
-      ? Math.max(0, Math.min(1, (row.stunMult - 1) / (vuln - 1)))
-      : (row.stunMult >= 1 ? 1 : 0)
+    const frac = rowStunCoverage(row, configStore.enemy.stunVuln ?? 0) ?? 0
     return `轴内覆盖 ${(frac * 100).toFixed(0)}% → 生效易伤 ×${appliedVulnOf(row)}`
   }
   // 行级生效易伤映射（全队汇总与逐人共用，避免两处各算一遍漂移）
   const stunVulnAppliedRows = computed(() => {
-    const { vuln, bonus, always, cap } = stunVulnPanelOf()
+    const p = stunVulnPanelOf()
     return {
-      full: calcStunMultiplier(vuln, bonus, always, cap, true),
+      full: calcStunMultiplier(p.vuln, p.bonus, p.always, p.cap, true),
       rows: damagePoolRows.value.map(row => ({
         slot: row.slot,
         totalDamage: row.totalDamage,
-        appliedStunMult: rowAppliedStunMult(row.stunMult, vuln, bonus, always, cap),
+        appliedStunMult: rowAppliedStunMultOf(row, p),
       })),
     }
   })
