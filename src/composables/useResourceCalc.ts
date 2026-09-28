@@ -10,7 +10,6 @@ import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
 import { calcStunAxisStack } from '@/core/stunAxisStack'
-import { calcSpecialActionBonus } from '@/core/anomalyPool'
 import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import { getAgentMechanic } from '@/mechanics'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
@@ -482,29 +481,9 @@ export function useResourceCalc() {
   })
 
   /** 特殊动作喧响奖励 */
-  const specialActionBonus = computed<SpecialActionBonusResult | null>(() => {
-    const topUp = interactionTopUp.value
-    const split = parrySplitResult.value
-    const perSlotParry = configStore.team.map((c, s) => {
-      let p = (c.parryCount ?? 0) + (topUp && s === topUp.slot ? topUp.parry : 0)
-      if (split) {
-        if (s === split.breakerSlot) p = split.breakerParry + split.breakerNoFollowUp + split.breakerDecibelOnly
-        // 主C：正常弹刀剩余 + **不带支援突击弹刀的对半分那一半**（用户口径 2026-09-10）
-        else if (s === 0 && (c.parryCount ?? 0) <= 0) p = split.mainDpsParry + split.mainDpsNoFollowUp
-      }
-      return p
-    })
-    const perSlotDodgeCounter = configStore.team.map(c => c.dodgeCounterCount ?? 0)
-    const perSlotQuickAssist = configStore.team.map(c => c.quickAssistCount ?? 0)
-    const perSlotChain = [0, 0, 0]
-
-    for (const charResult of resourceResult.value?.characters ?? []) {
-      perSlotChain[charResult.slot] = charResult.chainCountTotal ?? 0
-    }
-
-    const result = calcSpecialActionBonus(perSlotParry, perSlotChain, perSlotDodgeCounter, perSlotQuickAssist)
-    return result as SpecialActionBonusResult
-  })
+  // CC-227：直读引擎本轮实际用于喧响的那份（convergence 的 calcSpecialActionBonus 结果）。
+  // 旧写法在此用 store 原值 + topUp + parrySplit 另拼每槽弹刀、连携取结果 chainCountTotal——与引擎（注入后 cfg、规划连携）是两套口径。
+  const specialActionBonus = computed<SpecialActionBonusResult | null>(() => calcOutput.value?.specialActionBonus ?? null)
 
 
 

@@ -7,7 +7,7 @@ import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
-import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary } from '@/types/resource'
+import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { getAgentMechanic } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
@@ -666,12 +666,14 @@ export function createRunCalcRound(deps: {
     // 弹刀喧响（215/次）用注入后的有效次数（含反推拆分 + 不带支援突击 + 只给喧响 + 般岳补齐；不写回 store）
     const parryForBonus = [0, 0, 0]
     for (const cfg of characters) parryForBonus[cfg.slot] = (cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0) + (cfg.parryDecibelOnlyCount ?? 0)
-    const { perSlotBonus: specialBonusPerSlot } = calcSpecialActionBonus(
+    // CC-227：整份保留并随本轮结果返回（展示层直读——此前 useResourceCalc 用 store 原值另拼一份，Boss 弹刀反推 / 连携口径会漂）
+    const specialActionBonusRound = calcSpecialActionBonus(
       parryForBonus,
       perSlotChainForBonus,
       configStore.team.map(c => c.dodgeCounterCount ?? 0),
       configStore.team.map(c => c.quickAssistCount ?? 0),
     )
+    const specialBonusPerSlot = specialActionBonusRound.perSlotBonus
     // 异常/紊乱/乱流喧响奖励：上一轮异常池结果回填（首轮 0），在外层不动点内收敛
     const anomalyBonusPerSlot = configStore.team.map((_, s) => prevAnomalyDecibelBonus[s] ?? 0)
 
@@ -1105,6 +1107,7 @@ export function createRunCalcRound(deps: {
       matchedPlanName: opts?.forceNoAxis ? null : planName,
       interactionTopUp: interactionTopUpNext,
       parrySplit: parrySplitNext,
+      specialActionBonus: specialActionBonusRound as SpecialActionBonusResult,
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
       threadsNext: {

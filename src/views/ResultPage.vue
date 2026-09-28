@@ -529,22 +529,22 @@
           </template>
           <div class="pool-summary-body">
             <div class="pool-stat">
-              <span class="pool-stat-label">弹刀 ({{ totalParryCount }}次)</span>
+              <span class="pool-stat-label">弹刀 ({{ sumOf(specialActionBonus.perSlotParry) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.parry) }}</span>
               <span class="pool-stat-detail">215/次 · 伴随107.5</span>
             </div>
             <div class="pool-stat">
-              <span class="pool-stat-label">连携 ({{ specialActionBonus.perSlotChain.reduce((a, b) => a + b, 0) }}次)</span>
+              <span class="pool-stat-label">连携 ({{ sumOf(specialActionBonus.perSlotChain) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.chain) }}</span>
               <span class="pool-stat-detail">10/次 · 伴随5</span>
             </div>
             <div class="pool-stat">
-              <span class="pool-stat-label">闪避反击 ({{ totalDodgeCount }}次)</span>
+              <span class="pool-stat-label">闪避反击 ({{ sumOf(specialActionBonus.perSlotDodgeCounter) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.dodgeCounter) }}</span>
               <span class="pool-stat-detail">10/次 · 伴随5</span>
             </div>
             <div class="pool-stat">
-              <span class="pool-stat-label">快速支援 ({{ totalQuickAssistCount }}次)</span>
+              <span class="pool-stat-label">快速支援 ({{ sumOf(specialActionBonus.perSlotQuickAssist) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.quickAssist) }}</span>
               <span class="pool-stat-detail">20/次 · 伴随10</span>
             </div>
@@ -865,7 +865,10 @@ const convergenceOk = computed(() => {
     && (c.outerExit === undefined || c.outerExit !== 'maxIter')
 })
 
-// 全队弹刀/闪避反击总次数（per-character 求和）
+// 特殊动作喧响卡的次数（CC-227）：与喧响值同源 = 引擎本轮实际计入的每槽次数（含 Boss 弹刀反推拆分 / 只给喧响弹刀）
+const sumOf = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
+
+// 全队弹刀/闪避反击总次数（per-character 求和）——**输入侧**配置值，只给参数区只读框用
 const totalParryCount = computed(() =>
   configStore.team.reduce((sum, c) => sum + (c.parryCount ?? 0), 0),
 )

@@ -1,4 +1,4 @@
-import type { AnomalyPoolResult, StunAxis, TeamResourceResult, StunPoolResult, InStunAnomalySummary } from '@/types/resource'
+import type { AnomalyPoolResult, StunAxis, TeamResourceResult, StunPoolResult, InStunAnomalySummary, SpecialActionBonusResult } from '@/types/resource'
 import type { InteractionTopUp } from '@/mechanics/types'
 import type { ParrySplitResult } from '@/core/parrySplit'
 import type { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
@@ -18,6 +18,8 @@ export interface CalcRoundResult {
     matchedPlanName: string | null
     interactionTopUp: InteractionTopUp
     parrySplit: ParrySplitResult
+    /** 本轮实际用于喧响的特殊动作奖励（calcSpecialActionBonus 整份，含每槽次数）。CC-227：展示直读，不再在 useResourceCalc 另拼一份 */
+    specialActionBonus: SpecialActionBonusResult
     inStunAnomalyState: InStunAnomalySummary | null
     bossAnomalyState: BossAnomalyStateResult | null
     threadsNext: CalcRoundThreads
