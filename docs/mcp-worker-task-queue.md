@@ -70,23 +70,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 217 轮（lane lead-arena-0925c）：CC-194 完成（062af638）。文档见本提交。已 push。**
-- CC-194：`applyTeamConfig` 的 postRound 写入从来没有跨轮生效，因为每一轮都会重新克隆 cfg。扳机冥狱恒为 0，安比 C4 回能从未注入。已改成通用通道：`threads.postRoundInput` 在下一轮 converge 前派发，判稳签名补了强特次数。详见 `docs/mcp-stun-dual-source.md` §24.41。
-- 前几轮：216 CC-193（4ddd4f78）；215 CC-192（10817931）；214 CC-191（9e0d4adf）。
+**第 218 轮（lane lead-arena-0925c）：CC-195 完成（f5a28e56）。文档见本提交。已 push。**
+- CC-195：新增通用的「普攻汇总行 → 段命中」折算（`basicComboCycleSeconds` + `basicSummarySeconds`）。千夏普攻 #4 进入凝视标记供给；佩洛伊斯日珥账本补上余晖回复；苍角不做。详见 `docs/mcp-stun-dual-source.md` §24.42。
+- 前几轮：217 CC-194（062af638，postRound 跨轮）；216 CC-193（4ddd4f78）；215 CC-192（10817931）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **§24.41 末尾的剩余逐角色欠账**：千夏普攻 #4 标记、佩洛伊斯 a3 / a4 连段、爱芮绝对音准、苍角霜染刃旗。**先查** `docs/MECHANICS_IMPLEMENTATION.md` 对应角色段的「已知缺口 / 用户裁决」，并 `grep -rn 反锁 src`。**再用 harness 打印生产执行行**，确认问题是在匹配、次数还是接线（CC-194 就是这样发现 §24.40 的判断有误）。
-2. 如果「按普攻时长折算次数」的需求不止一个角色有，评估在 `execMatchesMove` 旁边提供通用的「汇总平A行 → 基准段次数」换算。
+1. **爱芮绝对音准直伤**（§24.42 已知缺口 2）：在 `aire.ts` 的 buildExecutions 里按 `pitchCount` 推 1501005 / 1501006 / 1501007 表行（参考 `trigger.ts#pushTableExecution`），前台耗时挤占普攻池。可逆：删掉推行即可回退。做之前先在 `docs/MECHANICS_IMPLEMENTATION.md` 爱芮段再确认一次没有相反的用户口径；做完跑 time golden，逐条解释时间账变化。
+2. **千夏 1491008 额外强特不计标记**（§24.42 已知缺口 1）：倾向方案 (a)，同步改 `basicSegmentFoldCc195.test.ts` 的 cardHits。
 3. **additionalAbility 声明普查**：1141 / 1151 / 1171 / 1351 / 1441 / 1511 / 1611。
 4. T2 剩余 71 条：派子代理（dsflash），由 lead 验收。
 5. freeCompare `higherBetter` 着色：评估，不值得就写「不做」。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）有没有同一件事的历史裁决。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`），再查 `docs/MECHANICS_IMPLEMENTATION.md` 的角色段和 `grep -rn 反锁 src`。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **按普攻段数命中**（CC-195）：普攻只有一条汇总行，要用 `basicComboCycleSeconds(skills, 段id)`（在 buildCharConfig 里取 skills 算好存进 cfg）加上 `basicSummarySeconds(executions)` 折算，不要 `SET.has(moveId)`。
+- **模块钩子看不到的行**：额外强特行（`exSpecialPlans`）在 `buildExecutions` **之后**物化，只有 `patchExecutions` 看得到；装配期的 `preModuleExecutions` 是 buildExecutions 派发前的行。模块派生量不要回写 cfg 给装配期读（多 pass 下最后写入者赢），应在装配期用同一纯函数重算。
 - **postRound 写入的是下一轮的 cfg**（CC-194 起）：`applyTeamConfig({phase:'postRound'})` 在**下一轮** converge 前、用上一轮收敛的次数对新克隆派发（`threads.postRoundInput`）。**本轮末尾**写 cfg 没有意义，`runCalcRound` 每轮都会从 `base.characters` 重新克隆。新增跨轮反馈，要么走 postRound，要么走 `nextRoundFeedback`；并检查 `outerFeedbackSignature` 是否覆盖了它的输入。
 - **普攻恒为一条汇总行**（`moveId: 'basic_attack'`，按基准段秒均结算）：模块按普攻段 id 匹配时必须用 `execMatchesMove(exec, SET)`（`@/types/resource`），`SET.has(exec.moveId)` 碰不到它。基准段由 catalog `basicBenchmarkMoveId` 决定，缺省为第 3 个带 `#N` 的段；状态型主形态（爆发、烧血等）要显式配置（CC-193）。
 - **新角色录入**：catalog 普攻段名不带 `#N` 时必须配 `basicBenchmarkMoveId`，否则普攻伤害为 0。`basicBenchmarkMatchCc193.test.ts` 的守卫会红（CC-193：赛维里安 / 菲欧妮就是这样漏的）。改 catalog 用 node 读入、改字段、再调 `scripts/lib/jsonio.mjs#writeJsonCompact` 写回，然后跑 `npm run minify:static`，最后按 JSON 结构比对确认只改了目标键。
