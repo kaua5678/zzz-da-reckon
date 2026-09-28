@@ -504,6 +504,7 @@ import type { DamageElement, PanelValues } from '@/types/catalog'
 import { getStatMeta, isPctStat } from '@/utils/statMeta'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
+import { elementAnomalyBuildUpEfficiency } from '@/data/anomalyElement'
 
 const props = defineProps<{
   panel: PanelValues
@@ -670,7 +671,8 @@ const stunBuildUpMultiplier = computed(() => {
 })
 
 // ========== 异常乘区 ==========
-const currentElementAnomalyBuildUpEfficiency = computed(() => props.damageElement === 'electric' ? props.panel.electricAnomalyBuildUpEfficiency ?? 0 : 0)
+// CC-223：与引擎 calcPerHitBuildUp 同源（此前只认 electric，物理 / 以太元素积蓄效率被漏显示）
+const currentElementAnomalyBuildUpEfficiency = computed(() => props.damageElement ? elementAnomalyBuildUpEfficiency(props.panel, props.damageElement) : 0)
 const currentElementLabel = computed(() => props.damageElement ? ELEMENT_NAME_BY_ELEMENT[props.damageElement] ?? '' : '')
 
 const anomalyBuildUpMultiplier = computed(() => {

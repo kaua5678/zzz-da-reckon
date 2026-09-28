@@ -308,7 +308,9 @@ const panels = computed(() => {
     const penDmgTotal = (pIn.penDmgBonus ?? 0) + (pIn.sheerDmgBonus ?? 0) + (elementSheerKey ? (pIn[elementSheerKey] ?? 0) : 0)
     const resTotal = (pIn.enemyResReduction ?? 0) + (pIn[elementResKey] ?? 0)
     const stunMultTotal = (pIn.stunDmgMultiplierBonus ?? 0) + (pIn.stunDmgMultiplierBonusAlways ?? 0)
-    const anomalyDmgTotal = (pIn.anomalyDmgBonus ?? 0) + (pIn.windAnomalyDmgBonus ?? 0)
+    // CC-223：风异常增伤只对风属性异常生效（引擎按异常元素判定：damage.ts / anomalyPool helpers），不并入通用异常增伤，单列
+    const anomalyDmgTotal = pIn.anomalyDmgBonus ?? 0
+    const windAnomalyDmg = pIn.windAnomalyDmgBonus ?? 0
     // CC-222：与引擎同源（此前只钳上限、负暴击率不按 0，且运算顺序与引擎不同）
     const anomalyCritRate = clampCritRatePct(pIn.anomalyCritRate ?? 0)
     const anomalyCritMult = expectedCritMultiplier(pIn.anomalyCritRate ?? 0, pIn.anomalyCritDmg ?? 0)
@@ -361,7 +363,7 @@ const panels = computed(() => {
       },
       {
         title: '异常链（异常公式/紊乱/异放/乱流）',
-        main: `异常增伤 ${pct(anomalyDmgTotal)} · 紊乱增伤 ${pct(pIn.disorderDamageBonus ?? 0)}（结算区）`,
+        main: `异常增伤 ${pct(anomalyDmgTotal)}${windAnomalyDmg ? `（风属性异常另 +${pct(windAnomalyDmg)}）` : ''} · 紊乱增伤 ${pct(pIn.disorderDamageBonus ?? 0)}（结算区）`,
         lines: [
           `异放增伤 ${pct(pIn.anomalyReleaseDmgBonus ?? 0)} · 乱流增伤 ${pct(pIn.turbulenceDamageBonus ?? 0)}`,
           `异常暴击期望 1 + ${pct(anomalyCritRate)} × ${pct(pIn.anomalyCritDmg ?? 0)} = ${fmt(anomalyCritMult, 4)}`,

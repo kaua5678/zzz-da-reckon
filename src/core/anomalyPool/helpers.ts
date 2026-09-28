@@ -51,6 +51,7 @@ import type {
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
+import { VARIANT_ELEMENT_TO_BASE, getBaseElement, elementAnomalyBuildUpEfficiency } from '@/data/anomalyElement'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { LEVEL_COEFF_60, LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
@@ -93,17 +94,8 @@ export const TURBULENCE_CD_SECONDS = 3
  * 变种元素的积蓄上限、持续时间、紊乱/乱流倍率均继承基础元素的值。
  * 变种元素之间在紊乱系统中视为不同元素（如 physical 和 physical_polar_assault 可互紊）。
  */
-export const VARIANT_ELEMENT_TO_BASE: Record<string, string> = {
-  'physical_polar_assault': 'physical',  // 爱丽丝极性强击变种
-  'ether_ink': 'ether',                  // 仪玄的玄墨（独立积蓄槽，可与以太互紊）
-  // 'frostfire': 'ice',                // 雅的烈霜设为冰变种时可加此行（当前 frostfire 独立）
-  // 'physical_accumulation': 'physical', // 叶瞬光的积蓄（待实现）
-}
-
-/** 获取基础元素（变种 → 基础，非变种返回自身） */
-export function getBaseElement(element: string): string {
-  return VARIANT_ELEMENT_TO_BASE[element] ?? element
-}
+// 变种元素映射 / getBaseElement：单一来源 `@/data/anomalyElement`（CC-223，展示层也要用），此处原名转出
+export { VARIANT_ELEMENT_TO_BASE, getBaseElement }
 
 // ============ 积蓄上限表（原有，保持不变） ============
 
@@ -476,13 +468,6 @@ function getBuildUpCap(
   return getBaseBuildUpCap(element, triggerCount) * bossCoeff * anomalyCoeff
 }
 
-function getElementAnomalyBuildUpEfficiency(panel: PanelValues, element: string): number {
-  const baseElement = getBaseElement(element)
-  if (baseElement === 'electric') return panel.electricAnomalyBuildUpEfficiency ?? 0
-  if (baseElement === 'physical') return panel.physicalAnomalyBuildUpEfficiency ?? 0
-  if (baseElement === 'ether') return panel.etherAnomalyBuildUpEfficiency ?? 0
-  return 0
-}
 
 /**
  * 计算单次招式的实际异常积蓄值
@@ -504,7 +489,7 @@ export function calcPerHitBuildUp(
 
   // 异常积蓄效率区（面板 + 元素 + 行级招式限定，全部**加算**）
   const buildUpEff = (panel.anomalyBuildUpEfficiency ?? 0)
-    + getElementAnomalyBuildUpEfficiency(panel, element)
+    + elementAnomalyBuildUpEfficiency(panel, element)
     + rowEfficiencyBonusPct
   const afterEff = afterMastery * (1 + buildUpEff / 100)
 
