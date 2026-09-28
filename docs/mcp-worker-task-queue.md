@@ -69,24 +69,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 208 轮（lane lead-arena-0925c）：CC-185 完成（0e4e7ecf）；立卡 CC-186。文档见本提交。**
-- CC-185：编排层优化器改为「useDefault 快速分配起点 + 真实伤害精修」，refine 必填，不再调打分式贪心。实测和贪心起点零差，详见 stun-dual-source §24.32。
-- 前几轮：207 CC-184（ae935755）；206 CC-183（20a47df3）；205 CC-182（85956a53）。
+**第 209 轮（lane lead-arena-0925c）：CC-186 完成（4d6f13d0）。文档见本提交。**
+- CC-186：core 副词条打分模型退役（唯一入口 store `optimizer.useDefault=0` 从引入起无写入点，生产不可达）。core/substatOptimizer.ts 915 行减到约 190 行，入口改名 `computeDefaultSubStatAllocation`。zd DIFF 0，探针零差。详见 stun-dual-source §24.33。
+- 副词条优化器这条线（CC-182～186）到此收尾：自动分配 = 默认分配 + 真实伤害精修，62 个角色平均比推荐配装 +6.47%，没有一个低于推荐。
+- 前几轮：208 CC-185（0e4e7ecf）；207 CC-184（ae935755）；206 CC-183（20a47df3）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-186：core 打分模型能否退役**。先只读清点，再决定：
-   - `src/stores/config.ts` 约 760–900 行 `applyBuildRecommendationForSlot`：`optimizer.useDefault=0` 分支用了 `optResult` 的哪些字段？是否把 `chosenSet` 写回套装（写回的话就是「自动选套装」功能）？默认值 1，而且非输出位角色强制走 default。
-   - `perSlotMarginalGains`：ResourceUtilizationPage.vue:528 和 MarginalUtilityCard.vue:152 展示，只在 useDefault=0 时有值。能否改为编排层对每个模板词条 +1 步读 teamTotalDamage 的真实差分（和 refine 同一模式，经 useResourceCalc 或 composable 暴露；展示层禁止值导入 core）？
-   - 设置项 `optimizer.useDefault`、`optimizer.substatCap`、`optimizer.totalSteps*` 的 UI 在哪里（grep `optimizer.useDefault`）？
-   - 判据：退役后架构更简单（core substatOptimizer.ts 约 900 行里的打分、贪心、剪枝、拐力部分），且用户可见功能有等价或更好的替代 ⇒ 做。不可逆部分（删设置项）要写明回退点 = revert。做不到等价 ⇒ 写「不做」加理由。
-2. CC-166 仍暂缓（需规格）。
+1. 卡表已没有 open 的 CC 卡（CC-166 暂缓，需规格）。下一轮自选方向，按唯一判据只做能让架构更通用或更简单的事。**本轮的方法值得复用：找「生产不可达的分支」**。CC-186 就是靠「设置只读不写」一眼定位的。
+   - 做法：列出全部 `getMechanicSetting('<字面量 key>'` 的 key，对每个 key 查写入点（`setMechanicSetting('<key>'`、模块 settings 注册的 id、`.vue` 输入框）。只读不写、缺省值恒定的 key ⇒ 它守护的非缺省分支就是死代码。先只读出清单写进文档（每条附读取行号和守护分支的行数），再挑影响面最大的一条退役。注意模块 `settings` 数组里注册的 id 会被 ResourceUtilizationPage 的通用渲染器渲染，这些不算只读。
+   - 同类：store 里其他按 `mechanicSettings` 分叉的逻辑。
+2. ARCHITECTURE-OVERVIEW A2（store 直接调用引擎）经 CC-186 已缩小；剩余调用（getAgentMechanic、getAgentSpec 等）是否值得继续上移，仍按 R6 结论（C2 规划条款已写进 ARCHITECTURE.md §0），不单独开卡。
 
 **探针（优化器相关改动的验收）**
-- `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k208/<out>.tsv`，基线 `k208/final.tsv`。**必须带 REFINE=1**：CC-185 起 refine 必填，不带会抛错。输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
-- 三人队对照模板：`k208/p208team.test.ts`（拷进 `src/composables/__tests__/zztmp/` 后运行，跑完删掉；它依赖已删除的 ZZ_SEED_DEFAULT 开关，复用时改成需要对照的两种写法）。
+- `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- 死通道扫描（`scripts/lib/dead-channel-scan.mjs`）按行识别字段写入：把 `critRateCap: 200` 压进单行对象字面量 `{ stats: [...], critRateCap: 200 }` 会被判成「只读不写」，报红（第 209 轮踩过）。可选字段的赋值保持独占一行。
+- 判断「某个分支 / 设置是否有用户」时，先查写入点再谈迁移：CC-173（第 198 轮）花了一整轮论证整队贪心「迁移得不偿失」，其实它从引入起就不可达（CC-186）。查法：`grep -rn "'<key>'" src public scripts`，再加 `git log -S'<key>'`。
+- 删 UI 会让 `scripts/check-tokens.mjs` 的 alias ratchet 报红：`VAR_TOTAL_BASELINE` 是「≥」型棘轮，删样式时 var() 总数下降会被误读成「改回了字面量」。纯删除时两个基线（WA_REF / VAR_TOTAL）照实下调，并在注释里写明归因（第 209 轮：447→437 / 808→797）。
+- `src/core/__tests__/calcPanelCallContract.test.ts` 的 KNOWN 清单记着每个文件的 calcPanel 生产调用点数；删掉调用点也要同步清单（第 209 轮删了 config.ts 那一项）。
+- 用脚本删 .vue 模板块时，要连同该块自己的闭合标签一起删：`npx vue-tsc -b` 和 vitest **都查不出**多出的 `</div>`，只有 verify 末尾的 vite build 会报「Element is missing end tag」（第 209 轮 MarginalUtilityCard 踩过）。改了模板就先单跑 `npx vite build`（约 10s）。
 - vitest 捕获的 console 输出里，数字前会插 ANSI 色码（`ZZEV \x1b[33m6`）。grep 数字前先 `sed 's/\x1b\[[0-9;]*m//g'`（第 208 轮踩过）。
 - 优化器改动一律用实伤探针验收（`k206/probe2.sh`，REFINE=1 开精修），不要只看打分函数：CC-183 里「更符合游戏口径」的面板改动在打分上合理，实伤反而变差。
 - **改完 docs 也要跑 `npx vitest run src/scripts/__tests__/checkGuards.test.ts`（约 25s）**：它读 `docs/ENGINE_PIPELINE_GUIDE.md`，§4（`## 4.` 到 `## 5.`）行数有棘轮（冻结 718），多一行变红，少一行也红（要求结算登记表）。改 §4 一律就地改写、净增 0 行。第 203 轮把 verify 放在文档提交之前，漏了这一点。

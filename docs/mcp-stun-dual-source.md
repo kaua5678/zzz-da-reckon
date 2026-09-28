@@ -1368,3 +1368,26 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **探针变化**：`k206/probe206.test.ts` 不设 REFINE 时会传 `undefined`，现在会抛错。所以探针一律带 `REFINE=1`，基线为 `k208/final.tsv`（等同 d.tsv）。
 - **验证**：vue-tsc 通过；上述 5 个用例通过；探针 final.tsv 与 r1.tsv 伤害零差；verify EXIT=0。zd 不受影响（预设和 zd 走 store useDefault 路径，本轮未改）。
 - **回退点**：revert 0e4e7ecf（改 composable、ImpactChart 注释、测试）。
+
+### 24.33 CC-186：core 副词条打分模型退役（第 209 轮，4d6f13d0）
+
+- **清点结论**：core 打分模型（computeExpectedScore / greedyAllocate / pruneAndRankSets / computeAtkTeamBenefit / 套装分解 / 模板里的 anomalyRatio、dmgBonusRelevant、anomalyRelevant、atkWeightInAnomaly、teamAtkTransfer、minGainRatio）的唯一生产入口，是 store `applyBuildRecommendationForSlot` 的 `optimizer.useDefault=0` 分支。
+  - `optimizer.useDefault` 全仓只有这一处读取（缺省 1），**从引入起（5c087473，2026-08-30）就没有任何写入点**。ResourceUtilizationPage 只有 substatCap 和 totalSteps 两个输入框；通用设置渲染器只渲染角色模块注册的设置；mechanicSettings 没有持久化也没有导入（difficultyCurve 只是对当前 store 拍快照再还原）；`git log -S` 也只有引入那一次。⇒ **整队贪心分支生产不可达**。
+  - 它写入的 `perSlotMarginalGains` 因此永远为空：ResourceUtilizationPage 的「全队边际收益」卡片和 MarginalUtilityCard 的「副词条边际效用」区，对每个角色都**永远只显示「（未计算）」**，是一块坏掉的界面。
+  - 真正求最优的路径已经是编排层「默认分配 + 真实伤害精修」（§24.30–24.32）。
+- **决定：退役**。依据唯一判据：删掉的是一套平行伤害模型，永远不执行却要跟着维护（每次伤害管线改口径，它都会悄悄漂移）；用户可见的部分只有一块永远显示「未计算」的界面，没有功能损失。回退点 = revert 4d6f13d0。
+- **改动**（一个原子提交）：
+  - `core/substatOptimizer.ts`：915 行减到约 190 行。只留 `SubstatTemplate`（stats、critRateCap）、`AGENT_TEMPLATES` 兜底、`getTemplate`、`computeDefaultSubStats`、`computeNoSubstatPanel`，以及入口 **`computeDefaultSubStatAllocation`**（原 `computeOptimalSubStats`，改名是因为「Optimal」已名不副实；输出直接是分配对象）。原 `SUBSTAT_POOL` 只剩暴击步长在用，改为常量 `CRIT_RATE_STEP = 2.4`，数值不变。
+  - `stores/config.ts`：配装推荐只剩默认分配；删掉整队贪心分支、`perSlotMarginalGains` 及其导出，以及 `calcPanel`、`buildTeammateBuffSourceContext` 两个 import。这对 ARCHITECTURE-OVERVIEW 的 A2「状态层掺计算」是实际改善，已在 A2 行加注。
+  - `useResourceCalc.ts`：memo 排除集删掉 `perSlotMarginalGains`。
+  - 展示层：删掉 ResourceUtilizationPage 的「全队边际收益」卡片（连同 STAT_LABELS 和 statLabel）、MarginalUtilityCard 的副词条边际区（主词条替换候选仍在，statLabel 保留）；substatCap 输入框的说明文字去掉「融合贪心」。
+  - 角色模块：6 个异常角色（简 1261、蕾米埃尔 1581、柏妮思 1171、维琳娜 1561、爱丽丝 1401、月城柳 1221）的 `substatTemplate` 收窄后与 anomaly 兜底完全相同，整条声明删除；卢西娅 1451、洛克茜 1621 只删三个废弃字段。
+  - 编排层 `composables/substatOptimizer.ts` 改调新入口。
+  - MarginalUtilityCard 模板在删除时残留一个孤立的 `</div>`，由 vite build 发现后修正。
+  - 棘轮与契约同步（纯删除带来的，不是回退）：`check-tokens.mjs` 中 WA_REF_BASELINE 447→437、VAR_TOTAL_BASELINE 808→797；`calcPanelCallContract.test.ts` 的 KNOWN 删掉 `src/stores/config.ts` 一项（剩 3 个文件 4 处）。
+- **测试**：
+  - core 测试去掉废弃字段。
+  - CC-81 测试重写：声明者只剩 1451 和 1621；新增「6 个删声明的异常角色在 anomaly 职业下 stats 不变」。
+  - 编排层测试改用新入口；CC-184 的贪心预算用例随贪心删除（默认分配按设计就会填满预算，core 测试「预算不足」等用例覆盖）。
+- **验证**：vue-tsc 通过；相关 18 个用例通过；探针（`k209/final.tsv` 对比 `k208/final.tsv`）变化 0；zd（cc186）DIFF 0（预设和 zd 走 store 默认分配，改写后必须零差）；verify EXIT=0。
+- **以后若要「词条边际收益」展示**：不要复活打分模型。在编排层按 refine 同一模式，对每个模板词条 +1 步读 `teamTotalDamage` 的真实差分，经 useResourceCalc 或 composable 暴露（展示层禁止值导入 core）。没人要就不做。

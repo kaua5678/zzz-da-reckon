@@ -131,7 +131,7 @@
 ## 方向 D · 从「计算器」到「决策器」：统一的优化与解释层
 
 **要解决的根本问题**
-- 仓库里已经散落着好几个求解器：难度阶梯贪心（`difficultyLadder.ts`）、时间权重均衡（`timeWeightBalancer.ts`）、抽卡规划 beam search（`pullPlannerEngine.ts`）、配装子属性优化（`core/substatOptimizer.ts`）、第三人扫描（`teamCompareSweep.ts`）。
+- 仓库里已经散落着好几个求解器：难度阶梯贪心（`difficultyLadder.ts`）、时间权重均衡（`timeWeightBalancer.ts`）、抽卡规划 beam search（`pullPlannerEngine.ts`）、配装子属性优化（`composables/substatOptimizer.ts`：core 默认分配作起点 + 真实伤害挪步精修；CC-186 起 core 只剩默认分配）、第三人扫描（`teamCompareSweep.ts`）。
 - 它们各自为政：目标函数、约束、「为什么是这个解」的解释方式都不统一，用户拿到的是一堆数字，而不是一个决策。
 
 **做法**

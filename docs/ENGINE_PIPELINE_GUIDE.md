@@ -179,7 +179,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 | **喧响收入** | 行级 Σ `rowDecibelTotal` / 旧聚合通道（已删） | 行级 Σ（`@fact engine:喧响收入行级Σ`） | ✅ 已收口 |
 | **能量** | `energySource.total` / `derivedEnergy` | 同一函数同一入参（坑 14） | ✅ 已收口 |
 | **伤害乘区** | `calcDirectDamage` / `calcAnomalyDamage` | 两者契约**不同**：直伤的通用减防 / 减抗 / 固定减防只读入参（调用方传面板值，函数内只加定向 / 元素额外）；异常的结算面板减防 / 减抗一律函数内读，入参只传面板外额外量（与异常池紊乱 / 乱流同契约）。第 199 轮 CC-175 前异常侧减抗双计、标准异常漏通用减防、异放固定减防双计 | ✅ CC-175 收口（`mcp-stun-dual-source.md` §24.21；判据 `damagePoolDefDown.test.ts`）。伤害池入参拼装唯一点 = `composables/resourceCalc/poolDamage.ts`：直伤 `calcPoolDirectDamage`（CC-176 §24.22）/ 异常 `calcPoolAnomalyDamage`（CC-177 §24.23）；模块经 `ExtraAnomalyRowsInput.directDamage` / `.anomalyDamage` 调用，不要自拼 core 伤害函数入参 |
-| **暴击/锐暴乘区** | 定义 `data/sharpCritMultiplier.ts`（权威）/ `substatOptimizer` 贪心评分 / `FinalPanel`·`StatPanel` 展示 | **`data/sharpCritMultiplier.ts` `sharpCritMultiplier`**（锋御 200% 封顶、100% 以上额外锐暴**乘算**；优化器与 UI 一律调它，不得各自实现）。2026-09-13 展示层棘轮下沉：**定义**移到 `src/data/`，`core/damage.ts` re-export（引擎侧调用点与 `@fact` 锚不变） | ✅ 已收口（2026-09-09 克拉蕾锐暴口径；2026-09-13 下沉，行为 0 delta） |
+| **暴击/锐暴乘区** | 定义 `data/sharpCritMultiplier.ts`（权威）/ `FinalPanel`·`StatPanel` 展示（`substatOptimizer` 贪心评分已于 CC-186 删除） | **`data/sharpCritMultiplier.ts` `sharpCritMultiplier`**（锋御 200% 封顶、100% 以上额外锐暴**乘算**；优化器与 UI 一律调它，不得各自实现）。2026-09-13 展示层棘轮下沉：**定义**移到 `src/data/`，`core/damage.ts` re-export（引擎侧调用点与 `@fact` 锚不变） | ✅ 已收口（2026-09-09 克拉蕾锐暴口径；2026-09-13 下沉，行为 0 delta） |
 | **倍率/失衡/积蓄行值** | 倍率表 / `enrichExecutionPlan` 回填 / 模块 override | 倍率表 + `*Override` 标记 | ✅ 单一 |
 | **多段招式「一次动作」时长/喧响** | catalog 段行 / `find*` 头段 / `moveFusions` 登记组 / 赠送回填（诺姆·琉音） | `moveFusions` 登记组 → `fusedGroupMetrics`+`channelMetricsOf`（自动攻击段 `countsTime:false` 不占时间） | ✅ 全通道已收口（坑 31，未登记组属数据录入侧） |
 
