@@ -19,8 +19,9 @@ export function buildExecutionsWithPhase(
   chainCountTotal: number,
   teamFrontlineSeconds: number,
   moduleInputRows?: SkillExecution[],
+  patchInputRows?: SkillExecution[],
 ): SkillExecution[] {
-  const rows = buildExecutions(cfg, state, chainCountTotal, teamFrontlineSeconds, moduleInputRows)
+  const rows = buildExecutions(cfg, state, chainCountTotal, teamFrontlineSeconds, moduleInputRows, patchInputRows)
   getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: rows, teamFrontlineSeconds })
   return rows
 }

@@ -26,9 +26,8 @@ describe('CC-195 普攻汇总行 → 段命中折算', () => {
     const execs = ch?.executions ?? []
     const basic = basicSummarySeconds(execs)
     expect(basic).toBeGreaterThan(5)
-    // ⚠ 已知缺口（§24.42）：1491008 特别拍照技巧是引擎「额外强特行」（rowBuild 在模块 buildExecutions 之后才物化），
-    // 千夏的标记计数看不到它 ⇒ 这里按现状只数 007/018/019。修掉该缺口时同步改这一行。
-    const cardHits = execs.filter(e => ['1491007', '1491018', '1491019'].includes(e.moveId ?? ''))
+    // CC-198：1491008 特别拍照技巧（引擎额外强特行）经 patchExecutions / prePatchExecutions 计入（原 §24.42 已知缺口）
+    const cardHits = execs.filter(e => ['1491007', '1491008', '1491018', '1491019'].includes(e.moveId ?? ''))
       .reduce((s, e) => s + Math.floor(e.count ?? 0), 0)
     const skills = useCatalogStore().agentSkillsByAgentMap.get('1491')
     const expected = cardHits + Math.floor(basic / basicComboCycleSeconds(skills, '1491004'))

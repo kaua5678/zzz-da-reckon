@@ -1183,19 +1183,37 @@ export const useConfigStore = defineStore('config', () => {
 
   // ========== 初始化 ==========
 
-  function initDefaultTeam() {
-    // 自动选择前3个角色作为默认队伍
+  // store 生命周期内只自动填一次；不是页面局部标志，因此 retry/remount 不会重置。
+  // 首次队伍写入即永久让路（含直接恢复 team / 改完又清空），不以「当前有无 agentId」猜测用户意图。
+  // 只观察第一次写入，随后停止，避免给正常配置与场景求值增加深监听开销；不进入计算用 $state。
+  let defaultTeamInitialized = false
+  let defaultTeamPristine = true
+  const stopDefaultTeamTracking = watch(team, () => {
+    defaultTeamPristine = false
+    stopDefaultTeamTracking()
+  }, { deep: true, flush: 'sync' })
+
+  // @fact ui:startup/默认队伍自动初始化 口径: 完整依赖就绪且队伍从未被改动时仅自动初始化一次；延迟推荐、重试与重挂载不得覆写已有编辑 | 据 用户任务@2026-09-28 | 验 src/composables/__tests__/calculatorStartup.test.ts | 锚 src/stores/config.ts#initDefaultTeam | 信 确认
+  // ⟳复核: 增加配置恢复或启动入口时复核延迟编辑与清空队伍哨兵 | 到期 2026-12-31
+  /** 返回是否填入默认队伍；false 也可能表示保留用户配置，不代表加载失败。 */
+  function initDefaultTeam(): boolean {
+    if (defaultTeamInitialized || !defaultTeamPristine) return false
+    if (!catalogStore.ready || !catalogStore.teammateBuffsReady || !catalogStore.buildRecsLoaded) return false
     const agents = catalogStore.displayAgents.filter(a => !a.hidden)
-    if (agents.length >= 3) {
-      for (let i = 0; i < 3; i++) {
-        setAgent(i, agents[i].id)
-      }
+    if (agents.length < 3) return false
+
+    defaultTeamInitialized = true
+    stopDefaultTeamTracking()
+    // 自动选择前3个角色作为默认队伍，保留原来的配装和同步顺序。
+    for (let i = 0; i < 3; i++) {
+      setAgent(i, agents[i].id)
     }
     // 初始化后同步一次队友 buff，再按完整队伍重刷推荐配置
     syncTeammateBuffsFromTeam()
     for (let i = 0; i < team.value.length; i++) {
       applyBuildRecommendationForSlot(i)
     }
+    return true
   }
 
   /** 一键套用预设队伍（按槽位 0/1/2 的 agentId）。

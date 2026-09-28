@@ -122,7 +122,9 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
   // 物化钩子派发前的引擎行快照：供 buildResourceResult 复现钩子当时看到的行基准
   // （阶段1 第二刀——卢西娅 cap 等派生量不再经 cfg 回写传递）
   const preModuleExecutions: SkillExecution[] = []
-  const builtExecutions = buildExecutionsWithPhase(cfg, state, chainCountTotal, teammateFrontlineSeconds, preModuleExecutions)
+  // CC-198：patchExecutions 派发前的行快照（额外强特行等只有 patch 钩子看得到）
+  const prePatchExecutions: SkillExecution[] = []
+  const builtExecutions = buildExecutionsWithPhase(cfg, state, chainCountTotal, teammateFrontlineSeconds, preModuleExecutions, prePatchExecutions)
   // 本槽赠送行时间（诺姆赠链 / 琉音赠大）：账本已含（necessary 预留），但行不在 builtExecutions 里
   // ——截断上限先扣掉它，装配后再追加的赠送行才与账本守恒（见上方 giftTimeOfSlot 注释）。
   const giftTimeThisSlot = giftTimeOfSlot(i)
@@ -174,6 +176,7 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
     state,
     teamFrontlineSeconds: teammateFrontlineSeconds,
     preModuleExecutions,
+    prePatchExecutions,
   }) ?? {}
 
   const result = {

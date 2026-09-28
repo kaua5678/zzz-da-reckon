@@ -558,6 +558,14 @@ export interface AgentResourceResultInput {
    * cfg 保持只读。注意基准是**钩子派发前**的行（不含钩子自己 push 的行），与旧写回时的口径逐位一致。
    */
   preModuleExecutions?: SkillExecution[]
+  /**
+   * **patchExecutions 派发前**的执行行（= `patchExecutions` 钩子当时看到的同一批行，CC-198）。
+   * 比 preModuleExecutions 多出 buildExecutions 之后才物化的行：额外强特行（`src/data/exSpecialPlans.ts`，
+   * rowBuild 在模块 buildExecutions 之后推入）、backstageAutoRows、闪反/弹刀/反制支援等。
+   * 派生量在 patchExecutions 里产行、装配期又要展示的模块读这个（千夏凝视标记供给即此）。
+   * 浅拷贝：数组新建、行对象与最终行共享——只读 moveId / count / 时长，不要读 patch 会改写的字段。
+   */
+  prePatchExecutions?: SkillExecution[]
 }
 
 export interface AgentSkillTransformInput {

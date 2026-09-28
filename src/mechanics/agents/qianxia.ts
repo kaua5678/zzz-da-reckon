@@ -194,7 +194,7 @@ function pushQianxiaExecution(executions: AgentResourceInput['executions'], inpu
  * 标记供给（纯函数）：千夏标记招式执行行命中数 + 普攻 #4 折算。
  * CC-195：原先写回 `cfg.qianxiaMarkSupply` 供装配期读，属 `AgentResourceResultInput.preModuleExecutions`
  * 头注释点名的反模式（多 pass 下最后写入者 ≠ 装配时的 state ⇒ 展示与行不同源）；现两处各自对同一批
- * 「钩子派发前」的行重算。
+ * 行重算——CC-198 起这批行是「patchExecutions 派发前」（prePatchExecutions），含额外强特 1491008。
  */
 function markSupplyOf(cfg: AgentResourceInput['cfg'], executions: readonly AgentResourceInput['executions'][number][]): number {
   const record = cfg as unknown as Record<string, unknown>
@@ -228,7 +228,12 @@ function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput[
   })
 }
 
-/** patchExecutions：数标记供给（标记招式行 count）+ 凝视/泡泡合成行 */
+/**
+ * patchExecutions：数标记供给（标记招式行 count）+ 凝视/泡泡合成行。
+ * CC-198：从 buildExecutions 挪到 patchExecutions——额外强特行 1491008「特别拍照技巧」由 rowBuild 在模块
+ * buildExecutions **之后**物化，旧位置看不到它（标记恒少计）。展示侧同步改读 prePatchExecutions（同一批行）。
+ * 本函数推的行都是 backstage、totalTime 0、倍率自带（damageMultiplierOverride），放在末尾不影响任何时间/计数通道。
+ */
 function buildQianxiaExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = whole(Number(record.qianxiaCinemaLevel ?? 0))
@@ -262,8 +267,8 @@ function buildQianxiaExecutions({ cfg, state, executions }: AgentResourceInput):
   })
 }
 
-function buildQianxiaResourceResult({ cfg, state, preModuleExecutions }: AgentResourceResultInput) {
-  return { specResources: { qianxia_gaze: cycleFromCfg(cfg, state, markSupplyOf(cfg, preModuleExecutions ?? [])) } }
+function buildQianxiaResourceResult({ cfg, state, prePatchExecutions }: AgentResourceResultInput) {
+  return { specResources: { qianxia_gaze: cycleFromCfg(cfg, state, markSupplyOf(cfg, prePatchExecutions ?? [])) } }
 }
 
 function buildQianxiaResourceSections({ result }: AgentResourceSectionsInput) {
@@ -326,7 +331,7 @@ export const qianxiaMechanic: AgentMechanicModule = {
   ],
   applyPanel: applyQianxiaPanel,
   buildCharConfig: buildQianxiaCharConfig,
-  buildExecutions: buildQianxiaExecutions,
+  patchExecutions: buildQianxiaExecutions,
   buildResourceResult: buildQianxiaResourceResult,
   resourceSections: buildQianxiaResourceSections,
 }

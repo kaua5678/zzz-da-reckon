@@ -138,7 +138,7 @@ describe('千夏猫的凝视触发与磨爪器（2026-08-31 建模）', () => {
       qianxiaTriggerHits: 8, teamVeilCountTotal: 2, battleTime: 180,
       panel: {},
     }
-    qianxiaMechanic.buildExecutions!({ cfg, state: { ultimateCount: 1 } as any, executions })
+    qianxiaMechanic.patchExecutions!({ cfg, state: { ultimateCount: 1 } as any, executions })
     const gazeRows = executions.filter(e => String(e.moveId).startsWith('1491_gaze'))
     expect(gazeRows).toHaveLength(2)
     expect(gazeRows[0].count).toBe(4) // 强攻 8×0.5
@@ -157,7 +157,7 @@ describe('千夏猫的凝视触发与磨爪器（2026-08-31 建模）', () => {
       qianxiaTriggerHits: 6, teamVeilCountTotal: 3, battleTime: 180,
       panel: {},
     }
-    qianxiaMechanic.buildExecutions!({ cfg, state: { ultimateCount: 2 } as any, executions })
+    qianxiaMechanic.patchExecutions!({ cfg, state: { ultimateCount: 2 } as any, executions })
     const attack = executions.find(e => e.moveId === '1491_gaze_attack_trigger')!
     expect(attack.damageMultiplier).toBe(350) // 150+200
     expect(attack.dmgBonus).toBe(50) // 影画6
@@ -183,7 +183,7 @@ describe('千夏猫的凝视触发与磨爪器（2026-08-31 建模）', () => {
         qianxiaTriggerHits: settingHits, teamVeilCountTotal: 0, battleTime: 180,
         panel: {},
       }
-      qianxiaMechanic.buildExecutions!({ cfg, state: { ultimateCount: 0 } as any, executions })
+      qianxiaMechanic.patchExecutions!({ cfg, state: { ultimateCount: 0 } as any, executions })
       return executions.find(e => e.moveId === '1491_gaze_attack_trigger')!.count
     }
     expect(mk(0)).toBe(10) // 自动 = 标记供给 10

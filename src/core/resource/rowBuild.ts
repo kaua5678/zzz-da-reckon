@@ -190,13 +190,16 @@ function feasibleRowsUncached(
 }
 
 /** 构建招式执行记录。`moduleInputRows`（可选出参）：接收**物化钩子派发前**的引擎行快照——
- *  供 buildResourceResult 复现钩子当时看到的行基准（阶段1 第二刀，见 AgentResourceResultInput）。 */
+ *  供 buildResourceResult 复现钩子当时看到的行基准（阶段1 第二刀，见 AgentResourceResultInput）。
+ *  `patchInputRows`（可选出参，CC-198）：同理接收 **patchExecutions 派发前**的行快照（含额外强特行、
+ *  backstageAutoRows 等 buildExecutions 之后物化的行）。两者都是浅拷贝：数组新建、行对象共享。 */
 export function buildExecutions(
   cfg: CharacterOperationConfig,
   state: IterationState,
   chainCountTotal: number,
   teamFrontlineSeconds = 0,
   moduleInputRows?: SkillExecution[],
+  patchInputRows?: SkillExecution[],
 ): SkillExecution[] {
   const executions: SkillExecution[] = []
 
@@ -539,6 +542,10 @@ export function buildExecutions(
   }
 
   // 招式执行计划完全构建后，模块可做最终修正（如按招式标签补增伤/暴击/固定附加伤害）。
+  if (patchInputRows) {
+    patchInputRows.length = 0
+    patchInputRows.push(...executions)
+  }
   getAgentMechanic(cfg.agentId)?.patchExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
 
   return executions.map(exec => applyExecutionUtilization(cfg, exec))
