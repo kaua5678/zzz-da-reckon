@@ -7,6 +7,7 @@ import type {
   SkillMove, SkillCategory, DamageElement, SkillDamageTarget,
 } from '@/types/catalog'
 import { calcStunMultiplier, resolveStatElement } from './anomalyPool/helpers'
+import { defenseMultiplierDetail, resistanceMultiplierDetail } from './damageMultipliers'
 import { getSkillDmgBonus, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
 import { fmt } from '@/utils/format'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
@@ -76,34 +77,7 @@ export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove)
  *   （enemyDefFlatReduction 本质就是穿透值，游戏里只有穿透值能固定扣除防御）
  * - penFlatEffective = penFlat + enemyDefFlatReduction
  */
-const LEVEL_COEFF_60 = 794
-
-function calcDefenseMultiplier(
-  enemyDefense: number,
-  enemyDefReduction: number,
-  enemyDefFlatReduction: number,
-  penRatio: number,
-  penFlat: number,
-): { multiplier: number; effectiveDef: number } {
-  // 穿透值 = 角色穿透值 + 敌方固定防御降低（两者本质相同）
-  const totalPenFlat = penFlat + enemyDefFlatReduction
-  // 有效防御 = 怪物防御 × (1 - 穿透率/100) × (1 - 减防/100) - 穿透值
-  const effectiveDef = Math.max(0, enemyDefense * (1 - penRatio / 100) * (1 - enemyDefReduction / 100) - totalPenFlat)
-  const multiplier = LEVEL_COEFF_60 / (LEVEL_COEFF_60 + effectiveDef)
-  return { multiplier, effectiveDef }
-}
-
-/** 抗性乘区 */
-function calcResistanceMultiplier(
-  baseResistance: number,
-  resReduction: number,
-  resIgnore: number,
-): { multiplier: number; effectiveRes: number } {
-  // 抗性区不设上限：抗性降低/无视抗性会线性提高该乘区；后续如出现 Boss 抗性增强字段，再加回 effectiveRes。
-  const effectiveRes = baseResistance - resReduction - resIgnore
-  const multiplier = 1 - effectiveRes / 100
-  return { multiplier, effectiveRes }
-}
+// 防御 / 抗性乘区与 794 常量：单一来源 `./damageMultipliers`（CC-219）
 
 /** 元素暴击伤害加成（属性数值口径经 resolveStatElement：frostfire 按冰读 iceCritDmg）。
  * 消费端=焰心桂冠等音擎的 XCritDmg 团队效果（此前全仓无读取端，纯死数据）。 */
@@ -389,7 +363,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
       value: afterDef, displayValue: fmt(afterDef),
     })
   } else {
-    const defResult = calcDefenseMultiplier(
+    const defResult = defenseMultiplierDetail(
       input.enemyDefense, input.enemyDefReduction + getTargetedStatExtra(p, 'enemyDefReduction', input.skillDamageTarget) + getElementEnemyDefReduction(p, input.damageElement, input.skillDamageTarget), input.enemyDefFlatReduction,
       p.penRatio, p.penFlat
     )
@@ -403,7 +377,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
 
   // 6. 抗性乘区
   const resReduction = input.enemyResReduction + getTargetedStatExtra(p, 'enemyResReduction', input.skillDamageTarget) + getElementEnemyResReduction(p, input.damageElement, input.skillDamageTarget)
-  const resResult = calcResistanceMultiplier(input.enemyResistance, resReduction, 0)
+  const resResult = resistanceMultiplierDetail(input.enemyResistance, resReduction, 0)
   const afterRes = afterDef * resResult.multiplier
   breakdown.push({
     label: '抗性乘区',
@@ -540,7 +514,7 @@ export function calcAnomalyDamage(
   })
 
   // 4. 防御乘区
-  const defResult = calcDefenseMultiplier(
+  const defResult = defenseMultiplierDetail(
     input.enemyDefense,
     input.enemyDefReduction
       + (settle.enemyDefReduction ?? 0) // CC-175：通用减防同样由结算面板读取（此前漏读，标准异常不吃妮可类减防）
@@ -562,7 +536,7 @@ export function calcAnomalyDamage(
   const resReduction = input.enemyResReduction
     + (settle.enemyResReduction ?? 0)
     + getElementEnemyResReduction(settle, element)
-  const resResult = calcResistanceMultiplier(input.enemyResistance, resReduction, 0)
+  const resResult = resistanceMultiplierDetail(input.enemyResistance, resReduction, 0)
   const afterRes = afterDef * resResult.multiplier
   breakdown.push({
     label: '抗性乘区 (异放×0.5)',

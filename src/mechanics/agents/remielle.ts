@@ -21,6 +21,7 @@ import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBl
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
+import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
 import { ELEMENT_DMG_KEYS, ELEMENT_DEF_REDUCTION_KEYS, ELEMENT_RES_REDUCTION_KEYS } from '@/core/elementKeys'
 import { findMoveById } from '@/data/moveTableQueries'
 import { channelMetricsOf } from '@/core/resource/moveLookup'
@@ -155,19 +156,18 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
   const remielleDefReduction = (remielle.enemyDefReduction ?? 0)
     + (remielle.enemyAnomalyDefReduction ?? 0)
     + (remielle[ELEMENT_DEF_REDUCTION_KEYS[element]] ?? 0)
-  const effectiveDef = Math.max(0,
-    enemyDefense * (1 - (source.penRatio ?? 0) / 100) * (1 - remielleDefReduction / 100)
-    - ((source.penFlat ?? 0) + (remielle.enemyDefFlatReduction ?? 0)),
+  // 防御 / 抗性乘区与等级系数：单一来源 core/damageMultipliers（CC-219，原手写同式）
+  const { multiplier: defMult } = defenseMultiplierDetail(
+    enemyDefense, remielleDefReduction, remielle.enemyDefFlatReduction ?? 0, source.penRatio ?? 0, source.penFlat ?? 0,
   )
-  const defMult = 794 / (794 + effectiveDef)
-  const levelMult = 2
+  const levelMult = LEVEL_MULT_60
   const mass = baseDmg * dmgMult * profMult * defMult * levelMult
 
   const baseRes = enemyResistances[element] ?? 0
   const sourceResReduction = (source.enemyResReduction ?? 0)
     + (source[ELEMENT_RES_REDUCTION_KEYS[element]] ?? 0)
     + cinema1ResIgnore
-  const resMult = 1 - (baseRes - sourceResReduction) / 100
+  const resMult = resistanceMultiplierDetail(baseRes, sourceResReduction).multiplier
 
   const anomalyDmgMult = 1 + (remielle.anomalyDmgBonus ?? 0) / 100
   const passiveLuminizeMult = 1 + (remielle.remielleLuminizeMultiplierBonus ?? 0) / 100

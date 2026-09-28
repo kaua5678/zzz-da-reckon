@@ -51,6 +51,7 @@ import type {
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
+import { LEVEL_COEFF_60, LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
 import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
 import { resolveAnomalyCorrosion } from './corrosion'
 
@@ -63,11 +64,8 @@ export { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS
 
 // ============ 伤害计算常量 ============
 
-/** 等级基数（60级固定常量，来源：穿透防御学） */
-export const LEVEL_COEFF_60 = 794
-
-/** 60级等级系数 = 1 + 1/59 × (60 - 1) = 2 */
-const LEVEL_MULT_60 = 2
+// 794 等级基数 / 60 级等级系数 2：单一来源 `../damageMultipliers`（CC-219），这里转出旧名
+export { LEVEL_COEFF_60, LEVEL_MULT_60 }
 
 /** 乱流CD（秒）：乱流槽位 = floor(风化时长 / CD) */
 export const TURBULENCE_CD_SECONDS = 3
@@ -647,7 +645,7 @@ export function getAnomalyDuration(panel: PanelValues, element: string): number 
 }
 
 /**
- * 防御乘区（内联实现，使用794常数）
+ * 防御乘区（转调 `../damageMultipliers#defenseMultiplierDetail`，CC-219）
  *
  * 公式（来源：啵啵獭第八期穿透防御学）：
  *   有效防御 = max(0, 怪物防御 × (1 - 穿透率/100) × (1 - 减防/100) - 穿透值)
@@ -662,12 +660,7 @@ export function calcDefenseMultiplier(
   penRatio: number,
   penFlat: number,
 ): number {
-  const totalPenFlat = penFlat + enemyDefFlatReduction
-  const effectiveDef = Math.max(
-    0,
-    enemyDefense * (1 - penRatio / 100) * (1 - enemyDefReduction / 100) - totalPenFlat,
-  )
-  return LEVEL_COEFF_60 / (LEVEL_COEFF_60 + effectiveDef)
+  return defenseMultiplierDetail(enemyDefense, enemyDefReduction, enemyDefFlatReduction, penRatio, penFlat).multiplier
 }
 
 /**
@@ -680,8 +673,7 @@ export function calcResistanceMultiplier(
   baseResistance: number,
   resReduction: number,
 ): number {
-  const effectiveRes = baseResistance - resReduction
-  return 1 - effectiveRes / 100
+  return resistanceMultiplierDetail(baseResistance, resReduction).multiplier
 }
 
 /**
