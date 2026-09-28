@@ -71,33 +71,32 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 257 轮（lane lead-arena-0925c）：CC-234 完成（09575566），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.81。
-- 前几轮：256 CC-233（2e7e2c4c）；255 CC-231/232（6b99e293 / 70cddc3c）；254 CC-230（f49a183f）。
+**第 258 轮（lane lead-arena-0925c）：CC-235 完成（960c00d3），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.82。
+- 前几轮：257 CC-234（09575566）；256 CC-233（2e7e2c4c）；255 CC-231/232。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
-- **结项**：「视图重算引擎聚合量」线（§24.81 ④）；「明细 vs 总数」无新缺口（§24.81 ②）。
+- **结项**：候选 A「resourceCalc 内部重复小函数」没有真实重复。
 
 **纯规则 / 引擎结果单一来源一览（新写代码直接用）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`；
-- `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`；
-- `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`（anomalyPool/helpers）；
-- 展示侧行级易伤：`composables/stunVulnSummary#rowAppliedStunMultOf`；
-- 引擎结果直读：`CalcRoundResult.specialActionBonus`、`CalcRoundResult.decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`、`useResourceCalc#teamTotalDamage`、`useResourceCalc#stunCoverage`；
-- 结果卡明细与总数：`resourceCardBreakdown.test.ts` 的清单。
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`、`moveTableQueries`（findMoveById / getRowValue / fusedRowValue）；
+- `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`、**`mechanicSettingCfg`**（角色模块读机制滑块一律用 `cfgMechanicSetting(cfg, id, fallback)`）；
+- `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`；
+- 引擎结果直读：`useResourceCalc#teamTotalDamage / stunCoverage`、`CalcRoundResult.specialActionBonus / decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`。
 
-**下一步（直接开工）**：展示层这一大片（第 250–257 轮：公式副本、结果直读、字段读者、明细总数、聚合量）都已结项。下一轮换层，按「让架构更通用 / 更简单」自选，先读 r6 §8 表避免重复：
-1. **候选 A：`composables/resourceCalc/*` 内部的重复小函数**（§8 表里还没扫过这一层）。方法：
-   - 列出各文件的非导出函数与箭头函数（`grep -nE '^(const|function) \w+' src/composables/resourceCalc/*.ts`）；
-   - 按函数体找同形实现，例如各自写的 clamp、按 slot 取 cfg、`?? 0` 求和等；
-   - 同形且语义相同 ⇒ 收成一处；语义不同 ⇒ 记「不做」。
-2. **候选 B：`src/mechanics/agents/*` 之间的重复 helper**（例如各模块自写的覆盖率计算、`Math.min(1, x / y)`）。方法同上；注意规则：core 不许判 agentId，跨角色共享的 helper 应放 `mechanics/shared` 一类的位置（先看现有目录再决定）。
-- 两个都无收获：在 r6 §8 表记一行，这一轮不改代码也可以（用户明确不要「只为有事做」的改动）。
-- 开工前**先查卡表**（最新 CC-234），并 `grep -rn 反锁 src`。
+**下一步（直接开工）**：继续候选 B 的其余家族，一族一个提交：
+1. **findMoveById**：
+   - 先用 `node /home/kaua/calc-arch/dupfn.mjs` 重跑扫描；
+   - 与 `data/moveTableQueries#findMoveById` 同形的 5 个模块（alice / miyabi / qingyi / velina / yidhari），删掉私有定义，改从 data 导入；
+   - 9 行变体（banyue / luciaElowen / starlightBilly / yixuan）、burnice / liuyin / norma / roxy 组、`findMove` 组，先 `sed -n` 比对函数体：语义相同就收，不同就记「不做」并写明差异。
+2. **rowValue / rowVal / getRowValue**：与 `moveTableQueries#getRowValue` 比对，方法同上。
+3. clamp / whole：倾向不做（纯算术，只降计数）；若做，NaN 语义的两种变体必须分开。
+- 可以参考第 258 轮的脚本 `/home/kaua/calc-arch/k229/p258a.py`：用正则识别函数形状、删除私有定义、在最后一个 import 后插入别名导入。之后用 p258d/e 折叠删除留下的连续空行（只处理 HEAD 版本没有连续空行的文件）。
 - **已知坑**：
   - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；
-  - 新文件先 `git add` 再 verify；
-  - 源码锁要排除注释行（本轮又踩一次）；
-  - 删类型或函数后另跑 `npx vue-tsc -b`；deadChannelLs 棘轮可能报新死导出。
+  - **新文件先 `git add` 再 verify**；
+  - 源码锁要排除注释行；
+  - 删函数后要跑 `npx vue-tsc -b`，查被带成未使用的类型导入（本轮 lycaon）；
+  - 被删函数上方的 JSDoc 会变成孤儿注释，要逐个处理。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）；「进入失衡 +20 喧响」是否真实机制（§24.79 ①）。
 
 **探针（优化器相关改动的验收）**

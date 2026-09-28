@@ -407,3 +407,4 @@
 | 255 | 喧响单价的全部读者 | 失衡池 decibelBonus 是无引擎消费者的展示字段，删（CC-231，`6b99e293`）；单价 215/10/10/20 下沉 data，结果页说明文字改为生成（CC-232，`70cddc3c`）；**喧响线结项** | 新增喧响来源 |
 | 256 | 结果接口 570 个字段的读者分类（fieldscan.mjs） | 模块诊断字段、测试可观测量不做；死字段 specialResources 删；卡片明细漏列两项已补（CC-233，`2e7e2c4c`），并加「明细之和 = 总数」锁 | 引擎新增 total 组成项（锁会红） |
 | 257 | 各页「明细 vs 总数」；视图重算 useResourceCalc 导出聚合量 | 明细只有结果卡（CC-233 已锁）；ResultPage 另算队伍总伤害，改为直读（CC-234，`09575566`）；stunCoverage 无近似副本；**视图重算线结项** | useResourceCalc 新增导出聚合量 |
+| 258 | 换层：resourceCalc 内部与 mechanics/agents 之间的重复 helper（跨文件同形扫描，29 组） | resourceCalc 没有真实重复（结项）；agents 的 `setting:${id}` 读取协议 37 份、4 种变体，收拢到 utils/mechanicSettingCfg（CC-235，`960c00d3`）；findMoveById / rowValue 待核；clamp / whole 倾向不做 | agents 新增私有 cfg 读取器（锁会拦） |

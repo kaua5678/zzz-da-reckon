@@ -2528,3 +2528,45 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - `stunCoverage` 在视图里没有「次数 × 窗长」的近似；
 - resourceResult 读者在第 253 轮已查过，都是直读；
 - ⇒ **这条线结项**。重开条件：useResourceCalc 新增导出的聚合量。
+
+### 24.82 第 258 轮：换层扫重复 helper；CC-235 机制设置 cfg 键单一来源（960c00d3）
+
+**① 扫描方法**：一次性脚本（`/home/kaua/calc-arch/dupfn.mjs`，不进 git）抽取 src 下非测试 `.ts` 文件的顶层函数，去空白、把函数名替换掉后按函数体分组，只报告跨文件的同形实现，共 29 组。
+- 候选 A（`composables/resourceCalc/*`）：唯一一组「4 行」同形是多行函数签名被截断的误匹配，**没有真实重复** ⇒ 结项。
+- 候选 B（`mechanics/agents/*`）：重复集中在这里，按份数排：
+  - `whole` / `intAtLeast0`：14 份；
+  - 读 `setting:${id}`：37 处（36 个文件）；
+  - `clampRatio` / `clamp01`：16 份，有两种语义，NaN 变 0 或原样传下去；
+  - `findMoveById` / `findMove`：约 23 份，其中 6 份与 `data/moveTableQueries#findMoveById` 同形；
+  - `rowValue` / `rowVal` / `getRowValue`、`cfgNum`、`combatTimeOf` 若干。
+
+**② 为什么先做 setting 这一族（CC-235）**：它不只是函数重复，而是一条**跨层协议**被复制了 37 份。
+- 写入方只有 `composables/resourceCalc/helpers.ts#buildCharConfig`：`cfg['setting:'+id] = getMechanicSetting(id, default)`，值恒为数字；
+- 读取方是 36 个角色模块，加上 `specs/resources.ts:150`；
+- 键格式字面量在每个读取方里各写一遍，读取 helper 有 4 种语义变体：Number 强转；要求 typeof number；null 取 0；`?? fallback` 时 null 取 fallback；
+- 新模块只能照抄，而且抄哪一份决定了它的边界语义。
+- 相比之下，clamp、whole 只是算术小函数，收拢的收益主要是降计数，不在本轮做（见 ④）。
+
+**③ 改法**：
+- 新建 `src/utils/mechanicSettingCfg.ts`：
+  - `mechanicSettingCfgKey(id)`：唯一的键格式；
+  - `cfgMechanicSetting(cfg, id, fallback)`：数字直接用；null/undefined 取 fallback；其余按 `Number()` 转换，非有限数取 fallback。
+- 写入方 helpers.ts 和 specs/resources.ts 改用 key 函数。
+- 33 个模块删掉 34 个私有 helper，改为 `import { cfgMechanicSetting as <原名> }`，**调用点一个没动**。
+  - roxy 的 `cfgRate` 原本 fallback 默认为 1，现在 4 个调用点显式传 1。共享函数不设默认值，因为默认为 1 的通用读取容易误用。
+- trigger（fallback 固定 0）、specPanelBuffs 的 `jufufuAdjustableRate`（外层 `max(0, ·)`，fallback 1）、ben（外层 clamp01）保留外层逻辑，只把读键换成共享实现。
+- anby 的历史缺陷注释保留，改成普通块注释并注明别名；roxy 的孤儿注释删除。
+- 38 个已有文件 + 2 个新文件，+122/−195（含锁测试）。
+- **语义差异评估**：各变体只在值为 null、数字字符串或布尔时结果不同，而唯一写入方只写 number ⇒ 生产路径零差；verify 全绿。
+- **锁**：`src/utils/__tests__/mechanicSettingCfgSource.test.ts`：
+  - ① 除 owner 外，非测试 ts/vue 不许出现 `` `setting:${ `` 模板字面量（排除注释行）；
+  - ② 读值语义的边界表。
+  - 反例：`git grep HEAD`（排除注释行）有 39 处命中（36 个模块 37 处 + helpers + specs）。
+- 分层：utils 是纯函数，mechanics 早已在引用 utils；specs 是首次引用 utils，没有循环依赖。
+- 回退点：revert 960c00d3。
+
+**④ 其余家族（本轮不做，留给下一轮逐个裁决）**：
+- `findMoveById` 同形 6 份（alice / miyabi / qingyi / velina / yidhari，外加 data 本体）⇒ **最值得收**：共享实现早已存在，模块却在重写。
+  - 另有 9 行变体 4 份（banyue / luciaElowen / starlightBilly / yixuan）、burnice / liuyin / norma / roxy 一组、`findMove`（lucy / rina / yaojiayin / yeshuguang / nicole），都要先比对语义再收。
+- `rowValue` / `rowVal`：可能与 `data/moveTableQueries#getRowValue` 重复，待核。
+- `clampRatio` / `clamp01` / `whole`：纯算术，收拢只降计数，**倾向不做**。若做，必须保留 NaN 语义的两种变体，不能合并成一个。
