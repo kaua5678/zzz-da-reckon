@@ -2749,3 +2749,51 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 - 验证：`npm run verify` EXIT=0（3967 passed | 29 skipped）；`npx vue-tsc -b` 干净。
 - 回退点：revert 652c7c18。
+
+### 24.88 第 264 轮：CC-242 角色模块预存行值吃行规则（79951791）；multiplierCoefficients 裁决不做；moveLookup 设计待开工
+
+**① CC-242 改动**（§24.87 交接候选 1）：以下模块的 buildCharConfig 原先内联 `rows.find(...).values[0]` 取原始值，现全部改为 data `getRowValue`：
+- `norma.ts`：弹幕 6 段与导弹的 damage / daze 行值表，供影画 6 技能专属加成缩放用；
+- `phoenix.ts`（菲欧妮 1641）：metaOf 的 damage / decibel_recovery、余火 attack_data_0、连携 anomaly_buildup；
+- `severian.ts`：凭风载体 / 苍风影猎 / 烈旋 / 风刃的 damage；
+- `sigrid.ts`：敛枪三段的 decibel_recovery / energy_recovery；
+- `xide.ts`：钢能 attack_data_0。按 `kind==='special'` 定位行的语义不变，取值改为 `getRowValue(move, row.id)`。
+
+**② 自算融合排查**：这 5 个角色的 spec 都没有 rowFusions（python 读 specs/agents/*.json 确认），因此不存在焰烈那种「模块自算融合 + 默认规则同义」重复计入的问题，生产默认规则下必然零差（探针基线读数新旧一致）。
+
+**③ 管线探针（修复前后对比，0 命 / 6 命，队伍为 X+1211+1311；对该角色全部招式的相关行配 ×2 规则，下表是总伤害涨幅）**：
+
+| 角色 | 行 | 旧代码 | 新代码 |
+|---|---|---|---|
+| 诺姆 1571 | damage, daze | 100.39% / 85.55% | 100.39% / 108.32%（影画 6 缩放开始吃规则） |
+| 菲欧妮 1641 | damage, decibel, attack_data_0, anomaly | 69.41% / 74.10% | 94.73% / 116.51% |
+| 赛维里安 1631 | damage | 66.91% / 26.40% | 82.53% / 81.82% |
+| 希格莉德 1591 | decibel, energy | 16.94% / 26.80% | 不变 |
+| 席德 1461 | attack_data_0 | **0% / 0%** | 9.07% / 9.81% |
+
+- 结论：与 CC-241 不同，这次**真实生效**（用户启用规则时）。原因是这些模块的执行行直接用预存值当倍率 / 资源量，下游不会按 moveId 重读。
+- 希格莉德零差：敛枪段的喧响 / 能量预存值在当前配置下不影响总伤害（资源不是瓶颈，或者走了其他路径）。改动只为单一来源归一，锁照样保留。
+
+**④ 锁**：`src/mechanics/__tests__/agentModuleRowFusionRule.test.ts`
+- 5 条行为锁（规则 ×2 ⇒ 预存值 ×2）；
+- 源码登记表：`mechanics/agents` 非注释行的 `values[0]` 只允许 `remielle.ts:101/104/106`（按技能等级选列，已裁决不做）；
+- 反例：stash 5 个源文件后 6 条全红；单独撤掉诺姆时诺姆那条变红。
+- 测试调用 buildCharConfig 时要传 `team: [], slot: 0`，因为诺姆会读 `team[slot]`。
+
+**⑤ 候选 2 `composables/multiplierCoefficients.ts:63/127/148` 裁决不做**：这是倍率表系数演算引擎（MultiplierCoeffPage、通胀曲线），拿录入的原始倍率表和标准表对比。63 是快速支援版本分类判定，127 是原表比值，148 是「回能录入为 0」的数据缺口检测，语义上就该用原始值，套用户规则会污染系数分析。回退点：无（未改动）。
+
+**⑥ 候选 3 `core/resource/moveLookup.ts` 的调查结论（未改）**：
+- 原始读取在 3 个函数里：
+  - `fusedGroupMetrics:158`（融合组喧响）；
+  - `channelMetricsOf:189`（单段喧响，是全部 `find*` 族的统一出口：findExSpecial / findUltimate / findChainAttack / findDodgeCounter / findDefensiveAssist / findAssistFollowUp / findCounterAssist，另有 remielle:297/322）；
+  - `calcBasicAttackRegenPerSec:358–367`（平 A 能量 / 喧响秒均，另有 damage>200 的强化平 A 分类判定）。
+- 影响面是**全角色的喧响通道 + 平 A 回能**，比前几张卡都大。
+- core 禁止 import getRowValue（fusion.ts 是全局可变状态）。
+- 设计（下一轮开工）：
+  - (a) **先量**：探针对某角色连携 / 终结的 decibel_recovery 配 ×2 规则，看 teamTotalDamage 或终结技次数变不变。如果已经变了，说明编排层另有吃规则的重算，此卡记「不做」，写明由谁覆盖。
+  - (b) 如果不变，就在 3 个函数上加可选参数 `rowValue?: (move, rowId) => number`，默认用纯原始读取，保持 core 可独立测试；`find*` 族透传该参数，编排层（core/resource.ts 的调用点和 resourceCalc/helpers:480）注入 data getRowValue。**注意 core/resource.ts 本身在 core 下**，注入点必须上移到 composables 层，不能在 core 里 import。
+  - (c) `calcBasicAttackRegenPerSec` 中 damage>200 的强化平 A 判定是**分类**，应保持原始值（同 panelPhases:212 的裁决），只让 energy / decibel 走注入函数。
+  - 要先 grep `find*` 在 composables 的调用链，确认注入点数量；超过约 10 处就记「不做」，并写明规则对喧响通道不生效是已知限制。
+
+- 验证：`npm run verify` EXIT=0（3973 passed | 29 skipped）；`npx vue-tsc -b` 干净。
+- 回退点：revert 79951791。
