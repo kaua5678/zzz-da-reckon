@@ -1,6 +1,7 @@
+/** spec 可执行校验执行器（CC-248：自 src/specs/verify.ts 迁入测试基础设施——依赖 core/panel.emptyPanel，唯一调用者为 specs/__tests__/verify.test.ts） */
 import { emptyPanel } from '@/core/panel'
-import { applySpecAttributeConversions } from './runtime'
-import type { AgentMechanicSpec, VerificationSpec } from './types'
+import { applySpecAttributeConversions } from '@/specs/runtime'
+import type { AgentMechanicSpec, VerificationSpec } from '@/specs/types'
 
 export interface SpecVerificationResult {
   specId: string

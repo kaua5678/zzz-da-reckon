@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { agentSpecs } from '@/specs/registry'
-import { verifyAllSpecs } from '@/specs/verify'
+import { verifyAllSpecs } from '@/test/specVerify'
 
 describe('spec verifications', () => {
   it('passes every user-confirmed spec verification', () => {
