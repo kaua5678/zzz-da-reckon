@@ -342,7 +342,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-43d | done | `afc6003` | `computeRemielleEntryPanel` → `computeEntrySnapshotPanel`（函数体无角色分支，零差改名；判据 23 13→8） | census §5.48 |
 | CC-43e | done | `7ae18b5` | roundInputs `hasLiuyin` 身份判定 → 模块声明 `ownsPromoteVariantAxisBlocks`（琉音）；零差，判据 23 8→6 | census §5.48 |
 | CC-43f | done | `cf5f270` | roundInputs 希格莉德破阵展开 → 模块钩子 `expandAxisAction`（sigrid 实现，编排层按槽位 agentId 派发）；零差，判据 23 6→4 | census §5.49 |
-| CC-27 | design | **待设计** | 维琳娜风蚀状态机（core/anomalyPool resolveAnomalyCorrosion + velinaCorrosionSource 输出 + velinaCinema2CorrosionRate）→ 模块能力；不可只改名 | census §5.19 |
+| CC-27 | ✅ done 948a1444 | lead-arena-0925c | 状态机本体已由 CC-6d 迁出。本卡删掉最后一条专属穿线 `cinema2CorrosionRate`（roundInputs → AnomalyPoolInput → core → 能力入参）：改由维琳娜 applyPanel 读 settings 盖章、风蚀能力读回（原面板字段零写入，属死读）。事件 id 前缀常量留在 core（依赖方向正确，不做）。zd 零差；新增真管线滑块探针，并做了反向验证。stun-dual-source §24.14 | census §5.19 |
 | CC-18c | design | **并入 CC-19a** |
 
 ### CC-1 · 招式表查询迁出（fast）

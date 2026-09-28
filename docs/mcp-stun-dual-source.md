@@ -968,3 +968,26 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **验证**：8 个文件 111/111 通过；全量测试与 `npm run verify` 见提交说明；CG 25 项通过；vue-tsc 无新错误。
 - **回退点**：`git revert c6795167`（只动测试文件）。
 - 仓库里剩余的 `stunPlanProjection` 文件级 `vi.mock` 钉：0 处（outerCyclePick 的 mock 是接线包装，不是口径钉；它的 setupYixuanPreset 用例级 off 见 §18.3）。
+
+### 24.14 CC-27：维琳娜风蚀利用率改由模块内闭环，删编排层到 core 的专属穿线（第 192 轮，提交 948a1444）
+- **核查卡面（卡片写于 CC-6d 之前，已部分过时）**：
+  - 状态机本体已由 CC-6d 迁进 `mechanics/agents/velina.ts`：core 只按能力 `anomalyCorrosion` / `anomalyCorrosionEvents` 查询，core 里 import 角色模块的地方为 0。
+  - `velinaCorrosionSource` 全仓零引用。
+  - core 里剩下的维琳娜专属形状只有一处：`cinema2CorrosionRate`。它从 `roundInputs` 读 store 滑块，经 `AnomalyPoolInput` → `anomalyPool.ts` → `helpers.ts`（两个接口字段 + `calcTurbulenceDamage`）→ `corrosion.ts` → 能力入参 `fallbackRate`，一路传到维琳娜模块。
+- **发现**：维琳娜 `resolveVelinaCorrosion` 本来就读 `panel.velinaCinema2CorrosionRate ?? fallbackRate`，但这个面板字段**全仓零写入**，所以永远回落到穿线传入的值。面板盖章这条路从来没有接上，第 154 行一直是死读。
+- **修法（让架构更简单）**：
+  - 维琳娜 `applyPanel` 读 `AgentPanelInput.settings['velina.cinema2CorrosionRate']`，盖章到自己的面板字段，由自己的风蚀能力读回。写读同属一个模块，这是面板相位读滑块的既定通道（`AgentPanelInput.settings` 注释），不属于它警告的跨模块走私。
+  - 删除整条穿线：`roundInputs` 一行、`AnomalyPoolInput` / 伤害配置的 `cinema2CorrosionRate` 两个字段、`anomalyPool.ts` 三处、`calcTurbulenceDamage` 的实参、`corrosion.ts` 的 `fallbackRate` 参数、能力入参 `fallbackRate`，以及 `resolveVelinaCorrosion` 的第 4 个参数。
+  - 缺省值收为 `VELINA_C2_CORROSION_RATE_DEFAULT`，settings 声明的 default 也引用它。
+  - 结果：异常池契约和 core 不再携带任何角色专属量；以后别的角色要给异常池能力传参数，也走同一模式（applyPanel 读 settings 盖章）。
+- **不做：`CORROSION_CYCLONE_RELEASE_ID_PREFIX = 'velina-corrosion'` 留在 core**。
+  - 依据：它是事件 id 契约的单一事实源。维琳娜模块（生产方）import core，编排层 `damagePoolAnomaly`（消费方）也只依赖 core，依赖方向正确。
+  - 如果搬进维琳娜模块，编排层就得 import 具体角色；如果改成事件标志字段，要动事件类型和 perf 语料（id 进入伤害池行 id）。收益都不足以抵消成本。
+- **测试**：
+  - `agentMechanicViewCc71` 的 CC-72 用例改写。旧版用空面板（队里没有维琳娜，两边都返回 undefined）比较，没有意义；新版断言源码中 core / roundInputs 不含该字段，并用 `applyPanel` 盖章出真实的维琳娜面板，断言 `c2WindGainExpected = 9 × 利用率`，未提供滑块值时为 2/3。
+  - `mechanicSettingsEffect` 新增真管线探针：1581 + 1501 + 1561 队，三点 0 / 0.5 / 1，断言 `c2WindGainExpected === 当点风化触发次数 × v`。风化次数会随利用率反馈漂移（v=1 → 8 次、v=0.5 → 7 次），所以不能断言严格比例。
+    - 反向验证：把盖章改成恒等于缺省值后，三点全红（恒为 5.33）。
+    - 此前该滑块唯一的覆盖是 velina.test 直调纯函数，绕开了生产注入点；守卫 settings-coverage 只按 id 字符串计数，看不出这一点。
+  - `anomalyPool.test` 删掉 3 处已不存在的入参。
+- **验证**：zd DUMP / ROWS 都是 0 差异（104 个预设，滑块取缺省值）；`npm run verify` rc=0（内含全量 3817 passed）；CG 25 项通过；vue-tsc 无新错误。独立并行跑的全量测试里有 3 条死通道耗时断言超限（67.9s > 60s），单跑 19/19 通过，属于负载偶发。
+- **回退点**：`git revert 948a1444`。

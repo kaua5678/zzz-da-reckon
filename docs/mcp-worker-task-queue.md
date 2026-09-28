@@ -69,24 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 191 轮（lane lead-arena-0925c）：CC-152 已完成（提交 c6795167）；文档见本提交。**
-- 8 个文件级 off 钉细化为逐用例钉：111 条用例中 102 条回到缺省 physical 口径，9 条保留 off 并逐条写明理由（stun-dual-source §24.13）。只改了测试文件，期望值零改动。
-- 改写由子代理 dsh 执行、我复核；子代理这次表现可靠（机械性、多文件、判据明确的活适合派出）。
-- 验证：8 个文件 111/111 通过、全量测试与 verify 通过、CG 25 项通过、vue-tsc 无新错误。
-- 前两轮：190 CC-156（e542a005，保底4失衡未达成提示）；189 CC-147（08b4d40d，删热启动通道）、CC-162 关闭。
+**第 192 轮（lane lead-arena-0925c）：CC-27 已完成（提交 948a1444）；文档见本提交。**
+- 维琳娜 2 命风蚀利用率改为模块内闭环（applyPanel 读 settings 盖章 → 风蚀能力读回），删除从编排层到 core 的专属穿线；zd 零差（stun-dual-source §24.14）。
+- 新增 `mechanicSettingsEffect` 真管线探针（velina.cinema2CorrosionRate），并做了反向验证。
+- 验证：全量测试与 verify 通过、CG 25 项通过、vue-tsc 无新错误。
+- 前几轮：191 CC-152（c6795167）；190 CC-156（e542a005）；189 CC-147（08b4d40d）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-27**（待设计）：维琳娜风蚀状态机模块化。
-   - 先读 census §5.19，以及 `core/anomalyPool.ts#resolveAnomalyCorrosion`、`velinaCorrosionSource` 输出、`velinaCinema2CorrosionRate` 的全部读写点（`grep -rn "velina\|Corrosion" src --include=*.ts`）。
-   - 目标：core 里不再有维琳娜专属的状态机逻辑，改为模块能力（参照已有的 `finalizePass` / `crossAgentSupply` 等能力的声明方式）。卡片写明「不可只改名」：必须把状态机本体迁进 `mechanics/agents/velina*.ts`，core 只按能力查询。
-   - 判据：zd（`.zc/perf/zd.sh <tag>`）全部 104 个预设零差、golden 与棘轮零差；若有差异，要像 CC-147 那样实证归因。
-   - 若设计后发现迁移只是把代码挪个位置、core 仍需知道风蚀语义，就写「不做」并说明理由。
-2. 其余：副词条优化器接收槽过滤；洛克茜 energyRegen（先在卡表或 census 中找原始描述）。
+1. **同类排查（CC-27 的推广，建议立卡 CC-164）**：找出「模块读自己的面板字段，但全仓零写入」的死读。CC-27 的 `velinaCinema2CorrosionRate` 就是这一类；CG 判据 25 只查 `Record<string, unknown>` 的键，没抓到 `PanelValues` 上的 `as number` 读法。
+   - 做法：对 `src/mechanics/agents/*.ts` 中所有 `panel.<字段>` / `panel.<字段> as` 读取，逐个 `grep -rn "<字段>\s*=" src` 找写入方；零写入的列出来。
+   - 判定：零写入且有回落值 ⇒ 要么删掉死读，要么像 CC-27 那样补上写入方（看口径：该值应由谁提供）。
+   - 若数量多，可以把检测做成 CG 判据（扩展判据 25 覆盖 PanelValues 字段），这属于架构收益，不是计数。
+2. 同类排查二：`src/mechanics/__tests__/*` 与 `src/specs` 里「只直调纯函数」的滑块覆盖。settings-coverage 只按 id 字符串计数；逐个核对哪些滑块的真管线路径没有被测试覆盖。
+3. 其余：副词条优化器接收槽过滤；洛克茜 energyRegen（先在卡表或 census 中找原始描述）。
 
 **已知坑**
-- 口径钉的唯一写法：用例内 `config.setMechanicSetting('time.stunPlanProjection', 0)`，放在读取任何 `calc.*.value` 之前；不要再用 `vi.mock` 改 `DEFAULT_STUN_PLAN_PROJECTION_CODE`。
-- 展示层（views/components）禁止值导入 `@/core` / `@/mechanics` / `@/specs`：新诊断要经 `useResourceCalc` 暴露。
-- `@/core/resource` 不再导出 `clearWarmStartCache`；`ResourceCalcConfig.initialStates` 已删除。
-- 派 dsh 的方式：任务书写成文件，再用 `setsid /home/kaua/calc-arch/bg.sh <名> '/home/kaua/.local/node/bin/dsh --profile headless "$(cat 任务书)" > 输出文件 2>&1'` 后台执行（约 5 分钟）；事后必须自己复核 diff，重点检查 expect 行有没有改。
+- 模块给异常池能力传角色参数的唯一写法：模块 `applyPanel` 读 `input.settings[id]` 盖章到自己的面板字段，能力函数读回；不要给 `AnomalyPoolInput` 加角色专属字段。
+- 滑块探针断言要用逐点闭式（带当点的实测读数），不要断言跨点严格比例：有反馈时读数会漂移（维琳娜：风化 8 → 7 次）。
+- 口径钉的唯一写法：用例内 `config.setMechanicSetting('time.stunPlanProjection', 0)`，放在读取任何 `calc.*.value` 之前。
+- 展示层禁止值导入 `@/core` / `@/mechanics` / `@/specs`：新诊断要经 `useResourceCalc` 暴露。
+- 全量测试在高负载下会偶发失败，单跑或在 verify 里能通过：`zcWorkspace.test.ts`，以及 `deadChannelLs.test.ts` / `zcDeadChannels.test.ts`（耗时断言 `ms < 60000`，第 192 轮实测 67.9s）。
 - 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行。
