@@ -626,7 +626,7 @@ export const aliceMechanic: AgentMechanicModule = {
         enemyDefFlatReduction: 0,
         enemyLevel: enemy.level,
         enemyResistance: enemyDamageRes.physical ?? 0,
-        enemyResReduction: polarAlicePanel?.enemyResReduction ?? 0,
+        enemyResReduction: 0, // CC-175：结算面板减抗由 calcAnomalyDamage 内部读取
         stunned: polarStunFor,
         stunMultiplier: enemy.stunVuln,
         critMode: 'expect',

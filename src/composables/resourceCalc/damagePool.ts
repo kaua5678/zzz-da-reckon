@@ -270,12 +270,13 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         baseMultiplier: row.multiplier,
         element: element as any,
         enemyDefense: configStore.enemy.defense,
-        // 异放同样吃面板通用减防（结算区口径：docs/mechanism-reference.md §异常结算区含减防）+ 异放限定 releaseModifier
-        enemyDefReduction: (settlementPanel?.enemyDefReduction ?? 0) + (releaseMod.enemyDefReduction ?? 0),
-        enemyDefFlatReduction: settlementPanel?.enemyDefFlatReduction ?? 0,
+        // 异放同样吃面板通用减防（结算区口径：docs/mechanism-reference.md §异常结算区含减防）——CC-175 起面板减防由
+        // calcAnomalyDamage 内部读取；这里只传异放限定 releaseModifier（此前连面板值一起传 ⇒ 固定减防双计）
+        enemyDefReduction: releaseMod.enemyDefReduction ?? 0,
+        enemyDefFlatReduction: 0,
         enemyLevel: configStore.enemy.level,
         enemyResistance: enemyDamageRes[resolveStatElement(element) ?? ''] ?? 0,
-        enemyResReduction: (settlementPanel?.enemyResReduction ?? 0) + releaseMod.enemyResReduction,
+        enemyResReduction: releaseMod.enemyResReduction, // CC-175：只传面板之外的异放限定量；面板减抗由 calcAnomalyDamage 内部读取
         stunned: row.stunnedOverride ?? stunCoverage,
         stunMultiplier: configStore.enemy.stunVuln,
         critMode: 'expect',

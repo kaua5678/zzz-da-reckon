@@ -740,7 +740,7 @@ export const burniceMechanic: AgentMechanicModule = {
             enemyDefFlatReduction: 0,
             enemyLevel: enemy.level,
             enemyResistance: enemyDamageRes.fire ?? 0,
-            enemyResReduction: (entry.panel?.enemyResReduction ?? 0) + burniceSrc.cinema6FireResIgnore,
+            enemyResReduction: burniceSrc.cinema6FireResIgnore, // CC-175：只传面板之外的 6 命无视火抗；面板减抗由 calcAnomalyDamage 内部读取
             stunned: burnBurstStun,
             stunMultiplier: enemy.stunVuln,
             critMode: 'expect',

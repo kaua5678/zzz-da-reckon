@@ -85,3 +85,49 @@ describe('直伤减防通道（面板 enemyDefReduction 必须进伤害）', () 
       .toBeCloseTo(expected, 6)
   })
 })
+
+/**
+ * CC-175（第 199 轮）：calcAnomalyDamage 契约——结算面板上的减防 / 固定减防 / 减抗由函数内部读取，入参只传面板之外的额外量。
+ * 修复前：① 四个调用点都把结算面板减抗再传一次 ⇒ 异常 / 异放减抗双计（自初始提交）；② 标准异常行通用减防传 0 且函数内不读 ⇒ 漏计；
+ * ③ 异放行把面板固定减防再传一次 ⇒ 双计。上面「直伤 / 异放」用例头注释说的「异常质量侧本来就吃得到」只对紊乱 / 乱流
+ * （calcAnomalyMass）成立，标准异常伤害行走的是 calcAnomalyDamage。
+ */
+describe('CC-175 异常 / 异放结算区减防减抗只计一次', () => {
+  const setup = async () => {
+    const { catalog, config } = await setupHarness([{ agentId: '1511' }, { agentId: '1411' }, { agentId: '1091' }])
+    await catalog.loadBuildRecommendations()
+    for (let i = 0; i < 3; i++) config.applyBuildRecommendationForSlot(i)
+    for (const k of Object.keys(config.enemy.damageResistances)) config.enemy.damageResistances[k] = 0
+    const calc = useResourceCalc()
+    const anomalyOf = () => calc.damagePoolRows.value.filter(r => r.id.startsWith('anomaly-damage-')).reduce((s, r) => s + r.totalDamage, 0)
+    const releaseOf = () => calc.damagePoolRows.value.filter(r => r.type === '异放').reduce((s, r) => s + r.totalDamage, 0)
+    return { config, anomalyOf, releaseOf }
+  }
+
+  it('标准异常行吃面板通用减防（修复前比值恒 1）', async () => {
+    const { config, anomalyOf } = await setup()
+    const before = anomalyOf()
+    expect(before).toBeGreaterThan(0)
+    config.globalBuffs.push({ id: 'test-defdown-20', name: '测试·减防20%', stat: 'enemyDefReduction', value: 20, enabled: true, targetSkillType: 'all' } as never)
+    const expected = defZone(config.enemy.defense, 20) / defZone(config.enemy.defense, 0)
+    expect(anomalyOf() / before).toBeCloseTo(expected, 6)
+  })
+
+  it('面板通用减抗 20% 对异常行与异放行都只计一次（抗性全 0 ⇒ 比值 1.2；双计时为 1.4）', async () => {
+    const { config, anomalyOf, releaseOf } = await setup()
+    const a0 = anomalyOf(), r0 = releaseOf()
+    expect(a0).toBeGreaterThan(0)
+    expect(r0).toBeGreaterThan(0)
+    config.globalBuffs.push({ id: 'test-resdown-20', name: '测试·减抗20%', stat: 'enemyResReduction', value: 20, enabled: true, targetSkillType: 'all' } as never)
+    expect(anomalyOf() / a0).toBeCloseTo(1.2, 6)
+    expect(releaseOf() / r0).toBeCloseTo(1.2, 6)
+  })
+
+  it('异放行固定减防只计一次', async () => {
+    const { config, releaseOf } = await setup()
+    const before = releaseOf()
+    config.globalBuffs.push({ id: 'test-defdown-flat-100', name: '测试·减防100点', stat: 'enemyDefFlatReduction', value: 100, enabled: true, targetSkillType: 'all' } as never)
+    const expected = (794 / (794 + config.enemy.defense - 100)) / defZone(config.enemy.defense, 0)
+    expect(releaseOf() / before).toBeCloseTo(expected, 6)
+  })
+})

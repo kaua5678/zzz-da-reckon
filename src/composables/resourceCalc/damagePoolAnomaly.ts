@@ -262,7 +262,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         enemyDefFlatReduction: 0,
         enemyLevel: configStore.enemy.level,
         enemyResistance: enemyDamageRes[resolveStatElement(prog.element) ?? ''] ?? 0,
-        enemyResReduction: entry.panel?.enemyResReduction ?? 0,
+        enemyResReduction: 0, // CC-175：结算面板减抗由 calcAnomalyDamage 内部读取（此前在此再传一次 ⇒ 双计）
         stunned: stunCoverage,
         stunMultiplier: configStore.enemy.stunVuln,
         critMode: 'expect',

@@ -481,6 +481,12 @@ export interface AnomalyDamageInput {
   baseMultiplier: number
   element: DamageElement
   enemyDefense: number
+  /**
+   * CC-175（第 199 轮）契约：下面三个「减防 / 固定减防 / 减抗」入参只表示**结算面板之外的额外量**（如异放限定
+   * releaseModifier、柏妮思 6 命无视火抗）。结算面板（settlementPanel ?? panel）上的 enemyDefReduction /
+   * enemyDefFlatReduction / enemyResReduction 以及元素 / 异常专属减防减抗，一律由本函数内部读取——调用方**不要再传**，
+   * 否则双计。与异常池 calcAnomalyMass / 紊乱结算（全局入参 0 + 面板内读）同一契约。
+   */
   enemyDefReduction: number
   enemyDefFlatReduction: number
   enemyLevel: number
@@ -539,6 +545,7 @@ export function calcAnomalyDamage(
   const defResult = calcDefenseMultiplier(
     input.enemyDefense,
     input.enemyDefReduction
+      + (settle.enemyDefReduction ?? 0) // CC-175：通用减防同样由结算面板读取（此前漏读，标准异常不吃妮可类减防）
       + (settle.enemyAnomalyDefReduction ?? 0)
       + getElementEnemyDefReduction(settle, element)
       + (element === 'physical' ? (settle.enemyAssaultDefReduction ?? 0) : 0),
