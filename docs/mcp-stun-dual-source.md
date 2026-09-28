@@ -2001,3 +2001,24 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - 1051 伊德海莉的「hp → 贯穿力 0.1」也是纯记录条目，但它记的是引擎对全体命破角色通用的贯穿力公式（`core/damage.ts#calcPenetrationPower`），不是角色模块私有的常数，**不做**。
 - verify EXIT=0（3908 passed / 29 skipped）；vue-tsc 0；validate-specs 1120 项通过。
 - **回退点**：`git revert 7b2af5ce`（含 golden）；或只回退口径，按上面加 `stepRounding: "none"`。
+
+### 24.60 第 236 轮：「实现位置：」纯记录条目全量核对（无新分叉）＋ CC-213 validate-specs 逐条消费证据（cd9a7486）
+
+**扫描范围**：`grep -n '实现位置：' src/specs/agents/*.json`，共 21 条，分布在 13 个文件：1051、1261×2、1281、1331×2、1401、1411、1481、1511×2、1541、1571×3、1581、1611×3、1621×2。覆盖 attributeConversions / events / resources / additionalAbility 全部字段。
+
+**逐条结论**
+- 模块真实执行 spec，单一来源：1261、1481、1541、1571（CC-212 后）；1511 南宫羽的展示值 `impactFromMasteryOf` 也经 spec runtime 计算。
+- 散文公式但数字与模块常量逐项一致：
+  - 1401 爱丽丝影画 6：3300% 对应 `C6_DAMAGE_RATIO = 33`；
+  - 1331 薇薇安两条 events：每十点系数 6.15 / 3.2 / 8 / 0.75 / 1.08 / 0.32 与 `VIVIAN_RELEASE_RATIO_PER_TEN` 一致，影画 2 ×1.3、影画 6 ×5、DoT 0.55 秒 / 55% 一致；事件里的 count（6、327）只是示意值，不参与计算。
+- 1051 伊德海莉：记录的是引擎通用公式 hp×0.1 → 贯穿力（`core/damage.ts#calcPenetrationPower`），与引擎一致，不是模块常数；归一已否决（见 §24.59 前后记录）。
+- 1281、1611（gash 资源）、1621（wind_eye）、1261 / 1411 / 1581 的 additionalAbility：都是散文规则，没有可比对的独立常数；1281、1581 的 resources 已由 CC-120 审计（`docs/mcp-spec-resources-audit.md`，1581 耀变系数已修）。
+- **结论**：除了已由 CC-212 修复的 1571，没有新的「记录说 X、执行的是 Y」。本线结项。
+
+**顺带复核 CC-212 的悬崖**：`auto-1371-1571-1451` 失衡次数 4 → 3，属于 `docs/mcp-outer-fixedpoint-continuity.md` §5 第 161 轮已裁决的「物理失衡次数整数台阶，不是缺陷，不修」，不重开。
+
+**CC-213（validate-specs 逐条消费证据）**
+- 改动：`scripts/validate-specs.mjs` 的死数据检查，除了原有两条（模块调用 `applySpecAttributeConversions`；note 含「实现位置：」），新增 ①′：模块调用 `specConversionAmount(` **且**源码里出现该条目的 id（带引号）时，认定该条被消费。
+- 为什么：1571 在 CC-212 后已真实读 spec，但检查仍只能靠 note 标记放行；note 是人写的，正是 CC-212 那次误判的源头。现在是逐条的代码证据，只有 1051 这类引擎公式条目还走 note 通道。
+- 反例验证：把 1571 三条 note 的「实现位置：」去掉，检查仍然 0 FAIL（靠逐条证据）；再把 `norma.ts` 里一处 `normaConversion('norma_pen_to_atk')` 的 id 改坏，`norma_pen_to_atk` 报 FAIL。两处临时改动都已还原。
+- 零数值影响（只改校验脚本）。回退点：还原 `scripts/validate-specs.mjs` 这两处（注释①′ 与 `readsById`）。

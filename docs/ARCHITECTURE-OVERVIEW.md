@@ -85,7 +85,7 @@ core/inCombatBuffs.ts  collectInCombatTeamBuffs   局内「给全队 / 队友」
 
 ## 5. R6 候选（初稿，第 2 步正式评估「做 / 不做」）
 
-> **第 2 步结论（第 139 轮）**：逐条「做 / 不做」见 `docs/mcp-r6-refactor-list.md`。**C1 已完成**（R6 验收项）：12 个 core 文件改 import `@/mechanics/registry`，注册由 `src/main.ts` 与 `vite.config.ts` `test.setupFiles` 负责，守卫测试 `src/core/__tests__/coreMechanicsRegistryOnly.test.ts`。回退点：12 处 import 改回 `@/mechanics`，删 setupFiles 一行与该测试。C7 做：1481 已完成（第 140 轮，spec 新增 `stepRounding` 字段承载连续口径），1571 不做；C6、C2 的规划条款已写进 `docs/ARCHITECTURE.md` §0（第 140 轮）；C5、C3 低优先做；C4 不做。下表保留为初稿记录。
+> **第 2 步结论（第 139 轮）**：逐条「做 / 不做」见 `docs/mcp-r6-refactor-list.md`。**C1 已完成**（R6 验收项）：12 个 core 文件改 import `@/mechanics/registry`，注册由 `src/main.ts` 与 `vite.config.ts` `test.setupFiles` 负责，守卫测试 `src/core/__tests__/coreMechanicsRegistryOnly.test.ts`。回退点：12 处 import 改回 `@/mechanics`，删 setupFiles 一行与该测试。C7 做：1481 已完成（第 140 轮，spec 新增 `stepRounding` 字段承载连续口径），1571 不做（第 235 轮 CC-212 改为常数归一，见 §6.4 更新）；C6、C2 的规划条款已写进 `docs/ARCHITECTURE.md` §0（第 140 轮）；C5、C3 低优先做；C4 不做。下表保留为初稿记录。
 
 | 候选 | 类别 | 为什么 | 初步风险 |
 |---|---|---|---|
@@ -159,5 +159,6 @@ useResourceCalc()                         composables/useResourceCalc.ts:87
 - 反例（已归一）：`alice.ts:115`、`luciaElowen.ts:135` 直接调 `applySpecAttributeConversions(getAgentSpec(...).attributeConversions)`，常数只在 spec 一处。
 - 转为候选 **C7**（§5）。
 - **第 147 轮复核（CC-120）**：变异法实测，上述 10 份 resources 与 3 份 events **不参与计算**，只错在展示；逐条对照后只有 1581 耀变系数 1 条是真错（已修），其余不迁移。详见 `docs/mcp-spec-resources-audit.md`。
+- **第 235–236 轮更新**：1571 的 3 条 attributeConversions 已改为常数单一来源 = spec（CC-212：模块负责来源与落点，常数与步数口径经 `specs/runtime#specConversionAmount` 读取），上文「写着 attributeConversions 的有 1571」与「典型：1571」两处描述已过时。第 236 轮全量核对 21 条「实现位置：」纯记录条目，没有其他常数分叉；`validate-specs` 改为逐条认定消费（CC-213）。详见 `docs/mcp-stun-dual-source.md` §24.59–24.60。
 - 探针的局限：只按模块主文件的源码判断，模块若经其他文件（如 `specPanelBuffs.ts`）间接调用 spec，会被误记为「不调用」。第 2 步动手前逐个复核。
 - 探针写法：`src/mechanics/__tests__/` 下临时 test，`import { getAgentMechanic } from '@/mechanics'`、`import { agentSpecs } from '@/specs/registry'`，结果写 `/tmp`，跑完删除。
