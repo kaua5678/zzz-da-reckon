@@ -1572,3 +1572,27 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - zd（`ZD_DROP=benchmarkMoveId,basicBenchmarkMoveId`）：DUMP / ROWS 均为 DIFF 0。两个新键会进所有预设的哈希，所以要剔除；剔除后零差，证明预设数值没变。
   - verify EXIT=0（3837：新增 basicBenchmarkMatchCc193 共 6 例）。
 - **回退点**：`git revert 4ddd4f78`。只想回退某个角色的基准段时，删掉 catalog 里对应的 `basicBenchmarkMoveId`，再跑 `npm run minify:static`。
+
+### 24.41 CC-194：postRound 写入从未跨轮生效（第 217 轮，062af638）
+
+- **起因**：做 §24.40「剩余逐角色建模欠账」第 4 项时，先用 harness 打印扳机队（`auto-1461-1521-1361`）的生产执行行：协奏狙杀 1361008 有 208 发，队友强特共 24 次、终结 8 次，但冥狱 1361020 / 1361022 **一行都没有**。§24.40 把它归为「状态型普攻、基准段匹配不到」，是误判：冥狱是模块自己推的后台行，问题出在次数恒为 0。
+- **根因（通用通道）**：`applyTeamConfig({phase:'postRound'})` 的契约是「本轮收敛 → 下一轮注入」。但 `convergence.ts` 在**本轮末尾**对本轮的 `characters` 派发，而 `runCalcRound` 每一轮开头都会 `base.characters.map(...)` 重新克隆 cfg，所以 postRound 的写入**全部**在下一轮开始前丢失。受影响的全部 postRound 用户（`grep -rn postRound src/mechanics/agents`）：
+  - **扳机 1361**：`triggerMate*Count` 恒 0 ⇒ 冥狱恒 0（2026-08-25 用户口供的「冥狱按 CD 吃满」从来没有进入计算）；
+  - **安比 1011 影画4**：给后场电属性队友的电荷传导回能（`initialEnergyGift`）从未注入；
+  - **千夏 1491**：`qianxiaExCount` / `qianxiaUltimateCount` **只写不读**（全仓无读点）⇒ 删除整个钩子。
+  - 莱特走的是 `nextRoundFeedback` 通道（返回值 → threads），不受影响；其余 `applyTeamConfig` 都用相位守卫只响应 build 或 converge，也不受影响（抽查了卢西娅、格莉丝、蕾米埃尔、莱卡恩、佩洛伊斯）。
+- **修法（通用，模块零改动）**：
+  - `roundThreads.ts` 新增 `postRoundInput: { exCounts, ultimateCounts, stunCount } | null`（首轮与 null 轮为 null）；
+  - 轮末**只记录**这组入参（`postRoundInputNext`），下一轮在 converge 派发**之前**，用它对新克隆的 cfg 派发 postRound；
+  - 安比那种「先减去上次、再加上本次」的写法，在新克隆上依然成立（上次为 0）；
+  - `outerCycle.ts#outerFeedbackSignature` 新增全队强特次数：postRound 注入读它，强特还在变、终结不变时，旧签名会在注入值落后一轮的状态下判稳。
+- **守卫**：`src/mechanics/__tests__/postRoundCarryCc194.test.ts`（harness 真队伍）：冥狱终结一击行必须 > 0，且连射行 = 3 × 终结一击。**单测直调钩子看不见这类接线断点**（trigger.test.ts 12 例一直是绿的）。
+- **数值影响面**（zd k217：625 条里 DIFF 92）：
+  - 14 支扳机预设 × 6 个变体 = 84 条：冥狱行补回，golden 伤害 +1.2~2.9%。其中 3 队时间账有变化：`auto-1521-1361-1311`、`auto-1201-1361-1211`、`auto-1401-1361-1411`（失衡 3→4）。冥狱带失衡值，失衡累积更快，于是能量和时间重新分配。timeFillRatchet 里伊德海莉-扳机-卢西娅失衡 2→3、留白 0.6→3.6s，也是同一原因。
+  - 5 个非扳机变体（伊德海莉-橘福福 / 洛克茜 / 诺姆-卢西娅、1051-1141-1451、1181-1561-1581 的 c6 或 heavy）：**来自判稳签名**。已证实：临时去掉签名那一行重跑 zd（k217b），差异只剩上面 84 条。这 5 个变体原来是在强特次数仍在变时提前停的，修正后总伤最多 +0.11%（伊德海莉-诺姆-卢西娅 c6），其余 4 个总伤不变、只有哈希变。**决定保留**：判据必须覆盖下一轮注入的输入，这是通用正确性，不是为了某个数。
+  - 预设里没有安比 C4+ 配电属性队友的队伍，所以安比 C4 的效应只体现在 `adjustableEffect.test.ts`：希希芙毒素的默认队友是安比 C6 和丽娜 C6，三点实测值更新为 stage4 20→18、duya_hold@0.5 13.5→15、stunned_bonus 10→9，线性关系保持不变。
+- **验证**：vue-tsc 0；verify EXIT=0（3838）；time golden 与 timeFillRatchet 已逐条归因后重生成。
+- **回退点**：`git revert 062af638`。只想撤掉判稳签名的变化时，删掉 `outerCycle.ts` 里 CC-194 那一行即可（差异只剩扳机队）。
+- **§24.40 剩余逐角色欠账（更新）**：
+  - 扳机：已随本卡解决。
+  - 千夏普攻 #4 标记（`qianxia.ts` 标记供给不含普攻时长）、佩洛伊斯 a3 / a4 连段（`specPanelBuffs.ts`）、爱芮绝对音准 1501005–008 / 022、苍角霜染刃旗 1131004 / 005：仍待做。先按「开工前查裁决」检查，再判断该状态是不是主形态。
