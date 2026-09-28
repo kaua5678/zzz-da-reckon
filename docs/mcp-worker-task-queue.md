@@ -69,22 +69,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 198 轮（lane lead-arena-0925c）：CC-173 定案（不迁移），CC-174 完成（代码提交 e0426398）；立卡 CC-175。文档见本提交。**
-- CC-173：整队贪心允许与管线不同源，理由和重开条件见 stun-dual-source §24.20、store 分支注释。
-- CC-174：calcPanel 生产调用点必须显式写 potentialLevel / effectCoverageMap（契约测试）。
-- 前几轮：197 CC-172（8bbefaed）；196 CC-171（c727c369）；195 CC-169（af1c9e86）。
-- calcPanel 口径线（CC-168 → CC-174）至此收尾。
+**第 199 轮（lane lead-arena-0925c）：CC-175 完成（代码提交 be822bc6，含 timeGolden 基线重生成）；立卡 CC-176。文档见本提交。**
+- CC-175：calcAnomalyDamage 结算区减防 / 减抗契约统一，修了三处（减抗双计、标准异常漏通用减防、异放固定减防双计），伤害有升有降，归因见 stun-dual-source §24.21。
+- 前几轮：198 CC-173 / 174（e0426398）；197 CC-172（8bbefaed）；196 CC-171（c727c369）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-175：core 公共函数可选入参的缺省兜底普查**（CC-170 方法推广）。
-   - 列候选：`grep -nE "^export function \w+\(" src/core/*.ts src/core/**/*.ts`，挑最后一个参数是对象、且含 `?:` 可选字段的；优先看被 ≥2 个生产调用点调用的。已知候选：`computeOptimalSubStats`（`OptimizeSubstatsInput`，store 分支已知不传 effectCoverageMap，属 CC-173 允许范围）、`collectInCombatTeamBuffs`、`buildTeammateBuffSourceContext`（deps.effectCoverageMap，store 不传属 CC-173）、伤害 / 失衡入口的 options。
-   - 对每个函数的每个可选字段：哪些生产调用点传、哪些不传？不传的调用点缺省值是否就是它想要的口径？
-   - 判定：漏传的补上（伤害路径上要跑 zd 并做归因）；有意不传的，在调用点写一行注释说明原因；不值得锁的写「不做」。
-   - 若发现第二个和 calcPanel 同样高风险的函数（多调用点、缺省值会静默改口径），再考虑给它加契约测试。不要为每个函数都加。
+1. **CC-176：CC-175 普查剩余候选**。
+   - 列表：`node /home/kaua/calc-arch/k198/scan175.mjs`（输出列依次为：调用文件数、调用次数、可选字段数、函数、可选类型、调用方）。跳过以 `CharacterOperationConfig` 为参数的（数据载体）。
+   - 逐个看：`calcDirectDamage` 的旁路调用（alice.ts:687、jane.ts:332）是否漏传伤害池会传的可选字段（`skillDamageTarget` / `critRateBonus` / `dmgBonus` / `flatDamageBonus` 等）。对照 `composables/resourceCalc/damagePool.ts` 的 pushDirect，判断是有意（附伤不吃定向增伤？）还是漏传；再看 `buildGiftRow`（GiftRowInput 7 个可选）、`frontlineOccupationBreakdown`、`effectiveBackstageTime` / `countFrontActions`（TimeBasisCfg）。
+   - 判定：漏传的补上（伤害路径要跑 zd 并做归因）；有意的写注释；没问题的在 §24.21 后追加「已查无问题」清单。
+   - 方法提示：本轮三个 bug 都是「函数内读一部分、调用方传一部分」造成的双计 / 漏计。优先查函数体里有没有 `settle.` / `p.` 与入参同名字段相加的地方。
 2. CC-166 仍暂缓（需规格）。
 
 **已知坑**
+- 伤害函数契约：`calcDirectDamage` 由调用方传面板通用减防 / 减抗；`calcAnomalyDamage` 由函数内读结算面板，调用方只传额外量。新写旁路伤害调用要照对应契约，写反就会双计或漏计（CC-175）。
+- 伤害变化的基线更新：timeGolden 用 `TIME_GOLDEN_UPDATE=1`。更新前先 `git diff --numstat` 基线文件，确认只有 `dmg` 行变化、没有时间账变化；断言报错信息只列部分条目，不要据此判断全貌。
 - calcPanel 的 config 可选字段（`potentialLevel` / `effectCoverageMap` / `sourcePanelsByOwner`）漏传不会报错，会被缺省值静默兜底（CC-171 就是这么漏的）。新增调用点对照 `computePanelPhases` 逐项核对，有意不传的写注释。
 - 给 calcPanel 组装队友 buff 输入，一律走 `resolveSlotPanelBuffInputs`（`composables/resourceCalc/panelPhases.ts`）。直接用 core `buildTeammateBuffSourceContext` 的原始 `enabledTeammateBuffs` 会缺门控、接收槽过滤、全局 Buff、覆盖率和来源修正（旧包装 `teammateBuffSourceContextFromStores` 已于第 195 轮删除）。
 - 删 src 文件要用 `git rm`：判据 25 用 `git ls-files` 列文件，工作区已删、索引还在的文件会让 CG 直接 ENOENT 崩溃。

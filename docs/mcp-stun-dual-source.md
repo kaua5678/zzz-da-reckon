@@ -1153,3 +1153,36 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 这是判据不是棘轮：它锁的是「口径必须显式」这条结构约束，没有计数。若日后 calcPanel 的 config 改为类型必填，本测试可废。
 - **验证**：`npm run verify` rc=0（3826 passed）；vue-tsc 无新错误；CG 25 项通过；zd 零差（DUMP 与 ROWS 两段 DIFF 0）。
 - **回退点**：revert 本提交；契约测试可单独删除，不影响计算。
+
+### 24.21 CC-175：core 可选入参缺省兜底普查 → calcAnomalyDamage 结算区减防 / 减抗契约统一（第 199 轮，提交 be822bc6）
+- **普查方法**：脚本 `/home/kaua/calc-arch/k198/scan175.mjs`（列出 core 导出函数中被 ≥2 个生产文件调用、参数含可选字段的）。
+  - 以 `CharacterOperationConfig` 为参数的（可选字段 267+）是资源管线内部的数据载体，不属于「调用方选择传不传」的配置对象，排除。
+  - 剩下风险最高的是伤害函数 `calcDirectDamage`（10 个可选字段）/ `calcAnomalyDamage`（7 个），它们除伤害池外还被爱丽丝 / 简 / 柏妮思的模块直接调用。其余候选（`buildGiftRow`、`frontlineOccupationBreakdown`、`effectiveTime` 族等）本轮未逐个查，列为 CC-176。
+- **发现：两个伤害函数的「结算面板减防 / 减抗」约定不同，各调用点写法混乱**。
+  - `calcDirectDamage`：通用减防 / 减抗 / 固定减防**只读入参**，函数内只叠加定向额外量（`getTargetedStatExtra`）和元素量。调用方必须传面板值；伤害池、爱丽丝、简都这么做，正确。
+  - `calcAnomalyDamage`（修复前）：函数内读结算面板的减抗、固定减防、异常 / 元素 / 强击专属减防，**唯独不读通用减防**；入参再叠加。结果：
+    1. **减抗双计**：4 个调用点（`damagePoolAnomaly.ts` 标准异常、`damagePool.ts` 异放、`alice.ts` 极性紊乱异常、`burnice.ts` 6 命爆发）都把结算面板减抗再传一次。自初始提交 1a1f8c65 即如此。
+    2. **标准异常漏通用减防**：标准异常 / 爱丽丝 / 柏妮思入参传 0，函数又不读。2026-09-08 `c56bd57d6` 修「面板减防未进直伤 / 异放」时只修了直伤和异放，护栏 `damagePoolDefDown.test.ts` 头注释认为「异常质量侧（calcAnomalyMass）本来就吃得到」——那只对紊乱 / 乱流成立，标准异常伤害行走的是 calcAnomalyDamage。
+    3. **异放固定减防双计**：`c56bd57d6` 在入参里传了面板固定减防，而函数内部本来就读。
+  - 参照口径：异常池紊乱 / 乱流（`roundInputs.ts:123-124` 全局减防 / 减抗入参为 0，`anomalyPool/helpers.ts` 从面板内读一次），加上 `docs/mechanism-reference.md:107` 结算区公式（减防、减抗各乘一次）。
+- **决定**：calcAnomalyDamage 统一为「结算面板（settlementPanel ?? panel）上的通用减防 / 固定减防 / 减抗及元素、专属量一律由函数内读取；入参只传面板之外的额外量」（如异放 releaseModifier、柏妮思 6 命无视火抗）。
+  - 依据：与异常池同一契约，调用方不可能再双计；4 个调用点中 3 个本来就传 0。
+  - 不改 calcDirectDamage 的契约（其调用点都正确）。但两个函数的约定不同，已写进 `AnomalyDamageInput` 注释和 ENGINE_PIPELINE_GUIDE 口径表。
+  - 改动：
+    - `core/damage.ts` 防御区补 `settle.enemyDefReduction`，接口注释写契约；
+    - 标准异常 / 爱丽丝：`enemyResReduction: 0`；
+    - 柏妮思：只传 `cinema6FireResIgnore`；
+    - 异放：`enemyDefReduction: releaseMod.enemyDefReduction ?? 0`、`enemyDefFlatReduction: 0`、`enemyResReduction: releaseMod.enemyResReduction`。
+- **伤害影响（这是修复，伤害可升可降，不按方向判对错）**：
+  - zd 分两步归因，基线均为 HEAD。
+    - **只修 ①**：4 个预设下降，均为 6 命档，面板通用减抗来源为普罗米娅 6 命「异常 / 紊乱无视 15% 抗性」（`promia.ts:147`）等：`1511-1561-1411/c6` −8.83%、`1541-1511-1411/c6` −5.36%、`1541-1561-1411/c6` −4.81%、`1541-1331-1581/c6` −3.74%。
+    - **全修**：dump 145 个变化（140 升 5 降），降的就是上面 4 个（数值与只修 ① 时逐位相同）加 `__ms` 计时键。升幅 +0.01% ～ +12.52%，最大 `1401-1411-1031/c6` +12.52%（妮可核心减防 40% 此前不进标准异常）。
+  - timeGolden：90 条全部是 `dmg` 字段（52 升 38 降，−12.53% ～ +8.91%），时间账零变化。降幅最大的是 1511 南宫羽 c3+（−10% ～ −12.5%，自带 18% 通用减抗），其余下降角色都是 teammate-buffs 里的通用减抗来源：琉音 C1 15、照 C1 15、柚叶 10、耀嘉音 C1 6、青衣 C6 20、凯撒 C1 15。已按 `TIME_GOLDEN_UPDATE=1` 重生成。
+- **测试**：`damagePoolDefDown.test.ts` 新增 3 条（队伍 1511 + 1411 + 1091，抗性全设 0）：
+  - 标准异常行吃面板通用减防（比值 = 防御区比值）；
+  - 面板通用减抗 20% 对异常行、异放行都是 ×1.2（双计时 ×1.4）；
+  - 异放行固定减防只计一次。
+
+  3 条在旧代码上全部失败。
+- **验证**：`npm run verify` rc=0（3829 passed；中途一次 zcWorkspace 偶发失败，单跑 9 passed，重跑 verify 干净，含 timeGolden 新基线）；vue-tsc 无新错误；CG 25 项通过；zd 两步见上。
+- **回退点**：revert 本提交（连同 timeGolden 基线）。若只想撤修 ②（通用减防），删掉 `core/damage.ts` 防御区的 `settle.enemyDefReduction` 一行，并重生成 timeGolden。
