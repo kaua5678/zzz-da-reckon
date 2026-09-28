@@ -1116,3 +1116,19 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **回退点**：revert 本提交（只是两行参数和一个新测试文件）。
 - **已知坑（通用）**：calcPanel 的 config 可选字段（`potentialLevel`、`effectCoverageMap`、`sourcePanelsByOwner`）漏传不会报类型错，会被缺省值静默兜底。新增调用点要对照 `computePanelPhases` 的参数表逐项核对，有意不传的写注释说明原因。
 - **CC-172（下一张）**：来源面板不传覆盖率表 → 来源角色自身的条件效果（音擎 / 驱动盘）在来源面板里按 100% 覆盖算，而同一角色在自己槽位的主面板按覆盖率算。覆盖率缺省为 100（`wEngineEffectCoverages` 空表 = 100），所以只有用户调低覆盖率，或 `mergeTeamDiscEffectCoverages` 自动算出 < 100 时才有差异。后者若在缺省配置下也生效，就会影响伤害，要跑 zd 并做归因。
+
+### 24.19 CC-172：队友 buff 来源面板的自身条件效果按覆盖率计算（第 197 轮，提交 8bbefaed）
+- **发现**（CC-170 普查遗留）：`core/teammateBuffSource.ts` 的来源面板 calcPanel 不传 `effectCoverageMap` → 来源角色自身的音擎 / 驱动盘条件效果按 100% 计算；同一角色在自己槽位的主面板和进场快照面板都按用户覆盖率计算，口径分裂。
+- **影响面**：覆盖率三张表（`wEngineEffectCoverages` / `discEffectCoverages` / 队友 buff coverage）缺省都是 100，`mergeTeamDiscEffectCoverages` 只读用户记录、不会自动产生 < 100 的值 → **缺省配置下零差**（zd 零差为证）。只有用户手动调低某个自身条件效果的覆盖率时，才会影响读来源面板的队友 buff（转模类，如按来源攻击力给的 buff）。
+- **决定**：来源面板改用「角色自身覆盖率表」。
+  - 依据：来源面板的定义是「角色自身配置 + 音擎 + 驱动盘 + 自身 buff，不带队友 buff」（teammateBuffSource.ts 函数注释）。除了不带队友 buff，它应与该角色自身面板同口径；进场快照面板正是同一定义，而且覆盖率组装一模一样。
+  - 做法：
+    - `panelPhases.ts` 抽出 `selfEffectCoverageMap(configStore, catalogStore)`（音擎覆盖率记录 + 全队驱动盘效果覆盖率，每次返回新 Map），进场快照面板（原内联 IIFE）和 `resolveSlotPanelBuffInputs` 的来源上下文共用；
+    - `TeammateBuffSourceDeps` 加可选 `effectCoverageMap`（缺省 = 旧行为 100%，store 层整队贪心仍不传）。
+  - 主面板 effectCoverageMap 的组装顺序（音擎 → 队友 buff → 全队盘覆盖）不变。
+- **测试**：`src/composables/__tests__/sourcePanelCoverage.test.ts`。
+  - 队伍 1091 + 1211 + 1221（避开有 `adjustTeammateBuffSource` 钩子的 1161 / 1311），全队盘效果覆盖率设为 50%：三人来源面板局内 10 个主属性 = 进场快照面板，且至少一人与 100% 时不同。
+  - 已确认旧代码失败。
+  - 这条恒等式本身就是判据：来源面板 ≡ 进场快照面板（不含 skillLevelBonus 影画补正、来源修正钩子）。
+- **验证**：`npm run verify` rc=0（3823 passed）；vue-tsc 无新错误；CG 25 项通过；zd 零差（DUMP 与 ROWS 两段 DIFF 0）。
+- **回退点**：revert 本提交；或只删 `resolveSlotPanelBuffInputs` 里传给 buildTeammateBuffSourceContext 的 `effectCoverageMap` 一行（回到来源面板满覆盖，`selfEffectCoverageMap` 抽取保留，零差）。

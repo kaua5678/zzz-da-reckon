@@ -69,24 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 196 轮（lane lead-arena-0925c）：CC-170 普查完成，CC-171 修复（代码提交 c727c369）；立卡 CC-172。文档见本提交。**
-- CC-171：引擎面板漏传潜能档 → `cfg.panel.potentialLevel` 恒为 6；补传后柏妮思 / 简资源结果按实际潜能档显示，伤害零变化（stun-dual-source §24.18）。
-- 前几轮：195 CC-169（af1c9e86）；194 CC-168（3336f873）；193 CC-165（90a7eb79）。
+**第 197 轮（lane lead-arena-0925c）：CC-172 完成（代码提交 8bbefaed）；立卡 CC-173。文档见本提交。**
+- CC-172：来源面板自身条件效果按覆盖率计算（与进场快照面板共用 `selfEffectCoverageMap`），缺省零差（stun-dual-source §24.19）。
+- 前几轮：196 CC-171（c727c369）；195 CC-169（af1c9e86）；194 CC-168（3336f873）。
+- 至此 calcPanel 的 5 个生产调用点里，4 个口径已理清（主面板 / 进场快照 / 来源面板同源；优化器起点由调用方给）；只剩 store 整队贪心。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-172：来源面板覆盖率口径**。
-   - 先读 `composables/resourceCalc/panelPhases.ts#mergeTeamDiscEffectCoverages`：缺省配置（`discEffectCoverages` 空表）下它会不会写入 < 100 的值？
-     - 不会：差异只在用户手动调低覆盖率时出现，伤害缺省零差；
-     - 会：缺省配置下也影响伤害。
-   - 做法（通用，不写角色分支）：
-     - `TeammateBuffSourceDeps` 加可选 `effectCoverageMap`，透传给 `teammateBuffSource.ts:58` 的 calcPanel；
-     - `resolveSlotPanelBuffInputs` 里先算出 effectCoverageMap（现在是在 buildTeammateBuffSourceContext 之后才算），再传进去。
-     - 注意：覆盖率表里含队友 buff 覆盖率，来源面板不带队友 buff，多出来的键不会命中，无害。
-   - 验证：探针造一个音擎条件效果覆盖率 50% 的来源角色（如耀嘉音），对比来源面板 atk 修复前后，以及它和同角色主面板局外 atk 的关系；跑 zd，有差异要做归因（worktree 临时去掉传参对照）。
-   - 判据：来源面板的「自身配置」应与该角色自己槽位的面板同口径（除队友 buff 外）。若查实有意不同（如来源面板刻意取满覆盖），写注释说明并关卡。
-2. store 层整队贪心与管线同源（CC-168 未决项）：只有确实要用整队贪心时才做。
-3. CC-166 仍暂缓（需规格）。
+1. **CC-173：整队贪心的归属与口径**（先定方案，写进卡表再动手）。
+   - 现状：
+     - `stores/config.ts#applyBuildRecommendationForSlot`（:760）是 store 动作，store 内部有 4 个调用者（:645 换角色、:1274 / :1296 / :1335 预设载入），另有 `TeamConfigPage.vue:680` 按钮和 `src/test/harness.ts:137`。
+     - 非缺省分支（`optimizer.useDefault` = 0 且为 attack / anomaly / rupture 角色，~815–870）自己组装原始队友上下文，并对每个队友 calcPanel 估伤。缺少 CC-168 列的 5 步加工（来源修正 / 全局 Buff / 额外能力门控 / 接收槽过滤 / 覆盖率），也没传潜能。
+     - store 不能依赖 composables（分层），所以当初没改。
+   - 候选方案：
+     - (a) 把「推荐配装 + 副词条分配」整个编排迁到 `composables/`（与单槽版 `composables/substatOptimizer.ts` 合并），store 只保留纯数据写入。难点：store 内部 4 个调用点要改成由编排层触发（预设载入流程在 store 里）。
+     - (b) store 暴露注入点（如 `setSubstatAllocator(fn)`），由编排层在应用启动时注册；store 调注入函数，缺省回落到 useDefault 路径。改动小，但是「隐式依赖」，测试 harness 要注册。
+     - (c) 不改，只在代码和卡表里写明「整队贪心是用户手动开启的近似估值，允许与管线不同源」。
+   - 选择判据：哪个让架构更简单。倾向 (a)（store 不再 import core 计算），但若 4 个内部调用点迁移牵连过大，选 (c) 并写理由。
+   - 做 (a) / (b) 时：非缺省分支对缺省预设不生效（useDefault 缺省为 1），zd 应零差；要另写探针，在 useDefault = 0 下对比新旧分配。
+2. CC-166 仍暂缓（需规格）。
 
 **已知坑**
 - calcPanel 的 config 可选字段（`potentialLevel` / `effectCoverageMap` / `sourcePanelsByOwner`）漏传不会报错，会被缺省值静默兜底（CC-171 就是这么漏的）。新增调用点对照 `computePanelPhases` 逐项核对，有意不传的写注释。
