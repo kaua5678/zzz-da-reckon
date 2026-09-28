@@ -7,6 +7,8 @@ import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Bos
 import { getAgentSpecsByAgentId } from '@/specs/registry'
 import type { TeamBuffSpec } from '@/specs/types'
 
+export type CatalogLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
+
 export const useCatalogStore = defineStore('catalog', () => {
   /**
    * 目录数据用 **shallowRef**（2026-09-23 mcp-engine，用户批准高风险引擎优化）：目录是加载后只读的静态数据
@@ -19,12 +21,18 @@ export const useCatalogStore = defineStore('catalog', () => {
   const catalog = shallowRef<Catalog | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const catalogStatus = computed<CatalogLoadStatus>(() =>
+    loading.value ? 'loading' : error.value ? 'error' : catalog.value ? 'ready' : 'idle',
+  )
+  let catalogPromise: Promise<Catalog> | null = null
 
   // 队友 Buff 数据
   /** 浅层（同 catalog）：只在加载时整体赋值 */
   const teammateBuffGroups = shallowRef<TeammateBuffGroup[]>([])
-  const teammateBuffsLoading = ref(false)
-  const teammateBuffsLoaded = ref(false)
+  const teammateBuffsStatus = ref<CatalogLoadStatus>('idle')
+  const teammateBuffsError = ref<string | null>(null)
+  const teammateBuffsLoading = computed(() => teammateBuffsStatus.value === 'loading')
+  const teammateBuffsLoaded = computed(() => teammateBuffsStatus.value === 'ready')
   // in-flight 去重：useResourceCalc 每次实例化都会 fire 一次加载（不 await），
   // 并发 fetch 曾一次跑出 3 个请求；存 promise 让并发调用共享同一次加载
   let teammateBuffsPromise: Promise<TeammateBuffGroup[] | null> | null = null
@@ -106,8 +114,11 @@ export const useCatalogStore = defineStore('catalog', () => {
   // 配装推荐数据（nanoka.cc 邦布精灵推荐）
   /** 浅层（同 catalog）：只在加载时整体赋值 */
   const buildRecommendations = shallowRef<BuildRecommendations | null>(null)
-  const buildRecsLoading = ref(false)
-  const buildRecsLoaded = ref(false)
+  const buildRecsStatus = ref<CatalogLoadStatus>('idle')
+  const buildRecsError = ref<string | null>(null)
+  const buildRecsLoading = computed(() => buildRecsStatus.value === 'loading')
+  const buildRecsLoaded = computed(() => buildRecsStatus.value === 'ready')
+  let buildRecsPromise: Promise<BuildRecommendations | null> | null = null
 
   // 索引 Map
   const agentsMap = computed(() => {
@@ -168,51 +179,59 @@ export const useCatalogStore = defineStore('catalog', () => {
 
   async function load() {
     if (catalog.value) return catalog.value
+    if (catalogPromise) return catalogPromise
     loading.value = true
     error.value = null
-    try {
-      // 默认缓存：服务端（vite preview 发 no-cache + ETag）走 304 重验证，避免每次整包重下 1.48MB。
-      // 改动后 ETag/mtime 变化自然失效，无需 no-store 强刷。
-      const res = await fetch('/static/catalog.json')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json() as Catalog
-      catalog.value = data
-      return data
-    } catch (e: any) {
-      error.value = e?.message ?? 'Failed to load catalog'
-      throw e
-    } finally {
-      loading.value = false
-    }
+    catalogPromise = Promise.resolve().then(async () => {
+      try {
+        // 默认缓存：服务端（vite preview 发 no-cache + ETag）走 304 重验证，避免每次整包重下 1.48MB。
+        // 改动后 ETag/mtime 变化自然失效，无需 no-store 强刷。
+        const res = await fetch('/static/catalog.json')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as Catalog
+        catalog.value = data
+        return data
+      } catch (e: unknown) {
+        error.value = e instanceof Error ? e.message : 'Failed to load catalog'
+        throw e
+      } finally {
+        loading.value = false
+        catalogPromise = null
+      }
+    })
+    return catalogPromise
   }
 
-  /** 就绪门：teammate-buffs 已加载（失败也置位，见 loadTeammateBuffs 的 finally） */
+  /** 就绪门只认完整数据成功；失败保持未就绪，显式重试成功后再放行计算。 */
   const teammateBuffsReady = computed(() => teammateBuffsLoaded.value)
 
-  // 加载队友 Buff 数据
+  // @fact ui:loading/队友Buff完整数据 口径: 队友Buff仅在采集数据加载且spec合并成功后ready；失败阻断完整计算并允许重试，不以空数据降级 | 据 用户任务@2026-09-28 | 验 src/stores/__tests__/catalogReadiness.test.ts | 锚 src/stores/catalog.ts#loadTeammateBuffs | 信 确认
+  // ⟳复核: 加载依赖或降级策略变化时复核错误门与重试回归 | 到期 2026-12-31
   async function loadTeammateBuffs() {
     if (teammateBuffsLoaded.value) return teammateBuffGroups.value
     if (teammateBuffsPromise) return teammateBuffsPromise
-    teammateBuffsLoading.value = true
-    teammateBuffsPromise = (async () => {
+    teammateBuffsStatus.value = 'loading'
+    teammateBuffsError.value = null
+    // 下一微任务才开始请求，确保同步抛错也不会把已失败的 promise 永久留在去重槽里。
+    teammateBuffsPromise = Promise.resolve().then(async () => {
       try {
+        // useResourceCalc 可能先于页面 onMounted 请求 Buff；spec 合并需要目录里的角色元信息。
+        await load()
         const res = await fetch('/static/teammate-buffs.json')
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as TeammateBuffGroup[]
         teammateBuffGroups.value = mergeSpecTeamBuffs(data) // 合并 spec 人工录入的 teamBuffs（去重，spec 优先）
+        teammateBuffsStatus.value = 'ready'
         return teammateBuffGroups.value
-      } catch (e: any) {
-        console.warn('Failed to load teammate buffs:', e?.message)
-        teammateBuffGroups.value = []
+      } catch (e: unknown) {
+        teammateBuffsError.value = e instanceof Error ? e.message : 'Failed to load teammate buffs'
+        teammateBuffsStatus.value = 'error'
+        console.warn('Failed to load teammate buffs:', teammateBuffsError.value)
         return null
       } finally {
-        // 无论成败都标记「已就绪」：就绪门（useResourceCalc 的 resourceConfig）依赖此标志，
-        // 失败不置位会让整条计算管线在 fetch 失败时永久返回 null
-        teammateBuffsLoaded.value = true
-        teammateBuffsLoading.value = false
         teammateBuffsPromise = null
       }
-    })()
+    })
     return teammateBuffsPromise
   }
 
@@ -221,23 +240,30 @@ export const useCatalogStore = defineStore('catalog', () => {
     return teammateBuffGroups.value.find(g => g.id === agentId)
   }
 
-  // 加载配装推荐数据
+  // 推荐加载原本即允许失败重试；这里补齐显式错误态与并发去重，不改变失败返回 null 的契约。
   async function loadBuildRecommendations() {
     if (buildRecsLoaded.value) return buildRecommendations.value
-    buildRecsLoading.value = true
-    try {
-      const res = await fetch('/static/build-recommendations.json')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json() as BuildRecommendations
-      buildRecommendations.value = data
-      buildRecsLoaded.value = true
-      return data
-    } catch (e: any) {
-      console.warn('Failed to load build recommendations:', e?.message)
-      return null
-    } finally {
-      buildRecsLoading.value = false
-    }
+    if (buildRecsPromise) return buildRecsPromise
+    buildRecsStatus.value = 'loading'
+    buildRecsError.value = null
+    buildRecsPromise = Promise.resolve().then(async () => {
+      try {
+        const res = await fetch('/static/build-recommendations.json')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as BuildRecommendations
+        buildRecommendations.value = data
+        buildRecsStatus.value = 'ready'
+        return data
+      } catch (e: unknown) {
+        buildRecsError.value = e instanceof Error ? e.message : 'Failed to load build recommendations'
+        buildRecsStatus.value = 'error'
+        console.warn('Failed to load build recommendations:', buildRecsError.value)
+        return null
+      } finally {
+        buildRecsPromise = null
+      }
+    })
+    return buildRecsPromise
   }
 
   // 根据角色 ID 获取配装推荐
@@ -263,6 +289,7 @@ export const useCatalogStore = defineStore('catalog', () => {
 
   return {
     catalog,
+    catalogStatus,
     loading,
     error,
     agentsMap,
@@ -277,11 +304,15 @@ export const useCatalogStore = defineStore('catalog', () => {
     bosses,
     ready,
     teammateBuffGroups,
+    teammateBuffsStatus,
+    teammateBuffsError,
     teammateBuffsLoading,
     teammateBuffsLoaded,
-    /** 就绪门：数据已加载（含失败置空）——resourceConfig 等待此标志，杜绝半载状态下的静默错值 */
+    /** 完整数据成功门：失败不放行 resourceConfig。 */
     teammateBuffsReady,
     buildRecommendations,
+    buildRecsStatus,
+    buildRecsError,
     buildRecsLoading,
     buildRecsLoaded,
     load,

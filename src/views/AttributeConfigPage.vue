@@ -233,6 +233,16 @@
               加载中...
             </div>
 
+            <n-alert v-else-if="catalogStore.teammateBuffsStatus === 'error'" type="error" title="队友 Buff 加载失败">
+              <p>{{ catalogStore.teammateBuffsError }}。完整计算已暂停，不使用缺失 Buff 的结果。</p>
+              <n-button size="small" @click="catalogStore.loadTeammateBuffs()">重试加载</n-button>
+            </n-alert>
+
+            <div v-else-if="!catalogStore.teammateBuffsReady" class="teammate-empty">
+              队友 Buff 数据尚未加载。
+              <n-button size="small" @click="catalogStore.loadTeammateBuffs()">加载数据</n-button>
+            </div>
+
             <div v-else-if="teammateBuffGroups.length === 0" class="teammate-empty">
               暂无队友 Buff 数据
             </div>
@@ -404,7 +414,7 @@ import { computed, ref, onMounted } from 'vue'
 import {
   NCard, NSpace, NGrid, NGi, NInputNumber, NText, NDivider,
   NButton, NSwitch, NInput, NSelect, NCheckbox, NCollapse, NCollapseItem,
-  NSlider, NTag,
+  NSlider, NTag, NAlert,
 } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -422,8 +432,8 @@ const { statLabel, formatStatValue } = useStatLabel()
 
 const teammateBuffSearch = ref('')
 
-onMounted(async () => {
-  await catalogStore.loadTeammateBuffs()
+onMounted(() => {
+  if (catalogStore.teammateBuffsStatus === 'idle') void catalogStore.loadTeammateBuffs()
 })
 
 const resistanceElements = [

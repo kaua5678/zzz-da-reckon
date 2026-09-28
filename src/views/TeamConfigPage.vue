@@ -22,6 +22,8 @@
       <n-select
         :value="presetSelectValue"
         :options="cfgPresetTeamOptions"
+        :disabled="!catalogStore.buildRecsLoaded"
+        :loading="catalogStore.buildRecsLoading"
         size="small"
         clearable
         filterable
@@ -33,6 +35,18 @@
         预设金数
       </n-button>
     </div>
+
+    <n-alert
+      v-if="!catalogStore.buildRecsLoaded"
+      :type="catalogStore.buildRecsStatus === 'error' ? 'error' : 'info'"
+      title="配装推荐未就绪"
+      style="margin-bottom: 12px"
+    >
+      <p>{{ catalogStore.buildRecsError ?? '正在准备配装推荐' }}。推荐就绪后才能应用队伍预设。</p>
+      <n-button size="small" :loading="catalogStore.buildRecsLoading" @click="catalogStore.loadBuildRecommendations()">
+        {{ catalogStore.buildRecsStatus === 'error' ? '重试加载推荐' : '加载推荐' }}
+      </n-button>
+    </n-alert>
 
     <!-- 上排：3个角色卡片 -->
     <div class="card-row">
@@ -759,7 +773,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import {
-  NCard, NSpace, NGrid, NGi, NSelect, NSlider, NInputNumber, NText,
+  NCard, NSpace, NGrid, NGi, NSelect, NSlider, NInputNumber, NText, NAlert,
   NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, NTooltip, useMessage,
 } from 'naive-ui'
 import { useConfigStore, getInteractionDefaults, ACTION_COUNT_BOUNDS } from '@/stores/config'
@@ -835,10 +849,17 @@ watch(saveTargetId, id => { saveTargetPresetId.value = id })
 /** 最近一次应用的预设 id（「预设金数」弹窗保存到预设文件时默认目标） */
 const lastAppliedPresetId = ref<string | null>(null)
 function onPresetSelect(id: string | number | null) {
+  presetSelectValue.value = null // 下拉只做触发，即使未就绪也复位。
   const preset = teamPresets.find(t => t.id === id)
-  if (preset) {
-    lastAppliedPresetId.value = preset.id
+  if (!preset) return
+  // 不排队等待推荐：延迟执行一次旧选择，同样可能覆盖用户期间的新编辑。
+  if (!catalogStore.buildRecsLoaded) {
+    message.warning('配装推荐尚未就绪，请加载成功后重新选择预设。')
+    return
+  }
+  try {
     configStore.applyTeamPreset(preset.team)
+    lastAppliedPresetId.value = preset.id
     // 预设交互清单 → 各角色交互次数（般岳金身弹刀 → blockCount；未列的角色保持原值）
     for (const it of preset.interactions ?? []) {
       const slot = it.slot ?? 0
@@ -848,8 +869,9 @@ function onPresetSelect(id: string | number | null) {
       else if (it.type === 'banyueGoldenParry') configStore.setBlockCount(slot, it.count)
       else if (it.type === 'banyueDualCounter') configStore.setDualCounterCount(slot, it.count)
     }
+  } catch (cause: unknown) {
+    message.error(cause instanceof Error ? cause.message : '应用队伍预设失败')
   }
-  presetSelectValue.value = null // 复位：下拉只做触发，不保持选中态
 }
 
 // ========== 预设金数（设置当前队伍各槽位影画/精炼，金数口径见 teamCompare.ts） ==========

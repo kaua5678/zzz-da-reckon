@@ -88,8 +88,9 @@ const { computePanel, computeEntrySnapshotPanel, getTeamAnomalyDurationBonus, ge
 export function useResourceCalc() {
   const configStore = useConfigStore()
   const catalogStore = useCatalogStore()
-  // 队友命座/核心拐（teammate-buffs）是全局计算依赖，不等到属性配置页才加载
-  catalogStore.loadTeammateBuffs()
+  // 队友命座/核心拐是全局计算依赖：首次读取可启动加载；失败后交给可见的重试入口，
+  // 不因新建计算读取者而悄悄清除 error / 重发请求。
+  if (catalogStore.teammateBuffsStatus === 'idle') void catalogStore.loadTeammateBuffs()
 
   /** 构建资源池计算配置 */
   const resourceConfig = computed<ResourceCalcConfig | null>(() => {
@@ -97,7 +98,7 @@ export function useResourceCalc() {
     configStore.refreshTrigger
 
     // 就绪门：teammate-buffs 未就绪时返回 null，杜绝「首算无队友 buff、数据到达后数值漂移」的
-    // 异步竞态（曾致同配置两次全新计算 12/3,9/1 vs 12/4,8/1）。失败也会置就绪（空数据语义）。
+    // 异步竞态（曾致同配置两次全新计算 12/3,9/1 vs 12/4,8/1）。失败同样阻断，重试成功才放行。
     if (!catalogStore.ready || !catalogStore.teammateBuffsReady) return null
 
     const characters: CharacterOperationConfig[] = []
