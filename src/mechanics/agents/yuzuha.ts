@@ -9,6 +9,7 @@ import type {
 import type { CharacterResourceResult, MechanicSetting, YuzuhaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { effectiveBattleTime, minusInvincibleTime } from '@/core/effectiveTime'
+import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 
 const YUZUHA_AGENT_ID = '1411'
 const SWEETNESS_INITIAL = 3
@@ -94,12 +95,6 @@ export function computeYuzuhaMechanic(input: {
     transferElement,
     note: '甜度点：进场3点、上限6，其他角色连携入场+1（二命），六命招架成功额外+1；甜度终身预算全部给硬糖射击（8秒CD后台追击，二命后6秒）。「影画6蓄能炮弹」作者拒绝实现（实时蓄能/自动闪避/逐发触发·极复杂度不成比例）。彩糖花火每1秒一次（惊吓满覆盖）；·极=硬糖射击+夹心硬糖重击触发；花火/·极积蓄经十人十色转入异常队友元素池（转积蓄，不吃自身伤害结算）。',
   }
-}
-
-function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const value = record[`setting:${id}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
 /** 按 moveId 在 assist 分类里取支援突击行（本模块单独用；`core/resource.ts#findAssistFollowUp`

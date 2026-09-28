@@ -27,6 +27,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const HARUMASA_ID = '1201'
 export const HARUMASA_ARROW_MOVE_ID = '1201008'
@@ -94,11 +95,6 @@ export interface HarumasaCycle {
   c4Decibel: number
   c6ExplosionCount: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clampRatio(value: number): number {

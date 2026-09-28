@@ -26,6 +26,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
@@ -64,11 +65,6 @@ export interface EvelynCycle {
   c4CritDmg: number
   c6FollowUpCount: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clampRatio(value: number): number {

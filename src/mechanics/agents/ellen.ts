@@ -39,6 +39,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const ELLEN_ID = '1191'
 export const ELLEN_FROST_TRIM_MOVE_IDS = ['1191006'] as const
@@ -121,11 +122,6 @@ export interface EllenCycle {
   potentialCritDmg: number
   potentialIceResIgnore: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clamp(value: number, min: number, max: number): number {

@@ -21,6 +21,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
@@ -85,11 +86,6 @@ export interface HugoCycle {
   stunRefundRatio: number
   echoCoverage: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clampRatio(value: number): number {

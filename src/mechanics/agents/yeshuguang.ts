@@ -37,6 +37,7 @@ import type {
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, MechanicSetting, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 export const YESHUGUANG_ID = '1431'
 
@@ -134,11 +135,6 @@ function rowVal(move: SkillMove | null | undefined, rowId: string): number {
   const vals = row?.values ?? []
   if (!vals.length) return 0
   return Number(vals[11] ?? vals[vals.length - 1] ?? 0) || 0
-}
-
-function cfgNum(cfg: CharacterOperationConfig, key: string, fallback: number): number {
-  const raw = Number((cfg as unknown as Record<string, unknown>)[`setting:${key}`] ?? fallback)
-  return Number.isFinite(raw) ? raw : fallback
 }
 
 /** 自动选轴的超支阈值（秒）：timeBudgetExcess 超过此值才退化，避免量化残差（~1s）误触降轴 */

@@ -19,6 +19,7 @@ import type {
 import type { ModuleFeedback } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 export const LUCY_ID = '1151'
 const MOVE_SPIN = '1151026' // 亲卫队小猪：回旋挥击！
@@ -150,12 +151,6 @@ function pushExec(
     element: 'fire',
     skillTableNote: note,
   } as SkillExecution)
-}
-
-function cfgNum(cfg: CharacterOperationConfig, key: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = Number(record[`setting:${key}`] ?? fallback)
-  return Number.isFinite(raw) ? raw : fallback
 }
 
 /** 抄家伙调用冷却（秒），钳制到 4–6；缺省 4 */

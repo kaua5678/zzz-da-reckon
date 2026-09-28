@@ -37,6 +37,7 @@ import { applyEffect } from '@/core/buff'
 import type { BuffEffect } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const PROMIA_ID = '1541'
 // 掌控转精通的常数只在 spec 1541.json `promia_mastery_to_proficiency`（R6 C7，第 143 轮）；
@@ -355,11 +356,6 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalEnergyConsume: 0,
     })
   }
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const v = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(v) ? v : fallback
 }
 
 /**

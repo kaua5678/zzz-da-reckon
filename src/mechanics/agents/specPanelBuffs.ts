@@ -10,6 +10,7 @@ import { basicSummarySeconds } from '@/types/resource'
 import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
+import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 
 /** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
 export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
@@ -530,8 +531,7 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
  * ⚠ 非有限值 ⇒ 回退 `1`（= 旧口径），勿回退 0：0 会让「未注入」静默变成「整项归零」。
  */
 function jufufuAdjustableRate(cfg: unknown, id: string): number {
-  const raw = Number((cfg as Record<string, unknown>)?.[`setting:${id}`])
-  return Number.isFinite(raw) ? Math.max(0, raw) : 1
+  return Math.max(0, cfgMechanicSetting(cfg, id, 1))
 }
 
 /** 两条 `adjustable` 的 id（单一事实源：spec 声明与本模块消费同源引用，规则 11） */

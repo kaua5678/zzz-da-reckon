@@ -33,6 +33,7 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
@@ -81,11 +82,6 @@ export interface VivianCycle {
   /** C6：悬落特殊异放增强倍数（消耗护羽，最多5点→×5） */
   c6ReleaseMult: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clampRatio(value: number): number {

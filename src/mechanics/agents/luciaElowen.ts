@@ -6,6 +6,7 @@ import { fmt } from '@/utils/format'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 /**
  * 卢西娅·艾洛温（1451）战斗逻辑（用户确认口径）：
@@ -378,12 +379,6 @@ function buildLuciaResourceSections({ result, agentNames }: AgentResourceSection
       footer: '计划外强特直接合轴耗时0秒；A5为随想1451005（合唱升级未单独拆分）；[合唱]行已按最大生命值附加最后一段固定伤害，2命+15%增伤，6命必暴+暴伤30%。帷幕来源拆分=边际法（总 − 自开归因给队友），总数精确、拆分≈。',
     },
   ]
-}
-
-function cfgNum(cfg: AgentCharConfigInput['cfg'], key: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = Number(record[`setting:${key}`] ?? fallback)
-  return Number.isFinite(raw) ? raw : fallback
 }
 
 /**

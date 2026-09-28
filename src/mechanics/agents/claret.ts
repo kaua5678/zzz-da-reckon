@@ -17,6 +17,7 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
 // 其中 `getRowValue` 漏乘逻辑编辑器行融合乘数（getRowFusionMultiplier），与引擎其余路径分裂；
 // 判据 = claretSmoke.test.ts「R37-J1」组（行为面：基准行 ×2 ⇒ 平A秒均 ×2；形状面：本文件不得再有同形私有函数）。
 import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } from '@/data/moveTableQueries'
+import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 
 /**
  * 克拉蕾（1611）v12 重录（2026-09-03，raw = nanoka 3.2.12+18601660）：
@@ -179,12 +180,6 @@ const MAX_INSCRIPTION_ENTRIES = 60
 function perSeconds(move: SkillMove | null | undefined, rowId: string): number {
   const at = move?.actionTime ?? 0
   return at > 0 ? getRowValue(move, rowId) / at : 0
-}
-
-function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const value = record[`setting:${id}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
 function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelInput): void {

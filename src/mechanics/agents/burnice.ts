@@ -16,6 +16,7 @@ import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResource
 import { fmt } from '@/utils/format'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
+import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -293,12 +294,6 @@ function resolveEnergyRegenTotal(panel: PanelValues): number {
     return panel.energyRegenOutOfCombat
   }
   return (panel.energyRegen ?? 1.2) * (1 + (panel.energyRegenBonusPct ?? 0) / 100) + (panel.energyRegenBonusFlat ?? 0)
-}
-
-function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const value = record[`setting:${id}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
 function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {

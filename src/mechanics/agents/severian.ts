@@ -29,6 +29,7 @@ import type {
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
 import { execMatchesMove } from '@/types/resource'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const SEVERIAN_ID = '1631'
 /** 核心被动：暴击伤害 +60% */
@@ -83,10 +84,6 @@ export const SEVERIAN_BASIC_MOVE_IDS: ReadonlySet<string> = new Set([
   SEVERIAN_SHADOW_MOVE_ID,
 ])
 
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const v = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(v) ? v : fallback
-}
 function settingOf(settings: Readonly<Record<string, number>>, id: string, fallback: number): number {
   const v = Number(settings?.[id])
   return Number.isFinite(v) ? v : fallback

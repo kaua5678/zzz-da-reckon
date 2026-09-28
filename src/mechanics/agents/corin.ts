@@ -30,6 +30,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const CORIN_ID = '1061'
 export const CORIN_CORE_SAW_DMG = 37.5
@@ -53,11 +54,6 @@ export interface CorinCycle {
   c6DetonationCount: number
   c6DamagePerDetonation: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function settingOf(settings: Readonly<Record<string, number>>, id: string, fallback: number): number {

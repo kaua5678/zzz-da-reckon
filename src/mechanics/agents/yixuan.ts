@@ -7,6 +7,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { fmt } from '@/utils/format'
 import { effectiveBattleTime } from '@/core/effectiveTime'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
@@ -311,12 +312,6 @@ function rowValue(move: SkillMove | null, rowId: string): number {
   if (!move) return 0
   const row = move.rows.find(r => r.id === rowId)
   return row?.values?.[0] ?? 0
-}
-
-function cfgNum(cfg: AgentCharConfigInput['cfg'], key: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = Number(record[`setting:${key}`] ?? fallback)
-  return Number.isFinite(raw) ? raw : fallback
 }
 
 function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {

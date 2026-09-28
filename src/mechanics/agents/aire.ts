@@ -31,6 +31,7 @@ import type {
   ExtraNecessaryAction,
 } from '../types'
 import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const AIRE_ID = '1501'
 export const AIRE_CORE_PROFICIENCY = 90
@@ -88,11 +89,6 @@ export interface AireCycle {
   c2DefIgnore: number
   c6DecibelGift: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clampRatio(value: number): number {

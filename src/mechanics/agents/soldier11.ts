@@ -40,6 +40,7 @@ import type {
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 const AGENT_ID = '1041'
 
@@ -86,11 +87,6 @@ const A5_QUICK_TIME = 1.383 * 0.5
 const CYCLE_TIME = A4_QUICK_TIME + A5_QUICK_TIME
 
 const specBase = specToMechanicModule(getAgentSpec(AGENT_ID)!)
-
-function cfgNum(cfg: AgentCharConfigInput['cfg'], key: string, fallback: number): number {
-  const value = (cfg as unknown as Record<string, unknown>)[`setting:${key}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
 
 function buildSoldier11CharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>

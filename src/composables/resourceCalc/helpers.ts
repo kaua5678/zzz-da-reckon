@@ -13,6 +13,7 @@
  *     → calcStunPool / calcAnomalyPool (失衡池 + 积蓄池)
  */
 import { damageElementLabel } from '@/utils/agentLabelMaps'
+import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { inferSkillDamageTarget } from '@/core/damage'
@@ -603,7 +604,7 @@ export function buildCharConfig(
   const charModule = getAgentMechanic(agent.id)
   for (const setting of charModule?.settings ?? []) {
     const record = cfg as unknown as Record<string, unknown>
-    record[`setting:${setting.id}`] = configStore.getMechanicSetting(setting.id, setting.default)
+    record[mechanicSettingCfgKey(setting.id)] = configStore.getMechanicSetting(setting.id, setting.default)
   }
 
   charModule?.buildCharConfig?.({

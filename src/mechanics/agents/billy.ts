@@ -24,6 +24,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const BILLY_ID = '1081'
 export const BILLY_CORE_CROUCH_DMG = 50
@@ -53,11 +54,6 @@ export interface BillyCycle {
   c6Dmg: number
   c1Energy: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clampRatio(value: number): number {

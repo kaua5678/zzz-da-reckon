@@ -41,6 +41,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
+import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 
 export const TRIGGER_AGENT_ID = '1361'
 export const TRIGGER_ADDITIONAL_MOVE_IDS = new Set(['1361008', '1361020', '1361022'])
@@ -107,8 +108,7 @@ function intAtLeast0(value: number): number {
 }
 
 function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string): number {
-  const value = (cfg as unknown as Record<string, unknown>)[`setting:${id}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+  return cfgMechanicSetting(cfg, id, 0)
 }
 
 export function computeTriggerCycle(input: {

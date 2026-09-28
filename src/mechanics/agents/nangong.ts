@@ -14,6 +14,7 @@ import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 /**
  * 南宫羽（1511）战斗逻辑（nanoka 原文满级被动 1511055 自主分析，2026-08）：
@@ -83,11 +84,6 @@ function findMoveById(skills: { categories: { moves: SkillMove[] }[] } | undefin
     if (mv) return mv
   }
   return null
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clampRatio(value: number): number {

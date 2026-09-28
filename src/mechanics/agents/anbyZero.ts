@@ -35,6 +35,7 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import { inferSkillDamageTarget } from '@/core/damage'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
@@ -78,11 +79,6 @@ export interface AnbyZeroCycle {
   c4ResIgnore: number
   critRateGain: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clampRatio(value: number): number {

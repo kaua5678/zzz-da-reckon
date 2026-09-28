@@ -13,6 +13,7 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 
 /**
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
@@ -108,12 +109,6 @@ const CINEMA2_PEN_RATIO = 24
 const CINEMA1_OVERFLOW_RATIO = 100
 /** 影画6 最后一击附加：一/二/三段 = 80/90/100%（catalog 有真实分段 id，精确建模不再取中值） */
 export const SIGRID_C6_LAST_HIT_RATIOS: readonly number[] = [80, 90, 100]
-
-function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const value = record[`setting:${id}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))

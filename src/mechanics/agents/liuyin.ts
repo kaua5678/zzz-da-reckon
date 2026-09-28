@@ -17,6 +17,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 const LIUYIN_AGENT_ID = '1481'
 
@@ -121,12 +122,6 @@ export function computeLiuyinHugCounts(
     else { rest -= HUG90_COST; hug90++ }
   }
   return { hug60, hug90, remainingGoodReview: rest }
-}
-
-function cfgNum(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const value = record[`setting:${id}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
 /** 判断队伍中是否存在强攻或命破角色（触发琉音额外能力） */

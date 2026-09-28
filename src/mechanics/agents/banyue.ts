@@ -4,6 +4,7 @@ import type { SkillMove } from '@/types/catalog'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { calcPenetrationPower } from '@/core/damage'
 import { fmt } from '@/utils/format'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
@@ -824,12 +825,6 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): Ban
     // 轴模式：失衡内 = 轴内实际捏的连段块，失衡外 = 全部连段 − 轴内捏块（后摇按轴外单位数计）
     !!(cfg as unknown as Record<string, unknown>).banyueAxisActive,
   )
-}
-
-function cfgNum(cfg: AgentCharConfigInput['cfg'], key: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = Number(record[`setting:${key}`] ?? fallback)
-  return Number.isFinite(raw) ? raw : fallback
 }
 
 const settings: MechanicSetting[] = [

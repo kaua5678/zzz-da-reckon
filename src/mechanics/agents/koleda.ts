@@ -25,6 +25,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const KOLEDA_ID = '1101'
 export const KOLEDA_CORE_STUN = 60
@@ -43,11 +44,6 @@ export interface KoledaCycle {
   c4DmgBonus: number
   c6ExplosionCount: number
   note: string
-}
-
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 function clampRatio(value: number): number {

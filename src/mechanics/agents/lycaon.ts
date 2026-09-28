@@ -6,7 +6,8 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { SkillMove } from '@/types/catalog'
-import type { CharacterOperationConfig, CharacterResourceResult } from '@/types/resource'
+import type { CharacterResourceResult } from '@/types/resource'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 /**
  * 莱卡恩（1141）战斗逻辑（用户确认口径，2026-08）：
@@ -474,12 +475,6 @@ function findMoveById(skills: { categories: { moves: SkillMove[] }[] } | undefin
 function rowValue(move: SkillMove | null | undefined, rowId: string): number {
   const row = move?.rows?.find(r => r.id === rowId)
   return row?.values?.[0] ?? 0
-}
-
-function cfgNum(cfg: CharacterOperationConfig, key: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = Number(record[`setting:${key}`] ?? fallback)
-  return Number.isFinite(raw) ? raw : fallback
 }
 
 function clamp01(v: number): number {

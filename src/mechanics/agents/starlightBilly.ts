@@ -15,6 +15,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { fmt } from '@/utils/format'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 export type { BillyChain }
 
@@ -215,12 +216,6 @@ export function computeBillyHpModel(
   const hpCostPct = avgCost * chain
   const hpFloorPct = Math.max(0, Math.min(100, 100 - hpCostPct + healPct))
   return { chain, hpCostPct, healPct, hpFloorPct }
-}
-
-function cfgNum(cfg: AgentCharConfigInput['cfg'], key: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = Number(record[`setting:${key}`] ?? fallback)
-  return Number.isFinite(raw) ? raw : fallback
 }
 
 function findMoveById(skills: { categories: { moves: SkillMove[] }[] } | undefined, moveId: string): SkillMove | null {

@@ -12,6 +12,7 @@ import type { CharacterResourceResult, RoxyWindEnergySource } from '@/types/reso
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
+import { cfgMechanicSetting as cfgSetting, cfgMechanicSetting as cfgRate } from '@/utils/mechanicSettingCfg'
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -103,18 +104,6 @@ export function roxyExEnergyCost(move: SkillMove | null | undefined): { start: n
     return Number.isFinite(n) && n >= 0 ? n : fb
   }
   return { start: num('Energy Cost', 10), perSecond: num('Energy Cost Per Second', 30) }
-}
-
-function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const value = record[`setting:${id}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-/** engine 侧同款读取器（`buildResourceResult` 的入参是 `CharacterOperationConfig`，不是 `AgentCharConfigInput`） */
-function cfgRate(cfg: unknown, id: string, fallback = 1): number {
-  const value = Number((cfg as Record<string, unknown> | undefined)?.[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
 }
 
 /** spec `adjustable` 的比例统一钳到 `[0, 2]`（与 spec 声明的 min/max 同源；缺省 1 = 旧口径） */
@@ -333,8 +322,8 @@ function buildRoxyResourceResult({ cfg, state }: AgentResourceResultInput): Part
       cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
       // ⚠ 两处调用点（buildResourceResult / buildExecutions）都**必须**传这两个 rate：
       // 只传一处会让「账本」与「执行行」分叉（行数按未缩放生成、账本按缩放生成）。
-      energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID),
-      eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID),
+      energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
+      eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID, 1),
     }),
   }
 }
@@ -347,8 +336,8 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
     ultimateCount: state.ultimateCount,
     spinSeconds: Number(record.roxySpinSeconds ?? 0),
     cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
-    energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID),
-    eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID),
+    energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
+    eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID, 1),
   })
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount > 0) {

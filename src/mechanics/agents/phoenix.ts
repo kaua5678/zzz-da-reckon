@@ -28,6 +28,7 @@ import type {
   ReleaseModifierInput,
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
+import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const PHOENIX_ID = '1641'
 /** 核心被动：异常精通 +40 */
@@ -95,10 +96,6 @@ export function phoenixSkillLevel(cinemaLevel: number): number {
   return 12 + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
 }
 
-function setting(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const v = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(v) ? v : fallback
-}
 function settingOf(settings: Readonly<Record<string, number>>, id: string, fallback: number): number {
   const v = Number(settings?.[id])
   return Number.isFinite(v) ? v : fallback

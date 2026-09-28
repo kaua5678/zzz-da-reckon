@@ -11,6 +11,7 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 /**
  * 安比（1011，电·强攻）—— 整局近似口径
@@ -126,7 +127,7 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
   // 改为 `buildAnbyExecutions` 按可消费命中数挂**执行级** dmgBonus（见下）。
 }
 
-/** 读机制滑块（`helpers.ts:632` 已把已注册滑块按 `setting:<id>` 写进 cfg）。
+/* 读机制滑块的 `cfgNum` 自 CC-235 起是 `utils/mechanicSettingCfg#cfgMechanicSetting` 的别名（见 import）。
  *
  * ⚠ 历史缺陷（2026-09-20 round 48 管理员AA 分诊实测，与般岳 `rageGainCoverage` 同源）：
  * `patchAnbyExecutions` 读的是 `record.anbyC2StunCoverage`——该字段**全仓无人写入**
@@ -135,11 +136,6 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
  * 落雷 `dmgBonus` **都是 15**（真管线 `computePanelPhases` 与执行级双证）。
  * 修法按 `evelyn.ts`/`koleda.ts`/`soldier11.ts` 同款：走 `setting:` 前缀读**已注册**的滑块 id。
  */
-function cfgNum(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const value = Number((cfg as unknown as Record<string, unknown>)[`setting:${id}`])
-  return Number.isFinite(value) ? value : fallback
-}
-
 function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.anbyCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))

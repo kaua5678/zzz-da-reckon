@@ -3,6 +3,7 @@ import type {
   IterationState,
 } from '@/types/resource'
 import type { AgentMechanicSpec, ResourceRuleSpec, ResourceSpec } from './types'
+import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
 
 export interface SpecResourceContext {
   broadCycloneCount?: number
@@ -147,7 +148,7 @@ function applyAdjustable(
   const adjustable = rule.adjustable
   if (!adjustable) return amount
   const record = cfg as unknown as Record<string, unknown>
-  const raw = Number(record[`setting:${adjustable.id}`] ?? adjustable.default)
+  const raw = Number(record[mechanicSettingCfgKey(adjustable.id)] ?? adjustable.default)
   const rate = Number.isFinite(raw)
     ? Math.max(adjustable.min ?? 0, Math.min(adjustable.max ?? Infinity, raw))
     : adjustable.default

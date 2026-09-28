@@ -16,6 +16,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { specConversionAmount } from '@/specs/runtime'
 import type { AttributeConversionSpec } from '@/specs/types'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
+import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -85,12 +86,6 @@ function findMoveById(skills: AgentSkills | undefined, moveId: string): SkillMov
     if (move) return move
   }
   return null
-}
-
-function cfgNum(cfg: AgentCharConfigInput['cfg'], id: string, fallback: number): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const value = record[`setting:${id}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
 /** 额外能力触发条件由 spec.additionalAbility 声明式统一判定写入 panel.additionalAbilityActive；
