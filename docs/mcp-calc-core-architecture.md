@@ -409,6 +409,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-236 | done | 51f52f7e | findMoveById 单一来源：删 25 个角色模块和 StunAxisPage 的私有副本；data 版改结构化泛型签名并加运行时容错（缺 categories / moves 返回 null）；LogicEditorPage 跨角色查找改名 findMoveInAnyAgent；源码锁 findMoveByIdSource.test；零差（§24.83） |
 | CC-237 | done | a6471949 | 15 个角色模块 16 份私有取行值函数（rowValue / rowVal / getRowValue / rawRowValue，漏乘逻辑编辑器行乘数，R37-J1 同型）改用 data getRowValue；默认零差；锁 rowValueSource.test（形状 + 露西行为）（§24.84） |
 | CC-238 | done | c512f97c | 撤回 CC-237 对焰烈 rawRowValue 的误并（生产默认规则 burnice_stirring_fusion 下搅拌式 591.4% 被重复乘成约 716.7%）；data 新增显式 rawRowValue；锁 defaultRowFusionRules.test（默认启用规则绊线 + 生产默认规则回归）；订正 §24.84「默认零差」的错误前提（§24.85） |
+| CC-239 | done | 01889e4d | 赠送终结技 / 赠送连携的单段回落、赠送终结技失衡值、失衡轴手放表直伤改吃逻辑编辑器行规则（与 fusedRowValue 多段分支、helpers 主执行同源）；锁 giftRowFusionRule.test（行为 + resourceCalc 内联原始读取登记表）；生产默认规则三队零差（§24.86） |
+| CC-240 | done | 97404d67 | skillRows 治疗量 / 专属资源回复改吃行规则；锁 skillRowsFusionRule.test（§24.86） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |

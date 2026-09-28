@@ -71,49 +71,49 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 261 轮（lane lead-arena-0925c）：CC-238 完成（c512f97c），修复 CC-237 引入的生产回归；文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.85（其中 ① 订正了 §24.84「默认零差」的错误前提）。
-- 前几轮：260 CC-237 模块取行值（a6471949，焰烈部分已被本轮撤回）；259 CC-236 findMoveById（51f52f7e）；258 CC-235（960c00d3）。
+**第 262 轮（lane lead-arena-0925c）：CC-239（01889e4d）、CC-240（97404d67）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.86；行规则作用面的裁决与「生产默认规则」背景见 §24.85。
+- 前几轮：261 CC-238 修复焰烈回归（c512f97c）；260 CC-237（a6471949）；259 CC-236（51f52f7e）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**纯规则 / 引擎结果单一来源一览（新写代码直接用）**：
+**单一来源一览（新写代码直接用）**：
 - `src/data/moveTableQueries`：
   - `findMoveById`；
-  - `getRowValue`：含逻辑编辑器行规则，**spec 默认规则在生产生效**；
-  - `rawRowValue`：不乘规则，只用于「模块自算融合且默认规则已表达同一融合」，调用点要注明规则 id；
+  - `getRowValue`：含逻辑编辑器行规则，spec 默认规则在生产生效；
+  - `rawRowValue`：只用于模块自算融合且默认规则已表达同一融合的场景（现存仅焰烈），调用点要注明规则 id；
   - `fusedRowValue`。
-- 默认启用行规则清单：只有 `burnice_stirring_fusion`（1171007 / damage）；由 `src/data/__tests__/defaultRowFusionRules.test.ts` 的绊线守护。
-- `src/data/` 其余：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`；
-- `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`、`mechanicSettingCfg`；
-- `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`；
-- 引擎结果直读：`useResourceCalc#teamTotalDamage / stunCoverage`、`CalcRoundResult.specialActionBonus / decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`。
+- 默认启用行规则只有 `burnice_stirring_fusion`（1171007 / damage），`defaultRowFusionRules.test` 绊线守护；
+- resourceCalc 内联原始读取登记表：`giftRowFusionRule.test#RAW_ROW_READ_ALLOW`；
+- `src/data/` 其余、`src/utils/`（含 `mechanicSettingCfg`）、`src/core/` 的单一来源同前几轮，不变。
 
-**下一步（直接开工）**：编排层 / 录入层的内联原始行读取改吃行规则（§24.85 ④，作用面已裁决：该招式该行的一切倍率表取值）。一类一个提交，每个提交都要：
-- (i) 确认不是「自算融合」（参照焰烈）；
-- (ii) 带行为锁：规则 ×2 ⇒ 对应量 ×2，写法参照 `rowValueSource.test` 的露西用例；
-- (iii) 在「生产默认规则」下跑一次探针：`setActiveRowFusionRules(createDefaultLogicEditorState().rowFusions)`，因为 verify 看不到生产规则。
+**下一步（直接开工）**：行规则作用面，剩余候选。每个提交都要：
+- (i) 确认不是自算融合（参照焰烈）；
+- (ii) 带行为锁：规则 ×2 ⇒ ×2，并在 stash 源码后确认锁变红；
+- (iii) 在生产默认规则下探针：`setActiveRowFusionRules(createDefaultLogicEditorState().rowFusions)`，对比含 1171 的队伍。
 
-候选，按影响面从大到小：
-1. `composables/resourceCalc/damagePoolDirect.ts:300`，以及 `ultimatePromote.ts:94/218`、`chainGift.ts:68`、`panelPhases.ts:212`：先读上下文。有些已经是 `fusedRowValue(...) ?? 原始` 的回落形状，把回落改成 getRowValue 即可（helpers.ts:364-387 就是这种写法的先例）。
-2. `composables/resourceCalc/skillRows.ts:54/64/74`（平A均值族）和 `composables/multiplierCoefficients.ts:63/127/148`。后者属于展示侧的系数表，要看它是展示倍率表原值还是计算值；展示原值的就记「不做」。
-3. `specs/mechanics.ts:146`，以及 phoenix（216/217/225/235）、severian:205、sigrid:168、norma:253、xide:94 的内联读取。
-4. **core/resource/moveLookup.ts（6 处）**：core 是纯函数，**不许直接 import getRowValue**，因为 fusion.ts 是全局可变的 Vue 快照。二选一：由编排层把取行值函数注入 moveLookup 的入参；或者记「不做」，并写明规则对这几处（喧响 / 能量 / 伤害）不生效是已知限制。先看调用方数量再定。
-- 不相干，不要改：`remielle.ts:101-106`（按技能等级选 luminize 值）、`teamCompare.ts:232`（档位表）。
-- 角色重复 helper 的 clamp / whole 家族：**倾向不做**（纯算术，收了只是降计数）。
+候选，按影响面排序：
+1. **`specs/mechanics.ts:146`**（`rowValues[moveId] = row?.values?.[0] ?? 0`）：spec 事件执行的行值，影响所有声明式 spec 角色，面最大。先读上下文，确认这些行值后面是否还会经过 getRowValue（避免重复乘）；若不会，改成 `getRowValue(move, rowId)`。specs 引用 data 是允许的。
+2. **角色模块内联**：`phoenix.ts:216/217/225/235`、`severian.ts:205`、`sigrid.ts:168`、`norma.ts:253`、`xide.ts:94`，写法同 CC-237。仿照 resourceCalc，也给 `mechanics/agents` 加一张登记表锁。
+3. **`composables/multiplierCoefficients.ts:63/127/148`**：先判断是展示侧的「倍率表原值」还是计算用值。展示原值的记「不做」（编辑器与页面都有 base 展示），计算值则改。
+4. **`core/resource/moveLookup.ts`（6 处）**：core 是纯函数，**不许直接 import getRowValue**（fusion.ts 是全局可变的 Vue 快照）。先 grep moveLookup 的调用方数量：
+   - 调用方少，就把取行值函数作为参数从编排层注入，默认值用纯原始读取以保持 core 可独立测试；
+   - 调用方多，就记「不做」，写明规则对这几处（喧响 / 能量 / 伤害）不生效是已知限制。
+- 不相干，不要改：`remielle.ts:101-106`（按技能等级选 luminize 值）、`teamCompare.ts:232`（档位表）、`panelPhases.ts:212`（积蓄属性判定，已裁决不做）。
+- 角色 helper 的 clamp / whole 家族：倾向不做（纯算术，收了只是降计数）。
 
 **已知坑**：
-- **命名带 raw 的函数是意图信号**，函数体同形不等于语义相同。本轮就是 CC-237 误并 rawRowValue 造成的生产回归。
-- **verify 看不到生产默认行规则**：harness 不建逻辑编辑器 store，测试态规则为空。涉及取行值的改动必须在默认规则下补验。
-- 函数体同形还要逐个比对 `?.`、`?? []`、默认值、NaN；模块级规则状态在测试里要 `afterEach(() => setActiveRowFusionRules([]))`。
-- verify 的 build 步骤会跑 `vue-tsc -b`，测试文件的类型错误也会让 EXIT=2。新测试写完先单独跑一次 `npx vue-tsc -b`。
-- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；临时探针放 `src/composables/__tests__/tmp_*.test.ts`，跑完删掉再 verify。
+- 命名带 raw 的函数是意图信号，函数体同形不等于语义相同（CC-237 回归的教训）；
+- **verify 看不到生产默认行规则**（harness 不建逻辑编辑器 store），涉及取行值的改动必须在默认规则下补验；
+- 模块级规则状态在测试里要 `afterEach(() => setActiveRowFusionRules([]))`；
+- verify 的 build 步骤会跑 `vue-tsc -b`，新测试写完先单独跑一次 `npx vue-tsc -b`；
+- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；临时探针跑完删掉再 verify；两刀改不同文件时，也要各自 verify、各自提交。
 
 **未决项**：
 - 1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；
 - lumiflux 叫「辉光」还是「流明」（§24.62）；
 - ResourceResultCard 命破 / 锋御标签颜色（§24.63）；
 - 「进入失衡 +20 喧响」是否真实机制（§24.79 ①）；
-- 测试 harness 是否应默认加载 spec 默认行规则，让测试态等于生产态。目前唯一启用的规则经探针验证不造成分歧，**暂不改**；新增默认启用规则时（绊线会拦）一并重新评估。
+- 测试 harness 是否默认加载 spec 默认行规则（§24.85，暂不改；新增默认启用规则时重新评估）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

@@ -2695,3 +2695,33 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **教训**（写入交接的已知坑）：
   - 命名带 `raw` 的函数是意图信号，不能按「函数体同形」当重复合并；
   - 凡是涉及 getRowValue 的改动，都要在「生产默认规则」下验一次（`setActiveRowFusionRules(createDefaultLogicEditorState().rowFusions)`），不能只看 verify。
+
+### 24.86 第 262 轮：CC-239 赠送 / 手放行、CC-240 治疗与专属回复吃逻辑编辑器行规则（01889e4d / 97404d67）
+
+**① resourceCalc 内联原始行读取逐条裁决**（§24.85 ④ 候选 1）：
+
+| 位置 | 用途 | 裁决 |
+|---|---|---|
+| `ultimatePromote.ts:94`（`fusedOf` 回落） | 转大赠送终结技的 damage / anomaly_buildup 等 | 改（CC-239） |
+| `ultimatePromote.ts:218` | 赠送终结技失衡值 `ultDaze` | 改（CC-239） |
+| `chainGift.ts:68`（`fusedOf` 回落） | 赠送连携倍率 | 改（CC-239） |
+| `damagePoolDirect.ts:300` | 失衡轴手放「表」行直伤（按 kind=damageMultiplier 找行） | 改（CC-239），用 `getRowValue(move, dmgRow.id)` |
+| `skillRows.ts` getHealingAmount / getSpecialResourceRecovery（3 处） | 治疗量、专属资源回复 | 改（CC-240），用 `getRowValue(move, row.id)` |
+| `panelPhases.ts:212` | 按元素累加 anomaly_buildup，**判定角色积蓄属性** | **不做**：这是分类启发式，不是计算量；用户倍率规则不应翻转角色的积蓄属性。锁里登记为允许项 |
+
+**② CC-239 为什么是缺陷，而不只是口径问题**：
+- `fusedOf = fusedRowValue(...) ?? 原始` 这一行里，多段分支 `fusedRowValue` 内部对每段调 `getRowValue`，**已经吃规则**；单段回落却取原始值。
+  - ⇒ 同一个赠送函数里，多段终结技（照、妮可等）吃规则，单段终结技不吃。
+- helpers.ts:364-387 的主执行路径是 `fusedRowValue ?? getRowValue`（吃规则）。
+  - ⇒ 同一招「自己放」吃规则，「被赠送」不吃。
+- **探针**：琉音转大赠送给希格莉德的 1591016，配 damage 规则 ×2 后赠送行倍率 4379.9 → 8759.8。修前保持 4379.9。
+- **生产默认规则探针**（`createDefaultLogicEditorState().rowFusions`）：1171-1481-1211、1171-1211-1301、1091-1481-1311 三队 teamTotalDamage 与空规则相同，0.0000%。
+  - 唯一启用的默认规则 1171007/damage 不是终结技或连携，只有在失衡轴手放表路径上才会碰到，与主执行路径对同一招的处理一致。
+
+**③ 锁**：
+- `src/composables/__tests__/giftRowFusionRule.test.ts`：
+  - 行为锁：琉音队 1591016 规则 ×2 ⇒ 赠送行 ×2。反例：stash 3 个源码文件后读数 4379.9 不动；
+  - **登记表锁**：`resourceCalc/*.ts` 的非注释行中，`.values[0]` 内联原始读取的条数必须等于 `RAW_ROW_READ_ALLOW`。目前只剩 `panelPhases.ts: 1`；新增内联读取要先登记理由，否则会变红。
+- `src/composables/__tests__/skillRowsFusionRule.test.ts`：用合成招式覆盖治疗行和专属回复的两条分支（kind=special 首行、兜底 recovery 求和），规则 ×2 ⇒ ×2。反例：stash skillRows.ts 后读数 15≠25、11≠22。
+- **按 row.id 取值与逐行取值等价**：catalog 的 1352 个招式里行 id 全部唯一、没有缺 id（本轮用 node 扫描确认）。
+- 回退点：revert 97404d67（CC-240）/ revert 01889e4d（CC-239），两刀互不依赖。
