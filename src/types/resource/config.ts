@@ -68,6 +68,8 @@ export interface CharacterOperationConfig {
   basicAttackRegenPerSec: number
   /** 平A秒均喧响（预计算值） */
   basicAttackDecibelPerSec: number
+  /** 平A基准段 move id（`getBasicComboMoves`；汇总平A行据此写 `benchmarkMoveId`，CC-193）。缺省 = 汇总行不带基准段（旧行为） */
+  basicBenchmarkMoveId?: string
   /** 蕾米一/四命特殊虚耀跟随的「普通攻击：垂虹」move id（CC-34b 起垂虹 / Radiant Turn 各字段只由 `remielle.ts#buildRemielleCharConfig` 写，非蕾米槽缺省） */
   remielleRainbowEndMoveId?: string
   /** 蕾米「普通攻击：垂虹」actionTime */

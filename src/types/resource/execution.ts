@@ -61,6 +61,9 @@ export interface SkillExecution {
   totalHealingAmount?: number
   /** 倍率表字段是否已回填 */
   skillTableResolved?: boolean
+  /** 仅汇总平A行（moveId = 'basic_attack'）：该行按哪一段普攻的秒均倍率结算（`getBasicComboMoves`，CC-193）。
+   *  模块按 moveId 集合匹配普攻段时经 `execMatchesMove` 读它——汇总行本身的 moveId 永远是 'basic_attack'。 */
+  benchmarkMoveId?: string
   /** 倍率表回填说明 */
   skillTableNote?: string
   /** 由机制模块直接覆盖伤害倍率（跳过倍率表回填） */
@@ -122,6 +125,16 @@ export interface SkillExecution {
 /** 行是否占用三人共享前台时间轴（后台行不进超时校验与账本折叠；未打标默认前台） */
 export function isFrontlineExecution(e: { timeBucket?: 'necessary' | 'basic' | 'backstage' }): boolean {
   return e.timeBucket !== 'backstage'
+}
+
+/**
+ * 执行行是否命中给定招式集合（CC-193）。普攻恒为一条汇总行（moveId = 'basic_attack'，按基准段秒均结算），
+ * 模块按普攻段 moveId 匹配时直接 `set.has(exec.moveId)` 永远碰不到它（第 216 轮普查：安东打桩/C6、振斗耗血暴伤因此恒不生效）。
+ * 本函数把汇总行按其 `benchmarkMoveId` 参与匹配：基准段在集合里 ⇒ 整条平A行视为该段。
+ */
+export function execMatchesMove(e: { moveId: string; benchmarkMoveId?: string }, ids: ReadonlySet<string>): boolean {
+  if (ids.has(e.moveId)) return true
+  return e.moveId === 'basic_attack' && !!e.benchmarkMoveId && ids.has(e.benchmarkMoveId)
 }
 
 /**

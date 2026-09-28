@@ -28,6 +28,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
+import { execMatchesMove } from '@/types/resource'
 
 export const SEVERIAN_ID = '1631'
 /** 核心被动：暴击伤害 +60% */
@@ -347,7 +348,7 @@ function patchSeverianExecutions({ cfg, executions }: AgentResourceInput): void 
   for (const exec of executions) {
     if (!exec.moveId) continue
     // 影画1：普通攻击暴击伤害 +60%（basic 组 moveId 限定，执行级）
-    if (cinema >= 1 && SEVERIAN_BASIC_MOVE_IDS.has(exec.moveId)) {
+    if (cinema >= 1 && execMatchesMove(exec, SEVERIAN_BASIC_MOVE_IDS)) {
       exec.critDmgBonus = (exec.critDmgBonus ?? 0) + SEVERIAN_C1_BASIC_CRIT_DMG
     }
     // 凭风：入场技/连携/终结最后一击伤害倍率固定 +60/+300（同区加算进倍率行）

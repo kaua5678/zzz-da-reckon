@@ -6,6 +6,7 @@
  */
 import type { AgentEventInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
 import type { AnomalyEventExecution } from '../../types/resource'
+import { execMatchesMove } from '../../types/resource'
 
 export const ANTON_ID = '1111'
 
@@ -63,7 +64,7 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
   for (const exec of executions) {
     const moveId = exec.moveId
     if (!moveId) continue
-    if (ANTON_PILE_MOVE_IDS.has(moveId)) exec.dmgBonus = (exec.dmgBonus ?? 0) + ANTON_CORE_PILE_BONUS
+    if (execMatchesMove(exec, ANTON_PILE_MOVE_IDS)) exec.dmgBonus = (exec.dmgBonus ?? 0) + ANTON_CORE_PILE_BONUS
     if (ANTON_DRILL_MOVE_IDS.has(moveId)) {
       exec.dmgBonus = (exec.dmgBonus ?? 0) + ANTON_CORE_DRILL_BONUS
       c1Moves += Math.max(0, exec.count)
@@ -71,7 +72,7 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
         c1Energy += Math.min(ANTON_C1_MAX_PER_MOVE, ANTON_C1_MAX_PER_MOVE * Math.max(0, exec.count))
       }
     }
-    if (cinema >= 6 && ANTON_C6_MOVE_IDS.has(moveId)) {
+    if (cinema >= 6 && execMatchesMove(exec, ANTON_C6_MOVE_IDS)) {
       exec.dmgBonus = (exec.dmgBonus ?? 0) + ANTON_C6_BONUS
     }
   }

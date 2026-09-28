@@ -8,6 +8,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { SkillExecution } from '@/types/resource'
+import { execMatchesMove } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
@@ -120,7 +121,7 @@ function patchZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number(record.zhendouCinemaLevel ?? 0)))
   for (const exec of executions) {
     if (!exec.moveId) continue
-    if (ZHENDOU_HP_DRAIN_MOVE_IDS.has(exec.moveId)) {
+    if (execMatchesMove(exec, ZHENDOU_HP_DRAIN_MOVE_IDS)) {
       exec.critDmgBonus = (exec.critDmgBonus ?? 0) + ZHENDOU_CORE_CRIT_DMG
     }
     if (cinema >= 6 && (exec.moveId === MOVE_ASSIST_1 || exec.moveId === MOVE_ASSIST_2)) {

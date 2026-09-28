@@ -218,6 +218,7 @@ export function buildExecutions(
       energyRecovery: cfg.basicAttackRegenPerSec,
       totalEnergyRecovery: state.basicAttackTime * cfg.basicAttackRegenPerSec,
       timeBucket: 'basic',
+      ...(cfg.basicBenchmarkMoveId ? { benchmarkMoveId: cfg.basicBenchmarkMoveId } : {}),
     })
   }
 

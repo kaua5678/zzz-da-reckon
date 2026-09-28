@@ -100,7 +100,7 @@ export const BASIC_BENCHMARK_OVERRIDE: Record<string, string> = {
 
 /**
  * 获取平A基准段（单段，秒均化）。
- * 优先：catalog agent.basicBenchmarkMoveId（数据配置）→ 硬编码 override 兜底 → 默认第 3 段（#3）；不足 3 段取最后一段。
+ * 优先：catalog agent.basicBenchmarkMoveId（数据配置，在全部普攻招式里找，不受 #N 命名约束）→ 硬编码 override 兜底 → 默认第 3 段（#3）；不足 3 段取最后一段。
  */
 export function getBasicComboMoves(
   skills: AgentSkills | undefined,
@@ -109,6 +109,17 @@ export function getBasicComboMoves(
 ): SkillMove | null {
   const basic = skills?.categories.find(c => c.id === 'basic')
   if (!basic) return null
+
+  // 0. 数据配置（catalog agent.basicBenchmarkMoveId）是显式裁决，在全部有动作时长的普攻招式里找，
+  //    **不受下方 #N 命名启发式约束**（CC-193：1631/1641 新版 catalog 普攻段名不带 #N ⇒ 旧写法连数据配置都被否决，
+  //    汇总平A行无倍率 ⇒ 普攻伤害恒 0）。
+  if (agentId && catalogStore) {
+    const dataId = catalogStore.agentsMap.get(agentId)?.basicBenchmarkMoveId
+    if (dataId) {
+      const found = basic.moves.find(m => m.id === dataId && (m.actionTime ?? 0) > 0)
+      if (found) return found
+    }
+  }
 
   // 1. 收集所有 #N 段（排除 dash/dodge），数组顺序 = 原始顺序（#1,#2,#3...）
   const all: SkillMove[] = []
@@ -120,15 +131,6 @@ export function getBasicComboMoves(
     all.push(move)
   }
   if (all.length === 0) return null
-
-  // 2. 数据配置优先（catalog agent.basicBenchmarkMoveId）
-  if (agentId && catalogStore) {
-    const dataId = catalogStore.agentsMap.get(agentId)?.basicBenchmarkMoveId
-    if (dataId) {
-      const found = all.find(m => m.id === dataId)
-      if (found) return found
-    }
-  }
 
   // 3. 硬编码 override 兜底
   if (agentId && BASIC_BENCHMARK_OVERRIDE[agentId]) {

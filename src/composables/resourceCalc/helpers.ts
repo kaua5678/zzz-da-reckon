@@ -541,6 +541,7 @@ export function buildCharConfig(
     outOfCombatPanel: panelPhases?.outOfCombat,
     basicAttackRegenPerSec: basicRegen.energyPerSec,
     basicAttackDecibelPerSec: basicRegen.decibelPerSec,
+    basicBenchmarkMoveId: getBasicComboMoves(skills as AgentSkills, char.agentId, catalogStore)?.id,
     // 蕾米埃尔 cfg 字段（垂虹 4 项 / Radiant Turn 3 项 / `remielleEnabled` / `remielleRadiantTurnDazeBonusPct`）
     // 全部由下方 `charModule?.buildCharConfig?.()`（= `remielle.ts#buildRemielleCharConfig`）写入
     // （CC-34b 2026-09-27 迁走垂虹 / Radiant Turn 7 项与两个招式查找函数；前序 2026-09-17 round 21 夜间批 C）。
