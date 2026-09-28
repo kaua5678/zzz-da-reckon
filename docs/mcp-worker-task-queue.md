@@ -69,23 +69,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 195 轮（lane lead-arena-0925c）：CC-169 完成（代码提交 af1c9e86）；立卡 CC-170。文档见本提交。**
-- CC-169：配置页「局外」面板 = 引擎局外面板（全局 Buff 只进局内）；删除零生产消费方的 `composables/teammateBuffContext.ts`（stun-dual-source §24.17）。
-- 前几轮：194 CC-168（3336f873）；193 CC-165（90a7eb79）；192 CC-27（948a1444）。
+**第 196 轮（lane lead-arena-0925c）：CC-170 普查完成，CC-171 修复（代码提交 c727c369）；立卡 CC-172。文档见本提交。**
+- CC-171：引擎面板漏传潜能档 → `cfg.panel.potentialLevel` 恒为 6；补传后柏妮思 / 简资源结果按实际潜能档显示，伤害零变化（stun-dual-source §24.18）。
+- 前几轮：195 CC-169（af1c9e86）；194 CC-168（3336f873）；193 CC-165（90a7eb79）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-170：calcPanel 调用方口径普查**。
-   - 列清单：`grep -rn "calcPanel(" src --include=*.ts --include=*.vue | grep -v __tests__`。
-   - 对每个调用点回答三问：它要的是「引擎局内 / 局外面板」还是有意不同的面板（如 `stores/config.ts` useDefault 的「无队友 buff」起点、`core/substatOptimizer` 的「无副词条」起点）？队友 buff / 覆盖率 / 全局 Buff 从哪来？和 `resolveSlotPanelBuffInputs` 差在哪？
-   - 判定：本应是引擎面板的，改为复用 `computePanelPhases` 或 `resolveSlotPanelBuffInputs`（要有逐值测试）；有意不同的，在调用点写一行注释说明为什么不同。
-   - 已知两处有意不同，**不要改**：`core/substatOptimizer.ts#computeNoSubstatPanel`（无副词条起点，输入由调用方给）；`stores/config.ts` useDefault 分支（用户口径：不看队友 buff）。
-   - 已知一处未决：`stores/config.ts` ~819 的整队贪心（含 teammates 的 calcPanel）用原始上下文，store 层不能依赖 composables（CC-168 未决项）。
-   - 伤害路径上的调用点（`resourceCalc/helpers.ts`、`anomalyPanels.ts`）若改，必须跑 zd 并做差异归因。
+1. **CC-172：来源面板覆盖率口径**。
+   - 先读 `composables/resourceCalc/panelPhases.ts#mergeTeamDiscEffectCoverages`：缺省配置（`discEffectCoverages` 空表）下它会不会写入 < 100 的值？
+     - 不会：差异只在用户手动调低覆盖率时出现，伤害缺省零差；
+     - 会：缺省配置下也影响伤害。
+   - 做法（通用，不写角色分支）：
+     - `TeammateBuffSourceDeps` 加可选 `effectCoverageMap`，透传给 `teammateBuffSource.ts:58` 的 calcPanel；
+     - `resolveSlotPanelBuffInputs` 里先算出 effectCoverageMap（现在是在 buildTeammateBuffSourceContext 之后才算），再传进去。
+     - 注意：覆盖率表里含队友 buff 覆盖率，来源面板不带队友 buff，多出来的键不会命中，无害。
+   - 验证：探针造一个音擎条件效果覆盖率 50% 的来源角色（如耀嘉音），对比来源面板 atk 修复前后，以及它和同角色主面板局外 atk 的关系；跑 zd，有差异要做归因（worktree 临时去掉传参对照）。
+   - 判据：来源面板的「自身配置」应与该角色自己槽位的面板同口径（除队友 buff 外）。若查实有意不同（如来源面板刻意取满覆盖），写注释说明并关卡。
 2. store 层整队贪心与管线同源（CC-168 未决项）：只有确实要用整队贪心时才做。
 3. CC-166 仍暂缓（需规格）。
 
 **已知坑**
+- calcPanel 的 config 可选字段（`potentialLevel` / `effectCoverageMap` / `sourcePanelsByOwner`）漏传不会报错，会被缺省值静默兜底（CC-171 就是这么漏的）。新增调用点对照 `computePanelPhases` 逐项核对，有意不传的写注释。
 - 给 calcPanel 组装队友 buff 输入，一律走 `resolveSlotPanelBuffInputs`（`composables/resourceCalc/panelPhases.ts`）。直接用 core `buildTeammateBuffSourceContext` 的原始 `enabledTeammateBuffs` 会缺门控、接收槽过滤、全局 Buff、覆盖率和来源修正（旧包装 `teammateBuffSourceContextFromStores` 已于第 195 轮删除）。
 - 删 src 文件要用 `git rm`：判据 25 用 `git ls-files` 列文件，工作区已删、索引还在的文件会让 CG 直接 ENOENT 崩溃。
 - 面板字段写在局内对象上时，想想局外对象上是否也该有同一个值（第 194 轮 `energyRegenOutOfCombat`）。

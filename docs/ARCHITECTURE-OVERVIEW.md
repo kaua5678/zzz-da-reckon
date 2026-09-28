@@ -67,7 +67,7 @@ R5 对账主要用这一段。
 public/static/catalog.json
   └─ stores/catalog.ts（加载，只读快照）
 core/panel.ts
-  calcPanel(...)                                   ← 9 个文件调用（resourceCalc/panelPhases、helpers、anomalyPanels，composables/outOfCombatPanel，stores/config …）
+  calcPanel(...)                                   ← 5 个生产调用点（第 196 轮 CC-170 普查）：panelPhases computePanelPhases / computeEntrySnapshotPanel、core/teammateBuffSource 来源面板、core/substatOptimizer 无副词条起点、stores/config 整队贪心；其余都经 computePanelPhases 间接调用
     ├─ calcBasePanel(agent, wEngine)               （只在 panel.ts 内部使用，导出了但没有外部调用者）
     ├─ collectAllBuffs(...)       core/buff.ts     把效果分成 outOfCombat / inCombat 两组：
     │     角色：corePassive / additionalAbility / cinema.buff 的 scope === 'outOfCombat' → 局外，否则局内（buff.ts:286–326）

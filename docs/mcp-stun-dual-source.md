@@ -1090,3 +1090,29 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - `substatOptimizer.test`：CC-52 内联算法改为新口径（`resolveSlotPanelBuffInputs` + `effectCoverageMap`）；「明攻」用例的原始集合改为直接调 core `buildTeammateBuffSourceContext`。
 - **验证**：CC-169 部分 `npm run verify` rc=0（3821 passed）；删除 teammateBuffContext 后再跑 verify rc=0（3820 passed，少的 1 条即被删测试）；vue-tsc 无新错误；CG 25 项通过。没跑 zd：`computePanelPhases` 与伤害管线未改，本卡只动展示层。
 - **已知坑**：删 src 文件要用 `git rm`（或提交后再跑 CG）。判据 25 `record-key-dead-reads.mjs` 用 `git ls-files` 列文件再 `readFileSync`，工作区已删但索引里还在的文件会让 CG 直接 ENOENT 崩溃。
+
+### 24.18 CC-170 calcPanel 调用方口径普查 + CC-171 引擎面板漏传潜能档（第 196 轮，提交 c727c369）
+- **普查**：`grep -rn "calcPanel(" src | grep -v __tests__` 实际只有 5 个生产调用点。ARCHITECTURE-OVERVIEW 原写「9 个文件」已过时（helpers / anomalyPanels / outOfCombatPanel 都已改为经 computePanelPhases 间接调用），本轮已更正。
+
+  | 调用点 | 要的面板 | 队友 buff / 覆盖率 / 潜能 | 结论 |
+  |---|---|---|---|
+  | `resourceCalc/panelPhases.ts#computePanelPhases` | 引擎局外 + 局内（伤害管线 cfg.panel、配置页两种模式、转化读的 outOfCombatPanel） | `resolveSlotPanelBuffInputs` 全套；潜能**漏传**（CC-171 修复） | 基准口径 |
+  | `resourceCalc/panelPhases.ts#computeEntrySnapshotPanel` | 进场记录面板（蕾米埃尔特殊虚耀）：有意**不吃**队友 buff、全局 Buff | 覆盖率 = 音擎 + 队伍驱动盘；潜能**漏传**（CC-171 修复） | 有意不同，已有注释 |
+  | `core/teammateBuffSource.ts#buildTeammateBuffSourceContext` | 队友 buff 来源面板：有意不带队友 buff（防递归） | 传了潜能；**没传覆盖率表** | 疑似不一致 → CC-172 |
+  | `core/substatOptimizer.ts#computeNoSubstatPanel` | 无副词条起点 | 输入全部由调用方给（单槽已同源，CC-168）；不传潜能（优化器不读面板潜能，无影响） | 有意不同，不改 |
+  | `stores/config.ts` ~839 整队贪心的队友面板 | 队友伤害估值 | 原始上下文（CC-168 未决项）；缺省 useDefault 分支不走这里 | 维持未决 |
+
+- **CC-171 发现**：`core/panel.ts:319` 把 `config.potentialLevel ?? 6` 盖章进局外 / 局内面板。但 `computePanelPhases` 和 `computeEntrySnapshotPanel` 都不传 → 管线的 `cfg.panel.potentialLevel` 恒为 6，与潜能滑块脱钩。
+  - 读它的 3 处：`burnice.ts` 的 buildBurniceResourceResult 和 burniceMechanicSourceOf（执行 / 异放入参），`jane.ts` 的 buildJaneResourceResult。它们的注释都写着「由 core/panel.ts 写入、与 applyPanel 同源同值」，这个前提实际不成立。来源面板（teammateBuffSource）一直有传，公式变量 `p` 的读数是对的。
+  - 实测（修复前，队伍 1171 + 1311 + 1211，推荐配装）：柏妮思 2 潜与 6 潜的 `burniceMechanicSource` 都是掌控 +15、增伤 +12（满潜值）；修复后 2 潜为 +6 / +6（6 档 × II 档系数 1），与 R59 档位表一致。
+  - **伤害影响 = 零**：2 潜总伤修复前后都是 33197215.858…。柏妮思潜能对伤害的作用走 `applyBurnicePanel`（拿的是正确的 `input.potentialLevel`）；source 里的潜能加成字段只进资源分区展示。所以本卡是**展示口径修正**：非满潜的柏妮思 / 简，资源分区显示的潜能加成此前按满潜显示。
+- **修复**：两处 calcPanel 调用补传 `potentialLevel: char.potentialLevel`（钳位与缺省 6 由 panel.ts 负责）；jane.ts 注释更正。不写角色分支。
+- **测试**：新增 `src/composables/__tests__/panelPotentialStamp.test.ts`：
+  - 三槽（2 / 4 / 6 潜）的局外、局内、进场快照面板盖章 = 角色设置；
+  - 端到端：柏妮思资源结果的潜能掌控加成 = 从 6 潜读数反推的档数 × II 档系数，且 ≠ 6 潜值。
+
+  已确认两条在旧代码上都失败。
+- **验证**：`npm run verify` rc=0（3822 passed）；vue-tsc 无新错误；CG 25 项通过；zd 零差（DUMP 与 ROWS 两段 DIFF 0，预设均为 6 潜）。
+- **回退点**：revert 本提交（只是两行参数和一个新测试文件）。
+- **已知坑（通用）**：calcPanel 的 config 可选字段（`potentialLevel`、`effectCoverageMap`、`sourcePanelsByOwner`）漏传不会报类型错，会被缺省值静默兜底。新增调用点要对照 `computePanelPhases` 的参数表逐项核对，有意不传的写注释说明原因。
+- **CC-172（下一张）**：来源面板不传覆盖率表 → 来源角色自身的条件效果（音擎 / 驱动盘）在来源面板里按 100% 覆盖算，而同一角色在自己槽位的主面板按覆盖率算。覆盖率缺省为 100（`wEngineEffectCoverages` 空表 = 100），所以只有用户调低覆盖率，或 `mergeTeamDiscEffectCoverages` 自动算出 < 100 时才有差异。后者若在缺省配置下也生效，就会影响伤害，要跑 zd 并做归因。
