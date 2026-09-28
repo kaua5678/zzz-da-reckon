@@ -11,6 +11,7 @@ import { useCatalogStore } from './catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
+import { additionalGateBuffTable } from '@/specs/additionalGate'
 import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AppliedBossPreset } from '@/types/bossPreset'
 import { counterAssistOf } from '@/data/counterAssists'
@@ -423,6 +424,9 @@ export function deriveTeammateBuffEnabled(
     return true
   }
 
+  // CC-203：「哪些 buff 随额外能力门控」与引擎硬门控共读一张表（specs/additionalGate.ts）——含跨来源条目
+  // （席德核心被动 / 潘引壶影画一 / 波可娜影画六），此前本函数只认来源标签「额外能力」，这些条目默认勾上、引擎却丢弃。
+  const aaGateTable = additionalGateBuffTable(groups)
   const out: Array<{ id: string; enabled: boolean }> = []
   // 遍历所有队友 buff 组（保持 groups 顺序 = 抽取前写入对象键序）
   for (const group of groups) {
@@ -436,10 +440,10 @@ export function deriveTeammateBuffEnabled(
       const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema
       // CC-64c：波可娜 C6 base 条互斥也经 teammateBuffGate（pulchra.ts 声明；原为此处写死 1351 分支）
       let shouldEnable = resolveSpecialTeammateBuffEnabled(buff.id, baseShouldEnable, agentId, cinemaLevel)
-      // 通用额外能力门控：若 buff 来源为"额外能力"且来源角色额外能力未激活，则自动禁用。
+      // 通用额外能力门控：buff 在额外能力门控表里（CC-203）且来源角色额外能力未激活，则自动禁用。
       // CC-199：按组 id（= 拥有者）查，不按 buff.ownerId——catalog 里 1411/1581/1511 的 ownerId 是拼音 slug
       // （youye/remielle/nangongyu），按它查恒 undefined ⇒ 柚叶额外能力曾无条件生效。
-      if (shouldEnable && sourceLabel === '额外能力') {
+      if (shouldEnable && aaGateTable[agentId]?.includes(buff.id)) {
         const aaActive = aaActiveMap.get(agentId)
         if (aaActive === false) shouldEnable = false
       }

@@ -5,7 +5,8 @@
  *   ① 面板两阶段 `computePanelPhases`（局外 → 局内；applyPanel 与队伍级面板效果的派发点）
  *   ② 队伍级机制钩子的三个派发器：`applyTeamMechanics`（相位写入）· `collectNextRoundFeedback`
  *      （本轮结果取回下一轮线程）· `collectAxisWindowOverlays`（轴窗口取值）
- *   ③ 额外能力门控登记表 `ADDITIONAL_GATE_BUFFS` + `evalAdditionalAbilityBuffGates`
+ *   ③ 额外能力硬门控求值 `evalAdditionalAbilityBuffGates`（表 `additionalGateBuffTable` 在 `@/specs/additionalGate`，
+ *      CC-203 起与 store 默认门控共用；本文件 re-export 以保持壳契约）
  *
  * 迁移纪律：逐字节剪切，算式/常量值/条件/求值顺序零改动。
  * 上游单一入口仍是 `./helpers`（该文件保留 re-export 壳）⇒ 51 个消费者与 66 个测试的 import 零改动。
@@ -45,11 +46,13 @@ import {
 } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
+import { additionalGateBuffTable } from '@/specs/additionalGate'
+export { additionalGateBuffTable }
 import type {
   CharacterOperationConfig,
   StunAxis,
 } from '@/types/resource'
-import type { PanelValues, TeammateBuff, Agent, DriveDiscConfig } from '@/types/catalog'
+import type { PanelValues, TeammateBuff, TeammateBuffGroup, Agent, DriveDiscConfig } from '@/types/catalog'
 // 结算口径单一事实源（全局 Buff → TeammateBuff.effect.mode）。**不要**用展示口径 `isPctStat`：
 // 两者对本仓 39 个字段结论相反（其中 34 个 mode 敏感），详见 statMeta.ts#statSettlementMode 头注释。
 import { statSettlementMode } from '@/utils/statMeta'
@@ -384,75 +387,26 @@ export function collectAxisWindowOverlays(
  * 局内 = 在局外基础上叠队友/全局 buff 与角色机制 applyPanel 修正后的权威面板，与计算完全一致）。
  */
 /**
- * 额外能力门控簇登记表（规则 6：SOP §6.2 第 3 步「按 buff id 过滤」的唯一登记处）。
- *
- * agentId → 受该角色「额外能力」门控的 teammate-buff id 列表。新增来源为「额外能力」的 buff
- * 必须在此登记（并把求值接进 `evalAdditionalAbilityBuffGates`），否则门控静默失效——
- * 护栏：`src/composables/__tests__/additionalGate.test.ts` 断言本表与 catalog `teammate-buffs.json`
- * 的 `source === '额外能力'` buff、spec `teamBuffs` 的 `source === '额外能力'` 条目一一对应。
- *
- * ⚠ 三条不可机械等同的登记（2026-09-13 自散落注释收敛，语义逐位保留）：
- * - 1071 凯撒：同阵营之外「其他可招架支援角色」以「有任意队友」近似满足（CC-67 起在 caesar.ts#adjustAdditionalAbilityGates）。
- * - 1461 席德：两条 buff 来源是核心被动/影画二（非「额外能力」），但与 spec additionalAbility
- *   同条件（spec 注明「核心被动与影画2 同条件，两条 buff 一并门控」）。
- * - 1421 潘引壶 cinema_1（影画一）随额外能力同条件门控；1281 派派与 1641 菲欧妮的 buff
- *   不在 catalog `teammate-buffs.json` 而在各自 spec 的 `teamBuffs`（结构不同：catalog 侧
- *   `sourceLabel.zhCN`、spec 侧 `source` 字符串）；菲欧妮 tier3 另需队伍 [异常] 角色数 ≥3。
- */
-export const ADDITIONAL_GATE_BUFFS: Record<string, readonly string[]> = {
-  // 丽娜：额外能力——队伍有[异常]或同阵营角色时，感电伤害提升
-  '1211': ['rina.additional_electric_damage'],
-  // 莱特：额外能力——士气高昂时，队中[冰]/[火]角色伤害提升
-  '1161': ['lighter.additional_morale_ice_fire_dmg'],
-  // 妮可：额外能力——队伍有[强攻]/[异常]角色时，以太伤害提升
-  '1031': ['nicole.additional_ether_damage'],
-  // 苍角：额外能力——旗势状态下，队中角色冰伤提升
-  '1131': ['soukaku.additional_ice_damage'],
-  // 凯撒：额外能力——「战意」状态下伤害提升（触发条件见表头 ⚠ 第 1 条）
-  '1071': ['caesar.additional_battle_spirit_dmg'],
-  // 本：额外能力——有护盾角色暴击率提升
-  '1121': ['ben.additional_shield_crit_rate'],
-  // 千夏额外能力·白日梦对位法：队伍存在[强攻]或与自身阵营（妄想天使）相同的角色时触发（帷幕失衡易伤+30%）
-  '1491': ['buff_23620b7000'],
-  // 照额外能力·凝聚力：队伍存在[强攻]或[异常]或[支援]角色时触发（全队增伤10%~40%按初始生命公式）
-  '1341': ['zhao.additional_ability.dmg_bonus'],
-  // 派派额外能力·同步疾驰：同属性、同阵营或其他异常队友在队，动力20层按稳态覆盖近似（buff 在 spec teamBuffs）
-  '1281': ['piper_extra_team_damage'],
-  // 潘引壶额外能力·食铁纳金：队伍存在[命破]或同阵营（云岿山）角色时触发（[气绝]增伤+20%，影画1再+10%）
-  '1421': ['pan_yinhu.additional_stupefaction_dmg', 'pan_yinhu.cinema_1_stupefaction_dmg'],
-  // 希希芙额外能力·毒素发酵：队伍存在[击破]或同属性（电）角色时触发（全队暴伤+40%、自身额外+10%）
-  '1521': ['xixifu.additional_toxin_crit_dmg'],
-  // 奥菲丝额外能力·熔炉所铸：队伍存在[击破]或[支援]角色时触发（准星聚焦追加攻击无视25%防御）
-  '1301': ['orphie.additional_def_ignore'],
-  // 席德核心被动/额外能力·花链协议/奇兵轰临：队伍存在其他[强攻]角色时触发（正兵明攻/围杀拐与影画2 无视防御）
-  '1461': ['seed.core_vanguard_bright_attack', 'seed.cinema_2_encirclement_def_ignore'],
-  // 菲欧妮（1641，⚠️3.3 测试服临时录入）额外能力：队伍存在其他[异常]/同阵营角色时触发
-  // ——脆弱暴伤档位（spec teamBuffs，SOP §6.2 接线）；tier3 附加条件见 evalAdditionalAbilityBuffGates
-  '1641': ['phoenix.weakness_anomaly_crit_dmg_tier2', 'phoenix.weakness_anomaly_crit_dmg_tier3'],
-  // 波可娜额外能力·业务搭档：队伍存在[强攻]/[命破]或同阵营（卡吕冬之子）角色时触发——[困迹]的前提。
-  // 影画6「困迹对追加攻击以外也生效」同样以困迹为前提 ⇒ 同门控（先例：1421 cinema_1）。CC-199。
-  '1351': ['pulchra_extra_trap_followup', 'pulchra_cinema_6_trap_all'],
-}
-
-/**
- * 求 ADDITIONAL_GATE_BUFFS 登记的全部门控：buffId → 是否放行（未登记的 buff 不在 Map 中 = 不受门控，
+ * 求 `additionalGateBuffTable(groups)` 的全部门控：buffId → 是否放行（未登记的 buff 不在 Map 中 = 不受门控，
  * 消费方判据为 `gates.get(buff.id) !== false`）。求值时机与迁移前逐位一致：面板阶段（calcPanel 之前）一次求值。
  */
 export function evalAdditionalAbilityBuffGates(
   team: ReadonlyTeam,
   getCatalogAgent: (agentId: string) => Agent | null,
+  groups: readonly TeammateBuffGroup[],
 ): Map<string, boolean> {
+  const table = additionalGateBuffTable(groups)
   // 第一步：每角色按 spec additionalAbility 声明求值（不在队 = false）；slot 查找走索引表，零 agentId 特判
   const slotByAgentId = new Map<string, number>(team.map(member => [member.agentId, member.slot]))
   const activeByAgent = new Map<string, boolean>()
-  for (const agentId of Object.keys(ADDITIONAL_GATE_BUFFS)) {
+  for (const agentId of Object.keys(table)) {
     const slot = slotByAgentId.get(agentId) ?? -1
     activeByAgent.set(agentId, slot >= 0
       && evalAdditionalAbility(team, slot, getCatalogAgent(agentId), getAgentSpec(agentId)?.additionalAbility) === true)
   }
   // 第二步：展平为 buffId → active
   const gates = new Map<string, boolean>()
-  for (const [agentId, buffIds] of Object.entries(ADDITIONAL_GATE_BUFFS)) {
+  for (const [agentId, buffIds] of Object.entries(table)) {
     for (const buffId of buffIds) gates.set(buffId, activeByAgent.get(agentId) === true)
   }
   // 第三步（CC-67）：在队角色的专属修正经模块能力 adjustAdditionalAbilityGates（凯撒「有任意队友」、菲欧妮 tier3「异常数≥3」；
@@ -580,11 +534,9 @@ export function resolveSlotPanelBuffInputs(
       teammateName: { zhCN: b.name },
     }))
   const team = buildMechanicTeamMembers(configStore, catalogStore)
-  // 额外能力门控簇（15 角色 / 19 条 buff）：slot 查找 + evalAdditionalAbility 求值 + 按 buff id 过滤
-  // 已收敛为数据驱动表 ADDITIONAL_GATE_BUFFS + evalAdditionalAbilityBuffGates（规则 6 棘轮 burn-down 第 1 批，
-  // 2026-09-13 逐位等价迁移；原 14 个 `xxxAdditionalActive` + 17 条逐 id `.filter`）。语义偏离与注释全部保留在表侧。
+  // 额外能力硬门控（CC-203：表从 catalog 分组派生，来源「额外能力」全员覆盖；跨来源条目与专属修正见 additionalGateBuffTable）
   const additionalAbilityBuffGates = evalAdditionalAbilityBuffGates(
-    team, id => catalogStore.agentsMap.get(id) ?? null)
+    team, id => catalogStore.agentsMap.get(id) ?? null, catalogStore.teammateBuffGroups)
   const allTeammateBuffs = applyTeammateBuffRecipientFilters(
     [...enabledTeammateBuffs, ...globalAsTeammateBuffs]
       .filter(buff => additionalAbilityBuffGates.get(buff.id) !== false),

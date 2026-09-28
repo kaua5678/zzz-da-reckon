@@ -69,7 +69,7 @@ import {
   applyTeamMechanics,
   collectNextRoundFeedback,
   collectAxisWindowOverlays,
-  ADDITIONAL_GATE_BUFFS,
+  additionalGateBuffTable,
   evalAdditionalAbilityBuffGates,
 } from './panelPhases'
 export {
@@ -81,7 +81,7 @@ export {
   applyTeamMechanics,
   collectNextRoundFeedback,
   collectAxisWindowOverlays,
-  ADDITIONAL_GATE_BUFFS,
+  additionalGateBuffTable,
   evalAdditionalAbilityBuffGates,
 }
 

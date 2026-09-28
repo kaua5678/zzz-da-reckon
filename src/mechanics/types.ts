@@ -863,7 +863,7 @@ export interface AgentMechanicModule {
   /**
    * CC-67：额外能力门控的角色专属修正（`panelPhases.ts#evalAdditionalAbilityBuffGates` 展平 buffId → active 之后、返回之前调用；
    * 只对在队角色调用，`slot` = 本角色槽位）。原在编排层按 id 写死：凯撒「有任意队友即满足」、菲欧妮 tier3「异常数≥3」。
-   * 只允许改写**本角色登记在 `ADDITIONAL_GATE_BUFFS` 里的 buff id**（各模块 buff id 不相交 ⇒ 调用顺序无关）。
+   * 只允许改写**本角色在 `additionalGateBuffTable` 里的 buff id**（各模块 buff id 不相交 ⇒ 调用顺序无关）。
    */
   adjustAdditionalAbilityGates?(input: { team: ReadonlyTeam; slot: number; gates: Map<string, boolean> }): void
   /**

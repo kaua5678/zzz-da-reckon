@@ -64,6 +64,9 @@ describe('副词条优化器的队友 buff 输入与伤害管线同源（第 194
   it('席德 + 命破队友（额外能力不触发）：原始上下文含「明攻」，管线输入按门控剔除', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1461' }, { agentId: '1441' }, ''], { recommendedBuild: true })
     const effectIds = (buffs: { effects?: { id: string }[] }[]) => new Set(buffs.flatMap(b => (b.effects ?? []).map(e => e.id)))
+    // CC-203：store 默认门控与引擎共读额外能力门控表 ⇒ 明攻默认已不勾；强行勾上，验证引擎仍按门控剔除
+    expect(config.isTeammateBuffEnabled('seed.core_vanguard_bright_attack')).toBe(false)
+    config.toggleTeammateBuff('seed.core_vanguard_bright_attack', true)
     const raw = buildTeammateBuffSourceContext(config.team, {
       teammateBuffGroups: catalog.teammateBuffGroups,
       driveDiscSetsMap: catalog.driveDiscSetsMap,

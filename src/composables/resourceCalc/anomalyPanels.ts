@@ -33,8 +33,8 @@ import { ELEMENT_DMG_KEYS, ELEMENT_RES_REDUCTION_KEYS } from './skillRows'
 // 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 刀 A）——同目录兄弟模块直接指真实现。
 // ⚠ 本 import 让 `panelPhases ↔ anomalyPanels` 成环（那边也取本文件的
 // `getTeamAnomalyDurationBonus` / `findSlotByIdentity`）：**两边全是函数声明（提升）且模块初始化期
-// 零互读**——本文件没有任何顶层 `const`，`panelPhases` 唯一的顶层 const `ADDITIONAL_GATE_BUFFS`
-// 是纯字面量表、本文件不引用 ⇒ **无 TDZ 风险**（刀 A 头注释点名的双向边至此解环）。
+// 零互读**——本文件没有任何顶层 `const`，`panelPhases` 的顶层 const（跨来源门控字面量表 + 派生表 WeakMap 缓存，CC-203）
+// 都是字面量、本文件不引用 ⇒ **无 TDZ 风险**（刀 A 头注释点名的双向边至此解环）。
 import { buildMechanicTeamMembers } from './panelPhases'
 
 export function teamHasAgent(

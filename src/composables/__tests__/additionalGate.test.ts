@@ -1,20 +1,18 @@
 /**
- * 额外能力门控簇回归（规则 6 棘轮 burn-down 第 1 批的护栏）：
+ * 额外能力门控簇回归：
  *
- * ① 门控表 ADDITIONAL_GATE_BUFFS 与数据源一一对应——catalog `teammate-buffs.json` 里
- *    `source.zhCN === '额外能力'` 的 buff、spec `teamBuffs[].source === '额外能力'` 的条目
- *    必须都在表里（防「加了 buff 忘了门控 → 额外能力静默失效」），表里的 id 必须能解析回
- *    该角色的 catalog 组或 spec teamBuffs（防手滑 id / 迁移后陈旧 id）。
- * ② evalAdditionalAbilityBuffGates 的三条不可机械等同语义（helpers.ts 表头 ⚠）：
- *    凯撒 1071「有任意队友」近似、菲欧妮 1641 tier3 异常数≥3（含影画6 修正）、
- *    不在队 = 全关、未登记 buff 不受门控。
+ * ① CC-203：硬门控表 `additionalGateBuffTable` 从 catalog 分组派生（来源「额外能力」+ 拥有者有 additionalAbility 声明，
+ *    外加跨来源登记）。断言：表内 id 全部可解析回拥有者分组、拥有者都有声明；来源「额外能力」的 buff 全员在表
+ *    （豁免仅 AA_OWNER_EXEMPT）；store 默认门控不勾 ⇐ 引擎硬门控关（两道门同口径，不会出现「默认勾上、引擎静默丢弃」）。
+ * ② evalAdditionalAbilityBuffGates 的专属语义：凯撒 1071「有任意队友」近似、菲欧妮 1641 tier3 异常数≥3（含影画6 修正）、
+ *    不在队 = 全关、未入表 buff 不受门控。
  *
  * 全部走 setupHarness（AGENTS §3：禁止自造 fetch stub）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import {
-  ADDITIONAL_GATE_BUFFS,
+  additionalGateBuffTable,
   buildMechanicTeamMembers,
   evalAdditionalAbilityBuffGates,
 } from '@/composables/resourceCalc/helpers'
@@ -26,35 +24,71 @@ import { deriveTeammateBuffEnabled } from '@/stores/config'
 async function gatesFor(team: Array<{ agentId: string; cinemaLevel?: number } | ''>) {
   const { catalog, config } = await setupHarness(team)
   const members = buildMechanicTeamMembers(config, catalog)
-  return evalAdditionalAbilityBuffGates(members, id => catalog.getAgent(id) ?? null)
+  return evalAdditionalAbilityBuffGates(members, id => catalog.getAgent(id) ?? null, catalog.teammateBuffGroups)
 }
 
-describe('ADDITIONAL_GATE_BUFFS 与 catalog/spec 数据源一一对应', () => {
-  it('每个登记角色：数据侧「额外能力」buff ⊆ 门控表；表内 id 全部可解析回该角色', async () => {
+const aaLabel = (b: { source?: { zhCN?: string }; sourceLabel?: { zhCN?: string } }) => b.source?.zhCN ?? b.sourceLabel?.zhCN ?? ''
+
+describe('CC-203 额外能力硬门控表：从数据派生、与 store 默认门控同口径', () => {
+  it('表内 id 全部可解析回拥有者分组；拥有者都有 additionalAbility；来源「额外能力」的 buff 全员在表（豁免见 AA_OWNER_EXEMPT）', async () => {
     const { catalog } = await setupHarness([{ agentId: '1081' }, '', ''])
-    for (const [agentId, tableIds] of Object.entries(ADDITIONAL_GATE_BUFFS)) {
-      const catalogBuffs = (catalog.teammateBuffGroups.find(g => g.id === agentId)?.buffs ?? [])
-      const specBuffs = getAgentSpec(agentId)?.teamBuffs ?? []
-      const knownIds = new Set([...catalogBuffs.map(b => b.id), ...specBuffs.map(b => b.id)])
-      const dataSideAA = [
-        ...catalogBuffs.filter(b => b.source?.zhCN === '额外能力').map(b => b.id),
-        ...specBuffs.filter(b => b.source === '额外能力').map(b => b.id),
-      ]
-      // 完备性：数据侧新增「额外能力」来源 buff 必须登记进表，否则门控静默失效
-      expect(dataSideAA.filter(id => !tableIds.includes(id)),
-        `${agentId} 的「额外能力」buff 未登记进 ADDITIONAL_GATE_BUFFS`).toEqual([])
-      // 反向：表里不许有解析不到的陈旧/手滑 id
-      expect(tableIds.filter(id => !knownIds.has(id)),
-        `${agentId} 的门控表 id 在 catalog/spec 中不存在`).toEqual([])
-      // 登记角色必须有声明式 additionalAbility（否则 evalAdditionalAbility 返回 undefined = 恒关）
-      expect(getAgentSpec(agentId)?.additionalAbility,
-        `${agentId} 登记了门控表但 spec 无 additionalAbility 声明`).toBeTruthy()
+    const table = additionalGateBuffTable(catalog.teammateBuffGroups)
+    for (const [agentId, ids] of Object.entries(table)) {
+      const known = new Set((catalog.teammateBuffGroups.find(g => g.id === agentId)?.buffs ?? []).map(b => b.id))
+      expect(ids.filter(id => !known.has(id)), `${agentId} 的门控 id 在分组中不存在（跨来源登记陈旧？）`).toEqual([])
+      expect(getAgentSpec(agentId)?.additionalAbility, `${agentId} 入表但 spec 无 additionalAbility`).toBeTruthy()
     }
+    const missing: string[] = []
+    for (const g of catalog.teammateBuffGroups) {
+      if (AA_OWNER_EXEMPT[g.id]) continue
+      for (const b of g.buffs ?? []) if (aaLabel(b) === '额外能力' && !(table[g.id] ?? []).includes(b.id)) missing.push(`${g.id}:${b.id}`)
+    }
+    expect(missing).toEqual([])
+    // CC-203 前只有 store 软门控的代表：莱卡恩 / 柚叶 / 蕾米埃尔
+    expect(table['1141']).toContain('lycaon.additional_graceful_pack_stun_multiplier')
+    expect(table['1411']).toContain('1411.additional_ability.anomaly_damage_bonus')
+    expect(table['1581']).toContain('1581.additional_ability.prismatic_buildup')
   })
+
+  it('莱卡恩 1141：额外能力未触发时强行勾上也被引擎拦住；触发时放行', async () => {
+    const off = await gatesFor([{ agentId: '1141' }, { agentId: '1071' }, ''])
+    expect(off.get('lycaon.additional_graceful_pack_stun_multiplier')).toBe(false)
+    const on = await gatesFor([{ agentId: '1141' }, { agentId: '1091' }, ''])
+    expect(on.get('lycaon.additional_graceful_pack_stun_multiplier')).toBe(true)
+  })
+
+  it('全员 × 任一队友：引擎硬门控关 ⇒ store 默认不勾（不会默认勾上却被引擎静默丢弃）', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1081' }, '', ''])
+    const table = additionalGateBuffTable(catalog.teammateBuffGroups)
+    const getA = (id: string) => catalog.getAgent(id) ?? null
+    const ids = [...catalog.agentsMap.keys()]
+    // 已知的有意偏差：菲欧妮 tier3 另需异常数≥3（引擎侧 adjustAdditionalAbilityGates），store 默认只看额外能力。
+    // CC-203 前另有跨来源条目（席德核心被动 / 潘引壶影画一 / 波可娜影画六）store 默认勾上、引擎丢弃——现 store 共读同一张表。
+    const KNOWN_STRICTER: ReadonlySet<string> = new Set(['phoenix.weakness_anomaly_crit_dmg_tier3'])
+    const bad: string[] = []
+    let n = 0
+    for (const owner of Object.keys(table)) {
+      for (const mate of ['', ...ids]) for (const cin of [0, 6]) {
+        if (mate === owner) continue
+        const team = [owner, mate, ''].map((agentId, slot) => ({
+          slot, agentId, cinemaLevel: slot === 0 ? cin : 0, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1, agent: agentId ? getA(agentId) : null,
+        }))
+        const gates = evalAdditionalAbilityBuffGates(team.filter(m => m.agentId) as never, getA, catalog.teammateBuffGroups)
+        const store = new Map(deriveTeammateBuffEnabled(team, catalog.teammateBuffGroups, getA).map(r => [r.id, r.enabled]))
+        for (const id of table[owner]) {
+          if (KNOWN_STRICTER.has(id)) continue
+          if (gates.get(id) === false && store.get(id) === true) bad.push(`${owner}c${cin}+${mate || '-'}:${id}`)
+        }
+        n++
+      }
+    }
+    expect(n).toBeGreaterThan(1000)
+    expect(bad).toEqual([])
+  }, 120000)
 })
 
 /**
- * CC-199：上面那条只查「已登记」角色，未登记又未声明的拥有者会整片漏网（1351 波可娜困迹 +30% 曾无条件生效）。
+ * CC-199：拥有者未声明 additionalAbility 会整片漏网（1351 波可娜困迹 +30% 曾无条件生效）。
  * 通用门控在 stores/config.ts#deriveTeammateBuffEnabled：来源「额外能力」的 buff 按拥有者 spec.additionalAbility
  * 求值——拥有者无声明 ⇒ aaActive 为 undefined ⇒ 恒开。故全员断言：拥有「额外能力」buff ⇒ spec 必须声明。
  */
@@ -127,9 +161,10 @@ describe('CC-199 全员：「额外能力」buff 的拥有者必须声明触发�
 })
 
 describe('evalAdditionalAbilityBuffGates 门控语义（迁移前散落逻辑的逐位等价面）', () => {
-  it('不在队 = 全关；未登记 buff id 不受门控（get 为 undefined）', async () => {
+  it('不在队 = 全关；未入表 buff id 不受门控（get 为 undefined）', async () => {
     const gates = await gatesFor([{ agentId: '1081' }, '', ''])
-    for (const buffIds of Object.values(ADDITIONAL_GATE_BUFFS)) {
+    const { catalog } = await setupHarness([{ agentId: '1081' }, '', ''])
+    for (const buffIds of Object.values(additionalGateBuffTable(catalog.teammateBuffGroups))) {
       for (const id of buffIds) expect(gates.get(id), `${id} 应被门控关闭`).toBe(false)
     }
     expect(gates.get('some.unregistered.buff')).toBeUndefined()

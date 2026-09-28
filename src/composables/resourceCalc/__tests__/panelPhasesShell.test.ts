@@ -40,7 +40,7 @@ const B_EXPORTS = [
   'applyTeamMechanics',
   'collectNextRoundFeedback',
   'collectAxisWindowOverlays',
-  'ADDITIONAL_GATE_BUFFS',
+  'additionalGateBuffTable',
   'evalAdditionalAbilityBuffGates',
 ] as const
 

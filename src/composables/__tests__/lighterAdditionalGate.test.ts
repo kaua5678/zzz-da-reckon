@@ -3,7 +3,7 @@
  * 背景：census §5.34 记为未决 ——「莱特来源面板冲击 ×1.2→×1.3 dump 零差，buff 是否真的生效没核实」；§5.45 实测结论：
  *   ① 门控满足（队中有[强攻]或卡吕冬之子）时默认勾选并生效，推荐配装下莱特局内冲击力 ≈278 ≥ 270 ⇒ 公式顶在 75（硬顶），
  *     所以 ×1.2 与 ×1.3 都是 75，dump 零差是「已顶上限」而非「未生效」；
- *   ② 门控不满足时有两道闸：选择表默认不勾（deriveTeammateBuffEnabled），强行勾上后面板层 ADDITIONAL_GATE_BUFFS 仍拦住。
+ *   ② 门控不满足时有两道闸：选择表默认不勾（deriveTeammateBuffEnabled），强行勾上后面板层 evalAdditionalAbilityBuffGates 仍拦住（CC-203 起两道闸共读 specs/additionalGate.ts 一张表）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'

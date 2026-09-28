@@ -7,7 +7,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { getAgentMechanic } from '@/mechanics'
-import { evalAdditionalAbilityBuffGates, ADDITIONAL_GATE_BUFFS } from '@/composables/resourceCalc/helpers'
+import { evalAdditionalAbilityBuffGates, additionalGateBuffTable } from '@/composables/resourceCalc/helpers'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 
@@ -23,6 +23,8 @@ describe('CC-67 额外能力门控修正 → adjustAdditionalAbilityGates', () =
     const { catalog } = await setupHarness([{ agentId: '1641' }, '', ''])
     const ids = [...new Set(catalog.agentsMap.keys())]
     const getA = (id: string) => catalog.getAgent(id) ?? null
+    // CC-203：门控表改为从 catalog 分组派生；对照实现用同一张表（本测试只锁凯撒/菲欧妮修正的迁移等价）
+    const ADDITIONAL_GATE_BUFFS = additionalGateBuffTable(catalog.teammateBuffGroups)
     /** 原实现逐字（写死 1071 / 1641） */
     function legacy(team: Parameters<typeof evalAdditionalAbilityBuffGates>[0]): Map<string, boolean> {
       const slotByAgentId = new Map<string, number>(team.map(m => [m.agentId, m.slot]))
@@ -48,7 +50,7 @@ describe('CC-67 额外能力门控修正 → adjustAdditionalAbilityGates', () =
         for (const cin of [0, 6]) {
           const agents = [lead, x, x === '1261' ? '1561' : '1261']
           const team = agents.map((agentId, slot) => ({ slot, agentId, cinemaLevel: slot === 0 ? cin : 0, agent: agentId ? getA(agentId) : null }))
-          const got = evalAdditionalAbilityBuffGates(team as never, getA)
+          const got = evalAdditionalAbilityBuffGates(team as never, getA, catalog.teammateBuffGroups)
           expect([...got.entries()], `${agents}/${cin}`).toEqual([...legacy(team as never).entries()])
           n++
         }
