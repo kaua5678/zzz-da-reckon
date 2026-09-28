@@ -69,20 +69,21 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 203 轮（lane lead-arena-0925c）：CC-180 完成（7f320498）。文档见本提交。**
-- CC-180：队友落点（赠大 / 赠连携 / 琉音额外能力「上一位队友」）统一由 `core/resource/targetSlot.ts#resolveTeammateTargetSlot` 在编队槽位空间按已上场序列解析（跳过空槽，无队友 = -1）；删除 `teamSize` 整条链。修掉了有空槽的两人队赠送丢失和额外能力直伤行丢失。详见 stun-dual-source §24.27（含探针表与归因）。
-- 前几轮：202 CC-179（8aba58f5）；201 CC-177（8fc869d0）/ CC-178（9daca673）；200 CC-176（542884bc）。
+**第 204 轮（lane lead-arena-0925c）：CC-181 完成（e0fdf806）；立卡 CC-182。文档见本提交。**
+- CC-181：可选参数普查余项收尾，删了 3 个无人使用的缺省，统一了套装排名阈值，并记下扫描器误报的类型。详见 stun-dual-source §24.28。
+- 顺带修复：203 轮文档让 `checkGuards.test` 变红（ENGINE_PIPELINE_GUIDE §4 721 > 718），已就地改写回 718。
+- 前几轮：203 CC-180（7f320498）；202 CC-179（8aba58f5）；201 CC-177 / 178。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-181：CC-179 普查余项**（清单在 stun-dual-source §24.26 末，原始数据 `/home/kaua/calc-arch/k202/scan.tsv` 的 NONE / SOME 行）：
-   - `calcStunPool` 输入的 `enemyStunResistance`（单数）生产从未传：先 `grep -rn enemyStunResistance src`，确认只剩声明和读取、没有写入，就删字段与读取分支（缺省分支的结果要和删后逐位相同，用 zd 证明）；
-   - wEngine ctx 中生产不传的字段：逐个判断缺省值会不会静默改变结果（CC-179 判据），会就改必填，不会就写「不做」加理由；
-   - `guaranteeStunShortfall` 的 `target` / `minGainRatio`、`decomposeSet` 的 `coverage` 默认参数：确认默认值与生产意图一致，写结论。
-   - 验证：zd DIFF 0；vue-tsc；verify。
+1. **CC-182：副词条优化器套装覆盖率**（卡表有做法）。先测变化面再决定做不做：把 `k204/probe204.test.ts` 扩成全角色（catalog 全部 agentId，取推荐队伍或「该角色 + 两名同属性队友」），比较 `computeSubstatAllocationForSlot` 在「cov = 1」和「cov = effectCoverageMap」两版下的分配差异。
+   - 若只有个别角色变化、且变化方向和伤害管线一致（选出的套装在伤害管线里确实更高），就做，并写明「优化器与伤害管线同口径」。
+   - 若变化面大或拿不准，写「暂缓」加理由，不改。
 2. CC-166 仍暂缓（需规格）。
+3. 可选参数普查（CC-179 → 181）已结束。以后新增 core 输入可选字段时按 worker-queue 已知坑第一条自查，不再立普查卡。
 
 **已知坑**
+- **改完 docs 也要跑 `npx vitest run src/scripts/__tests__/checkGuards.test.ts`（约 25s）**：它读 `docs/ENGINE_PIPELINE_GUIDE.md`，§4（`## 4.` 到 `## 5.`）行数有棘轮（冻结 718），多一行变红，少一行也红（要求结算登记表）。改 §4 一律就地改写、净增 0 行。第 203 轮把 verify 放在文档提交之前，漏了这一点。
 - core 输入加可选字段前先想：缺省会不会静默改变结果？会就做成必填（CC-179 判据）。普查可复用 `/home/kaua/calc-arch/k202/scan179.cjs`。
 - 「上一位 / 下一位队友」一律用 `resolveTeammateTargetSlot(编队槽, 已上场槽位, 设置)`（CC-180）：已上场槽位在引擎取 `configs.map(c => c.slot)`、编排层取资源结果 `characters.map(c => c.slot)`、模块钩子取 `team.filter(m => m.agentId && m.agent)`。不要用 `team.length` 或 `% 3`：`configStore.team` 和机制 `team` 都是定长 3 槽、含空槽。`configs` 下标和编队槽位只在满编时相同，存槽位的字段（如 `axisUltimatePromote.targetSlot`）进引擎要 `findIndex(c => c.slot === …)` 映射。
 - `bg.sh` 后台启动要写成 `setsid ./bg.sh … >/dev/null 2>&1 & sleep 1; echo started`：少了 `sleep 1`，外层 shell 立刻退出会带走子进程（第 203 轮踩过）。

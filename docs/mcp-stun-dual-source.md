@@ -1289,3 +1289,18 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 修复后剩下的差异只是行 id 里的槽位号。
 - **验证**：vue-tsc 无新错误；zd（cc180b，最终代码）dump / rows DIFF 0（满编与单角色预设不变，含 `agent:1571:c0/c6`）；verify VRC=0（3832 passed）；CG 25 项通过；`targetSlot.test.ts` 改写并补了空槽用例。
 - **回退点**：revert 7f320498（单提交，含 teamSize 删除）。
+
+### 24.28 CC-181：CC-179 普查余项（第 204 轮，e0fdf806）
+逐项判定，判据同 CC-179：缺省会静默改变结果 ⇒ 改必填；缺省无人传且无意义 ⇒ 删；缺省有意义 ⇒ 不动。
+- **`StunPoolInput.enemyStunResistance`（单数）：删**。注释写「兼容旧调用」，全仓零写入（生产、测试都没有），只作 `enemyStunResistances[element]` 查不到时的兜底，缺省 0。删后兜底直接写 `?? 0`，逐位等价。
+- **`WEngineConditionContext.wearerAgentId / wearerSpecialty / enemyWeakness`：不做（扫描器误报）**。两个函数共用这个上下文类型，但各读一个子集：`wEngineConditionMet` 只读 `wearerAttribute` 和 `enemyWeakness`，`wEngineEffectRequirementMet` 不读 `enemyWeakness`。扫描器报的「未传」正好是对应函数不读的字段。`enemyWeakness` 可选有语义（空 = 没选 Boss，不拦截），而且 calcPanel、teammateBuffSource、collectAllBuffs 的全部生产通路都传了（scan.tsv 为 ALL）。**扫描器局限**：它按类型字段统计，不看函数实际读哪些字段；复用时 NONE 行要先查被调函数读不读。
+- **`guaranteeStunShortfall(…, target = GUARANTEE_STUN_TARGET)`：删形参**。生产和测试都没传过；弹刀反推（`convergence.ts` 的 `targetStunCount: GUARANTEE_STUN_TARGET`）和诊断用的是同一个常量。留着形参只会让诊断有机会和反推用两个不同的目标，所以函数内改为固定用常量。
+- **`computeOptimalSubStats` 的 `minGainRatio`：发现并修正一处不一致**。`pruneAndRankSets`（Top-K 套装排名）调 `greedyAllocate` 时漏传阈值，固定用 0.05；最终分配却用「模板 > 用户 > 0.05」（蕾米埃尔模板 0.15）⇒ 排名和最终分配按两套停止规则算。现在排名也传同一个 `minGainRatio`。
+  - 这个差异从初始提交就在，没有找到说明它是有意设计的记录。
+  - 影响只落在带模板覆盖的角色，目前只有蕾米埃尔。探针（`/home/kaua/calc-arch/k204/probe204.test.ts`：5 支队伍 × 有无推荐配装，`computeSubstatAllocationForSlot`）新旧**逐位相同**，所以这是零差的一致性修正。
+  - 用户层 `input.minGainRatio` 生产不传，保留：它是算法调参入口，缺省 0.05 有注释。
+- **`decomposeSet(…, coverage?)`：删形参**。两处调用都不传，恒为 1。**但由此暴露一处语义差，另立 CC-182**：优化器分解套装时 4 件套条件效果按 100% 生效，伤害管线按 `effectCoverageMap` 打折 ⇒ 条件型 4 件套在套装排名里被高估。本卡不修，因为修了会改变优化结果，需要单独判断。
+- **不在本卡范围**：scan.tsv 的 SOME 行（`buildGiftRow` 的可选行字段、`calcStunAxisStack` 的 bySlot 等）属于「按调用场景选传」，第 202 轮已逐条看过，不改。
+- **验证**：vue-tsc 无新错误；zd（cc181）dump / rows DIFF 0；verify VRC=0；CG 25 项通过。
+- **顺带修复第 203 轮留下的红灯**：203 轮在 `ENGINE_PIPELINE_GUIDE.md` 第 32 条追加了 3 行，让 §4 从 718 行涨到 721 行，打红 `checkGuards.test`（判据 11 棘轮）。当轮 verify 是在**提交文档之前**跑的，所以没发现。现已把第 32 条那段就地改写（删掉过时的 teamSize 句子），行数回到 718，没有改登记表。教训已写进 worker-queue 已知坑。
+- **回退点**：revert e0fdf806。三处删除都逐位等价；只有排名阈值一处会改变非零差场景的行为。
