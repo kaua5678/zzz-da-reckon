@@ -1482,3 +1482,22 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **验证**：vue-tsc 通过；freeCompare 3 个测试文件 26 个用例通过；vite build 通过；CG 25 项全过；verify EXIT=0（3827 passed：删 1 加 1）。不碰引擎与数值，所以不跑 zd 和探针。
 - **教训（已写进交接已知坑）**：「加维度 = 往注册表加一行」这种设计，很容易出现「注册表里声明了、求值器没消费」的假选项。现有死通道扫描抓的是「只读不写」，**抓不到「只写不读」**：`LevelOverride.gold` 在 AXES 里被写、从没被读。
 - **回退点**：`git revert ad9a9321`。
+
+### 24.37 CC-190：接口属性「只写不读」普查 + 删掉 5 个假契约字段（第 213 轮，f516e95f）
+
+- **起因**：第 212 轮交接第 2 项（死通道扫描抓不到「只写不读」）。评估后发现：死通道扫描按名字计数，扩展它也抓不到 `gold` 这类常见名，所以改为另写符号级审计脚本 `scripts/audit-write-only-props.cjs`，不改 dead-channel-scan。
+- **结果**：158 条高置信候选，逐条分诊了所有输入 / 契约类，**没有数值 bug**。删掉 5 个误导性字段：
+  - `enemyLevel`：伤害公式固定按攻击方 60 级；
+  - `AxisContext.ultimateTotalBySlot`；
+  - `targetState`；
+  - `includeOwner`：真实机制是 `excludeTargetAgentIds`；
+  - `stunsTotal`：注释声称会缩放，实际按条目加权。
+
+  另外修掉爱丽丝 6 命常量与字面量双源；`higherBetter` 保留，注释改实话。详表、方法和待办见 **`docs/mcp-write-only-props.md`**。
+- **验证**：vue-tsc 0；zd DIFF 0（DUMP / ROWS）；verify EXIT=0（3827，用例数不变）。
+- **决定**：审计脚本**不做成守卫**（需要人工分诊，红灯会逼人乱删）。T1（37 条 cfg 死暂存）和 T2（80 条结果死字段）写成低级模型可执行的待办；T3（数据类型字段）不做。
+- **纠正第 212 轮交接的错误**：第 212 轮把「方向 C 第 2 刀试点（迁 1 个角色成纯 spec）」列为下一步，理由是方向 A 已否决。但这一刀就是 **CC-99，第 148 轮已评估为不做**（卡表 CC-99 行、`mcp-mechanic-dataization-census.md` §6）：
+  - 否决理由与方向 A 无关：G1 / G3 统一只能降计数，G1 还会波及所有纯 spec 角色的路径，对逻辑正确性没有收益；
+  - 重开条件是**新角色录入时，若能靠 G1 / G3 做到纯 spec**。
+  - 第 212 轮只看了 LONG-TERM-DIRECTIONS，没看卡表。已在 LONG-TERM-DIRECTIONS 的更新注记里改正。
+- **回退点**：`git revert f516e95f`（纯删除 + 注释，零差）。

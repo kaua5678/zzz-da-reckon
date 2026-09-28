@@ -70,24 +70,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 212 轮（lane lead-arena-0925c）：CC-189 完成（ad9a9321）。文档见本提交。已 push。**
-- CC-189：自由对比页 x 轴 6 个维度里有 3 个是假的（求值器只读 cinema / wengine）。期数轴已接线（所选 Boss 的各期危局）；金数、难度两轴删除（无现成口径，接线等于发明口径）；顺带修 `env.hp` 在装配前读死的问题（选 Boss 约束时血量比除错 Boss）。详见 stun-dual-source §24.36。
-- 前几轮：211 CC-188（378c1c17）；210 CC-187（00e50d4e）；209 CC-186（4d6f13d0）。
-- REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
+**第 213 轮（lane lead-arena-0925c）：CC-190 完成（f516e95f）。文档见本提交。已 push。**
+- CC-190：接口属性「只写不读」普查（新脚本 `scripts/audit-write-only-props.cjs`）。删掉 5 个假契约字段，修掉爱丽丝 6 命常量双源，没有数值 bug。详见 `docs/mcp-write-only-props.md`、stun-dual-source §24.37。
+- **更正**：第 212 轮交接的「方向 C 第 2 刀试点」撤回，它就是 CC-99，第 148 轮已判不做（见 §24.37）。
+- 前几轮：212 CC-189（ad9a9321）；211 CC-188（378c1c17）；210 CC-187（00e50d4e）。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **LONG-TERM-DIRECTIONS 方向 C 第 2 刀试点：迁 1 个角色成纯 spec，要求零差。** 原文写「第 2 刀排在方向 A 事件钩子接口定稿之后」，方向 A 已否决，这个前置条件不再成立，现在就可以做。做法：
-   - 读 `docs/mcp-mechanic-dataization-census.md`（CC-98 盘点，口径已修订为数「spec 生成…」，先读原文），挑**一个**被判为完全可数据化、且 TS 模块最短的角色；
-   - 把它的 TS 模块能力逐项改成 spec 表达（先例：佩洛 1551 纯 spec，`specToMechanicModule` + `computeSpecResources`）；
-   - 验收：zd DIFF 0（`bash .zc/perf/zd.sh <tag>`）+ timeGolden 零差 + verify；
-   - **退出条件**（方向 C 原文）：某项能力要在 spec 里新增超过 N 行特殊语法，就留在 TS，把「为什么没迁」写进盘点文档。
-   - 只迁 1 个，不是 5 个。先看 spec 的表达力缺口有多大，再决定要不要继续。
-2. （低优先，先评估成本再做）死通道扫描只抓「只读不写」，抓不到「只写不读」（CC-189 的 `LevelOverride.gold` 就是在注册表里写、从没被读）。若能在 `scripts/lib/dead-channel-scan.mjs` 以低噪音加一个「可选接口字段只写不读」模式就加；噪音大就不做，写明理由。
+1. **`docs/mcp-write-only-props.md` §2 T1（37 条 cfg 死暂存）清理**：低级模型或 lead 都可以做，按 §2 的通用规程逐批（≤10 条）删掉，每批 vue-tsc + zd DIFF 0，最后 verify。适合派给子代理，但**不要让子代理和你同时写同一个模块文件**。
+2. T2（80 条结果死字段）：误报率更高，每条先读消费方组件。只被测试读的诊断字段默认保留。
+3. 没有 REQUIREMENTS、T1/T2 也做完时：先重新跑 `node scripts/audit-write-only-props.cjs` 确认清单收敛。之后可以看 freeCompare 的 `higherBetter` 表格胜负着色（元数据已备好，没有消费方）是否值得做。判据是它是否让比较更好读；不值得就写「不做」。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）有没有同一件事的历史裁决，别只看 LONG-TERM-DIRECTIONS（第 212 轮就是因此把已否决的 CC-99 又列成了下一步）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- 按名字的死通道扫描（`dead-channel-scan.mjs`）对常见名是瞎的：只要名字在别处被读过，就会被判「有读取」。查「某个字段到底有没有人读」要用符号级引用（`scripts/audit-write-only-props.cjs`，或 LSP 的 find references），再补一次名字兜底（.vue 和字符串键动态读取 TS 看不见）。
+- 结构类型参数（`cfg: { foo?: number }`）让 TS 的 findReferences 连不到接口属性上：接口属性显示零引用，不等于零读取。
 - 「往注册表加一行」式的 UI（freeCompare 的 AXES / METRICS 等）：加一项时必须同时有一条**真引擎行为测试**，证明选了它结果真的会变。只测「能枚举出档位」测不出假选项（CC-189）。
 - freeCompare 求值器里，凡是依赖装配结果的量（血量等）都必须在装配之后读，不能在循环外预读（CC-189 env.hp）。
 - 断言封顶时要选一个**越过**上限的输入：丽娜 x=72 算出来恰好 =30，上限写成 31 也测不出来（第 211 轮补了 x=80）。
