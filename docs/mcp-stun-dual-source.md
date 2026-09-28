@@ -2418,7 +2418,7 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - FreeComparePage:354 是求值耗时估算（约 0.35s/次），不是引擎公式；
   - **唯一的引擎公式副本**是 `ResourceResultCard.vue` 的 `anomalyBonusBreakdown`（见 ③）。
 - 「读收敛后 resourceResult 再倒推引擎决策」：StunAxisPage:643、ResourceUtilizationPage:501/585/623、ResultPage:1020/1045 都是直接展示或求和，没有倒推，**无 CC-229 病型**。
-- 喧响单价（215、170、85、10、20）在展示层无副本。
+- ~~喧响单价（215、170、85、10、20）在展示层无副本。~~ **第 255 轮更正：说错了**。grep 模式漏掉了 `ResultPage.vue:530-545` 的「215/次 · 伴随107.5」等 4 处说明文字（§24.79 CC-232 已收）。
 - ⇒ **「展示层手写引擎公式」这条线结项**。重开条件：新增展示代码出现与 core 同形的算式（已有的源码锁会拦大部分）。
 
 **② 探针**（12 队，推荐配装）：卡片显示的 `decibelSource.anomalyBonus`（来自上一轮线程值 convergence:679）、卡片重算的 own+companion、引擎 `pool.perSlotBonus` 三者，36 个槽位全部相等 ⇒ **不是数值 bug**，是规则重复。
@@ -2444,3 +2444,30 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 **影响**：零数值差（乘数都是 0.5 × 整数，浮点精确；verify 全绿，golden 零差）。**回退点**：revert f49a183f。
 
 **判据说明**：这不是为降计数。同一条游戏规则原来有 3 处独立实现，其中一处的槽位数取法已经和引擎不同；收口后规则只有一处，展示层读引擎结果，这是结构上的简化。
+
+### 24.79 第 255 轮：CC-231 删除失衡池「喧响奖励」字段；CC-232 喧响单价全部下沉 data（6b99e293 / 70cddc3c）
+
+**起点**：§24.78 交接第 1 项，判断「喧响单价归一」值不值。查单价读者时发现两个问题。
+
+**① CC-231（6b99e293）：`StunPoolResult.decibelBonus = 失衡次数 × 20 + 总连携 × 10` 是从未生效的数字。**
+- 定义在 `core/stunPool.ts`（`STUN_DECIBEL_BONUS = 20`、`CHAIN_DECIBEL_BONUS = 10`，初始提交 1a1f8c65 就有）。
+- 全仓的读者只有 `ResultPage.vue:265`（失衡池卡片「喧响奖励 +X」）和 `RunArchivePage.vue:148`，**没有任何引擎读它**。初始提交的 useResourceCalc 也没读过，`git log -S` 没有「曾计入后移出」的记录。
+- 个人喧响的来源（`types/resource/energy.ts` DecibelSource）：连携 ×10 已由 `calcSpecialActionBonus` 计入 `specialActionBonus`（结果页「特殊动作喧响」卡片也显示了它）；「进入失衡 ×20」**不在任何字段里**。
+- ⇒ 失衡池卡片的「喧响奖励 +X」一半与特殊动作卡重复，另一半从没计给任何人，用户会以为它进了喧响账。
+- **决定：删除该字段、两个常量、两处显示**；`stunPool.test` 的断言改为 `not.toHaveProperty('decibelBonus')`。
+- **不选「让引擎计入进入失衡 +20」**：这是改数值，而这条规则没有规格来源（catalog 和文档里都查不到出处），R5 禁止顺手改数值。
+- **若日后有规格确认「进入失衡 +20 喧响」是真实机制**：应作为 `calcSpecialActionBonus` 的一项进入个人喧响（改数值走 CC 卡），不要恢复失衡池上的展示字段。
+- 零数值差（verify 3946 passed）。回退点：revert 6b99e293。
+
+**② CC-232（70cddc3c）：喧响单价全部下沉到 `src/data/anomalyDecibelBonuses.ts`。**
+- 现状：异常 170 / 紊乱 85 / 乱流 85 早已在 data（2026-09-13 越层棘轮）；弹刀 215 在 `core/anomalyPool.ts`，连携 10、闪反 10、快支 20 是 `calcSpecialActionBonus` 里的字面量；`ResultPage.vue:530-545` 手写「215/次 · 伴随107.5」「10/次 · 伴随5」×2「20/次 · 伴随10」。
+- **推翻第 251 轮（本文件约 2355 行）「收益小，暂不做」**：当时的阻碍是视图层不能值导入 core。CC-222/228/230 之后，「纯规则放 data」已是既定做法，阻碍不复存在。页面上有真实读者（说明文字），常量一改文字就会说谎。
+- 改法：
+  - data 新增 `PARRY_DECIBEL_BONUS`、`CHAIN_DECIBEL_BONUS`、`DODGE_COUNTER_DECIBEL_BONUS`、`QUICK_ASSIST_DECIBEL_BONUS`；
+  - `core/anomalyPool.ts` 改用具名常量，并以原名转出 `PARRY_DECIBEL_BONUS`（convergence 的 import 不变）；
+  - ResultPage 新增 `unitPriceText(unit)`，伴随值 = `unit × DECIBEL_COMPANION_RATIO`，文字与原先逐字相同（107.5、5、10）。
+- 锁：`src/data/__tests__/decibelUnitPrice.test.ts`（core 转出与 data 同值；calcSpecialActionBonus 读 data 单价；源码锁：core 不再以字面量乘 10/20，页面不再出现「N/次 · 伴随」字面量）。**反例**：stash core 和页面后，源码锁变红。
+- 零数值差。回退点：revert 70cddc3c。
+- **至此喧响规则全部单一来源**：单价在 `data/anomalyDecibelBonuses`，伴随比例在 `data/decibelCompanion`，引擎结果带 own/total（CC-230），保底4喧响决策（CC-229），特殊动作卡（CC-227）。**喧响线结项**。
+
+**本轮新病型（值得推广）**：「结果类型里有字段、生产方在算，但全仓没有引擎读者，只有页面显示」。这类字段会让页面展示引擎并未采用的口径。§24.78 的 grep 只盯算式，抓不到这一类。

@@ -71,33 +71,34 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 254 轮（lane lead-arena-0925c）：CC-230 完成（f49a183f），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.78。
-- 前几轮：253 CC-229（4e03fc6f）；252 CC-228（2ba355d0）；251 CC-227（661133cd）。
+**第 255 轮（lane lead-arena-0925c）：CC-231（6b99e293）、CC-232（70cddc3c）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.79。
+- 前几轮：254 CC-230（f49a183f）；253 CC-229（4e03fc6f）；252 CC-228（2ba355d0）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
-- **结项**：「展示层手写引擎公式」线（§24.78 ①）。
+- **结项**：喧响线（单价、伴随、保底、特殊动作全部单一来源）。
+- **更正**：§24.78「喧响单价在展示层无副本」是错的（已在原处加删除线并注明）。
 
 **纯规则 / 引擎结果单一来源一览（新写代码直接用）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`；
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`（全部喧响单价）、`decibelCompanion`；
 - `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`；
 - `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`（anomalyPool/helpers）；
 - 展示侧行级易伤：`composables/stunVulnSummary#rowAppliedStunMultOf`；
 - 引擎结果直读：`CalcRoundResult.specialActionBonus`、`CalcRoundResult.decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`。
 
-**下一步（直接开工）**
-1. **喧响奖励单价归到一处**（小刀，先判断值不值再做）：
-   - 现状：`data/anomalyDecibelBonuses.ts` 有 170/85/85；`core/anomalyPool.ts:445` 有 `PARRY_DECIBEL_BONUS = 215`；`calcSpecialActionBonus` 里连携 10、闪反 10、快支 20 是魔法数字（:471-478）。
-   - 做法：全部挪进 `data/anomalyDecibelBonuses.ts` 作为具名常量，core 原名转出，`convergence.ts:52` 的 import 不变。
-   - 判据：只有展示层或其他模块需要这些单价时才算架构收益（例如喧响卡想写「连携 ×10」）。若 grep 下来除 anomalyPool 外无人需要 ⇒ 写「不做」加理由，别为整洁而做。
-2. 若第 1 项判「不做」：读 `docs/mcp-r6-refactor-list.md` §8 扫描记录表，挑一个还没扫过的层（候选：`src/mechanics/agents/*` 之间的重复 helper，或 `composables/resourceCalc/*` 内的重复小函数），按「让架构更通用 / 更简单」自选；扫完无收获也要在 §8 表里记一行。
-- 开工前**先查卡表**（最新 CC-230），并 `grep -rn 反锁 src`。
-- **探针写法**：`src/composables/__tests__/tmp_*.test.ts`，用 `setupHarness(...)` 加 `useResourceCalc()`；跑完 `rm`，不提交。
+**下一步（直接开工）：扫「无引擎读者的结果字段」（§24.79 末的新病型）**
+1. 范围：`src/types/resource/pools.ts`、`src/types/resource/agentResources.ts`、`src/types/resource/energy.ts` 里各结果接口（StunPoolResult、AnomalyPoolResult、AnomalyProgress、SpecialActionBonusResult、CharacterResourceResult、DecibelSource、EnergySource 等）的每个字段。
+2. 方法：对每个字段名 `f`，执行 `grep -rnE "\.f\b|\bf:" src --include=*.ts --include=*.vue | grep -v __tests__`，分成三类：生产方（core 里写入）、引擎读者（core / composables / mechanics 里读）、展示读者（views / components）。字段多，可以写个一次性 node 脚本放 `/home/kaua/calc-arch/`（不进 git）批量跑。
+3. 判定：
+   - 只有展示读者：看它显示的口径和引擎实际采用的是否一致。一致（纯展示用的派生量，如 `stunRefundValue`）⇒ 保留；不一致或含引擎没有采用的规则 ⇒ 按 CC-231 处理（删，或改为读引擎实值）；
+   - 零读者：死字段，删（先确认测试之外无人用）；
+   - 结论逐条记进 §24.80，无收获也要在 r6 §8 表记一行。
+- 开工前**先查卡表**（最新 CC-232），并 `grep -rn 反锁 src`。
 - **已知坑**：
   - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；
-  - 新文件先 `git add` 再 verify；
+  - 新文件先 `git add` 再 verify；删字段或函数后 deadChannelLs 棘轮可能报新死导出（CC-230 踩过），顺手删；
   - verify 不拦 TS6133，另跑 `npx vue-tsc -b`；
-  - `decibelSource.anomalyBonus` 取的是上一轮线程值（convergence:679），收敛后与本轮 `pool.perSlotBonus` 相等（§24.78 ②），不要把它当成分叉。
-- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）。
+  - 两刀改同一文件时，先 verify 并提交第一刀，再做第二刀，保证能分别 revert（本轮做法）。
+- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）；「进入失衡 +20 喧响」是否真实机制（无规格，CC-231 未计入，见 §24.79 ①）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
