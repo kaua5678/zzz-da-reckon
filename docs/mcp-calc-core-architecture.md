@@ -391,6 +391,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-218 | done | 90f51ade | 失衡窗口时长（useResourceCalc#computeWindowDuration）与扣无敌秒（yuzuha 影画 2）改调 core `stunWindowDuration` / `minusInvincibleTime`；锁测试加两条特征；effectiveTime.ts 5 个函数全部收口；零数值差（§24.66） |
 | CC-219 | done | 257e042c | 防御乘区（794）/ 抗性乘区 / 60 级等级系数的 3 份副本（damage.ts、anomalyPool/helpers.ts、remielle 耀变）收进叶子模块 `core/damageMultipliers.ts`；新增锁测试 damageMultipliersSingleSource；积蓄 / 失衡抗性区同形但不归一；零数值差（§24.67） |
 | CC-220 | done | dc096e98 | 蕾米耀变失衡易伤区改调 `calcStunMultiplier`（旧版把覆盖率当布尔、覆盖率 > 0 即满额；非失衡时漏 Always）；锁测试加失衡易伤区 describe；6 个蕾米预设 −11.2%～−15.7%（golden 已逐条解释并重生成，§24.68）；增伤 / 精通区裁决不做 |
+| CC-221 | done | 253257e4 | core/damage.ts 直伤 / 异常分解的失衡乘区展示改为按乘数判定（旧版按 stunned 真假判定：未失衡 + Always 通道时，直伤写死「1 (未失衡)」、异常漏行）；damage.test 加 3 例；零数值差；角色模块自带伤害公式排查结束（§24.69） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |

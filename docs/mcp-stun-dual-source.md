@@ -2157,3 +2157,19 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 解释：虚耀行在蕾米队总伤中占比高，旧口径下失衡区恒为满额（约 ×1.5 起），新口径按覆盖率加权。其余预设零差。
 
 **决定与依据**：这不属于 R5「不顺手改数值」的范围（那条针对 catalog 数据对账）。这里是引擎内部同一乘区出现两种口径，而且旧口径违背了函数自身声明的输入语义；先例有 CC-175 和 CC-212（修复后写明数值影响）。**回退点**：revert 代码提交即可（golden 基线在同一提交里）。**若日后有实测证明耀变只在失衡窗口内触发**（例如虚耀集中于失衡期），正确做法是给虚耀行传行级覆盖率（像轴模式直伤那样），而不是恢复布尔用法。
+
+### 24.69 第 245 轮：CC-221 失衡乘区分解展示按乘数判定（零数值影响；253257e4）
+
+**起点（第 244 轮交接第 1 步）**：`grep -rnE 'function calc\w*Damage' src/mechanics` 只命中耀变 `calcVoidflareDamage`（CC-219/220 已收）。改按伤害字段（易伤、暴击、异常增伤、抗性降低、穿透）搜 mechanics 与 composables/resourceCalc：命中的都是往面板或 exec 写 buff，或是把行参数透传给 core，**没有另一份手写伤害公式**。`yidhari.ts#loopMove` 的 `damage × (1 + dmgBonusPct/100)` 是循环规划时对倍率的缩放，不是结算公式，不动。
+
+**CC-220 同类残留（`stunned` 被当真假值判断）**：全仓 `stunned ?` / `if (stunned)` 只剩 core/damage.ts 两处展示：
+- 直伤分解 `formula: input.stunned ? fmt(stunMult) : '1 (未失衡)'`；
+- 异常分解 `if (stunned) breakdown.push(失衡乘区)`。
+
+未失衡时 `calcStunMultiplier` 仍返回 Always 通道 `1 + always/100`（扳机 35% / 55%），所以直伤文案与实际乘数不符，异常分解在这一格累积值会无说明地跳变。计算本身一直是对的。
+
+**改动**：直伤文案改为 `!stunned && stunMult === 1 ? '1 (未失衡)' : fmt(stunMult)`；异常的出行条件改为 `stunned || stunMult !== 1`，原来会出的行照样出，标签顺序测试不受影响。`core/__tests__/damage.test.ts` 新增 describe「失衡乘区分解展示与乘数一致（CC-221）」3 例。**反例**：`git stash push -- src/core/damage.ts` 后 2 例变红（第 3 例守护旧文案，两边都应通过）。
+
+**影响**：只影响分解展示，零数值差（golden 通过）。**回退点**：revert 本提交。
+
+**结论**：角色模块自带伤害公式的排查到此结束，没有剩余。`boolean | number` 参数（9 处全是 `stunned`）都只经 `calcStunMultiplier` 消费。**新发现（留给 CC-222）**：暴击期望算式在 damage.ts 与 anomalyPool/helpers#calcAnomalyCritExpect 各有一份，§24.66 的「只有 1 处」系漏搜。

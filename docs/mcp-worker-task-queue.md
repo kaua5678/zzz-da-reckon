@@ -71,18 +71,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 244 轮（lane lead-arena-0925c）：CC-220 完成（dc096e98），文档见本提交。push 结果见 git log / rev-list。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.68。**有数值变化**：6 个蕾米预设 −11.2%～−15.7%，golden 已重生成。
-- 前几轮：243 CC-219（257e042c）；242 CC-218（90f51ade）；241 CC-217（3ba7af41）。
+**第 245 轮（lane lead-arena-0925c）：CC-221 完成（253257e4），文档见本提交。push 结果见 git log / rev-list。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.69。零数值差。
+- 前几轮：244 CC-220（dc096e98，蕾米 −11～16%）；243 CC-219（257e042c）；242 CC-218（90f51ade）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**伤害乘区线已收尾**：防御、抗性、等级系数由 `core/damageMultipliers.ts` 提供，失衡易伤由 `calcStunMultiplier` 提供，都有锁。增伤区和精通区裁决不做（§24.68）。
+**已收尾的线**：时间口径（CC-216 ~ 218，`core/effectiveTime.ts`）；伤害乘区与角色自带伤害公式（CC-219 ~ 221，`core/damageMultipliers.ts` + `calcStunMultiplier`），都有源码锁。唯一尾巴是暴击期望（见下一步 1）。
 
 **下一步（直接开工）**
-1. **角色模块里「整条伤害公式手写」的其余情形**：CC-220 说明，自带结算函数的角色模块（耀变这类）最容易与 core 口径分叉。执行 `grep -rnE 'function calc\w*Damage' src/mechanics` 列出角色模块里的自带伤害函数，逐个与 `core/damage.ts#calcAnomalyDamage` / `calcDirectDamage` 按乘区对照：易伤区、失衡区、暴击区、异常增伤区是否与 core 同口径。**只修「违背自身接口语义或 core 口径且无裁决」的**，有数值影响就照 §24.68 的格式逐条解释 golden。
-2. 没有发现，就按 `docs/ARCHITECTURE-OVERVIEW.md` 的「可归一」清单另找项。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-220）。
-- **已知坑**：积蓄抗性区、失衡抗性区已裁决不归一；叶瞬光帷幕 `veilStunBase` 是独立的封顶机制，不要并入 `calcStunMultiplier`；`core/damage.ts#calcAnomalyDamage` 的等级系数仍按 `1 + (1/59)×(attackerLevel−1)` 现算（已验证 60 级下 `=== 2` 逐位成立）。保留现算是为了让分解展示带出等级，不算副本，锁也不覆盖。
+1. **CC-222 暴击期望算式单一来源（已预查，可直接开工）**：`core/damage.ts` 约 101-103 行（直伤 `expect` 分支：`critRate = min(100, max(0, raw)) / 100; 1 + critRate × (critDmg/100)`）与 `core/anomalyPool/helpers.ts#calcAnomalyCritExpect` 约 733-735 行（`1 + (min(100, max(0, raw))/100) × (critDmg/100)`）是同一式子，浮点运算顺序一致。做法：在 `core/damageMultipliers.ts` 加 `expectedCritMultiplier(critRateRaw, critDmg)`，两处改为调用；锁测试 `damageMultipliersSingleSource.test.ts` 加特征 `min\(\s*100\s*,\s*Math\.max\(\s*0\s*,\s*\w*[cC]rit` 且在 damageMultipliers 之外不许出现（先 grep 确认没有别的合法用途）。零数值差预期。⚠ **更正**：§24.66（第 242 轮）写的「暴击期望只在 damage.ts:129 一处」是因为变量名不同而漏搜，以此条为准。
+2. 之后另找一条线。R6 清单（`docs/ARCHITECTURE-OVERVIEW.md` §5、`docs/mcp-r6-refactor-list.md`）已全部结项。「`boolean | number` 参数实现是否两种形态都处理」这条已在本轮查完：9 处全是 `stunned`，都只经 `calcStunMultiplier` 消费，没有剩余。可以沿「同一游戏量换了变量名的副本」继续按**算式形状**搜（本轮暴击期望就是这样漏掉的），例如 `/\s*100\)\s*\*\s*\(\w+\s*/\s*100\)` 这类百分比乘积。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-221）。
+- **已知坑**：积蓄抗性区、失衡抗性区已裁决不归一；叶瞬光帷幕 `veilStunBase` 是独立封顶机制；`1 + x/100` 增伤与精通区已裁决不抽函数（§24.68）。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色暂用 default（§24.63）。
 
 **探针（优化器相关改动的验收）**
