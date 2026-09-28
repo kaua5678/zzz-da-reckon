@@ -412,3 +412,4 @@
 | 260 | agents 重复 helper 第 3 族：rowValue 族 | 行乘数来自逻辑编辑器，不是 moveFusions；私有副本漏乘，与 R37-J1 同型 ⇒ 收拢到 data getRowValue（CC-237，`a6471949`）；新发现引擎（core moveLookup、resourceCalc 多处、specs）也有约 30 处内联原始读取，下一轮裁决行规则作用面 | 新增私有取行值函数（锁会拦） |
 | 261 | 行规则作用面裁决；复核 CC-237 | 发现 spec 默认启用规则在生产生效、测试态为空；CC-237 误并焰烈 rawRowValue 造成生产回归，由 CC-238（`c512f97c`）修复；作用面 = 该招式该行的一切倍率表取值；core 保持纯函数，不直接依赖 fusion | 新增默认启用规则（绊线会拦） |
 | 262 | 行规则作用面候选 1：resourceCalc 内联原始读取 | 赠送 / 手放行（CC-239，`01889e4d`）、治疗 / 专属回复（CC-240，`97404d67`）改吃规则；panelPhases 积蓄属性判定不做；登记表锁防止新增内联读取 | resourceCalc 新增 `.values[0]`（登记表锁会拦） |
+| 263 | 行规则作用面候选 1：specs/mechanics 事件载体原始读取 | CC-241（`652c7c18`）改走 data 单一来源；生产零差（仅 usesOverride 时 base 生效，现存 spec 无 ratio）；源码锁拦截 specs 新增 `.values[0]` | 将来声明非 damage 的 multiplierRowId 会撞上 buildExecutions 的 damage 闸 |

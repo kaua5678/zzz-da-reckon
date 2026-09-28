@@ -2725,3 +2725,27 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - `src/composables/__tests__/skillRowsFusionRule.test.ts`：用合成招式覆盖治疗行和专属回复的两条分支（kind=special 首行、兜底 recovery 求和），规则 ×2 ⇒ ×2。反例：stash skillRows.ts 后读数 15≠25、11≠22。
 - **按 row.id 取值与逐行取值等价**：catalog 的 1352 个招式里行 id 全部唯一、没有缺 id（本轮用 node 扫描确认）。
 - 回退点：revert 97404d67（CC-240）/ revert 01889e4d（CC-239），两刀互不依赖。
+
+### 24.87 第 263 轮：CC-241 spec 事件载体行值改走单一来源（652c7c18）
+
+**① 改动**（§24.86 候选 1）：`src/specs/mechanics.ts` 中 specToMechanicModule.buildCharConfig 原先手写遍历 `skills.categories` 取原始 `row.values[0]`，现改为 `findMoveById(skills, moveId)` 加 `getRowValue(move, event.multiplierRowId ?? 'damage')`。specs 引用 data 符合分层规则。
+
+**② 实际生效面（探针实测，必读）**：
+- 12 个 spec 事件载体（1021019、1091018、1331008、1371020、1401012、1451007、1471010、1531010、1561020、1611011–014、1621005/019–022；不含 1171007）逐个配 ×2 规则，分别跑队伍总伤害（0 命，外加 1531/1371/1021/1471/1451/1091 的 6 命）：**修复前后读数完全一致**。例如 1561 +0.7380%、1531 +19.6909%（0 命）。
+- 原因：`buildSpecEventExecutions` 只在 `usesOverride`（`multiplierRatio≠1` 或 cinema override）时把 base 当作倍率；否则 `damageMultiplierOverride=false`，rowBuild 按 moveId 重读倍率行（这条路本来就吃规则），`mechanicRowValues` 只起「>0 才生成执行」的闸作用。
+- 现存 spec JSON **没有任何 `multiplierRatio`**，所以**当前生产零差**。规则 ×2 带来的变化全部来自下游重读路径。
+- 结论：这张卡的价值是**单一来源归一**（删掉手写的 categories 遍历）加**防止将来**声明 ratio 事件时绕开规则，不是修线上数值。代码注释已写明。
+
+**③ 锁**：`src/specs/__tests__/specEventRowFusionRule.test.ts`
+- 行为锁：打开维琳娜默认规则 1561020/damage ×2（spec 自带，默认 enabled=false），`mechanicRowValues['1561020']` 应从 195.4 变为 390.8；
+- 源码锁：specs/*.ts 非注释行禁止出现 `.values[0]`；
+- 反例：stash 源码后两条都变红（值不变；报出 mechanics.ts:146）。
+
+**④ 已知隐患（不改）**：
+- buildExecutions 注入的 getRowValue 只放行 `rowId==='damage'`，现存 6 处 multiplierRowId 全是 damage；将来声明非 damage 行时要同时改这道闸，否则读成 0。
+- `mechanicRowValues` 的直接读者 nekomata:237、claret:764、roxy:249/380、burnice:302/387、yixuan:383 各有取值口径。本轮探针中 1021、1611、1621、1371 修复前后零差，说明这些读者当前也不依赖本条路径的规则差异。
+
+**⑤ 教训**：单元锁变红不等于管线生效。取行值类改动在提交前都要跑「修复前 / 修复后」两份管线探针对比，并把生效面写进文档。
+
+- 验证：`npm run verify` EXIT=0（3967 passed | 29 skipped）；`npx vue-tsc -b` 干净。
+- 回退点：revert 652c7c18。
