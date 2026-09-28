@@ -71,31 +71,30 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 249 轮（lane lead-arena-0925c）：CC-225 完成（f361972f），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.73。
-- 前几轮：248 CC-224（f1db965e）；247 CC-223（7eb4eace）；246 CC-222（f4e45890）。
+**第 250 轮（lane lead-arena-0925c）：CC-226 完成（f9be411d），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.74。
+- 前几轮：249 CC-225（f361972f）；248 CC-224（f1db965e）；247 CC-223（7eb4eace）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**纯规则单一来源一览（新写代码请直接用这些，不要自建表或手拼字段名；源码锁会拦）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`（变种 → 基础、`resolveStatElement`、元素积蓄效率）；
-- `src/utils/elementStatKeys`：`elementStatKey`、`panelElementStat`；
-- `src/utils/enemyDebuffStats`：敌方减益字段、`ELEMENT_FIELD_PREFIX`；
-- `src/utils/agentLabelMaps`：`damageElementLabel`；
-- `src/core/damageMultipliers`：防御 / 抗性 / 等级；
-- `src/core/effectiveTime`：时间口径。
+**纯规则单一来源一览（新写代码请直接用这些）**：
+- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`；
+- `src/utils/elementStatKeys`、`src/utils/enemyDebuffStats`、`src/utils/agentLabelMaps`；
+- `src/core/damageMultipliers`、`src/core/effectiveTime`；
+- 失衡易伤区：`calcStunMultiplier`（core/anomalyPool/helpers.ts）；
+- 展示侧行级易伤：`composables/stunVulnSummary#rowAppliedStunMultOf`。
 
-**下一步（直接开工）**：元素线已结项，转向「展示层重算与 core 口径一致性」。
-1. 读 `src/composables/stunVulnSummary.ts`、`src/composables/stunVulnDisplay.ts`、`src/composables/difficultyRatio.ts`、`src/composables/difficultyCurve.ts`。逐个公式找出它们在 core 里的对应（`calcStunMultiplier` 在 core/anomalyPool/helpers.ts；时间口径在 core/effectiveTime.ts；失衡窗口在 CC-217、CC-218 改过的函数里）。
-2. 分两类处理：
-   - **自己重算**的：改为调 core 或 data 的纯函数，并加源码锁，参照 CC-220、CC-221 的做法；
-   - **读引擎结果**的：只核对字段读法对不对。
-3. 判据：只收「同一公式两处实现」的，不为降计数去抽函数。如果发现口径本来就不同（例如展示特意用了简化式），写「不做」并附理由。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-225），并 `grep -rn 反锁 src`。
+**下一步（直接开工）**：继续「展示层重算与 core 口径一致性」，本轮查完了 stunVulnSummary、stunVulnDisplay、difficultyRatio。
+1. `src/composables/difficultyCurve.ts`（620 行）：列出其中每个公式，找它在 core 或 teamCompare 里的对应。重点是 `computeDifficulty`、`liveInteractions` 的调用，以及有没有自己算时间或次数（应走 `core/effectiveTime` 和引擎的 `stunCoverage`）。
+2. 用同样的方法扫 `src/composables/` 下其他「展示用」模块：`grep -lE 'calcStunMultiplier|effectiveBattleTime|stunWindowFraction|critMultiplier' src/composables/*.ts`，看有没有在 core 结果之外自己重算。
+3. 方法（本轮验证有效）：先找「编码 → 解码」形式的往返。展示层如果从引擎输出反推引擎的输入，往往假设了错误的基数或口径。优先改为让引擎把原值写在结果上。
+- 判据：只收「同一公式两处实现」或「反推有误」；展示特意简化的，写「不做」并附理由。
+- 开工前**先查卡表**（最新 CC-226），并 `grep -rn 反锁 src`。
+- **量化影响的探针写法**：在 `src/composables/__tests__/tmp_*.test.ts` 用 `setupHarness(team.map(agentId => ({agentId})), { recommendedBuild: true })` 加 `useResourceCalc()`，console.log 出结果，跑完 `rm` 掉，**不要提交**。
 - **已知坑**：
-  - 后台 verify 要用 `setsid ./bg.sh … & sleep 2`，不 sleep 的话 wsl_exec 返回时后台进程会被带走（本轮第一次就没起来）；
-  - 删文件要 `git rm`，否则守卫的 `git ls-files` 仍会列出它，读取时报 ENOENT；
+  - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；
+  - 删文件要 `git rm`；
   - 转出壳（resourceCalc/helpers.ts、skillRows.ts）删符号时两处都要改。
-- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62；agentLabelMaps 里两种都有：第 23 行是「流明」，`DAMAGE_ELEMENT_LABEL` 是「辉光」）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）。
+- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62；agentLabelMaps 两种叫法都有）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

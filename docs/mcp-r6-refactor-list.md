@@ -399,3 +399,4 @@
 | 247 | 展示层（FinalPanel / StatPanel）乘区与引擎对账 | 2 处口径不同已修（CC-223，`7eb4eace`）；失衡 cap 字段无写入方，不修；展示层对账线收尾 | 结构锁 anomalyElement.test |
 | 248 | 元素 → 面板字段名映射表 | 10 份收进 `src/utils/elementStatKeys.ts`（CC-224，`f1db965e`），`core/elementKeys.ts` 删除 | 源码锁 elementStatKeys.test |
 | 249 | 元素字段名手拼 / StatPanel 前缀表副本 | 并入 utils/elementStatKeys（CC-225，`f361972f`），元素线结项 | 源码锁 elementStatKeys.test 第 4 例 |
+| 250 | 失衡易伤展示反推（stunVulnSummary / stunVulnDisplay 各一份，且基数假设错） | 行携带引擎实值，反推收成单一回落（CC-226，`f9be411d`） | stunVulnSummary.test CC-226 三例 |

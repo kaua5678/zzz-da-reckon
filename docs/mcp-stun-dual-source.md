@@ -2277,3 +2277,40 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - `utils/elementStatKeys`：字段名；
 - `utils/enemyDebuffStats`：敌方减益字段与前缀；
 - `utils/agentLabelMaps`：标签。
+
+### 24.74 第 250 轮：CC-226 失衡易伤可见化按行取引擎实值（f9be411d）
+
+**来源**：§24.73 交接的「展示层重算与 core 口径一致性」。
+- `composables/difficultyRatio.ts` 已直调 `core/effectiveTime`，无重复实现，不动。
+- `composables/stunVulnSummary.ts`、`composables/stunVulnDisplay.ts` 有问题，见下。
+
+**问题**：伤害池 `damagePool.ts` 写入的行级 `stunMult = 1 + (stunBase − 1) × stunForThis`。其中 `stunBase` 平时是 Boss 的 `stunVuln`，叶瞬光（1431）的帷幕行取 `panel.veilStunVulnBase = min(boss + 加成, 封顶) − 加成`（`mechanics/agents/yeshuguang.ts#veilStunBase`），触顶时小于 stunVuln。展示层按 `(stunMult − 1) / (stunVuln − 1)` 反推覆盖率，这个式子在 `stunVulnSummary.rowAppliedStunMult` 和 `stunVulnDisplay.stunVulnTitleOf` 里各写了一遍。反推的基数假设错误，导致：
+1. 帷幕行覆盖率被压低。例：基数 1.1、stunVuln 1.5 时，满覆盖被读成 20%。
+2. 生效易伤用 stunVuln 重算，封顶语义完全丢失。
+
+**实测**：探针为临时测试，已删除。用 `setupHarness` 加 `recommendedBuild` 跑 4 支叶瞬光队伍，各测 0 命和 6 命，共 8 种情况。
+- **1431-1481-1491，0 命**（strongTeamPresets 里有这支）：加成 90%，帷幕基数 1.200，13 行受影响。
+  - 全队加权生效易伤：旧 1.5101，新 1.9585；
+  - 覆盖率 0.3 的示例行：旧 1.168，新 1.330。
+- 其余 7 种情况（未触顶；6 命封顶为 3.0 时不触顶）新旧逐位相同。
+- 叶瞬光位于槽 0，与展示约定的「面板加成取槽 0」一致，所以新值等于引擎实际乘上的值。
+
+**改动**
+- `DamagePoolRow` 新增两个可选字段：`stunCoverage`（= damagePool 的 stunForThis）和 `stunVulnBase`（= stunBase），直伤行照实写入。
+- `stunVulnSummary.ts`：
+  - 反推收成**唯一**一个私有回落函数 `coverageFromStunMult`，只在行没带 `stunCoverage` 时用（测试夹具、旧数据）；
+  - 新增 `rowStunCoverage`、`rowAppliedStunMultOf`、`rowFullStunMultOf`，用行自己的基数和覆盖率；
+  - 旧签名 `rowAppliedStunMult` 保留，现有测试不改。
+- `stunVulnDisplay.ts`：appliedVulnOf、stunVulnClassOf（判断「满额」改用行自己的满覆盖值）、stunVulnTitleOf、stunVulnAppliedRows 全部改调新函数。
+- 全队满额参照 `full` 仍为 `calcStunMultiplier(stunVuln, 槽 0 加成, …, true)`，不变。
+
+**锁**：`stunVulnSummary.test.ts` 新增 3 例：
+- 帷幕行触顶得 2.1，并附反例：去掉新字段后只有 20%；
+- 普通行上，新旧两条路径逐位等价；
+- 源码锁：全 src 中 `(…stunMult − 1) / (… − 1)` 只允许出现在 stunVulnSummary.ts 一处。**反例**：stash stunVulnDisplay.ts 后，锁报出该文件。
+
+**影响**：verify 全绿（3936 passed），golden 零差；引擎伤害零变化，只改 ResultPage 的失衡易伤列和全队 / 逐人加权易伤展示。**回退点**：revert f9be411d。
+
+**不做（已评估）**
+- 行级生效易伤改用「本行所属槽位的面板加成」，而不是槽 0：槽 0 是 @fact 记录在案的展示约定（与逐招矩阵探针同口径）；失衡易伤加成多为全队 buff，各槽大多相同。等出现「非槽 0 成员自带失衡易伤加成」的具体队伍再评估。
+- 从引擎结果里直接取失衡乘数（calcDirectDamage 只写在 breakdown 文案里）：得改 core 的返回类型，收益与本卡重叠。
