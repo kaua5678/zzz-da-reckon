@@ -124,7 +124,6 @@ export function createConvergenceRoundInputs(deps: {
       enemyResistances: configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}, enemyResReduction: 0,
       stunned: stunCov, stunMultiplier: configStore.enemy.stunVuln,
       hasWindChar: wind.hasWindChar, windCharSlot: wind.windCharSlot,
-      cinema2CorrosionRate: configStore.getMechanicSetting('velina.cinema2CorrosionRate', 2 / 3),
       globalAnomalyMultiplier: globalAnomalyMultiplier.value,
       coweringConfig: setup?.coweringConfig,
       // CC-78：赠送注入不再要求 anomalyPoolSetup 声明者（原 `setup &&`）；槽位 setup 优先，否则第一个有赠送的槽（giftedPolarAssault.ts 头注释）

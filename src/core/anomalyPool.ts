@@ -33,8 +33,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     stunMultiplier = 1.5,
     hasWindChar = false,
     windCharSlot = 0,
-    // CC-72：不补默认值（原 `= 2 / 3`）——`undefined` 透传到模块 `anomalyCorrosion` 的 fallbackRate，由维琳娜模块兜底同值
-    cinema2CorrosionRate,
     globalAnomalyMultiplier = 1,
   } = input
 
@@ -298,7 +296,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     enemyResReduction,
     stunned,
     stunMultiplier,
-    cinema2CorrosionRate,
     globalAnomalyMultiplier,
     coweringConfig: input.coweringConfig,
   }
@@ -334,7 +331,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       panels,
       turbulenceCount,
       windTriggerCount,
-      cinema2CorrosionRate,
     )
 
     anomalyEvents.push({

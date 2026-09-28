@@ -298,8 +298,6 @@ export interface AnomalyPoolInput {
   hasWindChar?: boolean
   /** 风属性角色slot（用于乱流结算区计算），默认0 */
   windCharSlot?: number
-  /** 维琳娜2命：风化获得风蚀的期望利用率，默认2/3 */
-  cinema2CorrosionRate?: number
   /** 蕾米异化系数倍率，乘到紊乱/乱流/异常相关伤害；默认1 */
   globalAnomalyMultiplier?: number
   /** 畏缩配置（启用时计算畏缩固定 DOT 伤害和紊乱倍率加成；目前由爱丽丝开启） */
@@ -1041,8 +1039,6 @@ export interface DamageCalcConfig {
   enemyResReduction: number
   stunned: boolean | number
   stunMultiplier: number
-  /** C2 风蚀利用率；`undefined` ⇒ 模块侧兜底（CC-72） */
-  cinema2CorrosionRate?: number
   /** 蕾米异化系数倍率，乘到所有异常相关伤害；无蕾米时为1 */
   globalAnomalyMultiplier: number
   /** 爱丽丝畏缩配置（启用时计算 DOT 和紊乱倍率加成） */
@@ -1221,7 +1217,6 @@ export function calcTurbulenceDamage(
     panels,
     turbulenceCount,
     windTriggerCount,
-    config.cinema2CorrosionRate,
   ) ?? EMPTY_CORROSION
 
   // 如果总数超过上限，按比例缩减各元素的次数

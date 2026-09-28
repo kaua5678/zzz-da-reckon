@@ -136,13 +136,11 @@ export function findVelinaPanel(panels: readonly PanelValues[]): PanelValues | u
  * **队里没有维琳娜 ⇒ 返回 `undefined`**（不是全零对象）——调用方据此「整套不结算」，
  * 而不是「结算出 0 次」；后者仍会把 `corrosionSource`/事件行推给别的风角色。
  *
- * @param fallbackRate C2 风化获得风蚀的期望利用率（未盖章时的兜底）
  */
 export function resolveVelinaCorrosion(
   panels: readonly PanelValues[],
   turbulenceCount: number,
   windTriggerCount: number,
-  fallbackRate = 2 / 3,
 ): CorrosionSource | undefined {
   const panel = findVelinaPanel(panels)
   if (!panel) return undefined
@@ -151,7 +149,7 @@ export function resolveVelinaCorrosion(
     windTriggerCount,
     (panel.velinaCinema2 ?? 0) > 0,
     (panel.velinaCinema6 ?? 0) > 0,
-    (panel.velinaCinema2CorrosionRate as number) ?? fallbackRate,
+    (panel.velinaCinema2CorrosionRate as number | undefined) ?? VELINA_C2_CORROSION_RATE_DEFAULT,
   )
 }
 
@@ -187,7 +185,10 @@ export function simulateVelinaCorrosionState(
   }
 }
 
-function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelInput): void {
+/** 2 命风化获得风蚀的期望利用率缺省值（与 settings `velina.cinema2CorrosionRate` 的 default 同值） */
+export const VELINA_C2_CORROSION_RATE_DEFAULT = 2 / 3
+
+function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: AgentPanelInput): void {
   const additionalAbilityActive = isAdditionalAbilityActive(team, slot, agent)
   // 维琳娜专属资源标记（**本模块唯一写入方**）⇒ 该标记即「本槽是维琳娜」的判据，
   // 供风蚀状态机按归属认人（2026-09-25 CC-D3：风蚀不按「队里第一个风属性」归属）。
@@ -198,6 +199,10 @@ function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelI
   panel.velinaCinema2 = cinemaLevel >= 2 ? 1 : 0
   panel.velinaCinema4 = cinemaLevel >= 4 ? 1 : 0
   panel.velinaCinema6 = cinemaLevel >= 6 ? 1 : 0
+  // CC-27（2026-09-28）：2 命风蚀利用率由本模块在面板阶段读自己的滑块盖章，风蚀状态机（本模块
+  // `resolveVelinaCorrosion`）读回——写读同属本模块。此前该字段零写入、恒回落到编排层穿线传入的
+  // `cinema2CorrosionRate`（roundInputs → AnomalyPoolInput → core/corrosion → 能力入参），那条穿线已删。
+  panel.velinaCinema2CorrosionRate = settings?.['velina.cinema2CorrosionRate'] ?? VELINA_C2_CORROSION_RATE_DEFAULT
   panel.velinaAdditionalAbilityActive = additionalAbilityActive ? 1 : 0
 
   // 一命：风属性异常伤害无视20%风抗；异放继承风底性质，一并吃到
@@ -580,9 +585,9 @@ export const velinaMechanic: AgentMechanicModule = {
   // 风蚀状态机的**引擎期求值**入口（规则 6 引擎落点，2026-09-25 CC-6d）：
   // 引擎遍历 `AnomalyPoolInput.agentMechanics` 调 `anomalyCorrosion`（`core/anomalyPool/corrosion.ts#resolveAnomalyCorrosion`），不再值导入本模块
   // （`core/anomalyPool.ts` 终局重结算 + `helpers.ts#calcTurbulenceDamage`）。
-  // `fallbackRate` **原样透传**（含 undefined）——默认 2/3 由 `resolveVelinaCorrosion` 兜底。
-  anomalyCorrosion: ({ panels, turbulenceCount, windTriggerCount, fallbackRate }) =>
-    resolveVelinaCorrosion(panels, turbulenceCount, windTriggerCount, fallbackRate),
+  // 2 命利用率读本模块 applyPanel 盖章的 `panel.velinaCinema2CorrosionRate`（CC-27）。
+  anomalyCorrosion: ({ panels, turbulenceCount, windTriggerCount }) =>
+    resolveVelinaCorrosion(panels, turbulenceCount, windTriggerCount),
   // CC-71：风蚀气旋异放事件记录（原写死在 core/anomalyPool.ts）
   anomalyCorrosionEvents: buildVelinaCorrosionEvents,
   resolveExecutionDamage: resolveVelinaExecutionDamage,
@@ -593,7 +598,7 @@ export const velinaMechanic: AgentMechanicModule = {
       id: 'velina.cinema2CorrosionRate',
       label: '维琳娜 2 命风蚀利用率',
       description: '风化获得风蚀的期望利用率。默认 66.67%。如果轴更好、能规避浪费，可以调高；如果风化触发时经常溢出，可以调低。',
-      default: 2 / 3,
+      default: VELINA_C2_CORROSION_RATE_DEFAULT,
       min: 0,
       max: 1,
       step: 0.01,

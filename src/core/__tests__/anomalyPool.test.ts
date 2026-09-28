@@ -69,7 +69,6 @@ describe('calcAnomalyPool', () => {
       stunMultiplier: 1.5,
       hasWindChar: true,
       windCharSlot: 0,
-      cinema2CorrosionRate: 2 / 3,
       globalAnomalyMultiplier: 1,
       agentMechanics: [],
     } as unknown as AnomalyPoolInput)
@@ -108,7 +107,6 @@ describe('calcAnomalyPool', () => {
       stunMultiplier: 1.5,
       hasWindChar: true,
       windCharSlot: 0,
-      cinema2CorrosionRate: 2 / 3,
       globalAnomalyMultiplier: 1,
       agentMechanics: [velinaMechanic],
     } as unknown as AnomalyPoolInput)
@@ -153,7 +151,6 @@ describe('calcAnomalyPool', () => {
       stunMultiplier: 1.5,
       hasWindChar: true,          // 队伍**有**风角色（1621 洛克茜这类），但**不是**维琳娜
       windCharSlot: 0,
-      cinema2CorrosionRate: 2 / 3,
       globalAnomalyMultiplier: 1,
       agentMechanics: [velinaMechanic],
     }

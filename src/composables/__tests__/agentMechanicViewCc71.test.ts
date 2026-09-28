@@ -55,16 +55,24 @@ describe('CC-71 风蚀气旋事件 → anomalyCorrosionEvents', () => {
     expect(src).toContain('resolveAnomalyCorrosionEvents(input.agentMechanics, corrosionSource)')
   })
 
-  it('CC-72：core 不再补 cinema2CorrosionRate 默认值；模块兜底 = 2/3 与显式 2/3 等价', () => {
-    const core = readFileSync(resolve(__dirname, '../../core/anomalyPool.ts'), 'utf-8')
-    expect(core).not.toMatch(/cinema2CorrosionRate = 2 \/ 3/)
-    const vel = readFileSync(resolve(__dirname, '../../mechanics/agents/velina.ts'), 'utf-8')
-    expect(vel).toContain('cinema2CorrosionRate = 2 / 3,')
-    const velina = getAgentMechanic('1561')!
-    const panels = [emptyPanel(), emptyPanel(), emptyPanel()]
-    for (const [t, w] of [[0, 0], [6, 3], [12, 9]]) {
-      expect(velina.anomalyCorrosion!({ panels, turbulenceCount: t, windTriggerCount: w, fallbackRate: undefined }))
-        .toEqual(velina.anomalyCorrosion!({ panels, turbulenceCount: t, windTriggerCount: w, fallbackRate: 2 / 3 }))
+  it('CC-27：2 命风蚀利用率由维琳娜 applyPanel 读 settings 盖章、风蚀能力读回；core / 编排层不再穿线', () => {
+    for (const f of ['../../core/anomalyPool.ts', '../../core/anomalyPool/helpers.ts', '../../core/anomalyPool/corrosion.ts', '../resourceCalc/roundInputs.ts']) {
+      expect(readFileSync(resolve(__dirname, f), 'utf-8'), f).not.toContain('cinema2CorrosionRate')
     }
+    const velina = getAgentMechanic('1561')!
+    const velinaPanels = (rate?: number) => {
+      const panel = emptyPanel()
+      velina.applyPanel!({ slot: 0, agent: { damageElement: 'wind' }, cinemaLevel: 2, team: [], panel,
+        settings: rate === undefined ? {} : { 'velina.cinema2CorrosionRate': rate } } as never)
+      return [panel, emptyPanel(), emptyPanel()]
+    }
+    // 盖章值驱动状态机：c2WindGainExpected = 风化次数 × 利用率
+    for (const rate of [0, 0.5, 1]) {
+      const src = velina.anomalyCorrosion!({ panels: velinaPanels(rate), turbulenceCount: 6, windTriggerCount: 9 })!
+      expect(src.c2WindGainExpected).toBeCloseTo(9 * rate, 9)
+    }
+    // 未提供滑块值 ⇒ 模块缺省 2/3（与 settings default 同值）
+    expect(velina.anomalyCorrosion!({ panels: velinaPanels(), turbulenceCount: 6, windTriggerCount: 9 })!.c2WindGainExpected)
+      .toBeCloseTo(9 * 2 / 3, 9)
   })
 })

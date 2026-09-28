@@ -1142,15 +1142,13 @@ export interface AgentMechanicModule {
    *
    * 契约：**纯函数**（同 `crossAgentSupply.supply` / `exSpecialCount`），只读入参；返回 `undefined`
    * = 本模块不认领 / 队里没有该资源持有者（调用方据此整套跳过风蚀结算）。同一队至多一个模块返回
-   * 非 undefined（引擎按注册顺序取首个）。`fallbackRate` 原样透传（含 `undefined`）——默认值
-   * `2/3` 由模块侧 `resolveVelinaCorrosion` 兜底，引擎**不补默认值**。
+   * 非 undefined（引擎按注册顺序取首个）。角色专属参数（如维琳娜 2 命风蚀利用率）由模块在 `applyPanel`
+   * 读 `settings` 盖章到自己的面板字段、在此读回（CC-27）——本入参不携带任何角色专属量。
    */
   anomalyCorrosion?(input: {
     panels: readonly PanelValues[]
     turbulenceCount: number
     windTriggerCount: number
-    /** C2 风化获得风蚀的期望利用率（未盖章时的兜底）；`undefined` 由模块侧默认参数兜底 */
-    fallbackRate?: number
   }): CorrosionSource | undefined
   /**
    * CC-71：风蚀气旋异放事件记录（微域 / 风蚀替换广域）——由认领风蚀（`anomalyCorrosion` 有结果）的模块产出，

@@ -26,8 +26,6 @@ import type { AgentMechanicModule } from '@/mechanics/types'
  * 解析本队风蚀状态：按模块注册顺序取第一个认领的 `anomalyCorrosion` 结果。
  *
  * @param agentMechanics 已注册角色机制模块列表；`undefined` = 调用方未提供 ⇒ 返回 `undefined`
- * @param fallbackRate C2 风化获得风蚀的期望利用率；`undefined` 原样透传给能力函数，
- *   由模块侧 `resolveVelinaCorrosion` 的默认参数 `2/3` 兜底——引擎**不补默认值**
  * @returns 风蚀状态；无模块认领（队里没有维琳娜）⇒ `undefined`
  */
 export function resolveAnomalyCorrosion(
@@ -35,11 +33,10 @@ export function resolveAnomalyCorrosion(
   panels: readonly PanelValues[],
   turbulenceCount: number,
   windTriggerCount: number,
-  fallbackRate?: number,
 ): CorrosionSource | undefined {
   if (!agentMechanics) return undefined
   for (const mech of agentMechanics) {
-    const result = mech.anomalyCorrosion?.({ panels, turbulenceCount, windTriggerCount, fallbackRate })
+    const result = mech.anomalyCorrosion?.({ panels, turbulenceCount, windTriggerCount })
     if (result !== undefined) return result
   }
   return undefined

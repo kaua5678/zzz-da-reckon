@@ -1056,3 +1056,30 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：叶瞬光 / 仪�
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)
 })
+
+/**
+ * CC-27（2026-09-28）：`velina.cinema2CorrosionRate` 的真管线探针。
+ * 生产路径 = `resolveMechanicSettings` → 维琳娜 `applyPanel`（`input.settings`）盖章
+ * `panel.velinaCinema2CorrosionRate` → 异常池经 `anomalyCorrosion` 能力读回（原经 roundInputs →
+ * AnomalyPoolInput → core 穿线，已删）。此前唯一覆盖是 velina.test 直调纯函数 `simulateVelinaCorrosionState`，
+ * 绕开了生产注入点（本文件口径①）。
+ * 闭式（逐点）：`c2WindGainExpected === 当点风化触发次数 × v`（C2 生效）。**不能断言 g(0.5) = g(1)/2**：
+ * 风化触发次数随利用率反馈漂移（实测 v=1 → 8 次、v=0.5 → 7 次；本文件口径④）。另断言 v=1 时 > 0（区分力）。
+ */
+describe('模块面板阶段读 settings 盖章：维琳娜 2 命风蚀利用率', () => {
+  it('velina.cinema2CorrosionRate：corrosionSource.c2WindGainExpected === 风化触发次数·v（三点 0 / 0.5 / 1）', async () => {
+    const team: HarnessTeamSlot[] = [{ agentId: '1581', cinemaLevel: 6 }, { agentId: '1501', cinemaLevel: 6 }, { agentId: '1561', cinemaLevel: 6 }]
+    const failures: string[] = []
+    for (const v of [0, 0.5, 1]) {
+      const { gain, wind } = await probe(team, 'velina.cinema2CorrosionRate', v, calc => {
+        const pool = calc.anomalyPoolResult.value
+        const src = pool?.corrosionSource
+        if (!src) throw new Error('异常池没有 corrosionSource（维琳娜未认领风蚀 / 无乱流？）')
+        return { gain: src.c2WindGainExpected, wind: pool!.perElement.find(e => e.element === 'wind')?.triggerCount ?? 0 }
+      })
+      if (Math.abs(gain - wind * v) > 1e-9) failures.push(`v=${v}: c2WindGainExpected 应为 风化${wind}×${v} = ${wind * v}，实到 ${gain}`)
+      if (v === 1 && !(gain > 0)) failures.push(`v=1: c2WindGainExpected 应 > 0（否则探针无区分力），实到 ${gain}`)
+    }
+    expect(failures, failures.join('\n')).toEqual([])
+  }, 300000)
+})
