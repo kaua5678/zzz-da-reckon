@@ -2173,3 +2173,22 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 **影响**：只影响分解展示，零数值差（golden 通过）。**回退点**：revert 本提交。
 
 **结论**：角色模块自带伤害公式的排查到此结束，没有剩余。`boolean | number` 参数（9 处全是 `stunned`）都只经 `calcStunMultiplier` 消费。**新发现（留给 CC-222）**：暴击期望算式在 damage.ts 与 anomalyPool/helpers#calcAnomalyCritExpect 各有一份，§24.66 的「只有 1 处」系漏搜。
+
+### 24.70 第 246 轮：CC-222 暴击率钳制 / 期望暴击单一来源 `src/data/critMultiplier.ts`（f4e45890）
+
+**副本（按算式形状搜，比第 245 轮预查多出 4 份）**
+- 期望暴击 `1 + clamp(率)/100 × 暴伤/100`：
+  - `core/damage.ts#calcCritMultiplier` 的 expect 分支（直伤）；
+  - `core/damage.ts#calcAnomalyDamage` 的 anomalyCritOverride expect 分支（异放等）；
+  - `core/anomalyPool/helpers.ts#calcAnomalyCritExpect`；
+  - `components/StatPanel.vue` critMultiplier；
+  - `components/FinalPanel.vue` 直伤与异常两份：只钳上限（负暴击率不按 0），运算顺序为 `(率/100 × 暴伤)/100`，与引擎不同。
+- 暴击率钳制 `min(100, max(0, 率))`：`mechanics/agents/jane.ts` 两处（6 命强击暴击次数 = 物理强击次数 × 强击暴击率，钳后作为概率）。
+
+**改动**：新增 `src/data/critMultiplier.ts`，导出 `clampCritRatePct` 与 `expectedCritMultiplier`（后者调用前者）。放在 data 层与 `sharpCritMultiplier.ts` 同理：展示层禁止 import core。以上 8 处都改为调用它。锁测试 `damageMultipliersSingleSource.test.ts` 新增 describe「暴击期望单一来源」：除 `data/critMultiplier.ts` 外，不许出现 `Math.min(100, [Math.max(0,] xCrit…` 或 `xCritRate / 100 [)] *`。「必暴」分支的 `1 + 暴伤/100` 只是百分比换算，不在锁内。另附逐位数值断言。**反例**：`git stash push -- 5 个源码文件` 后锁报出全部 5 个文件。
+
+**等价性**：引擎侧 3 处与新函数的浮点运算顺序完全相同（`clamp/100` 后乘 `暴伤/100`），golden 零差。FinalPanel 只影响展示：暴击率 < 0 时改按 0，另有末位浮点差异，经 fmt 四舍五入后不可见。锋御锐暴仍走 `sharpCritMultiplier`。
+
+**更正**：§24.66 的「暴击期望只在 damage.ts 一处」是按变量名搜导致的漏搜。**教训**：查副本要按**算式形状**搜（钳制、百分比乘积），不要按变量名搜。
+
+**影响**：零数值差。**回退点**：revert 本提交。
