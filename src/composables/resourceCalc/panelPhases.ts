@@ -510,19 +510,20 @@ export function applyTeammateBuffRecipientFilters(
   })
 }
 
-export function computePanelPhases(
+/**
+ * 第 194 轮：某接收槽喂给 `calcPanel` 的队友 buff 输入（从 `computePanelPhases` 原样抽出，**单一事实源**）。
+ *
+ * 含 5 步加工：来源上下文 → 在队模块 `adjustTeammateBuffSource`（莱特 / 耀嘉音来源面板修正）→ 全局 Buff 并入 →
+ * 额外能力门控（`evalAdditionalAbilityBuffGates`）+ CC-130 接收槽过滤 → 效果覆盖率表（队友 buff 覆盖率 / 音擎效果覆盖率 /
+ * 队伍驱动盘）。此前副词条优化器（`composables/substatOptimizer.ts`）只取原始 `enabledTeammateBuffs`，五步全缺 ⇒
+ * 优化目标面板与伤害管线不是同一个面板（例：席德队给正兵以外的强攻也算明攻、覆盖率 50% 的拐按 100% 算）。
+ * ⚠ store 层整队贪心（`stores/config.ts` ~800）不能反向依赖 composables，仍走原始上下文（缺省 useDefault 路径不读队友 buff，不受影响）。
+ */
+export function resolveSlotPanelBuffInputs(
   slot: number,
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
-): { outOfCombat: PanelValues; inCombat: PanelValues } | null {
-  const char = configStore.team[slot]
-  if (!char?.agentId) return null
-
-  const agent = catalogStore.agentsMap.get(char.agentId)
-  if (!agent) return null
-
-  const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : undefined
-
+): { teammateBuffs: TeammateBuff[]; sourcePanelsByOwner: ReturnType<typeof buildTeammateBuffSourceContext>['sourcePanelsByOwner']; effectCoverageMap: Map<string, number>; team: ReadonlyTeam } {
   const buffSelections = configStore.teammateBuffSelections
   const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(configStore.team, {
     teammateBuffGroups: catalogStore.teammateBuffGroups,
@@ -590,6 +591,23 @@ export function computePanelPhases(
     for (const effect of buff.effects ?? []) effectCoverageMap.set(effect.id, coverage)
   }
   mergeTeamDiscEffectCoverages(effectCoverageMap, configStore, catalogStore, teamDiscs(configStore))
+  return { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team }
+}
+
+export function computePanelPhases(
+  slot: number,
+  configStore: ReturnType<typeof useConfigStore>,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+): { outOfCombat: PanelValues; inCombat: PanelValues } | null {
+  const char = configStore.team[slot]
+  if (!char?.agentId) return null
+
+  const agent = catalogStore.agentsMap.get(char.agentId)
+  if (!agent) return null
+
+  const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : undefined
+
+  const { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore)
 
   // 计算面板
   const result = calcPanel(
@@ -608,12 +626,17 @@ export function computePanelPhases(
     },
   )
 
-  // 局内面板（全局 buff 已并入 calcPanel，不再后补）
-  const panel: PanelValues = { ...result.inCombat }
   // 局外回能总计（基础 × 局外加成 + 固定），供回能转模按局外口径读取。
-  panel.energyRegenOutOfCombat = (result.outOfCombat.energyRegen ?? 1.2)
+  // 第 194 轮：同时盖到局外面板上——此前局外面板该字段恒为 emptyPanel 缺省 1.2（从未盖章），
+  // 任何经 `getOutOfCombatPanel` / `sourcePanelPhase: 'outOfCombat'` 读它的新消费方都会静默拿到陈旧值
+  // （CC-127 洛克茜读错回能字段同类陷阱）。当时无消费方读局外面板上的该字段 ⇒ 零差。
+  const energyRegenOutOfCombat = (result.outOfCombat.energyRegen ?? 1.2)
     * (1 + (result.outOfCombat.energyRegenBonusPct ?? 0) / 100)
     + (result.outOfCombat.energyRegenBonusFlat ?? 0)
+  result.outOfCombat.energyRegenOutOfCombat = energyRegenOutOfCombat
+  // 局内面板（全局 buff 已并入 calcPanel，不再后补）
+  const panel: PanelValues = { ...result.inCombat }
+  panel.energyRegenOutOfCombat = energyRegenOutOfCombat
   // 额外能力触发条件统一判定（声明式 spec.additionalAbility）：满足才写面板标记，模块/伤害池按标记开关。
   const aaSpec = getAgentSpec(agent.id)?.additionalAbility
   if (aaSpec) {

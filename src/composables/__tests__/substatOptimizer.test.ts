@@ -1,11 +1,15 @@
 /**
  * CC-52：computeSubstatAllocationForSlot 与原 ImpactChart `runOptimizerForSlot0` 内联算法逐值一致。
+ * 第 194 轮：优化器的队友 buff 输入改为与伤害管线同源（`resolveSlotPanelBuffInputs`：门控 / 接收槽过滤 / 全局 Buff /
+ *   覆盖率 / 来源面板修正）。本队（莱特 + 耀嘉音，都有来源修正）上分配仍与原内联算法逐值相等，故第一条用例不改；
+ *   输入确实换源由末尾「与伤害管线同源」用例钉住。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { computeOptimalSubStats, getTemplate } from '@/core/substatOptimizer'
 import { teammateBuffSourceContextFromStores } from '@/composables/teammateBuffContext'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
+import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
 
 describe('computeSubstatAllocationForSlot', () => {
   it('与原组件内联算法逐值相等（三个槽位），且结果非空', async () => {
@@ -47,5 +51,17 @@ describe('computeSubstatAllocationForSlot', () => {
   it('空槽 ⇒ null', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1161' }, '', ''])
     expect(computeSubstatAllocationForSlot(1, config, catalog)).toBeNull()
+  }, 60000)
+})
+
+describe('副词条优化器的队友 buff 输入与伤害管线同源（第 194 轮）', () => {
+  it('席德 + 命破队友（额外能力不触发）：原始上下文含「明攻」，管线输入按门控剔除', async () => {
+    const { config, catalog } = await setupHarness([{ agentId: '1461' }, { agentId: '1441' }, ''], { recommendedBuild: true })
+    const effectIds = (buffs: { effects?: { id: string }[] }[]) => new Set(buffs.flatMap(b => (b.effects ?? []).map(e => e.id)))
+    const brightIds = [...effectIds(teammateBuffSourceContextFromStores(config, catalog).enabledTeammateBuffs
+      .filter(b => b.id === 'seed.core_vanguard_bright_attack'))]
+    expect(brightIds.length).toBeGreaterThan(0) // 原始上下文里有明攻：否则本用例无判别力
+    const piped = effectIds(resolveSlotPanelBuffInputs(1, config, catalog).teammateBuffs)
+    for (const id of brightIds) expect(piped.has(id), id).toBe(false)
   }, 60000)
 })

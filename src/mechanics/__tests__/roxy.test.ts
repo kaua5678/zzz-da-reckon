@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import {
   ROXY_C1_CRIT_DMG,
   ROXY_C1_RES_REDUCTION,
@@ -133,5 +134,17 @@ describe('洛克茜风能模型（v12 + 手法）', () => {
     expect(r0.megaTornadoCount).toBe(2)
     const r6 = computeRoxyWindEnergy({ exSpecialCount: 2, ultimateCount: 0, spinSeconds: 2.5, cinemaLevel: 6 })
     expect(r6.megaTornadoCount).toBe(2 + 2 * ROXY_C6_ECHO_BURSTS)
+  })
+})
+
+describe('局外总回能 energyRegenOutOfCombat 两相一致（第 194 轮）', () => {
+  it('局外面板与局内面板同值 = 基础 × (1 + 局外%) + 局外固定（局外面板不再残留缺省 1.2）', async () => {
+    const { catalog, config } = await setupHarness([{ agentId: '1621' }, { agentId: '1081' }, { agentId: '1031' }], { recommendedBuild: true })
+    const ph = computePanelPhases(0, config, catalog)!
+    const o = ph.outOfCombat
+    const expected = o.energyRegen * (1 + o.energyRegenBonusPct / 100) + o.energyRegenBonusFlat
+    expect(expected).toBeGreaterThan(1.2) // 推荐配装带回能：否则本断言无判别力
+    expect(o.energyRegenOutOfCombat).toBeCloseTo(expected, 9)
+    expect(ph.inCombat.energyRegenOutOfCombat).toBeCloseTo(expected, 9)
   })
 })

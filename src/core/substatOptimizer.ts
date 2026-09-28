@@ -685,6 +685,8 @@ export interface OptimizeSubstatsInput {
     cinemaLevel: number
     wEngineModLevel: number
     sourcePanelsByOwner?: SourcePanelsByOwner
+    /** 效果覆盖率表（effect id → 0~1），与伤害管线 calcPanel 同口径；缺省 = 全部按 100%（第 194 轮） */
+    effectCoverageMap?: Map<string, number>
     enemyWeakness?: readonly string[]
   }
   /** 队友信息（可选）。提供后攻击词条的拐力收益会计入目标函数。 */
@@ -771,6 +773,7 @@ function computeNoSubstatPanel(input: OptimizeSubstatsInput): PanelValues {
       cinemaLevel: input.config.cinemaLevel,
       wEngineModLevel: input.config.wEngineModLevel,
       sourcePanelsByOwner: input.config.sourcePanelsByOwner,
+      effectCoverageMap: input.config.effectCoverageMap,
       enemyWeakness: input.config.enemyWeakness,
     },
   )
