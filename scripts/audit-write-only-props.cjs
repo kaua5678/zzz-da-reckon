@@ -7,6 +7,7 @@
  *   ① TS LanguageService `findReferences` 按**符号**查引用，生产代码零读取的属性入候选
  *      （.vue 看不见 ⇒ 名字在 .vue 里出现过的剔除；字符串键动态读取看不见 ⇒ ② 兜底）；
  *   ② 按名字在全 src（含 .vue、去注释）找任何形式的读取（`.name` 非赋值 / `['name']` / 字符串 / 解构 / 裸名运算），
+ *      以及 src 与 public/static 下所有 .json 里的 `"name"`（spec 按字符串键读 cfg；第 214 轮 CC-191 补），
  *      一个都没有的才输出。② 会因同名局部变量**漏报**（宁漏不误），所以输出是「高置信候选」，**不是判定**。
  * 输出 TSV：声明位置 / 字段 / opt|req / 写入数 / 测试读取数。耗时约 2–3 分钟（~4000 个属性各查一次引用）。
  * 不进 verify / check-guards：噪音形态（结果对象被测试读、JSON 数据类型字段）需要人工分诊，做成守卫会逼人为变绿乱删。
@@ -84,6 +85,18 @@ const corpus = (function cw(d) {
     return [fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1')]
   })
 })(path.join(ROOT, 'src')).join('\n')
+// ②′ JSON 语料（CC-191，第 214 轮补）：spec 解释器按**字符串键**读 cfg（`countField` / `initialValueField` /
+// `enabledField` / `valueField`…，见 src/specs/types.ts），键名只出现在 src/specs/agents/*.json 里。
+// 第 213 轮漏了这一段 ⇒ T1 的 37 条里有 17 条其实被 spec 读取。从严：JSON 里以 `"name"` 出现过就算有读取
+// （含 `fields` 元数据数组这类非读取引用——宁漏不误）。
+const jsonCorpus = [path.join(ROOT, 'src'), path.join(ROOT, 'public', 'static')].flatMap(function jw(d) {
+  if (!fs.existsSync(d)) return []
+  return fs.readdirSync(d, { withFileTypes: true }).flatMap(e => {
+    const p = path.join(d, e.name)
+    if (e.isDirectory()) return e.name === 'node_modules' ? [] : jw(p)
+    return e.name.endsWith('.json') ? [fs.readFileSync(p, 'utf8')] : []
+  })
+}).join('\n')
 const esc = s => s.replace(/[$]/g, '\\$')
 function nameRead(name) {
   const n = esc(name)
@@ -93,7 +106,7 @@ function nameRead(name) {
     new RegExp("['\"`]" + n + "['\"`]"),
     new RegExp('\\{[^{}()]*\\b' + n + '\\b[^{}()]*\\}\\s*(?:=|:\\s*\\w)'),
     new RegExp('(?<![.\\w$])' + n + '\\s*(?:\\?\\?|&&|\\|\\||[-+*/<>]=?|\\))'),
-  ].some(re => re.test(corpus))
+  ].some(re => re.test(corpus)) || new RegExp('"' + n + '"').test(jsonCorpus)
 }
 let i = 0
 for (const t of targets) {

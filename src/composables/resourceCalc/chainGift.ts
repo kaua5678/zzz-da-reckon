@@ -51,8 +51,8 @@ export function applyChainGift(
   const targetSlot = resolveTeammateTargetSlot(providerSlot, base.characters.map(c => c.slot), targetSetting)
   // 帽子把戏替换的是「上一位队友的快速支援→该队友本人的连携技」（用户口径：赠送连携给上一位队友打，
   // 不是诺姆替打自己的 1571018）——连携招式 id/倍率/时长全部取目标队友技能表。
-  // C4 喧响（诺姆+队友各 200×次数）已由资源池 calcDecibelSource 计入（buildResourceResult 回写
-  // cfg.normaHatToChainCount → 下一轮迭代注入 extraUnshareableDecibel，真实影响终结技次数），
+  // C4 喧响（诺姆+队友各 200×次数）已由模块 chainGift 声明的 decibelPerUnit 经
+  // crossAgentSupply#giftDecibelForCfg 计入喧响收入（真实影响终结技次数），
   // applyChainGift 只做连携赠送，不再重复注入喧响。
   // 赠送连携行需自带倍率表值（applyChainGift 在 enrich 之后执行，不走 enrich 回填；
   // 缺倍率则伤害池按 damageMultiplier≤0 跳过、失衡池无 baseDaze——带上后伤害/失衡才进池）

@@ -22,7 +22,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
-import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
+import type { SkillExecution } from '@/types/resource'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
@@ -132,15 +132,6 @@ export function assignRinaUltNeighborEnergy(
   out[next] = 30
   out[previous] = 10
   return out
-}
-
-export function applyRinaTeamEnergyFlags(characters: CharacterOperationConfig[]): void {
-  const rina = characters.find(character => character.agentId === RINA_ID)
-  if (!rina) return
-  const energy = assignRinaUltNeighborEnergy(characters.map(character => character.slot), rina.slot)
-  for (const character of characters) {
-    character.rinaEnergyPerRinaUlt = energy[character.slot] ?? 0
-  }
 }
 
 function pushExec(
@@ -304,20 +295,13 @@ export const rinaMechanic: AgentMechanicModule = {
   // CC-35c：额外能力激活时全队电属性异常持续 +3s（原 anomalyPanels#getTeamAnomalyDurationBonus 按 '1211' 写死，逐字迁入）
   teamAnomalyDurationBonus: ({ element, slot, agent, team }) =>
     (element === 'electric' && evalAdditionalAbility(team, slot, agent, getAgentSpec('1211')?.additionalAbility) ? 3 : 0),
-  // 队伍级机制（原先由 useResourceCalc 手工 import + 调用 applyRinaTeamEnergyFlags）：
-  // 丽娜终结技邻位回能。只在 build 阶段动手，与迁移前的调用时机一致。
-  applyTeamConfig: ({ characters, phase }) => {
-    if (phase !== 'build') return
-    applyRinaTeamEnergyFlags(characters)
-  },
   /**
    * 跨槽位供给：终结技**邻位回能**（下一位 30 / 上一位 10，两人队另一位 30）。
    *
    * 2026-09-15 core 棘轮批次3：原先引擎在 `calcCrossAgentEnergy` 里
    * `findIndex(c => c.agentId === '1211')` 找丽娜槽位再乘系数；现引擎只按 kind 找提供者
    * （`neighborUltEnergyFor`），邻位分配语义留在本模块（规则 6）。
-   * 为什么不能靠 cfg 字段反向定位：`rinaEnergyPerRinaUlt` 是**写给全队**的 buff 值，
-   * 无法据此认出「谁是提供者」。
+   * （原先另有 applyTeamConfig 往全队 cfg 写 `rinaEnergyPerRinaUlt`，从无读取方，CC-191 删除。）
    */
   crossAgentSupply: {
     kind: 'neighbor-ult-energy',

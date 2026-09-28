@@ -669,8 +669,6 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       assistRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
       teamUltRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
     })
-    cfg.jufufuHuweiHits = cycle.huweiHits
-    cfg.jufufuTigerChainCount = cycle.tigerChainCount
     cfg.jufufuSpinCount = cycle.spinCount
     ;(cfg as any).jufufuCycle = cycle
 

@@ -5,7 +5,6 @@ import { useConfigStore } from '@/stores/config'
 import { computePanelPhases, getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/helpers'
 import { neighborUltEnergyByProvider } from '@/core/resource/crossAgentSupply'
 import {
-  applyRinaTeamEnergyFlags,
   assignRinaUltNeighborEnergy,
   computeRinaBangboo,
   RINA_POTENTIAL_PEN_RATIO,
@@ -217,10 +216,6 @@ describe('丽娜面板与资源接线', () => {
       { slot: 1, agentId: '1211' },
       { slot: 2, agentId: '1011' },
     ]
-    applyRinaTeamEnergyFlags(configs)
-    expect(configs[0].rinaEnergyPerRinaUlt).toBe(10)
-    expect(configs[2].rinaEnergyPerRinaUlt).toBe(30)
-
     const states: any[] = configs.map((_, index) => ({ ultimateCount: index === 1 ? 1 : 0 }))
     // 2026-09-15 core 棘轮批次3：原 `calcRinaUltEnergy(configs, states, target)` 已删——
     // 引擎改走通用类别查询 `neighborUltEnergyByProvider`（模块 crossAgentSupply 声明）。

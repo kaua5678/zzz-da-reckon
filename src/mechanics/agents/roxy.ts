@@ -256,7 +256,6 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   record.roxyRestPeaceMoveId = findMoveById(skills, REST_PEACE_MOVE_ID)?.id ?? ''
   record.roxyPerEnergyExtraMoveId = findMoveById(skills, PER_ENERGY_EXTRA_MOVE_ID)?.id ?? ''
   record.roxyEyeBurstMoveId = findMoveById(skills, EYE_BURST_MOVE_ID)?.id ?? ''
-  record.roxyMiniTornadoMoveId = findMoveById(skills, MINI_TORNADO_MOVE_ID)?.id ?? ''
   record.roxyMegaTornadoMoveId = findMoveById(skills, MEGA_TORNADO_MOVE_ID)?.id ?? ''
   record.roxySendOffMoveId = findMoveById(skills, SEND_OFF_MOVE_ID)?.id ?? ''
   record.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2))

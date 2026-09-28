@@ -239,7 +239,6 @@ function buildLiuyinCharConfig({ slot, cinemaLevel, team, skills, cfg, panel, ge
   // CC-180：与赠大 / 赠连携同一解析（已上场序列、跳过空槽；无队友 = -1）。`team` 定长 3 槽、空槽 agentId === ''，
   // 旧式按 team.length=3 环绕 ⇒ 琉音在槽 0、槽 2 空时「上一位」落到空槽，额外能力直伤行整行丢失（站位差 3.4%）。
   cfg.liuyinPreviousTeammateSlot = resolveTeammateTargetSlot(slot, team.filter(m => m.agentId && m.agent).map(m => m.slot), prevSetting)
-  cfg.liuyinHug60Count = Math.floor(cfgNum(cfg, 'liuyin.hug60Count', -1))
   // 三个强特由本模块按 1→3 顺序生成，跳过通用强特执行；强特次数必须为整数（真实次数，非期望值模型）。
   cfg.skipGenericExSpecial = true
   cfg.exSpecialCountFloor = true

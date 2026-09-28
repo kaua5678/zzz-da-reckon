@@ -428,8 +428,6 @@ function computeClaretBasicPerSecFromCfg(record: Record<string, unknown>, share:
 function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.claretSkills = skills
-  record.claretMaimMoveId = findMoveById(skills, MAIM_MOVE_ID)?.id ?? ''
-  record.claretBloodBurialMoveId = findMoveById(skills, BLOOD_BURIAL_MOVE_ID)?.id ?? ''
   // （2026-09-19 R37 清理）曾在此写 record.claretExMoveId / claretExDamageMultiplier：全仓零读取点的死诊断键
   //   （EX 行倍率由 enrichExecutionPlan 按 moveId 从倍率表回填，不经这里），判据 14 看不见 record 动态键 ⇒ 手工核销。
   /**

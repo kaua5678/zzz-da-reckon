@@ -127,13 +127,8 @@ export function runFoldLoop(
         + (i === ultimateGift.targetIdx ? ultimateGift.time : 0)
       // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
       let excess = rowTime - (state.necessaryTime + state.basicAttackTime)
-      const teammatesLedgerNet = ctx.configs.reduce(
-        (sum, _, j) => (j === i ? sum
-          : sum + Math.max(0, st[j].necessaryTime - (st[j].comboAlignCredit ?? 0) + st[j].basicAttackTime)),
-        0)
+      // （CC-191 删：原此处按「战斗窗口 − 队友账本净占用」算 availableFrontline 写 cfg.timeAvailableFrontlineSeconds，字段注释自承无消费者）
       const battleWindow = ctx.totalTime - (ctx.config.invincibleTime ?? 0)
-      const availableFrontline = Math.max(0, battleWindow - teammatesLedgerNet)
-      cfg.timeAvailableFrontlineSeconds = availableFrontline
       // 真实时间压力（模块退化判据的权威信号，见 CharacterOperationConfig.timePressureSeconds）：
       // **本槽物化行 − 战斗窗口**（不减队友占用）——用户裁决 2026-09-25：退化（短轴/砍交互）只在
       // 「自己绝对打不完」时触发。旧口径减了队友账本净占用 ⇒ 队友吃掉前台就把「其实装得下」的队

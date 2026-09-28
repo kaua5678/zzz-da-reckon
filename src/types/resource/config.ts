@@ -100,10 +100,6 @@ export interface CharacterOperationConfig {
   parryTimeFreeCount?: number
   /** 强特成本类型（catalog energyCost 键语义分类；见 ExSpecialCostType 注释） */
   exSpecialCostType?: ExSpecialCostType
-  /** 强特成本数值（energy 型 = 每发能量；resource 型 = 每发资源点；free 型 = 0） */
-  exSpecialCostAmount?: number
-  /** 替代资源标识（如 'sharpness'；energy/free 型为空） */
-  exSpecialResourceId?: string
   /** 替代资源型强特的应付次数：模块资源账本本轮 assembly 写入、下一轮 resolveExSpecialCount 读（不动点收敛，同般岳套路） */
   exSpecialResourcePaidCount?: number
   /** 额外强特行（免费/窗口门控的次要强特），注册表 src/data/exSpecialPlans.ts 预存于 buildCharConfig */
@@ -221,8 +217,6 @@ export interface CharacterOperationConfig {
   velinaAdditionalAbilityActive?: boolean
   /** 维琳娜2命：赋彩属性获得同等积蓄 */
   velinaCinema2?: boolean
-  /** 赋彩复制的队友属性，默认取第一个非风队友属性 */
-  velinaColorElement?: string
   /** 风华广域：Eye of the Storm move id */
   velinaEyeMoveId?: string
   /** 风华广域：Eye of the Storm actionTime */
@@ -233,8 +227,6 @@ export interface CharacterOperationConfig {
   velinaSweepingCyclone1MoveId?: string
   /** 风华广域：Sweeping Cyclone #2 move id */
   velinaSweepingCyclone2MoveId?: string
-  /** 风蚀微域：Condensed Cyclone move id */
-  velinaCondensedCycloneMoveId?: string
   /** 是否为爱丽丝，用于剑意专属资源 */
   aliceEnabled?: boolean
   /** 爱丽丝额外能力是否触发：队伍中存在另一名异常或支援角色 */
@@ -268,18 +260,12 @@ export interface CharacterOperationConfig {
   aliceTeamAssaultCount?: number
   /** 爱丽丝剑仪：**全队紊乱次数**（上一轮异常池收敛值）。对应 spec `alice_disorder_gain` */
   aliceDisorderCount?: number
-  /** 洛克茜小旋风 move id */
-  roxyMiniTornadoMoveId?: string
   /** 洛克茜小旋风持续秒数，默认 5 */
   roxyMiniTornadoSeconds?: number
   /** 克拉蕾斩金断铁使用次数（残痕消耗来源之一） */
   claretCleaveCount?: number
   /** 克拉蕾葬血强袭使用次数（消耗个人资源并提升伤害） */
   claretBloodBurialCount?: number
-  /** 克拉蕾毁伤 move id */
-  claretMaimMoveId?: string
-  /** 克拉蕾葬血强袭 move id */
-  claretBloodBurialMoveId?: string
   /** 克拉蕾秘血铸锋（锐能强特）单次动作时长（秒，倍率表） */
   claretExActionTime?: number
   /** 克拉蕾秘血铸锋（锐能强特）单次喧响回复（倍率表行） */
@@ -334,8 +320,6 @@ export interface CharacterOperationConfig {
   aliceCoweringDisorderBonusPerSec?: number
   /** 爱丽丝畏缩紊乱倍率加成上限（%），默认 180 */
   aliceCoweringDisorderBonusMax?: number
-  /** 爱丽丝畏缩物理异常积蓄效率加成（%），默认 25 */
-  aliceCoweringBuildUpEfficiency?: number
   /** 爱丽丝二命：终结技命中触发极性强击（额外 spark） */
   aliceCinema2UltSpark?: boolean
   /** 开局赠送能量（普通人40，仪玄120闪能等） */
@@ -400,8 +384,6 @@ export interface CharacterOperationConfig {
   decibelShareRatio: number
   /** 辅助大招给队友回能量（如柚叶25，无则0） */
   supportUltimateEnergyRegen: number
-  /** 是否为辅助角色（影响连携默认分配） */
-  isSupport: boolean
   /** 时间分配权重（3个角色的权重比，用于分配平A时间） */
   timeWeight: number
   /** 时间预算收敛：执行计划前台时间超出战斗时间的部分（秒），折入必要前台时间以压缩平A池（引擎时间收敛外层循环写入） */
@@ -419,12 +401,6 @@ export interface CharacterOperationConfig {
    */
   timePressureSeconds?: number
   /**
-   * 本槽可用前台时间（秒）：`预算 − 无敌时间 − 队友账本净占用`。
-   * ⚠ 与 `timePressureSeconds` **不再同源**（2026-09-25 起后者不减队友）：本字段仍减队友占用，
-   * 表「全队抢前台时本槽能分到多少」；当前**无消费者**（叶瞬光只读 timePressureSeconds）。
-   */
-  timeAvailableFrontlineSeconds?: number
-  /**
    * 行级收入可行上限（秒，**招式行**、不含平A填充；债 2 批 2-1 截断外环回灌，2026-09-19 R37-J2）。
    * 缺省 undefined ⇒ 账本收入按未截断行计（默认路径零分支零写入）。只由 `calcTeamResources` 的重折环在
    * 「初装截断 > 容差」时按上一轮装配的每槽 `kept` 写入，`calcEnergySource` / `calcRawDecibelParts` 经 `feasibleRows`
@@ -436,12 +412,6 @@ export interface CharacterOperationConfig {
   tauntCancelCount?: number
   /** 资源利用率覆盖：actionId/eventId -> 释放率/上限 */
   resourceUtilization?: Record<string, ResourceUtilizationRule>
-  /** 是否为雅，用于烈霜/落霜专属机制 */
-  miyabiEnabled?: boolean
-  /** 雅霜月架势三段 move id = 1091029 */
-  miyabiFrostMoonMoveId?: string
-  /** 雅霜月架势三段消耗落霜 = 6 */
-  miyabiFrostMoonCount?: number
   /** 雅霜月架势三段 actionTime = 3.434 */
   miyabiFrostMoonActionTime?: number
   /** 琉音命座等级 */
@@ -450,8 +420,6 @@ export interface CharacterOperationConfig {
   liuyinExtraAbilityActive?: boolean
   /** 琉音专属直伤读取的上一位队友槽位（已解析） */
   liuyinPreviousTeammateSlot?: number
-  /** 琉音 60 好评抱拳次数；-1 表示按失衡次数自动 */
-  liuyinHug60Count?: number
   /** 琉音送客长按（客诉抱拳）move id = 1481009 */
   liuyinFarewellMoveId?: string
   /** 琉音送客长按伤害倍率（1481009 damage 行） */
@@ -601,8 +569,6 @@ export interface CharacterOperationConfig {
   lycaonC1Coverage?: number
   /** 莱卡恩影画2回能（5 能量/次；次数 = 失衡次数 + 队伍连携总次数，由 useResourceCalc 注入总额） */
   lycaonC2EnergyPerTrigger?: number
-  /** 诺姆膛温换连携次数（buildResourceResult 回写，C4 喧响 = 次数 × 200 × 2 由资源池注入） */
-  normaHatToChainCount?: number
   /** 莱卡恩影画2回能总额（useResourceCalc 注入 = (失衡次数 + 队伍连携总次数) × 5） */
   lycaonC2Energy?: number
   /** 卢西娅 A5（随想 1451005）actionTime，buildCharConfig 从倍率表读取 */
@@ -639,10 +605,6 @@ export interface CharacterOperationConfig {
   jufufuAweInitial?: number
   /** 橘福福影画2：任意角色终结技时威势回复量/次（未达2命为 0；spec gain valueSource=cfgField） */
   jufufuC2WeishiPerUlt?: number
-  /** 橘福福·虎威自动攻击次数（后场 floor(t/4)） */
-  jufufuHuweiHits?: number
-  /** 橘福福·虎釜震煞次数（威风账本 floor(total/100)） */
-  jufufuTigerChainCount?: number
   /** 橘福福·山君鼎戏·威势旋转命中次数（= 威势消耗） */
   jufufuSpinCount?: number
   /** 橘福福影画等级（模块缓存） */
@@ -666,10 +628,6 @@ export interface CharacterOperationConfig {
    * 存在时终局重推不再从平A重推照影（`@fact agent:1431/终局整数化`「floor 一次」）。
    */
   yeshuguangFrozenZhaoying?: number
-  /** 丽娜终结技每次给本槽位的能量（邻位30/10） */
-  rinaEnergyPerRinaUlt?: number
-  /** 露西终结技每次给本槽位的能量（邻位 30/10） */
-  lucyEnergyPerLucyUlt?: number
   /** 露西影画1：回旋挥击全队回能标记 */
   lucyC1Enabled?: number
   /** 露西：队友强特合计（编排注入） */
@@ -692,8 +650,6 @@ export interface CharacterOperationConfig {
   axisActionCounts?: Record<string, number>
   /** 全队通用：轴内终结技块总次数（× 窗口数；轴模式注入，非轴 0；希希芙影画2 等消费） */
   axisUltimateTotal?: number
-  /** 苍角终结技每次给本槽位的能量（邻位 30/10） */
-  soukakuEnergyPerSoukakuUlt?: number
   /** 全队通用：以太帷幕开启总次数（照 veilCount + 爱芮/叶瞬光/千夏开帷幕；爱芮应援能量与叶瞬光溯影惊鸿消费） */
   teamVeilCountTotal?: number
   /** 仪玄·2连墨痕化形次数（主页交互栏；#1+#3，40闪能/次） */

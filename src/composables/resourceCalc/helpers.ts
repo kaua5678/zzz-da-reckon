@@ -547,8 +547,6 @@ export function buildCharConfig(
     exSpecialMoveId: exSpecial?.moveId ?? '',
     exSpecialEnergyConsume: exSpecial?.energyConsume ?? 0,
     exSpecialCostType: exSpecial?.costType ?? (exSpecial?.energyConsume ? 'energy' : 'free'),
-    exSpecialCostAmount: exSpecial?.costAmount ?? 0,
-    exSpecialResourceId: exSpecial?.resourceId,
     exSpecialActionTime: exSpecial?.actionTime ?? 0,
     exSpecialDecibelRecovery: exSpecial?.decibelRecovery ?? 0,
     decibelRecoveryByMoveId,
@@ -608,7 +606,6 @@ export function buildCharConfig(
     extraSelfDecibelReward: 0,
     decibelShareRatio: 0.5,
     supportUltimateEnergyRegen: 0,
-    isSupport,
     timeWeight,
     resourceUtilization,
   }

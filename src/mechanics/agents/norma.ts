@@ -281,7 +281,7 @@ function buildNormaCharConfig({ slot, cinemaLevel, team, skills, cfg, panel }: A
   // C2：帽子把戏回 25 能量/20s 冷却 —— 由资源池按战斗时间触发（见 core/resource/helpers.ts calcEnergySource）
   cfg.normaC2EnergyPerTrigger = cinemaLevel >= 2 ? C2_ENERGY_PER_TRIGGER : 0
   cfg.normaC2TriggerInterval = C2_TRIGGER_INTERVAL
-  // C4：膛温换连携时诺姆与对应代理人回 200 喧响 —— 需喧响池注入，暂未接入（待核对）。
+  // C4：膛温换连携时诺姆与对应代理人回 200 喧响 —— 已接入：chainGift 声明的 decibelPerUnit（见模块底部）。
 
 
   // 额外能力·集群优势（额外能力触发时）：
@@ -495,13 +495,9 @@ function buildNormaResourceResult({ cfg, state }: AgentResourceResultInput): Par
     extraAbilityAtkBonus: cfg.normaExtraAbilityAtkBonus ?? 0,
     techGapStunBonus: cfg.normaTechGapStunBonus ?? 0,
   })
-  // C4 喧响（200 × 膛温换连携次数 × 诺姆+队友 2 人）：回写 hatCount 供资源池 calcDecibelSource
-  // 下一轮迭代注入 extraUnshareableDecibel —— 喧响真实计入终结技次数（此前仅展示层注入，不影响终结技）
-  if ((cfg.normaCinemaLevel ?? 0) >= 4) {
-    cfg.normaHatToChainCount = source.hatToChainCount
-  } else {
-    cfg.normaHatToChainCount = 0
-  }
+  // C4 喧响（诺姆 + 上一位队友各 200 / 次）由本模块 chainGift 声明的 `decibelPerUnit`（400 = 两侧合计）
+  // 经 `core/resource/crossAgentSupply.ts#giftDecibelForCfg` 结算进喧响收入（CC-191 删了此处从无读取方的
+  // `cfg.normaHatToChainCount` 回写——它是迁到 decibelPerUnit 之前的残留）。
   return { normaMechanicSource: source }
 }
 

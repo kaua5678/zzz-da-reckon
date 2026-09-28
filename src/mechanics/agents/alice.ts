@@ -206,7 +206,6 @@ function buildAliceCharConfig({
   cfg.aliceCoweringDotInterval = COWERING_DOT_INTERVAL
   cfg.aliceCoweringDisorderBonusPerSec = COWERING_DISORDER_BONUS_PER_SEC
   cfg.aliceCoweringDisorderBonusMax = COWERING_DISORDER_BONUS_MAX
-  cfg.aliceCoweringBuildUpEfficiency = COWERING_BUILD_UP_EFFICIENCY
 }
 
 // ============ buildExecutions ============

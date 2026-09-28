@@ -169,9 +169,6 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
 // ============ buildCharConfig ============
 
 function buildMiyabiCharConfig({ skills: _skills, cfg, panel, cinemaLevel }: AgentCharConfigInput): void {
-  cfg.miyabiEnabled = true
-  cfg.miyabiFrostMoonMoveId = FROST_MOON_MOVE_ID
-  cfg.miyabiFrostMoonCount = FROST_MOON_COST
   cfg.miyabiFrostMoonActionTime = FROST_MOON_ACTION_TIME
   cfg.miyabiCinemaLevel = cinemaLevel
   // 冰焰覆盖率已由 applyPanel 静态算好（settings + 队伍/命座自动默认），buildCharConfig 只读

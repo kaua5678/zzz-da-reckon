@@ -412,16 +412,13 @@ export const lucyMechanic: AgentMechanicModule = {
   nextRoundFeedback: lucyNextRoundFeedback,
 }
 
-/** 组队后写入各槽位：每大从露西获得的能量、C1 标记 */
+/** 组队后写入各槽位：C1 标记与命座（邻位回能走 crossAgentSupply；原 lucyEnergyPerLucyUlt 写入从无读取方，CC-191 删） */
 function applyLucyTeamEnergyFlags(characters: CharacterOperationConfig[]): void {
   const lucy = characters.find(c => c.agentId === LUCY_ID)
   if (!lucy) return
   const cinema = Math.max(0, Math.floor(Number((lucy as any).lucyCinemaLevel ?? 0)))
-  const slots = characters.map(c => c.slot)
-  const neigh = assignLucyUltNeighborEnergy(slots, lucy.slot)
   for (const c of characters) {
     const rec = c as unknown as Record<string, unknown>
-    rec.lucyEnergyPerLucyUlt = neigh[c.slot] ?? 0
     rec.lucyC1Enabled = cinema >= 1 ? 1 : 0
     rec.lucyCinemaLevel = cinema
   }

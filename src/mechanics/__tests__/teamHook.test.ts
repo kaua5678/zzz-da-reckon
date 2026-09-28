@@ -31,10 +31,9 @@ async function run(team: Array<{ agentId: string; cinemaLevel?: number } | ''>) 
 }
 
 describe('队伍级钩子 applyTeamConfig 接线', () => {
-  it('5 个已迁移角色都声明了 applyTeamConfig（防迁移后忘记挂钩子）', () => {
+  it('3 个已迁移角色都声明了 applyTeamConfig（防迁移后忘记挂钩子）', () => {
     for (const [agentId, name] of [
-      ['1151', '露西'], ['1211', '丽娜'], ['1131', '苍角'],
-      ['1311', '耀嘉音'], ['1161', '莱特'],
+      ['1151', '露西'], ['1311', '耀嘉音'], ['1161', '莱特'],
     ] as const) {
       expect(
         typeof getAgentMechanic(agentId)?.applyTeamConfig,
@@ -43,7 +42,16 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     }
   })
 
-  it('丽娜/露西/苍角：终结邻位回能经钩子写入各槽 cfg，并出现在 crossAgent 明细里', async () => {
+  it('丽娜/苍角的邻位回能走 crossAgentSupply（CC-191：原 applyTeamConfig 只往全队 cfg 写从无读取方的字段，已删）', () => {
+    for (const [agentId, name] of [['1211', '丽娜'], ['1131', '苍角']] as const) {
+      expect(
+        getAgentMechanic(agentId)?.crossAgentSupply?.kind,
+        `${name}(${agentId}) 未声明 crossAgentSupply —— 邻位回能会静默失效`,
+      ).toBe('neighbor-ult-energy')
+    }
+  })
+
+  it('丽娜/露西/苍角：终结邻位回能经 crossAgentSupply 派发，并出现在 crossAgent 明细里', async () => {
     // 槽位：0 丽娜(1211) / 1 露西(1151) / 2 苍角(1131)，三人互为邻位/隔位
     const out = await run([{ agentId: '1211' }, { agentId: '1151' }, { agentId: '1131' }])
     const bySlot = new Map(out.characters.map(c => [c.slot, c]))

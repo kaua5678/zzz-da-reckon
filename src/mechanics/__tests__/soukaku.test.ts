@@ -5,7 +5,6 @@ import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { neighborUltEnergyByProvider } from '@/core/resource/crossAgentSupply'
 import {
-  applySoukakuTeamEnergyFlags,
   assignSoukakuUltNeighborEnergy,
   SOUKAKU_C6_DMG_BONUS,
   SOUKAKU_CHOP_SLAM_ACTION_TIME,
@@ -43,18 +42,6 @@ describe('苍角纯函数', () => {
   it('终结邻位回能 30/10', () => {
     expect(assignSoukakuUltNeighborEnergy([0, 1, 2], 1)).toEqual({ 0: 10, 2: 30 })
     expect(assignSoukakuUltNeighborEnergy([0, 1], 1)).toEqual({ 0: 30 })
-  })
-
-  it('applyTeamEnergyFlags 写入邻位', () => {
-    const configs: any[] = [
-      { slot: 0, agentId: '1091' },
-      { slot: 1, agentId: '1131' },
-      { slot: 2, agentId: '1011' },
-    ]
-    applySoukakuTeamEnergyFlags(configs)
-    expect(configs[0].soukakuEnergyPerSoukakuUlt).toBe(10)
-    expect(configs[2].soukakuEnergyPerSoukakuUlt).toBe(30)
-    expect(configs[1].soukakuEnergyPerSoukakuUlt).toBe(0)
   })
 
   it('邻位回能按终结次数结算（走通用类别查询：模块 crossAgentSupply 声明）', () => {

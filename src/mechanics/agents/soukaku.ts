@@ -29,7 +29,6 @@ import type {
   AgentMechanicModule,
   AgentResourceInput,
 } from '../types'
-import type { CharacterOperationConfig } from '@/types/resource'
 
 export const SOUKAKU_ID = '1131'
 
@@ -98,18 +97,6 @@ export function assignSoukakuUltNeighborEnergy(
   out[next] = 30
   out[prev] = 10
   return out
-}
-
-export function applySoukakuTeamEnergyFlags(characters: CharacterOperationConfig[]): void {
-  const sk = characters.find(c => c.agentId === SOUKAKU_ID)
-  if (!sk) return
-  const energy = assignSoukakuUltNeighborEnergy(
-    characters.map(c => c.slot),
-    sk.slot,
-  )
-  for (const ch of characters) {
-    ;(ch as any).soukakuEnergyPerSoukakuUlt = energy[ch.slot] ?? 0
-  }
 }
 
 function clampSwings(cfg: unknown): number {
@@ -255,12 +242,6 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 export const soukakuMechanic: AgentMechanicModule = {
-  // 队伍级机制（原先由 useResourceCalc 手工 import + 调用 applySoukakuTeamEnergyFlags）：
-  // 苍角终结技邻位回能（邻位 30/10）。只在 build 阶段动手，与迁移前的调用时机一致。
-  applyTeamConfig: ({ characters, phase }) => {
-    if (phase !== 'build') return
-    applySoukakuTeamEnergyFlags(characters)
-  },
   /**
    * 跨槽位供给：终结技**邻位回能**（下一位 30 / 上一位 10，两人队另一位 30）。
    * 2026-09-15 core 棘轮批次3 自 `core/resource/helpers.ts#calcCrossAgentEnergy` 的

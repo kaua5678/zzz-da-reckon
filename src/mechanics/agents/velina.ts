@@ -240,19 +240,16 @@ function buildVelinaCharConfig({
   const velinaEye = findMoveByEnglishName(skills, 'EX Special Attack: Wind Shear - Eye of the Storm')
   const velinaSweeping1 = findMoveByEnglishName(skills, 'Sweeping Cyclone #1')
   const velinaSweeping2 = findMoveByEnglishName(skills, 'Sweeping Cyclone #2')
-  const velinaCondensed = findMoveByEnglishName(skills, 'Condensed Cyclone')
   const additionalAbilityActive = isAdditionalAbilityActive(team, slot, agent)
 
   cfg.velinaEnabled = true
   cfg.velinaAdditionalAbilityActive = additionalAbilityActive
   cfg.velinaCinema2 = cinemaLevel >= 2
-  cfg.velinaColorElement = velinaColorElement(team, slot)
   cfg.velinaEyeMoveId = velinaEye?.id ?? ''
   cfg.velinaEyeActionTime = velinaEye?.actionTime ?? 0
   cfg.velinaEyeDecibelRecovery = getRowValue(velinaEye, 'decibel_recovery') || 0
   cfg.velinaSweepingCyclone1MoveId = velinaSweeping1?.id ?? ''
   cfg.velinaSweepingCyclone2MoveId = velinaSweeping2?.id ?? ''
-  cfg.velinaCondensedCycloneMoveId = velinaCondensed?.id ?? ''
 }
 
 function buildVelinaExecutions({ cfg, state, executions }: AgentResourceInput): void {
