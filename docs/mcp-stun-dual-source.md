@@ -1260,3 +1260,32 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **余项（未判，转 CC-181）**：`calcStunPool` 输入的 `enemyStunResistance`（单数）生产从未传，疑似遗留字段；wEngine ctx 中未传的若干字段；`guaranteeStunShortfall` 的 `target` / `minGainRatio`、`decomposeSet` 的 `coverage` 为默认参数，需确认默认值合理。清单在 `k202/scan.tsv` 的 NONE / SOME 行。
 - **验证**：vue-tsc 无新错误；zd（cc179）dump / rows 均 DIFF 0（满编预设 teamSize = configs.length）；verify VRC=0；CG 25 项通过。
 - **回退点**：revert 8aba58f5。只回退 teamSize 部分：删 `resource/helpers.ts#iterate` 的两行 `teamSize:`。
+
+### 24.27 CC-180：队友落点统一在编队槽位空间按已上场序列解析（第 203 轮，7f320498）
+- **问题**：「上一位队友」有三套写法、两个空间混用。
+  - 引擎 `crossAgentSupplyAt`：用含空槽的 `teamSize`（3）在 `configs` **压缩下标**里环绕；
+  - 引擎轴分支 `ultimateGiftOf` / `ultimateGiftRowSpec`：把编排层给的**编队槽号**当成 `configs` 下标；
+  - 编排层 `chainGift` / `ultimatePromote` / `convergence`：在编队槽空间用 `team.length`（3）环绕，落到空槽就赠送丢失；
+  - 琉音额外能力 `buildLiuyinCharConfig`：私有的 `resolvePreviousTeammateSlot(slot, team.length, …)`，`team` 定长 3 槽，同样会落到空槽。
+- **口径决定：跳过空槽**（已上场序列里的上一位，环绕）。依据：游戏换人顺序只含上场角色，没有「空槽」这一位（两人队的上一位 = 另一人）；邻位回能（苍角 / 丽娜 / 露西）本来就这样算（模块注释「两人队另一位 30」）。没有找到官方原文专门说空槽；这是按游戏机制推出的结论。**回退点**：改 `targetSlot.ts#resolveTeammateTargetSlot` 一处（例如让空槽落空），全部调用方随之改变。
+- **做法**：
+  - `resolveUltimateTargetSlot(own, teamLength, setting)` → `resolveTeammateTargetSlot(own, occupiedSlots, setting)`。入参和返回值都是**编队槽位**。手动设置指向空槽或自己时回落到自动；**没有队友时返回 -1（不赠）**。旧式在 teamLength=1 时返回自己；新口径下探针复现了单琉音自赠 7.2s，所以显式排除。这也保住了 ENGINE_PIPELINE_GUIDE 第 32 条「单角色诺姆不预留赠链时间」的修正。
+  - 引擎：用 `cfg.slot` 与 `configs.map(c => c.slot)` 解析，再 `findIndex` 映射回下标。模块钩子 `crossAgentSupply.targetSlot` 的入参由 `{ ownSlot, teamSize }` 改为 `{ ownSlot（编队槽）, occupiedSlots }`，返回编队槽。
+  - 编排层：已上场序列取资源结果的 `characters.map(c => c.slot)`，与引擎 `configs` 同源。不用 `team[i].agentId`，因为 catalog 缺角色时 `buildCharConfig` 会返回 null，两边会不一致。
+  - 琉音额外能力：改走同一函数（`team.filter(m => m.agentId && m.agent)`），删除 `resolvePreviousTeammateSlot`。
+  - **删除 teamSize 整条链**：`ResourceCalcConfig.teamSize`、`CrossAgentSupplyQuery.teamSize`、`CrossAgentSupplyInput.teamSize`（没有模块读它），以及 `perTargetEnergyByProvider` / `neighborUltEnergyByProvider` 的 `query` 参数（原本只为传 teamSize）。邻位回能 `perTargetAmounts.teamSize` 保留，固定为 `configs.length`（已上场人数）。§24.26 的「四处同源读 config.teamSize」由此作废：现在四处同源于 `configs[].slot`。
+- **探针**（`/home/kaua/calc-arch/k202/probe202.test.ts`，无推荐配装，临时放进仓库跑完即删）：
+
+  | 队伍 | CC-179 后 | CC-180 后 |
+  |---|---|---|
+  | 琉音 / 空 / 空 | 697096，预留 0 | 697096，预留 0（同） |
+  | 琉音 / 艾莲 / 空 | 2041086，29 行，预留 0 | **2302721，32 行，预留 5.049** |
+  | 空 / 琉音 / 艾莲 | 2041086，29 行，预留 0 | **2302721，32 行，预留 5.049** |
+  | 艾莲 / 琉音 / 空 | 2302721，32 行，预留 5.049 | 2302721（同） |
+
+  两人队三种站位现在逐位相同，原本差 12.8%。归因（`k203/probe203b.test.ts` 去掉槽号后逐行对比）：
+  - 赠大 2 行：旧版落到空槽后丢失；
+  - `liuyin-ex-direct`（16 次，约 127 万）：旧版琉音在槽 0 时「上一位」落到空槽 2，面板取不到，整行丢失（仅这一项就占 3.4%）。
+  - 修复后剩下的差异只是行 id 里的槽位号。
+- **验证**：vue-tsc 无新错误；zd（cc180b，最终代码）dump / rows DIFF 0（满编与单角色预设不变，含 `agent:1571:c0/c6`）；verify VRC=0（3832 passed）；CG 25 项通过；`targetSlot.test.ts` 改写并补了空槽用例。
+- **回退点**：revert 7f320498（单提交，含 teamSize 删除）。

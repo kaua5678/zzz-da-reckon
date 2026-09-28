@@ -579,6 +579,9 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     `configs.length`），账本/试探/行/展示四处同源。实测 delta：仅单角色扫描的**诺姆**两行
     （`agent:1571:c0` 留白 14.6→0.6s、dmg +4.6%；`agent:1571:c6` stun 2→3、留白 16.2→0.2s、
     dmg +14.5%）——**修正**：没有队友可赠时不该预留赠链时间白等；棘轮 1 条 3.9→3.8s。
+    **再统一（CC-180，2026-09-28，7f320498）**：`teamSize` 整条删除。落点改由 `core/resource/targetSlot.ts#resolveTeammateTargetSlot`
+    在**编队槽位空间**按已上场序列解析（跳过空槽；无队友 = -1，上面诺姆单角色的修正照旧成立）。引擎用 `configs[].slot`、
+    编排层用资源结果 `characters[].slot`，两边同源；琉音额外能力的「上一位队友」也走它（stun-dual-source §24.27）。
 33. **折叠环「必要时间超支」的两套机制互为惰性（2026-09-10 阶段2 立项度量 + 三版否决记录）**：
     - **根因**：折叠环把每槽 `rows − 账本` 超出量**累加**进 `cfg.timeBudgetExcess`（`+=`，2026-09-03 定的口径），`iterate` 另有「必要前台可行
       比例封顶」（`cappedNecessary = netNecessary × budget/ΣnetNecessary`）；叠加 = 累加被封顶部分抹掉、却又通过封顶的分配比例改变槽间预算 → 26 队

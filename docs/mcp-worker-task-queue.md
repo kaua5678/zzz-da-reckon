@@ -69,22 +69,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 202 轮（lane lead-arena-0925c）：CC-179 完成（8aba58f5）；立卡 CC-180、CC-181。文档见本提交。**
-- CC-179：`AnomalyPoolInput.agentMechanics` 等改必填（缺省曾静默跳过 transformAnomalyPool 钩子与风蚀）；账本 `resource/helpers.ts#iterate` 的赠送供给补传 `teamSize: globalCfg.teamSize`，与 foldLoop / underfillProbe / tailPipeline 同源；`axisMode` 不做。详见 stun-dual-source §24.26（含退化配置探针表）。
-- 前几轮：201 CC-177（8fc869d0）/ CC-178（9daca673）；200 CC-176（542884bc）；199 CC-175（be822bc6）。
+**第 203 轮（lane lead-arena-0925c）：CC-180 完成（7f320498）。文档见本提交。**
+- CC-180：队友落点（赠大 / 赠连携 / 琉音额外能力「上一位队友」）统一由 `core/resource/targetSlot.ts#resolveTeammateTargetSlot` 在编队槽位空间按已上场序列解析（跳过空槽，无队友 = -1）；删除 `teamSize` 整条链。修掉了有空槽的两人队赠送丢失和额外能力直伤行丢失。详见 stun-dual-source §24.27（含探针表与归因）。
+- 前几轮：202 CC-179（8aba58f5）；201 CC-177（8fc869d0）/ CC-178（9daca673）；200 CC-176（542884bc）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-180：赠送目标改在槽位空间解析**。
-   - 起点：`src/core/resource/crossAgentSupply.ts`（目标解析，`crossAgentSupplyAt` / `ultimateGiftOf`），以及 `grep -rn teamSize src/core src/mechanics` 的全部读取点（苍角 / 露西 / 丽娜的 `perTargetAmounts`、`neighborUltEnergy`）。
-   - 做法：由 `cfg.slot` 算「上一位队友」所在槽位，再在 `configs` 里按 slot 找回下标；找不到就不赠。空槽规则（跳过还是落空）先查 catalog 原文，拿不准选「跳过空槽」，写回退点。
-   - 验证：满编 zd 应 DIFF 0；退化配置用 `/home/kaua/calc-arch/k202/probe202.test.ts` 复跑（临时复制到 `src/composables/__tests__/zztmp/`，`PROBE_OUT=… npx vitest run …`，跑完删掉），对比 §24.26 表。
-2. CC-181：CC-179 余项（清单在 §24.26 末与 `k202/scan.tsv`）。
-3. CC-166 仍暂缓（需规格）。
+1. **CC-181：CC-179 普查余项**（清单在 stun-dual-source §24.26 末，原始数据 `/home/kaua/calc-arch/k202/scan.tsv` 的 NONE / SOME 行）：
+   - `calcStunPool` 输入的 `enemyStunResistance`（单数）生产从未传：先 `grep -rn enemyStunResistance src`，确认只剩声明和读取、没有写入，就删字段与读取分支（缺省分支的结果要和删后逐位相同，用 zd 证明）；
+   - wEngine ctx 中生产不传的字段：逐个判断缺省值会不会静默改变结果（CC-179 判据），会就改必填，不会就写「不做」加理由；
+   - `guaranteeStunShortfall` 的 `target` / `minGainRatio`、`decomposeSet` 的 `coverage` 默认参数：确认默认值与生产意图一致，写结论。
+   - 验证：zd DIFF 0；vue-tsc；verify。
+2. CC-166 仍暂缓（需规格）。
 
 **已知坑**
 - core 输入加可选字段前先想：缺省会不会静默改变结果？会就做成必填（CC-179 判据）。普查可复用 `/home/kaua/calc-arch/k202/scan179.cjs`。
-- 跨槽位量（赠送目标、邻位能量）的队长一律用 `config.teamSize`（含空槽），不要用 `configs.length`；但注意它和 `configs` 下标空间不对齐（CC-180 待修）。
+- 「上一位 / 下一位队友」一律用 `resolveTeammateTargetSlot(编队槽, 已上场槽位, 设置)`（CC-180）：已上场槽位在引擎取 `configs.map(c => c.slot)`、编排层取资源结果 `characters.map(c => c.slot)`、模块钩子取 `team.filter(m => m.agentId && m.agent)`。不要用 `team.length` 或 `% 3`：`configStore.team` 和机制 `team` 都是定长 3 槽、含空槽。`configs` 下标和编队槽位只在满编时相同，存槽位的字段（如 `axisUltimatePromote.targetSlot`）进引擎要 `findIndex(c => c.slot === …)` 映射。
+- `bg.sh` 后台启动要写成 `setsid ./bg.sh … >/dev/null 2>&1 & sleep 1; echo started`：少了 `sleep 1`，外层 shell 立刻退出会带走子进程（第 203 轮踩过）。
 - zd 的 dump 第 2 段是整个 `resourceResult` 的哈希：**删 / 改名结果对象字段**会让几乎所有预设 DIFF，即使数值零差。用 `ZD_DROP=<键1>,<键2> bash .zc/perf/zd.sh <tag>` 在两边都排除这些键再比（第 201 轮加在 `.zc/perf/dump.perf.ts` / `rowsnap.perf.ts` 第 26 行的 `KEY_DROP`；`.zc/` 不进 git，若被重置，就把 `...(process.env.ZD_DROP ?? '').split(',').filter(Boolean)` 重新加回那个 Set）。先用逐段统计确认只有第 2 段变，再用 ZD_DROP 证明零差。
 - `git mv` 过的文件，提交时 `git add` 只写新路径（旧路径已不存在，写上会让整条 add 失败）。
 - 伤害池伤害一律走 `src/composables/resourceCalc/poolDamage.ts`（CC-176 / 177）：直伤 `calcPoolDirectDamage`、异常 `calcPoolAnomalyDamage`。新环境量加进 `PoolDamageEnv`，新行级字段加进对应 Row；模块里用 `ExtraAnomalyRowsInput.directDamage` / `.anomalyDamage`，不要 import core 伤害函数自拼（自拼就会漏掉正路后加的量，比如侵染染色属性）。异常行的减防减抗只传面板**之外**的额外量。
