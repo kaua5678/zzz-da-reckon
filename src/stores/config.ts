@@ -7,6 +7,7 @@ import type {
   Agent, WEngine, DriveDiscConfig, SkillDamageTarget, CharacterBuildRecommendation, TeammateBuffGroup,
 } from '@/types/catalog'
 import { computeDefaultSubStatAllocation, getTemplate } from '@/core/substatOptimizer'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 import { useCatalogStore } from './catalog'
 import { getAgentMechanic } from '@/mechanics'
 import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
@@ -1167,8 +1168,8 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
     appliedBoss.value = null
   }
 
-  // 有效时间 = 180 - 无敌时间
-  const effectiveTime = computed(() => Math.max(0, 180 - enemy.value.invincibleTime))
+  // 有效时间 = 战斗时间 − 无敌时间。单一来源 core/effectiveTime#effectiveBattleTime（CC-216：原写死 180，不读 battleTime）
+  const effectiveTime = computed(() => effectiveBattleTime(enemy.value))
 
   // ========== 初始化 ==========
 

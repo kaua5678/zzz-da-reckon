@@ -11,6 +11,7 @@
  * - 合轴抵扣只算 `comboAlignCredit`（含在 necessary 内的部分；NET 约定模块已剔除，不重复抵）。
  */
 import { netFrontlineOccupation } from '@/core/resource/helpers'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 import { isFrontlineExecution } from '@/types/resource'
 import type { SkillExecution, TeamResourceResult, TruncationCut } from '@/types/resource'
 
@@ -121,7 +122,7 @@ export function buildTeamTimeSummary(args: {
     return { nec, basic, basicModule }
   }
 
-  const budget = Math.max(0, battleTime - invincibleTime)
+  const budget = effectiveBattleTime({ battleTime, invincibleTime })
   const actionFrontline = chars.reduce((sum, c) => sum + c.timeAllocation.necessaryTime, 0)
   const comboAlignDeduction = chars.reduce((sum, c) => sum + (c.timeAllocation.comboAlignCredit ?? 0), 0)
   const requiredFrontline = Math.max(0, actionFrontline - comboAlignDeduction)

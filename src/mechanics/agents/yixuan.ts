@@ -6,6 +6,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { fmt } from '@/utils/format'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
@@ -485,7 +486,7 @@ function applyYixuanTeamConfig(
   // ⚠ 二分点是算出来的 `axisInSeconds > 0`（= 轴生效且至少一个窗口），**不是** `axis.active`。
   // ⚠ 原实现**无条件**写该字段（分支内无门控）⇒ 此处也不挂任何通道门控。
   const yixuanCinema = Math.max(0, Math.floor(Number(record.yixuanCinemaLevel ?? 0)))
-  const battleTime = Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
+  const battleTime = effectiveBattleTime(cfg)
   const c1Lightnings = yixuanCinema >= 1
     ? Math.max(0, Math.floor((axisInSeconds > 0 ? axisInSeconds : battleTime) / C1_LIGHTNING_CD))
     : 0

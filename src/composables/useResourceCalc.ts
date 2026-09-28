@@ -31,6 +31,7 @@ import type {
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { panelAt } from '@/core/panel'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 import * as ResourceCalcHelpers from './resourceCalc/helpers'
 import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
 
@@ -252,7 +253,7 @@ export function useResourceCalc() {
     // 但异常喧响/终结技次数反馈仍收敛，避免与资源利用率页口径分裂
     const lockedStunCount = configStore.enemy.stunCountLock ?? -1
     const stunWindowDur = computeWindowDuration()
-    const stunEffTime = Math.max(0, (configStore.enemy.battleTime ?? 180) - (configStore.enemy.invincibleTime ?? 0))
+    const stunEffTime = effectiveBattleTime(configStore.enemy)
     // CC-10（2026-09-25）：外层不动点 + S3 可行化决策整段原样外提 `resourceCalc/solveTeam.ts#solveTeam`。
     // 唯一 store 副作用（降配闸门 ceiling 下调）改由本函数在 solveTeam 返回后执行 —— 原写回是
     // stageResolveFeasibility 的最后一条语句，之后到原 :653 再无 resourceConfig/configStore 读，
@@ -346,9 +347,7 @@ export function useResourceCalc() {
   function computeStunCoverage(sp: any, lostSeconds = 0): number {
     const stunCount = sp?.stunCount ?? 0
     if (stunCount <= 0) return 0
-    const battleTime = configStore.enemy.battleTime ?? 180
-    const invTime = configStore.enemy.invincibleTime ?? 0
-    const effectiveTime = Math.max(0, battleTime - invTime)
+    const effectiveTime = effectiveBattleTime(configStore.enemy)
     if (effectiveTime <= 0) return 0
     // 决算截断：有效失衡时长 = 窗口总时长 − 截断损失秒数（佩洛伊斯右分支做完即清空剩余失衡时间）
     const stunSeconds = Math.max(0, stunCount * computeWindowDuration() - lostSeconds)

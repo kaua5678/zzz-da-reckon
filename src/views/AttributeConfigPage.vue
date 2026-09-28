@@ -177,7 +177,7 @@
               </n-grid>
 
               <div class="field">
-                <span class="field-label">有效时间 (秒) = 180 - 无敌时间</span>
+                <span class="field-label">有效时间 (秒) = 战斗时间 − 无敌时间</span>
                 <n-input-number
                   :value="configStore.effectiveTime"
                   disabled

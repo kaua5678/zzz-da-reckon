@@ -8,6 +8,7 @@ import type {
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting, YuzuhaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 
 const YUZUHA_AGENT_ID = '1411'
 const SWEETNESS_INITIAL = 3
@@ -129,7 +130,7 @@ function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, o
   }
   // 影画2 强制连携：每次强制连携也有角色入场 → 甜度点 +1/次（与全队 chainCountTotalExtra 同源近似）
   if ((cinemaLevel ?? 0) >= 2) {
-    const effective = Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
+    const effective = effectiveBattleTime(cfg)
     cfg.yuzuhaChainEntryCount += Math.floor(effective / YUZUHA_C2_CHAIN_CD)
   }
 }
@@ -161,7 +162,7 @@ function buildYuzuhaTeamConfig({ slot, characters, team, anomalyBuildupElementBy
 }
 
 function yuzuhaSourceFromCfg(cfg: AgentResourceInput['cfg']): YuzuhaMechanicSource {
-  const effectiveSeconds = Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
+  const effectiveSeconds = effectiveBattleTime(cfg)
   return computeYuzuhaMechanic({
     initialAtk: cfg.yuzuhaInitialAtk ?? cfg.panel.atk ?? 0,
     chainEntryCount: cfg.yuzuhaChainEntryCount ?? 0,
