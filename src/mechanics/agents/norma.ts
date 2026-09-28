@@ -17,7 +17,7 @@ import { specConversionAmount } from '@/specs/runtime'
 import type { AttributeConversionSpec } from '@/specs/types'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -247,11 +247,8 @@ function buildNormaCharConfig({ slot, cinemaLevel, team, skills, cfg, panel }: A
   cfg.normaBarrageActionTimes = BARRAGE_MOVES.map(id => findMoveById(skills, id)?.actionTime ?? 0.5)
   // 预存 6 段 damage/daze 表值 + 火力实验导弹 2 段表值：影画6 技能专属加成按倍率表对应行缩放（破甲失衡+30%/高爆伤害+30%）
   const row = (id: string) => findMoveById(skills, id)
-  const get = (move: SkillMove | null | undefined, rowId: string) => {
-    if (!move) return 0
-    const r = move.rows.find(r => r.id === rowId)
-    return r?.values[0] ?? 0
-  }
+  // CC-242：取行值走 data getRowValue（吃逻辑编辑器行规则，作用面 §24.85 ④ / §24.88）
+  const get = (move: SkillMove | null | undefined, rowId: string) => getRowValue(move, rowId)
   cfg.normaBarrageRowValues = {
     damage: BARRAGE_MOVES.map(id => get(row(id), 'damage')),
     daze: BARRAGE_MOVES.map(id => get(row(id), 'daze')),

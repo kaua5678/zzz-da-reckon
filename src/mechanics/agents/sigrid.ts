@@ -14,6 +14,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { getRowValue } from '@/data/moveTableQueries'
 
 /**
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
@@ -165,7 +166,8 @@ function buildSigridCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCon
   const basicMoves = skills?.categories?.find(c => c.id === 'basic')?.moves ?? []
   const segments = SIGRID_LANCE_SEGMENT_IDS.map(moveId => {
     const move = basicMoves.find(m => m.id === moveId)
-    const row = (id: string) => move?.rows?.find(r => r.id === id)?.values?.[0] ?? 0
+    // CC-242：取行值走 data getRowValue（吃逻辑编辑器行规则，作用面 §24.85 ④ / §24.88）
+    const row = (id: string) => getRowValue(move, id)
     return {
       moveId,
       actionTime: move?.actionTime ?? 0,

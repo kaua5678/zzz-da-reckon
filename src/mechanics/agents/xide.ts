@@ -2,6 +2,7 @@ import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentR
 import type { SkillMove } from '@/types/catalog'
 import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
+import { getRowValue } from '@/data/moveTableQueries'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
@@ -91,7 +92,8 @@ const XIDE_BASIC_MOVE_IDS = ['1461001', '1461002', '1461003', '1461004']
 function getAttackData0(move: SkillMove | null | undefined): number {
   if (!move) return 0
   for (const row of (move.rows ?? []) as any[]) {
-    if (String((row as any).kind ?? '') === 'special') return Number(row.values?.[0] ?? 0)
+    // CC-242：按 kind 定位行，取值走 getRowValue（吃行规则）
+    if (String((row as any).kind ?? '') === 'special') return getRowValue(move, String(row.id))
   }
   return 0
 }

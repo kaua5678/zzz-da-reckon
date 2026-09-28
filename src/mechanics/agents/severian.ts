@@ -30,6 +30,7 @@ import type {
 import type { MechanicSetting } from '@/types/resource'
 import { execMatchesMove } from '@/types/resource'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { getRowValue } from '@/data/moveTableQueries'
 
 export const SEVERIAN_ID = '1631'
 /** 核心被动：暴击伤害 +60% */
@@ -202,7 +203,8 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
   }
   // 凭风载体/苍风影猎/烈旋 基础倍率与时间（buildExecutions 输入无 skills，单一事实源=倍率表）
   const all = skills?.categories?.flatMap(c => c.moves ?? []) ?? []
-  const multOf = (moveId: string) => all.find(m => m.id === moveId)?.rows?.find(r => r.id === 'damage')?.values?.[0] ?? 0
+  // CC-242：取行值走 data getRowValue（吃逻辑编辑器行规则，作用面 §24.85 ④ / §24.88）
+  const multOf = (moveId: string) => getRowValue(all.find(m => m.id === moveId), 'damage')
   const metaOf = (moveId: string) => {
     const m = all.find(mm => mm.id === moveId)
     return { moveId, actionTime: m?.actionTime ?? 0, damage: multOf(moveId) }

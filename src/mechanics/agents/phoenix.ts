@@ -29,6 +29,7 @@ import type {
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { getRowValue } from '@/data/moveTableQueries'
 
 export const PHOENIX_ID = '1641'
 /** 核心被动：异常精通 +40 */
@@ -213,8 +214,9 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
     return {
       moveId,
       actionTime: m?.actionTime ?? 0,
-      damage: m?.rows?.find(r => r.id === 'damage')?.values?.[0] ?? 0,
-      decibelRecovery: m?.rows?.find(r => r.id === 'decibel_recovery')?.values?.[0] ?? 0,
+      // CC-242：取行值走 data getRowValue（吃逻辑编辑器行规则，作用面 §24.85 ④ / §24.88）
+      damage: getRowValue(m, 'damage'),
+      decibelRecovery: getRowValue(m, 'decibel_recovery'),
       energyCost: parseFloat(m?.energyCost?.['Energy Cost'] ?? '') || 0,
     }
   }
@@ -222,7 +224,7 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
   const combustion: Record<string, number> = {}
   for (const moveId of PHOENIX_COMBUSTION_MOVE_IDS) {
     const m = all.find(mm => mm.id === moveId)
-    combustion[moveId] = m?.rows?.find(r => r.id === 'attack_data_0')?.values?.[0] ?? 0
+    combustion[moveId] = getRowValue(m, 'attack_data_0')
   }
   record.phoenixCombustionMeta = combustion
   record.phoenixBasicCycle = PHOENIX_BASIC_SEGMENT_IDS.map(metaOf)
@@ -232,7 +234,7 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
   record.phoenixEntryMeta = metaOf(PHOENIX_ENTRY_MOVE_ID)
   record.phoenixChainMeta = {
     ...metaOf(PHOENIX_CHAIN_MOVE_ID),
-    anomalyBuildUp: all.find(m => m.id === PHOENIX_CHAIN_MOVE_ID)?.rows?.find(r => r.id === 'anomaly_buildup')?.values?.[0] ?? 0,
+    anomalyBuildUp: getRowValue(all.find(m => m.id === PHOENIX_CHAIN_MOVE_ID), 'anomaly_buildup'),
   }
 }
 
