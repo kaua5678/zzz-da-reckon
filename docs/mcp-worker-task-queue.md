@@ -70,16 +70,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 223 轮（lane lead-arena-0925c）：CC-200 完成（d5e18595）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-200：模块必做行时间预留普查 + 苍角强特子动作改走 `estimateExSpecialTime`。详见 `docs/mcp-stun-dual-source.md` §24.47（含普查表与通道选择判据）。
-- 前几轮：222 CC-199（99282fdf）；221 CC-198（3d0217e3）；220 CC-197（2af8c466）。
+**第 224 轮（lane lead-arena-0925c）：CC-201 结论卡（无代码提交）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-201：席德落华时间预留试做后撤回；判据修订为「只迁有合轴的模块前台行」。详见 `docs/mcp-stun-dual-source.md` §24.48。
+- 前几轮：223 CC-200（d5e18595）；222 CC-199（99282fdf）；221 CC-198（3d0217e3）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（按顺序，直接开工）**
-1. **席德 1461 残差 31–35s**：读 `src/mechanics/agents/xide.ts:228` 附近 `mkRow` 产的 necessary 行，确认次数来源。次数 = 强特次数 ⇒ 照 CC-200 抽 `xxxPerExExtraTime` + `estimateExSpecialTime`；来自别的资源 ⇒ `extraNecessaryAction`。插桩复用 `/home/kaua/calc-arch/k222/p223inst.py`（跑完 `git checkout src/core/resource/helpers.ts`），探针队 1461-1521-1361、1461-1521-1031（golden 里有，golden 会直接反映）。注意 xide.ts:229 注释「统一对当前执行行求和」——它可能按已有行反推，估时要避开循环依赖。
-2. **雅 1091 / 艾莲 1191 残差 22–31s**：先找它们在模块里补了哪些前台行（行上没写 `timeBucket` 所以 grep 不到；用探针打印 `executions` 的 moveId/count/totalTime 对照 catalog 招式），再按同一判据选通道。雅队在 golden 里很多，影响面会大，逐条解释。
-3. **额外能力两道门控是否归一**（§24.46 末条）：先回答「额外能力未触发时用户能否手动打开该 buff」（`src/utils/teammateBuffRows.ts` + `syncTeammateBuffsFromTeam` 合并逻辑 + `git log -S'ADDITIONAL_GATE_BUFFS'`）。
-4. T2 剩余 71 条（子代理 dsflash，lead 验收）；freeCompare `higherBetter` 着色评估。
+1. **雅 1091：`1091029` 行（9 次 × 3.434s，comboAlignRatio 0.709）的合轴抵扣经折叠丢失**。先读 `src/mechanics/agents/miyabi.ts` 找产这行的代码与次数来源（`grep -n 1091029`；helpers.ts:421 附近注释提过「雅霜月架势」）。
+   - 次数 = 强特次数 ⇒ 照 CC-200：抽与产行同源的每次秒数/合轴函数 + `estimateExSpecialTime`。
+   - 来自其他资源 ⇒ `extraNecessaryAction`（带合轴率）。若次数依赖当前执行行，先看能否从 state 直接算；只能滞后读 cfg 的，**必须跑单人 c0/c6 探针看截断**（CC-201 就是栽在这里）。
+   - 雅在 golden 预设里很多，影响面会大：逐条解释，时间账变化用 TIME_GOLDEN_UPDATE=1，留白棘轮用 TIME_RATCHET_UPDATE=1。
+2. **额外能力两道门控是否归一**（§24.46 末条）：先回答「额外能力未触发时用户能否手动打开该 buff」（`src/utils/teammateBuffRows.ts` + `syncTeammateBuffsFromTeam` 合并逻辑 + `git log -S'ADDITIONAL_GATE_BUFFS'`）。
+3. T2 剩余 71 条（子代理 dsflash，lead 验收）；freeCompare `higherBetter` 着色评估。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`），再查 `docs/MECHANICS_IMPLEMENTATION.md` 的角色段和 `grep -rn 反锁 src`。
 - **未决项**：1511 南宫羽额外能力原文无触发条件（`AA_OWNER_EXEMPT`），数据补上后删例外。
 
@@ -87,7 +89,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
-- **模块前台行的时间通道选择（CC-200）**：行次数 = 强特次数 ⇒ `estimateExSpecialTime`（按次估时，估时函数与产行共用一个纯函数）；次数来自其他资源 ⇒ `extraNecessaryAction`。两者都不做 ⇒ 时间靠 `timeBudgetExcess` 折叠追认，行上的**合轴抵扣会丢失**（苍角打年糕#3 就是这样多挤了 21s 平A池）。找对象看残差：插桩脚本 `/home/kaua/calc-arch/k222/p223inst.py`。
+- **（CC-201 修订：只迁有合轴的行——残差大本身不是理由，无合轴的行折叠结果与预留一致；滞后估计进账本还可能把单人推进截断，见 §24.48）** 模块前台行的时间通道选择（CC-200）：行次数 = 强特次数 ⇒ `estimateExSpecialTime`（按次估时，估时函数与产行共用一个纯函数）；次数来自其他资源 ⇒ `extraNecessaryAction`。两者都不做 ⇒ 时间靠 `timeBudgetExcess` 折叠追认，行上的**合轴抵扣会丢失**（苍角打年糕#3 就是这样多挤了 21s 平A池）。找对象看残差：插桩脚本 `/home/kaua/calc-arch/k222/p223inst.py`。
 - **enrich 会按倍率表改写 `moveName`**：测试/探针里别用模块写的 moveName 认行（苍角两行 1131011 回填后都叫「扇走蚊虫 #1」），用 moveId + 出现顺序或 count/actionTime。
 - **单角色 golden 的 slack 非零不一定是错**：合轴抵扣在单人时没有队友可让，只能留白（卢西娅 163.6、苍角 34.2）。组队影响要另用探针队看，golden 预设里没有的角色尤其如此。
 - **按 `buff.ownerId` 找拥有者不可靠**：catalog teammate-buffs 里有拼音 slug（`youye` / `remielle` / `nangongyu`）。找拥有者用 buff 组 id（仅队友角色是 teammateBuffId）。CC-199 就是这么修出柚叶额外能力恒开。
