@@ -70,18 +70,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 233 轮（lane lead-arena-0925c）：CC-210 完成（bdc03f72）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-210：展示层音擎精炼取值与引擎同源，详见 `docs/mcp-stun-dual-source.md` §24.57（含本轮判为不做的扫描点）。
-- 前几轮：232 CC-209（2a88f81d）；231 CC-208（03680c60）；230 CC-207（fb0b8205）。
+**第 234 轮（lane lead-arena-0925c）：CC-211 完成（b96bbaa0）；「展示层 vs 引擎」线结项（CC-208 ~ 211）。文档见本提交。push 结果见 git log / rev-list。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.58（含结项结论和判为不做的点）。
+- 前几轮：233 CC-210（bdc03f72）；232 CC-209（2a88f81d）；231 CC-208（03680c60）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. 展示层「视图里的缩小版引擎」剩余扫描面：
-   - `grep -rn 'defaultStacks ?? ' src/views src/components src/composables`：stacked 层数口径，引擎是 `defaultStacks ?? maxStacks ?? 1`，看是否一致；
-   - `grep -rn 'specialty === agent.specialty\|matchSpecialty' src/views src/components src/composables`：音擎职业匹配。引擎 `collectWEngineBuffs` 还有 wearerAttribute / enemyWeakness 条件，看展示点是否只判断了职业。
-   - 判据同前：**分叉会让核对表误导**才做。
-2. 若以上都无可做项，这条「展示层 vs 引擎」线可以结项：写「展示层扫描结项」加扫描范围，然后转向 `docs/ARCHITECTURE-OVERVIEW.md` 的重构清单，看是否有新的高收益项。
-3. 可选：AttributeConfigPage 把被引擎否决的队友 buff 置灰。
+1. **转向引擎层的「同一机制两处实现」**：读 `docs/ARCHITECTURE-OVERVIEW.md` §6.4「specs ↔ mechanics：同一机制是否两处实现」，逐条复核当时的结论是否仍然成立（那是第 138 轮的快照，之后又做了 70 多张卡）。找出仍在两处实现、且会分叉的机制，立 CC-212。做法参照 CC-206 / 207：合并成 mechanics 或 specs 层的纯函数，默认配置下 golden 零差。
+2. 其次：`docs/mcp-r6-refactor-list.md` 里标「低优先做」的 C5、C3，先读条目，重新评估是否仍值得做（判据：让架构更通用或更简单）。值得就做，不值得就改标「不做」加理由。
+3. 两项都无可做时，写「本轮扫描无可做项」加扫描范围，不要为了降计数硬做。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）。
 

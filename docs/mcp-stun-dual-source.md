@@ -1949,3 +1949,27 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **影响面**：只改展示，计算零改动；golden 零差。verify EXIT=0（3901 passed / 29 skipped）；vue-tsc 0。
 - TeamConfigPage 有一处细微变化：旧写法在效果带 modificationValues.valuePerStack 时，不论 type 都显示成「× 层」；新写法按 type 格式化（与引擎 applyEffect 的分支一致）。数据里这类效果都是 stacked，实际显示不变。
 - **回退点**：`git revert bdc03f72`。
+
+### 24.58 第 234 轮：CC-211 展示层音擎发放判定与引擎同源 +「展示层 vs 引擎」线结项（b96bbaa0）
+
+- **扫描**（第 233 轮交接第 1 项）：
+  - 叠层层数 `defaultStacks ?? maxStacks ?? 1`：WEngineFieldPage、DebugPage、TeamConfigPage、hpSourceBreakdown 都与引擎 `applyEffect` 一致。AttributeConfigPage:540 的 `maxStacks ?? defaultStacks` 是滑块上限，本来就该这么取。**不做**。
+  - 音擎职业匹配：引擎 `collectWEngineBuffs` 依次判断三层：职业 → 组级 `wEngineConditionMet`（目前只判断 `attributeCounter`，其余条件恒放行，由覆盖率近似）→ 效果级 `wEngineEffectRequirementMet`（数据里 4 条：3 条限以太装备者、1 条限 1551）。展示层只判断第一层：
+    - DebugPage `addWEngineRows`：备注按分组写死「职业匹配，当前会生效」，限定装备者的条目在不满足时也显示「会生效」。**会误导，做**。
+    - hpSourceBreakdown 第 3 步：唯一带条件的生命效果（14145 hpPct，`etherVeilStartOrExtend`）引擎恒放行，**目前零分叉**。但同一个谓词顺手统一，避免以后数据变化时分叉。
+  - 另外几处 specialty 比较不属于同类问题：TeamConfigPage:358「匹配=」字面就是职业匹配；teamTimelineStore / freeCompare 是在挑选推荐音擎；helpers.ts:521 是加农转子事件，走数据表的 `requiresSpecialtyMatch`。
+- **改法**：`composables/wEngineEffectDisplay.ts` 新增 `wEngineEffectBlockReason(wEngine, group, effect, wearer, enemyWeakness) → string | null`，三层判断直接调用引擎函数，不发放时返回原因。
+  - DebugPage 的 `addEffectRows` 备注参数改为可接收「按单条效果生成」的函数，逐条显示「<原因>，当前计算不会生效 / 当前会生效」。
+  - hpSourceBreakdown 第 3 步改为逐条过滤。
+- **测试** `wEngineEffectGateCc211.test.ts`：
+  - 等价性：全部音擎 × 全部角色 × {未声明弱点, 冰弱点}，`reason === null` 的效果 id 集合与引擎 `collectAllBuffs(有音擎) − collectAllBuffs(无音擎)` 逐条相等，覆盖超过 1000 个组合。判别性对照：确有「职业匹配但被组条件或效果限定拦下」的条目。
+  - 源码锁：DebugPage 和 hpSourceBreakdown 必须调用 `wEngineEffectBlockReason(`，且不能出现只按职业判断的写法 `w(Engine).specialty === agent.specialty`。
+- **影响面**：只改展示，计算零改动；golden 零差。verify EXIT=0（3903 passed / 29 skipped）；vue-tsc 0。
+- **回退点**：`git revert b96bbaa0`。
+- **「展示层 vs 引擎」线结项**（CC-208 ~ CC-211）。展示层自己重算引擎口径的点已经全部收口到引擎函数，每一步都有源码锁：
+  - 队友 buff 列表 → `resolveSlotPanelBuffInputs`；
+  - 覆盖率 → `effectCoverageMap`；
+  - 精炼取值 → `applyWEngineModLevel`；
+  - 音擎发放 → `wengineConditions`。
+  - 剩下的 `coverage.default` / `modificationValues` 读取点都在数据定义页（MechanicsTablePage、WEngineFieldPage），展示的是数据本身，不代表用户当前状态，**不做**。
+  - 以后若新增展示点要列「生效的效果」，先找引擎对应函数，经 composable 暴露。
