@@ -8,6 +8,7 @@ import type {
   AgentResourceSectionsInput,
   AgentSkillTransformInput,
   AgentTeamPanelEffectInput,
+  ExtraNecessaryAction,
   ReadonlyTeam,
 } from '../types'
 import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
@@ -176,6 +177,30 @@ function buildMiyabiCharConfig({ skills: _skills, cfg, panel, cinemaLevel }: Age
 }
 
 // ============ buildExecutions ============
+
+/**
+ * 霜月时间的账本预留（CC-202）：走通用 `extraNecessaryAction`，**不带 moveId** ⇒ 引擎只预留时间（含合轴抵扣）、
+ * 不补行；行仍由 buildMiyabiExecutions 产出。原先霜月 #3（3.434s，仅 1s 锁定、其余合轴）的时间全靠
+ * timeBudgetExcess 事后折叠，行上的合轴抵扣因此丢失（≈ 次数 × 2.434s 挤了平A池，§24.48 预筛）。
+ * 次数来自 spec 资源「落霜」（cfg + state），不依赖当前执行行 ⇒ 无滞后。
+ * 与产行逐项对齐：`miyabiFrostMoonReserveCc202.test.ts`。回退：删模块登记里的 extraNecessaryAction。
+ */
+export function miyabiFrostMoonReserve(cfg: CharacterOperationConfig, state?: Readonly<IterationState>): ExtraNecessaryAction[] | null {
+  if (!state) return null
+  const res = getFrostFallResource(cfg, state as IterationState)
+  if (!res || res.frostMoonCount <= 0) return null
+  const count = res.frostMoonCount
+  const actionTime = cfg.miyabiFrostMoonActionTime ?? FROST_MOON_ACTION_TIME
+  const out: ExtraNecessaryAction[] = [{
+    count, moveName: '霜月 #3（账本预留）', actionTime,
+    comboAlignRatio: (actionTime - FROST_MOON_3_LOCK_SECONDS) / actionTime, decibelRecovery: 0,
+  }]
+  if ((cfg.panel as any)?.miyabiCinema6) {
+    out.push({ count, moveName: '霜月 #1（C6赠送，账本预留）', actionTime: FROST_MOON_1_ACTION_TIME, comboAlignRatio: 0, decibelRecovery: 0 })
+    out.push({ count, moveName: '霜月 #2（C6赠送，账本预留）', actionTime: FROST_MOON_2_ACTION_TIME, comboAlignRatio: 0, decibelRecovery: 0 })
+  }
+  return out
+}
 
 function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const res = getFrostFallResource(cfg, state)
@@ -405,6 +430,8 @@ export const miyabiMechanic: AgentMechanicModule = {
   },
   buildCharConfig: buildMiyabiCharConfig,
   buildExecutions: buildMiyabiExecutions,
+  // CC-202：霜月时间进账本（只预留、不补行，合轴抵扣随之生效）
+  extraNecessaryAction: miyabiFrostMoonReserve,
   anomalyBuildupElement: FROSTFIRE,
   replaceSkillExecutionExtraction: true,
   transformSkillExecutions: transformMiyabiSkillExecutions,
