@@ -2,7 +2,7 @@
  * computeParrySplit 单测：Boss 预设弹刀拆分（击破位按保底失衡反推、主C 拿剩余；无突击弹刀全归击破位）。
  */
 import { describe, expect, it } from 'vitest'
-import { computeParrySplit } from '@/core/parrySplit'
+import { computeParrySplit, guaranteeStunShortfall } from '@/core/parrySplit'
 
 /** 叶释渊 口径：保底4失衡、弹刀总数 13；nonParryStun = 非弹刀失衡基数（已剔除击破位弹刀行贡献） */
 function base(overrides: Partial<Parameters<typeof computeParrySplit>[0]> = {}) {
@@ -28,7 +28,6 @@ describe('computeParrySplit（Boss 弹刀反推拆分）', () => {
     expect(r.topUp).toBe(0)
     expect(r.breakerParry).toBe(0)
     expect(r.mainDpsParry).toBe(13)
-    expect(r.reached).toBe(true)
   })
 
   it('缺口按非弹刀基数反推（ceil），主C = 总数 − 击破位', () => {
@@ -37,7 +36,6 @@ describe('computeParrySplit（Boss 弹刀反推拆分）', () => {
     expect(r.topUp).toBe(6)
     expect(r.breakerParry).toBe(6)
     expect(r.mainDpsParry).toBe(7)
-    expect(r.reached).toBe(false)
   })
 
   it('尊重击破位用户输入：输入 ≥ 需求 → 不补齐；输入 < 需求 → 补到需求', () => {
@@ -111,5 +109,21 @@ describe('computeParrySplit（Boss 弹刀反推拆分）', () => {
     const b = base({ nonParryStun: 50000 })
     expect(a).toEqual(b)
     expect(a.topUp).toBe(6)
+  })
+})
+
+describe('guaranteeStunShortfall（保底4失衡未达成诊断，CC-156）', () => {
+  it('达成 → null', () => {
+    expect(guaranteeStunShortfall(4, { breakerParry: 8, parryTotal: 8 })).toBeNull()
+    expect(guaranteeStunShortfall(5, null)).toBeNull()
+  })
+  it('弹刀预算用满仍不够 → parry-exhausted', () => {
+    expect(guaranteeStunShortfall(3, { breakerParry: 6, parryTotal: 6 })).toEqual({ target: 4, stunCount: 3, cause: 'parry-exhausted' })
+  })
+  it('无弹刀预算（拆分未激活）→ no-parry-budget', () => {
+    expect(guaranteeStunShortfall(2, null)?.cause).toBe('no-parry-budget')
+  })
+  it('预算未用满却未达成 → other', () => {
+    expect(guaranteeStunShortfall(3, { breakerParry: 2, parryTotal: 8 })?.cause).toBe('other')
   })
 })

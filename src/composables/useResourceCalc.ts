@@ -1,4 +1,5 @@
 import { computed, toRaw } from 'vue'
+import { guaranteeStunShortfall, type GuaranteeStunShortfall } from '@/core/parrySplit'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { activeRowFusionRulesSnapshot } from '@/logicEditor/fusion'
@@ -474,6 +475,16 @@ export function useResourceCalc() {
     return { breakerSlot: effectiveBreakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, mainDpsNoFollowUp: split.mainDpsNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
   })
 
+  /** 保底4失衡未达成诊断（CC-156）：未勾选 / 无池结果 / 已达成 → null；判定见 core/parrySplit.ts#guaranteeStunShortfall */
+  const guaranteeStunShortfallResult = computed<(GuaranteeStunShortfall & { parryTotal: number }) | null>(() => {
+    if (configStore.getMechanicSetting('guarantee.stun', 0) === 0) return null
+    const sp = stunPoolResult.value
+    if (!sp) return null
+    const split = parrySplitResult.value
+    const s = guaranteeStunShortfall(sp.stunCount, split)
+    return s ? { ...s, parryTotal: split?.parryTotal ?? 0 } : null
+  })
+
   /** 特殊动作喧响奖励 */
   const specialActionBonus = computed<SpecialActionBonusResult | null>(() => {
     const topUp = interactionTopUp.value
@@ -734,6 +745,7 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
     stunCoverage,
     interactionTopUp,
     parrySplitResult,
+    guaranteeStunShortfallResult,
     ultPromoteCount,
     ultPromoteHug60,
   }

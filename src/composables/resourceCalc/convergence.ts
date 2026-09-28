@@ -38,7 +38,7 @@ import {
 import { applyChainGift } from './chainGift'
 import type { CalcRoundThreads } from './roundThreads'
 import * as ResourceCalcHelpers from './helpers'
-import { computeParrySplit } from '@/core/parrySplit'
+import { computeParrySplit, GUARANTEE_STUN_TARGET } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
 import {
@@ -824,7 +824,7 @@ export function createRunCalcRound(deps: {
     // Boss 预设弹刀反推下一轮量（保底4失衡）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
     // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），
     // 正常弹刀每次失衡 = 轻弹刀 + 支援突击；不带支援突击弹刀每次失衡 = 仅轻弹刀。无行 = 无招架失衡来源，不反推。
-    let parrySplitNext = prevParrySplit ?? { breakerParry: 0, mainDpsParry: 0, breakerNoFollowUp: 0, mainDpsNoFollowUp: 0, topUp: 0, reached: false, perParryDaze: 0, perNoFollowUpDaze: 0 }
+    let parrySplitNext = prevParrySplit ?? { breakerParry: 0, mainDpsParry: 0, breakerNoFollowUp: 0, mainDpsNoFollowUp: 0, topUp: 0, perParryDaze: 0, perNoFollowUpDaze: 0 }
     let backstageAutoNext: Record<string, number> = threads.backstageAuto ?? {}
     if (parrySplitActive && sp1.pool) {
       const breakerCfg = base.characters.find(c => c.slot === effectiveBreakerSlot)
@@ -856,7 +856,7 @@ export function createRunCalcRound(deps: {
       const nonParryStun = Math.max(0, sp1.pool.totalStunBuildUp - injectedParryDaze - injectedMainDpsParryDaze + (sp1.pool.stunGift ?? 0))
       parrySplitNext = {
         ...computeParrySplit({
-          targetStunCount: 4,
+          targetStunCount: GUARANTEE_STUN_TARGET,
           stunCount: sp1.pool.stunCount,
           nonParryStun,
           bossStunValue: configStore.enemy.stunValue,

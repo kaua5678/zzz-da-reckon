@@ -160,6 +160,7 @@
                       <div class="guarantee-row">
                         <span class="section-title" style="margin-right: 12px">保底目标</span>
                         <n-checkbox :checked="guaranteeStun" @update:checked="v => setGuarantee('stun', v)">保底4失衡</n-checkbox>
+                        <span v-if="guaranteeStunHint" class="muted" style="font-size: 12px; margin-right: 8px">{{ guaranteeStunHint }}</span>
                         <!-- 嗔火是般岳专属资源：队里没有般岳不显示（引擎侧 banyueSlot>=0 才消费） -->
                         <n-checkbox v-if="teamHasGuaranteeFury" :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
                         <n-checkbox :checked="guaranteeUltimate" @update:checked="v => setGuarantee('ultimate', v)">保底4喧响</n-checkbox>
@@ -951,7 +952,15 @@ function setComboAlignAbsorbPct(v: number) {
 }
 // 轴模式自动补齐（保底语义，现唯一产出者般岳）：弹刀/双反在交互栏输入之上补的量（懒计算，仅产出者槽位选中时非空；
 // 槽位 = 声明 producesInteractionTopUp 的角色，故弹刀提示不必再判角色 id —— CC-65b）
-const { interactionTopUp, autoPreset, parrySplitResult, resourceResult } = useResourceCalc()
+const { interactionTopUp, autoPreset, parrySplitResult, resourceResult, guaranteeStunShortfallResult } = useResourceCalc()
+/** 保底4失衡·未达成如实显示（CC-156）：弹刀预算内补不满时引擎按实际池计数算，这里把降级露出来 */
+const guaranteeStunHint = computed(() => {
+  const s = guaranteeStunShortfallResult.value
+  if (!s) return ''
+  const why = s.cause === 'parry-exhausted' ? `，Boss 弹刀 ${s.parryTotal} 次已全部反推给击破位仍不够`
+    : s.cause === 'no-parry-budget' ? '，当前 Boss 没有可反推的弹刀预算' : ''
+  return `（未达成：失衡池 ${s.stunCount} 次${why}）`
+})
 const interactionTopUpForSlot = computed(() => {
   const t = interactionTopUp.value
   return t && t.slot === configStore.selectedSlot ? t : null

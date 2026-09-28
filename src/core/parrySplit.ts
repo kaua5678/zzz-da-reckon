@@ -20,6 +20,9 @@
  * 数据源：boss-presets.json defaults.parryTotal / parryNoFollowUpTotal（叶释渊 13 / 司祭 15 等）。
  */
 
+/** 「保底4失衡」的目标失衡次数（单一事实源：收敛层反推与页面未达成提示同引） */
+export const GUARANTEE_STUN_TARGET = 4
+
 export interface ParrySplitInput {
   /** 保底失衡次数（UI「保底4失衡」= 4） */
   targetStunCount: number
@@ -56,8 +59,6 @@ export interface ParrySplitResult {
   mainDpsNoFollowUp: number
   /** 击破位正常弹刀反推补齐量（≥0，已按 parryTotal 封顶） */
   topUp: number
-  /** 当前轮是否已达成保底失衡次数 */
-  reached: boolean
   /** 击破位正常弹刀每次有效失衡（实测值，随线程携带：击破位 0 弹刀时无行、沿用上轮） */
   perParryDaze: number
   /** 击破位不带支援突击弹刀每次有效失衡（实测值，随线程携带） */
@@ -65,7 +66,7 @@ export interface ParrySplitResult {
 }
 
 export function computeParrySplit(input: ParrySplitInput): ParrySplitResult {
-  const target = Math.max(1, Math.floor(input.targetStunCount) || 4)
+  const target = Math.max(1, Math.floor(input.targetStunCount) || GUARANTEE_STUN_TARGET)
   const bossStun = Math.max(0, input.bossStunValue)
   const refund = Math.min(1, Math.max(0, input.stunRefundRatio))
   const parryTotal = Math.max(0, Math.floor(input.parryTotal))
@@ -103,8 +104,32 @@ export function computeParrySplit(input: ParrySplitInput): ParrySplitResult {
     breakerNoFollowUp,
     mainDpsNoFollowUp,
     topUp,
-    reached: input.stunCount >= target,
     perParryDaze: daze,
     perNoFollowUpDaze: noFollowDaze,
   }
+}
+
+/**
+ * 「保底4失衡」未达成诊断（CC-156，2026-09-28）：勾选保底后，弹刀反推在预算内补不满目标次数时，
+ * 引擎按实际池计数继续算（不硬凑）——此前这一降级**静默**发生（`ParrySplitResult.reached` 算了却零读取，
+ * 且比的是单轮池计数）。本函数按**最终**失衡池计数判定，返回 null = 已达成；否则给出原因供页面如实显示。
+ * - `parry-exhausted`：Boss 正常弹刀已全部反推给击破位仍不够（预算用满）；
+ * - `no-parry-budget`：当前 Boss 没有可反推的弹刀预算（拆分未激活）；
+ * - `other`：预算未用满却未达成（如主C 手填弹刀占用了预算）。
+ */
+export interface GuaranteeStunShortfall {
+  target: number
+  stunCount: number
+  cause: 'parry-exhausted' | 'no-parry-budget' | 'other'
+}
+export function guaranteeStunShortfall(
+  stunCount: number,
+  split: { breakerParry: number; parryTotal: number } | null,
+  target: number = GUARANTEE_STUN_TARGET,
+): GuaranteeStunShortfall | null {
+  if (stunCount >= target) return null
+  const cause: GuaranteeStunShortfall['cause'] = !split
+    ? 'no-parry-budget'
+    : split.parryTotal > 0 && split.breakerParry >= split.parryTotal ? 'parry-exhausted' : 'other'
+  return { target, stunCount, cause }
 }

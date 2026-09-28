@@ -14,6 +14,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { submissionToDeploy, type ArchiveRun, type ArchiveRoom } from '@/composables/runArchiveImport'
 import { applyDeployConfig } from '@/composables/runArchiveDeploy'
+import { guaranteeStunShortfall } from '@/core/parrySplit'
 import type { BossPresetFile } from '@/types/bossPreset'
 
 describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc3）', () => {
@@ -37,11 +38,9 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     expect(configStore.appliedBoss?.parryTotal).toBe(8)
     expect(configStore.getMechanicSetting('guarantee.stun', 0)).toBe(1)
 
-    // CC-154（第 177 轮）：本条钉 off。physical 下本队规划失衡 = 0（必要时间约束），修前 `axis.windows` 按规划值分到 0 窗、
-    // 块计数却按物理 4 次 ⇒ 快照自相矛盾 ⇒ 轴可行性误判、退化非轴 ⇒ 池 4。修后同源：轴保住、伤害 66.6%→75.4% 击杀线，
-    // 但 N* = 3.84 ⇒ 池 3（弹刀 8 次预算内保底 4 不可达）。本条钉的是「弹刀反推链不断」，场景值属 off 口径；
-    // physical 下的「保底 4 不可达」另记 CC-156（docs/mcp-stun-dual-source.md §18）。
-    configStore.setMechanicSetting('time.stunPlanProjection', 0)
+    // CC-156（第 190 轮）：原 off 钉已去掉。第 177 轮 physical 下 N*=3.84 ⇒ 池 3（保底 4 不可达）；
+    // 此后 CC-158…CC-147 的修复使本队缺省口径下池 = 4（有效失衡 66829 ≥ 4×16647）、伤害 66.6% 击杀线。
+    // 本条回到缺省（physical）口径钉「弹刀反推链不断」；保底不可达的诊断见文末 parryTotal=6 一段。
     const sp = calc.stunPoolResult.value
     expect(sp, '失衡池有结果').toBeTruthy()
     expect(sp!.stunCount, '4 次失衡打完整').toBeGreaterThanOrEqual(4)
@@ -54,5 +53,13 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     const hp = configStore.enemy.hp ?? 0
     const ratio = hp > 0 ? (calc.teamTotalDamage.value ?? 0) / hp : 0
     expect(ratio, `伤害占比 ${(ratio * 100).toFixed(1)}%`).toBeGreaterThan(0.35)
+    expect(guaranteeStunShortfall(sp!.stunCount, split), '保底已达成 ⇒ 无未达成提示').toBeNull()
+
+    // CC-156：弹刀预算压到 6 次 ⇒ 6 次全部反推给击破位仍只有 3 次失衡 ⇒ 诊断为「预算用满」（此前静默降级）
+    ;(configStore.appliedBoss as { parryTotal?: number }).parryTotal = 6
+    const sp6 = calc.stunPoolResult.value!
+    const split6 = calc.parrySplitResult.value
+    expect(split6?.breakerParry).toBe(6)
+    expect(guaranteeStunShortfall(sp6.stunCount, split6)).toEqual({ target: 4, stunCount: 3, cause: 'parry-exhausted' })
   }, 120000)
 })
