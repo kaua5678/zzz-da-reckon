@@ -70,18 +70,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 224 轮（lane lead-arena-0925c）：CC-201 结论卡（无代码提交）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-201：席德落华时间预留试做后撤回；判据修订为「只迁有合轴的模块前台行」。详见 `docs/mcp-stun-dual-source.md` §24.48。
-- 前几轮：223 CC-200（d5e18595）；222 CC-199（99282fdf）；221 CC-198（3d0217e3）。
+**第 225 轮（lane lead-arena-0925c）：CC-202 完成（11bf2ac8）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-202：雅霜月时间进账本（只预留、含合轴）。详见 `docs/mcp-stun-dual-source.md` §24.49。「模块必做行时间预留」这条线已收尾（§24.49 末条）。
+- 前几轮：224 CC-201（结论卡，无代码）；223 CC-200（d5e18595）；222 CC-199（99282fdf）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（按顺序，直接开工）**
-1. **雅 1091：`1091029` 行（9 次 × 3.434s，comboAlignRatio 0.709）的合轴抵扣经折叠丢失**。先读 `src/mechanics/agents/miyabi.ts` 找产这行的代码与次数来源（`grep -n 1091029`；helpers.ts:421 附近注释提过「雅霜月架势」）。
-   - 次数 = 强特次数 ⇒ 照 CC-200：抽与产行同源的每次秒数/合轴函数 + `estimateExSpecialTime`。
-   - 来自其他资源 ⇒ `extraNecessaryAction`（带合轴率）。若次数依赖当前执行行，先看能否从 state 直接算；只能滞后读 cfg 的，**必须跑单人 c0/c6 探针看截断**（CC-201 就是栽在这里）。
-   - 雅在 golden 预设里很多，影响面会大：逐条解释，时间账变化用 TIME_GOLDEN_UPDATE=1，留白棘轮用 TIME_RATCHET_UPDATE=1。
-2. **额外能力两道门控是否归一**（§24.46 末条）：先回答「额外能力未触发时用户能否手动打开该 buff」（`src/utils/teammateBuffRows.ts` + `syncTeammateBuffsFromTeam` 合并逻辑 + `git log -S'ADDITIONAL_GATE_BUFFS'`）。
-3. T2 剩余 71 条（子代理 dsflash，lead 验收）；freeCompare `higherBetter` 着色评估。
+1. **额外能力两道门控是否归一**（§24.46 末条）：硬表 `ADDITIONAL_GATE_BUFFS`（`src/composables/resourceCalc/panelPhases.ts`，用户开关压不过）与 store 默认门控 `deriveTeammateBuffEnabled`（`src/stores/config.ts`，可被用户覆盖）职责重叠。先回答「额外能力未触发时，用户能否手动打开该 buff」：读 `src/utils/teammateBuffRows.ts` 与其组件、`syncTeammateBuffsFromTeam` 合并用户选择的逻辑，再 `git log -S'ADDITIONAL_GATE_BUFFS' --oneline | tail -3` 看引入动机。
+   - 若「未触发时不许手动开」是既定口径 ⇒ 硬表应改成通用规则（来源＝额外能力 ⇒ 按拥有者声明硬门控），表里只留跨来源（影画/核心被动随额外能力：1421 cinema_1、1461 两条、1351 C6）与特殊修正（凯撒、菲欧妮 tier3）。要证明零差：golden + `additionalGate.test.ts` 全绿。
+   - 若允许手动开 ⇒ 硬表里「来源＝额外能力」的条目反而是 bug（压过了用户选择），需要单独立卡并写清口径依据。
+   - 两者都拿不准 ⇒ 写「不做」加理由。
+2. T2 剩余 71 条（子代理 dsflash，lead 验收）；freeCompare `higherBetter` 着色评估。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`），再查 `docs/MECHANICS_IMPLEMENTATION.md` 的角色段和 `grep -rn 反锁 src`。
 - **未决项**：1511 南宫羽额外能力原文无触发条件（`AA_OWNER_EXEMPT`），数据补上后删例外。
 
@@ -89,6 +88,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **截取引擎内部的 cfg/state 做同源测试**：`vi.spyOn(<模块>Mechanic, 'buildExecutions')` 可行（CC-202），拿 `spy.mock.calls.at(-1)[0]` 的 cfg/state 调预留或估时函数，再与实际行逐项比对。用完 `mockRestore()`。
 - **（CC-201 修订：只迁有合轴的行——残差大本身不是理由，无合轴的行折叠结果与预留一致；滞后估计进账本还可能把单人推进截断，见 §24.48）** 模块前台行的时间通道选择（CC-200）：行次数 = 强特次数 ⇒ `estimateExSpecialTime`（按次估时，估时函数与产行共用一个纯函数）；次数来自其他资源 ⇒ `extraNecessaryAction`。两者都不做 ⇒ 时间靠 `timeBudgetExcess` 折叠追认，行上的**合轴抵扣会丢失**（苍角打年糕#3 就是这样多挤了 21s 平A池）。找对象看残差：插桩脚本 `/home/kaua/calc-arch/k222/p223inst.py`。
 - **enrich 会按倍率表改写 `moveName`**：测试/探针里别用模块写的 moveName 认行（苍角两行 1131011 回填后都叫「扇走蚊虫 #1」），用 moveId + 出现顺序或 count/actionTime。
 - **单角色 golden 的 slack 非零不一定是错**：合轴抵扣在单人时没有队友可让，只能留白（卢西娅 163.6、苍角 34.2）。组队影响要另用探针队看，golden 预设里没有的角色尤其如此。
