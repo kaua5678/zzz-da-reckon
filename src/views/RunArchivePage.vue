@@ -145,7 +145,6 @@
               迭代 {{ resourceResult.iterations }} 次{{ resourceResult.converged ? '·已收敛' : '·未收敛' }}
               · 失衡 {{ stunPoolResult?.stunCount ?? 0 }} 次
               · 连携 {{ stunPoolResult?.chainCountTotal ?? 0 }} 次
-              · 喧响奖励 +{{ fmt(stunPoolResult?.decibelBonus ?? 0) }}
             </span>
           </div>
         </template>

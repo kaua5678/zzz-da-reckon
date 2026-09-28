@@ -7,7 +7,8 @@
  * 3. 汇总全队总失衡值
  * 4. 失衡次数 = floor(总失衡值 / bossStunValue)
  * 5. 连携次数 = 失衡次数 × 每次连携数（首领默认3）
- * 6. 失衡相关喧响奖励 = 失衡次数 × 20 + 总连携次数 × 10
+ *    （CC-231 删除了原第 6 步「失衡相关喧响奖励 = 失衡次数 × 20 + 总连携次数 × 10」：该字段自初始提交起无引擎消费者，
+ *     连携 ×10 实际由 core/anomalyPool#calcSpecialActionBonus 计入个人喧响，「进入失衡 ×20」从未计给任何人，只在失衡池卡片上显示 ⇒ 误导）
  *
  * 数据来源：
  * - 招式执行计划：从 resource.ts 的 SkillExecution 扩展，需要 daze 和 element
@@ -22,10 +23,6 @@ import { resolveStatElement } from './anomalyPool/helpers'
 import type {
   StunPoolResult, StunContribution,
 } from '@/types/resource'
-
-/** 喧响奖励常量 */
-const STUN_DECIBEL_BONUS = 20    // 进入失衡奖励
-const CHAIN_DECIBEL_BONUS = 10   // 连携一次奖励
 
 
 function getElementEnemyStunResReduction(panel: PanelValues, element: string, skillType?: string): number {
@@ -206,9 +203,6 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
   // 总连携次数
   const chainCountTotal = stunCount * chainCountPerStun
 
-  // 喧响奖励
-  const decibelBonus = stunCount * STUN_DECIBEL_BONUS + chainCountTotal * CHAIN_DECIBEL_BONUS
-
   return {
     contributions,
     totalStunBuildUp,
@@ -221,13 +215,12 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
     stunGift: Math.max(0, input.stunGift ?? 0),
     chainCountPerStun,
     chainCountTotal,
-    decibelBonus,
     perSlotStun,
   }
 }
 
 /**
- * 以给定失衡次数重建池的**次数派生字段**（返还值 / 总连携 / 喧响奖励），其余字段（贡献明细、失衡值合计）原样保留。
+ * 以给定失衡次数重建池的**次数派生字段**（返还值 / 总连携），其余字段（贡献明细、失衡值合计）原样保留。
  * 用途（CC-150，第 174 轮）：physical 缺省下外层以 2-环退出、环内整数次数无不动点（f(K)=K+1、f(K+1)=K）时，
  * 规范成员的引擎按读入的 K 分配时间，池却报 K+1 ⇒ 池 / 轴栈 / 伤害侧与资源行不同源（坑36 破）。
  * 取「最大自洽可行整数」K（按 K 分配时池撑得住 ≥K），报告池同步钳到 K。
@@ -239,6 +232,5 @@ export function withStunCount(pool: StunPoolResult, stunCount: number): StunPool
     stunCount,
     stunRefundValue: Math.max(0, stunCount - 1) * pool.stunRefundRatio * pool.bossStunValue,
     chainCountTotal,
-    decibelBonus: stunCount * STUN_DECIBEL_BONUS + chainCountTotal * CHAIN_DECIBEL_BONUS,
   }
 }

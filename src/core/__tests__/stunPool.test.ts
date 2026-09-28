@@ -26,7 +26,8 @@ describe('calcStunPool', () => {
     expect(result.totalStunBuildUp).toBeCloseTo(192)
     expect(result.stunCount).toBe(1)
     expect(result.chainCountTotal).toBe(3)
-    expect(result.decibelBonus).toBe(20 + 3 * 10)
+    // CC-231：失衡池不再报「喧响奖励」（无引擎消费者；连携喧响在 specialActionBonus，进入失衡 ×20 从未计入）
+    expect(result).not.toHaveProperty('decibelBonus')
   })
 
   it('deducts in-axis stun as ineffective (失衡窗口内失衡值无效)', () => {

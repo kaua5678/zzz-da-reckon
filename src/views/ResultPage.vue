@@ -260,10 +260,6 @@
               <span class="pool-stat-label">连携次数</span>
               <span class="pool-stat-value">{{ stunPoolResult.chainCountTotal }} 次</span>
             </div>
-            <div class="pool-stat bonus">
-              <span class="pool-stat-label">喧响奖励</span>
-              <span class="pool-stat-value">+{{ fmt(stunPoolResult.decibelBonus) }}</span>
-            </div>
             <div class="pool-per-slot">
               <span v-for="(val, i) in stunPoolResult.perSlotStun" :key="i" class="slot-chip">
                 {{ agentNames[configStore.team[i]?.agentId ?? ''] || `槽${i}` }}: {{ fmt(val, 1) }}

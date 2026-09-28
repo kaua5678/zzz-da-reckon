@@ -57,8 +57,6 @@ export interface StunPoolResult {
   chainCountPerStun: number
   /** 总连携次数 = 失衡次数 × 每次连携次数 */
   chainCountTotal: number
-  /** 失衡相关喧响奖励 = 失衡次数 × 20 + 总连携次数 × 10 */
-  decibelBonus: number
   /** 各角色的有效失衡贡献汇总 */
   perSlotStun: number[]
 }
