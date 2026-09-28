@@ -29,6 +29,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
+import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 
 export const AIRE_ID = '1501'
 export const AIRE_CORE_PROFICIENCY = 90
@@ -63,6 +64,9 @@ export const AIRE_C4_CD_SECONDS = 10
 /** 影画6 强化绝对音准/终结技以太伤害 +40% */
 export const AIRE_C6_ETHANOL_DMG_BONUS = 40
 export const AIRE_ULTIMATE_MOVE_ID = '1501016'
+/** 普攻甜心律动第四段：命中后生成 1 个应援能量（原文 skill.basic.description.0） */
+export const AIRE_SWEET_BASIC4_MOVE_ID = '1501004'
+export const AIRE_CHEER_BASIC4 = 1
 /** 应援能量来源（总量近似）：强特 +3 / 连携 +4 / 甜心四段 +1 / 帷幕每次开 4 个（额外能力） */
 export const AIRE_CHEER_EX = 3
 export const AIRE_CHEER_CHAIN = 4
@@ -114,7 +118,7 @@ export function computeAireCycle(input: {
   }
 }
 
-function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel }: AgentCharConfigInput): void {
+function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.aireCinemaLevel = cinemaLevel
   // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 局外面板（CC-125，与 CC-118/123/124 同口径）
@@ -123,7 +127,8 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel }: Agen
   record.aireAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   if (cinemaLevel >= 4) {
     // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
-    // 异放次数 = 应援能量/2 + 全场应援 ≥ floor(t/6) > floor(t/10)，故触发次数取 10s CD 上限。
+    // 异放次数 = 应援能量/2 + 全场应援；典型整局 ≫ floor(t/10)，故触发次数取 10s CD 上限
+    // （CC-196 后全场应援非C6=终结×3，不再恒 ≥ floor(t/6)；不设 min 截断，属近似）。
     const triggers = Math.max(0, Math.floor((cfg.battleTime ?? 180) / AIRE_C4_CD_SECONDS))
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * AIRE_C4_RELEASE_ENERGY
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + triggers * AIRE_C4_RELEASE_DECIBEL
@@ -132,6 +137,43 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel }: Agen
   if (cinemaLevel >= 6) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + AIRE_C6_DECIBEL_GIFT
   }
+  // CC-196：甜心律动 #4 应援能量按普攻时长折算（CC-195 通用口径 basicComboCycleSeconds）
+  record.aireBasicCheerCycleSeconds = basicComboCycleSeconds(skills, AIRE_SWEET_BASIC4_MOVE_ID)
+}
+
+/**
+ * 第三段绝对音准次数（纯函数，CC-196 抽出；直伤行 CC-197 接入时须与异放事件同源）。
+ * 手动覆盖（>0）优先；否则 = floor(应援能量 / 2) + 全场应援次数。
+ * 应援能量：强特 +3、连携 +4、甜心律动 #4 +1（普攻时长 / 甜心律动整套时长，CC-196 补）、
+ * 额外能力下每次帷幕 +4（含队友帷幕，teamVeilCountTotal）、滑块补充。
+ * 原文：消耗 2 个应援能量可直接快速发动第三段；全场应援每层 +2 段蓄力。
+ */
+export function aireAbsolutePitchCount(
+  cfg: AgentResourceInput['cfg'],
+  state: { exSpecialCount: number; chainCountTotal: number; basicAttackTime?: number; ultimateCount?: number },
+  totalTime: number,
+): number {
+  const record = cfg as unknown as Record<string, unknown>
+  const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 0)))
+  if (manualCount > 0) return manualCount
+  const additionalActive = record.aireAdditionalActive === true
+  const teamVeilCount = Math.max(0, Math.floor(Number(record.teamVeilCountTotal ?? 0) || 0))
+  const basicCycle = Number(record.aireBasicCheerCycleSeconds ?? 0)
+  const basic4Hits = basicCycle > 0 ? Math.floor(Math.max(0, Number(state.basicAttackTime ?? 0)) / basicCycle) : 0
+  const cheerEnergy = state.exSpecialCount * AIRE_CHEER_EX
+    + state.chainCountTotal * AIRE_CHEER_CHAIN
+    + basic4Hits * AIRE_CHEER_BASIC4
+    + (additionalActive ? AIRE_CHEER_PER_VEIL * teamVeilCount : 0)
+    + Math.max(0, setting(cfg, 'aire.cheerEnergyBonus', 0))
+  // 全场应援层数（每层 = 蓄力+2段 或 转化 2 应援能量，均 ≈ 1 次第三段）。CC-196 按原文订正：
+  // - 终结技进入[妄想时刻]获得 3 层（skill.chain 原文）；
+  // - 「妄想时刻内异常触发 +1 层 / 6s」是影画6 专属（talent.6 原文），旧实现对全命座无门控计 floor(t/6)。
+  // C6 妄想不退出 ⇒ 仅首次进入给 3 层（后续终结是否算「进入」原文未明，保守不计；回退点=本段）。
+  const ultCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0) || 0))
+  const cheerGain = Number(record.aireCinemaLevel ?? 0) >= 6
+    ? Math.floor(totalTime / AIRE_CHEER_CD_SECONDS) + (ultCount > 0 ? 3 : 0)
+    : 3 * ultCount
+  return Math.floor(cheerEnergy / 2) + cheerGain
 }
 
 function cycleFromCfg(cfg: unknown): AireCycle {
@@ -164,23 +206,10 @@ function buildAireResourceResult({ cfg }: AgentResourceResultInput) {
 function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Number(record.aireCinemaLevel ?? 0)
-  const additionalActive = record.aireAdditionalActive === true
   // 初始（局外）掌控；buildCharConfig 未跑（单测直调）时 undefined ⇒ 引擎回落局内面板
   const initialMastery = record.aireInitialMastery === undefined ? undefined : Number(record.aireInitialMastery)
-  // 绝对音准#3 次数：手动覆盖（>0）优先；否则按「应援能量/2 + 全场应援次数」自动推导
-  const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 0)))
-  let pitchCount = manualCount
-  if (pitchCount <= 0) {
-    // 应援能量总量近似：强特 +3、连携 +4、帷幕 4个/次×全队帷幕次数（含队友开的帷幕，useResourceCalc 收敛注入 teamVeilCountTotal）
-    const teamVeilCount = Math.max(0, Math.floor(Number(record.teamVeilCountTotal ?? 0) || 0))
-    const cheerEnergy = state.exSpecialCount * AIRE_CHEER_EX
-      + state.chainCountTotal * AIRE_CHEER_CHAIN
-      + (additionalActive ? AIRE_CHEER_PER_VEIL * teamVeilCount : 0)
-      + Math.max(0, setting(cfg, 'aire.cheerEnergyBonus', 0))
-    // 全场应援次数 = min(异常触发次数, floor(t/6))；异常队异常触发次数通常远超 CD 上限，取上限近似
-    const cheerGain = Math.floor(totalTime / AIRE_CHEER_CD_SECONDS)
-    pitchCount = Math.floor(cheerEnergy / 2) + cheerGain
-  }
+  // 绝对音准#3 次数（CC-196 纯函数 aireAbsolutePitchCount）
+  const pitchCount = aireAbsolutePitchCount(cfg, state, totalTime)
   if (pitchCount <= 0) return
   events.push({
     eventId: 'aire_absolute_pitch_release',
@@ -211,7 +240,7 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
           masteryValue: initialMastery,
         }
       : undefined,
-    note: `第三段绝对音准 #3 命中异常目标触发（次数=应援能量/2+全场应援）；基底属性取基底异常元素主施加者，结算区=爱芮。全场应援≈${Math.floor(totalTime / AIRE_CHEER_CD_SECONDS)}次（6秒CD上限近似，异常触发次数通常远超上限）。`,
+    note: `第三段绝对音准 #3 命中异常目标触发（次数=应援能量/2+全场应援）；基底属性取基底异常元素主施加者，结算区=爱芮。全场应援=终结×3层（影画6 另 +floor(t/6)，妄想内异常触发 6 秒CD上限近似）。`,
   })
 }
 

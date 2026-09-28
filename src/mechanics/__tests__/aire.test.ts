@@ -15,6 +15,7 @@ import {
   AIRE_C6_ETHANOL_DMG_BONUS,
   computeAireCycle,
   aireMechanic,
+  aireAbsolutePitchCount,
 } from '@/mechanics/agents/aire'
 import { setupHarness } from '@/test/harness'
 
@@ -126,18 +127,23 @@ describe('爱芮完整计算链', () => {
     expect(releases.every(r => r.totalDamage > 0)).toBe(true)
   })
 
-  it('异放次数自动推导 = 应援能量/2 + 全场应援(floor(t/6))；帷幕按次数（4个/次×teamVeilCountTotal）', () => {
+  it('异放次数自动推导 = 应援能量/2 + 全场应援（非C6=终结×3；C6=floor(t/6)+3）；帷幕按次数（4个/次×teamVeilCountTotal）', () => {
     const cfg = { aireCinemaLevel: 0, aireAdditionalActive: true, teamVeilCountTotal: 3 } as any
     const state = { exSpecialCount: 4, chainCountTotal: 5, ultimateCount: 2 } as any
     const events: any[] = []
     aireMechanic.buildAnomalyEvents!({ cfg, state, events, totalTime: 180 })
-    // 应援能量 = 4强特×3 + 5连携×4 + 3帷幕×4 = 44；全场应援 = floor(180/6)=30 → 异放 = floor(44/2)+30 = 52
-    expect(events[0].count).toBe(52)
+    // 应援能量 = 4强特×3 + 5连携×4 + 3帷幕×4 = 44；全场应援 = 2终结×3 = 6 → 异放 = floor(44/2)+6 = 28
+    // （CC-196 订正：「妄想内异常 +1层/6s」是影画6 专属，旧口径全命座 floor(180/6)=30 → 52）
+    expect(events[0].count).toBe(28)
+    // 影画6：全场应援 = floor(180/6) + 首次进入妄想 3 层 = 33 → 22+33 = 55
+    const events6: any[] = []
+    aireMechanic.buildAnomalyEvents!({ cfg: { ...cfg, aireCinemaLevel: 6 }, state, events: events6, totalTime: 180 })
+    expect(events6[0].count).toBe(55)
     // 生效断言：帷幕次数翻倍 → 应援能量 +3×4 → 异放 +6
     const cfg2 = { aireCinemaLevel: 0, aireAdditionalActive: true, teamVeilCountTotal: 6 } as any
     const events2: any[] = []
     aireMechanic.buildAnomalyEvents!({ cfg: cfg2, state, events: events2, totalTime: 180 })
-    expect(events2[0].count).toBe(58)
+    expect(events2[0].count).toBe(34)
   })
 
   it('影画1：异放事件带 releaseCrit（基础25/25，掌控>100每点+0.5）', () => {
@@ -211,6 +217,20 @@ describe('艾莲儿滑块生效差分（防守卫冻结，SOP §3.5）', () => {
     // +200 应援能量 → +100 次绝对音准（每次耗 2）
     expect(on - off).toBe(100)
     expect(on).toBeGreaterThan(off)
+  })
+
+  it('CC-196 纯函数：同一 state 下 cheerEnergyBonus +200 ⇒ 次数恰 +100', () => {
+    const state = { exSpecialCount: 10, chainCountTotal: 4, basicAttackTime: 30 }
+    const cfg: any = { aireBasicCheerCycleSeconds: 3.183 }
+    const off = aireAbsolutePitchCount(cfg, state, 180)
+    const on = aireAbsolutePitchCount({ ...cfg, 'setting:aire.cheerEnergyBonus': 200 }, state, 180)
+    expect(on - off).toBe(100)
+    // 应援能量 = 10×3 + 4×4 + floor(30/3.183)=9 ⇒ 55 → floor(55/2)=27；非C6 无终结 ⇒ 全场应援 0
+    expect(off).toBe(27)
+    // 影画6：+floor(180/6)=30（无终结 ⇒ 无首次进入 3 层）
+    expect(aireAbsolutePitchCount({ ...cfg, aireCinemaLevel: 6 }, state, 180)).toBe(57)
+    // 非C6 终结 3 次 ⇒ +9
+    expect(aireAbsolutePitchCount(cfg, { ...state, ultimateCount: 3 }, 180)).toBe(36)
   })
 })
 
