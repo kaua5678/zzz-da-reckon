@@ -70,15 +70,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 230 轮（lane lead-arena-0925c）：CC-207 完成（fb0b8205）。文档见本提交。push 结果见 git log / rev-list。**
-- CC-207：`teammateBuffGate` 改为 store 与引擎共读，详见 `docs/mcp-stun-dual-source.md` §24.54。
-- 前几轮：229 CC-206（a119557d）加 T2 收尾；228 CC-205（d95a2957）；227 CC-204（9aed3fc4）。
+**第 231 轮（lane lead-arena-0925c）：CC-208 完成（03680c60）。文档见本提交。push 结果见 git log / rev-list。**
+- CC-208：展示层队友 buff 列表与引擎同源，详见 `docs/mcp-stun-dual-source.md` §24.55（含本轮扫过但判为不做的点）。
+- 前几轮：230 CC-207（fb0b8205）；229 CC-206（a119557d）；228 CC-205（d95a2957）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. 找下一个「同一判断多处实现」的点：`grep -rn 'evalAdditionalAbility(' src`、`grep -rn 'getRegisteredAgentMechanics()' src/stores src/composables`，逐个看 store 层和引擎层是否各算一份、其中一层带修正而另一层不带。找到就立 CC-208，按 CC-206 / CC-207 的同构方式合并到 mechanics 层的纯函数（store 不能值导入 composables/resourceCalc）。零差判据：默认配置下 golden 不变。
-2. 若找不到值得做的点，写「本轮扫描无可做项」加扫描范围，不要为了降计数硬做。
-3. 可选的纯展示小项：UI 对被 `teammateBuffGateBlocks` 否决的条目置灰（§24.54「已知限制」）。展示层禁止值导入 mechanics，要经 store 暴露。
+1. 继续找「同一判断多处实现」，**重点看展示层**（本轮命中就在这里）：`grep -rn 'catalogStore\.\(agentsMap\|teammateBuffGroups\|getWEngine\)' src/views src/components`，看有没有视图自己重算引擎已经算过的东西（音擎职业匹配、命座达标、驱动盘件数等）。例：`FinalPanel.vue` 的 `collectHpSources` 第 3、4 步自己判断音擎职业匹配和驱动盘套装，可对照 `resolveSlotPanelBuffInputs` / `computePanelPhases` 的实际输入，看是否一致。**先判断「不一致会不会让核对表误导」再动**；只是换个写法、没有分叉的，不做。
+2. 可选的纯展示项：AttributeConfigPage 把被引擎否决的队友 buff（额外能力门控 / `teammateBuffGateBlocks`）置灰或加提示。展示层禁止值导入 mechanics，要经 store 或 composable 暴露。
+3. 若扫描无可做项，写「本轮扫描无可做项」加扫描范围，不要为了降计数硬做。
 - 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`）。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）。
 
@@ -86,6 +86,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
 
 **已知坑**
+- **「已勾选」≠「生效」**：展示层要列生效的队友 buff，一律取 `resolveSlotPanelBuffInputs(slot, …).teammateBuffs`（经 helpers 壳导入），不要遍历 `teammateBuffGroups` 再看 `isTeammateBuffEnabled`（CC-208 有源码锁）。
 - **修 bug 的测试要做反证**：临时撤掉修复（先 cp 备份），确认新测试失败，再恢复。否则测试可能在修复前也能通过（CC-207 做过）。
 - **wsl_exec 里后台起 dsh**：`nohup bash -c '…' &` 会随调用退出被杀、连日志都不生成。要写成脚本文件，用 `setsid nohup script.sh >/dev/null 2>&1 < /dev/null &` 启动（第 229 轮）。dsh 做 66 条的只读分类约需 30 分钟。
 - **store 值导入 composables/resourceCalc 会成环**（helpers.ts 值导入 stores/config）。两边共用的函数放 mechanics 或 specs 层（CC-206）。

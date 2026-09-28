@@ -1876,3 +1876,25 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **影响面**：默认配置下 store 本来就关掉了这些条目，所以 timeGolden / 棘轮零差。行为变化只出现在用户手动强行勾选的场景：结果变得与 UI 语义一致（被否决的条目不再生效）。verify EXIT=0（3892 passed / 29 skipped）；vue-tsc 0。
 - **已知限制**：UI 仍允许勾选被否决的条目，只是不生效。如需在 UI 上置灰，后续可让面板读 `teammateBuffGateBlocks`（纯展示改动，不影响计算）。
 - **回退点**：`git revert fb0b8205`。
+
+### 24.55 第 231 轮：CC-208 展示层「本槽生效的队友 buff」取引擎同一份输入（03680c60）
+
+- **扫描**（按第 230 轮交接的「同一判断多处实现」）：
+  - `evalAdditionalAbility(` 共 4 处调用点：`additionalAbilityGates.ts`（门控）、`panelPhases.ts:576`（面板 `additionalAbilityActive` 标志）、`rina.ts:297`（丽娜电属性积蓄加成）、`miyabi.ts:86`（雅自身条件）。四处都在引擎侧，而且回答的是不同问题（门控 / 面板标志 / 各自的机制条件），都调用同一个求值函数，**不算重复实现，不做**。
+  - `getRegisteredAgentMechanics()`：只有 registry、roundInputs、additionalAbilityGates、agentMechanicView（轴预设展示）四处使用，没有重复求值，**不做**。
+  - **命中**：展示层有两处自己拼「已启用的队友 buff」，做法是遍历 `teammateBuffGroups` 再看 `isTeammateBuffEnabled`：
+    - `FinalPanel.vue` 的 `collectHpSources` 第 2 步（局内生命构成核对表）；
+    - `DebugPage.vue` 的 `enabledTeammateBuffs` → `addTeamBuffRows`。
+  - 引擎的面板输入 `resolveSlotPanelBuffInputs` 在勾选之后还有 6 道处理，展示层一道都没做：拥有者在队、`singleSourced` 不进数值通道、修饰器改写数值（丽娜 C1 / 莱特 C2）、额外能力门控（CC-203/206）、模块钩子否决（CC-207）、接收槽过滤（CC-130）。
+  - 结果：这两个**用于核对**的界面会列出引擎实际丢弃的条目，或列出改写前的数值，核对表和面板对不上。
+- **改法**：
+  - `helpers.ts` 壳 re-export `resolveSlotPanelBuffInputs`（沿用 import + export 两行写法）；
+  - 两个展示点改为 `resolveSlotPanelBuffInputs(slot, …).teammateBuffs.filter(b => b.sourceKind !== 'global')`，排除全局 Buff 是因为两页都另有单列。
+  - 顺带修正 DebugPage 的错误备注。旧文案是「请注意现有面板计算主要读取 Buff 数据自身的默认 coverage」，已过时：滑块覆盖率经 `effectCoverageMap` 进入 `core/panel.ts` 的 `applyBuffs`。新文案是「覆盖率 X%（配置页滑块，引擎按此比例折算本条效果）」。
+- **为什么值得做**：「哪些队友 buff 作用于本槽」只剩引擎一处实现（更简单），以后新增的过滤会自动出现在核对界面上（更通用）。副词条优化器第 194 轮已经这样接入，本轮是把最后两个展示点也接进来。
+- **核查**：全数据只有 1 条 `singleSourced`，且没有生命类 stat，所以 FinalPanel 生命核对表不会因为排除 singleSourced 而少掉本应显示的行。
+- **测试** `displayTeammateBuffsCc208.test.ts`：
+  - 行为：波可娜 C6 强行勾上基础条后，store 显示已勾，引擎输入里没有这条，影画六条在；这正是旧展示口径会误列的情形。
+  - 源码锁：两个展示点必须调用 `resolveSlotPanelBuffInputs(`，且不能出现「`teammateBuffGroups` 后 200 字符内跟着 `isTeammateBuffEnabled(`」的重筛写法。旧代码两处都会被这条锁拦下。
+- **影响面**：只改展示，计算零改动；golden 零差。verify EXIT=0（3894 passed / 29 skipped）；vue-tsc 0。
+- **回退点**：`git revert 03680c60`。
