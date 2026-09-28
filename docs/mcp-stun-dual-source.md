@@ -1039,3 +1039,35 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - (a) 叠乘歧义：「垂虹 / 惊鸿耀变触发2次」（LuminizeTrigger）与「特殊虚耀再次翻倍」「惊鸿关联虚耀翻倍」在同一载体上是 ×4 还是 ×2。当前 ×2、LuminizeTrigger 不读。
   - (b) 普攻第 4 段（蹁跹 #4，1581005）命中获得 3 个特殊虚耀、伤害为开局特殊虚耀的 25%（`remielleCinema6SpecialVoidflareCount` / `DamageRatio`）：零读取，未建模。要先定「每次普攻 4 段都给 3 个，还是受储存上限 3 约束」以及触发频率来源（轴里 1581005 的次数）。
   - 两项都会改数值，而且需要语义判断，原文无法消歧。按 R5（数据可信、不凭推测改数）暂缓，等有更明确的规格来源再做。状态表 1581 c6 的 pending 已登记。
+
+### 24.16 第 194 轮：CC-167（加成初值双计推广，零发现）、洛克茜 energyRegen 旁支（读数正确，顺手让局外面板盖章）、CC-168 副词条优化器队友 buff 输入与伤害管线同源（提交 3336f873）
+- **CC-167（CC-165 的推广），结论：零发现。**
+  - 扫法：`core/panel.ts` 缺省工厂 + `data/agentPanelStats.ts` 共 116 个初值，非 0 的只有 `critRate` 5、`energyRegen` / `energyRegenOutOfCombat` 1.2、`energyMax` 120、`slot` −1，都是基础属性，全仓没有 `1 + (Math.max(0,)? x.<这些字段>` 的读法（脚本 WSL `/home/kaua/calc-arch/k193/scan194.py`，仓库外）。
+  - 补扫 `1 + … ?? 1`（回落值 1 被 `1 +` 包住）：唯一命中 `composables/teamCompare.ts:484` `1 + max(0, (精炼 ?? 1) − 1)`，精炼从 1 起算，写法正确。
+  - CC-165 是孤例，**不做 CG 判据**。
+- **洛克茜 energyRegen 旁支（r6-refactor-list §2.18 末尾「旁支未决」），结论：读数正确，关闭。**
+  - 临时探针（1621 + 1081 + 1031，推荐配装，已删）：局外 `energyRegenBonusPct = 160`、`BonusFlat = 0`，局内同为 160，没有混进局内回能加成；局内面板 `energyRegenOutOfCombat = 1.2 × 2.6 = 3.12` 正确。洛克茜核心被动吃满封顶（冲击 100 → 176.8）。
+  - 旁支里「局外面板上是 1.2」的原因：`panelPhases.ts` 只把局外总回能盖在局内面板对象上，局外对象上一直是 emptyPanel 缺省值。
+  - 维琳娜的回能转模（唯一的 `applySpecAttributeConversions` 调用方）在 applyPanel 中对局内面板执行，发生在盖章之后，读数正确；柏妮思读的也是局内面板。当时没有任何消费方从局外面板读这个字段（接收槽过滤器席德只读 `atk`，catalog / teammate-buffs 数据里没有引用）。
+  - **仍然修（让架构更一致）**：局外总回能算一次，同时盖到局外 / 局内两个面板上。字段名就叫「局外总回能」，局外面板却带着陈旧的缺省值，这正是 CC-127（洛克茜读错回能字段、转模从不触发）那类陷阱：以后谁经 `getOutOfCombatPanel` 或 `sourcePanelPhase: 'outOfCombat'` 读它，就会静默拿到 1.2。
+    - 测试：`roxy.test` 新增「两相一致」用例（局外 = 局内 = 基础 × (1 + 局外%) + 局外固定，且 > 1.2 以保证判别力）。反向验证：把 `panelPhases.ts` 换回 HEAD 版本后该用例红（1.2 ≠ 3.12）。
+    - zd：DUMP / ROWS 均 0 差异。
+- **CC-168：副词条优化器的队友 buff 输入改为与伤害管线同源（可归一，已做）。**
+  - 发现：单槽优化器（`composables/substatOptimizer.ts`，ImpactChart 按钮触发，总是贪心）只取原始 `enabledTeammateBuffs`，主管线 `computePanelPhases` 在交给 calcPanel 之前做的 5 步加工它全缺：
+    1. 在队模块 `adjustTeammateBuffSource`（莱特 / 耀嘉音来源面板修正）；
+    2. 全局 Buff 并入；
+    3. 额外能力门控（`evalAdditionalAbilityBuffGates`，14 角色 / 17 条 buff）；
+    4. CC-130 接收槽过滤（席德）；
+    5. 效果覆盖率表（队友 buff 覆盖率 / 音擎效果覆盖率 / 队伍驱动盘）。
+    优化器因此是对着一个和伤害管线不同的面板做优化（例：席德 + 命破队友时仍给队友算「明攻」；覆盖率 50% 的拐按 100% 算）。
+  - 修法：把 `computePanelPhases` 里这 67 行原样抽成导出函数 `resolveSlotPanelBuffInputs(slot, configStore, catalogStore)`（返回 `teammateBuffs` / `sourcePanelsByOwner` / `effectCoverageMap` / `team`），`computePanelPhases` 与单槽优化器共用；`OptimizeSubstatsInput.config` 新增可选 `effectCoverageMap`，由 `core/substatOptimizer.ts#computeNoSubstatPanel` 转发给 calcPanel（缺省 = 全部按 100%，与旧行为一致）。
+  - 影响面：只影响 ImpactChart 的单槽优化结果；预设 / zd 走 store 层的 `useDefault` 快速路径（`optimizer.useDefault` 缺省 1，`teammateBuffs: []`），不受影响。zd：见本节「验证」。
+  - 测试：
+    - CC-52 等价用例（莱特 + 耀嘉音 + 丽娜）不变且仍逐值相等（整数分配对来源修正不敏感），文件头已注明。
+    - 新增「与伤害管线同源」用例：席德 + 真斗（1441 命破，额外能力不触发），原始上下文里有 `seed.core_vanguard_bright_attack` 的效果，`resolveSlotPanelBuffInputs(1)` 里没有。
+    - ⚠ 该用例钉的是抽出函数的过滤行为；「优化器确实调用它」靠代码接线保证，没有 spy 测试（ESM 导出不便 spy）。
+  - **未决（不做，写明理由）**：
+    - store 层整队贪心（`stores/config.ts` ~800 的非 useDefault 分支）仍用原始上下文。store 层不能反向依赖 composables，要统一需把 `resolveSlotPanelBuffInputs` 下沉到不依赖 store 的层（入参改为 team / 选择表 / catalog 数据），改动面大；而缺省路径不读队友 buff，只有用户手动关掉 `optimizer.useDefault` 且是输出位时才会走到。等有人要用整队贪心时再做。
+    - 候选 CC-169：`composables/outOfCombatPanel.ts`（配置页「局外」面板展示）也用原始上下文，并把全局 Buff 事后加到局外面板上，而主管线把全局 Buff 当局内 buff 处理。只影响展示，未立卡实施；做之前要先确认「局外」展示页是否有意包含全局 Buff（CC-51 照搬原页面口径）。
+  - 回退点：`git revert 3336f873`（CC-168 与局外回能盖章同一提交；若只退其一，手工还原 `panelPhases.ts` 对应段）。
+- **验证**：两次 zd（局外回能盖章后 / CC-168 后）DUMP / ROWS 均 0 差异；`npm run verify` rc=0（内含全量 3820 passed，新增 2 条）；vue-tsc 无新错误；CG 见提交。

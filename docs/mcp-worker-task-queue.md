@@ -69,21 +69,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 193 轮（lane lead-arena-0925c）：CC-164 完成（零发现）；顺藤查出并完成 CC-165（代码提交 90a7eb79）；立卡 CC-166（暂缓）。文档见本提交。**
-- CC-164：`PanelValues` 死读零发现；19 个只有单测覆盖的滑块都走标准通道，不补测（stun-dual-source §24.15）。
-- CC-165：蕾米埃尔 6 命加成字段初值双计、特殊虚耀单位错，已修；0 命 1581 预设伤害 −12~16%，已做归因反向验证；timeGolden 已重生成。
-- 前几轮：192 CC-27（948a1444）；191 CC-152（c6795167）；190 CC-156（e542a005）。
+**第 194 轮（lane lead-arena-0925c）：CC-167 完成（零发现）；洛克茜 energyRegen 旁支关闭；CC-168 完成（代码提交 3336f873）；登记候选 CC-169。文档见本提交。**
+- CC-167：CC-165 那类加成初值双计是孤例。
+- 洛克茜：局外回能 160% 全是局外加成，读数正确；顺手把局外总回能也盖到局外面板上（防 CC-127 同类陷阱，zd 零差）。
+- CC-168：单槽副词条优化器与伤害管线共用 `resolveSlotPanelBuffInputs`（门控 / 接收槽过滤 / 全局 Buff / 覆盖率 / 来源修正），zd 零差。
+- 前几轮：193 CC-165（90a7eb79）；192 CC-27（948a1444）；191 CC-152（c6795167）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **同类排查三（CC-165 的推广）**：其他「加成语义字段初值却是 1」的双计。做法：
-   - 在 `src/mechanics/agents/*.ts` 里 grep `1 + Math.max(0, <panel>.X` 和 `1 + (<panel>.X`；
-   - 对每个 X 查它在 `core/panel.ts` / `data/agentPanelStats.ts` 的初值；初值非 0 就是嫌疑；
-   - 再对照 catalog effect id（`*_bonus` = 加成）和状态表口径下结论。只修有规格依据的，数值差异要做归因。
-2. 副词条优化器接收槽过滤；洛克茜 energyRegen（先在卡表或 census 中找原始描述）。
-3. CC-166 暂缓；除非出现新的规格来源（比如 catalog 或状态表补了叠乘说明），否则不要动。
+1. **CC-169（先判断口径再动手）**：读 `composables/outOfCombatPanel.ts` 与它的页面消费方（TeamConfigPage「局外」模式），以及 CC-51 的提交说明。判定「局外面板展示」是否应等于 `computePanelPhases(slot).outOfCombat`：
+   - 若是：改为直接复用 `computePanelPhases(...).outOfCombat`（或 `resolveSlotPanelBuffInputs`），删掉重复组装；
+   - 若全局 Buff 是有意叠加在局外展示上的（用户口径），就在文件头写明，并只把队友 buff 输入换成 `resolveSlotPanelBuffInputs`。
+   - 验收：展示层测试逐值对照；zd 应零差（展示不进伤害）。
+2. store 层整队贪心与管线同源（CC-168 未决项）：只有在确实要用整队贪心时才做，做法见 stun-dual-source §24.16。
+3. CC-166 仍暂缓（需规格）。
 
 **已知坑**
+- 给 calcPanel 组装队友 buff 输入，一律走 `resolveSlotPanelBuffInputs`（`composables/resourceCalc/panelPhases.ts`），不要再用 `teammateBuffSourceContextFromStores` 的原始 `enabledTeammateBuffs`：后者缺门控、接收槽过滤、全局 Buff、覆盖率和来源修正。
+- 面板字段写在局内对象上时，想想局外对象上是否也该有同一个值（第 194 轮 `energyRegenOutOfCombat`）。
 - 6 命原文里的「虹之终幕 / 瞬逝优雅」就是垂虹 / 惊鸿（英文名的另一译法），catalog 里没有这两个招式名。写「某载体未建模」之前先查招式 id。
 - 初值不要按字段名里的 Multiplier 猜：看 catalog effect id（`*_bonus`）和模块读法（`1 + x` ⇒ 初值 0）。
 - 手改 `public/static/*.json`（比如状态表）后要跑 `npm run -s minify:static`：verify 的 data check 要求紧凑 JSON，数组里的 `", "` 空格就会让它红。
