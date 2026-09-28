@@ -16,6 +16,7 @@ import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
 import { isPctStat } from '@/utils/statMeta'
+import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
 import { fmt, pct, localized } from '@/utils/format'
 
 /** 生命类 buff 字段（局内大生命 = inCombatHpPct / 局内 hpPct，局内小生命 = inCombatHpFlat / 局内 hpFlat） */
@@ -36,23 +37,20 @@ function hpPhase(effect: BuffEffect, group: BuffGroup | null | undefined): 'in' 
 }
 
 /** effect 数值展示 + 实际生效数值（fixed 按精炼等级取 modificationValues × 覆盖率；derived/formula 标注动态，num=0） */
-function hpEffectValue(effect: BuffEffect, cov: number, modLevel?: number): { text: string; num: number } {
+function hpEffectValue(raw: BuffEffect, cov: number, modLevel?: number): { text: string; num: number } {
+  // CC-210：精炼取值走引擎同一函数（此前只替换 value，stacked 的 valuePerStack 用原值）
+  const effect = effectAtModLevel(raw, modLevel)
+  const suffix = modLevel && (raw as any).modificationValues ? `（精炼${modLevel}）` : ''
   // 全局 buff 等无 type 的项按 fixed 处理
   if (!effect.type || effect.type === 'fixed') {
-    const mod = (effect as any).modificationValues?.value as number[] | undefined
-    let v = effect.value ?? 0
-    let suffix = ''
-    if (mod && modLevel && mod[modLevel - 1] != null) {
-      v = mod[modLevel - 1]
-      suffix = `（精炼${modLevel}）`
-    }
+    const v = effect.value ?? 0
     const text = `${suffix}${isPctStat(effect.stat) ? pct(v) : fmt(v, 0)}${cov < 1 ? ` × 覆盖率${pct(cov * 100)}` : ''}`
     return { text, num: v * cov }
   }
   if (effect.type === 'stacked') {
     const per = effect.valuePerStack ?? effect.value ?? 0
     const stacks = effect.defaultStacks ?? effect.maxStacks ?? 1
-    return { text: `${per} × ${stacks}层${cov < 1 ? ` × 覆盖率${pct(cov * 100)}` : ''}`, num: per * stacks * cov }
+    return { text: `${suffix}${per} × ${stacks}层${cov < 1 ? ` × 覆盖率${pct(cov * 100)}` : ''}`, num: per * stacks * cov }
   }
   if (effect.type === 'derived') {
     return {

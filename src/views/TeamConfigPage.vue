@@ -779,6 +779,7 @@ import {
 import { useConfigStore, getInteractionDefaults, ACTION_COUNT_BOUNDS } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useStatLabel } from '@/composables/useStatLabel'
+import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanel } from '@/composables/resourceCalc/helpers'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
@@ -1160,11 +1161,9 @@ const wengineEffectDesc = computed(() => {
   return localized(wengine.value.effect.description)
 })
 
-function effectValueText(effect: BuffEffect): string {
-  const modValue = (effect as any).modificationValues?.value
-  const modPerStack = (effect as any).modificationValues?.valuePerStack
-  if (Array.isArray(modValue)) return `${modValue[selectedChar.value.wEngineModLevel - 1] ?? effect.value}`
-  if (Array.isArray(modPerStack)) return `${modPerStack[selectedChar.value.wEngineModLevel - 1] ?? effect.valuePerStack} × ${effect.defaultStacks ?? effect.maxStacks ?? 1}层`
+function effectValueText(raw: BuffEffect): string {
+  // CC-210：精炼取值走引擎同一函数 applyWEngineModLevel（经 composable），不再自己索引 modificationValues
+  const effect = effectAtModLevel(raw, selectedChar.value.wEngineModLevel)
   if (effect.type === 'stacked') return `${effect.valuePerStack ?? effect.value} × ${effect.defaultStacks ?? effect.maxStacks ?? 1}层`
   if (effect.type === 'derived') return `${localized((effect as any).sourceLabel) || effect.basis || effect.sourceStat || '来源'} × ${effect.ratio ?? 0}%${effect.cap ? `，上限 ${effect.cap}` : ''}`
   if (effect.type === 'formula') return effect.formula?.expression ?? '公式'

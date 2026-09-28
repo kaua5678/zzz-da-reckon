@@ -102,6 +102,7 @@ import { NAlert, NCard, NGi, NGrid, NSelect, NSpace, NTag } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computePanel, resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
+import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt, pct, localized } from '@/utils/format'
 // `isPctStat` = **展示**口径（lineValue 的格式化），`statSettlementMode` = **结算**口径（全局 Buff 的 mode 实参）
@@ -182,9 +183,9 @@ function row(source: string, item: string, stat: string, value: number | string,
   }
 }
 
-function effectValue(effect: BuffEffect, modLevel?: number): number | string {
-  const mod = (effect as any).modificationValues?.value
-  if (mod && modLevel && mod[modLevel - 1] != null) return mod[modLevel - 1]
+function effectValue(raw: BuffEffect, modLevel?: number): number | string {
+  // CC-210：精炼取值走引擎同一函数（此前只替换 value，漏掉 valuePerStack）
+  const effect = effectAtModLevel(raw, modLevel)
   if (effect.type === 'fixed') return effect.value
   if (effect.type === 'derived') {
     const source = localized((effect as any).sourceLabel) || effect.basis || '来源属性'
