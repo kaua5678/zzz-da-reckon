@@ -125,8 +125,10 @@ export interface GuaranteeStunShortfall {
 export function guaranteeStunShortfall(
   stunCount: number,
   split: { breakerParry: number; parryTotal: number } | null,
-  target: number = GUARANTEE_STUN_TARGET,
 ): GuaranteeStunShortfall | null {
+  // CC-181：目标固定取弹刀反推同一常量（convergence 传 `targetStunCount: GUARANTEE_STUN_TARGET`）；
+  // 原默认形参全仓无人传，留着只会让诊断与反推有机会用两个目标
+  const target = GUARANTEE_STUN_TARGET
   if (stunCount >= target) return null
   const cause: GuaranteeStunShortfall['cause'] = !split
     ? 'no-parry-budget'

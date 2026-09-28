@@ -61,8 +61,6 @@ export interface StunPoolInput {
   chainCountPerStun: number
   /** 各元素失衡抗性（百分比，如20表示20%） */
   enemyStunResistances?: Record<string, number>
-  /** 兼容旧调用：单一失衡抗性 */
-  enemyStunResistance?: number
   /** 物理异常（畏缩）覆盖率，0-1之间
    *  畏缩使敌人受到的失衡值 +7.5%，持续10秒
    *  实际增幅 = 7.5% × 覆盖率
@@ -145,7 +143,7 @@ function calcPerHitStun(
 
 /** 失衡池主计算 */
 export function calcStunPool(input: StunPoolInput): StunPoolResult {
-  const { executions, bossStunValue, chainCountPerStun, enemyStunResistance = 0, enemyStunResistances = {}, physicalFlinchCoverageRate = 0 } = input
+  const { executions, bossStunValue, chainCountPerStun, enemyStunResistances = {}, physicalFlinchCoverageRate = 0 } = input
   const inAxisFractions = input.inAxisStunFractionByKey ?? {}
   const windowFraction = Math.max(0, Math.min(1, input.windowTimeFraction ?? 0))
   const refundStunRatio = Math.max(0, Math.min(0.25, input.refundStunRatio ?? 0))
@@ -161,7 +159,8 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
 
     const panel = panelAt(input.panels, exec.slot) ?? emptyPanel()
     const element = exec.element ?? 'physical'
-    const baseStunRes = enemyStunResistances[element] ?? enemyStunResistance
+    // CC-181：原「兼容旧调用」单数 enemyStunResistance（缺省 0）全仓零写入，已删；查不到的元素 = 0 抗性（逐位同旧）
+    const baseStunRes = enemyStunResistances[element] ?? 0
     const perHit = calcPerHitStun(exec.baseDaze, panel, baseStunRes, physicalFlinchCoverageRate, element, exec.skillType, exec.stunBuildUpBonus)
     const total = perHit * exec.count
     // 取较大者：轴模式逐招 fraction 已精确扣除，非轴模式退回全局窗口占比（不叠加，防双重折算）

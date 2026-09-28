@@ -261,13 +261,14 @@ function decomposeEffect(effect: BuffEffect): SetBonusDecomposition {
 function decomposeSet(
   setId: string,
   setsMap: Map<string, DriveDiscSet>,
-  coverage?: number,
 ): SetBonusDecomposition {
   const result: SetBonusDecomposition = { equivalentSteps: {}, multipliers: {} }
   const set = setsMap.get(setId)
   if (!set) return result
 
-  const cov = coverage ?? 1
+  // CC-181：原可选形参 coverage 全仓无人传（恒 1）已删。⚠ 已知近似（CC-182）：套装效果按 100% 生效分解，
+  // 伤害管线则按 effectCoverageMap 打折 ⇒ 条件型 4 件套在排名里被高估
+  const cov = 1
 
   // 2 件套效果
   for (const e of set.twoPiece?.effects ?? []) {
@@ -648,6 +649,7 @@ function pruneAndRankSets(
   atkTransfer?: AtkTransferConfig,
   statCap?: number,
   totalSteps?: number,
+  minGainRatio?: number,
 ): { fourPieceId: string; twoPieceId: string; decomposition: SetBonusDecomposition; baseScore: number }[] {
   // 生成 4+2 组合
   const combinations: { fourPieceId: string; twoPieceId: string; decomposition: SetBonusDecomposition }[] = []
@@ -661,9 +663,10 @@ function pruneAndRankSets(
     }
   }
 
-  // 对每个组合跑一次贪心（快速），取分数排序
+  // 对每个组合跑一次贪心，取分数排序。CC-181：排名与最终分配用**同一**提前终止阈值（原排名漏传 ⇒ 固定 0.05，
+  // 模板覆盖如蕾米埃尔 0.15 只在最终分配生效 ⇒ Top-K 按另一套停止规则选出）
   const scored = combinations.map(c => {
-    const result = greedyAllocate(basePanel, c.decomposition, template, subStep, totalSteps!, teammates, atkTransfer, statCap)
+    const result = greedyAllocate(basePanel, c.decomposition, template, subStep, totalSteps!, teammates, atkTransfer, statCap, minGainRatio)
     return { ...c, baseScore: result.expectedScore }
   })
 
@@ -845,7 +848,7 @@ export function computeOptimalSubStats(input: OptimizeSubstatsInput): OptimizeSu
   const minGainRatio = template.minGainRatio ?? input.minGainRatio ?? 0.05
 
   // 7. 剪枝 + 贪心 → 最优组合
-  const topCombos = pruneAndRankSets(allSetIds, input.setsMap, basePanel, template, subStep, 5, teammates, atkTransfer, statCap, totalSteps)
+  const topCombos = pruneAndRankSets(allSetIds, input.setsMap, basePanel, template, subStep, 5, teammates, atkTransfer, statCap, totalSteps, minGainRatio)
 
   // 回退函数：对指定套装跑贪心
   const runGreedy = (fourId: string, twoId: string): GreedyResult => {
