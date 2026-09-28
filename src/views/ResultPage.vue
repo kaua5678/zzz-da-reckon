@@ -527,22 +527,22 @@
             <div class="pool-stat">
               <span class="pool-stat-label">弹刀 ({{ sumOf(specialActionBonus.perSlotParry) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.parry) }}</span>
-              <span class="pool-stat-detail">215/次 · 伴随107.5</span>
+              <span class="pool-stat-detail">{{ unitPriceText(PARRY_DECIBEL_BONUS) }}</span>
             </div>
             <div class="pool-stat">
               <span class="pool-stat-label">连携 ({{ sumOf(specialActionBonus.perSlotChain) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.chain) }}</span>
-              <span class="pool-stat-detail">10/次 · 伴随5</span>
+              <span class="pool-stat-detail">{{ unitPriceText(CHAIN_DECIBEL_BONUS) }}</span>
             </div>
             <div class="pool-stat">
               <span class="pool-stat-label">闪避反击 ({{ sumOf(specialActionBonus.perSlotDodgeCounter) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.dodgeCounter) }}</span>
-              <span class="pool-stat-detail">10/次 · 伴随5</span>
+              <span class="pool-stat-detail">{{ unitPriceText(DODGE_COUNTER_DECIBEL_BONUS) }}</span>
             </div>
             <div class="pool-stat">
               <span class="pool-stat-label">快速支援 ({{ sumOf(specialActionBonus.perSlotQuickAssist) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.quickAssist) }}</span>
-              <span class="pool-stat-detail">20/次 · 伴随10</span>
+              <span class="pool-stat-detail">{{ unitPriceText(QUICK_ASSIST_DECIBEL_BONUS) }}</span>
             </div>
             <div class="pool-stat bonus">
               <span class="pool-stat-label">总计</span>
@@ -810,6 +810,8 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { fmt } from '@/utils/format'
+import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS, QUICK_ASSIST_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+import { DECIBEL_COMPANION_RATIO } from '@/data/decibelCompanion'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import FinalPanel from '@/components/FinalPanel.vue'
@@ -818,6 +820,11 @@ import TeamDamage3DChart from '@/components/charts/TeamDamage3DChart.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
 import type { CharacterResourceResult, AnomalyEventRecord } from '@/types/resource'
+
+/** 特殊动作喧响卡说明文字「单价/次 · 伴随 单价×50%」（CC-232：单价与伴随比例读 data 单一来源，不再手写） */
+function unitPriceText(unit: number): string {
+  return `${unit}/次 · 伴随${unit * DECIBEL_COMPANION_RATIO}`
+}
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()

@@ -441,8 +441,9 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
 
 // ============ 特殊动作喧响奖励计算（原有，保持不变） ============
 
-/** 弹刀（招架支援）单次喧响奖励（个人 215，队友伴随 50%；单一事实源，通用保底4喧响反推同引） */
-export const PARRY_DECIBEL_BONUS = 215
+// 特殊动作喧响单价定义落点在 data/anomalyDecibelBonuses（CC-232）；PARRY_DECIBEL_BONUS 原名转出（convergence 引用）
+import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS, QUICK_ASSIST_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+export { PARRY_DECIBEL_BONUS }
 
 /** 特殊动作喧响奖励计算
  *
@@ -469,15 +470,15 @@ export function calcSpecialActionBonus(
   const totalQuickAssist = perSlotQuickAssist.reduce((a, b) => a + b, 0)
 
   const parry = totalParry * PARRY_DECIBEL_BONUS
-  const chain = totalChain * 10
-  const dodgeCounter = totalDodgeCounter * 10
-  const quickAssist = totalQuickAssist * 20
+  const chain = totalChain * CHAIN_DECIBEL_BONUS
+  const dodgeCounter = totalDodgeCounter * DODGE_COUNTER_DECIBEL_BONUS
+  const quickAssist = totalQuickAssist * QUICK_ASSIST_DECIBEL_BONUS
 
   const ownReward = (slot: number) =>
     (perSlotParry[slot] ?? 0) * PARRY_DECIBEL_BONUS
-    + (perSlotChain[slot] ?? 0) * 10
-    + (perSlotDodgeCounter[slot] ?? 0) * 10
-    + (perSlotQuickAssist[slot] ?? 0) * 20
+    + (perSlotChain[slot] ?? 0) * CHAIN_DECIBEL_BONUS
+    + (perSlotDodgeCounter[slot] ?? 0) * DODGE_COUNTER_DECIBEL_BONUS
+    + (perSlotQuickAssist[slot] ?? 0) * QUICK_ASSIST_DECIBEL_BONUS
 
   const perSlotBonus = withCompanionShare(Array.from({ length: slotCount }, (_, i) => ownReward(i)))
 
