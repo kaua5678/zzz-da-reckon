@@ -69,23 +69,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 207 轮（lane lead-arena-0925c）：CC-184 完成（ae935755）。文档见本提交。**
-- CC-184：贪心分配补满步数预算（打分式看不到的属性边际恒 0，旧版浪费步数）。开精修后 62 个角色平均 +6.47%，54 胜，所有角色都不低于推荐配装。详见 stun-dual-source §24.31。
-- 前几轮：206 CC-183（20a47df3）；205 CC-182（85956a53）；204 CC-181（e0fdf806）。
+**第 208 轮（lane lead-arena-0925c）：CC-185 完成（0e4e7ecf）；立卡 CC-186。文档见本提交。**
+- CC-185：编排层优化器改为「useDefault 快速分配起点 + 真实伤害精修」，refine 必填，不再调打分式贪心。实测和贪心起点零差，详见 stun-dual-source §24.32。
+- 前几轮：207 CC-184（ae935755）；206 CC-183（20a47df3）；205 CC-182（85956a53）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-185：评估「快速路径起点 + 真实伤害精修」能否取代「打分式贪心起点」**（简化方向；R6 清单已全部处理，见 `docs/mcp-r6-refactor-list.md`）。
-   - 背景：CC-183 / 184 之后，打分式加贪心只负责给起点，结果由精修决定（§24.30 已证明换打分式对精修结果零影响）。
-   - 做法：在 `composables/substatOptimizer.ts computeSubstatAllocationForSlot` 中，refine 存在时改为调 `computeOptimalSubStats({ ...同参, useDefault: true })` 作起点（可先加临时开关）。跑 `REFINE=1 probe2.sh`，和 `k207/r1.tsv` 比平均、胜场、最差，同时比耗时（快速路径起点离最优可能更远，精修次数会增加，maxEvals=80 可能不够）。
-   - 判据：不变差且耗时可接受 ⇒ 合入；编排层从此不再依赖打分模型。再评估 core 打分模型还剩哪些消费者：store `useDefault=0` 分支、`marginalGains` 展示（grep `perSlotMarginalGains`）。能删多少删多少，删不掉的写明原因。变差 ⇒ 写「不做」加数据。
-   - 另一个可选项：store 整队贪心（config.ts:~802，`optimizer.useDefault=0`）接入精修。store 不能依赖 composables，CC-173 当时判断得不偿失，除非 useDefault 缺省改为 0，否则不做。
+1. **CC-186：core 打分模型能否退役**。先只读清点，再决定：
+   - `src/stores/config.ts` 约 760–900 行 `applyBuildRecommendationForSlot`：`optimizer.useDefault=0` 分支用了 `optResult` 的哪些字段？是否把 `chosenSet` 写回套装（写回的话就是「自动选套装」功能）？默认值 1，而且非输出位角色强制走 default。
+   - `perSlotMarginalGains`：ResourceUtilizationPage.vue:528 和 MarginalUtilityCard.vue:152 展示，只在 useDefault=0 时有值。能否改为编排层对每个模板词条 +1 步读 teamTotalDamage 的真实差分（和 refine 同一模式，经 useResourceCalc 或 composable 暴露；展示层禁止值导入 core）？
+   - 设置项 `optimizer.useDefault`、`optimizer.substatCap`、`optimizer.totalSteps*` 的 UI 在哪里（grep `optimizer.useDefault`）？
+   - 判据：退役后架构更简单（core substatOptimizer.ts 约 900 行里的打分、贪心、剪枝、拐力部分），且用户可见功能有等价或更好的替代 ⇒ 做。不可逆部分（删设置项）要写明回退点 = revert。做不到等价 ⇒ 写「不做」加理由。
 2. CC-166 仍暂缓（需规格）。
 
 **探针（优化器相关改动的验收）**
-- `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k207/<out>.tsv`：开精修，基线 `k207/r1.tsv`；不设 REFINE 时基线是 `k207/n1.tsv`。输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
+- `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k208/<out>.tsv`，基线 `k208/final.tsv`。**必须带 REFINE=1**：CC-185 起 refine 必填，不带会抛错。输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
+- 三人队对照模板：`k208/p208team.test.ts`（拷进 `src/composables/__tests__/zztmp/` 后运行，跑完删掉；它依赖已删除的 ZZ_SEED_DEFAULT 开关，复用时改成需要对照的两种写法）。
 
 **已知坑**
+- vitest 捕获的 console 输出里，数字前会插 ANSI 色码（`ZZEV \x1b[33m6`）。grep 数字前先 `sed 's/\x1b\[[0-9;]*m//g'`（第 208 轮踩过）。
 - 优化器改动一律用实伤探针验收（`k206/probe2.sh`，REFINE=1 开精修），不要只看打分函数：CC-183 里「更符合游戏口径」的面板改动在打分上合理，实伤反而变差。
 - **改完 docs 也要跑 `npx vitest run src/scripts/__tests__/checkGuards.test.ts`（约 25s）**：它读 `docs/ENGINE_PIPELINE_GUIDE.md`，§4（`## 4.` 到 `## 5.`）行数有棘轮（冻结 718），多一行变红，少一行也红（要求结算登记表）。改 §4 一律就地改写、净增 0 行。第 203 轮把 verify 放在文档提交之前，漏了这一点。
 - core 输入加可选字段前先想：缺省会不会静默改变结果？会就做成必填（CC-179 判据）。普查可复用 `/home/kaua/calc-arch/k202/scan179.cjs`。

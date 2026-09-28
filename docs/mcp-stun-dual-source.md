@@ -1351,3 +1351,20 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
 - **影响面**：只影响贪心路径（配置页按钮 / ImpactChart / store `optimizer.useDefault=0`）。useDefault 快速路径、预设、zd 都不经过 greedyAllocate，所以不跑 zd。
 - **验证**：vue-tsc 通过；新用例 `substatOptimizer.test.ts`「贪心分配用满步数预算」（1611 贪心总步数 = 推荐 39 步）；verify EXIT=0。
 - **回退点**：revert ae935755（core 一处循环后补段加一个测试）。
+
+### 24.32 CC-185：编排层优化器只剩「快速分配起点 + 真实伤害精修」（第 208 轮，0e4e7ecf）
+
+- **问题**：CC-183 / 184 之后，打分式贪心只负责给精修一个起点（§24.30 已证明换打分式对精修结果零影响）。那么起点是否还需要贪心？
+- **实测**（临时开关，已删）：
+  - 62 个角色单人队（`k208/g.tsv` 贪心起点、`k208/d.tsv` 快速起点，都开精修）：平均 +6.47%，54 胜，最差 0.00%，**两者完全相同**。4 个角色分配不同（1071 / 1271 / 1421：hpPct↔defPct；1621：defPct 5→3、critRate 14→16），伤害差为 0。精修评估次数合计 1244 对 1291，单个角色最多 56 对 50，均未碰到 maxEvals=80。整轮耗时 21 秒对 17 秒（快速路径省去贪心和候选套装计算）。
+  - 7 支三人队、21 个槽位（`k208/p208team.test.ts`：含蕾米埃尔在前 / 在中两种站位、克拉蕾、仪玄队、1441 队等）：两种起点精修后的**真实伤害全部零差**。三人队每次精修约 0.9 秒。
+- **决定**：`composables/substatOptimizer.ts computeSubstatAllocationForSlot` 只保留一种模式。起点调 `computeOptimalSubStats({ …, useDefault: true })`，然后无条件做真实伤害精修，`refine` 参数改为必填（唯一的生产调用方 ImpactChart 本来就一直在传）。编排层从此不依赖打分模型（anomalyRatio、atkWeightInAnomaly、teamAtkTransfer、套装剪枝）。队友 buff 输入（`resolveSlotPanelBuffInputs`）保留，只用于起点的百暴缺口，保持和伤害管线同源。
+- **core 贪心为什么不删**：它还有真实消费者。一是 store `applyBuildRecommendationForSlot` 的 `optimizer.useDefault=0` 分支（用户可打开的设置）；二是该分支写入的 `perSlotMarginalGains`，在 ResourceUtilizationPage:528 和 MarginalUtilityCard:152 展示「词条边际收益」（这是打分模型的近似值）。删掉会砍掉一个用户可见功能，另立 CC-186 先做清点再定。
+- **测试**：`substatOptimizer.test.ts` 重写。
+  - 旧的「与贪心内联算法逐值相等」改为：maxEvals=1 时返回值等于 core useDefault 起点；精修后真实伤害不低于起点，且总步数不变（1161 / 1311 / 1211 三个槽位）。
+  - refine 用例的对照改为推荐分配（即起点），1591 严格改进。
+  - CC-184 的预算用例改为直接钉 core 贪心（store 分支仍在用它）。
+  - 第 194 轮队友 buff 同源用例原样保留。
+- **探针变化**：`k206/probe206.test.ts` 不设 REFINE 时会传 `undefined`，现在会抛错。所以探针一律带 `REFINE=1`，基线为 `k208/final.tsv`（等同 d.tsv）。
+- **验证**：vue-tsc 通过；上述 5 个用例通过；探针 final.tsv 与 r1.tsv 伤害零差；verify EXIT=0。zd 不受影响（预设和 zd 走 store useDefault 路径，本轮未改）。
+- **回退点**：revert 0e4e7ecf（改 composable、ImpactChart 注释、测试）。
