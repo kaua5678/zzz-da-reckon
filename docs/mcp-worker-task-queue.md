@@ -71,26 +71,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 266 轮（lane lead-arena-0925c）：融合组口径扫描（无偏差）+ CC-245（99e1be54）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.90；扫描记录在 `docs/mcp-r6-refactor-list.md` §8 第 266 行（两行）。
-- 前几轮：265 CC-243/244（行规则作用面结项）；264 CC-242；263 CC-241。
+**第 267 轮（lane lead-arena-0925c）：CC-246（d9d5e4ed）、CC-247（1f2ee896）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.91。要点：管线层不再依赖展示层；core 的**传递**运行时闭包不再进入 specs 和逻辑编辑器状态；两层都有闭包锁，共用 `src/test/importClosure.ts`。
+- 前几轮：266 CC-245；265 CC-243/244（行规则结项）；264 CC-242。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**单一来源一览（新写代码直接用）**：
-- `src/data/moveTableQueries`：`findMoveById`、`getRowValue`（含行规则）、`fusedRowReader`（core 注入用）、`rawRowValue`（仅焰烈）、`fusedRowValue`（一次完整动作优先）。
-- core 需要吃规则的取值用 `RowValueReader` 参数注入；**resourceCalc/ 不许值导入 stores**，只能 `import type`（selectionReads 除外），由 `resourceCalcStoreDeps.test` 锁住。
-- 行规则锁：giftRowFusionRule、skillRowsFusionRule、specEventRowFusionRule、agentModuleRowFusionRule、moveLookupRowFusionRule；融合口径锁：ultimatePromoteFusedDaze。
+**分层锁一览（新写代码会被拦）**：
+- `core/__tests__/coreMechanicsRegistryOnly.test`（C1，直接 import）+ `core/__tests__/coreRuntimeDeps.test`（CC-247，传递闭包；registry 必须是纯叶子）；
+- `composables/__tests__/resourceCalcStoreDeps.test`（CC-245/246：resourceCalc 闭包不进入 stores〔selectionReads 除外〕与上层 composables）；
+- 行规则锁五件套和融合口径锁见 §24.89，不变。
+- 新增角色模块注册要调用 `mechanics/index.ts` 的 `registerWithSpecSettings`，不要直接调用 registry 的 `registerAgentMechanic`，否则 spec settings 不会合并。
 
-**下一步（直接开工）**：目前没有排定项。上两轮建议的方向已全部查完，查过的范围不要重扫，详见 r6 §8。可选方向，按架构收益排序：
-1. **`composables/agentMechanicView` → resourceCalc 的反向依赖**（roundInputs:25 取 `AUTO_AXIS_PRESET_HINTS`）：展示侧 composable 被管线层引用，方向是反的。先读 agentMechanicView 中 AUTO_AXIS_PRESET_HINTS 的定义：如果它只是由 mechanics 注册表派生的纯数据，就把它挪到 `mechanics/` 或 `data/stunAxisPresets` 旁边，roundInputs 和 agentMechanicView 都从新位置引用，并给 resourceCalc 加一条「不值导入 composables/ 非 resourceCalc 模块」的闭包锁（可复用 resourceCalcStoreDeps.test 的 walker）。改动小、方向明确，适合下一轮直接做。
-2. 如果 1 做完没有别的候选，按第 237 轮先例记「本轮不改代码」即可，不要为了有事做而改。
+**下一步（直接开工）**：用 `runtimeImportOffenders` 把其余口头分层规则逐条变成闭包锁。先用一次性脚本测量，有违规就判断修不修，没有违规就直接加锁：
+1. **specs 不能导入 core**（AGENTS / 本文件「已知坑」中的分层规则）：入口为 `sourceFilesUnder('specs')`，禁止 `^core/`。
+2. **展示层禁止值导入 core / mechanics / specs**：入口为 views/ 和 components/ 下的 `.vue`。注意 `sourceFilesUnder` 只收 `.ts`，要扩展成也收 `.vue`，并从 `<script>` 块里抽取 import（正则同样可用）。展示层经由 composables 间接到达 core 是**允许的**（composables 是门面），所以这里只锁**直接** import，不锁闭包。先看已有的展示层锁（grep「判据 7」或 `displayLayer`），避免重复。
+3. **data 不 import mechanics**（stunAxisPresets.ts:226 的注释约定）：入口为 `sourceFilesUnder('data')`，禁止 `^(mechanics|composables|stores|logicEditor)/`。注意 data/moveTableQueries 本来就 import logicEditor/fusion（N2 裁决不做），要作为唯一例外写进白名单并注明理由。
+- 每条锁都要做反例（临时加一条违规 import，确认变红再删掉）。三条都做完就可以把「分层规则」一节写成表格，放进 ARCHITECTURE.md，每条规则对应一个锁文件名。
 
 **已知坑**：
-- 命名带 raw 的函数是意图信号（CC-237 教训）；
-- verify 看不到生产默认行规则；**单元锁变红不等于管线生效**，取值类改动必须做修复前后的管线对比；
-- 纯 import 类改动（如 CC-245）零行为变化，验证靠依赖闭包锁加 verify，不需要管线探针；
+- 命名带 raw 的函数是意图信号（CC-237 教训）；取值类改动必须做修复前后的管线对比；纯 import 类改动靠闭包锁加 verify 即可；
+- 上传多个文件时逐行调用 `up.sh`，**不要在 bash for 循环里拼 `${...}`**（第 267 轮在仓库根目录生成了垃圾文件）；
 - 测试里调用模块 buildCharConfig 要传 `team: [], slot: 0`；模块级规则状态要 `afterEach(() => setActiveRowFusionRules([]))`；新测试先单独跑 `npx vue-tsc -b`；
-- 「先量」实验可以临时改源码，但必须 `git checkout -- <文件>` 还原；
 - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；临时探针跑完删掉再 verify。
 
 **未决项**：

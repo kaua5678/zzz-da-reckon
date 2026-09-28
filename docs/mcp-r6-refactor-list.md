@@ -417,3 +417,4 @@
 | 265 | 行规则作用面候选 3：core/moveLookup；未决项 ultimatePromote:218 | CC-243（`a5df49c4`）注入式吃规则；CC-244（`275ec8b4`）赠送终结技失衡取融合组。全仓扫描后**行规则作用面结项**（§24.89 ④） | 新增绕开 getRowValue / fusedRowReader 的取值（各层锁会拦） |
 | 266 | 融合组「一次完整动作」口径：19 个组头的全仓引用 + resourceCalc 直取 getRowValue | 无剩余真实偏差（千夏 extraExPlans 数据等价；手放表直伤潜在但触发不到；yanagi 追加突刺故意取头段）（§24.90 ①） | 融合组后段出现喧响 / 时长，或手放融合组头段成为常见用法 |
 | 266 | C6 前提：resourceCalc 读 store | 从不调用 useXStore；唯一值导入 helpers:17-18 改 type-only（CC-245，`99e1be54`），闭包锁；并入 core 裁决**不做**：剩余依赖 mechanics / fusion / agentMechanicView，并入会重建 C1 已拆的 core→mechanics 环（§24.90 ③） | 需要在无 Vue / pinia 环境跑管线（worker、CLI 批量） |
+| 267 | 管线层 → 展示门面反向依赖；core 运行时传递闭包 | CC-246（`d9d5e4ed`）AUTO_AXIS_PRESET_HINTS 迁入 registry；CC-247（`1f2ee896`）registry 成纯叶子，core 闭包去掉 specs / fusion；两层都有闭包锁（§24.91） | 新增分层违规会被 importClosure 锁拦截；其他层（specs → core 禁止、展示层禁止值导入 core / mechanics / specs）还没有闭包锁，见交接下一步 |

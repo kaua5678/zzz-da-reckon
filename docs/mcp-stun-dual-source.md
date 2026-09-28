@@ -2851,3 +2851,28 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 验证：verify EXIT=0（3981 passed | 29 skipped）；vue-tsc 干净。回退点：revert 99e1be54。
 
 **③ 「管线后半段并入 core」本轮不开**，理由：剩余三类依赖（mechanics 注册表、fusion 全局快照、agentMechanicView）都要改成注入。mechanics 是角色模块层，resourceCalc 本来就是它的消费者，并入 core 意味着 core 反向依赖 mechanics，而 C1 刚拆掉这个环。只有先把「按 agentId 查模块」做成参数注入（像 C1 那样由入口注册），才谈得上并入。收益仅是目录归属，风险与改动面都大。**裁决：不做**，除非出现具体需求（例如需要在无 Vue / pinia 环境跑管线：worker 线程、CLI 批量对比）。重开条件同上。
+
+### 24.91 第 267 轮：CC-246 管线层不再反向依赖展示门面（d9d5e4ed）；CC-247 core 运行时闭包去掉 specs / logicEditor（1f2ee896）
+
+**① CC-246**（§24.90 交接方向 1）：
+- `AUTO_AXIS_PRESET_HINTS` 完全由 mechanics 注册表派生（isChapterOwner / isPreferred 两个声明读取），原先放在展示门面 `composables/agentMechanicView.ts`，导致管线层 `resourceCalc/roundInputs.ts:25` 反向值导入展示层。
+- 迁入 `mechanics/registry.ts`，经 index 的 `export *` 导出；agentMechanicView、roundInputs 和两个测试（agentMechanicViewCc60、data/stunAxisPresets）都改为从 `@/mechanics` 引用；data/stunAxisPresets.ts 的注释同步更新。
+- 锁：`resourceCalcStoreDeps.test` 扩展为「运行时闭包不进入 stores/（selectionReads 除外）与 resourceCalc/ 以外的 composables」。只 stash roundInputs 时变红并报出该边。
+- ARCHITECTURE.md §0 第 25 行删去剩余前提中的第三项。
+
+**② CC-247（新发现，用 import 闭包工具扫 core 时得到）**：
+- core 运行时闭包原先进入 `logicEditor/fusion`（基于 Vue shallowRef 的全局可变状态），链路为 `core/resource/assembleSlot > mechanics/registry > specs/mechanics > data/moveTableQueries > logicEditor/fusion`，同时带入 specs/registry、runtime、resources。
+- 根因：C1 让 core 只认 `mechanics/registry`，前提是「registry 只依赖 specs，specs 不 import core」。这个前提防住了**环**，但 registry 为了在 `registerAgentMechanic` 里合并 spec settings 而值导入 specs，于是把整条 specs 运行时加逻辑编辑器状态**传递地**带进了 core。
+- 改动：合并逻辑移到唯一的注册入口 `mechanics/index.ts#registerWithSpecSettings`，62 处注册调用加上 spec-only 回填都改走它。语义逐位不变：合并原本就在写 settingDefaults 之前，而 `agentMechanics.set` 不读 settings。
+- 结果：registry 只剩类型 import，是纯叶子。`registerAgentMechanic` 的调用方全仓只有 index.ts（已 grep 确认），没有外部影响。
+- 锁 `src/core/__tests__/coreRuntimeDeps.test.ts`：
+  - core 传递闭包只经 registry 触达 mechanics，不进入 specs / logicEditor / composables / stores / views / components；
+  - registry 无运行时 import；
+  - 反例：stash registry 与 index 后两条都变红，并报出完整链路。
+  - 这是对 C1 `coreMechanicsRegistryOnly.test`（只钉直接 import）的补强。
+- 共用工具 `src/test/importClosure.ts`（`runtimeImportOffenders`、`sourceFilesUnder`，跳过 import type），resourceCalcStoreDeps 与 coreRuntimeDeps 共用。以后要加分层锁时直接复用。
+- 值不值得：零行为变化。它让「core 是纯函数层、不依赖逻辑编辑器状态」从口头约定变为传递闭包层面成立且被锁住；C1 当初的收益（core 单测可不加载 62 个模块）也因此真正可兑现。不是降计数。
+
+- 验证：v267（CC-246）verify EXIT=0（3981 passed）；v267b（CC-247）verify EXIT=0（3983 passed | 29 skipped）；两次 vue-tsc 干净。
+- 回退点：revert 1f2ee896（CC-247，独立）/ revert d9d5e4ed（CC-246）。
+- 踩坑：上传脚本的 for 循环里写了 `\${f%%:*}`，被 bash 转义成字面量，在仓库根目录生成了一个名为字面量 `${f#*:}` 的空文件。已 `rm` 并确认 git status 干净。**上传多个文件时逐行调用 up.sh，不要写循环。**
