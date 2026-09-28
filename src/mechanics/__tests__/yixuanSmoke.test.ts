@@ -116,7 +116,7 @@ describe('仪玄 spec 机制（1371）', () => {
     //   （口径历史/根因见 stores/config.ts getAnomalyUtilizationRate 注释）。
     // 时间轴喧响轨（2026-08-31，收敛门控版）：轨仅在 stunCount 收敛稳定后启用——
     // 本队 stunCount 在大招数稳定前已收敛（轮序早于轨），轨未介入 → 保持总量口径 13。
-    // （比琉队等「stunCount 先稳定」的队伍轨才削减——见 resourceTrack/billySmoke）
+    // （比琉队等「stunCount 先稳定」的队伍轨才削减——见 billySmoke；时间轨原型 core/resourceTrack.ts 已于 CC-187 删除）
     // 2026-09-07 喧响收入修复：仪玄喧响 8030→12000+ → 玄墨异常触发回闪能结构变化 → 强特 13→14
     // 2026-09-08 喧响账本行级化（Σ buildExecutions 行，债务清偿）：后台合轴喧响由「4招全加」
     // 聚合改为行级二选一（合轴替换对语义），仪玄/队友喧响结构变化 → 轨削减回摆 → 强特 14→13

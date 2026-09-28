@@ -7,21 +7,20 @@
  * 1. 整局总量口径：`ultimateCount = Math.floor(decibels[i] / cfg.ultimateCost)`
  *    （src/core/resource/helpers.ts:391/605）——无上限项；`ultimateCost` 是**角色级消耗**
  *    （默认 3000、佩洛伊斯 2000），上限字段不存在。
- * 2. 上限的唯一建模 = `simulateDecibelTrack`（DECIBEL_TRACK_CAP=3000，src/core/resourceTrack.ts），
- *    非测试代码**零调用点**——时间轨是「轴模块第一步」，未接入主伤害管线。
+ * 2. 全仓**没有**喧响上限建模。原先唯一的建模 `simulateDecibelTrack`（src/core/resourceTrack.ts，
+ *    时间轴喧响轨原型，生产零调用点）属于已否决的方向 A（事件时间轴），已于 CC-187 删除。
  * 3. +300/ult 那一半**已接**：`jufufuTigerRoarMechanic.applyTeamConfig`（build 相位）给
  *    队伍全体强攻/命破角色（含自身）写 `extraSelfDecibelPerUltimate=300`，消费点
  *    src/core/resource/helpers.ts:327 + resourceIncome.ts:281。
  * 4. 门控语义：`evalTeamConditions` **自身不算**（teamCondition.ts `m.slot === ownSlot → false`）
  *    ⇒ 1391 自身命破不触发额外能力，需队友中有强攻/命破。
  *
- * ★ 本文件是「未来闸门」：何时喧响时间轨接入主管线，形状面判据会红——
- * 届时先裁决角色级喧响上限口径（1391 +1000 及其同类），再删形状面判据、
+ * ★ 本文件是「未来闸门」：闸门 = 上面「大招次数 = floor(总喧响/ultimateCost)」那条行为判据。
+ * 谁引入喧响上限口径，它就会红——届时先裁决角色级喧响上限口径（1391 +1000 及其同类），
  * 换成新口径判据并更新 1391.json note（步骤见 docs/mcp-r65j1-decibel-cap-verdict.md §4）。
+ * （原「形状面」字符串判据随 CC-187 删除：它看守的 simulateDecibelTrack 已不存在。）
  */
 import { beforeEach, describe, expect, it } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
@@ -52,18 +51,6 @@ function teamChar(slot: number, agentId: string, cinemaLevel = 0, overrides: Rec
     basicAttackTimeWeight: 1,
     ...overrides,
   }
-}
-
-function walkTs(dir: string): string[] {
-  const out: string[] = []
-  for (const name of readdirSync(dir)) {
-    if (name === '__tests__') continue
-    const p = `${dir}/${name}`
-    const st = statSync(p)
-    if (st.isDirectory()) out.push(...walkTs(p))
-    else if (name.endsWith('.ts')) out.push(p)
-  }
-  return out
 }
 
 describe('R65-J1 裁决：喧响上限 +1000 在整局总量口径下零消费者（1391 额外能力·八面威风）', () => {
@@ -128,17 +115,5 @@ describe('R65-J1 裁决：喧响上限 +1000 在整局总量口径下零消费�
         `${c.agentId}: 大招次数必须 = floor(总喧响/ultimateCost)（无上限项；若未来引入 cap 口径本条会红 = 需先裁决角色级上限）`,
       ).toBeLessThanOrEqual(1)
     }
-  })
-
-  it('形状面：喧响时间轨（上限的唯一建模处）未接入主管线——非测试 src 零调用点（★未来闸门）', () => {
-    // ★ 本条变红 = 有人把 `simulateDecibelTrack` 接进了主管线。届时：
-    // ① 先裁决角色级喧响上限口径（simulateDecibelTrack 加 cap 参数、大招判定改「≥消耗(3000) 即放、余量保留」，
-    //    cap=3000 时与现状逐位相同）；② 1391 的 applyTeamConfig（与 +300 同门控）给队伍三人写 4000；
-    // ③ 补 cap 3000 vs 4000 的 A/B 行为判据；④ 删本条、更新 1391.json 两处 note。
-    const srcRoot = fileURLToPath(new URL('../../', import.meta.url)) // → src/
-    const hits = walkTs(srcRoot)
-      .filter(f => readFileSync(f, 'utf8').includes('simulateDecibelTrack'))
-      .map(f => f.slice(srcRoot.length + 1).replace(/\\/g, '/'))
-    expect(hits).toEqual(['core/resourceTrack.ts'])
   })
 })
