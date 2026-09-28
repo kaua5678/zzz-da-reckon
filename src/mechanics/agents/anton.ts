@@ -84,15 +84,12 @@ function clampRatio(value: number): number {
   return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
 }
 
-function cfgSetting(cfg: AgentResourceInput['cfg'], id: string): number {
-  const value = (cfg as unknown as Record<string, unknown>)[`setting:${id}`]
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0
-}
-
 /** 额外能力·通力合作：爆发状态内暴击次数 → 感电追加 release 事件（固定 45% 感电倍率）。
  * 暴击次数未知（引擎无逐 hit 暴击计数）→ 用爆发状态执行行的命中次数近似：电钻/打桩行都在爆发状态内。 */
 function buildAntonAnomalyEvents({ cfg, events }: AgentEventInput): void {
-  const ratio = clampRatio(cfgSetting(cfg, 'anton.additionalShockRatio') || 1)
+  // CC-192：原 `cfgSetting(...) || 1` 把滑块 0% 读成 100%；缺键（单测直构 cfg）才回落声明 default 1
+  const rawRatio = (cfg as unknown as Record<string, unknown>)['setting:anton.additionalShockRatio']
+  const ratio = clampRatio(typeof rawRatio === 'number' ? rawRatio : 1)
   if (ratio <= 0) return
   const additionalActive = (cfg.panel.additionalAbilityActive ?? 0) > 0
   if (!additionalActive) return

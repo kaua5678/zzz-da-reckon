@@ -129,10 +129,7 @@ function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
   // 膛温≥80%帽子把戏→连携技替换次数 = floor(膛温总量/80)
   const hatToChainCount = Math.floor(heatTotal / HEAT_HAT_THRESHOLD)
 
-  // 嗯呢弹幕：可全局刷新多次，默认满覆盖（用户确认）；手动可调
-  // 嗯呢弹幕很容易全覆盖（用户确认：去覆盖率滑块，内在逻辑满覆盖）
-  const barrageCoverage = 1
-  const barrageSeconds = battleTime * barrageCoverage
+  // 嗯呢弹幕很容易全覆盖（用户确认：去覆盖率滑块，内在逻辑满覆盖；CC-192 删恒 1 的覆盖率/覆盖秒数只写字段）
   // 打靶练习（炮塔普通自动射击 1571013）：基本全程都有，3 秒间隔
   const towerAutoShotCount = Math.floor(battleTime / TOWER_AUTO_SHOT_INTERVAL)
 
@@ -172,9 +169,6 @@ function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
     c2EnergyTriggers,
     c2EnergyTotal,
     hatToChainCount,
-    hatToChainCost: hatToChainCount * HEAT_HAT_COST,
-    barrageSeconds,
-    barrageCoverage,
     barrageTeamDmgBonus: input.additionalAbilityActive ? BARRAGE_TEAM_DMG_BONUS : 0,
     towerCount: exCount * 2,
     towerAutoShotCount,

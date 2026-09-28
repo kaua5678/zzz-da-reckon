@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { antonMechanic, ANTON_ADDITIONAL_SHOCK_RATIO, ANTON_C6_MOVE_IDS, ANTON_DRILL_MOVE_IDS, ANTON_PILE_MOVE_IDS } from '@/mechanics/agents/anton'
 import type { SkillExecution } from '@/types/resource'
+import { getAgentSpec } from '@/specs/registry'
 
 function exec(moveId: string, count = 1): SkillExecution {
   return { moveId, moveName: moveId, category: 'basic', count, actionTime: 1, comboAlignRatio: 0, totalTime: count, totalComboAlignTime: 0, energyConsume: 0, totalEnergyConsume: 0, decibelRecovery: 0, totalDecibelRecovery: 0, energyRecovery: 0, totalEnergyRecovery: 0 }
@@ -52,5 +53,16 @@ describe('安东（1111）简单机制', () => {
     const eventsNoAa: any[] = []
     antonMechanic.buildAnomalyEvents!({ cfg: { agentId: '1111', panel: { additionalAbilityActive: 0 } }, state: {} as any, events: eventsNoAa, totalTime: 180 } as any)
     expect(eventsNoAa).toHaveLength(0)
+    // CC-192：滑块 0% ⇒ 不触发（原 `|| 1` 读成 100%）
+    const eventsZero: any[] = []
+    const cfgZero: any = { agentId: '1111', antonCinemaLevel: 0, panel: { additionalAbilityActive: 1 }, 'setting:anton.additionalShockRatio': 0 }
+    antonMechanic.patchExecutions!({ cfg: cfgZero, state: {} as any, executions: [exec('1111010', 8), exec('1111019', 4)] })
+    antonMechanic.buildAnomalyEvents!({ cfg: cfgZero, state: {} as any, events: eventsZero, totalTime: 180 } as any)
+    expect(eventsZero).toHaveLength(0)
+  })
+
+  it('CC-192：额外能力门控由 spec 声明（同属性或同阵营），生产路径才会置 additionalAbilityActive', () => {
+    const aa = getAgentSpec('1111')?.additionalAbility
+    expect(aa?.teamConditions.map(c => c.type)).toEqual(['sameAttributeAsSelf', 'sameFactionAsSelf'])
   })
 })

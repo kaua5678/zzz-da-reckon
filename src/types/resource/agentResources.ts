@@ -414,12 +414,7 @@ export interface NormaMechanicSource {
   c2EnergyTotal: number
   /** 膛温≥80%帽子把戏→连携技替换次数 = floor(膛温总量/80) */
   hatToChainCount: number
-  hatToChainCost: number
-  /** 嗯呢弹幕覆盖秒数（每次 32 秒） */
-  barrageSeconds: number
-  /** 嗯呢弹幕覆盖率（0-1，默认满覆盖可调） */
-  barrageCoverage: number
-  /** 嗯呢弹幕期间全队增伤（+20% × 覆盖率，额外能力触发时） */
+  /** 嗯呢弹幕期间全队增伤（+20%，额外能力触发时；弹幕按满覆盖） */
   barrageTeamDmgBonus: number
   /** 炮塔总座数（每次弹幕 2 座） */
   towerCount: number

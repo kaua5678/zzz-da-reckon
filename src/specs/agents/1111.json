@@ -6,6 +6,17 @@
     "1111"
   ],
   "status": "implemented_approximation",
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "sameAttributeAsSelf"
+      },
+      {
+        "type": "sameFactionAsSelf"
+      }
+    ],
+    "note": "额外能力·通力合作：队伍中存在与自身属性或阵营相同的角色时触发（catalog 原文）。CC-192（2026-09-28）补声明：此前缺失 ⇒ panelPhases 从不置 additionalAbilityActive ⇒ 模块感电追加事件生产路径恒不触发。"
+  },
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
