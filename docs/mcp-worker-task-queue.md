@@ -71,20 +71,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 238 轮（lane lead-arena-0925c）：CC-214 完成（361abc6f），文档见本提交。push 结果见 git log / rev-list。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.62；r6 清单 §8 追加了一行。
-- 前几轮：237 纯扫描（dfdf29c1）；236 CC-213（cd9a7486）；235 CC-212（7b2af5ce）。
+**第 239 轮（lane lead-arena-0925c）：CC-215 完成（7eb7c11a），文档见本提交。push 结果见 git log / rev-list。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.63；r6 清单 §8 追加了一行。展示层元素 / 属性 / 职业名映射都已单一来源，并有源码锁（`src/utils/__tests__/elementLabelSingleSource.test.ts`）。
+- 前几轮：238 CC-214（361abc6f）；237 纯扫描（dfdf29c1）；236 CC-213（cd9a7486）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **下一步（直接开工）**
-1. **职业名映射单一来源（CC-215，照 CC-214 做）**：`attack: '强攻'` 这种映射有 6 份：`utils/agentLabelMaps.ts#SPECIALTY_LABEL`（单一来源）、`views/ResourcePage.vue`、`views/WEngineFieldPage.vue`、`views/MultiplierCoeffPage.vue`、`composables/teamCompareSweep.ts`、`components/CharacterCard.vue`。
-   - 先逐份对比键集与文案；键集不同是否是有意的（例如只列部分职业），对比后再决定。
-   - 副本改为导入 `SPECIALTY_LABEL`。文案不同时，以 agentLabelMaps 为准，并把差异逐条写进文档（文案变动要写明）。
-   - 给 `elementLabelSingleSource.test.ts` 加一个同样的用例（`attack:\s*'强攻'`），或新建同形测试。
-   - 验证：`npx vue-tsc -b`（verify 拦不住未使用变量）+ `npm run verify`。
-2. 做完后，再按 r6 清单 §8 找没扫过的区域（`stores/` 与 `composables/` 间的重复派生计算还没查）。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-214）。
-- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62，文案口径，没改）。
+1. **r6 清单 §8 里还没扫的区域：`stores/` 与 `composables/` 之间重复的派生计算**（CC-206/207 已收了 buff 门控，其余未查）。
+   - 做法：列出 `src/stores/*.ts` 里的 computed / getter，逐个看 composables 或 core 是否算同一个量。只有两处真在算同一个量、且可能分叉，才立卡。
+   - 查完没有，就在 §8 追加一行后收尾。
+2. 低优先的小项（看到再做，别专门立轮）：CharacterCard 与 ResourcePage 各有一份稀有度颜色映射（`r === 'S' ? 'warning' : …`），以及职业颜色映射（ResourcePage 的 `specialtyTagColor`）。这属于展示选择，不是口径，没有分叉就不必动。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-215）。
+- **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62，文案口径，没改）；ResourceResultCard 命破 / 锋御的标签颜色暂用 default（§24.63）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

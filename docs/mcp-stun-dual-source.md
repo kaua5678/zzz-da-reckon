@@ -2046,3 +2046,19 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 **影响**：零计算影响（只改展示文字；引擎读的 `elementLabel` 输出不变，因为用的是同一张表）。可见变化只有三类：变种元素、lumiflux、frostfire 从原始 id 变成中文名。
 **回退点**：revert 本提交。
+
+### 24.63 第 239 轮：CC-215 职业中文名映射单一来源（7eb7c11a）
+
+**问题**：「职业 code → 中文名」除了 `utils/agentLabelMaps#SPECIALTY_LABEL`，还有 7 处副本。其中 5 份文案与单一来源一致（ResourcePage、CharacterCard、MultiplierCoeffPage、teamCompareSweep、WEngineFieldPage#specialtyLabel），另外 2 份已经分叉，用户看得见：
+- `WEngineFieldPage` 的职业筛选项手写 7 项（「全部」加 6 个职业），**缺锋御**。catalog 里有 3 把锋御音擎，只能在「全部职业」下看到。
+- `ResourceResultCard#SPECIALTY_MAP` 只列 5 个职业，**缺命破和锋御**，查不到时回落 `{ label: '' }`。catalog 里 5 个命破、1 个锋御角色的资源结果卡职业标签为空。
+
+**改动**
+- 5 份一致副本删掉，改为导入 `SPECIALTY_LABEL`。
+- 音擎页的筛选项改由 `SPECIALTY_LABEL` 生成，顺序与原来一致，末尾多出「锋御」。
+- ResourceResultCard 拆成两部分：文案走 `SPECIALTY_LABEL`；颜色留在本卡 `SPECIALTY_TAG_TYPE`，未列出的职业用 `default`。**拍板**：命破 / 锋御的颜色先用 default，这是展示选择，不是口径；回退或改色只需改这张小表。
+- 源码锁 `elementLabelSingleSource.test.ts` 新增职业用例：全 src 只允许 agentLabelMaps 出现 `attack: '强攻'` / `label: '强攻'` / `attack: { label: '强攻'`，并断言表里是全部 7 个职业。
+- 这次先全 src grep `'强攻'`，再写锁：多找到的两处（筛选项、组合映射）正是分叉的那两份。
+
+**影响**：零计算影响。可见变化：音擎页多一个「锋御」筛选按钮；命破 / 锋御角色的资源结果卡显示职业标签。
+**回退点**：revert 本提交。

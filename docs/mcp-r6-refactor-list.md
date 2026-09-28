@@ -388,3 +388,4 @@
 
 **第 237 轮决定**：以上都不满足判据，本轮不改代码。依据：用户明确不要「只为有事做 / 降计数」的改动。影响：无。回退点：无（纯文档）。
 | 238 | 展示层「code → 中文名」映射副本 | 元素 / 属性名 12 处副本已收（CC-214，`361abc6f`）；**职业名 `SPECIALTY_LABEL` 还有 6 份**（agentLabelMaps、ResourcePage、WEngineFieldPage、MultiplierCoeffPage、teamCompareSweep、CharacterCard），见队列 §2 下一步 1 | 职业名收完后，再有新副本由源码锁拦下 |
+| 239 | 职业名 `SPECIALTY_LABEL` 副本 | 7 处已收（CC-215，`7eb7c11a`），修了两处可见缺项；展示层 code→中文名这一类到此收完 | 源码锁拦截新副本；其他「code→中文」类映射（稀有度颜色、职业颜色等）未查，见队列 §2 |
