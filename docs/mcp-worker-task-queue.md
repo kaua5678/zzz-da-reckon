@@ -71,16 +71,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 243 轮（lane lead-arena-0925c）：CC-219 完成（257e042c），文档见本提交。push 结果见 git log / rev-list。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.67。新增叶子模块 `src/core/damageMultipliers.ts`，锁在 `src/core/__tests__/damageMultipliersSingleSource.test.ts`。
-- 前几轮：242 CC-218（90f51ade）；241 CC-217（3ba7af41）；240 CC-216（95901f50）。
+**第 244 轮（lane lead-arena-0925c）：CC-220 完成（dc096e98），文档见本提交。push 结果见 git log / rev-list。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.68。**有数值变化**：6 个蕾米预设 −11.2%～−15.7%，golden 已重生成。
+- 前几轮：243 CC-219（257e042c）；242 CC-218（90f51ade）；241 CC-217（3ba7af41）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
+**伤害乘区线已收尾**：防御、抗性、等级系数由 `core/damageMultipliers.ts` 提供，失衡易伤由 `calcStunMultiplier` 提供，都有锁。增伤区和精通区裁决不做（§24.68）。
+
 **下一步（直接开工）**
-1. **伤害公式其余乘区**：增伤区 `1 + (dmgBonus + 元素增伤) / 100`、异常精通区 `精通 / 100`。已知 remielle 耀变（`calcVoidflareDamage`）和 anomalyPool/helpers 各写了一份，直伤 damage.ts 可能还有第三份。先读三处的实际组成：直伤增伤区可能含招式类型增伤，而异常类不含。只有组成相同的部分才能抽函数（例如只抽「元素增伤取值」或只抽算式）；组成不同就写「不做」加理由。
-2. 如果增伤区也不值得做，伤害乘区这条线就收尾（在 r6 §8 追加一行）。之后没有明确目标时，可按 ARCHITECTURE-OVERVIEW 的三类清单另找「可归一」项。
-- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-219）。
-- **已知坑**：积蓄抗性区（anomalyPool/helpers 约 513 行）与失衡抗性区（stunPool 约 139 行）已裁决不归一，不要再动。
+1. **角色模块里「整条伤害公式手写」的其余情形**：CC-220 说明，自带结算函数的角色模块（耀变这类）最容易与 core 口径分叉。执行 `grep -rnE 'function calc\w*Damage' src/mechanics` 列出角色模块里的自带伤害函数，逐个与 `core/damage.ts#calcAnomalyDamage` / `calcDirectDamage` 按乘区对照：易伤区、失衡区、暴击区、异常增伤区是否与 core 同口径。**只修「违背自身接口语义或 core 口径且无裁决」的**，有数值影响就照 §24.68 的格式逐条解释 golden。
+2. 没有发现，就按 `docs/ARCHITECTURE-OVERVIEW.md` 的「可归一」清单另找项。
+- 开工前**先查卡表**（`docs/mcp-calc-core-architecture.md`，最新 CC-220）。
+- **已知坑**：积蓄抗性区、失衡抗性区已裁决不归一；叶瞬光帷幕 `veilStunBase` 是独立的封顶机制，不要并入 `calcStunMultiplier`；`core/damage.ts#calcAnomalyDamage` 的等级系数仍按 `1 + (1/59)×(attackerLevel−1)` 现算（已验证 60 级下 `=== 2` 逐位成立）。保留现算是为了让分解展示带出等级，不算副本，锁也不覆盖。
 - **未决项**：1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色暂用 default（§24.63）。
 
 **探针（优化器相关改动的验收）**
