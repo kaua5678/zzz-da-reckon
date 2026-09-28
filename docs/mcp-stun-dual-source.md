@@ -2650,3 +2650,48 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 待裁决：
   - 行规则的产品语义是「作用于该招式该行的一切读取」，还是只作用于伤害执行路径？
   - `logicEditor/fusion` 依赖 Vue 的 shallowRef，core 经 data 间接引入它是否违反分层？先查 ARCHITECTURE 的分层规则和 `scripts/lib/*` 的守卫。
+
+### 24.85 第 261 轮：CC-238 撤回 CC-237 对焰烈的误并（生产回归）；行规则作用面裁决（c512f97c）
+
+**① 订正 §24.84 的错误前提**：§24.84 写的「无规则时乘数恒为 1 ⇒ **默认零差**」**是错的**。
+- 逻辑编辑器行规则**不只是用户覆盖**：`logicEditor/defaults.ts#createDefaultLogicEditorState` 会把 `specs/agents/*.json#rowFusions` 灌成默认规则，`stores/logicEditor.ts:39` 在 store 初始化时就 `setActiveRowFusionRules` ⇒ **生产开箱即生效**。
+- 测试 harness 不实例化逻辑编辑器 store ⇒ **测试态规则为空**。因此 verify 全绿不能证明生产零差。
+- 现存默认规则共 4 条，**启用的只有 1 条**：`burnice_stirring_fusion`（1171007 / damage ×1.268884，status `implemented_approximation`）。1561 有 3 条，都是 enabled=false。
+- 这条规则的 note 原文：「最终融合倍率591.4%（250.8×0.5+466）；**模块内直接按两段原始倍率计算，此规则用于倍率编辑器展示**」。
+  - ⇒ 焰烈模块的 `rawRowValue` 是**有意**的原始读取，不是同体重复。CC-237 把它并进 `getRowValue` 是误判。
+
+**② CC-237 回归的影响面（已由 CC-238 修复）**：
+- 生产态搅拌式倍率 `burniceStirringDamageRatio` = 250.8×0.5 + 466×1.2689 ≈ **716.7%**（应为 591.4%）。
+- 资源卡片「融合倍率」展示行（burnice.ts 的 buildResourceSections）**默认配置下就显示错**；
+- 伤害只在 `burnice.stirringCount` > 0 时受影响（默认 0）；
+- 时间窗口：a6471949 → c512f97c；
+- 除焰烈以外，CC-237 的其他模块不受影响：它们读的招式都没有启用的默认规则（由 ③ 的绊线兜底）。
+
+**③ CC-238 改法**：
+- `data/moveTableQueries.ts`：
+  - 新增显式的 `rawRowValue(move, rowId)`（`values[0]`，不乘规则）；注释写明适用场景：模块按分段原始倍率自算融合，而默认规则已为编辑器展示表达同一融合；新增用例要在调用点注明对应的默认规则 id；
+  - `getRowValue` 的注释补上「spec 默认规则在生产生效，测试态为空」。
+- `burnice.ts`：blend1 / blend2 / tossing 三处恢复 CC-237 之前的原始读取（逐字节对照 a6471949~1），调用点加注释。
+- `rowValueSource.test` 的形状锁只拦 owner 以外的定义，data 里的 `rawRowValue` 不受影响。
+- **新锁** `src/data/__tests__/defaultRowFusionRules.test.ts`：
+  - ① **绊线**：默认启用规则集合 = `['burnice_stirring_fusion@1171007/damage']`。新增默认启用规则时必须逐一检查读该 moveId/rowId 的模块：自算融合的用 rawRowValue，取整值的用 getRowValue；
+  - ② **回归**：激活生产默认规则后调 `burniceMechanic.buildCharConfig`，搅拌式 = 原始 Blend#1×0.5 + 原始 Blend#2 ≈ 591.4。
+  - 反例：stash burnice.ts 后读数为 **716.7**（差 125.3）。
+- **探针**（临时，已删）：修复后 1171-1211-1301、1171-1241-1311 两队在「规则为空」和「生产默认规则」下 teamTotalDamage 完全相同（0.000%），而且通用执行里没有 1171007 ⇒ 这条默认规则目前不造成测试 / 生产分歧。
+- verify：第一次因测试文件类型错误 EXIT=2（build 步骤的 vue-tsc 拦截），修正后 EXIT=0，3961 passed。
+- 回退点：revert c512f97c（会重新引入回归，不建议）。
+
+**④ 行规则作用面裁决（§24.84 ④ 的答案）**：
+- **产品语义 = 作用于「该招式该行」的一切倍率表取值**。依据：
+  - LogicEditorPage 的 rowId 下拉列出该招式**全部行**（`rowOptionsFor`），不限于 damage；
+  - 页面文案原文是「倍率融合启用后，按 moveId + rowId **在倍率表取值处生效**」；
+  - 预览显示 base × multiplier。
+- ⇒ CC-237 让模块的非伤害行（如 yeshuguang 的 attack_data_0）吃规则，方向正确，**不回退**。
+- **分层约束**：ARCHITECTURE 把 core 定义为「纯函数引擎」；`logicEditor/fusion.ts` 持有全局可变快照（Vue shallowRef）。core 目前零 Vue 依赖，也不引用 moveTableQueries。
+  - ⇒ **core 内的原始读取（`core/resource/moveLookup.ts` 共 6 处）不改为直接调 getRowValue**。
+  - 要么由编排层注入取行值函数，要么记「不做」，下一轮裁决。
+- 编排层（composables）与录入层（specs / mechanics）的内联原始读取**应当**吃规则，逐类改为 getRowValue。
+  - 但每一处都要先确认它不是「自算融合」（参照焰烈），并对照默认启用规则清单：只有 1171007/damage，所以读别的招式都默认零差。
+- **教训**（写入交接的已知坑）：
+  - 命名带 `raw` 的函数是意图信号，不能按「函数体同形」当重复合并；
+  - 凡是涉及 getRowValue 的改动，都要在「生产默认规则」下验一次（`setActiveRowFusionRules(createDefaultLogicEditorState().rowFusions)`），不能只看 verify。

@@ -71,42 +71,49 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 260 轮（lane lead-arena-0925c）：CC-237 完成（a6471949），文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.84。
-- 前几轮：259 CC-236 findMoveById（51f52f7e）；258 CC-235 机制设置 cfg 键（960c00d3）；257 CC-234（09575566）。
+**第 261 轮（lane lead-arena-0925c）：CC-238 完成（c512f97c），修复 CC-237 引入的生产回归；文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.85（其中 ① 订正了 §24.84「默认零差」的错误前提）。
+- 前几轮：260 CC-237 模块取行值（a6471949，焰烈部分已被本轮撤回）；259 CC-236 findMoveById（51f52f7e）；258 CC-235（960c00d3）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
 **纯规则 / 引擎结果单一来源一览（新写代码直接用）**：
-- `src/data/`：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`、**`moveTableQueries`**：
-  - `findMoveById`：结构化泛型，带运行时容错；
-  - `getRowValue`：含逻辑编辑器行乘数，角色模块取招式行值一律用它；
-  - `fusedRowValue`；
+- `src/data/moveTableQueries`：
+  - `findMoveById`；
+  - `getRowValue`：含逻辑编辑器行规则，**spec 默认规则在生产生效**；
+  - `rawRowValue`：不乘规则，只用于「模块自算融合且默认规则已表达同一融合」，调用点要注明规则 id；
+  - `fusedRowValue`。
+- 默认启用行规则清单：只有 `burnice_stirring_fusion`（1171007 / damage）；由 `src/data/__tests__/defaultRowFusionRules.test.ts` 的绊线守护。
+- `src/data/` 其余：`sharpCritMultiplier`、`critMultiplier`、`anomalyElement`、`penetrationPower`、`anomalyDecibelBonuses`、`decibelCompanion`；
 - `src/utils/`：`elementStatKeys`、`enemyDebuffStats`、`agentLabelMaps`、`mechanicSettingCfg`；
 - `src/core/`：`damageMultipliers`、`effectiveTime`、`calcStunMultiplier`；
 - 引擎结果直读：`useResourceCalc#teamTotalDamage / stunCoverage`、`CalcRoundResult.specialActionBonus / decibelGuarantee`、`AnomalyPoolResult.perSlotOwnBonus / perSlotBonus`。
 
-**下一步（直接开工）**：「逻辑编辑器行规则作用面」裁决（§24.84 ④）。
-1. 读 `src/logicEditor/`（types.ts、fusion.ts）和逻辑编辑器页面 `src/views/LogicEditorPage.vue`，弄清产品语义：
-   - 规则的 rowId 能选哪些行（只有 damage，还是任意行）；
-   - 界面文案怎么描述规则的作用范围。
-2. 查分层：ARCHITECTURE.md 对 core → logicEditor（间接经 data）的规定，以及 `scripts/lib/` 下的守卫（layer-inversion 只管录入层 → 编排层）。
-3. 按第 1 步的语义，逐条标注 §24.84 ④ 清单：「应吃规则、现在漏吃」/「本就不该吃」/「不相干」。
-   - 应吃且不违反分层 ⇒ 改为 `getRowValue`，一类一个提交；每个提交带行为锁（规则 ×2 ⇒ 对应量 ×2），默认零差；
-   - core 内的（moveLookup）如果受分层限制，就考虑由编排层传入乘数，或记「不做」并写明理由；
-   - 规则语义只针对伤害 ⇒ 非伤害行（喧响 / 能量 / 积蓄）的内联读取记「本就不该吃」。这时要反过来检查 CC-237 是否让模块的非伤害行多吃了规则。目前 CC-237 碰到的非伤害行只有 yeshuguang 的 `attack_data_0`；若确认不该吃，就 revert 相应部分，或换成 data 新增的「不乘规则」读法。
-4. 角色重复 helper 里剩下的 clamp / whole 家族：**倾向不做**（纯算术，收了只是降计数）。
-- 可复用脚本：`k229/p260a.py`（删私有函数 + 并入 import）、`k229/p259b.py`（按 tsc 报错清理未使用导入）、`/home/kaua/calc-arch/dupfn.mjs`（跨文件同形函数扫描）。
-- **已知坑**：
-  - 函数体同形不等于语义相同（`?.`、`?? []`、默认值、NaN 要逐个比对）；
-  - 模块级状态（`setActiveRowFusionRules`）在测试里要 `afterEach` 清空；
-  - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；
-  - 源码锁要在 HEAD 上用 `git grep` 核对反例数，行为锁用 `git stash push -- <源码>` 做反例。
-- **未决项**：
-  - 1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；
-  - lumiflux 叫「辉光」还是「流明」（§24.62）；
-  - ResourceResultCard 命破 / 锋御标签颜色（§24.63）；
-  - 「进入失衡 +20 喧响」是否真实机制（§24.79 ①）；
-  - 逻辑编辑器行规则作用面（§24.84 ④，下一轮做）。
+**下一步（直接开工）**：编排层 / 录入层的内联原始行读取改吃行规则（§24.85 ④，作用面已裁决：该招式该行的一切倍率表取值）。一类一个提交，每个提交都要：
+- (i) 确认不是「自算融合」（参照焰烈）；
+- (ii) 带行为锁：规则 ×2 ⇒ 对应量 ×2，写法参照 `rowValueSource.test` 的露西用例；
+- (iii) 在「生产默认规则」下跑一次探针：`setActiveRowFusionRules(createDefaultLogicEditorState().rowFusions)`，因为 verify 看不到生产规则。
+
+候选，按影响面从大到小：
+1. `composables/resourceCalc/damagePoolDirect.ts:300`，以及 `ultimatePromote.ts:94/218`、`chainGift.ts:68`、`panelPhases.ts:212`：先读上下文。有些已经是 `fusedRowValue(...) ?? 原始` 的回落形状，把回落改成 getRowValue 即可（helpers.ts:364-387 就是这种写法的先例）。
+2. `composables/resourceCalc/skillRows.ts:54/64/74`（平A均值族）和 `composables/multiplierCoefficients.ts:63/127/148`。后者属于展示侧的系数表，要看它是展示倍率表原值还是计算值；展示原值的就记「不做」。
+3. `specs/mechanics.ts:146`，以及 phoenix（216/217/225/235）、severian:205、sigrid:168、norma:253、xide:94 的内联读取。
+4. **core/resource/moveLookup.ts（6 处）**：core 是纯函数，**不许直接 import getRowValue**，因为 fusion.ts 是全局可变的 Vue 快照。二选一：由编排层把取行值函数注入 moveLookup 的入参；或者记「不做」，并写明规则对这几处（喧响 / 能量 / 伤害）不生效是已知限制。先看调用方数量再定。
+- 不相干，不要改：`remielle.ts:101-106`（按技能等级选 luminize 值）、`teamCompare.ts:232`（档位表）。
+- 角色重复 helper 的 clamp / whole 家族：**倾向不做**（纯算术，收了只是降计数）。
+
+**已知坑**：
+- **命名带 raw 的函数是意图信号**，函数体同形不等于语义相同。本轮就是 CC-237 误并 rawRowValue 造成的生产回归。
+- **verify 看不到生产默认行规则**：harness 不建逻辑编辑器 store，测试态规则为空。涉及取行值的改动必须在默认规则下补验。
+- 函数体同形还要逐个比对 `?.`、`?? []`、默认值、NaN；模块级规则状态在测试里要 `afterEach(() => setActiveRowFusionRules([]))`。
+- verify 的 build 步骤会跑 `vue-tsc -b`，测试文件的类型错误也会让 EXIT=2。新测试写完先单独跑一次 `npx vue-tsc -b`。
+- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；临时探针放 `src/composables/__tests__/tmp_*.test.ts`，跑完删掉再 verify。
+
+**未决项**：
+- 1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；
+- lumiflux 叫「辉光」还是「流明」（§24.62）；
+- ResourceResultCard 命破 / 锋御标签颜色（§24.63）；
+- 「进入失衡 +20 喧响」是否真实机制（§24.79 ①）；
+- 测试 harness 是否应默认加载 spec 默认行规则，让测试态等于生产态。目前唯一启用的规则经探针验证不造成分歧，**暂不改**；新增默认启用规则时（绊线会拦）一并重新评估。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。
