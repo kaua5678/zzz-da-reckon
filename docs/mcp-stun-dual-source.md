@@ -1186,3 +1186,22 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   3 条在旧代码上全部失败。
 - **验证**：`npm run verify` rc=0（3829 passed；中途一次 zcWorkspace 偶发失败，单跑 9 passed，重跑 verify 干净，含 timeGolden 新基线）；vue-tsc 无新错误；CG 25 项通过；zd 两步见上。
 - **回退点**：revert 本提交（连同 timeGolden 基线）。若只想撤修 ②（通用减防），删掉 `core/damage.ts` 防御区的 `settle.enemyDefReduction` 一行，并重生成 timeGolden。
+
+### 24.22 CC-176：CC-175 普查剩余候选 → 伤害池直伤入参拼装收口（第 200 轮，提交 542884bc）
+- **发现**：`calcDirectDamage` 的契约「面板通用减防 / 减抗 / 固定减防由调用方传、函数内只加定向额外」本身没错，但**拼装**在三处各写一遍：伤害池正路 `pushDirect`、简 6 命附伤（`jane.ts` extraAnomalyRows）、爱丽丝 6 命附伤（`alice.ts`）。正路后来加了 `infectionElement`（风化染色属性，侵染区），两处模块旁路没跟上。
+  - 影响：队里有风属性角色（面板侵染加成 10%，`panelPhases.ts:746`）且染色目标是简 / 爱丽丝本人（物理）时，她们的 6 命附伤漏吃侵染区 ×1.1。
+  - zd：2 个预设变化，`auto-1261-1561-1411/c6` +0.02%、`auto-1261-1561-1581/c6` +0.01%（附伤占全队伤害比例小）；另一个 DIFF 项是 `__ms` 计时键。timeGolden 零变化。
+- **修法（决定）**：新文件 `src/composables/resourceCalc/poolDirectDamage.ts`，`calcPoolDirectDamage(env, row)` 是伤害池直伤的**唯一入参拼装点**。
+  - `PoolDirectEnv`：敌人（防御 / 等级 / 失衡易伤）、抗性表、染色属性，同一次建池内不变；由 `damagePool.ts` 构造为 `directEnv`，经 `AnomalyRowsEnv.directEnv` 传到派发点。
+  - `PoolDirectRow`：面板 + 行级量；减防 / 减抗只传行级额外量（`defIgnore` / `resIgnore`），面板通用值由函数读。
+  - 正路 `pushDirect` 直接调；模块经新字段 `ExtraAnomalyRowsInput.directDamage` 闭包调，`jane.ts` / `alice.ts` 不再 import `calcDirectDamage`。
+  - 依据：让「新增一个环境量」只改一处（架构更简单），而不是给两处旁路各补一个参数。简 / 爱丽丝附伤注释早就写明「走标准直伤管线、其余乘区全吃」，所以补侵染区是按原意修正，不是新口径。
+- **其余候选逐个核对（已查无问题）**：
+  - `calcDirectDamage` 旁路其余可选字段：`specialDamageProfile` 对异常角色取缺省 normal 档，与正路 `resolveSpecialDamageProfile` 结果一致；`skillDamageTarget` 不传是有意（附伤不属于任何招式类型，不吃招式定向增伤）；`critRateBonus` 等行级加成正路也只在特定招式行上有。面板同源（派发点 `panelAt(damagePanels, slot)` 与正路一致）。
+  - `buildGiftRow`（core/resource/giftRows.ts）：纯行对象构造，没有「函数内读 + 调用方传」的混合结构。引擎物化的赠行（assembleSlot.ts:139/149）不填倍率 / 喧响是有意（只定存在与行序），编排层 `chainGift.ts` / `ultimatePromote.ts` 的补丁按池口径重写全部字段（含 `decibelRecovery` / `totalDecibelRecovery`）。
+  - `frontlineOccupationBreakdown`（core/resource/timeOccupation.ts:70）：读结果对象，无入参契约问题。它有「只有团队级 `axisOverlapSeconds`、无按块分摊」的兜底分支（注释写「老注入路径 / 测试」），生产是否还会走到未查，记入 CC-177 顺带项。
+  - `effectiveTime` 族（`TimeBasisCfg` 缺省 180s / 无敌 0s）：生产调用都传角色 cfg，而角色 cfg 由唯一构造点 `composables/resourceCalc/helpers.ts:536` 写入 `battleTime` / `invincibleTime` / `bodySize`（:604–606，读 `configStore.enemy`），缺省值只在测试生效。
+    - ⚠ 排查时踩的坑：一度以为这几个字段「全仓零写入」，原因是 grep 时用 `grep -v 'enemy\.'` 滤噪音，把构造点那几行也滤掉了。查「零写入」时不要用会命中赋值右侧的排除模式。
+- **判据**：`src/mechanics/__tests__/jane.test.ts`「CC-176：附伤经 input.directDamage 拼装，染色属性=物理时吃侵染区 ×1.1，=风时不吃」。旧 `jane.ts` 上该用例失败（已验证）。四个模块测试的输入桩补了 `directDamage`（简 / 爱丽丝 / 柏妮思用真实 `calcPoolDirectDamage` + 桩环境；蕾米埃尔不产直伤，桩直接抛错）。
+- **验证**：`npm run verify` rc=0（3830 passed）；vue-tsc 无新错误；CG 25 项通过；zd 见上。
+- **回退点**：revert 542884bc。若只想撤掉侵染区修正而保留收口，在 `damagePoolAnomaly.ts` 派发点给 `directDamage` 传一个 `infectionElement: ''` 的 env 副本即可（零差回到旧数值）。

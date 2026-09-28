@@ -69,20 +69,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 199 轮（lane lead-arena-0925c）：CC-175 完成（代码提交 be822bc6，含 timeGolden 基线重生成）；立卡 CC-176。文档见本提交。**
-- CC-175：calcAnomalyDamage 结算区减防 / 减抗契约统一，修了三处（减抗双计、标准异常漏通用减防、异放固定减防双计），伤害有升有降，归因见 stun-dual-source §24.21。
-- 前几轮：198 CC-173 / 174（e0426398）；197 CC-172（8bbefaed）；196 CC-171（c727c369）。
+**第 200 轮（lane lead-arena-0925c）：CC-176 完成（代码提交 542884bc）；立卡 CC-177。文档见本提交。**
+- CC-176：伤害池直伤入参拼装收口到 `composables/resourceCalc/poolDirectDamage.ts#calcPoolDirectDamage`，正路 pushDirect 与简 / 爱丽丝 6 命附伤共用（模块经 `ExtraAnomalyRowsInput.directDamage`）；修附伤漏侵染区（2 个预设 +0.01~0.02%）。其余普查候选已查无问题，清单见 stun-dual-source §24.22。
+- 前几轮：199 CC-175（be822bc6）；198 CC-173 / 174（e0426398）；197 CC-172（8bbefaed）。
 - REQUIREMENTS 无新条目；提示词未改（md5 2aa1f517）。
 
 **下一步（按顺序，直接开工）**
-1. **CC-176：CC-175 普查剩余候选**。
-   - 列表：`node /home/kaua/calc-arch/k198/scan175.mjs`（输出列依次为：调用文件数、调用次数、可选字段数、函数、可选类型、调用方）。跳过以 `CharacterOperationConfig` 为参数的（数据载体）。
-   - 逐个看：`calcDirectDamage` 的旁路调用（alice.ts:687、jane.ts:332）是否漏传伤害池会传的可选字段（`skillDamageTarget` / `critRateBonus` / `dmgBonus` / `flatDamageBonus` 等）。对照 `composables/resourceCalc/damagePool.ts` 的 pushDirect，判断是有意（附伤不吃定向增伤？）还是漏传；再看 `buildGiftRow`（GiftRowInput 7 个可选）、`frontlineOccupationBreakdown`、`effectiveBackstageTime` / `countFrontActions`（TimeBasisCfg）。
-   - 判定：漏传的补上（伤害路径要跑 zd 并做归因）；有意的写注释；没问题的在 §24.21 后追加「已查无问题」清单。
-   - 方法提示：本轮三个 bug 都是「函数内读一部分、调用方传一部分」造成的双计 / 漏计。优先查函数体里有没有 `settle.` / `p.` 与入参同名字段相加的地方。
+1. **CC-177：异常伤害入参拼装收口（要求 zd DIFF 0、timeGolden 零变化）**。
+   - 调用点：`grep -rn 'calcAnomalyDamage(' src --include=*.ts | grep -v __tests__`。已知 4 处：`composables/resourceCalc/damagePoolAnomaly.ts`（标准异常，约 :250–270）、`damagePool.ts`（pushRelease 异放，约 :270–290）、`mechanics/agents/alice.ts`（极性紊乱，约 :619）、`mechanics/agents/burnice.ts`（6 命灼烧迸发）。
+   - 仿 CC-176：在 `poolDirectDamage.ts` 旁建同构的 `calcPoolAnomalyDamage(env, row)`（或放同一文件，文件名可顺手改成 `poolDamage.ts`，改名要 `git mv` 并更新 import）。env 复用 `PoolDirectEnv`（敌人、抗性表）；row 只带面板 / 结算面板 / 行级额外量（releaseMod 减抗减防、柏妮思 6 命无视火抗）。契约沿用 CC-175：结算面板上的减防减抗由 `calcAnomalyDamage` 内部读，拼装点不再读面板。
+   - 模块侧经 `ExtraAnomalyRowsInput` 新字段（如 `anomalyDamage`）调用；四个模块测试桩（jane / alice / burnice / remielle）要一起补，模式同本轮 `directDamage`。
+   - 纯重构：zd 必须 DIFF 0（`__ms` 计时键除外）、timeGolden 不动。若出现差异 = 某处拼装与其他处不一致，先归因再决定（可能又是一个真 bug，按 CC-175 / 176 的方式处理）。
+   - 顺带：查 `core/resource/timeOccupation.ts:70` `frontlineOccupationBreakdown` 的 `teamLevel` 兜底分支生产是否还会走到（在分支里临时加 `// ZZTMP` 计数，跑 zd 看是否为 0）。若为 0 且只剩测试依赖，评估删除 + 改测试；否则写注释说明谁在走。
 2. CC-166 仍暂缓（需规格）。
 
 **已知坑**
+- 伤害池直伤一律走 `calcPoolDirectDamage`（CC-176）：新环境量加进 `PoolDirectEnv`，新行级字段加进 `PoolDirectRow`；模块里要算直伤用 `ExtraAnomalyRowsInput.directDamage`，不要 import `calcDirectDamage` 自拼（自拼就会漏掉正路后加的量，比如侵染染色属性）。
+- 查「某字段全仓零写入」时，不要用会命中赋值右侧的排除模式（第 200 轮用 `grep -v 'enemy\.'` 滤噪音，把 `battleTime: configStore.enemy.battleTime` 这类写入行也滤掉，差点误报）。先无过滤搜 `字段名:`，再看构造点。
 - 伤害函数契约：`calcDirectDamage` 由调用方传面板通用减防 / 减抗；`calcAnomalyDamage` 由函数内读结算面板，调用方只传额外量。新写旁路伤害调用要照对应契约，写反就会双计或漏计（CC-175）。
 - 伤害变化的基线更新：timeGolden 用 `TIME_GOLDEN_UPDATE=1`。更新前先 `git diff --numstat` 基线文件，确认只有 `dmg` 行变化、没有时间账变化；断言报错信息只列部分条目，不要据此判断全貌。
 - calcPanel 的 config 可选字段（`potentialLevel` / `effectCoverageMap` / `sourcePanelsByOwner`）漏传不会报错，会被缺省值静默兜底（CC-171 就是这么漏的）。新增调用点对照 `computePanelPhases` 逐项核对，有意不传的写注释。
