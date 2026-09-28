@@ -216,7 +216,9 @@ export function buildPromoteParams(
   const targetSkills = targetAgentId ? catalogStore.agentSkillsByAgentMap.get(targetAgentId) : undefined
   const ult = targetSkills ? findUltimate(targetSkills, fusedRowReader) : null
   const ultMove = ult?.moveId ? findMoveById(targetSkills, ult.moveId) : null
-  const ultDaze = getRowValue(ultMove, 'daze')
+  // CC-244：送出的是「一次完整终结技」⇒ 多段终结技（融合组，如照 1341014、妮可 1031301）取整段失衡值，
+  // 与本文件伤害（fusedOf）、helpers 主执行、chainGift 赠送连携同口径；修前只取主段 = 赠送了半招失衡。
+  const ultDaze = (ult?.moveId ? fusedRowValue(targetSkills, ult.moveId, 'daze') : null) ?? getRowValue(ultMove, 'daze')
   const chain = targetSkills ? findChainAttack(targetSkills, fusedRowReader) : null
   const ultElement = (targetAgentId && catalogStore.agentsMap.get(targetAgentId)?.damageElement) || 'physical'
   return {
