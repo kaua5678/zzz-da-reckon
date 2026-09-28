@@ -6,7 +6,7 @@
  * 引擎侧时间预留走 crossAgentSupply 的 `gift-chain:chain` 通道（core/resource/helpers.ts 的 chainGift*），两者须同源。
  */
 import { findChainAttack } from '@/core/resource'
-import { resolveUltimateTargetSlot } from '@/core/resource/targetSlot'
+import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import type { TeamResourceResult } from '@/types/resource'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
@@ -17,7 +17,7 @@ import { findMoveById, fusedRowValue } from './skillRows'
 import { buildGiftRow } from '@/core/resource/giftRows'
 
 /**
- * 赠送连携：提供者给「上一位队友」（`resolveUltimateTargetSlot`）赠送 N 次其本人连携技，连携归属该队友。
+ * 赠送连携：提供者给「上一位队友」（`resolveTeammateTargetSlot`，已上场序列、跳过空槽）赠送 N 次其本人连携技，连携归属该队友。
  * 诺姆 C4 的 +200 不可分享喧响不在这里（资源池 calcDecibelSource 已计入）。
  */
 export function applyChainGift(
@@ -46,9 +46,9 @@ export function applyChainGift(
     }
   }
 
-  // 上一位队友（环绕，排除自己）
+  // 上一位队友（已上场序列环绕、跳过空槽，排除自己；CC-180 与引擎 configs 同源）
   const targetSetting = configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1)
-  const targetSlot = resolveUltimateTargetSlot(providerSlot, configStore.team.length, targetSetting)
+  const targetSlot = resolveTeammateTargetSlot(providerSlot, base.characters.map(c => c.slot), targetSetting)
   // 帽子把戏替换的是「上一位队友的快速支援→该队友本人的连携技」（用户口径：赠送连携给上一位队友打，
   // 不是诺姆替打自己的 1571018）——连携招式 id/倍率/时长全部取目标队友技能表。
   // C4 喧响（诺姆+队友各 200×次数）已由资源池 calcDecibelSource 计入（buildResourceResult 回写

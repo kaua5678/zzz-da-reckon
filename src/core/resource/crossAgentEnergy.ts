@@ -59,9 +59,7 @@ export function calcCrossAgentEnergy(
   // ⚠ 明细字段（rina/soukaku/lucy 三个来源）由 `byProvider` 按**提供者槽位**拆分，
   // 供 `ResourceResultCard.vue` 逐条展示；`total` 用合计值（同一落点可同时被多名提供者回能，
   // 明细相加 = total，不会漏也不会重）。
-  const neighborUlt = neighborUltEnergyByProvider(configs, states, slotIndex, {
-    totalTime: 180, stunCount: 0,
-  })
+  const neighborUlt = neighborUltEnergyByProvider(configs, states, slotIndex)
   // 按来源明细（CC-32b）：键 = 提供者模块自报的 displayKey / cfg 通用字段的键（引擎不认识角色名）。
   const bySource: Record<string, number> = {}
   const addSource = (src: Record<string, number>) => {
@@ -83,7 +81,7 @@ export function calcCrossAgentEnergy(
   // 算正兵回能 + 算席德自己那槽时回写正兵实际耗能）。现按能力类别 `crossAgentSupply.kind = 'vanguard-energy'`
   // 派发：落点量走 `perTargetAmounts`（与邻位回能同一派发器，按模块自报 displayKey 聚合），
   // 回写走 `onOwnSlotCrossAgentEnergy`（同一时机：算提供者自己那槽时）。引擎侧零角色逻辑。
-  const vanguard = perTargetEnergyByProvider(configs, states, slotIndex, { totalTime: 180, stunCount: 0 }, 'vanguard-energy')
+  const vanguard = perTargetEnergyByProvider(configs, states, slotIndex, 'vanguard-energy')
   runOwnSlotCrossAgentEnergyHooks(configs, states, slotIndex, 'vanguard-energy')
   addSource(vanguard.byDisplayKey)
 

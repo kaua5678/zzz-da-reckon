@@ -65,7 +65,7 @@ describe('苍角纯函数', () => {
       { slot: 1, agentId: '1131' },
     ]
     const states: any[] = [{ ultimateCount: 2 }, { ultimateCount: 2 }]
-    expect(neighborUltEnergyByProvider(configs, states, 0, { totalTime: 180, stunCount: 0 }).total).toBe(60)
+    expect(neighborUltEnergyByProvider(configs, states, 0).total).toBe(60)
   })
 
   it('影画6 霜染段 dmgBonus+45', () => {

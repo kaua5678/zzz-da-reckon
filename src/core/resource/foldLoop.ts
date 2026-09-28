@@ -98,14 +98,14 @@ export function runFoldLoop(
     // idle → pass0 refund 双击（与最高马力星光行同病）。
     // 供给量与落点由模块声明（`crossAgentSupply`），引擎按类别查询——本文件不再含角色 id。
     const chainGiftInfo = crossAgentSupplyAt(ctx.configs, st, findCrossAgentSupplySlots(ctx.configs, 'gift-chain:chain')[0] ?? -1, {
-      totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config), teamSize: ctx.config.teamSize,
+      totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config),
     })
     // 琉音好评转大赠链行同理：装配后 applyUltimatePromote 追加，行测量计入其时间。
     // **轴模式必须用轴计数**（`ultimateGiftOf` = 该量的单一事实源）：模块供给带 `axisSuppressed`
     // ⇒ 漏掉轴分支就看不见赠行 ⇒ 它占的前台被读成 idle，`timeBudgetRefund` 把它 refund 掉
     // ⇒ iterate 侧刚补的预留又被打回（2026-09-20 R67 实测：只补 iterate 不补本处，账本净额仍 0）。
     const ultimateGift = ultimateGiftOf(ctx.configs, st, {
-      totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config), teamSize: ctx.config.teamSize,
+      totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config),
       axisMode: ctx.config.axisMode, axisPromote: ctx.config.axisUltimatePromote,
     })
     for (let i = 0; i < ctx.configs.length; i++) {

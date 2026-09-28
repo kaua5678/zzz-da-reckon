@@ -583,9 +583,8 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：琉音（含跨�
 
   /**
    * `liuyin.previousTeammateSlot` ★ **类别判据（不是比例量）**：
-   * 声明 `liuyin.ts:460`；读 `:251` → `resolvePreviousTeammateSlot(slot, teamLength, setting)`
-   *   （`:147-151`：`setting >= 0 && setting < teamLength && setting !== ownSlot ⇒ setting`，
-   *    否则回落到 `(ownSlot−1+teamLength) % teamLength`）。
+   * 声明见 `liuyin.ts` settings；读 `buildLiuyinCharConfig` → `resolveTeammateTargetSlot(slot, 已上场槽位, setting)`
+   *   （CC-180 起与赠大同一函数：设置指向已上场且非自己的槽 ⇒ 用它，否则已上场序列里的上一位；满编时同旧式）。
    *
    * 这是「专属直伤读哪个队友的面板」的**身份选择**，没有单调/比例可言：
    * ⚠ **v=0 与 v=2 都落到 slot 2**（0 == 琉音自己槽 ⇒ 走回落分支），

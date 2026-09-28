@@ -39,11 +39,12 @@ export interface CrossAgentSupplySpec {
    */
   supply(input: CrossAgentSupplyInput): number
   /**
-   * 供给落点槽位（缺省 = 上一位队友，环绕，与 `resolveUltimateTargetSlot` 同口径）。
-   * 模块自己读 `cfg` 上的设置字段（如 `setting:liuyin.ultimateTargetSlot`）——
+   * 供给落点槽位（缺省 = 上一位队友，环绕跳过空槽，与 `resolveTeammateTargetSlot` 同口径）。
+   * 入参 `ownSlot` 与返回值都是**编队槽位**（`cfg.slot`），`occupiedSlots` = 已上场槽位；引擎负责映射回 `configs` 下标（CC-180）；返回 -1 或空槽 = 无落点。
+   * 模块自己读 `cfg` 上的设置字段（如 `setting:liuyin.ultimateTargetSlot`，值为编队槽位）——
    * 引擎不解释角色私有设置键。
    */
-  targetSlot?(input: { ownSlot: number; teamSize: number; cfg: CharacterOperationConfig }): number
+  targetSlot?(input: { ownSlot: number; occupiedSlots: readonly number[]; cfg: CharacterOperationConfig }): number
   /**
    * **多落点**供给（可选，优先级高于 `targetSlot`）：一次给出「槽位 → 该落点得到的量」的完整映射。
    *
@@ -58,7 +59,9 @@ export interface CrossAgentSupplySpec {
    * 迁移前引擎正是读目标 cfg 取的这些值，故此处显式提供，模块按需读。
    */
   perTargetAmounts?(input: {
+    /** 提供者的 `configs` 下标（返回 Record 的 key 同为 `configs` 下标） */
     ownSlot: number
+    /** 已上场人数（= `configs.length`，不含空槽；两人队的「另一位」语义靠它） */
     teamSize: number
     cfg: CharacterOperationConfig
     state: IterationState
@@ -122,8 +125,6 @@ export interface CrossAgentSupplyInput {
   stunCount: number
   /** 战斗总时长（秒） */
   totalTime: number
-  /** 队伍槽位数（含空槽，与编排层 `configStore.team.length` 同源；缺省用 configs.length） */
-  teamSize: number
 }
 
 /**

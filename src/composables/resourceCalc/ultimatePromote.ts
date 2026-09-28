@@ -10,7 +10,7 @@ import { calcStunPool } from '@/core/stunPool'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource'
-import { resolveUltimateTargetSlot } from '@/core/resource/targetSlot'
+import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import type { AgentMechanicModule } from '@/mechanics/types'
 import type { TeamResourceResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
@@ -209,7 +209,7 @@ export function buildPromoteParams(
   if (!gift) return null
   const hug60Setting = configStore.getMechanicSetting('liuyin.hug60Count', -1)
   const targetSetting = configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1)
-  const targetSlot = resolveUltimateTargetSlot(gift.slot, configStore.team.length, targetSetting)
+  const targetSlot = resolveTeammateTargetSlot(gift.slot, rr.characters.map(c => c.slot), targetSetting)  // CC-180
   const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
   const targetChar = rr.characters.find(c => c.slot === targetSlot)
   const targetSkills = targetAgentId ? catalogStore.agentSkillsByAgentMap.get(targetAgentId) : undefined

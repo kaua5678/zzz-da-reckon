@@ -76,12 +76,12 @@ export function runUnderfillProbe(
     }
     let total = 0
     const chainGiftInfo = crossAgentSupplyAt(ctx.configs, st, chainGiftProvider, {
-      totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config), teamSize: ctx.config.teamSize,
+      totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config),
     })
     // 琉音赠大：一律走 `ultimateGiftOf`（单一事实源，`@fact engine:赠送时间/轴模式四处同源` ③）——
     // 轴模式用轴预设计数（`config.axisUltimatePromote`），非轴用模块供给；不再在此内联轴分支（W19）
     const giftLiu = ultimateGiftOf(ctx.configs, st, {
-      totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config), teamSize: ctx.config.teamSize,
+      totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config),
       ...(ctx.config.axisMode ? { axisMode: true } : {}),
       ...(ctx.config.axisUltimatePromote ? { axisPromote: ctx.config.axisUltimatePromote } : {}),
     })

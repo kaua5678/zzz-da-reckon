@@ -52,30 +52,32 @@ export interface TailResult {
  * 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
  *
  * 下面两个薄包装只是把「账本口径」（`crossAgentSupplyAt`，带秒数）转成「行口径」（带次数），
- * 并统一按 `config.teamSize`（编排层队长）解析目标槽——CC-179 起账本 `iterate` 也读同一值（四处同源）。
+ * 目标槽由 `crossAgentSupplyAt` 在编队槽位空间解析（已上场序列，CC-180），与账本 / 折叠 / 探针同源。
  */
 function chainGiftRowSpec(
-  configs: CharacterOperationConfig[], states: IterationState[], totalTime: number, teamSize: number | undefined,
+  configs: CharacterOperationConfig[], states: IterationState[], totalTime: number,
 ): { targetIdx: number; count: number } {
   const [info] = crossAgentSuppliesOf(configs, states, 'gift-chain:chain', {
-    totalTime, stunCount: 0, teamSize, axisMode: false,
+    totalTime, stunCount: 0, axisMode: false,
   })
   return !info || info.count <= 0 || !configs[info.targetIdx]
     ? { targetIdx: -1, count: 0 }
     : { targetIdx: info.targetIdx, count: info.count }
 }
 
-/** 行口径的琉音赠大（含次数）：轴模式用轴预设计数，非轴用模块供给；目标槽按 `teamSize` 解析 */
+/** 行口径的琉音赠大（含次数）：轴模式用轴预设计数，非轴用模块供给；目标槽在编队槽位空间解析 */
 function ultimateGiftRowSpec(
   configs: CharacterOperationConfig[], states: IterationState[], totalTime: number, stunCount: number,
-  axisPromote: { targetSlot: number; count: number } | undefined, axisMode: boolean, teamSize: number | undefined,
+  axisPromote: { targetSlot: number; count: number } | undefined, axisMode: boolean,
 ): { targetIdx: number; count: number } {
   // 轴模式：次数由轴预设 `promoteVariant` 块决定（模块供给被 axisSuppressed 跳过），预设计数优先
   if (axisMode && axisPromote && axisPromote.count > 0) {
-    return configs[axisPromote.targetSlot] ? { targetIdx: axisPromote.targetSlot, count: axisPromote.count } : { targetIdx: -1, count: 0 }
+    // `axisPromote.targetSlot` 是编队槽位 ⇒ 映射回 `configs` 下标（CC-180）
+    const idx = configs.findIndex(c => c.slot === axisPromote.targetSlot)
+    return idx >= 0 ? { targetIdx: idx, count: axisPromote.count } : { targetIdx: -1, count: 0 }
   }
   const [info] = crossAgentSuppliesOf(configs, states, 'gift-chain:ultimate', {
-    totalTime, stunCount, teamSize, axisMode,
+    totalTime, stunCount, axisMode,
   })
   return !info || info.count <= 0 || !configs[info.targetIdx]
     ? { targetIdx: -1, count: 0 }
@@ -142,7 +144,7 @@ export function runTailPipeline(
    * 轴模式同样计入（次数走 `ultimateGiftOf` 的轴分支，见下方；旧注释「轴模式不预留」已作废）。
    */
   const chainGiftFinal = crossAgentSupplyAt(configs, states, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
-    totalTime, stunCount: stunCountForCountChannel(config), teamSize: config.teamSize,
+    totalTime, stunCount: stunCountForCountChannel(config),
   })
   /**
    * 琉音赠大（装配侧：**截断上限 + 前台展示 + 赠行时间预留**）——四处同源之一（单一事实源 =
@@ -161,18 +163,18 @@ export function runTailPipeline(
    * `applyUltimatePromote` 也不再需要 post-hoc carve（`ultimateGiftTimeReserved` 有值即走预留路径）。
    */
   const ultimateGiftFinal = ultimateGiftOf(configs, states, {
-    totalTime, stunCount: stunCountForCountChannel(config), teamSize: config.teamSize,
+    totalTime, stunCount: stunCountForCountChannel(config),
     axisMode: config.axisMode, axisPromote: config.axisUltimatePromote,
   })
   const giftTimeOfSlot = (idx: number): number =>
     (idx === chainGiftFinal.targetIdx ? chainGiftFinal.time : 0)
     + (idx === ultimateGiftFinal.targetIdx ? ultimateGiftFinal.time : 0)
   // 赠行**物化口径**（阶段1 ②，2026-09-10）：行由引擎产出（存在/次数单一事实源），倍率由编排层补。
-  // 目标槽按 `config.teamSize`（编排层队长）解析——与账本 / 折叠 / 探针同源（CC-179；见 types/resource/config.ts#teamSize）。
-  const chainGiftRow = chainGiftRowSpec(configs, states, totalTime, config.teamSize)
+  // 目标槽在编队槽位空间解析（CC-180），与账本 / 折叠 / 探针同源。
+  const chainGiftRow = chainGiftRowSpec(configs, states, totalTime)
   const ultimateGiftRow = ultimateGiftRowSpec(
     configs, states, totalTime, stunCountForCountChannel(config),
-    config.axisUltimatePromote, !!config.axisMode, config.teamSize,
+    config.axisUltimatePromote, !!config.axisMode,
   )
   // S4 装配（CC-5b 外提至 `./resource/assembleSlot.ts`，纯函数）的只读上下文：闭包捕获的
   // `states`（装配期终态）/ `curtain` / 赠行查询函数与行口径在此显式化。

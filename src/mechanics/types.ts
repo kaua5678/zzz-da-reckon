@@ -1068,7 +1068,7 @@ export interface AgentMechanicModule {
   adjustTeammateBuffSource?(input: { source: SourcePanelsByOwner[string]; cinemaLevel: number }): void
   /**
    * 装配后赠送连携（CC-35d-A 2026-09-27）：`resourceCalc/chainGift.ts#applyChainGift` 取首个实现本能力的在队槽位，
-   * 以其资源结果调用。返回 null = 本轮无来源（结果不动）；否则给「上一位队友」（`resolveUltimateTargetSlot`）
+   * 以其资源结果调用。返回 null = 本轮无来源（结果不动）；否则给「上一位队友」（`resolveTeammateTargetSlot`）
    * 赠送 `count` 次该队友本人的连携技（count ≤ 0 时撤掉引擎占位赠送行），`label` 拼在招式名后、`note` 进技能表说明。
    * 引擎的时间预留走 `crossAgentSupply` 的 `gift-chain:chain` 通道，两者必须同源。现唯一实现：诺姆（帽子把戏）。
    */

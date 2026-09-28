@@ -19,7 +19,7 @@
  *   · `axisSuppressed`   —— 该类别在轴模式下不出数（琉音赠大：轴内次数由轴预设决定，见 docs 坑19①）
  */
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
-import { resolveUltimateTargetSlot } from './targetSlot'
+import { resolveTeammateTargetSlot } from './targetSlot'
 import { getAgentMechanic } from '@/mechanics/registry'
 
 export interface CrossAgentSupplyInfo {
@@ -40,8 +40,6 @@ export interface CrossAgentSupplyQuery {
   stunCount: number
   /** 轴模式：`axisSuppressed` 的提供者在此跳过 */
   axisMode?: boolean
-  /** 槽位数（编排层注入，与 `configStore.team.length` 同源；缺省 `configs.length`） */
-  teamSize?: number
 }
 
 const NO_SUPPLY: CrossAgentSupplyInfo = { providerSlot: -1, targetIdx: -1, count: 0, time: 0 }
@@ -75,12 +73,13 @@ export function crossAgentSupplyAt(
   if (spec.axisSuppressed && query.axisMode) return empty
   const state = states[providerSlot]
   if (!state) return empty
-  const teamSize = query.teamSize ?? configs.length
-  const targetIdx = spec.targetSlot
-    ? spec.targetSlot({ ownSlot: providerSlot, teamSize, cfg })
-    // 缺省落点 = 上一位队友（环绕），与赠大/赠连携同一函数（CC-44 起该函数位于 core/resource/targetSlot.ts）。
-    // teamSize ≥ 1 时与原内联式 `(providerSlot - 1 + teamSize) % teamSize` 逐值相同。
-    : resolveUltimateTargetSlot(providerSlot, teamSize, -1)
+  // 落点在**编队槽位空间**解析（已上场序列，跳过空槽），再映射回 `configs` 下标（CC-180）。
+  // 缺省落点 = 上一位队友（环绕），与编排层赠大/赠连携同一函数（core/resource/targetSlot.ts）。
+  const occupiedSlots = configs.map(c => c.slot)
+  const targetTeamSlot = spec.targetSlot
+    ? spec.targetSlot({ ownSlot: cfg.slot, occupiedSlots, cfg })
+    : resolveTeammateTargetSlot(cfg.slot, occupiedSlots, -1)
+  const targetIdx = configs.findIndex(c => c.slot === targetTeamSlot)
   const targetCfg = configs[targetIdx]
   if (!targetCfg) return empty
   const count = Math.max(0, Math.floor(spec.supply({
@@ -90,7 +89,6 @@ export function crossAgentSupplyAt(
     targetState: states[targetIdx],
     stunCount: query.stunCount,
     totalTime: query.totalTime,
-    teamSize,
   }) || 0))
   if (count <= 0) return { ...empty, targetIdx }
   const perUnit = spec.secondsPerUnit
@@ -127,13 +125,15 @@ export function ultimateGiftOf(
 ): CrossAgentSupplyInfo {
   const providerSlot = findCrossAgentSupplySlots(configs, 'gift-chain:ultimate')[0] ?? -1
   const ov = query.axisPromote
-  if (query.axisMode && ov && ov.count > 0 && configs[ov.targetSlot]) {
+  // `ov.targetSlot` 是编排层解析的**编队槽位** ⇒ 映射回 `configs` 下标（CC-180；满编时两者相同）
+  const ovIdx = ov ? configs.findIndex(c => c.slot === ov.targetSlot) : -1
+  if (query.axisMode && ov && ov.count > 0 && ovIdx >= 0) {
     return {
       providerSlot,
-      targetIdx: ov.targetSlot,
+      targetIdx: ovIdx,
       count: ov.count,
       // 单位耗时 = 落点槽的终结技时长（与模块 `secondsPerUnit` 同口径）
-      time: ov.count * (configs[ov.targetSlot].ultimateActionTime ?? 0),
+      time: ov.count * (configs[ovIdx].ultimateActionTime ?? 0),
     }
   }
   return crossAgentSupplyAt(configs, states, providerSlot, query)
@@ -178,7 +178,6 @@ export function crossAgentSupplyCountOf(
     state,
     stunCount: query.stunCount,
     totalTime: query.totalTime,
-    teamSize: query.teamSize ?? configs.length,
   }) || 0))
 }
 
@@ -204,10 +203,10 @@ export function perTargetEnergyByProvider(
   configs: CharacterOperationConfig[],
   states: IterationState[],
   targetSlot: number,
-  query: CrossAgentSupplyQuery,
   kind: string,
 ): { total: number; byProvider: Record<number, number>; byDisplayKey: Record<string, number> } {
-  const teamSize = query.teamSize ?? configs.length
+  // 邻位回能在已上场序列（`configs` 下标）上分配：两人队 = 另一位 30（模块内语义）
+  const teamSize = configs.length
   const byProvider: Record<number, number> = {}
   const byDisplayKey: Record<string, number> = {}
   let total = 0
@@ -237,9 +236,8 @@ export function neighborUltEnergyByProvider(
   configs: CharacterOperationConfig[],
   states: IterationState[],
   targetSlot: number,
-  query: CrossAgentSupplyQuery,
 ): { total: number; byProvider: Record<number, number>; byDisplayKey: Record<string, number> } {
-  return perTargetEnergyByProvider(configs, states, targetSlot, query, 'neighbor-ult-energy')
+  return perTargetEnergyByProvider(configs, states, targetSlot, 'neighbor-ult-energy')
 }
 
 /**
@@ -279,7 +277,7 @@ export function giftDecibelForCfg(
   const state = states[slot]
   if (!spec?.decibelPerUnit || !state) return 0
   const count = Math.max(0, Math.floor(spec.supply({
-    cfg, state, stunCount: 0, totalTime, teamSize: configs.length,
+    cfg, state, stunCount: 0, totalTime,
   }) || 0))
   return count * Math.max(0, spec.decibelPerUnit({ cfg }) || 0)
 }

@@ -813,14 +813,6 @@ export interface ResourceCalcConfig {
    */
   axisUltimatePromote?: { targetSlot: number; count: number }
   /**
-   * 编排层队长（`configStore.team.length`，含空槽）：跨槽位供给（赠连携 / 赠大）解析「上一位队友」用。
-   * 引擎只收到已配置角色（`configs.length`），退化配置（空槽 / 单角色扫描）下两者不同。
-   * CC-179（第 202 轮）起**四处同源**都读本值：账本 `iterate`、折叠环 `foldLoop`、欠打探针 `underfillProbe`、
-   * 装配尾段 `tailPipeline`（此前账本漏传、回落 `configs.length`；原注释说的 `giftRowTargetSlot` 已不存在）。
-   * ⚠ 已知遗留（CC-180）：目标槽是在 `configs` **下标**空间里用含空槽的队长做环绕，两人一空槽时可能落到不存在的下标 ⇒ 赠送丢失。
-   */
-  teamSize?: number
-  /**
    * 全队必要前台的可行比例（引擎 iterate 每轮写入，装配阶段消费）：
    * `预算 ÷ Σ必要净占用`，<1 = 想打的必做动作装不进战斗时间 ⇒ 执行计划按时间线截断。
    * ⚠ 诊断量副作用（坑 42 / R25-J2）：由引擎计算中途写回 cfg，调用前在新克隆对象上恒为 undefined，

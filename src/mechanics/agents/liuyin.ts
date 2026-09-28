@@ -12,7 +12,7 @@ import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, LiuyinMechanicSource, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
-import { resolveUltimateTargetSlot } from '@/core/resource/targetSlot'
+import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import { getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
@@ -134,17 +134,6 @@ function hasAttackOrRuptureTeammate(team: ReadonlyTeam, ownSlot: number): boolea
   return team.some(m => m.slot !== ownSlot && m.agent && (m.agent.specialty === 'attack' || m.agent.specialty === 'rupture'))
 }
 
-/**
- * 解析“上一位队友”槽位：
- * - 自动（-1）：取队伍顺序中琉音前一个槽位（环绕），排除自己。
- * - 手动：直接使用用户设置。
- */
-function resolvePreviousTeammateSlot(ownSlot: number, teamLength: number, setting: number): number {
-  if (setting >= 0 && setting < teamLength && setting !== ownSlot) return setting
-  const prev = (ownSlot - 1 + teamLength) % teamLength
-  return prev === ownSlot ? (ownSlot + 1) % teamLength : prev
-}
-
 interface LiuyinSourceInput {
   exSpecialCount: number
   ultimateCount: number
@@ -242,13 +231,14 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPa
 }
 
 function buildLiuyinCharConfig({ slot, cinemaLevel, team, skills, cfg, panel, getRowValue }: AgentCharConfigInput): void {
-  const teamLength = Math.max(1, team.length)
   const prevSetting = cfgNum(cfg, 'liuyin.previousTeammateSlot', -1)
   cfg.liuyinCinemaLevel = cinemaLevel
   // 额外能力触发条件：优先读声明式判定（panel.additionalAbilityActive），兜底硬编码。
   cfg.liuyinExtraAbilityActive = (panel.additionalAbilityActive ?? 0) > 0
     || (panel.additionalAbilityActive === undefined && hasAttackOrRuptureTeammate(team, slot))
-  cfg.liuyinPreviousTeammateSlot = resolvePreviousTeammateSlot(slot, teamLength, prevSetting)
+  // CC-180：与赠大 / 赠连携同一解析（已上场序列、跳过空槽；无队友 = -1）。`team` 定长 3 槽、空槽 agentId === ''，
+  // 旧式按 team.length=3 环绕 ⇒ 琉音在槽 0、槽 2 空时「上一位」落到空槽，额外能力直伤行整行丢失（站位差 3.4%）。
+  cfg.liuyinPreviousTeammateSlot = resolveTeammateTargetSlot(slot, team.filter(m => m.agentId && m.agent).map(m => m.slot), prevSetting)
   cfg.liuyinHug60Count = Math.floor(cfgNum(cfg, 'liuyin.hug60Count', -1))
   // 三个强特由本模块按 1→3 顺序生成，跳过通用强特执行；强特次数必须为整数（真实次数，非期望值模型）。
   cfg.skipGenericExSpecial = true
@@ -454,7 +444,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'liuyin.previousTeammateSlot',
     label: '琉音专属直伤·上一位队友',
-    description: '专属直伤读取的队友槽位；-1 表示自动取队伍顺序中琉音前一位（环绕），0/1/2 手动指定。',
+    description: '专属直伤读取的队友槽位；-1 表示自动取已上场队友中琉音前一位（环绕，跳过空槽），0/1/2 手动指定（指向空槽或自己时回落自动）。',
     default: -1,
     min: -1,
     max: 2,
@@ -529,7 +519,7 @@ export const liuyinMechanic: AgentMechanicModule = {
    *    `ultimateGiftOf` 取轴计数（单一事实源，见 `@fact engine:赠送时间/轴模式四处同源`）。
    *    ⚠ 旧注释「通用公式会算出另一个数 ⇒ 预留会让 4 队留白变差 +0.27~2.70s」已作废：那是
    *    **只有单处**消费轴计数时的读数；四处同源后守恒成立（实测 `timeLedgerInvariants` 全绿）。
-   * ② 落点缺省 = 上一位队友（`resolveUltimateTargetSlot`，用户可经 `liuyin.ultimateTargetSlot` 覆盖）。
+   * ② 落点缺省 = 上一位队友（`resolveTeammateTargetSlot`，已上场序列、跳过空槽，用户可经 `liuyin.ultimateTargetSlot` 覆盖）。
    * ③ 单位耗时 = 落点槽的 `ultimateActionTime`（转大是把队友的**连携**升级为**终结技**）。
    */
   crossAgentSupply: {
@@ -558,8 +548,8 @@ export const liuyinMechanic: AgentMechanicModule = {
       )
       return hug.hug60 + hug.hug90
     },
-    targetSlot: ({ ownSlot, teamSize, cfg }) =>
-      resolveUltimateTargetSlot(ownSlot, teamSize, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot', -1))),
+    targetSlot: ({ ownSlot, occupiedSlots, cfg }) =>
+      resolveTeammateTargetSlot(ownSlot, occupiedSlots, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot', -1))),
     secondsPerUnit: ({ targetCfg }) => targetCfg.ultimateActionTime ?? 0,
   },
   /** 赠终结技来源（CC-35d-B3：编排层按能力找提供者，原 findSlotByIdentity(['1481']) + 直读 liuyinMechanicSource） */

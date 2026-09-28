@@ -219,8 +219,7 @@ describe('丽娜面板与资源接线', () => {
     // 2026-09-15 core 棘轮批次3：原 `calcRinaUltEnergy(configs, states, target)` 已删——
     // 引擎改走通用类别查询 `neighborUltEnergyByProvider`（模块 crossAgentSupply 声明）。
     // 断言口径不变：槽0 拿 10、槽2 拿 30（丽娜在槽1）。
-    const q = { totalTime: 180, stunCount: 0 }
-    expect(neighborUltEnergyByProvider(configs as any, states, 0, q).total).toBe(10)
-    expect(neighborUltEnergyByProvider(configs as any, states, 2, q).total).toBe(30)
+    expect(neighborUltEnergyByProvider(configs as any, states, 0).total).toBe(10)
+    expect(neighborUltEnergyByProvider(configs as any, states, 2).total).toBe(30)
   })
 })

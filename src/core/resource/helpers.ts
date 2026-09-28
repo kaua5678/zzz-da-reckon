@@ -336,8 +336,6 @@ function iterateBody(
   // `gift-chain:chain`（赠连携）/ `ultimateGiftOf`（赠终结技），名字里的角色只是历史残留。
   const chainGift = crossAgentSupplyAt(configs, prevStates, findCrossAgentSupplySlots(configs, 'gift-chain:chain')[0] ?? -1, {
     totalTime, stunCount: countStunOf(globalCfg), // CC-141：赠送供给属计数通道
-    // CC-179：与折叠环 / 欠打探针 / 装配尾段同源（此前缺省回落 configs.length ⇒ 退化配置下账本与行口径目标槽不同）
-    teamSize: globalCfg.teamSize,
   })
   const chainGiftTargetIdx = chainGift.count > 0 ? chainGift.targetIdx : -1
   const chainGiftTime = chainGift.time
@@ -367,7 +365,6 @@ function iterateBody(
   // ⟳复核: 再增/删琉音赠大的消费点（尤其绕过 `ultimateGiftOf` 直调 `crossAgentSupplyAt`）时，复核「四处同源」覆盖面与 `Σ非赠行 + 赠行 ≡ 账本`（timeLedgerInvariants 全绿）；`axisUltimatePromote` 的产生改为非编排层时一并重核 | 到期 2027-03-31
   const ultGift = ultimateGiftOf(configs, prevStates, {
     totalTime, stunCount: countStunOf(globalCfg), // CC-141：赠送供给属计数通道
-    teamSize: globalCfg.teamSize, // CC-179：四处同源（见上）
     axisMode: !!globalCfg.axisMode,
     axisPromote: globalCfg.axisUltimatePromote,
   })

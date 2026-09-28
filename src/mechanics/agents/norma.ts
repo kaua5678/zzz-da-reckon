@@ -12,7 +12,7 @@ import type { AgentSkills, SkillMove, PanelValues } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting, NormaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
-import { resolveUltimateTargetSlot } from '@/core/resource/targetSlot'
+import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -634,8 +634,8 @@ export const normaMechanic: AgentMechanicModule = {
     ),
     // 落点设置键沿用 `liuyin.ultimateTargetSlot`（历史口径：两人共用同一个「送给谁」下拉，
     // 2026-09-13 迁移时逐位保留——改成 norma 私有键会改掉用户已存的设置值）。
-    targetSlot: ({ ownSlot, teamSize, cfg }) =>
-      resolveUltimateTargetSlot(ownSlot, teamSize, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot', -1))),
+    targetSlot: ({ ownSlot, occupiedSlots, cfg }) =>
+      resolveTeammateTargetSlot(ownSlot, occupiedSlots, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot', -1))),
     // 赠的是**连携**行 ⇒ 单位耗时 = 落点槽的 chainActionTime（与琉音赠大用 ultimateActionTime 不同）
     secondsPerUnit: ({ targetCfg }) => targetCfg.chainActionTime ?? 0,
     // 影画4·膛温换连携：每次赠链「诺姆 + 上一位队友**各** +200 不可分享喧响」。
