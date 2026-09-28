@@ -182,7 +182,10 @@
         </svg>
       </div>
 
-      <!-- 汇总表 -->
+      <!-- 汇总表（CC-204：每档最优系列绿底标出，方向按指标 higherBetter；单系列 / 全员并列不着色） -->
+      <div v-if="result.series.length > 1" class="legend-hint fc-best-hint">
+        绿底 = 该档最优（{{ resultDef?.higherBetter === false ? '本指标越小越好' : '越大越好' }}）
+      </div>
       <div class="table-wrap">
         <table class="tl-table">
           <thead>
@@ -194,7 +197,7 @@
           <tbody>
             <tr v-for="(lv, i) in result.levels" :key="i">
               <td>{{ lv.label }}</td>
-              <td v-for="s in result.series" :key="s.id">{{ cellText(s.values[i]) }}</td>
+              <td v-for="(s, si) in result.series" :key="s.id" :class="{ 'fc-best': bestByLevel[i]?.has(si) }">{{ cellText(s.values[i]) }}</td>
             </tr>
           </tbody>
         </table>
@@ -247,7 +250,7 @@ import {
   parseSetupCode,
   setupCodeLabel,
 } from '@/composables/freeCompare/axes'
-import { formatMetric, metricDef, metricOptions } from '@/composables/freeCompare/metrics'
+import { bestSeriesIndexByLevel, formatMetric, metricDef, metricOptions } from '@/composables/freeCompare/metrics'
 import type { BossPreset } from '@/types/bossPreset'
 
 const catalog = useCatalogStore()
@@ -452,7 +455,7 @@ function yOf(v: number): number {
   return padT + plotH - t * plotH
 }
 function yLabel(i: number): string {
-  const def = metricDef(metricId.value)
+  const def = resultDef.value
   const v = yGridValues.value[i] ?? 0
   if (!def) return String(Math.round(v))
   return def.unit === '%' ? `${(v * 100).toFixed(def.digits)}%` : formatMetric(def, v)
@@ -463,8 +466,20 @@ function levelX(i: number): number {
   return padL + (i / (n - 1)) * (svgW - padL - padR)
 }
 
+/**
+ * 结果所属指标的定义。CC-204：表格 / 折线 / 纵轴的格式化此前读下拉框当前值 `metricId`——对比完再切指标，
+ * 旧结果会按新指标的单位与小数位显示（百分比指标 ×100 等）。一律改读结果自带的 `result.metricId`。
+ */
+const resultDef = computed(() => metricDef(result.value?.metricId ?? metricId.value))
+/** 每个 x 档的最优系列下标（汇总表着色） */
+const bestByLevel = computed(() => {
+  const def = resultDef.value
+  const r = result.value
+  return def && r ? bestSeriesIndexByLevel(def, r.series) : []
+})
+
 const visibleLines = computed(() => {
-  const def = metricDef(metricId.value)
+  const def = resultDef.value
   return visibleSeries.value.map(s => {
     const pts = s.values.map((v, i) => ({
       x: levelX(i),
@@ -485,7 +500,7 @@ const downgradeNotes = computed(() => {
 })
 
 function cellText(v: number | null): string {
-  const def = metricDef(metricId.value)
+  const def = resultDef.value
   if (v === null) return '—'
   return def ? formatMetric(def, v) : String(Math.round(v))
 }
@@ -681,6 +696,14 @@ onMounted(async () => {
 .tl-table th:first-child,
 .tl-table td:first-child {
   text-align: left;
+}
+.tl-table td.fc-best {
+  color: var(--c-success);
+  background: var(--c-success-soft);
+  font-weight: 600;
+}
+.fc-best-hint {
+  margin: 4px 0;
 }
 .tl-table th {
   background: var(--app-tablehead-bg);

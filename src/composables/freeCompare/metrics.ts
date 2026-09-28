@@ -63,7 +63,7 @@ export interface MetricDef {
   digits: number
   /** 单位后缀（'' = 无；'%'=读数是 0~1 的比例） */
   unit: '' | '%' | ' /s'
-  /** 是否为「越大越好」（false = 越小越好）。⚠ 目前**无消费方**（第 213 轮 CC-190 普查）：表格胜负着色尚未实现，这是给它预留的方向元数据，不是已生效的行为 */
+  /** 是否为「越大越好」（false = 越小越好）。消费方：`bestSeriesIndexByLevel` → 汇总表每档最优系列着色（CC-204） */
   higherBetter: boolean
   /**
    * 读取向量。**必须纯读**——不许触发第二次求值（引擎 computed 是惰性的「读即重算」，
@@ -355,6 +355,40 @@ export function formatMetric(def: MetricDef, v: number): string {
   if (def.unit === '%') return `${(v * 100).toFixed(def.digits)}%`
   const body = def.digits === 0 ? compact(Math.round(v)) : v.toFixed(def.digits)
   return def.unit ? `${body}${def.unit}` : body
+}
+
+/**
+ * CC-204：汇总表胜负着色——每个 x 档里按指标方向（`higherBetter`）找最优系列，返回系列下标集合（与 `series` 同序）。
+ * - 越小越好的指标（前台时间 / 时间残差 / 溢出秒数）取最小值；
+ * - 并列（相对差 ≤ 1e-9）全部标出；`null`（该档无读数）不参与；
+ * - 该档可比系列 < 2 ⇒ 空集：没有对手就没有胜负（单系列对比不着色）；
+ * - 所有可比系列取值相同 ⇒ 空集：全员并列不算谁赢。
+ */
+export function bestSeriesIndexByLevel(
+  def: Pick<MetricDef, 'higherBetter'>,
+  series: ReadonlyArray<{ values: ReadonlyArray<number | null> }>,
+): Array<Set<number>> {
+  const levels = Math.max(0, ...series.map(s => s.values.length))
+  const out: Array<Set<number>> = []
+  for (let i = 0; i < levels; i++) {
+    const cands: Array<[number, number]> = []
+    series.forEach((s, si) => {
+      const v = s.values[i]
+      if (v !== null && v !== undefined && Number.isFinite(v)) cands.push([si, v])
+    })
+    const best = new Set<number>()
+    if (cands.length >= 2) {
+      const vals = cands.map(([, v]) => v)
+      const target = def.higherBetter ? Math.max(...vals) : Math.min(...vals)
+      const tol = 1e-9 * Math.max(1, Math.abs(target))
+      const worst = def.higherBetter ? Math.min(...vals) : Math.max(...vals)
+      if (Math.abs(worst - target) > tol) {
+        for (const [si, v] of cands) if (Math.abs(v - target) <= tol) best.add(si)
+      }
+    }
+    out.push(best)
+  }
+  return out
 }
 
 /** UI 下拉选项 */

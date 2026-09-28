@@ -25,6 +25,7 @@ import {
   TOTAL_KEY,
   formatMetric,
   metricDef,
+  bestSeriesIndexByLevel,
   type MetricEnv,
 } from '@/composables/freeCompare/metrics'
 import { constraintSummary } from '@/composables/freeCompare/constraints'
@@ -193,5 +194,33 @@ describe('约束（用户原话「维琳娜 0命1命2命」是条件不是系列
       nameOf,
     )
     expect(s).toContain('维琳娜 2命')
+  })
+})
+
+describe('CC-204 汇总表胜负着色：bestSeriesIndexByLevel', () => {
+  const up = { higherBetter: true }
+  const down = { higherBetter: false }
+  const ids = (sets: Array<Set<number>>) => sets.map(x => [...x].sort())
+
+  it('越大越好取最大、越小越好取最小（同一组数据方向相反结果相反）', () => {
+    const series = [{ values: [10, 5] }, { values: [20, 1] }, { values: [15, 3] }]
+    expect(ids(bestSeriesIndexByLevel(up, series))).toEqual([[1], [0]])
+    expect(ids(bestSeriesIndexByLevel(down, series))).toEqual([[0], [1]])
+  })
+
+  it('并列全标；全员并列不标；null 不参与；可比系列 <2 不标', () => {
+    expect(ids(bestSeriesIndexByLevel(up, [{ values: [9] }, { values: [9] }, { values: [3] }]))).toEqual([[0, 1]])
+    expect(ids(bestSeriesIndexByLevel(up, [{ values: [4] }, { values: [4] }]))).toEqual([[]])
+    expect(ids(bestSeriesIndexByLevel(down, [{ values: [null, 2] }, { values: [7, 5] }, { values: [null, 1] }])))
+      .toEqual([[], [2]])
+    expect(ids(bestSeriesIndexByLevel(up, [{ values: [1, 2, 3] }]))).toEqual([[], [], []])
+  })
+
+  it('注册表方向与语义一致：时间类「越小越好」指标恰为前台时间 / 时间残差 / 溢出秒数', () => {
+    expect(METRICS.filter(m => !m.higherBetter).map(m => m.id).sort())
+      .toEqual(['frontlineTime', 'overflowSeconds', 'timeBudgetResidual'])
+    // 真指标定义直接喂进去：溢出秒数少的系列赢
+    const def = metricDef('overflowSeconds')!
+    expect(ids(bestSeriesIndexByLevel(def, [{ values: [3.2] }, { values: [0] }]))).toEqual([[1]])
   })
 })
