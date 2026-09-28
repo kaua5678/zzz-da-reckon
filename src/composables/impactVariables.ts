@@ -18,6 +18,7 @@
  */
 import { IMPACT_VARIABLES, readImpactVar, writeImpactVar, type ImpactVariable } from '@/core/impactVars'
 import type { MechanicSetting } from '@/types/resource'
+import { damageElementLabel } from '@/utils/agentLabelMaps'
 import type { ReleaseShareDecl } from '@/composables/agentMechanicView'
 import type { useConfigStore } from '@/stores/config'
 
@@ -29,7 +30,6 @@ export type ElementCoverageRate = Readonly<Record<string, number>> | undefined
 
 /** `<namespace>.releaseShare:<元素>`（namespace 不含 '.'）；与引擎 damagePoolRelease.ts 的设置键同形 */
 const RELEASE_SHARE_RE = /^([^.]+)\.releaseShare:(.+)$/
-const ELEMENT_LABELS: Record<string, string> = { physical: '物理', fire: '火', ice: '冰', electric: '电', ether: '以太', wind: '风', lumiflux: '辉光' }
 
 function settingIdOf(id: string): string | null {
   const m = id.match(/^setting\.(.+)$/)
@@ -54,7 +54,7 @@ export function buildImpactVariables(
       if (rate <= 0) continue
       vars.push({
         id: `setting.${decl.namespace}.releaseShare:${element}`,
-        label: `${decl.label}·${ELEMENT_LABELS[element] ?? element}占比`,
+        label: `${decl.label}·${damageElementLabel(element)}占比`,
         defaultRange: [0, 100],
         suffix: '%',
       })

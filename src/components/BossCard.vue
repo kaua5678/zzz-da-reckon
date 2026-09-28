@@ -93,7 +93,8 @@
 import { computed, ref } from 'vue'
 import { NTag, NButton, NCheckbox, NSelect, NInputNumber } from 'naive-ui'
 import { fmt, compact } from '@/utils/format'
-import type { BossPreset, PhaseBossBrief, PhaseBuffEffect } from '@/types/bossPreset'
+import { bossBuffEffectLabel as effectLabel } from '@/utils/bossEffectLabel'
+import type { BossPreset, PhaseBossBrief } from '@/types/bossPreset'
 import { useConfigStore } from '@/stores/config'
 import { counterAssistOf } from '@/data/counterAssists'
 
@@ -185,36 +186,6 @@ const layerEffects = computed<string[]>(() => {
   return out
 })
 
-function effectLabel(e: PhaseBuffEffect): string {
-  const cond: string[] = []
-  if (e.cond?.countTier) cond.push(`${e.cond.countTier.specialty}${e.cond.countTier.thresholds[0]}/${e.cond.countTier.thresholds[1]}名`)
-  if (e.cond?.specialty) cond.push(`${e.cond.specialty}限定`)
-  const unit = e.stat === 'anomalyProficiency' ? '点' : '%'
-  const parts = [statLabelOf(e.stat), `+${e.value}${unit}`]
-  if (e.targetSkillType) parts.push(`→${e.targetSkillType}`)
-  if (cond.length) parts.push(`[${cond.join('，')}]`)
-  return parts.join(' ')
-}
-
-const STAT_LABELS: Record<string, string> = {
-  critDmg: '暴伤', critRate: '暴击率', atkPct: '攻击%', anomalyProficiency: '精通',
-  anomalyDmgBonus: '异常伤', anomalyBuildUpEfficiency: '积蓄效率',
-  disorderDamageBonus: '紊乱伤', anomalyReleaseDmgBonus: '异放伤', turbulenceDamageBonus: '乱流伤',
-  enemyResReduction: '全减抗', enemyDefReduction: '减防',
-  stunDmgMultiplierBonus: '失衡易伤', enemyDamageTakenBonus: '易伤', enemyCritDmgTakenBonus: '受暴伤',
-  sheerDmgBonus: '贯穿伤', sharpDmgBonus: '锐化伤', sharpCritDmg: '锐暴', penRatio: '穿透率',
-  defPct: '防御%', hpPct: '生命%', stunBuildUpBonus: '失衡值', skillDmgBonus: '招式伤', dmgBonus: '伤害',
-  decibelGainEfficiency: '喧响效率', energyGainEfficiency: '能量效率', flashEnergyGainEfficiency: '闪能效率',
-}
-const EL_ZH: Record<string, string> = { physical: '物理', fire: '火', ice: '冰', electric: '电', ether: '以太', wind: '风' }
-function statLabelOf(stat: string): string {
-  if (STAT_LABELS[stat]) return STAT_LABELS[stat]
-  const el = stat.match(/^(physical|fire|ice|electric|ether|wind)Dmg$/)
-  if (el) return `${EL_ZH[el[1]]}伤`
-  const res = stat.match(/^enemy(Physical|Fire|Ice|Electric|Ether|Wind)ResReduction$/)
-  if (res) return `${EL_ZH[res[1].toLowerCase()]}减抗`
-  return stat
-}
 </script>
 
 <style scoped>

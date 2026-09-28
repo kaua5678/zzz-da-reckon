@@ -12,6 +12,7 @@
  *     → TeamResourceResult (结果)
  *     → calcStunPool / calcAnomalyPool (失衡池 + 积蓄池)
  */
+import { damageElementLabel } from '@/utils/agentLabelMaps'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { inferSkillDamageTarget } from '@/core/damage'
@@ -191,22 +192,8 @@ export function safeElement(element?: string): any {
 }
 
 
-const DAMAGE_ELEMENT_LABELS: Record<string, string> = {
-  physical: '物理',
-  fire: '火',
-  ice: '冰',
-  electric: '电',
-  ether: '以太',
-  wind: '风',
-  lumiflux: '辉光',
-  physical_polar_assault: '极性强击',  // 爱丽丝物理变种
-  ether_ink: '玄墨',                  // 仪玄以太变种（独立积蓄槽）
-  frostfire: '烈霜',                     // 雅独立元素
-}
-
-export function elementLabel(element: string): string {
-  return DAMAGE_ELEMENT_LABELS[element] ?? element
-}
+// 伤害元素中文名单一来源：`@/utils/agentLabelMaps#damageElementLabel`（CC-214）。保留 elementLabel 名字，现有消费者不改。
+export const elementLabel = damageElementLabel
 
 // `isPctStat` 的第三份副本已于 2026-09-18 round 27 删除（规则 11 单一事实源）：
 // 它是 `utils/statMeta.ts#isPctStat` 的**逐字漂移副本**（缺 `Reduction`/`Ignore` 两个后缀、

@@ -295,6 +295,7 @@ import { computed, h } from 'vue'
 import { NCard, NTag, NDataTable } from 'naive-ui'
 import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
 import { agentResourceSections, agentResultCardCorrosion } from '@/composables/agentMechanicView'
 import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 
@@ -515,20 +516,7 @@ const stunPct = computed(() => {
 
 // ============ 积蓄池（本角色贡献） ============
 
-/** 元素中文标签 */
-const ELEMENT_LABELS: Record<string, string> = {
-  physical: '物理',
-  fire: '火',
-  ice: '冰',
-  electric: '电',
-  ether: '以太',
-  wind: '风',
-  lumiflux: '辉光',
-}
 
-function elementLabel(element: string): string {
-  return ELEMENT_LABELS[element] ?? element
-}
 
 /** 本角色各元素的积蓄进度（从团队结果中过滤本角色贡献） */
 const anomalyProgress = computed(() => {

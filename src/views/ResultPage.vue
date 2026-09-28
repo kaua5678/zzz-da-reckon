@@ -814,6 +814,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { fmt } from '@/utils/format'
+import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import FinalPanel from '@/components/FinalPanel.vue'
 import DifficultyDescentPanel from '@/components/DifficultyDescentPanel.vue'
@@ -896,20 +897,7 @@ function getSpecialty(agentId: string): string {
 }
 
 // 元素中文标签
-const ELEMENT_LABELS: Record<string, string> = {
-  physical: '物理',
-  fire: '火',
-  ice: '冰',
-  electric: '电',
-  ether: '以太',
-  wind: '风',
-  lumiflux: '辉光',
-  physical_polar_assault: '极性强击',
-}
 
-function elementLabel(element: string): string {
-  return ELEMENT_LABELS[element] ?? element
-}
 
 const damagePoolTotal = computed(() =>
   damagePoolRows.value.reduce((sum, row) => sum + row.totalDamage, 0),

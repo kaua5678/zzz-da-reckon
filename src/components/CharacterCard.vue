@@ -65,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import { ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 import { computed, ref, watch } from 'vue'
 import { NTag, NIcon, NSelect, NButton, NDropdown } from 'naive-ui'
 import { MusicalNotesOutline, ChevronDownOutline } from '@vicons/ionicons5'
@@ -197,18 +198,6 @@ const specialtyTagColor = computed(() => {
   const s = agent.value?.specialty ?? ''
   return map[s] ?? { color: '#555', textColor: '#fff' }
 })
-
-const ATTRIBUTE_LABEL: Record<string, string> = {
-  physical: '物理',
-  fire: '火',
-  ice: '冰',
-  electric: '电',
-  ether: '以太',
-  wind: '风',
-  frost: '霜',
-  honed_edge: '利刃',
-  xuanmo: '玄墨',
-}
 
 const attributeLabel = computed(() => {
   if (!agent.value) return ''

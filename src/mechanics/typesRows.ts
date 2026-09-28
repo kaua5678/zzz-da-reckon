@@ -187,7 +187,7 @@ export interface ExtraAnomalyRowsInput {
   teamElement: (slot: number) => string
   /** = (k, d) => configStore.getTeamMechanicSetting(k, d) */
   getTeamMechanicSetting: (key: string, dflt: number) => number
-  /** = elementLabel（helpers.ts:205，闭包注入以绕开判据 19） */
+  /** = elementLabel（单一来源 utils/agentLabelMaps#damageElementLabel，经 helpers 转出；闭包注入以绕开判据 19） */
   elementLabel: (element: string) => string
   /**
    * = (row) => calcPoolDirectDamage(poolEnv, row)（CC-176）：模块内的直伤（简 / 爱丽丝 6 命附伤）一律走它，

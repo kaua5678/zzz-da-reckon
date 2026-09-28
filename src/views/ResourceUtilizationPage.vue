@@ -331,6 +331,7 @@ import {
   type CinemaUpliftRow,
 } from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
+import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
 import { teamMechanicSettings, teamReleaseShares, teamTeammateSplit, agentExcludedFromWindInfectionPick } from '@/composables/agentMechanicView'
 import type { TeammateSplitDecl } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
@@ -351,19 +352,7 @@ const ELEMENT_RES_REDUCTION_KEYS: Record<string, string> = {
   lumiflux: 'enemyLumifluxResReduction',
 }
 
-const ELEMENT_LABELS: Record<string, string> = {
-  physical: '物理',
-  fire: '火',
-  ice: '冰',
-  electric: '电',
-  ether: '以太',
-  wind: '风',
-  lumiflux: '辉光',
-}
 
-function elementLabel(element: string): string {
-  return ELEMENT_LABELS[element] ?? element
-}
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 
@@ -412,7 +401,7 @@ const burniceReleaseElements = computed<{
     .filter(([, rate]) => rate > 0)
     .map(([element, autoRatio]) => ({
       element,
-      label: ELEMENT_LABELS[element] ?? element,
+      label: elementLabel(element),
       autoRatio,
       userValue: configStore.getMechanicSetting(`${decl.namespace}.releaseShare:${element}`, autoRatio),
     }))

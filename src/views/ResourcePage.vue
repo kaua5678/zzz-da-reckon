@@ -56,6 +56,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { getImageUrl } from '@/utils/image'
 import { localized } from '@/utils/format'
+import { ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 import type { SkillCategory, SkillMove, Agent } from '@/types/catalog'
 
 const catalogStore = useCatalogStore()
@@ -140,17 +141,6 @@ const specialtyTagColor = computed(() => {
   return map[currentAgent.value?.specialty ?? ''] ?? { color: '#555', textColor: '#fff' }
 })
 
-const ATTRIBUTE_LABEL: Record<string, string> = {
-  physical: '物理',
-  fire: '火',
-  ice: '冰',
-  electric: '电',
-  ether: '以太',
-  wind: '风',
-  frost: '霜',
-  honed_edge: '利刃',
-  xuanmo: '玄墨',
-}
 const attributeLabel = computed(() => {
   if (!currentAgent.value) return ''
   return ATTRIBUTE_LABEL[currentAgent.value.attribute] ?? currentAgent.value.attribute
