@@ -96,13 +96,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 326 轮（lane lead-arena-0925c）：CC-311（`f37af4de`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 影画门控加不变量锁（零行为差）；记录并裁决「影画 / 在队只软门控」不改；重开条件（存档恢复路径）已核查，无非用户意图路径，结项。详见 `docs/mcp-stun-dual-source.md` §24.150。
-- 前几轮：325 CC-310（诺姆额外能力漏门控，有数值变化）；324 CC-309；323 CC-308。
+**第 327 轮（lane lead-arena-0925c）：CC-312（`b7c6d567`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- singleSourced / 空 effects 队友 buff 普查 0 零读取；仪玄不再按身份认橘福福，改为自报终结技等价次数（新 cfg 字段 `ultimateEquivalentCount`），零数值差。详见 `docs/mcp-stun-dual-source.md` §24.151。
+- 前几轮：326 CC-311；325 CC-310（诺姆，有数值变化）；324 CC-309。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
 
 **下一步（直接开工）**：
-1. **`singleSourced` 队友 buff 的「另一通道」是否真的存在**：`core/inCombatBuffs.ts#collectInCombatTeamBuffs` 过滤掉 `singleSourced === true` 的 buff，理由是「数值由角色模块 / helpers 单通道接入，防双计」。若某条 singleSourced buff 实际**没有**模块通道，它就是零读取（R5 口径，效果完全丢失）。做法：① python 列出 `public/static/teammate-buffs.json` 与 spec teamBuffs 中 `singleSourced: true` 的全部 buff（id、拥有者、effects 的 stat）；② 对每条在 `src/mechanics/agents/<拥有者>.ts` 与 `src/composables/resourceCalc/` 里 grep buff id 或其效果常量 / stat，确认有写入；③ 找不到通道的逐条列出（代码出处 + 影响面），走 CC 卡要求零差或写明依据；全有通道则写结论结项。
+1. **最后一处跨角色身份：`src/mechanics/agents/luciaElowen.ts:32` `YIDHARI_AGENT_ID = '1051'`**（全量扫描 mechanics/agents 里非本模块 agentId 字面量，只剩这一处）。卢西娅的回血被换算给伊德海莉的烧血喧响（消费 `yidhariExternalHealPerUltPct`）。先读清：① 卢西娅模块在哪、写什么字段给伊德海莉；② 伊德海莉 `selfBurnDecibel` 与编排层「帷幕提供者槽 × 终结技次数」（`core/resource/helpers.ts` 的 `curtain.providerSlot`）怎么接；③ 是否还有别的回血提供者。判据同 CC-312：若能改成「提供者报通用量（如每次终结技的外部治疗 %），消费者自己决定怎么用」且零数值差，就做（探针：卢西娅+伊德海莉若干队 × C0/C6，逐位相同 + 变异验证）；若伊德海莉是唯一可能的消费者且通用化只是换名字，写「不做」加理由。
 2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

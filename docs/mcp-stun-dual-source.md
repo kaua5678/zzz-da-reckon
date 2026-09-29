@@ -4075,3 +4075,18 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **重开条件核查（同轮完成，结项）**：配置 store **不写 localStorage**（`grep localStorage` 命中的 teamCompare / difficultyCurve 等都不存 `teammateBuffSelections`）；唯一的恢复路径是 `composables/configSnapshot.ts#restoreStore`，它恢复的是同一时刻拍下的 team + selections 一致快照（先 `team.splice` 触发 sync，再整表覆盖回快照），不会出现「影画变低但 buff 仍勾着」。队伍 / 影画变化由 `watch(TEAMMATE_BUFF_INPUT_KEYS, flush: 'sync')` 同步覆盖。⇒ 没有非用户意图的路径，软门控裁决维持。
 - **验证**：vue-tsc 干净；additionalGate.test.ts 18 通过；wt326 `npm run verify` EXIT=0。
 - **回退**：`git revert f37af4de`。
+
+### 24.151 第 327 轮：singleSourced 普查 + CC-312 终结技等价次数（b7c6d567）
+
+- **普查（§24.150 交接第 1 条），结论：0 处零读取。**
+  - `singleSourced: true` 共 2 条：1311 `yaojiayin.special_aria_buff`（数值由 `yaojiayin.ts` 按 `computeAriaBonuses` 写面板；json 公式 `clamp(x+8,9,24)` / `clamp(1.5x+7,8.5,31)` 与模块逐项相同）、1061 spec `corin_c2_enemy_phys_res`（`corin.ts` applyPanel 写 `enemyPhysicalResReduction`，0.5×20=10 与 spec 值 10 相同）。
+  - 同属「仅声明行」的**空 effects** 条共 5 条，也逐条核对：1391 `jufufu.extra_ability_team_decibel`（+300/终结技走 `extraSelfDecibelPerUltimate`；喧响上限 +1000 按 2026-09-22 裁决不做）、1541 `promethea_core_team_voidflare`（与 `promia_ice_team_release_dmg` 同效果，后者生效）、1541 `promethea_c1_extra_def_ignore`（`promia.ts` releaseModifier，`PROMIA_C1_DEF_IGNORE=20`）、1381 `anby_zero_potential_followup`（并入 `anby_zero_extra_team_followup` 的潜能公式）、1181 `grace_c1_team_energy`（模块 applyTeamConfig 写 initialEnergyGift）。
+- **普查中发现的倒置 ⇒ CC-312**：
+  - 旧形态：橘福福额外能力「强攻 / 命破每次终结技 +300 喧响」分两处实现——(a) 橘福福模块（`specPanelBuffs.ts` jufufuTigerRoarMechanic）给强攻 / 命破写 `extraSelfDecibelPerUltimate = 300`；(b) 仪玄模块另按身份 `characters.some(agentId === '1391' && 额外能力触发)` 找橘福福，自抄常量 `JUFUFU_FUFA_DECIBEL = 300`，把「符法千重 / 调息赠送也算终结技」的次数 ×300 累加进共享通道 `extraSelfDecibelReward`。规则的常量与门控在两个模块各一份，且仪玄知道橘福福。
+  - 新形态：cfg 新字段 `ultimateEquivalentCount`（`types/resource/config.ts`）——模块只报自己的「视为终结技」次数，覆盖写（幂等）；core 两处结算改为 `extraSelfDecibelPerUltimate × (ultimateCount + ultimateEquivalentCount)`，种子 `totalDecibel` 同样计入（种子 ultimateCount 为 0，但等价次数是上一轮已知量，与旧版计入 extraSelfDecibelReward 的起点一致）。仪玄通道④改为 `record.ultimateEquivalentCount = prevFuFa`，删 `JUFUFU_AGENT_ID` / `JUFUFU_FUFA_DECIBEL` 与未用的 `characters` 解构。
+  - 等价性：旧版门控「橘福福在队且额外能力触发」= 橘福福模块写 per-ult 的门控（同一 `panel.additionalAbilityActive`）；仪玄是命破，恒在受益名单内 ⇒ 数值相同。
+  - 探针（临时测试，已删）：仪玄+橘福福+潘引壶 / 仪玄+橘福福+耀嘉音 / 橘福福+悠真+耀嘉音 / 仪玄+潘引壶+耀嘉音 × C0/C6，总伤与三槽终结次数**逐位相同**；把仪玄改为报 0 做变异，含仪玄+橘福福的 3 例总伤与终结次数变化（如 C6 225,171,551 → 199,321,667）⇒ 探针确实覆盖该通道。
+  - 收益：「每次终结技 +N」类规则的提供者不必认识终结技等价物的拥有者，反之亦然；共享累加通道少一个写入方（仪玄在 converge 里的 `+=` 改为覆盖写，消除一个重放风险点）。
+- **契约测试随之改写**（锁的是旧形态，不是数值）：`axisContext.test.ts` 的「extraSelfDecibelReward 是 `+=`、橘福福在队才加」改为「只覆盖写 `ultimateEquivalentCount`、重放不翻倍、不碰 extraSelfDecibelReward、不认橘福福」；同文件「缺 interactions 仍照写」的断言改看 `ultimateEquivalentCount`；`nextRoundFeedbackR20.test.ts` ③ 同改（去掉 1391 队友与负控，改为重放两次 = 2.5）。首轮 verify 就是这 3 条红，改后全绿。
+- **验证**：vue-tsc 干净；wt327 `npm run verify` EXIT=0（4046 passed）。
+- **回退**：`git revert b7c6d567`。
