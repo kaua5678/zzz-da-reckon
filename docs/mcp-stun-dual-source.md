@@ -4235,3 +4235,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **golden**：只有 agent:1631:c0/c3/c4/c5/c6 和 agent:1641:c0/c3/c4/c5/c6 这 10 例变化。原因都是能量、喧响收入增加：强特 +3~+8，终结技 +1~+2，c3/c4（部分 c5）失衡 1→2 带来连携 +1；平A时间相应减少；dmg +6.5%~+18.8%。其他队伍逐位不变：兜底只在没有 #N 段时生效，而只有这两人没有。
 - **验证**：新锁 `src/data/__tests__/basicSegment.test.ts`（4 例：谓词；无 #N 段名单 == [1631, 1641]；1631 有兜底 = 基准段秒均、无兜底 = 0；青衣传兜底参数逐位不变）；vue-tsc 干净；全量 verify EXIT=0。
 - **回退**：`git revert 71bf1a04`（golden 基线一起回退）。
+
+### 24.160 第 336 轮：#N 启发式线收口；CC-321 删掉恒空的基准段硬编码表（b91008c4）
+
+- **#N 余项（§2 交接第 2 条）**：
+  - `data/moveTableQueries#basicComboCycleSeconds`（CC-195）按「同名 #N 连段」求整套时长，只有 3 个调用方：千夏 `1491004`、爱芮 `1501004`、佩洛伊斯 `1551003`。catalog 实测整套时长依次是 4.767 / 3.183 / 2.284s，都不为 0。1631 / 1641 不调用它 ⇒ 不受 CC-320 那类问题影响。
+  - `skillRows#averageBasicRows` 走 `getBasicComboMoves`（基准段），CC-193 已经覆盖。
+  - `composables/multiplierCoefficients.ts` 的 `#N` 解析（招架支援段号 / 支援突击分段合并）是展示用的系数分析，按中文名匹配，不进引擎 ⇒ 不做。
+  - 结论：#N 这条线到此收口。
+- **CC-321**：`skillRows.ts` 的 `BASIC_BENCHMARK_OVERRIDE: Record<string,string> = {}` 只有一行示例注释，没有任何写入方。它在 `getBasicComboMoves` 里排第 3 级，排在 catalog `basicBenchmarkMoveId`（数据裁决，第 0 级）之后。它是同一个裁决的第二个来源：以后有人往里填值，会和数据字段并存，却不知道谁优先（实际是数据优先，代码表只在数据缺失时生效）。已删除表、查找分支和 helpers 壳的两处转出，`skillRowsShell.test` 清单同步。
+- **同类扫描**：用 python 扫描全仓（`src/**`，不含测试）初始化为空的 `export const` 对象 / 数组：只有 `core/anomalyPool/helpers.ts#BUILDUP_THRESHOLD_TABLE`，它由运行时写入（有 `[k] = …` 写点），是正常用法。这一类已清完。
+- **验证**：vue-tsc 干净；skillRowsShell + timeGolden 共 13 例通过、零差；全量 verify EXIT=0。
+- **回退**：`git revert b91008c4`。

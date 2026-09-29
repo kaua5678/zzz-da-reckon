@@ -96,15 +96,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 335 轮（lane lead-arena-0925c）：CC-320（`71bf1a04`，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 336 轮（lane lead-arena-0925c）：CC-321（`b91008c4`，零差）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 「普通 #N 普攻段」判定收成 `data/basicSegment`；1631 赛维里安 / 1641 菲欧妮的平A秒均回复从 0 改为按基准段计算。golden 只动了这两人的 10 例。详见 `docs/mcp-stun-dual-source.md` §24.159。
-- 按名字子串判招式类型这一类已扫完（r6 第 335 行），不要再扫。
+- #N 启发式线收口：其余依赖 #N 的规则都不受影响（r6 第 336 行 ①）。
+- 删除恒空的 `BASIC_BENCHMARK_OVERRIDE`，基准段只认 catalog `basicBenchmarkMoveId`。详见 `docs/mcp-stun-dual-source.md` §24.160。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选新题，先登记要查什么。有日期的条件：坑 25 到期日 2026-10-31。
-2. 可选题（同型，未登记）：CC-193 / CC-320 都是「新版 catalog 命名不带 #N，启发式静默失效」。可以查其余依赖 `#N` 或名字格式的启发式：`moveTableQueries` 里 CC-195 的「同名 #N 连段整套时长」（1631/1641 会返回 0 ⇒ 千夏 #4 标记、佩洛伊斯余晖日珥这类按段命中的规则对他们是否受影响）、`averageBasicRows`。先用 python 在 catalog 上确认有没有角色受影响，没有就写「不做」。
+2. 可选题（未登记）：`calcBasicAttackRegenPerSec` 与 `alice#calcSwordWillPerSec` 都有「伤害倍率 > 200% = 强化平A」的启发式（注释写着「后续可调」）。先在 catalog 上统计它排除了哪些 #N 段，以及排除前后秒均回复差多少。差别可以忽略就记「不做」；差别大、而且排除的是普通段（例如青衣 #2 221%、#3 244%），再评估改成数据字段或按段名判定。注意这会是数值卡。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
