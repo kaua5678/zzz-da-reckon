@@ -25,6 +25,7 @@
  */
 import { getRowFusionMultiplier } from '@/logicEditor/fusion'
 import { moveFusionByMoveId } from '@/data/moveFusions'
+import { isNumberedBasicSegment } from '@/data/basicSegment'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 
 /**
@@ -102,14 +103,7 @@ export function findMoveById<M extends { id: string } = SkillMove>(
  * 常态/猩红铭刻两态分支）都调本函数，避免两处各写一遍"第 3 段"而在规则变化时漂移。
  */
 export function pickThirdNamedBasicSegment(moves: readonly SkillMove[]): SkillMove | null {
-  const named: SkillMove[] = []
-  for (const move of moves) {
-    const name = move.name?.en || ''
-    if (!name.match(/#\d+/)) continue
-    if (name.toLowerCase().includes('dash') || name.toLowerCase().includes('dodge')) continue
-    if (!move.actionTime || move.actionTime <= 0) continue
-    named.push(move)
-  }
+  const named = moves.filter(isNumberedBasicSegment) // CC-320
   if (named.length === 0) return null
   return named[Math.min(2, named.length - 1)]
 }

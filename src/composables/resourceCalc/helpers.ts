@@ -479,7 +479,9 @@ export function buildCharConfig(
     ? (configStore.appliedBoss?.counterAssistGroups?.length ?? 0)
     : 0
   const dodgeCounter = findDodgeCounter(skills as AgentSkills, fusedRowReader)
-  const basicRegen = calcBasicAttackRegenPerSec(skills as AgentSkills, fusedRowReader)
+  // CC-320：基准段只解析一次，平A伤害基准与秒均回复兜底共用（无 #N 段的角色回复按基准段算）
+  const basicBenchmarkMoveId = getBasicComboMoves(skills as AgentSkills, char.agentId, catalogStore)?.id
+  const basicRegen = calcBasicAttackRegenPerSec(skills as AgentSkills, fusedRowReader, { fallbackMoveId: basicBenchmarkMoveId })
 
   // 倍率表 decibel_recovery / energy_recovery 全量预存（喧响+能量收入行级化 Σ 切换的前置）：
   // 核心层 calcRawDecibelParts / calcEnergySource 无 catalog 访问权，按此表复刻 enrichExecutionPlan
@@ -529,7 +531,7 @@ export function buildCharConfig(
     outOfCombatPanel: panelPhases?.outOfCombat,
     basicAttackRegenPerSec: basicRegen.energyPerSec,
     basicAttackDecibelPerSec: basicRegen.decibelPerSec,
-    basicBenchmarkMoveId: getBasicComboMoves(skills as AgentSkills, char.agentId, catalogStore)?.id,
+    basicBenchmarkMoveId,
     // 蕾米埃尔 cfg 字段（垂虹 4 项 / Radiant Turn 3 项 / `remielleEnabled` / `remielleRadiantTurnDazeBonusPct`）
     // 全部由下方 `charModule?.buildCharConfig?.()`（= `remielle.ts#buildRemielleCharConfig`）写入
     // （CC-34b 2026-09-27 迁走垂虹 / Radiant Turn 7 项与两个招式查找函数；前序 2026-09-17 round 21 夜间批 C）。

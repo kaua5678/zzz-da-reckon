@@ -35,6 +35,7 @@ import type { SkillExecution } from '@/types/resource'
 //   需要本地绑定（与 `./helpers` 壳同一教训：刀 A 实测 `ReferenceError` / `vue-tsc` TS2304）。
 // ⚠ 改这 4 个函数请去 `data/moveTableQueries.ts`，不要在本文件重建同形函数。
 import { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment } from '@/data/moveTableQueries'
+import { isNumberedBasicSegment } from '@/data/basicSegment'
 export { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment }
 
 // ---- 元素 → 面板字段名：CC-224 起单一来源 `@/utils/elementStatKeys`（原 3 张表与本壳已删，不要在此重建） ----
@@ -111,13 +112,7 @@ export function getBasicComboMoves(
 
   // 1. 收集所有 #N 段（排除 dash/dodge），数组顺序 = 原始顺序（#1,#2,#3...）
   const all: SkillMove[] = []
-  for (const move of basic.moves) {
-    const name = move.name?.en || ''
-    if (!name.match(/#\d+/)) continue
-    if (name.toLowerCase().includes('dash') || name.toLowerCase().includes('dodge')) continue
-    if (!move.actionTime || move.actionTime <= 0) continue
-    all.push(move)
-  }
+  for (const move of basic.moves) if (isNumberedBasicSegment(move)) all.push(move) // CC-320
   if (all.length === 0) return null
 
   // 3. 硬编码 override 兜底

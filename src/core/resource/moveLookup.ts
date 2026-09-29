@@ -10,6 +10,7 @@
  */
 import type { ExSpecialCostType } from '@/types/resource'
 import { isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
+import { isNumberedBasicSegment } from '@/data/basicSegment'
 import { moveFusionByMoveId } from '@/data/moveFusions'
 
 /**
@@ -339,23 +340,23 @@ export function findCounterAssist(agentSkills: {
  */
 export function calcBasicAttackRegenPerSec(agentSkills: {
   categories: { id: string; moves: { id: string; name: { en?: string }; actionTime?: number | null; rows: { id: string; values: number[] }[] }[] }[]
-}, rowValue: RowValueReader = rawRowReader): { energyPerSec: number; decibelPerSec: number } {
+}, rowValue: RowValueReader = rawRowReader, opts?: { fallbackMoveId?: string }): { energyPerSec: number; decibelPerSec: number } {
   const basic = agentSkills.categories.find(c => c.id === 'basic')
   if (!basic) return { energyPerSec: 0, decibelPerSec: 0 }
 
   const energyRates: number[] = []
   const decibelRates: number[] = []
 
-  for (const move of basic.moves) {
-    const name = move.name?.en || ''
-    // 匹配 #1 到 #N 的普通平A段
-    const match = name.match(/#\d+/)
-    if (!match) continue
-    // 排除冲刺攻击、闪避反击等
-    if (name.toLowerCase().includes('dash') || name.toLowerCase().includes('dodge')) continue
-
-    const actionTime = move.actionTime
-    if (!actionTime || actionTime <= 0) continue
+  // 普通 #N 段（排除冲刺 / 闪避，CC-320 单一事实源 `data/basicSegment`）。
+  // CC-320 兜底：一个 #N 段都没有（1631 / 1641 新版 catalog 段名不带 #N）时，改用**已解析的普攻基准段**
+  // （`opts.fallbackMoveId` = cfg.basicBenchmarkMoveId，与平A伤害同一段），且不套下方「>200% = 强化平A」
+  // 启发式（那条是给 #N 段列表挑普通段的；基准段是数据声明 / 模块裁决）。原先这两人秒均回复恒 0。
+  const numbered = basic.moves.filter(isNumberedBasicSegment)
+  const fallback = numbered.length === 0 && opts?.fallbackMoveId
+    ? basic.moves.find(m => m.id === opts.fallbackMoveId && (m.actionTime ?? 0) > 0)
+    : undefined
+  for (const move of fallback ? [fallback] : numbered) {
+    const actionTime = move.actionTime as number
 
     let energy = 0
     let decibel = 0
@@ -372,8 +373,8 @@ export function calcBasicAttackRegenPerSec(agentSkills: {
       // 强化平A判定是**分类**，保持原始倍率（不吃行规则；同 panelPhases:212 裁决）
       if (row.id === 'damage') damage = row.values[0] || 0
     }
-    // 简单判定：伤害倍率 > 200% 可能是强化平A（后续可调）
-    if (damage > 200) continue
+    // 简单判定：伤害倍率 > 200% 可能是强化平A（后续可调）；基准段兜底不套（见上）
+    if (!fallback && damage > 200) continue
 
     energyRates.push(energy / actionTime)
     decibelRates.push(decibel / actionTime)

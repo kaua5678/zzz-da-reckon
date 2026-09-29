@@ -18,6 +18,7 @@ import type {
   SpecialResourceSection,
 } from '@/types/resource'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
+import { isNumberedBasicSegment } from '@/data/basicSegment'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
@@ -104,11 +105,8 @@ function calcSwordWillPerSec(skills: AgentSkills): number {
 
   const rates: number[] = []
   for (const move of basic.moves) {
-    const name = move.name?.en || ''
-    // 只取 #N 普通段
-    if (!name.match(/#\d+/)) continue
-    if (name.toLowerCase().includes('dash') || name.toLowerCase().includes('dodge')) continue
-    if (!move.actionTime || move.actionTime <= 0) continue
+    // 只取 #N 普通段（CC-320：单一事实源）
+    if (!isNumberedBasicSegment(move) || !move.actionTime) continue
 
     // 排除强化平A（damage > 200%）和星芒圆舞曲段（attack_data=0）
     const damage = getRowValue(move, 'damage')
