@@ -3298,3 +3298,53 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 锁：`src/composables/__tests__/liveInteractionsDownscale.test.ts`（取整口径 / 降配队行为 / 引擎源码按字段表）。stash liveInteractions.ts 后行为锁变红。
 - verify EXIT=0，golden 不变。
 - 回退：revert 47c051c8。
+
+### 24.104 第 280 轮：CC-264 快支 / 连携基准单一来源，setAgent 预填 3/1（5a357bf6，数值卡）
+
+**① 测量（改前）：快支 / 连携在各入口的口径。**
+
+| 入口 | 快支 | 连携 / 失衡 | 出处 |
+|---|---|---|---|
+| 生产默认 `defaultCharacter` | 0 | 0 | 初始提交起未改，无裁决 |
+| setAgent（换人） | 不写（继承） | 不写（继承） | 只重置弹刀 / 闪反 / 格挡 / 双反 / 平 A 权重 |
+| 散点 / 难度曲线 / 定位对比（`teamCompare#applyTeamToStore`） | 预设声明（15 个手编 3）否则继承 | 预设 `chainCountPerStun`（0 个预设声明）否则继承 | — |
+| 轻量装配 `teamTimelineStore` | 3 | 1 | 魔数，无注释 |
+| 部署 `runArchiveDeploy` | 3 | 1 | 注释：用户 2026-08-30「快支固定 3 作为喧响基础供给；连携基准 1」 |
+| `buildCharConfig` 兜底（resourceCalc/helpers.ts:558） | — | `?? (支援 0 : 1)` | 字段恒为 number ⇒ 从不生效 |
+| `config.ts:52` 注释 | — | 「默认非辅助1辅助0」 | 与实际默认 0 不符 |
+| harness `TEST_BASE_CHAR` | 3 | 1 | 测试态 |
+
+- 结论：散点对 auto 预设的快支 / 连携**继承用户 store 隐藏值**。新用户是 0/0，即完全没有连携；同一支队在轻量装配 / 部署页是 3/1。
+- 104 预设（全部槽统一设值，相对 0/0）：
+
+| 设值 | 伤害（中位 / 范围） | 难度 x（中位） |
+|---|---|---|
+| 快支 3 | 0%，−0.84% ~ +11.65% | +5.4 |
+| 连携 1 | +3.32%，−4.10% ~ +23.69% | 0 |
+| 3/1 | +3.53%，−11.52% ~ +23.69% | +5.4 |
+| 3 / 支援 0 其余 1 | +3.38% | +5.4 |
+
+- 另发现 `EnemyConfig.quickAssistCount = 6`（config.ts:80/309）在 src 中无任何读取点：死字段，本卡不动（见 ③）。
+
+**② 裁决与改动（5a357bf6）。**
+- `stores/config.ts` 新增 `ASSIST_ACTION_BASELINE = { quickAssist: 3, chainPerStun: 1 }`。
+  - 依据：唯一有出处的用户口径（08-30 部署），加上 09-04「setAgent 按职业基准预填，默认大家会打」。
+  - 全体角色同值：支援位也打连携（部署口径即全员 1）；noGenericInteraction 只管弹刀 / 闪反归属，不扩到快支 / 连携。
+- setAgent 预填这两项（与弹刀 / 闪反同一语义：换人即填，用户可改；预设声明其后覆盖）。
+- teamTimelineStore / runArchiveDeploy 的魔数 3/1 改读常量。
+- 删 `buildCharConfig` 的「支援 0 / 其余 1」死兜底（改 `?? 0`）以及无用的 `isSupport`；`config.ts:52` 注释改为指向常量。
+- 不改 `defaultCharacter`（空槽无角色，setAgent 时即预填；持久化恢复不走 setAgent，用户已存值不被覆盖）。
+- 影响：
+  - 散点 / 曲线 / 定位对比对 auto 预设改为 3/1（新用户伤害中位 +3.5%、x +5.4）；
+  - 主页换人时快支 / 连携被预填（此前保留上一个角色的值）；
+  - golden 不变（harness 本来就是 3/1）。
+- 测试：
+  - presetLoopActionCounts：CC-260 泄漏探针改用 tauntCancel 合成预设（setAgent 仍不重置），新增 CC-264 锁（预填 3/1 + 两个装配文件无魔数）；
+  - teamCompare 两处 x 期望值 +5.4 / +3.6（快支 9 × 0.6，逐项对账写在注释）；
+  - lycaonC2Contract「默认值分裂」改锁「分裂已消除」（cfg 兜底 = 0 = store）。
+- verify EXIT=0。
+- 回退：revert 5a357bf6；只想回到「继承用户值」则删 setAgent 里两行赋值。
+
+**③ 留下的事。**
+- `EnemyConfig.quickAssistCount`（Boss 侧快支 6）零读取：删除需同时处理持久化旧存档字段与类型。价值低，登记 CC-265（todo，低优先），做前先 grep persist / migrate。
+- 15 个手编预设的 quickAssist 3 现在等于基准，属冗余声明，但无害（作为显式记录保留，不删）。

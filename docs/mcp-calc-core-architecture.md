@@ -434,6 +434,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-261 | done | bdc3d312 | 去掉预设占位交互 parry8/dodge4（87 → []，16 手编只留 quickAssist 3）；生成脚本同步；slot 0 回到职业基准 / 模块专属默认（90 → 6/10、1051 → 0、1531 → 4/0）；伤害 −12.8% ~ +6.7%，golden 不变（§24.102） |
 | CC-262 | done | 47c051c8 | 定性：吸收↑ ⇒ 降配档 s↑ ⇒ 交互挤掉平 A、终结到 s=1 才跨台阶 ⇒ 整数台阶，不修；阶梯前瞻不做（重开条件见 §24.103 ①） |
 | CC-263 | done | 47c051c8 | 难度 x 认引擎非轴降配：`feasibilitySearch#DOWNSCALED_INTERACTION_FIELDS/downscaleInteractionCount` 单一来源，引擎与 engineInteractionItems 共用；11/104 预设 x 下降，伤害 0 差（§24.103 ②） |
+| CC-264 | done | 5a357bf6 | 快支 / 连携基准单一来源 `ASSIST_ACTION_BASELINE`（3/1，用户 08-30 部署口径），setAgent 预填，轻量装配 / 部署去魔数，删 buildCharConfig「支援 0 / 其余 1」死兜底；散点不再继承用户 store 隐藏值（§24.104） |
+| CC-265 | todo | — | `EnemyConfig.quickAssistCount`（Boss 侧快支 6，config.ts:80/309）src 零读取：确认持久化 / 迁移无依赖后删字段（低优先，§24.104 ③） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |
