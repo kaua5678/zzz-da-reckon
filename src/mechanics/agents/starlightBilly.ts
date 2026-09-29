@@ -302,7 +302,6 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   cfg.initialEnergyGift = ENTRY_FLASH + (cinemaLevel >= 1 ? ENTRY_FLASH : 0)
   // 付费强特（摇曳/抓地）由闪能池驱动：state.exSpecialCount = floor(闪能总量/60) = 付费单位 E
   cfg.skipGenericExSpecial = true
-  cfg.exSpecialCountFloor = true
   cfg.exSpecialEnergyConsume = EX_FLASH_COST
   // 链数实数化 opt-in（1051 exContinuous 同款）：完整管线经本函数构建时恒置位；
   // 外部直调模块（单元测试/面板探针）不带此旗标 → 走整数口径，保持历史行为。

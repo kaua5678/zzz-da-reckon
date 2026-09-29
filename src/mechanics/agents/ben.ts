@@ -96,7 +96,6 @@ function buildCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInp
 
   // 一组强特固定消耗 30+30；让资源池用可用总能量 / 60 推导总组数，模块接管真实两段执行。
   cfg.exSpecialEnergyConsume = BEN_EX_COMBO_ENERGY
-  cfg.exSpecialCountFloor = true
   cfg.skipGenericExSpecial = true
 }
 

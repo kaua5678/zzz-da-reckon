@@ -276,8 +276,13 @@ export interface CharacterOperationConfig {
   claretBloodBurialDamageMultiplier?: number
   /** 跳过通用强特执行，由机制模块自行生成强特执行（柏妮思等可变耗能强特） */
   skipGenericExSpecial?: boolean
-  /** 强特次数强制取整（默认 skipGenericExSpecial 时按小数期望值模型）；琉音等真实次数强特需开启 */
-  exSpecialCountFloor?: boolean
+  /**
+   * 强特次数按**小数期望值**计（不取整）。只给「按住秒数可变」的持续型强特用：柏妮思（burnice.ts）与
+   * sustainedEx 注册表（resourceCalc/helpers.ts buildCharConfig）。缺省 = 取整（真实次数）。
+   * CC-324：此前取整与否由 `!skipGenericExSpecial` 隐式决定、再用 exSpecialCountFloor 反向纠正——
+   * 接管产行却漏设 floor 的 1181 格莉丝 / 1621 洛克茜被按小数记资源、按整数产行。
+   */
+  exSpecialCountFractional?: boolean
   /** 柏妮思单喷持续秒数（0 表示不放） */
   burniceSingleSpraySeconds?: number
   /** 柏妮思双喷持续秒数（0 表示不放） */

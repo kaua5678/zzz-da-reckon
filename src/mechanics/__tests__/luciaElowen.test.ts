@@ -63,7 +63,6 @@ function teamCfg(agentId: string, extra: Record<string, unknown> = {}): Characte
     isSupport: false,
     timeWeight: 1,
     skipGenericExSpecial: false,
-    exSpecialCountFloor: false,
     ...extra,
   } as unknown as CharacterOperationConfig
 }
@@ -251,7 +250,6 @@ describe('卢西娅↔伊德海莉 资源池跨角色联动（calcTeamResources 
       slot: 0,
       timeWeight: 0,
       skipGenericExSpecial: true,
-      exSpecialCountFloor: true,
       initialDecibelGift: 7000,
       luciaA5ActionTime: 1.887,
       decibelPerCurtainTrigger: 100,

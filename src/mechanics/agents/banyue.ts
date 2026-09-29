@@ -457,7 +457,6 @@ function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, th
 
 function buildBanyueCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true // 强特全部由模块生成（怒相山威/怒相外论道/地动）
-  cfg.exSpecialCountFloor = true
   const record = cfg as unknown as Record<string, unknown>
   record.banyueCinemaLevel = cinemaLevel
 

@@ -110,7 +110,6 @@ export function computeLuciaHealPctPerUlt(skillLevelBonus = 0): number {
 
 function buildLuciaCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true // 强特由本模块生成：计划内接 A5，计划外合轴 0 秒
-  cfg.exSpecialCountFloor = true // 强特次数取整
   cfg.timeWeight = 0 // 卢西娅不打通用平A，只打计划内 A5（由本模块生成）
   const record = cfg as unknown as Record<string, unknown>
   record.luciaCinemaLevel = cinemaLevel

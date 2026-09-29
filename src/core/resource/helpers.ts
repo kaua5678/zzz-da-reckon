@@ -195,9 +195,11 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
     const outStun = remaining > 0 ? Math.floor(remaining / cfg.exSpecialEnergyConsume) : 0
     return inStun + outStun
   }
-  const paid = cfg.exSpecialCountFloor || !cfg.skipGenericExSpecial
-    ? Math.floor(totalEnergy / cfg.exSpecialEnergyConsume)
-    : totalEnergy / cfg.exSpecialEnergyConsume
+  // 缺省取整（真实次数）；只有持续型强特声明 exSpecialCountFractional（期望值模型）。
+  // `skipGenericExSpecial` 只表示「模块自己产行」，不再兼管取整（CC-324）。
+  const paid = cfg.exSpecialCountFractional
+    ? totalEnergy / cfg.exSpecialEnergyConsume
+    : Math.floor(totalEnergy / cfg.exSpecialEnergyConsume)
   // 免费强特（如南宫羽每次失衡一次免能E）：不占闪能预算，照常计次/计时/喧响
   return paid + Math.max(0, Math.floor(cfg.freeExSpecialCount ?? 0))
 }
@@ -529,7 +531,7 @@ function iterateBody(
   // ⚠ 本封顶处的债务标记已于 2026-09-18（R24 批 1-3）**销号**——原标记称「本封顶让未实数化
   //   整数队的落点可随初值差 ±1 次强特（实测琉音 24/23）」，该量化依据经三条独立实测**证伪**：
   //   ① 批 1-0（`seedInvariance.test.ts` 第三档）104 预设 × 4 种子次数落点逐位相等；
-  //   ② R24 手组队矩阵（8 个 `exSpecialCountFloor` 模块 × 3 组队友 × 11 种子 = 385 次）违反 0；
+  //   ② R24 手组队矩阵（8 个强特取整模块（当时字段 exSpecialCountFloor；CC-324 起取整为缺省） × 3 组队友 × 11 种子 = 385 次）违反 0；
   //   ③ R25 复核：**生产落点 cfg**（"被接受那次调用"的 `before` 快照，见 `seedInvariance` 的
   //      `acceptedCall`）104 队 × 4 种子次数违反 0 ⇒ 本分支在当前数据面上不改变任何一队的落点。
   //   琉音「24/23」在 HEAD 上不可复现（6 支队 ex∈{23,24,50} 全部 SAME，落点 26~29）。

@@ -59,7 +59,6 @@ function minimalTimeSliceConfig(): { configs: CharacterOperationConfig[]; states
     decibelShareRatio: 0,
     initialEnergyGift: 0,
     initialDecibelGift: 0,
-    exSpecialCountFloor: true,
   } as unknown as CharacterOperationConfig]
   const states: IterationState[] = [{
     basicAttackTime: 180,

@@ -193,7 +193,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
    （先例 `harumasa.ts`/`zhao.ts`）——⚠ **不要**用 `applyStat(panel,'atkPct',…)`：它以**当前局内值**为基数整体乘，会把局内固定加成放大（与本坑开头同源）。
    判据 = 断言**通道量** `panel.atk/hp` 差分 == 局外基数 × %，并反锁 `panel.atkPct` 为 `undefined`。
 2. **state.exSpecialCount 由闪能池驱动**：`resolveExSpecialCount` 用 `exSpecialEnergyConsume` 除。
-   模块接管 EX 链时设 `skipGenericExSpecial = true` + `exSpecialCountFloor = true` + 一个合理 cost，
+   模块接管 EX 链时设 `skipGenericExSpecial = true` + 一个合理 cost（次数缺省取整；只有持续型期望值强特才设 `exSpecialCountFractional = true`，CC-324），
    让 state.exSpecialCount 表达"付费强特数"，再在 buildExecutions 里 push 自己的执行（般岳/星徽·比利模式）。
 3. **执行计划的 moveId 必须是 catalog 倍率表编号**（1531010 才是最高马力星光），不是游戏技能列表编号，
    也不是模块自己的键名。曾把事件 carrierMoveId 写成 1531002（骑士斗技#2）导致倍率/失衡全错。
@@ -244,7 +244,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 17. **连续松弛终局整数化（2026-08）**：强特/终结次数在迭代期以**实数**参与（`iterate` 的
     `finalCounts` 参数供终局覆盖），收敛判据 ε=1e-9（次数+平A时间）；终局「floor 基线 + 小数
     降序预算内加回」贪心装包 + 整数态重推抬升（≤3 轮）。floor 滞回曾致同输入不同初值落到相邻
-    不动点（12/3 vs 12/4）；结构性整数模块（`exSpecialCountFloor=true`：琉音/诺姆/比利EX链等）
+    不动点（12/3 vs 12/4）；结构性整数模块（强特次数取整——CC-324 起为缺省，原字段 `exSpecialCountFloor`：琉音/诺姆/比利EX链等）
     不参与加回（其必要时间对次数非线性）。种子不变性回归：`seedInvariance.test.ts`。
     已知取舍：预算极紧时「小数次数按比例占时间」可产生轻微负命座提升（卢西娅C4 −1.2% 量级），
     旧整数动力学靠路径运气掩盖该权衡——彻底解法需按伤害评估加回候选，待定。

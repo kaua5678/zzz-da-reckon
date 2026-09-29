@@ -129,7 +129,6 @@ export const lycaonMechanic: AgentMechanicModule = {
     cfg.exSpecialEnergyConsume = EX_TAP_ENERGY * (1 - holdRatio) + EX_HOLD_ENERGY * holdRatio
     cfg.exSpecialActionTime = EX_TAP_TIME * (1 - holdRatio) + EX_HOLD_TIME * holdRatio
     cfg.skipGenericExSpecial = true
-    cfg.exSpecialCountFloor = true
     // C1 覆盖率（8s CD → 覆盖率滑块，只给有限次强特强化）
     cfg.lycaonC1Coverage = clamp01(cfgNum(cfg, 'lycaon.c1Coverage', 1))
     // C2 回能（5 能量/次；次数 = 失衡次数 + 队伍连携总次数，由 useResourceCalc 注入 lycaonC2Energy）

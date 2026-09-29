@@ -294,6 +294,7 @@ function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInp
   cfg.burniceStirringActionTimeSeconds = findMoveById(skills, MIXED_FLAME_BLEND_2_MOVE)?.actionTime ?? 0
   cfg.burniceTossingActionTimeSeconds = findMoveById(skills, TOSSING_MOVE_ID)?.actionTime ?? 0
   cfg.skipGenericExSpecial = true
+  cfg.exSpecialCountFractional = true // 喷射秒数可变 ⇒ 次数取期望值（CC-324 前由 skip 隐式给出）
   const s1 = cfg.burniceSingleSpraySeconds ?? 0
   const s2 = cfg.burniceDoubleSpraySeconds ?? 0
   const c1 = s1 > 0 ? s1 * SINGLE_SPRAY_PER_SECOND + SINGLE_EXPLOSION_COST : 0

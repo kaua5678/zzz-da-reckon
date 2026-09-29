@@ -216,7 +216,6 @@ function buildLiuyinCharConfig({ slot, cinemaLevel, team, skills, cfg, getRowVal
   cfg.liuyinPreviousTeammateSlot = resolveTeammateTargetSlot(slot, team.filter(m => m.agentId && m.agent).map(m => m.slot), prevSetting)
   // 三个强特由本模块按 1→3 顺序生成，跳过通用强特执行；强特次数必须为整数（真实次数，非期望值模型）。
   cfg.skipGenericExSpecial = true
-  cfg.exSpecialCountFloor = true
   cfg.exSpecialEnergyConsume = EX_SPECIAL_ENERGY
 
   // 送客长按（1481009，客诉抱拳）倍率行：damage/daze/anomaly/喧响/动作时间，供执行计划完整调用。

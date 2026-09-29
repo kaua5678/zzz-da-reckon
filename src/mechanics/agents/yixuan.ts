@@ -309,7 +309,6 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCh
   cfg.initialEnergyGift = ENTRY_FLASH
   // 强特全部由模块生成（墨痕化形链/凝云术链）；exSpecialCount 仅作喧响估算（60 闪能/循环当量）
   cfg.skipGenericExSpecial = true
-  cfg.exSpecialCountFloor = true
   cfg.exSpecialEnergyConsume = CLOUD_CYCLE_COST
   // 交互栏用户输入（CC-35b 2026-09-27 由 helpers.ts cfg 字面量迁入，缺省值逐字保留：极限支援 -1 = 自动）。
   // 必须在下方读取 `yixuanPerfectBlockCount` / `yixuanExtremeAssistCount` 之前写好。

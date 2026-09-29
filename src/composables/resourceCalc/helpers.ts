@@ -628,6 +628,7 @@ export function buildCharConfig(
   const sustainedSpec = SUSTAINED_EX_SPECS[agent.id]
   if (sustainedSpec && !cfg.skipGenericExSpecial) {
     cfg.skipGenericExSpecial = true
+    cfg.exSpecialCountFractional = true // 持续段按满蓄秒数计耗能 ⇒ 次数取期望值（CC-324 前由 skip 隐式给出）
     const susMove = findMoveById(skills as AgentSkills, sustainedSpec.sustain.moveId)
     const scale = sustainedDamageScale(sustainedSpec, susMove)
     const secs = sustainedSpec.sustain.maxSeconds

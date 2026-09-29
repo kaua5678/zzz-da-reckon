@@ -614,7 +614,7 @@
   "outerExit": "cycle"
  },
  "yixuan-roxy-lucia": {
-  "slack": 0.7,
+  "slack": 0.6,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"

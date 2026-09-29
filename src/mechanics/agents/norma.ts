@@ -224,7 +224,6 @@ function buildNormaCharConfig({ slot, cinemaLevel, team, skills, cfg }: AgentCha
   // CC-306：额外能力条件唯一来源 = spec 1571 `additionalAbility`（强攻 / 命破 / 同阵营；原「面板标记 || 手写兜底」两套）
   cfg.normaAdditionalAbilityActive = specAdditionalAbilityActive(team, slot, team[slot]?.agent)
   cfg.skipGenericExSpecial = true // 嗯呢弹幕由本模块生成 6 段
-  cfg.exSpecialCountFloor = true // 嗯呢弹幕是真实次数（6 段 × 次数），必须取整
   // 嗯呢弹幕耗能（用户确认）：40 激活 + 长按 20/s（默认 2s）→ 每次 80 能量；
   // 资源池按此驱动强特次数（长按能量此前漏算 → 次数被高估，2026-08 修复）
   const holdSeconds = Math.max(0, Math.min(2, cfgNum(cfg, 'norma.holdSeconds', 2)))
