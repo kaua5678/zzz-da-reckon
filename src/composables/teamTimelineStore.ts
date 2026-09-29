@@ -2,7 +2,7 @@
  * 队伍时间线共享工具（现场快照/恢复已收至 configSnapshot.ts，CC-251）：基础金与预算感知加金、装配队伍到 store、让出事件循环。
  * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；teamTimeline.ts 原样转出公开名，导入方不用改。
  */
-import { useConfigStore, interactionBaselineFor, ASSIST_ACTION_BASELINE } from '@/stores/config'
+import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedAgent, isLimitedWEngine, applyGoldSteps } from '@/composables/teamCompare'
 import type { Agent } from '@/types/catalog'
@@ -139,15 +139,8 @@ export function applyTeamToStore(
     configStore.setCinemaLevel(s, state.cinemas[s])
     configStore.setWEngineModLevel(s, state.wengineMods[s])
     if (state.wEngines[s]) configStore.setWEngine(s, state.wEngines[s])
-    // 交互基准：角色专属默认（般岳/星徽·比利等）> 通用职业基准（支援/防护不交互，击破只弹刀，主C弹刀+闪反）
-    // CC-255：单一来源 interactionBaselineFor（含 noGenericInteraction；原内联副本漏了，1051 被发通用弹刀/闪反）
-    const base = interactionBaselineFor(team[s], useCatalogStore().getAgent(team[s])?.specialty)
-    configStore.setParryCount(s, base.parry)
-    configStore.setDodgeCounterCount(s, base.dodge)
-    configStore.setBlockCount(s, base.block)
-    configStore.setDualCounterCount(s, base.dual)
-    configStore.setQuickAssistCount(s, ASSIST_ACTION_BASELINE.quickAssist)
-    configStore.setChainCountPerStun(s, ASSIST_ACTION_BASELINE.chainPerStun)
+    // 交互 / 快支 / 连携基准不在这里写（CC-266）：上面两条分支都经 setAgent（applyTeamPreset 内部亦然），
+    // setAgent 已按 interactionBaselineFor + ASSIST_ACTION_BASELINE 预填——原先此处 6 行是逐位相同的第二写入者。
   }
 }
 

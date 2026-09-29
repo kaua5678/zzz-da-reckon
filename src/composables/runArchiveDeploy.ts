@@ -9,7 +9,7 @@
  * - 当期可选牌（3 选 1）不自动应用：归档未记录玩家选择，对比时由用户在属性配置页手动选。
  */
 import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase, PhaseBossBrief, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
-import { useConfigStore, hasCustomInteractionDefaults, interactionBaselineFor, ASSIST_ACTION_BASELINE } from '@/stores/config'
+import { useConfigStore, hasCustomInteractionDefaults, interactionBaselineFor } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
 
@@ -113,12 +113,11 @@ export function applyDeployConfig(
     // CC-255：基准取 interactionBaselineFor（含 noGenericInteraction）；本口径「不预设弹刀」⇒ 非专属角色只取闪反
     const custom = hasCustomInteractionDefaults(slot.agentId)
     const base = interactionBaselineFor(slot.agentId, useCatalogStore().getAgent(slot.agentId)?.specialty)
+    // CC-266：闪反 / 快支 / 连携与 setAgent 预填相同（applyTeamPreset 已调 setAgent），这里只写**本口径的偏差**：
+    // 非专属角色不预设弹刀 / 格挡 / 双反（运行时反推）。
     configStore.setParryCount(s, custom ? base.parry : 0)
-    configStore.setDodgeCounterCount(s, base.dodge)
     configStore.setBlockCount(s, custom ? base.block : 0)
     configStore.setDualCounterCount(s, custom ? base.dual : 0)
-    configStore.setQuickAssistCount(s, ASSIST_ACTION_BASELINE.quickAssist)
-    configStore.setChainCountPerStun(s, ASSIST_ACTION_BASELINE.chainPerStun)
   }
 
   // 修复跨队泄漏：applyTeamPreset 在 setCinemaLevel 之前同步队友 buff，读到上一队残留命座，
