@@ -3482,3 +3482,14 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 赠送 S 佩洛伊斯 1551：两套定义都计限定金（pullValue 分层为 freeGift）。是否计金属于口径问题，没有用户裁决，不动。
 - 锁：`src/composables/__tests__/limitedAgentSingleSource.test.ts`（3 例）：catalog 全员 isLimitedSAgentId = S ∧ 非常驻（新 S 角色漏录进收录表会先红）；潘引壶 M6 = 0 金；teamCompare 源码不再出现 `rarity === 'S' && !STANDARD_S_AGENT_IDS`。反例：去掉 A 级特例条件后前两例红（报 1421）。
 - 回退：revert fb9786fb。
+
+### 24.110 第 286 轮：CC-271 音擎限定判定归一 + 别名 id 解析（48f30a1b）
+
+- **测量（§24.109 下一步 1）**：
+  - 别名 id 会到达 `teamCompare.isLimitedWEngine`：catalog store 的 `wEnginesMap` 把 legacyIds 也登记为键（catalog.ts :133「浏览器 localStorage 里的旧配置仍存旧 id，getWEngine 按 legacyIds 兜底」），config store 没有任何把别名迁移成主 id 的代码 ⇒ 旧用户的 `wEngineId` 可以是 `zzz_wiki_218` 之类；
+  - 预设 JSON、enginePools、run-archive 的 weaponId 全是数字 id ⇒ `limitedGold.isLimitedSWengineId`（归档用）只会看到主 id。
+- **缺陷**：旧 `isLimitedWEngine` 按 catalog 稀有度判 S，却用**原始**别名 id 查 `STANDARD_S_WENGINE_IDS` ⇒ 常驻 S 的 5 个别名（zzz_wiki_214→14118、zzz_wiki_218→14121、zzz_wiki_223→14104、zzz_wiki_224→14102、nanoka_14114→14114）被当成限定音擎（多记金、被当作限定专武参与金数分配）。catalog 未加载时又把任何非常驻 id（含 A 级）当限定。
+- **修法（48f30a1b）**：`isLimitedWEngine(id)` = `isLimitedSWengineId(getWEngine(id)?.id ?? id)`——别名解析（catalog 的职责）与限定定义（limitedGold 的单一定义：141 前缀 ∧ 非常驻）分开；teamCompare 不再导入 `STANDARD_S_WENGINE_IDS`。至此角色、音擎两侧的「限定」各只有一个定义，都在 limitedGold.ts。
+- **影响**：主 id 上两套判定 83/83 一致 ⇒ 预设、散点、golden 零差；只有持有旧别名 id 的 localStorage 配置行为变化（常驻 S 别名不再算限定）。
+- **锁**：`limitedAgentSingleSource.test.ts` 新增 2 例（共 5 例）：catalog 全部音擎前缀判定 = S ∧ 非常驻（前缀约定失效时先红）；全部 legacyIds 与主 id 判定一致。反例：stash teamCompare.ts 后报出上述 5 个别名。
+- **回退**：revert 48f30a1b。
