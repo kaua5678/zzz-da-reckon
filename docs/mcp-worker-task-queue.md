@@ -96,16 +96,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 322 轮（lane lead-arena-0925c）：CC-307（`60b9fff4`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 维琳娜 / 爱丽丝补 spec `additionalAbility`，模块改调 `specAdditionalAbilityActive`；零连带门控、零数值差。详见 `docs/mcp-stun-dual-source.md` §24.146。
-- 前几轮：321 CC-306；320 CC-305；319 CC-304。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify；arena-B 已推 pull-planner 提交（b73a6774），与本线无冲突。
-- 本轮开工时沙箱 /tmp 被清空（mcp.js 从 /home/user/mcp-tools/ 复制恢复）。
+**第 323 轮（lane lead-arena-0925c）：CC-308（`bdba9007`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 1511 南宫羽额外能力豁免**保留**（仓库数据无触发条件，R5 不编造）；两处源码锁去行号。详见 `docs/mcp-stun-dual-source.md` §24.147。
+- 前几轮：322 CC-307；321 CC-306；320 CC-305。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
 
 **下一步（直接开工）**：
-1. **1511 南宫羽的 `AA_OWNER_EXEMPT` 豁免**：查为什么没有 spec `additionalAbility`（条件是否无法用现有条件类型表达，还是遗漏）。能表达就补声明并删豁免；注意补声明后她来源为「额外能力」的队友 buff 会被自动门控——先列出这些 buff、写探针比较前后伤害，行为变则走 CC 卡并写明依据（数据可信，不以「更接近投稿」为由）。
-2. **`agentModuleRowFusionRule.test.ts` 的 `RAW_ROW_READ_ALLOW` 按行号登记**：每次改 remielle.ts 都要同步行号（§24.145）。评估改成按「函数名 / 代码片段」登记能否保持同等约束力；能则改，不能写「不做」加理由。
-3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+1. **来源标签「额外能力：xxx」漏门控（已普查，可直接开工）**：`additionalGateBuffTable` 与 `additionalGate.test.ts` 只认 source **全等** `"额外能力"`。spec `teamBuffs` 中 source 以「额外能力」开头的 13 条里，带后缀的只有 3 条：`1541 promia_ice_team_release_dmg`（`额外能力：饮冰`，**1541 已声明 additionalAbility ⇒ 当前不受门控，疑似 CC-199 同类漏网**）与 1511 两条「额外能力：天使队长」（1511 豁免，不动）。步骤：① 读 spec 1541 该条 note 与普罗米娅额外能力原文，判断「饮冰」是否即 spec `additionalAbility` 所指的额外能力（若是另一个能力或无条件，则不门控，写明理由结项）；② 若应门控：把判定改为 `label === '额外能力' || label.startsWith('额外能力：')`，**只在 `specs/additionalGate.ts` 一处**定义谓词并让 `additionalGate.test.ts` 与 store 共用；③ 探针比较普罗米娅在「额外能力未触发」队伍下的伤害前后差，走 CC 卡写明依据（数据可信，不以接近投稿为由）。
+2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。

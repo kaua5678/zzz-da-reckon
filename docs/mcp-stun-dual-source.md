@@ -4016,3 +4016,18 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **结果**：mechanics/agents 内额外能力触发条件已无手写副本，spec `additionalAbility` 是唯一来源（1511 南宫羽仍按 `AA_OWNER_EXEMPT` 豁免，无声明）。
 - **验证**：vue-tsc 干净；wt322 `npm run verify` EXIT=0。
 - **回退**：`git revert 60b9fff4`。
+
+### 24.147 第 323 轮：1511 豁免裁决 + CC-308 源码锁去行号（bdba9007）
+
+- **1511 南宫羽 `AA_OWNER_EXEMPT`：保留，不补声明。**
+  - 查证：「天使队长」在仓库数据里只出现在 `public/static/teammate-buffs.json`（`buff_ce11acbda2`：踉跄 失衡易伤 +30% / 失衡时长 +3s，只写效果）与 spec 1511。catalog `agentSkills` 只有倍率表，没有额外能力文本；spec `notes` 里的技能原文（核心被动与额外能力 Lv.1、影画二）也**没有触发条件**。
+  - spec `teamBuffs` 两条 note 写「额外能力条件（队伍有异常角色或同阵营）未门控」——这个条件**在仓库数据中无出处**，不能当依据。
+  - 依据：R5 硬约束「不引入实测、数据可信、不编造」。补声明会让 `additionalGateBuffTable` 自动门控 `buff_ce11acbda2`（及 spec 两条「额外能力：天使队长」若日后改标签），属于**无数据支撑的行为变化**。
+  - 回退 / 接管点：数据源补入触发条件时，在 `src/specs/agents/1511.json` 加 `additionalAbility`、删 `additionalGate.test.ts` 的 `AA_OWNER_EXEMPT['1511']`，测试会自动接管。
+- **CC-308 源码锁去行号**：
+  - `src/mechanics/__tests__/agentModuleRowFusionRule.test.ts`：`RAW_ROW_READ_ALLOW` 由 `remielle.ts:93/96/98` 改为 `remielle.ts: <去首尾空白的代码行>`（3 条）。约束力相同（新增或改写任何 `values[0]` 读点都会让列表不等），但与读点无关的增删行不再逼着同步（第 321 轮就踩过）。
+  - `src/utils/__tests__/finiteClampSingleSource.test.ts`：只登记文件 `utils/finiteClamp.ts` ×2（两处命中即 `clampRatio` / `whole` 本体），去掉 `:16/:22`。
+  - 不改的：`giftRowFusionRule.test.ts` 用「文件 → 条数」，本来就不依赖行号；`recordKeyDeadReads.test.ts`、`layerInversion.test.ts`、`scripts/lib/record-key-dead-reads.mjs` 里的 `x.ts:N` 是断言**扫描器自身报出的行号**（夹具内容固定），行号就是被测对象，不做。
+  - 变异验证：remielle.ts 顶部插一行 ⇒ 仍绿（旧写法会红）；末尾加一处 `values?.[0]` ⇒ 红。均已 `git checkout` 复原。
+- **验证**：wt323 `npm run verify` EXIT=0。
+- **回退**：`git revert bdba9007`。

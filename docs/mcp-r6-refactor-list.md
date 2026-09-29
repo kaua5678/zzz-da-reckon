@@ -473,3 +473,4 @@
 | 320 | 展示层 findIndex / damageElement 普查；锁定未下沉进 promoteFixpoint（§24.139 未钳项） | 页面命中 5 处全为纯展示（条件列表 / 饼图 / 排序 / 抗性行 / 物理判断），不做；锁定下沉 ⇒ CC-305（`c46321bb`），实测零数值差 | 已结项 |
 | 321 | 角色模块之间的队伍级规则副本（specialty / damageElement 判定） | 额外能力条件在 4 个模块手写、与 spec 声明两套来源 ⇒ CC-306（`25041ef0`）；维琳娜 / 爱丽丝无 spec 声明（仍手写），其余命中是各角色技能自身条件（非额外能力），见 §24.145 | 下一步：维琳娜 / 爱丽丝补 spec 声明（先量 additionalGate 连带门控） |
 | 322 | 额外能力条件仍手写的最后两处（维琳娜 / 爱丽丝） | CC-307（`60b9fff4`）补 spec 声明后，mechanics/agents 内额外能力条件已无手写副本（仅剩 1511 南宫羽按 AA_OWNER_EXEMPT 豁免）；见 §24.146 | 结项 |
+| 323 | 源码锁按行号登记（改无关代码也要同步） | 2 处真实源码锁去行号 ⇒ CC-308（`bdba9007`）；其余 `.ts:N` 字面量都是扫描器自测夹具（recordKeyDeadReads / layerInversion / record-key-dead-reads.mjs 断言扫描器报出的行号本身），不做 | 结项 |
