@@ -27,11 +27,13 @@ export const ADDITIONAL_GATE_CROSS_SOURCE_BUFFS: Readonly<Record<string, readonl
 }
 
 /**
- * 来源标签是否为「额外能力」：`额外能力` 或 `额外能力：<能力名>`（spec teamBuffs 常带能力名，如 1511「额外能力：天使队长」）。
- * CC-309 前只认全等 `额外能力` ⇒ 带能力名的标签静默逃过门控。引擎门控表与 additionalGate.test.ts 共用本谓词。
+ * 来源标签是否为「额外能力」：`额外能力`、`额外能力：<能力名>`（spec teamBuffs，如 1511「额外能力：天使队长」）
+ * 或 `额外能力（<效果名>）`（teammate-buffs.json，如 1571「额外能力（技术鸿沟）」「额外能力（嗯呢弹幕）」）。
+ * CC-309 前只认全等 `额外能力` ⇒ 带后缀的标签静默逃过门控；CC-310 补上括号形（诺姆两条 buff 曾在额外能力未触发时照样生效）。
+ * 引擎门控表与 additionalGate.test.ts 共用本谓词。
  */
 export function isAdditionalAbilitySourceLabel(label: string): boolean {
-  return label === '额外能力' || label.startsWith('额外能力：')
+  return label === '额外能力' || /^额外能力[：（(]/.test(label)
 }
 
 const additionalGateTableCache = new WeakMap<readonly TeammateBuffGroup[], Readonly<Record<string, readonly string[]>>>()

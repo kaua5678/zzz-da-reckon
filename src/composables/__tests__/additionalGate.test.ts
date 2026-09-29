@@ -49,6 +49,25 @@ describe('CC-203 额外能力硬门控表：从数据派生、与 store 默认�
     expect(table['1141']).toContain('lycaon.additional_graceful_pack_stun_multiplier')
     expect(table['1411']).toContain('1411.additional_ability.anomaly_damage_bonus')
     expect(table['1581']).toContain('1581.additional_ability.prismatic_buildup')
+    // CC-310：teammate-buffs.json 的括号形标签「额外能力（技术鸿沟）」「额外能力（嗯呢弹幕）」曾漏出门控表
+    expect(table['1571']).toEqual(expect.arrayContaining(['norma_hollowell.additional_technical_gap', 'norma_hollowell.additional_bangboo_barrage']))
+  })
+
+  it('CC-310：凡以「额外能力」开头的来源标签都被谓词识别（新后缀格式出现时本测试先红，不会静默漏门控）', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1081' }, '', ''])
+    const unrecognized = catalog.teammateBuffGroups.flatMap(g => (g.buffs ?? []).map(aaLabel))
+      .filter(l => l.startsWith('额外能力') && !isAdditionalAbilitySourceLabel(l))
+    expect(unrecognized).toEqual([])
+    expect(['额外能力', '额外能力：天使队长', '额外能力（技术鸿沟）'].every(isAdditionalAbilitySourceLabel)).toBe(true)
+    expect(['额外能力说明', '核心被动', '影画一'].some(isAdditionalAbilitySourceLabel)).toBe(false)
+  })
+
+  it('CC-310：诺姆额外能力未触发（队友无强攻/命破/同阵营）⇒ 技术鸿沟、嗯呢弹幕默认不勾', async () => {
+    const { catalog, config } = await setupHarness([{ agentId: '1571' }, { agentId: '1331' }, { agentId: '1181' }])
+    const rows = deriveTeammateBuffEnabled(config.team, catalog.teammateBuffGroups, aid => catalog.getAgent(aid))
+    const en = (id: string) => rows.find(r => r.id === id)?.enabled
+    expect(en('norma_hollowell.additional_technical_gap')).toBe(false)
+    expect(en('norma_hollowell.additional_bangboo_barrage')).toBe(false)
   })
 
   it('CC-206：store 默认门控经模块修正——凯撒 + 异阵营队友默认勾上；菲欧妮 tier3 异常数不足默认不勾', async () => {
