@@ -96,15 +96,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 332 轮（lane lead-arena-0925c）：CC-317（`0ebcfcae`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 333 轮（lane lead-arena-0925c）：CC-318（`2c88fd30`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 删喧响预算棘轮 `max(上一轮, 本轮)`：最终结果、退出类型、轮数逐位不变（只有 7 次中间轮的门控不同）。详见 `docs/mcp-stun-dual-source.md` §24.156。
-- 前几轮：331 CC-316（postRound 读本轮 countStun）；330 CC-315（签名补齐）；329 CC-314。外层收敛这条线（签名覆盖 / 滞后 / 棘轮）到此收口。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
+- 编排层线程 `auricInkFlash` 迁进 `moduleFeedback.auricInkTriggers`，由仪玄模块产出；solveTeam 的 stable 条件现在只有 `|next-stun|<tol && feedbackStable`。最终结果、退出方式、轮数都不变。详见 `docs/mcp-stun-dual-source.md` §24.157。
+- 从属清单还剩 decibelParryBasisShort、teamUltimateForJufufu、anomalyDecibelBonus，三项都有保留理由（见 outerCycle.ts 头注释和 §24.157）。
+- REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
-1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**（今天之后按日期判断）：把条件已满足的行挑出来做；都不满足就在 §8 追加一行「第 N 轮复核：无满足项」，然后按判据自选新题并先登记查什么。已知有日期的条件：坑 25 到期 2026-10-31（连携按实际失衡次数改造开工前复核）。
-2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选新题，先登记要查什么。有日期的条件：坑 25 到期日 2026-10-31。
+2. 可选题（未登记，需先评估）：`CalcRoundThreads` 里是否还有「单模块产出、单模块消费」的字段，可仿 CC-318 迁进 moduleFeedback（先 grep 各字段的读写点；注意 `anomalyDecibelBonus` 是全队按槽的，不属于这类）。
+3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。

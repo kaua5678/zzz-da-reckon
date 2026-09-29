@@ -483,3 +483,4 @@
 | 330 | `CalcRoundThreads` 各字段是否在外层签名里（§24.153 交接第 1 条） | 插桩 479 停点：105 个仍有字段在变 ⇒ CC-315（`a6ab4558`，golden 零差、轮数 +5.6%）；`postRoundInput.stunCount` 入签名会破坏长环检测 ⇒ 根因（滞后一拍）转 CC-316 | 新增 CalcRoundThreads 字段时：入签名或在 `outerCycle.ts` 头注释的从属清单写明理由 |
 | 331 | CC-316：postRound 失衡次数滞后一拍 | 改读本轮 countStun，零差（`d357f784`）；签名例外清零 | — |
 | 332 | 喧响预算棘轮 `max(上一轮, 本轮)` 是否仍必要 | 不影响任何覆盖用例的结果 ⇒ 删（CC-317，`0ebcfcae`） | 出现「某队喧响 / 终结次数逐轮塌缩」的反例时回退 CC-317 |
+| 333 | 第 333 轮复核：无满足项（坑 25 到期日 2026-10-31，还没到；264 行 channelMetricsOf 已由 CC-243 覆盖）。自选：编排层的角色专属线程 `auricInkFlash` 该不该留 | 该移：它由仪玄产生、只给仪玄读，应走 moduleFeedback 通道 ⇒ CC-318（`2c88fd30`）；`teamUltimateForJufufu` 维持原裁决，留在编排层（全队汇总），不改名 | 出现「玄墨触发必须在无 1371 的队里可见」的需求时回退 CC-318 |

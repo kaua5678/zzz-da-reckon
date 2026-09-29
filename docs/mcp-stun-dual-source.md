@@ -4174,3 +4174,21 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 去掉棘轮后：timeGolden 零差，退出类型 stable 479 / cycle 10 / maxIter 6，总轮数 2070，全部与有棘轮时相同；全量 verify EXIT=0（4051 passed）。
 - **判断（做）**：在所有覆盖用例里，棘轮只改变中间轮的门控，不改变任何最终结果；同时它让预算取「历史最大值」，结果依赖迭代经过的路径，且 §24.154 里新增的外层轮数几乎都来自这个单调量。删掉更简单，预算也变成上一轮输出的纯函数。它原本防的螺旋如果真的出现，会表现为终结次数逐轮下降：签名会变，外层有 2-环 / 长环规范选点和 maxIter 兜底，不会静默给出错误的稳态。
 - **回退**：`git revert 0ebcfcae`（重开条件：出现「某队喧响 / 终结次数逐轮塌缩」的反例）。
+
+### 24.157 第 333 轮：CC-318 `auricInkFlash` 迁入 moduleFeedback（2c88fd30）
+
+- **背景**：r6 §8 的重开条件逐行复核后没有满足项，于是按判据自选。`CalcRoundThreads.auricInkFlash` 是编排层线程里唯一的角色专属字段。编排层（`convergence.ts`）每轮都无条件从 `anomalyPool` 取 `ether_ink` 的触发次数写进去（没有仪玄的队伍也算）。唯一读者是 `yixuan.ts`（通道③ 回闪能 `yixuanAnomalyTriggerFlash`）。`solveTeam` 的非锁定 stable 条件还为它单独写了 `ait === threads.auricInkFlash`，它也因此列在 outerCycle 头注释的从属清单里。CC-314 之后，moduleFeedback 就是专门给这种「模块产出、下一轮本模块读」的量准备的通道。
+- **改动**：
+  - `ModuleFeedback` 新增 `auricInkTriggers?`；
+  - `yixuanNextRoundFeedback` 解构 `anomalyPool`，取到的次数 > 0 时才返回（这样 `nextRoundFeedbackR20` 里的 `toEqual` 不用改，与 `moduleFeedbackSignature` 跳过 0 键的规则一致）；
+  - yixuan 两处改为读 `threads.moduleFeedback?.auricInkTriggers`；
+  - 删除线程字段和初值、删除 convergence 里的写入、删除 solveTeam 里的特例比较，从属清单去掉这一项；
+  - axisContext.test 的 12 处夹具改用新形态。
+- **语义**：非锁定分支等价，原来比较的是 `threads` 与 `threadsNext` 中的该值，现在是签名比较相邻两轮的 moduleFeedback，是同一对量。锁定分支和环检测原来看不到它，现在能看到。
+- **验证**：
+  - vue-tsc 干净；timeGolden、outerCyclePick、axisContext、nextRoundFeedbackR20 共 69 例通过；
+  - 插桩统计退出方式：stable 479 / cycle 10 / maxIter 6，总轮数 2070，与基线逐项相同；
+  - 变异：产出置 0 后，golden 中 auto-1371-1481/1571/1251-1451 和 agent:1371:c0/c6 这 5 条变红（-5.4%~+0.1%），说明通道有覆盖；
+  - 全量 verify 在 wt333 上 EXIT=0。
+- **不做**：`teamUltimateForJufufu` 维持原裁决。它是全队终结技汇总，编排层计算、不涉及角色判定；挂到 1371 模块会让「有 1391、无 1371」的队变 0。只有名字带角色，改名收益低。
+- **回退**：`git revert 2c88fd30`。
