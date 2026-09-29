@@ -17,6 +17,12 @@ export interface CalcRoundResult {
     resolvedAxes: StunAxis[]
     matchedPlanName: string | null
     interactionTopUp: InteractionTopUp
+    /**
+     * 本轮**已装入**计划的补齐量（= 本轮输入 threads.interactionTopUp；`interactionTopUp` 是算出的下一轮量）。
+     * CC-296：展示读这个——两者只在收敛时相等；保底4喧响的补齐线程在外层按环内选点落在「装了 N、下一轮算 0」的
+     * 成员上时，读下一轮量会让交互栏显示 0 而资源卡显示已装的 N。同 `decibelGuarantee.parry` 读 prev 的口径。纯展示载荷。
+     */
+    interactionTopUpApplied: InteractionTopUp
     parrySplit: ParrySplitResult
     /** 本轮实际用于喧响的特殊动作奖励（calcSpecialActionBonus 整份，含每槽次数）。CC-227：展示直读，不再在 useResourceCalc 另拼一份 */
     specialActionBonus: SpecialActionBonusResult

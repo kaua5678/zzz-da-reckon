@@ -433,15 +433,18 @@ export function useResourceCalc() {
     })
   })
 
-  /** 轴模式自动补齐的交互次数（保底，最终收敛值）：交互栏显示「弹刀 +N / 双反 +M」用 */
+  /** 自动补齐的交互次数（轴模式或保底开关驱动，最终结果里已装入的量）：交互栏显示「弹刀 +N / 双反 +M」用 */
   const interactionTopUp = computed<{ slot: number; parry: number; dual: number } | null>(() => {
-    // 懒守卫：无声明该能力的角色或非轴模式 → 不触发全量计算（首页交互栏只在选中该角色时读取）。
-    // 槽位 = 挂出 computeInteractionTopUp 能力的模块（CC-293，与 convergence 找槽同一函数），本文件不含角色 id。
+    // 懒守卫：队里没有挂出 computeInteractionTopUp 能力的模块 → 不触发全量计算。
+    // 槽位 = 挂出该能力的模块（CC-293，与 convergence 找槽同一函数），本文件不含角色 id。
+    // CC-296：原先还要求轴模式，但是否补齐由模块门控决定（CC-295：非轴 + 保底嗔火 / 喧响也补），
+    // 旧守卫让「补齐已生效、交互栏不显示 +N」；且同页 decibelGuaranteeResult 本就无条件读 calcOutput，懒计算无从省起。
     const slot = findInteractionTopUpSlot(configStore.team)
-    if (slot < 0 || (!configStore.useStunAxis && !autoActive.value)) return null
-    const topUp = calcOutput.value?.interactionTopUp
+    if (slot < 0) return null
+    // CC-296：读「本轮已装入」量（与资源卡同源），不读下一轮量（2-环落点上两者不等）。
+    const topUp = calcOutput.value?.interactionTopUpApplied
     if (!topUp || (topUp.parry === 0 && topUp.dual === 0)) return null
-    return { slot, ...topUp }
+    return { slot, parry: topUp.parry, dual: topUp.dual }
   })
 
   // ===== runCalcRound 本体在 resourceCalc/convergence.ts（#10 收线刀：1180 行逐字整体搬）=====

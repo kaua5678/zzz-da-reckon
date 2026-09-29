@@ -198,7 +198,7 @@
                       <n-grid cols="6" :x-gap="8">
                       <n-gi>
                         <div class="field" title="对黄光的一次交互次数。招架型角色＝弹刀（轻弹刀＋支援突击）；回避型角色＝回避支援（1.166s 时停，不产伤害与失衡）＋支援突击。一个角色只能其一（用户 2026-09-15 口径）">
-                          <span class="field-label">弹刀/回避次数<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.parry > 0" class="field-hint">+{{ interactionTopUpForSlot.parry }}（轴自动）</span><span v-if="parrySplitForSlot" class="field-hint">{{ parrySplitForSlot.label }}</span><span v-if="counterAssistForSlot > 0" class="field-hint">（控制技 {{ counterAssistForSlot }} 组已转反制支援）</span></span>
+                          <span class="field-label">弹刀/回避次数<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.parry > 0" class="field-hint">+{{ interactionTopUpForSlot.parry }}（自动补齐）</span><span v-if="parrySplitForSlot" class="field-hint">{{ parrySplitForSlot.label }}</span><span v-if="counterAssistForSlot > 0" class="field-hint">（控制技 {{ counterAssistForSlot }} 组已转反制支援）</span></span>
                           <n-input-number
                             :value="selectedChar.parryCount || interactionDefaults.parry"
                             :min="0"
@@ -237,7 +237,7 @@
                       </n-gi>
                       <n-gi v-if="interactionInputs.dualCounter">
                         <div class="field">
-                          <span class="field-label">{{ interactionInputs.dualCounter?.label }}<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.dual > 0" class="field-hint">+{{ interactionTopUpForSlot.dual }}（轴自动）</span></span>
+                          <span class="field-label">{{ interactionInputs.dualCounter?.label }}<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.dual > 0" class="field-hint">+{{ interactionTopUpForSlot.dual }}（自动补齐）</span></span>
                           <n-input-number
                             :value="selectedChar.dualCounterCount || interactionDefaults.dual"
                             :min="0"
@@ -974,7 +974,7 @@ function setComboAlignAbsorbPct(v: number) {
   const pct = Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO * 100
   configStore.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, Math.round(pct) / 100)
 }
-// 轴模式自动补齐（保底语义，现唯一产出者般岳）：弹刀/双反在交互栏输入之上补的量（懒计算，仅产出者槽位选中时非空；
+// 自动补齐（保底语义，轴模式或保底开关驱动，现唯一产出者般岳；CC-296 起非轴也显示）：弹刀/双反在交互栏输入之上补的量（懒计算，仅产出者槽位选中时非空；
 // 槽位 = 挂出 computeInteractionTopUp 能力的角色（CC-293），故弹刀提示不必再判角色 id —— CC-65b）
 const { interactionTopUp, autoPreset, parrySplitResult, guaranteeStunShortfallResult, decibelGuaranteeResult } = useResourceCalc()
 /** 保底4失衡·未达成如实显示（CC-156）：弹刀预算内补不满时引擎按实际池计数算，这里把降级露出来 */
