@@ -2974,3 +2974,37 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 值不值得：一条跨 6 个分析器的协议从 3 份（其中 2 份有缺陷）归一为 1 份，同时修复一个用户可见的状态泄漏。不是降计数。
 - 验证：新测试 2 passed；vue-tsc 干净（首次漏了 teamCompare 自身的值导入，已补）；v271 verify EXIT=0（3995 passed | 29 skipped）。
 - 回退点：revert 7ed14dfc。
+
+### 24.96 第 272 轮：CC-252 全战斗有效时间（ca29c623）；CC-253 findMoveByEnglishName 下沉（045c587b）；CC-254 applyTeamToStore 副本（979b673c）；发现交互基准 4 份漂移副本
+
+**① CC-252**（§24.95 下一步 1）：
+- `core/effectiveTime.ts` 新增 `effectiveCombatTime(state, cfg)`，定义为前台 + 后台 − 无敌，下限 0；
+- 替换 5 处：lighter / rina / yaojiayin 各一份私有 `combatTimeOf`，以及 burnice:314 / 367 两处内联（写法不带 `?? 0`，但 `IterationState.frontlineTime/backstageTime` 是必填 number，与其他 3 处语义等价，扫描时是 grep 多找到的）；
+- 锁：`core/__tests__/effectiveTimeSingleSource.test.ts` 追加一个 describe，全 src 不许内联「frontlineTime + backstageTime」（带不带 `?? 0` 都拦）。反例：只 stash burnice 时变红；全仓扫描时没有别处命中。
+
+**② CC-253**（§24.95 下一步 2）：
+- `findMoveByEnglishName` 定义移到 `data/moveTableQueries.ts`；velina 删掉私有副本，改为从 data 导入，同时去掉因此不再使用的 AgentSkills / SkillMove 类型导入；
+- `resourceCalc/skillRows.ts` 与 `helpers.ts` **保留 import + export 壳**。这是 R22 壳契约「helpers 导出面逐符号不变」的要求：`skillRowsShell.test.ts` 把它加进 `SUNK_TO_DATA`，并更新 export 行的正则；
+- 锁：CC-236 的 `data/__tests__/findMoveByIdSource.test.ts` 正则扩展到 findMoveByEnglishName。反例：stash velina 时报 `velina.ts:36`。
+
+**③ CC-254**（换维度测量「跨分析器协议」时发现）：
+- `applyTeamToStore` 有 3 个同名定义：
+  - `teamTimelineStore.ts` 那个是**同名不同义**（入参是队伍 id + 金档状态，走轻量或推荐配装），不是副本；
+  - `positionCompare.ts` 的私有副本与 `teamCompare.ts` 逐行相同，**但已漂移：漏了 `tauntCancel`（般岳嘲讽取消）分支**。positionCompare 本来就在从 teamCompare 导入 applyGoldSteps 等函数，没有理由另抄一份。
+- 现存预设都没有 tauntCancel 交互（git grep 确认），所以当前零差；但一旦给般岳预设加上这项，位置对比就会静默忽略它。
+- 改法：删掉私有副本，从 teamCompare 导入。锁 `composables/__tests__/applyTeamToStoreSource.test.ts`：签名里带 `preset: TeamPreset` 的 applyTeamToStore 只能在 teamCompare 定义。反例：修复前报 positionCompare。
+- 同轮测量：positionCompare / teamTimeline* / difficultyCurve / freeCompare/engine 的顶层函数名与其他 composables 撞名的，只有 `teamKey`（teamTimeline 与 charIncrement，语义不同：前者是有序拼接，后者带命座 / 阶段并排序），不是副本。
+
+**④ 新发现（下一轮 CC-255，涉及数值，本轮不做）：交互基准有 4 份漂移副本**
+- 单一来源是 `stores/config.ts:236#interactionBaselineFor(agentId, specialty)`：模块声明 `noGenericInteraction` 时全部归零；否则有角色专属默认就用它，没有就用 `roleInteractionBaseline(specialty)`。harness 的 setTeam 也用它。
+- 内联副本（`const hasCustom = defs.parry > 0 || …`）都**缺少 noGenericInteraction 这一支**：
+  - `composables/pullPlannerEngine.ts:257`
+  - `composables/teamTimelineStore.ts:144`（轻量装配）
+  - `composables/charIncrement.ts:390`（applyBaseTeamLite）
+  - `composables/runArchiveDeploy.ts:114`
+- 当前声明 noGenericInteraction 的只有 `mechanics/agents/yidhari.ts:480`（伊德海莉 1051，CC-65b）⇒ 这 4 个分析器给伊德海莉发了通用弹刀 / 闪反，主页和 harness 给的是 0。**1051 队伍在抽卡规划、时间线、卡片增量、归档部署里的读数与主页口径不一致。**
+- 另外，teamTimelineStore 的轻量分支与 charIncrement 的 applyBaseTeamLite 是同一个「轻量装配」协议（setAgent defer → sync → 清 4/6 号主词条与副词条 → 命座 / 精炼 / 音擎 → 交互基准 → 快支 3 / 连携 1），可以在 CC-255 之后考虑归一（见交接）。
+
+- 验证：v272a（CC-252）、v272b（CC-253）verify EXIT=0（3996 passed | 29 skipped）；v272c（CC-254）EXIT=0（3997 passed）；每刀 vue-tsc 都干净（CC-253 首次报 velina 未用类型导入，已删）。
+- 回退点：三刀各自独立，revert 979b673c / 045c587b / ca29c623。
+- 环境：本轮沙箱重置后 `/home/user/mcp-tools/up.sh` 丢了可执行位，直接执行报 Permission denied，上传静默失败（后面的 python 找不到文件）。改为 `bash up.sh` 或先 chmod +x。

@@ -71,29 +71,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 271 轮（lane lead-arena-0925c）：CC-251（7ed14dfc）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.95。要点：分析器现场快照 / 恢复协议收成 `src/composables/configSnapshot.ts`（唯一实现，源码锁拦新副本）；修复跑分析器后主页队友 buff 手动开关被改回的问题。新写分析器一律 `snapshotStore` + `try/finally restoreStore`，从 configSnapshot 导入。
-- 前几轮：270 CC-250（multiplierRowId）；269 CC-249（生产态规则一致性锁）；268 CC-248（specs / data 闭包锁）。
+**第 272 轮（lane lead-arena-0925c）：CC-252（ca29c623）、CC-253（045c587b）、CC-254（979b673c）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.96。要点：全战斗有效时间 → `core/effectiveTime#effectiveCombatTime`；`findMoveByEnglishName` → data；positionCompare 改用 teamCompare 的 `applyTeamToStore`。三处都有源码锁。
+- 前几轮：271 CC-251（configSnapshot）；270 CC-250；269 CC-249。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**下一步（直接开工，两件都小，可在同一轮先后做，各自提交）**：
-1. **CC-252 `combatTimeOf` 概念归一**：lighter.ts:226 / rina.ts:153 / yaojiayin.ts:170 三份逐字相同的 `minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)`。
-   - 在 `src/core/effectiveTime.ts` 加 `effectiveCombatTime(state: { frontlineTime?: number; backstageTime?: number }, cfg: TimeBasisCfg)`，写头注释说明「前台 + 后台 = 全战斗时间，扣无敌」；
-   - 三个模块删掉私有函数，改为 import，调用点不动（可以 `import { effectiveCombatTime as combatTimeOf }`）；
-   - 先 grep 全 src 看有没有别的写法在算同一个量（例如 `frontlineTime + backstageTime` 未扣无敌的），逐个判断口径是否本来就不同，**不同的不并**；
-   - 加源码锁：mechanics/agents 非注释行不许出现 `frontlineTime ?? 0) + (state.backstageTime`。纯重构，零差，靠 verify。
-2. **CC-253 `findMoveByEnglishName` 下沉 data**：`resourceCalc/skillRows.ts:80` 与 `mechanics/agents/velina.ts:36` 逐字相同。
-   - 移到 `src/data/moveTableQueries.ts`（findMoveById 旁边）；skillRows 与 velina 都改为从 data 导入；
-   - 如果 skillRows 的导出还有其他调用方，全部改为直接从 data 导入，不留壳（先 grep `findMoveByEnglishName`）。
-   - 与 CC-236 同型，零差。
-3. 两件做完后：dupfn 扫描线结项（剩下的全是已裁决的不做项）。接下来换个维度扫：用 importClosure 或 grep 找「同一个 store 字段被多个分析器各自写入 / 恢复」之外的**跨分析器协议**（例如 `applyTeamToStore` 在 teamCompare / teamTimelineStore / positionCompare 是否也有 3 份，语义是否不同）。**先测量，再判断**。
+**下一步（直接开工）**：
+1. **CC-255 交互基准单一来源（涉及数值）**：4 处内联 `const hasCustom = defs.parry > 0 || …` 缺 `noGenericInteraction` 这一支。位置：`composables/pullPlannerEngine.ts:257`、`teamTimelineStore.ts:144`、`charIncrement.ts:390`、`runArchiveDeploy.ts:114`。
+   - 先读 4 处上下文：有的是整组赋值，有的逐字段 `hasCustom ? defs.x : base.x`，两者等价；
+   - 全部改调 `interactionBaselineFor(agentId, useCatalogStore().getAgent(agentId)?.specialty)`（`@/stores/config` 已导出；composables 可以依赖 stores，但 **resourceCalc/ 不行**，这 4 个文件都不在 resourceCalc 下，先确认一下）；
+   - **修复前后管线对比**：只有 1051（伊德海莉，yidhari.ts:480 `noGenericInteraction: true`）受影响。用含 1051 的队伍（如 1051-1211-1311）走 charIncrement 的轻量装配或 teamTimelineStore.applyTeamToStore(autoBuild=false)，读 teamTotalDamage，修复前后各一份，差值写进文档。预期：1051 的弹刀 / 闪反从职业基准变为 0，读数与主页一致；
+   - 锁：composables 与 views 的非测试文件不许出现 `defs.parry > 0 || defs.dodge > 0`（`stores/config.ts` 是 owner）；
+   - 如果 golden 因此变化：golden 更新时要写明原因（1051 交互口径与主页对齐）。
+2. **（CC-255 之后，可选）轻量装配协议归一**：`teamTimelineStore.applyTeamToStore(autoBuild=false)` 分支与 `charIncrement.applyBaseTeamLite` 同义（setAgent defer → sync → 清 4/6 号主词条与副词条 → 命座 / 精炼 / 音擎 → 交互基准 → 快支 3 / 连携 1）。先逐行比对差异（charIncrement 的音擎来自 `m.weaponId`，timeline 的来自 `state.wEngines`；入参形状不同），能抽出一个 `applyLiteTeam(configStore, members[])` 就抽，放在 teamTimelineStore 或新文件。**差异大于共性就写「不做」。**
+3. 以上都完成后：跨分析器协议线结项。再用 `grep -rn 'setQuickAssistCount(s, 3)'` 之类的「魔数装配」找第三类副本，先测量。
 
 **已知坑**：
-- 分析器换队会经 team watcher（flush:'sync'）同步改写 `teammateBuffSelections`；任何「恢复现场」逻辑都必须在 team 之后恢复 buff 选择（configSnapshot 头注释）；
-- 命名带 raw 的函数是意图信号；新增默认规则时仍要手工补验；
-- 上传多个文件时逐行调用 `up.sh`，**不要在 bash for 循环里拼 `${...}`**；
-- 删除一个模块里的导出函数后，要 grep 该模块**自身**是否还在内部调用它（本轮 teamCompare 自己也用 snapshotStore，vue-tsc 报错后才补上）；
-- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；反例可以「测试导入临时指向旧实现、跑红、删掉临时文件」。
+- 沙箱重置后 `up.sh` 可能丢可执行位 ⇒ 一律 `bash /home/user/mcp-tools/up.sh …`（直接执行会报 Permission denied，上传静默失败）；
+- `skillRows.ts` / `helpers.ts` 的 re-export 壳受 R22 壳契约锁保护，导出面要逐符号不变；下沉到 data 时加进 `SUNK_TO_DATA`，不要删壳；
+- 分析器换队会经 team watcher 同步改写 `teammateBuffSelections`；恢复现场一律用 configSnapshot；
+- 新测试先单独跑 `npx vue-tsc -b`（未使用的类型导入会报 TS6196）；
+- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify。
 
 **未决项**：
 - 1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；
