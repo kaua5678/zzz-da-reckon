@@ -3591,3 +3591,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **锁**：`configSnapshot.test.ts` 新增 CC-278 用例——非测试源码里不许出现「`JSON.stringify({ team: configStore.team`」内联快照，也不许出现「从快照变量整表回写 `stunAxisPlans`」的内联恢复（teamCompare 从预设 JSON 写轴不算）；只允许 configSnapshot.ts 自己。反例：stash 两个文件后报出 charIncrement / pullPlannerEngine 各 snapshot + restore 4 条。
 - **影响**：只影响跑完角色增量 / 抽卡规划之后的 store 状态（恢复更完整），不影响任何伤害计算；verify 全绿、golden 未动。行为正确性由 CC-251 已有的换队恢复用例覆盖（同一个函数）。
 - **回退**：revert d02c098a。
+
+### 24.118 第 294 轮：补推成功；jscpd 剩余 3 处同文件克隆收成单一出口（CC-279，fc72df87）
+
+- **补推**：开工时 `git push origin master` 成功（fb4d3000..5cc28d2f），第 292–293 轮积压的 5 个提交已上远端；GitHub 不通只是暂时的网络问题。
+- **逐处比对（按「同形 ≠ 同义」逐项核 `?.` / 默认值）**：
+  1. `norma.ts` `buildNormaExecutions` 与 `buildNormaResourceResult` 各抄一份 `computeNormaSource({…11 个入参…})`，逐字相同（入参都来自 cfg + state）。→ 抽本地 `normaSourceOf(cfg, state)`。
+  2. `burnice.ts` 已有 `burniceMechanicSourceOf(cfg, state)`，`buildBurniceExecutions` 在用，但 `buildBurniceResourceResult` 仍内联一份逐字相同的 `computeBurniceMechanic({…18 个入参…})`（只多一行注释）。→ 改调现成函数。
+  3. `damagePoolRelease.ts` 主导元素异放的两条归因路径（Boss 异常状态轴 / 覆盖率权重）各有一份 18 行 `pushRelease` 块，只差 note 标签。→ 在 dominant 分支内抽闭包 `pushDominantShare(element, count, label)`。
+- **为什么值得做（不是降计数）**：三处都是「同一份装配 / 落行写两遍」。执行行（伤害）与资源结果（展示）或两条归因路径之间，任何一边单独加字段就会静默分叉——CC-251 / CC-278 的快照副本就是这样漏字段的。收成一处后，新增入参 / 行字段只改一个地方。
+- **影响**：纯重构，行为零差（verify 全绿，timeGolden / 留白棘轮未动）。3 个文件共 −36 行。
+- **没加锁**：这类局部副本没有稳定的源码形态可锁；以后的防线是每隔一段时间重跑同一条 jscpd 命令（写入交接）。
+- **回退**：revert fc72df87。

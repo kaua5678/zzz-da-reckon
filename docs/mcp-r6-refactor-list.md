@@ -444,3 +444,4 @@
 | 291 | 身份双字段（id / teammateBuffId） | 可归一：别名字段退役，CC-276（`ccfd9dfe`） | 遗留：teamHasAgent / findSlotByIdentity 无生产调用，下一轮删 |
 | 292 | 死身份 helper | 冗余可删：CC-277（`fcecd8eb`） | 身份线（CC-275→277）收尾；下一轮换题 |
 | 293 | jscpd 跨文件克隆 | 可归一：快照 / 恢复副本并回 configSnapshot，CC-278（`d02c098a`） | 剩 3 处同文件克隆待看（norma / burnice / damagePoolRelease） |
+| 294 | jscpd 同文件克隆 3 处 | 可归一：CC-279（`fc72df87`） | ts 克隆清零；下一轮扫 .vue + min-lines 8 |

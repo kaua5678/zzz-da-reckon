@@ -71,20 +71,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 293 轮（lane lead-arena-0925c）：CC-278（d02c098a）完成。文档见本提交。push：第 292 轮起本机到 GitHub 不通（push 超时无输出）；本轮收尾再试一次，若 `git rev-list --count origin/master..master` 不为 0 就是仍未推上，请先补推。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.117：legacyIds 候选由 §24.111 结案；两份快照 / 恢复私有副本并回 configSnapshot。
-- 前几轮：292 CC-277；291 CC-276；290 CC-275；289 CC-274；288 CC-273。
+**第 294 轮（lane lead-arena-0925c）：CC-279（fc72df87）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。开工时已补推第 292–293 轮积压的 5 个提交。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.118：norma / burnice / damagePoolRelease 三处同文件副本收成单一出口，行为零差。
+- 前几轮：293 CC-278；292 CC-277；291 CC-276；290 CC-275；289 CC-274。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-0. **先补推**：`git rev-list --count origin/master..master` 不为 0 就 `timeout 150 git push origin master`（第 292、293 轮 GitHub 均不通，见上）。
-1. **看 jscpd 剩下的 3 处同文件克隆**：`src/mechanics/agents/norma.ts` 465 与 286（15 行）、`src/mechanics/agents/burnice.ts` 371 与 319（13 行）、`src/composables/resourceCalc/damagePoolRelease.ts` 150 与 98（13 行）。逐处判断是否语义相同（按「函数体同形 ≠ 语义相同」逐项比对 `?.`、默认值），相同且合并后更简单就抽本地函数，否则在 r6 清单记「不做 + 理由」。
-2. 扩大扫描：同一条 jscpd 命令加 `.vue`（`--pattern '**/*.{ts,vue}'`）并把 `--min-lines` 降到 8，看展示层有没有跨文件副本（展示层不许值导入 core，合并时注意分层）。
+1. **扩大克隆扫描**：`timeout 160 npx -y jscpd@4 src --pattern '**/*.{ts,vue}' --ignore '**/__tests__/**,**/*.test.ts,**/*.d.ts' --min-lines 8 --min-tokens 70 --reporters json --output /tmp/jscpd --silent`，再用 python 读 `/tmp/jscpd/jscpd-report.json` 的 duplicates 按 lines 排序。优先看**跨文件**副本（最容易漏字段）；展示层（views / components）不许值导入 core / mechanics / specs，合并时放到 utils 或 composables。每处先比对语义，相同且合并更简单才动，否则在 r6 清单记「不做 + 理由」。
+2. 若 1 无值得做的：回到「两份实现表达同一事实」这条线，grep `JSON.parse(JSON.stringify(` 在 composables 里的用法，看有没有别的手写深拷贝快照（CC-278 只锁了带 `team: configStore.team` 的形态）。
 
 **已知坑**：
-- 分析器改 store 前后一律 `snapshotStore` / `restoreStore`（configSnapshot.ts），内联副本会被 CC-278 锁拦；
+- 分析器改 store 前后一律 `snapshotStore` / `restoreStore`（configSnapshot.ts）；
 - 量 HEAD 的测试（`agentIdentity.test.ts` T8）提交前 verify 覆盖不到，影响身份度量时提交后再跑一次；
 - 角色身份只有 agent.id（CC-276）；队友 buff 拥有者在加载后等于组 id（CC-275）；
+- GitHub 偶尔不通（第 292–293 轮）：push 超时就记进交接，下一轮开工先补推；
 - 杀进程只 kill 具体 pid（`pgrep -f` 会匹配到 wsl_exec 自己的 shell）；
 - 新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
