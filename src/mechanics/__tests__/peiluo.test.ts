@@ -61,15 +61,14 @@ describe('佩洛伊斯（1551）影画1 黄昏旧章', () => {
   it('★ 轴内终结技喧响消耗按槽解析 cfg.ultimateCost（不是按 agentId 认人）', async () => {
     const { resolveAxisUltimateDecibelCost } = await import('@/composables/resourceCalc/convergence')
     const chars = [{ ultimateCost: 3000 }, { ultimateCost: 2000 }] // 槽0 普通、槽1 佩洛伊斯
-    const ULT = 'Ultimate: Total Annihilation'
+    const ULT = true // CC-319：第一个参数改为「是否终结技」（由调用方经 chainMoveKind 判定）
     // 同一招式名、不同槽 ⇒ 消耗必须不同（这正是「按槽读」与「按 agentId/固定槽读」的分水岭）
     expect(resolveAxisUltimateDecibelCost(ULT, chars, 0)).toBe(3000)
     expect(resolveAxisUltimateDecibelCost(ULT, chars, 1), '槽1 必须读到 2000').toBe(2000)
     // 未设 ultimateCost 的槽回落全局默认
     expect(resolveAxisUltimateDecibelCost(ULT, [{}], 0)).toBe(3000)
     // 非终结技招式 = 0（该分支的守卫仍在）
-    expect(resolveAxisUltimateDecibelCost('Basic Attack: Sunset', chars, 1)).toBe(0)
-    expect(resolveAxisUltimateDecibelCost(undefined, chars, 1)).toBe(0)
+    expect(resolveAxisUltimateDecibelCost(false, chars, 1)).toBe(0)
   })
 
   it('★ 编排层给佩洛伊斯槽写的是 2000（模块口径，非全局默认）', async () => {

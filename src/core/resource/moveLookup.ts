@@ -9,6 +9,7 @@
  * 依赖方向：本文件**不得** import `core/resource.ts`（防循环依赖）；只依赖类型与 `data/moveFusions`。
  */
 import type { ExSpecialCostType } from '@/types/resource'
+import { isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
 import { moveFusionByMoveId } from '@/data/moveFusions'
 
 /**
@@ -109,10 +110,7 @@ export function findUltimate(agentSkills: {
   const chain = agentSkills.categories.find(c => c.id === 'chain')
   if (!chain) return null
 
-  const ultMove = chain.moves.find(m => {
-    const name = m.name?.en?.toLowerCase() || ''
-    return name.includes('ultimate') && !name.includes('chain attack')
-  })
+  const ultMove = chain.moves.find(m => isUltimateMoveName(m.name?.en)) // CC-319：单一事实源
   if (!ultMove) return null
 
   // 多段终结技（登记组，如妮可 特制以太榴弹 = 炮击 + 能量场）：倍率/喧响取整段，
@@ -212,10 +210,7 @@ export function findChainAttack(agentSkills: {
   const chain = agentSkills.categories.find(c => c.id === 'chain')
   if (!chain) return null
 
-  const chainMove = chain.moves.find(m => {
-    const name = m.name?.en?.toLowerCase() || ''
-    return name.includes('chain attack') && !name.includes('ultimate')
-  })
+  const chainMove = chain.moves.find(m => isChainAttackMoveName(m.name?.en)) // CC-319：单一事实源
   if (!chainMove) return null
 
   const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, chainMove, rowValue)

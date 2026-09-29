@@ -254,6 +254,7 @@ import { fmt } from '@/utils/format'
 import type { StunAxisAction, StunAxisPlan, StunAxis } from '@/types/resource'
 import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/data/bossEntryAnomalyOptions'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
+import { findUltimateMove, chainMoveKind } from '@/data/chainMoveKind'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -706,7 +707,7 @@ const allMoves = computed(() => {
   // + 触手（即使当前执行数为 0 也常驻显示）
   for (const c of chars) {
     const skills = catalogStore.getAgentSkills(c.agentId)
-    const ultMove = findMoveByEn(skills, 'ultimate')
+    const ultMove = findUltimateMove(skills) // CC-319：原 findMoveByEn(skills,'ultimate') 不看分类，青衣会取到普攻 1251001
     if (ultMove && promoteOwnerSlot.value >= 0 && !agentOwnsPromoteVariantAxisBlocks(c.agentId)) {
       for (const v of ['60', '90'] as const) {
         let consumed = 0
@@ -805,11 +806,6 @@ function moveOptions(s: number) {
   }).map(m => ({ label: m.label + (m.remaining <= 0 ? ' (×0)' : ''), value: m.moveId }))
 }
 function moveLabel(mid: string) { return allMoves.value.find(m => m.moveId === mid)?.label ?? mid }
-function findMoveByEn(skills: any, enPart: string): any {
-  if (!skills) return null
-  for (const cat of skills.categories ?? []) for (const m of cat.moves ?? []) if ((m.name?.en ?? '').toLowerCase().includes(enPart)) return m
-  return null
-}
 function actDuration(act: StunAxisAction): number {
   // 轴块 duration 覆盖倍率表 actionTime（仪玄轴内凝云术蓄力 0-2s 可调）
   const per = typeof act.duration === 'number' ? act.duration : (allMoves.value.find(m => m.slot === act.slot && m.moveId === act.moveId)?.actionTime ?? 0)
@@ -825,8 +821,7 @@ function isPromotable(moveId: string): boolean {
   if (moveId === '1371020') return false
   for (const s of [0, 1, 2]) {
     const skills = catalogStore.getAgentSkills(configStore.team[s]?.agentId ?? '')
-    const move = findMove(skills, moveId)
-    if (move && (move.name?.en ?? '').toLowerCase().includes('ultimate')) return true
+    if (chainMoveKind(skills, moveId) === 'ultimate') return true // CC-319
   }
   return false
 }

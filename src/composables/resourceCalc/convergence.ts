@@ -53,6 +53,7 @@ import { getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/help
 import { calcSpecialActionBonus, PARRY_DECIBEL_BONUS } from '@/core/anomalyPool'
 import { ULTIMATE_COST_DEFAULT, calcTeamResources } from '@/core/resource'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
+import { chainMoveKind } from '@/data/chainMoveKind'
 // 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 / T67-a1 刀 A）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { applyTeamMechanics, collectNextRoundFeedback, resolveMechanicSettings } from './panelPhases'
@@ -212,7 +213,7 @@ export function createRunCalcRound(deps: {
     // 弹刀注入槽位 0（主C，弹刀喧响经伴随覆盖全队），轮间经 prevDecibelParry 线程收敛。
     const decibelParryActive = guaranteeUltimate && interactionTopUpSlot < 0
 
-    /** 轴内某槽位终结技块总次数（× 窗口数），与 buildStackAxes 的终结技判定同口径（英文名含 ultimate 且非 chain attack） */
+    /** 轴内某槽位终结技块总次数（× 窗口数）。判定走 `chainMoveKind`（CC-319：只认 chain 分类，青衣普攻 Penultimate 不算） */
     const axisUltimateNeed = (axes: StunAxis[], stunCountN: number, slot: number): number => {
       const winAlloc = allocateAxisWindows(axes, stunCountN)
       let n = 0
@@ -221,9 +222,7 @@ export function createRunCalcRound(deps: {
         for (const act of axis.actions) {
           if (act.slot !== slot || act.sourceTag === 'gift') continue
           const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? '')
-          const mv = findMoveById(skills, act.moveId)
-          const en = (mv?.name?.en ?? '').toLowerCase()
-          if (en.includes('ultimate') && !en.includes('chain attack')) n += act.count * wins
+          if (chainMoveKind(skills, act.moveId) === 'ultimate') n += act.count * wins
         }
       })
       return n
@@ -242,8 +241,7 @@ export function createRunCalcRound(deps: {
           // 赠送连携块（怒焰·赠，sourceTag='gift'）= 诺姆膛温换连携的轴内标记：不占目标自身连携次数
           if (act.sourceTag === 'gift') continue
           const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[act.slot]?.agentId ?? '')
-          const en = (findMoveById(skills, act.moveId)?.name?.en ?? '').toLowerCase()
-          if (en.includes('chain attack') && !en.includes('ultimate')) {
+          if (chainMoveKind(skills, act.moveId) === 'chainAttack') { // CC-319
             axisChainTotal[act.slot] = (axisChainTotal[act.slot] ?? 0) + act.count * wins
           }
         }

@@ -28,6 +28,7 @@ import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } 
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById } from './skillRows'
+import { chainMoveKind } from '@/data/chainMoveKind'
 import { ULTIMATE_COST_DEFAULT } from '@/core/resource'
 import { panelAt } from '@/core/panel'
 
@@ -248,7 +249,7 @@ export function createConvergenceRoundInputs(deps: {
           // 2026-09-15 arch 棘轮：原为 `agentId === '1551' ? 2000 : 3000` 硬编码特判——
           // 而 `specPanelBuffs.ts:174` 早已写 `cfg.ultimateCost = PEILUO_ULT_COST`（2000），
           // 故该 agentId 判断**冗余**（判据同 T6：字段唯一写入方 = 该角色模块 ⇒ 不需要再认人）。
-          decibelCost = resolveAxisUltimateDecibelCost(move?.name?.en, resourceConfig.value?.characters, act.slot)
+          decibelCost = resolveAxisUltimateDecibelCost(chainMoveKind(skills, act.moveId) === 'ultimate', resourceConfig.value?.characters, act.slot)
           // 60/90 转大块是琉音好评赠送的终结技（白送，不耗目标喧响），只占窗口时间不扣喧响
           if (act.promoteVariant) decibelCost = 0
         }
@@ -341,10 +342,12 @@ export function createConvergenceRoundInputs(deps: {
  * 必须断言解析结果**随槽位变化**（实测教训：第一版测试断言在输入上，反向验证时照样绿）。
  */
 export function resolveAxisUltimateDecibelCost(
-  moveEnName: unknown,
+  isUltimate: boolean,
   chars: ReadonlyArray<{ ultimateCost?: number }> | undefined,
   slot: number,
 ): number {
-  if (!String(moveEnName ?? '').toLowerCase().includes('ultimate')) return 0
+  // CC-319：原收英文名、只判 `includes('ultimate')`（不看分类）⇒ 轴里放青衣普攻「Penultimate」块会被扣 3000 喧响。
+  // 现由调用方用 `chainMoveKind(...) === 'ultimate'` 判定后传入。
+  if (!isUltimate) return 0
   return chars?.[slot]?.ultimateCost ?? ULTIMATE_COST_DEFAULT
 }
