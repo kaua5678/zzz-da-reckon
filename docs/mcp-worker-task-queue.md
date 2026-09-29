@@ -96,16 +96,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 341 轮（lane lead-arena-0925c）：CC-325（`6c7cb19e`，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 342 轮（lane lead-arena-0925c）：docs-only（无代码缺陷），已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 布尔字段「一词两义」普查：无第二例，收口（r6 第 341 行）。r6 §5 前提复测已满足，不再做 store 参数收窄。
-- 影画单调性体检发现蕾米埃尔特殊虚耀被「队友虚耀 = 0」门控吞掉：时间扣了，伤害没算，4 命反而掉伤害 ⇒ CC-325 修复。golden 只动 agent:1581 c3–c6 伤害，时间账不变。新增 `cinemaMonotone.test.ts` 守护影画单调性（白名单 1091 c3→c4）。详见 `docs/mcp-stun-dual-source.md` §24.165。
+- extraNecessaryAction 普查（3 处，全部一致或已修）、「占时间但零伤害」全量探针（248 次，3 类全部合理）、组队影画单调性（3 处下降，归因为整数台阶 / 重分配 / 非收敛参照）均收口。详见 `docs/mcp-stun-dual-source.md` §24.166、r6 第 342 行。
+- 新数据：随机组队 [id,1211,1311] × c0–6 共 434 次中，**converged=false 19 次（4.4%）**，名单见 §24.166 ④。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
-1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选新题，先登记要查什么。有日期的条件：坑 25 到期日 2026-10-31。
-2. 自选方向建议（未登记）：CC-325 属于「必做动作扣了时间，对应伤害却被别的门控挡掉」。可以普查所有 `extraNecessaryAction` 钩子（grep `extraNecessaryAction:`），逐个核对「计时条件」和「出伤条件」是否一致。探针可参照 `/home/user/mcp-tools/zzProbe341.test.ts`：对单人和组队分别跑，看 necessaryTime 里有该动作、伤害行却为 0 的角色。
-3. 可选：cinemaMonotone 目前只看单人用例。若要覆盖组队，可在 timeGolden 里给 2–3 个代表队加命座档位；注意会扩大 golden，先评估收益。
+1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选。有日期的条件：坑 25 到期日 2026-10-31。
+2. 自选方向建议（未登记）：对 §24.166 ④ 的 19 个非收敛用例做**分型**（`resourceResult.convergence` / iter 数，环长度，环成员中哪个整数量在跳），判断是否有一类可以用局部手段（比如某个模块的 finalizePass 声明缺失）解决，而不必动「全局实数化收敛重构」。先只做分型表写进 docs，不改代码；若有一类能局部修，再开 CC 卡。探针参照 `/home/user/mcp-tools/zzProbe342b.test.ts`（输出里已有 conv 字段）。
+3. 可选：琉音猜拳行在 damagePoolRows 中 moveId 为 null，按 moveId 做关联的工具（探针、对比卡）会漏掉。是否给模块行补 moveId，需先查读 moveId 的消费方，属于「可归一」类，评估后再决定。
 4. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

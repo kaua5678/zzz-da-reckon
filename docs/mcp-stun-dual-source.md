@@ -4351,3 +4351,26 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 新增 `src/composables/__tests__/cinemaMonotone.test.ts`：读 golden 单人用例，要求相邻影画档位伤害不下降，白名单 `1091:c3->c4` 并写原因。变异确认：换回旧基线后报出 1581 两处下降。
 - **验证**：vue-tsc 干净；全量 verify EXIT=0。
 - **回退**：`git revert 6c7cb19e`（golden 一起回退；cinemaMonotone 的白名单需同时加回 1581 两项）。
+
+### 24.166 第 342 轮：extraNecessaryAction 普查 + 「占时零伤」探针 + 组队影画单调性 / 收敛普查（均无代码缺陷，docs-only）
+
+- **① extraNecessaryAction 钩子普查**（第 341 轮交接第 2 条）：`grep extraNecessaryAction` 全仓只有 3 处实现。
+  - remielle：CC-325 已修（§24.165）。
+  - aire（1501，`aireExtraNecessaryActions`）：动作带 moveId，由 `core/resource/rowBuild.ts:228–250` 通用分支直接产执行行，计时和出伤读同一行 ⇒ 一致。
+  - miyabi（1091，`miyabiFrostMoonReserve`）：没有 moveId，只预留时间（rowBuild 跳过）。它和 `buildMiyabiExecutions` 都以 `getFrostFallResource(...).frostMoonCount>0` 为门控，C6 两侧都读 `panel.miyabiCinema6`；CC-202 有测试锁 ⇒ 一致。
+  - 结论：**无新缺陷，这条线收口**。
+- **② 「占时间但零伤害」全量探针**（`/home/user/mcp-tools/zzProbe342.test.ts` + `an342.py`）：62 人 × 单人/组队（id + 从 1211/1311/1131/1041 取 2 个队友）× c0/c6，共 248 次。列出 slot0 中 totalTime>0 且 count>0 的执行行，按 moveId 在 damagePoolRows 里汇总伤害，没有伤害的只有 3 类：
+  - 1471 般岳「后摇（狮子吼·怒）」`banyue-recovery-lundao`：纯收招，本来就无伤；
+  - 1481 琉音「强化特殊技：石头 / 剪刀 / 布」：伤害行存在，但伤害池里这几行的 moveId 为 null（模块产行），探针按 moveId 匹配不上 ⇒ 误报；
+  - 1531 星徽比利「招架支援：英雄登台 #1」1531018：catalog 里这一招只有 daze 407.7、ether_purify，**没有 damage 行**（62 人中至少 20 人的招架 #1 都是这样，伤害在支援突击行）。只有比利冒出来，是因为她的模块默认招架 4 次（starlightBilly.ts:117，用户口径），其余角色默认 0 次 ⇒ 合理。
+  - 结论：收口。
+- **③ 组队影画单调性**（`zzProbe342b.test.ts` + `an342b.py`；队伍 = id + 从 [1211,1311,1131,1041] 中去掉 id 后取前 2 个，slot0 取 c0–c6，共 434 次，teamTotalDamage）：3 处下降。
+  - 1161 莱特 c0→c1 全队 −3.36%（本人 +3.70%）：1 命把溃败失衡延长 +3s 改为 +5s，失衡窗口变长后取整的失衡次数 4→3，三人连携、1311 和弦随之减少。两侧都 converged ⇒ **整数台阶**，「修整数台阶」维持否决。实数 stunCount 没有直接导出，这一步是从连携 4→3（三人同步）和窗口时长公式 `stunWindowDuration` 推出来的。
+  - 1181 格莉丝 c0→c1 −0.14%：强化特殊技 +1、普通特殊技 −1、感电略降，两侧都收敛 ⇒ 正常的时间重分配。
+  - 1431 叶瞬光 c3→c4 −1.51%：4 命只是 `initialDecibelGift` +1000（只给自己）加帷幕封顶 2.1→3.0；单人 c3→c4 终结技 1→2，+7.6%。组队 c3 **converged=false**（c4 为 true），全部标量字段里只有能量 / 次数有差异 ⇒ 参照值是振荡中的停点，**不是 4 命缺陷**。
+- **④ 收敛普查**（同一批 434 次）：**converged=false 共 19 次（4.4%）**，涉及 1011 c0；1101 c3–6；1391 c2–6；1431 c2–3；1481 c1–3；1501 c3；1511 c4–5；1591 c1。
+  - 与 `src/core/resource.ts` INNER_LOOP_OSCILLATOR_STOP 注释（「104 预设只剩 2 队真整数环」）对照：预设队的非收敛率很低，但随机组队明显更高。
+  - 这属于已登记的「整数量子振荡器，非收敛轨迹没有更对的停点」，真正的解法是 DEBT「全局实数化收敛重构」，工作量大，与判据的关系需要单独设计 ⇒ 本轮**不做**，只记录数据。
+  - 影响：任何「组队场景比较」类守护（单调性、对比卡）都必须先过滤 converged=false，FEATURES_GUIDE 中组队排名已经这样过滤。
+- **代码**：无改动；探针文件已删除，没有入库。
+- **回退**：纯文档，无需回退。
