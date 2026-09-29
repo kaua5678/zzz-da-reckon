@@ -29,9 +29,16 @@ import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 import { simulateCounterStateMachine } from '@/specs/stateMachine'
-import { findMoveById, findMoveByEnglishName } from '@/data/moveTableQueries'
+import { findMoveById } from '@/data/moveTableQueries'
 
 const VELINA_AGENT_ID = '1561'
+/**
+ * CC-273：招式按 catalog moveId 认（主键），不再按英文名。修前 3 处 `findMoveByEnglishName` + 2 处 `name.en ===`，
+ * 而同文件 resultCardCorrosion 早已按 id 写 1561007——同一招式两种认法；名字又会被 enrich / 数据更新改写（已知坑）。
+ */
+const VELINA_EYE_MOVE_ID = '1561006' // EX Special Attack: Wind Shear - Eye of the Storm
+const VELINA_SWEEPING_CYCLONE_1_MOVE_ID = '1561007' // Sweeping Cyclone #1（广域气旋）
+const VELINA_SWEEPING_CYCLONE_2_MOVE_ID = '1561020' // Sweeping Cyclone #2
 
 function isAdditionalAbilityActive(team: ReadonlyTeam, slot: number, agent: Agent): boolean {
   return team.some(member => {
@@ -220,9 +227,9 @@ function buildVelinaCharConfig({
   cfg,
   getRowValue,
 }: AgentCharConfigInput): void {
-  const velinaEye = findMoveByEnglishName(skills, 'EX Special Attack: Wind Shear - Eye of the Storm')
-  const velinaSweeping1 = findMoveByEnglishName(skills, 'Sweeping Cyclone #1')
-  const velinaSweeping2 = findMoveByEnglishName(skills, 'Sweeping Cyclone #2')
+  const velinaEye = findMoveById(skills, VELINA_EYE_MOVE_ID)
+  const velinaSweeping1 = findMoveById(skills, VELINA_SWEEPING_CYCLONE_1_MOVE_ID)
+  const velinaSweeping2 = findMoveById(skills, VELINA_SWEEPING_CYCLONE_2_MOVE_ID)
   const additionalAbilityActive = isAdditionalAbilityActive(team, slot, agent)
 
   cfg.velinaEnabled = true
@@ -382,7 +389,7 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
     const daze = getRowValue(foundMove, 'daze')
     const anomaly = getRowValue(foundMove, 'anomaly_buildup')
     const moveName = exec.moveName.replace(/（.*）/g, '').trim()
-    const isVelinaBroadCyclone = foundMove.name?.en === 'Sweeping Cyclone #1' || foundMove.name?.en === 'Sweeping Cyclone #2'
+    const isVelinaBroadCyclone = foundMove.id === VELINA_SWEEPING_CYCLONE_1_MOVE_ID || foundMove.id === VELINA_SWEEPING_CYCLONE_2_MOVE_ID
     const velinaResReductionMult = 1 + (additionalAbilityActive ? 14 : 7) / 100
     const velinaCinema1 = cinemaLevel >= 1
     const velinaCinema6 = cinemaLevel >= 6
@@ -406,7 +413,7 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
     }
 
     if (anomaly > 0 && count > 0 && foundElement) {
-      const isSweepingCyclone2 = foundMove.name?.en === 'Sweeping Cyclone #2'
+      const isSweepingCyclone2 = foundMove.id === VELINA_SWEEPING_CYCLONE_2_MOVE_ID
       if (isSweepingCyclone2) {
         if (velinaCinema2 && velinaColorElementValue) {
           const baseBuildUp = anomaly * velinaBuildUpMult
@@ -536,7 +543,7 @@ export const velinaMechanic: AgentMechanicModule = {
   agentIds: [VELINA_AGENT_ID],
   name: '维琳娜',
   // CC-66：ResourceResultCard 腐蚀状态机展示（原组件写死本角色 id / Sweeping Cyclone #1 moveId）
-  resultCardCorrosion: { poolReleaseEventMarker: CORROSION_CYCLONE_RELEASE_ID_PREFIX, broadCycloneMoveId: '1561007' },
+  resultCardCorrosion: { poolReleaseEventMarker: CORROSION_CYCLONE_RELEASE_ID_PREFIX, broadCycloneMoveId: VELINA_SWEEPING_CYCLONE_1_MOVE_ID },
   description: '风华/风蚀专属资源、广域/微域气旋、赋彩属性与风化乱流命座机制。',
   applyPanel: applyVelinaPanel,
   buildCharConfig: buildVelinaCharConfig,

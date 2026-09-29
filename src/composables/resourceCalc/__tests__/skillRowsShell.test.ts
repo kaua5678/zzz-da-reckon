@@ -29,7 +29,6 @@ const C_EXPORTS = [
   'fusedRowValue',
   // CC-224：3 张元素键表已删（单一来源 utils/elementStatKeys），不再经壳转出
   'findMoveById',
-  'findMoveByEnglishName',
   'isHealingRow',
   'getHealingAmount',
   'getSpecialResourceRecovery',
@@ -47,7 +46,7 @@ const STAYED = ['teamHasAgent', 'findSlotByIdentity', 'normalizeDisplayTime', 'b
  * `skillRows.ts` 与 `helpers.ts` 各留一层 import + export 壳。下沉理由 = 录入层 `claret.ts` 需要其中两个，
  * 而录入层值导入编排层是全仓唯一反向边（判据 19 `layer-inversion`）。
  */
-const SUNK_TO_DATA = ['getRowValue', 'fusedRowValue', 'findMoveById', 'findMoveByEnglishName', 'pickThirdNamedBasicSegment'] as const // CC-253 加 findMoveByEnglishName
+const SUNK_TO_DATA = ['getRowValue', 'fusedRowValue', 'findMoveById', 'pickThirdNamedBasicSegment'] as const // CC-253 加 findMoveByEnglishName；CC-273 删（维琳娜改按 moveId）
 
 describe('R22 刀 B：skillRows 壳契约', () => {
   it('① C 簇 14 个符号经 ./helpers 壳可达，且与 ./skillRows 是**同一个绑定**', () => {
@@ -97,7 +96,7 @@ describe('R22 刀 B：skillRows 壳契约', () => {
     // 只有 vue-tsc -b 红（R22 刀 B 教训）⇒ 这里读源码钉形态。
     const src = readFileSync(join(__dirname, '..', 'skillRows.ts'), 'utf8')
     expect(src).toMatch(/^import \{[^}]*\} from '@\/data\/moveTableQueries'$/m)
-    expect(src).toMatch(/^export \{ getRowValue, fusedRowValue, findMoveById, findMoveByEnglishName, pickThirdNamedBasicSegment \}$/m)
+    expect(src).toMatch(/^export \{ getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment \}$/m)
     expect(src).not.toMatch(/export \{[^}]*\} from '@\/data\/moveTableQueries'/)
     // 定义确实不在 skillRows.ts 里了（不许两处各一份）
     for (const name of SUNK_TO_DATA) expect(src).not.toMatch(new RegExp(`^export function ${name}\\b`, 'm'))
