@@ -3640,3 +3640,25 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **没有加锁**：这是局部写法，不是会被再抄的口径；仓库也没有组件挂载测试基础设施（没有 @vue/test-utils）。jscpd 定期重扫能发现回退。
 - **影响**：只涉及展示层一页，计算零差（verify 全绿）。
 - **回退**：revert 54baeebe。
+
+### 24.122 第 298 轮：jscpd 同文件克隆收尾（CC-283 d3fbccc2，CC-284 94817ea8）
+
+**CC-283：橘福福 / 露西的「cfg + state → 机制源」各收成一个装配函数**（CC-279 裁决「角色模块内只保留一个装配函数」的延续）
+- `specPanelBuffs.ts`（橘福福 1391）：
+  - CC-283 前，`buildExecutions` 调 `computeJufufuCycle` 后把结果写进 `cfg.jufufuCycle`；`buildResourceResult` 先读这个缓存，读不到再用一份手抄入参重算。手抄那份**漏了 `frontActionCount` / `frontSwitchRatio`**，也就是 2026-09-09「阶段 1 第二刀」要消灭的 cfg 副作用缓存模式（卢西娅 `luciaAdditionalAttackCap` 当时已改）。
+  - 现在由 `jufufuCycleOf(cfg, state, executions)` 统一装配：`buildExecutions` 传钩子当时的行，`buildResourceResult` 传 `preModuleExecutions`（与卢西娅 `buildLuciaResourceResult` 同一模式），并删除 `cfg.jufufuCycle` 缓存。`cfg.jufufuSpinCount` 保留，因为 `specs/agents/1391.json` 的 `countField` 在读它。
+  - 回退路径里的 frontSwitchRatio：只有 frontActionCount > 0 时 `frontBlockSeconds` 才读它，所以缺行基准时加上它不改变结果。
+  - 验证：timeGolden 基线含 1391，verify 零差，说明装配期重算与原缓存逐位一致。
+- `lucy.ts`（1151）：`buildExecutions` 与 `buildResourceResult` 的 `computeLucyCheer` 入参逐字相同，收成 `lucyCheerOf(cfg, state)`。
+- 回退：revert d3fbccc2。
+
+**CC-284：两处聚合 / 摊点循环收成 helper**
+- `composables/freeCompare/metrics.ts`：7 个 perSlot 指标各手写一个「`__total__` + 按 agentId 分量」循环，另有与 `sumRowsBy` 同义的 `sumRowsBySlot`。现在统一走 `sumRowsBy`，在它上面加两个薄壳：`perCharacter`（characters[] 字段）和 `perSlotArray`（按槽位下标排列的数组）。
+  - 语义取超集：key 为空时只计 `__total__`、不产生空键分量（原先角色循环这样做；伤害行路径以前会写出 `''` 键，但 UI 只按 agentId 取分量，从不读空键）。
+  - 角色循环原来是覆盖写 `out[id] = v`，现在是累加。队伍里 agentId 唯一（usedAgentIds），两者等价。
+- `composables/versionChartGeometry.ts`：chart3 散点（7px）与 scPts（14px）的「同节点多点左右摊开」计数循环收成模块内的 `spreadVersionXsOf`（未导出，以免成为死导出）。算术顺序不变（节点 x + 偏移）。
+- **不做**：`AttributeConfigPage.vue` 53/11（15 行）是 CC-282 之后 `ENEMY_FIELDS_HEAD` / `TAIL` 的两段 v-for，中间夹着体型下拉和快速支援只读框。合成一段要在模板里按 kind 分支，并不更简单。
+- 验证：verify 全绿（含 freeCompare 三个测试文件）。
+- 回退：revert 94817ea8。
+
+**jscpd 现状**：ts + vue、min-lines 8 下，除上面「不做」的一处外已清零。之后只在大改后重扫，不再作为主队列。

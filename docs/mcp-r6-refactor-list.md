@@ -448,3 +448,4 @@
 | 295 | 角色模块私有钳位 helper ×20 | 可归一：utils/finiteClamp，CC-280（`0b4664f3`） | 异义 clamp01 组待核实 NaN 可能性；CharacterCard↔ResourcePage 与 6 处同文件克隆待看 |
 | 296 | 展示层标签颜色表 ×2 / CharacterCard 选项 ×2 | 可归一：agentLabelMaps，CC-281（`20ebfa5b`）；推翻 285 行「颜色映射不收」（当时漏看职业 / 属性表） | lumiflux 无颜色（审美未决）；jscpd 剩 5 处同文件克隆待看 |
 | 297 | AttributeConfigPage 敌人数值框 ×11 | 可结构化：描述表 + v-for，CC-282（`54baeebe`） | jscpd 剩 specPanelBuffs / lucy / freeCompare metrics / versionChartGeometry 同文件克隆 |
+| 298 | 橘福福 cfg 缓存 + 回退分叉 / 露西装配 ×2 / 指标聚合循环 ×7 / 版本图摊点 ×2 | 可归一：CC-283（`d3fbccc2`）、CC-284（`94817ea8`）；AttributeConfigPage 两段 v-for「不做」 | jscpd 清零；其余模块的 cfg 写回缓存待普查（见交接） |
