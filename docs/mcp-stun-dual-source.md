@@ -4326,3 +4326,28 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **timeFillRatchet**：yixuan-roxy-lucia 留白 0.7→0.6（归因本卡），已重生成。
 - **验证**：vue-tsc 干净；全量 verify EXIT=0。
 - **回退**：`git revert 5621d802`（基线一起回退）。
+
+### 24.165 第 341 轮：布尔字段一词两义普查（无第二例）+ CC-325 蕾米埃尔特殊虚耀被队友门控吞掉（6c7cb19e，数值卡）
+
+- **普查**（第 340 轮交接第 2 条；脚本 `/home/user/mcp-tools/flag2.py`）：`CharacterOperationConfig` 共 24 个布尔字段，逐个统计读写点。
+  - `exContinuous` / `exFinalize`：唯一写入方 yidhari，core 中 4 处 `exContinuous && !exFinalize` 都是同一语义「迭代期实数」⇒ 不是一词两义。
+  - 三套终局整数化旗标（1051 exFinalize、1531 billyFinalizeChain、1431 yeshuguangFinalizeForms）已由 `core/resource/finalizePasses.ts`（CC-6c）统一执行，模块只声明 `finalizePass`。复位不对称是有意保留（文件头注释），再合并字段会动已锁的行为 ⇒ **不做**。
+  - `isFlashUser`：回能公式、能量护盾回能、莱特统计全队能量消耗三处读取都是「闪能而非能量」的推论 ⇒ 单一语义。
+  - `velinaAdditionalAbilityActive`：代码中零读取，但 spec 1561.json 以 `enabledField` 字符串键读取 ⇒ 不是死写。
+  - 结论：CC-324 是唯一一例，**这条线收口**。
+- **r6 §5 前提复测**：「resourceCalc 仍直接读 store」已不成立。resourceCalc/ 下 8 个文件对 stores 的引用全部是 `import type`，store 以参数注入；唯一的值导入 `stores/selectionReads.ts` 是纯函数。再把参数类型收窄成快照接口只是类型搬家（约 170 处成员访问），而「管线后半段并入 core」已否决 ⇒ **不做**。
+- **影画单调性体检**（`mono.py` 读 golden 单人用例 `agent:<id>:c<N>`）：62 人里有 3 处伤害随影画升级而下降。
+  - 1091 c3→c4 −0.17%：终结技 3→5、强特 18→17，属于资源重新分配 ⇒ 合理，登记白名单。
+  - **1581 c3→c4 −4.03%、c5→c6 −1.29%：真缺陷**。
+- **CC-325 根因**：蕾米埃尔 1/4/6 命的「特殊虚耀」来自开局 / 补充的**自带**虚曜点，由垂虹打出（×2.5 独立乘区，§ remielle.test @fact），与队友异常无关。但：
+  - `extraAnomalyRows` 里特殊虚耀段嵌在 `if (voidflareTotal > 0 && remielleSkills)` 内（voidflareTotal = 非蕾米槽位的异常触发数）；
+  - `remielleAnomalyEventRecords` 在 voidflareTotal≤0 时 `return []`；
+  - 而 `extraNecessaryAction`（垂虹必做动作）照扣前台时间。
+  ⇒ 队友不产生异常（单人 / 无异常队友）时，时间扣了、伤害没算；4 命多补 3 个点，多扣 4.5s 平A，于是掉伤害。与 CC-288「提前 return 早于写入」同型。
+- **改动**（`src/mechanics/agents/remielle.ts`）：`skillLevelBonus` / `c1ResIgnore` 提到门控之前（只依赖蕾米面板）；特殊虚耀段移出 `voidflareTotal > 0` 块，改用自己的 `remielleSkills` 守卫；anomalyEventRecords 删掉提前 return（虚耀池类记录 count=0，由末尾 `filter(count > 0)` 剔除）。行对象字段和顺序逐字不变。
+- **golden**：只动 4 个叶子。agent:1581 c3 1347901→1425449（+5.8%）、c4 1293562→1467267（+13.4%）、c5 1432271→1616194（+12.8%）、c6 1413781→1781629（+26.0%）。时间账（slots）逐位不变，因为时间原本就扣了；c0 没有 1 命，不变；组队预设都有异常队友，零差。timeFillRatchet 零差。修后 c3→c6 单调递增。
+- **锁**：
+  - remielle.test +1 例「无队友虚耀 + C1 ⇒ 只产特殊虚耀行 count=3，事件记录同口径」。变异确认：撤掉修复后该例变红。
+  - 新增 `src/composables/__tests__/cinemaMonotone.test.ts`：读 golden 单人用例，要求相邻影画档位伤害不下降，白名单 `1091:c3->c4` 并写原因。变异确认：换回旧基线后报出 1581 两处下降。
+- **验证**：vue-tsc 干净；全量 verify EXIT=0。
+- **回退**：`git revert 6c7cb19e`（golden 一起回退；cinemaMonotone 的白名单需同时加回 1581 两项）。

@@ -96,16 +96,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 340 轮（lane lead-arena-0925c）：CC-324（`5621d802`，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 341 轮（lane lead-arena-0925c）：CC-325（`6c7cb19e`，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 强特次数「取整」与「模块自己产行（skipGenericExSpecial）」解耦：取整成为缺省，持续型强特显式设 `exSpecialCountFractional`（burnice + sustainedEx）。修掉 1181/1621 按小数记资源、按整数产行的错配。golden 只动含 1181/1621 的 18 例，逐条归因见 `docs/mcp-stun-dual-source.md` §24.164。
-- 「强特次数来源收成单一声明」：测量后结论为**不做**（12 个模块的理由不同类），见 r6 第 340 行。
+- 布尔字段「一词两义」普查：无第二例，收口（r6 第 341 行）。r6 §5 前提复测已满足，不再做 store 参数收窄。
+- 影画单调性体检发现蕾米埃尔特殊虚耀被「队友虚耀 = 0」门控吞掉：时间扣了，伤害没算，4 命反而掉伤害 ⇒ CC-325 修复。golden 只动 agent:1581 c3–c6 伤害，时间账不变。新增 `cinemaMonotone.test.ts` 守护影画单调性（白名单 1091 c3→c4）。详见 `docs/mcp-stun-dual-source.md` §24.165。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选新题，先登记要查什么。有日期的条件：坑 25 到期日 2026-10-31。
-2. 自选方向建议（未登记）：CC-324 的同型问题是「一个标志位兼管两件事，缺省值由另一个标志推出」。可以 grep `CharacterOperationConfig` 中形如 `a || !b`、`b ? x : y`（b 为 skip*/is* 标志）的 core 读取点，逐个判断是否也有一词两义。先列清单，再决定做不做。
-3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+2. 自选方向建议（未登记）：CC-325 属于「必做动作扣了时间，对应伤害却被别的门控挡掉」。可以普查所有 `extraNecessaryAction` 钩子（grep `extraNecessaryAction:`），逐个核对「计时条件」和「出伤条件」是否一致。探针可参照 `/home/user/mcp-tools/zzProbe341.test.ts`：对单人和组队分别跑，看 necessaryTime 里有该动作、伤害行却为 0 的角色。
+3. 可选：cinemaMonotone 目前只看单人用例。若要覆盖组队，可在 timeGolden 里给 2–3 个代表队加命座档位；注意会扩大 golden，先评估收益。
+4. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
