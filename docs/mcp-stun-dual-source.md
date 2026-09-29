@@ -3929,3 +3929,14 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **倾向（供下一轮裁定，写明理由）**：CC-151 更晚、更专门针对锁定，且明确把「锁定值被池绕过」定为缺陷 ⇒ 倾向锁定模式下计数权威 = 锁定值。落地方式：让雨果与其他读 `prevPoolStunCount` 的模块改读计数通道（`AgentTeamConfigInput` 若没有 countStun 字段就新增一个通用字段 `axis.countWindows` / `countStun`，physical 非锁定时 ≡ prevPoolStunCount ⇒ 零差；锁定时 = 锁定值；off 模式（难度阶梯 G4 专用）会回到计划实数，需确认坑36 的 0.82→0 问题是否在 G4 复现，必要时对 off 用 `Math.floor` 以外的投影）。然后 CC-299 就能无分叉落地，`hugo.test.ts:289` 期望随口径改为 3 并在注释里引用本节。
   - 另一个待查：锁定模式下池为什么是 4（池不受锁定约束？）。若锁定语义是「失衡恰 N 次」，池的 stunCount 本身也该钳到 N，那样三方自动一致。先读 `solveTeam.ts` 的 `lockedStunCount` 路径与 `stunPool` 生成处再定。
 - **回退**：本轮无代码改动，无需回退。
+
+### 24.139 第 315 轮：CC-300 锁定失衡下池钉到锁定值（fdf54712）；CC-299 二试仍撤回
+
+- **§24.138 待查项结论**：锁定路径（`solveTeam.ts` `lockedStunCount`）只把外层输入钉成锁定值，池 `sp1.pool.stunCount` 仍按失衡值自算（hugo 锁 3 → 池 4）。锁定的用途（`cinemaUplift.ts#readScene` 注释）是「把次数钉死再比，防止命座抬失衡值 → 次数联动放大成假提升」，而池没钳 ⇒ `prevPoolStunCount`（雨果决算）、`computeStunCoverage`、伤害侧栈都读到未锁次数，假提升从池漏出（`cinemaUplift.ts:82` 注释「3 队里 2 队 stunCount Δ 恒 0」——第 3 队就是这个漏口）。⇒ 判为缺陷，裁定「锁定模式计数权威 = 锁定值」，与 CC-151 一致；坑36 的「池同源」在锁定下自动满足（池 = 锁定值）。
+- **改法**：`convergence.ts` 在 `promoteFixpoint` 得到 `sp1Raw` 后：锁定且池次数 ≠ `countStun` ⇒ `sp1 = { ...sp1Raw, pool: withStunCount(sp1Raw.pool, countStun) }`（返还值 / 总连携同步重建，同 CC-150）。锁到计数通道值而不是裸锁定值：锁定 + 非 physical 投影（如 round 3.6→4，lycaonC2Contract）时池与计数通道同值。
+  - 未钳的：promoteFixpoint **内部**的转大计算仍按池自算次数（钳在其后）。若日后发现锁定场景转大次数与锁定值不配，再把锁定下沉到 promoteFixpoint 入参。
+- **结果**：wt315 `npm run verify` 全绿（4028 passed），golden 零差（golden 不用锁定）；唯一需要改期望的是 `hugo.test.ts`「轴模式：决算次数由轴内块反推」锁 3 场景：池 / 轴栈 / 决算行 4 → 3，三方一致。`hugo.ts` 注释「锁定次数路径池 = 锁定值」现在成立，已补注 CC-300。
+  - cinemaUplift 相关测试全过（锁定下命座对比口径：池次数不再随命座漂）。
+- **CC-299 二试**：在 CC-300 之上重做「伤害侧改读引擎执行集合」，锁定分叉已消失，但 3 红：`hugoVerdictLanding.test.ts:44`（期望栈决算 5 得 2）与 `stunVulnSummary.test.ts` 案例 B / D。三条都显式钉 **off 投影**（`time.stunPlanProjection = 0`）：off 下 `countStun` = 计划实数（≈1.x ⇒ 2 窗），而雨果决算行按坑36 读池（5）。伤害侧旧重算按池 ⇒ 与雨果行一致；改读引擎集合 ⇒ 2 ≠ 5。已撤回（CC-299 未提交）。
+  - **剩余分叉只在 off 投影**（缺省 physical 下 countStun ≡ prevPoolStunCount；锁定下 ≡ 锁定值 ≡ 池）。off 目前只用于难度阶梯 G4（`difficultyLadder.ts:121/183`）与钉 off 的旧测试。
+- **回退**：`git revert fdf54712`（hugo.test 期望随之回到 4）。

@@ -71,17 +71,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 314 轮（lane lead-arena-0925c）：CC-299 试做后撤回，无代码提交；只提交文档（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 阻塞原因：锁定失衡模式下 CC-151（计数 ≡ 锁定值）与坑36（雨果按池整数次数）冲突，`hugo.test.ts:289` 3≠4。详见 `docs/mcp-stun-dual-source.md` §24.138（含探针数据与倾向方案）。
-- 前几轮：313 CC-298 执行集合按计数通道分窗；312 CC-297 threadsApplied；311 CC-296。
+**第 315 轮（lane lead-arena-0925c）：CC-300（`fdf54712`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 锁定失衡下池次数钉到计数通道值；golden 零差；hugo 锁 3 场景 4→3。CC-299 二试因 off 投影下雨果分叉再次撤回。详见 `docs/mcp-stun-dual-source.md` §24.139。
+- 前几轮：314 CC-299 首试撤回（锁定冲突，已由 CC-300 解决）；313 CC-298；312 CC-297。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/`、pullPlanner 系列、FEATURES_GUIDE、check-tokens 都不是本 lane 的，不要 add。
 
 **下一步（直接开工）**：
-1. **先查锁定模式下池为什么不等于锁定值**：读 `src/composables/resourceCalc/solveTeam.ts` 的 `lockedStunCount` 路径（约 :104、:238）和池 stunCount 的产生处；用 `hugo.test.ts:274` 同款设置（1291+1141、锁 3、单决算块轴）打探针。
-   - 若锁定语义应为「失衡恰 N 次」而池没钳 ⇒ 这是根因，钳池（数值卡，跑 golden + 锁定相关 27 个测试文件：`grep -rln stunCountLock src --include=*.test.ts`）。
-   - 若池 ≠ 锁定是有意（锁定只锁外层输入）⇒ 按 §24.138「倾向」让雨果改读计数通道（新增通用契约字段，physical 非锁定零差）。
-2. 口径定了之后再做 CC-299（改法见 §24.138 试做段，已验证除 hugo 外全绿）。
-3. 雨果 `hugo.ts:359` 注释「锁定次数路径池 = 锁定值不受影响」实测不成立，裁定后一并更正。
+1. **CC-299 的最后阻塞 = off 投影下雨果（坑36）与计数通道分叉**。两条路，先量再选：
+   - (a) 引擎执行集合的窗口数在 off 下也读池（即 `axisExecutedStack` 用 `threads.prevPoolStunCount ?? countStun`，与雨果同源）。physical 非锁定 ≡ countStun 零差；锁定下池已钉 ⇒ 零差；只改 off。代价：off 的「计数 = 计划值」口径在轴执行集合上失效（但 off 下 axisChainTotal 仍按 countStun，要一并评估是否也该读池）。
+   - (b) 雨果改读计数通道（契约新增通用字段），off 下回到计划实数 ⇒ 坑36 的 0.82→0 问题在 off 复现 ⇒ 不推荐。
+   倾向 (a)：off 只是遗留口径，轴「块 × 窗」天然是整数次数，读池更物理。量法：只改那一行，跑 `hugoVerdictLanding` / `stunVulnSummary` / `stunPlanAxisWindows` / timeGolden / difficultyLadder 相关测试。
+2. (a) 落地后重做 CC-299（改法见 §24.138 试做段：`CalcRoundResult.axisStack` + `stackTraversalResult` 直读，删 useResourceCalc 里的 `calcStunAxisStack` 重算与 import）。
+3. 低优先：锁定下沉到 promoteFixpoint 入参（§24.139 未钳项）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
