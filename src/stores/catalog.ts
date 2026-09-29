@@ -83,7 +83,17 @@ export const useCatalogStore = defineStore('catalog', () => {
   }
 
   function mergeSpecTeamBuffs(data: TeammateBuffGroup[]): TeammateBuffGroup[] {
-    const out: TeammateBuffGroup[] = data.map(g => ({ ...g, buffs: [...g.buffs] }))
+    // CC-275：拥有者身份归一到组 id（= 拥有者 agentId，CC-199 口径）。采集数据里 1171/1261/1411/1511/1581 的
+    // ownerId / teammateId 是拼音 slug（burnice_white / jane_doe / youye / nangongyu / remielle），而来源面板
+    // （teammateBuffSource.addSourcePanelAliases）只按 agent.id / teammateBuffId（均为数字）登记 ⇒ core/buff 的
+    // cloneEffectWithSourceValue 按 ownerId 查不到来源面板，这些 derived / formula 效果（柚叶 攻击力 40% 转模、
+    // 额外能力 异常掌控公式；简 核心被动 精通公式；蕾米埃尔 攻击力转模）拿不到 x：derived 回落 defaultSourceValue
+    // （柚叶 3000 ⇒ 恒顶 1200），formula 回落接收者自己的面板。在加载处归一，所有按 ownerId
+    // 查拥有者的消费者（来源面板、CC-130 接收槽过滤、HP 来源标签）一次修好。
+    const out: TeammateBuffGroup[] = data.map(g => ({
+      ...g,
+      buffs: g.buffs.map(b => (b.ownerId === g.id && b.teammateId === g.id ? b : { ...b, ownerId: g.id, teammateId: g.id })),
+    }))
     const byId = new Map(out.map(g => [g.id, g]))
     for (const [agentId, spec] of getAgentSpecsByAgentId()) {
       const tbs = spec.teamBuffs ?? []
