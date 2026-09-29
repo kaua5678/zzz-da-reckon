@@ -5,6 +5,13 @@
  * stable 比相邻轮；二周期比 k 与 k-2。签名历史只在本轮判定之后追加。
  * 这是既有监测量的显式投影，不是全部 CalcRoundThreads 的序列化；新增独立反馈需补判据。
  * 例外（CC-314）：模块下一轮反馈字典 `moduleFeedback` 整体入签名（键排序），模块新增键不必再改这里。
+ * 口径（CC-315）：stable 的含义是「本轮输入 = 下一轮输入」——CalcRoundThreads 的每个字段要么在签名里，
+ * 要么是签名已有项的从属量：decibelParryBasisShort（随 decibelParry）、teamUltimateForJufufu（= Σ 终结次数，第一项）、
+ * anomalyDecibelBonus（= anomalyPool.perSlotBonus，第二项）、auricInkFlash（stable 条件里单独比较）。
+ * **已知例外**：`postRoundInput.stunCount`（上一轮计数通道失衡次数，比本轮输入滞后一拍）——入签名会让
+ * yixuan-jufufu-lucia 的长环在耗尽前认不出（outerCyclePick.test），故不入；停点上它可能仍在变（安比 4 命无连携覆盖时读到上一拍），
+ * 见 docs §24.154 未决项。
+ * 新增 CalcRoundThreads 字段 ⇒ 在这里补一项，或在上面这份从属清单里写明理由（逐字段表见 docs/mcp-stun-dual-source.md §24.154）。
  */
 import type { CalcRoundResult } from './convergence'
 import { giftedPolarAssaultOf } from './giftedPolarAssault'
@@ -29,7 +36,20 @@ export function outerFeedbackSignature(out: CalcRoundResult): string {
     // CC-314：模块反馈字典整体入签名。CC-31 起模块加反馈键「编排层零改动」，但签名看不到字典 ⇒
     // 若新键不是上面各项的函数，stable 会在它收敛前停下。实测现有 14 个键在全部停点已与输入相等（零差）。
     moduleFeedbackSignature(out.threadsNext.moduleFeedback),
+    // CC-315：下一轮会读、原先不在签名里的轴栈能量 / 喧响预算（`calcStunAxisStack` 的 energyBySlot / decibelBySlot，
+    // 按整数点比较；第 330 轮插桩：479 个 stable 停点里 101 / 9 个仍在变，入签名后多跑约 5.6% 轮、结果逐位不变）。
+    slotRecordSignature(out.threadsNext.energyBySlot),
+    slotRecordSignature(out.threadsNext.decibelRegenBySlot),
+    // 其余下一轮输入（第 330 轮插桩停点 0 分叉 ⇒ 零成本）：琉音好评（条件轴解析）、失衡内每窗异常触发（南宫羽）、
+    // 全队帷幕开启总次数（叶瞬光 / 爱芮 / 千夏）、上一轮池整数次数（轴块落地，坑36）。
+    `${out.threadsNext.goodReview},${out.threadsNext.inStunWindowTriggers},${out.threadsNext.teamVeilCountTotal},${out.threadsNext.prevPoolStunCount ?? ''}`,
   ].join('|')
+}
+
+/** 槽位 → 点数表按槽号排序、取整点序列化（预算按整点比较，浮点尾数不算变化）。 */
+export function slotRecordSignature(rec: Readonly<Record<number, number>> | undefined): string {
+  if (!rec) return ''
+  return Object.keys(rec).map(Number).sort((a, b) => a - b).map(k => `${k}:${Math.round(rec[k] ?? 0)}`).join(',')
 }
 
 /** 键排序后序列化（写入顺序不同不应判为变化）；缺键 = 0 与缺省同义，故跳过 0 / 非有限值。 */
