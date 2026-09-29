@@ -72,6 +72,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 ## 2. 最近一轮交接（每轮替换本节）
 
 **第 299 轮（lane lead-arena-0925c）：CC-285（7a783dd5）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- **本轮 push 失败**：`ssh: connect to host ssh.github.com port 443: Connection timed out`（2026-09-29 试了 3 次，与第 292–293 轮同类网络故障）。7a783dd5 和 ed5e3eea 连同本条都只在本地。**下一轮开工先 `timeout 150 git push origin master`**，再用 `git rev-list --count origin/master..HEAD` 确认为 0。
+- 本轮收尾时出现了未跟踪的 `docs/proposals/pull-value-optimization.md`，不是本 lane 写的（来源不明），没有 add。下一轮先读它，判断是否算用户的新需求或提案。
 - 详见 `docs/mcp-stun-dual-source.md` §24.123：删除 37 个只写不读的 cfg 键，新增锁 `src/mechanics/__tests__/cfgWriteOnlyKeys.test.ts`。计算零差。
 - 前几轮：298 CC-283 / 284；297 CC-282；296 CC-281；295 CC-280。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
