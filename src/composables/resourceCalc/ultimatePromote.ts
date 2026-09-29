@@ -11,9 +11,9 @@ import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/c
 import type { StunSkillExecution } from '@/core/stunPool'
 import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource'
 import { fusedRowReader } from '@/data/moveTableQueries'
-import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
+import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 import type { AgentMechanicModule } from '@/mechanics/types'
-import type { TeamResourceResult, StunPoolResult } from '@/types/resource'
+import type { CharacterOperationConfig, TeamResourceResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
@@ -205,12 +205,14 @@ export function buildPromoteParams(
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
   rr: TeamResourceResult,
+  configs: readonly CharacterOperationConfig[],
 ): UltimatePromoteParams | null {
   const gift = ultimateGiftSourceOf(configStore, rr)
   if (!gift) return null
   const hug60Setting = configStore.getMechanicSetting('liuyin.hug60Count', -1)
-  const targetSetting = configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1)
-  const targetSlot = resolveTeammateTargetSlot(gift.slot, rr.characters.map(c => c.slot), targetSetting)  // CC-180
+  // CC-294：落点与引擎 `gift-chain:ultimate` 预留同一函数、同一份提供者 cfg（原在此直读设置重解）
+  const providerCfg = configs.find(c => c.slot === gift.slot)
+  const targetSlot = providerCfg ? supplyTargetTeamSlot(providerCfg, configs.map(c => c.slot)) : -1
   const targetAgentId = configStore.team[targetSlot]?.agentId ?? ''
   const targetChar = rr.characters.find(c => c.slot === targetSlot)
   const targetSkills = targetAgentId ? catalogStore.agentSkillsByAgentMap.get(targetAgentId) : undefined

@@ -59,6 +59,21 @@ export function findCrossAgentSupplySlots(configs: CharacterOperationConfig[], k
   return out
 }
 
+/**
+ * 跨槽位供给的落点（**编队槽位**；无落点 = -1）——引擎预留与编排层物化赠行的单一来源（CC-294）。
+ * 提供者模块声明了 `crossAgentSupply.targetSlot` 就用它（读的是提供者**自己 cfg** 上的设置），否则缺省
+ * = 已上场序列里的上一位队友。`occupiedSlots` = 已上场槽位（引擎 `configs.map(c => c.slot)`；编排层传同一份
+ * `resourceConfig.characters`）。编排层（chainGift / ultimatePromote / 轴内转大）不得再自己读设置重解一遍：
+ * 此前 chainGift 直读 `liuyin.ultimateTargetSlot`，而诺姆 cfg 上没有这个键（buildCharConfig 只写本模块设置）
+ * ⇒ 引擎按「上一位」预留、编排层按设置落行，两个队友各拿一份赠送连携。
+ */
+export function supplyTargetTeamSlot(cfg: CharacterOperationConfig, occupiedSlots: readonly number[]): number {
+  const spec = getAgentMechanic(cfg.agentId)?.crossAgentSupply
+  return spec?.targetSlot
+    ? spec.targetSlot({ ownSlot: cfg.slot, occupiedSlots, cfg })
+    : resolveTeammateTargetSlot(cfg.slot, occupiedSlots, -1)
+}
+
 /** 解析**单个**槽位的跨槽位供给（`providerSlot` 无声明或槽位无效时返回空）。 */
 export function crossAgentSupplyAt(
   configs: CharacterOperationConfig[],
@@ -76,9 +91,7 @@ export function crossAgentSupplyAt(
   // 落点在**编队槽位空间**解析（已上场序列，跳过空槽），再映射回 `configs` 下标（CC-180）。
   // 缺省落点 = 上一位队友（环绕），与编排层赠大/赠连携同一函数（core/resource/targetSlot.ts）。
   const occupiedSlots = configs.map(c => c.slot)
-  const targetTeamSlot = spec.targetSlot
-    ? spec.targetSlot({ ownSlot: cfg.slot, occupiedSlots, cfg })
-    : resolveTeammateTargetSlot(cfg.slot, occupiedSlots, -1)
+  const targetTeamSlot = supplyTargetTeamSlot(cfg, occupiedSlots)
   const targetIdx = configs.findIndex(c => c.slot === targetTeamSlot)
   const targetCfg = configs[targetIdx]
   if (!targetCfg) return empty

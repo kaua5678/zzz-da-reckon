@@ -15,7 +15,6 @@ import { calcPenetrationPower } from '@/core/damage'
 import { getAgentSpec } from '@/specs/registry'
 import { specConversionAmount } from '@/specs/runtime'
 import type { AttributeConversionSpec } from '@/specs/types'
-import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 
@@ -605,10 +604,10 @@ export const normaMechanic: AgentMechanicModule = {
       },
       cfgNum(cfg, 'norma.holdSeconds', 2),
     ),
-    // 落点设置键沿用 `liuyin.ultimateTargetSlot`（历史口径：两人共用同一个「送给谁」下拉，
-    // 2026-09-13 迁移时逐位保留——改成 norma 私有键会改掉用户已存的设置值）。
-    targetSlot: ({ ownSlot, occupiedSlots, cfg }) =>
-      resolveTeammateTargetSlot(ownSlot, occupiedSlots, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot', -1))),
+    // 落点 = 缺省「上一位队友」（不声明 targetSlot；CC-294）。此处原读 `liuyin.ultimateTargetSlot`（注释称与琉音共用下拉），
+    // 但 buildCharConfig 只把**本模块**设置写进 cfg ⇒ 诺姆 cfg 上恒无此键、恒取 -1：引擎一直按上一位预留，
+    // 只有编排层 chainGift 真读了琉音的设置 ⇒ 设置 ≠ 自动时两个队友各拿一份赠链。下拉标签也是「琉音…」，
+    // 且只在琉音在队时显示。若要让诺姆落点可调，给本模块注册自己的设置并在这里声明 targetSlot。
     // 赠的是**连携**行 ⇒ 单位耗时 = 落点槽的 chainActionTime（与琉音赠大用 ultimateActionTime 不同）
     secondsPerUnit: ({ targetCfg }) => targetCfg.chainActionTime ?? 0,
     // 影画4·膛温换连携：每次赠链「诺姆 + 上一位队友**各** +200 不可分享喧响」。

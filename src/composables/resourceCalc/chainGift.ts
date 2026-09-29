@@ -7,8 +7,8 @@
  */
 import { findChainAttack } from '@/core/resource'
 import { fusedRowReader } from '@/data/moveTableQueries'
-import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
-import type { TeamResourceResult } from '@/types/resource'
+import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
+import type { CharacterOperationConfig, TeamResourceResult } from '@/types/resource'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { getAgentMechanic } from '@/mechanics'
@@ -18,13 +18,15 @@ import { findMoveById, fusedRowValue, getRowValue } from './skillRows'
 import { buildGiftRow } from '@/core/resource/giftRows'
 
 /**
- * 赠送连携：提供者给「上一位队友」（`resolveTeammateTargetSlot`，已上场序列、跳过空槽）赠送 N 次其本人连携技，连携归属该队友。
+ * 赠送连携：提供者给落点队友赠送 N 次其本人连携技，连携归属该队友。落点 = `supplyTargetTeamSlot`（与引擎时间预留
+ * 同一函数、同一份 cfg；`configs` = `resourceConfig.characters`，CC-294）。
  * 诺姆 C4 的 +200 不可分享喧响不在这里（资源池 calcDecibelSource 已计入）。
  */
 export function applyChainGift(
   base: TeamResourceResult | null,
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  configs: readonly CharacterOperationConfig[],
 ): TeamResourceResult | null {
   if (!base) return null
   // 提供者槽位 = 首个实现 `chainGift` 的在队模块（CC-35d-A；原按身份 findSlotByIdentity(['1571'])，
@@ -47,9 +49,10 @@ export function applyChainGift(
     }
   }
 
-  // 上一位队友（已上场序列环绕、跳过空槽，排除自己；CC-180 与引擎 configs 同源）
-  const targetSetting = configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1)
-  const targetSlot = resolveTeammateTargetSlot(providerSlot, base.characters.map(c => c.slot), targetSetting)
+  // 落点与引擎预留同源（CC-294）：提供者模块的 crossAgentSupply.targetSlot 作用在提供者自己的 cfg 上
+  const providerCfg = configs.find(c => c.slot === providerSlot)
+  if (!providerCfg) return base
+  const targetSlot = supplyTargetTeamSlot(providerCfg, configs.map(c => c.slot))
   // 帽子把戏替换的是「上一位队友的快速支援→该队友本人的连携技」（用户口径：赠送连携给上一位队友打，
   // 不是诺姆替打自己的 1571018）——连携招式 id/倍率/时长全部取目标队友技能表。
   // C4 喧响（诺姆+队友各 200×次数）已由模块 chainGift 声明的 decibelPerUnit 经

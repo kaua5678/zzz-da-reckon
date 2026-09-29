@@ -52,7 +52,7 @@ import {
 import { getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
 import { calcSpecialActionBonus, PARRY_DECIBEL_BONUS } from '@/core/anomalyPool'
 import { ULTIMATE_COST_DEFAULT, calcTeamResources } from '@/core/resource'
-import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
+import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 // 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 / T67-a1 刀 A）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { applyTeamMechanics, collectNextRoundFeedback } from './panelPhases'
@@ -359,10 +359,11 @@ export function createRunCalcRound(deps: {
       const giftSlot = ultimateGiftProviderSlot(configStore)  // CC-35d-B3：原按身份查找琉音槽位
       if (giftSlot >= 0) {
         axisUltimatePromote = {
-          targetSlot: resolveTeammateTargetSlot(
-            giftSlot, base.characters.map(c => c.slot),  // CC-180：已上场序列，与引擎 configs 同源
-            configStore.getMechanicSetting('liuyin.ultimateTargetSlot', -1),
-          ),
+          // CC-294：落点与引擎预留 / 非轴赠大同一函数（提供者 cfg 上的模块设置）
+          targetSlot: (() => {
+            const providerCfg = base.characters.find(c => c.slot === giftSlot)
+            return providerCfg ? supplyTargetTeamSlot(providerCfg, base.characters.map(c => c.slot)) : -1
+          })(),
           count: axisHug.hug60 + axisHug.hug90,
         }
       }
@@ -771,7 +772,7 @@ export function createRunCalcRound(deps: {
     // 赠行由引擎物化 → rr 里已有赠行；池侧赠送口径单独结算，故基准提取跳过赠行（防双计）
     const baseStun = extractStunExecsFrom(rr, true)
     const baseAnomaly = extractAnomalyExecsFrom(rr, true)
-    const p = buildPromoteParams(configStore, catalogStore, rr)
+    const p = buildPromoteParams(configStore, catalogStore, rr, base.characters)
     if (baseStun.length === 0) return null
     const goodReview = ultimateGiftSourceOf(configStore, rr)?.goodReviewTotal ?? -1  // CC-35d-B3
     const energyBySlot: Record<number, number> = {}
@@ -929,7 +930,7 @@ export function createRunCalcRound(deps: {
 
     const adj1 = applyUltimatePromote(rr, sp1, catalogStore)
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
-    const adj2 = applyChainGift(adj1 ?? rr, configStore, catalogStore)
+    const adj2 = applyChainGift(adj1 ?? rr, configStore, catalogStore, base.characters)
     // 展示层：resourceResult 也带上诺姆赠送连携（执行计划/次数在资源利用率页可见），
     // 不动点/失衡池仍用原始 rr（baseStun），避免赠送连携失衡反作用于转大收敛。
     // 琉音好评转大同样并入展示层（转大=目标队友真实打一次终结技，时间表/资源页应能看见耗时——
@@ -939,7 +940,7 @@ export function createRunCalcRound(deps: {
     // 展示口径归一：赠送行（诺姆赠链 / 琉音赠大，含轴模式 post-hoc carve 路径）在装配后追加，
     // 引擎 timeAllocation 看不到 → 按**最终行**重算前台/后台（单一展示口径，见 normalizeDisplayTime）
     const rrShown = ResourceCalcHelpers.normalizeDisplayTime(
-      applyChainGift(rrShown0, configStore, catalogStore) ?? rrShown0)
+      applyChainGift(rrShown0, configStore, catalogStore, base.characters) ?? rrShown0)
 
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, giftedPolarAssaultThisRound, giftedPolarAssaultSlot)

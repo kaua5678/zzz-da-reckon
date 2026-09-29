@@ -13,9 +13,10 @@ import { findMoveById, fusedRowValue, getRowValue } from '@/data/moveTableQuerie
 describe('CC-244 转大赠送终结技失衡值取融合组整段', () => {
   it('照 1341014：ultDaze = Σ 融合组 daze > 主段 daze', async () => {
     await setupHarness([{ agentId: '1341' }, { agentId: '1481' }, { agentId: '1211' }], { recommendedBuild: true })
-    const rr = useResourceCalc().resourceResult.value!
+    const calc = useResourceCalc()
+    const rr = calc.resourceResult.value!
     const catalog = useCatalogStore()
-    const p = buildPromoteParams(useConfigStore(), catalog, rr)!
+    const p = buildPromoteParams(useConfigStore(), catalog, rr, calc.resourceConfig.value!.characters)!
     expect(p.ultimateMoveId).toBe('1341014')
     const skills = catalog.agentSkillsByAgentMap.get('1341')
     const fused = fusedRowValue(skills, '1341014', 'daze')!
