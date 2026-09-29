@@ -28,7 +28,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
-import { minusInvincibleTime } from '@/core/effectiveTime'
+import { effectiveCombatTime } from '@/core/effectiveTime'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 
 export const YAOJIAYIN_ID = '1311'
@@ -167,11 +167,6 @@ function pushExec(
   } as SkillExecution)
 }
 
-function combatTimeOf(state: AgentResourceInput['state'], cfg: AgentResourceInput['cfg']): number {
-  // 前台+后台 = 全战斗时间；震音/音簇/随想曲等 CD 折算按有效战斗时间，无敌期间不结算（core/effectiveTime.ts）
-  return minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)
-}
-
 /**
  * 入场触发次数：全队快支+招架+回避支援 + 全队连携（编排注入 yaojiayinTeamChainTotal）。
  * 耀嘉音本人连携/终结进华彩不额外计「队友入场」，但队友连携入场会计入。
@@ -294,7 +289,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = Math.max(0, Math.floor(Number(record.yaojiayinCinemaLevel ?? 0)))
   const additionalActive = Number(record.yaojiayinAdditionalActive ?? 0) > 0
-  const combatTime = combatTimeOf(state, cfg)
+  const combatTime = effectiveCombatTime(state, cfg)
   const entries = Math.max(0, Math.floor(Number(record.yaojiayinEntryCount ?? 0)))
   const totalEnergy = Math.max(0, Number(state.totalEnergy ?? 0))
   const result = computeYaojiayinTremolos({
@@ -372,7 +367,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
   const result = computeYaojiayinTremolos({
     totalEnergy: Math.max(0, Number(state.totalEnergy ?? 0)),
     entryCount: Math.max(0, Math.floor(Number(record.yaojiayinEntryCount ?? 0))),
-    combatTime: combatTimeOf(state as any, cfg),
+    combatTime: effectiveCombatTime(state as any, cfg),
     cinemaLevel: cinema,
     additionalActive,
   })

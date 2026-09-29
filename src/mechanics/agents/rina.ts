@@ -22,7 +22,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { SkillExecution } from '@/types/resource'
-import { minusInvincibleTime } from '@/core/effectiveTime'
+import { effectiveCombatTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
@@ -150,11 +150,6 @@ function pushExec(
   } as SkillExecution)
 }
 
-function combatTimeOf(state: AgentResourceInput['state'], cfg: AgentResourceInput['cfg']): number {
-  // 前台+后台 = 全战斗时间；邦布自动攻击按有效战斗时间折算，无敌期间不结算（core/effectiveTime.ts）
-  return minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)
-}
-
 function buildCharConfig({ skills, cfg }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   // 晨间清扫：三段倍率之和作为单次发动总倍率
@@ -171,7 +166,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     exSpecialCount: state.exSpecialCount ?? 0,
     chainCountTotal: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
-    combatTime: combatTimeOf(state, cfg),
+    combatTime: effectiveCombatTime(state, cfg),
   })
   record.rinaBangboo = bangboo
 
@@ -219,7 +214,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
     exSpecialCount: ex,
     chainCountTotal: chain,
     ultimateCount: ult,
-    combatTime: combatTimeOf(state, cfg),
+    combatTime: effectiveCombatTime(state, cfg),
   })
   record.rinaBangboo = bangboo
   return {

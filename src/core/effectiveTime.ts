@@ -66,6 +66,16 @@ export function minusInvincibleTime(seconds: number | undefined, cfg: TimeBasisC
 }
 
 /**
+ * 全战斗有效时间（秒）= 前台时间 + 后台时间 − boss 无敌时间（下限 0）。
+ * 按「整场战斗」折算次数的模块通道用这个（莱特士气、丽娜邦布自动攻击、耀嘉音震音 / 音簇 CD、焰烈燃点）。
+ * CC-252 起唯一实现：原 lighter / rina / yaojiayin 各一份私有 `combatTimeOf`、burnice 两处内联（源码锁见
+ * `__tests__/effectiveTimeSingleSource.test.ts`）。
+ */
+export function effectiveCombatTime(state: { frontlineTime?: number; backstageTime?: number }, cfg: TimeBasisCfg): number {
+  return minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)
+}
+
+/**
  * 后台自动招式的相位延后等效 CD（2026-08-30，用户口径）：
  * 拥有者本人被换上前台做必要动作（连携/强特/终结/交互）的时间，插在他自己后台自动招式的
  * CD 循环任意相位——前台期间 CD 照转但打不出来（触发要求处于后台），触发被延后。

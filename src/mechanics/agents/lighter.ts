@@ -37,7 +37,7 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
-import { minusInvincibleTime } from '@/core/effectiveTime'
+import { effectiveCombatTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 
 export const LIGHTER_ID = '1161'
@@ -223,11 +223,6 @@ function pushExec(
   } as SkillExecution)
 }
 
-function combatTimeOf(state: AgentResourceInput['state'], cfg: AgentResourceInput['cfg']): number {
-  // 前台+后台 = 全战斗时间；士气管线按有效战斗时间折算，无敌期间不结算（core/effectiveTime.ts）
-  return minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)
-}
-
 function cfgNum(cfg: CharacterOperationConfig, key: string, fallback = 0): number {
   const record = cfg as unknown as Record<string, unknown>
   const raw = Number(record[key] ?? fallback)
@@ -291,7 +286,7 @@ function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): voi
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = Math.max(0, Math.floor(Number(record.lighterCinemaLevel ?? 0)))
-  const combatTime = combatTimeOf(state, cfg)
+  const combatTime = effectiveCombatTime(state, cfg)
   const teamEnergy = Math.max(0, Number(record.lighterTeamEnergyConsumed ?? 0))
   const morale = computeLighterMorale({
     combatTime,
@@ -372,7 +367,7 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = Math.max(0, Math.floor(Number(record.lighterCinemaLevel ?? 0)))
-  const combatTime = combatTimeOf(state as any, cfg)
+  const combatTime = effectiveCombatTime(state as any, cfg)
   const teamEnergy = Math.max(0, Number(record.lighterTeamEnergyConsumed ?? 0))
   const morale = computeLighterMorale({
     combatTime,

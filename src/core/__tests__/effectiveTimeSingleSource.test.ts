@@ -60,3 +60,15 @@ describe('有效战斗时间单一来源（CC-216）', () => {
     expect(hits).toEqual([])
   })
 })
+
+// CC-252：前台 + 后台 求和（无论是否带 `?? 0`）= 全战斗时间，只许在 core/effectiveTime.ts#effectiveCombatTime 里算
+const COMBAT_TIME_SUM = /frontlineTime(?:\s*\?\?\s*0\))?\s*\+\s*\(?\s*[\w.]*backstageTime/
+
+describe('全战斗有效时间单一来源（CC-252）', () => {
+  it('除 core/effectiveTime.ts 外没有内联「前台时间 + 后台时间」', () => {
+    const hits = walk(SRC)
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+      .filter(rel => rel !== 'core/effectiveTime.ts' && COMBAT_TIME_SUM.test(readFileSync(join(SRC, rel), 'utf8')))
+    expect(hits).toEqual([])
+  })
+})

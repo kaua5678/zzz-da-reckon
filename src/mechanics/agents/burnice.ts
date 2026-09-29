@@ -14,7 +14,7 @@ import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { minusInvincibleTime } from '@/core/effectiveTime'
+import { effectiveCombatTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue, rawRowValue } from '@/data/moveTableQueries'
@@ -311,7 +311,7 @@ function buildBurniceResourceResult({ cfg, state }: AgentResourceResultInput): P
   return {
     burniceMechanicSource: computeBurniceMechanic({
       exSpecialCount: state.exSpecialCount,
-      totalTime: minusInvincibleTime(state.frontlineTime + state.backstageTime, cfg),
+      totalTime: effectiveCombatTime(state, cfg),
       atk: cfg.panel.atk ?? 0,
       anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
       cinemaLevel: cfg.burniceCinemaLevel ?? 0,
@@ -364,7 +364,7 @@ function pushEx(
 function burniceMechanicSourceOf(cfg: CharacterOperationConfig, state: IterationState): BurniceMechanicSource {
   return computeBurniceMechanic({
     exSpecialCount: state.exSpecialCount,
-    totalTime: minusInvincibleTime(state.frontlineTime + state.backstageTime, cfg),
+    totalTime: effectiveCombatTime(state, cfg),
     atk: cfg.panel.atk ?? 0,
     anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
     cinemaLevel: cfg.burniceCinemaLevel ?? 0,
