@@ -3526,3 +3526,14 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 影响：id 与原名字一一对应 ⇒ 零差（verify EXIT=0，golden 不变；golden 角色段含维琳娜）。
 - 回退：revert 4b01b307。
 - 口径（写给后续）：**模块认招式一律用 catalog moveId**，不按 name.en / name.zhCN；展示文字可以读名字。
+
+### 24.113 第 289 轮：源码 id 字面量悬空扫描（全部存在）→ CC-274 全量锁（89c988a2）
+
+- **测量**（`/home/kaua/calc-arch/k229/m289.cjs`、`m289b.cjs`；扫描 src 下 mechanics / specs / data / composables / core / logicEditor / views / components / stores / utils，跳过 __tests__、teamPresets、golden baseline、注释行）：
+  - 招式 moveId（带引号的 7 位 1 开头字面量）869 处，catalog 1352 个招式 id 全部命中，**0 悬空**；
+  - 音擎 id（13xxx / 14xxx，含 legacyIds）27 处，0 悬空；角色 id（1xx1）365 处，0 悬空；驱动盘套装 id（3xxxx）字面量 0 处；
+  - 静态数据 character-mechanics / teammate-buffs / character-constellations / build-recommendations 里没有 7 位招式 id 字符串。
+- **决定**：没有缺陷可修，但把检查做成锁（交接里预定的分支）。理由：`findMoveById(skills, '<字面量>')` / `exec.moveId === '<字面量>'` 查不到时静默返回 null / false，模块不产行也不报错（CC-269 / CC-273 同类）；catalog 改号或手误时，这条锁是唯一能立刻报出来的地方，成本只是一次文件扫描（约 120ms）。
+- **锁**：`src/data/__tests__/moveIdLiteralsExist.test.ts`（3 例：招式 / 音擎 / 角色），每例带「字面量总数下限」防止扫描器失效后空转通过。反例：把 velina.ts 的 1561006 临时改成 1561999，锁报出 `src/mechanics/agents/velina.ts:39 1561999`。
+- **边界**：只认带引号的字面量；派生 id（如 `${exec.moveId}_velina_colored_buildup`）、数字字面量、模板字符串不在范围内。若将来出现合法的「catalog 之外」7 位 id（例如自造招式），在测试里加显式豁免表并写明原因，不要放宽正则。
+- **回退**：revert 89c988a2（只删一个测试文件）。
