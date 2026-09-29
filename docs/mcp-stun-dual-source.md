@@ -3573,3 +3573,11 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **锁**：`src/data/__tests__/agentIdentitySingleField.test.ts`：① catalog.json 的 teammateBuffId 缺省或等于 id；② src（不含测试）不出现 `teammateBuffId`（注释除外）。反例：stash panelPhases.ts 后 ② 报出 `panelPhases.ts:427`。
 - **遗留（下一轮可做）**：`anomalyPanels.ts` 的 `teamHasAgent` / `findSlotByIdentity` **没有生产调用方**（只有测试与 helpers 壳 re-export）；`teamHasAgent` 的 catalogStore 参数现已不用（暂改名 `_catalogStore`）。删除它们要连带改 skillRowsShell / anomalyPanelsShell 壳锁的 STAYED 名单和 4 个测试文件。scripts/ 下的身份度量脚本仍把 `teammateBuffId` 列为身份字段名，无害，未动。
 - **回退**：revert ccfd9dfe。
+
+### 24.116 第 292 轮：删无生产调用的身份 helper `teamHasAgent` / `findSlotByIdentity`（CC-277，fcecd8eb）
+
+- **依据**：`grep -rn 'teamHasAgent(\|findSlotByIdentity(' src --include=*.ts --include=*.vue | grep -v __tests__` 只剩注释。编排层的身份查找早已迁成「按模块能力找提供者」（CC-25 / CC-35 系列），CC-276 之后这两个函数只剩测试和 helpers 壳的 re-export 在用。保留它们等于留一个「按身份找槽位」的现成入口，和「规则 6：按能力、不按角色查询」的方向相反。
+- **改动**：删 `anomalyPanels.ts` 里两个函数（原位留注释说明替代写法）；删 helpers.ts 壳的两处 re-export；壳锁 `skillRowsShell.test`（STAYED）/ `anomalyPanelsShell.test`（D_EXPORTS 8→6，壳本地绑定的自证改由 `Helpers.getTeamAnomalyDurationBonus` 调用承担）同步；删 `findSlotByIdentity.test.ts` 整文件；删 `convergenceNightB.test` 的「组 1/2/4 helper 等价」整段（及只被它用的 legacyFindIndex / legacyAliceFindIndex / TEAMS），保留组 4 端到端段；删 `helpersNightC.test` 里 3 个 helper oracle 用例。数值零变化。
+- **顺带修复（CC-276 遗留的红测试）**：`src/scripts/__tests__/agentIdentity.test.ts` 的 T8「measures HEAD」**量的是 HEAD 提交态**，断言 `head.entries.length > 0`（防空转）。CC-276 在提交前跑 verify 时 HEAD 还是旧提交，所以是绿的；提交之后 HEAD 的编排层身份判定清零，这条在 master（ccfd9dfe、fb4d3000）上是**红的**。改为 `sources.length > 0`（确实读到了源文件）——身份判定为 0 是目标状态，不是空转。
+  - **教训**：凡是量 HEAD 的测试，提交前的 verify 都覆盖不到。改动会让身份度量归零 / 变化时，提交后要再跑一次 `npx vitest run src/scripts/__tests__/agentIdentity.test.ts`。已写入交接「已知坑」。
+- **回退**：revert fcecd8eb（纯删除 + 1 处测试断言）。

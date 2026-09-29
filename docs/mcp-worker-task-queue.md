@@ -71,21 +71,21 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 291 轮（lane lead-arena-0925c）：CC-276（ccfd9dfe）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.115：Agent.teammateBuffId 退役，身份只认 agent.id；数值零变化。
-- 前几轮：290 CC-275；289 CC-274；288 CC-273；287 CC-272；286 CC-271。
+**第 292 轮（lane lead-arena-0925c）：CC-277（fcecd8eb）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.116：删 teamHasAgent / findSlotByIdentity；顺带修 CC-276 提交后变红的 agentIdentity T8。
+- 前几轮：291 CC-276；290 CC-275；289 CC-274；288 CC-273；287 CC-272。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
-**下一步（直接开工）**：
-1. **删死 helper**：`src/composables/resourceCalc/anomalyPanels.ts` 的 `teamHasAgent`、`findSlotByIdentity` 没有生产调用方（`grep -rn 'teamHasAgent(\|findSlotByIdentity(' src --include=*.ts --include=*.vue | grep -v __tests__` 只剩注释）。连带：helpers.ts:253/269 的 re-export、`resourceCalc/__tests__/skillRowsShell.test.ts:42` 与 `anomalyPanelsShell.test.ts:32` 的名单、`findSlotByIdentity.test.ts`（整文件）、`convergenceNightB.test.ts` / `helpersNightC.test.ts` 里用它做 oracle 的段落（改成直接比 `config.team.findIndex(c => c.agentId === id)` 或删掉）。注意 guard-registries.mjs 里有注释提到它，不影响。
-2. 之后回到架构面：R6 清单已空，按「更通用 / 更简单」自选；候选方向——grep 其它「两个字段表达同一件事」的地方（如 wEngine / driveDisc 的 legacyIds 在 store 里是否每个消费点都各自解析，还是有单点）。
+**下一步（直接开工）**：身份线已收尾，换题。候选：
+1. **旧 id 解析是否单点**：音擎 / 驱动盘套装有 `legacyIds`（catalog.json）。查 store / composables / core 里每个按 wEngineId / setId 查表的消费点：是全部经 `catalogStore.getWEngine` / `getDriveDiscSet`（能解析别名）还是有直接 `wEnginesMap.get(id)` / `driveDiscSetsMap.get(id)`（旧 id 会查空）。例：`panelPhases.resolveSlotPanelBuffInputs` 里 `getWEngine: (id) => catalogStore.wEnginesMap.get(id)`、`driveDiscSetsMap: catalogStore.driveDiscSetsMap`。若持久化配置里可能留旧 id，这些点会静默丢效果——先写探针确认（把一个槽的 wEngineId 设成某个 legacyId，看面板是否掉音擎效果）；确认后优先在**配置写入 / 加载处**归一（注意 §24.111 已否决「读取持久化数据时迁移别名 id」——原因是 catalog 加载时序，先读该节再定方案）。
+2. 若 1 无缺陷：在 r6 清单记一行，自选「更通用 / 更简单」的题目。
 
 **已知坑**：
-- 角色身份只有 agent.id（CC-276，agentIdentitySingleField.test 拦 src 里出现 teammateBuffId）；数据若给出 ≠ id 的别名，在 catalog 加载处归一，不要加回消费点；
+- **量 HEAD 的测试**（`agentIdentity.test.ts` T8）提交前 verify 覆盖不到；改动影响身份度量时，提交后再跑一次该文件；
+- 角色身份只有 agent.id（CC-276）；按身份找槽位的 helper 已删（CC-277），需要时按能力找提供者；
 - 队友 buff 的 ownerId / teammateId 在 catalog 加载后等于组 id（CC-275）；
-- 编排层 agentId 棘轮已为 0；
-- `agentModuleRowFusionRule.test.ts` 的 `RAW_ROW_READ_ALLOW` 按 remielle.ts **行号**登记（本轮删常量后 101/104/106→92/95/97）；改 remielle.ts 上半部要同步；
-- 杀进程只 kill 具体 pid：`pgrep -f 'vitest…'` 会匹配到 wsl_exec 自己的 shell 并把它杀掉（本轮踩到，命令失败但无副作用）；
+- `agentModuleRowFusionRule.test.ts` 的 `RAW_ROW_READ_ALLOW` 按 remielle.ts 行号登记；
+- 杀进程只 kill 具体 pid（`pgrep -f` 会匹配到 wsl_exec 自己的 shell）；
 - 新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。
