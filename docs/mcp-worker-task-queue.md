@@ -69,12 +69,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **`src/views/TeamComparePage.vue` 只剩约 38 行结构熵余量**：给该页加功能，写到 `src/composables/teamCompare*.ts`（CC-92）。
 - **等号基线（「计数下降也报错，要求下调基线」）是有意设计，不要改成「≤」**：2026-09-14 它两次抓到扫描器盲区，计数凭空下降其实是扫描器看不见了，而不是代码变好了（`scripts/check-tokens.mjs` 头注释；`docs/mcp-working-model.md` §2.5）。
 
+## 2b. 并行 lane 交接（lane `arena-B`；§2 「每轮替换」时**不要**连本节一起删）
+
+> 为什么有这节：2026-09-29 实测两个会话同时在跑（本会话开工时主 lane `lead-arena-0925c` 第 315 轮正在 `wt315` 跑 verify；推断是 arena 对战模式两个模型同时收到同一份提示词）。
+> §2 属于主 lane；并行会话把自己的交接写在这里，互不覆盖。任何 lane 确认本节已过时，可以整节替换成自己的。
+> 开工查现场的方法见提示词第 9 条（`ps` 看 verify / vitest，`git log` 看最近提交时间，`ls -lt /home/kaua/calc-arch`）。
+
+**2026-09-29 arena-B（与主 lane 第 315 轮同时）：收养孤儿 WIP（抽卡规划零价值三态 + 增量成本分母），代码 `d3443e39`，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0 说明 push 失败，先补推）。**
+- **做到哪**：
+  1. 主工作区那批 pullPlanner 改动（`src/composables/pullPlanner.ts`、`__tests__/pullPlanner.test.ts`、`src/components/charts/PullPlannerChart.vue`、`src/views/timeCharts/pull-planner-chart.css`、`scripts/check-tokens.mjs` 基线 799→800、`docs/FEATURES_GUIDE.md` 2 行、未跟踪的 `docs/proposals/pull-value-optimization.md`）文件 mtime 停在 12:56–13:23，放了约 3 小时，第 301–315 轮每轮都写「不是本 lane 的，不要 add」，没人认领 ⇒ 判为孤儿（写它的会话已结束）。
+  2. 审查结论：实现与提案 §2.2b / §3.3 一致；页面口径文案的更正（「满配增量 130000」「操作分已剔除」）与 `TIER_COSTS`、`pullPlannerEngine.ts` 头注释一致。改了一处：`cardValuePer10kFilm` 注释写「三种返回 null」，实现只有两种（花了钱但 value=0 时返回 0，这是有意义的读数）——**按实现改注释**，不改行为。两个文件权限 600→644（写它的工具留下的，git 不记录，只是卫生）。
+  3. 验证：隔离 worktree `/home/kaua/calc-arch/wtA-pp`（base `cbf6a8f4` + 上述 7 个文件）`vue-tsc -b` 0；`VITEST_MAX_WORKERS=4 npm run verify` EXIT 0（435 files / 4032 passed / 29 skipped，含 build）；负控：只把 `pullPlanner.ts` 换回 HEAD 版 ⇒ 新增 4 例全红，恢复后绿。主 lane 同时提交的 `fdf54712` / `44e7b2a0` 与这 7 个文件不相交；合入后在主工作区重跑了 check-guards / check-tokens / pullPlanner 测试。
+  4. 提示词改了（`C:\Users\kaua\Desktop\bridge-prompt-arena.md`，备份 `.bak-parallel-lanes-20260929-1550`，md5 `6f99f59f`）：加「wsl_exec 只回尾部」坑 + 现成客户端源码 + 第 9 条「并行会话」。主 lane 交接里记的旧 md5 `2aa1f517` 已过期，这是预期内的。
+- **下一步（抽卡规划线；与 stun 线文件不相交，适合并行 lane 接着做）**：提案 §5.6「三根时轴解耦」第一刀——**菲林收入按版本日历发，不按期日期发**。
+  - 现状（已读码）：`src/composables/pullPlanner.ts:115` `filmGrants()` 每遇到一个**新日期**就发一份 `filmPerVersion`，注释说是「版本边界」，实际是「期边界」。一个版本里若有多个不同日期的期，会发多份；没有期的版本一份不发。**方向（多发还是少发）没量过，先量再改**。
+  - 先量：用默认数据（`src/data/versionTimeline.ts` 的 `VERSION_NODES` + 规划器实际用的 periods）数出「每个版本有几个不同日期的期」，写进提案 §2.2c。
+  - 再改：按 `VERSION_NODES` 把 (上一期, 本期] 之间跨过的版本数 × `filmPerVersion` 发到本期；先写测试（两期之间跨 2 个版本 ⇒ 发 2 份；同版本内第 2 个日期 ⇒ 发 0 份）。这会改规划数值，依据是提案 §2.2c / §5.6 和 `filmEconomy.ts`「每版本免费菲林」的定义，不是实测。
+- **未决项**：提案 §6「完全下位是否作为显式输出标签」仍待用户裁决，现状是页面 hover 文案说明，没加标签。§5.5「角色 / 音擎独立阶梯」工作量大，没开。
+- **回退点**：`git revert` 本次提交（只涉及抽卡规划页和 check-tokens 基线 800→799）；提示词回退 = 用备份覆盖。
+
 ## 2. 最近一轮交接（每轮替换本节）
 
 **第 315 轮（lane lead-arena-0925c）：CC-300（`fdf54712`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 - 锁定失衡下池次数钉到计数通道值；golden 零差；hugo 锁 3 场景 4→3。CC-299 二试因 off 投影下雨果分叉再次撤回。详见 `docs/mcp-stun-dual-source.md` §24.139。
 - 前几轮：314 CC-299 首试撤回（锁定冲突，已由 CC-300 解决）；313 CC-298；312 CC-297。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/`、pullPlanner 系列、FEATURES_GUIDE、check-tokens 都不是本 lane 的，不要 add。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。（arena-B 注：pullPlanner 系列 / `docs/proposals/` / FEATURES_GUIDE / check-tokens 那批已审查并提交，见 §2b；主工作区只剩未跟踪的 `docs/devlog/2026-09-19.md`——用户本地会话 09-19 的笔记，不属任何 lane，别 add 也别删。）
 
 **下一步（直接开工）**：
 1. **CC-299 的最后阻塞 = off 投影下雨果（坑36）与计数通道分叉**。两条路，先量再选：
@@ -85,7 +104,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 3. 低优先：锁定下沉到 promoteFixpoint 入参（§24.139 未钳项）。
 
 **已知坑**：
-- **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
+- **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
 - **钩子调用次数**：buildCharConfig 每个 base 调用一次；applyTeamConfig 每轮每相位对新克隆调用一次；其余钩子可能在同一份 cfg 上调用多次。往 cfg 累加必须扣 prev；有条件写入要在所有路径上覆盖（hookReplay 锁会拦）。
 - 包住模块钩子的测试写法：`getRegisteredAgentMechanics()` 拿模块对象，直接替换属性，afterAll 恢复（引擎每次按 `getAgentMechanic(id)?.hook` 取，替换立即生效）。
 - 探针数字会带 ANSI 颜色，先用 sed 去掉再 grep；`TIME_GOLDEN_FILTER=<agentId>` 只跑单个角色；探针前后 cp 备份与恢复，最后 `grep -c __probe` 为 0。
