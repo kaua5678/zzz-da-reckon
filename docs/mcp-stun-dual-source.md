@@ -3615,3 +3615,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **锁**：`src/utils/__tests__/finiteClampSingleSource.test.ts`：① 语义（NaN / ±Infinity / undefined → 0）；② 源码里 `max(0, min(1, isFinite(x) ? x : 0))` / `max(0, floor(isFinite(x) ? x : 0))` 的函数体只允许出现在 finiteClamp.ts（回落值非 0 的写法，如 `? rate : 1`，不在范围）。反例：stash vivian.ts 后报出 vivian.ts:88 / :92。
 - **影响**：行为零差（verify 全绿，golden 未动）。
 - **回退**：revert 0b4664f3。
+
+### 24.120 第 296 轮：角色卡片标签样式单一来源 + CharacterCard 选项同文件克隆（CC-281，20ebfa5b）
+
+- **来源**：§24.119 交接下一步 1（jscpd：`CharacterCard.vue` :175/:194 ↔ `ResourcePage.vue` :120/:137；同文件 `CharacterCard.vue` 141/123）。
+- **推翻 §24.108② 的「展示层颜色映射不收」**：那次只查了稀有度颜色（`WEngineFieldPage` 一处），漏看了职业 / 属性颜色表——这两张表在 `CharacterCard.vue` 与 `ResourcePage.vue` 里逐字各有一份（连 `#555` 兜底和 rarity→tag type 三元式都一样）。它们是同一个概念（角色卡片三枚标签的样式），新增职业 / 属性时两处都得改，否则两页颜色会分叉，所以收。§24.108② 的「不收」结论只对稀有度那一处成立。
+- **改动**：
+  - `src/utils/agentLabelMaps.ts`（本来就是 `SPECIALTY_LABEL` / `ATTRIBUTE_LABEL` 的单一来源）新增 `specialtyTagColor` / `attributeTagColor` / `rarityTagType` 与 `AgentTagColor`；两页 computed 改成一行调用（为免与 import 同名，改名为 `rarityTag` / `specialtyTag` / `attributeTag`，模板同步）。
+  - `CharacterCard.vue` 的 `availableOptions`（NSelect）与 `dropdownOptions`（NDropdown）原本各自做一遍「过滤已选 + 拼标签」，只差 `value` / `key`。改为共用 `agentChoices`，两者由它映射出来。
+- **锁**：`src/utils/__tests__/agentTagStyleSingleSource.test.ts`：① 语义（已知 code、未知 / undefined → 灰色，稀有度 S / A / 其它）；② 源码里 `attack: { color:` / `honed_edge: { color:` 只允许出现在 agentLabelMaps.ts。反例：stash ResourcePage.vue 后跑红。
+- **发现（未改，行为零差）**：catalog 的角色属性实际只有 wind / physical / lumiflux / fire / ether / ice / electric 七种。颜色表里的 frost / honed_edge / xuanmo 目前没有角色使用；**lumiflux（1581 蕾米埃尔）不在颜色表里，属性标签显示为灰色兜底**，搬迁前两页都是这样。补什么颜色属于审美问题，又和「辉光 / 流明命名」未决项（§24.62）挂钩，因此只记为未决。要补色时在 `ATTRIBUTE_TAG_COLOR` 加一行，两页同时生效。
+- **影响**：只涉及展示层两页，计算零差（verify 全绿）。
+- **回退**：revert 20ebfa5b。

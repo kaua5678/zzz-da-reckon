@@ -71,25 +71,30 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 295 轮（lane lead-arena-0925c）：CC-280（0b4664f3）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.119：20 处私抄钳位 helper 收成 `src/utils/finiteClamp.ts`，行为零差。
-- 前几轮：294 CC-279；293 CC-278；292 CC-277；291 CC-276；290 CC-275。
+**第 296 轮（lane lead-arena-0925c）：CC-281（20ebfa5b）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.120：角色卡片标签样式收进 `src/utils/agentLabelMaps.ts`；CharacterCard 两份角色选项共用 `agentChoices`。计算零差。
+- 前几轮：295 CC-280（finiteClamp）；294 CC-279；293 CC-278；292 CC-277。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
-**下一步（直接开工）**：
-1. **`CharacterCard.vue` ↔ `ResourcePage.vue` 跨文件副本**（CharacterCard :175 / :194 与 ResourcePage :120 / :137，14 + 16 行）：先读两段，判断是否同一展示逻辑（同义且都在展示层 ⇒ 抽到 `src/utils/` 或 composables 的纯函数；展示层禁止值导入 core / mechanics / specs）。
-2. 同文件克隆逐个看（同义且合并更简单才动，否则 r6 清单记「不做 + 理由」）：`AttributeConfigPage.vue` 29/17（157 行，可能是模板里两份表单）、`CharacterCard.vue` 141/123、`specPanelBuffs.ts` 768/672、`lucy.ts` 226/172、`freeCompare/metrics.ts` 224/191、`versionChartGeometry.ts` 179/83。
-3. 重扫命令：`rm -rf /tmp/jscpd && timeout 160 npx -y jscpd@4 src --pattern '**/*.{ts,vue}' --ignore '**/__tests__/**,**/*.test.ts,**/*.d.ts' --min-lines 8 --min-tokens 70 --reporters json --output /tmp/jscpd --silent`，再用 python 读 `/tmp/jscpd/jscpd-report.json` 的 duplicates。
+**下一步（直接开工）**：jscpd 剩下的同文件克隆，逐个判断（同义且合并后更简单才动，否则在 r6 清单记「不做 + 理由」）：
+1. `src/views/AttributeConfigPage.vue` 29/17（157 行，最大，先看；可能是模板里两份几乎相同的表单，合并方式是 v-for 或子组件）；
+2. `src/specs/specPanelBuffs.ts` 768/672；
+3. `src/mechanics/agents/lucy.ts` 226/172；
+4. `freeCompare/metrics.ts` 224/191；
+5. `versionChartGeometry.ts` 179/83；
+6. `harumasa.ts` 95 ↔ `koleda.ts` 44（CC-280 合并 helper 后可能已消失，重扫确认）。
+
+重扫命令：`rm -rf /tmp/jscpd && timeout 160 npx -y jscpd@4 src --pattern '**/*.{ts,vue}' --ignore '**/__tests__/**,**/*.test.ts,**/*.d.ts' --min-lines 8 --min-tokens 70 --reporters json --output /tmp/jscpd --silent`，再用 python 读 `/tmp/jscpd/jscpd-report.json` 的 duplicates。文件路径先用 `git ls-files | grep` 确认。
 
 **已知坑**：
-- 「非有限值 → 0」的比例钳位 / 非负取整用 `@/utils/finiteClamp`（CC-280 锁拦私抄）；需要其它回落值或不挡 NaN 的，写清原因；
-- 分析器改 store 前后一律 `snapshotStore` / `restoreStore`（configSnapshot.ts）；
-- 量 HEAD 的测试（`agentIdentity.test.ts` T8）提交前 verify 覆盖不到，影响身份度量时提交后再跑一次；
-- GitHub 偶尔不通（第 292–293 轮）：push 超时就记进交接，下一轮开工先补推；
-- 杀进程只 kill 具体 pid（`pgrep -f` 会匹配到 wsl_exec 自己的 shell）；
-- 新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
+- 角色卡片标签颜色 / 稀有度 type 用 `@/utils/agentLabelMaps`（CC-281 锁拦副本）；「非有限值 → 0」的钳位用 `@/utils/finiteClamp`（CC-280）；
+- 判定「某类副本不存在」之前，把同概念的所有变体都 grep 一遍（§24.108② 只看了稀有度就下了「不收」的结论，本轮推翻）；
+- 分析器改 store 前后一律 `snapshotStore` / `restoreStore`；
+- 量 HEAD 的测试（`agentIdentity.test.ts` T8）提交前 verify 覆盖不到；
+- GitHub 偶尔不通：push 超时就记进交接，下一轮先补推；
+- 杀进程只 kill 具体 pid；后台 verify 用 `setsid ./bg.sh … & sleep 2`；上传一律用 `bash /home/user/mcp-tools/up.sh …`。
 
-**未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。
+**未决项**（依赖游戏事实或审美，不开卡）：lumiflux 属性标签颜色（§24.120）；1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

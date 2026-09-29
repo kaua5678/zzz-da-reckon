@@ -446,3 +446,4 @@
 | 293 | jscpd 跨文件克隆 | 可归一：快照 / 恢复副本并回 configSnapshot，CC-278（`d02c098a`） | 剩 3 处同文件克隆待看（norma / burnice / damagePoolRelease） |
 | 294 | jscpd 同文件克隆 3 处 | 可归一：CC-279（`fc72df87`） | ts 克隆清零；下一轮扫 .vue + min-lines 8 |
 | 295 | 角色模块私有钳位 helper ×20 | 可归一：utils/finiteClamp，CC-280（`0b4664f3`） | 异义 clamp01 组待核实 NaN 可能性；CharacterCard↔ResourcePage 与 6 处同文件克隆待看 |
+| 296 | 展示层标签颜色表 ×2 / CharacterCard 选项 ×2 | 可归一：agentLabelMaps，CC-281（`20ebfa5b`）；推翻 285 行「颜色映射不收」（当时漏看职业 / 属性表） | lumiflux 无颜色（审美未决）；jscpd 剩 5 处同文件克隆待看 |
