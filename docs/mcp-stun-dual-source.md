@@ -3603,3 +3603,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **影响**：纯重构，行为零差（verify 全绿，timeGolden / 留白棘轮未动）。3 个文件共 −36 行。
 - **没加锁**：这类局部副本没有稳定的源码形态可锁；以后的防线是每隔一段时间重跑同一条 jscpd 命令（写入交接）。
 - **回退**：revert fc72df87。
+
+### 24.119 第 295 轮：jscpd 扩到 .vue + min-lines 8；角色模块私抄的钳位 helper 收成 utils/finiteClamp（CC-280，0b4664f3）
+
+- **扫描**（命令见交接）：362 个 ts/vue 文件，15 处克隆、320 行（0.39%）。跨文件的主体是角色模块里的同一对 3 行私有 helper（vivian 与 seth / koleda / evelyn / billy / aire / corin / harumasa 等），另有 `CharacterCard.vue` ↔ `ResourcePage.vue` 两段（16 + 14 行）；同文件的有 `AttributeConfigPage.vue` 29/17（157 行）、`CharacterCard.vue` 141/123、`specPanelBuffs.ts` 768/672、`lucy.ts` 226/172、`freeCompare/metrics.ts` 224/191、`versionChartGeometry.ts` 179/83，本轮未看。
+- **按语义分组**（全仓 grep `function clampRatio|function whole|clamp01`）：
+  - **同义组（已合并）**：`clampRatio(v) = max(0, min(1, isFinite(v) ? v : 0))` 与 `whole(v) = max(0, floor(isFinite(v) ? v : 0))`，共 19 个角色模块的私有副本（含 severian / phoenix 的单行写法、anbyZero 接受 undefined 的写法、trigger 改名的 `intAtLeast0`、luciaElowen 块内的 `const clamp01`），外加 `stores/config.ts` 一处内联（异常结算份额）。
+  - **异义组（不合并，写进 finiteClamp.ts 头注释）**：`clamp01(v) = max(0, min(1, v))`（severian / phoenix / lycaon / sigrid / data/deadlyAssaultScore）与 hugo 的 `clampRatio`——不挡 NaN；anby 的 `Number(v) || 0`——+Infinity → 1；ben 的 `clamp01(value, fallback = 1)`——非有限值回落 1。合并它们会改行为，而这些输入目前是否可能出现 NaN 没有核实；若日后核实为有限，再单独开卡归一。
+- **改动**：新增 `src/utils/finiteClamp.ts`（`clampRatio`、`whole`）；20 个文件删私有副本、改 import。mechanics 已在用 `@/utils/*`（如 mechanicSettingCfg），分层允许。
+- **为什么值得做**：同一个「非有限值按 0」口径写了 20 份，看代码的人无法一眼分辨哪些是同义副本、哪些是故意不同的变体（上面的异义组正是混在里面的）。收成一处后，异义变体变成显式的少数，读者能直接看到差异。
+- **锁**：`src/utils/__tests__/finiteClampSingleSource.test.ts`：① 语义（NaN / ±Infinity / undefined → 0）；② 源码里 `max(0, min(1, isFinite(x) ? x : 0))` / `max(0, floor(isFinite(x) ? x : 0))` 的函数体只允许出现在 finiteClamp.ts（回落值非 0 的写法，如 `? rate : 1`，不在范围）。反例：stash vivian.ts 后报出 vivian.ts:88 / :92。
+- **影响**：行为零差（verify 全绿，golden 未动）。
+- **回退**：revert 0b4664f3。

@@ -71,19 +71,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 294 轮（lane lead-arena-0925c）：CC-279（fc72df87）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。开工时已补推第 292–293 轮积压的 5 个提交。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.118：norma / burnice / damagePoolRelease 三处同文件副本收成单一出口，行为零差。
-- 前几轮：293 CC-278；292 CC-277；291 CC-276；290 CC-275；289 CC-274。
+**第 295 轮（lane lead-arena-0925c）：CC-280（0b4664f3）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.119：20 处私抄钳位 helper 收成 `src/utils/finiteClamp.ts`，行为零差。
+- 前几轮：294 CC-279；293 CC-278；292 CC-277；291 CC-276；290 CC-275。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **扩大克隆扫描**：`timeout 160 npx -y jscpd@4 src --pattern '**/*.{ts,vue}' --ignore '**/__tests__/**,**/*.test.ts,**/*.d.ts' --min-lines 8 --min-tokens 70 --reporters json --output /tmp/jscpd --silent`，再用 python 读 `/tmp/jscpd/jscpd-report.json` 的 duplicates 按 lines 排序。优先看**跨文件**副本（最容易漏字段）；展示层（views / components）不许值导入 core / mechanics / specs，合并时放到 utils 或 composables。每处先比对语义，相同且合并更简单才动，否则在 r6 清单记「不做 + 理由」。
-2. 若 1 无值得做的：回到「两份实现表达同一事实」这条线，grep `JSON.parse(JSON.stringify(` 在 composables 里的用法，看有没有别的手写深拷贝快照（CC-278 只锁了带 `team: configStore.team` 的形态）。
+1. **`CharacterCard.vue` ↔ `ResourcePage.vue` 跨文件副本**（CharacterCard :175 / :194 与 ResourcePage :120 / :137，14 + 16 行）：先读两段，判断是否同一展示逻辑（同义且都在展示层 ⇒ 抽到 `src/utils/` 或 composables 的纯函数；展示层禁止值导入 core / mechanics / specs）。
+2. 同文件克隆逐个看（同义且合并更简单才动，否则 r6 清单记「不做 + 理由」）：`AttributeConfigPage.vue` 29/17（157 行，可能是模板里两份表单）、`CharacterCard.vue` 141/123、`specPanelBuffs.ts` 768/672、`lucy.ts` 226/172、`freeCompare/metrics.ts` 224/191、`versionChartGeometry.ts` 179/83。
+3. 重扫命令：`rm -rf /tmp/jscpd && timeout 160 npx -y jscpd@4 src --pattern '**/*.{ts,vue}' --ignore '**/__tests__/**,**/*.test.ts,**/*.d.ts' --min-lines 8 --min-tokens 70 --reporters json --output /tmp/jscpd --silent`，再用 python 读 `/tmp/jscpd/jscpd-report.json` 的 duplicates。
 
 **已知坑**：
+- 「非有限值 → 0」的比例钳位 / 非负取整用 `@/utils/finiteClamp`（CC-280 锁拦私抄）；需要其它回落值或不挡 NaN 的，写清原因；
 - 分析器改 store 前后一律 `snapshotStore` / `restoreStore`（configSnapshot.ts）；
 - 量 HEAD 的测试（`agentIdentity.test.ts` T8）提交前 verify 覆盖不到，影响身份度量时提交后再跑一次；
-- 角色身份只有 agent.id（CC-276）；队友 buff 拥有者在加载后等于组 id（CC-275）；
 - GitHub 偶尔不通（第 292–293 轮）：push 超时就记进交接，下一轮开工先补推；
 - 杀进程只 kill 具体 pid（`pgrep -f` 会匹配到 wsl_exec 自己的 shell）；
 - 新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
