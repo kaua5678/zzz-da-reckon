@@ -71,32 +71,35 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 276 轮（lane lead-arena-0925c）：CC-259（58e4eb7b）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推；push 偶尔第一次超时，重试即可）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.100。要点：
-  - 难度 x 轴的输入（散点、曲线、下降三处）一律走 `src/composables/liveInteractions.ts`（引擎实打次数）；
-  - 预设交互写引擎走 `teamCompare#applyPresetInteractions`，专属类型按该槽模块 `interactionFieldTypes` 反查。
-- 前几轮：275 CC-258；274 CC-257；273 CC-255/256。
+**第 277 轮（lane lead-arena-0925c）：CC-260（a1b2e755）完成；CC-261 测量完成待做。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.101。
+- 前几轮：276 CC-259（散点 x 轴读实打次数，`composables/liveInteractions.ts`）；275 CC-258；274 CC-257。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **预设 `interactions` 字段的去留（先测量）**。CC-259 之后，预设声明的 parry / dodge / quickAssist 只作为 slot 0 的覆盖值写进引擎（auto 预设统一是 parry8/dodge4 的「未校准占位」），难度与伤害都读实打次数。
-   - 问题：这个占位覆盖值（8/4）让 slot 0 偏离职业基准（6/10）。用户 2026-09-11 说过「完全不需要以前这个死数值」。
-   - 测量：统计 104 个预设的 slot 0 声明值分布（`grep -h '\"type\"' -A2 src/data/teamPresets/*.json`，或写 node 脚本），区分 auto 占位（8/4）与手编值。
-   - 候选：
-     - (a) `scripts/gen-auto-presets.mjs` 不再生成占位交互，存量 auto 预设删掉 parry/dodge，改走 setAgent 基准；
-     - (b) 保持现状。
-   - (a) 会改变 auto 预设的伤害与难度（slot 0 从 8/4 变为 6/10），属于数值卡，需给出修前 / 修后表。
-   - 裁决依据：用户 09-11 原话，加上「占位不是事实」。先查 gen 脚本注释和 `data/__tests__/teamPresets.test.ts` 是否锁了 8/4。
-   - 拿不准就只改生成脚本（可逆），存量另开卡。
-2. 之后：R6 三类清单复盘；或继续找**签名不同但协议相同**的副本（CC-256 ~ 259 都是这一类）。
+1. **CC-261 去掉预设占位交互（涉及数值：103 个预设的伤害与难度）**。
+   - 范围：`src/data/teamPresets/*.json` 里 `interactions` 恰为 `[parry 8, dodge 4]` 的 87 条（85 auto + 2 手编），改为 `[]`。
+   - 16 条手编 `[parry 8, dodge 4, quickAssist 3]` 去掉 parry / dodge，**quickAssist 3 暂留**：
+     - 快支不是 8/4 那类占位，runArchiveDeploy / 轻量装配都有「快支 3 = 喧响基础供给」的口径；
+     - 是否统一快支另行测量，本卡不决定。
+   - banyue-liuyin-lucia（等于模块默认值）和空预设不动。
+   - 生成脚本 `scripts/gen-auto-presets.mjs:111-114` 改为 `interactions: []`，同步改第 15 行和第 106 行的注释 / note 文案（写明依据是用户 09-04 基准和 09-11 原话）。
+   - 注意 note 字段是每个 auto json 里的字符串，含「交互为 parry8/dodge4 取整档」。改 json 时一并替换为「交互走角色基准（setAgent 预填，CC-261）」，或者重跑生成脚本。重跑前先确认它不会改动别的字段：用 `git diff --stat` 检查。
+   - 探针（先测再改）：对全部预设 `applyTeamToStore(config, preset)` 与 `applyTeamToStore(config, {...preset, interactions: 去占位后})`，读 `useResourceCalc().teamTotalDamage` 与 `computeDifficulty(liveInteractions(...))`，输出修前 / 修后表（按角色分组汇总）。
+     - 注意 harness 的 TEST_BASE_CHAR 预填快支 3，先清零；每个预设前 `restoreActionCounts`。
+     - 预期：1051 队伤害变化最大（交互从 8/4 变为 0）；普通输出位主 C 从 8/4 变为 6/10；支援 / 防护位主 C 从 8/4 变为 0。
+   - 检查 `src/data/__tests__/teamPresets.test.ts`：`merged.interactions.length > 0` 只针对 liuyin，不受影响。其余锁定预设内容的测试逐个核对。
+   - golden 若变化，按「占位去除、改走角色基准」写明原因。
+   - 回退：json 为纯数据，revert 即可。
+2. 之后：快支口径统一的测量（手编 3 / auto 0 / 轻量装配 3 / 生产默认 0）；或 R6 清单复盘。
 
 **已知坑**：
-- 副本之间的差异常常是缺陷（CC-251 / 254 / 255 / 257 / 258 / 259）；但有注释写明口径的差异要保留（runArchiveDeploy 不预设弹刀、快支 3）；
-- 同一 store 字段对不同角色可能是不同交互（般岳 blockCount = 金身）⇒ 先查模块 `interactionFieldTypes`（正查 `interactionFieldTypeOf`，反查 `interactionFieldForType`）；
-- 改了难度输入口径后，teamCompare.test 里有钉了绝对值的用例，要逐项对账后改期望（注释里写清来源）；
+- 逐预设循环必须在每个预设开头 `restoreActionCounts(configStore, snap)`（CC-260 锁）；新写的分析器循环照此办理；
+- 不要在循环里整份 `restoreStore`：循环外的 applyBossPreset 等会被退回；
+- 副本之间的差异常常是缺陷；但有注释写明口径的差异要保留；
 - 沙箱重置后 `up.sh` 可能丢可执行位 ⇒ 一律 `bash /home/user/mcp-tools/up.sh …`；
-- harness 的 TEST_BASE_CHAR 给每槽预填快支 3（生产默认 0），做预设级探针前先清零；
-- 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify。
+- harness 的 TEST_BASE_CHAR 预填快支 3 / 连携 1（生产默认 0），做预设级探针前先清零；
+- 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；搬动带 @fact 的代码时同步 `scripts/lib/guard-registries.mjs` 的豁免路径。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。
 

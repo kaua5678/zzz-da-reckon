@@ -3161,3 +3161,45 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 **影响面。** 散点页横轴整体右移：多数队 +18，双输出队 +36，般岳 / 比利队更多。跨队的相对位置按「实打交互量」重排。难度曲线不变（它原本就用 liveInteractions）。
 
 **回退点。** revert 58e4eb7b，散点回到读预设声明；或者只把 teamCompare 中那一行改回声明值（需恢复被删的团队聚合缩）。
+
+### 24.101 第 277 轮：预设占位交互测量（CC-261 待做）；CC-260 逐预设循环动作次数不泄漏（a1b2e755，当前全量顺序零差）
+
+**① 预设 `interactions` 分布（105 个 json）。**
+
+| 条数 | 内容 |
+|---|---|
+| 85 | auto：`parry 8 / dodge 4` |
+| 16 | 手编：`parry 8 / dodge 4 / quickAssist 3` |
+| 2 | 手编：`parry 8 / dodge 4` |
+| 1 | banyue-liuyin-lucia：`dodge 10 / parry 6 / banyueGoldenParry 20 / banyueDualCounter 5`（等于模块默认值） |
+| 1 | 空 |
+
+- 来源：`scripts/gen-auto-presets.mjs:111-114` 写死 8/4，注释写「交互取整档（用户 2026-09-03：交互为资源/失衡次数服务，无需实战值，四舍五入整数档足够）」。
+- 用户口径时间线：
+  - 09-03：取整档即可；
+  - 09-04：setAgent 按职业基准预填 6/10，「默认大家会打」；
+  - 09-11：「现在有自动交互了…完全不需要以前这个死数值」（teamPresets.ts:37-38）。
+  - 09-03 的 8/4 早于 09-04 的自动预填，已被后两条取代。
+- **实际副作用**：8/4 以 slot 0 覆盖值写进引擎，盖掉模块默认值。
+  - 1051 伊德海莉的模块声明 `noGenericInteraction`（交互 0），所有 1051 预设被强制成弹刀 8 / 闪反 4，与 CC-255 修的是同一类偏差，只是换了入口；
+  - 星徽·比利（interactionDefaults p4/d0/b5）、般岳（6/10）同样被 8/4 覆盖；
+  - 普通输出位 6/10 被覆盖成 8/4，队友却是 6/10，同一支队主 C 和队友口径不同。
+- 裁决方向：去掉占位（见 worker §2 CC-261）。这会改变 103 个预设的伤害与难度，属于数值卡，需修前 / 修后表，本轮不做。
+
+**② CC-260（a1b2e755）：逐预设循环的动作次数泄漏。**
+- 测量：`setAgent`（config.ts:591）只重置弹刀、闪反、格挡、双反、平 A 权重。快支、连携、嘲讽取消、仪玄系等由预设写入后不重置。
+- 散点 `computeTeamComparePoints`、难度曲线 `computeDifficultyCurves`、定位对比 `positionCompare` 三个循环都只在最外层快照一次，预设之间不恢复。
+- 实测：装配手编预设 yixuan-trigger-lucia（slot 0 快支 3）后再装配 auto-1461-1521-1361，slot 0 仍是快支 3。
+- 影响：
+  - 伤害：这支队的快支对伤害为 0（快支 3 / 7 读数相同）；全 104 个预设「连续装配 vs 逐个从基线装配」伤害 0 差；
+  - x 轴：CC-259 后散点 x 读实打快支（×0.6）。全量列表顺序恰好 0 差（手编快支预设之后没有紧跟不声明快支的预设），但界面按分组 / 子分组传入的 `options.presets` 子集会触发，属于潜伏缺陷。
+- 修法：`configSnapshot#restoreActionCounts(configStore, snap)`，把每槽 `ACTION_COUNT_BOUNDS` 全集字段写回快照值，三个循环在每个预设开头调用。
+  - 之后 setAgent 照常覆盖它负责的字段。
+  - 没有整份 `restoreStore`：difficultyCurve 在循环外已 `applyBossPreset`，整份恢复会把 Boss / 敌人退回用户态。
+  - 没有重置为 defaultCharacter 模板：模板连携为 0，会改变「以用户基线为起点」的现有口径（另一个语义决定）。
+- 锁：`src/composables/__tests__/presetLoopActionCounts.test.ts`：
+  - 行为：修前泄漏；恢复后快支回到基线，setAgent 预填保留；
+  - 源码：三个循环开头都调用该函数。
+  - 修前两条红。
+- verify EXIT=0，golden 不变。
+- 回退点：revert a1b2e755。
