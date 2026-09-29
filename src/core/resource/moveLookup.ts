@@ -351,11 +351,24 @@ export function calcBasicAttackRegenPerSec(agentSkills: {
   // CC-320 兜底：一个 #N 段都没有（1631 / 1641 新版 catalog 段名不带 #N）时，改用**已解析的普攻基准段**
   // （`opts.fallbackMoveId` = cfg.basicBenchmarkMoveId，与平A伤害同一段），且不套下方「>200% = 强化平A」
   // 启发式（那条是给 #N 段列表挑普通段的；基准段是数据声明 / 模块裁决）。原先这两人秒均回复恒 0。
+  //
+  // CC-322：兜底条件推广为「**没有普通段存活**」——#N 段为空（CC-320），或 #N 段**全部**被下方
+  // 「>200% = 强化平A」启发式排除（1511 南宫羽：流星步 #1–#3 本身就是 230/274/528% 的普通平A，
+  // 6 段全灭 ⇒ 秒均回复恒 0；其地雷行按 rowAccounting 口径显式 0、回能本应留在平A聚合行）。
+  // 启发式本身保留：catalog 实测它把其余 59 人的秒均能量拉回普通段的 ≈3.6/s（不过滤反被强化段拉偏）。
+  const rawDamage = (move: { rows: { id: string; values: number[] }[] }): number => {
+    // 强化平A判定是**分类**，保持原始倍率（不吃行规则；同 panelPhases:212 裁决）
+    let damage = 0
+    for (const row of move.rows) if (row.id === 'damage') damage = row.values[0] || 0
+    return damage
+  }
   const numbered = basic.moves.filter(isNumberedBasicSegment)
-  const fallback = numbered.length === 0 && opts?.fallbackMoveId
+  // 排除强化平A：倍率异常高（强化平A伤害通常是普通平A的2-3倍以上）；简单判定 > 200%（后续可调）
+  const ordinary = numbered.filter(m => !(rawDamage(m) > 200))
+  const fallback = ordinary.length === 0 && opts?.fallbackMoveId
     ? basic.moves.find(m => m.id === opts.fallbackMoveId && (m.actionTime ?? 0) > 0)
     : undefined
-  for (const move of fallback ? [fallback] : numbered) {
+  for (const move of fallback ? [fallback] : ordinary) {
     const actionTime = move.actionTime as number
 
     let energy = 0
@@ -366,15 +379,6 @@ export function calcBasicAttackRegenPerSec(agentSkills: {
       if (row.id === 'flash_energy_recovery') energy = rowValue(move, row.id)
       if (row.id === 'decibel_recovery') decibel = rowValue(move, row.id)
     }
-
-    // 排除强化平A：倍率异常高（强化平A伤害通常是普通平A的2-3倍以上）
-    let damage = 0
-    for (const row of move.rows) {
-      // 强化平A判定是**分类**，保持原始倍率（不吃行规则；同 panelPhases:212 裁决）
-      if (row.id === 'damage') damage = row.values[0] || 0
-    }
-    // 简单判定：伤害倍率 > 200% 可能是强化平A（后续可调）；基准段兜底不套（见上）
-    if (!fallback && damage > 200) continue
 
     energyRates.push(energy / actionTime)
     decibelRates.push(decibel / actionTime)

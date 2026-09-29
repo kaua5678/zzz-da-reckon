@@ -34,6 +34,23 @@ describe('CC-320 isNumberedBasicSegment / 秒均回复基准段兜底', () => {
     expect(r.decibelPerSec).toBeCloseTo(26.785 / 0.981, 6)
   })
 
+  it('CC-322：#N 段全被 >200% 启发式排除（1511 南宫羽）⇒ 同样走基准段兜底', () => {
+    const s = skillsOf('1511')
+    expect(calcBasicAttackRegenPerSec(s).energyPerSec, '无兜底 = 旧行为 0').toBe(0)
+    const r = calcBasicAttackRegenPerSec(s, undefined, { fallbackMoveId: '1511003' })
+    expect(r.energyPerSec).toBeCloseTo(5.526 / 1.535, 6)
+    expect(r.decibelPerSec).toBeCloseTo(38.005 / 1.535, 6)
+  })
+
+  it('全部角色：带 #N 段的只有 1511 会被启发式清空（新增此类角色时本例提醒检查）', () => {
+    const dmg = (m: Skills['categories'][number]['moves'][number]) => m.rows.find(r => r.id === 'damage')?.values[0] ?? 0
+    const wiped = catalog.agentSkills.filter(a => {
+      const segs = (a.categories.find(c => c.id === 'basic')?.moves ?? []).filter(isNumberedBasicSegment)
+      return segs.length > 0 && segs.every(m => dmg(m) > 200)
+    }).map(a => a.agentId)
+    expect(wiped).toEqual(['1511'])
+  })
+
   it('有 #N 段：兜底参数不生效（青衣逐位不变）', () => {
     const s = skillsOf('1251')
     expect(calcBasicAttackRegenPerSec(s, undefined, { fallbackMoveId: '1251008' })).toEqual(calcBasicAttackRegenPerSec(s))

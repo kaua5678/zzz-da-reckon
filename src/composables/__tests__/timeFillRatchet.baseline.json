@@ -110,7 +110,7 @@
   "outerExit": "stable"
  },
  "auto-1181-1511-1411": {
-  "slack": 0.4,
+  "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
