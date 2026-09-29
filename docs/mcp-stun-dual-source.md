@@ -4478,3 +4478,25 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   转为下一步候选，要先在 CC-150「最大自洽可行整数」与 CC-136 ③′「输入小者」之间定原则。
 - **验证**：`vue-tsc -b` 0 错；get_diagnostics 0；隔离 worktree `wtA-fn` 全量 verify EXIT=0（442 个文件、4063 个测试）。回退点：`git revert 7ad71a8e`。
 - 详见 `docs/mcp-integer-cycle-stop.md` §8、`docs/mcp-outer-fixedpoint-continuity.md` §6。
+
+### 24.171 第 347 轮（lane arena-C）：外层 physical 同级按读入 K 取大（CC-329 `216c5bde`，数值卡，1 个预设动数）
+
+- **起因**：§24.170 与外层连续性文档 §6 留下的候选。第 346 轮 414 例消融显示，外层环内选点 ③「取最后一轮」只在 auto-1371-1571-1451
+  （physical）上实质相位相关。四个成员是 [读入 4、可行、池 4]、[读入 4、不可行、池 3]、[读入 3、可行、池 3]、[读入 3、可行、池 4]，
+  规划 stunIn 全为 0，截断和时间全同级。旧规则取末轮，得到读入 3（池 4 被 CC-150 钳到 3）；换一个检出相位，就会取到读入 4。
+- **原则裁决**：physical 下同级成员按读入 K **取大**。
+  - 依据一：CC-150 / CC-153 已立「最大自洽可行整数」，即按 K 分配时池 ≥ K 的最大 K（§15.2、§17.2）。
+  - 依据二：内层 CC-326 的 `integerCycleStop`（不透支成员中次数最多者）是同一原则。
+  - 与 CC-136 ③′「输入小者」不冲突：③′ 比的是规划 stunIn，是连续量、取保守口径，在这里全为 0，比不出高下。
+    归纳为一句：**整数的物理次数取可行最大，连续的规划量取小。**
+- **代码**（`outerCycle.ts#pickOuterCycleMember`）：在 ③′ 之后、③ 之前新增 ③″——池内成员都有 `windowsIn`、且都不是 `feasible === false`
+  时，保留 K 最大者。放在 ③′ 之后，按构造不推翻任何已有级，只接管原先落到「取最后一轮」、且 K 不同的情形。非 physical（不传
+  `windowsIn`）和全员不可行时不适用。新增 3 条纯函数用例（含旋转不变）；反向验证：换回旧 outerCycle.ts 后，恰好旋转用例红。
+- **影响**（414 例 × physical / off 两遍，探针 `zzOcProbe`，与第 346 轮 `oc.json` / `oc-off.json` 逐字段比较）：
+  - 只有 auto-1371-1571-1451（physical）变。失衡 3→4；连携 16→20（槽 0 10→12、槽 1 3→4、槽 2 3→4）；槽 1 终结 3→4；前台共 +9.467s，
+    后台等量减少；留白 0、超预算 0 不变；伤害 82,536,812 → 85,878,541（+4.049%）。
+  - 新成员读入 4、池 4，恰好自洽，不需要 CC-150 钳位。
+  - off 投影 0 变。timeFillRatchet / cinemaMonotone / teamTimeSummary 直接通过；timeGolden 重生成，只有这一条目。
+- **验证**：`vue-tsc -b` 0 错；get_diagnostics 0；隔离 worktree `wtA-ock` 全量 verify EXIT=0（442 个文件、4066 个测试）。
+  回退点：`git revert 216c5bde`，golden 随提交一起回退。
+- 详见 `docs/mcp-outer-fixedpoint-continuity.md` §7。

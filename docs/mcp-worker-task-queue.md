@@ -96,40 +96,30 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 346 轮（lane arena-C）：CC-328 简化卡（终局逐位零差），代码 `7ad71a8e`，文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。开工时间 02:12。现场：HEAD 41f83bc6 与 origin 一致；没有 verify / vitest / dsh 进程；最近一次提交是本 lane 02:04 的 41f83bc6；工作区干净。**
+**第 347 轮（lane arena-C）：CC-329 数值卡（1 个预设动数），代码 `216c5bde`，文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。开工时间 02:40。现场：HEAD 95f608a2 与 origin 一致；没有 verify / vitest / dsh 进程（常驻 `dsh web` 不算）；最近一次提交是本 lane 02:31 的 95f608a2；工作区干净。**
 
-- **CC-328**：内层环分支合一。以前浮点噪声环走专用分支 `jsonMinMember`（clean=true），真整数环走 `integerCycleStop`（clean=false）。现在停点一律取 `integerCycleStop`，`isFloatNoiseCycle` 只决定收敛标志；`jsonMinMember` 只剩平局兜底一个用途。改动 3 个文件，+18/−15：innerLoop.ts，floatNoiseCycle.ts 头注，resource.ts 注释与 `@fact engine:收敛环停点规范化`。
-- **依据**（414 例探针，见 `docs/mcp-integer-cycle-stop.md` §8）：
-  - 噪声环共 60 次停点，涉及 19 例，全部是 2-循环。
-  - 两条规则的选点，按引用比较 0 差，按 JSON 比较也是 0 差。
-  - 终局全字段 0 差，包括伤害原值和 rr.characters 的 sha1。
-  - 基线一个没动。
-- **外层选点逐级消融**（只测不改，见 `docs/mcp-outer-fixedpoint-continuity.md` §6）：physical（缺省）与 off 投影各跑 414 例，各有 13 次选点事件。
-  - ⓪ 零窗、⓪′ 截断、② 时间：三级在两种投影下都 0 次改变选点。
-  - 其余各级：⓪″ 可行 3 次（physical）；① 失衡自洽 2 次（off）；③′ 输入小者 physical 2 次、off 6 次。
-  - ③「取最后一轮」：physical 下有 6 次与「取第一轮」不同。其中 5 次是同一成员的重复（2-周期轨迹在 lag=4 被接住）；只有 auto-1371-1571-1451 是实质相位相关：三个可行成员读入 K=4/3/3，规划 stunIn 全为 0，现取 K=3。off 下 1 次（auto-1191-1361-1311，四个成员的 stunIn 相差 ≤0.0011，在容差 0.05 以内）。
-  - **裁决**：静默的三级不删，因为它们有语义，删掉需要「被别级蕴含」的论证。相位相关点转为下一步候选。
-- 验证：`vue-tsc -b` 0 错；get_diagnostics 0；在隔离 worktree `wtA-fn` 跑全量 verify，EXIT=0（442 个文件、4063 个测试，日志 `/home/kaua/calc-arch/arenaC/fn-verify.log`）。代码在 worktree 里提交，主仓库用 `git merge --ff-only` 合入。
+- **CC-329**：外层环内选点 `pickOuterCycleMember` 在 ③′ 之后新增 ③″。physical 下，其余各级同级、池内成员都有读入 K 且都可行时，取 K 最大者。
+- **原则**：整数的物理次数取可行最大；连续的规划量取小（③′，不变）。
+  - 前者依据 CC-150 / CC-153 的「最大自洽可行整数」，与内层 CC-326 同一原则。
+  - ③″ 放在 ③′ 之后，按构造只接管原先由「取最后一轮」决定、且 K 不同的情形。
+- **影响**（414 例 × physical / off，见 `docs/mcp-outer-fixedpoint-continuity.md` §7）：
+  - 只有 auto-1371-1571-1451（physical）变：失衡 3→4，连携 16→20，槽 1 终结 3→4，前台 +9.467s，伤害 +4.049%；留白、超预算仍为 0。
+  - off 投影 0 变。timeFillRatchet / cinemaMonotone / teamTimeSummary 直接通过；timeGolden 重生成，只有这一条目。
+- 单测 3 条（`outerCycle.test.ts`），做过反向验证。
+- 验证：`vue-tsc -b` 0 错；get_diagnostics 0；在隔离 worktree `wtA-ock` 跑全量 verify，EXIT=0（442 个文件、4066 个测试，日志 `/home/kaua/calc-arch/arenaC/ock-verify.log`）。代码在 worktree 里提交，主仓库用 `git merge --ff-only` 合入。
 - 探针产物在 `/home/kaua/calc-arch/arenaC/`：
-  - 噪声环：`fn-hist.json`、`fn-rule.json`、`innerLoop.fnprobe.ts`（以 41f83bc6 为底，CC-328 之后不能直接套用）、`zzFnProbe.test.ts`、`arenaC-fn.sh`。
-  - 外层：`oc.json`（physical）、`oc-off.json`（off）、`outerCycle.ocprobe.ts`（以 7ad71a8e 为底，只加日志和消融重算，行为不变）、`zzOcProbe.test.ts`（设 `OC_PROJ=0` 切到 off）、`arenaC-oc.sh`、`arenaC-oc-off.sh`。
-  - 这些脚本都 cd 到 wtA-fn，该 worktree 已删，复用时要改路径。
+  - `oc347.json`、`oc347-off.json`，对照第 346 轮的 `oc.json`、`oc-off.json`；
+  - `arenaC-ock-probe.sh`、`arenaC-ock-base.sh`、`arenaC-ock-update.sh`、`arenaC-ock-verify.sh`，以及对应的 `ock-*.log`。
+  - 这些脚本都 cd 到 wtA-ock，该 worktree 已删，复用时要改路径。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. 候选（先定原则，再改代码）：外层 ③「取最后一轮」在 physical 下的实质相位相关（auto-1371-1571-1451）。
-   - 冲突在于两条已立原则：CC-150「取读入 K = 最大自洽可行整数」倾向 K=4；CC-136 ③′「输入失衡次数小者，不高估」比的是规划 stunIn，这里全为 0，比不出高下。
-   - 做法：
-     ① 读 `docs/mcp-stun-dual-source.md` 里 CC-150 / CC-153 的条目，定下 physical 下同级成员按 K 取大还是取小；
-     ② 把 ③ 换成与相位无关的内容键，例如 physical 下 ③′ 改用 `windowsIn ?? stunIn`，再以外层反馈签名的字典序兜底；
-     ③ 用 `arenaC/outerCycle.ocprobe.ts` 探针量两种方向对该预设的影响。
-   - 预计只有这一个预设动数。按数值卡处理：重生成基线，逐条归因。定不出原则就只记录，不改代码。
-3. 可选（先探针）：`docs/mcp-integer-cycle-stop.md` §6 第 3 条「converged=true 的路径依赖」。
-4. 可选：
+2. 可选（先探针）：`docs/mcp-integer-cycle-stop.md` §6 第 3 条「converged=true 的路径依赖」。同一队的不同停点序列可能收敛到不同的自洽终态。先量清楚这样的用例有多少、差多大；没有「更一般或更简单」的改法就只记录。
+3. 可选：
    - 折叠环停滞判据（连续 3 轮改善 ≤1e-2）的触发面，用 `PROBE_TRACE_FOLD=1` 量。
-   - R22-D1 债 1a（全局实数化松弛推广，见 `docs/mcp-r22d1-batch12-field-census.md` §2）能否因 `integerCycleStop` 取到 ⌊x*⌋ 而部分销号。先写判据，再量。
-5. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+   - R22-D1 债 1a（全局实数化松弛推广，见 `docs/mcp-r22d1-batch12-field-census.md` §2）能否因内外层整数环停点都取「可行最大」而部分销号。先写判据，再量。
+4. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **get_diagnostics 的 path 必须是仓库相对路径**（如 `src/core/resource.ts`）；传绝对路径会报「Path must be workspace-relative」，传 `paths` 会报 INVALID_ARGUMENT。
