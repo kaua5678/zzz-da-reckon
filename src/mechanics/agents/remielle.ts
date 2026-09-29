@@ -519,9 +519,9 @@ export const remielleMechanic: AgentMechanicModule = {
         .filter(item => item.count > 0 && item.panel)
       const voidflareTotal = voidflareBySlot.reduce((sum, item) => sum + item.count, 0)
 
+      const skillLevelBonus = remiellePanel.skillLevelBonus ?? 0
+      const c1ResIgnore = (remiellePanel.remielleCinema1SpecialVoidflareCount ?? 0) > 0 ? 50 : 0
       if (voidflareTotal > 0 && remielleSkills) {
-        const skillLevelBonus = remiellePanel.skillLevelBonus ?? 0
-        const c1ResIgnore = (remiellePanel.remielleCinema1SpecialVoidflareCount ?? 0) > 0 ? 50 : 0
         const fleetingGraceMultiplier = remielleFleetingGraceMultiplier(remiellePanel)
         const qBatches = Math.floor(voidflareTotal / 3)
         const firstOtherSlot = otherSlots[0]
@@ -596,40 +596,43 @@ export const remielleMechanic: AgentMechanicModule = {
             })
           }
         }
+      }
 
-        const specialCount = remielleSpecialVoidflareCount(remiellePanel)
-        if (specialCount > 0) {
-          const rainbowMove = findMoveById(remielleSkills, '1581007')
-          const rainbowLuminizeRow = rainbowMove?.rows.find(row => row.kind === 'luminizeMultiplier' || row.id === 'luminize_multiplier')
-          const rainbowMultiplier = getRemielleLevelValue(rainbowLuminizeRow, skillLevelBonus)
-          const specialMultiplier = rainbowMultiplier * 2.5
-          if (specialMultiplier > 0) {
-            const result = calcVoidflareDamage({
-              sourcePanel: remielleEntryPanel,
-              remiellePanel: remielleEntryPanel,
-              multiplier: specialMultiplier,
-              element: 'lumiflux',
-              enemyDefense: enemy.defense,
-              enemyResistances: enemyDamageRes,
-              stunMultiplier: enemy.stunVuln,
-              stunned: stunCoverage,
-              cinema1ResIgnore: c1ResIgnore,
-            })
-            rows.push({
-              id: 'remielle-special-voidflare',
-              slot: remielleSlot,
-              agentId: teamAgentId(remielleSlot),
-              agentName: agentName(teamAgentId(remielleSlot), remielleSlot),
-              type: '特殊虚耀',
-              name: '普通攻击垂虹·特殊虚耀',
-              element: 'lumiflux',
-              source: '蕾米进场记录面板 × 2.5 特殊独立乘区',
-              count: specialCount,
-              perDamage: result.damage,
-              totalDamage: result.damage * specialCount,
-              note: `垂虹倍率 ${fmt(rainbowMultiplier)}% × 2.5 · ${result.formula}`,
-            })
-          }
+      // CC-325：特殊虚耀（1/4/6 命自带虚曜点，垂虹打出）只用蕾米自身面板与技能表，与队友虚耀无关——
+      // 原先嵌在 `voidflareTotal > 0` 块内，队友不产生异常（单人 / 无异常队友）时被一并跳过，
+      // 而垂虹必做动作（extraNecessaryAction）照扣前台时间 ⇒ 时间扣了、耀变伤害没算。
+      const specialCount = remielleSkills ? remielleSpecialVoidflareCount(remiellePanel) : 0
+      if (specialCount > 0 && remielleSkills) {
+        const rainbowMove = findMoveById(remielleSkills, '1581007')
+        const rainbowLuminizeRow = rainbowMove?.rows.find(row => row.kind === 'luminizeMultiplier' || row.id === 'luminize_multiplier')
+        const rainbowMultiplier = getRemielleLevelValue(rainbowLuminizeRow, skillLevelBonus)
+        const specialMultiplier = rainbowMultiplier * 2.5
+        if (specialMultiplier > 0) {
+          const result = calcVoidflareDamage({
+            sourcePanel: remielleEntryPanel,
+            remiellePanel: remielleEntryPanel,
+            multiplier: specialMultiplier,
+            element: 'lumiflux',
+            enemyDefense: enemy.defense,
+            enemyResistances: enemyDamageRes,
+            stunMultiplier: enemy.stunVuln,
+            stunned: stunCoverage,
+            cinema1ResIgnore: c1ResIgnore,
+          })
+          rows.push({
+            id: 'remielle-special-voidflare',
+            slot: remielleSlot,
+            agentId: teamAgentId(remielleSlot),
+            agentName: agentName(teamAgentId(remielleSlot), remielleSlot),
+            type: '特殊虚耀',
+            name: '普通攻击垂虹·特殊虚耀',
+            element: 'lumiflux',
+            source: '蕾米进场记录面板 × 2.5 特殊独立乘区',
+            count: specialCount,
+            perDamage: result.damage,
+            totalDamage: result.damage * specialCount,
+            note: `垂虹倍率 ${fmt(rainbowMultiplier)}% × 2.5 · ${result.formula}`,
+          })
         }
       }
     }
@@ -692,7 +695,9 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
   const otherSlots = [0, 1, 2].filter(slot => slot !== ownSlot)
   const perSlotAnomaly = perSlotAnomalyTriggers
   const voidflareTotal = otherSlots.reduce((sum, slot) => sum + Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)), 0)
-  if (voidflareTotal <= 0) return []
+  // CC-325：不在 voidflareTotal=0 时提前 return——特殊虚耀（1/4/6 命自带虚曜点，垂虹打出）与队友异常无关；
+  // 提前 return 会把它一并吞掉，而垂虹必做动作（extraNecessaryAction）照扣前台时间 ⇒ 时间扣了、耀变没算。
+  // 依赖虚耀池的记录 count 为 0，由末尾 filter(count > 0) 自然剔除。
 
   const remiellePanel = panel
   const qBatches = Math.floor(voidflareTotal / 3)

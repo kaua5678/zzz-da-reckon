@@ -205,6 +205,23 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     }))).toEqual([])
   })
 
+  it('CC-325：无队友虚耀但有 C1 → 仍产特殊虚耀行（与队友异常无关；垂虹必做动作照扣时间，伤害不能丢）', () => {
+    const groups = remielleMechanic.extraAnomalyRows!(input({
+      anomalyPool: { perSlotAnomalyTriggers: [0, 0, 0] } as never,
+      panel: panel({ remielleCinema1SpecialVoidflareCount: 1 }) as never,
+    }))
+    expect(groups).toHaveLength(1)
+    expect(groups[0].rows.map(r => r.id)).toEqual(['remielle-special-voidflare'])
+    expect(groups[0].rows[0]).toMatchObject({ count: 3, element: 'lumiflux' })
+    expect(groups[0].rows[0].totalDamage).toBeGreaterThan(0)
+    // 展示侧事件记录同口径：虚耀池类记录 count=0 被滤掉，只剩特殊虚耀
+    const records = remielleMechanic.anomalyEventRecords!({
+      slot: 0, panel: panel({ remielleCinema1SpecialVoidflareCount: 1 }) as never,
+      teamAgentIds: ['1581'], perSlotAnomalyTriggers: [0, 0, 0], cinemaLevel: 1, perElementTriggerCounts: {},
+    } as never)
+    expect(records.map(r => r.id)).toEqual(['remielle-special-voidflare'])
+  })
+
   it('2 个队友虚耀计数：order=60，耀变行 id/count 逐字', () => {
     const groups = remielleMechanic.extraAnomalyRows!(input({
       anomalyPool: { perSlotAnomalyTriggers: [0, 2, 3] } as never,
