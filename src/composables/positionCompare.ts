@@ -34,7 +34,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { AnomalyPoolResult } from '@/types/resource'
-import { applyGoldSteps, baseGoldOf, applyAxisBinding } from '@/composables/teamCompare'
+import { applyGoldSteps, baseGoldOf, applyAxisBinding, applyTeamToStore } from '@/composables/teamCompare' // CC-254：原私有副本漏 tauntCancel
 import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
 
 type Calc = ReturnType<typeof import('@/composables/useResourceCalc').useResourceCalc>
@@ -127,30 +127,6 @@ function computePerSlotBuildUp(
     }
   }
   return perSlot
-}
-
-function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>, preset: TeamPreset) {
-  for (let slot = 0; slot < 3; slot++) {
-    configStore.setAgent(slot, preset.team[slot])
-    if (preset.wEngines?.[slot]) configStore.setWEngine(slot, preset.wEngines[slot])
-    const dd = preset.driveDiscs?.[slot]
-    if (dd) {
-      if (dd.fourPieceSetId) configStore.setFourPieceSet(slot, dd.fourPieceSetId)
-      if (dd.twoPieceSetId) configStore.setTwoPieceSet(slot, dd.twoPieceSetId)
-      for (const [pos, stat] of Object.entries(dd.mainStats ?? {})) {
-        configStore.setMainStat(slot, Number(pos) as 4 | 5 | 6, stat)
-      }
-    }
-    if (preset.chainCountPerStun) configStore.setChainCountPerStun(slot, preset.chainCountPerStun[slot])
-    if (preset.basicAttackTimeWeight) configStore.setBasicAttackTimeWeight(slot, preset.basicAttackTimeWeight[slot])
-  }
-  for (const it of preset.interactions) {
-    const slot = it.slot ?? 0
-    if (it.type === 'parry') configStore.setParryCount(slot, it.count)
-    else if (it.type === 'dodge') configStore.setDodgeCounterCount(slot, it.count)
-    else if (it.type === 'quickAssist') configStore.setQuickAssistCount(slot, it.count)
-    else if (it.type === 'block') configStore.setBlockCount(slot, it.count)
-  }
 }
 
 export function computePositionCompare(
