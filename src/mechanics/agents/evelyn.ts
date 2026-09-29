@@ -17,6 +17,7 @@
  *   次数显式可调（每窗口上限16次）。
  * - 牵缠禁制/禁锢作为敌方状态、禁锢扩散、束裂式自动衔接等逐状态机制不在总量模型内，未建模。
  */
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -65,14 +66,6 @@ export interface EvelynCycle {
   c4CritDmg: number
   c6FollowUpCount: number
   note: string
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export function computeEvelynCycle(input: {

@@ -4,6 +4,7 @@
  *   触发次数 = 爆发状态内暴击次数/4 × 触发率滑块（anton.additionalShockRatio，默认100% 用户口径）；
  *   结算为 release 事件（element=electric 固定 45% 感电倍率，倍率基准=感电施加者的感电伤害）。
  */
+import { clampRatio } from '@/utils/finiteClamp'
 import type { AgentEventInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
 import type { AnomalyEventExecution } from '../../types/resource'
 import { execMatchesMove } from '../../types/resource'
@@ -79,10 +80,6 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
   // 进入 calcEnergySource 的单一总账；不按 hit 放大，按实际执行招式计一次上限。
   setRecord(cfg, 'antonC1EnergyGift', c1Energy)
   setRecord(cfg, 'antonC1DrillMoveCount', c1Moves)
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
 }
 
 /** 额外能力·通力合作：爆发状态内暴击次数 → 感电追加 release 事件（固定 45% 感电倍率）。

@@ -19,6 +19,7 @@
  * - 预言 DoT：悬落/落羽生花命中异常目标施加，每0.55秒 55% 攻击力以太伤害。
  * - 额外能力全队侵蚀/紊乱伤害+12%（spec teamBuffs 记录，引擎无侵蚀限定字段待近似）。
  */
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentEventInput,
@@ -82,14 +83,6 @@ export interface VivianCycle {
   /** C6：悬落特殊异放增强倍数（消耗护羽，最多5点→×5） */
   c6ReleaseMult: number
   note: string
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export function computeVivianCycle(input: {

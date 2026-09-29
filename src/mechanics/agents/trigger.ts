@@ -30,6 +30,7 @@
  *   协奏/冥狱/断离/破甲凶弹均为 CD 驱动后台自动行（autoSplitByStun，猫又同款通用机制）——
  *   不按捏轴认领，轴模式按失衡时间占比拆「占比内吃满易伤 / 其余无易伤」，非轴按全局覆盖率。
  */
+import { whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -103,10 +104,6 @@ export interface TriggerCycle {
   note: string
 }
 
-function intAtLeast0(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
-}
-
 function cfgSetting(cfg: AgentCharConfigInput['cfg'], id: string): number {
   return cfgMechanicSetting(cfg, id, 0)
 }
@@ -123,34 +120,34 @@ export function computeTriggerCycle(input: {
   ownExSpecialCount: number
   ownUltimateCount: number
 }): TriggerCycle {
-  const cinema = intAtLeast0(input.cinemaLevel)
+  const cinema = whole(input.cinemaLevel)
   const battleTime = Math.max(0, Number(input.battleTime) || 0)
   const resolveGainPerSniperHit = cinema >= 1 ? 31.25 : 25
   const resolveCap = cinema >= 1 ? 125 : 100
 
   // 协奏狙杀：全队 CD 吃满（次数由战斗时长反推）
   const normalCdSeconds = cinema >= 1 ? TRIGGER_NORMAL_CD_C1_SECONDS : TRIGGER_NORMAL_CD_SECONDS
-  const normalAuto = !(intAtLeast0(input.normalCountOverride) > 0)
+  const normalAuto = !(whole(input.normalCountOverride) > 0)
   const normalPaidCount = normalAuto
     ? Math.floor(battleTime / normalCdSeconds)
-    : intAtLeast0(input.normalCountOverride)
+    : whole(input.normalCountOverride)
 
   // 冥狱：队友强特/支援突击/终结技重击触发，每类 20 秒内最多 2 次
   const hellRateCapPerType = TRIGGER_HELL_RATE_PER_WINDOW
     * Math.ceil(battleTime / TRIGGER_HELL_RATE_WINDOW_SECONDS)
-  const hellAuto = !(intAtLeast0(input.hellCountOverride) > 0)
-  const mateExCount = intAtLeast0(input.mateExCount)
-  const mateUltimateCount = intAtLeast0(input.mateUltimateCount)
-  const mateAssistCount = intAtLeast0(input.mateAssistCount)
+  const hellAuto = !(whole(input.hellCountOverride) > 0)
+  const mateExCount = whole(input.mateExCount)
+  const mateUltimateCount = whole(input.mateUltimateCount)
+  const mateAssistCount = whole(input.mateAssistCount)
   const hellCount = hellAuto
     ? Math.min(mateExCount, hellRateCapPerType)
       + Math.min(mateUltimateCount, hellRateCapPerType)
       + Math.min(mateAssistCount, hellRateCapPerType)
-    : intAtLeast0(input.hellCountOverride)
+    : whole(input.hellCountOverride)
 
   // 协战免费协奏：强特进入协战送4次、终结技送6次（整局总量近似，不建逐秒窗口）
-  const ownEx = intAtLeast0(input.ownExSpecialCount)
-  const ownUlt = intAtLeast0(input.ownUltimateCount)
+  const ownEx = whole(input.ownExSpecialCount)
+  const ownUlt = whole(input.ownUltimateCount)
   const freeCoordinatedCount = ownEx * TRIGGER_COOP_FREE_PER_EX_SPECIAL
     + ownUlt * TRIGGER_COOP_FREE_PER_ULTIMATE
   const coordinatedCount = normalPaidCount + freeCoordinatedCount
@@ -158,8 +155,8 @@ export function computeTriggerCycle(input: {
   // 绝意：回复端按需——自动模式下消耗全额支付；手动命中数时供给受存量上限封顶
   const resolveRequested = normalPaidCount * TRIGGER_RESOLVE_PER_NORMAL
     + hellCount * TRIGGER_RESOLVE_PER_HELL
-  const sniperAuto = !(intAtLeast0(input.sniperHitCountOverride) > 0)
-  const sniperManualHits = intAtLeast0(input.sniperHitCountOverride)
+  const sniperAuto = !(whole(input.sniperHitCountOverride) > 0)
+  const sniperManualHits = whole(input.sniperHitCountOverride)
   const resolveSupply = sniperAuto
     ? resolveRequested
     : Math.min(resolveCap, sniperManualHits * resolveGainPerSniperHit)
@@ -220,9 +217,9 @@ function applyTriggerPanel({ panel }: AgentPanelInput): void {
 function buildTriggerCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.triggerCinemaLevel = cinemaLevel
-  record.triggerNormalCountOverride = intAtLeast0(cfgSetting(cfg, 'trigger.normalCoordinatedCount'))
-  record.triggerHellCountOverride = intAtLeast0(cfgSetting(cfg, 'trigger.hellCoordinatedCount'))
-  record.triggerSniperHitOverride = intAtLeast0(cfgSetting(cfg, 'trigger.sniperHitCount'))
+  record.triggerNormalCountOverride = whole(cfgSetting(cfg, 'trigger.normalCoordinatedCount'))
+  record.triggerHellCountOverride = whole(cfgSetting(cfg, 'trigger.hellCoordinatedCount'))
+  record.triggerSniperHitOverride = whole(cfgSetting(cfg, 'trigger.sniperHitCount'))
 }
 
 /** postRound：本轮全队强特/终结已收敛 → 写入冥狱触发源（下一轮 buildExecutions 生效） */

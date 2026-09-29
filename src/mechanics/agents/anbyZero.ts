@@ -23,6 +23,7 @@
  * - 苍光·临界（1381023）：每轮 3 层白雷打完后接一招收尾，499.1%、真实动作时间 0.867s 占前台。
  * - 连携/终结视为追加攻击伤害（Lv7 文本），供限定追击增伤命中。
  */
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -79,15 +80,6 @@ export interface AnbyZeroCycle {
   c4ResIgnore: number
   critRateGain: number
   note: string
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
-function whole(value: number | undefined): number {
-  const n = value ?? 0
-  return Math.max(0, Math.floor(Number.isFinite(n) ? n : 0))
 }
 
 export function computeAnbyZeroCycle(input: {

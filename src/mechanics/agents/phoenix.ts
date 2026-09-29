@@ -16,6 +16,7 @@
  *
  * 未建模（spec notes 在册）：[重生]/[消亡]状态机、影画2 保留段数、队友向脆弱异常暴击。
  */
+import { whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentExSpecialTimeInput,
@@ -101,7 +102,6 @@ function settingOf(settings: Readonly<Record<string, number>>, id: string, fallb
   const v = Number(settings?.[id])
   return Number.isFinite(v) ? v : fallback
 }
-function whole(value: number): number { return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0)) }
 function clamp01(value: number): number { return Math.max(0, Math.min(1, value)) }
 
 export interface PhoenixCycle {

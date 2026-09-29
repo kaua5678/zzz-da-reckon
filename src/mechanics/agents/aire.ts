@@ -20,6 +20,7 @@
  * 影画4 异放回能/喧响已建模：floor(t/10)（10s CD 上限，异放次数≥floor(t/6)>floor(t/10)）× (4能量+70喧响) 并入 initialEnergyGift/initialDecibelGift。
  * 影画6 强化绝对音准/终结技以太伤害+40%已建模：patchExecutions 按 moveId 加 dmgBonus（妄想时刻不退出 → 强化绝对音准全覆盖）。
  */
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentEventInput,
@@ -89,14 +90,6 @@ export interface AireCycle {
   c2DefIgnore: number
   c6DecibelGift: number
   note: string
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export function computeAireCycle(input: {

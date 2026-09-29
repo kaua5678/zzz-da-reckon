@@ -18,6 +18,7 @@
  * - 熔炉升温/熔炉充能逐状态时序（仅保留资源展示口径）。
  * - 旧 koledaFurnaceMechanic 的无出处 +25% 增伤占位已随模块替换移除。
  */
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -44,14 +45,6 @@ export interface KoledaCycle {
   c4DmgBonus: number
   c6ExplosionCount: number
   note: string
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export function computeKoledaCycle(input: {

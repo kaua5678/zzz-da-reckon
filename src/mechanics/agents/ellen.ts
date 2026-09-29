@@ -28,6 +28,7 @@
  * - 潜能觉醒·极冰带（按潜能等级 1-6 档位）：风暴潮每层追加暴伤（II..VI = 1.6/2.4/3.2/4.0/4.8%），
  *   叠满 10 层时无视冰抗（3.3/5/6.7/8.3/10%）。潜能 I 无觉醒=0。经 potentialLevel 输入驱动。
  */
+import { whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -126,10 +127,6 @@ export interface EllenCycle {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Number.isFinite(value) ? value : min))
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export function computeEllenCycle(input: {

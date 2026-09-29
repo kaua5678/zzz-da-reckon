@@ -1,6 +1,7 @@
 /**
  * 配置 Store - 3人队伍配置 + 全局Buff + 敌人配置
  */
+import { clampRatio } from '@/utils/finiteClamp'
 import { defineStore } from 'pinia'
 import { ref, computed, watch, type UnwrapRef } from 'vue'
 import type {
@@ -984,7 +985,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
   }
 
   function setAnomalySettlementShare(element: string, slot: number, share: number) {
-    anomalySettlementShares.value[`${element}:${slot}`] = Math.max(0, Math.min(1, Number.isFinite(share) ? share : 0))
+    anomalySettlementShares.value[`${element}:${slot}`] = clampRatio(share)
     refreshTrigger.value++
   }
 

@@ -18,6 +18,7 @@
  * 未建模（spec notes 在册）：烁影状态机、疾锋四段闪避强化（1631020 无计数来源）、
  * 影画2「登场技替换为连携技」、流息上限截断（总量口径）。
  */
+import { whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentExSpecialTimeInput,
@@ -89,7 +90,6 @@ function settingOf(settings: Readonly<Record<string, number>>, id: string, fallb
   const v = Number(settings?.[id])
   return Number.isFinite(v) ? v : fallback
 }
-function whole(value: number): number { return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0)) }
 function clamp01(value: number): number { return Math.max(0, Math.min(1, value)) }
 
 export interface SeverianCycle {

@@ -19,6 +19,7 @@
  * - 额外能力霜寒持续+3秒（全队/敌方状态）。
  * - 影画1 有罪推定额外无视20%防御、影画4 异放回寒蚀值、影画6 特殊异放200%与无视15%全抗。
  */
+import { whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -84,10 +85,6 @@ export interface PromiaCycle {
   additionalBuildUpEff: number
   guiltyDefIgnore: number
   note: string
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export function computePromiaCycle(input: {

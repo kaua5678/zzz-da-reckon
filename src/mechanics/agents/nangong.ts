@@ -1,3 +1,4 @@
+import { clampRatio } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentEventInput,
@@ -77,10 +78,6 @@ const RELEASE_RATIOS: Record<string, number> = {
   wind: 36,
 }
 const MINE_COST_PER_PAIR = 100 // #2/#3 各耗 50 重拍
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
 
 export function computeNangongMechanic(input: {
   anomalyMastery: number

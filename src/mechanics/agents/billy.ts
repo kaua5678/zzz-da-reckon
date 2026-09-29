@@ -16,6 +16,7 @@
  *
  * @author kaua5678
  */
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -54,14 +55,6 @@ export interface BillyCycle {
   c6Dmg: number
   c1Energy: number
   note: string
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export const BILLY_CROUCH_EXCLUDED_MOVE_IDS = new Set<string>([BILLY_MOVE_IDS.chain])

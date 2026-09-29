@@ -1,3 +1,4 @@
+import { whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -87,10 +88,6 @@ export interface QianxiaGazeCycle {
   attackMultiplier: number
   anomalyMultiplier: number
   note: string
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 function computeQianxiaGazeCycle(input: {

@@ -15,6 +15,7 @@
  * - 影画1 护盾/上限+30%、异常精通失效后额外维持10秒（护盾值与逐时序）。
  * - 影画4 招架支援迅雷盾失衡值+25%（招架支援不在通用伤害执行模型内）。
  */
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -42,14 +43,6 @@ export interface SethCycle {
   c2ElectricBuildup: number
   c6FinishCount: number
   note: string
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export function computeSethCycle(input: {

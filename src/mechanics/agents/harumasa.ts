@@ -18,6 +18,7 @@
  * - C2 电掣按连携/终结各补满 7 层的总量近似，最多强化实际飞弦·斩次数；C6 每12次甲乙矢生成一次1500%电磁爆炸。
  * - 锋芒5秒、电囚10/20秒按可调覆盖率处理，不声称逐秒精确。
  */
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -95,14 +96,6 @@ export interface HarumasaCycle {
   c4Decibel: number
   c6ExplosionCount: number
   note: string
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export function computeHarumasaCycle(input: {

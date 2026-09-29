@@ -21,6 +21,7 @@
  * 明确未建模：
  * - 影画2 每层独立结算5秒持续、影画6 充能逐层积累/消耗时序，均按覆盖率/层数滑块近似。
  */
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -59,14 +60,6 @@ export interface CorinCycle {
 function settingOf(settings: Readonly<Record<string, number>>, id: string, fallback: number): number {
   const value = Number(settings?.[id])
   return Number.isFinite(value) ? value : fallback
-}
-
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
-function whole(value: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
 }
 
 export function computeCorinCycle(input: {

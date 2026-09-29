@@ -1,3 +1,4 @@
+import { clampRatio } from '@/utils/finiteClamp'
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { ModuleFeedback } from '../types'
 import type { CharacterResourceResult, MechanicSetting, YixuanExChain } from '@/types/resource'
@@ -51,10 +52,6 @@ const AGENT_ID = '1371'
 const specBase = specToMechanicModule(getAgentSpec(AGENT_ID)!)
 
 /** 覆盖率类滑块 → [0,1]（非有限值落 0；与各模块同名本地 helper 同形，见 corin.ts:68） */
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
-}
-
 // 招式 moveId（catalog 倍率表行）
 const MOVE = {
   ink1: '1371009', // 强化特殊技：墨痕化形 #1 600.6% / 40闪能 / 1.083s

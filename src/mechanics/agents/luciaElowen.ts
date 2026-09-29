@@ -1,3 +1,4 @@
+import { clampRatio } from '@/utils/finiteClamp'
 import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting, SkillExecution } from '@/types/resource'
 import type { LuciaMechanicSource } from '@/types/resource'
@@ -512,19 +513,18 @@ export const luciaElowenMechanic: AgentMechanicModule = {
     if (phase !== 'build') return
     const self = characters.find(c => c.slot === slot)
     if (!self) return
-    const clamp01 = (v: number) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0))
     // ① 影画4：帷幕触发 → 全队 +100 喧响/次（非 4 命不写字段 = 引擎既有无字段语义）
     if (cinemaLevel >= 4) {
       for (const cfg of characters) {
         cfg.decibelPerCurtainTrigger = 100
-        cfg.luciaC4CurtainCoverage = clamp01(settings['lucia.c4CurtainCoverage'] ?? 1)
+        cfg.luciaC4CurtainCoverage = clampRatio(settings['lucia.c4CurtainCoverage'] ?? 1)
       }
     }
     // ② 回血 → 伊德海莉烧血→喧响（换算比 = 卢西娅生命 / 伊德海莉生命）
     const yidhari = characters.find(c => c.agentId === YIDHARI_AGENT_ID)
     if (!yidhari) return
     const healPctPerUlt = computeLuciaHealPctPerUlt(self.panel?.skillLevelBonus ?? 0)
-    const healingCoverage = clamp01(settings['lucia.healingCoverage'] ?? DEFAULT_HEALING_COVERAGE)
+    const healingCoverage = clampRatio(settings['lucia.healingCoverage'] ?? DEFAULT_HEALING_COVERAGE)
     const luciaHp = Math.max(1, self.panel?.hp ?? 0)
     const yidhariHp = Math.max(1, yidhari.panel?.hp ?? 0)
     yidhari.yidhariExternalHealPerUltPct = healPctPerUlt * healingCoverage * (luciaHp / yidhariHp)
