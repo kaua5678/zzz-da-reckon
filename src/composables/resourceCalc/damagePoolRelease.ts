@@ -65,6 +65,29 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
         // 轴模式下事件次数按代表窗内均匀取样时刻查当时状态分摊——链上元素无手动
         // releaseShare 覆盖才启用，手动分配/非轴模式回落下方覆盖率权重路径。
         const totalRelease = Math.max(0, Math.floor(event.count))
+        // CC-279：两条归因路径（Boss 异常状态轴 / 覆盖率权重）落行的唯一出口——原先各抄一份 18 行的
+        // pushRelease 块、只差 note 标签，行形状（面板取主施加者槽、失衡分段、暴击口径）改一处就会分叉。
+        const pushDominantShare = (element: string, count: number, label: string) => {
+          const prog = anomalyPoolResult?.perElement.find(p => p.element === element)
+          const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
+          for (const seg of releaseStunSegments(event, element, count, carrierInAxisFraction)) {
+            pushRelease({
+              id: `release-${slot}-${event.eventId}-${element}${seg.suffix}`,
+              slot,
+              agentId: charResult.agentId,
+              name: event.eventName,
+              count: seg.count,
+              multiplier: releaseMultiplierFor(event, element, triggerPanel, seg.stunned < 0 ? stunCoverage : seg.stunned),
+              source: event.carrierMoveName || event.carrierMoveId || event.eventId,
+              note: `${event.note ?? ''}；${element}·${label}${seg.tag ? `；${seg.tag}` : ''}`,
+              element,
+              panel: panelAt(damagePanels, baseSlot) ?? triggerPanel,
+              settlementPanel: triggerPanel,
+              releaseCrit: event.releaseCrit,
+              stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
+            })
+          }
+        }
         const bossRel = isAxis ? bossAnomalyState : null
         const relWindows = bossRel?.stateChainsPerWindow.length ?? 0
         const relAnySegment = !!bossRel && (bossRel.stateChainsPerWindow.some(c => c.length > 0) || bossRel.windOverlayPerWindow.some(c => c.length > 0))
@@ -95,26 +118,7 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
             for (let i = 0; i < parts.length; i++) {
               const count = shares[i] ?? 0
               if (count <= 0) continue
-              const element = parts[i].element
-              const prog = anomalyPoolResult?.perElement.find(p => p.element === element)
-              const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
-              for (const seg of releaseStunSegments(event, element, count, carrierInAxisFraction)) {
-                pushRelease({
-                  id: `release-${slot}-${event.eventId}-${element}${seg.suffix}`,
-                  slot,
-                  agentId: charResult.agentId,
-                  name: event.eventName,
-                  count: seg.count,
-                  multiplier: releaseMultiplierFor(event, element, triggerPanel, seg.stunned < 0 ? stunCoverage : seg.stunned),
-                  source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-                  note: `${event.note ?? ''}；${element}·Boss异常状态轴·按触发时刻状态归因${seg.tag ? `；${seg.tag}` : ''}`,
-                  element,
-                  panel: panelAt(damagePanels, baseSlot) ?? triggerPanel,
-                  settlementPanel: triggerPanel,
-                  releaseCrit: event.releaseCrit,
-                  stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
-                })
-              }
+              pushDominantShare(parts[i].element, count, 'Boss异常状态轴·按触发时刻状态归因')
             }
             continue
           }
@@ -147,26 +151,7 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
         for (let i = 0; i < effectiveWeights.length; i++) {
           const count = counts[i] ?? 0
           if (count <= 0) continue
-          const element = effectiveWeights[i].element
-          const prog = anomalyPoolResult?.perElement.find(p => p.element === element)
-          const baseSlot = prog ? getMainApplierSlot(prog.contributions) : slot
-          for (const seg of releaseStunSegments(event, element, count, carrierInAxisFraction)) {
-            pushRelease({
-              id: `release-${slot}-${event.eventId}-${element}${seg.suffix}`,
-              slot,
-              agentId: charResult.agentId,
-              name: event.eventName,
-              count: seg.count,
-              multiplier: releaseMultiplierFor(event, element, triggerPanel, seg.stunned < 0 ? stunCoverage : seg.stunned),
-              source: event.carrierMoveName || event.carrierMoveId || event.eventId,
-              note: `${event.note ?? ''}；${element}·${attributionLabel}${seg.tag ? `；${seg.tag}` : ''}`,
-              element,
-              panel: panelAt(damagePanels, baseSlot) ?? triggerPanel,
-              settlementPanel: triggerPanel,
-              releaseCrit: event.releaseCrit,
-              stunnedOverride: seg.stunned < 0 ? undefined : seg.stunned,
-            })
-          }
+          pushDominantShare(effectiveWeights[i].element, count, attributionLabel)
         }
         continue
       }

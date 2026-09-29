@@ -309,25 +309,8 @@ function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInp
 
 function buildBurniceResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   return {
-    burniceMechanicSource: computeBurniceMechanic({
-      exSpecialCount: state.exSpecialCount,
-      totalTime: effectiveCombatTime(state, cfg),
-      atk: cfg.panel.atk ?? 0,
-      anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
-      cinemaLevel: cfg.burniceCinemaLevel ?? 0,
-      // cfg.panel 是**局内盖章面板**，potentialLevel 由 core/panel.ts 写入（`:353`）。
-      potentialLevel: cfg.panel.potentialLevel ?? 6,
-      energyRegen: resolveEnergyRegenTotal(cfg.panel),
-      ultimateCount: state.ultimateCount,
-      singleSpraySeconds: cfg.burniceSingleSpraySeconds ?? SINGLE_SPRAY_MAX_SECONDS,
-      doubleSpraySeconds: cfg.burniceDoubleSpraySeconds ?? DOUBLE_SPRAY_MAX_SECONDS,
-      stirringCount: cfg.burniceStirringCount ?? 0,
-      stirringActionTime: cfg.burniceStirringActionTimeSeconds ?? 0,
-      flowCountUtilization: cfg.burniceFlowCountUtilization ?? 1,
-      stirringDamageRatio: cfg.burniceStirringDamageRatio ?? STIRRING_DAMAGE_FALLBACK,
-      tossingDamageRatio: cfg.burniceTossingDamageRatio ?? TOSSING_DAMAGE_FALLBACK,
-      tossingActionTime: cfg.burniceTossingActionTimeSeconds ?? 0,
-    }),
+    // CC-279：与 buildBurniceExecutions 共用唯一入参装配点（原先两份逐字相同的副本）
+    burniceMechanicSource: burniceMechanicSourceOf(cfg, state),
   }
 }
 

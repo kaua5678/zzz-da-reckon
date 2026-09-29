@@ -283,8 +283,12 @@ function buildNormaCharConfig({ slot, cinemaLevel, team, skills, cfg, panel }: A
   }
 }
 
-function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const source = computeNormaSource({
+/**
+ * cfg + 迭代状态 → 诺姆机制源（CC-279：执行行与资源结果原先各抄一份入参装配，新增入参只改一处会让
+ * 伤害行与展示结果静默分叉；收成唯一装配点）。
+ */
+function normaSourceOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): NormaMechanicSource {
+  return computeNormaSource({
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     frontlineTime: state.frontlineTime,
@@ -297,6 +301,10 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
     extraAbilityAtkBonus: cfg.normaExtraAbilityAtkBonus ?? 0,
     techGapStunBonus: cfg.normaTechGapStunBonus ?? 0,
   })
+}
+
+function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const source = normaSourceOf(cfg, state)
 
   // 嗯呢弹幕（基础 40 能量）：点射 1571007 + 弹头（未失衡破甲 1571008 / 失衡高爆 1571009），每次强特一轮。
   // 长按（20/s，最多 2 秒，norma.holdSeconds 可调）：延长射击 1571010 + 延长弹头（1571011/1571012），倍率为每秒。
@@ -463,19 +471,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
 }
 
 function buildNormaResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const source = computeNormaSource({
-    exSpecialCount: state.exSpecialCount,
-    ultimateCount: state.ultimateCount,
-    frontlineTime: state.frontlineTime,
-    cinemaLevel: cfg.normaCinemaLevel ?? 0,
-    additionalAbilityActive: cfg.normaAdditionalAbilityActive ?? false,
-    stunCount: cfg.normaStunCount ?? 0,
-    stunCoverage: cfg.normaStunCoverage ?? 0,
-    battleTime: cfg.normaBattleTime ?? 180,
-    holdSeconds: cfgNum(cfg, 'norma.holdSeconds', 2),
-    extraAbilityAtkBonus: cfg.normaExtraAbilityAtkBonus ?? 0,
-    techGapStunBonus: cfg.normaTechGapStunBonus ?? 0,
-  })
+  const source = normaSourceOf(cfg, state)
   // C4 喧响（诺姆 + 上一位队友各 200 / 次）由本模块 chainGift 声明的 `decibelPerUnit`（400 = 两侧合计）
   // 经 `core/resource/crossAgentSupply.ts#giftDecibelForCfg` 结算进喧响收入（CC-191 删了此处从无读取方的
   // `cfg.normaHatToChainCount` 回写——它是迁到 decibelPerUnit 之前的残留）。
