@@ -8,7 +8,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
-import type { CharacterResourceResult, QingyiMechanicSource } from '@/types/resource'
+import type { CharacterResourceResult, QingyiMechanicSource, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 
@@ -173,7 +173,18 @@ function buildQingyiCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInpu
   cfg.qingyiAssistFollowUpVoltage = sumVoltage((assist?.moves ?? []).filter(m => (m.name?.en ?? '').toLowerCase().includes('assist follow-up')))
 }
 
-export function computeQingyiSource(cfg: Record<string, unknown>, state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number }): QingyiMechanicSource {
+/** 实测通用行总时间（强特/大招/连携/闪反/弹刀/快支等已生成行，不含平A填充行），供电压计划预算扣减 */
+function qingyiGenericRowsTimeOf(executions: readonly SkillExecution[]): number {
+  return executions
+    .filter(e => e.moveId !== 'basic_attack')
+    .reduce((s, e) => s + (e.totalTime ?? 0), 0)
+}
+
+/**
+ * genericRowsTime：物化钩子派发前的通用行总时间（CC-287 前经 `cfg.qingyiGenericRowsTime` 回写传递）。
+ * buildExecutions 传钩子当时的行、buildResourceResult 传 `preModuleExecutions` 算出的同一值；缺省 0 ⇒ 只用公式估算。
+ */
+export function computeQingyiSource(cfg: Record<string, unknown>, state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number }, genericRowsTime = 0): QingyiMechanicSource {
   const stunCount = Math.max(0, Math.floor(Number(cfg.qingyiStunCount ?? 0)))
   const cinemaLevel = Math.max(0, Math.floor(Number(cfg.qingyiCinemaLevel ?? 0)))
   const loop = cfg.qingyiLoopRates as LoopRates | undefined
@@ -206,8 +217,7 @@ export function computeQingyiSource(cfg: Record<string, unknown>, state: { exSpe
     + Math.max(0, Math.floor(state.chainCountTotal)) * Number(cfg.chainActionTime ?? 0)
     + Math.max(0, Number(cfg.dodgeCounterCount ?? 0)) * Number(cfg.dodgeCounterActionTime ?? 0)
     + Math.max(0, Number(cfg.parryCount ?? 0)) * Number(cfg.assistFollowUpActionTime ?? 0)
-  const genericRowsTime = Math.max(0, Number(cfg.qingyiGenericRowsTime ?? 0))
-  const effectiveGenericTime = Math.max(genericNecessaryTime, genericRowsTime)
+  const effectiveGenericTime = Math.max(genericNecessaryTime, Math.max(0, Number(genericRowsTime) || 0))
   const roundsFromGeneric = Math.floor((c1Start + genericVoltage) / VOLTAGE_PER_ROUND)
   const zuiHuaAt = loop?.zuiHuaTimePerRound ?? 0
   const fullRoundAt = (loop?.yisha4TimePerRound ?? 0) + zuiHuaAt
@@ -243,12 +253,7 @@ export function computeQingyiSource(cfg: Record<string, unknown>, state: { exSpe
 }
 
 function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  // 实测通用行总时间（强特/大招/连携/闪反/弹刀/快支等已生成行），供电压计划预算扣减
-  const genericRowsTime = executions
-    .filter(e => e.moveId !== 'basic_attack')
-    .reduce((s, e) => s + (e.totalTime ?? 0), 0)
-  ;(cfg as unknown as Record<string, unknown>).qingyiGenericRowsTime = genericRowsTime
-  const source = computeQingyiSource(cfg as unknown as Record<string, unknown>, state)
+  const source = computeQingyiSource(cfg as unknown as Record<string, unknown>, state, qingyiGenericRowsTimeOf(executions))
   const loop = cfg.qingyiLoopRates
   const cinemaLevel = Math.max(0, Math.floor(cfg.qingyiCinemaLevel ?? 0))
 
@@ -336,8 +341,8 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
-function buildQingyiResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  return { qingyiMechanicSource: computeQingyiSource(cfg as unknown as Record<string, unknown>, state) }
+function buildQingyiResourceResult({ cfg, state, preModuleExecutions }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { qingyiMechanicSource: computeQingyiSource(cfg as unknown as Record<string, unknown>, state, qingyiGenericRowsTimeOf(preModuleExecutions ?? [])) }
 }
 
 function buildQingyiResourceSections({ result }: AgentResourceSectionsInput) {

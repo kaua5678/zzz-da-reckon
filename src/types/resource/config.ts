@@ -510,8 +510,6 @@ export interface CharacterOperationConfig {
   defAssistCount?: number
   /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
   qingyiStunCount?: number
-  /** 青衣通用行实测总时间（buildExecutions 写入，电压计划预算扣减用） */
-  qingyiGenericRowsTime?: number
   /** 青衣可分配循环秒均（一煞#4 连打→醉花月云转） */
   qingyiLoopRates?: {
     yisha4Voltage: number
