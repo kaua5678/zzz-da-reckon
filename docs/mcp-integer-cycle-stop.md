@@ -2,7 +2,7 @@
 
 > 第 344 轮（lane arena-C，2026-09-30）。代码：`src/core/resource/innerLoop.ts#integerCycleStop`。
 > 对应 stun-dual-source §24.168、r6 §8 第 344 行、架构卡 CC-326。
-> 回退点：`git revert <CC-326 代码提交>`。改动面只有 innerLoop.ts 一个函数、三处注释、`@fact engine:收敛环停点规范化` 口径、
+> 回退点：`git revert 76261a80`。改动面只有 innerLoop.ts 一个函数、三处注释、`@fact engine:收敛环停点规范化` 口径、
 > 两份基线（timeGolden、timeFillRatchet）和 teamTimeSummary 的一个样例。
 
 ## 0. 结论

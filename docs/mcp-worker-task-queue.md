@@ -96,22 +96,30 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 343 轮（lane lead-arena-0925c）：docs-only（无代码改动），已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 344 轮（lane arena-C）：CC-326 数值卡，代码 `76261a80`，文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。开工时间 01:00，现场：HEAD ebac7417 与 origin 一致，无 verify / vitest / dsh 进程，主 lane 最近一次提交在 00:29（已超过 15 分钟），工作区只有孤儿 `docs/devlog/`。**
 
-- 组队非收敛 19 例分型：全部是早检出的真整数环（「次数 ±1 ↔ 平 A 时间 ↔ 能量/喧响」），没有可以局部修的一型。整数环停点规则「JSON 字典序最小」与语义无关；试验「取最保守成员」影响 golden 64 条（含 converged=true 的单人用例）⇒ 不采纳。详见 `docs/mcp-stun-dual-source.md` §24.167、r6 第 343 行。
+- **CC-326**：内层真整数环（第 20 轮前检出）的停点原为「JSON 字典序最小成员」，改为「不透支成员中次数最多者」（`src/core/resource/innerLoop.ts#integerCycleStop`）。判据是引擎自洽，不看投稿值：`iterate(m_i) = m_(i+1)`，所以 m_(i+1) 的次数就是 m_i 撑得起的次数，over > 0 即透支。414 例探针：旧规则 52% 的环停点取中透支成员；终局非收敛 18 例（全是单人）的旧停点 18/18 透支，改后为 0。影响：golden 64 条 / 38 例；棘轮 6 队（4 好 2 差）；teamTimeSummary 样例换队；cinemaMonotone 唯一例外 1091 c3→c4 消失（它本来就是透支造成的）。与 §24.167（r343 否决 Σ最小）的区别见 `docs/mcp-integer-cycle-stop.md` §4 和 §24.168。
+- **另结两件**：
+  1. moveId（第 343 轮交接第 2 条）**不做**：生产代码里没有 `DamagePoolRow.moveId` 的读者，缺 moveId 的只有 liuyin/banyue/burnice 三个 `extraDirectRows` 模块行，补上只会改 zd 哈希（r6 第 344 行②）。
+  2. 孤儿 `docs/devlog/`（2026-09-19 的 WSL 工具链笔记，未跟踪 10 天、无 lane 认领，内容已在 AGENTS.md L206–256）**已删**。备份在 `/home/kaua/calc-arch/orphans/docs-devlog-2026-09-19.md`（sha256 131466ee…），要回退就拷回。
+- 验证：`vue-tsc -b` 0 错；隔离 worktree `wtA-feas` 全量 verify EXIT=0（日志 `/home/kaua/calc-arch/arenaC-verify.log`）。代码提交在 worktree 里完成，主仓库 `git merge --ff-only` 合入。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
-1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选。有日期的条件：坑 25 到期日 2026-10-31。
-2. 自选方向建议（未登记）：「整数环 / 非收敛」这条线已经测清，剩下的只有 DEBT「全局实数化收敛重构」本体（大工程，要先写设计稿，不要直接动代码）。若不做它，建议换线：琉音猜拳等模块行在 damagePoolRows 中 moveId 为 null，按 moveId 关联的工具会漏掉。先 grep damagePoolRows / moveId 的消费方，判断是否属于「可归一」类（给模块行补来源 moveId），评估后再决定开不开卡。
+1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
+2. 可选，CC-326 的延续（数值卡）：第 20 轮后回落（`runInnerLoop` 的 `oscillatorStopStates` 分支）是否也改用 `integerCycleStop`。
+   - 现成探针：插桩版 innerLoop `/home/kaua/calc-arch/arenaC/innerLoop.probe.ts`，基于 CC-326 之前的文件；`FEAS_MODE=new` 与 CC-326 在 414 例上逐字段一致；事件写进 `globalThis.__FEAS_LOG`，带 `path: canon|osc`。
+   - 用例 `/home/kaua/calc-arch/arenaC-zzFeasProbe.test.ts`，输出路径由 `FEAS_OUT` 指定。跑法 `/home/kaua/calc-arch/arenaC-feas.sh`：脚本里 cd 到 `wtA-feas`，要改成新的 worktree 路径；新旧各跑一遍约 15s。
+   - 做法：在插桩版里给 osc 分支加第三种模式，同样按规则选取。硬约束：单人 1431 c6 留白保持 0（resource.ts `INNER_LOOP_MAX_ITERATIONS` 注释里的反例）。涉及 93 次事件、16 例（1431 系，1171 c5/c6）。不满足硬约束就记录否决。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
+- **golden 基线的下游读者**：`cinemaMonotone.test.ts` 读的是 `timeGolden.baseline.json`，不是现算结果。数值卡要在**重生成 golden 之后**再跑一遍 cinemaMonotone（或整轮 verify）；重生成之前跑的全量看不到它的变化（第 344 轮第一次全量是绿的，重生成后的 verify 才红）。同类的还有 teamTimeSummary「账本虚高」样例：每修掉一处留白，它就可能失效，按用例注释里的惯例换队（已经换过多次）。
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
 - **钩子调用次数**：buildCharConfig 每个 base 调用一次；applyTeamConfig 每轮每相位对新克隆调用一次；其余钩子可能在同一份 cfg 上调用多次。往 cfg 累加必须扣 prev；有条件写入要在所有路径上覆盖（hookReplay 锁会拦）。
 - 包住模块钩子的测试写法：`getRegisteredAgentMechanics()` 拿模块对象，直接替换属性，afterAll 恢复（引擎每次按 `getAgentMechanic(id)?.hook` 取，替换立即生效）。
 - 探针数字会带 ANSI 颜色，先用 sed 去掉再 grep；`TIME_GOLDEN_FILTER=<agentId>` 只跑单个角色；探针前后 cp 备份与恢复，最后 `grep -c __probe` 为 0。
-- 新增模块 cfg 写入必须有读者（cfgWriteOnlyKeys 锁）；verify 跑的时候不要往被验证的目录写文件；杀进程只 kill 具体 pid；上传一律用 `bash /home/user/mcp-tools/up.sh …`；GitHub 偶尔不通，push 失败记进交接。
+- 新增模块 cfg 写入必须有读者（cfgWriteOnlyKeys 锁）；verify 跑的时候不要往被验证的目录写文件；杀进程只 kill 具体 pid；上传一律用提示词自带客户端 `node /tmp/mcp.js put <本地文件> <WSL 路径>`（base64 分块 + sha256 校验；`/home/user/mcp-tools/up.sh` 只在部分沙箱里有）；GitHub 偶尔不通，push 失败记进交接。
 
 **未决项**（依赖游戏事实或审美，不开卡）：lumiflux 属性标签颜色（§24.120）；1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。
 
@@ -131,7 +139,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **wsl_exec 里后台起 dsh**：`nohup bash -c '…' &` 会随调用退出被杀、连日志都不生成。要写成脚本文件，用 `setsid nohup script.sh >/dev/null 2>&1 < /dev/null &` 启动（第 229 轮）。dsh 做 66 条的只读分类约需 30 分钟。
 - **store 值导入 composables/resourceCalc 会成环**（helpers.ts 值导入 stores/config）。两边共用的函数放 mechanics 或 specs 层（CC-206）。
 - **「零读取」≠「可删」**：先 grep 字段语义对应的展示文本或常量，看有没有写死的过时值（CC-205 零号安比 +25% 实为 50%）。
-- **沙箱重置后 `/home/user/mcp-tools/*.sh` 会丢执行权限**：先 `chmod +x`，或用 `bash up.sh ...` 调用。
+- **沙箱重置后 `/home/user/mcp-tools/*.sh` 会丢执行权限**（仅对有这套脚本的沙箱）：先 `chmod +x`，或用 `bash up.sh ...` 调用。没有这套脚本时，用 `node /tmp/mcp.js put`。
 - **token 棘轮**：`npm run verify` 第二步 check-tokens 会拦下 var() 总数的变化。新增语义令牌引用是进步方向，把 `scripts/check-tokens.mjs` 的 `VAR_TOTAL_BASELINE` 上调，并在注释头补一句「日期 / CC / 原因」（CC-204 797→799）。
 - **页面格式化要跟着结果走**：freeCompare 这类「先选参数再点计算」的页面，渲染结果时读结果自带的参数（`result.metricId`），不要读控件的当前值（CC-204）。
 - **MCP `read_files` 会分页**：大文件（如 `src/mechanics/types.ts` 900+ 行）一次只返回前一段，要看 `has_more` / `next_start_line`。据此拉到本地改完再上传会**截掉文件尾**（第 226 轮踩过，esbuild 报「Expected */」）。大文件改动一律在 WSL 端用 python 精确替换。
@@ -199,4 +207,4 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - 口径钉的唯一写法：用例内 `config.setMechanicSetting('time.stunPlanProjection', 0)`，放在读取任何 `calc.*.value` 之前。
 - 展示层禁止值导入 `@/core` / `@/mechanics` / `@/specs`：新诊断要经 `useResourceCalc` 暴露。
 - 全量测试在高负载下会偶发失败，单跑或在 verify 里能通过：`zcWorkspace.test.ts`，以及 `deadChannelLs.test.ts` / `zcDeadChannels.test.ts`（耗时断言 `ms < 60000`，第 192 轮实测 67.9s）。
-- 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 up.sh 上传后执行。
+- 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 `node /tmp/mcp.js put`（或沙箱里现有的 up.sh）上传后执行。
