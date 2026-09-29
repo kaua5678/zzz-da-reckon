@@ -516,7 +516,7 @@ export function createRunCalcRound(deps: {
       // 理由见 `AgentTeamConfigInput.guarantee` 头注释）⇒ 本 map 里不再有 1471 判据。
       // 仪玄 1371 的 8 个字段已整条迁进 `yixuan.ts#applyYixuanTeamConfig`（round 14 批次 4）：
       // 轴内量（`yixuanAxisEx`/`yixuanAxisCloudSeconds`/`yixuanAxisActive`/`yixuanC1LightningCount` 的轴臂）
-      // 走 `axis` 契约、线程量（`yixuanAnomalyTriggerFlash`/`extraSelfDecibelReward` 的橘福福项）
+      // 走 `axis` 契约、线程量（`yixuanAnomalyTriggerFlash`/`ultimateEquivalentCount`，CC-312 前为 `extraSelfDecibelReward` 的橘福福项）
       // 走 `threads` 契约、缺口量（`yixuanExtremeAssistCap` + `yixuanC1LightningCount` 非轴臂需要的
       // 有效战斗时间）走本轮新增的 `interactions` 契约（store 口径**未缩放**交互次数）。
       // ⚠ 迁移的地基是 round 13 的受控两臂实验：用 `characters` 上那份合并值（被 `interactionScale`

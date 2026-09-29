@@ -120,8 +120,8 @@ peiluoProminenceMechanic.directRowBonus = ({ exec, isAxis, buckets, scalar }) =>
  *    该字段消费方**只有本模块**（`patchExecutions` 上文），故原 agentId 判断冗余（同 T6 判据）。
  * ② `extraSelfDecibelReward` += 连携总次数 × 300（额外能力：连携回 300 喧响；失衡连携与诺姆赠送连携同算）
  *    + 影画2 开局固定一次 1500（上限不建模）。
- *    ⚠ 该字段是**跨角色共享累加通道**（另有 `useResourceCalc` 的橘福福 `fufaDecibel`、`helpers.ts`
- *    的蕾米埃尔、`orphie.ts` 的影画2 各自 `+=`；`core/resource.ts:251` 汇总），故这里必须**累加**
+ *    ⚠ 该字段是**跨角色共享累加通道**（另有 `remielle.ts`、`promia.ts` 的 converge 钩子与 `orphie.ts` 影画2
+ *    各自写入；core `resource/helpers.ts` / `resourceIncome.ts` 汇总；CC-312 起仪玄不再写），故这里必须**累加**
  *    而不是覆盖——原分支写的也是 `(merged.extraSelfDecibelReward ?? 0) + …`。
  *    因为共享，本钩子的 phase 门只按 converge（与其它角色的写入时机一致）。
  */
