@@ -3799,3 +3799,10 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `lateCfgWrite`：buildResourceResult 不改 cfg（写得太晚，引擎读不到）；
   - `idempotentCfgWrite` + `hookReplay ①`：重复调用不累加 / 不漂移；
   - `hookReplay ②`：不留陈旧值。
+
+### 24.131 第 307 轮：模块私有通道测量，决定不做私有状态袋
+
+- 测量脚本 `scripts/cfg-key-census.cjs`（AST 找写入 + 按词匹配读者；V=1 / EXT=1 / TYPES=1 看明细）。
+- 结果：a 仅本模块读 387 键 / 60 模块（once 307、round 51、repeat 29）；b 仅外部读 33；c 两者都读 55；无读者 1。a 类里 153 键声明在共享类型上，234 键未声明。
+- 决定：运行时状态袋和类型搬家都不做。风险只在 repeat 层（29 键，CC-288～291 全出在这里），这一层已有三把行为锁；lucy / promia / vivian 等键是有意的轮间通道，引擎统一清空反而改变收敛。完整表格、依据和重开条件见 `docs/mcp-module-state.md`。
+- 影响：只新增文档和测量脚本，代码零改动。

@@ -71,17 +71,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 306 轮（lane lead-arena-0925c）：CC-292（5801e112）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.130：钩子重放一致 / 陈旧值行为锁；当前 0 处；cfg 写入纪律线结项。
-- 前几轮：305 CC-291（格莉丝 / 奥菲丝非幂等累加，数值卡）；304 CC-290；303 CC-289（朱鸢，数值卡）。
+**第 307 轮（lane lead-arena-0925c）：只测量、只写文档（代码零改动），已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 结论：模块私有通道**不做**状态袋迁移，也不做类型搬家。见 `docs/mcp-module-state.md`、`docs/mcp-stun-dual-source.md` §24.131、r6 清单 307 行。测量脚本已入库：`node scripts/cfg-key-census.cjs`。
+- 前几轮：306 CC-292 hookReplay 锁（cfg 写入纪律线结项）；305 CC-291（数值卡）；304 CC-290；303 CC-289（数值卡）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add。
 
-**下一步（直接开工，先测量再决定做不做）**：
-1. **结构问题测量：模块私有通道借道共享 cfg**。CC-285～292 的 4 类缺陷根源相同：角色模块把「只有自己读的中间量」写在共享的 `CharacterOperationConfig` 上（`record.xxx = …` / `(cfg as any).xxx`），靠调用顺序和手写 prev 扣减维持正确。现在有锁兜底，但结构本身没变。
-   - 测量：用 AST（参考 `/home/kaua/calc-arch/k229/scan303.cjs` / `acc305.cjs`）列出每个 agents 模块写入的 cfg 键，按读者分三类：(a) 只在本模块读（私有通道）；(b) core / resourceCalc / specs cfgField 读（跨层接口）；(c) 两者都有。统计各类键数和模块数，写进 `docs/mcp-r6-refactor-list.md` §8。
-   - 决策判据（唯一不变的判据：更通用 / 更简单）：如果 (a) 占多数且集中，可以设计「模块私有状态袋」（如 `cfg.moduleState[moduleId]`，由引擎在每轮克隆时统一清空 / 保留），把私有通道从共享类型里拿出来。这样 prev 扣减、陈旧值都由引擎统一处理，而不是每个模块手写。**先写设计稿**（`docs/mcp-module-state.md`：收益、迁移面、对 outerFeedbackSignature / snapshot 恢复的影响、回退点），不直接动代码；如果 (a) 很少或很分散，写「不做」加理由。
-   - 注意：(b) 类键是正当接口，不要动；「只为降键数」的迁移不做。
-2. 之后回到 `docs/mcp-r6-refactor-list.md` §8，自选影响面最大的候选。
+**下一步（直接开工）**：
+1. 回到 `docs/mcp-r6-refactor-list.md` §8，自选影响面最大、仍未做的候选；先读该清单里「不做」和「已否决」的条目，避免重开。cfg 写入纪律线与模块私有通道都已结项，不要再扫。
+2. 如果 hookReplay 允许名单开始增长，或 repeat 层私有键明显多于 29（重跑 census 对比），按 `docs/mcp-module-state.md` §4 重开评估。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。

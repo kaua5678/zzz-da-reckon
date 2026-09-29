@@ -457,3 +457,4 @@
 | 304 | 晚写常驻化；anby 能量写入 | CC-290（`0e40804e`）锁；anby 两处有效（golden 场景不触发） | 其他「礼物型」cfg 字段（initialDecibelGift / extraSelfDecibelReward）的死写入普查 |
 | 305 | 喧响礼物字段死写入；重复调用钩子的非幂等累加 | 死写入按钩子时机推理结项；非幂等累加 2 处真缺陷 → CC-291（`ecc5a838`，数值卡）；源码锁 idempotentCfgWrite | 源码锁只认 cfg/record 等变量名和同文件 helper；跨文件 helper 或别名变量不在覆盖面 |
 | 306 | 重复调用钩子的非累加型不一致 / 陈旧值（行为探针） | 0 处；固化为 hookReplay 锁 CC-292（`5801e112`）；cfg 写入纪律线（CC-285～292）结项 | 结构性问题：模块私有通道借道共享 cfg（见交接下一步） |
+| 307 | 模块私有通道借道共享 cfg（AST 测量 `scripts/cfg-key-census.cjs`） | agents 写入键 476：a 仅本模块读 387（60 模块；once 307 / round 51 / repeat 29）、b 仅外部读 33、c 两者 55、无读者 1。风险层 a/repeat 29 键已被 hookReplay / idempotentCfgWrite / lateCfgWrite 覆盖 | **不做**：私有状态袋只是把钩子层级规则搬家，还要改 materializeRows 快照 / outerFeedbackSignature / cfgField 路径；类型搬家属整洁性改动。详见 `docs/mcp-module-state.md`（含重开条件） |
