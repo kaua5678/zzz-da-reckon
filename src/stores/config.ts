@@ -608,7 +608,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
       const tpl = defaultCharacter(slot, agentId, '')
       for (const f of Object.keys(ACTION_COUNT_BOUNDS) as ActionCountField[]) (char as Record<ActionCountField, number | undefined>)[f] = tpl[f]
       // CC-268：潜能同属「随角色」字段且没有任何分析器 / applyTeamPreset 显式设置 ⇒ 上一个角色的潜能会漏给新角色
-      // （散点实测：用户槽潜能 1 时 40/104 预设伤害变化，最多 −20.7%，艾莲 / 雅 / 零号安比模块与 spec 公式 p 变量读它）。
+      // （散点实测：用户槽潜能 1 时 40/104 预设伤害变化，最多 −20.7%，艾莲 / 悠真（harumasa 1201）/ 零号安比模块与 spec 公式 p 变量读它）。
       // 命座 / 精炼不在此重置：所有分析器与 applyTeamPreset 都显式设置；主页换人保留用户所选档位是有意的 UX。
       char.potentialLevel = tpl.potentialLevel
     }
@@ -768,9 +768,19 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
     return defaultBasicAttackTimeWeight(agent)
   }
 
-  function findDriveDiscSetByRecommendationName(name?: string) {
+  /**
+   * CC-269：推荐套装按 **id** 解析（build-recommendations 每条都带 catalog 套装 id，类型必填），名字只作兜底且去首尾空白。
+   * 修前只按 name_zh 全等匹配：数据里「雪兔梦游仙境 」带尾随空格 ⇒ 凯撒 / 赛斯 / 照 / 潘引壶四名防护的 4pc 解析失败，
+   * 静默落到 setAgent 的兜底套装（displayDriveDiscSets[0]），全队 +18% 伤害的雪兔 teamBuff 从未进入推荐配装与散点。
+   */
+  function findDriveDiscSetForRecommendation(entry?: { id?: string; name_zh?: string; name_en?: string }) {
+    if (!entry) return undefined
+    const sets = catalogStore.displayDriveDiscSets
+    const byId = entry.id ? sets.find(set => set.id === String(entry.id)) : undefined
+    if (byId) return byId
+    const name = (entry.name_zh || entry.name_en || '').trim()
     if (!name) return undefined
-    return catalogStore.displayDriveDiscSets.find(set => localized(set.name) === name)
+    return sets.find(set => localized(set.name).trim() === name)
   }
 
   /** 自动/手动应用当前角色的配装推荐：专武、驱动盘、主词条、副词条 */
@@ -784,12 +794,10 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
       char.wEngineId = rec.wengine.catalog_wengine_id
     }
 
-    const fourPieceName = rec.drive_disc_sets?.four_piece?.name_zh || rec.drive_disc_sets?.four_piece?.name_en
-    const fourPieceSet = findDriveDiscSetByRecommendationName(fourPieceName)
+    const fourPieceSet = findDriveDiscSetForRecommendation(rec.drive_disc_sets?.four_piece)
     if (fourPieceSet) char.driveDisc.fourPieceSetId = fourPieceSet.id
 
-    const twoPieceName = rec.drive_disc_sets?.two_piece?.name_zh || rec.drive_disc_sets?.two_piece?.name_en
-    const twoPieceSet = findDriveDiscSetByRecommendationName(twoPieceName)
+    const twoPieceSet = findDriveDiscSetForRecommendation(rec.drive_disc_sets?.two_piece)
     if (twoPieceSet) char.driveDisc.twoPieceSetId = twoPieceSet.id
 
     for (const slotNum of [4, 5, 6] as const) {
