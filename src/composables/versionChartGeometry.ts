@@ -36,6 +36,27 @@ export function versionXOf(index: number, total: number, padL: number, plotW: nu
 }
 
 /** 版本号刻度：抽稀到 maxTicks 个（保留前若干个索引 + 标签） */
+/**
+ * 同一版本节点上的多个点按到达顺序左右摊开（以节点 x 为中心、间距 spacing px）——
+ * chart3 散点（7px）与 scPts（14px）共用（CC-284 前两处各抄一份计数循环）。
+ */
+function spreadVersionXsOf(
+  points: ReadonlyArray<{ nodeId: string }>,
+  nodeIndexOf: (nodeId: string) => number,
+  spacing: number,
+  total: number, padL: number, plotW: number,
+): number[] {
+  const perNode = new Map<string, number>()
+  for (const p of points) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  return points.map(p => {
+    const n = perNode.get(p.nodeId) ?? 1
+    const k = seen.get(p.nodeId) ?? 0
+    seen.set(p.nodeId, k + 1)
+    return versionXOf(nodeIndexOf(p.nodeId), total, padL, plotW) + (k - (n - 1) / 2) * spacing
+  })
+}
+
 export function versionXTicksOf(
   versionNodes: ReadonlyArray<VersionNode>,
   maxTicks: number,
@@ -80,17 +101,10 @@ export function buildChart3Scatter<P extends { nodeId: string; hpRatio: number; 
   teamNames: string[]; teamNo: number; damage: number; hpRatio: number; goldLabel: string
 }> {
   const { points, nodeIndexOf, yMax, box, padL, plotW, versionTotal, colorOf, nameOf } = input
-  const perNode = new Map<string, number>()
-  for (const p of points) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
-  const seen = new Map<string, number>()
-  return points.map(p => {
-    const idx = nodeIndexOf(p.nodeId)
-    const total = perNode.get(p.nodeId) ?? 1
-    const k = seen.get(p.nodeId) ?? 0
-    seen.set(p.nodeId, k + 1)
-    const offset = (k - (total - 1) / 2) * 7
+  const xs = spreadVersionXsOf(points, nodeIndexOf, 7, versionTotal, padL, plotW)
+  return points.map((p, i) => {
     return {
-      x: versionXOf(idx, versionTotal, padL, plotW) + offset,
+      x: xs[i],
       y: chart3YOf(Math.min(p.hpRatio, yMax), yMax, box),
       color: colorOf(p.team.join(',')),
       charName: p.charName,
@@ -176,18 +190,11 @@ export function buildScPts<P extends SlotComparePointLike>(
   },
 ): Array<P & { x: number; yA: number; yB: number }> {
   const { nodeIndexOf, range, box, padL, plotW, versionTotal } = opts
-  const perNode = new Map<string, number>()
-  for (const p of points) perNode.set(p.nodeId, (perNode.get(p.nodeId) ?? 0) + 1)
-  const seen = new Map<string, number>()
-  return points.map(p => {
-    const idx = nodeIndexOf(p.nodeId)
-    const total = perNode.get(p.nodeId) ?? 1
-    const k = seen.get(p.nodeId) ?? 0
-    seen.set(p.nodeId, k + 1)
-    const offset = (k - (total - 1) / 2) * 14
+  const xs = spreadVersionXsOf(points, nodeIndexOf, 14, versionTotal, padL, plotW)
+  return points.map((p, i) => {
     return {
       ...p,
-      x: versionXOf(idx, versionTotal, padL, plotW) + offset,
+      x: xs[i],
       yA: scYOf(p.damageA, range, box),
       yB: scYOf(p.damageB, range, box),
     }

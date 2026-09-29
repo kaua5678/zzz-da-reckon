@@ -80,28 +80,30 @@ const solo = (v: number): MetricVector => ({ [TOTAL_KEY]: v })
 const num = (v: number | undefined | null): number =>
   Number.isFinite(v) ? (v as number) : 0
 
-/** 按槽位把 pool 行聚合成 { agentId: sum } + __total__ */
-function sumRowsBySlot(rows: ReadonlyArray<{ slot: number; agentId: string; totalDamage: number }>): MetricVector {
-  const out: MetricVector = { [TOTAL_KEY]: 0 }
-  for (const r of rows) {
-    const v = num(r.totalDamage)
-    out[TOTAL_KEY] += v
-    out[r.agentId] = (out[r.agentId] ?? 0) + v
-  }
-  return out
-}
-
-/** 按任意 key 把 pool 行聚合成 { key: sum } + __total__ */
-function sumRowsBy<T>(rows: ReadonlyArray<T>, key: (r: T) => string, val: (r: T) => number): MetricVector {
+/**
+ * 按任意 key 把行聚合成 { key: sum } + __total__（本文件 perSlot 指标的唯一聚合口径，CC-284）。
+ * key 为空（槽位没有角色）时只计入 __total__、不产生空键分量——CC-284 前角色循环各自这样跳过，
+ * 伤害行路径则会写出 `''` 键（UI 只按 agentId 取分量，从不读空键）。
+ */
+function sumRowsBy<T>(rows: ReadonlyArray<T>, key: (r: T) => string | undefined, val: (r: T) => number | undefined | null): MetricVector {
   const out: MetricVector = { [TOTAL_KEY]: 0 }
   for (const r of rows) {
     const v = num(val(r))
     out[TOTAL_KEY] += v
     const k = key(r)
-    out[k] = (out[k] ?? 0) + v
+    if (k) out[k] = (out[k] ?? 0) + v
   }
   return out
 }
+
+/** resourceResult.characters[] 的逐角色字段 → 向量 */
+type CalcCharacter = NonNullable<Calc['resourceResult']['value']>['characters'][number]
+const perCharacter = (ctx: Calc, val: (c: CalcCharacter) => number | undefined | null): MetricVector =>
+  sumRowsBy(ctx.resourceResult.value?.characters ?? [], c => c.agentId, val)
+
+/** 按槽位下标排列的数组（perSlotStun 等）→ 向量；槽位 i 的归属 = characters[i].agentId */
+const perSlotArray = (ctx: Calc, arr: ReadonlyArray<number>): MetricVector =>
+  sumRowsBy(arr.map((v, i) => ({ v, id: ctx.resourceResult.value?.characters?.[i]?.agentId })), r => r.id, r => r.v)
 
 // ---------- 指标注册表 ----------
 
@@ -124,7 +126,7 @@ export const METRICS: MetricDef[] = [
     label: '分人伤害',
     hint: '按伤害池行归属槽位求和 —— 单人系列就读该角色的分量',
     scope: 'perSlot', digits: 0, unit: '', higherBetter: true,
-    read: ctx => sumRowsBySlot(ctx.damagePoolRows.value),
+    read: ctx => sumRowsBy(ctx.damagePoolRows.value, r => r.agentId, r => r.totalDamage),
   },
   {
     id: 'dmgBossHpRatio',
@@ -186,17 +188,7 @@ export const METRICS: MetricDef[] = [
     label: '分人失衡贡献',
     hint: 'perSlotStun —— 该角色打出的有效失衡值（谁在破韧）',
     scope: 'perSlot', digits: 0, unit: '', higherBetter: true,
-    read: (ctx) => {
-      const out: MetricVector = { [TOTAL_KEY]: 0 }
-      const arr = ctx.stunPoolResult.value?.perSlotStun ?? []
-      for (let i = 0; i < arr.length; i++) {
-        const id = ctx.resourceResult.value?.characters?.[i]?.agentId
-        const v = num(arr[i])
-        out[TOTAL_KEY] += v
-        if (id) out[id] = (out[id] ?? 0) + v
-      }
-      return out
-    },
+    read: ctx => perSlotArray(ctx, ctx.stunPoolResult.value?.perSlotStun ?? []),
   },
   {
     id: 'windowDuration',
@@ -219,17 +211,7 @@ export const METRICS: MetricDef[] = [
     label: '分人异常触发',
     hint: 'perSlotAnomalyTriggers —— 该角色归属的异常触发次数',
     scope: 'perSlot', digits: 0, unit: '', higherBetter: true,
-    read: (ctx) => {
-      const out: MetricVector = { [TOTAL_KEY]: 0 }
-      const arr = ctx.anomalyPoolResult.value?.perSlotAnomalyTriggers ?? []
-      for (let i = 0; i < arr.length; i++) {
-        const id = ctx.resourceResult.value?.characters?.[i]?.agentId
-        const v = num(arr[i])
-        out[TOTAL_KEY] += v
-        if (id) out[id] = (out[id] ?? 0) + v
-      }
-      return out
-    },
+    read: ctx => perSlotArray(ctx, ctx.anomalyPoolResult.value?.perSlotAnomalyTriggers ?? []),
   },
   {
     id: 'anomalyCoverage',
@@ -252,45 +234,21 @@ export const METRICS: MetricDef[] = [
     label: '强特次数',
     hint: 'characters[].exSpecialCount = 总能量 ÷ 强特消耗（读 derivedEnergy 差异可看出 ≠ overflow）',
     scope: 'perSlot', digits: 1, unit: '', higherBetter: true,
-    read: (ctx) => {
-      const out: MetricVector = { [TOTAL_KEY]: 0 }
-      for (const c of ctx.resourceResult.value?.characters ?? []) {
-        const v = num(c.exSpecialCount)
-        out[TOTAL_KEY] += v
-        if (c.agentId) out[c.agentId] = v
-      }
-      return out
-    },
+    read: ctx => perCharacter(ctx, c => c.exSpecialCount),
   },
   {
     id: 'ultimateCount',
     label: '终结技次数',
     hint: 'characters[].ultimateCount = 总喧响 ÷ ultimateCost（失衡外层的反馈量之一）',
     scope: 'perSlot', digits: 2, unit: '', higherBetter: true,
-    read: (ctx) => {
-      const out: MetricVector = { [TOTAL_KEY]: 0 }
-      for (const c of ctx.resourceResult.value?.characters ?? []) {
-        const v = num(c.ultimateCount)
-        out[TOTAL_KEY] += v
-        if (c.agentId) out[c.agentId] = v
-      }
-      return out
-    },
+    read: ctx => perCharacter(ctx, c => c.ultimateCount),
   },
   {
     id: 'chainCountTotal',
     label: '连携次数',
     hint: 'characters[].chainCountTotal = 每次失衡连携数 × 失衡次数',
     scope: 'perSlot', digits: 1, unit: '', higherBetter: true,
-    read: (ctx) => {
-      const out: MetricVector = { [TOTAL_KEY]: 0 }
-      for (const c of ctx.resourceResult.value?.characters ?? []) {
-        const v = num(c.chainCountTotal)
-        out[TOTAL_KEY] += v
-        if (c.agentId) out[c.agentId] = v
-      }
-      return out
-    },
+    read: ctx => perCharacter(ctx, c => c.chainCountTotal),
   },
 
   // ===== 时间分配 =====
@@ -299,30 +257,14 @@ export const METRICS: MetricDef[] = [
     label: '前台时间',
     hint: 'timeAllocation.frontlineTime（秒）—— 该角色占场时间，多了会挤主C',
     scope: 'perSlot', digits: 1, unit: '', higherBetter: false,
-    read: (ctx) => {
-      const out: MetricVector = { [TOTAL_KEY]: 0 }
-      for (const c of ctx.resourceResult.value?.characters ?? []) {
-        const v = num(c.timeAllocation?.frontlineTime)
-        out[TOTAL_KEY] += v
-        if (c.agentId) out[c.agentId] = v
-      }
-      return out
-    },
+    read: ctx => perCharacter(ctx, c => c.timeAllocation?.frontlineTime),
   },
   {
     id: 'basicAttackTime',
     label: '平A时间',
     hint: 'timeAllocation.basicAttackTime（秒）—— 账本留给该角色自由输出的秒数',
     scope: 'perSlot', digits: 1, unit: '', higherBetter: true,
-    read: (ctx) => {
-      const out: MetricVector = { [TOTAL_KEY]: 0 }
-      for (const c of ctx.resourceResult.value?.characters ?? []) {
-        const v = num(c.timeAllocation?.basicAttackTime)
-        out[TOTAL_KEY] += v
-        if (c.agentId) out[c.agentId] = v
-      }
-      return out
-    },
+    read: ctx => perCharacter(ctx, c => c.timeAllocation?.basicAttackTime),
   },
 
   // ===== 收敛健康度（越小越好 / 布尔） =====
