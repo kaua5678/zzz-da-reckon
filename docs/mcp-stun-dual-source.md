@@ -4277,10 +4277,30 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 | dodgeCounterActionTime | 1311 / 1531 | 1311 数据时长为 null；1531 由模块有意禁用通用闪反（starlightBilly:46） |
 | exSpecialMoveId / ActionTime / Decibel / EnergyConsume | 1311 | 数据：没有 EX 招式 |
 | exSpecialActionTime | 1541 | 模块：首个 EX 1541009 时长为 0，promia 模块单独生成绝裁 1541014 |
-| exSpecialEnergyConsume | 1551 1611 | 数据：强特没有 energyCost（走替代资源） |
+| exSpecialEnergyConsume | 1551 1611 | 1611 走替代资源（锐能）；**1551 为数据缺口**：原文要能量但没有数值，强特恒 0（第 339 轮订正，§24.163） |
 | timeWeight | 1451 | 模块有意为之：luciaElowen:114「不打通用平A」 |
 | ultimateActionTime | 1451 | **存疑，不做**，见下 |
 
 - **1451 卢西娅终结技**：catalog 中 1451024「Ultimate #1」actionTime 为 null，1451017「#2」为 1.767s；findUltimate 取 #1，因此终结技前台时长为 0，#2 段也没有计入。nanoka full/1451.json 把两段列为独立 param（Prop 1001/1002 各一条），**没有** `{Skill:A}+{Skill:B}` 编码。moveFusions 规定「#N 后缀不作融合判据」（星见雅飞雪就是反例），R5 又要求不顺手改数值 ⇒ 证据不足，不登记。重开条件见 r6 第 338 行。
 - **结论**：启发式漏读这条线收口。字段级零值已全部有归属，不再逐条扫描。
 - **回退**：本轮只改文档，没有代码改动。
+
+### 24.163 第 339 轮：行级体检 + CC-323 无价强特名单锁（56e29d1d，零差）
+
+- **方法**（探针 `/home/user/mcp-tools/zzProbe339.test.ts` + `an339.py`，只在临时 worktree 中运行，不提交）：对 62 个角色各组队 `[id, 1211, 1311]`（撞车时换 1131/1041），套推荐配装，`chainCountPerStun=1`，跑完整 `useResourceCalc`，导出 slot0 的 `damagePoolRows`、强特/终结次数。再核对 cfg 选中的强特/终结/连携/招架/闪反/支援突击 moveId 在伤害行里是否有 count>0 的行。62 个角色零异常。
+- **结果**：
+  - 终结技次数全员 >0。
+  - 招架、闪反、支援突击默认 0 次（默认配置不打交互），全员一致，不算离群。
+  - 强特离群：1121 本（模块按招架成功版发 #3/#4，ben.ts:20）；1481 琉音（石头/剪刀/布由模块拆行，31 = 4 + 9×3；「送客」8 = 转大 + 终结技，liuyin.ts:141）；1611 克拉蕾（锐能替代资源，模块生成 1 行）；1311 耀嘉音（没有强特招式，改由和弦行承载）——四者都有承接。
+  - **1551 佩洛伊斯：强特恒 0，没有任何承接**。
+- **1551 根因**：catalog 的 1551009「EX Special Attack: Sun's Halo」没有 energyCost ⇒ `findExSpecial`（moveLookup.ts:57）记 `costType='free'`、energyConsume=0 ⇒ `resolveExSpecialCount`（core/resource/helpers.ts:154）看到耗能 ≤0 直接返回 0。`'free'` 在全仓没有任何消费分支，实际含义是「没有耗能数据」，不是「免费」。
+  - 原文（nanoka full/1551.json）：「能量足够时，点按发动」⇒ 需要能量。nanoka `energy_cost` 为 `{}`；gachabase `sp_consume` 对**所有**角色的强特都是 0（107 条对照 0 条一致），这个字段不可用。
+  - 同类角色的先例：1461 铁萼雨幕 60（xide.ts:121）、1571 嗯呢弹幕 40+20×hold（norma.ts:231）、1531 闪能（starlightBilly.ts:306），耗能都来自用户口径，由模块写入。1551 没有口径。
+  - 影响：佩洛伊斯的能量收入全部闲置；凯旋坦途的「能量效率 +15%」、日珥账本中的「EX 日华回复 4.9987」、强袭训令「发动日华时协助攻击」都不会触发。
+- **决定**：R5 规定数据可信、不自编数值、不引入实测 ⇒ **不补耗能**，登记为数据缺口。加名单锁 CC-323（`src/composables/__tests__/exSpecialUnpriced.test.ts`）：对 62 个角色跑 `buildCharConfig`，统计「有强特 moveId、非模块接管、非替代资源、耗能 ≤0」的角色，断言 == [1551]。
+  - 作用：新角色缺耗能时测试变红，不再静默 0 次；1551 拿到耗能后也会变红，提醒按数值卡解释 golden。
+  - 变异确认：去掉「模块接管 / 替代资源」过滤后名单多出 1611 ⇒ 过滤条件生效。
+  - **不做**：把 `'free'` 改名为 `'unpriced'`。它只有 3 处引用，改名不改变行为，名单锁已经把语义写清楚；属于只为好看的改动。
+- **订正**：§24.162 表格和 r6 第 338 行把 1551 归为「走替代资源」，是误判，已改为数据缺口。
+- **验证**：新测试 1 例通过；vue-tsc 干净；全量 verify EXIT=0。
+- **回退**：`git revert 56e29d1d`（只删一个测试文件）。

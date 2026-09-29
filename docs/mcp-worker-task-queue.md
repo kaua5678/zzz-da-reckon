@@ -96,15 +96,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 338 轮（lane lead-arena-0925c）：只改文档；反向体检没有发现新缺陷。docs 提交已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 339 轮（lane lead-arena-0925c）：CC-323（`56e29d1d`，只加测试，零差）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 对全部 62 个角色单人跑了 `buildCharConfig`。10 个离群字段都归到三类：数据本来就没有、模块有意为之、已登记的缺口。唯一存疑的是 1451 终结技 #1 时长为 null、#2 段未计入：原文没有融合编码，不做（`docs/mcp-stun-dual-source.md` §24.162，r6 第 338 行写了重开条件）。
-- 启发式漏读这条线（CC-319/320/322 + 本次体检）收口，**不要再扫**。
+- 行级体检（62 个角色完整跑 `useResourceCalc`）：强特/终结/连携的离群都有模块或数据承接，**唯一例外 1551 佩洛伊斯强特恒 0**：日华要能量，但所有数据源都没有耗能数值，`costType=free` 被引擎算成 0 次。按 R5 不编数，登记为数据缺口，并加名单锁 `exSpecialUnpriced.test.ts` == [1551]。详见 `docs/mcp-stun-dual-source.md` §24.163，重开条件写在 r6 第 339 行。
+- 已订正上一轮误判（§24.162、r6 第 338 行曾写 1551「走替代资源」）。
+- cfg 字段级（第 338 轮）+ 伤害行级（第 339 轮）两层体检都已完成，这条线收口，**不要再扫**。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选新题，先登记要查什么。有日期的条件：坑 25 到期日 2026-10-31。
-2. 自选方向建议（未登记）：体检的是 cfg 字段，还没有看到「行」这一级。可以对同样 62 个单人配置跑完整 `useResourceCalc`，列出装配出却为 0 次的通道行（强特/终结/连携/招架），判断是资源不够（正常），还是门控或分派漏接。探针可在 `zzProbe338.test.ts` 上改。
+2. 自选方向建议（未登记）：`resolveExSpecialCount` 里「替代资源 / 模块能力 / 能量公式」三条路的判定顺序散在 helpers.ts:150-200，另有 12 个模块各自写 `skipGenericExSpecial`。可以评估强特次数的来源能否收成单一的「来源声明」（先测量各模块 skipGenericExSpecial 的理由是否同类），不同类就写「不做」。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
