@@ -391,6 +391,18 @@ export interface InteractionTopUpInput {
   perDualSeconds?: number
 }
 
+/**
+ * `computeInteractionTopUp` 能力的门控输入（CC-295）：是否补齐由**模块**判定（门控公式只在模块里写一份），
+ * 编排层只递事实。`axisActive` = convergence 的 `axisActive`（与 `AgentTeamConfigInput.axis.active` 同源）；
+ * `guarantee` = 保底开关快照（`guarantee.*` 不注册 MechanicSetting，理由见 `AgentTeamConfigInput.guarantee`）；
+ * `settings` = `resolveMechanicSettings(configStore)`（与 applyTeamConfig 的 `settings` 同一函数）。
+ */
+export interface InteractionTopUpGate {
+  axisActive: boolean
+  guarantee: Readonly<{ fury: boolean; ultimate: boolean }>
+  settings: Readonly<Record<string, number>>
+}
+
 /** `extraNecessaryAction` 能力返回值（CC-26）。moveId 为空 ⇒ 只预留时间、不补执行行（迁移前口径） */
 export interface ExtraNecessaryAction {
   count: number

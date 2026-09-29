@@ -25,7 +25,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
 
 /** 队伍中某个槽位的最小上下文快照 */
 export interface MechanicTeamMember {
@@ -1114,8 +1114,12 @@ export interface AgentMechanicModule {
    * **能力存在即声明**（CC-293）：槽位由 `registry.ts#findInteractionTopUpSlot` 按「谁实现了本能力」查找，
    * convergence 找槽与 useResourceCalc 交互栏的懒守卫（非本角色队伍不触发全量计算）共用它。
    * 此前另有布尔旗标 `producesInteractionTopUp` 表达同一事实，两者可以不一致（旗标有、能力无 ⇒ 门控打开却静默不补）。
+   *
+   * **门控归模块**（CC-295）：编排层每轮都调用（只要有产出者槽位），递 `gate` 事实；模块判定本轮不补齐时返回
+   * `null` ⇒ 编排层保持上一轮值（与 applyTeamConfig 侧「不用它」配合，行为同迁移前）。此前 convergence 与
+   * banyue.ts 各写一份 `(axisActive || fury || ultimate) && 设置 !== 0`，编排层还直读 `banyue.` 设置键。
    */
-  computeInteractionTopUp?(opts: InteractionTopUpInput): InteractionTopUp
+  computeInteractionTopUp?(opts: InteractionTopUpInput & { gate: InteractionTopUpGate }): InteractionTopUp | null
   /**
    * 异常池入参设置（CC-25）：编排层（`roundInputs.ts` 的 `anomalyPoolSetupInfo`）找到本队第一个挂了
    * 本能力的槽位，按 `characters.find(c => c.slot === slot)` 取**本模块自己那份 cfg** 调用；返回 null =
@@ -1351,4 +1355,4 @@ export interface AgentMechanicModule {
 // 导入方继续写 `from '@/mechanics/types'`。AgentMechanicModule 本体与各 Agent*Input 留在本文件。
 export type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
-export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AxisScalarOverlays, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AxisScalarOverlays, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'

@@ -414,16 +414,8 @@ export function computeBanyueMingwangBlocks(
  *   ⇒ 现读 `axis.actionCountsBySlot[slot] ?? {}`（`AgentAxisContext` 头注释写明它就是
  *   `convergence.ts` 的 `axisActionCountsBySlot` **同一对象**，不是重新推导）。
  * - `banyueAxisActive` 原读 `axisActive` ⇒ 现读 `axis.active`（同源）。
- * - `autoTopUp` 原读 `(axisActive || guaranteeFury || guaranteeUltimate) && banyueSlot >= 0
- *   && configStore.getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0`，四段逐一对应：
- *   · `axisActive` ⇒ `axis.active`；
- *   · `guaranteeFury` / `guaranteeUltimate` ⇒ 本轮新增的 `guarantee` 契约快照（`guarantee.*`
- *     **刻意未注册** `MechanicSetting`：`resolveMechanicSettings()` 只遍历注册表 ⇒ 模块侧读不到，
- *     注册它又会把内部实验旋钮变成资源利用率页滑块 = 产品级口径。见类型头注释）；
- *   · `banyueSlot >= 0` ⇒ 本钩子**只在般岳模块自己被派发时**执行 ⇒ 恒成立（派发器已按同一身份
- *     判据选中本模块，`slot` 即般岳槽位；UI 侧 `usedAgentIds` 保证同一角色不重复进队）；
- *   · `banyue.autoTopUpInteractions` 是**已注册** setting（本文件 `settings`，default 1）
- *     ⇒ 从 `settings` 契约读，与 `getMechanicSetting(id, 1)` 同源同值。
+ * - `autoTopUp`：门控公式单一来源 `banyueAutoTopUpEnabled`（CC-295），本钩子与 `computeInteractionTopUp` 共用；
+ *   `guarantee.*` **刻意未注册** `MechanicSetting`，经 `guarantee` 契约快照读取（见类型头注释）。
  * - `topUp` 原读 `prevInteractionTopUp`（= `threads.interactionTopUp`）⇒ 现读 `threads.interactionTopUp`。
  *   ⚠ 非补齐态原式取**字面量** `{ parry: 0, dual: 0 }`（新对象，不是线程对象引用）
  *   ⇒ 逐位保留该形状，避免把线程对象泄漏进 cfg。
@@ -434,14 +426,27 @@ export function computeBanyueMingwangBlocks(
  *   converge 但契约缺项时**连非保底字段也不写**（与 `billyAxisEx` 同族——让「字段 undefined」
  *   唯一编码「契约没接上」，而不是静默按「保底全关 + 无轴」算出一组看似正常的零值）。
  */
+/**
+ * 自动补齐门控（CC-295 单一来源）：轴模式或任一保底开关（嗔火 / 喧响）打开，且设置 `banyue.autoTopUpInteractions`
+ * 未关闭。`applyBanyueTeamConfig`（用不用补齐量）与 `computeInteractionTopUp`（算不算补齐量）共用；
+ * 此前编排层 convergence 另抄一份并直读本模块设置键。
+ */
+function banyueAutoTopUpEnabled(
+  axisActive: boolean,
+  guarantee: Readonly<{ fury: boolean; ultimate: boolean }>,
+  settings: Readonly<Record<string, number>> | undefined,
+): boolean {
+  return (axisActive || guarantee.fury || guarantee.ultimate)
+    && Number(settings?.['banyue.autoTopUpInteractions'] ?? 1) !== 0
+}
+
 function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, threads }: AgentTeamConfigInput): void {
   if (phase !== 'converge' || !axis || !guarantee) return
   const record = cfg as unknown as Record<string, unknown>
   record.banyueAxisEx = axis.actionCountsBySlot[slot] ?? {}
   record.banyueAxisActive = axis.active
   // 轴模式自动补齐（保底）：轴模式之外，保底开关也可独立驱动（非轴亦生效）；设置可整体关闭。
-  const autoTopUp = (axis.active || guarantee.fury || guarantee.ultimate)
-    && Number(settings?.['banyue.autoTopUpInteractions'] ?? 1) !== 0
+  const autoTopUp = banyueAutoTopUpEnabled(axis.active, guarantee, settings)
   const topUp = autoTopUp ? (threads?.interactionTopUp ?? { parry: 0, dual: 0 }) : { parry: 0, dual: 0 }
   if (topUp.parry > 0 || topUp.dual > 0) {
     record.parryCount = (cfg.parryCount ?? 0) + topUp.parry
@@ -1038,7 +1043,9 @@ export const banyueMechanic: AgentMechanicModule = {
   interactionFieldTypes: { blockCount: 'banyueGoldenParry', dualCounterCount: 'banyueDualCounter' },
   // CC-23：补齐求解经模块能力派发（原 convergence.ts 直连 import 本函数）；
   // CC-293：挂出本能力即是交互补齐产出者（槽位归属 + 交互栏懒守卫，registry#findInteractionTopUpSlot），不再另设旗标
-  computeInteractionTopUp: computeBanyueInteractionTopUp,
+  // CC-295：门控在模块内判定（与 applyBanyueTeamConfig 同一函数）；关闭 ⇒ null，编排层保持上一轮值
+  computeInteractionTopUp: ({ gate, ...opts }) =>
+    banyueAutoTopUpEnabled(gate.axisActive, gate.guarantee, gate.settings) ? computeBanyueInteractionTopUp(opts) : null,
   // 失衡轴动作块：怒相连段（论道→狮子吼·怒 / 地动→山摇·怒）= 怒相技能，山威免费（4 山威/怒相 = 2 组），
   // 不耗闪能不回嗔火；怒相内 2 组连段可在两个块间自由分配（didong 块优先占山威配额），明王触发源两者皆认领
   combos: {

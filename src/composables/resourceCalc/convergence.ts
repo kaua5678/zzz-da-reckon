@@ -55,7 +55,7 @@ import { ULTIMATE_COST_DEFAULT, calcTeamResources } from '@/core/resource'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 // 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 / T67-a1 刀 A）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { applyTeamMechanics, collectNextRoundFeedback } from './panelPhases'
+import { applyTeamMechanics, collectNextRoundFeedback, resolveMechanicSettings } from './panelPhases'
 import { enrichExecutionPlan, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
@@ -205,11 +205,9 @@ export function createRunCalcRound(deps: {
     const parrySplitActive = (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal) > 0 && guaranteeStun && (breakerSlot >= 0 || configStore.team.length > 0)
     const mainDpsSlot = breakerSlot === 0 ? -1 : 0
     // 保底开关（配装页「保底目标」勾选）：保底4嗔火 → 抬双反补嗔火；保底4喧响 → 抬弹刀补喧响。
-    // 轴模式自动补齐（axisActive）之外，保底开关也可独立驱动（非轴亦生效）。
+    // 是否补齐由产出者模块按 gate 判定（CC-295：轴模式 / 保底开关 / 模块设置，公式只在模块里一份）。
     const guaranteeFury = configStore.getMechanicSetting('guarantee.fury', 0) !== 0
     const guaranteeUltimate = configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0
-    const autoTopUp = (axisActive || guaranteeFury || guaranteeUltimate) && interactionTopUpSlot >= 0
-      && configStore.getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0
     // 通用保底4喧响：喧响缺口 → 弹刀（任意队伍；般岳走上面的模块能力 computeInteractionTopUp，此处排除避免双计）。
     // 弹刀注入槽位 0（主C，弹刀喧响经伴随覆盖全队），轮间经 prevDecibelParry 线程收敛。
     const decibelParryActive = guaranteeUltimate && interactionTopUpSlot < 0
@@ -714,15 +712,16 @@ export function createRunCalcRound(deps: {
     // 轴模式自动补齐下一轮量（保底）：嗔火缺口 → 双反；喧响缺口 → 弹刀。用 store 原始输入 + 本轮实际资源供给计算，
     // 外不动点收敛时 prevInteractionTopUp 稳定（round 0 无补齐 → 本轮算出的下一轮量即最终缺口）。
     let interactionTopUpNext = prevInteractionTopUp
-    if (autoTopUp) {
+    if (interactionTopUpSlot >= 0) {
       const storeChar = configStore.team[interactionTopUpSlot]
       const ultNeed = axisUltimateNeed(resolvedAxes, countStun, interactionTopUpSlot) // CC-142：计数通道
       // 喧响供给取般岳个人（终结技次数 = 个人喧响 / 终结技消耗，非全队总和；曾用全队总和导致
       // 队友喧响把缺口抹平 → 保底4喧响不补齐、般岳卡在 9000 出头打不满 4 大）
       const decibelHave = rr.characters.find(c => c.slot === interactionTopUpSlot)?.decibelSource?.total ?? 0
-      // 门控 autoTopUp 已含 interactionTopUpSlot >= 0 ⇒ 该槽模块必有 computeInteractionTopUp（CC-293：槽位即按能力查找）
+      // 槽位即按能力查找（CC-293）⇒ 该槽模块必有 computeInteractionTopUp；返回 null = 模块判定本轮不补齐 ⇒ 保持上一轮值（CC-295）
       const computeTopUp = storeChar?.agentId ? getAgentMechanic(storeChar.agentId)?.computeInteractionTopUp : undefined
-      if (computeTopUp) interactionTopUpNext = computeTopUp({
+      const topUpNext = computeTopUp?.({
+        gate: { axisActive, guarantee: { fury: guaranteeFury, ultimate: guaranteeUltimate }, settings: resolveMechanicSettings(configStore) },
         dodgeCount: storeChar?.dodgeCounterCount ?? 0,
         parryCount: storeChar?.parryCount ?? 0,
         blockCount: storeChar?.blockCount ?? 0,
@@ -739,6 +738,7 @@ export function createRunCalcRound(deps: {
         perParrySeconds: (base.characters.find(c => c.slot === interactionTopUpSlot)?.defensiveAssistActionTime ?? 0)
           + (base.characters.find(c => c.slot === interactionTopUpSlot)?.assistFollowUpActionTime ?? 0),
       })
+      if (topUpNext) interactionTopUpNext = topUpNext
     }
 
     // 通用保底4喧响：喧响缺口 → 弹刀（所有非般岳队伍）。目标 = 主C（槽0）保底 4 次终结技（4×3000 喧响），

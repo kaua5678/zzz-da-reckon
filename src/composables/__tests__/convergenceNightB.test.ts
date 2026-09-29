@@ -149,6 +149,17 @@ describe('convergence 夜间批 B · 组 3 保留项：cfg-merge 分支仍在（
     expect(findInteractionTopUpSlot([{ agentId: '1011' }, { agentId: '' }, undefined])).toBe(-1)
     // 当前唯一产出者；新增时同步核对 convergence 的通用保底4喧响互斥（decibelParryActive）
     expect(getRegisteredAgentMechanics().filter(m => typeof m.computeInteractionTopUp === 'function').map(m => m.agentIds[0])).toEqual(['1471'])
+    // CC-295：门控归模块——关闭（无轴、保底全关，或设置关）⇒ null（编排层保持上一轮值）；打开 ⇒ 与纯函数同值
+    const { computeBanyueInteractionTopUp } = await import('@/mechanics/agents/banyue')
+    const opts = {
+      dodgeCount: 10, parryCount: 6, blockCount: 20, dualCounterCount: 5, cinemaLevel: 0,
+      axisEx: {}, ultimateCountNeeded: 4, minRageCount: 4, ultimateCost: 3000, decibelHave: 3000,
+    }
+    const on = { fury: true, ultimate: false }
+    const off = { fury: false, ultimate: false }
+    expect(mod.computeInteractionTopUp!({ ...opts, gate: { axisActive: false, guarantee: off, settings: {} } })).toBeNull()
+    expect(mod.computeInteractionTopUp!({ ...opts, gate: { axisActive: true, guarantee: on, settings: { 'banyue.autoTopUpInteractions': 0 } } })).toBeNull()
+    expect(mod.computeInteractionTopUp!({ ...opts, gate: { axisActive: false, guarantee: on, settings: {} } })).toEqual(computeBanyueInteractionTopUp(opts))
   })
 
   it('★ 契约缺口可复现：`guarantee.*` 不是注册 MechanicSetting ⇒ 模块侧读不到（故 :840 的 autoTopUp 迁不动）', async () => {
