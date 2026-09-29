@@ -8,66 +8,17 @@
           <n-card title="敌人配置" size="small" :bordered="true">
             <n-space vertical :size="10">
               <n-grid cols="2" :x-gap="8" :y-gap="8">
-                <n-gi>
+                <n-gi v-for="f in ENEMY_FIELDS_HEAD" :key="f.key">
                   <div class="field">
-                    <span class="field-label">Boss 血量</span>
+                    <span class="field-label">{{ f.label }}</span>
                     <n-input-number
-                      :value="configStore.enemy.hp"
+                      :value="configStore.enemy[f.key]"
                       :min="0"
+                      :max="f.max"
+                      :step="f.step ?? 1"
                       size="small"
                       style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ hp: v ?? 0 })"
-                    />
-                  </div>
-                </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">失衡值</span>
-                    <n-input-number
-                      :value="configStore.enemy.stunValue"
-                      :min="0"
-                      size="small"
-                      style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ stunValue: v ?? 0 })"
-                    />
-                  </div>
-                </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">失衡时间 (秒)</span>
-                    <n-input-number
-                      :value="configStore.enemy.stunTime"
-                      :min="0"
-                      :step="0.5"
-                      size="small"
-                      style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ stunTime: v ?? 0 })"
-                    />
-                  </div>
-                </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">失衡易伤倍率</span>
-                    <n-input-number
-                      :value="configStore.enemy.stunVuln"
-                      :min="0"
-                      :step="0.1"
-                      size="small"
-                      style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ stunVuln: v ?? 1 })"
-                    />
-                  </div>
-                </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">怪物防御</span>
-                    <n-input-number
-                      :value="configStore.enemy.defense"
-                      :min="0"
-                      :step="50"
-                      size="small"
-                      style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ defense: v ?? 0 })"
+                      @update:value="v => setEnemyNumber(f, v)"
                     />
                   </div>
                 </n-gi>
@@ -99,78 +50,17 @@
                     />
                   </div>
                 </n-gi>
-                <n-gi>
+                <n-gi v-for="f in ENEMY_FIELDS_TAIL" :key="f.key">
                   <div class="field">
-                    <span class="field-label">异常条系数</span>
+                    <span class="field-label">{{ f.label }}</span>
                     <n-input-number
-                      :value="configStore.enemy.anomalyCoeff"
+                      :value="configStore.enemy[f.key]"
                       :min="0"
-                      :step="0.1"
+                      :max="f.max"
+                      :step="f.step ?? 1"
                       size="small"
                       style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ anomalyCoeff: v ?? 1 })"
-                    />
-                  </div>
-                </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">危局异常系数</span>
-                    <n-input-number
-                      :value="configStore.enemy.bossAnomalyCoeff"
-                      :min="0"
-                      :step="0.1"
-                      size="small"
-                      style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ bossAnomalyCoeff: v ?? 1 })"
-                    />
-                  </div>
-                </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">Boss 赠送失衡</span>
-                    <n-input-number
-                      :value="configStore.enemy.bossStunGift"
-                      :min="0"
-                      size="small"
-                      style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ bossStunGift: v ?? 0 })"
-                    />
-                  </div>
-                </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">秽盾数量</span>
-                    <n-input-number
-                      :value="configStore.enemy.shieldCount"
-                      :min="0"
-                      size="small"
-                      style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ shieldCount: v ?? 0 })"
-                    />
-                  </div>
-                </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">能量盾数量</span>
-                    <n-input-number
-                      :value="configStore.enemy.energyShield"
-                      :min="0"
-                      size="small"
-                      style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ energyShield: v ?? 0 })"
-                    />
-                  </div>
-                </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">Boss 无敌时间 (秒)</span>
-                    <n-input-number
-                      :value="configStore.enemy.invincibleTime"
-                      :min="0"
-                      :max="180"
-                      size="small"
-                      style="width: 100%"
-                      @update:value="v => configStore.setEnemy({ invincibleTime: v ?? 0 })"
+                      @update:value="v => setEnemyNumber(f, v)"
                     />
                   </div>
                 </n-gi>
@@ -416,7 +306,7 @@ import {
   NButton, NSwitch, NInput, NSelect, NCheckbox, NCollapse, NCollapseItem,
   NSlider, NTag, NAlert,
 } from 'naive-ui'
-import { useConfigStore } from '@/stores/config'
+import { useConfigStore, type EnemyConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useStatLabel } from '@/composables/useStatLabel'
 import { getGlobalBuffStatOptions } from '@/utils/statMeta'
@@ -435,6 +325,32 @@ const teammateBuffSearch = ref('')
 onMounted(() => {
   if (catalogStore.teammateBuffsStatus === 'idle') void catalogStore.loadTeammateBuffs()
 })
+
+/**
+ * 敌人配置的数值输入框：按显示顺序列出（体型下拉 / 快速支援只读框夹在 HEAD 与 TAIL 之间）。
+ * fallback = 清空输入框时写回的值（系数类为 1，其余为 0）；step 缺省 1，max 缺省不限。
+ * 新增一个敌人数值字段 = 在这里加一行（CC-282 前每个字段是一段 11 行的手写模板）。
+ */
+type EnemyNumberKey = { [K in keyof EnemyConfig]-?: EnemyConfig[K] extends number ? K : never }[keyof EnemyConfig]
+interface EnemyNumberField { key: EnemyNumberKey; label: string; step?: number; max?: number; fallback: number }
+const ENEMY_FIELDS_HEAD: EnemyNumberField[] = [
+  { key: 'hp', label: 'Boss 血量', fallback: 0 },
+  { key: 'stunValue', label: '失衡值', fallback: 0 },
+  { key: 'stunTime', label: '失衡时间 (秒)', step: 0.5, fallback: 0 },
+  { key: 'stunVuln', label: '失衡易伤倍率', step: 0.1, fallback: 1 },
+  { key: 'defense', label: '怪物防御', step: 50, fallback: 0 },
+]
+const ENEMY_FIELDS_TAIL: EnemyNumberField[] = [
+  { key: 'anomalyCoeff', label: '异常条系数', step: 0.1, fallback: 1 },
+  { key: 'bossAnomalyCoeff', label: '危局异常系数', step: 0.1, fallback: 1 },
+  { key: 'bossStunGift', label: 'Boss 赠送失衡', fallback: 0 },
+  { key: 'shieldCount', label: '秽盾数量', fallback: 0 },
+  { key: 'energyShield', label: '能量盾数量', fallback: 0 },
+  { key: 'invincibleTime', label: 'Boss 无敌时间 (秒)', max: 180, fallback: 0 },
+]
+function setEnemyNumber(f: EnemyNumberField, v: number | null) {
+  configStore.setEnemy({ [f.key]: v ?? f.fallback } as Partial<EnemyConfig>)
+}
 
 const resistanceElements = [
   { key: 'physical', label: '物理' },
