@@ -231,14 +231,31 @@ describe('朱鸢强化霰弹资源循环', () => {
 
   it('影画6 余温回能：floor(霰弹总量/12)次 ×30 能量并入 initialEnergyGift（用户口径 2026-08）', () => {
     // cinema6 含影画1 快速装填：总量 36+21=57 → floor(57/12)=4 次 ×30 = 120 能量
-    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    // CC-289：写入点在 buildExecutions（能量账之前），幂等——重复调用不叠加
+    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, initialEnergyGift: 40 }
+    zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions: [] } as any)
+    expect(cfg.initialEnergyGift).toBe(40 + 4 * 30)
+    zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions: [] } as any)
+    expect(cfg.initialEnergyGift).toBe(40 + 4 * 30)
+    // buildResourceResult 不再改能量账
     zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
-    expect(cfg.initialEnergyGift).toBe(4 * 30)
+    expect(cfg.initialEnergyGift).toBe(40 + 4 * 30)
 
     // 非6命不注入
     const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
-    zhuYuanMechanic.buildResourceResult!({ cfg: cfg0, state: mkState() } as any)
+    zhuYuanMechanic.buildExecutions!({ cfg: cfg0, state: mkState(), executions: [] } as any)
     expect(cfg0.initialEnergyGift ?? 0).toBe(0)
+  })
+
+  it('CC-289 影画6 余温回能真正进入能量账（真队：C6 比「去掉余温」多能量）', async () => {
+    const { config } = await setupHarness([{ agentId: '1241', cinemaLevel: 6 }, { agentId: '1031' }, { agentId: '1311' }] as any)
+    const calc = useResourceCalc()
+    const zy = calc.resourceResult.value!.characters.find(c => c.agentId === '1241')!
+    const afterglowRows = zy.executions.filter(e => (e.moveName ?? '').includes('以太余温'))
+    const afterglow = afterglowRows.reduce((a, e) => a + (e.count ?? 0), 0)
+    expect(afterglow, '余温次数').toBeGreaterThan(0)
+    expect(Number((zy as any).energySource?.initialGift ?? NaN)).toBeGreaterThanOrEqual(40 + 30)
+    void config
   })
 })
 

@@ -145,6 +145,17 @@ function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentR
 function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
   const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
+  // 影画6 余温强特耗能-30 → 回能口径：余温次数 × 30 并入开局能量总账（用户口径 2026-08）。
+  // CC-289：原先写在 buildResourceResult（装配末尾，能量账 resourceIncome 早已算完）⇒ 这笔能量从未进账
+  // （探针：golden 里 1241 C6 余温 13～16 次，resourceIncome 读到的 initialEnergyGift 恒为 40）。
+  // 改到 buildExecutions（与潘引壶 C2 同一钩子、同一幂等写法：先扣本模块上次写入量再写新值）。
+  const record = cfg as unknown as Record<string, unknown>
+  const afterglowGift = cinema >= 6 ? Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST) * ZHUYUAN_C6_AFTERGLOW_ENERGY : 0
+  const prevAfterglowGift = Math.max(0, Number(record.zhuYuanC6AfterglowEnergy ?? 0))
+  if (afterglowGift > 0 || prevAfterglowGift > 0) {
+    cfg.initialEnergyGift = Math.max(0, Number(cfg.initialEnergyGift ?? 0) - prevAfterglowGift) + afterglowGift
+    record.zhuYuanC6AfterglowEnergy = afterglowGift
+  }
   // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款），非轴按覆盖率近似（默认0），轴模式待接入
   // 压制模式·请勿抵抗：1 枚霰弹 = 1 段以太强化霰弹（1241010/1241011/1241012 三段轮转），
   // 时间有界（超出平A池的霰弹浪费，时间紧可浪费）。物理不打（用户口径）。
@@ -228,16 +239,9 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
 function buildZhuYuanResourceResult({ cfg, state }: AgentResourceResultInput) {
   const spec = getAgentSpec(ZHUYUAN_AGENT_ID)
   if (!spec) return {}
-  computeZhuYuanShellsTotal(cfg, state) // 写入影画门控的快速装填量
-  const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
-  if (cinema >= 6) {
-    // 影画6 余温强特耗能-30 → 回能口径：余温次数 × 30 并入开局能量总账（用户口径 2026-08）
-    const afterglow = Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST)
-    if (afterglow > 0) {
-      cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + afterglow * ZHUYUAN_C6_AFTERGLOW_ENERGY
-    }
-  }
+  // computeZhuYuanShellsTotal 顺带写影画1 快速装填门控字段，computeSpecResources 依赖它，调用顺序不能换。
+  // 余温回能已在 buildExecutions 并入能量账（CC-289），这里不再写 cfg。
+  computeZhuYuanShellsTotal(cfg, state)
   return { specResources: Object.fromEntries(computeSpecResources(spec, cfg, state)) }
 }
 
