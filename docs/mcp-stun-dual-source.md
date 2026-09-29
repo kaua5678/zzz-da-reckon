@@ -3413,3 +3413,25 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 有残留时散点 / 曲线 / 定位对比不再受其影响；
   - 主页换人时专属次数清回默认（仪玄系回到 0 / −1 自动哨兵）。
 - 回退：revert dfbe5db1（会同时恢复 restoreActionCounts）。
+
+### 24.107 第 283 轮：setAgent「随角色」字段逐个判定；CC-268 换人重置潜能（0577858e）
+
+**① CharacterConfig 字段逐个判定**（换人后是否残留、是否被读、分析器是否显式设置）：
+
+| 字段 | 换人时 | 分析器 / applyTeamPreset 显式设置 | 结论 |
+|---|---|---|---|
+| 动作次数（ACTION_COUNT_BOUNDS 全集） | CC-267 起回模板 + 预填基准 | — | 已收 |
+| cinemaLevel / wEngineModLevel | 保留 | 散点 / 曲线 / 定位对比 / applyTeamPreset / 轻量装配都设 | 不改：保留用户档位是有意 UX，分析器不受影响 |
+| **potentialLevel** | **保留** | **无人设置** | **CC-268 收**（见 ②） |
+| wEngineId / 5 号位主词条 / 平 A 权重 / 套装兜底 | setAgent 重写 | — | 无残留 |
+| driveDisc 4/6 号位主词条、subStatAllocation | 有推荐时 `applyBuildRecommendationForSlot` 清空重写；**无推荐的角色直接 return ⇒ 残留** | — | 待量：缺推荐的角色有多少（下一步 1） |
+
+**② CC-268（0577858e）。**
+- 探针：用户 store 每槽潜能 = 1，按散点口径装配 104 预设 ⇒ 40 个伤害变化（−1.37% ~ −20.68%，如 auto-1021-1481-1211 −20.68%、claret-koleda-rina −16.82%）。
+- 读潜能的有艾莲 / 雅 / 零号安比模块，以及 spec 公式的 `p` 变量。
+- 修法：setAgent 在 CC-267 的模板重置块里加 `char.potentialLevel = tpl.potentialLevel`（6 满级）。
+- 影响：
+  - 用户槽潜能为 6（默认）时零差（verify EXIT=0，golden 不变，无既有测试改期望）；
+  - 主页换人时潜能回到 6。
+- 锁：`presetLoopActionCounts.test.ts` 新增 CC-268 例（艾莲预设，残留潜能 1 ⇒ 装配后 6），stash config.ts 后变红。
+- 回退：revert 0577858e。

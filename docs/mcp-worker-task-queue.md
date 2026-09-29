@@ -71,24 +71,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 282 轮（lane lead-arena-0925c）：R6 清单复盘（为空）、CC-267（dfbe5db1）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.106。
-- 前几轮：281 CC-265 / 266；280 CC-264；279 CC-263。
+**第 283 轮（lane lead-arena-0925c）：CC-268（0577858e）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.107（含 CharacterConfig 字段逐个判定表）。
+- 前几轮：282 CC-267；281 CC-265 / 266；280 CC-264。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
-**下一步（直接开工，自选方向；R6 清单已空）**：
-1. **展示层剩余映射副本**（r6 清单 §8 第 239 行留项：稀有度颜色、职业颜色等「code → 显示」映射未查）：
-   - `grep -rn "'S'\s*:\|rarity ===\|specialty ===" src/views src/components | head`；
-   - 同一映射 ≥ 3 份且有分叉才收；收进 `src/utils/agentLabelMaps.ts`（职业名已在那）。
-2. **setAgent 其余「随角色」字段**（CC-267 的延伸，先测）：setAgent 还写音擎 / 驱动盘兜底 / 5 号位主词条 / 平 A 权重。
-   - 查换人后是否还有随旧角色残留的字段（命座 / 潜能 / 精炼 / 副词条分配），逐个判断「属于角色还是属于槽」；
-   - 只收「属于角色却留在槽上且被读」的。
-3. 若都无收获：按 §8 表格式记一行「查了什么 / 结论 / 重开条件」，不改代码。
+**下一步（直接开工）**：
+1. **驱动盘残留（先测）**：`stores/config.ts#applyBuildRecommendationForSlot` 在角色无推荐时直接 `return false`，上一个角色的 4/6 号位主词条与 `subStatAllocation` 留在槽上。
+   - 测：`await catalog.loadBuildRecommendations()` 后，列出 catalog 全部角色中没有推荐的（查 `buildRecommendations` 的取法，函数在 config.ts 约 :776）；再看预设里是否有这些角色。
+   - 若有且被散点用到：在 setAgent（非 defer）或推荐缺失分支把 4/6 主词条与副词条分配清回 defaultCharacter 模板（与 CC-267 / 268 同一处模板重置），写锁；
+   - 若预设里没有：只记结论，不改（重开条件：新角色入预设却没推荐）。
+2. 展示层映射副本（r6 清单 §8 第 239 行留项：稀有度颜色 / 职业颜色）：同一映射 ≥ 3 份且分叉才收。
+3. 都无收获：在 r6 清单 §8 记一行，不改代码。
 
 **已知坑**：
-- 动作次数：setAgent 先按 `ACTION_COUNT_BOUNDS` 全集回模板，再写 `interactionBaselineFor` + `ASSIST_ACTION_BASELINE`；预设覆盖走 `applyPresetInteractions`。**restoreActionCounts 已删**（CC-267），探针与新分析器循环不需要它；
-- 新增动作次数字段：只要加进 `ACTION_COUNT_BOUNDS`，换人重置自动覆盖；
-- 预设级探针：harness 快支 3 / 连携 1 与生产 setAgent 一致，不必再清零；
+- setAgent 的模板重置块（CC-267 / 268）是「随角色字段」的唯一重置点：新增随角色字段时加在那里，并在 §24.107 表里补一行；
+- 预设级探针：harness 快支 3 / 连携 1 与生产一致；潜能 6；
 - 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。
