@@ -90,13 +90,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 320 轮（lane lead-arena-0925c）：CC-305（`c46321bb`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 展示层 findIndex / damageElement 普查：全为纯展示，展示层副本线收尾。锁定失衡下沉进 `promoteFixpoint`（CC-300 事后钳位删除），实测零数值差；全量 verify 4033 绿。详见 `docs/mcp-stun-dual-source.md` §24.144。
-- 前几轮：319 CC-304；318 CC-303；317 CC-302。
+**第 321 轮（lane lead-arena-0925c）：CC-306（`25041ef0`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 额外能力触发条件收成 spec 一份：简 / 琉音 / 诺姆 / 蕾米埃尔 6 处手写改调 `specAdditionalAbilityActive`。全量 verify 4033 绿，零数值差。详见 `docs/mcp-stun-dual-source.md` §24.145。
+- 前几轮：320 CC-305；319 CC-304；318 CC-303。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行会话在跑。
 
 **下一步（直接开工）**：
-1. 本轮起「同一物理量 / 同一规则两份实现」在 useResourceCalc 与展示层两条线都已普查完，r6 清单无未结项。下一条线：**mechanics/agents 模块之间的规则副本**——`grep -rn "specialty === 'stun'\|damageElement === " src/mechanics/agents`（本轮已见 yaojiayin:256、yixuan:336、hugo:143 三处判 stun 特性），逐个看是不是各自重写了同一条队伍级规则（如「队里有无击破位」）；是则收成 `mechanics/` 下共享助手或 teamContext 字段，否则记「不做」。
+1. **维琳娜（1561）/ 爱丽丝（1401）补 spec `additionalAbility` 声明**，模块改调 `specAdditionalAbilityActive`。先量连带影响：补声明后 `specs/additionalGate.ts#additionalGateBuffTable` 会自动门控这两人来源为「额外能力」的队友 buff。步骤：① `grep` catalog teammate buff 里 1561 / 1401 来源为「额外能力」的条目；② 若有，写探针比较补声明前后 `evalAdditionalAbilityBuffGates` 结果与相关伤害；③ 维琳娜条件是「同属性」——spec 的 `sameAttributeAsSelf` 读 `agent.attribute`，模块读 `damageElement`，先确认两字段在 catalog 里是否同值，不同就新增 `sameDamageElementAsSelf` 条件类型而不是硬套。
 2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

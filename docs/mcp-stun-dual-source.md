@@ -3992,3 +3992,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - **仍然做的理由**：锁定语义从「两处（外层输入 + 事后钳池）」收成「外层输入 + 不动点入参」一处明确定义，不再依赖「执行行上限恰好兜住」这个巧合；锁定下不再做无意义的不动点迭代。
   - 新增 `src/composables/__tests__/lockedPromoteCc305.test.ts`（2 例）：是**不变量锁**（锁定下改失衡条，池次数 / promote / hug60 不变），修复前同样绿，已在文件头注明，不冒充有牙回归。
 - **回退**：`git revert c46321bb`（恢复 CC-300 的事后钳位形态）。
+
+### 24.145 第 321 轮：CC-306 额外能力条件单一来源（25041ef0）
+
+- **普查**（§24.144 交接第 1 条）：`grep -rn "specialty === \|damageElement === " src/mechanics/agents` 共 25 处。分三类：
+  1. **额外能力触发条件的手写副本**（spec 已声明 `additionalAbility.teamConditions`，面板阶段 `panelPhases.ts` 已用 `evalAdditionalAbility` 写 `panel.additionalAbilityActive`）：简 `jane.ts` applyPanel（异常 / 同阵营）、琉音 `liuyin.ts` applyPanel + buildCharConfig（强攻 / 命破，形如「面板标记 || 手写兜底」）、诺姆 `norma.ts` buildCharConfig（强攻 / 命破 / 同阵营，同形）、蕾米埃尔 `remielle.ts` 的 `remielleDazeTier` 与 `remielleAdditionalState`（异常 / 同阵营）。改 spec 不会影响这些副本 ⇒ 两套来源。
+  2. **spec 未声明、模块手写**：维琳娜 `velina.ts#isAdditionalAbilityActive`（异常 / 同属性，按 damageElement）、爱丽丝 `alice.ts#isAdditionalAbilityActive`（异常 / 支援）。本轮未动：补 spec 声明会让 `specs/additionalGate.ts` 自动门控它们来源为「额外能力」的队友 buff（行为可能变），需要单独测量。
+  3. **角色技能自身的条件**（不是额外能力）：耀嘉音按目标特性给 buff、仪玄队伍构成、雨果数队友击破位、千夏 / 席德 / 莱特 / 柚叶 / 雅 / 狄 / 凰 的各自条件、specPanelBuffs 按特性给喧响——各是各的游戏文本，不是同一规则 ⇒ 不做。
+- **CC-306 改法**：`mechanics/additionalAbilityGates.ts` 新增 `specAdditionalAbilityActive(team, slot, agent)`（= `evalAdditionalAbility(…, getAgentSpec(agent.id)?.additionalAbility) === true`，与面板阶段同一求值器）。第 1 类 6 处全部改调它，删 `hasAttackOrRuptureTeammate`、`isNormaExtraAbilityActive` 及随之无用的 import / 解构。`specs/teamCondition.ts` 的队伍参数放宽为结构子集 `TeamConditionTeam`（只需 slot / agentId / agent），让只有压缩 Agent 列表的 `teammateBuffGate` 钩子（蕾米埃尔）也能直接用，不需要类型转换。
+  - 等价性：spec 条件与手写条件逐项相同；唯一字面差别是同阵营守卫（spec `faction != null`，蕾米埃尔旧写 `!!faction`，简旧写无守卫），catalog 阵营都非空 ⇒ 无差。全量测试零数值变化。
+  - 连带：`agentModuleRowFusionRule.test.ts` 的 `RAW_ROW_READ_ALLOW` 按行号登记 remielle.ts 的 values[0] 读点，因新增一行 import 整体 +1（92/95/97 → 93/96/98）。这张按行号的登记表很脆，但它只锁位置不锁语义，本轮不改它的机制。
+- **验证**：vue-tsc 干净；wt321 `npm run verify` EXIT=0（4033 passed，build 通过）。
+- **回退**：`git revert 25041ef0`。

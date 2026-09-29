@@ -471,3 +471,4 @@
 | 318 | useResourceCalc 普查余项 | computeStunCoverage（注入引擎的依赖，非重复）/ interactionTopUp（已读 threadsApplied）/ axisOverlays（伤害侧独有，引擎不算）：不做；parrySplitResult 复制了引擎门控与击破位规则 ⇒ CC-303（`c7aa0ad6`） | 已结项 |
 | 319 | 展示层 .vue 派生规则副本普查 | ResourceUtilizationPage 风化浸染挑槽复制了引擎规则且身份口径不同 ⇒ CC-304（`07a91a16`）；其余命中（optimizer.* / releaseShare / alice / guarantee.* / counterAssist / 连段吸收比例）都是设置控件的读写或纯展示，不做 | 已结项 |
 | 320 | 展示层 findIndex / damageElement 普查；锁定未下沉进 promoteFixpoint（§24.139 未钳项） | 页面命中 5 处全为纯展示（条件列表 / 饼图 / 排序 / 抗性行 / 物理判断），不做；锁定下沉 ⇒ CC-305（`c46321bb`），实测零数值差 | 已结项 |
+| 321 | 角色模块之间的队伍级规则副本（specialty / damageElement 判定） | 额外能力条件在 4 个模块手写、与 spec 声明两套来源 ⇒ CC-306（`25041ef0`）；维琳娜 / 爱丽丝无 spec 声明（仍手写），其余命中是各角色技能自身条件（非额外能力），见 §24.145 | 下一步：维琳娜 / 爱丽丝补 spec 声明（先量 additionalGate 连带门控） |
