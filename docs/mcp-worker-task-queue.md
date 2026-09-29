@@ -90,14 +90,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 317 轮（lane lead-arena-0925c）：CC-302（`c45a500a`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 轴模式布尔 `isAxis` 改读引擎 `CalcRoundResult.axisActive`，伤害池不再依赖展示计算 `stunAxisResult`。全量 verify 4032 绿，golden 零差。详见 `docs/mcp-stun-dual-source.md` §24.141。
-- 前几轮：316 CC-301 + CC-299；315 CC-300；314 CC-299 首试撤回。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f，arena-B 上轮改过，本 lane 认可）。开工时无并行会话在跑。
+**第 318 轮（lane lead-arena-0925c）：CC-303（`c7aa0ad6`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- `useResourceCalc` 普查收尾：只有 `parrySplitResult` 复制了引擎规则，已改读 `CalcRoundResult.parrySplitGate`；其余三项不做（理由见 `docs/mcp-stun-dual-source.md` §24.142）。全量 verify 4032 绿。
+- 前几轮：317 CC-302（isAxis 单一来源）；316 CC-301 + CC-299；315 CC-300。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行会话在跑。
 
 **下一步（直接开工）**：
-1. 继续普查 `useResourceCalc.ts`（约 720 行）里剩下的本地计算：`computeStunCoverage`（:~318，是否还有读者？`stunCoverage` 已直读 calcOutput）、`interactionTopUp`、`axisOverlays`（`collectAxisWindowOverlays` 是否与引擎某处同算）。判据：同一物理量两份实现 ⇒ 收成一份；纯展示量 ⇒ 不动。
-2. 若无可做项，转 `docs/mcp-r6-refactor-list.md` 三类清单里未结项。
+1. `useResourceCalc` 这条线已普查完。下一个同类面：**展示层 .vue 里的派生规则副本**。先 `grep -rn "specialty ===\|getMechanicSetting(" src/views src/components`，找展示层自己重判引擎规则（门控 / 槽位 / 保底开关）的地方；判据同上：与引擎同一规则两份 ⇒ 让引擎导出结果；纯展示格式化 ⇒ 不动。
+2. 若无可做项，转 `docs/mcp-r6-refactor-list.md` 三类清单里的未结项。
 3. 低优先：锁定下沉到 promoteFixpoint 入参（§24.139 未钳项）；off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

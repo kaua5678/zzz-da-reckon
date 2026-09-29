@@ -3960,3 +3960,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **口径差**（仅边角）：旧表达式另要求「至少一条轴有动作」（calcStunAxis 前 filter）；引擎 `axisActive` 只看生效轴非空。全部轴都没有动作时，旧口径伤害侧判非轴、引擎却已按轴注入（连携覆盖 = 0）⇒ 旧口径本身就是两边不一致，新口径与引擎一致。全量测试无一受影响。
 - **验证**：vue-tsc 干净；wt317 `npm run verify` EXIT=0（4032 passed），golden 零差。
 - **回退**：`git revert c45a500a`。
+
+### 24.142 第 318 轮：useResourceCalc 普查收尾 + CC-303 弹刀反推门控单一来源（c7aa0ad6）
+
+- **普查结论**（§24.141 交接第 1 条）：
+  - `computeStunCoverage`：注入 `createRunCalcRound` 的依赖（引擎本身用它），展示侧 `stunCoverage` 已直读 calcOutput ⇒ 不是重复，不动。
+  - `interactionTopUp`：读 `threadsApplied.interactionTopUp`，槽位用与 convergence 同一函数 `findInteractionTopUpSlot` ⇒ 已单一来源，不动。
+  - `axisOverlays`（`collectAxisWindowOverlays`）：伤害池专用，引擎不算 ⇒ 不动。
+  - `parrySplitResult`：**复制了 convergence 的两条规则**——生效门控「`parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal > 0` 且 `guarantee.stun` 勾选且（有击破位或队伍非空）」和击破位槽位「首个 specialty=stun 槽位，无则 0」。两份字面一致，但任何一边改规则另一边就静默分叉（例如击破位规则改成读模块能力时）。
+- **CC-303 改法**：`CalcRoundResult.parrySplitGate = { active: parrySplitActive, breakerSlot: effectiveBreakerSlot }`（convergence 局部量原样导出）；`parrySplitResult` 改为 `gate.active` 门控 + `gate.breakerSlot`，Boss 原始预算三项仍读 store（它们是输入，不是派生规则）。
+  - 删掉的「懒守卫」（不满足条件时不触发全量计算）没有实际收益：同页 `decibelGuaranteeResult` 无条件读 calcOutput（CC-296 已记）。
+- **验证**：vue-tsc 干净；wt318 `npm run verify` EXIT=0（4032 passed）。覆盖：parrySplitInt / specialActionBonusSingleSource / counterAssist / archiveDeployStun 四个读 parrySplitResult 的测试全绿。
+- **回退**：`git revert c7aa0ad6`。
