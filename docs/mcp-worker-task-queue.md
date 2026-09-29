@@ -71,28 +71,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 302 轮（lane lead-arena-0925c）：CC-288（de751282）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.126：南宫羽地雷撞套数残留确认可达，已修，已加锁。
-- 前几轮：301 CC-287；300 CC-286；299 CC-285。
+**第 303 轮（lane lead-arena-0925c）：CC-289（1f8ed509，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.127：同型残留普查用 AST 结项；发现并修复朱鸢 C6 余温回能从未进入能量账（1241 C6 伤害 +4.4%，golden 已更新）。
+- 前几轮：302 CC-288；301 CC-287；300 CC-286。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add。
 
 **下一步（直接开工）**：
-1. **同型残留普查：「提前 return 早于 cfg 写入」**。CC-288 的模式是：模块在某条件下提前 return，于是本该写的 cfg 键不被覆盖，保留上一次装配 / 上一个场景的值，而读者（事件钩子、估时、装配、spec countField）读到旧值。
-   - 候选扫描（第 302 轮跑出约 50 行、20 个模块，粗筛，含大量假阳性）：
-     `cd src/mechanics/agents && for f in *.ts; do awk -v F=$f '/\) return$/ {r=NR} /^ *(record|cfg|rec)(\.|\[)[A-Za-z_]+[^=]* = [^=]/ { if (r && NR-r<=8) print F":"NR": "$0 }' $f; done`
-   - 值得优先看的：`lycaon.ts:188-190`、`norma.ts:585-587`、`sigrid.ts:253`、`yidhari.ts:396/401`、`zhendou.ts:137/142`、`trigger.ts:241`、`harumasa.ts:213`、`zhuYuan.ts:115`、`remielle.ts:330-333`、`luciaElowen.ts:472`、`hugo.ts:394-396`。
-   - 判定办法：看写入之前那个 return 的条件在真实场景里能不能成立，以及写入的键是否有读者；可达且有读者 ⇒ 用 CC-288 的探针法（在 return 前打印「残留 > 0」计数）量，确认后在函数入口先写中性值（0 / '' / false）。
-   - **注意**：`initialEnergyGift` / `extraSelfDecibelReward` 这种「减掉旧值再加新值」的累加字段（ellen:258、panYinhu:64、remielle:385、specPanelBuffs:134）是另一种模式，残留会导致重复累加或漏减，要单独分析，不要套归零。
-   - 每个真缺陷一张卡（CC-289 起），带有牙的锁测试。
-2. 普查结项后回到 `docs/mcp-r6-refactor-list.md` §8，挑影响面最大的待查项。
+1. **把「晚写」变成常驻锁（可选，小）**：第 303 轮的晚写探针（assembleSlot 里 buildResourceResult 前后 cfg 快照比较）很有效，但只是临时的。考虑在 timeGolden 同一批场景上加一个测试：用 `vi.spyOn` 包住各模块的 `buildResourceResult`，前后比较 cfg，允许名单只放 `orphieBladeHits`（spec cfgField 展示）。
+   - 值得做的理由：把 CC-289 这类「展示说进账，引擎没进账」的死写入变成新模块一写就红，是通用约束，不是计数。
+   - 如果 spy 的方式在 harness 里取不到模块对象，就写成「不做」加理由，不要硬上。
+2. **anby 两处 initialEnergyGift（:173 闪反回能、:193 C4 后场电队友）在 golden 场景里屏蔽后零变化**，无法判定是死写入还是场景不触发。用带闪反次数的真队（1011 + 电属性后场队友，C4+）跑一次屏蔽对比；有差 ⇒ 正常，写结论；无差 ⇒ 按 CC-289 的方法查写入时机。
+3. 之后回到 `docs/mcp-r6-refactor-list.md` §8，挑影响面最大的待查项。
 
 **已知坑**：
-- **主工作区里有另一个会话在并行改动**（第 301、302 轮都有：`pullPlanner.ts`、`pullPlanner.test.ts`、`PullPlannerChart.vue`、`pull-planner-chart.css`、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md` 未提交修改）。主工作区 verify 会因为它们变红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；提交时只 add 自己的文件，**不碰对方的文件**；用完执行 `git worktree remove --force`（node_modules 软链不会被跟随删除，第 301 轮已验证）。
-- 「缓存 == 重算」和「残留可达」都用探针计数证明（console.log 标签 + `uniq -c`），探针前后 cp 备份与恢复，最后 `grep -c __probe` 为 0；
-- 读者在估时 / 事件钩子里的是轮间通道，改成重算会改变收敛；归零本次写入不改变通道语义；
-- 新增模块 cfg 写入必须有读者（cfgWriteOnlyKeys 锁）；
-- verify 跑的时候不要往工作区写文件；
-- 杀进程只 kill 具体 pid；后台 verify 用 `setsid ./bg.sh … & sleep 2`；上传一律用 `bash /home/user/mcp-tools/up.sh …`；GitHub 偶尔不通，push 失败记进交接，下一轮先补推。
+- **主工作区里有另一个会话在并行改动**（第 301～303 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
+- **cfg 生命周期**（第 303 轮读 `convergence.ts:424` 确认）：每轮从 base cfg 浅拷贝出 merged，applyTeamConfig 的相位门 / 轴门不会造成跨轮残留；同一轮内被多次调用的钩子才可能残留。能量账（resourceIncome）在装配之前，**buildResourceResult 里写 cfg 对引擎无效**。
+- 「缓存 == 重算」「残留可达」「死写入」都用探针证明：console.log 标签加 `uniq -c`（数字会带 ANSI 颜色，先用 sed 去掉再 grep）；「死写入」用屏蔽写入后跑 golden 看是否零变化。探针前后 cp 备份与恢复，最后 `grep -c __probe` 为 0。
+- 新增模块 cfg 写入必须有读者（cfgWriteOnlyKeys 锁）；verify 跑的时候不要往被验证的目录写文件；杀进程只 kill 具体 pid；上传一律用 `bash /home/user/mcp-tools/up.sh …`；GitHub 偶尔不通，push 失败记进交接。
 
 **未决项**（依赖游戏事实或审美，不开卡）：lumiflux 属性标签颜色（§24.120）；1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。
 

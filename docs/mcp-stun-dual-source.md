@@ -3728,3 +3728,20 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **锁**：`nangongSmoke.test.ts`「CC-288 地雷撞套数不残留」2 例（预置 5，两条提前 return 路径都断言归零），在修复前的代码上会红（已验证有牙）。
 - **推广**：同型模式（提前 return 在 cfg 写入之前）在其他模块里还有候选，扫描命令和清单见 worker §2 下一步 1。
 - **回退**：revert de751282。
+
+### 24.127 第 303 轮：「提前 return 早于 cfg 写入」普查结项；朱鸢 C6 余温回能从未进账（CC-289，1f8ed509，数值卡）
+
+- **普查方法换成 AST**：第 302 轮交接给的 awk 粗筛约 50 行，绝大多数是 `applyTeamConfig` 开头的相位门（`if (phase !== 'converge') return`）或轴门（`if (!axis) return`）。
+  - 这些**不是残留**：`convergence.ts:424` 每一轮都用 `{ ...base cfg }` 新建 merged 克隆，applyTeamConfig 每相位每轮只调一次，门控键在新克隆上要么本轮写、要么缺省，不会带上一轮的值。
+  - 真正可能残留的是**同一轮内会被重复调用**的钩子（buildExecutions / patchExecutions / buildAnomalyEvents / buildResourceResult / resourceSections）。
+  - 扫描器：`node /home/kaua/calc-arch/k229/scan303.cjs [钩子列表]`（TypeScript AST；只看模块对象上的钩子函数体本身，不跟进调用的 helper；`ALL=1` 列出全部 cfg 写入，不止 return 之后的）。结果只有 2 处：`nangong.ts:228`（CC-288 已修）和 `zhuYuan.ts:238`。
+- **zhuYuan.ts:238 是另一类问题（写得太晚）**：影画6 余温回能（余温次数 × 30，注释写明「用户口径 2026-08 并入开局能量总账」，资源面板也显示「+N 能量（并入开局能量总账）」）写在 `buildResourceResult` 里，而 buildResourceResult 在装配末尾，能量账 `resourceIncome.ts:104` 早就读完 `initialEnergyGift` 了。
+  - 探针：timeGolden 里 1241 C6 余温 13～16 次（应进账 390～480 能量），而 resourceIncome 读到的 `initialEnergyGift` 119 次**全部是 40**，这笔能量从未进账。
+  - 旁证：逐个屏蔽 13 处 `initialEnergyGift` 写入跑 timeGolden（`/home/kaua/calc-arch/k229/gift303.sh`），除 anby 的 2 处（golden 场景不触发，无法判定）外都会让 golden 变化，**只有 zhuYuan:238 屏蔽后零变化**，确认是死写入。
+  - 唯一挡住它的是一个直读 cfg 的单测（正是「测试不能读 cfg 上的缓存值」那条坑）。
+- **修法（CC-289）**：写入点移到 `buildZhuYuanExecutions`（与潘引壶 C2 同一钩子、同一幂等写法：先扣本模块上次写入量 `zhuYuanC6AfterglowEnergy`，再加新值）；buildResourceResult 不再写能量，并删掉重复的 `computeZhuYuanShellsTotal` 调用（留一次，它顺带写 C1 快速装填门控字段）。
+- **数值影响（有意）**：timeGolden 只有 1 条变化：`agent:1241:c6` 强特 12→19，平A 136.24→126.21 秒，必要动作 43.76→53.79 秒，伤害 2146094→2240904（+4.4%）；其他 119 条零差。golden 已用 `TIME_GOLDEN_UPDATE=1` 更新。
+  - 依据：代码注释里的用户口径（2026-08），以及展示层早已按这个口径向用户展示「并入开局能量总账」。这是修正引擎与既定口径 / 展示不一致，不是新口径，不适用 R5 的「不顺手改数值」（那条约束针对 catalog 对账）。
+- **锁**：`zhuYuan.test.ts` 原单测改成调 buildExecutions，并断言幂等（重复调用不叠加）以及 buildResourceResult 不再改能量账；新增真队用例「CC-289 余温回能真正进入能量账」（1241 C6 + 1031 + 1311，断言 `energySource.initialGift ≥ 70`）。两例在修复前的代码上都会红（已验证）。
+- **晚写普查**：临时探针在 `assembleSlot.ts` 的 buildResourceResult 前后对 cfg 做 JSON 快照比较（timeGolden 全量）。修复后唯一的晚写键是 `orphieBladeHits`（1301）：写后立刻被同一函数内的 `computeSpecResources` 按 spec cfgField 读取，只用于展示 specResources，时机正确，**不改**。至此「buildResourceResult 改 cfg 却想影响引擎」这类问题清零。
+- **回退**：revert 1f8ed509（golden 连同一起回退）。
