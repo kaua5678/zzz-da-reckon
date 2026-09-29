@@ -3,6 +3,7 @@ import type { InteractionTopUp } from '@/mechanics/types'
 import type { ParrySplitResult } from '@/core/parrySplit'
 import type { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import type { CalcRoundThreads } from './roundThreads'
+import type { StackTraversalResult } from '@/core/stunAxisStack'
 
 /** 单轮计算输出：下游 computed 消费的 13 字段 + 下一轮收敛线程 */
 export interface CalcRoundResult {
@@ -49,4 +50,11 @@ export interface CalcRoundResult {
      * 同 `decibelGuarantee.parry` 读 prev 的口径。纯展示载荷，零求值影响（runCalcRound 不改写 threads）。
      */
     threadsApplied: CalcRoundThreads
+    /**
+     * 本轮轴内**实际执行集合**（convergence `axisExecutedStack`；非轴 = null）。CC-299：
+     * 它是 cfg.axisActionCounts / axisUltimateTotal 的唯一来源（CC-298 起按计数通道分窗），
+     * 伤害侧轴内易伤分配（axisAllocation / attachedInAxisMap）与失衡轴页展示直接读它，不再在 useResourceCalc 另跑一遍栈。
+     * 资源门控入参 = 本轮已装的上一轮闪能 / 单调喧响线程（同 threadsApplied 口径）。
+     */
+    axisStack: StackTraversalResult | null
   }

@@ -380,7 +380,10 @@ export function createRunCalcRound(deps: {
         axes: buildStackAxes(resolvedAxes),
         // CC-298：执行集合 = axisActionCounts / axisUltimateTotal 的来源，属计数通道（同 CC-142 的 axisChainTotal）
         // ⇒ 窗口数读 countStun。旧读计划实数 stunCount：physical 下 1371 队计划 0.655 ⇒ 1 窗，而物化行 / 池按物理 3 窗。
-        stunCount: countStun,
+        // CC-301：窗口数 = 上一轮池整数（`threads.prevPoolStunCount`，首轮缺省回落 countStun）。physical ≡ countStun、
+        // 锁定下池已钉 countStun（CC-300）⇒ 两者零差；只有 off / floor / round / ceil 投影下由「计划值」改为「池整数」——
+        // 轴块是「块 × 窗」的整数执行，与雨果决算行（坑36，读池）及伤害侧栈（读池）同源。
+        stunCount: threads.prevPoolStunCount ?? countStun,
         windowDuration: computeWindowDuration(),
         energyBySlot: prevEnergyBySlot ?? {},
         decibelBySlot: prevDecibelRegenBySlot ?? {},
@@ -1126,6 +1129,7 @@ export function createRunCalcRound(deps: {
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
       threadsApplied: threads,
+      axisStack: axisExecutedStack,
       threadsNext: {
         goodReview,
         energyBySlot,

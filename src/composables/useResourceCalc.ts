@@ -9,7 +9,6 @@ import { DEFAULT_STUN_PLAN_PROJECTION_CODE, stunPlanProjectionFromCode } from '@
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
-import { calcStunAxisStack } from '@/core/stunAxisStack'
 import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import { findInteractionTopUpSlot, getAgentMechanic } from '@/mechanics'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
@@ -497,25 +496,9 @@ export function useResourceCalc() {
   /** 栈遍历：按资源（闪能/喧响/时间）门控，决定轴内实际执行哪些动作 */
   const stackTraversalResult = computed(() => {
     if ((!configStore.useStunAxis && !autoActive.value) || !stunAxisResult.value) return null
-    const resRes = adjustedResourceResult.value
-    const sp = stunPoolResult.value
-    if (!resRes || !sp) return null
-
-    // 各槽位可用闪能/喧响
-    const energyBySlot: Record<number, number> = {}
-    const decibelBySlot: Record<number, number> = {}
-    for (const c of resRes.characters) {
-      energyBySlot[c.slot] = c.energySource?.total ?? 0
-      decibelBySlot[c.slot] = c.decibelSource?.total ?? 0
-    }
-
-    return calcStunAxisStack({
-      axes: buildStackAxes(effectiveStunAxes.value),
-      stunCount: sp.stunCount,
-      windowDuration: computeWindowDuration(),
-      energyBySlot,
-      decibelBySlot,
-    })
+    // CC-299：直读引擎本轮执行集合（同一物理量一份实现）。原在此用 adjusted rr 的闪能 / 喧响总量 + 池次数重跑一遍栈，
+    // 与引擎门控入参（上一轮闪能 / 单调喧响）不同源；窗口数两边已同为池整数（CC-301）。
+    return calcOutput.value?.axisStack ?? null
   })
 
   /** (slot, moveId) → 轴内单位数分配（来自栈遍历 executed，连段展开成招式，outAxisUnits 由 axisSplitFor 反推） */
