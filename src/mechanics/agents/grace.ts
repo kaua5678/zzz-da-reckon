@@ -315,8 +315,14 @@ export const graceMechanic: AgentMechanicModule = {
     // 影画1 再充能弹膛：一次 A4（每轮换一格）给全队每人回 2 能量——存 cycles，由 applyGraceTeamConfig 分发
     record.graceC1Cycles = cinema >= 1 ? v.cycles : 0
     // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
-    if (v.c4Applies) {
-      record.initialEnergyGift = Number(record.initialEnergyGift ?? 0) + v.c4Energy
+    // CC-291：幂等写入（先扣本钩子上次写入量再加新值）。原实现每次调用都 `+= c4Energy`，而本钩子在
+    // 同一份 cfg 上随内层迭代反复调用 ⇒ 能量账读到的 initialEnergyGift 随迭代次数单调增长
+    // （探针：1181 C6 从 124 涨到 853.9，本应只加一次约 70）。
+    const prevC4 = Math.max(0, Number(record.graceC4EnergyGift ?? 0))
+    const c4Gift = v.c4Applies ? v.c4Energy : 0
+    if (c4Gift > 0 || prevC4 > 0) {
+      record.initialEnergyGift = Math.max(0, Number(record.initialEnergyGift ?? 0) - prevC4) + c4Gift
+      record.graceC4EnergyGift = c4Gift
     }
     record.gracePulseGrenadeCount = v.pulseGrenades
   },

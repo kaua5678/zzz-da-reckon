@@ -105,8 +105,13 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
     }
     const combatTime = Math.max(0, Number((state as any)?.combatTime ?? (state as any)?.totalTime ?? 180))
     const cdCap = Math.floor(combatTime / 4)
-    ;(cfg as any).extraSelfDecibelReward =
-      Number((cfg as any).extraSelfDecibelReward ?? 0) + ORPHIE_C2_AA_DECIBEL * Math.min(aaCount, cdCap)
+    // CC-291：幂等写入（extraSelfDecibelReward 是跨角色共享累加通道，只能扣掉本模块上次写入量再加新值）。
+    // 原实现每次调用都 `+=`，patchExecutions 在同一份 cfg 上被重复调用 ⇒ 喧响账读到 2 倍（探针：2925 → 5850）。
+    const record = cfg as unknown as Record<string, unknown>
+    const gift = ORPHIE_C2_AA_DECIBEL * Math.min(aaCount, cdCap)
+    const prev = Math.max(0, Number(record.orphieC2DecibelGift ?? 0))
+    record.extraSelfDecibelReward = Math.max(0, Number(record.extraSelfDecibelReward ?? 0) - prev) + gift
+    record.orphieC2DecibelGift = gift
   }
   // 倍率融合（2026-08-27）：蓄热充能(1301011) 打完全自动接燥焰迸射(1301022)；
   // 终结技 与火共舞 #1(1301015)+#2(1301016) 合一计一次终结技
