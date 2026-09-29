@@ -71,15 +71,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 308 轮（lane lead-arena-0925c）：CC-293（`12393c82`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 模块接口成员普查：92 个成员里单实现者 42 个，属正当代价，不合并。成对成员里只有 banyue 的「旗标 + 能力」是真冗余，已删旗标，槽位查找归一为 `registry#findInteractionTopUpSlot`，零差。详见 `docs/mcp-stun-dual-source.md` §24.132。
-- 前几轮：307 模块私有通道测量，结论是不做状态袋（`docs/mcp-module-state.md`）；306 CC-292 hookReplay 锁；305 CC-291（数值卡）。
+**第 309 轮（lane lead-arena-0925c）：CC-294（`a712129c`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 赠送落点单一来源 `core/resource/crossAgentSupply#supplyTargetTeamSlot`，修了诺姆双份赠链（残留琉音设置时出现）。详见 `docs/mcp-stun-dual-source.md` §24.133。
+- 前几轮：308 CC-293 删除冗余旗标；307 模块私有通道测量，结论是不做（`docs/mcp-module-state.md`）；306 CC-292 hookReplay 锁。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add。
 
 **下一步（直接开工）**：
-1. 回到 `docs/mcp-r6-refactor-list.md` §8 自选。已结项、不要再扫的线：cfg 写入纪律、模块私有通道、模块接口成员合并。
-   - 可选方向（未测）：编排层 `convergence.ts`（1170 行）里 `configStore.getMechanicSetting('<角色>.xxx')` 这类角色命名的设置键，是否属于「编排层替模块读设置」，能否下沉进模块自己的钩子。先 grep 统计，再按「更通用 / 更简单」判断，不值得做就写「不做」。
-2. 以后新增函数型模块能力时，不要再配布尔旗标（§24.132 口径）。
+1. **般岳 autoTopUp 门控两份副本归一**。`convergence.ts` 约 :211 的 `autoTopUp = (axisActive || guaranteeFury || guaranteeUltimate) && slot >= 0 && getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0` 决定算不算补齐量；`banyue.ts#applyBanyueTeamConfig` 约 :443 用同一公式决定用不用它（:418 起那段注释在逐段论证两份等价）。
+   - 方案：给 `InteractionTopUpInput` 加门控输入（axisActive、guarantee.fury / ultimate、settings），`computeInteractionTopUp` 在门控关闭时返回 `null`，convergence 收到 null 就保持上一轮值（这正是现有行为）。门控公式抽成 banyue.ts 内的一个函数，两处共用。convergence 就不再出现 `banyue.` 设置键。
+   - 验收：golden 零差；`convergenceNightB` 与 banyue 相关测试全绿；在 axisActive=false、guarantee 全关时，确认 `interactionTopUp` 线程值与改前一致。
+   - 注意：`decibelParryActive` 依赖的是 `interactionTopUpSlot < 0`，不是 autoTopUp，不要连带改。
+2. 之后回到 `docs/mcp-r6-refactor-list.md` §8 自选。原则：编排层需要「模块决定的量」时调模块能力，不要自己读设置重算。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。

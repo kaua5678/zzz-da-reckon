@@ -3825,3 +3825,32 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **验证**：只改了声明来源，般岳同时有旗标和能力，所以行为零差。worktree wt308 隔离跑 `npm run verify` 通过（golden 无变化）。
 - **口径**（写进 types 注释）：函数型能力存在即声明，不再为它另配布尔旗标。
 - **回退**：`git revert 12393c82`。
+
+### 24.133 第 309 轮：带角色名的设置键被编排层直读；CC-294 赠送落点单一来源（a712129c）
+
+- **测量**：`grep getMechanicSetting('<角色>.xxx')`，排除角色模块自身。模块外共有 8 个带角色名的键：
+  - `liuyin.ultimateTargetSlot`：ultimatePromote、convergence（轴内转大）、chainGift 各读一次；
+  - `liuyin.hug60Count`：ultimatePromote；
+  - `banyue.autoTopUpInteractions`：convergence；
+  - `yeshuguang.formAxis`：difficultyDescent；
+  - `velina.cinema2CorrosionRate`：store；
+  - `alice.cinema6PerStateCount`：ResultPage。
+- **真缺陷（CC-294）**：
+  - 引擎的赠送时间预留走提供者模块的 `crossAgentSupply.targetSlot`，读的是提供者**自己 cfg** 上的设置。编排层则直接用 `configStore.getMechanicSetting('liuyin.ultimateTargetSlot')` 再解一遍，两边靠注释维持「同源」。
+  - 诺姆的 targetSlot 也读这个琉音的键，但 `buildCharConfig` 只把**本模块注册的**设置写进 cfg，诺姆 cfg 上恒无此键，恒取 -1（上一位）。
+  - 结果：设置 ≠ 自动时（比如在琉音队里改过、换成诺姆队后残留），引擎在上一位队友身上物化赠链行并预留时间，chainGift 又在设置指向的队友身上追加一份带伤害的行。探针（1571 / 1191 / 1011，设置 = 1）：槽 1、槽 2 各 6 次赠链。
+- **改法**：
+  - 新增 `supplyTargetTeamSlot(cfg, occupiedSlots)`，引擎 `crossAgentSupplyAt` 与编排层 3 处共用。编排层传 `resourceConfig.characters`，即引擎用的同一份 cfg。
+  - `applyChainGift` 和 `buildPromoteParams` 各加一个参数 `configs`。
+  - 诺姆删掉 targetSlot 声明，改用缺省「上一位」，并在注释里写明原因。
+- **口径决定**：诺姆落点 = 上一位队友，不跟随琉音下拉。
+  - 依据：引擎从 2026-09-13 迁移起就一直这样算；下拉标签是「琉音好评转大·目标队友」，而且只在琉音在队时显示。
+  - 若要让诺姆落点可调：给 norma 注册自己的设置，并声明 targetSlot。这样可逆。
+- **影响**：golden 零差（预设里没有残留设置）；只有在残留非自动设置的诺姆队里，赠链才从「两份」变成「一份」。琉音赠大在正常整数设置下逐位不变（模块侧多一次 `Math.floor`，UI 步长是 1）。
+- **锁**：`chainGiftTargetCc294.test.ts`，残留设置取 -1 / 1 / 2，赠链都只落在槽 2。牙测：换回旧 chainGift.ts 后，设置 = 1 那例变红，结果为 `[1, 2]`。
+- **其余键的判断**：
+  - `banyue.autoTopUpInteractions`：convergence:211 的 autoTopUp 门控，与 `banyue.ts#applyBanyueTeamConfig` 的门控是同一公式的两份副本（banyue.ts:418 的注释在逐段论证两者对应）。这是**下一步**，方案见 worker §2。
+  - velina / alice：展示层读写该角色自己的注册设置，属正当的 UI 接线，**不做**。
+  - yeshuguang.formAxis：难度下降器按级别写这个设置，是正当驱动，**不做**。
+  - liuyin.hug60Count：只有琉音一个提供者，读的是它自己的设置；与模块侧同值（模块用 cfg 上同一个键）。**不做**，但若出现第二个赠大提供者，要改成从提供者 cfg 读。
+- **回退**：`git revert a712129c`。
