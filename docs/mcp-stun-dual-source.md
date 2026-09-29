@@ -4152,3 +4152,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **锁**：`moduleFeedbackSignature.test.ts` 新增 3 例（共 6 例）：四个标量变化会改签名；预算整点变化会改签名，浮点尾数和键序不改；postRound 失衡次数**不**改签名。
 - **验证**：wt330 `npm run verify` EXIT=0（4052 passed | 29 skipped）。
 - **CC-316（下一步，数值卡）**：`convergence.ts:559` postRound 派发传的是 `threads.postRoundInput.stunCount`（上一轮 countStun），但本轮 `countStun` 在 `:148` 已算出。改为传本轮 countStun，滞后就消失了；它也就成了本轮输入的函数，不必入签名。exCounts / ultimateCounts 仍取上一轮收敛值（本轮还没算出来）。唯一读者：`anby.ts:177` 安比 4 命（`cfg.chainCountTotalOverride` 缺省时用 `chainCountPerStun × stunCount`）。预期只有安比 4/5/6 命且非轴的队伍有数值变化，需要逐条解释 golden。注意 CC-154 当初选「上一轮 countStun」的理由要先读（grep `CC-154`），若理由仍成立就写「不做」。
+
+### 24.155 第 331 轮：CC-316 postRound 派发改读本轮 countStun（d357f784）
+
+- **先查理由**：CC-154（§18.2）只规定 converge / postRound 派发都走计数通道 countStun；CC-194（§24.41）把 postRound 派发挪到下一轮 converge 之前，并把 `stunCount` 连同 exCounts / ultimateCounts 一起记进 `postRoundInput`。两处都**没有**要求失衡次数用上一轮值——exCounts / ultimateCounts 必须用上一轮值（本轮还没算出来），失衡次数本轮开头（`countStun`，`convergence.ts` runCalcRound 开头）就已知，只是被顺手一起打包了。
+- **改动**：postRound 派发 `stunCount: countStun`（本轮）；`PostRoundInput` 删 `stunCount`（`roundThreads.ts`），轮末记录处同步；`outerCycle.ts` 头注释删掉「已知例外」，改为一句沿革；`moduleFeedbackSignature.test.ts` 删掉锁定例外的那一例。
+- **数值**：
+  - timeGolden 零差（golden 快照里没有安比 C4+ 配手填连携数的队伍）。
+  - 探针（临时，已删）：1011+1381+1211 / 1011+1521+1211 / 1521+1011+1211 / 1011+1191+1211 / 1011+1381+1311 × 安比 C0/C4/C6，配装推荐，**全槽 chainCountPerStun=1**（默认 0 时这条读路径 `chainCountPerStun × stunCount` 恒 0，第一次探针因此变异也无变化——已记为坑）。改前改后逐位相同；把派发的失衡次数改成 0 做变异，8 例（安比 C4/C6、有电属性队友）变化 ⇒ 探针覆盖该路径。
+  - 解释：原先的上一轮值在 stable 停点上多数已等于本轮值；§24.154 观察到的 4 个 0→3 停点不在这些队伍里，且 golden 零差 ⇒ 未造成可见差异。收益是结构上的：去掉一个滞后通道和一条签名例外。
+- **验证**：wt331 `npm run verify` EXIT=0（4051 passed | 29 skipped；比上轮少 1 例 = 删掉的例外锁）。
+- **坑**：用 harness 探针量「按每次失衡连携数」的逻辑时，默认 `chainCountPerStun=0`，必须显式设置，否则变异验证也测不出。
+- **回退**：`git revert d357f784`。

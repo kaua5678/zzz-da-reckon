@@ -481,3 +481,4 @@
 | 328 | 最后一处跨角色身份字面量（luciaElowen `YIDHARI_AGENT_ID`） | 提供者报「每次提供者终结技给本槽回血 %本槽生命」写全队，消费者自决 ⇒ CC-313（`9262395f`）；mechanics/agents 内非本模块 agentId 字面量清零；跨模块私有前缀写入普查 0 处（仅 starlightBilly 的 `billy*` 为同名前缀误报） | 做 |
 | 329 | 共享喧响通道 `extraSelfDecibelReward` 写入方（orphie / promia / remielle / 佩洛伊斯）；外层反馈签名是否覆盖 `moduleFeedback` | 写入方：都只写自己 cfg、用自己常量，无身份 / 抄常量 ⇒ **不做**（佩洛伊斯「每次连携 +300」可仿 `extraSelfDecibelPerUltimate` 做 per-chain 字段，但唯一使用者，只是换名字）；陈旧注释已修（`03591521`）。签名：看不到模块反馈字典 ⇒ CC-314（`acf5e8d4`，零差） | 新增「下一轮反馈」通道但不走 `moduleFeedback` 字典时，须在 `outerFeedbackSignature` 手动补项 |
 | 330 | `CalcRoundThreads` 各字段是否在外层签名里（§24.153 交接第 1 条） | 插桩 479 停点：105 个仍有字段在变 ⇒ CC-315（`a6ab4558`，golden 零差、轮数 +5.6%）；`postRoundInput.stunCount` 入签名会破坏长环检测 ⇒ 根因（滞后一拍）转 CC-316 | 新增 CalcRoundThreads 字段时：入签名或在 `outerCycle.ts` 头注释的从属清单写明理由 |
+| 331 | CC-316：postRound 失衡次数滞后一拍 | 改读本轮 countStun，零差（`d357f784`）；签名例外清零 | — |

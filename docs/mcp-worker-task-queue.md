@@ -96,18 +96,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 330 轮（lane lead-arena-0925c）：CC-315（`a6ab4558`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 331 轮（lane lead-arena-0925c）：CC-316（`d357f784`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 外层签名补齐下一轮输入（轴栈能量 / 喧响预算 + 4 个标量），golden 零差、轮数 +5.6%；`postRoundInput.stunCount` 是已知例外（入签名会破坏长环检测）。逐字段表见 `docs/mcp-stun-dual-source.md` §24.154。
-- 前几轮：329 CC-314（moduleFeedback 入签名）；328 CC-313；327 CC-312。
+- postRound 派发改读本轮 countStun，删 `PostRoundInput.stunCount`；零差（golden + 安比 C4 探针，变异有效）；CC-315 的签名例外清零。详见 `docs/mcp-stun-dual-source.md` §24.155。
+- 前几轮：330 CC-315（签名补齐下一轮输入，轮数 +5.6%）；329 CC-314；328 CC-313。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
 
 **下一步（直接开工）**：
-1. **CC-316：postRound 派发改读本轮 countStun**（数值卡，详见 §24.154 末条）。
-   - 先 `grep -rn 'CC-154' docs src`，读当初为什么用上一轮值。
-   - 改 `src/composables/resourceCalc/convergence.ts:559`（`stunCount: threads.postRoundInput.stunCount` → 本轮 `countStun`），跑 timeGolden 看差异。
-   - 差异应只出现在含安比 1011 且 4 命以上的快照。逐条解释后 `TIME_GOLDEN_UPDATE=1` 更新 golden，并把 §24.154 里的例外说明、`outerCycle.ts` 头注释、`moduleFeedbackSignature.test.ts` 最后一例改成「已根治」（postRoundInput.stunCount 不再被读，可从 PostRoundInput 删掉，或保留仅作记录——删更干净）。
-   - 若差异超出安比，或 CC-154 的理由仍成立：写「不做」加理由，保留例外。
+1. **喧响轨棘轮 `decibelRegenBySlot = max(上一轮, 本轮)` 是否仍必要**（`convergence.ts` threadsNext 组装处，注释：「轨削减大招 → 回响行减少 → 产出下滑 → 恶性循环，实测可螺旋到 0」）。它让结果依赖迭代路径（历史最大值），且 §24.154 中新增的 109 轮里 108 轮来自它。做法：worktree 里改成只取本轮 `c.decibelSource.total`，跑 timeGolden + 全量 verify，并统计退出类型与总轮数（插桩脚本 `/home/user/mcp-tools/inst330b.py` 的做法：在 `solveTeam.ts` 的 `if (outerExit === 'maxIter')` 前打印 `outerExit` / `outerRounds`）。
+   - 零差或只有少量可解释差异、且没有新的 maxIter / 螺旋：说明原问题已被后来的机制（2-环规范选点、CC-150 等）兜住，删掉棘轮（更简单、结果不再依赖路径），数值卡逐条解释。
+   - 出现螺旋（某队喧响 / 终结次数塌到 0 或 maxIter 增多）：保留，并在注释里写明第 331/332 轮复测的证据和日期。
 2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 3. 以上结项：读 `docs/mcp-r6-refactor-list.md` §8 表「重开条件」列。
 
