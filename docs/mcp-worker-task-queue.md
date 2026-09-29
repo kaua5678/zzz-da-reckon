@@ -71,23 +71,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 284 轮（lane lead-arena-0925c）：CC-269（81068b3c）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.108：驱动盘残留测得无残留（不改）；测量中发现推荐套装按名字匹配失败，改为按 id 解析。
-- 前几轮：283 CC-268；282 CC-267；281 CC-265 / 266。
+**第 285 轮（lane lead-arena-0925c）：CC-270（fb9786fb）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.109：推荐配装名字通道不改；展示层颜色映射不收；「限定 S 角色」统一为 `limitedGold.isLimitedSAgentId`。
+- 前几轮：284 CC-269；283 CC-268；282 CC-267。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **推荐配装其余字段的解析通道**（CC-269 的同类排查，先测）：`applyBuildRecommendationForSlot` 还有两处按名字匹配——主词条 `REC_MAIN_STAT_MAP[recStat.name]`（当前全可映射）与 substats 走 `computeDefaultSubStatAllocation`（不读推荐名）。确认 `main_stats` 条目有无 id / 稳定键可替代名字；若没有就只记结论。另查 TeamConfigPage.vue :724 推荐面板显示的套装名是否也该 trim（纯展示，影响小，≥ 有实际可见问题才改）。
-2. 展示层映射副本（r6 清单 §8 第 239 行留项：稀有度颜色 / 职业颜色）：同一映射 ≥ 3 份且分叉才收。
-3. 都无收获：在 r6 清单 §8 记一行，不改代码。
+1. **音擎侧限定判定两套**（CC-270 的续篇，先测）：`limitedGold.isLimitedSWengineId`（`id.startsWith('141')` ∧ 非常驻）与 `teamCompare.isLimitedWEngine`（catalog 稀有度 S ∧ 非常驻，经 `getWEngine` 能解析 legacyIds 别名）。
+   - 测：grep 预设 `src/data/teamPresets/*.json`、`enginePools.json`、store 持久化迁移（`wEngineId` 写入点）里有没有非数字别名 id；catalog store 加载后别名是否已被归一成数字 id。
+   - 若别名不会到达这两个函数：让 isLimitedWEngine 委托 isLimitedSWengineId，并在 limitedAgentSingleSource.test 加「catalog 全部音擎：前缀判定 = S ∧ 非常驻」；
+   - 若会到达：在 limitedGold 里先把别名解析成主 id（需要 catalog 的别名表，注意 limitedGold 目前不依赖 store），或只记结论不改。
+2. 都无收获：在 r6 清单 §8 记一行，不改代码。
 
 **已知坑**：
-- harness 默认 `recommendedBuild: false` ⇒ 推荐配装相关改动在 golden 与多数测试里零差，**必须**另写探针（`await catalog.loadBuildRecommendations()` 后 applyTeamToStore）量影响；
-- 数据侧护栏从 catalog 全员出发（CC-199 教训），不要从登记表出发；
-- setAgent 模板重置块（CC-267 / 268）是「随角色字段」唯一重置点；
-- 新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
+- 限定判定现在只有一个定义（角色侧）：新增 S 角色必须同时录进 `AGENT_RELEASE_NODE`，否则 limitedAgentSingleSource.test 会红；新的 A 级特例要加进 `A_RANK_RELEASE_SPECIAL_IDS`；
+- 赠送 S（1551）计限定金的口径未裁决，别顺手改；
+- harness 默认 `recommendedBuild: false` ⇒ 推荐配装相关改动要另写探针；
+- 数据侧护栏从 catalog 全员出发；新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
-**未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。
+**未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

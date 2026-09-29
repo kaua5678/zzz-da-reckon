@@ -3455,3 +3455,30 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 锁：`src/stores/__tests__/buildRecSetResolve.test.ts`：从 catalog 全员出发，应用推荐后 4pc / 2pc 必须等于推荐条目 id；stash config.ts 后报出 1071/1271/1341/1421 四条。
 - 回退：revert 81068b3c。
 - 顺手订正：§24.107 与 config.ts CC-268 注释把 harumasa 写成「雅」，实为浅羽悠真 1201（本节替换 1 处文档）。
+
+### 24.109 第 285 轮：推荐配装其余名字通道（不改）；CC-270「限定 S 角色」单一定义（fb9786fb）
+
+**① 推荐配装其余按名字匹配的通道（§24.108 下一步 1）——结论：不改。**
+- 主词条：`main_stats` 条目带 `prop`（游戏属性 id，如 11102 生命% / 12102 攻击% / 30502 能量回复），但 `REC_MAIN_STAT_MAP` 按 `name` 映射且当前全部命中；换成 prop 只是把一张表换成另一张表，没有架构收益。重开条件：出现未映射主词条名（届时优先改按 prop）。
+- substats：只用 `rec.substats.length` 作门，分配走 `computeDefaultSubStatAllocation`，不读推荐名。
+- 全部 static JSON 首尾空白扫描（`/home/kaua/calc-arch/k229/m285.cjs`）：只有 build-recommendations 里 33700 的 5 处「雪兔梦游仙境 」（CC-269 已改按 id，不再受影响）与 catalog 一处套装效果文本前导空格（纯展示）。TeamConfigPage 推荐面板显示尾随空格不可见，不改。
+
+**② 展示层映射副本排查中发现：「限定 S 角色」两套定义分叉 ⇒ CC-270（fb9786fb）。**
+- 稀有度 / 职业颜色：展示层没有 ≥ 3 份的颜色映射（`WEngineFieldPage` 只有一处 `rarity === 'S' ? 'warning' : 'info'`），不收。
+- 分叉：
+  - `limitedGold.memberLimitedGold`（文件头自称三处共用的单一事实源：pullValue 效率前沿、charIncrement 金数窗、RunArchivePage 低金筛选）按「AGENT_RELEASE_NODE 收录 ∧ 非常驻」判限定角色；
+  - `teamCompare.isLimitedAgent`（预设对比、时间线、teamTimelineStore 用）按 catalog「S 级 ∧ 非常驻」。
+  - 收录表里唯一的 A 级特例潘引壶 1421 两边结果不同：limitedGold 算她 1 + 影画金，违反用户口径（FEATURES_GUIDE「随仪玄 2.0 上实装、0 限定金」）；pullValue 另有私有 `A_RANK_SPECIAL_IDS` 把她归 A 级层（第三份）。
+- 修法：
+  - `data/versionTimeline.ts` 新增导出 `A_RANK_RELEASE_SPECIAL_IDS`（= {1421}），放在收录表旁边（例外本来就在该表注释里说明）；pullValue 删私有副本改读它；
+  - `limitedGold.ts` 新增 `isLimitedSAgentId(id)` = 收录 ∧ 非常驻 ∧ 非 A 级特例（不依赖 catalog，归档统计可用），memberLimitedGold 用它；
+  - `teamCompare.isLimitedAgent` 委托 `isLimitedSAgentId`，不再查 catalog 稀有度（删除 teamCompare 对 STANDARD_S_AGENT_IDS 的导入）。
+- 影响：
+  - catalog 62 名角色中，除 1421 外两套定义逐个一致 ⇒ 预设对比 / 时间线零差；
+  - 归档 5758 条 run 中含潘引壶的 31 条（全为 M6）单 run 金数各 −7（如 7→0、26→19）；低金前沿（窗口 0 / 仅击杀 / 窗口 2）集合零变化（这 31 条都不是房间最高分）——脚本 `/home/kaua/calc-arch/k229/m285d.py`；
+  - 语义变化：catalog 未加载时 `isLimitedAgent` 原来把任何非常驻 id 当限定，现在按收录表判定（更准确；未加载时的兜底路径本来就不该把未知 id 计金）。
+- 未改（写明以免下一轮重查）：
+  - 音擎侧仍有两套：`limitedGold.isLimitedSWengineId`（141 前缀）与 `teamCompare.isLimitedWEngine`（catalog 稀有度）。83 把逐个一致，但后者能通过 `getWEngine` 解析 legacyIds 别名（如 `zzz_wiki_1753`），前缀判定不能。合并前要先确认 store / 预设里是否还会出现别名 id，否则是行为变化。暂不收，列为下一步。
+  - 赠送 S 佩洛伊斯 1551：两套定义都计限定金（pullValue 分层为 freeGift）。是否计金属于口径问题，没有用户裁决，不动。
+- 锁：`src/composables/__tests__/limitedAgentSingleSource.test.ts`（3 例）：catalog 全员 isLimitedSAgentId = S ∧ 非常驻（新 S 角色漏录进收录表会先红）；潘引壶 M6 = 0 金；teamCompare 源码不再出现 `rarity === 'S' && !STANDARD_S_AGENT_IDS`。反例：去掉 A 级特例条件后前两例红（报 1421）。
+- 回退：revert fb9786fb。
