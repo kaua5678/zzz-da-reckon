@@ -3872,3 +3872,16 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `convergenceNightD`（模块侧门控）、timeGolden 1471 都通过。
   - wt310 隔离跑 `npm run verify` 通过，golden 零差。
 - **回退**：`git revert 39ecce25`。
+
+### 24.135 第 311 轮：CC-296 交互栏补齐显示归一（fa64324e）
+
+- **测量**（harness，1471+1481+1211、非轴、`guarantee.ultimate=1`）：资源卡 `banyueInteractionTopUp = {parry:13}`（补齐已生效），交互栏 `interactionTopUp` computed = null。两层原因：
+  1. `useResourceCalc#interactionTopUp` 守卫另要求「轴模式或自动轴命中」——这是门控的第三种写法；CC-295 后模块门控在非轴 + 保底嗔火 / 喧响时也补齐。
+  2. 即使去掉守卫仍为 null：computed 读的 `calcOutput.interactionTopUp` 是**下一轮量**。保底4喧响补齐线程按「已含本轮补齐弹刀喧响」的 decibelHave 算缺口 ⇒ 13→0→13 的 2-环（solveTeam.ts:87 注释的 ⑥″ 即为此），外层落在「装了 13、下一轮算 0」的成员上，显示 0、资源卡 13。
+- **改法**：
+  - `CalcRoundResult` 新增纯展示字段 `interactionTopUpApplied`（= 本轮输入 `prevInteractionTopUp`），与 `decibelGuarantee.parry` 读 prev 同口径；
+  - computed 守卫只判 `findInteractionTopUpSlot < 0`（懒守卫本就省不下：同页 `decibelGuaranteeResult` 无条件读 calcOutput），改读 `interactionTopUpApplied`，只返回 slot/parry/dual；
+  - TeamConfigPage 两处提示「（轴自动）」→「（自动补齐）」。
+- **试过并放弃**：在 `computeBanyueInteractionTopUp` 里对 parry 单调夹住上一轮（`max(prev, ceil(short/215))`，仿通用 decibelParry）以根治 2-环。结果 `convergenceNightD` 精确锚 12 → 20 弹刀（27.996s → 46.66s）：215/次低估实际每弹刀喧响（探针 8632→13293 / 16 次 ≈ 291/次），夹住 = 锁死首轮超补估计；而每次外层重启从 0 开始、无补齐喧响逐次下降（8632→7226），夹住值一路 16→24。现有「⑥″ 待装补齐 + 环成员可行性闸门」落点（12）更自洽。**不做**；若将来要根治，方向是用实测每弹刀收益（Δhave/Δparry）做割线步，而不是单调夹住。
+- **验证**：新测 `interactionTopUpDisplayCc296.test.ts`（显示 == 资源卡已装量；保底全关 ⇒ null）；牙测旧 useResourceCalc 下失败；banyue / convergenceNightB / NightD 94 条过；timeGolden 零差；wt311 隔离 `npm run verify` 通过。
+- **回退**：`git revert fa64324e`。

@@ -71,17 +71,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 310 轮（lane lead-arena-0925c）：CC-295（`39ecce25`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 般岳自动补齐门控归模块，`banyueAutoTopUpEnabled` 是单一来源；convergence 不再读 `banyue.` 设置键。零差。详见 `docs/mcp-stun-dual-source.md` §24.134。
-- 前几轮：309 CC-294 赠送落点单一来源（修诺姆双份赠链）；308 CC-293 删除冗余旗标；307 模块私有通道测量，结论是不做。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add。
+**第 311 轮（lane lead-arena-0925c）：CC-296（`fa64324e`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 交互栏补齐显示：守卫只认槽位，改读 `interactionTopUpApplied`（已装量）。零差。详见 `docs/mcp-stun-dual-source.md` §24.135。
+- 试过「补齐线程单调夹住」根治保底4喧响 2-环：超补（12→20），已放弃，理由见 §24.135。
+- 前几轮：310 CC-295 般岳门控归模块；309 CC-294 赠送落点单一来源；308 CC-293 删冗余旗标。
+- REQUIREMENTS 无新条目；提示词未改。未跟踪的 `docs/devlog/`、`docs/proposals/`、pullPlanner 系列都不是本 lane 的，不要 add。
 
-**下一步（直接开工，先测量）**：
-1. **交互栏「弹刀 +N / 双反 +M」显示门控是第三种写法**。`useResourceCalc.ts` 约 :441：`if (slot < 0 || (!configStore.useStunAxis && !autoActive.value)) return null` 只认轴模式。但 CC-295 的模块门控在「非轴 + 保底嗔火 / 喧响打开」时也会补齐，所以这种情况下补齐生效了，TeamConfigPage 却不显示 +N。
-   - 先用 harness 量：1471 队、非轴、`guarantee.fury = 1`，看 `calcOutput.interactionTopUp` 是否非零、`interactionTopUp` computed 是否为 null。
-   - 若属实：这个守卫原本的用意是懒计算（非本角色队伍不触发全量计算），槽位判断已经够了。可改为「槽位 ≥ 0 且结果非零」，或者复用模块门控（经 gate 事实）。按「更简单」选一种，写明理由。
-   - 若不属实（例如保底模式下另有显示入口），写「不做」并附理由。
-2. 之后回到 `docs/mcp-r6-refactor-list.md` §8 自选。原则：编排层需要「模块决定的量」时调模块能力，不要自己读设置重算。
+**下一步（直接开工）**：
+1. `src/composables/__tests__/timeGolden.test.ts:58` 注释已过时（记于第 310 轮），读后按现状修正（纯注释，零差）。
+2. `solveTeam.ts:87` ⑥″ 注释可补一句「2-环根因 = decibelHave 已含补齐喧响；单调夹住会超补，见 §24.135」，防后人重试。
+3. 之后回 `docs/mcp-r6-refactor-list.md` §8 自选；原则不变：编排层需要「模块决定的量」时调模块能力。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
