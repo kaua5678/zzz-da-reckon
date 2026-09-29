@@ -71,19 +71,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 287 轮（lane lead-arena-0925c）：CC-272（6047d435）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.111：旧 id 通道不改（理由与重开条件在文中）；赠送 S / A 级特例集合收进 versionTimeline。
-- 前几轮：286 CC-271；285 CC-270；284 CC-269。
+**第 288 轮（lane lead-arena-0925c）：CC-273（4b01b307）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.112。
+- 前几轮：287 CC-272；286 CC-271；285 CC-270；284 CC-269。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **composables / views 里其他硬编码 agentId 集合**：`grep -rnE "new Set\(\['1[0-9]{3}'" src/composables src/views src/data`（排除 __tests__、mechanics/agents 模块自身的 agentIds 声明）。按「同一事实 ≥ 2 份」筛：例如「当期新角色排除常驻」（teamTimeline :687 读 STANDARD_S_AGENT_IDS，已是单一来源）这类已收的跳过；真正重复的收进 data 层并加源码锁，只有一份的不动。
+1. **「查不到就静默回落」的查找**（CC-269 / CC-273 的同类，先测）：模块里 `findMoveById(skills, '<字面量 id>')` 若 id 在 catalog 里不存在，就静默返回 null。写一个一次性脚本：抽出 `src/mechanics/agents/*.ts` 与 `src/specs/**` 里所有形如 `'1[0-9]{6}'` 的招式 id 字面量，逐个查 catalog agentSkills 是否存在（注意 `_velina_colored_buildup` 这类派生 id 与融合组头段 id 不算）。
+   - 有悬空 id：逐个判断是数据改号还是模块写错，开卡修，并考虑加一条全量锁（模块字面量 moveId 必须存在于 catalog）；
+   - 全部存在：把这个检查做成锁测试（便宜、从数据侧兜住未来改号），记结论。
 2. 都无收获：在 r6 清单 §8 记一行，不改代码。
 
 **已知坑**：
-- 卡片分层事实（常驻 S / A 级特例 / 赠送 S / 收录表）都在 `data/versionTimeline.ts` + `data/standardMultiplierTable.ts`（常驻名单）；限定判定只在 `limitedGold.ts`；
-- store 里的音擎 / 套装 id 可能是旧别名：按 id 查名单前先经 `getWEngine(id)?.id` 解析（CC-271）；
-- 赠送 S（1551）是否计限定金未裁决，别顺手改；
+- 模块认招式一律用 moveId（CC-273 口径）；
+- 卡片分层事实在 `data/versionTimeline.ts` + `data/standardMultiplierTable.ts`；限定判定只在 `limitedGold.ts`；
+- store 里的音擎 / 套装 id 可能是旧别名（CC-271）；
+- 删导出时同步 skillRowsShell.test 的壳契约（`SUNK_TO_DATA` 与 export 行正则）；
 - 新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。

@@ -443,6 +443,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-270 | done | fb9786fb | 「限定 S 角色」单一定义 `limitedGold.isLimitedSAgentId`（收录 ∧ 非常驻 ∧ 非 A 级特例）；teamCompare.isLimitedAgent 委托；A 级特例常量移到 versionTimeline；修潘引壶被 limitedGold 计金（归档 31 条 −7 金，前沿零差）（§24.109） |
 | CC-271 | done | 48f30a1b | teamCompare.isLimitedWEngine = 别名解析 + limitedGold.isLimitedSWengineId；修常驻 S 的 5 个 legacyIds 别名被判为限定（§24.110） |
 | CC-272 | done | 6047d435 | 赠送 S 集合 `FREE_GIFT_S_AGENT_IDS` 移到 versionTimeline；pullPlannerEngine 免费特例 = 赠送 ∪ A 级特例派生；行为零差（§24.111） |
+| CC-273 | done | 4b01b307 | 维琳娜模块招式改按 moveId 常量识别（原 3 处按英文名查找 + 2 处 name.en 比较）；删无调用者的 findMoveByEnglishName 及两层壳再导出；零差（§24.112） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |

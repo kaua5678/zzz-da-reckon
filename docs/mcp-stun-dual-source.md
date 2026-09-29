@@ -3509,3 +3509,20 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 影响：集合内容不变 ⇒ 行为零差（verify EXIT=0）。limitedGold 仍**不**读赠送集合（赠送 S 是否计限定金未裁决）。
 - 锁：`limitedAgentSingleSource.test.ts` 新增源码锁（共 6 例）：pullValue / pullPlannerEngine 不再出现以 '1551' / '1421' 开头的字面量 Set。反例：stash 两个文件后变红。
 - 回退：revert 6047d435。
+
+### 24.112 第 288 轮：硬编码 agentId 集合扫描（无）；CC-273 维琳娜招式改按 moveId、删 findMoveByEnglishName（4b01b307）
+
+**① 硬编码 agentId 集合（§24.111 下一步 1）——结论：无重复，不改。**
+- `new Set(['1xxx'…])` 在 composables / views / stores / utils / data 里只剩三个单一来源：`STANDARD_S_AGENT_IDS`、`A_RANK_RELEASE_SPECIAL_IDS`、`FREE_GIFT_S_AGENT_IDS`。
+- 字面量 id 数组只有 `TimeChartsPage.vue:523 DEFAULT_CANDIDATE_POOL`（候选池默认种子，用户口径，仅一份）。
+- `agentId === '1xxx'` 在编排层与展示层只出现在注释里（历史迁移记录），代码里已经没有。
+
+**② 顺着 CC-269（按名字匹配的脆弱通道）扫到的：CC-273（4b01b307）。**
+- 全仓按名字认招式只剩维琳娜模块：3 处 `findMoveByEnglishName(skills, '…')`，外加 2 处 `foundMove.name?.en === 'Sweeping Cyclone #…'`；而同一文件的 `resultCardCorrosion.broadCycloneMoveId` 早已按 id 写 `'1561007'`——同一招式两种认法。
+- 名字不是主键：已知坑「enrich 会按倍率表改写 moveName」，数据更新时也可能改译名；一旦对不上，`findMoveByEnglishName` 返回 null，模块静默不产行（`cfg.velina*MoveId = ''`），没有任何报错。
+- 修法：
+  - 维琳娜模块顶部定义 3 个 moveId 常量（1561006 风切·风眼 / 1561007 广域气旋 #1 / 1561020 #2，已对照 catalog 确认与原英文名一一对应），5 处全部改用 `findMoveById` 或 `foundMove.id ===` 比较；`resultCardCorrosion` 也引用常量；
+  - `data/moveTableQueries.ts#findMoveByEnglishName` 随之没有调用者，删除，连同 skillRows / helpers 两层壳的再导出；skillRowsShell.test 的壳契约同步去掉它；findMoveByIdSource.test 的「禁止另写同形定义」正则保留该名字（防止重新引入）。
+- 影响：id 与原名字一一对应 ⇒ 零差（verify EXIT=0，golden 不变；golden 角色段含维琳娜）。
+- 回退：revert 4b01b307。
+- 口径（写给后续）：**模块认招式一律用 catalog moveId**，不按 name.en / name.zhCN；展示文字可以读名字。

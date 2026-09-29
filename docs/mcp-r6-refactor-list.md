@@ -438,3 +438,4 @@
 | 285 | 推荐配装名字通道 / 展示层颜色映射 / 限定判定 | 前两项不收；「限定 S 角色」两套定义分叉 ⇒ CC-270（`fb9786fb`） | 音擎侧两套限定判定（前缀 vs catalog 稀有度，legacyIds 差异）待查 |
 | 286 | 音擎侧限定判定两套 | CC-271（`48f30a1b`）：委托 limitedGold 单一定义并先解析别名；修常驻别名误判 | 抽卡分层特例集合（pullPlannerEngine FREE_SPECIAL vs pullValue FREE_GIFT + A 级特例）待查 |
 | 287 | 旧 id 通道 / 抽卡分层特例集合 | 旧 id 通道都经登记了别名的 Map，不改；特例集合单一来源 CC-272（`6047d435`） | composables / views 里其他硬编码 agentId 集合（同一事实 ≥ 2 份才收） |
+| 288 | 硬编码 agentId 集合 / 按名字认招式 | 前者无重复；后者 CC-273（`4b01b307`）：维琳娜改按 moveId，删 findMoveByEnglishName | 其他「查不到就静默回落」的查找（按名字 / 按 id）待扫 |
