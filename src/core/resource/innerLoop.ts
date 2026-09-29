@@ -2,8 +2,9 @@
  * S1 内层不动点 —— 自 `core/resource.ts` 迁出（CC-3，2026-09-24）。
  *
  * 职责：把单次迭代映射 `iterate`（`./helpers`）跑成不动点——判稳（强特/终结次数 + `basicAttackTime`
- * 严格相等）→ 精确环检测（全状态 JSON 签名重复）→ 规范停点（环内 JSON 字典序最小成员；浮点噪声环
- * 视为已收敛）→ 收敛尝试失败时回落到第 `oscillatorStop` 轮瞬态。**纯函数**：只读 `ctx`，不写任何
+ * 严格相等）→ 精确环检测（全状态 JSON 签名重复）→ 环停点（真整数环 = 不透支成员中次数最多者，见
+ * `integerCycleStop`；浮点噪声环视为已收敛，取 JSON 字典序最小成员）→ 收敛尝试失败时回落到第
+ * `oscillatorStop` 轮瞬态。**纯函数**：只读 `ctx`，不写任何
  * 闭包/模块级状态，返回 `{ end, clean, iterations }`。`core/resource.ts#calcTeamResources` 内以一行
  * `runInnerLoop` 包装注入只读上下文；两个调用点（折叠环 `runFoldLoop`、欠打回填试探 `convergeCounts`）
  * 行为逐位不变。
@@ -35,8 +36,58 @@ function cycleProbeKey(states: IterationState[]): string {
   return s
 }
 
+/** 环成员里全状态 JSON 字典序最小者（纯确定性兜底：与进入环的相位无关）。 */
+function jsonMinMember(members: IterationState[][]): IterationState[] {
+  let best = members[0]
+  let bestSig = JSON.stringify(best)
+  for (const m of members) {
+    const ms = JSON.stringify(m)
+    if (ms < bestSig) { best = m; bestSig = ms }
+  }
+  return best
+}
+
+const CYCLE_STOP_EPS = 1e-9
+
 /**
- * 内层次数收敛 + 停点规范化（环检测 + 字典序规范停点）。
+ * **真整数环的停点 = 不透支的成员里次数最多者**（CC-326，arena-C 第 344 轮；旧口径 = 全状态 JSON 字典序最小）。
+ *
+ * 环成员按出现顺序 m0 → m1 → … → m(n−1) → m0，`iterate(m_i) = m_(i+1)`。`iterate` 的含义是「按 m_i 的时间分配
+ * （平A池等）挣到的能量 / 喧响 → 撑得起的强特 / 终结次数」，所以 **m_(i+1) 的次数就是 m_i 自己撑得起的次数**：
+ *
+ *     透支量 over(m_i) = Σ槽 [ max(0, ex_i − ex_(i+1)) + max(0, ult_i − ult_(i+1)) ]
+ *
+ * over = 0 ⇔ m_i 声称的次数不超过它自身资源撑得起的次数（可行）；over > 0 ⇔ 它的行比它的平A池挣到的资源多放了动作
+ * （终局行重放「花的 > 挣的」，账本与行不自洽）。映射「次数↑ → 平A↓ → 资源↓ → 撑得起的次数↓」是反序的，真解是
+ * 两个整数之间的实数 x*；整数行模型下，可行成员中次数最多者就是 ⌊x*⌋（单量 2-循环 n ↔ n+1：n 可行、n+1 透支）。
+ *
+ * 选取键（字典序）：① over 最小（有可行成员时 = 0）② Σ(强特 + 终结) 最大（可行里做得最多）③ JSON 字典序最小
+ * （纯确定性兜底）。三项都只依赖环本身（成员集合 + 后继关系），与进入环的相位 / 种子无关（冷热逐位一致不变）。
+ *
+ * 实测依据（第 344 轮，timeGolden 同面 414 例）：内层真整数环停点 1815 次，旧规则取中透支成员 944 次（52%）；
+ * 终局非收敛的 18 例（全是单人用例）旧停点**全部**透支 1–2 次、改后 0 例透支；结果共变 36 例（这 18 例 + 18 例折叠路径改变）。
+ * 分析与 delta 表：`docs/mcp-integer-cycle-stop.md`。
+ */
+function integerCycleStop(members: IterationState[][]): IterationState[] {
+  const n = members.length
+  const over = members.map((m, i) => {
+    const next = members[(i + 1) % n]
+    let o = 0
+    for (let s = 0; s < m.length; s++) {
+      o += Math.max(0, m[s].exSpecialCount - next[s].exSpecialCount)
+        + Math.max(0, m[s].ultimateCount - next[s].ultimateCount)
+    }
+    return o
+  })
+  const total = members.map(m => m.reduce((sum, st) => sum + st.exSpecialCount + st.ultimateCount, 0))
+  const minOver = Math.min(...over)
+  const leastOver = members.map((_, i) => i).filter(i => over[i] <= minOver + CYCLE_STOP_EPS)
+  const maxTotal = Math.max(...leastOver.map(i => total[i]))
+  return jsonMinMember(leastOver.filter(i => total[i] >= maxTotal - CYCLE_STOP_EPS).map(i => members[i]))
+}
+
+/**
+ * 内层次数收敛 + 停点规范化（环检测 + 环停点：真整数环 `integerCycleStop`，浮点噪声环 `jsonMinMember`）。
  * 提升到函数级（2026-09-08 重构）：折叠循环与「② 规范重跑」共用。
  */
 export function runInnerLoop(
@@ -92,20 +143,15 @@ export function runInnerLoop(
       for (const idx of bucket) if (sigAt(idx) === sig) { firstSeen = idx; break }
     }
     if (firstSeen !== undefined) {
+      // 环成员按出现顺序排列：members[i] 的后继是 members[i + 1]，末成员的后继是 cur（= members[0]）。
       const members = cycleSnapshots.slice(firstSeen)
-      let canonical = members[0]
-      let canonicalSig = JSON.stringify(canonical)
-      for (const m of members) {
-        const ms = JSON.stringify(m)
-        if (ms < canonicalSig) { canonical = m; canonicalSig = ms }
-      }
       // 浮点噪声环（成员逐字段相对 1e-9 内，典型 = 连续收缩到 ulp 级后 1 ulp 交替的 2-循环）= 已收敛：
-      // 停点仍是规范成员、数值一位不差，只是不再把收敛标志报成 false（口径与实测见 floatNoiseCycle.ts）。
-      // 真整数环（Δ≥1）照旧 clean=false：历史上限内检出的取字典序规范成员（旧口径），上限后检出的 = 收敛尝试失败，
-      // 回到第 oscillatorStop 轮状态（见 INNER_LOOP_MAX_ITERATIONS 两层语义）。
-      if (isFloatNoiseCycle(members)) return { end: structuredClone(canonical), clean: true, iterations: k }
+      // 停点取 JSON 字典序最小成员、数值一位不差，只是不再把收敛标志报成 false（口径与实测见 floatNoiseCycle.ts）。
+      // 真整数环（Δ≥1）照旧 clean=false：历史上限内检出的取「不透支成员中次数最多者」（`integerCycleStop`，CC-326），
+      // 上限后检出的 = 收敛尝试失败，回到第 oscillatorStop 轮状态（见 INNER_LOOP_MAX_ITERATIONS 两层语义）。
+      if (isFloatNoiseCycle(members)) return { end: structuredClone(jsonMinMember(members)), clean: true, iterations: k }
       if (oscillatorStopStates) return { end: oscillatorStopStates, clean: false, iterations: oscillatorStop }
-      return { end: structuredClone(canonical), clean: false, iterations: k }
+      return { end: structuredClone(integerCycleStop(members)), clean: false, iterations: k }
     }
     if (bucket) bucket.push(cycleSnapshots.length)
     else cycleBuckets.set(probe, [cycleSnapshots.length])

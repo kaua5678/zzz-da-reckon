@@ -105,9 +105,12 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     // 2026-09-28 第 187 轮：CC-160（终局照影 floor 一次冻结 + 终局后重折）修掉了单人 1431 的跨盆虚高（c4 slack 12.2 → 0）⇒ 再换。
     // 全库扫描（预设 + 默认口径各一遍，k185/zzTS187.test.ts）虚高最大 = 爱丽丝/南宫羽/柚叶默认口径 slack 3.98 = 虚高 3.98、
     // 池分完（平A − 可分配池 = 0）；已无虚高 > 10s 的队 ⇒ 阈值随样例降到 2s（判据不变：留白 ≈ 虚高、池已分完）。
+    // 2026-09-30 第 344 轮：CC-326（内层真整数环停点改「不透支成员中次数最多者」）后爱丽丝/南宫羽/柚叶 slack 3.98 → 0 ⇒ 再换。
+    // 同口径重扫（预设 + 默认口径各一遍，calc-arch/arenaC/tsscan.txt）：默认口径「slack > 2 且 虚高 ≈ 留白、池分完」只剩
+    // 伊德海莉/「扳机」/卢西娅（slack 3.65 = 虚高 3.65，CC-326 前后同值）与伊德海莉/莱卡恩/卢西娅（2.32）⇒ 现样例 = 前者。
     await setupHarness(['', '', ''])
     const cs = useConfigStore()
-    for (const [i, id] of ['1401', '1511', '1411'].entries()) cs.setAgent(i, id)
+    for (const [i, id] of ['1051', '1361', '1451'].entries()) cs.setAgent(i, id)
     const rr = useResourceCalc().resourceResult.value!
     const t = buildTeamTimeSummary({ rr, battleTime: rr.totalTime, invincibleTime: useConfigStore().enemy.invincibleTime ?? 0, nameOf: () => '' })
     expect(t.slack).toBeGreaterThan(2)

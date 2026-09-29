@@ -74,7 +74,7 @@
   "outerExit": "stable"
  },
  "auto-1051-1481-1451": {
-  "slack": 1.1,
+  "slack": 0.1,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -116,7 +116,7 @@
   "outerExit": "stable"
  },
  "auto-1181-1561-1411": {
-  "slack": 0.8,
+  "slack": 0.4,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -128,7 +128,7 @@
   "outerExit": "stable"
  },
  "auto-1191-1161-1311": {
-  "slack": 1.6,
+  "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -326,7 +326,7 @@
   "outerExit": "stable"
  },
  "auto-1401-1511-1411": {
-  "slack": 4,
+  "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -506,7 +506,7 @@
   "outerExit": "stable"
  },
  "auto-1591-1571-1211": {
-  "slack": 0.6,
+  "slack": 1.7,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -560,7 +560,7 @@
   "outerExit": "stable"
  },
  "billy-trigger-lucia": {
-  "slack": 0,
+  "slack": 0.2,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"

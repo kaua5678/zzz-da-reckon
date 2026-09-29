@@ -106,6 +106,8 @@ export const TIME_FOLD_MAX_PASSES = 32
  * 为什么不直接取环的规范成员：整数量子振荡器（实测单人 1431 命座 6：ex 6↔10 / ult 1↔2 精确 2-循环，环增益 >1）
  * 的环成员账本是「本轮次数 + 上轮平A」估出来的混相位量，行与账本差 21s，折叠环随之在 84/49/29/78s 之间摆、靠停滞
  * 规则退出 ⇒ 留白 0 → 29.0s。非收敛轨迹没有「更对」的停点，只有「历史已钉」的停点；真解是 DEBT「全局实数化收敛重构」。
+ * （本段只管**第 20 轮之后**检出的环。第 20 轮前检出的真整数环自 CC-326 起取语义停点「不透支成员中次数最多者」
+ * ——`innerLoop.ts#integerCycleStop`，依据 `docs/mcp-integer-cycle-stop.md`；上面的 1431 c6 反例属 20 轮后回落，不受影响。）
  * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100），第 20 轮（`INNER_LOOP_OSCILLATOR_STOP`，1051 队 = 预算本身）之后只用于收敛尝试：判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环 / 耗尽 ⇒ 回到第 20 轮状态（非收敛轨迹与旧口径逐位一致）——20 轮曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（单人 1431 c6 取环规范成员留白 29s 的反例；先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」）·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/floatNoiseCycle.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS | 信 确认
  * ⟳复核: 「全局实数化收敛重构」（DEBT_REGISTRY）落地或 20 轮停点语义再动时，复核「104 预设 converged=false 只剩真整数环队（当前 2 队）」+「单人 1431 c6 留白仍为 0」（floatNoiseCycle.test + timeGolden；warmStart 冷/热档随 CC-147 删热启动通道删除） | 到期 2026-12-31
  */
@@ -219,7 +221,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 重折环 `resetDiagnostics` = 换新对象；被接受态存引用、拒绝时整体换回（口径 `engine:收敛读数归属`）。
   let diag = createSolveDiagnostics()
   /**
-   * 内层次数收敛 + 停点规范化（环检测 + 字典序规范停点）已迁 `src/core/resource/innerLoop.ts`
+   * 内层次数收敛 + 停点规范化（环检测 + 环停点，见 `integerCycleStop`）已迁 `src/core/resource/innerLoop.ts`
    * （CC-3，纯函数）：折叠循环与欠打回填试探共用同一台机器。此处只注入只读 ctx
    * （configs/config/maxIter/oscillatorStop），经 `foldCtx` / `probeCtx` 传给两个调用方。
    * 原 `runInnerLoop` 包装行的最后一个消费者（欠打回填 `convergeCounts`）已随 CC-5a 迁出，
@@ -229,7 +231,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // `runFoldLoop`（S2 时间预算折叠环）已迁 `src/core/resource/foldLoop.ts`（CC-4，2026-09-25，纯函数）。
   // 下列 `@fact` 的**实现已迁**该文件，声明按既有惯例留在 re-export 壳处（同 CC-3 `innerLoop.ts` 的处理）；
   // **锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:收敛环停点规范化`）不变。
-  // @fact engine:收敛环停点规范化 口径: calcTeamResources 恒从默认零种子起跑（CC-146 先令 pass0 弃用注入种子——实测注入种子可 clean 收敛到冷种子到不了的共存不动点；CC-147 随即删除注入通道本身：显式 initialStates 与热启动缓存）；入环则取环内 JSON 字典序最小成员为规范停点（相位无关）。结果 = f(默认种子, 迭代映射) | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25·复核@2026-09-27·CC-146 反例@2026-09-28·CC-147 删注入通道@2026-09-28 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
+  // @fact engine:收敛环停点规范化 口径: calcTeamResources 恒从默认零种子起跑（CC-146 先令 pass0 弃用注入种子——实测注入种子可 clean 收敛到冷种子到不了的共存不动点；CC-147 随即删除注入通道本身：显式 initialStates 与热启动缓存）；入环则取环停点——真整数环 = 不透支成员中次数最多者（`innerLoop.ts#integerCycleStop`，平局取 JSON 字典序最小；CC-326 前 = JSON 字典序最小），浮点噪声环 = JSON 字典序最小；均只依赖环本身（成员集合 + 后继关系，相位无关）。结果 = f(默认种子, 迭代映射) | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25·复核@2026-09-27·CC-146 反例@2026-09-28·CC-147 删注入通道@2026-09-28·CC-326 真整数环停点改不透支@2026-09-30（docs/mcp-integer-cycle-stop.md） | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
   /**
    * S2 时间预算折叠环（CC-4 外提至 `./resource/foldLoop.ts`，纯函数）的只读上下文与包装。
    * ⚠ 包装**每次调用时读 `diag`**（禁止 `const d = diag` 缓存——重折环会换新对象，缓存会写到旧对象）。

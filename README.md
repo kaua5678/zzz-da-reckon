@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（68 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（69 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -116,6 +116,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-debt2-blade1-feasibility-v4.md` | **协作者 WIP 接管备忘**：债 2 刀 1（截断入口容差与折叠环同源，消灭假截断）+ 降配搜索 v4（绝对可行优先）的拆分落地、`timeGolden`/`timeFillRatchet` 逐队 delta 归因表、满套件 4 红收口、未合入的债 2 批 2-1 半成品去向与正解 |
 | `docs/mcp-outer-feedback-regression.md` | **外层反馈回归（R67-J1）**：当前快照/二周期相位修复、机制测试正反对照、12 场景 A/B 与数值影响；逐字段证据 `docs/mcp-outer-feedback-deltas.csv` |
 | `docs/mcp-outer-fixedpoint-continuity.md` | **外层不动点连续性（CC-136 起）**：输入微动导致环内选点跳成员的扫描复现、根因（检出相位 / 两两比较不传递）、逐级筛选 + ③′ 方案、逐条影响；第二种不连续判定为物理失衡次数的整数台阶（护栏 `outerContinuity.test.ts`） |
+| `docs/mcp-integer-cycle-stop.md` | **内层真整数环停点（CC-326，第 344 轮）**：停点由「JSON 字典序最小成员」改为「不透支成员中次数最多者」（= 整数取整 ⌊x*⌋，相位无关）；透支量定义、414 例探针（旧规则 52% 取中透支成员、终局非收敛 18/18 透支 → 0）、36 例伤害 delta 表、与 r343「Σ最小」否决的区别、20 轮后回落未动与后续 |
 | `docs/mcp-stun-dual-source.md` | **失衡双源测量（第 162 轮；§16 CC-151 / CC-148 收尾；§17 CC-153；§18 CC-154；§19 CC-155；§20 CC-157 结案；§21 CC-149 定位 / CC-158；§22 CC-158 折叠残差）**：规划失衡 vs 物理次数；去掉外层第二次折算的原型不落地；主因 = 必要时间约束（78/104 队、17 队规划 0），合轴抵扣假设已否定；§4 窗口内连携只解释一小部分，真因 = 外层约束与池口径互斥，21/104 队有失衡没连携；§5 CC-140 physical 计数模式（缺省 off，打开后 21→6）；§6 CC-141 赠送供给漏改计数通道已修（physical 超预算 13→3 队）；§7 CC-143 S3 降配第三层「缓解档」（physical 截断 177→41s）；§8 CC-142 轴模式分窗读计数通道（有失衡没连携 6→4，剩 4 队是希希芙轴没写连携），切默认 = CC-144；§12 CC-146 共存吸引子（折叠环 pass0 注入种子一律弃用）；§13 CC-144 已切 physical 缺省；§14 CC-148 迁移进度与 CC-149（physical 下合轴率单调破缺）；§15 CC-150 physical 外层 2-环池同源（更正 §13.1） |
 | `docs/mcp-cc144-team-deltas.md` | **CC-144 逐队归因表（第 172 轮）**：缺省 off→physical 全库 104 队的伤害变化、规划失衡 P / 物理次数 K、连携秒数、截断与次数；U 76（K>P 补上少算的失衡事件）/ X 19（连携占前台挤出高收益动作）/ Z 9 |
 | `docs/mcp-substat-contract.md` | **副词条契约（R28-J2）**：合法池 mode 可观测性、步长/步数/混合结算与白名单反控；不以等价注入冒充缺测 |
