@@ -152,6 +152,41 @@ describe('环内选点：pickOuterCycleMember（与数值基线无关的纯函�
     expect(pickOuterCycleMember([m(1, 1, 0, 5), m(1, 1, 0, 0)], TOL)).toEqual({ index: 1, pickedEarlier: false })
   })
 
+  it('③″ CC-329：physical 各级同级时取读入 K 大者，不论从哪个相位检出（auto-1371-1571-1451 形态）', () => {
+    // 四成员：[K4 可行]、[K4 不可行]、[K3 可行]、[K3 可行]；规划 stunIn / next 全 0，截断与时间全 0。
+    // 旧规则走 ③ 取末轮 ⇒ 这个顺序下得 K=3，旋转后可能得 K=4（相位相关）；③″ 恒取可行成员里 K 最大者。
+    const ring: OuterCyclePickMember[] = [
+      { ...m(0, 0, 0, 0), feasible: true, windowsIn: 4 },
+      { ...m(0, 0, 0, 0), feasible: false, windowsIn: 4 },
+      { ...m(0, 0, 0, 0), feasible: true, windowsIn: 3 },
+      { ...m(0, 0, 0, 0), feasible: true, windowsIn: 3 },
+    ]
+    expect(pickOuterCycleMember(ring, TOL)).toEqual({ index: 0, pickedEarlier: true })
+    for (let r = 1; r < ring.length; r++) {
+      const rot = [...ring.slice(r), ...ring.slice(0, r)]
+      expect(rot[pickOuterCycleMember(rot, TOL).index]).toBe(ring[0])
+    }
+  })
+
+  it('③″ 不越级：③′ 已按规划 stunIn 分出高下时不看 K', () => {
+    // 2-环：① 互等、⓪′② 同级；③′ 取 stunIn 小者（K=3），即便另一成员 K=4
+    expect(pickOuterCycleMember([
+      { ...m(0.08, 0.28, 0, 0), feasible: true, windowsIn: 3 },
+      { ...m(0.28, 0.08, 0, 0), feasible: true, windowsIn: 4 },
+    ], TOL)).toEqual({ index: 0, pickedEarlier: true })
+  })
+
+  it('③″ 全员不可行、或有成员缺 windowsIn 时不适用（照旧取末轮）', () => {
+    expect(pickOuterCycleMember([
+      { ...m(1, 1, 0, 0), feasible: false, windowsIn: 4 },
+      { ...m(1, 1, 0, 0), feasible: false, windowsIn: 3 },
+    ], TOL)).toEqual({ index: 1, pickedEarlier: false })
+    expect(pickOuterCycleMember([
+      { ...m(1, 1, 0, 0), feasible: true, windowsIn: 4 },
+      { ...m(1, 1, 0, 0), feasible: true },
+    ], TOL)).toEqual({ index: 1, pickedEarlier: false })
+  })
+
   it('disc / time 同为 Infinity 时 NaN 比较全 false，保持取末轮', () => {
     // Infinity − Infinity = NaN ⇒ better 三项全 false（原实现行为，不许"修"）
     const inf = Number.POSITIVE_INFINITY

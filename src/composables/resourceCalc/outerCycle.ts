@@ -94,6 +94,7 @@ export interface OuterCyclePickMember {
   /**
    * CC-153：physical 下成员实际的失衡窗数 = 读入的物理次数 K（引擎按 K 分配窗口），⓪ 零窗判据用它而不是规划值 `stunIn`
    * （实测 auto-1401-1511-1411：可行成员读入 2 次、规划 stunIn 0.015 被 ⓪ 误判零窗剔除）。缺省 = 用 `stunIn`（非 physical 零影响）。
+   * CC-329：③″ 在其余各级同级时取 K 大者（最大自洽可行整数）；缺省则不参与 ③″。
    */
   windowsIn?: number
   /** 该轮输入的失衡次数（环内映射的自变量）。 */
@@ -141,6 +142,12 @@ export interface OuterCyclePickResult {
  *      ③′ 只看成员自身的输入、筛选是全序 ⇒ 同一个环（不论从哪个相位检出）永远选同一个成员。
  *      取「小」= 不高估失衡收益（与 CC-134 floor 同向的保守口径）。
  *      详见 docs/mcp-outer-fixedpoint-continuity.md。回退：换回两两比较循环（git show 0028eb01:本文件）。
+ *   ③″ **physical：读入 K 大者**（CC-329，第 347 轮）：仍同级、且池内成员都给了 `windowsIn` 又都不是 `feasible === false` 时，
+ *      保留读入物理次数 K 最大的成员。依据 = CC-150 / CC-153 已立的「最大自洽可行整数」（按 K 分配时池 ≥ K 的最大 K），
+ *      与内层 `integerCycleStop`「不透支成员中次数最多者」（CC-326）同一原则。放在 ③′ 之后 ⇒ 不推翻任何已有级，只接管
+ *      原先落到「取最后一轮」的情形——那里 K 不同的成员谁胜全看环在第几轮被检出（相位相关）。实测（第 346 轮 414 例消融）
+ *      唯一这样的点是 auto-1371-1571-1451：可行成员读入 K=4/3/3、规划 stunIn 全 0、截断与时间全同级，旧规则取到 K=3 的末轮。
+ *      全员不可行（⓪″ 放行了不可行成员）时不适用：那里没有「可行 K」可取大。回退：删本级一行。
  *   ③ 仍同级（如只有反馈签名在交替的周期）取池内最后一轮（与旧行为一致）。
  *
  * `disc`/`time` 允许为 `+Infinity`（无结果成员）：有有限值成员时 Infinity 自然被筛掉；
@@ -169,6 +176,8 @@ export function pickOuterCycleMember(
   keep(m => m.disc, tol.disc) // ⓪′ 离散自洽
   keep(m => m.time, tol.time) // ② 时间自洽
   keep(m => m.stunIn, tol.stun) // ③′ 输入失衡次数小者
+  // ③″ CC-329：physical 仍同级时取读入 K 大者（最大自洽可行整数；只在池内都有 K、都不是不可行成员时）
+  if (pool.every(i => members[i].windowsIn !== undefined && members[i].feasible !== false)) keep(m => -(m.windowsIn as number), tol.stun)
   // ③ 仍同级：取最后一轮
   const bestIdx = pool[pool.length - 1]
   const pickedEarlier = idx.length < members.length || bestIdx !== idx[idx.length - 1]
