@@ -3075,3 +3075,35 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `dualCounterCount` 不在表中，双反只从预设声明读。
 - 根因：同一个引擎字段 `blockCount` 对不同角色是不同的交互类型（星徽·比利的 block 是普通格挡，般岳的 block 是金身格挡）。`ENGINE_INTERACTION_FIELDS` 是「字段 → 类型」的全局表，缺少按角色的类型名。
 - 方案（下一轮直接开工，见交接）：由角色模块声明字段到类型名的覆盖，liveInteractions 按槽位解析类型名。
+
+### 24.99 第 275 轮：CC-258 难度轴引擎交互类型名按角色解析（0cd375a8，修般岳双计 / 漏计，涉及难度数值）
+
+**口径核对（动手前）。** 用户确认过般岳默认值「闪反10/招架6/金身20/双反5」（banyue.ts:1038 CC-65b 注释），`interactionInputs.block.label = 金身格挡`。docs 与 teamPreset.ts 里都没有「block 与金身格挡是两次不同操作」的口径 ⇒ 般岳的 blockCount 就是金身格挡，做。
+
+**改动。**
+- 模块类型新增 `interactionFieldTypes?: Partial<Record<'blockCount' | 'dualCounterCount', string>>`（`mechanics/types.ts`）。般岳声明 `{ blockCount: 'banyueGoldenParry', dualCounterCount: 'banyueDualCounter' }`。
+- CC-68 的 `compareInteractionTypes` 与它的值完全相同，已**并入**：`agentMechanicView#teamCompareInteractionTypes` 改取 `Object.values(interactionFieldTypes)`，输出不变，CC-68 测试照旧通过。
+- `difficultyCurve#engineInteractionItems(config, shrink)` 成为**引擎实打交互次数的唯一读取**：
+  - 逐字段 × 逐槽解析类型名：模块覆盖优先，否则用全局名；同名求和；
+  - 全局类型 0 次也保留；`dualCounterCount` 只有声明了覆盖才输出。
+  - `ENGINE_INTERACTION_FIELDS` 改为非导出。
+- `liveInteractions` 改用它，防双计的判断改为「引擎已给出的类型名集合」。
+- `difficultyDescent#measureDifficulty` 原有的第三份字段循环删除，改用它（仍过滤 count>0）。
+
+**数值对比（applyTeamToStore(preset) 后 measureOperationalDifficulty，无 rr）：**
+
+| 预设 | 修前 | 修后 | 原因 |
+|---|---|---|---|
+| banyue-trigger / jufufu / roxy / qingyi-lucia | 56.2 | 76.2 | 金身 20 由 block×1.0 改为 banyueGoldenParry×1.5（+10）；双反 5×2.0 新计入（+10） |
+| banyue-liuyin-lucia | 101.4 | 81.4 | 去掉 block 20×1.0 的双计 |
+| auto-1521-1361-1311、auto-1191-1161-1311（对照） | 36.2 | 36.2 | 零差 |
+
+- verify EXIT=0（418 个文件 / 4005 个测试），golden 不变（难度轴不在 golden 覆盖面内）。
+- 锁：`src/composables/__tests__/engineInteractionTypes.test.ts`：
+  - 般岳队金身、双反各只计一次，block=0；未声明般岳类型的预设也按引擎次数计；
+  - 非般岳队不新增 banyue 条目；
+  - 源码锁：`ENGINE_INTERACTION_FIELDS` 只出现在 difficultyCurve.ts，`compareInteractionTypes` 声明已不存在。
+  - 修前前两条红，非般岳零差条修前就绿（符合预期）。
+- 回退点：revert 0cd375a8。数值会回到双计口径。
+
+**遗留观察（下一步测量）。** 散点页的难度用**预设声明**（`teamCompare#shrinkInteractionsByTruncation` 与 `completeInteractionList`），曲线用**引擎实打次数**。般岳 4 队未声明金身 / 双反，散点 x 只补了 0 条目。两张图的注释都说「同一个函数、同一个单位」，但输入口径不同。修前两者也差 block 20，这是既有差异，不是本卡引入的。

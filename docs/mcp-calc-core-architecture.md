@@ -428,7 +428,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-255 | done | e9a57ec6 | 交互基准单一来源：3 处内联改调 interactionBaselineFor，runArchiveDeploy 保留不预设弹刀口径但 base 改从单一来源取；修复 1051 在分析器里被发通用交互（+0.93% / +3.20%，有意为之）；行为锁加源码锁（§24.97） |
 | CC-256 | done | 41971d2a | 轻量装配唯一实现 teamTimelineStore#applyTeamToStore(autoBuild=false)：删 pullPlannerEngine#applyTeamLite，charIncrement#applyBaseTeamLite 只保留适配；零差；源码锁（§24.97） |
 | CC-257 | done | 5268b414 | 预设交互条目→引擎字段唯一映射 teamCompare#applyPresetInteractions（主页 onPresetSelect 与 applyTeamToStore 两份词表不同副本，取并集 banyueGoldenParry≡block）；零差；源码锁加行为锁（§24.98） |
-| CC-258 | todo | — | 般岳难度双计：liveInteractions 把 blockCount 按 block 1.0 计，又把预设 banyueGoldenParry 按 1.5 计；根因是字段→类型全局表缺按角色的类型名；方案见 §24.98 ③ 与 worker §2（涉及难度数值） |
+| CC-258 | done | 0cd375a8 | 难度轴引擎交互次数唯一读取 difficultyCurve#engineInteractionItems，类型名按角色解析（模块 interactionFieldTypes，并入 CC-68 compareInteractionTypes）；修般岳金身双计 / 双反漏计（4 队 56.2→76.2，liuyin 101.4→81.4，非般岳零差）；difficultyDescent 副本归一；锁（§24.99） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |
