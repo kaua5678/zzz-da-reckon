@@ -585,10 +585,19 @@ function resolveYixuanChain(cfg: AgentCharConfigInput['cfg'], exSpecialCount: nu
   return computeYixuanExChain(income, ink2, ink3, perfectBlocks, axisCloud, axisSec)
 }
 
+/**
+ * 术法值驱动的符法千重实际次数（用户口径，文本框可填）：默认 -1 = 自动 = 全部（理论可打次数）；手动填则封顶于理论可打次数。
+ * buildExecutions 与 buildResourceResult 共用（CC-286）。resources = 同一 (cfg, state) 的 computeSpecResources 结果。
+ */
+function shufaUltCountOf(cfg: AgentResourceResultInput['cfg'], resources: ReadonlyMap<string, { spendCounts: Record<string, number> }>): number {
+  const theoretical = Math.max(0, Math.floor(resources.get('yixuan_shufa_value')?.spendCounts['yixuan_extra_ult_spend'] ?? 0))
+  const slider = Math.floor(cfgNum(cfg, 'yixuan.shufaUltCount', DEFAULT_SHUFA_ULT_COUNT))
+  return Math.max(0, Math.min(slider >= 0 ? slider : theoretical, theoretical))
+}
+
 function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const chain = resolveYixuanChain(cfg, state.exSpecialCount ?? 0)
-  record.yixuanExChain = chain
   // spec 术法值按 cfgField 读取实际总耗闪能
   record.yixuanFlashEnergySpent = chain.flashSpent
 
@@ -600,12 +609,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   const ultCount = Math.max(0, Math.floor(state.ultimateCount ?? 0))
   // 玄墨值 M = 符法千重总次数（术法值消耗 + 影画6 调息赠送）——合轴替换/聚墨破/C4 静心共用
   const shufaResources = computeSpecResources(getAgentSpec(AGENT_ID)!, cfg, state)
-  const theoreticalShufaUlts = Math.max(0, Math.floor(shufaResources.get('yixuan_shufa_value')?.spendCounts['yixuan_extra_ult_spend'] ?? 0))
-  // 术法值驱动的符法千重实际次数（用户口径，文本框可填）：默认 -1 = 自动 = 全部（理论可打次数）；
-  // 手动填则封顶于理论可打次数。
-  const shufaSlider = Math.floor(cfgNum(cfg, 'yixuan.shufaUltCount', DEFAULT_SHUFA_ULT_COUNT))
-  const shufaUlts = Math.max(0, Math.min(shufaSlider >= 0 ? shufaSlider : theoreticalShufaUlts, theoreticalShufaUlts))
-  record.yixuanShufaUltCount = shufaUlts
+  const shufaUlts = shufaUltCountOf(cfg, shufaResources)
   // 影画6·调息：青溟云影后获得一层，可无视术法值发动一次符法千重；30s CD 封顶；
   // 赠送次数默认 = 大招次数（喧响大的次数，用户口径），滑块可调
   const giftSlider = Math.floor(cfgNum(cfg, 'yixuan.c6GiftUltCount', DEFAULT_C6_GIFT_ULT_COUNT))
@@ -890,20 +894,19 @@ function patchYixuanExecutions({ cfg, executions }: AgentResourceInput): void {
 function buildYixuanResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const spec = getAgentSpec(AGENT_ID)!
   const resources = computeSpecResources(spec, cfg, state)
-  const record = cfg as unknown as Record<string, unknown>
-  // 术法值实际消耗 = 文本框/自动决定的符法千重次数（buildExecutions 已写入 cfg.yixuanShufaUltCount）；
+  // 术法值实际消耗 = 文本框/自动决定的符法千重次数（与 buildExecutions 同一 helper 重算，CC-286 前经 cfg.yixuanShufaUltCount 缓存）；
   // 资源卡「消耗/剩余」按实际打出的次数展示，而非理论可打次数。
-  const shufaActualRaw = Number(record.yixuanShufaUltCount ?? NaN)
   const shufaRes = resources.get('yixuan_shufa_value')
-  if (shufaRes && Number.isFinite(shufaActualRaw) && shufaActualRaw >= 0) {
-    const shufaActual = Math.floor(shufaActualRaw)
+  if (shufaRes) {
+    const shufaActual = shufaUltCountOf(cfg, resources)
     shufaRes.spendCounts['yixuan_extra_ult_spend'] = shufaActual
     shufaRes.spendCosts['yixuan_extra_ult_spend'] = shufaActual * SHUFA_ULT_COST
     shufaRes.remaining = Math.max(0, shufaRes.total - shufaActual * SHUFA_ULT_COST)
   }
   return {
     specResources: Object.fromEntries(resources),
-    yixuanExChain: (record.yixuanExChain as YixuanExChain) ?? resolveYixuanChain(cfg, state.exSpecialCount ?? 0),
+    // 与 buildExecutions 同一纯函数重算（CC-286：不再经 cfg.yixuanExChain 缓存）
+    yixuanExChain: resolveYixuanChain(cfg, state.exSpecialCount ?? 0),
   }
 }
 
