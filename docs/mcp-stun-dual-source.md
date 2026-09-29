@@ -3972,3 +3972,14 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 删掉的「懒守卫」（不满足条件时不触发全量计算）没有实际收益：同页 `decibelGuaranteeResult` 无条件读 calcOutput（CC-296 已记）。
 - **验证**：vue-tsc 干净；wt318 `npm run verify` EXIT=0（4032 passed）。覆盖：parrySplitInt / specialActionBonusSingleSource / counterAssist / archiveDeployStun 四个读 parrySplitResult 的测试全绿。
 - **回退**：`git revert c7aa0ad6`。
+
+### 24.143 第 319 轮：展示层副本普查 + CC-304 风化浸染挑槽单一来源（07a91a16）
+
+- **普查**（§24.142 交接第 1 条）：`grep -rn "specialty ===\|getMechanicSetting(" src/views src/components`。命中分类：
+  - 设置控件的读 / 写（`optimizer.*`、`releaseShare:*`、`boss.counterAssist*`、`guarantee.*` 勾选框、连段吸收比例、`alice.cinema6PerStateCount`）：控件本来就要读设置原值 ⇒ 不做。
+  - `FinalPanel.vue` 的 specialty 判断、TeamConfigPage 的音擎职业匹配调试行：纯展示 ⇒ 不做。
+  - **`ResourceUtilizationPage.vue#windInfectionConfig`：逐字复制了引擎 `anomalyPanels#getWindInfectionTargetSlot` 的挑槽规则**（首个风角色；自动 = 首个非风 / 非支援 / 非防护 / 非排除者，退而求其次首个非风，再退风角色本身；用户指定有效则用户值）。而且两份身份口径不同：页面按 `identityModules`（agentMechanicView，含 teammateBuffId 别名）判排除名单，引擎按 `getAgentMechanic(agentId)` 判。页面覆盖率另外没做引擎的 [0,1] 夹取。
+- **CC-304 改法**：`anomalyPanels.ts` 新增 `resolveWindInfectionPick` → `{windSlot, autoSlot, targetSlot} | null`，`getWindInfectionTargetSlot` 改为它的投影（行为不变）；经 `resourceCalc/helpers` 门面导出（views 已有从该门面导入的先例：DebugPage / TeamConfigPage / FinalPanel）。页面改读 pick 与 `getWindInfectionCoverage`，只保留下拉候选（纯展示）。删掉页面的 `windCharSlot` computed，以及只剩测试读者的 `agentMechanicView#agentExcludedFromWindInfectionPick`（连同 `agentMechanicViewCc56.test.ts` 里它的用例，测试数 4032 → 4031）。
+  - 裁定以引擎口径为准（按 agentId）：计算结果本来就由引擎决定，页面显示的「生效槽位」应与计算一致。
+- **验证**：vue-tsc 干净；wt319 `npm run verify` EXIT=0（4031 passed），check-guards 分层检查通过。
+- **回退**：`git revert 07a91a16`。

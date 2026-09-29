@@ -469,3 +469,4 @@
 | 316 | off 投影下引擎执行集合（计划实数）与雨果 / 伤害侧（池整数）分叉 | 执行集合窗口数统一读池整数 ⇒ CC-301；CC-299 第三次落地（`9629f619`），全量 verify 4032 绿、golden 零差 | 已结项；遗留：axisChainTotal / windows / ultNeed 在 off 下仍读计划实数（见 §24.140，默认不做） |
 | 317 | 伤害池 / overlay 用展示计算 `stunAxisResult` 的真假值判轴模式 | 改读引擎 `axisActive`（CC-302，`c45a500a`）；`stunAxisResult` 退为纯展示（仅 StunAxisPage 与测试读） | 已结项 |
 | 318 | useResourceCalc 普查余项 | computeStunCoverage（注入引擎的依赖，非重复）/ interactionTopUp（已读 threadsApplied）/ axisOverlays（伤害侧独有，引擎不算）：不做；parrySplitResult 复制了引擎门控与击破位规则 ⇒ CC-303（`c7aa0ad6`） | 已结项 |
+| 319 | 展示层 .vue 派生规则副本普查 | ResourceUtilizationPage 风化浸染挑槽复制了引擎规则且身份口径不同 ⇒ CC-304（`07a91a16`）；其余命中（optimizer.* / releaseShare / alice / guarantee.* / counterAssist / 连段吸收比例）都是设置控件的读写或纯展示，不做 | 已结项 |

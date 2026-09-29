@@ -90,13 +90,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 318 轮（lane lead-arena-0925c）：CC-303（`c7aa0ad6`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- `useResourceCalc` 普查收尾：只有 `parrySplitResult` 复制了引擎规则，已改读 `CalcRoundResult.parrySplitGate`；其余三项不做（理由见 `docs/mcp-stun-dual-source.md` §24.142）。全量 verify 4032 绿。
-- 前几轮：317 CC-302（isAxis 单一来源）；316 CC-301 + CC-299；315 CC-300。
+**第 319 轮（lane lead-arena-0925c）：CC-304（`07a91a16`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 展示层 .vue 派生规则副本普查：只有机制页风化浸染挑槽是引擎规则副本，已收成 `anomalyPanels#resolveWindInfectionPick` 一份；其余命中都是设置控件或纯展示，不做（`docs/mcp-stun-dual-source.md` §24.143）。全量 verify 4031 绿（删了一个随死函数而去的用例）。
+- 前几轮：318 CC-303；317 CC-302；316 CC-301 + CC-299。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行会话在跑。
 
 **下一步（直接开工）**：
-1. `useResourceCalc` 这条线已普查完。下一个同类面：**展示层 .vue 里的派生规则副本**。先 `grep -rn "specialty ===\|getMechanicSetting(" src/views src/components`，找展示层自己重判引擎规则（门控 / 槽位 / 保底开关）的地方；判据同上：与引擎同一规则两份 ⇒ 让引擎导出结果；纯展示格式化 ⇒ 不动。
+1. 展示层副本的第二种 grep 面：`grep -rn "findIndex(\|damageElement ===" src/views src/components`（页面自己找槽位 / 判属性的地方），同判据：与引擎规则相同的两份 ⇒ 引擎导出；纯展示 ⇒ 不动。
 2. 若无可做项，转 `docs/mcp-r6-refactor-list.md` 三类清单里的未结项。
 3. 低优先：锁定下沉到 promoteFixpoint 入参（§24.139 未钳项）；off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
