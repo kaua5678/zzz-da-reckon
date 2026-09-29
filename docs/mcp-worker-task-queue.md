@@ -96,24 +96,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 344 轮（lane arena-C）：CC-326 数值卡，代码 `76261a80`，文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。开工时间 01:00，现场：HEAD ebac7417 与 origin 一致，无 verify / vitest / dsh 进程，主 lane 最近一次提交在 00:29（已超过 15 分钟），工作区只有孤儿 `docs/devlog/`。**
+**第 345 轮（lane arena-C）：CC-327 简化卡（终局零差），代码 `1f03164f`，文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。开工时间 01:52。现场：HEAD 9f5791d7 与 origin 一致；没有 verify / vitest / dsh 进程；最近一次提交是本 lane 01:36 的 9f5791d7；工作区干净。**
 
-- **CC-326**：内层真整数环（第 20 轮前检出）的停点原为「JSON 字典序最小成员」，改为「不透支成员中次数最多者」（`src/core/resource/innerLoop.ts#integerCycleStop`）。判据是引擎自洽，不看投稿值：`iterate(m_i) = m_(i+1)`，所以 m_(i+1) 的次数就是 m_i 撑得起的次数，over > 0 即透支。414 例探针：旧规则 52% 的环停点取中透支成员；终局非收敛 18 例（全是单人）的旧停点 18/18 透支，改后为 0。影响：golden 64 条 / 38 例；棘轮 6 队（4 好 2 差）；teamTimeSummary 样例换队；cinemaMonotone 唯一例外 1091 c3→c4 消失（它本来就是透支造成的）。与 §24.167（r343 否决 Σ最小）的区别见 `docs/mcp-integer-cycle-stop.md` §4 和 §24.168。
-- **另结两件**：
-  1. moveId（第 343 轮交接第 2 条）**不做**：生产代码里没有 `DamagePoolRow.moveId` 的读者，缺 moveId 的只有 liuyin/banyue/burnice 三个 `extraDirectRows` 模块行，补上只会改 zd 哈希（r6 第 344 行②）。
-  2. 孤儿 `docs/devlog/`（2026-09-19 的 WSL 工具链笔记，未跟踪 10 天、无 lane 认领，内容已在 AGENTS.md L206–256）**已删**。备份在 `/home/kaua/calc-arch/orphans/docs-devlog-2026-09-19.md`（sha256 131466ee…），要回退就拷回。
-- 验证：`vue-tsc -b` 0 错；隔离 worktree `wtA-feas` 全量 verify EXIT=0（日志 `/home/kaua/calc-arch/arenaC-verify.log`）。代码提交在 worktree 里完成，主仓库 `git merge --ff-only` 合入。
+- **CC-327**：删掉内层的「第 20 轮后回落」兼容层。以前，`runInnerLoop` 在第 20 轮之后检出真整数环时，会回到第 20 轮瞬态（`oscillatorStopStates`，与旧上限 20 逐位兼容）。现在不论第几轮检出，都与第 20 轮前一样取 `integerCycleStop`；预算耗尽则返回末轮状态。已删除：常量 `INNER_LOOP_OSCILLATOR_STOP`、ctx 字段 `oscillatorStop`、快照变量，以及「1051 队停点 = 预算本身」这个特例。
+- **依据**（414 例探针，见 `docs/mcp-integer-cycle-stop.md` §7）：
+  - 这条路径共 74 次停点，全部是 2-循环，且每次都有可行成员。
+  - 第 20 轮瞬态 74/74 本身就是环成员，其中 70 次正好是规则会选的成员。所谓「第 20 轮后检出」，其实是次数早已入环，只是全状态 JSON 要晚些才精确重复。
+  - 改后 414 例终局逐字段零差，预算耗尽 0 次，硬约束「单人 1431 c6 留白 0」成立。
+  - 基线一个没动：timeGolden / timeFillRatchet / cinemaMonotone / teamTimeSummary / floatNoiseCycle 直接通过。
+- `@fact engine:内层上限`：口径已改（「据」字段加了「CC-327 删第 20 轮回落@2026-09-30」）。⟳复核同步为：104 预设中 converged=false 为 0，非收敛只剩 18 例单人。
+- 验证：`vue-tsc -b` 0 错；get_diagnostics 0；在隔离 worktree `wtA-osc` 跑全量 verify，EXIT=0（442 个文件、4063 个测试，日志 `/home/kaua/calc-arch/arenaC-verify.log`）。代码在 worktree 里提交，主仓库用 `git merge --ff-only` 合入。
+- 探针产物在 `/home/kaua/calc-arch/arenaC/`：`osc-hist.json`、`osc-rule.json`、`innerLoop.oscprobe.ts`（以 9f5791d7 为底，CC-327 之后不能直接套用）、`zzOscProbe.test.ts`、`arenaC-osc.sh`、`arenaC-osc-check.sh`。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. 可选，CC-326 的延续（数值卡）：第 20 轮后回落（`runInnerLoop` 的 `oscillatorStopStates` 分支）是否也改用 `integerCycleStop`。
-   - 现成探针：插桩版 innerLoop `/home/kaua/calc-arch/arenaC/innerLoop.probe.ts`，基于 CC-326 之前的文件；`FEAS_MODE=new` 与 CC-326 在 414 例上逐字段一致；事件写进 `globalThis.__FEAS_LOG`，带 `path: canon|osc`。
-   - 用例 `/home/kaua/calc-arch/arenaC-zzFeasProbe.test.ts`，输出路径由 `FEAS_OUT` 指定。跑法 `/home/kaua/calc-arch/arenaC-feas.sh`：脚本里 cd 到 `wtA-feas`，要改成新的 worktree 路径；新旧各跑一遍约 15s。
-   - 做法：在插桩版里给 osc 分支加第三种模式，同样按规则选取。硬约束：单人 1431 c6 留白保持 0（resource.ts `INNER_LOOP_MAX_ITERATIONS` 注释里的反例）。涉及 93 次事件、16 例（1431 系，1171 c5/c6）。不满足硬约束就记录否决。
+2. 可选（先探针，再决定是否开卡）：`docs/mcp-integer-cycle-stop.md` §6 第 3 条「converged=true 的路径依赖」。同一队的不同停点序列可能收敛到不同的自洽终态。先量清楚这样的用例有多少、差多大；做法可参照本轮探针，在折叠环里记录每个 pass 的内层停点与终态。没有「更一般或更简单」的改法就只记录，不改代码。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
+- **get_diagnostics 的 path 必须是仓库相对路径**（如 `src/core/resource.ts`）；传绝对路径会报「Path must be workspace-relative」，传 `paths` 会报 INVALID_ARGUMENT。
 - **golden 基线的下游读者**：`cinemaMonotone.test.ts` 读的是 `timeGolden.baseline.json`，不是现算结果。数值卡要在**重生成 golden 之后**再跑一遍 cinemaMonotone（或整轮 verify）；重生成之前跑的全量看不到它的变化（第 344 轮第一次全量是绿的，重生成后的 verify 才红）。同类的还有 teamTimeSummary「账本虚高」样例：每修掉一处留白，它就可能失效，按用例注释里的惯例换队（已经换过多次）。
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
 - **钩子调用次数**：buildCharConfig 每个 base 调用一次；applyTeamConfig 每轮每相位对新克隆调用一次；其余钩子可能在同一份 cfg 上调用多次。往 cfg 累加必须扣 prev；有条件写入要在所有路径上覆盖（hookReplay 锁会拦）。
