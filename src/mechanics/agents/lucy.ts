@@ -169,17 +169,21 @@ function buildCharConfig({ skills, cinemaLevel, team: _team, cfg }: AgentCharCon
   record.lucyIsLucy = true
 }
 
-function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
+/** 「cfg + state → 加油循环」的唯一装配（CC-283：buildExecutions 与 buildResourceResult 共用）。 */
+function lucyCheerOf(cfg: AgentResourceResultInput['cfg'], state: AgentResourceResultInput['state']) {
   const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.lucyCinemaLevel ?? 0)))
-  const mateEx = Math.max(0, Math.floor(Number(record.lucyTeammateExTotal ?? 0)))
-  const cheer = computeLucyCheer({
-    cinemaLevel: cinema,
+  return computeLucyCheer({
+    cinemaLevel: Math.max(0, Math.floor(Number(record.lucyCinemaLevel ?? 0))),
     exSpecialCount: state.exSpecialCount ?? 0,
     chainCountTotal: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
-    teammateExSpecialTotal: mateEx,
+    teammateExSpecialTotal: Math.max(0, Math.floor(Number(record.lucyTeammateExTotal ?? 0))),
   })
+}
+
+function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const cheer = lucyCheerOf(cfg, state)
   record.lucyCheer = cheer
 
   const spinDmg = Number(record.lucySpinDmg ?? 0) || 0
@@ -224,16 +228,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.lucyCinemaLevel ?? 0)))
-  const mateEx = Math.max(0, Math.floor(Number(record.lucyTeammateExTotal ?? 0)))
-  const cheer = computeLucyCheer({
-    cinemaLevel: cinema,
-    exSpecialCount: state.exSpecialCount ?? 0,
-    chainCountTotal: state.chainCountTotal ?? 0,
-    ultimateCount: state.ultimateCount ?? 0,
-    teammateExSpecialTotal: mateEx,
-  })
+  const cheer = lucyCheerOf(cfg, state)
   const boarCd = lucyBoarCd(cfg)
   const boarCount = computeLucyBoarCount(state.frontlineTime ?? 0, boarCd)
   return {

@@ -1,9 +1,11 @@
 import type {
   AgentMechanicModule,
   AgentPanelInput,
+  AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
+import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds } from '@/types/resource'
@@ -582,6 +584,44 @@ function pushJufufuExec(
   })
 }
 
+function jufufuCinemaOf(cfg: AgentResourceResultInput['cfg']): number {
+  return Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))
+}
+
+/**
+ * 「cfg + state + 行基准 → 虎釜循环」的唯一装配（CC-283；与卢西娅 additionalAttackCapOf 同一模式）。
+ * buildExecutions 传钩子当时的行，buildResourceResult 传 `preModuleExecutions`（= 物化钩子派发前的同一批行），
+ * 两处各自用同一纯函数重算，不再经 `cfg.jufufuCycle` 缓存（CC-283 前的写法是 cfg 副作用，回退分支还漏了
+ * frontActionCount / frontSwitchRatio 两个字段）。缺行基准（外部直调）时 frontActionCount 缺省 ⇒
+ * frontBlockSeconds 回退块长 ≈ CD，frontSwitchRatio 不参与。
+ */
+function jufufuCycleOf(
+  cfg: AgentResourceResultInput['cfg'],
+  state: AgentResourceResultInput['state'],
+  executions: readonly SkillExecution[] | undefined,
+): JufufuCycleResult {
+  const cinema = jufufuCinemaOf(cfg)
+  return computeJufufuCycle({
+    // 后台时间含无敌秒（不属于任何人的前台）；虎威后台自动攻击按有效后台时间折算（core/effectiveTime.ts）
+    backstageTime: effectiveBackstageTime(state.backstageTime, cfg),
+    frontlineTime: state.frontlineTime ?? 0,
+    effectiveTotalTime: effectiveBattleTime(cfg),
+    frontActionCount: executions
+      ? countFrontActions(executions as SkillExecution[], { fusedMoveIds: [cfg.assistFollowUpMoveId] })
+      : undefined,
+    frontSwitchRatio: Number((cfg as any)['setting:jufufu.frontSwitchRatio'] ?? 0.7),
+      exSpecialCount: state.exSpecialCount ?? 0,
+    ultimateCount: state.ultimateCount ?? 0,
+    parryCount: cfg.parryCount ?? 0,
+    cinemaLevel: cinema,
+    aweInitial: cfg.jufufuAweInitial ?? 0,
+    c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
+    teamUltimateCount: (cfg as any).jufufuTeamUltimateCount,
+    assistRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
+    teamUltRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
+  })
+}
+
 export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   id: 'agent:jufufu_tiger_roar',
   agentIds: ['1391'],
@@ -661,27 +701,10 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   },
   buildExecutions: ({ cfg, state, executions }) => {
     // 不再走 spec 事件（虎釜震煞改由账本精确次数生成）
-    const cinema = Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))
+    const cinema = jufufuCinemaOf(cfg)
     const dmg = ((cfg as any).jufufuMoveDmg ?? {}) as Record<string, number>
-    const cycle = computeJufufuCycle({
-      // 后台时间含无敌秒（不属于任何人的前台）；虎威后台自动攻击按有效后台时间折算（core/effectiveTime.ts）
-      backstageTime: effectiveBackstageTime(state.backstageTime, cfg),
-      frontlineTime: state.frontlineTime ?? 0,
-      effectiveTotalTime: effectiveBattleTime(cfg),
-      frontActionCount: countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
-      frontSwitchRatio: Number((cfg as any)['setting:jufufu.frontSwitchRatio'] ?? 0.7),
-      exSpecialCount: state.exSpecialCount ?? 0,
-      ultimateCount: state.ultimateCount ?? 0,
-      parryCount: cfg.parryCount ?? 0,
-      cinemaLevel: cinema,
-      aweInitial: cfg.jufufuAweInitial ?? 0,
-      c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
-      teamUltimateCount: (cfg as any).jufufuTeamUltimateCount,
-      assistRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
-      teamUltRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
-    })
+    const cycle = jufufuCycleOf(cfg, state, executions)
     cfg.jufufuSpinCount = cycle.spinCount
-    ;(cfg as any).jufufuCycle = cycle
 
     const c6Bonus = cinema >= 6 ? JUFUFU_C6_CHAIN_DMG_BONUS : 0
 
@@ -760,22 +783,9 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       }
     }
   },
-  buildResourceResult: ({ cfg, state }) => {
-    const cinema = Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))
-    const cycle: JufufuCycleResult = (cfg as any).jufufuCycle ?? computeJufufuCycle({
-      backstageTime: effectiveBackstageTime(state.backstageTime, cfg),
-      frontlineTime: state.frontlineTime ?? 0,
-      effectiveTotalTime: effectiveBattleTime(cfg),
-      exSpecialCount: state.exSpecialCount ?? 0,
-      ultimateCount: state.ultimateCount ?? 0,
-      parryCount: cfg.parryCount ?? 0,
-      cinemaLevel: cinema,
-      aweInitial: cfg.jufufuAweInitial ?? 0,
-      c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
-      teamUltimateCount: (cfg as any).jufufuTeamUltimateCount,
-      assistRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
-      teamUltRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
-    })
+  buildResourceResult: ({ cfg, state, preModuleExecutions }) => {
+    const cinema = jufufuCinemaOf(cfg)
+    const cycle = jufufuCycleOf(cfg, state, preModuleExecutions)
     // 覆盖 spec 资源账本为精确次数模型
     const aweSpend = cycle.tigerChainCount * JUFUFU_CHAIN_AWE_COST
     const aweGains: Record<string, number> = {
