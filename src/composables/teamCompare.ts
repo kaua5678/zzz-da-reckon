@@ -1049,14 +1049,32 @@ export function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>,
     if (preset.chainCountPerStun) configStore.setChainCountPerStun(slot, preset.chainCountPerStun[slot])
     if (preset.basicAttackTimeWeight) configStore.setBasicAttackTimeWeight(slot, preset.basicAttackTimeWeight[slot])
   }
-  // 内置交互类型 → 对应角色字段（条目 slot 缺省 0；角色专属类型只进难度，不映射引擎参数）
-  for (const it of preset.interactions) {
+  applyPresetInteractions(configStore, preset.interactions)
+}
+
+/**
+ * CC-257：**预设交互条目 → 引擎字段**的唯一映射（主页选预设 `TeamConfigPage#onPresetSelect` 与分析器装配
+ * `applyTeamToStore` 共用；条目 slot 缺省 0；未列类型只进难度、不写引擎）。
+ * 修前两份副本词表不同：主页认 banyueGoldenParry / banyueDualCounter、不认 block / tauntCancel；
+ * 此处反之（旧注释「角色专属类型只进难度」）。般岳的 `blockCount` 就是金身格挡
+ * （banyue.ts `interactionInputs.block = 金身格挡`）⇒ 两个名字是同一物理交互，取并集。
+ * 现存预设里只有 banyue-liuyin-lucia 声明般岳类型，且值 = 模块 interactionDefaults（20 / 5）⇒ 零差。
+ */
+export function applyPresetInteractions(
+  configStore: ReturnType<typeof useConfigStore>,
+  items: readonly InteractionItem[] | undefined,
+): void {
+  for (const it of items ?? []) {
     const slot = it.slot ?? 0
-    if (it.type === 'parry') configStore.setParryCount(slot, it.count)
-    else if (it.type === 'dodge') configStore.setDodgeCounterCount(slot, it.count)
-    else if (it.type === 'quickAssist') configStore.setQuickAssistCount(slot, it.count)
-    else if (it.type === 'block') configStore.setBlockCount(slot, it.count)
-    else if (it.type === 'tauntCancel') configStore.setTauntCancelCount(slot, it.count) // 般岳：嘲讽取消失衡外连段后摇
+    switch (it.type) {
+      case 'parry': configStore.setParryCount(slot, it.count); break
+      case 'dodge': configStore.setDodgeCounterCount(slot, it.count); break
+      case 'quickAssist': configStore.setQuickAssistCount(slot, it.count); break
+      case 'block':
+      case 'banyueGoldenParry': configStore.setBlockCount(slot, it.count); break
+      case 'banyueDualCounter': configStore.setDualCounterCount(slot, it.count); break
+      case 'tauntCancel': configStore.setTauntCancelCount(slot, it.count); break // 般岳：嘲讽取消失衡外连段后摇
+    }
   }
 }
 

@@ -806,7 +806,7 @@ const { statLabel, formatStatValue } = useStatLabel()
 
 // ========== 预设队伍（下拉，与「队伍对比」页共用 src/data/teamPresets/） ==========
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
-import { teamGoldOf } from '@/composables/teamCompare'
+import { teamGoldOf, applyPresetInteractions } from '@/composables/teamCompare'
 import { useTeamConfigPresetIO } from '@/composables/teamConfigPresetIO'
 const presetSelectValue = ref<string | null>(null)
 
@@ -861,15 +861,8 @@ function onPresetSelect(id: string | number | null) {
   try {
     configStore.applyTeamPreset(preset.team)
     lastAppliedPresetId.value = preset.id
-    // 预设交互清单 → 各角色交互次数（般岳金身弹刀 → blockCount；未列的角色保持原值）
-    for (const it of preset.interactions ?? []) {
-      const slot = it.slot ?? 0
-      if (it.type === 'parry') configStore.setParryCount(slot, it.count)
-      else if (it.type === 'dodge') configStore.setDodgeCounterCount(slot, it.count)
-      else if (it.type === 'quickAssist') configStore.setQuickAssistCount(slot, it.count)
-      else if (it.type === 'banyueGoldenParry') configStore.setBlockCount(slot, it.count)
-      else if (it.type === 'banyueDualCounter') configStore.setDualCounterCount(slot, it.count)
-    }
+    // 预设交互清单 → 各角色交互次数（CC-257 唯一映射；未列的角色保持 setAgent 预填）
+    applyPresetInteractions(configStore, preset.interactions)
   } catch (cause: unknown) {
     message.error(cause instanceof Error ? cause.message : '应用队伍预设失败')
   }
