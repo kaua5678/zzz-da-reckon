@@ -3379,3 +3379,37 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 回退：revert 626e2e63。
 
 - CC-265 与 CC-266 在同一次 verify 中验证（EXIT=0），分两个提交，各自可独立 revert（改动文件不相交）。
+
+### 24.106 第 282 轮：R6 清单复盘结论；CC-267 换人重置全部动作次数，删 restoreActionCounts（dfbe5db1）
+
+**① R6 清单复盘。**
+- `docs/mcp-r6-refactor-list.md` §0 总表（C1–C7、N1、N2）全部 ✅ 或写了「不做」；§7 后续顺序 1–6 已完成（§2.6 / 2.7 / 2.8）。
+- §8 自选扫描表是之后的防重复记录，本身不是待办。
+- ⇒ R6 清单为空，不需要新增条目。
+
+**② 发现（CC-260 测量时的遗留）。**
+- setAgent 只重置弹刀 / 闪反 / 格挡 / 双反 / 平 A 权重（CC-264 起加快支 / 连携）。
+- 专属字段（tauntCancel、perfectBlock、assaultOrder、yixuan 5 个、promiaNiying）换人后留在槽上。
+- `liveInteractions` 对**任意槽**读 tauntCancel / perfectBlock / yixuanPerfectBlock（全局类型名）。
+- 探针：用户 store 每槽残留专属值（嘲讽 5、完美格挡 3、仪玄完美格挡 4 等），按散点口径装配 104 预设：
+  - x 全部变化（约 +21）；
+  - 9 个仪玄 / 普罗米娅预设伤害变化 −23.10% ~ +1.99%。
+- 与 CC-264 同类：散点结果依赖用户 store 的隐藏值。
+- CC-260 的 restoreActionCounts 只消除了「预设之间」的泄漏，没有消除「用户 store → 所有预设」的依赖（恢复的就是用户值）。
+
+**③ CC-267（dfbe5db1）。**
+- setAgent 开头按 `ACTION_COUNT_BOUNDS` 全集把动作次数写回 `defaultCharacter` 模板值，再按新角色预填基准。
+- 277 轮否决「重置为模板」的理由是「模板连携 0 会改伤害口径」，CC-264 后连携由 setAgent 预填，该理由已失效。
+- 删 `configSnapshot#restoreActionCounts` 与三个逐预设循环（teamCompare / difficultyCurve / positionCompare）里的调用：setAgent 已覆盖全部字段，恢复后立刻被覆写，成为空操作。
+- 语义收成一句：**换人 = 全部动作次数按新角色重置**（主页换人同样生效；上一个角色的专属次数属于上一个角色）。
+- 锁：`presetLoopActionCounts.test.ts` 重写（4 例）：
+  - 预设间不泄漏；
+  - 用户 store 残留任意值（全部字段设上界）时装配结果与干净 store 逐字段相同；
+  - CC-264 基准；
+  - setAgent 源码按全集重置。
+  - stash config.ts 后 3 例变红。
+- 影响：
+  - 用户 store 无残留时零差（verify EXIT=0、golden 不变，无任何既有测试改期望）；
+  - 有残留时散点 / 曲线 / 定位对比不再受其影响；
+  - 主页换人时专属次数清回默认（仪玄系回到 0 / −1 自动哨兵）。
+- 回退：revert dfbe5db1（会同时恢复 restoreActionCounts）。

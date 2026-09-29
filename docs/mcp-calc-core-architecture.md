@@ -437,6 +437,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-264 | done | 5a357bf6 | 快支 / 连携基准单一来源 `ASSIST_ACTION_BASELINE`（3/1，用户 08-30 部署口径），setAgent 预填，轻量装配 / 部署去魔数，删 buildCharConfig「支援 0 / 其余 1」死兜底；散点不再继承用户 store 隐藏值（§24.104） |
 | CC-265 | done | 626e2e63 | 删 Boss 侧死字段 `EnemyConfig.quickAssistCount`（零读取、store 不持久化）（§24.105 ③） |
 | CC-266 | done | b0ec91a3 | 装配入口不重复写基准：teamTimelineStore 删 6 行、runArchiveDeploy 删 3 行与 setAgent 相同的写入，只留弹刀 / 格挡 / 双反偏差；等价锁全队伍零差（§24.105 ②） |
+| CC-267 | done | dfbe5db1 | setAgent 换人按 ACTION_COUNT_BOUNDS 全集重置为模板值再预填基准；删 restoreActionCounts（空操作）；散点不再受用户 store 专属次数残留影响（无残留零差）（§24.106） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |

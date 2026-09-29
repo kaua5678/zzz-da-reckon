@@ -71,24 +71,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 281 轮（lane lead-arena-0925c）：CC-266（b0ec91a3）、CC-265（626e2e63）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.105。
-- 前几轮：280 CC-264（快支 / 连携基准）；279 CC-263；278 CC-261。
+**第 282 轮（lane lead-arena-0925c）：R6 清单复盘（为空）、CC-267（dfbe5db1）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.106。
+- 前几轮：281 CC-265 / 266；280 CC-264；279 CC-263。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
-- 「装配 / 交互口径归一」系列（CC-254 ~ 266）到此收口：基准唯一写入者 setAgent；预设覆盖唯一映射 applyPresetInteractions；逐预设起点 restoreActionCounts；难度 x 唯一读取 liveInteractions（含降配）。
 
-**下一步（直接开工）**：
-1. **R6 清单复盘**（`docs/mcp-r6-refactor-list.md` 前半的三类清单）：
-   - 把每条的当前状态（done / todo / 不做）对一遍：清单写于 R6（6db533b），之后 CC-2xx 可能已顺带做掉若干条；
-   - 已做的补提交号，已不值得的写「不做」加理由；
-   - 剩余 todo 按影响面排序，挑第一项开工。
-   - 判据：让架构更通用 / 更简单；不做只为降计数的改动。
-2. 若 R6 清单已空：从 `docs/ARCHITECTURE-OVERVIEW.md` 重新找「同一概念多处实现」的地方（上一系列的方法：grep 写入口 / 读入口，逐个比对语义）。
+**下一步（直接开工，自选方向；R6 清单已空）**：
+1. **展示层剩余映射副本**（r6 清单 §8 第 239 行留项：稀有度颜色、职业颜色等「code → 显示」映射未查）：
+   - `grep -rn "'S'\s*:\|rarity ===\|specialty ===" src/views src/components | head`；
+   - 同一映射 ≥ 3 份且有分叉才收；收进 `src/utils/agentLabelMaps.ts`（职业名已在那）。
+2. **setAgent 其余「随角色」字段**（CC-267 的延伸，先测）：setAgent 还写音擎 / 驱动盘兜底 / 5 号位主词条 / 平 A 权重。
+   - 查换人后是否还有随旧角色残留的字段（命座 / 潜能 / 精炼 / 副词条分配），逐个判断「属于角色还是属于槽」；
+   - 只收「属于角色却留在槽上且被读」的。
+3. 若都无收获：按 §8 表格式记一行「查了什么 / 结论 / 重开条件」，不改代码。
 
 **已知坑**：
-- 动作次数：基准只由 setAgent 写（`interactionBaselineFor` + `ASSIST_ACTION_BASELINE`）；装配入口只写偏差（runArchiveDeploy 的非专属不预设弹刀）；新增装配入口不要再抄基准；
-- teamTimelineStore 的 autoBuild=true 分支走 applyTeamPreset，测试要先 `await catalog.loadBuildRecommendations()`，否则抛错；
-- 预设级探针：每个预设前 `restoreActionCounts(config, snap)`；
+- 动作次数：setAgent 先按 `ACTION_COUNT_BOUNDS` 全集回模板，再写 `interactionBaselineFor` + `ASSIST_ACTION_BASELINE`；预设覆盖走 `applyPresetInteractions`。**restoreActionCounts 已删**（CC-267），探针与新分析器循环不需要它；
+- 新增动作次数字段：只要加进 `ACTION_COUNT_BOUNDS`，换人重置自动覆盖；
+- 预设级探针：harness 快支 3 / 连携 1 与生产 setAgent 一致，不必再清零；
 - 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。
