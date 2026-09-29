@@ -90,16 +90,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 316 轮（lane lead-arena-0925c）：CC-301 + CC-299（`9629f619`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 引擎轴执行集合窗口数改读池整数（off 分叉消除），伤害侧栈直读引擎 `axisStack`，删本地重算。全量 verify 4032 绿，golden 零差。详见 `docs/mcp-stun-dual-source.md` §24.140。
-- 前几轮：315 CC-300（锁定下池钉锁定值）；314 CC-299 首试撤回；313 CC-298。
-- REQUIREMENTS 无新条目（md5 807ee096）。提示词被 arena-B 改过（加第 9 条并行会话 + 现成客户端，md5 6f99f59f，见提示词「修改记录」）；本 lane 认可，不改。
-- 本轮开工时 arena-B 在 wtA-pp 跑 verify（pullPlanner），与本 lane 文件不相交；它的交接在 §2b。
+**第 317 轮（lane lead-arena-0925c）：CC-302（`c45a500a`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 轴模式布尔 `isAxis` 改读引擎 `CalcRoundResult.axisActive`，伤害池不再依赖展示计算 `stunAxisResult`。全量 verify 4032 绿，golden 零差。详见 `docs/mcp-stun-dual-source.md` §24.141。
+- 前几轮：316 CC-301 + CC-299；315 CC-300；314 CC-299 首试撤回。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f，arena-B 上轮改过，本 lane 认可）。开工时无并行会话在跑。
 
 **下一步（直接开工）**：
-1. 轴链路「同一物理量一份实现」已收尾：dual-source 待办清单里下一条候选是 CC-298 遗留的 `overlapStack` / `axisInSeconds` 仍按实数（时间账）——按 CC-298 口径「时间账读实数」是**正确**的，默认不做。
-2. 所以下一轮先从 `docs/mcp-r6-refactor-list.md` 三类清单里挑未结项（先 grep「未做」「待」），或者重新普查 `useResourceCalc.ts` 里还剩哪些「展示层本地重算引擎已有量」的 computed（本轮删掉 stackTraversalResult 后，先查 `stunAxisResult`、`axisAllocation` 的来源）。
-3. 低优先：锁定下沉到 promoteFixpoint 入参（§24.139 未钳项）。
+1. 继续普查 `useResourceCalc.ts`（约 720 行）里剩下的本地计算：`computeStunCoverage`（:~318，是否还有读者？`stunCoverage` 已直读 calcOutput）、`interactionTopUp`、`axisOverlays`（`collectAxisWindowOverlays` 是否与引擎某处同算）。判据：同一物理量两份实现 ⇒ 收成一份；纯展示量 ⇒ 不动。
+2. 若无可做项，转 `docs/mcp-r6-refactor-list.md` 三类清单里未结项。
+3. 低优先：锁定下沉到 promoteFixpoint 入参（§24.139 未钳项）；off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。

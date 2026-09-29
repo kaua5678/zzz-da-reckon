@@ -3951,3 +3951,12 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **验证**：定向 52 文件（hugo / stunVuln / axis / cinema / difficultyLadder / timeGolden / xixifu / stunPlan / gift）341 绿；wt316 全量 `npm run verify` EXIT=0（4032 passed），golden 零差。verify 基于 44e7b2a0；其后并行 lane arena-B 的 d3443e39 / f16de121 只动 pullPlanner 与文档，与本改动文件不相交。
 - **遗留（默认不做）**：off 下 `axisChainTotal`、`allocateAxisWindows(…, countStun)`（转大块 / 快照 windows）、`axisUltimateNeed` 仍读计划实数，与执行集合（池）不同。off 仅供难度阶梯 G4 与钉 off 的旧测试；除非出现 off 下连携 / 转大与执行集合对不上的实际缺陷，否则不统一（统一会改 G4 数值，却不带来架构收益）。
 - **回退**：`git revert 9629f619`（CC-299 与 CC-301 同一提交；只退 CC-299 时恢复 useResourceCalc 的 calcStunAxisStack 重算并删掉 roundResult 的 axisStack 字段）。
+
+### 24.141 第 317 轮：CC-302 轴模式布尔单一来源（c45a500a）
+
+- **普查**（§24.140 交接第 2 条）：`useResourceCalc` 里 `stunAxisResult`（`core/stunAxis#calcStunAxis`）**不是**引擎量的重复——引擎不跑 calcStunAxis，它是失衡轴页的逐轴贡献展示，保留。`axisAllocation` 已由 CC-299 起来源于引擎 `axisStack`，无重复。
+- **发现的真问题**：`stunAxisResult` 的**真假值**被当作「真·轴模式布尔」用在三处——伤害池 `damagePool.ts` 的 `isAxis`（ctx 字段类型是 `stunAxisResult: unknown`，只取真假）、轴窗口 overlay 入参、`stackTraversalResult` 守卫。于是伤害结算依赖一份纯展示计算，且「是不是轴模式」与引擎是否真的注入轴块（convergence 局部 `axisActive`）不同源。
+- **改法**：`CalcRoundResult.axisActive` 新字段；`useResourceCalc` 新增 `axisMode = calcOutput.axisActive ?? false`，三处都读它；伤害池 ctx 删 `autoActive` / `stunAxisResult`，改收 `isAxis: boolean`（`Boolean(isAxis)` 转换随之删）；`typesHooks.ts` 两处 `isAxis` 文档改指新来源。
+- **口径差**（仅边角）：旧表达式另要求「至少一条轴有动作」（calcStunAxis 前 filter）；引擎 `axisActive` 只看生效轴非空。全部轴都没有动作时，旧口径伤害侧判非轴、引擎却已按轴注入（连携覆盖 = 0）⇒ 旧口径本身就是两边不一致，新口径与引擎一致。全量测试无一受影响。
+- **验证**：vue-tsc 干净；wt317 `npm run verify` EXIT=0（4032 passed），golden 零差。
+- **回退**：`git revert c45a500a`。

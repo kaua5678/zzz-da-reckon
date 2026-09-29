@@ -467,3 +467,4 @@
 | 314 | CC-299 伤害侧改读引擎执行集合（试做，已撤回） | **阻塞**：锁定失衡（`enemy.stunCountLock`）下引擎集合按锁定值分窗（CC-151：锁定 ⇒ countStun ≡ 锁定值），雨果轴决算行按池物理次数（坑36，`hugo.ts` 读 `threads.prevPoolStunCount`），伤害侧旧重算按池 ⇒ 改读引擎集合后 `hugo.test.ts:289` 3≠4 红。两条用户口径在锁定模式下冲突，先裁口径再做（§24.138） | 裁定锁定模式下「池次数 vs 锁定值」谁是计数权威 |
 | 315 | 锁定模式池 ≠ 锁定值（§24.138 待查项） | 真缺陷（锁定 = 「恰 N 次」，池没钳）⇒ CC-300（`fdf54712`）。CC-299 再试：physical / 锁定已无分叉，但 **off 投影**（难度阶梯 G4 + 钉 off 的旧测试）下引擎集合按计划实数、雨果行按池 ⇒ hugoVerdictLanding / stunVulnSummary 3 红，再次撤回 | off 模式下雨果（坑36）与计数通道的分叉 |
 | 316 | off 投影下引擎执行集合（计划实数）与雨果 / 伤害侧（池整数）分叉 | 执行集合窗口数统一读池整数 ⇒ CC-301；CC-299 第三次落地（`9629f619`），全量 verify 4032 绿、golden 零差 | 已结项；遗留：axisChainTotal / windows / ultNeed 在 off 下仍读计划实数（见 §24.140，默认不做） |
+| 317 | 伤害池 / overlay 用展示计算 `stunAxisResult` 的真假值判轴模式 | 改读引擎 `axisActive`（CC-302，`c45a500a`）；`stunAxisResult` 退为纯展示（仅 StunAxisPage 与测试读） | 已结项 |
