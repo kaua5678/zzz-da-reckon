@@ -164,6 +164,12 @@ export const AGENT_RELEASE_NODE: Record<string, string> = {
   '1641': '3.3-1', // 菲欧妮
 }
 
+/**
+ * AGENT_RELEASE_NODE 里的 A 级特例（潘引壶 1421，见上方注释）：为演变路径收录进时间线，但**不是限定金**
+ * （FEATURES_GUIDE「随仪玄 2.0 上实装、0 限定金」）。CC-270 单一来源：limitedGold 的限定判定与 pullValue 的分层都读这里。
+ */
+export const A_RANK_RELEASE_SPECIAL_IDS: ReadonlySet<string> = new Set(['1421'])
+
 /** 角色实装节点 id；未知角色（四星/未收录）返回 null */
 export function releaseNodeOf(agentId: string): string | null {
   return AGENT_RELEASE_NODE[agentId] ?? null

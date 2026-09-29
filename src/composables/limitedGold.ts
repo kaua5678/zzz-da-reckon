@@ -12,7 +12,7 @@
  * - charIncrement（队伍基底 extractBaseTeams 的金数窗）
  * - 实战对比页 RunArchivePage（「仅看低金顶分」筛选）
  */
-import { AGENT_RELEASE_NODE } from '@/data/versionTimeline'
+import { AGENT_RELEASE_NODE, A_RANK_RELEASE_SPECIAL_IDS } from '@/data/versionTimeline'
 import { STANDARD_S_AGENT_IDS, STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'
 
 export interface LimitedGoldMember {
@@ -33,10 +33,20 @@ export function isLimitedSWengineId(id: string | undefined | null): boolean {
   return id.startsWith('141') && !STANDARD_S_WENGINE_IDS.has(id)
 }
 
-/** 单个成员的限定金数（常驻 S / 未收录 = 0） */
+/**
+ * 限定 S 角色（占 1 金本体 + 影画）= 时间线收录 ∧ 非常驻 S ∧ 非 A 级特例。不依赖 catalog store。
+ * CC-270：修前只看「收录 ∧ 非常驻」，把收录表里的 A 级特例潘引壶算成限定金（归档 31 条潘引壶 M6 run 各多记 7 金）；
+ * teamCompare.isLimitedAgent 另按 catalog 稀有度判定、恰好排除了她——两套定义分叉，现统一到本函数。
+ */
+export function isLimitedSAgentId(id: string | undefined | null): boolean {
+  if (!id) return false
+  return !!AGENT_RELEASE_NODE[id] && !STANDARD_S_AGENT_IDS.has(id) && !A_RANK_RELEASE_SPECIAL_IDS.has(id)
+}
+
+/** 单个成员的限定金数（常驻 S / A 级特例 / 未收录 = 0） */
 export function memberLimitedGold(m: LimitedGoldMember): number {
   let gold = 0
-  if (AGENT_RELEASE_NODE[m.agentId] && !STANDARD_S_AGENT_IDS.has(m.agentId)) {
+  if (isLimitedSAgentId(m.agentId)) {
     gold += 1 + (m.mindscape ?? 0)
   }
   if (isLimitedSWengineId(m.weaponId)) {

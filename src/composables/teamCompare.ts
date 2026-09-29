@@ -19,7 +19,8 @@
  * 设 minGold 门槛（低于该总限定金不生成点，表达「配置要求」）。
  * 纵轴：伤害 / Boss 血量 × 100%（100 = 击杀，200 = 两倍血量）。
  */
-import { STANDARD_S_AGENT_IDS, STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'
+import { STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'
+import { isLimitedSAgentId } from '@/composables/limitedGold'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { interactionFieldForType, teamCompareInteractionTypes } from '@/composables/agentMechanicView'
@@ -54,12 +55,12 @@ type Calc = ReturnType<typeof useResourceCalc>
  */
 export const DEFAULT_AUTO_ENGINE_POOL = ['13005', '14110', '13115', '14002', '14121']
 
-/** 角色是否算限定金（S 级且非常驻；A/B 级不算）。catalog 未加载时按常驻清单兜底。 */
+/**
+ * 角色是否算限定金。CC-270：委托 limitedGold 的单一定义（时间线收录 ∧ 非常驻 ∧ 非 A 级特例），
+ * 不再另按 catalog 稀有度判定（两套定义曾在潘引壶上分叉；catalog 全员与收录表的一致性由 limitedAgentSingleSource.test 锁）。
+ */
 export function isLimitedAgent(agentId: string): boolean {
-  if (!agentId) return false
-  const agent = useCatalogStore().getAgent(agentId)
-  if (agent) return agent.rarity === 'S' && !STANDARD_S_AGENT_IDS.has(agentId)
-  return !STANDARD_S_AGENT_IDS.has(agentId)
+  return isLimitedSAgentId(agentId)
 }
 
 /** 音擎是否算限定金（S 级且非常驻音擎；A/B 级不算）。catalog 未加载时按常驻清单兜底。 */
