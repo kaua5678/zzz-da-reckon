@@ -423,3 +423,4 @@
 | 270 | spec 声明式字段 multiplierRowId 只对 damage 生效（4 份重复闸 + enrich 回填 damage 行） | CC-250（`60d35e7f`）缺省读取器归一，非 damage 行强制覆盖（§24.94） | §24.87 ④ 未决项结项 |
 | 271 | 重跑跨文件同形扫描（dupfn.mjs，15 组） | 快照 / 恢复协议 3 份归一并修复 buff 开关泄漏（CC-251，`7ed14dfc`）；clamp / whole / settingOf / 防御包装 / 签名截断不做；combatTimeOf 3 份、findMoveByEnglishName 2 份留作下一步（§24.95） | 新增 agents 私有 helper 时重跑 dupfn.mjs |
 | 272 | combatTimeOf / findMoveByEnglishName（§24.95 留项）；跨分析器协议（applyTeamToStore、交互基准） | CC-252（`ca29c623`）、CC-253（`045c587b`）、CC-254（`979b673c`）；交互基准 4 份漂移副本 → CC-255 待做（§24.96） | dupfn 扫描线结项；跨分析器协议线见 CC-255 与轻量装配归一 |
+| 273 | 交互基准副本（CC-255）；轻量装配副本 | CC-255（`e9a57ec6`，修复 1051 偏差）、CC-256（`41971d2a`，零差）（§24.97） | 跨分析器协议线结项；下一步测量魔数装配（快支 3 / 连携 1） |

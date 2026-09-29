@@ -71,33 +71,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 272 轮（lane lead-arena-0925c）：CC-252（ca29c623）、CC-253（045c587b）、CC-254（979b673c）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.96。要点：全战斗有效时间 → `core/effectiveTime#effectiveCombatTime`；`findMoveByEnglishName` → data；positionCompare 改用 teamCompare 的 `applyTeamToStore`。三处都有源码锁。
-- 前几轮：271 CC-251（configSnapshot）；270 CC-250；269 CC-249。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
+**第 273 轮（lane lead-arena-0925c）：CC-255（e9a57ec6）、CC-256（41971d2a）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.97。要点：
+  - 交互默认值一律走 `stores/config#interactionBaselineFor`；需要区分是否专属角色时用 `hasCustomInteractionDefaults`；
+  - 分析器的轻量装配一律走 `teamTimelineStore#applyTeamToStore(cfg, team, state, false)`。
+  - 两处都有源码锁。
+- 前几轮：272 CC-252/253/254；271 CC-251（configSnapshot）。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **CC-255 交互基准单一来源（涉及数值）**：4 处内联 `const hasCustom = defs.parry > 0 || …` 缺 `noGenericInteraction` 这一支。位置：`composables/pullPlannerEngine.ts:257`、`teamTimelineStore.ts:144`、`charIncrement.ts:390`、`runArchiveDeploy.ts:114`。
-   - 先读 4 处上下文：有的是整组赋值，有的逐字段 `hasCustom ? defs.x : base.x`，两者等价；
-   - 全部改调 `interactionBaselineFor(agentId, useCatalogStore().getAgent(agentId)?.specialty)`（`@/stores/config` 已导出；composables 可以依赖 stores，但 **resourceCalc/ 不行**，这 4 个文件都不在 resourceCalc 下，先确认一下）；
-   - **修复前后管线对比**：只有 1051（伊德海莉，yidhari.ts:480 `noGenericInteraction: true`）受影响。用含 1051 的队伍（如 1051-1211-1311）走 charIncrement 的轻量装配或 teamTimelineStore.applyTeamToStore(autoBuild=false)，读 teamTotalDamage，修复前后各一份，差值写进文档。预期：1051 的弹刀 / 闪反从职业基准变为 0，读数与主页一致；
-   - 锁：composables 与 views 的非测试文件不许出现 `defs.parry > 0 || defs.dodge > 0`（`stores/config.ts` 是 owner）；
-   - 如果 golden 因此变化：golden 更新时要写明原因（1051 交互口径与主页对齐）。
-2. **（CC-255 之后，可选）轻量装配协议归一**：`teamTimelineStore.applyTeamToStore(autoBuild=false)` 分支与 `charIncrement.applyBaseTeamLite` 同义（setAgent defer → sync → 清 4/6 号主词条与副词条 → 命座 / 精炼 / 音擎 → 交互基准 → 快支 3 / 连携 1）。先逐行比对差异（charIncrement 的音擎来自 `m.weaponId`，timeline 的来自 `state.wEngines`；入参形状不同），能抽出一个 `applyLiteTeam(configStore, members[])` 就抽，放在 teamTimelineStore 或新文件。**差异大于共性就写「不做」。**
-3. 以上都完成后：跨分析器协议线结项。再用 `grep -rn 'setQuickAssistCount(s, 3)'` 之类的「魔数装配」找第三类副本，先测量。
+1. **魔数装配测量**：`grep -rn 'setQuickAssistCount(s, 3)\|setChainCountPerStun(s, 1)' src`。
+   - 已知出现位置：teamTimelineStore 轻量装配（现为唯一实现）、runArchiveDeploy，可能还有 teamCompare#applyTeamToStore。
+   - 先判断这些魔数是不是「分析器默认轴」这一个口径：
+     - 是 ⇒ 提成一个命名常量或函数（放在 stores/config 或 teamTimelineStore），加锁；
+     - 各处语义不同（例如 runArchiveDeploy 有自己的口径注释）⇒ 写「不做」。
+   - 只为降计数的改动不做。
+2. 若 1 写了「不做」：R6 三类清单复盘，挑影响面最大的未做项；或用 dupfn 重扫（`node /home/kaua/calc-arch/dupfn.mjs`），关注**签名不同但协议相同**的副本（CC-256 这种，dupfn 扫不到）。
 
 **已知坑**：
-- 沙箱重置后 `up.sh` 可能丢可执行位 ⇒ 一律 `bash /home/user/mcp-tools/up.sh …`（直接执行会报 Permission denied，上传静默失败）；
-- `skillRows.ts` / `helpers.ts` 的 re-export 壳受 R22 壳契约锁保护，导出面要逐符号不变；下沉到 data 时加进 `SUNK_TO_DATA`，不要删壳；
-- 分析器换队会经 team watcher 同步改写 `teammateBuffSelections`；恢复现场一律用 configSnapshot；
-- 新测试先单独跑 `npx vue-tsc -b`（未使用的类型导入会报 TS6196）；
+- 副本之间的差异常常是缺陷（CC-251 / 254 / 255 都是副本漏了一支），合并时以单一来源为准；但有注释写明口径的差异（runArchiveDeploy 不预设弹刀）要保留；
+- 沙箱重置后 `up.sh` 可能丢可执行位 ⇒ 一律 `bash /home/user/mcp-tools/up.sh …`；
+- skillRows / helpers 的 re-export 壳受壳契约锁保护，不要删；
+- 新测试先单独跑 `npx vue-tsc -b`（未使用的变量 / 导入会报 TS6133 / TS6196）；
 - 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify。
 
-**未决项**：
-- 1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；
-- lumiflux 叫「辉光」还是「流明」（§24.62）；ResourceResultCard 命破 / 锋御标签颜色（§24.63）；
-- 「进入失衡 +20 喧响」是否真实机制（§24.79 ①）。
-- 以上 3 项都依赖游戏事实或用户审美，不是架构问题，不要为它们开卡。
+**未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。
 
 **探针（优化器相关改动的验收）**
 - `REFINE=1 /home/kaua/calc-arch/k206/probe2.sh /home/kaua/calc-arch/k209/<out>.tsv`，基线 `k209/final.tsv`。必须带 REFINE=1，输出路径必须是绝对路径。对比：`node /home/kaua/calc-arch/k206/cmp.cjs <base> <cand>`。

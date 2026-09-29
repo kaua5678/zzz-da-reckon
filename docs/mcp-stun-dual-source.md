@@ -3008,3 +3008,40 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 验证：v272a（CC-252）、v272b（CC-253）verify EXIT=0（3996 passed | 29 skipped）；v272c（CC-254）EXIT=0（3997 passed）；每刀 vue-tsc 都干净（CC-253 首次报 velina 未用类型导入，已删）。
 - 回退点：三刀各自独立，revert 979b673c / 045c587b / ca29c623。
 - 环境：本轮沙箱重置后 `/home/user/mcp-tools/up.sh` 丢了可执行位，直接执行报 Permission denied，上传静默失败（后面的 python 找不到文件）。改为 `bash up.sh` 或先 chmod +x。
+
+### 24.97 第 273 轮：CC-255 交互基准单一来源（e9a57ec6，修复 1051 偏差）；CC-256 轻量装配协议归一（41971d2a，零差）
+
+**① CC-255（涉及数值，有意为之）。**
+- 问题：4 处内联 `hasCustom = defs.parry > 0 || defs.dodge > 0 …` 漏了 `noGenericInteraction` 这一支。1051 伊德海莉在时间线、抽卡规划、单角增量这几个分析器里被发了职业通用的弹刀 / 闪反（p6/d10），但主页读数是 0。
+- 修法：
+  - `stores/config.ts` 新增导出 `hasCustomInteractionDefaults(agentId)`，`interactionBaselineFor` 改为调用它；
+  - pullPlannerEngine、teamTimelineStore、charIncrement 三处直接调 `interactionBaselineFor(id, specialty)`；
+  - runArchiveDeploy **保留「不预设弹刀」口径**（非专属角色的弹刀、格挡、双反为 0，闪反取 base.dodge；依据是文件头注释 2026-08-30 的修订说明），只是 base 改从 interactionBaselineFor 取。
+- 管线对比（时间线轻量装配，teamTotalDamage）：
+
+| 队伍 | 修复前 | 修复后 | 变化 |
+|---|---|---|---|
+| 1051-1211-1311 | 12560855.013 | 12677834.116 | +0.93% |
+| 1191-1051-1311 | 11801247.216 | 12179342.897 | +3.20% |
+| 1171-1211-1311（对照） | 12720271.602 | 12720271.602 | 0 |
+
+- 读数上升，是因为通用交互会占用前台时间，而 1051 的输出按机制不吃这些交互。没有 golden 变化，因为现有 golden 没有覆盖 1051 走这些分析器的路径。
+- 锁：`src/stores/__tests__/interactionBaselineSource.test.ts`，含两部分：
+  - 行为锁：1051 在轻量装配下交互全 0，艾莲大于 0；
+  - 源码锁：composables、views、components 的非测试文件禁止出现 `defs.parry > 0 || defs.dodge > 0`。
+  - 修复前两条都红。
+
+**② CC-256 轻量装配协议归一（零差）。**
+- 测量结果：
+  - `pullPlannerEngine#applyTeamLite` 与 `teamTimelineStore#applyTeamToStore(cfg, team, state, false)` 逐行等价，`TeamGoldState` 就只有 cinemas、wengineMods、wEngines 三个字段；
+  - `charIncrement#applyBaseTeamLite` 协议相同，只是入参为 members，且逐槽交错执行；写入的字段互不依赖，最终状态等价。
+- 裁决：唯一实现 = teamTimelineStore#applyTeamToStore(autoBuild=false)。
+  - pullPlannerEngine 删除私有函数，直接调用；
+  - charIncrement 的 applyBaseTeamLite 只保留 members 到 (ids, cinemas=mindscape, wengineMods=phase, wEngines=weaponId ?? '') 的适配。
+- 依赖方向：teamTimelineStore 只 `import type` teamTimeline，不导入这两个分析器，无循环。
+- 锁：`src/composables/__tests__/liteTeamAssemblySource.test.ts`。在 composables 非测试文件中，标志性写法 `subStatAllocation = {}` 只允许出现在 teamTimelineStore.ts（`stores/config.ts:778` 是 store action，不在范围内）。修复前为红（3 处），修复后为绿。
+- 验证：verify EXIT=0，golden 零差。
+- 意义：三份副本各自维护交互基准，正是 CC-255 的漏洞能在副本里漏两次的原因；归一后，轻量装配的任何口径只需改一处。
+
+- 回退点：两刀独立，revert 41971d2a / e9a57ec6。
+- 跨分析器协议线（applyTeamToStore、交互基准、轻量装配）**结项**。
