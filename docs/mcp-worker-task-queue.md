@@ -96,17 +96,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 342 轮（lane lead-arena-0925c）：docs-only（无代码缺陷），已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 343 轮（lane lead-arena-0925c）：docs-only（无代码改动），已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- extraNecessaryAction 普查（3 处，全部一致或已修）、「占时间但零伤害」全量探针（248 次，3 类全部合理）、组队影画单调性（3 处下降，归因为整数台阶 / 重分配 / 非收敛参照）均收口。详见 `docs/mcp-stun-dual-source.md` §24.166、r6 第 342 行。
-- 新数据：随机组队 [id,1211,1311] × c0–6 共 434 次中，**converged=false 19 次（4.4%）**，名单见 §24.166 ④。
+- 组队非收敛 19 例分型：全部是早检出的真整数环（「次数 ±1 ↔ 平 A 时间 ↔ 能量/喧响」），没有可以局部修的一型。整数环停点规则「JSON 字典序最小」与语义无关；试验「取最保守成员」影响 golden 64 条（含 converged=true 的单人用例）⇒ 不采纳。详见 `docs/mcp-stun-dual-source.md` §24.167、r6 第 343 行。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选。有日期的条件：坑 25 到期日 2026-10-31。
-2. 自选方向建议（未登记）：对 §24.166 ④ 的 19 个非收敛用例做**分型**（`resourceResult.convergence` / iter 数，环长度，环成员中哪个整数量在跳），判断是否有一类可以用局部手段（比如某个模块的 finalizePass 声明缺失）解决，而不必动「全局实数化收敛重构」。先只做分型表写进 docs，不改代码；若有一类能局部修，再开 CC 卡。探针参照 `/home/user/mcp-tools/zzProbe342b.test.ts`（输出里已有 conv 字段）。
-3. 可选：琉音猜拳行在 damagePoolRows 中 moveId 为 null，按 moveId 做关联的工具（探针、对比卡）会漏掉。是否给模块行补 moveId，需先查读 moveId 的消费方，属于「可归一」类，评估后再决定。
-4. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+2. 自选方向建议（未登记）：「整数环 / 非收敛」这条线已经测清，剩下的只有 DEBT「全局实数化收敛重构」本体（大工程，要先写设计稿，不要直接动代码）。若不做它，建议换线：琉音猜拳等模块行在 damagePoolRows 中 moveId 为 null，按 moveId 关联的工具会漏掉。先 grep damagePoolRows / moveId 的消费方，判断是否属于「可归一」类（给模块行补来源 moveId），评估后再决定开不开卡。
+3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
