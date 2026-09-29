@@ -213,8 +213,8 @@ export function incrementForCard(period: IncPeriod, agentId: string): CardPeriod
 
 // ========== 引擎求值层（快照/部署/伤害→分数；基底队少 = 全量也秒级） ==========
 
-import { useConfigStore, interactionBaselineFor } from '@/stores/config'
-import { useCatalogStore } from '@/stores/catalog'
+import { useConfigStore } from '@/stores/config'
+import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pullPlannerEngine'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
@@ -373,28 +373,13 @@ function applyBaseTeamLite(
   configStore: ReturnType<typeof useConfigStore>,
   team: BaseTeam,
 ): void {
-  for (let s = 0; s < 3; s++) configStore.setAgent(s, team.members[s].agentId, { defer: true })
-  configStore.syncTeammateBuffsFromTeam()
-  for (let s = 0; s < 3; s++) {
-    const m = team.members[s]
-    const char = configStore.team[s]
-    if (!char) continue
-    // 清残留（跨队泄漏防护，同 teamTimeline.applyTeamToStore）
-    const m5 = char.driveDisc.mainStats[5]
-    char.driveDisc.mainStats = { 5: m5 } as typeof char.driveDisc.mainStats
-    char.driveDisc.subStatAllocation = {}
-    configStore.setCinemaLevel(s, m.mindscape)
-    configStore.setWEngineModLevel(s, m.phase)
-    if (m.weaponId) configStore.setWEngine(s, m.weaponId)
-    // CC-255：单一来源 interactionBaselineFor（角色专属默认 > 职业基准；noGenericInteraction 归零——原内联副本漏了）
-    const base = interactionBaselineFor(m.agentId, useCatalogStore().getAgent(m.agentId)?.specialty)
-    configStore.setParryCount(s, base.parry)
-    configStore.setDodgeCounterCount(s, base.dodge)
-    configStore.setBlockCount(s, base.block)
-    configStore.setDualCounterCount(s, base.dual)
-    configStore.setQuickAssistCount(s, 3)
-    configStore.setChainCountPerStun(s, 1)
-  }
+  // CC-256：轻量装配唯一实现 teamTimelineStore#applyTeamToStore(autoBuild=false)；本函数只做 members → (队伍, 档位) 适配
+  const ms = team.members
+  applyTeamToStore(configStore, [ms[0].agentId, ms[1].agentId, ms[2].agentId], {
+    cinemas: [ms[0].mindscape, ms[1].mindscape, ms[2].mindscape],
+    wengineMods: [ms[0].phase, ms[1].phase, ms[2].phase],
+    wEngines: [ms[0].weaponId ?? '', ms[1].weaponId ?? '', ms[2].weaponId ?? ''],
+  })
 }
 
 // ========== 卡片增量汇总（纯集合运算，零引擎） ==========

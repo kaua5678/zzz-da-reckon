@@ -1,6 +1,6 @@
 /**
  * 抽卡规划器的引擎 oracle 桥：把 pullPlanner 的 TeamOracle 接到真实伤害引擎
- * （teamTimeline 底座：applyTeamLite / 逐人持有档配装 / maxIter 收敛过滤 / 现场快照恢复）。
+ * （teamTimeline 底座：轻量装配 teamTimelineStore#applyTeamToStore / 逐人持有档配装 / maxIter 收敛过滤 / 现场快照恢复）。
  *
  * 伤害 → 分数映射（分段线性，FEATURES_GUIDE §4.5）：
  *   score = scoreForDamageRatio(teamDamage / bossHp)（伤害分 0~60000，非线性——前段血值分多）
@@ -10,7 +10,8 @@
  * (有序 team × bossId/phaseId/HP × 逐人持有档)——同槽序同房同档只算一次，
  * beam 的 VCG 重规划大量命中缓存。规划期内 Boss/buff 逐期应用（同 Chart 4）。
  */
-import { useConfigStore, interactionBaselineFor } from '@/stores/config'
+import { useConfigStore } from '@/stores/config'
+import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedSWengineId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
@@ -166,7 +167,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     if (hit !== undefined) return hit
     const hp = bossRoom.hp > 0 ? bossRoom.hp : 1
     const goldState = holdingStateFor(team, holdings, catalog)
-    applyTeamLite(configStore, team, goldState)
+    applyTeamToStore(configStore, team, goldState) // CC-256：轻量装配唯一实现（原私有 applyTeamLite 逐行同义）
     state.evaluations++
     const conv = opts.calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
     if (conv === 'maxIter') {
@@ -232,35 +233,6 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     oracle,
     applyPeriodContext,
     stats: () => ({ evaluations: state.evaluations, cacheHits: state.cacheHits, cacheSize: state.cache.size + teamScoreCache.size }),
-  }
-}
-
-/** 轻量装配（同 Chart 1 轻量档：setAgent 兜底 + 清残留主/副词条） */
-function applyTeamLite(
-  configStore: ReturnType<typeof useConfigStore>,
-  team: [string, string, string],
-  state: { cinemas: [number, number, number]; wengineMods: [number, number, number]; wEngines: [string, string, string] },
-) {
-  for (let s = 0; s < 3; s++) configStore.setAgent(s, team[s], { defer: true })
-  configStore.syncTeammateBuffsFromTeam()
-  for (let s = 0; s < 3; s++) {
-    const char = configStore.team[s]
-    if (!char) continue
-    const m5 = char.driveDisc.mainStats[5]
-    char.driveDisc.mainStats = { 5: m5 } as typeof char.driveDisc.mainStats
-    char.driveDisc.subStatAllocation = {}
-    configStore.setCinemaLevel(s, state.cinemas[s])
-    configStore.setWEngineModLevel(s, state.wengineMods[s])
-    if (state.wEngines[s]) configStore.setWEngine(s, state.wEngines[s])
-    // 交互基准：同 teamTimeline.applyTeamToStore（支援/防护不交互，击破只弹刀，主C弹刀+闪反）
-    // CC-255：单一来源 interactionBaselineFor（含 noGenericInteraction；原内联副本漏了，1051 被发通用弹刀/闪反）
-    const base = interactionBaselineFor(team[s], useCatalogStore().getAgent(team[s])?.specialty)
-    configStore.setParryCount(s, base.parry)
-    configStore.setDodgeCounterCount(s, base.dodge)
-    configStore.setBlockCount(s, base.block)
-    configStore.setDualCounterCount(s, base.dual)
-    configStore.setQuickAssistCount(s, 3)
-    configStore.setChainCountPerStun(s, 1)
   }
 }
 
