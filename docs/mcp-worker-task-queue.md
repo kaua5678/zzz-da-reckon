@@ -71,30 +71,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 275 轮（lane lead-arena-0925c）：CC-258（0cd375a8）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推；本 lane 的 push 偶尔第一次超时，重试即可）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.99。要点：
-  - 难度轴读引擎交互次数一律走 `difficultyCurve#engineInteractionItems`；
-  - 角色专属类型名由模块 `interactionFieldTypes` 声明（原 `compareInteractionTypes` 已并入）。
-- 前几轮：274 CC-257（预设交互映射）；273 CC-255/256；272 CC-252/253/254。
+**第 276 轮（lane lead-arena-0925c）：CC-259（58e4eb7b）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推；push 偶尔第一次超时，重试即可）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.100。要点：
+  - 难度 x 轴的输入（散点、曲线、下降三处）一律走 `src/composables/liveInteractions.ts`（引擎实打次数）；
+  - 预设交互写引擎走 `teamCompare#applyPresetInteractions`，专属类型按该槽模块 `interactionFieldTypes` 反查。
+- 前几轮：275 CC-258；274 CC-257；273 CC-255/256。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **测量散点 vs 难度曲线的 x 轴输入口径（先测量，不预设结论）**。
-   - 散点：`teamCompare.ts` 的 `computeDifficulty(shrinkInteractionsByTruncation(completeInteractionList(preset.interactions, team), rr), …)`。先 grep 调用点确认实际链路，读的是**预设声明**。
-   - 曲线：`difficultyCurve#measureOperationalDifficulty`，读**引擎实打次数**（`liveInteractions`）。
-   - 探针：对全部 teamPresets，在同一装配（`applyTeamToStore(config, preset)`，无 rr）下分别算两者的 difficulty，列出差值不为 0 的预设。
-   - 预期：般岳 4 队差 30（金身 1.5×20 加双反 2.0×5，散点里没有）；其余队是否有差，取决于预设声明与 setAgent 预填是否一致（applyPresetInteractions 之后，声明的类型应当一致；未声明的类型如 quickAssist 可能不同）。
-   - 裁决准则：两处注释都声称「同一函数、同一单位、可对齐比较」。
-     - 如果差异只来自「预设未声明、引擎有预填」⇒ 让散点也走引擎实打次数（即 liveInteractions 口径），或者把散点的输入口径写清楚并改正注释；二选一，写明依据。
-     - 如果用户口径明确要求散点用声明值（先 grep「散点」「预设声明」相关的用户原话，如 2026-09-1x 的口径注释），就只改注释，写「不做」。
-   - 涉及数值（散点 x 轴），需给出修前 / 修后表。
-2. 之后：R6 三类清单复盘，挑影响面最大的未做项；或继续找**签名不同但协议相同**的副本（CC-256 / 257 / 258 都是这种，dupfn 扫不到）。找法：grep 同一组 store 字段或 setter 的循环，例如 `parryCount` 与 `dodgeCounterCount` 同时出现的非测试文件。
+1. **预设 `interactions` 字段的去留（先测量）**。CC-259 之后，预设声明的 parry / dodge / quickAssist 只作为 slot 0 的覆盖值写进引擎（auto 预设统一是 parry8/dodge4 的「未校准占位」），难度与伤害都读实打次数。
+   - 问题：这个占位覆盖值（8/4）让 slot 0 偏离职业基准（6/10）。用户 2026-09-11 说过「完全不需要以前这个死数值」。
+   - 测量：统计 104 个预设的 slot 0 声明值分布（`grep -h '\"type\"' -A2 src/data/teamPresets/*.json`，或写 node 脚本），区分 auto 占位（8/4）与手编值。
+   - 候选：
+     - (a) `scripts/gen-auto-presets.mjs` 不再生成占位交互，存量 auto 预设删掉 parry/dodge，改走 setAgent 基准；
+     - (b) 保持现状。
+   - (a) 会改变 auto 预设的伤害与难度（slot 0 从 8/4 变为 6/10），属于数值卡，需给出修前 / 修后表。
+   - 裁决依据：用户 09-11 原话，加上「占位不是事实」。先查 gen 脚本注释和 `data/__tests__/teamPresets.test.ts` 是否锁了 8/4。
+   - 拿不准就只改生成脚本（可逆），存量另开卡。
+2. 之后：R6 三类清单复盘；或继续找**签名不同但协议相同**的副本（CC-256 ~ 259 都是这一类）。
 
 **已知坑**：
-- 副本之间的差异常常是缺陷（CC-251 / 254 / 255 / 257 / 258）；但有注释写明口径的差异要保留（runArchiveDeploy 不预设弹刀、快支 3）；
-- 同一 store 字段对不同角色可能是不同交互（般岳 blockCount = 金身）⇒ 按全局「字段 → 类型」表处理时，先查模块 `interactionFieldTypes`；
+- 副本之间的差异常常是缺陷（CC-251 / 254 / 255 / 257 / 258 / 259）；但有注释写明口径的差异要保留（runArchiveDeploy 不预设弹刀、快支 3）；
+- 同一 store 字段对不同角色可能是不同交互（般岳 blockCount = 金身）⇒ 先查模块 `interactionFieldTypes`（正查 `interactionFieldTypeOf`，反查 `interactionFieldForType`）；
+- 改了难度输入口径后，teamCompare.test 里有钉了绝对值的用例，要逐项对账后改期望（注释里写清来源）；
 - 沙箱重置后 `up.sh` 可能丢可执行位 ⇒ 一律 `bash /home/user/mcp-tools/up.sh …`；
-- `setupHarness` 是 async：`await setupHarness(['', '', ''], { recommendedBuild: false })`，再 `applyTeamToStore(config, preset)`（teamCompare 版）；
+- harness 的 TEST_BASE_CHAR 给每槽预填快支 3（生产默认 0），做预设级探针前先清零；
 - 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。

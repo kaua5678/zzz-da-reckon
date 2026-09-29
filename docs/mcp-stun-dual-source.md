@@ -3107,3 +3107,57 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 回退点：revert 0cd375a8。数值会回到双计口径。
 
 **遗留观察（下一步测量）。** 散点页的难度用**预设声明**（`teamCompare#shrinkInteractionsByTruncation` 与 `completeInteractionList`），曲线用**引擎实打次数**。般岳 4 队未声明金身 / 双反，散点 x 只补了 0 条目。两张图的注释都说「同一个函数、同一个单位」，但输入口径不同。修前两者也差 block 20，这是既有差异，不是本卡引入的。
+
+### 24.100 第 276 轮：CC-259 散点 x 轴改读引擎实打次数（58e4eb7b，涉及散点难度数值；伤害零差）
+
+**测量（applyTeamToStore(preset) 后、无 rr、非失衡占比 0，对全部 104 个 teamPresets 比较散点输入与曲线输入）。**
+- 散点：`computeDifficulty(shrinkInteractionsByTruncation(preset.interactions, rr), …)`，即**预设声明**。
+- 曲线：`liveInteractions`，即**引擎实打次数**。
+- 结果：只有 7 个一致，97 个不同。
+
+| 预设数 | 散点 x 修前 → 修后 | 原因 |
+|---|---|---|
+| 69 + 7 | +18（例如 12.8 → 30.8） | 一名非支援队友被 setAgent 预填弹刀 6 / 闪反 10，预设只声明 slot 0 |
+| 8 | +36 | 两名非支援队友 |
+| 6 | +23 | 另有星徽·比利格挡预填 5 |
+| 5 | +56 ~ +58 | 另有般岳金身 20 / 双反 5（预设未声明） |
+| 1（yidhari-norma-lucia） | 0 → 18 | 预设交互为空 |
+
+**裁决：散点改读实打次数。依据是三条已确认的用户口径，方向一致。**
+1. teamPresets.ts（用户 2026-09-11）：预设交互是「早期的默认交互…完全不需要以前这个死数值」，auto 预设 `parry8/dodge4` 是**未校准占位**。
+2. config.ts @fact 交互基准（用户 2026-09-04）：非支援 / 防护默认弹刀 6 / 闪反 10，「默认大家会打」。
+3. difficultyCurve.ts @fact x 轴：x = 当前档**实打**交互次数，与散点「同一函数同一单位，可直接对齐比较」。
+
+另外，**同一个散点的伤害本来就按实打次数算**（setAgent 预填 + 预设覆盖），修前的 x 和伤害口径不同。
+
+- 没有选「改引擎装配、只用声明值」：那会改变 97 个预设的伤害，并且违背口径 1、2。
+
+**改动。**
+- 新模块 `src/composables/liveInteractions.ts`，是引擎实打交互次数的唯一模块，包含：
+  - `interactionSurvivalBySlot` 与 `roundInteractionCount`（自 teamCompare 迁入）；
+  - `ENGINE_INTERACTION_FIELDS`、`engineInteractionItems` 与 `liveInteractions`（自 difficultyCurve 迁入）。
+- 独立成模块的原因：difficultyCurve → teamCompare 是单向依赖，散点也要用 liveInteractions。
+- 散点点生成改为 `computeDifficulty(liveInteractions(configStore, preset, rrHere), …)`。
+- 删除散点专用的团队聚合缩 `teamInteractionSurvival` / `shrinkInteractionsByTruncation`，现在两图都按槽缩。
+- **CC-257 顺带泛化：** `applyPresetInteractions` 的专属类型不再写死般岳名，改由**该槽角色**模块的 `interactionFieldTypes` 反查字段（`agentMechanicView#interactionFieldForType`）。
+  - 专属类型挂在别的角色槽上时，不写引擎，只进难度。
+  - 发现途径：teamCompare.test 的夹具给维琳娜 1561 声明了 banyueGoldenParry 5，修前被写进 blockCount，又按普通格挡计一次。
+  - 真实预设零差（般岳都在 slot 0）。
+
+**测试。**
+- teamCompare.test 两条钉了散点难度绝对值的用例按新口径改期望，逐项对账写在测试注释里：
+  - 接线用例 8.78 → 41.71：弹刀 = 声明 8 + 队友预填 6；
+  - 批量用例 24.08 → 43.83。
+  - 权重透传判据保留：弹刀权重 ×2.5 ⇒ 弹刀部分 ×2.5。
+- 新锁 `scatterDifficultyInput.test.ts`：
+  - 散点传 liveInteractions；
+  - 被删的两个函数不再出现；
+  - teamCompare 中没有 `case 'banyue…`。
+  - 修前红。
+- CC-257 锁补了反例：般岳类型挂在非般岳槽上不写引擎。
+- verify EXIT=0，golden 不变。伤害零差：引擎装配未改，只改难度输入。
+- 守卫：角力权重的 @fact 随 liveInteractions 从 difficultyCurve.ts 迁入 liveInteractions.ts，口径复核豁免清单（`scripts/lib/guard-registries.mjs:315`）中该条目的路径同步改，**不新增豁免**。第一次 verify 因此 EXIT=1，改后通过。
+
+**影响面。** 散点页横轴整体右移：多数队 +18，双输出队 +36，般岳 / 比利队更多。跨队的相对位置按「实打交互量」重排。难度曲线不变（它原本就用 liveInteractions）。
+
+**回退点。** revert 58e4eb7b，散点回到读预设声明；或者只把 teamCompare 中那一行改回声明值（需恢复被删的团队聚合缩）。
