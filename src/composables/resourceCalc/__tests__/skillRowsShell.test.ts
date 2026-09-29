@@ -32,7 +32,7 @@ const C_EXPORTS = [
   'isHealingRow',
   'getHealingAmount',
   'getSpecialResourceRecovery',
-  'BASIC_BENCHMARK_OVERRIDE',
+  // CC-321：BASIC_BENCHMARK_OVERRIDE（恒空的硬编码基准段表）已删，基准段只认 catalog basicBenchmarkMoveId
   'pickThirdNamedBasicSegment',
   'getBasicComboMoves',
   'averageBasicRows',

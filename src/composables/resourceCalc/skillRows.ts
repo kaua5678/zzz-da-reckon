@@ -79,17 +79,9 @@ export function getSpecialResourceRecovery(move: SkillMove): number {
 }
 
 /**
- * 平A基准段硬编码 override。
- * key = agentId（catalog id），value = 使用的 moveId。
- * 不在此映射的角色默认取第 3 段（index 2），不足 3 段取最后一段。
- */
-export const BASIC_BENCHMARK_OVERRIDE: Record<string, string> = {
-  // 在此填入需要特殊基准段的角色，如 '1401': '1401003'
-}
-
-/**
  * 获取平A基准段（单段，秒均化）。
- * 优先：catalog agent.basicBenchmarkMoveId（数据配置，在全部普攻招式里找，不受 #N 命名约束）→ 硬编码 override 兜底 → 默认第 3 段（#3）；不足 3 段取最后一段。
+ * 优先：catalog agent.basicBenchmarkMoveId（数据配置，在全部普攻招式里找，不受 #N 命名约束）→ 默认第 3 段（#3）；不足 3 段取最后一段。
+ * CC-321：原有第二来源 `BASIC_BENCHMARK_OVERRIDE`（代码内硬编码表，自建立起一直为空）已删——基准段裁决只写 catalog 数据字段。
  */
 export function getBasicComboMoves(
   skills: AgentSkills | undefined,
@@ -114,13 +106,6 @@ export function getBasicComboMoves(
   const all: SkillMove[] = []
   for (const move of basic.moves) if (isNumberedBasicSegment(move)) all.push(move) // CC-320
   if (all.length === 0) return null
-
-  // 3. 硬编码 override 兜底
-  if (agentId && BASIC_BENCHMARK_OVERRIDE[agentId]) {
-    const overrideId = BASIC_BENCHMARK_OVERRIDE[agentId]
-    const found = all.find(m => m.id === overrideId)
-    if (found) return found
-  }
 
   // 4. 默认第 3 段（index 2），不足取末尾
   return pickThirdNamedBasicSegment(all)
