@@ -3761,3 +3761,26 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 1011 C0 / C6 的 initialGift 都是 112（40 + 并联电路 72）；C6 时两名电属性队友从 40 → 65（C4 电荷传导）。
   - **两处写入都有效**。golden 零变化只是因为 golden 场景不满足触发条件（单人没有电属性队友；预设里 anby 的额外能力 / 命座条件不满足）。结论：不改。
 - **顺带澄清**：timeGolden.test.ts:58 附近的注释说「纯伤害回归不判红」，已经过时。现行 `diffEntry`（:155）规则是：时间账不变、只有伤害变、且没动 catalog ⇒ 判红（有单测 ①②③ 锁定）。注释未改（非本 lane 文件的纯文字问题，下次动该文件时顺手更正）。
+
+### 24.129 第 305 轮：重复调用钩子里的非幂等累加（CC-291，ecc5a838，数值卡）
+
+- **起点**：第 304 轮交接让查喧响类「礼物型」字段（`initialDecibelGift` / `extraSelfDecibelReward`）的死写入。逐处看所在钩子后发现，**时机**不是问题（`buildCharConfig` 只在建 base 时调用一次；`applyTeamConfig` 每轮每相位对新克隆调用一次，都早于能量 / 喧响账），真正的问题是**幂等**。
+- **非幂等累加**：`cfg.k = (cfg.k ?? 0) + x` 写在**同一份 cfg 会被重复调用**的钩子里（patchExecutions / materializePhaseState 等随内层迭代、underfillProbe 反复调用），结果会随调用次数累加。
+  - AST 扫描（`/home/kaua/calc-arch/k229/acc305.cjs`，已固化为测试）命中 3 处：
+    - `grace.ts:319` materializePhaseState `initialEnergyGift += c4Energy`：**探针**显示 1181 C6 能量账读到的值 124 → 184 → … → 853.9，逐次上涨，本应只加一次约 70。**真缺陷，影响大。**
+    - `orphie.ts:108` patchExecutions `extraSelfDecibelReward += C2 喧响`：**探针**显示 0 → 2925 → 5850，喧响账读到 5850（2 倍）。**真缺陷**，但 golden 零变化（多出的喧响没跨过终结技阈值）。
+    - `yidhari.ts:472` onFinalAssemble：每次装配只调用一次，core/resource.ts:274 的第二遍装配在全新 cfg 上跑，**不累积**，列入允许名单。
+- **修法**：两处都改成仓库已有的幂等写法（ellen / panYinhu / corin 同款）：本模块专属键 `graceC4EnergyGift` / `orphieC2DecibelGift` 记下上次写入量，先扣再加。共享累加通道（extraSelfDecibelReward 也被佩洛伊斯、蕾米埃尔、仪玄写）只扣自己那份。
+- **数值影响（有意）**：timeGolden 只有格莉丝变化：
+  - `agent:1181:c4` / `c5`：强特 33.57→23.86、终结技 4→3、伤害 −6.6%；
+  - `agent:1181:c6`：强特 40.19→23.60、伤害 −8.4%；
+  - 其余（含全部 105 个预设）零差。golden 已用 `TIME_GOLDEN_UPDATE=1` 更新。
+  - 依据：C4 爆破电容的回能是一笔「A1-A4 平A 回能的 20%」总量，按口径只该计一次；旧结果取决于内层迭代次数，属于实现缺陷，不是口径选择。
+- **锁**：`src/mechanics/__tests__/idempotentCfgWrite.test.ts`：
+  - ① 源码锁：TypeScript AST 扫描全部 agents 模块中除 buildCharConfig / applyTeamConfig 外的钩子（跟进同文件 helper 3 层），出现「自引用累加且右侧没有 prev 扣减」就红；允许名单只有 yidhari onFinalAssemble。
+  - ② 行为锁：格莉丝 / 奥菲丝钩子重复调用 6 次，结果与调用 1 次相同。
+  - 三例在修复前的代码上都会红（已验证）。
+- **喧响礼物字段的死写入普查（原第 304 轮下一步）**：按写入所在钩子推理结项，不再逐处屏蔽。
+  - `initialDecibelGift` 的写入全在 buildCharConfig（aire / alice / evelyn / phoenix / yaojiayin / yeshuguang / zhao / 佩洛伊斯）；`extraSelfDecibelReward` 在 applyTeamConfig（promia / remielle / 佩洛伊斯 / yixuan）和 orphie patchExecutions。
+  - 前两种钩子都早于喧响账（`resourceIncome.ts:232/248`、`core/resource/helpers.ts:312`），结构上不会是死写入；orphie 已由本卡修复。
+- **回退**：revert ecc5a838（golden 连同一起回退）。
