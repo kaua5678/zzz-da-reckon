@@ -2,9 +2,9 @@
  * S1 内层不动点 —— 自 `core/resource.ts` 迁出（CC-3，2026-09-24）。
  *
  * 职责：把单次迭代映射 `iterate`（`./helpers`）跑成不动点——判稳（强特/终结次数 + `basicAttackTime`
- * 严格相等）→ 精确环检测（全状态 JSON 签名重复）→ 环停点（真整数环 = 不透支成员中次数最多者，见
- * `integerCycleStop`，不论第几轮检出；浮点噪声环视为已收敛，取 JSON 字典序最小成员）→ 预算耗尽则返回末轮
- * 状态（414 例探针面 0 例）。**纯函数**：只读 `ctx`，不写任何
+ * 严格相等）→ 精确环检测（全状态 JSON 签名重复）→ 环停点（任何精确环都取 `integerCycleStop`「不透支成员中
+ * 次数最多者」，不论第几轮检出；浮点噪声环只把收敛标志报成 true）→ 预算耗尽则返回末轮状态（414 例探针面
+ * 0 例）。**纯函数**：只读 `ctx`，不写任何
  * 闭包/模块级状态，返回 `{ end, clean, iterations }`。`core/resource.ts#calcTeamResources` 内以一行
  * `runInnerLoop` 包装注入只读上下文；两个调用点（折叠环 `runFoldLoop`、欠打回填试探 `convergeCounts`）
  * 行为逐位不变。
@@ -49,7 +49,7 @@ function jsonMinMember(members: IterationState[][]): IterationState[] {
 const CYCLE_STOP_EPS = 1e-9
 
 /**
- * **真整数环的停点 = 不透支的成员里次数最多者**（CC-326，arena-C 第 344 轮；旧口径 = 全状态 JSON 字典序最小）。
+ * **环停点 = 不透支的成员里次数最多者**（CC-326，arena-C 第 344 轮；旧口径 = 全状态 JSON 字典序最小）。
  *
  * 环成员按出现顺序 m0 → m1 → … → m(n−1) → m0，`iterate(m_i) = m_(i+1)`。`iterate` 的含义是「按 m_i 的时间分配
  * （平A池等）挣到的能量 / 喧响 → 撑得起的强特 / 终结次数」，所以 **m_(i+1) 的次数就是 m_i 自己撑得起的次数**：
@@ -64,6 +64,8 @@ const CYCLE_STOP_EPS = 1e-9
  * （纯确定性兜底）。三项都只依赖环本身（成员集合 + 后继关系），与进入环的相位 / 种子无关（冷热逐位一致不变）。
  * 适用于**任何轮次**检出的真整数环（CC-327 起。此前第 20 轮之后检出的环回落到「第 20 轮瞬态」
  * `oscillatorStopStates`，那是旧上限 20 的逐位兼容层；414 例实测：该路径 74 次停点，改后全部终局结果逐字段零差）。
+ * 浮点噪声环也走本函数（CC-328 起，此前是专用分支 `jsonMinMember`）：成员的次数只差 ulp 级 ⇒ over 与 Σ 全部落在
+ * `CYCLE_STOP_EPS` 内 ⇒ 退化为 JSON 字典序最小，与旧分支同一成员（第 346 轮 414 例：60 次停点 60 次同一成员，终局逐位零差）。
  *
  * 实测依据（第 344 轮，timeGolden 同面 414 例）：内层真整数环停点 1815 次，旧规则取中透支成员 944 次（52%）；
  * 终局非收敛的 18 例（全是单人用例）旧停点**全部**透支 1–2 次、改后 0 例透支；结果共变 36 例（这 18 例 + 18 例折叠路径改变）。
@@ -88,7 +90,7 @@ function integerCycleStop(members: IterationState[][]): IterationState[] {
 }
 
 /**
- * 内层次数收敛 + 停点规范化（环检测 + 环停点：真整数环 `integerCycleStop`，浮点噪声环 `jsonMinMember`）。
+ * 内层次数收敛 + 停点规范化（环检测 + 环停点 `integerCycleStop`；浮点噪声环只决定收敛标志）。
  * 提升到函数级（2026-09-08 重构）：折叠循环与「② 规范重跑」共用。
  */
 export function runInnerLoop(
@@ -143,11 +145,10 @@ export function runInnerLoop(
     if (firstSeen !== undefined) {
       // 环成员按出现顺序排列：members[i] 的后继是 members[i + 1]，末成员的后继是 cur（= members[0]）。
       const members = cycleSnapshots.slice(firstSeen)
-      // 浮点噪声环（成员逐字段相对 1e-9 内，典型 = 连续收缩到 ulp 级后 1 ulp 交替的 2-循环）= 已收敛：
-      // 停点取 JSON 字典序最小成员、数值一位不差，只是不再把收敛标志报成 false（口径与实测见 floatNoiseCycle.ts）。
-      // 真整数环（Δ≥1）照旧 clean=false，不论第几轮检出都取「不透支成员中次数最多者」（`integerCycleStop`，CC-326/327）。
-      if (isFloatNoiseCycle(members)) return { end: structuredClone(jsonMinMember(members)), clean: true, iterations: k }
-      return { end: structuredClone(integerCycleStop(members)), clean: false, iterations: k }
+      // 停点一律取「不透支成员中次数最多者」（`integerCycleStop`，CC-326/327/328），不论第几轮检出、不论环的种类。
+      // 收敛标志：浮点噪声环（成员逐字段相对 1e-9 内，典型 = 连续收缩到 ulp 级后 1 ulp 交替的 2-循环）= 已收敛，
+      // 口径与实测见 floatNoiseCycle.ts；真整数环（Δ≥1）= clean=false。
+      return { end: structuredClone(integerCycleStop(members)), clean: isFloatNoiseCycle(members), iterations: k }
     }
     if (bucket) bucket.push(cycleSnapshots.length)
     else cycleBuckets.set(probe, [cycleSnapshots.length])

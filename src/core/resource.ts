@@ -101,7 +101,8 @@ export const TIME_FOLD_MAX_PASSES = 32
  * 上限只需容得下「收缩到 ulp 级 + 进入精确环」：ρ=0.17 ≈21 轮、ρ=0.5 ≈55 轮、0.5 阻尼的 1051 实测 41 轮 ⇒ 取 **100**
  * 与 1051 既有口径统一；正常收敛队照旧 ≤15 轮退出，代价只落在本来就要跑满的队。
  *
- * **停点**（CC-327 起单层）：预算内判稳（严格相等，**不放宽**）或检出浮点噪声环 ⇒ 收敛态；检出真整数环（不论第几轮）
+ * **停点**（CC-327 起单层）：预算内判稳（严格相等，**不放宽**）或检出浮点噪声环 ⇒ 收敛态（噪声环的停点同样取
+ * `integerCycleStop`，CC-328）；检出真整数环（不论第几轮）
  * ⇒ `innerLoop.ts#integerCycleStop`「不透支成员中次数最多者」（CC-326，依据 `docs/mcp-integer-cycle-stop.md`）；预算
  * 耗尽 ⇒ 末轮状态（414 例探针面 0 次）。已删的「两层语义」：第 20 轮之后的预算只用于收敛尝试，失败回到第 20 轮瞬态
  * （常量 `INNER_LOOP_OSCILLATOR_STOP`，旧上限 20 的逐位兼容层）。第 345 轮 414 例实测该路径 74 次停点，换成
@@ -119,7 +120,7 @@ export const INNER_LOOP_MAX_ITERATIONS = 100
  * | 阶段 | 名字 | 位置 | 输入 → 输出 | 判据/不变量 |
  * |---|---|---|---|---|
  * | S0 | 输入装配 | `composables/resourceCalc/convergence.ts#createRunCalcRound` 产出的 runCalcRound（`buildCharConfig` + `applyTeamMechanics`） | store/catalog → `cfg[]` | 规则 6：队伍级机制走 `applyTeamConfig` |
- * | S1 | 资源账本预解（内层不动点） | `runInnerLoop` → `iterate`（`helpers.ts#iterate`，四步见其函数头） | `cfg[]` + 种子 → `IterationState[]` | 判稳 = 强特/终结次数 + `basicAttackTime` **严格相等**；入环 → 环停点（`integerCycleStop` / 浮点噪声环）、跑满 → 末轮状态（冷热解耦） |
+ * | S1 | 资源账本预解（内层不动点） | `runInnerLoop` → `iterate`（`helpers.ts#iterate`，四步见其函数头） | `cfg[]` + 种子 → `IterationState[]` | 判稳 = 强特/终结次数 + `basicAttackTime` **严格相等**；入环 → 环停点 `integerCycleStop`（浮点噪声环只改收敛标志）、跑满 → 末轮状态（冷热解耦） |
  * | S2 | 时间预算折叠（外层不动点） | `runFoldLoop` | states → states（`cfg.timeBudgetExcess`/`timeBudgetRefund` 折入） | `Σ前台行 ≡ 账本`；`+=` 折正超出、负差 refund 回填；上限 `TIME_FOLD_MAX_PASSES` |
  * | S3 | 可行化决策 | `composables/resourceCalc/solveTeam.ts#stageResolveFeasibility`（轴退化 + 降配，2026-09-11 抽出） | 整轮结果 → `{r, axisFallback, interactionScale}` | 三臂不更差（截断/超预算/留白各 1s）+ 枚举取最大可行；锁窗一律不动 |
  * | S4 | 装配 + 可行化截断 | `core/resource/assembleSlot.ts#assembleSlot`（#8 分刀自逐槽 `configs.map` 抽出，CC-5b 外提；截断在 `truncateExecutionsToFrontline`） | states + cfg → `characters[]`（行/资源/时间） | 平A行不参与截断；后台行不占前台；整数装包；`overflowSeconds`/`truncationCuts` 逐行上报 |
@@ -222,7 +223,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // `runFoldLoop`（S2 时间预算折叠环）已迁 `src/core/resource/foldLoop.ts`（CC-4，2026-09-25，纯函数）。
   // 下列 `@fact` 的**实现已迁**该文件，声明按既有惯例留在 re-export 壳处（同 CC-3 `innerLoop.ts` 的处理）；
   // **锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:收敛环停点规范化`）不变。
-  // @fact engine:收敛环停点规范化 口径: calcTeamResources 恒从默认零种子起跑（CC-146 先令 pass0 弃用注入种子——实测注入种子可 clean 收敛到冷种子到不了的共存不动点；CC-147 随即删除注入通道本身：显式 initialStates 与热启动缓存）；入环则取环停点——真整数环 = 不透支成员中次数最多者（`innerLoop.ts#integerCycleStop`，平局取 JSON 字典序最小；CC-326 前 = JSON 字典序最小），浮点噪声环 = JSON 字典序最小；均只依赖环本身（成员集合 + 后继关系，相位无关）。结果 = f(默认种子, 迭代映射) | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25·复核@2026-09-27·CC-146 反例@2026-09-28·CC-147 删注入通道@2026-09-28·CC-326 真整数环停点改不透支@2026-09-30（docs/mcp-integer-cycle-stop.md） | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
+  // @fact engine:收敛环停点规范化 口径: calcTeamResources 恒从默认零种子起跑（CC-146 先令 pass0 弃用注入种子——实测注入种子可 clean 收敛到冷种子到不了的共存不动点；CC-147 随即删除注入通道本身：显式 initialStates 与热启动缓存）；入环则取环停点 = 不透支成员中次数最多者（`innerLoop.ts#integerCycleStop`，平局取 JSON 字典序最小；CC-326 前 = JSON 字典序最小）；浮点噪声环自 CC-328 同走本规则（成员次数只差 ulp ⇒ 退化为 JSON 字典序最小），它只决定收敛标志；只依赖环本身（成员集合 + 后继关系，相位无关）。结果 = f(默认种子, 迭代映射) | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25·复核@2026-09-27·CC-146 反例@2026-09-28·CC-147 删注入通道@2026-09-28·CC-326 真整数环停点改不透支@2026-09-30（docs/mcp-integer-cycle-stop.md）·CC-328 浮点噪声环并入@2026-09-30（414 例 60 次停点同一成员，终局逐位零差） | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
   /**
    * S2 时间预算折叠环（CC-4 外提至 `./resource/foldLoop.ts`，纯函数）的只读上下文与包装。
    * ⚠ 包装**每次调用时读 `diag`**（禁止 `const d = diag` 缓存——重折环会换新对象，缓存会写到旧对象）。
