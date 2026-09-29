@@ -3784,3 +3784,18 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `initialDecibelGift` 的写入全在 buildCharConfig（aire / alice / evelyn / phoenix / yaojiayin / yeshuguang / zhao / 佩洛伊斯）；`extraSelfDecibelReward` 在 applyTeamConfig（promia / remielle / 佩洛伊斯 / yixuan）和 orphie patchExecutions。
   - 前两种钩子都早于喧响账（`resourceIncome.ts:232/248`、`core/resource/helpers.ts:312`），结构上不会是死写入；orphie 已由本卡修复。
 - **回退**：revert ecc5a838（golden 连同一起回退）。
+
+### 24.130 第 306 轮：钩子重放一致 / 陈旧值行为锁（CC-292，5801e112）；cfg 写入纪律线结项
+
+- **探针结论（先量后锁）**：包住全部注册模块的 buildExecutions / materializePhaseState / patchExecutions / buildAnomalyEvents，在 timeGolden 全部场景上（不设重放上限）对每次生产调用做「紧接着第二次调用」的重放。当前代码 **0 处**不一致；第 305 轮交接担心的「读了自己上次写的别的键」这类问题不存在。
+- **CC-292**：固化为 `src/mechanics/__tests__/hookReplay.test.ts`（约 13 秒；每个场景里每个「模块:钩子」最多重放 6 次，不限次时约 55 秒，结论相同）。
+  - ① **重放一致**：在「调用后 cfg」的拷贝上，用「调用前的 state / 行 / 事件」拷贝再调一次，逐键 JSON 比较 cfg。
+  - ② **陈旧值**：分别在「调用前 cfg」「调用后 cfg」的拷贝上用空行 / 空事件输入各调一次，只看本钩子写过的键，两份不同 ⇒ 空输入那条路径没覆盖该键，留下上一次的值（CC-288 型）。
+  - 重放只作用于拷贝（structuredClone），不影响生产结果；克隆失败的调用跳过。
+  - **有牙**：grace / orphie 换回 CC-291 之前 ⇒ ① 红（各 ×6）；nangong 换回 CC-288 之前 ⇒ ② 红（×79）。
+- **与 idempotentCfgWrite（AST 锁）的关系**：行为锁不依赖写法和变量名，覆盖面更通用；AST 锁能静态覆盖场景跑不到的分支（0.4 秒）。**两者都保留**。回退：删 hookReplay.test.ts 即可。
+- **cfg 写入纪律线结项**：现在有 4 把锁，对应 CC-285～292 发现的 4 类问题：
+  - `cfgWriteOnlyKeys`：写了要有读者；
+  - `lateCfgWrite`：buildResourceResult 不改 cfg（写得太晚，引擎读不到）；
+  - `idempotentCfgWrite` + `hookReplay ①`：重复调用不累加 / 不漂移；
+  - `hookReplay ②`：不留陈旧值。

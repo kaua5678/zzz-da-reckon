@@ -71,24 +71,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 305 轮（lane lead-arena-0925c）：CC-291（ecc5a838，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.129：格莉丝 C4 回能随迭代累加（1181 C4–C6 伤害 −6.6～−8.4%）、奥菲丝 C2 喧响 2 倍，都改成幂等写法；加 AST 源码锁 + 行为锁。
-- 前几轮：304 CC-290（晚写锁）；303 CC-289（朱鸢余温回能）；302 CC-288。
+**第 306 轮（lane lead-arena-0925c）：CC-292（5801e112）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.130：钩子重放一致 / 陈旧值行为锁；当前 0 处；cfg 写入纪律线结项。
+- 前几轮：305 CC-291（格莉丝 / 奥菲丝非幂等累加，数值卡）；304 CC-290；303 CC-289（朱鸢，数值卡）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add。
 
-**这一串（CC-288～291）的共同根因**：模块往 cfg 写「给引擎读的量」，却没有约定**何时写、写几次、谁先读**。现在已有三把锁：cfgWriteOnlyKeys（写了要有读者）、lateCfgWrite（buildResourceResult 不改 cfg）、idempotentCfgWrite（重复调用的钩子累加须扣 prev）。
-
-**下一步（直接开工）**：
-1. **非累加型的「重复调用不一致」**：idempotentCfgWrite 只抓自引用累加。还有一种可能：钩子在同一份 cfg 上重复调用时，**读了自己上次写的别的键**（例如 A 键由 B 键推出，B 又在本钩子里被改），导致第二次调用结果不同。
-   - 通用探针：在 `core/resource/phaseExecutions.ts:25`（materializePhaseState 调用点）和 patchExecutions 调用点，对同一 cfg 连续调用两次，比较两次调用后的 cfg 快照（JSON 逐键）。不同 ⇒ 列出来逐个判断。
-   - 跑 timeGolden 全量，用 `uniq -c` 统计 `模块:键`。如果 0 处，写「结项」；有真缺陷就按 CC-291 开卡（CC-292 起）。
-   - 如果探针证明所有钩子都已幂等，可以考虑把「连续调用两次比较」固化成像 lateCfgWrite 那样的常驻测试（包住模块钩子，场景同 timeGolden）。这比 AST 锁更通用（不依赖变量名），值得做。
-2. 之后回到 `docs/mcp-r6-refactor-list.md` §8，自选影响面最大的候选（先读 §8 已扫记录，别重复扫）。
+**下一步（直接开工，先测量再决定做不做）**：
+1. **结构问题测量：模块私有通道借道共享 cfg**。CC-285～292 的 4 类缺陷根源相同：角色模块把「只有自己读的中间量」写在共享的 `CharacterOperationConfig` 上（`record.xxx = …` / `(cfg as any).xxx`），靠调用顺序和手写 prev 扣减维持正确。现在有锁兜底，但结构本身没变。
+   - 测量：用 AST（参考 `/home/kaua/calc-arch/k229/scan303.cjs` / `acc305.cjs`）列出每个 agents 模块写入的 cfg 键，按读者分三类：(a) 只在本模块读（私有通道）；(b) core / resourceCalc / specs cfgField 读（跨层接口）；(c) 两者都有。统计各类键数和模块数，写进 `docs/mcp-r6-refactor-list.md` §8。
+   - 决策判据（唯一不变的判据：更通用 / 更简单）：如果 (a) 占多数且集中，可以设计「模块私有状态袋」（如 `cfg.moduleState[moduleId]`，由引擎在每轮克隆时统一清空 / 保留），把私有通道从共享类型里拿出来。这样 prev 扣减、陈旧值都由引擎统一处理，而不是每个模块手写。**先写设计稿**（`docs/mcp-module-state.md`：收益、迁移面、对 outerFeedbackSignature / snapshot 恢复的影响、回退点），不直接动代码；如果 (a) 很少或很分散，写「不做」加理由。
+   - 注意：(b) 类键是正当接口，不要动；「只为降键数」的迁移不做。
+2. 之后回到 `docs/mcp-r6-refactor-list.md` §8，自选影响面最大的候选。
 
 **已知坑**：
-- **主工作区里有另一个会话在并行改动**（第 301～305 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
-- **钩子调用次数**：buildCharConfig 每个 base 调用一次；applyTeamConfig 每轮每相位对新克隆调用一次；其余钩子（buildExecutions / patchExecutions / materializePhaseState / buildAnomalyEvents / onFinalAssemble …）可能在同一份 cfg 上调用多次（内层迭代、underfillProbe、装配）。往 cfg 累加必须扣 prev。
-- 探针数字会带 ANSI 颜色，先用 sed 去掉再 grep；`TIME_GOLDEN_FILTER=<agentId>` 可以只跑单个角色（3 秒）；探针前后 cp 备份与恢复，最后 `grep -c __probe` 为 0。
+- **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
+- **钩子调用次数**：buildCharConfig 每个 base 调用一次；applyTeamConfig 每轮每相位对新克隆调用一次；其余钩子可能在同一份 cfg 上调用多次。往 cfg 累加必须扣 prev；有条件写入要在所有路径上覆盖（hookReplay 锁会拦）。
+- 包住模块钩子的测试写法：`getRegisteredAgentMechanics()` 拿模块对象，直接替换属性，afterAll 恢复（引擎每次按 `getAgentMechanic(id)?.hook` 取，替换立即生效）。
+- 探针数字会带 ANSI 颜色，先用 sed 去掉再 grep；`TIME_GOLDEN_FILTER=<agentId>` 只跑单个角色；探针前后 cp 备份与恢复，最后 `grep -c __probe` 为 0。
 - 新增模块 cfg 写入必须有读者（cfgWriteOnlyKeys 锁）；verify 跑的时候不要往被验证的目录写文件；杀进程只 kill 具体 pid；上传一律用 `bash /home/user/mcp-tools/up.sh …`；GitHub 偶尔不通，push 失败记进交接。
 
 **未决项**（依赖游戏事实或审美，不开卡）：lumiflux 属性标签颜色（§24.120）；1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。

@@ -462,6 +462,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-289 | done | 1f8ed509 | 朱鸢 C6 余温回能从 buildResourceResult（晚于能量账，死写入）移到 buildExecutions 幂等写入；**数值卡**：1241 C6 强特 12→19、伤害 +4.4%，golden 更新；「提前 return 残留」和「晚写」两类普查结项（§24.127） |
 | CC-290 | done | 0e40804e | 晚写常驻锁 lateCfgWrite.test（包住全部 buildResourceResult 前后比较 cfg；允许 orphieBladeHits；有牙）；anby 能量写入确认有效（§24.128） |
 | CC-291 | done | ecc5a838 | 重复调用钩子里的非幂等累加：格莉丝 C4 回能（initialEnergyGift 随迭代涨到 853.9）、奥菲丝 C2 喧响（2 倍）改成扣 prev 的幂等写法；**数值卡**：1181 C4–C6 伤害 −6.6～−8.4%；AST 源码锁 + 行为锁（§24.129） |
+| CC-292 | done | 5801e112 | hookReplay.test：全部重复调用钩子的「重放一致」与「无陈旧值」行为锁（timeGolden 场景；grace/orphie/nangong 旧版会红）；当前 0 处；cfg 写入纪律线结项（§24.130） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |
