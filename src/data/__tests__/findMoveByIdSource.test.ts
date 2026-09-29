@@ -11,7 +11,8 @@ import { findMoveById } from '../moveTableQueries'
 
 const SRC = resolve(__dirname, '../..')
 const OWNER = 'data/moveTableQueries.ts'
-const DEF = /^\s*(?:export\s+)?(?:function\s+(?:findMove|findMoveById)\s*[<(]|const\s+(?:findMove|findMoveById)\s*=)/
+// CC-253：findMoveByEnglishName 同样只许 data 一份
+const DEF = /^\s*(?:export\s+)?(?:function\s+(?:findMove|findMoveById|findMoveByEnglishName)\s*[<(]|const\s+(?:findMove|findMoveById|findMoveByEnglishName)\s*=)/
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

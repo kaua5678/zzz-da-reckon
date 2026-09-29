@@ -12,7 +12,7 @@ import type {
   ReadonlyTeam,
   ReleaseModifierInput,
 } from '../types'
-import type { Agent, AgentSkills, SkillMove, PanelValues } from '@/types/catalog'
+import type { Agent, PanelValues } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
@@ -29,18 +29,9 @@ import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 import { simulateCounterStateMachine } from '@/specs/stateMachine'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, findMoveByEnglishName } from '@/data/moveTableQueries'
 
 const VELINA_AGENT_ID = '1561'
-
-function findMoveByEnglishName(skills: AgentSkills | undefined, englishName: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const move = cat.moves.find(m => m.name?.en === englishName || m.name?.zhCN === englishName)
-    if (move) return move
-  }
-  return null
-}
 
 function isAdditionalAbilityActive(team: ReadonlyTeam, slot: number, agent: Agent): boolean {
   return team.some(member => {

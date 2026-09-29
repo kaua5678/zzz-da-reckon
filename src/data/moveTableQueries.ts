@@ -96,6 +96,19 @@ export function findMoveById<M extends { id: string } = SkillMove>(
 }
 
 /**
+ * 按招式英文名（或中文名）取招式（分类顺序中的第一个）——**单一来源**（CC-253：此前 resourceCalc/skillRows 与
+ * mechanics/agents/velina 各一份逐字相同的实现，velina 因不能值导入 composables 而抄写）。
+ */
+export function findMoveByEnglishName(skills: AgentSkills | undefined, englishName: string): SkillMove | null {
+  if (!skills) return null
+  for (const cat of skills.categories) {
+    const move = cat.moves.find(m => m.name?.en === englishName || m.name?.zhCN === englishName)
+    if (move) return move
+  }
+  return null
+}
+
+/**
  * 平A「第 3 段」挑选（`#N` 段里取 index 2，不足取末段）——**单一事实源**。
  *
  * 引擎默认基准（`getBasicComboMoves` 第 4 步）与需要**多套基准**的角色模块（如克拉蕾 1611

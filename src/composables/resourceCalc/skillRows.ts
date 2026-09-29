@@ -5,7 +5,7 @@
  *   ① 行值提取 `getRowValue` + 倍率融合 `fusedRowValue`（`data/moveFusions.ts` 单一事实源）
  *      —— ⚠ 2026-09-19 round 37 起**定义已下沉 `data/moveTableQueries.ts`**（连同 `findMoveById` /
  *      `pickThirdNamedBasicSegment`，共 4 个纯查询），本文件只留 import + export 两行壳，见下。
- *   ② 招式查找 `findMoveById`（壳）/ `findMoveByEnglishName` + 平A基准段挑选
+ *   ② 招式查找 `findMoveById`（壳）/ `findMoveByEnglishName`（壳，CC-253）+ 平A基准段挑选
  *      `pickThirdNamedBasicSegment`（壳）/ `getBasicComboMoves` / `averageBasicRows`
  *   ③ 行分类与派生量 `isHealingRow` / `getHealingAmount` / `getSpecialResourceRecovery`
  *   ④（已删，CC-224）元素 → 面板键映射表：现为 `@/utils/elementStatKeys`
@@ -29,13 +29,13 @@ import type { useCatalogStore } from '@/stores/catalog'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { SkillExecution } from '@/types/resource'
 
-// ---- 4 个纯查询的定义在 `data/moveTableQueries.ts`（2026-09-19 round 37 下沉），这里是壳 ----
+// ---- 5 个纯查询的定义在 `data/moveTableQueries.ts`（2026-09-19 round 37 下沉 4 个；CC-253 加 findMoveByEnglishName），这里是壳 ----
 // ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**，而下方
 //   `getBasicComboMoves`（调 `pickThirdNamedBasicSegment`）/ `averageBasicRows`（调 `getRowValue`）
 //   需要本地绑定（与 `./helpers` 壳同一教训：刀 A 实测 `ReferenceError` / `vue-tsc` TS2304）。
 // ⚠ 改这 4 个函数请去 `data/moveTableQueries.ts`，不要在本文件重建同形函数。
-import { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment } from '@/data/moveTableQueries'
-export { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment }
+import { getRowValue, fusedRowValue, findMoveById, findMoveByEnglishName, pickThirdNamedBasicSegment } from '@/data/moveTableQueries'
+export { getRowValue, fusedRowValue, findMoveById, findMoveByEnglishName, pickThirdNamedBasicSegment }
 
 // ---- 元素 → 面板字段名：CC-224 起单一来源 `@/utils/elementStatKeys`（原 3 张表与本壳已删，不要在此重建） ----
 
@@ -75,15 +75,6 @@ export function getSpecialResourceRecovery(move: SkillMove): number {
     total += getRowValue(move, row.id) // CC-240
   }
   return total
-}
-
-export function findMoveByEnglishName(skills: AgentSkills | undefined, englishName: string): SkillMove | null {
-  if (!skills) return null
-  for (const cat of skills.categories) {
-    const move = cat.moves.find(m => m.name?.en === englishName || m.name?.zhCN === englishName)
-    if (move) return move
-  }
-  return null
 }
 
 /**
