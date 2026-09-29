@@ -71,18 +71,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 289 轮（lane lead-arena-0925c）：CC-274（89c988a2）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.113：源码 id 字面量 0 悬空，加全量锁。
-- 前几轮：288 CC-273；287 CC-272；286 CC-271；285 CC-270；284 CC-269。
+**第 290 轮（lane lead-arena-0925c）：CC-275（ae4e2af5）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.114：teammate-buffs 拥有者 slug 让来源面板失联，已在 catalog 加载处归一；golden 28 条按修缺陷重生成。
+- 前几轮：289 CC-274；288 CC-273；287 CC-272；286 CC-271；285 CC-270。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
-**下一步（直接开工）**：「静默回落」这条线（CC-269 → 274）已收尾，换题。候选按优先级：
-1. **静态数据内部的交叉引用**：teammate-buffs.json 的 buff 组 / 效果 id、character-mechanics.json、boss-presets.json 里引用的角色 / 音擎 / 套装 id 是否都能在 catalog 解析（本轮只查了 7 位招式 id）。写一次性脚本列悬空引用；有则开卡，无则并入 moveIdLiteralsExist.test 或单独加锁。注意 teammate-buffs 的 ownerId 有拼音 slug（`youye` / `remielle` / `nangongyu`，已知坑），按 teammateBuffId 解析。
-2. 若 1 无收获：回到架构面，重读 `docs/ARCHITECTURE-OVERVIEW.md` 的三类清单（R6），找仍标「未做 / 待定」的条目，按「更通用 / 更简单」判据挑一条；没有就在 r6 清单 §8 记一行。
+**下一步（直接开工）**：
+1. **回到架构面**：重读 `docs/ARCHITECTURE-OVERVIEW.md` 的三类清单（R6），找仍标「未做 / 待定」的条目，按「更通用 / 更简单」判据挑一条；没有就在 r6 清单 §8 记一行。
+2. 备选（同类余波）：grep 其余按 `buff.ownerId` / `teammateId` 找拥有者的地方（`core/inCombatBuffs.ts:45` ownerAliases、HP 来源标签等），确认在归一之后没有残留的 slug 专用分支；有则删（更简单）。
 
 **已知坑**：
+- 队友 buff 的 ownerId / teammateId 在 catalog 加载后等于组 id（CC-275）；直接读 json 的脚本仍会看到 slug；
 - 新写的 id 字面量必须存在于 catalog（moveIdLiteralsExist.test 会拦）；合法例外用显式豁免表，不放宽正则；
-- 模块认招式一律用 moveId（CC-273）；卡片分层事实在 versionTimeline + standardMultiplierTable；限定判定只在 limitedGold.ts；store 里音擎 / 套装 id 可能是旧别名（CC-271）；
+- 模块认招式一律用 moveId（CC-273）；限定判定只在 limitedGold.ts；store 里音擎 / 套装 id 可能是旧别名（CC-271）；
 - 新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。

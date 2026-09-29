@@ -3537,3 +3537,22 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **锁**：`src/data/__tests__/moveIdLiteralsExist.test.ts`（3 例：招式 / 音擎 / 角色），每例带「字面量总数下限」防止扫描器失效后空转通过。反例：把 velina.ts 的 1561006 临时改成 1561999，锁报出 `src/mechanics/agents/velina.ts:39 1561999`。
 - **边界**：只认带引号的字面量；派生 id（如 `${exec.moveId}_velina_colored_buildup`）、数字字面量、模板字符串不在范围内。若将来出现合法的「catalog 之外」7 位 id（例如自造招式），在测试里加显式豁免表并写明原因，不要放宽正则。
 - **回退**：revert 89c988a2（只删一个测试文件）。
+
+### 24.114 第 290 轮：静态数据交叉引用 → 队友 buff 拥有者 slug 让来源面板失联（CC-275，ae4e2af5）
+
+- **扫描**（`/home/kaua/calc-arch/k229/m290.py`）：teammate-buffs 29 组的组 id、character-mechanics 的角色键、boss-presets 的 23 个 presetId 全部能在 catalog 解析；catalog 的 teammateBuffId 只有 1171/1261/1411/1511/1581 五个，值都是数字。
+- **悬空**：teammate-buffs.json 里这 5 组共 21 条 buff 的 `ownerId` / `teammateId` 仍是拼音 slug（burnice_white / jane_doe / youye / nangongyu / remielle），没有任何 id 能解析到它们。
+- **缺陷**（探针确认）：来源面板 `sourcePanelsByOwner` 由 `teammateBuffSource.addSourcePanelAliases` 只按 agent.id / teammateBuffId 登记（实测键为 `['1191','1411','1581']`），`core/buff.ts` 的 `cloneEffectWithSourceValue` 按 `[ownerId, teammateId]` 查 ⇒ 查不到 ⇒ 不写 dynamicSourceValue，`getEffectSourceValue` 回落：
+  - derived：回落 `defaultSourceValue`。柚叶「狸之愿」攻击力 = 40% × 3000 ⇒ **恒顶 1200**，与她实际初始攻击力无关；蕾米埃尔额外能力 atk_1/2/3 同理。
+  - formula：回落**接收者自己的面板**。柚叶额外能力（异常掌控 → 异常 / 紊乱伤害、积蓄效率）用的是受益人的异常掌控；简核心被动（精通 → 强击暴击率）同理。
+  - 契约（buff.ts evalFormulaExpression 注释）写明 x = **来源角色面板**，所以这是缺陷，不是口径选择。
+  - 同源的第二处：`panelPhases.applyTeammateBuffRecipientFilters` 的 drops 也按 ownerId 查；目前只有席德有 recipientFilter，不受影响，但同样会被 slug 挡住。CC-199 修门控时只改了那一处消费点。
+- **修法**（更通用，单点）：`stores/catalog.ts` 的 `mergeSpecTeamBuffs` 在加载时把每条 buff 的 ownerId / teammateId 归一为组 id（= 拥有者 agentId，CC-199 口径）。所有按 ownerId 找拥有者的消费者一次修好，core 不动，也不改 json 数据（R5：数据可信，slug 只是身份字段，不是数值）。`remielle.ts` 的 `REMIELLE_TEAMMATE_BUFF_ID='remielle'` 与 1581 的 `excludeTargetAgentIds` 里的 'remielle' 变成无害死别名，不动。
+- **影响**（修缺陷，非改数值；timeGolden 28 条、留白棘轮 1 条，已 `TIME_GOLDEN_UPDATE=1` / `TIME_RATCHET_UPDATE=1` 重生成）：
+  - 柚叶队：伤害有升有降。升（最多 +23.9% auto-1221-1561-1411、+22.2% auto-1181-1561-1411、+19.6% auto-1561-1171-1411）推测主要来自额外能力改读柚叶自己的异常掌控（原先读受益人的；未逐项拆分）；降（auto-1401-1511-1411 −9%）来自狸之愿不再恒顶 1200。
+  - 蕾米埃尔队：统一 −3.8% ~ −4.5%（攻击力转模改读她的真实攻击力，不再用默认 3000 顶满）。
+  - `agent:1411:c0/3/4/5/6` 单人 −30.9%：harness 默认不带推荐配装，柚叶局外攻击力 1074 ⇒ 狸之愿 430（原 1200）。
+  - 时间账：auto-1541-1561-1411、auto-1401-1411-1031 的动作分配有 ±1 次强化特殊技 / 终结技的移动（buff 值变了，优化器选的方案随之变）；棘轮 auto-1181-1561-1411 留白 0.4 → 0.8。
+  - 所有 delta 都只出现在含 1171/1261/1411/1511/1581 的队伍里，与改动范围一致。
+- **锁**：`src/stores/__tests__/teammateBuffOwnerNormalized.test.ts`（2 例）：① 加载后每条 buff 的 ownerId / teammateId 等于组 id；② 原始数据里非组 id 的拥有者只能是这 5 个已知 slug（新增 slug 时需人工确认它确实指向本组角色）。反例：stash catalog.ts 后 ① 变红。
+- **回退**：revert ae4e2af5（catalog.ts 归一段 + 两份 baseline + 锁）。
