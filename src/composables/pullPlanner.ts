@@ -388,6 +388,21 @@ export interface CardValueVcg {
   agentId: string
   /** 禁用重规划的总分差（= 卡在最优策略里的抽取价值；≥0） */
   value: number
+  /**
+   * **未截断**的原始差 `base.totalScore − counter.totalScore`（可为负）。
+   * 精确最优下禁购不可能让最优更好 ⇒ rawGap ≥ 0 恒成立；rawGap < 0 只可能来自
+   * beam 近似（窄搜索下"禁用它反而找到更高分"），是**搜索质量告警**，不是卡的属性。
+   * 与 `value` 分开报：`value` 是展示口径（下界 0），`rawGap` 是自洽性证据。
+   */
+  rawGap: number
+  /** `rawGap < 0` = 本次搜索不自洽（结果不可信，别读成"这张卡价值 0"） */
+  searchInconsistent: boolean
+  /**
+   * 最优策略里**实际为该卡花掉的菲林**（= base 轨迹中该卡各次购买成本之和）。
+   * 这是"每万菲林"的正确分母：从本体升专武只算 10000，不是满配累计 155000，
+   * 也不是按档位硬编码的均价。0 = 没为它花钱（未持有未抽 / 起点已持有本体）。
+   */
+  spentInPlan: number
   /** 禁用重规划后该卡槽位的实际替代差（诊断用） */
   baselineTotal: number
   /** 最优策略里该卡的最终档位（0 = 最优策略本来就没抽它 → 价值 0） */
@@ -395,21 +410,51 @@ export interface CardValueVcg {
 }
 
 /**
+ * 每万菲林兑现（诊断读数，**不用于排序**）：`value / (spentInPlan / 10000)`。
+ *
+ * 两种返回 null 的情形——都表示"这个比值此刻无意义"，而不是"值为 0"：
+ * - 没为该卡花钱（分母 0，比值无定义；含未持有未抽、起点已持有且未升档）；
+ * - 搜索不自洽（`rawGap < 0`：value 是被截断的 0，不是真 0）。
+ * 花了钱但 value 恰为 0（rawGap = 0）⇒ 返回 0：这是有意义的读数（投入了、但没换来分数）。
+ * 分母来自 `spentInPlan`（实际增量支出），不是档位均价——升级路径上后者会算错。
+ */
+export function cardValuePer10kFilm(v: CardValueVcg): number | null {
+  if (v.searchInconsistent) return null
+  if (v.spentInPlan <= 0) return null
+  return v.value / (v.spentInPlan / 10000)
+}
+
+/**
  * 卡片 VCG 价值：V(全卡可购) − V(禁用该卡重规划)。
  * 禁用 = 该卡 initialTier 保留（已持有的不没收，公平比较「起点后的抽取决策」）、
  * 但窗口内不可购（对成型号起点= 持有集排除该卡初始档）。
+ *
+ * 输出三件事分开：`value`（展示，下界 0）、`rawGap`（未截断，负值 = 搜索不自洽）、
+ * `spentInPlan`（该卡在最优策略里实际花掉的菲林，作「每万菲林」分母）。
+ * 三者分开的理由见 `CardValueVcg` 字段注释与 `docs/proposals/pull-value-optimization.md` §3.3。
  */
 export function computeCardValuesVcg(
   opts: PlannerOptions,
   base: PlannerResult,
 ): CardValueVcg[] {
+  // 最优轨迹里每张卡实际花掉的菲林（增量成本口径：升档只算该档成本）
+  const spentByCard = new Map<string, number>()
+  for (const step of base.steps) {
+    for (const p of step.purchases) {
+      spentByCard.set(p.agentId, (spentByCard.get(p.agentId) ?? 0) + p.cost)
+    }
+  }
   const out: CardValueVcg[] = []
   for (const card of opts.cards) {
     const wasHeld = (card.initialTier ?? 0) > 0
     // 最优策略没抽它且起点也没持有 → 价值 0（禁用不改变任何决策）
     const tierInPlan: PurchaseTier = (base.holdings[card.agentId] ?? 0) as PurchaseTier
+    const spentInPlan = spentByCard.get(card.agentId) ?? 0
     if (!wasHeld && tierInPlan === 0) {
-      out.push({ agentId: card.agentId, value: 0, baselineTotal: base.totalScore, tierInPlan: 0 as PurchaseTier })
+      out.push({
+        agentId: card.agentId, value: 0, rawGap: 0, searchInconsistent: false,
+        spentInPlan, baselineTotal: base.totalScore, tierInPlan: 0 as PurchaseTier,
+      })
       continue
     }
     const restricted: PlannerOptions = {
@@ -421,13 +466,17 @@ export function computeCardValuesVcg(
       ),
     }
     const counter = planPullStrategy(restricted)
+    const rawGap = base.totalScore - counter.totalScore
     out.push({
       agentId: card.agentId,
-      value: Math.max(0, base.totalScore - counter.totalScore),
+      value: Math.max(0, rawGap),
+      rawGap,
+      searchInconsistent: rawGap < 0,
+      spentInPlan,
       baselineTotal: counter.totalScore,
       tierInPlan,
     })
-    opts.onProgress?.({ pct: 0, text: `VCG 归因 ${card.agentId}：−${Math.round(base.totalScore - counter.totalScore)}` })
+    opts.onProgress?.({ pct: 0, text: `VCG 归因 ${card.agentId}：−${Math.round(rawGap)}` })
   }
   return out.sort((a, b) => b.value - a.value)
 }

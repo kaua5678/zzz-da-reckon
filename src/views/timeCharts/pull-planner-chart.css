@@ -31,6 +31,15 @@
 .pp-values {
   margin-top: 10px;
 }
+/* 搜索不自洽行（禁购该卡后重规划反而更高分 = beam 近似告警，不是「这张卡价值 0」）：
+   整行降调 + 警示符号，与「真·完全下位（价值 0）」在视觉上区分开。 */
+.pp-inconsistent td {
+  opacity: 0.72;
+}
+.pp-warn {
+  color: var(--c-warning);
+  font-weight: 700;
+}
 /* `.pv-sel-row`（选中行底色）已移入 `styles/chart-blocks.css`（2026-09-15 用户裁决「都修」）：
    它有两个真消费者（本块 + Chart 5 抽卡价值），定义在本文件只会带**本组件**的 scope id
    ⇒ Chart 5 永远匹配不上（CDP 实测：行有 class 但 backgroundColor 透明）。

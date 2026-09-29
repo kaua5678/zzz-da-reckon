@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   TIER_COSTS,
+  cardValuePer10kFilm,
   computeCardValuesVcg,
   nextPurchase,
   pickPeriodAssignment,
@@ -228,5 +229,97 @@ describe('pullPlanner · VCG 反事实价值', () => {
     // A5 未持有未抽 → 价值 0
     expect(byId.get('A5')!.value).toBe(0)
     for (const v of values) expect(v.value).toBeGreaterThanOrEqual(0)
+  })
+})
+
+/**
+ * 零价值三态与成本分母（口径见 docs/proposals/pull-value-optimization.md §2.2b / §3.3）：
+ * - 真·完全下位 → value 0 且 rawGap 恰为 0、不标不自洽（**有效结论**：建议不抽）；
+ * - beam 近似导致禁购反而更高分 → rawGap < 0 且标 searchInconsistent（**搜索告警**，不是卡的属性）。
+ * 两者都显示成 0，必须可区分；每万菲林的分母 = 实际增量投入，不是档位均价。
+ */
+describe('pullPlanner · 零价值三态与每万菲林分母', () => {
+  /** 两期陷阱 oracle：A1 在 P0 值 10000，A2 在 P1 值 50000；预算只够买一张 */
+  const trapOptions = (beamWidth: number) => opts({
+    cards: [card(1, 0), card(2, 0)],
+    periods: [period(0, [80000], 'P0'), period(14, [80000], 'P1')],
+    initialBank: 15000,
+    filmPerVersion: 0,
+    beamWidth,
+    oracle: {
+      candidates: (b, h) => {
+        const out = [{ team: ['f0', 'f1', 'f2'] as [string, string, string], score: 0 }]
+        if (h.A1) out.push({ team: ['A1', 'f1', 'f2'] as [string, string, string], score: b.bossId.startsWith('P0') ? 10000 : 0 })
+        if (h.A2) out.push({ team: ['A2', 'f1', 'f2'] as [string, string, string], score: b.bossId.startsWith('P0') ? 0 : 50000 })
+        return out.sort((x, y) => y.score - x.score)
+      },
+    },
+  })
+
+  it('★ 搜索不自洽：窄 beam 下禁用反而更高分 → rawGap 为负并标 searchInconsistent，不冒充完全下位', () => {
+    const narrow = planPullStrategy(trapOptions(1))
+    const a = computeCardValuesVcg(trapOptions(1), narrow).find(v => v.agentId === 'A1')!
+    expect(narrow.totalScore).toBe(10000)      // 窄 beam 只看到"先买 A1"的前缀
+    expect(a.value).toBe(0)                    // 展示口径：下界 0
+    expect(a.rawGap).toBe(-40000)              // 证据：未截断，禁购 A1 反而 50000
+    expect(a.searchInconsistent).toBe(true)
+    expect(cardValuePer10kFilm(a)).toBeNull()  // 不自洽 ⇒ 比值无意义（不是"0 分/万"）
+    // 放宽 beam 后同一问题自洽 → 证明负差是搜索近似，不是这张卡的属性
+    expect(planPullStrategy(trapOptions(8)).totalScore).toBe(50000)
+  })
+
+  it('★ 完全下位 = 真 0（且不标不自洽）：已持有但加入后最优收益不变', () => {
+    const o = opts({
+      cards: [card(1, 0, 1)], // 起点已持有本体；A1 永不入队
+      periods: [period(0, [80000], 'P0'), period(14, [80000], 'P1')],
+      initialBank: 0,
+      filmPerVersion: 0,
+      oracle: { candidates: () => [{ team: ['f0', 'f1', 'f2'] as [string, string, string], score: 100 }] },
+    })
+    const base = planPullStrategy(o)
+    const v = computeCardValuesVcg(o, base)[0]
+    expect(base.totalScore).toBe(200)          // 两期 × 100
+    expect(v.value).toBe(0)
+    expect(v.rawGap).toBe(0)                   // 精确 0：禁购不改变任何决策
+    expect(v.searchInconsistent).toBe(false)   // ← 与上一条的本质区别
+    expect(v.spentInPlan).toBe(0)              // 没为它花钱
+    expect(cardValuePer10kFilm(v)).toBeNull()  // 分母 0 ⇒ 比值无定义
+  })
+
+  it('★ 每万菲林分母 = 实际增量投入（升档只算该档），不是满配累计或档位均价', () => {
+    const o = opts({
+      cards: [card(1, 0, 1)], // 起点已持有本体 → 升专武只花 10000
+      periods: [period(0, [80000], 'P0')],
+      initialBank: 10000,
+      filmPerVersion: 0,
+      oracle: {
+        candidates: (_b, h) => [{
+          team: ['A1', 'f1', 'f2'] as [string, string, string],
+          score: (h.A1 ?? 0) >= 2 ? 6000 : 0,
+        }],
+      },
+    })
+    const base = planPullStrategy(o)
+    const v = computeCardValuesVcg(o, base)[0]
+    expect(base.totalSpent).toBe(WEAPON_GOLD_FILM) // 10000（不是满配 155000）
+    expect(v.spentInPlan).toBe(10000)
+    expect(v.value).toBe(6000)
+    expect(v.searchInconsistent).toBe(false)
+    // 6000/(10000/10000) = 6000；旧的档位均价口径会算成 6000/2.5 = 2400（低估 60%）
+    expect(cardValuePer10kFilm(v)).toBeCloseTo(6000, 6)
+  })
+
+  it('未持有且未抽的卡：价值 0、未花钱、比值无定义（与"完全下位"同样显示 0 但成因不同）', () => {
+    const o = trapOptions(8)
+    const base = planPullStrategy(o)
+    const values = computeCardValuesVcg(o, base)
+    const notBought = values.find(v => v.agentId === 'A1')!
+    // 宽 beam 下最优策略买 A2（50000），A1 从未被抽
+    expect(notBought.tierInPlan).toBe(0)
+    expect(notBought.value).toBe(0)
+    expect(notBought.rawGap).toBe(0)
+    expect(notBought.searchInconsistent).toBe(false)
+    expect(notBought.spentInPlan).toBe(0)
+    expect(cardValuePer10kFilm(notBought)).toBeNull()
   })
 })

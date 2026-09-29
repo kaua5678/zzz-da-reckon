@@ -39,8 +39,8 @@
       </label>
     </div>
     <div class="ctl-field ctl-hint">
-      <span class="ctl-label">口径：分数 = 60000×伤害/当期Boss血量 + 5000 操作分（全满）；单房上限 65000。
-        限定卡首 UP 窗口唯一可购（复刻不建模）；购买阶梯 = 本体 15000 → 专武 10000 → 满配。
+      <span class="ctl-label">口径：分数 = 分段线性伤害分（0~60000，非线性——前段血值分多）；操作分是附加分、与强度无关，已剔除。
+        限定卡首 UP 窗口唯一可购（复刻不建模）；购买阶梯 = 本体 15000 → 专武 10000 → 满配增量 130000。
         贬值内生（每期 Boss 血量/抗性数据驱动，无折现参数）。
         ⚠ 性能：默认参数（近起点 + beam 2 + 4 期）≈ 十秒级；调远起点/加大 beam/放开期数上限会进入分钟级——
         规划是同步计算，期间页面无响应属正常，请勿连点。想要全角色兑现曲线请用「角色兑现」页（基底队方案，秒级）。</span>
@@ -142,16 +142,27 @@
             <th>VCG 价值（分）</th>
             <th>禁用后总分</th>
             <th>规划终态档位</th>
+            <th>该卡实际投入</th>
             <th>折算（分/万菲林）</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="v in ppTopValues" :key="v.agentId" :class="{ 'pv-sel-row': v.value > 0 && v.tierInPlan > 0 }">
+          <tr
+            v-for="v in ppTopValues"
+            :key="v.agentId"
+            :class="{ 'pv-sel-row': v.value > 0 && v.tierInPlan > 0, 'pp-inconsistent': v.searchInconsistent }"
+            :title="v.searchInconsistent
+              ? `⚠ 搜索不自洽：禁购该卡后重规划反而高 ${fmt(-v.rawGap, 0)} 分（beam 宽度 ${ppBeamWidth} 偏窄）。此行的 0 是搜索上限，不代表该卡完全下位——请加大 beam 宽度重算。`
+              : (v.value === 0 ? '价值 0：在起点持有集下未能提高最优可行收益（完全下位，建议不抽）' : '')"
+          >
             <td><span class="dot" :style="{ background: colorOf(v.agentId) }"></span>{{ agentName(v.agentId) }}</td>
-            <td :class="{ 'kill-line': v.value > 0 }">{{ fmt(v.value, 0) }}</td>
+            <td :class="{ 'kill-line': v.value > 0 }">
+              {{ fmt(v.value, 0) }}<span v-if="v.searchInconsistent" class="pp-warn"> ⚠</span>
+            </td>
             <td>{{ fmt(v.baselineTotal, 0) }}</td>
             <td>{{ ppTierLabel(v.tierInPlan) }}</td>
-            <td>{{ v.value > 0 && v.tierInPlan > 0 ? fmt(v.value / (v.tierInPlan === 3 ? 17 : v.tierInPlan === 2 ? 2.5 : 1.5), 0) : '—' }}</td>
+            <td>{{ v.spentInPlan > 0 ? compact(v.spentInPlan) : '—' }}</td>
+            <td>{{ ppPer10k(v) }}</td>
           </tr>
         </tbody>
       </table>
@@ -190,6 +201,7 @@ import {
   PP_LANE_DEFS,
   ppTierLabelOf,
 } from '@/composables/pullPlannerChart'
+import { cardValuePer10kFilm, type CardValueVcg } from '@/composables/pullPlanner'
 import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
 import { runPullPlanner, type PlannerRunResult } from '@/composables/pullPlannerEngine'
 import { VERSION_NODES } from '@/data/versionTimeline'
@@ -293,6 +305,11 @@ const ppScorePts = computed(() => ppc.value.scorePts)
 const ppScoreLine = computed(() => ppc.value.scoreLine)
 const ppVisibleTeamLanes = computed(() => ppc.value.visibleTeamLanes)
 const ppTierLabel = ppTierLabelOf
+/** 每万菲林 = value / (实际增量投入/10000)；分母来自规划轨迹而非档位均价（见 pullPlanner#cardValuePer10kFilm） */
+function ppPer10k(v: CardValueVcg): string {
+  const per = cardValuePer10kFilm(v)
+  return per == null ? '—' : fmt(per, 0)
+}
 const ppTopValues = computed(() => (ppResult.value?.values ?? []).slice(0, 20))
 </script>
 
