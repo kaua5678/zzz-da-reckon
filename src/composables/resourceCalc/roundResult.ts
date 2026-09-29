@@ -63,4 +63,10 @@ export interface CalcRoundResult {
      * 真假值兼任，伤害池因此依赖一份纯展示计算；且与引擎是否注入轴块不同源。
      */
     axisActive: boolean
+    /**
+     * CC-303：Boss 弹刀反推（保底4失衡）本轮是否生效 + 击破位槽位（无 stun 特性槽位时回落 0 = 主C 承担）。
+     * 交互栏 `parrySplitResult` 的门控与槽位唯一来源——原先 useResourceCalc 逐字复制了一份
+     * 「parryTotal 三项 > 0 且保底4失衡勾选且（有击破位或队伍非空）」与「首个 stun 特性槽位」规则。
+     */
+    parrySplitGate: { active: boolean; breakerSlot: number }
   }

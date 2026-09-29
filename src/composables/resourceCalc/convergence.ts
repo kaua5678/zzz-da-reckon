@@ -1131,6 +1131,7 @@ export function createRunCalcRound(deps: {
       threadsApplied: threads,
       axisStack: axisExecutedStack,
       axisActive, // CC-302：forceNoAxis 已含在局部 axisActive 内
+      parrySplitGate: { active: parrySplitActive, breakerSlot: effectiveBreakerSlot }, // CC-303
       threadsNext: {
         goodReview,
         energyBySlot,

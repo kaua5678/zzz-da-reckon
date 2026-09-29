@@ -460,20 +460,17 @@ export function useResourceCalc() {
 
   /** Boss 预设弹刀反推（保底4失衡，最终收敛值）：交互栏显示「击破位弹刀 +N / 主C 剩余」用 */
   const parrySplitResult = computed<{ breakerSlot: number; topUp: number; breakerParry: number; mainDpsParry: number; breakerNoFollowUp: number; mainDpsNoFollowUp: number; breakerDecibelOnly: number; parryTotal: number; parryNoFollowUpTotal: number } | null>(() => {
-    // 懒守卫：未应用带 parryTotal/parryNoFollowUpTotal/parryDecibelOnlyTotal 的 Boss、未勾选「保底4失衡」或队伍无击破位时不触发全量计算
-    const parryTotal = configStore.appliedBoss?.parryTotal ?? 0
-    const parryNoFollowUpTotal = configStore.appliedBoss?.parryNoFollowUpTotal ?? 0
-    const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
-    if (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal <= 0) return null
-    if (configStore.getMechanicSetting('guarantee.stun', 0) === 0) return null
-    const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.agentsMap.get(c.agentId)?.specialty === 'stun')
-    // 无击破位队伍：弹刀由主C（槽位 0）承担（noBreakerFallback，见 runCalcRound 同款回落）
-    if (breakerSlot < 0 && configStore.team.length === 0) return null
+    // CC-303：门控（弹刀预算 / 保底4失衡勾选 / 有击破位或队伍非空）与击破位槽位（首个 stun 特性，无则 0）都读引擎
+    // `parrySplitGate`，不再在此复制 convergence 的规则。原「懒守卫」省不了计算：同页 decibelGuaranteeResult 无条件读 calcOutput。
+    const gate = calcOutput.value?.parrySplitGate
+    if (!gate?.active) return null
     // CC-297：读本轮已装入的分配（与资源卡 / 本轮 stunCount 同源），不读下一轮反推量。null = 首轮缺省对半分，无反推可显示。
     const split = calcOutput.value?.threadsApplied.parrySplit
     if (!split) return null
-    const effectiveBreakerSlot = breakerSlot >= 0 ? breakerSlot : 0
-    return { breakerSlot: effectiveBreakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, mainDpsNoFollowUp: split.mainDpsNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
+    const parryTotal = configStore.appliedBoss?.parryTotal ?? 0
+    const parryNoFollowUpTotal = configStore.appliedBoss?.parryNoFollowUpTotal ?? 0
+    const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
+    return { breakerSlot: gate.breakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, mainDpsNoFollowUp: split.mainDpsNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
   })
 
   /** 保底4失衡未达成诊断（CC-156）：未勾选 / 无池结果 / 已达成 → null；判定见 core/parrySplit.ts#guaranteeStunShortfall */
