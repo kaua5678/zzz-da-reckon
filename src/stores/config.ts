@@ -607,6 +607,10 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
     {
       const tpl = defaultCharacter(slot, agentId, '')
       for (const f of Object.keys(ACTION_COUNT_BOUNDS) as ActionCountField[]) (char as Record<ActionCountField, number | undefined>)[f] = tpl[f]
+      // CC-268：潜能同属「随角色」字段且没有任何分析器 / applyTeamPreset 显式设置 ⇒ 上一个角色的潜能会漏给新角色
+      // （散点实测：用户槽潜能 1 时 40/104 预设伤害变化，最多 −20.7%，艾莲 / 雅 / 零号安比模块与 spec 公式 p 变量读它）。
+      // 命座 / 精炼不在此重置：所有分析器与 applyTeamPreset 都显式设置；主页换人保留用户所选档位是有意的 UX。
+      char.potentialLevel = tpl.potentialLevel
     }
 
     const agent = catalogStore.getAgent(agentId)

@@ -35,6 +35,14 @@ describe('CC-267 换人重置全部动作次数', () => {
     expect(config.team.map(c => FIELDS.map(f => c[f]))).toEqual(clean)
   })
 
+  it('CC-268：用户槽残留潜能不影响装配结果（换人回到模板潜能 6）', async () => {
+    const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    const preset = teamPresets.find(p => p.team.includes('1191'))! // 艾莲：模块读潜能
+    for (const c of config.team) c.potentialLevel = 1
+    applyTeamToStore(config, preset)
+    expect(config.team.map(c => c.potentialLevel)).toEqual([6, 6, 6])
+  })
+
   it('CC-264：setAgent 预填快支 / 连携基准（ASSIST_ACTION_BASELINE）', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     for (const c of config.team) { c.quickAssistCount = 0; c.chainCountPerStun = 0 }
