@@ -4,6 +4,7 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { interactionSurvivalBySlot, roundInteractionCount } from '@/composables/liveInteractions'
 import {
   applyAxisBinding,
   applyGoldSteps,
@@ -14,10 +15,6 @@ import {
   computeDifficulty,
   defaultInteractionExponent,
   BOSS_ATTACK_INTERACTIONS,
-  interactionSurvivalBySlot,
-  roundInteractionCount,
-  shrinkInteractionsByTruncation,
-  teamInteractionSurvival,
   computeOptimalGoldAllocations,
   goldAlternativesOf,
   computeTeamComparePoints,
@@ -441,26 +438,16 @@ describe('teamCompare 金数/难度口径', () => {
     expect(itemWins.difficulty).toBeCloseTo(22.1, 2)
   })
 
-  it('截断存活率：交互按 kept/requested 缩（无截断 = 零变化），散点横轴与曲线同一口径', () => {
-    const items = [{ type: 'parry', count: 10 }]
-    // 无截断 / 未传 rr ⇒ 因子 1，逐位不变（只有带截断的队会动）
-    expect(teamInteractionSurvival(null)).toBe(1)
-    expect(shrinkInteractionsByTruncation(items, null)).toBe(items)
-    // 有截断槽（kept/requested = 0.6）⇒ 10 次弹刀缩成 6 次
+  it('截断存活率：按槽 kept/requested（散点与曲线同一函数 liveInteractions，CC-259），缩后 2 位小数', () => {
     const rr = { convergence: { truncationBySlot: [{ slot: 0, requested: 100, kept: 60, cutSeconds: 40 }] } } as never
-    expect(teamInteractionSurvival(rr)).toBeCloseTo(0.6, 6)
-    const shrunk = shrinkInteractionsByTruncation(items, rr)
-    expect(shrunk[0]!.count).toBeCloseTo(6, 6)
-    expect(shrunk[0]!.type).toBe('parry')
     // 必须 2 位小数（实机点通实测：不取整会在明细里打 15 位浮点、撑破散点明细表）
     expect(roundInteractionCount(7.244532236386592)).toBe(7.24)
-    const odd = shrinkInteractionsByTruncation([{ type: 'parry', count: 11 }], rr)
-    expect(odd[0]!.count).toBe(6.6)
-    expect(String(odd[0]!.count)).toHaveLength(3)
-    // 按槽粒度（曲线用）：槽 0 = 0.6、槽 1 无截断 = 缺省 1
+    expect(roundInteractionCount(11 * 0.6)).toBe(6.6)
+    // 按槽粒度：槽 0 = 0.6、槽 1 无截断 = 缺省（调用方按 1）
     const bySlot = interactionSurvivalBySlot(rr)
     expect(bySlot.get(0)).toBeCloseTo(0.6, 6)
     expect(bySlot.get(1)).toBeUndefined()
+    expect(interactionSurvivalBySlot(null).size).toBe(0)
   })
 
   it('interactions：tauntCancel 映射到 setTauntCancelCount（般岳后摇取消），weight 0 不计难度', async () => {
@@ -522,14 +509,15 @@ describe('teamCompare 金数/难度口径', () => {
     const def = computeTeamComparePoints(calc, opts)
     const over = computeTeamComparePoints(calc, { ...opts, difficultyWeights: { interaction: { parry: 2.5 } } })
     /**
-     * 本用例只声明了**弹刀**（`parry`）——弹刀**在** `BOSS_ATTACK_INTERACTIONS` 名单里
-     * （招架支援 = 挡 boss 攻击 ⇒ 需怪出手 ⇒ 吃非失衡占比修正，2026-09-20 二次修正）。
-     * 实测 8.78 = 8 ÷ 0.911（该队非失衡占比 91.1%）。
+     * CC-259：散点 x 读**引擎实打次数**（与难度曲线同一函数 liveInteractions），不再读预设声明。
+     * 本队 1561 / 1261 / 1411：预设声明槽0 弹刀 8；setAgent 按职业基准预填 1561 闪反 10、1261 弹刀 6 + 闪反 10、
+     * 1411（支援）0 ⇒ 弹刀 14、闪避 20。弹刀 / 闪避都吃非失衡占比修正（÷0.911）：
+     * 弹刀 14 ÷ 0.911 = 15.37，闪避 24 ÷ 0.911 = 26.34，合计 41.71。
      */
-    expect(def[0].difficulty, `默认权重实测 ${def[0].difficulty}`).toBeCloseTo(8.78, 1)
-    expect(def[0].difficultyDetail, '弹刀应带修正项').toContain('弹刀修正→8.78')
-    // 权重透传：覆盖弹刀权重 2.5 ⇒ 20 ÷ 0.911 = 21.95（证明弹层填的值真的透传到难度轴）
-    expect(over[0].difficulty, '弹刀权重 2.5 ⇒ 21.95').toBeCloseTo(21.95, 1)
+    expect(def[0].difficulty, `默认权重实测 ${def[0].difficulty}`).toBeCloseTo(41.71, 1)
+    expect(def[0].difficultyDetail, '弹刀 = 声明 8 + 队友预填 6').toContain('弹刀14×1 + 弹刀修正→15.37')
+    // 权重透传：覆盖弹刀权重 2.5 ⇒ 弹刀部分 15.37 → 38.41（×2.5），闪避不变 ⇒ 64.76（证明弹层填的值真的透传到难度轴）
+    expect(over[0].difficulty, '弹刀权重 2.5 ⇒ 64.76').toBeCloseTo(41.71 + 1.5 * 15.37, 1)
   })
 })
 
@@ -793,16 +781,15 @@ describe('teamCompare 批量计算', () => {
       /**
        * 难度与金数无关（本用例的判据 = 各金档同值）。
        *
-       * 2026-09-20 逐类型公式：本队 `TEST_PRESET.interactions` 的四项里
-       * **弹刀 / 闪避 / 般岳金身**都需怪出手 ⇒ 吃修正，**快支不吃**（救场替换）。
-       * 逐项对账（除数 0.911 = 该队非失衡占比）：
-       *  · 弹刀 8 ÷ 0.911 = 8.78
-       *  · 闪避 4.8 ÷ 0.911 = 5.27
-       *  · 快支 1.8（原样）
-       *  · 金身 7.5 ÷ 0.911 = 8.23
-       *  合计 ≈ 24.08
+       * 2026-09-20 逐类型公式：**弹刀 / 闪避 / 般岳金身**都需怪出手 ⇒ 吃修正，**快支不吃**（救场替换）。
+       * CC-259：散点 x 读引擎实打次数（liveInteractions）。逐项对账（除数 0.911 = 该队非失衡占比）：
+       *  · 弹刀 14（声明槽0 8 + 1261 预填 6）÷ 0.911 = 15.37
+       *  · 闪避 14（声明槽0 4 + 1261 预填 10）×1.2 ÷ 0.911 = 18.44
+       *  · 快支 3 ×0.6 = 1.8（原样）
+       *  · 金身 5 ×1.5 ÷ 0.911 = 8.23（夹具把般岳类型挂在非般岳槽上 ⇒ 不写引擎，只从预设补进难度）
+       *  合计 ≈ 43.83
        */
-      expect(p.difficulty, `实测 ${p.difficulty}`).toBeCloseTo(24.08, 1)
+      expect(p.difficulty, `实测 ${p.difficulty}`).toBeCloseTo(43.83, 1)
       // 需怪出手的三项都带修正项；快支不带（逐类型化的直接判据）
       expect(p.difficultyDetail, '般岳金身应带修正项').toContain('般岳金身弹刀修正→')
       expect(p.difficultyDetail, '弹刀应带修正项').toContain('弹刀修正→')

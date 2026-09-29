@@ -39,5 +39,9 @@ describe('CC-257 预设交互映射单一来源', () => {
     expect([c.blockCount, c.dualCounterCount, c.tauntCancelCount, c.parryCount]).toEqual([7, 3, 2, 4])
     applyPresetInteractions(cfg, [{ type: 'block', count: 11 }])
     expect(cfg.team[0]!.blockCount).toBe(11)
+    // CC-259：专属类型按该槽角色模块反查——挂在非般岳槽（1211 丽娜）上不写引擎
+    const before = [cfg.team[1]!.blockCount, cfg.team[1]!.dualCounterCount]
+    applyPresetInteractions(cfg, [{ type: 'banyueGoldenParry', count: 9, slot: 1 }, { type: 'banyueDualCounter', count: 9, slot: 1 }])
+    expect([cfg.team[1]!.blockCount, cfg.team[1]!.dualCounterCount]).toEqual(before)
   })
 })

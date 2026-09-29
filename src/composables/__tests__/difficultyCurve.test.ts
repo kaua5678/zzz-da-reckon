@@ -6,10 +6,11 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
+import { liveInteractions } from '@/composables/liveInteractions'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
-  captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, liveInteractions, majorChanges,
+  captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
   measureOperationalDifficulty, pickNonOverlapping,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'

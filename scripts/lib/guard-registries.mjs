@@ -312,7 +312,7 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/composables/difficultyCurve.ts engine:难度曲线/交互项截断缩",
   "src/composables/difficultyCurve.ts engine:难度曲线/关键次数标注",
   "src/composables/difficultyCurve.ts engine:难度曲线/全关基线",
-  "src/composables/difficultyCurve.ts engine:操作难度/角力权重",
+  "src/composables/liveInteractions.ts engine:操作难度/角力权重",
   // ⚠ 2026-09-17 round 21 夜D：`engine:轴内块数落地` 的**键随实现改路径**——
   // 该口径的实现在夜D 从 `convergence.ts` 整块迁进 `hugo.ts#applyHugoTeamConfig`（规则 6），
   // 故豁免键从 `src/composables/resourceCalc/convergence.ts` 改指 `src/mechanics/agents/hugo.ts`。

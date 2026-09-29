@@ -21,7 +21,8 @@
  */
 import { STANDARD_S_AGENT_IDS, STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
-import { teamCompareInteractionTypes } from '@/composables/agentMechanicView'
+import { liveInteractions } from '@/composables/liveInteractions'
+import { interactionFieldForType, teamCompareInteractionTypes } from '@/composables/agentMechanicView'
 import { useConfigStore } from '@/stores/config'
 import { restoreStore, snapshotStore, type StoreSnapshot } from '@/composables/configSnapshot'
 import type { SkillDamageTarget } from '@/types/catalog'
@@ -37,7 +38,6 @@ import {
   type TeamPreset,
 } from '@/types/teamPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
-import type { TeamResourceResult } from '@/types/resource'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
@@ -275,52 +275,6 @@ function completeInteractionList(interactions: InteractionItem[], team: (string 
     if (!present.has(t)) out.push({ type: t, count: 0, slot: 0 })
   }
   return out
-}
-
-/**
- * **交互次数按装配期截断存活率缩**的两个粒度（用户 2026-09-11：「不上升合轴率导致招式截断，
- * 那么对应的资源回复也应该降低，或者交互次数应该降低」）：
- *  - `interactionSurvivalBySlot`：每槽 `kept / requested`（`convergence.truncationBySlot`），难度曲线用
- *    （它读的是**当前配置**的实打次数，天然按槽分）；
- *  - `shrinkInteractionsByTruncation`：散点页用（预设声明的交互是**团队级**计数，故按 Σkept/Σrequested 聚合缩）。
- * 无截断（或没传 rr）⇒ 因子 1 ⇒ 零变化。近似口径与 A 项（截断回灌资源循环）见 `core/resource.ts` 的 debt 标记。
- */
-export function interactionSurvivalBySlot(rr?: TeamResourceResult | null): Map<number, number> {
-  const out = new Map<number, number>()
-  for (const s of rr?.convergence?.truncationBySlot ?? []) {
-    out.set(s.slot, s.requested > 0 ? Math.max(0, Math.min(1, s.kept / s.requested)) : 1)
-  }
-  return out
-}
-
-/** 团队级存活率（只聚合**有截断**的槽；都无截断 ⇒ 1） */
-export function teamInteractionSurvival(rr?: TeamResourceResult | null): number {
-  let requested = 0
-  let kept = 0
-  for (const s of rr?.convergence?.truncationBySlot ?? []) {
-    requested += s.requested
-    kept += s.kept
-  }
-  return requested > 0 ? Math.max(0, Math.min(1, kept / requested)) : 1
-}
-
-/** 预设声明的交互清单 → 按团队存活率缩后的清单（散点页横轴用；条目 weight/label 原样保留） */
-export function shrinkInteractionsByTruncation(
-  items: InteractionItem[],
-  rr?: TeamResourceResult | null,
-): InteractionItem[] {
-  const factor = teamInteractionSurvival(rr)
-  if (factor >= 1) return items
-  return items.map(it => ({ ...it, count: roundInteractionCount(it.count * factor) }))
-}
-
-/**
- * 缩后的交互次数保留 2 位小数（**必须**）：不取整会在明细里打出 `弹刀7.244532236386592×1`
- * ——实机点通实测把散点明细表的「交互明细」列撑到 538px、表格横向溢出 36px（2026-09-11）。
- * 难度轴本来就是主观量，2 位小数足够，页面/明细都可读。
- */
-export function roundInteractionCount(v: number): number {
-  return Math.round(v * 100) / 100
 }
 
 /**
@@ -1058,7 +1012,9 @@ export function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>,
  * 修前两份副本词表不同：主页认 banyueGoldenParry / banyueDualCounter、不认 block / tauntCancel；
  * 此处反之（旧注释「角色专属类型只进难度」）。般岳的 `blockCount` 就是金身格挡
  * （banyue.ts `interactionInputs.block = 金身格挡`）⇒ 两个名字是同一物理交互，取并集。
- * 现存预设里只有 banyue-liuyin-lucia 声明般岳类型，且值 = 模块 interactionDefaults（20 / 5）⇒ 零差。
+ * CC-259：专属类型不再写死般岳名，改由**该槽角色**模块 `interactionFieldTypes` 反查字段——
+ * 专属类型挂在别的角色槽上（如测试夹具给维琳娜声明 banyueGoldenParry）不写引擎、只进难度（修前会误写 blockCount 再按普通格挡计一次）。
+ * 现存预设里只有 banyue-liuyin-lucia 声明般岳类型（般岳在 slot 0），值 = 模块 interactionDefaults（20 / 5）⇒ 零差。
  */
 export function applyPresetInteractions(
   configStore: ReturnType<typeof useConfigStore>,
@@ -1066,13 +1022,14 @@ export function applyPresetInteractions(
 ): void {
   for (const it of items ?? []) {
     const slot = it.slot ?? 0
+    const own = interactionFieldForType(configStore.team[slot]?.agentId, it.type)
+    if (own === 'blockCount') { configStore.setBlockCount(slot, it.count); continue }
+    if (own === 'dualCounterCount') { configStore.setDualCounterCount(slot, it.count); continue }
     switch (it.type) {
       case 'parry': configStore.setParryCount(slot, it.count); break
       case 'dodge': configStore.setDodgeCounterCount(slot, it.count); break
       case 'quickAssist': configStore.setQuickAssistCount(slot, it.count); break
-      case 'block':
-      case 'banyueGoldenParry': configStore.setBlockCount(slot, it.count); break
-      case 'banyueDualCounter': configStore.setDualCounterCount(slot, it.count); break
+      case 'block': configStore.setBlockCount(slot, it.count); break
       case 'tauntCancel': configStore.setTauntCancelCount(slot, it.count); break // 般岳：嘲讽取消失衡外连段后摇
     }
   }
@@ -1261,8 +1218,10 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
         // 时间压力（硬溢出 + 合轴抵扣，同一笔秒数）并入操作难度：默认 1 秒 = 1 难度点，权重可被用户覆盖（难度权重弹层）
         const rrHere = calc.resourceResult.value
         const { difficulty, detail } = computeDifficulty(
-          // 交互项按装配期截断存活率缩（与难度曲线同一口径：曲线按槽缩、这里按团队聚合缩，见 helpers 注释）
-          shrinkInteractionsByTruncation(preset.interactions, rrHere), preset.team, rrHere?.overflowSeconds ?? 0,
+          // CC-259：交互项 = 引擎实打次数（与难度曲线同一函数 liveInteractions：按槽截断存活率缩；预设只补引擎没有的类型）。
+          // 修前读预设声明（auto 预设 parry8/dodge4 = 未校准占位，用户 2026-09-11「完全不需要以前这个死数值」），
+          // 而同一个点的伤害按 setAgent 预填 + 预设覆盖的实打次数算 ⇒ 97/104 个预设 x 与伤害不同口径。
+          liveInteractions(configStore, preset, rrHere), preset.team, rrHere?.overflowSeconds ?? 0,
           options.difficultyWeights,
           // 合轴抵扣掉的那一半（两图同一把尺：难度曲线也用它）
           rrHere ? frontlineOccupationBreakdown(rrHere).saved : 0,

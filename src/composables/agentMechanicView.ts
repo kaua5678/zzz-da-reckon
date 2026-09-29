@@ -256,6 +256,14 @@ export function teamCompareInteractionTypes(team: ReadonlyArray<string | null | 
   return out
 }
 
+/** CC-259：反查——某槽角色把专属交互类型名映射到哪个引擎字段（未声明 ⇒ undefined；预设交互写引擎用） */
+export function interactionFieldForType(agentId: string | null | undefined, type: string): 'blockCount' | 'dualCounterCount' | undefined {
+  const m = agentId ? getAgentMechanic(agentId)?.interactionFieldTypes : undefined
+  if (!m) return undefined
+  for (const [field, t] of Object.entries(m)) if (t === type) return field as 'blockCount' | 'dualCounterCount'
+  return undefined
+}
+
 /** CC-258：某槽角色对某引擎交互字段的专属类型名（未声明 ⇒ undefined，调用方回落全局类型名） */
 export function interactionFieldTypeOf(agentId: string | null | undefined, field: string): string | undefined {
   const m = agentId ? getAgentMechanic(agentId)?.interactionFieldTypes : undefined

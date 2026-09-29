@@ -3,7 +3,7 @@
  *
  * 为什么单独成模块（而不是留在 `difficultyCurve.ts` 或 `teamCompare.ts`）：
  * 两处都要用它，而这两个模块的依赖方向是**单向**的（`difficultyCurve` → `teamCompare`，
- * 因为前者要用后者的 `computeDifficulty` / `liveInteractions`）。若把本函数留在任一侧，
+ * 因为前者要用后者的 `computeDifficulty`；实打交互次数另在 `liveInteractions.ts`，CC-259）。若把本函数留在任一侧，
  * 另一侧就得复制一份——复制版一旦漂移，同一支队在散点页与难度曲线页会得到不同的 x 轴
  * （2026-09-20 实机点通抓到过：散点页漏传修正，两图不同尺）。抽成无依赖叶子模块即可双向引用。
  *

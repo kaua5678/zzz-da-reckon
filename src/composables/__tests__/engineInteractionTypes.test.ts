@@ -10,7 +10,7 @@ import { join, relative, resolve } from 'node:path'
 import { setupHarness } from '@/test/harness'
 import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore } from '@/composables/teamCompare'
-import { liveInteractions } from '@/composables/difficultyCurve'
+import { liveInteractions } from '@/composables/liveInteractions'
 
 const count = (items: { type: string; count: number }[], t: string) => items.filter(i => i.type === t)
 
@@ -38,7 +38,7 @@ describe('CC-258 引擎交互类型名按角色解析', () => {
     expect(types.some(t => t.startsWith('banyue'))).toBe(false)
   })
 
-  it('源码锁：ENGINE_INTERACTION_FIELDS 只在 difficultyCurve.ts；compareInteractionTypes 已并入 interactionFieldTypes', () => {
+  it('源码锁：ENGINE_INTERACTION_FIELDS 只在 liveInteractions.ts（CC-259 迁入）；compareInteractionTypes 已并入 interactionFieldTypes', () => {
     const root = resolve(__dirname, '../..')
     const engineHits: string[] = []
     const oldHits: string[] = []
@@ -54,7 +54,7 @@ describe('CC-258 引擎交互类型名按角色解析', () => {
       }
     }
     walk(root)
-    expect(engineHits).toEqual(['composables/difficultyCurve.ts'])
+    expect(engineHits).toEqual(['composables/liveInteractions.ts'])
     expect(oldHits).toEqual([])
   })
 })

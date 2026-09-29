@@ -890,7 +890,7 @@ export interface AgentMechanicModule {
   /**
    * CC-258：本角色引擎交互字段的**专属类型名**（键见 teamCompare.ts#INTERACTION_LABELS / INTERACTION_WEIGHTS）。
    * 同一 store 字段对不同角色是不同交互（般岳 blockCount = 金身格挡、星徽·比利 blockCount = 普通格挡）⇒
-   * 难度轴读引擎次数时按槽位解析类型名（`difficultyCurve#engineInteractionItems`）；
+   * 难度轴读引擎次数时按槽位解析类型名（`liveInteractions#engineInteractionItems`）；
    * `dualCounterCount` 只有声明了类型名才进难度轴。
    * 值集合同时是队伍对比难度表要补 0 值条目的专属类型（`teamCompareInteractionTypes`，原 CC-68 `compareInteractionTypes` 并入）。
    */

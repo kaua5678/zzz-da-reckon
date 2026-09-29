@@ -29,8 +29,9 @@
  */
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import type { LadderCtx } from './difficultyLadder'
-import { captureKeyCounts, captureDmgBySource, stunWindowRatioOf, engineInteractionItems } from './difficultyCurve'
-import { computeDifficulty, interactionSurvivalBySlot, roundInteractionCount } from './teamCompare'
+import { captureKeyCounts, captureDmgBySource, stunWindowRatioOf } from './difficultyCurve'
+import { computeDifficulty } from './teamCompare'
+import { engineInteractionItems, interactionSurvivalBySlot, roundInteractionCount } from './liveInteractions'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import type { InteractionItem } from '@/types/teamPreset'
 
