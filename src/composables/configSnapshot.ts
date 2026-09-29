@@ -10,7 +10,7 @@
  * 只有 positionCompare 的私有副本是对的）。
  * 不在快照里：机制开关与权重策略（difficultyCurve 自行处理）、副词条设置等分析器不碰的状态。
  */
-import type { useConfigStore, CharacterConfig, EnemyConfig } from '@/stores/config'
+import { ACTION_COUNT_BOUNDS, type ActionCountField, type useConfigStore, type CharacterConfig, type EnemyConfig } from '@/stores/config'
 
 type ConfigStore = ReturnType<typeof useConfigStore>
 type TeammateBuffSelections = Record<string, { enabled: boolean; coverage: number }>
@@ -53,4 +53,23 @@ export function restoreStore(configStore: ConfigStore, snap: StoreSnapshot): voi
   const selections = configStore.teammateBuffSelections as TeammateBuffSelections
   for (const key of Object.keys(selections)) delete selections[key]
   Object.assign(selections, clone(snap.buffSelections))
+}
+
+/**
+ * CC-260：逐预设循环的**起点不变量**——把每槽「动作次数」字段（`ACTION_COUNT_BOUNDS` 全集）写回快照值。
+ *
+ * 为什么需要：`setAgent` 只重置它负责的 弹刀 / 闪反 / 格挡 / 双反 / 平A权重；快支、连携、嘲讽取消、仪玄系等
+ * 由预设（`applyPresetInteractions` / `chainCountPerStun`）写入后**会漏进下一个预设**（实测：手编预设 slot0 快支 3
+ * 装配后再装 auto 预设，slot0 仍是 3）。CC-259 后散点 x 读实打次数（快支 ×0.6），泄漏 = x 随预设顺序 / 界面筛选子集变化。
+ * 为什么不整份 `restoreStore`：循环外已 `applyBossPreset` 等（difficultyCurve），整份恢复会把 Boss / 敌人退回用户态。
+ * 调用方：teamCompare#computeTeamComparePoints、difficultyCurve#computeDifficultyCurves、positionCompare 的逐预设循环开头。
+ */
+export function restoreActionCounts(configStore: ConfigStore, snap: StoreSnapshot): void {
+  const fields = Object.keys(ACTION_COUNT_BOUNDS) as ActionCountField[]
+  for (let slot = 0; slot < configStore.team.length; slot++) {
+    const char = configStore.team[slot]
+    const base = snap.team[slot]
+    if (!char || !base) continue
+    for (const f of fields) (char as Record<ActionCountField, number | undefined>)[f] = (base as Record<ActionCountField, number | undefined>)[f]
+  }
 }

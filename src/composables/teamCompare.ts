@@ -24,7 +24,7 @@ import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { interactionFieldForType, teamCompareInteractionTypes } from '@/composables/agentMechanicView'
 import { useConfigStore } from '@/stores/config'
-import { restoreStore, snapshotStore, type StoreSnapshot } from '@/composables/configSnapshot'
+import { restoreActionCounts, restoreStore, snapshotStore, type StoreSnapshot } from '@/composables/configSnapshot'
 import type { SkillDamageTarget } from '@/types/catalog'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseBuffEffect } from '@/types/bossPreset'
@@ -1142,6 +1142,7 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
   const goldAlternatives: Array<GoldAllocationAlternative & { presetId: string; presetName: string }> = []
   try {
     for (const preset of options.presets) {
+      restoreActionCounts(configStore, snap) // CC-260：动作次数不跨预设泄漏（与顺序 / 筛选子集无关）
       applyTeamToStore(configStore, preset)
       // 难度变体轴绑定（未绑定 = 恢复快照轴状态，走自动匹配/用户轴）
       applyAxisBinding(configStore, snap, preset)

@@ -35,7 +35,7 @@ import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { AnomalyPoolResult } from '@/types/resource'
 import { applyGoldSteps, baseGoldOf, applyAxisBinding, applyTeamToStore } from '@/composables/teamCompare' // CC-254：原私有副本漏 tauntCancel
-import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
+import { restoreActionCounts, restoreStore, snapshotStore } from '@/composables/configSnapshot'
 
 type Calc = ReturnType<typeof import('@/composables/useResourceCalc').useResourceCalc>
 
@@ -144,6 +144,7 @@ export function computePositionCompare(
   try {
     const gold = options.gold ?? 6
     for (const preset of presets) {
+      restoreActionCounts(configStore, snap) // CC-260：动作次数不跨预设泄漏
       applyTeamToStore(configStore, preset)
       // 同款限定金数：所有参比队伍按同一金档应用预设 goldSteps（复用队伍对比页 applyGoldSteps 口径）
       const applied = applyGoldSteps(
