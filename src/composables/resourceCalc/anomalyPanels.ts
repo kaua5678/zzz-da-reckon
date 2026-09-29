@@ -37,16 +37,6 @@ import { panelElementStat } from '@/utils/elementStatKeys'
 // 都是字面量、本文件不引用 ⇒ **无 TDZ 风险**（刀 A 头注释点名的双向边至此解环）。
 import { buildMechanicTeamMembers } from './panelPhases'
 
-export function teamHasAgent(
-  configStore: ReturnType<typeof useConfigStore>,
-  _catalogStore: ReturnType<typeof useCatalogStore>,
-  agentIds: string[],
-): boolean {
-  return configStore.team.some(char => {
-    return agentIds.includes(char.agentId)
-  })
-}
-
 export function getTeamAnomalyDurationBonus(
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
@@ -79,32 +69,9 @@ export function getTeamAnomalyDurationBonus(
   return bonus
 }
 
-/**
- * **按角色身份找槽位**（单一事实源，规则 11）。
- *
- * 为什么需要（2026-09-17 round 20 侦察）：`findIndex(char => { const a = …; return a?.id === 'X'
- * || a?.teammateBuffId === 'Y' })` 这一形状在全仓编排层**重复 18 次**（`damagePool.ts` 5 /
- * `helpers.ts` 5 / `useResourceCalc.ts` 3 / `convergence.ts` 3 / `normaHatChain.ts` 1 /
- * `ultimatePromote.ts` 1），且每一处都是角色判定棘轮的计数站点。
- * ⚠ **调用点若同时还要「查表/读该成员的其它字段」，请用本函数拿槽位后再按槽位取**（判据 17：
- * 槽位号 ≠ 下标，`team` 数组索引即槽位号但 `characters`/`panels` 是按位置压缩的）。
- *
- * CC-276：原「必须查 `agent.id` 与 `agent.teammateBuffId` 两个字段」已作废——别名字段退役，只认 `agent.id`。
- *
- * @param ids 任一匹配即算命中（如 `['1581']`）
- * @returns 槽位号；找不到返回 **-1**（调用方按 `< 0` 判空，勿用 `?? ` 兜底）
- */
-export function findSlotByIdentity(
-  configStore: ReturnType<typeof useConfigStore>,
-  catalogStore: ReturnType<typeof useCatalogStore>,
-  ids: readonly string[],
-): number {
-  return configStore.team.findIndex(char => {
-    const a = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
-    if (!a) return false
-    return ids.includes(a.id)
-  })
-}
+// CC-277（第 292 轮）：`teamHasAgent` / `findSlotByIdentity` 已删——编排层的身份查找全部迁成模块能力派发后，
+// 两者没有任何生产调用方（CC-276 之后只剩测试与 helpers 壳的 re-export）。按 agentId 找槽位请直接
+// `configStore.team.findIndex(c => c.agentId === id)`，或更好：给模块加能力，按能力找提供者。
 
 /**
  * 风化浸染默认选择：优先非支援/防护、非蕾米埃尔的非风队友属性。

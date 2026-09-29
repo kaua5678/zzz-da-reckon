@@ -53,7 +53,6 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness, type HarnessTeamSlot } from '@/test/harness'
-import { findSlotByIdentity } from '@/composables/resourceCalc/helpers'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
 type Team = Array<HarnessTeamSlot | ''>
@@ -73,123 +72,8 @@ async function ctx(team: Team) {
  *    ⚠ 它与前两者的差别是**双次 getAgent 调用 + 外层 `c.agentId &&` 短路**——oracle 里逐字保留，
  *      以便证明 helper 的 `if (!a) return false` 与之等价（空槽 / 未知 id 两条路径）。
  */
-function legacyFindIndex(config: any, catalog: any, id: string): number {
-  return config.team.findIndex((char: any) => {
-    const a = char.agentId ? catalog.getAgent(char.agentId) : null
-    return a?.id === id || a?.teammateBuffId === id
-  })
-}
-
-/** 爱丽丝原文形态（`:79` 迁移前逐字） */
-function legacyAliceFindIndex(config: any, catalog: any, id: string): number {
-  return config.team.findIndex((c: any) =>
-    c.agentId && (catalog.getAgent(c.agentId)?.id === id || catalog.getAgent(c.agentId)?.teammateBuffId === id))
-}
-
-/** 队形矩阵：覆盖「命中槽 0/1/2」「空槽在前/在中」「无该角色」「未知 id 残留在队」 */
-const TEAMS: Team[] = [
-  [{ agentId: '1291' }, { agentId: '1471' }, { agentId: '1481' }],  // 三个目标都在
-  [{ agentId: '1481' }, { agentId: '1291' }, { agentId: '1471' }],  // 顺序打乱
-  ['', { agentId: '1471' }, { agentId: '1481' }],                   // 前导空槽
-  [{ agentId: '1471' }, '', { agentId: '1291' }],                   // 中间空槽
-  [{ agentId: '1011' }, { agentId: '1031' }, { agentId: '1041' }],  // 一个目标都没有
-  [{ agentId: '1401' }, { agentId: '1291' }, { agentId: '1181' }],  // 爱丽丝在槽 0
-  ['', '', { agentId: '1401' }],                                    // 爱丽丝在槽 2（前两槽空）
-]
-
-describe('convergence 夜间批 B · 组 1/2/4：身份查找收进 findSlotByIdentity', () => {
-  // ── 层① 等价性 oracle（主判据）──────────────────────────────────────────────
-  describe('层① 等价性：helper 结果 === 迁移前内联表达式（逐队形逐 id）', () => {
-    // 本批实际迁移的 4 个 id（:79 爱丽丝 / :159 琉音 / :549 般岳 / :654 琉音 / :1103 雨果 → 去重后 4 个）
-    const IDS = ['1401', '1481', '1471', '1291'] as const
-
-    for (const id of IDS) {
-      it(`id=${id}：findIndex 形态逐队一致（含前导/中间空槽）`, async () => {
-        for (const [i, team] of TEAMS.entries()) {
-          const { catalog, config } = await ctx(team)
-          const got = findSlotByIdentity(config as never, catalog as never, [id])
-          const want = legacyFindIndex(config, catalog, id)
-          expect(got, `team#${i}=${JSON.stringify(team)}`).toBe(want)
-        }
-      })
-    }
-
-    it('★ id=1401（爱丽丝）额外对照原文形态（双次 getAgent + `c.agentId &&` 短路）', async () => {
-      for (const [i, team] of TEAMS.entries()) {
-        const { catalog, config } = await ctx(team)
-        const got = findSlotByIdentity(config as never, catalog as never, ['1401'])
-        expect(got, `team#${i}=${JSON.stringify(team)}`).toBe(legacyAliceFindIndex(config, catalog, '1401'))
-      }
-    })
-
-    it('★ `some` 形态（队里有没有 X）=== `findSlotByIdentity(...) >= 0`', async () => {
-      // :159（琉音转大块门控）与 :513（雨果轴内决算门控）迁移前都是 .some；
-      // 本批 :159 复用 helper（≥0），:513 改读同一份 hugoSlot（见层②-d）。此处钉住同义。
-      for (const id of ['1481', '1291'] as const) {
-        for (const [i, team] of TEAMS.entries()) {
-          const { catalog, config } = await ctx(team)
-          const some = config.team.some((char: any) => {
-            const a = char.agentId ? catalog.getAgent(char.agentId) : null
-            return a?.id === id
-          })
-          expect(findSlotByIdentity(config as never, catalog as never, [id]) >= 0, `team#${i}`).toBe(some)
-        }
-      }
-    })
-  })
-
-  // ── 层② 精确值：槽位号本身（不是布尔）──────────────────────────────────────
-  describe('层② 精确槽位值（禁 >0 / 禁布尔化）', () => {
-    it('★ 前导空槽：三个目标槽位号各自正确（下标 ≠ 压缩后位置）', async () => {
-      const { catalog, config } = await ctx(['', { agentId: '1291' }, { agentId: '1481' }])
-      expect(findSlotByIdentity(config as never, catalog as never, ['1291'])).toBe(1)
-      expect(findSlotByIdentity(config as never, catalog as never, ['1481'])).toBe(2)
-      expect(findSlotByIdentity(config as never, catalog as never, ['1471'])).toBe(-1)
-    })
-
-    it('★ 前两槽空 + 爱丽丝在槽 2 ⇒ slot === 2（`:79` 的 slot 要喂给 cfg.slot 查表）', async () => {
-      const { catalog, config } = await ctx(['', '', { agentId: '1401' }])
-      expect(findSlotByIdentity(config as never, catalog as never, ['1401'])).toBe(2)
-    })
-
-    it('未命中 ⇒ 精确 -1（不是 0 / undefined）', async () => {
-      const { catalog, config } = await ctx([{ agentId: '1011' }, { agentId: '1031' }, { agentId: '1041' }])
-      for (const id of ['1291', '1471', '1481', '1401']) {
-        expect(findSlotByIdentity(config as never, catalog as never, [id]), id).toBe(-1)
-      }
-    })
-
-    it('★ 雨果单一事实源：同一份查找同时供「轴内决算门控」与「决算返还」⇒ 两处一致', async () => {
-      // :513 迁移前 = `team.some(c => c.agentId === '1291')`；:1103 迁移前 = `team.findIndex(c => c.agentId === '1291')`。
-      // 本批把两者合成**一个** hugoSlot（`>= 0` 即门控成立）——此断言钉住「合并没改语义」。
-      for (const team of TEAMS) {
-        const { catalog, config } = await ctx(team)
-        const slot = findSlotByIdentity(config as never, catalog as never, ['1291'])
-        const someLegacy = config.team.some((c: any) => c.agentId === '1291')
-        expect(slot >= 0, `team=${JSON.stringify(team)}`).toBe(someLegacy)
-        // 且 findIndex 形态（:1103）与之同源
-        expect(slot).toBe(config.team.findIndex((c: any) => c.agentId === '1291'))
-      }
-    })
-  })
-
-  // ── 层③ CC-276：别名字段 teammateBuffId 退役 ⇒ 只认 agent.id ───────────────
-  describe('层③ CC-276：身份只认 agent.id（别名臂已删）', () => {
-    it('★ 构造 id≠别名 的 agent：按别名查不到（反锁：别名臂不许复活）', async () => {
-      const { catalog, config } = await ctx([{ agentId: '1181' }, { agentId: '1011' }, { agentId: '1031' }])
-      const agent = catalog.getAgent('1011') as any
-      expect(agent, '1011 必须在 catalog 里（否则本判据退化成空转）').toBeTruthy()
-      const real = agent.teammateBuffId
-      try {
-        agent.teammateBuffId = 'nightB-alias'
-        expect(findSlotByIdentity(config as never, catalog as never, ['nightB-alias'])).toBe(-1)
-        expect(findSlotByIdentity(config as never, catalog as never, ['1011'])).toBe(1)
-      } finally {
-        agent.teammateBuffId = real
-      }
-    })
-  })
-})
+// CC-277（第 292 轮）：原「组 1/2/4：身份查找收进 findSlotByIdentity」整段（层①等价 oracle / 层②精确槽位 / 层③别名反锁）
+// 随 findSlotByIdentity 删除而删除——该 helper 已无生产调用方；组 4 的端到端判据（下一段）不依赖它，保留。
 
 describe('convergence 夜间批 B · 组 4 真管线（`:79` 调用点，不只是 helper）', () => {
   /**

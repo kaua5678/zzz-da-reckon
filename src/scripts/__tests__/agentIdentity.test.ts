@@ -323,7 +323,8 @@ const c = team.find(x => x.id === '1581')`)
     // 显式量工作树是**另一个**面（不保证相等）——但两面都必须自洽：表达式可加、行数独立去重
     const worktree = reportIdentity(undefined, { atHead: false })
     expect(worktree.measuredAt).toBe('worktree')
-    expect(head.entries.length).toBeGreaterThan(0)
+    // CC-276 起编排层身份判定已清零（entries 可以是 0）⇒ 防空转改为「确实读到了源文件」
+    expect(sources.length).toBeGreaterThan(0)
     for (const r of [head, worktree]) {
       expect(r.summary.comparisons).toBe(r.entries.length)
       expect(r.summary.lines).toBe(new Set(r.entries.map(e => `${e.file}:${e.line}`)).size)

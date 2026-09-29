@@ -47,7 +47,6 @@ import { setupHarness } from '@/test/harness'
 import {
   computePanelPhases,
   buildCharConfig,
-  findSlotByIdentity,
   getTeamAnomalyDurationBonus,
   getWindInfectionTargetSlot,
   getWindInfectionElement,
@@ -417,16 +416,6 @@ describe('组1-A `:621` 耀嘉音源面板槽位 → findSlotByIdentity', () => 
     }
   })
 
-  it('★ 等价性 oracle：helper 结果 === 旧 team.findIndex 表达式', async () => {
-    for (const ids of [
-      ['1311', '1011', '1031'], ['1011', '1311', '1031'], ['', '1311', '1011'],
-      ['1011', '1031', '1181'], ['1311', '1311', '1011'],
-    ] as const) {
-      const { catalog, config } = await ctx(ids)
-      const legacy = config.team.findIndex(c => c.agentId === '1311')
-      expect(findSlotByIdentity(config as never, catalog as never, ['1311']), JSON.stringify(ids)).toBe(legacy)
-    }
-  })
 })
 
 // ════════════════════════════════════════════════ 组1-B：里奈槽位（findSlotByIdentity）
@@ -448,25 +437,6 @@ describe('组1-B `:942` 里奈槽位 → findSlotByIdentity', () => {
     expect(getTeamAnomalyDurationBonus(lead.config, lead.catalog, 'electric')).toBe(3)
   })
 
-  it('★ 等价性 oracle：helper 结果 === 旧 `team.find(m => m.agentId === id)?.slot ?? -1`', async () => {
-    const legacy = (config: unknown, catalog: unknown) => {
-      const c = config as { team: Array<{ agentId: string }> }
-      const cat = catalog as { getAgent: (id: string) => unknown }
-      const members = c.team.map((ch, slot) => ({ slot, agentId: ch.agentId, agent: ch.agentId ? cat.getAgent(ch.agentId) : null }))
-      // 旧式只用 `agentId`，**不查** teammateBuffId —— 等价性只在 `agentId` 命中面成立
-      return members.find(m => m.agentId === '1211')?.slot ?? -1
-    }
-    for (const ids of [
-      ['1211', '1011', '1031'], ['1011', '1211', '1031'], ['', '1211', '1011'],
-      ['1011', '1031', '1181'], ['1211', '1211', '1011'], ['1011', '', '1211'],
-    ] as const) {
-      const { catalog, config } = await ctx(ids)
-      // ⚠ 里奈 1211 的 teammateBuffId 是 `undefined`（实测）⇒ 两实现必然同值；
-      // 若哪天数据面给它一个别名，本断言会红 ⇒ 提醒复核那一行迁移
-      expect(findSlotByIdentity(config as never, catalog as never, ['1211']), JSON.stringify(ids))
-        .toBe(legacy(config, catalog))
-    }
-  })
 })
 
 // ════════════════════════════════════════════════ 组2-E：isRemielle 谓词
@@ -584,12 +554,4 @@ describe('层⑦：本批**刻意没做**的事（做了会静默改数值）', 
     expect(setting.max).toBe(1)
   })
 
-  it('★ 组3 未动：`findSlotByIdentity` 语义保持不变（批 A/批 B 正在 import 它）', async () => {
-    // 只验**行为契约**（不验实现行号）：未命中 ⇒ -1；前导空槽 ⇒ 真实槽位；两字段都查。
-    const { catalog, config } = await ctx(['', '1581', '1011'])
-    expect(findSlotByIdentity(config as never, catalog as never, ['1581'])).toBe(1)
-    expect(findSlotByIdentity(config as never, catalog as never, ['1011'])).toBe(2)
-    expect(findSlotByIdentity(config as never, catalog as never, ['9999'])).toBe(-1)
-    expect(findSlotByIdentity(config as never, catalog as never, ['remielle'])).toBe(-1)
-  })
 })

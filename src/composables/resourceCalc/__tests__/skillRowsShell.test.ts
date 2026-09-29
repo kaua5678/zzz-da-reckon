@@ -39,7 +39,7 @@ const C_EXPORTS = [
 ] as const
 
 /** 留在 `helpers.ts` 的真定义（本刀**不该**把它们搬走：D/E 簇与展示归一） */
-const STAYED = ['teamHasAgent', 'findSlotByIdentity', 'normalizeDisplayTime', 'buildCharConfig'] as const
+const STAYED = ['normalizeDisplayTime', 'buildCharConfig'] as const // CC-277 删 teamHasAgent / findSlotByIdentity（无生产调用）
 
 /**
  * 2026-09-19 round 37（OPEN-ITEMS R35-J2）再下沉一层的 4 个纯查询：定义在 `data/moveTableQueries.ts`，

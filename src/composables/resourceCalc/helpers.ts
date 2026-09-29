@@ -250,9 +250,7 @@ export {
 // ⚠ 改异常面板/结算口径请改 `./anomalyPanels.ts`，**不要在本文件重建同形函数**。
 // ============================================================================
 import {
-  teamHasAgent,
   getTeamAnomalyDurationBonus,
-  findSlotByIdentity,
   getWindInfectionTargetSlot,
   getWindInfectionElement,
   getWindInfectionCoverage,
@@ -266,9 +264,7 @@ import type {
   VoidflareDamageInput,
 } from './anomalyPanels'
 export {
-  teamHasAgent,
   getTeamAnomalyDurationBonus,
-  findSlotByIdentity,
   getWindInfectionTargetSlot,
   getWindInfectionElement,
   getWindInfectionCoverage,

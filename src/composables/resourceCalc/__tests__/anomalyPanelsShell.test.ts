@@ -27,11 +27,9 @@ import type {
   VoidflareDamageInput,
 } from '@/composables/resourceCalc/helpers'
 
-/** D 簇 8 个**运行时**符号（原 11 个，CC-34d 删去蕾米埃尔 3 个）（迁移前 helpers.ts 的导出面，迁移后经壳原样可达） */
+/** D 簇 6 个**运行时**符号（原 11 个，CC-34d 删去蕾米埃尔 3 个，CC-277 删 teamHasAgent / findSlotByIdentity）（迁移前 helpers.ts 的导出面，迁移后经壳原样可达） */
 const D_EXPORTS = [
-  'teamHasAgent',
   'getTeamAnomalyDurationBonus',
-  'findSlotByIdentity',
   'getWindInfectionTargetSlot',
   'getWindInfectionElement',
   'getWindInfectionCoverage',
@@ -65,7 +63,7 @@ describe('R22 刀 C：anomalyPanels 壳契约', () => {
     ]
     expect(shapes.length).toBe(4)  })
 
-  it('② 壳的 import 形式**真能跑**：真管线经壳跑一次 buildCharConfig（含 D 簇 findSlotByIdentity 路径）', async () => {
+  it('② 壳的 import 形式**真能跑**：真管线经壳跑一次 buildCharConfig（D 簇 getTeamAnomalyDurationBonus 路径）', async () => {
     // 电属性 + 1211（丽娜）会走 `getTeamAnomalyDurationBonus` → `buildMechanicTeamMembers` +
     // `findSlotByIdentity` + `evalAdditionalAbility`——即 D 簇最深的跨模块路径（也是刀 C 新增的
     // `anomalyPanels → panelPhases` 那条边的实际执行点，顺带反锁无 TDZ 问题）。
@@ -77,9 +75,7 @@ describe('R22 刀 C：anomalyPanels 壳契约', () => {
     const cfg = buildCharConfig(0, config, catalog)
     expect(cfg).not.toBeNull()
     expect(cfg!.agentId).toBe('1291')
-    // 壳的本地绑定：经壳调 findSlotByIdentity（若壳写成 export-from，这里 ReferenceError）
-    const slot = Helpers.findSlotByIdentity(config, catalog, ['1211'])
-    expect(slot).toBe(1)
+    // 壳的本地绑定由上面 Helpers.getTeamAnomalyDurationBonus 调用自证（若壳写成 export-from，那里 ReferenceError）
   })
 
   it('②bis ★ 类型 re-export 必须是**两行形态**（import type + export type）——这是本刀唯一能拦住它的判据', async () => {
