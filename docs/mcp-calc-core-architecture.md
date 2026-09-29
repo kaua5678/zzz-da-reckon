@@ -446,6 +446,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-273 | done | 4b01b307 | 维琳娜模块招式改按 moveId 常量识别（原 3 处按英文名查找 + 2 处 name.en 比较）；删无调用者的 findMoveByEnglishName 及两层壳再导出；零差（§24.112） |
 | CC-274 | done | 89c988a2 | 源码 id 字面量（招式 869 / 音擎 27 / 角色 365）全部存在于 catalog；加全量锁 moveIdLiteralsExist.test 兜住改号 / 笔误（§24.113） |
 | CC-275 | done | ae4e2af5 | 队友 buff ownerId 拼音 slug（5 组 21 条）⇒ 来源面板查不到，derived 回落默认值、formula 回落接收者面板；catalog 加载时归一到组 id，golden 28 条按修缺陷重生成（§24.114） |
+| CC-276 | done | ccfd9dfe | 角色身份单字段化：Agent.teammateBuffId（数据面恒等于 id）退役，15 处双臂判定收成 agent.id；数据入口锁 agentIdentitySingleField.test 取代分散「数据面守卫」；数值零变化（§24.115） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |

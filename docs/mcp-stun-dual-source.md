@@ -3556,3 +3556,20 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 所有 delta 都只出现在含 1171/1261/1411/1511/1581 的队伍里，与改动范围一致。
 - **锁**：`src/stores/__tests__/teammateBuffOwnerNormalized.test.ts`（2 例）：① 加载后每条 buff 的 ownerId / teammateId 等于组 id；② 原始数据里非组 id 的拥有者只能是这 5 个已知 slug（新增 slug 时需人工确认它确实指向本组角色）。反例：stash catalog.ts 后 ① 变红。
 - **回退**：revert ae4e2af5（catalog.ts 归一段 + 两份 baseline + 锁）。
+
+### 24.115 第 291 轮：角色身份单字段化——`teammateBuffId` 别名字段退役（CC-276，ccfd9dfe）
+
+- **起点**：交接候选 1（R6 清单）无「未做 / 待定」条目；候选 2（CC-275 余波）展开后发现问题比「删几处 slug 分支」大：
+  - catalog.json 里 `agents[].teammateBuffId` 只有 5 个取值（1171/1261/1411/1511/1581），**全部等于自身 id**；
+  - teammate-buffs.json 的组 id 本来就是 agent.id；buff 拥有者已由 CC-275 在加载处归一到组 id；
+  - 但 src 里仍有 15 处「`agent.id === X || agent.teammateBuffId === X`」双臂判定 / 双键登记（core/buff、core/inCombatBuffs、core/teammateBuffSource、panelPhases、anomalyPanels、additionalAbilityGates、stores/config ×2、agentMechanicView ×2、MechanicsTablePage、jane / liuyin / norma / remielle）。右臂在数据面恒等于左臂或恒 false，此前各轮以「数据面将来可能给出真别名」为由逐处保留（称为「数据面守卫」）。
+- **决定**：别名字段退役。理由（判据：更简单 + 更通用）：
+  - 身份从两个字段变成一个，每个消费点都少一条永远不会独立生效的分支；
+  - 「数据将来给出别名」的风险改由**数据入口的一条锁**承担，比 15 处分散守卫更可靠——分散守卫恰恰漏过了 CC-199 和 CC-275 两次（拥有者 slug 就是「真别名」，却没有一处守卫接住它）；
+  - 若真出现别名，正确修法是照 CC-275 在 catalog 加载处归一，而不是把别名臂加回各消费点。
+  - **推翻的旧口径**：liuyin.ts / norma.ts / remielle.ts / anomalyPanels.ts 注释与 findSlotByIdentity.test、convergenceNightB.test、helpersNightC.test 里「右臂是数据面守卫、逐位保留不删」。依据如上；这些注释与断言已同步改写（原「别名臂承重」断言翻转为「别名臂不许复活」反锁）。
+- **改动**：`types/catalog.ts` 的 Agent 删掉 `teammateBuffId`；15 处消费点收成只认 `agent.id`；`remielle.ts` 删 `REMIELLE_TEAMMATE_BUFF_ID`；`teammateBuffDerivation.test` 的「组 id 命中别名也算在队」翻转为「不算」；数据 json 不动。
+- **影响**：数值零变化（timeGolden / 留白棘轮未重生成，verify 全绿）——因为右臂在数据面从未独立命中。副产品：编排层 agentId 棘轮 1→0（剩下那一行正是 findSlotByIdentity 的别名动态比较），`AGENT_BRANCH_BASELINE` 与登记表 frozen 同步下调；checkGuards 里「总计数 > 入口计数」证明在全量清零后不再成立，改为 ≥，目录进度量面的证明由上一例 `listAgentBranchFiles()` 承担。
+- **锁**：`src/data/__tests__/agentIdentitySingleField.test.ts`：① catalog.json 的 teammateBuffId 缺省或等于 id；② src（不含测试）不出现 `teammateBuffId`（注释除外）。反例：stash panelPhases.ts 后 ② 报出 `panelPhases.ts:427`。
+- **遗留（下一轮可做）**：`anomalyPanels.ts` 的 `teamHasAgent` / `findSlotByIdentity` **没有生产调用方**（只有测试与 helpers 壳 re-export）；`teamHasAgent` 的 catalogStore 参数现已不用（暂改名 `_catalogStore`）。删除它们要连带改 skillRowsShell / anomalyPanelsShell 壳锁的 STAYED 名单和 4 个测试文件。scripts/ 下的身份度量脚本仍把 `teammateBuffId` 列为身份字段名，无害，未动。
+- **回退**：revert ccfd9dfe。
