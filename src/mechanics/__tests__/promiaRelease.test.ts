@@ -49,7 +49,7 @@ describe('普罗米娅 有罪推定·全队异放无视防御（CC-121，release
   })
 })
 
-describe('普罗米娅 饮冰·全队异放增伤（formula 型 teamBuff）', () => {
+describe('普罗米娅 盗火·全队异放增伤（formula 型 teamBuff）', () => {
   it('队友面板读取 anomalyReleaseDmgBonus = 0.35×max(0, 掌控-150)', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1541' }, { agentId: '1371' }])
     const calc = useResourceCalc()

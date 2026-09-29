@@ -26,11 +26,19 @@ export const ADDITIONAL_GATE_CROSS_SOURCE_BUFFS: Readonly<Record<string, readonl
   '1351': ['pulchra_cinema_6_trap_all'],
 }
 
+/**
+ * 来源标签是否为「额外能力」：`额外能力` 或 `额外能力：<能力名>`（spec teamBuffs 常带能力名，如 1511「额外能力：天使队长」）。
+ * CC-309 前只认全等 `额外能力` ⇒ 带能力名的标签静默逃过门控。引擎门控表与 additionalGate.test.ts 共用本谓词。
+ */
+export function isAdditionalAbilitySourceLabel(label: string): boolean {
+  return label === '额外能力' || label.startsWith('额外能力：')
+}
+
 const additionalGateTableCache = new WeakMap<readonly TeammateBuffGroup[], Readonly<Record<string, readonly string[]>>>()
 
 /**
  * CC-203：额外能力硬门控表（拥有者组 id → buff id 列表），**从数据派生**：
- * 来源（`source.zhCN ?? sourceLabel.zhCN`）为「额外能力」、且拥有者 spec 声明了 `additionalAbility` 的 buff，
+ * 来源（`source.zhCN ?? sourceLabel.zhCN`）为「额外能力」（含「额外能力：<能力名>」，见 `isAdditionalAbilitySourceLabel`）、且拥有者 spec 声明了 `additionalAbility` 的 buff，
  * 加上 `ADDITIONAL_GATE_CROSS_SOURCE_BUFFS`。
  *
  * 引擎与 store 都读本函数（见文件头）。
@@ -44,7 +52,7 @@ export function additionalGateBuffTable(groups: readonly TeammateBuffGroup[]): R
   for (const group of groups) {
     if (!getAgentSpec(group.id)?.additionalAbility) continue
     for (const buff of group.buffs ?? []) {
-      if ((buff.source?.zhCN ?? buff.sourceLabel?.zhCN ?? '') === '额外能力') (table[group.id] ??= []).push(buff.id)
+      if (isAdditionalAbilitySourceLabel(buff.source?.zhCN ?? buff.sourceLabel?.zhCN ?? '')) (table[group.id] ??= []).push(buff.id)
     }
   }
   for (const [agentId, buffIds] of Object.entries(ADDITIONAL_GATE_CROSS_SOURCE_BUFFS)) {

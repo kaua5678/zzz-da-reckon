@@ -16,6 +16,7 @@ import {
   buildMechanicTeamMembers,
   evalAdditionalAbilityBuffGates,
 } from '@/composables/resourceCalc/helpers'
+import { isAdditionalAbilitySourceLabel } from '@/specs/additionalGate'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { deriveTeammateBuffEnabled } from '@/stores/config'
@@ -41,7 +42,7 @@ describe('CC-203 额外能力硬门控表：从数据派生、与 store 默认�
     const missing: string[] = []
     for (const g of catalog.teammateBuffGroups) {
       if (AA_OWNER_EXEMPT[g.id]) continue
-      for (const b of g.buffs ?? []) if (aaLabel(b) === '额外能力' && !(table[g.id] ?? []).includes(b.id)) missing.push(`${g.id}:${b.id}`)
+      for (const b of g.buffs ?? []) if (isAdditionalAbilitySourceLabel(aaLabel(b)) && !(table[g.id] ?? []).includes(b.id)) missing.push(`${g.id}:${b.id}`)
     }
     expect(missing).toEqual([])
     // CC-203 前只有 store 软门控的代表：莱卡恩 / 柚叶 / 蕾米埃尔
@@ -116,14 +117,14 @@ describe('CC-199 全员：「额外能力」buff 的拥有者必须声明触发�
       if (AA_OWNER_EXEMPT[g.id]) continue
       for (const b of g.buffs ?? []) {
         const label = b.source?.zhCN ?? b.sourceLabel?.zhCN ?? ''
-        if (label !== '额外能力') continue
+        if (!isAdditionalAbilitySourceLabel(label)) continue
         if (!getAgentSpec(g.id)?.additionalAbility) missing.push(`${g.id}:${b.id}`)
       }
     }
     for (const agentId of catalog.agentsMap.keys()) {
       if (AA_OWNER_EXEMPT[agentId]) continue
       for (const b of getAgentSpec(agentId)?.teamBuffs ?? []) {
-        if (b.source === '额外能力' && !getAgentSpec(agentId)?.additionalAbility) missing.push(`${agentId}:${b.id}`)
+        if (isAdditionalAbilitySourceLabel(b.source ?? '') && !getAgentSpec(agentId)?.additionalAbility) missing.push(`${agentId}:${b.id}`)
       }
     }
     expect(missing, '拥有「额外能力」buff 却无 spec.additionalAbility ⇒ deriveTeammateBuffEnabled 恒开').toEqual([])

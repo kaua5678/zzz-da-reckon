@@ -103,8 +103,8 @@
     },
     {
       "id": "promia_ice_team_release_dmg",
-      "name": "普罗米娅｜饮冰·全队异放增伤",
-      "source": "额外能力：饮冰",
+      "name": "普罗米娅｜盗火·全队异放增伤",
+      "source": "核心被动：盗火",
       "description": "若初始异常掌控大于150点，每超过1点提升全队造成的[异放]伤害0.35%。",
       "target": "team",
       "coverage": 1,
