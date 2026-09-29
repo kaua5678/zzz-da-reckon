@@ -1,13 +1,19 @@
 import type { Agent } from '@/types/catalog'
-import type { ReadonlyTeam } from '@/mechanics/types'
+import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AdditionalAbilitySpec, TeamConditionSpec } from './types'
+
+/**
+ * 条件求值只读队员的 slot / agentId / agent（CC-306：放宽为结构子集，让只有「压缩 Agent 列表」的调用方
+ * ——如 teammateBuffGate 钩子——也能直接用本求值器，不必再手写一份条件）。`ReadonlyTeam` 可直接传入。
+ */
+export type TeamConditionTeam = ReadonlyArray<Readonly<Pick<MechanicTeamMember, 'slot' | 'agentId' | 'agent'>>>
 
 /**
  * 额外能力触发条件统一判定（声明式）。
  * 满足任一条件即触发；不带 additionalAbility 声明时返回 undefined（未声明，由模块自行处理）。
  */
 export function evalTeamConditions(
-  team: ReadonlyTeam,
+  team: TeamConditionTeam,
   ownSlot: number,
   agent: Agent | null,
   conditions: TeamConditionSpec[],
@@ -19,7 +25,7 @@ export function evalTeamConditions(
 }
 
 export function evalAdditionalAbility(
-  team: ReadonlyTeam,
+  team: TeamConditionTeam,
   ownSlot: number,
   agent: Agent | null,
   spec: AdditionalAbilitySpec | undefined,
@@ -29,7 +35,7 @@ export function evalAdditionalAbility(
 }
 
 function matchTeamCondition(
-  team: ReadonlyTeam,
+  team: TeamConditionTeam,
   ownSlot: number,
   agent: Agent | null,
   cond: TeamConditionSpec,

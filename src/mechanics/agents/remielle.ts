@@ -26,6 +26,7 @@ import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import { panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { channelMetricsOf } from '@/core/resource/moveLookup'
+import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 
 const REMIELLE_AGENT_ID = '1581'
 const VOIDFLARE_MAX = 3
@@ -202,11 +203,7 @@ export function isRemielleAgent(agent: { id?: string } | null | undefined): bool
  * 空槽（`agent` 为 null）不参与计数，也不与本人同槽比较 —— 与原实现的 `member.slot === slot` 等价。
  */
 function remielleDazeTier(slot: number, agent: Agent, team: ReadonlyTeam): number {
-  const faction = agent.faction
-  const active = team.some(member => {
-    if (member.slot === slot || !member.agent) return false
-    return member.agent.specialty === 'anomaly' || (!!faction && member.agent.faction === faction)
-  })
+  const active = specAdditionalAbilityActive(team, slot, agent) // CC-306：spec 1581 `additionalAbility`
   const anomalyCount = team.filter(member => member.agent?.specialty === 'anomaly').length
   return active ? Math.max(1, Math.min(3, anomalyCount)) : 0
 }
@@ -403,11 +400,9 @@ const REMIELLE_Q_SPLIT = {
 export function remielleAdditionalState(team: ReadonlyArray<Agent>): { active: boolean; anomalyCount: number; tier: number } {
   const selfIdx = team.findIndex(agent => agent?.id === REMIELLE_AGENT_ID)
   if (selfIdx < 0) return { active: false, anomalyCount: 0, tier: 0 }
-  const remielleFaction = team[selfIdx].faction
-  const otherAgents = team.filter((_, i) => i !== selfIdx)
-  const active = otherAgents.some(agent =>
-    agent?.specialty === 'anomaly' || (!!remielleFaction && agent?.faction === remielleFaction)
-  )
+  // CC-306：同一 spec 求值器（压缩 Agent 列表按下标当槽位；条件只看「本人以外」⇒ 下标 ≠ 真实槽位无影响）
+  const members = team.map((agent, i) => ({ slot: i, agentId: agent?.id ?? '', agent: agent ?? null }))
+  const active = specAdditionalAbilityActive(members, selfIdx, team[selfIdx])
   const anomalyCount = team.filter(agent => agent?.specialty === 'anomaly').length
   const tier = active ? Math.max(1, Math.min(3, anomalyCount)) : 0
   return { active, anomalyCount, tier }

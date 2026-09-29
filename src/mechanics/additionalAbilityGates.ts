@@ -11,7 +11,20 @@ import type { ReadonlyTeam } from './types'
 import { getAgentMechanic, getRegisteredAgentMechanics } from './registry'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
+import type { TeamConditionTeam } from '@/specs/teamCondition'
 import { additionalGateBuffTable } from '@/specs/additionalGate'
+
+/**
+ * CC-306：角色**额外能力是否触发**的唯一求值入口（按该角色 spec `additionalAbility.teamConditions` 声明式判定，
+ * 与面板阶段写 `panel.additionalAbilityActive` 的 `panelPhases.ts` 同一求值器）。模块在拿不到面板标记的钩子
+ * （buildCharConfig / teammateBuffGate 等）里用它，**不要再手写「队里有 X 特性或同阵营」**——原先
+ * 简 / 琉音 / 诺姆 / 蕾米埃尔各写了一份，与 spec 声明是两套来源（改 spec 不生效）。
+ * 未声明 `additionalAbility` 或 agent 为空 ⇒ false。
+ */
+export function specAdditionalAbilityActive(team: TeamConditionTeam, slot: number, agent: Agent | null | undefined): boolean {
+  if (!agent) return false
+  return evalAdditionalAbility(team, slot, agent, getAgentSpec(agent.id)?.additionalAbility) === true
+}
 
 /**
  * 求 `additionalGateBuffTable(groups)` 的全部门控：buffId → 是否放行（未登记的 buff 不在 Map 中 = 不受门控，

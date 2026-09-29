@@ -15,6 +15,7 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
+import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 import { clampCritRatePct } from '@/data/critMultiplier'
 
@@ -152,11 +153,8 @@ function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, poten
 
   // 额外能力：痛点。物理积蓄+20%；敌人处于异常状态时额外+15%（按100%覆盖）。
   // ⚠ 不吃 `frenzy` 总闸（额外能力与狂热状态无关，见函数头注释）。
-  const additionalActive = teamMembers.some(member =>
-    member.slot !== slot && member.agent && (
-      member.agent.specialty === 'anomaly' || member.agent.faction === agent?.faction
-    ),
-  )
+  // CC-306：条件 = spec 1261 `additionalAbility`（异常特性或同阵营），不再手写
+  const additionalActive = specAdditionalAbilityActive(teamMembers, slot, agent)
   if (additionalActive) {
     panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + 20
     panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + 15

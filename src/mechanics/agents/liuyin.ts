@@ -6,13 +6,13 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  ReadonlyTeam,
 } from '../types'
 import type { CharacterResourceResult, LiuyinMechanicSource, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import { getAgentSpec } from '@/specs/registry'
+import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
@@ -115,10 +115,6 @@ export function computeLiuyinHugCounts(
   return { hug60, hug90, remainingGoodReview: rest }
 }
 
-/** 判断队伍中是否存在强攻或命破角色（触发琉音额外能力） */
-function hasAttackOrRuptureTeammate(team: ReadonlyTeam, ownSlot: number): boolean {
-  return team.some(m => m.slot !== ownSlot && m.agent && (m.agent.specialty === 'attack' || m.agent.specialty === 'rupture'))
-}
 
 interface LiuyinSourceInput {
   exSpecialCount: number
@@ -169,10 +165,8 @@ export function computeLiuyinSource(input: LiuyinSourceInput): LiuyinMechanicSou
 }
 
 function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
-  // 额外能力触发条件由 spec.additionalAbility 声明式统一判定写入 panel.additionalAbilityActive；
-  // 兜底走硬编码（spec 未声明时）。
-  const extraAbilityActive = (panel.additionalAbilityActive ?? 0) > 0
-    || (panel.additionalAbilityActive === undefined && hasAttackOrRuptureTeammate(team, slot))
+  // CC-306：额外能力条件唯一来源 = spec 1481 `additionalAbility`（原「面板标记 || 手写强攻/命破兜底」两套）
+  const extraAbilityActive = specAdditionalAbilityActive(team, slot, agent)
 
   // 核心被动·恶意投诉：敌人进入失衡后的失衡持续时间 +2 秒（角色级失衡时长延长，引擎按全队求和计入失衡覆盖率）。
   panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + 2
@@ -212,12 +206,11 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPa
   }
 }
 
-function buildLiuyinCharConfig({ slot, cinemaLevel, team, skills, cfg, panel, getRowValue }: AgentCharConfigInput): void {
+function buildLiuyinCharConfig({ slot, cinemaLevel, team, skills, cfg, getRowValue }: AgentCharConfigInput): void {
   const prevSetting = cfgNum(cfg, 'liuyin.previousTeammateSlot', -1)
   cfg.liuyinCinemaLevel = cinemaLevel
-  // 额外能力触发条件：优先读声明式判定（panel.additionalAbilityActive），兜底硬编码。
-  cfg.liuyinExtraAbilityActive = (panel.additionalAbilityActive ?? 0) > 0
-    || (panel.additionalAbilityActive === undefined && hasAttackOrRuptureTeammate(team, slot))
+  // CC-306：额外能力条件唯一来源 = spec 1481 `additionalAbility`
+  cfg.liuyinExtraAbilityActive = specAdditionalAbilityActive(team, slot, team[slot]?.agent)
   // CC-180：与赠大 / 赠连携同一解析（已上场序列、跳过空槽；无队友 = -1）。`team` 定长 3 槽、空槽 agentId === ''，
   // 旧式按 team.length=3 环绕 ⇒ 琉音在槽 0、槽 2 空时「上一位」落到空槽，额外能力直伤行整行丢失（站位差 3.4%）。
   cfg.liuyinPreviousTeammateSlot = resolveTeammateTargetSlot(slot, team.filter(m => m.agentId && m.agent).map(m => m.slot), prevSetting)

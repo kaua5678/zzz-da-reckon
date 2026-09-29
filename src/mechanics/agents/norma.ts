@@ -5,14 +5,14 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
-  ReadonlyTeam,
   AgentTeamConfigInput,
 } from '../types'
-import type { SkillMove, PanelValues } from '@/types/catalog'
+import type { SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting, NormaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
 import { getAgentSpec } from '@/specs/registry'
+import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { specConversionAmount } from '@/specs/runtime'
 import type { AttributeConversionSpec } from '@/specs/types'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
@@ -79,14 +79,6 @@ const C6_MISSILE_COOLDOWN = 30
 const C6_ARMOR_PIERCE_DAZE_BONUS = 30 // 破甲弹头失衡值 +30%
 const C6_HIGH_EXPLOSIVE_DMG_BONUS = 30 // 高爆弹头伤害 +30%
 
-/** 额外能力触发条件由 spec.additionalAbility 声明式统一判定写入 panel.additionalAbilityActive；
- *  本模块只读标记开关，不硬编码条件（条件见 src/specs/agents/1571.json）。 */
-function isNormaExtraAbilityActive(panel: PanelValues | undefined, team: ReadonlyTeam, ownSlot: number, agentFaction: string): boolean {
-  return (panel?.additionalAbilityActive ?? 0) > 0
-    || (panel?.additionalAbilityActive === undefined && team.some(m => m.slot !== ownSlot && m.agent && (
-      m.agent.specialty === 'attack' || m.agent.specialty === 'rupture' || m.agent.faction === agentFaction
-    )))
-}
 
 interface NormaSourceInput {
   exSpecialCount: number
@@ -227,13 +219,10 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
   }
 }
 
-function buildNormaCharConfig({ slot, cinemaLevel, team, skills, cfg, panel }: AgentCharConfigInput): void {
-  // 自身阵营取自队伍快照
-  const selfAgent = team[slot]?.agent
-  const agentFaction = selfAgent?.faction ?? ''
+function buildNormaCharConfig({ slot, cinemaLevel, team, skills, cfg }: AgentCharConfigInput): void {
   cfg.normaCinemaLevel = cinemaLevel
-  // 额外能力触发条件：优先读声明式判定（panel.additionalAbilityActive，spec.additionalAbility 判定写入），兜底硬编码。
-  cfg.normaAdditionalAbilityActive = isNormaExtraAbilityActive(panel, team, slot, agentFaction)
+  // CC-306：额外能力条件唯一来源 = spec 1571 `additionalAbility`（强攻 / 命破 / 同阵营；原「面板标记 || 手写兜底」两套）
+  cfg.normaAdditionalAbilityActive = specAdditionalAbilityActive(team, slot, team[slot]?.agent)
   cfg.skipGenericExSpecial = true // 嗯呢弹幕由本模块生成 6 段
   cfg.exSpecialCountFloor = true // 嗯呢弹幕是真实次数（6 段 × 次数），必须取整
   // 嗯呢弹幕耗能（用户确认）：40 激活 + 长按 20/s（默认 2s）→ 每次 80 能量；
