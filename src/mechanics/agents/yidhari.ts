@@ -432,7 +432,7 @@ function applyYidhariTeamConfig({ cfg, phase, stunCount, team, axis }: AgentTeam
  *
  * 算式逐字来自 `core/resource/helpers.ts#iterate`（迭代期）与 `core/resource/resourceIncome.ts
  * #calcDecibelSource`（结果装配），两处常量 75 / 33 / 10 与取整方式逐位不变。差别只在外部治疗项：
- *  · 迭代期调用方传 `providerUltCount`（帷幕提供者的终结技次数），按 `yidhariExternalHealPerUltPct`
+ *  · 迭代期调用方传 `providerUltCount`（帷幕提供者的终结技次数），按 `healPctPerCurtainProviderUlt`
  *    逐次结算；
  *  · 结果装配调用方传 `providerUltCount: 0`——`assembleSlot` 已把「每次 × 次数」写回
  *    `cfg.yidhariExternalHealPct`，再乘次数会重复计入。
@@ -451,7 +451,7 @@ function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, provider
   const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
   const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
   const external = Math.max(0, (cfg.yidhariExternalHealPct ?? 0)
-    + (cfg.yidhariExternalHealPerUltPct ?? 0) * providerUltCount)
+    + (cfg.healPctPerCurtainProviderUlt ?? 0) * providerUltCount)
   const cycleTime = 1 + (cfg.yidhariChargeSlam?.actionTime ?? 0) + (cfg.yidhariBasicFollow?.actionTime ?? 0)
   const cycles = cycleTime > 0 ? Math.floor(basicAttackTime / cycleTime) : 0
   const exHeal = exSpecialCount * 33 * missing
@@ -470,7 +470,7 @@ function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, provider
 function yidhariOnFinalAssemble({ cfg, providerUltCount }: { cfg: CharacterOperationConfig; providerUltCount: number }): void {
   if (cfg.yidhariDecibelPerHpPct === undefined) return
   cfg.yidhariExternalHealPct = (cfg.yidhariExternalHealPct ?? 0)
-    + (cfg.yidhariExternalHealPerUltPct ?? 0) * providerUltCount
+    + (cfg.healPctPerCurtainProviderUlt ?? 0) * providerUltCount
 }
 
 export const yidhariMechanic: AgentMechanicModule = {

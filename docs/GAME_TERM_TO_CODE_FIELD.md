@@ -334,7 +334,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | [以太帷幕·涌泉] | `computeLuciaCurtainTriggers` + `decibelPerCurtainTrigger`（通用 cfg 字段，原名 `luciaC4DecibelPerTrigger`；4命开启/延长 → 全队每人 +100 喧响，15s CD 封顶 × `lucia.c4CurtainCoverage` 滑块） |
 | [巡梦童谣] / [破暗] | teammate-buffs `lucia_elowen.*` 组（F级全队伤、一命全抗无视+喧响获取、破暗贯穿力 formula、额外能力暴伤） |
 | 影画2 / 影画6 | 影画2：全队贯穿增伤 + 自身[合唱]增伤；影画6：`attributeConversions` 生命→攻击 + [合唱]必暴/暴伤（patchExecutions） |
-| [星光汇聚之地]回血 | `computeLuciaHealPctPerUlt` → `yidhariExternalHealPerUltPct`（换算成伊德海莉生命%接入烧血→喧响，伊德海莉在队时） |
+| [星光汇聚之地]回血 | `computeLuciaHealPctPerUlt` → `healPctPerCurtainProviderUlt`（CC-313：换算成各槽自身生命%写给全队；伊德海莉烧血→喧响消费） |
 
 ---
 

@@ -261,7 +261,7 @@ describe('卢西娅↔伊德海莉 资源池跨角色联动（calcTeamResources 
     const yidhariCfg = teamCfg('1051', {
       slot: 1,
       yidhariExternalHealPct: 0,
-      yidhariExternalHealPerUltPct: 6.4,
+      healPctPerCurtainProviderUlt: 6.4,
       yidhariExHealMissingHpPct: 0.75,
       yidhariDecibelPerHpPct: 10,
       yidhariChargeSlam: { actionTime: 1.2917 },

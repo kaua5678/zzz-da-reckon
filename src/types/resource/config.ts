@@ -371,8 +371,11 @@ export interface CharacterOperationConfig {
 
   /** 伊德海莉外部回血（%自身最大生命值）：如卢西娅星光汇聚之地等，由其他机制换算后累加 */
   yidhariExternalHealPct?: number
-  /** 伊德海莉外部回血按卢西娅终结技次数结算的比例（每次大 %自身最大生命值），由卢西娅模块换算注入 */
-  yidhariExternalHealPerUltPct?: number
+  /**
+   * 帷幕提供者每次终结技给**本槽**的回血（%本槽最大生命值；通用字段，CC-313 由 `yidhariExternalHealPerUltPct` 改名）。
+   * 现唯一写入方：卢西娅[星光汇聚之地]（写给全队每槽）；现唯一消费者：伊德海莉烧血→喧响（按提供者终结技次数结算）。
+   */
+  healPctPerCurtainProviderUlt?: number
   /**
    * 每次帷幕开启/延长给本槽的喧响（通用字段，CC-35c-C 2026-09-27 由 `luciaC4DecibelPerTrigger` 改名）。
    * 引擎按「帷幕触发次数（`curtainTriggers` 能力）× 本值」计入自身喧响。现唯一写入方：卢西娅4命（全队每人 100），未开时为 undefined。

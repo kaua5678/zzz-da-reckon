@@ -28,8 +28,6 @@ import { findMoveById } from '@/data/moveTableQueries'
  */
 
 const LUCIA_AGENT_ID = '1451'
-/** 回血换算的目标角色：伊德海莉（烧血→喧响消费 `yidhariExternalHealPerUltPct`） */
-const YIDHARI_AGENT_ID = '1051'
 const A5_MOVE_ID = '1451005' // 普通攻击：星轨连击 #5（随想）
 const ADDITIONAL_ATTACK_MOVE_ID = '1451007' // 追加攻击（合唱，1100%/200异常/0失衡）
 const DREAM_TARGET = 500
@@ -495,7 +493,7 @@ export const luciaElowenMechanic: AgentMechanicModule = {
     stats: ['hpPct', 'atkPct', 'defPct'],
   },
   name: '卢西娅·艾洛温',
-  description: '梦境值计划（500点→20次追加攻击）、计划外强特合轴0秒、[合唱]最后一段固定伤害/2命增伤/6命必暴暴伤、4命帷幕喧响、星光汇聚之地回血接入伊德海莉。',
+  description: '梦境值计划（500点→20次追加攻击）、计划外强特合轴0秒、[合唱]最后一段固定伤害/2命增伤/6命必暴暴伤、4命帷幕喧响、星光汇聚之地回血（全队通用字段，伊德海莉烧血消费）。',
   /**
    * 队伍级机制（规则 6 迁入，棘轮站点 2-3/8，2026-09-12 #10 真清偿）：两块原本共用一个
    * 「卢西娅在队」守卫，故合并进本钩子一次清两处：
@@ -504,7 +502,8 @@ export const luciaElowenMechanic: AgentMechanicModule = {
    *    写通用 cfg 字段 `decibelPerCurtainTrigger`（CC-35c-C 2026-09-27 由 `luciaC4DecibelPerTrigger` 改名），引擎
    *    `core/resource/helpers.ts` / `assembleSlot.ts` 按「帷幕触发次数 × 每次喧响」结算；`luciaC4CurtainCoverage` 只有本模块读。
    * ② **星光汇聚之地回血** → 终结技等级公式（12级 12.8%/大）× 覆盖滑块，换算成**伊德海莉自身生命%**
-   *    喂给烧血→喧响（仅伊德海莉在队时）。②跨槽位写 yidhari 字段正是本钩子的用途。
+   *    CC-313 起换算成**各槽自身**生命%写通用字段 `healPctPerCurtainProviderUlt` 给全队（不再认伊德海莉），
+   *    现唯一消费者 = 伊德海莉烧血→喧响（`yidhari.ts#yidhariSelfBurnDecibel` / `onFinalAssemble`）。
    *
    * 等价性：settings 已含注册默认兜底（lucia.c4CurtainCoverage=1 / lucia.healingCoverage=0.5），
    * 与原 `configStore.getMechanicSetting(id, default)` 逐位等价；命座由派发器直接给（cinemaLevel）。
@@ -520,14 +519,14 @@ export const luciaElowenMechanic: AgentMechanicModule = {
         cfg.luciaC4CurtainCoverage = clampRatio(settings['lucia.c4CurtainCoverage'] ?? 1)
       }
     }
-    // ② 回血 → 伊德海莉烧血→喧响（换算比 = 卢西娅生命 / 伊德海莉生命）
-    const yidhari = characters.find(c => c.agentId === YIDHARI_AGENT_ID)
-    if (!yidhari) return
+    // ② 回血：星光汇聚之地给「当前操作中的角色」回卢西娅生命% ⇒ 换算成**各槽自身**生命%写给全队
+    //    （CC-313：不再按身份找伊德海莉；谁消费、怎么用由消费者模块决定，现唯一消费者 = 伊德海莉烧血→喧响）
     const healPctPerUlt = computeLuciaHealPctPerUlt(self.panel?.skillLevelBonus ?? 0)
     const healingCoverage = clampRatio(settings['lucia.healingCoverage'] ?? DEFAULT_HEALING_COVERAGE)
     const luciaHp = Math.max(1, self.panel?.hp ?? 0)
-    const yidhariHp = Math.max(1, yidhari.panel?.hp ?? 0)
-    yidhari.yidhariExternalHealPerUltPct = healPctPerUlt * healingCoverage * (luciaHp / yidhariHp)
+    for (const cfg of characters) {
+      cfg.healPctPerCurtainProviderUlt = healPctPerUlt * healingCoverage * (luciaHp / Math.max(1, cfg.panel?.hp ?? 0))
+    }
   },
   applyPanel: applyLuciaPanel,
   buildCharConfig: buildLuciaCharConfig,

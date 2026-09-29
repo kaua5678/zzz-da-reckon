@@ -208,7 +208,7 @@ describe('spec resource interpreter', () => {
       yidhariExHealMissingHpPct: 0.75,
       yidhariDecibelPerHpPct: 10,
       yidhariExternalHealPct: 0,
-      yidhariExternalHealPerUltPct: 6.4,
+      healPctPerCurtainProviderUlt: 6.4,
       yidhariChargeSlam: { actionTime: 1.2917 },
       yidhariBasicFollow: { actionTime: 1.55 },
       panel: emptyPanel(),

@@ -93,7 +93,7 @@ describe('卢西娅 4命帷幕 + 回血→伊德海莉（原 luciaCfg 两个内�
     expect(c0[0].decibelPerCurtainTrigger).toBeUndefined()
   })
 
-  it('回血：换算比 = 卢西娅生命 / 伊德海莉生命，×覆盖滑块；伊德海莉不在队则不写', () => {
+  it('回血（CC-313）：写给全队每槽，换算比 = 卢西娅生命 / 本槽生命，×覆盖滑块；不按身份认伊德海莉', () => {
     const chars: any[] = [
       { slot: 0, agentId: '1451', panel: { skillLevelBonus: 0, hp: 8000 } },
       { slot: 1, agentId: '1051', panel: { hp: 4000 } },
@@ -103,11 +103,16 @@ describe('卢西娅 4命帷幕 + 回血→伊德海莉（原 luciaCfg 两个内�
     }))
     // 12级终结技 → 12.8%/大；× 0.5 覆盖 × (8000/4000)
     const expected = 12.8 * 0.5 * (8000 / 4000)
-    expect(chars[1].yidhariExternalHealPerUltPct).toBeCloseTo(expected, 10)
+    expect(chars[1].healPctPerCurtainProviderUlt).toBeCloseTo(expected, 10)
+    expect(chars[0].healPctPerCurtainProviderUlt).toBeCloseTo(12.8 * 0.5, 10) // 自己：比值 1
 
-    const noYidhari: any[] = [{ slot: 0, agentId: '1451', panel: { skillLevelBonus: 0, hp: 8000 } }]
-    luciaElowenMechanic.applyTeamConfig!(teamInput({ slot: 0, characters: noYidhari }))
-    expect(noYidhari[0].yidhariExternalHealPerUltPct).toBeUndefined()
+    // 非伊德海莉队友同样拿到（按其自身生命换算）；是否消费由消费者模块决定
+    const other: any[] = [
+      { slot: 0, agentId: '1451', panel: { skillLevelBonus: 0, hp: 8000 } },
+      { slot: 1, agentId: '1091', panel: { hp: 16000 } },
+    ]
+    luciaElowenMechanic.applyTeamConfig!(teamInput({ slot: 0, characters: other }))
+    expect(other[1].healPctPerCurtainProviderUlt).toBeCloseTo(12.8 * 0.5 * 0.5, 10)
   })
 
   it('settings 缺省时用注册默认（c4=1 / healing=0.5）——与 getMechanicSetting(id, default) 等价', () => {
@@ -117,7 +122,7 @@ describe('卢西娅 4命帷幕 + 回血→伊德海莉（原 luciaCfg 两个内�
     ]
     luciaElowenMechanic.applyTeamConfig!(teamInput({ slot: 0, characters: chars, cinemaLevel: 4, settings: {} }))
     expect(chars[0].luciaC4CurtainCoverage).toBe(1)
-    expect(chars[1].yidhariExternalHealPerUltPct).toBeCloseTo(12.8 * 0.5 * 1, 10)
+    expect(chars[1].healPctPerCurtainProviderUlt).toBeCloseTo(12.8 * 0.5 * 1, 10)
   })
 })
 
