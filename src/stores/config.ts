@@ -600,6 +600,14 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
     const char = team.value[slot]
     if (!char) return
     char.agentId = agentId
+    // CC-267：换人 = **全部**动作次数回到模板值（ACTION_COUNT_BOUNDS 全集，含嘲讽取消 / 仪玄系 / 普罗米娅等专属字段），
+    // 再由下方按新角色预填基准。修前只重置弹刀 / 闪反 / 格挡 / 双反 / 平A权重，上一个角色的专属次数留在槽上：
+    // liveInteractions 对任意槽都读 tauntCancel / perfectBlock / yixuanPerfectBlock ⇒ 散点 104 预设 x 全体虚高，
+    // 仪玄 / 普罗米娅预设伤害随用户残留值变（实测 −23% ~ +2%）。本行让逐预设循环不再需要 restoreActionCounts（已删）。
+    {
+      const tpl = defaultCharacter(slot, agentId, '')
+      for (const f of Object.keys(ACTION_COUNT_BOUNDS) as ActionCountField[]) (char as Record<ActionCountField, number | undefined>)[f] = tpl[f]
+    }
 
     const agent = catalogStore.getAgent(agentId)
     if (agent) {

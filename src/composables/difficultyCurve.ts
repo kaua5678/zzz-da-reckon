@@ -48,7 +48,7 @@ import {
 import {
   applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, type DifficultyWeights,
 } from '@/composables/teamCompare'
-import { restoreActionCounts, restoreStore, snapshotStore } from '@/composables/configSnapshot'
+import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 export { stunWindowRatioOf }
@@ -130,7 +130,6 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
     // 「全关」= 不跑自动权重分配；阶梯里的 G1/G2 自己显式跑均衡/联合
     configStore.timeWeightStrategy = 'static'
     for (const preset of options.presets) {
-      restoreActionCounts(configStore, snap) // CC-260：动作次数不跨预设泄漏（阶梯内 base() 另有 clearDifficultyLevers）
       applyAxisBinding(configStore, snap, preset)
       // 切轴档（preset.altAxes，2026-09-13）：快照阶梯起点轴态 → 备选轴做成「切轴」目标；
       // 显式传 goals = 完全覆盖（不含切轴档），缺省 = DIFFICULTY_GOALS + 切轴档
