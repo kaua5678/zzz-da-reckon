@@ -51,16 +51,24 @@ describe('CC-242 角色模块预存行值吃行规则', () => {
     now.forEach((v, i) => expect(v).toBeCloseTo(base[i] * 2, 9))
   })
 
-  /** 登记表：mechanics/agents 允许的原始行读取。remielle 按技能等级选列（非首列），已裁决不做（§24.85）。 */
-  const RAW_ROW_READ_ALLOW = ['remielle.ts:93', 'remielle.ts:96', 'remielle.ts:98']
+  /**
+   * 登记表：mechanics/agents 允许的原始行读取。remielle 按技能等级选列（非首列），已裁决不做（§24.85）。
+   * 第 323 轮（§24.147）：键由「文件:行号」改为「文件: 去首尾空白的代码行」——约束力不变（新增 / 改写读点照样红），
+   * 但与读点无关的增删行不再逼着同步行号。
+   */
+  const RAW_ROW_READ_ALLOW = [
+    'remielle.ts: if (idx >= 0) return values[idx] ?? values[0] ?? 0',
+    'remielle.ts: return values[skillLevel >= 16 ? 2 : skillLevel >= 14 ? 1 : 0] ?? values[0] ?? 0',
+    'remielle.ts: return values[0] ?? 0',
+  ]
   it('源码：mechanics/agents 非注释行的 values[0] 仅限登记表', () => {
     const dir = resolve(__dirname, '../agents')
     const hits: string[] = []
     for (const name of readdirSync(dir)) {
       if (!name.endsWith('.ts')) continue
-      readFileSync(join(dir, name), 'utf-8').split('\n').forEach((l, i) => {
-        if (!/^\s*(\/\/|\*|\/\*)/.test(l) && /values\??\.?\[0\]/.test(l)) hits.push(`${name}:${i + 1}`)
-      })
+      for (const l of readFileSync(join(dir, name), 'utf-8').split('\n')) {
+        if (!/^\s*(\/\/|\*|\/\*)/.test(l) && /values\??\.?\[0\]/.test(l)) hits.push(`${name}: ${l.trim()}`)
+      }
     }
     expect(hits).toEqual(RAW_ROW_READ_ALLOW)
   })

@@ -23,12 +23,13 @@ describe('CC-280 finiteClamp 单一实现', () => {
         const p = join(dir, name)
         if (statSync(p).isDirectory()) { if (name !== '__tests__') walk(p); continue }
         if (!/\.(ts|vue)$/.test(name) || name.endsWith('.test.ts')) continue
-        readFileSync(p, 'utf-8').split('\n').forEach((l, i) => {
-          if (/Math\.max\(0, Math\.(min\(1, |floor\()Number\.isFinite\((\w+)\) \? \2 : 0\)\)/.test(l)) hits.push(`${relative(SRC, p)}:${i + 1}`)
+        readFileSync(p, 'utf-8').split('\n').forEach(l => {
+          if (/Math\.max\(0, Math\.(min\(1, |floor\()Number\.isFinite\((\w+)\) \? \2 : 0\)\)/.test(l)) hits.push(relative(SRC, p))
         })
       }
     }
     walk(SRC)
-    expect(hits).toEqual(['utils/finiteClamp.ts:16', 'utils/finiteClamp.ts:22'])
+    // 第 323 轮（§24.147）：只登记文件不登记行号——两处命中就是 clampRatio / whole 本体，行号只会让无关增删误报。
+    expect(hits).toEqual(['utils/finiteClamp.ts', 'utils/finiteClamp.ts'])
   })
 })
