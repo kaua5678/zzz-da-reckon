@@ -229,13 +229,8 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCo
   record.phoenixCombustionMeta = combustion
   record.phoenixBasicCycle = PHOENIX_BASIC_SEGMENT_IDS.map(metaOf)
   record.phoenixChargedMeta = metaOf(PHOENIX_CHARGED_MOVE_ID)
-  record.phoenixEx2Meta = metaOf(PHOENIX_EX2_MOVE_ID)
   record.phoenixEnergizeMeta = metaOf(PHOENIX_ENERGIZE_MOVE_ID)
   record.phoenixEntryMeta = metaOf(PHOENIX_ENTRY_MOVE_ID)
-  record.phoenixChainMeta = {
-    ...metaOf(PHOENIX_CHAIN_MOVE_ID),
-    anomalyBuildUp: getRowValue(all.find(m => m.id === PHOENIX_CHAIN_MOVE_ID), 'anomaly_buildup'),
-  }
 }
 
 /**

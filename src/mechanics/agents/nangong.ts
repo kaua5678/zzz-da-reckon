@@ -223,7 +223,6 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
   const pairs = computeNangongMinePairs(totalBeat, Number(basicExec.totalTime ?? 0), pairSeconds)
   if (pairs <= 0) return
   record.nangongMinePairs = pairs
-  record.nangongBeatTotal = totalBeat
   basicExec.totalTime = Math.max(0, Number(basicExec.totalTime ?? 0) - pairs * pairSeconds)
   const halfSeconds = pairSeconds / 2
   executions.push({

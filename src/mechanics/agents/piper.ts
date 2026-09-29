@@ -93,7 +93,6 @@ function buildPiperCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void 
     const maxTriggers = Math.max(1, Math.ceil((cfg.battleTime ?? 180) / PIPER_C4_CD))
     const triggers = Math.min(maxTriggers, Math.max(0, Math.floor(cfgSetting(cfg, 'piper.c4AnomalyTriggers', 1))))
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * PIPER_C4_ENERGY
-    record.piperC4AnomalyTriggers = triggers
   }
 }
 

@@ -227,13 +227,6 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   const record = cfg as unknown as Record<string, unknown>
   record.roxyCinemaLevel = cinemaLevel ?? 0
   // v12 moveIds
-  record.roxyExChillMoveId = findMoveById(skills, EX_CHILL_MOVE_ID)?.id ?? ''
-  record.roxySpinSecondMoveId = findMoveById(skills, SPIN_SECOND_MOVE_ID)?.id ?? ''
-  record.roxyRestPeaceMoveId = findMoveById(skills, REST_PEACE_MOVE_ID)?.id ?? ''
-  record.roxyPerEnergyExtraMoveId = findMoveById(skills, PER_ENERGY_EXTRA_MOVE_ID)?.id ?? ''
-  record.roxyEyeBurstMoveId = findMoveById(skills, EYE_BURST_MOVE_ID)?.id ?? ''
-  record.roxyMegaTornadoMoveId = findMoveById(skills, MEGA_TORNADO_MOVE_ID)?.id ?? ''
-  record.roxySendOffMoveId = findMoveById(skills, SEND_OFF_MOVE_ID)?.id ?? ''
   record.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2))
   // CC-109（R5 D28）：一次强特 = 小心风寒启动 + 自旋 spinSeconds 秒，耗能按 catalog 两项合计。
   // 修前沿用通用 findExSpecial 的「Energy Cost」10（只算启动），自旋 30/s 零扣费 ⇒ 强特次数按 能量/10 推，

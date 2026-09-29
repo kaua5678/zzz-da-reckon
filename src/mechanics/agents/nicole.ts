@@ -64,7 +64,6 @@ function buildCharConfig({ cinemaLevel, cfg, skills }: AgentCharConfigInput): vo
     const battleTime = cfg.battleTime ?? 180
     const triggers = Math.max(0, Math.floor(battleTime / NICOLE_C2_CD))
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * NICOLE_C2_ENERGY
-    record.nicoleC2EnergyTotal = triggers * NICOLE_C2_ENERGY
   }
 }
 

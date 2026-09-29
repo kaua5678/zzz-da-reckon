@@ -168,7 +168,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     ultimateCount: state.ultimateCount ?? 0,
     combatTime: effectiveCombatTime(state, cfg),
   })
-  record.rinaBangboo = bangboo
 
   const sweepDmg = Number(record.rinaSweepComboDmg ?? 0) || 0
   // 晨间清扫：单次三段合计倍率对半拆物理/电（用户口径）
@@ -206,7 +205,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const record = cfg as unknown as Record<string, unknown>
   const ex = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
   const chain = Math.max(0, Math.floor(state.chainCountTotal ?? 0))
   const ult = Math.max(0, Math.floor(state.ultimateCount ?? 0))
@@ -216,7 +214,6 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
     ultimateCount: ult,
     combatTime: effectiveCombatTime(state, cfg),
   })
-  record.rinaBangboo = bangboo
   return {
     rinaBangboo: bangboo,
     specResources: {

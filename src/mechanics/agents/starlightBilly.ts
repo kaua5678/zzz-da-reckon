@@ -337,7 +337,6 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   record.billyMoveDmg = dmg
   record.billyMoveDecibel = decibel
   record.billyAttackData0 = attackData0
-  record.billyAttackData1 = attackData1
   cfg.billyMoveTimes = times
   cfg.billyMoveDmg = dmg
   cfg.billyMoveDecibel = decibel

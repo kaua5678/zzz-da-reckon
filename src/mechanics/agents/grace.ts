@@ -315,7 +315,6 @@ export const graceMechanic: AgentMechanicModule = {
     // 影画1 再充能弹膛：一次 A4（每轮换一格）给全队每人回 2 能量——存 cycles，由 applyGraceTeamConfig 分发
     record.graceC1Cycles = cinema >= 1 ? v.cycles : 0
     // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
-    record.graceC4Energy = v.c4Applies ? v.c4Energy : 0
     if (v.c4Applies) {
       record.initialEnergyGift = Number(record.initialEnergyGift ?? 0) + v.c4Energy
     }

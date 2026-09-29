@@ -88,7 +88,6 @@ function buildCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInp
   const record = cfg as unknown as Record<string, unknown>
   record.benCinemaLevel = cinemaLevel ?? 0
   record.benDef = panel.def ?? 0
-  record.benAtkFromDef = (panel as any).benDefToAtk ?? (panel.def ?? 0) * BEN_DEF_TO_ATK
   record.benExParrySuccessRate = clamp01(record[mechanicSettingCfgKey(BEN_EX_PARRY_RATE_SETTING)], 1)
   record.benExActionTimes = Object.fromEntries(
     [...BEN_EX_NORMAL_MOVE_IDS, ...BEN_EX_PARRY_MOVE_IDS]

@@ -281,8 +281,6 @@ function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharCon
     team.filter(m => m.agentId && m.agentId !== YAOJIAYIN_ID).map(m => m.agent?.specialty).filter(Boolean),
   )
   record.yaojiayinTeamHasAttack = specs.has('attack') ? 1 : 0
-  record.yaojiayinTeamHasAnomaly = specs.has('anomaly') ? 1 : 0
-  record.yaojiayinTeamHasStun = specs.has('stun') ? 1 : 0
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
@@ -299,7 +297,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     cinemaLevel: cinema,
     additionalActive,
   })
-  record.yaojiayinTremolo = result
 
   const tremoloDmg = Number(record.yaojiayinTremoloDmg ?? 0) || 0
   const clusterDmg = Number(record.yaojiayinClusterDmg ?? 0) || 0
@@ -371,7 +368,6 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
     cinemaLevel: cinema,
     additionalActive,
   })
-  record.yaojiayinTremolo = result
   return {
     yaojiayinTremolo: result,
     specResources: {

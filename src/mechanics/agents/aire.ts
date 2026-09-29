@@ -126,7 +126,6 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
     const triggers = Math.max(0, Math.floor((cfg.battleTime ?? 180) / AIRE_C4_CD_SECONDS))
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * AIRE_C4_RELEASE_ENERGY
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + triggers * AIRE_C4_RELEASE_DECIBEL
-    record.aireC4ReleaseTriggers = triggers
   }
   if (cinemaLevel >= 6) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + AIRE_C6_DECIBEL_GIFT

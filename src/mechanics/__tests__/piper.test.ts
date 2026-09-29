@@ -90,7 +90,7 @@ describe('派派影画机制', () => {
       'setting:piper.c4AnomalyTriggers': 6,
     } as any
     piperMechanic.buildCharConfig!({ cinemaLevel: 4, cfg: c4 } as any)
-    expect(c4.piperC4AnomalyTriggers).toBe(3)
+    // 触发次数 = min(ceil(90/CD), 6) = 3（CC-285 删了只写不读的 cfg.piperC4AnomalyTriggers，改由回能总量体现）
     expect(c4.initialEnergyGift).toBe(5 + 3 * PIPER_C4_ENERGY)
   })
 })

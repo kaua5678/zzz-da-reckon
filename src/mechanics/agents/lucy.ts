@@ -164,9 +164,6 @@ function buildCharConfig({ skills, cinemaLevel, team: _team, cfg }: AgentCharCon
     + rowVal(findMove(skills, MOVE_BOAR_2), 'damage')
     + rowVal(findMove(skills, MOVE_BOAR_3), 'damage')
   record.lucyBoarComboDmg = boarDmg
-
-  // 邻位回能标记写在全队 cfg 上（由 useResourceCalc 在组队后调用 applyLucyTeamEnergyFlags）
-  record.lucyIsLucy = true
 }
 
 /** 「cfg + state → 加油循环」的唯一装配（CC-283：buildExecutions 与 buildResourceResult 共用）。 */
@@ -184,7 +181,6 @@ function lucyCheerOf(cfg: AgentResourceResultInput['cfg'], state: AgentResourceR
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cheer = lucyCheerOf(cfg, state)
-  record.lucyCheer = cheer
 
   const spinDmg = Number(record.lucySpinDmg ?? 0) || 0
   pushExec(
@@ -203,7 +199,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const boarCd = lucyBoarCd(cfg)
   const boarCount = computeLucyBoarCount(state.frontlineTime ?? 0, boarCd)
   const boarDmg = Number(record.lucyBoarComboDmg ?? 0) || 0
-  record.lucyBoarCount = boarCount
   pushExec(
     executions,
     MOVE_BOAR_1,

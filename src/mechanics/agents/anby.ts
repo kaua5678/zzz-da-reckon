@@ -252,8 +252,6 @@ function buildAnbyExecutions({ cfg, state, executions }: AgentResourceInput): vo
     anomalyBuildUp: 0,
     skillTableNote: `平A分段已物化（${cycle.length} 段 × ${fullCycles} 轮）：伤害/失衡/积蓄由分段行承载，本行只作时间与回能载体（余量 ${poolTime.toFixed(2)}s）。`,
   }
-  record.anbyBasicChargedHits = totalHits - chargesLeft
-  record.anbyBasicHitTotal = totalHits
 }
 
 /** 单条平A分段执行行：真实 moveId ⇒ enrich 从倍率表回填伤害/失衡/积蓄（元素随 catalog 每招口径）。 */

@@ -169,7 +169,6 @@ function applyCorinTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount }
   const prev = Math.max(0, Number(record.corinC4EnergyTotal ?? 0))
   cfg.initialEnergyGift = Math.max(0, (cfg.initialEnergyGift ?? 0) - prev) + gift
   record.corinC4EnergyTotal = gift
-  record.corinC4Triggers = triggers
 }
 
 function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' | 'state'>): CorinCycle {

@@ -830,7 +830,6 @@ export const yeshuguangMechanic: AgentMechanicModule = {
     const record = cfg as unknown as Record<string, unknown>
     const cycle = resolveCycle(cfg, state)
     record.yeshuguangCycle = cycle
-    record.yeshuguangOutsideSword = cycle.outsideSword
   },
   patchExecutions,
   estimateExSpecialTime,

@@ -469,10 +469,7 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
   )
   // 静态初值（账本推导时常态时间 = 0 → 整段铭刻）；真实占比在 buildClaretResourceSource 里按账本重算
   const bench = computeClaretBasicPerSecFromCfg(record, 1)
-  record.claretInscriptionBasicTimeShare = 1
-  record.claretBasicDamagePerSec = bench.damage
   record.claretBasicDazePerSec = bench.daze
-  record.claretBasicGashPerSec = bench.gash
   record.claretNormalDamagePerSec = bench.normalDamage
   record.claretInscriptionDamagePerSec = bench.inscriptionDamage
   record.claretCinemaLevel = cinemaLevel

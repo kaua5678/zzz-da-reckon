@@ -134,7 +134,6 @@ function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   // 按可调触发次数注入能量池（默认 5 次，用户按实际对局调整）。
   if ((cinemaLevel ?? 0) >= 2) {
     const count = Math.max(0, Math.floor(Number((cfg as any)['setting:soukaku.c2RefundCount'] ?? 5)))
-    record.soukakuC2RefundCount = count
     cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + SOUKAKU_C2_ENERGY_PER_TRIGGER * count
   }
 }

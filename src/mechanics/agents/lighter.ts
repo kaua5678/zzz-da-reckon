@@ -273,11 +273,7 @@ function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): voi
   const cinema = cinemaLevel ?? 0
   record.lighterCinemaLevel = cinema
   record.lighterImpact = panel.impact ?? 0
-  record.lighterAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0 ? 1 : 0
   record.lighterMoraleDmgBonus = Number((panel as any).lighterMoraleDmgBonus ?? 0) || 0
-  record.lighterRoutStunBonus = computeLighterRoutStunBonus(cinema)
-  record.lighterImpactBonusPct = computeLighterImpactBonusPct(cinema)
-  if (cinema >= 1) record.lighterC1FinisherDmgBonus = LIGHTER_C1_FINISHER_DMG
   if (cinema >= 6) {
     record.lighterFlameShockMult = computeLighterFlameShockMultiplier(panel.impact ?? 0)
   }
@@ -293,7 +289,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     teamEnergyConsumed: teamEnergy,
     cinemaLevel: cinema,
   })
-  record.lighterMorale = morale
 
   // 强力终结：耗尽士气自动衔接；次数 = 喷发轮次；后台/前台混合，整局不另占必做时间（合入普攻循环）
   if (morale.powerFinisherCount > 0) {
@@ -347,7 +342,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
         + ` + 耗尽士气终结 ${morale.powerFinisherCount}；倍率 ${fmt(mult)}%）`,
       { category: 'basic' },
     )
-    record.lighterFlameShockCount = count
   }
 }
 
@@ -374,7 +368,6 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
     teamEnergyConsumed: teamEnergy,
     cinemaLevel: cinema,
   })
-  record.lighterMorale = morale
   const flameCount = cinema >= 6
     ? computeLighterFlameShockCount(combatTime, morale.powerFinisherCount)
     : 0
