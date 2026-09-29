@@ -29,13 +29,13 @@
             </n-dropdown>
           </div>
           <div class="char-tags">
-            <n-tag :type="rarityTagType" size="tiny" round>
+            <n-tag :type="rarityTag" size="tiny" round>
               {{ agent.rarity }}
             </n-tag>
-            <n-tag size="tiny" :color="specialtyTagColor">
+            <n-tag size="tiny" :color="specialtyTag">
               {{ specialtyLabel }}
             </n-tag>
-            <n-tag size="tiny" :color="attributeTagColor" round>
+            <n-tag size="tiny" :color="attributeTag" round>
               {{ attributeLabel }}
             </n-tag>
           </div>
@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { ATTRIBUTE_LABEL, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
+import { ATTRIBUTE_LABEL, SPECIALTY_LABEL, attributeTagColor, rarityTagType, specialtyTagColor } from '@/utils/agentLabelMaps'
 import { computed, ref, watch } from 'vue'
 import { NTag, NIcon, NSelect, NButton, NDropdown } from 'naive-ui'
 import { MusicalNotesOutline, ChevronDownOutline } from '@vicons/ionicons5'
@@ -119,41 +119,21 @@ const wengineName = computed(() => {
   return localized(w.name, w.id)
 })
 
-// 可选角色列表（过滤掉已选的，保留当前槽位的角色）
-const availableOptions = computed(() => {
+// 可选角色（过滤掉已选的，保留当前槽位的角色）：NSelect 与 NDropdown 共用同一份过滤 + 标签，只差 value / key 字段名
+const agentChoices = computed(() => {
   const used = configStore.usedAgentIds
   const currentId = char.value?.agentId
   return catalogStore.displayAgents
     .filter(a => !used.includes(a.id) || a.id === currentId)
     .map(a => {
-      const rarity = a.rarity
       const specialty = SPECIALTY_LABEL[a.specialty] ?? a.specialty
       const attr = ATTRIBUTE_LABEL[a.attribute] ?? a.attribute
       const name = localized(a.name, a.id)
-      return {
-        label: `${name} · ${rarity} · ${specialty} · ${attr}`,
-        value: a.id,
-      }
+      return { label: `${name} · ${a.rarity} · ${specialty} · ${attr}`, id: a.id }
     })
 })
-
-// Dropdown 选项（与 availableOptions 结构一致但适配 NDropdown）
-const dropdownOptions = computed(() => {
-  const used = configStore.usedAgentIds
-  const currentId = char.value?.agentId
-  return catalogStore.displayAgents
-    .filter(a => !used.includes(a.id) || a.id === currentId)
-    .map(a => {
-      const rarity = a.rarity
-      const specialty = SPECIALTY_LABEL[a.specialty] ?? a.specialty
-      const attr = ATTRIBUTE_LABEL[a.attribute] ?? a.attribute
-      const name = localized(a.name, a.id)
-      return {
-        label: `${name} · ${rarity} · ${specialty} · ${attr}`,
-        key: a.id,
-      }
-    })
-})
+const availableOptions = computed(() => agentChoices.value.map(c => ({ label: c.label, value: c.id })))
+const dropdownOptions = computed(() => agentChoices.value.map(c => ({ label: c.label, key: c.id })))
 
 function onSelectAgent(id: string | null) {
   if (id) {
@@ -165,50 +145,21 @@ function onDropdownSelect(key: string | number) {
   configStore.setAgent(props.slot, String(key))
 }
 
-const rarityTagType = computed(() => {
-  const r = agent.value?.rarity
-  return r === 'S' ? 'warning' : r === 'A' ? 'success' : 'default'
-})
+const rarityTag = computed(() => rarityTagType(agent.value?.rarity))
 
 const specialtyLabel = computed(() => {
   if (!agent.value) return ''
   return SPECIALTY_LABEL[agent.value.specialty] ?? agent.value.specialty
 })
 
-const specialtyTagColor = computed(() => {
-  const map: Record<string, { color: string; textColor: string }> = {
-    attack: { color: '#c0392b', textColor: '#fff' },
-    stun: { color: '#d97706', textColor: '#fff' },
-    anomaly: { color: '#7c3aed', textColor: '#fff' },
-    support: { color: '#2563eb', textColor: '#fff' },
-    defense: { color: '#047857', textColor: '#fff' },
-    rupture: { color: '#db2777', textColor: '#fff' },
-    sharpen: { color: '#0f766e', textColor: '#fff' },
-  }
-  const s = agent.value?.specialty ?? ''
-  return map[s] ?? { color: '#555', textColor: '#fff' }
-})
+const specialtyTag = computed(() => specialtyTagColor(agent.value?.specialty))
 
 const attributeLabel = computed(() => {
   if (!agent.value) return ''
   return ATTRIBUTE_LABEL[agent.value.attribute] ?? agent.value.attribute
 })
 
-const attributeTagColor = computed(() => {
-  const map: Record<string, { color: string; textColor: string }> = {
-    physical: { color: '#9ca3af', textColor: '#fff' },
-    fire: { color: '#ef4444', textColor: '#fff' },
-    ice: { color: '#38bdf8', textColor: '#fff' },
-    electric: { color: '#facc15', textColor: '#fff' },
-    ether: { color: '#a78bfa', textColor: '#fff' },
-    wind: { color: '#34d399', textColor: '#fff' },
-    frost: { color: '#60a5fa', textColor: '#fff' },
-    honed_edge: { color: '#f472b6', textColor: '#fff' },
-    xuanmo: { color: '#6366f1', textColor: '#fff' },
-  }
-  const a = agent.value?.attribute ?? ''
-  return map[a] ?? { color: '#555', textColor: '#fff' }
-})
+const attributeTag = computed(() => attributeTagColor(agent.value?.attribute))
 
 function handleCardClick() {
   emit('select', props.slot)

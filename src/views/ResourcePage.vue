@@ -15,9 +15,9 @@
         </div>
         <div class="agent-meta">
           <span class="agent-meta-name">{{ agentName }}</span>
-          <n-tag :type="rarityTagType" size="tiny" round>{{ currentAgent.rarity }}</n-tag>
-          <n-tag size="tiny" :color="specialtyTagColor">{{ specialtyLabel }}</n-tag>
-          <n-tag size="tiny" :color="attributeTagColor" round>{{ attributeLabel }}</n-tag>
+          <n-tag :type="rarityTag" size="tiny" round>{{ currentAgent.rarity }}</n-tag>
+          <n-tag size="tiny" :color="specialtyTag">{{ specialtyLabel }}</n-tag>
+          <n-tag size="tiny" :color="attributeTag" round>{{ attributeLabel }}</n-tag>
         </div>
       </div>
     </div>
@@ -56,7 +56,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { getImageUrl } from '@/utils/image'
 import { localized } from '@/utils/format'
-import { ATTRIBUTE_LABEL, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
+import { ATTRIBUTE_LABEL, SPECIALTY_LABEL, attributeTagColor, rarityTagType, specialtyTagColor } from '@/utils/agentLabelMaps'
 import type { SkillCategory, SkillMove, Agent } from '@/types/catalog'
 
 const catalogStore = useCatalogStore()
@@ -110,46 +110,19 @@ const currentSkills = computed(() => {
   return catalogStore.getAgentSkills(selectedAgentId.value)
 })
 
-const rarityTagType = computed(() => {
-  const r = currentAgent.value?.rarity
-  return r === 'S' ? 'warning' : r === 'A' ? 'success' : 'default'
-})
+const rarityTag = computed(() => rarityTagType(currentAgent.value?.rarity))
 
 const specialtyLabel = computed(() => {
   if (!currentAgent.value) return ''
   return SPECIALTY_LABEL[currentAgent.value.specialty] ?? currentAgent.value.specialty
 })
-const specialtyTagColor = computed(() => {
-  const map: Record<string, { color: string; textColor: string }> = {
-    attack: { color: '#c0392b', textColor: '#fff' },
-    stun: { color: '#d97706', textColor: '#fff' },
-    anomaly: { color: '#7c3aed', textColor: '#fff' },
-    support: { color: '#2563eb', textColor: '#fff' },
-    defense: { color: '#047857', textColor: '#fff' },
-    rupture: { color: '#db2777', textColor: '#fff' },
-    sharpen: { color: '#0f766e', textColor: '#fff' },
-  }
-  return map[currentAgent.value?.specialty ?? ''] ?? { color: '#555', textColor: '#fff' }
-})
+const specialtyTag = computed(() => specialtyTagColor(currentAgent.value?.specialty))
 
 const attributeLabel = computed(() => {
   if (!currentAgent.value) return ''
   return ATTRIBUTE_LABEL[currentAgent.value.attribute] ?? currentAgent.value.attribute
 })
-const attributeTagColor = computed(() => {
-  const map: Record<string, { color: string; textColor: string }> = {
-    physical: { color: '#9ca3af', textColor: '#fff' },
-    fire: { color: '#ef4444', textColor: '#fff' },
-    ice: { color: '#38bdf8', textColor: '#fff' },
-    electric: { color: '#facc15', textColor: '#fff' },
-    ether: { color: '#a78bfa', textColor: '#fff' },
-    wind: { color: '#34d399', textColor: '#fff' },
-    frost: { color: '#60a5fa', textColor: '#fff' },
-    honed_edge: { color: '#f472b6', textColor: '#fff' },
-    xuanmo: { color: '#6366f1', textColor: '#fff' },
-  }
-  return map[currentAgent.value?.attribute ?? ''] ?? { color: '#555', textColor: '#fff' }
-})
+const attributeTag = computed(() => attributeTagColor(currentAgent.value?.attribute))
 
 // 构建列定义
 function buildColumns(category: SkillCategory) {
