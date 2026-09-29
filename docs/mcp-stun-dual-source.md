@@ -4457,3 +4457,24 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **验证**：`vue-tsc -b` 0 错；get_diagnostics 0；timeGolden / timeFillRatchet / cinemaMonotone / teamTimeSummary / floatNoiseCycle 直接通过；
   隔离 worktree 全量 verify EXIT=0（442 个文件、4063 个测试）。回退点：`git revert 1f03164f`。
 - 详见 `docs/mcp-integer-cycle-stop.md` §7。
+
+### 24.170 第 346 轮（lane arena-C）：浮点噪声环停点并入 `integerCycleStop`（CC-328 `7ad71a8e`，简化卡，终局逐位零差）；外层环内选点逐级消融（只测不改）
+
+- **CC-328 起因**：CC-326/327 之后，内层环停点还剩两条规则：真整数环取 `integerCycleStop`（不透支成员中次数最多者），浮点噪声环走专用分支
+  `jsonMinMember`（JSON 字典序最小）。噪声环成员的次数只差 ulp，`integerCycleStop` 在它上面应当退化为平局兜底，也就是同一个成员。
+  若实测成立，环停点就只剩一条规则，噪声判据只决定收敛标志。
+- **探针**（414 例；插桩版 innerLoop 以 41f83bc6 为底，在噪声环分支同时算两条规则的选点，两种模式各跑一遍）：噪声环 60 次停点、19 例，
+  全部是 2-循环；两条规则的选点按引用比较 0 差、按 JSON 比较 0 差；终局全字段（伤害原值、converged、失衡、留白、超预算、各槽次数、
+  rr.characters 的 sha1）0 / 414 差。
+- **代码**：`runInnerLoop` 的环分支合成一行，`end` 取 `integerCycleStop(members)`，`clean` 取 `isFloatNoiseCycle(members)`。`jsonMinMember`
+  只剩平局兜底一个用途。注释同步：innerLoop.ts 头注 / `integerCycleStop` / `runInnerLoop`，floatNoiseCycle.ts 头注，resource.ts 停点段与 S1 行，
+  `@fact engine:收敛环停点规范化` 口径（据字段加「CC-328 浮点噪声环并入@2026-09-30」）。不重生成任何基线。
+- **理论角落（重开条件）**：噪声判据是相对 1e-9（乘 max(1,|a|,|b|)），`CYCLE_STOP_EPS` 是绝对 1e-9。量级大于 1 时，成员差可能落在两者之间，
+  选点就可能不同于 JSON 最小；两者都是噪声级成员。实测 60 次都只差 ulp，没有出现。若出现且终局变化超出取整，统一两处容差，不要回退成专用分支。
+- **外层选点逐级消融**（只测不改）：在 `pickOuterCycleMember` 里逐级「跳过一级」重算，并把 ③「取最后一轮」换成「取第一轮」看相位相关。
+  physical（缺省）与 off 投影各 414 例，各 13 次选点事件。⓪ 零窗、⓪′ 截断、② 时间三级在两种投影下都 0 次改变选点；⓪″ 可行 3 次（physical）、
+  ① 失衡自洽 2 次（off）、③′ 输入小者 2 + 6 次。③ 只在 auto-1371-1571-1451（physical）有实质相位相关：三个可行成员读入 K=4/3/3、规划 stunIn
+  全为 0，现取 K=3，取第一轮则得 K=4。**裁决**：静默的三级不删（有语义，删需要「被别级蕴含」的论证，不能凭面上 0 次变化删）；相位相关点
+  转为下一步候选，要先在 CC-150「最大自洽可行整数」与 CC-136 ③′「输入小者」之间定原则。
+- **验证**：`vue-tsc -b` 0 错；get_diagnostics 0；隔离 worktree `wtA-fn` 全量 verify EXIT=0（442 个文件、4063 个测试）。回退点：`git revert 7ad71a8e`。
+- 详见 `docs/mcp-integer-cycle-stop.md` §8、`docs/mcp-outer-fixedpoint-continuity.md` §6。

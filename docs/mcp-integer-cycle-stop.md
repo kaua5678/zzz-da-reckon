@@ -5,12 +5,14 @@
 > 回退点：`git revert 76261a80`。改动面只有 innerLoop.ts 一个函数、三处注释、`@fact engine:收敛环停点规范化` 口径、
 > 两份基线（timeGolden、timeFillRatchet）和 teamTimeSummary 的一个样例。
 > 第 345 轮追加 §7：CC-327（`1f03164f`，简化卡，终局零差）把第 20 轮后的回落也并入本规则。
+> 第 346 轮追加 §8：CC-328（`7ad71a8e`，简化卡，终局逐位零差）把浮点噪声环的停点也并入本规则，噪声判据只决定收敛标志。
 
 ## 0. 结论
 
 `runInnerLoop` 在第 20 轮前检出**真整数环**（Δ≥1）时，停点由「全状态 JSON 字典序最小成员」改为「**不透支**的成员中
 强特加终结次数最多者」，平局才取 JSON 字典序最小。浮点噪声环（视为已收敛）和第 20 轮后的回落（`oscillatorStopStates`，
 单人 1431 c6 的反例）都没有改。第 345 轮的 CC-327 已把第 20 轮后的回落并入本规则，终局零差，见 §7。
+第 346 轮的 CC-328 又把浮点噪声环的停点并入本规则（噪声判据只决定收敛标志），终局逐位零差，见 §8。
 
 判据是**引擎自洽**：终局停点声称的次数不能超过它自己的平A池挣到的资源。实测中，终局非收敛的 18 个 golden 用例，旧规则的停点
 **全部**透支（1–2 次），新规则一例都没有。判据与投稿值无关。
@@ -157,6 +159,7 @@
 ## 6. 没做的 / 后续
 
 - ~~**第 20 轮后回落**（`oscillatorStopStates`）仍用历史停点~~ → 第 345 轮已并入本规则（CC-327），见 §7。
+- ~~浮点噪声环仍走专用停点 `jsonMinMember`~~ → 第 346 轮已并入本规则（CC-328），见 §8。
 - **根治**仍然是 DEBT「全局实数化收敛重构」。本规则是整数模型内的语义停点，不能替代它。
 - **converged=true 的路径依赖**（多个自洽终态）本轮没有处理。它也不是 JSON 停点特有的问题：任何环停点规则都会影响路径。
 
@@ -217,3 +220,49 @@ JSON 最小变体本轮没有复测，也已不需要。
 
 **验证**：`vue-tsc -b` 0 错；get_diagnostics 0；不重生成任何基线，timeGolden / timeFillRatchet / cinemaMonotone / teamTimeSummary / floatNoiseCycle
 直接通过；隔离 worktree 全量 verify EXIT=0（442 个文件、4063 个测试）。
+
+## 8. 第 346 轮：浮点噪声环的停点并入本规则（CC-328）
+
+> 代码 `7ad71a8e`，简化卡，终局逐位零差。对应 stun-dual-source §24.170、r6 §8 第 346 行、架构卡 CC-328。
+> 回退点：`git revert 7ad71a8e`，不牵涉基线。
+
+**改了什么**：`runInnerLoop` 的环分支从两路合成一路：
+
+```ts
+return { end: structuredClone(integerCycleStop(members)), clean: isFloatNoiseCycle(members), iterations: k }
+```
+
+以前，浮点噪声环走专用分支 `jsonMinMember`（JSON 字典序最小成员，clean=true），真整数环走 `integerCycleStop`（clean=false）。现在停点只有
+一条规则，`isFloatNoiseCycle` 只决定收敛标志。`jsonMinMember` 仍在，只作 `integerCycleStop` 的平局兜底。
+
+注释同步改了这些地方：
+
+- innerLoop.ts 的头注、`integerCycleStop` 注释（标题改为「环停点 = …」，加 CC-328 说明）、`runInnerLoop` 注释；
+- floatNoiseCycle.ts 头注：判据只决定收敛标志；
+- resource.ts 的停点段和 S1 行；
+- `@fact engine:收敛环停点规范化`：口径改写，据字段加「CC-328 浮点噪声环并入@2026-09-30」。
+
+**为什么等价**：噪声环成员逐字段相对 1e-9 以内，次数只差 ulp 级。`integerCycleStop` 里 over 与 Σ(强特+终结) 的比较全部落在
+`CYCLE_STOP_EPS`（绝对 1e-9）以内，于是退化为平局兜底，也就是 JSON 字典序最小，与旧分支是同一个成员。
+
+**探针**：插桩版 innerLoop 以 41f83bc6 为底，在噪声环分支同时算两条规则的选点（hist = `jsonMinMember`，rule = `integerCycleStop`），
+并按实际采用的规则各跑一遍 414 例。
+
+| 项 | 结果 |
+|---|---|
+| 噪声环事件 | 60 次（两种模式相同），全部是 2-循环 |
+| 涉及用例 | 19 例：预设 10 个（yidhari-roxy-lucia、billy-trigger-lucia、auto-1051-1481-1451、auto-1561-1171-1411、auto-1431 系 6 个），单人 1171 c0/c3–c6、1431 c0/c4–c6 |
+| 两条规则选点不同（按引用） | 0 |
+| 两条规则选点不同（按 JSON） | 0 |
+| 终局不同（伤害原值、converged、失衡、留白、超预算、各槽次数、rr.characters 的 sha1） | 0 / 414 |
+
+产物在 `/home/kaua/calc-arch/arenaC/`：`fn-hist.json`、`fn-rule.json`、`fn.log`、`innerLoop.fnprobe.ts`（以 41f83bc6 为底）、`zzFnProbe.test.ts`、
+`arenaC-fn.sh`。
+
+**理论角落（重开条件）**：噪声判据是相对容差，|a−b| ≤ 1e-9×max(1,|a|,|b|)；`CYCLE_STOP_EPS` 是绝对 1e-9。次数或透支量的量级大于 1 时，
+成员差可能落在 (1e-9, 1e-9×量级] 之间。这时它被判为噪声环，却能被 `integerCycleStop` 的 over / Σ 比较分开，选到的成员可能不是 JSON 最小。
+两个成员都是噪声级的，终局差异在相对 1e-8 以内。实测 60 次都只差 ulp，没有出现这种情况。**重开条件**：若将来出现这种事件，且终局变化超出取整，
+就统一两处容差（例如 `integerCycleStop` 对噪声环也用相对容差），不要回退成专用分支。
+
+**验证**：`vue-tsc -b` 0 错；get_diagnostics 0；不重生成任何基线；隔离 worktree `wtA-fn` 全量 verify EXIT=0（442 个文件通过、16 个跳过，
+4063 个测试通过，build 通过）。
