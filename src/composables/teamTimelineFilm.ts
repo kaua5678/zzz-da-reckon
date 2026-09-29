@@ -9,7 +9,8 @@ import { VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimelin
 import type { BossPreset, PhaseBossBrief, PhaseView } from '@/types/bossPreset'
 import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION, allocateTopUpFilm } from '@/data/filmEconomy'
 import type { TimelineAxisNode } from './teamTimeline'
-import { snapshotStore, restoreStore, baseGoldOfTeam, buildBudgetAwareGoldSteps, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
+import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
+import { baseGoldOfTeam, buildBudgetAwareGoldSteps, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 
 type Calc = ReturnType<typeof useResourceCalc>

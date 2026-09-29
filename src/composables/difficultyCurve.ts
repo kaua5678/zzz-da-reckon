@@ -47,8 +47,9 @@ import {
 } from '@/composables/difficultyLadder'
 import {
   applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, interactionSurvivalBySlot,
-  restoreStore, roundInteractionCount, snapshotStore, type DifficultyWeights,
+  roundInteractionCount, type DifficultyWeights,
 } from '@/composables/teamCompare'
+import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 export { stunWindowRatioOf }

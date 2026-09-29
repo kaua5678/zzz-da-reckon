@@ -10,12 +10,13 @@
  * ```
  *
  * **现场快照/恢复口径**（照抄 `teamCompare.ts#computeTeamComparePoints` 的 `:1029/:1170-1172`，
- * 不另发明）：进函数先 `snapshotStore`，`try/finally` 里 `restoreStore`，跑完不留痕。
+ * 不另发明）：进函数先 `snapshotStore`（composables/configSnapshot），`try/finally` 里 `restoreStore`，跑完不留痕。
  */
 
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { snapshotStore, restoreStore, isLimitedWEngine } from '@/composables/teamCompare'
+import { isLimitedWEngine } from '@/composables/teamCompare'
+import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   type AxisId,

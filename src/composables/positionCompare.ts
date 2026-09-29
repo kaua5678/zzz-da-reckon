@@ -35,6 +35,7 @@ import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { AnomalyPoolResult } from '@/types/resource'
 import { applyGoldSteps, baseGoldOf, applyAxisBinding } from '@/composables/teamCompare'
+import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
 
 type Calc = ReturnType<typeof import('@/composables/useResourceCalc').useResourceCalc>
 
@@ -126,32 +127,6 @@ function computePerSlotBuildUp(
     }
   }
   return perSlot
-}
-
-function snapshotStore(configStore: ReturnType<typeof useConfigStore>) {
-  return {
-    team: JSON.parse(JSON.stringify(configStore.team)),
-    enemy: JSON.parse(JSON.stringify(configStore.enemy)),
-    appliedBoss: configStore.appliedBoss,
-    stunAxes: JSON.parse(JSON.stringify(configStore.stunAxes)),
-    stunAxisPlans: JSON.parse(JSON.stringify(configStore.stunAxisPlans)),
-    useStunAxis: configStore.useStunAxis,
-    globalBuffs: JSON.parse(JSON.stringify(configStore.globalBuffs)),
-    buffSelections: JSON.parse(JSON.stringify(configStore.teammateBuffSelections)),
-  }
-}
-
-function restoreStore(configStore: ReturnType<typeof useConfigStore>, snap: ReturnType<typeof snapshotStore>) {
-  configStore.team.splice(0, configStore.team.length, ...snap.team)
-  configStore.setEnemy(snap.enemy)
-  configStore.appliedBoss = snap.appliedBoss
-  configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(snap.stunAxes as never[]))
-  configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(snap.stunAxisPlans as never[]))
-  configStore.useStunAxis = snap.useStunAxis
-  configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...(snap.globalBuffs as never[]))
-  const selections = configStore.teammateBuffSelections as Record<string, { enabled: boolean; coverage: number }>
-  for (const key of Object.keys(selections)) delete selections[key]
-  Object.assign(selections, snap.buffSelections)
 }
 
 function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>, preset: TeamPreset) {

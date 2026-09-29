@@ -22,7 +22,8 @@
 import { STANDARD_S_AGENT_IDS, STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { teamCompareInteractionTypes } from '@/composables/agentMechanicView'
-import { useConfigStore, type CharacterConfig, type EnemyConfig } from '@/stores/config'
+import { useConfigStore } from '@/stores/config'
+import { restoreStore, snapshotStore, type StoreSnapshot } from '@/composables/configSnapshot'
 import type { SkillDamageTarget } from '@/types/catalog'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseBuffEffect } from '@/types/bossPreset'
@@ -983,39 +984,7 @@ export function goldAlternativesOf(allocs: OptimalGoldAllocation[]): GoldAllocat
   return (allocs as OptimalGoldAllocation[] & { alternatives?: GoldAllocationAlternative[] }).alternatives ?? []
 }
 
-// ========== 现场快照 / 恢复 ==========
-
-export interface StoreSnapshot {
-  team: CharacterConfig[]
-  enemy: EnemyConfig
-  appliedBoss: ReturnType<typeof useConfigStore>['appliedBoss']
-  stunAxes: unknown[]
-  stunAxisPlans: unknown[]
-  useStunAxis: boolean
-  globalBuffs: unknown[]
-}
-
-export function snapshotStore(configStore: ReturnType<typeof useConfigStore>): StoreSnapshot {
-  return {
-    team: JSON.parse(JSON.stringify(configStore.team)),
-    enemy: JSON.parse(JSON.stringify(configStore.enemy)),
-    appliedBoss: configStore.appliedBoss,
-    stunAxes: JSON.parse(JSON.stringify(configStore.stunAxes)),
-    stunAxisPlans: JSON.parse(JSON.stringify(configStore.stunAxisPlans)),
-    useStunAxis: configStore.useStunAxis,
-    globalBuffs: JSON.parse(JSON.stringify(configStore.globalBuffs)),
-  }
-}
-
-export function restoreStore(configStore: ReturnType<typeof useConfigStore>, snap: StoreSnapshot) {
-  configStore.team.splice(0, configStore.team.length, ...snap.team)
-  configStore.setEnemy(snap.enemy)
-  configStore.appliedBoss = snap.appliedBoss
-  configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(snap.stunAxes as never[]))
-  configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(snap.stunAxisPlans as never[]))
-  configStore.useStunAxis = snap.useStunAxis
-  configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...(snap.globalBuffs as never[]))
-}
+// 现场快照 / 恢复：唯一实现在 composables/configSnapshot.ts（CC-251）
 
 // ========== 应用到 store ==========
 

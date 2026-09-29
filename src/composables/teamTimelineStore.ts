@@ -1,5 +1,5 @@
 /**
- * 队伍时间线共享工具：现场快照/恢复、基础金与预算感知加金、装配队伍到 store、让出事件循环。
+ * 队伍时间线共享工具（现场快照/恢复已收至 configSnapshot.ts，CC-251）：基础金与预算感知加金、装配队伍到 store、让出事件循环。
  * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；teamTimeline.ts 原样转出公开名，导入方不用改。
  */
 import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
@@ -7,40 +7,6 @@ import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedAgent, isLimitedWEngine, applyGoldSteps } from '@/composables/teamCompare'
 import type { Agent } from '@/types/catalog'
 import type { TeamGoldState } from './teamTimeline'
-
-// ========== 现场快照 / 恢复 ==========
-
-export interface StoreSnapshot {
-  team: unknown[]
-  enemy: unknown
-  appliedBoss: unknown
-  stunAxes: unknown[]
-  stunAxisPlans: unknown[]
-  useStunAxis: boolean
-  globalBuffs: unknown[]
-}
-
-export function snapshotStore(configStore: ReturnType<typeof useConfigStore>): StoreSnapshot {
-  return {
-    team: JSON.parse(JSON.stringify(configStore.team)),
-    enemy: JSON.parse(JSON.stringify(configStore.enemy)),
-    appliedBoss: configStore.appliedBoss,
-    stunAxes: JSON.parse(JSON.stringify(configStore.stunAxes)),
-    stunAxisPlans: JSON.parse(JSON.stringify(configStore.stunAxisPlans)),
-    useStunAxis: configStore.useStunAxis,
-    globalBuffs: JSON.parse(JSON.stringify(configStore.globalBuffs)),
-  }
-}
-
-export function restoreStore(configStore: ReturnType<typeof useConfigStore>, snap: StoreSnapshot) {
-  configStore.team.splice(0, configStore.team.length, ...(snap.team as never[]))
-  configStore.setEnemy(snap.enemy as never)
-  configStore.appliedBoss = snap.appliedBoss as never
-  configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(snap.stunAxes as never[]))
-  configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(snap.stunAxisPlans as never[]))
-  configStore.useStunAxis = snap.useStunAxis
-  configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...(snap.globalBuffs as never[]))
-}
 
 // ========== 配装工具（基础金 / 预算感知加金 / 装配到 store） ==========
 

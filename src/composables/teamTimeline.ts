@@ -39,7 +39,8 @@ import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
-import { snapshotStore, restoreStore, bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
+import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
+import { bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
 type Calc = ReturnType<typeof useResourceCalc>
 

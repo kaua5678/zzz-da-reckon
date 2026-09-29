@@ -231,7 +231,7 @@
  * - `versionChartGeometry` 的同款「优美步长纵轴」思路（本页自己算是因为 x 维度是动态的，
  *   版本节点数固定那套不适用）
  * - `agentPresentation.ts#colorOf`：系列配色（与全仓图表同一套）
- * - `teamCompare.ts#snapshotStore/restoreStore`：现场快照恢复（求值器内部已封装，本页不碰）
+ * - `configSnapshot.ts#snapshotStore/restoreStore`：现场快照恢复（求值器内部已封装，本页不碰）
  */
 import { computed, onMounted, ref } from 'vue'
 import { NAlert, NButton, NCard, NCheckbox, NInput, NInputNumber, NProgress, NSelect, NTag } from 'naive-ui'
