@@ -96,15 +96,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 333 轮（lane lead-arena-0925c）：CC-318（`2c88fd30`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 334 轮（lane lead-arena-0925c）：CC-319（`54fb397f`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 编排层线程 `auricInkFlash` 迁进 `moduleFeedback.auricInkTriggers`，由仪玄模块产出；solveTeam 的 stable 条件现在只有 `|next-stun|<tol && feedbackStable`。最终结果、退出方式、轮数都不变。详见 `docs/mcp-stun-dual-source.md` §24.157。
-- 从属清单还剩 decibelParryBasisShort、teamUltimateForJufufu、anomalyDecibelBonus，三项都有保留理由（见 outerCycle.ts 头注释和 §24.157）。
+- 终结技 / 连携技判定收成 `data/chainMoveKind` 等 4 个函数，修掉青衣「Penultimate」被当作终结技的问题（轴编辑页转大块挂错招式）。详见 `docs/mcp-stun-dual-source.md` §24.158。
+- 「单模块线程迁 moduleFeedback」这一类已评估完，没有剩余（r6 第 334 行 ①），不要再扫。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选新题，先登记要查什么。有日期的条件：坑 25 到期日 2026-10-31。
-2. 可选题（未登记，需先评估）：`CalcRoundThreads` 里是否还有「单模块产出、单模块消费」的字段，可仿 CC-318 迁进 moduleFeedback（先 grep 各字段的读写点；注意 `anomalyDecibelBonus` 是全队按槽的，不属于这类）。
+2. 可选题（同型扫描，未登记）：其他「按英文名子串判招式类型」的写法（`includes('ex special')`、`'dodge counter'`、`'dash attack'` 等，见 `core/damage.ts:43-49`、`qingyi.ts:164/170`）是否也有跨分类误判。做法同 CC-319：先用 python 扫 catalog，看子串是否出现在别的分类里，出现了才值得做。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

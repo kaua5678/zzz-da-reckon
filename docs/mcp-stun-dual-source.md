@@ -4192,3 +4192,25 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 全量 verify 在 wt333 上 EXIT=0。
 - **不做**：`teamUltimateForJufufu` 维持原裁决。它是全队终结技汇总，编排层计算、不涉及角色判定；挂到 1371 模块会让「有 1391、无 1371」的队变 0。只有名字带角色，改名收益低。
 - **回退**：`git revert 2c88fd30`。
+
+### 24.158 第 334 轮：CC-319 终结技 / 连携技判定单一事实源（54fb397f）
+
+- **选题**：r6 §8 复核没有满足项。先评估了 §2 交接的可选题：`CalcRoundThreads` 里已经没有 CC-318 那种字段，结论写在 r6 第 334 行 ①。然后扫描「按英文名判终结技」的副本。
+- **发现**：`name.includes('ultimate') && !name.includes('chain attack')` 这条规则在全仓有 5 份副本：
+  - `core/resource/moveLookup.ts` 里的 `findUltimate` 和 `findChainAttack`，限定了 chain 分类；
+  - `convergence.ts` 里的 `axisUltimateNeed` 和轴内连携计数，不看分类；
+  - `roundInputs.ts#resolveAxisUltimateDecibelCost`，只判 `includes('ultimate')`；
+  - `StunAxisPage.vue` 里的 `findMoveByEn(skills,'ultimate')` 和 `isPromotable`，不看分类；
+  - `qingyi.ts` 的电压统计，限定了 chain 分类。
+  - catalog 扫描（62 个角色）：没有招式同时含两个词；chain 分类以外含 `ultimate` 的只有青衣 1251001–1251006（`Basic Attack: Penultimate #N`），青衣的分类顺序是 basic 在前。
+- **后果**：
+  - **真缺陷**：琉音在队时，轴编辑页给青衣生成的「转大·60/90」块 moveId 是 1251001（普攻），不是 1251015。
+  - **潜在缺陷**：轴里放青衣普攻块（一煞 #4 是可放的执行行）时，会被扣 3000 喧响、计入终结技需求，UI 还标成可转大。预设轴里没有这种块，所以 golden 零差。
+- **改动**：
+  - 新建零 import 的 `data/chainMoveKind.ts`，内含 `isUltimateMoveName`、`isChainAttackMoveName`、`chainMoveKind(skills, moveId)`（只在 chain 分类里找）和 `findUltimateMove`；
+  - 上面 5 处都改用它们；删除 `StunAxisPage#findMoveByEn`；
+  - `resolveAxisUltimateDecibelCost(isUltimate: boolean, …)` 的判定挪到调用方，peiluo 测试同步。
+  - 分层：新文件没有任何 import，core、mechanics、编排层和展示层都可以导入。第一版放在 `moveTableQueries.ts`，但那个文件依赖 `logicEditor/fusion`，core 一导入，CC-247 运行时闭包锁就红了，所以单独成文件。
+- **不做**：`core/damage.ts:53`（有 `categoryId === 'chain'` 判断，另外匹配中文「终结」，用于伤害分类）；`ResourceResultCard.vue:405`（有 category 判断，匹配中文名，展示分组）。这两处都在分类内判定，又多一个中文名兜底，与引擎口径不冲突。
+- **验证**：vue-tsc 干净；新锁 `src/data/__tests__/chainMoveKind.test.ts`（3 例：陷阱仍在数据里但 chainMoveKind 返回 null；62 个角色上 findUltimateMove 与 findUltimate 同口径；谓词互斥）；timeGolden 零差；全量 verify EXIT=0。
+- **回退**：`git revert 54fb397f`。
