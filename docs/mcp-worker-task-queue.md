@@ -71,16 +71,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 309 轮（lane lead-arena-0925c）：CC-294（`a712129c`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 赠送落点单一来源 `core/resource/crossAgentSupply#supplyTargetTeamSlot`，修了诺姆双份赠链（残留琉音设置时出现）。详见 `docs/mcp-stun-dual-source.md` §24.133。
-- 前几轮：308 CC-293 删除冗余旗标；307 模块私有通道测量，结论是不做（`docs/mcp-module-state.md`）；306 CC-292 hookReplay 锁。
+**第 310 轮（lane lead-arena-0925c）：CC-295（`39ecce25`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 般岳自动补齐门控归模块，`banyueAutoTopUpEnabled` 是单一来源；convergence 不再读 `banyue.` 设置键。零差。详见 `docs/mcp-stun-dual-source.md` §24.134。
+- 前几轮：309 CC-294 赠送落点单一来源（修诺姆双份赠链）；308 CC-293 删除冗余旗标；307 模块私有通道测量，结论是不做。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add。
 
-**下一步（直接开工）**：
-1. **般岳 autoTopUp 门控两份副本归一**。`convergence.ts` 约 :211 的 `autoTopUp = (axisActive || guaranteeFury || guaranteeUltimate) && slot >= 0 && getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0` 决定算不算补齐量；`banyue.ts#applyBanyueTeamConfig` 约 :443 用同一公式决定用不用它（:418 起那段注释在逐段论证两份等价）。
-   - 方案：给 `InteractionTopUpInput` 加门控输入（axisActive、guarantee.fury / ultimate、settings），`computeInteractionTopUp` 在门控关闭时返回 `null`，convergence 收到 null 就保持上一轮值（这正是现有行为）。门控公式抽成 banyue.ts 内的一个函数，两处共用。convergence 就不再出现 `banyue.` 设置键。
-   - 验收：golden 零差；`convergenceNightB` 与 banyue 相关测试全绿；在 axisActive=false、guarantee 全关时，确认 `interactionTopUp` 线程值与改前一致。
-   - 注意：`decibelParryActive` 依赖的是 `interactionTopUpSlot < 0`，不是 autoTopUp，不要连带改。
+**下一步（直接开工，先测量）**：
+1. **交互栏「弹刀 +N / 双反 +M」显示门控是第三种写法**。`useResourceCalc.ts` 约 :441：`if (slot < 0 || (!configStore.useStunAxis && !autoActive.value)) return null` 只认轴模式。但 CC-295 的模块门控在「非轴 + 保底嗔火 / 喧响打开」时也会补齐，所以这种情况下补齐生效了，TeamConfigPage 却不显示 +N。
+   - 先用 harness 量：1471 队、非轴、`guarantee.fury = 1`，看 `calcOutput.interactionTopUp` 是否非零、`interactionTopUp` computed 是否为 null。
+   - 若属实：这个守卫原本的用意是懒计算（非本角色队伍不触发全量计算），槽位判断已经够了。可改为「槽位 ≥ 0 且结果非零」，或者复用模块门控（经 gate 事实）。按「更简单」选一种，写明理由。
+   - 若不属实（例如保底模式下另有显示入口），写「不做」并附理由。
 2. 之后回到 `docs/mcp-r6-refactor-list.md` §8 自选。原则：编排层需要「模块决定的量」时调模块能力，不要自己读设置重算。
 
 **已知坑**：

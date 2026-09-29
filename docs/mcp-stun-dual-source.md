@@ -3854,3 +3854,21 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - yeshuguang.formAxis：难度下降器按级别写这个设置，是正当驱动，**不做**。
   - liuyin.hug60Count：只有琉音一个提供者，读的是它自己的设置；与模块侧同值（模块用 cfg 上同一个键）。**不做**，但若出现第二个赠大提供者，要改成从提供者 cfg 读。
 - **回退**：`git revert a712129c`。
+
+### 24.134 第 310 轮：CC-295 般岳自动补齐门控归模块（39ecce25）
+
+- **问题**：「是否自动补齐交互」写了两份：
+  - `convergence.ts` 的 `autoTopUp = (axisActive || fury || ultimate) && slot >= 0 && getMechanicSetting('banyue.autoTopUpInteractions', 1) !== 0`，决定算不算补齐量；
+  - `banyue.ts#applyBanyueTeamConfig` 用同一公式决定用不用它。旧注释逐段论证两份等价，编排层还直读本模块的设置键。
+- **改法**：
+  - 公式抽成 `banyue.ts#banyueAutoTopUpEnabled(axisActive, guarantee, settings)`，两处共用。
+  - `computeInteractionTopUp` 的入参改为 `InteractionTopUpInput & { gate: InteractionTopUpGate }`，返回 `InteractionTopUp | null`。gate 里是 axisActive、保底嗔火 / 喧响快照，以及 `resolveMechanicSettings(configStore)`（与 applyTeamConfig 的 settings 同一函数）。
+  - 模块在门控关闭时返回 null，convergence 收到 null 就保持上一轮值，这与改前「不进 if」的行为逐位相同。
+  - 纯函数 `computeBanyueInteractionTopUp` 签名不变，直接调用它的测试不受影响。
+  - `decibelParryActive` 依赖的仍是 `interactionTopUpSlot < 0`，没有动。
+- **代价**：有产出者槽位时每轮都会构造 opts，还要调一次 `resolveMechanicSettings`（遍历注册设置，O(设置数)），门控关闭时这些都白算。只在有般岳的队伍里发生，可以忽略。
+- **验证**：
+  - `convergenceNightB` ② 新增三条断言：无轴且保底全关 ⇒ null；设置 = 0 ⇒ null；保底嗔火打开 ⇒ 与纯函数同值。
+  - `convergenceNightD`（模块侧门控）、timeGolden 1471 都通过。
+  - wt310 隔离跑 `npm run verify` 通过，golden 零差。
+- **回退**：`git revert 39ecce25`。
