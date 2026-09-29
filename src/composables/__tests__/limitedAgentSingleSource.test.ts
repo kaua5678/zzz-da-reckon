@@ -57,4 +57,11 @@ describe('CC-270 限定 S 角色单一定义', () => {
     expect(bad).toEqual([])
     expect(isLimitedWEngine('zzz_wiki_218')).toBe(false) // = 14121 啜泣摇篮（常驻）
   })
+
+  it('CC-272 源码锁：抽卡分层特例集合只在 versionTimeline 定义（pullValue / pullPlannerEngine 不再写字面量 id 集合）', () => {
+    for (const f of ['../pullValue.ts', '../pullPlannerEngine.ts']) {
+      const src = readFileSync(new URL(f, import.meta.url), 'utf8')
+      expect(src, f).not.toMatch(/new Set\(\[\s*'1(551|421)'/)
+    }
+  })
 })

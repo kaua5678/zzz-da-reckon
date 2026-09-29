@@ -46,8 +46,8 @@ interface OracleState {
   cacheHits: number
 }
 
-/** 既有免费特例口径：赠送 S 与 A 级特例；购买清单、入队及代表剪枝共享。 */
-const FREE_SPECIAL_AGENT_IDS = new Set(['1551', '1421'])
+/** 免费特例 = 赠送 S ∪ A 级特例（CC-272 由 versionTimeline 两个集合派生）；购买清单、入队及代表剪枝共享。 */
+const FREE_SPECIAL_AGENT_IDS: ReadonlySet<string> = new Set([...FREE_GIFT_S_AGENT_IDS, ...A_RANK_RELEASE_SPECIAL_IDS])
 
 function isFreePlannerMember(id: string, catalog: ReturnType<typeof useCatalogStore>): boolean {
   const agent = catalog.getAgent(id)
@@ -238,7 +238,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
 
 // ========== 期轴构造（boss-presets → PlannerPeriod；只取有预设的房间） ==========
 
-import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
+import { AGENT_RELEASE_NODE, A_RANK_RELEASE_SPECIAL_IDS, FREE_GIFT_S_AGENT_IDS, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 
 /**
  * 危局期数轴 → 规划器期轴：每期 = defense 模式的 phases 按 phaseId 聚合（同 buildPeriodAxis

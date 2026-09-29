@@ -34,7 +34,7 @@
  *   常驻 S（STANDARD_S_AGENT_IDS）/ A 级基线（占位选项，边际常为负 = 与更好卡的机会差，
  *   不参与分级——它们定义的是保留效用/机会成本，不是抽卡投资标的）。
  */
-import { AGENT_RELEASE_NODE, A_RANK_RELEASE_SPECIAL_IDS, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
+import { AGENT_RELEASE_NODE, A_RANK_RELEASE_SPECIAL_IDS, FREE_GIFT_S_AGENT_IDS, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import { runLimitedGold } from '@/composables/limitedGold'
 import { CINEMA_GOLD_FILM } from '@/data/filmEconomy'
@@ -45,8 +45,6 @@ export const SCORE_CAP = 65000
 export const MIN_PAIRS_FOR_GRADE = 10
 /** 「近 3 期」窗口长度 */
 const RECENT_ROOMS = 3
-/** 赠送 S（无抽卡成本，ROI 记 null）——佩洛伊斯 3.0 上半赠送（用户口径） */
-const FREE_GIFT_AGENT_IDS = new Set(['1551'])
 
 // ========== 输入（run-archive.json 的结构子集；宽接口兼容真实 ArchiveRun） ==========
 
@@ -181,7 +179,7 @@ function quantileAsc(sortedAsc: number[], q: number): number {
 
 /** 卡的抽卡分层（单一事实源：versionTimeline 收录表 + 标准常驻 S 名单 + 两个特例集合） */
 export function pvTierOf(agentId: string): PvCardTier {
-  if (FREE_GIFT_AGENT_IDS.has(agentId)) return 'freeGift'
+  if (FREE_GIFT_S_AGENT_IDS.has(agentId)) return 'freeGift' // 赠送 S：无抽卡成本，ROI 记 null
   if (!AGENT_RELEASE_NODE[agentId] || A_RANK_RELEASE_SPECIAL_IDS.has(agentId)) return 'aRank'
   if (STANDARD_S_AGENT_IDS.has(agentId)) return 'standard'
   return 'limited'

@@ -170,6 +170,13 @@ export const AGENT_RELEASE_NODE: Record<string, string> = {
  */
 export const A_RANK_RELEASE_SPECIAL_IDS: ReadonlySet<string> = new Set(['1421'])
 
+/**
+ * 赠送 S（无抽卡成本）：佩洛伊斯 1551，3.0 上半赠送（用户口径）。CC-272 单一来源：
+ * pullValue 分层（freeGift）与 pullPlannerEngine 免费特例（= 赠送 S ∪ A 级特例）都读这里。
+ * 是否计限定金是未决口径（§24.109），limitedGold 目前**不**读本集合。
+ */
+export const FREE_GIFT_S_AGENT_IDS: ReadonlySet<string> = new Set(['1551'])
+
 /** 角色实装节点 id；未知角色（四星/未收录）返回 null */
 export function releaseNodeOf(agentId: string): string | null {
   return AGENT_RELEASE_NODE[agentId] ?? null
