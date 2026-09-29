@@ -215,6 +215,7 @@ export function incrementForCard(period: IncPeriod, agentId: string): CardPeriod
 
 import { useConfigStore } from '@/stores/config'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
+import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pullPlannerEngine'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
@@ -264,15 +265,8 @@ function periodIndexOfSeason(periods: Array<{ date: string }>, seasonStartUtc: s
  */
 export async function computeIncrementPass(opts: IncrementPassOptions): Promise<IncrementPassResult> {
   const configStore = useConfigStore()
-  const snap = JSON.parse(JSON.stringify({
-    team: configStore.team,
-    enemy: configStore.enemy,
-    appliedBoss: configStore.appliedBoss,
-    stunAxes: configStore.stunAxes,
-    stunAxisPlans: configStore.stunAxisPlans,
-    useStunAxis: configStore.useStunAxis,
-    globalBuffs: configStore.globalBuffs,
-  })) as never
+  // CC-278：改用唯一实现 configSnapshot（原私有副本漏快照队友 buff 选择 ⇒ 跑完后用户手动开关被 team watcher 改写，CC-251 同类）
+  const snap = snapshotStore(configStore)
   const t0 = Date.now()
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
   try {
@@ -344,15 +338,7 @@ export async function computeIncrementPass(opts: IncrementPassOptions): Promise<
     report(1, `完成：${incPeriods.length} 期 · ${baseTeamCount} 支基底队`)
     return { periods: incPeriods, stats: { baseTeams: baseTeamCount, evaluations: baseTeamCount, durationMs: Date.now() - t0 } }
   } finally {
-    // 现场恢复（同 teamTimeline / pullPlannerEngine）
-    const s = snap as { team: unknown[]; enemy: unknown; appliedBoss: unknown; stunAxes: unknown[]; stunAxisPlans: unknown[]; useStunAxis: boolean; globalBuffs: unknown[] }
-    configStore.team.splice(0, configStore.team.length, ...(s.team as never[]))
-    configStore.setEnemy(s.enemy as never)
-    configStore.appliedBoss = s.appliedBoss as never
-    configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(s.stunAxes as never[]))
-    configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(s.stunAxisPlans as never[]))
-    configStore.useStunAxis = s.useStunAxis
-    configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...(s.globalBuffs as never[]))
+    restoreStore(configStore, snap)
   }
 }
 

@@ -51,4 +51,24 @@ describe('CC-251 分析器现场快照 / 恢复', () => {
     walk(root)
     expect(hits.map(h => h.split(':')[0]).sort()).toEqual(['composables/configSnapshot.ts', 'composables/configSnapshot.ts'])
   })
+
+  it('CC-278 源码：不许内联抄快照 / 恢复（函数名锁拦不住的形态：charIncrement / pullPlannerEngine 曾各抄一份，漏队友 buff 选择）', () => {
+    const root = resolve(__dirname, '../..')
+    const hits: string[] = []
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name)
+        if (statSync(p).isDirectory()) { if (name !== '__tests__' && name !== 'node_modules') walk(p); continue }
+        if (!/\.(ts|vue)$/.test(name) || name.endsWith('.test.ts')) continue
+        const src = readFileSync(p, 'utf-8')
+        const rel = relative(root, p)
+        // 内联快照：把 configStore.team 与其它字段打包深拷贝
+        if (/JSON\.stringify\(\{\s*team:\s*configStore\.team\b/.test(src)) hits.push(`${rel}:snapshot`)
+        // 内联恢复：从快照变量整表回写失衡轴计划（teamCompare 从预设 JSON 写轴不算）
+        if (/stunAxisPlans\.splice\(0,\s*configStore\.stunAxisPlans\.length,\s*\.\.\.\(*\s*(snap|s)\b/.test(src)) hits.push(`${rel}:restore`)
+      }
+    }
+    walk(root)
+    expect(hits).toEqual(['composables/configSnapshot.ts:restore'])
+  })
 })

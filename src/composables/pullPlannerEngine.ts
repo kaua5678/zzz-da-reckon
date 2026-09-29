@@ -12,6 +12,7 @@
  */
 import { useConfigStore } from '@/stores/config'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
+import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedSWengineId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
@@ -394,15 +395,8 @@ export interface PlannerRunResult {
 export async function runPullPlanner(opts: PlannerRunOptions): Promise<PlannerRunResult> {
   const configStore = useConfigStore()
   const catalog = useCatalogStore()
-  const snap = JSON.parse(JSON.stringify({
-    team: configStore.team,
-    enemy: configStore.enemy,
-    appliedBoss: configStore.appliedBoss,
-    stunAxes: configStore.stunAxes,
-    stunAxisPlans: configStore.stunAxisPlans,
-    useStunAxis: configStore.useStunAxis,
-    globalBuffs: configStore.globalBuffs,
-  })) as never
+  // CC-278：改用唯一实现 configSnapshot（原私有副本漏快照队友 buff 选择 ⇒ 跑完后用户手动开关被 team watcher 改写，CC-251 同类）
+  const snap = snapshotStore(configStore)
   const t0 = Date.now()
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
   try {
@@ -448,13 +442,6 @@ export async function runPullPlanner(opts: PlannerRunOptions): Promise<PlannerRu
     const stats = engine.stats()
     return { plan, values, stats: { ...stats, durationMs: Date.now() - t0 } }
   } finally {
-    // 现场恢复（同 computeTeamTimeline）
-    configStore.team.splice(0, configStore.team.length, ...(snap as { team: unknown[] }).team as never[])
-    configStore.setEnemy((snap as { enemy: unknown }).enemy as never)
-    configStore.appliedBoss = (snap as { appliedBoss: unknown }).appliedBoss as never
-    configStore.stunAxes.splice(0, configStore.stunAxes.length, ...((snap as { stunAxes: unknown[] }).stunAxes as never[]))
-    configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...((snap as { stunAxisPlans: unknown[] }).stunAxisPlans as never[]))
-    configStore.useStunAxis = (snap as { useStunAxis: boolean }).useStunAxis
-    configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...((snap as { globalBuffs: unknown[] }).globalBuffs as never[]))
+    restoreStore(configStore, snap)
   }
 }
