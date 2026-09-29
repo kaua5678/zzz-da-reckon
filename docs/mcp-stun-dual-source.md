@@ -4004,3 +4004,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 连带：`agentModuleRowFusionRule.test.ts` 的 `RAW_ROW_READ_ALLOW` 按行号登记 remielle.ts 的 values[0] 读点，因新增一行 import 整体 +1（92/95/97 → 93/96/98）。这张按行号的登记表很脆，但它只锁位置不锁语义，本轮不改它的机制。
 - **验证**：vue-tsc 干净；wt321 `npm run verify` EXIT=0（4033 passed，build 通过）。
 - **回退**：`git revert 25041ef0`。
+
+### 24.146 第 322 轮：CC-307 维琳娜 / 爱丽丝额外能力改由 spec 声明（60b9fff4）
+
+- **动手前的三项核查**（§24.145 交接第 1 条）：
+  1. 连带门控：`public/static/teammate-buffs.json` 无 1401 / 1561 组；spec `teamBuffs` 中 1401 两条来源是影画一 / 影画二，1561 为空 ⇒ 补声明后 `additionalGateBuffTable` 不新增任何条目，`evalAdditionalAbilityBuffGates` 结果不变，**不需要探针**。
+  2. 字段口径：catalog 62 名角色 `attribute` 与 `damageElement` **全部相同**（0 处不同）⇒ 维琳娜「同属性」用现有 `sameAttributeAsSelf`，**不新增** `sameDamageElementAsSelf`（多一种条件类型只会多一个语义重复的分支）。该前提由新测试锁住：数据一旦分歧测试即红，届时再立类型。
+  3. `panel.additionalAbilityActive` 的通用读者：唯一的是 `panelPhases.ts:373` 给 `axisWindowOverlays` 钩子的输入，维琳娜 / 爱丽丝模块不实现该钩子 ⇒ 二人面板标记从恒 0 变为真实值不影响数值（展示侧若读该标记则变为正确显示）。
+- **改法**：`src/specs/agents/1401.json` 加 `additionalAbility: specialty [anomaly, support]`；`1561.json` 加 `specialty [anomaly]` + `sameAttributeAsSelf`。`alice.ts` / `velina.ts` 删手写 `isAdditionalAbilityActive`（共 5 处调用改调 `specAdditionalAbilityActive`），连带删无用的 `ReadonlyTeam`（alice）、`Agent`（velina）类型导入，alice 两处 `agent: _agent` 解构改为直接用 `agent`。
+- **不变量锁**（修复前同样绿）：`src/specs/__tests__/additionalAbilityVelinaAlice.test.ts`——catalog 全部角色（含空位）两两组队，spec 求值与迁移前手写逻辑逐位相同；另断言 attribute≡damageElement。
+- **结果**：mechanics/agents 内额外能力触发条件已无手写副本，spec `additionalAbility` 是唯一来源（1511 南宫羽仍按 `AA_OWNER_EXEMPT` 豁免，无声明）。
+- **验证**：vue-tsc 干净；wt322 `npm run verify` EXIT=0。
+- **回退**：`git revert 60b9fff4`。
