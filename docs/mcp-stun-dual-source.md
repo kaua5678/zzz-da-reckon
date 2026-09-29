@@ -3581,3 +3581,13 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **顺带修复（CC-276 遗留的红测试）**：`src/scripts/__tests__/agentIdentity.test.ts` 的 T8「measures HEAD」**量的是 HEAD 提交态**，断言 `head.entries.length > 0`（防空转）。CC-276 在提交前跑 verify 时 HEAD 还是旧提交，所以是绿的；提交之后 HEAD 的编排层身份判定清零，这条在 master（ccfd9dfe、fb4d3000）上是**红的**。改为 `sources.length > 0`（确实读到了源文件）——身份判定为 0 是目标状态，不是空转。
   - **教训**：凡是量 HEAD 的测试，提交前的 verify 都覆盖不到。改动会让身份度量归零 / 变化时，提交后要再跑一次 `npx vitest run src/scripts/__tests__/agentIdentity.test.ts`。已写入交接「已知坑」。
 - **回退**：revert fcecd8eb（纯删除 + 1 处测试断言）。
+
+### 24.117 第 293 轮：旧 id 候选已由 §24.111 结案；jscpd 扫出两份快照 / 恢复私有副本（CC-278，d02c098a）
+
+- **交接候选 1（legacyIds 是否单点）不做**：重读 §24.111 ①，第 287 轮已查完——`wEnginesMap` / `driveDiscSetsMap` 登记了 legacyIds，消费者一律用解析后的主 id；上一轮交接把它写成「待查」是重复，此处结案。
+- **换题方法**：用 `npx -y jscpd@4 src --pattern '**/*.ts' --ignore '**/__tests__/**,**/*.test.ts,**/*.d.ts' --min-lines 12 --min-tokens 90`（npm 可用，GitHub 不通）扫非测试 ts：259 个文件只有 4 处克隆、51 行（0.08%）。其中 3 处是同文件内相似块（norma.ts 465/286、burnice.ts 371/319、damagePoolRelease.ts 150/98），本轮未看，留作候选；1 处跨文件的是本卡。
+- **缺陷**：`charIncrement.ts#computeIncrementPass`（角色增量）与 `pullPlannerEngine.ts#runPullPlanner`（抽卡规划）各自内联了一份「现场快照 / 恢复」，字段只有 team / enemy / appliedBoss / 失衡轴 / 全局 buff，**漏了队友 buff 选择**。这正是 CC-251 修过的缺陷：恢复时 `team.splice` 会同步触发 team watcher → syncTeammateBuffsFromTeam 按派生结果改写 enabled，用户手动改过的队友 buff 开关 / 覆盖率在跑完这两个分析器后被覆盖。CC-251 的锁只查 `function snapshotStore|restoreStore` 定义，拦不住内联写法。
+- **修法**：两处改用 `configSnapshot.ts` 的 `snapshotStore` / `restoreStore`（唯一实现），各删约 15 行。
+- **锁**：`configSnapshot.test.ts` 新增 CC-278 用例——非测试源码里不许出现「`JSON.stringify({ team: configStore.team`」内联快照，也不许出现「从快照变量整表回写 `stunAxisPlans`」的内联恢复（teamCompare 从预设 JSON 写轴不算）；只允许 configSnapshot.ts 自己。反例：stash 两个文件后报出 charIncrement / pullPlannerEngine 各 snapshot + restore 4 条。
+- **影响**：只影响跑完角色增量 / 抽卡规划之后的 store 状态（恢复更完整），不影响任何伤害计算；verify 全绿、golden 未动。行为正确性由 CC-251 已有的换队恢复用例覆盖（同一个函数）。
+- **回退**：revert d02c098a。

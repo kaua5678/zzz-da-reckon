@@ -71,20 +71,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 292 轮（lane lead-arena-0925c）：CC-277（fcecd8eb）完成，文档 008bfd85。⚠ push 失败**：`git push origin master` 与改走 `ssh.github.com:443` 都超时无输出（`ssh -T git@github.com` 也连不上，判断为本机到 GitHub 网络不通，不是认证问题）。**下一轮开工先跑 `git rev-list --count origin/master..master`，不为 0 就先补推**（`timeout 150 git push origin master`）。
-- 详见 `docs/mcp-stun-dual-source.md` §24.116：删 teamHasAgent / findSlotByIdentity；顺带修 CC-276 提交后变红的 agentIdentity T8。
-- 前几轮：291 CC-276；290 CC-275；289 CC-274；288 CC-273；287 CC-272。
+**第 293 轮（lane lead-arena-0925c）：CC-278（d02c098a）完成。文档见本提交。push：第 292 轮起本机到 GitHub 不通（push 超时无输出）；本轮收尾再试一次，若 `git rev-list --count origin/master..master` 不为 0 就是仍未推上，请先补推。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.117：legacyIds 候选由 §24.111 结案；两份快照 / 恢复私有副本并回 configSnapshot。
+- 前几轮：292 CC-277；291 CC-276；290 CC-275；289 CC-274；288 CC-273。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
-**下一步（直接开工）**：身份线已收尾，换题。候选：
-1. **旧 id 解析是否单点**：音擎 / 驱动盘套装有 `legacyIds`（catalog.json）。查 store / composables / core 里每个按 wEngineId / setId 查表的消费点：是全部经 `catalogStore.getWEngine` / `getDriveDiscSet`（能解析别名）还是有直接 `wEnginesMap.get(id)` / `driveDiscSetsMap.get(id)`（旧 id 会查空）。例：`panelPhases.resolveSlotPanelBuffInputs` 里 `getWEngine: (id) => catalogStore.wEnginesMap.get(id)`、`driveDiscSetsMap: catalogStore.driveDiscSetsMap`。若持久化配置里可能留旧 id，这些点会静默丢效果——先写探针确认（把一个槽的 wEngineId 设成某个 legacyId，看面板是否掉音擎效果）；确认后优先在**配置写入 / 加载处**归一（注意 §24.111 已否决「读取持久化数据时迁移别名 id」——原因是 catalog 加载时序，先读该节再定方案）。
-2. 若 1 无缺陷：在 r6 清单记一行，自选「更通用 / 更简单」的题目。
+**下一步（直接开工）**：
+0. **先补推**：`git rev-list --count origin/master..master` 不为 0 就 `timeout 150 git push origin master`（第 292、293 轮 GitHub 均不通，见上）。
+1. **看 jscpd 剩下的 3 处同文件克隆**：`src/mechanics/agents/norma.ts` 465 与 286（15 行）、`src/mechanics/agents/burnice.ts` 371 与 319（13 行）、`src/composables/resourceCalc/damagePoolRelease.ts` 150 与 98（13 行）。逐处判断是否语义相同（按「函数体同形 ≠ 语义相同」逐项比对 `?.`、默认值），相同且合并后更简单就抽本地函数，否则在 r6 清单记「不做 + 理由」。
+2. 扩大扫描：同一条 jscpd 命令加 `.vue`（`--pattern '**/*.{ts,vue}'`）并把 `--min-lines` 降到 8，看展示层有没有跨文件副本（展示层不许值导入 core，合并时注意分层）。
 
 **已知坑**：
-- **量 HEAD 的测试**（`agentIdentity.test.ts` T8）提交前 verify 覆盖不到；改动影响身份度量时，提交后再跑一次该文件；
-- 角色身份只有 agent.id（CC-276）；按身份找槽位的 helper 已删（CC-277），需要时按能力找提供者；
-- 队友 buff 的 ownerId / teammateId 在 catalog 加载后等于组 id（CC-275）；
-- `agentModuleRowFusionRule.test.ts` 的 `RAW_ROW_READ_ALLOW` 按 remielle.ts 行号登记；
+- 分析器改 store 前后一律 `snapshotStore` / `restoreStore`（configSnapshot.ts），内联副本会被 CC-278 锁拦；
+- 量 HEAD 的测试（`agentIdentity.test.ts` T8）提交前 verify 覆盖不到，影响身份度量时提交后再跑一次；
+- 角色身份只有 agent.id（CC-276）；队友 buff 拥有者在加载后等于组 id（CC-275）；
 - 杀进程只 kill 具体 pid（`pgrep -f` 会匹配到 wsl_exec 自己的 shell）；
 - 新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
