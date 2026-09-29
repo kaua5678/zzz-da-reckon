@@ -71,26 +71,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 278 轮（lane lead-arena-0925c）：CC-261（bdc3d312）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.102。
-- 前几轮：277 CC-260（逐预设 restoreActionCounts）；276 CC-259；275 CC-258。
+**第 279 轮（lane lead-arena-0925c）：CC-262 定性完成、CC-263（47c051c8）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.103。
+- 前几轮：278 CC-261（去预设占位交互）；277 CC-260；276 CC-259。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **CC-262 G5 合轴吸收逐档不单调**（先测再判）。
-   - 复现：`auto-1371-1481-1451`；`clearDifficultyLevers` 后 `applyTeamToStore`，逐个设置 `config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, r)`（r = 0 / 0.05 / 0.1 / …），读 `teamTotalDamage` 与 `frontlineOccupationBreakdown(resourceResult).saved`。
-   - 预期复现 74.29 / 71.61 / 71.61 / 73.01 / 73.33 / 73.33 / 77.38M。
-   - 查 saved 1.1s 为什么让伤害掉 3.6%：比较 r = 0 与 r = 0.05 的排轴 / 可行行 / 时间预算差异，定位是哪一段离散跳变。
-   - 注意：「修不动点整数台阶」是已否决方向；若根因就是整数台阶，只写结论，不修。
-   - 再查 `climbDifficultyLadder` 对 G5 按档试开：第一档负增益是否导致整个 G5 被拒；若是，可考虑试开时一次看两档（可逆方案），先测影响面。
-2. 快支口径统一测量（手编 3 / auto 0 / 轻量装配 3 / 生产默认 0）。
-3. R6 清单复盘。
+1. **快支口径统一测量**（先测，不改）：
+   - 现状：手编预设 quickAssist 3 / auto 预设 0（不声明，走 setAgent 预填）/ 轻量装配 `teamTimelineStore#applyTeamToStore` 常量快支 3 / 生产默认 0 / harness 预填 3。
+   - 探针：对每个预设比较快支 0 与 3 的伤害和 x（liveInteractions 口径；快支 ×0.6 进 x）。
+   - 查快支在引擎里被谁消费（喧响供给？），判断「快支 3」是否为模块事实或占位。
+   - 然后按用户 09-11 口径裁决是否统一，写明依据。
+2. R6 清单复盘（docs/mcp-r6-refactor-list.md）：挑剩余「可归一」项里影响面最大的。
 
 **已知坑**：
+- 难度 x 交互项 = store 值 → 降配取整（`downscaleInteractionCount`）→ 截断存活率缩；新增被降配的引擎字段只改 `DOWNSCALED_INTERACTION_FIELDS` 一处；
+- 伤害对交互档 / 吸收比例不单调多半是整数台阶（终结 / 强特跨整数），先钉档做受控实验再下结论；
 - 预设级探针：每个预设前 `restoreActionCounts(config, snap)`，harness 快支 3 / 连携 1 先清零；
-- 数值卡：伤害零差不代表无影响，同时比较难度 x；
-- 改预设 json：有 5 个文件无法 `json.dumps(indent=2)` 无损回写（_template、banyue-liuyin-lucia、claret-*、yidhari-norma-lucia），对它们用文本替换；
-- 测试断言如依赖样例的偶然单调性，先扫描确认是否为设计保证，不要换样例绕过；
 - 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。

@@ -3250,3 +3250,51 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 影响：阶梯按档试开时，第一档可能因负增益被拒，从而错过第二档 +4% 的收益，这是 CC-262 要查的。
 - verify EXIT=0，golden 不变。
 - 回退：revert bdc3d312（json 为纯数据，测试改动同一提交）。
+
+### 24.103 第 279 轮：CC-262 定性（G5 吸收逐档不单调 = 降配档 × 整数台阶，不修）；CC-263 难度 x 认引擎降配（47c051c8）
+
+**① CC-262 根因（探针：auto-1371-1481-1451，clearDifficultyLevers 后逐档设 `time.comboAlignAbsorbRatio`）。**
+- 吸收只在溢出时起作用（`helpers.ts#calcTimeAllocation` `sumNetNecessary > budget`）。该队基线溢出 ⇒ 非轴降配 `stageResolveFeasibility` 取「最大可行交互档 s」。
+- 吸收越多 ⇒ 能装下的 s 越大：
+
+| 吸收比例 | 0 | 0.05–0.1 | 0.15 | 0.2 | 0.3–0.4 |
+|---|---|---|---|---|---|
+| 降配档 s | 0.5 | 0.625 | 0.75 | 0.875 | 1（不降配） |
+| 伤害 | 74.29M | 71.61M | 73.01M | 73.33M | 77.38M |
+
+- 受控实验：用 `interactionScaleMonotone + ceiling 0.5` 钉住档位 ⇒ 0–0.2 伤害恒为 74.29M，0.3 起 77.38M。⇒ 不单调**完全来自交互档变化**，吸收逻辑本身单调。
+- 伤害对 s 不单调的原因：
+  - r=0（s=0.5）两名队友各有 2.68s 平 A；
+  - r=0.05（s=0.625）多出的弹刀 / 闪反把平 A 挤成 0，强特 / 终结次数不变（仪玄终结 7）；
+  - s=1 时终结跨到 8。
+  - ⇒ 属**整数台阶**（「修不动点整数台阶」是已否决方向）。
+- 裁决：不修。G5 测试已在 §24.102 改为只锁设计保证，注释更新为本结论。
+- 阶梯「按档试开、第一档负增益被拒而错过满档」：**不做**。
+  - 理由：阶梯是按档贪心的既定设计，负增益来自整数台阶；加前瞻是策略改动，收益只在少数溢出队（本表所示）。
+  - 重开条件：用户明确要求 G5 一次到上限，或实测多队因此错过 >3% 收益。
+
+**② CC-263（47c051c8）：难度 x 没认引擎非轴降配。**
+- 修前：`liveInteractions` / `difficultyDescent#measureDifficulty` 经 `engineInteractionItems` 读 **store 原值**，只按装配截断存活率缩。
+- 引擎 `convergence#runCalcRound` 在 `interactionScale < 1` 时把弹刀 / 格挡 / 双反 / 闪反按 `round(x × s)` 实打。⇒ x 与伤害不同口径，违背 CC-259「x = 引擎实打次数」。
+  - 探针里 x 在 s=0.5…1 恒为 41.4，就是这个原因。
+- 修法：
+  - `resourceCalc/feasibilitySearch.ts` 新增 `DOWNSCALED_INTERACTION_FIELDS` 与 `downscaleInteractionCount(raw, scale)`（单一来源）；
+  - 引擎四行手写改为按字段表循环（逐位不变）；
+  - `engineInteractionItems(config, shrink, interactionScale?)` 先降配取整再 shrink（与引擎顺序一致：合并 cfg 缩放 → 装配截断）；
+  - liveInteractions 与 descent 传 `rr.convergence.interactionScale`。
+  - 快支 / 反制支援 / 预设补充类型不缩（引擎也不缩）。
+- 影响（104 个预设，散点口径）：只动 x，伤害 0 差（引擎未改）。11 个预设变化，恰好是全部 s<1 的预设：
+
+| 预设 | s | x |
+|---|---|---|
+| auto-1431-1481-1491 | 0.625 | 65.8 → 52.2 |
+| auto-1431-1481-1341 | 0.5 | 60.7 → 42.7 |
+| auto-1201-1361-1211 / -1311 | 0.875 | 36.0 → 31.6 |
+| auto-1091-1511-1411 | 0.875 | 57.9 → 53.5 |
+| banyue-trigger / jufufu / roxy / qingyi-lucia | 0.875 | 各约 −9.4 |
+| banyue-liuyin-lucia | 0.625 | 82.3 → 54.2 |
+| auto-1471-1571-1451 | 0.75 | 93.7 → 77.4 |
+
+- 锁：`src/composables/__tests__/liveInteractionsDownscale.test.ts`（取整口径 / 降配队行为 / 引擎源码按字段表）。stash liveInteractions.ts 后行为锁变红。
+- verify EXIT=0，golden 不变。
+- 回退：revert 47c051c8。
