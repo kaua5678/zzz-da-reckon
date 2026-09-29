@@ -71,29 +71,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 273 轮（lane lead-arena-0925c）：CC-255（e9a57ec6）、CC-256（41971d2a）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.97。要点：
-  - 交互默认值一律走 `stores/config#interactionBaselineFor`；需要区分是否专属角色时用 `hasCustomInteractionDefaults`；
-  - 分析器的轻量装配一律走 `teamTimelineStore#applyTeamToStore(cfg, team, state, false)`。
-  - 两处都有源码锁。
-- 前几轮：272 CC-252/253/254；271 CC-251（configSnapshot）。
+**第 274 轮（lane lead-arena-0925c）：CC-257（5268b414）完成；魔数装配测量后写「不做」；发现 CC-258。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.98。要点：预设交互条目写引擎一律走 `teamCompare#applyPresetInteractions`（有锁）。
+- 前几轮：273 CC-255/256（交互基准、轻量装配）；272 CC-252/253/254。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **魔数装配测量**：`grep -rn 'setQuickAssistCount(s, 3)\|setChainCountPerStun(s, 1)' src`。
-   - 已知出现位置：teamTimelineStore 轻量装配（现为唯一实现）、runArchiveDeploy，可能还有 teamCompare#applyTeamToStore。
-   - 先判断这些魔数是不是「分析器默认轴」这一个口径：
-     - 是 ⇒ 提成一个命名常量或函数（放在 stores/config 或 teamTimelineStore），加锁；
-     - 各处语义不同（例如 runArchiveDeploy 有自己的口径注释）⇒ 写「不做」。
-   - 只为降计数的改动不做。
-2. 若 1 写了「不做」：R6 三类清单复盘，挑影响面最大的未做项；或用 dupfn 重扫（`node /home/kaua/calc-arch/dupfn.mjs`），关注**签名不同但协议相同**的副本（CC-256 这种，dupfn 扫不到）。
+1. **CC-258 般岳难度双计（涉及数值：难度 x 轴）**。
+   - 现状：`src/composables/difficultyCurve.ts` 的 `ENGINE_INTERACTION_FIELDS`（约第 188 行）是全局「类型 → 字段」表；`liveInteractions`（约第 215 行）逐字段求三槽之和，按全局类型名输出，再跳过预设中同名类型（防双计）。般岳的 blockCount 被按 `block` 输出，预设里的 `banyueGoldenParry` 不同名，不被跳过。
+   - 方案：
+     - 在角色模块类型（`src/mechanics/types.ts`，与 `compareInteractionTypes` 同处）加可选声明 `interactionFieldTypes?: Partial<Record<'blockCount' | 'dualCounterCount', string>>`；
+     - 般岳声明 `{ blockCount: 'banyueGoldenParry', dualCounterCount: 'banyueDualCounter' }`；
+     - liveInteractions 改为按槽位解析类型名：该槽模块有覆盖就用覆盖名，否则用全局名。输出按类型名聚合（同名求和），防双计改为跳过「已由引擎给出的类型名集合」。
+     - dualCounterCount 只在有覆盖时输出，避免给普通角色新增 dual 行。
+     - 注意 `@/mechanics/registry` 必须保持纯叶子；composables 读模块用现成的 getAgentMechanic。
+   - 探针：先写 tmp 测试，对 5 个般岳预设（`src/data/teamPresets/banyue-*.json`）加一个非般岳对照，用 `measureOperationalDifficulty` 或 `liveInteractions` 取修复前后的难度，差值写入文档。预期：liuyin 下降（去掉 20×1.0 的重复计数），其余般岳队上升（block 1.0 → 1.5，dual 从 0 变为 5×2.0）；非般岳零差。
+   - 散点页用的是预设声明（`shrinkInteractionsByTruncation`），不走 liveInteractions，先确认它不受影响。
+   - golden 若变化，写明原因。
+   - 若发现 `block` 与 `banyueGoldenParry` 在用户口径里本就是两次不同操作（先查 §24.x 与 teamPreset.ts 注释中 2026-09 的用户口径），改写「不做」并说明。
+2. CC-258 之后：R6 三类清单复盘，挑影响面最大的未做项；或关注**签名不同但协议相同**的副本（CC-256 / 257 这种，dupfn 扫不到）。找法：grep 同一组 store setter 的连续调用序列。
 
 **已知坑**：
-- 副本之间的差异常常是缺陷（CC-251 / 254 / 255 都是副本漏了一支），合并时以单一来源为准；但有注释写明口径的差异（runArchiveDeploy 不预设弹刀）要保留；
+- 副本之间的差异常常是缺陷（CC-251 / 254 / 255 / 257），合并时取超集或以单一来源为准；但有注释写明口径的差异要保留（runArchiveDeploy 不预设弹刀、快支 3）；
 - 沙箱重置后 `up.sh` 可能丢可执行位 ⇒ 一律 `bash /home/user/mcp-tools/up.sh …`；
-- skillRows / helpers 的 re-export 壳受壳契约锁保护，不要删；
-- 新测试先单独跑 `npx vue-tsc -b`（未使用的变量 / 导入会报 TS6133 / TS6196）；
-- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify。
+- `setupHarness` 是 async 且要传队伍数组：`await setupHarness([{ agentId: '1471' }, …])`；
+- 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。
 

@@ -3045,3 +3045,33 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 - 回退点：两刀独立，revert 41971d2a / e9a57ec6。
 - 跨分析器协议线（applyTeamToStore、交互基准、轻量装配）**结项**。
+
+### 24.98 第 274 轮：魔数装配测量（不做）；CC-257 预设交互映射单一来源（5268b414，零差）；发现般岳难度双计 → CC-258
+
+**① 魔数装配 `setQuickAssistCount(s, 3)` / `setChainCountPerStun(s, 1)`：不做。**
+- 测量：CC-256 之后只剩 2 处，即 `teamTimelineStore#applyTeamToStore` 的轻量分支（唯一轻量装配）和 `runArchiveDeploy.ts:120-121`。
+- runArchiveDeploy 有自己的口径注释（「快支固定 3 作为喧响基础供给；连携基准 1，轴模式由轴内连携块反推覆盖」），弹刀口径也已经和轻量装配不同（不预设弹刀）。两处是两个可能各自演化的口径，只是数值恰好相同。
+- 提成命名常量只会降计数，没有架构收益（唯一判据）。回退点：将来若第三处出现同一口径，再提成 `ANALYZER_DEFAULT_ACTION_AXIS`。
+
+**② CC-257（零差）。**
+- 测量「预设交互条目 → 引擎字段」这层映射，发现两份副本、词表不同：
+  - `TeamConfigPage.vue#onPresetSelect` 认 parry / dodge / quickAssist / banyueGoldenParry→blockCount / banyueDualCounter→dualCounterCount，**不认** block / tauntCancel；
+  - `teamCompare#applyTeamToStore` 认 parry / dodge / quickAssist / block / tauntCancel，**不认**般岳两类（旧注释写「角色专属类型只进难度」）。
+- 裁决：般岳的 `blockCount` 就是金身格挡（banyue.ts:1040 `interactionInputs.block.label = 金身格挡`），两个名字是同一物理交互，映射取并集。
+  - 新增 `teamCompare#applyPresetInteractions(configStore, items)`，两处都改调它。
+  - 其余类型（yixuanPerfectBlock、perfectBlock 等）仍然不写引擎，与修复前两边都一致。
+- 零差依据：现存预设实际使用的类型只有 parry 104、dodge 104、quickAssist 16，以及 banyue-liuyin-lucia 的 banyueGoldenParry 20 / banyueDualCounter 5。后者等于 setAgent 按 interactionBaselineFor 预填的 1471 默认值（20 / 5）。verify EXIT=0，golden 不变。
+- 语义变化（潜在）：以后若有预设声明般岳金身次数不等于 20，散点和难度曲线的引擎读数会跟随预设，与主页一致；修复前会停留在默认值 20。
+- 锁：`src/composables/__tests__/presetInteractionsSource.test.ts`，含两部分：
+  - 源码锁：非测试源码中不许出现 `it.type === '<交互>') configStore.set…` 这种内联映射；
+  - 行为锁：并集词表、未知类型不写引擎。
+  - 修复前两条都红。
+- 回退点：revert 5268b414。
+
+**③ 发现：般岳难度双计（CC-258 待做，涉及数值）。**
+- `difficultyCurve#liveInteractions` 按 `ENGINE_INTERACTION_FIELDS` 从引擎读 `blockCount`，按类型 `block`（INTERACTION_WEIGHTS 1.0）计入。预设里的 `banyueGoldenParry` 不在这张表中，于是「防双计」跳过不生效，又按 1.5 计入一次。
+  - 结果：banyue-liuyin-lucia 的金身格挡被计为 20×1.0 + 20×1.5；
+  - 其余 4 个般岳预设没有声明般岳类型，引擎读到的 blockCount 20 只按普通 `block` 1.0 计，般岳权重 1.5 没有生效；
+  - `dualCounterCount` 不在表中，双反只从预设声明读。
+- 根因：同一个引擎字段 `blockCount` 对不同角色是不同的交互类型（星徽·比利的 block 是普通格挡，般岳的 block 是金身格挡）。`ENGINE_INTERACTION_FIELDS` 是「字段 → 类型」的全局表，缺少按角色的类型名。
+- 方案（下一轮直接开工，见交接）：由角色模块声明字段到类型名的覆盖，liveInteractions 按槽位解析类型名。
