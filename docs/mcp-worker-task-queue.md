@@ -75,18 +75,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > §2 属于主 lane；并行会话把自己的交接写在这里，互不覆盖。任何 lane 确认本节已过时，可以整节替换成自己的。
 > 开工查现场的方法见提示词第 9 条（`ps` 看 verify / vitest，`git log` 看最近提交时间，`ls -lt /home/kaua/calc-arch`）。
 
-**2026-09-29 18:40 arena-B 第 3 轮（开工时无并行会话：HEAD 7bbaabe4，无 verify 进程）：抽卡规划购买窗口加上界，代码 `c8b76d2f`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+**2026-09-29 19:00 arena-B 第 4 轮（开工时无并行会话：HEAD 0d6b93ab，无 verify 进程，主 lane 最近提交 16:43）：抽卡规划购买阶梯数据化，代码 `bf868983`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **判断**（上一轮下一步 = 提案 §5.5「角色 / 音擎独立阶梯」）：读码发现同一个阶梯在三个文件里各写一遍——`pullPlanner.ts` `TIER_COSTS`、`pullPlannerEngine.ts` `holdingStateFor` 的 `tier >= 3 ? 6 : 0` / `tier >= 3 ? 5 : 1`、`pullPlannerChart.ts` `ppTierLabelOf` 的三元式。合成一张表是**架构简化**（一个事实一处定义），且让 §5.5 变成改数据。**阶梯内容不改**：本体 → 专武 → 满配是用户 2026-08-28 明确口径（队列本文件抽卡段「用户口径」）。真正的两条独立阶梯（持有状态换成 (影画, 精炼) 二元组）会让每卡每节点分支 1 → 2、引擎求值变多，且下面实测显示中间档当前零收益 ⇒ 不做。
 - **做到哪**：
-  1. **先量**（上一轮下一步）：一次性探针（成型号 + 猫又/1031/1131、beam 2、topM 8、每起点 6 期，约 25 秒/起点；文件留在 `/home/kaua/calc-arch/arena-probe-window.test.ts`，放进 worktree 的 `src/` 下用 vitest 跑，靠 `PROBE_STARTS` / `PROBE_N` / `PROBE_OUT` 环境变量），统计购买日期 ≥ 下一个卡池节点日期的笔数。旧实现：起点 2025-12-30 共 4 笔里 1 笔越窗（1341 专武，窗口 [12-30, 02-06) 却在 02-13 买）；起点 2026-03-27 共 4 笔 0 越窗。结果：`/home/kaua/calc-arch/probeA-window.out`（旧）/ `probeA-window-after.out`（新）。
-  2. **改**（不论量出多少都做：用户口径「首 UP 窗口唯一可购，复刻不建模」+ 文件头 + `runPullPlanner` 的 `inWindow` 过滤注释「窗口已过永远买不到」都说窗口会关，只有 `nextPurchase` 没关）：`PlannerCard.windowEnd: string | null` **必填**（不含；null = 其后无节点；CC-179：可选会静默退回永久可买）；`nextPurchase` 加 `date >= windowEnd ⇒ null`（本体 / 专武 / 满配一起关）；`buildPlannerCards` 取 `VERSION_NODES[idx+1]?.date ?? null`。VCG 禁购写法 `windowStart: '9999-12-31'` 不受影响。
-  3. **测试**：`pullPlanner.test.ts` 夹具 `card()` 加第 4 参 `windowEndDay`（缺省 null = 开放，旧用例不动）+ 新 2 例（窗口边界含升档 / 钱在关窗后才到则买不到、开放时会买）；`pullPlannerEngine.test.ts` 卡清单用例加 2 条断言（windowEnd > windowStart、有上界的卡 > 30 张）。负控：删掉上界检查 ⇒ 新 2 例红，恢复后绿。
-  4. 验证：`vue-tsc -b` 0；pullPlanner 19 例绿；隔离 worktree `wtA-window` 全量 verify 见提交说明（日志 `/home/kaua/calc-arch/vA-window.log`）。没跑 zd：抽卡规划不在 `resourceResult` 计算路径上。**数值影响**：起点 2025-12-30 的 6 期规划总分 67836 → 65474（旧分含越窗购买），起点 2026-03-27 不变；无 golden 覆盖 Chart 6。
-- **§5.6 三根时轴现已全部落地**（收入 = 版本日历，结算 = 期，购买 = 卡池节点窗口）。提案第 15 行已标 ✅，§6 警告已改成「已修 + 实测」。
-- **下一步（抽卡规划线，仍与 stun 线文件不相交）**：提案 §5.5「角色 / 音擎独立阶梯」（现在强制 本体 → 专武 → 满配 顺序）。开工先读 `docs/proposals/pull-value-optimization.md` §5.5 全文和 `pullPlanner.ts` 的 `PurchaseTier` / `TIER_COSTS` / `nextPurchase` / `tierHoldings`，判断「独立阶梯」是否让架构更一般（两根独立计数器替代单一档位）还是只是加状态维度（beam 状态空间变大、引擎求值次数变多）；只有前者才做。若做：先写一个小用例证明现阶梯会错过的购买组合（如先满配影画不买专武），再改。
-- **坑**：窗口长度继承下半节点的近似日期（多数约 21 天，2.5 上半约 38 天）；若将来有人把下半日期改准，规划结果会跟着变——这是预期。
-- **未决项**：提案 §6「完全下位是否作为显式输出标签」待用户裁决。
-- **回退点**：`git revert c8b76d2f`（删 `windowEnd` 字段、上界检查与新测试；收入轴 724f37cf 独立，不受影响）。
-- 上一轮（arena-B 第 2 轮）：收入改按版本日历 `724f37cf`（旧实现每期发一份，收入约 ×3，提案 §2.2c 有实测）。回退 `git revert 724f37cf`。
+  1. `pullPlanner.ts`：新增 `LadderRung { label, cinema, refine }`（累计状态）、`PURCHASE_LADDER`（3 档，内容同旧）、`ladderRung(tier)`、`tierCost(tier)`（首档 = 本体 15000 + 影画 / 精炼差额）；删 `TIER_COSTS`；`PurchaseTier` 从 `0|1|2|3` 改成 `number`（档位个数由表决定，顺带删掉几处 `as never` / `as PurchaseTier`）；`nextPurchase` 的「满配须先专武」特判随之消失（逐档走本来就不跳档）。
+  2. `pullPlannerEngine.ts` `holdingStateFor`：影画 / 精炼查表；免费成员不走阶梯。`pullPlannerChart.ts` `ppTierLabelOf` = 表的 label。
+  3. 测试：`tierCost(1..3)` 替换 `TIER_COSTS`；新增「各档增量之和 = 本体 + 顶档影画×15000 + 顶档精炼×10000 = 155000、到顶返回 null、越界抛错」；引擎「持有档逐人配装」用例加逐档对齐 `PURCHASE_LADDER` 的断言。
+  4. **行为不变的证据**：上一轮探针（`/home/kaua/calc-arch/arena-probe-window.test.ts`，成型号、2 起点 × 6 期）重跑，输出与 `probeA-window-after.out` 逐行相同（去掉耗时列后 diff 为空）→ `probeA-ladder-same.out`。
+  5. **派生的证据 + 中间档实测**：临时往表里插 `M1+专武`、`M2+专武` 两档：新的逐档对齐断言仍绿（引擎确实查表）；钉死用户阶梯内容的旧断言（`{雅1,柳3}` 用例、`nextPurchase` 档位成本用例）变红——这是想要的，改阶梯内容 = 改口径，测试应报警。同一探针两个起点的规划**完全不变**（`probeA-ladder-finer.out`）：每版本 25000 菲林下几乎只买本体 / 专武，中间档用不上。已恢复。
+  6. 验证：`vue-tsc -b` 0；pullPlanner + pullPlannerChart 32 例绿；引擎两组用例绿；隔离 worktree `wtA-ladder` 全量 verify 见提交说明（日志 `/home/kaua/calc-arch/vA-ladder.log`）。不涉 `resourceResult` 计算路径，未跑 zd。
+- 提案第 14 行 §5.5 标 ◐（数据化完成、内容待裁决、附实测），§2.1 与 §5 第 5 条同步；§2.2(c) 里修复前的旧判断段加了「保留作记录」前缀。`FEATURES_GUIDE.md` 抽卡段补阶梯数据表说明。
+- **下一步（抽卡规划线已无不依赖用户的大项）**：
+  1. ~~疑似边角 bug：限定 S 卡的专武不是限定 S 音擎 ⇒ 专武档花钱不改配装~~ **本轮已查：42/42 张卡都有限定 S 专武，无此类卡**（`/home/kaua/calc-arch/probeA-sig.out`）。已加锁：`pullPlannerEngine.test.ts` 卡清单用例断言「无专武的卡 = []」，新角色缺专武数据时会红——届时补 catalog 数据，或让阶梯按卡过滤（`PlannerCard` 加必填 `hasLimitedSignature`，`nextPurchase` 跳过无效档）。
+  2. 抽卡规划线剩下的都待用户裁决，可转去其他线：主 lane（§2）下一步是维琳娜 / 爱丽丝补 spec `additionalAbility`，那是主 lane 的活；开工前按提示词第 9 条查现场，主 lane 若超过数小时没有提交且无进程，可以接手，但要在 §2 写明「由 arena-B 接手」。
+- **未决项**：提案 §6「完全下位是否作为显式输出标签」、§5.5 阶梯内容（是否插中间档 / 独立阶梯）都待用户裁决。
+- **回退点**：`git revert bf868983`（纯重构，行为不变；回退后 `TIER_COSTS` 与三处硬编码恢复）。
+- 上一轮（arena-B 第 3 轮）：购买窗口加上界 `c8b76d2f`（必填 `PlannerCard.windowEnd` = 下一个卡池节点；实测起点 2025-12-30 旧实现 1 笔越窗，总分 67836 → 65474）。回退 `git revert c8b76d2f`。
+- 第 2 轮：收入改按版本日历 `724f37cf`（旧实现每期发一份，收入约 ×3，提案 §2.2c 有实测）。回退 `git revert 724f37cf`。
 - 上一轮（arena-B 第 1 轮，与主 lane 第 315 轮同时）：收养孤儿 WIP（抽卡规划零价值三态 + 增量成本分母）`d3443e39`；改提示词（加 wsl_exec 尾截断坑、现成客户端、第 9 条并行会话）。
 
 ## 2. 最近一轮交接（每轮替换本节）
