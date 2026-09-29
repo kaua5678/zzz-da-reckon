@@ -82,6 +82,19 @@ describe('teamPresets 预设队伍库', () => {
     expect(merged.variants).toBeUndefined()
   })
 
+  it('CC-261：预设不再携带 parry8/dodge4 占位交互（空数组 = 走职业基准 / 模块专属默认）', () => {
+    // 用户 2026-09-11「完全不需要以前这个死数值」；8/4 会盖掉 setAgent 的职业基准（输出位 6/10）
+    // 与模块专属默认（1051 noGenericInteraction、1531、1471）。回退：git revert 该提交。
+    const offenders = teamPresets.filter(p => {
+      const kinds = (p.interactions ?? []).map(i => `${i.type}=${i.count}`)
+      return kinds.includes('parry=8') && kinds.includes('dodge=4')
+    }).map(p => p.id)
+    expect(offenders).toEqual([])
+    const auto = teamPresets.filter(p => p.id.startsWith('auto-'))
+    expect(auto.length).toBeGreaterThan(0)
+    for (const p of auto) expect(p.interactions, p.id).toEqual([])
+  })
+
   it('诺姆复制版的专武随角色替换（专武 14157 首席跟班，或常驻击破音擎）', () => {
     const normaSig = catalog.wEngines.find(w => w.ownerAgentId === NORMA)!.id
     expect(normaSig).toBe('14157')

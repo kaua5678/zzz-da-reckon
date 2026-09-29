@@ -12,7 +12,7 @@
  *   「击破队和支援队没必要分…他们是辅助，怎么能作为一个命名呢」。旧版把 team[0]
  *   职业直接当队名，于是 耀嘉音/柚叶 带队的实战队塞出了「支援队」这类假分类）。
  *   goldSteps = []（默认 01 基线——用户「默认配置全 01」；
- *   实战命座/精炼记入 note 出处）；interactions = parry8/dodge4（难度 0，自动队供参考）。
+ *   实战命座/精炼记入 note 出处）；interactions = []（不预设，走角色职业基准——用户 09-11「完全不需要以前这个死数值」，CC-261）。
  * - 同名队去重：**成员集合相同（顺序无关）= 同一队**，只留 1 条（保留判据见去重段）；
  *   本脚本会清理 `auto-*` 孤儿文件（上一轮生成但本轮不再产出的），手编预设不受影响。
  * - 同一口径的回填/校验：`node scripts/sync-preset-categories.mjs`（手编预设 subgroup
@@ -103,15 +103,13 @@ const presets = [...byTeam.values()].sort((a, b) => String(a.team[0].agentId).lo
     subgroup: verdict.subgroup,
     // 命名只带人物组成（用户 2026-09-03：自动无有效信息、低金可改金数，都不入名）
     name: r.team.map(m => nameOf(m.agentId)).join('+'),
-    note: `自动收录自实战顶分：${r.id}｜${r.score} 分 ${r.timeSeconds}s｜实战配装：${configText}｜金数 ${gold}（最低金+窗口收录，用户 2026-09-03）。默认 01 基线（goldSteps 空）；交互为 parry8/dodge4 取整档；命中数据有出入可在此修订。`,
+    note: `自动收录自实战顶分：${r.id}｜${r.score} 分 ${r.timeSeconds}s｜实战配装：${configText}｜金数 ${gold}（最低金+窗口收录，用户 2026-09-03）。默认 01 基线（goldSteps 空）；交互不预设，走角色职业基准（setAgent 预填，CC-261）；命中数据有出入可在此修订。`,
     team: r.team.map(m => m.agentId),
     wEngines: r.team.map(m => (m.weaponId && wEngineIds.has(String(m.weaponId))) ? String(m.weaponId) : ''),
     goldSteps: [],
-    // 交互取整档（用户 2026-09-03：交互为资源/失衡次数服务，无需实战值，四舍五入整数档足够）
-    interactions: [
-      { type: 'parry', count: 8 },
-      { type: 'dodge', count: 4 },
-    ],
+    // 交互不预设（CC-261）：旧 parry8/dodge4 占位（用户 09-03）已被 09-04「setAgent 按职业基准预填」
+    // 与 09-11「完全不需要以前这个死数值」取代；空数组 = 走 interactionBaselineFor（含模块专属默认）。
+    interactions: [],
   }
 })
 

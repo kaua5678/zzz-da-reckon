@@ -198,14 +198,6 @@
   ],
   "interactions": [
     {
-      "type": "parry",
-      "count": 8
-    },
-    {
-      "type": "dodge",
-      "count": 4
-    },
-    {
       "type": "quickAssist",
       "count": 3
     }

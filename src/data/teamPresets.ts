@@ -37,7 +37,7 @@
  * 预设来源两种，同名队只留一条（用户 2026-09-11 裁决「去重吧，手动预设的都可以删了，那是早期的
  * 默认交互，现在有自动交互了，特别是难度提升效果，完全不需要以前这个死数值」）：
  *   · `auto-<主C-击破-辅助>.json` = `scripts/gen-auto-presets.mjs` 从**实战顶分归档**生成
- *     （最低金 +2 窗口；`goldSteps: []` 默认 01 基线、交互 `parry8/dodge4` 是未校准占位）——保留为唯一来源；
+ *     （最低金 +2 窗口；`goldSteps: []` 默认 01 基线、`interactions: []` 不预设，走角色职业基准 / 模块专属默认；旧 parry8/dodge4 占位已于 CC-261 删除）——保留为唯一来源；
  *   · 手编 `<主C>-<队友>-lucia.json` = 早期人工录入（交互/加金顺序是**修好的死数值**，只在没有 auto 孪生时保留）。
  *   2026-09-11 删掉的 8 条手编重复项：yidhari-lycaon-liuyin / yixuan-qingyi/liuyin/norma /
  *   banyue-norma / billy-liuyin/norma（各自 auto- 孪生仍在；清单同步进 `data/__tests__/teamPresets.test.ts`）。
