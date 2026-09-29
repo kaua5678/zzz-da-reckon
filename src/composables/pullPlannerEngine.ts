@@ -10,7 +10,7 @@
  * (有序 team × bossId/phaseId/HP × 逐人持有档)——同槽序同房同档只算一次，
  * beam 的 VCG 重规划大量命中缓存。规划期内 Boss/buff 逐期应用（同 Chart 4）。
  */
-import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
+import { useConfigStore, interactionBaselineFor } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedSWengineId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
@@ -253,9 +253,8 @@ function applyTeamLite(
     configStore.setWEngineModLevel(s, state.wengineMods[s])
     if (state.wEngines[s]) configStore.setWEngine(s, state.wEngines[s])
     // 交互基准：同 teamTimeline.applyTeamToStore（支援/防护不交互，击破只弹刀，主C弹刀+闪反）
-    const defs = getInteractionDefaults(team[s])
-    const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
-    const base = hasCustom ? defs : roleInteractionBaseline(useCatalogStore().getAgent(team[s])?.specialty)
+    // CC-255：单一来源 interactionBaselineFor（含 noGenericInteraction；原内联副本漏了，1051 被发通用弹刀/闪反）
+    const base = interactionBaselineFor(team[s], useCatalogStore().getAgent(team[s])?.specialty)
     configStore.setParryCount(s, base.parry)
     configStore.setDodgeCounterCount(s, base.dodge)
     configStore.setBlockCount(s, base.block)

@@ -9,7 +9,7 @@
  * - 当期可选牌（3 选 1）不自动应用：归档未记录玩家选择，对比时由用户在属性配置页手动选。
  */
 import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase, PhaseBossBrief, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
-import { getInteractionDefaults, roleInteractionBaseline, useConfigStore } from '@/stores/config'
+import { useConfigStore, hasCustomInteractionDefaults, interactionBaselineFor } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
 
@@ -110,13 +110,13 @@ export function applyDeployConfig(
     configStore.setWEngineModLevel(s, slot.wEngineModLevel)
     if (slot.wEngineId) configStore.setWEngine(s, slot.wEngineId)
 
-    const defs = getInteractionDefaults(slot.agentId)
-    const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
-    const base = roleInteractionBaseline(useCatalogStore().getAgent(slot.agentId)?.specialty)
-    configStore.setParryCount(s, hasCustom ? defs.parry : 0)
-    configStore.setDodgeCounterCount(s, hasCustom ? defs.dodge : base.dodge)
-    configStore.setBlockCount(s, hasCustom ? defs.block : 0)
-    configStore.setDualCounterCount(s, hasCustom ? defs.dual : 0)
+    // CC-255：基准取 interactionBaselineFor（含 noGenericInteraction）；本口径「不预设弹刀」⇒ 非专属角色只取闪反
+    const custom = hasCustomInteractionDefaults(slot.agentId)
+    const base = interactionBaselineFor(slot.agentId, useCatalogStore().getAgent(slot.agentId)?.specialty)
+    configStore.setParryCount(s, custom ? base.parry : 0)
+    configStore.setDodgeCounterCount(s, base.dodge)
+    configStore.setBlockCount(s, custom ? base.block : 0)
+    configStore.setDualCounterCount(s, custom ? base.dual : 0)
     configStore.setQuickAssistCount(s, 3)
     configStore.setChainCountPerStun(s, 1)
   }

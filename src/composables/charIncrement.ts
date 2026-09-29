@@ -213,7 +213,7 @@ export function incrementForCard(period: IncPeriod, agentId: string): CardPeriod
 
 // ========== 引擎求值层（快照/部署/伤害→分数；基底队少 = 全量也秒级） ==========
 
-import { useConfigStore, getInteractionDefaults, roleInteractionBaseline } from '@/stores/config'
+import { useConfigStore, interactionBaselineFor } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pullPlannerEngine'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
@@ -386,14 +386,12 @@ function applyBaseTeamLite(
     configStore.setCinemaLevel(s, m.mindscape)
     configStore.setWEngineModLevel(s, m.phase)
     if (m.weaponId) configStore.setWEngine(s, m.weaponId)
-    const defs = getInteractionDefaults(m.agentId)
-    const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
-    // 职业基准单一事实源（roleInteractionBaseline）：支援/防护 0 交互（辅助不上场打弹刀/闪反），其余弹刀6+闪反10
-    const base = roleInteractionBaseline(useCatalogStore().getAgent(m.agentId)?.specialty)
-    configStore.setParryCount(s, hasCustom ? defs.parry : base.parry)
-    configStore.setDodgeCounterCount(s, hasCustom ? defs.dodge : base.dodge)
-    configStore.setBlockCount(s, hasCustom ? defs.block : base.block)
-    configStore.setDualCounterCount(s, hasCustom ? defs.dual : base.dual)
+    // CC-255：单一来源 interactionBaselineFor（角色专属默认 > 职业基准；noGenericInteraction 归零——原内联副本漏了）
+    const base = interactionBaselineFor(m.agentId, useCatalogStore().getAgent(m.agentId)?.specialty)
+    configStore.setParryCount(s, base.parry)
+    configStore.setDodgeCounterCount(s, base.dodge)
+    configStore.setBlockCount(s, base.block)
+    configStore.setDualCounterCount(s, base.dual)
     configStore.setQuickAssistCount(s, 3)
     configStore.setChainCountPerStun(s, 1)
   }

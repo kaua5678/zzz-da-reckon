@@ -235,9 +235,17 @@ export function clampActionCount(field: ActionCountField, count: number): number
  */
 export function interactionBaselineFor(agentId: string, specialty?: string): { parry: number; dodge: number; block: number; dual: number } {
   if (agentId && getAgentMechanic(agentId)?.noGenericInteraction) return { parry: 0, dodge: 0, block: 0, dual: 0 }
+  return hasCustomInteractionDefaults(agentId) ? getInteractionDefaults(agentId) : roleInteractionBaseline(specialty)
+}
+
+/**
+ * 角色是否有专属交互默认值（任一项 > 0）。CC-255：此前 pullPlannerEngine / teamTimelineStore / charIncrement /
+ * runArchiveDeploy 各内联一份「hasCustom ? defs : 职业基准」，都漏了 noGenericInteraction（1051 伊德海莉被发通用弹刀/闪反）；
+ * 现一律调 interactionBaselineFor，只有「不预设弹刀」的部署口径（runArchiveDeploy）另需本判定。
+ */
+export function hasCustomInteractionDefaults(agentId: string): boolean {
   const defs = getInteractionDefaults(agentId)
-  const hasCustom = defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
-  return hasCustom ? defs : roleInteractionBaseline(specialty)
+  return defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
 }
 
 /** 推荐主词条 prop name → catalog statId 映射（含中文别名）。
