@@ -3348,3 +3348,34 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 **③ 留下的事。**
 - `EnemyConfig.quickAssistCount`（Boss 侧快支 6）零读取：删除需同时处理持久化旧存档字段与类型。价值低，登记 CC-265（todo，低优先），做前先 grep persist / migrate。
 - 15 个手编预设的 quickAssist 3 现在等于基准，属冗余声明，但无害（作为显式记录保留，不删）。
+
+### 24.105 第 281 轮：CC-266 装配入口不重复写基准（b0ec91a3，零差）；CC-265 删 Boss 侧快支死字段（626e2e63）
+
+**① 动作次数写入入口盘点**（`grep -rn 'set[A-Z][a-zA-Z]*Count(' src`，排除测试）：
+
+| 文件 | 写入次数 | 性质 | 处置 |
+|---|---|---|---|
+| stores/config.ts | 1 | setAgent 预填基准（唯一写入者） | 保留 |
+| teamCompare.ts | 7 | 预设声明覆盖（chainCountPerStun / basicAttackTimeWeight / applyPresetInteractions） | 保留 |
+| TeamConfigPage.vue | 7 | 用户滑块 | 保留 |
+| timeWeightAllocation.ts | 6 | 时间权重优化的试探 / 回滚 | 保留 |
+| difficultyLadder / difficultyDescent | 1 / 2 | 杠杆施加与快照恢复 | 保留 |
+| teamTimelineStore.ts | 6 | **与 setAgent 逐位相同**（两条分支都先经 setAgent：直接调或经 applyTeamPreset） | CC-266 删 |
+| runArchiveDeploy.ts | 6 | 闪反 / 快支 / 连携与 setAgent 相同；弹刀 / 格挡 / 双反是本口径偏差（非专属角色不预设，运行时反推） | CC-266 删 3 行相同的、留 3 行偏差 |
+
+**② CC-266（b0ec91a3）。**
+- 两处删重复写入，注释写明「基准由 setAgent 写，这里只写偏差」。
+- teamTimelineStore 不再 import `interactionBaselineFor` / `ASSIST_ACTION_BASELINE`。
+- 锁：`src/composables/__tests__/assemblyBaselineWriter.test.ts`。
+  - 等价锁：全部去重队伍 × autoBuild false / true，先把次数弄脏（77 / 3），装配后逐槽等于 `interactionBaselineFor` + `ASSIST_ACTION_BASELINE`。autoBuild=true 走 applyTeamPreset，即 runArchiveDeploy 同一路径。
+  - 源码锁：teamTimelineStore 无次数写入；runArchiveDeploy 无闪反 / 快支 / 连携写入，并保留弹刀偏差式。
+- 零差依据：删去的写入与 setAgent 写入同函数、同参数，中间只有命座 / 精炼 / 音擎写入，不碰次数；等价锁覆盖全部队伍。
+- 回退：revert b0ec91a3。
+
+**③ CC-265（626e2e63）。**
+- `EnemyConfig.quickAssistCount`（类型行与 `defaultEnemy` 的 6）删除。
+- 依据：src / 数据 json 零读取；config store 不持久化（localStorage 只在 logicEditor / theme / catalog / 两个页面的视图状态）；vue-tsc 无报错。
+- 旧 `updateEnemy` 若传入该字段会经 `Object.assign` 挂上，但无人读取，无害。
+- 回退：revert 626e2e63。
+
+- CC-265 与 CC-266 在同一次 verify 中验证（EXIT=0），分两个提交，各自可独立 revert（改动文件不相交）。

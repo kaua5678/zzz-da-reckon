@@ -71,22 +71,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 280 轮（lane lead-arena-0925c）：CC-264（5a357bf6）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.104。
-- 前几轮：279 CC-262 定性 / CC-263；278 CC-261；277 CC-260。
+**第 281 轮（lane lead-arena-0925c）：CC-266（b0ec91a3）、CC-265（626e2e63）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.105。
+- 前几轮：280 CC-264（快支 / 连携基准）；279 CC-263；278 CC-261。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
+- 「装配 / 交互口径归一」系列（CC-254 ~ 266）到此收口：基准唯一写入者 setAgent；预设覆盖唯一映射 applyPresetInteractions；逐预设起点 restoreActionCounts；难度 x 唯一读取 liveInteractions（含降配）。
 
 **下一步（直接开工）**：
-1. **R6 清单复盘**（`docs/mcp-r6-refactor-list.md`）：
-   - 列出三类（冗余可简化 / 可归一 / 可结构化）里仍为 todo 的条目，按影响面排序；
-   - 挑一项做，或把已不值得做的标「不做」加理由。
-   - 本系列（CC-254 ~ 264）是「装配 / 交互口径归一」，可顺带检查还剩哪些入口各自写动作次数：`grep -rn 'set[A-Z][a-zA-Z]*Count(' src --include=*.ts | grep -v __tests__`。
-2. CC-265（低优先）：删 Boss 侧死字段 `EnemyConfig.quickAssistCount`，先 grep `persist|migrate|localStorage`。
+1. **R6 清单复盘**（`docs/mcp-r6-refactor-list.md` 前半的三类清单）：
+   - 把每条的当前状态（done / todo / 不做）对一遍：清单写于 R6（6db533b），之后 CC-2xx 可能已顺带做掉若干条；
+   - 已做的补提交号，已不值得的写「不做」加理由；
+   - 剩余 todo 按影响面排序，挑第一项开工。
+   - 判据：让架构更通用 / 更简单；不做只为降计数的改动。
+2. 若 R6 清单已空：从 `docs/ARCHITECTURE-OVERVIEW.md` 重新找「同一概念多处实现」的地方（上一系列的方法：grep 写入口 / 读入口，逐个比对语义）。
 
 **已知坑**：
-- 动作次数基准：弹刀 / 闪反 / 格挡 / 双反 → `interactionBaselineFor`；快支 / 连携 → `ASSIST_ACTION_BASELINE`；二者都在 setAgent 预填。setAgent 仍**不**重置嘲讽取消、仪玄系、普罗米娅等专属字段，逐预设循环靠 `restoreActionCounts`；
-- 改基准会动 teamCompare.test 里按项对账的 x 期望值：先打 difficultyDetail 看构成，再逐项改注释和数值；
-- 预设级探针：每个预设前 `restoreActionCounts(config, snap)`；harness 快支 3 / 连携 1 现在与生产 setAgent 一致；
+- 动作次数：基准只由 setAgent 写（`interactionBaselineFor` + `ASSIST_ACTION_BASELINE`）；装配入口只写偏差（runArchiveDeploy 的非专属不预设弹刀）；新增装配入口不要再抄基准；
+- teamTimelineStore 的 autoBuild=true 分支走 applyTeamPreset，测试要先 `await catalog.loadBuildRecommendations()`，否则抛错；
+- 预设级探针：每个预设前 `restoreActionCounts(config, snap)`；
 - 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。
