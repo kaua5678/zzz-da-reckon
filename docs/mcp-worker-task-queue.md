@@ -71,16 +71,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 313 轮（lane lead-arena-0925c）：CC-298（`fee62755`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 轴内执行集合窗口数改读 countStun，删两份死副本；golden 零差；希希芙 C2 轴队终结毒素 3→9。详见 `docs/mcp-stun-dual-source.md` §24.137（含三份栈实例对照表）。
-- 前几轮：312 CC-297 threadsApplied；311 CC-296 交互栏补齐显示；310 CC-295 般岳门控归模块。
+**第 314 轮（lane lead-arena-0925c）：CC-299 试做后撤回，无代码提交；只提交文档（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 阻塞原因：锁定失衡模式下 CC-151（计数 ≡ 锁定值）与坑36（雨果按池整数次数）冲突，`hugo.test.ts:289` 3≠4。详见 `docs/mcp-stun-dual-source.md` §24.138（含探针数据与倾向方案）。
+- 前几轮：313 CC-298 执行集合按计数通道分窗；312 CC-297 threadsApplied；311 CC-296。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/`、pullPlanner 系列、FEATURES_GUIDE、check-tokens 都不是本 lane 的，不要 add。
 
 **下一步（直接开工）**：
-1. **CC-299 候选：伤害侧改读引擎执行集合**。`useResourceCalc.ts#stackTraversalResult` 自己再跑一遍 `calcStunAxisStack`（资源入参 = adjusted rr 总量，引擎 A = 上一轮 energy / 单调喧响），修后 golden 22 场景二者 executed 全等，但入参不同源。做法：`CalcRoundResult` 加 `axisStack`（= `axisExecutedStack`，纯展示载荷），`stackTraversalResult` 在原门控下直接返回它；删掉 useResourceCalc 里的重算。
-   - 风险：StunAxisPage 显示的「闪能 / 喧响消耗 x / 总量」会变成引擎门控用的量（上一轮 / 单调喧响）——这正是计划的真实门控依据，按「展示读 threadsApplied」口径是对的；`skipped` 文案同理。
-   - 先跑 hugo / liuyinAxisGiftSameSource / inStunAttribution / outerCyclePhysicalFeasible / timeLedgerInvariants / archiveStunVulnProbe（都读 stackTraversalResult），再 golden。若 golden 有差，逐队归因后定是否数值卡。
-2. 之后：B（转大轴内占比）的资源入参与 A 不同源，量一下是否影响 executed（B 只用于转大内层有效失衡）。
+1. **先查锁定模式下池为什么不等于锁定值**：读 `src/composables/resourceCalc/solveTeam.ts` 的 `lockedStunCount` 路径（约 :104、:238）和池 stunCount 的产生处；用 `hugo.test.ts:274` 同款设置（1291+1141、锁 3、单决算块轴）打探针。
+   - 若锁定语义应为「失衡恰 N 次」而池没钳 ⇒ 这是根因，钳池（数值卡，跑 golden + 锁定相关 27 个测试文件：`grep -rln stunCountLock src --include=*.test.ts`）。
+   - 若池 ≠ 锁定是有意（锁定只锁外层输入）⇒ 按 §24.138「倾向」让雨果改读计数通道（新增通用契约字段，physical 非锁定零差）。
+2. 口径定了之后再做 CC-299（改法见 §24.138 试做段，已验证除 hugo 外全绿）。
+3. 雨果 `hugo.ts:359` 注释「锁定次数路径池 = 锁定值不受影响」实测不成立，裁定后一并更正。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。

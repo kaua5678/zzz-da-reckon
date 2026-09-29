@@ -3917,3 +3917,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 可见差：`auto-1521-1461-1311` physical、希希芙 C2：影画2 失衡下终结毒素 3 → 9（= 3 × 伤害侧执行终结 3 次）。新测 `axisExecutedCountChannelCc298.test.ts` 锁此值，牙测旧文件 3 ≠ 9 红。
 - **未改**：`overlapStack`（合轴节省）与 `axisInSeconds` 仍按计划实数 `stunCount` 分窗——它们是时间账（stunPlanProjection 头注释：时间账继续用实数），不属本卡。若日后发现合轴节省与物化行窗口数不匹配导致净占用偏差，另开卡量。
 - **回退**：`git revert fee62755`。
+
+### 24.138 第 314 轮：CC-299 试做撤回——锁定失衡下两条口径冲突（无代码提交）
+
+- **试做**：`CalcRoundResult.axisStack = axisExecutedStack`，`useResourceCalc#stackTraversalResult` 在原门控下直接返回它，删掉本地重跑的 `calcStunAxisStack`。tsc 过；timeGolden、inStunAttribution、liuyinAxisGiftSameSource、timeLedgerInvariants、archiveStunVulnProbe、hugoStunVulnMatrixProbe、outerCyclePhysicalFeasible、CC-298 全过。**唯一红**：`src/mechanics/__tests__/hugo.test.ts:289`「轴模式：决算次数由轴内块反推」期望栈决算 4、得 3。已 `git checkout` 撤回，工作区干净。
+- **探针**（已删）该用例最终轮：`stunCount=3`（锁定输入）、`countStun=3`、`threads.prevPoolStunCount=4`、`sp1.pool.stunCount=4`，引擎执行集合决算 3 次；雨果物化行决算 4 次；旧伤害侧重算按池 4 窗 = 4。
+- **根因 = 两条口径在锁定模式下冲突**：
+  1. **CC-151**（第 175 轮，`useResourceCalc.ts` resourceConfig 的 `stunPlanProjection` IIFE）：锁定失衡时 physical 投影回落 off ⇒ 计数通道 `countStun ≡ 锁定值`（依据：锁定 = 命座对比「操作够就能打 N 次」，读池会绕过锁定值）。CC-298 后引擎执行集合读 `countStun` ⇒ 3。修前读 `stunCount` 也是 3，所以**这个分叉在 CC-298 之前就存在**，不是 CC-298 引入的。
+  2. **坑36**（2026-09-10，`hugo.ts#applyHugoTeamConfig`）：雨果轴内决算块数 × **上一轮池整数次数** `threads.prevPoolStunCount`，不看投影、不看锁定 ⇒ 4。该函数注释还写着「锁定次数路径池 = 锁定值不受影响」——**实测不成立**（锁定 3、池 4）。`hugo.test.ts:283` 注释「锁定 3 是计划输入，失衡池/轴栈（同源）算出 4 窗」写于 CC-151 之前。
+- **决定**：不做 CC-299，直到裁定锁定模式下谁是计数权威。理由：改读引擎集合会把雨果锁定场景的轴内易伤分配从 4 降到 3，而雨果物化行仍是 4，等于制造新的分叉；硬改测试期望则是拿一条口径压另一条，不可逆地丢掉坑36 的依据。
+- **倾向（供下一轮裁定，写明理由）**：CC-151 更晚、更专门针对锁定，且明确把「锁定值被池绕过」定为缺陷 ⇒ 倾向锁定模式下计数权威 = 锁定值。落地方式：让雨果与其他读 `prevPoolStunCount` 的模块改读计数通道（`AgentTeamConfigInput` 若没有 countStun 字段就新增一个通用字段 `axis.countWindows` / `countStun`，physical 非锁定时 ≡ prevPoolStunCount ⇒ 零差；锁定时 = 锁定值；off 模式（难度阶梯 G4 专用）会回到计划实数，需确认坑36 的 0.82→0 问题是否在 G4 复现，必要时对 off 用 `Math.floor` 以外的投影）。然后 CC-299 就能无分叉落地，`hugo.test.ts:289` 期望随口径改为 3 并在注释里引用本节。
+  - 另一个待查：锁定模式下池为什么是 4（池不受锁定约束？）。若锁定语义是「失衡恰 N 次」，池的 stunCount 本身也该钳到 N，那样三方自动一致。先读 `solveTeam.ts` 的 `lockedStunCount` 路径与 `stunPool` 生成处再定。
+- **回退**：本轮无代码改动，无需回退。
