@@ -347,9 +347,10 @@ function defaultGlobalBuffs(): GlobalBuffRow[] {
 /** 从 buff source 名称解析所需的影画等级
  *  "核心被动" → 0, "额外能力" → 0, "强化特殊技" → 0
  *  "影画一" → 1, "影画二" → 2, "影画三" → 3, "影画四" → 4, "影画五" → 5, "影画六" → 6
- *  解析失败默认 0（总是启用）
+ *  解析失败默认 0（总是启用）——所以「影画2」这类阿拉伯数字写法会被当成无影画要求；
+ *  additionalGate.test.ts 的 CC-311 不变量锁保证数据里凡含「影画」的标签都解析出 1..6。
  */
-function parseCinemaRequirement(sourceLabel: string): number {
+export function parseCinemaRequirement(sourceLabel: string): number {
   const cnNums: Record<string, number> = {
     '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6,
   }

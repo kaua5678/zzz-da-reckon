@@ -19,7 +19,7 @@ import {
 import { isAdditionalAbilitySourceLabel } from '@/specs/additionalGate'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
-import { deriveTeammateBuffEnabled } from '@/stores/config'
+import { deriveTeammateBuffEnabled, parseCinemaRequirement } from '@/stores/config'
 
 /** 按队伍装配门控 Map（与 computePanelPhases 的调用路径同参数形态） */
 async function gatesFor(team: Array<{ agentId: string; cinemaLevel?: number } | ''>) {
@@ -60,6 +60,16 @@ describe('CC-203 额外能力硬门控表：从数据派生、与 store 默认�
     expect(unrecognized).toEqual([])
     expect(['额外能力', '额外能力：天使队长', '额外能力（技术鸿沟）'].every(isAdditionalAbilitySourceLabel)).toBe(true)
     expect(['额外能力说明', '核心被动', '影画一'].some(isAdditionalAbilitySourceLabel)).toBe(false)
+  })
+
+  it('CC-311 不变量锁：凡含「影画」的来源标签都解析出影画等级 1..6（「影画2」式写法会被当成无要求，C0 也默认勾上）', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1081' }, '', ''])
+    const bad = catalog.teammateBuffGroups.flatMap(g => (g.buffs ?? []).map(b => `${g.id}:${b.id}:${aaLabel(b)}`))
+      .filter(s => s.split(':').slice(2).join(':').includes('影画'))
+      .filter(s => { const n = parseCinemaRequirement(s.split(':').slice(2).join(':')); return !(n >= 1 && n <= 6) })
+    expect(bad).toEqual([])
+    expect(parseCinemaRequirement('影画二')).toBe(2)
+    expect(parseCinemaRequirement('影画2')).toBe(0) // 现状口径：阿拉伯数字不识别，由上面的数据锁兜底
   })
 
   it('CC-310：诺姆额外能力未触发（队友无强攻/命破/同阵营）⇒ 技术鸿沟、嗯呢弹幕默认不勾', async () => {
