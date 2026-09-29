@@ -216,6 +216,9 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
       ? `快速支援重击 ×${quickAssistPlaced}（捏轴放置：极性紊乱载体，命中异常+失衡敌消耗舞力全开；窗内伤害吃易伤）`
       : '快速支援重击（极性紊乱载体）；捏轴放置后按块数结算（×0 灰块）',
   })
+  // 地雷撞套数每次装配先归零再按本次重算（CC-288）：原实现在 pairs≤0 / 无普攻行时提前 return，
+  // 上一次装配（甚至上一个场景）的套数残留在 cfg 上，被 C6 颤音:改叠层计数读到。
+  record.nangongMinePairs = 0
   const basicExec = executions.find(e => e.moveId === 'basic_attack')
   if (!basicExec || pairSeconds <= 0) return
   const battleTime = Math.max(0, Number(record.battleTime ?? 180))

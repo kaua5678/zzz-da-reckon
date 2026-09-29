@@ -276,3 +276,16 @@ describe('南宫羽 C4：地雷撞积蓄 ×1.35 一次性（B2 点修）', () =>
     }
   })
 })
+
+describe('CC-288 地雷撞套数不残留', () => {
+  it('无普攻行 / 套数为 0 时 nangongMinePairs 归零（不沿用上一次装配的值）', () => {
+    const cfg = { nangongCinemaLevel: 6, nangongMinePairSeconds: 1.2, nangongMinePairs: 5, battleTime: 180 } as any
+    const executions: any[] = []
+    nangongMechanic.buildExecutions!({ cfg, state: { frontlineTime: 0 }, executions } as any)
+    expect(cfg.nangongMinePairs).toBe(0)
+    cfg.nangongMinePairs = 5
+    const exec2: any[] = [{ moveId: 'basic_attack', totalTime: 0 }]
+    nangongMechanic.buildExecutions!({ cfg, state: { frontlineTime: 0 }, executions: exec2 } as any)
+    expect(cfg.nangongMinePairs).toBe(0)
+  })
+})
