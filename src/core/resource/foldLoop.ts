@@ -91,7 +91,13 @@ export function runFoldLoop(
     let maxExcess = 0
     let maxIdle = 0
     let teamRefund = 0
-    /** 停滞判据用：历史最小残差 + 连续无改善轮数（阶段2，见下方收敛判据注释） */
+    /**
+     * 停滞判据用：历史最小残差 + 连续无改善轮数（阶段2，见下方收敛判据注释）。
+     * **只在 undefined 时初始化 = 跨运行不归零，这是承重行为**（第 348 轮实测）：同一个 `diag` 上的第二次运行
+     * （CC-160 终局重折，`resource.ts#runPreTailFinalize`）接着主折叠的最优残差与计数判停；截断重折环每次换新 `diag`，不受影响。
+     * 改成每次运行归零时，缺省配置 414 例终局不变，但 auto-1431-1481-1341 在 `comboAlignAbsorbRatio=1` 下留白 1.01→1.88s
+     * （dynamicComboAlign ② 的 1.5s 门红）、`=0` 下截断 82.7→63.9s。要改先定重折语义（续跑还是重新迭代），见 docs/mcp-fold-loop-stop.md。
+     */
     if (typeof diag.bestExcess === 'undefined') diag.bestExcess = Infinity
     if (typeof diag.stagnantPasses === 'undefined') diag.stagnantPasses = 0
     // 诺姆膛温换连携赠链行在装配后被 applyChainGift 追加、不在 buildExecutions 产物里——

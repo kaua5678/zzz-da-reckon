@@ -28,9 +28,9 @@ export interface SolveDiagnostics {
   timeBudgetRefundedSeconds: number
   /** 每次折叠管线运行（含规范重放）独立冻结 refund 的旗标 */
   refundFrozen: boolean
-  /** 折叠环停滞判据：历史最小 `maxExcess` */
+  /** 折叠环停滞判据：历史最小 `maxExcess`（跨运行不归零，承重：见 foldLoop.ts 同处注释与 docs/mcp-fold-loop-stop.md） */
   bestExcess: number | undefined
-  /** 折叠环停滞判据：连续无改善轮数 */
+  /** 折叠环停滞判据：连续无改善轮数（同上，跨运行不归零） */
   stagnantPasses: number | undefined
 }
 
