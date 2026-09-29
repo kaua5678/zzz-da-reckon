@@ -71,28 +71,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 299 轮（lane lead-arena-0925c）：CC-285（7a783dd5）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- **本轮 push 失败**：`ssh: connect to host ssh.github.com port 443: Connection timed out`（2026-09-29 试了 3 次，与第 292–293 轮同类网络故障）。7a783dd5 和 ed5e3eea 连同本条都只在本地。**下一轮开工先 `timeout 150 git push origin master`**，再用 `git rev-list --count origin/master..HEAD` 确认为 0。
-- 本轮收尾时出现了未跟踪的 `docs/proposals/pull-value-optimization.md`，不是本 lane 写的（来源不明），没有 add。下一轮先读它，判断是否算用户的新需求或提案。
-- 详见 `docs/mcp-stun-dual-source.md` §24.123：删除 37 个只写不读的 cfg 键，新增锁 `src/mechanics/__tests__/cfgWriteOnlyKeys.test.ts`。计算零差。
-- 前几轮：298 CC-283 / 284；297 CC-282；296 CC-281；295 CC-280。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
+**第 300 轮（lane lead-arena-0925c）：CC-286（8920ccc6）完成。**
+- **push 状态**：开工时第 299 轮的 3 个提交仍未推送；本轮开工再试仍失败（`ssh.github.com:443` 连接超时，`curl https://github.com` 也无响应，是整机到 GitHub 不通，与认证无关）。本轮提交是否推送成功，以 `git rev-list --count origin/master..HEAD` 为准，不为 0 就是没推上去。**下一轮开工第一件事：`timeout 150 git push origin master`。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.124：仪玄两个 cfg 缓存改为纯函数重算，其余候选逐个分类。
+- 前几轮：299 CC-285（删 37 个 cfg 死写并加锁）；298 CC-283 / 284；297 CC-282；296 CC-281。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。
+- 未跟踪：`docs/devlog/`（别人的），以及 `docs/proposals/pull-value-optimization.md`（09-29 12:31 出现，自称「提案（未实现）」，讲抽卡价值口径：期望值、增量价值相对持有集、两种零价值要分开报）。它不在 REQUIREMENTS 里，本 lane 不 add、不实现；若日后出现在 REQUIREMENTS 里再按需求做。
 
-**下一步（直接开工）：把「写了又被装配期读回」的 cfg 缓存逐个改成纯函数重算**（清单见 §24.123 末尾）。建议顺序（先易后难）：
-1. `phoenix.ts` 的 `phoenixChargedCount`：已有同名纯函数 `phoenixChargedCount(cfg, state, executions)`（约 :175），装配期 :370 / :385 / :447 改为用 `preModuleExecutions` 调它，再删除 `record.phoenixChargedCount =` 写入。注意 :370 / :385 所在函数拿到的入参里是否有 preModuleExecutions；没有的话先看调用链。
-2. `yixuan.ts` 的 `yixuanExChain`：装配期 `record.yixuanExChain ?? resolveYixuanChain(cfg, state.exSpecialCount)`，与 CC-283 前的橘福福同形，先确认 buildExecutions 写入的值是否就是 `resolveYixuanChain` 的结果。
-3. `promiaAttackFrostGain`、`qingyiGenericRowsTime`、`nekomataHitPurrGain`、`xideAttackSteel`：各自先找写入处的计算式，看能否用 `preModuleExecutions` / `prePatchExecutions` 重算。
-- 模式参考：`luciaElowen.ts#buildLuciaResourceResult`、`specPanelBuffs.ts#jufufuCycleOf`。
-- 验收：verify 全绿，且 timeGolden 零差（看 `timeGolden.baseline.json` 里有没有该角色；没有的写临时探针 `src/composables/__tests__/tmp_*.test.ts`，比较改前改后的 teamTotalDamage，用完即删）。
-- **不要动**：被 spec json countField 读的键（jufufuSpinCount、sigridChuqiangHits、billy*、yixuanFlashEnergySpent、yixuanXuanmoGain），它们是 spec 接口；`panYinhuC2EnergyTotal` / `corinC4EnergyTotal` 这类「减去上次值再加新值」属于幂等回写，不是缓存。
+**下一步（直接开工）**：「写了读回」普查的收益已经下降（剩下的多是轮间通道），转向 `docs/mcp-r6-refactor-list.md` 里仍标「待查」或「候选」的条目，挑影响面最大的一项。如果想先收尾普查，按这个顺序：
+1. `qingyi.ts`：`qingyiGenericRowsTime` 改为 `computeQingyiSource(cfg, state, genericRowsTime)` 显式传参。先 `git grep -n computeQingyiSource` 找出所有调用者，装配期没有 executions 的调用者改传 `preModuleExecutions` 算出的值。
+2. `nangong.ts`：先查 :352 / :367 所在钩子，是同轮缓存才改。
+3. starlightBilly 的 `billyChain*`：先读 :386 附近注释，确认哪些已经改过。
+- 每改一处都要用探针证明等价（方法见 §24.124）。
 
 **已知坑**：
-- `materializeRows` 会快照并恢复 cfg（钩子写入只在同一次调用内可见）；装配路径不快照，写入会一直留到 `buildResourceResult`。改缓存前先分清读者走的是哪条路径；
-- 新增模块 cfg 写入必须有读者，否则 cfgWriteOnlyKeys 会变红；
-- 新增的模块内 helper 不要 export，除非有外部读者；
-- 分析器改 store 前后一律 `snapshotStore` / `restoreStore`；量 HEAD 的测试（T8）提交前 verify 覆盖不到；
-- verify 跑的时候不要往工作区写文件（本轮在 verify 中途上传了新测试，被 vue-tsc 扫到，只好重跑）；
-- GitHub 偶尔不通：push 超时就记进交接；杀进程只 kill 具体 pid；后台 verify 用 `setsid ./bg.sh … & sleep 2`；上传一律用 `bash /home/user/mcp-tools/up.sh …`。
+- 「缓存 == 重算」必须用探针计数 SAME / DIFF / NOCACHE 来证明，timeGolden 只覆盖伤害和时间账，覆盖不到展示量；
+- 读者若在估时 / 事件钩子里（先于本轮物化运行），读到的是上一次装配的值，那是轮间通道，改成重算会改变收敛；
+- 新增模块 cfg 写入必须有读者（cfgWriteOnlyKeys 锁）；
+- verify 跑的时候不要往工作区写文件；
+- 杀进程只 kill 具体 pid；后台 verify 用 `setsid ./bg.sh … & sleep 2`；上传一律用 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：lumiflux 属性标签颜色（§24.120）；1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。
 

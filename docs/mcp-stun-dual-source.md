@@ -3680,3 +3680,25 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **真正的「写了又被装配期读回」缓存**（普查结果，留作下一步）：`phoenixChargedCount`（phoenix.ts :370 / :385 / :447 读 record，而同名纯函数 `phoenixChargedCount(cfg, state, executions)` 已存在）、`promiaAttackFrostGain`、`qingyiGenericRowsTime`、`nekomataHitPurrGain`、`nangongMinePairs`、`xideAttackSteel`、`yixuanExChain`（装配期 `record.yixuanExChain ?? resolveYixuanChain(...)`，与 CC-283 前的橘福福同形）、`yixuanShufaUltCount`、`billyChainHp`、`billyChainCount`、`billyFullThrottleCount`、`panYinhuC2EnergyTotal`（读上一轮值做差量累加，属于「幂等回写」模式，不是缓存）。被 spec json countField 读的键（`jufufuSpinCount`、`sigridChuqiangHits`、`billy*Determination`、`billyCoolWheelieCount`、`yixuanFlashEnergySpent`、`yixuanXuanmoGain`）是 spec 接口，保留。
 - **影响**：计算零差（verify 全绿，timeGolden 未动）。
 - **回退**：revert 7a783dd5。
+
+### 24.124 第 300 轮：仪玄两个 cfg 缓存改为纯函数重算；其余「写了读回」候选逐个分类（CC-286，8920ccc6）
+
+**改动（仅 `src/mechanics/agents/yixuan.ts`）**
+- `yixuanExChain`：`buildYixuanResourceResult` 原来是 `record.yixuanExChain ?? resolveYixuanChain(cfg, ex)`，现改为直接 `resolveYixuanChain(cfg, ex)`，并删除 buildExecutions 里的写入。
+- `yixuanShufaUltCount`：符法千重实际次数的公式（理论次数封顶、滑块 -1 = 自动）抽成 `shufaUltCountOf(cfg, resources)`，两处共用；删除 cfg 写入，也去掉了装配期「缓存缺失就不调整资源卡」的分支（装配路径上缓存从不缺失，见下面的探针）。
+- **等价证明（临时探针，已撤）**：在 buildExecutions 里把旧值写到 `__probe*`，装配期与重算值逐一比较。timeGolden（60 角色 × 命座 0/6）加 yixuan 单测，两个量各比较 570 次，**570 次全部相同，0 次不同，0 次缓存缺失**。这两个量只进展示（resourceSections / 资源卡），timeGolden 本身覆盖不到，所以必须用探针证明。
+- 方法记录：要证明「缓存 == 重算」，timeGolden 零差不够（它只比伤害和时间账），要在缓存与重算两处之间插探针计数；输出 SAME / DIFF / NOCACHE 三种计数，只看测试通过不算数。
+
+**其余候选分类**（§24.123 清单，逐个读了读写两端）
+- **轮间反馈通道，不是缓存，不改**：
+  - `phoenixChargedCount`：读者 `phoenixExSpecialTime`（估时）在迭代中先于本轮物化运行，读到的是上一次装配写下的值。改成重算会改变收敛路径。
+  - `nekomataHitPurrGain`：源码注释明写「写回 cfg，供下一轮资源预算收敛」。
+  - `promiaAttackFrostGain`：读者是 `computePromiaVerdict` 和 `buildPromiaAnomalyEvents`（事件钩子），同属跨钩子、跨轮。
+  - `panYinhuC2EnergyTotal` / `corinC4EnergyTotal`：幂等差量回写。
+- **有外部接口依赖，暂不改**：`xideAttackSteel`。`xide.test.ts:212` 明确把它当作 `buildResourceResult` 的显式输入（「单测直接调时显式传入」）。要改就得同时改测试接口，收益小。
+- **同一调用内经 cfg 传参，可改但收益一般**：`qingyiGenericRowsTime`。buildExecutions 写入后立刻调用 `computeQingyiSource(cfg, state)`，后者再从 cfg 读回。更干净的写法是把它作为参数传入；但 `computeQingyiSource` 是导出函数，还要查其它调用者，留作候选。
+- **未查**：`nangongMinePairs`（nangong.ts :352 / :367 的读者在哪个钩子待确认）、`billyChainHp`、`billyChainCount`、`billyFullThrottleCount`（starlightBilly.ts :386 有注释提到「旧实现读上一轮 buildExecutions 写入」，疑似已部分改过）。
+- **结论**：「写了读回」清单里，真正同一轮内的缓存只有仪玄这两个和 CC-283 的橘福福，其余多是轮间通道。继续普查的收益在下降，下一轮起不再把它当主队列（见交接）。
+
+- **影响**：计算零差（verify 全绿），展示零差（探针 570/570）。
+- **回退**：revert 8920ccc6。
