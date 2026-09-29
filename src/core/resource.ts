@@ -101,24 +101,17 @@ export const TIME_FOLD_MAX_PASSES = 32
  * 上限只需容得下「收缩到 ulp 级 + 进入精确环」：ρ=0.17 ≈21 轮、ρ=0.5 ≈55 轮、0.5 阻尼的 1051 实测 41 轮 ⇒ 取 **100**
  * 与 1051 既有口径统一；正常收敛队照旧 ≤15 轮退出，代价只落在本来就要跑满的队。
  *
- * **两层语义**（`INNER_LOOP_OSCILLATOR_STOP` 配套）：第 20 轮之后的预算**只用于收敛尝试**——尝试成功（严格判稳 / 浮点
- * 噪声环）就返回收敛态；尝试失败（真整数环 / 预算耗尽）**回到历史停点 = 第 20 轮状态**，与旧口径逐位一致。
- * 为什么不直接取环的规范成员：整数量子振荡器（实测单人 1431 命座 6：ex 6↔10 / ult 1↔2 精确 2-循环，环增益 >1）
- * 的环成员账本是「本轮次数 + 上轮平A」估出来的混相位量，行与账本差 21s，折叠环随之在 84/49/29/78s 之间摆、靠停滞
- * 规则退出 ⇒ 留白 0 → 29.0s。非收敛轨迹没有「更对」的停点，只有「历史已钉」的停点；真解是 DEBT「全局实数化收敛重构」。
- * （本段只管**第 20 轮之后**检出的环。第 20 轮前检出的真整数环自 CC-326 起取语义停点「不透支成员中次数最多者」
- * ——`innerLoop.ts#integerCycleStop`，依据 `docs/mcp-integer-cycle-stop.md`；上面的 1431 c6 反例属 20 轮后回落，不受影响。）
- * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100），第 20 轮（`INNER_LOOP_OSCILLATOR_STOP`，1051 队 = 预算本身）之后只用于收敛尝试：判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环 / 耗尽 ⇒ 回到第 20 轮状态（非收敛轨迹与旧口径逐位一致）——20 轮曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（单人 1431 c6 取环规范成员留白 29s 的反例；先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」）·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/floatNoiseCycle.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS | 信 确认
- * ⟳复核: 「全局实数化收敛重构」（DEBT_REGISTRY）落地或 20 轮停点语义再动时，复核「104 预设 converged=false 只剩真整数环队（当前 2 队）」+「单人 1431 c6 留白仍为 0」（floatNoiseCycle.test + timeGolden；warmStart 冷/热档随 CC-147 删热启动通道删除） | 到期 2026-12-31
+ * **停点**（CC-327 起单层）：预算内判稳（严格相等，**不放宽**）或检出浮点噪声环 ⇒ 收敛态；检出真整数环（不论第几轮）
+ * ⇒ `innerLoop.ts#integerCycleStop`「不透支成员中次数最多者」（CC-326，依据 `docs/mcp-integer-cycle-stop.md`）；预算
+ * 耗尽 ⇒ 末轮状态（414 例探针面 0 次）。已删的「两层语义」：第 20 轮之后的预算只用于收敛尝试，失败回到第 20 轮瞬态
+ * （常量 `INNER_LOOP_OSCILLATOR_STOP`，旧上限 20 的逐位兼容层）。第 345 轮 414 例实测该路径 74 次停点，换成
+ * `integerCycleStop` 后终局结果逐字段零差、预算耗尽 0 次。当年反对「取环规范成员」的反例（单人 1431 c6：ex 6↔10 /
+ * ult 1↔2 宽 2-循环 ⇒ 留白 0 → 29.0s）针对的是当时的规范成员 = JSON 字典序最小，不是可行性停点；改后 1431 c6 留白仍为 0。
+ * 非收敛轨迹的真解仍是 DEBT「全局实数化收敛重构」。
+ * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100）；判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环不论第几轮检出 ⇒ `integerCycleStop`；耗尽 ⇒ 末轮状态——20 轮上限曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」）·复核@2026-09-25·锚未变@2026-09-27·CC-327 删第 20 轮回落@2026-09-30（414 例探针：该路径 74 次停点换 `integerCycleStop` 终局逐字段零差，耗尽 0 次，单人 1431 c6 留白仍 0） | 验 src/core/__tests__/floatNoiseCycle.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS | 信 确认
+ * ⟳复核: 「全局实数化收敛重构」（DEBT_REGISTRY）落地或内层停点语义再动时，复核「104 预设 converged=false 队数（2026-09-30 = 0；非收敛只剩 18 例单人）」+「单人 1431 c6 留白仍为 0」（floatNoiseCycle.test + timeGolden） | 到期 2026-12-31
  */
 export const INNER_LOOP_MAX_ITERATIONS = 100
-
-/**
- * 非收敛轨迹（整数量子振荡器）的停点轮次 = 历史内层上限 20：`INNER_LOOP_MAX_ITERATIONS` 里第 20 轮之后的预算只用于
- * 收敛尝试，失败即返回第 20 轮状态（详见上方两层语义）。1051 连续松弛队的历史上限本就是 100 ⇒ 她的停点轮次 = 预算本身。
- */
-const INNER_LOOP_OSCILLATOR_STOP = 20
-
 
 /**
  * ===== 计算核心的**阶段顺序**（2026-09-11 显式化；改动前先读这张表，改动只落在对应阶段）=====
@@ -126,7 +119,7 @@ const INNER_LOOP_OSCILLATOR_STOP = 20
  * | 阶段 | 名字 | 位置 | 输入 → 输出 | 判据/不变量 |
  * |---|---|---|---|---|
  * | S0 | 输入装配 | `composables/resourceCalc/convergence.ts#createRunCalcRound` 产出的 runCalcRound（`buildCharConfig` + `applyTeamMechanics`） | store/catalog → `cfg[]` | 规则 6：队伍级机制走 `applyTeamConfig` |
- * | S1 | 资源账本预解（内层不动点） | `runInnerLoop` → `iterate`（`helpers.ts#iterate`，四步见其函数头） | `cfg[]` + 种子 → `IterationState[]` | 判稳 = 强特/终结次数 + `basicAttackTime` **严格相等**；跑满/入环 → 规范停点（冷热解耦） |
+ * | S1 | 资源账本预解（内层不动点） | `runInnerLoop` → `iterate`（`helpers.ts#iterate`，四步见其函数头） | `cfg[]` + 种子 → `IterationState[]` | 判稳 = 强特/终结次数 + `basicAttackTime` **严格相等**；入环 → 环停点（`integerCycleStop` / 浮点噪声环）、跑满 → 末轮状态（冷热解耦） |
  * | S2 | 时间预算折叠（外层不动点） | `runFoldLoop` | states → states（`cfg.timeBudgetExcess`/`timeBudgetRefund` 折入） | `Σ前台行 ≡ 账本`；`+=` 折正超出、负差 refund 回填；上限 `TIME_FOLD_MAX_PASSES` |
  * | S3 | 可行化决策 | `composables/resourceCalc/solveTeam.ts#stageResolveFeasibility`（轴退化 + 降配，2026-09-11 抽出） | 整轮结果 → `{r, axisFallback, interactionScale}` | 三臂不更差（截断/超预算/留白各 1s）+ 枚举取最大可行；锁窗一律不动 |
  * | S4 | 装配 + 可行化截断 | `core/resource/assembleSlot.ts#assembleSlot`（#8 分刀自逐槽 `configs.map` 抽出，CC-5b 外提；截断在 `truncateExecutionsToFrontline`） | states + cfg → `characters[]`（行/资源/时间） | 平A行不参与截断；后台行不占前台；整数装包；`overflowSeconds`/`truncationCuts` 逐行上报 |
@@ -148,8 +141,6 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // （模块只对自己的 cfg 运行 ⇒ 该字段为 true 即蕴含 agentId === '1051'），引擎层不读 agentId。
   const continuousExPresent = config.characters.some(c => c.exContinuous === true)
   const maxIter = Math.max(config.maxIterations || INNER_LOOP_MAX_ITERATIONS, continuousExPresent ? 100 : 0)
-  /** 非收敛轨迹的停点轮次（历史上限；显式传更小的 maxIterations 时以它为准，1051 队 = 预算本身） */
-  const oscillatorStop = continuousExPresent ? maxIter : Math.min(maxIter, INNER_LOOP_OSCILLATOR_STOP)
   const configs = config.characters
   // 欠打试探排除队（2026-09-08 立 → **2026-09-10 解除，现无任何排除队**）：
   //  · **1591 希格莉德**（当时唯一排除）：试探的物化行测量口径（`buildExecutions` + 赠送行近似）
@@ -223,11 +214,11 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   /**
    * 内层次数收敛 + 停点规范化（环检测 + 环停点，见 `integerCycleStop`）已迁 `src/core/resource/innerLoop.ts`
    * （CC-3，纯函数）：折叠循环与欠打回填试探共用同一台机器。此处只注入只读 ctx
-   * （configs/config/maxIter/oscillatorStop），经 `foldCtx` / `probeCtx` 传给两个调用方。
+   * （configs/config/maxIter），经 `foldCtx` / `probeCtx` 传给两个调用方。
    * 原 `runInnerLoop` 包装行的最后一个消费者（欠打回填 `convergeCounts`）已随 CC-5a 迁出，
    * 包装随之删除——`underfillProbe.ts` 直接 `runInnerLoop(from, ctx.innerCtx)`。
    */
-  const innerCtx: InnerLoopContext = { configs, config, maxIter, oscillatorStop }
+  const innerCtx: InnerLoopContext = { configs, config, maxIter }
   // `runFoldLoop`（S2 时间预算折叠环）已迁 `src/core/resource/foldLoop.ts`（CC-4，2026-09-25，纯函数）。
   // 下列 `@fact` 的**实现已迁**该文件，声明按既有惯例留在 re-export 壳处（同 CC-3 `innerLoop.ts` 的处理）；
   // **锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:收敛环停点规范化`）不变。

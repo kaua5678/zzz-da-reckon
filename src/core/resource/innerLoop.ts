@@ -3,8 +3,8 @@
  *
  * 职责：把单次迭代映射 `iterate`（`./helpers`）跑成不动点——判稳（强特/终结次数 + `basicAttackTime`
  * 严格相等）→ 精确环检测（全状态 JSON 签名重复）→ 环停点（真整数环 = 不透支成员中次数最多者，见
- * `integerCycleStop`；浮点噪声环视为已收敛，取 JSON 字典序最小成员）→ 收敛尝试失败时回落到第
- * `oscillatorStop` 轮瞬态。**纯函数**：只读 `ctx`，不写任何
+ * `integerCycleStop`，不论第几轮检出；浮点噪声环视为已收敛，取 JSON 字典序最小成员）→ 预算耗尽则返回末轮
+ * 状态（414 例探针面 0 例）。**纯函数**：只读 `ctx`，不写任何
  * 闭包/模块级状态，返回 `{ end, clean, iterations }`。`core/resource.ts#calcTeamResources` 内以一行
  * `runInnerLoop` 包装注入只读上下文；两个调用点（折叠环 `runFoldLoop`、欠打回填试探 `convergeCounts`）
  * 行为逐位不变。
@@ -21,7 +21,6 @@ export interface InnerLoopContext {
   configs: CharacterOperationConfig[]
   config: ResourceCalcConfig
   maxIter: number
-  oscillatorStop: number
 }
 
 /**
@@ -63,6 +62,8 @@ const CYCLE_STOP_EPS = 1e-9
  *
  * 选取键（字典序）：① over 最小（有可行成员时 = 0）② Σ(强特 + 终结) 最大（可行里做得最多）③ JSON 字典序最小
  * （纯确定性兜底）。三项都只依赖环本身（成员集合 + 后继关系），与进入环的相位 / 种子无关（冷热逐位一致不变）。
+ * 适用于**任何轮次**检出的真整数环（CC-327 起。此前第 20 轮之后检出的环回落到「第 20 轮瞬态」
+ * `oscillatorStopStates`，那是旧上限 20 的逐位兼容层；414 例实测：该路径 74 次停点，改后全部终局结果逐字段零差）。
  *
  * 实测依据（第 344 轮，timeGolden 同面 414 例）：内层真整数环停点 1815 次，旧规则取中透支成员 944 次（52%）；
  * 终局非收敛的 18 例（全是单人用例）旧停点**全部**透支 1–2 次、改后 0 例透支；结果共变 36 例（这 18 例 + 18 例折叠路径改变）。
@@ -94,18 +95,15 @@ export function runInnerLoop(
   from: IterationState[],
   ctx: InnerLoopContext,
 ): { end: IterationState[]; clean: boolean; iterations: number } {
-  const { configs, config, maxIter, oscillatorStop } = ctx
+  const { configs, config, maxIter } = ctx
   // 环检测：预键 → 同预键的快照下标（升序）。全状态 JSON 只在预键撞上时才算（见下方循环注释）
   const cycleBuckets = new Map<string, number[]>()
   const cycleSigCache: (string | undefined)[] = []
   const sigAt = (idx: number): string => (cycleSigCache[idx] ??= JSON.stringify(cycleSnapshots[idx]))
   const cycleSnapshots: IterationState[][] = []
   let cur = from
-  /** 第 oscillatorStop 轮状态快照 = 收敛尝试失败时的停点（与历史上限 20 的「上限处瞬态」逐位一致） */
-  let oscillatorStopStates: IterationState[] | undefined
   let k = 0
   for (; k < maxIter; k++) {
-    if (k === oscillatorStop) oscillatorStopStates = structuredClone(cur)
     const newStates = iterate(configs, cur, config)
     // 检查收敛：强特次数、大招次数与**平A时间**是否稳定。伊德海莉连续松弛（阻尼实数次数）同样按
     // 严格相等判稳——阻尼映射收敛到浮点不动点后逐位复现（热启动透明的前提）；ε 判据会留下
@@ -147,10 +145,8 @@ export function runInnerLoop(
       const members = cycleSnapshots.slice(firstSeen)
       // 浮点噪声环（成员逐字段相对 1e-9 内，典型 = 连续收缩到 ulp 级后 1 ulp 交替的 2-循环）= 已收敛：
       // 停点取 JSON 字典序最小成员、数值一位不差，只是不再把收敛标志报成 false（口径与实测见 floatNoiseCycle.ts）。
-      // 真整数环（Δ≥1）照旧 clean=false：历史上限内检出的取「不透支成员中次数最多者」（`integerCycleStop`，CC-326），
-      // 上限后检出的 = 收敛尝试失败，回到第 oscillatorStop 轮状态（见 INNER_LOOP_MAX_ITERATIONS 两层语义）。
+      // 真整数环（Δ≥1）照旧 clean=false，不论第几轮检出都取「不透支成员中次数最多者」（`integerCycleStop`，CC-326/327）。
       if (isFloatNoiseCycle(members)) return { end: structuredClone(jsonMinMember(members)), clean: true, iterations: k }
-      if (oscillatorStopStates) return { end: oscillatorStopStates, clean: false, iterations: oscillatorStop }
       return { end: structuredClone(integerCycleStop(members)), clean: false, iterations: k }
     }
     if (bucket) bucket.push(cycleSnapshots.length)
@@ -160,8 +156,7 @@ export function runInnerLoop(
     // 快照只在本函数内比较，出口处的规范成员仍 structuredClone 后返回 ⇒ 调用方拿到的对象与旧版同为独立副本。
     cycleSnapshots.push(cur)
   }
-  // 预算耗尽：停点 = 第 oscillatorStop 轮瞬态（起点确定则停点确定；与历史上限 20 逐位一致）
-  return oscillatorStopStates
-    ? { end: oscillatorStopStates, clean: false, iterations: oscillatorStop }
-    : { end: cur, clean: false, iterations: k }
+  // 预算耗尽（既没判稳也没进精确环）：返回末轮状态，clean=false。起点确定则停点确定。
+  // 探针面 414 例（104 预设 + 62 角色 × c0/c3–c6）0 次走到这里（第 345 轮）；1051 连续松弛队历来就是这个出口。
+  return { end: cur, clean: false, iterations: k }
 }
