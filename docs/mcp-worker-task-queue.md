@@ -96,18 +96,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 331 轮（lane lead-arena-0925c）：CC-316（`d357f784`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 332 轮（lane lead-arena-0925c）：CC-317（`0ebcfcae`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- postRound 派发改读本轮 countStun，删 `PostRoundInput.stunCount`；零差（golden + 安比 C4 探针，变异有效）；CC-315 的签名例外清零。详见 `docs/mcp-stun-dual-source.md` §24.155。
-- 前几轮：330 CC-315（签名补齐下一轮输入，轮数 +5.6%）；329 CC-314；328 CC-313。
+- 删喧响预算棘轮 `max(上一轮, 本轮)`：最终结果、退出类型、轮数逐位不变（只有 7 次中间轮的门控不同）。详见 `docs/mcp-stun-dual-source.md` §24.156。
+- 前几轮：331 CC-316（postRound 读本轮 countStun）；330 CC-315（签名补齐）；329 CC-314。外层收敛这条线（签名覆盖 / 滞后 / 棘轮）到此收口。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
 
 **下一步（直接开工）**：
-1. **喧响轨棘轮 `decibelRegenBySlot = max(上一轮, 本轮)` 是否仍必要**（`convergence.ts` threadsNext 组装处，注释：「轨削减大招 → 回响行减少 → 产出下滑 → 恶性循环，实测可螺旋到 0」）。它让结果依赖迭代路径（历史最大值），且 §24.154 中新增的 109 轮里 108 轮来自它。做法：worktree 里改成只取本轮 `c.decibelSource.total`，跑 timeGolden + 全量 verify，并统计退出类型与总轮数（插桩脚本 `/home/user/mcp-tools/inst330b.py` 的做法：在 `solveTeam.ts` 的 `if (outerExit === 'maxIter')` 前打印 `outerExit` / `outerRounds`）。
-   - 零差或只有少量可解释差异、且没有新的 maxIter / 螺旋：说明原问题已被后来的机制（2-环规范选点、CC-150 等）兜住，删掉棘轮（更简单、结果不再依赖路径），数值卡逐条解释。
-   - 出现螺旋（某队喧响 / 终结次数塌到 0 或 maxIter 增多）：保留，并在注释里写明第 331/332 轮复测的证据和日期。
+1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**（今天之后按日期判断）：把条件已满足的行挑出来做；都不满足就在 §8 追加一行「第 N 轮复核：无满足项」，然后按判据自选新题并先登记查什么。已知有日期的条件：坑 25 到期 2026-10-31（连携按实际失衡次数改造开工前复核）。
 2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
-3. 以上结项：读 `docs/mcp-r6-refactor-list.md` §8 表「重开条件」列。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
