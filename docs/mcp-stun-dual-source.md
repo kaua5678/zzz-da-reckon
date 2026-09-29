@@ -4031,3 +4031,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 变异验证：remielle.ts 顶部插一行 ⇒ 仍绿（旧写法会红）；末尾加一处 `values?.[0]` ⇒ 红。均已 `git checkout` 复原。
 - **验证**：wt323 `npm run verify` EXIT=0。
 - **回退**：`git revert bdba9007`。
+
+### 24.148 第 324 轮：CC-309 「额外能力」来源谓词 + 1541 标签纠正（cf097628）
+
+- **核查结果**（§24.147 交接第 1 条）：`1541 promia_ice_team_release_dmg`（每超 1 点初始掌控 +0.35% 全队异放伤害）标的来源是「额外能力：饮冰」，但 spec 1541 `notes` 里抄录的原文显示：
+  - **额外能力·饮冰**（有「队伍中存在其他[异常]或[支援]角色时触发」条件）只有三件事：强特后冰积蓄效率 +30%、霜寒持续 +3s、有罪推定异放无视 40% 防御；
+  - **核心被动·盗火** 才写「若初始异常掌控大于150点，每超过1点…提升0.35%全队造成的[异放]伤害」，无触发条件；`promia.ts` 头注释也写它属于核心被动。
+  - ⇒ 该 buff **本来就不该门控**，当前「不受门控」是对的，错的是标签。改为 `source: "核心被动：盗火"`、`name: "普罗米娅｜盗火·全队异放增伤"`；**id 不改**（`promia.ts` 按 id 查 effect，用户持久化的勾选状态也按 id 存）。
+- **CC-309 谓词单一来源**：新增 `specs/additionalGate.ts#isAdditionalAbilitySourceLabel(label)` = `label === '额外能力' || label.startsWith('额外能力：')`。`additionalGateBuffTable` 与 `additionalGate.test.ts` 的 3 处全等比较改用它。
+  - 理由：spec teamBuffs 常在来源后带能力名（1511「额外能力：天使队长」），旧的全等比较让这类标签**静默逃过门控和 CC-199 护栏**。收成一个谓词后，门控和护栏口径一致，不再依赖「标签恰好不带后缀」。
+  - 影响：目前带后缀的只剩 1511 两条，1511 无 `additionalAbility` 声明且在 `AA_OWNER_EXEMPT` 中 ⇒ 不入表。探针（临时测试打印排序后的门控表）改动前后 md5 相同（`7814758c…`），**零行为差**。
+- **验证**：vue-tsc 干净；additionalGate / promia / promiaRelease 34 个测试通过；wt324 `npm run verify` EXIT=0。
+- **回退**：`git revert cf097628`。

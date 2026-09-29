@@ -96,13 +96,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 323 轮（lane lead-arena-0925c）：CC-308（`bdba9007`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 1511 南宫羽额外能力豁免**保留**（仓库数据无触发条件，R5 不编造）；两处源码锁去行号。详见 `docs/mcp-stun-dual-source.md` §24.147。
-- 前几轮：322 CC-307；321 CC-306；320 CC-305。
+**第 324 轮（lane lead-arena-0925c）：CC-309（`cf097628`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 「额外能力」来源判定收成谓词 `isAdditionalAbilitySourceLabel`；1541 一条 teamBuff 的来源标签由「额外能力：饮冰」纠正为「核心被动：盗火」（原文如此，id 不变）。零行为差。详见 `docs/mcp-stun-dual-source.md` §24.148。
+- 前几轮：323 CC-308；322 CC-307；321 CC-306。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
 
 **下一步（直接开工）**：
-1. **来源标签「额外能力：xxx」漏门控（已普查，可直接开工）**：`additionalGateBuffTable` 与 `additionalGate.test.ts` 只认 source **全等** `"额外能力"`。spec `teamBuffs` 中 source 以「额外能力」开头的 13 条里，带后缀的只有 3 条：`1541 promia_ice_team_release_dmg`（`额外能力：饮冰`，**1541 已声明 additionalAbility ⇒ 当前不受门控，疑似 CC-199 同类漏网**）与 1511 两条「额外能力：天使队长」（1511 豁免，不动）。步骤：① 读 spec 1541 该条 note 与普罗米娅额外能力原文，判断「饮冰」是否即 spec `additionalAbility` 所指的额外能力（若是另一个能力或无条件，则不门控，写明理由结项）；② 若应门控：把判定改为 `label === '额外能力' || label.startsWith('额外能力：')`，**只在 `specs/additionalGate.ts` 一处**定义谓词并让 `additionalGate.test.ts` 与 store 共用；③ 探针比较普罗米娅在「额外能力未触发」队伍下的伤害前后差，走 CC 卡写明依据（数据可信，不以接近投稿为由）。
+1. **spec `teamBuffs` 来源标签对原文普查**（1541 的错标说明这类错误存在，且标签会影响门控）：对全部 `src/specs/agents/*.json` 的每条 teamBuff，取 `source` 的类别（额外能力 / 核心被动 / 影画N / 潜能觉醒…），在同一 spec 的 `notes` 原文里找该类别段落，检查 `description` 的关键数值（如 `0.35%`、`30%`）是否出现在**该段**而不是别的段。可先写 python 粗筛（数值只出现在别的段 ⇒ 疑似错标），再逐条人工看原文。**只有影响门控的错标（来源在「额外能力」与其他类别之间错位）才改**；改标签不改 id；每改一条都跑门控表探针（本节的临时测试写法），行为变了就单独开 CC 卡写明依据。纯展示错标可一并纠正。
 2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
