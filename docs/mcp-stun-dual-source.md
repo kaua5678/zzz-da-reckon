@@ -3885,3 +3885,18 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **试过并放弃**：在 `computeBanyueInteractionTopUp` 里对 parry 单调夹住上一轮（`max(prev, ceil(short/215))`，仿通用 decibelParry）以根治 2-环。结果 `convergenceNightD` 精确锚 12 → 20 弹刀（27.996s → 46.66s）：215/次低估实际每弹刀喧响（探针 8632→13293 / 16 次 ≈ 291/次），夹住 = 锁死首轮超补估计；而每次外层重启从 0 开始、无补齐喧响逐次下降（8632→7226），夹住值一路 16→24。现有「⑥″ 待装补齐 + 环成员可行性闸门」落点（12）更自洽。**不做**；若将来要根治，方向是用实测每弹刀收益（Δhave/Δparry）做割线步，而不是单调夹住。
 - **验证**：新测 `interactionTopUpDisplayCc296.test.ts`（显示 == 资源卡已装量；保底全关 ⇒ null）；牙测旧 useResourceCalc 下失败；banyue / convergenceNightB / NightD 94 条过；timeGolden 零差；wt311 隔离 `npm run verify` 通过。
 - **回退**：`git revert fa64324e`。
+
+### 24.136 第 312 轮：CC-297 展示读「本轮已装」一般化（e54413f2）
+
+- **扫描**（CC-296 的同型）：`CalcRoundResult` 里是「下一轮量」的字段有 `interactionTopUp`、`parrySplit`、`inStunAnomalyState`、`bossAnomalyState`。
+  - `parrySplit` = `parrySplitNext`（按本轮池反推的下一轮分配），而本轮计划装的是 `prevParrySplit`。`useResourceCalc#parrySplitResult`（交互栏分配标签）和 `guaranteeStunShortfallResult`（拿**本轮** stunCount 配**下一轮** breakerParry 判 `parry-exhausted`）都读它——与 CC-296 同型混读。
+  - `inStunAnomalyState` / `bossAnomalyState` 由本轮池算出、供下一轮用，但内容是「本计划的结果摘要」，展示它们正确，不改。
+- **测量**（探针，已删）：10 击破位 × 5 主C × 前 3 个 boss 预设（49 个有弹刀的场景）+ 4 个现有弹刀测试：展示对象里的计数字段 applied == next 全部相同；差异只出现在 `perParryDaze` 小数（2 例，不展示）。⇒ 现有场景零可见差，改动是口径统一与防未收敛落点。
+- **改法**（一般化而不是再加单字段）：
+  - `CalcRoundResult.threadsApplied: CalcRoundThreads` = 本轮输入 `threads`（与 `threadsNext` 对称；runCalcRound 不改写 threads，已 grep 确认无赋值）；
+  - 删 CC-296 的 `interactionTopUpApplied`，交互栏补齐改读 `threadsApplied.interactionTopUp`；
+  - `parrySplitResult` 改读 `threadsApplied.parrySplit`（null = 首轮缺省对半分，无反推可显示 ⇒ 返回 null）；
+  - `interactionTopUp` / `parrySplit` 字段注释标明「下一轮量，展示读 threadsApplied」。
+- **口径**：描述「这份计划」的展示一律读 `threadsApplied`；`*Next` 只给外层不动点与判环（outerCycle）用。
+- **验证**：tsc 过；parrySplitInt / specialActionBonusSingleSource / counterAssist / archiveDeployStun / CC-296 / convergenceNightD 58 条过；wt312 隔离 `npm run verify` 通过；golden 零差。
+- **回退**：`git revert e54413f2`（CC-296 行为保留在 fa64324e 的单字段写法）。

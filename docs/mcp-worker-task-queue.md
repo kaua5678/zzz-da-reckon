@@ -71,16 +71,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 311 轮（lane lead-arena-0925c）：CC-296（`fa64324e`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 交互栏补齐显示：守卫只认槽位，改读 `interactionTopUpApplied`（已装量）。零差。详见 `docs/mcp-stun-dual-source.md` §24.135。
-- 试过「补齐线程单调夹住」根治保底4喧响 2-环：超补（12→20），已放弃，理由见 §24.135。
-- 前几轮：310 CC-295 般岳门控归模块；309 CC-294 赠送落点单一来源；308 CC-293 删冗余旗标。
-- REQUIREMENTS 无新条目；提示词未改。未跟踪的 `docs/devlog/`、`docs/proposals/`、pullPlanner 系列都不是本 lane 的，不要 add。
+**第 312 轮（lane lead-arena-0925c）：CC-297（`e54413f2`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 展示读「本轮已装」一般化：`CalcRoundResult.threadsApplied`；交互栏补齐与弹刀分配 / 保底4失衡诊断都读它。零差。详见 `docs/mcp-stun-dual-source.md` §24.136。
+- 顺手：`timeGolden.test.ts` 过时注释（纯伤害回归盲区已收口）与 `solveTeam.ts` ⑥″ 注释（2-环根因 + 别用单调夹住）已改，纯注释。
+- 前几轮：311 CC-296 交互栏补齐显示；310 CC-295 般岳门控归模块；309 CC-294 赠送落点单一来源。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/`、pullPlanner 系列、FEATURES_GUIDE、check-tokens 都不是本 lane 的，不要 add。
 
 **下一步（直接开工）**：
-1. `src/composables/__tests__/timeGolden.test.ts:58` 注释已过时（记于第 310 轮），读后按现状修正（纯注释，零差）。
-2. `solveTeam.ts:87` ⑥″ 注释可补一句「2-环根因 = decibelHave 已含补齐喧响；单调夹住会超补，见 §24.135」，防后人重试。
-3. 之后回 `docs/mcp-r6-refactor-list.md` §8 自选；原则不变：编排层需要「模块决定的量」时调模块能力。
+1. 反馈线程展示线已收口（CC-296/297）。回 `docs/mcp-r6-refactor-list.md` §8 自选新题；§8 表最后几行已无「待」尾巴。候选方向（先量再定）：
+   - `useResourceCalc.ts` 里其他 computed 是否仍有「store 原值 + 引擎结果」另拼一份的展示口径（CC-227/229 同型），逐个对照是否已有引擎直出字段；
+   - 般岳补齐 215/弹刀估值与实测 ≈291/弹刀的差（§24.135）属**建模**问题，不是架构题；若做，走数值卡并先写口径。
+2. 原则不变：编排层需要「模块决定的量」时调模块能力；展示描述计划时读 `threadsApplied` 而非 `*Next`。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
