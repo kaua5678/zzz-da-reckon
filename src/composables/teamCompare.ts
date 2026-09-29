@@ -19,8 +19,7 @@
  * 设 minGold 门槛（低于该总限定金不生成点，表达「配置要求」）。
  * 纵轴：伤害 / Boss 血量 × 100%（100 = 击杀，200 = 两倍血量）。
  */
-import { STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'
-import { isLimitedSAgentId } from '@/composables/limitedGold'
+import { isLimitedSAgentId, isLimitedSWengineId } from '@/composables/limitedGold'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { interactionFieldForType, teamCompareInteractionTypes } from '@/composables/agentMechanicView'
@@ -63,12 +62,15 @@ export function isLimitedAgent(agentId: string): boolean {
   return isLimitedSAgentId(agentId)
 }
 
-/** 音擎是否算限定金（S 级且非常驻音擎；A/B 级不算）。catalog 未加载时按常驻清单兜底。 */
+/**
+ * 音擎是否算限定金。CC-271：store 里可能是旧 localStorage 的别名 id（legacyIds，如 zzz_wiki_218 = 14121 啜泣摇篮），
+ * 先经 catalog 解析成主 id，再交给 limitedGold 的单一定义 `isLimitedSWengineId`（141 前缀 ∧ 非常驻）。
+ * 修前按 catalog 稀有度判定、却拿**原始**别名 id 查常驻名单 ⇒ 常驻 S 的别名被当成限定（多记金）；
+ * catalog 未加载时把任何非常驻 id（含 A 级）都当限定。前缀判定与 catalog 稀有度的一致性由 limitedAgentSingleSource.test 锁。
+ */
 export function isLimitedWEngine(wEngineId: string): boolean {
   if (!wEngineId) return false
-  const w = useCatalogStore().getWEngine(wEngineId)
-  if (w) return w.rarity === 'S' && !STANDARD_S_WENGINE_IDS.has(wEngineId)
-  return !STANDARD_S_WENGINE_IDS.has(wEngineId)
+  return isLimitedSWengineId(useCatalogStore().getWEngine(wEngineId)?.id ?? wEngineId)
 }
 
 export interface TeamCompareOptions {

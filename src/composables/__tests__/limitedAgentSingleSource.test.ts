@@ -5,8 +5,10 @@
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { isLimitedSAgentId, memberLimitedGold } from '@/composables/limitedGold'
-import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
+import { isLimitedSAgentId, isLimitedSWengineId, memberLimitedGold } from '@/composables/limitedGold'
+import { STANDARD_S_AGENT_IDS, STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'
+import { setupHarness } from '@/test/harness'
+import { isLimitedWEngine } from '@/composables/teamCompare'
 import { A_RANK_RELEASE_SPECIAL_IDS, AGENT_RELEASE_NODE } from '@/data/versionTimeline'
 
 const catalog = JSON.parse(readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8'))
@@ -30,5 +32,29 @@ describe('CC-270 限定 S 角色单一定义', () => {
   it('源码锁：限定角色判定只在 limitedGold 定义（不再另写 rarity === \'S\' && !STANDARD_S_AGENT_IDS）', () => {
     const src = readFileSync(new URL('../teamCompare.ts', import.meta.url), 'utf8')
     expect(src).not.toMatch(/rarity === 'S' && !STANDARD_S_AGENT_IDS/)
+  })
+
+  it('CC-271 catalog 全部音擎：前缀判定 isLimitedSWengineId = S 级 ∧ 非常驻', () => {
+    const bad: string[] = []
+    for (const w of catalog.wEngines as { id: string; rarity: string }[]) {
+      const want = w.rarity === 'S' && !STANDARD_S_WENGINE_IDS.has(w.id)
+      if (isLimitedSWengineId(w.id) !== want) bad.push(`${w.id} rarity=${w.rarity}`)
+    }
+    expect(bad).toEqual([])
+  })
+
+  it('CC-271 别名 id（legacyIds）与主 id 判定一致（常驻 S 别名不算限定）', async () => {
+    await setupHarness(['', '', ''], { recommendedBuild: false })
+    const bad: string[] = []
+    let n = 0
+    for (const w of catalog.wEngines as { id: string; legacyIds?: string[] }[]) {
+      for (const old of w.legacyIds ?? []) {
+        n++
+        if (isLimitedWEngine(old) !== isLimitedWEngine(w.id)) bad.push(`${old}→${w.id}`)
+      }
+    }
+    expect(n).toBeGreaterThan(0)
+    expect(bad).toEqual([])
+    expect(isLimitedWEngine('zzz_wiki_218')).toBe(false) // = 14121 啜泣摇篮（常驻）
   })
 })
