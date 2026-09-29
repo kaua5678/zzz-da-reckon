@@ -71,35 +71,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 277 轮（lane lead-arena-0925c）：CC-260（a1b2e755）完成；CC-261 测量完成待做。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.101。
-- 前几轮：276 CC-259（散点 x 轴读实打次数，`composables/liveInteractions.ts`）；275 CC-258；274 CC-257。
+**第 278 轮（lane lead-arena-0925c）：CC-261（bdc3d312）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.102。
+- 前几轮：277 CC-260（逐预设 restoreActionCounts）；276 CC-259；275 CC-258。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **CC-261 去掉预设占位交互（涉及数值：103 个预设的伤害与难度）**。
-   - 范围：`src/data/teamPresets/*.json` 里 `interactions` 恰为 `[parry 8, dodge 4]` 的 87 条（85 auto + 2 手编），改为 `[]`。
-   - 16 条手编 `[parry 8, dodge 4, quickAssist 3]` 去掉 parry / dodge，**quickAssist 3 暂留**：
-     - 快支不是 8/4 那类占位，runArchiveDeploy / 轻量装配都有「快支 3 = 喧响基础供给」的口径；
-     - 是否统一快支另行测量，本卡不决定。
-   - banyue-liuyin-lucia（等于模块默认值）和空预设不动。
-   - 生成脚本 `scripts/gen-auto-presets.mjs:111-114` 改为 `interactions: []`，同步改第 15 行和第 106 行的注释 / note 文案（写明依据是用户 09-04 基准和 09-11 原话）。
-   - 注意 note 字段是每个 auto json 里的字符串，含「交互为 parry8/dodge4 取整档」。改 json 时一并替换为「交互走角色基准（setAgent 预填，CC-261）」，或者重跑生成脚本。重跑前先确认它不会改动别的字段：用 `git diff --stat` 检查。
-   - 探针（先测再改）：对全部预设 `applyTeamToStore(config, preset)` 与 `applyTeamToStore(config, {...preset, interactions: 去占位后})`，读 `useResourceCalc().teamTotalDamage` 与 `computeDifficulty(liveInteractions(...))`，输出修前 / 修后表（按角色分组汇总）。
-     - 注意 harness 的 TEST_BASE_CHAR 预填快支 3，先清零；每个预设前 `restoreActionCounts`。
-     - 预期：1051 队伤害变化最大（交互从 8/4 变为 0）；普通输出位主 C 从 8/4 变为 6/10；支援 / 防护位主 C 从 8/4 变为 0。
-   - 检查 `src/data/__tests__/teamPresets.test.ts`：`merged.interactions.length > 0` 只针对 liuyin，不受影响。其余锁定预设内容的测试逐个核对。
-   - golden 若变化，按「占位去除、改走角色基准」写明原因。
-   - 回退：json 为纯数据，revert 即可。
-2. 之后：快支口径统一的测量（手编 3 / auto 0 / 轻量装配 3 / 生产默认 0）；或 R6 清单复盘。
+1. **CC-262 G5 合轴吸收逐档不单调**（先测再判）。
+   - 复现：`auto-1371-1481-1451`；`clearDifficultyLevers` 后 `applyTeamToStore`，逐个设置 `config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, r)`（r = 0 / 0.05 / 0.1 / …），读 `teamTotalDamage` 与 `frontlineOccupationBreakdown(resourceResult).saved`。
+   - 预期复现 74.29 / 71.61 / 71.61 / 73.01 / 73.33 / 73.33 / 77.38M。
+   - 查 saved 1.1s 为什么让伤害掉 3.6%：比较 r = 0 与 r = 0.05 的排轴 / 可行行 / 时间预算差异，定位是哪一段离散跳变。
+   - 注意：「修不动点整数台阶」是已否决方向；若根因就是整数台阶，只写结论，不修。
+   - 再查 `climbDifficultyLadder` 对 G5 按档试开：第一档负增益是否导致整个 G5 被拒；若是，可考虑试开时一次看两档（可逆方案），先测影响面。
+2. 快支口径统一测量（手编 3 / auto 0 / 轻量装配 3 / 生产默认 0）。
+3. R6 清单复盘。
 
 **已知坑**：
-- 逐预设循环必须在每个预设开头 `restoreActionCounts(configStore, snap)`（CC-260 锁）；新写的分析器循环照此办理；
-- 不要在循环里整份 `restoreStore`：循环外的 applyBossPreset 等会被退回；
-- 副本之间的差异常常是缺陷；但有注释写明口径的差异要保留；
-- 沙箱重置后 `up.sh` 可能丢可执行位 ⇒ 一律 `bash /home/user/mcp-tools/up.sh …`；
-- harness 的 TEST_BASE_CHAR 预填快支 3 / 连携 1（生产默认 0），做预设级探针前先清零；
-- 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；搬动带 @fact 的代码时同步 `scripts/lib/guard-registries.mjs` 的豁免路径。
+- 预设级探针：每个预设前 `restoreActionCounts(config, snap)`，harness 快支 3 / 连携 1 先清零；
+- 数值卡：伤害零差不代表无影响，同时比较难度 x；
+- 改预设 json：有 5 个文件无法 `json.dumps(indent=2)` 无损回写（_template、banyue-liuyin-lucia、claret-*、yidhari-norma-lucia），对它们用文本替换；
+- 测试断言如依赖样例的偶然单调性，先扫描确认是否为设计保证，不要换样例绕过；
+- 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。
 

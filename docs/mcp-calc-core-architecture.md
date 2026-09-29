@@ -431,7 +431,8 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-258 | done | 0cd375a8 | 难度轴引擎交互次数唯一读取 difficultyCurve#engineInteractionItems，类型名按角色解析（模块 interactionFieldTypes，并入 CC-68 compareInteractionTypes）；修般岳金身双计 / 双反漏计（4 队 56.2→76.2，liuyin 101.4→81.4，非般岳零差）；difficultyDescent 副本归一；锁（§24.99） |
 | CC-259 | done | 58e4eb7b | 散点 x 轴改读引擎实打次数（liveInteractions，与难度曲线同一函数；97/104 个预设原两图不同尺），新模块 composables/liveInteractions.ts 收拢实打交互读取，删除团队聚合缩副本；applyPresetInteractions 专属类型改按该槽模块反查；伤害零差（§24.100） |
 | CC-260 | done | a1b2e755 | 逐预设循环（散点 / 难度曲线 / 定位对比）动作次数跨预设泄漏：setAgent 不重置快支 / 连携等；新增 configSnapshot#restoreActionCounts 在每个预设开头恢复；当前全量顺序零差，筛选子集下 x 轴不再依赖顺序（§24.101） |
-| CC-261 | todo | — | 预设占位交互 parry8/dodge4（103/105，含 16 条手编的 quickAssist 3）去留：占位盖掉模块默认值（1051 noGenericInteraction 被强制 8/4、比利 / 般岳专属默认、普通输出位 6/10）；方案见 §24.101 ① 与 worker §2（涉及数值） |
+| CC-261 | done | bdc3d312 | 去掉预设占位交互 parry8/dodge4（87 → []，16 手编只留 quickAssist 3）；生成脚本同步；slot 0 回到职业基准 / 模块专属默认（90 → 6/10、1051 → 0、1531 → 4/0）；伤害 −12.8% ~ +6.7%，golden 不变（§24.102） |
+| CC-262 | todo | — | G5 合轴吸收比例 → 伤害逐档不单调（auto-1371-1481-1451：0/0.05/0.2/0.3 = 74.29/71.61/73.33/77.38M）；查根因（前台时间释放后排轴离散跳变？）及阶梯按档试开是否因第一档负增益错过后续档（§24.102 ③） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |
