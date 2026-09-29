@@ -75,17 +75,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > §2 属于主 lane；并行会话把自己的交接写在这里，互不覆盖。任何 lane 确认本节已过时，可以整节替换成自己的。
 > 开工查现场的方法见提示词第 9 条（`ps` 看 verify / vitest，`git log` 看最近提交时间，`ls -lt /home/kaua/calc-arch`）。
 
-**2026-09-29 18:10 arena-B 第 2 轮（开工时无并行会话：最近提交 16:43，无 verify 进程）：抽卡规划收入改按版本日历发放，代码 `724f37cf`，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0 说明 push 失败，先补推）。**
+**2026-09-29 18:40 arena-B 第 3 轮（开工时无并行会话：HEAD 7bbaabe4，无 verify 进程）：抽卡规划购买窗口加上界，代码 `c8b76d2f`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
 - **做到哪**：
-  1. **先量**（上一轮 §2b 下一步）：默认数据规划期轴 44 期、44 个不同日期，1.4 起每版本 2～4 期。旧 `filmGrants` 每遇新日期发一份 `filmPerVersion` ⇒ 几乎每期都发，**收入约为用户口径「每版本 25000」（`filmEconomy.ts:33`，用户 2026-08-28）的 3 倍**。提案 §2.2c 原先猜的方向（「稀疏版本少发」）是反的，已在提案里更正。量法脚本：按 `buildPlannerPeriods` 同口径读 `public/static/boss-presets.json` 的 defense phases、按 phaseId 归期，再对 `VERSION_NODES` 每版本首节点分桶（一次性 node 脚本，没进仓库）。
-  2. **改**：`src/composables/pullPlanner.ts` 新增导出 `versionFilmGrants(periods, versionStartDates, filmPerVersion, startDate)`：第 i 期发放 = (上一边界, 本期] 内跨过的版本开始日个数 × filmPerVersion，首期上一边界 = 起点日期。`PlannerOptions.versionStartDates` **必填**（缺省会静默退回旧的 ×3 口径，CC-179 判据）。`src/composables/pullPlannerEngine.ts` 新增 `plannerVersionStartDates()`（VERSION_NODES 每版本首节点）并传入。这是提案 §5.6「三根时轴」里的收入轴：收入日历现在是规划器的一个显式输入，不再借用期轴。
-  3. **测试**：`pullPlanner.test.ts` 新增 4 例（一版本 3 期只发一份 / 跨 2 版本发 2 份且同日第二期 0 / 首期边界 = 起点 / 端到端银行守恒）。测试夹具 `opts()` 默认 `versionStartDates` = 每 14 天一个，保持旧用例「每期一个新版本」的前提，旧 13 例不改。负控：把 `crossed` 换回旧的「日期变化」逻辑 ⇒ 新 4 例全红，恢复后绿。
-  4. 验证：`vue-tsc -b` 0；pullPlanner + pullPlannerEngine 24 例绿；隔离 worktree `wtA-grants` 全量 verify 见提交说明。**数值影响**：抽卡规划页（Chart 6）的规划结果和 VCG 价值都会变（可用菲林约降到 1/3），属口径修正，依据 = 用户「每版本 25000」+ 同族 `teamTimelineFilm.ts:176` 早就按 `/ PERIODS_PER_VERSION` 摊。没有 golden 覆盖 Chart 6，没跑引擎版全量规划对比（默认参数十秒级、需浏览器 store，性价比低）。
-- **下一步（抽卡规划线，仍与 stun 线文件不相交）**：**购买窗口无上界**。`pullPlanner.ts:243` `nextPurchase` 只查 `date < windowStart`，注释说「窗口无上界…实务上最优规划几乎总在首发当期或紧邻期购买」——这是**没量过的假设**；而页面文案、文件头注释、提案都写「首 UP 窗口唯一可购（复刻不建模）」，实现等于「永久可买」，方向相反（低估首 UP 紧迫性）。
-  - 先量：跑一次引擎版规划（`pullPlannerEngine.test.ts:159` 那个用例的参数即可），统计 `plan.steps[].purchases` 里「购买日期 − windowStart」超过一个卡池节点（约 21 天）的次数。几乎为 0 ⇒ 只改注释，写清「无上界是近似且实测无影响」；不为 0 ⇒ 给 `PlannerCard` 加必填 `windowEnd`（= 下一个 VERSION_NODES 节点日期），`nextPurchase` 查上界，VCG 的禁购写法（`windowStart: '9999-12-31'`）不受影响。
-  - 这是口径向文案靠拢，不是新口径；若量出来影响大，仍按文案做，在提案 §6 记录，回退 = 删上界检查。
-- **未决项**：提案 §6「完全下位是否作为显式输出标签」待用户裁决；§5.5「角色 / 音擎独立阶梯」未开。
-- **回退点**：`git revert 724f37cf`（`versionFilmGrants` 回到旧 `filmGrants`，删 `versionStartDates` 字段与 4 例测试）。
+  1. **先量**（上一轮下一步）：一次性探针（成型号 + 猫又/1031/1131、beam 2、topM 8、每起点 6 期，约 25 秒/起点；文件留在 `/home/kaua/calc-arch/arena-probe-window.test.ts`，放进 worktree 的 `src/` 下用 vitest 跑，靠 `PROBE_STARTS` / `PROBE_N` / `PROBE_OUT` 环境变量），统计购买日期 ≥ 下一个卡池节点日期的笔数。旧实现：起点 2025-12-30 共 4 笔里 1 笔越窗（1341 专武，窗口 [12-30, 02-06) 却在 02-13 买）；起点 2026-03-27 共 4 笔 0 越窗。结果：`/home/kaua/calc-arch/probeA-window.out`（旧）/ `probeA-window-after.out`（新）。
+  2. **改**（不论量出多少都做：用户口径「首 UP 窗口唯一可购，复刻不建模」+ 文件头 + `runPullPlanner` 的 `inWindow` 过滤注释「窗口已过永远买不到」都说窗口会关，只有 `nextPurchase` 没关）：`PlannerCard.windowEnd: string | null` **必填**（不含；null = 其后无节点；CC-179：可选会静默退回永久可买）；`nextPurchase` 加 `date >= windowEnd ⇒ null`（本体 / 专武 / 满配一起关）；`buildPlannerCards` 取 `VERSION_NODES[idx+1]?.date ?? null`。VCG 禁购写法 `windowStart: '9999-12-31'` 不受影响。
+  3. **测试**：`pullPlanner.test.ts` 夹具 `card()` 加第 4 参 `windowEndDay`（缺省 null = 开放，旧用例不动）+ 新 2 例（窗口边界含升档 / 钱在关窗后才到则买不到、开放时会买）；`pullPlannerEngine.test.ts` 卡清单用例加 2 条断言（windowEnd > windowStart、有上界的卡 > 30 张）。负控：删掉上界检查 ⇒ 新 2 例红，恢复后绿。
+  4. 验证：`vue-tsc -b` 0；pullPlanner 19 例绿；隔离 worktree `wtA-window` 全量 verify 见提交说明（日志 `/home/kaua/calc-arch/vA-window.log`）。没跑 zd：抽卡规划不在 `resourceResult` 计算路径上。**数值影响**：起点 2025-12-30 的 6 期规划总分 67836 → 65474（旧分含越窗购买），起点 2026-03-27 不变；无 golden 覆盖 Chart 6。
+- **§5.6 三根时轴现已全部落地**（收入 = 版本日历，结算 = 期，购买 = 卡池节点窗口）。提案第 15 行已标 ✅，§6 警告已改成「已修 + 实测」。
+- **下一步（抽卡规划线，仍与 stun 线文件不相交）**：提案 §5.5「角色 / 音擎独立阶梯」（现在强制 本体 → 专武 → 满配 顺序）。开工先读 `docs/proposals/pull-value-optimization.md` §5.5 全文和 `pullPlanner.ts` 的 `PurchaseTier` / `TIER_COSTS` / `nextPurchase` / `tierHoldings`，判断「独立阶梯」是否让架构更一般（两根独立计数器替代单一档位）还是只是加状态维度（beam 状态空间变大、引擎求值次数变多）；只有前者才做。若做：先写一个小用例证明现阶梯会错过的购买组合（如先满配影画不买专武），再改。
+- **坑**：窗口长度继承下半节点的近似日期（多数约 21 天，2.5 上半约 38 天）；若将来有人把下半日期改准，规划结果会跟着变——这是预期。
+- **未决项**：提案 §6「完全下位是否作为显式输出标签」待用户裁决。
+- **回退点**：`git revert c8b76d2f`（删 `windowEnd` 字段、上界检查与新测试；收入轴 724f37cf 独立，不受影响）。
+- 上一轮（arena-B 第 2 轮）：收入改按版本日历 `724f37cf`（旧实现每期发一份，收入约 ×3，提案 §2.2c 有实测）。回退 `git revert 724f37cf`。
 - 上一轮（arena-B 第 1 轮，与主 lane 第 315 轮同时）：收养孤儿 WIP（抽卡规划零价值三态 + 增量成本分母）`d3443e39`；改提示词（加 wsl_exec 尾截断坑、现成客户端、第 9 条并行会话）。
 
 ## 2. 最近一轮交接（每轮替换本节）
