@@ -1088,18 +1088,9 @@ export interface AgentMechanicModule {
    */
   chainGift?(result: DeepReadonly<CharacterResourceResult>): { count: number; label: string; note: string } | null
   /**
-   * 保底自动补齐的交互次数由本模块产出（`CalcRoundResult.interactionTopUp` 的槽位归属，规则 6 落点）。
-   *
-   * 存在的理由：交互栏要用「弹刀 +N / 双反 +M」，读的是轮内收敛值 `calcOutput.interactionTopUp`——
-   * 而它**很贵**，非本角色队伍不该触发全量计算（原实现是这个懒守卫的唯一理由）。编排层要保留
-   * 该守卫就得知道「本队有没有这种角色」，此前写成 `team.findIndex(c => c.agentId === '1471')`。
-   * 声明式（同 `backstageAutoFill` 范式）：编排层按声明找槽位，新角色接入不必再动编排层。
-   */
-  producesInteractionTopUp?: boolean
-  /**
    * CC-43e（2026-09-27）：本角色「拥有」轴预设里的 `promoteVariant`（60/90 转大）块。
    * 编排层 `roundInputs.ts#buildStackAxes`：队里没有任何声明者时跳过 promoteVariant 块（不当普通轴动作执行）。
-   * 声明式（同 `producesInteractionTopUp` 范式），替代原身份判定 `findSlotByIdentity(['1481'])`。现实现：琉音。
+   * 声明式（同 `backstageAutoFill` 范式），替代原身份判定 `findSlotByIdentity(['1481'])`。现实现：琉音。
    */
   ownsPromoteVariantAxisBlocks?: boolean
   /**
@@ -1117,10 +1108,12 @@ export interface AgentMechanicModule {
     actionTimeOf: (moveId: string) => number
   }): StackActionCost[] | undefined
   /**
-   * 交互补齐量求解（CC-23，与 `producesInteractionTopUp` 配套）：编排层（`convergence.ts`）在
-   * autoTopUp 门控成立时，对「声明了 producesInteractionTopUp 的那个槽位」的模块调用本能力，
-   * 求下一轮的弹刀/双反补齐量（轮间经 `threads.interactionTopUp` 收敛）。原先编排层直连
-   * import `computeBanyueInteractionTopUp`；现由模块挂出，编排层不含角色 id、不 import 角色模块。
+   * 交互补齐量求解（CC-23）：编排层（`convergence.ts`）在 autoTopUp 门控成立时，对「挂出本能力的那个槽位」
+   * 的模块调用本能力，求下一轮的弹刀/双反补齐量（轮间经 `threads.interactionTopUp` 收敛）。编排层不含角色 id、不 import 角色模块。
+   *
+   * **能力存在即声明**（CC-293）：槽位由 `registry.ts#findInteractionTopUpSlot` 按「谁实现了本能力」查找，
+   * convergence 找槽与 useResourceCalc 交互栏的懒守卫（非本角色队伍不触发全量计算）共用它。
+   * 此前另有布尔旗标 `producesInteractionTopUp` 表达同一事实，两者可以不一致（旗标有、能力无 ⇒ 门控打开却静默不补）。
    */
   computeInteractionTopUp?(opts: InteractionTopUpInput): InteractionTopUp
   /**
@@ -1208,7 +1201,7 @@ export interface AgentMechanicModule {
    * 是纯数据，没有派发钩子所需的上下文。故本声明是**纯函数式**的：引擎每 pass 按类别查询槽位、
    * 调 `supply()` 拿数量、按 `targetSlot()` 落点，全程不含角色 id。
    *
-   * 新角色接入 = 只写自己的模块（引擎与编排层零改动），与 `producesInteractionTopUp` /
+   * 新角色接入 = 只写自己的模块（引擎与编排层零改动），与 `computeInteractionTopUp` /
    * `backstageAutoFill` / `axisWindowOverlays` 同族。
    */
   crossAgentSupply?: CrossAgentSupplySpec

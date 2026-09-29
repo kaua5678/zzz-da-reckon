@@ -9,7 +9,7 @@ import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
-import { getAgentMechanic } from '@/mechanics'
+import { findInteractionTopUpSlot, getAgentMechanic } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
@@ -184,9 +184,9 @@ export function createRunCalcRound(deps: {
     const provStunCoverage = computeStunCoverage({ stunCount }, verdictSecondsLost)
     // 般岳轴模式自动补齐（保底语义，方案 A）：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时抬双反（补嗔火）与弹刀（补喧响），
     // 有效次数 = 交互栏输入 + 补齐量（不写回 store，不覆盖用户输入）；计算轮间通过 prevInteractionTopUp 线程收敛。
-    // CC-23：找槽改为声明式（与 useResourceCalc.ts 交互栏的 `interactionTopUp` computed 同一写法，两处判定同源），
-    // 原为按身份 `findSlotByIdentity(…, ['1471'])`。补齐求解经模块能力 `computeInteractionTopUp`。
-    const interactionTopUpSlot = configStore.team.findIndex(c => c.agentId && getAgentMechanic(c.agentId)?.producesInteractionTopUp)
+    // CC-23 / CC-293：槽位 = 挂出模块能力 `computeInteractionTopUp` 者（与 useResourceCalc.ts 交互栏的
+    // `interactionTopUp` computed 共用 findInteractionTopUpSlot），原为按身份 `findSlotByIdentity(…, ['1471'])`。
+    const interactionTopUpSlot = findInteractionTopUpSlot(configStore.team)
     // Boss 预设弹刀反推（用户口径 2026-08）：appliedBoss 声明 parryTotal/parryNoFollowUpTotal（如 叶释渊 13 / 司祭 15）且
     // 「保底4失衡」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按保底失衡反推补齐、主C 拿剩余
     // （纯函数 core/parrySplit.ts；本轮注入上一轮拆分，收敛判据含 parrySplitSeq）。
@@ -719,7 +719,7 @@ export function createRunCalcRound(deps: {
       // 喧响供给取般岳个人（终结技次数 = 个人喧响 / 终结技消耗，非全队总和；曾用全队总和导致
       // 队友喧响把缺口抹平 → 保底4喧响不补齐、般岳卡在 9000 出头打不满 4 大）
       const decibelHave = rr.characters.find(c => c.slot === interactionTopUpSlot)?.decibelSource?.total ?? 0
-      // 门控 autoTopUp 已含 interactionTopUpSlot >= 0 ⇒ 该槽模块声明了 producesInteractionTopUp；能力缺席时保持上一轮值
+      // 门控 autoTopUp 已含 interactionTopUpSlot >= 0 ⇒ 该槽模块必有 computeInteractionTopUp（CC-293：槽位即按能力查找）
       const computeTopUp = storeChar?.agentId ? getAgentMechanic(storeChar.agentId)?.computeInteractionTopUp : undefined
       if (computeTopUp) interactionTopUpNext = computeTopUp({
         dodgeCount: storeChar?.dodgeCounterCount ?? 0,

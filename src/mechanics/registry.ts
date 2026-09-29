@@ -39,6 +39,14 @@ export function getAgentMechanic(agentId: string): AgentMechanicModule | undefin
 }
 
 /**
+ * 交互补齐产出者槽位（CC-293）：队中第一个挂出 `computeInteractionTopUp` 能力的槽位；无 ⇒ -1。
+ * convergence 找槽与 useResourceCalc 交互栏懒守卫共用（两处判定同源）；能力存在即声明，不另设旗标。
+ */
+export function findInteractionTopUpSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): number {
+  return team.findIndex(c => !!c?.agentId && typeof getAgentMechanic(c.agentId)?.computeInteractionTopUp === 'function')
+}
+
+/**
  * 自动失衡轴选档提示（CC-60；CC-246 自 composables/agentMechanicView 迁入）：由注册表派生的纯声明读取，
  * 生产入口 resourceCalc/roundInputs#autoPreset 传给 data `selectAutoStunAxisPreset`（data 层不 import mechanics）。
  * 放在 mechanics 而非展示门面：管线层不得反向依赖展示层 composable（锁 resourceCalcStoreDeps.test）。

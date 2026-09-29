@@ -1028,12 +1028,6 @@ export const banyueMechanic: AgentMechanicModule = {
     }
     return [row]
   },
-  /**
-   * 交互栏「轴模式自动补齐」的槽位归属声明（规则 6 迁入，棘轮站点 8/8，2026-09-12 #10 真清偿）：
-   * 原本 `useResourceCalc.interactionTopUp` 写死 `findIndex(c => c.agentId === '1471')`。
-   * 该 computed 的槽位查找 + 懒守卫（非本角色队伍不触发全量计算）改由编排层按本声明完成。
-   */
-  producesInteractionTopUp: true,
   // CC-65b：交互次数默认值（原 stores/config.ts 写死表；用户确认：闪反10/招架6/金身20/双反5，嗔火来源）
   interactionDefaults: { parry: 6, dodge: 10, block: 20, dual: 5 },
   // CC-65b：TeamConfigPage 交互栏专属输入框（原页面写死本角色 id）
@@ -1042,7 +1036,8 @@ export const banyueMechanic: AgentMechanicModule = {
   ownsGuaranteeFury: true,
   // CC-258：引擎字段的专属交互类型名（金身格挡 / 双反；难度轴按此计权，队伍对比难度表按值补 0 条目，原 CC-68 compareInteractionTypes）
   interactionFieldTypes: { blockCount: 'banyueGoldenParry', dualCounterCount: 'banyueDualCounter' },
-  // CC-23：补齐求解经模块能力派发（原 convergence.ts 直连 import 本函数）
+  // CC-23：补齐求解经模块能力派发（原 convergence.ts 直连 import 本函数）；
+  // CC-293：挂出本能力即是交互补齐产出者（槽位归属 + 交互栏懒守卫，registry#findInteractionTopUpSlot），不再另设旗标
   computeInteractionTopUp: computeBanyueInteractionTopUp,
   // 失衡轴动作块：怒相连段（论道→狮子吼·怒 / 地动→山摇·怒）= 怒相技能，山威免费（4 山威/怒相 = 2 组），
   // 不耗闪能不回嗔火；怒相内 2 组连段可在两个块间自由分配（didong 块优先占山威配额），明王触发源两者皆认领

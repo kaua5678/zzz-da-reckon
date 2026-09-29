@@ -22,7 +22,7 @@ export interface CalcRoundResult {
     specialActionBonus: SpecialActionBonusResult
     /**
      * 通用保底4喧响的本轮决策（CC-229，TeamConfigPage 提示直读；此前页面用收敛后的主C喧响重算缺口 = 补后剩余缺口，与引擎决策不同）。
-     * active=false ⇒ 未勾选或本队由补齐角色（producesInteractionTopUp，如般岳）负责，通用口径不生效。
+     * active=false ⇒ 未勾选或本队由补齐角色（挂出 computeInteractionTopUp 者，如般岳）负责，通用口径不生效。
      */
     decibelGuarantee: {
       active: boolean

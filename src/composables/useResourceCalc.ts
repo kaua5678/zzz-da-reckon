@@ -11,7 +11,7 @@ import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
 import { calcStunAxisStack } from '@/core/stunAxisStack'
 import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
-import { getAgentMechanic } from '@/mechanics'
+import { findInteractionTopUpSlot, getAgentMechanic } from '@/mechanics'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createConvergenceRoundInputs, createRunCalcRound } from './resourceCalc/convergence'
@@ -436,8 +436,8 @@ export function useResourceCalc() {
   /** 轴模式自动补齐的交互次数（保底，最终收敛值）：交互栏显示「弹刀 +N / 双反 +M」用 */
   const interactionTopUp = computed<{ slot: number; parry: number; dual: number } | null>(() => {
     // 懒守卫：无声明该能力的角色或非轴模式 → 不触发全量计算（首页交互栏只在选中该角色时读取）。
-    // 槽位由模块声明（producesInteractionTopUp）驱动，本文件不含角色 id（2026-09-12 #10 真清偿）。
-    const slot = configStore.team.findIndex(c => c.agentId && getAgentMechanic(c.agentId)?.producesInteractionTopUp)
+    // 槽位 = 挂出 computeInteractionTopUp 能力的模块（CC-293，与 convergence 找槽同一函数），本文件不含角色 id。
+    const slot = findInteractionTopUpSlot(configStore.team)
     if (slot < 0 || (!configStore.useStunAxis && !autoActive.value)) return null
     const topUp = calcOutput.value?.interactionTopUp
     if (!topUp || (topUp.parry === 0 && topUp.dual === 0)) return null

@@ -141,10 +141,14 @@ describe('convergence 夜间批 B · 组 3 保留项：cfg-merge 分支仍在（
   it('② 般岳消费端契约存在：banyueInteractionTopUp 字段被模块读取', async () => {
     const mod = (await import('@/mechanics')).getAgentMechanic('1471')!
     expect(mod.agentIds).toEqual(['1471'])
-    // 该模块声明了 producesInteractionTopUp（= 编排层 :549 的 banyueSlot 查找本可走声明式）
-    expect(mod.producesInteractionTopUp).toBe(true)
-    // CC-23：编排层找槽已改走本声明，补齐求解经模块能力派发（缺了它 autoTopUp 静默不补）
+    // CC-23：补齐求解经模块能力派发（缺了它 autoTopUp 静默不补）
     expect(typeof mod.computeInteractionTopUp, 'CC-23：般岳模块须挂出 computeInteractionTopUp').toBe('function')
+    // CC-293：槽位按「谁挂出该能力」查找（旗标 producesInteractionTopUp 已删），convergence 与交互栏共用
+    const { findInteractionTopUpSlot, getRegisteredAgentMechanics } = await import('@/mechanics')
+    expect(findInteractionTopUpSlot([{ agentId: '1011' }, { agentId: '1471' }, null])).toBe(1)
+    expect(findInteractionTopUpSlot([{ agentId: '1011' }, { agentId: '' }, undefined])).toBe(-1)
+    // 当前唯一产出者；新增时同步核对 convergence 的通用保底4喧响互斥（decibelParryActive）
+    expect(getRegisteredAgentMechanics().filter(m => typeof m.computeInteractionTopUp === 'function').map(m => m.agentIds[0])).toEqual(['1471'])
   })
 
   it('★ 契约缺口可复现：`guarantee.*` 不是注册 MechanicSetting ⇒ 模块侧读不到（故 :840 的 autoTopUp 迁不动）', async () => {
