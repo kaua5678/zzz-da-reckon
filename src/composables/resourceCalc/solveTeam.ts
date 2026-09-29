@@ -89,6 +89,9 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * 声明的补齐（般岳厚轴 4-环实测：179.2s 的计划装上 46.66s 补齐是 225.9s；保底4喧响 2-环：180.0s 的计划少装 7 弹刀 16.3s）。
    * 待装 = 本轮补齐时长 − 上一轮（= 本轮输入）补齐时长，取正；stable 停点两轮相等 ⇒ 0，对已收敛的队零影响。
    * 环内选点、轴退化判据、非轴降配的净占用**都**按「计划 + 待装」算。
+   * 2-环根因（CC-296 实测）：补齐缺口按「已含本轮补齐弹刀喧响」的 decibelHave 算 ⇒ 装 N → 算 0 → 装 N。
+   * ⚠ 别用「补齐量单调夹住上一轮」根治：模块按 215/弹刀估，实测 ≈291/弹刀，夹住 = 锁死首轮超补（1471 锚 12→20 弹刀），
+   *   见 docs/mcp-stun-dual-source.md §24.135；要根治应改割线步（用实测 Δ喧响/Δ弹刀）。
    */
   const pendingTopUpSeconds = (x: CalcRoundResult | null, prev: CalcRoundResult | null): number =>
     Math.max(0, (x?.interactionTopUp?.requiredSeconds ?? 0) - (prev?.interactionTopUp?.requiredSeconds ?? 0))

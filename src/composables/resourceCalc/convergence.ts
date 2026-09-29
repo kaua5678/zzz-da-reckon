@@ -1118,7 +1118,6 @@ export function createRunCalcRound(deps: {
       resolvedAxes: opts?.forceNoAxis ? [] : resolvedAxes,
       matchedPlanName: opts?.forceNoAxis ? null : planName,
       interactionTopUp: interactionTopUpNext,
-      interactionTopUpApplied: prevInteractionTopUp,
       parrySplit: parrySplitNext,
       specialActionBonus: specialActionBonusRound as SpecialActionBonusResult,
       decibelGuarantee: {
@@ -1131,6 +1130,7 @@ export function createRunCalcRound(deps: {
       },
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
+      threadsApplied: threads,
       threadsNext: {
         goodReview,
         energyBySlot,

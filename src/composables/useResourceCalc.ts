@@ -441,8 +441,8 @@ export function useResourceCalc() {
     // 旧守卫让「补齐已生效、交互栏不显示 +N」；且同页 decibelGuaranteeResult 本就无条件读 calcOutput，懒计算无从省起。
     const slot = findInteractionTopUpSlot(configStore.team)
     if (slot < 0) return null
-    // CC-296：读「本轮已装入」量（与资源卡同源），不读下一轮量（2-环落点上两者不等）。
-    const topUp = calcOutput.value?.interactionTopUpApplied
+    // CC-296/297：读「本轮已装入」量（与资源卡同源），不读下一轮量（2-环落点上两者不等）。
+    const topUp = calcOutput.value?.threadsApplied.interactionTopUp
     if (!topUp || (topUp.parry === 0 && topUp.dual === 0)) return null
     return { slot, parry: topUp.parry, dual: topUp.dual }
   })
@@ -467,7 +467,8 @@ export function useResourceCalc() {
     const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.agentsMap.get(c.agentId)?.specialty === 'stun')
     // 无击破位队伍：弹刀由主C（槽位 0）承担（noBreakerFallback，见 runCalcRound 同款回落）
     if (breakerSlot < 0 && configStore.team.length === 0) return null
-    const split = calcOutput.value?.parrySplit
+    // CC-297：读本轮已装入的分配（与资源卡 / 本轮 stunCount 同源），不读下一轮反推量。null = 首轮缺省对半分，无反推可显示。
+    const split = calcOutput.value?.threadsApplied.parrySplit
     if (!split) return null
     const effectiveBreakerSlot = breakerSlot >= 0 ? breakerSlot : 0
     return { breakerSlot: effectiveBreakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, mainDpsNoFollowUp: split.mainDpsNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }

@@ -16,13 +16,9 @@ export interface CalcRoundResult {
     stunCoverage: number
     resolvedAxes: StunAxis[]
     matchedPlanName: string | null
+    /** 下一轮补齐量（= threadsNext.interactionTopUp）。展示请读 `threadsApplied.interactionTopUp`（CC-296/297）。 */
     interactionTopUp: InteractionTopUp
-    /**
-     * 本轮**已装入**计划的补齐量（= 本轮输入 threads.interactionTopUp；`interactionTopUp` 是算出的下一轮量）。
-     * CC-296：展示读这个——两者只在收敛时相等；保底4喧响的补齐线程在外层按环内选点落在「装了 N、下一轮算 0」的
-     * 成员上时，读下一轮量会让交互栏显示 0 而资源卡显示已装的 N。同 `decibelGuarantee.parry` 读 prev 的口径。纯展示载荷。
-     */
-    interactionTopUpApplied: InteractionTopUp
+    /** 按本轮池反推的下一轮弹刀分配（= threadsNext.parrySplit）。展示请读 `threadsApplied.parrySplit`（CC-297）。 */
     parrySplit: ParrySplitResult
     /** 本轮实际用于喧响的特殊动作奖励（calcSpecialActionBonus 整份，含每槽次数）。CC-227：展示直读，不再在 useResourceCalc 另拼一份 */
     specialActionBonus: SpecialActionBonusResult
@@ -46,4 +42,11 @@ export interface CalcRoundResult {
     inStunAnomalyState: InStunAnomalySummary | null
     bossAnomalyState: BossAnomalyStateResult | null
     threadsNext: CalcRoundThreads
+    /**
+     * 本轮**输入**线程（已装入本轮计划的轮间量）。CC-297（取代 CC-296 的单字段 `interactionTopUpApplied`）：
+     * 反馈线程的「本轮已装」与「下一轮算出」只在 stable 停点相等；外层落在环成员 / maxIter 时两者不等，
+     * 而资源卡、stunCount、伤害都是按**已装**量算的 ⇒ 描述「这份计划」的展示一律读这里，不读 `*Next` 量。
+     * 同 `decibelGuarantee.parry` 读 prev 的口径。纯展示载荷，零求值影响（runCalcRound 不改写 threads）。
+     */
+    threadsApplied: CalcRoundThreads
   }

@@ -3,7 +3,7 @@
  * 修前两处问题叠加：
  * ① useResourceCalc#interactionTopUp 另要求轴模式 ⇒ 非轴 + 保底4喧响时交互栏不显示；
  * ② 弹刀补齐按「已含补齐喧响的 decibelHave」算缺口 ⇒ 13→0→13 的 2-环，外层停在「装了 13、下一轮算 0」的成员上，
- *    显示读的是下一轮量（0）而资源卡读的是已装量（13）。修法：显示改读 calcOutput.interactionTopUpApplied（已装量）。
+ *    显示读的是下一轮量（0）而资源卡读的是已装量（13）。修法：显示改读已装量（CC-297 起为 calcOutput.threadsApplied.interactionTopUp）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
