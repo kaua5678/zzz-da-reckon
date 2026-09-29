@@ -96,16 +96,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 339 轮（lane lead-arena-0925c）：CC-323（`56e29d1d`，只加测试，零差）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 340 轮（lane lead-arena-0925c）：CC-324（`5621d802`，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 行级体检（62 个角色完整跑 `useResourceCalc`）：强特/终结/连携的离群都有模块或数据承接，**唯一例外 1551 佩洛伊斯强特恒 0**：日华要能量，但所有数据源都没有耗能数值，`costType=free` 被引擎算成 0 次。按 R5 不编数，登记为数据缺口，并加名单锁 `exSpecialUnpriced.test.ts` == [1551]。详见 `docs/mcp-stun-dual-source.md` §24.163，重开条件写在 r6 第 339 行。
-- 已订正上一轮误判（§24.162、r6 第 338 行曾写 1551「走替代资源」）。
-- cfg 字段级（第 338 轮）+ 伤害行级（第 339 轮）两层体检都已完成，这条线收口，**不要再扫**。
+- 强特次数「取整」与「模块自己产行（skipGenericExSpecial）」解耦：取整成为缺省，持续型强特显式设 `exSpecialCountFractional`（burnice + sustainedEx）。修掉 1181/1621 按小数记资源、按整数产行的错配。golden 只动含 1181/1621 的 18 例，逐条归因见 `docs/mcp-stun-dual-source.md` §24.164。
+- 「强特次数来源收成单一声明」：测量后结论为**不做**（12 个模块的理由不同类），见 r6 第 340 行。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选新题，先登记要查什么。有日期的条件：坑 25 到期日 2026-10-31。
-2. 自选方向建议（未登记）：`resolveExSpecialCount` 里「替代资源 / 模块能力 / 能量公式」三条路的判定顺序散在 helpers.ts:150-200，另有 12 个模块各自写 `skipGenericExSpecial`。可以评估强特次数的来源能否收成单一的「来源声明」（先测量各模块 skipGenericExSpecial 的理由是否同类），不同类就写「不做」。
+2. 自选方向建议（未登记）：CC-324 的同型问题是「一个标志位兼管两件事，缺省值由另一个标志推出」。可以 grep `CharacterOperationConfig` 中形如 `a || !b`、`b ? x : y`（b 为 skip*/is* 标志）的 core 读取点，逐个判断是否也有一词两义。先列清单，再决定做不做。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

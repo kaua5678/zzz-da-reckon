@@ -4304,3 +4304,25 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **订正**：§24.162 表格和 r6 第 338 行把 1551 归为「走替代资源」，是误判，已改为数据缺口。
 - **验证**：新测试 1 例通过；vue-tsc 干净；全量 verify EXIT=0。
 - **回退**：`git revert 56e29d1d`（只删一个测试文件）。
+
+### 24.164 第 340 轮：CC-324 强特次数取整与「模块产行」解耦（5621d802，数值卡）
+
+- **测量**（第 339 轮交接第 2 条：强特次数来源能否收成单一声明）：
+  - `resolveExSpecialCount`（core/resource/helpers.ts）的分流顺序：替代资源 → 耗能 ≤0 返回 0 → 模块能力 `exSpecialCount` → 连续通道 exContinuous → exReservedCount → 通用能量公式。
+  - 12 个模块设 `skipGenericExSpecial`，理由各不相同：格莉丝轮换、琉音石头剪刀布、克拉蕾锐能、柏妮思持续喷射、般岳怒相、诺姆弹幕、洛克茜自旋、本招架版、莱卡恩点按/长按、卢西娅 A5、仪玄、星徽比利。它们已经分别经上述分流表达，**收成单一来源声明：不做**（只是换壳）。
+  - **测出隐式耦合**：通用能量公式里 `paid = cfg.exSpecialCountFloor || !cfg.skipGenericExSpecial ? floor(x) : x`，也就是「模块自己产行」⇒ 默认**不取整**，要取整还得再写 `exSpecialCountFloor=true`（8 个模块照做）。漏设的有 4 个：claret 走替代资源，碰不到这行；burnice 是持续型，本来就要小数；**grace 1181 与 roxy 1621 是真实次数，却被按小数计**。
+  - 实测（第 339 轮探针数据）：1181 引擎 13.63 次、伤害行 13 次；1621 引擎 10.15 次、伤害行 10 次（roxy.ts:124/:322 自己 floor）。多出的小数次强特照样计入能量、喧响、时间，却没有伤害。ENGINE_PIPELINE_GUIDE §坑2 本来就要求「接管 ⇒ skip + floor」，两者属于漏设。
+- **改动**：
+  - `CharacterOperationConfig.exSpecialCountFloor` 删除，新增 `exSpecialCountFractional`（缺省 false = 取整）。
+  - core：`paid = cfg.exSpecialCountFractional ? x : floor(x)`。
+  - 只有两个 setter：burnice.ts（喷射秒数可变）和 resourceCalc/helpers.ts 的 sustainedEx 路径（1031/1061/1281）。这两处原本靠 skip 隐式得到小数，**行为不变**。
+  - 删除 8 个模块的 `exSpecialCountFloor = true`（缺省已取整，行为不变）；测试夹具删掉该键；spec 1481 注释与 ENGINE_PIPELINE_GUIDE 坑 2 / 第 17 条同步。
+  - 结果：`skipGenericExSpecial` 只表示「模块自己产行」。新模块默认得到真实次数，要期望值必须显式声明，这一类漏设不会再发生。
+- **golden**（只动含 1181/1621 的 18 例，其余零差）：
+  - agent:1181 c0/c3–c6：只有 slot0 强特次数列取整（20.27→20 等），伤害与时间逐位不变（伤害行本来就按整数产）。
+  - preset:auto-1181-1511-1411 / 1181-1561-1411 / 1181-1561-1581：同上，只有次数列变化。
+  - agent:1621 c0/c3–c6：次数列取整；c5 伤害 3270618→3270619（舍入量级）。
+  - roxy 组队 5 例：banyue-roxy-lucia −0.013%（over 0.007→0）、billy-roxy-lucia −0.013%、claret-roxy-rina −0.0008%（over 0.003→0）、yidhari-roxy-lucia −0.0009%、yixuan-roxy-lucia +0.0008%。原因是洛克茜少记 0.1–0.9 次强特的喧响/能量/时间（她的强特时间列 −0.01~−0.1s），合轴列随之微调。
+- **timeFillRatchet**：yixuan-roxy-lucia 留白 0.7→0.6（归因本卡），已重生成。
+- **验证**：vue-tsc 干净；全量 verify EXIT=0。
+- **回退**：`git revert 5621d802`（基线一起回退）。
