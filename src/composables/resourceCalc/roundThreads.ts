@@ -21,7 +21,7 @@ import type { ParrySplitResult } from '@/core/parrySplit'
 export interface PostRoundInput {
   exCounts: number[]
   ultimateCounts: number[]
-  stunCount: number
+  // CC-316：不再记录失衡次数——postRound 派发直接读本轮 countStun（原先的上一轮值滞后一拍）
 }
 
 export interface CalcRoundThreads {
@@ -61,7 +61,7 @@ export interface CalcRoundThreads {
   /** 时间轴喧响轨：各槽上一轮收敛的喧响产出（slot → 点；首轮空对象 = 轨未启动） */
   decibelRegenBySlot: Record<number, number>
   /**
-   * CC-194：上一轮收敛的 `applyTeamConfig({phase:'postRound'})` 输入（全队强特/终结次数 + 计数通道失衡次数）。
+   * CC-194：上一轮收敛的 `applyTeamConfig({phase:'postRound'})` 输入（全队强特/终结次数；失衡次数自 CC-316 起由派发处取本轮 countStun）。
    * 本轮在 converge 之前用它对**本轮新克隆的 cfg** 派发 postRound。旧实现在本轮末尾对本轮克隆派发，
    * 而下一轮会从 `base.characters` 重新克隆，写入全部丢失（扳机冥狱恒 0、千夏自身次数、安比影画4 回能）。
    * null = 首轮 / null 轮（不派发，与旧首轮行为一致）。

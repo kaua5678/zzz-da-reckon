@@ -560,7 +560,9 @@ export function createRunCalcRound(deps: {
         combatTime: base.totalTime ?? 180,
         exCounts: threads.postRoundInput.exCounts,
         ultimateCounts: threads.postRoundInput.ultimateCounts,
-        stunCount: threads.postRoundInput.stunCount, // CC-154：计数通道（上一轮 countStun）
+        // CC-154：计数通道；CC-316：取**本轮** countStun（与 converge 派发同一口径）。原先随 postRoundInput 记录
+        // 上一轮的 countStun，比本轮输入滞后一拍，stable 停点上可能仍在变（§24.154），且入签名会破坏长环检测。
+        stunCount: countStun,
       })
     }
     // 队伍级机制·converge 阶段：带上一轮收敛量（莱特按上一轮全队能量消耗重算喷发回能；
@@ -975,7 +977,7 @@ export function createRunCalcRound(deps: {
       // 全队帷幕次数（下一轮注入）：照霜寒开帷幕 + 爱芮/叶瞬光终结技 + 千夏强特，按本轮收敛次数算。
       teamVeilCountTotalNext = computeTeamVeilCountTotal(characters, exCounts, ultimateCounts, base.totalTime ?? 180)
       // CC-194：只记录入参，派发挪到下一轮 converge 之前（见上方 `threads.postRoundInput`）
-      postRoundInputNext = { exCounts, ultimateCounts, stunCount: countStun }
+      postRoundInputNext = { exCounts, ultimateCounts }
     }
 
     // 薇薇安落羽生花双源 / 普罗米娅·霜刑回复端的「下一轮注入」已迁进各自模块的

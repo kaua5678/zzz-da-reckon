@@ -43,8 +43,4 @@ describe('CC-315 轴栈预算等下一轮输入入外层签名', () => {
       .not.toBe(outerFeedbackSignature(round({ energyBySlot: { 0: 860 } })))
     expect(slotRecordSignature({ 1: 773.519762048527, 0: 5 })).toBe(slotRecordSignature({ 0: 5, 1: 773.5197620485271 }))
   })
-  it('postRound 失衡次数不入签名（已知例外：入了会破坏长环检测，见 outerCycle.ts 头注释）', () => {
-    const pri = (stunCount: number) => ({ postRoundInput: { exCounts: [7], ultimateCounts: [3], stunCount } })
-    expect(outerFeedbackSignature(round(pri(0)))).toBe(outerFeedbackSignature(round(pri(3))))
-  })
 })
