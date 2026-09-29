@@ -282,12 +282,14 @@ describe('雨果轴模式（决算可视化 + 0命2命区分）', () => {
     const hugo = calc.resourceResult.value!.characters.find(r => r.agentId === '1291')!
     const verdict = hugo.executions.find(r => r.moveId === '1291_ex_verdict_final')
     expect(verdict).toBeTruthy()
-    // 坑36 修复（2026-09-10）：锁定 3 是**计划输入**，失衡池/轴栈（同源）算出 4 窗 → 决算 4 次。
-    // 旧断言 3 = floor(锁定计划值)，恰与轴栈 executed 不一致（同一缺陷的影子）；与池同源后 = 栈计数。
+    // 坑36 修复（2026-09-10）：决算块数与失衡池同源（读 prevPoolStunCount），与轴栈 executed 一致。
+    // CC-300（第 315 轮）：锁定失衡 = 「操作够就能打 N 次」⇒ 池次数钉到锁定值（CC-151 计数通道同口径）。
+    // 此前锁定只钉外层输入、池自算 4 窗 ⇒ 本条曾断言 4；现在池 / 轴栈 / 决算行三方同为锁定值 3。
     const stackVerdict = (calc.stackTraversalResult.value as { executed?: Record<string, { count: number }> } | null)
       ?.executed?.['0:1291_ex_verdict_final']?.count
-    expect(stackVerdict).toBe(4)
-    expect(verdict!.count).toBe(stackVerdict) // 4 窗 × 1 块
+    expect(calc.stunPoolResult.value?.stunCount).toBe(3)
+    expect(stackVerdict).toBe(3)
+    expect(verdict!.count).toBe(stackVerdict) // 3 窗 × 1 块
     // 非决算强特（轴外）仍在，总强特 = 轴内决算 + 轴外非决算
     const normal = hugo.executions.find(r => r.moveId === '1291_ex_normal_final')
     expect(normal).toBeTruthy()

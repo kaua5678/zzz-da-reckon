@@ -7,6 +7,7 @@ import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
+import { withStunCount } from '@/core/stunPool'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic } from '@/mechanics'
@@ -828,7 +829,15 @@ export function createRunCalcRound(deps: {
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
-    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio)
+    const sp1Raw = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio)
+    // CC-300：锁定失衡（`enemy.stunCountLock ≥ 0`，命座对比「操作够就能打 N 次」）⇒ 池次数钉到计数通道值（CC-151：锁定时
+    // countStun ≡ 锁定值 / 其投影）。原先锁定只钉外层输入，池仍按失衡值自算（实测 hugo 锁 3 → 池 4），于是
+    // prevPoolStunCount（雨果决算 / 坑36）、覆盖率、伤害侧栈都读到未锁的次数 ⇒ 命座抬失衡值的「假提升」从池漏出，
+    // 且与读 countStun 的引擎执行集合（CC-298）分叉。派生字段（返还 / 总连携）由 withStunCount 同步重建（同 CC-150）。
+    const stunLockN = configStore.enemy.stunCountLock ?? -1
+    const sp1 = stunLockN >= 0 && sp1Raw.pool && sp1Raw.pool.stunCount !== countStun
+      ? { ...sp1Raw, pool: withStunCount(sp1Raw.pool, countStun) }
+      : sp1Raw
 
     // Boss 预设弹刀反推下一轮量（保底4失衡）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
     // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），

@@ -356,7 +356,7 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
   // 坑36（2026-09-10 修复）：轴内块数落地必须与失衡池**同源**——外层不动点的计划次数是连续小数
   // （实测 0.824），池同轮算整数（floor）；对小数块数 Math.floor 后决算次数静默 0/1（轴栈 executed
   // 说 5、资源池只落地 1）。改读上一轮失衡池的整数次数（与其它线程同款滞后注入；首轮无池 → 0，
-  // 收敛期稳定后与最终池一致；锁定次数路径池 = 锁定值不受影响）。
+  // 收敛期稳定后与最终池一致；锁定次数路径池 = 锁定值——CC-300 起 convergence 把锁定下的池钉到计数通道值，此前该假设实测不成立）。
   const axisStunCount = threads?.prevPoolStunCount ?? 0
   const winAlloc = allocateAxisWindows([...axis.axes], axisStunCount)
   const windowDur = axis.windowSeconds
