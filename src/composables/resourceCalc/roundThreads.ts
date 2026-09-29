@@ -29,8 +29,6 @@ export interface CalcRoundThreads {
   goodReview: number
   /** 各槽位能量总额（条件轴解析输入） */
   energyBySlot: Record<number, number>
-  /** 仪玄玄墨异常触发回闪能次数（10s CD 封顶 18） */
-  auricInkFlash: number
   /** 异常/紊乱/乱流喧响奖励（按槽位，上一轮异常池回填） */
   anomalyDecibelBonus: number[]
   /** 般岳轴模式自动补齐（弹刀/双反） */
@@ -75,7 +73,6 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
   return {
     goodReview: -1,
     energyBySlot: {},
-    auricInkFlash: 0,
     anomalyDecibelBonus: [],
     interactionTopUp: { parry: 0, dual: 0, requiredSeconds: 0, illegal: false },
     parrySplit: null,

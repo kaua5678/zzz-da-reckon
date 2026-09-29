@@ -208,7 +208,6 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         continue
       }
       const t = out.threadsNext
-      const ait = t.auricInkFlash
       const rawNext = out?.stunPool?.stunCount ?? 0
       // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
       let next = rawNext
@@ -239,9 +238,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       if (lockedStunCount >= 0) {
         if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
       } else {
-        // 失衡次数与玄墨异常触发次数双稳定才收敛（异常触发 → 回闪能 → 强特 → 积蓄 → 触发）
+        // 失衡次数与反馈签名双稳定才收敛。CC-318：原先另比 `auricInkFlash`（仪玄玄墨触发，异常触发 → 回闪能 →
+        // 强特 → 积蓄 → 触发），现在它在 moduleFeedback 里、随签名比较（锁定分支与环检测也一并覆盖）。
         // 失衡值用既有容差；反馈签名的量化与同相位判据见 outerCycle.ts。
-        if (Math.abs(next - stunCount) < OUTER_STUN_TOLERANCE && ait === threads.auricInkFlash && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
+        if (Math.abs(next - stunCount) < OUTER_STUN_TOLERANCE && feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
         const isTwoCycle = isOuterTwoCycle({
           previousInput: prevStunValue,
           currentInput: stunCount,

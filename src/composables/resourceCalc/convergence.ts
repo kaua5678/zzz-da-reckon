@@ -106,8 +106,8 @@ export function createRunCalcRound(deps: {
     const {
       goodReview: prevGoodReview,
       energyBySlot: prevEnergyBySlot,
-      // 2026-09-16 round 14：`auricInkFlash` 也不再在此解构——仪玄 1371 整条分支已迁进
-      // `yixuan.ts#applyYixuanTeamConfig`（该模块经 `threads` 契约自取，规则 6）。
+      // 2026-09-16 round 14：仪玄 1371 整条分支已迁进 `yixuan.ts#applyYixuanTeamConfig`（规则 6）；
+      // CC-318：玄墨触发次数也改由仪玄 `nextRoundFeedback` 产出（`moduleFeedback.auricInkTriggers`），编排层不再有该线程。
       anomalyDecibelBonus: prevAnomalyDecibelBonus,
       interactionTopUp: prevInteractionTopUp,
       parrySplit: prevParrySplit,
@@ -1133,7 +1133,6 @@ export function createRunCalcRound(deps: {
       threadsNext: {
         goodReview,
         energyBySlot,
-        auricInkFlash: ap1?.perElement?.find(p => p.element === 'ether_ink')?.triggerCount ?? 0,
         anomalyDecibelBonus: [],
         interactionTopUp: interactionTopUpNext,
         parrySplit: parrySplitNext,

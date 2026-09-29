@@ -414,6 +414,11 @@ export type { CalcRoundThreads }
  * 新增一条跨轮反馈 = 这里加一个可选键 + 产出模块 `nextRoundFeedback` 返回它 + 消费模块读它。
  */
 export interface ModuleFeedback {
+  /**
+   * 仪玄：上一轮异常池里玄墨（`ether_ink`）异常触发次数（CC-318 由编排层具名线程 `auricInkFlash` 迁入；
+   * 通道③ 折成 `yixuanAnomalyTriggerFlash` 回闪能，10s CD 封顶 18）。只在 > 0 时返回（缺键 = 0）。
+   */
+  auricInkTriggers?: number
   /** 仪玄符法千重类终结次数（橘福福额外能力 +300 喧响；亦并入编排层 `teamUltimateForJufufu`） */
   teamUltimateExtra?: number
   /** 琉音转大赠送的叶瞬光逐云次数 */

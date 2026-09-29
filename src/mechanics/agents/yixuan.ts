@@ -391,7 +391,7 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCh
  * | `yixuanAxisEx` | `axis` | 轴内块 × 窗口数（**本槽**，全 moveId） |
  * | `yixuanAxisCloudSeconds` | `axis` | `1371022` 的 `duration` 加权；**无权重写 2**（不是 0） |
  * | `yixuanAxisActive` | `axis` | = `axis.active`，**恒写含 false** |
- * | `yixuanAnomalyTriggerFlash` | `threads` | `min(18, max(0, floor(auricInkFlash)))` |
+ * | `yixuanAnomalyTriggerFlash` | `threads` | `min(18, max(0, floor(moduleFeedback.auricInkTriggers)))`（CC-318 前为编排层具名线程 `auricInkFlash`） |
  * | `yixuanExtremeAssistCap` | `interactions` | Σ**队友** store 口径弹刀（**未缩放**——本轮的契约缺口） |
  * | `yixuanC1LightningCount` | `axis` + `cfg` | 轴/非轴**两臂**，判据是 `axisInSeconds > 0` |
  * | `yixuanFlashBonus` | `+=` | `auric*10 + extremeAssists*5 + c1*5`（**累加**，不是覆盖） |
@@ -471,10 +471,10 @@ function applyYixuanTeamConfig(
   // 缺失的**单个字段**按 0 计（`?? 0` 与原式 `Math.floor(prevAuricInkFlash)` 的取值面一致）。
   if (threads) {
     record.yixuanAnomalyTriggerFlash =
-      Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads.auricInkFlash ?? 0))))
+      Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads.moduleFeedback?.auricInkTriggers ?? 0))))
   }
   const auricInkTriggers = Math.min(
-    ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads?.auricInkFlash ?? 0))),
+    ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads?.moduleFeedback?.auricInkTriggers ?? 0))),
   )
 
   // ── 通道④ 终结技等价次数（只依赖 threads，**不依赖 interactions**）──
@@ -999,7 +999,7 @@ const settings: MechanicSetting[] = [
  * 数据源 = `teamResult`（== 原式的 `rr`）。⚠ **刻意不读 `adjustedResult`**（与 C-α 的叶瞬光
  * 不同——那边原式就是 `(adj2 ?? rr)`）：本处原实现读 `rr`，改读 adj 会改语义。
  */
-function yixuanNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function yixuanNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let teamUltimateExtra = 0
   const self = teamResult.characters.find(c => c.agentId === AGENT_ID)
   for (const e of self?.executions ?? []) {
@@ -1009,7 +1009,10 @@ function yixuanNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): M
       teamUltimateExtra += e.count ?? 0
     }
   }
-  return { teamUltimateExtra }
+  // CC-318：玄墨异常触发次数（下一轮通道③回闪能）。原由编排层无条件算进具名线程 `auricInkFlash`、
+  // 并在外层 stable 条件里单独比较；现归仪玄模块产出，走 moduleFeedback（CC-314 起整体入签名）。
+  const auricInkTriggers = anomalyPool?.perElement?.find(p => p.element === 'ether_ink')?.triggerCount ?? 0
+  return auricInkTriggers > 0 ? { teamUltimateExtra, auricInkTriggers } : { teamUltimateExtra }
 }
 
 export const yixuanMechanic: AgentMechanicModule = {

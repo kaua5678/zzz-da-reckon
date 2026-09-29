@@ -629,18 +629,18 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     expect(cfg.yixuanAxisActive).toBe(false)
   })
 
-  it('threads：yixuanAnomalyTriggerFlash = min(18, max(0, floor(auricInkFlash)))', () => {
+  it('threads：yixuanAnomalyTriggerFlash = min(18, max(0, floor(moduleFeedback.auricInkTriggers)))', () => {
     const cfg: Cfg = { slot: 0, agentId: '1371' }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes: [], windows: [] }),
-      threads: { auricInkFlash: 25.7 } as never,
+      threads: { moduleFeedback: { auricInkTriggers: 25.7 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }]),
     }))
     expect(cfg.yixuanAnomalyTriggerFlash).toBe(18) // floor(25.7)=25 → 封顶 18（不是 25）
     const cfg2: Cfg = { slot: 0, agentId: '1371' }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg2, {
       axis: axisOf({ axes: [], windows: [] }),
-      threads: { auricInkFlash: -3 } as never,
+      threads: { moduleFeedback: { auricInkTriggers: -3 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }]),
     }))
     expect(cfg2.yixuanAnomalyTriggerFlash).toBe(0) // 负值钳 0
@@ -664,7 +664,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60, invincibleTime: 0, teamUltimateFlashBonus: 20 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes: [], windows: [] }),          // 轴内时间 0 ⇒ 非轴臂
-      threads: { auricInkFlash: 4 } as never,
+      threads: { moduleFeedback: { auricInkTriggers: 4 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }, { agentId: '1481', parry: 3 }]),
     }))
     // 落雷 = floor((60 − 0)/6) = 10；极限支援 = min(默认取上限 3, 3) = 3
@@ -678,7 +678,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       // 轴内时间 = Σwindows(2) × windowSeconds(12) = 24 ⇒ floor(24/6) = 4
       axis: axisOf({ axes: [], windows: [2], windowSeconds: 12 }),
-      threads: { auricInkFlash: 0 } as never,
+      threads: { moduleFeedback: { auricInkTriggers: 0 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }, { agentId: '1481', parry: 2 }]),
     }))
     // 轴臂 = floor(24/6) = 4（**不是**非轴臂 floor((60−12)/6) = 8）
@@ -691,7 +691,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 0, yixuanFlashBonus: 0, battleTime: 180 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes: [], windows: [10], windowSeconds: 20 }),
-      threads: { auricInkFlash: 0 } as never,
+      threads: { moduleFeedback: { auricInkTriggers: 0 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }]),
       characters: [{ slot: 0, agentId: '1371' } as never],
     }))
@@ -703,7 +703,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     const cfg: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 1500 }
     const input = hookInput(cfg, {
       axis: axisOf({ axes: [], windows: [] }),
-      threads: { auricInkFlash: 0, moduleFeedback: { teamUltimateExtra: 3 } } as never,
+      threads: { moduleFeedback: { auricInkTriggers: 0, teamUltimateExtra: 3 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }]),
       characters: [{ slot: 0, agentId: '1371' }] as never, // 无橘福福：次数照报（+300 由提供者经 extraSelfDecibelPerUltimate 决定）
     })
@@ -722,7 +722,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
       const cfg: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 40 }
       getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
         axis: axisOf({ axes: [], windows: [] }),
-        threads: { auricInkFlash: 0, moduleFeedback: { teamUltimateExtra: prev } } as never,
+        threads: { moduleFeedback: { auricInkTriggers: 0, teamUltimateExtra: prev } } as never,
         interactions: interactionsOf([{ agentId: '1371' }]),
         characters: chars as never,
       }))
@@ -732,7 +732,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     const cfg: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 40 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes: [], windows: [] }),
-      threads: { auricInkFlash: 0, moduleFeedback: { teamUltimateExtra: 0 } } as never,
+      threads: { moduleFeedback: { auricInkTriggers: 0, teamUltimateExtra: 0 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }]),
       characters: [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 1 } }] as never,
     }))
@@ -745,7 +745,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
       getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
         phase,
         axis: axisOf({ axes, windows: [2] }),
-        threads: { auricInkFlash: 5, moduleFeedback: { teamUltimateExtra: 2 } } as never,
+        threads: { moduleFeedback: { auricInkTriggers: 5, teamUltimateExtra: 2 } } as never,
         interactions: interactionsOf([{ agentId: '1371' }, { agentId: '1481', parry: 4 }]),
         characters: [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 1 } }] as never,
       }))
@@ -762,7 +762,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes, windows: [2] }),
-      threads: { auricInkFlash: 4 } as never,
+      threads: { moduleFeedback: { auricInkTriggers: 4 } } as never,
       // 不传 interactions
     }))
     // ⚠ 这两个字段是**整条链唯一**依赖 `interactions` 的：缺契约 ⇒ 钩子提前 return、
@@ -821,7 +821,7 @@ describe('1141 莱卡恩：lycaonBackstageDodgeCount ← interactions（未缩�
     // 仪玄（slot 0，只看槽位号）⇒ 队友 = 槽 1 空槽：parry 2
     const yx: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 0 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(yx, {
-      axis: axisOf({ axes: [], windows: [] }), threads: { auricInkFlash: 0 } as never, interactions: snap,
+      axis: axisOf({ axes: [], windows: [] }), threads: { moduleFeedback: { auricInkTriggers: 0 } } as never, interactions: snap,
     }))
     expect(yx.yixuanExtremeAssistCap).toBe(2)
     // 莱卡恩（slot 0，带 agentId 判据）⇒ 队友 = 槽 1 但空槽被排除：0
