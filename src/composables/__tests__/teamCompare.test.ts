@@ -513,11 +513,12 @@ describe('teamCompare 金数/难度口径', () => {
      * 本队 1561 / 1261 / 1411：预设声明槽0 弹刀 8；setAgent 按职业基准预填 1561 闪反 10、1261 弹刀 6 + 闪反 10、
      * 1411（支援）0 ⇒ 弹刀 14、闪避 20。弹刀 / 闪避都吃非失衡占比修正（÷0.911）：
      * 弹刀 14 ÷ 0.911 = 15.37，闪避 24 ÷ 0.911 = 26.34，合计 41.71。
+     * CC-264：setAgent 预填快支 3（ASSIST_ACTION_BASELINE）⇒ 3 槽 × 3 = 9 × 0.6 = 5.4（快支不吃修正）⇒ 47.11。
      */
-    expect(def[0].difficulty, `默认权重实测 ${def[0].difficulty}`).toBeCloseTo(41.71, 1)
+    expect(def[0].difficulty, `默认权重实测 ${def[0].difficulty}`).toBeCloseTo(47.11, 1)
     expect(def[0].difficultyDetail, '弹刀 = 声明 8 + 队友预填 6').toContain('弹刀14×1 + 弹刀修正→15.37')
     // 权重透传：覆盖弹刀权重 2.5 ⇒ 弹刀部分 15.37 → 38.41（×2.5），闪避不变 ⇒ 64.76（证明弹层填的值真的透传到难度轴）
-    expect(over[0].difficulty, '弹刀权重 2.5 ⇒ 64.76').toBeCloseTo(41.71 + 1.5 * 15.37, 1)
+    expect(over[0].difficulty, '弹刀权重 2.5 ⇒ 70.16').toBeCloseTo(47.11 + 1.5 * 15.37, 1)
   })
 })
 
@@ -785,11 +786,11 @@ describe('teamCompare 批量计算', () => {
        * CC-259：散点 x 读引擎实打次数（liveInteractions）。逐项对账（除数 0.911 = 该队非失衡占比）：
        *  · 弹刀 14（声明槽0 8 + 1261 预填 6）÷ 0.911 = 15.37
        *  · 闪避 14（声明槽0 4 + 1261 预填 10）×1.2 ÷ 0.911 = 18.44
-       *  · 快支 3 ×0.6 = 1.8（原样）
+       *  · 快支 9（声明槽0 3 + 队友 setAgent 预填 3+3，CC-264）×0.6 = 5.4（原样；修前队友 0 ⇒ 1.8）
        *  · 金身 5 ×1.5 ÷ 0.911 = 8.23（夹具把般岳类型挂在非般岳槽上 ⇒ 不写引擎，只从预设补进难度）
-       *  合计 ≈ 43.83
+       *  合计 ≈ 47.44（CC-264 前 43.83）
        */
-      expect(p.difficulty, `实测 ${p.difficulty}`).toBeCloseTo(43.83, 1)
+      expect(p.difficulty, `实测 ${p.difficulty}`).toBeCloseTo(47.44, 1)
       // 需怪出手的三项都带修正项；快支不带（逐类型化的直接判据）
       expect(p.difficultyDetail, '般岳金身应带修正项').toContain('般岳金身弹刀修正→')
       expect(p.difficultyDetail, '弹刀应带修正项').toContain('弹刀修正→')

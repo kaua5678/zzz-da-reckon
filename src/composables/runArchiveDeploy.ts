@@ -9,7 +9,7 @@
  * - 当期可选牌（3 选 1）不自动应用：归档未记录玩家选择，对比时由用户在属性配置页手动选。
  */
 import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase, PhaseBossBrief, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
-import { useConfigStore, hasCustomInteractionDefaults, interactionBaselineFor } from '@/stores/config'
+import { useConfigStore, hasCustomInteractionDefaults, interactionBaselineFor, ASSIST_ACTION_BASELINE } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
 
@@ -117,8 +117,8 @@ export function applyDeployConfig(
     configStore.setDodgeCounterCount(s, base.dodge)
     configStore.setBlockCount(s, custom ? base.block : 0)
     configStore.setDualCounterCount(s, custom ? base.dual : 0)
-    configStore.setQuickAssistCount(s, 3)
-    configStore.setChainCountPerStun(s, 1)
+    configStore.setQuickAssistCount(s, ASSIST_ACTION_BASELINE.quickAssist)
+    configStore.setChainCountPerStun(s, ASSIST_ACTION_BASELINE.chainPerStun)
   }
 
   // 修复跨队泄漏：applyTeamPreset 在 setCinemaLevel 之前同步队友 buff，读到上一队残留命座，

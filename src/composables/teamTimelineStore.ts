@@ -2,7 +2,7 @@
  * 队伍时间线共享工具（现场快照/恢复已收至 configSnapshot.ts，CC-251）：基础金与预算感知加金、装配队伍到 store、让出事件循环。
  * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；teamTimeline.ts 原样转出公开名，导入方不用改。
  */
-import { useConfigStore, interactionBaselineFor } from '@/stores/config'
+import { useConfigStore, interactionBaselineFor, ASSIST_ACTION_BASELINE } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedAgent, isLimitedWEngine, applyGoldSteps } from '@/composables/teamCompare'
 import type { Agent } from '@/types/catalog'
@@ -146,8 +146,8 @@ export function applyTeamToStore(
     configStore.setDodgeCounterCount(s, base.dodge)
     configStore.setBlockCount(s, base.block)
     configStore.setDualCounterCount(s, base.dual)
-    configStore.setQuickAssistCount(s, 3)
-    configStore.setChainCountPerStun(s, 1)
+    configStore.setQuickAssistCount(s, ASSIST_ACTION_BASELINE.quickAssist)
+    configStore.setChainCountPerStun(s, ASSIST_ACTION_BASELINE.chainPerStun)
   }
 }
 

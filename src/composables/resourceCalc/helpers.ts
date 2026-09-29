@@ -503,9 +503,6 @@ export function buildCharConfig(
   const ov = (moveId: string, defaultRatio: number) =>
     configStore.getComboAlignOverride(slot, moveId, defaultRatio)
 
-  // 角色类型
-  const isSupport = agent.specialty === 'support'
-
   // 音擎周期直伤事件（现仅加农转子）：数据表 src/data/wEnginePeriodicDirect.ts 按 id / legacyIds 查（CC-82）。
   const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : null
   const wEngineMatchesSpecialty = !!wEngine && wEngine.specialty === agent.specialty
@@ -555,7 +552,8 @@ export function buildCharConfig(
     chainActionTime: chainAttack?.actionTime ?? 0,
     chainDecibelRecovery: chainAttack?.decibelRecovery ?? 0,
     chainComboAlignRatio: ov(chainAttack?.moveId ?? '', chainAttack?.comboAlignRatio ?? 0),
-    chainCountPerStun: char.chainCountPerStun ?? (isSupport ? 0 : 1),
+    // CC-264：字段恒为 number（setAgent 预填 ASSIST_ACTION_BASELINE）；旧兜底「支援 0 / 其余 1」从未生效且与部署口径冲突，删去
+    chainCountPerStun: char.chainCountPerStun ?? 0,
     parryCount: char.parryCount ?? 0,
     parryNoFollowUpCount: (char as { parryNoFollowUpCount?: number }).parryNoFollowUpCount ?? 0,
     parryDecibelOnlyCount: (char as { parryDecibelOnlyCount?: number }).parryDecibelOnlyCount ?? 0,

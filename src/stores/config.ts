@@ -49,7 +49,7 @@ export interface CharacterConfig {
   yixuanExtremeAssistCount?: number  // 仪玄·极限支援换场次数（落雷 225% 贯穿力 + 5闪能/次；缺省 -1 = 自动取队友弹刀和上限）
   yixuanBackstageComboCount?: number  // 仪玄·墨影凝云合轴次数（后台墨影凝云+霄云劲#5，不占战场时间但有倍率行调用）
   quickAssistCount: number  // 快速支援次数（per-character）
-  chainCountPerStun: number  // 每次失衡的连携次数（per-character，默认非辅助1辅助0）
+  chainCountPerStun: number  // 每次失衡的连携次数（per-character；setAgent 预填 ASSIST_ACTION_BASELINE.chainPerStun = 1，CC-264）
   basicAttackTimeWeight: number // 平A时间分配权重（0=不分配平A时间）
 }
 
@@ -237,6 +237,16 @@ export function interactionBaselineFor(agentId: string, specialty?: string): { p
   if (agentId && getAgentMechanic(agentId)?.noGenericInteraction) return { parry: 0, dodge: 0, block: 0, dual: 0 }
   return hasCustomInteractionDefaults(agentId) ? getInteractionDefaults(agentId) : roleInteractionBaseline(specialty)
 }
+
+/**
+ * **快支 / 连携基准**（CC-264 单一来源；setAgent 预填、轻量装配 teamTimelineStore、部署 runArchiveDeploy 共用）。
+ * 口径 = 用户 2026-08-30 部署口径（runArchiveDeploy 原注释）：「快支固定 3 作为喧响基础供给；连携基准 1
+ * （轴模式由轴内连携块反推覆盖）」。修前 setAgent 不写这两项 ⇒ 散点 / 难度曲线 / 定位对比对 auto 预设
+ * 继承用户 store 里的隐藏值（新用户 = defaultCharacter 0/0，即**完全没有连携**：104 预设伤害中位 −3.3%、最多 −23.7%），
+ * 而轻量装配与部署是 3/1 ⇒ 同一支队在不同页面口径不同。全体角色同值（含支援位与 noGenericInteraction：
+ * 那条声明只管弹刀 / 闪反归属）。回退：setAgent 删两行赋值即回到「继承用户值」。
+ */
+export const ASSIST_ACTION_BASELINE = { quickAssist: 3, chainPerStun: 1 } as const
 
 /**
  * 角色是否有专属交互默认值（任一项 > 0）。CC-255：此前 pullPlannerEngine / teamTimelineStore / charIncrement /
@@ -602,6 +612,9 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
       char.dodgeCounterCount = base.dodge
       char.blockCount = base.block
       char.dualCounterCount = base.dual
+      // CC-264：快支 / 连携同为「默认会打」的基础交互，按单一来源预填（预设显式声明仍在其后覆盖）
+      char.quickAssistCount = ASSIST_ACTION_BASELINE.quickAssist
+      char.chainCountPerStun = ASSIST_ACTION_BASELINE.chainPerStun
 
       // 自动推荐音擎：优先该角色的专属音擎（ownerAgentId），其次同职业第一个 S 级，最后任意 S 级
       const wEngines = catalogStore.displayWEngines

@@ -398,7 +398,9 @@ describe('applyTeamMechanics 透传 countStun / chainCountPerStun（跳②）', 
    * `delete` 掉 store 上的键 ⇒ 模拟「老预设/外部写入的对象没有这个字段」。
    * 实测：`delete` 后 store 读 `?? 0` = 0，而 cfg 那份 = 1 ⇒ 两口径**精确可分辨**。
    */
-  it('★ 默认值分裂（真实边界）：store 侧字段**缺失** ⇒ 快照 0 vs cfg 兜底 1，读 store 才对', async () => {
+  // CC-264：`buildCharConfig` 的「支援 0 / 其余 1」兜底已删（字段恒为 number、setAgent 预填基准）⇒ 缺字段时两侧同为 0，
+  // 默认值分裂消失。本用例改锁「分裂不再存在 + 莱卡恩仍读 store」；若有人恢复旧兜底，前提断言变红。
+  it('★ 默认值分裂（已消除，CC-264）：store 侧字段**缺失** ⇒ 快照 0 且 cfg 兜底也是 0', async () => {
     const { catalog, config } = await setupHarness([{ agentId: '1141', cinemaLevel: 2 }, { agentId: '1011' }])
     delete (config.team[1] as unknown as Record<string, unknown>).chainCountPerStun
     expect(config.team[1].chainCountPerStun, 'store 侧缺字段 ⇒ 原式 `?? 0` 得 0').toBeUndefined()
@@ -406,8 +408,8 @@ describe('applyTeamMechanics 透传 countStun / chainCountPerStun（跳②）', 
       buildCharConfig(0, config, catalog) as unknown as Cfg,
       buildCharConfig(1, config, catalog) as unknown as Cfg,
     ]
-    // 前提确认（判据的承重面）：cfg 那份**真的**被兜底成 1。若这条不成立，本判据退化为同值。
-    expect(characters[1].chainCountPerStun, 'cfg 侧兜底前提：强攻非辅助 ⇒ ?? 1').toBe(1)
+    // CC-264 前 cfg 这份被兜底成 1（强攻非辅助）；现与 store 语义一致 = 0
+    expect(characters[1].chainCountPerStun, 'cfg 侧兜底 = 0（与 store 同值，无分裂）').toBe(0)
     applyTeamMechanics({
       characters: characters as never,
       configStore: config,
