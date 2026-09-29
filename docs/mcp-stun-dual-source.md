@@ -3493,3 +3493,19 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **影响**：主 id 上两套判定 83/83 一致 ⇒ 预设、散点、golden 零差；只有持有旧别名 id 的 localStorage 配置行为变化（常驻 S 别名不再算限定）。
 - **锁**：`limitedAgentSingleSource.test.ts` 新增 2 例（共 5 例）：catalog 全部音擎前缀判定 = S ∧ 非常驻（前缀约定失效时先红）；全部 legacyIds 与主 id 判定一致。反例：stash teamCompare.ts 后报出上述 5 个别名。
 - **回退**：revert 48f30a1b。
+
+### 24.111 第 287 轮：旧 id 通道扫描（不改）；CC-272 抽卡分层特例集合单一来源（6047d435）
+
+**① 旧别名 id 的其他通道（§24.110 下一步 2）——结论：不改。**
+- 音擎 / 套装按 id 查询的消费者（panelPhases :538 / :694 / :755、helpers :507、inCombatBuffs :135 / :173、core/buff :534）都经 `wEnginesMap` / `driveDiscSetsMap` 查询，这两张 Map 已登记 legacyIds，之后一律用解析出的 `w.id` / `set.id`（主 id）⇒ 别名安全。
+- 仍用原始 id 直接比较的只有两处：
+  - `core/buff.ts:439` `twoPieceSetId !== fourPieceSetId`：只有「4pc 是别名、2pc 是同一套装的主 id」才会让 2pc 效果重复计入。这需要旧存档加上用户把 2pc 手选成与 4pc 同一套，现实中几乎不会发生，不改；
+  - `teamCompare.ts:486` `baseWEngineIds[slot] !== wEngineId`：两侧都来自同一次装配，id 形态相同，无影响。
+- 没有采用「恢复持久化时把别名迁成主 id」：需要 catalog 先加载，而 store 恢复早于 catalog 加载，要引入额外的时序钩子；现有「Map 登记别名 + 消费者用解析后 id」已覆盖全部实际通道，迁移只增加复杂度。重开条件：出现新的按原始 id 查名单的代码（CC-271 类缺陷）。
+
+**② CC-272（6047d435）：赠送 S / A 级特例集合单一来源。**
+- 现状：同一事实写了两份——`pullValue.ts` 私有 `FREE_GIFT_AGENT_IDS = {1551}`，`pullPlannerEngine.ts` 私有 `FREE_SPECIAL_AGENT_IDS = {1551, 1421}`（注释「赠送 S 与 A 级特例」）。新增赠送角色时要改两处，漏改一处，规划器就会把赠送角色当成要购买的卡。
+- 修法：`data/versionTimeline.ts` 新增导出 `FREE_GIFT_S_AGENT_IDS`（与 CC-270 的 `A_RANK_RELEASE_SPECIAL_IDS` 放在一起）；pullValue 删私有副本改读它；pullPlannerEngine 的免费特例改为两者的并集派生。
+- 影响：集合内容不变 ⇒ 行为零差（verify EXIT=0）。limitedGold 仍**不**读赠送集合（赠送 S 是否计限定金未裁决）。
+- 锁：`limitedAgentSingleSource.test.ts` 新增源码锁（共 6 例）：pullValue / pullPlannerEngine 不再出现以 '1551' / '1421' 开头的字面量 Set。反例：stash 两个文件后变红。
+- 回退：revert 6047d435。
