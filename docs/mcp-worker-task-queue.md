@@ -96,15 +96,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 336 轮（lane lead-arena-0925c）：CC-321（`b91008c4`，零差）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 337 轮（lane lead-arena-0925c）：CC-322（`2f745db0`，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- #N 启发式线收口：其余依赖 #N 的规则都不受影响（r6 第 336 行 ①）。
-- 删除恒空的 `BASIC_BENCHMARK_OVERRIDE`，基准段只认 catalog `basicBenchmarkMoveId`。详见 `docs/mcp-stun-dual-source.md` §24.160。
+- 「>200% 强化平A」启发式实测有效，保留；它把 1511 南宫羽的普通段全部排除，导致平A回复为 0，现改为走基准段兜底。golden 只动了含 1511 的 15 例，逐条解释见 `docs/mcp-stun-dual-source.md` §24.161。
+- 平A秒均回复这条线（CC-320 / 322）收口：兜底条件已覆盖「没有 #N 段」和「#N 段被全部排除」两种情况，两份名单都有测试锁。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选新题，先登记要查什么。有日期的条件：坑 25 到期日 2026-10-31。
-2. 可选题（未登记）：`calcBasicAttackRegenPerSec` 与 `alice#calcSwordWillPerSec` 都有「伤害倍率 > 200% = 强化平A」的启发式（注释写着「后续可调」）。先在 catalog 上统计它排除了哪些 #N 段，以及排除前后秒均回复差多少。差别可以忽略就记「不做」；差别大、而且排除的是普通段（例如青衣 #2 221%、#3 244%），再评估改成数据字段或按段名判定。注意这会是数值卡。
+2. 自选方向建议（未登记）：CC-319/320/322 都是「按命名或阈值的启发式，对个别角色静默失效，产出 0」。可以做一次反向体检：对 catalog 全部角色跑一遍 `buildCharConfig`（harness，见 `/home/user/mcp-tools/zzProbe331.test.ts` 模板），列出结果为 0 或缺失的通用字段（`basicAttackRegenPerSec`、`basicAttackDecibelPerSec`、`basicBenchmarkMoveId`、ultimate / chainAttack / exSpecial 的 moveId 与 decibel 等），逐个判断是数据本来就没有，还是启发式漏读。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
