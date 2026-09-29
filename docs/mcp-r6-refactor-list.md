@@ -458,3 +458,4 @@
 | 305 | 喧响礼物字段死写入；重复调用钩子的非幂等累加 | 死写入按钩子时机推理结项；非幂等累加 2 处真缺陷 → CC-291（`ecc5a838`，数值卡）；源码锁 idempotentCfgWrite | 源码锁只认 cfg/record 等变量名和同文件 helper；跨文件 helper 或别名变量不在覆盖面 |
 | 306 | 重复调用钩子的非累加型不一致 / 陈旧值（行为探针） | 0 处；固化为 hookReplay 锁 CC-292（`5801e112`）；cfg 写入纪律线（CC-285～292）结项 | 结构性问题：模块私有通道借道共享 cfg（见交接下一步） |
 | 307 | 模块私有通道借道共享 cfg（AST 测量 `scripts/cfg-key-census.cjs`） | agents 写入键 476：a 仅本模块读 387（60 模块；once 307 / round 51 / repeat 29）、b 仅外部读 33、c 两者 55、无读者 1。风险层 a/repeat 29 键已被 hookReplay / idempotentCfgWrite / lateCfgWrite 覆盖 | **不做**：私有状态袋只是把钩子层级规则搬家，还要改 materializeRows 快照 / outerFeedbackSignature / cfgField 路径；类型搬家属整洁性改动。详见 `docs/mcp-module-state.md`（含重开条件） |
+| 308 | 模块接口成员普查（`AgentMechanicModule` 92 个成员；单实现者 42 个） | 同一模块的成对成员里只有「布尔旗标 + 同事实能力函数」一处真冗余：banyue `producesInteractionTopUp` + `computeInteractionTopUp` ⇒ CC-293（`12393c82`，零差）。其余成对成员语义不同（见 §24.132），单实现者钩子本身是「core 不写 agentId」的正确代价，**不做**合并 | 新增函数型能力时不要再配布尔旗标（能力存在即声明） |

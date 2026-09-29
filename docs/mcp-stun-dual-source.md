@@ -3806,3 +3806,22 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 结果：a 仅本模块读 387 键 / 60 模块（once 307、round 51、repeat 29）；b 仅外部读 33；c 两者都读 55；无读者 1。a 类里 153 键声明在共享类型上，234 键未声明。
 - 决定：运行时状态袋和类型搬家都不做。风险只在 repeat 层（29 键，CC-288～291 全出在这里），这一层已有三把行为锁；lucy / promia / vivian 等键是有意的轮间通道，引擎统一清空反而改变收敛。完整表格、依据和重开条件见 `docs/mcp-module-state.md`。
 - 影响：只新增文档和测量脚本，代码零改动。
+
+### 24.132 第 308 轮：模块接口成员普查；CC-293 删除冗余旗标 producesInteractionTopUp（12393c82）
+
+- **测量**（`/home/kaua/calc-arch/k229/hooks.sh`、`hooks2.sh`，按词匹配，近似）：`AgentMechanicModule` 共 92 个成员；只有 1 个模块实现的有 42 个，2 个模块实现的有 17 个。
+- **判断**：单实现者多本身**不是问题**。它是「core / 编排层不写 agentId」规则的正确代价：每个特例变成模块自己声明的能力。只为降成员数去合并钩子，属于用户明确不要的计数型改动，**不做**。
+- **逐对核对**同一模块实现的成对成员，看是否「两处声明同一事实」：
+  - banyue `producesInteractionTopUp`（布尔）+ `computeInteractionTopUp`（函数）：**同一事实，两份声明**。旗标决定槽位与懒守卫，函数决定补多少；两者可以不一致（旗标有、函数无 ⇒ autoTopUp 门控打开却静默不补，convergence 里还专门留了「能力缺席时保持上一轮值」的分支；函数有、旗标无 ⇒ 永远不调用）。⇒ **CC-293 做**。
+  - liuyin `ownsPromoteVariantAxisBlocks` + `promoteHugCounts`：前者管轴预设转大块归属（roundInputs / 展示），后者经 `ultimateGiftProviderSlot` 找提供者再取算法，找法不同，**不合**。
+  - liuyin `axisPresetPreferred` + `axisPresetPreferredShort`：后者只是横幅简称，缺省回落模块 name；合成对象只是换写法，**不合**。
+  - velina `anomalyCorrosion` / `anomalyCorrosionEvents` / `resultCardCorrosion`：分别是池计算、事件记录、展示卡片，三个消费层不同，**不合**。
+  - yixuan `backstageAutoFill` 与 remielle `backstageAutoRows`：类型注释已写明名字相近、语义无关，**不合**。
+- **CC-293 改法**：
+  - 删掉旗标；新增 `mechanics/registry.ts#findInteractionTopUpSlot(team)`，按「谁挂出 computeInteractionTopUp」找槽位。
+  - convergence 找槽和 useResourceCalc 交互栏懒守卫原来是两份手写副本（注释要求「同一写法」），现在共用同一个函数。
+  - 注释引用改了 5 处：types、roundResult、TeamConfigPage、guard-registries、banyue。
+  - 测试 `convergenceNightB` ②：改断言 helper 行为，并锁「当前唯一产出者 = 1471」。以后新增产出者时，要一并核对通用保底4喧响的互斥（`decibelParryActive = guaranteeUltimate && slot < 0`）。
+- **验证**：只改了声明来源，般岳同时有旗标和能力，所以行为零差。worktree wt308 隔离跑 `npm run verify` 通过（golden 无变化）。
+- **口径**（写进 types 注释）：函数型能力存在即声明，不再为它另配布尔旗标。
+- **回退**：`git revert 12393c82`。

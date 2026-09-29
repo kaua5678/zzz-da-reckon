@@ -71,14 +71,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 307 轮（lane lead-arena-0925c）：只测量、只写文档（代码零改动），已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 结论：模块私有通道**不做**状态袋迁移，也不做类型搬家。见 `docs/mcp-module-state.md`、`docs/mcp-stun-dual-source.md` §24.131、r6 清单 307 行。测量脚本已入库：`node scripts/cfg-key-census.cjs`。
-- 前几轮：306 CC-292 hookReplay 锁（cfg 写入纪律线结项）；305 CC-291（数值卡）；304 CC-290；303 CC-289（数值卡）。
+**第 308 轮（lane lead-arena-0925c）：CC-293（`12393c82`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 模块接口成员普查：92 个成员里单实现者 42 个，属正当代价，不合并。成对成员里只有 banyue 的「旗标 + 能力」是真冗余，已删旗标，槽位查找归一为 `registry#findInteractionTopUpSlot`，零差。详见 `docs/mcp-stun-dual-source.md` §24.132。
+- 前几轮：307 模块私有通道测量，结论是不做状态袋（`docs/mcp-module-state.md`）；306 CC-292 hookReplay 锁；305 CC-291（数值卡）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add。
 
 **下一步（直接开工）**：
-1. 回到 `docs/mcp-r6-refactor-list.md` §8，自选影响面最大、仍未做的候选；先读该清单里「不做」和「已否决」的条目，避免重开。cfg 写入纪律线与模块私有通道都已结项，不要再扫。
-2. 如果 hookReplay 允许名单开始增长，或 repeat 层私有键明显多于 29（重跑 census 对比），按 `docs/mcp-module-state.md` §4 重开评估。
+1. 回到 `docs/mcp-r6-refactor-list.md` §8 自选。已结项、不要再扫的线：cfg 写入纪律、模块私有通道、模块接口成员合并。
+   - 可选方向（未测）：编排层 `convergence.ts`（1170 行）里 `configStore.getMechanicSetting('<角色>.xxx')` 这类角色命名的设置键，是否属于「编排层替模块读设置」，能否下沉进模块自己的钩子。先 grep 统计，再按「更通用 / 更简单」判断，不值得做就写「不做」。
+2. 以后新增函数型模块能力时，不要再配布尔旗标（§24.132 口径）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
