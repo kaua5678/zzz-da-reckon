@@ -96,14 +96,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 327 轮（lane lead-arena-0925c）：CC-312（`b7c6d567`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- singleSourced / 空 effects 队友 buff 普查 0 零读取；仪玄不再按身份认橘福福，改为自报终结技等价次数（新 cfg 字段 `ultimateEquivalentCount`），零数值差。详见 `docs/mcp-stun-dual-source.md` §24.151。
-- 前几轮：326 CC-311；325 CC-310（诺姆，有数值变化）；324 CC-309。
+**第 328 轮（lane lead-arena-0925c）：CC-313（`9262395f`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+
+- 卢西娅回血不再按身份认伊德海莉：改写通用字段 `healPctPerCurtainProviderUlt`（各槽自身生命%，写全队），伊德海莉消费；零数值差。mechanics/agents 内跨角色身份字面量、跨模块私有字段写入均已清零。详见 `docs/mcp-stun-dual-source.md` §24.152。
+- 前几轮：327 CC-312（仪玄/橘福福 `ultimateEquivalentCount`）；326 CC-311；325 CC-310（诺姆，有数值变化）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
 
 **下一步（直接开工）**：
-1. **最后一处跨角色身份：`src/mechanics/agents/luciaElowen.ts:32` `YIDHARI_AGENT_ID = '1051'`**（全量扫描 mechanics/agents 里非本模块 agentId 字面量，只剩这一处）。卢西娅的回血被换算给伊德海莉的烧血喧响（消费 `yidhariExternalHealPerUltPct`）。先读清：① 卢西娅模块在哪、写什么字段给伊德海莉；② 伊德海莉 `selfBurnDecibel` 与编排层「帷幕提供者槽 × 终结技次数」（`core/resource/helpers.ts` 的 `curtain.providerSlot`）怎么接；③ 是否还有别的回血提供者。判据同 CC-312：若能改成「提供者报通用量（如每次终结技的外部治疗 %），消费者自己决定怎么用」且零数值差，就做（探针：卢西娅+伊德海莉若干队 × C0/C6，逐位相同 + 变异验证）；若伊德海莉是唯一可能的消费者且通用化只是换名字，写「不做」加理由。
+1. **共享累加通道 `extraSelfDecibelReward` 写入方复核**（倒置线的最后一块）：写入方 = `orphie.ts`、`promia.ts`、`remielle.ts`、`specPanelBuffs.ts`（佩洛伊斯）。逐个读：① 是否在可重放钩子里 `+=` 却不扣上次写入（hookReplay 锁应已拦，确认即可）；② 是否把「别人的规则常量」抄到自己模块（CC-312 型：提供者常量在消费者里另存一份）；③ 能否改成像 `ultimateEquivalentCount` / `healPctPerCurtainProviderUlt` 那样「提供者报通用量、core 或消费者结算」。判据：只有能消掉重复常量或身份知识才做；若只是换个字段名，写「不做」加理由即可结项。探针方法同 §24.152。
 2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+3. 若 1 结项且无新需求：从 `docs/mcp-r6-refactor-list.md` 三类清单里挑仍为「待做」且影响面最大的一条。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。

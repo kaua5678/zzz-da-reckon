@@ -4090,3 +4090,20 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **契约测试随之改写**（锁的是旧形态，不是数值）：`axisContext.test.ts` 的「extraSelfDecibelReward 是 `+=`、橘福福在队才加」改为「只覆盖写 `ultimateEquivalentCount`、重放不翻倍、不碰 extraSelfDecibelReward、不认橘福福」；同文件「缺 interactions 仍照写」的断言改看 `ultimateEquivalentCount`；`nextRoundFeedbackR20.test.ts` ③ 同改（去掉 1391 队友与负控，改为重放两次 = 2.5）。首轮 verify 就是这 3 条红，改后全绿。
 - **验证**：vue-tsc 干净；wt327 `npm run verify` EXIT=0（4046 passed）。
 - **回退**：`git revert b7c6d567`。
+
+### 24.152 第 328 轮：CC-313 卢西娅回血通用化（9262395f）
+
+- **背景**：§24.151 交接第 1 条。全量扫描后，mechanics/agents 里唯一的「非本模块 agentId 字面量」是 `luciaElowen.ts` 的 `YIDHARI_AGENT_ID = '1051'`：卢西娅 build 相位按身份找伊德海莉，把星光汇聚之地回血换算成伊德海莉生命% 写进伊德海莉专属字段 `yidhariExternalHealPerUltPct`。
+- **动手前核对否决清单**：否决记录里的「1051 归一」指 §24.59 前后「伊德海莉 hp→贯穿力 0.1 纯记录条目归一」（`mcp-stun-dual-source.md` 约 2002、2015 行），与本处无关，不构成否决。
+- **判断（值得做）**：游戏原文是「当前操作中的角色在内每秒回复卢西娅最大生命值 x%」——受益方是**任一在场角色**，不是伊德海莉。旧实现把「谁会用这份回血」的知识放进了提供者。新形态让提供者只报通用量，消费者自决，和 CC-312 同一模式；将来若出现第二个消费者（吃回血的机制）无需改卢西娅。
+- **改动**：
+  - `luciaElowen.ts`：删 `YIDHARI_AGENT_ID`；对全队每槽写 `cfg.healPctPerCurtainProviderUlt = healPctPerUlt × 覆盖 × (卢西娅生命 / max(1, 本槽生命))`（原「伊德海莉不在队则不写」变为恒写，非消费者不读）。
+  - `types/resource/config.ts`：`yidhariExternalHealPerUltPct` 改名 `healPctPerCurtainProviderUlt`，注释写明写入方 / 消费者。
+  - `yidhari.ts`：两处消费（`yidhariSelfBurnDecibel`、`yidhariOnFinalAssemble`）与注释仅改字段名。
+  - `1531.json` 注释、`GAME_TERM_TO_CODE_FIELD.md` 同步。
+  - 测试：`teamHookMigration.test.ts`「伊德海莉不在队则不写」改为「写给全队、按本槽生命换算（含非伊德海莉队友 1091）」；`luciaElowen.test.ts`、`resources.test.ts` 夹具改字段名。
+- **等价性**：对伊德海莉槽的表达式与旧版逐字相同（同样的乘法结合顺序），只是多写了其它槽；其它槽没有读者。
+- **探针**（临时测试，已删）：1051+1141+1451 / 1051+1481+1451 / 1051+1251+1451 / 1451+1051+1571 / 1451+1191+1251（无伊德海莉）/ 1051+1391+1311（无卢西娅）× C0/C6，配装推荐，总伤与三槽终结次数：git stash 前后**逐位相同**（12/12）；把写入改成 0 做变异，含卢西娅+伊德海莉的 7 例变化（如 1051+1141+1451 C0 68,461,855 → 76,433,849；回血减少反而可能涨，是烧血喧响与轴互动的结果，与本卡无关）⇒ 探针覆盖该通道。
+- **收尾普查**：用脚本扫 mechanics/agents 各文件对「其它模块名前缀」cfg 键的写入，唯一命中是 `starlightBilly.ts` 写 `billy*`（星徽·比利自己的前缀，与 `billy.ts` 无共享键，误报）⇒ **跨模块私有字段写入 0 处，跨角色身份字面量 0 处**，「规则拥有者与消费者倒置」这一线收口。
+- **验证**：vue-tsc 干净；wt328 `npm run verify` EXIT=0（4046 passed | 29 skipped）。
+- **回退**：`git revert 9262395f`（字段改名 + 恒写，回退无数据迁移）。
