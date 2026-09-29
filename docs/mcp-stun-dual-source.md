@@ -4214,3 +4214,24 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **不做**：`core/damage.ts:53`（有 `categoryId === 'chain'` 判断，另外匹配中文「终结」，用于伤害分类）；`ResourceResultCard.vue:405`（有 category 判断，匹配中文名，展示分组）。这两处都在分类内判定，又多一个中文名兜底，与引擎口径不冲突。
 - **验证**：vue-tsc 干净；新锁 `src/data/__tests__/chainMoveKind.test.ts`（3 例：陷阱仍在数据里但 chainMoveKind 返回 null；62 个角色上 findUltimateMove 与 findUltimate 同口径；谓词互斥）；timeGolden 零差；全量 verify EXIT=0。
 - **回退**：`git revert 54fb397f`。
+
+### 24.159 第 335 轮：CC-320 普通 #N 普攻段单一事实源 + 无 #N 角色秒均回复兜底（71bf1a04，数值卡）
+
+- **选题**：r6 §8 复核没有满足项，接着做 §2 交接第 2 条：其余按英文名子串判招式类型的写法。全仓统计 17 种子串，用 catalog（62 个角色）逐一扫描每个子串出现在哪些分类：
+  - 只有 `flash` 跨分类（dodge / assist / special / basic），但它只在 `moveLookup.ts:74` 判能量键名，不判招式名；
+  - 其余子串都只出现在各自的分类里 ⇒ 不做。
+- **发现**：`#N` + 非 dash / dodge + `actionTime > 0` 这组条件在 4 处逐字重复：
+  - `moveTableQueries#pickThirdNamedBasicSegment`
+  - `skillRows#getBasicComboMoves`
+  - `core/resource/moveLookup#calcBasicAttackRegenPerSec`
+  - `alice#calcSwordWillPerSec`
+
+  catalog 里 1631 / 1641 的普攻段名不带 `#N`（`Swift Edge` / `Basic Attack`），一个段都选不出来。CC-193 只修了基准段（加了数据字段 `basicBenchmarkMoveId`），没修秒均回复。平A聚合行的 `totalEnergyRecovery` / `totalDecibelRecovery` 就是「平A时间 × 秒均」，而它是能量收入行级 Σ（`resourceIncome.ts` 里的 skillRegen）和喧响收入的唯一平A来源，所以这两人的平A回能、回喧响一直是 0。表里的真实值：1631003 是 3.533 能量 / 26.785 喧响、0.981s；1641003 是 3.317 / 25.355、0.921s。
+- **改动**：
+  - 新建零 import 的 `data/basicSegment.ts#isNumberedBasicSegment`，4 处都改用它；
+  - `calcBasicAttackRegenPerSec(skills, reader, { fallbackMoveId })`：`#N` 段为空时只用基准段，而且不套「>200% 强化平A」过滤（1631003 是 356%，套上就又是 0）；
+  - `helpers.ts` 里基准段只解析一次，同时供 `basicBenchmarkMoveId` 和回复兜底使用。
+- **口径依据**：普攻伤害已经按基准段秒均算，回复用同一段是同口径。量级：1631 约 3.60 能量/秒，青衣按 #N 平均约 3.6/秒，处在同一水平。R5 的「不顺手改数值」约束的是 catalog 对账；这里是代码漏读了可信数据，属于缺陷修复。数值变化按惯例走数值卡并逐条解释。
+- **golden**：只有 agent:1631:c0/c3/c4/c5/c6 和 agent:1641:c0/c3/c4/c5/c6 这 10 例变化。原因都是能量、喧响收入增加：强特 +3~+8，终结技 +1~+2，c3/c4（部分 c5）失衡 1→2 带来连携 +1；平A时间相应减少；dmg +6.5%~+18.8%。其他队伍逐位不变：兜底只在没有 #N 段时生效，而只有这两人没有。
+- **验证**：新锁 `src/data/__tests__/basicSegment.test.ts`（4 例：谓词；无 #N 段名单 == [1631, 1641]；1631 有兜底 = 基准段秒均、无兜底 = 0；青衣传兜底参数逐位不变）；vue-tsc 干净；全量 verify EXIT=0。
+- **回退**：`git revert 71bf1a04`（golden 基线一起回退）。
