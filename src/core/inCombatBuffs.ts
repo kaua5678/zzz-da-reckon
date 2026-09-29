@@ -42,10 +42,6 @@ export interface InCombatBuffTeamMember {
   cinemaLevel: number
 }
 
-function ownerAliases(agent: Agent): string[] {
-  return [agent.id, agent.teammateBuffId].filter((x): x is string => !!x)
-}
-
 /**
  * 驱动盘 teamBuff 门槛：装备者特化/属性 + 局外面板属性（装备者源面板已算好，用精确值；面板缺失时门槛按不满足处理）。
  * selfBuff 侧自 CC-108（R5 D26）起也读精确局外面板（`calcPanel` 两段式），两侧口径相同。
@@ -129,7 +125,7 @@ export function collectInCombatTeamBuffs(
     if (!char?.agentId) continue
     const agent = deps.getAgent(char.agentId)
     if (!agent) continue
-    const aliases = ownerAliases(agent)
+    const aliases = [agent.id]
 
     // 音擎团队效果：装备者已通过自身 buff 收集，传播时排除装备者
     if (char.wEngineId) {
@@ -161,7 +157,7 @@ export function collectInCombatTeamBuffs(
           sourceLabel: { zhCN: `音擎团队效果（${wEngine.name?.zhCN ?? wEngine.id}）` },
           ownerId: agent.id,
           ownerName: agent.name,
-          teammateId: agent.teammateBuffId ?? agent.id,
+          teammateId: agent.id,
           teammateName: agent.name,
           excludeTargetAgentIds: aliases,
         } as InCombatTeamBuff)
@@ -198,7 +194,7 @@ export function collectInCombatTeamBuffs(
             sourceLabel: { zhCN: `驱动盘团队效果（${set.name?.zhCN ?? set.id}）` },
             ownerId: agent.id,
             ownerName: agent.name,
-            teammateId: agent.teammateBuffId ?? agent.id,
+            teammateId: agent.id,
             teammateName: agent.name,
           } as InCombatTeamBuff)
         }

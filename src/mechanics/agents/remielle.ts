@@ -28,15 +28,6 @@ import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { channelMetricsOf } from '@/core/resource/moveLookup'
 
 const REMIELLE_AGENT_ID = '1581'
-/**
- * 蕾米埃尔的**队友 buff 归属别名**（`catalog.<agent>.teammateBuffId`）。
- *
- * ⚠ 契约面必须留这一支：各处历史上写的是 `agent.teammateBuffId === 'remielle'`，
- * 而**当前数据面**里 `teammateBuffId` 只有 5 个取值（1171/1261/1411/1511/1581）且全部等于自身 id
- * ⇒ 该右臂恒 false（`findSlotByIdentity.test.ts` 把这个数据面事实钉住了）。删掉会让「数据面将来
- * 真给出别名」时静默失效 —— 与旧正则口径漏计 `.id`/`teammateBuffId` 两形态是同族错误。
- */
-const REMIELLE_TEAMMATE_BUFF_ID = 'remielle'
 const VOIDFLARE_MAX = 3
 const VOIDFLARE_INITIAL = 3
 const REFRINGE_COEFFICIENT_PER_AP = 0.02
@@ -198,10 +189,10 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
  *
  * 原先这条判据在编排层重复 4 次（`helpers.ts` 的 `:756` 面板块 / `:798` 相变时流块 /
  * `:996` 风染挑槽 / `:1661` cfg 构建），2026-09-17 round 21 夜间批 C 收进本模块：
- * **调用点不再出现身份字面量**，两臂语义（`id` 与 `teammateBuffId` 别名）只在这一处维护。
+ * **调用点不再出现身份字面量**。CC-276：别名臂（`teammateBuffId === 'remielle'`）随别名字段退役删除，只认 `id`。
  */
-export function isRemielleAgent(agent: { id?: string; teammateBuffId?: string } | null | undefined): boolean {
-  return agent?.id === REMIELLE_AGENT_ID || agent?.teammateBuffId === REMIELLE_TEAMMATE_BUFF_ID
+export function isRemielleAgent(agent: { id?: string } | null | undefined): boolean {
+  return agent?.id === REMIELLE_AGENT_ID
 }
 
 /** 蕾米埃尔的**额外能力三档转攻**：队友中存在 [异常] 或同阵营角色时按异常角色数取 1/2/3 档。
@@ -407,10 +398,10 @@ const REMIELLE_Q_SPLIT = {
 /**
  * CC-64b：蕾米埃尔额外能力档位（原 stores/config.ts#deriveTeammateBuffEnabled 内 getRemielleAdditionalState，逐字搬入）。
  * active = 其余队友里有异常职业或与蕾米埃尔同阵营；anomalyCount = 全队异常职业数（含本人）；tier = active ? clamp(anomalyCount, 1, 3) : 0。
- * 按 `agent.id` 或 `agent.teammateBuffId` 识别本人；不在队 ⇒ { active: false, anomalyCount: 0, tier: 0 }。
+ * 按 `agent.id` 识别本人；不在队 ⇒ { active: false, anomalyCount: 0, tier: 0 }。
  */
 export function remielleAdditionalState(team: ReadonlyArray<Agent>): { active: boolean; anomalyCount: number; tier: number } {
-  const selfIdx = team.findIndex(agent => agent?.id === REMIELLE_AGENT_ID || agent?.teammateBuffId === REMIELLE_AGENT_ID)
+  const selfIdx = team.findIndex(agent => agent?.id === REMIELLE_AGENT_ID)
   if (selfIdx < 0) return { active: false, anomalyCount: 0, tier: 0 }
   const remielleFaction = team[selfIdx].faction
   const otherAgents = team.filter((_, i) => i !== selfIdx)

@@ -27,8 +27,6 @@ describe('CC-64c 波可娜 C6 互斥 → teammateBuffGate', () => {
             const teamCinema: Record<string, number> = {}
             for (const t of team) {
               teamCinema[t.agentId] = t.cinemaLevel
-              const tb = getAgent(t.agentId)?.teammateBuffId
-              if (tb) teamCinema[tb] = t.cinemaLevel
             }
             const cl = teamCinema[groupId]
             const base = cl !== undefined

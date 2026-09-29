@@ -17,7 +17,7 @@ const GATED = [
 const CONTROL = '1581.core_passive.control'
 // 照抄原 store 逻辑（teamAgents = 查得到 Agent 的队员，槽位顺序）
 function legacyGate(team: Agent[], buffId: string, base: boolean): boolean {
-  const remielleItem = team.find(agent => agent?.id === '1581' || agent?.teammateBuffId === '1581')
+  const remielleItem = team.find(agent => agent?.id === '1581')
   let st = { active: false, anomalyCount: 0, tier: 0 }
   if (remielleItem) {
     const remielleFaction = remielleItem.faction
@@ -53,7 +53,7 @@ describe('CC-64b 蕾米埃尔档位门控 → 模块钩子 teammateBuffGate', ()
     const run = (team: string[], groupId: string) => {
       const out = deriveTeammateBuffEnabled(team.map(slot), [mkGroup(groupId, [...GATED, CONTROL])], getAgent)
       const agents = team.map(getAgent).filter((x): x is Agent => !!x)
-      const base = agents.some(a => a.id === groupId || a.teammateBuffId === groupId)
+      const base = agents.some(a => a.id === groupId)
       for (const o of out) {
         expect(o.enabled, `${team.join(',')}/${groupId}/${o.id}`).toBe(legacyGate(agents, o.id, base))
         checked++

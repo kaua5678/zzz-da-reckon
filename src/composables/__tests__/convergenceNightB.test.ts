@@ -130,7 +130,7 @@ describe('convergence 夜间批 B · 组 1/2/4：身份查找收进 findSlotById
           const { catalog, config } = await ctx(team)
           const some = config.team.some((char: any) => {
             const a = char.agentId ? catalog.getAgent(char.agentId) : null
-            return a?.id === id || a?.teammateBuffId === id
+            return a?.id === id
           })
           expect(findSlotByIdentity(config as never, catalog as never, [id]) >= 0, `team#${i}`).toBe(some)
         }
@@ -173,49 +173,19 @@ describe('convergence 夜间批 B · 组 1/2/4：身份查找收进 findSlotById
     })
   })
 
-  // ── 层③ 数据面事实钉住 ─────────────────────────────────────────────────────
-  describe('层③ 数据面：目标 id 无 teammateBuffId 别名（事实钉住，非契约）', () => {
-    it('★ 1291/1471/1481/1401 都不是任何角色的 teammateBuffId ⇒ 第二字段查询恒 false（当前数据面）', async () => {
-      const { catalog } = await ctx([{ agentId: '1011' }, { agentId: '1031' }, { agentId: '1041' }])
-      const all = (catalog as any).agentsMap ?? (catalog as any).agents
-      const buffIds = new Set<string>()
-      for (const a of (all instanceof Map ? all.values() : all ?? [])) {
-        if (a?.teammateBuffId) buffIds.add(String(a.teammateBuffId))
-      }
-      // 数据面真值：只有 5 个 buffId，且全部等于自身 id
-      expect([...buffIds].sort()).toEqual(['1171', '1261', '1411', '1511', '1581'])
-      for (const id of ['1291', '1471', '1481', '1401']) {
-        expect(buffIds.has(id), `${id} 若成为真别名 ⇒ 本行红，应复核该站点`).toBe(false)
-      }
-    })
-
-    it('★ 但第二字段仍必须查（契约面）：用数据面真值证明 teammateBuffId 分支活着', async () => {
-      // 用**有一个真 teammateBuffId 的角色**（1581 蕾米埃尔）证明 helper 的第二个字段确实在生效：
-      // 若把 helper 的第二臂删掉，本断言仍绿（因为 1581 的 buffId === id），
-      // 故这里换成「buffId 与 id 不同」的构造来真正区分两臂 —— 见 layer③-b。
-      const { catalog, config } = await ctx([{ agentId: '1181' }, { agentId: '1581' }, { agentId: '1011' }])
-      const remielle = catalog.getAgent('1581')!
-      expect(remielle.teammateBuffId).toBe('1581')
-      expect(findSlotByIdentity(config as never, catalog as never, ['1581'])).toBe(1)
-      expect(findSlotByIdentity(config as never, catalog as never, [remielle.teammateBuffId!])).toBe(1)
-    })
-
-    it('★ layer③-b：`teammateBuffId` 臂**承重**证明（构造 id≠buffId 的别名 agent）', async () => {
-      // ⚠ 这是本文件里唯一能真正把「第二臂」与「第一臂」区分开的判据：
-      // 现有数据面 buffId 恒等于 id ⇒ 只查 id 也能过。故**人为构造**一个 id≠buffId 的
-      // catalog 条目，证明 helper 认第二种形态（若第二臂被删 ⇒ 本断言精确红 expected 1, received -1）。
+  // ── 层③ CC-276：别名字段 teammateBuffId 退役 ⇒ 只认 agent.id ───────────────
+  describe('层③ CC-276：身份只认 agent.id（别名臂已删）', () => {
+    it('★ 构造 id≠别名 的 agent：按别名查不到（反锁：别名臂不许复活）', async () => {
       const { catalog, config } = await ctx([{ agentId: '1181' }, { agentId: '1011' }, { agentId: '1031' }])
       const agent = catalog.getAgent('1011') as any
       expect(agent, '1011 必须在 catalog 里（否则本判据退化成空转）').toBeTruthy()
-      const realBuffId = agent.teammateBuffId
+      const real = agent.teammateBuffId
       try {
         agent.teammateBuffId = 'nightB-alias'
-        expect(findSlotByIdentity(config as never, catalog as never, ['nightB-alias'])).toBe(1)
-        // 反锁：拿掉别名后必须查不到（证明上面那次命中真的来自第二臂，不是碰巧）
-        agent.teammateBuffId = undefined
         expect(findSlotByIdentity(config as never, catalog as never, ['nightB-alias'])).toBe(-1)
+        expect(findSlotByIdentity(config as never, catalog as never, ['1011'])).toBe(1)
       } finally {
-        agent.teammateBuffId = realBuffId
+        agent.teammateBuffId = real
       }
     })
   })

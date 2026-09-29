@@ -43,7 +43,6 @@ function addSourcePanelAliases(
   panels: { outOfCombat: PanelValues; inCombat: PanelValues },
 ): void {
   map[agent.id] = panels
-  if (agent.teammateBuffId) map[agent.teammateBuffId] = panels
 }
 
 /**

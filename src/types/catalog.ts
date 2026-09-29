@@ -366,8 +366,9 @@ export interface Agent {
   sources: string[]
   verification?: Record<string, string>
   hidden?: boolean
-  /** 映射到 teammate-buffs.json 中的角色 ID（nanoka 角色用英文名匹配队友 buff） */
-  teammateBuffId?: string
+  // CC-276：原 `teammateBuffId`（队友 buff 归属别名）已退役——数据面 5 个取值全部等于自身 id，
+  // 队友 buff 组 id 就是 agent.id（CC-275 在 catalog 加载处把 buff 拥有者也归一到组 id）。
+  // 身份只剩 `id` 一个字段；数据若再出现不等于 id 的别名，`agentIdentitySingleField.test` 会红。
   /** 标记为仅队友角色（无完整倍率表，只用于提供队友 buff） */
   isTeammateOnly?: boolean
 }

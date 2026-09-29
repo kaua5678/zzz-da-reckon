@@ -67,7 +67,6 @@ export function teammateBuffGateBlocks(team: ReadonlyTeam, groups: readonly Team
     if (!member.agent || !member.agentId) continue
     agents.push(member.agent)
     cinemaByGroup.set(member.agentId, member.cinemaLevel ?? 0)
-    if (member.agent.teammateBuffId) cinemaByGroup.set(member.agent.teammateBuffId, member.cinemaLevel ?? 0)
   }
   for (const group of groups) {
     const groupCinema = cinemaByGroup.get(group.id)

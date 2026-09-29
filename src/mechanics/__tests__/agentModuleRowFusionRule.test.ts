@@ -52,7 +52,7 @@ describe('CC-242 角色模块预存行值吃行规则', () => {
   })
 
   /** 登记表：mechanics/agents 允许的原始行读取。remielle 按技能等级选列（非首列），已裁决不做（§24.85）。 */
-  const RAW_ROW_READ_ALLOW = ['remielle.ts:101', 'remielle.ts:104', 'remielle.ts:106']
+  const RAW_ROW_READ_ALLOW = ['remielle.ts:92', 'remielle.ts:95', 'remielle.ts:97']
   it('源码：mechanics/agents 非注释行的 values[0] 仅限登记表', () => {
     const dir = resolve(__dirname, '../agents')
     const hits: string[] = []

@@ -39,12 +39,11 @@ import { buildMechanicTeamMembers } from './panelPhases'
 
 export function teamHasAgent(
   configStore: ReturnType<typeof useConfigStore>,
-  catalogStore: ReturnType<typeof useCatalogStore>,
+  _catalogStore: ReturnType<typeof useCatalogStore>,
   agentIds: string[],
 ): boolean {
   return configStore.team.some(char => {
-    const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
-    return agentIds.includes(char.agentId) || agentIds.includes(agent?.teammateBuffId ?? '')
+    return agentIds.includes(char.agentId)
   })
 }
 
@@ -90,11 +89,9 @@ export function getTeamAnomalyDurationBonus(
  * ⚠ **调用点若同时还要「查表/读该成员的其它字段」，请用本函数拿槽位后再按槽位取**（判据 17：
  * 槽位号 ≠ 下标，`team` 数组索引即槽位号但 `characters`/`panels` 是按位置压缩的）。
  *
- * ⚠ **必须查两个字段**：`agent.id`（角色自己的 id）与 `agent.teammateBuffId`（队友 buff 归属别名，
- * 如蕾米埃尔 `1581` 的别名 `'remielle'`）。漏查后者会让「按 buff 别名引用该角色」的配置找不到人
- * ——旧正则口径漏计这两种形态正是换尺的理由（见 `check-guards.mjs` 的 2026-09-17 换尺沿革）。
+ * CC-276：原「必须查 `agent.id` 与 `agent.teammateBuffId` 两个字段」已作废——别名字段退役，只认 `agent.id`。
  *
- * @param ids 任一匹配即算命中（如 `['1581', 'remielle']`）
+ * @param ids 任一匹配即算命中（如 `['1581']`）
  * @returns 槽位号；找不到返回 **-1**（调用方按 `< 0` 判空，勿用 `?? ` 兜底）
  */
 export function findSlotByIdentity(
@@ -105,7 +102,7 @@ export function findSlotByIdentity(
   return configStore.team.findIndex(char => {
     const a = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
     if (!a) return false
-    return ids.some(id => a.id === id || a.teammateBuffId === id)
+    return ids.includes(a.id)
   })
 }
 

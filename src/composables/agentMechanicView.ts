@@ -88,7 +88,7 @@ export type ReleaseShareDecl = NonNullable<AgentMechanicModule['releaseShare']>
  */
 export function teamReleaseShares(
   team: ReadonlyArray<{ agentId?: string | null } | null | undefined>,
-  getAgent: (id: string) => { id: string; teammateBuffId?: string } | null | undefined,
+  getAgent: (id: string) => { id: string } | null | undefined,
 ): ReleaseShareDecl[] {
   const out: ReleaseShareDecl[] = []
   const seen = new Set<string>()
@@ -96,27 +96,19 @@ export function teamReleaseShares(
     if (!char?.agentId) continue
     const agent = getAgent(char.agentId)
     if (!agent) continue
-    for (const id of [agent.id, agent.teammateBuffId]) {
-      if (!id) continue
-      const decl = getAgentMechanic(id)?.releaseShare
-      if (!decl || seen.has(decl.namespace)) continue
-      seen.add(decl.namespace)
-      out.push(decl)
-    }
+    const decl = getAgentMechanic(agent.id)?.releaseShare
+    if (!decl || seen.has(decl.namespace)) continue
+    seen.add(decl.namespace)
+    out.push(decl)
   }
   return out
 }
 
-type AgentIdentity = { id: string; teammateBuffId?: string }
-/** 按 `agent.id` 与 `agent.teammateBuffId` 各查一次模块（与原展示层 `agent?.id === X || agent?.teammateBuffId === X` 同口径） */
+type AgentIdentity = { id: string }
+/** 按 `agent.id` 查模块（CC-276：别名字段 teammateBuffId 退役，不再查第二次） */
 function identityModules(agent: AgentIdentity | null | undefined): AgentMechanicModule[] {
-  if (!agent) return []
-  const out: AgentMechanicModule[] = []
-  for (const id of [agent.id, agent.teammateBuffId]) {
-    const mod = id ? getAgentMechanic(id) : undefined
-    if (mod) out.push(mod)
-  }
-  return out
+  const mod = agent ? getAgentMechanic(agent.id) : undefined
+  return mod ? [mod] : []
 }
 
 export type TeammateSplitDecl = NonNullable<AgentMechanicModule['teammateSplit']>

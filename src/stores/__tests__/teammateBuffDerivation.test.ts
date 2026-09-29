@@ -72,12 +72,12 @@ describe('deriveTeammateBuffEnabled（基础：在队 × 影画门槛）', () =>
   })
 })
 
-describe('deriveTeammateBuffEnabled（teammateBuffId 二级映射）', () => {
-  it('group.id 命中 agent.teammateBuffId 也算在队', () => {
+describe('deriveTeammateBuffEnabled（CC-276：组 id 只按 agentId 匹配，别名二级映射已退役）', () => {
+  it('group.id 只等于某角色的旧别名 teammateBuffId ⇒ 不算在队', () => {
     const groups = [mkGroup('TB9', [mkBuff('tb.core', '核心被动')])]
-    const agents: Record<string, Agent> = { A1: mkAgent('A1', { teammateBuffId: 'TB9' }) }
+    const agents: Record<string, Agent> = { A1: mkAgent('A1', { teammateBuffId: 'TB9' } as never) }
     const out = deriveTeammateBuffEnabled([slot('A1', 0)], groups, id => agents[id])
-    expect(out).toEqual([{ id: 'tb.core', enabled: true }])
+    expect(out).toEqual([{ id: 'tb.core', enabled: false }])
   })
 })
 

@@ -23,7 +23,7 @@ function inlineAllVars(h: H, settingMap: Map<string, MechanicSetting>, coverage:
   }
   const burniceSlot = configStore.team.findIndex(char => {
     const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return agent?.id === '1171' || agent?.teammateBuffId === '1171'
+    return agent?.id === '1171'
   })
   if (burniceSlot >= 0) {
     const elementLabels: Record<string, string> = { physical: '物理', fire: '火', ice: '冰', electric: '电', ether: '以太', wind: '风', lumiflux: '辉光' }

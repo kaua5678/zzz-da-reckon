@@ -500,12 +500,11 @@ function cloneEffectWithSourceValue(effect: BuffEffect, buff: TeammateBuff, sour
 
 function isExcludedForTarget(effect: BuffEffect, buff: TeammateBuff, targetAgent?: Agent): boolean {
   if (!targetAgent) return false
-  const targetIds = [targetAgent.id, targetAgent.teammateBuffId].filter(Boolean)
   const excluded = [
     ...((effect as any).excludeTargetAgentIds ?? []),
     ...((buff as any).excludeTargetAgentIds ?? []),
   ]
-  return targetIds.some(id => excluded.includes(id))
+  return excluded.includes(targetAgent.id)
 }
 
 function collectTeammateBuffs(teammateBuffs: TeammateBuff[], sourcePanels?: SourcePanelsByOwner, targetAgent?: Agent): CollectedBuffs {

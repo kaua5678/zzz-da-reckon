@@ -424,8 +424,6 @@ export function applyTeammateBuffRecipientFilters(
     if (!ids || ids.length === 0) continue
     const set = new Set(ids)
     drops.set(member.agentId, set)
-    const alias = member.agent?.teammateBuffId
-    if (alias) drops.set(alias, set)
   }
   if (drops.size === 0) return buffs
   return buffs.map(buff => {

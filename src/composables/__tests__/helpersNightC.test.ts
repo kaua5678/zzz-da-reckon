@@ -473,8 +473,8 @@ describe('组1-B `:942` 里奈槽位 → findSlotByIdentity', () => {
 
 describe('组2-E `:996` isRemielle → remielle.ts#isRemielleAgent', () => {
   it('★ 等价性 oracle：谓词结果 === 旧内联两臂表达式（逐角色 + 空值安全）', async () => {
-    const legacy = (a: { id?: string; teammateBuffId?: string } | null | undefined) =>
-      a?.id === '1581' || a?.teammateBuffId === 'remielle'
+    // CC-276：别名臂（teammateBuffId === 'remielle'）数据面恒 false 且已随别名字段退役删除
+    const legacy = (a: { id?: string } | null | undefined) => a?.id === '1581'
     const { catalog } = await ctx(['1581', '1261', '1011'])
     for (const id of ['1581', '1261', '1011', '1031', '1311', '1211', '1181', '1331', '1221', '1171']) {
       const a = catalog.getAgent(id)
@@ -485,14 +485,9 @@ describe('组2-E `:996` isRemielle → remielle.ts#isRemielleAgent', () => {
     expect(isRemielleAgent({})).toBe(false)
   })
 
-  it('★ 数据面事实：`remielle` **不是**任何角色的 teammateBuffId（该臂当前恒 false，但契约面要留）', async () => {
-    const { catalog } = await ctx(['1581', '1261', '1011'])
-    // 蕾米真实的 teammateBuffId 就是自身 id ⇒ 别名臂在当前数据面永不命中
-    expect(catalog.getAgent('1581')!.teammateBuffId).toBe('1581')
+  it('★ CC-276：只认 id，别名臂已删（构造别名对象不再命中）', () => {
     expect(isRemielleAgent({ id: '1581' })).toBe(true)
-    // 别名臂单独可命中（构造对象，证明分支活着）
-    expect(isRemielleAgent({ teammateBuffId: 'remielle' })).toBe(true)
-    expect(isRemielleAgent({ id: '9999', teammateBuffId: 'remielle' })).toBe(true)
+    expect(isRemielleAgent({ id: '9999', teammateBuffId: 'remielle' } as never)).toBe(false)
   })
 
   it('★ 风染挑槽：蕾米被**排除**（跳到队里第 3 位）；非蕾米异常角色**会被**挑中（成对对照）', async () => {
@@ -569,12 +564,9 @@ describe('层⑦：本批**刻意没做**的事（做了会静默改数值）', 
     expect((await at(0.5)) - (await at(0))).toBe(12.5)
   })
 
-  it('★ 简块的身份守卫按**两臂**匹配（`teammateBuffId` 别名臂也要留）', async () => {
+  it('★ 简块的身份守卫只认 agent.id（CC-276：别名臂随 teammateBuffId 退役删除）', async () => {
     const { catalog } = await ctx(['1261', '1011', '1031'])
-    const jane = catalog.getAgent('1261')!
-    expect(jane.id).toBe('1261')
-    // 数据面：恰等于自身 ⇒ 两臂同值（契约面两臂都要留，见 jane.ts 注释）
-    expect(jane.teammateBuffId).toBe('1261')
+    expect(catalog.getAgent('1261')!.id).toBe('1261')
   })
 
   it('★ `jane.passionCoverage` **已注册**（R51 用户裁决「一并注册成 MechanicSetting」）', async () => {

@@ -378,9 +378,10 @@ describe('编排层度量范围（2026-09-12 口径纠正：单文件 → 入口
     const total = countAgentBranchLines()
     expect(total).toBe(AGENT_BRANCH_BASELINE)
     expect(RATCHET_BURNDOWN.find(e => e.id === 'agentId 分支')!.frozen).toBe(AGENT_BRANCH_BASELINE)
-    // 入口文件现已清零；若总计数等于入口计数，说明目录没被算进去（口径退回）→ 红
+    // CC-276：全量已清零，「总计数 > 入口计数」无法再证明目录进了度量面 ⇒ 该证明改由上一例的
+    // `listAgentBranchFiles()` 含 convergence/helpers/damagePool 断言承担；这里只保留入口 ≤ 总计。
     const entryOnly = countAgentIdBranchLinesInFiles([AGENT_BRANCH_FILE])
-    expect(total).toBeGreaterThan(entryOnly)
+    expect(total).toBeGreaterThanOrEqual(entryOnly)
   })
 })
 

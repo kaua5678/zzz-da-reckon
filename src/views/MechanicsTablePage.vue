@@ -220,9 +220,7 @@ const visibleSpecs = computed(() => {
 
 function catalogGroupForSpec(spec: AgentMechanicSpec) {
   for (const agentId of spec.agentIds) {
-    const agent = catalogStore.getAgent(agentId)
-    const key = agent?.teammateBuffId ?? agentId
-    const group = catalogStore.teammateBuffGroups.find(item => item.id === key)
+    const group = catalogStore.teammateBuffGroups.find(item => item.id === agentId)
     if (group) return group
   }
   return null

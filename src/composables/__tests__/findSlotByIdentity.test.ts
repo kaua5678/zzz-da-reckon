@@ -33,22 +33,9 @@ describe('findSlotByIdentity（按身份找槽位）', () => {
     expect(findSlotByIdentity(config, catalog, ['1581'])).toBe(1)
   })
 
-  it('★ 按 teammateBuffId 命中（契约面必须留：数据面可能变）', async () => {
-    // ⚠ **实测数据面现状（2026-09-17，本批勘查发现，已记入报告）**：
-    // catalog 里 `teammateBuffId` 只有 5 个取值（1171/1261/1411/1511/1581），
-    // **全部等于该角色自己的 id** ⇒ 对现有数据，「查 teammateBuffId」与「查 id」等价。
-    // 而到处写的别名 `'remielle'` **不是任何角色的 teammateBuffId**（它只是 catalog 里
-    // `remielleRefringeCoefficient` 之类 **stat/effect 名前缀**）⇒ 那些
-    // `agent.teammateBuffId === 'remielle'` 右臂在当前数据面恒 false。
-    // ⇒ 本 helper **仍必须保留第二字段查询**：它是契约面（数据面将来可能给出真别名），
-    //    删掉会让「按别名引用」静默失效，而那正是旧正则口径漏计 27 行的同族错误。
-    // 故此处不钉 `'remielle'`（那会钉住一个死值），而用**数据面真值**验两字段都生效：
+  it('★ CC-276：只认 agent.id（别名字段 teammateBuffId 已退役，数据面 5 个取值原本就全等于自身 id）', async () => {
     const { catalog, config } = await ctx([{ agentId: '1181' }, { agentId: '1581' }, { agentId: '1011' }])
-    expect(findSlotByIdentity(config, catalog, ['1581'])).toBe(1)   // id 命中
-    const remielleAgent = catalog.getAgent('1581')!
-    expect(remielleAgent.teammateBuffId, '数据面：1581 的 buffId').toBe('1581')
-    // 用「数据面给什么就认什么」的方式验：把该角色真实 teammateBuffId 传进去必须命中
-    expect(findSlotByIdentity(config, catalog, [remielleAgent.teammateBuffId!])).toBe(1)
+    expect(findSlotByIdentity(config, catalog, ['1581'])).toBe(1)
   })
 
   it('★ 死别名 `remielle` 当前数据面查不到（诚实记录，不钉成契约）', async () => {

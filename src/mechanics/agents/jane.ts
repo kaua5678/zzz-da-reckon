@@ -135,7 +135,7 @@ function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, poten
 
   // ⚠ 身份守卫必须**容忍直调**（`jane.test.ts` 曾只传 `{ panel }` 就调本钩子，见该文件）：
   // 缺失 `agent` 时按「是简」放行（本模块本来就只被简的槽位派发），而不是抛 TypeError。
-  if (agent && !(agent.id === JANE_AGENT_ID || agent.teammateBuffId === JANE_AGENT_ID)) return
+  if (agent && agent.id !== JANE_AGENT_ID) return
   const settingsMap = settings ?? {}
   const teamMembers = team ?? []
 

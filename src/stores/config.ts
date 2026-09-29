@@ -121,9 +121,8 @@ function defaultDriveDisc(element: string): DriveDiscConfig {
 // @fact engine:平A权重阶梯 口径: 不设职业统一阶梯（强攻/异常/击破默认同为1）——用户裁决「不同情况不同权重，不能一概而论」，抬权重归角色级滑块/预设 | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27 | 锚 src/stores/config.ts#defaultBasicAttackTimeWeight | 信 确认
 function defaultBasicAttackTimeWeight(agent?: Agent | null): number {
   if (!agent) return 1
-  // CC-64：角色级默认值经模块声明 defaultBasicAttackTimeWeight（现：蕾米埃尔 / 薇薇安 = 0）；按 id 与 teammateBuffId 各查一次
+  // CC-64：角色级默认值经模块声明 defaultBasicAttackTimeWeight（现：蕾米埃尔 / 薇薇安 = 0）
   const declared = getAgentMechanic(agent.id)?.defaultBasicAttackTimeWeight
-    ?? (agent.teammateBuffId ? getAgentMechanic(agent.teammateBuffId)?.defaultBasicAttackTimeWeight : undefined)
   if (declared !== undefined) return declared
   if (agent.specialty === 'support' || agent.specialty === 'defense') return 0
   return 1
@@ -383,21 +382,17 @@ export function deriveTeammateBuffEnabled(
   groups: readonly TeammateBuffGroup[],
   getAgent: (agentId: string) => Agent | null | undefined,
 ): Array<{ id: string; enabled: boolean }> {
-  // 收集队伍中每个角色的影画等级，同时建立 agentId → teammateBuffId 的映射
+  // 收集队伍中每个角色的影画等级（键 = agentId = 队友 buff 组 id）
   const teamCinema: Record<string, number> = {}
   const teamAgents = team
     .filter(char => !!char.agentId)
     .map(char => ({ char, agent: getAgent(char.agentId!) }))
     .filter(item => !!item.agent)
 
-  for (const { char, agent } of teamAgents) {
+  for (const { char } of teamAgents) {
     if (char.agentId) {
-      // 直接用 agentId 匹配（仅队友角色的 id 就是 teammateBuffId）
+      // 队友 buff 组 id = agentId（CC-276：别名字段退役）
       teamCinema[char.agentId] = char.cinemaLevel
-      // nanoka 角色有 teammateBuffId 字段，用它也建立映射
-      if (agent?.teammateBuffId) {
-        teamCinema[agent.teammateBuffId] = char.cinemaLevel
-      }
     }
   }
 
