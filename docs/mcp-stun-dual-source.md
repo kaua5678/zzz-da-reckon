@@ -3428,10 +3428,30 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 **② CC-268（0577858e）。**
 - 探针：用户 store 每槽潜能 = 1，按散点口径装配 104 预设 ⇒ 40 个伤害变化（−1.37% ~ −20.68%，如 auto-1021-1481-1211 −20.68%、claret-koleda-rina −16.82%）。
-- 读潜能的有艾莲 / 雅 / 零号安比模块，以及 spec 公式的 `p` 变量。
+- 读潜能的有艾莲 / 悠真（harumasa 1201）/ 零号安比模块，以及 spec 公式的 `p` 变量。
 - 修法：setAgent 在 CC-267 的模板重置块里加 `char.potentialLevel = tpl.potentialLevel`（6 满级）。
 - 影响：
   - 用户槽潜能为 6（默认）时零差（verify EXIT=0，golden 不变，无既有测试改期望）；
   - 主页换人时潜能回到 6。
 - 锁：`presetLoopActionCounts.test.ts` 新增 CC-268 例（艾莲预设，残留潜能 1 ⇒ 装配后 6），stash config.ts 后变红。
 - 回退：revert 0577858e。
+
+### 24.108 第 284 轮：驱动盘残留测量（无残留）；CC-269 推荐套装按 id 解析（81068b3c）
+
+**① 驱动盘残留（§24.107 表最后一行的待量项）——结论：当前数据下无残留，不改重置块。**
+- 测量脚本 `/home/kaua/calc-arch/k229/m284.cjs`、`m284b.cjs`（直接读 public/static 的 catalog.json 与 build-recommendations.json）：
+  - catalog 62 名角色全部有推荐条目（`buildRecWengine.test.ts`「catalog 每个角色都有配装推荐条目」早已锁住）⇒ `applyBuildRecommendationForSlot` 的 `if (!rec) return false` 分支在生产数据下不可达；
+  - 全部推荐的 4/5/6 号位主词条名都能被 `REC_MAIN_STAT_MAP` 映射，全部带 substats ⇒ 主词条与副词条每次都被重写；
+  - 只有 1551 无 `catalog_wengine_id`，但 setAgent 先按专武 / 同职业 S 级写过 wEngineId，无残留。
+- 重开条件：新增角色没有推荐条目（上述锁会先红）或推荐里出现未映射主词条名。那时把 4/6 主词条与 subStatAllocation 加进 setAgent 模板重置块（与 CC-267 / 268 同处）。
+- §24.107 表「driveDisc 4/6 号位主词条、subStatAllocation」一行据此改判为「无残留（全员有推荐）」。
+
+**② 测量中发现的真缺陷：CC-269（81068b3c）。**
+- 现象：推荐套装原按 `name_zh` 全等匹配 catalog 套装名。数据里 33700 的 `name_zh` 是「雪兔梦游仙境 」（带尾随空格）⇒ 凯撒 1071 / 赛斯 1271 / 照 1341 / 潘引壶 1421 四名防护的 4pc 解析失败，**静默**停在 setAgent 的兜底套装（displayDriveDiscSets[0] = 34200 荆棘玫瑰）。雪兔 4pc 是防护位全队 +18% 伤害的 teamBuff，从未进入推荐配装、散点与预设对比。
+- 修法：`findDriveDiscSetByRecommendationName(name)` → `findDriveDiscSetForRecommendation(entry)`：先按条目 `id` 在 `displayDriveDiscSets` 里找（124/124 条套装推荐都带 id，类型里 id 必填），名字只作兜底且两侧 trim。这是解析通道的修正，不是改数值；数据本身（推荐雪兔）按「数据可信」照用。
+- 为什么不改数据去掉空格：id 本来就在数据里且是主键，按名字匹配是多余的脆弱通道；只修数据的话下次爬取还会出同类问题。
+- 影响（探针：recs 已加载，applyTeamToStore 逐预设）：含 1341 的 6 个预设 4pc 34200→33700，teamTotalDamage +5.83% ~ +7.48%（auto-1041-1571-1341 +7.48%、auto-1431-1341-1031 +7.41%、auto-1431-1481-1341 +7.15%、auto-1431-1491-1341 +6.87%、auto-1431-1341-1311 +6.72%、auto-1021-1481-1341 +5.83%）。预设里没有 1071 / 1271 / 1421。timeGolden 的预设段加载推荐 ⇒ 恰好这 6 条 dmg 变化（时间账零变化，与探针一致，auto-1431-1341-1031 在 golden 口径为 +7.563%），已用 TIME_GOLDEN_UPDATE=1 重生成；角色段（60 角色 × 命座 0/6）不变。其余既有测试不变（harness 默认不加载推荐），verify EXIT=0。
+- 实现上按 id 查 `displayDriveDiscSets.find`，不调 `catalogStore.getDriveDiscSet`：configModel.test 的 catalog 桩只提供 displayDriveDiscSets（第一版用 getDriveDiscSet 被它抓出 TypeError）。
+- 锁：`src/stores/__tests__/buildRecSetResolve.test.ts`：从 catalog 全员出发，应用推荐后 4pc / 2pc 必须等于推荐条目 id；stash config.ts 后报出 1071/1271/1341/1421 四条。
+- 回退：revert 81068b3c。
+- 顺手订正：§24.107 与 config.ts CC-268 注释把 harumasa 写成「雅」，实为浅羽悠真 1201（本节替换 1 处文档）。

@@ -71,23 +71,21 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 283 轮（lane lead-arena-0925c）：CC-268（0577858e）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.107（含 CharacterConfig 字段逐个判定表）。
-- 前几轮：282 CC-267；281 CC-265 / 266；280 CC-264。
+**第 284 轮（lane lead-arena-0925c）：CC-269（81068b3c）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.108：驱动盘残留测得无残留（不改）；测量中发现推荐套装按名字匹配失败，改为按 id 解析。
+- 前几轮：283 CC-268；282 CC-267；281 CC-265 / 266。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：
-1. **驱动盘残留（先测）**：`stores/config.ts#applyBuildRecommendationForSlot` 在角色无推荐时直接 `return false`，上一个角色的 4/6 号位主词条与 `subStatAllocation` 留在槽上。
-   - 测：`await catalog.loadBuildRecommendations()` 后，列出 catalog 全部角色中没有推荐的（查 `buildRecommendations` 的取法，函数在 config.ts 约 :776）；再看预设里是否有这些角色。
-   - 若有且被散点用到：在 setAgent（非 defer）或推荐缺失分支把 4/6 主词条与副词条分配清回 defaultCharacter 模板（与 CC-267 / 268 同一处模板重置），写锁；
-   - 若预设里没有：只记结论，不改（重开条件：新角色入预设却没推荐）。
+1. **推荐配装其余字段的解析通道**（CC-269 的同类排查，先测）：`applyBuildRecommendationForSlot` 还有两处按名字匹配——主词条 `REC_MAIN_STAT_MAP[recStat.name]`（当前全可映射）与 substats 走 `computeDefaultSubStatAllocation`（不读推荐名）。确认 `main_stats` 条目有无 id / 稳定键可替代名字；若没有就只记结论。另查 TeamConfigPage.vue :724 推荐面板显示的套装名是否也该 trim（纯展示，影响小，≥ 有实际可见问题才改）。
 2. 展示层映射副本（r6 清单 §8 第 239 行留项：稀有度颜色 / 职业颜色）：同一映射 ≥ 3 份且分叉才收。
 3. 都无收获：在 r6 清单 §8 记一行，不改代码。
 
 **已知坑**：
-- setAgent 的模板重置块（CC-267 / 268）是「随角色字段」的唯一重置点：新增随角色字段时加在那里，并在 §24.107 表里补一行；
-- 预设级探针：harness 快支 3 / 连携 1 与生产一致；潜能 6；
-- 新测试先单独跑 `npx vue-tsc -b`；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
+- harness 默认 `recommendedBuild: false` ⇒ 推荐配装相关改动在 golden 与多数测试里零差，**必须**另写探针（`await catalog.loadBuildRecommendations()` 后 applyTeamToStore）量影响；
+- 数据侧护栏从 catalog 全员出发（CC-199 教训），不要从登记表出发；
+- setAgent 模板重置块（CC-267 / 268）是「随角色字段」唯一重置点；
+- 新测试先单独跑；后台 verify 要 `setsid ./bg.sh … & sleep 2`；一律 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）。
 
