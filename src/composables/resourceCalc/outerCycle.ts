@@ -4,6 +4,7 @@
  * 签名必须从本轮输出即时生成，不能跨轮保存一个待更新的“当前值”。
  * stable 比相邻轮；二周期比 k 与 k-2。签名历史只在本轮判定之后追加。
  * 这是既有监测量的显式投影，不是全部 CalcRoundThreads 的序列化；新增独立反馈需补判据。
+ * 例外（CC-314）：模块下一轮反馈字典 `moduleFeedback` 整体入签名（键排序），模块新增键不必再改这里。
  */
 import type { CalcRoundResult } from './convergence'
 import { giftedPolarAssaultOf } from './giftedPolarAssault'
@@ -25,7 +26,18 @@ export function outerFeedbackSignature(out: CalcRoundResult): string {
     chars.map(giftedPolarAssaultOf).join(','),
     // CC-194：postRound 注入（下一轮生效）读全队强特次数——强特变化而终结不变时也须再跑一轮。
     (out.threadsNext.postRoundInput?.exCounts ?? []).map(v => v.toFixed(3)).join(','),
+    // CC-314：模块反馈字典整体入签名。CC-31 起模块加反馈键「编排层零改动」，但签名看不到字典 ⇒
+    // 若新键不是上面各项的函数，stable 会在它收敛前停下。实测现有 14 个键在全部停点已与输入相等（零差）。
+    moduleFeedbackSignature(out.threadsNext.moduleFeedback),
   ].join('|')
+}
+
+/** 键排序后序列化（写入顺序不同不应判为变化）；缺键 = 0 与缺省同义，故跳过 0 / 非有限值。 */
+export function moduleFeedbackSignature(mf: Readonly<Record<string, unknown>> | undefined): string {
+  if (!mf) return ''
+  return Object.keys(mf).sort()
+    .filter(k => { const v = Number(mf[k]); return Number.isFinite(v) && v !== 0 })
+    .map(k => `${k}:${Number(mf[k])}`).join(',')
 }
 
 export interface OuterTwoCycleInput {
