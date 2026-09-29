@@ -73,8 +73,8 @@ export interface DamagePoolContext {
   /** 琉音转大收敛次数（余音直伤用） */
   ultPromoteCount: number
   agentNames: Record<string, string>
-  autoActive: boolean
-  stunAxisResult: unknown
+  /** 真·轴模式布尔（CC-302：= 引擎 `CalcRoundResult.axisActive`；原为 `(useStunAxis || autoActive) && stunAxisResult` 真假值） */
+  isAxis: boolean
   /**
    * 按**槽位**归属的轴窗口 overlay 原始返回（CC-17 2026-09-26）：
    * `slot → AgentAxisOverlays`（该槽模块 `axisWindowOverlays` 的原始返回，含 4 个 moveId 桶）。
@@ -97,13 +97,12 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     configStore, catalogStore,
     adjustedResourceResult, damagePanels, stunCoverage, axisAllocation: allocMap, attachedInAxisMap: attachedInAxis,
     anomalyPoolResult, inStunAnomalyState,
-    globalAnomalyMultiplier, agentNames, autoActive,
-    stunAxisResult,
+    globalAnomalyMultiplier, agentNames,
+    isAxis,
   } = ctx
   if (!adjustedResourceResult || damagePanels.length === 0) return []
     const rows: DamagePoolRow[] = []
     const enemyDamageRes = configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}
-    const isAxis = (configStore.useStunAxis || autoActive) && stunAxisResult
     // 轴内涉及的槽位（有轴内动作的槽位）；其余槽位（如换了辅助、没进轴）走全局覆盖率「单独算」
     const axisSlots = new Set<number>()
     for (const a of Object.values(allocMap)) axisSlots.add(a.slot)
@@ -389,7 +388,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     const seenDirectIds = new Map<string, number>()
 
     const charEnv: CharRowsEnv = {
-      ctx, rows, isAxis: Boolean(isAxis), axisSlots, axisSplitFor, axisStunFor,
+      ctx, rows, isAxis, axisSlots, axisSplitFor, axisStunFor,
       pushDirect, pushRelease, releaseMultiplierFor, inStunAttributionCandidates,
       releaseStunSegments, seenDirectIds, agentName,
       ultimateInAxisFraction,
@@ -407,7 +406,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     emitAnomalyRows({
-      ctx, rows, agentName, enemyDamageRes, isAxis: Boolean(isAxis), windSlot, poolEnv,
+      ctx, rows, agentName, enemyDamageRes, isAxis, windSlot, poolEnv,
       inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
       axisStunFor, pushRelease,
     })

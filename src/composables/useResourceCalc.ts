@@ -281,6 +281,11 @@ export function useResourceCalc() {
 
   /** 生效轴：条件轴方案命中后的轴（无方案时回退手动 stunAxes），供下游栈遍历/易伤分配统一消费 */
   const effectiveStunAxes = computed<StunAxis[]>(() => calcOutput.value?.resolvedAxes ?? configStore.stunAxes)
+  /**
+   * CC-302：真·轴模式布尔 = 引擎本轮 `axisActive`（是否注入了轴块）。伤害池 / overlay / stunOverride 的 `isAxis` 唯一来源；
+   * 原为 `(useStunAxis || autoActive) && stunAxisResult`（展示计算 calcStunAxis 的真假值）。`stunAxisResult` 现在只供失衡轴页展示。
+   */
+  const axisMode = computed<boolean>(() => calcOutput.value?.axisActive ?? false)
 
   /**
    * 失衡轴窗口覆盖：按槽归属的 `bucketsBySlot` + 标量表（般岳明王 / 仪玄凝神 / 佩洛伊斯阳炎 /
@@ -295,10 +300,8 @@ export function useResourceCalc() {
    * 2026-09-16 round 16：入参补 `isAxis`（真轴模式布尔，**不是** `axes.length > 0`）与
    * `damagePanels`（提供 `additionalAbilityActive` / `windInfectionRate` 两个门控值，
    * 与伤害池 `execPanel` 同源同值 ⇒ 迁移前后逐位一致）。
-   * ⚠ `isAxis` 必须与伤害池**同一个表达式**——`configStore.useStunAxis || autoActive` 与
-   * `stunAxisResult` 都已在下方/上方就绪；用 `effectiveStunAxes.length > 0` 代替会让
-   * `forceNoAxis` 轴退化态（`resolvedAxes` 清空、但 `effectiveStunAxes` 回落到手动轴）
-   * 静默走错支。
+   * ⚠ `isAxis` 必须与伤害池同源——CC-302 起两处都读 `axisMode`（= 引擎 `CalcRoundResult.axisActive`）；
+   * 用 `effectiveStunAxes.length > 0` 代替会让 `forceNoAxis` 轴退化态静默走错支。
    *
    * 2026-09-26 CC-17：四个 moveId 桶不再跨模块合并成全局表（会泄漏 `basic_attack`），
    * 改为按槽归属的 `bucketsBySlot`（设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §3）。
@@ -307,7 +310,7 @@ export function useResourceCalc() {
     effectiveStunAxes.value,
     configStore,
     catalogStore,
-    (configStore.useStunAxis || autoActive.value) && !!stunAxisResult.value,
+    axisMode.value,
     damagePanels.value,
   ))
 
@@ -495,7 +498,6 @@ export function useResourceCalc() {
   // ===== 轴内易伤分配 =====
   /** 栈遍历：按资源（闪能/喧响/时间）门控，决定轴内实际执行哪些动作 */
   const stackTraversalResult = computed(() => {
-    if ((!configStore.useStunAxis && !autoActive.value) || !stunAxisResult.value) return null
     // CC-299：直读引擎本轮执行集合（同一物理量一份实现）。原在此用 adjusted rr 的闪能 / 喧响总量 + 池次数重跑一遍栈，
     // 与引擎门控入参（上一轮闪能 / 单调喧响）不同源；窗口数两边已同为池整数（CC-301）。
     return calcOutput.value?.axisStack ?? null
@@ -571,8 +573,7 @@ export function useResourceCalc() {
     globalAnomalyMultiplier: globalAnomalyMultiplier.value,
     ultPromoteCount: ultPromoteCount.value,
     agentNames: agentNames.value,
-    autoActive: autoActive.value,
-    stunAxisResult: stunAxisResult.value,
+    isAxis: axisMode.value,
     axisBucketsBySlot: axisOverlays.value.bucketsBySlot,
     axisScalarBySlot: axisOverlays.value.scalarBySlot,
     computeWindowDuration,

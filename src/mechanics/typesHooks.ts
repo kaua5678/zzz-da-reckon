@@ -145,7 +145,7 @@ export interface AgentStunOverrideInput {
   moveId: string
   /**
    * **真·轴模式布尔** = 伤害池 `damagePool.ts` 的同名局部量
-   * （`(configStore.useStunAxis || autoActive) && stunAxisResult`），口径与
+   * （CC-302：= 引擎 `CalcRoundResult.axisActive`，经 `useResourceCalc#axisMode`），口径与
    * `AgentAxisOverlayInput.isAxis` **逐字相同**（那边的不等价于 `axes.length > 0` 的论证同样适用）。
    *
    * ⚠ 它只说明「本帧是轴模式」，**不说明本行有没有被轴认领**——认领与否由伤害池的
@@ -179,7 +179,7 @@ export interface AgentAxisOverlayInput {
   getAgentSkills: (agentId: string) => { categories: { id: string; moves: { id: string }[] }[] } | undefined
   /**
    * **真·轴模式布尔** = 伤害池 `damagePool.ts` 的同名局部量
-   * （`(configStore.useStunAxis || autoActive) && stunAxisResult`）。
+   * （CC-302：= 引擎 `CalcRoundResult.axisActive`，经 `useResourceCalc#axisMode`）。
    *
    * ⚠ **它不等价于 `axes.length > 0`**（2026-09-16 round 16 实测口径，设计卡 §16）：
    * `forceNoAxis` 轴退化时对外返回的 `resolvedAxes` 被清空为 `[]`（`convergence.ts:1422`），
@@ -187,8 +187,8 @@ export interface AgentAxisOverlayInput {
    * 存在第三态「`axes` 非空但 `isAxis === false`」。**必须用本字段判模式**，用 `axes.length`
    * 会让轴退化态静默走错支（扫描值 vs 折算值）。
    *
-   * 反向蕴含成立：`isAxis === true` ⇒ `axes.length > 0`（`stunAxisResult` 在
-   * `axes.length === 0` 时为 null，见 `useResourceCalc.ts` 的 `stunAxisResult` computed）。
+   * 反向蕴含成立：`isAxis === true` ⇒ `axes.length > 0`（引擎 `axisActive` 要求 `resolvedAxes.length > 0`，
+   * 且非退化态下对外 `resolvedAxes` 即局部值）。
    */
   isAxis: boolean
   /**

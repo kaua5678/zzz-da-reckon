@@ -1130,6 +1130,7 @@ export function createRunCalcRound(deps: {
       bossAnomalyState: bossAnomalyStateNext,
       threadsApplied: threads,
       axisStack: axisExecutedStack,
+      axisActive, // CC-302：forceNoAxis 已含在局部 axisActive 内
       threadsNext: {
         goodReview,
         energyBySlot,

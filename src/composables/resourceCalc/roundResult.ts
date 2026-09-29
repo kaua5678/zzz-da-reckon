@@ -57,4 +57,10 @@ export interface CalcRoundResult {
      * 资源门控入参 = 本轮已装的上一轮闪能 / 单调喧响线程（同 threadsApplied 口径）。
      */
     axisStack: StackTraversalResult | null
+    /**
+     * CC-302：本轮是否**真的**按轴注入（convergence 局部 `axisActive`：轴开关 / 自动部署命中、生效轴非空、非 forceNoAxis 退化）。
+     * 伤害池 / 轴窗口 overlay / 行级 stunOverride 的 `isAxis` 唯一来源——原先由展示用的 `stunAxisResult`（calcStunAxis 结果）
+     * 真假值兼任，伤害池因此依赖一份纯展示计算；且与引擎是否注入轴块不同源。
+     */
+    axisActive: boolean
   }
