@@ -7,7 +7,6 @@ import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
-import { withStunCount } from '@/core/stunPool'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic } from '@/mechanics'
@@ -820,8 +819,13 @@ export function createRunCalcRound(deps: {
     // debt: 轮换动作覆盖实数化——物化执行行少于实战动作序列（仪玄强特 11 vs 实战 15+、平A填充/
     // 闪反取职业基准），竖向字段（伤害/失衡/异常）已行级进账而横向动作覆盖无逐角色锚点。
     // 升级路径：实数化专项逐角色收口（弹刀反推/合轴自动填充同族手法），以归档对拍定每角色动作锚点。
+    // CC-300 / CC-305：锁定失衡（`enemy.stunCountLock ≥ 0`，命座对比「操作够就能打 N 次」）⇒ 两次不动点都按计数通道值
+    // countStun（CC-151：锁定时 ≡ 锁定值 / 其投影）单趟求值、池次数钉到它。原 CC-300 只在 sp1 之后钳池，
+    // 不动点内部的转大次数仍按自算次数推（命座抬失衡值的假提升从 promote 漏出）⇒ 锁定下沉进 promoteFixpoint。
+    const stunLockN = configStore.enemy.stunCountLock ?? -1
+    const lockForPool = stunLockN >= 0 ? countStun : undefined
     // Round 0：无易伤 → 畏缩覆盖率初算
-    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio)
+    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio, lockForPool)
     const adj0 = applyUltimatePromote(rr, sp0, catalogStore)
     // 本轮极性强击赠送次数：读本轮 rr 而非异常池 setup（循环依赖，见 calcAnomalyPoolInput）。
     // CC-38b：模块能力 `giftedPolarAssaultCount` 派发求和；CC-75 收进 giftedPolarAssault.ts（口径裁定 = 求和，见该文件头）。
@@ -832,15 +836,7 @@ export function createRunCalcRound(deps: {
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
-    const sp1Raw = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio)
-    // CC-300：锁定失衡（`enemy.stunCountLock ≥ 0`，命座对比「操作够就能打 N 次」）⇒ 池次数钉到计数通道值（CC-151：锁定时
-    // countStun ≡ 锁定值 / 其投影）。原先锁定只钉外层输入，池仍按失衡值自算（实测 hugo 锁 3 → 池 4），于是
-    // prevPoolStunCount（雨果决算 / 坑36）、覆盖率、伤害侧栈都读到未锁的次数 ⇒ 命座抬失衡值的「假提升」从池漏出，
-    // 且与读 countStun 的引擎执行集合（CC-298）分叉。派生字段（返还 / 总连携）由 withStunCount 同步重建（同 CC-150）。
-    const stunLockN = configStore.enemy.stunCountLock ?? -1
-    const sp1 = stunLockN >= 0 && sp1Raw.pool && sp1Raw.pool.stunCount !== countStun
-      ? { ...sp1Raw, pool: withStunCount(sp1Raw.pool, countStun) }
-      : sp1Raw
+    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio, lockForPool)
 
     // Boss 预设弹刀反推下一轮量（保底4失衡）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
     // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），

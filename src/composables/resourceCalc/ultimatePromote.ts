@@ -6,7 +6,7 @@
  * 失衡次数 → 转大次数变（正反馈）；开窗次数（阈值结转，见 computeLiuyinHugCounts）有界，正反馈单调
  * 有界必收敛（MAX_PROMOTE_ITER 轮兜底）。倍率表全走目标队友执行计划自然调用。
  */
-import { calcStunPool } from '@/core/stunPool'
+import { calcStunPool, withStunCount } from '@/core/stunPool'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource'
@@ -286,6 +286,13 @@ export function promoteFixpoint(
   deps: PromoteFixpointDeps,
   inAxisFractionProvider?: (stunCount: number, execs: StunSkillExecution[]) => Record<string, number>,
   refundStunRatio = 0,
+  /**
+   * CC-305：锁定失衡次数（`enemy.stunCountLock ≥ 0` 时由 convergence 传计数通道值 countStun；缺省 / 负数 = 正常求不动点）。
+   * 锁定 = 「操作够就能打 N 次」：不迭代，转大次数（好评 / 连携窗口）、轴内 fraction、窗口时间占比都按 N 算，
+   * 池次数钉到 N（withStunCount 重建派生字段）。原先只在外面把池钳到 N（CC-300），内部仍按自算次数推转大 ⇒
+   * 命座抬失衡值 → 次数 → 转大联动放大的「假提升」仍从 promote 漏出。
+   */
+  lockedStunCount?: number,
 ): PromoteFixpointResult {
   const { configStore, panels } = deps
   const chainCountPerStun = configStore.team.reduce((sum, c) => sum + (c.chainCountPerStun ?? 0), 0)
@@ -316,6 +323,8 @@ export function promoteFixpoint(
   let pool: StunPoolResult | null = null
   const seenStunCounts = new Set<number>()
   const bossStunValue = configStore.enemy.stunValue
+  const locked = lockedStunCount != null && lockedStunCount >= 0
+  if (locked) stunCount = lockedStunCount
   for (let k = 0; k < MAX_PROMOTE_ITER; k++) {
     // 有轴时：60/90 转大次数直接读轴（轴即最终次数，无连携↔大招改写），否则按好评/连携窗口推导
     let hug90 = 0
@@ -335,6 +344,10 @@ export function promoteFixpoint(
     const inAxisFraction = inAxisFractionProvider ? inAxisFractionProvider(stunCount, execs) : undefined
     // 传上一轮的 stunCount 折算窗口占比（首轮 0 = 与旧行为一致，之后逐轮收敛）
     pool = runPool(execs, inAxisFraction, stunCount)
+    if (locked) {
+      if (pool && pool.stunCount !== stunCount) pool = withStunCount(pool, stunCount)
+      break
+    }
     const next = pool?.stunCount ?? 0
     if (next === stunCount) break
     // **两种模式统一走连续闭式求根**（用户 2026-09-10 裁决「顺序：边打边攒 → 攒够开窗 → 剩多久」）：
