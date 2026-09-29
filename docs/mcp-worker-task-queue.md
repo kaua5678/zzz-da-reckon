@@ -71,7 +71,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 292 轮（lane lead-arena-0925c）：CC-277（fcecd8eb）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+**第 292 轮（lane lead-arena-0925c）：CC-277（fcecd8eb）完成，文档 008bfd85。⚠ push 失败**：`git push origin master` 与改走 `ssh.github.com:443` 都超时无输出（`ssh -T git@github.com` 也连不上，判断为本机到 GitHub 网络不通，不是认证问题）。**下一轮开工先跑 `git rev-list --count origin/master..master`，不为 0 就先补推**（`timeout 150 git push origin master`）。
 - 详见 `docs/mcp-stun-dual-source.md` §24.116：删 teamHasAgent / findSlotByIdentity；顺带修 CC-276 提交后变红的 agentIdentity T8。
 - 前几轮：291 CC-276；290 CC-275；289 CC-274；288 CC-273；287 CC-272。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
