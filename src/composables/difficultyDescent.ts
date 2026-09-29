@@ -29,7 +29,7 @@
  */
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import type { LadderCtx } from './difficultyLadder'
-import { captureKeyCounts, captureDmgBySource, stunWindowRatioOf, ENGINE_INTERACTION_FIELDS } from './difficultyCurve'
+import { captureKeyCounts, captureDmgBySource, stunWindowRatioOf, engineInteractionItems } from './difficultyCurve'
 import { computeDifficulty, interactionSurvivalBySlot, roundInteractionCount } from './teamCompare'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import type { InteractionItem } from '@/types/teamPreset'
@@ -239,15 +239,10 @@ export function descendDifficultyCurve(
   const measureDifficulty = (): number => {
     const rr = ctx.calc.resourceResult.value
     const survival = interactionSurvivalBySlot(rr)
-    const items: InteractionItem[] = []
-    for (const { type, field } of ENGINE_INTERACTION_FIELDS) {
-      let count = 0
-      for (let slot = 0; slot < 3; slot++) {
-        const raw = Number(ctx.config.team[slot]?.[field] ?? 0)
-        count += roundInteractionCount(raw * (survival.get(slot) ?? 1))
-      }
-      if (count > 0) items.push({ type, count })
-    }
+    // CC-258：引擎实打次数唯一读取（含角色专属类型名：般岳金身 / 双反）
+    const items: InteractionItem[] = engineInteractionItems(
+      ctx.config, (slot, raw) => roundInteractionCount(raw * (survival.get(slot) ?? 1)),
+    ).filter(i => i.count > 0)
     const overflow = rr?.overflowSeconds ?? 0
     const saved = rr ? frontlineOccupationBreakdown(rr).saved : 0
     return computeDifficulty(

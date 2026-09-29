@@ -270,7 +270,7 @@ function completeInteractionList(interactions: InteractionItem[], team: (string 
   for (const t of ['parry', 'dodge', 'quickAssist'] as const) {
     if (!present.has(t)) out.push({ type: t, count: 0 })
   }
-  // CC-68：角色专属交互类型经模块声明 compareInteractionTypes（原写死般岳 id）
+  // CC-68 / CC-258：角色专属交互类型 = 模块声明 interactionFieldTypes 的值（原写死般岳 id）
   for (const t of teamCompareInteractionTypes(team)) {
     if (!present.has(t)) out.push({ type: t, count: 0, slot: 0 })
   }

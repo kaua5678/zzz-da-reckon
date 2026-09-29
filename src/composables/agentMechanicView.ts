@@ -251,7 +251,13 @@ export function agentResultCardCorrosion(agentId: string | null | undefined): Ag
 export function teamCompareInteractionTypes(team: ReadonlyArray<string | null | undefined>): string[] {
   const out: string[] = []
   for (const id of team) {
-    for (const t of (id ? getAgentMechanic(id)?.compareInteractionTypes : undefined) ?? []) if (!out.includes(t)) out.push(t)
+    for (const t of Object.values((id ? getAgentMechanic(id)?.interactionFieldTypes : undefined) ?? {})) if (t && !out.includes(t)) out.push(t)
   }
   return out
+}
+
+/** CC-258：某槽角色对某引擎交互字段的专属类型名（未声明 ⇒ undefined，调用方回落全局类型名） */
+export function interactionFieldTypeOf(agentId: string | null | undefined, field: string): string | undefined {
+  const m = agentId ? getAgentMechanic(agentId)?.interactionFieldTypes : undefined
+  return m ? (m as Readonly<Record<string, string | undefined>>)[field] : undefined
 }

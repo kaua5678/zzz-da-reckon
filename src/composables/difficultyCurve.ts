@@ -54,6 +54,7 @@ import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 export { stunWindowRatioOf }
 import { getAgentMechanic } from '@/mechanics'
+import { interactionFieldTypeOf } from '@/composables/agentMechanicView'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
 import type { InteractionItem, TeamPreset } from '@/types/teamPreset'
@@ -182,10 +183,11 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
 
 /**
  * 引擎侧交互字段 ↔ 难度交互类型（`computeDifficulty` 的入参口径）。
- * 只列**有引擎字段**的类型；角色专属类型（如般岳·金身弹刀/双反）不进引擎字段，
- * 由 `liveInteractions` 从预设声明里补回来。
+ * 只列**有引擎字段**的类型（全局类型名）；角色专属类型名由模块 `interactionFieldTypes` 按槽位覆盖
+ * （CC-258：般岳 blockCount = 金身格挡 `banyueGoldenParry`，修前按普通 `block` 计、又从预设声明补一次 = 双计）。
+ * 只经 `engineInteractionItems` 读取。
  */
-export const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ReturnType<typeof useConfigStore>['team'][number] }[] = [
+const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ReturnType<typeof useConfigStore>['team'][number] }[] = [
   { type: 'parry', field: 'parryCount' },
   { type: 'dodge', field: 'dodgeCounterCount' },
   { type: 'quickAssist', field: 'quickAssistCount' },
@@ -197,6 +199,36 @@ export const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ReturnType<
   { type: 'perfectBlock', field: 'perfectBlockCount' },
   { type: 'tauntCancel', field: 'tauntCancelCount' },
 ]
+
+/** CC-258：只有角色声明了专属类型名才进难度轴的引擎字段（般岳双反；通用角色的 dualCounterCount 恒 0 且无全局类型） */
+const OVERRIDE_ONLY_INTERACTION_FIELDS = ['dualCounterCount'] as const
+
+/**
+ * CC-258：**引擎侧实打交互次数**的唯一读取（难度曲线 `liveInteractions` 与难度下降 `difficultyDescent` 共用）。
+ * 逐字段 × 逐槽：类型名 = 该槽模块 `interactionFieldTypes[field]` ?? 全局类型名；同名求和。
+ * 全局类型即使 0 次也保留（明细要能照抄字段）；`shrink(slot, raw)` 负责截断存活率缩与取位。
+ */
+export function engineInteractionItems(
+  config: ReturnType<typeof useConfigStore>,
+  shrink: (slot: number, raw: number) => number,
+): InteractionItem[] {
+  const byType = new Map<string, number>()
+  for (const { type } of ENGINE_INTERACTION_FIELDS) byType.set(type, 0)
+  const fields: { type?: string; field: string }[] = [
+    ...ENGINE_INTERACTION_FIELDS.map(f => ({ type: f.type, field: f.field as string })),
+    ...OVERRIDE_ONLY_INTERACTION_FIELDS.map(field => ({ field })),
+  ]
+  for (const { type, field } of fields) {
+    for (let slot = 0; slot < 3; slot++) {
+      const char = config.team[slot]
+      const t = interactionFieldTypeOf(char?.agentId, field) ?? type
+      if (!t) continue
+      const raw = Number((char as Record<string, unknown> | undefined)?.[field] ?? 0)
+      byType.set(t, (byType.get(t) ?? 0) + shrink(slot, raw))
+    }
+  }
+  return [...byType].map(([type, count]) => ({ type, count }))
+}
 
 /**
  * **当前配置**（不是预设声明）的交互清单，并按**装配期截断存活率**缩到「180s 里真打的次数」——
@@ -220,12 +252,8 @@ export function liveInteractions(
   const survival = interactionSurvivalBySlot(rr)
   // 缩后保留 2 位小数（roundInteractionCount）：不取整会在难度明细里打出 15 位浮点尾巴（实测撑破散点明细表）
   const shrink = (slot: number, count: number) => roundInteractionCount(count * (survival.get(slot) ?? 1))
-  const out: InteractionItem[] = []
-  for (const { type, field } of ENGINE_INTERACTION_FIELDS) {
-    let count = 0
-    for (let slot = 0; slot < 3; slot++) count += shrink(slot, Number(config.team[slot]?.[field] ?? 0))
-    out.push({ type, count })
-  }
+  const out: InteractionItem[] = engineInteractionItems(config, shrink)
+  const engineTypes = new Set(out.map(i => i.type))
   // 反制支援（角力化解一组控制技）：次数不是 store 字段而是**运行时折算**（boss 控制技组 ×
   // 队内有反制支援招式的角色），按承接槽位的截断存活率缩。
   //
@@ -235,7 +263,7 @@ export function liveInteractions(
   if (caCount > 0) out.push({ type: 'counterAssist', count: caCount, slot: caSlot })
   for (const it of preset.interactions ?? []) {
     // 引擎侧已给出实打次数的类型不再吃预设声明（防双计）
-    if (ENGINE_INTERACTION_FIELDS.some(f => f.type === it.type)) continue
+    if (engineTypes.has(it.type)) continue
     if (it.type === 'counterAssist' && caCount > 0) continue
     out.push({ ...it, count: shrink(it.slot ?? 0, it.count) })
   }
