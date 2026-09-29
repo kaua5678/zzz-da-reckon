@@ -96,32 +96,36 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 347 轮（lane arena-C）：CC-329 数值卡（1 个预设动数），代码 `216c5bde`，文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。开工时间 02:40。现场：HEAD 95f608a2 与 origin 一致；没有 verify / vitest / dsh 进程（常驻 `dsh web` 不算）；最近一次提交是本 lane 02:31 的 95f608a2；工作区干净。**
+**第 348 轮（lane arena-C）：S2 折叠环出口普查 + 停滞计数承重结论（行为不变，只加注释 `5363d20a`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。开工时间 03:30。现场：HEAD f87b348e 与 origin 一致；没有 verify / vitest / dsh 进程（常驻 `dsh web` 不算）；最近一次提交是本 lane 02:53 的 f87b348e；工作区干净。**
 
-- **CC-329**：外层环内选点 `pickOuterCycleMember` 在 ③′ 之后新增 ③″。physical 下，其余各级同级、池内成员都有读入 K 且都可行时，取 K 最大者。
-- **原则**：整数的物理次数取可行最大；连续的规划量取小（③′，不变）。
-  - 前者依据 CC-150 / CC-153 的「最大自洽可行整数」，与内层 CC-326 同一原则。
-  - ③″ 放在 ③′ 之后，按构造只接管原先由「取最后一轮」决定、且 K 不同的情形。
-- **影响**（414 例 × physical / off，见 `docs/mcp-outer-fixedpoint-continuity.md` §7）：
-  - 只有 auto-1371-1571-1451（physical）变：失衡 3→4，连携 16→20，槽 1 终结 3→4，前台 +9.467s，伤害 +4.049%；留白、超预算仍为 0。
-  - off 投影 0 变。timeFillRatchet / cinemaMonotone / teamTimeSummary 直接通过；timeGolden 重生成，只有这一条目。
-- 单测 3 条（`outerCycle.test.ts`），做过反向验证。
-- 验证：`vue-tsc -b` 0 错；get_diagnostics 0；在隔离 worktree `wtA-ock` 跑全量 verify，EXIT=0（442 个文件、4066 个测试，日志 `/home/kaua/calc-arch/arenaC/ock-verify.log`）。代码在 worktree 里提交，主仓库用 `git merge --ff-only` 合入。
-- 探针产物在 `/home/kaua/calc-arch/arenaC/`：
-  - `oc347.json`、`oc347-off.json`，对照第 346 轮的 `oc.json`、`oc-off.json`；
-  - `arenaC-ock-probe.sh`、`arenaC-ock-base.sh`、`arenaC-ock-update.sh`、`arenaC-ock-verify.sh`，以及对应的 `ock-*.log`。
-  - 这些脚本都 cd 到 wtA-ock，该 worktree 已删，复用时要改路径。
+- **出口普查**（交接可选项「折叠环停滞判据的触发面」，见新文档 `docs/mcp-fold-loop-stop.md` §1）：
+  - 414 例共 2968 次折叠运行：残差达标 1771 次、停滞 1197 次、跑满 0 次。
+  - 被接受的运行：389 / 25 / 0。
+- **停滞计数跨运行不归零，是承重行为**（§2）：
+  - `diag.bestExcess` / `stagnantPasses` 只在 `undefined` 时初始化，CC-160 终局重折（同一个 `diag`）接着主折叠的计数判停。404 次运行受影响，全在 12 个 1431 用例里。
+  - 试过改成每次运行归零（曾拟为 CC-330，卡号未占用）：缺省 414 例终局不变；但全量 verify 红 1 条，dynamicComboAlign ②（合轴吸收率 1）auto-1431-1481-1341 留白 1.01 → 1.882 > 1.5。吸收率 0 时截断 82.7 → 63.9 秒、伤害 +3.05%。
+  - **决定不改**，测试门不放宽。在 `foldLoop.ts`、`solveDiagnostics.ts` 加注释标明承重，防止被当成遗留写法顺手清理。
+- **未做（候选 F2）**：停滞出口停在振荡的哪一相取决于停的轮次（例如 1591 c3–c5 停在 0.514，最优 0.074）。做法草案与代价见 `docs/mcp-fold-loop-stop.md` §4。
+- 验证（注释提交）：`vue-tsc -b` 0 错；get_diagnostics 0；在隔离 worktree `wtA-fl` 跑全量 verify，EXIT=0（442 个文件、4066 个测试，日志 `/home/kaua/calc-arch/arenaC/c348-verify.log`）。代码在 worktree 里提交，主仓库用 `git merge --ff-only` 合入。
+- 新文档 `docs/mcp-fold-loop-stop.md` 已登记 README §6（69 → 70 份；表尾「以本表为准」的份数也同步为 70，原来写的是 48）。
+- 探针产物在 `/home/kaua/calc-arch/arenaC/`，清单见新文档 §5；脚本都 cd 到已删除的 wtA-fl，复用时要改路径。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. 可选（先探针）：`docs/mcp-integer-cycle-stop.md` §6 第 3 条「converged=true 的路径依赖」。同一队的不同停点序列可能收敛到不同的自洽终态。先量清楚这样的用例有多少、差多大；没有「更一般或更简单」的改法就只记录。
-3. 可选：
-   - 折叠环停滞判据（连续 3 轮改善 ≤1e-2）的触发面，用 `PROBE_TRACE_FOLD=1` 量。
-   - R22-D1 债 1a（全局实数化松弛推广，见 `docs/mcp-r22d1-batch12-field-census.md` §2）能否因内外层整数环停点都取「可行最大」而部分销号。先写判据，再量。
-4. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+2. 候选（先定语义）：CC-160 终局重折是主折叠的「续跑」还是从终局态「重新迭代」。
+   - 定下来之后，停滞计数与 refund 冻结旗标按同一语义统一（续跑：两者都接着用；重新迭代：两者都归零）。
+   - 然后复核 `docs/mcp-fold-loop-stop.md` §2 表里三种合轴吸收率，以及 dynamicComboAlign ②。
+   - 依据要写进文档；定不出就维持现状。
+3. 候选（先量再定）：F2「停滞出口取本次运行残差最小的一轮」（新文档 §4）。
+   - 注意残差最小不等于留白最小，先想清楚「最优轮」的判据。
+   - 在插桩版 foldLoop 里加快照与还原（开关控制），量 §1 表里 7 个用例的留白 / 截断 / 伤害。
+4. 可选（先探针）：`docs/mcp-integer-cycle-stop.md` §6 第 3 条「converged=true 的路径依赖」。
+5. 可选：R22-D1 债 1a（全局实数化松弛推广，见 `docs/mcp-r22d1-batch12-field-census.md` §2）能否因内外层整数环停点都取「可行最大」而部分销号。先写判据，再量。
+6. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
+- **「只在 undefined 时初始化」的求解状态可能是承重的**：折叠环的 `diag.bestExcess` / `stagnantPasses` 跨运行不归零，CC-160 重折依赖它（第 348 轮归零试验让 dynamicComboAlign ② 变红）。清理这类写法前，先跑全量 verify，并在非缺省机制参数下对照（合轴吸收率 0 / 1）。
 - **get_diagnostics 的 path 必须是仓库相对路径**（如 `src/core/resource.ts`）；传绝对路径会报「Path must be workspace-relative」，传 `paths` 会报 INVALID_ARGUMENT。
 - **golden 基线的下游读者**：`cinemaMonotone.test.ts` 读的是 `timeGolden.baseline.json`，不是现算结果。数值卡要在**重生成 golden 之后**再跑一遍 cinemaMonotone（或整轮 verify）；重生成之前跑的全量看不到它的变化（第 344 轮第一次全量是绿的，重生成后的 verify 才红）。同类的还有 teamTimeSummary「账本虚高」样例：每修掉一处留白，它就可能失效，按用例注释里的惯例换队（已经换过多次）。
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
