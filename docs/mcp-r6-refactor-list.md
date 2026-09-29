@@ -454,3 +454,4 @@
 | 301 | 青衣 cfg 回写传参 / nangong / billy | 可简化：CC-287（`f45d69f7`）；nangong、billy 属轮间通道「不做」；普查结项 | nangong C6 疑似陈旧值（pairs→0 时不清零）待量 |
 | 302 | nangong C6 残留套数 | 真缺陷，CC-288（`de751282`）修复，锁 2 例 | 同型「提前 return 早于 cfg 写入」普查（候选约 20 个模块）待做 |
 | 303 | 「提前 return 早于 cfg 写入」普查；buildResourceResult 晚写 | AST 扫描只剩 nangong（已修）和 zhuYuan；zhuYuan C6 余温回能是死写入 → CC-289（`1f8ed509`，数值卡）；晚写探针只剩 orphieBladeHits（展示，不改）；两类普查结项 | 新模块把影响引擎的量写在 buildResourceResult 里（真队锁只覆盖 1241） |
+| 304 | 晚写常驻化；anby 能量写入 | CC-290（`0e40804e`）锁；anby 两处有效（golden 场景不触发） | 其他「礼物型」cfg 字段（initialDecibelGift / extraSelfDecibelReward）的死写入普查 |

@@ -71,22 +71,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 303 轮（lane lead-arena-0925c）：CC-289（1f8ed509，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.127：同型残留普查用 AST 结项；发现并修复朱鸢 C6 余温回能从未进入能量账（1241 C6 伤害 +4.4%，golden 已更新）。
-- 前几轮：302 CC-288；301 CC-287；300 CC-286。
+**第 304 轮（lane lead-arena-0925c）：CC-290（0e40804e）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.128：晚写常驻锁；anby 能量写入有效。
+- 前几轮：303 CC-289（朱鸢余温回能，数值卡）；302 CC-288；301 CC-287。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add。
 
 **下一步（直接开工）**：
-1. **把「晚写」变成常驻锁（可选，小）**：第 303 轮的晚写探针（assembleSlot 里 buildResourceResult 前后 cfg 快照比较）很有效，但只是临时的。考虑在 timeGolden 同一批场景上加一个测试：用 `vi.spyOn` 包住各模块的 `buildResourceResult`，前后比较 cfg，允许名单只放 `orphieBladeHits`（spec cfgField 展示）。
-   - 值得做的理由：把 CC-289 这类「展示说进账，引擎没进账」的死写入变成新模块一写就红，是通用约束，不是计数。
-   - 如果 spy 的方式在 harness 里取不到模块对象，就写成「不做」加理由，不要硬上。
-2. **anby 两处 initialEnergyGift（:173 闪反回能、:193 C4 后场电队友）在 golden 场景里屏蔽后零变化**，无法判定是死写入还是场景不触发。用带闪反次数的真队（1011 + 电属性后场队友，C4+）跑一次屏蔽对比；有差 ⇒ 正常，写结论；无差 ⇒ 按 CC-289 的方法查写入时机。
-3. 之后回到 `docs/mcp-r6-refactor-list.md` §8，挑影响面最大的待查项。
+1. **其他「礼物型」cfg 字段的死写入普查**（CC-289 方法推广）。晚写锁只管 buildResourceResult；在其他钩子里写、但写入时机晚于读者的情况还没查。
+   - 目标字段：`initialDecibelGift`（读者 `core/resource/resourceIncome.ts:232`）、`extraSelfDecibelReward`，以及 `grep -rn "cfg\.[a-zA-Z]* = (cfg\.[a-zA-Z]* ?? 0) +" src/mechanics/agents` 列出的其他累加字段。
+   - 方法：照 `/home/kaua/calc-arch/k229/gift303.sh` 逐处屏蔽写入（换成 `void 0 // __probe`），跑 timeGolden。有变化 ⇒ 有效；零变化 ⇒ 像 anby 那样用满足触发条件的真队复测；真队也零变化 ⇒ 死写入，按 CC-289 修（移到 buildExecutions / applyTeamConfig，幂等写法：先扣本模块上次写入量）。
+   - **注意** timeGolden 的 dmg 判据：时间账不变、只有伤害变、且未改 catalog 时判红，所以喧响类只影响伤害的屏蔽也能被看到。
+2. 之后回到 `docs/mcp-r6-refactor-list.md` §8，自选影响面最大的候选（先读 §8 已扫记录，别重复扫）。
 
 **已知坑**：
-- **主工作区里有另一个会话在并行改动**（第 301～303 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
-- **cfg 生命周期**（第 303 轮读 `convergence.ts:424` 确认）：每轮从 base cfg 浅拷贝出 merged，applyTeamConfig 的相位门 / 轴门不会造成跨轮残留；同一轮内被多次调用的钩子才可能残留。能量账（resourceIncome）在装配之前，**buildResourceResult 里写 cfg 对引擎无效**。
-- 「缓存 == 重算」「残留可达」「死写入」都用探针证明：console.log 标签加 `uniq -c`（数字会带 ANSI 颜色，先用 sed 去掉再 grep）；「死写入」用屏蔽写入后跑 golden 看是否零变化。探针前后 cp 备份与恢复，最后 `grep -c __probe` 为 0。
+- **主工作区里有另一个会话在并行改动**（第 301～304 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
+- **cfg 生命周期**：每轮从 base cfg 浅拷贝出 merged（`convergence.ts:424`）；postRound 相位对本轮新克隆派发上一轮收敛量（CC-194），不会丢失。能量账在装配之前，buildResourceResult 里写 cfg 对引擎无效（现有 lateCfgWrite 锁）。
+- 真队探针：`setupHarness([{ agentId, cinemaLevel }, …] as any)` 后读 `useResourceCalc().resourceResult.value.characters[i].energySource.initialGift`。
+- 探针数字会带 ANSI 颜色，先用 sed 去掉再 grep；探针前后 cp 备份与恢复，最后 `grep -c __probe` 为 0。
 - 新增模块 cfg 写入必须有读者（cfgWriteOnlyKeys 锁）；verify 跑的时候不要往被验证的目录写文件；杀进程只 kill 具体 pid；上传一律用 `bash /home/user/mcp-tools/up.sh …`；GitHub 偶尔不通，push 失败记进交接。
 
 **未决项**（依赖游戏事实或审美，不开卡）：lumiflux 属性标签颜色（§24.120）；1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。

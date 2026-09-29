@@ -3745,3 +3745,19 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **锁**：`zhuYuan.test.ts` 原单测改成调 buildExecutions，并断言幂等（重复调用不叠加）以及 buildResourceResult 不再改能量账；新增真队用例「CC-289 余温回能真正进入能量账」（1241 C6 + 1031 + 1311，断言 `energySource.initialGift ≥ 70`）。两例在修复前的代码上都会红（已验证）。
 - **晚写普查**：临时探针在 `assembleSlot.ts` 的 buildResourceResult 前后对 cfg 做 JSON 快照比较（timeGolden 全量）。修复后唯一的晚写键是 `orphieBladeHits`（1301）：写后立刻被同一函数内的 `computeSpecResources` 按 spec cfgField 读取，只用于展示 specResources，时机正确，**不改**。至此「buildResourceResult 改 cfg 却想影响引擎」这类问题清零。
 - **回退**：revert 1f8ed509（golden 连同一起回退）。
+
+### 24.128 第 304 轮：「晚写」常驻锁（CC-290，0e40804e）；anby 能量写入确认有效
+
+- **CC-290**：新增 `src/mechanics/__tests__/lateCfgWrite.test.ts`，把第 303 轮的临时晚写探针改成常驻锁。
+  - 做法：包住 `getRegisteredAgentMechanics()` 里所有模块的 `buildResourceResult`，调用前后对 cfg 逐键做 JSON 比较，afterAll 恢复原函数。场景与 timeGolden 相同：全角色 × 命座 0/6 单人，加全部三人预设，约 12 秒。
+  - 允许名单只有 `orphieBladeHits`（写后立刻由同一函数内的 computeSpecResources 读取，只服务展示）。
+  - **有牙**：把 zhuYuan.ts 换回 CC-289 之前的版本，锁会红，报 `agent:juhufu(1241): initialEnergyGift`。
+  - 值得做的理由：「展示说进账、引擎没进账」这类问题（CC-289）以后新模块一写就红，是通用约束，不是计数。
+  - 回退：删掉该测试文件即可（不影响任何产物）。
+- **命名怪象（不改）**：朱鸢模块的 `id` 是 `'agent:juhufu'`（zhuYuan.ts:279 与 `src/specs/agents/1241.json:3` 一致），疑似早期抄写。
+  - module.id 只用于注册报错和日志，身份一律按 agentIds / agent.id，所以不影响计算。
+  - 改名要同时动 spec JSON 和可能的持久化键，收益只是好看，**不做**；锁的报错信息已带上 agentIds，避免误导。
+- **anby 两处 initialEnergyGift**（第 303 轮屏蔽后 golden 零变化，当时无法判定）：用真队 1011 + 1221 + 1181 测。
+  - 1011 C0 / C6 的 initialGift 都是 112（40 + 并联电路 72）；C6 时两名电属性队友从 40 → 65（C4 电荷传导）。
+  - **两处写入都有效**。golden 零变化只是因为 golden 场景不满足触发条件（单人没有电属性队友；预设里 anby 的额外能力 / 命座条件不满足）。结论：不改。
+- **顺带澄清**：timeGolden.test.ts:58 附近的注释说「纯伤害回归不判红」，已经过时。现行 `diffEntry`（:155）规则是：时间账不变、只有伤害变、且没动 catalog ⇒ 判红（有单测 ①②③ 锁定）。注释未改（非本 lane 文件的纯文字问题，下次动该文件时顺手更正）。
