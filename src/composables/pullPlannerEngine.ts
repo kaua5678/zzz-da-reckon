@@ -308,7 +308,7 @@ export function plannerTestServerVersions(): Set<string> {
 import { computeCardValuesVcg, planPullStrategy, type CardValueVcg, type PlannerCard, type PlannerOptions, type PlannerResult, type StartPresetKind } from '@/composables/pullPlanner'
 import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
 
-/** 起点预设 → 卡清单（窗口 = 首 UP 日期，复刻不建模）：
+/** 起点预设 → 卡清单（窗口 = [首 UP 节点日期, 下一个卡池节点日期)，复刻不建模）：
  * - fresh：无任何限定（起点前实装的卡也 0 持有，全部待抽）
  * - established：常驻 S + A 免费可用（freeMemberPool），0 限定
  * - custom：用户传入 holdings 映射（起点即持有的档位）。 */
@@ -320,13 +320,16 @@ export function buildPlannerCards(
   void startDate // 窗口日期来自版本节点；起点只影响规划期过滤（runPullPlanner 内做）
   const out: PlannerCard[] = []
   for (const [agentId, nodeId] of Object.entries(AGENT_RELEASE_NODE)) {
-    const date = VERSION_NODES[nodeIndexOf(nodeId)]?.date
+    const idx = nodeIndexOf(nodeId)
+    const date = VERSION_NODES[idx]?.date
     if (!date) continue
+    // 窗口终止 = 下一个卡池节点（上半 → 下半 → 下个版本上半，约 21 天；下半日期是近似值，见 versionTimeline 头注释）
+    const windowEnd = VERSION_NODES[idx + 1]?.date ?? null
     if (STANDARD_S_AGENT_IDS.has(agentId)) continue // 常驻 S 非抽卡对象（免费）
     if (FREE_SPECIAL_AGENT_IDS.has(agentId)) continue // 潘引壶/佩洛伊斯永久免费，不受购买窗口限制
     let initialTier = 0
     if (preset === 'custom') initialTier = customHoldings[agentId] ?? 0
-    out.push({ agentId, windowStart: date, ...(initialTier ? { initialTier: initialTier as never } : {}) })
+    out.push({ agentId, windowStart: date, windowEnd, ...(initialTier ? { initialTier: initialTier as never } : {}) })
   }
   return out
 }

@@ -70,8 +70,12 @@ function period(dayOffset: number, hps: number[], id = `P${dayOffset}`): Planner
   }
 }
 
-function card(no: number, windowDay: number, initialTier = 0): PlannerCard {
-  return { agentId: `A${no}`, windowStart: date(windowDay), ...(initialTier ? { initialTier: initialTier as never } : {}) }
+/** windowEndDay 缺省 null = 窗口开放（旧用例不涉及关窗；关窗行为见文末「首 UP 窗口上界」组） */
+function card(no: number, windowDay: number, initialTier = 0, windowEndDay: number | null = null): PlannerCard {
+  return {
+    agentId: `A${no}`, windowStart: date(windowDay), windowEnd: windowEndDay === null ? null : date(windowEndDay),
+    ...(initialTier ? { initialTier: initialTier as never } : {}),
+  }
 }
 
 function opts(over: Partial<PlannerOptions> = {}): PlannerOptions {
@@ -363,5 +367,32 @@ describe('pullPlanner · 收入按版本日历发放（versionFilmGrants）', ()
       initialBank: 10000,
     }))
     expect(res.finalBank).toBe(10000) // 旧口径：10000 + 2×25000
+  })
+})
+
+/** 首 UP 窗口上界（复刻不建模 ⇒ 关窗后买不到；2026-09-29 arena-B） */
+describe('pullPlanner · 首 UP 窗口上界（windowEnd）', () => {
+  it('nextPurchase：[windowStart, windowEnd) 内可买，windowEnd 当天起不可买（含升档）', () => {
+    const c = card(1, 10, 0, 31)
+    expect(nextPurchase(c, 0, date(30))).toEqual({ tier: 1, cost: CINEMA_GOLD_FILM })
+    expect(nextPurchase(c, 0, date(31))).toBeNull()
+    expect(nextPurchase(c, 1, date(31))).toBeNull() // 专武也随窗口关闭
+    expect(nextPurchase(card(1, 10, 0, null), 0, date(999))).not.toBeNull() // null = 开放
+  })
+
+  it('★ 钱在关窗后才到 ⇒ 买不到；同一问题窗口开放时会买（旧实现的行为）', () => {
+    const o = (windowEndDay: number | null) => opts({
+      cards: [card(1, 0, 0, windowEndDay)],
+      periods: [period(0, [80000]), period(14, [80000])],
+      initialBank: 0,
+      filmPerVersion: CINEMA_GOLD_FILM, // 第 14 天发一份，刚够本体
+      oracle: { candidates: (_b, h) => [{ team: ['A1', 'f1', 'f2'] as [string, string, string], score: (h.A1 ?? 0) > 0 ? 1000 : 0 }] },
+    })
+    const closed = planPullStrategy(o(14))
+    expect(closed.totalSpent).toBe(0)
+    expect(closed.totalScore).toBe(0)
+    const open = planPullStrategy(o(null))
+    expect(open.totalSpent).toBe(CINEMA_GOLD_FILM)
+    expect(open.totalScore).toBe(1000)
   })
 })

@@ -62,6 +62,9 @@ describe('pullPlannerEngine · 期轴与卡清单', () => {
     expect(ids.has('1371')).toBe(true) // 仪玄限定
     const custom = buildPlannerCards('custom', '2026-01-01', { '1371': 2 })
     expect(custom.find(c => c.agentId === '1371')!.initialTier).toBe(2)
+    // 首 UP 窗口上界 = 下一个卡池节点（2026-09-29 arena-B）：窗口非空，且绝大多数卡有上界
+    expect(fresh.every(c => c.windowEnd === null || c.windowEnd > c.windowStart)).toBe(true)
+    expect(fresh.filter(c => c.windowEnd !== null).length).toBeGreaterThan(30)
   })
 
   it('免费池：常驻 S + A 级 + 赠送/特例在内；限定 S 不在', async () => {

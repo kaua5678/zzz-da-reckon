@@ -80,6 +80,12 @@ export interface PlannerCard {
   agentId: string
   /** 首发 UP 窗口：起始日（版本节点日期） */
   windowStart: string
+  /**
+   * 首发 UP 窗口：终止日（**不含**；= 下一个卡池节点的日期）。`null` = 之后没有已知节点（窗口开放）。
+   * **必填**：缺省会静默退回「开窗后永久可买」——等于隐式建模了复刻，
+   * 与「首 UP 窗口唯一可购、复刻不建模」口径相反（CC-179 判据；2026-09-29 arena-B）。
+   */
+  windowEnd: string | null
   /** 起点即持有的初始档位（自选持有预设用；缺省 0） */
   initialTier?: PurchaseTier
 }
@@ -243,8 +249,10 @@ export function pickPeriodAssignment(
 /** 卡的下一档与成本；窗口外 / 已满配 / 档位跳跃（initialTier>1 且未按序）返回 null */
 export function nextPurchase(card: PlannerCard, tier: number, date: string): { tier: Exclude<PurchaseTier, 0>; cost: number } | null {
   if (date < card.windowStart) return null // 首UP窗口未开
-  // 窗口无上界（首 UP 窗口唯一 + 复刻不建模：窗口开后任意后续节点都可买——
-  // 实务上最优规划几乎总在首发当期或紧邻期购买，攒着跨多期买 = 实物期权，规划器自动权衡）
+  // 首UP窗口已关（复刻不建模 ⇒ 关窗后永远买不到，含专武 / 满配升档）。
+  // 2026-09-29 前这里没有上界（注释假设「最优规划几乎总在首发当期或紧邻期购买」，未实测），
+  // 等于卡永久可买、与文件头「首 UP 窗口唯一可购」相反；实测见 docs/mcp-worker-task-queue.md §2b。
+  if (card.windowEnd !== null && date >= card.windowEnd) return null
   const next = (tier + 1) as Exclude<PurchaseTier, 0>
   if (next > 3) return null
   if (next === 3 && tier < 2) return null // 满配必须先有本体+专武（阶梯不跳档）
