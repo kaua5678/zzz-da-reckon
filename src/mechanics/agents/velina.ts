@@ -12,7 +12,7 @@ import type {
   ReadonlyTeam,
   ReleaseModifierInput,
 } from '../types'
-import type { Agent, PanelValues } from '@/types/catalog'
+import type { PanelValues } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
@@ -25,6 +25,7 @@ import { panelAt, emptyPanel } from '@/core/panel'
 import { CORROSION_CYCLONE_RELEASE_ID_PREFIX } from '@/core/anomalyPool/helpers'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
+import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applySpecAttributeConversions } from '@/specs/runtime'
@@ -39,13 +40,6 @@ const VELINA_AGENT_ID = '1561'
 const VELINA_EYE_MOVE_ID = '1561006' // EX Special Attack: Wind Shear - Eye of the Storm
 const VELINA_SWEEPING_CYCLONE_1_MOVE_ID = '1561007' // Sweeping Cyclone #1（广域气旋）
 const VELINA_SWEEPING_CYCLONE_2_MOVE_ID = '1561020' // Sweeping Cyclone #2
-
-function isAdditionalAbilityActive(team: ReadonlyTeam, slot: number, agent: Agent): boolean {
-  return team.some(member => {
-    if (member.slot === slot || !member.agent) return false
-    return member.agent.specialty === 'anomaly' || member.agent.damageElement === agent.damageElement
-  })
-}
 
 function velinaColorElement(team: ReadonlyTeam, _slot: number): string {
   return team
@@ -179,7 +173,7 @@ export function simulateVelinaCorrosionState(
 export const VELINA_C2_CORROSION_RATE_DEFAULT = 2 / 3
 
 function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: AgentPanelInput): void {
-  const additionalAbilityActive = isAdditionalAbilityActive(team, slot, agent)
+  const additionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
   // 维琳娜专属资源标记（**本模块唯一写入方**）⇒ 该标记即「本槽是维琳娜」的判据，
   // 供风蚀状态机按归属认人（2026-09-25 CC-D3：风蚀不按「队里第一个风属性」归属）。
   panel.velinaEnabled = 1
@@ -230,7 +224,7 @@ function buildVelinaCharConfig({
   const velinaEye = findMoveById(skills, VELINA_EYE_MOVE_ID)
   const velinaSweeping1 = findMoveById(skills, VELINA_SWEEPING_CYCLONE_1_MOVE_ID)
   const velinaSweeping2 = findMoveById(skills, VELINA_SWEEPING_CYCLONE_2_MOVE_ID)
-  const additionalAbilityActive = isAdditionalAbilityActive(team, slot, agent)
+  const additionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
 
   cfg.velinaEnabled = true
   cfg.velinaAdditionalAbilityActive = additionalAbilityActive
@@ -374,7 +368,7 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
     normalizeResourceSkillType,
   } = input
   const fallbackElement = agent?.damageElement
-  const additionalAbilityActive = agent ? isAdditionalAbilityActive(team, slot, agent) : false
+  const additionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
   const velinaCinema2 = cinemaLevel >= 2
   const velinaColorElementValue = velinaColorElement(team, slot)
 

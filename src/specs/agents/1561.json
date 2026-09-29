@@ -233,6 +233,10 @@
       "note": "每次乱流先检查是否已有 2 点风蚀；若已有则消耗并替换微域为广域，否则 +1。"
     }
   ],
+  "additionalAbility": {
+    "teamConditions": [{ "type": "specialty", "values": ["anomaly"] }, { "type": "sameAttributeAsSelf" }],
+    "note": "额外能力：队伍中存在另一名[异常]角色或同属性角色时触发（CC-307：原为 velina.ts 手写判断、读 damageElement；catalog 62 名角色 attribute 与 damageElement 全等，故用 sameAttributeAsSelf，不另立条件类型）。"
+  },
   "notes": [
     "[已接入·用户口径 2026-08] 风化无 DOT：风化触发后直接造成一次 1250% 倍率直伤，并施加 30s 风化效果（不可被覆盖）。引擎实现：ANOMALY_SINGLE_HIT_MULTIPLIER.wind=1250（anomalyPool/helpers.ts:1302）+ ANOMALY_DURATION.wind=30（helpers.ts:183）+ useResourceCalc.ts:2338 按风化触发次数结算直伤；6命对风化状态敌人再次施加按平均剩余时长增伤（每1s +2.5%，上限40%，useResourceCalc.ts:2362-2371）。",
     "状态机的 2 命风化获得按 2/3 期望值折算，可在资源利用率页调整。",
