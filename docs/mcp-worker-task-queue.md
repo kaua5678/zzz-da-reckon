@@ -90,17 +90,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 315 轮（lane lead-arena-0925c）：CC-300（`fdf54712`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 锁定失衡下池次数钉到计数通道值；golden 零差；hugo 锁 3 场景 4→3。CC-299 二试因 off 投影下雨果分叉再次撤回。详见 `docs/mcp-stun-dual-source.md` §24.139。
-- 前几轮：314 CC-299 首试撤回（锁定冲突，已由 CC-300 解决）；313 CC-298；312 CC-297。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。（arena-B 注：pullPlanner 系列 / `docs/proposals/` / FEATURES_GUIDE / check-tokens 那批已审查并提交，见 §2b；主工作区只剩未跟踪的 `docs/devlog/2026-09-19.md`——用户本地会话 09-19 的笔记，不属任何 lane，别 add 也别删。）
+**第 316 轮（lane lead-arena-0925c）：CC-301 + CC-299（`9629f619`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 引擎轴执行集合窗口数改读池整数（off 分叉消除），伤害侧栈直读引擎 `axisStack`，删本地重算。全量 verify 4032 绿，golden 零差。详见 `docs/mcp-stun-dual-source.md` §24.140。
+- 前几轮：315 CC-300（锁定下池钉锁定值）；314 CC-299 首试撤回；313 CC-298。
+- REQUIREMENTS 无新条目（md5 807ee096）。提示词被 arena-B 改过（加第 9 条并行会话 + 现成客户端，md5 6f99f59f，见提示词「修改记录」）；本 lane 认可，不改。
+- 本轮开工时 arena-B 在 wtA-pp 跑 verify（pullPlanner），与本 lane 文件不相交；它的交接在 §2b。
 
 **下一步（直接开工）**：
-1. **CC-299 的最后阻塞 = off 投影下雨果（坑36）与计数通道分叉**。两条路，先量再选：
-   - (a) 引擎执行集合的窗口数在 off 下也读池（即 `axisExecutedStack` 用 `threads.prevPoolStunCount ?? countStun`，与雨果同源）。physical 非锁定 ≡ countStun 零差；锁定下池已钉 ⇒ 零差；只改 off。代价：off 的「计数 = 计划值」口径在轴执行集合上失效（但 off 下 axisChainTotal 仍按 countStun，要一并评估是否也该读池）。
-   - (b) 雨果改读计数通道（契约新增通用字段），off 下回到计划实数 ⇒ 坑36 的 0.82→0 问题在 off 复现 ⇒ 不推荐。
-   倾向 (a)：off 只是遗留口径，轴「块 × 窗」天然是整数次数，读池更物理。量法：只改那一行，跑 `hugoVerdictLanding` / `stunVulnSummary` / `stunPlanAxisWindows` / timeGolden / difficultyLadder 相关测试。
-2. (a) 落地后重做 CC-299（改法见 §24.138 试做段：`CalcRoundResult.axisStack` + `stackTraversalResult` 直读，删 useResourceCalc 里的 `calcStunAxisStack` 重算与 import）。
+1. 轴链路「同一物理量一份实现」已收尾：dual-source 待办清单里下一条候选是 CC-298 遗留的 `overlapStack` / `axisInSeconds` 仍按实数（时间账）——按 CC-298 口径「时间账读实数」是**正确**的，默认不做。
+2. 所以下一轮先从 `docs/mcp-r6-refactor-list.md` 三类清单里挑未结项（先 grep「未做」「待」），或者重新普查 `useResourceCalc.ts` 里还剩哪些「展示层本地重算引擎已有量」的 computed（本轮删掉 stackTraversalResult 后，先查 `stunAxisResult`、`axisAllocation` 的来源）。
 3. 低优先：锁定下沉到 promoteFixpoint 入参（§24.139 未钳项）。
 
 **已知坑**：

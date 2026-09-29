@@ -3940,3 +3940,14 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **CC-299 二试**：在 CC-300 之上重做「伤害侧改读引擎执行集合」，锁定分叉已消失，但 3 红：`hugoVerdictLanding.test.ts:44`（期望栈决算 5 得 2）与 `stunVulnSummary.test.ts` 案例 B / D。三条都显式钉 **off 投影**（`time.stunPlanProjection = 0`）：off 下 `countStun` = 计划实数（≈1.x ⇒ 2 窗），而雨果决算行按坑36 读池（5）。伤害侧旧重算按池 ⇒ 与雨果行一致；改读引擎集合 ⇒ 2 ≠ 5。已撤回（CC-299 未提交）。
   - **剩余分叉只在 off 投影**（缺省 physical 下 countStun ≡ prevPoolStunCount；锁定下 ≡ 锁定值 ≡ 池）。off 目前只用于难度阶梯 G4（`difficultyLadder.ts:121/183`）与钉 off 的旧测试。
 - **回退**：`git revert fdf54712`（hugo.test 期望随之回到 4）。
+
+### 24.140 第 316 轮：CC-301 执行集合窗口读池整数 + CC-299 落地（9629f619）
+
+- **分叉**（§24.139 遗留）：off 投影下 `countStun` = 计划实数（hugo 0 命轴约 1.x ⇒ 2 窗），而雨果决算行（坑36，`threads.prevPoolStunCount`）与伤害侧栈（池 `stunCount`）读池整数 5。
+- **裁定**：轴内执行集合（`convergence.ts` 里的 `axisExecutedStack`，是 `axisActionCounts` / `axisUltimateTotal` 的唯一来源）按「块 × 窗」算整数执行次数，窗口数取**上一轮池整数** `threads.prevPoolStunCount ?? countStun`（首轮回落）。
+  - 依据：physical（缺省）下 `projectStunPlanForCounts` 本来就返回 prevPool ⇒ 零差；锁定下池已被 CC-300 钉到 countStun ⇒ 零差。只有 off / floor / round / ceil（遗留 / 实验投影）改变，且改后与雨果行、伤害侧同源——这是「同一物理量一份实现」，不是新口径。
+  - 否决方案 (b)：让雨果改读计数通道——off 下回到计划实数，坑36（0.82→0）复现。
+- **CC-299**（在 CC-301 上第三次落地）：`CalcRoundResult.axisStack` 新字段，`useResourceCalc.stackTraversalResult` 直读，删除本地 `calcStunAxisStack` 重跑（该重跑用 adjusted rr 闪能 / 喧响 + 池次数，入参与引擎不同源）。
+- **验证**：定向 52 文件（hugo / stunVuln / axis / cinema / difficultyLadder / timeGolden / xixifu / stunPlan / gift）341 绿；wt316 全量 `npm run verify` EXIT=0（4032 passed），golden 零差。verify 基于 44e7b2a0；其后并行 lane arena-B 的 d3443e39 / f16de121 只动 pullPlanner 与文档，与本改动文件不相交。
+- **遗留（默认不做）**：off 下 `axisChainTotal`、`allocateAxisWindows(…, countStun)`（转大块 / 快照 windows）、`axisUltimateNeed` 仍读计划实数，与执行集合（池）不同。off 仅供难度阶梯 G4 与钉 off 的旧测试；除非出现 off 下连携 / 转大与执行集合对不上的实际缺陷，否则不统一（统一会改 G4 数值，却不带来架构收益）。
+- **回退**：`git revert 9629f619`（CC-299 与 CC-301 同一提交；只退 CC-299 时恢复 useResourceCalc 的 calcStunAxisStack 重算并删掉 roundResult 的 axisStack 字段）。
