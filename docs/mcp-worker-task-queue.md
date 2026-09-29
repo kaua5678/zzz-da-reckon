@@ -75,18 +75,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > §2 属于主 lane；并行会话把自己的交接写在这里，互不覆盖。任何 lane 确认本节已过时，可以整节替换成自己的。
 > 开工查现场的方法见提示词第 9 条（`ps` 看 verify / vitest，`git log` 看最近提交时间，`ls -lt /home/kaua/calc-arch`）。
 
-**2026-09-29 arena-B（与主 lane 第 315 轮同时）：收养孤儿 WIP（抽卡规划零价值三态 + 增量成本分母），代码 `d3443e39`，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0 说明 push 失败，先补推）。**
+**2026-09-29 18:10 arena-B 第 2 轮（开工时无并行会话：最近提交 16:43，无 verify 进程）：抽卡规划收入改按版本日历发放，代码 `724f37cf`，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0 说明 push 失败，先补推）。**
 - **做到哪**：
-  1. 主工作区那批 pullPlanner 改动（`src/composables/pullPlanner.ts`、`__tests__/pullPlanner.test.ts`、`src/components/charts/PullPlannerChart.vue`、`src/views/timeCharts/pull-planner-chart.css`、`scripts/check-tokens.mjs` 基线 799→800、`docs/FEATURES_GUIDE.md` 2 行、未跟踪的 `docs/proposals/pull-value-optimization.md`）文件 mtime 停在 12:56–13:23，放了约 3 小时，第 301–315 轮每轮都写「不是本 lane 的，不要 add」，没人认领 ⇒ 判为孤儿（写它的会话已结束）。
-  2. 审查结论：实现与提案 §2.2b / §3.3 一致；页面口径文案的更正（「满配增量 130000」「操作分已剔除」）与 `TIER_COSTS`、`pullPlannerEngine.ts` 头注释一致。改了一处：`cardValuePer10kFilm` 注释写「三种返回 null」，实现只有两种（花了钱但 value=0 时返回 0，这是有意义的读数）——**按实现改注释**，不改行为。两个文件权限 600→644（写它的工具留下的，git 不记录，只是卫生）。
-  3. 验证：隔离 worktree `/home/kaua/calc-arch/wtA-pp`（base `cbf6a8f4` + 上述 7 个文件）`vue-tsc -b` 0；`VITEST_MAX_WORKERS=4 npm run verify` EXIT 0（435 files / 4032 passed / 29 skipped，含 build）；负控：只把 `pullPlanner.ts` 换回 HEAD 版 ⇒ 新增 4 例全红，恢复后绿。主 lane 同时提交的 `fdf54712` / `44e7b2a0` 与这 7 个文件不相交；合入后在主工作区重跑了 check-guards / check-tokens / pullPlanner 测试。
-  4. 提示词改了（`C:\Users\kaua\Desktop\bridge-prompt-arena.md`，备份 `.bak-parallel-lanes-20260929-1550`，md5 `6f99f59f`）：加「wsl_exec 只回尾部」坑 + 现成客户端源码 + 第 9 条「并行会话」。主 lane 交接里记的旧 md5 `2aa1f517` 已过期，这是预期内的。
-- **下一步（抽卡规划线；与 stun 线文件不相交，适合并行 lane 接着做）**：提案 §5.6「三根时轴解耦」第一刀——**菲林收入按版本日历发，不按期日期发**。
-  - 现状（已读码）：`src/composables/pullPlanner.ts:115` `filmGrants()` 每遇到一个**新日期**就发一份 `filmPerVersion`，注释说是「版本边界」，实际是「期边界」。一个版本里若有多个不同日期的期，会发多份；没有期的版本一份不发。**方向（多发还是少发）没量过，先量再改**。
-  - 先量：用默认数据（`src/data/versionTimeline.ts` 的 `VERSION_NODES` + 规划器实际用的 periods）数出「每个版本有几个不同日期的期」，写进提案 §2.2c。
-  - 再改：按 `VERSION_NODES` 把 (上一期, 本期] 之间跨过的版本数 × `filmPerVersion` 发到本期；先写测试（两期之间跨 2 个版本 ⇒ 发 2 份；同版本内第 2 个日期 ⇒ 发 0 份）。这会改规划数值，依据是提案 §2.2c / §5.6 和 `filmEconomy.ts`「每版本免费菲林」的定义，不是实测。
-- **未决项**：提案 §6「完全下位是否作为显式输出标签」仍待用户裁决，现状是页面 hover 文案说明，没加标签。§5.5「角色 / 音擎独立阶梯」工作量大，没开。
-- **回退点**：`git revert` 本次提交（只涉及抽卡规划页和 check-tokens 基线 800→799）；提示词回退 = 用备份覆盖。
+  1. **先量**（上一轮 §2b 下一步）：默认数据规划期轴 44 期、44 个不同日期，1.4 起每版本 2～4 期。旧 `filmGrants` 每遇新日期发一份 `filmPerVersion` ⇒ 几乎每期都发，**收入约为用户口径「每版本 25000」（`filmEconomy.ts:33`，用户 2026-08-28）的 3 倍**。提案 §2.2c 原先猜的方向（「稀疏版本少发」）是反的，已在提案里更正。量法脚本：按 `buildPlannerPeriods` 同口径读 `public/static/boss-presets.json` 的 defense phases、按 phaseId 归期，再对 `VERSION_NODES` 每版本首节点分桶（一次性 node 脚本，没进仓库）。
+  2. **改**：`src/composables/pullPlanner.ts` 新增导出 `versionFilmGrants(periods, versionStartDates, filmPerVersion, startDate)`：第 i 期发放 = (上一边界, 本期] 内跨过的版本开始日个数 × filmPerVersion，首期上一边界 = 起点日期。`PlannerOptions.versionStartDates` **必填**（缺省会静默退回旧的 ×3 口径，CC-179 判据）。`src/composables/pullPlannerEngine.ts` 新增 `plannerVersionStartDates()`（VERSION_NODES 每版本首节点）并传入。这是提案 §5.6「三根时轴」里的收入轴：收入日历现在是规划器的一个显式输入，不再借用期轴。
+  3. **测试**：`pullPlanner.test.ts` 新增 4 例（一版本 3 期只发一份 / 跨 2 版本发 2 份且同日第二期 0 / 首期边界 = 起点 / 端到端银行守恒）。测试夹具 `opts()` 默认 `versionStartDates` = 每 14 天一个，保持旧用例「每期一个新版本」的前提，旧 13 例不改。负控：把 `crossed` 换回旧的「日期变化」逻辑 ⇒ 新 4 例全红，恢复后绿。
+  4. 验证：`vue-tsc -b` 0；pullPlanner + pullPlannerEngine 24 例绿；隔离 worktree `wtA-grants` 全量 verify 见提交说明。**数值影响**：抽卡规划页（Chart 6）的规划结果和 VCG 价值都会变（可用菲林约降到 1/3），属口径修正，依据 = 用户「每版本 25000」+ 同族 `teamTimelineFilm.ts:176` 早就按 `/ PERIODS_PER_VERSION` 摊。没有 golden 覆盖 Chart 6，没跑引擎版全量规划对比（默认参数十秒级、需浏览器 store，性价比低）。
+- **下一步（抽卡规划线，仍与 stun 线文件不相交）**：**购买窗口无上界**。`pullPlanner.ts:243` `nextPurchase` 只查 `date < windowStart`，注释说「窗口无上界…实务上最优规划几乎总在首发当期或紧邻期购买」——这是**没量过的假设**；而页面文案、文件头注释、提案都写「首 UP 窗口唯一可购（复刻不建模）」，实现等于「永久可买」，方向相反（低估首 UP 紧迫性）。
+  - 先量：跑一次引擎版规划（`pullPlannerEngine.test.ts:159` 那个用例的参数即可），统计 `plan.steps[].purchases` 里「购买日期 − windowStart」超过一个卡池节点（约 21 天）的次数。几乎为 0 ⇒ 只改注释，写清「无上界是近似且实测无影响」；不为 0 ⇒ 给 `PlannerCard` 加必填 `windowEnd`（= 下一个 VERSION_NODES 节点日期），`nextPurchase` 查上界，VCG 的禁购写法（`windowStart: '9999-12-31'`）不受影响。
+  - 这是口径向文案靠拢，不是新口径；若量出来影响大，仍按文案做，在提案 §6 记录，回退 = 删上界检查。
+- **未决项**：提案 §6「完全下位是否作为显式输出标签」待用户裁决；§5.5「角色 / 音擎独立阶梯」未开。
+- **回退点**：`git revert 724f37cf`（`versionFilmGrants` 回到旧 `filmGrants`，删 `versionStartDates` 字段与 4 例测试）。
+- 上一轮（arena-B 第 1 轮，与主 lane 第 315 轮同时）：收养孤儿 WIP（抽卡规划零价值三态 + 增量成本分母）`d3443e39`；改提示词（加 wsl_exec 尾截断坑、现成客户端、第 9 条并行会话）。
 
 ## 2. 最近一轮交接（每轮替换本节）
 
