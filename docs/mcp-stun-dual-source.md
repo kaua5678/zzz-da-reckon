@@ -4072,5 +4072,6 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - **硬门控**（引擎 `panelPhases.ts` 也拦，用户强行勾上也不生效）：额外能力（`evalAdditionalAbilityBuffGates`，CC-203）、模块 `teammateBuffGate` 钩子（蕾米埃尔档位、波可娜 C6 互斥，CC-207）。
   - **软门控**（只决定默认勾不勾）：影画等级、拥有者是否在队。`deriveTeammateBuffEnabled` 算默认值，`syncTeammateBuffsFromTeam` 在队伍 / 影画变化时覆盖 `enabled`；引擎 `core/inCombatBuffs.ts#collectInCombatTeamBuffs` 只看 `isTeammateBuffEnabled(buff.id)`，UI `utils/teammateBuffRows.ts` 也不按影画锁定。⇒ 用户可以在队友 C0 时手动勾上它的 C6 buff，引擎照算。
   - **裁决：不改**。依据：① 每次队伍或影画变化，sync 都会把 enabled 覆盖回派生值，只有用户**事后手动**勾选才会出现「影画不足仍生效」，这是显式的用户意图（what-if），不是静默漏算；② 额外能力改成硬门控（CC-203）的原因是它此前连默认值都算错（软门控本身漏），影画没有这个问题；③ 改成硬门控会让手动开关对这类 buff 失效，是 UI 行为变化，没有需求依据。回退 / 重开条件：若出现「存档恢复后影画变低但 buff 仍勾着」之类非用户意图的路径，再把影画纳入硬门控（在 `panelPhases.ts` 与 `evalAdditionalAbilityBuffGates` 同处加一道）。
+- **重开条件核查（同轮完成，结项）**：配置 store **不写 localStorage**（`grep localStorage` 命中的 teamCompare / difficultyCurve 等都不存 `teammateBuffSelections`）；唯一的恢复路径是 `composables/configSnapshot.ts#restoreStore`，它恢复的是同一时刻拍下的 team + selections 一致快照（先 `team.splice` 触发 sync，再整表覆盖回快照），不会出现「影画变低但 buff 仍勾着」。队伍 / 影画变化由 `watch(TEAMMATE_BUFF_INPUT_KEYS, flush: 'sync')` 同步覆盖。⇒ 没有非用户意图的路径，软门控裁决维持。
 - **验证**：vue-tsc 干净；additionalGate.test.ts 18 通过；wt326 `npm run verify` EXIT=0。
 - **回退**：`git revert f37af4de`。

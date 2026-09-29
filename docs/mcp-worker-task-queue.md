@@ -97,12 +97,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 ## 2. 最近一轮交接（每轮替换本节）
 
 **第 326 轮（lane lead-arena-0925c）：CC-311（`f37af4de`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 影画门控加不变量锁（零行为差）；记录并裁决「影画 / 在队只软门控」不改。详见 `docs/mcp-stun-dual-source.md` §24.150。
+- 影画门控加不变量锁（零行为差）；记录并裁决「影画 / 在队只软门控」不改；重开条件（存档恢复路径）已核查，无非用户意图路径，结项。详见 `docs/mcp-stun-dual-source.md` §24.150。
 - 前几轮：325 CC-310（诺姆额外能力漏门控，有数值变化）；324 CC-309；323 CC-308。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
 
 **下一步（直接开工）**：
-1. **存档恢复路径核查**（§24.150 裁决的重开条件）：确认从持久化恢复 `teammateBuffSelections` 后，`syncTeammateBuffsFromTeam` 是否一定会跑（`watch(teammateBuffsLoaded)` 只在数据晚到时触发；若数据先到、存档后恢复，是否有别的 watch 覆盖）。做法：读 `stores/config.ts` 中持久化恢复（grep `teammateBuffSelections` 的赋值点）与 team watch 的源；写 setupHarness 测试：先设 C6 队伍并同步，再模拟恢复一份「C0 但 C6 buff enabled=true」的存档，看同步后 enabled 是否回 false。若不会回 false ⇒ 这是非用户意图路径，按 §24.150 回退条件处理（开 CC 卡）；若会 ⇒ 写结论结项。
+1. **`singleSourced` 队友 buff 的「另一通道」是否真的存在**：`core/inCombatBuffs.ts#collectInCombatTeamBuffs` 过滤掉 `singleSourced === true` 的 buff，理由是「数值由角色模块 / helpers 单通道接入，防双计」。若某条 singleSourced buff 实际**没有**模块通道，它就是零读取（R5 口径，效果完全丢失）。做法：① python 列出 `public/static/teammate-buffs.json` 与 spec teamBuffs 中 `singleSourced: true` 的全部 buff（id、拥有者、effects 的 stat）；② 对每条在 `src/mechanics/agents/<拥有者>.ts` 与 `src/composables/resourceCalc/` 里 grep buff id 或其效果常量 / stat，确认有写入；③ 找不到通道的逐条列出（代码出处 + 影响面），走 CC 卡要求零差或写明依据；全有通道则写结论结项。
 2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
