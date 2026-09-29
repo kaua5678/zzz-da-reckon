@@ -212,23 +212,6 @@ export function createRunCalcRound(deps: {
     // 弹刀注入槽位 0（主C，弹刀喧响经伴随覆盖全队），轮间经 prevDecibelParry 线程收敛。
     const decibelParryActive = guaranteeUltimate && interactionTopUpSlot < 0
 
-    /** 轴内某槽位捏的块次数（moveId → 总次数 = 块数 × 窗口数；赠品连携块不计） */
-    const computeAxisActionCountsFor = (slot: number): Record<string, number> => {
-      const out: Record<string, number> = {}
-      if (!axisActive) return out
-      // CC-142：块计数属计数通道 ⇒ 窗口数读 countStun（off 下 ≡ stunCount）
-      const winAlloc = allocateAxisWindows(resolvedAxes, countStun)
-      resolvedAxes.forEach((axis, ai) => {
-        const wins = winAlloc[ai] ?? 0
-        for (const act of axis.actions) {
-          if (act.slot !== slot) continue
-          if (act.sourceTag === 'gift') continue // 赠品连携块是标记（不耗闪能/不占次数），不计入轴内强特
-          out[act.moveId] = (out[act.moveId] ?? 0) + act.count * wins
-        }
-      })
-      return out
-    }
-
     /** 轴内某槽位终结技块总次数（× 窗口数），与 buildStackAxes 的终结技判定同口径（英文名含 ultimate 且非 chain attack） */
     const axisUltimateNeed = (axes: StunAxis[], stunCountN: number, slot: number): number => {
       const winAlloc = allocateAxisWindows(axes, stunCountN)
@@ -249,10 +232,8 @@ export function createRunCalcRound(deps: {
     // 有轴时：失衡送的连携次数从轴里连携块反推（chainCountPerStun 仅无轴兜底）。
     // 多条轴连携数可能不同（爆发轴 1 连携 / 末尾爆发轴 2 连携），须按各轴分配的窗口数加权求和，不能简单相加。
     const axisChainTotal: Record<number, number> = {}
-    /** 轴内终结技块总次数（× 窗口数，与 axisUltimateNeed 同口径）：通用注入 cfg.axisUltimateTotal 供模块消费（希希芙影画2 等） */
-    const axisUltimateTotal: Record<number, number> = {}
     if (axisActive) {
-      // CC-142：轴内连携 / 终结技总次数属计数通道 ⇒ 窗口数读 countStun（off 下 ≡ stunCount）。
+      // CC-142：轴内连携次数属计数通道 ⇒ 窗口数读 countStun（off 下 ≡ stunCount）。
       // physical 模式下旧写法按计划值分窗：auto-1531-1481-1451 计划 0 ⇒ 0 窗 ⇒ 轴声明的连携一次也不给，而池物理 3 次。
       const winAlloc = allocateAxisWindows(resolvedAxes, countStun)
       resolvedAxes.forEach((axis, ai) => {
@@ -264,9 +245,6 @@ export function createRunCalcRound(deps: {
           const en = (findMoveById(skills, act.moveId)?.name?.en ?? '').toLowerCase()
           if (en.includes('chain attack') && !en.includes('ultimate')) {
             axisChainTotal[act.slot] = (axisChainTotal[act.slot] ?? 0) + act.count * wins
-          }
-          if (en.includes('ultimate') && !en.includes('chain attack')) {
-            axisUltimateTotal[act.slot] = (axisUltimateTotal[act.slot] ?? 0) + act.count * wins
           }
         }
       })
@@ -390,16 +368,23 @@ export function createRunCalcRound(deps: {
     // （用户 2026-09-10 裁决「同一物理量只能有一份实现」）。资源用**上一轮**收敛值（与其它线程
     // 同款滞后注入）；首轮为空 = 门控放行全部，等价旧的「块数 × 窗口数」口径。
     let axisExecutedStack: ReturnType<typeof calcStunAxisStack> | null = null
+    /**
+     * 轴内终结技块实际执行总次数：通用注入 cfg.axisUltimateTotal 供模块消费（希希芙影画2 等）。
+     * CC-298：只由执行集合产出。原先另有一份「块数 × countStun 窗口」的预算循环，但 axisActive 时恒被下方覆盖、
+     * 非轴时为空 ⇒ 死代码，已删（`axisActionCounts` 的 computeAxisActionCountsFor 同理）。
+     */
+    const axisUltimateTotal: Record<number, number> = {}
     if (axisActive) {
       axisExecutedStack = calcStunAxisStack({
         axes: buildStackAxes(resolvedAxes),
-        stunCount,
+        // CC-298：执行集合 = axisActionCounts / axisUltimateTotal 的来源，属计数通道（同 CC-142 的 axisChainTotal）
+        // ⇒ 窗口数读 countStun。旧读计划实数 stunCount：physical 下 1371 队计划 0.655 ⇒ 1 窗，而物化行 / 池按物理 3 窗。
+        stunCount: countStun,
         windowDuration: computeWindowDuration(),
         energyBySlot: prevEnergyBySlot ?? {},
         decibelBySlot: prevDecibelRegenBySlot ?? {},
       })
-      // 终结技总次数（供希希芙影画2 等）：按实际执行集合重算（含赠送块，与旧口径一致）
-      for (const k of Object.keys(axisUltimateTotal)) delete axisUltimateTotal[Number(k)]
+      // 终结技总次数（供希希芙影画2 等）：按实际执行集合计（含赠送块）
       const ultMoveOfSlot = new Map<number, string>()
       for (const c of base.characters) ultMoveOfSlot.set(c.slot, c.ultimateMoveId ?? '')
       for (const v of Object.values(axisExecutedStack.executed)) {
@@ -418,7 +403,8 @@ export function createRunCalcRound(deps: {
         m[v.moveId] = (m[v.moveId] ?? 0) + v.count
       }
     } else {
-      for (const c of base.characters) axisActionCountsBySlot[c.slot] = computeAxisActionCountsFor(c.slot)
+      // 非轴：无轴内块（原 computeAxisActionCountsFor 在 !axisActive 时恒返回 {}）
+      for (const c of base.characters) axisActionCountsBySlot[c.slot] = {}
     }
     const characters = base.characters.map(cfg => {
       // 轴模式：连携总次数完全由轴决定（未列连携块的槽位 = 0 次，轴即最终次数）
