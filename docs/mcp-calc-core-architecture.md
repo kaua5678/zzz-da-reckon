@@ -421,6 +421,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-248 | done | 7c8567c9 | specs / data 运行时闭包锁（specsRuntimeDeps、dataRuntimeDeps，白名单仅 logicEditor/fusion）；specs/verify.ts 迁至 src/test/specVerify.ts，specs 不再依赖 core；ARCHITECTURE 分层规则表（§24.92） |
 | CC-249 | done | 9c037acf | 测试态 / 生产态行规则一致性锁 productionRuleParity.test（拥有 spec 默认规则的角色整队读数：空规则 ≡ 默认规则，角色集合动态推导）；§24.85 裁决：harness 不全局加载默认规则（§24.93） |
 | CC-250 | done | 60d35e7f | spec 事件 multiplierRowId 端到端生效：buildSpecEventExecutions 缺省读 cfg.mechanicRowValues（删 roxy / claret / nekomata / specs 4 份只放行 damage 的 lambda），非 damage 行强制倍率覆盖；锁 specEventRowId.test（§24.94） |
+| CC-251 | done | 7ed14dfc | 分析器现场快照 / 恢复单一来源 composables/configSnapshot.ts（teamCompare / teamTimelineStore / positionCompare 3 份归一）；修复恢复后用户手动队友 buff 开关被 sync 改回；锁 configSnapshot.test（§24.95） |
 | CC-156 | ✅ done e542a005 | lead-arena-0925c | 原病例（归档 72db6dc3）已不复现（池 4）。一般情形「弹刀预算用满仍未达保底」原先静默降级，改为如实提示：`core/parrySplit.ts#guaranteeStunShortfall`（按最终池计数）→ `useResourceCalc.guaranteeStunShortfallResult` → 页面在「保底4失衡」旁提示；同时删除零读取的 `reached`，并把目标值 4 收为 `GUARANTEE_STUN_TARGET`。数值零变化。stun-dual-source §24.12 |
 | R5 | **进行中（排最前）**：第 1 刀粗筛 done | 第 1 刀随第 119 轮文档提交 | 用户需求 R5：规格-实现对账。逐个查 `catalog.json` 字段，引擎读不读、怎么读、读得对不对；优先查「零读取」和「读了但语义不同」两类；产出差异清单 | `docs/REQUIREMENTS.md` R5 · `docs/mcp-r5-spec-impl-reconciliation.md` |
 | R6 | **进行中**：第 1 步 v1 done（`docs/ARCHITECTURE-OVERVIEW.md`），第 2 步待做 | 第 121 轮文档提交 | 用户需求 R6：先写架构全景文档，再出三类重构机会清单（冗余可简化 / 可归一 / 可结构化），按清单做、不按计数做；判据是工具不是目标 | `docs/REQUIREMENTS.md` R6 · `docs/ARCHITECTURE-OVERVIEW.md` |

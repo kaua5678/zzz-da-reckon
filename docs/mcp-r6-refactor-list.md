@@ -421,3 +421,4 @@
 | 268 | specs → core 越界（verify.ts）；specs / data 分层无锁 | CC-248（`7c8567c9`）verify.ts 迁至 src/test/specVerify.ts；specs / data 闭包锁；ARCHITECTURE 分层规则表（§24.92） | 口头分层规则已全部落成锁（7 条对应 7 个锁）；展示层规则确认已有判据 7 覆盖 |
 | 269 | mechanics 闭包（测量）；测试态 / 生产态行规则盲区 | mechanics 无越界、不加锁；CC-249（`9c037acf`）一致性锁（§24.93） | 「涉及 getRowValue 须在默认规则下补验」由人工纪律转为 verify 自动检查 |
 | 270 | spec 声明式字段 multiplierRowId 只对 damage 生效（4 份重复闸 + enrich 回填 damage 行） | CC-250（`60d35e7f`）缺省读取器归一，非 damage 行强制覆盖（§24.94） | §24.87 ④ 未决项结项 |
+| 271 | 重跑跨文件同形扫描（dupfn.mjs，15 组） | 快照 / 恢复协议 3 份归一并修复 buff 开关泄漏（CC-251，`7ed14dfc`）；clamp / whole / settingOf / 防御包装 / 签名截断不做；combatTimeOf 3 份、findMoveByEnglishName 2 份留作下一步（§24.95） | 新增 agents 私有 helper 时重跑 dupfn.mjs |

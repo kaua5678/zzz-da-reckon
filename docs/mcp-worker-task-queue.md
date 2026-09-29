@@ -71,25 +71,29 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 270 轮（lane lead-arena-0925c）：CC-250（60d35e7f）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.94。要点：spec 事件 `multiplierRowId` 端到端生效；`buildSpecEventExecutions` 缺省读 `cfg.mechanicRowValues`，调用方**不要再传** getRowValue lambda（源码锁 `specs/__tests__/specEventRowId.test.ts`）。§24.87 ④ 结项。
-- 前几轮：269 CC-249（生产态规则一致性锁）；268 CC-248（specs / data 闭包锁）；267 CC-246/247。
+**第 271 轮（lane lead-arena-0925c）：CC-251（7ed14dfc）完成，文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.95。要点：分析器现场快照 / 恢复协议收成 `src/composables/configSnapshot.ts`（唯一实现，源码锁拦新副本）；修复跑分析器后主页队友 buff 手动开关被改回的问题。新写分析器一律 `snapshotStore` + `try/finally restoreStore`，从 configSnapshot 导入。
+- 前几轮：270 CC-250（multiplierRowId）；269 CC-249（生产态规则一致性锁）；268 CC-248（specs / data 闭包锁）。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区干净（只有别人未跟踪的 `docs/devlog/`，不要 add）。
 
-**分层锁**：见 ARCHITECTURE.md §0「分层规则 → 锁」表。分层线已收口。
-
-**下一步（直接开工）**：行规则 / spec 取值线的未决项已清空，回到 R6 清单（`docs/mcp-r6-refactor-list.md`）。
-1. 先读 r6 清单的「可归一 / 可结构化」两类，列出状态不是 done / 不做的条目。每条先 grep 卡表（`docs/mcp-calc-core-architecture.md`）与本文件「已否决方向」，排除已裁决的。
-2. 从剩下的条目里挑**影响面最大**的一项，按「先测量、再判断值不值得」执行。写 CC-251。
-3. 若清单已无可做项：用一次性探针扫 `src/mechanics/agents/*.ts` 里跨文件重复 ≥3 份的同形 lambda 或辅助函数（本轮 4 份 getRowValue lambda 就是这样发现的）。**同形不等于同义**：逐个比对 `?.`、`?? []`、默认值、Number() 包装，以及函数名里的 raw 等意图信号（CC-237 教训）。
+**下一步（直接开工，两件都小，可在同一轮先后做，各自提交）**：
+1. **CC-252 `combatTimeOf` 概念归一**：lighter.ts:226 / rina.ts:153 / yaojiayin.ts:170 三份逐字相同的 `minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)`。
+   - 在 `src/core/effectiveTime.ts` 加 `effectiveCombatTime(state: { frontlineTime?: number; backstageTime?: number }, cfg: TimeBasisCfg)`，写头注释说明「前台 + 后台 = 全战斗时间，扣无敌」；
+   - 三个模块删掉私有函数，改为 import，调用点不动（可以 `import { effectiveCombatTime as combatTimeOf }`）；
+   - 先 grep 全 src 看有没有别的写法在算同一个量（例如 `frontlineTime + backstageTime` 未扣无敌的），逐个判断口径是否本来就不同，**不同的不并**；
+   - 加源码锁：mechanics/agents 非注释行不许出现 `frontlineTime ?? 0) + (state.backstageTime`。纯重构，零差，靠 verify。
+2. **CC-253 `findMoveByEnglishName` 下沉 data**：`resourceCalc/skillRows.ts:80` 与 `mechanics/agents/velina.ts:36` 逐字相同。
+   - 移到 `src/data/moveTableQueries.ts`（findMoveById 旁边）；skillRows 与 velina 都改为从 data 导入；
+   - 如果 skillRows 的导出还有其他调用方，全部改为直接从 data 导入，不留壳（先 grep `findMoveByEnglishName`）。
+   - 与 CC-236 同型，零差。
+3. 两件做完后：dupfn 扫描线结项（剩下的全是已裁决的不做项）。接下来换个维度扫：用 importClosure 或 grep 找「同一个 store 字段被多个分析器各自写入 / 恢复」之外的**跨分析器协议**（例如 `applyTeamToStore` 在 teamCompare / teamTimelineStore / positionCompare 是否也有 3 份，语义是否不同）。**先测量，再判断**。
 
 **已知坑**：
-- 命名带 raw 的函数是意图信号；
-- 整队读数的生产默认规则一致性由 productionRuleParity 自动覆盖；新增默认规则时仍要手工补验；
-- `mechanicRowValues` 按 moveId 存，同一 moveId 被多个事件以不同行引用时会冲突（注释已写明，现存无此情形）；
+- 分析器换队会经 team watcher（flush:'sync'）同步改写 `teammateBuffSelections`；任何「恢复现场」逻辑都必须在 team 之后恢复 buff 选择（configSnapshot 头注释）；
+- 命名带 raw 的函数是意图信号；新增默认规则时仍要手工补验；
 - 上传多个文件时逐行调用 `up.sh`，**不要在 bash for 循环里拼 `${...}`**；
-- 测试里调用模块 buildCharConfig 要传 `team: [], slot: 0`；模块级规则状态要 `afterEach(() => setActiveRowFusionRules([]))`；新测试先单独跑 `npx vue-tsc -b`；
-- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；反例用「先上传测试、跑红、再打补丁」或临时 sed 加 `git checkout <文件>`。
+- 删除一个模块里的导出函数后，要 grep 该模块**自身**是否还在内部调用它（本轮 teamCompare 自己也用 snapshotStore，vue-tsc 报错后才补上）；
+- 后台 verify 要 `setsid ./bg.sh … & sleep 2`；新文件先 `git add` 再 verify；反例可以「测试导入临时指向旧实现、跑红、删掉临时文件」。
 
 **未决项**：
 - 1511 南宫羽额外能力无触发条件（`AA_OWNER_EXEMPT`）；

@@ -2942,3 +2942,35 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 验证：相关 4 个测试文件 15 passed；vue-tsc 干净；v270 verify EXIT=0（3993 passed | 29 skipped）。
 - 回退点：revert 60d35e7f。
 - 值不值得：声明式接口从「文档说能用、实际读 0」变为真正通用；4 份重复实现归一为 1 份缺省实现。不是降计数。
+
+### 24.95 第 271 轮：重跑跨文件同形扫描；CC-251 分析器现场快照 / 恢复单一来源并修复用户 buff 开关泄漏（7ed14dfc）
+
+**① 扫描**（重跑 `/home/kaua/calc-arch/dupfn.mjs`，不进 git；第 258 轮 29 组 → 现 15 组）逐组裁决：
+- `whole` 14 份、`clampRatio` / `clamp01` 16 份：沿用 §24.82 ④「纯算术，不做」。
+- 签名截断误匹配（多行签名只取到前几行）：panelPhases / hpSourceBreakdown 等 7 个、anomalyPanels 等 4 个、banyue / corin / specPanelBuffs / yixuan 的 compute* 4 个、banyue / yixuan Blocks、resolveMechanicSettings / promoteHugCountsOf、curtainInfoOf / chainGiftRowSpec：不是真重复。
+- `calcDefenseMultiplier`：转调 `defenseMultiplierDetail` 的包装（CC-219 已收），误报。
+- `settingOf`（corin / sigrid、phoenix / severian）：`cfgMechanicSetting` 的薄包装（CC-235 已收协议），不做。
+- **`snapshotStore` / `restoreStore`（真实重复 + 缺陷）⇒ CC-251**，见 ②。
+- **`combatTimeOf` 3 份**（lighter:226 / rina:153 / yaojiayin:170，逐字相同：`minusInvincibleTime(frontlineTime + backstageTime, cfg)`）：这是「全战斗有效时间」这个**概念**的副本，与 CC-218 收的窗口时长同类 ⇒ 列为下一步 1。
+- **`findMoveByEnglishName` 2 份**（resourceCalc/skillRows.ts:80、mechanics/agents/velina.ts:36，逐字相同）：与 CC-236 findMoveById 同型（模块不能 import composables，所以抄了一份）⇒ 列为下一步 2。
+
+**② CC-251**：
+- **问题**：分析器「进函数先快照 configStore、finally 里恢复」的协议有 3 份副本：
+  - `teamCompare.ts`：队伍对比 / 难度曲线 / 自由对比在用，TeamComparePage 还拿它当会话缓存键；
+  - `teamTimelineStore.ts`：时间线 / 胶片在用；
+  - `positionCompare.ts`：私有副本。
+  **只有 positionCompare 快照了 `teammateBuffSelections`**。分析器换队时，`setAgent` 与 team watcher（flush:'sync'）会调 `syncTeammateBuffsFromTeam`，按派生结果改写 enabled；restore 的 `team.splice` 再触发一次 sync ⇒ 用户**手动**关掉的「派生开启」队友 buff 被改回开启。
+- **实测**：harness 队伍 1191 / 1211 / 1311，手动关掉一个派生开启的 buff，覆盖率设为 37。换队后用 teamCompare 版恢复：`{ enabled: true, coverage: 37 }`，期望是 false ⇒ **用户可见的缺陷**：跑一次队伍对比 / 时间线 / 难度曲线 / 自由对比，主页的队友 buff 开关就被悄悄改掉。
+- **改动**：
+  - 新建 `src/composables/configSnapshot.ts`（`StoreSnapshot`、`snapshotStore`、`restoreStore`），语义取 positionCompare 的完整版：buff 选择在 team **之后**整表覆盖回快照，头注释写明顺序原因与快照范围；
+  - 删除 3 份副本；6 个导入方（teamCompare 内部、difficultyCurve、freeCompare/engine、teamTimeline、teamTimelineFilm、positionCompare）加上 TeamComparePage.vue 直接从新模块导入，不留 re-export 壳；FreeComparePage 与 engine 的注释同步更新。
+  - 净删约 80 行。
+- **副作用（有意）**：TeamComparePage 的会话缓存键现在包含 buff 选择 ⇒ 用户改了 buff 开关后不会再命中旧结果。只会多出缓存未命中，不会读错。
+- **锁** `src/composables/__tests__/configSnapshot.test.ts`：
+  - 行为：换队后恢复，队伍与手动 buff 开关、覆盖率逐字节回到原样；
+  - 源码：`function snapshotStore/restoreStore` 只能在 configSnapshot.ts 定义。
+  - 反例：导入指向修复前的 teamCompare 版时两条都红，行为那条报 `enabled: true`。
+- **未纳入**：`components/ImpactChart.vue:192/385` 只克隆 team，是影响图自己的局部换算，不是分析器现场协议。
+- 值不值得：一条跨 6 个分析器的协议从 3 份（其中 2 份有缺陷）归一为 1 份，同时修复一个用户可见的状态泄漏。不是降计数。
+- 验证：新测试 2 passed；vue-tsc 干净（首次漏了 teamCompare 自身的值导入，已补）；v271 verify EXIT=0（3995 passed | 29 skipped）。
+- 回退点：revert 7ed14dfc。
