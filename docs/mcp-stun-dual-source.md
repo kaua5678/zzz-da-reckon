@@ -3662,3 +3662,21 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 回退：revert 94817ea8。
 
 **jscpd 现状**：ts + vue、min-lines 8 下，除上面「不做」的一处外已清零。之后只在大改后重扫，不再作为主队列。
+
+### 24.123 第 299 轮：角色模块「只写不读」的 cfg 键 ×37 清除 + 锁（CC-285，7a783dd5）
+
+- **来源**：§24.122 交接「普查物化钩子写 cfg、装配期读回的缓存」。扫描脚本 `k229/scan299.py` 按所在钩子归类每处 `record.X =` / `(cfg as any).X =`，再 grep 读者。
+- **先弄清机制**（`core/resource/rowBuild.ts#materializeRows` 的头注释与代码）：
+  - 试探测量走 `materializeRows`，调用前快照 cfg、调用后恢复，钩子里写的 cfg 只在同一次调用内可见；
+  - 装配（`assembleSlot` → `buildExecutionsWithPhase`）不做快照，写入会一直留到同槽的 `buildResourceResult`，CC-283 橘福福缓存就是靠这条路生效的；
+  - 新增键会让 `materializeRows` 走慢分支。注释实测：13 个模块每轮新增键，约占 materializeRows 自耗时的 1/3。
+- **发现**：普查的主体不是「写了又被装配期读回的缓存」，而是**根本没人读的 cfg 写入**。共 37 个键，分两批：
+  - **第 1 批（9 个，物化钩子 / 装配期写）**：`lucyCheer`、`lucyBoarCount`、`lighterMorale` ×2 处、`lighterFlameShockCount`、`rinaBangboo` ×2、`yaojiayinTremolo` ×2、`anbyBasicChargedHits`、`anbyBasicHitTotal`、`nangongBeatTotal`。结果对象里另有同名字段，真正的读者读的是 `result.X`，cfg 上那份是死写。
+  - **第 2 批（28 个，锁扫出来的，多数在 buildCharConfig）**：aire / corin / piper / nicole / soukaku / grace 的 C2 或 C4 触发计数（回能已并进 `initialEnergyGift`，计数本身没人读）；ben `benAtkFromDef`；claret 三个 perSec 初值；lighter 四个 cinema 派生量；lucy `lucyIsLucy`（注释说 applyLucyTeamEnergyFlags 读，实际不读）；phoenix `phoenixEx2Meta` / `phoenixChainMeta`；roxy 七个 `*MoveId`；starlightBilly `billyAttackData1`；yaojiayin `TeamHasAnomaly` / `TeamHasStun`；yeshuguang `yeshuguangOutsideSword`（materializePhaseState 写）。
+  - 右侧表达式都是纯函数（findMoveById、metaOf、compute*、算术），删除不会丢副作用。唯一的「读者」是 piper.test 对 `c4.piperC4AnomalyTriggers` 的断言，已改为只断言回能总量（总量里已含 3 次触发）。
+- **为什么值得做**：死写让读代码的人以为有下游消费者（例如 lucy 的注释就指向一个不存在的读者），还给行物化的快照 / 恢复增加开销。删掉后，cfg 上剩下的模块写入都有读者，谁写谁读可以直接追溯。
+- **锁**：`src/mechanics/__tests__/cfgWriteOnlyKeys.test.ts`。扫描 `src/mechanics/agents/*.ts` 里的 `record.X =` / `(cfg as any).X =` / `cfg.X =`，要求每个 X 在 src（ts / vue / json，不含测试）里至少有一处读：`.X` 后面不是赋值，或者出现字符串 `'X'` / `"X"`（spec json 的 countField、方括号访问）。判定是宽口径，宁可漏报也不误报。反例：删前跑是红的，报出上面 28 个键。
+- **范围外（记录，未改）**：`lighter.ts` 里 `(panel as any).lighterC1FinisherDmgBonus = …` 是写在 panel 上的，同样没有读者；panel 写入不在本锁的扫描范围内。
+- **真正的「写了又被装配期读回」缓存**（普查结果，留作下一步）：`phoenixChargedCount`（phoenix.ts :370 / :385 / :447 读 record，而同名纯函数 `phoenixChargedCount(cfg, state, executions)` 已存在）、`promiaAttackFrostGain`、`qingyiGenericRowsTime`、`nekomataHitPurrGain`、`nangongMinePairs`、`xideAttackSteel`、`yixuanExChain`（装配期 `record.yixuanExChain ?? resolveYixuanChain(...)`，与 CC-283 前的橘福福同形）、`yixuanShufaUltCount`、`billyChainHp`、`billyChainCount`、`billyFullThrottleCount`、`panYinhuC2EnergyTotal`（读上一轮值做差量累加，属于「幂等回写」模式，不是缓存）。被 spec json countField 读的键（`jufufuSpinCount`、`sigridChuqiangHits`、`billy*Determination`、`billyCoolWheelieCount`、`yixuanFlashEnergySpent`、`yixuanXuanmoGain`）是 spec 接口，保留。
+- **影响**：计算零差（verify 全绿，timeGolden 未动）。
+- **回退**：revert 7a783dd5。

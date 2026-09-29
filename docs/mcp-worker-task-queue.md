@@ -71,24 +71,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 298 轮（lane lead-arena-0925c）：CC-283（d3fbccc2）与 CC-284（94817ea8）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.122。jscpd 同文件克隆已收尾（只剩一处有理由的「不做」）。
-- 前几轮：297 CC-282；296 CC-281；295 CC-280；294 CC-279。
+**第 299 轮（lane lead-arena-0925c）：CC-285（7a783dd5）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.123：删除 37 个只写不读的 cfg 键，新增锁 `src/mechanics/__tests__/cfgWriteOnlyKeys.test.ts`。计算零差。
+- 前几轮：298 CC-283 / 284；297 CC-282；296 CC-281；295 CC-280。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
-**下一步（直接开工）：普查「物化钩子写 cfg、装配期读回」的缓存**（CC-283 在橘福福身上发现的模式；这类缓存会让回退分支与主路径分叉）。
-1. 候选清单：`git grep -nE '\(cfg as any\)\.\w+ = |record\.\w+ = ' src/mechanics/agents`，只看 `buildExecutions` / `patchExecutions` 里写、`buildResourceResult` 里读的键。露西的 `record.lucyCheer` / `lucyBoarCount` 就是候选：lucy.ts `buildExecutions` 写，`buildResourceResult` 已经用 lucyCheerOf 重算，要查还有谁读这两个键。
-2. 每个候选先 grep 读者：
-   - 只有本模块装配期读 ⇒ 改为用 `preModuleExecutions` / `prePatchExecutions` 重算，并删除写回（模式见 luciaElowen.ts `buildLuciaResourceResult` 与 specPanelBuffs.ts `jufufuCycleOf`）；
-   - 被 spec json 的 `countField` 或其它模块读 ⇒ 保留，写明理由。
-3. 验收：verify 全绿，且 timeGolden 零差（timeGolden 基线覆盖到的角色才算有保护；没覆盖的写临时探针对比改前改后 teamTotalDamage，用完即删）。
+**下一步（直接开工）：把「写了又被装配期读回」的 cfg 缓存逐个改成纯函数重算**（清单见 §24.123 末尾）。建议顺序（先易后难）：
+1. `phoenix.ts` 的 `phoenixChargedCount`：已有同名纯函数 `phoenixChargedCount(cfg, state, executions)`（约 :175），装配期 :370 / :385 / :447 改为用 `preModuleExecutions` 调它，再删除 `record.phoenixChargedCount =` 写入。注意 :370 / :385 所在函数拿到的入参里是否有 preModuleExecutions；没有的话先看调用链。
+2. `yixuan.ts` 的 `yixuanExChain`：装配期 `record.yixuanExChain ?? resolveYixuanChain(cfg, state.exSpecialCount)`，与 CC-283 前的橘福福同形，先确认 buildExecutions 写入的值是否就是 `resolveYixuanChain` 的结果。
+3. `promiaAttackFrostGain`、`qingyiGenericRowsTime`、`nekomataHitPurrGain`、`xideAttackSteel`：各自先找写入处的计算式，看能否用 `preModuleExecutions` / `prePatchExecutions` 重算。
+- 模式参考：`luciaElowen.ts#buildLuciaResourceResult`、`specPanelBuffs.ts#jufufuCycleOf`。
+- 验收：verify 全绿，且 timeGolden 零差（看 `timeGolden.baseline.json` 里有没有该角色；没有的写临时探针 `src/composables/__tests__/tmp_*.test.ts`，比较改前改后的 teamTotalDamage，用完即删）。
+- **不要动**：被 spec json countField 读的键（jufufuSpinCount、sigridChuqiangHits、billy*、yixuanFlashEnergySpent、yixuanXuanmoGain），它们是 spec 接口；`panYinhuC2EnergyTotal` / `corinC4EnergyTotal` 这类「减去上次值再加新值」属于幂等回写，不是缓存。
 
 **已知坑**：
-- `cfg.jufufuSpinCount` 被 `specs/agents/1391.json` 的 countField 读，不能删；
-- freeCompare 指标新增 perSlot 读数用 `perCharacter` / `perSlotArray`，别再手写循环；
-- 模板改写用「解析、逐字重建、assert 相等、再写盘」证明等价（p297.py）；
-- 新增的模块内 helper 不要 export，除非有外部读者（避免死导出）；
+- `materializeRows` 会快照并恢复 cfg（钩子写入只在同一次调用内可见）；装配路径不快照，写入会一直留到 `buildResourceResult`。改缓存前先分清读者走的是哪条路径；
+- 新增模块 cfg 写入必须有读者，否则 cfgWriteOnlyKeys 会变红；
+- 新增的模块内 helper 不要 export，除非有外部读者；
 - 分析器改 store 前后一律 `snapshotStore` / `restoreStore`；量 HEAD 的测试（T8）提交前 verify 覆盖不到；
+- verify 跑的时候不要往工作区写文件（本轮在 verify 中途上传了新测试，被 vue-tsc 扫到，只好重跑）；
 - GitHub 偶尔不通：push 超时就记进交接；杀进程只 kill 具体 pid；后台 verify 用 `setsid ./bg.sh … & sleep 2`；上传一律用 `bash /home/user/mcp-tools/up.sh …`。
 
 **未决项**（依赖游戏事实或审美，不开卡）：lumiflux 属性标签颜色（§24.120）；1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。
