@@ -4262,3 +4262,25 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **timeFillRatchet 基线**：同一队 `auto-1181-1511-1411` 的留白从 0.4s 变为 0（改善方向，归因本卡），已用 `TIME_RATCHET_UPDATE=1` 重生成；其余队零变化。
 - **验证**：basicSegment.test 新增 2 例（1511 有兜底 = 基准段秒均、无兜底 = 0；「#N 段全部 > 200%」的名单 == [1511]），共 6 例；vue-tsc 干净；全量 verify EXIT=0。
 - **回退**：`git revert 2f745db0`（golden 基线一起回退）。
+
+### 24.162 第 338 轮：启发式漏读反向体检（全部 62 个角色的 buildCharConfig，无新缺陷）
+
+- **动机**：CC-319/320/322 同属一类问题：按命名或阈值的启发式在个别角色上静默失效，产出 0。本轮反过来普查结果，而不是逐条审启发式。
+- **方法**：harness 测试中，每个角色单独进 slot 0，套用推荐配装后调 `buildCharConfig(0, config, catalog)`，导出 cfg 的全部标量字段（探针 `/home/user/mcp-tools/zzProbe338.test.ts`，在临时 worktree 中运行，不提交）。python（`an338.py`）筛选「≥80% 的角色非 0，且 1–8 个角色为 0 或缺失」的字段。62 个角色装配零异常。
+- **结果**：10 个字段离群，逐项到 catalog 或模块核对：
+
+| 字段 | 离群角色 | 归类 |
+|---|---|---|
+| basicAttackRegenPerSec | 1611 | 数据：普攻段 energy 全为 0（CC-322 测量时已见） |
+| defensiveAssistMoveId / ActionTime | 1081 1181 1211 1241 1311 1351 | 数据：assist 分类只有快速支援和支援突击，没有 Defensive Assist |
+| defensiveAssistActionTime | 1441 | 已登记的缺口：`#1` 段时长为 0（moveLookup:269 注释；rowBuild:469 改用 moveId 分派） |
+| dodgeCounterActionTime | 1311 / 1531 | 1311 数据时长为 null；1531 由模块有意禁用通用闪反（starlightBilly:46） |
+| exSpecialMoveId / ActionTime / Decibel / EnergyConsume | 1311 | 数据：没有 EX 招式 |
+| exSpecialActionTime | 1541 | 模块：首个 EX 1541009 时长为 0，promia 模块单独生成绝裁 1541014 |
+| exSpecialEnergyConsume | 1551 1611 | 数据：强特没有 energyCost（走替代资源） |
+| timeWeight | 1451 | 模块有意为之：luciaElowen:114「不打通用平A」 |
+| ultimateActionTime | 1451 | **存疑，不做**，见下 |
+
+- **1451 卢西娅终结技**：catalog 中 1451024「Ultimate #1」actionTime 为 null，1451017「#2」为 1.767s；findUltimate 取 #1，因此终结技前台时长为 0，#2 段也没有计入。nanoka full/1451.json 把两段列为独立 param（Prop 1001/1002 各一条），**没有** `{Skill:A}+{Skill:B}` 编码。moveFusions 规定「#N 后缀不作融合判据」（星见雅飞雪就是反例），R5 又要求不顺手改数值 ⇒ 证据不足，不登记。重开条件见 r6 第 338 行。
+- **结论**：启发式漏读这条线收口。字段级零值已全部有归属，不再逐条扫描。
+- **回退**：本轮只改文档，没有代码改动。

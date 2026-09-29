@@ -96,15 +96,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 337 轮（lane lead-arena-0925c）：CC-322（`2f745db0`，数值卡）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 338 轮（lane lead-arena-0925c）：只改文档；反向体检没有发现新缺陷。docs 提交已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 「>200% 强化平A」启发式实测有效，保留；它把 1511 南宫羽的普通段全部排除，导致平A回复为 0，现改为走基准段兜底。golden 只动了含 1511 的 15 例，逐条解释见 `docs/mcp-stun-dual-source.md` §24.161。
-- 平A秒均回复这条线（CC-320 / 322）收口：兜底条件已覆盖「没有 #N 段」和「#N 段被全部排除」两种情况，两份名单都有测试锁。
+- 对全部 62 个角色单人跑了 `buildCharConfig`。10 个离群字段都归到三类：数据本来就没有、模块有意为之、已登记的缺口。唯一存疑的是 1451 终结技 #1 时长为 null、#2 段未计入：原文没有融合编码，不做（`docs/mcp-stun-dual-source.md` §24.162，r6 第 338 行写了重开条件）。
+- 启发式漏读这条线（CC-319/320/322 + 本次体检）收口，**不要再扫**。
 - REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
 
 **下一步（直接开工）**：
 1. **`docs/mcp-r6-refactor-list.md` §8 表逐行复核「重开条件」**。有满足的就做；都不满足就追加「第 N 轮复核：无满足项」，按判据自选新题，先登记要查什么。有日期的条件：坑 25 到期日 2026-10-31。
-2. 自选方向建议（未登记）：CC-319/320/322 都是「按命名或阈值的启发式，对个别角色静默失效，产出 0」。可以做一次反向体检：对 catalog 全部角色跑一遍 `buildCharConfig`（harness，见 `/home/user/mcp-tools/zzProbe331.test.ts` 模板），列出结果为 0 或缺失的通用字段（`basicAttackRegenPerSec`、`basicAttackDecibelPerSec`、`basicBenchmarkMoveId`、ultimate / chainAttack / exSpecial 的 moveId 与 decibel 等），逐个判断是数据本来就没有，还是启发式漏读。
+2. 自选方向建议（未登记）：体检的是 cfg 字段，还没有看到「行」这一级。可以对同样 62 个单人配置跑完整 `useResourceCalc`，列出装配出却为 0 次的通道行（强特/终结/连携/招架），判断是资源不够（正常），还是门控或分派漏接。探针可在 `zzProbe338.test.ts` 上改。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
