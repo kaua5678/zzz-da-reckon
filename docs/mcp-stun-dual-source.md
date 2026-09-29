@@ -4107,3 +4107,21 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **收尾普查**：用脚本扫 mechanics/agents 各文件对「其它模块名前缀」cfg 键的写入，唯一命中是 `starlightBilly.ts` 写 `billy*`（星徽·比利自己的前缀，与 `billy.ts` 无共享键，误报）⇒ **跨模块私有字段写入 0 处，跨角色身份字面量 0 处**，「规则拥有者与消费者倒置」这一线收口。
 - **验证**：vue-tsc 干净；wt328 `npm run verify` EXIT=0（4046 passed | 29 skipped）。
 - **回退**：`git revert 9262395f`（字段改名 + 恒写，回退无数据迁移）。
+
+### 24.153 第 329 轮：共享喧响通道写入方复核（不做）；CC-314 模块反馈字典入外层签名（acf5e8d4）
+
+- **① `extraSelfDecibelReward` 写入方复核（§24.152 交接第 1 条）**：
+  - `orphie.ts:108-114`（影画2 追加攻击回喧响，patchExecutions 可重放 ⇒ 已按 CC-291 扣上次写入量）；`promia.ts:424`、`remielle.ts:382`、`specPanelBuffs.ts:134`（佩洛伊斯）都在 converge 相位 applyTeamConfig 里 `+=`，该钩子每轮每相位对新克隆调用一次，hookReplay 锁覆盖。
+  - 四者都只写**自己**的 cfg、常量都是自己的规则（65 / 霜刑回喧响 / 花羽轮舞面板值 / 连携 300 + 影画2 1500），没有按身份认别人、也没有抄别人的常量 ⇒ **不做**。
+  - 佩洛伊斯「每次连携 +300」形式上可以仿 `extraSelfDecibelPerUltimate` 做成 core 结算的 per-chain 字段，但它是唯一使用者，改了只是换位置 ⇒ 不做（重开条件：出现第二个「每次连携 +N 喧响」的规则）。
+  - 陈旧注释：`specPanelBuffs.ts:121-126` 仍写「useResourceCalc 的橘福福 fufaDecibel」「core/resource.ts:251」，`convergence.ts:519` 仍写「extraSelfDecibelReward 的橘福福项」——CC-312 后已不存在，改正（`03591521`，纯注释）。
+- **② 外层反馈签名的盲区 ⇒ CC-314**：
+  - `outerCycle.ts#outerFeedbackSignature` 头注释自称「既有监测量的显式投影……新增独立反馈需补判据」。但 CC-31 起模块下一轮反馈走 `threadsNext.moduleFeedback` 字典（`mechanics/types.ts#ModuleFeedback`，现 14 键：teamUltimateExtra、promiaReleaseDecibel、remielleFlowerFeatherDanceCasts、vivianAnomalyTriggers……），承诺「编排层零改动」——于是新键**天然不会**被补进签名；若某个键不是终结次数 / 强特次数等已监测量的函数，stable 就会在它收敛前停下，结果取决于停在哪一轮。
+  - **测量**（临时插桩，已撤，worktree 内）：在 `solveTeam.ts` 的 stable 分支比较本轮输入 `threads.moduleFeedback` 与输出 `threadsNext.moduleFeedback`（JSON 全等）。timeGolden 全量：**479 个停点全等，0 例分叉** ⇒ 现有 14 键都随已监测量一起收敛，今天没有缺陷。
+  - **改动**：签名追加 `moduleFeedbackSignature(out.threadsNext.moduleFeedback)`——键排序（写入顺序不同不算变化），跳过 0 与非有限值（读侧 `?? 0`，缺键 = 0 同义）。头注释写明例外。`roundThreads.ts:6` 注释补「字典整体入签名，收敛判据也不用改」。
+  - **为什么值得做**：让「加一个模块反馈键 = 只改模块」的扩展约定对收敛判据也成立，删掉了一条要靠人记住的隐性规则（更通用）；代价是签名多一段字符串。
+  - **风险点与结果**：精确比较浮点可能让 2-环 / 长环判据（比 k 与 k-2）失配、导致改走 maxIter——verify 里 timeGolden 与全部预设 golden 零差，说明没有发生。
+  - **锁**：`src/composables/__tests__/moduleFeedbackSignature.test.ts` 3 例（只改字典 ⇒ 签名变；键序无关；显式 0 / NaN / 缺键同签名）。
+- **验证**：wt329 `npm run verify` EXIT=0（4049 passed | 29 skipped，+3 为新锁）；注释提交后 check-guards 25 项、`vitest run src/mechanics src/composables/resourceCalc` 1357 例全绿。
+- **文档修正**：第 328 轮 doc 脚本的 `after()` 在 marker 以 `\n` 开头时把新行插到了 marker 行**之前**，r6 §8 表里 328 行排在 327 前，且 327 行仍是「进行中」——本轮已调正顺序、327 改为结项；脚本已修（`s.index('\n', i+1)`）。
+- **回退**：`git revert acf5e8d4`（仅签名多一项 + 新测试）；注释提交 `03591521` 无需回退。
