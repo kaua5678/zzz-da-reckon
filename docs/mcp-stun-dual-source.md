@@ -278,6 +278,7 @@ CC-141 / CC-143 之后复测 physical：仍是 §5.2 那 6 队，**全部是轴�
 - 切 physical 默认的**引擎阻塞项已清空**（CC-141 / 142 / 143）。剩下的是切换本身：约 80 队伤害变化需要按原因分类解释（下一张 CC-144）。
 - 未决：
   - 栈引擎路径（`axisExecutedStack` 非空时 `axisUltimateTotal` / 块计数取栈的实际执行集合）里窗口数的来源没核，是否也读计划值待查；本轮 21 队变化说明主路径是 `computeAxisActionCountsFor` 分支。
+    - **→ 第 313 轮核实并修复（CC-298，`fee62755`）**：确实读计划值 `stunCount`；而且 axisActive 时栈路径恒覆盖，`computeAxisActionCountsFor` 与 axisUltimateTotal 的 countStun 循环都是死代码（CC-142 当时的 21 队变化实际全来自 `axisChainTotal`）。见 §24.137。
   - `yixuan-trigger-lucia` physical 下变 cycle：切默认时逐队看。
   - `applyTeamMechanics` / `applyTeamConfig` 的 `stunCount`（耀嘉音、诺姆）仍读计划值（§6.6）。
 
@@ -3900,3 +3901,19 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **口径**：描述「这份计划」的展示一律读 `threadsApplied`；`*Next` 只给外层不动点与判环（outerCycle）用。
 - **验证**：tsc 过；parrySplitInt / specialActionBonusSingleSource / counterAssist / archiveDeployStun / CC-296 / convergenceNightD 58 条过；wt312 隔离 `npm run verify` 通过；golden 零差。
 - **回退**：`git revert e54413f2`（CC-296 行为保留在 fa64324e 的单字段写法）。
+
+### 24.137 第 313 轮：CC-298 轴内执行集合按计数通道分窗（fee62755）
+
+- **测量**：同一轮里 `calcStunAxisStack` 有三份实例，入参各不相同：
+  | 实例 | 位置 | 窗口数 | 资源 |
+  |---|---|---|---|
+  | A 执行集合 | convergence `axisExecutedStack` | 计划实数 `stunCount` | 上一轮 energyBySlot / 单调喧响 decibelRegenBySlot |
+  | B 转大轴内占比 | convergence `inAxisFractionProvider` | 转大内层 stunCountN | 本轮 rr 总量 |
+  | C 伤害侧 | useResourceCalc `stackTraversalResult` → axisAllocation / attachedInAxisMap / damagePoolRows | 池 `sp.stunCount` | adjusted rr 总量 |
+  探针（已删）在 timeGolden 22 个轴场景比 A 与 C 的 executed：**10 DIFF / 12 SAME**。典型：1371 队计划 0.655 ⇒ A 排 1 窗，池 3 窗，物化行按 3 窗（9 次），C 也 3 窗；1521 希希芙轴 A 终结 1 次 vs C 3 次；1591 队 A 空集。
+- **判定**：A 是 `axisActionCounts` / `axisUltimateTotal` 的唯一来源（ENGINE_PIPELINE_GUIDE 坑 32「次数权威收口」），属计数通道；CC-142 只把 `axisChainTotal` 与死分支切到 `countStun`，A 漏了 ⇒ §8.4 未决项坐实为缺陷。
+- **改法**：A 的 `stunCount` → `countStun`。顺带删两份死副本：`computeAxisActionCountsFor`（axisActive 时被 A 覆盖、非轴恒 {}）与 axisUltimateTotal 的「块 × countStun 窗」预算循环（axisActive 时先算后 delete 再由 A 重算）。
+- **结果**：修后同一探针 **22/22 SAME**（A == C）；timeGolden 零差（golden 预设不触发 axisActionCounts / axisUltimateTotal 的消费者：希希芙 C2、猫又档位、般岳 axisEx）。
+  - 可见差：`auto-1521-1461-1311` physical、希希芙 C2：影画2 失衡下终结毒素 3 → 9（= 3 × 伤害侧执行终结 3 次）。新测 `axisExecutedCountChannelCc298.test.ts` 锁此值，牙测旧文件 3 ≠ 9 红。
+- **未改**：`overlapStack`（合轴节省）与 `axisInSeconds` 仍按计划实数 `stunCount` 分窗——它们是时间账（stunPlanProjection 头注释：时间账继续用实数），不属本卡。若日后发现合轴节省与物化行窗口数不匹配导致净占用偏差，另开卡量。
+- **回退**：`git revert fee62755`。

@@ -71,17 +71,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 312 轮（lane lead-arena-0925c）：CC-297（`e54413f2`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 展示读「本轮已装」一般化：`CalcRoundResult.threadsApplied`；交互栏补齐与弹刀分配 / 保底4失衡诊断都读它。零差。详见 `docs/mcp-stun-dual-source.md` §24.136。
-- 顺手：`timeGolden.test.ts` 过时注释（纯伤害回归盲区已收口）与 `solveTeam.ts` ⑥″ 注释（2-环根因 + 别用单调夹住）已改，纯注释。
-- 前几轮：311 CC-296 交互栏补齐显示；310 CC-295 般岳门控归模块；309 CC-294 赠送落点单一来源。
+**第 313 轮（lane lead-arena-0925c）：CC-298（`fee62755`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 轴内执行集合窗口数改读 countStun，删两份死副本；golden 零差；希希芙 C2 轴队终结毒素 3→9。详见 `docs/mcp-stun-dual-source.md` §24.137（含三份栈实例对照表）。
+- 前几轮：312 CC-297 threadsApplied；311 CC-296 交互栏补齐显示；310 CC-295 般岳门控归模块。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/`、pullPlanner 系列、FEATURES_GUIDE、check-tokens 都不是本 lane 的，不要 add。
 
 **下一步（直接开工）**：
-1. 反馈线程展示线已收口（CC-296/297）。回 `docs/mcp-r6-refactor-list.md` §8 自选新题；§8 表最后几行已无「待」尾巴。候选方向（先量再定）：
-   - `useResourceCalc.ts` 里其他 computed 是否仍有「store 原值 + 引擎结果」另拼一份的展示口径（CC-227/229 同型），逐个对照是否已有引擎直出字段；
-   - 般岳补齐 215/弹刀估值与实测 ≈291/弹刀的差（§24.135）属**建模**问题，不是架构题；若做，走数值卡并先写口径。
-2. 原则不变：编排层需要「模块决定的量」时调模块能力；展示描述计划时读 `threadsApplied` 而非 `*Next`。
+1. **CC-299 候选：伤害侧改读引擎执行集合**。`useResourceCalc.ts#stackTraversalResult` 自己再跑一遍 `calcStunAxisStack`（资源入参 = adjusted rr 总量，引擎 A = 上一轮 energy / 单调喧响），修后 golden 22 场景二者 executed 全等，但入参不同源。做法：`CalcRoundResult` 加 `axisStack`（= `axisExecutedStack`，纯展示载荷），`stackTraversalResult` 在原门控下直接返回它；删掉 useResourceCalc 里的重算。
+   - 风险：StunAxisPage 显示的「闪能 / 喧响消耗 x / 总量」会变成引擎门控用的量（上一轮 / 单调喧响）——这正是计划的真实门控依据，按「展示读 threadsApplied」口径是对的；`skipped` 文案同理。
+   - 先跑 hugo / liuyinAxisGiftSameSource / inStunAttribution / outerCyclePhysicalFeasible / timeLedgerInvariants / archiveStunVulnProbe（都读 stackTraversalResult），再 golden。若 golden 有差，逐队归因后定是否数值卡。
+2. 之后：B（转大轴内占比）的资源入参与 A 不同源，量一下是否影响 executed（B 只用于转大内层有效失衡）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（第 301～306 轮都有：pullPlanner 相关 4 个文件、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md`）。主工作区 verify 会被它们弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
