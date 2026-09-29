@@ -106,7 +106,7 @@
             :options="[
               { label: '自动', value: -1 },
               ...(windInfectionConfig?.candidates ?? [])
-                .filter(x => x.slot !== windCharSlot)
+                .filter(x => x.slot !== windInfectionConfig?.windSlot)
                 .map(x => ({ label: `${x.name}（${elementLabel(x.element)}）`, value: x.slot })),
             ]"
             @update:value="(v: number | null) => configStore.setMechanicSetting('wind.infectionTargetSlot', v ?? -1)"
@@ -333,7 +333,8 @@ import {
 import { fmt } from '@/utils/format'
 import { panelElementStat } from '@/utils/elementStatKeys'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
-import { teamMechanicSettings, teamReleaseShares, teamTeammateSplit, agentExcludedFromWindInfectionPick } from '@/composables/agentMechanicView'
+import { teamMechanicSettings, teamReleaseShares, teamTeammateSplit } from '@/composables/agentMechanicView'
+import { resolveWindInfectionPick, getWindInfectionCoverage } from '@/composables/resourceCalc/helpers'
 import type { TeammateSplitDecl } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
@@ -407,24 +408,21 @@ const burniceReleaseElements = computed<{
 // 已注册成 MechanicSetting（`jane.ts#settings`）⇒ 上面的 `mechanicSettings` 泛型渲染器
 // 会自动为它出控件。手写卡片 + 泛型控件会**双滑块**（同一 setting 两个入口），故删卡片。
 
-const windCharSlot = computed<number>(() => {
-  return configStore.team.findIndex(char => {
-    const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
-    return agent?.damageElement === 'wind'
-  })
-})
-
+// CC-304：挑槽（风角色 / 自动 / 生效）与覆盖率（含 [0,1] 夹取）读引擎同一实现 `anomalyPanels#resolveWindInfectionPick` /
+// `getWindInfectionCoverage`；原在此逐字复制挑槽规则（排除名单还按 teammateBuffId 别名判，与引擎按 agentId 判不同源）。
 const windInfectionConfig = computed<{
   autoRate: number
   coverage: number
-  candidates: { slot: number; name: string; element: string; specialty: string; excludedFromPick: boolean }[]
+  candidates: { slot: number; name: string; element: string }[]
+  windSlot: number
   autoSlot: number
   targetSlot: number
 } | null>(() => {
-  const windSlot = windCharSlot.value
-  if (windSlot < 0) return null
+  const pick = resolveWindInfectionPick(configStore, catalogStore)
+  if (!pick) return null
   const autoRate = anomalyPoolResult.value?.coverage?.windCoverageRate ?? 0
-  const coverage = configStore.getMechanicSetting('wind.infectionCoverage', autoRate)
+  const coverage = getWindInfectionCoverage(configStore, autoRate)
+  // 下拉候选（纯展示）：有属性的队友
   const candidates = configStore.team
     .map((char, slot) => {
       const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
@@ -432,23 +430,10 @@ const windInfectionConfig = computed<{
         slot,
         name: agent?.name?.zhCN || char.agentId || `槽${slot + 1}`,
         element: agent?.damageElement ?? '',
-        specialty: agent?.specialty ?? '',
-        // CC-56：模块声明 excludeFromWindInfectionPick（与引擎 anomalyPanels#getWindInfectionTargetSlot 同源；原写死 1581）
-        excludedFromPick: agentExcludedFromWindInfectionPick(agent),
       }
     })
     .filter(x => !!x.element)
-  const autoSlot = candidates.find(x =>
-    x.slot !== windSlot && x.element !== 'wind'
-    && x.specialty !== 'support' && x.specialty !== 'defense' && !x.excludedFromPick,
-  )?.slot
-    ?? candidates.find(x => x.slot !== windSlot && x.element !== 'wind')?.slot
-    ?? windSlot
-  const userSlot = Math.floor(configStore.getMechanicSetting('wind.infectionTargetSlot', -1))
-  const targetSlot = userSlot >= 0 && userSlot !== windSlot && candidates.some(x => x.slot === userSlot)
-    ? userSlot
-    : autoSlot
-  return { autoRate, coverage, candidates, autoSlot, targetSlot }
+  return { autoRate, coverage, candidates, windSlot: pick.windSlot, autoSlot: pick.autoSlot, targetSlot: pick.targetSlot }
 })
 
 function settlementRows(vp: any): any[] {

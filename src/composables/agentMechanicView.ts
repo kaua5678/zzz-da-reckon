@@ -132,14 +132,6 @@ export function teamTeammateSplit(
 }
 
 /**
- * 风化浸染默认挑槽是否排除该角色（CC-56）：模块声明 `excludeFromWindInfectionPick`（CC-42，引擎 anomalyPanels 同源）。
- * 原位置：ResourceUtilizationPage.vue `windInfectionConfig` 的 `isRemielle: agent?.id === '1581' || …`。
- */
-export function agentExcludedFromWindInfectionPick(agent: AgentIdentity | null | undefined): boolean {
-  return identityModules(agent).some(mod => !!mod.excludeFromWindInfectionPick)
-}
-
-/**
  * 角色是否「拥有」轴预设里的 60/90 转大块（CC-58）：模块声明 `ownsPromoteVariantAxisBlocks`（CC-43e），
  * 与编排层 `roundInputs.ts#buildStackAxes` 同源（按 agentId 派发，=== true）。现唯一声明：琉音。
  */

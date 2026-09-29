@@ -88,11 +88,31 @@ export function getWindInfectionTargetSlot(
   configStore: ReturnType<typeof useConfigStore>,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): number {
+  return resolveWindInfectionPick(configStore, catalogStore)?.targetSlot ?? -1
+}
+
+/** 风化浸染挑槽结果（CC-304）：风角色槽位 / 自动挑槽 / 生效槽位（用户指定有效则用户值，否则自动） */
+export interface WindInfectionPick {
+  windSlot: number
+  autoSlot: number
+  targetSlot: number
+}
+
+/**
+ * 风化浸染挑槽的**唯一实现**（CC-304）：引擎（`getWindInfectionTargetSlot` / `getWindInfectionElement`）与
+ * 机制页 `ResourceUtilizationPage.vue#windInfectionConfig` 的「自动 / 生效」显示共用。原页面逐字复制了一份挑槽规则，
+ * 且排除名单按 `identityModules`（含 teammateBuffId 别名）判、引擎按 agentId 判——两份身份口径不同。
+ * 无风属性角色 ⇒ null。
+ */
+export function resolveWindInfectionPick(
+  configStore: ReturnType<typeof useConfigStore>,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+): WindInfectionPick | null {
   const windSlot = configStore.team.findIndex(char => {
     const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
     return agent?.damageElement === 'wind'
   })
-  if (windSlot < 0) return -1
+  if (windSlot < 0) return null
 
   const candidates = configStore.team.map((char, slot) => {
     const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
@@ -105,16 +125,15 @@ export function getWindInfectionTargetSlot(
     }
   }).filter(x => !!x.agentId)
 
-  const userSlot = Math.floor(configStore.getMechanicSetting('wind.infectionTargetSlot', -1))
-  const userValid = userSlot >= 0 && userSlot !== windSlot && candidates.some(x => x.slot === userSlot)
-  if (userValid) return userSlot
-
-  return candidates.find(x =>
+  const autoSlot = candidates.find(x =>
     x.slot !== windSlot && x.element && x.element !== 'wind'
     && x.specialty !== 'support' && x.specialty !== 'defense' && !x.excludedFromPick,
   )?.slot
     ?? candidates.find(x => x.slot !== windSlot && x.element && x.element !== 'wind')?.slot
     ?? windSlot
+  const userSlot = Math.floor(configStore.getMechanicSetting('wind.infectionTargetSlot', -1))
+  const userValid = userSlot >= 0 && userSlot !== windSlot && candidates.some(x => x.slot === userSlot)
+  return { windSlot, autoSlot, targetSlot: userValid ? userSlot : autoSlot }
 }
 
 export function getWindInfectionElement(

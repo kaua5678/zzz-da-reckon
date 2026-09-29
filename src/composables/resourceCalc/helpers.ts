@@ -252,12 +252,14 @@ export {
 import {
   getTeamAnomalyDurationBonus,
   getWindInfectionTargetSlot,
+  resolveWindInfectionPick,
   getWindInfectionElement,
   getWindInfectionCoverage,
   buildAnomalyVirtualPanel,
   buildAnomalySettlementEntries,
 } from './anomalyPanels'
 import type {
+  WindInfectionPick,
   AnomalyVirtualPanelRow,
   AnomalyVirtualPanelBuild,
   AnomalySettlementEntry,
@@ -266,12 +268,14 @@ import type {
 export {
   getTeamAnomalyDurationBonus,
   getWindInfectionTargetSlot,
+  resolveWindInfectionPick,
   getWindInfectionElement,
   getWindInfectionCoverage,
   buildAnomalyVirtualPanel,
   buildAnomalySettlementEntries,
 }
 export type {
+  WindInfectionPick,
   AnomalyVirtualPanelRow,
   AnomalyVirtualPanelBuild,
   AnomalySettlementEntry,
