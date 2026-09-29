@@ -8,10 +8,11 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  TIER_COSTS,
+  PURCHASE_LADDER,
   cardValuePer10kFilm,
   computeCardValuesVcg,
   nextPurchase,
+  tierCost,
   pickPeriodAssignment,
   planPullStrategy,
   versionFilmGrants,
@@ -105,9 +106,20 @@ describe('pullPlanner · 购买阶梯与窗口', () => {
     expect(nextPurchase(c, 0, date(11))!.tier).toBe(1)
     expect(nextPurchase(c, 1, date(11))!.tier).toBe(2)
     expect(nextPurchase(c, 3, date(11))).toBeNull() // 满配后无下一档
-    expect(TIER_COSTS[1]).toBe(15000)
-    expect(TIER_COSTS[2]).toBe(10000)
-    expect(TIER_COSTS[3]).toBe(15000 * 6 + 10000 * 4)
+    expect(tierCost(1)).toBe(15000)
+    expect(tierCost(2)).toBe(10000)
+    expect(tierCost(3)).toBe(15000 * 6 + 10000 * 4)
+  })
+
+  it('阶梯是数据：各档增量成本之和 = 本体 + 顶档影画 × 15000 + 顶档精炼 × 10000（任意阶梯内容都成立）', () => {
+    const n = PURCHASE_LADDER.length
+    const top = PURCHASE_LADDER[n - 1]
+    let sum = 0
+    for (let t = 1; t <= n; t++) sum += tierCost(t)
+    expect(sum).toBe(CINEMA_GOLD_FILM * (1 + top.cinema) + WEAPON_GOLD_FILM * top.refine)
+    expect(sum).toBe(155000) // 用户口径阶梯：满配累计 15.5 万（提案 §2.1）
+    expect(nextPurchase(card(1, 0), n, date(0))).toBeNull()
+    expect(() => tierCost(n + 1)).toThrow()
   })
 })
 

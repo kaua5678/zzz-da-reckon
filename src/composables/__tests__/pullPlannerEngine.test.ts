@@ -25,6 +25,8 @@ import {
   plannerTestServerVersions,
   runPullPlanner,
 } from '@/composables/pullPlannerEngine'
+import { PURCHASE_LADDER } from '@/composables/pullPlanner'
+import { isLimitedSWengineId } from '@/composables/limitedGold'
 import type { BossPresetFile } from '@/types/bossPreset'
 
 const bossData = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as BossPresetFile
@@ -65,6 +67,11 @@ describe('pullPlannerEngine · 期轴与卡清单', () => {
     // 首 UP 窗口上界 = 下一个卡池节点（2026-09-29 arena-B）：窗口非空，且绝大多数卡有上界
     expect(fresh.every(c => c.windowEnd === null || c.windowEnd > c.windowStart)).toBe(true)
     expect(fresh.filter(c => c.windowEnd !== null).length).toBeGreaterThan(30)
+    // 阶梯的专武档对每张卡都有效：专武不是限定 S 音擎的人，专武档会花钱却不改配装（holdingStateFor 落到固定下位）。
+    // 2026-09-29 实测 42/42 都有；新角色缺专武数据会在这里报——补数据，或让阶梯按卡过滤
+    const catalog = useCatalogStore()
+    const sigOf = (id: string) => catalog.displayWEngines.find(w => w.ownerAgentId === id)?.id ?? ''
+    expect(fresh.filter(c => !isLimitedSWengineId(sigOf(c.agentId))).map(c => c.agentId)).toEqual([])
   })
 
   it('免费池：常驻 S + A 级 + 赠送/特例在内；限定 S 不在', async () => {
@@ -104,6 +111,17 @@ describe('pullPlannerEngine · 持有档逐人配装', () => {
     expect(bothBody.wEngines[0]).not.toBe('14109')
     expect(bothBody.wEngines[1]).not.toBe('14122')
     expect(bothBody.wEngines[2]).toBe('14121')
+    // 配装逐档对齐 PURCHASE_LADDER（唯一定义处；改阶梯表不用改引擎）
+    PURCHASE_LADDER.forEach((rung, i) => {
+      const st = holdingStateFor(team, { '1091': i + 1 }, catalog)
+      expect(st.cinemas[0]).toBe(rung.cinema)
+      if (rung.refine > 0) {
+        expect(st.wEngines[0]).toBe('14109')
+        expect(st.wengineMods[0]).toBe(rung.refine)
+      } else {
+        expect(st.wEngines[0]).not.toBe('14109')
+      }
+    })
     const bothSig = holdingStateFor(team, { '1091': 2, '1221': 2 }, catalog)
     expect(bothSig.cinemas).toEqual([0, 0, 0])
     expect(bothSig.wEngines[0]).toBe('14109')

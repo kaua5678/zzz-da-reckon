@@ -11,7 +11,7 @@
  *   title 带房号/Boss 名/分数；
  * - **可见泳道过滤保留原房号**（隐藏房2 后房3 仍写「房3」，不串号）——这是 ui 语义，别改成重编号。
  */
-import type { PlannerStep } from '@/composables/pullPlanner'
+import { ladderRung, type PlannerStep } from '@/composables/pullPlanner'
 
 /** 泳道图例定义：2 个固定泳道 + 3 个房间泳道 */
 export const PP_LANE_DEFS = [
@@ -22,9 +22,9 @@ export const PP_LANE_DEFS = [
   { id: 'room3', label: '房3', desc: '当期第 3 个 Boss 的选队', color: 'var(--c-info)', roomNo: 3 },
 ] as const
 
-/** 档位文案（购买方块/表内用） */
+/** 档位文案（购买方块/表内用）：取 `PURCHASE_LADDER` 的 label；0 = 未持有 */
 export function ppTierLabelOf(tier: number): string {
-  return tier === 3 ? '满配' : tier === 2 ? '本体+专武' : tier === 1 ? '本体' : '—'
+  return ladderRung(tier)?.label ?? '—'
 }
 
 export interface PlannerLaneCell {

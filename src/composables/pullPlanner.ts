@@ -8,7 +8,8 @@
  *   复刻期无更强新卡，两者都罕见，用户认同直接砍掉）。
  * - 购买阶梯（每卡三档）：本体 15000 菲林（1 角色金）→ 专武 10000 菲林（1 音擎金；
  *   金数同样计 1，期望抽数更低）→ 满配增量 = 6 影画×15000 + 4 精炼×10000。
- *   满配金数 = 1+6+1+4 = 12，菲林不按 12×15000 折算。
+ *   满配金数 = 1+6+1+4 = 12，菲林不按 12×15000 折算。阶梯是数据（`PURCHASE_LADDER`），
+ *   成本 / 引擎配装 / 页面文案都从它派生。
  * - 每期结算 = 3 个危局 Boss × 不重叠 3 人队（角色跨房间不可复用，共 9 人约束）；
  *   分数 = 60000 × min(1, 伤害/HP)（只算伤害分；操作分是附加分、已剔除）。
  * - 贬值内生：不设折现参数——老卡分数下降由每期 Boss 血量/抗性与 layer buff 数据自然涌现。
@@ -66,13 +67,47 @@ export interface TeamOracle {
   }>
 }
 
-/** 购买档位（阶梯：0 < 1 < 2 < 3） */
-export type PurchaseTier = 0 | 1 | 2 | 3
-/** tier 语义：0 = 未持有；1 = 本体（15000）；2 = 本体+专武（+10000）；3 = 满配（+剩余全部） */
-export const TIER_COSTS: Record<Exclude<PurchaseTier, 0>, number> = {
-  1: CINEMA_GOLD_FILM,
-  2: WEAPON_GOLD_FILM,
-  3: CINEMA_GOLD_FILM * 6 + WEAPON_GOLD_FILM * 4,
+/**
+ * 购买阶梯的一档 = **累计**持有状态（不是增量）：影画数 + 限定专武精炼（0 = 没有专武）。
+ * 阶梯是数据：增量成本（`tierCost`）、引擎逐人配装（pullPlannerEngine `holdingStateFor`）、
+ * 页面文案（pullPlannerChart `ppTierLabelOf`）都从这张表派生。
+ * 2026-09-29 前同一个阶梯在三个文件里各硬编码一遍（`TIER_COSTS` / `tier >= 3 ? 6 : 0` / 文案三元式）。
+ */
+export interface LadderRung {
+  label: string
+  cinema: number
+  refine: number
+}
+
+/**
+ * 购买阶梯（下标 i ↔ 档位 i+1；档位 0 = 未持有）。内容 = 用户口径（2026-08-28）：
+ * 本体 → 专武 → 满配（6 影画 + 4 精炼）。提案 §5.5（插中间档 / 角色与音擎两条独立阶梯）
+ * 在这里只是改表，但**改内容 = 改口径**，需用户裁决（见提案 §5.5）。
+ */
+export const PURCHASE_LADDER: readonly LadderRung[] = [
+  { label: '本体', cinema: 0, refine: 0 },
+  { label: '本体+专武', cinema: 0, refine: 1 },
+  { label: '满配', cinema: 6, refine: 5 },
+]
+
+/** 购买档位：0 = 未持有；t ≥ 1 = 持有 `PURCHASE_LADDER[t − 1]` */
+export type PurchaseTier = number
+
+/** 档位 → 累计持有状态；0 或越界 = null（未持有） */
+export function ladderRung(tier: number): LadderRung | null {
+  return tier >= 1 && tier <= PURCHASE_LADDER.length ? PURCHASE_LADDER[tier - 1] : null
+}
+
+/**
+ * 从 tier−1 升到 tier 的增量菲林：首档含角色本体（1 角色金），其余按影画 / 精炼差额计价
+ * （影画 `CINEMA_GOLD_FILM`；专武本体与每级精炼 `WEAPON_GOLD_FILM`）。
+ */
+export function tierCost(tier: number): number {
+  const to = ladderRung(tier)
+  if (!to) throw new Error(`tierCost: 档位 ${tier} 不在购买阶梯内`)
+  const from = ladderRung(tier - 1) ?? { cinema: 0, refine: 0 }
+  const body = tier === 1 ? CINEMA_GOLD_FILM : 0
+  return body + (to.cinema - from.cinema) * CINEMA_GOLD_FILM + (to.refine - from.refine) * WEAPON_GOLD_FILM
 }
 
 /** 可购卡（限定 S；首 UP 窗口唯一） */
@@ -246,17 +281,16 @@ export function pickPeriodAssignment(
 
 // ========== 购买阶梯 ==========
 
-/** 卡的下一档与成本；窗口外 / 已满配 / 档位跳跃（initialTier>1 且未按序）返回 null */
-export function nextPurchase(card: PlannerCard, tier: number, date: string): { tier: Exclude<PurchaseTier, 0>; cost: number } | null {
+/** 卡的下一档与成本；窗口外 / 已到阶梯顶返回 null */
+export function nextPurchase(card: PlannerCard, tier: number, date: string): { tier: PurchaseTier; cost: number } | null {
   if (date < card.windowStart) return null // 首UP窗口未开
   // 首UP窗口已关（复刻不建模 ⇒ 关窗后永远买不到，含专武 / 满配升档）。
   // 2026-09-29 前这里没有上界（注释假设「最优规划几乎总在首发当期或紧邻期购买」，未实测），
   // 等于卡永久可买、与文件头「首 UP 窗口唯一可购」相反；实测见 docs/mcp-worker-task-queue.md §2b。
   if (card.windowEnd !== null && date >= card.windowEnd) return null
-  const next = (tier + 1) as Exclude<PurchaseTier, 0>
-  if (next > 3) return null
-  if (next === 3 && tier < 2) return null // 满配必须先有本体+专武（阶梯不跳档）
-  return { tier: next, cost: TIER_COSTS[next] }
+  const next = tier + 1 // 阶梯逐档走，不跳档
+  if (!ladderRung(next)) return null // 已到阶梯顶
+  return { tier: next, cost: tierCost(next) }
 }
 
 // ========== Beam Search 主流程 ==========
@@ -266,7 +300,7 @@ export interface PlannerStep {
   periodLabel: string
   date: string
   /** 本期入手的购买（agentId → 新档位） */
-  purchases: Array<{ agentId: string; tier: Exclude<PurchaseTier, 0>; cost: number }>
+  purchases: Array<{ agentId: string; tier: PurchaseTier; cost: number }>
   /** 期初银行（发薪后、购买前） */
   bankBefore: number
   bankAfter: number
@@ -339,7 +373,7 @@ export function planPullStrategy(opts: PlannerOptions): PlannerResult {
     for (const st of beam) {
       // 发薪 → 购买分支（含不买）→ 期结算。
       // 购买分支用受控展开：单张购买 + 同节点连买（递归受限：每张卡至多一档/节点）
-      const purchasesRoot: Array<{ agentId: string; tier: Exclude<PurchaseTier, 0>; cost: number }> = []
+      const purchasesRoot: Array<{ agentId: string; tier: PurchaseTier; cost: number }> = []
       type Branch = { holdings: Record<string, number>; bank: number; spent: number; purchases: typeof purchasesRoot }
       const branches: Branch[] = []
       const expand = (state: Branch, depth: number) => {
@@ -473,12 +507,12 @@ export function computeCardValuesVcg(
   for (const card of opts.cards) {
     const wasHeld = (card.initialTier ?? 0) > 0
     // 最优策略没抽它且起点也没持有 → 价值 0（禁用不改变任何决策）
-    const tierInPlan: PurchaseTier = (base.holdings[card.agentId] ?? 0) as PurchaseTier
+    const tierInPlan: PurchaseTier = base.holdings[card.agentId] ?? 0
     const spentInPlan = spentByCard.get(card.agentId) ?? 0
     if (!wasHeld && tierInPlan === 0) {
       out.push({
         agentId: card.agentId, value: 0, rawGap: 0, searchInconsistent: false,
-        spentInPlan, baselineTotal: base.totalScore, tierInPlan: 0 as PurchaseTier,
+        spentInPlan, baselineTotal: base.totalScore, tierInPlan: 0,
       })
       continue
     }

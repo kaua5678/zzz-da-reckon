@@ -18,7 +18,7 @@ import { isLimitedSWengineId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
-import type { PlannerBossRoom, PlannerPeriod, TeamOracle } from '@/composables/pullPlanner'
+import { ladderRung, type PlannerBossRoom, type PlannerPeriod, type TeamOracle } from '@/composables/pullPlanner'
 
 type Calc = ReturnType<typeof useResourceCalc>
 
@@ -77,8 +77,8 @@ const FALLBACK_LOWER = { id: '13004', mod: 5 }
 /**
  * 持有档 → 该人自己的配装。不把队伍金数并成一个池再按主C优先分配
  * （那会让 {雅1,柳3} 和 {雅3,柳1} 装成同一套）。
- * tier 1 = 本体、下位音擎；tier 2 = 本体+专武 R1；tier 3 = 满配 M6R5。
- * 没买专武就不带专武。
+ * 档位 → 影画 / 精炼查 `PURCHASE_LADDER`（pullPlanner.ts，唯一定义处）；免费成员不走阶梯（0 影画 + 固定下位）。
+ * 没买专武（refine 0）或专武不是限定 S 音擎就穿固定下位。
  */
 export function holdingStateFor(
   team: [string, string, string],
@@ -91,15 +91,14 @@ export function holdingStateFor(
   for (let s = 0; s < 3; s++) {
     const id = team[s]
     const agent = catalog.getAgent(id)
-    const tier = holdings[id] ?? 0
     const limited = !!agent && !isFreePlannerMember(id, catalog)
+    const rung = limited ? ladderRung(holdings[id] ?? 0) : null
     const sig = catalog.displayWEngines.find(w => w.ownerAgentId === id)?.id ?? ''
-    if (limited && tier >= 2 && isLimitedSWengineId(sig)) {
-      cinemas[s] = tier >= 3 ? 6 : 0
+    cinemas[s] = rung?.cinema ?? 0
+    if (rung && rung.refine > 0 && isLimitedSWengineId(sig)) {
       wEngines[s] = sig
-      wengineMods[s] = tier >= 3 ? 5 : 1
+      wengineMods[s] = rung.refine
     } else {
-      cinemas[s] = limited && tier >= 3 ? 6 : 0
       const lower = PLANNER_FIXED_LOWER[agent?.specialty ?? ''] ?? FALLBACK_LOWER
       wEngines[s] = lower.id
       wengineMods[s] = lower.mod
@@ -329,7 +328,7 @@ export function buildPlannerCards(
     if (FREE_SPECIAL_AGENT_IDS.has(agentId)) continue // 潘引壶/佩洛伊斯永久免费，不受购买窗口限制
     let initialTier = 0
     if (preset === 'custom') initialTier = customHoldings[agentId] ?? 0
-    out.push({ agentId, windowStart: date, windowEnd, ...(initialTier ? { initialTier: initialTier as never } : {}) })
+    out.push({ agentId, windowStart: date, windowEnd, ...(initialTier ? { initialTier } : {}) })
   }
   return out
 }
