@@ -77,7 +77,6 @@ export interface EnemyConfig {
   stunVuln: number       // 失衡易伤倍率
   defense: number        // 怪物防御
   level: number          // 怪物等级
-  quickAssistCount: number   // 快速支援次数
   anomalyCoeff: number   // 异常条系数
   bossAnomalyCoeff: number  // 危局异常系数
   bossStunGift: number   // boss赠送失衡
@@ -316,7 +315,6 @@ function defaultEnemy(): EnemyConfig {
     stunVuln: 1.5,
     defense: 953,
     level: 70,
-    quickAssistCount: 6,
     anomalyCoeff: 1,
     bossAnomalyCoeff: 1.1,
     bossStunGift: 0,
