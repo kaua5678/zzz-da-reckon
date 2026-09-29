@@ -3627,3 +3627,16 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **发现（未改，行为零差）**：catalog 的角色属性实际只有 wind / physical / lumiflux / fire / ether / ice / electric 七种。颜色表里的 frost / honed_edge / xuanmo 目前没有角色使用；**lumiflux（1581 蕾米埃尔）不在颜色表里，属性标签显示为灰色兜底**，搬迁前两页都是这样。补什么颜色属于审美问题，又和「辉光 / 流明命名」未决项（§24.62）挂钩，因此只记为未决。要补色时在 `ATTRIBUTE_TAG_COLOR` 加一行，两页同时生效。
 - **影响**：只涉及展示层两页，计算零差（verify 全绿）。
 - **回退**：revert 20ebfa5b。
+
+### 24.121 第 297 轮：敌人配置数值框改为数据驱动（CC-282，54baeebe）
+
+- **来源**：§24.120 交接下一步 1。jscpd 报的 `AttributeConfigPage.vue` 29/17（157 行）同文件克隆，实际是「敌人配置」卡片里 11 段同构的手写模板：每段 11 行，只差字段名、标签、step、max、清空时写回的值。
+- **为什么值得做**：同页的元素抗性早就是 `v-for` + 描述表（`resistanceElements` / `resistanceGroups`），敌人数值框却是手抄的，属于同一页两种写法。改成描述表后，新增一个敌人数值字段只需加一行；各字段的清空回写值并排列出，一眼可见（系数类 stunVuln / anomalyCoeff / bossAnomalyCoeff 为 1，其余为 0）。
+- **改动**（仅 `src/views/AttributeConfigPage.vue`）：
+  - script 新增 `EnemyNumberField` 描述表 `ENEMY_FIELDS_HEAD`（hp / stunValue / stunTime / stunVuln / defense）与 `ENEMY_FIELDS_TAIL`（anomalyCoeff / bossAnomalyCoeff / bossStunGift / shieldCount / energyShield / invincibleTime），另加 `setEnemyNumber`；
+  - `EnemyNumberKey` 由 `EnemyConfig` 的 number 字段推导，写错键 vue-tsc 会报；
+  - 体型下拉和快速支援只读框结构不同，保持手写，夹在两表之间，**显示顺序不变**。
+- **等价性验证**：替换脚本 `k229/p297.py` 先按 `<n-gi>` 切块，确认各块首尾相接覆盖原区段；再从解析出的描述逐字重建每一块模板，assert 与原文完全相同后才写盘。所以描述表与原模板一一对应（label / key / step / max / fallback 都没有漏）。模板中没写 step 的字段用 `f.step ?? 1`，等于 naive-ui 的默认值；没写 max 的传 undefined，等于不设。
+- **没有加锁**：这是局部写法，不是会被再抄的口径；仓库也没有组件挂载测试基础设施（没有 @vue/test-utils）。jscpd 定期重扫能发现回退。
+- **影响**：只涉及展示层一页，计算零差（verify 全绿）。
+- **回退**：revert 54baeebe。

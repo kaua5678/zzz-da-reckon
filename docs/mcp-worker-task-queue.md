@@ -71,24 +71,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 296 轮（lane lead-arena-0925c）：CC-281（20ebfa5b）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.120：角色卡片标签样式收进 `src/utils/agentLabelMaps.ts`；CharacterCard 两份角色选项共用 `agentChoices`。计算零差。
-- 前几轮：295 CC-280（finiteClamp）；294 CC-279；293 CC-278；292 CC-277。
+**第 297 轮（lane lead-arena-0925c）：CC-282（54baeebe）完成。文档见本提交，已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.121：`AttributeConfigPage.vue` 敌人配置的数值框改为描述表 `ENEMY_FIELDS_HEAD` / `ENEMY_FIELDS_TAIL` 加 v-for，计算零差。
+- 前几轮：296 CC-281（标签样式）；295 CC-280（finiteClamp）；294 CC-279；293 CC-278。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。主工作区只剩别人未跟踪的 `docs/devlog/`，不要 add。
 
 **下一步（直接开工）**：jscpd 剩下的同文件克隆，逐个判断（同义且合并后更简单才动，否则在 r6 清单记「不做 + 理由」）：
-1. `src/views/AttributeConfigPage.vue` 29/17（157 行，最大，先看；可能是模板里两份几乎相同的表单，合并方式是 v-for 或子组件）；
-2. `src/specs/specPanelBuffs.ts` 768/672；
-3. `src/mechanics/agents/lucy.ts` 226/172；
-4. `freeCompare/metrics.ts` 224/191；
-5. `versionChartGeometry.ts` 179/83；
-6. `harumasa.ts` 95 ↔ `koleda.ts` 44（CC-280 合并 helper 后可能已消失，重扫确认）。
+1. `src/specs/specPanelBuffs.ts` 768/672（先 `git ls-files | grep specPanelBuffs` 确认路径）；
+2. `src/mechanics/agents/lucy.ts` 226/172；
+3. `freeCompare/metrics.ts` 224/191；
+4. `versionChartGeometry.ts` 179/83；
+5. `harumasa.ts` 95 ↔ `koleda.ts` 44（CC-280 后可能已消失）。
 
-重扫命令：`rm -rf /tmp/jscpd && timeout 160 npx -y jscpd@4 src --pattern '**/*.{ts,vue}' --ignore '**/__tests__/**,**/*.test.ts,**/*.d.ts' --min-lines 8 --min-tokens 70 --reporters json --output /tmp/jscpd --silent`，再用 python 读 `/tmp/jscpd/jscpd-report.json` 的 duplicates。文件路径先用 `git ls-files | grep` 确认。
+重扫命令：`rm -rf /tmp/jscpd && timeout 160 npx -y jscpd@4 src --pattern '**/*.{ts,vue}' --ignore '**/__tests__/**,**/*.test.ts,**/*.d.ts' --min-lines 8 --min-tokens 70 --reporters json --output /tmp/jscpd --silent`，再用 python 读 `/tmp/jscpd/jscpd-report.json` 的 duplicates。
+- jscpd 清完后的方向：回到 `docs/mcp-r6-refactor-list.md` 里仍标「待查」的条目，或按 ARCHITECTURE-OVERVIEW 找影响面更大的归一项。不要为了把 jscpd 数字清零去合并语义不同的块。
 
 **已知坑**：
-- 角色卡片标签颜色 / 稀有度 type 用 `@/utils/agentLabelMaps`（CC-281 锁拦副本）；「非有限值 → 0」的钳位用 `@/utils/finiteClamp`（CC-280）；
-- 判定「某类副本不存在」之前，把同概念的所有变体都 grep 一遍（§24.108② 只看了稀有度就下了「不收」的结论，本轮推翻）；
+- 模板改写用「解析、逐字重建、assert 相等、再写盘」的办法证明等价（见 p297.py）；仓库没有组件挂载测试；
+- 角色卡片标签颜色 / 稀有度 type 用 `@/utils/agentLabelMaps`（CC-281）；「非有限值 → 0」的钳位用 `@/utils/finiteClamp`（CC-280）；
+- 判定「某类副本不存在」之前，把同概念的所有变体都 grep 一遍；
 - 分析器改 store 前后一律 `snapshotStore` / `restoreStore`；
 - 量 HEAD 的测试（`agentIdentity.test.ts` T8）提交前 verify 覆盖不到；
 - GitHub 偶尔不通：push 超时就记进交接，下一轮先补推；
