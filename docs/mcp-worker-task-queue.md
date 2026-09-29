@@ -96,16 +96,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 329 轮（lane lead-arena-0925c）：CC-314（`acf5e8d4`）+ 注释修正（`03591521`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+**第 330 轮（lane lead-arena-0925c）：CC-315（`a6ab4558`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
 
-- 共享喧响通道 4 个写入方复核：无倒置 ⇒ 不做；外层反馈签名看不到 `moduleFeedback` 字典 ⇒ 整体入签名（零差，479 停点实测字典已稳定）。详见 `docs/mcp-stun-dual-source.md` §24.153。
-- 前几轮：328 CC-313（卢西娅回血通用字段）；327 CC-312（`ultimateEquivalentCount`）；326 CC-311。「规则拥有者与消费者倒置」一线已收口。
+- 外层签名补齐下一轮输入（轴栈能量 / 喧响预算 + 4 个标量），golden 零差、轮数 +5.6%；`postRoundInput.stunCount` 是已知例外（入签名会破坏长环检测）。逐字段表见 `docs/mcp-stun-dual-source.md` §24.154。
+- 前几轮：329 CC-314（moduleFeedback 入签名）；328 CC-313；327 CC-312。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
 
 **下一步（直接开工）**：
-1. **签名盲区的同型普查**：`CalcRoundThreads`（`resourceCalc/roundThreads.ts`）里除 `moduleFeedback` 外的每个字段，逐个判断「下一轮会读它、它却不在 `outerFeedbackSignature` 里、也不是签名已有项的函数」。方法同 §24.153：worktree 里在 `solveTeam.ts` stable 分支插桩比较 `threads.<字段>` 与 `out.threadsNext.<字段>`，跑 timeGolden，统计停点分叉数。分叉 0 ⇒ 判断是否值得像 CC-314 一样入签名（只有「新增入口会漏」时才值得，已被签名项决定的就写不做）；分叉 >0 ⇒ 真缺陷，走数值卡。注意 `auricInkFlash` 已在 stable 条件里单独比较，`anomalyDecibelBonus` 在循环末尾从 anomalyPool 重取。
+1. **CC-316：postRound 派发改读本轮 countStun**（数值卡，详见 §24.154 末条）。
+   - 先 `grep -rn 'CC-154' docs src`，读当初为什么用上一轮值。
+   - 改 `src/composables/resourceCalc/convergence.ts:559`（`stunCount: threads.postRoundInput.stunCount` → 本轮 `countStun`），跑 timeGolden 看差异。
+   - 差异应只出现在含安比 1011 且 4 命以上的快照。逐条解释后 `TIME_GOLDEN_UPDATE=1` 更新 golden，并把 §24.154 里的例外说明、`outerCycle.ts` 头注释、`moduleFeedbackSignature.test.ts` 最后一例改成「已根治」（postRoundInput.stunCount 不再被读，可从 PostRoundInput 删掉，或保留仅作记录——删更干净）。
+   - 若差异超出安比，或 CC-154 的理由仍成立：写「不做」加理由，保留例外。
 2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
-3. 以上结项且无新需求：读 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」列，找条件已满足的行；都不满足就按判据自选新题，先在 §8 登记查了什么。
+3. 以上结项：读 `docs/mcp-r6-refactor-list.md` §8 表「重开条件」列。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。

@@ -4125,3 +4125,30 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **验证**：wt329 `npm run verify` EXIT=0（4049 passed | 29 skipped，+3 为新锁）；注释提交后 check-guards 25 项、`vitest run src/mechanics src/composables/resourceCalc` 1357 例全绿。
 - **文档修正**：第 328 轮 doc 脚本的 `after()` 在 marker 以 `\n` 开头时把新行插到了 marker 行**之前**，r6 §8 表里 328 行排在 327 前，且 327 行仍是「进行中」——本轮已调正顺序、327 改为结项；脚本已修（`s.index('\n', i+1)`）。
 - **回退**：`git revert acf5e8d4`（仅签名多一项 + 新测试）；注释提交 `03591521` 无需回退。
+
+### 24.154 第 330 轮：CC-315 外层签名补齐下一轮输入（a6ab4558）；postRound 失衡次数滞后一拍 → CC-316
+
+- **方法**（§24.153 交接第 1 条）：worktree 内在 `solveTeam.ts` stable 分支插桩，逐字段比较本轮输入 `threads` 与下一轮输入（`threadsNext`，`anomalyDecibelBonus` 按循环末尾的重取口径用 `anomalyPool.perSlotBonus`），跑 timeGolden。
+- **结果**：479 个 stable 停点中 374 个全等，105 个有字段在变：`decibelRegenBySlot` 101、`energyBySlot` 9、`postRoundInput`（仅 `stunCount`）4。样例：喧响预算每槽 +85 / +170 或 +1190 / +1360（`max(上一轮, 本轮)` 的单调棘轮仍在上涨）；postRound 失衡次数 0 → 3。
+- **逐字段表**（`resourceCalc/roundThreads.ts#CalcRoundThreads`）：
+
+| 字段 | 下一轮读者 | 签名状态 |
+|---|---|---|
+| goodReview | 条件轴解析（琉音好评） | CC-315 入签名（停点 0 分叉） |
+| energyBySlot | 条件轴解析 + `calcStunAxisStack` 能量预算 | CC-315 入签名（整点） |
+| auricInkFlash | 仪玄 | stable 条件里单独比较（原有） |
+| anomalyDecibelBonus | 喧响奖励 | 从属：= `anomalyPool.perSlotBonus`（签名第二项） |
+| interactionTopUp / parrySplit / backstageAuto / decibelParry | 各自 | 原有签名项 |
+| decibelParryBasisShort | 展示 | 从属：随 decibelParry（CC-229） |
+| teamUltimateForJufufu | 橘福福影画2 | 从属：= Σ 终结次数（签名第一项） |
+| moduleFeedback | 各模块 | CC-314 |
+| inStunWindowTriggers / teamVeilCountTotal / prevPoolStunCount | 南宫羽 / 叶瞬光·爱芮·千夏 / 轴块落地 | CC-315 入签名（停点 0 分叉） |
+| decibelRegenBySlot | `calcStunAxisStack` 喧响预算 | CC-315 入签名（整点） |
+| postRoundInput | postRound 派发 | exCounts 原有、ultimateCounts ≡ 第一项；**stunCount 例外，不入**（见下） |
+
+- **实验**（逐项加入，timeGolden）：三类各自加入都零差；全部加入后退出类型分布不变（stable 479 / cycle 10 / maxIter 6），总轮数 1961 → 2070（+5.6%）。
+- **例外 `postRoundInput.stunCount`**：全量 verify 时 `outerCyclePick.test.ts`「yixuan-jufufu-lucia：长环分支只调用一次」红（长环分支 0 次调用）。二分：只有这一项导致。原因：它是**上一轮**的 `countStun`，比本轮 stun 输入滞后一拍，放进签名后长环在耗尽前不再重复。⇒ 不入签名，头注释列为已知例外，测试锁「它不影响签名」。
+- **判断（为什么值得做）**：stable 本应表示「本轮输入 = 下一轮输入」；原签名是手写投影 + 零散注释，漏了哪些没人知道。现在规则变成「每个字段要么入签名、要么在头注释从属清单里写明理由」，新增字段有一处可查（更简单）。代价：+5.6% 外层轮数，结果零变化。若日后嫌慢：先去掉 `decibelRegenBySlot`（占 108 / 109 的新增轮数），回退点 `git revert a6ab4558`。
+- **锁**：`moduleFeedbackSignature.test.ts` 新增 3 例（共 6 例）：四个标量变化会改签名；预算整点变化会改签名，浮点尾数和键序不改；postRound 失衡次数**不**改签名。
+- **验证**：wt330 `npm run verify` EXIT=0（4052 passed | 29 skipped）。
+- **CC-316（下一步，数值卡）**：`convergence.ts:559` postRound 派发传的是 `threads.postRoundInput.stunCount`（上一轮 countStun），但本轮 `countStun` 在 `:148` 已算出。改为传本轮 countStun，滞后就消失了；它也就成了本轮输入的函数，不必入签名。exCounts / ultimateCounts 仍取上一轮收敛值（本轮还没算出来）。唯一读者：`anby.ts:177` 安比 4 命（`cfg.chainCountTotalOverride` 缺省时用 `chainCountPerStun × stunCount`）。预期只有安比 4/5/6 命且非轴的队伍有数值变化，需要逐条解释 golden。注意 CC-154 当初选「上一轮 countStun」的理由要先读（grep `CC-154`），若理由仍成立就写「不做」。
