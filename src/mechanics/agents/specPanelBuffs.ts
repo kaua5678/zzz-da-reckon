@@ -629,6 +629,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   description: '虎威4秒/次驱动威风；虎釜震煞/山君鼎戏·威势次数由账本收敛；虎啸满覆盖冲击+50；影画1/2/4/6 面板与附伤。',
   /**
    * 额外能力·八面威风（队伍级，规则 6 迁入）：队伍有强攻/命破 → 这些角色每次终结技 +300 喧响。
+   * 「终结技」含模块自报的等价次数 `ultimateEquivalentCount`（CC-312：仪玄符法千重 / 调息赠送），core 一并乘 300。
    *
    * 迁移自 `useResourceCalc` 的 `jufufuCfg` 分支（棘轮站点 1/8，2026-09-12 #10 真清偿）：
    * 判定读本槽 cfg.panel.additionalAbilityActive（build 阶段面板已随 cfg 建好），

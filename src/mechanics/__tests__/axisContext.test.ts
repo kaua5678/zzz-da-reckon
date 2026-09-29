@@ -699,16 +699,18 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     expect(cfg.yixuanFlashBonus).toBe(0)
   })
 
-  it('★ extraSelfDecibelReward 是 `+=`：橘福福在队（额外能力开启）+ 上一轮符法千重>0 才加', () => {
-    const withJufufu: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 1500 }
-    getAgentMechanic('1371')!.applyTeamConfig!(hookInput(withJufufu, {
+  it('★ CC-312：只报终结技等价次数 ultimateEquivalentCount（覆盖写、幂等），不碰共享通道 extraSelfDecibelReward、不认橘福福', () => {
+    const cfg: Cfg = { slot: 0, agentId: '1371', extraSelfDecibelReward: 1500 }
+    const input = hookInput(cfg, {
       axis: axisOf({ axes: [], windows: [] }),
       threads: { auricInkFlash: 0, moduleFeedback: { teamUltimateExtra: 3 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }]),
-      // 橘福福 1391 且额外能力开启（`additionalAbilityActive > 0`）
-      characters: [{ slot: 0, agentId: '1371' }, { slot: 1, agentId: '1391', panel: { additionalAbilityActive: 1 } }] as never,
-    }))
-    expect(withJufufu.extraSelfDecibelReward).toBe(1500 + 3 * 300) // 累加，不是覆盖成 900
+      characters: [{ slot: 0, agentId: '1371' }] as never, // 无橘福福：次数照报（+300 由提供者经 extraSelfDecibelPerUltimate 决定）
+    })
+    getAgentMechanic('1371')!.applyTeamConfig!(input)
+    getAgentMechanic('1371')!.applyTeamConfig!(input) // 重放不翻倍
+    expect(cfg.ultimateEquivalentCount).toBe(3)
+    expect(cfg.extraSelfDecibelReward).toBe(1500)
   })
 
   it('★ 橘福福不在队 / 额外能力关 / 上一轮次数为 0 ⇒ 一项都不加（但字段仍写回原值）', () => {
@@ -769,7 +771,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     // **「基线 70 原样保留」**而不是 undefined——即增量项一个都没加（不是「加了 0」）。
     expect(cfg.yixuanExtremeAssistCap, '缺 interactions ⇒ 不许写（否则断路伪装成 0）').toBeUndefined()
     expect(cfg.yixuanFlashBonus, '缺 interactions ⇒ 增量项不许加（基线原样保留）').toBe(70)
-    expect(cfg.extraSelfDecibelReward, 'extraSelfDecibelReward 只依赖 threads+characters ⇒ 照写').toBe(0)
+    expect(cfg.ultimateEquivalentCount, 'ultimateEquivalentCount 只依赖 threads ⇒ 照写').toBe(0)
     // 不依赖 interactions 的字段必须仍然落盘（证明钩子跑了，不是「什么都没跑」）
     expect(cfg.yixuanAxisActive).toBe(true)
     expect(cfg.yixuanAnomalyTriggerFlash).toBe(4)

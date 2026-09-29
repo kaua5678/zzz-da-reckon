@@ -246,7 +246,7 @@ export function calcDecibelSource(
   }) ?? 0
   const unshareableBonus = (
     (cfg.extraSelfDecibelReward ?? 0)
-    + (cfg.extraSelfDecibelPerUltimate ?? 0) * state.ultimateCount
+    + (cfg.extraSelfDecibelPerUltimate ?? 0) * (state.ultimateCount + (cfg.ultimateEquivalentCount ?? 0))
     + selfBurnDecibel
     + extraUnshareableDecibel
   ) * efficiency

@@ -230,25 +230,17 @@ describe('C-β next-round feedback', () => {
     getAgentMechanic('1161')!.applyTeamConfig!(lInput)
     expect(lighter.lighterTeamEnergyConsumed).toBe(680) // 二次消费不翻倍
 
-    // ③ 仪玄（1371）：`extraSelfDecibelReward` 是**跨角色共享累加通道** ⇒ `+= 次数 × 300`，
-    //    且**门控是「橘福福在队且额外能力开启」**（`characters.some(…1391…)` + panel 门控）。
-    //    ⚠ 它**刻意不是幂等的**（佩洛伊斯/orphie 各自 += 同一字段，覆盖会静默清零别人那份；
-    //    既有 `axisContext.test.ts` 已把该 `+=` 语义锁死）。故这里钉的是**单次精确值**，
-    //    并成对给出「无 1391 ⇒ 一项都不加」的负控；「跨轮不翻倍」由上面管线用例承担。
-    const jufufuMate = { agentId: '1391', slot: 0, panel: { additionalAbilityActive: 1 } }
+    // ③ 仪玄（1371）：CC-312 起只把上一轮符法千重次数**覆盖写**进 `ultimateEquivalentCount`（幂等），
+    //    +300/次由橘福福模块经 `extraSelfDecibelPerUltimate` 决定、core 结算；仪玄不再认 1391、不碰共享通道。
     const yixuan = { agentId: '1371', slot: 2, extraSelfDecibelReward: 1500 } as Record<string, unknown>
     const yInput = {
-      slot: 2, cfg: yixuan, characters: [jufufuMate, yixuan], team: [], settings: {},
+      slot: 2, cfg: yixuan, characters: [yixuan], team: [], settings: {},
       phase: 'converge', combatTime: 180, threads,
     } as unknown as AgentTeamConfigInput
     getAgentMechanic('1371')!.applyTeamConfig!(yInput)
-    expect(yixuan.extraSelfDecibelReward).toBe(1500 + 2.5 * 300) // = 2250（累加，不是覆盖成 750）
-    // 负控：橘福福不在队 ⇒ 分量为 0（这一条保证上面的 2250 不是因为「无条件加」而通过）
-    const yixuanNoMate = { agentId: '1371', slot: 2, extraSelfDecibelReward: 1500 } as Record<string, unknown>
-    getAgentMechanic('1371')!.applyTeamConfig!({
-      ...yInput, cfg: yixuanNoMate, characters: [yixuanNoMate],
-    } as unknown as AgentTeamConfigInput)
-    expect(yixuanNoMate.extraSelfDecibelReward).toBe(1500)
+    getAgentMechanic('1371')!.applyTeamConfig!(yInput)
+    expect(yixuan.ultimateEquivalentCount).toBe(2.5) // 二次消费不翻倍
+    expect(yixuan.extraSelfDecibelReward).toBe(1500)
     expect(catalog.ready).toBe(true) // harness 真加载（防「因错误的原因通过」）
   })
 

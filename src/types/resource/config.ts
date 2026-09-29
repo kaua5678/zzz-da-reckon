@@ -332,6 +332,13 @@ export interface CharacterOperationConfig {
   extraSelfDecibelReward: number
   /** 每次终结技额外获得的不可分享喧响（如橘福福额外能力对强攻/命破 300/次） */
   extraSelfDecibelPerUltimate?: number
+  /**
+   * CC-312：模块自报的「视为终结技」额外次数（上一轮收敛值，如仪玄符法千重 / 调息赠送），
+   * 与 `ultimateCount` 一起乘 `extraSelfDecibelPerUltimate`。「每次终结技 +N」类规则的提供者
+   * （橘福福额外能力）因此不必知道谁有终结技等价物，等价物的拥有者也不必知道谁在发奖励。
+   * 写入方须**覆盖**写（幂等）；未写 = 0。
+   */
+  ultimateEquivalentCount?: number
   /** 伊德海莉 4 命：生命值降低时喧响获得提升 10% */
   yidhariCinema4Enabled?: boolean
   /** 伊德海莉每降低 1% 生命值获得的喧响（含命座修正） */

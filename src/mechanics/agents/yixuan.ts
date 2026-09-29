@@ -88,8 +88,6 @@ const ANOMALY_TRIGGER_MAX = Math.floor(180 / 10) // 10s CD 封顶次数（180s �
 const C1_LIGHTNING_CD = 6 // 影画1 落雷 CD（秒）
 const C1_LIGHTNING_FLASH = 5 // 落雷回闪能（/次）
 const EXTREME_ASSIST_FLASH = 5 // 极限支援换场落雷回闪能（/次）
-const JUFUFU_AGENT_ID = '1391' // 橘福福（额外能力：仪玄终结技类 +300 喧响/次）
-const JUFUFU_FUFA_DECIBEL = 300 // 符法千重/调息赠送每次的额外喧响
 
 // 核心被动 Lv.7 增伤目标 moveId（用户确认招式限定范围）
 const CORE_DMG_MOVE_IDS = new Set<string>([
@@ -397,12 +395,12 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCh
  * | `yixuanExtremeAssistCap` | `interactions` | Σ**队友** store 口径弹刀（**未缩放**——本轮的契约缺口） |
  * | `yixuanC1LightningCount` | `axis` + `cfg` | 轴/非轴**两臂**，判据是 `axisInSeconds > 0` |
  * | `yixuanFlashBonus` | `+=` | `auric*10 + extremeAssists*5 + c1*5`（**累加**，不是覆盖） |
- * | `extraSelfDecibelReward` | `+=` | 橘福福在队且上一轮符法千重 > 0 ⇒ `×300`（**累加**） |
+ * | `ultimateEquivalentCount` | 覆盖 | 上一轮符法千重次数（终结技等价物，CC-312；「每次终结技 +N」奖励由提供者经 `extraSelfDecibelPerUltimate` 结算） |
  *
  * ⚠ 三处**逐位保留**的形态（改了就是静默改语义）：
- *  ① `yixuanFlashBonus` / `extraSelfDecibelReward` 都是 **`+=`** 累加通道——`yixuanFlashBonus` 由
- *     `buildCharConfig` 先写「完美格挡/极限闪避/玄墨异常」三项，`extraSelfDecibelReward` 更是跨角色
- *     共享（另有 specPanelBuffs 佩洛伊斯/橘福福、蕾米埃尔、orphie）。写成覆盖会静默丢掉前面那几份。
+ *  ① `yixuanFlashBonus` 是 **`+=`** 累加通道——由 `buildCharConfig` 先写「完美格挡/极限闪避/玄墨异常」
+ *     三项，写成覆盖会静默丢掉前面那几份。（CC-312 前本钩子还 `+=` 共享通道 `extraSelfDecibelReward`，已改为覆盖写
+ *     `ultimateEquivalentCount`。）
  *  ② `yixuanC1LightningCount` 的**轴判据是算出来的 `axisInSeconds`**（`Σwindows × windowSeconds`），
  *     **不是** `axis.active`：`forceNoAxis` 退化时 `active === false` 但轴仍解析过 ⇒ 两者不同值。
  *     故此处用 `axis.active ? Σwindows×windowSeconds : 0` 复现原局部量，**不直接读 `active`**。
@@ -417,7 +415,7 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCh
  * 等轴字段（契约缺一个不等于全契约不可用）。
  */
 function applyYixuanTeamConfig(
-  { cfg, phase, slot, characters, threads, axis, interactions }: AgentTeamConfigInput,
+  { cfg, phase, slot, threads, axis, interactions }: AgentTeamConfigInput,
 ): void {
   if (phase !== 'converge') return
   const record = cfg as unknown as Record<string, unknown>
@@ -479,21 +477,14 @@ function applyYixuanTeamConfig(
     ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads?.auricInkFlash ?? 0))),
   )
 
-  // ── 通道④ 橘福福额外喧响（只依赖 threads + characters，**不依赖 interactions**）──
-  // 橘福福额外能力：仪玄符法千重/调息赠送也算终结技，上一轮次数 ×300 喧响
-  // （青溟云影走 extraSelfDecibelPerUltimate）。`jufufuOn` 是**按身份**判队伍是否含橘福福
-  // （B 类真特判：`characters` 按位置压缩，槽位号 ≠ 下标 ⇒ 只许 `.some`/`.find(身份)`）。
-  //
-  // ⚠ 原实现**无条件**写该字段 ⇒ 这里也写在 `interactions` 门控**之前**：把它挂在
-  // `interactions` 后面会让「契约漏传」静默吞掉这 300/次的喧响（新静默路径，禁止）。
-  // ⚠ `+=`：`extraSelfDecibelReward` 是**跨角色共享累加通道**（佩洛伊斯/橘福福/蕾米埃尔/
-  // orphie 各自 +=，`core/resource.ts:251` 汇总）——覆盖会静默清零别人那几份。
-  const jufufuOn = characters.some(
-    c => c.agentId === JUFUFU_AGENT_ID && (c.panel?.additionalAbilityActive ?? 0) > 0,
-  )
+  // ── 通道④ 终结技等价次数（只依赖 threads，**不依赖 interactions**）──
+  // CC-312：符法千重 / 调息赠送「也算终结技」——只自报次数（上一轮收敛值），**覆盖**写（幂等）。
+  // 「每次终结技 +N 喧响」由规则提供者经 `extraSelfDecibelPerUltimate` 结算（现：橘福福额外能力，对强攻/命破 300/次，
+  // 见 specPanelBuffs.ts jufufuTigerRoarMechanic），core 按 `(ultimateCount + ultimateEquivalentCount) × perUltimate` 算。
+  // 此前本通道按身份找橘福福（'1391'）并自抄 300 常量累加进 extraSelfDecibelReward（规则拥有者与消费者倒置）。
+  // ⚠ 写在 `interactions` 门控**之前**：挂在后面会让「契约漏传」静默吞掉这部分喧响。
   const prevFuFa = Number((threads?.moduleFeedback?.teamUltimateExtra ?? 0))
-  const fufaDecibel = jufufuOn && prevFuFa > 0 ? prevFuFa * JUFUFU_FUFA_DECIBEL : 0
-  record.extraSelfDecibelReward = Number(record.extraSelfDecibelReward ?? 0) + fufaDecibel
+  record.ultimateEquivalentCount = prevFuFa > 0 ? prevFuFa : 0
 
   // ── 通道⑤ 未缩放交互次数（`interactions` 契约；本轮的契约缺口）──────────────
   // ⚠ 双判据门控：走到这里 `phase === 'converge'` 已满足，缺 `interactions` 即**直接 return、
@@ -991,8 +982,8 @@ const settings: MechanicSetting[] = [
 
 /**
  * 仪玄·符法千重次数「下一轮反馈」（`nextRoundFeedback` 钩子，2026-09-17 round 20 C-β 自
- * `convergence.ts` 迁入）。产出线程值 `teamUltimateExtra`——**消费方是橘福福 1391**
- * （额外能力：仪玄终结技类 +300 喧响/次，见本文件 `applyYixuanTeamConfig` 通道④的读点），
+ * `convergence.ts` 迁入）。产出线程值 `teamUltimateExtra`——本文件 `applyYixuanTeamConfig` 通道④把它写成
+ * `ultimateEquivalentCount`（CC-312），橘福福额外能力经 `extraSelfDecibelPerUltimate` 对它结算 +300/次；
  * 但**产出侧归属仪玄**：它只数仪玄自己那份结果行。
  *
  * ⚠ **为什么不能挂 1391 模块**（本处归属判断的实测依据，不是口味）：橘福福额外能力的另一半
