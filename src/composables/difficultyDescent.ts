@@ -242,7 +242,7 @@ export function descendDifficultyCurve(
     const survival = interactionSurvivalBySlot(rr)
     // CC-258：引擎实打次数唯一读取（含角色专属类型名：般岳金身 / 双反）
     const items: InteractionItem[] = engineInteractionItems(
-      ctx.config, (slot, raw) => roundInteractionCount(raw * (survival.get(slot) ?? 1)),
+      ctx.config, (slot, raw) => roundInteractionCount(raw * (survival.get(slot) ?? 1)), rr?.convergence?.interactionScale,
     ).filter(i => i.count > 0)
     const overflow = rr?.overflowSeconds ?? 0
     const saved = rr ? frontlineOccupationBreakdown(rr).saved : 0

@@ -12,6 +12,21 @@
 export const DOWNSCALE_SCALES: readonly number[] = [0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125, 0.0625]
 
 /**
+ * CC-263：**非轴降配缩放的交互字段**与取整口径的唯一来源。
+ * 引擎（`convergence#runCalcRound` 合并 cfg 时）与难度 x（`liveInteractions#engineInteractionItems`）共用——
+ * 修前 x 读 store 原值，引擎按 `round(x × scale)` 实打（实测 auto-1371-1481-1451 scale 0.5：主 C 弹刀 store 6 → 实打 3，
+ * x 仍按 6 计），违背 CC-259「x = 引擎实打次数」。快支 / 反制支援 / 专属字段不缩（引擎也不缩）。
+ */
+export const DOWNSCALED_INTERACTION_FIELDS = ['parryCount', 'blockCount', 'dualCounterCount', 'dodgeCounterCount'] as const
+export type DownscaledInteractionField = typeof DOWNSCALED_INTERACTION_FIELDS[number]
+
+/** 降配后的实打次数：scale 缺省或 ≥ 1 ⇒ 原值（逐位不变）；否则 `Math.round(raw × scale)`。 */
+export function downscaleInteractionCount(raw: number, scale: number | undefined): number {
+  const s = scale ?? 1
+  return s < 1 ? Math.round(raw * s) : raw
+}
+
+/**
  * `selectDownscaleScale` 的单档试算产物：
  * - `accepted`：通过**相对**验收（三臂不比基线更差 + 截断 ≤ 容差）——「比现状好」；
  * - `feasible`：**绝对**可行（`downscaleTrialFeasible`：净占用不超预算 + 截断 ≤ 容差）——「真装得进 180s」。

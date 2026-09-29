@@ -36,6 +36,7 @@ import {
   ultimateGiftSourceOf,
 } from './ultimatePromote'
 import { applyChainGift } from './chainGift'
+import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from './feasibilitySearch'
 import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
 import * as ResourceCalcHelpers from './helpers'
 import { computeParrySplit, GUARANTEE_STUN_TARGET } from '@/core/parrySplit'
@@ -441,10 +442,8 @@ export function createRunCalcRound(deps: {
       // 下方 boss 强制弹刀（parrySplit 直读 store 原值）与轴补齐注入在其后叠加，不被缩放。
       const iscale = opts?.interactionScale ?? 1
       if (iscale < 1) {
-        merged.parryCount = Math.round((merged.parryCount ?? 0) * iscale)
-        merged.blockCount = Math.round((merged.blockCount ?? 0) * iscale)
-        merged.dualCounterCount = Math.round((merged.dualCounterCount ?? 0) * iscale)
-        merged.dodgeCounterCount = Math.round((merged.dodgeCounterCount ?? 0) * iscale)
+        // CC-263：字段表与取整口径单一来源（难度 x 同读，见 feasibilitySearch#DOWNSCALED_INTERACTION_FIELDS）
+        for (const f of DOWNSCALED_INTERACTION_FIELDS) merged[f] = downscaleInteractionCount(merged[f] ?? 0, iscale)
       }
       // 后台合轴自动填充（模块 backstageAutoFill 声明驱动，上一轮反推值；手动字段 >0 时模块优先用手动）
       {

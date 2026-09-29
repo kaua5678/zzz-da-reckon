@@ -12,6 +12,9 @@ import type { useConfigStore } from '@/stores/config'
 import { interactionFieldTypeOf } from '@/composables/agentMechanicView'
 import type { InteractionItem, TeamPreset } from '@/types/teamPreset'
 import type { TeamResourceResult } from '@/types/resource'
+import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from '@/composables/resourceCalc/feasibilitySearch'
+
+const DOWNSCALED = new Set<string>(DOWNSCALED_INTERACTION_FIELDS)
 
 /**
  * **交互次数按装配期截断存活率缩**（用户 2026-09-11：「不上升合轴率导致招式截断，
@@ -62,10 +65,13 @@ const OVERRIDE_ONLY_INTERACTION_FIELDS = ['dualCounterCount'] as const
  * CC-258：**引擎侧实打交互次数**的唯一读取（难度曲线 `liveInteractions` 与难度下降 `difficultyDescent` 共用）。
  * 逐字段 × 逐槽：类型名 = 该槽模块 `interactionFieldTypes[field]` ?? 全局类型名；同名求和。
  * 全局类型即使 0 次也保留（明细要能照抄字段）；`shrink(slot, raw)` 负责截断存活率缩与取位。
+ * CC-263：`interactionScale`（= `rr.convergence.interactionScale`）先按引擎口径降配取整，再交给 `shrink`
+ * （引擎顺序同：合并 cfg 时缩放 → 装配期截断）。缺省 / ≥1 ⇒ 逐位不变。
  */
 export function engineInteractionItems(
   config: ReturnType<typeof useConfigStore>,
   shrink: (slot: number, raw: number) => number,
+  interactionScale?: number,
 ): InteractionItem[] {
   const byType = new Map<string, number>()
   for (const { type } of ENGINE_INTERACTION_FIELDS) byType.set(type, 0)
@@ -78,7 +84,8 @@ export function engineInteractionItems(
       const char = config.team[slot]
       const t = interactionFieldTypeOf(char?.agentId, field) ?? type
       if (!t) continue
-      const raw = Number((char as Record<string, unknown> | undefined)?.[field] ?? 0)
+      const stored = Number((char as Record<string, unknown> | undefined)?.[field] ?? 0)
+      const raw = DOWNSCALED.has(field) ? downscaleInteractionCount(stored, interactionScale) : stored
       byType.set(t, (byType.get(t) ?? 0) + shrink(slot, raw))
     }
   }
@@ -107,7 +114,7 @@ export function liveInteractions(
   const survival = interactionSurvivalBySlot(rr)
   // 缩后保留 2 位小数（roundInteractionCount）：不取整会在难度明细里打出 15 位浮点尾巴（实测撑破散点明细表）
   const shrink = (slot: number, count: number) => roundInteractionCount(count * (survival.get(slot) ?? 1))
-  const out: InteractionItem[] = engineInteractionItems(config, shrink)
+  const out: InteractionItem[] = engineInteractionItems(config, shrink, rr?.convergence?.interactionScale)
   const engineTypes = new Set(out.map(i => i.type))
   // 反制支援（角力化解一组控制技）：次数不是 store 字段而是**运行时折算**（boss 控制技组 ×
   // 队内有反制支援招式的角色），按承接槽位的截断存活率缩。
