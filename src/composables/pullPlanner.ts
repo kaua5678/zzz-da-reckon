@@ -93,8 +93,15 @@ export interface PlannerOptions {
   startDate: string
   /** 起点银行菲林 */
   initialBank: number
-  /** 每版本免费菲林（用户口径默认 25000）；按版本边界发放 */
+  /** 每版本免费菲林（用户口径默认 25000）；按 `versionStartDates` 的版本边界发放 */
   filmPerVersion: number
+  /**
+   * 收入日历（提案 §5.6「三根时轴」之收入轴）：各版本开始日 YYYY-MM-DD，升序。
+   * 每跨过一个版本开始日发一份 `filmPerVersion`（见 `versionFilmGrants`）。
+   * **必填**：缺省会静默退回「按期发薪」，而一个版本约有 3 期 ⇒ 收入被放大约 3 倍（CC-179 判据）。
+   * 引擎传 `plannerVersionStartDates()`（VERSION_NODES 每版本首节点）。
+   */
+  versionStartDates: string[]
   /** beam 宽度 */
   beamWidth: number
   /** 内层每 Boss 取前 M 候选做不重叠匹配 */
@@ -109,16 +116,26 @@ export interface PlannerOptions {
 // ========== 版本边界（菲林发放粒度） ==========
 
 /**
- * 每版本发一次菲林：同一日历天内可能有多个期（如同日开赛的 3.2 两期），
- * 按「日期变化」判定版本边界；首期不发（起点预算 = initialBank）。
+ * 每版本发一次菲林：第 i 期发放 = (上一边界, 本期日期] 内跨过的版本开始日个数 × filmPerVersion。
+ * 首期的上一边界 = 起点日期 `startDate`（起点所在版本的收入视为已含在 initialBank 里，
+ * 所以起点恰为版本开始日时不重复发）。
+ *
+ * 旧实现（2026-08 至 2026-09-29）按「期日期变化」发薪，注释以为同一版本的期同日开赛；
+ * 实测默认数据 44 期 44 个不同日期、每版本约 3 期 ⇒ 每期都发一份，收入约为用户口径（每版本 25000）的 3 倍。
+ * 同族的菲林经济模拟卡（teamTimelineFilm）一直按 `filmPerVersion / PERIODS_PER_VERSION` 摊到每期，口径本来就是每版本。
  */
-function filmGrants(periods: PlannerPeriod[], filmPerVersion: number): number[] {
+export function versionFilmGrants(
+  periods: PlannerPeriod[],
+  versionStartDates: readonly string[],
+  filmPerVersion: number,
+  startDate: string,
+): number[] {
   const out: number[] = []
-  let prevDate = ''
+  let prev = startDate
   for (const p of periods) {
-    const isNewVersion = p.date !== prevDate && prevDate !== ''
-    out.push(isNewVersion ? filmPerVersion : 0)
-    prevDate = p.date
+    const crossed = versionStartDates.filter(d => d > prev && d <= p.date).length
+    out.push(crossed * filmPerVersion)
+    if (p.date > prev) prev = p.date
   }
   return out
 }
@@ -283,7 +300,7 @@ export function planPullStrategy(opts: PlannerOptions): PlannerResult {
   const { cards, periods, oracle } = opts
   const startDate = opts.startDate
   const activePeriods = periods.filter(p => p.date >= startDate)
-  const grants = filmGrants(activePeriods, opts.filmPerVersion)
+  const grants = versionFilmGrants(activePeriods, opts.versionStartDates, opts.filmPerVersion, startDate)
 
   // 初始持有（起点预设）
   const initHoldings: Record<string, number> = {}

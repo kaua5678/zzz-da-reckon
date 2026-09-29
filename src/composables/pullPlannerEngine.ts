@@ -283,6 +283,21 @@ export function buildPlannerPeriods(
     }))
 }
 
+/**
+ * 规划器收入日历：每个版本的开始日（VERSION_NODES 里该版本的第一个节点，升序）。
+ * 不排除测试服版本——收入按日历发，期轴已排除测试服期，测试服版本开始日之后没有期，不影响发放。
+ */
+export function plannerVersionStartDates(): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const n of VERSION_NODES) {
+    if (seen.has(n.version)) continue
+    seen.add(n.version)
+    out.push(n.date)
+  }
+  return out.sort()
+}
+
 /** 测试服版本集合（同 Chart 1 口径：note 含「测试服」的 VERSION_NODES） */
 export function plannerTestServerVersions(): Set<string> {
   return new Set(VERSION_NODES.filter(n => (n.note ?? '').includes('测试服')).map(n => n.version))
@@ -425,6 +440,7 @@ export async function runPullPlanner(opts: PlannerRunOptions): Promise<PlannerRu
       startDate: opts.startDate,
       initialBank: opts.initialBank ?? 0,
       filmPerVersion: opts.filmPerVersion ?? PLANNER_FILM_PER_VERSION,
+      versionStartDates: plannerVersionStartDates(),
       beamWidth: opts.beamWidth ?? 6,
       assignmentTopM: opts.assignmentTopM ?? 12,
       oracle: engine.oracle,

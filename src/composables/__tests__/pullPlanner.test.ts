@@ -14,6 +14,7 @@ import {
   nextPurchase,
   pickPeriodAssignment,
   planPullStrategy,
+  versionFilmGrants,
   type PlannerBossRoom,
   type PlannerCard,
   type PlannerOptions,
@@ -80,6 +81,9 @@ function opts(over: Partial<PlannerOptions> = {}): PlannerOptions {
     startDate: date(0),
     initialBank: 0,
     filmPerVersion: 25000,
+    // 测试夹具的期每 14 天一个、每期视为一个新版本（保持本文件旧用例「每期发一份」的前提；
+    // 真实数据是约 3 期一个版本，见文末 versionFilmGrants 用例）
+    versionStartDates: Array.from({ length: 12 }, (_, i) => date(i * 14)),
     beamWidth: 8,
     assignmentTopM: 10,
     oracle: fakeOracle(),
@@ -321,5 +325,43 @@ describe('pullPlanner · 零价值三态与每万菲林分母', () => {
     expect(notBought.searchInconsistent).toBe(false)
     expect(notBought.spentInPlan).toBe(0)
     expect(cardValuePer10kFilm(notBought)).toBeNull()
+  })
+})
+
+/**
+ * 收入按版本日历发（提案 §5.6 收入轴；2026-09-29 arena-B）：
+ * 旧实现按「期日期变化」发薪 ⇒ 真实数据每版本约 3 期 ⇒ 收入 ×3。
+ */
+describe('pullPlanner · 收入按版本日历发放（versionFilmGrants）', () => {
+  const periodsAt = (...days: number[]) => days.map(d => period(d, [80000]))
+
+  it('★ 一个版本 3 期只发一份：版本开始日 0 / 42，期 0,14,28,42,56 ⇒ 只有第 42 天那期发', () => {
+    const g = versionFilmGrants(periodsAt(0, 14, 28, 42, 56), [date(0), date(42)], 25000, date(0))
+    expect(g).toEqual([0, 0, 0, 25000, 0])
+    // 旧口径（按日期变化）会是 [0, 25000, 25000, 25000, 25000] = 4 份
+    expect(g.reduce((a, b) => a + b, 0)).toBe(25000)
+  })
+
+  it('两期之间跨过 2 个版本 ⇒ 本期发 2 份；同一天的第二期 ⇒ 0', () => {
+    const g = versionFilmGrants(
+      [period(0, [80000], 'Pa'), period(100, [80000], 'Pb'), period(100, [80000], 'Pc')],
+      [date(0), date(42), date(84)], 25000, date(0),
+    )
+    expect(g).toEqual([0, 50000, 0])
+  })
+
+  it('首期上一边界 = 起点：起点在版本中段、首期跨过下一版本开始日 ⇒ 首期发一份', () => {
+    const g = versionFilmGrants(periodsAt(50, 64), [date(0), date(42), date(45)], 25000, date(40))
+    expect(g).toEqual([50000, 0]) // (40, 50] 内有 42 与 45 两个版本开始日
+  })
+
+  it('planPullStrategy 端到端：银行守恒按版本发放（3 期同版本 ⇒ 终态银行 = 起始银行，不再多发）', () => {
+    const res = planPullStrategy(opts({
+      cards: [],
+      periods: periodsAt(2, 16, 30),
+      versionStartDates: [date(0), date(42)],
+      initialBank: 10000,
+    }))
+    expect(res.finalBank).toBe(10000) // 旧口径：10000 + 2×25000
   })
 })
