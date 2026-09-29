@@ -4062,3 +4062,15 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 影画门控（`stores/config.ts#parseCinemaRequirement`，正则 `/影画([一二三四五六])/` 任意位置匹配）：现有标签全是中文数字，**无漏**；未加护栏（见交接）。
 - **验证**：vue-tsc 干净；wt325 `npm run verify` EXIT=0。
 - **回退**：`git revert b3da0d0f`（诺姆两条 buff 回到不门控）。
+
+### 24.150 第 326 轮：CC-311 影画门控不变量锁 + 软 / 硬门控口径记录（f37af4de）
+
+- **CC-311**：`stores/config.ts#parseCinemaRequirement` 用 `/影画([一二三四五六])/` 从来源标签取影画要求，解析不出就返回 0（= 无要求）。「影画2」这类写法会让 C2 效果对 C0 队友也默认勾上。现有数据全是中文数字，无漏。
+  - 改法：导出该函数（原为模块内私有），`additionalGate.test.ts` 新增不变量锁——teammate buff 分组（含合并进来的 spec teamBuffs）中凡含「影画」的标签，解析结果必须在 1..6。
+  - 变异验证：把 `public/static/teammate-buffs.json` 中第一条「影画二」（1491 `qianxia.cinema_2.aether_curtain_atk_pct`）临时改成「影画2」⇒ 测试红并报出该条；已 `git checkout` 复原。
+- **口径记录（读代码所得，未改）**：队友 buff 有两类门控，强度不同。
+  - **硬门控**（引擎 `panelPhases.ts` 也拦，用户强行勾上也不生效）：额外能力（`evalAdditionalAbilityBuffGates`，CC-203）、模块 `teammateBuffGate` 钩子（蕾米埃尔档位、波可娜 C6 互斥，CC-207）。
+  - **软门控**（只决定默认勾不勾）：影画等级、拥有者是否在队。`deriveTeammateBuffEnabled` 算默认值，`syncTeammateBuffsFromTeam` 在队伍 / 影画变化时覆盖 `enabled`；引擎 `core/inCombatBuffs.ts#collectInCombatTeamBuffs` 只看 `isTeammateBuffEnabled(buff.id)`，UI `utils/teammateBuffRows.ts` 也不按影画锁定。⇒ 用户可以在队友 C0 时手动勾上它的 C6 buff，引擎照算。
+  - **裁决：不改**。依据：① 每次队伍或影画变化，sync 都会把 enabled 覆盖回派生值，只有用户**事后手动**勾选才会出现「影画不足仍生效」，这是显式的用户意图（what-if），不是静默漏算；② 额外能力改成硬门控（CC-203）的原因是它此前连默认值都算错（软门控本身漏），影画没有这个问题；③ 改成硬门控会让手动开关对这类 buff 失效，是 UI 行为变化，没有需求依据。回退 / 重开条件：若出现「存档恢复后影画变低但 buff 仍勾着」之类非用户意图的路径，再把影画纳入硬门控（在 `panelPhases.ts` 与 `evalAdditionalAbilityBuffGates` 同处加一道）。
+- **验证**：vue-tsc 干净；additionalGate.test.ts 18 通过；wt326 `npm run verify` EXIT=0。
+- **回退**：`git revert f37af4de`。

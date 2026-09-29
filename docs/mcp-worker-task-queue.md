@@ -96,15 +96,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 325 轮（lane lead-arena-0925c）：CC-310（`b3da0d0f`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- **有数值变化**：诺姆两条「额外能力（…）」buff 补进门控表，额外能力未触发的诺姆队总伤下降（示例 −15.4%），触发队不变。spec teamBuffs 来源普查 0 处错标。详见 `docs/mcp-stun-dual-source.md` §24.149。
-- 前几轮：324 CC-309；323 CC-308；322 CC-307。
+**第 326 轮（lane lead-arena-0925c）：CC-311（`f37af4de`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 影画门控加不变量锁（零行为差）；记录并裁决「影画 / 在队只软门控」不改。详见 `docs/mcp-stun-dual-source.md` §24.150。
+- 前几轮：325 CC-310（诺姆额外能力漏门控，有数值变化）；324 CC-309；323 CC-308。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行 verify。
 
 **下一步（直接开工）**：
-1. **影画门控护栏**（小，与 CC-310 同形）：`stores/config.ts#parseCinemaRequirement` 只认中文数字 `影画[一二三四五六]`；标签若写成「影画2」会解析成 0（= 无影画要求，C2 效果对 C0 角色也生效）。现有标签全是中文数字，无漏。在 `additionalGate.test.ts` 或 store 测试里加一条：teammate buff 分组中凡含「影画」的标签，`parseCinemaRequirement` 须 > 0（需把该函数导出或经 `deriveTeammateBuffEnabled` 用 C0 队验证）。先红后绿不适用（现状无漏），标「不变量锁」。
-2. **teammate-buffs.json 其他带后缀的标签**：`核心被动（F级）`×6、`强化特殊技（技能等级随动）`、`以太帷幕.妄想重奏` 目前不参与任何门控，无需处理；若日后新增按来源类别门控的逻辑，先用本轮的「标签取值普查」脚本思路（§24.149）列全格式再写谓词。
-3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+1. **存档恢复路径核查**（§24.150 裁决的重开条件）：确认从持久化恢复 `teammateBuffSelections` 后，`syncTeammateBuffsFromTeam` 是否一定会跑（`watch(teammateBuffsLoaded)` 只在数据晚到时触发；若数据先到、存档后恢复，是否有别的 watch 覆盖）。做法：读 `stores/config.ts` 中持久化恢复（grep `teammateBuffSelections` 的赋值点）与 team watch 的源；写 setupHarness 测试：先设 C6 队伍并同步，再模拟恢复一份「C0 但 C6 buff enabled=true」的存档，看同步后 enabled 是否回 false。若不会回 false ⇒ 这是非用户意图路径，按 §24.150 回退条件处理（开 CC 卡）；若会 ⇒ 写结论结项。
+2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。
