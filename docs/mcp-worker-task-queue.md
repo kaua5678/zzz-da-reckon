@@ -71,25 +71,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 300 轮（lane lead-arena-0925c）：CC-286（8920ccc6）完成。**
-- **push 状态**：开工时第 299 轮的 3 个提交仍未推送；本轮开工再试仍失败（`ssh.github.com:443` 连接超时，`curl https://github.com` 也无响应，是整机到 GitHub 不通，与认证无关）。本轮提交是否推送成功，以 `git rev-list --count origin/master..HEAD` 为准，不为 0 就是没推上去。**下一轮开工第一件事：`timeout 150 git push origin master`。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.124：仪玄两个 cfg 缓存改为纯函数重算，其余候选逐个分类。
-- 前几轮：299 CC-285（删 37 个 cfg 死写并加锁）；298 CC-283 / 284；297 CC-282；296 CC-281。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。
-- 未跟踪：`docs/devlog/`（别人的），以及 `docs/proposals/pull-value-optimization.md`（09-29 12:31 出现，自称「提案（未实现）」，讲抽卡价值口径：期望值、增量价值相对持有集、两种零价值要分开报）。它不在 REQUIREMENTS 里，本 lane 不 add、不实现；若日后出现在 REQUIREMENTS 里再按需求做。
+**第 301 轮（lane lead-arena-0925c）：CC-287（f45d69f7）完成。开工时补推成功，GitHub 已恢复；本轮文档提交后已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.125：青衣改为显式传参，「写了读回」普查结项。
+- 前几轮：300 CC-286；299 CC-285；298 CC-283 / 284；297 CC-282。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add（proposals 是抽卡价值口径提案，不在 REQUIREMENTS 里，不实现）。
 
-**下一步（直接开工）**：「写了读回」普查的收益已经下降（剩下的多是轮间通道），转向 `docs/mcp-r6-refactor-list.md` 里仍标「待查」或「候选」的条目，挑影响面最大的一项。如果想先收尾普查，按这个顺序：
-1. `qingyi.ts`：`qingyiGenericRowsTime` 改为 `computeQingyiSource(cfg, state, genericRowsTime)` 显式传参。先 `git grep -n computeQingyiSource` 找出所有调用者，装配期没有 executions 的调用者改传 `preModuleExecutions` 算出的值。
-2. `nangong.ts`：先查 :352 / :367 所在钩子，是同轮缓存才改。
-3. starlightBilly 的 `billyChain*`：先读 :386 附近注释，确认哪些已经改过。
-- 每改一处都要用探针证明等价（方法见 §24.124）。
+**下一步（直接开工）**：
+1. **南宫羽 C6 疑似陈旧值**（§24.125）：`nangong.ts` buildNangongExecutions 里 `if (pairs <= 0) return` 在 `record.nangongMinePairs = pairs` 之前，pairs 掉到 0 时不清零，事件钩子 :352 就会读到旧值。
+   - 先写临时探针：1511 C6 的队伍跑一遍，在 buildNangongAnomalyEvents 里打印读到的 nangongMinePairs 和本轮真实 pairs；
+   - 两者不同 ⇒ 是真 bug：把写入移到 return 之前（写 `pairs`，可能为 0），更新 golden（`TIME_GOLDEN_UPDATE=1`），并在文档写明差异来源；
+   - 从未出现不同 ⇒ 写「不可达，不改」。
+2. 之后回到 `docs/mcp-r6-refactor-list.md` §8，挑影响面最大的待查项。「写了读回」普查已经结项，不要再扫。
 
 **已知坑**：
-- 「缓存 == 重算」必须用探针计数 SAME / DIFF / NOCACHE 来证明，timeGolden 只覆盖伤害和时间账，覆盖不到展示量；
-- 读者若在估时 / 事件钩子里（先于本轮物化运行），读到的是上一次装配的值，那是轮间通道，改成重算会改变收敛；
+- **主工作区里有另一个会话在并行改动**（第 301 轮观察到：`pullPlanner.ts`、`pullPlanner.test.ts`、`PullPlannerChart.vue`、`pull-planner-chart.css` 未提交修改，看起来是在实现 `docs/proposals/pull-value-optimization.md`）。它的半成品会让主工作区的 verify 红（pullPlanner 4 个用例和 checkTokens）。本轮做法：`git worktree add --detach /home/kaua/calc-arch/wt301 HEAD`，只拷入自己改的文件，把 node_modules 软链过去，在那里跑 verify（EXIT=0）；提交时只 add 自己的文件，**不碰对方的文件**。以后遇到同样情况照此办理，用完执行 `git worktree remove --force`。
+- 「缓存 == 重算」用探针计数 SAME / DIFF / NOCACHE 证明（timeGolden 覆盖不到展示量）；
+- 读者在估时 / 事件钩子里的是轮间通道，改成重算会改变收敛；
 - 新增模块 cfg 写入必须有读者（cfgWriteOnlyKeys 锁）；
 - verify 跑的时候不要往工作区写文件；
-- 杀进程只 kill 具体 pid；后台 verify 用 `setsid ./bg.sh … & sleep 2`；上传一律用 `bash /home/user/mcp-tools/up.sh …`。
+- 杀进程只 kill 具体 pid；后台 verify 用 `setsid ./bg.sh … & sleep 2`；上传一律用 `bash /home/user/mcp-tools/up.sh …`；GitHub 偶尔不通，push 失败记进交接，下一轮先补推。
 
 **未决项**（依赖游戏事实或审美，不开卡）：lumiflux 属性标签颜色（§24.120）；1511 南宫羽 `AA_OWNER_EXEMPT`；辉光 / 流明命名（§24.62）；命破 / 锋御标签颜色（§24.63）；失衡 +20 喧响（§24.79 ①）；赠送 S 是否计限定金（§24.109）。
 

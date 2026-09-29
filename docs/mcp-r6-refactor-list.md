@@ -451,3 +451,4 @@
 | 298 | 橘福福 cfg 缓存 + 回退分叉 / 露西装配 ×2 / 指标聚合循环 ×7 / 版本图摊点 ×2 | 可归一：CC-283（`d3fbccc2`）、CC-284（`94817ea8`）；AttributeConfigPage 两段 v-for「不做」 | jscpd 清零；其余模块的 cfg 写回缓存待普查（见交接） |
 | 299 | 角色模块 cfg 死写 ×37 | 冗余可删：CC-285（`7a783dd5`），加锁 | 12 个真「写了读回」的缓存待逐个改成纯函数重算（§24.123 清单） |
 | 300 | 仪玄 cfg 缓存 ×2 / 其余「写了读回」候选 | 可简化：CC-286（`8920ccc6`）；phoenix / nekomata / promia 属轮间通道「不做」；xide 有测试接口「暂不做」 | qingyi 同调用传参、nangong / billy 未查 |
+| 301 | 青衣 cfg 回写传参 / nangong / billy | 可简化：CC-287（`f45d69f7`）；nangong、billy 属轮间通道「不做」；普查结项 | nangong C6 疑似陈旧值（pairs→0 时不清零）待量 |

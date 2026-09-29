@@ -3702,3 +3702,19 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 - **影响**：计算零差（verify 全绿），展示零差（探针 570/570）。
 - **回退**：revert 8920ccc6。
+
+### 24.125 第 301 轮：青衣通用行时间改为显式传参；「写了读回」普查结项（CC-287，f45d69f7）
+
+- **push 恢复**：开工时补推成功（`15f3e2d7..cb2942c9` 等 5 个提交），GitHub 连通性恢复。
+- **CC-287（`qingyi.ts` + `types/resource/config.ts`）**：
+  - 原先 `buildQingyiExecutions` 把实测通用行时间写进 `cfg.qingyiGenericRowsTime`，紧接着调 `computeQingyiSource(cfg, state)` 从 cfg 读回；装配期 `buildQingyiResourceResult` 也读这个缓存。
+  - 现在 `computeQingyiSource(cfg, state, genericRowsTime = 0)` 显式接收这个值：buildExecutions 传 `qingyiGenericRowsTimeOf(executions)`，buildResourceResult 传 `qingyiGenericRowsTimeOf(preModuleExecutions ?? [])`；同时删除 cfg 写入和 `CharacterOperationConfig.qingyiGenericRowsTime` 类型字段。
+  - 导出函数签名的第 3 个参数带默认值，qingyi.test 的两处直调（不传该值，等于只用公式估算）行为不变。
+  - 等价证明：探针在 timeGolden 加 qingyi 单测上比较缓存值与重算值，**106 次全部相同，0 次不同，0 次缓存缺失**；verify 全绿。
+- **普查结项**（§24.123 / §24.124 清单全部有结论）：
+  - `nangongMinePairs`：读者是 `buildNangongAnomalyEvents`（事件钩子），属于轮间通道，不改。
+    - **顺带发现一个疑似陈旧值**：buildExecutions 里 `if (pairs <= 0) return` 在写入之前，所以本轮地雷对数为 0 时，cfg 里还留着上一次 > 0 的值，C6 颤音叠层会用到它。只影响 C6 且 pairs 从正数掉到 0 的情形，**未修**，记为候选；修法是在 return 前写入 0，要用探针量出影响面后再改。
+  - starlightBilly `billyChainHp` / `billyChainCount` / `billyFullThrottleCount`：:386 注释说明链数已改为本轮重算，其余读者在估时与展示两处，属于轮间通道或展示，不改。
+  - 汇总：同一轮内「写了读回」的缓存共 4 处（橘福福 CC-283、仪玄 ×2 CC-286、青衣 CC-287），已全部改成纯函数重算或显式传参；其余都是轮间通道、spec countField 接口，或带测试接口（xide）。
+- **影响**：计算零差，展示零差。
+- **回退**：revert f45d69f7。
