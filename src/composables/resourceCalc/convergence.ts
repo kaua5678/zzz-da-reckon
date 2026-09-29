@@ -1153,13 +1153,11 @@ export function createRunCalcRound(deps: {
         postRoundInput: postRoundInputNext,
         decibelParry: decibelParryNext,
         decibelParryBasisShort: decibelParryBasisShortNext,
-        // 轨推演输入（喧响产出）单调不减：轨削减大招 → 大招回响数据行减少 → 产出下滑
-        // → 下一轮轨更紧 → 恶性循环（实测可螺旋到 0）。取 max(上一轮, 本轮) 锁定基准。
+        // 轴栈喧响预算 = 本轮各槽喧响产出。CC-317 删掉原先的 max(上一轮, 本轮) 棘轮（防「轨削减大招 → 产出下滑 →
+        // 螺旋到 0」）：第 332 轮复测 495 例 golden + specs，棘轮在约 20% 的轮次生效，但只改变 7 次中间轮的喧响跳过，
+        // 最终结果、退出类型、总轮数逐位不变；而棘轮让预算依赖迭代路径（历史最大值）。若日后复现螺旋，回退 CC-317。
         decibelRegenBySlot: Object.fromEntries(
-          rr.characters.map(c => [c.slot, Math.max(
-            prevDecibelRegenBySlot?.[c.slot] ?? 0,
-            c.decibelSource?.total ?? 0,
-          )]),
+          rr.characters.map(c => [c.slot, c.decibelSource?.total ?? 0]),
         ),
         // 上一轮失衡池整数次数：轴内块数落地（雨果决算 坑36）与池同源的滞后注入
         prevPoolStunCount: sp1.pool?.stunCount ?? 0,
