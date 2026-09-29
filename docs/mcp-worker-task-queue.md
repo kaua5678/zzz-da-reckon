@@ -90,15 +90,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 319 轮（lane lead-arena-0925c）：CC-304（`07a91a16`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
-- 展示层 .vue 派生规则副本普查：只有机制页风化浸染挑槽是引擎规则副本，已收成 `anomalyPanels#resolveWindInfectionPick` 一份；其余命中都是设置控件或纯展示，不做（`docs/mcp-stun-dual-source.md` §24.143）。全量 verify 4031 绿（删了一个随死函数而去的用例）。
-- 前几轮：318 CC-303；317 CC-302；316 CC-301 + CC-299。
+**第 320 轮（lane lead-arena-0925c）：CC-305（`c46321bb`）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 展示层 findIndex / damageElement 普查：全为纯展示，展示层副本线收尾。锁定失衡下沉进 `promoteFixpoint`（CC-300 事后钳位删除），实测零数值差；全量 verify 4033 绿。详见 `docs/mcp-stun-dual-source.md` §24.144。
+- 前几轮：319 CC-304；318 CC-303；317 CC-302。
 - REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。开工时无并行会话在跑。
 
 **下一步（直接开工）**：
-1. 展示层副本的第二种 grep 面：`grep -rn "findIndex(\|damageElement ===" src/views src/components`（页面自己找槽位 / 判属性的地方），同判据：与引擎规则相同的两份 ⇒ 引擎导出；纯展示 ⇒ 不动。
-2. 若无可做项，转 `docs/mcp-r6-refactor-list.md` 三类清单里的未结项。
-3. 低优先：锁定下沉到 promoteFixpoint 入参（§24.139 未钳项）；off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+1. 本轮起「同一物理量 / 同一规则两份实现」在 useResourceCalc 与展示层两条线都已普查完，r6 清单无未结项。下一条线：**mechanics/agents 模块之间的规则副本**——`grep -rn "specialty === 'stun'\|damageElement === " src/mechanics/agents`（本轮已见 yaojiayin:256、yixuan:336、hugo:143 三处判 stun 特性），逐个看是不是各自重写了同一条队伍级规则（如「队里有无击破位」）；是则收成 `mechanics/` 下共享助手或 teamContext 字段，否则记「不做」。
+2. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **主工作区里有另一个会话在并行改动**（2026-09-29 实测：arena 可能同时跑两个会话，见提示词第 9 条与本文件 §2b；原先那批 pullPlanner 改动已由 arena-B 提交）。主工作区里随时可能有别人的未提交改动，verify 会被弄红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；只 add 自己的文件；用完执行 `git worktree remove --force`。

@@ -3983,3 +3983,12 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 裁定以引擎口径为准（按 agentId）：计算结果本来就由引擎决定，页面显示的「生效槽位」应与计算一致。
 - **验证**：vue-tsc 干净；wt319 `npm run verify` EXIT=0（4031 passed），check-guards 分层检查通过。
 - **回退**：`git revert 07a91a16`。
+
+### 24.144 第 320 轮：展示层第二面普查 + CC-305 锁定下沉进 promoteFixpoint（c46321bb）
+
+- **普查**（§24.143 交接第 1 条）：`grep -rn "findIndex(\|damageElement ===" src/views src/components` 命中 5 处：FreeComparePage 条件列表、TeamDamage3DChart 饼图扇区、DifficultyDescentPanel 排序、StatPanel 光耀抗性行与物理判断——全是纯展示，不做。展示层副本这条线收尾。
+- **CC-305**（§24.139 留的未钳项）：CC-300 只在 `sp1 = promoteFixpoint(…)` 之后把池钳到 countStun，不动点内部仍从 0 迭代到自算次数，转大次数（`promoteHugCountsOf` 读 stunCount）、`inAxisFractionProvider(stunCount)`、`windowTimeFraction(prevStunCount)` 都按未锁次数求。改为 `promoteFixpoint` 新增末位参数 `lockedStunCount`：锁定时 stunCount 直接取 N、单趟求值、池 `withStunCount` 钉 N；convergence 对 sp0 / sp1 都传 `lockForPool = stunCountLock ≥ 0 ? countStun : undefined`，删掉事后钳位块与 `withStunCount` 导入。
+  - **实测零数值差**：定向 48 个文件（含全部 27 个带 stunCountLock 的测试文件 + timeGolden）612 绿，全量 4033 绿。探针（琉音 / 雨果 / 莱特非轴，失衡条 40000 vs 8000）：不锁时失衡 3 / 6、hug60 3 / 5、promote 5 / 5；锁 3 时修复前后都是 3 / 3、hug60 3 / 3。原因：60 转大受「连携执行行」上限约束（`targetChainTotal = min(每失衡连携 × stunCount, chainExecCount)`），而执行行已由外层按锁定次数装配；promote 受好评总量约束。所以 §24.139 猜测的「转大假提升」在现有场景下没有发生。
+  - **仍然做的理由**：锁定语义从「两处（外层输入 + 事后钳池）」收成「外层输入 + 不动点入参」一处明确定义，不再依赖「执行行上限恰好兜住」这个巧合；锁定下不再做无意义的不动点迭代。
+  - 新增 `src/composables/__tests__/lockedPromoteCc305.test.ts`（2 例）：是**不变量锁**（锁定下改失衡条，池次数 / promote / hug60 不变），修复前同样绿，已在文件头注明，不冒充有牙回归。
+- **回退**：`git revert c46321bb`（恢复 CC-300 的事后钳位形态）。
