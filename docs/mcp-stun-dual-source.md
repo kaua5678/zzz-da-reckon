@@ -3718,3 +3718,13 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 汇总：同一轮内「写了读回」的缓存共 4 处（橘福福 CC-283、仪玄 ×2 CC-286、青衣 CC-287），已全部改成纯函数重算或显式传参；其余都是轮间通道、spec countField 接口，或带测试接口（xide）。
 - **影响**：计算零差，展示零差。
 - **回退**：revert f45d69f7。
+
+### 24.126 第 302 轮：南宫羽地雷撞套数残留修复（CC-288，de751282）
+
+- **问题**：`buildNangongExecutions` 里有两个提前 return（`!basicExec || pairSeconds <= 0`，以及 `pairs <= 0`），都在 `record.nangongMinePairs = pairs` 之前。命中任何一个时，cfg 上留着**上一次装配（甚至上一个场景，cfg 对象被复用时）**的套数，事件钩子 `buildNangongAnomalyEvents` 的 C6 颤音:改叠层计数（`gained += nangongMinePairs × 2`）会读到这个旧值。
+- **测量**（临时探针，已撤）：在 nangong / inStun / timeGolden / specialMechanics / mechanicSettingsEffect 上跑，命中提前 return 且残留 > 0 的情况：A 路径 30 次、B 路径 8 次（写入 3183 次，正常 return 19542 次）。**确认可达**，属于真实缺陷，不是理论问题。
+- **修法**：在函数进入地雷撞段之前先写 `record.nangongMinePairs = 0`，之后按本次结果覆盖。这个字段仍是轮间通道（读者在事件钩子里，读的是本次装配 buildExecutions 的结果），语义不变，只是去掉残留。
+- **数值**：timeGolden（60 角色 × 命座 0/6）零差。残留只出现在无普攻行 / pairSeconds 为 0 / 重拍不够一套的场景，这些场景下 C6 且有失衡的组合不在 golden 覆盖里；修复后这些场景的颤音:改层数按真实套数（0）算，有差也是修正方向。
+- **锁**：`nangongSmoke.test.ts`「CC-288 地雷撞套数不残留」2 例（预置 5，两条提前 return 路径都断言归零），在修复前的代码上会红（已验证有牙）。
+- **推广**：同型模式（提前 return 在 cfg 写入之前）在其他模块里还有候选，扫描命令和清单见 worker §2 下一步 1。
+- **回退**：revert de751282。

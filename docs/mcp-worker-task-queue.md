@@ -71,22 +71,25 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 301 轮（lane lead-arena-0925c）：CC-287（f45d69f7）完成。开工时补推成功，GitHub 已恢复；本轮文档提交后已 push（若 rev-list 不为 0，说明 push 失败，请先补推）。**
-- 详见 `docs/mcp-stun-dual-source.md` §24.125：青衣改为显式传参，「写了读回」普查结项。
-- 前几轮：300 CC-286；299 CC-285；298 CC-283 / 284；297 CC-282。
-- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add（proposals 是抽卡价值口径提案，不在 REQUIREMENTS 里，不实现）。
+**第 302 轮（lane lead-arena-0925c）：CC-288（de751282）完成并 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。**
+- 详见 `docs/mcp-stun-dual-source.md` §24.126：南宫羽地雷撞套数残留确认可达，已修，已加锁。
+- 前几轮：301 CC-287；300 CC-286；299 CC-285。
+- REQUIREMENTS 无新条目（md5 807ee096）；提示词未改（md5 2aa1f517）。未跟踪的 `docs/devlog/`、`docs/proposals/` 都不是本 lane 的，不要 add。
 
 **下一步（直接开工）**：
-1. **南宫羽 C6 疑似陈旧值**（§24.125）：`nangong.ts` buildNangongExecutions 里 `if (pairs <= 0) return` 在 `record.nangongMinePairs = pairs` 之前，pairs 掉到 0 时不清零，事件钩子 :352 就会读到旧值。
-   - 先写临时探针：1511 C6 的队伍跑一遍，在 buildNangongAnomalyEvents 里打印读到的 nangongMinePairs 和本轮真实 pairs；
-   - 两者不同 ⇒ 是真 bug：把写入移到 return 之前（写 `pairs`，可能为 0），更新 golden（`TIME_GOLDEN_UPDATE=1`），并在文档写明差异来源；
-   - 从未出现不同 ⇒ 写「不可达，不改」。
-2. 之后回到 `docs/mcp-r6-refactor-list.md` §8，挑影响面最大的待查项。「写了读回」普查已经结项，不要再扫。
+1. **同型残留普查：「提前 return 早于 cfg 写入」**。CC-288 的模式是：模块在某条件下提前 return，于是本该写的 cfg 键不被覆盖，保留上一次装配 / 上一个场景的值，而读者（事件钩子、估时、装配、spec countField）读到旧值。
+   - 候选扫描（第 302 轮跑出约 50 行、20 个模块，粗筛，含大量假阳性）：
+     `cd src/mechanics/agents && for f in *.ts; do awk -v F=$f '/\) return$/ {r=NR} /^ *(record|cfg|rec)(\.|\[)[A-Za-z_]+[^=]* = [^=]/ { if (r && NR-r<=8) print F":"NR": "$0 }' $f; done`
+   - 值得优先看的：`lycaon.ts:188-190`、`norma.ts:585-587`、`sigrid.ts:253`、`yidhari.ts:396/401`、`zhendou.ts:137/142`、`trigger.ts:241`、`harumasa.ts:213`、`zhuYuan.ts:115`、`remielle.ts:330-333`、`luciaElowen.ts:472`、`hugo.ts:394-396`。
+   - 判定办法：看写入之前那个 return 的条件在真实场景里能不能成立，以及写入的键是否有读者；可达且有读者 ⇒ 用 CC-288 的探针法（在 return 前打印「残留 > 0」计数）量，确认后在函数入口先写中性值（0 / '' / false）。
+   - **注意**：`initialEnergyGift` / `extraSelfDecibelReward` 这种「减掉旧值再加新值」的累加字段（ellen:258、panYinhu:64、remielle:385、specPanelBuffs:134）是另一种模式，残留会导致重复累加或漏减，要单独分析，不要套归零。
+   - 每个真缺陷一张卡（CC-289 起），带有牙的锁测试。
+2. 普查结项后回到 `docs/mcp-r6-refactor-list.md` §8，挑影响面最大的待查项。
 
 **已知坑**：
-- **主工作区里有另一个会话在并行改动**（第 301 轮观察到：`pullPlanner.ts`、`pullPlanner.test.ts`、`PullPlannerChart.vue`、`pull-planner-chart.css` 未提交修改，看起来是在实现 `docs/proposals/pull-value-optimization.md`）。它的半成品会让主工作区的 verify 红（pullPlanner 4 个用例和 checkTokens）。本轮做法：`git worktree add --detach /home/kaua/calc-arch/wt301 HEAD`，只拷入自己改的文件，把 node_modules 软链过去，在那里跑 verify（EXIT=0）；提交时只 add 自己的文件，**不碰对方的文件**。以后遇到同样情况照此办理，用完执行 `git worktree remove --force`。
-- 「缓存 == 重算」用探针计数 SAME / DIFF / NOCACHE 证明（timeGolden 覆盖不到展示量）；
-- 读者在估时 / 事件钩子里的是轮间通道，改成重算会改变收敛；
+- **主工作区里有另一个会话在并行改动**（第 301、302 轮都有：`pullPlanner.ts`、`pullPlanner.test.ts`、`PullPlannerChart.vue`、`pull-planner-chart.css`、`scripts/check-tokens.mjs`、`docs/FEATURES_GUIDE.md` 未提交修改）。主工作区 verify 会因为它们变红。做法：`git worktree add -q --detach /home/kaua/calc-arch/wtNNN HEAD`，拷入自己改的文件，`ln -s <项目>/node_modules wtNNN/node_modules`，用 `bg.sh vNNNw 'cd /home/kaua/calc-arch/wtNNN && npm run verify'` 跑；提交时只 add 自己的文件，**不碰对方的文件**；用完执行 `git worktree remove --force`（node_modules 软链不会被跟随删除，第 301 轮已验证）。
+- 「缓存 == 重算」和「残留可达」都用探针计数证明（console.log 标签 + `uniq -c`），探针前后 cp 备份与恢复，最后 `grep -c __probe` 为 0；
+- 读者在估时 / 事件钩子里的是轮间通道，改成重算会改变收敛；归零本次写入不改变通道语义；
 - 新增模块 cfg 写入必须有读者（cfgWriteOnlyKeys 锁）；
 - verify 跑的时候不要往工作区写文件；
 - 杀进程只 kill 具体 pid；后台 verify 用 `setsid ./bg.sh … & sleep 2`；上传一律用 `bash /home/user/mcp-tools/up.sh …`；GitHub 偶尔不通，push 失败记进交接，下一轮先补推。
