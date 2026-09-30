@@ -70,7 +70,7 @@ export const ROXY_C6_MEGA_TORNADO_MULT = 2.5
 export const ROXY_C6_MEGA_DAZE_BONUS = 20
 export const ROXY_C6_ECHO_BURSTS = 2
 /** 额外能力：自身伤害 +8%+1.2%/级（**角色等级**轴，Lv60 命中「最多提升80%」上限）；进场回 40 能量 */
-// @fact agent:1621/额外能力伤害·等级轴 口径: 「洛克茜造成的伤害提升8%，该效果随**角色等级**提升，每级增加1.2%，最多提升80%」的「级」是**角色等级**（60 级满级）而非核心被动等级 ⇒ 取上限 80（8+1.2×60=80 恰等于原文写的上限，自洽）；判据 = 该子句在 raw 的 7 条 passive.level 里**逐字恒定**（8/1.2/80 三级都不随被动等级变），而真正走被动等级轴的子句（如 1611 核心 20→50）在 7 条里**逐级递增** ⇒ 两类轴可用「是否随 passive.level 变化」机械区分；同族三条（1571 44+14/级→870、1591 120+12/级→840、1631 100+10/级→700）同样取各自上限，本条的 15.2（=8+1.2×6，误按被动 Lv.7 读）是**孤例** | 据 nanoka 3.2 raw passive.level.1621501~07@2026-09-20·外部复核（zh/en/ja/ko 四语言 + 3.3.3 构建 + gachabase 均作「角色等级」；ja=エージェントレベル、ko=캐릭터 레벨）@2026-09-20·复核@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/roxyAdditionalAbility.test.ts | 锚 src/mechanics/agents/roxy.ts#ROXY_AA_DMG_BONUS_LV60 | 信 高
+// @fact agent:1621/额外能力伤害·等级轴 口径: 「洛克茜造成的伤害提升8%，该效果随**角色等级**提升，每级增加1.2%，最多提升80%」的「级」是**角色等级**（60 级满级）而非核心被动等级 ⇒ 取上限 80（8+1.2×60=80 恰等于原文写的上限，自洽）；判据 = 该子句在 raw 的 7 条 passive.level 里**逐字恒定**（8/1.2/80 三级都不随被动等级变），而真正走被动等级轴的子句（如 1611 核心 20→50）在 7 条里**逐级递增** ⇒ 两类轴可用「是否随 passive.level 变化」机械区分；同族三条（1571 44+14/级→870、1591 120+12/级→840、1631 100+10/级→700）同样取各自上限，本条的 15.2（=8+1.2×6，误按被动 Lv.7 读）是**孤例** | 据 nanoka 3.2 raw passive.level.1621501~07@2026-09-20·外部复核（zh/en/ja/ko 四语言 + 3.3.3 构建 + gachabase 均作「角色等级」；ja=エージェントレベル、ko=캐릭터 레벨）@2026-09-20·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/specs/__tests__/roxyAdditionalAbility.test.ts | 锚 src/mechanics/agents/roxy.ts#ROXY_AA_DMG_BONUS_LV60 | 信 高
 // ⟳复核: 官方若给出「随角色等级提升」的等级-数值对照表（或本仓引入角色等级输入）时复核本上限 | 到期 2027-03-31
 export const ROXY_AA_DMG_BONUS_LV60 = 80
 export const ROXY_AA_ENTER_ENERGY = 40
@@ -168,7 +168,7 @@ export function computeRoxyWindEnergy(input: {
   // 未建模假设写进伤害数（R52 侦察的实测证据，见 `.claude/PROMPT-handoff-round52.md` §3）。
   // ⚠ 同样刻意**不**把 `WIND_EYE_MAX` 当总量上限用：那是「同时存在」上限，按总量钳会让
   // `sendOffCount` 从 38 塌成 3（R51 侦察实测）——属把时序约束误当总量约束，比不建模更错。
-  // @fact agent:1621/风眼时序 近似: 「同时存量≤9 / 30s 自然引爆」在默认手法下**结构性不可达**（单发风眼 ≤ WIND_ENERGY_MAX=3 < 9，且每发恕不远送清空队列）⇒ `sendOffCount = floor(windEyeGenerated/SEND_OFF_BURST_MAX)` 是精确解而非近似；天花板 = 滑块域 `eyeRate>4/3`（单发>3 ⇒ 9 上限咬合，本式高估）与 `spinSeconds<65/30`（局末余留眼被本式计成小旋风） | 据 nanoka 3.2 raw special.description[4]@2026-09-20·R52 全库 5702 次引擎求值零 delta@2026-09-20·复核@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/roxyWindEyeTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 确认
+  // @fact agent:1621/风眼时序 近似: 「同时存量≤9 / 30s 自然引爆」在默认手法下**结构性不可达**（单发风眼 ≤ WIND_ENERGY_MAX=3 < 9，且每发恕不远送清空队列）⇒ `sendOffCount = floor(windEyeGenerated/SEND_OFF_BURST_MAX)` 是精确解而非近似；天花板 = 滑块域 `eyeRate>4/3`（单发>3 ⇒ 9 上限咬合，本式高估）与 `spinSeconds<65/30`（局末余留眼被本式计成小旋风） | 据 nanoka 3.2 raw special.description[4]@2026-09-20·R52 全库 5702 次引擎求值零 delta@2026-09-20·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/roxyWindEyeTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 确认
   // ⟳复核: 引擎若获得「逐发绝对时刻」通道（或在 eyeRate>1 滑块域落地真 FIFO 队列）时复核本近似边界 | 到期 2027-03-31
   const sendOffCount = Math.floor(windEyeGenerated / SEND_OFF_BURST_MAX)
   // ── 影画6 [余响]：**方向可证 / 幅度不可定**（R53 收口，取代 R52 的「方向未定」）────────────
@@ -196,7 +196,7 @@ export function computeRoxyWindEnergy(input: {
   //     留着有界近似更坏）⇒ 正解 = **保留上界 + 把幅度登记为 debt + 挂 ⟳复核**。
   //   ⚠ 与 R52 风眼那条的区别：风眼是**证明到不了**（结构性不可达 ⇒ 销号）；本条是**到得了但算不准**
   //     （有界高估 ⇒ 登记 debt）。**两者结论不同，别互相照抄。**
-  // @fact agent:1621/余响时序 近似: [余响] 每次恕不远送至多追加 2 次巨型风旋（原文「共额外生成2次」）⇒ `megaTornadoCount = sendOffCount × (1 + 2)` 是**所有自洽读法的共同上界**（4 读法 × 7 时长 × 全网格 4224 次求值零越界）⇒ 本式**单向高估、不可能低估**（纠正 R52-J1 的「方向未定」）；天花板 = 精确值需 [余响] 持续秒数 D 与「3s 节拍归属」（每实例 vs 单状态），二者**原文与全部可达外部源均未给出**（nanoka 中英双语、noun_3.2.3.json、fandom/prydwen/game8/hakush 全查不到）⇒ 合法区间实测 [17, 86]（默认夹具 n=43），落精确值必须编造 D | 据 nanoka 3.2 raw talent.6.desc@2026-09-20·R53 全库对账+4 读法穷举@2026-09-20·复核@2026-09-25·锚未变@2026-09-27 | 验 src/mechanics/__tests__/roxyEchoTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 高
+  // @fact agent:1621/余响时序 近似: [余响] 每次恕不远送至多追加 2 次巨型风旋（原文「共额外生成2次」）⇒ `megaTornadoCount = sendOffCount × (1 + 2)` 是**所有自洽读法的共同上界**（4 读法 × 7 时长 × 全网格 4224 次求值零越界）⇒ 本式**单向高估、不可能低估**（纠正 R52-J1 的「方向未定」）；天花板 = 精确值需 [余响] 持续秒数 D 与「3s 节拍归属」（每实例 vs 单状态），二者**原文与全部可达外部源均未给出**（nanoka 中英双语、noun_3.2.3.json、fandom/prydwen/game8/hakush 全查不到）⇒ 合法区间实测 [17, 86]（默认夹具 n=43），落精确值必须编造 D | 据 nanoka 3.2 raw talent.6.desc@2026-09-20·R53 全库对账+4 读法穷举@2026-09-20·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/roxyEchoTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 高
   // ⟳复核: 官方若补充 [余响] 持续秒数或 buff 表（可裁决「3s 节拍归属」）时，用真逐事件时间轴替换本上界并销 debt | 到期 2027-03-31
   // debt: 余响总量口径天花板 「每间隔3秒生成一次 / 共额外生成2次 / 次数叠加且刷新持续时间」是时序约束，
   // 总量口径只能给出**共同上界** `2×引爆数`（单向高估，已证不可能低估）；精确值需原文未给出的
@@ -333,7 +333,7 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
     const spinMoveMult = Number((cfg as unknown as Record<string, unknown>).roxySpinSecondDamage ?? 0)
     const spinDecibelPerSec = Number(record.roxySpinSecondDecibel ?? 0)
     if (source.spinSeconds > 0) {
-      // @fact agent:1621/自旋喧响每秒口径 口径: 自旋(1621008)倍率表 damage=2608.6 与 decibel_recovery=84.343 同为「每秒」值——damage 侧已按 每秒×spinSeconds 录入并被 roxy 测试锁定，喧响同构：行值=84.343×spinSeconds/次、总=×exCount；表值直填会把持续段少算 spinSeconds 倍，故 decibelRecoveryOverride 跳过 enrich 表值覆盖 | 据 catalog 1621008 行值+damage 侧已录口径@2026-09-08·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/mechanics/agents/roxy.ts#SPIN_SECOND_MOVE_ID | 信 高
+      // @fact agent:1621/自旋喧响每秒口径 口径: 自旋(1621008)倍率表 damage=2608.6 与 decibel_recovery=84.343 同为「每秒」值——damage 侧已按 每秒×spinSeconds 录入并被 roxy 测试锁定，喧响同构：行值=84.343×spinSeconds/次、总=×exCount；表值直填会把持续段少算 spinSeconds 倍，故 decibelRecoveryOverride 跳过 enrich 表值覆盖 | 据 catalog 1621008 行值+damage 侧已录口径@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/mechanics/agents/roxy.ts#SPIN_SECOND_MOVE_ID | 信 高
       executions.push({
         moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（每秒，耗能 30/s）', category: 'special',
         count: exCount, actionTime: 0, comboAlignRatio: 0,
