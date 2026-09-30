@@ -74,7 +74,7 @@ export const SOUKAKU_FROST_BASIC3_COMBO_ALIGN = 1
 /** enrich 回填占位：非 0 → 倍率表值优先回填；0 = 显式禁用回填（引擎口径，见 enrichExecutionPlan） */
 const RECOVERY_BACKFILL_PLACEHOLDER = 1
 
-// @fact agent:1131/强特 口径: 强特循环 = 每击扇风(扇子 1131011 525.3%/1.16s + 风团 1131010 204.4%×体型段数 小0/中3/大6, 0.271s摊段, 30能量/击 → cfg.exSpecialEnergyConsume=30×击数, 击数滑块 soukaku.exPressCount 1-2 默认2) + 下砸×1(劈斩关=集合啦#1 1131012 500.9%/1.25s, 开=快速展旗·集合啦#2 1131013 280.9%/0.7s, 滑块 soukaku.chopSlam；集合啦#3 被玩家冲刺打断不录) + 冲刺攻击·霜染(1131016 0.4s)×1 + 打年糕·霜染#3(1131006 2.632s 全合轴 comboAlignRatio=1)×1；强特次数=floor(总能量/30×击数)，打年糕#3次数=展旗(下砸)次数=强特次数，霜染段回能喂回强特=自我能量循环；扇/团段喧响不另计(同艾莲衍生段口径) | 据 用户@2026-09-05·复核@2026-09-25 | 验 src/mechanics/__tests__/soukaku.test.ts | 锚 src/mechanics/agents/soukaku.ts#buildSoukakuExecutions | 信 确认
+// @fact agent:1131/强特 口径: 强特循环 = 每击扇风(扇子 1131011 525.3%/1.16s + 风团 1131010 204.4%×体型段数 小0/中3/大6, 0.271s摊段, 30能量/击 → cfg.exSpecialEnergyConsume=30×击数, 击数滑块 soukaku.exPressCount 1-2 默认2) + 下砸×1(劈斩关=集合啦#1 1131012 500.9%/1.25s, 开=快速展旗·集合啦#2 1131013 280.9%/0.7s, 滑块 soukaku.chopSlam；集合啦#3 被玩家冲刺打断不录) + 冲刺攻击·霜染(1131016 0.4s)×1 + 打年糕·霜染#3(1131006 2.632s 全合轴 comboAlignRatio=1)×1；强特次数=floor(总能量/30×击数)，打年糕#3次数=展旗(下砸)次数=强特次数，霜染段回能喂回强特=自我能量循环；扇/团段喧响不另计(同艾莲衍生段口径) | 据 用户@2026-09-05·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/soukaku.test.ts | 锚 src/mechanics/agents/soukaku.ts#buildSoukakuExecutions | 信 确认
 
 /**
  * 终结技邻位回能：三人下一位 30 / 上一位 10；两人另一位 30。

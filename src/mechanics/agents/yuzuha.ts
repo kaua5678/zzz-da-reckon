@@ -46,7 +46,7 @@ export const YUZUHA_C2_CHAIN_CD = 20
  * **招式限定**效果（只给支援突击两行），走 `exec.dmgBonus` 而非全局面板 —— 写面板会外溢到
  * 其他招式。积蓄侧按行级 ×(1+20%) 并同步 `totalAnomalyBuildUp`（enrich 会回填覆盖，需 override）。
  */
-// @fact agent:1411/影画4支援突击 口径: 影画4（talent.4）支援突击伤害 +30% / 属性异常积蓄效率 +20%，招式限定到两行支援突击（来块曲奇 1411017 / 夹心硬糖射击 1411024），与潜能（potentialLevel）无关 | 据 raw nanoka_missing/full/1411.json `talent.4` + R61 三队正交实测@2026-09-20 | 验 src/mechanics/__tests__/cinemaAxisBatchA.test.ts | 锚 src/mechanics/agents/yuzuha.ts#YUZUHA_C4_ASSIST_DMG_PCT | 信 确认
+// @fact agent:1411/影画4支援突击 口径: 影画4（talent.4）支援突击伤害 +30% / 属性异常积蓄效率 +20%，招式限定到两行支援突击（来块曲奇 1411017 / 夹心硬糖射击 1411024），与潜能（potentialLevel）无关 | 据 raw nanoka_missing/full/1411.json `talent.4` + R61 三队正交实测@2026-09-20·复核@2026-09-30 | 验 src/mechanics/__tests__/cinemaAxisBatchA.test.ts | 锚 src/mechanics/agents/yuzuha.ts#YUZUHA_C4_ASSIST_DMG_PCT | 信 确认
 // ⟳复核: nanoka 若刷新 1411 的 talent.4，逐条对账「支援突击伤害+30%/积蓄+20%」是否仍为影画4 且仍只作用于支援突击两行 | 到期 2027-03-31
 export const YUZUHA_C4_ASSIST_DMG_PCT = 30
 export const YUZUHA_C4_ASSIST_BUILDUP_PCT = 20

@@ -45,7 +45,7 @@ const RINA_FRIGHT_CYCLE = 7
 /**
  * 潜能觉醒·完美侍奉①：丽娜自身穿透率 +1.6%（无条件，潜能 II 起；原文每档都是 1.6%）。
  */
-// @fact agent:1211/潜能觉醒穿透率 口径: 潜能觉醒·完美侍奉①（大扫除 II~VI）丽娜**自身**穿透率 +1.6%（各档同值，无条件；潜能 I 未觉醒 = 0），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1211.json `potential_detail` + static.nanoka.cc/zzz/3.2/{zh,en} 双语复核@2026-09-20·锚未变@2026-09-27 | 验 src/mechanics/__tests__/potentialAxisBatchC.test.ts | 锚 src/mechanics/agents/rina.ts#RINA_POTENTIAL_PEN_RATIO | 信 确认
+// @fact agent:1211/潜能觉醒穿透率 口径: 潜能觉醒·完美侍奉①（大扫除 II~VI）丽娜**自身**穿透率 +1.6%（各档同值，无条件；潜能 I 未觉醒 = 0），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1211.json `potential_detail` + static.nanoka.cc/zzz/3.2/{zh,en} 双语复核@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/potentialAxisBatchC.test.ts | 锚 src/mechanics/agents/rina.ts#RINA_POTENTIAL_PEN_RATIO | 信 确认
 // ⟳复核: nanoka 若刷新 1211 的 potential_detail，逐档对账 II~VI 是否仍为「穿透率提升1.6%」 | 到期 2027-03-31
 export const RINA_POTENTIAL_PEN_RATIO = 1.6
 
