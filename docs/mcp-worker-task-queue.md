@@ -96,21 +96,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 351 轮（lane arena-A，承接第 350 轮下一步 1–2）：CC-332 蕾米埃尔（1581）特殊虚耀载体垂虹动作次数（1/2/2）与耀变次数（3/6/12）分离 + 额外能力三档推导归一 + catalog statDisplay 孤儿项清理（代码 `84016cd3`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `2ccca09a`，工作区干净）。**
+**第 352 轮（lane arena-A，承接第 351 轮下一步 1–2）：CC-333 普罗米娅（1541）C1 `[有罪推定]` 异放无视防御门控对账 + 7 个角色模块内部派生单源化（代码 `2feb0083`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `23714cc4`，工作区干净）。**
 
-- **CC-332（`84016cd3`，蕾米埃尔 `1581` 特殊虚耀载体垂虹施放次数修复 + 额外能力推导归一，105 预设零差、单人 `agent:1581:c3..c6` 4 条更新）**：
-  1. **根因**：原文（`data/raw/nanoka_missing/full/1581.json`）中 `普通攻击：垂虹`（`1581007`，`actionTime=1.5s`）写明「发动后会清空身上储存的所有[虚曜]」；C1 进场获得 3 个特殊[虚曜]（打 1 次垂虹），C4 消耗完后再补 3 个特殊[虚曜]（再打 1 次垂虹，共 2 次），C6 使每次垂虹/惊鸿触发 2 次耀变。2026-09-30 用户裁决（`@fact agent:1581/特殊虚耀垂虹次数`，`remielle.ts:109`）明确「特殊虚耀点数不翻倍，C6 的 12 次耀变 = 2 次垂虹 × (3 豆/次 × 2 倍耀变)；1 命 1 次垂虹 3 耀变 / 4 命 2 次垂虹 6 耀变 / 6 命 2 次垂虹 12 耀变」。但第 193 轮 CC-165 把 `remielleSpecialVoidflareUseCount(cfg)`（`extraNecessaryAction` 生成载体招式行 `1581007`「普通攻击：垂虹（特殊虚耀载体）」的施放次数）直接委托给了返回**耀变次数**（`3 / 6 / 12`）的 `remielleSpecialVoidflareCount(cfg.panel)`，导致 C1–C3 扣了 3 次垂虹（4.5s）、C4–C5 扣了 6 次垂虹（9.0s）、C6 扣了 12 次垂虹（18.0s，多扣 15s 前台时间并挤掉 1 发强特），而非 1 / 2 / 2 次垂虹（1.5s / 3.0s / 3.0s）。
-  2. **修复**：
-     - `src/mechanics/agents/remielle.ts`：抽出 `remielleSpecialVoidflareRainbowCount(panel)`（`1 / 2 / 2`）；`remielleSpecialVoidflareUseCount(cfg)`（`extraNecessaryAction` 垂虹载体招式次数）改读 `remielleSpecialVoidflareRainbowCount(cfg.panel)`；`buildAnomalyEvents` / `extraAnomalyRows` / `anomalyEventRecords`（特殊虚耀耀变事件次数）仍读 `remielleSpecialVoidflareCount(panel)`（`3 / 6 / 12`）。
-     - 同文件抽出 `computeRemielleAdditionalState` 归一 `remielleDazeTier` 与 `remielleAdditionalState` 的重复推导；清理 `public/static/catalog.json` `statRules.statDisplay` 残留的孤儿项 `remielleCinema6SpecialVoidflareTriggerMultiplier`。
-     - `src/mechanics/__tests__/remielle.test.ts` 锁死 C1/C4/C6 的 `extraNecessaryAction` 次数 `[1, 2, 2]` 与 `buildAnomalyEvents` 次数 `[3, 6, 12]`；重生成 `timeGolden.baseline.json`（仅 `agent:1581:c3..c6` 4 条变化，C4/C5/C6 前台时间账现完全一致，`cinemaMonotone.test.ts` 全绿）。
-- **验证**：`vue-tsc -b` 0 错；`check-guards` 25/25 通过；`validate:data` / `validate:specs` 1120/1120 通过；全量 442 个测试文件（4067 passed）+ `npm run build` 通过（日志 `/home/kaua/calc-arch/arenaA/verify-cc332.log`）。回退点：`git revert 84016cd3`。
+- **CC-333（`2feb0083`，普罗米娅 `1541` C1 `[有罪推定]` 门控修复 + 7 角色模块内部派生单源化，105 预设零差、单人 `agent:1541:c3..c6` 4 条更新）**：
+  1. **普罗米娅（1541，`src/mechanics/agents/promia.ts`）规格-实现对账修复**：
+     - 原文（`data/raw/nanoka_missing/full/1541.json`）中 `[有罪推定]` 状态仅由额外能力「饮冰」（`passive.level.1541507.desc[1]`）施加；影画 1「不请自来」（`talent.1.desc`）写明「全队角色对[有罪推定]状态的敌人造成[异放]效果时额外无视 20% 防御力」。
+     - 旧实现中 `promiaReleaseModifier` 在额外能力未激活（敌人无法陷入 `[有罪推定]`）时仍越门控给 C1 的 20% 异放无视防御，而 `computePromiaCycle.guiltyDefIgnore` 在额外能力激活且 C1+ 时漏计 C1 的 20%（恒报 40%）。
+     - 修复：`computePromiaCycle.guiltyDefIgnore` 统一按 `input.additionalActive ? 40 + (cinemaLevel >= 1 ? 20 : 0) : 0` 计算，`promiaReleaseModifier` 直接复用该字段；`src/mechanics/__tests__/promia.test.ts` 补齐 C0/C1 × 额外能力开/关四象限断言。
+  2. **7 个角色模块内部重复派生单源化**：
+     - `src/mechanics/agents/aire.ts`（1501 爱芮）：`applyAirePanel` 直接复用 `computeAireCycle`，修正 `computeAireCycle.note` 过期文案。
+     - `src/mechanics/agents/nangong.ts`（1511 南宫羽）：抽出 `nangongBeatRegen`、`nangongVibratoStacks`、`nangongVibratoStackPct`，使 `buildNangongResourceResult` / `buildNangongResourceSections` 与事件侧共用自动颤音层数、C2 每层加成（`+35%`）及 `record.nangongMinePairs` 实打套数（补 `nangongSmoke.test.ts` 单测；注：`nangong_polar_disorder` 的 `cinemaLevel >= 2` 门控为 `nangongSmoke.test.ts:94-115` 显式锁定的舞力全开口径，保持不动）。
+     - `src/mechanics/agents/luciaElowen.ts`（1451 卢西娅·艾洛温）：抽出 `computeLuciaCurtainBreakdown` 归一 `computeLuciaDreamPlan`、`computeLuciaCurtainTriggers` 与 `computeLuciaSource` 三处 `dreamE / curtainOpens / curtainExtends`。
+     - `src/mechanics/agents/norma.ts`（1571 诺姆）与 `src/mechanics/agents/liuyin.ts`（1481 琉音）：`computeNormaHatToChainCount` 直接复用 `computeNormaSource(...).hatToChainCount`；两模块 `buildCharConfig` 调用 `specAdditionalAbilityActive` 时优先传入参 `agent`。
+     - `src/mechanics/agents/severian.ts`（1631 赛维里安）：`severianFlowIncome` 复用 `severianLiexuanCount`，抽出 `severianFlowState` 归一 C6 `[风起]` 定点流息与苍风影猎次数，`patchSeverianExecutions` 复用 `computeSeverianCycle`。
+     - `src/mechanics/agents/sigrid.ts`（1591 希格莉德）与 `src/mechanics/agents/claret.ts`（1611 克拉蕾）：`countBasicFinisherHits` 直接委托 `countBasicSegments`（构造级保证 `#4` 机会计数与分段行次数一致并含 `1e-9` 容差），`expandSigridAxisAction` 改读 `SIGRID_C6_POZHEN_TIME_FACTOR`；同步修正 `claretMechanic.description` 残留的 R55 前影画 1/2 文案。
+- **验证**：`vue-tsc -b` 0 错；`validate:data` 366/366 通过；`verify:recording` 189/189 通过；全量 442 个测试文件（4068 passed）通过（日志 `/home/kaua/calc-arch/arenaA/verify-cc333.log`）。回退点：`git revert 2feb0083`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. **规格-实现对账 / 模块同构简化新扫描**：
-   - 本轮已对照 `data/raw/nanoka_missing/full/*.json` 扫完 1581/1591/1611/1621/1631/1641，修复了 1581 特殊虚耀载体垂虹动作次数与耀变次数混用（CC-332）。
-   - 下一步可继续抽查其余自定义模块（如 1511 南宫羽、1541 普罗米娅、1561 爱芮、1571 卢西娅·艾洛温、1601 诺姆等）中 `extraNecessaryAction` / `buildExecutions` / `buildAnomalyEvents` 的载体动作次数与衍生事件次数是否严格对齐原文，或是否存在同模块内重复状态推导。
+2. **继续规格-实现对账 / 模块同构简化扫描**：
+   - 第 350–352 轮已扫完 1641/1581/1591/1611/1631/1541/1501/1511/1451/1571/1481。
+   - 下一步可继续抽查其余自定义模块（如 `banyue.ts` 1471、`yeshuguang.ts` 1431、`yidhari.ts` 1461、`yixuan.ts` 1371、`roxy.ts` 1621、`velina.ts` 1561、`peiluo.ts` 1551 等）中是否存在「面板/执行/资源卡片三处各自手写同一公式」或「命座附加效果未继承前置技能/额外能力门控」的分叉。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

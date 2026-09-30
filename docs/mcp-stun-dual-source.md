@@ -4564,3 +4564,27 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
      - `agent:1581:c6`：垂虹必做动作 `12→2` 次（省 15.0s 前台时间，与 C4/C5 同为 2 次垂虹），强特恢复 `12→13`（+1.583s），平A `116.424→129.841s`（+13.417s，与 C4/C5 时间账完全一致），必做时间 `63.576→50.159s`，总伤 `1767984→1812445`（+2.515%）。
      - `cinemaMonotone.test.ts` 全绿（C0→C3→C4→C5→C6 严格单调递增）。
 - **验证**：`vue-tsc -b` 0 错；`check-guards` 25/25 通过；`validate:data` / `validate:specs` 1120/1120 通过；全量 442 个测试文件（4067 passed）+ `npm run build` 通过。回退点：`git revert 84016cd3`。
+
+### 24.176 CC-333：普罗米娅（1541）C1 `[有罪推定]` 异放无视防御门控对账与 7 角色模块内部派生单源化（`2feb0083`）
+
+- **背景与问题**：
+  1. **普罗米娅（1541，`src/mechanics/agents/promia.ts`）**：
+     - 原文（`data/raw/nanoka_missing/full/1541.json`）：`[有罪推定]` 状态仅由额外能力「饮冰」（`passive.level.1541507.desc[1]`）施加；影画 1「不请自来」（`talent.1.desc`）写明「全队角色对[有罪推定]状态的敌人造成[异放]效果时额外无视 20% 防御力」。
+     - 旧实现存在双向分叉：`promiaReleaseModifier`（`promia.ts:169`）写为 `(additionalActive > 0 ? 40 : 0) + (cinema >= 1 ? 20 : 0)`，在额外能力未激活（敌人无法进入 `[有罪推定]`）时仍越门控给予 C1 的 20% 异放无视防御；而 `computePromiaCycle.guiltyDefIgnore`（`promia.ts:114`）写为 `input.additionalActive ? 40 : 0`，在额外能力已激活且 C1+ 时漏计 C1 的 20%（资源卡片恒展示 `+40%` 而实际结算 `+60%`）。
+  2. **其余角色模块内部重复派生**：
+     - **爱芮（1501，`src/mechanics/agents/aire.ts`）**：`applyAirePanel` 注释写明「面板字段与 `computeAireCycle` 同源」，但仍手写一份 `coreProficiency / c1EtherAnomalyResIgnore / c2DefIgnore` 分支，且 `computeAireCycle.note` 残留「异放回能/喧响（影画4）未建模」过期文案。
+     - **南宫羽（1511，`src/mechanics/agents/nangong.ts`）**：`computeNangongMechanic` 与 `nangongBeatIncome` 各写一份重拍回复公式；`buildNangongResourceResult` 未复用事件侧的 `inStunWindowTriggers` 自动颤音层数与 `record.nangongMinePairs` 实打套数；`buildNangongResourceSections` 将每层颤音加成硬编码为 `+25%`（C2+ 实际为 `+35%`）。（注：`nangong_polar_disorder` 的 `cinemaLevel >= 2` 门控由 `nangongSmoke.test.ts:94-115`「舞力全开口径：C0 无极性紊乱」显式锁定，保持不动。）
+     - **卢西娅·艾洛温（1451，`src/mechanics/agents/luciaElowen.ts`）**：`computeLuciaDreamPlan`、`computeLuciaCurtainTriggers` 与 `computeLuciaSource` 三处重复计算 `dreamE = Math.min(totalE, Math.max(0, 4 - q))` 及 `curtainOpens / curtainExtends`。
+     - **诺姆（1571，`src/mechanics/agents/norma.ts`）与琉音（1481，`src/mechanics/agents/liuyin.ts`）**：`computeNormaHatToChainCount` 重复手写 `computeNormaSource` 的膛温累加与 `floor(heatTotal / 80)`；两模块 `buildCharConfig` 调用 `specAdditionalAbilityActive` 时读 `team[slot]?.agent` 而非直接入参 `agent`。
+     - **赛维里安（1631，`src/mechanics/agents/severian.ts`）与希格莉德（1591，`src/mechanics/agents/sigrid.ts`）**：`severianFlowIncome` 重复手写 `severianLiexuanCount`，`buildSeverianResourceResult` 未计 C6 `[风起]` 定点反馈流息，`patchSeverianExecutions` 未复用 `computeSeverianCycle`；`sigrid.ts` 的 `countBasicFinisherHits` 与 `countBasicSegments` 各算一套循环（前者漏 `1e-9` 容差），`expandSigridAxisAction` 硬编码 `0.75`。
+- **修复**：
+  - `promia.ts`：`computePromiaCycle.guiltyDefIgnore` 改为 `input.additionalActive ? PROMIA_GUILTY_DEF_IGNORE + (cinemaLevel >= 1 ? PROMIA_C1_DEF_IGNORE : 0) : 0`，`promiaReleaseModifier` 直接取 `computePromiaCycle(...).guiltyDefIgnore`。
+  - `aire.ts` / `nangong.ts` / `luciaElowen.ts` / `norma.ts` / `liuyin.ts` / `severian.ts` / `sigrid.ts` / `claret.ts`：按上述单源化入口逐一合一。
+- **数值影响（`timeGolden.baseline.json` 4 条，105 预设与全部时间账零变化）**：
+  - 单人夹具 `agent:1541:c3..c6` 无队友（额外能力未激活，敌人无 `[有罪推定]`），修正前 C1 的 20% 异放无视防御越门控生效，修正后归零：
+    - `agent:1541:c3.dmg`：`1036336 → 1020815 (-1.498%)`
+    - `agent:1541:c4.dmg`：`1063106 → 1045368 (-1.669%)`
+    - `agent:1541:c5.dmg`：`1184585 → 1166092 (-1.561%)`
+    - `agent:1541:c6.dmg`：`1453104 → 1422841 (-2.083%)`
+  - 含 1541 的 3 条预设（队友激活额外能力）及全仓其余 410 条 golden 快照逐位零差。
+- **验证**：`vue-tsc -b` 0 错；`validate:data` 366/366 通过；`verify:recording` 189/189 通过；全量 442 个测试文件（4068 passed）通过。回退点：`git revert 2feb0083`。
