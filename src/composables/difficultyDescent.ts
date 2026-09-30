@@ -24,7 +24,7 @@
  *  · 形态轴：同合轴率下 `full` 恒最高（C0@0.8：full 29.8M / pair 21.8M / mie 19.6M）⇒ **最后**降；
  *  · **闪反 / 快速支援不进杠杆集**（用户实测收益低：「闪反比较无所谓，快支更是没啥收益，不用算」）。
  *
- * @fact engine:难度曲线/降序一般化 口径: 档位阶梯从**最优配置**逐级降一个杠杆（合轴率 → 弹刀配额 → 形态轴），每级只算一次、经 `onPoint` 增量出结果；档位数 = 杠杆级数展开数（非笛卡尔积），默认 ≤6 档；闪反/快速支援不进杠杆集（收益低，用户裁决） | 据 用户@2026-09-20（「从最优到一般化的变化」「不能太卡顿」「快支更是没啥收益」）·复核@2026-09-25 | 验 src/composables/__tests__/difficultyDescent.test.ts | 锚 src/composables/difficultyDescent.ts#descendDifficultyCurve | 信 确认
+ * @fact engine:难度曲线/降序一般化 口径: 档位阶梯从**最优配置**逐级降一个杠杆（合轴率 → 弹刀配额 → 形态轴），每级只算一次、经 `onPoint` 增量出结果；档位数 = 杠杆级数展开数（非笛卡尔积），默认 ≤6 档；闪反/快速支援不进杠杆集（收益低，用户裁决） | 据 用户@2026-09-20（「从最优到一般化的变化」「不能太卡顿」「快支更是没啥收益」）·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/difficultyDescent.test.ts | 锚 src/composables/difficultyDescent.ts#descendDifficultyCurve | 信 确认
  * ⟳复核: 杠杆集/顺序、`DESCENT_PLATEAU_RATIO` 平台门槛、或 `maxSteps` 缺省再动时，复核「档位数 == 杠杆级数展开数（成本 = 档数）」与「实测仍有真实非单调档（合轴率→0 那档回升）」两条声明 | 到期 2026-12-31
  */
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'

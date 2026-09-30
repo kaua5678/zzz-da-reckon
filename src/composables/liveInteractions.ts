@@ -119,7 +119,7 @@ export function liveInteractions(
   // 反制支援（角力化解一组控制技）：次数不是 store 字段而是**运行时折算**（boss 控制技组 ×
   // 队内有反制支援招式的角色），按承接槽位的截断存活率缩。
   //
-  // @fact engine:操作难度/角力权重 口径: 反制支援每次角力 = 一次弹刀同权重（1.0），单列类型 `counterAssist` 以便明细可读、用户仍可单独覆盖；次数取运行时折算结果（`configStore.counterAssistSlot` ≥0 时的 `appliedBoss.counterAssistGroups.length`），并按承接槽位截断存活率缩，与其余交互同口径 | 据 用户@2026-09-12「角力的操作就是一次弹刀而已，计同等权重就行，确实不难」·复核@2026-09-25 | 验 src/composables/__tests__/counterAssist.test.ts::角力 = 一次弹刀同权重 | 锚 src/composables/difficultyCurve.ts#liveInteractions | 信 确认
+  // @fact engine:操作难度/角力权重 口径: 反制支援每次角力 = 一次弹刀同权重（1.0），单列类型 `counterAssist` 以便明细可读、用户仍可单独覆盖；次数取运行时折算结果（`configStore.counterAssistSlot` ≥0 时的 `appliedBoss.counterAssistGroups.length`），并按承接槽位截断存活率缩，与其余交互同口径 | 据 用户@2026-09-12「角力的操作就是一次弹刀而已，计同等权重就行，确实不难」·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/counterAssist.test.ts::角力 = 一次弹刀同权重 | 锚 src/composables/liveInteractions.ts#liveInteractions | 信 确认
   const caSlot = config.counterAssistSlot
   const caCount = caSlot >= 0 ? shrink(caSlot, config.appliedBoss?.counterAssistGroups?.length ?? 0) : 0
   if (caCount > 0) out.push({ type: 'counterAssist', count: caCount, slot: caSlot })

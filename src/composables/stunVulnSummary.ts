@@ -13,7 +13,7 @@
  * 异常行不逐行暴露易伤（其结算内部已含，damagePool 只给直伤行写 stunMult）→ 按 1 计，
  * 信用因此偏保守（异常行的易伤贡献未计入）。
  */
-// @fact engine:失衡易伤可见化/加权信用 口径: 行级 stunMult = Boss 失衡易伤分量（满额=stunVuln、零=1、跨窗部分中间值），生效易伤 = calcStunMultiplier(vuln, 面板失衡增伤, frac)；加权信用 = Σ(伤害×生效易伤)/Σ伤害 − 1，与部署 A/B 差分同构（archiveStunVulnProbe 实测 0.1966），异常行按 1 计、信用偏保守；满额参照 = 槽0 面板 | 据 实测@2026-09-10（archiveStunVulnProbe A/B 差分）+ 用户@2026-09-10 方案听取·复核@2026-09-25 | 验 src/composables/__tests__/stunVulnSummary.test.ts | 锚 src/composables/stunVulnSummary.ts#computeStunVulnSummary | 信 确认
+// @fact engine:失衡易伤可见化/加权信用 口径: 行级 stunMult = Boss 失衡易伤分量；覆盖率取行级引擎实值 `stunCoverage`、基数取行级 `stunVulnBase`（缺省 = Boss stunVuln），`stunMult` 反推仅作无新字段时的回落（CC-226）；生效易伤 = calcStunMultiplier(行级基数, 面板失衡增伤, 覆盖率)；加权信用 = Σ(伤害×生效易伤)/Σ伤害 − 1，与部署 A/B 差分同构（archiveStunVulnProbe 实测 0.1966），异常行按 1 计、信用偏保守；满额参照 = 槽0 面板 | 据 实测@2026-09-10（archiveStunVulnProbe A/B 差分）+ 用户@2026-09-10 方案听取·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/stunVulnSummary.test.ts | 锚 src/composables/stunVulnSummary.ts#computeStunVulnSummary | 信 确认
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 
 /**
