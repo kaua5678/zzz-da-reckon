@@ -52,7 +52,7 @@ import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
  * R59 修复：原实现写死 `panel.impact *= 1.15`（VI 满档）⇒ `potentialLevel` 滑块完全不进计算
  * （四臂正交实测 A==B、C==D，见 lycaonCinemaTier.test.ts）。
  */
-// @fact agent:1141/潜能觉醒冲击力 口径: 潜能觉醒·掠冰按 `potentialLevel` 取档 II~VI = 5/7.5/10/12.5/15%（围猎后台普攻/冲刺/闪反期间局内冲击力），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1141.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27 | 验 src/mechanics/__tests__/lycaonCinemaTier.test.ts | 锚 src/mechanics/agents/lycaon.ts#LYCAON_POTENTIAL_IMPACT_PCT | 信 确认
+// @fact agent:1141/潜能觉醒冲击力 口径: 潜能觉醒·掠冰按 `potentialLevel` 取档 II~VI = 5/7.5/10/12.5/15%（围猎后台普攻/冲刺/闪反期间局内冲击力），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1141.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/lycaonCinemaTier.test.ts | 锚 src/mechanics/agents/lycaon.ts#LYCAON_POTENTIAL_IMPACT_PCT | 信 确认
 // ⟳复核: nanoka 若刷新 1141 的 potential_detail，逐档对账 II~VI 是否仍为 5/7.5/10/12.5/15 | 到期 2027-03-31
 export const LYCAON_POTENTIAL_IMPACT_PCT = [0, 0, 5, 7.5, 10, 12.5, 15] as const
 
