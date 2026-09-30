@@ -240,6 +240,13 @@ describe('evalAdditionalAbilityBuffGates 门控语义（迁移前散落逻辑的
     // 影画6：2 异常 + 有效数+1 → tier3 开
     const cinema6 = await gatesFor([{ agentId: '1641', cinemaLevel: 6 }, { agentId: '1261' }, { agentId: '1011' }])
     expect(cinema6.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(true)
+    // CC-331：同阵营非异常队友（1481 琉音，坎卜斯黑枝·击破）触发额外能力但仅 1 名异常 → C0 时 tier2/tier3 均关；C6（需求-1 → 有效数 2）时 tier2 开、tier3 关
+    const sameFactionC0 = await gatesFor([{ agentId: '1641', cinemaLevel: 0 }, { agentId: '1481' }, ''])
+    expect(sameFactionC0.get('phoenix.weakness_anomaly_crit_dmg_tier2')).toBe(false)
+    expect(sameFactionC0.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(false)
+    const sameFactionC6 = await gatesFor([{ agentId: '1481' }, { agentId: '1641', cinemaLevel: 6 }, ''])
+    expect(sameFactionC6.get('phoenix.weakness_anomaly_crit_dmg_tier2')).toBe(true)
+    expect(sameFactionC6.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(false)
   })
 
   it('潘引壶 1421：两条 buff（额外能力 + 影画1）同门控，开/关一致', async () => {

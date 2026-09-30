@@ -180,11 +180,13 @@ export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: Age
   return Math.floor(phoenixEmberIncome(cfg, state, executions) * eff / PHOENIX_CHARGED_EMBER_COST)
 }
 
-function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
+function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: AgentCharConfigInput): void {
   const record = cfg as unknown as Record<string, unknown>
   record.phoenixCinemaLevel = cinemaLevel
   record.phoenixAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   record.phoenixAnomalyMastery = panel.anomalyMastery ?? 0
+  const teamAnomalyCount = team ? team.filter(m => m.agent?.specialty === 'anomaly').length : 0
+  record.phoenixTeamAnomalyCount = teamAnomalyCount > 0 ? teamAnomalyCount : 1
   // 影画4：长按普攻 +200 喧响/次——行级 decibel 会被 enrich 按倍率表回填，改走 initialDecibelGift。
   // 次数：滑块覆盖优先；自动按 战斗时长/15s 一次长按普攻估算 [猜测·低]（余火循环收敛值在 buildExecutions 才有）。
   if (cinemaLevel >= 4) {
@@ -440,12 +442,11 @@ function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput) {
   const cinema = whole(Number(record.phoenixCinemaLevel ?? 0))
   const additionalActive = record.phoenixAdditionalActive === true
   const chargedCount = whole(Number(record.phoenixChargedCount ?? 0))
-  // 展示口径：脆弱暴击实际承载 = spec teamBuffs（公式读源面板掌控 + 档位/影画门控）；
-  // 这里按 2 档（触发额外能力的最低编成）估算给资源卡看，权威值以面板为准。
+  const teamAnomalyCount = Math.max(1, whole(Number(record.phoenixTeamAnomalyCount ?? 2)))
   const weakness = computePhoenixWeaknessCrit({
     anomalyMastery: Number(record.phoenixAnomalyMastery ?? 0),
     additionalActive,
-    teamAnomalyCount: 2,
+    teamAnomalyCount,
     cinemaLevel: cinema,
   })
   return {
@@ -456,7 +457,7 @@ function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput) {
         coreProficiency: PHOENIX_CORE_PROFICIENCY,
         weaknessCritRate: Math.round(weakness.rate * 100) / 100,
         weaknessCritDmg: weakness.dmg,
-        teamAnomalyCount: 2,
+        teamAnomalyCount,
         c2BuildUpEff: cinema >= 2 ? PHOENIX_C2_BUILDUP_EFF : 0,
         chargedCount,
         note: '脆弱暴击承载 = spec teamBuffs（含队友受益）；重生/消亡状态机未建模；余火按总量口径。',
@@ -519,12 +520,15 @@ const settings: MechanicSetting[] = [
 export const phoenixMechanic: AgentMechanicModule = {
   id: 'agent:phoenix',
   agentIds: [PHOENIX_ID],
-  // CC-67：额外能力门控修正——tier3 另需队伍 [异常] 角色数 ≥3（含自己；影画6 需求-1 = 有效数+1，2026-09-12 组队对账落地）
-  // （原 panelPhases.ts#evalAdditionalAbilityBuffGates 按本角色 id 写死，逐位搬入）
+  // CC-67 / CC-331：额外能力门控修正——原文「当队伍中[异常]角色数量为2/3时，暴击伤害提升为25%/40%」（影画6 需求-1 = 有效数+1）。
+  // 同阵营非异常队友（如坎卜斯黑枝 1451/1471/1481/1591）触发额外能力但仅 1 名异常角色时，tier2 须要求有效异常数 ≥2；
+  // 本槽命座按 m.slot === slot 查找（兼容压缩 team 数组）。
   adjustAdditionalAbilityGates: ({ team, slot, gates }) => {
-    const cinemaLevel = team[slot]?.cinemaLevel ?? 0
+    const cinemaLevel = team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel ?? 0
     const anomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (cinemaLevel >= 6 ? 1 : 0)
+    const tier2 = 'phoenix.weakness_anomaly_crit_dmg_tier2'
     const tier3 = 'phoenix.weakness_anomaly_crit_dmg_tier3'
+    gates.set(tier2, gates.get(tier2) === true && anomalyCount >= 2)
     gates.set(tier3, gates.get(tier3) === true && anomalyCount >= 3)
   },
   name: '菲欧妮·脆弱',

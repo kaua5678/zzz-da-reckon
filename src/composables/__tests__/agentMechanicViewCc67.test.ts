@@ -38,9 +38,11 @@ describe('CC-67 额外能力门控修正 → adjustAdditionalAbilityGates', () =
       const gates = new Map<string, boolean>()
       for (const [agentId, buffIds] of Object.entries(ADDITIONAL_GATE_BUFFS)) for (const b of buffIds) gates.set(b, activeByAgent.get(agentId) === true)
       { const slot = slotByAgentId.get('1641') ?? -1
-        const cinemaLevel = slot >= 0 ? (team[slot]?.cinemaLevel ?? 0) : 0
+        const cinemaLevel = slot >= 0 ? (team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel ?? 0) : 0
         const anomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (cinemaLevel >= 6 ? 1 : 0)
+        const t2 = 'phoenix.weakness_anomaly_crit_dmg_tier2'
         const t3 = 'phoenix.weakness_anomaly_crit_dmg_tier3'
+        gates.set(t2, gates.get(t2) === true && anomalyCount >= 2)
         gates.set(t3, gates.get(t3) === true && anomalyCount >= 3) }
       return gates
     }

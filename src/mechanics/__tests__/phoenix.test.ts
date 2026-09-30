@@ -116,6 +116,13 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     const two = await setup(['1641', '1171', ''], 0)
     const p25 = two.computePanelPhases(0, two.config, useCatalogStore())!.inCombat as any
     expect(p25.anomalyCritDmg).toBeCloseTo(25, 5)
+    // CC-331：同阵营非异常队友（1481 琉音，坎卜斯黑枝）仅 1 名异常 → C0 只有基础 15（不误开 tier2）；C6 需求-1（有效数 2）→ 15 + tier2(10) + C1(20) = 45
+    const sameFacC0 = await setup(['1641', '1481', ''], 0)
+    const pSameC0 = sameFacC0.computePanelPhases(0, sameFacC0.config, useCatalogStore())!.inCombat as any
+    expect(pSameC0.anomalyCritDmg).toBeCloseTo(15, 5)
+    const sameFacC6 = await setup(['1641', '1481', ''], 6)
+    const pSameC6 = sameFacC6.computePanelPhases(0, sameFacC6.config, useCatalogStore())!.inCombat as any
+    expect(pSameC6.anomalyCritDmg).toBeCloseTo(45, 5)
   })
 
   it('执行行/事件：余火驱动长按普攻（1641005）+ 蓄能附加攻击（1641021）+ 异放事件（445%/597% 固定倍率）', async () => {

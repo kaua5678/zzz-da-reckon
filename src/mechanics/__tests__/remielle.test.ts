@@ -272,8 +272,8 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     expect([c1, c4, c6].map(remielleSpecialVoidflareCount)).toEqual([3, 6, 12])
     expect(remielleFleetingGraceMultiplier(e)).toBe(1)
     expect(remielleFleetingGraceMultiplier(c6)).toBe(2)
-    // 6 命两个 TriggerMultiplier 是加成语义：空面板初值必须为 0（否则与 1 + x 叠成双计）
-    expect([e.remielleCinema6SpecialVoidflareTriggerMultiplier, e.remielleCinema6FleetingGraceVoidflareTriggerMultiplier]).toEqual([0, 0])
+    // 6 命 FleetingGraceTriggerMultiplier 是加成语义：空面板初值必须为 0（否则与 1 + x 叠成双计）
+    expect(e.remielleCinema6FleetingGraceVoidflareTriggerMultiplier).toBe(0)
   })
 
   it('无 C1 → 不含特殊虚耀行（普通耀变行仍在）', () => {

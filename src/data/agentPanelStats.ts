@@ -28,8 +28,7 @@ export const AGENT_PANEL_STATS = [
   { key: 'remielleCinema1SpecialVoidflareDamage', group: 'anomaly', initial: 0 },
   { key: 'remielleFlowerFeatherDanceDecibelPerUse', group: 'anomaly', initial: 0 },
   { key: 'remielleCinema4SpecialVoidflareRefillCount', group: 'anomaly', initial: 0 },
-  { key: 'remielleCinema6SpecialVoidflareTriggerMultiplier', group: 'anomaly', initial: 0 }, // 加成语义（CC-165，记录错误待删）
-  { key: 'remielleCinema6FleetingGraceVoidflareTriggerMultiplier', group: 'anomaly', initial: 0 }, // 加成语义（CC-165，①=③同一效果 用户裁决 2026-09-30）
+  { key: 'remielleCinema6FleetingGraceVoidflareTriggerMultiplier', group: 'anomaly', initial: 0 }, // 加成语义（CC-165/CC-166，垂虹/惊鸿耀变次数翻倍 用户裁决 2026-09-30）
   { key: 'remielleCinema6SpecialVoidflareCount', group: 'anomaly', initial: 0 },
   { key: 'remielleCinema6SpecialVoidflareDamageRatio', group: 'anomaly', initial: 0 },
 ] as const satisfies ReadonlyArray<{ key: keyof PanelValues; group: AgentPanelStatGroup; initial: number }>
