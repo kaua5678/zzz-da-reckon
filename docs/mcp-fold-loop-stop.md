@@ -1,7 +1,7 @@
 # S2 折叠环的停点（第 348 轮起）
 
-> lane arena-C，2026-09-30。代码：`src/core/resource/foldLoop.ts#runFoldLoop`。
-> 对应 stun-dual-source §24.172、r6 §8 第 348 行。本轮**没有改行为**，只在代码里加了注释（`5363d20a`）。
+> lane arena-C（第 348 轮创建）· lane arena-A（第 349 轮补齐 §2 重折语义四变体拆解与 §4 候选 F2 实测结项），2026-09-30。
+> 代码：`src/core/resource/foldLoop.ts#runFoldLoop`。对应 stun-dual-source §24.172–173、r6 §8 第 348–349 行。
 
 ## 0. 结论
 
@@ -14,7 +14,7 @@
   - 本轮试过改成每次运行归零（曾拟为 CC-330）：缺省配置 414 例终局不变。
   - 但在非缺省的合轴吸收率下，auto-1431-1481-1341 的结果明显变化，并让 dynamicComboAlign ② 的留白门（1.5 秒）变红。
   - **决定不改**。在代码里加注释标明承重，防止被当成遗留写法「顺手清理」。
-- **未做的候选 F2**（§4）：停滞出口停在振荡的哪一相，取决于停在第几轮。被接受的运行里有 7 个停在比本次最优残差高 0.08–0.44 秒的一相。
+- **候选 F2 已实测否决**（§4，第 349 轮）：停滞出口若还原到「本次运行残差最小的那一轮」，在正反馈队伍（如 `yidhari-qingyi-lucia`、`dca:auto-1431-1491-1341@0`）会把 `cfg.timeBudgetExcess` 累加器回退到前序轮次，反而把已收敛的 0 截断队打成截断（`cut: 0 → 0.95s`、留白 `0.049 → 2.19s`）或让截断暴涨 `+4.37s`。
 
 ## 1. 出口普查（探针，414 例）
 
@@ -66,30 +66,43 @@
   按用户口径「留白太多 = 引擎没把资源回复消耗算完备」，这不能算纯改进；dynamicComboAlign ② 的门是拦机制失效的，不应为这次改动放宽。
 - **决定**：不改。计数续跑等于把 CC-160 重折当成主折叠的「续跑」（没比主折叠更好就停），虽然不是有意设计，但结果依赖它。
   已在 `foldLoop.ts`（初始化处）和 `solveDiagnostics.ts`（两个字段）加注释标明承重（`5363d20a`，只改注释）。
-- **重开条件**：先定 CC-160 重折的语义——是主折叠的续跑，还是从终局态重新迭代——再改；改时把上表三种吸收率与 dynamicComboAlign ② 一起复核。
-  refund 冻结旗标的语义也要随之统一（续跑的话，重折不该重新注入 refund）。
+- **第 349 轮四变体拆解实测（结项：维持 `base` 现状）**：
+  为回答「CC-160 终局重折改成纯续跑或纯重跑是否自洽」，第 349 轮在 429 例（414 例 + 5 支时间压力队 × 吸收率 0.4/1/0，产物 `/home/kaua/calc-arch/arenaA/fold-cand-sub.json`）上对照了四个正交变体：
+  1. `cont`（纯续跑：重折不重置 `refundFrozen`，也不重置 `bestExcess / stagnantPasses`）与 `cont_reset_stag`（重折不重置 `refundFrozen`，仅重置停滞计数）：两者在 429 例上**逐位相同**，均改变 **14 例**并显著恶化时间账：
+     - `preset:auto-1431-1491-1341`：残差 `0.0004 → 4.3996s`，留白 `-0.011 → 1.367s`，伤害 `-1.57%`；
+     - `preset:auto-1431-1341-1311`：refund `1.085 → 0s`，留白 `0 → 1.085s`；
+     - 5 个 1431 预设（`1431-1341-1031`、`1431-1391-1341`、`1431-1471-1341`、`1431-1511-1341`、`1431-1341-1211`）从 `passes=2, over=0` 退化为 `passes=1, over=0.037..0.218s`；
+     - `dca:auto-1431-1481-1341@0`：截断 `82.666 → 92.178s`（`+9.51s`），伤害 `-6.36%`。
+     - **根因**：`foldLoop.ts` 中 `if (!diag.refundFrozen) { ... continue }` 同时承担两件事：① 在 `preTail` 把叶瞬光 1431 的冥心轮数取整后，按整数态重新测量支援槽可退还秒数 `teamRefund`；② 充当 Pass 0 的必过门控，强制 CC-158 在重折入口展开的 `cfg.timeBudgetExcess` 至少跑完一轮后续 `runInnerLoop`（`passes >= 2`）。若重折保持 `refundFrozen = true`，Pass 0 既丢掉整数态 refund，又在 `maxExcess <= bestExcess` 时立刻单轮早退，导致 CC-158 展开的时间债来不及回流平 A 池。
+  2. `restart_both`（纯重新迭代：重折重置 `refundFrozen = false` 与 `bestExcess / stagnantPasses`，保留前序写入的 `timeBudgetRefund`）与 `restart_zero_refund`（同上且重折入口清零 `cfg.timeBudgetRefund`）：两者在 429 例上**逐位相同**（因为 `timeBudgetRefund` 只写 `timeWeight = 0` 的支援槽，其 `basicAttackTime === 0`，Pass 0 测量的 `-excess` 与旧 `timeBudgetRefund` 无关），均只改变上表的 3 例 `auto-1431-1481-1341`（其中吸收率 1 时留白 `1.01 → 1.882 > 1.5`，红 `dynamicComboAlign ②`）。
+  3. **结论**：`refundFrozen`（单次调用内「Pass 0 测量 + CC-158 展开后必跑 Pass 1」门控）与 `bestExcess / stagnantPasses`（跨主折叠与重折的停滞地板）职责正交，不能按单一「续跑 / 重跑」二元语义合并。本项**结项，维持现状**。
 
 ## 3. 本轮代码
 
 - 只改注释（`5363d20a`）：`src/core/resource/foldLoop.ts` 停滞判据初始化处、`src/core/resource/solveDiagnostics.ts` 两个字段的说明。
 - 验证：`vue-tsc -b` 0 错；get_diagnostics 0；隔离 worktree `wtA-fl` 全量 verify EXIT=0（442 个文件、4066 个测试）。
 
-## 4. 候选 F2：停滞出口取本次运行残差最小的那一轮（未做）
+## 4. 候选 F2：停滞出口取本次运行残差最小的那一轮（第 349 轮实测否决）
 
 - **问题**：停滞判据只数「没有比最优好 1e-2」的轮数，不管当前轮离最优多远，于是振荡中的折叠环会停在任意一相。例如 1591 c3–c5 在
-  0.514 / 0.074 的振荡里停在 0.514，终局留白正好是 0.514。停在哪一相取决于停的轮次，和内层 CC-326–328、外层 CC-136 / CC-329 已经消除的
-  「检出相位」是同一类问题。
-- **做法草案**：
-  1. 跑动中记录残差最小的一轮（严格小于才替换）的快照：states；每槽 `timeBudgetExcess` 与 `timePressureSeconds`（本轮折叠之后的值）；
-     `config.timeBudgetRefund`；诊断量（残差、留白、refund 秒数、内层轮数）。
-  2. 停滞出口时还原到该轮；残差达标出口不变。
-  3. 约定与现行一致：现行返回的是「第 p 轮的 states + 第 p 轮折叠之后的累加器」，还原也取「最优轮的 states + 最优轮折叠之后的累加器」。
-- **代价与风险**：
-  - 要快照 cfg 副作用，代码明显变复杂。
-  - `diag.converged` 现为「任一轮内层判稳」的粘性量，还原时要不要跟随最优轮，需要单独定。
-  - 残差最小不等于留白最小（§2 吸收率 1 的例子里，残差 0 的状态留白反而更大），「最优轮」的判据要先想清楚。
-  - 影响面预计是 §1 表里的 7 个用例，留白 / 截断有亚秒到数秒级变化。
-- **先决条件**：先用探针量出这几例改后的实际差，再判断收益是否抵得上复杂度；没有「更一般」的收益就只记录。
+  0.514 / 0.074 的振荡里停在 0.514，终局留白正好是 0.514。
+- **第 349 轮探针实测**（429 例，产物 `/home/kaua/calc-arch/arenaA/fold-cand-sub.json`）：
+  实现两个开关变体：`f2_min_excess`（按单轮 `maxExcess` 最小快照 `states + cfg(timeBudgetExcess, timePressureSeconds, timeBudgetRefund) + diag`，停滞出口时还原）与 `f2_min_sum`（按 `maxExcess + maxIdle` 最小快照还原）。两者在 429 例上结果**完全一致**，共改变 **13 例**：
+
+| 用例 | 现行 `base` | F2（还原最小残差轮） | 判读 |
+|---|---|---|---|
+| `agent:1591:c3–c5` | `res: 0.514s, slack: 0.514s`, dmg 14.37M–17.87M | `res: 0.074s, slack: 0.074s`, dmg +0.18% | 2-周期振荡取中低残差相（正向） |
+| `agent:1591:c6` | `res: 0.74s, slack: 1.23s` | `res: 0.6235s, slack: 1.23s`（终局不变） | 仅诊断残差变 |
+| `agent:1051:c0` | `res: 0.8775s, slack: 1.534s, cut: 1.55s` | `res: 0.6847s, slack: 0.045s, cut: 1.883s`，dmg +3.57% | 截断增加 `+0.333s` |
+| `preset:yidhari-qingyi-lucia` | `res: 2.61s, idle: 0.049s, cut: 0s` | `res: 2.2545s, idle: 2.190s, cut: 0.95s`，dmg +4.81% | **破坏性退化**：原本 0 截断的队伍出现 `0.95s` 截断，留白暴涨 |
+| `preset:auto-1431-1481-1491` | `res: 14.386s, cut: 19.8s` | `res: 14.307s, cut: 20.119s` | 截断增加 `+0.319s` |
+| `dca:auto-1431-1491-1341@0` | `res: 36.22s, cut: 10.507s` | `res: 36.22s, cut: 14.875s`，dmg −1.03% | **破坏性退化**：截断恶化 `+4.37s`，伤害下降 |
+
+- **根因（为什么「最小 `maxExcess` 轮」在S2折叠环里不是最优解）**：
+  `cfg.timeBudgetExcess` 是跨 pass 的**累加器**（每轮 `cfg.timeBudgetExcess += excess`），而 `maxExcess` 是**当轮增量** $\Delta\text{excess}_p = \max(0, \text{occupied}_p - \text{allocated}_p)$。
+  在含正反馈（如 1051 闪能返还、1431 冥心）的队伍里，轨迹 `11.67 → 2.2545 → 2.6163 → 2.61 → 2.61` 的每一轮都在继续向 `timeBudgetExcess` 累加正的超出量（第 1 轮加 2.25s，第 2–4 轮合计再加 7.84s），逐步把超出的前台动作压回预算内。
+  若按「当轮增量最小」还原到第 1 轮（`2.2545s`），就等于**丢弃了第 2–4 轮累计折叠掉的 `7.84s` 时间债**，导致终局动作总时长反而超出战斗时长，触发截断（`cut: 0 → 0.95s`、`10.51 → 14.88s`）。
+- **裁决**：**否决 F2，结项不做**。
 
 ## 5. 产物（`/home/kaua/calc-arch/arenaC/`）
 
@@ -100,3 +113,4 @@
 - 日志：`cc330-verify.log` 是归零试验的全量 verify（红 1 条）；`c348-verify.log` 是本轮只改注释的全量 verify。
 - 运行脚本 `arenaC-fl.sh`、`arenaC-fl2.sh`、`arenaC-cc330.sh`、`arenaC-chdump.sh`、`arenaC-dca.sh`、`arenaC-cc330-verify.sh`（现已改成写 `c348-verify.log`），
   都 cd 到已删除的 wtA-fl，复用时要改路径。
+- 第 349 轮产物（`/home/kaua/calc-arch/arenaA/`）：`fold-cand-sub.json`（`base / cont / cont_reset_stag / restart_both / restart_zero_refund / f2_min_excess / f2_min_sum` 七模式 × 429 例完整对照）、`zzFoldCandProbe.test.ts`、插桩版 `foldLoop.probe.ts`。

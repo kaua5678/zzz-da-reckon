@@ -4515,3 +4515,17 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **未做（候选 F2）**：停滞出口停在振荡的哪一相取决于停的轮次，7 个被接受运行停在比最优高 0.08–0.44 秒的一相（例如 1591 c3–c5 停在 0.514，
   最优 0.074）。做法草案与代价见 `docs/mcp-fold-loop-stop.md` §4。
 - **验证**：注释提交 `vue-tsc -b` 0 错；get_diagnostics 0；隔离 worktree `wtA-fl` 全量 verify EXIT=0（442 个文件、4066 个测试）。
+
+### 24.173 第 349 轮（lane arena-A）：CC-330 `resolveExSpecialCount` 正交归一 + 伊德海莉轴内成本档读本槽命座（`0237d0d2`）；折叠环与整数环三项候选实测结项
+
+- **CC-330（`0237d0d2`，简化 + 槽位错位修复，既有预设与单人零数值差）**：
+  1. `src/core/resource/helpers.ts#resolveExSpecialCount`：此前「连续强特通道（`exContinuous && exRefundPerPaid > 0`）」与「普通通道」各写了一遍 `if (cfg.exReservedCount !== undefined)` 失衡内拆分和 `totalEnergy / consume`，两处唯一区别只是非失衡/付费次数是否保留小数（连续通道看 `!exFinalize`，普通通道看 `exSpecialCountFractional`）。提炼正交谓词 `continuous` 与 `fractional = continuous ? cfg.exFinalize !== true : Boolean(cfg.exSpecialCountFractional)` 后，收成单一 `exReservedCount` 拆分分支 + 单一 `paid` 计算。
+  2. `src/mechanics/agents/yidhari.ts#applyYidhariTeamConfig`：修正 2026-09-16 迁移时逐字照搬的 `team[0]?.cinemaLevel` 槽位错位（当伊德海莉不在槽 0 且走自定义失衡轴时，单次碾闪能成本 60/50 误按槽 0 队友命座判定，与同模块 `buildYidhariCharConfig` 按本槽 `cinemaLevel` 设 `exSpecialEnergyConsume` 矛盾），改为读本槽 `cinemaLevel`。`axisContext.test.ts` 新增 `slot=1` 正反双向用例（槽 0 C1 + 槽 1 伊德海莉 C0 得 120；槽 0 C0 + 槽 1 伊德海莉 C1 得 100），撤掉修复恰好 1 红。
+  3. 清理并行会话 `028b47c9` 误入库的空壳 `data/recordings/1581.json`（82 条全 `pending` 且 `1581` 仍在 `legacy.json`，导致 `verify:recording` 必红）。
+- **候选 2（`docs/mcp-fold-loop-stop.md` §2，CC-160 重折语义）实测结项**：
+  429 例对照 `cont` / `cont_reset_stag`（保持 `refundFrozen=true`）与 `restart_both` / `restart_zero_refund`（重置 `refundFrozen=false` 与停滞计数）。前两者改变 14 例并恶化时间账（`auto-1431-1491-1341` 残差 `0.0004 → 4.40s`，5 个 1431 预设 `over: 0 → 0.037..0.218s`，`dca:auto-1431-1481-1341@0` 截断 `+9.51s`），原因是 `!diag.refundFrozen` 兼任「`preTail` 整数化后重测 `teamRefund`」与「CC-158 展开 `timeBudgetExcess` 后必跑 Pass 1」两项职责；后两者改变 3 例并红 `dynamicComboAlign ②`。职责正交，维持 `base` 现状。
+- **候选 3（`docs/mcp-fold-loop-stop.md` §4，F2 停滞出口还原最小残差轮）实测否决**：
+  `f2_min_excess` 与 `f2_min_sum` 在 429 例上完全一致，改变 13 例：虽把 `1591:c3–c5` 留白从 `0.514s` 压到 `0.074s`，但在正反馈队 `yidhari-qingyi-lucia` 把截断从 `0` 打成 `0.95s`（留白 `0.049 → 2.19s`），在 `dca:auto-1431-1491-1341@0` 把截断从 `10.51s` 恶化到 `14.88s`。根因：`cfg.timeBudgetExcess` 是跨轮累加器，当轮 `maxExcess` 只是本轮正增量 $\Delta\text{excess}_p$，还原到第 1 轮会丢弃后续轮次已折叠掉的 `7.84s` 时间债。
+- **候选 4（`docs/mcp-integer-cycle-stop.md` §6.3 / §9，`converged=true` 路径依赖）归因结项**：
+  CC-326 中变化的 18 个 `converged=true` 用例 100% 在前序/终局 `runInnerLoop`（`path: 'canon'`）命中了真整数 2-循环（旧停点 `over=1..5` → 新停点 `over=0`），经三类机制传递：① S2 折叠环 Pass 0 / 中间轮改写 `timeBudgetRefund` 或 `timeBudgetExcess` 后在后续 pass 收敛（9 例）；② 外层不动点前序轮改变 `stunCount` / `threads` 后在下一轮收敛（6 例）；③ `diag.converged` 跨 `timePass` / `finalizePasses` 的粘性 OR 保留了前序 `true`（4 例）。
+- **验证**：`vue-tsc -b` 0 错；`get_diagnostics` 0；隔离 worktree `wtA-fold` 全量 `npm run verify` EXIT=0（442 个文件、4067 个测试，25 guards，1120 specs，189 recordings）。回退点：`git revert 0237d0d2`。

@@ -161,7 +161,7 @@
 - ~~**第 20 轮后回落**（`oscillatorStopStates`）仍用历史停点~~ → 第 345 轮已并入本规则（CC-327），见 §7。
 - ~~浮点噪声环仍走专用停点 `jsonMinMember`~~ → 第 346 轮已并入本规则（CC-328），见 §8。
 - **根治**仍然是 DEBT「全局实数化收敛重构」。本规则是整数模型内的语义停点，不能替代它。
-- **converged=true 的路径依赖**（多个自洽终态）本轮没有处理。它也不是 JSON 停点特有的问题：任何环停点规则都会影响路径。
+- ~~**converged=true 的路径依赖**（多个自洽终态）本轮没有处理~~ → 第 349 轮已逐例追踪归因并结项，见 §9。
 
 ## 7. 第 345 轮：第 20 轮后回落并入本规则（CC-327）
 
@@ -266,3 +266,29 @@ return { end: structuredClone(integerCycleStop(members)), clean: isFloatNoiseCyc
 
 **验证**：`vue-tsc -b` 0 错；get_diagnostics 0；不重生成任何基线；隔离 worktree `wtA-fn` 全量 verify EXIT=0（442 个文件通过、16 个跳过，
 4063 个测试通过，build 通过）。
+
+
+## 9. 第 349 轮：`converged=true` 子集的路径依赖归因与结项
+
+> lane arena-A，2026-09-30。对应 stun-dual-source §24.173、r6 §8 第 349 行。本节只做归因与结项，不改代码。
+
+**问题（§6 第 3 条）**：CC-326 只改了内层真整数环出口（`inner.clean === false` 分支：`jsonMinMember` → `integerCycleStop`），但 414 例里除了 18 个终局 `converged=false` 的单人用例之外，还有 **18 个终局 `converged=true` 的用例**（8 个单人 + 10 个预设）发生了数值变化。为什么只改非收敛分支的停点，会改变终局 `converged=true` 的用例？
+
+**探针方法**：
+对比 `/home/kaua/calc-arch/arenaC/feas-old.json` 与 `feas-new.json`，并在插桩探针 `zzPathDepProbe.test.ts`（产物 `/home/kaua/calc-arch/arenaA/path-dep.json`）中记录每次 `runInnerLoop` 调用所在的管线阶段（`main:r<外层轮>:p<折叠pass>`、`finalize:r<外层轮>`、`preTail`、`refold`、`truncRefold`）及 `clean / iterations / 选中成员的 over`。
+
+**核心发现**：
+18 个发生变化的 `converged=true` 用例中，**18/18（100%）都在某次前序 `runInnerLoop` 调用（`path: 'canon'`）中命中了内层真整数 2-循环**，且旧规则 `jsonMinMember` 在这些中间环上全部选了透支成员（`over = 1..5`），新规则 `integerCycleStop` 改选可行成员（`over = 0`）。没有任何一例是在「全程不触发整数环」的情况下被波及的。
+
+按「中间整数环如何传递到最终 `converged=true` 终态」分为三类精确机制：
+
+| 传递机制 | 用例（共 18 例） | 机理说明 |
+|---|---|---|
+| **① S2 折叠环累加器路径改变** | 单人 `1641:c3–c6`、`1191:c0`；预设 `auto-1431-1341-1311`、`auto-1181-1511-1411`、`auto-1191-1361-1311`、`auto-1191-1161-1311`（9 例） | 在同一次 `runFoldLoop` 内，Pass 0 或中间某轮 `timePass` 落入内层 2-循环。旧停点取透支成员（如 `1641:c3` 在 `main:r1:p0` 取强特 6/大招 3 的透支相 `over=2`，新停点取 5/2 的 `over=0`），直接改变了 Pass 0 冻结的 `timeBudgetRefund` 或当轮注入的 `cfg.timeBudgetExcess += excess`；随后的 `timePass` 在新的时间债下正常不动点收敛（`inner.clean = true`）。 |
+| **② 外层不动点跨轮反馈** | 预设 `auto-1201-1361-1211`、`auto-1541-1561-1411`、`auto-1221-1561-1411`、`auto-1241-1031-1311`、`auto-1591-1571-1211`、`yidhari-jufufu-lucia`（6 例） | 外层第 $r$ 轮的内层求解落入 2-循环，不同停点产出不同的本轮动作次数与失衡池，改变下一轮外层输入（`stunCount` 或跨轮线程 `threads`），第 $r+1$ 轮在新的失衡窗数下干净收敛（例如 `yidhari-jufufu-lucia` 外层轮次从 4 轮减为 2 轮，留白 `0.734 → 0.049s`）。 |
+| **③ `diag.converged` 的跨 pass 粘性或（OR）语义** | 单人 `1191:c3`、`1591:c0`、`1531:c0`、`1051:c0`（4 例，其中 `1191:c0` 兼有①） | `foldLoop.ts` 中 `if (inner.clean) diag.converged = true` 与 `resource.ts#finalizePasses` 中 `if (fp.converged) diag.converged = true` 都是**单向置真（粘性 OR）**：只要前序某个 `timePass` 曾达标 `clean=true`，即使末轮 `timePass` 或 `finalize` 落入 2-循环（`clean=false`），终局 `rr.convergence.converged` 仍为 `true`。这些用例的末轮或终局整数重推本身就停在 2-循环上，CC-326 直接消除了它们终局状态的透支（`over: 1..2 → 0`）。 |
+
+**结论与裁决**：
+1. 18 例 `converged=true` 的变化完全由「前序/终局 pass 真整数环消除透支」因果解释，不存在预期外的旁路污染。
+2. 机制 ①② 属于「带截断/取整的迭代求解器在中途遇到整数环时，后续轨迹依赖环出口选择」的固有性质；只要内层中途仍使用整数次数（而非全局实数化松弛、仅终局取整，即 DEBT 1a），任何环停点规则都会决定后续折叠轨迹。在整数环存在的前提下，取不透支的可行成员（`over=0`）比取透支成员向后续 pass 注入虚假的 `timeBudgetExcess` 更自洽。
+3. 本项**结项**，无需额外代码改动。

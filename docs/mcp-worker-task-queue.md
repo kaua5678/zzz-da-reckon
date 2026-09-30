@@ -96,33 +96,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 348 轮（lane arena-C）：S2 折叠环出口普查 + 停滞计数承重结论（行为不变，只加注释 `5363d20a`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。开工时间 03:30。现场：HEAD f87b348e 与 origin 一致；没有 verify / vitest / dsh 进程（常驻 `dsh web` 不算）；最近一次提交是本 lane 02:53 的 f87b348e；工作区干净。**
+**第 349 轮（lane arena-A，承接第 348 轮下一步 1–4）：CC-330 `resolveExSpecialCount` 正交归一 + 伊德海莉轴内成本档读本槽命座（`0237d0d2`），以及折叠环 CC-160 重折语义 / 候选 F2 / 内层整数环 `converged=true` 路径依赖三项实测结项，文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时并行会话 `session-cfb4706f` 刚完成 CC-166（`028b47c9` / `4cfeda10`）并收工退出，主仓库无活跃进程。**
 
-- **出口普查**（交接可选项「折叠环停滞判据的触发面」，见新文档 `docs/mcp-fold-loop-stop.md` §1）：
-  - 414 例共 2968 次折叠运行：残差达标 1771 次、停滞 1197 次、跑满 0 次。
-  - 被接受的运行：389 / 25 / 0。
-- **停滞计数跨运行不归零，是承重行为**（§2）：
-  - `diag.bestExcess` / `stagnantPasses` 只在 `undefined` 时初始化，CC-160 终局重折（同一个 `diag`）接着主折叠的计数判停。404 次运行受影响，全在 12 个 1431 用例里。
-  - 试过改成每次运行归零（曾拟为 CC-330，卡号未占用）：缺省 414 例终局不变；但全量 verify 红 1 条，dynamicComboAlign ②（合轴吸收率 1）auto-1431-1481-1341 留白 1.01 → 1.882 > 1.5。吸收率 0 时截断 82.7 → 63.9 秒、伤害 +3.05%。
-  - **决定不改**，测试门不放宽。在 `foldLoop.ts`、`solveDiagnostics.ts` 加注释标明承重，防止被当成遗留写法顺手清理。
-- **未做（候选 F2）**：停滞出口停在振荡的哪一相取决于停的轮次（例如 1591 c3–c5 停在 0.514，最优 0.074）。做法草案与代价见 `docs/mcp-fold-loop-stop.md` §4。
-- 验证（注释提交）：`vue-tsc -b` 0 错；get_diagnostics 0；在隔离 worktree `wtA-fl` 跑全量 verify，EXIT=0（442 个文件、4066 个测试，日志 `/home/kaua/calc-arch/arenaC/c348-verify.log`）。代码在 worktree 里提交，主仓库用 `git merge --ff-only` 合入。
-- 新文档 `docs/mcp-fold-loop-stop.md` 已登记 README §6（69 → 70 份；表尾「以本表为准」的份数也同步为 70，原来写的是 48）。
-- 探针产物在 `/home/kaua/calc-arch/arenaC/`，清单见新文档 §5；脚本都 cd 到已删除的 wtA-fl，复用时要改路径。
-- REQUIREMENTS 没有新条目（md5 807ee096）；提示词未改（md5 6f99f59f）。
+- **CC-330（`0237d0d2`，简化 + 槽位错位修复，既有预设与单人零数值差）**：
+  1. `src/core/resource/helpers.ts#resolveExSpecialCount`：将「付费/非失衡次数是否保留实数（`continuous ? !exFinalize : Boolean(exSpecialCountFractional)`）」与「失衡内保留次数（`exReservedCount`）拆分」两个正交维度合一，删掉两处重复的 `exReservedCount` 拆分块与两处 `totalEnergy / consume` 计算。
+  2. `src/mechanics/agents/yidhari.ts#applyYidhariTeamConfig`：修正 2026-09-16 迁移遗留的 `team[0]?.cinemaLevel` 槽位错位，改为读本槽 `cinemaLevel`（与同模块 `buildYidhariCharConfig` 的 `exSpecialEnergyConsume` 同源）；`src/mechanics/__tests__/axisContext.test.ts` 新增非槽 0（`slot=1`）正反双向单测（撤掉修复 1 红）。
+  3. 清理 `028b47c9` 误入库的未处置空壳 `data/recordings/1581.json`（82 条全 `pending` 且 `1581` 仍在 `legacy.json`，导致 `npm run verify` 的 `verify:recording` 必红；`028b47c9` 只跑了 `npm run check` 漏检）。
+- **第 348 轮候选 2（CC-160 重折语义）四变体实测结项（维持 `base` 现状，见 `docs/mcp-fold-loop-stop.md` §2）**：
+  - `cont` / `cont_reset_stag`（保持 `refundFrozen=true`）在 429 例上逐位相同，改变 14 例并显著恶化时间账（`auto-1431-1491-1341` 残差 `0.0004 → 4.40s`，5 个 1431 预设 `over: 0 → 0.037..0.218s`，`dca:auto-1431-1481-1341@0` 截断 `82.67 → 92.18s`）。根因：`!diag.refundFrozen` 兼任「`preTail` 整数化后重测 `teamRefund`」与「CC-158 展开 `timeBudgetExcess` 后必跑 Pass 1」两项门控，与停滞计数职责正交。
+- **第 348 轮候选 3（F2：停滞出口还原最小残差轮）实测否决（见 `docs/mcp-fold-loop-stop.md` §4）**：
+  - `f2_min_excess` 与 `f2_min_sum` 在 429 例上完全一致，改变 13 例：在正反馈队 `yidhari-qingyi-lucia` 把截断从 `0` 打成 `0.95s`（留白 `0.049 → 2.19s`），在 `dca:auto-1431-1491-1341@0` 把截断从 `10.51s` 恶化到 `14.88s`。根因：`cfg.timeBudgetExcess` 是跨轮累加器，当轮 `maxExcess` 只是当轮正增量 $\Delta\text{excess}_p$，还原到第 1 轮会丢弃第 2–4 轮累计折叠掉的 `7.84s` 时间债。
+- **第 348 轮候选 4（`docs/mcp-integer-cycle-stop.md` §6.3 / §9，`converged=true` 路径依赖）归因结项**：
+  - CC-326 中变化的 18 个 `converged=true` 用例 100% 在前序/终局 `runInnerLoop`（`path: 'canon'`）命中了真整数 2-循环（`over: 1..5 → 0`），经 S2 折叠累加器（9 例）、外层跨轮反馈（6 例）、`diag.converged` 粘性 OR（4 例）三类机制传递。
+- **验证**：`vue-tsc -b` 0 错；`get_diagnostics` 0；在隔离 worktree `wtA-fold` 跑全量 `npm run verify` EXIT=0（442 个文件、4067 个测试，日志 `/home/kaua/calc-arch/arenaA/verify-cc330.log`）。探针产物归档于 `/home/kaua/calc-arch/arenaA/`（`fold-cand-sub.json`、`path-dep.json`、`zzFoldCandProbe.test.ts`、`zzPathDepProbe.test.ts`、`foldLoop.probe.ts`）。回退点：`git revert 0237d0d2`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. 候选（先定语义）：CC-160 终局重折是主折叠的「续跑」还是从终局态「重新迭代」。
-   - 定下来之后，停滞计数与 refund 冻结旗标按同一语义统一（续跑：两者都接着用；重新迭代：两者都归零）。
-   - 然后复核 `docs/mcp-fold-loop-stop.md` §2 表里三种合轴吸收率，以及 dynamicComboAlign ②。
-   - 依据要写进文档；定不出就维持现状。
-3. 候选（先量再定）：F2「停滞出口取本次运行残差最小的一轮」（新文档 §4）。
-   - 注意残差最小不等于留白最小，先想清楚「最优轮」的判据。
-   - 在插桩版 foldLoop 里加快照与还原（开关控制），量 §1 表里 7 个用例的留白 / 截断 / 伤害。
-4. 可选（先探针）：`docs/mcp-integer-cycle-stop.md` §6 第 3 条「converged=true 的路径依赖」。
-5. 可选：R22-D1 债 1a（全局实数化松弛推广，见 `docs/mcp-r22d1-batch12-field-census.md` §2）能否因内外层整数环停点都取「可行最大」而部分销号。先写判据，再量。
-6. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+2. **规格-实现对账 / 模块同构简化新扫描**：
+   - 折叠环停点线（`docs/mcp-fold-loop-stop.md`）与内层整数环停点线（`docs/mcp-integer-cycle-stop.md`）已全部收口，不要再单改环出口。
+   - 可扫描 `src/mechanics/agents/*.ts` 中 `applyTeamConfig` / `buildCharConfig` / `buildExecutions` 是否还有类似 CC-330 的「槽位硬编码 / 与同模块另一钩子口径不一致」或重复分支，发现真缺陷或有意义的简化再开 CC 卡。
+3. 可选：R22-D1 债 1a（全局实数化松弛推广，见 `docs/mcp-r22d1-batch12-field-census.md` §2）能否因内外层整数环停点都取「可行最大」而更新债登记说明（注意：第 349 轮 `docs/mcp-integer-cycle-stop.md` §9 已证明中间 pass 的整数环仍会造成路径依赖，故债 1a 本体不能销号，只可评估注释说明是否需补充）。
+4. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **「只在 undefined 时初始化」的求解状态可能是承重的**：折叠环的 `diag.bestExcess` / `stagnantPasses` 跨运行不归零，CC-160 重折依赖它（第 348 轮归零试验让 dynamicComboAlign ② 变红）。清理这类写法前，先跑全量 verify，并在非缺省机制参数下对照（合轴吸收率 0 / 1）。
