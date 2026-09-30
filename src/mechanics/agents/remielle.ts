@@ -98,28 +98,32 @@ export function getRemielleLevelValue(row: SkillMove['rows'][number] | undefined
   return values[0] ?? 0
 }
 
-/** 一命「开局特殊虚耀」每轮个数（状态表 1 命：开局 3 个；6 命原文「1命+4命的2轮变为4轮」⇒ 1 轮 = 3 个） */
+/** 一命「开局特殊虚耀」每轮个数（状态表 1 命：开局 3 个；1 轮 = 3 个豆 = 打 1 次垂虹） */
 export const REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND = 3
 
 /**
- * 特殊虚耀个数（CC-165 口径）：`(3 × 一命轮次 + 四命补充个数) × (1 + 六命翻倍加成)`。
- * - `remielleCinema1SpecialVoidflareCount` = **轮次**（catalog buff 描述「特殊虚耀触发轮次」，值 1）；
- * - `remielleCinema4SpecialVoidflareRefillCount` = **个数**（「补充3个特殊虚曜点」，值 3 = 1 轮）；
- * - `remielleCinema6SpecialVoidflareTriggerMultiplier` = **加成**（初值 0，6 命 +1 ⇒ ×2）。
- * 读数：1 命 3 / 4 命 6 / 6 命 12（与 character-constellations 状态表、6 命原文一致）。
+ * 特殊虚耀**垂虹次数**（用户裁决 2026-09-30）：特殊虚耀点数不翻倍，C6 的 12 次耀变 = 2 次垂虹 × 6 耀变/次。
+ * - `remielleCinema1SpecialVoidflareCount` = **轮次**（catalog buff 描述「特殊虚耀触发轮次」，值 1 = 打 1 次垂虹）；
+ * - `remielleCinema4SpecialVoidflareRefillCount` = **个数**（「补充3个特殊虚曜点」，值 3 = 1 轮 = 再打 1 次垂虹）；
+ * - 垂虹次数 = 1 命轮次 + 4 命补充轮次 = 1 + 1 = 2（C4 后）。
+ * @fact agent:1581/特殊虚耀垂虹次数 口径: 特殊虚耀点数不翻倍，C6 的 12 次耀变 = 2 次垂虹 × (3 豆/次 × 2 倍耀变)；1 命 1 次垂虹 3 耀变 / 4 命 2 次垂虹 6 耀变 / 6 命 2 次垂虹 12 耀变 | 据 用户裁决@2026-09-30 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/mechanics/agents/remielle.ts#remielleSpecialVoidflareCount | 信 确认
+ * ⟳复核: 若官方实装后特殊虚耀机制变更（如点数真的翻倍、或垂虹次数与耀变次数解耦）→ 重核本口径 | 到期 2026-12-31
  */
 export function remielleSpecialVoidflareCount(panel: PanelValues): number {
   const firstRound = panel.remielleCinema1SpecialVoidflareCount ?? 0
   if (firstRound <= 0) return 0
   const refill = Math.max(0, panel.remielleCinema4SpecialVoidflareRefillCount ?? 0)
-  const c6Multiplier = 1 + Math.max(0, panel.remielleCinema6SpecialVoidflareTriggerMultiplier ?? 0)
-  return (firstRound * REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND + refill) * c6Multiplier
+  // 垂虹次数 = 1 命轮次 + 4 命补充轮次（每轮 3 豆打 1 次垂虹）
+  const rainbowCount = firstRound + Math.floor(refill / REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND)
+  // 每次垂虹耀变数 = 3 豆 × (1 + 6 命耀变翻倍)
+  const luminizeMultiplier = 1 + Math.max(0, panel.remielleCinema6LuminizeTriggerMultiplier ?? 0)
+  return rainbowCount * REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND * luminizeMultiplier
 }
 
 /**
  * 「普通攻击：惊鸿」关联虚耀触发倍率 = 1 + 六命加成（CC-165：初值曾为 1 与 `1 + x` 叠成 0 命 ×2 / 6 命 ×3）。
  * 读 FleetingGrace 字段（其声明即「六命惊鸿关联虚耀」）；原文「瞬逝优雅（Fleeting Grace）耀变触发2次」
- * 的 `remielleCinema6LuminizeTriggerMultiplier` 与本条是否叠乘未定，当前只乘一次（CC-166）。
+ * 的 `remielleCinema6LuminizeTriggerMultiplier` 是独立效果（垂虹/瞬逝优雅单次耀变次数 ×2），不与本条叠乘。
  */
 export function remielleFleetingGraceMultiplier(panel: PanelValues): number {
   return 1 + Math.max(0, panel.remielleCinema6FleetingGraceVoidflareTriggerMultiplier ?? 0)
@@ -464,11 +468,11 @@ export const remielleMechanic: AgentMechanicModule = {
         carrierMoveId: cfg.remielleRainbowEndMoveId,
         carrierMoveName: '普通攻击：垂虹',
         count: remielleRainbowEndCount,
-        formula: 'count = (3 × remielleCinema1SpecialVoidflareCount + remielleCinema4SpecialVoidflareRefillCount) × (1 + remielleCinema6SpecialVoidflareTriggerMultiplier)',
+        formula: 'count = (remielleCinema1SpecialVoidflareCount + remielleCinema4SpecialVoidflareRefillCount/3) × 3 × (1 + remielleCinema6LuminizeTriggerMultiplier) —— 垂虹次数 × 3 豆 × 6命耀变翻倍',
         fields: [
           'remielleCinema1SpecialVoidflareCount',
           'remielleCinema4SpecialVoidflareRefillCount',
-          'remielleCinema6SpecialVoidflareTriggerMultiplier',
+          'remielleCinema6LuminizeTriggerMultiplier',
           'remielleRainbowEndMoveId',
         ],
         note: '异常事件只记录次数和载体动作；不进入普通招式执行计划，不读取 damageMultiplier。',
@@ -751,8 +755,8 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
       label: '普通攻击垂虹·特殊虚耀',
       source: '开局特殊虚曜点，垂虹打出并消耗',
       count: specialCount,
-      formula: 'count = (3 × 一命轮次 + 4命补充3) × (1 + 6命翻倍加成)；倍率 = 垂虹耀变倍率 × 2.5',
-      fields: ['remielleCinema1SpecialVoidflareCount', 'remielleCinema4SpecialVoidflareRefillCount', 'remielleCinema6SpecialVoidflareTriggerMultiplier'],
+      formula: 'count = 垂虹次数 × 3 豆 × (1 + 6命耀变翻倍)；倍率 = 垂虹耀变倍率 × 2.5',
+      fields: ['remielleCinema1SpecialVoidflareCount', 'remielleCinema4SpecialVoidflareRefillCount', 'remielleCinema6LuminizeTriggerMultiplier'],
     },
   ] as AnomalyEventRecord[]).filter(event => event.count > 0)
 }

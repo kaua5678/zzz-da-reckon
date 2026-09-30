@@ -262,12 +262,13 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     })
   })
 
-  it('CC-165：特殊虚耀个数 1 命 3 / 4 命 6 / 6 命 12，惊鸿 0 命 ×1 / 6 命 ×2（状态表与 6 命原文口径）', () => {
+  it('CC-165/CC-166：特殊虚耀耀变次数 1 命 3 / 4 命 6 / 6 命 12（垂虹次数 × 3 豆 × 6命耀变翻倍），惊鸿 0 命 ×1 / 6 命 ×2', () => {
     const e = emptyPanel()
     expect(remielleSpecialVoidflareCount(e)).toBe(0)
     const c1 = { ...e, remielleCinema1SpecialVoidflareCount: 1 }
     const c4 = { ...c1, remielleCinema4SpecialVoidflareRefillCount: 3 }
-    const c6 = { ...c4, remielleCinema6SpecialVoidflareTriggerMultiplier: 1, remielleCinema6FleetingGraceVoidflareTriggerMultiplier: 1 }
+    // C6：2 次垂虹 × 3 豆 × 2 倍耀变 = 12（不是点数 6 × 2 = 12 的记录错误口径）
+    const c6 = { ...c4, remielleCinema6LuminizeTriggerMultiplier: 1, remielleCinema6FleetingGraceVoidflareTriggerMultiplier: 1 }
     expect([c1, c4, c6].map(remielleSpecialVoidflareCount)).toEqual([3, 6, 12])
     expect(remielleFleetingGraceMultiplier(e)).toBe(1)
     expect(remielleFleetingGraceMultiplier(c6)).toBe(2)

@@ -460,8 +460,8 @@ const formulaSections = [
     formula: 'luminizeMultiplier = base × (1 + remielleLuminizeMultiplierBonus/100) × (1 + remielleCinema4LuminizeMultiplierBonus/100) × triggerMultiplier',
     lines: [
       '耀变展示行读取 luminizeMultiplier，不使用 damageMultiplier；特殊虚耀 damageMultiplier = 0，只记异常事件次数',
-      '特殊虚耀次数 = (3 × remielleCinema1SpecialVoidflareCount + remielleCinema4SpecialVoidflareRefillCount) × (1 + remielleCinema6SpecialVoidflareTriggerMultiplier)',
-      '惊鸿耀变次数 × (1 + remielleCinema6FleetingGraceVoidflareTriggerMultiplier)；6命 remielleCinema6LuminizeTriggerMultiplier（原文「虹之终幕/瞬逝优雅」= 垂虹/惊鸿 耀变2次）是否与另两条翻倍叠乘未定、当前不读；普攻4段特殊虚耀暂未建模（CC-166）',
+      '特殊虚耀耀变次数 = (1命轮次 + 4命补充轮次) × 3 豆 × (1 + remielleCinema6LuminizeTriggerMultiplier) —— 垂虹次数 × 3 豆 × 6命耀变翻倍',
+      '惊鸿耀变次数 × (1 + remielleCinema6FleetingGraceVoidflareTriggerMultiplier)；6命 remielleCinema6LuminizeTriggerMultiplier 作用垂虹/瞬逝优雅单次耀变次数 ×2（含特殊虚耀，CC-166 已接）；普攻4段特殊虚耀暂未建模（CC-166）',
     ],
   },
   {
