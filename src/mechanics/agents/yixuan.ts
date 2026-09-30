@@ -340,10 +340,7 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCh
   // 额外闪能总账（文本明确数值，次数按现有交互输入近似）：
   // 完美格挡 +10/次（yixuanPerfectBlockCount，≤0=自动=弹刀次数全完美）、极限闪避 +5/次（dodgeCounterCount）、
   // 影画1 落雷 +5/次（6s CD 战斗时间驱动）、玄墨异常触发 +10/次（外层收敛注入 cfg.yixuanAnomalyTriggerFlash）
-  const pbRaw = Number(record.yixuanPerfectBlockCount ?? 0)
-  const perfectBlocks = pbRaw >= 1
-    ? Math.floor(pbRaw)
-    : Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).parryCount ?? 0)))
+  const perfectBlocks = resolveYixuanPerfectBlocks(record, cfg)
   const dodges = Math.max(0, Math.floor(cfg.dodgeCounterCount ?? 0))
   const anomalyFlash = Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(record.yixuanAnomalyTriggerFlash ?? 0))))
   // 极限支援换场落雷（额外能力，用户口径）：默认次数 = 队友正常弹刀次数求和（上限），主页可录入；
@@ -503,10 +500,7 @@ function applyYixuanTeamConfig(
 
   // 极限支援换场落雷（用户口径）：次数上限 = 队友正常弹刀次数求和；默认次数 = 上限（主页可录入）。
   // 输入读 `cfg` 上的 `yixuanExtremeAssistCount`——**与原式同一字段**（`merged.yixuanExtremeAssistCount ?? -1`）。
-  const assistInput = Math.max(-1, Math.floor(Number(record.yixuanExtremeAssistCount ?? -1)))
-  const extremeAssists = (cfg.teamUltimateFlashBonus ?? 0) > 0
-    ? Math.min(assistInput >= 0 ? assistInput : assistCap, assistCap)
-    : 0
+  const extremeAssists = resolveYixuanExtremeAssists(cfg, assistCap, record.yixuanExtremeAssistCount)
 
   // 玄墨异常触发回闪能（10s CD 封顶 18 次）+ 极限支援落雷闪能（5/次）+ C1 落雷闪能（5/次）。
   // ⚠ **`+=`（不是覆盖）**：`buildCharConfig` 已写「完美格挡/极限闪避/玄墨异常」三项，
@@ -536,6 +530,24 @@ function applyYixuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
  * 总闪能先打完失衡内（轴内凝云等）消耗，剩余闪能全部在轴外打 3连墨痕化形（60/次）；
  * 完美格挡按「全完美」= 弹刀次数（每次 +10 闪能进收入）。手填 ≥1 覆盖自动值。
  */
+function resolveYixuanPerfectBlocks(record: Record<string, unknown>, cfg: AgentCharConfigInput['cfg']): number {
+  const pbRaw = Number(record.yixuanPerfectBlockCount ?? 0)
+  return pbRaw >= 1
+    ? Math.floor(pbRaw)
+    : Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).parryCount ?? 0)))
+}
+
+function resolveYixuanExtremeAssists(
+  cfg: AgentCharConfigInput['cfg'],
+  assistCap: number,
+  rawInput: unknown,
+): number {
+  if ((cfg.teamUltimateFlashBonus ?? 0) <= 0) return 0
+  const cap = Math.max(0, Math.floor(assistCap))
+  const assistInput = Math.max(-1, Math.floor(Number(rawInput ?? -1)))
+  return Math.min(assistInput >= 0 ? assistInput : cap, cap)
+}
+
 function resolveYixuanAutoInputs(
   record: Record<string, unknown>,
   cfg: AgentCharConfigInput['cfg'],
@@ -547,10 +559,7 @@ function resolveYixuanAutoInputs(
   const ink3 = ink3Raw >= 1
     ? Math.floor(ink3Raw)
     : Math.floor(Math.max(0, income - ink2 * INK2_COST - axisCloudSpent) / INK3_COST)
-  const pbRaw = Number(record.yixuanPerfectBlockCount ?? 0)
-  const perfectBlocks = pbRaw >= 1
-    ? Math.floor(pbRaw)
-    : Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).parryCount ?? 0)))
+  const perfectBlocks = resolveYixuanPerfectBlocks(record, cfg)
   // 影画4 静心（增伤载体=凝云/墨烬影消）：自动口径下留 1 轮凝云（60 闪能）当载体，
   // 否则轴外凝云全被 3 连吃掉 → C4 0 增幅 —— 用户口径 2026-08
   const cinemaLevel = Math.max(0, Math.floor(Number(record.yixuanCinemaLevel ?? 0)))
@@ -768,8 +777,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 额外能力·极限支援换场落雷：225% 贯穿力 + 5 闪能/次（默认队友弹刀和上限，主页可录入；假 id 不进失衡/异常池）
   const assistCap = Math.max(0, Math.floor(Number(record.yixuanExtremeAssistCap ?? 0)))
-  const assistInput = Math.floor(Number(record.yixuanExtremeAssistCountInput ?? -1)) // -1 = 默认取上限
-  const extremeAssists = (cfg.teamUltimateFlashBonus ?? 0) > 0 ? Math.min(assistInput >= 0 ? assistInput : assistCap, assistCap) : 0
+  const extremeAssists = resolveYixuanExtremeAssists(cfg, assistCap, record.yixuanExtremeAssistCountInput ?? -1)
   record.yixuanExtremeAssistCount = extremeAssists
   if (extremeAssists > 0) {
     executions.push({

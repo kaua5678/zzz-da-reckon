@@ -164,8 +164,8 @@ function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
     c6BurstCount,
     c6MissileCount,
     additionalAbilityActive: input.additionalAbilityActive,
-    techGapStunBonus: input.additionalAbilityActive ? input.techGapStunBonus : 0,
-    extraAbilityAtkBonus: input.additionalAbilityActive ? input.extraAbilityAtkBonus : 0,
+    techGapStunBonus: input.additionalAbilityActive ? (input.techGapStunBonus ?? 0) : 0,
+    extraAbilityAtkBonus: input.additionalAbilityActive ? (input.extraAbilityAtkBonus ?? 0) : 0,
     cinemaLevel,
     note:
       '膛温完整模型：进场+60，接战1.5/s、耗能×0.4%/点（瞬发40→16、长按20/s→8/s）、终结+30；≥80%帽子把戏→连携技替换，次数=floor(膛温总量/80)。' +

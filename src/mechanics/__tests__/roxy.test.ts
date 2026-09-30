@@ -135,6 +135,17 @@ describe('洛克茜风能模型（v12 + 手法）', () => {
     const r6 = computeRoxyWindEnergy({ exSpecialCount: 2, ultimateCount: 0, spinSeconds: 2.5, cinemaLevel: 6 })
     expect(r6.megaTornadoCount).toBe(2 + 2 * ROXY_C6_ECHO_BURSTS)
   })
+
+  it('CC-334：显式传入 exSpecialEnergyConsume 时按该值记单轮耗能，buildCharConfig 缺省自旋秒与 settings 一致为 2.5', () => {
+    const r = computeRoxyWindEnergy({ exSpecialCount: 2, exSpecialEnergyConsume: 60, spinSeconds: 2.5 })
+    expect(r.energySpentTotal).toBe(120)
+    expect(r.windEnergyGain).toBe(4) // 2 × floor(60/25)
+
+    const cfg: any = { initialEnergyGift: 0 }
+    roxyMechanic.buildCharConfig!({ cinemaLevel: 0, cfg, skills: { categories: [] } as any, getRowValue: () => 0 } as any)
+    expect(cfg.roxySpinSeconds).toBe(2.5)
+    expect(cfg.exSpecialEnergyConsume).toBe(10 + 2.5 * 30)
+  })
 })
 
 describe('局外总回能 energyRegenOutOfCombat 两相一致（第 194 轮）', () => {

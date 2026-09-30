@@ -132,10 +132,13 @@ export function computeRoxyWindEnergy(input: {
   // 一份 scratch 摘要（`data/raw/_archive/scratch/spec_notes_1621.txt:4`）的**笔误**，
   // `docs/MECHANICS_IMPLEMENTATION.md:149` 早已记为「旧口径已废除」⇒ **不要**把 25 改成 30
   // （R51 隔离 worktree 实测：改成 30 ⇒ `roxy`/`specialMechanics` 5 failed，全管线伤害 −1.59%）。
-  const energySpentTotal = exCount * (10 + spinSeconds * 30)
+  const perExEnergy = input.exSpecialEnergyConsume !== undefined && input.exSpecialEnergyConsume > 0
+    ? input.exSpecialEnergyConsume
+    : (10 + spinSeconds * 30)
+  const energySpentTotal = exCount * perExEnergy
   // `adjustable` 的计数源就是「每消耗 N 点能量」⇒ 比例必须乘在**耗能**这一侧（不是 gain）：
   // 乘 gain 会让 `energySpentTotal`（有独立执行行 `totalEnergyConsume`）与风能脱钩 ⇒ 双账。
-  const energyPerRound = (spinSeconds * 30 + 10) * energyRate
+  const energyPerRound = perExEnergy * energyRate
   const windEnergyGain = exCount * Math.floor(energyPerRound / ENERGY_PER_WIND_ENERGY)
     + Math.max(0, Math.floor(Number(input.ultimateCount ?? 0)))
   // 存量上限 3：每发敬请安息至多消耗 3 点 → 总消耗 = min(总获得, 强特次数 × 3)
@@ -227,7 +230,7 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   const record = cfg as unknown as Record<string, unknown>
   record.roxyCinemaLevel = cinemaLevel ?? 0
   // v12 moveIds
-  record.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2))
+  record.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2.5))
   // CC-109（R5 D28）：一次强特 = 小心风寒启动 + 自旋 spinSeconds 秒，耗能按 catalog 两项合计。
   // 修前沿用通用 findExSpecial 的「Energy Cost」10（只算启动），自旋 30/s 零扣费 ⇒ 强特次数按 能量/10 推，
   // 而风能账本 computeRoxyWindEnergy 按 10 + 30×秒 记耗能，两本账不一致。
@@ -291,34 +294,31 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   }
 }
 
-function buildRoxyResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+function roxyWindEnergySourceOf(
+  cfg: AgentResourceInput['cfg'],
+  state: Pick<AgentResourceInput['state'], 'exSpecialCount' | 'ultimateCount'>,
+): RoxyWindEnergySource {
   const record = cfg as unknown as Record<string, unknown>
+  return computeRoxyWindEnergy({
+    exSpecialCount: state.exSpecialCount,
+    exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
+    ultimateCount: state.ultimateCount,
+    spinSeconds: Number(record.roxySpinSeconds ?? 2.5),
+    cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
+    energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
+    eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID, 1),
+  })
+}
+
+function buildRoxyResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   return {
-    roxyWindEnergySource: computeRoxyWindEnergy({
-      exSpecialCount: state.exSpecialCount,
-      exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
-      ultimateCount: state.ultimateCount,
-      spinSeconds: Number(record.roxySpinSeconds ?? 0),
-      cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
-      // ⚠ 两处调用点（buildResourceResult / buildExecutions）都**必须**传这两个 rate：
-      // 只传一处会让「账本」与「执行行」分叉（行数按未缩放生成、账本按缩放生成）。
-      energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
-      eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID, 1),
-    }),
+    roxyWindEnergySource: roxyWindEnergySourceOf(cfg, state),
   }
 }
 
 function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
-  const source = computeRoxyWindEnergy({
-    exSpecialCount: state.exSpecialCount,
-    exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
-    ultimateCount: state.ultimateCount,
-    spinSeconds: Number(record.roxySpinSeconds ?? 0),
-    cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
-    energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
-    eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID, 1),
-  })
+  const source = roxyWindEnergySourceOf(cfg, state)
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount > 0) {
     // 小心风寒（1621007）+ 自旋（1621008 每秒）+ 敬请安息（1621023）

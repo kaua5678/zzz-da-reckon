@@ -279,16 +279,21 @@ function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): voi
   }
 }
 
+function lighterMoraleOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): LighterMoraleResult {
+  const record = cfg as unknown as Record<string, unknown>
+  const cinema = Math.max(0, Math.floor(Number(record.lighterCinemaLevel ?? 0)))
+  return computeLighterMorale({
+    combatTime: effectiveCombatTime(state, cfg),
+    teamEnergyConsumed: Math.max(0, Number(record.lighterTeamEnergyConsumed ?? 0)),
+    cinemaLevel: cinema,
+  })
+}
+
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = Math.max(0, Math.floor(Number(record.lighterCinemaLevel ?? 0)))
   const combatTime = effectiveCombatTime(state, cfg)
-  const teamEnergy = Math.max(0, Number(record.lighterTeamEnergyConsumed ?? 0))
-  const morale = computeLighterMorale({
-    combatTime,
-    teamEnergyConsumed: teamEnergy,
-    cinemaLevel: cinema,
-  })
+  const morale = lighterMoraleOf(cfg, state)
 
   // 强力终结：耗尽士气自动衔接；次数 = 喷发轮次；后台/前台混合，整局不另占必做时间（合入普攻循环）
   if (morale.powerFinisherCount > 0) {
@@ -362,12 +367,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = Math.max(0, Math.floor(Number(record.lighterCinemaLevel ?? 0)))
   const combatTime = effectiveCombatTime(state as any, cfg)
-  const teamEnergy = Math.max(0, Number(record.lighterTeamEnergyConsumed ?? 0))
-  const morale = computeLighterMorale({
-    combatTime,
-    teamEnergyConsumed: teamEnergy,
-    cinemaLevel: cinema,
-  })
+  const morale = lighterMoraleOf(cfg, state)
   const flameCount = cinema >= 6
     ? computeLighterFlameShockCount(combatTime, morale.powerFinisherCount)
     : 0

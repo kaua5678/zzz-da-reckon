@@ -114,8 +114,6 @@ function buildYidhariCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInp
   const follow = findMoveById(skills, BASIC_FOLLOW)
   cfg.yidhariChargeSlam = loopMove(slam)
   cfg.yidhariBasicFollow = loopMove(follow)
-  const cycleTime = CHARGE_SECONDS + (slam?.actionTime ?? 0) + (follow?.actionTime ?? 0)
-  void cycleTime
 
   // 核心被动：进入战场时回复 60 闪能（勘域模式 180s 内最多一次；按一次计入开局赠送）
   cfg.initialEnergyGift = 60
@@ -450,10 +448,10 @@ function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, provider
   const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
   const external = Math.max(0, (cfg.yidhariExternalHealPct ?? 0)
     + (cfg.healPctPerCurtainProviderUlt ?? 0) * providerUltCount)
-  const cycleTime = 1 + (cfg.yidhariChargeSlam?.actionTime ?? 0) + (cfg.yidhariBasicFollow?.actionTime ?? 0)
+  const cycleTime = chargeCycleTime(cfg as unknown as Record<string, unknown>)
   const cycles = cycleTime > 0 ? Math.floor(basicAttackTime / cycleTime) : 0
-  const exHeal = exSpecialCount * 33 * missing
-  const followHeal = cycles * 10
+  const exHeal = exSpecialCount * EX_HEAL_RATIO_PCT * missing
+  const followHeal = cycles * BASIC_FOLLOW_HEAL_PCT
   return (75 + exHeal + followHeal + external) * decibelPerHp
 }
 

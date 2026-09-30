@@ -132,7 +132,11 @@ function computeZhaoFrostCycle(input: {
   }
 }
 
-function cycleFromInput({ cfg, state, teamFrontlineSeconds }: AgentResourceInput): ZhaoFrostCycle {
+function cycleFromInput({
+  cfg,
+  state,
+  teamFrontlineSeconds,
+}: Pick<AgentResourceInput, 'cfg' | 'state' | 'teamFrontlineSeconds'>): ZhaoFrostCycle {
   const record = cfg as unknown as Record<string, unknown>
   return computeZhaoFrostCycle({
     cinemaLevel: Number(record.zhaoCinemaLevel ?? 0),
@@ -173,15 +177,7 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 function buildResourceResult({ cfg, state, teamFrontlineSeconds }: AgentResourceResultInput) {
-  const record = cfg as unknown as Record<string, unknown>
-  const cycle = computeZhaoFrostCycle({
-    cinemaLevel: Number(record.zhaoCinemaLevel ?? 0),
-    exSpecialCount: state.exSpecialCount,
-    ultimateCount: state.ultimateCount,
-    teamFrontlineSeconds: teamFrontlineSeconds ?? 0,
-    panelHp: Number(cfg.panel.hp ?? 0),
-  })
-  return { specResources: { zhao_frost: cycle } }
+  return { specResources: { zhao_frost: cycleFromInput({ cfg, state, teamFrontlineSeconds }) } }
 }
 
 /** 照：霜寒值满开帷幕次数（总量口径；队友命中按战斗时间近似——postRound 无队友前台秒数）。

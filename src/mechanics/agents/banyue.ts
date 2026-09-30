@@ -507,23 +507,7 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.banyueCinemaLevel ?? 0)))
   const axisEx = readAxisExCounts(cfg)
-  const axisSpend = axisExSpendOf(axisEx)
-  const axisCombo = axisEx['banyue-combo'] ?? 0
-  const cycle = computeBanyueRageCycle(
-    cfg.dodgeCounterCount ?? DEFAULT_DODGE,
-    cfg.parryCount ?? DEFAULT_PARRY,
-    cfg.blockCount ?? DEFAULT_BLOCK,
-    cfg.dualCounterCount ?? DEFAULT_DUAL,
-    cfgNum(cfg, 'banyue.diDongComboCount', DEFAULT_DIDONG_COMBO),
-    axisSpend,
-    axisCombo,
-    cinemaLevel,
-    axisEx['banyue-combo-didong'] ?? 0,
-    // 失衡外连段末尾后摇的嘲讽取消次数（主页交互栏录入，每次取消一次后摇）
-    Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).tauntCancelCount ?? 0))),
-    // 轴模式：失衡内 = 轴内实际捏的连段块，失衡外 = 全部连段 − 轴内捏块（后摇按轴外单位数计）
-    !!(cfg as unknown as Record<string, unknown>).banyueAxisActive,
-  )
+  const cycle = computeBanyueCycleFromCfg(cfg)
 
   const times = (record.banyueMoveTimes ?? {}) as Record<string, number>
   const dmg = (record.banyueMoveDmg ?? {}) as Record<string, number>
@@ -637,10 +621,10 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
   const chongXiao = block + dual
   const times = (record.banyueMoveTimes ?? {}) as Record<string, number>
   // 不动如山（招架/金身动作）：金身弹刀 + 双反 次数 → 动作行（0.666s 耗时 + daze 143.7，失衡贡献）
-  if (chongXiao > 0 && !executions.some(e => e.moveId === '1471011')) {
-    const time = times['1471011'] ?? 0.666
+  if (chongXiao > 0 && !executions.some(e => e.moveId === MOVE.buDongRuShan)) {
+    const time = times[MOVE.buDongRuShan] ?? 0.666
     executions.push({
-      moveId: '1471011',
+      moveId: MOVE.buDongRuShan,
       moveName: '闪避：不动如山',
       category: 'dodge',
       count: chongXiao,
@@ -658,10 +642,10 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
     })
   }
   // 支援突击：冲霄（金身弹刀 + 双反 次数）——与不动如山配套的攻击动作
-  if (chongXiao > 0 && !executions.some(e => e.moveId === '1471029')) {
-    const time = times['1471029'] ?? 0
+  if (chongXiao > 0 && !executions.some(e => e.moveId === MOVE.chongXiao)) {
+    const time = times[MOVE.chongXiao] ?? 0
     executions.push({
-      moveId: '1471029',
+      moveId: MOVE.chongXiao,
       moveName: '支援突击：冲霄',
       category: 'assist',
       count: chongXiao,

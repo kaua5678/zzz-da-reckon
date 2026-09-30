@@ -16,6 +16,7 @@ import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
+import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 import { clampCritRatePct } from '@/data/critMultiplier'
 
@@ -84,8 +85,8 @@ export function computeJaneMechanic(input: {
     assaultCritRatePerMastery: ASSAULT_CRIT_PER_MASTERY,
     assaultCritRate,
     assaultCritDmgBonus: JANE_POTENTIAL_ASSAULT_CRIT_DMG[potentialLevel],
-    frenzyBuildUpBonus: FRENZY_BUILD_UP_BONUS_CORE,
-    atkFromMastery: atkFromProficiencyOf(mastery),
+    frenzyBuildUpBonus: input.frenzyActive ? FRENZY_BUILD_UP_BONUS_CORE : 0,
+    atkFromMastery: input.frenzyActive ? atkFromProficiencyOf(mastery) : 0,
     frenzyActive: input.frenzyActive,
     biteSeconds: Math.max(0, input.frontlineSeconds),
     note: `啮咬：攻击命中使敌人进入状态，持续10秒；强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%），潜能觉醒按档位额外+${JANE_POTENTIAL_ASSAULT_CRIT_DMG[potentialLevel]}%强击暴伤（潜能 ${potentialLevel}）；狂热物理积蓄效率与精通转攻、额外能力痛点、影画1/6 面板区见 resourceCalc/helpers 简专属分支（jane.passionCoverage 滑块默认90%）。`,
@@ -177,7 +178,7 @@ function buildJaneResourceResult({ cfg, state }: AgentResourceResultInput): Part
   return {
     janeMechanicSource: computeJaneMechanic({
       anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
-      frenzyActive: true,
+      frenzyActive: clamp01(cfgMechanicSetting(cfg, 'jane.frenzyActive', 1), 1) > 0,
       frontlineSeconds: state.frontlineTime,
       // cfg.panel 是**局内盖章面板**，potentialLevel 由 core/panel.ts 写入（`:353`），
       // 与 applyPanel 的 `input.potentialLevel` 同源同值（CC-171 第 196 轮前 computePanelPhases 漏传，恒为 6）。

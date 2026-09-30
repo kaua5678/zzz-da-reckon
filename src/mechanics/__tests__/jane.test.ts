@@ -91,6 +91,14 @@ describe('简（1261）啮咬/狂热/强击暴击', () => {
     const p = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p.assaultCritRate).toBeGreaterThan(20)
     expect(p.selfAssaultCritDmgBonus).toBe(30)
+
+    // CC-334：关闭 jane.frenzyActive 总闸时，账本 janeMechanicSource 与面板同源归零
+    config.setMechanicSetting('jane.frenzyActive', 0)
+    const rowOff = calc.resourceResult.value!.characters.find(ch => ch.agentId === '1261')!
+    expect(rowOff.janeMechanicSource!.frenzyActive).toBe(false)
+    expect(rowOff.janeMechanicSource!.frenzyBuildUpBonus).toBe(0)
+    expect(rowOff.janeMechanicSource!.atkFromMastery).toBe(0)
+    expect(rowOff.janeMechanicSource!.assaultCritRate).toBeGreaterThan(20)
   })
 
   it('萨霍夫跳进入执行计划：狂热 1 次，影画1 额外 +1 次', async () => {

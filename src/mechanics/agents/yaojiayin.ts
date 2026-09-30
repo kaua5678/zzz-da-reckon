@@ -283,20 +283,27 @@ function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharCon
   record.yaojiayinTeamHasAttack = specs.has('attack') ? 1 : 0
 }
 
-function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
+function yaojiayinTremolosOf(
+  cfg: AgentResourceInput['cfg'],
+  state: AgentResourceInput['state'],
+): YaojiayinTremoloResult {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = Math.max(0, Math.floor(Number(record.yaojiayinCinemaLevel ?? 0)))
   const additionalActive = Number(record.yaojiayinAdditionalActive ?? 0) > 0
-  const combatTime = effectiveCombatTime(state, cfg)
-  const entries = Math.max(0, Math.floor(Number(record.yaojiayinEntryCount ?? 0)))
-  const totalEnergy = Math.max(0, Number(state.totalEnergy ?? 0))
-  const result = computeYaojiayinTremolos({
-    totalEnergy,
-    entryCount: entries,
-    combatTime,
+  return computeYaojiayinTremolos({
+    totalEnergy: Math.max(0, Number(state.totalEnergy ?? 0)),
+    entryCount: Math.max(0, Math.floor(Number(record.yaojiayinEntryCount ?? 0))),
+    combatTime: effectiveCombatTime(state, cfg),
     cinemaLevel: cinema,
     additionalActive,
   })
+}
+
+function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const cinema = Math.max(0, Math.floor(Number(record.yaojiayinCinemaLevel ?? 0)))
+  const combatTime = effectiveCombatTime(state, cfg)
+  const result = yaojiayinTremolosOf(cfg, state)
 
   const tremoloDmg = Number(record.yaojiayinTremoloDmg ?? 0) || 0
   const clusterDmg = Number(record.yaojiayinClusterDmg ?? 0) || 0
@@ -358,16 +365,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.yaojiayinCinemaLevel ?? 0)))
-  const additionalActive = Number(record.yaojiayinAdditionalActive ?? 0) > 0
-  const result = computeYaojiayinTremolos({
-    totalEnergy: Math.max(0, Number(state.totalEnergy ?? 0)),
-    entryCount: Math.max(0, Math.floor(Number(record.yaojiayinEntryCount ?? 0))),
-    combatTime: effectiveCombatTime(state as any, cfg),
-    cinemaLevel: cinema,
-    additionalActive,
-  })
+  const result = yaojiayinTremolosOf(cfg, state)
   return {
     yaojiayinTremolo: result,
     specResources: {

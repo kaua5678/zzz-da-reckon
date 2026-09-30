@@ -52,15 +52,7 @@ function velinaBroadCycloneCountFromFloria(
   cfg: { velinaEnabled?: boolean; exSpecialEnergyConsume?: number },
   state: { exSpecialCount: number },
 ): number {
-  if (!cfg.velinaEnabled) return 0
-  const spec = getAgentSpec(VELINA_AGENT_ID)
-  if (!spec) return 0
-  const floria = computeSpecResources(
-    spec,
-    cfg as unknown as CharacterOperationConfig,
-    state as unknown as IterationState,
-  ).get('velina_floria')
-  return floria?.spendCounts['floria_broad_cyclone'] ?? 0
+  return buildVelinaFloriaSource(cfg, state)?.broadCycloneCount ?? 0
 }
 
 function buildVelinaFloriaSource(
@@ -447,7 +439,7 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
 
 function resolveVelinaExecutionDamage(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null {
   const { slot, move, exec, team } = input
-  if (move?.name?.en !== 'Sweeping Cyclone #2') return null
+  if (move?.id !== VELINA_SWEEPING_CYCLONE_2_MOVE_ID && move?.name?.en !== 'Sweeping Cyclone #2') return null
   const coloredElement = velinaColorElement(team, slot)
   return {
     element: coloredElement,

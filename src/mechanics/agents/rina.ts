@@ -160,14 +160,18 @@ function buildCharConfig({ skills, cfg }: AgentCharConfigInput): void {
   record.rinaMidnightDmg = rowVal(findMove(skills, MOVE_MIDNIGHT), 'damage')
 }
 
-function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const bangboo = computeRinaBangboo({
+function rinaBangbooOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): RinaBangbooResult {
+  return computeRinaBangboo({
     exSpecialCount: state.exSpecialCount ?? 0,
     chainCountTotal: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
     combatTime: effectiveCombatTime(state, cfg),
   })
+}
+
+function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const record = cfg as unknown as Record<string, unknown>
+  const bangboo = rinaBangbooOf(cfg, state)
 
   const sweepDmg = Number(record.rinaSweepComboDmg ?? 0) || 0
   // 晨间清扫：单次三段合计倍率对半拆物理/电（用户口径）
@@ -208,12 +212,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
   const ex = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
   const chain = Math.max(0, Math.floor(state.chainCountTotal ?? 0))
   const ult = Math.max(0, Math.floor(state.ultimateCount ?? 0))
-  const bangboo = computeRinaBangboo({
-    exSpecialCount: ex,
-    chainCountTotal: chain,
-    ultimateCount: ult,
-    combatTime: effectiveCombatTime(state, cfg),
-  })
+  const bangboo = rinaBangbooOf(cfg, state)
   return {
     rinaBangboo: bangboo,
     specResources: {
