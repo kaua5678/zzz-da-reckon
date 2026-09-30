@@ -96,29 +96,31 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 353 轮（lane arena-A，承接第 352 轮下一步 1–2）：CC-334 简（1261）`jane.frenzyActive` 账本对账、洛克茜（1621）风能耗能口径统一与 10 个角色模块内部装配单源化（代码 `6d885b6c`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `690de426`，工作区干净）。**
+**第 354 轮（lane arena-A，承接第 353 轮下一步 1–2）：CC-335 星见雅（1091）跨槽风队门控修复、佩洛伊斯（1551）额外能力连携喧响门控对齐、奥菲丝（1301）融合行 C1 火抗无视时序修复、雨果（1291）/席德（1461）资源门控与 12 个角色模块内部派生单源化（代码 `67b371c2`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `34eb078b`，工作区干净）。**
 
-- **CC-334（`6d885b6c`，简 `1261` 狂热账本修复 + 洛克茜 `1621` 风能耗能与自旋秒缺省对齐 + 10 角色模块内部装配单源化，全量 414 条 golden 零差）**：
-  1. **简（1261，`src/mechanics/agents/jane.ts`）账本-面板同源化修复**：
-     - R51 将 `jane.frenzyActive` 总闸接入 `applyJanePanel`，但漏改第二处调用点 `buildJaneResourceResult`（仍写死 `frenzyActive: true`），且 `computeJaneMechanic` 未按 `input.frenzyActive` 门控 `frenzyBuildUpBonus` 与 `atkFromMastery`，导致关闭狂热总闸时面板归零而资源卡仍展示「狂热 生效 / +25% / +600 攻」。
-     - 修复：`computeJaneMechanic` 按 `input.frenzyActive` 门控 `frenzyBuildUpBonus` 与 `atkFromMastery`，`buildJaneResourceResult` 读 `cfgMechanicSetting(cfg, 'jane.frenzyActive', 1)`；`src/mechanics/__tests__/jane.test.ts` 补齐关闭总闸后的账本断言。
-  2. **洛克茜（1621，`src/mechanics/agents/roxy.ts`）风能耗能与单源装配修复**：
-     - `computeRoxyWindEnergy` 接入入参 `exSpecialEnergyConsume`（未传时回退 `10 + spinSeconds * 30`），使逻辑编辑器/倍率表改耗能时风能账本与 `cfg.exSpecialEnergyConsume` 同步；
-     - `buildRoxyCharConfig` 的 `roxy.spinSeconds` 缺省回退由 `2` 对齐为 `2.5`（与 `settings` 及 `computeRoxyWindEnergy` 一致）；
-     - 抽出 `roxyWindEnergySourceOf(cfg, state)` 合一 `buildRoxyResourceResult` 与 `buildRoxyExecutions`（补 `roxy.test.ts` 断言）。
-  3. **其余角色模块内部重复装配单源化**：
-     - `src/mechanics/agents/velina.ts`（1561 维琳娜）：`resolveVelinaExecutionDamage` 补完 CC-273 按 `VELINA_SWEEPING_CYCLONE_2_MOVE_ID`（`1561020`）认招；`velinaBroadCycloneCountFromFloria` 直接委托 `buildVelinaFloriaSource`。
-     - `src/mechanics/agents/banyue.ts`（1471 般岳）：`buildBanyueExecutions` 复用既有 `computeBanyueCycleFromCfg(cfg)`；`patchBanyueExecutions` 改用 `MOVE.buDongRuShan` / `MOVE.chongXiao`。
-     - `src/mechanics/agents/zhao.ts`（1451 照）：`buildResourceResult` 复用既有 `cycleFromInput`。
-     - `src/mechanics/agents/yaojiayin.ts`（1311 耀嘉音）、`src/mechanics/agents/rina.ts`（1211 丽娜）、`src/mechanics/agents/lighter.ts`（1161 莱特）：分别抽出 `yaojiayinTremolosOf`、`rinaBangbooOf`、`lighterMoraleOf` 合一 `buildExecutions` 与 `buildResourceResult`。
-     - `src/mechanics/agents/yixuan.ts`（1371 仪玄）与 `src/mechanics/agents/yidhari.ts`（1051 伊德海莉）：抽出 `resolveYixuanPerfectBlocks` 与 `resolveYixuanExtremeAssists`；`yidhariSelfBurnDecibel` 复用 `chargeCycleTime` / `EX_HEAL_RATIO_PCT` / `BASIC_FOLLOW_HEAL_PCT` 并清理 `buildYidhariCharConfig` 无用 `void cycleTime`。
-- **验证**：`vue-tsc -p tsconfig.app.json --noEmit` 0 错；`validate:data` 通过；`verify:recording` 189/189 通过；全量 442 个测试文件（4069 passed）通过（日志 `/home/kaua/calc-arch/arenaA/verify-cc334.log`）。回退点：`git revert 6d885b6c`。
+- **CC-335（`67b371c2`，跨槽/额外能力门控对账 + 12 个角色模块内部派生单源化，全量 414 条 golden 零差）**：
+  1. **星见雅（1091，`src/mechanics/agents/miyabi.ts`）跨槽风队门控修复**：
+     - `miyabiMechanic.teamPanelEffects` 的入参 `panel` 是 `targetSlot` 面板，而 `applyMiyabiPanel` 仅在雅自身面板写 `miyabiHasWindTeammate`，导致有风队时雅本人正确门控（`+0`）、队友槽因 `panel.miyabiHasWindTeammate === undefined` 误吃核心被动 `+20%` 异常积蓄效率。
+     - 修复：`teamPanelEffects` 直接调 `hasWindTeammate(team, slot)`（与 `applyMiyabiPanel` 同源），并抽 `hasMiyabiCinema6` 统一 `miyabiFrostMoonReserve` 与 `buildMiyabiExecutions` 的 C6 判定；`src/mechanics/__tests__/miyabiCinema.test.ts` 新增有风队跨槽门控回归单测。
+  2. **佩洛伊斯（1551）与橘福福（1391，`src/mechanics/agents/specPanelBuffs.ts`）门控对齐与单源化**：
+     - 佩洛伊斯额外能力「辉煌军势」在 `applyTeamConfig` 中的 `chainTotal * 300` 喧响补齐 `(cfgIn.panel?.additionalAbilityActive ?? 1) > 0` 门控（与 `applyPanel` 的暴伤 +40% 同门控；`peiluo.test.ts` 补齐 `additionalAbilityActive=0` 回归单测），`resourceSections` 直接读取 `prom.total / prom.remaining`；
+     - 橘福福在 `computeJufufuCycle` 内单源产出 `aweGains` 与 `weishiGains` 供 `buildResourceResult` 直接复用（消除与 `computeJufufuCycle` 的双写），`patchExecutions` 改用 `jufufuCinemaOf(cfg)`。
+  3. **奥菲丝（1301，`src/mechanics/agents/orphie.ts`）融合行 C1 火抗无视时序修复**：
+     - `ORPHIE_C1_RES_IGNORE_MOVE_IDS` 包含 `1301022`（强化特殊技：燥焰迸射），但 `patchOrphieExecutions` 原先在 `fusionPush`（`1301011 → 1301022`）入列前就跑完了 C1 循环，导致融合出的 `1301022` 漏挂 `resIgnore: 15`；现将 C1/C4 行级修饰移至 `fusionPush` 入列之后（C2 `aaCount` 仍按融合前原行统计；`orphieSelf.test.ts` 补 `burst.resIgnore === 15` 断言）。
+  4. **雨果（1291，`src/mechanics/agents/hugo.ts`）与席德（1461，`src/mechanics/agents/xide.ts`）**：
+     - `hugo.ts`：抽出 `computeHugoStunRefundRatio` 合一 `computeHugoCycle` 与 `hugoMechanic.stunRefundRatio` 的决算存在性门控（`hugo.test.ts` 补双决算比例为 0 时 `stunRefundRatio === 0` 断言）。
+     - `xide.ts`：抽出 `resolveXideSteelResources` 合一 `buildXideExecutions` 与 `buildXideResourceResult`，并在合入 `attackSteel` 时同步更新 `steel.total`（`xide.test.ts` 补断言）。
+  5. **其余 7 个角色模块内部重复求值收敛**：
+     - `starlightBilly.ts`（1531）：抽出 `billyFullThrottleFromDetermination` 供 `billyFullThrottleFromState` 与 `buildBillyExecutions` 共用；
+     - `alice.ts`（1401）、`xixifu.ts`（1521）、`zhuYuan.ts`（1241）：消除 `buildAliceSwordWillSource`、`buildXixifuResourceResult`、`buildZhuYuanResourceResult` 中对同一 `(spec, cfg, state)` 的连续二次 `computeSpecResources` 调用；
+     - `ellen.ts`（1191）、`anbyZero.ts`（1381）、`evelyn.ts`（1321）：`apply*Panel` 直接委托 `compute*Cycle` 求值（兑现函数内「与 `compute*Cycle` 同源」注释），并合并 `patchEvelynExecutions` 的两次遍历。
+- **验证**：`npm run check`（`vue-tsc --noEmit` + 全量 442 个测试文件 / 4071 passed）通过；`timeGolden.test.ts` 414 条零差通过。回退点：`git revert 67b371c2`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. **继续规格-实现对账 / 模块同构简化扫描**：
-   - 第 350–353 轮已扫完 `src/mechanics/agents/` 下主要自定义模块（1641/1581/1591/1611/1631/1541/1501/1511/1451/1571/1481/1261/1621/1561/1471/1311/1211/1161/1371/1051）。
-   - 下一步可转向检查 `src/mechanics/agents/specPanelBuffs.ts` 及剩余轻量角色模块（如 `alice.ts`、`hugo.ts`、`lycaon.ts`、`qingyi.ts`、`starlightBilly.ts`、`trigger.ts`、`vivian.ts`、`xide.ts` 等）中是否存在 `spec` 声明与模块手写逻辑的口径偏差或死代码。
+2. **转向 `src/specs/` 或 `src/composables/` 层的规格-实现对账与同构简化**：
+   - 第 350–354 轮已完成 `src/mechanics/agents/` 全部 47 个角色模块的逐文件对账与内部单源化扫描。
+   - 下一步可检查 `src/specs/`（如 `wengine_mechanics.json` / `drive_disc_mechanics.json` / `teammate-buffs.json` 与 `src/specs/mechanics.ts`、`src/core/buff.ts` 的消费路径）或 `src/composables/resourceCalc/` 辅助层是否存在口径分叉或重复推导。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

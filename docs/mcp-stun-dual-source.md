@@ -4609,3 +4609,30 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `roxy.ts`：`computeRoxyWindEnergy` 优先使用正数 `input.exSpecialEnergyConsume`（未传时回退 `10 + spinSeconds * 30`），`buildRoxyCharConfig` 自旋秒回退对齐为 `2.5`，抽出 `roxyWindEnergySourceOf(cfg, state)`（补 `roxy.test.ts` 断言）。
   - `velina.ts` / `banyue.ts` / `zhao.ts` / `yaojiayin.ts` / `rina.ts` / `lighter.ts` / `yixuan.ts` / `yidhari.ts` / `norma.ts`：按上述单源化入口逐一收敛。
 - **验证**：`vue-tsc -p tsconfig.app.json --noEmit` 0 错；`validate:data` 通过；`verify:recording` 189/189 通过；全量 442 个测试文件（4069 passed，含 `timeGolden.test.ts` 414 条零差）通过。回退点：`git revert 6d885b6c`。
+
+### 24.178 CC-335：星见雅跨槽风队门控、佩洛伊斯额外能力门控、奥菲丝融合行 C1 火抗无视时序与 12 角色模块单源化（`67b371c2`）
+
+- **背景与问题**：
+  1. **星见雅（1091，`src/mechanics/agents/miyabi.ts`）跨槽风队门控 bug**：
+     - F2（2026-09-25）将核心被动「霜灼状态下，所有单位对目标累积的属性异常积蓄值提升 20%」迁入 `teamPanelEffects`，门控写为 `if ((panel.miyabiHasWindTeammate ?? 0) === 1) return`。
+     - 但 `AgentTeamPanelEffectInput.panel` 是目标槽（`targetSlot`）的面板，而 `applyMiyabiPanel` 只把 `miyabiHasWindTeammate` 写在雅自己的面板上——导致在有风队（如雅 + 维琳娜/洛克茜 + 队友）中，雅本人面板正确门控（`+0`），而队友槽因 `panel.miyabiHasWindTeammate === undefined` 误吃 `+20%` 异常积蓄效率。
+  2. **佩洛伊斯（1551）与橘福福（1391，`src/mechanics/agents/specPanelBuffs.ts`）**：
+     - 佩洛伊斯额外能力「辉煌军势」（队伍存在击破/支援角色时触发：暴伤+40%，发动连携技回复300喧响）的两半效果门控分裂：`applyPanel` 的暴伤 +40% 判了 `(panel.additionalAbilityActive ?? 0) > 0`，而 `applyTeamConfig` 的 `chainTotal * 300` 未判 `additionalAbilityActive`；此外 `resourceSections` 手动重算 `totalGain` 与 `surplus` 而未直接读 `prom.total / prom.remaining`。
+     - 橘福福 `buildResourceResult` 与 `computeJufufuCycle` 各自独立拼装 4 条威风回复与 4 条威势回复（R51 曾因两处不同步踩过假生效 bug），且 `patchExecutions` 内联 `Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))` 而未用同文件的 `jufufuCinemaOf(cfg)`。
+  3. **奥菲丝（1301，`src/mechanics/agents/orphie.ts`）融合行 C1 时序 bug**：
+     - `ORPHIE_C1_RES_IGNORE_MOVE_IDS = new Set(['1301008', '1301010', '1301011', '1301022'])` 显式包含 `1301022`（强化特殊技：燥焰迸射），但 `patchOrphieExecutions` 先跑 `if (cinema >= 1)` 循环、后跑 `fusionPush`（将 `1301011` 自动衔接的 `1301022` 推入 `executions`），导致融合生成的 `1301022` 行永远吃不到 C1 的 15% 火抗无视。
+  4. **雨果（1291，`src/mechanics/agents/hugo.ts`）与席德（1461，`src/mechanics/agents/xide.ts`）**：
+     - `computeHugoCycle` 无条件计算 `stunRefundRatio`，未像 `hugoMechanic.stunRefundRatio` 那样门控 `hasVerdict`（强特/终结决算比例均 0 时资源卡仍显示返还 25%）。
+     - `xide.ts` 的 `buildXideResourceResult` 将 `attackSteel` 并入 `steel.totalGain` 并重算 `spendCounts / remaining`，但漏更 `steel.total`，且与 `computeXideSteelTotal` 重复调用 `computeSpecResources`。
+  5. **其余 7 个角色模块的重复求值**：
+     - `starlightBilly.ts`（1531）：`billyFullThrottleFromState` 与 `buildBillyExecutions` 重复实现 `billyFullThrottleFromDetermination`；
+     - `alice.ts`（1401）、`xixifu.ts`（1521）、`zhuYuan.ts`（1241）：`buildAliceSwordWillSource`、`buildXixifuResourceResult`、`buildZhuYuanResourceResult` 在同一函数内对同一 `(spec, cfg, state)` 连续调用两次 `computeSpecResources`；
+     - `ellen.ts`（1191）、`anbyZero.ts`（1381）、`evelyn.ts`（1321）：`apply*Panel` 注释均声明「面板字段与 `compute*Cycle` 同源」，但函数体内仍手抄公式而未调用 `compute*Cycle`。
+- **修复**：
+  - `miyabi.ts`：`teamPanelEffects` 直接调 `hasWindTeammate(team, slot)`（兼容单测直传 `panel.miyabiHasWindTeammate`），抽出 `hasMiyabiCinema6`；补 `miyabiCinema.test.ts` 有风队跨槽回归单测。
+  - `specPanelBuffs.ts`：佩洛伊斯 `applyTeamConfig` 按 `(cfgIn.panel?.additionalAbilityActive ?? 1) > 0` 门控 `chainTotal * 300`（补 `peiluo.test.ts` 单测），`resourceSections` 直接读 `prom.total / prom.remaining`；橘福福 `computeJufufuCycle` 单源返回 `aweGains / weishiGains` 供 `buildResourceResult` 直接复用。
+  - `orphie.ts`：`patchOrphieExecutions` 在 `fusionPush` 入列后再跑 C1/C4/C6 行级修饰（C2 `aaCount` 仍按融合前原行统计，保持喧响账不变；补 `orphieSelf.test.ts` 断言 `burst.resIgnore === 15`）。
+  - `hugo.ts`：抽出 `computeHugoStunRefundRatio` 供 `computeHugoCycle` 与 `hugoMechanic.stunRefundRatio` 共用（补 `hugo.test.ts` 断言）。
+  - `xide.ts`：抽出 `resolveXideSteelResources` 并同步更新 `steel.total`（补 `xide.test.ts` 断言）。
+  - `starlightBilly.ts` / `alice.ts` / `xixifu.ts` / `zhuYuan.ts` / `ellen.ts` / `anbyZero.ts` / `evelyn.ts`：按上述单源化入口收敛。
+- **验证**：`vue-tsc -p tsconfig.app.json --noEmit` 0 错；全量 442 个测试文件（4071 passed，含 `timeGolden.test.ts` 414 条零差）通过。回退点：`git revert 67b371c2`。
