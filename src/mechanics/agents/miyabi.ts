@@ -177,6 +177,11 @@ function buildMiyabiCharConfig({ skills: _skills, cfg, panel, cinemaLevel }: Age
  * 次数来自 spec 资源「落霜」（cfg + state），不依赖当前执行行 ⇒ 无滞后。
  * 与产行逐项对齐：`miyabiFrostMoonReserveCc202.test.ts`。回退：删模块登记里的 extraNecessaryAction。
  */
+function hasMiyabiCinema6(cfg: CharacterOperationConfig, cinemaLevel?: number): boolean {
+  const c = cinemaLevel ?? Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).miyabiCinemaLevel ?? 0)))
+  return c >= 6 || Boolean((cfg.panel as any)?.miyabiCinema6)
+}
+
 export function miyabiFrostMoonReserve(cfg: CharacterOperationConfig, state?: Readonly<IterationState>): ExtraNecessaryAction[] | null {
   if (!state) return null
   const res = getFrostFallResource(cfg, state as IterationState)
@@ -187,7 +192,7 @@ export function miyabiFrostMoonReserve(cfg: CharacterOperationConfig, state?: Re
     count, moveName: '霜月 #3（账本预留）', actionTime,
     comboAlignRatio: (actionTime - FROST_MOON_3_LOCK_SECONDS) / actionTime, decibelRecovery: 0,
   }]
-  if ((cfg.panel as any)?.miyabiCinema6) {
+  if (hasMiyabiCinema6(cfg)) {
     out.push({ count, moveName: '霜月 #1（C6赠送，账本预留）', actionTime: FROST_MOON_1_ACTION_TIME, comboAlignRatio: 0, decibelRecovery: 0 })
     out.push({ count, moveName: '霜月 #2（C6赠送，账本预留）', actionTime: FROST_MOON_2_ACTION_TIME, comboAlignRatio: 0, decibelRecovery: 0 })
   }
@@ -225,7 +230,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 非C6只有霜月#3；C6固定额外赠送#1（910.1%）和#2（1717.2%），各随次数翻倍
   // 前台时间：霜月#1（0.4s完整动作，不合轴）+霜月#2（0.567s完整动作，不合轴）
   // +霜月#3（仅 1s 锁定在前台，其余合轴）= 每次前台合计 1.967s
-  const hasC6 = Boolean((cfg.panel as any)?.miyabiCinema6)
+  const hasC6 = hasMiyabiCinema6(cfg, cinemaLevel)
   if (hasC6 && frostMoonCount > 0) {
     for (const gift of [
       { moveId: FROST_MOON_1_MOVE_ID, moveName: '普通攻击：霜月 #1（C6赠送）', at: FROST_MOON_1_ACTION_TIME },
@@ -416,8 +421,10 @@ export const miyabiMechanic: AgentMechanicModule = {
    * 无风队里 C1 激活时每名队友与雅本人各 +40%（F1 裁决：核心被动与影画一在雅身上叠加为 +40）。
    * 契约见 `AgentTeamPanelEffectInput`（本钩子只允许可交换的加法 `+=`）。
    */
-  teamPanelEffects: ({ targetSlot: _targetSlot, panel }: AgentTeamPanelEffectInput): void => {
-    if ((panel.miyabiHasWindTeammate ?? 0) === 1) return
+  teamPanelEffects: ({ slot, team, panel }: AgentTeamPanelEffectInput): void => {
+    // CC-335：panel 是 targetSlot 的面板，而 applyMiyabiPanel 只把 miyabiHasWindTeammate 写在雅自己的面板上
+    // ⇒ 队友槽 panel.miyabiHasWindTeammate 恒为 undefined，有风队时队友误吃 +20%。直接与 applyMiyabiPanel 同源调 hasWindTeammate(team, slot)。
+    if (hasWindTeammate(team, slot) || (panel.miyabiHasWindTeammate ?? 0) === 1) return
     panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + FROSTBURN_TEAM_BUILDUP_BONUS
   },
   buildCharConfig: buildMiyabiCharConfig,

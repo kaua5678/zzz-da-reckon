@@ -456,14 +456,19 @@ function billyFullThrottleFromState(
     billyExExtraDetermination: chainFinal * EX_EXTRA_DETERMINATION,
   } as CharacterOperationConfig
   const resources = computeSpecResources(getAgentSpec(AGENT_ID)!, detCfg, st)
+  return billyFullThrottleFromDetermination(resources, quantize)
+}
+
+function billyFullThrottleFromDetermination(
+  resources: ReadonlyMap<string, SpecResourceResult>,
+  quantize: boolean,
+): number {
   const det = resources.get('billy_determination')
-  const spend = det?.spendCounts?.['billy_max_power_spend'] ?? 0
-  const total = det?.total ?? 0
   // 100 = spec spendRules「billy_max_power_spend」cost（核心被动文本「≥100 点消耗 100 点发动」）。
   // spendCounts 即 floor(total/100)，终局直接用；迭代期实数 = total/100。
   return quantize
-    ? Math.max(0, Math.floor(spend))
-    : Math.max(0, total / FULL_THROTTLE_DETERMINATION_COST)
+    ? Math.max(0, Math.floor(det?.spendCounts?.['billy_max_power_spend'] ?? 0))
+    : Math.max(0, (det?.total ?? 0) / FULL_THROTTLE_DETERMINATION_COST)
 }
 
 function pushChainExec(
@@ -589,9 +594,7 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
   specBase.buildExecutions?.({ cfg, state, executions })
   const resources = computeSpecResources(getAgentSpec(AGENT_ID)!, cfg, state)
   // 终局整数 = spec spendCounts（floor(total/100)）；迭代期实数 = total/100（同 estimate 求解器）
-  const fullThrottle = quantize
-    ? Math.max(0, Math.floor(resources.get('billy_determination')?.spendCounts['billy_max_power_spend'] ?? 0))
-    : Math.max(0, (resources.get('billy_determination')?.total ?? 0) / FULL_THROTTLE_DETERMINATION_COST)
+  const fullThrottle = billyFullThrottleFromDetermination(resources, quantize)
   record.billyFullThrottleCount = fullThrottle
   chain = { ...chain, fullThrottle }
   // ===== 最高马力星光时间物化（坑19③ 的对称侧，2026-09-06）=====

@@ -84,9 +84,9 @@ function applyXixifuTeamConfig({ characters, phase, stunCount }: AgentTeamConfig
   }
 }
 
-function computeXixifuToxinTotal(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): number {
+function resolveXixifuResources(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']) {
   const spec = getAgentSpec(XIXIFU_AGENT_ID)
-  if (!spec) return 0
+  if (!spec) return null
   const cinema = Math.max(0, Math.floor(Number((cfg as any).xixifuCinemaLevel ?? 0)))
   // 影画1：进场毒素 3→6（initialValueSource=cfgField，buildExecutions 先于
   // buildResourceResult 调用，此处写入保证两条路径一致）
@@ -102,7 +102,11 @@ function computeXixifuToxinTotal(cfg: AgentResourceInput['cfg'], state: AgentRes
   const stun = Math.max(0, Math.floor(Number((cfg as any).xixifuStunCount ?? 0)))
   const stunnedUlt = axisUlt > 0 ? ult : Math.min(ult, stun)
   ;(cfg as any).xixifuC2Toxin = cinema >= 2 ? (chain + stunnedUlt) * 3 : 0
-  const toxin = computeSpecResources(spec, cfg, state).get(XIXIFU_TOXIN_RESOURCE_ID)
+  return computeSpecResources(spec, cfg, state)
+}
+
+function computeXixifuToxinTotal(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): number {
+  const toxin = resolveXixifuResources(cfg, state)?.get(XIXIFU_TOXIN_RESOURCE_ID)
   if (!toxin) return 0
   return Math.max(0, Math.floor(toxin.initialValue + toxin.totalGain))
 }
@@ -214,10 +218,9 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
 }
 
 function buildXixifuResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const spec = getAgentSpec(XIXIFU_AGENT_ID)
-  if (!spec) return {}
-  computeXixifuToxinTotal(cfg, state) // 写入影画门控的 xixifuInitialToxin / xixifuC2Toxin
-  return { specResources: Object.fromEntries(computeSpecResources(spec, cfg, state)) }
+  const resources = resolveXixifuResources(cfg, state)
+  if (!resources) return {}
+  return { specResources: Object.fromEntries(resources) }
 }
 
 function buildXixifuResourceSections(input: AgentResourceSectionsInput) {
@@ -227,13 +230,14 @@ function buildXixifuResourceSections(input: AgentResourceSectionsInput) {
     { initialValue: number; totalGain: number } | undefined
   if (toxin) {
     const toxinTotal = Math.max(0, Math.floor(toxin.initialValue + toxin.totalGain))
+    const shekissCount = Math.floor(toxinTotal / XIXIFU_SHEKISS_TOXIN_COST)
     sections.push({
       id: 'xixifu-shekiss',
       title: '希希芙·蛇吻',
-      summary: `蛇吻次数 ≈ ${Math.floor(toxinTotal / XIXIFU_SHEKISS_TOXIN_COST)}`,
+      summary: `蛇吻次数 ≈ ${shekissCount}`,
       rows: [{
         label: '蛇影层数来源',
-        value: `${Math.floor(toxinTotal / XIXIFU_SHEKISS_TOXIN_COST)} 次`,
+        value: `${shekissCount} 次`,
         detail: `每获得 ${XIXIFU_SHEKISS_TOXIN_COST} 点毒素得1层蛇影（毒素总量 ${toxinTotal}），蛇吻每次消耗1层；蛇吻伤害行见伤害池「普通攻击：蛇吻」。`,
       }],
       footer: '蚀骨伤害行见伤害池「蚀骨（毒素消耗）」与「特殊蚀骨（觉悟/印记）」。',

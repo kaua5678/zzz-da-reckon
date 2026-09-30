@@ -234,4 +234,18 @@ describe('星见雅核心被动「所有单位」积蓄 +20% 改全队（F2 裁�
       `队友 delta（in=${withMiyabi.teammateEff} ref=${withoutMiyabi.teammateEff}）`)
       .toBeCloseTo(20, 5)
   })
+
+  it('CC-335 有风队：雅本人与队友的 anomalyBuildUpEfficiency 均被风队门控（队友不误吃核心被动 +20）', async () => {
+    const windTeam: Parameters<typeof setupHarness>[0] = [
+      { agentId: '1091', cinemaLevel: 0 },
+      { agentId: '1131' },
+      { agentId: '1561' }, // 维琳娜（风属性队友）
+    ]
+    const withWind = await effPair(windTeam)
+    const withoutMiyabi = await effPair(NO_MIYABI_TEAM)
+    // 队友槽（苍角）：有风队时不吃核心被动 +20（修复前队友槽 panel.miyabiHasWindTeammate 为 undefined 误得 +20）
+    expect(withWind.teammateEff - withoutMiyabi.teammateEff).toBeCloseTo(0, 5)
+    // 雅本人：有风队时仅保留自身冰焰（5% 基础暴击 × 100% 冰焰覆盖 = +5），不叠核心被动霜灼 +20
+    expect(withWind.miyabiEff - withoutMiyabi.teammateEff).toBeCloseTo(5, 5)
+  })
 })

@@ -354,4 +354,18 @@ describe('CC-17：佩洛伊斯 directRowBonus（阳炎，轴臂桶 / 非轴标�
       exec: exec('1551016', 0), isAxis: false, stunOverride: 0, buckets: undefined, scalar: scalar as never,
     })).toBeNull()
   })
+
+  it('CC-335 额外能力·辉煌军势门控：additionalAbilityActive=0 时不加连携×300喧响，仅保留 C2 开局 +1500', () => {
+    const cfgOff: any = { agentId: '1551', slot: 0, chainCountPerStun: 2, panel: { additionalAbilityActive: 0 } }
+    peiluoProminenceMechanic.applyTeamConfig!({
+      slot: 0, cfg: cfgOff, cinemaLevel: 2, phase: 'converge', stunCount: 4,
+    } as any)
+    expect(cfgOff.extraSelfDecibelReward).toBe(1500)
+
+    const cfgOn: any = { agentId: '1551', slot: 0, chainCountPerStun: 2, panel: { additionalAbilityActive: 1 } }
+    peiluoProminenceMechanic.applyTeamConfig!({
+      slot: 0, cfg: cfgOn, cinemaLevel: 2, phase: 'converge', stunCount: 4,
+    } as any)
+    expect(cfgOn.extraSelfDecibelReward).toBe(2 * 4 * 300 + 1500)
+  })
 })

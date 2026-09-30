@@ -291,6 +291,7 @@ describe('奥菲丝倍率融合（2026-08-27）', () => {
     const ult2 = executions.find(e => e.moveId === '1301016')
     expect(burst).toBeTruthy()
     expect(burst.count).toBe(3) // 蓄热充能 3 次 → 燥焰迸射 3 次
+    expect(burst.resIgnore).toBe(15) // CC-335：融合出的 1301022 同吃影画1 火抗无视 15%
     expect(ult2).toBeTruthy()
     expect(ult2.count).toBe(2) // 大招 #1 2 次 → #2 2 次（合一）
   })

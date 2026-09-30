@@ -228,18 +228,23 @@ function buildAnbyZeroExecutions({ cfg, state, executions }: AgentResourceInput)
   })
 }
 
-function applyAnbyZeroPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
-  // 面板字段与 computeAnbyZeroCycle 同源（critRateGain / coreDmgBonus / c4ResIgnore）。
+function applyAnbyZeroPanel({ cinemaLevel, potentialLevel, panel, settings }: AgentPanelInput): void {
+  // 面板字段直接委托 computeAnbyZeroCycle 求值（critRateGain / coreDmgBonus / c4ResIgnore）。
   // 全队追加攻击增伤与银星追攻暴伤为全队向/敌方目标向增益，由 spec teamBuffs 合并生效，不落自身面板。
-  const silverStarCoverage = clampRatio(settings['anbyZero.silverStarCoverage'] ?? 1)
-  const additionalActive = (panel.additionalAbilityActive ?? 0) > 0
-  const critRateGain = (additionalActive ? ANBY_ZERO_ADDITIONAL_CRIT_RATE : 0)
-    + (cinemaLevel >= 2 ? ANBY_ZERO_C2_CRIT_RATE : 0)
-  if (critRateGain > 0) panel.critRate = (panel.critRate ?? 0) + critRateGain
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + ANBY_ZERO_CORE_DMG * silverStarCoverage
+  const cycle = computeAnbyZeroCycle({
+    cinemaLevel,
+    potentialLevel,
+    cangguangCount: 0,
+    exSpecialCount: 0,
+    ultimateCount: 0,
+    teammateWhiteLightning: 0,
+    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
+    silverStarCoverage: settings['anbyZero.silverStarCoverage'] ?? 1,
+  })
+  if (cycle.critRateGain > 0) panel.critRate = (panel.critRate ?? 0) + cycle.critRateGain
+  panel.dmgBonus = (panel.dmgBonus ?? 0) + cycle.coreDmgBonus
   if (cinemaLevel >= 4) {
-    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0)
-      + ANBY_ZERO_C4_RES_IGNORE * silverStarCoverage
+    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + cycle.c4ResIgnore
   }
 }
 

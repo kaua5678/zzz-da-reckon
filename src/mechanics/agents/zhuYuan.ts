@@ -128,15 +128,19 @@ function applyZhuYuanTeamConfig({ cfg, phase, stunCount, combatTime, axis }: Age
   record.zhuYuanAxisEther = axisEther
 }
 
-function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): number {
+function resolveZhuYuanResources(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']) {
   const spec = getAgentSpec(ZHUYUAN_AGENT_ID)
-  if (!spec) return 0
+  if (!spec) return null
   // 影画1 快速装填：连携+6/终结+9（initialValue/gain 的 cfgField 门控；
   // buildExecutions 先于 buildResourceResult 调用，此处写入保证两条路径一致）
   const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
   ;(cfg as any).zhuyuanC1ChainReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_CHAIN : 0
   ;(cfg as any).zhuyuanC1UltReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_ULTIMATE : 0
-  const shells = computeSpecResources(spec, cfg, state).get(ZHUYUAN_SHELLS_RESOURCE_ID)
+  return computeSpecResources(spec, cfg, state)
+}
+
+function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): number {
+  const shells = resolveZhuYuanResources(cfg, state)?.get(ZHUYUAN_SHELLS_RESOURCE_ID)
   if (!shells) return 0
   return Math.max(0, Math.floor(shells.initialValue + shells.totalGain))
 }
@@ -237,12 +241,10 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
 }
 
 function buildZhuYuanResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const spec = getAgentSpec(ZHUYUAN_AGENT_ID)
-  if (!spec) return {}
-  // computeZhuYuanShellsTotal 顺带写影画1 快速装填门控字段，computeSpecResources 依赖它，调用顺序不能换。
-  // 余温回能已在 buildExecutions 并入能量账（CC-289），这里不再写 cfg。
-  computeZhuYuanShellsTotal(cfg, state)
-  return { specResources: Object.fromEntries(computeSpecResources(spec, cfg, state)) }
+  // resolveZhuYuanResources 统一写影画1 快速装填门控字段并求值 spec 资源（消除二次 computeSpecResources 调用）
+  const resources = resolveZhuYuanResources(cfg, state)
+  if (!resources) return {}
+  return { specResources: Object.fromEntries(resources) }
 }
 
 function buildZhuYuanResourceSections(input: AgentResourceSectionsInput) {

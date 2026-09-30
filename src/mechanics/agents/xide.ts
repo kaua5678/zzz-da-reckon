@@ -206,16 +206,34 @@ function computeXideAttackSteelFromExecutions(cfg: AgentResourceInput['cfg'], ex
   return total
 }
 
-/** 钢能总量 = 初始 + spec 获取（耗能/终结技/影画1）+ 招式攻击数据（正兵耗能已由 calcCrossAgentEnergy 写入 cfg） */
-function computeXideSteelTotal(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state'], attackSteel: number): number {
+/** 钢能资源统一求解：影画1 相关量写入 cfg 后委托 spec 解释器，并合入攻击数据钢能与动态 cost 崩坠次数 */
+function resolveXideSteelResources(
+  cfg: AgentResourceInput['cfg'],
+  state: AgentResourceInput['state'],
+  attackSteel: number,
+) {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).xideCinemaLevel ?? 0)))
   ;(cfg as any).xideInitialSteel = XIDE_STEEL_INITIAL + (cinema >= 1 ? XIDE_STEEL_C1_ENTRY_BONUS : 0)
   ;(cfg as any).xideC1UltSteel = cinema >= 1 ? XIDE_STEEL_C1_ULTIMATE_BONUS : 0
   const spec = getAgentSpec(XIDE_AGENT_ID)
-  if (!spec) return 0
-  const steel = computeSpecResources(spec, cfg, state).get(XIDE_STEEL_RESOURCE_ID)
+  const cost = cinema >= 1 ? XIDE_STEEL_BENGZHUI_COST_C1 : XIDE_STEEL_BENGZHUI_COST
+  if (!spec) return { resources: null, totalSteel: 0, cycle: 0 }
+  const resources = new Map(computeSpecResources(spec, cfg, state))
+  const steel = resources.get(XIDE_STEEL_RESOURCE_ID)
   const base = steel ? steel.initialValue + steel.totalGain : 0
-  return base + attackSteel
+  const totalSteel = base + attackSteel
+  const cycle = Math.floor(totalSteel / cost)
+  if (steel) {
+    resources.set(XIDE_STEEL_RESOURCE_ID, {
+      ...steel,
+      totalGain: steel.totalGain + attackSteel,
+      total: totalSteel,
+      spendCounts: { ...steel.spendCounts, xide_bengzhui_spend: cycle },
+      spendCosts: { ...steel.spendCosts, xide_bengzhui_spend: cycle * cost },
+      remaining: Math.max(0, totalSteel - cycle * cost),
+    })
+  }
+  return { resources, totalSteel, cycle }
 }
 
 /** 钢能消耗出口：三招落华（重戮快速释放 + 崩坠一式 + 崩坠二式）+ 铁萼雨幕衔接重戮 */
@@ -224,9 +242,7 @@ function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): vo
   // 统一对当前执行行求和（通用行 + 后续追加的落华/崩坠行 attack_data 均为 0，不影响）
   const attackSteel = computeXideAttackSteelFromExecutions(cfg, executions)
   ;(cfg as any).xideAttackSteel = attackSteel
-  const totalSteel = computeXideSteelTotal(cfg, state, attackSteel)
-  const cost = cinema >= 1 ? XIDE_STEEL_BENGZHUI_COST_C1 : XIDE_STEEL_BENGZHUI_COST
-  const cycle = Math.floor(totalSteel / cost)
+  const { cycle } = resolveXideSteelResources(cfg, state, attackSteel)
 
   const mkRow = (moveId: string, moveName: string, count: number, actionTime: number, extra: Partial<SkillExecution> = {}): SkillExecution => ({
     moveId,
@@ -286,30 +302,11 @@ function patchXideExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
-/** 钢能资源：影画1 相关量写入 cfg 后委托 spec 解释器；攻击数据钢能 + 崩坠次数后处理重算 */
+/** 钢能资源：复用 resolveXideSteelResources 统一求解 */
 function buildXideResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).xideCinemaLevel ?? 0)))
-  // 攻击数据钢能已由 buildExecutions 统一求和写入 cfg.xideAttackSteel（单测直接调时显式传入）
   const attackSteel = Math.max(0, Number((cfg as any).xideAttackSteel ?? 0))
-  ;(cfg as any).xideInitialSteel = XIDE_STEEL_INITIAL + (cinema >= 1 ? XIDE_STEEL_C1_ENTRY_BONUS : 0)
-  ;(cfg as any).xideC1UltSteel = cinema >= 1 ? XIDE_STEEL_C1_ULTIMATE_BONUS : 0
-  const spec = getAgentSpec(XIDE_AGENT_ID)
-  if (!spec) return {}
-  const resources = new Map(computeSpecResources(spec, cfg, state))
-  // 攻击数据钢能并入总获取 + 崩坠次数按动态 cost 重算（120 / 影画1 100）
-  const steel = resources.get(XIDE_STEEL_RESOURCE_ID)
-  if (steel) {
-    const total = steel.initialValue + steel.totalGain + attackSteel
-    const cost = cinema >= 1 ? XIDE_STEEL_BENGZHUI_COST_C1 : XIDE_STEEL_BENGZHUI_COST
-    const count = Math.floor(total / cost)
-    resources.set(XIDE_STEEL_RESOURCE_ID, {
-      ...steel,
-      totalGain: steel.totalGain + attackSteel,
-      spendCounts: { ...steel.spendCounts, xide_bengzhui_spend: count },
-      spendCosts: { ...steel.spendCosts, xide_bengzhui_spend: count * cost },
-      remaining: Math.max(0, total - count * cost),
-    })
-  }
+  const { resources } = resolveXideSteelResources(cfg, state, attackSteel)
+  if (!resources) return {}
   return { specResources: Object.fromEntries(resources) }
 }
 

@@ -81,23 +81,7 @@ function buildOrphieCharConfig({ cfg, cinemaLevel, panel }: AgentCharConfigInput
 function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
   const atk = Math.max(0, Number((cfg as any).orphieAtk ?? 0))
-  // 影画1：自身 4 招无视 15% 火伤抗性——moveId 级 resIgnore（精确到招式，不再面板宽泛）
-  if (cinema >= 1) {
-    for (const exec of executions) {
-      if (exec.moveId && ORPHIE_C1_RES_IGNORE_MOVE_IDS.has(exec.moveId)) {
-        exec.resIgnore = (exec.resIgnore ?? 0) + ORPHIE_C1_RES_IGNORE
-      }
-    }
-  }
-  // 影画4：蓄热充能（1301011）伤害 +40%——moveId 级（此前标「无通道」已过期，patchExecutions 有 moveId 级）
-  if (cinema >= 4) {
-    for (const exec of executions) {
-      if (exec.moveId === ORPHIE_C4_STORAGE_MOVE_ID) {
-        exec.dmgBonus = (exec.dmgBonus ?? 0) + ORPHIE_C4_STORAGE_DMG
-      }
-    }
-  }
-  // 影画2：追加攻击回 65 喧响（4s 至多一次）——按 additionalAttack tag 计次数，4s CD 上限近似
+  // 影画2：追加攻击回 65 喧响（4s 至多一次）——按 additionalAttack tag 计次数（融合前原行），4s CD 上限近似
   if (cinema >= 2) {
     let aaCount = 0
     for (const exec of executions) {
@@ -114,7 +98,8 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
     record.orphieC2DecibelGift = gift
   }
   // 倍率融合（2026-08-27）：蓄热充能(1301011) 打完全自动接燥焰迸射(1301022)；
-  // 终结技 与火共舞 #1(1301015)+#2(1301016) 合一计一次终结技
+  // 终结技 与火共舞 #1(1301015)+#2(1301016) 合一计一次终结技。
+  // CC-335：融合行先入列再挂 C1/C4/C6，确保 1301022（燥焰迸射，列于 ORPHIE_C1_RES_IGNORE_MOVE_IDS）也能吃到 C1 无视 15% 火抗。
   const fusionPush: SkillExecution[] = []
   for (const exec of executions) {
     if (exec.moveId === ORPHIE_EX_STORAGE) {
@@ -163,6 +148,22 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
     }
   }
   executions.push(...fusionPush)
+  // 影画1：自身 4 招无视 15% 火伤抗性——moveId 级 resIgnore（精确到招式，不再面板宽泛）
+  if (cinema >= 1) {
+    for (const exec of executions) {
+      if (exec.moveId && ORPHIE_C1_RES_IGNORE_MOVE_IDS.has(exec.moveId)) {
+        exec.resIgnore = (exec.resIgnore ?? 0) + ORPHIE_C1_RES_IGNORE
+      }
+    }
+  }
+  // 影画4：蓄热充能（1301011）伤害 +40%——moveId 级（此前标「无通道」已过期，patchExecutions 有 moveId 级）
+  if (cinema >= 4) {
+    for (const exec of executions) {
+      if (exec.moveId === ORPHIE_C4_STORAGE_MOVE_ID) {
+        exec.dmgBonus = (exec.dmgBonus ?? 0) + ORPHIE_C4_STORAGE_DMG
+      }
+    }
+  }
   if (cinema < 6 || atk <= 0) return
   for (const exec of executions) {
     if (!exec.moveId || !ORPHIE_C6_LASER_MOVE_IDS.has(exec.moveId)) continue

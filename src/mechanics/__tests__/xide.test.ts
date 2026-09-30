@@ -215,6 +215,7 @@ describe('席德钢能资源循环（spec resource）', () => {
     const steel = result.specResources.xide_steel_energy
     // total = 60(初始) + 90(自身耗能) + 120(终结) + 375.8(攻击) = 645.8 → floor(645.8/120)=5
     expect(steel.totalGain).toBeCloseTo(90 + 120 + 375.8, 1)
+    expect(steel.total).toBeCloseTo(60 + 90 + 120 + 375.8, 1)
     expect(steel.spendCounts.xide_bengzhui_spend).toBe(5)
   })
 

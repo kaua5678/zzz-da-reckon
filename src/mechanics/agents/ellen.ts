@@ -432,27 +432,27 @@ function patchEllenExecutions({ cfg, state, executions }: AgentResourceInput): v
 }
 
 function applyEllenPanel({ cinemaLevel, potentialLevel, panel, settings }: AgentPanelInput): void {
-  // 面板字段与 computeEllenCycle 同源（c1CritRate / stormSurgeIceDmg / c6PenRatio / potentialCritDmg / potentialIceResIgnore）。
-  const c1CritStacks = clamp(settings['ellen.c1CritStacks'] ?? 6, 0, ELLEN_C1_MAX_STACKS)
-  const stormSurgeStacks = clamp(settings['ellen.stormSurgeStacks'] ?? 10, 0, ELLEN_STORM_SURGE_MAX_STACKS)
-  const c6PenCoverage = clamp(settings['ellen.c6PenCoverage'] ?? 1, 0, 1)
-  const potentialLevelClamped = clamp(whole(potentialLevel), 1, 6)
-  const additionalActive = (panel.additionalAbilityActive ?? 0) > 0
-  if (cinemaLevel >= 1) {
-    panel.critRate = (panel.critRate ?? 0) + c1CritStacks * ELLEN_C1_CRIT_RATE_PER_STACK
-  }
-  if (additionalActive) {
-    panel.iceDmg = (panel.iceDmg ?? 0) + stormSurgeStacks * ELLEN_STORM_SURGE_PER_STACK
-    panel.critDmg = (panel.critDmg ?? 0)
-      + stormSurgeStacks * ELLEN_POTENTIAL_CRIT_DMG_PER_STACK[potentialLevelClamped]
-    if (stormSurgeStacks >= ELLEN_STORM_SURGE_MAX_STACKS) {
-      panel.enemyIceResReduction = (panel.enemyIceResReduction ?? 0)
-        + ELLEN_POTENTIAL_ICE_RES_IGNORE[potentialLevelClamped]
-    }
-  }
-  if (cinemaLevel >= 6) {
-    panel.penRatio = (panel.penRatio ?? 0) + ELLEN_C6_PEN_RATIO * c6PenCoverage
-  }
+  // 面板字段直接委托 computeEllenCycle 求值（c1CritRate / stormSurgeIceDmg / c6PenRatio / potentialCritDmg / potentialIceResIgnore）。
+  const cycle = computeEllenCycle({
+    cinemaLevel,
+    potentialLevel,
+    basicAttackTime: 0,
+    exSpecialCount: 0,
+    freezeCount: 0,
+    stunCount: 0,
+    c4CdRate: 1,
+    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
+    c1CritStacks: settings['ellen.c1CritStacks'] ?? 6,
+    c2AvgCharge: settings['ellen.c2AvgCharge'] ?? 3,
+    stormSurgeStacks: settings['ellen.stormSurgeStacks'] ?? 10,
+    c6PenCoverage: settings['ellen.c6PenCoverage'] ?? 1,
+    c6FeastCoverage: settings['ellen.c6FeastCoverage'] ?? 1,
+  })
+  if (cycle.c1CritRate > 0) panel.critRate = (panel.critRate ?? 0) + cycle.c1CritRate
+  if (cycle.stormSurgeIceDmg > 0) panel.iceDmg = (panel.iceDmg ?? 0) + cycle.stormSurgeIceDmg
+  if (cycle.potentialCritDmg > 0) panel.critDmg = (panel.critDmg ?? 0) + cycle.potentialCritDmg
+  if (cycle.potentialIceResIgnore > 0) panel.enemyIceResReduction = (panel.enemyIceResReduction ?? 0) + cycle.potentialIceResIgnore
+  if (cinemaLevel >= 6) panel.penRatio = (panel.penRatio ?? 0) + cycle.c6PenRatio
 }
 
 function buildEllenResourceResult({ cfg, state }: AgentResourceResultInput) {

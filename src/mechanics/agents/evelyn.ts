@@ -225,39 +225,43 @@ function patchEvelynExecutions({ cfg, state, executions }: AgentResourceInput): 
   const scaledChain = Number(record.evelynChainMultScaled ?? 0)
   const scaledUlt = Number(record.evelynUltMultScaled ?? 0)
   for (const exec of executions) {
-    if (!CHAIN_ULT_TARGETS.has(exec.moveId)) continue
-    if (cycle.additionalDmg > 0) {
-      exec.dmgBonus = (exec.dmgBonus ?? 0) + cycle.additionalDmg
-    }
-    if (record.evelynMultiplierActive === true) {
-      const scaled = exec.moveId === EVELYN_CHAIN_MOVE_ID ? scaledChain : scaledUlt
-      if (scaled > 0) {
-        exec.damageMultiplier = scaled
-        exec.damageMultiplierOverride = true
-      }
-    }
-  }
-  // 影画6追击视为连携伤害，同样吃额外能力连携增伤。
-  if (cycle.additionalDmg > 0) {
-    for (const exec of executions) {
-      if (exec.moveId === '1321_c6_moonlight_followup') {
+    if (CHAIN_ULT_TARGETS.has(exec.moveId)) {
+      if (cycle.additionalDmg > 0) {
         exec.dmgBonus = (exec.dmgBonus ?? 0) + cycle.additionalDmg
       }
+      if (record.evelynMultiplierActive === true) {
+        const scaled = exec.moveId === EVELYN_CHAIN_MOVE_ID ? scaledChain : scaledUlt
+        if (scaled > 0) {
+          exec.damageMultiplier = scaled
+          exec.damageMultiplierOverride = true
+        }
+      }
+    } else if (cycle.additionalDmg > 0 && exec.moveId === '1321_c6_moonlight_followup') {
+      // 影画6追击视为连携伤害，同样吃额外能力连携增伤。
+      exec.dmgBonus = (exec.dmgBonus ?? 0) + cycle.additionalDmg
     }
   }
 }
 
 function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
-  // 面板字段与 computeEvelynCycle 同源（coreCritRate / c4CritDmg / c1DefIgnore）。
-  const restraintCoverage = clampRatio(settings['evelyn.restraintCoverage'] ?? 1)
-  const c4ShieldCoverage = clampRatio(settings['evelyn.c4ShieldCoverage'] ?? 1)
-  const c1DefIgnoreCoverage = clampRatio(settings['evelyn.c1DefIgnoreCoverage'] ?? 1)
-  panel.critRate = (panel.critRate ?? 0) + EVELYN_CORE_CRIT_RATE * restraintCoverage
+  // 面板字段直接委托 computeEvelynCycle 求值（coreCritRate / c4CritDmg / c1DefIgnore）。
+  const cycle = computeEvelynCycle({
+    cinemaLevel,
+    basicAttackTime: 0,
+    exSpecialCount: 0,
+    chainCountTotal: 0,
+    ultimateCount: 0,
+    additionalActive: false,
+    restraintCoverage: settings['evelyn.restraintCoverage'] ?? 1,
+    c1DefIgnoreCoverage: settings['evelyn.c1DefIgnoreCoverage'] ?? 1,
+    c4ShieldCoverage: settings['evelyn.c4ShieldCoverage'] ?? 1,
+  })
+  panel.critRate = (panel.critRate ?? 0) + cycle.coreCritRate
   if (cinemaLevel >= 4) {
-    panel.critDmg = (panel.critDmg ?? 0) + EVELYN_C4_CRIT_DMG * c4ShieldCoverage
+    panel.critDmg = (panel.critDmg ?? 0) + cycle.c4CritDmg
   }
   if (cinemaLevel >= 1) {
-    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + EVELYN_C1_DEF_IGNORE * c1DefIgnoreCoverage
+    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + cycle.c1DefIgnore
   }
   // 影画2 赴火之舞：攻击力提升 15%（燎火返还部分未建模，见 status pending）。
   //

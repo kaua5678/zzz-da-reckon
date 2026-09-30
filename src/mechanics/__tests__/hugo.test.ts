@@ -307,6 +307,8 @@ describe('雨果滑块生效差分（防守卫冻结，SOP §3.5：改滑块→�
     expect(half.exVerdictCount).toBe(4)
     expect(off.exVerdictCount).toBe(0)
     expect(full.exNormalCount + full.exVerdictCount).toBe(8)
+    const noVerdict = computeHugoCycle({ ...base, exVerdictRatio: 0, ultimateVerdictRatio: 0 })
+    expect(noVerdict.stunRefundRatio).toBe(0)
   })
 
   it('hugo.ultimateVerdictRatio → 终结技决算次数差分（并联动 C1 暴击暴伤行差分）', () => {

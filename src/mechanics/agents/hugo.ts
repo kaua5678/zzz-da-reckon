@@ -99,6 +99,15 @@ export function computeHugoVerdictMultiplier(remainingStunSeconds: number): numb
   return Math.min(HUGO_VERDICT_MAX_MULTIPLIER, HUGO_VERDICT_BASE_MULTIPLIER + dynamic)
 }
 
+export function computeHugoStunRefundRatio(
+  remainingStunSeconds: number,
+  exVerdictRatio: number,
+  ultimateVerdictRatio: number,
+): number {
+  const hasVerdict = clampRatio(exVerdictRatio) > 0 || clampRatio(ultimateVerdictRatio) > 0
+  return hasVerdict ? Math.min(0.25, Math.max(0, remainingStunSeconds) * 0.05) : 0
+}
+
 export function computeHugoCycle(input: {
   cinemaLevel: number
   exSpecialCount: number
@@ -132,7 +141,7 @@ export function computeHugoCycle(input: {
     c6OutOfStunVerdictCount: cinemaLevel >= 6 ? exNormalCount : 0,
     remainingStunSeconds: Math.max(0, Math.min(15, input.remainingStunSeconds)),
     verdictMultiplier: computeHugoVerdictMultiplier(input.remainingStunSeconds),
-    stunRefundRatio: Math.min(0.25, Math.max(0, input.remainingStunSeconds) * 0.05),
+    stunRefundRatio: computeHugoStunRefundRatio(input.remainingStunSeconds, input.exVerdictRatio, input.ultimateVerdictRatio),
     echoCoverage: cinemaLevel >= 6 ? 1 : clampRatio(input.echoCoverage),
     note: '决算按可调剩余失衡时间结算；失衡值返还由 useResourceCalc 回灌下一条失衡条（calcStunPool 闭式解）。',
   }
@@ -421,11 +430,11 @@ export const hugoMechanic: AgentMechanicModule = {
   id: 'agent:hugo',
   // 决算失衡值返还（CC-39a 2026-09-27，原 convergence.ts 内联）：每次失衡结束返还 min(25%, 剩余秒×5%) × bossStunValue
   // 进下一次失衡条。返还只由「结束失衡」的决算产生（C2 的 Q 不结束不返还），恒为每窗 1 次；剩余秒取滑块。
-  stunRefundRatio: ({ getMechanicSetting }) => {
-    const hasVerdict = getMechanicSetting('hugo.exVerdictRatio', 1) > 0
-      || getMechanicSetting('hugo.ultimateVerdictRatio', 1) > 0
-    return hasVerdict ? Math.min(0.25, Math.max(0, getMechanicSetting('hugo.remainingStunSeconds', 5)) * 0.05) : 0
-  },
+  stunRefundRatio: ({ getMechanicSetting }) => computeHugoStunRefundRatio(
+    getMechanicSetting('hugo.remainingStunSeconds', 5),
+    getMechanicSetting('hugo.exVerdictRatio', 1),
+    getMechanicSetting('hugo.ultimateVerdictRatio', 1),
+  ),
   agentIds: [HUGO_ID],
   name: '雨果·终末裁决',
   description: '暗渊回响、击破队友攻击、决算倍率、额外能力与影画1/2/4/6。',

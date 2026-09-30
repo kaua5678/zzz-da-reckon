@@ -243,7 +243,6 @@ function buildAliceSwordWillSource(
   anomalyPoolData?: { assaultTriggerCount?: number; disorderCount?: number },
 ): AliceSwordWillSource | undefined {
   if (!cfg.aliceEnabled) return undefined
-  const details = aliceSwordWillTotal(cfg, state, anomalyPoolData)
   const spec = getAgentSpec(ALICE_AGENT_ID)
   const resource = spec
     ? computeSpecResources(
@@ -261,14 +260,14 @@ function buildAliceSwordWillSource(
   const perSpark = cfg.alicePolarityAssaultSwordWill ?? POLARITY_ASSAULT_SWORD_WILL
   return {
     initial: resource?.initialValue ?? cfg.aliceInitialSwordWill ?? 0,
-    basicAttackGain: details.basicAttackGain,
-    exSpecialGain: details.exSpecialGain,
-    polarityAssaultGain: details.polarityAssaultGain,
+    basicAttackGain: resource?.gains['alice_basic_gain'] ?? 0,
+    exSpecialGain: resource?.gains['alice_ex_gain'] ?? 0,
+    polarityAssaultGain: resource?.gains['alice_polarity_feedback'] ?? 0,
     polarityAssaultPerSpark: perSpark,
-    teamAssaultGain: details.teamAssaultGain,
-    disorderGain: details.disorderGain,
-    c2UltSparkCount: details.c2UltSparkCount,
-    totalAvailable: details.total,
+    teamAssaultGain: resource?.gains['alice_team_assault_gain'] ?? 0,
+    disorderGain: resource?.gains['alice_disorder_gain'] ?? 0,
+    c2UltSparkCount: resource?.bonusCount ?? 0,
+    totalAvailable: resource?.total ?? 0,
     sparkCount,
     sparkCost,
     remaining: resource?.remaining ?? 0,
