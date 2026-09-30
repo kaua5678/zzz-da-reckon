@@ -384,13 +384,10 @@ function buildYidhariResourceSections({ result }: AgentResourceSectionsInput) {
  * （有该字段 = 失衡内次数已知、按 `(总闪能 − 失衡内成本)/消耗` 反推非失衡次数；缺 = 纯能量预算口径）。
  * 恒写 0 会把「本队没有轴内重碾」错判成「失衡内 0 次」而改掉非失衡次数的求解路径。
  *
- * ⚠ 成本档读的是**槽 0** 的命座（原实现逐字为 `configStore.team[0]?.cinemaLevel ?? 0`，非本槽）：
- * 轴预设把伊德海莉钉在槽 0（`1章-琉`/`1章其他` 的 `team[0] === '1051'`，且全部章鱼轴块的 `slot`
- * 实测恒为 0），故两者在全部可命中路径上同值。此处**逐位保留**原读法，不顺手改成自己槽位
- * （那属口径变更，不在本次迁移授权面内；`input.team` 与 `configStore.team` 同为**槽位对齐**数组
- * ——见 `buildMechanicTeamMembers` 的 `configStore.team.map`，故 `team[0]` 与原表达式同源同值）。
+ * 成本档按**本槽**命座判定（CC-330：修正 2026-09-16 迁移遗留的 `team[0]?.cinemaLevel` 槽位错位；
+ * 与 `buildYidhariCharConfig` 的 `exSpecialEnergyConsume` 同读本槽 `cinemaLevel`）。
  */
-function applyYidhariTeamConfig({ cfg, phase, stunCount, team, axis }: AgentTeamConfigInput): void {
+function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, team, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
   const record = cfg as unknown as Record<string, unknown>
   record.yidhariStunCount = stunCount
@@ -403,8 +400,9 @@ function applyYidhariTeamConfig({ cfg, phase, stunCount, team, axis }: AgentTeam
   let inStunEx = 0
   let inStunEnergy = 0
   if (axis.active) {
-    const singleCost = Number(team[0]?.cinemaLevel ?? 0) >= 1 ? HEAVY_SINGLE_COST_1 : HEAVY_SINGLE_COST_0
     const slot = Number(cfg.slot)
+    const ownCinema = cinemaLevel ?? team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel ?? 0
+    const singleCost = Number(ownCinema) >= 1 ? HEAVY_SINGLE_COST_1 : HEAVY_SINGLE_COST_0
     axis.axes.forEach((ax, ai) => {
       const wins = axis.windows[ai] ?? 0
       for (const act of ax.actions) {

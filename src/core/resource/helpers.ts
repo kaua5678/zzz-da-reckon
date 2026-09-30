@@ -158,48 +158,32 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
   // 返回 undefined = 本模块不认领 ⇒ 回落通用公式。
   const fromModule = getAgentMechanic(cfg.agentId)?.exSpecialCount?.({ cfg, totalEnergy })
   if (fromModule !== undefined) return fromModule
-  // agentId 判断冗余已删：exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts:148
-  // （模块只对自己的 cfg 运行 ⇒ 字段为 true 即蕴含 agentId === '1051'），引擎层不读 agentId。
-  if (cfg.exContinuous === true && (cfg.exRefundPerPaid ?? 0) > 0) {
-    // debt: 全局实数化收敛重构（正反馈模块统一连续通道 + 逐模块重校准）——本分支是通用连续强特
-    // 通道（解析不动点 + 阻尼实数迭代 + 终局整数重推）；全局「实数化松弛、终局才 floor」会重排所有
-    // 带时间/资源循环模块的均衡（sigrid 出枪式消失前例），需专项按模块重校准。
-    // ⚠ 本标记（1a）**保留**：R24 批 1-3 只销掉同名的 1b（可行性封顶处那条，其量化依据
-    //   「落点随初值差 ±1 次强特」已被三条独立实测证伪）。批 1-1 已由 CC-13 落地——通道已是
-    //   声明式通用字段（exContinuous/exFinalize/exRefundPerPaid/exReserved*/exRefundFreeCap），
-    //   故「1051 的 refund 自指反馈**只能**按角色开洞」这一前提已证伪。债本体（全局「实数化松弛、
-    //   终局才 floor」推广到其它正反馈模块 + 逐模块重校准）仍未做 ⇒ 标记保留（规则 16③）。
-    // @fact yidhari:refund不动点 口径: 极寒重碾非失衡每发回15闪能属自指反馈——迭代期强特次数实数化（refund解析求解+必要时间信道阻尼）唯一连续不动点，floor只在终局整数重推发生一次（不在迭代中途截断资源循环）；曾致19/20双稳态（种子相关，parry4/dodge10、parry8/dodge2复现），勿改回「迭代期回读整数次数+floor」 | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts | 锚 src/core/resource/helpers.ts#resolveExSpecialCount | 信 确认
-    // 连续强特通道 refund 反馈连续松弛（2026-09-04 修复 19/20 双稳态，用户口径「floor 应该最后算」）：
-    // 迭代期强特次数以实数参与收敛（refund 已解析求解，见 calcEnergySource），唯一不动点；
-    // 终局整数重推（calcTeamResources）冻结非失衡整数次数后重推，floor 只发生一次。
-    const consume = cfg.exSpecialEnergyConsume
-    const finalize = cfg.exFinalize === true
-    if (cfg.exReservedCount !== undefined) {
-      const inStun = cfg.exReservedCount
-      const inStunCost = cfg.exReservedEnergyCost ?? inStun * consume
-      const remaining = totalEnergy - inStunCost
-      const outStun = remaining > 0 ? remaining / consume : 0
-      return inStun + (finalize ? Math.floor(outStun) : outStun)
-    }
-    const paid = totalEnergy / consume
-    return finalize ? Math.floor(paid) : paid
-  }
-  // 连续强特通道：失衡内强特次数已知时（字段非 undefined 即蕴含是该角色，唯一写入方 = yidhari.ts
-  // 的 applyTeamConfig converge 分支 ⇒ 只写它自己那份 cfg）⇒ agentId 判断冗余，已删
-  // （2026-09-15 core 棘轮批次2，判据同 T6）。
+  // debt: 全局实数化收敛重构（正反馈模块统一连续通道 + 逐模块重校准）——连续强特
+  // 通道（解析不动点 + 阻尼实数迭代 + 终局整数重推）；全局「实数化松弛、终局才 floor」会重排所有
+  // 带时间/资源循环模块的均衡（sigrid 出枪式消失前例），需专项按模块重校准。
+  // ⚠ 本标记（1a）**保留**：R24 批 1-3 只销掉同名的 1b（可行性封顶处那条，其量化依据
+  //   「落点随初值差 ±1 次强特」已被三条独立实测证伪）。批 1-1 已由 CC-13 落地——通道已是
+  //   声明式通用字段（exContinuous/exFinalize/exRefundPerPaid/exReserved*/exRefundFreeCap），
+  //   故「1051 的 refund 自指反馈**只能**按角色开洞」这一前提已证伪。债本体（全局「实数化松弛、
+  //   终局才 floor」推广到其它正反馈模块 + 逐模块重校准）仍未做 ⇒ 标记保留（规则 16③）。
+  // @fact yidhari:refund不动点 口径: 极寒重碾非失衡每发回15闪能属自指反馈——迭代期强特次数实数化（refund解析求解+必要时间信道阻尼）唯一连续不动点，floor只在终局整数重推发生一次（不在迭代中途截断资源循环）；曾致19/20双稳态（种子相关，parry4/dodge10、parry8/dodge2复现），勿改回「迭代期回读整数次数+floor」 | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts | 锚 src/core/resource/helpers.ts#resolveExSpecialCount | 信 确认
+  // CC-330：「付费/非失衡次数是否保留小数」与「失衡内保留次数（exReservedCount）拆分」正交归一：
+  //  · 小数判据：连续强特通道（exContinuous && exRefundPerPaid > 0）在非终局（!exFinalize）保留实数，
+  //    其余通道按 exSpecialCountFractional（持续型强特期望值模型，CC-324）决定是否保留实数；
+  //  · 失衡内保留拆分（exReservedCount !== undefined）：先扣失衡内成本，剩余闪能按同一小数判据求非失衡次数。
+  const consume = cfg.exSpecialEnergyConsume
+  const continuous = cfg.exContinuous === true && (cfg.exRefundPerPaid ?? 0) > 0
+  const fractional = continuous ? cfg.exFinalize !== true : Boolean(cfg.exSpecialCountFractional)
   if (cfg.exReservedCount !== undefined) {
     const inStun = cfg.exReservedCount
-    const inStunCost = cfg.exReservedEnergyCost ?? inStun * cfg.exSpecialEnergyConsume
+    const inStunCost = cfg.exReservedEnergyCost ?? inStun * consume
     const remaining = totalEnergy - inStunCost
-    const outStun = remaining > 0 ? Math.floor(remaining / cfg.exSpecialEnergyConsume) : 0
+    const outStun = remaining > 0
+      ? (fractional ? remaining / consume : Math.floor(remaining / consume))
+      : 0
     return inStun + outStun
   }
-  // 缺省取整（真实次数）；只有持续型强特声明 exSpecialCountFractional（期望值模型）。
-  // `skipGenericExSpecial` 只表示「模块自己产行」，不再兼管取整（CC-324）。
-  const paid = cfg.exSpecialCountFractional
-    ? totalEnergy / cfg.exSpecialEnergyConsume
-    : Math.floor(totalEnergy / cfg.exSpecialEnergyConsume)
+  const paid = fractional ? totalEnergy / consume : Math.floor(totalEnergy / consume)
   // 免费强特（如南宫羽每次失衡一次免能E）：不占闪能预算，照常计次/计时/喧响
   return paid + Math.max(0, Math.floor(cfg.freeExSpecialCount ?? 0))
 }

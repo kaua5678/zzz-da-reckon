@@ -446,7 +446,7 @@ describe('1051 伊德海莉：轴内连段反推 exReservedCount / EnergyCost（
     expect(cfg.yidhariStunCount).toBe(3)
   })
 
-  it('1 命（槽 0 cinema≥1）：单次碾成本档 60 → 50（双次碾恒 85，不受命座影响）', () => {
+  it('1 命（本槽 cinema≥1）：单次碾成本档 60 → 50（双次碾恒 85，不受命座影响）', () => {
     const cfg: Cfg = { slot: 0, agentId: '1051' }
     getAgentMechanic('1051')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes, windows: [2] }),
@@ -455,6 +455,39 @@ describe('1051 伊德海莉：轴内连段反推 exReservedCount / EnergyCost（
     expect(cfg.exReservedCount).toBe(14) // 次数与命座无关
     // 闪能 = (50×3 + 85×2) × 2 = (150 + 170) × 2 = 640（≠ 0 命的 700，精确可分辨）
     expect(cfg.exReservedEnergyCost).toBe(640)
+  })
+
+  it('CC-330：非槽 0（slot=1）按伊德海莉本槽命座判单次碾成本档，不串读槽 0 队友命座', () => {
+    const slot1Axes: StunAxis[] = [{
+      name: '槽1轴',
+      count: 1,
+      actions: [{ slot: 1, moveId: 'yidhari-heavy-single', count: 2 }],
+    }]
+    // 槽 0 队友 1 命、槽 1 伊德海莉 0 命 ⇒ 单次碾仍按 0 命 60 计（2×60=120，旧代码串读 team[0] 误算为 100）
+    const cfgC0: Cfg = { slot: 1, agentId: '1051' }
+    getAgentMechanic('1051')!.applyTeamConfig!(hookInput(cfgC0, {
+      cinemaLevel: 0,
+      axis: axisOf({ axes: slot1Axes, windows: [1] }),
+      team: [
+        { slot: 0, agentId: '1481', cinemaLevel: 1 } as never,
+        { slot: 1, agentId: '1051', cinemaLevel: 0 } as never,
+      ],
+    }))
+    expect(cfgC0.exReservedCount).toBe(2)
+    expect(cfgC0.exReservedEnergyCost).toBe(120)
+
+    // 槽 0 队友 0 命、槽 1 伊德海莉 1 命 ⇒ 单次碾按 1 命 50 计（2×50=100，旧代码串读 team[0] 误算为 120）
+    const cfgC1: Cfg = { slot: 1, agentId: '1051' }
+    getAgentMechanic('1051')!.applyTeamConfig!(hookInput(cfgC1, {
+      cinemaLevel: 1,
+      axis: axisOf({ axes: slot1Axes, windows: [1] }),
+      team: [
+        { slot: 0, agentId: '1481', cinemaLevel: 0 } as never,
+        { slot: 1, agentId: '1051', cinemaLevel: 1 } as never,
+      ],
+    }))
+    expect(cfgC1.exReservedCount).toBe(2)
+    expect(cfgC1.exReservedEnergyCost).toBe(100)
   })
 
   it('多轴各自窗口数按轴下标对齐（不是拿第一个轴乘所有块）', () => {
