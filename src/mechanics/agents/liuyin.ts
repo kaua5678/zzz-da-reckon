@@ -206,11 +206,11 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPa
   }
 }
 
-function buildLiuyinCharConfig({ slot, cinemaLevel, team, skills, cfg, getRowValue }: AgentCharConfigInput): void {
+function buildLiuyinCharConfig({ slot, agent, cinemaLevel, team, skills, cfg, getRowValue }: AgentCharConfigInput): void {
   const prevSetting = cfgNum(cfg, 'liuyin.previousTeammateSlot', -1)
   cfg.liuyinCinemaLevel = cinemaLevel
-  // CC-306：额外能力条件唯一来源 = spec 1481 `additionalAbility`
-  cfg.liuyinExtraAbilityActive = specAdditionalAbilityActive(team, slot, team[slot]?.agent)
+  // CC-306 / CC-333：额外能力条件唯一来源 = spec 1481 `additionalAbility`（优先取入参 agent，兼容非定长/稀疏 team）
+  cfg.liuyinExtraAbilityActive = specAdditionalAbilityActive(team, slot, agent ?? team.find(m => m.slot === slot)?.agent ?? team[slot]?.agent)
   // CC-180：与赠大 / 赠连携同一解析（已上场序列、跳过空槽；无队友 = -1）。`team` 定长 3 槽、空槽 agentId === ''，
   // 旧式按 team.length=3 环绕 ⇒ 琉音在槽 0、槽 2 空时「上一位」落到空槽，额外能力直伤行整行丢失（站位差 3.4%）。
   cfg.liuyinPreviousTeammateSlot = resolveTeammateTargetSlot(slot, team.filter(m => m.agentId && m.agent).map(m => m.slot), prevSetting)

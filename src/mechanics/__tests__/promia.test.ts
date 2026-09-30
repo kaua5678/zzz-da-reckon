@@ -61,11 +61,15 @@ describe('普罗米娅（1541）总量', () => {
       10 * PROMIA_PROF_PER_MASTERY)
   })
 
-  it('额外能力门控冰异常积蓄效率与有罪推定无视防御', () => {
-    expect(cycle({ additionalActive: true }).additionalBuildUpEff).toBe(PROMIA_ADDITIONAL_BUILDUP_EFF)
-    expect(cycle({ additionalActive: true }).guiltyDefIgnore).toBe(PROMIA_GUILTY_DEF_IGNORE)
-    expect(cycle({ additionalActive: false }).additionalBuildUpEff).toBe(0)
-    expect(cycle({ additionalActive: false }).guiltyDefIgnore).toBe(0)
+  it('额外能力门控冰异常积蓄效率与有罪推定无视防御（CC-333：含影画1对[有罪推定]额外+20%同源）', () => {
+    expect(cycle({ cinemaLevel: 0, additionalActive: true }).additionalBuildUpEff).toBe(PROMIA_ADDITIONAL_BUILDUP_EFF)
+    expect(cycle({ cinemaLevel: 0, additionalActive: true }).guiltyDefIgnore).toBe(PROMIA_GUILTY_DEF_IGNORE)
+    expect(cycle({ cinemaLevel: 1, additionalActive: true }).guiltyDefIgnore).toBe(
+      PROMIA_GUILTY_DEF_IGNORE + PROMIA_C1_DEF_IGNORE,
+    )
+    expect(cycle({ cinemaLevel: 0, additionalActive: false }).additionalBuildUpEff).toBe(0)
+    expect(cycle({ cinemaLevel: 0, additionalActive: false }).guiltyDefIgnore).toBe(0)
+    expect(cycle({ cinemaLevel: 1, additionalActive: false }).guiltyDefIgnore).toBe(0)
   })
 })
 
@@ -99,12 +103,19 @@ describe('普罗米娅完整计算链', () => {
     expect(panel.enemyDefReduction ?? 0).toBeLessThan(PROMIA_GUILTY_DEF_IGNORE)
   })
 
-  it('releaseModifier：有罪推定 40% + 影画1 20% 只作用于异放结算（异放限定减防）', async () => {
+  it('releaseModifier：有罪推定 40% + 影画1 20% 只作用于异放结算，且额外能力未激活时 C1 不越门控生效（CC-333）', async () => {
     await setup('1181', 1)
     const calc = useResourceCalc()
     const mod = promiaMechanic.releaseModifier!({ panels: calc.panels.value })
     // 额外能力激活（格莉丝1181=异常）+ 影画1 → 40 + 20
     expect(mod.enemyDefReduction).toBe(PROMIA_GUILTY_DEF_IGNORE + PROMIA_C1_DEF_IGNORE)
     expect(mod.enemyResReduction).toBe(0)
+
+    // 负例：额外能力未激活（艾莲1191=强攻·异阵营）时，敌人无法进入[有罪推定]，C1 额外 20% 不得生效
+    await setup('1191', 1)
+    const calcNeg = useResourceCalc()
+    const modNeg = promiaMechanic.releaseModifier!({ panels: calcNeg.panels.value })
+    expect(modNeg.enemyDefReduction).toBeUndefined()
+    expect(modNeg.note).toBe('')
   })
 })

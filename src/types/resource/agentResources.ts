@@ -306,6 +306,8 @@ export interface NangongMechanicSource {
   impactFromMastery: number
   vibratoStacks: number
   vibratoMax: number
+  vibratoStackPct?: number
+  minePairs?: number
   releaseCount: number
   releaseRatios: Record<string, number>
   beatInitial: number

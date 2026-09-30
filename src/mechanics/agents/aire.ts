@@ -108,7 +108,7 @@ export function computeAireCycle(input: {
       ? AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE * c2DelusionCoverage
       : 0,
     c6DecibelGift: cinemaLevel >= 6 ? AIRE_C6_DECIBEL_GIFT : 0,
-    note: '妄想时刻与应援能量转化属状态机、异放回能/喧响（影画4）未建模；异放比例结算与影画1暴击已接入。',
+    note: '妄想时刻与应援能量转化按总量近似；异放比例结算、影画1暴击与影画4异放回能/喧响已接入。',
   }
 }
 
@@ -216,16 +216,19 @@ function cycleFromCfg(cfg: unknown): AireCycle {
 }
 
 function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
-  // 面板字段与 computeAireCycle 同源（coreProficiency / c1EtherAnomalyResIgnore / c2DefIgnore）。
-  const c2DelusionCoverage = clampRatio(settings['aire.c2DelusionCoverage'] ?? 1)
-  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + AIRE_CORE_PROFICIENCY
-  if (cinemaLevel >= 1) {
+  // CC-333：面板字段直接复用 computeAireCycle（coreProficiency / c1EtherAnomalyResIgnore / c2DefIgnore 单源）。
+  const cycle = computeAireCycle({
+    cinemaLevel,
+    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
+    c2DelusionCoverage: settings['aire.c2DelusionCoverage'] ?? 1,
+  })
+  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + cycle.coreProficiency
+  if (cycle.c1EtherAnomalyResIgnore > 0) {
     panel.enemyEtherAnomalyResReduction = (panel.enemyEtherAnomalyResReduction ?? 0)
-      + AIRE_C1_ETHER_ANOMALY_RES_IGNORE
+      + cycle.c1EtherAnomalyResIgnore
   }
-  if (cinemaLevel >= 2) {
-    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0)
-      + AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE * c2DelusionCoverage
+  if (cycle.c2DefIgnore > 0) {
+    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + cycle.c2DefIgnore
   }
 }
 

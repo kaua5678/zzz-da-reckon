@@ -90,8 +90,8 @@ interface NormaSourceInput {
   stunCoverage: number
   battleTime: number
   holdSeconds: number
-  extraAbilityAtkBonus: number
-  techGapStunBonus: number
+  extraAbilityAtkBonus?: number
+  techGapStunBonus?: number
 }
 
 function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
@@ -219,10 +219,10 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
   }
 }
 
-function buildNormaCharConfig({ slot, cinemaLevel, team, skills, cfg }: AgentCharConfigInput): void {
+function buildNormaCharConfig({ slot, agent, cinemaLevel, team, skills, cfg }: AgentCharConfigInput): void {
   cfg.normaCinemaLevel = cinemaLevel
-  // CC-306：额外能力条件唯一来源 = spec 1571 `additionalAbility`（强攻 / 命破 / 同阵营；原「面板标记 || 手写兜底」两套）
-  cfg.normaAdditionalAbilityActive = specAdditionalAbilityActive(team, slot, team[slot]?.agent)
+  // CC-306 / CC-333：额外能力条件唯一来源 = spec 1571 `additionalAbility`（优先取入参 agent，兼容非定长/稀疏 team）
+  cfg.normaAdditionalAbilityActive = specAdditionalAbilityActive(team, slot, agent ?? team.find(m => m.slot === slot)?.agent ?? team[slot]?.agent)
   cfg.skipGenericExSpecial = true // 嗯呢弹幕由本模块生成 6 段
   // 嗯呢弹幕耗能（用户确认）：40 激活 + 长按 20/s（默认 2s）→ 每次 80 能量；
   // 资源池按此驱动强特次数（长按能量此前漏算 → 次数被高估，2026-08 修复）
@@ -535,17 +535,18 @@ export function computeNormaHatToChainCount(
   prev: { exSpecialCount: number; ultimateCount: number; frontlineTime: number; battleTime?: number },
   holdSeconds = 2,
 ): number {
-  // battleTime 缺省兜底：旧调用无 battleTime 时按整局 180s 计（帽子整局积蓄口径）
-  const battleTime = Math.max(0, prev.battleTime ?? 180)
-  const exCount = Math.max(0, Math.floor(prev.exSpecialCount))
-  const heatTotal = HEAT_INITIAL
-    + battleTime * HEAT_PER_SEC
-    + exCount * HEAT_PER_EX
-    + Math.max(0, Math.floor(prev.ultimateCount)) * HEAT_PER_ULTIMATE
-    // 长按按「每次弹幕都长按 holdSeconds」计（与 computeNormaSource 同口径；曾漏乘 exCount
-    // → 迭代期喧响信道与最终行差 1 条赠链，2026-09-06 对齐）
-    + exCount * Math.max(0, Math.min(2, holdSeconds)) * HEAT_PER_HOLD_SEC
-  return Math.floor(heatTotal / HEAT_HAT_THRESHOLD)
+  // CC-333：直接复用 computeNormaSource 的膛温→连携计算，避免两处手写膛温公式再次分叉
+  return computeNormaSource({
+    exSpecialCount: prev.exSpecialCount,
+    ultimateCount: prev.ultimateCount,
+    frontlineTime: prev.frontlineTime,
+    battleTime: prev.battleTime ?? 180,
+    cinemaLevel: 0,
+    additionalAbilityActive: false,
+    stunCount: 0,
+    stunCoverage: 0,
+    holdSeconds,
+  }).hatToChainCount
 }
 
 export const normaMechanic: AgentMechanicModule = {

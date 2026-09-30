@@ -277,7 +277,7 @@ describe('南宫羽 C4：地雷撞积蓄 ×1.35 一次性（B2 点修）', () =>
   })
 })
 
-describe('CC-288 地雷撞套数不残留', () => {
+describe('CC-288 / CC-333 地雷撞套数不残留与资源卡片单源', () => {
   it('无普攻行 / 套数为 0 时 nangongMinePairs 归零（不沿用上一次装配的值）', () => {
     const cfg = { nangongCinemaLevel: 6, nangongMinePairSeconds: 1.2, nangongMinePairs: 5, battleTime: 180 } as any
     const executions: any[] = []
@@ -287,5 +287,26 @@ describe('CC-288 地雷撞套数不残留', () => {
     const exec2: any[] = [{ moveId: 'basic_attack', totalTime: 0 }]
     nangongMechanic.buildExecutions!({ cfg, state: { frontlineTime: 0 }, executions: exec2 } as any)
     expect(cfg.nangongMinePairs).toBe(0)
+  })
+
+  it('CC-333：buildResourceResult 与事件侧共用颤音层数/C2每层加成（+35%）及地雷撞实打套数', () => {
+    const cfg = {
+      nangongCinemaLevel: 2,
+      nangongInitialMastery: 150,
+      nangongMinePairs: 3,
+      nangongStunCount: 4,
+      inStunWindowTriggers: 2.8,
+      battleTime: 180,
+      panel: { anomalyMastery: 150 },
+    } as any
+    const res = nangongMechanic.buildResourceResult!({ cfg, state: { frontlineTime: 60 } as any })
+    expect(res.nangongMechanicSource?.vibratoStacks).toBe(2)
+    expect(res.nangongMechanicSource?.vibratoStackPct).toBe(35)
+    expect(res.nangongMechanicSource?.minePairs).toBe(3)
+    const sections = nangongMechanic.resourceSections!({ result: res as any, cfg } as any)
+    const beatSec = sections.find(s => s.id === 'nangong-beat')!
+    const vibSec = sections.find(s => s.id === 'nangong-vibrato')!
+    expect(beatSec.summary).toContain('≈3 套')
+    expect(vibSec.rows.find(r => r.label === '每层加成')?.value).toBe('+35%')
   })
 })

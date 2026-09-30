@@ -54,14 +54,31 @@ export interface LuciaDreamPlan {
   additionalAttackDreamCost: number
 }
 
+/** 梦境内强特数与帷幕开启/延长拆解（CC-333：计划、4命触发与展示源三处同源） */
+function computeLuciaCurtainBreakdown(exSpecialCount: number, ultimateCount: number): {
+  totalE: number
+  q: number
+  dreamE: number
+  curtainOpens: number
+  curtainExtends: number
+} {
+  const totalE = Math.max(0, Math.floor(exSpecialCount))
+  const q = Math.max(0, Math.floor(ultimateCount))
+  const dreamE = Math.min(totalE, Math.max(0, 4 - q))
+  return {
+    totalE,
+    q,
+    dreamE,
+    curtainOpens: 1 + (dreamE > 0 ? 1 : 0) + q,
+    curtainExtends: dreamE + q,
+  }
+}
+
 /** 按用户口径计算梦境值计划：Q 与总 E 已知，求需要打几个 E/A5 达到 500 梦境值 */
 export function computeLuciaDreamPlan(totalExSpecialCount: number, ultimateCount: number, additionalAttackCap: number): LuciaDreamPlan {
-  const totalE = Math.max(0, Math.floor(totalExSpecialCount))
-  const q = Math.max(0, Math.floor(ultimateCount))
-
   // 基础需求：Q=2 时 E=2、A5=3；Q 每少 1 多一组 E+A5，Q 每多 1 少一组 E+A5。
   // 即 dreamE = clamp(4 - Q, 0, totalE)，A5 补足 500 目标。
-  const dreamE = Math.min(totalE, Math.max(0, 4 - q))
+  const { totalE, q, dreamE } = computeLuciaCurtainBreakdown(totalExSpecialCount, ultimateCount)
   const baseDream = INITIAL_DREAM + EX_DREAM_GAIN * dreamE + ULTIMATE_DREAM_GAIN * q
   const needFromA5 = Math.max(0, DREAM_TARGET - baseDream)
   const a5Count = Math.ceil(needFromA5 / A5_DREAM_GAIN)
@@ -92,12 +109,8 @@ export function computeLuciaCurtainTriggers(
   coverage = 1,
   totalTime = 180,
 ): number {
-  const q = Math.max(0, Math.floor(ultimateCount))
-  const totalE = Math.max(0, Math.floor(exSpecialCount))
-  const dreamE = Math.min(totalE, Math.max(0, 4 - q))
-  const opens = 1 + (dreamE > 0 ? 1 : 0) + q
-  const extendsCount = dreamE + q
-  const raw = opens + extendsCount + Math.max(0, Math.floor(teammateCurtainCount))
+  const { curtainOpens, curtainExtends } = computeLuciaCurtainBreakdown(exSpecialCount, ultimateCount)
+  const raw = curtainOpens + curtainExtends + Math.max(0, Math.floor(teammateCurtainCount))
   const cap = Math.max(1, Math.ceil(Math.max(0, totalTime) / CURTAIN_CD_SECONDS))
   return Math.min(cap, raw) * Math.max(0, Math.min(1, coverage))
 }
@@ -272,10 +285,7 @@ function computeLuciaSource(
   // 帷幕来源拆分（展示用）：引擎同点写入自开/队友归因；外部直调（缺写入）时自开回退 = 总次数。
   const curtainSelfRaw = Number(cfg.luciaCurtainSelfCount)
   const curtainSelfCount = Number.isFinite(curtainSelfRaw) ? Math.max(0, curtainSelfRaw) : curtainTriggerCount
-  const totalEForCurtain = Math.max(0, Math.floor(state.exSpecialCount))
-  const dreamEForCurtain = Math.min(totalEForCurtain, Math.max(0, 4 - q))
-  const curtainOpens = 1 + (dreamEForCurtain > 0 ? 1 : 0) + q
-  const curtainExtends = dreamEForCurtain + q
+  const { curtainOpens, curtainExtends } = computeLuciaCurtainBreakdown(state.exSpecialCount, state.ultimateCount)
   const curtainTeammatesRaw = Array.isArray(cfg.luciaCurtainTeammates)
     ? cfg.luciaCurtainTeammates as { agentId: string; rawCount: number; triggers: number }[]
     : []

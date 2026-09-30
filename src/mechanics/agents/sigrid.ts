@@ -193,14 +193,10 @@ export function countBasicFinisherHits(basicTime: number, cycle: { moveId: strin
   const segs = pressCancel
     ? cycle.filter(s => s.moveId === '1591004' || s.moveId === '1591005')
     : cycle
-  if (segs.length === 0 || basicTime <= 0) return 0
-  const cycleTime = segs.reduce((sum, s) => sum + s.actionTime, 0)
-  if (cycleTime <= 0) return 0
-  const fullCycles = Math.floor(basicTime / cycleTime)
-  const tail = basicTime - fullCycles * cycleTime
-  // 尾部要推进到 #4：需打完它之前的所有段
-  const beforeFinisher = segs.slice(0, -1).reduce((sum, s) => sum + s.actionTime, 0)
-  return fullCycles + (tail >= beforeFinisher ? 1 : 0)
+  const finisherId = segs[segs.length - 1]?.moveId
+  if (!finisherId) return 0
+  // CC-333：直接委托 countBasicSegments 取收尾段命中次数，构造级保证「机会 = 出枪式#4 命中」与「#4 段行次数」同源（含 1e-9 浮点容差）
+  return countBasicSegments(basicTime, cycle, pressCancel)[finisherId] ?? 0
 }
 
 /**
@@ -629,7 +625,7 @@ export function expandSigridAxisAction(input: {
   slot: number; moveId: string; count: number; startTime: number; cinemaLevel: number; actionTimeOf: (moveId: string) => number
 }): StackActionCost[] | undefined {
   if (input.moveId !== SIGRID_POZHEN_MOVE_ID) return undefined
-  const scale = input.cinemaLevel >= 6 ? 0.75 : 1
+  const scale = input.cinemaLevel >= 6 ? SIGRID_C6_POZHEN_TIME_FACTOR : 1
   return SIGRID_LANCE_SEGMENT_IDS.map(segId => ({
     slot: input.slot, moveId: segId, count: input.count, actionTime: input.actionTimeOf(segId) * scale,
     energyCost: 0, decibelCost: 0, startTime: input.startTime,

@@ -143,17 +143,14 @@ export function severianBasicFinisherHits(basicTime: number, cycle: { moveId: st
   return full + (tail >= beforeFinisher - 1e-9 ? 1 : 0)
 }
 
-/** 流息基础收入（不含影画6[风起]反馈项，反馈在 countFromFlow 定点迭代里加） */
+/** 流息基础收入（不含影画6[风起]反馈项，反馈在 severianFlowState 定点迭代里加） */
 function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = whole(Number(record.severianCinemaLevel ?? 0))
   const basicCycle = (record.severianBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
   const basicTime = Math.max(0, Number((state as { basicAttackTime?: number } | undefined)?.basicAttackTime ?? 0))
   const finisher = severianBasicFinisherHits(basicTime, basicCycle)
-  // 烈旋次数：手动覆盖优先；自动按极限闪避（闪反行）次数近似——烁影/受击驱动未建模
-  const liexuan = setting(cfg, 'severian.blazingSpinCount', 0) > 0
-    ? whole(setting(cfg, 'severian.blazingSpinCount', 0))
-    : Math.max(0, Number(cfg.dodgeCounterCount ?? 0))
+  const liexuan = severianLiexuanCount(cfg)
   return finisher * SEVERIAN_FLOW_BASIC4
     + liexuan * SEVERIAN_FLOW_LIEXUAN
     + Math.max(0, Number(cfg.dodgeCounterCount ?? 0)) * SEVERIAN_FLOW_DODGE
@@ -163,15 +160,22 @@ function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResour
 }
 
 /**
- * 苍风影猎次数（估时与物化唯一共用入口）：floor(流息收入/100)。
+ * 流息总收入与苍风影猎次数（CC-333：估时、物化与资源区块三处唯一共用入口）：
  * 影画6[风起]（每次苍风影猎 +30 流息）形成自指，定点迭代解（增益比 0.3 ⇒ 2 轮内稳定）。
  */
-function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
-  const override = setting(cfg, 'severian.shadowHuntCount', 0)
-  if (override > 0) return whole(override)
+function severianFlowState(
+  cfg: AgentCharConfigInput['cfg'],
+  state: AgentResourceInput['state'] | undefined,
+): { flowIncome: number; shadowHuntCount: number } {
   const record = cfg as unknown as Record<string, unknown>
   const cinema = whole(Number(record.severianCinemaLevel ?? 0))
   const base = severianFlowIncome(cfg, state)
+  const override = setting(cfg, 'severian.shadowHuntCount', 0)
+  if (override > 0) {
+    const shadowHuntCount = whole(override)
+    const flowIncome = base + (cinema >= 6 ? shadowHuntCount * SEVERIAN_C6_WINDRISE_FLOW : 0)
+    return { flowIncome, shadowHuntCount }
+  }
   let flow = base
   if (cinema >= 6) {
     for (let i = 0; i < 8; i++) {
@@ -180,7 +184,11 @@ function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentR
       flow = next
     }
   }
-  return Math.floor(flow / SEVERIAN_SHADOW_FLOW_COST)
+  return { flowIncome: flow, shadowHuntCount: Math.floor(flow / SEVERIAN_SHADOW_FLOW_COST) }
+}
+
+function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
+  return severianFlowState(cfg, state).shadowHuntCount
 }
 
 function severianLiexuanCount(cfg: AgentCharConfigInput['cfg']): number {
@@ -340,34 +348,42 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
 
 function patchSeverianExecutions({ cfg, executions }: AgentResourceInput): void {
   const record = cfg as unknown as Record<string, unknown>
-  const cinema = whole(Number(record.severianCinemaLevel ?? 0))
-  const stacks = Math.max(0, Math.min(2, whole(setting(cfg, 'severian.fengfengStacks', 1))))
-  const fengfengBonus = SEVERIAN_FENGFENG_MULT[stacks]
+  // CC-333：执行行与资源区块共用 computeSeverianCycle（优先读 buildCharConfig 写入的字段，单测直调未跑 buildCharConfig 时回落 setting）
+  const cycle = computeSeverianCycle({
+    cinemaLevel: Number(record.severianCinemaLevel ?? 0),
+    additionalActive: record.severianAdditionalActive === true,
+    fengfengStacks: record.severianFengfengStacks !== undefined
+      ? Number(record.severianFengfengStacks)
+      : setting(cfg, 'severian.fengfengStacks', 1),
+    c4Coverage: record.severianC4Coverage !== undefined
+      ? Number(record.severianC4Coverage)
+      : setting(cfg, 'severian.c4Coverage', 1),
+  })
   const carrierMeta = (record.severianCarrierMeta as { moveId: string; damage: number }[] | undefined) ?? []
   for (const exec of executions) {
     if (!exec.moveId) continue
     // 影画1：普通攻击暴击伤害 +60%（basic 组 moveId 限定，执行级）
-    if (cinema >= 1 && execMatchesMove(exec, SEVERIAN_BASIC_MOVE_IDS)) {
-      exec.critDmgBonus = (exec.critDmgBonus ?? 0) + SEVERIAN_C1_BASIC_CRIT_DMG
+    if (cycle.c1BasicCritDmg > 0 && execMatchesMove(exec, SEVERIAN_BASIC_MOVE_IDS)) {
+      exec.critDmgBonus = (exec.critDmgBonus ?? 0) + cycle.c1BasicCritDmg
     }
     // 凭风：入场技/连携/终结最后一击伤害倍率固定 +60/+300（同区加算进倍率行）
-    if (fengfengBonus > 0 && SEVERIAN_FENGFENG_CARRIERS.has(exec.moveId)) {
+    if (cycle.fengfengMultBonus > 0 && SEVERIAN_FENGFENG_CARRIERS.has(exec.moveId)) {
       const base = carrierMeta.find(m => m.moveId === exec.moveId)?.damage ?? 0
-      exec.damageMultiplier = base + fengfengBonus
+      exec.damageMultiplier = base + cycle.fengfengMultBonus
       exec.damageMultiplierOverride = true
-      exec.skillTableNote = `${exec.skillTableNote ?? ''}；凭风${stacks}层：最后一击倍率固定+${fengfengBonus}`
+      exec.skillTableNote = `${exec.skillTableNote ?? ''}；凭风${cycle.fengfengStacks}层：最后一击倍率固定+${cycle.fengfengMultBonus}`
     }
   }
 }
 
 function buildSeverianResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const flow = severianFlowIncome(cfg as AgentCharConfigInput['cfg'], state as AgentResourceInput['state'])
+  const { flowIncome, shadowHuntCount } = severianFlowState(cfg as AgentCharConfigInput['cfg'], state as AgentResourceInput['state'])
   return {
     specResources: {
       severian_flow: {
         ...cycleFromCfg(cfg),
-        flowIncome: Math.round(flow),
-        shadowHuntCount: severianShadowHuntCount(cfg as AgentCharConfigInput['cfg'], state as AgentResourceInput['state']),
+        flowIncome: Math.round(flowIncome),
+        shadowHuntCount,
       },
     },
   }

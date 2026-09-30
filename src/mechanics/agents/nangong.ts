@@ -79,6 +79,23 @@ const RELEASE_RATIOS: Record<string, number> = {
 }
 const MINE_COST_PER_PAIR = 100 // #2/#3 各耗 50 重拍
 
+function nangongBeatRegen(frontlineSeconds: number, battleTime: number): number {
+  const anomalyProcs = Math.floor(Math.max(0, battleTime) / ANOMALY_PROC_CD)
+  return Math.max(0, frontlineSeconds) * BEAT_PER_SEC + anomalyProcs * BEAT_PER_ANOMALY
+}
+
+function nangongVibratoStackPct(cinemaLevel: number): number {
+  return VIBRATO_STACK_PCT + (cinemaLevel >= 2 ? 10 : 0)
+}
+
+function nangongVibratoStacks(cfg: AgentResourceInput['cfg'], record: Record<string, unknown>): number {
+  const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
+  const systemTriggers = Math.max(0, Number(record.inStunWindowTriggers ?? 0))
+  return sliderStacks > 0
+    ? Math.min(VIBRATO_MAX, sliderStacks)
+    : (systemTriggers > 0 ? Math.min(VIBRATO_MAX, Math.floor(systemTriggers)) : VIBRATO_MAX)
+}
+
 export function computeNangongMechanic(input: {
   anomalyMastery: number
   frontlineSeconds: number
@@ -87,23 +104,26 @@ export function computeNangongMechanic(input: {
   minePairs: number
   vibratoStacks: number
   releaseCount: number
+  cinemaLevel?: number
 }): NangongMechanicSource {
   const impactFromMastery = impactFromMasteryOf(input.anomalyMastery)
   // 重拍收入累进（持有上限只延迟消耗不吞收入）：初始 + 接战 3.8/s + 队友异常 12/次（CD 上限近似）
-  const anomalyProcs = Math.floor(Math.max(0, input.battleTime) / ANOMALY_PROC_CD)
-  const beatRegen = Math.max(0, input.frontlineSeconds) * BEAT_PER_SEC + anomalyProcs * BEAT_PER_ANOMALY
+  const beatRegen = nangongBeatRegen(input.frontlineSeconds, input.battleTime)
+  const vibratoStackPct = nangongVibratoStackPct(Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0))))
   return {
     anomalyProficiencyBonus: MASTERY_BONUS,
     impactFromMastery,
     vibratoStacks: Math.min(VIBRATO_MAX, Math.max(0, Math.floor(input.vibratoStacks))),
     vibratoMax: VIBRATO_MAX,
+    vibratoStackPct,
+    minePairs: Math.max(0, Math.floor(input.minePairs)),
     releaseCount: Math.max(0, Math.floor(input.releaseCount)),
     releaseRatios: RELEASE_RATIOS,
     beatInitial: input.beatInitial,
     beatRegen,
     beatTotal: input.beatInitial + beatRegen,
     beatCap: BEAT_CAP,
-    note: `重拍收入 ${input.beatInitial}+${beatRegen.toFixed(0)} ≈ 地雷撞#2/#3 双击 ${input.minePairs} 套（每套100点）；颤音每层异放比例+25%，层数/次数按滑块近似（异常逐事件系统 pending）。`,
+    note: `重拍收入 ${input.beatInitial}+${beatRegen.toFixed(0)} ≈ 地雷撞#2/#3 双击 ${input.minePairs} 套（每套100点）；颤音每层异放比例+${vibratoStackPct}%，层数/次数按滑块近似（异常逐事件系统 pending）。`,
   }
 }
 
@@ -190,7 +210,7 @@ export function computeNangongMinePairs(totalBeat: number, allocTime: number, pa
 
 export function nangongBeatIncome(cinemaLevel: number, frontlineSeconds: number, battleTime: number): number {
   const beatInitial = cinemaLevel >= 1 ? BEAT_CAP : BEAT_INITIAL
-  return beatInitial + Math.max(0, frontlineSeconds) * BEAT_PER_SEC + Math.floor(Math.max(0, battleTime) / ANOMALY_PROC_CD) * BEAT_PER_ANOMALY
+  return beatInitial + nangongBeatRegen(frontlineSeconds, battleTime)
 }
 
 function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput): void {
@@ -303,15 +323,10 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
   const record = cfg as unknown as Record<string, unknown>
   const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
   const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
-  // 颤音层数：滑块 >0 = 手动覆盖；0 = 自动——失衡内异常系统 v2 有轴内真实触发数用之，
-  // 非轴/无数据回落满层 4（用户口径：失衡中叠满很容易）
+  // 颤音层数与每层加成（CC-333：事件侧与资源结果共用 nangongVibratoStacks / nangongVibratoStackPct）
   const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
-  const systemTriggers = Math.max(0, Number(record.inStunWindowTriggers ?? 0))
-  const stacks = sliderStacks > 0
-    ? Math.min(VIBRATO_MAX, sliderStacks)
-    : (systemTriggers > 0 ? Math.min(VIBRATO_MAX, Math.floor(systemTriggers)) : VIBRATO_MAX)
-  // C2：每层[颤音]使[核心被动]异放比例额外 +10%（25% → 35%/层）
-  const stackPct = VIBRATO_STACK_PCT + (cinemaLevel >= 2 ? 10 : 0)
+  const stacks = nangongVibratoStacks(cfg, record)
+  const stackPct = nangongVibratoStackPct(cinemaLevel)
   const coverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
   const releaseCount = Math.round(stunCount * coverage)
   if (releaseCount > 0 && stacks > 0) {
@@ -380,18 +395,21 @@ function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): P
   const frontline = Math.max(0, Number(state.frontlineTime ?? 0))
   const beatInitial = cinemaLevel >= 1 ? BEAT_CAP : BEAT_INITIAL
   const totalBeat = nangongBeatIncome(cinemaLevel, frontline, battleTime)
-  const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
-  const stacks = sliderStacks > 0 ? Math.min(VIBRATO_MAX, sliderStacks) : VIBRATO_MAX
+  const stacks = nangongVibratoStacks(cfg, record)
   const releaseCoverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
   const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
+  const minePairs = record.nangongMinePairs !== undefined
+    ? Math.max(0, Math.floor(Number(record.nangongMinePairs)))
+    : Math.floor(totalBeat / MINE_COST_PER_PAIR)
   const source = computeNangongMechanic({
     anomalyMastery: Number(record.nangongInitialMastery ?? cfg.panel.anomalyMastery ?? 0),
     frontlineSeconds: frontline,
     battleTime,
     beatInitial,
-    minePairs: Math.floor(totalBeat / MINE_COST_PER_PAIR),
+    minePairs,
     vibratoStacks: stacks,
     releaseCount: Math.round(stunCount * releaseCoverage),
+    cinemaLevel,
   })
   return { nangongMechanicSource: source }
 }
@@ -399,11 +417,13 @@ function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): P
 function buildNangongResourceSections({ result }: AgentResourceSectionsInput) {
   const source = result.nangongMechanicSource
   if (!source) return []
+  const minePairs = source.minePairs ?? Math.floor(source.beatTotal / MINE_COST_PER_PAIR)
+  const vibratoStackPct = source.vibratoStackPct ?? VIBRATO_STACK_PCT
   return [
     {
       id: 'nangong-beat',
       title: '南宫羽重拍',
-      summary: `收入 ${fmt(source.beatTotal)} 点 → 地雷撞双击 ≈${Math.floor(source.beatTotal / MINE_COST_PER_PAIR)} 套`,
+      summary: `收入 ${fmt(source.beatTotal)} 点 → 地雷撞双击 ≈${minePairs} 套`,
       rows: [
         { label: '进场', value: `+${source.beatInitial}`, detail: source.beatInitial >= BEAT_CAP ? '影画1 入场回满' : '上限 100' },
         { label: '接战回复', value: `+${fmt(source.beatRegen)}`, detail: `每秒 ${BEAT_PER_SEC} × 接战时长 + 队友异常 ${BEAT_PER_ANOMALY}/${ANOMALY_PROC_CD}s` },
@@ -417,7 +437,7 @@ function buildNangongResourceSections({ result }: AgentResourceSectionsInput) {
       summary: `${source.releaseCount} 次 × ${source.vibratoStacks} 层`,
       rows: [
         { label: '属性比例', value: Object.entries(source.releaseRatios).map(([k, v]) => `${k} ${v}%`).join(' / ') },
-        { label: '每层加成', value: `+${VIBRATO_STACK_PCT}%`, detail: `当前按 ${source.vibratoStacks} 层近似（滑块可调 0-4）` },
+        { label: '每层加成', value: `+${vibratoStackPct}%`, detail: `当前按 ${source.vibratoStacks} 层近似（滑块可调 0-4）` },
         { label: '结算次数', value: `${source.releaseCount}`, detail: '≈ 失衡次数 × 清除时有异常覆盖（滑块）' },
       ],
       footer: '失衡中全队异放/紊乱/进异常各 +1 层（≤4），清除时若目标处于属性异常状态则结算一次异放；逐事件建模 pending。',

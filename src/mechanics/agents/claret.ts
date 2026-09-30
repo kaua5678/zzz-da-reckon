@@ -882,7 +882,7 @@ export const claretMechanic: AgentMechanicModule = {
   id: 'agent:claret',
   agentIds: [CLARET_AGENT_ID],
   name: '克拉蕾',
-  description: 'v12：锐化伤害积累残痕值（每600点=1层，上限3），斩金断铁/葬血强袭消耗残痕触发毁伤；锐能进场60/秘血铸锋60发；核心被动暴击率+30%与残锋锐暴+25%；影画1电抗无视16%、2毁伤×130%、4+20%、6直接毁伤。',
+  description: 'v12：锐化伤害积累残痕值（每600点=1层，上限3），斩金断铁/葬血强袭消耗残痕触发毁伤；锐能进场60/秘血铸锋60发；核心被动暴击率+30%与残锋锐暴+25%；影画1锐暴积蓄+20%与毁伤×130%、2铭刻+2s与电抗无视18%、4+20%、6直接毁伤。',
   applyPanel: applyClaretPanel,
   buildCharConfig: buildClaretCharConfig,
   buildExecutions: buildClaretExecutions,

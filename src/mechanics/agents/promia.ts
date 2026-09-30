@@ -13,11 +13,10 @@
  *   有罪推定「全队角色对有罪推定敌人造成异放时无视40%防御」走 releaseModifier，作用域 team（CC-121：
  *   此前按异放行 agentId 派发，只有普罗米娅自己的异放吃到，队友异放漏算）。有罪推定状态按常驻近似（额外能力激活即生效）。
  *
- * 明确未建模（异常结算区/状态机，calcAnomalyDamage 已内置精通乘区，直接叠加会重复计入精通）：
- * - 核心被动异放：处刑式·绝裁终结一击命中异常敌人触发异放，固定结算635%倍率对应属性异常伤害、
- *   消耗1点霜刑；寒蚀值积累（冻结/紊乱/乱流/强特/队友异放回复）与霜刑转化（50寒蚀→1霜刑）逐时序。
- * - 额外能力霜寒持续+3秒（全队/敌方状态）。
- * - 影画1 有罪推定额外无视20%防御、影画4 异放回寒蚀值、影画6 特殊异放200%与无视15%全抗。
+ * 已接入（总量回复端近似 + 异常事件/异放修饰器）：
+ * - 核心被动异放：处刑式·绝裁（635%，C2+120）与寒蚀回复→霜刑转化（含 C4/C6 回寒蚀收敛、C6 特殊异放 200%+无视15%全抗）。
+ * - 额外能力·饮冰：[有罪推定]全队异放无视40%防御 + 影画1 对[有罪推定]敌人额外无视20%防御（均由额外能力门控，经 releaseModifier 异放限定生效）。
+ * 明确未建模：额外能力霜寒持续+3秒（全队/敌方状态）与寒蚀逐时序状态机。
  */
 import { whole } from '@/utils/finiteClamp'
 import type {
@@ -111,7 +110,11 @@ export function computePromiaCycle(input: {
     totalProficiency: proficiencyFromMastery + c2Proficiency,
     teamReleaseDmg: probe.anomalyReleaseDmgBonus,
     additionalBuildUpEff: input.additionalActive ? PROMIA_ADDITIONAL_BUILDUP_EFF : 0,
-    guiltyDefIgnore: input.additionalActive ? PROMIA_GUILTY_DEF_IGNORE : 0,
+    // CC-333：原文 C1「对[有罪推定]状态的敌人造成[异放]效果时额外无视20%防御力」，而[有罪推定]仅由额外能力施加；
+    // 展示值与 releaseModifier 统一走本字段（额外能力激活时 40% + C1 20%，未激活时恒 0）。
+    guiltyDefIgnore: input.additionalActive
+      ? PROMIA_GUILTY_DEF_IGNORE + (cinemaLevel >= 1 ? PROMIA_C1_DEF_IGNORE : 0)
+      : 0,
     note: '寒蚀值/霜刑按总量回复端近似；全队异放增伤经 spec teamBuff 生效（此处为展示值）。',
   }
 }
@@ -160,13 +163,13 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
   }
 }
 
-/** 异放限定减防（有罪推定 40% + 影画1 20%，原文均为「全队角色」）：只作用于异放结算；作用域 team（全队异放行，CC-121）。 */
+/** 异放限定减防（有罪推定 40% + 影画1 20%，原文均为「全队角色对[有罪推定]状态的敌人」）：只作用于异放结算；作用域 team（全队异放行，CC-121 / CC-333 与 computePromiaCycle.guiltyDefIgnore 同源）。 */
 function promiaReleaseModifier({ panels }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
   const promia = panels.find(p => (p as Record<string, unknown>).promiaCinemaLevel !== undefined)
   if (!promia) return { enemyResReduction: 0, note: '' }
   const cinema = Number((promia as Record<string, unknown>).promiaCinemaLevel ?? 0)
-  const additionalActive = Number((promia as Record<string, unknown>).promiaAdditionalActive ?? 0)
-  const defIgnore = (additionalActive > 0 ? PROMIA_GUILTY_DEF_IGNORE : 0) + (cinema >= 1 ? PROMIA_C1_DEF_IGNORE : 0)
+  const additionalActive = Number((promia as Record<string, unknown>).promiaAdditionalActive ?? 0) > 0
+  const defIgnore = computePromiaCycle({ cinemaLevel: cinema, anomalyMastery: 0, additionalActive }).guiltyDefIgnore
   return defIgnore > 0
     ? { enemyResReduction: 0, enemyDefReduction: defIgnore, note: `；有罪推定/C1：异放无视 ${defIgnore}% 防御（releaseModifier 异放限定）` }
     : { enemyResReduction: 0, note: '' }
