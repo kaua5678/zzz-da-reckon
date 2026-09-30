@@ -96,27 +96,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 349 轮（lane arena-A，承接第 348 轮下一步 1–4）：CC-330 `resolveExSpecialCount` 正交归一 + 伊德海莉轴内成本档读本槽命座（`0237d0d2`），以及折叠环 CC-160 重折语义 / 候选 F2 / 内层整数环 `converged=true` 路径依赖三项实测结项，文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时并行会话 `session-cfb4706f` 刚完成 CC-166（`028b47c9` / `4cfeda10`）并收工退出，主仓库无活跃进程。**
+**第 350 轮（lane arena-A，承接第 349 轮下一步 1–3）：CC-331 菲欧妮（1641）额外能力 `tier2` 门控与本槽命座对齐 + CC-166(a) 蕾米埃尔 6 命记录错误死字段清理与状态表/文档同步（代码 `cb5fc209`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `d82d3da6`，工作区干净）。**
 
-- **CC-330（`0237d0d2`，简化 + 槽位错位修复，既有预设与单人零数值差）**：
-  1. `src/core/resource/helpers.ts#resolveExSpecialCount`：将「付费/非失衡次数是否保留实数（`continuous ? !exFinalize : Boolean(exSpecialCountFractional)`）」与「失衡内保留次数（`exReservedCount`）拆分」两个正交维度合一，删掉两处重复的 `exReservedCount` 拆分块与两处 `totalEnergy / consume` 计算。
-  2. `src/mechanics/agents/yidhari.ts#applyYidhariTeamConfig`：修正 2026-09-16 迁移遗留的 `team[0]?.cinemaLevel` 槽位错位，改为读本槽 `cinemaLevel`（与同模块 `buildYidhariCharConfig` 的 `exSpecialEnergyConsume` 同源）；`src/mechanics/__tests__/axisContext.test.ts` 新增非槽 0（`slot=1`）正反双向单测（撤掉修复 1 红）。
-  3. 清理 `028b47c9` 误入库的未处置空壳 `data/recordings/1581.json`（82 条全 `pending` 且 `1581` 仍在 `legacy.json`，导致 `npm run verify` 的 `verify:recording` 必红；`028b47c9` 只跑了 `npm run check` 漏检）。
-- **第 348 轮候选 2（CC-160 重折语义）四变体实测结项（维持 `base` 现状，见 `docs/mcp-fold-loop-stop.md` §2）**：
-  - `cont` / `cont_reset_stag`（保持 `refundFrozen=true`）在 429 例上逐位相同，改变 14 例并显著恶化时间账（`auto-1431-1491-1341` 残差 `0.0004 → 4.40s`，5 个 1431 预设 `over: 0 → 0.037..0.218s`，`dca:auto-1431-1481-1341@0` 截断 `82.67 → 92.18s`）。根因：`!diag.refundFrozen` 兼任「`preTail` 整数化后重测 `teamRefund`」与「CC-158 展开 `timeBudgetExcess` 后必跑 Pass 1」两项门控，与停滞计数职责正交。
-- **第 348 轮候选 3（F2：停滞出口还原最小残差轮）实测否决（见 `docs/mcp-fold-loop-stop.md` §4）**：
-  - `f2_min_excess` 与 `f2_min_sum` 在 429 例上完全一致，改变 13 例：在正反馈队 `yidhari-qingyi-lucia` 把截断从 `0` 打成 `0.95s`（留白 `0.049 → 2.19s`），在 `dca:auto-1431-1491-1341@0` 把截断从 `10.51s` 恶化到 `14.88s`。根因：`cfg.timeBudgetExcess` 是跨轮累加器，当轮 `maxExcess` 只是当轮正增量 $\Delta\text{excess}_p$，还原到第 1 轮会丢弃第 2–4 轮累计折叠掉的 `7.84s` 时间债。
-- **第 348 轮候选 4（`docs/mcp-integer-cycle-stop.md` §6.3 / §9，`converged=true` 路径依赖）归因结项**：
-  - CC-326 中变化的 18 个 `converged=true` 用例 100% 在前序/终局 `runInnerLoop`（`path: 'canon'`）命中了真整数 2-循环（`over: 1..5 → 0`），经 S2 折叠累加器（9 例）、外层跨轮反馈（6 例）、`diag.converged` 粘性 OR（4 例）三类机制传递。
-- **验证**：`vue-tsc -b` 0 错；`get_diagnostics` 0；在隔离 worktree `wtA-fold` 跑全量 `npm run verify` EXIT=0（442 个文件、4067 个测试，日志 `/home/kaua/calc-arch/arenaA/verify-cc330.log`）。探针产物归档于 `/home/kaua/calc-arch/arenaA/`（`fold-cand-sub.json`、`path-dep.json`、`zzFoldCandProbe.test.ts`、`zzPathDepProbe.test.ts`、`foldLoop.probe.ts`）。回退点：`git revert 0237d0d2`。
+- **CC-331（`cb5fc209`，菲欧妮 `1641` 额外能力门控与资源卡口径对齐，既有预设与单人零数值差）**：
+  1. **根因**：菲欧妮额外能力原文（`data/raw/nanoka_missing/full/1641.json` `passive.level.1641507.desc[1]`）为「队伍中存在其他[异常]角色或同阵营角色时触发：当队伍中[异常]角色数量为2/3时，[脆弱]状态下的敌人受到属性异常伤害的暴击伤害提升为25%/40%」，影画 6 为「额外能力所需的[异常]角色数量减1」。同模块 `computePhoenixWeaknessCrit` 已按 `effectiveCount = teamAnomalyCount + (cinemaLevel >= 6 ? 1 : 0)` 与 `{ 1: 15, 2: 25, 3: 40 }` 实现；但 `adjustAdditionalAbilityGates` 此前只对 `tier3`（`phoenix.weakness_anomaly_crit_dmg_tier3`）加了 `anomalyCount >= 3` 门控，漏掉了 `tier2`（`phoenix.weakness_anomaly_crit_dmg_tier2`，`+10%`）的 `anomalyCount >= 2` 门控。当 C0–C5 菲欧妮与同阵营非异常队友（坎卜斯黑枝：1481 琉音 / 1471 般岳 / 1451 卢西娅 / 1591 希格莉德 / 1051 伊德海莉）组队且队内仅 1 名异常角色时，`tier2` 被误开（25% 而非 15%），且 C6 对 `tier2` 失效。此外 `adjustAdditionalAbilityGates` 用 `team[slot]?.cinemaLevel` 按下标索引（压缩 `team` 数组失配），`buildPhoenixResourceResult` 将 `teamAnomalyCount` 写死为 `2`。
+  2. **修复**：`adjustAdditionalAbilityGates` 按 `team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel ?? 0` 取本槽命座，并对 `tier2` 增加 `anomalyCount >= 2` 门控；`buildPhoenixCharConfig` / `buildPhoenixResourceResult` 记录并消费真实队伍异常角色数 `phoenixTeamAnomalyCount`。`phoenix.test.ts` 与 `additionalGate.test.ts` 新增同阵营非异常队友 C0（15%）vs C6（45%）正反断言（撤掉 `phoenix.ts` 修复即红）。
+- **CC-166(a) 收尾清理与状态表/文档同步（`cb5fc209`）**：
+  - 清理 `4cfeda10` 标「记录错误待删，CC-166」且全仓 0 生产读取的死字段 `remielleCinema6SpecialVoidflareTriggerMultiplier`（`public/static/catalog.json`、`src/data/agentPanelStats.ts`、`src/types/catalog.ts`、`src/mechanics/__tests__/remielle.test.ts`）。
+  - 同步更新 `public/static/character-constellations.json`（1581 C6 `implemented` / `pending`）、`docs/MECHANICS_IMPLEMENTATION.md`、`docs/mcp-calc-core-architecture.md`、`docs/mcp-stun-dual-source.md`、`docs/mcp-pending-triage-2026-09-30.md` 与 `docs/mcp-r5-spec-impl-reconciliation.md`（CC-166(a) 结项，仅剩 (b) 普攻第 4 段 25% 特殊虚耀未建模）。
+- **验证**：`vue-tsc -b` 0 错；`check-guards` 25/25 通过；`validate:data` / `validate:specs` 1120/1120 通过；隔离 worktree `wtA-cc331` 跑全量 442 个测试文件全部通过 + `npm run build` 通过。回退点：`git revert cb5fc209`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
 2. **规格-实现对账 / 模块同构简化新扫描**：
-   - 折叠环停点线（`docs/mcp-fold-loop-stop.md`）与内层整数环停点线（`docs/mcp-integer-cycle-stop.md`）已全部收口，不要再单改环出口。
-   - 可扫描 `src/mechanics/agents/*.ts` 中 `applyTeamConfig` / `buildCharConfig` / `buildExecutions` 是否还有类似 CC-330 的「槽位硬编码 / 与同模块另一钩子口径不一致」或重复分支，发现真缺陷或有意义的简化再开 CC 卡。
-3. 可选：R22-D1 债 1a（全局实数化松弛推广，见 `docs/mcp-r22d1-batch12-field-census.md` §2）能否因内外层整数环停点都取「可行最大」而更新债登记说明（注意：第 349 轮 `docs/mcp-integer-cycle-stop.md` §9 已证明中间 pass 的整数环仍会造成路径依赖，故债 1a 本体不能销号，只可评估注释说明是否需补充）。
-4. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
+   - 本轮已扫完全部 `src/mechanics/agents/*.ts` 的 `adjustAdditionalAbilityGates` / `buildCharConfig` / `applyTeamConfig` 槽位索引与门控口径，以及 `AGENT_PANEL_STATS` 全部 12 个角色专属面板字段的读写闭合（0 死字段）。
+   - 下一步可对照 `data/raw/nanoka_missing/full/*.json` 与 `src/specs/agents/*.json` / `src/mechanics/agents/*.ts`，抽查近期录入或 3.2–3.3 角色（如 1611 克拉蕾特、1621 洛克茜、1631 赛维里安、1581 蕾米埃尔）是否存在类似 CC-331 的「模块内纯函数口径与 spec teamBuffs / 门控钩子不一致」或可合并的重复推导。
+3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
 - **「只在 undefined 时初始化」的求解状态可能是承重的**：折叠环的 `diag.bestExcess` / `stagnantPasses` 跨运行不归零，CC-160 重折依赖它（第 348 轮归零试验让 dynamicComboAlign ② 变红）。清理这类写法前，先跑全量 verify，并在非缺省机制参数下对照（合轴吸收率 0 / 1）。

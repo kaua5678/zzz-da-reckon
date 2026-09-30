@@ -1036,10 +1036,9 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
     - `moduleAnomalyEventRecords` 4 组惊鸿块：count 减半，字段名与公式文案同步（文件头已记 CC-165）。
   - 验证：zd DUMP 36 处 / ROWS 42 处差异，全部在含 1581 的队伍（NON1581 = 0）；蕾米埃尔相关 36 个测试文件 604 条通过；全量在 timeGolden 重生成前唯一失败项为 timeGolden；`npm run verify` rc=0（内含全量 3818 passed）（首轮因状态表非紧凑 JSON 红，`minify:static` 后通过）；CG 通过；vue-tsc 无新错误。
   - 回退点：`git revert <CC-165 代码提交>`；golden 随同一提交回退。
-- **CC-166（立卡，未做）**：蕾米埃尔 6 命两处未决。
-  - (a) 叠乘歧义：「垂虹 / 惊鸿耀变触发2次」（LuminizeTrigger）与「特殊虚耀再次翻倍」「惊鸿关联虚耀翻倍」在同一载体上是 ×4 还是 ×2。当前 ×2、LuminizeTrigger 不读。
+- **CC-166（(a) 已由 2026-09-30 用户裁决结项 `028b47c9`/`4cfeda10`/`cb5fc209`；(b) 仍 open）**：蕾米埃尔 6 命两处问题。
+  - (a) **已结项（2026-09-30 用户裁决）**：①「发动垂虹和惊鸿时触发2次耀变」与③「惊鸿关联虚耀触发次数翻倍」是同一效果的两种表述，统一读 `remielleCinema6FleetingGraceVoidflareTriggerMultiplier`（初值 0、6 命 +1）；②「特殊虚耀触发次数再次翻倍（1命+4命的2轮变为4轮）」为记录错误（1/4/6 命特殊虚耀 = 1/2/2 次垂虹 × 3 豆 × (1+6命加成) = 3/6/12 次耀变）。`LuminizeTriggerMultiplier` 与 `SpecialVoidflareTriggerMultiplier` 两个冗余/错误字段已从 `catalog.json` / `agentPanelStats.ts` / `types/catalog.ts` 删除，`character-constellations.json` 已同步。
   - (b) 普攻第 4 段（蹁跹 #4，1581005）命中获得 3 个特殊虚耀、伤害为开局特殊虚耀的 25%（`remielleCinema6SpecialVoidflareCount` / `DamageRatio`）：零读取，未建模。要先定「每次普攻 4 段都给 3 个，还是受储存上限 3 约束」以及触发频率来源（轴里 1581005 的次数）。
-  - 两项都会改数值，而且需要语义判断，原文无法消歧。按 R5（数据可信、不凭推测改数）暂缓，等有更明确的规格来源再做。状态表 1581 c6 的 pending 已登记。
 
 ### 24.16 第 194 轮：CC-167（加成初值双计推广，零发现）、洛克茜 energyRegen 旁支（读数正确，顺手让局外面板盖章）、CC-168 副词条优化器队友 buff 输入与伤害管线同源（提交 3336f873）
 - **CC-167（CC-165 的推广），结论：零发现。**
@@ -4529,3 +4528,20 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **候选 4（`docs/mcp-integer-cycle-stop.md` §6.3 / §9，`converged=true` 路径依赖）归因结项**：
   CC-326 中变化的 18 个 `converged=true` 用例 100% 在前序/终局 `runInnerLoop`（`path: 'canon'`）命中了真整数 2-循环（旧停点 `over=1..5` → 新停点 `over=0`），经三类机制传递：① S2 折叠环 Pass 0 / 中间轮改写 `timeBudgetRefund` 或 `timeBudgetExcess` 后在后续 pass 收敛（9 例）；② 外层不动点前序轮改变 `stunCount` / `threads` 后在下一轮收敛（6 例）；③ `diag.converged` 跨 `timePass` / `finalizePasses` 的粘性 OR 保留了前序 `true`（4 例）。
 - **验证**：`vue-tsc -b` 0 错；`get_diagnostics` 0；隔离 worktree `wtA-fold` 全量 `npm run verify` EXIT=0（442 个文件、4067 个测试，25 guards，1120 specs，189 recordings）。回退点：`git revert 0237d0d2`。
+
+### 24.174 第 350 轮（lane arena-A）：CC-331 菲欧妮额外能力 tier2 门控与本槽命座对齐 + CC-166 记录错误字段清理与状态表同步（`cb5fc209`）
+
+- **CC-331（`cb5fc209`，规格-实现对账修复 + 模块内部口径归一，既有预设与单人零数值差）**：
+  1. **问题定位**：
+     - 菲欧妮（1641，坎卜斯黑枝·异常）额外能力原文（`data/raw/nanoka_missing/full/1641.json` `passive.level.1641507.desc[1]`）：「队伍中存在其他[异常]角色或同阵营角色时触发：当队伍中[异常]角色数量为2/3时，[脆弱]状态下的敌人受到属性异常伤害的暴击伤害提升为25%/40%」；影画 6 原文：「额外能力所需的[异常]角色数量减1」。
+     - 同模块纯函数 `computePhoenixWeaknessCrit`（`src/mechanics/agents/phoenix.ts:122-135`）已按 `effectiveCount = Math.min(3, Math.max(1, teamAnomalyCount + (cinemaLevel >= 6 ? 1 : 0)))` 与 `{ 1: 15, 2: 25, 3: 40 }` 实现；但 `adjustAdditionalAbilityGates`（`phoenix.ts:524-529`）当时只对 `tier3`（`phoenix.weakness_anomaly_crit_dmg_tier3`）加了 `anomalyCount >= 3` 门控，漏掉了 `tier2`（`phoenix.weakness_anomaly_crit_dmg_tier2`，`+10%`）的 `anomalyCount >= 2` 门控。
+     - 结果：当 C0–C5 菲欧妮与**同阵营非异常队友**（坎卜斯黑枝：1481 琉音 / 1471 般岳 / 1451 卢西娅 / 1591 希格莉德 / 1051 伊德海莉）组队且队内仅菲欧妮 1 名异常角色时，`evalAdditionalAbility` 因 `sameFactionAsSelf` 为 `true`，`tier2` 被误开（暴伤算成 25% 而非 15%），且 C6「所需异常角色数减 1」在该队对 `tier2` 完全失效。
+     - 同时 `adjustAdditionalAbilityGates` 用 `team[slot]?.cinemaLevel ?? 0` 按数组下标索引 `slot`（压缩 `team` 数组且菲欧妮不在槽 0 时失配），而 `buildPhoenixResourceResult` 将 `teamAnomalyCount` 写死为 `2`。
+  2. **修复**：
+     - `adjustAdditionalAbilityGates`：本槽命座改为 `team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel ?? 0`；同时对 `tier2` 施加 `gates.get(tier2) === true && anomalyCount >= 2`、对 `tier3` 施加 `gates.get(tier3) === true && anomalyCount >= 3`。
+     - `buildPhoenixCharConfig` / `buildPhoenixResourceResult`：记录并读取真实队伍异常角色数 `phoenixTeamAnomalyCount`（无 `team` 入参的孤立单测回退 `2`），使资源卡 `phoenix_cycle` 与面板同源。
+     - 测试：`src/mechanics/__tests__/phoenix.test.ts` 与 `src/composables/__tests__/additionalGate.test.ts` 新增同阵营非异常队友（`['1641', '1481', '']`）C0（`tier2=false`，暴伤 15%）与 C6（`tier2=true`，暴伤 45%）正反断言；撤掉 `phoenix.ts` 修复即红（`expected 25 to be close to 15`）。
+- **CC-166(a) 收尾清理与状态表同步（`cb5fc209`）**：
+  - 并行会话在 `028b47c9` / `4cfeda10` 落地了 2026-09-30 用户对蕾米埃尔 6 命的裁决，并在 `src/types/catalog.ts:114` 与 `src/data/agentPanelStats.ts:31` 将 `remielleCinema6SpecialVoidflareTriggerMultiplier` 标为「记录错误待删，CC-166」（全仓 0 生产读取）。
+  - 本轮将其从 `public/static/catalog.json`（1581 C6 effects）、`src/data/agentPanelStats.ts`、`src/types/catalog.ts`、`src/mechanics/__tests__/remielle.test.ts` 彻底移除，并同步更新 `public/static/character-constellations.json`（1581 C6 `implemented` / `pending`）、`docs/MECHANICS_IMPLEMENTATION.md`、`docs/mcp-pending-triage-2026-09-30.md` 与 `docs/mcp-r5-spec-impl-reconciliation.md`，消除文档与代码的分裂。
+- **验证**：`vue-tsc -b` 0 错；`check-guards` 25/25 通过；`validate:data` / `validate:specs` 1120/1120 通过；全量 442 个测试文件全部通过，`npm run build` 通过。回退点：`git revert cb5fc209`。
