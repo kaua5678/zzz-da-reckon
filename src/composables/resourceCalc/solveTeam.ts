@@ -414,7 +414,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           stunEffTime,
           toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,
         })
-        // @fact engine:降配档单调闸门 口径: 闸门开启（`interactionScaleMonotone`）时，自动降配档**只降不升**——① 候选 scale 不得高于 `interactionScaleCeiling`（每次采纳后下调到该档，单调不进位）；② 候选集内无可行解时**继续往下降**（取最小档如实上报截断），**不得退回基线全量交互**（旧行为 = 回升，实测 C0 合轴率 0.10 档：退回 scale=1 ⇒ 闪反 3→10、伤害 24.36→20.99M，单调性换向破坏）。目的 = 「合轴降 ⇒ 难度降 + 伤害降；交互升 ⇒ 难度升」各因子同向（用户口径 2026-09-20）| 据 用户@2026-09-20·复核@2026-09-25·复核@2026-09-27 | 验 src/composables/__tests__/difficultyDescent.test.ts | 锚 src/composables/resourceCalc/solveTeam.ts#stageResolveFeasibility | 信 确认
+        // @fact engine:降配档单调闸门 口径: 闸门开启（`interactionScaleMonotone`）时，自动降配档**只降不升**——① 候选 scale 不得高于 `interactionScaleCeiling`（每次采纳后下调到该档，单调不进位）；② 候选集内无可行解时**继续往下降**（取最小档如实上报截断），**不得退回基线全量交互**（旧行为 = 回升，实测 C0 合轴率 0.10 档：退回 scale=1 ⇒ 闪反 3→10、伤害 24.36→20.99M，单调性换向破坏）。目的 = 「合轴降 ⇒ 难度降 + 伤害降；交互升 ⇒ 难度升」各因子同向（用户口径 2026-09-20）| 据 用户@2026-09-20·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/difficultyDescent.test.ts | 锚 src/composables/resourceCalc/solveTeam.ts#stageResolveFeasibility | 信 确认
         // ⟳复核: 闸门默认关闭态（monotone=false）再动、或 `selectDownscaleScale` 的 null 兜底语义再动时，复核「普通计算路径逐位不变」+「闸门开启后合轴率↓ ⇒ 交互档不增」（timeGolden/timeLedgerInvariants + difficultyDescent.test.ts） | 到期 2026-12-31
         /**
          * **降配档单向闸门**（用户口径 2026-09-20）：候选 scale 不得高于 `interactionScaleCeiling`。

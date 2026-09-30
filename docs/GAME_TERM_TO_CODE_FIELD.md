@@ -237,7 +237,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 不要在新落点内联 `atk × 0.3 + hp × 0.1`。展示层三处纯渲染复述（属性面板卡 / 最终面板 /
 调试页）属例外——它们不参与结算，但改动公式时三处要一起改。
 
-- @fact engine:贯穿力/单一事实源 口径: 贯穿力**只许**经 `core/damage.ts#calcPenetrationPower` 求值（= atk×0.3 + hp×0.1 + sheerForceFlat）；任何「读队友/自己贯穿力」的新落点一律 import 它，**不得内联 `atk*0.3 + hp*0.1`**——漏 `sheerForceFlat` 会让潘引壶(1421)[通窍]、卢西娅(1451)[强特·碎暗] 等全队固定贯穿力提升静默失效（CC-D1 实测：琉音「命破队友 400% 贯穿力」行在面板 sheerForceFlat 781.6→0 时 delta=0，修复后琉音四预设 +0.58%~+1.00%）。展示层三处例外（StatPanel/FinalPanel/DebugPage）是纯渲染复述，不参与结算 | 据 CC-D1 裁决@2026-09-25（用户「别人有为什么不算」）+ 实测归因·锚未变@2026-09-27 | 验 src/composables/__tests__/ccD3D1Verdict.test.ts::CC-D1 | 锚 src/core/damage.ts#calcPenetrationPower | 信 确认
+- @fact engine:贯穿力/单一事实源 口径: 贯穿力**只许**经 `core/damage.ts#calcPenetrationPower` 求值（= atk×0.3 + hp×0.1 + sheerForceFlat）；任何「读队友/自己贯穿力」的新落点一律 import 它，**不得内联 `atk*0.3 + hp*0.1`**——漏 `sheerForceFlat` 会让潘引壶(1421)[通窍]、卢西娅(1451)[强特·碎暗] 等全队固定贯穿力提升静默失效（CC-D1 实测：琉音「命破队友 400% 贯穿力」行在面板 sheerForceFlat 781.6→0 时 delta=0，修复后琉音四预设 +0.58%~+1.00%）。展示层三处例外（StatPanel/FinalPanel/DebugPage）是纯渲染复述，不参与结算 | 据 CC-D1 裁决@2026-09-25（用户「别人有为什么不算」）+ 实测归因·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/ccD3D1Verdict.test.ts::CC-D1 | 锚 src/data/penetrationPower.ts#calcPenetrationPower | 信 确认
   ⟳复核: `grep -rn "atk \* 0\.3\|hp \* 0\.1" src --include=*.ts` —— 命中项应只剩结算侧的 `calcPenetrationPower` 调用与展示层三处纯渲染复述；若出现新的内联 `atk*0.3 + hp*0.1`，说明漏项复发 | 到期 2027-03-31
 
 ---

@@ -5,7 +5,7 @@
  * 降配要在「缩交互次数」的若干档里挑**最大可行**档
  * （保留最多交互）。这里只放**纯策略**，试算本身（`runOuterLoop`）由调用方经 `evaluate` 注入。
  *
- * @fact engine:降配搜索/非下闭可行集 口径: 候选 scale 必须**由大到小逐个试**、按**两层字典序**采纳：首个绝对可行（`feasible!==false`：净占用不超预算且截断≤容差）者优先（= 该网格上真装得下的最大档），无则回退首个相对档（`accepted` 但 `feasible===false`：三臂不比基线更差且截断≤1s），无相对档 ⇒ 第三层缓解档（截断最小，CC-143@2026-09-28）⇒ 仍无才 null 保基线；不得改「先探最小档、失败即跳过」的成本闸门——实测可行集**非 scale 下闭**（全库进入枚举 21 队中 7 队「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行），该闸门前提为假、会漏掉更大档 | 据 实测@2026-09-13（受控：同配置只变候选集/顺序；单跑 vs 混跑逐位相同 ⇒ 非状态泄漏）+ 两层字典序 R32 债 2 刀 1@2026-09-18·复核@2026-09-25 | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#selectDownscaleScale | 信 确认
+ * @fact engine:降配搜索/非下闭可行集 口径: 候选 scale 必须**由大到小逐个试**、按**两层字典序**采纳：首个绝对可行（`feasible!==false`：净占用不超预算且截断≤容差）者优先（= 该网格上真装得下的最大档），无则回退首个相对档（`accepted` 但 `feasible===false`：三臂不比基线更差且截断≤1s），无相对档 ⇒ 第三层缓解档（截断最小，CC-143@2026-09-28）⇒ 仍无才 null 保基线；不得改「先探最小档、失败即跳过」的成本闸门——实测可行集**非 scale 下闭**（全库进入枚举 21 队中 7 队「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行），该闸门前提为假、会漏掉更大档 | 据 实测@2026-09-13（受控：同配置只变候选集/顺序；单跑 vs 混跑逐位相同 ⇒ 非状态泄漏）+ 两层字典序 R32 债 2 刀 1@2026-09-18·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#selectDownscaleScale | 信 确认
  */
 
 /** 降配候选档（严格递减）。顺序即语义：由大到小，首个可行即最大可行。 */
@@ -124,7 +124,7 @@ export function downscaleTrialAccepted(args: {
  * `selectDownscaleScale` 先找达成目标的最大档，找不到才退回「比现状好」。
  * 容差与截断硬门槛同源（`TIME_BUDGET_TOLERANCE_SECONDS` = 1s 量化地板，坑 12「不追求精确 0」）。
  */
-// @fact engine:降配搜索/绝对可行优先 口径: 降配选档两层字典序——首个「截断≤容差 且 净占用超预算≤容差」的绝对可行档优先（= 真装进 180s 的最大档），无绝对可行档才退回首个「三臂不比基线更差」的相对档；相对臂是兜底不是终点（yixuan-roxy-lucia 曾靠假截断误拒 0.875 才碰巧选到真可行的 0.625，刀 1 去掉假截断后暴露） | 据 用户裁决@2026-09-18「治根」·R32·复核@2026-09-25 | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#downscaleTrialFeasible | 信 确认
+// @fact engine:降配搜索/绝对可行优先 口径: 降配选档两层字典序——首个「截断≤容差 且 净占用超预算≤容差」的绝对可行档优先（= 真装进 180s 的最大档），无绝对可行档才退回首个「三臂不比基线更差」的相对档；相对臂是兜底不是终点（yixuan-roxy-lucia 曾靠假截断误拒 0.875 才碰巧选到真可行的 0.625，刀 1 去掉假截断后暴露） | 据 用户裁决@2026-09-18「治根」·R32·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/feasibilitySearch.test.ts | 锚 src/composables/resourceCalc/feasibilitySearch.ts#downscaleTrialFeasible | 信 确认
 // ⟳复核: DOWNSCALE_SCALES 网格或 TIME_BUDGET_TOLERANCE_SECONDS 再动时，复核「退回相对档」的队数（R32 实测全库 0 队走兜底）是否仍为 0 | 到期 2026-12-31
 export function downscaleTrialFeasible(args: {
   trialNet: number
