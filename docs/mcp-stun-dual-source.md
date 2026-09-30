@@ -4545,3 +4545,22 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 并行会话在 `028b47c9` / `4cfeda10` 落地了 2026-09-30 用户对蕾米埃尔 6 命的裁决，并在 `src/types/catalog.ts:114` 与 `src/data/agentPanelStats.ts:31` 将 `remielleCinema6SpecialVoidflareTriggerMultiplier` 标为「记录错误待删，CC-166」（全仓 0 生产读取）。
   - 本轮将其从 `public/static/catalog.json`（1581 C6 effects）、`src/data/agentPanelStats.ts`、`src/types/catalog.ts`、`src/mechanics/__tests__/remielle.test.ts` 彻底移除，并同步更新 `public/static/character-constellations.json`（1581 C6 `implemented` / `pending`）、`docs/MECHANICS_IMPLEMENTATION.md`、`docs/mcp-pending-triage-2026-09-30.md` 与 `docs/mcp-r5-spec-impl-reconciliation.md`，消除文档与代码的分裂。
 - **验证**：`vue-tsc -b` 0 错；`check-guards` 25/25 通过；`validate:data` / `validate:specs` 1120/1120 通过；全量 442 个测试文件全部通过，`npm run build` 通过。回退点：`git revert cb5fc209`。
+
+### 24.175 第 351 轮（lane arena-A）：CC-332 蕾米埃尔特殊虚耀载体垂虹动作次数（1/2/2）与耀变次数（3/6/12）分离 + 额外能力三档推导归一 + catalog statDisplay 孤儿项清理（`84016cd3`）
+
+- **CC-332（`84016cd3`，规格-实现对账修复 + 模块内部简化，105 预设零差，单人 `agent:1581:c3..c6` 4 条更新）**：
+  1. **问题定位**：
+     - 原文（`data/raw/nanoka_missing/full/1581.json`）：`普通攻击：垂虹`（`1581007`，`actionTime=1.5s`，`damage=390.8%`，`daze=247.5%`，`decibel=20.625`）写明「当蕾米埃尔身上储存有[虚曜]时，长按发动……发动后会清空身上储存的所有[虚曜]」；影画 1 进场获得 3 个特殊[虚曜]（打 1 次垂虹）；影画 4 消耗完后再获得 1 次最大数量（3 个）特殊[虚曜]（再打 1 次垂虹，共 2 次）；影画 6「发动[普通攻击：垂虹]和[普通攻击：惊鸿]时，会触发 2 次[耀变]效果」。
+     - 2026-09-30 用户裁决（`@fact agent:1581/特殊虚耀垂虹次数`，`remielle.ts:109`）亦明确：「特殊虚耀点数不翻倍，C6 的 12 次耀变 = 2 次垂虹 × (3 豆/次 × 2 倍耀变)；1 命 1 次垂虹 3 耀变 / 4 命 2 次垂虹 6 耀变 / 6 命 2 次垂虹 12 耀变」。
+     - 然而第 193 轮 CC-165 将 `remielleSpecialVoidflareUseCount(cfg)`（供 `extraNecessaryAction` 生成载体招式行 `1581007`「普通攻击：垂虹（特殊虚耀载体）」）直接委托给了返回**耀变次数**（`3 / 6 / 12`）的 `remielleSpecialVoidflareCount(cfg.panel)`，导致 `extraNecessaryAction` 在 C1–C3 扣了 **3 次垂虹（4.5s）**、C4–C5 扣了 **6 次垂虹（9.0s）**、C6 扣了 **12 次垂虹（18.0s！）**，而非 **1 / 2 / 2 次垂虹（1.5s / 3.0s / 3.0s）**。这也是第 341 轮 CC-325 中 `agent:1581` 在 C4/C6 扣掉大量前台平A时间（C6 甚至从 13 发强特掉到 12 发强特）的底层原因。
+  2. **修复**：
+     - `src/mechanics/agents/remielle.ts`：抽出 `remielleSpecialVoidflareRainbowCount(panel)` 计算特殊虚耀载体垂虹施放次数（`firstRound + Math.floor(refill / 3)` = C0 `0` / C1–C3 `1` / C4–C6 `2`）；`remielleSpecialVoidflareUseCount(cfg)`（`extraNecessaryAction` 载体动作次数）改读 `remielleSpecialVoidflareRainbowCount(cfg.panel)`（`1 / 2 / 2`）；`remielleSpecialVoidflareCount(panel)`（`extraAnomalyRows` / `anomalyEventRecords` / `buildAnomalyEvents` 的特殊虚耀耀变事件次数）仍为 `rainbowCount * 3 * luminizeMultiplier`（`3 / 6 / 12`）。
+     - 同文件抽出 `computeRemielleAdditionalState(members, slot, agent)`，归一 `remielleDazeTier`（面板/cfg 阶段）与 `remielleAdditionalState`（store 队友 buff 门控）两处重复的 `specAdditionalAbilityActive + anomalyCount + tier` 推导。
+     - 清理 `public/static/catalog.json` `statRules.statDisplay` 残留的孤儿项 `remielleCinema6SpecialVoidflareTriggerMultiplier`。
+  3. **数值影响（`timeGolden.baseline.json` 4 条，105 预设零变化）**：
+     - `agent:1581:c3`：垂虹必做动作 `3→1` 次（省 3.0s 前台时间），终结技 `2→3`（+2.367s），平A `128.341→128.974s`（+0.633s），必做时间 `51.659→51.026s`，总伤 `1379458→1431015`（+3.737%）；
+     - `agent:1581:c4`：垂虹必做动作 `6→2` 次（省 6.0s 前台时间），平A `123.841→129.841s`（+6.000s），必做时间 `56.159→50.159s`，总伤 `1467267→1478400`（+0.759%）；
+     - `agent:1581:c5`：垂虹必做动作 `6→2` 次（省 6.0s），平A `123.841→129.841s`（+6.000s），必做时间 `56.159→50.159s`，总伤 `1616194→1628521`（+0.763%）；
+     - `agent:1581:c6`：垂虹必做动作 `12→2` 次（省 15.0s 前台时间，与 C4/C5 同为 2 次垂虹），强特恢复 `12→13`（+1.583s），平A `116.424→129.841s`（+13.417s，与 C4/C5 时间账完全一致），必做时间 `63.576→50.159s`，总伤 `1767984→1812445`（+2.515%）。
+     - `cinemaMonotone.test.ts` 全绿（C0→C3→C4→C5→C6 严格单调递增）。
+- **验证**：`vue-tsc -b` 0 错；`check-guards` 25/25 通过；`validate:data` / `validate:specs` 1120/1120 通过；全量 442 个测试文件（4067 passed）+ `npm run build` 通过。回退点：`git revert 84016cd3`。
