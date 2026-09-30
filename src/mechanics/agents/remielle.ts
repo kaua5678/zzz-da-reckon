@@ -102,21 +102,28 @@ export function getRemielleLevelValue(row: SkillMove['rows'][number] | undefined
 export const REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND = 3
 
 /**
- * 特殊虚耀**垂虹次数**（用户裁决 2026-09-30）：特殊虚耀点数不翻倍，C6 的 12 次耀变 = 2 次垂虹 × 6 耀变/次。
+ * 特殊虚耀载体「普通攻击：垂虹」施放次数（用户裁决 2026-09-30）：每次垂虹清空全部 3 个特殊虚曜点（1 轮 = 3 个豆 = 打 1 次垂虹）。
  * - `remielleCinema1SpecialVoidflareCount` = **轮次**（catalog buff 描述「特殊虚耀触发轮次」，值 1 = 打 1 次垂虹）；
  * - `remielleCinema4SpecialVoidflareRefillCount` = **个数**（「补充3个特殊虚曜点」，值 3 = 1 轮 = 再打 1 次垂虹）；
- * - 垂虹次数 = 1 命轮次 + 4 命补充轮次 = 1 + 1 = 2（C4 后）。
+ * - 垂虹次数 = 1 命轮次 + 4 命补充轮次 = 1（C1~C3）/ 2（C4~C6）。
+ */
+export function remielleSpecialVoidflareRainbowCount(panel: PanelValues): number {
+  const firstRound = panel.remielleCinema1SpecialVoidflareCount ?? 0
+  if (firstRound <= 0) return 0
+  const refill = Math.max(0, panel.remielleCinema4SpecialVoidflareRefillCount ?? 0)
+  return firstRound + Math.floor(refill / REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND)
+}
+
+/**
+ * 特殊虚耀**耀变次数**（用户裁决 2026-09-30）：特殊虚耀点数不翻倍，C6 的 12 次耀变 = 2 次垂虹 × 6 耀变/次。
  * @fact agent:1581/特殊虚耀垂虹次数 口径: 特殊虚耀点数不翻倍，C6 的 12 次耀变 = 2 次垂虹 × (3 豆/次 × 2 倍耀变)；1 命 1 次垂虹 3 耀变 / 4 命 2 次垂虹 6 耀变 / 6 命 2 次垂虹 12 耀变；6命耀变翻倍字段 = remielleCinema6FleetingGraceVoidflareTriggerMultiplier（用户裁决 2026-09-30：①=③同一效果，LuminizeTriggerMultiplier 为记录错误已删） | 据 用户裁决@2026-09-30 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/mechanics/agents/remielle.ts#remielleSpecialVoidflareCount | 信 确认
  * ⟳复核: 若官方实装后特殊虚耀机制变更（如点数真的翻倍、或垂虹次数与耀变次数解耦）→ 重核本口径 | 到期 2026-12-31
  */
 export function remielleSpecialVoidflareCount(panel: PanelValues): number {
-  const firstRound = panel.remielleCinema1SpecialVoidflareCount ?? 0
-  if (firstRound <= 0) return 0
-  const refill = Math.max(0, panel.remielleCinema4SpecialVoidflareRefillCount ?? 0)
-  // 垂虹次数 = 1 命轮次 + 4 命补充轮次（每轮 3 豆打 1 次垂虹）
-  const rainbowCount = firstRound + Math.floor(refill / REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND)
+  const rainbowCount = remielleSpecialVoidflareRainbowCount(panel)
+  if (rainbowCount <= 0) return 0
   // 每次垂虹耀变数 = 3 豆 × (1 + 6 命耀变翻倍)——①=③同一效果，用 FleetingGrace 字段（用户裁决 2026-09-30）
-  const luminizeMultiplier = 1 + Math.max(0, panel.remielleCinema6FleetingGraceVoidflareTriggerMultiplier ?? 0)
+  const luminizeMultiplier = remielleFleetingGraceMultiplier(panel)
   return rainbowCount * REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND * luminizeMultiplier
 }
 
@@ -205,10 +212,19 @@ export function isRemielleAgent(agent: { id?: string } | null | undefined): bool
  * `buildMechanicTeamMembers` + `agent.faction`，本模块从钩子入参拿同一份 `team` 与 `agent`）。
  * 空槽（`agent` 为 null）不参与计数，也不与本人同槽比较 —— 与原实现的 `member.slot === slot` 等价。
  */
+function computeRemielleAdditionalState(
+  members: ReadonlyArray<{ slot: number; agentId: string; agent: Agent | null }>,
+  slot: number,
+  agent: Agent | null | undefined,
+): { active: boolean; anomalyCount: number; tier: number } {
+  const active = specAdditionalAbilityActive(members, slot, agent) // CC-306：spec 1581 `additionalAbility`
+  const anomalyCount = members.filter(member => member.agent?.specialty === 'anomaly').length
+  const tier = active ? Math.max(1, Math.min(3, anomalyCount)) : 0
+  return { active, anomalyCount, tier }
+}
+
 function remielleDazeTier(slot: number, agent: Agent, team: ReadonlyTeam): number {
-  const active = specAdditionalAbilityActive(team, slot, agent) // CC-306：spec 1581 `additionalAbility`
-  const anomalyCount = team.filter(member => member.agent?.specialty === 'anomaly').length
-  return active ? Math.max(1, Math.min(3, anomalyCount)) : 0
+  return computeRemielleAdditionalState(team, slot, agent).tier
 }
 
 /** 额外能力三档 → 失衡提升%（0 / 6 / 12 / 35）。 */
@@ -405,10 +421,7 @@ export function remielleAdditionalState(team: ReadonlyArray<Agent>): { active: b
   if (selfIdx < 0) return { active: false, anomalyCount: 0, tier: 0 }
   // CC-306：同一 spec 求值器（压缩 Agent 列表按下标当槽位；条件只看「本人以外」⇒ 下标 ≠ 真实槽位无影响）
   const members = team.map((agent, i) => ({ slot: i, agentId: agent?.id ?? '', agent: agent ?? null }))
-  const active = specAdditionalAbilityActive(members, selfIdx, team[selfIdx])
-  const anomalyCount = team.filter(agent => agent?.specialty === 'anomaly').length
-  const tier = active ? Math.max(1, Math.min(3, anomalyCount)) : 0
-  return { active, anomalyCount, tier }
+  return computeRemielleAdditionalState(members, selfIdx, team[selfIdx])
 }
 
 /** CC-64b：受档位门控的 buff id → 附加条件（原 store resolveSpecialTeammateBuffEnabled 的 5 个分支） */
@@ -458,15 +471,15 @@ export const remielleMechanic: AgentMechanicModule = {
   },
   // CC-26：特殊虚耀异常事件（原 core/resource/rowBuild.ts#buildAnomalyEventExecutions 内联，逐字搬迁）
   buildAnomalyEvents: ({ cfg, events }) => {
-    const remielleRainbowEndCount = remielleSpecialVoidflareUseCount(cfg)
-    if (remielleRainbowEndCount > 0 && cfg.remielleRainbowEndMoveId) {
+    const specialCount = remielleSpecialVoidflareCount(cfg.panel)
+    if (specialCount > 0 && cfg.remielleRainbowEndMoveId) {
       events.push({
         eventId: 'remielle_special_voidflare_event',
         eventName: '特殊虚耀',
         eventType: 'special_voidflare',
         carrierMoveId: cfg.remielleRainbowEndMoveId,
         carrierMoveName: '普通攻击：垂虹',
-        count: remielleRainbowEndCount,
+        count: specialCount,
         formula: 'count = (remielleCinema1SpecialVoidflareCount + remielleCinema4SpecialVoidflareRefillCount/3) × 3 × (1 + remielleCinema6FleetingGraceVoidflareTriggerMultiplier) —— 垂虹次数 × 3 豆 × 6命耀变翻倍',
         fields: [
           'remielleCinema1SpecialVoidflareCount',
@@ -644,10 +657,9 @@ export const remielleMechanic: AgentMechanicModule = {
   },
 }
 
-/** 特殊虚耀使用次数（CC-26 自 core/resource/rowAccounting.ts 迁入，公式逐字保留） */
+/** 特殊虚耀载体「普通攻击：垂虹」施放次数（CC-26 自 core/resource/rowAccounting.ts 迁入；CC-332：每次垂虹清空 3 豆，垂虹次数 = 1/2/2，与耀变次数 3/6/12 分离） */
 export function remielleSpecialVoidflareUseCount(cfg: CharacterOperationConfig): number {
-  // CC-165：与 remielleSpecialVoidflareCount 原为逐字相同的两份公式，收为一处
-  return remielleSpecialVoidflareCount(cfg.panel)
+  return remielleSpecialVoidflareRainbowCount(cfg.panel)
 }
 
 /**

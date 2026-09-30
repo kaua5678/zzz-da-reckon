@@ -3,7 +3,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { buildAnomalyVirtualPanel, computePanelPhases, computeEntrySnapshotPanel, findMoveById } from '@/composables/resourceCalc/helpers'
 import { emptyPanel } from '@/core/panel'
-import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts, remielleFleetingGraceMultiplier, remielleSpecialVoidflareCount } from '@/mechanics/agents/remielle'
+import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts, remielleFleetingGraceMultiplier, remielleSpecialVoidflareCount, remielleSpecialVoidflareRainbowCount, remielleSpecialVoidflareUseCount } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 
@@ -262,14 +262,31 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     })
   })
 
-  it('CC-165/CC-166：特殊虚耀耀变次数 1 命 3 / 4 命 6 / 6 命 12（垂虹次数 × 3 豆 × 6命耀变翻倍），惊鸿 0 命 ×1 / 6 命 ×2', () => {
+  it('CC-165/CC-166/CC-332：特殊虚耀垂虹施放次数 1/2/2 vs 耀变次数 3/6/12，惊鸿 0 命 ×1 / 6 命 ×2', () => {
     const e = emptyPanel()
+    expect(remielleSpecialVoidflareRainbowCount(e)).toBe(0)
     expect(remielleSpecialVoidflareCount(e)).toBe(0)
     const c1 = { ...e, remielleCinema1SpecialVoidflareCount: 1 }
     const c4 = { ...c1, remielleCinema4SpecialVoidflareRefillCount: 3 }
     // C6：2 次垂虹 × 3 豆 × 2 倍耀变 = 12（①=③同一效果，用 FleetingGrace 字段；LuminizeTriggerMultiplier 为记录错误已删）
     const c6 = { ...c4, remielleCinema6FleetingGraceVoidflareTriggerMultiplier: 1 }
+    expect([c1, c4, c6].map(remielleSpecialVoidflareRainbowCount)).toEqual([1, 2, 2])
     expect([c1, c4, c6].map(remielleSpecialVoidflareCount)).toEqual([3, 6, 12])
+    // CC-332：extraNecessaryAction（普通攻击：垂虹载体动作）施放次数 = 垂虹轮次 1/2/2，buildAnomalyEvents（特殊虚耀事件）次数 = 耀变次数 3/6/12
+    const cfgOf = (p: typeof e) => ({
+      panel: p,
+      remielleRainbowEndMoveId: '1581007',
+      remielleRainbowEndActionTime: 1.5,
+      remielleRainbowEndComboAlignRatio: 0,
+      remielleRainbowEndDecibelRecovery: 20.625,
+    } as never)
+    expect([c1, c4, c6].map(p => remielleSpecialVoidflareUseCount(cfgOf(p)))).toEqual([1, 2, 2])
+    expect([c1, c4, c6].map(p => (remielleMechanic.extraNecessaryAction!(cfgOf(p)) as { count?: number } | null)?.count)).toEqual([1, 2, 2])
+    expect([c1, c4, c6].map(p => {
+      const events: Array<{ count: number }> = []
+      remielleMechanic.buildAnomalyEvents!({ cfg: cfgOf(p), state: {} as never, events: events as never, totalTime: 180 })
+      return events[0]?.count ?? 0
+    })).toEqual([3, 6, 12])
     expect(remielleFleetingGraceMultiplier(e)).toBe(1)
     expect(remielleFleetingGraceMultiplier(c6)).toBe(2)
     // 6 命 FleetingGraceTriggerMultiplier 是加成语义：空面板初值必须为 0（否则与 1 + x 叠成双计）
