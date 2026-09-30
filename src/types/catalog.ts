@@ -111,9 +111,8 @@ export interface PanelValues {
   remielleCinema1SpecialVoidflareDamage: number // 一命开局特殊虚耀伤害占位/计算结果
   remielleFlowerFeatherDanceDecibelPerUse: number // 花羽轮舞每次额外喧响
   remielleCinema4SpecialVoidflareRefillCount: number // 四命特殊虚耀一次性再装填数量
-  remielleCinema6LuminizeTriggerMultiplier: number // 六命异放/异常弹触发次数倍率
-  remielleCinema6SpecialVoidflareTriggerMultiplier: number // 六命特殊虚耀触发次数倍率
-  remielleCinema6FleetingGraceVoidflareTriggerMultiplier: number // 六命「普通攻击：惊鸿」关联虚耀触发次数倍率
+  remielleCinema6SpecialVoidflareTriggerMultiplier: number // 六命特殊虚耀触发次数倍率（记录错误待删，CC-166）
+  remielleCinema6FleetingGraceVoidflareTriggerMultiplier: number // 六命「普通攻击：垂虹/惊鸿」耀变触发次数倍率（①=③同一效果 用户裁决 2026-09-30）
   remielleCinema6SpecialVoidflareCount: number // 六命普攻4段获得特殊虚耀数量
   remielleCinema6SpecialVoidflareDamageRatio: number // 六命特殊虚耀相对一命特殊虚耀伤害比例
   skillLevelBonus: number // 技能等级提升（3命+2，5命+4，通用字段）

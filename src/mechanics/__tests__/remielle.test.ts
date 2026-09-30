@@ -267,13 +267,13 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     expect(remielleSpecialVoidflareCount(e)).toBe(0)
     const c1 = { ...e, remielleCinema1SpecialVoidflareCount: 1 }
     const c4 = { ...c1, remielleCinema4SpecialVoidflareRefillCount: 3 }
-    // C6：2 次垂虹 × 3 豆 × 2 倍耀变 = 12（不是点数 6 × 2 = 12 的记录错误口径）
-    const c6 = { ...c4, remielleCinema6LuminizeTriggerMultiplier: 1, remielleCinema6FleetingGraceVoidflareTriggerMultiplier: 1 }
+    // C6：2 次垂虹 × 3 豆 × 2 倍耀变 = 12（①=③同一效果，用 FleetingGrace 字段；LuminizeTriggerMultiplier 为记录错误已删）
+    const c6 = { ...c4, remielleCinema6FleetingGraceVoidflareTriggerMultiplier: 1 }
     expect([c1, c4, c6].map(remielleSpecialVoidflareCount)).toEqual([3, 6, 12])
     expect(remielleFleetingGraceMultiplier(e)).toBe(1)
     expect(remielleFleetingGraceMultiplier(c6)).toBe(2)
-    // 6 命三个 TriggerMultiplier 是加成语义：空面板初值必须为 0（否则与 1 + x 叠成双计）
-    expect([e.remielleCinema6LuminizeTriggerMultiplier, e.remielleCinema6SpecialVoidflareTriggerMultiplier, e.remielleCinema6FleetingGraceVoidflareTriggerMultiplier]).toEqual([0, 0, 0])
+    // 6 命两个 TriggerMultiplier 是加成语义：空面板初值必须为 0（否则与 1 + x 叠成双计）
+    expect([e.remielleCinema6SpecialVoidflareTriggerMultiplier, e.remielleCinema6FleetingGraceVoidflareTriggerMultiplier]).toEqual([0, 0])
   })
 
   it('无 C1 → 不含特殊虚耀行（普通耀变行仍在）', () => {
