@@ -60,7 +60,7 @@ export const SHARPNESS_COST_PER_EX = 60
 /**
  * 终结技：千锤百炼 发动时回复 10 点锐能。
  *
- * @fact agent:1611/锐能·终结技回复 口径: 终结技「血华誓·千锤百炼」发动时 +10 锐能（与进场 60 同为锐能来源；单次上限不参与总量口径，用户 2026-09 裁决） | 据 用户@2026-09-11·复核@2026-09-25 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#SHARPNESS_ULTIMATE_GAIN | 信 确认
+ * @fact agent:1611/锐能·终结技回复 口径: 终结技「血华誓·千锤百炼」发动时 +10 锐能（与进场 60 同为锐能来源；单次上限不参与总量口径，用户 2026-09 裁决） | 据 用户@2026-09-11·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#SHARPNESS_ULTIMATE_GAIN | 信 确认
  *
  * 数据侧核实（2026-09-11）：nanoka 全表 `sp_recovery` / `sp_recovery_growth` 恒 0（含终结技 1611021），
  * 锐能回复只存在于原文描述文本 → 口径锚 = `data/raw/nanoka_missing/full/1611.json`
@@ -102,7 +102,7 @@ export const GASH_PER_LAYER = 600
  *   ⚠ 本条**纠正**原债务记的「极端配装（积累远快于消耗节奏）下偏乐观」：误差**不随积累速率 `L` 单调放大**，
  *     而是被 `Ds` 与 `cap` 夹住（`L` 再大，幅度也 ≤ `Ds − cap`）——原表述把两个因子说成了一个。
  *
- * @fact agent:1611/残痕时序 近似: 「同时存量≤3层」是时序约束，总量口径下 `consumed = min(L, Ds)` 是**所有自洽读法的共同上界且紧**（10 400 599 个交错穷举零越界；细粒度交错可达该界，而平A项按定义即「秒均×时间」= 连续）；天花板 = 病态「先攒满再消耗」读法取 `min(L,Ds,cap)`，幅度 `max(0, min(L,Ds)−cap)`，cap 咬合充要条件 `L>3 且 Ds>3`（实测默认夹具 ≤1 层、滑块推满 ≤53 层） | 据 nanoka 3.2 raw passive.level.1611501.desc[0]@2026-09-20·外部 6 语言×4 版本复核零差异@2026-09-20·R54 穷举 10400599 交错@2026-09-20·复核@2026-09-25 | 验 src/mechanics/__tests__/claretGashTiming.test.ts | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 高
+ * @fact agent:1611/残痕时序 近似: 「同时存量≤3层」是时序约束，总量口径下 `consumed = min(L, Ds)` 是**所有自洽读法的共同上界且紧**（10 400 599 个交错穷举零越界；细粒度交错可达该界，而平A项按定义即「秒均×时间」= 连续）；天花板 = 病态「先攒满再消耗」读法取 `min(L,Ds,cap)`，幅度 `max(0, min(L,Ds)−cap)`，cap 咬合充要条件 `L>3 且 Ds>3`（实测默认夹具 ≤1 层、滑块推满 ≤53 层） | 据 nanoka 3.2 raw passive.level.1611501.desc[0]@2026-09-20·外部 6 语言×4 版本复核零差异@2026-09-20·R54 穷举 10400599 交错@2026-09-20·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretGashTiming.test.ts | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 高
  * ⟳复核: 官方若给出 [残痕] 的时长/衰减子句，或引擎获得逐事件顺序通道（可落真队列）时，替换本上界并复核 cap 咬合域 | 到期 2027-03-31
  */
 export const GASH_MAX_STACKS = 3
@@ -123,7 +123,7 @@ export const CORE_CRIT_RATE = 30
  *   且电抗数值 16 是过期值 ⇒ 后果 = **C1 玩家少拿、C2 玩家多拿**（R54 外部复核发现，刻意未修；
  *   R55 单独立项修复，避免与 R54 的「时序口径」混批致 delta 无法归因 —— 规则 17②）。
  *
- * @fact agent:1611/影画分档 口径: 影画1（淋漓古志）= 锐暴命中残痕积蓄效率 +20% 且 [毁伤] 伤害倍率 → 130%；影画2（薪火荣冠）= 猩红铭刻最大持续 +2s 且 [猩红铭刻]/[连携技]/[终结技]/[反制支援]/[支援突击] 期间攻击命中无视 **18%** 电属性伤害抗性 | 据 nanoka raw talent.1.desc + talent.2.desc@2026-09-20（外部 6 语言 × 4 版本 + gachabase 四方一致复核）·复核@2026-09-25 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#C2_RES_IGNORE | 信 确认
+ * @fact agent:1611/影画分档 口径: 影画1（淋漓古志）= 锐暴命中残痕积蓄效率 +20% 且 [毁伤] 伤害倍率 → 130%；影画2（薪火荣冠）= 猩红铭刻最大持续 +2s 且 [猩红铭刻]/[连携技]/[终结技]/[反制支援]/[支援突击] 期间攻击命中无视 **18%** 电属性伤害抗性 | 据 nanoka raw talent.1.desc + talent.2.desc@2026-09-20（外部 6 语言 × 4 版本 + gachabase 四方一致复核）·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#C2_RES_IGNORE | 信 确认
  * ⟳复核: 若官方改版重排影画顺序或改电抗数值（现 18%），改本组常量并同步 character-constellations.json | 到期 2027-03-31
  */
 export const C1_MAIM_MULT = 1.3
@@ -137,7 +137,7 @@ export const RESIDUAL_EDGE_SHARP_CRIT_DMG = 25
 /**
  * 核心被动·初始转化：每 1% **初始**暴击伤害 → 初始暴击率 +0.35%。
  *
- * @fact agent:1611/初始暴伤转暴击 口径: 每1%初始暴击伤害→初始暴击率+0.35%（读局外面板 critDmg，局内暴伤拐如珂蕾妲潜能不参与转化）；锋御模板基础暴伤=50（与其他 61 名角色同模板），初始暴伤 = 基础 50 + 副词条/主词条/驱动盘 | 据 nanoka live3.2原文@2026-09-12（stats.crit_damage=5000→50%；**旧写「锋御模板基础暴伤=0」是错的**——它把 8 月过期快照的 critDmg=0 当成模板口径，已订正 catalog 1611 critDmg 0→50、critRate 19.4→33.8）·复核@2026-09-25 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#INITIAL_CRIT_DMG_TO_CRIT_RATE | 信 确认
+ * @fact agent:1611/初始暴伤转暴击 口径: 每1%初始暴击伤害→初始暴击率+0.35%（读局外面板 critDmg，局内暴伤拐如珂蕾妲潜能不参与转化；初始暴伤按整 1% 计，`floor(源值+1e-9)`，CC-135 §2.18）；锋御模板基础暴伤=50（与其他 61 名角色同模板），初始暴伤 = 基础 50 + 副词条/主词条/驱动盘 | 据 nanoka live3.2原文@2026-09-12（stats.crit_damage=5000→50%；**旧写「锋御模板基础暴伤=0」是错的**——它把 8 月过期快照的 critDmg=0 当成模板口径，已订正 catalog 1611 critDmg 0→50、critRate 19.4→33.8）·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#INITIAL_CRIT_DMG_TO_CRIT_RATE | 信 确认
  */
 export const INITIAL_CRIT_DMG_TO_CRIT_RATE = 0.35
 /** 葬血强袭每施放至多 3 次毁伤（连续 3 段横斩，各命中触发） */
@@ -145,7 +145,7 @@ export const BURIAL_MAIM_PER_CAST = 3
 /**
  * 猩红铭刻平A基准段：锻星#3（表 id 1611007，531.88%/s、gash 120/s）。
  *
- * @fact agent:1611/平A双基准 口径: 常态平A只能用[血锻四式]（基准=血锻#3 345.21%/s·gash 100/s），[猩红铭刻]下用[锻星]/[伏钺]（基准=锻星#3 531.88%/s·gash 120/s）；两态秒均倍率与残痕积累都不同，引擎单基准段必须按 `claret.inscriptionBasicTimeShare` 加权 | 据 用户@2026-09-11（gachabase 列 gash_buildup 佐证：锻星 120% vs 血锻 100%）·复核@2026-09-25 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#INSCRIPTION_BENCHMARK_MOVE_ID | 信 确认
+ * @fact agent:1611/平A双基准 口径: 常态平A只能用[血锻四式]（基准=血锻#3 345.21%/s·gash 100/s），[猩红铭刻]下用[锻星]/[伏钺]（基准=锻星#3 531.88%/s·gash 120/s）；两态秒均倍率与残痕积累都不同，引擎单基准段必须按 `claret.inscriptionBasicTimeShare` 加权 | 据 用户@2026-09-11（gachabase 列 gash_buildup 佐证：锻星 120% vs 血锻 100%）·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#INSCRIPTION_BENCHMARK_MOVE_ID | 信 确认
  */
 export const INSCRIPTION_BENCHMARK_MOVE_ID = '1611007'
 /** 默认铭刻平A时间占比（%）：**0 = 由锐能账本推导**（默认口径，用户 2026-09-11：时间由进次数与锐能账本反推）；1–100 = 手动覆盖。 */
@@ -161,7 +161,7 @@ export const DEFAULT_INSCRIPTION_WINDOW_SECONDS = 16
  *   （`DEFAULT_INSCRIPTION_WINDOW_SECONDS` 直接进两态时间解，见 `deriveClaretTwoStateTime`）。
  *   R55 实测 delta：建模后 1611 c3~c6 伤害 1.724% → 3.269~3.514%（窗口变长 ⇒ 铭刻态时间份额上升）。
  *
- * @fact agent:1611/铭刻窗口·影画2 口径: 影画2 使猩红铭刻单窗基础时长 16s → 18s（+2秒）；该窗口直接进两态时间解（铭刻总时间 = 轮数×窗口 + 连携/停表延长秒） | 据 nanoka raw talent.2.desc@2026-09-20（外部 6 语言 × 4 版本复核一致）·复核@2026-09-25 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#C2_INSCRIPTION_WINDOW_BONUS_SECONDS | 信 确认
+ * @fact agent:1611/铭刻窗口·影画2 口径: 影画2 使猩红铭刻单窗基础时长 16s → 18s（+2秒）；该窗口直接进两态时间解（铭刻总时间 = 轮数×窗口 + 连携/停表延长秒） | 据 nanoka raw talent.2.desc@2026-09-20（外部 6 语言 × 4 版本复核一致）·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#C2_INSCRIPTION_WINDOW_BONUS_SECONDS | 信 确认
  * ⟳复核: 官方若调整影画2 的窗口延长量（现 +2s），改本常量并重跑 timeGolden | 到期 2027-03-31
  */
 export const C2_INSCRIPTION_WINDOW_BONUS_SECONDS = 2
@@ -276,7 +276,7 @@ export function computeClaretSharpResource(input: {
   // 直接送的层**不进**积蓄效率倍率（原文是「添加1层」，不是「积累残痕值」；
   // 表列 gash_buildup（本体 446 + 琢形 134）按全角色同口径仍不计——只认这一条明写的赠送）。
   //
-  // @fact agent:1611/琢形送残痕 口径: 反制支援整组化解一组控制技 = 琢形「重击命中直接为目标添加1层[残痕]」→ 每组 +600 点**且不吃积蓄效率倍率**（送层不是积累），仍受 3 层上限；表列 gash_buildup（1611028=446 / 1611030=134）按「非平A非E 不计」的全局同口径仍不计入 | 据 用户@2026-09-12（「残痕建模一下，他的确是送了」）+ nanoka full/1611.json 琢形条目·复核@2026-09-25 | 验 src/mechanics/__tests__/claretSmoke.test.ts::反制支援送残痕 | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 确认
+  // @fact agent:1611/琢形送残痕 口径: 反制支援整组化解一组控制技 = 琢形「重击命中直接为目标添加1层[残痕]」→ 每组 +600 点**且不吃积蓄效率倍率**（送层不是积累），仍受 3 层上限；表列 gash_buildup（1611028=446 / 1611030=134）按「非平A非E 不计」的全局同口径仍不计入 | 据 用户@2026-09-12（「残痕建模一下，他的确是送了」）+ nanoka full/1611.json 琢形条目·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts::反制支援送残痕 | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 确认
   const counterAssistGashStacks = Math.max(0, Math.floor(input.counterAssistCount ?? 0))
   const gashValuePct = baseGash * buildupMultiplier + counterAssistGashStacks * GASH_PER_LAYER
   // 整局可用层数**不设 3 钳制**：3 层是敌人身上的同时存量上限（见 GASH_MAX_STACKS 注释），
@@ -591,7 +591,7 @@ function deriveClaretTwoStateTime(input: {
 /**
  * 全局总延长秒：连携 ×2s/次 + **非强化招式不占强化时间**的白送时长。
  *
- * @fact agent:1611/铭刻窗口·停表 口径: 停表覆盖率 100%——铭刻时间**只被吃强化的招式（血锻/锻星/E）消耗**；连携技/终结技**不吃强化**（伤害不随态变化，所以也不消耗强化时间），其动作时长全额等价于延长窗口；连携另按 raw 送 +2s/次 | 据 用户@2026-09-11「连携大招不分强化态，这些招式不掉时间，是因为它没有消耗强化时间进行招式强化」·复核@2026-09-25 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#computeInscriptionExtension | 信 确认
+ * @fact agent:1611/铭刻窗口·停表 口径: 停表覆盖率 100%——铭刻时间**只被吃强化的招式（血锻/锻星/E）消耗**；连携技/终结技**不吃强化**（伤害不随态变化，所以也不消耗强化时间），其动作时长全额等价于延长窗口；连携另按 raw 送 +2s/次 | 据 用户@2026-09-11「连携大招不分强化态，这些招式不掉时间，是因为它没有消耗强化时间进行招式强化」·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#computeInscriptionExtension | 信 确认
  *
  * 这条与 raw 描述一致（「发动期间，[猩红铭刻]持续时间不再减少」），但**理由更本质**：
  * 不是「停表」这个动作，而是「这些招式本就不申请强化」。两处口径同时成立，停表覆盖率固定 100%；
