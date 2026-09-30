@@ -59,7 +59,7 @@ export const TIME_BUDGET_TOLERANCE_SECONDS = 1
 // `cycleProbeKey`（内层环检测预键）已随 `runInnerLoop` 迁 src/core/resource/innerLoop.ts（CC-3）。
 // 下列 `@fact` 的**实现已迁** `src/core/resource/innerLoop.ts`，声明按既有惯例留在 re-export 壳处
 // （同 CC-1 `moveLookup.ts` 的处理）；**锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:判稳含平A时间`）不变。
-// @fact engine:判稳含平A时间 口径: 内环次数收敛判稳 = 强特/终结次数 + basicAttackTime 严格相等（bat 是预算与次数的确定性函数；折叠边界 bat 跳变而次数暂不动时旧判稳提前 clean，停点带「驱动快照 ≠ 终局态行重放」伪不动点——实测雅 C2 快照 585.8 vs 重放 307.5、命座伤害 C4<C2 非单调） | 据 实测@2026-09-09 能量行级Σ专项·复核@2026-09-25 | 验 src/mechanics/__tests__/miyabiCinema.test.ts | 锚 src/core/resource/innerLoop.ts#runInnerLoop | 信 确认
+// @fact engine:判稳含平A时间 口径: 内环次数收敛判稳 = 强特/终结次数 + basicAttackTime 严格相等（bat 是预算与次数的确定性函数；折叠边界 bat 跳变而次数暂不动时旧判稳提前 clean，停点带「驱动快照 ≠ 终局态行重放」伪不动点——实测雅 C2 快照 585.8 vs 重放 307.5、命座伤害 C4<C2 非单调） | 据 实测@2026-09-09 能量行级Σ专项·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/miyabiCinema.test.ts | 锚 src/core/resource/innerLoop.ts#runInnerLoop | 信 确认
 
 /**
  * 欠打回填的启动门槛（秒）：平A权重队的剩余自由时间必须按权重全部分配（用户口径 2026-09-08），
@@ -69,7 +69,7 @@ export const TIME_BUDGET_TOLERANCE_SECONDS = 1
  * 复核：1s 门槛下 ratchet 绝对不变量（stun>0/outerExit≠maxIter）/runArchiveDeploy（116k 样本）/
  * allAgentsSweep（C6>C0 等不变量）/yidhariInteractionGrid 全绿，旧盆不复现（实测数字见
  * underfillRefund.test.ts 与 docs 坑19① 否决记录）。
- * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**无排除队**——1591 一族 2026-09-10 解除（该族试探现进入即被 fits 门拒，开关零差异），1051/1531 已随热启动规范种子修复放回）；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08·复核@2026-09-10（能量行级 Σ 后全链零差异）·复核@2026-09-25·锚未变@2026-09-27 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
+ * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**无排除队**——1591 一族 2026-09-10 解除（该族试探现进入即被 fits 门拒，开关零差异），1051/1531 已随热启动规范种子修复放回）；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08·复核@2026-09-10（能量行级 Σ 后全链零差异）·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
  */
 export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
 
@@ -84,7 +84,7 @@ export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
  * 取 32 = 实测需求（≈25）留一倍余量；代价只落在本来就要跑满的队（127 预设里 8 轮顶格 6 队，
  * 其余 121 队 ≤5 轮），且停滞判据仍在，真发散队照旧 3 轮停。
  *
- * @fact engine:折叠环上限 口径: 折叠环轮数上限缺省 32（`TIME_FOLD_MAX_PASSES`，`maxTimeIterations` 可覆写）；判据 `maxExcess ≤ 1e-3` **不放宽**——8 轮上限曾是 tbConv=false 的唯一来源（3 队尾巴全部在几何收敛，21 轮内可达标）。实测 3→0 队、留白 189.3s/超预算 2.2s 不变、棘轮零变差、golden 15 条 delta/5 队（billy 逐槽 nec ±0.35s 守恒再分配 + 1591 系 ≤3ms） | 据 用户裁决@2026-09-10「重排就重排，以长期利益为主」·复核@2026-09-25·锚未变@2026-09-27 | 验 src/composables/__tests__/convergenceProbe.test.ts + src/composables/__tests__/timeGolden.test.ts | 锚 src/core/resource.ts#TIME_FOLD_MAX_PASSES | 信 确认
+ * @fact engine:折叠环上限 口径: 折叠环轮数上限缺省 32（`TIME_FOLD_MAX_PASSES`，`maxTimeIterations` 可覆写）；判据 `maxExcess ≤ 1e-3` **不放宽**——8 轮上限曾是 tbConv=false 的唯一来源（3 队尾巴全部在几何收敛，21 轮内可达标）。实测 3→0 队、留白 189.3s/超预算 2.2s 不变、棘轮零变差、golden 15 条 delta/5 队（billy 逐槽 nec ±0.35s 守恒再分配 + 1591 系 ≤3ms） | 据 用户裁决@2026-09-10「重排就重排，以长期利益为主」·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/convergenceProbe.test.ts + src/composables/__tests__/timeGolden.test.ts | 锚 src/core/resource.ts#TIME_FOLD_MAX_PASSES | 信 确认
  */
 export const TIME_FOLD_MAX_PASSES = 32
 
@@ -323,7 +323,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   //       进度（2026-09-19 R37-J2，批 2-1）：上方 rowTimeLimit 重折环已落地「装不下就重收敛」的外环形态（只接受 Σcut 严格变小，
   //       ≤3 轮）；刀 1 后全库仅 1431 簇两队有初装截断，其余 103 队默认路径逐位 0 delta。**未销号**：结构性溢出队重折后
   //       仍可能残留截断（如实上报），「直到截断为 0」要等实数化专项 + 用户终验。
-  // @fact engine:资源账本/截断 口径: 资源池能量/喧响收入按 feasibleRows 计（cfg.rowTimeLimit 缺省 = 未截断行；初装截断 > 容差时重折环按每槽装配 kept 注入、从 S2 入口重跑到装配，Σcut **不增**即接受（相等也接受——那正是「账本按真装得下的行计」的不动点态，接受后不动点即停机；实现 `src/core/resource/truncationRefold.ts`）、≤3 轮、拒绝即整体回滚、返回前删键），装配期截断只削招式行（伤害/失衡随之降）；残留截断如实上报（overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 · 债2批2-1@2026-09-19 R37·复核@2026-09-25·实测@2026-09-27（接受判据按 e4d970a「严格变小→不增」与 truncationRefold.ts 现状改写） | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
+  // @fact engine:资源账本/截断 口径: 资源池能量/喧响收入按 feasibleRows 计（cfg.rowTimeLimit 缺省 = 未截断行；初装截断 > 容差时重折环按每槽装配 kept 注入、从 S2 入口重跑到装配，Σcut **不增**即接受（相等也接受——那正是「账本按真装得下的行计」的不动点态，接受后不动点即停机；实现 `src/core/resource/truncationRefold.ts`）、≤3 轮、拒绝即整体回滚、返回前删键），装配期截断只削招式行（伤害/失衡随之降）；残留截断如实上报（overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 · 债2批2-1@2026-09-19 R37·复核@2026-09-25·实测@2026-09-27（接受判据按 e4d970a「严格变小→不增」与 truncationRefold.ts 现状改写）·复核@2026-09-30 | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
   // ⟳复核: 重折环上限 / 接受判据 / kept 口径再动时，复核「默认路径（cut ≤ 1s 队）逐位 0 delta」+「1431 簇两队 Σcut 只减不增、cfg 无 rowTimeLimit 残留」（truncationRefold.test.ts + timeGolden） | 到期 2026-12-31
   config.overflowSeconds = timeTruncatedSeconds
 
@@ -392,8 +392,8 @@ export { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 
 // 下列两条 `@fact` 的**实现已迁** `src/core/resource/moveLookup.ts`，声明按既有惯例留在
 // re-export 壳处（同 `data/exSpecialPlans.ts` 声明 → 锚 `findExSpecial`）；**锚已随实现改指新文件**。
-// @fact engine:fusedGroupMetrics/一次动作整段量 口径: 登记融合组的「一次动作」在倍率·失衡·积蓄·喧响上 Σ 全部段、在前台时间上只 Σ countsTime≠false 的段（能力场/自动攻击段不站场）；未登记段仍取本段值 | 据 用户@2026-09-11「倍率表必须融合，因为连携本身就是打3段」+「时间通道只回头段那也不行，必须改」+「只有炮击算时间，能力场是自动攻击，不算时间」·复核@2026-09-25·锚未变@2026-09-27 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#fusedGroupMetrics | 信 确认
-// @fact engine:findChainAttack/多段连携 口径: 登记融合组的连携「一次动作」时长 = Σ 站场段 actionTime（星见雅春临 0.515+0.515+0.687=1.717s；妮可 0.25+0.25=0.5s，能量场段不计时），喧响 = Σ 全部段（雅 230.15、妮可 217.25，全体基线 168~278）；未登记连携仍取头段 | 据 nanoka full/1091.json + full/1031.json param.desc + 用户@2026-09-11·复核@2026-09-25·锚未变@2026-09-27 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#findChainAttack | 信 确认
+// @fact engine:fusedGroupMetrics/一次动作整段量 口径: 登记融合组的「一次动作」在倍率·失衡·积蓄·喧响上 Σ 全部段、在前台时间上只 Σ countsTime≠false 的段（能力场/自动攻击段不站场）；未登记段仍取本段值 | 据 用户@2026-09-11「倍率表必须融合，因为连携本身就是打3段」+「时间通道只回头段那也不行，必须改」+「只有炮击算时间，能力场是自动攻击，不算时间」·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#fusedGroupMetrics | 信 确认
+// @fact engine:findChainAttack/多段连携 口径: 登记融合组的连携「一次动作」时长 = Σ 站场段 actionTime（星见雅春临 0.515+0.515+0.687=1.717s；妮可 0.25+0.25=0.5s，能量场段不计时），喧响 = Σ 全部段（雅 230.15、妮可 217.25，全体基线 168~278）；未登记连携仍取头段 | 据 nanoka full/1091.json + full/1031.json param.desc + 用户@2026-09-11·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#findChainAttack | 信 确认
 
 // 招式表查询（`find*` 族 + 融合组「一次动作」整段量）——CC-1（2026-09-24）迁
 // `src/core/resource/moveLookup.ts`；此处 re-export 壳保持全仓调用方（`@/core/resource`）

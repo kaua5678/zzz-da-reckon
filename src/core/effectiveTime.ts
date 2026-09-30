@@ -1,4 +1,4 @@
-// @fact engine:time/无敌≠秽盾 口径: `invincibleTime` 只表示 boss **真无敌**（转阶段动画等完全不可攻击的秒数），**不含秽盾**——秽盾期间 boss 照常可被攻击（代理人能攻击削减[秽盾]），只是获得高额防御/减伤/抗打断且不失衡，故它是**伤害乘区与失衡通道**问题、不是**时间扣除**问题 | 据 用户@2026-09-13（纠正 2026-08-30 旧口径「boss 无敌（秽盾/转阶段动画）」）+ nanoka noun_3.2.3.json #2000002 原文·复核@2026-09-25 | 验 src/core/__tests__/effectiveTime.test.ts | 锚 src/core/effectiveTime.ts#effectiveBattleTime | 信 确认
+// @fact engine:time/无敌≠秽盾 口径: `invincibleTime` 只表示 boss **真无敌**（转阶段动画等完全不可攻击的秒数），**不含秽盾**——秽盾期间 boss 照常可被攻击（代理人能攻击削减[秽盾]），只是获得高额防御/减伤/抗打断且不失衡，故它是**伤害乘区与失衡通道**问题、不是**时间扣除**问题 | 据 用户@2026-09-13（纠正 2026-08-30 旧口径「boss 无敌（秽盾/转阶段动画）」）+ nanoka noun_3.2.3.json #2000002 原文·复核@2026-09-25·复核@2026-09-30 | 验 src/core/__tests__/effectiveTime.test.ts | 锚 src/core/effectiveTime.ts#effectiveBattleTime | 信 确认
 // ⟳复核: 秽盾若被正式纳入建模（破盾回能/削盾量/防御减伤乘区落地）时，确认本口径与「无敌时间」字段语义仍只需表示真无敌，并把秽盾相关通道指向新实现而非 invincibleTime | 到期 2026-12-31
 /**
  * 无敌时间口径：boss **真无敌**（转阶段动画等）期间不可被攻击——dot 与后台/CD 自动伤害
@@ -34,7 +34,7 @@ export function effectiveBattleTime(cfg: TimeBasisCfg): number {
   return Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
 }
 
-// @fact engine:stun/时间守恒 口径: 失衡窗口内的招式吃易伤但不攒条 ⇒ 非轴模式按窗口时间占比折算攒条量，形成「次数↑→占比↑→攒条↓」的负反馈，由不动点自行收敛，不设硬上限 | 据 用户@2026-09-01·复核@2026-09-25 | 验 src/core/__tests__/stunPool.test.ts | 锚 src/core/effectiveTime.ts#stunWindowFraction | 信 确认
+// @fact engine:stun/时间守恒 口径: 失衡窗口内的招式吃易伤但不攒条 ⇒ 非轴模式按窗口时间占比折算攒条量，形成「次数↑→占比↑→攒条↓」的负反馈，由不动点自行收敛，不设硬上限 | 据 用户@2026-09-01·复核@2026-09-25·复核@2026-09-30 | 验 src/core/__tests__/stunPool.test.ts | 锚 src/core/effectiveTime.ts#stunWindowFraction | 信 确认
 
 /** 单次失衡窗口时长（秒）= boss 失衡时间 + 4 秒基础延长 + 全队失衡延时加成 */
 export function stunWindowDuration(stunTime: number | undefined, teamStunDurationBonus = 0): number {

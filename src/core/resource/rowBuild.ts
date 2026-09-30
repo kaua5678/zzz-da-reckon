@@ -126,7 +126,7 @@ export function feasibleRows(
  * 首次结果被消费后 **0 次被改写**；`iterate` 85,779 次调用 **0 次改写入参 states**。
  * 键用身份比较（cfg/state 对象 + 3 个数值 `Object.is`）：cfg 字段被改写而对象身份不变的情形不可能发生在单次
  * `iterate` 内（上述隔离）；作用域退出即清空，不跨调用持有引用。
- * @fact engine:物化行作用域记忆 口径: `feasibleRows` 仅在 `withFeasibleRowsMemo` 作用域（= 单次 `iterate`）内按「cfg/state 同对象 + chain/teamFrontline/rowTimeLimit `Object.is` 相等」复用上一次结果（单槽），作用域外恒重算；前提 = 作用域内 cfg/state 不被改写、消费者不改写行（纯度探针实测 0 违规） | 据 mcp-engine-r2 纯度探针@2026-09-23·复核@2026-09-25·锚未变@2026-09-27 | 验 src/core/__tests__/feasibleRowsMemo.test.ts | 锚 src/core/resource/rowBuild.ts#withFeasibleRowsMemo | 信 高
+ * @fact engine:物化行作用域记忆 口径: `feasibleRows` 仅在 `withFeasibleRowsMemo` 作用域（= 单次 `iterate`）内按「cfg/state 同对象 + chain/teamFrontline/rowTimeLimit `Object.is` 相等」复用上一次结果（单槽），作用域外恒重算；前提 = 作用域内 cfg/state 不被改写、消费者不改写行（纯度探针实测 0 违规） | 据 mcp-engine-r2 纯度探针@2026-09-23·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/core/__tests__/feasibleRowsMemo.test.ts | 锚 src/core/resource/rowBuild.ts#withFeasibleRowsMemo | 信 高
  * ⟳复核: iterate 内新增「改写 cfg/state」或「就地改写行」的消费者时，重跑 `.zc/perf/purity.perf.ts`（iterMutated / rowsMutated 须仍为 0）+ feasibleRowsMemo.test A/B | 到期 2026-12-31
  */
 const feasibleRowsMemo: {
@@ -458,7 +458,7 @@ export function buildExecutions(
     })
   }
 
-  // @fact engine:time/回避支援 口径: 无招架支援的角色，一次黄光交互产「回避支援」行 = 1.166s 必要前台 + 零伤害零失衡（时停＝纯亏时间）；判据用 `!defensiveAssistMoveId`（数据驱动、不列角色名单，真斗 1441 那种「有 moveId 但 actionTime=0」不会被误判）；215 喧响走 calcSpecialActionBonus 的 parry 通道按 parryCount 计、行内 decibel 给 0 不重复计；不套 parryTimeFreeCount 豁免 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，要么只能回避…只是前面弹刀的1.16秒换成了1.16秒的时停效果，纯亏时间」+「按照真实的模拟来，老测试不通过就修改老测试」·复核@2026-09-25·复核@2026-09-27 | 验 src/core/__tests__/evadeAssist.test.ts | 锚 src/core/resource/rowBuild.ts#buildExecutions | 信 确认
+  // @fact engine:time/回避支援 口径: 无招架支援的角色，一次黄光交互产「回避支援」行 = 1.166s 必要前台 + 零伤害零失衡（时停＝纯亏时间）；判据用 `!defensiveAssistMoveId`（数据驱动、不列角色名单，真斗 1441 那种「有 moveId 但 actionTime=0」不会被误判）；215 喧响走 calcSpecialActionBonus 的 parry 通道按 parryCount 计、行内 decibel 给 0 不重复计；不套 parryTimeFreeCount 豁免 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，要么只能回避…只是前面弹刀的1.16秒换成了1.16秒的时停效果，纯亏时间」+「按照真实的模拟来，老测试不通过就修改老测试」·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/core/__tests__/evadeAssist.test.ts | 锚 src/core/resource/rowBuild.ts#buildExecutions | 信 确认
   // ⟳复核: raw 里「回避支援」若补出倍率/失衡数据（当前 param 块完全缺失）或弹刀侧 1.166 众数口径变了，须重对 | 到期 2026-12-15
   // 回避支援（Evade Assist）：**没有招架支援的角色**对黄光的那一次交互。
   // 口径（用户 2026-09-15）：「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，

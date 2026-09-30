@@ -169,7 +169,7 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
     //   声明式通用字段（exContinuous/exFinalize/exRefundPerPaid/exReserved*/exRefundFreeCap），
     //   故「1051 的 refund 自指反馈**只能**按角色开洞」这一前提已证伪。债本体（全局「实数化松弛、
     //   终局才 floor」推广到其它正反馈模块 + 逐模块重校准）仍未做 ⇒ 标记保留（规则 16③）。
-    // @fact yidhari:refund不动点 口径: 极寒重碾非失衡每发回15闪能属自指反馈——迭代期强特次数实数化（refund解析求解+必要时间信道阻尼）唯一连续不动点，floor只在终局整数重推发生一次（不在迭代中途截断资源循环）；曾致19/20双稳态（种子相关，parry4/dodge10、parry8/dodge2复现），勿改回「迭代期回读整数次数+floor」 | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts | 锚 src/core/resource/helpers.ts#resolveExSpecialCount | 信 确认
+    // @fact yidhari:refund不动点 口径: 极寒重碾非失衡每发回15闪能属自指反馈——迭代期强特次数实数化（refund解析求解+必要时间信道阻尼）唯一连续不动点，floor只在终局整数重推发生一次（不在迭代中途截断资源循环）；曾致19/20双稳态（种子相关，parry4/dodge10、parry8/dodge2复现），勿改回「迭代期回读整数次数+floor」 | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts | 锚 src/core/resource/helpers.ts#resolveExSpecialCount | 信 确认
     // 连续强特通道 refund 反馈连续松弛（2026-09-04 修复 19/20 双稳态，用户口径「floor 应该最后算」）：
     // 迭代期强特次数以实数参与收敛（refund 已解析求解，见 calcEnergySource），唯一不动点；
     // 终局整数重推（calcTeamResources）冻结非失衡整数次数后重推，floor 只发生一次。
@@ -363,7 +363,7 @@ function iterateBody(
   // +0.27~2.70s」）是**只有本处单方面预留**时的读数：当时折叠环与截断上限的轴分支尚未落地，
   // 预留挤平A池而赠送行不等量补回（折叠环把它读成 idle 再 refund 掉，净额仍 0）。现四处同源，
   // 该否决理由的前提已消失（实测见下方 `@fact engine:赠送时间/轴模式四处同源`）。
-  // @fact engine:赠送时间/轴模式四处同源 口径: 琉音赠大（`gift-chain:ultimate`）在轴模式下的**次数与时长必须四处同源**（`ultimateGiftOf` 单一事实源）：① 本处 `iterate` 账本必要时间预留 ② S2 折叠环 `rowTime` 测量 ③ `frontlineRowsOf` 试探测量 ④ `giftTimeOfSlot` 装配截断上限。四处缺任一（尤其①与②）都会破守恒——实测雨果 0 命轴只做④不做①②时，截断额度被扣 8.732s 而账本/折叠都没涨 ⇒ **双重计费**、决算行被整数装包砍掉一整次（5→4）| 据 用户@2026-09-20「同一个量转大次数，在轴模式下显示制定了部分好评值的用途，剩余好评应该默认 90」·复核@2026-09-25（W19：③ frontlineRowsOf 内联轴分支已收敛到 ultimateGiftOf）·锚未变@2026-09-27 | 验 src/composables/__tests__/timeLedgerInvariants.test.ts + src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/core/resource/crossAgentSupply.ts#ultimateGiftOf | 信 确认
+  // @fact engine:赠送时间/轴模式四处同源 口径: 琉音赠大（`gift-chain:ultimate`）在轴模式下的**次数与时长必须四处同源**（`ultimateGiftOf` 单一事实源）：① 本处 `iterate` 账本必要时间预留 ② S2 折叠环 `rowTime` 测量 ③ `frontlineRowsOf` 试探测量 ④ `giftTimeOfSlot` 装配截断上限。四处缺任一（尤其①与②）都会破守恒——实测雨果 0 命轴只做④不做①②时，截断额度被扣 8.732s 而账本/折叠都没涨 ⇒ **双重计费**、决算行被整数装包砍掉一整次（5→4）| 据 用户@2026-09-20「同一个量转大次数，在轴模式下显示制定了部分好评值的用途，剩余好评应该默认 90」·复核@2026-09-25（W19：③ frontlineRowsOf 内联轴分支已收敛到 ultimateGiftOf）·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/timeLedgerInvariants.test.ts + src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/core/resource/crossAgentSupply.ts#ultimateGiftOf | 信 确认
   // ⟳复核: 再增/删琉音赠大的消费点（尤其绕过 `ultimateGiftOf` 直调 `crossAgentSupplyAt`）时，复核「四处同源」覆盖面与 `Σ非赠行 + 赠行 ≡ 账本`（timeLedgerInvariants 全绿）；`axisUltimatePromote` 的产生改为非编排层时一并重核 | 到期 2027-03-31
   const ultGift = ultimateGiftOf(configs, prevStates, {
     totalTime, stunCount: countStunOf(globalCfg), // CC-141：赠送供给属计数通道
@@ -451,8 +451,8 @@ function iterateBody(
   // Σnecessary 允许 > 战斗时间（Σ>180），只要合轴抵扣后的净占用装得下。
   // 轴模式下栈引擎节省（axisOverlapByAction）与招式合轴率是同一物理并行的两种模型，
   // 按槽位取 max 不叠加（防同时设置时超扣；缺省合轴率全 0，退化为原口径）。
-  // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/timeOccupation.ts#netFrontlineOccupation | 信 确认
-  // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；贴顶截断的份额按剩余权重水填回流给还有余量的队友，不留池蒸发 | 据 用户@2026-09-05（改 09-04「留池不重分配」）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
+  // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/timeOccupation.ts#netFrontlineOccupation | 信 确认
+  // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；贴顶截断的份额按剩余权重水填回流给还有余量的队友，不留池蒸发 | 据 用户@2026-09-05（改 09-04「留池不重分配」）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
   const overlapBySlot: number[] = configs.map(() => 0)
   for (const [key, sec] of Object.entries(globalCfg.axisOverlapByAction ?? {})) {
     const slot = Number(key.slice(0, key.indexOf(':')))
@@ -490,7 +490,7 @@ function iterateBody(
   // **吸收上限**（v3，用户口径 2026-09-19「全部吸收比较难，默认队友的 40% 可以被吸收（合轴率），超过了就无力合轴了」）：
   // 每名非操作角色的容量 = `comboAlignAbsorbRatio` × 其净必要（缺省 0.4，全局变量、可调、0 = 不吸收）；
   // 吸收不完的溢出**不再**被队友兜住 ⇒ 回到封顶 / 装配截断——结构性溢出队（1431 簇）在自由口径下重新可见。
-  // @fact engine:动态合轴吸收上限 口径: 非操作角色可被合轴吸收的前台 ≤ comboAlignAbsorbRatio × 其净必要前台（全局变量，缺省 0.4，0 = 不吸收）；吸收总量 = min(溢出, Σ容量)，超出部分照旧封顶/截断 | 据 用户@2026-09-19「全部吸收比较难…默认队友的40%可以被吸收（合轴率），超过了就无力合轴了」 | 验 src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/timeOccupation.ts#calcTimeAllocation | 信 确认
+  // @fact engine:动态合轴吸收上限 口径: 非操作角色可被合轴吸收的前台 ≤ comboAlignAbsorbRatio × 其净必要前台（全局变量，缺省 0.4，0 = 不吸收）；吸收总量 = min(溢出, Σ容量)，超出部分照旧封顶/截断 | 据 用户@2026-09-19「全部吸收比较难…默认队友的40%可以被吸收（合轴率），超过了就无力合轴了」·复核@2026-09-30 | 验 src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/timeOccupation.ts#calcTimeAllocation | 信 确认
   // ⟳复核: 用户再调缺省比例或改为按角色/按招式的上限时，复核「吸收总量 == min(溢出, Σ 0.4×净必要)」恒等式（dynamicComboAlign.test ①）+ 1431 簇预设口径截断量（timeGolden over 字段）| 到期 2026-12-31
   const absorbRatioRaw = globalCfg.comboAlignAbsorbRatio ?? DEFAULT_COMBO_ALIGN_ABSORB_RATIO
   const absorbRatio = Number.isFinite(absorbRatioRaw) ? Math.min(1, Math.max(0, absorbRatioRaw)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO
@@ -550,7 +550,7 @@ function iterateBody(
   const cappedNecessary = absorbedNetNecessary.map((x, i) =>
     x * feasibleScale + (effectiveCredits[i] ?? 0))
   const sumNecessaryCapped = cappedNecessary.reduce((a, b) => a + b, 0)
-  // @fact engine:cfg/诊断量写回 口径: timeFeasibleScale 与 overflowSeconds 是引擎计算中途写回 globalCfg 的诊断量，在新克隆 cfg 上调用前恒为 undefined，严禁在调用前预读作条件判定；读截断秒数必须读 convergence.timeTruncatedSeconds | 据 用户@2026-09-18·R25-J2·复核@2026-09-25·复核@2026-09-27 | 验 src/composables/__tests__/seedInvariance.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
+  // @fact engine:cfg/诊断量写回 口径: timeFeasibleScale 与 overflowSeconds 是引擎计算中途写回 globalCfg 的诊断量，在新克隆 cfg 上调用前恒为 undefined，严禁在调用前预读作条件判定；读截断秒数必须读 convergence.timeTruncatedSeconds | 据 用户@2026-09-18·R25-J2·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
   // ⟳复核: 检查是否有外部模块误读 timeFeasibleScale 或 overflowSeconds | 到期 2026-12-31
   globalCfg.timeFeasibleScale = feasibleScale
   globalCfg.overflowSeconds = Math.max(0, sumNecessary - reliefWithDynamic - budget)
