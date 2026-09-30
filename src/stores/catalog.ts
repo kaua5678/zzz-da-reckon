@@ -215,7 +215,7 @@ export const useCatalogStore = defineStore('catalog', () => {
   /** 就绪门只认完整数据成功；失败保持未就绪，显式重试成功后再放行计算。 */
   const teammateBuffsReady = computed(() => teammateBuffsLoaded.value)
 
-  // @fact ui:loading/队友Buff完整数据 口径: 队友Buff仅在采集数据加载且spec合并成功后ready；失败阻断完整计算并允许重试，不以空数据降级 | 据 用户任务@2026-09-28 | 验 src/stores/__tests__/catalogReadiness.test.ts | 锚 src/stores/catalog.ts#loadTeammateBuffs | 信 确认
+  // @fact ui:loading/队友Buff完整数据 口径: 队友Buff仅在采集数据加载且spec合并成功后ready；失败阻断完整计算并允许重试，不以空数据降级 | 据 用户任务@2026-09-28·复核@2026-09-30 | 验 src/stores/__tests__/catalogReadiness.test.ts | 锚 src/stores/catalog.ts#loadTeammateBuffs | 信 确认
   // ⟳复核: 加载依赖或降级策略变化时复核错误门与重试回归 | 到期 2026-12-31
   async function loadTeammateBuffs() {
     if (teammateBuffsLoaded.value) return teammateBuffGroups.value

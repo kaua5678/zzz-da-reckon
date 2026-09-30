@@ -230,7 +230,7 @@ describe('时间系统不变量与留白棘轮', () => {
    *
    * **成本 = 零**：复用 `measureAll()` 同一次扫描（残差在 `measureWithResidual` 里顺手算出）。
    *
-   * @fact engine:guards/留白四项分解 口径: 结果页留白归因必须是**精确闭合的四项分解** `slack == 账本虚高 + 平A池没打出来 + 池余额 + 合轴抵扣`（零容差、全库 104 队）；**不得**把 `basicShrink`（= basicTotal − 聚合行，含「池物化成模块行」与「池没打出来」两种相反含义）挂到留白之下当「其中」（实测 21 队 shrink>1s 而留白 ≤1s，`auto-1241-1031-1311` 117.57s vs 0.00s） | 据 闸门实测@2026-09-20（104/104 闭合、偏差 5.7e-14；反向注入两项各自独立变红）·复核@2026-09-25 | 验 src/composables/__tests__/timeFillRatchet.test.ts | 锚 src/composables/teamTimeSummary.ts#slackHint | 信 确认
+   * @fact engine:guards/留白四项分解 口径: 结果页留白归因必须是**精确闭合的四项分解** `slack == 账本虚高 + 平A池没打出来 + 池余额 + 合轴抵扣`（零容差、全库 104 队）；**不得**把 `basicShrink`（= basicTotal − 聚合行，含「池物化成模块行」与「池没打出来」两种相反含义）挂到留白之下当「其中」（实测 21 队 shrink>1s 而留白 ≤1s，`auto-1241-1031-1311` 117.57s vs 0.00s） | 据 闸门实测@2026-09-20（104/104 闭合、偏差 5.7e-14；反向注入两项各自独立变红）·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/timeFillRatchet.test.ts | 锚 src/composables/teamTimeSummary.ts#slackHint | 信 确认
    * ⟳复核: 留白分解项增删 / `ledgerInflation` 或 `basicUnspent` 口径变更时，确认本断言仍零容差闭合，且结果页四项与 `slackHint` 同源 | 到期 2026-12-31
    */
   it('留白分解恒等式：四项带符号分解逐队零容差闭合（拦「展示层拿不闭合的量当留白」）', async () => {
