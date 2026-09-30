@@ -4588,3 +4588,24 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
     - `agent:1541:c6.dmg`：`1453104 → 1422841 (-2.083%)`
   - 含 1541 的 3 条预设（队友激活额外能力）及全仓其余 410 条 golden 快照逐位零差。
 - **验证**：`vue-tsc -b` 0 错；`validate:data` 366/366 通过；`verify:recording` 189/189 通过；全量 442 个测试文件（4068 passed）通过。回退点：`git revert 2feb0083`。
+
+### 24.177 CC-334：简（1261）`jane.frenzyActive` 账本对账、洛克茜（1621）风能耗能口径统一与 10 角色模块内部装配单源化（`6d885b6c`）
+
+- **背景与问题**：
+  1. **简（1261，`src/mechanics/agents/jane.ts`）**：
+     - R51 将 `jane.frenzyActive` 接入 `applyJanePanel`（关闭时狂热物理积蓄 +25% 与精通转攻击归零），并在函数头注释（`jane.ts:116`）写明「原实现两处调用点硬编码 `true` ⇒ 现真正被读」，但漏改了第二处调用点 `buildJaneResourceResult`（仍硬编码 `frenzyActive: true`），且 `computeJaneMechanic` 未按 `input.frenzyActive` 门控 `frenzyBuildUpBonus` 与 `atkFromMastery`——导致用户关闭 `jane.frenzyActive` 时面板已归零，而资源卡片仍显示「狂热 生效 / +25% / +600 攻」。
+  2. **洛克茜（1621，`src/mechanics/agents/roxy.ts`）**：
+     - `computeRoxyWindEnergy` 签名接收 `exSpecialEnergyConsume?: number`（且 `buildRoxyResourceResult` / `buildRoxyExecutions` 均传入 `cfg.exSpecialEnergyConsume`），但函数体忽略该入参、硬编码 `10 + spinSeconds * 30`；
+     - `buildRoxyCharConfig` 读取 `cfgSetting(cfg, 'roxy.spinSeconds', 2)` 的缺省回退为 `2`，与 `settings`（`default: 2.5`）和 `computeRoxyWindEnergy`（`input.spinSeconds ?? 2.5`）不一致；
+     - `buildRoxyResourceResult` 与 `buildRoxyExecutions` 各抄一份 7 字段 `computeRoxyWindEnergy({...})` 调用，靠注释提醒「两处都必须传 rate 否则分叉」。
+  3. **其余角色模块内部重复装配**：
+     - **维琳娜（1561，`src/mechanics/agents/velina.ts`）**：文件头注释声明「CC-273：招式按 catalog moveId 认（主键），不再按英文名」，但 `resolveVelinaExecutionDamage` 仍只判 `move?.name?.en !== 'Sweeping Cyclone #2'`；`velinaBroadCycloneCountFromFloria` 与 `buildVelinaFloriaSource` 重复调 `computeSpecResources(spec, cfg, state).get('velina_floria')`。
+     - **般岳（1471，`src/mechanics/agents/banyue.ts`）**：模块已有 `computeBanyueCycleFromCfg(cfg)`（供 `exSpecialCount` / `estimateExSpecialTime` / `buildBanyueResourceResult` 共用），但 `buildBanyueExecutions` 仍手写 11 参数的 `computeBanyueRageCycle(...)` 调用；`patchBanyueExecutions` 硬编码 `'1471011'` / `'1471029'` 而未用 `MOVE.buDongRuShan` / `MOVE.chongXiao`。
+     - **照（1451，`src/mechanics/agents/zhao.ts`）**：模块已有 `cycleFromInput`，但 `buildResourceResult` 仍手抄一份 `computeZhaoFrostCycle({...})`。
+     - **耀嘉音（1311，`yaojiayin.ts`）、丽娜（1211，`rina.ts`）、莱特（1161，`lighter.ts`）**：各自的 `buildExecutions` 与 `buildResourceResult` 重复拼装 `computeYaojiayinTremolos` / `computeRinaBangboo` / `computeLighterMorale` 入参。
+     - **仪玄（1371，`yixuan.ts`）与伊德海莉（1051，`yidhari.ts`）**：`yixuan.ts` 两处重复解析 `perfectBlocks` 与 `extremeAssists`；`yidhari.ts` 的 `yidhariSelfBurnDecibel` 手写 `1 + slam + follow` 与 `33 / 10` 魔数而未复用同文件的 `chargeCycleTime` / `EX_HEAL_RATIO_PCT` / `BASIC_FOLLOW_HEAL_PCT`，且 `buildYidhariCharConfig` 残留无用 `void cycleTime`。
+- **修复**：
+  - `jane.ts`：`computeJaneMechanic` 按 `input.frenzyActive` 门控 `frenzyBuildUpBonus` 与 `atkFromMastery`；`buildJaneResourceResult` 传入 `clamp01(cfgMechanicSetting(cfg, 'jane.frenzyActive', 1), 1) > 0`（补 `jane.test.ts` 断言）。
+  - `roxy.ts`：`computeRoxyWindEnergy` 优先使用正数 `input.exSpecialEnergyConsume`（未传时回退 `10 + spinSeconds * 30`），`buildRoxyCharConfig` 自旋秒回退对齐为 `2.5`，抽出 `roxyWindEnergySourceOf(cfg, state)`（补 `roxy.test.ts` 断言）。
+  - `velina.ts` / `banyue.ts` / `zhao.ts` / `yaojiayin.ts` / `rina.ts` / `lighter.ts` / `yixuan.ts` / `yidhari.ts` / `norma.ts`：按上述单源化入口逐一收敛。
+- **验证**：`vue-tsc -p tsconfig.app.json --noEmit` 0 错；`validate:data` 通过；`verify:recording` 189/189 通过；全量 442 个测试文件（4069 passed，含 `timeGolden.test.ts` 414 条零差）通过。回退点：`git revert 6d885b6c`。

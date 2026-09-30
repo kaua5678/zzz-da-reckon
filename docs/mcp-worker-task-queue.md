@@ -96,27 +96,29 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 352 轮（lane arena-A，承接第 351 轮下一步 1–2）：CC-333 普罗米娅（1541）C1 `[有罪推定]` 异放无视防御门控对账 + 7 个角色模块内部派生单源化（代码 `2feb0083`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `23714cc4`，工作区干净）。**
+**第 353 轮（lane arena-A，承接第 352 轮下一步 1–2）：CC-334 简（1261）`jane.frenzyActive` 账本对账、洛克茜（1621）风能耗能口径统一与 10 个角色模块内部装配单源化（代码 `6d885b6c`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `690de426`，工作区干净）。**
 
-- **CC-333（`2feb0083`，普罗米娅 `1541` C1 `[有罪推定]` 门控修复 + 7 角色模块内部派生单源化，105 预设零差、单人 `agent:1541:c3..c6` 4 条更新）**：
-  1. **普罗米娅（1541，`src/mechanics/agents/promia.ts`）规格-实现对账修复**：
-     - 原文（`data/raw/nanoka_missing/full/1541.json`）中 `[有罪推定]` 状态仅由额外能力「饮冰」（`passive.level.1541507.desc[1]`）施加；影画 1「不请自来」（`talent.1.desc`）写明「全队角色对[有罪推定]状态的敌人造成[异放]效果时额外无视 20% 防御力」。
-     - 旧实现中 `promiaReleaseModifier` 在额外能力未激活（敌人无法陷入 `[有罪推定]`）时仍越门控给 C1 的 20% 异放无视防御，而 `computePromiaCycle.guiltyDefIgnore` 在额外能力激活且 C1+ 时漏计 C1 的 20%（恒报 40%）。
-     - 修复：`computePromiaCycle.guiltyDefIgnore` 统一按 `input.additionalActive ? 40 + (cinemaLevel >= 1 ? 20 : 0) : 0` 计算，`promiaReleaseModifier` 直接复用该字段；`src/mechanics/__tests__/promia.test.ts` 补齐 C0/C1 × 额外能力开/关四象限断言。
-  2. **7 个角色模块内部重复派生单源化**：
-     - `src/mechanics/agents/aire.ts`（1501 爱芮）：`applyAirePanel` 直接复用 `computeAireCycle`，修正 `computeAireCycle.note` 过期文案。
-     - `src/mechanics/agents/nangong.ts`（1511 南宫羽）：抽出 `nangongBeatRegen`、`nangongVibratoStacks`、`nangongVibratoStackPct`，使 `buildNangongResourceResult` / `buildNangongResourceSections` 与事件侧共用自动颤音层数、C2 每层加成（`+35%`）及 `record.nangongMinePairs` 实打套数（补 `nangongSmoke.test.ts` 单测；注：`nangong_polar_disorder` 的 `cinemaLevel >= 2` 门控为 `nangongSmoke.test.ts:94-115` 显式锁定的舞力全开口径，保持不动）。
-     - `src/mechanics/agents/luciaElowen.ts`（1451 卢西娅·艾洛温）：抽出 `computeLuciaCurtainBreakdown` 归一 `computeLuciaDreamPlan`、`computeLuciaCurtainTriggers` 与 `computeLuciaSource` 三处 `dreamE / curtainOpens / curtainExtends`。
-     - `src/mechanics/agents/norma.ts`（1571 诺姆）与 `src/mechanics/agents/liuyin.ts`（1481 琉音）：`computeNormaHatToChainCount` 直接复用 `computeNormaSource(...).hatToChainCount`；两模块 `buildCharConfig` 调用 `specAdditionalAbilityActive` 时优先传入参 `agent`。
-     - `src/mechanics/agents/severian.ts`（1631 赛维里安）：`severianFlowIncome` 复用 `severianLiexuanCount`，抽出 `severianFlowState` 归一 C6 `[风起]` 定点流息与苍风影猎次数，`patchSeverianExecutions` 复用 `computeSeverianCycle`。
-     - `src/mechanics/agents/sigrid.ts`（1591 希格莉德）与 `src/mechanics/agents/claret.ts`（1611 克拉蕾）：`countBasicFinisherHits` 直接委托 `countBasicSegments`（构造级保证 `#4` 机会计数与分段行次数一致并含 `1e-9` 容差），`expandSigridAxisAction` 改读 `SIGRID_C6_POZHEN_TIME_FACTOR`；同步修正 `claretMechanic.description` 残留的 R55 前影画 1/2 文案。
-- **验证**：`vue-tsc -b` 0 错；`validate:data` 366/366 通过；`verify:recording` 189/189 通过；全量 442 个测试文件（4068 passed）通过（日志 `/home/kaua/calc-arch/arenaA/verify-cc333.log`）。回退点：`git revert 2feb0083`。
+- **CC-334（`6d885b6c`，简 `1261` 狂热账本修复 + 洛克茜 `1621` 风能耗能与自旋秒缺省对齐 + 10 角色模块内部装配单源化，全量 414 条 golden 零差）**：
+  1. **简（1261，`src/mechanics/agents/jane.ts`）账本-面板同源化修复**：
+     - R51 将 `jane.frenzyActive` 总闸接入 `applyJanePanel`，但漏改第二处调用点 `buildJaneResourceResult`（仍写死 `frenzyActive: true`），且 `computeJaneMechanic` 未按 `input.frenzyActive` 门控 `frenzyBuildUpBonus` 与 `atkFromMastery`，导致关闭狂热总闸时面板归零而资源卡仍展示「狂热 生效 / +25% / +600 攻」。
+     - 修复：`computeJaneMechanic` 按 `input.frenzyActive` 门控 `frenzyBuildUpBonus` 与 `atkFromMastery`，`buildJaneResourceResult` 读 `cfgMechanicSetting(cfg, 'jane.frenzyActive', 1)`；`src/mechanics/__tests__/jane.test.ts` 补齐关闭总闸后的账本断言。
+  2. **洛克茜（1621，`src/mechanics/agents/roxy.ts`）风能耗能与单源装配修复**：
+     - `computeRoxyWindEnergy` 接入入参 `exSpecialEnergyConsume`（未传时回退 `10 + spinSeconds * 30`），使逻辑编辑器/倍率表改耗能时风能账本与 `cfg.exSpecialEnergyConsume` 同步；
+     - `buildRoxyCharConfig` 的 `roxy.spinSeconds` 缺省回退由 `2` 对齐为 `2.5`（与 `settings` 及 `computeRoxyWindEnergy` 一致）；
+     - 抽出 `roxyWindEnergySourceOf(cfg, state)` 合一 `buildRoxyResourceResult` 与 `buildRoxyExecutions`（补 `roxy.test.ts` 断言）。
+  3. **其余角色模块内部重复装配单源化**：
+     - `src/mechanics/agents/velina.ts`（1561 维琳娜）：`resolveVelinaExecutionDamage` 补完 CC-273 按 `VELINA_SWEEPING_CYCLONE_2_MOVE_ID`（`1561020`）认招；`velinaBroadCycloneCountFromFloria` 直接委托 `buildVelinaFloriaSource`。
+     - `src/mechanics/agents/banyue.ts`（1471 般岳）：`buildBanyueExecutions` 复用既有 `computeBanyueCycleFromCfg(cfg)`；`patchBanyueExecutions` 改用 `MOVE.buDongRuShan` / `MOVE.chongXiao`。
+     - `src/mechanics/agents/zhao.ts`（1451 照）：`buildResourceResult` 复用既有 `cycleFromInput`。
+     - `src/mechanics/agents/yaojiayin.ts`（1311 耀嘉音）、`src/mechanics/agents/rina.ts`（1211 丽娜）、`src/mechanics/agents/lighter.ts`（1161 莱特）：分别抽出 `yaojiayinTremolosOf`、`rinaBangbooOf`、`lighterMoraleOf` 合一 `buildExecutions` 与 `buildResourceResult`。
+     - `src/mechanics/agents/yixuan.ts`（1371 仪玄）与 `src/mechanics/agents/yidhari.ts`（1051 伊德海莉）：抽出 `resolveYixuanPerfectBlocks` 与 `resolveYixuanExtremeAssists`；`yidhariSelfBurnDecibel` 复用 `chargeCycleTime` / `EX_HEAL_RATIO_PCT` / `BASIC_FOLLOW_HEAL_PCT` 并清理 `buildYidhariCharConfig` 无用 `void cycleTime`。
+- **验证**：`vue-tsc -p tsconfig.app.json --noEmit` 0 错；`validate:data` 通过；`verify:recording` 189/189 通过；全量 442 个测试文件（4069 passed）通过（日志 `/home/kaua/calc-arch/arenaA/verify-cc334.log`）。回退点：`git revert 6d885b6c`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
 2. **继续规格-实现对账 / 模块同构简化扫描**：
-   - 第 350–352 轮已扫完 1641/1581/1591/1611/1631/1541/1501/1511/1451/1571/1481。
-   - 下一步可继续抽查其余自定义模块（如 `banyue.ts` 1471、`yeshuguang.ts` 1431、`yidhari.ts` 1461、`yixuan.ts` 1371、`roxy.ts` 1621、`velina.ts` 1561、`peiluo.ts` 1551 等）中是否存在「面板/执行/资源卡片三处各自手写同一公式」或「命座附加效果未继承前置技能/额外能力门控」的分叉。
+   - 第 350–353 轮已扫完 `src/mechanics/agents/` 下主要自定义模块（1641/1581/1591/1611/1631/1541/1501/1511/1451/1571/1481/1261/1621/1561/1471/1311/1211/1161/1371/1051）。
+   - 下一步可转向检查 `src/mechanics/agents/specPanelBuffs.ts` 及剩余轻量角色模块（如 `alice.ts`、`hugo.ts`、`lycaon.ts`、`qingyi.ts`、`starlightBilly.ts`、`trigger.ts`、`vivian.ts`、`xide.ts` 等）中是否存在 `spec` 声明与模块手写逻辑的口径偏差或死代码。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
