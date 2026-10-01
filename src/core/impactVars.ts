@@ -157,7 +157,7 @@ export function writeImpactVar(configStore: any, varId: string, value: number): 
       configStore.setEnemy({ anomalyCoeff: value })
       break
     case 'slot1TimeWeight':
-      configStore.setBasicAttackTimeWeight(1, value)
+      configStore.setActionCount(1, 'basicAttackTimeWeight', value)
       break
   }
 }

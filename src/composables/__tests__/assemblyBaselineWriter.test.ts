@@ -37,9 +37,9 @@ describe('CC-266 装配入口不重复写基准', () => {
   it('源码锁：teamTimelineStore 不写动作次数；runArchiveDeploy 只写弹刀 / 格挡 / 双反偏差', () => {
     const root = resolve(__dirname, '..')
     const strip = (f: string) => readFileSync(resolve(root, f), 'utf-8').split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
-    expect(strip('teamTimelineStore.ts')).not.toMatch(/\.set(Parry|DodgeCounter|Block|DualCounter|QuickAssist)Count\(|\.setChainCountPerStun\(/)
+    expect(strip('teamTimelineStore.ts')).not.toMatch(/\.setActionCount\([^,]+, '(parryCount|dodgeCounterCount|blockCount|dualCounterCount|quickAssistCount|chainCountPerStun)'/)
     const deploy = strip('runArchiveDeploy.ts')
-    expect(deploy).not.toMatch(/\.set(DodgeCounter|QuickAssist)Count\(|\.setChainCountPerStun\(/)
-    expect(deploy).toMatch(/setParryCount\(s, custom \? base\.parry : 0\)/)
+    expect(deploy).not.toMatch(/\.setActionCount\([^,]+, '(dodgeCounterCount|quickAssistCount|chainCountPerStun)'/)
+    expect(deploy).toMatch(/setActionCount\(s, 'parryCount', custom \? base\.parry : 0\)/)
   })
 })

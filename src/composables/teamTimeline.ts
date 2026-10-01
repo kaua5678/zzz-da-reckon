@@ -227,7 +227,7 @@ export function optimizeTeamTimeWeights(
     return { weights: initial, damage: calc.teamTotalDamage.value, balanced: false }
   }
   const evaluate = (w: number[]) => {
-    for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, Math.max(0, w[s]))
+    for (let s = 0; s < 3; s++) configStore.setActionCount(s, 'basicAttackTimeWeight', Math.max(0, w[s]))
     return calc.teamTotalDamage.value
   }
   const r = equalizeTimeWeights(evaluate, initial, {
@@ -235,7 +235,7 @@ export function optimizeTeamTimeWeights(
     shiftStep: opts.shiftStep ?? 1,
     maxIter: opts.maxIter ?? 3,
   })
-  for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, r.weights[s])
+  for (let s = 0; s < 3; s++) configStore.setActionCount(s, 'basicAttackTimeWeight', r.weights[s])
   return { weights: r.weights, damage: r.damage, balanced: true }
 }
 

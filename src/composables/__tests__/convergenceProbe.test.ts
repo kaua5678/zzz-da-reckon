@@ -687,13 +687,13 @@ describe.runIf(!!process.env.PROBE_STUN_LEVER)('探针：打失衡的手段效�
       lines.push(`\n---- ${id}（${p.name}）`)
       const cases: [string, (cfg: ReturnType<typeof useConfigStore>) => void][] = [
         ['基线（预设权重/交互）', () => {}],
-        ['A 击破位权重 2', cfg => cfg.setBasicAttackTimeWeight(1, 2)],
-        ['A 击破位权重 8', cfg => cfg.setBasicAttackTimeWeight(1, 8)],
-        ['B 弹刀 0', cfg => cfg.setParryCount(0, 0)],
-        ['B 弹刀 4', cfg => cfg.setParryCount(0, 4)],
-        ['B 弹刀 8', cfg => cfg.setParryCount(0, 8)],
-        ['B 弹刀 12', cfg => cfg.setParryCount(0, 12)],
-        ['C 主C 权重 2', cfg => cfg.setBasicAttackTimeWeight(0, 2)],
+        ['A 击破位权重 2', cfg => cfg.setActionCount(1, 'basicAttackTimeWeight', 2)],
+        ['A 击破位权重 8', cfg => cfg.setActionCount(1, 'basicAttackTimeWeight', 8)],
+        ['B 弹刀 0', cfg => cfg.setActionCount(0, 'parryCount', 0)],
+        ['B 弹刀 4', cfg => cfg.setActionCount(0, 'parryCount', 4)],
+        ['B 弹刀 8', cfg => cfg.setActionCount(0, 'parryCount', 8)],
+        ['B 弹刀 12', cfg => cfg.setActionCount(0, 'parryCount', 12)],
+        ['C 主C 权重 2', cfg => cfg.setActionCount(0, 'basicAttackTimeWeight', 2)],
       ]
       for (const [tag, mut] of cases) {
         apply(mut)

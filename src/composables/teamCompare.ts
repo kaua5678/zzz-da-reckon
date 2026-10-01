@@ -980,8 +980,8 @@ export function applyTeamPresetConfig(configStore: ConfigModel, preset: TeamPres
         configStore.setMainStat(slot, Number(pos) as 4 | 5 | 6, stat)
       }
     }
-    if (preset.chainCountPerStun) configStore.setChainCountPerStun(slot, preset.chainCountPerStun[slot])
-    if (preset.basicAttackTimeWeight) configStore.setBasicAttackTimeWeight(slot, preset.basicAttackTimeWeight[slot])
+    if (preset.chainCountPerStun) configStore.setActionCount(slot, 'chainCountPerStun', preset.chainCountPerStun[slot])
+    if (preset.basicAttackTimeWeight) configStore.setActionCount(slot, 'basicAttackTimeWeight', preset.basicAttackTimeWeight[slot])
   }
   applyPresetInteractions(configStore, preset.interactions)
 }
@@ -1003,14 +1003,14 @@ export function applyPresetInteractions(
   for (const it of items ?? []) {
     const slot = it.slot ?? 0
     const own = interactionFieldForType(configStore.team[slot]?.agentId, it.type)
-    if (own === 'blockCount') { configStore.setBlockCount(slot, it.count); continue }
-    if (own === 'dualCounterCount') { configStore.setDualCounterCount(slot, it.count); continue }
+    if (own === 'blockCount') { configStore.setActionCount(slot, 'blockCount', it.count); continue }
+    if (own === 'dualCounterCount') { configStore.setActionCount(slot, 'dualCounterCount', it.count); continue }
     switch (it.type) {
-      case 'parry': configStore.setParryCount(slot, it.count); break
-      case 'dodge': configStore.setDodgeCounterCount(slot, it.count); break
-      case 'quickAssist': configStore.setQuickAssistCount(slot, it.count); break
-      case 'block': configStore.setBlockCount(slot, it.count); break
-      case 'tauntCancel': configStore.setTauntCancelCount(slot, it.count); break // 般岳：嘲讽取消失衡外连段后摇
+      case 'parry': configStore.setActionCount(slot, 'parryCount', it.count); break
+      case 'dodge': configStore.setActionCount(slot, 'dodgeCounterCount', it.count); break
+      case 'quickAssist': configStore.setActionCount(slot, 'quickAssistCount', it.count); break
+      case 'block': configStore.setActionCount(slot, 'blockCount', it.count); break
+      case 'tauntCancel': configStore.setActionCount(slot, 'tauntCancelCount', it.count); break // 般岳：嘲讽取消失衡外连段后摇
     }
   }
 }

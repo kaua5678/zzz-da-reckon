@@ -54,8 +54,8 @@ describe('CC-267 换人重置全部动作次数', () => {
     const root = resolve(__dirname, '..')
     for (const file of ['teamTimelineStore.ts', 'runArchiveDeploy.ts']) {
       const src = readFileSync(resolve(root, file), 'utf-8')
-      expect(src, file).not.toMatch(/setQuickAssistCount\(s, \d/)
-      expect(src, file).not.toMatch(/setChainCountPerStun\(s, \d/)
+      expect(src, file).not.toMatch(/setActionCount\(s, 'quickAssistCount', \d/)
+      expect(src, file).not.toMatch(/setActionCount\(s, 'chainCountPerStun', \d/)
     }
   })
 

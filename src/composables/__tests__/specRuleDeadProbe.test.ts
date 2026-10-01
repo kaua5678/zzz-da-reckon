@@ -62,10 +62,10 @@ describe.runIf(active)('探针：spec 规则恒 0 全库体检', () => {
     const applyInteractions = (p: (typeof teamPresets)[number]) => {
       for (const it of p.interactions ?? []) {
         const slot = (it as any).slot ?? 0
-        if (it.type === 'parry') config.setParryCount(slot, it.count)
-        else if (it.type === 'dodge') config.setDodgeCounterCount(slot, it.count)
-        else if (it.type === 'quickAssist') config.setQuickAssistCount(slot, it.count)
-        else if (it.type === 'block') config.setBlockCount(slot, it.count)
+        if (it.type === 'parry') config.setActionCount(slot, 'parryCount', it.count)
+        else if (it.type === 'dodge') config.setActionCount(slot, 'dodgeCounterCount', it.count)
+        else if (it.type === 'quickAssist') config.setActionCount(slot, 'quickAssistCount', it.count)
+        else if (it.type === 'block') config.setActionCount(slot, 'blockCount', it.count)
       }
     }
 

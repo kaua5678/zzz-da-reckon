@@ -205,7 +205,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setParryCount(uiStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'parryCount', v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -218,7 +218,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setDodgeCounterCount(uiStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'dodgeCounterCount', v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -231,7 +231,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setBlockCount(uiStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'blockCount', v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -244,7 +244,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setDualCounterCount(uiStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'dualCounterCount', v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -272,7 +272,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setQuickAssistCount(uiStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'quickAssistCount', v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -285,7 +285,7 @@
                             :max="3"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setChainCountPerStun(uiStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'chainCountPerStun', v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -299,7 +299,7 @@
                             :step="0.1"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setBasicAttackTimeWeight(uiStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'basicAttackTimeWeight', v ?? 0)"
                           />
                         </div>
                       </n-gi>

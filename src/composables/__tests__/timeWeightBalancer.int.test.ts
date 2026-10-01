@@ -17,7 +17,7 @@ describe('optimizeTeamTimeWeights（真实引擎接线）', () => {
     const config = useConfigStore()
     const calc = useResourceCalc()
 
-    for (let s = 0; s < 3; s++) config.setBasicAttackTimeWeight(s, s === 2 ? 0 : 1)
+    for (let s = 0; s < 3; s++) config.setActionCount(s, 'basicAttackTimeWeight', s === 2 ? 0 : 1)
     const base = calc.teamTotalDamage.value
     expect(base).toBeGreaterThan(0)
 
@@ -40,7 +40,7 @@ describe('optimizeTeamTimeWeights（真实引擎接线）', () => {
     await setupHarness([{ agentId: '1021' }, { agentId: '1211' }, { agentId: '1151' }])
     const config = useConfigStore()
     const calc = useResourceCalc()
-    for (let s = 0; s < 3; s++) config.setBasicAttackTimeWeight(s, s === 0 ? 1 : 0)
+    for (let s = 0; s < 3; s++) config.setActionCount(s, 'basicAttackTimeWeight', s === 0 ? 1 : 0)
     const r = optimizeTeamTimeWeights(calc, config)
     expect(r.balanced).toBe(false)
     expect(r.weights).toEqual([1, 0, 0])

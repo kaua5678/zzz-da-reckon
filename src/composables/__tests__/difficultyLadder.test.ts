@@ -53,7 +53,7 @@ describe('难度阶梯（伤害-难度曲线）', () => {
     // 合成：一个把主C权重清零的目标（必然卖伤害）
     const bad: DifficultyGoal = {
       id: 'X-BAD', label: '主C权重清零（合成·必负）', cost: 1, mutates: true,
-      apply: c => { c.config.setBasicAttackTimeWeight(0, 0) },
+      apply: c => { c.config.setActionCount(0, 'basicAttackTimeWeight', 0) },
     }
     const r = climbDifficultyLadder(ctx, p.team as [string, string, string], { goals: [bad, DIFFICULTY_GOALS[0]!] })
     expect(r.dropped.map(d => d.id)).toContain('X-BAD')

@@ -28,7 +28,7 @@ async function runAssistRows(agentId: string, parryCount: number): Promise<Assis
   const { catalog, config } = await setupHarness(['', '', ''])
   await catalog.loadBuildRecommendations()
   config.setAgent(0, agentId)
-  config.setParryCount(0, parryCount)
+  config.setActionCount(0, 'parryCount', parryCount)
   const calc = useResourceCalc()
   const rr = calc.resourceResult.value
   expect(rr).toBeTruthy()

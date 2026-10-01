@@ -162,8 +162,8 @@ function snapshot(ctx: LadderCtx): LadderMutSnap {
 }
 function restore(ctx: LadderCtx, snap: LadderMutSnap) {
   for (let s = 0; s < 3; s++) {
-    ctx.config.setBasicAttackTimeWeight(s, snap.w[s])
-    ctx.config.setParryCount(s, snap.p[s])
+    ctx.config.setActionCount(s, 'basicAttackTimeWeight', snap.w[s])
+    ctx.config.setActionCount(s, 'parryCount', snap.p[s])
   }
   for (let s = 0; s < 3; s++) {
     ctx.config.clearComboAlignOverrides(s)

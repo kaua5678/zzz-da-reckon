@@ -113,9 +113,9 @@ export function applyDeployConfig(
     const base = interactionBaselineFor(slot.agentId, useCatalogStore().getAgent(slot.agentId)?.specialty)
     // CC-266：闪反 / 快支 / 连携与 setAgent 预填相同（applyTeamPreset 已调 setAgent），这里只写**本口径的偏差**：
     // 非专属角色不预设弹刀 / 格挡 / 双反（运行时反推）。
-    configStore.setParryCount(s, custom ? base.parry : 0)
-    configStore.setBlockCount(s, custom ? base.block : 0)
-    configStore.setDualCounterCount(s, custom ? base.dual : 0)
+    configStore.setActionCount(s, 'parryCount', custom ? base.parry : 0)
+    configStore.setActionCount(s, 'blockCount', custom ? base.block : 0)
+    configStore.setActionCount(s, 'dualCounterCount', custom ? base.dual : 0)
   }
 
   // 启用自动轴 + 保底4喧响（弹刀反推的两个驱动）；保底4失衡由 applyBossPreset 按 Boss 预设自动勾选。

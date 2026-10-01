@@ -66,7 +66,7 @@ describe('普罗米娅 处刑式·匿影（交互栏次数）', () => {
   it('匿影次数生效：+10寒蚀/次进回复端，且解锁重霜执行行 ×N', async () => {
     const { config } = await setupHarness([{ agentId: '1541' }])
     const calc = useResourceCalc()
-    config.setPromiaNiyingCount(0, 5)
+    config.setActionCount(0, 'promiaNiyingCount', 5)
     const char = calc.resourceResult.value!.characters.find(c => c.agentId === '1541')!
     const ev = (char.anomalyEventExecutions ?? []).find(e => e.eventId === 'promia_execution_release')
     expect(ev?.fields.some(f => String(f).includes('niying=5')), '回复端应含匿影分项').toBe(true)

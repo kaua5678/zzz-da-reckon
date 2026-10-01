@@ -145,8 +145,8 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     config.setAgent(0, '1471')
     config.setAgent(1, '1191')
     config.setAgent(2, '1481')
-    config.setBlockCount(0, 20)
-    config.setParryCount(0, 10)
+    config.setActionCount(0, 'blockCount', 20)
+    config.setActionCount(0, 'parryCount', 10)
     const calc = useResourceCalc()
     const rr = calc.resourceResult.value!
     const t = buildTeamTimeSummary({

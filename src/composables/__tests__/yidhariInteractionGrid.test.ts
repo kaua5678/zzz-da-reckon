@@ -34,8 +34,8 @@ async function baseConfig(): Promise<ResourceCalcConfig> {
   config.setAgent(0, '1051'); config.setWEngine(0, '14105')
   config.setAgent(1, '1141')
   config.setAgent(2, '1451'); config.setWEngine(2, '14145')
-  config.setQuickAssistCount(0, 3)
-  config.setChainCountPerStun(0, 1)
+  config.setActionCount(0, 'quickAssistCount', 3)
+  config.setActionCount(0, 'chainCountPerStun', 1)
   const calc = useResourceCalc()
   // 轮询等 pipeline 装配完成（就绪门：teammate-buffs 落位后 resourceConfig 才非 null）
   let cfg: ResourceCalcConfig | null = null

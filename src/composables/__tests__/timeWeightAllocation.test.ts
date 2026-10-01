@@ -66,7 +66,7 @@ describe('平A池权重·分配策略', () => {
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const sigBefore = timeWeightAllocationSignature(config)
-    config.setBasicAttackTimeWeight(0, 7)
+    config.setActionCount(0, 'basicAttackTimeWeight', 7)
     expect(timeWeightAllocationSignature(config)).toBe(sigBefore)
   })
 
@@ -285,7 +285,7 @@ describe('平A池权重·分配策略', () => {
     const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
-    config.setParryCount(0, 99)
+    config.setActionCount(0, 'parryCount', 99)
     const conv0 = calc.resourceResult.value!.convergence
     const overflow = conv0?.timeTruncatedSeconds ?? 0
     // 越界信号两种形态都算「硬门已挡」：装配截断 > 0（v2 前的形态），或被编排层降配收进可行域（interactionScale < 1）。
@@ -321,9 +321,9 @@ describe('平A池权重·分配策略', () => {
     expect(config.appliedBoss?.parryTotal).toBe(13)
     // 输入刻意**高于**强制次数（主C 8 + 击破 8 = 16 > 13）→ 搜索可以下调，但不得低于 13。
     // 注：低于下限的部分由 `core/parrySplit.ts` 负责补齐（单一事实源），本策略只承诺「不下调越过它」。
-    config.setParryCount(0, 8)
-    config.setParryCount(1, 8)
-    config.setParryCount(2, 0)
+    config.setActionCount(0, 'parryCount', 8)
+    config.setActionCount(1, 'parryCount', 8)
+    config.setActionCount(2, 'parryCount', 0)
     const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
     const total = [0, 1, 2].reduce((a, s) => a + config.team[s]!.parryCount, 0)
     expect(total, '搜索不得把弹刀总数压到 boss 预设强制次数以下').toBeGreaterThanOrEqual(13)

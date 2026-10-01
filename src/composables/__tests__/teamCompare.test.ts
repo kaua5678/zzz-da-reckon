@@ -450,7 +450,7 @@ describe('teamCompare 金数/难度口径', () => {
     expect(interactionSurvivalBySlot(null).size).toBe(0)
   })
 
-  it('interactions：tauntCancel 映射到 setTauntCancelCount（般岳后摇取消），weight 0 不计难度', async () => {
+  it('interactions：tauntCancel 映射到 setActionCount(slot, tauntCancelCount)（般岳后摇取消），weight 0 不计难度', async () => {
     const catalog = useCatalogStore()
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
@@ -459,7 +459,7 @@ describe('teamCompare 金数/难度口径', () => {
     config.team[1] = { ...config.team[0], slot: 1 }
     config.team[2] = { ...config.team[0], slot: 2 }
     const calc = useResourceCalc()
-    const spy = vi.spyOn(config, 'setTauntCancelCount')
+    const spy = vi.spyOn(config, 'setActionCount')
     const preset: TeamPreset = {
       id: 'taunt-test',
       name: '嘲讽测试队',
@@ -477,7 +477,7 @@ describe('teamCompare 金数/难度口径', () => {
       phase: FAKE_PHASE,
     })
     // 每次嘲讽取消一次失衡外连段末尾后摇 → 写入槽位 2
-    expect(spy).toHaveBeenCalledWith(2, 3)
+    expect(spy).toHaveBeenCalledWith(2, 'tauntCancelCount', 3)
     // tauntCancel weight 0 → 不计难度（只有弹刀 8×1.0）
     const { difficulty, detail } = computeDifficulty(preset.interactions, preset.team)
     expect(difficulty).toBeCloseTo(8, 2)

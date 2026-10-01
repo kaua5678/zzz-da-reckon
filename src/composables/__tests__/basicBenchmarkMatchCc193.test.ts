@@ -34,7 +34,7 @@ describe('CC-193 生产路径：汇总平A行命中模块普攻段', () => {
     // 见 docs/MECHANICS_IMPLEMENTATION.md 安东段「已知缺口」与 cinemaAxisBatchA.test.ts 边界反锁；
     // 若日后裁决改为建模：catalog 配 basicBenchmarkMoveId = 1111008 即可（execMatchesMove 已接好），同时改本条与反锁测试。
     await setupHarness(['1111', '1181', '1191'].map(agentId => ({ agentId })), { recommendedBuild: true })
-    useConfigStore().setBasicAttackTimeWeight(0, 3)
+    useConfigStore().setActionCount(0, 'basicAttackTimeWeight', 3)
     const row = basicRow(0)
     expect(row?.benchmarkMoveId).toBe('1111003')
     expect(row?.dmgBonus ?? 0).toBe(0)
@@ -42,7 +42,7 @@ describe('CC-193 生产路径：汇总平A行命中模块普攻段', () => {
 
   it('振斗：基准段 = 炽风·胧切 #1，耗血暴伤 +50% 落到平A行', async () => {
     await setupHarness(['1441', '1181', '1191'].map(agentId => ({ agentId })), { recommendedBuild: true })
-    useConfigStore().setBasicAttackTimeWeight(0, 3)
+    useConfigStore().setActionCount(0, 'basicAttackTimeWeight', 3)
     const row = basicRow(0)
     expect(row?.benchmarkMoveId).toBe('1441009')
     expect(row?.critDmgBonus ?? 0).toBeGreaterThanOrEqual(50)
@@ -51,7 +51,7 @@ describe('CC-193 生产路径：汇总平A行命中模块普攻段', () => {
   it('赛维里安 / 菲欧妮：普攻段名不带 #N 时数据配置仍生效，汇总平A行有倍率（修复前恒无倍率 ⇒ 普攻伤害 0）', async () => {
     for (const [aid, bench] of [['1631', '1631003'], ['1641', '1641003']] as const) {
       await setupHarness([aid, '1181', '1311'].map(agentId => ({ agentId })), { recommendedBuild: true })
-      useConfigStore().setBasicAttackTimeWeight(0, 3)
+      useConfigStore().setActionCount(0, 'basicAttackTimeWeight', 3)
       const row = basicRow(0)
       expect(row?.benchmarkMoveId, aid).toBe(bench)
       expect(row?.damageMultiplier ?? 0, aid).toBeGreaterThan(0)
@@ -61,7 +61,7 @@ describe('CC-193 生产路径：汇总平A行命中模块普攻段', () => {
   it('赛维里安 C1：普攻暴伤 +60% 落到平A行', async () => {
     await setupHarness(['1631', '1181', '1311'].map(agentId => ({ agentId })), { recommendedBuild: true })
     const config = useConfigStore()
-    config.setBasicAttackTimeWeight(0, 3)
+    config.setActionCount(0, 'basicAttackTimeWeight', 3)
     config.setCinemaLevel(0, 1)
     expect(basicRow(0)?.critDmgBonus ?? 0).toBeGreaterThanOrEqual(60)
   }, 60000)

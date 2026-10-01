@@ -23,7 +23,6 @@ import {
   mechanicSettingOf,
   teammateBuffCoverageOf,
   teammateBuffEnabledOf,
-  wEngineEffectCoverageMapOf,
 } from './selectionReads'
 
 // ========== 类型定义 ==========
@@ -579,11 +578,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   // ========== Computed ==========
 
-  // 获取某个槽位的角色
-  function getChar(slot: number): CharacterConfig {
-    return team.value[slot]
-  }
-
   function getAgent(slot: number): Agent | null {
     const id = team.value[slot]?.agentId
     if (!id) return null
@@ -704,8 +698,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     if (char) char.wEngineModLevel = Math.max(1, Math.min(5, level))
   }
 
-  function setTauntCancelCount(slot: number, count: number) { setActionCount(slot, 'tauntCancelCount', count) }
-
   function setFourPieceSet(slot: number, setId: string) {
     const char = team.value[slot]
     if (char) char.driveDisc.fourPieceSetId = setId
@@ -735,46 +727,16 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     else char.driveDisc.subStatAllocation[statId] = safeCount
   }
 
-  // ========== 角色动作次数：统一写入通道 ==========
+  // ========== 角色动作次数：唯一写入通道 ==========
   //
-  // 下方 15 个命名 setter 都是一行包装（上下界见模块级 ACTION_COUNT_BOUNDS / clampActionCount）。
-  // **新角色不必再往 store 加 setter**：直接调 `setActionCount(slot, '<字段>', n)` 即可——
-  // 这正是评审 #9「角色 setter 泛化」要解决的「store 随角色数线性增长」。
-  // 命名 setter 保留是为了既有 14 个消费文件零改动；旧调用点可择机迁到通用入口。
+  // 所有动作次数 / 平A时间权重字段都经 `setActionCount(slot, '<字段>', n)` 写入（上下界见模块级
+  // ACTION_COUNT_BOUNDS / clampActionCount）。CC-357（r387）删掉了原 15 个一行包装的命名 setter
+  // （`set<字段名>` 形式，如平A权重 / 各角色专属次数）：store 不再随角色数线性增长，新角色只需在界表加字段。
+  // 锁：actionCountBounds.test.ts「store 不导出按字段命名的 setter」。
   function setActionCount(slot: number, field: ActionCountField, count: number) {
     const char = team.value[slot]
     if (char) char[field] = clampActionCount(field, count)
   }
-
-  function setParryCount(slot: number, count: number) { setActionCount(slot, 'parryCount', count) }
-
-  function setDodgeCounterCount(slot: number, count: number) { setActionCount(slot, 'dodgeCounterCount', count) }
-
-  function setAssaultOrderCount(slot: number, count: number) { setActionCount(slot, 'assaultOrderCount', count) }
-
-  function setPerfectBlockCount(slot: number, count: number) { setActionCount(slot, 'perfectBlockCount', count) }
-
-  function setBlockCount(slot: number, count: number) { setActionCount(slot, 'blockCount', count) }
-  function setDualCounterCount(slot: number, count: number) { setActionCount(slot, 'dualCounterCount', count) }
-
-  function setYixuanInk2Count(slot: number, count: number) { setActionCount(slot, 'yixuanInk2Count', count) }
-
-  function setPromiaNiyingCount(slot: number, count: number) { setActionCount(slot, 'promiaNiyingCount', count) }
-
-  // 3连/完美格挡 ≤0 = 自动（剩余闪能打3连 / 全弹刀完美），≥1 手填（与模块哨兵同口径）
-  function setYixuanInk3Count(slot: number, count: number) { setActionCount(slot, 'yixuanInk3Count', count) }
-
-  function setYixuanPerfectBlockCount(slot: number, count: number) { setActionCount(slot, 'yixuanPerfectBlockCount', count) }
-
-  function setYixuanExtremeAssistCount(slot: number, count: number) { setActionCount(slot, 'yixuanExtremeAssistCount', count) }
-
-  function setYixuanBackstageComboCount(slot: number, count: number) { setActionCount(slot, 'yixuanBackstageComboCount', count) }
-
-  function setQuickAssistCount(slot: number, count: number) { setActionCount(slot, 'quickAssistCount', count) }
-
-  function setChainCountPerStun(slot: number, count: number) { setActionCount(slot, 'chainCountPerStun', count) }
-
-  function setBasicAttackTimeWeight(slot: number, weight: number) { setActionCount(slot, 'basicAttackTimeWeight', weight) }
 
   function getDefaultBasicAttackTimeWeight(agent?: Agent | null): number {
     return defaultBasicAttackTimeWeight(agent)
@@ -913,10 +875,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     return wEngineEffectCoverages.value[effectId] ?? 100
   }
 
-  function getWEngineEffectCoverageMap(): Map<string, number> {
-    return wEngineEffectCoverageMapOf(wEngineEffectCoverages.value)
-  }
-
   function resourceUtilizationKey(slot: number, actionId: string): string {
     return `${slot}:${actionId}`
   }
@@ -988,12 +946,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     anomalySettlementShares.value[`${element}:${slot}`] = clampRatio(share)
   }
 
-  /** 维琳娜2命风蚀利用率的兼容别名 */
-  const velinaCinema2CorrosionRate = computed(() => getMechanicSetting('velina.cinema2CorrosionRate', 2 / 3))
-
-  function setVelinaCinema2CorrosionRate(value: number) {
-    setMechanicSetting('velina.cinema2CorrosionRate', Math.max(0, Math.min(1, Number.isFinite(value) ? value : 2 / 3)))
-  }
 
 
 
@@ -1329,13 +1281,11 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     teamMechanicSettings,
     anomalyUtilizationRates,
     anomalySettlementShares,
-    velinaCinema2CorrosionRate,
     enemy,
     // computed
     usedAgentIds,
     effectiveTime,
     // actions
-    getChar,
     getAgent,
     getWEngine,
     setAgent,
@@ -1343,28 +1293,12 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     setPotentialLevel,
     setWEngine,
     setWEngineModLevel,
-    setTauntCancelCount,
     setFourPieceSet,
     setTwoPieceSet,
     setMainStat,
     setSubStatCount,
     // 动作次数统一入口（新角色走这个，不必再加命名 setter）
     setActionCount,
-    setParryCount,
-    setDodgeCounterCount,
-    setBlockCount,
-    setPerfectBlockCount,
-    setAssaultOrderCount,
-    setDualCounterCount,
-    setYixuanInk2Count,
-    setPromiaNiyingCount,
-    setYixuanInk3Count,
-    setYixuanPerfectBlockCount,
-    setYixuanExtremeAssistCount,
-    setYixuanBackstageComboCount,
-    setQuickAssistCount,
-    setChainCountPerStun,
-    setBasicAttackTimeWeight,
     getDefaultBasicAttackTimeWeight,
     applyBuildRecommendationForSlot,
     comboAlignOverrides,
@@ -1378,7 +1312,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     setTeammateBuffCoverage,
     setWEngineEffectCoverage,
     getWEngineEffectCoverage,
-    getWEngineEffectCoverageMap,
     setDiscEffectCoverage,
     getDiscEffectCoverage,
     getResourceUtilization,
@@ -1403,7 +1336,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     setAnomalyUtilizationRate,
     getAnomalySettlementShare,
     setAnomalySettlementShare,
-    setVelinaCinema2CorrosionRate,
     isTeammateBuffEnabled,
     getTeammateBuffCoverage,
     syncTeammateBuffsFromTeam,

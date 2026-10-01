@@ -60,7 +60,7 @@ describe('位置对比（positionCompare）击破手口径', () => {
     for (let slot = 0; slot < 3; slot++) {
       config.setAgent(slot, liuyin.team[slot])
       if (liuyin.wEngines?.[slot]) config.setWEngine(slot, liuyin.wEngines[slot])
-      if (liuyin.chainCountPerStun) config.setChainCountPerStun(slot, liuyin.chainCountPerStun[slot])
+      if (liuyin.chainCountPerStun) config.setActionCount(slot, 'chainCountPerStun', liuyin.chainCountPerStun[slot])
     }
     config.useStunAxis = false
     config.syncTeammateBuffsFromTeam()

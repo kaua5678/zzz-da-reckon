@@ -178,7 +178,7 @@ export function defaultDescentLevers(): DescentLever[] {
         const factor = [1, 0.75, 0.5, 0.25, 0][level] ?? 0
         for (let s = 0; s < 3; s++) {
           const base = ctx.descentParryBase?.[s] ?? ctx.config.team[s]?.parryCount ?? 0
-          ctx.config.setParryCount(s, Math.round(base * factor))
+          ctx.config.setActionCount(s, 'parryCount', Math.round(base * factor))
         }
       },
     },
@@ -309,7 +309,7 @@ export function descendDifficultyCurve(
 
   // 复位（不污染用户配置）
   ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, absorbBefore)
-  for (let s = 0; s < 3; s++) ctx.config.setParryCount(s, parryBefore[s]!)
+  for (let s = 0; s < 3; s++) ctx.config.setActionCount(s, 'parryCount', parryBefore[s]!)
   ctx.config.setMechanicSetting('yeshuguang.formAxis', axisBefore)
   ctx.config.interactionScaleMonotone = savedMonotone
   ctx.config.interactionScaleCeiling = savedCeiling

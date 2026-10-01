@@ -150,10 +150,10 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     // 减掉低边际交互既能缩小截断又往往不亏伤害。
     if (baselineTruncation > 1e-6) {
       const FEAS_LEVERS = [
-        { key: 'parry', get: (s: number) => Number(configStore.team[s]?.parryCount ?? 0), set: (s: number, v: number) => configStore.setParryCount(s, v) },
-        { key: 'block', get: (s: number) => Number(configStore.team[s]?.blockCount ?? 0), set: (s: number, v: number) => configStore.setBlockCount(s, v) },
-        { key: 'dual', get: (s: number) => Number(configStore.team[s]?.dualCounterCount ?? 0), set: (s: number, v: number) => configStore.setDualCounterCount(s, v) },
-        { key: 'dodge', get: (s: number) => Number(configStore.team[s]?.dodgeCounterCount ?? 0), set: (s: number, v: number) => configStore.setDodgeCounterCount(s, v) },
+        { key: 'parry', get: (s: number) => Number(configStore.team[s]?.parryCount ?? 0), set: (s: number, v: number) => configStore.setActionCount(s, 'parryCount', v) },
+        { key: 'block', get: (s: number) => Number(configStore.team[s]?.blockCount ?? 0), set: (s: number, v: number) => configStore.setActionCount(s, 'blockCount', v) },
+        { key: 'dual', get: (s: number) => Number(configStore.team[s]?.dualCounterCount ?? 0), set: (s: number, v: number) => configStore.setActionCount(s, 'dualCounterCount', v) },
+        { key: 'dodge', get: (s: number) => Number(configStore.team[s]?.dodgeCounterCount ?? 0), set: (s: number, v: number) => configStore.setActionCount(s, 'dodgeCounterCount', v) },
       ] as const
       let bestTrunc = baselineTruncation
       let bestDmg = baselineDamage
@@ -191,7 +191,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     // ① 平A 权重（委托边际均衡；它自己不含可行性门，故候选若越界即回滚）
     const w = marginalEqualizeStrategy.allocate(ctx)
     if (!feasible()) {
-      for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, weightsBefore[s])
+      for (let s = 0; s < 3; s++) configStore.setActionCount(s, 'basicAttackTimeWeight', weightsBefore[s])
       notes.push('平A 权重均衡解越界（超时间），已回滚')
     } else if (w.note) {
       notes.push(w.note)
@@ -212,10 +212,10 @@ export const jointLeverStrategy: TimeWeightStrategy = {
           const next = Math.max(0, Math.min(99, cur + dir))
           if (next === cur) continue
           if (dir < 0 && totalParries() + dir < minParryTotal) { floorBlocked = true; continue } // 强制次数下限
-          configStore.setParryCount(slot, next)
+          configStore.setActionCount(slot, 'parryCount', next)
           const dmg = calc.teamTotalDamage.value
           if (!feasible() || dmg <= best + 1e-6) {
-            configStore.setParryCount(slot, cur) // 回滚：越界或没变好
+            configStore.setActionCount(slot, 'parryCount', cur) // 回滚：越界或没变好
           } else {
             best = dmg
             improved = true
@@ -251,8 +251,8 @@ export const jointLeverStrategy: TimeWeightStrategy = {
           const wFrom = Math.max(0, Number(configStore.team[from]?.basicAttackTimeWeight ?? 0))
           if (wFrom <= 0) continue // 已无可转移的权重
           const wMain = Math.max(0, Number(configStore.team[carry]?.basicAttackTimeWeight ?? 0))
-          configStore.setBasicAttackTimeWeight(carry, wMain + 1)
-          configStore.setBasicAttackTimeWeight(from, wFrom - 1)
+          configStore.setActionCount(carry, 'basicAttackTimeWeight', wMain + 1)
+          configStore.setActionCount(from, 'basicAttackTimeWeight', wFrom - 1)
           const ex = exOf(carry)
           const d = calc.teamTotalDamage.value
           // 接受：ex 实打实上升 + 可行 + 伤害地板（被挤：入口总伤 / 未挤：当前最优）。
@@ -266,8 +266,8 @@ export const jointLeverStrategy: TimeWeightStrategy = {
             improved = true
             energyMoved = true
           } else {
-            configStore.setBasicAttackTimeWeight(carry, wMain)
-            configStore.setBasicAttackTimeWeight(from, wFrom)
+            configStore.setActionCount(carry, 'basicAttackTimeWeight', wMain)
+            configStore.setActionCount(from, 'basicAttackTimeWeight', wFrom)
           }
         }
         if (!improved) break
@@ -294,13 +294,13 @@ export const jointLeverStrategy: TimeWeightStrategy = {
       for (let round = 0; round < 4; round++) {
         const w = Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0))
         if (w <= 0) break
-        configStore.setBasicAttackTimeWeight(s, Math.max(0, w - 1))
+        configStore.setActionCount(s, 'basicAttackTimeWeight', Math.max(0, w - 1))
         const d = calc.teamTotalDamage.value
         const ok = stunOf() >= stunBase - 1e-9
           && d >= cornerDmg - 1e-6
           && feasible()
         if (!ok) {
-          configStore.setBasicAttackTimeWeight(s, w) // 回滚到最小够用
+          configStore.setActionCount(s, 'basicAttackTimeWeight', w) // 回滚到最小够用
           break
         }
         cornerDmg = Math.max(cornerDmg, d)
@@ -322,7 +322,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
       .filter(x => x.now < x.mid - 1e-9)
     if (starvedNow.length > 0) {
       rolledBack = true
-      for (let s = 0; s < 3; s++) configStore.setBasicAttackTimeWeight(s, weightsMid[s])
+      for (let s = 0; s < 3; s++) configStore.setActionCount(s, 'basicAttackTimeWeight', weightsMid[s])
       notes.push(`③④ 步弄坏主C 强特（${starvedNow.map(x => `槽${x.c + 1}：${x.mid}→${x.now}`).join('、')}），权重已还原 ①② 末态`)
     }
     // ⑤ 合轴匀出（用户裁决 2026-09-13，留白语义：「平A会把剩余时间吃完。允许多吃，多吃就上调

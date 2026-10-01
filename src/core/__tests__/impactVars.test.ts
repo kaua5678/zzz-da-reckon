@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { IMPACT_VARIABLES, readImpactVar, writeImpactVar } from '@/core/impactVars'
 
-/** 最小 configStore 桩：只实现 team + setBasicAttackTimeWeight */
+/** 最小 configStore 桩：只实现 team + setActionCount（平A时间权重） */
 function makeStore() {
   const team = [
     { slot: 0, agentId: '1471', basicAttackTimeWeight: 3 },
@@ -12,8 +12,8 @@ function makeStore() {
     team,
     enemy: {},
     setEnemy(patch: any) { Object.assign(this.enemy, patch) },
-    setBasicAttackTimeWeight(slot: number, weight: number) {
-      if (team[slot]) team[slot].basicAttackTimeWeight = Math.max(0, Math.min(99, weight))
+    setActionCount(slot: number, field: string, count: number) {
+      if (field === 'basicAttackTimeWeight' && team[slot]) team[slot].basicAttackTimeWeight = Math.max(0, Math.min(99, count))
     },
   }
 }
@@ -39,7 +39,7 @@ describe('伤害影响分析变量 slot1TimeWeight（2号队友 平A战场时间
     expect(readImpactVar(store, 'slot1TimeWeight')).toBe(1)
   })
 
-  it('写入：setBasicAttackTimeWeight(1, v) 生效并触发响应式链', () => {
+  it('写入：setActionCount(1, basicAttackTimeWeight, v) 生效并触发响应式链', () => {
     const store = makeStore()
     writeImpactVar(store, 'slot1TimeWeight', 50)
     expect(store.team[1].basicAttackTimeWeight).toBe(50)

@@ -393,8 +393,8 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     await setupTeam(null)
     const config = useConfigStore()
     // 关掉金身/双反（其动作时间也计入必做前台，会把平A压到 0）→ 让后摇时间成为唯一变量
-    config.setBlockCount(0, 0)
-    config.setDualCounterCount(0, 0)
+    config.setActionCount(0, 'blockCount', 0)
+    config.setActionCount(0, 'dualCounterCount', 0)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
     const rr = calc.resourceResult.value!
@@ -411,7 +411,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     expect(c0.timeAllocation.necessaryTime).toBeGreaterThan(0)
     const basic0 = c0.timeAllocation.basicAttackTime
     // 全嘲讽取消后摇 → 无恢复行、后摇 0 → 平A时间回升
-    config.setTauntCancelCount(0, 99)
+    config.setActionCount(0, 'tauntCancelCount', 99)
     await new Promise(r => setTimeout(r, 50))
     const c99 = calc.resourceResult.value!.characters[0]
     expect(c99.executions.some(e => e.moveId?.startsWith('banyue-recovery'))).toBe(false)
@@ -471,10 +471,10 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
       { slot: 0, moveId: '1471010', count: 1, startTime: 10 },
     ] }], 3)
     const config = useConfigStore()
-    config.setDodgeCounterCount(0, 0)
-    config.setParryCount(0, 0)
-    config.setBlockCount(0, 0)
-    config.setDualCounterCount(0, 0)
+    config.setActionCount(0, 'dodgeCounterCount', 0)
+    config.setActionCount(0, 'parryCount', 0)
+    config.setActionCount(0, 'blockCount', 0)
+    config.setActionCount(0, 'dualCounterCount', 0)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 80))
     const c0 = calc.resourceResult.value!.characters[0]
@@ -504,10 +504,10 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
       { slot: 0, moveId: '1471021', count: 2, startTime: 12 }, // 撼天动地×2（终结技）
     ] }])
     const config = useConfigStore()
-    config.setDodgeCounterCount(0, 0)
-    config.setParryCount(0, 0)
-    config.setBlockCount(0, 0)
-    config.setDualCounterCount(0, 0)
+    config.setActionCount(0, 'dodgeCounterCount', 0)
+    config.setActionCount(0, 'parryCount', 0)
+    config.setActionCount(0, 'blockCount', 0)
+    config.setActionCount(0, 'dualCounterCount', 0)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 80))
     const rr = calc.resourceResult.value!

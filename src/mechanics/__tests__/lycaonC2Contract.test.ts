@@ -338,7 +338,7 @@ describe('applyTeamMechanics 透传 countStun / chainCountPerStun（跳②）', 
     // 1011 是强攻（isSupport = false）⇒ `buildCharConfig` 的 `?? 1` 兜底会把它变成 1；
     // 这里 store 显式 = 3 ⇒ 若读 `characters` 会得 3 或 1，若读快照会得 3。可分辨性靠下面的
     // 第二臂（store = 0 而 cfg 兜底 = 1）来钉——那才是默认值分裂的真实形态。
-    config.setChainCountPerStun(1, 3)
+    config.setActionCount(1, 'chainCountPerStun', 3)
     const characters = [
       buildCharConfig(0, config, catalog) as unknown as Cfg,
       buildCharConfig(1, config, catalog) as unknown as Cfg,
@@ -365,7 +365,7 @@ describe('applyTeamMechanics 透传 countStun / chainCountPerStun（跳②）', 
     const { catalog, config } = await setupHarness([{ agentId: '1141', cinemaLevel: 2 }, { agentId: '1011' }])
     // ⚠ 把队友的 store 值设成 **0**（= 未调过滑块的默认形态），并让 cfg 侧的兜底会是另一个数：
     // 1011 是强攻（`isSupport = false`）⇒ `characters` 上那份被写成 1。store 侧 0 ⇒ 走快照得 0。
-    config.setChainCountPerStun(1, 0)
+    config.setActionCount(1, 'chainCountPerStun', 0)
     const characters = [
       buildCharConfig(0, config, catalog) as unknown as Cfg,
       buildCharConfig(1, config, catalog) as unknown as Cfg,

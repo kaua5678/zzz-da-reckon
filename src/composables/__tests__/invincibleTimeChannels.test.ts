@@ -21,9 +21,9 @@ describe('无敌时间 × 后台/CD 伤害通道', () => {
   it('卢西娅追加攻击：支援位 0 交互口径下默认 20 次；无敌 60 → 相位延后+后台口径压至 13 次', async () => {
     const { config } = await setupHarness([{ agentId: '1451' }, { agentId: '1391' }, { agentId: '1051' }])
     // 支援位 0 交互（roleInteractionBaseline 页面口径）
-    config.setParryCount(0, 0)
-    config.setDodgeCounterCount(0, 0)
-    config.setQuickAssistCount(0, 3)
+    config.setActionCount(0, 'parryCount', 0)
+    config.setActionCount(0, 'dodgeCounterCount', 0)
+    config.setActionCount(0, 'quickAssistCount', 3)
 
     config.setEnemy({ invincibleTime: 0 })
     const calc0 = useResourceCalc()
