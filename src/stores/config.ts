@@ -11,7 +11,7 @@ import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocatio
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { useCatalogStore } from './catalog'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic } from '@/mechanics'
-import { autoStunAxisPresetOf, presetGuaranteeWrites } from '@/data/stunAxisPresets'
+import { autoStunAxisPresetOf, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
 import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AppliedBossPreset, PhaseBuffEffect } from '@/types/bossPreset'
@@ -1384,6 +1384,6 @@ export const useConfigStore = defineStore('config', () => {
 function installUiSessionEffects(model: ReturnType<typeof createConfigModel>): void {
   watch(
     () => autoStunAxisPresetOf({ autoYidhariAxis: model.autoYidhariAxis.value, team: model.team.value }, AUTO_AXIS_PRESET_HINTS),
-    (p) => { for (const [key, v] of presetGuaranteeWrites(p)) model.setMechanicSetting(key, v) },
+    (p) => prefillPresetGuarantee(model, p),
   )
 }

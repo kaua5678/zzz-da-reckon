@@ -65,10 +65,12 @@ export interface StunAxisPreset {
    */
   chapter?: number
   /**
-   * 保底目标（≥ N，0 = 不保底）：**通用自动轴命中**该预设时自动勾选「保底目标」（UI store 会话效果，
-   * 见 `stores/config#useConfigStore`；写入表 = `presetGuaranteeWrites`）。
-   * 注意（CC-349 核实）：手动「应用」与难度变体 altAxes 绑定（`applyStunAxisPreset`）**不**写本字段；
-   * 现唯一声明者「5火10大」与「般琉通用」同队、后者带 plans 优先 ⇒ 自动命中路径当前也选不到它。
+   * 保底目标（≥ N，0 = 不保底）= **把预设应用到 UI 现场时的预填建议**（CC-358 口径，`prefillPresetGuarantee`）：
+   * 通用自动轴命中（UI store 会话效果，CC-349）与轴页手动「应用」（StunAxisPage）都写；
+   * **批量求值不写**——难度变体 altAxes 绑定 / 队伍对比 / 位置对比（`applyStunAxisPreset`）只换轴，
+   * 因为保底在难度爬梯里是独立目标档 G3（`difficultyLadder.ts`，「全关」基线清零、试开失败回滚），
+   * 绑轴顺带开保底会把「换轴」与「开保底」两个难度维度捆死、污染全关基线。
+   * 现唯一声明者「5火10大」与「般琉通用」同队、后者带 plans 优先 ⇒ 自动命中选不到它，只有手动应用会写。
    * - stun：保底 N 次失衡；fury：保底 N 次嗔火（般岳怒相）；ultimate：保底 N 次喧响（终结技）。
    * 如 5火10大 = { stun: 4, fury: 4, ultimate: 4 }（另需琉音好评≥6，见 note）。
    */
@@ -292,6 +294,18 @@ export function presetGuaranteeWrites(
     if (n !== undefined) out.push([`guarantee.${k}`, n > 0 ? 1 : 0])
   }
   return out
+}
+
+/**
+ * CC-358：把预设的保底目标预填进 **UI 现场**（自动命中的会话效果 + 轴页手动「应用」共用这一个入口）。
+ * 批量求值路径（composables/ 下的难度爬梯 / 对比 / 部署）**不得**调用：保底是爬梯的独立目标档 G3。
+ * 锁：`stores/__tests__/autoAxisGuaranteePrefill.test.ts`「CC-358」。
+ */
+export function prefillPresetGuarantee(
+  config: { setMechanicSetting(key: GuaranteeSettingKey, value: number): void },
+  preset: Pick<StunAxisPreset, 'guarantee'> | null | undefined,
+): void {
+  for (const [key, v] of presetGuaranteeWrites(preset)) config.setMechanicSetting(key, v)
 }
 
 /** 深拷贝轴（应用/导出预设时隔离编辑器改动；用 JSON 序列化，兼容 Vue 响应式 Proxy） */

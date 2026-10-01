@@ -247,7 +247,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
-import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/data/stunAxisPresets'
+import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
@@ -597,7 +597,9 @@ function pct(t: number): string { return (t / maxDur.value * 100) + '%' }
 function laneTop(s: number): string { return (24 + s * 20) + 'px' }
 
 function applyPreset(p: StunAxisPreset) {
-  configStore.applyStunAxisPreset(p) // 方案 / 固定轴互斥写入的唯一实现（arena-D 第 368 轮，原在本页与 teamCompare 各写一份）
+  // 方案 / 固定轴互斥写入的唯一实现（arena-D 第 368 轮，原在本页与 teamCompare 各写一份）；
+  // 手动应用到 UI 现场 ⇒ 同自动命中一样预填预设声明的保底目标（CC-358；批量求值不预填）
+  if (configStore.applyStunAxisPreset(p)) prefillPresetGuarantee(configStore, p)
 }
 function exportPreset() {
   const teamIds = configStore.team.map(c => c.agentId)
