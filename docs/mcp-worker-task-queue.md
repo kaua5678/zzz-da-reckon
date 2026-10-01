@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 380 轮**：CC-350 敌方体型并入 Boss 房间入口 `83f9b665`（删 TeamComparePage 写 UI store 体型的 watcher；口径：所有进房间路径体型跟 Boss）——原 §2；全文 `git show bb45d580:docs/mcp-worker-task-queue.md` 的 §2。
+
 **2026-10-02 arena-E 第 379 轮**：CC-349 自动轴保底预填去页面依赖 `3f5dcb1e`（UI store 会话效果，不进场景 Model）；**开放项仍有效**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（待用户裁决，细节见卡表 CC-349 与 `git show 8e53d9ec:docs/mcp-worker-task-queue.md` 的 §2）。
 
 **2026-10-02 arena-E 第 378 轮**：CC-348 Canvas 主题桥单源 `4b4490f3`（三个 3D 组件取色归一 + 修切主题不重绘；像素 A/B 相同）——原 §2 交接；全文 `git show 79e3039c:docs/mcp-worker-task-queue.md` 的 §2。
@@ -138,14 +140,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 380 轮（lane arena-E，开工 02:24；无并行会话；HEAD `8e53d9ec`；REQUIREMENTS.md 无新条目）：CC-350 敌方体型并入 Boss 房间入口 `83f9b665`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **怎么选的**：r379 在 TeamConfigPage 发现「页面 watcher 写全局 store」⇒ 本轮全仓普查同一模式（`/home/kaua/calc-arch/arenaE/scanw.py`：扫 views/components 所有 `watch(` 块里的 store 写入）。唯一真命中 = TeamComparePage 选 Boss 写体型。
-- **做到哪**：`src/composables/bossRoom.ts` 新 `DEFAULT_BOSS_BODY_SIZE` + `applyBossRoom` 写体型；`TeamComparePage.vue` 删 watcher；`types/bossPreset.ts` 注释改口径；`bossRoom.test.ts` +2 例；`docs/mcp-boss-room-context.md` 末尾补 CC-350 节。
-- **验证**：全量 verify 通过（452 文件通过 / 16 跳过，build 成功；日志 `/home/kaua/calc-arch/arenaE/verify380.log`）；无金标变化。
-- **口径变化（本轮拍板，可逆）**：所有进房间路径（含主计算器 BossSelectCard、各分析器）体型都跟 Boss；依据 = 用户 2026-09-05「体型跟随 boss、未录入默认中型」+ CC-342「房间上下文唯一入口」。影响 = 艾莲 / 苍角在分析器里的数值可能变（变到正确值）。回退：`git revert 83f9b665`。
-- **开放项（沿用 r379，待用户裁决，勿自行改）**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效 ⇒ 般琉卢「10大轴」高难段在未开保底下计算。细节见卡表 CC-349。
-- **下一步**：无排定项。views/components 已无写 store 的 watcher。候选（非必须）：① composables 里同类普查（`watch(` 写 store 且不在场景里——注意 `stores/config.ts` 内部 watcher 是 Model 自身不变量，不算）；② `createBatchScheduler`（只在 worker 化时有意义）；③ 两个 3D 图浏览器点验（`arenaE/pix378.sh` 写法）。不为降计数开卡。
-- **已知坑**：① 普查脚本的正则会把「写页面局部 ref」误报（如 `selectedAgentId.value = …`），命中要逐条看；② 同一 worktree 里 verify 在跑时别为反证去还原源文件（会污染 verify），反证改在另一份副本里做或按用例构造推理。
+**第 381 轮（lane arena-E，开工 02:31；无并行会话；HEAD `bb45d580`；REQUIREMENTS.md 无新条目）：CC-351 队伍预设 → store 单一映射 `ff1a64dc`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **怎么选的**：r380 候选 ① composables 普查「watch 写 store」→ 零真命中（`useTimeWeightAutoAllocation` 挂在根视图，会话级）。转查同类「同一语义两条应用路径」：队伍预设装配主页 / 分析器两份，主页不套预设音擎（核查脚本 `/home/kaua/calc-arch/arenaE/presetdiff.cjs`：104 预设 65 槽分叉）。
+- **做到哪**：`src/composables/teamCompare.ts` 新 `applyTeamPresetConfig`（唯一映射）、`applyTeamToStore` 改为「复位 0命1精 + 它」；`src/views/TeamConfigPage.vue#onPresetSelect` 改调它；新测试 `src/composables/__tests__/teamPresetConfig.test.ts`。
+- **验证**：zd 零差（DUMP / ROWS DIFF 0，分析器路径逐位不变）；全量 verify 通过（453 文件 / 16 跳过，build 成功；`/home/kaua/calc-arch/arenaE/verify381.log`）。
+- **本轮拍板（可逆）**：主页选预设后音擎 = 预设声明值（与队伍对比同一支队）；命座 / 精炼仍保留用户档位。回退：`git revert ff1a64dc`。
+- **开放项（沿用 r379，待用户裁决，勿自行改）**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（卡表 CC-349）。
+- **下一步**：无排定项。候选（非必须）：① **同名不同义**：`teamCompare#applyTeamToStore`（预设装配）与 `teamTimelineStore#applyTeamToStore`（金档轻量装配）改名其一（如后者 → `applyGoldStateTeam`），纯改名 + 调用点（约 10 处），zd 应零差——值不值得做看是否真的引起过误用，先 grep 历史提交里有没有混用修复再定；② `createBatchScheduler`（worker 化时）；③ 3D 图浏览器点验。不为降计数开卡。
+- **已知坑**：① **worktree 里没有 `.zc` 时**，`cp -r .zc/perf <wt>/.zc/` 会把 perf 内容直接摊进 `<wt>/.zc/`（zd 报 `Could not resolve .../.zc/perf/vitest.perf.config.ts`）⇒ 先 `mkdir -p <wt>/.zc` 再 `cp -r .zc/perf <wt>/.zc/perf`；
+  ② `store.applyTeamPreset` 推荐未加载即抛错，分析器单测普遍不加载推荐 ⇒ 分析器装配路径别改调它（金标会整体漂移）。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
