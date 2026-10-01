@@ -11,8 +11,11 @@
  * - `getTemplate` / 依赖组装在 try 之外（原样：它们抛错会向上冒泡）；
  * - 返回值只含 n>0 的键，且夹到 [0, 54]。调用方应**整体替换** `driveDisc.subStatAllocation`（原组件先置 {} 再逐键写，等价）。
  *
- * ⚠ 与 `stores/config.ts` 里的整队优化（:~800，同样按 totalSteps2/3/4 选键）是**两条独立路径**，本函数不替代它；
- *    store 层不反向依赖 composables。若日后要统一，两处步数口径需一起改。
+ * ⚠ 与 `stores/config.ts` 的配装推荐（applyBuildRecommendationForSlot）是**两条独立路径**，本函数不替代它；
+ *    store 层不反向依赖 composables。两处共用的预算口径（设置键 / 缺省步数 / 分档）与写回规整
+ *    已收进 core `resolveSubstatBudget` / `normalizeSubstatAllocation`（arena-D 第 361 轮），不要再各写一份。
+ *    仍有意不同的一点：store 推荐的「百暴」起点面板不带队友 buff（teammateBuffs: []，与队友无关），
+ *    本函数的起点带同源队友 buff（随后再用真实伤害精修）。见 docs/mcp-r6-refactor-list.md §8 第 361 轮。
  *    CC-173（第 198 轮）决定**不统一**：整队贪心只在用户关闭 optimizer.useDefault 时生效，允许与管线不同源，
  *    理由与重开条件见 stores/config.ts 该分支注释、docs/mcp-stun-dual-source.md §24.20。
  *
@@ -22,7 +25,7 @@
  * core 只剩默认分配 `computeDefaultSubStatAllocation`（§24.33）。
  * 详见 docs/mcp-stun-dual-source.md §24.32。
  */
-import { computeDefaultSubStatAllocation, getTemplate } from '@/core/substatOptimizer'
+import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget } from '@/core/substatOptimizer'
 import type { DriveDiscConfig } from '@/types/catalog'
 import type { useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
@@ -100,8 +103,7 @@ export function computeSubstatAllocationForSlot(
   // 第 194 轮：与伤害管线同一份队友 buff 输入（门控 / 接收槽过滤 / 全局 Buff / 覆盖率 / 来源修正），见 resolveSlotPanelBuffInputs
   const setInfo = resolveSlotPanelBuffInputs(slot, configStore, catalogStore)
   const tmpl = getTemplate(agent)
-  const sc = tmpl.stats.length
-  const tsk = sc <= 2 ? 'optimizer.totalSteps2' : sc === 3 ? 'optimizer.totalSteps3' : 'optimizer.totalSteps4'
+  const budget = resolveSubstatBudget(tmpl, configStore.getMechanicSetting)
   let seed: Record<string, number>
   try {
     seed = computeDefaultSubStatAllocation({
@@ -110,17 +112,12 @@ export function computeSubstatAllocationForSlot(
       setsMap: catalogStore.driveDiscSetsMap,
       teammateBuffs: setInfo.teammateBuffs,
       statRules: catalogStore.statRules,
-      statCap: configStore.getMechanicSetting('optimizer.substatCap', 20),
-      totalSteps: configStore.getMechanicSetting(tsk, 0),
+      ...budget,
       config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, potentialLevel: char.potentialLevel, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: configStore.enemy.weakness },
     })
   } catch {
     return null
   }
-  const chosen = refineWithRealDamage(slot, configStore, seed, tmpl.stats, configStore.getMechanicSetting('optimizer.substatCap', 20), refine)
-  const alloc: DriveDiscConfig['subStatAllocation'] = {}
-  for (const [s, n] of Object.entries(chosen)) {
-    if (n > 0) alloc[s] = Math.max(0, Math.min(54, n))
-  }
-  return alloc
+  const chosen = refineWithRealDamage(slot, configStore, seed, tmpl.stats, budget.statCap, refine)
+  return normalizeSubstatAllocation(chosen)
 }

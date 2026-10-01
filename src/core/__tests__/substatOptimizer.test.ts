@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { computeDefaultSubStats, getTemplate, type SubstatTemplate } from '@/core/substatOptimizer'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import {
+  computeDefaultSubStats, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget,
+  SUBSTAT_BUDGET_SETTINGS, type SubstatTemplate,
+} from '@/core/substatOptimizer'
 import type { Agent } from '@/types/catalog'
 
 const dpsTemplate: SubstatTemplate = {
@@ -72,5 +77,42 @@ describe('computeDefaultSubStats · 快速默认词条分配', () => {
     expect(alloc.atkPct ?? 0).toBe(0)
     // 普通角色仍按 100% 封顶
     expect(getTemplate(mockAgent('9992', 'stun')).critRateCap ?? 100).toBe(100)
+  })
+})
+
+describe('副词条预算口径单一来源（arena-D 第 361 轮）', () => {
+  const tmpl = (n: number): SubstatTemplate => ({ stats: ['critRate', 'critDmg', 'atkPct', 'penFlat', 'hpPct'].slice(0, n) })
+  const none = (_id: string, fallback: number) => fallback
+
+  it('设置全缺省：1–2 词条 32 步、3 词条 39 步、≥4 词条 43 步；单词条上限 20', () => {
+    expect([1, 2, 3, 4, 5].map(n => resolveSubstatBudget(tmpl(n), none).totalSteps)).toEqual([32, 32, 39, 43, 43])
+    expect(resolveSubstatBudget(tmpl(3), none).statCap).toBe(20)
+  })
+
+  it('设置 > 0 覆盖缺省，且读的键与分档一致（1 词条读 totalSteps2，≥5 读 totalSteps4）', () => {
+    const settings: Record<string, number> = { 'optimizer.substatCap': 15, 'optimizer.totalSteps2': 30, 'optimizer.totalSteps3': 0, 'optimizer.totalSteps4': 50 }
+    const read = (id: string, fallback: number) => settings[id] ?? fallback
+    expect([1, 2, 3, 4, 5].map(n => resolveSubstatBudget(tmpl(n), read).totalSteps)).toEqual([30, 30, 39, 50, 50])
+    expect(resolveSubstatBudget(tmpl(2), read).statCap).toBe(15)
+    expect(SUBSTAT_BUDGET_SETTINGS).toEqual(['optimizer.substatCap', 'optimizer.totalSteps2', 'optimizer.totalSteps3', 'optimizer.totalSteps4'])
+  })
+
+  it('写回规整：去掉 ≤0 的键，夹到 54', () => {
+    expect(normalizeSubstatAllocation({ critRate: 0, critDmg: 60, atkPct: 3, penFlat: -1 })).toEqual({ critDmg: 54, atkPct: 3 })
+  })
+
+  it('源码锁：总步数设置键只在 core/substatOptimizer.ts 出现（视图的输入控件除外）', () => {
+    const root = join(__dirname, '..', '..')
+    const hits: string[] = []
+    const walk = (d: string) => {
+      for (const f of readdirSync(d)) {
+        const p = join(d, f)
+        if (statSync(p).isDirectory()) { if (f !== '__tests__') walk(p); continue }
+        if (!/\.(ts|vue)$/.test(f) || p.includes(`${join('src', 'views')}`)) continue
+        if (readFileSync(p, 'utf8').includes('optimizer.totalSteps')) hits.push(relative(root, p).split('\\').join('/'))
+      }
+    }
+    walk(root)
+    expect(hits).toEqual(['core/substatOptimizer.ts'])
   })
 })

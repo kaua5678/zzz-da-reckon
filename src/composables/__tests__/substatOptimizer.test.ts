@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { computeDefaultSubStatAllocation, getTemplate } from '@/core/substatOptimizer'
+import { computeDefaultSubStatAllocation, getTemplate, resolveSubstatBudget } from '@/core/substatOptimizer'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
@@ -32,13 +32,11 @@ describe('computeSubstatAllocationForSlot', () => {
       const char = config.team[slot]!
       const agent = catalog.getAgent(char.agentId!)!
       const setInfo = resolveSlotPanelBuffInputs(slot, config, catalog)
-      const sc = getTemplate(agent).stats.length
-      const tsk = sc <= 2 ? 'optimizer.totalSteps2' : sc === 3 ? 'optimizer.totalSteps3' : 'optimizer.totalSteps4'
       return computeDefaultSubStatAllocation({
         agent, wEngine: char.wEngineId ? catalog.getWEngine(char.wEngineId) : undefined,
         driveDiscConfig: char.driveDisc, setsMap: catalog.driveDiscSetsMap,
         teammateBuffs: setInfo.teammateBuffs, statRules: catalog.statRules,
-        statCap: config.getMechanicSetting('optimizer.substatCap', 20), totalSteps: config.getMechanicSetting(tsk, 0),
+        ...resolveSubstatBudget(getTemplate(agent), config.getMechanicSetting),
         config: { cinemaLevel: char.cinemaLevel ?? 0, wEngineModLevel: char.wEngineModLevel ?? 1, potentialLevel: char.potentialLevel, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: config.enemy.weakness },
       })
     }

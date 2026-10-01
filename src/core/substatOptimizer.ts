@@ -23,15 +23,58 @@ import { getAgentMechanic } from '@/mechanics/registry'
 /** 暴击率副词条步长（S 级 +2.4%/步；原 SUBSTAT_POOL.critRate，只剩「百暴」缺口在用） */
 const CRIT_RATE_STEP = 2.4
 
-/**
- * 按有效词条数自动计算总步数。
- * 2 词条→32、3 词条→39、4 词条→43，其他→39。
- */
-function getDefaultTotalSteps(statsCount: number): number {
-  if (statsCount === 2) return 32
-  if (statsCount === 3) return 39
-  if (statsCount === 4) return 43
-  return 39
+// ============ 副词条预算（设置键 + 缺省值的唯一来源） ============
+//
+// arena-D 第 361 轮：原先「模板词条数 → 总步数设置键」的三元式在 store 配装推荐、编排层优化器、优化器测试里
+// 各抄一份，缺省总步数又单独写在这里的 getDefaultTotalSteps 里，两边分档还不一致（1 词条读 totalSteps2 键、
+// 缺省却是 39；≥5 词条读 totalSteps4 键、缺省也是 39）。当前所有模板都是 2–4 词条，不一致不可达，
+// 但「一个口径三处手抄」本身就是会漂移的结构。现在键、缺省值、分档放在同一张表里，调用方只传读取器。
+// 设置键属于 store 的 mechanicSettings，core 只认字符串、不依赖 store（读取器由调用方注入）。
+
+/** 单词条分配上限（步数）的设置键与缺省值。 */
+export const SUBSTAT_CAP_SETTING = 'optimizer.substatCap'
+const SUBSTAT_CAP_DEFAULT = 20
+
+/** 写回 `driveDisc.subStatAllocation` 前的硬上限（原 store / 编排层两处各写一个 54，原样保留）。 */
+const SUBSTAT_ALLOC_HARD_MAX = 54
+
+/** 总步数分档：模板词条数 ≤ maxStats 落该档；设置值 0 = 用 defaultSteps。 */
+const TOTAL_STEP_TIERS: readonly { maxStats: number; setting: string; defaultSteps: number }[] = [
+  { maxStats: 2, setting: 'optimizer.totalSteps2', defaultSteps: 32 },
+  { maxStats: 3, setting: 'optimizer.totalSteps3', defaultSteps: 39 },
+  { maxStats: Infinity, setting: 'optimizer.totalSteps4', defaultSteps: 43 },
+]
+
+/** 影响默认分配的全部设置键（store 据此 watch 重算）。 */
+export const SUBSTAT_BUDGET_SETTINGS: readonly string[] = [SUBSTAT_CAP_SETTING, ...TOTAL_STEP_TIERS.map(t => t.setting)]
+
+function totalStepTier(statsCount: number) {
+  return TOTAL_STEP_TIERS.find(t => statsCount <= t.maxStats)!
+}
+
+/** 读取器签名与 store `getMechanicSetting(id, fallback)` 相同。 */
+export type SubstatSettingReader = (id: string, fallback: number) => number
+
+/** 按模板词条数解析副词条预算：单词条上限 + 总步数（设置 > 0 用设置，否则按分档缺省）。 */
+export function resolveSubstatBudget(
+  template: SubstatTemplate,
+  readSetting: SubstatSettingReader,
+): { statCap: number; totalSteps: number } {
+  const tier = totalStepTier(template.stats.length)
+  const override = readSetting(tier.setting, 0)
+  return {
+    statCap: readSetting(SUBSTAT_CAP_SETTING, SUBSTAT_CAP_DEFAULT),
+    totalSteps: override > 0 ? override : tier.defaultSteps,
+  }
+}
+
+/** 写回 store 的规整：只留 n > 0 的键，夹到 [0, 54]。调用方整体替换 `subStatAllocation`。 */
+export function normalizeSubstatAllocation(alloc: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const [s, n] of Object.entries(alloc)) {
+    if (n > 0) out[s] = Math.max(0, Math.min(SUBSTAT_ALLOC_HARD_MAX, n))
+  }
+  return out
 }
 
 // ============ 角色词条模板 ============
@@ -136,9 +179,9 @@ export interface DefaultSubStatInput {
     effectCoverageMap?: Map<string, number>
     enemyWeakness?: readonly string[]
   }
-  /** 单词条分配上限（步数）。默认 20。 */
+  /** 单词条分配上限（步数）。缺省 20。生产调用方用 `resolveSubstatBudget` 求出后传入。 */
   statCap?: number
-  /** 总步数覆盖。0（默认）= 自动按有效词条数（2→32/3→39/4→43）。>0 时强制使用。 */
+  /** 总步数。缺省或 0 = 按模板词条数分档（2→32 / 3→39 / ≥4→43，见 TOTAL_STEP_TIERS）。 */
   totalSteps?: number
 }
 
@@ -174,9 +217,9 @@ function computeNoSubstatPanel(input: DefaultSubStatInput): PanelValues {
 export function computeDefaultSubStatAllocation(input: DefaultSubStatInput): Record<string, number> {
   const template = getTemplate(input.agent)
   const basePanel = computeNoSubstatPanel(input)
-  const statCap = input.statCap ?? 20
+  const statCap = input.statCap ?? SUBSTAT_CAP_DEFAULT
   const totalSteps = input.totalSteps && input.totalSteps > 0
     ? input.totalSteps
-    : getDefaultTotalSteps(template.stats.length)
+    : totalStepTier(template.stats.length).defaultSteps
   return computeDefaultSubStats(template, basePanel.critRate, totalSteps, statCap)
 }

@@ -7,7 +7,7 @@ import { ref, computed, watch, type UnwrapRef } from 'vue'
 import type {
   Agent, WEngine, DriveDiscConfig, SkillDamageTarget, CharacterBuildRecommendation, TeammateBuffGroup,
 } from '@/types/catalog'
-import { computeDefaultSubStatAllocation, getTemplate } from '@/core/substatOptimizer'
+import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget, SUBSTAT_BUDGET_SETTINGS } from '@/core/substatOptimizer'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { useCatalogStore } from './catalog'
 import { getAgentMechanic } from '@/mechanics'
@@ -816,10 +816,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
         // CC-186（第 209 轮）：原 `optimizer.useDefault=0` 整队贪心分支已删——该设置自引入起从无写入点（无 UI / 导入 / 持久化），
         // 分支生产不可达，它写的 perSlotMarginalGains 永远为空。求最优走编排层真实伤害精修（composables/substatOptimizer.ts）。
         // 详见 docs/mcp-stun-dual-source.md §24.33。
-        const statCount = getTemplate(agent).stats.length
-        const totalStepsKey = statCount <= 2 ? 'optimizer.totalSteps2'
-          : statCount === 3 ? 'optimizer.totalSteps3'
-          : 'optimizer.totalSteps4'
+        // 预算（设置键 / 缺省 / 分档）与写回规整的唯一来源在 core/substatOptimizer（arena-D 第 361 轮）
         const alloc = computeDefaultSubStatAllocation({
           agent,
           wEngine,
@@ -827,13 +824,10 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
           setsMap: catalogStore.driveDiscSetsMap,
           teammateBuffs: [],
           statRules: catalogStore.statRules,
-          statCap: getMechanicSetting('optimizer.substatCap', 20),
-          totalSteps: getMechanicSetting(totalStepsKey, 0),
+          ...resolveSubstatBudget(getTemplate(agent), getMechanicSetting),
           config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, potentialLevel: char.potentialLevel, enemyWeakness: enemy.value.weakness },
         })
-        for (const [statId, count] of Object.entries(alloc)) {
-          if (count > 0) char.driveDisc.subStatAllocation[statId] = Math.max(0, Math.min(54, count))
-        }
+        char.driveDisc.subStatAllocation = normalizeSubstatAllocation(alloc)
       }
     }
 
@@ -1296,12 +1290,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
 
   // 监听副词条设置变化，自动重算默认分配
   watch(
-    () => [
-      mechanicSettings.value['optimizer.substatCap'],
-      mechanicSettings.value['optimizer.totalSteps2'],
-      mechanicSettings.value['optimizer.totalSteps3'],
-      mechanicSettings.value['optimizer.totalSteps4'],
-    ],
+    () => SUBSTAT_BUDGET_SETTINGS.map(id => mechanicSettings.value[id]),
     () => {
       for (let i = 0; i < 3; i++) {
         if (team.value[i]?.agentId) applyBuildRecommendationForSlot(i)
