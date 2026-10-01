@@ -91,6 +91,24 @@ describe('bossRoom', () => {
     expect(config.globalBuffs.map(r => r.id)).toEqual(layer)
   }, 60000)
 
+  it('CC-350：进房间写敌方体型 = Boss 体型，未录入按中型', async () => {
+    const { config } = await setupHarness([{ agentId: '1091' }, { agentId: '1511' }, { agentId: '1411' }])
+    const sized = presets.find(p => p.bodySize && p.bodySize !== 'medium')
+    const unsized = presets.find(p => !p.bodySize)
+    expect(sized, '数据里应有录了非中型体型的 Boss').toBeTruthy()
+    expect(unsized, '数据里应有未录体型的 Boss').toBeTruthy()
+    config.setEnemy({ bodySize: 'small' })
+    applyBossRoom(config, sized!, sized!.phases[0]!)
+    expect(config.enemy.bodySize).toBe(sized!.bodySize)
+    applyBossRoom(config, unsized!, unsized!.phases[0]!)
+    expect(config.enemy.bodySize).toBe('medium')
+  }, 60000)
+
+  it('CC-350 源码锁：页面不再自己写敌方体型（体型只经房间入口 / 属性页手改）', () => {
+    const page = readFileSync(join(__dirname, '..', '..', 'views', 'TeamComparePage.vue'), 'utf8')
+    expect(page).not.toMatch(/setEnemy\(\{\s*bodySize/)
+  })
+
   it('源码锁：applyBossPreset 只经 bossRoom 调用（所有分析器都进同一种房间）', () => {
     const root = join(__dirname, '..', '..')
     const hits: string[] = []

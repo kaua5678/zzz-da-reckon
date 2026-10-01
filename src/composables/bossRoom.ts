@@ -1,7 +1,7 @@
 /**
  * Boss 房间上下文的唯一写入口（CC-342：arena-D 第 363 轮立入口，第 364 轮让关卡 buff 随 phase 数据走）。
  *
- * 「房间上下文」= 一次求值所在的那一关：敌人参数（store `applyBossPreset`）+ 该 Boss 当期的关卡固有 buff
+ * 「房间上下文」= 一次求值所在的那一关：敌人参数（store `applyBossPreset`）+ 敌方体型（CC-350）+ 该 Boss 当期的关卡固有 buff
  * （`layer_buff`，写进全局 Buff 表、前缀 `layer-buff:`）。分析与调用点普查见 `docs/mcp-boss-room-context.md`。
  *
  * 关卡 buff 的数据源 = `BossPresetPhase.layerBuffs`（`scripts/import-nanoka-bosses.mjs` 生成时把该期该 Boss 的
@@ -17,6 +17,9 @@ import type { ConfigModel } from '@/stores/config'
 import { phaseBuffRows } from '@/utils/phaseBuff'
 
 export const LAYER_BUFF_PREFIX = 'layer-buff:'
+
+/** 未录入体型的 Boss 按中型（用户口径 2026-09-05；体型表 = scripts/import-nanoka-bosses.mjs `BOSS_BODY_SIZES`） */
+export const DEFAULT_BOSS_BODY_SIZE = 'medium' as const
 
 /**
  * 写关卡固有 buff：先清旧（前缀 `layer-buff:`），再写该 phase 的 `layerBuffs`。phase 没有（缺数据 / 测试桩）⇒ 只清不写。
@@ -45,5 +48,9 @@ export function applyBossRoom(
   phase: BossPresetPhase,
 ): void {
   configStore.applyBossPreset({ id: boss.id }, phase, boss.monster, boss.defaults)
+  // CC-350：体型是 Boss 的属性，随房间一起写。修前只有 TeamComparePage 的页面 watcher 写（写的还是 UI store），
+  // 主计算器选 Boss 不写、其余分析器的场景继承「用户上次在队伍对比页选过的 Boss」的体型 ⇒ 艾莲 / 苍角等体型相关招式随导航史变。
+  // 手动改体型照旧在下次进房间前保持（与 HP / 防御等房间参数同口径）。
+  configStore.setEnemy({ bodySize: boss.bodySize ?? DEFAULT_BOSS_BODY_SIZE })
   applyBossLayerBuffs(configStore, boss, phase)
 }

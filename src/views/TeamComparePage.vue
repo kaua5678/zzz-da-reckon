@@ -766,16 +766,7 @@ const selectedPhase = computed(() => {
   return phases.find(p => p.modeType === 'critical_assault') ?? phases[0] ?? b.phases[0] ?? null
 })
 
-// 敌方体型跟随 boss（BOSS_BODY_SIZES 手录，2026-09-05）：选中 boss 自动写入敌方配置，
-// 艾莲霜锋剑气/苍角风团等体型相关招式经 cfg.bodySize 消费；未录入体型的 boss 默认中型
-// （用户口径 2026-09-05），手动改过则在下次切换 boss 前保持。
-watch(selectedBoss, (boss) => {
-  if (!boss) return
-  const size = boss.bodySize ?? 'medium'
-  if (configStore.enemy.bodySize !== size) {
-    configStore.setEnemy({ bodySize: size })
-  }
-})
+// 敌方体型跟随 boss：CC-350 并入房间入口 `bossRoom#applyBossRoom`（对比在场景里进房间时写场景、不再改 UI store）
 
 // ========== 当期 Buff ==========
 /** 当前期视图（含 buff 牌） */
