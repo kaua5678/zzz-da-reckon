@@ -241,6 +241,12 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
   删「向后兼容：不传 readMetrics」一例（无此分支）。`MIGRATED_ANALYZERS` 加 `cinemaUplift.ts`。全量 verify 见队列 §2 第 377 轮交接。
 - **更正**：§6 第 5 条原写「`allAgentsSweep` 也调它」——实际不调（它自己做 C0 vs C6），调用方只有页面与 `cinemaUplift.test.ts`。
 
+### 3.9 第 382 轮 CC-352：实战部署页当期牌自动选择（`7967311a`，lane arena-E）
+
+- view 层漏网：`RunArchivePage.vue#autoPickPeriodBuff` 在 UI store 上逐张写牌 → `setTimeout(40)` → 读伤害。④ 源码锁只扫 `MIGRATED_ANALYZERS`（composables），扫不到 view。
+- 迁成 `runArchiveDeploy#pickBestPeriodBuff(ctx, phaseId, cards)`，页面 `withAnalysisScenario` 调用后只写最终结果一次。比较口径与旧 reduce 相同（基准「不用」排第一、严格大于才替换）。
+- 普查 views/components 的「await + 读 teamTotalDamage」：其余都已在场景内。
+
 ## 4. 迁移进度（每迁一个：改本表 + 把文件加进 `analysisScenario.test.ts` 的 `MIGRATED_ANALYZERS`）
 
 | 分析器 | 入口 | 调用方 | 同步 / 异步 | 状态 |
@@ -257,6 +263,7 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 | 伤害影响 2D / 3D（原在 `components/ImpactChart.vue` / `charts/ResponseSurface3D.vue`，**原表漏列**） | `impactSampling.ts#sampleImpactCurve` / `sampleImpactSurface` | 同左两个组件 | 异步 | ✅ 第 376 轮 `56e2f697`（CC-345，A/B 逐字节相同） |
 | 主词条边际效用（原在 `components/MarginalUtilityCard.vue`，**原表漏列**） | `mainStatMarginal.ts#computeMainStatMarginals` | 同左组件 | 异步 | ✅ 第 376 轮 `1962c4b0`（CC-346，含「单项替换」口径修正） |
 | 命座提升率 `composables/cinemaUplift.ts`（**原表漏列**） | `analyzeCinemaUplift` | `views/ResourceUtilizationPage.vue#computeCinemaGains` | 异步（nextTick） | ✅ 第 377 轮 `887c0ebc`（CC-347，A/B 逐字节相同） |
+| 当期牌自动选择（原在 `views/RunArchivePage.vue#autoPickPeriodBuff`，**原表漏列**） | `runArchiveDeploy.ts#pickBestPeriodBuff` | `views/RunArchivePage.vue` | 同步 | ✅ 第 382 轮 `7967311a`（CC-352，lane arena-E） |
 
 ## 5. 迁移配方（一个分析器一张卡，零差简化卡）
 
