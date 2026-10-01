@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 377 轮**：CC-347 命座提升率迁独立场景 `887c0ebc`（A/B 逐字节相同；改写 UI store 的分析器清零）——原 §2 交接，细节见隔离文档 §3.8；全文 `git show cfb8c30f:docs/mcp-worker-task-queue.md` 的 §2。
+
 **2026-10-02 arena-E 第 376 轮**：CC-345 伤害影响 `56e2f697` + CC-346 主词条边际效用 `1962c4b0`（含单项替换口径修正）——原 §2 交接，细节见隔离文档 §3.6 / §3.7；全文 `git show b444abf8:docs/mcp-worker-task-queue.md` 的 §2。
 
 **2026-10-02 arena-E 第 375 轮**：CC-343 S5 收窄类型（`3c287f85`，新增 `EvalConfig`，dist 逐字节相同）——原 §2 交接，细节见隔离文档 §3.5；全文 `git show d43ba04f:docs/mcp-worker-task-queue.md` 的 §2。
@@ -132,19 +134,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 377 轮（lane arena-E，开工 00:52；无并行会话；HEAD `b444abf8`；REQUIREMENTS.md 无新条目）：CC-347 命座提升率迁独立场景 `887c0ebc`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：`analyzeCinemaUplift(scenario, { targetStunCount, slots?, maxLevel?, resolveName?, control? })`；新导出 `readCinemaScene(calc)`；
-  页面 `ResourceUtilizationPage.vue#computeCinemaGains` 改 `withAnalysisScenario` + `useBatchOwner`（删 `teamUltimateTotal`）；`cinemaUplift.test.ts` 改写 3 例、删 1 例；`MIGRATED_ANALYZERS` 现 11 个模块。细节与理由全在隔离文档 §3.8。
-- **验证**：A/B 三队逐字节相同（旧 API 在 HEAD worktree、新 API 在本 worktree 各跑一次；两个探针留在 `/home/kaua/calc-arch/arenaE/zzCu{Old,New}.test.ts`，可作下次 A/B 模板）；全量 verify 通过（check-guards 25、450 文件 / 4131 测试通过、16 / 29 跳过——比上轮少 1 例即删掉的向后兼容用例；build 成功），日志 `/home/kaua/calc-arch/arenaE/verify377c.log`；实机点通资源利用率页「命座提升率」计算 + 重新计算两次均出表、零 JS 错误（`arenaE/ui377.sh`）。
-- **结论**：按隔离文档 §8 的两条检索，**已没有在 UI store 上改写-让出-恢复的分析器**，CC-343 这条线收口。
-- **下一步**：无排定项。可选方向（都不是必须）：① `createBatchScheduler` 接线（只在 worker 化时有意义，§3.4 末段）；② 换区域扫——REQUIREMENTS.md 有新条目优先。不要为降计数开卡。
-- **本轮拍板（可逆）**：页面口径文案用的 `cinemaStunLock` 改为与结果一起 commit（原先点按钮即改）。回退：`git revert 887c0ebc`。
+**第 378 轮（lane arena-E，开工 01:32；无并行会话；HEAD `cfb8c30f`；REQUIREMENTS.md 无新条目）：CC-348 Canvas 主题桥单源 `4b4490f3`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **怎么选的**：无排定项 ⇒ 按 r6 §8「别重复扫」挑从未扫过的大文件。`TeamDamage3DChart.vue` 是纯渲染，但它和另两个 3D 组件各抄了一份主题取色桥。
+- **做到哪**：新 `src/utils/canvasTheme.ts`（`SCENE_ROOT_FALLBACK` / `themeReader` / `readThemeVar` / `isLightTheme` / `withAlpha` / `onThemeChange` / `useThemeRedraw`）+ `src/utils/__tests__/canvasTheme.test.ts`（6 例：兜底表 = `:root`、withAlpha、主题翻转回调、三组件接了重绘、源码锁）；
+  三个组件删各自的读取器 / 兜底常量 / withAlpha；`scripts/check-tokens.mjs` 判据 10 删掉已恒不命中的 `cssVarColor('--wa-…')` 正则（改由 `SceneVar` 类型保证，注释写明）；`docs/UI_THEME_GUIDE.md` 第 125 行改指 canvasTheme。卡表 CC-348 有完整说明。
+- **验证**：vue-tsc 0 错；全量 verify 通过（25 guard、12 token、451 文件 / 4137 测试通过、16 / 29 跳过，build 成功；日志 `/home/kaua/calc-arch/arenaE/verify378b.log`）；
+  像素 A/B（`/home/kaua/calc-arch/arenaE/pix378.sh <worktree> <tag>`：选预设队 → 资源池 → 伤害池 → 强制夜间重绘取哈希 → 切明亮取哈希 → 再重绘取哈希）：新旧 build 夜间 / 明亮帧哈希逐一相同；旧 build 切主题后哈希不变（缺陷实证），新 build 立即变成明亮帧。
+- **未覆盖**：DifficultyCurve3DChart（队伍对比·难度曲线 3D）与 ResponseSurface3D（资源利用率·伤害影响 3D）没在浏览器里点——它们要先跑完计算才出画布；改动只是取色函数换源 + 一行 `useThemeRedraw`，tsc / build / 单测都过。下一轮若顺手可按 `pix378.sh` 的写法补点一次。
+- **下一步**：无排定项。候选（非必须）：① `TeamConfigPage.vue`（1255 行，§8 表从未扫过）——看有没有可抽成 composable 的计算 / 重复的选择逻辑；② `createBatchScheduler`（只在 worker 化时有意义）。不为降计数开卡。
+- **本轮拍板（可逆）**：`useThemeRedraw` 用 MutationObserver 看 `html.light` 翻转，而不是 watch `themeStore.mode`——工具层不依赖 Pinia store、任何改 class 的入口都能覆盖。回退：`git revert 4b4490f3`。
 - **已知坑**：
-  ① **WSL 会在没有 wsl_exec 连接时自己关机**（本轮 2 次：`journalctl --list-boots` 每次只隔几分钟，关机前无报错、只有时钟跳变；开工时还在的 dsh web 应该是之前的保活者，它没了以后，两次调用之间空几分钟 VM 就停）：
-     后台 verify 被杀、`/tmp` 清空（A/B 输出、`/tmp/chromedeps` 都没了）。**做法**：verify 发车后，用「在 WSL 里 `sleep`/轮询日志」的调用接力等（每次 ≤170s，调用之间不要在沙箱侧长 sleep）；本轮这样跑完一次全量。
-     判断是否被关过：`uptime` 或 `journalctl --list-boots | tail -3`。发车用的 `(…; echo EXIT=$?) &` 收尾行在本轮也没写出来，以日志里 `built in` / `Tests` 行为准。
-  ② A/B 输出放 `/tmp` 会随重启丢；要留证据就放 `/home/kaua/calc-arch/arenaE/`。
-  ③ 第 376 轮坑（让出位置照抄、先新后旧、ui-check 用法、pkill 方括号、verify 发车确认）仍有效，见 `git show b444abf8:docs/mcp-worker-task-queue.md` §2。
+  ① **ui-check 的 Chrome 配置在多次运行之间共用**（localStorage 里的 `zzz-theme` 会留下来）⇒ 每次开头的主题取决于上一次结束时的状态；做主题相关的 A/B 要先显式归位（`pix378.sh` 的 DARK 步）。
+  ② 资源池页（`ResultPage.vue`）内部还有一层页签（资源/动作池 · 异常池 · 伤害池），3D 构成图在「伤害池」；预设下拉是虚拟列表，`--step option:<名>` 常找不到，直接 eval 点第一个 `.n-base-select-option`。
+  ③ 本轮 ngrok 端点掉线过一次（ERR_NGROK_3200，约半分钟后恢复，WSL 没重启）：客户端报 `no session id: 404` 时等一会儿 `rm -f /tmp/mcp.session` 重试。
+  ④ 第 377 轮的「WSL 空闲关机」对策（在 WSL 里轮询接力等 verify）本轮照做，两次全量都一次跑完。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
