@@ -331,6 +331,8 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 - 页面里延时的「收起提示」定时器也要过 `run.commit`，否则被顶掉的旧运行会把新运行的进度条清掉。
 - 场景里 `effectScope(true)` 是脱离父作用域的：在组件 setup 里建也不会随组件卸载自动停，必须 `dispose()`（用 `withAnalysisScenario` 就不会漏）。
 
+- **（r383 CC-353）view 层的试算循环由 ④c 锁住**：`views/` + `components/` 里同一循环体既写 store 又读计算结果即红。新页面要「逐项试 → 取最优」就写成 `composables/` 里收 `AnalysisContext` 的纯函数，页面 `withAnalysisScenario` 调用（参照 `runArchiveDeploy#pickBestPeriodBuff`）。
+
 ## 9. 回退点
 
 - 第 1 阶段整体：`git revert 02049db9`（出生态参数、工厂化、场景模块、试点迁移一起回退；UI 行为不变）。

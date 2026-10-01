@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 382 轮**：CC-352 实战部署页当期牌自动选择迁独立场景 `7967311a`——原 §2；全文 `git show d01283dd:docs/mcp-worker-task-queue.md` 的 §2。
+
 **2026-10-02 arena-E 第 381 轮**：CC-351 队伍预设 → store 单一映射 `ff1a64dc`（主页选预设改套预设音擎，与队伍对比同一支队；分析器 zd 零差）——原 §2；全文 `git show 02dfce35:docs/mcp-worker-task-queue.md` 的 §2。
 
 **2026-10-02 arena-E 第 380 轮**：CC-350 敌方体型并入 Boss 房间入口 `83f9b665`（删 TeamComparePage 写 UI store 体型的 watcher；口径：所有进房间路径体型跟 Boss）——原 §2；全文 `git show bb45d580:docs/mcp-worker-task-queue.md` 的 §2。
@@ -142,15 +144,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 382 轮（lane arena-E，开工 02:43；无并行会话；HEAD `02dfce35`；REQUIREMENTS.md 无新条目）：CC-352 实战部署页当期牌自动选择迁独立场景 `7967311a`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **怎么选的**：r381 候选 ① 同名 `applyTeamToStore` 改名——无混用史 ⇒ 不做（记在 r6 §8 第 382 行）。转查当期牌写入入口：两入口语义有意不同不合并；但 RunArchivePage 的「自动选择」在 UI store 上试牌（view 层漏网的分析循环）。
-- **做到哪**：`src/composables/runArchiveDeploy.ts` 新 `pickBestPeriodBuff`；`src/views/RunArchivePage.vue#autoPickPeriodBuff` 改 `withAnalysisScenario`；`analysisScenario.test.ts` 的 `MIGRATED_ANALYZERS` 加 `runArchiveDeploy.ts`；新测试 `src/composables/__tests__/periodBuffAutoPick.test.ts`；隔离文档 §3.9 + §4 加行。
-- **验证**：vue-tsc 0 错；全量 verify 通过（454 文件 / 16 跳过，build 成功；`/home/kaua/calc-arch/arenaE/verify382.log`）。选牌口径与旧 reduce 相同（基准「不用」第一、严格大于才换）⇒ 选出的牌不变，只是不再改写 UI store 中间态。
+**第 383 轮（lane arena-E，开工 02:52；无并行会话；HEAD `d01283dd`；REQUIREMENTS.md 无新条目）：CC-353 view 层试算循环源码锁 `44bddfb3`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **怎么选的**：r382 候选 ①。先估误报：「循环里写 store」3 误报 / 0 真命中 ⇒ 不做成那样；收窄为「循环体内写 store + 读计算结果」⇒ 0 误报、修前 RunArchivePage 命中 ⇒ 做。
+- **做到哪**：`src/composables/__tests__/analysisScenario.test.ts` 新增 ④c（含 detector 正反自证）；隔离文档 §8 加一条坑。没有改生产代码。
+- **验证**：④c 当前通过；把 `RunArchivePage.vue` 换回 `02dfce35` 版本时 ④c 报 `views/RunArchivePage.vue:387`（已还原）；全量 verify 通过（454 文件 / 16 跳过，build 成功；`/home/kaua/calc-arch/arenaE/verify383.log`）。
 - **开放项（沿用 r379，待用户裁决，勿自行改）**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（卡表 CC-349）。
-- **下一步**：无排定项。近四轮（CC-349～352）都是同一类问题——**同一语义多条入口 / 页面里藏着改全局状态的逻辑**；views 已普查到底（watch 写 store：0；UI store 上的试算循环：0）。候选（非必须）：
-  ① 把这类检查机器化：一个 guard「views/components 里不许出现 `configStore.<写方法>(` 处于 `for`/`while` 循环体内」——先估误报再定，若误报多就不做；
-  ② `createBatchScheduler`（worker 化时）；③ 3D 图浏览器点验。不为降计数开卡。
-- **已知坑**：① 「逐张对照求值」类测试要先断言各候选结果**确有差异**，否则选 null 也会空过（本轮测试已加）；② `withAnalysisScenario(fn, source)` 第二参缺省 = `useConfigStore()`，测试里 harness 的 store 就是它。
+- **下一步（可直接开工，先查后定）**：**金档（命座 / 精炼 / 音擎）写入有多个入口**——`teamCompare.ts` 的 `applyGoldSteps` / `applyGoldAllocationToStore` / `applyGoldToStore`、`teamTimelineStore#applyTeamToStore(config, team, state, …)`、`TeamConfigPage#applyGoldDraft`（直接循环 setCinemaLevel / setWEngineModLevel）。
+  做法：`grep -n "export function applyGold\|function applyGoldDraft\|setCinemaLevel\|setWEngineModLevel" src -r` 列出全部写入点 → 对比每个入口写哪些字段、按什么顺序（**特别看音擎换限定时是否同步重置精炼 / 是否触发队友 buff 同步**）→ 若有口径分叉（像 CC-351 那样）就归一，若只是参数形状不同就**不动**并在 r6 §8 记一句。
+  其它候选（非必须）：`createBatchScheduler`（worker 化时）；3D 图浏览器点验。不为降计数开卡。
+- **已知坑**：做源码判据前先量误报（写个一次性扫描脚本放 `/home/kaua/calc-arch/arenaE/`），并拿修前版本做反证——只「当前 0 命中」不能说明判据有牙。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
