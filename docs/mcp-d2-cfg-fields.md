@@ -63,16 +63,91 @@
   锁 `src/types/__tests__/privateCfgFields.test.ts` 4 条（3 个目标接口 + 整份类型），迁移前源码上全红（已反证）。
 - 验证：vue-tsc 净、产物 `diff -r` 逐字节相同、zd 0/0、全量 4158 例过。回滚 `git revert 859cae1e`（纯类型，无数值影响）。
 
-## 5. 下一步
+## 5. D2 §5：模块内 `Record` 强转 → 有类型的 `cfg.<键>`（进行中）
 
-**D2 剩下的真痛点 = 编译期查不出的拼写错误**：角色模块里 `cfg as unknown as Record<string, unknown>` 共 228 处
-（yeshuguang 14 / banyue 11 / starlightBilly 10 / sigrid 9 / phoenix 8 / lucy 8 / yixuan 7 / yidhari 7 …），经 `record.<键>` 读写**未声明**的键，
-拼错键名 = 静默读到 `undefined`（守卫 25「无类型记录键死读」只抓「全仓零写入」的键，抓不到「写 A 读 A'」）。
-现在每个模块都有自己的 `declare module` 扩充块，可以逐模块把 `record.<键>` 用到的键补成声明、把访问改回 `cfg.<键>`。
-- 试点建议：`mechanics/agents/yixuan.ts`（`record.` 访问 36 处、cast 7 处，字段语义集中）。
-- 步骤：① `grep -o "record\.[a-zA-Z]*" <模块> | sort | uniq -c` 列键；② 每个键查是否已声明（公共接口或本模块扩充块），没有就在扩充块里加（类型看写入点）；
-  ③ 把 `record.<键>` 改回 `cfg.<键>`，删掉不再需要的 cast；④ vue-tsc + `vite build` 产物 `diff -r`（应逐字节相同；`Number(record.x ?? 0)` 之类的运行时包装**不要动**）。
-- **判据**：值得做的标准是「这个模块的状态键全部有类型、拼错会编译失败」，不是「cast 计数下降」。若某模块的 record 访问是按动态键（`record[field]`）的通用逻辑，保留，记理由。
+**为什么做**：D2 立项时的痛点是「跨角色拼写错误无法在编译期暴露」。角色模块里 `X as unknown as Record<string, unknown>` 之后
+`record.<键>` 读写**未声明**的键，拼错键名 = 静默读到 `undefined`（守卫 25 只抓「全仓零写入」的键，抓不到「写 A 读 A'」）。
+每个模块现在都有自己的 `declare module` 扩充块 ⇒ 未声明键补进去、访问改回 `cfg.<键>`，拼错就编译失败。
+
+**判据**：「这个模块的 cfg 状态键全有类型」，**不是** cast 计数下降。按动态键（`record[field]`）的通用逻辑可以保留，但这样的模块不进完成表，记一句理由。
+
+**试点 r391（CC-361 `a5e054d1`）`yixuan.ts`**：38 处 `record.` → `cfg.`；6 处 `const record = cfg as …` 删除；两个辅助函数去掉 `record` 参数；
+5 个未声明键补进本模块扩充块（`yixuanCinemaLevel` / `yixuanExtremeAssistCountInput` / `yixuanC1LightningCount` / `yixuanFlashEnergySpent` / `yixuanXuanmoGain`）；
+字段有类型后 4 处 `(cfg.x ?? {}) as Record<string, number>` 与 1 处 `as YixuanExChain | undefined` 变冗余，删掉（强转会掩盖类型不匹配）。
+vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被编译器证明的事）；zd 0/0；全量 4159 例过。
+
+### 执行卡（每个模块一张，机械活，可派执行模型）
+
+1. `python3 scripts/d2-record-keys.py . <模块名>`：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
+2. 来源是本槽 `cfg` 的：未声明键补进**本模块**的 `declare module '@/types/resource/config'` 扩充块（类型看写入点；拿不准写 `number`，tsc 会报）。
+   **只有本模块用的键**放本模块；若 `privateCfgFields` 锁或脚本显示别处也用，放公共接口 `types/resource/config.ts`。
+3. 把 `record.<键>` 改成 `cfg.<键>`、删 `const record = cfg as …`、内联 `(cfg as unknown as Record<string, unknown>).k` 改 `cfg.k`；
+   辅助函数若收 `record: Record<string, unknown>` 参数，去掉它、改收 `cfg`。**`Number(x ?? 0)` 等运行时包装一律不动**（保零差）。
+4. 字段有类型后变冗余的 `as` 删掉；若 tsc 因 `readonly` 等报错，说明原强转在绕约束——停下来读清楚再决定，别再套一层强转。
+5. 来源**不是**本槽 cfg 的（`mateRecord ← mateCfg` 是队友 cfg，同接口，可同样处理；`exec` / `state` / `result` 是别的接口）：查对应接口，同理补声明；不确定就本轮跳过、表里记一句。
+6. 把模块名加进 `src/types/__tests__/privateCfgFields.test.ts` 的 `TYPED_CFG_MODULES`（锁住不回退）。
+7. 验证：vue-tsc；`ZD_REPO=<wt> bash .zc/perf/zd.sh <tag>` 必须 0/0（变量改名后产物不再逐字节相同，零差是主判据）；该模块相关测试；收尾全量 vitest `--maxWorkers=4`。
+8. 本表把状态改为 `done <提交号>`。一次做 3–5 个模块为宜，一个模块一个提交便于回滚。
+
+**已知坑**：`grep` 计数有些 cast 不是对 cfg（`own` / `mateRecord` / `exec` 等），以脚本输出为准；`miyabi` / `xide` / `qingyi` / `yuzuha` 的 cast 不是 `const x = … as …` 形式（脚本「变量」段为空），看「内联」段或直接 grep。
+
+| 模块 | 强转处数（r391） | 状态 |
+|---|---|---|
+| `yixuan` | 7 | done a5e054d1 |
+| `yeshuguang` | 14 | 待做 |
+| `banyue` | 11 | 待做 |
+| `starlightBilly` | 10 | 待做 |
+| `sigrid` | 9 | 待做 |
+| `lucy` | 8 | 待做 |
+| `phoenix` | 8 | 待做 |
+| `grace` | 7 | 待做 |
+| `promia` | 7 | 待做 |
+| `yidhari` | 7 | 待做 |
+| `nangong` | 6 | 待做 |
+| `severian` | 6 | 待做 |
+| `vivian` | 6 | 待做 |
+| `aire` | 5 | 待做 |
+| `anby` | 5 | 待做 |
+| `ellen` | 5 | 待做 |
+| `hugo` | 5 | 待做 |
+| `lighter` | 5 | 待做 |
+| `roxy` | 5 | 待做 |
+| `claret` | 4 | 待做 |
+| `evelyn` | 4 | 待做 |
+| `miyabi` | 4 | 待做 |
+| `qianxia` | 4 | 待做 |
+| `soukaku` | 4 | 待做 |
+| `zhendou` | 4 | 待做 |
+| `anbyZero` | 3 | 待做 |
+| `billy` | 3 | 待做 |
+| `corin` | 3 | 待做 |
+| `harumasa` | 3 | 待做 |
+| `luciaElowen` | 3 | 待做 |
+| `pulchra` | 3 | 待做 |
+| `qingyi` | 3 | 待做 |
+| `seth` | 3 | 待做 |
+| `trigger` | 3 | 待做 |
+| `xide` | 3 | 待做 |
+| `yanagi` | 3 | 待做 |
+| `yaojiayin` | 3 | 待做 |
+| `zhuYuan` | 3 | 待做 |
+| `anton` | 2 | 待做 |
+| `jane` | 2 | 待做 |
+| `koleda` | 2 | 待做 |
+| `nekomata` | 2 | 待做 |
+| `nicole` | 2 | 待做 |
+| `panYinhu` | 2 | 待做 |
+| `piper` | 2 | 待做 |
+| `rina` | 2 | 待做 |
+| `soldier11` | 2 | 待做 |
+| `specPanelBuffs` | 2 | 待做 |
+| `yuzuha` | 2 | 待做 |
+| `zhao` | 2 | 待做 |
+| `ben` | 1 | 待做 |
+| `caesar` | 1 | 待做 |
+| `norma` | 1 | 待做 |
+| `orphie` | 1 | 待做 |
+| `remielle` | 1 | 待做 |
 
 ## 6. 字段矩阵（`python3 scripts/d2-cfg-field-matrix.py . --md <out>` 可重生成）
 

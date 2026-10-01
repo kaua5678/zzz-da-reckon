@@ -152,12 +152,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 390 轮（lane arena-E，开工 04:28；无并行会话；HEAD `885bf3cb`；REQUIREMENTS.md 无新条目）：CC-360 D2 续 `859cae1e`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：r389 的 14 个候选逐个判定完（`docs/mcp-d2-cfg-fields.md` §3：其余全是引擎契约，cfg 接口类型层到此为止）；同一规则推广到 `ModuleFeedback` / `CharacterResourceResult` / 整份角色结果类型（同文档 §4、卡表 CC-360）。
-- **顺带修的遗留**：r389 新建 `docs/mcp-d2-cfg-fields.md` 没登记 README §6 文档表 ⇒ master 上 `npm run check-guards` 红了一轮（r389 的 guards 是在写文档**之前**跑的）。已补登、改「74 份」。
-- **验证**：vue-tsc 净；`vite build` 产物前后 `diff -r` 逐字节相同；zd `r390`/`r390b` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189（`arenaE/verify390.log`）；`vitest run --maxWorkers=4` 455 文件 / 16 跳过 / 4158 例过（`verify390-test.log`）。
+**第 391 轮（lane arena-E，开工 04:51；无并行会话；HEAD `0bd70573`；REQUIREMENTS.md 无新条目）：CC-361 D2 §5 试点 `a5e054d1` + 助手脚本 `b05146d3`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：`yixuan.ts` 不再经 `Record` 强转读写 cfg，全部状态键有类型（卡表 CC-361）。做法已固化成执行卡 + 54 模块待办表：`docs/mcp-d2-cfg-fields.md` §5。
+- **验证**：vue-tsc 净；zd `r391` DIFF 0/0（本轮变量改名，产物不再逐字节相同，零差是主判据）；仪玄 3 个测试文件 69 例；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 / build（`arenaE/verify391.log`）；全量 455 文件 / 4159 例过（`verify391-test.log`）。
 - **开放项**：无。
-- **下一步（先查后定）**：`docs/mcp-d2-cfg-fields.md` §5——试点 `mechanics/agents/yixuan.ts`：把 `record.<键>`（`cfg as unknown as Record<string, unknown>`）用到的未声明键补进本模块扩充块、访问改回 `cfg.<键>`，让拼错键名编译失败。判据是「模块状态键全有类型」，不是 cast 计数；动态键（`record[field]`）的通用逻辑保留并记理由。验证同本轮（产物应逐字节相同）。
+- **下一步**：按 `docs/mcp-d2-cfg-fields.md` §5 执行卡逐模块做，从表头往下（`yeshuguang` 14 / `banyue` 11 / `starlightBilly` 10 …），一次 3–5 个、一模块一提交；每做完一个把模块名加进 `TYPED_CFG_MODULES` 并改表状态。这是机械活，适合执行模型 / dsh 并行（不同模块文件不相交；`privateCfgFields.test.ts` 的名单行与 d2 文档表格会冲突 ⇒ 由收尾的人统一合并）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -169,6 +168,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
   - **新建 `docs/*.md` 必须同步登记 README §6 文档表并改节标题份数**（守卫 `docs table`）；收尾在**文档提交之后**再跑一次 `npm run check-guards`，别只在代码提交前跑。
   - `git stash -- <路径>` 可只撤某几处改动做锁的反证，`git stash pop` 复原（r390 用过）。
+
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
