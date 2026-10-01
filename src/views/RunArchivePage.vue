@@ -174,7 +174,8 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { submissionToDeploy, type ArchiveRun, type RunArchiveFile } from '@/composables/runArchiveImport'
-import { applyDeployConfig, applyPeriodBuff } from '@/composables/runArchiveDeploy'
+import { applyDeployConfig, applyPeriodBuff, pickBestPeriodBuff } from '@/composables/runArchiveDeploy'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import type { DeployConfig } from '@/composables/runArchiveImport'
 import { runLimitedGold, lowGoldFrontier } from '@/composables/limitedGold'
 import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
@@ -369,32 +370,15 @@ function pickPeriodBuff(card: PhaseBuffCard | null) {
   configStore.triggerRefresh?.()
 }
 
-/** 自动选择：评估「不用」+ 每张可用牌的总伤害，应用最高者（含基准；测试牌/无效果牌剔除） */
+/** 自动选择：评估「不用」+ 每张可用牌的总伤害，应用最高者（CC-352：在独立场景里试，UI store 只写最终结果一次） */
 const buffPicking = ref(false)
 async function autoPickPeriodBuff() {
   const view = deployPhaseView.value
   if (!view || buffPicking.value) return
-  const candidates = (view.buffs ?? []).filter(b => !b.testOnly && (b.effects ?? []).some(e => e.stat))
-  if (candidates.length === 0) return
   buffPicking.value = true
   try {
-    const results: { title: string; damage: number }[] = []
-    // 基准：不用
-    applyPeriodBuff(configStore, view.phaseId, null)
-    configStore.triggerRefresh?.()
-    await new Promise(r => setTimeout(r, 40))
-    results.push({ title: 'none', damage: teamTotalDamage.value })
-    for (const b of candidates) {
-      applyPeriodBuff(configStore, view.phaseId, b)
-      configStore.triggerRefresh?.()
-      await new Promise(r => setTimeout(r, 40))
-      results.push({ title: b.title, damage: teamTotalDamage.value })
-    }
-    const best = results.reduce((a, b2) => (b2.damage > a.damage ? b2 : a))
-    const bestCard = candidates.find(c => c.title === best.title) ?? null
-    applyPeriodBuff(configStore, view.phaseId, bestCard)
-    selectedBuffTitle.value = bestCard ? bestCard.title : 'none'
-    configStore.triggerRefresh?.()
+    const best = await withAnalysisScenario(s => pickBestPeriodBuff(s, view.phaseId, view.buffs ?? []))
+    pickPeriodBuff(best)
   } finally {
     buffPicking.value = false
   }

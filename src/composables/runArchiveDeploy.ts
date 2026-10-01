@@ -15,6 +15,7 @@ import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
 import { phaseBuffRows } from '@/utils/phaseBuff'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
+import type { AnalysisContext } from '@/composables/analysisScenario'
 
 export interface ResolvedBossApply {
   preset: BossPreset
@@ -53,6 +54,34 @@ export function applyPeriodBuff(
   const rows = phaseBuffRows(card, e => `period-buff:${phaseId}:${e.stat}:${e.value}`, `当期·${card.title || '(未命名)'}`)
   configStore.globalBuffs.push(...rows)
   return rows.length > 0
+}
+
+/**
+ * CC-352：当期牌「自动选择」= 在**独立场景**上逐一试「不用」+ 每张可用牌（测试牌 / 无数值效果的牌剔除），返回总伤害最高者
+ * （`null` = 不用最好；并列取先出现的，基准「不用」排第一）。调用方 `withAnalysisScenario(s => pickBestPeriodBuff(s, …))`
+ * 后再把结果 `applyPeriodBuff` 一次写进 UI store。
+ * 修前 RunArchivePage 在 **UI store** 上逐张写牌 → `setTimeout(40)` → 读伤害：试牌期间页面闪、用户的全局 Buff 表被反复改写，
+ * 且是 CC-343 / CC-347 宣布清零之后仍留在 view 里的「拿 UI store 当草稿纸」的分析循环（分析器源码锁只扫 composables，漏网）。
+ */
+export function pickBestPeriodBuff(
+  ctx: AnalysisContext,
+  phaseId: string,
+  cards: readonly PhaseBuffCard[],
+): PhaseBuffCard | null {
+  const candidates = cards.filter(b => !b.testOnly && (b.effects ?? []).some(e => e.stat))
+  if (candidates.length === 0) return null
+  const damageWith = (card: PhaseBuffCard | null): number => {
+    applyPeriodBuff(ctx.config, phaseId, card)
+    ctx.config.triggerRefresh?.()
+    return ctx.calc.teamTotalDamage.value ?? 0
+  }
+  let best: PhaseBuffCard | null = null
+  let bestDamage = damageWith(null)
+  for (const card of candidates) {
+    const d = damageWith(card)
+    if (d > bestDamage) { bestDamage = d; best = card }
+  }
+  return best
 }
 
 /** 一键部署：队伍（命座/音擎/精炼/交互基准） + Boss（期相位 + layer_buff）。 */
