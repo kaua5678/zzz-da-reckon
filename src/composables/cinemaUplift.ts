@@ -232,19 +232,23 @@ export async function analyzeCinemaUplift(params: AnalyzeCinemaUpliftParams): Pr
         || `槽${slot + 1}`
       const entries: CinemaUpliftEntry[] = []
 
-      for (let to = 1; to <= maxLevel; to++) {
-        configStore.setCinemaLevel(slot, to - 1)
-        configStore.syncTeammateBuffsFromTeam()
-        const before = await readScene()
-        const panelBefore = computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
+      // CC-338：① C0 基线只求值一次，逐级复用上一档 (after, panelAfter) 作下一档 (before, panelBefore)，
+      // 单槽求值次数由 2×maxLevel 降为 maxLevel+1；② 每槽跑完立即把该槽命座恢复为 originalCinemas[slot]，
+      // 防止多槽分析（slots=[0,1,2]）时前序槽位留在 C6 污染后续槽位的命座提升率。
+      configStore.setCinemaLevel(slot, 0)
+      configStore.syncTeammateBuffsFromTeam()
+      let before = await readScene()
+      let panelBefore = computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
 
+      for (let to = 1; to <= maxLevel; to++) {
         configStore.setCinemaLevel(slot, to)
         configStore.syncTeammateBuffsFromTeam()
         const after = await readScene()
         const panelAfter = computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
+        const pb = panelBefore
 
-        const changedFields = panelBefore && panelAfter
-          ? Object.keys(panelAfter).filter(k => Math.abs((panelAfter[k] ?? 0) - (panelBefore[k] ?? 0)) > 1e-9)
+        const changedFields = pb && panelAfter
+          ? Object.keys(panelAfter).filter(k => Math.abs((panelAfter[k] ?? 0) - (pb[k] ?? 0)) > 1e-9)
           : []
         const gainPct = before.dmg > 0 ? ((after.dmg - before.dmg) / before.dmg) * 100 : 0
         const metrics = buildCinemaMetrics(before.metrics, after.metrics)
@@ -257,7 +261,11 @@ export async function analyzeCinemaUplift(params: AnalyzeCinemaUpliftParams): Pr
             ? 'execLevel' // 面板无变化但伤害有移动：执行级效果（moveId 增伤/暴伤/附伤/资源侧联动等）
             : 'unimplemented' // 无字段无伤害：效果可能未接进计算
         entries.push({ to, gainPct, ultBefore: before.ult, ultAfter: after.ult, changedFields, warn, metrics })
+        before = after
+        panelBefore = panelAfter
       }
+      configStore.setCinemaLevel(slot, originalCinemas[slot] ?? 0)
+      configStore.syncTeammateBuffsFromTeam()
       rows.push({ slot, agentId: char.agentId, name, entries })
     }
   } finally {

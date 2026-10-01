@@ -52,10 +52,9 @@ import type {
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
 import { VARIANT_ELEMENT_TO_BASE, getBaseElement, elementAnomalyBuildUpEfficiency, resolveStatElement } from '@/data/anomalyElement'
-import { elementStatKey } from '@/utils/elementStatKeys'
+import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { LEVEL_COEFF_60, LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
-import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
 import { resolveAnomalyCorrosion } from './corrosion'
 
 // ============ 喧响奖励常量 ============
@@ -556,29 +555,22 @@ export function getElementDmgKey(element: string): string {
   return elementStatKey('dmg', element) ?? ((resolveStatElement(element) ?? '') + 'Dmg')
 }
 
-/** 获取面板中指定元素的伤害加成（百分比） */
+/** 获取面板中指定元素的伤害加成（百分比，CC-338 转调 panelElementStat） */
 export function getElementDmgBonus(panel: PanelValues, element: string): number {
-  const key = getElementDmgKey(element)
-  return panel[key] ?? 0
+  return panelElementStat(panel, 'dmg', element)
 }
 
 export function getElementEnemyResReduction(panel: PanelValues, element: string): number {
-  const statElement = resolveStatElement(element)
-  const stat = enemyDebuffElementStatId('res', statElement)
-  return stat ? panel[stat] ?? 0 : 0
+  return panelElementStat(panel, 'enemyRes', element)
 }
 
 export function getElementEnemyDefReduction(panel: PanelValues, element: string): number {
-  const statElement = resolveStatElement(element)
-  const stat = enemyDebuffElementStatId('def', statElement)
-  return stat ? panel[stat] ?? 0 : 0
+  return panelElementStat(panel, 'enemyDef', element)
 }
 
-/** 积蓄抗性：frostfire 经 resolveStatElement 按冰族读（用户口径 2026-09-05） */
+/** 积蓄抗性：frostfire 经 resolveStatElement 按冰族读（用户口径 2026-09-05，CC-338 转调 panelElementStat） */
 export function getElementEnemyAnomalyResReduction(panel: PanelValues, element: string): number {
-  const statElement = resolveStatElement(element)
-  const stat = enemyDebuffElementStatId('anomalyRes', statElement)
-  return stat ? panel[stat] ?? 0 : 0
+  return panelElementStat(panel, 'enemyAnomalyRes', element)
 }
 
 export function getAnomalyDuration(panel: PanelValues, element: string): number {
@@ -666,6 +658,32 @@ export function calcStunMultiplier(
 }
 
 /**
+ * 异常暴击率/暴伤提取（单一来源，CC-338）：
+ * 同时服务 `core/damage.ts#calcAnomalyDamage`（直伤/异放/异常结算）与 `calcAnomalyCritExpect`（乱流结算）。
+ * 物理族（含 physical_polar_assault）额外读取 assaultCritRate / assaultCritDmg，且默认继承自身触发强击暴伤
+ * `selfAssaultCritDmgBonus`（简潜能觉醒·致命舞步；乱流传 `includeSelfAssaultBonus: false`）。
+ */
+export function getAnomalyCritStats(
+  panel: PanelValues,
+  element?: string,
+  sourcePanel?: PanelValues,
+  options?: { includeSelfAssaultBonus?: boolean },
+): { rate: number; dmg: number; labelPrefix: string } {
+  const assaultSource = sourcePanel ?? panel
+  const baseElement = element ? getBaseElement(element) : undefined
+  const isAssault = baseElement === 'physical'
+  const rate = (panel.anomalyCritRate ?? 0) + (isAssault ? assaultSource.assaultCritRate ?? 0 : 0)
+  const selfAssaultBonus = options?.includeSelfAssaultBonus === false
+    ? 0
+    : (assaultSource.selfAssaultCritDmgBonus ?? 0)
+  const dmg = (panel.anomalyCritDmg ?? 0) + (isAssault ? (assaultSource.assaultCritDmg ?? 0) + selfAssaultBonus : 0)
+  const labelPrefix = isAssault && ((assaultSource.assaultCritRate ?? 0) !== 0 || (assaultSource.assaultCritDmg ?? 0) !== 0)
+    ? '强击/异常暴击'
+    : '异常暴击'
+  return { rate, dmg, labelPrefix }
+}
+
+/**
  * 计算异常暴击乘区（期望模式）
  *
  * 期望暴击乘区 = 1 + min(100, max(0, 暴击率)) / 100 × (暴击伤害 / 100)
@@ -676,15 +694,8 @@ export function calcAnomalyCritExpect(
   sourcePanel?: PanelValues,
   options?: { includeSelfAssaultBonus?: boolean },
 ): number {
-  const assaultSource = sourcePanel ?? panel
-  const baseElement = element ? getBaseElement(element) : undefined
-  const isAssault = baseElement === 'physical'
-  const critRateRaw = (panel.anomalyCritRate ?? 0) + (isAssault ? assaultSource.assaultCritRate ?? 0 : 0)
-  const selfAssaultBonus = options?.includeSelfAssaultBonus === false
-    ? 0
-    : (assaultSource.selfAssaultCritDmgBonus ?? 0)
-  const critDmg = (panel.anomalyCritDmg ?? 0) + (isAssault ? (assaultSource.assaultCritDmg ?? 0) + selfAssaultBonus : 0)
-  return expectedCritMultiplier(critRateRaw, critDmg)
+  const { rate, dmg } = getAnomalyCritStats(panel, element, sourcePanel, options)
+  return expectedCritMultiplier(rate, dmg)
 }
 
 /**

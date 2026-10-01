@@ -6,30 +6,11 @@ import type {
   Agent, PanelValues, DamageBreakdownItem,
   SkillMove, SkillCategory, DamageElement, SkillDamageTarget,
 } from '@/types/catalog'
-import { calcStunMultiplier, resolveStatElement } from './anomalyPool/helpers'
+import { calcStunMultiplier, getAnomalyCritStats } from './anomalyPool/helpers'
 import { defenseMultiplierDetail, resistanceMultiplierDetail } from './damageMultipliers'
-import { getSkillDmgBonus, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
+import { getSkillDmgBonus, getTargetedElementStat, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
 import { fmt } from '@/utils/format'
-import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
-import { elementStatKey } from '@/utils/elementStatKeys'
 import { calcPenetrationPower } from '@/data/penetrationPower'
-
-/** 获取元素伤害加成（属性数值口径经 resolveStatElement：frostfire 按冰） */
-function getElementDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  if (!element) return 0
-  const stat = elementStatKey('dmg', element) // CC-224 单一来源（内部已 resolveStatElement）
-  return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
-}
-
-function getElementEnemyResReduction(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  const stat = enemyDebuffElementStatId('res', resolveStatElement(element))
-  return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
-}
-
-function getElementEnemyDefReduction(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  const stat = enemyDebuffElementStatId('def', resolveStatElement(element))
-  return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
-}
 
 
 export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove): SkillDamageTarget {
@@ -72,18 +53,11 @@ export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove)
  */
 // 防御 / 抗性乘区与 794 常量：单一来源 `./damageMultipliers`（CC-219）
 
-/** 元素暴击伤害加成（属性数值口径经 resolveStatElement：frostfire 按冰读 iceCritDmg）。
- * 消费端=焰心桂冠等音擎的 XCritDmg 团队效果（此前全仓无读取端，纯死数据）。 */
-function getElementCritDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: SkillDamageTarget): number {
-  const key = elementStatKey('critDmg', element) // CC-225 单一来源（经 resolveStatElement；无元素 / 未知 ⇒ 0）
-  return key ? getTargetedStat(panel, key, targetSkillType) : 0
-}
-
-/** 暴击乘区 */
+/** 暴击乘区（元素暴伤经 getTargetedElementStat('critDmg') 单一来源，frostfire 按冰读 iceCritDmg） */
 function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget, element?: DamageElement): { multiplier: number; label: string } {
   const enemyCritBonus = panel.enemyCritDmgTakenBonus ?? 0
   const critDmg = getTargetedStat(panel, 'critDmg', targetSkillType)
-    + getElementCritDmgBonus(panel, element, targetSkillType) + enemyCritBonus
+    + getTargetedElementStat(panel, 'critDmg', element, targetSkillType) + enemyCritBonus
   const critRateRaw = getTargetedStat(panel, 'critRate', targetSkillType)
   switch (mode) {
     case 'crit':
@@ -128,40 +102,9 @@ function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | '
   }
 }
 
-/**
- * 物理强击的异常暴击统计（期望口径）。
- *
- * ⚠ `selfAssaultCritDmgBonus` **只给简自身触发的强击**（简潜能觉醒·致命舞步；
- * 乱流不继承 ⇒ `calcAnomalyCritExpect` 的 `includeSelfAssaultBonus:false` 右臂保持不变）。
- * 本函数由 `calcAnomalyDamage` 在**结算者面板**（`settlementPanel`）上调用，
- * 而结算者正是真正触发该次强击的槽位 ⇒ 在此累加等价于「只给简自己的强击」。
- *
- * ★ R59 修复：该字段此前**零消费者**（`PanelValues` 上有声明、`jane.ts` 有写入、
- * `calcAnomalyCritExpect` 会读 —— 但强击行根本不走那条路径，它走本函数）
- * ⇒ 简的潜能暴伤对直伤强击**端到端恒为 0**（四臂实测 pot 1/2/6 的 `perDamage` 完全相同）。
- */
-function getAnomalyCritStats(panel: PanelValues, element: DamageElement | undefined): { rate: number; dmg: number; labelPrefix: string } {
-  const isAssault = element === 'physical'
-  const selfAssaultBonus = isAssault ? (panel.selfAssaultCritDmgBonus ?? 0) : 0
-  return {
-    rate: (panel.anomalyCritRate ?? 0) + (isAssault ? panel.assaultCritRate ?? 0 : 0),
-    dmg: (panel.anomalyCritDmg ?? 0) + (isAssault ? (panel.assaultCritDmg ?? 0) + selfAssaultBonus : 0),
-    labelPrefix: isAssault && ((panel.assaultCritRate ?? 0) !== 0 || (panel.assaultCritDmg ?? 0) !== 0) ? '强击/异常暴击' : '异常暴击',
-  }
-}
-
+// 异常暴击统计：单一来源 `./anomalyPool/helpers#getAnomalyCritStats`（CC-338）
 // 贯穿力：单一来源 `@/data/penetrationPower`（CC-228，展示层也要用），此处原名转出（mechanics 的 import 路径不变）
 export { calcPenetrationPower }
-
-function getElementSheerDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  const key = elementStatKey('sheerDmg', element) // CC-225 单一来源（经 resolveStatElement；无元素 / 未知 ⇒ 0）
-  return key ? getTargetedStat(panel, key, targetSkillType) : 0
-}
-
-function getElementSharpDmgBonus(panel: PanelValues, element: DamageElement | undefined, targetSkillType?: string): number {
-  const key = elementStatKey('sharpDmg', element) // CC-225 单一来源（经 resolveStatElement；无元素 / 未知 ⇒ 0）
-  return key ? getTargetedStat(panel, key, targetSkillType) : 0
-}
 
 export type SpecialDamageProfileKind = 'normal' | 'rupture' | 'sharpen'
 
@@ -306,7 +249,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
   }
 
   // 3. 增伤乘区：通用增伤 + 对应元素增伤 + 对应招式增伤
-  const elementDmg = getElementDmgBonus(p, input.damageElement, input.skillDamageTarget)
+  const elementDmg = getTargetedElementStat(p, 'dmg', input.damageElement, input.skillDamageTarget)
   const dmgBonus = getTargetedStat(p, 'dmgBonus', input.skillDamageTarget)
   const skillDmgBonus = getSkillDmgBonus(p, input.skillDamageTarget)
   const totalDmgBonus = elementDmg + dmgBonus + skillDmgBonus + (input.dmgBonus ?? 0)
@@ -320,7 +263,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
 
   // 3.5 锐化增伤乘区：锋御角色额外独立乘区
   const sharpDmgBonus = profile.usesSharpDmgBonus
-    ? getTargetedStat(p, 'sharpDmgBonus', input.skillDamageTarget) + getElementSharpDmgBonus(p, input.damageElement, input.skillDamageTarget)
+    ? getTargetedStat(p, 'sharpDmgBonus', input.skillDamageTarget) + getTargetedElementStat(p, 'sharpDmg', input.damageElement, input.skillDamageTarget)
     : 0
   const sharpDmgMult = 1 + sharpDmgBonus / 100
   const afterSharpDmg = afterDmgBonus * sharpDmgMult
@@ -334,7 +277,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
 
   // 4. 贯穿增伤乘区：命破角色额外乘区（本行招式专属贯穿增伤 input.sheerDmgBonus 叠加，如星徽·比利影画6）
   const penDmgBonus = profile.usesPenDmgBonus
-    ? getTargetedStat(p, 'penDmgBonus', input.skillDamageTarget) + getTargetedStat(p, 'sheerDmgBonus', input.skillDamageTarget) + getElementSheerDmgBonus(p, input.damageElement, input.skillDamageTarget) + (input.sheerDmgBonus ?? 0)
+    ? getTargetedStat(p, 'penDmgBonus', input.skillDamageTarget) + getTargetedStat(p, 'sheerDmgBonus', input.skillDamageTarget) + getTargetedElementStat(p, 'sheerDmg', input.damageElement, input.skillDamageTarget) + (input.sheerDmgBonus ?? 0)
     : (input.sheerDmgBonus ?? 0)
   const penDmgMult = 1 + penDmgBonus / 100
   const afterPenDmg = (sharpDmgBonus !== 0 ? afterSharpDmg : afterDmgBonus) * penDmgMult
@@ -356,7 +299,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
     })
   } else {
     const defResult = defenseMultiplierDetail(
-      input.enemyDefense, input.enemyDefReduction + getTargetedStatExtra(p, 'enemyDefReduction', input.skillDamageTarget) + getElementEnemyDefReduction(p, input.damageElement, input.skillDamageTarget), input.enemyDefFlatReduction,
+      input.enemyDefense, input.enemyDefReduction + getTargetedStatExtra(p, 'enemyDefReduction', input.skillDamageTarget) + getTargetedElementStat(p, 'enemyDef', input.damageElement, input.skillDamageTarget), input.enemyDefFlatReduction,
       p.penRatio, p.penFlat
     )
     afterDef = afterPenDmg * defResult.multiplier
@@ -368,7 +311,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
   }
 
   // 6. 抗性乘区
-  const resReduction = input.enemyResReduction + getTargetedStatExtra(p, 'enemyResReduction', input.skillDamageTarget) + getElementEnemyResReduction(p, input.damageElement, input.skillDamageTarget)
+  const resReduction = input.enemyResReduction + getTargetedStatExtra(p, 'enemyResReduction', input.skillDamageTarget) + getTargetedElementStat(p, 'enemyRes', input.damageElement, input.skillDamageTarget)
   const resResult = resistanceMultiplierDetail(input.enemyResistance, resReduction, 0)
   const afterRes = afterDef * resResult.multiplier
   breakdown.push({
@@ -488,7 +431,7 @@ export function calcAnomalyDamage(
   })
 
   // 2. 增伤区（通用 + 元素伤害）
-  const elementDmg = getElementDmgBonus(p, element)
+  const elementDmg = getTargetedElementStat(p, 'dmg', element)
   const dmgBonus = p.dmgBonus ?? 0
   const totalDmgBonus = elementDmg + dmgBonus
   const afterDmgBonus = baseDmg * (1 + totalDmgBonus / 100)
@@ -512,7 +455,7 @@ export function calcAnomalyDamage(
     input.enemyDefReduction
       + (settle.enemyDefReduction ?? 0) // CC-175：通用减防同样由结算面板读取（此前漏读，标准异常不吃妮可类减防）
       + (settle.enemyAnomalyDefReduction ?? 0)
-      + getElementEnemyDefReduction(settle, element)
+      + getTargetedElementStat(settle, 'enemyDef', element)
       + (element === 'physical' ? (settle.enemyAssaultDefReduction ?? 0) : 0),
     input.enemyDefFlatReduction + (settle.enemyDefFlatReduction ?? 0),
     p.penRatio,
@@ -528,7 +471,7 @@ export function calcAnomalyDamage(
   // 5. 抗性乘区：异常伤害使用对应元素的伤害抗性表
   const resReduction = input.enemyResReduction
     + (settle.enemyResReduction ?? 0)
-    + getElementEnemyResReduction(settle, element)
+    + getTargetedElementStat(settle, 'enemyRes', element)
   const resResult = resistanceMultiplierDetail(input.enemyResistance, resReduction, 0)
   const afterRes = afterDef * resResult.multiplier
   breakdown.push({

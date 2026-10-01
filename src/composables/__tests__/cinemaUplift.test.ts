@@ -85,6 +85,32 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
     expect(config.enemy.stunCountLock).toBe(stunLockBefore)
   })
 
+  it('多槽隔离（CC-338）：slots=[0,1] 下槽 1 的提升率与单独分析 slots=[1] 逐位一致（槽 0 不残留 C6）', async () => {
+    const { config } = await setupHarness([{ agentId: '1371', cinemaLevel: 0 }, { agentId: '1251', cinemaLevel: 0 }, { agentId: '1271', cinemaLevel: 0 }])
+    const calc = useResourceCalc()
+    const catalogStore = useCatalogStore()
+    const targetStunCount = calc.stunPoolResult.value?.stunCount ?? 4
+    const soloSlot1 = await analyzeCinemaUplift({
+      configStore: config,
+      catalogStore,
+      readDamage: () => calc.teamTotalDamage.value,
+      readUltimateTotal: () => 0,
+      targetStunCount,
+      slots: [1],
+      maxLevel: 2,
+    })
+    const bothSlots = await analyzeCinemaUplift({
+      configStore: config,
+      catalogStore,
+      readDamage: () => calc.teamTotalDamage.value,
+      readUltimateTotal: () => 0,
+      targetStunCount,
+      slots: [0, 1],
+      maxLevel: 2,
+    })
+    expect(bothSlots[1].entries).toEqual(soloSlot1[0].entries)
+  })
+
   it('逐级返回 1..6 且字段自洽（gainPct 有限、warn 三态之一、ult 次数非负）', async () => {
     const { rows } = await analyze('1371', ['1251', '1271'])
     expect(rows).toHaveLength(1)

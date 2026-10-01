@@ -14,20 +14,30 @@ import { ELEMENT_FIELD_PREFIX, enemyDebuffElementStatId } from '@/utils/enemyDeb
  * FinalPanel 4 张、StatPanel 2 张、ResourceUtilizationPage 1 张。
  * 源码锁：`src/utils/__tests__/elementStatKeys.test.ts`。
  */
-export type ElementStatKind = 'dmg' | 'critDmg' | 'sheerDmg' | 'sharpDmg' | 'enemyRes' | 'enemyDef'
+export type ElementStatKind =
+  | 'dmg'
+  | 'critDmg'
+  | 'sheerDmg'
+  | 'sharpDmg'
+  | 'enemyRes'
+  | 'enemyDef'
+  | 'enemyAnomalyRes'
+  | 'enemyStunRes'
 
-const OWN_SUFFIX: Record<Exclude<ElementStatKind, 'enemyRes' | 'enemyDef'>, string> = {
+const OWN_SUFFIX: Record<Exclude<ElementStatKind, 'enemyRes' | 'enemyDef' | 'enemyAnomalyRes' | 'enemyStunRes'>, string> = {
   dmg: 'Dmg',
   critDmg: 'CritDmg',
   sheerDmg: 'SheerDmg',
   sharpDmg: 'SharpDmg',
 }
 
-export function elementStatKey(kind: ElementStatKind, element?: string): string | undefined {
-  const e = resolveStatElement(element)
+export function elementStatKey(kind: ElementStatKind, element?: string | null): string | undefined {
+  const e = resolveStatElement(element ?? undefined)
   if (!e || !ELEMENT_FIELD_PREFIX[e]) return undefined
   if (kind === 'enemyRes') return enemyDebuffElementStatId('res', e)
   if (kind === 'enemyDef') return enemyDebuffElementStatId('def', e)
+  if (kind === 'enemyAnomalyRes') return enemyDebuffElementStatId('anomalyRes', e)
+  if (kind === 'enemyStunRes') return enemyDebuffElementStatId('stunRes', e)
   return `${e}${OWN_SUFFIX[kind]}`
 }
 

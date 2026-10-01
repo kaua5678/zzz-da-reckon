@@ -16,19 +16,11 @@
  * - Boss 配置：stunValue（失衡值上限）、stunVuln（失衡易伤）
  */
 import type { PanelValues } from '@/types/catalog'
-import { getStunBuildUpBonus, getTargetedStat } from './buff'
+import { getStunBuildUpBonus, getTargetedElementStat, getTargetedStat } from './buff'
 import { panelAt, emptyPanel } from './panel'
-import { enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
-import { resolveStatElement } from './anomalyPool/helpers'
 import type {
   StunPoolResult, StunContribution,
 } from '@/types/resource'
-
-
-function getElementEnemyStunResReduction(panel: PanelValues, element: string, skillType?: string): number {
-  const stat = enemyDebuffElementStatId('stunRes', resolveStatElement(element))
-  return stat ? getTargetedStat(panel, stat, skillType) : 0
-}
 
 /** 招式执行记录（扩展，含 daze 和 element 信息） */
 export interface StunSkillExecution {
@@ -131,7 +123,7 @@ function calcPerHitStun(
   const afterTaken = afterBuildUp * (1 + totalStunTaken / 100)
 
   // 失衡抗性区
-  const stunResRed = getTargetedStat(panel, 'enemyStunResReduction', skillType) + getElementEnemyStunResReduction(panel, element, skillType)
+  const stunResRed = getTargetedStat(panel, 'enemyStunResReduction', skillType) + getTargetedElementStat(panel, 'enemyStunRes', element, skillType)
   const effectiveRes = enemyStunResistance - stunResRed
   const afterRes = afterTaken * (1 - effectiveRes / 100)
 

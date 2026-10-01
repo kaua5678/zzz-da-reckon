@@ -320,10 +320,18 @@ export async function computeFreeCompare(
           if (s >= 0) condSlots.set(s, conditionToCode(c))
         }
         // 第一遍：把三槽的角色/命座/专武写全（**择优要读全队伤害，必须等队伍齐了再试**）
+        // CC-338：空槽（!agentId）必须显式清空——否则 autoBuild=false（默认轻量速算）时，
+        // 用户页面原有槽位或上一条 3 人系列的残留角色会漏进本系列的 1~2 人队求值。
         const needPick: Array<{ slot: number; agentId: string; cinema: number }> = []
         for (let slot = 0; slot < 3; slot++) {
           const agentId = team[slot]
-          if (!agentId) continue
+          if (!agentId) {
+            configStore.setAgent(slot, '')
+            configStore.setCinemaLevel(slot, 0)
+            configStore.setWEngine(slot, '')
+            configStore.setWEngineModLevel(slot, 1)
+            continue
+          }
           const slotCode = condSlots.get(slot) ?? code
           applyCodeToSlot(configStore, catalog, slot, agentId, slotCode, '', 1)
           if (slotCode.wengine === 0) needPick.push({ slot, agentId, cinema: slotCode.cinema })

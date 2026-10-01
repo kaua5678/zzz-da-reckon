@@ -172,6 +172,26 @@ describe('自由对比求值器（真引擎）', () => {
     expect(seen.agentId).toBe(VELINA)
     expect(seen.cinemaLevel, '条件里的 2 命必须真的套上（防「约束没进装配」的静默失效）').toBe(2)
   })
+
+  it('★ 空槽清理（CC-338）：默认轻量速算（autoBuild=false）下 2 人队不会残留页面原有 3 号槽角色', async () => {
+    const config = useConfigStore()
+    const { run } = makeRunner()
+    // 模拟用户页面原本 3 号槽有角色（菲欧妮 C2）
+    config.setAgent(2, PHOENIX)
+    config.setCinemaLevel(2, 2)
+    let seenSlot2Agent = 'UNSET'
+    await run(
+      [{ id: 's', kind: 'agent', members: [BURNICE], code: code('01') }],
+      'cinema',
+      { cinemaMax: 0 },
+      { baseTeammates: [VELINA, ''] },
+      () => { seenSlot2Agent = config.team[2].agentId },
+    )
+    expect(seenSlot2Agent, '求值期间 2 号空槽必须被清空，不能带着页面残留角色算').toBe('')
+    // 跑完后 finally 仍恢复用户原 3 号槽
+    expect(config.team[2].agentId).toBe(PHOENIX)
+    expect(config.team[2].cinemaLevel).toBe(2)
+  })
 })
 
 // ---------- 测试用小工具（不进产品代码） ----------

@@ -7,6 +7,7 @@ import type {
   PanelValues, StatId, TeammateBuff, DriveDiscConfig, SkillDamageTarget, BuffScope, EffectRequirement, StatRules
 } from '@/types/catalog'
 import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normalizeEnemyDebuffStatAlias } from '@/utils/enemyDebuffStats'
+import { elementStatKey, type ElementStatKind } from '@/utils/elementStatKeys'
 import { wEngineConditionMet, wEngineEffectRequirementMet, type WEngineConditionContext } from '@/core/wengineConditions'
 
 /** 收集的 buff 列表 */
@@ -114,6 +115,17 @@ export function getTargetedStat(panel: PanelValues, stat: string, targetSkillTyp
   const all = panel[stat] ?? 0
   if (target === 'all') return all
   return all + (panel[targetedStatKey(stat, target)] ?? 0)
+}
+
+/** CC-338：按元素族 + 招式目标读取面板字段（内部经 elementStatKey → resolveStatElement 单一来源） */
+export function getTargetedElementStat(
+  panel: PanelValues,
+  kind: ElementStatKind,
+  element: string | undefined | null,
+  targetSkillType?: string,
+): number {
+  const stat = elementStatKey(kind, element)
+  return stat ? getTargetedStat(panel, stat, targetSkillType) : 0
 }
 
 export function getTargetedStatExtra(panel: PanelValues, stat: string, targetSkillType?: string): number {

@@ -32,7 +32,9 @@ describe('元素 → 面板字段名单一来源（CC-224）', () => {
       expect(elementStatKey('sharpDmg', e)).toBe(`${e}SharpDmg`)
       expect(elementStatKey('enemyRes', e)).toBe(`enemy${cap}ResReduction`)
       expect(elementStatKey('enemyDef', e)).toBe(`enemy${cap}DefReduction`)
-      for (const k of ['dmg', 'enemyRes', 'enemyDef'] as const) {
+      expect(elementStatKey('enemyAnomalyRes', e)).toBe(`enemy${cap}AnomalyResReduction`)
+      expect(elementStatKey('enemyStunRes', e)).toBe(`enemy${cap}StunResReduction`)
+      for (const k of ['dmg', 'enemyRes', 'enemyDef', 'enemyAnomalyRes', 'enemyStunRes'] as const) {
         expect(elementStatKey(k, e)! in panel, `${k}/${e}`).toBe(true)
       }
     }
@@ -69,6 +71,13 @@ describe('元素 → 面板字段名单一来源（CC-224）', () => {
         if (CONCAT.test(code) || PREFIX_TABLE.test(code)) hits.push(`${rel}:${i + 1}`)
       })
     }
+    expect(hits).toEqual([])
+  })
+  it('源码锁（CC-338）：除 utils/elementStatKeys.ts 与 utils/enemyDebuffStats.ts 外不直调 enemyDebuffElementStatId', () => {
+    const ALLOW = new Set(['utils/elementStatKeys.ts', 'utils/enemyDebuffStats.ts'])
+    const hits = walk(SRC)
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+      .filter(rel => !ALLOW.has(rel) && /\benemyDebuffElementStatId\b/.test(readFileSync(join(SRC, rel), 'utf8')))
     expect(hits).toEqual([])
   })
 })
