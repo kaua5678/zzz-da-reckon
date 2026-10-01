@@ -94,7 +94,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 **2026-10-02 arena-E 第 380 轮**：CC-350 敌方体型并入 Boss 房间入口 `83f9b665`（删 TeamComparePage 写 UI store 体型的 watcher；口径：所有进房间路径体型跟 Boss）——原 §2；全文 `git show bb45d580:docs/mcp-worker-task-queue.md` 的 §2。
 
-**2026-10-02 arena-E 第 379 轮**：CC-349 自动轴保底预填去页面依赖 `3f5dcb1e`（UI store 会话效果，不进场景 Model）；**开放项仍有效**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（待用户裁决，细节见卡表 CC-349 与 `git show 8e53d9ec:docs/mcp-worker-task-queue.md` 的 §2）。
+**2026-10-02 arena-E 第 379 轮**：CC-349 自动轴保底预填去页面依赖 `3f5dcb1e`（UI store 会话效果，不进场景 Model）；开放项（预设 `guarantee` 在手动应用 / altAxes 绑定不生效）**已于 r388 裁决关闭**：手动应用预填、批量路径不写，见卡表 CC-358。
 
 **2026-10-02 arena-E 第 378 轮**：CC-348 Canvas 主题桥单源 `4b4490f3`（三个 3D 组件取色归一 + 修切主题不重绘；像素 A/B 相同）——原 §2 交接；全文 `git show 79e3039c:docs/mcp-worker-task-queue.md` 的 §2。
 
@@ -152,15 +152,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 387 轮（lane arena-E，开工 03:43；无并行会话；HEAD `5ee3d6f6`；REQUIREMENTS.md 无新条目）：CC-357 删 16 个动作次数命名 setter，统一走 `setActionCount` `1ad63488`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：见卡表 CC-357。改写脚本 `/home/kaua/calc-arch/arenaE/p387.py`（可复用：给名单即可把 `X.setFoo(a, b)` 改成 `X.setActionCount(a, 'foo', b)`，报告剩余未改写引用）。
-- **验证**：零差 `zd.sh r387` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 / build 过（`arenaE/verify387.log`）；`vitest run --maxWorkers=4` 454 文件 / 16 跳过 / 4152 例过（`verify387-test.log`）。
-- **开放项（沿用 r379，待用户裁决，勿自行改）**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（卡表 CC-349）。
-- **下一步（先查后定，可能结论是「不做」）**：**角色专属动作字段仍写死在通用类型 / 界表里**。`src/stores/config.ts` 的 `ACTION_COUNT_BOUNDS`（~213 行）与角色默认模板（~150–165 行）、`CharacterConfig` 类型里有 `yixuanInk2Count` / `yixuanInk3Count` / `yixuanPerfectBlockCount` / `yixuanExtremeAssistCount` / `yixuanBackstageComboCount` / `promiaNiyingCount` / `tauntCancelCount`（以及可能专属的 `assaultOrderCount` / `perfectBlockCount`），新角色要动 store。仓库已有「模块注册」先例：`MechanicSetting`（如 `mechanics/agents/jane.ts#settings`，ResourceUtilizationPage 泛型渲染）、TeamConfigPage 的 `agentCharacterCountInputs(agentId)`。
+**第 388 轮（lane arena-E，开工 03:57；无并行会话；HEAD `991589cf`；REQUIREMENTS.md 无新条目）：CC-358 自行裁决并关闭 CC-349 开放项 `5e7f9b4c`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：见卡表 CC-358。预设 `guarantee` = 应用到 UI 现场的预填（自动命中 + 轴页手动应用，共用 `prefillPresetGuarantee`）；批量求值（altAxes / 对比 / 爬梯）不写，因为保底是难度爬梯独立目标档 G3。补丁脚本 `/home/kaua/calc-arch/arenaE/p388.py`。
+- **验证**：零差 `zd.sh r388` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 / build 过（`arenaE/verify388.log`）；`vitest run --maxWorkers=4` 454 文件 / 16 跳过 / 4154 例过（`verify388-test.log`）。
+- **开放项**：无。（规则：文档里不再留「待用户裁决，勿自行改」——遇到就按代码依据自行定案、写明依据与回滚点。）
+- **下一步（沿用 r387 候选，先查后定，可能结论是「不做」）**：**角色专属动作字段仍写死在通用类型 / 界表里**。`src/stores/config.ts` 的 `ACTION_COUNT_BOUNDS`（~213 行）与角色默认模板（~150–165 行）、`CharacterConfig` 类型里有 `yixuanInk2Count` / `yixuanInk3Count` / `yixuanPerfectBlockCount` / `yixuanExtremeAssistCount` / `yixuanBackstageComboCount` / `promiaNiyingCount` / `tauntCancelCount`（以及可能专属的 `assaultOrderCount` / `perfectBlockCount`），新角色要动 store。仓库已有「模块注册」先例：`MechanicSetting`（如 `mechanics/agents/jane.ts#settings`，ResourceUtilizationPage 泛型渲染）、TeamConfigPage 的 `agentCharacterCountInputs(agentId)`。
   步骤：① `grep -rn "<字段>" src --include=*.ts --include=*.vue | grep -v __tests__` 逐字段列读写点（引擎 helpers.ts:~562 等、预设 `teamPresets` / 导入导出 / 实战存档）；② 看 `agentCharacterCountInputs` 的字段表是否已由角色模块声明——若是，界表上下界能否同处声明；③ **判据**：若迁移后「新角色加动作次数 = 只改自己的模块」且持久化格式不变（或有迁移），就做；若要改存档 / 预设格式、或读点 > 10 处分散在引擎核心，就**不做**，在 r6 §8 记一句「字段留在 CharacterConfig 的理由」。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
+
+  - 源码锁写完要反证（临时撤掉被锁的改动看是否变红），r388 用 `git show HEAD:<file> > <file>` 换回旧版验证后再复原。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
