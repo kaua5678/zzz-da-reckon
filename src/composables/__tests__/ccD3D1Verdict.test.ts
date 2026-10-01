@@ -75,13 +75,11 @@ describe('CC-D1：琉音额外能力「命破队友 400% 贯穿力」含 sheerFo
     ])
     const rowOf = () => (calc.damagePoolRows.value as any[]).find(r => r.id === 'liuyin-ex-direct-0')
 
-    config.refreshTrigger++
     const on = rowOf()
     expect(on, '琉音额外能力直伤行进池（前置条件）').toBeTruthy()
     expect(on.note).toContain('命破队友 400% 贯穿力')
 
     config.toggleTeammateBuff('pan_yinhu.core_open_meridians_sheer_force', false)
-    config.refreshTrigger++
     const off = rowOf()
     config.toggleTeammateBuff('pan_yinhu.core_open_meridians_sheer_force', true)
 

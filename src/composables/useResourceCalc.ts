@@ -47,10 +47,10 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
  * 正确性护栏：
  *  - 键 = `config.$state` 的 JSON（**经响应式代理读取**，于是每个字段都建立依赖；不能 toRaw——那样读到的是 ref 对象且不追踪），
  *    **默认全部 state 进键**（漏字段 = 静默错值，这正是高风险所在；宁可多失效）。store 的 24 个 ref 全部在 `$state` 里（已核）。
- *    唯一排除的是 `CALC_MEMO_KEY_EXCLUDE`：纯触发器 `refreshTrigger` 与**引擎不读的纯 UI 态**（已 grep 核引擎/编排/机制/数据层零引用）。
+ *    唯一排除的是 `CALC_MEMO_KEY_EXCLUDE`：**引擎不读的纯 UI 态**（已 grep 核引擎/编排/机制/数据层零引用）。
  *    排除项**连读都不读**（不经 replacer），否则会建立依赖、切 tab 也触发重算。
- *  - `triggerRefresh()`/`refreshTrigger++` 的语义因此从「强制重算」变成「state 没变就复用」：全库调用点都是
- *    「先改 store 再触发」（setComboAlignOverride / toggleTeammateBuff 等，已核），改动本身已进键。
+ *  - 因此**没有手动失效**：任何 state 写入本身就让计算失效。原 `refreshTrigger`/`triggerRefresh()` 与三个「刷新」按钮
+ *    已删（CC-354 删内部调用、CC-355 删按钮与字段）。store 外的输入要么是响应式的（行融合规则），要么是测试专用开关。
  *  - 目录数据按**对象身份**进键（`catalog` / `teammateBuffGroups` / `buildRecommendations` 整体替换才会变；
  *    全库无原地改目录的生产代码，已核）。
  *  - **读 `$state` 的每个字段本身就建立了响应式依赖**——键计算让 calcOutput 依赖全部 state，比原来更宽，不会漏失效。
@@ -62,7 +62,7 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
 /** 容量 16：难度爬梯单队 G2 实测 12 个不同配置（8 装不下、命中率掉一半）；每个 useResourceCalc 实例各一份 */
 const CALC_OUTPUT_MEMO_MAX = 16
 /** 不进 calcOutput 记忆化键的 state 字段（见上）。新增字段**默认进键**；只有确认引擎不读的纯 UI 态才可加到这里。 */
-const CALC_MEMO_KEY_EXCLUDE: ReadonlySet<string> = new Set(['refreshTrigger', 'activeTab', 'selectedSlot'])
+const CALC_MEMO_KEY_EXCLUDE: ReadonlySet<string> = new Set(['activeTab', 'selectedSlot'])
 /** 对象身份 → 序号（目录数据进键用；WeakMap 不阻止回收） */
 const memoIdentity = new WeakMap<object, number>()
 let memoIdentitySeq = 0
@@ -108,9 +108,6 @@ export function createResourceCalc(
 
   /** 构建资源池计算配置 */
   const resourceConfig = computed<ResourceCalcConfig | null>(() => {
-    // 依赖 refreshTrigger，用户点击刷新键时强制重算
-    configStore.refreshTrigger
-
     // 就绪门：teammate-buffs 未就绪时返回 null，杜绝「首算无队友 buff、数据到达后数值漂移」的
     // 异步竞态（曾致同配置两次全新计算 12/3,9/1 vs 12/4,8/1）。失败同样阻断，重试成功才放行。
     if (!catalogStore.ready || !catalogStore.teammateBuffsReady) return null

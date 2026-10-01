@@ -12,7 +12,6 @@
           资源池先计算理论上限，再用本页的释放率和次数上限折算最终进入失衡、积蓄和事件表的次数。默认 100% 且不封顶，表示“回复多少资源都能用完”。
         </div>
         <div class="intro-actions">
-          <n-button size="small" type="primary" secondary @click="configStore.triggerRefresh">刷新当前列表</n-button>
           <n-button size="small" type="warning" secondary @click="configStore.resetResourceUtilization()">清空全部覆盖</n-button>
         </div>
       </n-card>

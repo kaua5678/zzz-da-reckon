@@ -34,7 +34,6 @@ describe(`全角色护栏（${agentIds.length} 角色 × 命座 0/6 × 交互加
     const read = () => `${calc.teamTotalDamage.value}|${enc(calc.resourceResult.value)}`
     const arm = (on: boolean) => {
       setRowFastPathsEnabled(on)
-      config.refreshTrigger++
       const base = read()
       const pc = config.team[0]!.parryCount, dc = config.team[0]!.dodgeCounterCount
       config.team[0]!.parryCount = (pc ?? 0) + 25
@@ -95,8 +94,7 @@ describe(`全角色护栏（${agentIds.length} 角色 × 命座 0/6 × 交互加
     const start = [{ agentId: agentIds[0]! }, { agentId: agentIds[1 % n]! }, { agentId: agentIds[2 % n]! }]
     const snapshot = (calc: ReturnType<typeof useResourceCalc>, config: Awaited<ReturnType<typeof setupHarness>>['config']) =>
       enc([calc.teamTotalDamage.value, calc.panels.value, calc.resourceResult.value,
-        // refreshTrigger 是失效计数器（历史长度），本身不是状态
-        { ...config.$state, refreshTrigger: 0 }])
+        config.$state])
     const label = (t: Slot[]) => t.map(s => `${s.agentId}c${s.cinemaLevel}`).join('-')
     const drift: string[] = []
     for (let k = 0; k < n; k++) {

@@ -84,7 +84,6 @@ describe('⑤ 合轴匀出 · 机制传导与集成诚实', () => {
     const moveId = chainMoveId(calc)
     const p0 = poolSecs(calc)
     config.setComboAlignOverride(1, moveId, 0.8)
-    config.triggerRefresh()
     const seeded = rowsOf(calc, 1).find(e => String(e.moveId) === moveId)
     expect(seeded?.comboAlignRatio ?? 0, '种子未进执行行 = ov() 接线断').toBeCloseTo(0.8, 3)
     expect(poolSecs(calc), '队友可合轴段不占共享轴 ⇒ 平A池必须增大（坑21）').toBeGreaterThan(p0)
@@ -94,7 +93,6 @@ describe('⑤ 合轴匀出 · 机制传导与集成诚实', () => {
     const { config, calc } = await boot()
     const moveId = chainMoveId(calc)
     config.setComboAlignOverride(1, moveId, 0.3)
-    config.triggerRefresh()
     const t0 = truncOf(calc)
     const d0 = calc.teamTotalDamage.value; const s0 = calc.stunPoolResult.value?.stunCount ?? 0
     const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)

@@ -518,9 +518,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   // 用户在结果页调节，覆盖倍率表中的默认值（默认0）
   const comboAlignOverrides = ref<Record<number, Record<string, number>>>({})
 
-  // 刷新触发器：递增后强制资源池重新计算
-  const refreshTrigger = ref(0)
-
   // 失衡轴配置
   const stunAxes = ref<import('@/types/resource').StunAxis[]>([])
   // 条件轴方案（按资源量自选轴：resolveStunAxisPlan 按 when 命中；存在时优先于 stunAxes）
@@ -890,11 +887,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     delete comboAlignOverrides.value[slot]
   }
 
-  /** 触发资源池重新计算 */
-  function triggerRefresh() {
-    refreshTrigger.value++
-  }
-
   // ========== Actions - 全局 Buff ==========
 
   function addGlobalBuff() {
@@ -1151,7 +1143,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     const stateRefs: Record<string, { value: unknown }> = {
       selectedSlot, team, globalBuffs, teammateBuffSelections, wEngineEffectCoverages, discEffectCoverages,
       resourceUtilization, mechanicSettings, teamMechanicSettings, anomalyUtilizationRates, anomalySettlementShares,
-      enemy, comboAlignOverrides, refreshTrigger, stunAxes, stunAxisPlans, useStunAxis, autoYidhariAxis,
+      enemy, comboAlignOverrides, stunAxes, stunAxisPlans, useStunAxis, autoYidhariAxis,
       interactionScaleCeiling, interactionScaleMonotone, timeWeightStrategy, activeTab, appliedBoss,
     }
     for (const [key, value] of Object.entries(initialState)) {
@@ -1409,8 +1401,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     getComboAlignOverride,
     setComboAlignOverride,
     clearComboAlignOverrides,
-    refreshTrigger,
-    triggerRefresh,
     addGlobalBuff,
     removeGlobalBuff,
     updateGlobalBuff,

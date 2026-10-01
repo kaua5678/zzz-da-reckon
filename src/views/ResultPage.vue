@@ -136,11 +136,6 @@
           <n-button size="small" type="primary" secondary @click="showComboAlignModal = true">
             合轴率调节
           </n-button>
-          <!-- 原 type="info"：Naive 的 info 亮蓝在 secondary 底上白底只有 2.86:1（audit 抓出），
-               换 primary（品牌蓝）与同排「合轴率调节」一致且过 AA -->
-          <n-button size="small" type="primary" secondary @click="configStore.triggerRefresh" style="margin-left: 8px">
-            刷新计算
-          </n-button>
         </div>
       </div>
 
@@ -735,12 +730,6 @@
           合轴段不占三人共享时间轴 → 该部分时间回流平A池（全队必做动作因此可超出战斗总时长）。
           查看各招式的总时间和执行次数后，输入合适的合轴率（0-100%）。
         </n-text>
-
-        <div style="text-align: right; margin-bottom: 8px">
-          <n-button size="small" type="info" secondary @click="configStore.triggerRefresh">
-            应用并刷新计算
-          </n-button>
-        </div>
 
         <n-tabs type="line" animated>
           <n-tab-pane

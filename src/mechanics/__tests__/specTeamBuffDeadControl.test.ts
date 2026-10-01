@@ -97,7 +97,6 @@ async function readingsFor(
     ])
     for (const b of config.globalBuffs) b.enabled = false
     if (mode !== 'auto') config.toggleTeammateBuff(buffId, mode === 'on')
-    config.refreshTrigger++
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 0)) // resourceResult 必须在 await 之后读
     const rows = calc.damagePoolRows.value as unknown as Array<Record<string, unknown>>
