@@ -58,6 +58,8 @@ import type { PanelValues, TeammateBuff, DriveDiscConfig } from '@/types/catalog
 // 结算口径单一事实源（全局 Buff → TeammateBuff.effect.mode）。**不要**用展示口径 `isPctStat`：
 // 两者对本仓 39 个字段结论相反（其中 34 个 mode 敏感），详见 statMeta.ts#statSettlementMode 头注释。
 import { statSettlementMode } from '@/utils/statMeta'
+// CC-341：危局 buff 牌条件（特性限定 / 人数分档）的唯一解析（全局 Buff 行带 cond，在这里按当前队伍解析）
+import { resolvePhaseBuffValue, teamSpecialtiesOf } from '@/utils/phaseBuff'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { getTeamAnomalyDurationBonus } from './anomalyPanels'
@@ -481,32 +483,41 @@ export function resolveSlotPanelBuffInputs(
   // applyCoreStatBonus 会把"当前合并 atk（含模块/硬编码块直加的局内固定值）"当 base 重新乘百分比，
   // 导致局内固定加成（如诺姆 870 / 琉音 500）被局内百分比错误放大（×1.2）。
   // 并入 calcPanel 后：局内 = 局外结果 × (1 + Σ局内%) + Σ局内固定，公式正确。
+  //
+  // CC-341：危局 buff 牌（应用 Boss 写的关卡固有 buff / 当期牌）的条件（特性限定 / 特性人数分档）在这里按
+  // **当前队伍**解析——唯一解析点 `utils/phaseBuff#resolvePhaseBuffValue`；写入方只带 `cond`、不看队伍。
+  // 条件不成立的行不进面板，人数分档取生效档的值；无 `cond` 的行（用户手动添加）原样。
+  const teamSpecialties = teamSpecialtiesOf(configStore.team, id => catalogStore.agentsMap.get(id)?.specialty)
   const globalAsTeammateBuffs: TeammateBuff[] = configStore.globalBuffs
     .filter(b => b.enabled)
-    .map(b => ({
-      id: `global-${b.id}`,
-      source: { zhCN: '全局Buff' },
-      description: { zhCN: b.name },
-      scope: 'inCombat' as const,
-      effects: [{
-        id: `global-${b.id}-effect`,
-        type: 'fixed' as const,
-        target: { kind: 'default' as const },
-        stat: b.stat as TeammateBuff['effects'][number]['stat'],
-        mode: statSettlementMode(b.stat),
-        value: b.value,
-        ...(b.targetSkillType && b.targetSkillType !== 'all' ? { targetSkillType: b.targetSkillType } : {}),
-      }],
-      buffModifiers: [],
-      sourceType: 'teammate' as const,
-      sourceCategory: 'agent' as const,
-      sourceKind: 'global' as const,
-      sourceLabel: { zhCN: '全局Buff' },
-      ownerId: '',
-      ownerName: { zhCN: b.name },
-      teammateId: '',
-      teammateName: { zhCN: b.name },
-    }))
+    .flatMap((b): TeammateBuff[] => {
+      const value = resolvePhaseBuffValue(b.value, b.cond, teamSpecialties)
+      if (value == null) return []
+      return [{
+        id: `global-${b.id}`,
+        source: { zhCN: '全局Buff' },
+        description: { zhCN: b.name },
+        scope: 'inCombat' as const,
+        effects: [{
+          id: `global-${b.id}-effect`,
+          type: 'fixed' as const,
+          target: { kind: 'default' as const },
+          stat: b.stat as TeammateBuff['effects'][number]['stat'],
+          mode: statSettlementMode(b.stat),
+          value,
+          ...(b.targetSkillType && b.targetSkillType !== 'all' ? { targetSkillType: b.targetSkillType } : {}),
+        }],
+        buffModifiers: [],
+        sourceType: 'teammate' as const,
+        sourceCategory: 'agent' as const,
+        sourceKind: 'global' as const,
+        sourceLabel: { zhCN: '全局Buff' },
+        ownerId: '',
+        ownerName: { zhCN: b.name },
+        teammateId: '',
+        teammateName: { zhCN: b.name },
+      }]
+    })
   const team = buildMechanicTeamMembers(configStore, catalogStore)
   // 额外能力硬门控（CC-203：表从 catalog 分组派生，来源「额外能力」全员覆盖；跨来源条目与专属修正见 additionalGateBuffTable）
   const additionalAbilityBuffGates = evalAdditionalAbilityBuffGates(

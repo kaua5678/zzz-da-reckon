@@ -5,15 +5,15 @@
  */
 import type { PhaseBuffEffect } from '@/types/bossPreset'
 import { damageElementLabel } from '@/utils/agentLabelMaps'
+import { phaseBuffCondLabel } from '@/utils/phaseBuff'
 
 export function bossBuffEffectLabel(e: PhaseBuffEffect): string {
-  const cond: string[] = []
-  if (e.cond?.countTier) cond.push(`${e.cond.countTier.specialty}${e.cond.countTier.thresholds[0]}/${e.cond.countTier.thresholds[1]}名`)
-  if (e.cond?.specialty) cond.push(`${e.cond.specialty}限定`)
+  // CC-341：条件说明与属性配置页共用 phaseBuffCondLabel（原在这里内联拼接）
+  const cond = phaseBuffCondLabel(e.cond)
   const unit = e.stat === 'anomalyProficiency' ? '点' : '%'
   const parts = [statLabelOf(e.stat), `+${e.value}${unit}`]
   if (e.targetSkillType) parts.push(`→${e.targetSkillType}`)
-  if (cond.length) parts.push(`[${cond.join('，')}]`)
+  if (cond) parts.push(`[${cond}]`)
   return parts.join(' ')
 }
 

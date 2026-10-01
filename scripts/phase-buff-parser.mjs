@@ -8,7 +8,7 @@
  * - 失衡易伤 → stunDmgMultiplierBonus（与击破角色 buff 同字段，直接加，不折算覆盖率）
  * - 异常/强攻等特性人数分档（2/3 名异常、1/2 名强攻）→ cond.countTier
  *   { specialty, thresholds:[低档人数, 高档人数], values:[低档值, 高档值] }，
- *   应用时按队伍该特性实际人数选档（resolveBuffEffect）。
+ *   计算时按当前队伍该特性实际人数选档（src/utils/phaseBuff.ts#resolvePhaseBuffValue，CC-341 起在管线里唯一解析）。
  * - 强攻/异常/击破/命破等特性限定 → cond.specialty（二元：队伍无该特性角色则该条不生效）
  * - 其余条件效果（施放后持续 X 秒等）→ 默认满覆盖录入，原文保留在 note
  * - (Test1)TBD 测试服占位 → testOnly: true（不参与解析/推荐，等正式服）

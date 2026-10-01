@@ -13,7 +13,7 @@ import { useCatalogStore } from './catalog'
 import { getAgentMechanic } from '@/mechanics'
 import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
 import type { MechanicTeamMember } from '@/mechanics/types'
-import type { AppliedBossPreset } from '@/types/bossPreset'
+import type { AppliedBossPreset, PhaseBuffEffect } from '@/types/bossPreset'
 import { counterAssistOf } from '@/data/counterAssists'
 import { localized } from '@/utils/format'
 import { elementStatKey } from '@/utils/elementStatKeys'
@@ -62,6 +62,9 @@ export interface GlobalBuffRow {
   value: number      // 数值
   enabled: boolean
   targetSkillType?: SkillDamageTarget
+  /** CC-341：危局 buff 牌条件（特性限定 / 特性人数分档；应用 Boss / 当期牌写入时随行带上，见 `utils/phaseBuff#phaseBuffRows`）。
+   *  管线按**当前队伍**解析（`resolvePhaseBuffValue`）：不成立的行不生效、人数分档取生效档的值；用户手动添加的行没有此字段。 */
+  cond?: PhaseBuffEffect['cond']
 }
 
 /** 单个资源利用率覆盖：按 slot + actionId/eventId 作用于最终执行计划 */

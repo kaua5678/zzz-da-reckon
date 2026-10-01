@@ -20,7 +20,6 @@ import {
   computeTeamComparePoints,
   isLimitedAgent,
   isLimitedWEngine,
-  resolveBuffEffect,
   resolveGoldLevel,
   teamGoldOf,
 } from '@/composables/teamCompare'
@@ -964,22 +963,8 @@ describe('teamCompare 批量计算', () => {
     expect(points[0].buffTitle).toBe('后期牌')
   })
 
-  it('buff 条件：特性限定/异常人数分档（resolveBuffEffect）', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
-    // 测试队：1561(异常) 1261(异常) 1411(支援) —— 2 名异常
-    const eff2: any = { stat: 'atkPct', value: 70, cond: { countTier: { specialty: '异常', thresholds: [2, 3], values: [10, 70] } } }
-    expect(resolveBuffEffect(eff2, TEST_PRESET)).toMatchObject({ stat: 'atkPct', value: 10 })
-
-    // 3 名异常 → 满编档
-    const team3: TeamPreset = { ...TEST_PRESET, team: ['1561', '1261', '1171'] }
-    expect(resolveBuffEffect(eff2, team3)).toMatchObject({ stat: 'atkPct', value: 70 })
-
-    // 队伍无强攻 → 限定效果不生效
-    const effSpec: any = { stat: 'critDmg', value: 30, cond: { specialty: '强攻' } }
-    expect(resolveBuffEffect(effSpec, TEST_PRESET)).toBeNull()
-  })
+  // CC-341：原「buff 条件：特性限定/异常人数分档（resolveBuffEffect）」随解析移到管线，
+  // 同一组队伍与断言改测引擎实际收下的条目：src/composables/__tests__/phaseBuffCond.test.ts
 })
 
 // ========== 自动下位音擎（装填池择优） ==========

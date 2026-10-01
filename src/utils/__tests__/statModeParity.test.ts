@@ -145,8 +145,10 @@ describe('判据 19：stat 结算口径单一事实源（statSettlementMode）',
       // [文件, 必须是结算口径的那行, 该文件里「结算位上出现展示口径」的回退形态]
       // CC-169（第 195 轮）：局外面板改为直接取引擎 computePanelPhases().outOfCombat，不再自己结算全局 Buff
       // ⇒ 原 `src/composables/outOfCombatPanel.ts` 这一行锁删除；全局 Buff 的结算位只剩下面的 panelPhases.ts。
+      // CC-341：调试页的全局 Buff 行改取引擎实际收下的条目（`buff` = 面板输入里的全局 TeammateBuff，`e` = 其效果），
+      // 结算位仍须是 statSettlementMode，锚点随调用形态更新
       ['src/views/DebugPage.vue',
-        /row\('全局 Buff',\s*buff\.name,\s*buff\.stat,\s*buff\.value,\s*statSettlementMode\(buff\.stat\)/,
+        /row\('全局 Buff',\s*localized\(buff\.ownerName\),\s*e\.stat,\s*e\.value,\s*statSettlementMode\(e\.stat\)/,
         /row\('全局 Buff'[^)]*isPctStat\(/],
       ['src/composables/resourceCalc/panelPhases.ts',
         /mode:\s*statSettlementMode\(b\.stat\)/,

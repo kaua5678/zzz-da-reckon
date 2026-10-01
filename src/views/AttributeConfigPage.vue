@@ -246,6 +246,7 @@
                       placeholder="名称"
                       @update:value="v => configStore.updateGlobalBuff(buff.id, { name: v })"
                     />
+                    <div v-if="buff.cond" class="target-muted" title="危局 buff 牌条件：按当前队伍判定，不满足时本行不生效">{{ phaseBuffCondLabel(buff.cond) }}</div>
                   </td>
                   <td>
                     <n-select
@@ -313,6 +314,7 @@ import { getGlobalBuffStatOptions } from '@/utils/statMeta'
 import { localized } from '@/utils/format'
 import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import { isTeammateBuffInteractive, declaredOnlyReason } from '@/utils/teammateBuffRows'
+import { phaseBuffCondLabel } from '@/utils/phaseBuff'
 import BossSelectCard from '@/components/BossSelectCard.vue'
 import type { TeammateBuffGroup, TeammateBuff, BuffEffect } from '@/types/catalog'
 

@@ -145,11 +145,14 @@ const slotOptions = computed(() => configStore.team.map((char, index) => {
 
 // CC-208：本槽实际生效的队友 buff = 引擎面板输入（门控 / 钩子否决 / 接收槽过滤 / 修饰器改写均已生效），
 // 不再按勾选状态自己重筛（旧写法会列出引擎丢弃的条目）。全局 Buff 由 addGlobalRows 单列，这里排除。
-const enabledTeammateBuffs = computed<TeammateBuff[]>(() => {
+const slotPanelBuffs = computed<TeammateBuff[]>(() => {
   if (!configStore.team[configStore.selectedSlot]?.agentId) return []
   return resolveSlotPanelBuffInputs(configStore.selectedSlot, configStore, catalogStore).teammateBuffs
-    .filter(buff => buff.sourceKind !== 'global')
 })
+const enabledTeammateBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value.filter(buff => buff.sourceKind !== 'global'))
+// CC-341：全局 Buff 同样取引擎实际收下的条目（危局 buff 牌的特性限定 / 人数分档已按当前队伍解析，值为生效档），
+// 不再直接遍历 configStore.globalBuffs（会列出条件不成立、引擎丢弃的行）
+const engineGlobalBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value.filter(buff => buff.sourceKind === 'global'))
 
 const currentPanel = computed<PanelValues | null>(() => {
   return computePanel(configStore.selectedSlot, configStore, catalogStore)
@@ -294,10 +297,11 @@ function addTeamBuffRows(rows: DebugRow[]) {
 }
 
 function addGlobalRows(rows: DebugRow[]) {
-  for (const buff of configStore.globalBuffs) {
-    if (!buff.enabled) continue
-    const targetNote = buff.stat === 'skillDmgBonus' ? `；目标招式：${SKILL_DMG_TARGET_LABELS[normalizeSkillDamageTarget(buff.targetSkillType)]}` : ''
-    rows.push(row('全局 Buff', buff.name, buff.stat, buff.value, statSettlementMode(buff.stat), `属性配置页手动添加，直接应用到局内面板${targetNote}`, phaseStatLabel(buff.stat, 'inCombat')))
+  for (const buff of engineGlobalBuffs.value) {
+    const e = buff.effects?.[0]
+    if (!e) continue
+    const targetNote = e.stat === 'skillDmgBonus' ? `；目标招式：${SKILL_DMG_TARGET_LABELS[normalizeSkillDamageTarget(e.targetSkillType)]}` : ''
+    rows.push(row('全局 Buff', localized(buff.ownerName), e.stat, e.value, statSettlementMode(e.stat), `属性配置页手动添加或应用 Boss / 当期牌写入，直接应用到局内面板${targetNote}`, phaseStatLabel(e.stat, 'inCombat')))
   }
 }
 

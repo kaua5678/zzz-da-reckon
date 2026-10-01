@@ -25,9 +25,9 @@ import { liveInteractions } from '@/composables/liveInteractions'
 import { interactionFieldForType, teamCompareInteractionTypes } from '@/composables/agentMechanicView'
 import { useConfigStore } from '@/stores/config'
 import { restoreStore, snapshotStore, type StoreSnapshot } from '@/composables/configSnapshot'
-import type { SkillDamageTarget } from '@/types/catalog'
 import { useCatalogStore } from '@/stores/catalog'
-import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseBuffEffect } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
+import { phaseBuffRows } from '@/utils/phaseBuff'
 import { cloneStunAxes, stunAxisPresets } from '@/data/stunAxisPresets'
 import { fmt, localized } from '@/utils/format'
 import {
@@ -223,34 +223,9 @@ export function defaultInteractionFormula(type: string): string {
  */
 const NON_STUN_RATIO_FLOOR = 0.05
 
-/** 效果是否对当前队伍生效（特性限定 / 特性人数分档）。导出供测试。 */
-export function resolveBuffEffect(eff: PhaseBuffEffect, preset: TeamPreset): PhaseBuffEffect | null {
-  if (!eff.cond) return eff
-  const { specialty, countTier } = eff.cond
-  if (specialty) {
-    const has = preset.team.some(id => specialtyOf(id) === specialtyEn(specialty))
-    if (!has) return null
-  }
-  if (countTier) {
-    const n = preset.team.filter(id => specialtyOf(id) === specialtyEn(countTier.specialty)).length
-    const value = n >= countTier.thresholds[1] ? countTier.values[1] : n >= countTier.thresholds[0] ? countTier.values[0] : null
-    if (value == null) return null
-    return { ...eff, value }
-  }
-  return eff
-}
+// CC-341：buff 牌条件（特性限定 / 人数分档）的解析已移到管线（`utils/phaseBuff#resolvePhaseBuffValue`，
+// 在 `resolveSlotPanelBuffInputs` 按当前队伍解析）；原 `resolveBuffEffect` 与手写特性中文反表在此删除。
 
-function specialtyOf(agentId: string): string {
-  return useCatalogStore().getAgent(agentId)?.specialty ?? ''
-}
-
-/** 特性中文（parser 产出的 cond.specialty）→ 引擎英文 specialty */
-const SPECIALTY_ZH_EN: Record<string, string> = {
-  强攻: 'attack', 异常: 'anomaly', 击破: 'stun', 命破: 'rupture', 支援: 'support', 防护: 'defense', 锋御: 'sharpen',
-}
-function specialtyEn(zh: string): string {
-  return SPECIALTY_ZH_EN[zh] ?? zh
-}
 // @fact engine:操作难度/权重可调 口径: 难度 = Σ(交互次数×权重) + **时间压力秒×时间压力权重**（时间压力 = 引擎硬溢出 overflowSeconds + 合轴抵扣 saved —— 用户 2026-09-11「这俩其实是一个东西」：同一份「必做前台超出可用窗口的秒数」，合轴吃掉多少、硬溢出剩多少都只是这笔秒数的两种花法，故**只挂一个权重**）；交互权重与时间压力权重都只是默认值（INTERACTION_WEIGHTS / 1 秒=1 点），用户在对比页「难度权重」弹层自填覆盖（localStorage 持久化）；优先级 条目weight > 用户覆盖 > 默认表 | 据 用户@2026-09-04·口径合并@2026-09-11·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/teamCompare.test.ts::难度权重用户覆盖 | 锚 src/composables/teamCompare.ts#computeDifficulty | 信 确认
 export const INTERACTION_LABELS: Record<string, string> = {
   parry: '弹刀',
@@ -933,19 +908,13 @@ export function goldAlternativesOf(allocs: OptimalGoldAllocation[]): GoldAllocat
 
 // ========== 应用到 store ==========
 
-/** 把 buff 牌写进全局 Buff 表（快照/恢复负责清理） */
-function applyBuffToStore(configStore: ReturnType<typeof useConfigStore>, card: PhaseBuffCard | null, preset: TeamPreset) {
-  const rows = (card?.effects ?? [])
-    .map(e => resolveBuffEffect(e, preset))
-    .filter((e): e is PhaseBuffEffect => e !== null)
-    .map((e, i) => ({
-      id: `phase-buff:${card!.title}:${i}`,
-      name: card!.title,
-      stat: e.stat,
-      value: e.value,
-      enabled: true,
-      targetSkillType: (e.targetSkillType ?? 'all') as SkillDamageTarget,
-    }))
+/**
+ * 把 buff 牌写进全局 Buff 表（**整表替换**＝只留这张牌；快照/恢复负责清理）。
+ * CC-341：走唯一映射 `phaseBuffRows`，`cond` 原样写入，由管线按当前队伍解析（修前在这里按预设队伍预解析；
+ * 写入时 store 里已是该预设的队伍 ⇒ 结果逐位相同）。
+ */
+function applyBuffToStore(configStore: ReturnType<typeof useConfigStore>, card: PhaseBuffCard | null) {
+  const rows = card ? phaseBuffRows(card, (_e, i) => `phase-buff:${card.title}:${i}`, card.title) : []
   configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...rows)
 }
 
@@ -956,7 +925,6 @@ function applyBuffToStore(configStore: ReturnType<typeof useConfigStore>, card: 
 function pickBestBuff(
   calc: Calc,
   configStore: ReturnType<typeof useConfigStore>,
-  preset: TeamPreset,
   options: TeamCompareOptions,
 ): PhaseBuffCard | null {
   const cards = (options.buffs ?? []).filter(b => !b.testOnly)
@@ -964,7 +932,7 @@ function pickBestBuff(
   let best: PhaseBuffCard | null = null
   let bestDmg = -1
   for (const card of cards) {
-    applyBuffToStore(configStore, card, preset)
+    applyBuffToStore(configStore, card)
     const dmg = calc.teamTotalDamage.value
     if (dmg > bestDmg) {
       bestDmg = dmg
@@ -1169,9 +1137,9 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
       if (options.manualBuffTitle) {
         chosen = (options.buffs ?? []).find(b => b.title === options.manualBuffTitle) ?? null
       } else {
-        chosen = pickBestBuff(calc, configStore, preset, options)
+        chosen = pickBestBuff(calc, configStore, options)
       }
-      applyBuffToStore(configStore, chosen, preset)
+      applyBuffToStore(configStore, chosen)
       // 自动下位音擎（缺省开）：boss/buff 已应用，从真实场景出发在装填池内择优；每队一次
       const autoPicks = options.autoEngine === false
         ? []

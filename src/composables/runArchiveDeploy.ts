@@ -12,6 +12,7 @@ import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase
 import { useConfigStore, hasCustomInteractionDefaults, interactionBaselineFor } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
+import { phaseBuffRows } from '@/utils/phaseBuff'
 
 export interface ResolvedBossApply {
   preset: BossPreset
@@ -47,24 +48,17 @@ export function applyBossLayerBuffs(
     if (String(configStore.globalBuffs[i].id).startsWith('layer-buff:')) configStore.globalBuffs.splice(i, 1)
   }
   if (!brief) return
+  // CC-341：牌 → 行走唯一映射 phaseBuffRows，`cond`（特性限定 / 人数分档）随行写入、由管线按当前队伍解析
+  // （修前丢 cond ⇒ 如 40003 在 690431 / 690441 的「强攻限定」暴伤 +60% 等对非强攻队也满额生效）
   for (const card of brief.bossBuffs ?? []) {
-    for (const e of card.effects) {
-      configStore.globalBuffs.push({
-        id: `layer-buff:${brief.monsterId}:${e.stat}:${e.value}`,
-        name: `关卡·${brief.name}`,
-        stat: e.stat,
-        value: e.value,
-        enabled: true,
-        targetSkillType: (e.targetSkillType ?? 'all') as never,
-      })
-    }
+    configStore.globalBuffs.push(...phaseBuffRows(card, e => `layer-buff:${brief.monsterId}:${e.stat}:${e.value}`, `关卡·${brief.name}`))
   }
 }
 
 /**
  * 写当期可选 buff 牌（危局 3 选 1，period-buff: 前缀；先清旧）——实战对比部署页的
  * 快捷按钮用（归档未记录玩家选择，手动点选后写进全局 Buff 表参与计算，与 layer_buff 通道同源）。
- * 传 null 清除当前选择（回到「不用」口径）。返回是否已应用（effects 非空且非测试牌）。
+ * 传 null 清除当前选择（回到「不用」口径）。返回是否已写入（effects 非空且非测试牌；带条件的行是否对当前队伍生效由管线判）。
  */
 export function applyPeriodBuff(
   configStore: ReturnType<typeof useConfigStore>,
@@ -75,20 +69,10 @@ export function applyPeriodBuff(
     if (String(configStore.globalBuffs[i].id).startsWith('period-buff:')) configStore.globalBuffs.splice(i, 1)
   }
   if (!card || card.testOnly) return false
-  let written = 0
-  for (const e of card.effects ?? []) {
-    if (!e.stat) continue
-    configStore.globalBuffs.push({
-      id: `period-buff:${phaseId}:${e.stat}:${e.value}`,
-      name: `当期·${card.title || '(未命名)'}`,
-      stat: e.stat,
-      value: e.value,
-      enabled: true,
-      targetSkillType: (e.targetSkillType ?? 'all') as never,
-    })
-    written++
-  }
-  return written > 0
+  // CC-341：同 applyBossLayerBuffs，`cond` 随行写入（修前丢 cond ⇒ 「异常 2/3 名」按满编档、特性限定对任何队都生效）
+  const rows = phaseBuffRows(card, e => `period-buff:${phaseId}:${e.stat}:${e.value}`, `当期·${card.title || '(未命名)'}`)
+  configStore.globalBuffs.push(...rows)
+  return rows.length > 0
 }
 
 /** 一键部署：队伍（命座/音擎/精炼/交互基准） + Boss（期相位 + layer_buff）。 */
