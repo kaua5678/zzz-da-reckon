@@ -14,7 +14,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { mockStaticFetch, setupHarness } from '@/test/harness'
-import { useConfigStore } from '@/stores/config'
+import { useConfigStore, type ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
@@ -211,7 +211,7 @@ function makeRunner() {
     axisId: 'cinema' | 'setupCode',
     axisOptions: Record<string, unknown>,
     constraints: Record<string, unknown> = {},
-    onEval?: (config: ReturnType<typeof useConfigStore>) => void,
+    onEval?: (config: ConfigModel) => void,
   ) {
     return withAnalysisScenario(scenario => computeFreeCompare(scenario, {
       series,

@@ -1,5 +1,5 @@
 import { computed, type ComputedRef } from 'vue'
-import { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { PanelValues } from '@/types/catalog'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMultOf, rowFullStunMultOf, rowStunCoverage } from '@/composables/stunVulnSummary'
@@ -16,7 +16,7 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
  * 保真证明表）。改名会静默扩大「搬了什么」的口径，规则 17 的「逐位保真」就失效了。
  */
 export function useStunVulnDisplay(opts: {
-  configStore: ReturnType<typeof useConfigStore>
+  configStore: ConfigModel
   panels: ComputedRef<PanelValues[]>
   damagePoolRows: ComputedRef<DamagePoolRow[]>
 }) {

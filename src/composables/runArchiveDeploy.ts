@@ -9,7 +9,7 @@
  * - 当期可选牌（3 选 1）不自动应用：归档未记录玩家选择，对比时由用户在属性配置页手动选。
  */
 import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
-import { useConfigStore, hasCustomInteractionDefaults, interactionBaselineFor } from '@/stores/config'
+import { hasCustomInteractionDefaults, interactionBaselineFor, type ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
 import { phaseBuffRows } from '@/utils/phaseBuff'
@@ -41,7 +41,7 @@ export function resolveBossApply(
  * 传 null 清除当前选择（回到「不用」口径）。返回是否已写入（effects 非空且非测试牌；带条件的行是否对当前队伍生效由管线判）。
  */
 export function applyPeriodBuff(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   phaseId: string,
   card: PhaseBuffCard | null,
 ): boolean {
@@ -57,7 +57,7 @@ export function applyPeriodBuff(
 
 /** 一键部署：队伍（命座/音擎/精炼/交互基准） + Boss（期相位 + layer_buff）。 */
 export function applyDeployConfig(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   deploy: DeployConfig,
   presets: BossPreset[],
 ): void {

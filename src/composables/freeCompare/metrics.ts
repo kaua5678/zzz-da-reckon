@@ -23,10 +23,10 @@
  * 「这次想看另一个人的伤害」是不可接受的代价。
  */
 import { compact } from '@/utils/format'
-import type { useResourceCalc } from '@/composables/useResourceCalc'
+import type { ResourceCalc } from '@/composables/useResourceCalc'
 
 /** 一次求值后引擎暴露的全部读数（= useResourceCalc() 的返回值） */
-export type Calc = ReturnType<typeof useResourceCalc>
+export type Calc = ResourceCalc
 
 /**
  * 读指标时的环境（引擎侧取不到、由调用方给的上下文）。

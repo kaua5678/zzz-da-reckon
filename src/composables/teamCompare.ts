@@ -24,7 +24,7 @@ import { isLimitedSAgentId, isLimitedSWengineId } from '@/composables/limitedGol
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { interactionFieldForType, teamCompareInteractionTypes } from '@/composables/agentMechanicView'
-import { type useConfigStore, type StunAxisState } from '@/stores/config'
+import { type StunAxisState, type ConfigModel } from '@/stores/config'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
@@ -38,12 +38,12 @@ import {
   type TeamComparePoint,
   type TeamPreset,
 } from '@/types/teamPreset'
-import type { useResourceCalc } from '@/composables/useResourceCalc'
+import type { ResourceCalc } from '@/composables/useResourceCalc'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
 
-type Calc = ReturnType<typeof useResourceCalc>
+type Calc = ResourceCalc
 
 /** 常驻角色/音擎名单在 @/data/standardMultiplierTable，本文件不转出口。焰心桂冠 14116 是限定，不在常驻 6 把里。 */
 
@@ -593,7 +593,7 @@ function countLimitedAutoApplied(
  */
 export function computeAutoEnginePicks(
   calc: Calc,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   preset: TeamPreset,
   options: Pick<TeamCompareOptions, 'autoEngineMods' | 'autoEnginePool'> = {},
 ): AutoEnginePick[] {
@@ -720,7 +720,7 @@ export interface GoldAllocationAlternative {
  */
 export function computeOptimalGoldAllocations(
   calc: Calc,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   preset: TeamPreset,
   baseGold: number,
   autoPicks: AutoEnginePick[] = [],
@@ -912,7 +912,7 @@ export function goldAlternativesOf(allocs: OptimalGoldAllocation[]): GoldAllocat
  * CC-341：走唯一映射 `phaseBuffRows`，`cond` 原样写入，由管线按当前队伍解析（修前在这里按预设队伍预解析；
  * 写入时 store 里已是该预设的队伍 ⇒ 结果逐位相同）。
  */
-export function applyBuffToStore(configStore: ReturnType<typeof useConfigStore>, card: PhaseBuffCard | null) {
+export function applyBuffToStore(configStore: ConfigModel, card: PhaseBuffCard | null) {
   const rows = card ? phaseBuffRows(card, (_e, i) => `phase-buff:${card.title}:${i}`, card.title) : []
   // 整表替换成所选牌（本页口径：用户手填的全局 buff 不参与对比），但关卡固有 buff 属于房间、由 applyBossRoom 写入，保留
   // （CC-342 第 364 轮；修前连关卡 buff 一起清掉 ⇒ 队伍对比恒按「无关卡 buff」算）
@@ -926,7 +926,7 @@ export function applyBuffToStore(configStore: ReturnType<typeof useConfigStore>,
  */
 function pickBestBuff(
   calc: Calc,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   options: TeamCompareOptions,
 ): PhaseBuffCard | null {
   const cards = (options.buffs ?? []).filter(b => !b.testOnly)
@@ -949,7 +949,7 @@ function pickBestBuff(
  * **难度曲线的「全关」基线也用它**（`difficultyCurve.ts`）：曲线必须与散点同口径
  * （预设声明的静态权重/交互，而不是 `setAgent` 的 agent 默认值），见该文件头。
  */
-export function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>, preset: TeamPreset) {
+export function applyTeamToStore(configStore: ConfigModel, preset: TeamPreset) {
   // CC-339：换人前先把三槽复位为 0命1精，防止上一预设末尾的高命座/高精炼残留进 setAgent 内的 syncTeammateBuffsFromTeam 与配装推荐
   for (let slot = 0; slot < 3; slot++) {
     configStore.setCinemaLevel(slot, 0)
@@ -983,7 +983,7 @@ export function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>,
  * 现存预设里只有 banyue-liuyin-lucia 声明般岳类型（般岳在 slot 0），值 = 模块 interactionDefaults（20 / 5）⇒ 零差。
  */
 export function applyPresetInteractions(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   items: readonly InteractionItem[] | undefined,
 ): void {
   for (const it of items ?? []) {
@@ -1003,7 +1003,7 @@ export function applyPresetInteractions(
 
 /** 把金档状态（影画 / 精炼 / 音擎）写进 configStore（CC-337 单一实现） */
 export function applyGoldAllocationToStore(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   alloc: { cinemas: readonly number[]; wengineMods: readonly number[]; wEngines: readonly string[] },
 ): void {
   for (let slot = 0; slot < 3; slot++) {
@@ -1014,7 +1014,7 @@ export function applyGoldAllocationToStore(
 }
 
 export function applyGoldToStore(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   preset: TeamPreset,
   targetTotalGold: number,
   autoPicks: AutoEnginePick[] = [],
@@ -1047,7 +1047,7 @@ export function applyGoldToStore(
  * 每队先恢复快照，同一次批量计算内各队轴状态互相隔离。
  */
 export function applyAxisBinding(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   snap: StunAxisState,
   preset: Pick<TeamPreset, 'stunAxisPresetId'>,
 ): boolean {

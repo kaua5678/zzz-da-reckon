@@ -14,16 +14,15 @@
  * （在 `config` 上随意改写、读 `calc` 的结果），不调 useConfigStore()、不做快照恢复。
  */
 import { effectScope, reactive, toRaw } from 'vue'
-import { createConfigModel, useConfigStore } from '@/stores/config'
+import { createConfigModel, useConfigStore, type EvalConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { createResourceCalc, type ResourceCalc } from '@/composables/useResourceCalc'
 
-type ConfigStore = ReturnType<typeof useConfigStore>
 type CatalogStore = ReturnType<typeof useCatalogStore>
 
 /** 分析器的求值上下文：在 `config` 上随意改写，读 `calc` 的结果。 */
 export interface AnalysisContext {
-  readonly config: ConfigStore
+  readonly config: EvalConfig
   readonly calc: ResourceCalc
 }
 
@@ -50,12 +49,11 @@ export function cloneConfigState<T>(value: T): T {
 /**
  * 以 `source` 的当前现场为出生态建一个独立场景。`source` 缺省 = UI config store，也可以是另一个场景的 `config`。
  *
- * 返回的 `config` 类型标成 config store：有 model 的全部 state / getter / action，外加 `$state`（memo 键读它，
- * 键集合与源一致）。没有 Pinia 的 `$patch` / `$subscribe` / `$reset` / `$onAction`——分析器与求值管线都不调它们
- * （全仓只有 ImpactChart.vue 对 UI store 用 `$patch`）。
+ * 返回的 `config` 是 `EvalConfig`：model 的全部 state / getter / action，外加 `$state`（memo 键读它，
+ * 键集合与源一致）。没有 Pinia 的 `$patch` / `$subscribe` / `$reset` / `$onAction`，类型上也没有（CC-343 S5）。
  */
 export function createAnalysisScenario(
-  source: ConfigStore = useConfigStore(),
+  source: EvalConfig = useConfigStore(),
   catalog: CatalogStore = useCatalogStore(),
 ): AnalysisScenario {
   const sourceState = source.$state as unknown as Record<string, unknown>
@@ -67,7 +65,7 @@ export function createAnalysisScenario(
     const model = createConfigModel(catalog, initialState) as unknown as Record<string, unknown>
     // `$state` 视图：同一批 ref，经 reactive 读取即解包并建立依赖（与 Pinia 的 $state 同语义）
     const $state = reactive(Object.fromEntries(stateKeys.map(key => [key, model[key]])))
-    const config = reactive({ ...model, $state }) as unknown as ConfigStore
+    const config = reactive({ ...model, $state }) as unknown as EvalConfig
     return { config, calc: createResourceCalc(config, catalog) }
   })!
   let disposed = false
@@ -85,7 +83,7 @@ export function createAnalysisScenario(
 /** 建场景 → 跑 fn → 无论成败都 dispose（页面入口用它，免得漏 dispose）。 */
 export async function withAnalysisScenario<T>(
   fn: (scenario: AnalysisScenario) => T | Promise<T>,
-  source?: ConfigStore,
+  source?: EvalConfig,
 ): Promise<T> {
   const scenario = createAnalysisScenario(source)
   try {

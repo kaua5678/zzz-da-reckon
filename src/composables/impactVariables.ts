@@ -20,11 +20,11 @@ import { IMPACT_VARIABLES, readImpactVar, writeImpactVar, type ImpactVariable } 
 import type { MechanicSetting } from '@/types/resource'
 import { damageElementLabel } from '@/utils/agentLabelMaps'
 import type { ReleaseShareDecl } from '@/composables/agentMechanicView'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 
 export type { ImpactVariable }
 
-type ConfigStore = ReturnType<typeof useConfigStore>
+type ConfigStore = ConfigModel
 /** 每元素异常覆盖率（0~1）；来自 useResourceCalc().anomalyPoolResult.coverage.perElementCoverageRate，可缺省 */
 export type ElementCoverageRate = Readonly<Record<string, number>> | undefined
 

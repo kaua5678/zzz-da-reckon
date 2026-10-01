@@ -1,6 +1,6 @@
 import { computed, toRaw } from 'vue'
 import { guaranteeStunShortfall, type GuaranteeStunShortfall } from '@/core/parrySplit'
-import { useConfigStore } from '@/stores/config'
+import { useConfigStore, type EvalConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { activeRowFusionRulesSnapshot } from '@/logicEditor/fusion'
 import { INNER_LOOP_MAX_ITERATIONS } from '@/core/resource'
@@ -99,7 +99,7 @@ export function useResourceCalc(): ResourceCalc {
  * 函数体内不得再调 `useConfigStore()` / `useCatalogStore()`——那会让场景实例静默读回 UI 现场（锁：analysisScenario.test.ts）。
  */
 export function createResourceCalc(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: EvalConfig,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ) {
   // 队友命座/核心拐是全局计算依赖：首次读取可启动加载；失败后交给可见的重试入口，

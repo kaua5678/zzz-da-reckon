@@ -20,15 +20,15 @@
  *
  * 判据测试：`__tests__/difficultyLadder.test.ts`（单调性 / 负收益被丢弃 / 目标契约）。
  */
-import { useConfigStore, type StunAxisState } from '@/stores/config'
+import { type StunAxisState, type ConfigModel } from '@/stores/config'
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE } from '@/core/stunPlanProjection'
-import { useResourceCalc } from '@/composables/useResourceCalc'
+import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 
 export interface LadderCtx {
-  config: ReturnType<typeof useConfigStore>
-  calc: ReturnType<typeof useResourceCalc>
+  config: ConfigModel
+  calc: ResourceCalc
   /**
    * 用户的动态合轴吸收上限（机制参数 `time.comboAlignAbsorbRatio` 在「全关」之前的值）。
    * `clearDifficultyLevers` 把上限置 0（全关 = 不吸收）前记在这里，G5 分档推进到它为止；缺省 = 引擎缺省 0.4。

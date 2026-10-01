@@ -16,9 +16,9 @@
  * UI 开关与 watcher 调用点都不用改。策略契约 = 读现况 → 写回各槽权重 → 返回诊断。
  */
 import { watch } from 'vue'
-import { useConfigStore } from '@/stores/config'
+import { useConfigStore, type ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
+import { useResourceCalc, type ResourceCalc } from '@/composables/useResourceCalc'
 import { optimizeTeamTimeWeights } from '@/composables/teamTimeline'
 import { isCarrySpecialty } from '../../scripts/lib/presetCategories.mjs'
 import type { TimeWeightMode } from '@/types/resource'
@@ -54,8 +54,8 @@ function carrySlotsOf(configStore: ConfigStore, catalogStore: ReturnType<typeof 
   return slots.length > 0 ? slots : [0]
 }
 
-type Calc = ReturnType<typeof useResourceCalc>
-type ConfigStore = ReturnType<typeof useConfigStore>
+type Calc = ResourceCalc
+type ConfigStore = ConfigModel
 
 export interface TimeWeightAllocationContext {
   calc: Calc

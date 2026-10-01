@@ -11,13 +11,13 @@
  * - 回退点：revert 该提交（或恢复「对 result.outOfCombat 逐条 applyTargetedStat 全局 Buff」的循环）。
  */
 import type { PanelValues } from '@/types/catalog'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from './resourceCalc/panelPhases'
 
 export function computeOutOfCombatPanel(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): PanelValues | null {
   const phases = computePanelPhases(slot, configStore, catalogStore)

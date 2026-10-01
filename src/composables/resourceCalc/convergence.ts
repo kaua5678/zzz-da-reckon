@@ -3,7 +3,7 @@
  * 本体 RoundCtx 拆分见 CC-11b。
  */
 import type { ComputedRef } from 'vue'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
@@ -83,7 +83,7 @@ export type { CalcRoundResult } from './roundResult'
  * 函数体 `.value` 读点实测 0 ⇒ 死依赖，旧注释「在 calcOutput 求值中读它们」与实现不符，已删。）
  */
 export function createRunCalcRound(deps: {
-  configStore: ReturnType<typeof useConfigStore>
+  configStore: ConfigModel
   catalogStore: ReturnType<typeof useCatalogStore>
   panels: ComputedRef<PanelValues[]>
   resourceConfig: ComputedRef<ResourceCalcConfig | null>

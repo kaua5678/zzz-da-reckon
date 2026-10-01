@@ -15,7 +15,7 @@ import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 import type { AgentMechanicModule } from '@/mechanics/types'
 import type { CharacterOperationConfig, TeamResourceResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
@@ -48,7 +48,7 @@ export interface PromoteFixpointResult {
 }
 
 export interface PromoteFixpointDeps {
-  configStore: ReturnType<typeof useConfigStore>
+  configStore: ConfigModel
   panels: PanelValues[]
 }
 
@@ -160,7 +160,7 @@ export function applyUltimatePromote(
  * 赠终结技提供者槽位（CC-35d-B3 2026-09-27；原按身份 `findSlotByIdentity(['1481'])`）：
  * 首个实现模块能力 `ultimateGiftSource` 的在队槽位，无则 -1。本库 teammateBuffId 均等于自身 id，与原查找等价。
  */
-export function ultimateGiftProviderSlot(configStore: ReturnType<typeof useConfigStore>): number {
+export function ultimateGiftProviderSlot(configStore: ConfigModel): number {
   return configStore.team.findIndex(m => !!m.agentId && !!getAgentMechanic(m.agentId)?.ultimateGiftSource)
 }
 
@@ -170,7 +170,7 @@ export function ultimateGiftProviderSlot(configStore: ReturnType<typeof useConfi
  * 替代原 `computeLiuyinHugCounts` 值导入（判据 23）。
  */
 export function promoteHugCountsOf(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
 ): AgentMechanicModule['promoteHugCounts'] {
   const slot = ultimateGiftProviderSlot(configStore)
   if (slot < 0) return undefined
@@ -178,7 +178,7 @@ export function promoteHugCountsOf(
 }
 
 export function ultimateGiftSourceOf(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   rr: TeamResourceResult,
 ): { slot: number; goodReviewTotal: number } | null {
   const slot = ultimateGiftProviderSlot(configStore)
@@ -190,7 +190,7 @@ export function ultimateGiftSourceOf(
 
 /** 从某轮资源池结果构建转大参数；队伍无赠大提供者（现为琉音）时返回 null */
 export function buildPromoteParams(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   rr: TeamResourceResult,
   configs: readonly CharacterOperationConfig[],

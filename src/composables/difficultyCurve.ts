@@ -40,8 +40,8 @@
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
  */
 import { applyBossRoom } from '@/composables/bossRoom'
-import { type useConfigStore, type StunAxisState } from '@/stores/config'
-import { useResourceCalc } from '@/composables/useResourceCalc'
+import { type StunAxisState, type ConfigModel } from '@/stores/config'
+import type { ResourceCalc } from '@/composables/useResourceCalc'
 import {
   clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
   DIFFICULTY_GOALS, type DifficultyGoal, type LadderResult, type LadderSnapshot,
@@ -59,7 +59,7 @@ import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
 import type { TeamPreset } from '@/types/teamPreset'
 
-type Calc = ReturnType<typeof useResourceCalc>
+type Calc = ResourceCalc
 
 export interface DifficultyCurveOptions {
   presets: TeamPreset[]
@@ -173,7 +173,7 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
  * ⚠️ 与散点页**同一个函数、同一个单位** ⇒ 两张图的 x 轴可对齐比较（这正是难度曲线要解决的对比问题）。
  */
 export function measureOperationalDifficulty(
-  ctx: { config: ReturnType<typeof useConfigStore>; calc: Calc },
+  ctx: { config: ConfigModel; calc: Calc },
   preset?: Pick<TeamPreset, 'interactions' | 'team'>,
   weights?: DifficultyWeights,
 ): number {

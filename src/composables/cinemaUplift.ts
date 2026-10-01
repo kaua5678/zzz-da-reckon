@@ -29,7 +29,7 @@
  * 这是当前引擎只能「改全局 store → 读 computed」驱动的后果，不是本模块的设计选择。
  */
 import { nextTick } from 'vue'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
@@ -164,7 +164,7 @@ export interface SceneReading {
 }
 
 export interface AnalyzeCinemaUpliftParams {
-  configStore: ReturnType<typeof useConfigStore>
+  configStore: ConfigModel
   catalogStore: ReturnType<typeof useCatalogStore>
   /** 读当前配置下的全队总伤害（页面传 teamTotalDamage 的 getter） */
   readDamage: () => number

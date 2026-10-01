@@ -12,7 +12,7 @@
  *   作为「未逐条列出」行显示，使公式行恒等于引擎结果（差额非零即提示去模块里找）。
  */
 import type { BuffEffect, BuffGroup } from '@/types/catalog'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
 import { isPctStat } from '@/utils/statMeta'
@@ -69,7 +69,7 @@ function hpEffectValue(raw: BuffEffect, cov: number, modLevel?: number): { text:
  */
 export function collectHpSources(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): HpSourceRow[] {
   const rows: HpSourceRow[] = []

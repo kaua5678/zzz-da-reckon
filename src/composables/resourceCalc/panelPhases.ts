@@ -19,7 +19,7 @@
  * 反向依赖只剩 `./anomalyPanels`（异常面板簇，非 `./helpers`）。
  * ⚠ 注意 `./helpers` 仍 re-export 本文件的符号（服务目录外既有消费者），那条边不受影响。
  */
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import {
   discEffectCoverageOf,
@@ -65,7 +65,7 @@ import { resolvePhaseBuffValue, teamSpecialtiesOf } from '@/utils/phaseBuff'
 import { getTeamAnomalyDurationBonus } from './anomalyPanels'
 
 export function buildMechanicTeamMembers(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): MechanicTeamMember[] {
   return configStore.team.map((char, slot) => ({
@@ -104,7 +104,7 @@ function agentHasCinemaSkillLevelBuff(agent: any): boolean {
 
 /** 计算单个角色的局内面板（复用 TeamConfigPage 同逻辑） */export function computePanel(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): PanelValues | null {
   return computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
@@ -118,7 +118,7 @@ function agentHasCinemaSkillLevelBuff(agent: any): boolean {
  * 后者曾静默失效（般岳 rageGainCoverage）。见 mechanics/types.ts 的 AgentPanelInput 注释。
  */
 export function resolveMechanicSettings(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
 ): Readonly<Record<string, number>> {
   const out: Record<string, number> = {}
   // 直读 state + 共享纯函数，不经 pinia action 包装（原因与口径单一来源见 `@/stores/selectionReads` 头注释）
@@ -138,7 +138,7 @@ export function resolveMechanicSettings(
  */
 export function applyTeamMechanics(params: {
   characters: CharacterOperationConfig[]
-  configStore: ReturnType<typeof useConfigStore>
+  configStore: ConfigModel
   catalogStore: ReturnType<typeof useCatalogStore>
   phase: AgentTeamPhase
   combatTime?: number
@@ -349,7 +349,7 @@ export function collectNextRoundFeedback(params: {
  */
 export function collectAxisWindowOverlays(
   axes: StunAxis[],
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   isAxis: boolean,
   damagePanels: readonly PanelValues[],
@@ -401,7 +401,7 @@ let recipientFilterProbeDepth = 0
 
 function outOfCombatPanelProbe(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): PanelValues | null {
   recipientFilterProbeDepth++
@@ -454,7 +454,7 @@ export function applyTeammateBuffRecipientFilters(
  */
 export function resolveSlotPanelBuffInputs(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): { teammateBuffs: TeammateBuff[]; sourcePanelsByOwner: ReturnType<typeof buildTeammateBuffSourceContext>['sourcePanelsByOwner']; effectCoverageMap: Map<string, number>; team: ReadonlyTeam } {
   const buffSelections = configStore.teammateBuffSelections
@@ -541,7 +541,7 @@ export function resolveSlotPanelBuffInputs(
 
 export function computePanelPhases(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): { outOfCombat: PanelValues; inCombat: PanelValues } | null {
   const char = configStore.team[slot]
@@ -685,7 +685,7 @@ export function computePanelPhases(
  */
 export function computeEntrySnapshotPanel(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): PanelValues | null {
   const char = configStore.team[slot]
@@ -721,7 +721,7 @@ export function computeEntrySnapshotPanel(
  * 每次调用返回新 Map（调用方可能继续 set）。
  */
 function selfEffectCoverageMap(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): Map<string, number> {
   const map = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)
@@ -730,7 +730,7 @@ function selfEffectCoverageMap(
 }
 
 /** 全队各槽位的驱动盘配置（覆盖率并入用；空槽为 undefined 由 merge 侧跳过）。 */
-function teamDiscs(configStore: ReturnType<typeof useConfigStore>): Array<DriveDiscConfig | undefined> {
+function teamDiscs(configStore: ConfigModel): Array<DriveDiscConfig | undefined> {
   return (configStore.team ?? []).map(c => (c as { driveDisc?: DriveDiscConfig } | undefined)?.driveDisc)
 }
 
@@ -745,7 +745,7 @@ function teamDiscs(configStore: ReturnType<typeof useConfigStore>): Array<DriveD
  */
 function mergeTeamDiscEffectCoverages(
   map: Map<string, number>,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   slotDiscs: Array<DriveDiscConfig | undefined>,
 ): void {

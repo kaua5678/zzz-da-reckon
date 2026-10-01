@@ -16,7 +16,7 @@ import { damageElementLabel } from '@/utils/agentLabelMaps'
 import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
 // CC-245：只在类型位置使用（store 实例由调用方注入）⇒ type-only，resourceCalc/ 运行时不依赖 stores/config、stores/catalog
 // （锁：resourceCalcStoreDeps.test；ARCHITECTURE.md §0「管线后半段并入 core」前提）
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { inferSkillDamageTarget } from '@/core/damage'
 import type { StunSkillExecution } from '@/core/stunPool'
@@ -436,7 +436,7 @@ export function normalizeResourceSkillType(move: SkillMove | null, execMoveId: s
 
 export function buildCharConfig(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): CharacterOperationConfig | null {
   const char = configStore.team[slot]
@@ -684,7 +684,7 @@ export function extractSkillExecutions(
   resourceResult: TeamResourceResult | null,
   catalogStore: ReturnType<typeof useCatalogStore>,
   panel: PanelValues | null,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   opts?: { skipGift?: boolean },
 ): { stunExecs: StunSkillExecution[]; anomalyExecs: AnomalySkillExecution[] } {
   if (!skills || !resourceResult) return { stunExecs: [], anomalyExecs: [] }

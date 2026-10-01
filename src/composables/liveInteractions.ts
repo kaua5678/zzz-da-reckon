@@ -8,7 +8,7 @@
  * 为什么独立成模块：`difficultyCurve` → `teamCompare` 是单向依赖（曲线要用 computeDifficulty 等），
  * 散点也要用 liveInteractions ⇒ 放任一侧都会成环或复制。本模块只依赖类型与 agentMechanicView（纯读模块声明）。
  */
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import { interactionFieldTypeOf } from '@/composables/agentMechanicView'
 import type { InteractionItem, TeamPreset } from '@/types/teamPreset'
 import type { TeamResourceResult } from '@/types/resource'
@@ -45,7 +45,7 @@ export function roundInteractionCount(v: number): number {
  * （CC-258：般岳 blockCount = 金身格挡 `banyueGoldenParry`，修前按普通 `block` 计、又从预设声明补一次 = 双计）。
  * 只经 `engineInteractionItems` 读取。
  */
-const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ReturnType<typeof useConfigStore>['team'][number] }[] = [
+const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ConfigModel['team'][number] }[] = [
   { type: 'parry', field: 'parryCount' },
   { type: 'dodge', field: 'dodgeCounterCount' },
   { type: 'quickAssist', field: 'quickAssistCount' },
@@ -69,7 +69,7 @@ const OVERRIDE_ONLY_INTERACTION_FIELDS = ['dualCounterCount'] as const
  * （引擎顺序同：合并 cfg 时缩放 → 装配期截断）。缺省 / ≥1 ⇒ 逐位不变。
  */
 export function engineInteractionItems(
-  config: ReturnType<typeof useConfigStore>,
+  config: ConfigModel,
   shrink: (slot: number, raw: number) => number,
   interactionScale?: number,
 ): InteractionItem[] {
@@ -107,7 +107,7 @@ export function engineInteractionItems(
  * （如般岳 金身/双反 共用一行「冲霄」），且资源账本仍是未截断的（见 `core/resource.ts` 的 debt 标记）。
  */
 export function liveInteractions(
-  config: ReturnType<typeof useConfigStore>,
+  config: ConfigModel,
   preset?: Pick<TeamPreset, 'interactions'>,
   rr?: TeamResourceResult | null,
 ): InteractionItem[] {

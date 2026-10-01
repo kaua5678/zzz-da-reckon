@@ -13,7 +13,7 @@
  * 行为锚判据：timeGolden / timeFillRatchet delta=0（规则 10）。
  */
 import { computed, type ComputedRef } from 'vue'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { calcAnomalyPool, type AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
@@ -33,7 +33,7 @@ import { ULTIMATE_COST_DEFAULT, parseMoveEnergyCost } from '@/core/resource'
 import { panelAt } from '@/core/panel'
 
 export function createConvergenceRoundInputs(deps: {
-  configStore: ReturnType<typeof useConfigStore>
+  configStore: ConfigModel
   catalogStore: ReturnType<typeof useCatalogStore>
   panels: ComputedRef<PanelValues[]>
   resourceConfig: ComputedRef<ResourceCalcConfig | null>

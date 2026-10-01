@@ -9,7 +9,7 @@ import { findChainAttack } from '@/core/resource'
 import { fusedRowReader } from '@/data/moveTableQueries'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 import type { CharacterOperationConfig, TeamResourceResult } from '@/types/resource'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { getAgentMechanic } from '@/mechanics'
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
@@ -24,7 +24,7 @@ import { buildGiftRow } from '@/core/resource/giftRows'
  */
 export function applyChainGift(
   base: TeamResourceResult | null,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   configs: readonly CharacterOperationConfig[],
 ): TeamResourceResult | null {

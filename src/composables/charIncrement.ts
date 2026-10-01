@@ -213,7 +213,7 @@ export function incrementForCard(period: IncPeriod, agentId: string): CardPeriod
 
 // ========== 引擎求值层（独立场景上部署/伤害→分数；基底队少 = 全量也秒级） ==========
 
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pullPlannerEngine'
@@ -358,7 +358,7 @@ function teamKeyOf(team: BaseTeam): string {
  * 与副词条分配（setAgent 不重置它们）。
  */
 function applyBaseTeamLite(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   team: BaseTeam,
 ): void {
   // CC-256：轻量装配唯一实现 teamTimelineStore#applyTeamToStore(autoBuild=false)；本函数只做 members → (队伍, 档位) 适配

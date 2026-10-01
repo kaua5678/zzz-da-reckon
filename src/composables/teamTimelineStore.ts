@@ -3,7 +3,7 @@
  * 求值，现场快照 / 恢复（configSnapshot.ts，CC-251）已删。
  * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；teamTimeline.ts 原样转出公开名，导入方不用改。
  */
-import { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedAgent, isLimitedWEngine, applyGoldSteps, applyGoldAllocationToStore } from '@/composables/teamCompare'
 import type { Agent } from '@/types/catalog'
@@ -118,7 +118,7 @@ export function budgetAwareStateFor(
  * （setAgent 不重置它们，不清会跨队泄漏）。
  */
 export function applyTeamToStore(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   team: [string, string, string],
   state: TeamGoldState,
   autoBuild = false,

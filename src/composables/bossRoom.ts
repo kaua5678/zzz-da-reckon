@@ -13,7 +13,7 @@
  * 源码锁（`__tests__/bossRoom.test.ts`）：`.applyBossPreset(` 只允许出现在本文件。
  */
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import { phaseBuffRows } from '@/utils/phaseBuff'
 
 export const LAYER_BUFF_PREFIX = 'layer-buff:'
@@ -23,7 +23,7 @@ export const LAYER_BUFF_PREFIX = 'layer-buff:'
  * CC-341：牌 → 行走唯一映射 `phaseBuffRows`，`cond`（特性限定 / 人数分档）随行写入、由管线按当前队伍解析。
  */
 export function applyBossLayerBuffs(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   boss: Pick<BossPreset, 'id' | 'name'>,
   phase: Pick<BossPresetPhase, 'phaseId' | 'layerBuffs'>,
 ): void {
@@ -40,7 +40,7 @@ export function applyBossLayerBuffs(
  * 所有「切到某期某 Boss 再求值」的地方都走这里，而不是只调 `applyBossPreset`。
  */
 export function applyBossRoom(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   boss: BossPreset,
   phase: BossPresetPhase,
 ): void {

@@ -22,7 +22,7 @@
  * （刀 A 头注释里点名的「D 簇后续再拆时把这几个符号一并迁走即可解环」即本刀）：
  * `panelPhases.ts` 与 `./helpers` 都改为从本文件 import 它，本文件对二者**零出边**。
  */
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { emptyPanel, panelAt } from '@/core/panel'
 import { getAgentMechanic } from '@/mechanics'
@@ -38,7 +38,7 @@ import { panelElementStat } from '@/utils/elementStatKeys'
 import { buildMechanicTeamMembers } from './panelPhases'
 
 export function getTeamAnomalyDurationBonus(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   element: string,
 ): number {
@@ -85,7 +85,7 @@ export function getTeamAnomalyDurationBonus(
  * ⇒ **不是分裂**；真正未裁决的是本函数的排除名单与 UI 之间**没有**对应用户可见开关（分诊 §3.4）。
  */
 export function getWindInfectionTargetSlot(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): number {
   return resolveWindInfectionPick(configStore, catalogStore)?.targetSlot ?? -1
@@ -105,7 +105,7 @@ export interface WindInfectionPick {
  * 无风属性角色 ⇒ null。
  */
 export function resolveWindInfectionPick(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): WindInfectionPick | null {
   const windSlot = configStore.team.findIndex(char => {
@@ -137,7 +137,7 @@ export function resolveWindInfectionPick(
 }
 
 export function getWindInfectionElement(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): string {
   const slot = getWindInfectionTargetSlot(configStore, catalogStore)
@@ -148,7 +148,7 @@ export function getWindInfectionElement(
 
 /** 风化浸染覆盖率：默认风化覆盖时间/全局时间，用户可手动覆盖 */
 export function getWindInfectionCoverage(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   autoRate: number,
 ): number {
   return Math.max(0, Math.min(1, configStore.getMechanicSetting('wind.infectionCoverage', autoRate)))
@@ -192,7 +192,7 @@ export interface AnomalyVirtualPanelBuild {
 export function buildAnomalyVirtualPanel(
   prog: AnomalyProgress,
   panels: PanelValues[],
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): AnomalyVirtualPanelBuild | null {
   const slotBuildUp = new Map<number, number>()
@@ -327,7 +327,7 @@ export function buildAnomalySettlementEntries(
   build: AnomalyVirtualPanelBuild,
   panels: PanelValues[],
   totalTriggers: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): AnomalySettlementEntry[] {
   // 同属性角色筛选（用 virtual panel row 的 settlementEligible 字段）

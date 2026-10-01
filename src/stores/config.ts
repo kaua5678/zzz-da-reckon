@@ -1472,5 +1472,13 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
 export type ConfigModel = UnwrapRef<ReturnType<typeof createConfigModel>>
 
+/**
+ * 求值入口收的配置（CC-343 S5，2026-10-02 arena-E）：model 全部成员 + `$state`（state ref 的响应式视图，
+ * calcOutputMemo 的 memo 键读它）。UI store 与独立场景（analysisScenario）的 config 都满足；
+ * **不含** Pinia 的 `$patch` / `$subscribe` / `$reset` / `$onAction`。
+ * 只读写 model 成员的管线 / 分析器函数收 `ConfigModel` 即可，不必要求 `$state`。
+ */
+export type EvalConfig = ConfigModel & { readonly $state: ReturnType<typeof useConfigStore>['$state'] }
+
 /** UI Adapter；批量场景直接实例化 Model，不创建或替换全局 Pinia。 */
 export const useConfigStore = defineStore('config', () => createConfigModel(useCatalogStore()))

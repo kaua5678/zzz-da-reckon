@@ -49,7 +49,7 @@ import type { CharRowsEnv, CharLocals } from './damagePoolDirect'
 
 /** 伤害池构建入参：useResourceCalc 侧各 computed 的解包快照 */
 export interface DamagePoolContext {
-  configStore: ReturnType<typeof import('@/stores/config').useConfigStore>
+  configStore: import('@/stores/config').ConfigModel
   catalogStore: ReturnType<typeof import('@/stores/catalog').useCatalogStore>
   /** 转大修正后的资源池结果 */
   adjustedResourceResult: TeamResourceResult | null

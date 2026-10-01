@@ -16,10 +16,10 @@
  */
 
 import { applyBossRoom } from '@/composables/bossRoom'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedWEngine } from '@/composables/teamCompare'
-import type { useResourceCalc } from '@/composables/useResourceCalc'
+import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import {
@@ -40,7 +40,7 @@ import {
   metricDef,
 } from './metrics'
 
-export type Calc = ReturnType<typeof useResourceCalc>
+export type Calc = ResourceCalc
 
 // ========== 结果 ==========
 
@@ -120,7 +120,7 @@ export function signatureWEngineId(catalog: ReturnType<typeof useCatalogStore>, 
  * ⇒ 默认走 **按伤害择优**（`pickDowngradeByDamage`），与 `computeAutoEnginePicks` 同思路。
  */
 function applyCodeToSlot(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalog: ReturnType<typeof useCatalogStore>,
   slot: number,
   agentId: string,
@@ -191,7 +191,7 @@ export function downgradeCandidates(
  */
 function pickDowngradeByDamage(
   calc: Calc,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalog: ReturnType<typeof useCatalogStore>,
   slot: number,
   agentId: string,
@@ -228,7 +228,7 @@ function pickDowngradeByDamage(
  * 缓存键含 `cinema`：命座会改角色机制（如某命座改强特占比），可能翻转最优下位（实测三把差 3–8pp，
  * 不是不可能翻转）；键含队友组合是因为择优读的是**全队伤害**，换队友就换了判据。
  */
-function makeDowngradeResolver(calc: Calc, configStore: ReturnType<typeof useConfigStore>, catalog: ReturnType<typeof useCatalogStore>) {
+function makeDowngradeResolver(calc: Calc, configStore: ConfigModel, catalog: ReturnType<typeof useCatalogStore>) {
   const cache = new Map<string, DowngradeCandidate | null>()
   return {
     /** 解析并**把结果写进 store**（调用方随后求值即为该下位配置） */
@@ -409,7 +409,7 @@ function seriesLabelOf(spec: SeriesSpec, nameOf: (id: string) => string): string
  * 只改「场景」，不改系列成员 —— 保证「改约束不动系列」这条判据。
  */
 function applyConstraintBaseline(
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalog: ReturnType<typeof useCatalogStore>,
   spec: SeriesSpec,
   cs: ConstraintSpec,

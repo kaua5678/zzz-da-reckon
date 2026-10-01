@@ -2,7 +2,7 @@ import { computed, type Ref } from 'vue'
 import type { MessageApi } from 'naive-ui'
 import { teamPresets } from '@/data/teamPresets'
 import { buildGoldStepsFromConfig } from '@/composables/teamCompare'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 
 /**
  * 队伍配置页「预设金数 → 保存到预设文件」族（纯搬运自 TeamConfigPage.vue）。
@@ -16,7 +16,7 @@ import type { useConfigStore } from '@/stores/config'
 export function useTeamConfigPresetIO({
   configStore, goldDraft, saveTargetPresetId, message,
 }: {
-  configStore: ReturnType<typeof useConfigStore>
+  configStore: ConfigModel
   goldDraft: Ref<{ cinemas: number[]; mods: number[] }>
   saveTargetPresetId: Ref<string | null>
   message: MessageApi

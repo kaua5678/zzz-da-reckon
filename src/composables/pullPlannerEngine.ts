@@ -10,7 +10,7 @@
  * (有序 team × bossId/phaseId/HP × 逐人持有档)——同槽序同房同档只算一次，
  * beam 的 VCG 重规划大量命中缓存。规划期内 Boss/buff 逐期应用（同 Chart 4）。
  */
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { useCatalogStore } from '@/stores/catalog'
@@ -43,7 +43,7 @@ export interface EngineOracleOptions {
 interface OracleState {
   opts: EngineOracleOptions
   bossById: Map<string, BossPreset>
-  configStore: ReturnType<typeof useConfigStore>
+  configStore: ConfigModel
   cache: Map<string, Array<{ team: [string, string, string]; score: number }>>
   evaluations: number
   cacheHits: number
@@ -169,7 +169,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     bossRoom: PlannerBossRoom,
     team: [string, string, string],
     holdings: Record<string, number>,
-    configStore: ReturnType<typeof useConfigStore>,
+    configStore: ConfigModel,
   ): number | null => {
     const key = `${roomKey(bossRoom)}|${team.map(id => `${id}:${holdings[id] ?? 0}`).join(',')}`
     const hit = teamScoreCache.get(key)

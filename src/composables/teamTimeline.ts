@@ -29,7 +29,7 @@
  *   独立场景 `AnalysisContext`，在场景上改写求值，UI store 不被碰（CC-343，arena-D 第 371 轮；原为快照/恢复 UI store）。
  */
 import { applyBossRoom } from '@/composables/bossRoom'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import { equalizeTimeWeights } from '@/composables/timeWeightBalancer'
 import { useCatalogStore } from '@/stores/catalog'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
@@ -40,12 +40,12 @@ import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
-import type { useResourceCalc } from '@/composables/useResourceCalc'
+import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import { bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
-type Calc = ReturnType<typeof useResourceCalc>
+type Calc = ResourceCalc
 
 /** 一个队伍的最终配装态（命座/精炼/音擎） */
 export interface TeamGoldState {
@@ -218,7 +218,7 @@ export function classifySwapUplift(prevDamage: number, curDamage: number): { kin
  */
 export function optimizeTeamTimeWeights(
   calc: Calc,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   opts: { step?: number; shiftStep?: number; maxIter?: number } = {},
 ): { weights: number[]; damage: number; balanced: boolean } {
   const initial = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
@@ -301,7 +301,7 @@ export interface GoldAllocationResult extends TeamGoldState {
  */
 export function computeOptimalTeamAllocation(
   calc: Calc,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   team: [string, string, string],
   budget: number,
   autoBuild = false,
@@ -901,7 +901,7 @@ export interface SlotCompareOptions {
  */
 function evalTeamByBudget(
   calc: Calc,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalog: ReturnType<typeof useCatalogStore>,
   team: [string, string, string],
   budget: number,

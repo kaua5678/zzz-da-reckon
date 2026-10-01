@@ -27,7 +27,7 @@
  */
 import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget } from '@/core/substatOptimizer'
 import type { DriveDiscConfig } from '@/types/catalog'
-import type { useConfigStore } from '@/stores/config'
+import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
 
@@ -47,7 +47,7 @@ export interface SubstatRefineOptions {
 
 function refineWithRealDamage(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   seed: Record<string, number>,
   stats: readonly string[],
   statCap: number,
@@ -91,7 +91,7 @@ function refineWithRealDamage(
 
 export function computeSubstatAllocationForSlot(
   slot: number,
-  configStore: ReturnType<typeof useConfigStore>,
+  configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   refine: SubstatRefineOptions,
 ): DriveDiscConfig['subStatAllocation'] | null {
