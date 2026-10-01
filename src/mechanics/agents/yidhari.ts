@@ -8,7 +8,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { SkillMove } from '@/types/catalog'
-import type { CharacterOperationConfig, CharacterResourceResult, IterationState, YidhariHpSource, YidhariLoopMove } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, IterationState} from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { effectiveBattleTime } from '@/core/effectiveTime'
@@ -591,4 +591,59 @@ declare module '@/types/resource/config' {
     /** 伊德海莉外部回血（%自身最大生命值）：如卢西娅星光汇聚之地等，由其他机制换算后累加 */
     yidhariExternalHealPct?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 伊德海莉烧血/回血/喧响明细 */
+    yidhariHpSource?: YidhariHpSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 伊德海莉蓄力循环招式（buildCharConfig 从倍率表提取，buildExecutions 消费） */
+export interface YidhariLoopMove {
+  id: string
+  damage: number
+  daze: number
+  anomaly: number
+  actionTime: number
+  decibel: number
+  flash: number
+}
+
+/** 伊德海莉生命值烧血/回血/喧响明细 */
+export interface YidhariHpSource {
+  /** 能量/闪能决定的强化特殊技总次数（极寒重碾） */
+  exSpecialCount: number
+  /** 强化特殊技单次闪能消耗 */
+  exSpecialEnergyCost: number
+  /** 失衡内（追碾）极寒重碾次数 = 每次失衡次数 × 失衡次数 */
+  inStunExCount: number
+  /** 非失衡（溯寒后）极寒重碾次数 = 总次数 − 失衡内，每次回 15 闪能 */
+  outStunExCount: number
+  /** 每次失衡的极寒重碾次数（0命2 / 1命3，可调） */
+  exPerStun: number
+  /** 蓄力循环次数（蓄力1s→霜寒拥覆#3→碎惘沉击#4） */
+  chargeCycles: number
+  /** 蓄力总时长（秒，烧血时间） */
+  chargedAttackSeconds: number
+  /** 每秒消耗生命值百分比（近似） */
+  hpBurnPctPerSecond: number
+  /** 总烧血百分比 */
+  hpBurnPct: number
+  /** 强化特殊技回血：已损失生命值 × 33% × 次数（近似） */
+  hpHealPct: number
+  /** 强化特殊技释放时已损失生命值比例（0-1，默认 0.75 最优） */
+  exHealMissingHpPct: number
+  /** 每降低 1% 生命值获得的喧响 */
+  decibelPerHpPct: number
+  /** 烧血换算出的总喧响 */
+  burnDecibel: number
+  note: string
 }

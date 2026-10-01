@@ -409,3 +409,14 @@ declare module '@/types/resource/config' {
     lucyTeammateExTotal?: number
   }
 }
+
+/**
+ * D2（CC-359/360）：本模块自产自读的跨轮反馈键（nextRoundFeedback 产出、下一轮本模块读回），声明随模块走，不堆在 `mechanics/types.ts`。
+ * 仍是 `ModuleFeedback` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /** 露西 C6 队友强特合计（C1 回能预估） */
+    lucyTeammateEx?: number
+  }
+}

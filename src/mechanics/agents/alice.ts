@@ -259,9 +259,6 @@ export function cfgExternalCountsProbe(cfg: {
   }
 }
 
-/** 导出的类型别名，方便其他模块引用 */
-type AliceSwordWillSource = import('@/types/resource').AliceSwordWillSource
-
 function buildAliceExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const smSrc = buildAliceSwordWillSource(cfg, state, cfgExternalCountsProbe(cfg))
   if (!smSrc || smSrc.sparkCount <= 0) return
@@ -695,5 +692,68 @@ declare module '@/types/resource/config' {
     aliceCinema2UltSpark?: boolean
     /** 是否为爱丽丝，用于剑意专属资源 */
     aliceEnabled?: boolean
+    /**
+     * 爱丽丝剑仪：**全队强击次数**（`physical` + `physical_polar_assault` 两键触发数之和）。
+     * 由爱丽丝模块的 `applyTeamConfig` 在 converge 阶段按**上一轮**异常池收敛值写入
+     * （异常池在 `buildExecutions` 之后才算 ⇒ 只能跨轮反馈，同 `teamEnergyConsumed`）。
+     * 对应 spec `alice_team_assault_gain` 的 `countSource: teamAssaultCount`。
+     */
+    aliceTeamAssaultCount?: number
+    /** 爱丽丝剑仪：**全队紊乱次数**（上一轮异常池收敛值）。对应 spec `alice_disorder_gain` */
+    aliceDisorderCount?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块自产自读的跨轮反馈键（nextRoundFeedback 产出、下一轮本模块读回），声明随模块走，不堆在 `mechanics/types.ts`。
+ * 仍是 `ModuleFeedback` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /** 爱丽丝剑仪：爱丽丝自己触发的强击次数（字段名里的 Team 是历史名，口径见 alice.ts `aliceExternalCountsOf`） */
+    aliceTeamAssaultCount?: number
+    /** 爱丽丝剑仪：全队紊乱次数 */
+    aliceDisorderCount?: number
+  }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 爱丽丝剑意资源明细 */
+    aliceSwordWillSource?: AliceSwordWillSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 爱丽丝剑意资源明细 */
+export interface AliceSwordWillSource {
+  /** 额外能力入场赠送，默认300 */
+  initial: number
+  /** 普攻段获得的剑意 = basicAttackTime × swordWillPerSec */
+  basicAttackGain: number
+  /** 强特获得的剑意 = exSpecialCount × exSpecialSwordWill */
+  exSpecialGain: number
+  /** 极性强击获得的剑意 = sparkCount × polarityAssaultSwordWill */
+  polarityAssaultGain: number
+  /** 每次极性强击回复剑意量（C0=10，C1=35） */
+  polarityAssaultPerSpark: number
+  /** 全队强击获得的剑意 = 全队强击触发次数 × 10 */
+  teamAssaultGain: number
+  /** 紊乱回复剑意 = 紊乱次数 × 30 */
+  disorderGain: number
+  /** 二命终结技额外触发极性强击次数 */
+  c2UltSparkCount: number
+  /** 总可用剑意 = initial + basicAttackGain + exSpecialGain + polarityAssaultGain + teamAssaultGain + disorderGain */
+  totalAvailable: number
+  /** 星芒圆舞曲 #3 触发次数 = floor(totalAvailable / 300) + c2UltSparkCount */
+  sparkCount: number
+  /** 星芒圆舞曲 #3 总消耗 = sparkCount × 300 */
+  sparkCost: number
+  /** 结余剑意 */
+  remaining: number
 }

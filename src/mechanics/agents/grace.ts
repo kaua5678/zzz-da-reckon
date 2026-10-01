@@ -350,3 +350,14 @@ export const graceMechanic: AgentMechanicModule = {
     },
   ],
 }
+
+/**
+ * D2（CC-359/360）：本模块自产自读的跨轮反馈键（nextRoundFeedback 产出、下一轮本模块读回），声明随模块走，不堆在 `mechanics/types.ts`。
+ * 仍是 `ModuleFeedback` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /** 格莉丝影画1 全队回能轮换数 */
+    graceC1Cycles?: number
+  }
+}

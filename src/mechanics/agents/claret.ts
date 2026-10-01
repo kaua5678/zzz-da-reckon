@@ -8,7 +8,7 @@ import type {
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
-import type { CharacterResourceResult, ClaretSharpResourceSource } from '@/types/resource'
+import type { CharacterResourceResult} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
@@ -913,4 +913,95 @@ declare module '@/types/resource/config' {
     /** 克拉蕾命座等级（用于二命锐能额外回复） */
     claretCinemaLevel?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 克拉蕾残痕/锐能资源明细 */
+    claretSharpResourceSource?: ClaretSharpResourceSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 克拉蕾残痕/锐能资源明细（v12 口径 2026-09-03） */
+export interface ClaretSharpResourceSource {
+  /** 残痕值来源（%）：平A（两态秒均×时间）+ **其余全部招式**（实打次数 × `gash_buildup` 表值），已 × 积蓄效率 */
+  gashValuePct: number
+  /** 其中平A 贡献（%）——两态基准秒均 × 平A时间 × 积蓄效率 */
+  basicGashValuePct?: number
+  /** 其中「其余招式」贡献（%）= Σ 实打次数 × 该招 gash_buildup 表值 × 积蓄效率 */
+  moveGashValuePct?: number
+  /** 残痕积蓄效率倍率 = 1 + 核心被动 50%（Lv7，猩红铭刻期间近似常驻）+ 影画1 20%（锐暴命中近似常驻；★R55 订正，旧写「影画2」是两档互换） */
+  gashBuildupMultiplier: number
+  /** 残痕层数 = floor(残痕值 / 100)，上限 3 层（溢出浪费） */
+  gashStacks: number
+  /** 反制支援送层数（= 整组化解的控制技组数）：琢形「重击命中**直接**添加1层[残痕]」，
+   *  每组 +600 点且**不吃积蓄效率倍率**（用户口径 2026-09-12）；0 = 本次计算没有反制支援。 */
+  counterAssistGashStacks?: number
+  /** 血华誓毁伤需求次数（斩金断铁×1 + 葬血强袭×3 + 影画6 连携/终结各1）——**展示用总量**。
+   *  ⚠ 不等于层预算：影画6 原文「不消耗[残痕]」⇒ 层预算只含斩金断铁/葬血强袭（R54 修正）。 */
+  maimDemand: number
+  /** 命中残痕状态消耗的层数 = min(残痕层数, **层预算** cleave+3·burial) × 残痕覆盖率
+   *  （★ 层预算**不含**影画6 —— 它不消耗残痕；见 `claret.ts#computeClaretSharpResource` 的 R54 注释） */
+  gashStackConsumed: number
+  /** 触发毁伤次数 = 消耗残痕层数 + 影画6 不消耗残痕的单体毁伤 */
+  maimCount: number
+  /** 斩金断铁触发的毁伤数 */
+  maimFromCleave: number
+  /** 葬血强袭触发的毁伤数 */
+  maimFromBurial: number
+  /** 影画6 连携/终结重击直接触发的单体毁伤数（不消耗残痕） */
+  maimFromC6: number
+  /** 参与锐能账本的终结技次数（锐能额外来源 10/次） */
+  ultimateCount: number
+  /** 平A伤害秒均（%）＝常态基准 345.21 与铭刻基准 531.88 按铭刻时间占比加权 */
+  basicDamagePerSec: number
+  /** 平A失衡秒均（%）＝两态基准同法加权 */
+  basicDazePerSec: number
+  /** 平A残痕积累秒均（%）＝血锻 100/s 与锻星 120/s 同法加权（catalog `gash_buildup` 行） */
+  basicGashPerSec: number
+  /** 铭刻平A时间占比 0–1（账本推导或面板滑块覆盖） */
+  inscriptionBasicTimeShare: number
+  /** 占比来源：ledger = 由锐能账本推导（默认）；manual = 面板滑块覆盖 */
+  inscriptionBasicTimeShareSource: 'ledger' | 'manual'
+  /** 常态锐能产出合计（/s）= 自动累积（接战时间基准）+ 血锻招式增益 */
+  normalSharpnessPerSec: number
+  /** 锐能基础自动累积（/s，catalog `level60.sharpnessRegen`） */
+  sharpnessAutoPerSec: number
+  /** 常态血锻四式的锐能招式增益（/s，catalog `sharpness_gain` 列） */
+  normalAttackSharpnessPerSec: number
+  /** 账本推导出的常态平A时间（秒）＝轮数 × 攒能秒数 */
+  normalBasicTimeNeeded: number
+  /** 铭刻平A时间（秒）＝轮数 × 单窗时长 + 总延长秒 */
+  inscriptionBasicTime: number
+  /**
+   * **单窗**基础时长（秒）：raw 基础 16s；**影画2「最大持续时间延长2秒」⇒ 18s**（★ R55 建模）。
+   * ⚠ 与 `inscriptionWindowSeconds` 区分：那个是**总延长秒**（连携×2s + 停表白送），这个是**每轮窗口本身**。
+   */
+  inscriptionWindowSecondsPerEntry: number
+  /** 本结果的命座档（影画2 起单窗 +2s，展示层据此标注） */
+  cinemaLevel: number
+  /** 账本推导出的铭刻平A时间占比（面板未覆盖时的口径，供展示对照） */
+  derivedInscriptionTimeShare: number
+  /** 平A时间能支撑的进场轮数（常态攒能 → EX 进场 → 铭刻窗口），= EX 发数 */
+  inscriptionEntries: number
+  /** 全局总延长秒（连携×2s + 停表白送时长）——总额口径一次性加到铭刻总时间 */
+  inscriptionWindowSeconds: number
+  /** 自动累积的时长基准 = 接战时间（秒，前后台都回；用户口径 2026-09-11） */
+  combatTime: number
+  /** 单次进场锐能成本（60） */
+  sharpnessPerEntry: number
+  /** 锐能总量 = 进场 60（勘域 180s 一次）+ 终结技 ×10（单次上限不参与总量口径） */
+  sharpnessGain: number
+  /** 锐能可负担的秘血铸锋次数 = floor(锐能 / 60) */
+  affordableExCount: number
+  /** 锐能消耗（秘血铸锋 60/次） */
+  sharpnessSpend: number
+  sharpnessRemaining: number
+  note: string
 }

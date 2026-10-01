@@ -411,44 +411,17 @@ export type { CalcRoundThreads }
  * 存进 `CalcRoundThreads.moduleFeedback`（不逐键拆字段），下一轮各模块从 `threads.moduleFeedback.<键>` 自取。
  * **缺键 = 0**（该角色不在队 / 守卫不成立；与迁移前具名字段初值 0 逐位等价）⇒ 读侧一律 `?? 0`。
  * 键名住在 mechanics 层（这里），编排层（composables/resourceCalc）不再列角色字段名（判据 22）。
- * 新增一条跨轮反馈 = 这里加一个可选键 + 产出模块 `nextRoundFeedback` 返回它 + 消费模块读它。
+ * 新增一条跨轮反馈 = 加一个可选键 + 产出模块 `nextRoundFeedback` 返回它 + 消费方读它。键声明放哪（CC-360）：
+ * - **跨层 / 跨模块**（编排层或另一个模块也读写）⇒ 写在这里——本接口 = 「角色间 / 角色↔编排层」反馈耦合的完整清单；
+ * - **本模块自产自读**（只有产出模块自己下一轮读回）⇒ 写在该模块末尾的 `declare module '@/mechanics/types'` 扩充块
+ *   （r390 迁出 14 个：alice / anbyZero / ellen / grace / lucy / promia / remielle / vivian / yeshuguang / yixuan）。
+ * 锁：`src/types/__tests__/privateCfgFields.test.ts`。
  */
 export interface ModuleFeedback {
-  /**
-   * 仪玄：上一轮异常池里玄墨（`ether_ink`）异常触发次数（CC-318 由编排层具名线程 `auricInkFlash` 迁入；
-   * 通道③ 折成 `yixuanAnomalyTriggerFlash` 回闪能，10s CD 封顶 18）。只在 > 0 时返回（缺键 = 0）。
-   */
-  auricInkTriggers?: number
   /** 仪玄符法千重类终结次数（橘福福额外能力 +300 喧响；亦并入编排层 `teamUltimateForJufufu`） */
   teamUltimateExtra?: number
-  /** 琉音转大赠送的叶瞬光逐云次数 */
-  yeshuguangGiftUlt?: number
-  /** 露西 C6 队友强特合计（C1 回能预估） */
-  lucyTeammateEx?: number
   /** 莱特后场：全队常态能量消耗（converge 相位经通用输入 `teamEnergyConsumed` 递给模块） */
   consumedTeamEnergy?: number
-  /** 格莉丝影画1 全队回能轮换数 */
-  graceC1Cycles?: number
-  /** 零号·安比：队友追加攻击命中折算白雷层数 */
-  anbyZeroTeammateWl?: number
-  /** 薇薇安落羽生花源1：全队强特命中次数 */
-  vivianTeamEx?: number
-  /** 薇薇安落羽生花源2：全队异常触发次数 */
-  vivianAnomalyTriggers?: number
-  /** 普罗米娅·霜刑：触发命中数 */
-  promiaTriggerHits?: number
-  /** 普罗米娅·霜刑：队友异放次数 */
-  promiaTeammateReleases?: number
-  /** 普罗米娅自身异放回喧响（绝裁/影画6 各 +100） */
-  promiaReleaseDecibel?: number
-  /** 蕾米埃尔一命：上一轮花羽轮舞施放次数（= 队友虚曜数，按 18s 冷却封顶；CC-41，读回方 remielle.ts#applyRemielleTeamConfig） */
-  remielleFlowerFeatherDanceCasts?: number
-  /** 爱丽丝剑仪：爱丽丝自己触发的强击次数（字段名里的 Team 是历史名，口径见 alice.ts `aliceExternalCountsOf`） */
-  aliceTeamAssaultCount?: number
-  /** 爱丽丝剑仪：全队紊乱次数 */
-  aliceDisorderCount?: number
-  /** 艾莲影画4 冻结次数（异常池 ice 触发数） */
-  ellenFreezeCount?: number
 }
 
 /**

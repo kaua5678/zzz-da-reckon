@@ -1,7 +1,7 @@
 import { clampRatio } from '@/utils/finiteClamp'
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { ModuleFeedback } from '../types'
-import type { CharacterResourceResult, MechanicSetting, YixuanExChain } from '@/types/resource'
+import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
@@ -1183,4 +1183,71 @@ declare module '@/types/resource/config' {
     /** 仪玄极限支援换场次数上限 = 队友正常弹刀次数求和（useResourceCalc 注入，用户口径） */
     yixuanExtremeAssistCap?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块自产自读的跨轮反馈键（nextRoundFeedback 产出、下一轮本模块读回），声明随模块走，不堆在 `mechanics/types.ts`。
+ * 仍是 `ModuleFeedback` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /**
+     * 仪玄：上一轮异常池里玄墨（`ether_ink`）异常触发次数（CC-318 由编排层具名线程 `auricInkFlash` 迁入；
+     * 通道③ 折成 `yixuanAnomalyTriggerFlash` 回闪能，10s CD 封顶 18）。只在 > 0 时返回（缺键 = 0）。
+     */
+    auricInkTriggers?: number
+  }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 仪玄强特链明细（墨痕化形链/凝云术链） */
+    yixuanExChain?: YixuanExChain
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 星徽·比利主循环/EX 链明细（用户确认口径） */
+export interface YixuanExChain {
+  /** 强特招式总次数（展示用） */
+  cycles: number
+  /** 墨痕化形链次数（2连+3连） */
+  inkCycles: number
+  /** 凝云术链总次数（轴内+轴外） */
+  cloudCycles: number
+  /** 墨痕化形 #1 次数（40闪能） */
+  ink1: number
+  /** 墨痕化形 #2 次数（完美格挡赠送，免费） */
+  ink2: number
+  /** 墨痕化形 #3 次数（免费） */
+  ink3: number
+  /** 墨痕化形 #4 次数（20闪能） */
+  ink4: number
+  /** 墨烬影消次数（20闪能，凝云术前置） */
+  ashen: number
+  /** 凝云术次数 */
+  cloud: number
+  /** 凝云术蓄力秒数（0-2；轴内按轴时长，轴外满蓄） */
+  cloudChargeSeconds: number
+  /** 总耗闪能（术法值 = 该值 × 0.667） */
+  flashSpent: number
+  /** 强特链总前台时间（秒） */
+  chainSeconds: number
+  /** 轴内凝云次数（扩展字段，Record 读取） */
+  axisCloud?: number
+  /** 轴外凝云次数（扩展字段） */
+  cloudOut?: number
+  /** 轴内凝云蓄力秒数（扩展字段） */
+  axisCloudSeconds?: number
+  /** 2连墨痕化形次数（扩展字段） */
+  ink2Count?: number
+  /** 3连墨痕化形次数（扩展字段） */
+  ink3Count?: number
+  /** 完美格挡次数（扩展字段） */
+  perfectBlockCount?: number
 }

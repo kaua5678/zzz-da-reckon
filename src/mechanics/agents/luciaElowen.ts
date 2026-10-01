@@ -1,7 +1,6 @@
 import { clampRatio } from '@/utils/finiteClamp'
 import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting, SkillExecution } from '@/types/resource'
-import type { LuciaMechanicSource } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { getAgentSpec } from '@/specs/registry'
@@ -590,4 +589,56 @@ declare module '@/types/resource/config' {
     /** 卢西娅命座等级（buildCharConfig 写入，供 patchExecutions 按命座补合唱行专属字段） */
     luciaCinemaLevel?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 卢西娅梦境值/追加攻击/回血明细 */
+    luciaMechanicSource?: LuciaMechanicSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 卢西娅·艾洛温梦境值/追加攻击/回血资源明细（用户确认口径） */
+export interface LuciaMechanicSource {
+  /** 全局目标梦境值（默认 500） */
+  dreamTarget: number
+  /** 计划内强特次数（占用前台时间） */
+  dreamExSpecialCount: number
+  /** 计划外强特次数（合轴 0 秒） */
+  excessExSpecialCount: number
+  /** A5 次数（开局场地外 1 次 + 战斗中 E 后接） */
+  a5Count: number
+  /** 终结技次数 */
+  ultimateCount: number
+  /** 梦境值总计 = 60 + A5×40 + E×60 + Q×100 */
+  dreamTotal: number
+  /** 追加攻击次数 = min(设置上限, floor(dreamTotal/25)) */
+  additionalAttackCount: number
+  /** 追加攻击消耗梦境值 */
+  additionalAttackDreamCost: number
+  /** 每次终结技回血量（%卢西娅最大生命）= 8s × (1% + 0.05%×终结技等级)/秒，12级=12.8% */
+  healPctPerUlt: number
+  /** 队友回血总量 = 终结技次数 × healPctPerUlt × 覆盖滑块（% 卢西娅最大生命） */
+  healTotalHpPct: number
+  /** 4命帷幕触发次数（开启/延长，含队友如伊德海莉大招开帷幕；15s CD 封顶 × 利用率滑块） */
+  curtainTriggerCount: number
+  /** 4命帷幕触发中卢西娅**自开/自延**部分（边际拆分；缺写入方时回退 = 总次数） */
+  curtainSelfCount: number
+  /** 4命帷幕开启次数（原始，未受 CD 封顶/覆盖率折算）：开局1 + 入场1（有梦境E）+ Q 退出再入梦 ×Q */
+  curtainOpens: number
+  /** 4命帷幕延长次数（原始）：梦境内强特 + 梦境内终结技 */
+  curtainExtends: number
+  /** 4命帷幕队友来源分摊（展示用；triggers=边际法计入总次数的份额） */
+  curtainTeammates: { agentId: string; rawCount: number; triggers: number }[]
+  /** 4命每次触发给全队每人的喧响（100；未开4命为 0） */
+  c4DecibelPerTrigger: number
+  /** 4命全队每人喧响合计 = curtainTriggerCount × c4DecibelPerTrigger */
+  c4TeamDecibelPerChar: number
+  note: string
 }

@@ -16,7 +16,7 @@ import type {
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
-import type { AnomalyEventRecord, CharacterOperationConfig, CharacterResourceResult, RemielleMechanicSource, SkillExecution } from '@/types/resource'
+import type { AnomalyEventRecord, CharacterOperationConfig, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
@@ -797,4 +797,37 @@ declare module '@/types/resource/config' {
     /** 蕾米额外能力：Luminous Reflection 状态失衡提升（6/12/35） */
     remielleRadiantTurnDazeBonusPct?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块自产自读的跨轮反馈键（nextRoundFeedback 产出、下一轮本模块读回），声明随模块走，不堆在 `mechanics/types.ts`。
+ * 仍是 `ModuleFeedback` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /** 蕾米埃尔一命：上一轮花羽轮舞施放次数（= 队友虚曜数，按 18s 冷却封顶；CC-41，读回方 remielle.ts#applyRemielleTeamConfig） */
+    remielleFlowerFeatherDanceCasts?: number
+  }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 蕾米埃尔机制资源明细 */
+    remielleMechanicSource?: RemielleMechanicSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 蕾米埃尔虚曜/耀变/异化系数资源明细 */
+export interface RemielleMechanicSource {
+  voidflareStored: number
+  voidflareMax: number
+  refringeCoefficient: number
+  luminizeMultiplierBonus: number
+  note: string
 }

@@ -8,7 +8,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
-import type { CharacterResourceResult, QingyiMechanicSource, SkillExecution } from '@/types/resource'
+import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
@@ -437,4 +437,42 @@ declare module '@/types/resource/config' {
     /** 青衣影画4·稳态电弧屏障：护盾刷新每次回能（5；未达4命为 0） */
     qingyiC4EnergyPerTrigger?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 青衣闪络电压/醉花月云转明细 */
+    qingyiMechanicSource?: QingyiMechanicSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 青衣闪络电压/醉花月云转资源明细 */
+export interface QingyiMechanicSource {
+  /** 失衡次数（外层不动点传入） */
+  stunCount: number
+  /** 醉花月云转轮数 = 2 × 失衡次数 */
+  rounds: number
+  /** 总电压需求 = 200 × 失衡次数（点） */
+  totalVoltageNeeded: number
+  /** 1命开局赠送电压 */
+  c1StartVoltage: number
+  /** 通用招式（强特/大招/连携/闪反/快支/支援突击）电压合计 */
+  genericVoltage: number
+  /** 剩余需由一煞整套弦（#4+#5+#6 ≈ 14.26 电压/2.96s）补齐的电压 */
+  remainingVoltage: number
+  /** 一煞整套弦补电压套数（每套 = #4/#5/#6 各一段） */
+  yisha4Hits: number
+  /** 一煞整套弦补电压所需时间（秒） */
+  yisha4NecessaryTime: number
+  /** 醉花月云转总时间（秒） */
+  zuiHuaTime: number
+  /** 必要时间合计 = 一煞#4 补电压 + 醉花月云转 */
+  necessaryTime: number
+  note: string
 }

@@ -8,7 +8,7 @@ import type {
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
-import type { CharacterResourceResult, RoxyWindEnergySource } from '@/types/resource'
+import type { CharacterResourceResult} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
@@ -479,4 +479,43 @@ declare module '@/types/resource/config' {
     /** 洛克茜小旋风持续秒数，默认 5 */
     roxyMiniTornadoSeconds?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 洛克茜风能/风眼资源明细 */
+    roxyWindEnergySource?: RoxyWindEnergySource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 洛克茜风能/风眼资源明细 */
+export interface RoxyWindEnergySource {
+  /** 强特消耗能量合计（当前按强特次数 × 单次耗能） */
+  energySpentTotal: number
+  /** 风能总量 = floor(总耗能 / 25) + 终结技次数（核心被动 Lv.7：每 25 能量 +1）；3 为存量上限 */
+  windEnergyGain: number
+  windEnergyCap: number
+  /** 敬请安息消耗风能 = min(总获得, 强特次数 × 3)（存量上限 3/发） */
+  windEnergyConsumed: number
+  /** 敬请安息每消耗 1 点风能生成的风眼数（同时存在上限 9、30s 自爆；默认手法单发 ≤3 ⇒ 两约束不可达） */
+  windEyeGenerated: number
+  /** 被引爆的风眼数（全部，爆鸣结算） */
+  windEyeDestroyed: number
+  /** 恕不远送次数 = floor(消耗/3)（每次引爆至多 3 个风眼） */
+  sendOffCount: number
+  /** 巨型风旋次数（3 个风眼同命中 → 1s） */
+  megaTornadoCount: number
+  /** 小旋风个数（不足 3 的余数） */
+  miniTornadoCount: number
+  /** 小旋风总秒数 = miniTornadoCount × 1s（v12 持续 1 秒） */
+  miniTornadoSeconds: number
+  /** 自旋秒数（滑块，30 能量/s） */
+  spinSeconds: number
+  note: string
 }

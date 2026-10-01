@@ -30,7 +30,7 @@ def kind(rel):
     return 'other'
 rows = []
 for name, opt in fields:
-    rx = re.compile(r'\b' + name + r'\b')
+    rx = re.compile(r'\b' + name + r'\b(?!\?:)')  # r390：`name?:` 可选声明行（别的接口里的同名字段）不算引用
     hit = collections.defaultdict(list)
     for rel, txt in files.items():
         if rx.search(txt): hit[kind(rel)].append(rel)

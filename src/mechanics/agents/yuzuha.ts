@@ -6,7 +6,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { CharacterResourceResult, MechanicSetting, YuzuhaMechanicSource } from '@/types/resource'
+import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { effectiveBattleTime, minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
@@ -339,4 +339,44 @@ declare module '@/types/resource/config' {
     /** 柚叶影画4：支援突击行预存的缩放后异常积蓄（buildCharConfig 从倍率表 ×1.2，patchExecutions 消费） */
     yuzuhaC4AssistBuildUp?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 柚叶机制资源明细 */
+    yuzuhaMechanicSource?: YuzuhaMechanicSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 柚叶甜度点/狸之愿/硬糖射击·彩糖花火资源明细 */
+export interface YuzuhaMechanicSource {
+  sweetnessInitial: number
+  sweetnessFromChain: number
+  /** 影画6：招架成功额外甜度点 */
+  sweetnessFromParry: number
+  sweetnessTotal: number
+  sweetnessCap: number
+  /** 整场甜度终身预算（进场+连携入场+影画6招架；存量上限6只钳瞬时持有，不钳终身收入） */
+  sweetnessBudget: number
+  teamAtkBonus: number
+  teamAtkCap: number
+  teamDmgBonus: number
+  /** 有效战斗时间（秒）= battleTime - invincibleTime，后台追击类次数的時間基数 */
+  effectiveSeconds: number
+  /** 硬糖射击触发次数 = min(floor(有效时间/CD), 甜度终身预算)；影画2 CD 8→6秒 */
+  hardCandyCount: number
+  hardCandyCdSeconds: number
+  /** 彩糖花火 tick 数 = floor(有效时间)（惊吓满覆盖，1秒/次） */
+  fireworkTickCount: number
+  /** 彩糖花火·极次数 = 硬糖射击 + 夹心硬糖(≈招架数) 重击触发 */
+  fireworkExtremeCount: number
+  /** 十人十色转积蓄目标元素（队伍有异常专精队友时为其属性；无则缺省物理不转） */
+  transferElement?: string
+  note: string
 }

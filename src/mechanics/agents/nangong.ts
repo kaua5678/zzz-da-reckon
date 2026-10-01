@@ -9,7 +9,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { CharacterResourceResult, MechanicSetting, NangongMechanicSource } from '@/types/resource'
+import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { getAgentSpec } from '@/specs/registry'
@@ -492,4 +492,34 @@ export const nangongMechanic: AgentMechanicModule = {
   buildResourceResult: buildNangongResourceResult,
   resourceSections: buildNangongResourceSections,
   settings,
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 南宫羽机制资源明细 */
+    nangongMechanicSource?: NangongMechanicSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 南宫羽重拍/颤音/异放资源明细 */
+export interface NangongMechanicSource {
+  anomalyProficiencyBonus: number
+  impactFromMastery: number
+  vibratoStacks: number
+  vibratoMax: number
+  vibratoStackPct?: number
+  minePairs?: number
+  releaseCount: number
+  releaseRatios: Record<string, number>
+  beatInitial: number
+  beatRegen: number
+  beatTotal: number
+  beatCap: number
+  note: string
 }

@@ -7,7 +7,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import type { CharacterResourceResult, LiuyinMechanicSource, MechanicSetting } from '@/types/resource'
+import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
@@ -676,4 +676,48 @@ declare module '@/types/resource/config' {
     /** 琉音强化A 4 段（1481005-1481008）各段 actionTime */
     liuyinJankenActionTimes?: number[]
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 琉音机制资源明细 */
+    liuyinMechanicSource?: LiuyinMechanicSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 琉音好评/抱拳资源明细 */
+export interface LiuyinMechanicSource {
+  /** 好评初始值 */
+  goodReviewInitial: number
+  /** 好评每秒回复（接战） */
+  goodReviewPerSec: number
+  /** 好评每次强特重击回复 */
+  goodReviewPerEx: number
+  /** 1命好评回复乘算系数（1 或 1.16） */
+  goodReviewC1Multiplier: number
+  /** 好评总回复量（不含初始） */
+  goodReviewGainTotal: number
+  /** 好评总量（初始 + 回复） */
+  goodReviewTotal: number
+  /** 强特重击次数（= exSpecialCount，用于好评回复与专属直伤） */
+  exHeavyCount: number
+  /** 转大次数（**阈值结转**口径：每次开窗当刻需满 90，扣 60/90 后余额结转 ⇒ 见 computeLiuyinHugCounts；60/90 分配见 promoteFixpoint） */
+  promoteWindows: number
+  /** 琉音自己的终结技次数（每次终结技送 1 客诉，可打一次不转大的抱拳） */
+  ownUltimateCount: number
+  /** 抱拳次数（送客长按 1481009 执行次数）= 转大次数 + 终结技次数（等效规则） */
+  farewellCount: number
+  /** 额外能力是否触发（队伍有强攻或命破队友） */
+  extraAbilityActive: boolean
+  /** 专属直伤读取的上一位队友槽位（已按设置解析） */
+  previousTeammateSlot: number
+  /** 命座等级 */
+  cinemaLevel: number
+  note: string
 }

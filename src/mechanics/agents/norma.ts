@@ -8,7 +8,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { SkillMove } from '@/types/catalog'
-import type { CharacterResourceResult, MechanicSetting, NormaMechanicSource } from '@/types/resource'
+import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
 import { getAgentSpec } from '@/specs/registry'
@@ -672,4 +672,64 @@ declare module '@/types/resource/config' {
     /** 诺姆影画2·帽子把戏每次回能（25；未达2命为 0） */
     normaC2EnergyPerTrigger?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 诺姆预热膛温/嗯呢弹幕/技术鸿沟明细 */
+    normaMechanicSource?: NormaMechanicSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 诺姆预热膛温/嗯呢弹幕/技术鸿沟资源明细 */
+export interface NormaMechanicSource {
+  heatInitial: number
+  heatFromFrontline: number
+  heatFromExSpecial: number
+  /** 长按延长射击额外膛温（长按能量 20/s × 0.4%）；完整模型：膛温 = 消耗能量 × 0.4% */
+  heatFromHold: number
+  heatFromUltimate: number
+  heatTotal: number
+  /** 影画2·帽子把戏回能触发次数（floor(战斗时间/20)，默认180s→9次） */
+  c2EnergyTriggers: number
+  /** 影画2·帽子把戏回能总量（次数 × 25） */
+  c2EnergyTotal: number
+  /** 膛温≥80%帽子把戏→连携技替换次数 = floor(膛温总量/80) */
+  hatToChainCount: number
+  /** 嗯呢弹幕期间全队增伤（+20%，额外能力触发时；弹幕按满覆盖） */
+  barrageTeamDmgBonus: number
+  /** 炮塔总座数（每次弹幕 2 座） */
+  towerCount: number
+  /** 炮塔普通自动射击次数（弹幕覆盖秒数 / 3s，打靶练习 1571013） */
+  towerAutoShotCount: number
+  /** 火力实验导弹舱次数 = 失衡次数 + 膛温换连携次数 */
+  missileBayCount: number
+  /** 导弹舱强化自动射击总发数（每舱 8s/2s=4 发，C1 12s/2s=6 发） */
+  boostedShotTotal: number
+  /** 火力实验强化期失衡内秒数（打高爆弹） */
+  highExplosiveSeconds: number
+  /** 火力实验强化期超出失衡的秒数（打失衡高的破甲弹） */
+  armorPierceSeconds: number
+  /** 破甲弹头发数（未失衡，1571014） */
+  armorPierceCount: number
+  /** 高爆弹头发数（失衡，1571015） */
+  highExplosiveCount: number
+  /** C6 导弹轰击触发次数（min(失衡次数, floor(180/30))） */
+  c6BurstCount: number
+  /** C6 导弹总发数 = 触发次数 × 8 发 */
+  c6MissileCount: number
+  /** 额外能力是否触发 */
+  additionalAbilityActive: boolean
+  /** 技术鸿沟失衡易伤（+3%/层×10层，额外能力触发时） */
+  techGapStunBonus: number
+  /** 额外能力攻击提升（44~870，随等级） */
+  extraAbilityAtkBonus: number
+  cinemaLevel: number
+  note: string
 }

@@ -1060,3 +1060,14 @@ declare module '@/types/resource/config' {
     banyueAxisEx?: Record<string, number>
   }
 }
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 般岳轴模式自动补齐的交互次数（保底语义：在交互栏输入之上补多少） */
+    banyueInteractionTopUp?: { parry: number; dual: number }
+  }
+}

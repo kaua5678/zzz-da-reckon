@@ -10,7 +10,7 @@ import type {
   ExtraAnomalyRowsInput,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
-import type { AnomalyEventRecord, CharacterResourceResult, JaneMechanicSource, MechanicSetting } from '@/types/resource'
+import type { AnomalyEventRecord, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
@@ -350,4 +350,30 @@ export const janeMechanic: AgentMechanicModule = {
   },
   anomalyEventRecords: janeAnomalyEventRecords,
   settings,
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 简机制资源明细 */
+    janeMechanicSource?: JaneMechanicSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 简机制资源明细（啮咬/狂热/强击暴击） */
+export interface JaneMechanicSource {
+  assaultCritBaseRate: number
+  assaultCritRatePerMastery: number
+  assaultCritRate: number
+  assaultCritDmgBonus: number
+  frenzyBuildUpBonus: number
+  atkFromMastery: number
+  frenzyActive: boolean
+  biteSeconds: number
+  note: string
 }

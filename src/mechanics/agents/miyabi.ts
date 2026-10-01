@@ -483,3 +483,22 @@ declare module '@/types/resource/config' {
     miyabiFrostMoonActionTime?: number
   }
 }
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 雅落霜资源明细 */
+    miyabiFrostFallSource?: MiyabiFrostFallSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 雅落霜资源明细 */
+export interface MiyabiFrostFallSource {
+  total: number
+  frostMoonCount: number
+}

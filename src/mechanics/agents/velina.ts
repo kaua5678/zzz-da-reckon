@@ -18,7 +18,6 @@ import type {
   IterationState,
   SpecialResourceSection,
   CorrosionSource,
-  VelinaFloriaSource,
   AnomalyEventRecord,
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '@/core/panel'
@@ -595,4 +594,33 @@ declare module '@/types/resource/config' {
     /** 是否为维琳娜，用于风华/风蚀专属资源 */
     velinaEnabled?: boolean
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 维琳娜风华资源明细 */
+    velinaFloriaSource?: VelinaFloriaSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 维琳娜风华资源明细 */
+export interface VelinaFloriaSource {
+  /** 初始风华，默认45 */
+  initial: number
+  /** 消耗能量获得的风华（当前按强特耗能折算） */
+  energySpentGain: number
+  /** 总可用风华 = 初始 + 能量消耗获得 */
+  totalAvailable: number
+  /** 90风华消耗触发广域气旋的次数 */
+  broadCycloneCount: number
+  /** 广域气旋消耗风华 = broadCycloneCount × 90 */
+  broadCycloneCost: number
+  /** 结余风华 */
+  remaining: number
 }

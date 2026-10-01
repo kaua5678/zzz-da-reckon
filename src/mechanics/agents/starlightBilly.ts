@@ -8,7 +8,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { BillyChain, CharacterResourceResult, MechanicSetting } from '@/types/resource'
+import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
@@ -16,8 +16,6 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
-
-export type { BillyChain }
 
 /**
  * 星徽·比利（1531）战斗逻辑（用户确认口径，2026-08）：
@@ -904,4 +902,44 @@ declare module '@/types/resource/config' {
     /** 星徽·比利失衡覆盖率（useResourceCalc 注入，涡轮增压「失衡动力压制」获得计数用） */
     billyStunCoverage?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 星徽·比利 EX 链明细 */
+    billyChain?: BillyChain
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+export interface BillyChain {
+  /** 付费单位总数 = floor(闪能总量 / 60)（闪能只支付 摇曳/抓地；动力压制与孤轮 0 闪能） */
+  paidEx: number
+  /** 摇曳步伐链数（动力压制+孤轮+摇曳，120 闪能/条；轴模式 = 轴内捏的数量） */
+  rocking: number
+  /** 抓地轮毂总次数（60 闪能/次；轴模式 = 轴内 + 轴外剩余闪能） */
+  traction: number
+  /** 轴外抓地轮毂次数（轴模式 = max(0, 付费单位 − 轴内付费)，非轴模式 = traction） */
+  tractionOut: number
+  /** 动力压制链总数 = 动力压制次数 = 孤轮特技次数（0 闪能免费衔接，只受 HP 池约束） */
+  chain: number
+  /** 银河横行次数（动力压制期间漂移→尾焰全旋→衔接孤轮特技；= min(闪反次数, 动力压制数)，轴外） */
+  galaxy: number
+  /** 最高马力星光次数 = floor(决意总量 / 100) */
+  fullThrottle: number
+  /** 是否失衡轴模式（轴内动作按捏轴执行） */
+  axisMode: boolean
+  /** HP 池：动力压制总消耗 %生命上限（由 buildExecutions 填充） */
+  hpCostPct?: number
+  /** HP 池：回血总量 %生命上限（抓地30/摇曳15/普攻 attack_data_1） */
+  healPct?: number
+  /** HP 池：战斗结束剩余生命 %（100 − 消耗 + 回血，0-100 截断） */
+  hpFloorPct?: number
+  /** HP 池：经普攻第四段衔接（耗血减半）的动力压制占比（滑块 1531.driveSuppressionHpDiscountRatio） */
+  hpDiscountRatio?: number
 }
