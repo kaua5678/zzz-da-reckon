@@ -79,22 +79,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
-**2026-10-01 18:45 arena-D 第 364 轮（开工 18:27 时无并行会话，HEAD `db032f6a`）：CC-342 第 3 步，代码 `59ea97ea`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。CC-342 至此完成。**
-- **做到哪**：关卡固有 buff 由 `scripts/import-nanoka-bosses.mjs` 挂到 `BossPresetPhase.layerBuffs`（JSON 已重新生成）；`bossRoom#applyBossRoom(configStore, boss, phase)` 是唯一进房间入口，5 个分析器已迁入。
-  另外：删掉死掉的 periodViews / phaseViews 参数；队伍对比换牌时保留关卡行。详情、探针、锁见 `docs/mcp-boss-room-context.md` §5。
+**2026-10-01 19:15 arena-D 第 365 轮（开工 18:41 时无并行会话，HEAD `254cf87e`）：抽卡规划「第 3 房恒 0 分」根因与修复，代码 `b719ba36`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：两处都修了，详情、探针数字、测试见 r6 §8 第 365 行：
+  - `freePoolRepresentatives` 补足免费人到 9（`PLANNER_MIN_FREE_MEMBERS`）；
+  - `pickPeriodAssignment` 改为分支定界精确解，`assignmentTopM` 删除。
+  探针空房 6/36 → 0/36，总分 +27% / +56%，求值量不变。FEATURES_GUIDE §4.5 已同步。
 - **下一步**（按价值排序）：
-  1. 抽卡规划求值 ×4.3（第 362 轮遗留，见 r6 §8 第 362 行）。
-  2. 探针里有些房间恒为 `,, 0`（如 300121、部分期的 40000 / 40001 / 40005）：没查是「Boss 预设缺该期 phase」还是「凑不出不重叠的第 3 队」。查法：在 `arenaD/probe363.test.ts` 里打印 `applyRoomContext` 的返回值与候选数。
-  3. boss-presets.json 有 9 处各自 `fetch`（页面 + `PullValueChart` + `BossSelectCard`），可以收成一个加载函数。纯整理，价值低于前两项。
-  4. testOnly 关卡牌照样写入（`docs/mcp-boss-room-context.md` §1.3，待裁决）。
-- **已拍板**：
-  - 第 3 步没走「给分析器传 phaseViews」，改为数据带关卡 buff，依据见 §5；
-  - 队伍对比保留关卡行，依据：关卡 buff 属于房间，牌才是玩家的选择。
-- **已知坑**：
-  - 改了 `phase-buff-parser.mjs` 或 raw 数据要重跑生成脚本，`bossRoom.test` 的数据锁会拦；
-  - 后台脚本用 `setsid nohup bash x.sh >/dev/null 2>&1 < /dev/null & disown`，写成 `(setsid nohup x &)` 会被杀。
-- **回退点**：`git revert 59ea97ea`。
-- 第 363 轮（arena-D）：CC-342 第 1、2 步 `602c0f94`，抽卡规划 / 兑现曲线逐房带关卡 buff，探针总分 +16.6% / +12.5%。第 362 轮：抽卡规划候选队友 4 → 6 `3439c9d2`。第 361 轮：副词条预算口径单源化 `08acb322`。
+  1. 抽卡规划求值量（第 362 轮 ×4.3）。诊断：同一组三人的三种槽序分差 ≤ 9%（如 1211/1021/1181 6796，1181/1211/1021 6621，1021/1211/1181 6225），不能直接按集合去重。
+     可做的口径：每组人只评「持有档最高者 / 原主C 在 slot0」一个规范序，用探针对比总分与购买是否变化；变了就不做。脚本：`arenaD/probe363.test.ts` + `arenaD/d365/p365.sh`（改 side 目录即可）。
+  2. boss-presets.json 有 9 处各自 `fetch`，可以收成一个加载函数（低价值整理）。
+  3. testOnly 关卡牌照样写入（`docs/mcp-boss-room-context.md` §1.3，待裁决）。
+- **已拍板**：精确解替换截断启发式。依据：候选规模已降到「主C × 15」量级，精确解在探针里不变慢；结果 ≥ 旧解，可证明。回退点：`git revert b719ba36`。
+- **已知坑**：`pullPlannerOracle.test` 原来钉「每职业 ≤ 1 名代表」，本轮放宽为 ≤ 2；探针脚本里的 `assignmentTopM: 8` 现在是多余字段（vitest 不做类型检查，不报错）。
+- 第 364 轮（arena-D）：CC-342 第 3 步 `59ea97ea`，关卡 buff 随 `BossPresetPhase.layerBuffs`，所有分析器经 `applyBossRoom`。第 363 轮：CC-342 第 1、2 步 `602c0f94`。第 362 轮：候选队友 4 → 6 `3439c9d2`。
 
 **2026-10-01 arena-C 第 360 轮（开工 17:24 时无并行会话：HEAD `a8fffc89`；17:44 起 arena-D 第 361 轮提交 `08acb322` / `02cdfcb6`，第 362 轮在 `wtD-362` 审计 `pullPlannerEngine.ts`）：CC-341 危局 buff 牌条件随行写入、管线唯一解析，代码 `8f80b031`（已 rebase 到 `02cdfcb6` 后复跑全量 verify），文档见本轮 docs 提交，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
 - **做到哪**：第 359 轮交接「下一步 2」里的 `runArchiveDeploy.ts` / `runArchiveImport.ts`。认领表由 arena-D 代登记，本 lane 17:57 确认。读码追到「房间上下文」（敌人参数 + 关卡固有 buff + 当期牌）的全部写入点，分析与数据见新文档 `docs/mcp-boss-room-context.md`（README §6 71 → 72 份）。
