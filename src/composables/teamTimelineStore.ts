@@ -1,5 +1,6 @@
 /**
- * 队伍时间线共享工具（现场快照/恢复已收至 configSnapshot.ts，CC-251）：基础金与预算感知加金、装配队伍到 store、让出事件循环。
+ * 队伍时间线共享工具（基础金与预算感知加金、装配队伍到 store、让出事件循环）。CC-343 起调用方在独立场景上
+ * 求值，现场快照 / 恢复（configSnapshot.ts，CC-251）已删。
  * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；teamTimeline.ts 原样转出公开名，导入方不用改。
  */
 import { useConfigStore } from '@/stores/config'

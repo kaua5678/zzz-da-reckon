@@ -7,7 +7,8 @@
  * ③ 等值：同一现场，场景 calc 与 UI calc 的队伍总伤逐位相同，两边同步改写后仍相同；
  * ④ 源码锁：createResourceCalc 函数体不查全局 store；已迁移分析器不调 useConfigStore()、不做快照恢复。
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { effectScope, nextTick, reactive } from 'vue'
 import { setupHarness } from '@/test/harness'
@@ -129,5 +130,28 @@ describe('源码锁', () => {
       expect(src, rel).not.toMatch(/useConfigStore\(\)/)
       expect(src, rel).not.toMatch(/\b(snapshotStore|restoreStore)\(/)
     }
+  })
+
+  it('④b CC-278：不许再把「现场快照 / 恢复」抄回来（函数名锁拦不住的形态；configSnapshot.ts 已随 S3 删除）', () => {
+    // 搬自 configSnapshot.test.ts（r372 S3 删该模块时保留）：函数名锁只能拦住叫 snapshotStore / restoreStore 的副本，
+    // 拦不住把 configStore.team 打包深拷贝的**内联**快照——charIncrement / pullPlannerEngine 当初正是各抄了一份，
+    // 漏掉队友 buff 选择（CC-278）。现在全部分析器都该在独立场景上跑，任何形式的现场打包都是回退。
+    const root = resolve(__dirname, '../..')
+    const hits: string[] = []
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name)
+        if (statSync(p).isDirectory()) { if (name !== '__tests__' && name !== 'node_modules') walk(p); continue }
+        if (!/\.(ts|vue)$/.test(name) || name.endsWith('.test.ts')) continue
+        const src = readFileSync(p, 'utf-8')
+        const rel = relative(root, p).split('\\').join('/')
+        // 内联快照：把 configStore.team 与其它字段打包深拷贝
+        if (/JSON\.stringify\(\{\s*team:\s*configStore\.team\b/.test(src)) hits.push(`${rel}:snapshot`)
+        // 内联恢复：整表回写失衡轴方案（轴状态只经 store 的 setAxisState / applyStunAxisPreset）
+        if (rel !== 'stores/config.ts' && /stunAxisPlans(\.value)?\.splice\(0,\s*[\w.]*stunAxisPlans(\.value)?\.length,\s*\.\.\./.test(src)) hits.push(`${rel}:restore`)
+      }
+    }
+    walk(root)
+    expect(hits).toEqual([])
   })
 })

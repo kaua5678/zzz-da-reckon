@@ -905,12 +905,10 @@ export function goldAlternativesOf(allocs: OptimalGoldAllocation[]): GoldAllocat
   return (allocs as OptimalGoldAllocation[] & { alternatives?: GoldAllocationAlternative[] }).alternatives ?? []
 }
 
-// 现场快照 / 恢复：唯一实现在 composables/configSnapshot.ts（CC-251）
-
 // ========== 应用到 store ==========
 
 /**
- * 把 buff 牌写进全局 Buff 表（**整表替换**＝只留这张牌；快照/恢复负责清理）。
+ * 把 buff 牌写进全局 Buff 表（**整表替换**＝只留这张牌；CC-343 起分析器在独立场景里跑，UI store 不被碰）。
  * CC-341：走唯一映射 `phaseBuffRows`，`cond` 原样写入，由管线按当前队伍解析（修前在这里按预设队伍预解析；
  * 写入时 store 里已是该预设的队伍 ⇒ 结果逐位相同）。
  */

@@ -52,3 +52,14 @@ describe('显式配置 Model', () => {
     }
   })
 })
+
+describe('setAgent 清空槽位', () => {
+  it('setAgent(slot, "") 必须同步清空该槽音擎（搬自 configSnapshot.test.ts，r372 S3）', async () => {
+    // 原判据在 configSnapshot.test.ts 的 CC-340 用例里；模块删除后搬来此处——它测的是 store 行为，与快照无关。
+    const { config } = await setupHarness([{ agentId: '1191' }, { agentId: '1371', wEngineId: '14137' }, { agentId: '1311' }])
+    expect(config.team[1].wEngineId).toBe('14137')
+    config.setAgent(1, '')
+    expect(config.team[1].agentId).toBe('')
+    expect(config.team[1].wEngineId, '清空角色槽位时必须同步清空 wEngineId').toBe('')
+  })
+})

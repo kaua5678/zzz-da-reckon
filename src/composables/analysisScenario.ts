@@ -2,7 +2,7 @@
  * 分析器独立场景（数据隔离；2026-10-01 arena-C r369 第 1 阶段，设计与迁移进度见 docs/mcp-analyzer-scenario-isolation.md）。
  *
  * 为什么要有它：分析器（队伍对比、难度曲线、抽卡规划、角色兑现曲线……）要逐队改写配置再求值。过去它们直接改写
- * 页面正在用的 UI config store，跑完靠 configSnapshot 的 snapshotStore / restoreStore 恢复：
+ * 页面正在用的 UI config store，跑完靠 configSnapshot 的快照 / 恢复（该模块已随 CC-343 S3 删除）：
  * - 快照只覆盖部分字段，漏一个就是泄漏（CC-251 / 278 / 338 / 339 / 340 修的都是这一类）；
  * - 异步分析器 yield 时 UI 看得见中间态，页面上的计算也会为每个中间态重算；
  * - 调用方传进来的 calc 必须恰好绑在 useConfigStore() 上，否则静默错配。
