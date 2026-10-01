@@ -69,30 +69,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **`src/views/TeamComparePage.vue` 只剩约 38 行结构熵余量**：给该页加功能，写到 `src/composables/teamCompare*.ts`（CC-92）。
 - **等号基线（「计数下降也报错，要求下调基线」）是有意设计，不要改成「≤」**：2026-09-14 它两次抓到扫描器盲区，计数凭空下降其实是扫描器看不见了，而不是代码变好了（`scripts/check-tokens.mjs` 头注释；`docs/mcp-working-model.md` §2.5）。
 
-## 2b. 并行 lane 交接（lane `arena-B`；§2 「每轮替换」时**不要**连本节一起删）
+## 2b. 并行 lane 交接（§2 「每轮替换」时**不要**连本节一起删；每个 lane 一段，过时的段压成一行指针）
+
 
 > 为什么有这节：2026-09-29 实测两个会话同时在跑（本会话开工时主 lane `lead-arena-0925c` 第 315 轮正在 `wt315` 跑 verify；推断是 arena 对战模式两个模型同时收到同一份提示词）。
 > §2 属于主 lane；并行会话把自己的交接写在这里，互不覆盖。任何 lane 确认本节已过时，可以整节替换成自己的。
 > 开工查现场的方法见提示词第 9 条（`ps` 看 verify / vitest，`git log` 看最近提交时间，`ls -lt /home/kaua/calc-arch`）。
 
-**2026-09-29 19:00 arena-B 第 4 轮（开工时无并行会话：HEAD 0d6b93ab，无 verify 进程，主 lane 最近提交 16:43）：抽卡规划购买阶梯数据化，代码 `bf868983`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **判断**（上一轮下一步 = 提案 §5.5「角色 / 音擎独立阶梯」）：读码发现同一个阶梯在三个文件里各写一遍——`pullPlanner.ts` `TIER_COSTS`、`pullPlannerEngine.ts` `holdingStateFor` 的 `tier >= 3 ? 6 : 0` / `tier >= 3 ? 5 : 1`、`pullPlannerChart.ts` `ppTierLabelOf` 的三元式。合成一张表是**架构简化**（一个事实一处定义），且让 §5.5 变成改数据。**阶梯内容不改**：本体 → 专武 → 满配是用户 2026-08-28 明确口径（队列本文件抽卡段「用户口径」）。真正的两条独立阶梯（持有状态换成 (影画, 精炼) 二元组）会让每卡每节点分支 1 → 2、引擎求值变多，且下面实测显示中间档当前零收益 ⇒ 不做。
-- **做到哪**：
-  1. `pullPlanner.ts`：新增 `LadderRung { label, cinema, refine }`（累计状态）、`PURCHASE_LADDER`（3 档，内容同旧）、`ladderRung(tier)`、`tierCost(tier)`（首档 = 本体 15000 + 影画 / 精炼差额）；删 `TIER_COSTS`；`PurchaseTier` 从 `0|1|2|3` 改成 `number`（档位个数由表决定，顺带删掉几处 `as never` / `as PurchaseTier`）；`nextPurchase` 的「满配须先专武」特判随之消失（逐档走本来就不跳档）。
-  2. `pullPlannerEngine.ts` `holdingStateFor`：影画 / 精炼查表；免费成员不走阶梯。`pullPlannerChart.ts` `ppTierLabelOf` = 表的 label。
-  3. 测试：`tierCost(1..3)` 替换 `TIER_COSTS`；新增「各档增量之和 = 本体 + 顶档影画×15000 + 顶档精炼×10000 = 155000、到顶返回 null、越界抛错」；引擎「持有档逐人配装」用例加逐档对齐 `PURCHASE_LADDER` 的断言。
-  4. **行为不变的证据**：上一轮探针（`/home/kaua/calc-arch/arena-probe-window.test.ts`，成型号、2 起点 × 6 期）重跑，输出与 `probeA-window-after.out` 逐行相同（去掉耗时列后 diff 为空）→ `probeA-ladder-same.out`。
-  5. **派生的证据 + 中间档实测**：临时往表里插 `M1+专武`、`M2+专武` 两档：新的逐档对齐断言仍绿（引擎确实查表）；钉死用户阶梯内容的旧断言（`{雅1,柳3}` 用例、`nextPurchase` 档位成本用例）变红——这是想要的，改阶梯内容 = 改口径，测试应报警。同一探针两个起点的规划**完全不变**（`probeA-ladder-finer.out`）：每版本 25000 菲林下几乎只买本体 / 专武，中间档用不上。已恢复。
-  6. 验证：`vue-tsc -b` 0；pullPlanner + pullPlannerChart 32 例绿；引擎两组用例绿；隔离 worktree `wtA-ladder` 全量 verify 见提交说明（日志 `/home/kaua/calc-arch/vA-ladder.log`）。不涉 `resourceResult` 计算路径，未跑 zd。
-- 提案第 14 行 §5.5 标 ◐（数据化完成、内容待裁决、附实测），§2.1 与 §5 第 5 条同步；§2.2(c) 里修复前的旧判断段加了「保留作记录」前缀。`FEATURES_GUIDE.md` 抽卡段补阶梯数据表说明。
-- **下一步（抽卡规划线已无不依赖用户的大项）**：
-  1. ~~疑似边角 bug：限定 S 卡的专武不是限定 S 音擎 ⇒ 专武档花钱不改配装~~ **本轮已查：42/42 张卡都有限定 S 专武，无此类卡**（`/home/kaua/calc-arch/probeA-sig.out`）。已加锁：`pullPlannerEngine.test.ts` 卡清单用例断言「无专武的卡 = []」，新角色缺专武数据时会红——届时补 catalog 数据，或让阶梯按卡过滤（`PlannerCard` 加必填 `hasLimitedSignature`，`nextPurchase` 跳过无效档）。
-  2. 抽卡规划线剩下的都待用户裁决，可转去其他线：主 lane（§2）下一步是维琳娜 / 爱丽丝补 spec `additionalAbility`，那是主 lane 的活；开工前按提示词第 9 条查现场，主 lane 若超过数小时没有提交且无进程，可以接手，但要在 §2 写明「由 arena-B 接手」。
-- **未决项**：提案 §6「完全下位是否作为显式输出标签」、§5.5 阶梯内容（是否插中间档 / 独立阶梯）都待用户裁决。
-- **回退点**：`git revert bf868983`（纯重构，行为不变；回退后 `TIER_COSTS` 与三处硬编码恢复）。
-- 上一轮（arena-B 第 3 轮）：购买窗口加上界 `c8b76d2f`（必填 `PlannerCard.windowEnd` = 下一个卡池节点；实测起点 2025-12-30 旧实现 1 笔越窗，总分 67836 → 65474）。回退 `git revert c8b76d2f`。
-- 第 2 轮：收入改按版本日历 `724f37cf`（旧实现每期发一份，收入约 ×3，提案 §2.2c 有实测）。回退 `git revert 724f37cf`。
-- 上一轮（arena-B 第 1 轮，与主 lane 第 315 轮同时）：收养孤儿 WIP（抽卡规划零价值三态 + 增量成本分母）`d3443e39`；改提示词（加 wsl_exec 尾截断坑、现成客户端、第 9 条并行会话）。
+> **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
+> **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-01 17:50 arena-D 第 361 轮（开工时 arena-C 第 360 轮在 `wtA-base360` 刚跑完基线 verify、尚未改文件；HEAD `a8fffc89`）：副词条预算口径单源化，代码 `08acb322`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：审计第 359 轮交接「下一步 2」里的 `substatOptimizer.ts` 与 `liveInteractions.ts`（认领表登记，另一半 `runArchiveDeploy/Import.ts`、`pullPlannerEngine.ts` 没碰）。结论与依据见 `docs/mcp-r6-refactor-list.md` §8 第 361 行：
+  1. `08acb322`：core `src/core/substatOptimizer.ts` 新增 `TOTAL_STEP_TIERS`（词条数 → 设置键 + 缺省步数）、`resolveSubstatBudget(template, readSetting)`、`normalizeSubstatAllocation`（>0、夹到 54）、`SUBSTAT_BUDGET_SETTINGS`（store watch 用）；删 `getDefaultTotalSteps`。store `applyBuildRecommendationForSlot`、编排层 `computeSubstatAllocationForSlot`、编排层测试改为调用它们。分档统一后 1 词条缺省 39→32、≥5 词条缺省 39→43（不可达，所有模板 2–4 词条）。
+  2. 验证：`vue-tsc -b` 0；两份 substatOptimizer 测试 17 例绿；zd（`ZD_REPO=wtD-361`）DUMP / ROWS DIFF 0；worktree 全量 verify EXIT 0（日志 `/home/kaua/calc-arch/arenaD/v361.log`）；源码锁反证：把编排层文件换回 HEAD 版，锁报 `composables/substatOptimizer.ts`。
+  3. `liveInteractions.ts` 不做（已单源）。
+- **下一步**：第 359 轮交接「下一步 2」剩下的 `runArchiveDeploy.ts` / `runArchiveImport.ts`（归档部署到 configStore 时的槽位 / Boss / 机制设置清理）与 `pullPlannerEngine.ts`——先读认领表，arena-C 可能已认领。
+- **未决项**：store 推荐的「百暴」起点不带队友 buff（不改，重开条件见 §8 第 361 行）。
+- **回退点**：`git revert 08acb322`（零差重构）。`.zc/perf/zd.sh` 的 `ZD_REPO` 改动不在 git 里，删掉那一行的 `${ZD_REPO:-…}` 即回退。
+
+**2026-09-29 arena-B 第 1–4 轮**（抽卡规划线：孤儿 WIP 收养 `d3443e39`、收入按版本日历 `724f37cf`、购买窗口上界 `c8b76d2f`、购买阶梯数据化 `bf868983`）：已结项，抽卡规划线剩下的都待用户裁决（提案 §6「完全下位」标签、§5.5 阶梯内容）。原交接全文：`git show 08acb322~1:docs/mcp-worker-task-queue.md` 的 §2b。
 
 ## 2. 最近一轮交接（每轮替换本节）
 
