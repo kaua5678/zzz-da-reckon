@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 384 轮**：金档写入入口审计（不动）+ CC-354 删内部手动 refreshTrigger `ca616a22`——原 §2；全文 `git show e7095d6b:docs/mcp-worker-task-queue.md` 的 §2。
+
 **2026-10-02 arena-E 第 383 轮**：CC-353 view 层试算循环源码锁（analysisScenario.test ④c）`44bddfb3`——原 §2；全文 `git show 1efb9dce:docs/mcp-worker-task-queue.md` 的 §2。
 
 **2026-10-02 arena-E 第 382 轮**：CC-352 实战部署页当期牌自动选择迁独立场景 `7967311a`——原 §2；全文 `git show d01283dd:docs/mcp-worker-task-queue.md` 的 §2。
@@ -146,13 +148,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 384 轮（lane arena-E，开工 03:00；无并行会话；HEAD `1efb9dce`；REQUIREMENTS.md 无新条目）：金档入口审计（不动）+ CC-354 删内部手动 refreshTrigger `ca616a22`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **金档审计结论**：所有写入都经 `setCinemaLevel` / `setWEngineModLevel` / `setWEngine`，无口径分叉 ⇒ 按 r383 规则不合并（r6 §8 第 384 行）。
-- **CC-354 做到哪**：store 8 处 + positionCompare×2 + timeWeightAllocation×2 + runArchiveDeploy + RunArchivePage 的 `refreshTrigger++`/`triggerRefresh()` 已删；`calcOutputMemo.test.ts` ⑤ 锁住（只允许 store 内 `triggerRefresh` 函数体）。
-- **验证**：零差 `zd.sh r384` DIFF 0/0（ROWS/DUMP）；定向测试（calcOutputMemo / positionCompare / timeWeight / runArchive / stores）通过；全量 verify 见 `/home/kaua/calc-arch/arenaE/verify384.log`。
+**第 385 轮（lane arena-E，开工 03:10；无并行会话；HEAD `e7095d6b`；REQUIREMENTS.md 无新条目）：CC-355 删掉 `refreshTrigger` / `triggerRefresh` 与三个 no-op 刷新按钮 `af660ce4`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **核实依据**：合轴率弹窗输入即写 store；资源页列表是 computed；记忆化键不含计数器 ⇒ 按钮只会命中同一结果。store 外非响应式开关生产零调用。详见卡表 CC-355。
+- **做到哪**：`src/views/ResultPage.vue`（2 个按钮）、`src/views/ResourceUtilizationPage.vue`（1 个）、`src/stores/config.ts`、`src/composables/useResourceCalc.ts`、5 个测试；`calcOutputMemo.test.ts` ⑤ 锁住。
+- **验证**：零差 `zd.sh r385` DIFF 0/0；受影响 6 个测试文件 34 例通过；全量分段跑：check-guards～verify:recording 通过（`verify385.log`，跑到 vitest 时 WSL 重启被打断）、`vitest run --maxWorkers=4` 454 文件 / 16 跳过 / 4151 例通过（`verify385-test.log`）、`npm run build` 成功（`verify385-build.log`）、check-guards 25 过。没做浏览器点验（只删按钮，模板结构 diff 已人工核过）。
 - **开放项（沿用 r379，待用户裁决，勿自行改）**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（卡表 CC-349）。
-- **下一步（可直接开工，先查后定）**：**用户「刷新」按钮在记忆化下是 no-op**（ResultPage.vue 两处、ResourceUtilizationPage.vue 一处 `@click="configStore.triggerRefresh"`）。先在浏览器 / 测试里确认点击前后 `getCalcOutputMemoStats()` 只增 hits、结果不变 ⇒ 删按钮 + store 的 `refreshTrigger`/`triggerRefresh` + `CALC_MEMO_KEY_EXCLUDE` 里那一项 + `useResourceCalc.ts:~111` 的读取；同时改 `ccD3D1Verdict` / `comboAlignRelief` / `specTeamBuffDeadControl` / `allAgentsGuards` 测试里的 bump（多半也可直接删）。若发现记忆化关闭开关（`setCalcOutputMemoEnabled(false)`）场景下按钮仍有意义，则保留并在按钮旁注释。
-- **已知坑**：源码判据的正则会匹配函数声明本身（`function triggerRefresh(`），用 `(?<!function )` 排除；做完先故意让它红一次确认有牙。
+- **下一步（可直接开工，先查后定）**：**`activeTab` / `selectedSlot` 移出 config store**。它们是纯 UI 态，引擎层（core / mechanics / composables/resourceCalc）零引用，只因住在 config store 里才需要 `CALC_MEMO_KEY_EXCLUDE` 特判、出生态键表登记、场景克隆时白白复制。
+  引用面（r385 量）：`activeTab` 生产 5 文件 9 处（CalculatorView / LogicEditorPage / AppHeader / config.ts / useResourceCalc）；`selectedSlot` 生产 4 文件 41 处（主要 TeamConfigPage、DebugPage）；测试各 1～2 个文件。
+  做法：先 `grep -nw "selectedSlot\|activeTab" src/stores/config.ts` 看 store 内部有没有 action 读写它们（例如设角色时顺带切槽）——**有就先决定这些 action 归谁**；然后新建 `src/stores/ui.ts`（pinia，两个 ref）或就近放组件局部态，改调用点，删 `CALC_MEMO_KEY_EXCLUDE`（键 = 整个 `$state`，护栏注释同步改）。
+  注意：若有持久化 / 导出（grep `\$state` 与 `localStorage`）把 `activeTab` 带进去，搬家后行为要保持。判据：做完 memo 键无排除表、`calcOutputMemo.test.ts`「纯 UI 态不失效」用例改成断言 UI store 变化不影响 config `$state`。不值得做的信号：若 store 内部 action 大量依赖 `selectedSlot`（>5 处），搬家只是挪复杂度 ⇒ 不做，在 r6 §8 记一句。
+- **环境坑（r385 03:15 起实测）**：① WSL VM 在每次 `wsl_exec` 返回后几秒内就关机，`setsid nohup … &` 的后台 verify 会被一起杀掉（日志停在 vitest `RUN` 行、`/proc/uptime` 十几秒）⇒ 长任务必须**前台**跑、单次 ≤ 285s，verify 拆段：`npm run check-guards && … verify:recording` 一段、`timeout 270 npx vitest run --maxWorkers=4` 一段（约 205s）、`npm run build` 一段。② 默认 worker 数（16 核）跑全量 vitest 约 20s 后 VM 直接消失（连后续 echo 都不输出），`--maxWorkers=4` 稳定、内存峰值约 3.2 GB / 9.9 GB。
+- **已知坑**：删测试里的 `refreshTrigger++` 前先看它是否在给**非响应式**开关（如 `setRowFastPathsEnabled`）强制重算；本轮那处恰好因上一步写回 state 已变脏，不是普遍规律。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
