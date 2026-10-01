@@ -3,10 +3,10 @@
  * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；teamTimeline.ts 原样转出公开名，导入方不用改。
  */
 import { useConfigStore } from '@/stores/config'
-import { applyBossLayerBuffs } from '@/composables/runArchiveDeploy'
+import { applyBossRoom } from '@/composables/bossRoom'
 import { useCatalogStore } from '@/stores/catalog'
 import { VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
-import type { BossPreset, PhaseBossBrief, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, PhaseView } from '@/types/bossPreset'
 import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION, allocateTopUpFilm } from '@/data/filmEconomy'
 import type { TimelineAxisNode } from './teamTimeline'
 import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
@@ -83,20 +83,6 @@ export interface FilmSimulationOptions {
 export interface FilmSimulationResult {
   points: FilmSimPoint[]
   stats: { nonConverged: number; durationMs: number }
-}
-
-/** 期视图里选定 Boss 的关卡固有 buff → 写入全局 Buff 表（先清旧 layer-buff:，复用 runArchiveDeploy.applyBossLayerBuffs 唯一实现） */
-function applyPeriodLayerBuffs(
-  configStore: ReturnType<typeof useConfigStore>,
-  periodViews: PhaseView[],
-  periodId: string,
-  boss: BossPreset,
-) {
-  // 无论 view/brief 是否存在都先清旧（applyBossLayerBuffs 内部清旧 + brief 为空只清不写）
-  const view = periodViews.find(v => v.phaseId === periodId)
-  const brief = view ? ([view.criticalAssault, ...(view.defense ?? [])].filter(Boolean) as PhaseBossBrief[])
-    .find(b => b.presetId === boss.id) ?? null : null
-  applyBossLayerBuffs(configStore, brief)
 }
 
 /** 下一个待购金步的成本（主C 优先顺序）：影画 = 命座金，音擎（本体/精炼）= 音擎金 */
@@ -183,8 +169,8 @@ export async function computeFilmSimulation(calc: Calc, opts: FilmSimulationOpti
       const phase = opts.boss.phases.find(p => p.phaseId === node.id)
         ?? opts.boss.phases.find(p => p.begin.slice(0, 10) === (node.date ?? '').slice(0, 10))
       if (!phase) continue
-      configStore.applyBossPreset({ id: opts.boss.id }, phase, opts.boss.monster, opts.boss.defaults)
-      applyPeriodLayerBuffs(configStore, opts.periodViews, node.id, opts.boss)
+      // CC-342：房间上下文唯一写入口（brief 按 phase.phaseId 查；原按 node.id 查，只在上面的按日期兜底分支里两者可能不同）
+      applyBossRoom(configStore, opts.boss, phase, opts.periodViews)
       // ---- 经济：收入 → 存/花 ----
       const ratio = Math.max(0, Math.min(1, opts.spendRatio))
       bank += filmPerPeriod * (1 - ratio)

@@ -12,6 +12,7 @@
  */
 import { useConfigStore } from '@/stores/config'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
+import { applyBossRoom } from '@/composables/bossRoom'
 import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedSWengineId } from '@/composables/limitedGold'
@@ -32,6 +33,7 @@ export interface EngineOracleOptions {
   /** 全部 Boss 预设（按 bossRoom.bossId 定位该期相位——一期 3 房是 3 个不同 Boss，
    *  单预设只覆盖自己的出场期） */
   bosses: BossPreset[]
+  /** 期视图（关卡固有 buff 的数据源；逐房经 bossRoom#applyBossRoom 写入，缺该期 ⇒ 该房无关卡 buff） */
   periodViews: PhaseView[]
   /** 候选池（agentId 列表；含常驻 S 与 A 级——成型号起点的免费人；限定 S 的持有态由 holdings 决定） */
   candidatePool: string[]
@@ -146,7 +148,8 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     if (!boss) return false
     const phase = boss.phases.find(p => p.phaseId === bossRoom.phaseId)
     if (!phase) return false
-    configStore.applyBossPreset({ id: boss.id }, phase, boss.monster, boss.defaults)
+    // CC-342：敌人参数 + 该期关卡固有 buff（修前只切敌人：periodViews 从不读，用户现场的 layer-buff: 行泄漏到每一房）
+    applyBossRoom(configStore, boss, phase, opts.periodViews)
     return true
   }
   const applyPeriodContext = (period: PlannerPeriod) => {

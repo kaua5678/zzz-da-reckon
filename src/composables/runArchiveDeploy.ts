@@ -13,6 +13,7 @@ import { useConfigStore, hasCustomInteractionDefaults, interactionBaselineFor } 
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
 import { phaseBuffRows } from '@/utils/phaseBuff'
+import { applyBossRoom, findBossBrief } from '@/composables/bossRoom'
 
 export interface ResolvedBossApply {
   preset: BossPreset
@@ -33,26 +34,9 @@ export function resolveBossApply(
   if (!preset) return null
   const phase = boss.phaseId ? preset.phases.find((p) => p.phaseId === boss.phaseId) : undefined
   if (!phase) return null
-  const view = phaseViews.find((v) => v.phaseId === phase.phaseId)
-  const briefs = view ? [...(view.defense ?? []), ...(view.criticalAssault ? [view.criticalAssault] : [])] : []
-  const brief = briefs.find((b) => b.presetId === preset.id || String(b.monsterId) === preset.id) ?? null
+  // CC-342：brief 查找走唯一实现（原 `monsterId === preset.id` 兜底在全部 159 个 brief 上命中 0 次，已删）
+  const brief = findBossBrief(phaseViews, phase.phaseId, preset.id)
   return { preset, phase, monster: preset.monster, defaults: preset.defaults, brief }
-}
-
-/** 写关卡固有 buff（layer_buff）——唯一事实源：先清旧（前缀 layer-buff:），再写当前 Boss 的。teamTimeline.applyPeriodLayerBuffs / BossSelectCard.applyBoss 同源调用（2026-09-01 销号债务）。 */
-export function applyBossLayerBuffs(
-  configStore: ReturnType<typeof useConfigStore>,
-  brief: PhaseBossBrief | null,
-): void {
-  for (let i = configStore.globalBuffs.length - 1; i >= 0; i--) {
-    if (String(configStore.globalBuffs[i].id).startsWith('layer-buff:')) configStore.globalBuffs.splice(i, 1)
-  }
-  if (!brief) return
-  // CC-341：牌 → 行走唯一映射 phaseBuffRows，`cond`（特性限定 / 人数分档）随行写入、由管线按当前队伍解析
-  // （修前丢 cond ⇒ 如 40003 在 690431 / 690441 的「强攻限定」暴伤 +60% 等对非强攻队也满额生效）
-  for (const card of brief.bossBuffs ?? []) {
-    configStore.globalBuffs.push(...phaseBuffRows(card, e => `layer-buff:${brief.monsterId}:${e.stat}:${e.value}`, `关卡·${brief.name}`))
-  }
 }
 
 /**
@@ -69,7 +53,7 @@ export function applyPeriodBuff(
     if (String(configStore.globalBuffs[i].id).startsWith('period-buff:')) configStore.globalBuffs.splice(i, 1)
   }
   if (!card || card.testOnly) return false
-  // CC-341：同 applyBossLayerBuffs，`cond` 随行写入（修前丢 cond ⇒ 「异常 2/3 名」按满编档、特性限定对任何队都生效）
+  // CC-341：同 bossRoom#applyBossLayerBuffs，`cond` 随行写入（修前丢 cond ⇒ 「异常 2/3 名」按满编档、特性限定对任何队都生效）
   const rows = phaseBuffRows(card, e => `period-buff:${phaseId}:${e.stat}:${e.value}`, `当期·${card.title || '(未命名)'}`)
   configStore.globalBuffs.push(...rows)
   return rows.length > 0
@@ -119,8 +103,7 @@ export function applyDeployConfig(
   if (deploy.boss) {
     const resolved = resolveBossApply(deploy.boss, presets, phaseViews)
     if (resolved) {
-      configStore.applyBossPreset({ id: resolved.preset.id }, resolved.phase, resolved.monster, resolved.defaults)
-      applyBossLayerBuffs(configStore, resolved.brief)
+      applyBossRoom(configStore, resolved.preset, resolved.phase, phaseViews) // CC-342：房间上下文唯一写入口
     }
   }
 }

@@ -134,7 +134,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSpace, NSelect, NButton, NTag, NCollapse, NCollapseItem } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
-import { applyBossLayerBuffs } from '@/composables/runArchiveDeploy'
+import { applyBossRoom } from '@/composables/bossRoom'
 import BossCard from './BossCard.vue'
 import { bossBuffEffectLabel as effectLabel } from '@/utils/bossEffectLabel'
 import type { BossPreset, BossPresetFile, BossPresetPhase, PhaseBossBrief, PhaseView } from '@/types/bossPreset'
@@ -274,8 +274,7 @@ function applyBoss(brief: PhaseBossBrief) {
   if (!preset || !v) return
   const phase = preset.phases.find(p => p.phaseId === v.phaseId && p.zoneKey === brief.zoneKey)
   if (!phase) return
-  configStore.applyBossPreset({ id: preset.id }, phase, preset.monster, preset.defaults)
-  applyBossLayerBuffs(configStore, brief)
+  applyBossRoom(configStore, preset, phase, [v]) // CC-342：同一 (phaseId, presetId) ⇒ 查回的就是被点的 brief
 }
 
 // ========== 全部 Boss 分组（折叠区） ==========

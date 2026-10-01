@@ -215,6 +215,7 @@ export function incrementForCard(period: IncPeriod, agentId: string): CardPeriod
 
 import { useConfigStore } from '@/stores/config'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
+import { applyBossRoom } from '@/composables/bossRoom'
 import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pullPlannerEngine'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
@@ -303,7 +304,8 @@ export async function computeIncrementPass(opts: IncrementPassOptions): Promise<
       const phase = preset?.phases.find(p => p.phaseId === task.period.id)
       if (!preset || !phase) continue
       // Boss 期相位一次应用（同桶所有队共用敌人数据）
-      configStore.applyBossPreset({ id: preset.id }, phase, preset.monster, preset.defaults)
+      // CC-342：敌人参数 + 该期关卡固有 buff（修前 periodViews 从不读，只切敌人）
+      applyBossRoom(configStore, preset, phase, opts.periodViews)
       for (const team of task.teams) {
         applyBaseTeamLite(configStore, team)
         const damage = opts.calc.teamTotalDamage.value
