@@ -96,18 +96,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 355 轮（lane arena-A，承接第 354 轮下一步 1–2）：CC-336 诺姆赠链与琉音赠大同槽共存覆写修复 + 赠行构造、Spec 运行时与倍率查表单源化（代码 `f4c32bef`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `c3bb91f3`，工作区干净）。**
+**第 356 轮（lane arena-A，承接第 355 轮下一步 1–2）：CC-337 `calcPanel` 局外总回能出口盖章、轴块招式能量成本类型化与跨模块单源化（代码 `f0c5b4b8`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `7dca5daf`，工作区干净）。**
 
-- **CC-336（`f4c32bef`，同槽赠行共存修复 + 编排层/Spec 运行时单源化，全量 414 条 golden 零差）**：
-  1. **诺姆赠链（`src/composables/resourceCalc/chainGift.ts`）与琉音赠大（`ultimatePromote.ts`）同槽共存修复 + `buildGiftRow` 单源构造**：
-     - 引擎 `assembleSlot.ts` 先推入琉音赠大占位行（`source: 'gift'`，无 `chainGift`），再推入诺姆赠链占位行（`source: 'gift', chainGift: true`）。此前 `chainGift.ts` 在回填分支用 `findIndex(e => e.chainGift || e.source === 'gift')` 查找占位行，导致同一目标槽同时收到琉音赠大与诺姆赠链时，`applyChainGift` 误命中索引 0 的琉音赠大行并将其覆写为诺姆连携倍率，而真正的 `chainGift: true` 行留在 0 倍率。
-     - 修复：`chainGift.ts` 改为 `findIndex(e => Boolean(e.chainGift))`，`ultimatePromote.ts` 改为 `findIndex(e => e.source === 'gift' && !e.chainGift && e.moveId === ultimateMoveId)`；两处统一先调 `buildGiftRow` 构造 `giftRow` 再用于 `giftIdx >= 0` 覆写或 `giftIdx < 0` 追加（删除两份 13 字段手写 `giftPatch` 副本）；`convergence.ts` 中 `rrShown` 直接复用 `adj2 ?? adj1 ?? rr`，消除对 `applyUltimatePromote + applyChainGift` 的重复调用；`giftMoveTimeLedger.test.ts` 新增 `['1021', '1571', '1481']` 同槽共存回归单测。
-  2. **Spec 运行时（`src/specs/mechanics.ts`、`src/specs/resources.ts`）单源化与 `resolveEventCount` 口径对齐**：
-     - `mechanics.ts`：抽出 `isSpecEventEnabled` 供 `buildSpecAnomalyEvents` 与 `buildSpecEventExecutions` 共用；`specToMechanicModule.buildCharConfig` 复用 `resolveCarrierMoveId`；`resolveEventCount` 统一支持 `counts[event.countField ?? event.id]`（使 `buildSpecAnomalyEvents` 与 `buildSpecEventExecutions` 口径一致，`mechanics.test.ts` 补回归单测）。
-     - `resources.ts`：`resolveGain` 增加可选 `countOverride` 参数，`computeOneResource.feedbackGainRules` 直接委托 `resolveGain(rule, cfg, state, context, countOverride)`。
-  3. **`src/composables/resourceCalc/helpers.ts` 倍率查表归一与 `vue-tsc -b` 清理**：
-     - `extractSkillExecutions` 改调 `findMoveById(skills, exec.moveId)`（删除 11 行手写双层循环），并在 `enrichExecutionPlan` 与 `extractSkillExecutions` 内用局部 `fusedOf` 收拢 7 处 `fusedRowValue ?? getRowValue`；同步清理 `alice.ts` / `evelyn.ts` / `starlightBilly.ts` 的 3 处 `vue-tsc -b` 类型告警。
-- **验证**：`npm run check`（`vue-tsc -b --noEmit` 0 错 + 全量 442 个测试文件 / 4073 passed）通过；`timeGolden.test.ts` 414 条零差通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert f4c32bef`。
+- **CC-337（`f0c5b4b8`，`calcPanel` 局外总回能盖章 + 轴块成本类型化 + 跨模块单源化，全量 414 条 golden 零差）**：
+  1. **`calcPanel` 局外总回能（`energyRegenOutOfCombat`）出口盖章 + `calcEnergyRegenTotal` 单一事实源**：
+     - 此前 `emptyPanel()` 将 `energyRegenOutOfCombat` 置为 `1.2`，仅 `computePanelPhases` 在 `calcPanel` 后事后盖章，其余 3 个生产调用点（`computeEntrySnapshotPanel`、`buildTeammateBuffSourceContext`、`computeNoSubstatPanel`）及直接调 `calcPanel` 的调用方拿到的 `energyRegenOutOfCombat` 恒停留在 `1.2`。
+     - 修复：在 `src/data/agentPanelStats.ts` 定义并导出 `calcEnergyRegenTotal` / `calcFlashEnergyRegenTotal`（`src/core/buff.ts` re-export，遵守 `specsRuntimeDeps.test.ts` 分层锁），在 `src/core/panel.ts#calcPanel` 的 `outOfCombatOf` 内统一盖章 `p.energyRegenOutOfCombat = calcEnergyRegenTotal(p, 1.2)`（`inCombat` 经 `applyBuffs` 浅拷贝继承），并在 `buff.ts`、`specs/runtime.ts`、`mechanics/agents/burnice.ts` 复用；`panelPhases.ts` 抽出 `applyDefaultCinemaSkillLevelBonus` 归一 `computePanelPhases` 与 `computeEntrySnapshotPanel` 的 3/5 命技能等级加成。
+  2. **驱动盘门槛与 `{attribute}` 模板单源化（`src/core/buff.ts` ↔ `src/core/inCombatBuffs.ts`）**：
+     - 从 `buff.ts` 导出 `discRequirementMet` 与 `resolveDiscStatTemplate` 供 `inCombatBuffs.ts#collectInCombatTeamBuffs` 直接复用，删除 `discTeamRequirementMet`、内联 `{attribute}` 替换与 `parseStatRequirement` 别名。
+  3. **轴块招式能量成本类型化（`src/core/resource/moveLookup.ts` ↔ `src/composables/resourceCalc/roundInputs.ts`）**：
+     - 抽出并导出 `parseMoveEnergyCost(energyCostRaw)`（经 `src/core/resource.ts` re-export），`findExSpecial` 与 `buildStackAxes` 共用同一实现——防止轴块将替代资源招式（如 `Sharpness Cost: 60`）误作能量扣减。
+  4. **编排层与展示层跨模块重复管道归一**：
+     - `useResourceCalc.ts#anomalyDamageEvents` 改读 `STANDARD_DOT_CONFIG` 与 `ANOMALY_SINGLE_HIT_MULTIPLIER`（与 `damagePoolAnomaly` 同源）；`positionCompare.ts` 导出 `computePerSlotBuildUp` 供 `ResultPage.vue#teamOverview` 复用并删 `applyAxisBinding` 前冗余轴恢复；`liveInteractions` / `measureOperationalDifficulty` 支持可选 `preset` 并由 `difficultyDescent.ts` 直接委托（修复带 `counterAssistGroups` 的 Boss 递降难度漏计 `counterAssist`）；`teamCompare.ts` 导出 `applyGoldAllocationToStore` 归一 7 处金档写入；`impactVars.ts` 以 `RESISTANCE_VAR_ELEMENTS` 归一 6 种属性抗性读写。新增 `src/core/__tests__/cc337SingleSource.test.ts`（5 例）。
+- **验证**：`npm run check`（`vue-tsc -b --noEmit` 0 错 + 全量 443 个测试文件 / 4078 passed）通过；`timeGolden.test.ts` 414 条零差通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert f0c5b4b8`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
