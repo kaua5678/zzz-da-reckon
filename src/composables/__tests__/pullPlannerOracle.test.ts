@@ -39,7 +39,9 @@ describe('planner free-member chain', () => {
       const specialty = catalog.getAgent(id)!.specialty
       counts.set(specialty, (counts.get(specialty) ?? 0) + 1)
     }
-    expect([...counts.values()].every(n => n <= 1)).toBe(true)
+    // 每职业 1 名；总数不足一期 3 房 × 3 人时按职业轮转补第 2 名（arena-D 第 365 轮，PLANNER_MIN_FREE_MEMBERS）
+    expect([...counts.values()].every(n => n <= 2)).toBe(true)
+    expect(representatives.length).toBeGreaterThanOrEqual(9)
     expect(new Set(representatives).size).toBe(representatives.length)
   })
 

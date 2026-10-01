@@ -21,6 +21,7 @@ import {
   createEngineOracle,
   freeMemberPool,
   freePoolRepresentatives,
+  PLANNER_MIN_FREE_MEMBERS,
   holdingStateFor,
   plannerTestServerVersions,
   runPullPlanner,
@@ -194,7 +195,6 @@ describe('pullPlannerEngine · 规划集成（截短期数）', () => {
       maxPeriods: 2,
       initialBank: 30000,
       beamWidth: 2,
-      assignmentTopM: 8,
     })
     expect(res.plan.totalScore).toBeGreaterThan(0)
     expect(res.plan.steps).toHaveLength(2)
@@ -229,7 +229,6 @@ describe('pullPlannerEngine · 用户钉子（VCG 反事实）', () => {
       maxPeriods: 1,
       initialBank: 60000,
       beamWidth: 2,
-      assignmentTopM: 8,
       withVcg: true,
     } satisfies Parameters<typeof runPullPlanner>[0]
     const withoutBudget = await runPullPlanner({ ...runOpts, initialBank: 0, withVcg: false })
@@ -247,4 +246,18 @@ describe('pullPlannerEngine · 用户钉子（VCG 反事实）', () => {
     expect(positive.length).toBeGreaterThan(0)
     expect(res.plan.totalSpent).toBeGreaterThan(0)
   }, 400000)
+})
+
+describe('免费人下限（arena-D 第 365 轮）', () => {
+  it('每职业 1 名代表也至少凑满一期 3 房 × 3 人（修前 8 人 ⇒ 0 持有时第 3 房恒 0 分）', async () => {
+    await setupHarness(['', '', ''])
+    const catalog = useCatalogStore()
+    const all = catalog.displayAgents.map(a => a.id)
+    const reps = freePoolRepresentatives(all, catalog, 1)
+    expect(PLANNER_MIN_FREE_MEMBERS).toBe(9)
+    expect(reps.length).toBeGreaterThanOrEqual(PLANNER_MIN_FREE_MEMBERS)
+    expect(new Set(reps).size).toBe(reps.length)
+    // 每职业 2 名时本来就够，不受补足逻辑影响（顺序 = 按职业分组，与修前一致）
+    expect(freePoolRepresentatives(all, catalog, 2).length).toBeGreaterThanOrEqual(PLANNER_MIN_FREE_MEMBERS)
+  }, 60000)
 })

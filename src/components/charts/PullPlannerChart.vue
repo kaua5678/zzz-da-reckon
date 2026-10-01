@@ -268,7 +268,6 @@ async function runPlanner() {
       initialBank: ppInitialBank.value,
       filmPerVersion: ppFilmPerVersion.value,
       beamWidth: ppBeamWidth.value,
-      assignmentTopM: 6,
       withVcg: ppWithVcg.value,
       onProgress: p => { ppProgress.value = p },
     })

@@ -19,7 +19,7 @@
  * 卢西娅式「单拿弱配命破 C 强」的边际不减结构恰是 beam 的保留多样性所要对抗的）。
  * 状态 = (持有集, 银行菲林)；每版本节点展开「买 X（窗口内可购的下一档）/ 攒着」分支；
  * 节点价值 = 该期 3-Boss 不重叠组队的 oracle 最优解（内层，见 engineOracles 的
- * pickPeriodAssignment——每 Boss Top-M 队伍的三维不重叠匹配）。
+ * pickPeriodAssignment——3 房不重叠匹配的分支定界精确解）。
  *
  * 价值归因：VCG 反事实差分（Vickrey 1961 / Clarke 1971 / Groves 1973 的边际外部性口径）——
  * 卡 c 的价值 = V(规划器 | c 可购) − V(规划器 | c 永不可购)，重规划非禁用。
@@ -145,8 +145,6 @@ export interface PlannerOptions {
   versionStartDates: string[]
   /** beam 宽度 */
   beamWidth: number
-  /** 内层每 Boss 取前 M 候选做不重叠匹配 */
-  assignmentTopM: number
   /** 组队 oracle（引擎注入；测试可注入假 oracle） */
   oracle: TeamOracle
   onProgress?: (p: { pct: number; text: string }) => void
@@ -192,86 +190,55 @@ export interface PeriodAssignment {
 }
 
 /**
- * 单期不重叠组队：每 Boss 取 oracle 候选，DFS 选「每房间一队、9 人不重叠」的分数最大
- * 组合（早期数据不全的期房间数 < 3 也成立）。
+ * 单期不重叠组队：每房一队（或空房 0 分）、跨房不重叠，总分最大的**精确解**（分支定界 DFS）。
+ * 早期数据不全的期房间数 < 3 也成立；凑不出满编时自动留空房（取总分最大的部分解）。
  *
- * topM 截断用「分桶多样化」：纯分数序截断会让前 M 名全含同一个最强角色（真实引擎下
- * 即「每个 Boss 的最优队都想要主C」），第 2 房起全部重叠 → DFS 无解。分桶 = 按队伍
- * 首成员（最强位）分桶、每桶取桶内前 ceil(M/桶数)——保证不同「主C」的队都有代表，
- * 不重叠匹配才有可行解空间。桶内仍按分数降序。
+ * arena-D 第 365 轮：原实现先把每房候选截断成 topM（按首成员分桶多样化），无解再放大到 topM×4，再不行退回逐房贪心。
+ * 截断会把唯一可行的划分截掉：免费人刚好 9 人时，满编划分只能用到排名靠后的队，探针里 3 房中第 3 房恒为 0 分。
+ * 现在候选只有「主C × C(6,2) 队友」量级（每房 ≤ 数百队），不需要截断：候选按分降序，
+ * 上界 = 已选分 + 剩余各房最高分，当前候选加上界不超过已知最优就剪掉该房后面所有候选。空房作为每房最后一个选项（0 分）。
  */
 export function pickPeriodAssignment(
   oracle: TeamOracle,
   period: PlannerPeriod,
   holdings: Record<string, number>,
-  topM: number,
 ): PeriodAssignment {
-  // 候选池：首试用「分桶多样化截断」；DFS 无解（桶代表队高度重叠，3 房选不出 9 个
-  // 不重叠的人——实测同组三人互相是各桶 top1）则扩大到 topM×4 重试（仍远小于全量）。
-  const rawCands = period.bosses.map(b => oracle.candidates(b, holdings))
-  const diverse = (raw: Array<{ team: [string, string, string]; score: number }>, limit: number) => {
-    if (raw.length <= limit) return raw
-    const byLead = new Map<string, Array<{ team: [string, string, string]; score: number }>>()
-    for (const c of raw) {
-      const lead = c.team[0]
-      const arr = byLead.get(lead) ?? []
-      arr.push(c)
-      byLead.set(lead, arr)
+  type Cand = { team: [string, string, string]; score: number }
+  const cands: Cand[][] = period.bosses.map(b => [...oracle.candidates(b, holdings)].sort((x, y) => y.score - x.score))
+  const n = cands.length
+  /** suffixBest[r] = 第 r 房起各房最高分之和（上界；空房 0 分 ⇒ 至少 0） */
+  const suffixBest = new Array<number>(n + 1).fill(0)
+  for (let r = n - 1; r >= 0; r--) suffixBest[r] = suffixBest[r + 1] + Math.max(0, cands[r][0]?.score ?? 0)
+  const EMPTY: Cand = { team: ['', '', ''], score: 0 }
+  let bestScore = -1
+  let bestPicks: Cand[] = []
+  const chosen: Cand[] = []
+  const used = new Set<string>()
+  const dfs = (room: number, score: number) => {
+    if (room === n) {
+      if (score > bestScore) { bestScore = score; bestPicks = [...chosen] }
+      return
     }
-    const perBucket = Math.max(1, Math.ceil(limit / Math.max(1, byLead.size)))
-    const out: Array<{ team: [string, string, string]; score: number }> = []
-    for (const arr of byLead.values()) out.push(...arr.slice(0, perBucket))
-    return out.sort((a, b) => b.score - a.score).slice(0, limit)
-  }
-  /** 一次 DFS 尝试；返回最优（无解 = null） */
-  interface AttemptResult { bestTeams: Array<[string, string, string]>; bestScore: number }
-  const attempt = (cands: Array<Array<{ team: [string, string, string]; score: number }>>): AttemptResult | null => {
-    let best: AttemptResult | null = null
-    const used = new Set<string>()
-    const chosen: Array<[string, string, string] | null> = period.bosses.map(() => null)
-    const dfs = (room: number, score: number) => {
-      if (room === period.bosses.length) {
-        if (best == null || score > best.bestScore) {
-          // 闭包内赋值闭包外变量：TS 控制流分析会把直接 let 视为 never，用整对象赋值绕开
-          best = { bestScore: score, bestTeams: chosen.map(c => (c ?? ['', '', '']) as [string, string, string]) }
-        }
-        return
-      }
-      for (const c of cands[room]) {
-        if (c.team.some(m => used.has(m))) continue
-        c.team.forEach(m => used.add(m))
-        chosen[room] = c.team
-        dfs(room + 1, score + c.score)
-        chosen[room] = null
-        c.team.forEach(m => used.delete(m))
-      }
+    for (const c of cands[room]) {
+      if (score + c.score + suffixBest[room + 1] <= bestScore) break // 降序 ⇒ 后面只会更低
+      if (c.team.some(m => used.has(m))) continue
+      c.team.forEach(m => used.add(m))
+      chosen.push(c)
+      dfs(room + 1, score + c.score)
+      chosen.pop()
+      c.team.forEach(m => used.delete(m))
     }
-    dfs(0, 0)
-    return best
-  }
-  let result: AttemptResult | null = attempt(rawCands.map(raw => diverse(raw, topM)))
-  if (!result) result = attempt(rawCands.map(raw => diverse(raw, topM * 4)))
-  if (!result) {
-    // 兜底贪心：桶截断候选无解（小池完美划分稀疏）时，逐房取「与已用人不重叠的最高分队」
-    // ——保证有解（DFS 最优性让位于可行性；beam 下一期仍会重新搜索）。
-    const used = new Set<string>()
-    const teams: Array<[string, string, string]> = []
-    for (const raw of rawCands) {
-      const c = raw.find(c => !c.team.some(m => used.has(m)))
-      if (c) {
-        c.team.forEach(m => used.add(m))
-        teams.push([...c.team] as [string, string, string])
-      } else {
-        teams.push(['', '', ''])
-      }
+    if (score + suffixBest[room + 1] > bestScore) {
+      chosen.push(EMPTY)
+      dfs(room + 1, score)
+      chosen.pop()
     }
-    result = { bestTeams: teams, bestScore: -1 }
   }
-  const picks = (result?.bestTeams ?? period.bosses.map(() => ['', '', ''] as [string, string, string])).map((team, i) => ({
-    bossRoom: period.bosses[i],
-    team,
-    score: result ? (rawCands[i].find(c => c.team.join() === team.join())?.score ?? 0) : 0,
-  }))
+  dfs(0, 0)
+  const picks = period.bosses.map((bossRoom, i) => {
+    const c = bestPicks[i] ?? EMPTY
+    return { bossRoom, team: [...c.team] as [string, string, string], score: c.score }
+  })
   return {
     periodId: period.id,
     picks,
@@ -397,7 +364,7 @@ export function planPullStrategy(opts: PlannerOptions): PlannerResult {
 
       // 每个分支做期结算并构造 PlannerStep
       for (const br of branches) {
-        const assignment = pickPeriodAssignment(wrapOracle, period, br.holdings, opts.assignmentTopM)
+        const assignment = pickPeriodAssignment(wrapOracle, period, br.holdings)
         const step: PlannerStep = {
           periodId: period.id,
           periodLabel: period.label,

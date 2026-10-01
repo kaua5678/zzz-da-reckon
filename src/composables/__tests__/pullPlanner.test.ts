@@ -90,7 +90,6 @@ function opts(over: Partial<PlannerOptions> = {}): PlannerOptions {
     // 真实数据是约 3 期一个版本，见文末 versionFilmGrants 用例）
     versionStartDates: Array.from({ length: 12 }, (_, i) => date(i * 14)),
     beamWidth: 8,
-    assignmentTopM: 10,
     oracle: fakeOracle(),
     ...over,
   }
@@ -147,7 +146,7 @@ describe('pullPlanner · 每期不重叠组队（内层 DFS）', () => {
     const teams3 = [T('W1', 'W2', 'W3', 52000), T('W1', 'W2', 'X1', 30000)]
     const oracle = roomOracle([teams1, teams2, teams3])
     const p = period(0, [100, 100, 100])
-    const res = pickPeriodAssignment(oracle, p, {}, 10)
+    const res = pickPeriodAssignment(oracle, p, {})
     expect(res.totalScore).toBe(60000 + 55000 + 52000)
     const allMembers = res.picks.flatMap(x => x.team)
     expect(new Set(allMembers).size).toBe(9) // 9 人互不重叠
@@ -161,7 +160,7 @@ describe('pullPlanner · 每期不重叠组队（内层 DFS）', () => {
       [T('Z1', 'Z2', 'Z3', 50000)],
       [T('W1', 'W2', 'X1', 58000), T('W1', 'W2', 'X9', 40000)],
     ])
-    const res = pickPeriodAssignment(oracle, period(0, [1, 1, 1]), {}, 10)
+    const res = pickPeriodAssignment(oracle, period(0, [1, 1, 1]), {})
     expect(res.totalScore).toBe(60000 + 50000 + 40000)
   })
 })
@@ -202,8 +201,8 @@ describe('pullPlanner · beam 主流程不变量', () => {
   it('贬值内生：同一持有集对高血量 Boss 分数更低（无折现参数，数据驱动）', () => {
     const o = fakeOracle()
     const holdings = { A1: 2, A2: 2, A3: 2, A4: 2 } // ≥4 张才能组出 3 人队
-    const lowHp = pickPeriodAssignment(o, period(0, [30000]), holdings, 10)
-    const highHp = pickPeriodAssignment(o, period(0, [300000]), holdings, 10)
+    const lowHp = pickPeriodAssignment(o, period(0, [30000]), holdings)
+    const highHp = pickPeriodAssignment(o, period(0, [300000]), holdings)
     expect(lowHp.totalScore).toBeGreaterThan(highHp.totalScore)
   })
 
@@ -406,5 +405,45 @@ describe('pullPlanner · 首 UP 窗口上界（windowEnd）', () => {
     const open = planPullStrategy(o(null))
     expect(open.totalSpent).toBe(CINEMA_GOLD_FILM)
     expect(open.totalScore).toBe(1000)
+  })
+})
+
+describe('pullPlanner · 不重叠组队精确解（arena-D 第 365 轮：去掉 topM 截断 / 贪心兜底）', () => {
+  const T = (a: string, b: string, c: string, score: number) => ({ team: [a, b, c] as [string, string, string], score })
+  const oracleOf = (byRoom: Array<Array<{ team: [string, string, string]; score: number }>>): TeamOracle => ({
+    candidates(b) { return byRoom[Number(b.bossId.slice(-1)) - 1] },
+  })
+
+  it('截断 + 贪心兜底拿不到的最优解也能找到（与暴力枚举一致）', () => {
+    // 每房 54 支「Q 队」（9 个主C × 6，全含 Q ⇒ 三房最多用一支），分数高于真队；修前按主C分桶截断（每桶 ≤5）把真队截掉 ⇒ DFS 无解
+    // ⇒ 逐房贪心：房1 拿最高的 P4/Q/P1（9000）⇒ 房2 的唯一真队 P4P5P6 被占。最优 = 房1 P1/Q/P2（8999）+ 房2 + 房3 真队 = 9199
+    const qTeams = (room: number) => Array.from({ length: 54 }, (_, i) => T(`P${1 + Math.floor(i / 6)}`, 'Q', `R${room}${i % 6}`, 8000 - i))
+    const byRoom = [
+      [T('P4', 'Q', 'P1', 9000), T('P1', 'Q', 'P2', 8999), ...qTeams(1)],
+      [...qTeams(2), T('P4', 'P5', 'P6', 100)],
+      [...qTeams(3), T('P7', 'P8', 'P9', 100)],
+    ]
+    let brute = -1
+    const opts = byRoom.map(r => [...r, T('', '', '', 0)])
+    for (const x of opts[0]) for (const y of opts[1]) for (const z of opts[2]) {
+      const ms = [x, y, z].flatMap(t => t.team).filter(Boolean)
+      if (new Set(ms).size === ms.length) brute = Math.max(brute, x.score + y.score + z.score)
+    }
+    expect(brute).toBe(9199)
+    const res = pickPeriodAssignment(oracleOf(byRoom), period(0, [1, 1, 1]), {})
+    expect(res.totalScore).toBe(brute)
+    const ms = res.picks.flatMap(p => p.team).filter(Boolean)
+    expect(new Set(ms).size).toBe(ms.length)
+  })
+
+  it('凑不出满编时留空房、取总分最大的部分解', () => {
+    const res = pickPeriodAssignment(oracleOf([
+      [T('A', 'B', 'C', 500), T('A', 'D', 'E', 400)],
+      [T('A', 'F', 'G', 450)],
+      [T('B', 'F', 'H', 300)],
+    ]), period(0, [1, 1, 1]), {})
+    // 候选：{ABC, ADE} × {AFG} × {BFH}：ADE+BFH=700 > ABC 单房 500 > AFG+? (AFG 与 ABC/ADE 都冲突，AFG 与 BFH 冲突) ⇒ AFG 单房 450
+    expect(res.totalScore).toBe(700)
+    expect(res.picks[1].team).toEqual(['', '', ''])
   })
 })

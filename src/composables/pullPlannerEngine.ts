@@ -49,6 +49,8 @@ interface OracleState {
 
 /** 每期危局房间数上限（一期 3 房；早期数据不全的期可能更少）。候选队友数按它定。 */
 const PLANNER_ROOMS_PER_PERIOD = 3
+/** 免费人下限 = 一期满编 3 房不重叠所需人数（freePoolRepresentatives 不足时补代表，第 365 轮）。 */
+export const PLANNER_MIN_FREE_MEMBERS = 3 * PLANNER_ROOMS_PER_PERIOD
 
 /** 免费特例 = 赠送 S ∪ A 级特例（CC-272 由 versionTimeline 两个集合派生）；购买清单、入队及代表剪枝共享。 */
 const FREE_SPECIAL_AGENT_IDS: ReadonlySet<string> = new Set([...FREE_GIFT_S_AGENT_IDS, ...A_RANK_RELEASE_SPECIAL_IDS])
@@ -348,7 +350,7 @@ export function freeMemberPool(allAgentIds: string[], catalog: ReturnType<typeof
 }
 
 /**
- * 免费池精筛（性能剪枝）：每职业保留至多 N 名代表（限定 S 与特例不裁）。
+ * 免费池精筛（性能剪枝）：每职业保留 N 名代表（限定 S 与特例不裁）；总数不足 `PLANNER_MIN_FREE_MEMBERS` 时按职业轮转补足。
  * 免费人是「凑 9 人」的底座而非强度来源——C(池,3) 是引擎求值量的主控项：
  * 20 免费全量 = C(20+窗口卡,3) ≈ 1330+ 队 × ~70ms ≈ 92s/持有集（实测）；
  * 每职业留 2 = ~10 人 + 窗口卡 ≈ C(14,3) = 364 队 ≈ 25s/持有集。
@@ -369,8 +371,10 @@ export function freePoolRepresentatives(
     arr.push(id)
     bySpec.set(spec, arr)
   }
+  const specials = free.filter(id => FREE_SPECIAL_AGENT_IDS.has(id))
+  const lists = [...bySpec.values()]
   const out: string[] = []
-  for (const arr of bySpec.values()) {
+  for (const arr of lists) {
     arr.sort((a, b) => {
       const ra = catalog.getAgent(a)?.rarity ?? 'A'
       const rb = catalog.getAgent(b)?.rarity ?? 'A'
@@ -379,7 +383,18 @@ export function freePoolRepresentatives(
     })
     out.push(...arr.slice(0, perSpecialty))
   }
-  return [...out, ...free.filter(id => FREE_SPECIAL_AGENT_IDS.has(id))]
+  // 下限：免费人（起点不持有任何限定也能上场的人）至少要凑满一期 3 房 × 3 人。arena-D 第 365 轮：每职业 1 名
+  // 时只有 8 人（5 职业代表 + 3 特例）⇒ 0 持有的持有集**第 3 房恒为 0 分**，第一张买到的卡不论强弱都白得一整房分
+  // （规划与 VCG 归因都被这个假边际值带偏）。不够时按职业轮转补下一名代表，直到够数或免费池用尽。
+  for (let k = perSpecialty; out.length + specials.length < PLANNER_MIN_FREE_MEMBERS; k++) {
+    let added = false
+    for (const arr of lists) {
+      if (out.length + specials.length >= PLANNER_MIN_FREE_MEMBERS) break
+      if (k < arr.length) { out.push(arr[k]); added = true }
+    }
+    if (!added) break
+  }
+  return [...out, ...specials]
 }
 
 export interface PlannerRunOptions {
@@ -397,7 +412,6 @@ export interface PlannerRunOptions {
   initialBank?: number
   filmPerVersion?: number
   beamWidth?: number
-  assignmentTopM?: number
   /** 是否跑 VCG 归因（贵：每卡一次重规划；默认 false） */
   withVcg?: boolean
   /** 免费池每职业代表数（性能剪枝；0 = 全量免费池。默认 1——池越大 beam 每个持有集的 C(池,3) 求值越贵，实测 2 已分钟级） */
@@ -451,7 +465,6 @@ export async function runPullPlanner(opts: PlannerRunOptions): Promise<PlannerRu
       filmPerVersion: opts.filmPerVersion ?? PLANNER_FILM_PER_VERSION,
       versionStartDates: plannerVersionStartDates(),
       beamWidth: opts.beamWidth ?? 6,
-      assignmentTopM: opts.assignmentTopM ?? 12,
       oracle: engine.oracle,
       onPeriod: engine.applyPeriodContext,
       onProgress: p => report(p.pct * (opts.withVcg ? 0.7 : 1), p.text),
