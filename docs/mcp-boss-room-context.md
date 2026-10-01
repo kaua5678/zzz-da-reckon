@@ -9,7 +9,7 @@
 | 项 | 状态 | 位置 |
 |---|---|---|
 | buff 牌条件（特性限定 / 人数分档）被两个写入方丢掉 | **CC-341 已修（`8f80b031`）**：条件随行写入，管线按当前队伍唯一解析 | §1.1、§2 |
-| 房间上下文 13 处写法分裂；抽卡规划、角色兑现曲线的 `periodViews` 是死参 | **CC-342 第 1、2 步已做（`602c0f94`，arena-D 第 363 轮）**：唯一入口 `composables/bossRoom.ts#applyBossRoom`；第 3 步（5 个分析器）待定口径 | §1.2、§3、§4 |
+| 房间上下文 13 处写法分裂；抽卡规划、角色兑现曲线的 `periodViews` 是死参 | **CC-342 已完成**：第 1、2 步 `602c0f94`（第 363 轮）；第 3 步 `59ea97ea`（第 364 轮）——关卡 buff 随 `BossPresetPhase.layerBuffs` 走，所有分析器经 `bossRoom#applyBossRoom` 进房间 | §3、§4、§5 |
 | 测试服占位（testOnly）关卡牌照样写入 | 未改，记为待裁决 | §1.3 |
 | 解析器把「对敌减抗」也挂上强攻限定；「全队[强攻]代理人」被近似成「队里有强攻就全队生效」 | 未改，数据侧近似 | §1.4 |
 
@@ -156,7 +156,7 @@ CC-341 前「任何队满额生效」更接近原文。要再精确，需要：
    - 改后每房带上关卡固有 buff，也不再泄漏用户现场的 `layer-buff:`。
    - 需要小规模规划的前后对比，比如固定持有集、2–3 期，看期分与 VCG 值的变化。
    - 头注释和 FEATURES_GUIDE §4.5 的「Boss/buff 逐期应用」随之成真。
-3. **其余分析器要先定口径再改**：Chart 1 / 2 / 3 / 5、难度曲线、位置对比、自由对比。
+3. **其余分析器要先定口径再改**（第 364 轮已做，口径与做法见 §5，没有走选项 a 的「传 phaseViews」）：Chart 1 / 2 / 3 / 5、难度曲线、位置对比、自由对比。
    - 选项 a：页面把 `phaseViews` 传进来，改调 `applyBossRoom`。符合 FEATURES_GUIDE 第 15 行「应用 Boss 时……自动写关卡固有 buff」。
    - 选项 b：显式清掉 `layer-buff:` 行，按「不含关卡 buff」求值。
    - 缺省建议 a，依据是文档已写明的规则。队伍对比「整表替换成所选牌」是它自己的口径，保持不动。
@@ -188,3 +188,36 @@ CC-341 前「任何队满额生效」更接近原文。要再精确，需要：
 
 **第 3 步仍待做**（口径见 §3 第 3 条，缺省建议选项 a）：5 个分析器需要页面把 `phaseViews` 传进来。
 `teamCompare` 是「整表替换成所选当期牌」的自有口径，迁移时只把 `applyBossPreset` 换成 `applyBossRoom` 会改变它的结果（多出关卡 buff），要先决定它算不算「应用 Boss」。
+
+## 5. CC-342 第 3 步（`59ea97ea`，arena-D 第 364 轮）：关卡 buff 随 phase 数据走
+
+**决定**：不按 §3 选项 a 给 5 个分析器加 `phaseViews` 参数，而是让**数据本身**带上关卡 buff。
+
+- **依据**：选项 a 要改 5 个分析器的入参、图表编排 `chartRunners`、4 个页面和约 20 处测试调用，而且以后每加一个分析器都得记得传期视图，忘了就静默没有关卡 buff（第 363 轮修的就是这种静默缺失）。
+  关卡 buff 本来就是「某期某 Boss 那一关」的属性：生成脚本解析 brief 时已经拿到了 `(preset, phase)`，挂到 phase 上即可。之后「拿到 phase 就拿到这一关」。
+- **数据**：`scripts/import-nanoka-bosses.mjs` 在 `monsterBrief` 命中预设时写 `phase.layerBuffs = bossBuffs`，其余 phase 为 `[]`。这和期视图 brief 的 `bossBuffs` 是同一次解析、同一个数组。
+  生成脚本离线可跑（读 `data/raw/bosses/`）。实测重新生成，除 `generatedAt` 外与旧 JSON 逐字相同；加字段后重新生成即为本次的 JSON。
+  类型：`BossPresetPhase.layerBuffs?: PhaseBuffCard[]`（缺省 = 测试桩，无关卡 buff）。
+- **入口**：`bossRoom#applyBossRoom(configStore, boss, phase)`，不再收 `phaseViews`；`findBossBrief` 删除。行 id 改为 `layer-buff:<presetId>:<phaseId>:<stat>:<value>`，只要求前缀，没有其他读者。
+- **迁移**：`difficultyCurve`、`freeCompare/engine`、`positionCompare`、`teamCompare`、`teamTimeline`（Chart 1/3/7/第三人海选）改调 `applyBossRoom`。源码锁收紧为 `.applyBossPreset(` **只**出现在 `bossRoom.ts`，没有白名单。
+- **队伍对比的口径（§3 末尾留下的未决项）**：`teamCompare#applyBuffToStore` 仍然把全局 Buff 表整表替换成所选牌（用户手填的 buff 不参与对比），但**保留 `layer-buff:` 行**。
+  依据：关卡 buff 属于房间，游戏里不管选哪张牌都生效；牌才是玩家的选择。修前整表替换把关卡 buff 一起清掉，队伍对比恒按「无关卡 buff」计算。
+- **顺带删掉的死参**（第 363 轮改完后它们唯一的读者已消失）：
+  - `periodViews`：抽卡规划（`createEngineOracle` / `runPullPlanner` 入参）、角色兑现曲线、菲林模拟、`chartRunners#runFilmSimCompute`、`FilmSimChart` / `PullPlannerChart` 的 prop、`TimeChartsPage` / `CharIncrementPage` 的期视图 ref。
+  - `phaseViews`：实战部署 `applyDeployConfig` / `resolveBossApply`，以及 `ResolvedBossApply.brief`。
+  - 期视图仍用于 Boss 选择卡、实战部署页的当期牌按钮、队伍对比的期数列表与牌，这些都没动。
+- **数值影响**（探针 `/home/kaua/calc-arch/arenaD/d364/probe364.test.ts`，未入库）：位置对比，6 金、主 C，前 8 个队伍预设。同一 phase 对比带 / 不带 `layerBuffs`，总伤倍率：
+  - 40003@690491（强攻 / 异常 / 暴伤 / 锐利）：×1.09–1.24；
+  - 40008@690481（含 enemyDamageTakenBonus 45）：×1.47–1.49；
+  - 40009@690501：×1.17–1.29。
+  倍率随队伍不同，所以分析器的队伍排名可能变化。现在分析器的口径与主计算页「应用 Boss」后看到的一致。
+- **锁**：`src/composables/__tests__/bossRoom.test.ts`，共 5 条：
+  - 数据锁：每个预设 phase 都有 `layerBuffs`，且与同一关的 brief `bossBuffs` 深相等，匹配数 > 100；
+  - 进房清旧写新；phase 无 `layerBuffs` 时只清不写；
+  - 抽卡规划逐房写入；
+  - 队伍对比换牌保留关卡行：把 `...layer` 撤掉即红，已反证；
+  - 源码锁。
+  `phaseBuffCond.test` 改用真 phase 40003@690431。
+- **验证**：worktree `wtD-364`：`vue-tsc -b` 0；verify EXIT 0（446 个文件、4109 例）。全量测试里没有分析器测试钉住受关卡 buff 影响的数值。
+- **回退点**：`git revert 59ea97ea`。JSON 会回到不带 `layerBuffs` 的版本，`applyBossRoom` 恢复读 `phaseViews` 的第 363 轮写法。
+- **维护提示**：改了 `phase-buff-parser.mjs` 或 raw 数据后，要重跑 `node scripts/import-nanoka-bosses.mjs`；数据锁会拦住 brief 与 phase 不一致。

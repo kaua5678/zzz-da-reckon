@@ -12,7 +12,7 @@
    - **困难 · 危局强袭战**：1 个 Boss，可应用
    - **普通 · 危局强袭战**：当期 3 个 Boss，**同样可应用**（预设覆盖全部危局 Boss 共 22 个 + 老防卫战 Boss 彷徨猎手 1 个 = 23 个；其中 3.3 测试服「(Test1)僭越者」为**临时预设**——只录弱点/失衡/血量等自动信息，手录默认值（体型/弹刀/无敌）待正式服，2026-09 用户口径）
    - **当期 Buff**：3 张可选牌 + 各 Boss 卡上的**关卡固有 buff**（layer_buff 解析）
-3. 应用 Boss 时（唯一入口 `composables/bossRoom.ts#applyBossRoom`，CC-342；抽卡规划 / 角色兑现曲线逐房同样走它）除填充敌人配置外，**自动把该 Boss 当期关卡固有 buff（layer_buff 数值效果）写入全局 Buff 表**（id 前缀 `layer-buff:`，切 Boss 时先清旧）；效果上的特性限定 / 人数分档（`cond`）随行写入，计算时按**当前队伍**判定、换人自动换档（`src/utils/phaseBuff.ts`，CC-341）
+3. 应用 Boss 时（唯一入口 `composables/bossRoom.ts#applyBossRoom`，CC-342；所有分析器与抽卡规划 / 角色兑现曲线逐房同样走它；数据 = `boss-presets.json` 预设 phase 的 `layerBuffs`）除填充敌人配置外，**自动把该 Boss 当期关卡固有 buff（layer_buff 数值效果）写入全局 Buff 表**（id 前缀 `layer-buff:`，切 Boss 时先清旧）；效果上的特性限定 / 人数分档（`cond`）随行写入，计算时按**当前队伍**判定、换人自动换档（`src/utils/phaseBuff.ts`，CC-341）
 3. 一键填充字段：血量 / 失衡值 / 防御 / 等级 / 危局异常系数（`bossAnomalyCoeff`）/ 失衡易伤（`stunVuln`）/ 失衡时间（`stunTime`）/ 三张抗性表 / 战斗时间 180s / 秽盾触发次数 / 能量盾次数 / 无敌时间（预设声明时，如 叶释渊 24s）/ 失衡赠礼（`bossStunGift`，预设 `stunGiftRatio` × 失衡上限，如 亵渎者 30%）。
    **不动的字段**：快支次数（角色侧）。
 3.1. **Boss 预设弹刀反推**（声明了 `parryTotal` / `parryNoFollowUpTotal` / `parryDecibelOnlyTotal` 的 Boss）：应用时自动勾选「保底4失衡」，计算器按当前队伍反推——击破位（首个 stun 特性槽位）**正常弹刀** = 保底 4 次失衡所需（封顶 `parryTotal`），主C = `parryTotal − 击破位`（主C 已手填则不覆盖）；**不带支援突击的弹刀**（`parryNoFollowUpTotal`，只有轻弹刀倍率行 + 喧响 215、无支援突击行）按**对半分**（击破/主C 各一半、奇数时击破位多 1；2026-09-10 口径，早期「全部归击破位」已废）；**只给喧响的弹刀**（`parryDecibelOnlyTotal`，轻弹刀打小怪无 daze 无支援突击）归击破位，两者均非用户可调；**喧响赠礼**（`decibelGift`）叠加到指定槽位进场喧响。交互栏显示「→ N（含无突击 M / 只喧响 K / 保底反推 +K）」提示，取消勾选即回到手动输入。实现：`src/core/parrySplit.ts` 纯函数 + `useResourceCalc` 外层不动点线程（般岳轴自动补齐同款收敛）。
@@ -225,7 +225,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 
 **用户口径（2026-08-28 拍板）**：
 - 起点预设全做：新号（全限定待抽）/ 成型号（常驻 S + A + 赠送免费可用，0 限定）/ 自选持有。
-- **贬值内生**：不设折现参数——老卡分数下降由每期 Boss 血量/抗性数据自然涌现（引擎逐期求值）。
+- **贬值内生**：不设折现参数——老卡分数下降由每期 Boss 血量/抗性数据自然涌现（引擎逐期求值；每房带该期该 Boss 的关卡固有 buff，CC-342）。
 - **复刻不建模**：首 UP 窗口 = 唯一购买窗口（最优规划下复刻补抽要求「当时资源受限且复刻期无更强新卡」，两者都罕见）。窗口 = [首 UP 卡池节点日期, 下一个卡池节点日期)（`PlannerCard.windowStart` / `windowEnd`，后者必填、`null` = 其后无已知节点），关窗后本体、专武、满配都不能再买（2026-09-29 前实现无上界，等于永久可买）。
 - **只算伤害分**：分数 = `scoreForDamageRatio(伤害/当期Boss血量)`，单房 60000（`core/deadlyAssaultScore.ts`，分段线性 7 段——前段血「值分」多、末段（接近击杀）效率最低，非 `60000×伤害比` 线性；操作分是附加分、与强度无关，已剔除）。
 - **音擎 = 1 金但期望更便宜**（10000 vs 15000 菲林）；**每版本免费 25000 菲林**（`PLANNER_FILM_PER_VERSION`），按版本日历发放（`versionFilmGrants`：每跨过一个版本开始日发一份，收入日历 = `plannerVersionStartDates()`；2026-09-29 前误按「期日期变化」每期发一份，每版本约 3 期 ⇒ 收入约 ×3）。没买专武不带专武：持有档逐人映射（不并池灌给主C）；本体档穿固定下位（辅助=高精炼啜泣摇篮，击破=高精炼燃狱齿轮），不逐队搜索。
