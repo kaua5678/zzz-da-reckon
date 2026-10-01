@@ -1,6 +1,6 @@
 # 交接与执行纪律（活文档，原「低级模型任务队列」）
 
-> **本文件现在只放四样东西**：置顶顺序、§0 执行纪律、§1 长期规则、§2 最近一轮交接和已知坑。
+> **本文件现在只放五样东西**：置顶顺序、§0 执行纪律、§1 长期规则、§2 最近一轮交接和已知坑、§3 执行卡（第 368 轮加）。
 > 逐轮流水账已删除（W3，`docs/mcp-working-model.md` §2.4）。压缩前的全文（第 1–120 轮交接、W1–W31 卡表、2026-09-24 OPEN-ITEMS 分诊记录）
 > 用 `git show 8a8db00:docs/mcp-worker-task-queue.md` 查看。每轮只**替换** §2，不追加；历史靠 git。
 > **分工**：固定的 lead / worker 分工已废除（`docs/mcp-working-model.md` §1）。每个会话都是完整执行者。子代理（dsh）只外包输入输出能写死的机械活，派活时仍按 §0 的纪律。
@@ -79,13 +79,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
-**2026-10-01 19:40 arena-D 第 367 轮（开工 19:14 时无并行会话，HEAD `b03bc58b`；REQUIREMENTS.md 仍为 429 行，无新条目）：run-archive.json 唯一加载入口，代码 `fb674a8a`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：`catalog#loadRunArchive` 已替换 3 处 fetch；共享类型 `RunArchiveFile`（runArchiveImport.ts）；`pvArchive` 模块级缓存已删。详见 r6 §8 第 367 行。
+**2026-10-01 20:00 arena-D 第 368 轮（开工 19:22 时无并行会话，HEAD `914f1fa1`；REQUIREMENTS.md 429 行无新条目）：失衡轴状态唯一读写入口，代码 `a6264cf4`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：config store 新增 `getAxisState` / `setAxisState` / `applyStunAxisPreset` + 类型 `StunAxisState`，5 处调用方改走它（configSnapshot、teamCompare、difficultyLadder、difficultyCurve、StunAxisPage）；CC-278 源码锁放宽到任意前缀。详见 r6 §8 第 368 行。
+- **已拍板**：① 「每组三人只评一个规范槽序」**不做**（有损：slot0 是真实建模维度，分差 ≤ 9%），理由见 r6 §8 第 368 行；② 静态 fetch 散落已清零，关闭。回退点：`git revert a6264cf4`。
 - **下一步**（按价值排序）：
-  1. 抽卡规划求值量（第 362 轮 ×4.3）：同一组三人只评一个规范槽序。做之前先用探针对比（`arenaD/probe363.test.ts` + `arenaD/d365/p365.sh`），不同槽序分差最高 9%，不能简单去重，要先量清楚再决定。
-  2. 还有没有别的 `fetch('/static/...')` 散落在多处：`grep -rn "fetch('/static" src --include=*.vue --include=*.ts | grep -v __tests__`，同一文件出现 ≥2 处的再按本轮做法收拢；只有 1 处的不动。
+  1. 本节下方 §3 执行卡 **T1 / T2**（类型逃逸收紧，卡面自足）：可派 dsh（§0 脚本，`CARD=T1`），也可自己做；做完删卡。
+  2. 继续「类型逃逸 → 藏着的重复」扫描：`grep -rnP "unknown\[\]" src --include=*.ts --include=*.vue | grep -v __tests__`，看哪些是 store 状态的副本类型；本轮靠收紧类型揪出了第 5 处轴快照。只收「有重复规则或重复快照」的，单纯的 `as any` 不为降计数而改。
   3. testOnly 关卡牌照样写入（`docs/mcp-boss-room-context.md` §1.3，待裁决）。
-- **已拍板**：类型放 `composables/runArchiveImport.ts`，没有新建 `types/runArchive.ts`，因为 ArchiveRun/ArchiveRoom 已经在那里，store 只做 type 导入，guards 已通过。回退点：`git revert fb674a8a`。
+- **已知坑**：config store 的新动作都深拷贝写入，调用方不需要再 clone；`runArchiveDeploy` 只清两表不动总开关是有意的（自动轴接管），别顺手改成 setAxisState。
+- 第 367 轮（arena-D）：run-archive.json 唯一加载入口 `fb674a8a`（3 处 fetch → `catalog#loadRunArchive`，共享类型 `RunArchiveFile`）。
 - 第 366 轮（arena-D）：boss-presets.json 唯一加载入口 `29aa7183`（9 处 fetch → `catalog#loadBossPresets`）。
 - 第 365 轮（arena-D）：抽卡规划第 3 房恒 0 分修复 `b719ba36`（精确分房 + 免费人下限 9），探针空房 6/36 → 0/36。- 第 364 轮（arena-D）：CC-342 第 3 步 `59ea97ea`，关卡 buff 随 `BossPresetPhase.layerBuffs`，所有分析器经 `applyBossRoom`。第 363 轮：CC-342 第 1、2 步 `602c0f94`。第 362 轮：候选队友 4 → 6 `3439c9d2`。
 
@@ -245,3 +247,38 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - 展示层禁止值导入 `@/core` / `@/mechanics` / `@/specs`：新诊断要经 `useResourceCalc` 暴露。
 - 全量测试在高负载下会偶发失败，单跑或在 verify 里能通过：`zcWorkspace.test.ts`，以及 `deadChannelLs.test.ts` / `zcDeadChannels.test.ts`（耗时断言 `ms < 60000`，第 192 轮实测 67.9s）。
 - 远端 bash 会执行 heredoc 中的反引号：代码和文档一律写成 .py 文件，用 `node /tmp/mcp.js put`（或沙箱里现有的 up.sh）上传后执行。
+
+## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
+
+> 用法：§0 的派发脚本按 `<!-- card:ID -->` 抽卡面。**卡面就是全部上下文**，执行者不需要读别的文档。
+> 做完：主代理按 §0 复核（真实 diff、vue-tsc、相关测试）→ 提交 → 删卡，在 §2b 留一行「T? 完成 `<commit>`」。
+> 写卡标准：改哪几个文件、改成什么样、怎么验收、不许碰什么，都写死；需要判断的活不写成卡。
+
+<!-- card:T1 -->
+任务 T1：给分析器快照的 globalBuffs 去掉类型逃逸。仓库 /home/kaua/projects/zzz-calculator（WSL）。
+背景：src/composables/configSnapshot.ts 的 interface StoreSnapshot 里 `globalBuffs: unknown[]`，restoreStore 里写回时用了 `as never[]` 绕类型。store 里的真实类型是 src/stores/config.ts 导出的 `GlobalBuffRow`（`const globalBuffs = ref<GlobalBuffRow[]>`）。
+要做：
+1. configSnapshot.ts：`globalBuffs: unknown[]` 改成 `globalBuffs: GlobalBuffRow[]`，从 '@/stores/config' 加 `type GlobalBuffRow` 导入（并到已有那行 import 里）。
+2. restoreStore 里 `...(snap.globalBuffs as never[])` 去掉 `as never[]`，改成 `...clone(snap.globalBuffs)`（深拷贝写入：同一份快照会被反复恢复，不能让 store 和快照共享对象）。
+3. 若 `npx vue-tsc -b` 在别的文件报错（有人用 unknown[] 构造快照），在那个文件把类型写对；**不许新加 as any / as never / as unknown**。
+验收（全部满足才算 done）：
+- `timeout -s KILL 600 npx vue-tsc -b` 退出 0；
+- `npx vitest run src/composables/__tests__/configSnapshot.test.ts src/composables/__tests__/teamCompare.test.ts` 全过；
+- `grep -n "as never" src/composables/configSnapshot.ts` 无输出。
+不许：碰上面以外的文件（除第 3 步必要的类型修正）；git commit / push。
+报告首行 `STATUS: done` 或 `STATUS: blocked`，随后贴 `git diff --stat` 和三条验收命令的尾部输出。
+<!-- /card:T1 -->
+
+<!-- card:T2 -->
+任务 T2：实战归档页的建模账本去掉 as any / as never。仓库 /home/kaua/projects/zzz-calculator（WSL）。
+背景：src/views/RunArchivePage.vue 的 `ensureModelingLedgers()` 用 `fetch('/static/character-constellations.json').then(r => (r.ok ? r.json() : {}) as any)`（mechanics 同样）读两份账本，存进 `modelingLedgers = ref<{ constellations?: Record<string, object>; mechanics?: Record<string, object> } | null>`，用的时候再 `as never` 传给 src/utils/modelingGaps.ts 的 `collectCinemaGaps(ledger: Record<string, CinemaLedgerEntry> | undefined, ...)` 和 `collectMechanicGaps(ledger: Record<string, MechanicLedgerEntry> | undefined, ...)`。
+要做：
+1. modelingGaps.ts：若 `CinemaLedgerEntry` / `MechanicLedgerEntry` 没有 export，加 `export`（只加关键字，不改字段）。
+2. RunArchivePage.vue：ref 类型改成 `{ constellations: Record<string, CinemaLedgerEntry>; mechanics: Record<string, MechanicLedgerEntry> } | null`；两个 fetch 的结果分别标成 `{ characters?: Record<string, CinemaLedgerEntry> }` 和 `{ characters?: Record<string, MechanicLedgerEntry> }`（写一个小函数 `async function readLedger<T>(url: string): Promise<{ characters?: Record<string, T> }>`，`!r.ok` 时返回 `{}`）；两处 `as never` 删掉。行为不变：请求失败仍当空账本，异常仍走原 catch。
+验收：
+- `timeout -s KILL 600 npx vue-tsc -b` 退出 0；
+- `npx vitest run src/utils` 全过；
+- `grep -nE "as (any|never)" src/views/RunArchivePage.vue` 里不再有 ensureModelingLedgers / modelingGapHints 这两段的行。
+不许：改 modelingGaps 的函数逻辑；新加 as any / as never / as unknown；git commit / push。
+报告首行 `STATUS: done` 或 `STATUS: blocked`，随后贴 `git diff --stat` 和验收命令尾部输出。
+<!-- /card:T2 -->
