@@ -8,7 +8,7 @@
 ## 0. 现状一句话
 
 第 1 阶段已落地：底座（出生态 + 资源计算工厂 + 场景）和一个试点分析器（角色兑现曲线 `computeIncrementPass`）。
-其余 7 个分析器模块（11 处 `snapshotStore` / `restoreStore`）仍改写 UI store 再恢复；另有 `TeamComparePage` 用快照拼缓存键。迁移清单与配方见 §4、§5。
+第 371 轮（arena-D，`d9e39042`）迁完时间线 4 个入口 + 菲林模拟。其余 5 个分析器模块（6 处 `snapshotStore` / `restoreStore`）仍改写 UI store 再恢复；另有 `TeamComparePage` 用快照拼缓存键。迁移清单与配方见 §4、§5。
 
 ## 1. 为什么要做
 
@@ -87,13 +87,23 @@
   输出（9 期、78 次基底队求值的逐队分数）逐字节相同（md5 `53ecb939`）；耗时 15.6s / 15.9s。探针未入库（`/home/kaua/calc-arch/arenaC/zzScenarioProbe.{old,new}.test.ts`、`ab.sh`）。
 - 全量 verify：全量 verify EXIT 0（449 文件 / 4126 测试通过，16 / 29 跳过，228.9s）。
 
+### 3.1 第 371 轮（时间线 + 菲林，`d9e39042`）
+
+- 入口签名 `computeX(calc, opts)` → `computeX(scenario: AnalysisContext, opts)`（第一个位置参数换类型，其余不动）；删 5 处快照恢复与 `try / finally`（`git diff -w`：12 文件 +68 / −96）。
+- 运行器 `charts/chartRunners.ts` 的 4 个 runner 与 `teamCompareSweep.ts#useSlotSweep` 改为 `withAnalysisScenario(scenario => computeX(scenario, ...))`；`io.calc` / `opts.calc` 字段删除；
+  `TimeChartsPage` / `NewCharacterChart` / `FilmSimChart` / `SlotCompareChart` 里只为传参存在的 `useResourceCalc()` 一并删除。
+- 间接依赖核查：时间线 / 菲林调用的 `teamTimelineStore`、`timeWeightBalancer`、`bossRoom` 都不调 `useConfigStore()`；`teamCompare.ts:1102` 有，但那是队伍对比自己的入口，时间线只从它导入纯函数。
+- **A/B 逐字节相同**：同一探针（时间线 7 人池、新角色强队轻量档 + 逐金档、同槽对比、第三人海选 4 候选、菲林全期）在旧 HEAD `48f10d3e` 与新 worktree 各跑一遍，输出 md5 均为 `ad4581ba`（16699 字节）。探针未入库：`/home/kaua/calc-arch/arenaD/d371/zzTimelineAB.test.ts`、`ab.sh`。
+- 新测试（`teamTimeline.test.ts` 末尾「CC-343 独立场景」）：时间线 + 菲林每次进度回报时 UI `$state` 与开跑前逐字相同。**反证**：同样的断言套在旧 API 上（base worktree 临时测试）失败——旧实现 yield 时 UI 确实看得见中间态。
+- 全量 verify EXIT 0（449 文件 / 4129 测试通过）。
+
 ## 4. 迁移进度（每迁一个：改本表 + 把文件加进 `analysisScenario.test.ts` 的 `MIGRATED_ANALYZERS`）
 
 | 分析器 | 入口 | 调用方 | 同步 / 异步 | 状态 |
 |---|---|---|---|---|
 | 角色兑现曲线 `composables/charIncrement.ts` | `computeIncrementPass` | `views/CharIncrementPage.vue` | 异步（每 4 队 yield） | ✅ 第 369 轮 `02049db9` |
-| 时间线 `composables/teamTimeline.ts` | `computeTeamTimeline` / `computeNewCharacterPoints` / `computeSlotComparePoints` / `computeSlotSweepPoints`（4 处快照） | `composables/charts/chartRunners.ts`、`composables/teamCompareSweep.ts` | 异步 | 待迁（建议第一个：4 处快照、yield 中间态最多） |
-| 菲林模拟 `composables/teamTimelineFilm.ts` | `computeFilmSimulation` | `chartRunners.ts` | 异步 | 待迁（与时间线同批，同一运行器） |
+| 时间线 `composables/teamTimeline.ts` | `computeTeamTimeline` / `computeNewCharacterPoints` / `computeSlotComparePoints` / `computeSlotSweepPoints`（4 处快照） | `composables/charts/chartRunners.ts`、`composables/teamCompareSweep.ts` | 异步 | ✅ 第 371 轮 `d9e39042`（arena-D） |
+| 菲林模拟 `composables/teamTimelineFilm.ts` | `computeFilmSimulation` | `chartRunners.ts` | 异步 | ✅ 第 371 轮 `d9e39042`（arena-D） |
 | 抽卡规划 `composables/pullPlannerEngine.ts` | `runPullPlanner` | `components/charts/PullPlannerChart.vue` | 异步 | 待迁 |
 | 自由对比 `composables/freeCompare/engine.ts` | `computeFreeCompare` | `views/FreeComparePage.vue` | 异步 | 待迁 |
 | 位置对比 `composables/positionCompare.ts` | `computePositionCompare` | `views/PositionComparePage.vue` | 同步 | 待迁 |
