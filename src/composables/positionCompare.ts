@@ -188,12 +188,10 @@ export function computePositionCompare(
         for (const buff of group.buffs ?? []) {
           configStore.toggleTeammateBuff(buff.id, false)
         }
-        configStore.refreshTrigger++
         const withoutBuff = calc.teamTotalDamage.value
         buffContribution = Math.max(0, total - withoutBuff)
         // CC-339：按队伍真实门控（命座 / 额外能力 / 排他门）重同步恢复，禁止无条件全开 group.buffs
         configStore.syncTeammateBuffsFromTeam()
-        configStore.refreshTrigger++
       }
     }
 

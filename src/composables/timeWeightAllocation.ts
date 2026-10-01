@@ -333,8 +333,8 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     // 表扫 `comboAlignRatio>0` 会设到引擎不读的键（2026-09-13 实测否决），且行值已含现有覆盖、
     // 二轮直接续爬。不能合轴的招式（ratio=0）不硬凑=模型作弊。接受门 =（平A池↑ 或 截断↓ 或 总伤↑）
     // 且总伤不低于该步前地板 且 失衡不降（「次数是分配的结果」先例：只防作弊不拦截）且 feasible()；
-    // 无改善当场回滚。覆盖是嵌套 ref 突变，必须 triggerRefresh 才进重算（②弹刀靠整值 setter 隐式触发，
-    // 不同源）。只挂 'joint' 深搜档（非默认档 ⇒ golden/留白棘轮零外溢）；手动录入面 = 结果页合轴弹窗。
+    // 无改善当场回滚。（CC-354：不再手动 triggerRefresh——计算经 memo 键深读整个 `$state`，嵌套覆盖写入本身即失效。）
+    //只挂 'joint' 深搜档（非默认档 ⇒ golden/留白棘轮零外溢）；手动录入面 = 结果页合轴弹窗。
     const poolSecs = () => (calc.resourceResult.value?.characters ?? [])
       .reduce((acc, c) => acc + Math.max(0, c.timeAllocation?.basicAttackTime ?? 0), 0)
     let reliefSteps = 0
@@ -353,14 +353,12 @@ export const jointLeverStrategy: TimeWeightStrategy = {
         for (const [moveId, cur] of targets) {
           const t0 = truncation(); const p0 = poolSecs(); const st0 = stunOf(); const floorNow = calc.teamTotalDamage.value
           configStore.setComboAlignOverride(s, moveId, Math.min(1, cur + 0.25))
-          configStore.triggerRefresh()
           const t1 = truncation(); const p1 = poolSecs(); const d1 = calc.teamTotalDamage.value
           if (reliefTrialAccepted({ p0, p1, t0, t1, d0: floorNow, d1, s0: st0, s1: stunOf(), feasible: feasible() })) {
             reliefSteps++
             anyRelief = true
           } else {
             configStore.setComboAlignOverride(s, moveId, cur)
-            configStore.triggerRefresh()
           }
         }
       }

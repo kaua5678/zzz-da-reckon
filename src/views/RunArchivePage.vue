@@ -367,7 +367,6 @@ function pickPeriodBuff(card: PhaseBuffCard | null) {
   const phaseId = deployPhaseView.value?.phaseId ?? ''
   const applied = applyPeriodBuff(configStore, phaseId, card)
   selectedBuffTitle.value = card && applied ? card.title : 'none'
-  configStore.triggerRefresh?.()
 }
 
 /** 自动选择：评估「不用」+ 每张可用牌的总伤害，应用最高者（CC-352：在独立场景里试，UI store 只写最终结果一次） */

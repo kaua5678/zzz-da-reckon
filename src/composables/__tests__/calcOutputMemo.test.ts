@@ -6,7 +6,11 @@
  * ③ 降配单调闸门开启时绕过记忆化（该路径在求值内写回 store）。
  * ④ 审查补测（ENG-R1）：冷热启动缓存下 on/off 对照、命中结果被深冻结后下游仍逐位相同（下游不原地改）、
  *    目录整体替换失效、纯 UI 态（切 tab/切槽）不失效也不改值。
+ * ⑤ CC-354 源码锁：记忆化键深读 config.$state 后手动失效是多余的；内部写入方不得再 `triggerRefresh()` /
+ *    `refreshTrigger++`（只剩用户刷新按钮的 `@click="configStore.triggerRefresh"` 与 store 内的定义）。
  */
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, relative, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { getCalcOutputMemoStats, setCalcOutputMemoEnabled, useResourceCalc } from '@/composables/useResourceCalc'
@@ -171,4 +175,29 @@ describe('calcOutput 记忆化', () => {
     expect(calc.teamTotalDamage.value).toBe(d0)
     expect(getCalcOutputMemoStats().misses).toBeGreaterThan(s1.misses)
   }, 300_000)
+
+  it('CC-354：内部写入方不手动 bump refreshTrigger（键已深读 store，setter 即失效）', () => {
+    const root = resolve(__dirname, '../..')
+    const files: string[] = []
+    const walk = (d: string): void => {
+      for (const n of readdirSync(d)) {
+        const p = join(d, n)
+        if (statSync(p).isDirectory()) { if (n !== '__tests__' && n !== 'test') walk(p) }
+        else if (/\.(ts|vue)$/.test(n)) files.push(p)
+      }
+    }
+    walk(root)
+    const bump = /(?<!function )\btriggerRefresh\s*\(|refreshTrigger(\.value)?\s*(\+\+|\+=)/
+    const hits: string[] = []
+    for (const p of files) {
+      const rel = relative(root, p).split('\\').join('/')
+      if (rel === 'composables/useResourceCalc.ts') continue
+      readFileSync(p, 'utf-8').split('\n').forEach((line, i) => {
+        if (bump.test(line)) hits.push(`${rel}:${i + 1}`)
+      })
+    }
+    // 唯一允许的 bump：store 内 triggerRefresh() 的函数体（供用户刷新按钮）
+    expect(hits.length).toBe(1)
+    expect(hits[0]).toMatch(/^stores\/config\.ts:\d+$/)
+  })
 })

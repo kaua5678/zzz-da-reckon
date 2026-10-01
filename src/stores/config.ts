@@ -711,8 +711,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     const char = team.value[slot]
     if (char) {
       char.cinemaLevel = Math.max(0, Math.min(6, level))
-      // 触发 resourceConfig 失效重算：模块 buildCharConfig 写入的命座字段（如仪玄 yixuanCinemaLevel）依赖此刷新
-      refreshTrigger.value++
     }
   }
 
@@ -720,8 +718,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     const char = team.value[slot]
     if (char) {
       char.potentialLevel = Math.max(1, Math.min(6, level))
-      // 潜能效果多数在 applyPanel/buildCharConfig 里按档位取值，切换档位同样需失效重算
-      refreshTrigger.value++
     }
   }
 
@@ -969,7 +965,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     if (next.cap === undefined || next.cap === null || !Number.isFinite(Number(next.cap))) next.cap = null
     else next.cap = Math.max(0, Number(next.cap))
     resourceUtilization.value[key] = next
-    refreshTrigger.value++
   }
 
   function resetResourceUtilization(slot?: number, actionId?: string) {
@@ -983,7 +978,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     } else {
       resourceUtilization.value = {}
     }
-    refreshTrigger.value++
   }
 
   /** 读取机制模块声明参数的当前值 */
@@ -994,7 +988,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   /** 写入机制模块声明参数 */
   function setMechanicSetting(id: string, value: number) {
     mechanicSettings.value[id] = Number.isFinite(value) ? value : 0
-    refreshTrigger.value++
   }
 
   function getTeamMechanicSetting(key: string, fallback: number): number {
@@ -1004,7 +997,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   function setTeamMechanicSetting(key: string, value: number) {
     teamMechanicSettings.value[key] = Number.isFinite(value) ? value : 0
-    refreshTrigger.value++
   }
 
   function getAnomalyUtilizationRate(slot: number): number {
@@ -1017,7 +1009,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   function setAnomalyUtilizationRate(slot: number, rate: number) {
     anomalyUtilizationRates.value[slot] = Math.max(0, Math.min(1, Number.isFinite(rate) ? rate : 1))
-    refreshTrigger.value++
   }
 
   function getAnomalySettlementShare(element: string, slot: number): number | null {
@@ -1027,7 +1018,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   function setAnomalySettlementShare(element: string, slot: number, share: number) {
     anomalySettlementShares.value[`${element}:${slot}`] = clampRatio(share)
-    refreshTrigger.value++
   }
 
   /** 维琳娜2命风蚀利用率的兼容别名 */
