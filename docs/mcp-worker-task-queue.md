@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 385 轮**：CC-355 删 refreshTrigger / triggerRefresh 与三个 no-op 刷新按钮 `af660ce4`——原 §2；全文 `git show a6cb4b42:docs/mcp-worker-task-queue.md` 的 §2（含 WSL / vitest worker 环境坑）。
+
 **2026-10-02 arena-E 第 384 轮**：金档写入入口审计（不动）+ CC-354 删内部手动 refreshTrigger `ca616a22`——原 §2；全文 `git show e7095d6b:docs/mcp-worker-task-queue.md` 的 §2。
 
 **2026-10-02 arena-E 第 383 轮**：CC-353 view 层试算循环源码锁（analysisScenario.test ④c）`44bddfb3`——原 §2；全文 `git show 1efb9dce:docs/mcp-worker-task-queue.md` 的 §2。
@@ -148,17 +150,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 385 轮（lane arena-E，开工 03:10；无并行会话；HEAD `e7095d6b`；REQUIREMENTS.md 无新条目）：CC-355 删掉 `refreshTrigger` / `triggerRefresh` 与三个 no-op 刷新按钮 `af660ce4`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **核实依据**：合轴率弹窗输入即写 store；资源页列表是 computed；记忆化键不含计数器 ⇒ 按钮只会命中同一结果。store 外非响应式开关生产零调用。详见卡表 CC-355。
-- **做到哪**：`src/views/ResultPage.vue`（2 个按钮）、`src/views/ResourceUtilizationPage.vue`（1 个）、`src/stores/config.ts`、`src/composables/useResourceCalc.ts`、5 个测试；`calcOutputMemo.test.ts` ⑤ 锁住。
-- **验证**：零差 `zd.sh r385` DIFF 0/0；受影响 6 个测试文件 34 例通过；全量分段跑：check-guards～verify:recording 通过（`verify385.log`，跑到 vitest 时 WSL 重启被打断）、`vitest run --maxWorkers=4` 454 文件 / 16 跳过 / 4151 例通过（`verify385-test.log`）、`npm run build` 成功（`verify385-build.log`）、check-guards 25 过。没做浏览器点验（只删按钮，模板结构 diff 已人工核过）。
+**第 386 轮（lane arena-E，开工 03:27；无并行会话；HEAD `a6cb4b42`；REQUIREMENTS.md 无新条目）：CC-356 纯界面态 `activeTab` / `selectedSlot` 搬到 `src/stores/ui.ts` `3914192b`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：见卡表 CC-356。config store 里不再有任何界面态；记忆化键 = 整个 `$state`，无排除表。
+- **验证**：零差 `zd.sh r386` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 过（`arenaE/verify386.log`）；`vitest run --maxWorkers=4` 454 文件 / 16 跳过 / 4151 例过（`verify386-test.log`）；build 成功（`verify386-build.log`）；实机点通（`arenaE/ui386b/`）：默认槽位 1 → 点第 2 张卡 → 「槽位 2」选中、切到资源利用率（无卡片、无「刷新当前列表」）再切回 → 仍是槽位 2、零 JS 错误。
 - **开放项（沿用 r379，待用户裁决，勿自行改）**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（卡表 CC-349）。
-- **下一步（可直接开工，先查后定）**：**`activeTab` / `selectedSlot` 移出 config store**。它们是纯 UI 态，引擎层（core / mechanics / composables/resourceCalc）零引用，只因住在 config store 里才需要 `CALC_MEMO_KEY_EXCLUDE` 特判、出生态键表登记、场景克隆时白白复制。
-  引用面（r385 量）：`activeTab` 生产 5 文件 9 处（CalculatorView / LogicEditorPage / AppHeader / config.ts / useResourceCalc）；`selectedSlot` 生产 4 文件 41 处（主要 TeamConfigPage、DebugPage）；测试各 1～2 个文件。
-  做法：先 `grep -nw "selectedSlot\|activeTab" src/stores/config.ts` 看 store 内部有没有 action 读写它们（例如设角色时顺带切槽）——**有就先决定这些 action 归谁**；然后新建 `src/stores/ui.ts`（pinia，两个 ref）或就近放组件局部态，改调用点，删 `CALC_MEMO_KEY_EXCLUDE`（键 = 整个 `$state`，护栏注释同步改）。
-  注意：若有持久化 / 导出（grep `\$state` 与 `localStorage`）把 `activeTab` 带进去，搬家后行为要保持。判据：做完 memo 键无排除表、`calcOutputMemo.test.ts`「纯 UI 态不失效」用例改成断言 UI store 变化不影响 config `$state`。不值得做的信号：若 store 内部 action 大量依赖 `selectedSlot`（>5 处），搬家只是挪复杂度 ⇒ 不做，在 r6 §8 记一句。
-- **环境坑（r385 实测，已更正）**：① 03:15 那次 verify 中断是我在沙箱侧 sleep 150s ⇒ 撞上提示词第 1 条已写的「WSL 无连接即关机」（自己违规，不是新现象）。② **新现象**：默认 worker 数（16 核）跑全量 vitest，在 `wsl_exec` 连接持续中、约 20～36s 后 VM 整个消失（连同一条命令里后续的 echo 都不输出，`/proc/uptime` 归零）；连续 2 次复现。`npx vitest run --maxWorkers=4` 稳定通过（约 205s，内存峰值约 3.2 GB / 9.9 GB）。r384 时默认 worker 还能跑通 ⇒ 疑似宿主内存压力，间歇性。做法：verify 拆段前台跑（`check-guards … verify:recording` / `timeout 270 npx vitest run --maxWorkers=4` / `npm run build`），每段一次 `wsl_exec`。若以后频繁复现，可考虑在 vitest 配置里固定 `maxWorkers`（可逆，改前先测耗时）。
-- **已知坑**：删测试里的 `refreshTrigger++` 前先看它是否在给**非响应式**开关（如 `setRowFastPathsEnabled`）强制重算；本轮那处恰好因上一步写回 state 已变脏，不是普遍规律。
+- **下一步（可直接开工，先查后定）**：**config store 里的角色专属 setter 已被通用入口取代、生产零调用**。r386 扫描（`python3 /home/kaua/calc-arch/arenaE/deadscan.py <repo>`，按名字在 src 非测试文件里数引用）：
+  - 生产 0 / 只剩测试调用：`setPerfectBlockCount` `setAssaultOrderCount` `setYixuanInk2Count` `setYixuanInk3Count` `setYixuanPerfectBlockCount` `setYixuanExtremeAssistCount` `setYixuanBackstageComboCount` `setPromiaNiyingCount`——TeamConfigPage 已统一走 `setActionCount(slot, field, v)`（字段表 `agentCharacterCountInputs` + `ACTION_COUNT_BOUNDS`）。
+  - 生产 0 / 测试 0：`setVelinaCinema2CorrosionRate`、`getChar`、`getWEngineEffectCoverageMap`；另 `velinaCinema2CorrosionRate`（store computed）扫描器漏报（velina.ts 里同名的是 `panel.` 字段，不是 store），手核亦生产零读。
+  - `anomalyUtilizationRates` / `anomalySettlementShares` 显示 0 是因为外部经 getter/setter 访问，**它们是 state，不是死代码，别删**。
+  做法：先逐个读这些 setter 的实现，确认和 `setActionCount(slot, field, v)` 的钳制 / 默认值一致（**不一致 = 真分叉，先记下、按 CC-351 那样归一**）；一致就删 setter、把测试改成调 `setActionCount`，velina 那对与零调用 getter 直接删。判据：store 不再有按角色命名的成员。零差必须 0。
+- **已知坑**：
+  - ui-check 的 `click:` 只在 `.n-button` 里找（卡片等非按钮元素用 `eval:document.querySelectorAll(".character-card")[1].click()||"clicked"`）；空队伍时结果页不渲染「合轴率调节」区，`wait:合轴率调节` 会挂到超时。
+  - 同一条命令里起 `python3 -m http.server 8099` 又用 `pgrep -f "[h]ttp.server 8099"` 收尾会杀到自己（命令行里有未加括号的字面量）⇒ 用 `… & SP=$!; …; kill $SP`。
+  - chromedeps 在 `/tmp`，WSL 重启即丢，重建命令见 `scripts/ui-check.mjs` 头注释。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
