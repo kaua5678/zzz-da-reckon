@@ -157,7 +157,7 @@
 /**
  * Chart 3「每期新角色 · 强队强度」（2026-09-14 从 TimeChartsPage 抽组件，153 行模板 + 90 行脚本）。
  *
- * 与 Chart 5 同型：`calc` 用 `useResourceCalc()` 在组件内取（它是 pinia store 的无状态包装，
+ * 求值在运行器建的独立场景里跑（CC-343，第 371 轮起组件不再取 `useResourceCalc()`；原注：它是 pinia store 的无状态包装，
  * 任何组件调用都拿到同一份 store —— 已在本文件注释中确认），其余是标量 props。
  * 强队清单 `chart3Teams` 是**组件内状态**（用户手填，与图语义绑定），页面不关心。
  *
@@ -168,7 +168,6 @@ import { computed, ref } from 'vue'
 import { NButton, NCard, NSelect } from 'naive-ui'
 import { fmt } from '@/utils/format'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
@@ -213,7 +212,6 @@ const props = defineProps<{
 }>()
 
 const catalogStore = useCatalogStore()
-const calc = useResourceCalc()
 function agentName(id: string): string {
   return catalogStore.getAgent(id)?.name.zhCN ?? id
 }
@@ -244,7 +242,7 @@ const chart3Points = ref<NewCharacterPoint[]>([])
 async function runChart3() {
   // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runChart3Compute（第一片拆分，逐字搬迁）
   await runChart3Compute({
-    calc, computing: chart3Computing, progress: chart3Progress, points: chart3Points,
+    computing: chart3Computing, progress: chart3Progress, points: chart3Points,
     boss: props.boss,
     phase: props.phase,
     rows: chart3Rows.value,

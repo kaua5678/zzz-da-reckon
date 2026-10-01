@@ -389,7 +389,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NInputNumber } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { type TeamTimelineResult } from '@/composables/teamTimeline'
 import {
   TIMELINE_LAYOUT,
@@ -423,7 +422,6 @@ import type { BossPreset } from '@/types/bossPreset'
 
 useConfigStore()
 const catalogStore = useCatalogStore()
-const calc = useResourceCalc()
 
 // ========== 主C 选择（只列 S 级：AGENT_RELEASE_NODE 收录即 S 级） ==========
 const mainAgentId = ref('1371') // 默认仪玄（用户指定先做仪玄验证）
@@ -545,7 +543,7 @@ const result = ref<TeamTimelineResult | null>(null)
 async function runCompute() {
   // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runTeamTimelineCompute（第一片拆分，逐字搬迁）
   await runTeamTimelineCompute({
-    calc, computing, progress, result,
+    computing, progress, result,
     boss: selectedBoss.value,
     phase: selectedPhase.value,
     mainAgentId: mainAgentId.value,

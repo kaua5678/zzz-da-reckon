@@ -6,7 +6,7 @@
  * - 队伍演变集成冒烟（候选池裁剪下：节点结构、成员实装 ≤ 节点、换人事件、现场恢复）
  * - Chart 3：每期新角色 · 强队强度（行清单 / preset 预填 / 引擎建议 / 逐队配装求值）
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
@@ -33,6 +33,12 @@ import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import { allocateTopUpFilm } from '@/data/filmEconomy'
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
+import { createAnalysisScenario, type AnalysisScenario } from '@/composables/analysisScenario'
+
+// CC-343（第 371 轮）：分析器入口改收独立场景；测试每次调用建一个场景（源 = harness 的 UI store），用完统一 dispose
+const scenarios: AnalysisScenario[] = []
+const scen = (): AnalysisScenario => { const s = createAnalysisScenario(); scenarios.push(s); return s }
+afterEach(() => { for (const s of scenarios.splice(0)) s.dispose() })
 
 const bossText = readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')
 const bossData = JSON.parse(bossText) as BossPresetFile
@@ -158,11 +164,10 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
   it('节点结构 / 成员实装 ≤ 节点 / 换人事件 / 现场恢复', async () => {
     await boot()
     const config = useConfigStore()
-    const calc = useResourceCalc()
     const originalTeam = JSON.stringify(config.team)
     // 候选池：仪玄 + 其已知队友路线（耀嘉音/凯撒 → 橘福福 → 卢西娅 → 琉音 → 诺姆）+ 干扰项（朱鸢）
     const pool = ['1311', '1071', '1391', '1451', '1481', '1571', '1241']
-    const res = await computeTeamTimeline(calc, {
+    const res = await computeTeamTimeline(scen(), {
       mainAgentId: '1371',
       boss: firstBoss as BossPreset,
       phase: firstPhase,
@@ -259,11 +264,10 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
   it('A 级特例潘引壶全链路：入队搜索、0 限定金（预算步数全给限定队友）、配装生效', async () => {
     await boot()
     const config = useConfigStore()
-    const calc = useResourceCalc()
     const originalTeam = JSON.stringify(config.team)
     // 池子只有凯撒 + 潘引壶（无排名敏感性）：仪玄+凯撒+潘引壶 基础金 = 仪(本体+专武)2 + 凯(本体+专武)2 + 潘(A级)0 = 4
     const pool = ['1071', '1421']
-    const res = await computeTeamTimeline(calc, {
+    const res = await computeTeamTimeline(scen(), {
       mainAgentId: '1371',
       boss: firstBoss as BossPreset,
       phase: firstPhase,
@@ -286,10 +290,9 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
   it('轻量默认档：不走最优加金（label 无「最优」、零贪婪求值），求值量级 = 池内组合数', async () => {
     await boot()
     const config = useConfigStore()
-    const calc = useResourceCalc()
     const originalTeam = JSON.stringify(config.team)
     const pool = ['1311', '1071', '1391'] // 3 候选 → C(3,2)=3 对
-    const res = await computeTeamTimeline(calc, {
+    const res = await computeTeamTimeline(scen(), {
       mainAgentId: '1371',
       boss: firstBoss as BossPreset,
       phase: firstPhase,
@@ -309,9 +312,8 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
   it('全量档（autoBuild+optimalGold）：贪婪求值发生，预算花满到可达上限', async () => {
     await boot()
     const config = useConfigStore()
-    const calc = useResourceCalc()
     const originalTeam = JSON.stringify(config.team)
-    const res = await computeTeamTimeline(calc, {
+    const res = await computeTeamTimeline(scen(), {
       mainAgentId: '1371',
       boss: firstBoss as BossPreset,
       phase: firstPhase,
@@ -330,11 +332,10 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
   it('实装未进队判定：晚实装角色当期未进最优队 → 节点带 bench 标注（柚叶 2.1-1，实测差 12% 判未上位）', async () => {
     await boot()
     const config = useConfigStore()
-    const calc = useResourceCalc()
     const originalTeam = JSON.stringify(config.team)
     // 池子只有早期双队友 + 柚叶（2.1-1 实装）；柚叶打不过 仪玄+耀嘉音+凯撒 → bench
     const pool = ['1311', '1071', '1411']
-    const res = await computeTeamTimeline(calc, {
+    const res = await computeTeamTimeline(scen(), {
       mainAgentId: '1371',
       boss: firstBoss as BossPreset,
       phase: firstPhase,
@@ -416,7 +417,6 @@ describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / co
   it('computeNewCharacterPoints：同角色多队各出一点；无效队（重复成员）跳过；现场恢复', async () => {
     await boot()
     const config = useConfigStore()
-    const calc = useResourceCalc()
     const originalTeam = JSON.stringify(config.team)
     const rows = [
       { nodeId: '2.0-1', nodeLabel: '2.0 上半', charId: '1371' },
@@ -431,7 +431,7 @@ describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / co
       '1091': [['1091', '1141', '1131']], // 星见雅+莱卡恩+苍角
       '1451': [['1451', '1451', '1481']], // 重复成员 → 应跳过
     }
-    const points = await computeNewCharacterPoints(calc, {
+    const points = await computeNewCharacterPoints(scen(), {
       rows,
       teams,
       boss: firstBoss as BossPreset,
@@ -493,9 +493,8 @@ describe('Chart 7：同槽位角色对比（预设中其余两槽相同、所选
   it('computeSlotComparePoints：轻量档每组出 A/B 两伤、按主C实装节点有序、现场恢复', async () => {
     await boot()
     const config = useConfigStore()
-    const calc = useResourceCalc()
     const originalTeam = JSON.stringify(config.team)
-    const points = await computeSlotComparePoints(calc, {
+    const points = await computeSlotComparePoints(scen(), {
       slot: 1,
       agentA: '1481',
       agentB: '1571',
@@ -541,11 +540,10 @@ describe('Chart 4：菲林经济模拟（computeFilmSimulation / 预算性价比
 
   it('prefill 空（主C 首次 UP 前无该 Boss 期）→ 0 点；起点 = 主C 首次 UP 之后', async () => {
     await boot()
-    const calc = useResourceCalc()
     // 主C = 希格莉德（3.1-2，2026-08-19 实装）→ 恶名·死路屠夫 3.1 期之后的登场期才能算
     const bossWithLateMain = firstBoss as BossPreset
     const axis = axisOf(bossWithLateMain)
-    const res = await computeFilmSimulation(calc, { ...baseSim, mainAgentId: '1591', axisNodes: axis })
+    const res = await computeFilmSimulation(scen(), { ...baseSim, mainAgentId: '1591', axisNodes: axis })
     expect(res.points.length).toBeGreaterThan(0)
     for (const p of res.points) {
       // 每期都在主C 实装日之后
@@ -555,11 +553,10 @@ describe('Chart 4：菲林经济模拟（computeFilmSimulation / 预算性价比
 
   it('主C 固定 + 队友随金数换最优：金数增长后队伍从 仪青潘 升级为更强组合（琉音/卢西娅换入）', async () => {
     await boot()
-    const calc = useResourceCalc()
     const boss = firstBoss as BossPreset
     const axis = axisOf(boss)
     // 占比 1 + 高版本投入 + 目标期清空 → 金数拉满，必然发生换队
-    const res = await computeFilmSimulation(calc, {
+    const res = await computeFilmSimulation(scen(), {
       ...baseSim,
       axisNodes: axis,
       initialGold: 4,
@@ -597,17 +594,16 @@ describe('Chart 4：菲林经济模拟（computeFilmSimulation / 预算性价比
   it('经济：占比 0 全存金数不变；占比 1 全花金数单调增长；现场恢复', async () => {
     await boot()
     const config = useConfigStore()
-    const calc = useResourceCalc()
     const originalTeam = JSON.stringify(config.team)
     const boss = firstBoss as BossPreset
     const axis = axisOf(boss)
 
-    const save0 = await computeFilmSimulation(calc, { ...baseSim, axisNodes: axis, spendRatio: 0 })
+    const save0 = await computeFilmSimulation(scen(), { ...baseSim, axisNodes: axis, spendRatio: 0 })
     expect(save0.points.length).toBeGreaterThan(0)
     const g0 = save0.points[0].totalGold
     for (const p of save0.points) expect(p.totalGold).toBe(g0) // 全存 → 金数恒定
 
-    const spend1 = await computeFilmSimulation(calc, { ...baseSim, axisNodes: axis, spendRatio: 1 })
+    const spend1 = await computeFilmSimulation(scen(), { ...baseSim, axisNodes: axis, spendRatio: 1 })
     for (let i = 1; i < spend1.points.length; i++) {
       expect(spend1.points[i].totalGold).toBeGreaterThanOrEqual(spend1.points[i - 1].totalGold)
     }
@@ -616,3 +612,24 @@ describe('Chart 4：菲林经济模拟（computeFilmSimulation / 预算性价比
   }, 240000)
 })
 
+describe('CC-343 独立场景：异步入口 yield 时 UI store 全程不变', () => {
+  it('computeTeamTimeline / computeFilmSimulation：每次进度回报时调用方 $state 与开跑前逐字相同', async () => {
+    await boot()
+    const config = useConfigStore()
+    const before = JSON.stringify(config.$state)
+    let checks = 0
+    const onProgress = () => { checks++; expect(JSON.stringify(config.$state)).toBe(before) }
+    await computeTeamTimeline(scen(), {
+      mainAgentId: '1371', boss: firstBoss as BossPreset, phase: firstPhase, budget: 6,
+      candidatePool: ['1311', '1071', '1391'], onProgress,
+    })
+    const phases = [...firstBoss.phases].filter(p => p.begin).sort((a, b) => a.begin.localeCompare(b.begin))
+    await computeFilmSimulation(scen(), {
+      boss: firstBoss as BossPreset, axisNodes: phases.slice(0, 3).map((p, i) => ({ id: p.phaseId, label: `${i + 1}`, date: p.begin })),
+      mainAgentId: '1371', candidatePool: ['1251', '1421', '1391'], initialGold: 0, filmPerVersion: 15000, spendRatio: 0.8, budgetYuanPerVersion: 0,
+      onProgress,
+    })
+    expect(checks).toBeGreaterThan(2)
+    expect(JSON.stringify(config.$state)).toBe(before)
+  }, 180000)
+})

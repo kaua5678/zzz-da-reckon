@@ -1,7 +1,7 @@
 import { computed, ref, type Ref } from 'vue'
 import { computeSlotSweepPoints, type SlotCompareSlot, type SlotSweepResult } from '@/composables/teamTimeline'
 import type { useCatalogStore } from '@/stores/catalog'
-import type { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import type { BossPreset } from '@/types/bossPreset'
 import type { Specialty } from '@/types/catalog'
 import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
@@ -10,19 +10,18 @@ import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
  * 「选第三人」区块：候选圈定 + 试算调度 + 结果条形比例。
  * 从 `views/TeamComparePage.vue` 原样搬出（CC-92，2026-09-27 结构熵切面：页面 1552 行 > 1500 线）。
  *
- * ⚠ 依赖以**同名参数**注入（`catalogStore` / `calc` / `selectedBoss` / `selectedPhase` / `progress` / `computing`），
+ * ⚠ 依赖以**同名参数**注入（`catalogStore` / `selectedBoss` / `selectedPhase` / `progress` / `computing`），
  * 正文与原地逐行相同（仅整体缩进 2 格），先例 `teamCompareScatter.ts#useScatterGeometry`（R44）。
  * `progress` / `computing` 是页面级共享状态（曲线计算等也写它们），故注入而不是在此新建。
  */
 export function useSlotSweep(opts: {
   catalogStore: ReturnType<typeof useCatalogStore>
-  calc: ReturnType<typeof useResourceCalc>
   selectedBoss: Readonly<Ref<BossPreset | null>>
   selectedPhase: Readonly<Ref<BossPreset['phases'][number] | null>>
   progress: Ref<{ pct: number; text: string } | null>
   computing: Ref<boolean>
 }) {
-  const { catalogStore, calc, selectedBoss, selectedPhase, progress, computing } = opts
+  const { catalogStore, selectedBoss, selectedPhase, progress, computing } = opts
 
   // 求值口径在 teamTimeline.ts#computeSlotSweepPoints（@fact slotSweep），页面只做候选圈定与展示。
   /** 职业中文标签：单一来源 `@/utils/agentLabelMaps#SPECIALTY_LABEL`（CC-215）；specialty 联合类型单源在 types/catalog */
@@ -98,7 +97,7 @@ export function useSlotSweep(opts: {
     sweepAbort.value = false
     progress.value = { pct: 0, text: '' }
     try {
-      sweepResult.value = await computeSlotSweepPoints(calc, {
+      sweepResult.value = await withAnalysisScenario(scenario => computeSlotSweepPoints(scenario, {
         slot: sweepSlot.value,
         fixed: [f0, f1],
         boss,
@@ -108,7 +107,7 @@ export function useSlotSweep(opts: {
         candidateIds,
         shouldAbort: () => sweepAbort.value,
         onProgress: p => { progress.value = p },
-      })
+      }))
     } finally {
       sweepAbort.value = false
       computing.value = false

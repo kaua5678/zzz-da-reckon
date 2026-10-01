@@ -12,12 +12,12 @@
  * 依赖注入：`calc`（useResourceCalc 实例）与各 ref/getter 由页面传入，本文件不读 store、
  * 不碰组件生命周期，可单测。
  */
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { nextTick, type Ref } from 'vue'
 import { releaseNodeOf } from '@/data/versionTimeline'
 import { computeTeamTimeline, computeNewCharacterPoints, computeSlotComparePoints, computeFilmSimulation, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow, type SlotComparePoint, type SlotCompareSlot, type TeamTimelineResult } from '@/composables/teamTimeline'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
-type Calc = Parameters<typeof computeTeamTimeline>[0]
 type Progress = { pct: number; text: string } | null
 
 /** 校验失败时的短提示（原地 setTimeout 收起，2500ms 为原值） */
@@ -28,7 +28,6 @@ function flash(io: { progress: Ref<Progress> }, text: string, ms = 2500): void {
 
 /** Chart 1：队伍强度随版本演变 */
 export async function runTeamTimelineCompute(io: {
-  calc: Calc
   computing: Ref<boolean>
   progress: Ref<Progress>
   result: Ref<TeamTimelineResult | null>
@@ -51,7 +50,7 @@ export async function runTeamTimelineCompute(io: {
   io.progress.value = { pct: 0, text: '准备…' }
   await nextTick()
   try {
-    io.result.value = await computeTeamTimeline(io.calc, {
+    io.result.value = await withAnalysisScenario(scenario => computeTeamTimeline(scenario, {
       mainAgentId: io.mainAgentId,
       boss,
       phase,
@@ -62,7 +61,7 @@ export async function runTeamTimelineCompute(io: {
       autoBuild: io.autoBuild,
       optimalGold: io.optimalGold,
       onProgress: p => { io.progress.value = p },
-    })
+    }))
   } finally {
     io.computing.value = false
     io.progress.value = null
@@ -71,7 +70,6 @@ export async function runTeamTimelineCompute(io: {
 
 /** Chart 3：每期新角色 · 强队强度 */
 export async function runChart3Compute(io: {
-  calc: Calc
   computing: Ref<boolean>
   progress: Ref<Progress>
   points: Ref<NewCharacterPoint[]>
@@ -88,7 +86,7 @@ export async function runChart3Compute(io: {
   io.computing.value = true
   io.progress.value = { pct: 0, text: '准备…' }
   try {
-    io.points.value = await computeNewCharacterPoints(io.calc, {
+    io.points.value = await withAnalysisScenario(scenario => computeNewCharacterPoints(scenario, {
       rows: io.rows,
       teams: io.teams,
       boss,
@@ -97,7 +95,7 @@ export async function runChart3Compute(io: {
       autoBuild: io.autoBuild,
       optimalGold: io.optimalGold,
       onProgress: p => { io.progress.value = p },
-    })
+    }))
   } finally {
     io.computing.value = false
     io.progress.value = null
@@ -106,7 +104,6 @@ export async function runChart3Compute(io: {
 
 /** Chart 7：同槽位角色对比 */
 export async function runSlotCompareCompute(io: {
-  calc: Calc
   computing: Ref<boolean>
   progress: Ref<Progress>
   points: Ref<SlotComparePoint[]>
@@ -126,7 +123,7 @@ export async function runSlotCompareCompute(io: {
   io.progress.value = { pct: 0, text: '准备…' }
   await nextTick()
   try {
-    io.points.value = await computeSlotComparePoints(io.calc, {
+    io.points.value = await withAnalysisScenario(scenario => computeSlotComparePoints(scenario, {
       slot: io.slot,
       agentA: io.agentA,
       agentB: io.agentB,
@@ -136,7 +133,7 @@ export async function runSlotCompareCompute(io: {
       autoBuild: io.autoBuild,
       optimalGold: io.optimalGold,
       onProgress: p => { io.progress.value = p },
-    })
+    }))
   } finally {
     io.computing.value = false
     io.progress.value = null
@@ -145,7 +142,6 @@ export async function runSlotCompareCompute(io: {
 
 /** Chart 4：菲林经济模拟 */
 export async function runFilmSimCompute(io: {
-  calc: Calc
   computing: Ref<boolean>
   progress: Ref<Progress>
   points: Ref<FilmSimPoint[]>
@@ -168,7 +164,7 @@ export async function runFilmSimCompute(io: {
   io.computing.value = true
   io.progress.value = { pct: 0, text: '准备…' }
   try {
-    const res = await computeFilmSimulation(io.calc, {
+    const res = await withAnalysisScenario(scenario => computeFilmSimulation(scenario, {
       boss,
       axisNodes: axis,
       mainAgentId: io.mainAgentId,
@@ -180,7 +176,7 @@ export async function runFilmSimCompute(io: {
       targetPeriodId: io.targetPeriod || undefined,
       autoBuild: io.autoBuild,
       onProgress: p => { io.progress.value = p },
-    })
+    }))
     io.points.value = res.points
   } finally {
     io.computing.value = false

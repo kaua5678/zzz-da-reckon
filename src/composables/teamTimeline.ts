@@ -25,10 +25,11 @@
  * - 配装 = 每队跑一遍 store.applyTeamPreset（邦布精灵推荐驱动盘 + 词条优化器），
  *   再显式覆盖音擎/命座/精炼/交互（交互基准：弹刀6 闪反10 快支3 连携1，般岳/星徽·比利按角色默认）。
  * - Boss 一次应用（applyBossPreset）；当期可选 buff 牌不参与（与「队伍对比」的「不使用」一致）。
- * - 计算现场快照/恢复，跑完不留痕（同 computeTeamComparePoints）。
+ * - 入口（computeTeamTimeline / computeNewCharacterPoints / computeSlotComparePoints / computeSlotSweepPoints）收调用方建的
+ *   独立场景 `AnalysisContext`，在场景上改写求值，UI store 不被碰（CC-343，arena-D 第 371 轮；原为快照/恢复 UI store）。
  */
 import { applyBossRoom } from '@/composables/bossRoom'
-import { useConfigStore } from '@/stores/config'
+import type { useConfigStore } from '@/stores/config'
 import { equalizeTimeWeights } from '@/composables/timeWeightBalancer'
 import { useCatalogStore } from '@/stores/catalog'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
@@ -40,7 +41,7 @@ import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
-import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
+import type { AnalysisContext } from '@/composables/analysisScenario'
 import { bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
 type Calc = ReturnType<typeof useResourceCalc>
@@ -375,289 +376,284 @@ export function computeOptimalTeamAllocation(
  * 每节点最强 = 可达组合前缀的最大值；再对每节点参考 Top-3 队伍按所选金数做最优加金（逐金贪婪），
  * 取加金后伤害最高者为该节点展示队伍。未收敛（maxIter）队伍排除出排名。
  */
-export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions): Promise<TeamTimelineResult> {
-  const configStore = useConfigStore()
+export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamTimelineOptions): Promise<TeamTimelineResult> {
+  const { config: configStore, calc } = scenario // CC-343：在调用方给的独立场景上改写 / 求值，不碰 UI store、不做快照恢复
   const catalog = useCatalogStore()
-  const snap = snapshotStore(configStore)
   const t0 = Date.now()
   let teamsEvaluated = 0
   let goldEvaluations = 0
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
 
-  try {
-    const mainRelease = releaseNodeOf(opts.mainAgentId)
-    if (!mainRelease) throw new Error(`角色 ${opts.mainAgentId} 未收录实装版本（时间线只做 S 级）`)
-    const mainDate = VERSION_NODES[nodeIndexOf(mainRelease)]?.date
-    if (!mainDate) throw new Error(`版本节点 ${mainRelease} 缺日期，无法映射演变轴`)
+  const mainRelease = releaseNodeOf(opts.mainAgentId)
+  if (!mainRelease) throw new Error(`角色 ${opts.mainAgentId} 未收录实装版本（时间线只做 S 级）`)
+  const mainDate = VERSION_NODES[nodeIndexOf(mainRelease)]?.date
+  if (!mainDate) throw new Error(`版本节点 ${mainRelease} 缺日期，无法映射演变轴`)
 
-    // 演变轴：页面传入的危局期数轴优先；缺省由 VERSION_NODES 合成（回归兼容）。
-    // 角色可用性按日期窗口匹配：实装日落在某节点 [date, 下一节点 date) 内即从该节点起可用
-    //（期数中途实装也算该期）；早于轴起点的队友从轴起点可用。
-    const defaultAxis: TimelineAxisNode[] = VERSION_NODES.map(n => ({
-      id: n.id,
-      label: n.label,
-      date: n.date,
-      testServer: (n.note ?? '').includes('测试服'),
-    }))
-    const fullAxis = (opts.axisNodes?.length ? opts.axisNodes : defaultAxis)
-      .filter(a => a.testServer !== true || opts.includeTestServer === true)
-    if (fullAxis.length === 0) throw new Error('演变轴为空（无可用期数）')
-    // 主C实装日期不在轴内（如所选 Boss 首登晚于主C实装）→ 从轴起点开始；主C作为存量队友从起点可用
-    const mainAxisIdx = Math.max(0, indexForDate(fullAxis, mainDate))
-    const nodes: TimelineAxisNode[] = fullAxis.slice(mainAxisIdx)
+  // 演变轴：页面传入的危局期数轴优先；缺省由 VERSION_NODES 合成（回归兼容）。
+  // 角色可用性按日期窗口匹配：实装日落在某节点 [date, 下一节点 date) 内即从该节点起可用
+  //（期数中途实装也算该期）；早于轴起点的队友从轴起点可用。
+  const defaultAxis: TimelineAxisNode[] = VERSION_NODES.map(n => ({
+    id: n.id,
+    label: n.label,
+    date: n.date,
+    testServer: (n.note ?? '').includes('测试服'),
+  }))
+  const fullAxis = (opts.axisNodes?.length ? opts.axisNodes : defaultAxis)
+    .filter(a => a.testServer !== true || opts.includeTestServer === true)
+  if (fullAxis.length === 0) throw new Error('演变轴为空（无可用期数）')
+  // 主C实装日期不在轴内（如所选 Boss 首登晚于主C实装）→ 从轴起点开始；主C作为存量队友从起点可用
+  const mainAxisIdx = Math.max(0, indexForDate(fullAxis, mainDate))
+  const nodes: TimelineAxisNode[] = fullAxis.slice(mainAxisIdx)
 
-    const releaseDateOf = (id: string) => {
-      const rel = AGENT_RELEASE_NODE[id]
-      return rel ? VERSION_NODES[nodeIndexOf(rel)]?.date : undefined
+  const releaseDateOf = (id: string) => {
+    const rel = AGENT_RELEASE_NODE[id]
+    return rel ? VERSION_NODES[nodeIndexOf(rel)]?.date : undefined
+  }
+  /** 实装 → 轴下标（未裁剪；-1 = 早于轴起点） */
+  const axisIndexRaw = (id: string) => {
+    const d = releaseDateOf(id)
+    return d ? indexForDate(nodes, d) : -1
+  }
+  /** 实装 → 可用轴下标（早于轴起点钳制为 0 = 从轴起点可用） */
+  const axisIndexFor = (id: string) => {
+    const idx = axisIndexRaw(id)
+    return idx < 0 ? 0 : idx
+  }
+
+  // Boss 一次应用（与节点无关）
+  applyBossRoom(configStore, opts.boss, opts.phase)
+
+  // S 级候选（AGENT_RELEASE_NODE 收录即 S 级），排除主C；缺省排除测试服（3.2 未实装）角色
+  const testNodes = new Set(
+    VERSION_NODES.filter(n => (n.note ?? '').includes('测试服')).map(n => n.id),
+  )
+  // 显式传候选池时池子说了算（测试服角色也可被用户选入）；仅缺省全量模式排除测试服
+  const candidates = (opts.candidatePool ?? Object.keys(AGENT_RELEASE_NODE))
+    .filter(id => id !== opts.mainAgentId)
+    .filter(id => opts.candidatePool?.length || opts.includeTestServer || !testNodes.has(AGENT_RELEASE_NODE[id]))
+  // 队伍结构约束：至多 1 名击破（stun）。真实 meta 无双击破阵容（失衡窗口重叠浪费），
+  // 且引擎失衡循环对双击破组合严重高估（实测 仪玄+莱卡恩+青衣 8金 ≈ 437% 血量，远高于
+  // 单击破 meta 队 105-127%）；用户确认的演变路径（橘福福/卢西娅/琉音/诺姆）均为 ≤1 击破。
+  const isStun = (id: string) => (catalog.getAgent(id)?.specialty ?? '') === 'stun'
+  const stunBudget = isStun(opts.mainAgentId) ? 0 : 1
+
+  // ---- 阶段 1：全对参考伤害（精确增量，每对只算一次）----
+  // 按「较晚实装成员」的轴位置排序求值，让早期节点先完成（进度单调）
+  const pairs: { a: string; b: string; at: number }[] = []
+  for (let i = 0; i < candidates.length; i++) {
+    for (let j = i + 1; j < candidates.length; j++) {
+      const a = candidates[i]
+      const b = candidates[j]
+      if ((isStun(a) ? 1 : 0) + (isStun(b) ? 1 : 0) > stunBudget) continue
+      pairs.push({ a, b, at: Math.max(axisIndexFor(a), axisIndexFor(b)) })
     }
-    /** 实装 → 轴下标（未裁剪；-1 = 早于轴起点） */
-    const axisIndexRaw = (id: string) => {
-      const d = releaseDateOf(id)
-      return d ? indexForDate(nodes, d) : -1
+  }
+  pairs.sort((x, y) => x.at - y.at)
+
+  const refDamage = new Map<string, number>()
+  let nonConverged = 0
+  let evalCount = 0
+  const totalEval = pairs.length
+  for (const { a, b } of pairs) {
+    const team: [string, string, string] = [opts.mainAgentId, a, b]
+    // 搜索排名用「预算感知确定性分配」（主C优先）：排名贴近所选金数下的真实强度，
+    // 换人时机 = 该金数下变强的时刻（比基础金排名准确；最优加金仍由阶段 3 逐金贪婪给出）
+    const { state } = budgetAwareStateFor(team, opts.budget, catalog)
+    applyTeamToStore(configStore, team, state, opts.autoBuild === true)
+    // 收敛过滤：失衡外层不动点未收敛（outerExit='maxIter'）的队伍伤害虚高不可信
+    // （实测 青衣 系阵容 8金 407% vs 收敛 meta 队 105-127%），排除出排名
+    const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+    if (conv === 'maxIter') {
+      nonConverged++
+    } else {
+      refDamage.set(teamKey(opts.mainAgentId, a, b), calc.teamTotalDamage.value)
     }
-    /** 实装 → 可用轴下标（早于轴起点钳制为 0 = 从轴起点可用） */
-    const axisIndexFor = (id: string) => {
-      const idx = axisIndexRaw(id)
-      return idx < 0 ? 0 : idx
+    teamsEvaluated++
+    evalCount++
+    if (evalCount % 2 === 0) {
+      report((evalCount / totalEval) * 0.75, `队伍搜索 ${evalCount}/${totalEval}（${catalog.getAgent(a)?.name.zhCN ?? a}+${catalog.getAgent(b)?.name.zhCN ?? b}）…`)
+      await yieldNow()
     }
+  }
+  report(0.75, '队伍搜索完成，节点归并…')
+  await yieldNow()
 
-    // Boss 一次应用（与节点无关）
-    applyBossRoom(configStore, opts.boss, opts.phase)
+  // ---- 多队并存强度种子（用户口径「队伍×版本强度矩阵」，演示.xlsx）----
+  // 池内每个收敛组合一条：damage 跨期恒定，startIndex = 双队友均实装的首个节点。
+  const shortName = (id: string) => catalog.getAgent(id)?.name.zhCN?.[0] ?? id
+  const strengthSeeds: TeamStrengthSeed[] = [...refDamage.entries()]
+    .map(([key, dmg]) => {
+      const [m, a, b] = key.split(',') as [string, string, string]
+      const startNodeIdx = Math.max(axisIndexFor(a), axisIndexFor(b))
+      return {
+        key,
+        team: [m, a, b] as [string, string, string],
+        shortLabel: `${shortName(m)}${shortName(a)}${shortName(b)}`,
+        damage: dmg,
+        hpRatio: opts.phase.hp > 0 ? Math.round((dmg / opts.phase.hp) * 10000) / 100 : 0,
+        startIndex: Math.max(0, startNodeIdx),
+      }
+    })
+    .sort((x, y) => y.damage - x.damage)
 
-    // S 级候选（AGENT_RELEASE_NODE 收录即 S 级），排除主C；缺省排除测试服（3.2 未实装）角色
-    const testNodes = new Set(
-      VERSION_NODES.filter(n => (n.note ?? '').includes('测试服')).map(n => n.id),
-    )
-    // 显式传候选池时池子说了算（测试服角色也可被用户选入）；仅缺省全量模式排除测试服
-    const candidates = (opts.candidatePool ?? Object.keys(AGENT_RELEASE_NODE))
-      .filter(id => id !== opts.mainAgentId)
-      .filter(id => opts.candidatePool?.length || opts.includeTestServer || !testNodes.has(AGENT_RELEASE_NODE[id]))
-    // 队伍结构约束：至多 1 名击破（stun）。真实 meta 无双击破阵容（失衡窗口重叠浪费），
-    // 且引擎失衡循环对双击破组合严重高估（实测 仪玄+莱卡恩+青衣 8金 ≈ 437% 血量，远高于
-    // 单击破 meta 队 105-127%）；用户确认的演变路径（橘福福/卢西娅/琉音/诺姆）均为 ≤1 击破。
-    const isStun = (id: string) => (catalog.getAgent(id)?.specialty ?? '') === 'stun'
-    const stunBudget = isStun(opts.mainAgentId) ? 0 : 1
-
-    // ---- 阶段 1：全对参考伤害（精确增量，每对只算一次）----
-    // 按「较晚实装成员」的轴位置排序求值，让早期节点先完成（进度单调）
-    const pairs: { a: string; b: string; at: number }[] = []
-    for (let i = 0; i < candidates.length; i++) {
-      for (let j = i + 1; j < candidates.length; j++) {
-        const a = candidates[i]
-        const b = candidates[j]
-        if ((isStun(a) ? 1 : 0) + (isStun(b) ? 1 : 0) > stunBudget) continue
-        pairs.push({ a, b, at: Math.max(axisIndexFor(a), axisIndexFor(b)) })
+  // ---- 阶段 2：每节点参考 Top-3（可达前缀）----
+  // 当期新实装角色（候选池内按实装日期映射轴下标；主C已排除）——「实装未进队」判定用。
+  // 用未钳制下标：早于轴起点的是存量队友，不算「当期新实装」
+  const releasedAtByAxis = new Map<number, string[]>()
+  for (const id of candidates) {
+    const idx = axisIndexRaw(id)
+    if (idx < 0) continue
+    const list = releasedAtByAxis.get(idx) ?? []
+    list.push(id)
+    releasedAtByAxis.set(idx, list)
+  }
+  const top3ByNode: { key: string; dmg: number }[][] = []
+  // 每节点「含 / 不含当期新实装角色」的最强参考伤害（同一 refDamage 空间，零额外求值）
+  const newAgentStatsByNode: { agents: string[]; withNew: number; withoutNew: number }[] = []
+  let running: { key: string; dmg: number }[] = []
+  let pairPtr = 0
+  for (let n = 0; n < nodes.length; n++) {
+    while (pairPtr < pairs.length && pairs[pairPtr].at <= n) {
+      const { a, b } = pairs[pairPtr]
+      const key = teamKey(opts.mainAgentId, a, b)
+      const dmg = refDamage.get(key)
+      if (dmg !== undefined) running.push({ key, dmg })
+      pairPtr++
+    }
+    const ranked = [...running].sort((x, y) => y.dmg - x.dmg)
+    top3ByNode.push(ranked.slice(0, 3))
+    const newHere = releasedAtByAxis.get(n) ?? []
+    let stats: { agents: string[]; withNew: number; withoutNew: number } | null = null
+    if (newHere.length > 0 && running.length > 0) {
+      const newSet = new Set(newHere)
+      let withNew = Number.NEGATIVE_INFINITY
+      let withoutNew = Number.NEGATIVE_INFINITY
+      for (const r of running) {
+        const [, x, y] = r.key.split(',')
+        if (newSet.has(x) || newSet.has(y)) withNew = Math.max(withNew, r.dmg)
+        else withoutNew = Math.max(withoutNew, r.dmg)
+      }
+      if (withNew > Number.NEGATIVE_INFINITY && withoutNew > Number.NEGATIVE_INFINITY) {
+        stats = { agents: newHere, withNew, withoutNew }
       }
     }
-    pairs.sort((x, y) => x.at - y.at)
+    newAgentStatsByNode.push(stats ?? { agents: [], withNew: 0, withoutNew: 0 })
+  }
 
-    const refDamage = new Map<string, number>()
-    let nonConverged = 0
-    let evalCount = 0
-    const totalEval = pairs.length
-    for (const { a, b } of pairs) {
-      const team: [string, string, string] = [opts.mainAgentId, a, b]
-      // 搜索排名用「预算感知确定性分配」（主C优先）：排名贴近所选金数下的真实强度，
-      // 换人时机 = 该金数下变强的时刻（比基础金排名准确；最优加金仍由阶段 3 逐金贪婪给出）
-      const { state } = budgetAwareStateFor(team, opts.budget, catalog)
-      applyTeamToStore(configStore, team, state, opts.autoBuild === true)
-      // 收敛过滤：失衡外层不动点未收敛（outerExit='maxIter'）的队伍伤害虚高不可信
-      // （实测 青衣 系阵容 8金 407% vs 收敛 meta 队 105-127%），排除出排名
-      const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
-      if (conv === 'maxIter') {
-        nonConverged++
-      } else {
-        refDamage.set(teamKey(opts.mainAgentId, a, b), calc.teamTotalDamage.value)
-      }
-      teamsEvaluated++
-      evalCount++
-      if (evalCount % 2 === 0) {
-        report((evalCount / totalEval) * 0.75, `队伍搜索 ${evalCount}/${totalEval}（${catalog.getAgent(a)?.name.zhCN ?? a}+${catalog.getAgent(b)?.name.zhCN ?? b}）…`)
-        await yieldNow()
-      }
+  // ---- 阶段 3：对 Top-3 队伍按所选金数做最优加金（逐金贪婪；optimalGold=false 轻量档跳过，零额外求值）----
+  const goldCache = new Map<string, GoldAllocationResult>()
+  if (opts.optimalGold) {
+    const distinctTeams = new Set<string>()
+    for (const tops of top3ByNode) for (const t of tops) distinctTeams.add(t.key)
+    const distinctList = [...distinctTeams]
+    for (let i = 0; i < distinctList.length; i++) {
+      const key = distinctList[i]
+      const [m, a, b] = key.split(',') as [string, string, string]
+      const alloc = computeOptimalTeamAllocation(calc, configStore, [m, a, b], opts.budget, opts.autoBuild === true)
+      goldCache.set(key, alloc)
+      goldEvaluations += alloc.stepsEvaluated
+      report(0.75 + (i / distinctList.length) * 0.22, `加金优化 ${i + 1}/${distinctList.length}（${catalog.getAgent(a)?.name.zhCN ?? a}+${catalog.getAgent(b)?.name.zhCN ?? b}）…`)
+      if (i % 2 === 0) await yieldNow()
     }
-    report(0.75, '队伍搜索完成，节点归并…')
-    await yieldNow()
+  }
 
-    // ---- 多队并存强度种子（用户口径「队伍×版本强度矩阵」，演示.xlsx）----
-    // 池内每个收敛组合一条：damage 跨期恒定，startIndex = 双队友均实装的首个节点。
-    const shortName = (id: string) => catalog.getAgent(id)?.name.zhCN?.[0] ?? id
-    const strengthSeeds: TeamStrengthSeed[] = [...refDamage.entries()]
-      .map(([key, dmg]) => {
-        const [m, a, b] = key.split(',') as [string, string, string]
-        const startNodeIdx = Math.max(axisIndexFor(a), axisIndexFor(b))
-        return {
-          key,
-          team: [m, a, b] as [string, string, string],
-          shortLabel: `${shortName(m)}${shortName(a)}${shortName(b)}`,
-          damage: dmg,
-          hpRatio: opts.phase.hp > 0 ? Math.round((dmg / opts.phase.hp) * 10000) / 100 : 0,
-          startIndex: Math.max(0, startNodeIdx),
-        }
-      })
-      .sort((x, y) => y.damage - x.damage)
-
-    // ---- 阶段 2：每节点参考 Top-3（可达前缀）----
-    // 当期新实装角色（候选池内按实装日期映射轴下标；主C已排除）——「实装未进队」判定用。
-    // 用未钳制下标：早于轴起点的是存量队友，不算「当期新实装」
-    const releasedAtByAxis = new Map<number, string[]>()
-    for (const id of candidates) {
-      const idx = axisIndexRaw(id)
-      if (idx < 0) continue
-      const list = releasedAtByAxis.get(idx) ?? []
-      list.push(id)
-      releasedAtByAxis.set(idx, list)
-    }
-    const top3ByNode: { key: string; dmg: number }[][] = []
-    // 每节点「含 / 不含当期新实装角色」的最强参考伤害（同一 refDamage 空间，零额外求值）
-    const newAgentStatsByNode: { agents: string[]; withNew: number; withoutNew: number }[] = []
-    let running: { key: string; dmg: number }[] = []
-    let pairPtr = 0
-    for (let n = 0; n < nodes.length; n++) {
-      while (pairPtr < pairs.length && pairs[pairPtr].at <= n) {
-        const { a, b } = pairs[pairPtr]
-        const key = teamKey(opts.mainAgentId, a, b)
-        const dmg = refDamage.get(key)
-        if (dmg !== undefined) running.push({ key, dmg })
-        pairPtr++
-      }
-      const ranked = [...running].sort((x, y) => y.dmg - x.dmg)
-      top3ByNode.push(ranked.slice(0, 3))
-      const newHere = releasedAtByAxis.get(n) ?? []
-      let stats: { agents: string[]; withNew: number; withoutNew: number } | null = null
-      if (newHere.length > 0 && running.length > 0) {
-        const newSet = new Set(newHere)
-        let withNew = Number.NEGATIVE_INFINITY
-        let withoutNew = Number.NEGATIVE_INFINITY
-        for (const r of running) {
-          const [, x, y] = r.key.split(',')
-          if (newSet.has(x) || newSet.has(y)) withNew = Math.max(withNew, r.dmg)
-          else withoutNew = Math.max(withoutNew, r.dmg)
-        }
-        if (withNew > Number.NEGATIVE_INFINITY && withoutNew > Number.NEGATIVE_INFINITY) {
-          stats = { agents: newHere, withNew, withoutNew }
-        }
-      }
-      newAgentStatsByNode.push(stats ?? { agents: [], withNew: 0, withoutNew: 0 })
-    }
-
-    // ---- 阶段 3：对 Top-3 队伍按所选金数做最优加金（逐金贪婪；optimalGold=false 轻量档跳过，零额外求值）----
-    const goldCache = new Map<string, GoldAllocationResult>()
-    if (opts.optimalGold) {
-      const distinctTeams = new Set<string>()
-      for (const tops of top3ByNode) for (const t of tops) distinctTeams.add(t.key)
-      const distinctList = [...distinctTeams]
-      for (let i = 0; i < distinctList.length; i++) {
-        const key = distinctList[i]
-        const [m, a, b] = key.split(',') as [string, string, string]
-        const alloc = computeOptimalTeamAllocation(calc, configStore, [m, a, b], opts.budget, opts.autoBuild === true)
-        goldCache.set(key, alloc)
-        goldEvaluations += alloc.stepsEvaluated
-        report(0.75 + (i / distinctList.length) * 0.22, `加金优化 ${i + 1}/${distinctList.length}（${catalog.getAgent(a)?.name.zhCN ?? a}+${catalog.getAgent(b)?.name.zhCN ?? b}）…`)
-        if (i % 2 === 0) await yieldNow()
-      }
-    }
-
-    // ---- 阶段 4：节点结果装配 ----
-    const mainAgent = catalog.getAgent(opts.mainAgentId)
-    const nodesResult: TimelineNodeResult[] = []
-    for (let n = 0; n < nodes.length; n++) {
-      const tops = top3ByNode[n]
-      if (tops.length === 0) {
-        // 该节点无收敛队伍：沿用上一节点结果（首次节点无收敛时跳过该节点）
-        if (nodesResult.length > 0) {
-          const prev = nodesResult[nodesResult.length - 1]
-          nodesResult.push({ ...prev, nodeId: nodes[n].id, nodeLabel: nodes[n].label })
-          continue
-        }
+  // ---- 阶段 4：节点结果装配 ----
+  const mainAgent = catalog.getAgent(opts.mainAgentId)
+  const nodesResult: TimelineNodeResult[] = []
+  for (let n = 0; n < nodes.length; n++) {
+    const tops = top3ByNode[n]
+    if (tops.length === 0) {
+      // 该节点无收敛队伍：沿用上一节点结果（首次节点无收敛时跳过该节点）
+      if (nodesResult.length > 0) {
+        const prev = nodesResult[nodesResult.length - 1]
+        nodesResult.push({ ...prev, nodeId: nodes[n].id, nodeLabel: nodes[n].label })
         continue
       }
-      let best = tops[0]
-      if (opts.optimalGold) {
-        for (const t of tops) {
-          const a1 = goldCache.get(t.key)!
-          const a2 = goldCache.get(best.key)!
-          if (a1.damage > a2.damage + 1e-9) best = t
-        }
-      }
-      const team = best.key.split(',') as [string, string, string]
-      // 轻量档：排名伤害（阶段1参考值）直接复用——同队跨期面对同一 Boss 数值不变，仅当期 buff 不同（不参与）
-      const alloc = opts.optimalGold ? goldCache.get(best.key) : null
-      const budgetAware = alloc ? null : budgetAwareStateFor(team, opts.budget, catalog)
-      const damage = alloc ? alloc.damage : refDamage.get(best.key)!
-      const totalGold = alloc ? alloc.totalGold : budgetAware!.totalGold
-      const goldLabel = alloc ? alloc.label : budgetAware!.label
-      const nodeState: TeamGoldState = alloc
-        ? { cinemas: alloc.cinemas, wengineMods: alloc.wengineMods, wEngines: alloc.wEngines }
-        : budgetAware!.state
-      const hpRatio = opts.phase.hp > 0 ? Math.round((damage / opts.phase.hp) * 10000) / 100 : 0
-      const prev = nodesResult[n - 1]
-      let swappedIn: string | undefined
-      let swappedOut: string | undefined
-      if (prev && prev.team.join() !== team.join()) {
-        for (let s = 1; s < 3; s++) {
-          if (prev.team[s] !== team[s]) {
-            swappedOut = prev.team[s]
-            swappedIn = team[s]
-          }
-        }
-      }
-      // 换人判定：本节点最优队 vs 上一节点旧队伤害（同预算各自配装态）
-      const swapCls = prev && swappedIn ? classifySwapUplift(prev.damage, damage) : null
-      // 实装未进队：当期新角色全部不在展示队伍里 → 参考伤害差距定平替/未上位
-      // （gapPct ≥ 0 说明参考最强含新角色但最优加金后被反超，排名分歧场景不标注）
-      const stats = newAgentStatsByNode[n]
-      let newAgentBench: NewAgentBench | undefined
-      if (stats.agents.length > 0 && !stats.agents.some(a => team.includes(a))) {
-        const gapPct = Math.round(((stats.withNew - stats.withoutNew) / stats.withoutNew) * 1000) / 10
-        if (gapPct < 0) {
-          newAgentBench = {
-            agents: stats.agents,
-            kind: gapPct > -SWAP_UPGRADE_UPLIFT_PCT ? 'lateral' : 'worse',
-            gapPct,
-          }
-        }
-      }
-      nodesResult.push({
-        nodeId: nodes[n].id,
-        nodeLabel: nodes[n].label,
-        ...(nodes[n].testServer ? { nodeNote: '测试服数据' } : {}),
-        team,
-        state: nodeState,
-        totalGold,
-        goldLabel,
-        damage,
-        hpRatio,
-        ...(swappedIn ? { swappedIn, swappedOut } : {}),
-        ...(swapCls ? { swapKind: swapCls.kind, swapUpliftPct: swapCls.pct } : {}),
-        ...(newAgentBench ? { newAgentBench } : {}),
-      })
+      continue
     }
-
-    const swapEvents: TeamTimelineSwapEvent[] = nodesResult
-      .filter(r => r.swappedIn)
-      .map(r => ({
-        nodeId: r.nodeId,
-        nodeLabel: r.nodeLabel,
-        swappedIn: r.swappedIn!,
-        swappedOut: r.swappedOut!,
-        ...(r.swapKind ? { swapKind: r.swapKind, swapUpliftPct: r.swapUpliftPct } : {}),
-      }))
-
-    report(1, `完成：${nodesResult.length} 个节点，${swapEvents.length} 次换人`)
-    return {
-      mainAgentId: opts.mainAgentId,
-      mainName: mainAgent?.name.zhCN ?? opts.mainAgentId,
-      budget: opts.budget,
-      bossName: opts.boss.name,
-      phaseLabel: opts.phase.label,
-      nodes: nodesResult,
-      swapEvents,
-      strengthSeeds,
-      stats: { teamsEvaluated, nonConverged, goldEvaluations, durationMs: Date.now() - t0 },
+    let best = tops[0]
+    if (opts.optimalGold) {
+      for (const t of tops) {
+        const a1 = goldCache.get(t.key)!
+        const a2 = goldCache.get(best.key)!
+        if (a1.damage > a2.damage + 1e-9) best = t
+      }
     }
-  } finally {
-    restoreStore(configStore, snap)
+    const team = best.key.split(',') as [string, string, string]
+    // 轻量档：排名伤害（阶段1参考值）直接复用——同队跨期面对同一 Boss 数值不变，仅当期 buff 不同（不参与）
+    const alloc = opts.optimalGold ? goldCache.get(best.key) : null
+    const budgetAware = alloc ? null : budgetAwareStateFor(team, opts.budget, catalog)
+    const damage = alloc ? alloc.damage : refDamage.get(best.key)!
+    const totalGold = alloc ? alloc.totalGold : budgetAware!.totalGold
+    const goldLabel = alloc ? alloc.label : budgetAware!.label
+    const nodeState: TeamGoldState = alloc
+      ? { cinemas: alloc.cinemas, wengineMods: alloc.wengineMods, wEngines: alloc.wEngines }
+      : budgetAware!.state
+    const hpRatio = opts.phase.hp > 0 ? Math.round((damage / opts.phase.hp) * 10000) / 100 : 0
+    const prev = nodesResult[n - 1]
+    let swappedIn: string | undefined
+    let swappedOut: string | undefined
+    if (prev && prev.team.join() !== team.join()) {
+      for (let s = 1; s < 3; s++) {
+        if (prev.team[s] !== team[s]) {
+          swappedOut = prev.team[s]
+          swappedIn = team[s]
+        }
+      }
+    }
+    // 换人判定：本节点最优队 vs 上一节点旧队伤害（同预算各自配装态）
+    const swapCls = prev && swappedIn ? classifySwapUplift(prev.damage, damage) : null
+    // 实装未进队：当期新角色全部不在展示队伍里 → 参考伤害差距定平替/未上位
+    // （gapPct ≥ 0 说明参考最强含新角色但最优加金后被反超，排名分歧场景不标注）
+    const stats = newAgentStatsByNode[n]
+    let newAgentBench: NewAgentBench | undefined
+    if (stats.agents.length > 0 && !stats.agents.some(a => team.includes(a))) {
+      const gapPct = Math.round(((stats.withNew - stats.withoutNew) / stats.withoutNew) * 1000) / 10
+      if (gapPct < 0) {
+        newAgentBench = {
+          agents: stats.agents,
+          kind: gapPct > -SWAP_UPGRADE_UPLIFT_PCT ? 'lateral' : 'worse',
+          gapPct,
+        }
+      }
+    }
+    nodesResult.push({
+      nodeId: nodes[n].id,
+      nodeLabel: nodes[n].label,
+      ...(nodes[n].testServer ? { nodeNote: '测试服数据' } : {}),
+      team,
+      state: nodeState,
+      totalGold,
+      goldLabel,
+      damage,
+      hpRatio,
+      ...(swappedIn ? { swappedIn, swappedOut } : {}),
+      ...(swapCls ? { swapKind: swapCls.kind, swapUpliftPct: swapCls.pct } : {}),
+      ...(newAgentBench ? { newAgentBench } : {}),
+    })
+  }
+
+  const swapEvents: TeamTimelineSwapEvent[] = nodesResult
+    .filter(r => r.swappedIn)
+    .map(r => ({
+      nodeId: r.nodeId,
+      nodeLabel: r.nodeLabel,
+      swappedIn: r.swappedIn!,
+      swappedOut: r.swappedOut!,
+      ...(r.swapKind ? { swapKind: r.swapKind, swapUpliftPct: r.swapUpliftPct } : {}),
+    }))
+
+  report(1, `完成：${nodesResult.length} 个节点，${swapEvents.length} 次换人`)
+  return {
+    mainAgentId: opts.mainAgentId,
+    mainName: mainAgent?.name.zhCN ?? opts.mainAgentId,
+    budget: opts.budget,
+    bossName: opts.boss.name,
+    phaseLabel: opts.phase.label,
+    nodes: nodesResult,
+    swapEvents,
+    strengthSeeds,
+    stats: { teamsEvaluated, nonConverged, goldEvaluations, durationMs: Date.now() - t0 },
   }
 }
 
@@ -731,52 +727,47 @@ export interface NewCharacterChartOptions {
 /**
  * 计算 Chart 3 各点：对用户清单里每个已配置强队（同角色多队各出一点），按所选金数配装
  * （optimalGold=false 轻量档用 budgetAwareStateFor，零额外求值；true 用逐金贪婪），
- * 收敛过滤 + 现场快照/恢复。
+ * 收敛过滤；在调用方的独立场景上求值（CC-343）。
  */
-export async function computeNewCharacterPoints(calc: Calc, opts: NewCharacterChartOptions): Promise<NewCharacterPoint[]> {
-  const configStore = useConfigStore()
+export async function computeNewCharacterPoints(scenario: AnalysisContext, opts: NewCharacterChartOptions): Promise<NewCharacterPoint[]> {
+  const { config: configStore, calc } = scenario // CC-343：在调用方给的独立场景上改写 / 求值，不碰 UI store、不做快照恢复
   const catalog = useCatalogStore()
-  const snap = snapshotStore(configStore)
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
-  try {
-    applyBossRoom(configStore, opts.boss, opts.phase)
-    // 展开成 (行, 队) 平铺：同角色多队各一任务
-    const tasks: { row: NewCharacterRow; team: [string, string, string] }[] = []
-    for (const row of opts.rows) {
-      for (const team of opts.teams[row.charId] ?? []) {
-        if (new Set(team).size === 3 && team.every(id => id && catalog.getAgent(id))) {
-          tasks.push({ row, team })
-        }
+  applyBossRoom(configStore, opts.boss, opts.phase)
+  // 展开成 (行, 队) 平铺：同角色多队各一任务
+  const tasks: { row: NewCharacterRow; team: [string, string, string] }[] = []
+  for (const row of opts.rows) {
+    for (const team of opts.teams[row.charId] ?? []) {
+      if (new Set(team).size === 3 && team.every(id => id && catalog.getAgent(id))) {
+        tasks.push({ row, team })
       }
     }
-    const points: NewCharacterPoint[] = []
-    for (let i = 0; i < tasks.length; i++) {
-      const { row, team } = tasks[i]
-      const res = evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
-      if (!res) continue
-      const char = catalog.getAgent(row.charId)
-      points.push({
-        charId: row.charId,
-        charName: char?.name.zhCN ?? row.charId,
-        nodeId: row.nodeId,
-        nodeLabel: row.nodeLabel,
-        ...(row.nodeNote ? { nodeNote: row.nodeNote } : {}),
-        team,
-        teamIndex: (opts.teams[row.charId] ?? []).indexOf(team),
-        state: res.state,
-        totalGold: res.totalGold,
-        goldLabel: res.goldLabel,
-        damage: res.damage,
-        hpRatio: opts.phase.hp > 0 ? Math.round((res.damage / opts.phase.hp) * 10000) / 100 : 0,
-      })
-      report((i + 1) / tasks.length, `强队强度 ${i + 1}/${tasks.length}（${char?.name.zhCN ?? row.charId}）…`)
-      if (i % 2 === 0) await yieldNow()
-    }
-    report(1, `完成：${points.length} 个点`)
-    return points
-  } finally {
-    restoreStore(configStore, snap)
   }
+  const points: NewCharacterPoint[] = []
+  for (let i = 0; i < tasks.length; i++) {
+    const { row, team } = tasks[i]
+    const res = evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
+    if (!res) continue
+    const char = catalog.getAgent(row.charId)
+    points.push({
+      charId: row.charId,
+      charName: char?.name.zhCN ?? row.charId,
+      nodeId: row.nodeId,
+      nodeLabel: row.nodeLabel,
+      ...(row.nodeNote ? { nodeNote: row.nodeNote } : {}),
+      team,
+      teamIndex: (opts.teams[row.charId] ?? []).indexOf(team),
+      state: res.state,
+      totalGold: res.totalGold,
+      goldLabel: res.goldLabel,
+      damage: res.damage,
+      hpRatio: opts.phase.hp > 0 ? Math.round((res.damage / opts.phase.hp) * 10000) / 100 : 0,
+    })
+    report((i + 1) / tasks.length, `强队强度 ${i + 1}/${tasks.length}（${char?.name.zhCN ?? row.charId}）…`)
+    if (i % 2 === 0) await yieldNow()
+  }
+  report(1, `完成：${points.length} 个点`)
+  return points
 }
 
 /** 预填 Chart 3 强队清单：用户口述预设（STRONG_TEAM_PRESETS）优先，仓库 preset 队伍补剩余（同主C取 goldSteps 最多者——配置最完整；平手取后者） */
@@ -933,53 +924,48 @@ function evalTeamByBudget(
  * 计算 Chart 7 各组对比点：对每对队伍按所选金数配装求 A/B 两队的伤害
  * （口径与 computeNewCharacterPoints 一致：轻量档 budgetAwareStateFor 零额外求值，
  * optimalGold 档逐金贪婪；任一队基础态未收敛 → 整组跳过），
- * 现场快照/恢复；结果按（主C实装节点, 支援）稳定排序供页面连折线。
+ * 在调用方的独立场景上求值（CC-343）；结果按（主C实装节点, 支援）稳定排序供页面连折线。
  */
-export async function computeSlotComparePoints(calc: Calc, opts: SlotCompareOptions): Promise<SlotComparePoint[]> {
-  const configStore = useConfigStore()
+export async function computeSlotComparePoints(scenario: AnalysisContext, opts: SlotCompareOptions): Promise<SlotComparePoint[]> {
+  const { config: configStore, calc } = scenario // CC-343：在调用方给的独立场景上改写 / 求值，不碰 UI store、不做快照恢复
   const catalog = useCatalogStore()
-  const snap = snapshotStore(configStore)
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
-  try {
-    applyBossRoom(configStore, opts.boss, opts.phase)
-    const pairs = findSlotComparePairs(teamPresets, opts.slot, opts.agentA, opts.agentB)
-      .filter(p => releaseNodeOf(p.main) != null && catalog.getAgent(p.main))
-    const evalOne = (team: [string, string, string]) =>
-      evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
-    const points: SlotComparePoint[] = []
-    for (let i = 0; i < pairs.length; i++) {
-      const pair = pairs[i]
-      const resA = evalOne(pair.teamA)
-      const resB = evalOne(pair.teamB)
-      if (!resA || !resB) continue
-      const main = catalog.getAgent(pair.main)
-      const nodeId = releaseNodeOf(pair.main)!
-      points.push({
-        mainId: pair.main,
-        mainName: main?.name.zhCN ?? pair.main,
-        supportId: pair.support,
-        nodeId,
-        nodeLabel: VERSION_NODES[nodeIndexOf(nodeId)]?.label ?? nodeId,
-        teamA: pair.teamA,
-        teamB: pair.teamB,
-        damageA: resA.damage,
-        damageB: resB.damage,
-        hpRatioA: opts.phase.hp > 0 ? Math.round((resA.damage / opts.phase.hp) * 10000) / 100 : 0,
-        hpRatioB: opts.phase.hp > 0 ? Math.round((resB.damage / opts.phase.hp) * 10000) / 100 : 0,
-        totalGoldA: resA.totalGold,
-        totalGoldB: resB.totalGold,
-        goldLabelA: resA.goldLabel,
-        goldLabelB: resB.goldLabel,
-      })
-      report((i + 1) / pairs.length, `同槽位对比 ${i + 1}/${pairs.length}（${main?.name.zhCN ?? pair.main}）…`)
-      if (i % 2 === 0) await yieldNow()
-    }
-    points.sort((a, b) => nodeIndexOf(a.nodeId) - nodeIndexOf(b.nodeId) || a.supportId.localeCompare(b.supportId))
-    report(1, `完成：${points.length} 组对比`)
-    return points
-  } finally {
-    restoreStore(configStore, snap)
+  applyBossRoom(configStore, opts.boss, opts.phase)
+  const pairs = findSlotComparePairs(teamPresets, opts.slot, opts.agentA, opts.agentB)
+    .filter(p => releaseNodeOf(p.main) != null && catalog.getAgent(p.main))
+  const evalOne = (team: [string, string, string]) =>
+    evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
+  const points: SlotComparePoint[] = []
+  for (let i = 0; i < pairs.length; i++) {
+    const pair = pairs[i]
+    const resA = evalOne(pair.teamA)
+    const resB = evalOne(pair.teamB)
+    if (!resA || !resB) continue
+    const main = catalog.getAgent(pair.main)
+    const nodeId = releaseNodeOf(pair.main)!
+    points.push({
+      mainId: pair.main,
+      mainName: main?.name.zhCN ?? pair.main,
+      supportId: pair.support,
+      nodeId,
+      nodeLabel: VERSION_NODES[nodeIndexOf(nodeId)]?.label ?? nodeId,
+      teamA: pair.teamA,
+      teamB: pair.teamB,
+      damageA: resA.damage,
+      damageB: resB.damage,
+      hpRatioA: opts.phase.hp > 0 ? Math.round((resA.damage / opts.phase.hp) * 10000) / 100 : 0,
+      hpRatioB: opts.phase.hp > 0 ? Math.round((resB.damage / opts.phase.hp) * 10000) / 100 : 0,
+      totalGoldA: resA.totalGold,
+      totalGoldB: resB.totalGold,
+      goldLabelA: resA.goldLabel,
+      goldLabelB: resB.goldLabel,
+    })
+    report((i + 1) / pairs.length, `同槽位对比 ${i + 1}/${pairs.length}（${main?.name.zhCN ?? pair.main}）…`)
+    if (i % 2 === 0) await yieldNow()
   }
+  points.sort((a, b) => nodeIndexOf(a.nodeId) - nodeIndexOf(b.nodeId) || a.supportId.localeCompare(b.supportId))
+  report(1, `完成：${points.length} 组对比`)
+  return points
 }
 
 // ========== 选第三人（队伍对比页）：固定两槽 + 候选范围扫第三槽 ==========
@@ -1061,45 +1047,40 @@ export function slotSweepCandidates(
 /**
  * 第三人海选：固定两槽，第三槽对候选逐个按同一预算求值（evalTeamByBudget），
  * 结果按伤害降序。候选缺省 = 目录全部可见角色 − 固定 2 人；Boss 一次应用（applyBossPreset）；
- * 现场快照/恢复，跑完不留痕。未收敛（maxIter）候选跳过并计入 skipped。
+ * 在调用方的独立场景上求值（CC-343）。未收敛（maxIter）候选跳过并计入 skipped。
  */
-export async function computeSlotSweepPoints(calc: Calc, opts: SlotSweepOptions): Promise<SlotSweepResult> {
-  const configStore = useConfigStore()
+export async function computeSlotSweepPoints(scenario: AnalysisContext, opts: SlotSweepOptions): Promise<SlotSweepResult> {
+  const { config: configStore, calc } = scenario // CC-343：在调用方给的独立场景上改写 / 求值，不碰 UI store、不做快照恢复
   const catalog = useCatalogStore()
-  const snap = snapshotStore(configStore)
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
-  try {
-    applyBossRoom(configStore, opts.boss, opts.phase)
-    const candidateIds = slotSweepCandidates(catalog, opts.fixed, opts.candidateIds)
-    const points: SlotSweepPoint[] = []
-    let skipped = 0
-    let aborted = false
-    for (let i = 0; i < candidateIds.length; i++) {
-      if (opts.shouldAbort?.()) { aborted = true; break }
-      const agent = catalog.getAgent(candidateIds[i])!
-      const team = sweepTeamForCandidate(opts.slot, opts.fixed, agent.id)
-      const res = evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
-      if (!res) { skipped++; continue }
-      points.push({
-        candidateId: agent.id,
-        candidateName: agent.name.zhCN ?? agent.name.en ?? agent.id,
-        team,
-        damage: res.damage,
-        hpRatio: opts.phase.hp > 0 ? Math.round((res.damage / opts.phase.hp) * 10000) / 100 : 0,
-        totalGold: res.totalGold,
-        goldLabel: res.goldLabel,
-      })
-      report((i + 1) / candidateIds.length, `第三人对比 ${i + 1}/${candidateIds.length}（${agent.name.zhCN ?? agent.id}）…`)
-      if (i % 2 === 0) await yieldNow()
-    }
-    points.sort((a, b) => b.damage - a.damage || a.candidateName.localeCompare(b.candidateName))
-    report(1, aborted
-      ? `已中止：保留已算的 ${points.length} 名候选`
-      : `完成：${points.length} 名候选${skipped > 0 ? `（跳过未收敛 ${skipped}）` : ''}`)
-    return { slot: opts.slot, fixed: [...opts.fixed] as [string, string], points, skipped }
-  } finally {
-    restoreStore(configStore, snap)
+  applyBossRoom(configStore, opts.boss, opts.phase)
+  const candidateIds = slotSweepCandidates(catalog, opts.fixed, opts.candidateIds)
+  const points: SlotSweepPoint[] = []
+  let skipped = 0
+  let aborted = false
+  for (let i = 0; i < candidateIds.length; i++) {
+    if (opts.shouldAbort?.()) { aborted = true; break }
+    const agent = catalog.getAgent(candidateIds[i])!
+    const team = sweepTeamForCandidate(opts.slot, opts.fixed, agent.id)
+    const res = evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
+    if (!res) { skipped++; continue }
+    points.push({
+      candidateId: agent.id,
+      candidateName: agent.name.zhCN ?? agent.name.en ?? agent.id,
+      team,
+      damage: res.damage,
+      hpRatio: opts.phase.hp > 0 ? Math.round((res.damage / opts.phase.hp) * 10000) / 100 : 0,
+      totalGold: res.totalGold,
+      goldLabel: res.goldLabel,
+    })
+    report((i + 1) / candidateIds.length, `第三人对比 ${i + 1}/${candidateIds.length}（${agent.name.zhCN ?? agent.id}）…`)
+    if (i % 2 === 0) await yieldNow()
   }
+  points.sort((a, b) => b.damage - a.damage || a.candidateName.localeCompare(b.candidateName))
+  report(1, aborted
+    ? `已中止：保留已算的 ${points.length} 名候选`
+    : `完成：${points.length} 名候选${skipped > 0 ? `（跳过未收敛 ${skipped}）` : ''}`)
+  return { slot: opts.slot, fixed: [...opts.fixed] as [string, string], points, skipped }
 }
 
 // CC-86（2026-09-27，census §5.92）：配装/现场工具拆到 ./teamTimelineStore，Chart 4 菲林经济模拟拆到

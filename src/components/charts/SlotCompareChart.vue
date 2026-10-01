@@ -147,7 +147,7 @@
 /**
  * Chart 7「同槽位角色对比」（2026-09-14 从 TimeChartsPage 抽组件，143 行模板 + 115 行脚本）。
  *
- * 与 Chart 3 同型：`calc` 用 `useResourceCalc()` 在组件内取，布局/数据经 props 注入。
+ * 与 Chart 3 同型：求值在运行器建的独立场景里跑（CC-343），布局/数据经 props 注入。
  * **组件内状态**（页面不关心）：槽位与 A/B 选择、卡片内 Boss 选择、跑批状态、图例显隐、悬浮。
  * **props 注入**：`bossOptions`（页面按各 Boss 最近出场排序）与 `selectedBossId`（顶部选择，
  * 用于「默认跟随顶部」的 watch）——两者留在页面是因为 Chart 1/2/4 与顶部控件也用它们。
@@ -156,7 +156,6 @@ import { computed, ref, watch } from 'vue'
 import { NButton, NCard, NProgress, NSelect } from 'naive-ui'
 import { fmt, compact } from '@/utils/format'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
@@ -199,7 +198,6 @@ const props = defineProps<{
 }>()
 
 const catalogStore = useCatalogStore()
-const calc = useResourceCalc()
 function agentName(id: string): string {
   return catalogStore.getAgent(id)?.name.zhCN ?? id
 }
@@ -242,7 +240,7 @@ const scBossName = computed(() => scBoss.value?.name ?? '—')
 async function runSlotCompare() {
   // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runSlotCompareCompute（第一片拆分，逐字搬迁）
   await runSlotCompareCompute({
-    calc, computing: scComputing, progress: scProgress, points: scPoints,
+    computing: scComputing, progress: scProgress, points: scPoints,
     boss: scBoss.value,
     phase: scPhase.value,
     slot: scSlot.value,

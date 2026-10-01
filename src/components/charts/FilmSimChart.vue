@@ -142,7 +142,6 @@ import { computed, ref } from 'vue'
 import { NButton, NCard, NInputNumber, NProgress, NSelect } from 'naive-ui'
 import { fmt } from '@/utils/format'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
@@ -175,7 +174,6 @@ const props = defineProps<{
 }>()
 
 const catalogStore = useCatalogStore()
-const calc = useResourceCalc()
 function agentName(id: string): string {
   return catalogStore.getAgent(id)?.name.zhCN ?? id
 }
@@ -197,7 +195,7 @@ const simTargetOptions = computed(() =>
 async function runFilmSim() {
   // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runFilmSimCompute（第一片拆分，逐字搬迁）
   await runFilmSimCompute({
-    calc, computing: simComputing, progress: simProgress, points: simPoints,
+    computing: simComputing, progress: simProgress, points: simPoints,
     boss: props.boss,
     axisNodes: props.axisNodes.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin })),
     mainAgentId: props.mainAgentId,

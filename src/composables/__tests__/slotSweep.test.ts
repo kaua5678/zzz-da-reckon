@@ -4,14 +4,19 @@
  * - 候选池：固定成员被剔除（即使显式出现在候选池）；candidateIds 覆盖生效
  * - 集成冒烟：伤害降序、槽位正确、现场快照恢复（跑完不留痕）
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { computeSlotSweepPoints, slotSweepCandidates, sweepTeamForCandidate } from '@/composables/teamTimeline'
 import type { BossPresetFile } from '@/types/bossPreset'
+import { createAnalysisScenario, type AnalysisScenario } from '@/composables/analysisScenario'
+
+// CC-343（第 371 轮）：分析器入口改收独立场景；测试每次调用建一个场景（源 = harness 的 UI store），用完统一 dispose
+const scenarios: AnalysisScenario[] = []
+const scen = (): AnalysisScenario => { const s = createAnalysisScenario(); scenarios.push(s); return s }
+afterEach(() => { for (const s of scenarios.splice(0)) s.dispose() })
 
 const bossData = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as BossPresetFile
 const firstBoss = bossData.bosses[0]
@@ -43,9 +48,8 @@ describe('computeSlotSweepPoints（集成冒烟）', () => {
   it('固定 1371+1451 海选击破槽：降序、槽位正确、排除固定成员、现场恢复', async () => {
     await boot()
     const config = useConfigStore()
-    const calc = useResourceCalc()
     const before = JSON.stringify(config.team)
-    const res = await computeSlotSweepPoints(calc, {
+    const res = await computeSlotSweepPoints(scen(), {
       slot: 1,
       fixed: ['1371', '1451'],
       boss: firstBoss,
@@ -72,8 +76,7 @@ describe('computeSlotSweepPoints（集成冒烟）', () => {
 
   it('固定成员即使被显式列入候选池也被剔除；shouldAbort 中止后保留已算部分', async () => {
     await boot()
-    const calc = useResourceCalc()
-    const res = await computeSlotSweepPoints(calc, {
+    const res = await computeSlotSweepPoints(scen(), {
       slot: 1,
       fixed: ['1371', '1451'],
       boss: firstBoss,
@@ -83,7 +86,7 @@ describe('computeSlotSweepPoints（集成冒烟）', () => {
     })
     expect(res.points.map(p => p.candidateId)).toEqual(['1481'])
 
-    const partial = await computeSlotSweepPoints(calc, {
+    const partial = await computeSlotSweepPoints(scen(), {
       slot: 2,
       fixed: ['1371', '1481'],
       boss: firstBoss,

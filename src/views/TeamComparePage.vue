@@ -1191,7 +1191,7 @@ async function runCurves() {
 const {
   slotLabels, sweepSlot, sweepSlotOptions, sweepFixedBySlot, sweepSpecFilter, sweepCandidateSel, sweepBudget, sweepOptimalGold, sweepAbort, sweepResult,
   sweepFixedSlots, agentOptions, sweepSpecOptions, sweepSpecLabel, sweepCandidateOptions, runSweep, sweepBarPct,
-} = useSlotSweep({ catalogStore, calc, selectedBoss, selectedPhase, progress, computing })
+} = useSlotSweep({ catalogStore, selectedBoss, selectedPhase, progress, computing })
 
 function agentNameOf(id: string | null | undefined): string {
   return id ? (catalogStore.getAgent(id)?.name.zhCN ?? id) : '—'
