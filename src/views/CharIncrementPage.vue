@@ -163,7 +163,6 @@ interface ArchiveFile {
 }
 const archive = ref<ArchiveFile | null>(null)
 const bosses = ref<BossPreset[]>([])
-const phaseViews = ref<BossPresetFile['phaseViews']>([])
 const loading = ref(true)
 const error = ref('')
 
@@ -175,7 +174,6 @@ onMounted(async () => {
     ])) as [ArchiveFile, BossPresetFile]
     archive.value = ra
     bosses.value = bp.bosses ?? []
-    phaseViews.value = bp.phaseViews ?? []
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -202,7 +200,6 @@ async function runPass() {
     passResult.value = await computeIncrementPass({
       calc,
       bosses: bosses.value,
-      periodViews: phaseViews.value ?? [],
       runs: a.runs,
       rooms: a.rooms,
       onProgress: p => { progress.value = p },

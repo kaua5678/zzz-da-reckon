@@ -24,7 +24,7 @@ function instrument(damage: (lead: string) => number = () => 1_000_000, outerExi
   } as unknown as ReturnType<typeof useResourceCalc>
 }
 function oracle(calc = instrument(), candidatePool = pool) {
-  return createEngineOracle({ calc, bosses: [boss], periodViews: [], candidatePool })
+  return createEngineOracle({ calc, bosses: [boss], candidatePool })
 }
 
 describe('planner free-member chain', () => {

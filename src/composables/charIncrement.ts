@@ -219,7 +219,7 @@ import { applyBossRoom } from '@/composables/bossRoom'
 import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pullPlannerEngine'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
-import type { BossPreset, PhaseView } from '@/types/bossPreset'
+import type { BossPreset } from '@/types/bossPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import type { ArchiveRoom } from '@/composables/runArchiveImport'
 
@@ -232,8 +232,6 @@ export interface IncrementPassOptions {
   calc: Calc
   /** 全部 Boss 预设（期轴 + 部署求值） */
   bosses: BossPreset[]
-  /** 期视图（关卡固有 buff；有数据才应用） */
-  periodViews: PhaseView[]
   /** 归档（runs + rooms） */
   runs: IncRun[]
   rooms: ArchiveRoomMap
@@ -304,8 +302,8 @@ export async function computeIncrementPass(opts: IncrementPassOptions): Promise<
       const phase = preset?.phases.find(p => p.phaseId === task.period.id)
       if (!preset || !phase) continue
       // Boss 期相位一次应用（同桶所有队共用敌人数据）
-      // CC-342：敌人参数 + 该期关卡固有 buff（修前 periodViews 从不读，只切敌人）
-      applyBossRoom(configStore, preset, phase, opts.periodViews)
+      // CC-342：敌人参数 + 该期关卡固有 buff（第 363 轮前只切敌人）
+      applyBossRoom(configStore, preset, phase)
       for (const team of task.teams) {
         applyBaseTeamLite(configStore, team)
         const damage = opts.calc.teamTotalDamage.value

@@ -45,7 +45,7 @@ describe('探针：实战对比部署路径的失衡易伤信用', () => {
     for (const run of frontier) {
       const room = archive.rooms[run.targetId]
       const deploy = submissionToDeploy(run, room, bossFile.bosses, room?.seasonStart)
-      applyDeployConfig(configStore, deploy, bossFile.bosses, bossFile.phaseViews ?? [])
+      applyDeployConfig(configStore, deploy, bossFile.bosses)
       const hp = configStore.enemy.hp ?? 0
       scored.push({ run, ratio: hp > 0 ? (calc.teamTotalDamage.value ?? 0) / hp : 0 })
     }
@@ -54,7 +54,7 @@ describe('探针：实战对比部署路径的失衡易伤信用', () => {
     for (const { run, ratio } of scored.slice(0, topN)) {
       const room = archive.rooms[run.targetId]
       const deploy = submissionToDeploy(run, room, bossFile.bosses, room?.seasonStart)
-      applyDeployConfig(configStore, deploy, bossFile.bosses, bossFile.phaseViews ?? [])
+      applyDeployConfig(configStore, deploy, bossFile.bosses)
       const realVuln = configStore.enemy.stunVuln
       const rows = () => (calc.damagePoolRows.value ?? []) as DamagePoolRow[]
       const total = () => calc.teamTotalDamage.value ?? 0

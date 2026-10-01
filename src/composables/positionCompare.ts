@@ -29,6 +29,7 @@
  * 积蓄占比：按「异属性赠送归接收人」口径逐槽归因（与资源池页 teamOverview 同口径）——
  * 赋彩/赠送等异属性贡献（贡献元素 ≠ 角色伤害元素）记在该元素同属性主贡献者槽，不记赠送者。
  */
+import { applyBossRoom } from '@/composables/bossRoom'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
@@ -150,7 +151,7 @@ export function computePositionCompare(
       // 各自预设轴：applyAxisBinding 内部先恢复快照轴状态，再按 preset.stunAxisPresetId 绑定变体轴（CC-337 删重复恢复）
       applyAxisBinding(configStore, snap, preset)
       configStore.syncTeammateBuffsFromTeam()
-      configStore.applyBossPreset({ id: boss.id }, phase, boss.monster, boss.defaults)
+      applyBossRoom(configStore, boss, phase)
 
       // 识别目标位置角色
       const team = configStore.team.map(c => ({ agentId: c?.agentId ?? null }))

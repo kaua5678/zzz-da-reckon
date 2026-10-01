@@ -5,13 +5,12 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyDeployConfig, resolveBossApply } from '@/composables/runArchiveDeploy'
 import { applyBossLayerBuffs } from '@/composables/bossRoom'
 import type { DeployConfig } from '@/composables/runArchiveImport'
-import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 
 const bp = JSON.parse(
   readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8'),
 ) as BossPresetFile
 const presets = bp.bosses as BossPreset[]
-const phaseViews = (bp.phaseViews ?? []) as PhaseView[]
 
 /** 真实样例部署配置（铃依依_ 星见雅 6命5精 + 南宫羽 + 柚叶，对基塔布鲁·滞变畸兽 690431 期）。 */
 const DEPLOY: DeployConfig = {
@@ -27,8 +26,8 @@ const DEPLOY: DeployConfig = {
 }
 
 describe('resolveBossApply', () => {
-  it('按 presetId + phaseId 解析出预设/期相位/怪物/默认值/关卡 brief', () => {
-    const r = resolveBossApply(DEPLOY.boss!, presets, phaseViews)
+  it('按 presetId + phaseId 解析出预设/期相位/怪物/默认值', () => {
+    const r = resolveBossApply(DEPLOY.boss!, presets)
     expect(r?.preset.id).toBe('40008')
     expect(r?.phase.phaseId).toBe('690431')
     expect(r?.phase.hp).toBeGreaterThan(0)
@@ -37,12 +36,12 @@ describe('resolveBossApply', () => {
   })
 
   it('phaseId 未收录 → null', () => {
-    const r = resolveBossApply({ presetId: '40008', name: 'x', phaseId: '999999' }, presets, phaseViews)
+    const r = resolveBossApply({ presetId: '40008', name: 'x', phaseId: '999999' }, presets)
     expect(r).toBeNull()
   })
 
   it('presetId 不存在 → null', () => {
-    const r = resolveBossApply({ presetId: '40404', name: 'x', phaseId: '690431' }, presets, phaseViews)
+    const r = resolveBossApply({ presetId: '40404', name: 'x', phaseId: '690431' }, presets)
     expect(r).toBeNull()
   })
 })
@@ -51,7 +50,7 @@ describe('applyDeployConfig', () => {
   it('写队伍（命座/音擎/精炼）+ Boss 期相位（hp）+ 交互基准', async () => {
     const { config, catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
-    applyDeployConfig(config, DEPLOY, presets, phaseViews)
+    applyDeployConfig(config, DEPLOY, presets)
 
     expect(config.team.map((s) => s.agentId)).toEqual(['1091', '1511', '1411'])
     expect(config.team.map((s) => s.cinemaLevel)).toEqual([6, 6, 6])
@@ -87,7 +86,7 @@ describe('applyDeployConfig', () => {
         { slot: 2, agentId: '1411', cinemaLevel: 0, wEngineId: null, wEngineModLevel: 1 },
       ],
     }
-    applyDeployConfig(config, deploy, presets, phaseViews)
+    applyDeployConfig(config, deploy, presets)
     expect(config.team.map((s) => s.agentId)).toEqual(['1091', '1511', '1411'])
     // 空音擎不覆盖 → 走 applyTeamPreset 的专属音擎推荐（非空）
     expect(config.team.every((s) => s.wEngineId !== '')).toBe(true)
@@ -98,7 +97,7 @@ describe('部署 → 资源池结果', () => {
   it('部署后产出资源池结果（三角色 + 总伤>0 + 失衡>0），供 UI 资源池卡片展示', async () => {
     const { config, catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
-    applyDeployConfig(config, DEPLOY, presets, phaseViews)
+    applyDeployConfig(config, DEPLOY, presets)
 
     const calc = useResourceCalc()
     expect(calc.resourceResult.value).not.toBeNull()
@@ -134,13 +133,13 @@ describe('部署 → 失衡次数路径无关（2026-09-08 修复：显示 0 次
       warnings: [],
     }
 
-    applyDeployConfig(config, DEPLOY, presets, phaseViews)
+    applyDeployConfig(config, DEPLOY, presets)
     const first = calc.stunPoolResult.value!.stunCount
     expect(first, `首次部署失衡次数 ${first}`).toBeGreaterThanOrEqual(2)
 
-    applyDeployConfig(config, neko, presets, phaseViews)
+    applyDeployConfig(config, neko, presets)
     void calc.teamTotalDamage.value // 触发别队计算，写入热启动缓存
-    applyDeployConfig(config, DEPLOY, presets, phaseViews)
+    applyDeployConfig(config, DEPLOY, presets)
     const second = calc.stunPoolResult.value!.stunCount
 
     expect(second, `重复部署失衡次数 ${second}（首次 ${first}）`).toBe(first)
@@ -178,11 +177,11 @@ describe('applyDeployConfig 确定性（跨队不泄漏命座门控队友 buff�
       warnings: [],
     }
 
-    applyDeployConfig(config, aria, presets, phaseViews)
+    applyDeployConfig(config, aria, presets)
     const d1 = calc.teamTotalDamage.value
-    applyDeployConfig(config, neko, presets, phaseViews)
+    applyDeployConfig(config, neko, presets)
     void calc.teamTotalDamage.value // 触发 neko 计算，留下残留命座
-    applyDeployConfig(config, aria, presets, phaseViews)
+    applyDeployConfig(config, aria, presets)
     const d2 = calc.teamTotalDamage.value
 
     // 相对误差 < 1e-6（bug 形态下 d2/d1 ≈ 1.317，蕾米埃尔 C1/C2 被错误开启）
@@ -243,25 +242,15 @@ describe('保底4喧响 → 弹刀反推（通用）', () => {
 describe('applyBossLayerBuffs', () => {
   it('写关卡固有 buff（前缀 layer-buff:），重复调用先清旧', async () => {
     const { config } = await setupHarness(['', '', ''])
-    const brief = {
-      presetId: '40008',
-      monsterId: '40008',
-      name: '基塔布鲁·滞变畸兽',
-      weakness: [],
-      resistance: [],
-      hp: 0,
-      stunValue: 0,
-      defense: 0,
-      level: 70,
-      bossBuffs: [{ title: '', testOnly: false, effects: [{ stat: 'anomalyDmgBonus', value: 40 }], unparsed: [] }],
-    }
-    applyBossLayerBuffs(config, brief)
+    const boss = { id: '40008', name: '基塔布鲁·滞变畸兽' }
+    const phase = { phaseId: '690431', layerBuffs: [{ title: '', testOnly: false, effects: [{ stat: 'anomalyDmgBonus', value: 40 }], unparsed: [] }] }
+    applyBossLayerBuffs(config, boss, phase)
     const first = config.globalBuffs.filter((b) => String(b.id).startsWith('layer-buff:'))
     expect(first.length).toBe(1)
     expect(first[0].stat).toBe('anomalyDmgBonus')
     expect(first[0].value).toBe(40)
 
-    applyBossLayerBuffs(config, brief)
+    applyBossLayerBuffs(config, boss, phase)
     expect(config.globalBuffs.filter((b) => String(b.id).startsWith('layer-buff:')).length).toBe(1)
   })
 })

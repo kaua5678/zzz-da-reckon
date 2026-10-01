@@ -17,7 +17,7 @@ import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedSWengineId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
-import type { BossPreset, PhaseView } from '@/types/bossPreset'
+import type { BossPreset } from '@/types/bossPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import { ladderRung, type PlannerBossRoom, type PlannerPeriod, type TeamOracle } from '@/composables/pullPlanner'
 
@@ -33,8 +33,6 @@ export interface EngineOracleOptions {
   /** 全部 Boss 预设（按 bossRoom.bossId 定位该期相位——一期 3 房是 3 个不同 Boss，
    *  单预设只覆盖自己的出场期） */
   bosses: BossPreset[]
-  /** 期视图（关卡固有 buff 的数据源；逐房经 bossRoom#applyBossRoom 写入，缺该期 ⇒ 该房无关卡 buff） */
-  periodViews: PhaseView[]
   /** 候选池（agentId 列表；含常驻 S 与 A 级——成型号起点的免费人；限定 S 的持有态由 holdings 决定） */
   candidatePool: string[]
   onProgress?: (p: { pct: number; text: string }) => void
@@ -148,8 +146,8 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     if (!boss) return false
     const phase = boss.phases.find(p => p.phaseId === bossRoom.phaseId)
     if (!phase) return false
-    // CC-342：敌人参数 + 该期关卡固有 buff（修前只切敌人：periodViews 从不读，用户现场的 layer-buff: 行泄漏到每一房）
-    applyBossRoom(configStore, boss, phase, opts.periodViews)
+    // CC-342：敌人参数 + 该期关卡固有 buff（第 363 轮前只切敌人，用户现场的 layer-buff: 行泄漏到每一房）
+    applyBossRoom(configStore, boss, phase)
     return true
   }
   const applyPeriodContext = (period: PlannerPeriod) => {
@@ -389,7 +387,6 @@ export interface PlannerRunOptions {
   /** 期轴数据源：全部 Boss 预设（期轴聚合需要；oracle 求值用 boss 单预设） */
   allBosses: BossPreset[]
   boss: BossPreset
-  periodViews: PhaseView[]
   /** 全部可选角色 id（catalog displayAgents；免费池从中过滤） */
   allAgentIds: string[]
   preset: StartPresetKind
@@ -444,7 +441,6 @@ export async function runPullPlanner(opts: PlannerRunOptions): Promise<PlannerRu
     const engine = createEngineOracle({
       calc: opts.calc,
       bosses: opts.allBosses,
-      periodViews: opts.periodViews,
       candidatePool: pool,
     })
     const plannerOpts: PlannerOptions = {

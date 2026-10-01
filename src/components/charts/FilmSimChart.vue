@@ -136,7 +136,7 @@
  * - `axisNodes`（所选 Boss 的登场期数轴，PeriodAxisNode[] 整份传入）：**两个映射在组件内做**——
  *   「目标卡池」下拉用 `${p.seq} · ${p.label}`，runner 的 axisNodes 用 `${p.seq}`（横轴刻度用期号），
  *   两处文案不同、必须逐字保留；
- * - `periodViews`（页面 fetch 的 phaseViews）、`mainAgentId`/`candidatePool`/`autoBuild`（顶部控件状态）。
+ * - `mainAgentId`/`candidatePool`/`autoBuild`（顶部控件状态）。
  */
 import { computed, ref } from 'vue'
 import { NButton, NCard, NInputNumber, NProgress, NSelect } from 'naive-ui'
@@ -154,7 +154,7 @@ import { buildFilmSimChart } from '@/composables/filmSimChart'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
 import type { FilmSimPoint } from '@/composables/teamTimeline'
 import type { PeriodAxisNode } from '@/composables/bossSchedule'
-import type { BossPreset, PhaseView } from '@/types/bossPreset'
+import type { BossPreset } from '@/types/bossPreset'
 
 const props = defineProps<{
   /** 布局（页面 svgW + TIMELINE_LAYOUT 的 pad/plot） */
@@ -168,8 +168,6 @@ const props = defineProps<{
   boss: BossPreset | null
   /** 所选 Boss 的登场期数轴（页面 bossPeriodAxis；映射在本组件内做，见头注释） */
   axisNodes: PeriodAxisNode[]
-  /** 危局期数视图（页面 fetch 的 phaseViews） */
-  periodViews: PhaseView[]
   /** 顶部控件状态（主C / 候选队友池 / 自动配装） */
   mainAgentId: string
   candidatePool: string[]
@@ -202,7 +200,6 @@ async function runFilmSim() {
     calc, computing: simComputing, progress: simProgress, points: simPoints,
     boss: props.boss,
     axisNodes: props.axisNodes.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin })),
-    periodViews: props.periodViews,
     mainAgentId: props.mainAgentId,
     candidatePool: props.candidatePool,
     initialGold: simInitialGold.value,

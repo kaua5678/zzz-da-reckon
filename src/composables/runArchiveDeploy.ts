@@ -8,35 +8,30 @@
  * - Boss：applyBossPreset 应用期相位血量/失衡/防御/三表抗性（分期数决定血量膨胀），并写关卡固有 layer_buff。
  * - 当期可选牌（3 选 1）不自动应用：归档未记录玩家选择，对比时由用户在属性配置页手动选。
  */
-import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase, PhaseBossBrief, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 import { useConfigStore, hasCustomInteractionDefaults, interactionBaselineFor } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
 import { phaseBuffRows } from '@/utils/phaseBuff'
-import { applyBossRoom, findBossBrief } from '@/composables/bossRoom'
+import { applyBossRoom } from '@/composables/bossRoom'
 
 export interface ResolvedBossApply {
   preset: BossPreset
   phase: BossPresetPhase
   monster: BossPresetMonster
   defaults: BossPresetDefaults
-  /** 当期关卡简览（含 bossBuffs），用于写关卡固有 layer_buff；无 view 时 null */
-  brief: PhaseBossBrief | null
 }
 
-/** 从 boss-presets 解析出 applyBossPreset 所需的完整参数（预设 + 期相位 + 怪物本体 + 默认值 + 关卡 brief）。 */
+/** 从 boss-presets 解析出 applyBossPreset 所需的完整参数（预设 + 期相位 + 怪物本体 + 默认值；关卡 buff 在 phase.layerBuffs 上）。 */
 export function resolveBossApply(
   boss: BossMatch,
   presets: BossPreset[],
-  phaseViews: PhaseView[],
 ): ResolvedBossApply | null {
   const preset = presets.find((p) => p.id === boss.presetId)
   if (!preset) return null
   const phase = boss.phaseId ? preset.phases.find((p) => p.phaseId === boss.phaseId) : undefined
   if (!phase) return null
-  // CC-342：brief 查找走唯一实现（原 `monsterId === preset.id` 兜底在全部 159 个 brief 上命中 0 次，已删）
-  const brief = findBossBrief(phaseViews, phase.phaseId, preset.id)
-  return { preset, phase, monster: preset.monster, defaults: preset.defaults, brief }
+  return { preset, phase, monster: preset.monster, defaults: preset.defaults }
 }
 
 /**
@@ -64,7 +59,6 @@ export function applyDeployConfig(
   configStore: ReturnType<typeof useConfigStore>,
   deploy: DeployConfig,
   presets: BossPreset[],
-  phaseViews: PhaseView[],
 ): void {
   configStore.applyTeamPreset(deploy.team.map((s) => s.agentId) as [string, string, string])
 
@@ -101,9 +95,9 @@ export function applyDeployConfig(
   configStore.setMechanicSetting('guarantee.ultimate', 1)
 
   if (deploy.boss) {
-    const resolved = resolveBossApply(deploy.boss, presets, phaseViews)
+    const resolved = resolveBossApply(deploy.boss, presets)
     if (resolved) {
-      applyBossRoom(configStore, resolved.preset, resolved.phase, phaseViews) // CC-342：房间上下文唯一写入口
+      applyBossRoom(configStore, resolved.preset, resolved.phase) // CC-342：房间上下文唯一写入口
     }
   }
 }

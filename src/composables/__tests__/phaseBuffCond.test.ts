@@ -13,7 +13,7 @@ import { applyPeriodBuff } from '@/composables/runArchiveDeploy'
 import { applyBossLayerBuffs } from '@/composables/bossRoom'
 import type { GlobalBuffRow, useConfigStore } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import type { BossPresetFile, PhaseBossBrief, PhaseBuffCard } from '@/types/bossPreset'
+import type { BossPresetFile, PhaseBuffCard } from '@/types/bossPreset'
 
 const bp = JSON.parse(
   readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8'),
@@ -90,23 +90,23 @@ describe('CC-341 全局 Buff 行的 cond 由管线按当前队伍解析', () => 
 })
 
 describe('CC-341 真数据：40003 在 690431 期的关卡固有 buff（强攻限定 4 条）', () => {
-  function brief(): PhaseBossBrief {
-    const v = (bp.phaseViews ?? []).find(x => x.phaseId === '690431')
-    const b = v && [...(v.criticalAssault ? [v.criticalAssault] : []), ...(v.defense ?? [])].find(x => x.presetId === '40003')
-    if (!b) throw new Error('boss-presets.json 缺 690431 / 40003 的 brief')
-    return b
+  function room() {
+    const boss = bp.bosses.find(x => x.id === '40003')
+    const phase = boss?.phases.find(x => x.phaseId === '690431')
+    if (!boss || !phase) throw new Error('boss-presets.json 缺 40003 / 690431')
+    return { boss, phase }
   }
 
   it('applyBossLayerBuffs 带上 cond；非强攻队不吃、强攻队吃满（修前两队都吃满）', async () => {
-    const b = brief()
-    const limited = (b.bossBuffs ?? []).flatMap(c => c.effects).filter(e => e.cond?.specialty === '强攻')
+    const { boss, phase } = room()
+    const limited = (phase.layerBuffs ?? []).flatMap(c => c.effects).filter(e => e.cond?.specialty === '强攻')
     expect(limited.map(e => e.stat).sort()).toEqual(['atkPct', 'critDmg', 'enemyResReduction', 'penRatio'])
     const expectedDiff: Record<string, number> = {}
     for (const e of limited) expectedDiff[e.stat] = (expectedDiff[e.stat] ?? 0) + e.value
 
     const { config, catalog } = await setupHarness(TWO_ANOMALY)
     setRows(config, [])
-    applyBossLayerBuffs(config, b)
+    applyBossLayerBuffs(config, boss, phase)
     expect(config.globalBuffs.filter(r => r.cond?.specialty === '强攻').length).toBe(limited.length)
     const nonAttack = engineGlobals(config, catalog)
     setTeam(config, WITH_ATTACK)

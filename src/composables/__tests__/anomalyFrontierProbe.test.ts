@@ -68,7 +68,7 @@ describe('探针：前沿异常/紊乱积储分层', () => {
     for (const run of frontier) {
       const room = archive.rooms[run.targetId]
       const deploy = submissionToDeploy(run, room, bossFile.bosses, room?.seasonStart)
-      applyDeployConfig(configStore, deploy, bossFile.bosses, bossFile.phaseViews ?? [])
+      applyDeployConfig(configStore, deploy, bossFile.bosses)
       const hp = configStore.enemy.hp ?? 0
       const damage = teamTotalDamage.value ?? 0
       const ap = anomalyPoolResult.value

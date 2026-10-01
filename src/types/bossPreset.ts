@@ -22,6 +22,9 @@ export interface BossPresetPhase {
   stageNum: number
   level: number
   hp: number
+  /** 该期该 Boss 的关卡固有 buff（layer_buff 解析结果；与期视图 brief.bossBuffs 同源）。进房间时由
+   *  `composables/bossRoom#applyBossRoom` 写入全局 Buff 表。缺省（测试桩）= 无关卡 buff。 */
+  layerBuffs?: PhaseBuffCard[]
   /** 血量版本系数（%）：mo.stats.hp / (1级基础血量 × 4号曲线 70级 247.95)；如 叶释渊 69025 = 180。无基础血量时为 null。 */
   hpVersionCoeff?: number | null
   stunValue: number

@@ -27,6 +27,7 @@
  * - Boss 一次应用（applyBossPreset）；当期可选 buff 牌不参与（与「队伍对比」的「不使用」一致）。
  * - 计算现场快照/恢复，跑完不留痕（同 computeTeamComparePoints）。
  */
+import { applyBossRoom } from '@/composables/bossRoom'
 import { useConfigStore } from '@/stores/config'
 import { equalizeTimeWeights } from '@/composables/timeWeightBalancer'
 import { useCatalogStore } from '@/stores/catalog'
@@ -421,7 +422,7 @@ export async function computeTeamTimeline(calc: Calc, opts: TeamTimelineOptions)
     }
 
     // Boss 一次应用（与节点无关）
-    configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
+    applyBossRoom(configStore, opts.boss, opts.phase)
 
     // S 级候选（AGENT_RELEASE_NODE 收录即 S 级），排除主C；缺省排除测试服（3.2 未实装）角色
     const testNodes = new Set(
@@ -738,7 +739,7 @@ export async function computeNewCharacterPoints(calc: Calc, opts: NewCharacterCh
   const snap = snapshotStore(configStore)
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
   try {
-    configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
+    applyBossRoom(configStore, opts.boss, opts.phase)
     // 展开成 (行, 队) 平铺：同角色多队各一任务
     const tasks: { row: NewCharacterRow; team: [string, string, string] }[] = []
     for (const row of opts.rows) {
@@ -940,7 +941,7 @@ export async function computeSlotComparePoints(calc: Calc, opts: SlotCompareOpti
   const snap = snapshotStore(configStore)
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
   try {
-    configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
+    applyBossRoom(configStore, opts.boss, opts.phase)
     const pairs = findSlotComparePairs(teamPresets, opts.slot, opts.agentA, opts.agentB)
       .filter(p => releaseNodeOf(p.main) != null && catalog.getAgent(p.main))
     const evalOne = (team: [string, string, string]) =>
@@ -1068,7 +1069,7 @@ export async function computeSlotSweepPoints(calc: Calc, opts: SlotSweepOptions)
   const snap = snapshotStore(configStore)
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
   try {
-    configStore.applyBossPreset({ id: opts.boss.id }, opts.phase, opts.boss.monster, opts.boss.defaults)
+    applyBossRoom(configStore, opts.boss, opts.phase)
     const candidateIds = slotSweepCandidates(catalog, opts.fixed, opts.candidateIds)
     const points: SlotSweepPoint[] = []
     let skipped = 0

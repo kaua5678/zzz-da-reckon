@@ -19,6 +19,7 @@
  * 设 minGold 门槛（低于该总限定金不生成点，表达「配置要求」）。
  * 纵轴：伤害 / Boss 血量 × 100%（100 = 击杀，200 = 两倍血量）。
  */
+import { applyBossRoom, LAYER_BUFF_PREFIX } from '@/composables/bossRoom'
 import { isLimitedSAgentId, isLimitedSWengineId } from '@/composables/limitedGold'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { liveInteractions } from '@/composables/liveInteractions'
@@ -913,9 +914,12 @@ export function goldAlternativesOf(allocs: OptimalGoldAllocation[]): GoldAllocat
  * CC-341：走唯一映射 `phaseBuffRows`，`cond` 原样写入，由管线按当前队伍解析（修前在这里按预设队伍预解析；
  * 写入时 store 里已是该预设的队伍 ⇒ 结果逐位相同）。
  */
-function applyBuffToStore(configStore: ReturnType<typeof useConfigStore>, card: PhaseBuffCard | null) {
+export function applyBuffToStore(configStore: ReturnType<typeof useConfigStore>, card: PhaseBuffCard | null) {
   const rows = card ? phaseBuffRows(card, (_e, i) => `phase-buff:${card.title}:${i}`, card.title) : []
-  configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...rows)
+  // 整表替换成所选牌（本页口径：用户手填的全局 buff 不参与对比），但关卡固有 buff 属于房间、由 applyBossRoom 写入，保留
+  // （CC-342 第 364 轮；修前连关卡 buff 一起清掉 ⇒ 队伍对比恒按「无关卡 buff」算）
+  const layer = configStore.globalBuffs.filter(r => String(r.id).startsWith(LAYER_BUFF_PREFIX))
+  configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...layer, ...rows)
 }
 
 /**
@@ -1126,12 +1130,7 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
         applyGoldSteps(preset.goldSteps, baseGold, baseGold, preset.standardSteps ?? [], preset.wEngines ?? []),
       )
       // boss 一次应用（与金数档无关）；必须在选 buff 前应用，推荐排序才基于所选期数的敌人配置
-      configStore.applyBossPreset(
-        { id: options.boss.id },
-        options.phase,
-        options.boss.monster,
-        options.boss.defaults,
-      )
+      applyBossRoom(configStore, options.boss, options.phase)
       // 选 buff：手动指定 > 每队自动取三张牌伤害最高（用第一个金数档推荐）
       let chosen: PhaseBuffCard | null = null
       if (options.manualBuffTitle) {

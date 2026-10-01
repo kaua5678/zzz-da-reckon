@@ -187,7 +187,7 @@
  * - `svgW`（页面 svgW 计算属性）——本组件只用宽度，pad/plot 由 `pullPlannerChart.ts` 自带
  *   （ppLabelW/ppPadT/ppXLabelH 直接读自 buildPlannerChart 的返回值，原样保留非响应式写法）；
  * - `boss`（顶部所选 Boss）——runPlanner 的 `boss` 入参与「先选 Boss」校验用它；
- * - `bosses`（页面 fetch 的 bossPresets 全量）、`periodViews`（页面 fetch 的 phaseViews）。
+ * - `bosses`（页面 fetch 的 bossPresets 全量）（关卡 buff 随 `phases[].layerBuffs`）。
  * ⚠ 文案与 `formula` 口径字符串逐字保留（有测试断言，改一个字就红）。
  */
 import { computed, nextTick, ref } from 'vue'
@@ -206,7 +206,7 @@ import { PLANNER_FILM_PER_VERSION } from '@/data/filmEconomy'
 import { runPullPlanner, type PlannerRunResult } from '@/composables/pullPlannerEngine'
 import { VERSION_NODES } from '@/data/versionTimeline'
 import { fmt, compact } from '@/utils/format'
-import type { BossPreset, PhaseView } from '@/types/bossPreset'
+import type { BossPreset } from '@/types/bossPreset'
 
 const props = defineProps<{
   /** 布局宽度（页面 svgW；本图纵向几何自带，见头注释） */
@@ -215,8 +215,6 @@ const props = defineProps<{
   boss: BossPreset | null
   /** 全部 Boss（页面 fetch 的 boss-presets.json bosses） */
   bosses: BossPreset[]
-  /** 危局期数视图（页面 fetch 的 phaseViews） */
-  periodViews: PhaseView[]
 }>()
 
 const catalogStore = useCatalogStore()
@@ -263,7 +261,6 @@ async function runPlanner() {
       calc,
       allBosses: props.bosses,
       boss,
-      periodViews: props.periodViews,
       allAgentIds: catalog.displayAgents.map(a => a.id),
       preset: ppPreset.value,
       startDate: ppStartDate.value,

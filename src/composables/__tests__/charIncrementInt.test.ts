@@ -36,7 +36,6 @@ describe('charIncrement · 真实归档集成', () => {
     await computeIncrementPass({
       calc,
       bosses: bossData.bosses as BossPreset[],
-      periodViews: bossData.phaseViews ?? [],
       runs: raw.runs.slice(0, 2),
       rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
     })
@@ -44,7 +43,6 @@ describe('charIncrement · 真实归档集成', () => {
     const res = await computeIncrementPass({
       calc,
       bosses: bossData.bosses as BossPreset[],
-      periodViews: bossData.phaseViews ?? [],
       runs: raw.runs,
       rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
     })
@@ -77,7 +75,6 @@ describe('charIncrement · 真实归档集成', () => {
     const res = await computeIncrementPass({
       calc,
       bosses: bossData.bosses as BossPreset[],
-      periodViews: bossData.phaseViews ?? [],
       runs: raw.runs,
       rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
     })

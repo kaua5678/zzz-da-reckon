@@ -146,7 +146,6 @@ describe('pullPlannerEngine · 引擎 oracle 冒烟', () => {
     const engine = createEngineOracle({
       calc,
       bosses: [boss],
-      periodViews: [],
       candidatePool: [...free, '1371'], // 仪玄 = 唯一限定候选
     })
     const room = { bossId: boss.id, phaseId: phase.phaseId, bossName: boss.name, hp: phase.hp }
@@ -188,7 +187,6 @@ describe('pullPlannerEngine · 规划集成（截短期数）', () => {
     const res = await runPullPlanner({
       calc,
       boss: ALL_BOSSES[0],
-      periodViews: [],
       allAgentIds: catalog.displayAgents.map(a => a.id),
       allBosses: ALL_BOSSES,
       preset: 'established',
@@ -224,7 +222,6 @@ describe('pullPlannerEngine · 用户钉子（VCG 反事实）', () => {
     const runOpts = {
       calc,
       boss: ALL_BOSSES[0],
-      periodViews: [],
       allAgentIds: catalog.displayAgents.map(a => a.id).filter(id => ['1021', '1031'].includes(id)),
       allBosses: ALL_BOSSES,
       preset: 'established',

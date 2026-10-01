@@ -322,7 +322,7 @@ describe('探针：融合生效后雅队伤害', () => {
     const { applyDeployConfig } = await import('@/composables/runArchiveDeploy')
     const run = archive.runs.find((r: any) => r.team.some((m: any) => m.agentId === '1091') && r.bossKilled)
     const room = archive.rooms[run.targetId]
-    applyDeployConfig(configStore, submissionToDeploy(run, room, bossFile.bosses, room?.seasonStart), bossFile.bosses, bossFile.phaseViews ?? [])
+    applyDeployConfig(configStore, submissionToDeploy(run, room, bossFile.bosses, room?.seasonStart), bossFile.bosses)
     const hp = configStore.enemy.hp ?? 0
     const dmg = teamTotalDamage.value ?? 0
     const exs = resourceResult.value?.characters.find(c => c.agentId === '1091')?.executions ?? []

@@ -530,7 +530,6 @@ describe('Chart 4：菲林经济模拟（computeFilmSimulation / 预算性价比
   const baseSim = {
     boss: firstBoss as BossPreset,
     axisNodes: [] as { id: string; label: string; date: string }[],
-    periodViews: [] as never[],
     mainAgentId: '1371',
     // 用户口径候选池：青衣/潘引壶/橘福福/卢西娅/琉音（琉音换青衣、卢西娅换潘引壶）
     candidatePool: ['1251', '1421', '1391', '1451', '1481'],

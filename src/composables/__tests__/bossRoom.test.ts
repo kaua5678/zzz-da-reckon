@@ -1,14 +1,15 @@
 /**
- * CC-342（arena-D 第 363 轮）：Boss 房间上下文唯一写入口 `bossRoom#applyBossRoom`。
- * 分析见 docs/mcp-boss-room-context.md §1.2 / §3。
+ * CC-342：Boss 房间上下文唯一写入口 `bossRoom#applyBossRoom`（第 363 轮立入口；第 364 轮关卡 buff 改为随 phase 数据走，
+ * 5 个分析器迁入）。分析见 docs/mcp-boss-room-context.md。
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { applyBossRoom, findBossBrief } from '@/composables/bossRoom'
+import { applyBossRoom } from '@/composables/bossRoom'
 import { createEngineOracle } from '@/composables/pullPlannerEngine'
+import { applyBuffToStore } from '@/composables/teamCompare'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 
 const bp = JSON.parse(
@@ -16,14 +17,13 @@ const bp = JSON.parse(
 ) as BossPresetFile
 const presets = bp.bosses as BossPreset[]
 const phaseViews = (bp.phaseViews ?? []) as PhaseView[]
+const briefsOf = (v: PhaseView) => [...(v.criticalAssault ? [v.criticalAssault] : []), ...(v.defense ?? [])]
 
-/** 找一个带数值关卡 buff 的 (Boss, 期)：真数据里 148/159 个 brief 有 */
+/** 找一个带数值关卡 buff 的 (Boss, 期) */
 function roomWithLayerBuff() {
-  for (const v of phaseViews) {
-    for (const b of [...(v.criticalAssault ? [v.criticalAssault] : []), ...(v.defense ?? [])]) {
-      const preset = presets.find(p => p.id === b.presetId)
-      const phase = preset?.phases.find(p => p.phaseId === v.phaseId)
-      if (preset && phase && (b.bossBuffs ?? []).some(c => (c.effects ?? []).some(e => e.stat))) return { preset, phase, brief: b }
+  for (const preset of presets) {
+    for (const phase of preset.phases) {
+      if ((phase.layerBuffs ?? []).some(c => (c.effects ?? []).some(e => e.stat))) return { preset, phase }
     }
   }
   throw new Error('no room with layer buff')
@@ -33,40 +33,60 @@ const layerRows = (rows: { id: string | number }[]) => rows.filter(r => String(r
 const STALE = { id: 'layer-buff:stale:atkPct:99', name: '关卡·上一个 Boss', stat: 'atkPct', value: 99, enabled: true }
 
 describe('bossRoom', () => {
-  it('findBossBrief：按 (phaseId, presetId) 唯一定位；期或 Boss 不在 ⇒ null', () => {
-    const { preset, phase, brief } = roomWithLayerBuff()
-    expect(findBossBrief(phaseViews, phase.phaseId, preset.id)).toBe(brief)
-    expect(findBossBrief(phaseViews, '999999', preset.id)).toBeNull()
-    expect(findBossBrief(phaseViews, phase.phaseId, '40404')).toBeNull()
-    expect(findBossBrief([], phase.phaseId, preset.id)).toBeNull()
+  it('数据锁：每个预设 phase 都有 layerBuffs，且与期视图同一关的 brief.bossBuffs 完全一致（生成脚本同一次解析）', () => {
+    for (const p of presets) for (const ph of p.phases) expect(Array.isArray(ph.layerBuffs), `${p.id}/${ph.phaseId}`).toBe(true)
+    let matched = 0
+    for (const v of phaseViews) {
+      for (const b of briefsOf(v)) {
+        if (!b.presetId) continue
+        const phase = presets.find(p => p.id === b.presetId)?.phases.find(ph => ph.phaseId === v.phaseId)
+        expect(phase, `${b.presetId}/${v.phaseId}`).toBeTruthy()
+        expect(phase!.layerBuffs, `${b.presetId}/${v.phaseId}`).toEqual(b.bossBuffs ?? [])
+        matched++
+      }
+    }
+    expect(matched).toBeGreaterThan(100)
   })
 
-  it('applyBossRoom：清掉旧 layer-buff 行、写入该期该 Boss 的；无 brief 时只清不写', async () => {
+  it('applyBossRoom：清掉旧 layer-buff 行、写入该 phase 的；phase 无 layerBuffs 时只清不写', async () => {
     const { config } = await setupHarness([{ agentId: '1091' }, { agentId: '1511' }, { agentId: '1411' }])
-    const { preset, phase, brief } = roomWithLayerBuff()
+    const { preset, phase } = roomWithLayerBuff()
     config.globalBuffs.push({ ...STALE } as never)
-    expect(applyBossRoom(config, preset, phase, phaseViews)).toBe(brief)
+    applyBossRoom(config, preset, phase)
     const rows = layerRows(config.globalBuffs)
     expect(rows.length).toBeGreaterThan(0)
-    expect(rows.some(r => r.id === STALE.id)).toBe(false)
+    expect(rows.every(r => String(r.id).startsWith(`layer-buff:${preset.id}:${phase.phaseId}:`))).toBe(true)
     expect(config.appliedBoss?.presetId).toBe(preset.id)
-    applyBossRoom(config, preset, phase, [])
+    applyBossRoom(config, preset, { ...phase, layerBuffs: undefined })
     expect(layerRows(config.globalBuffs)).toEqual([])
   }, 60000)
 
-  it('抽卡规划逐房也写关卡 buff（修前只切敌人，用户现场的 layer-buff 行泄漏进每一房）', async () => {
+  it('抽卡规划逐房也写关卡 buff（第 362 轮前只切敌人，用户现场的 layer-buff 行泄漏进每一房）', async () => {
     const { config } = await setupHarness([{ agentId: '1091' }, { agentId: '1511' }, { agentId: '1411' }])
-    const { preset, phase, brief } = roomWithLayerBuff()
+    const { preset, phase } = roomWithLayerBuff()
     config.globalBuffs.push({ ...STALE } as never)
-    const engine = createEngineOracle({ calc: useResourceCalc(), bosses: [preset], periodViews: phaseViews, candidatePool: [] })
+    const engine = createEngineOracle({ calc: useResourceCalc(), bosses: [preset], candidatePool: [] })
     engine.applyPeriodContext({ id: phase.phaseId, label: '', date: '', bosses: [{ bossId: preset.id, phaseId: phase.phaseId, bossName: preset.name, hp: phase.hp }] })
     const rows = layerRows(config.globalBuffs)
-    expect(rows.some(r => r.id === STALE.id)).toBe(false)
-    expect(rows.every(r => String(r.id).startsWith(`layer-buff:${brief.monsterId}:`))).toBe(true)
     expect(rows.length).toBeGreaterThan(0)
+    expect(rows.every(r => String(r.id).startsWith(`layer-buff:${preset.id}:${phase.phaseId}:`))).toBe(true)
   }, 60000)
 
-  it('源码锁：applyBossPreset 只经 bossRoom 调用；未迁移的分析器列在白名单里（CC-342 第 3 步待定口径）', () => {
+  it('队伍对比换牌：整表替换成所选牌，但保留关卡 buff 行（第 364 轮前连关卡 buff 一起清掉）', async () => {
+    const { config } = await setupHarness([{ agentId: '1091' }, { agentId: '1511' }, { agentId: '1411' }])
+    const { preset, phase } = roomWithLayerBuff()
+    applyBossRoom(config, preset, phase)
+    const layer = layerRows(config.globalBuffs).map(r => r.id)
+    config.globalBuffs.push({ id: 'user:x', name: '用户手填', stat: 'atkPct', value: 5, enabled: true } as never)
+    applyBuffToStore(config, { title: '牌', testOnly: false, effects: [{ stat: 'atkPct', value: 10 }], unparsed: [] })
+    expect(layerRows(config.globalBuffs).map(r => r.id)).toEqual(layer)
+    expect(config.globalBuffs.some(r => r.id === 'user:x')).toBe(false)
+    expect(config.globalBuffs.filter(r => String(r.id).startsWith('phase-buff:')).length).toBe(1)
+    applyBuffToStore(config, null)
+    expect(config.globalBuffs.map(r => r.id)).toEqual(layer)
+  }, 60000)
+
+  it('源码锁：applyBossPreset 只经 bossRoom 调用（所有分析器都进同一种房间）', () => {
     const root = join(__dirname, '..', '..')
     const hits: string[] = []
     const walk = (d: string) => {
@@ -78,14 +98,6 @@ describe('bossRoom', () => {
       }
     }
     walk(root)
-    // 第 3 步（docs/mcp-boss-room-context.md §3）：这些分析器「不写不清」关卡 buff，口径待定后迁移并从这里删掉
-    const PENDING_STEP3 = [
-      'composables/difficultyCurve.ts',
-      'composables/freeCompare/engine.ts',
-      'composables/positionCompare.ts',
-      'composables/teamCompare.ts',
-      'composables/teamTimeline.ts',
-    ]
-    expect(hits.sort()).toEqual(['composables/bossRoom.ts', ...PENDING_STEP3].sort())
+    expect(hits).toEqual(['composables/bossRoom.ts'])
   })
 })

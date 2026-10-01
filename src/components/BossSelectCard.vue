@@ -274,7 +274,7 @@ function applyBoss(brief: PhaseBossBrief) {
   if (!preset || !v) return
   const phase = preset.phases.find(p => p.phaseId === v.phaseId && p.zoneKey === brief.zoneKey)
   if (!phase) return
-  applyBossRoom(configStore, preset, phase, [v]) // CC-342：同一 (phaseId, presetId) ⇒ 查回的就是被点的 brief
+  applyBossRoom(configStore, preset, phase) // CC-342：房间上下文唯一写入口（关卡 buff 随 phase 数据）
 }
 
 // ========== 全部 Boss 分组（折叠区） ==========

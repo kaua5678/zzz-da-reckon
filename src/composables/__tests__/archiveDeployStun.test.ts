@@ -32,7 +32,7 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     const room = archive.rooms[run!.targetId]
     const deploy = submissionToDeploy(run!, room, bossFile.bosses, room?.seasonStart)
     expect(deploy.supported).toBe(true)
-    applyDeployConfig(configStore, deploy, bossFile.bosses, bossFile.phaseViews ?? [])
+    applyDeployConfig(configStore, deploy, bossFile.bosses)
 
     // 30021 defaults 补录 parryTotal 8 + 自动勾选「保底4失衡」
     expect(configStore.appliedBoss?.parryTotal).toBe(8)

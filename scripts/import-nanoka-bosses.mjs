@@ -471,6 +471,9 @@ const presetPhaseByKey = new Map()
 for (const preset of presets.values()) {
   for (const phase of preset.phases) {
     presetPhaseByKey.set(`${phase.phaseId}|${phase.zoneKey}`, { preset, phase })
+    // CC-342（第 364 轮）：关卡固有 buff 挂到预设 phase 上（下面 monsterBrief 命中预设时填），
+    // 运行时 bossRoom#applyBossRoom 拿到 phase 就拿到这一关，不必再按 (phaseId, presetId) 查期视图
+    phase.layerBuffs = []
   }
 }
 
@@ -487,6 +490,7 @@ function monsterBrief(monsterId, zone, room, modeType, layerBuffs) {
   const presetHit = presetPhaseByKey.get(key)
   if (presetHit && presetHit.phase.modeType === modeType) {
     const { preset, phase } = presetHit
+    phase.layerBuffs = bossBuffs
     return {
       presetId: preset.id,
       monsterId: String(mo.id),

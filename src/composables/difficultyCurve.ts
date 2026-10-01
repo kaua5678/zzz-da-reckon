@@ -39,6 +39,7 @@
  * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
  */
+import { applyBossRoom } from '@/composables/bossRoom'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
@@ -121,7 +122,7 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
   const snap = snapshotStore(configStore)
   const rows: DifficultyCurveRow[] = []
   try {
-    configStore.applyBossPreset({ id: options.boss.id }, options.phase, options.boss.monster, options.boss.defaults)
+    applyBossRoom(configStore, options.boss, options.phase)
     // 「全关」= 不跑自动权重分配；阶梯里的 G1/G2 自己显式跑均衡/联合
     configStore.timeWeightStrategy = 'static'
     for (const preset of options.presets) {

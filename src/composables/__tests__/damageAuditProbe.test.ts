@@ -49,7 +49,7 @@ describe('探针：单队行级审计（乘区管线自洽性）', () => {
     for (const run of frontier) {
       const room = archive.rooms[run.targetId]
       const deploy = submissionToDeploy(run, room, bossFile.bosses, room?.seasonStart)
-      applyDeployConfig(configStore, deploy, bossFile.bosses, bossFile.phaseViews ?? [])
+      applyDeployConfig(configStore, deploy, bossFile.bosses)
       const hp = configStore.enemy.hp ?? 0
       rows.push({ run, ratio: hp > 0 ? (calc.teamTotalDamage.value ?? 0) / hp : 0 })
     }
@@ -58,7 +58,7 @@ describe('探针：单队行级审计（乘区管线自洽性）', () => {
     for (const { run, ratio } of rows.slice(0, topN)) {
       const room = archive.rooms[run.targetId]
       const deploy = submissionToDeploy(run, room, bossFile.bosses, room?.seasonStart)
-      applyDeployConfig(configStore, deploy, bossFile.bosses, bossFile.phaseViews ?? [])
+      applyDeployConfig(configStore, deploy, bossFile.bosses)
       const hp = configStore.enemy.hp ?? 0
       const total = calc.teamTotalDamage.value ?? 0
       console.log(`\n### ${ratio * 100 > 9 ? (ratio * 100).toFixed(0) : ratio.toFixed(2)}% | score=${run.score} t=${run.timeSeconds}s | HP=${(hp / 1e6).toFixed(1)}M 模型=${(total / 1e6).toFixed(1)}M | ${run.team.map(m => `${nameOf(m.agentId)}M${m.mindscape}`).join('/')}`)

@@ -6,7 +6,7 @@ import { useConfigStore } from '@/stores/config'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { useCatalogStore } from '@/stores/catalog'
 import { VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
-import type { BossPreset, PhaseView } from '@/types/bossPreset'
+import type { BossPreset } from '@/types/bossPreset'
 import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION, allocateTopUpFilm } from '@/data/filmEconomy'
 import type { TimelineAxisNode } from './teamTimeline'
 import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
@@ -59,8 +59,6 @@ export interface FilmSimulationOptions {
   boss: BossPreset
   /** 危局期数轴（id = phaseId；label/date 由页面从 bossSchedule 构造） */
   axisNodes: TimelineAxisNode[]
-  /** 期视图（当期关卡固有 buff 数据；缺省空 = 老期无 buff） */
-  periodViews: PhaseView[]
   /** 主C（固定；队友从候选池搜最优） */
   mainAgentId: string
   /** 队友候选池（用户策展；主C 自动排除；每期按当前总限定金搜最优双人组） */
@@ -170,7 +168,7 @@ export async function computeFilmSimulation(calc: Calc, opts: FilmSimulationOpti
         ?? opts.boss.phases.find(p => p.begin.slice(0, 10) === (node.date ?? '').slice(0, 10))
       if (!phase) continue
       // CC-342：房间上下文唯一写入口（brief 按 phase.phaseId 查；原按 node.id 查，只在上面的按日期兜底分支里两者可能不同）
-      applyBossRoom(configStore, opts.boss, phase, opts.periodViews)
+      applyBossRoom(configStore, opts.boss, phase)
       // ---- 经济：收入 → 存/花 ----
       const ratio = Math.max(0, Math.min(1, opts.spendRatio))
       bank += filmPerPeriod * (1 - ratio)

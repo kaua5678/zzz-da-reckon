@@ -365,7 +365,6 @@
       :plot-h="plotH"
       :boss="selectedBoss"
       :axis-nodes="bossPeriodAxis"
-      :period-views="phaseViews"
       :main-agent-id="mainAgentId"
       :candidate-pool="candidatePool"
       :auto-build="autoBuild"
@@ -381,7 +380,6 @@
       :svg-w="svgW"
       :boss="selectedBoss"
       :bosses="bossPresets"
-      :period-views="phaseViews"
     />
   </div>
 </template>
@@ -421,7 +419,7 @@ import { benchText, bossCellText, bossCellTitle, colorOf, swapKindLabel } from '
 import { timelineHoverRows as buildTimelineHoverRows } from '@/composables/charts/hoverCardRows'
 import { runTeamTimelineCompute } from '@/composables/charts/chartRunners'
 import { fmt, compact } from '@/utils/format'
-import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 
 useConfigStore()
 const catalogStore = useCatalogStore()
@@ -440,7 +438,6 @@ const mainAgentOptions = computed(() =>
 
 // ========== Boss（必选直选；期数概念已移除——横轴固定为主C实装起到最新） ==========
 const bossPresets = ref<BossPreset[]>([])
-const phaseViews = ref<PhaseView[]>([])
 const selectedBossId = ref('')
 
 /** Boss 最近一次出场开打时间（倒序排列用） */
@@ -463,7 +460,6 @@ onMounted(async () => {
     if (res.ok) {
       const data = (await res.json()) as BossPresetFile
       bossPresets.value = data.bosses ?? []
-      phaseViews.value = data.phaseViews ?? []
       // 默认选最新危局 Boss（无危局期数的 Boss 不作默认）
       const withCA = bossOptions.value.filter(o => {
         const b = bossPresets.value.find(x => x.id === o.value)
@@ -664,7 +660,7 @@ const ddPoints = computed(() =>
 // 本页只负责把数据传进去：`ddPoints` 是直伤系数时间线。
 // ========== Chart 6：抽卡规划器（beam search 最优策略 + VCG 价值归因） ==========
 // 整块已抽组件 components/charts/PullPlannerChart.vue（2026-09-14）：规划器表单/结果/跑批状态
-// 全部随组件走；本页只传页面级状态（boss / bosses / periodViews / svgW）。
+// 全部随组件走；本页只传页面级状态（boss / bosses / svgW；关卡 buff 随 boss.phases[].layerBuffs，CC-342 第 364 轮起不再传期视图）。
 </script>
 
 <style scoped src="./timeCharts/TimeChartsPage.css"></style>

@@ -13,6 +13,7 @@
  * 不另发明）：进函数先 `snapshotStore`（composables/configSnapshot），`try/finally` 里 `restoreStore`，跑完不留痕。
  */
 
+import { applyBossRoom } from '@/composables/bossRoom'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedWEngine } from '@/composables/teamCompare'
@@ -420,7 +421,7 @@ function applyConstraintBaseline(
     const phase = cs.boss.phases.find(p => p.phaseId === phaseId) ?? cs.boss.phases[0]
     if (phase) {
       try {
-        configStore.applyBossPreset({ id: cs.boss.id }, phase, cs.boss.monster, cs.boss.defaults)
+        applyBossRoom(configStore, cs.boss, phase)
       } catch {
         // 静默：约束里的 Boss 不是本任务的正确性判据，装配失败就沿用当前 Boss
       }

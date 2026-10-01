@@ -16,7 +16,7 @@
 import { nextTick, type Ref } from 'vue'
 import { releaseNodeOf } from '@/data/versionTimeline'
 import { computeTeamTimeline, computeNewCharacterPoints, computeSlotComparePoints, computeFilmSimulation, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow, type SlotComparePoint, type SlotCompareSlot, type TeamTimelineResult } from '@/composables/teamTimeline'
-import type { BossPreset, BossPresetPhase, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
 type Calc = Parameters<typeof computeTeamTimeline>[0]
 type Progress = { pct: number; text: string } | null
@@ -152,7 +152,6 @@ export async function runFilmSimCompute(io: {
   points: Ref<FilmSimPoint[]>
   boss: BossPreset | null
   axisNodes: Array<{ id: string; label: string; date: string }>
-  periodViews: PhaseView[]
   mainAgentId: string
   candidatePool: string[]
   initialGold: number | null
@@ -173,7 +172,6 @@ export async function runFilmSimCompute(io: {
     const res = await computeFilmSimulation(io.calc, {
       boss,
       axisNodes: axis,
-      periodViews: io.periodViews,
       mainAgentId: io.mainAgentId,
       candidatePool: io.candidatePool,
       initialGold: io.initialGold ?? 6,

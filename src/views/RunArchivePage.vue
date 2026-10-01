@@ -334,7 +334,7 @@ function onDeploy(run: ArchiveRun) {
   void ensureModelingLedgers()
   const room = f.rooms[run.targetId]
   const deploy = submissionToDeploy(run, room, presets.value, room?.seasonStart)
-  applyDeployConfig(configStore, deploy, presets.value, phaseViews.value)
+  applyDeployConfig(configStore, deploy, presets.value)
   selected.value = run
   lastWarnings.value = deploy.warnings
   lastDeploy.value = deploy

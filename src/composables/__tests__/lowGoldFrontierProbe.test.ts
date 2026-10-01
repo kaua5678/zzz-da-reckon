@@ -61,7 +61,7 @@ describe('探针：最低金+3 前沿 × 真引擎，找伤害过低（招式丢
     for (const run of frontier) {
       const room = archive.rooms[run.targetId]
       const deploy = submissionToDeploy(run, room, bossFile.bosses, room?.seasonStart)
-      applyDeployConfig(configStore, deploy, bossFile.bosses, bossFile.phaseViews ?? [])
+      applyDeployConfig(configStore, deploy, bossFile.bosses)
       const hp = configStore.enemy.hp ?? 0
       const damage = teamTotalDamage.value ?? 0
       const ratio = hp > 0 ? damage / hp : 0
@@ -102,7 +102,7 @@ describe('探针：最低金+3 前沿 × 真引擎，找伤害过低（招式丢
     for (const r of dump) {
       const room = archive.rooms[r.run.targetId]
       const deploy = submissionToDeploy(r.run, room, bossFile.bosses, room?.seasonStart)
-      applyDeployConfig(configStore, deploy, bossFile.bosses, bossFile.phaseViews ?? [])
+      applyDeployConfig(configStore, deploy, bossFile.bosses)
       void teamTotalDamage.value
       const chars = resourceResult.value?.characters ?? []
       console.log(`\n## ${r.team} | 比率 ${(r.ratio * 100).toFixed(0)}% | ${room?.bossNameZh ?? r.run.targetId} | 实战 ${r.run.score}分 ${r.run.timeSeconds}s`)
