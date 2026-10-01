@@ -1,14 +1,16 @@
 # 分析器独立场景（数据隔离）：设计、验证与迁移进度
 
-> 第 369 轮（lane arena-C，2026-10-01）起草，CC-343。第 1 阶段代码 `02049db9`。
+> 第 369 轮（lane arena-C，2026-10-01）起草，CC-343。第 1 阶段代码 `02049db9`；第 372 轮（arena-C）迁完抽卡规划 + 自由对比（`dfe53a2e`）并删 `configSnapshot.ts`（S3，`81b0d2dc`）。
 > 本文是这条线的唯一主档：动机、设计、判据、逐个分析器的迁移状态、迁移配方、后续阶段、决定与回退点。
 > 代码侧入口：`src/composables/analysisScenario.ts`（头注释）、`src/stores/config.ts`「独立场景出生态」段、
 > `src/composables/useResourceCalc.ts#createResourceCalc`。判据：`src/composables/__tests__/analysisScenario.test.ts`。
 
 ## 0. 现状一句话
 
-第 1 阶段已落地：底座（出生态 + 资源计算工厂 + 场景）和一个试点分析器（角色兑现曲线 `computeIncrementPass`）。
-第 371 轮（arena-D，`d9e39042`）迁完时间线 4 个入口 + 菲林模拟。其余 5 个分析器模块（6 处 `snapshotStore` / `restoreStore`）仍改写 UI store 再恢复；另有 `TeamComparePage` 用快照拼缓存键。迁移清单与配方见 §4、§5。
+S2 / S3 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage` 会话缓存键都在独立场景上求值，
+`configSnapshot.ts`（快照 / 恢复）已删除（`81b0d2dc`）。剩下的路是 S4（接 `batchTask.ts`）与可选的 S5（收窄类型）。
+历史：第 1 阶段只落地底座 + 一个试点（角色兑现曲线 `computeIncrementPass`），其余 7 个模块当时仍靠 11 处
+`snapshotStore` / `restoreStore` 改写 UI store 再恢复。迁移清单与配方见 §4、§5。
 
 ## 1. 为什么要做
 
@@ -105,6 +107,28 @@
   - 位置对比（6 队 × breaker/support，6 金）：新旧输出 md5 均为 `93495371f9a5f532e43462089a36105f`（5191 字节，`cmp` 无输出）；
   - 队伍对比 + 难度曲线（3 队 × 0/6/12 金开最优加金 + 自动下位 + 期牌，以及 `auto-1521-1361-1311` / `banyue-liuyin-lucia` 含切轴档爬梯）：新旧输出 md5 均为 `f0bf1c28269e365feb74a47b645b5d39`（12867 字节，`cmp` 无输出）。
 
+### 3.3 第 372 轮（抽卡规划 + 自由对比 `dfe53a2e`；S3 删 configSnapshot `81b0d2dc`）
+
+- `pullPlannerEngine.ts`：`EngineOracleOptions.calc` / `PlannerRunOptions.calc` 换成 `scenario: AnalysisContext`，
+  `createEngineOracle` 与 `runPullPlanner` 都不再调 `useConfigStore()`；删 `type Calc`、`configSnapshot` 导入与 `try / finally`
+  （`git diff -w`：8 文件 +223 / −210，含测试）。oracle 的 `teamScoreCache` / `state.cache` 跟着场景走，一次运行一个场景。
+- `freeCompare/engine.ts`：`computeFreeCompare(calc, options)` → `computeFreeCompare(scenario, options)`；
+  `makeDowngradeResolver` / `applyConstraintBaseline` / `readMetric` 仍收 `calc` / `configStore` / `catalog`，由首行解包给出。
+- 调用方：`PullPlannerChart.vue` / `FreeComparePage.vue` 改用 `withAnalysisScenario`，两处只为传参存在的 `useResourceCalc()` 一并删除。
+- **A/B 逐字节相同**（探针未入库：`/home/kaua/calc-arch/arenaC/zzS2bProbe.{old,new}.test.ts`、`ab-r372.sh`；输出连
+  `stats.evaluations` / `cacheHits` / `cacheSize` / `pickEvaluations` 一起比对，只剔除 `durationMs`）：
+  - 抽卡规划（成型号起点、2 期、beam 2、VCG 开）：md5 `703c3db4553f628755a21d7c7fca8fc2`（1818 字节，27.3s / 27.5s）；
+  - 自由对比 · 命座轴（柏妮思 21 vs 菲欧妮 11，cinemaMax 2）：md5 `3293188e4febe623ed3c595367b46b07`（539 字节）；
+  - 自由对比 · 期数轴（死路屠夫两期、`dmgBossHpRatio`）：md5 `942e10ac47a7cbe76e51c93178076351`（410 字节）。
+- 测试：oracle 冒烟与规划集成改传场景；「快照恢复」断言改为「调用方 `$state` 全程逐字相同」（含 `onProgress` 中途）；
+  `bossRoom.test.ts` 的关卡 buff 用例改为在场景里断言 + 查 UI store 全局 Buff 一行不碰；
+  `freeCompareEngine.test.ts` 的 ★ 用例改为抓**场景** config（`makeRunner` 的 `onEval` 收 `config` 参数）。
+- **源码锁踩到一次真钉子**：`MIGRATED_ANALYZERS` 加项后 ④ 立刻红——`freeCompare/engine.ts` 头注释里写着「不调 `useConfigStore()`」，
+  正则按调用形态匹配，**注释也算**。已改成「不读 UI config store」。写这类注释时避开被锁函数名的调用形态。
+- **S3（`81b0d2dc`）**：删 `configSnapshot.ts` + `configSnapshot.test.ts`；两条非快照专属判据搬家——CC-278 内联快照源码锁 →
+  `analysisScenario.test.ts` ④b，`setAgent(slot, "")` 同步清空该槽音擎 → `stores/__tests__/configModel.test.ts`。
+- 全量 verify：`dfe53a2e` EXIT 0（449 文件 / 4129 测试通过，16 / 29 跳过）；`81b0d2dc` EXIT 0（448 文件 / 4125 测试通过，16 / 29 跳过，178.8s）。
+
 ## 4. 迁移进度（每迁一个：改本表 + 把文件加进 `analysisScenario.test.ts` 的 `MIGRATED_ANALYZERS`）
 
 | 分析器 | 入口 | 调用方 | 同步 / 异步 | 状态 |
@@ -112,8 +136,8 @@
 | 角色兑现曲线 `composables/charIncrement.ts` | `computeIncrementPass` | `views/CharIncrementPage.vue` | 异步（每 4 队 yield） | ✅ 第 369 轮 `02049db9` |
 | 时间线 `composables/teamTimeline.ts` | `computeTeamTimeline` / `computeNewCharacterPoints` / `computeSlotComparePoints` / `computeSlotSweepPoints`（4 处快照） | `composables/charts/chartRunners.ts`、`composables/teamCompareSweep.ts` | 异步 | ✅ 第 371 轮 `d9e39042`（arena-D） |
 | 菲林模拟 `composables/teamTimelineFilm.ts` | `computeFilmSimulation` | `chartRunners.ts` | 异步 | ✅ 第 371 轮 `d9e39042`（arena-D） |
-| 抽卡规划 `composables/pullPlannerEngine.ts` | `runPullPlanner` | `components/charts/PullPlannerChart.vue` | 异步 | 待迁 |
-| 自由对比 `composables/freeCompare/engine.ts` | `computeFreeCompare` | `views/FreeComparePage.vue` | 异步 | 待迁 |
+| 抽卡规划 `composables/pullPlannerEngine.ts` | `runPullPlanner` / `createEngineOracle` | `components/charts/PullPlannerChart.vue` | 异步 | ✅ 第 372 轮 `dfe53a2e` |
+| 自由对比 `composables/freeCompare/engine.ts` | `computeFreeCompare` | `views/FreeComparePage.vue` | 异步 | ✅ 第 372 轮 `dfe53a2e` |
 | 位置对比 `composables/positionCompare.ts` | `computePositionCompare` | `views/PositionComparePage.vue` | 同步 | ✅ 第 373 轮 `851f232f`（arena-A，T3） |
 | 难度曲线 `composables/difficultyCurve.ts`（内含 `difficultyLadder`） | `computeDifficultyCurves` | `views/TeamComparePage.vue` | 同步 | ✅ 第 373 轮 `851f232f`（arena-A） |
 | 队伍对比 `composables/teamCompare.ts` | `computeTeamComparePoints` | `views/TeamComparePage.vue` | 同步 | ✅ 第 373 轮 `851f232f`（arena-A） |
@@ -137,8 +161,8 @@
 
 ## 6. 后续阶段
 
-1. **S2 迁完 §4 的 7 个模块**（顺序：时间线 + 菲林（同一运行器）→ 抽卡规划 → 自由对比 → 位置对比 → 难度曲线 → 队伍对比）。异步的先做，收益最大。
-2. **S3 删 `configSnapshot.ts`**：没有调用方后删文件与测试；`TeamComparePage` 的缓存键改用状态指纹；CC-278 相关源码锁改成「分析器不调 `useConfigStore()`」（即 `MIGRATED_ANALYZERS` 变成「全部分析器」的扫描）。
+1. ~~**S2 迁完 §4 的 7 个模块**~~ ✅ 第 371 / 372 / 373 轮全部完成：时间线 + 菲林 `d9e39042`；抽卡规划 + 自由对比 `dfe53a2e`；位置对比（T3）+ 难度曲线 + 队伍对比 `851f232f`。
+2. ~~**S3 删 `configSnapshot.ts`**~~ ✅ 第 372 轮 `81b0d2dc`：8 个分析器 + `TeamComparePage` 缓存键迁完后调用方为零，删模块与测试。`TeamComparePage` 的缓存键已由第 373 轮改成 `cloneConfigState(configStore.$state)`；CC-278 的内联快照源码锁搬到 `analysisScenario.test.ts` ④b（`MIGRATED_ANALYZERS` 现已覆盖全部分析器）。
 3. **S4 接 `batchTask.ts`**：每个任务一个场景（或一个场景跑完一批再 dispose），任务间天然隔离；之后才谈 worker。
 4. **S5 收窄类型（可选）**：管线与分析器里 `ReturnType<typeof useConfigStore>` 的参数改成 `ConfigModel`（`config.ts` 已导出），场景就不必把 model 标成 store 类型；
    各文件里的 `ReturnType<typeof useResourceCalc>`（现 10 处）换成导入 `ResourceCalc`。只在顺手时做，不为降计数单独开卡。
@@ -150,12 +174,14 @@
 - **出生态放进 `createConfigModel`**（而不是在场景模块里先建 model 再注水 + `await nextTick()` 让 watcher 先跑）：
   后者要求场景模块知道「哪个 watcher 怎么触发」，且把建场景变成异步；出生态对未来新增的 watcher 也成立。
 - **`$state` 视图键取自源的 `$state`**：与 Pinia 对 state 的分类完全一致，memo 键覆盖的字段与 UI 实例相同。
-- **不改其余 7 个分析器模块**：第 1 阶段只证明底座与一个试点（A/B 逐字节相同）；逐个迁移是机械活，按 §5 一张卡一个，单独可回退。
+- **不改其余 7 个分析器模块**：第 1 阶段只证明底座与一个试点（A/B 逐字节相同）；逐个迁移是机械活，按 §5 一张卡一个，单独可回退。（S2 已由第 371 / 372 / 373 轮做完。）
+- **catalog 不进 `AnalysisContext`，分析器内部仍 `useCatalogStore()`**（第 372 轮决定）：目录是全局只读数据（角色 / 音引擎 / 推荐配装，加载后不再被用户改写），场景不持有独立副本——`createAnalysisScenario` 也是把同一个 catalog store 直接传给 `createResourceCalc`。把它收进上下文对隔离没有收益，却会让每个测试都多传一个字段。源码锁④因此只查 `useConfigStore()`。**再收窄的时机**：等 worker 真的需要自己的目录快照时（S4 / worker 化），那时 `AnalysisContext` 加 `catalog` 才是必要改动。
 
 ## 8. 坑
 
 - 场景的 `config` 没有 `$patch` / `$subscribe` / `$reset` / `$onAction`。分析器里需要「批量写」就直接赋值字段或调 action。
-- `createResourceCalc` 与已迁移分析器里不得调 `useConfigStore()` / `useCatalogStore()`：会静默读回 UI 现场（源码锁④）。
+- `createResourceCalc` 与已迁移分析器里不得调 `useConfigStore()`：会静默读回 UI 现场（源码锁④）。`useCatalogStore()` 允许——见 §7 的决定（catalog 是全局只读数据）。
+- **写注释别出现被锁函数名的调用形态**：源码锁④ 按调用形态匹配，注释里写「不调 `useConfigStore()`」一样会红（第 372 轮实测踩到，改成「不读 UI config store」）。
 - 新增 state ref 必须登记进 `config.ts` 出生态键表，否则建场景直接抛错。
 - 一次运行一个场景；`withAnalysisScenario` 出错也会 dispose。
 - 场景里 `effectScope(true)` 是脱离父作用域的：在组件 setup 里建也不会随组件卸载自动停，必须 `dispose()`（用 `withAnalysisScenario` 就不会漏）。
@@ -164,3 +190,5 @@
 
 - 第 1 阶段整体：`git revert 02049db9`（出生态参数、工厂化、场景模块、试点迁移一起回退；UI 行为不变）。
 - 只回退试点：恢复 `charIncrement.ts` / `CharIncrementPage.vue` / `charIncrementInt.test.ts` 三个文件到 `2d781b67`，并从 `MIGRATED_ANALYZERS` 删掉该项。
+- 第 372 轮（抽卡规划 + 自由对比）：`git revert dfe53a2e`（恢复快照路径；调用方改回传 `calc`）。
+- S3（删 configSnapshot）：`git revert 81b0d2dc`。**顺序要紧**：S3 之后不能再单独把某个分析器退回快照路径——`configSnapshot.ts` 已不在，回退前必须先 `git revert 81b0d2dc`。

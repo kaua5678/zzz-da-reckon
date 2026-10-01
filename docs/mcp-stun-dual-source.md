@@ -4816,3 +4816,12 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **未改**：其余 7 个分析器模块（11 处快照恢复）与 `TeamComparePage` 的快照缓存键。迁移表与配方见 `docs/mcp-analyzer-scenario-isolation.md` §4–5。
 - **验证**：`vue-tsc -b` 0；全量 verify EXIT 0（449 文件 / 4126 测试通过，16 / 29 跳过，228.9s）。
 - **回退点**：`git revert 02049db9`。
+
+### 24.187 CC-343 S2 收尾 + S3（`dfe53a2e` + `81b0d2dc`，第 372 轮，lane arena-C）
+
+- **问题**：第 1 阶段之后还剩 7 个分析器改写 UI store + 快照恢复；`configSnapshot.ts` 作为「唯一实现」仍在，且它快照的字段是手列的（漏一个就泄漏，CC-251 / 278 / 338 / 339 / 340 同源）。
+- **改法（`dfe53a2e`）**：`pullPlannerEngine.ts`（`createEngineOracle` / `runPullPlanner`）与 `freeCompare/engine.ts#computeFreeCompare` 改收 `scenario: AnalysisContext`；调用方 `PullPlannerChart.vue` / `FreeComparePage.vue` 改用 `withAnalysisScenario` 并删掉只为传参存在的 `useResourceCalc()`。与第 371 / 373 轮合起来，§4 的 8 个分析器入口 + `TeamComparePage` 会话缓存键全部迁完。
+- **改法（`81b0d2dc`，S3）**：删 `src/composables/configSnapshot.ts` 与 `src/composables/__tests__/configSnapshot.test.ts`（此时全仓调用方为零）。搬走两条非快照专属判据，否则会随模块一起丢失：CC-278 内联快照源码锁（`JSON.stringify({ team: configStore.team` / `stunAxisPlans.splice` 回写）→ `analysisScenario.test.ts` ④b；`setAgent(slot, "")` 同步清空该槽 `wEngineId` → `src/stores/__tests__/configModel.test.ts`。
+- **影响**：零差。A/B 三项逐字节相同：抽卡规划（2 期 + VCG）md5 `703c3db4553f628755a21d7c7fca8fc2`（1818 字节，27.3s / 27.5s）；自由对比命座轴 md5 `3293188e4febe623ed3c595367b46b07`（539 字节）；自由对比期数轴 md5 `942e10ac47a7cbe76e51c93178076351`（410 字节）。全量 verify 两次 EXIT 0（4129 / 4125 测试通过）。
+- **决定**：`catalog` 不进 `AnalysisContext`，分析器内部仍 `useCatalogStore()`——目录是全局只读数据、场景不持有独立副本；源码锁④只查 `useConfigStore()`。等 worker 需要自己的目录快照时再收窄（依据见 `docs/mcp-analyzer-scenario-isolation.md` §7）。
+- **回退点**：先 `git revert 81b0d2dc` 再 `git revert dfe53a2e`——顺序反了编译不过（`configSnapshot.ts` 已不在）。

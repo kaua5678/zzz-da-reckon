@@ -79,6 +79,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-01 arena-C 第 372 轮（开工 21:28；r371 已被 arena-D 21:28 认领「时间线 + 菲林」，本轮记 372；HEAD `48f10d3e`；期间 arena-D r371（`d9e39042`）与 arena-A r373（`851f232f`）先后合入，本人在 worktree 里 rebase 两次；REQUIREMENTS.md 429 行无新条目）：CC-343 S2 抽卡规划 + 自由对比迁独立场景，并顺手做掉 S3 删 configSnapshot，代码 `dfe53a2e` + `81b0d2dc`，已 push。**
+- **做到哪**：
+  1. **抽卡规划 `dfe53a2e`**：`EngineOracleOptions` / `PlannerRunOptions` 的 `calc` 字段换成 `scenario: AnalysisContext`，`createEngineOracle` 与 `runPullPlanner` 都不再调 `useConfigStore()`，删 `type Calc`、`configSnapshot` 导入与 `try / finally`；`PullPlannerChart.vue` 改用 `withAnalysisScenario` 并删 `useResourceCalc()`。A/B 逐字节相同（2 期 + VCG，md5 `703c3db4`，1818 字节，27.3s / 27.5s）。
+  2. **自由对比 `dfe53a2e`**：`computeFreeCompare(calc, options)` → `computeFreeCompare(scenario, options)`，`FreeComparePage.vue` 同步改。A/B 逐字节相同（命座轴 md5 `3293188e`、期数轴 md5 `942e10a`）。
+  3. **S3 `81b0d2dc`**：删 `src/composables/configSnapshot.ts` + 其测试（此时全仓调用方为零）；搬走两条非快照专属判据——CC-278 内联快照源码锁 → `analysisScenario.test.ts` ④b，`setAgent(slot,"")` 清空槽位同步清 `wEngineId` → `stores/__tests__/configModel.test.ts`。
+  4. **验证**：`vue-tsc -b` 0；定向套件 51/51（freeCompare 目录 + pullPlannerOracle + bossRoom + pullPlannerEngine）；`analysisScenario.test.ts` 6/6；`configModel.test.ts` 2/2；全量 verify 两次 EXIT 0（`dfe53a2e` 449 文件 / 4129 测试；`81b0d2dc` 448 文件 / 4125 测试，178.8s）。
+  5. **回退点**：`git revert 81b0d2dc` → `git revert dfe53a2e`（**必须先退 S3 再退分析器**：`configSnapshot.ts` 已不在，顺序反了编译不过）。
+- **下一步**（按价值排序）：
+  1. **S4：接 `batchTask.ts`**（`9b523a0a` 的提交说明就写着「接线须先完成数据隔离」，现在前置已满足）：每个任务一个 `withAnalysisScenario`，任务间天然隔离。它目前仍未接线（无调用方），接之前先读它现状。
+  2. **S5（可选，顺手才做）**：管线与分析器里 `ReturnType<typeof useConfigStore>` 的参数改成 `ConfigModel`（`config.ts` 已导出），`ReturnType<typeof useResourceCalc>`（现 10 处）换成导入 `ResourceCalc`。**不为降计数单独开卡。**
+  3. 第 373 轮遗留已由本轮结清：`docs/mcp-analyzer-scenario-isolation.md` §4 的 8 行现全部 ✅，下一位开工先读该文档 §6（S2 / S3 已结项，只剩 S4 / S5）。
+- **已知坑**：
+  ① **源码锁按调用形态匹配，注释也算**：`MIGRATED_ANALYZERS` 加项后 ④ 立刻红，原因是 `freeCompare/engine.ts` 头注释写了「不调 `useConfigStore()`」。写这类注释要避开被锁函数名的调用形态（改成「不读 UI config store」）。
+  ② **MCP 客户端并发撞 id**：一个 `sh` 超时（shell_error）后服务端那条请求仍在跑，下一次调用报 `Duplicate JSON-RPC request id`。除 `rm -f /tmp/mcp.session` 换会话外，还可以 `sed "s#/tmp/mcp.session#/tmp/mcp2.session#" /tmp/mcp.js > /tmp/mcp2.js` 起第二个会话——本轮用后者实现「后台跑全量 verify + 同时读文档」。
+  ③ 迁 `runPullPlanner` 这类「入口 + 内部 oracle」结构时，oracle 的 `teamScoreCache` / `state.cache` 都跟着场景走，一次运行一个场景（跨运行复用会让第二次从第一次的残留出发）；VCG 反事实重规划因此也各建一个场景。
+  ④ `freeCompare` 的 ★ 用例原本借 `onProgress` 读 **UI store** 断言装配；迁后必须读**场景** config（`makeRunner` 的 `onEval` 收 `config` 参数），否则断言的是「没被碰过的 UI store」，永远绿。
 **2026-10-01 arena-A 第 373 轮（与 arena-C 第 372 轮 `wtA-s2b` 并行，worktree `wtA-373`）：CC-343 S2 位置对比（执行卡 T3）+ 难度曲线 + 队伍对比 + TeamComparePage 缓存键迁独立场景，代码 `851f232f`，文档见本轮 docs 提交，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
 - **做到哪**：
   1. **T3 完成 `851f232f`（`src/composables/positionCompare.ts` + `src/views/PositionComparePage.vue` + 测试）**：`computePositionCompare` 改收 `scenario: AnalysisContext`，轴基准改用 `configStore.getAxisState()`，删 `snapshotStore / restoreStore` 与 `try / finally`；`PositionComparePage#run` 改用 `withAnalysisScenario` 并删 `useResourceCalc()`。A/B 零差：6 队 × breaker/support（6 金）新旧输出 md5 均为 `93495371f9a5f532e43462089a36105f`（5191 字节，`cmp` 无输出）。
