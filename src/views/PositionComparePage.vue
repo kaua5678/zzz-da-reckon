@@ -134,6 +134,7 @@ import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
 import { computePositionCompare, type ComparePosition, type PositionCompareRow } from '@/composables/positionCompare'
 import type { BossPreset } from '@/types/bossPreset'
 
@@ -207,11 +208,15 @@ watch(quickPickMainC, main => {
   selectedPresetIds.value = teamPresets.filter(t => t.team[0] === main).map(t => t.id)
 })
 
+/** 批任务归属（S4，CC-343）：重算吊销上一次，离开页面也吊销 */
+const owner = useBatchOwner()
+
 async function run() {
   if (!canRun.value) return
   const presets = teamPresets.filter(p => selectedPresetIds.value.includes(p.id))
   const boss = selectedBoss.value!
   const phase = selectedPhase.value!
+  const run = owner.start()
   computing.value = true
   try {
     // useResourceCalc 的 load 是 fire-and-forget：先显式等 catalog/teammateBuffs 就绪，
@@ -219,9 +224,10 @@ async function run() {
     const catalog = useCatalogStore()
     await catalog.load()
     await catalog.loadTeammateBuffs()
-    results.value = await withAnalysisScenario(scenario => computePositionCompare(scenario, presets, boss, phase, { gold: gold.value, position: position.value }))
+    const res = await withAnalysisScenario(scenario => computePositionCompare(scenario, presets, boss, phase, { gold: gold.value, position: position.value }))
+    run.commit(() => { results.value = res })
   } finally {
-    computing.value = false
+    run.commit(() => { computing.value = false })
   }
 }
 

@@ -174,6 +174,7 @@ import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import { hoverCardPosition } from '@/composables/svgPointer'
 import { colorOf } from '@/composables/charts/agentPresentation'
 import { runChart3Compute } from '@/composables/charts/chartRunners'
+import { useBatchOwner } from '@/composables/batchTask'
 import { chart3HoverRows as buildChart3HoverRows } from '@/composables/charts/hoverCardRows'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
 import {
@@ -239,9 +240,12 @@ const allAgentOptions = computed(() =>
 const chart3Computing = ref(false)
 const chart3Progress = ref<{ pct: number; text: string } | null>(null)
 const chart3Points = ref<NewCharacterPoint[]>([])
+/** 批任务归属（S4，CC-343）：重算吊销上一次，离开页面也吊销 */
+const chart3Owner = useBatchOwner()
 async function runChart3() {
   // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runChart3Compute（第一片拆分，逐字搬迁）
   await runChart3Compute({
+    owner: chart3Owner,
     computing: chart3Computing, progress: chart3Progress, points: chart3Points,
     boss: props.boss,
     phase: props.phase,

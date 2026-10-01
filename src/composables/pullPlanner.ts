@@ -27,6 +27,7 @@
  * 会给同一张卡不同估值（持有集条件化，即用户「比利 vs 维琳娜」例子的形式化）。
  */
 import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM } from '@/data/filmEconomy'
+import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 
 // ========== 类型 ==========
 
@@ -150,6 +151,8 @@ export interface PlannerOptions {
   onProgress?: (p: { pct: number; text: string }) => void
   /** 每期结算前回调（引擎 oracle 在此切换 Boss/期相位上下文；纯逻辑测试无需传） */
   onPeriod?: (period: PlannerPeriod) => void
+  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
+  control?: BatchControl
 }
 
 // ========== 版本边界（菲林发放粒度） ==========
@@ -333,6 +336,7 @@ export function planPullStrategy(opts: PlannerOptions): PlannerResult {
   let beamStates = 0
 
   for (let i = 0; i < activePeriods.length; i++) {
+    if (isBatchAborted(opts.control)) break
     const period = activePeriods[i]
     opts.onPeriod?.(period)
     const grant = grants[i]

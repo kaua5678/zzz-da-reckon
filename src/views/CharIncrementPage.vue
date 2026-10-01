@@ -146,6 +146,7 @@ import { computed, onMounted, ref } from 'vue'
 import { NAlert, NButton, NCard, NInputNumber, NProgress, NSelect } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
 import { computeIncrementPass, computeCardIncrements, computeAllCardTotals, type IncrementPassResult, type CardIncrementSummary, type BaseTeam } from '@/composables/charIncrement'
 import { pvReleaseDateOf } from '@/composables/pullValue'
 import { AGENT_RELEASE_NODE as RELEASE_NODE } from '@/data/versionTimeline'
@@ -181,6 +182,8 @@ const maxPerBoss = ref(3)
 const computing = ref(false)
 const progress = ref<{ pct: number; text: string } | null>(null)
 const passResult = ref<IncrementPassResult | null>(null)
+/** 批任务归属（S4，CC-343）：重算吊销上一次，离开页面也吊销 */
+const batchOwner = useBatchOwner()
 
 async function runPass() {
   const a = archive.value
@@ -188,23 +191,26 @@ async function runPass() {
     error.value = '归档/Boss 数据未加载'
     return
   }
+  const run = batchOwner.start()
   computing.value = true
   error.value = ''
   progress.value = { pct: 0, text: '提取队伍基底…' }
   try {
     // 独立场景（r369）：求值在当前配置的副本上跑，计算器的配置全程不变，跑完自动销毁
-    passResult.value = await withAnalysisScenario(scenario => computeIncrementPass({
+    const res = await withAnalysisScenario(scenario => computeIncrementPass({
       scenario,
       bosses: bosses.value,
       runs: a.runs,
       rooms: a.rooms,
-      onProgress: p => { progress.value = p },
+      control: { signal: run.signal },
+      onProgress: p => run.commit(() => { progress.value = p }),
     }))
+    run.commit(() => { passResult.value = res })
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    run.commit(() => { error.value = e instanceof Error ? e.message : String(e) })
   } finally {
-    computing.value = false
-    setTimeout(() => { progress.value = null }, 1500)
+    run.commit(() => { computing.value = false })
+    setTimeout(() => run.commit(() => { progress.value = null }), 1500)
   }
 }
 

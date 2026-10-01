@@ -9,6 +9,7 @@ import type { BossPreset } from '@/types/bossPreset'
 import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION, allocateTopUpFilm } from '@/data/filmEconomy'
 import type { TimelineAxisNode } from './teamTimeline'
 import type { AnalysisContext } from '@/composables/analysisScenario'
+import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import { baseGoldOfTeam, buildBudgetAwareGoldSteps, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
 
@@ -73,6 +74,8 @@ export interface FilmSimulationOptions {
   /** 自动配装（推荐驱动盘 + 词条优化器）；缺省 false = 轻量速算 */
   autoBuild?: boolean
   onProgress?: (p: { pct: number; text: string }) => void
+  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
+  control?: BatchControl
 }
 
 export interface FilmSimulationResult {
@@ -157,6 +160,7 @@ export async function computeFilmSimulation(scenario: AnalysisContext, opts: Fil
   let nonConverged = 0
   const total = axis.length
   for (let i = 0; i < total; i++) {
+    if (isBatchAborted(opts.control)) break
     const node = axis[i]
     // 当前期数 Boss + 关卡固有 buff 一次应用（本期所有候选队共用）
     const phase = opts.boss.phases.find(p => p.phaseId === node.id)

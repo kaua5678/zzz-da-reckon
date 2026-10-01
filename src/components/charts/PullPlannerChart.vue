@@ -195,6 +195,7 @@ import { computed, nextTick, ref } from 'vue'
 import { NButton, NCard, NInputNumber, NProgress, NSelect } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { colorOf } from '@/composables/charts/agentPresentation'
 import {
@@ -244,6 +245,8 @@ const ppWithVcg = ref(false)
 const ppComputing = ref(false)
 const ppProgress = ref<{ pct: number; text: string } | null>(null)
 const ppResult = ref<PlannerRunResult | null>(null)
+/** 批任务归属（S4，CC-343）：重算吊销上一次（上一次的 beam 会停在下一期），离开页面也吊销 */
+const ppOwner = useBatchOwner()
 
 async function runPlanner() {
   const catalog = catalogStore
@@ -253,12 +256,13 @@ async function runPlanner() {
     setTimeout(() => { ppProgress.value = null }, 2500)
     return
   }
+  const run = ppOwner.start()
   ppComputing.value = true
   ppProgress.value = { pct: 0, text: '准备…' }
   await nextTick()
   try {
     // r372：规划在独立场景上求值（跑完 dispose，UI store 一行都不被碰）
-    ppResult.value = await withAnalysisScenario(scenario => runPullPlanner({
+    const res = await withAnalysisScenario(scenario => runPullPlanner({
       scenario,
       allBosses: props.bosses,
       boss,
@@ -270,13 +274,15 @@ async function runPlanner() {
       filmPerVersion: ppFilmPerVersion.value,
       beamWidth: ppBeamWidth.value,
       withVcg: ppWithVcg.value,
-      onProgress: p => { ppProgress.value = p },
+      control: { signal: run.signal },
+      onProgress: p => run.commit(() => { ppProgress.value = p }),
     }))
+    run.commit(() => { ppResult.value = res })
   } catch (e) {
-    ppProgress.value = { pct: 1, text: `规划失败：${e instanceof Error ? e.message : String(e)}` }
-    setTimeout(() => { ppProgress.value = null }, 4000)
+    run.commit(() => { ppProgress.value = { pct: 1, text: `规划失败：${e instanceof Error ? e.message : String(e)}` } })
+    setTimeout(() => run.commit(() => { ppProgress.value = null }), 4000)
   } finally {
-    ppComputing.value = false
+    run.commit(() => { ppComputing.value = false })
   }
 }
 

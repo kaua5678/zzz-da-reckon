@@ -220,6 +220,7 @@ import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pu
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import type { BossPreset } from '@/types/bossPreset'
 import type { AnalysisContext } from '@/composables/analysisScenario'
+import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import type { ArchiveRoom } from '@/composables/runArchiveImport'
 
 /** 归档房间表（run-archive.json rooms：ArchiveRoom + seasonStart） */
@@ -237,6 +238,8 @@ export interface IncrementPassOptions {
   runs: IncRun[]
   rooms: ArchiveRoomMap
   onProgress?: (p: { pct: number; text: string }) => void
+  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
+  control?: BatchControl
 }
 
 export interface IncrementPassResult {
@@ -296,6 +299,7 @@ export async function computeIncrementPass(opts: IncrementPassOptions): Promise<
   const totalTasks = tasks.reduce((s, t) => s + t.teams.length, 0)
   let done = 0
   for (const task of tasks) {
+    if (isBatchAborted(opts.control)) break
     // Boss 无该期相位 → 房间不可结算（防御：resolveBossApply 静默跳过会用上一个
     // 房间的敌人数据求值出垃圾分；此处显式跳过，房间计 0 分 = 无数据）
     const preset = opts.bosses.find(b => b.id === task.room.bossId)
@@ -305,6 +309,7 @@ export async function computeIncrementPass(opts: IncrementPassOptions): Promise<
     // CC-342：敌人参数 + 该期关卡固有 buff（第 363 轮前只切敌人）
     applyBossRoom(configStore, preset, phase)
     for (const team of task.teams) {
+      if (isBatchAborted(opts.control)) break
       applyBaseTeamLite(configStore, team)
       const damage = calc.teamTotalDamage.value
       const hp = task.room.hp > 0 ? task.room.hp : 1

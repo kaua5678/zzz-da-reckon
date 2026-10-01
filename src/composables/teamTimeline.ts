@@ -156,6 +156,8 @@ export interface TeamTimelineOptions {
   /** 目标总限定金（低于队伍基础金自动钳制） */
   budget: number
   onProgress?: (p: { pct: number; text: string }) => void
+  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
+  control?: BatchControl
   /**
    * 演变轴（危局期数轴由页面经 buildPeriodAxis 构造后传入）。缺省 = VERSION_NODES 合成。
    * 角色在期数中途实装也算该期可用：实装日落在某节点 [date, 下一节点 date) 窗口内即算该节点；
@@ -456,6 +458,7 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
   let evalCount = 0
   const totalEval = pairs.length
   for (const { a, b } of pairs) {
+    if (isBatchAborted(opts.control)) break
     const team: [string, string, string] = [opts.mainAgentId, a, b]
     // 搜索排名用「预算感知确定性分配」（主C优先）：排名贴近所选金数下的真实强度，
     // 换人时机 = 该金数下变强的时刻（比基础金排名准确；最优加金仍由阶段 3 逐金贪婪给出）
@@ -548,6 +551,7 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
     for (const tops of top3ByNode) for (const t of tops) distinctTeams.add(t.key)
     const distinctList = [...distinctTeams]
     for (let i = 0; i < distinctList.length; i++) {
+      if (isBatchAborted(opts.control)) break
       const key = distinctList[i]
       const [m, a, b] = key.split(',') as [string, string, string]
       const alloc = computeOptimalTeamAllocation(calc, configStore, [m, a, b], opts.budget, opts.autoBuild === true)
@@ -723,6 +727,8 @@ export interface NewCharacterChartOptions {
   /** 最优加金（逐金贪婪）；缺省 false = 主C优先确定性分配（与排名同源） */
   optimalGold?: boolean
   onProgress?: (p: { pct: number; text: string }) => void
+  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
+  control?: BatchControl
 }
 
 /**
@@ -746,6 +752,7 @@ export async function computeNewCharacterPoints(scenario: AnalysisContext, opts:
   }
   const points: NewCharacterPoint[] = []
   for (let i = 0; i < tasks.length; i++) {
+    if (isBatchAborted(opts.control)) break
     const { row, team } = tasks[i]
     const res = evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
     if (!res) continue
@@ -883,6 +890,8 @@ export interface SlotCompareOptions {
   /** 最优加金（逐金贪婪）；缺省 false = 主C优先确定性分配（与 Chart 3 同口径） */
   optimalGold?: boolean
   onProgress?: (p: { pct: number; text: string }) => void
+  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
+  control?: BatchControl
 }
 
 /**
@@ -938,6 +947,7 @@ export async function computeSlotComparePoints(scenario: AnalysisContext, opts: 
     evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
   const points: SlotComparePoint[] = []
   for (let i = 0; i < pairs.length; i++) {
+    if (isBatchAborted(opts.control)) break
     const pair = pairs[i]
     const resA = evalOne(pair.teamA)
     const resB = evalOne(pair.teamB)

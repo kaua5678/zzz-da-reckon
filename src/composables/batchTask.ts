@@ -93,6 +93,9 @@ export function createBatchOwner() {
   }
 }
 
+/** 页面/图表侧持有的任务所有者类型（`createBatchOwner` / `useBatchOwner` 的返回值） */
+export type BatchOwner = ReturnType<typeof createBatchOwner>
+
 /** Vue Adapter：离开页面后即使异步计算恢复，也不能再提交结果。 */
 export function useBatchOwner() {
   const owner = createBatchOwner()

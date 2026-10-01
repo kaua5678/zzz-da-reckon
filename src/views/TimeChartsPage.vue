@@ -417,6 +417,7 @@ import { useSeriesFilter } from '@/composables/seriesFilter'
 import { benchText, bossCellText, bossCellTitle, colorOf, swapKindLabel } from '@/composables/charts/agentPresentation'
 import { timelineHoverRows as buildTimelineHoverRows } from '@/composables/charts/hoverCardRows'
 import { runTeamTimelineCompute } from '@/composables/charts/chartRunners'
+import { useBatchOwner } from '@/composables/batchTask'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset } from '@/types/bossPreset'
 
@@ -539,10 +540,13 @@ const candidateOptions = Object.keys(AGENT_RELEASE_NODE)
 const computing = ref(false)
 const progress = ref<{ pct: number; text: string } | null>(null)
 const result = ref<TeamTimelineResult | null>(null)
+/** 批任务归属（S4，CC-343）：重算吊销上一次，离开页面也吊销 */
+const chartOwner = useBatchOwner()
 
 async function runCompute() {
   // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runTeamTimelineCompute（第一片拆分，逐字搬迁）
   await runTeamTimelineCompute({
+    owner: chartOwner,
     computing, progress, result,
     boss: selectedBoss.value,
     phase: selectedPhase.value,

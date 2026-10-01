@@ -147,6 +147,7 @@ import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import { colorOf } from '@/composables/charts/agentPresentation'
 import { runFilmSimCompute } from '@/composables/charts/chartRunners'
+import { useBatchOwner } from '@/composables/batchTask'
 import { filmSimHoverRows as buildFilmSimHoverRows } from '@/composables/charts/hoverCardRows'
 import { buildFilmSimHoverInfo } from '@/composables/charts/hoverInfoBuilders'
 import { buildFilmSimChart } from '@/composables/filmSimChart'
@@ -187,6 +188,8 @@ const simTargetPeriod = ref('')
 const simComputing = ref(false)
 const simProgress = ref<{ pct: number; text: string } | null>(null)
 const simPoints = ref<FilmSimPoint[]>([])
+/** 批任务归属（S4，CC-343）：重算吊销上一次，离开页面也吊销 */
+const simOwner = useBatchOwner()
 
 const simTargetOptions = computed(() =>
   props.axisNodes.map(p => ({ value: p.id, label: `${p.seq} · ${p.label}` })),
@@ -195,6 +198,7 @@ const simTargetOptions = computed(() =>
 async function runFilmSim() {
   // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runFilmSimCompute（第一片拆分，逐字搬迁）
   await runFilmSimCompute({
+    owner: simOwner,
     computing: simComputing, progress: simProgress, points: simPoints,
     boss: props.boss,
     axisNodes: props.axisNodes.map(p => ({ id: p.id, label: `${p.seq}`, date: p.begin })),

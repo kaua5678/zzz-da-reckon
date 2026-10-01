@@ -161,6 +161,7 @@ import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import { colorOf, slotCompareTableRows } from '@/composables/charts/agentPresentation'
 import { runSlotCompareCompute } from '@/composables/charts/chartRunners'
+import { useBatchOwner } from '@/composables/batchTask'
 import { slotCompareHoverRows as buildSlotCompareHoverRows } from '@/composables/charts/hoverCardRows'
 import { buildSlotCompareHoverInfo } from '@/composables/charts/hoverInfoBuilders'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
@@ -215,6 +216,8 @@ const scAgentB = ref('1571') // 诺姆·霍洛维尔
 const scComputing = ref(false)
 const scProgress = ref<{ pct: number; text: string } | null>(null)
 const scPoints = ref<SlotComparePoint[]>([])
+/** 批任务归属（S4，CC-343）：重算吊销上一次，离开页面也吊销 */
+const scOwner = useBatchOwner()
 const scSlotLabel = computed(() => scSlotOptions.find(o => o.value === scSlot.value)?.label ?? '')
 /** 强队成员可选全部角色（S+A；A 级支援如苍角/妮可可作队友） */
 const allAgentOptions = computed(() =>
@@ -240,6 +243,7 @@ const scBossName = computed(() => scBoss.value?.name ?? '—')
 async function runSlotCompare() {
   // 校验/装配/调用已出函 composables/charts/chartRunners.ts#runSlotCompareCompute（第一片拆分，逐字搬迁）
   await runSlotCompareCompute({
+    owner: scOwner,
     computing: scComputing, progress: scProgress, points: scPoints,
     boss: scBoss.value,
     phase: scPhase.value,

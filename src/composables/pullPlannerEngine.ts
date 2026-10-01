@@ -18,6 +18,7 @@ import { isLimitedSWengineId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import type { BossPreset } from '@/types/bossPreset'
 import type { AnalysisContext } from '@/composables/analysisScenario'
+import type { BatchControl } from '@/composables/batchTask'
 import { ladderRung, type PlannerBossRoom, type PlannerPeriod, type TeamOracle } from '@/composables/pullPlanner'
 
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
@@ -420,6 +421,8 @@ export interface PlannerRunOptions {
   /** 免费池每职业代表数（性能剪枝；0 = 全量免费池。默认 1——池越大 beam 每个持有集的 C(池,3) 求值越贵，实测 2 已分钟级） */
   freePoolPerSpecialty?: number
   onProgress?: (p: { pct: number; text: string }) => void
+  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
+  control?: BatchControl
 }
 
 export interface PlannerRunResult {
@@ -470,6 +473,7 @@ export async function runPullPlanner(opts: PlannerRunOptions): Promise<PlannerRu
     oracle: engine.oracle,
     onPeriod: engine.applyPeriodContext,
     onProgress: p => report(p.pct * (opts.withVcg ? 0.7 : 1), p.text),
+    control: opts.control,
   }
   const plan = planPullStrategy(plannerOpts)
   let values: CardValueVcg[] = []
