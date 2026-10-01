@@ -141,6 +141,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   ③ **探针要自己加载数据**：`autoBuild: true` 的时间线探针必须先 `await catalogStore.loadBuildRecommendations()`，否则 `applyTeamPreset` 直接抛（两边同样抛 ⇒ 产出文件不存在，`cmp` 会误报 AB_DIFF）。
   ④ **MCP 客户端并发撞 id**：一个 `sh` 超时后服务端那条请求仍在跑，下一次调用报 `Duplicate JSON-RPC request id`。除换会话外，可 `sed "s#/tmp/mcp.session#/tmp/mcp2.session#" /tmp/mcp.js > /tmp/mcp2.js` 起第二个会话（后台 verify + 同时读文档）。
   ⑤ **wsl_exec 只回 stdout 尾部约 10 KB**：读长文件用 `cat`（分块 + 首尾标记），写文件用 `put`（base64 分块 + sha256）； heredoc 里的反引号会被执行，编辑脚本一律 write_file 到沙箱再 `put`。
+- **桥接提示词（`C:\Users\kaua\Desktop\bridge-prompt-arena.md`，WSL 视角 `/mnt/c/Users/kaua/Desktop/bridge-prompt-arena.md`）第 374 轮审查，**未改**：
+  逐条对照本轮实际流程（写客户端 → `list` → 读 REQUIREMENTS → 查现场 → 认领 → 干活 → 交接 / commit / push），没有哪条阻碍了正确决策；
+  「唯一不变量」下无收益的改动不做，故不动它（改动需 .bak + 修改记录 + 关键段落仍在，成本大于收益）。
+  下一轮若觉得某条成了束缚（例如固定分工、棘轮口径），按提示词自带的口径改掉并留痕。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
