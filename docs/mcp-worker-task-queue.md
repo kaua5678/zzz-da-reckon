@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 386 轮**：CC-356 纯界面态 activeTab / selectedSlot 搬到 `stores/ui.ts` `3914192b`——原 §2；全文 `git show 5ee3d6f6:docs/mcp-worker-task-queue.md` 的 §2（含 ui-check 用法坑）。
+
 **2026-10-02 arena-E 第 385 轮**：CC-355 删 refreshTrigger / triggerRefresh 与三个 no-op 刷新按钮 `af660ce4`——原 §2；全文 `git show a6cb4b42:docs/mcp-worker-task-queue.md` 的 §2（含 WSL / vitest worker 环境坑）。
 
 **2026-10-02 arena-E 第 384 轮**：金档写入入口审计（不动）+ CC-354 删内部手动 refreshTrigger `ca616a22`——原 §2；全文 `git show e7095d6b:docs/mcp-worker-task-queue.md` 的 §2。
@@ -150,19 +152,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 386 轮（lane arena-E，开工 03:27；无并行会话；HEAD `a6cb4b42`；REQUIREMENTS.md 无新条目）：CC-356 纯界面态 `activeTab` / `selectedSlot` 搬到 `src/stores/ui.ts` `3914192b`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：见卡表 CC-356。config store 里不再有任何界面态；记忆化键 = 整个 `$state`，无排除表。
-- **验证**：零差 `zd.sh r386` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 过（`arenaE/verify386.log`）；`vitest run --maxWorkers=4` 454 文件 / 16 跳过 / 4151 例过（`verify386-test.log`）；build 成功（`verify386-build.log`）；实机点通（`arenaE/ui386b/`）：默认槽位 1 → 点第 2 张卡 → 「槽位 2」选中、切到资源利用率（无卡片、无「刷新当前列表」）再切回 → 仍是槽位 2、零 JS 错误。
+**第 387 轮（lane arena-E，开工 03:43；无并行会话；HEAD `5ee3d6f6`；REQUIREMENTS.md 无新条目）：CC-357 删 16 个动作次数命名 setter，统一走 `setActionCount` `1ad63488`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：见卡表 CC-357。改写脚本 `/home/kaua/calc-arch/arenaE/p387.py`（可复用：给名单即可把 `X.setFoo(a, b)` 改成 `X.setActionCount(a, 'foo', b)`，报告剩余未改写引用）。
+- **验证**：零差 `zd.sh r387` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 / build 过（`arenaE/verify387.log`）；`vitest run --maxWorkers=4` 454 文件 / 16 跳过 / 4152 例过（`verify387-test.log`）。
 - **开放项（沿用 r379，待用户裁决，勿自行改）**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（卡表 CC-349）。
-- **下一步（可直接开工，先查后定）**：**config store 里的角色专属 setter 已被通用入口取代、生产零调用**。r386 扫描（`python3 /home/kaua/calc-arch/arenaE/deadscan.py <repo>`，按名字在 src 非测试文件里数引用）：
-  - 生产 0 / 只剩测试调用：`setPerfectBlockCount` `setAssaultOrderCount` `setYixuanInk2Count` `setYixuanInk3Count` `setYixuanPerfectBlockCount` `setYixuanExtremeAssistCount` `setYixuanBackstageComboCount` `setPromiaNiyingCount`——TeamConfigPage 已统一走 `setActionCount(slot, field, v)`（字段表 `agentCharacterCountInputs` + `ACTION_COUNT_BOUNDS`）。
-  - 生产 0 / 测试 0：`setVelinaCinema2CorrosionRate`、`getChar`、`getWEngineEffectCoverageMap`；另 `velinaCinema2CorrosionRate`（store computed）扫描器漏报（velina.ts 里同名的是 `panel.` 字段，不是 store），手核亦生产零读。
-  - `anomalyUtilizationRates` / `anomalySettlementShares` 显示 0 是因为外部经 getter/setter 访问，**它们是 state，不是死代码，别删**。
-  做法：先逐个读这些 setter 的实现，确认和 `setActionCount(slot, field, v)` 的钳制 / 默认值一致（**不一致 = 真分叉，先记下、按 CC-351 那样归一**）；一致就删 setter、把测试改成调 `setActionCount`，velina 那对与零调用 getter 直接删。判据：store 不再有按角色命名的成员。零差必须 0。
+- **下一步（先查后定，可能结论是「不做」）**：**角色专属动作字段仍写死在通用类型 / 界表里**。`src/stores/config.ts` 的 `ACTION_COUNT_BOUNDS`（~213 行）与角色默认模板（~150–165 行）、`CharacterConfig` 类型里有 `yixuanInk2Count` / `yixuanInk3Count` / `yixuanPerfectBlockCount` / `yixuanExtremeAssistCount` / `yixuanBackstageComboCount` / `promiaNiyingCount` / `tauntCancelCount`（以及可能专属的 `assaultOrderCount` / `perfectBlockCount`），新角色要动 store。仓库已有「模块注册」先例：`MechanicSetting`（如 `mechanics/agents/jane.ts#settings`，ResourceUtilizationPage 泛型渲染）、TeamConfigPage 的 `agentCharacterCountInputs(agentId)`。
+  步骤：① `grep -rn "<字段>" src --include=*.ts --include=*.vue | grep -v __tests__` 逐字段列读写点（引擎 helpers.ts:~562 等、预设 `teamPresets` / 导入导出 / 实战存档）；② 看 `agentCharacterCountInputs` 的字段表是否已由角色模块声明——若是，界表上下界能否同处声明；③ **判据**：若迁移后「新角色加动作次数 = 只改自己的模块」且持久化格式不变（或有迁移），就做；若要改存档 / 预设格式、或读点 > 10 处分散在引擎核心，就**不做**，在 r6 §8 记一句「字段留在 CharacterConfig 的理由」。
 - **已知坑**：
-  - ui-check 的 `click:` 只在 `.n-button` 里找（卡片等非按钮元素用 `eval:document.querySelectorAll(".character-card")[1].click()||"clicked"`）；空队伍时结果页不渲染「合轴率调节」区，`wait:合轴率调节` 会挂到超时。
-  - 同一条命令里起 `python3 -m http.server 8099` 又用 `pgrep -f "[h]ttp.server 8099"` 收尾会杀到自己（命令行里有未加括号的字面量）⇒ 用 `… & SP=$!; …; kill $SP`。
-  - chromedeps 在 `/tmp`，WSL 重启即丢，重建命令见 `scripts/ui-check.mjs` 头注释。
+  - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
+  - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
