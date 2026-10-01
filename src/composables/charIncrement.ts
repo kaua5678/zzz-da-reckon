@@ -16,7 +16,7 @@
  * - 账号分 = 一期 3 房（每期实际 Boss 数由期轴定）× 不重叠 3 人队（9 人约束）的最优 DFS。
  * - 分数 = scoreForDamageRatio(引擎伤害/当期Boss血量)（伤害分 0~60000 分段线性；操作分是附加分、与强度无关，已剔除）。
  *
- * 引擎部分（快照/求值/赋值）在 computeIncrementPass（同文件尾部，vitest 里假 oracle 验证）。
+ * 引擎部分（独立场景上装配/求值/赋值）在 computeIncrementPass（同文件尾部；集成测试 charIncrementInt.test.ts）。
  */
 import { runLimitedGold } from '@/composables/limitedGold'
 
@@ -211,25 +211,26 @@ export function incrementForCard(period: IncPeriod, agentId: string): CardPeriod
   }
 }
 
-// ========== 引擎求值层（快照/部署/伤害→分数；基底队少 = 全量也秒级） ==========
+// ========== 引擎求值层（独立场景上部署/伤害→分数；基底队少 = 全量也秒级） ==========
 
-import { useConfigStore } from '@/stores/config'
+import type { useConfigStore } from '@/stores/config'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { applyBossRoom } from '@/composables/bossRoom'
-import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pullPlannerEngine'
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import type { BossPreset } from '@/types/bossPreset'
-import type { useResourceCalc } from '@/composables/useResourceCalc'
+import type { AnalysisContext } from '@/composables/analysisScenario'
 import type { ArchiveRoom } from '@/composables/runArchiveImport'
-
-type Calc = ReturnType<typeof useResourceCalc>
 
 /** 归档房间表（run-archive.json rooms：ArchiveRoom + seasonStart） */
 export type ArchiveRoomMap = Record<string, ArchiveRoom & { seasonStart?: string }>
 
 export interface IncrementPassOptions {
-  calc: Calc
+  /**
+   * 求值场景（r369 独立场景试点）：本函数在 `scenario.config` 上随意改写（应用 Boss 房间 / 装配基底队），
+   * 读 `scenario.calc` 的伤害。页面传 `withAnalysisScenario` 给的场景，UI store 全程不被改写。
+   */
+  scenario: AnalysisContext
   /** 全部 Boss 预设（期轴 + 部署求值） */
   bosses: BossPreset[]
   /** 归档（runs + rooms） */
@@ -263,83 +264,79 @@ function periodIndexOfSeason(periods: Array<{ date: string }>, seasonStartUtc: s
  * 卡片增量 = 缓存分数上的纯集合运算（零引擎），切卡即算。
  */
 export async function computeIncrementPass(opts: IncrementPassOptions): Promise<IncrementPassResult> {
-  const configStore = useConfigStore()
-  // CC-278：改用唯一实现 configSnapshot（原私有副本漏快照队友 buff 选择 ⇒ 跑完后用户手动开关被 team watcher 改写，CC-251 同类）
-  const snap = snapshotStore(configStore)
+  // r369：在调用方给的独立场景上求值——改写只落在场景里，跑完无需恢复（原 CC-278 的 snapshotStore / restoreStore
+  // 已删）；yield 期间 UI 也看不到中间态（旧路径下页面会为每个中间态重算）。
+  const { config: configStore, calc } = opts.scenario
   const t0 = Date.now()
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
-  try {
-    // 1. 期轴（boss-presets defense 聚合；测试服剔除）
-    const periods = buildPlannerPeriods(opts.bosses, { testServerVersions: plannerTestServerVersions() })
-    // 2. 房间 →（bossId, periodId）
-    const { matchBossPreset } = await import('@/composables/runArchiveImport')
-    const roomMeta: RoomMeta = {}
-    for (const [targetId, room] of Object.entries(opts.rooms)) {
-      const match = matchBossPreset(room, opts.bosses, room.seasonStart)
-      if (!match) continue
-      const pIdx = room.seasonStart ? periodIndexOfSeason(periods, room.seasonStart) : -1
-      if (pIdx < 0) continue
-      roomMeta[targetId] = { bossId: match.presetId, periodId: periods[pIdx].id }
-    }
-    // 3. 基底提取（强队 90% + 金数窗 [min, min+4] + 每桶 ≤6 队去重）
-    const base = extractBaseTeams(opts.runs, roomMeta)
-    // 4. 引擎求值：只对有基底队的（期 × 房）算
-    const tasks: Array<{ period: (typeof periods)[number]; room: (typeof periods)[number]['bosses'][number]; teams: BaseTeam[] }> = []
-    for (const period of periods) {
-      for (const room of period.bosses) {
-        const teams = base.get(`${period.id}|${room.bossId}`) ?? []
-        if (teams.length > 0) tasks.push({ period, room, teams })
-      }
-    }
-    const scoreByKey = new Map<string, number>()
-    const yieldNow = () => new Promise(r => setTimeout(r, 0))
-    const totalTasks = tasks.reduce((s, t) => s + t.teams.length, 0)
-    let done = 0
-    for (const task of tasks) {
-      // Boss 无该期相位 → 房间不可结算（防御：resolveBossApply 静默跳过会用上一个
-      // 房间的敌人数据求值出垃圾分；此处显式跳过，房间计 0 分 = 无数据）
-      const preset = opts.bosses.find(b => b.id === task.room.bossId)
-      const phase = preset?.phases.find(p => p.phaseId === task.period.id)
-      if (!preset || !phase) continue
-      // Boss 期相位一次应用（同桶所有队共用敌人数据）
-      // CC-342：敌人参数 + 该期关卡固有 buff（第 363 轮前只切敌人）
-      applyBossRoom(configStore, preset, phase)
-      for (const team of task.teams) {
-        applyBaseTeamLite(configStore, team)
-        const damage = opts.calc.teamTotalDamage.value
-        const hp = task.room.hp > 0 ? task.room.hp : 1
-        scoreByKey.set(`${task.period.id}|${task.room.bossId}|${teamKeyOf(team)}`, scoreForDamageRatio(damage / hp))
-        done++
-        if (done % 4 === 0) {
-          report(done / (totalTasks || 1), `基底求值 ${done}/${totalTasks} 队…`)
-          await yieldNow()
-        }
-      }
-    }
-    // 5. 装配 IncPeriod[]（只留求值成功的队 → 非空房间 → 非空期）
-    const incPeriods: IncPeriod[] = periods
-      .map(p => ({
-        id: p.id,
-        label: p.label,
-        date: p.date,
-        rooms: p.bosses
-          .map(r => ({
-            bossId: r.bossId,
-            bossName: r.bossName,
-            hp: r.hp,
-            scores: (base.get(`${p.id}|${r.bossId}`) ?? [])
-              .map(team => ({ team, score: scoreByKey.get(`${p.id}|${r.bossId}|${teamKeyOf(team)}`) }))
-              .filter(x => x.score != null) as Array<{ team: BaseTeam; score: number }>,
-          }))
-          .filter(r => r.scores.length > 0),
-      }))
-      .filter(p => p.rooms.length > 0)
-    const baseTeamCount = tasks.reduce((s, t) => s + t.teams.length, 0)
-    report(1, `完成：${incPeriods.length} 期 · ${baseTeamCount} 支基底队`)
-    return { periods: incPeriods, stats: { baseTeams: baseTeamCount, evaluations: baseTeamCount, durationMs: Date.now() - t0 } }
-  } finally {
-    restoreStore(configStore, snap)
+  // 1. 期轴（boss-presets defense 聚合；测试服剔除）
+  const periods = buildPlannerPeriods(opts.bosses, { testServerVersions: plannerTestServerVersions() })
+  // 2. 房间 →（bossId, periodId）
+  const { matchBossPreset } = await import('@/composables/runArchiveImport')
+  const roomMeta: RoomMeta = {}
+  for (const [targetId, room] of Object.entries(opts.rooms)) {
+    const match = matchBossPreset(room, opts.bosses, room.seasonStart)
+    if (!match) continue
+    const pIdx = room.seasonStart ? periodIndexOfSeason(periods, room.seasonStart) : -1
+    if (pIdx < 0) continue
+    roomMeta[targetId] = { bossId: match.presetId, periodId: periods[pIdx].id }
   }
+  // 3. 基底提取（强队 90% + 金数窗 [min, min+4] + 每桶 ≤6 队去重）
+  const base = extractBaseTeams(opts.runs, roomMeta)
+  // 4. 引擎求值：只对有基底队的（期 × 房）算
+  const tasks: Array<{ period: (typeof periods)[number]; room: (typeof periods)[number]['bosses'][number]; teams: BaseTeam[] }> = []
+  for (const period of periods) {
+    for (const room of period.bosses) {
+      const teams = base.get(`${period.id}|${room.bossId}`) ?? []
+      if (teams.length > 0) tasks.push({ period, room, teams })
+    }
+  }
+  const scoreByKey = new Map<string, number>()
+  const yieldNow = () => new Promise(r => setTimeout(r, 0))
+  const totalTasks = tasks.reduce((s, t) => s + t.teams.length, 0)
+  let done = 0
+  for (const task of tasks) {
+    // Boss 无该期相位 → 房间不可结算（防御：resolveBossApply 静默跳过会用上一个
+    // 房间的敌人数据求值出垃圾分；此处显式跳过，房间计 0 分 = 无数据）
+    const preset = opts.bosses.find(b => b.id === task.room.bossId)
+    const phase = preset?.phases.find(p => p.phaseId === task.period.id)
+    if (!preset || !phase) continue
+    // Boss 期相位一次应用（同桶所有队共用敌人数据）
+    // CC-342：敌人参数 + 该期关卡固有 buff（第 363 轮前只切敌人）
+    applyBossRoom(configStore, preset, phase)
+    for (const team of task.teams) {
+      applyBaseTeamLite(configStore, team)
+      const damage = calc.teamTotalDamage.value
+      const hp = task.room.hp > 0 ? task.room.hp : 1
+      scoreByKey.set(`${task.period.id}|${task.room.bossId}|${teamKeyOf(team)}`, scoreForDamageRatio(damage / hp))
+      done++
+      if (done % 4 === 0) {
+        report(done / (totalTasks || 1), `基底求值 ${done}/${totalTasks} 队…`)
+        await yieldNow()
+      }
+    }
+  }
+  // 5. 装配 IncPeriod[]（只留求值成功的队 → 非空房间 → 非空期）
+  const incPeriods: IncPeriod[] = periods
+    .map(p => ({
+      id: p.id,
+      label: p.label,
+      date: p.date,
+      rooms: p.bosses
+        .map(r => ({
+          bossId: r.bossId,
+          bossName: r.bossName,
+          hp: r.hp,
+          scores: (base.get(`${p.id}|${r.bossId}`) ?? [])
+            .map(team => ({ team, score: scoreByKey.get(`${p.id}|${r.bossId}|${teamKeyOf(team)}`) }))
+            .filter(x => x.score != null) as Array<{ team: BaseTeam; score: number }>,
+        }))
+        .filter(r => r.scores.length > 0),
+    }))
+    .filter(p => p.rooms.length > 0)
+  const baseTeamCount = tasks.reduce((s, t) => s + t.teams.length, 0)
+  report(1, `完成：${incPeriods.length} 期 · ${baseTeamCount} 支基底队`)
+  return { periods: incPeriods, stats: { baseTeams: baseTeamCount, evaluations: baseTeamCount, durationMs: Date.now() - t0 } }
 }
 
 function teamKeyOf(team: BaseTeam): string {

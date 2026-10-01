@@ -463,8 +463,12 @@ export type ConfigCatalogReader = Readonly<Pick<ReturnType<typeof useCatalogStor
 /**
  * 配置的唯一 Implementation：显式注入只读目录，不查找 active Pinia、不加载数据。
  * UI store 和独立场景使用同一套装配/派生规则；独立调用方负责 effectScope 生命周期。
+ *
+ * `initialState`（可选，2026-10-01 arena-C r369）= 独立场景的**出生态**：键 = `$state` 的键，值必须是调用方
+ * 独占的深拷贝（`composables/analysisScenario#createAnalysisScenario` 负责拷贝）。它在任何依赖 state 的
+ * watcher 注册之前写入（见下方「独立场景出生态」段），watcher 只见出生之后的修改。UI store 不传，行为不变。
  */
-export function createConfigModel(catalogStore: ConfigCatalogReader) {
+export function createConfigModel(catalogStore: ConfigCatalogReader, initialState?: Readonly<Record<string, unknown>>) {
 
   // 当前选中的角色槽位（用于队伍配置页的详细编辑）
   const selectedSlot = ref<number>(0)
@@ -1145,6 +1149,25 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
     const clean = groups.slice(0, 8).map(g => Math.min(12, Math.max(1, Math.floor(g) || 1)))
     applied.counterAssistGroups = clean.length > 0 ? clean : undefined
     syncBossInteractionPlan()
+  }
+
+  // ========== 独立场景出生态（initialState，2026-10-01 arena-C r369）==========
+  // 写在这里是刻意的：全部 state ref 已声明，依赖 state 的 watcher 一个都还没注册（上方唯一的 watch 只看目录加载）。
+  // 出生之后再逐键写入（「朴素注水」）会被 watcher 当成用户改动：副词条设置 watcher（pre-flush）下一拍把三个槽的
+  // 配装重刷成推荐值，队友 buff watcher（sync）按队伍改写已有选择——场景就不再等于源现场。
+  // 判据：analysisScenario.test.ts「出生态 = 源现场」及其反例。新增 state ref 必须登记进下表，未登记的键直接抛错。
+  if (initialState) {
+    const stateRefs: Record<string, { value: unknown }> = {
+      selectedSlot, team, globalBuffs, teammateBuffSelections, wEngineEffectCoverages, discEffectCoverages,
+      resourceUtilization, mechanicSettings, teamMechanicSettings, anomalyUtilizationRates, anomalySettlementShares,
+      enemy, comboAlignOverrides, refreshTrigger, stunAxes, stunAxisPlans, useStunAxis, autoYidhariAxis,
+      interactionScaleCeiling, interactionScaleMonotone, timeWeightStrategy, activeTab, appliedBoss,
+    }
+    for (const [key, value] of Object.entries(initialState)) {
+      const target = stateRefs[key]
+      if (!target) throw new Error(`createConfigModel: initialState 含未登记的 state 键「${key}」（新增 state ref 须登记进出生态键表）`)
+      target.value = value
+    }
   }
 
   // 队伍换人 / 两个开关翻转 → 立刻重算（**flush: 'sync'**：引擎与弹刀下限在同一 tick 内直读

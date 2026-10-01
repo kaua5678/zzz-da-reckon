@@ -85,9 +85,23 @@ export function setCalcOutputMemoEnabled(on: boolean): void {
 }
 
 const { computePanel, computeEntrySnapshotPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays } = ResourceCalcHelpers
-export function useResourceCalc() {
-  const configStore = useConfigStore()
-  const catalogStore = useCatalogStore()
+/** 资源计算实例（UI 入口与独立场景同一类型；各分析器的局部 `Calc` 别名都等于它） */
+export type ResourceCalc = ReturnType<typeof createResourceCalc>
+
+/** UI 入口：绑定全局 Pinia 的 config / catalog store（页面与组件用它）。 */
+export function useResourceCalc(): ResourceCalc {
+  return createResourceCalc(useConfigStore(), useCatalogStore())
+}
+
+/**
+ * 资源计算的唯一实现：显式注入配置与目录（2026-10-01 arena-C r369 由 useResourceCalc 工厂化）。
+ * `configStore` 可以是 UI store，也可以是独立场景的 model（`composables/analysisScenario`，带 `$state`：memo 键读它）。
+ * 函数体内不得再调 `useConfigStore()` / `useCatalogStore()`——那会让场景实例静默读回 UI 现场（锁：analysisScenario.test.ts）。
+ */
+export function createResourceCalc(
+  configStore: ReturnType<typeof useConfigStore>,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+) {
   // 队友命座/核心拐是全局计算依赖：首次读取可启动加载；失败后交给可见的重试入口，
   // 不因新建计算读取者而悄悄清除 error / 重发请求。
   if (catalogStore.teammateBuffsStatus === 'idle') void catalogStore.loadTeammateBuffs()

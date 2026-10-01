@@ -145,7 +145,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { NAlert, NButton, NCard, NInputNumber, NProgress, NSelect } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { computeIncrementPass, computeCardIncrements, computeAllCardTotals, type IncrementPassResult, type CardIncrementSummary, type BaseTeam } from '@/composables/charIncrement'
 import { pvReleaseDateOf } from '@/composables/pullValue'
 import { AGENT_RELEASE_NODE as RELEASE_NODE } from '@/data/versionTimeline'
@@ -154,7 +154,6 @@ import type { BossPreset } from '@/types/bossPreset'
 import type { RunArchiveFile } from '@/composables/runArchiveImport'
 
 const catalogStore = useCatalogStore()
-const calc = useResourceCalc()
 
 // ========== 数据加载（归档 + Boss 预设，页面挂载即取） ==========
 const archive = ref<RunArchiveFile | null>(null)
@@ -193,13 +192,14 @@ async function runPass() {
   error.value = ''
   progress.value = { pct: 0, text: '提取队伍基底…' }
   try {
-    passResult.value = await computeIncrementPass({
-      calc,
+    // 独立场景（r369）：求值在当前配置的副本上跑，计算器的配置全程不变，跑完自动销毁
+    passResult.value = await withAnalysisScenario(scenario => computeIncrementPass({
+      scenario,
       bosses: bosses.value,
       runs: a.runs,
       rooms: a.rooms,
       onProgress: p => { progress.value = p },
-    })
+    }))
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
