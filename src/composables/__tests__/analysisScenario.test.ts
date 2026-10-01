@@ -22,7 +22,7 @@ import type { BossPresetFile } from '@/types/bossPreset'
 const bossData = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as BossPresetFile
 
 /** 已迁到独立场景的分析器（迁一个加一个；进度表见 docs/mcp-analyzer-scenario-isolation.md §4） */
-const MIGRATED_ANALYZERS = ['../charIncrement.ts', '../teamTimeline.ts', '../teamTimelineFilm.ts', '../pullPlannerEngine.ts', '../freeCompare/engine.ts', '../positionCompare.ts', '../difficultyCurve.ts', '../teamCompare.ts']
+const MIGRATED_ANALYZERS = ['../charIncrement.ts', '../teamTimeline.ts', '../teamTimelineFilm.ts', '../pullPlannerEngine.ts', '../freeCompare/engine.ts', '../positionCompare.ts', '../difficultyCurve.ts', '../teamCompare.ts', '../impactSampling.ts']
 
 /** 让 pre-flush watcher 与宏任务都跑完 */
 async function flush(): Promise<void> {

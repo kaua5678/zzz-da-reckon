@@ -197,6 +197,9 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { NButton, NSelect, NProgress } from 'naive-ui'
 import { fmt } from '@/utils/format'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
+import { sampleImpactSurface } from '@/composables/impactSampling'
 
 interface ImpactVar {
   id: string
@@ -208,8 +211,6 @@ interface ImpactVar {
 const props = defineProps<{
   allVars: ImpactVar[]
   readVar: (id: string) => number
-  writeVar: (id: string, value: number) => void
-  readDamageSnapshot: () => { x: number; y: number; byType: Record<string, number> }
   teamTotalDamage: number
   hasTeam: boolean
   varOptions: Array<{ label: string; value: string }>
@@ -327,106 +328,59 @@ function resetCamera() {
   setCameraView('iso')
 }
 
-// ========== 计算网格曲面 ==========
+// ========== 计算网格曲面（CC-345：在独立场景上采样，见 composables/impactSampling.ts） ==========
+/** 批任务归属（同 CC-343 S4）：重算吊销上一次，离开页面也吊销 */
+const owner = useBatchOwner()
+
 async function runCompute() {
   const vx = selVarX.value
   const vy = selVarY.value
   if (!vx || !vy) return
+  const task = owner.start()
 
   computing.value = true
   surfaceReady.value = false
   hoverInfo.value = null
-
-  const origX = props.readVar(vx.id)
-  const origY = props.readVar(vy.id)
   curZ.value = props.teamTotalDamage
 
   const N = gridDensity.value
   const totalPoints = N * N
-  const [minX, maxX] = vx.defaultRange
-  const [minY, maxY] = vy.defaultRange
-
-  const xs: number[] = []
-  const ys: number[] = []
-  for (let i = 0; i < N; i++) {
-    xs.push(minX + ((maxX - minX) / (N - 1)) * i)
-    ys.push(minY + ((maxY - minY) / (N - 1)) * i)
-  }
-
-  const grid: number[][] = []
-  let globalMin = Infinity
-  let globalMax = -Infinity
-  let peakPoint = { x: minX, y: minY, z: 0 }
-
   const startTime = Date.now()
   progress.value = { current: 0, total: totalPoints, pct: 0, text: `计算 3D 响应面 (0/${totalPoints})…`, startTime }
 
-  const BATCH_SIZE = 8
-
   try {
-    let completed = 0
-
-    for (let i = 0; i < N; i++) {
-      grid[i] = []
-      const xVal = xs[i]
-
-      for (let j = 0; j < N; j++) {
-        const yVal = ys[j]
-
-        props.writeVar(vx.id, xVal)
-        props.writeVar(vy.id, yVal)
-
-        // 让出主线程以保持 UI 响应
-        if (completed % BATCH_SIZE === 0) {
-          await new Promise(r => setTimeout(r, 0))
-        }
-
-        const snap = props.readDamageSnapshot()
-        const zVal = snap.y
-        grid[i][j] = zVal
-
-        if (zVal < globalMin) globalMin = zVal
-        if (zVal > globalMax) {
-          globalMax = zVal
-          peakPoint = { x: xVal, y: yVal, z: zVal }
-        }
-
-        completed++
-        if (completed % 5 === 0 || completed === totalPoints) {
-          const pct = completed / totalPoints
-          const elapsed = (Date.now() - startTime) / 1000
-          const eta = pct > 0 ? (elapsed / pct) * (1 - pct) : 0
-          progress.value = {
-            current: completed,
-            total: totalPoints,
-            pct,
-            text: `采样中 ${completed}/${totalPoints} · 预计剩余 ${eta.toFixed(0)}s`,
-            startTime,
-          }
-        }
-      }
+    const surface = await withAnalysisScenario(s => sampleImpactSurface(s, {
+      varX: vx.id,
+      varY: vy.id,
+      n: N,
+      control: { signal: task.signal },
+      onProgress: (completed, total) => {
+        const pct = completed / total
+        const elapsed = (Date.now() - startTime) / 1000
+        const eta = pct > 0 ? (elapsed / pct) * (1 - pct) : 0
+        task.commit(() => { progress.value = { current: completed, total, pct, text: `采样中 ${completed}/${total} · 预计剩余 ${eta.toFixed(0)}s`, startTime } })
+      },
+    }))
+    if (surface?.complete) {
+      task.commit(() => {
+        xGrid.value = surface.xs
+        yGrid.value = surface.ys
+        zGrid.value = surface.grid
+        minZ.value = surface.minZ
+        maxZ.value = surface.maxZ
+        maxCoords.value = surface.peak
+        surfaceReady.value = true
+      })
     }
-
-    // 恢复原始参数
-    props.writeVar(vx.id, origX)
-    props.writeVar(vy.id, origY)
-    await new Promise(r => setTimeout(r, 0))
-
-    // 存储数据
-    xGrid.value = xs
-    yGrid.value = ys
-    zGrid.value = grid
-    minZ.value = globalMin === Infinity ? 0 : globalMin
-    maxZ.value = globalMax === -Infinity ? 1 : globalMax
-    maxCoords.value = peakPoint
-    surfaceReady.value = true
   } catch (err) {
     console.error('3D 曲面计算失败:', err)
   } finally {
-    computing.value = false
-    progress.value = null
-    nextTick(() => {
-      requestRender()
+    task.commit(() => {
+      computing.value = false
+      progress.value = null
+      nextTick(() => {
+        requestRender()
+      })
     })
   }
 }

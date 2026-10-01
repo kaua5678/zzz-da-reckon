@@ -18,8 +18,6 @@
         v-if="dimensionMode === '3d'"
         :all-vars="allVars"
         :read-var="readVar"
-        :write-var="writeVar"
-        :read-damage-snapshot="readDamageSnapshot"
         :team-total-damage="teamTotalDamage"
         :has-team="hasTeam"
         :var-options="varOptions"
@@ -121,17 +119,19 @@ import { h, ref, computed, watch } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NRadioGroup, NRadioButton } from 'naive-ui'
 import ResponseSurface3D from '@/components/charts/ResponseSurface3D.vue'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
+import { sampleImpactCurve, type ImpactPoint } from '@/composables/impactSampling'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
-import { buildImpactVariables, readImpactVariable, writeImpactVariable } from '@/composables/impactVariables'
+import { buildImpactVariables, readImpactVariable } from '@/composables/impactVariables'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
-import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const { teamTotalDamage, damagePoolRows, anomalyPoolResult } = useResourceCalc()
+const { teamTotalDamage, anomalyPoolResult } = useResourceCalc()
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 const optimizePerPoint = ref(false)
@@ -178,9 +178,6 @@ function readVar(id: string): number {
   return readImpactVariable(id, configStore, settingMap.value, coverageRate.value)
 }
 
-function writeVar(id: string, value: number): void {
-  writeImpactVariable(id, value, configStore, settingMap.value)
-}
 
 // ========== 快照 ==========
 interface Snapshot { label: string; team: any }
@@ -195,7 +192,7 @@ function saveSnapshot() {
 }
 
 // ========== 数据点 ==========
-interface DataPoint { x: number; y: number; byType: Record<string, number> }
+type DataPoint = ImpactPoint
 interface CurveData { label: string; points: DataPoint[]; color: string; isMain: boolean }
 const curves = ref<CurveData[]>([])
 const selectedCurve = computed(() => curves.value.find(c => c.isMain))
@@ -305,112 +302,47 @@ const ttY = computed(() => hoverPt.value ? Math.max(padT + 4, hoverPt.value.cy -
 const ttW = 170
 const ttH = computed(() => (hoverTips.value.length) * 13)
 
-// ========== 采样核心 ==========
+// ========== 采样（CC-345：在独立场景上跑，见 composables/impactSampling.ts） ==========
 
-/** 对当前配置跑一轮优化（仅槽0），应用到 store 副分配 */
-function runOptimizerForSlot0() {
-  // CC-52：入参组装 + 引擎调用 + 夹值收拢到编排层（判据 7）；这里只负责写回 store。null = 空槽/无角色/引擎抛错 ⇒ 不改分配（原口径）
-  const char = configStore.team[0]
-  // CC-183/185：useDefault 快速分配作起点，以真实伤害（teamTotalDamage）精修，见 composables/substatOptimizer.ts
-  const alloc = computeSubstatAllocationForSlot(0, configStore, catalogStore, { readDamage: () => teamTotalDamage.value ?? 0 })
-  if (char && alloc) char.driveDisc.subStatAllocation = alloc
-}
-
-function readDamageSnapshot(): DataPoint {
-  const byType: Record<string, number> = {}
-  for (const row of damagePoolRows.value) {
-    if (row.totalDamage > 0) byType[row.type] = (byType[row.type] ?? 0) + row.totalDamage
-  }
-  return { x: 0, y: teamTotalDamage.value, byType } as DataPoint
-}
-
-async function sampleCurve(totalPts: number, updateProgress: (i: number) => void): Promise<DataPoint[]> {
-  const v = selVar.value; if (!v) return []
-  const pts: DataPoint[] = []
-  const [xMin, xMax] = v.defaultRange
-  const BATCH = 5 // 每 5 点让出主线程一次
-
-  for (let batch = 0; batch * BATCH < totalPts; batch++) {
-    const start = batch * BATCH
-    const end = Math.min(start + BATCH, totalPts)
-
-    // 批量设置变量（每点不同值）
-    for (let i = start; i < end; i++) {
-      const x = xMin + ((xMax - xMin) / (totalPts - 1)) * i
-      writeVar(selectedVarId.value!, x)
-      // 不开 setTimeout——最后一次性等待
-    }
-    // 等待响应式链结算
-    await new Promise(r => setTimeout(r, 0))
-
-    // 批量读取（每点需恢复自己的 x 值 + 重算）
-    // 实际上需要逐点：每次设 x → 等待 → 读 → 设下一个 x
-    // 简化：回退到逐点（但在同一 tick 批量 updateProgress）
-    for (let i = start; i < end; i++) {
-      const x = xMin + ((xMax - xMin) / (totalPts - 1)) * i
-      writeVar(selectedVarId.value!, x)
-      await new Promise(r => setTimeout(r, 0))
-      if (optimizePerPoint.value) runOptimizerForSlot0()
-      await new Promise(r => setTimeout(r, 0))
-      const dp = readDamageSnapshot(); dp.x = x
-      pts.push(dp)
-      updateProgress(i + 1)
-    }
-  }
-  return pts
-}
+/** 批任务归属（同 CC-343 S4）：重算吊销上一次，离开页面也吊销 */
+const owner = useBatchOwner()
 
 async function run() {
-  if (!selectedVarId.value) return
+  const varId = selectedVarId.value
+  if (!varId) return
+  const task = owner.start()
+  const control = { signal: task.signal }
   computing.value = true; errorMsg.value = ''; hoverIdx.value = -1
-  const origVal = readVar(selectedVarId.value)
-  curVal.value = origVal
+  curVal.value = readVar(varId)
   const N = sampleCount.value
-
-  // 保存原始词条分配（用于优化模式恢复）
-  const origAllocs = configStore.team.map(c => c?.driveDisc?.subStatAllocation ? { ...c.driveDisc.subStatAllocation } : {})
-
-  progress.value = { current: 0, total: N, pct: 0, text: '采样中 0/' + N, startTime: Date.now() }
-  const updProgress = (i: number) => {
-    const elapsed = (Date.now() - progress.value!.startTime) / 1000
-    const eta = i > 0 ? (elapsed / i) * (N - i) : 0
-    progress.value = { current: i, total: N, pct: i / N, text: `采样中 ${i}/${N} · 预计剩余 ${eta.toFixed(0)}s`, startTime: progress.value!.startTime }
+  const optimize = optimizePerPoint.value
+  /** 每条曲线一个进度条：label 0/N → label i/N · 预计剩余 */
+  const progressFor = (label: string) => {
+    const startTime = Date.now()
+    task.commit(() => { progress.value = { current: 0, total: N, pct: 0, text: `${label} 0/${N}`, startTime } })
+    return (i: number) => {
+      const elapsed = (Date.now() - startTime) / 1000
+      const eta = i > 0 ? (elapsed / i) * (N - i) : 0
+      task.commit(() => { progress.value = { current: i, total: N, pct: i / N, text: `${label} ${i}/${N} · 预计剩余 ${eta.toFixed(0)}s`, startTime } })
+    }
   }
-
+  // 发车时定格快照列表与勾选（运行中增删快照不影响本次）
+  const snaps = snapshots.value.map((sn, i) => ({ label: sn.label, team: sn.team, active: !!snapActive.value[i] }))
   try {
-    // 主线
-    const mainPts = await sampleCurve(N, updProgress)
-    // 快照
-    const snapPts: DataPoint[][] = []
-    const origTeam = JSON.parse(JSON.stringify(configStore.team))
-    for (let i = 0; i < snapshots.value.length; i++) {
-      if (!snapActive.value[i]) { snapPts.push([]); continue }
-      configStore.$patch({ team: JSON.parse(JSON.stringify(snapshots.value[i].team)) })
-      await new Promise(r => setTimeout(r, 0))
-      progress.value = { current: 0, total: N, pct: 0, text: '采样 ' + snapshots.value[i].label + ' 0/' + N, startTime: Date.now() }
-      snapPts.push(await sampleCurve(N, updProgress))
-    }
-    configStore.$patch({ team: JSON.parse(JSON.stringify(origTeam)) })
-    await new Promise(r => setTimeout(r, 0))
-    writeVar(selectedVarId.value!, origVal)
-
-    // 恢复原始词条
-    for (let s = 0; s < 3; s++) {
-      if (origAllocs[s]) configStore.team[s].driveDisc.subStatAllocation = { ...origAllocs[s] }
-    }
-    await new Promise(r => setTimeout(r, 0))
-
+    const mainPts = await withAnalysisScenario(s => sampleImpactCurve(s, { varId, points: N, optimizePerPoint: optimize, onProgress: progressFor('采样中'), control }))
     const all: CurveData[] = [{ label: '当前', points: mainPts, color: CURVE_COLORS[0], isMain: true }]
-    for (let i = 0; i < snapPts.length; i++) {
-      all.push({ label: snapshots.value[i].label, points: snapPts[i], color: CURVE_COLORS[1 + (i % 3)], isMain: false })
+    for (let i = 0; i < snaps.length; i++) {
+      const sn = snaps[i]
+      const pts = sn.active
+        ? await withAnalysisScenario(s => sampleImpactCurve(s, { varId, points: N, optimizePerPoint: optimize, team: sn.team, onProgress: progressFor('采样 ' + sn.label), control }))
+        : []
+      all.push({ label: sn.label, points: pts, color: CURVE_COLORS[1 + (i % 3)], isMain: false })
     }
-    curves.value = all
+    task.commit(() => { curves.value = all })
   } catch (e: any) {
-    errorMsg.value = `计算失败：${e?.message ?? e}`
+    task.commit(() => { errorMsg.value = `计算失败：${e?.message ?? e}` })
   } finally {
-    writeVar(selectedVarId.value!, origVal)
-    progress.value = null
-    computing.value = false
+    task.commit(() => { progress.value = null; computing.value = false })
   }
 }
 
