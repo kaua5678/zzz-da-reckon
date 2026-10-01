@@ -4636,3 +4636,23 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `xide.ts`：抽出 `resolveXideSteelResources` 并同步更新 `steel.total`（补 `xide.test.ts` 断言）。
   - `starlightBilly.ts` / `alice.ts` / `xixifu.ts` / `zhuYuan.ts` / `ellen.ts` / `anbyZero.ts` / `evelyn.ts`：按上述单源化入口收敛。
 - **验证**：`vue-tsc -p tsconfig.app.json --noEmit` 0 错；全量 442 个测试文件（4071 passed，含 `timeGolden.test.ts` 414 条零差）通过。回退点：`git revert 67b371c2`。
+
+### 24.179 CC-336：诺姆赠链与琉音赠大同槽共存覆写修复 + 赠行构造、Spec 运行时与倍率查表单源化（`f4c32bef`）
+
+- **背景与问题**：
+  1. **诺姆赠链（`chainGift.ts`）与琉音赠大（`ultimatePromote.ts`）同槽共存覆写 bug**：
+     - 引擎装配层 `src/core/resource/assembleSlot.ts` 按顺序先把琉音终结技赠行占位（`source: 'gift'`，无 `chainGift` 标记）推入 `giftRowsHere`，再把诺姆连携赠行占位（`source: 'gift'` 且 `chainGift: true`）推入 `giftRowsHere`。
+     - `chainGift.ts` 在 `hatCount <= 0` 分支已按 `!e.chainGift` 过滤，但在 `hatCount > 0` 回填分支误写为 `findIndex(e => e.chainGift || e.source === 'gift')`。
+     - 当同一目标槽同时收到琉音赠大与诺姆赠链（如主 C 槽 0 + 槽 1 诺姆 + 槽 2 琉音指定目标槽 0）时，`applyUltimatePromote` 先回填索引 0 的琉音赠大行，随后 `applyChainGift` 因 `e.source === 'gift'` 命中同一条琉音赠大行，将其倍率覆写为诺姆连携倍率（且保留 `moveId = ultimateMoveId` 与 `skillDamageTarget = 'ultimate'`），而真正带 `chainGift: true` 的诺姆占位行留在 `damageMultiplier: 0`。
+     - 此外 `chainGift.ts` 与 `ultimatePromote.ts` 在 `giftIdx >= 0` 分支各自手抄了一份 13 字段的 `giftPatch`，仅在 `giftIdx < 0` 兜底分支调 `buildGiftRow`；`convergence.ts` 为算 `rrShown` 又对同一入参链重复调了一遍 `applyUltimatePromote` 与 `applyChainGift`。
+  2. **`src/specs/mechanics.ts` 与 `src/specs/resources.ts` 内部重复求值与事件计数口径不一致**：
+     - `mechanics.ts`：`specToMechanicModule.buildCharConfig` 手抄 `event.carrierField ? String(...) : event.carrierMoveId ?? ''` 而未调同文件的 `resolveCarrierMoveId`；`buildSpecAnomalyEvents` 与 `buildSpecEventExecutions` 重复实现 `enabledField` 判定；`buildSpecEventExecutions` 支持 `counts[event.countField ?? event.id]` 而 `resolveEventCount`（供 `buildSpecAnomalyEvents` 调用）仅在声明了 `event.countField` 时读 `counts`。
+     - `resources.ts`：`computeOneResource` 的 `feedbackGainRules` 手抄 `count * applyAdjustable(rule, cfg, resolveRuleAmount(rule, cfg)) * (rule.coverage ?? 1)`，未复用下方的 `resolveGain`。
+  3. **`src/composables/resourceCalc/helpers.ts` 倍率查表重复**：
+     - `extractSkillExecutions` 内含 11 行手写双层 `for (const cat of skills.categories) for (const move of cat.moves)` 循环（同文件已导入 `findMoveById`），且 `enrichExecutionPlan` 与 `extractSkillExecutions` 重复书写 7 处 `fusedRowValue(skills, exec.moveId, ...) ?? getRowValue(move, ...)`。
+- **修复**：
+  - `chainGift.ts` / `ultimatePromote.ts`：占位行查找分别收窄为 `Boolean(e.chainGift)` 与 `e.source === 'gift' && !e.chainGift && e.moveId === ultimateMoveId`，两处统一先调 `buildGiftRow` 构造 `giftRow` 再用于 `giftIdx >= 0` 覆写或 `giftIdx < 0` 追加；`giftMoveTimeLedger.test.ts` 新增 `['1021', '1571', '1481']` 同槽共存回归测试。
+  - `convergence.ts`：`rrShown` 直接取 `ResourceCalcHelpers.normalizeDisplayTime(adj2 ?? adj1 ?? rr)`。
+  - `specs/mechanics.ts` & `specs/resources.ts`：抽出 `isSpecEventEnabled`、复用 `resolveCarrierMoveId`、在 `resolveEventCount` 内统一先查 `counts[event.countField ?? event.id]`（补 `mechanics.test.ts` 断言），并为 `resolveGain` 增加可选 `countOverride` 参数供 `feedbackGainRules` 委托调用。
+  - `helpers.ts`：`extractSkillExecutions` 改调 `findMoveById(skills, exec.moveId)`，两函数内以局部 `fusedOf` 收拢 7 处融合行回退取值；同步清理 `alice.ts` / `evelyn.ts` / `starlightBilly.ts` 的 3 处 `vue-tsc -b` 类型告警。
+- **验证**：`npm run check`（`vue-tsc -b --noEmit` 0 错 + 全量 442 个测试文件 / 4073 passed，含 `timeGolden.test.ts` 414 条零差）通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert f4c32bef`。

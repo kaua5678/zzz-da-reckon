@@ -96,31 +96,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 354 轮（lane arena-A，承接第 353 轮下一步 1–2）：CC-335 星见雅（1091）跨槽风队门控修复、佩洛伊斯（1551）额外能力连携喧响门控对齐、奥菲丝（1301）融合行 C1 火抗无视时序修复、雨果（1291）/席德（1461）资源门控与 12 个角色模块内部派生单源化（代码 `67b371c2`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `34eb078b`，工作区干净）。**
+**第 355 轮（lane arena-A，承接第 354 轮下一步 1–2）：CC-336 诺姆赠链与琉音赠大同槽共存覆写修复 + 赠行构造、Spec 运行时与倍率查表单源化（代码 `f4c32bef`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `c3bb91f3`，工作区干净）。**
 
-- **CC-335（`67b371c2`，跨槽/额外能力门控对账 + 12 个角色模块内部派生单源化，全量 414 条 golden 零差）**：
-  1. **星见雅（1091，`src/mechanics/agents/miyabi.ts`）跨槽风队门控修复**：
-     - `miyabiMechanic.teamPanelEffects` 的入参 `panel` 是 `targetSlot` 面板，而 `applyMiyabiPanel` 仅在雅自身面板写 `miyabiHasWindTeammate`，导致有风队时雅本人正确门控（`+0`）、队友槽因 `panel.miyabiHasWindTeammate === undefined` 误吃核心被动 `+20%` 异常积蓄效率。
-     - 修复：`teamPanelEffects` 直接调 `hasWindTeammate(team, slot)`（与 `applyMiyabiPanel` 同源），并抽 `hasMiyabiCinema6` 统一 `miyabiFrostMoonReserve` 与 `buildMiyabiExecutions` 的 C6 判定；`src/mechanics/__tests__/miyabiCinema.test.ts` 新增有风队跨槽门控回归单测。
-  2. **佩洛伊斯（1551）与橘福福（1391，`src/mechanics/agents/specPanelBuffs.ts`）门控对齐与单源化**：
-     - 佩洛伊斯额外能力「辉煌军势」在 `applyTeamConfig` 中的 `chainTotal * 300` 喧响补齐 `(cfgIn.panel?.additionalAbilityActive ?? 1) > 0` 门控（与 `applyPanel` 的暴伤 +40% 同门控；`peiluo.test.ts` 补齐 `additionalAbilityActive=0` 回归单测），`resourceSections` 直接读取 `prom.total / prom.remaining`；
-     - 橘福福在 `computeJufufuCycle` 内单源产出 `aweGains` 与 `weishiGains` 供 `buildResourceResult` 直接复用（消除与 `computeJufufuCycle` 的双写），`patchExecutions` 改用 `jufufuCinemaOf(cfg)`。
-  3. **奥菲丝（1301，`src/mechanics/agents/orphie.ts`）融合行 C1 火抗无视时序修复**：
-     - `ORPHIE_C1_RES_IGNORE_MOVE_IDS` 包含 `1301022`（强化特殊技：燥焰迸射），但 `patchOrphieExecutions` 原先在 `fusionPush`（`1301011 → 1301022`）入列前就跑完了 C1 循环，导致融合出的 `1301022` 漏挂 `resIgnore: 15`；现将 C1/C4 行级修饰移至 `fusionPush` 入列之后（C2 `aaCount` 仍按融合前原行统计；`orphieSelf.test.ts` 补 `burst.resIgnore === 15` 断言）。
-  4. **雨果（1291，`src/mechanics/agents/hugo.ts`）与席德（1461，`src/mechanics/agents/xide.ts`）**：
-     - `hugo.ts`：抽出 `computeHugoStunRefundRatio` 合一 `computeHugoCycle` 与 `hugoMechanic.stunRefundRatio` 的决算存在性门控（`hugo.test.ts` 补双决算比例为 0 时 `stunRefundRatio === 0` 断言）。
-     - `xide.ts`：抽出 `resolveXideSteelResources` 合一 `buildXideExecutions` 与 `buildXideResourceResult`，并在合入 `attackSteel` 时同步更新 `steel.total`（`xide.test.ts` 补断言）。
-  5. **其余 7 个角色模块内部重复求值收敛**：
-     - `starlightBilly.ts`（1531）：抽出 `billyFullThrottleFromDetermination` 供 `billyFullThrottleFromState` 与 `buildBillyExecutions` 共用；
-     - `alice.ts`（1401）、`xixifu.ts`（1521）、`zhuYuan.ts`（1241）：消除 `buildAliceSwordWillSource`、`buildXixifuResourceResult`、`buildZhuYuanResourceResult` 中对同一 `(spec, cfg, state)` 的连续二次 `computeSpecResources` 调用；
-     - `ellen.ts`（1191）、`anbyZero.ts`（1381）、`evelyn.ts`（1321）：`apply*Panel` 直接委托 `compute*Cycle` 求值（兑现函数内「与 `compute*Cycle` 同源」注释），并合并 `patchEvelynExecutions` 的两次遍历。
-- **验证**：`npm run check`（`vue-tsc --noEmit` + 全量 442 个测试文件 / 4071 passed）通过；`timeGolden.test.ts` 414 条零差通过。回退点：`git revert 67b371c2`。
+- **CC-336（`f4c32bef`，同槽赠行共存修复 + 编排层/Spec 运行时单源化，全量 414 条 golden 零差）**：
+  1. **诺姆赠链（`src/composables/resourceCalc/chainGift.ts`）与琉音赠大（`ultimatePromote.ts`）同槽共存修复 + `buildGiftRow` 单源构造**：
+     - 引擎 `assembleSlot.ts` 先推入琉音赠大占位行（`source: 'gift'`，无 `chainGift`），再推入诺姆赠链占位行（`source: 'gift', chainGift: true`）。此前 `chainGift.ts` 在回填分支用 `findIndex(e => e.chainGift || e.source === 'gift')` 查找占位行，导致同一目标槽同时收到琉音赠大与诺姆赠链时，`applyChainGift` 误命中索引 0 的琉音赠大行并将其覆写为诺姆连携倍率，而真正的 `chainGift: true` 行留在 0 倍率。
+     - 修复：`chainGift.ts` 改为 `findIndex(e => Boolean(e.chainGift))`，`ultimatePromote.ts` 改为 `findIndex(e => e.source === 'gift' && !e.chainGift && e.moveId === ultimateMoveId)`；两处统一先调 `buildGiftRow` 构造 `giftRow` 再用于 `giftIdx >= 0` 覆写或 `giftIdx < 0` 追加（删除两份 13 字段手写 `giftPatch` 副本）；`convergence.ts` 中 `rrShown` 直接复用 `adj2 ?? adj1 ?? rr`，消除对 `applyUltimatePromote + applyChainGift` 的重复调用；`giftMoveTimeLedger.test.ts` 新增 `['1021', '1571', '1481']` 同槽共存回归单测。
+  2. **Spec 运行时（`src/specs/mechanics.ts`、`src/specs/resources.ts`）单源化与 `resolveEventCount` 口径对齐**：
+     - `mechanics.ts`：抽出 `isSpecEventEnabled` 供 `buildSpecAnomalyEvents` 与 `buildSpecEventExecutions` 共用；`specToMechanicModule.buildCharConfig` 复用 `resolveCarrierMoveId`；`resolveEventCount` 统一支持 `counts[event.countField ?? event.id]`（使 `buildSpecAnomalyEvents` 与 `buildSpecEventExecutions` 口径一致，`mechanics.test.ts` 补回归单测）。
+     - `resources.ts`：`resolveGain` 增加可选 `countOverride` 参数，`computeOneResource.feedbackGainRules` 直接委托 `resolveGain(rule, cfg, state, context, countOverride)`。
+  3. **`src/composables/resourceCalc/helpers.ts` 倍率查表归一与 `vue-tsc -b` 清理**：
+     - `extractSkillExecutions` 改调 `findMoveById(skills, exec.moveId)`（删除 11 行手写双层循环），并在 `enrichExecutionPlan` 与 `extractSkillExecutions` 内用局部 `fusedOf` 收拢 7 处 `fusedRowValue ?? getRowValue`；同步清理 `alice.ts` / `evelyn.ts` / `starlightBilly.ts` 的 3 处 `vue-tsc -b` 类型告警。
+- **验证**：`npm run check`（`vue-tsc -b --noEmit` 0 错 + 全量 442 个测试文件 / 4073 passed）通过；`timeGolden.test.ts` 414 条零差通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert f4c32bef`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. **转向 `src/specs/` 或 `src/composables/` 层的规格-实现对账与同构简化**：
-   - 第 350–354 轮已完成 `src/mechanics/agents/` 全部 47 个角色模块的逐文件对账与内部单源化扫描。
-   - 下一步可检查 `src/specs/`（如 `wengine_mechanics.json` / `drive_disc_mechanics.json` / `teammate-buffs.json` 与 `src/specs/mechanics.ts`、`src/core/buff.ts` 的消费路径）或 `src/composables/resourceCalc/` 辅助层是否存在口径分叉或重复推导。
+2. **继续审计 `src/core/`（如 `buff.ts`、`damage.ts`、`anomalyPool/`、`stunPool.ts`）或 `src/composables/`（如 `teamCompare*.ts`、`freeCompare.ts`、`cinemaUplift.ts`）的规格-实现对账与同构简化**：
+   - 第 350–355 轮已完成 `src/mechanics/agents/`（47 个角色模块）、`src/specs/` 与 `src/composables/resourceCalc/` 核心编排链的对账与单源化。
+   - 下一步可转向 `src/core/` 结算子模块或外围分析 composables（`teamCompare` / `freeCompare` / `cinemaUplift` / `substatOptimizer`）检查是否存在重复拼装或口径漂移。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
