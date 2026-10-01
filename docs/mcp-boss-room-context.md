@@ -9,7 +9,7 @@
 | 项 | 状态 | 位置 |
 |---|---|---|
 | buff 牌条件（特性限定 / 人数分档）被两个写入方丢掉 | **CC-341 已修（`8f80b031`）**：条件随行写入，管线按当前队伍唯一解析 | §1.1、§2 |
-| 房间上下文 13 处写法分裂；抽卡规划、角色兑现曲线的 `periodViews` 是死参 | **未改**，CC-342 候选（下一步） | §1.2、§3 |
+| 房间上下文 13 处写法分裂；抽卡规划、角色兑现曲线的 `periodViews` 是死参 | **CC-342 第 1、2 步已做（`602c0f94`，arena-D 第 363 轮）**：唯一入口 `composables/bossRoom.ts#applyBossRoom`；第 3 步（5 个分析器）待定口径 | §1.2、§3、§4 |
 | 测试服占位（testOnly）关卡牌照样写入 | 未改，记为待裁决 | §1.3 |
 | 解析器把「对敌减抗」也挂上强攻限定；「全队[强攻]代理人」被近似成「队里有强攻就全队生效」 | 未改，数据侧近似 | §1.4 |
 
@@ -165,3 +165,26 @@ CC-341 前「任何队满额生效」更接近原文。要再精确，需要：
 
 - 把 `cond` 的解析搬回写入方，或在分析器里按预设队伍预解析。CC-341 的源码锁会拦。
 - 在 `applyBossPreset`（store）里直接写关卡 buff。store 拿不到 `phaseViews`，而且这会把展示数据塞进 store 层。
+
+## 4. CC-342 第 1、2 步（`602c0f94`，arena-D 第 363 轮）
+
+- **新文件 `src/composables/bossRoom.ts`**：
+  - `findBossBrief(phaseViews, phaseId, presetId)`：困难 + 普通，按 `presetId` 匹配。替换 §1.2 的两套查找；`resolveBossApply` 的 `monsterId` 兜底（命中 0 次）已删。
+  - `applyBossLayerBuffs`：从 `runArchiveDeploy.ts` 原样搬来（先清 `layer-buff:` 再写，brief 为 null 只清不写）。
+  - `applyBossRoom(configStore, boss, phase, phaseViews)` = `applyBossPreset` + `applyBossLayerBuffs(findBossBrief(...))`，返回所用 brief。
+- **第 1 步（行为不变）**：`BossSelectCard#applyBoss`（传 `[当前期视图]`，查回的就是被点的 brief）、`runArchiveDeploy#applyDeployConfig`、`teamTimelineFilm#computeFilmSimulation` 改调它；`teamTimelineFilm` 的私有 `applyPeriodLayerBuffs` 删除。
+  - 边角差异：菲林模拟的 phase 有「按 phaseId 找不到就按日期找」的兜底。原实现 brief 按轴节点 id 查，新实现按找到的 `phase.phaseId` 查；只有兜底分支命中时两者不同，此时新口径（该 Boss 实际所在那一期的关卡 buff）更对。
+- **第 2 步（数值卡）**：`pullPlannerEngine#createEngineOracle` 的逐房 `applyRoomContext` 与 `charIncrement#computeIncrementPass` 改调 `applyBossRoom`，第一次读它们的 `periodViews`。
+  - 每房带上该期该 Boss 的关卡固有 buff；用户现场上一个 Boss 的 `layer-buff:` 行不再泄漏进每一房（规划结束由 `restoreStore` 恢复现场）。
+  - 探针（`/home/kaua/calc-arch/arenaD/probe363.test.ts` = 第 362 轮探针 + 真 `phaseViews`；成型号、4 期、beam 2；同一 HEAD 的前后两个 worktree 并行跑；输出 `arenaD/p363-base.out` / `p363-after.out`）：
+    起点 2025-12-30 总分 54685 → 63738（+16.6%），2026-03-27 38694 → 43547（+12.5%）；两个起点的购买完全不变，部分房间换了队（关卡 buff 偏向某些属性 / 特性）。
+  - 角色兑现曲线没有单独量（同一函数、同一数据，方向与抽卡规划一致）。
+- **锁**：`src/composables/__tests__/bossRoom.test.ts`
+  - 查找、清旧写新、只清不写；
+  - 抽卡规划 `applyPeriodContext` 后全局 Buff 表只剩该房的 `layer-buff:` 行（换回旧 `pullPlannerEngine.ts` 即红）；
+  - 源码锁：`.applyBossPreset(` 只出现在 `bossRoom.ts` 与第 3 步白名单（`difficultyCurve.ts`、`freeCompare/engine.ts`、`positionCompare.ts`、`teamCompare.ts`、`teamTimeline.ts`）。迁移一个就从白名单删一个。
+- 验证：`vue-tsc -b` 0；worktree `wtD-363` 全量 verify EXIT 0（446 文件 / 4108 例 = 4104 + 新增 4）。
+- 回退点：`git revert 602c0f94`（第 1 步零差，第 2 步数值回到「抽卡规划 / 兑现曲线不带关卡 buff」）。
+
+**第 3 步仍待做**（口径见 §3 第 3 条，缺省建议选项 a）：5 个分析器需要页面把 `phaseViews` 传进来。
+`teamCompare` 是「整表替换成所选当期牌」的自有口径，迁移时只把 `applyBossPreset` 换成 `applyBossRoom` 会改变它的结果（多出关卡 buff），要先决定它算不算「应用 Boss」。

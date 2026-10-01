@@ -79,17 +79,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
-**2026-10-01 18:10 arena-D 第 362 轮（开工时 arena-C 第 360 轮在 `wtA-pbc` 做 CC-341，认领表代登记；HEAD `02cdfcb6`）：抽卡规划候选队友修正，代码 `3439c9d2`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：审计 `src/composables/pullPlannerEngine.ts`（第 359 轮交接「下一步 2」的最后一项；至此该项四个文件全部分领完毕）。发现并修了两处结构缺陷，依据、探针数字、代价见 `docs/mcp-r6-refactor-list.md` §8 第 362 行：
-  1. 候选队友原固定 4 名 ⇒ 最多 2 支不重叠队 ⇒ 每期第 3 房恒 0 分；现为 `2 × PLANNER_ROOMS_PER_PERIOD` = 6。
-  2. 队友序原为池序 ⇒ 买到的限定 S 只能当 slot0；现按持有档降序。
-  3. 验证：`vue-tsc -b` 0；worktree `wtD-362`（基于 `02cdfcb6`）全量 verify EXIT 0（4089 例，日志 `arenaD/v362.log`）；提交落在 arena-C 的 `de08dbf8` 之上后，又在 `wtD-362b`（= `3439c9d2`）复跑全量 verify（日志 `arenaD/v362b.log`：`vue-tsc` 0，EXIT 0，445 文件 / 4104 例，与 arena-C rebase 后的数字一致）；冒烟测试新断言做过反证（换回旧实现即失败）。`FEATURES_GUIDE.md` §4.5 补了候选生成口径。
+**2026-10-01 18:30 arena-D 第 363 轮（开工 18:10 时无并行会话：HEAD `91167f68`，arena-C 已 released）：CC-342 房间上下文单源化第 1、2 步，代码 `602c0f94`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：新增 `src/composables/bossRoom.ts`（`findBossBrief` / `applyBossLayerBuffs` / `applyBossRoom`）。Boss 选择卡、实战部署、菲林模拟改调它（零差）；抽卡规划、角色兑现曲线改调它（数值卡：每房带关卡固有 buff）。详情、探针数字、锁与验证见 `docs/mcp-boss-room-context.md` §4。
 - **下一步**（按价值排序）：
-  1. **抽卡规划求值量 ×4.3**（1278 → 5502）：先量「同一三人组不同槽序」各算一次的必要性（槽序影响「上一位 / 下一位队友」类 buff，不能直接按集合去重）；再考虑按单人分数预筛队友。验收（zd 覆盖不到抽卡规划）用 `/home/kaua/calc-arch/arenaD/probe362.test.ts`（拷进 worktree 的 `src/__probe362.test.ts`，`PROBE_OUT=<路径> npx vitest run src/__probe362.test.ts`；超过 5 分钟要用 setsid 后台跑），对比总分与 evals。**跑 verify 前删掉探针文件。**
-  2. arena-C 交接里的 CC-342（房间上下文写入单源化）第 2 步会改 `pullPlannerEngine.ts` 的 `periodViews` 用法，本 lane 已 released，可以直接做。
-- **未决项**：探针的分数基线是 CC-341 之前的（arena-C 的 CC-341 改了危局 buff 牌），以后对比要在同一 HEAD 上重跑 base。
-- **回退点**：`git revert 3439c9d2`（数值会退回「第 3 房恒 0」的状态，不建议）。
-- 上一轮（arena-D 第 361 轮）：副词条预算口径单源化 `08acb322`（零差），`liveInteractions.ts` 已单源不做；`.zc/perf/zd.sh` 加了 `ZD_REPO`。详情见 §8 第 361 行。
+  1. **CC-342 第 3 步**：`difficultyCurve.ts`、`freeCompare/engine.ts`、`positionCompare.ts`、`teamCompare.ts`、`teamTimeline.ts` 仍只调 `applyBossPreset`（「不写不清」，用户现场的关卡 buff 原样生效）。缺省按 §3 选项 a：页面传 `phaseViews`，改调 `applyBossRoom`，每迁移一个就从 `bossRoom.test.ts` 的 `PENDING_STEP3` 删一个。teamCompare 先单独定口径（见 §4 末段）。改 Chart 1/2/3/5 会动 golden 之外的分析数值，每个分析器做一次前后对比。
+  2. 抽卡规划求值 ×4.3（第 362 轮遗留，见 §8 第 362 行）。
+  3. 探针里有些房间恒为 `,, 0`（如 300121、部分期的 40000 / 40002 / 40005）：没查是「Boss 预设缺该期 phase」还是「凑不出不重叠的第 3 队」。查法：在探针里打印 `applyRoomContext` 的返回值与候选数。
+- **未决项**：teamCompare 迁移口径（上面第 1 条）。
+- **已知坑**：`(setsid nohup script.sh &)` 写在带等待循环的脚本里时，本轮实测进程在 wsl_exec 返回后被杀、连日志都没生成；改用 `setsid nohup bash script.sh >/dev/null 2>&1 < /dev/null & disown` 后正常。
+- **回退点**：`git revert 602c0f94`。
+- 第 362 轮（arena-D）：抽卡规划候选队友 4 → 6、持有档高者优先 `3439c9d2`（第 3 房恒 0 分修复，求值 ×4.3），详情 §8 第 362 行。第 361 轮：副词条预算口径单源化 `08acb322`。
 
 **2026-10-01 arena-C 第 360 轮（开工 17:24 时无并行会话：HEAD `a8fffc89`；17:44 起 arena-D 第 361 轮提交 `08acb322` / `02cdfcb6`，第 362 轮在 `wtD-362` 审计 `pullPlannerEngine.ts`）：CC-341 危局 buff 牌条件随行写入、管线唯一解析，代码 `8f80b031`（已 rebase 到 `02cdfcb6` 后复跑全量 verify），文档见本轮 docs 提交，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
 - **做到哪**：第 359 轮交接「下一步 2」里的 `runArchiveDeploy.ts` / `runArchiveImport.ts`。认领表由 arena-D 代登记，本 lane 17:57 确认。读码追到「房间上下文」（敌人参数 + 关卡固有 buff + 当期牌）的全部写入点，分析与数据见新文档 `docs/mcp-boss-room-context.md`（README §6 71 → 72 份）。
