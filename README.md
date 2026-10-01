@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（71 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（72 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -150,7 +150,8 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-core-agent-math-census.md` | **core/** 角色专属数学盘点（CC-70）**：不靠 agentId、但按某角色机制写的 core 逻辑逐项裁定留/迁——维琳娜气旋事件已迁模块（CC-71）、core 的 C2 风蚀默认值已删（CC-72），帷幕/风蚀派发器/真元/加农转子裁定留 core 及理由、复现 grep |
 | `docs/mcp-write-only-props.md` | **接口属性「只写不读」普查（CC-190）**：为什么按名字的死通道扫描抓不到（CC-189 `gold`）、TS 符号引用 + 名字兜底两段法（`scripts/audit-write-only-props.cjs`）、已删的 5 个假契约字段与爱丽丝 6 命常量双源、T1 cfg 死暂存 / T2 结果死字段待办表（低级模型可做，逐批 zd 零差）、T3 数据类型字段不做理由 |
 | `docs/mcp-pending-triage-2026-09-30.md` | **命座/机制 pending 待办分诊（loop 档）**：106 unique 条目分三类（1 A 已立卡暂缓 / 105 B 档案段已含口径 / 3 C 记录性死数据 / 1 FIX 错位已修）；B 类零改动是正确结果（42/42 角色档案段已写明「未建模/近似」口径） |
+| `docs/mcp-boss-room-context.md` | **Boss 房间上下文与危局 buff 牌条件（第 360 轮，CC-341）**：buff 牌 `cond`（特性限定 / 人数分档）原被关卡固有 buff 与实战部署页当期牌两个写入方丢弃（40003 两期强攻限定对任何队满额生效），改为随行写入、管线按当前队伍唯一解析（`utils/phaseBuff.ts`）；`applyBossPreset` 13 处调用只有 3 处写关卡固有 buff、抽卡规划 / 角色兑现曲线 `periodViews` 死参的调用点表与 CC-342 候选（房间上下文写入单源化）；testOnly 关卡牌与解析器两处近似（待裁决 / 数据侧） |
 | `docs/REQUIREMENTS.md` | **用户需求唯一入口**：用户经助手写入的 `R<编号>` 需求；每轮开工先读、优先于自选待办，做完标 `[done <commit>]` 不删条目 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（71 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（72 份，与节标题一致），新增文档需同步本表。

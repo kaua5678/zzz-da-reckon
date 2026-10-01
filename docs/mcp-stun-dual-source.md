@@ -4743,3 +4743,43 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `src/composables/freeCompare/engine.ts`：`applyCodeToSlot` 先写 `cinemaLevel / wEngineModLevel` 再调 `setAgent`；`pickEvaluations` 改为 `n > 1 ? n : 0`。
   - `src/composables/__tests__/configSnapshot.test.ts`：新增两条 `CC-340` 回归单测。
 - **验证**：`npx vue-tsc -b --noEmit` 0 错；相关套件（`configSnapshot.test.ts`、`teamCompare.test.ts`、`teamTimeline.test.ts`、`freeCompareEngine.test.ts`、`difficultyCurve.test.ts`、`slotSweep.test.ts`、`checkGuards.test.ts` 143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 8b613145`。
+
+### 24.184 CC-341（`8f80b031`，第 360 轮，lane arena-C）：危局 buff 牌条件（特性限定 / 人数分档）随行写入全局 Buff、管线按当前队伍唯一解析
+
+- **根因**：
+  - 解析器（`scripts/phase-buff-parser.mjs`）给 buff 牌效果带 `cond`：特性限定为二元（队伍无该特性角色则不生效），人数分档按该特性人数选档。
+  - CC-341 前只有队伍对比在写入全局 Buff 表**之前**按预设队伍解析（`teamCompare#resolveBuffEffect`）。
+  - `runArchiveDeploy#applyBossLayerBuffs`（Boss 选择卡应用 Boss、实战部署、菲林模拟逐期）与 `applyPeriodBuff`（实战部署页当期牌）写行时丢掉 `cond` ⇒ 条件效果对任何队伍都满额生效。
+  - 数据：`phaseViews` 效果 821 条，带 `cond` 110 条（当期牌 102、关卡固有 8）。关卡固有的 8 条全是 40003 在 690431 / 690441 的「强攻限定」4 条（全减抗 10、暴伤 60、攻击 20、穿透率 25）。
+- **修复（`8f80b031`）**：
+  - 新增 `src/utils/phaseBuff.ts`，内含：
+    - `resolvePhaseBuffValue`：唯一解析，与原 `resolveBuffEffect` 逐分支相同；
+    - `phaseBuffRows`：牌 → 行唯一映射，带上 `cond`；
+    - `specialtyCodeOfLabel`：由 `SPECIALTY_LABEL` 反查，删 teamCompare 手写反表 `SPECIALTY_ZH_EN`；
+    - `teamSpecialtiesOf`、`phaseBuffCondLabel`。
+  - `GlobalBuffRow` 加可选 `cond`。
+  - `resolveSlotPanelBuffInputs` 按 `configStore.team` 的特性解析：不成立的行不进面板，分档取生效档。
+  - 三个写入方（`applyBossLayerBuffs` / `applyPeriodBuff` / `teamCompare#applyBuffToStore`）一律走 `phaseBuffRows`，行 id 与名称格式不变。
+  - 调试页全局 Buff 行改取引擎实际收下的条目（CC-208 同型）；属性配置页带条件的行显示条件说明；Boss 卡效果标签改用 `phaseBuffCondLabel`。
+- **影响**：探针，推荐配装，同一现场只切换行上带不带 `cond`。
+
+| 场景 | 队伍 | 新 / 旧 |
+|---|---|---|
+| 40003 @ 690431（690441 相同） | 雅 / 南宫羽 / 柚叶 | −31.115% |
+| 同上 | 柳 / 简 / 丽娜 | −30.477% |
+| 同上 | 朱鸢 / 青衣 / 妮可（有强攻） | 0 |
+| 当期牌 690441「异变」（异常 2/3 名分档） | 上面三队 | −13.885% / −13.745% / −13.457% |
+
+  - 队伍对比零差：写入时 store 里已是该预设的队伍。
+  - golden 零差（全量 verify 通过，未重生成基线）。
+- **未改（记录在 `docs/mcp-boss-room-context.md`）**：
+  - 房间上下文写入分裂：`applyBossPreset` 13 处调用只有 3 处写关卡固有 buff；抽卡规划 / 角色兑现曲线的 `periodViews` 是死参。→ CC-342 候选（§3）。
+  - testOnly 关卡牌照写：5 个 brief，3.3 版本。待裁决（§1.3）。
+  - 解析器按段落挂条件：40003 的对敌减抗也带上强攻限定。「全队[强攻]代理人」被近似为「队里有强攻就全队生效」（§1.4）。
+- **测试与锁**：
+  - `src/utils/__tests__/phaseBuff.test.ts`：含源码锁，`countTier` 只出现在 `utils/phaseBuff.ts` 与类型定义。
+  - `src/composables/__tests__/phaseBuffCond.test.ts`：管线按当前队伍解析；真数据 40003 @ 690431 下，强攻队与非强攻队之差恰为 4 条限定效果。
+  - `statModeParity` ②c：调试页锚点更新。
+  - 反例：管线忽略 `cond` ⇒ 红 4/5；写入方回到旧版 ⇒ 两条写入测试红。
+- **验证**：`vue-tsc -b` 0；隔离 worktree `wtA-pbc` 全量 verify 两次 EXIT 0：基于 `a8fffc89` 445 文件通过 / 16 跳过、4100 测试通过 / 29 跳过；rebase 到 `02cdfcb6` 后 445 / 16、4104 / 29（日志 `/home/kaua/calc-arch/arenaC/v360-cc341.log`、`v360-cc341-rb.log`；基线 `a8fffc89` 为 4085 / 29，`v360-base.log`）；get_diagnostics 10 个文件 0。
+- **回退点**：`git revert 8f80b031`。

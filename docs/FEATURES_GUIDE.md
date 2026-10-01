@@ -12,7 +12,7 @@
    - **困难 · 危局强袭战**：1 个 Boss，可应用
    - **普通 · 危局强袭战**：当期 3 个 Boss，**同样可应用**（预设覆盖全部危局 Boss 共 22 个 + 老防卫战 Boss 彷徨猎手 1 个 = 23 个；其中 3.3 测试服「(Test1)僭越者」为**临时预设**——只录弱点/失衡/血量等自动信息，手录默认值（体型/弹刀/无敌）待正式服，2026-09 用户口径）
    - **当期 Buff**：3 张可选牌 + 各 Boss 卡上的**关卡固有 buff**（layer_buff 解析）
-3. 应用 Boss 时除填充敌人配置外，**自动把该 Boss 当期关卡固有 buff（layer_buff 数值效果）写入全局 Buff 表**（id 前缀 `layer-buff:`，切 Boss 时先清旧）
+3. 应用 Boss 时除填充敌人配置外，**自动把该 Boss 当期关卡固有 buff（layer_buff 数值效果）写入全局 Buff 表**（id 前缀 `layer-buff:`，切 Boss 时先清旧）；效果上的特性限定 / 人数分档（`cond`）随行写入，计算时按**当前队伍**判定、换人自动换档（`src/utils/phaseBuff.ts`，CC-341）
 3. 一键填充字段：血量 / 失衡值 / 防御 / 等级 / 危局异常系数（`bossAnomalyCoeff`）/ 失衡易伤（`stunVuln`）/ 失衡时间（`stunTime`）/ 三张抗性表 / 战斗时间 180s / 秽盾触发次数 / 能量盾次数 / 无敌时间（预设声明时，如 叶释渊 24s）/ 失衡赠礼（`bossStunGift`，预设 `stunGiftRatio` × 失衡上限，如 亵渎者 30%）。
    **不动的字段**：快支次数（角色侧）。
 3.1. **Boss 预设弹刀反推**（声明了 `parryTotal` / `parryNoFollowUpTotal` / `parryDecibelOnlyTotal` 的 Boss）：应用时自动勾选「保底4失衡」，计算器按当前队伍反推——击破位（首个 stun 特性槽位）**正常弹刀** = 保底 4 次失衡所需（封顶 `parryTotal`），主C = `parryTotal − 击破位`（主C 已手填则不覆盖）；**不带支援突击的弹刀**（`parryNoFollowUpTotal`，只有轻弹刀倍率行 + 喧响 215、无支援突击行）按**对半分**（击破/主C 各一半、奇数时击破位多 1；2026-09-10 口径，早期「全部归击破位」已废）；**只给喧响的弹刀**（`parryDecibelOnlyTotal`，轻弹刀打小怪无 daze 无支援突击）归击破位，两者均非用户可调；**喧响赠礼**（`decibelGift`）叠加到指定槽位进场喧响。交互栏显示「→ N（含无突击 M / 只喧响 K / 保底反推 +K）」提示，取消勾选即回到手动输入。实现：`src/core/parrySplit.ts` 纯函数 + `useResourceCalc` 外层不动点线程（般岳轴自动补齐同款收敛）。
@@ -50,7 +50,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
   - 失衡易伤 → `stunDmgMultiplierBonus`（与击破角色 buff 同字段，直接加不折算）
   - **锐化伤害 → `sharpDmgBonus`（锋御独立乘区）；贯穿伤害 → `sheerDmgBonus`（命破贯穿增伤区）；锐暴 → `sharpCritDmg`**——三者别混
   - **元素伤害并列（`X属性伤害和Y属性伤害提升N%`、`X/Y`、顿号）→ 每个元素各出一个 `{el}Dmg`**；元素减抗（`无视其N%的X伤害抗性和Y伤害抗性`，含共享值/各自值）→ 每个元素各出 `enemy{El}ResReduction`
-  - 特性人数分档（异常 2/3 名、强攻 1 名/2 名）→ `cond.countTier: { specialty, thresholds:[低档人数, 高档人数], values:[低档值, 高档值] }`，应用时按队伍该特性实际人数选档（`resolveBuffEffect`；parser 产出中文特性，`resolveBuffEffect` 内 `SPECIALTY_ZH_EN` 映射到引擎英文 specialty）
+  - 特性人数分档（异常 2/3 名、强攻 1 名/2 名）→ `cond.countTier: { specialty, thresholds:[低档人数, 高档人数], values:[低档值, 高档值] }`，计算时按**当前队伍**该特性实际人数选档（`src/utils/phaseBuff.ts#resolvePhaseBuffValue`，在 `resolveSlotPanelBuffInputs` 唯一解析；parser 产出中文特性，经 `specialtyCodeOfLabel` 由 `SPECIALTY_LABEL` 反查成引擎 specialty；CC-341 前只有队伍对比解析，关卡固有 buff 与实战部署页当期牌丢掉条件）
   - 强攻/异常等特性限定 → `cond.specialty`（中文，如「强攻」），队伍无该特性角色则该条不生效
   - 字段补全：`[紊乱]伤害`→`disorderDamageBonus`；`[异放]伤害`→`anomalyReleaseDmgBonus`；`[乱流]伤害`→`turbulenceDamageBonus`；`暴击率`→`critRate`；`喧响值获取效率`→`decibelGainEfficiency`；`能量/闪能获得效率`→`energyGainEfficiency`/`flashEnergyGainEfficiency`；`受到的伤害提升`→`enemyDamageTakenBonus`；`受到的暴击伤害提升`→`enemyCritDmgTakenBonus`；无条件`造成的伤害提升`→`dmgBonus`（`首领敌人/自身` 的 boss 自我增伤跳过）
   - **叠层满覆盖**：`每层[X]/每有1层[X]/每拥有1层[X]/每持有1层[X]…提升Y%` 配 `最多叠加N层/最多累计N层/最多N层/至多可以叠加N层`（或隐式 `施加1层/N层`、`额外施加N层`、`拥有N层[X]时`）→ 按 `Y×N` 录入满叠值（如 彷徨猎手 动摇 7%×5=35%）；`最多叠加N层` 的 selectable buff 按「后，/时，」触发器拆：前段 flat、后段叠层
@@ -148,7 +148,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | --- | --- |
 | 交互类型难度权重/中文名 | `src/types/teamPreset.ts` 的 `INTERACTION_WEIGHTS` / `src/composables/teamCompare.ts` 的 `INTERACTION_LABELS` |
 | 金数应用 / 难度公式 | `src/composables/teamCompare.ts`：`applyGoldSteps`（目标限定金钳制 + standardSteps 常驻配置）/ `computeDifficulty` / `baseGoldOf`（只算限定 S 角色/音擎，常驻清单 `STANDARD_S_AGENT_IDS`/`STANDARD_S_WENGINE_IDS`） |
-| buff 应用/推荐 | 同上 `applyBuffToStore`（写全局 Buff 表）/ `pickBestBuff`（每队三张牌取伤害最高）/ `resolveBuffEffect`（特性限定/异常人数分档，导出供测试） |
+| buff 应用/推荐 | 同上 `applyBuffToStore`（整表替换为所选牌，行经 `utils/phaseBuff#phaseBuffRows` 带 `cond`）/ `pickBestBuff`（每队三张牌取伤害最高）；条件（特性限定 / 异常人数分档）由管线按当前队伍解析（`resolvePhaseBuffValue`，CC-341） |
 | 批量计算管线（含现场快照/恢复） | 同上 `computeTeamComparePoints`（改 configStore → 读 `calc.teamTotalDamage` computed → 收集 → 恢复；快照含 team/enemy/globalBuffs/stunAxes） |
 | 最优加金（≤12金贪婪） | 同上 `computeOptimalGoldAllocations`（候选只来自 goldSteps、standardSteps 全量应用、封顶 `GOLD_OPTIMIZE_CAP`=12、同场景对比）；页面对勾 `TeamComparePage.vue` 的 `optimalGold` |
 | 自动下位音擎（装填池择优） | 同上 `computeAutoEnginePicks`（池解析/过滤/逐槽试算）+ `substituteAutoEngines`（非限定槽位覆盖）；默认池 `DEFAULT_AUTO_ENGINE_POOL`；页面开关/精炼档/装填框 = `TeamComparePage.vue` 的 `autoEngine`/`autoEngineMods`/`autoEnginePool` |
