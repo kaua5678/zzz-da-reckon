@@ -1239,12 +1239,12 @@ export function runAllChecks(root = ROOT) {
     // 不剥就把自己的文档判成违规（实测首版正是如此，2 条假红）。
     const scriptBody = stripJsComments((src.match(/<script[^>]*>([\s\S]*?)<\/script>/) ?? [])[1] ?? '')
     for (const m of scriptBody.matchAll(/ctx\.(?:fill|stroke)Style\s*=\s*['"`]var\(/g)) {
-      closureDetail.push(`  ✗ ${file} 第 ${scriptBody.slice(0, m.index).split('\n').length} 行：Canvas 赋值 'var(...)' 会被静默忽略 → 用 cssVarColor()/sceneInk*() 读回真实色值`)
+      closureDetail.push(`  ✗ ${file} 第 ${scriptBody.slice(0, m.index).split('\n').length} 行：Canvas 赋值 'var(...)' 会被静默忽略 → 用 utils/canvasTheme.ts 的 readThemeVar()/themeReader() 读回真实色值`)
     }
-    // Canvas 侧：不得拿**页面墨**当场景墨（cssVarColor 的实参）
-    for (const m of scriptBody.matchAll(/cssVarColor\(\s*['"`](--wa-[\w-]+|--fg-[\w-]+)['"`]/g)) {
-      closureDetail.push(`  ✗ ${file} 第 ${scriptBody.slice(0, m.index).split('\n').length} 行：Canvas 场景墨借用了页面令牌 ${m[1]} → 用 --scene-ink-*`)
-    }
+    // Canvas 侧「不得拿页面墨（--wa-* / --fg-*）当场景墨」：CC-348 起由类型保证，不再正则扫——
+    // canvas 取色只能经 utils/canvasTheme.ts 的 readThemeVar / themeReader，实参类型 SceneVar = SCENE_ROOT_FALLBACK 的键集
+    // （只有 --scene-* / --app-text-solid / --c-danger），写 '--wa-450' 编译不过；组件自己 getPropertyValue 被 canvasTheme.test.ts 源码锁拦住。
+    // （原先这里按 `cssVarColor('--wa-…')` 正则扫；读取器搬走后该正则恒不命中，留着就是假绿。）
   }
   results.push({
     name: `scene-ink-closure (3D 场景只用 --scene-* 墨: 场景选择器的 var() + Canvas 取色)`,

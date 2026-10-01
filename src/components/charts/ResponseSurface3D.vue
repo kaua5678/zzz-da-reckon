@@ -200,6 +200,7 @@ import { fmt } from '@/utils/format'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { sampleImpactSurface } from '@/composables/impactSampling'
+import { isLightTheme, SCENE_ROOT_FALLBACK, themeReader, useThemeRedraw, withAlpha, type SceneVar } from '@/utils/canvasTheme'
 
 interface ImpactVar {
   id: string
@@ -418,72 +419,29 @@ interface SceneInk {
   markMax: string
 }
 
-/** 无 DOM（SSR/测试）时的兜底 = 夜间档（与 :root 的 --scene-* 同值，保证不回归） */
-const SCENE_INK_FALLBACK: SceneInk = {
-  rgb: '255, 255, 255',
-  panel: 'rgba(15, 20, 32, 0.88)',
-  panelLine: 'rgba(255, 255, 255, 0.18)',
-  shadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
-  strong: '#ffffff',
-  axisX: '#38bdf8',
-  axisY: '#a78bfa',
-  axisZ: '#63e2b7',
-  markCur: '#63e2b7',
-  markMax: '#fbbf24',
-}
-
-/**
- * 每帧读一次计算样式（`drawScene` 开头调用）。
- * 为什么不缓存 + 监听主题变化：① `drawScene` 本来就是 rAF 合帧后的热路径，一次
- * `getComputedStyle` 相对整棵曲面的投影+多边形填充可忽略；② 缓存就必须自己接主题
- * 切换事件，而本仓库的取色先例（TeamDamage3DChart.cssVarColor）就是**不缓存**——
- * 遵循既有约定，避免两组件两套主题失效语义。实测校准：13×13 曲面整帧 < 8ms。
- */
-function sceneInk(): SceneInk {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return SCENE_INK_FALLBACK
-  const cs = getComputedStyle(document.documentElement)
-  const read = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback
+/** 一帧的场景墨色；`read` 缺省 = 读计算样式（utils/canvasTheme.ts，取不到回落夜间兜底） */
+function sceneInk(read: (name: SceneVar) => string = themeReader()): SceneInk {
   return {
-    rgb: read('--scene-ink-rgb', SCENE_INK_FALLBACK.rgb),
-    panel: read('--scene-panel', SCENE_INK_FALLBACK.panel),
-    panelLine: read('--scene-panel-line', SCENE_INK_FALLBACK.panelLine),
-    shadow: read('--scene-shadow', SCENE_INK_FALLBACK.shadow),
-    strong: read('--app-text-solid', SCENE_INK_FALLBACK.strong),
-    axisX: read('--scene-axis-x', SCENE_INK_FALLBACK.axisX),
-    axisY: read('--scene-axis-y', SCENE_INK_FALLBACK.axisY),
-    axisZ: read('--scene-axis-z', SCENE_INK_FALLBACK.axisZ),
-    markCur: read('--scene-mark-cur', SCENE_INK_FALLBACK.markCur),
-    markMax: read('--scene-mark-max', SCENE_INK_FALLBACK.markMax),
+    rgb: read('--scene-ink-rgb'),
+    panel: read('--scene-panel'),
+    panelLine: read('--scene-panel-line'),
+    shadow: read('--scene-shadow'),
+    strong: read('--app-text-solid'),
+    axisX: read('--scene-axis-x'),
+    axisY: read('--scene-axis-y'),
+    axisZ: read('--scene-axis-z'),
+    markCur: read('--scene-mark-cur'),
+    markMax: read('--scene-mark-max'),
   }
 }
+
+/** 无 DOM（SSR/测试）时的兜底 = 夜间档（单源：utils/canvasTheme.ts 的 SCENE_ROOT_FALLBACK，与 :root 由测试锁定） */
+const SCENE_INK_FALLBACK: SceneInk = sceneInk(name => SCENE_ROOT_FALLBACK[name])
 
 /** 当前墨基色三元组 + 主题态（`drawScene` 每帧刷新，供各绘制函数派生任意 α / 选档） */
 let inkRgb = SCENE_INK_FALLBACK.rgb
 let ink: SceneInk = SCENE_INK_FALLBACK
 let isLight = false
-
-/**
- * 给一个**不透明**色值加 α —— 只用于场景标记的柔光（如 `--scene-mark-cur` 的 0.4 光晕）。
- *
- * 为什么不直接写 `rgba(99, 226, 183, 0.4)`：那在夜间成立（== #63e2b7），但明亮档
- * `--scene-mark-cur` 已是压深的 #0f7a5a ⇒ 固定字面值会在亮色下**变成另一个色相的光晕**。
- * 也不走 `color-mix()`：仓库未用过该函数，且 Canvas 只认**已解析**的色值字符串
- * （不解析 CSS 函数式颜色语法）——同 `var()` 静默失效那条坑。
- * 非 hex/rgb 输入（如已是 `rgba(...)`）原样返回：**不猜、不抛**。
- */
-function withAlpha(color: string, alpha: number): string {
-  const s = color.trim()
-  const hex = s.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
-  if (hex) {
-    let h = hex[1]
-    if (h.length === 3) h = h.split('').map(c => c + c).join('')
-    const n = parseInt(h, 16)
-    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
-  }
-  const rgb = s.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/)
-  if (rgb) return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${alpha})`
-  return s
-}
 
 function requestRender() {
   if (animationFrameId !== null) return
@@ -606,7 +564,7 @@ function drawScene() {
   // 主题墨色每帧读一次（见 sceneInk 注释）；浅色主题下网格/描边/文字全部换成深墨
   ink = sceneInk()
   inkRgb = ink.rgb
-  isLight = document.documentElement.classList.contains('light')
+  isLight = isLightTheme()
 
   const midX = w / 2
   const midY = h / 2
@@ -1078,6 +1036,8 @@ function checkHover(e: MouseEvent) {
 
 // 窗口尺寸自适应
 let resizeObserver: ResizeObserver | null = null
+// 切主题重绘（否则画面停在旧主题，直到下一次拖动/缩放；CC-348）
+useThemeRedraw(requestRender)
 
 onMounted(() => {
   if (containerRef.value) {

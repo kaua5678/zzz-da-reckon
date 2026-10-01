@@ -122,7 +122,7 @@ SVG presentation attribute（`fill="var(...)"` / `stroke="var(...)"`）**不可�
 | 加第三个主题（如跟随系统） | `stores/theme.ts` 加 mode + `global.css` 加 `html.<name>` 块 + App.vue 加 overrides 分支 + index.html 脚本 |
 | 改亮暗切换动画 | `global.css` body 的 transition + `.n-card` 过渡 |
 | 新 SVG 图表颜色 | §4 三种写法，禁止 presentation attribute 写 var() |
-| **新 Canvas（自绘）图表颜色** | 走 `--scene-*`（§2 表末）；**禁止** `ctx.fillStyle = 'var(--x)'`（静默忽略）⇒ 用 `getComputedStyle` 读回真实值（先例 `TeamDamage3DChart.cssVarColor` / `ResponseSurface3D.sceneInk`），由 `check-tokens` 判据 10 机器兜底 |
+| **新 Canvas（自绘）图表颜色** | 走 `--scene-*`（§2 表末）；**禁止** `ctx.fillStyle = 'var(--x)'`（静默忽略）⇒ 经 `src/utils/canvasTheme.ts` 读回真实值（`readThemeVar` / 一帧多读用 `themeReader()`，加 α 用 `withAlpha`；CC-348 起唯一入口，组件里不许自己 `getPropertyValue`）。需要新令牌时把它加进 `SCENE_ROOT_FALLBACK`（值须与 `:root` 逐字同，测试锁定）。机器兜底：`check-tokens` 判据 10 + `canvasTheme.test.ts` |
 | 检查明亮模式漏色 | grep 新改动文件里的 `rgba(255` / `#fff` / `#0f0f` 等字面值 |
 
 ## 8. 历史决策记录（Changelog）

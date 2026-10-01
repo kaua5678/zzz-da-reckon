@@ -24,20 +24,15 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { project3d, type Camera3D, type VersionLane } from '@/composables/difficultyCurve3d'
 import type { CurveSeries } from '@/composables/difficultyCurve'
 import { fmt } from '@/utils/format'
+import { readThemeVar, useThemeRedraw, withAlpha } from '@/utils/canvasTheme'
 
 /**
  * 场景色一律走 `--scene-*` 令牌（自绘 canvas 场景不能借页面墨色 --wa-* 或 --fg-*：明亮主题下压在场景底上对比度会塌，
- * 见 global.css「3D Canvas 场景」段与 check-tokens 判据 9）。从计算样式读回真实值以跟随主题，无 DOM 时回落夜间值。
+ * 见 global.css「3D Canvas 场景」段与 check-tokens 判据 9）。读取与夜间兜底统一走 utils/canvasTheme.ts（CC-348）。
  */
-function cssVarColor(name: string, fallback: string): string {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return fallback
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  return v || fallback
-}
-const SCENE_FALLBACK = { rgb: '255, 255, 255', dim: 'rgba(255, 255, 255, 0.55)', danger: '#f87171' }
-const sceneInk = (alpha: number) => `rgba(${cssVarColor('--scene-ink-rgb', SCENE_FALLBACK.rgb)}, ${alpha})`
-const sceneDim = () => cssVarColor('--scene-ink-dim', SCENE_FALLBACK.dim)
-const sceneDanger = () => cssVarColor('--c-danger', SCENE_FALLBACK.danger)
+const sceneInk = (alpha: number) => `rgba(${readThemeVar('--scene-ink-rgb')}, ${alpha})`
+const sceneDim = () => readThemeVar('--scene-ink-dim')
+const sceneDanger = () => readThemeVar('--c-danger')
 
 /**
  * 难度曲线 3D（版本轴）：x = 操作难度绝对值（与 2D 同尺）、y（深度）= 版本道（`deriveVersionAxis`）、z = 伤害/血量%。
@@ -235,20 +230,6 @@ function draw() {
   }
 }
 
-function withAlpha(color: string, a: number): string {
-  const m = /^#([0-9a-f]{6})$/i.exec(color)
-  if (m) {
-    const n = parseInt(m[1]!, 16)
-    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
-  }
-  const rgb = /^rgba?\(([^)]+)\)/.exec(color)
-  if (rgb) {
-    const parts = rgb[1]!.split(',').slice(0, 3).map(s => s.trim())
-    return `rgba(${parts.join(',')},${a})`
-  }
-  return color
-}
-
 // ---- 交互 ----
 let dragging: { x: number; y: number; yaw: number; pitch: number } | null = null
 function onDown(e: MouseEvent) {
@@ -293,6 +274,8 @@ function onWheel(e: WheelEvent) {
 const onGlobalUp = () => { dragging = null }
 
 let ro: ResizeObserver | null = null
+// 切主题重绘（否则画面停在旧主题；CC-348）
+useThemeRedraw(draw)
 onMounted(() => {
   draw()
   window.addEventListener('mouseup', onGlobalUp)

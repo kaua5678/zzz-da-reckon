@@ -125,6 +125,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { fmt } from '@/utils/format'
+import { isLightTheme, readThemeVar, SCENE_ROOT_FALLBACK, useThemeRedraw } from '@/utils/canvasTheme'
 
 export interface DamageShareCategory {
   key: string
@@ -198,7 +199,7 @@ const currentSlices = computed<SliceData[]>(() => {
     for (const c of list) {
       const pct = (c.damage / sum) * 100
       const span = (pct / 100) * Math.PI * 2
-      const color = TYPE_COLOR_MAP[c.key] ?? TYPE_COLOR_MAP[c.label] ?? SCENE_INK_FALLBACK.markCur
+      const color = TYPE_COLOR_MAP[c.key] ?? TYPE_COLOR_MAP[c.label] ?? SCENE_ROOT_FALLBACK['--scene-mark-cur']
       slices.push({
         key: c.key,
         label: c.label,
@@ -447,7 +448,7 @@ function draw3DBars(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fill()
     ctx.stroke()
 
-    // 标签与数值（⚠ Canvas 不解析 var() ⇒ 必须读回真实色值，见 cssVarColor 注释）
+    // 标签与数值（⚠ Canvas 不解析 var() ⇒ 必须读回真实色值，见 utils/canvasTheme.ts 头注释）
     ctx.fillStyle = isHover ? sceneStrong() : sceneMuted()
     ctx.font = '10px Inter, system-ui, sans-serif'
     ctx.textAlign = 'center'
@@ -495,37 +496,11 @@ function shadeColor(hex: string, percent: number): string {
   return `rgb(${R},${G},${B})`
 }
 
-/**
- * Canvas 用的主题色取值。
- *
- * ⚠ **不要写 `ctx.fillStyle = 'var(--wa-450)'`**：Canvas 的 fillStyle **不解析 CSS 变量**
- * （它不是 CSS 属性赋值，而是 CanvasRenderingContext2D 的 IDL 属性）⇒ 浏览器**静默忽略**该赋值，
- * 画布继续用**上一次**的颜色 ⇒ 观感错乱且不报错。实测（2026-09-18 round 29）本文件
- * 的 3D 柱阵标签就是这样：非 hover 时继承了上一笔的 `shadeColor(s.color, -25)`。
- * 正解 = 从计算样式读回真实色值（跟随主题），取不到再回落。
- */
-function cssVarColor(name: string, fallback: string): string {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return fallback
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  return v || fallback
-}
-
-/**
- * 场景墨色/标记的**夜间兜底**（与 global.css `:root` 的 `--scene-*` 逐字同值）。
- * 只在无 DOM 时用到；有 DOM 时一律走下面的 scene* 读取函数。
- */
-const SCENE_INK_FALLBACK = {
-  rgb: '255, 255, 255',
-  strong: '#ffffff',
-  markCur: '#63e2b7',
-  muted: 'rgba(255, 255, 255, 0.55)',
-  shadowFill: 'rgba(0, 0, 0, 0.35)',
-}
+// Canvas 不解析 var()：主题色一律经 utils/canvasTheme.ts 读回真实值（CC-348 起单源，兜底表与 :root 由测试锁定）
 
 /**
  * 场景墨色读取（跟随主题）。
  *
- * 与 `cssVarColor` 的分工：那个读**任意**令牌（本文件用在柱阵标签的 `--fg-3`），
  * 这一组读 `--scene-*` 场景专用令牌，把「裸三元组 → 任意 α」的派生收在一处
  * ——本文件原有 5 处 `rgba(255,255,255,<α>)` 字面量 + 3 处 `#ffffff`，
  * 若不收拢则明亮主题下**每处都要单独判断**，漏一处就是一处「深底墨画在白底上」。
@@ -535,13 +510,13 @@ const SCENE_INK_FALLBACK = {
  * 而不是每次调用都 getComputedStyle。
  */
 function sceneInkRgb(): string {
-  return cssVarColor('--scene-ink-rgb', SCENE_INK_FALLBACK.rgb)
+  return readThemeVar('--scene-ink-rgb')
 }
 function sceneInkAlpha(alpha: number): string {
   return `rgba(${sceneInkRgb()}, ${alpha})`
 }
 function sceneStrong(): string {
-  return cssVarColor('--app-text-solid', SCENE_INK_FALLBACK.strong)
+  return readThemeVar('--app-text-solid')
 }
 /**
  * 次级标签墨色 —— 走**场景专用**令牌 `--scene-ink-dim`，**不借** `--fg-3`。
@@ -550,15 +525,11 @@ function sceneStrong(): string {
  * 这条不是推断——check-tokens 判据 9（scene-contrast）就是这么把首版实现判红的。
  */
 function sceneMuted(): string {
-  return cssVarColor('--scene-ink-dim', SCENE_INK_FALLBACK.muted)
+  return readThemeVar('--scene-ink-dim')
 }
 /** 场景投影：夜间纯黑（深底上"浮"起来），明亮用冷灰（纯黑在白底上会脏） */
 function sceneShadowFill(): string {
-  return darkMode() ? 'rgba(0, 0, 0, 0.35)' : 'rgba(16, 24, 40, 0.12)'
-}
-function darkMode(): boolean {
-  if (typeof document === 'undefined') return true
-  return !document.documentElement.classList.contains('light')
+  return isLightTheme() ? 'rgba(16, 24, 40, 0.12)' : 'rgba(0, 0, 0, 0.35)'
 }
 
 // ========== 鼠标交互与射线判定 ==========
@@ -651,6 +622,8 @@ function detectHover(e: MouseEvent) {
 
 // 尺寸监听与初始化
 let ro: ResizeObserver | null = null
+// 切主题重绘（否则画面停在旧主题，直到下一次悬停/缩放；CC-348）
+useThemeRedraw(requestRender)
 
 onMounted(() => {
   if (containerRef.value) {
