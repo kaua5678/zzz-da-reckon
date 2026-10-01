@@ -29,7 +29,7 @@ import { restoreStore, snapshotStore, type StoreSnapshot } from '@/composables/c
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 import { phaseBuffRows } from '@/utils/phaseBuff'
-import { cloneStunAxes, stunAxisPresets } from '@/data/stunAxisPresets'
+import { stunAxisPresets } from '@/data/stunAxisPresets'
 import { fmt, localized } from '@/utils/format'
 import {
   INTERACTION_WEIGHTS,
@@ -1053,24 +1053,11 @@ export function applyAxisBinding(
   snap: Pick<StoreSnapshot, 'stunAxes' | 'stunAxisPlans' | 'useStunAxis'>,
   preset: Pick<TeamPreset, 'stunAxisPresetId'>,
 ): boolean {
-  configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(JSON.parse(JSON.stringify(snap.stunAxes)) as never[]))
-  configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(JSON.parse(JSON.stringify(snap.stunAxisPlans)) as never[]))
-  configStore.useStunAxis = snap.useStunAxis
+  configStore.setAxisState(snap)
   if (!preset.stunAxisPresetId) return false
   const axisPreset = stunAxisPresets.find(p => p.id === preset.stunAxisPresetId)
   if (!axisPreset) return false
-  // 两条手动轴路径互斥清空，再写入绑定的那条（resolveAxes 优先级：plans > stunAxes > 自动）
-  configStore.stunAxes.splice(0, configStore.stunAxes.length)
-  configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length)
-  if (axisPreset.plans && axisPreset.plans.length > 0) {
-    configStore.stunAxisPlans.splice(0, 0, ...(JSON.parse(JSON.stringify(axisPreset.plans)) as never[]))
-  } else if (axisPreset.axes && axisPreset.axes.length > 0) {
-    configStore.stunAxes.splice(0, 0, ...cloneStunAxes(axisPreset.axes))
-  } else {
-    return false
-  }
-  configStore.useStunAxis = true
-  return true
+  return configStore.applyStunAxisPreset(axisPreset) // 方案 / 固定轴互斥写入的唯一实现（arena-D 第 368 轮）
 }
 
 /**

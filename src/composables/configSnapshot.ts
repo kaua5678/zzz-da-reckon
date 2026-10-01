@@ -11,18 +11,15 @@
  * CC-340：appliedBoss 改为 clone 深拷贝（防 syncBossInteractionPlan 就地改写 parryTotal 污染快照），
  * 并把 mechanicSettings 与 timeWeightStrategy 纳入快照（防 applyBossPreset 自动写 guarantee.stun=1 泄漏到用户现场）。
  */
-import { type useConfigStore, type CharacterConfig, type EnemyConfig } from '@/stores/config'
+import { type useConfigStore, type CharacterConfig, type EnemyConfig, type StunAxisState } from '@/stores/config'
 
 type ConfigStore = ReturnType<typeof useConfigStore>
 type TeammateBuffSelections = Record<string, { enabled: boolean; coverage: number }>
 
-export interface StoreSnapshot {
+export interface StoreSnapshot extends StunAxisState {
   team: CharacterConfig[]
   enemy: EnemyConfig
   appliedBoss: ConfigStore['appliedBoss']
-  stunAxes: unknown[]
-  stunAxisPlans: unknown[]
-  useStunAxis: boolean
   globalBuffs: unknown[]
   buffSelections: TeammateBuffSelections
   mechanicSettings: Record<string, number>
@@ -36,9 +33,7 @@ export function snapshotStore(configStore: ConfigStore): StoreSnapshot {
     team: clone(configStore.team),
     enemy: clone(configStore.enemy),
     appliedBoss: clone(configStore.appliedBoss),
-    stunAxes: clone(configStore.stunAxes),
-    stunAxisPlans: clone(configStore.stunAxisPlans),
-    useStunAxis: configStore.useStunAxis,
+    ...configStore.getAxisState(),
     globalBuffs: clone(configStore.globalBuffs),
     buffSelections: clone(configStore.teammateBuffSelections as TeammateBuffSelections),
     mechanicSettings: { ...configStore.mechanicSettings },
@@ -50,9 +45,7 @@ export function restoreStore(configStore: ConfigStore, snap: StoreSnapshot): voi
   configStore.team.splice(0, configStore.team.length, ...snap.team)
   configStore.setEnemy(snap.enemy)
   configStore.appliedBoss = clone(snap.appliedBoss)
-  configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(snap.stunAxes as never[]))
-  configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(snap.stunAxisPlans as never[]))
-  configStore.useStunAxis = snap.useStunAxis
+  configStore.setAxisState(snap)
   configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...(snap.globalBuffs as never[]))
   // 必须在 team 之后：team.splice 已同步触发 sync 改写 enabled，这里整表覆盖回快照
   const selections = configStore.teammateBuffSelections as TeammateBuffSelections

@@ -40,7 +40,7 @@
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
  */
 import { applyBossRoom } from '@/composables/bossRoom'
-import { useConfigStore } from '@/stores/config'
+import { useConfigStore, type StunAxisState } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
@@ -100,7 +100,7 @@ export interface DifficultyCurveRow {
  */
 export function makeAltAxisGoal(
   alt: NonNullable<TeamPreset['altAxes']>[number],
-  baseAxisSnap: { stunAxes: unknown[]; stunAxisPlans: unknown[]; useStunAxis: boolean },
+  baseAxisSnap: StunAxisState,
 ): DifficultyGoal {
   return {
     id: `AXIS:${alt.id}`,
@@ -129,11 +129,7 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
       applyAxisBinding(configStore, snap, preset)
       // 切轴档（preset.altAxes，2026-09-13）：快照阶梯起点轴态 → 备选轴做成「切轴」目标；
       // 显式传 goals = 完全覆盖（不含切轴档），缺省 = DIFFICULTY_GOALS + 切轴档
-      const baseAxisSnap = {
-        stunAxes: JSON.parse(JSON.stringify(configStore.stunAxes)) as unknown[],
-        stunAxisPlans: JSON.parse(JSON.stringify(configStore.stunAxisPlans)) as unknown[],
-        useStunAxis: configStore.useStunAxis,
-      }
+      const baseAxisSnap = configStore.getAxisState()
       const goals = options.goals ?? [
         ...(options.baseGoals ?? DIFFICULTY_GOALS),
         ...(preset.altAxes ?? []).map(a => makeAltAxisGoal(a, baseAxisSnap)),

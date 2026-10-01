@@ -55,6 +55,18 @@ export interface CharacterConfig {
 }
 
 /** 全局 Buff 行（用户自由添加） */
+/**
+ * 失衡轴状态三件套：固定轴 / 条件轴方案 / 总开关。
+ * 快照、恢复、应用轴预设一律走 store 的 `getAxisState` / `setAxisState` / `applyStunAxisPreset`
+ * （arena-D 第 368 轮；修前 configSnapshot、teamCompare、difficultyLadder、StunAxisPage 各自 splice，
+ * 「方案与固定轴互斥」的规则在 teamCompare 与 StunAxisPage 各写一份，快照字段靠 `unknown[]` + `as never[]` 绕类型）。
+ */
+export interface StunAxisState {
+  stunAxes: import('@/types/resource').StunAxis[]
+  stunAxisPlans: import('@/types/resource').StunAxisPlan[]
+  useStunAxis: boolean
+}
+
 export interface GlobalBuffRow {
   id: string
   name: string       // 名称，如"危局buff"、"boss"、"角色被动"
@@ -509,6 +521,28 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
   // 条件轴方案（按资源量自选轴：resolveStunAxisPlan 按 when 命中；存在时优先于 stunAxes）
   const stunAxisPlans = ref<import('@/types/resource').StunAxisPlan[]>([])
   const useStunAxis = ref(false)
+  const cloneJson = <T>(v: T): T => JSON.parse(JSON.stringify(v))
+  /** 轴状态深拷贝（快照用；与 store 不共享对象） */
+  function getAxisState(): StunAxisState {
+    return { stunAxes: cloneJson(stunAxes.value), stunAxisPlans: cloneJson(stunAxisPlans.value), useStunAxis: useStunAxis.value }
+  }
+  /** 整体写回轴状态（深拷贝写入：同一份快照可反复恢复，store 后续编辑不会改到快照） */
+  function setAxisState(s: StunAxisState) {
+    stunAxes.value.splice(0, stunAxes.value.length, ...cloneJson(s.stunAxes))
+    stunAxisPlans.value.splice(0, stunAxisPlans.value.length, ...cloneJson(s.stunAxisPlans))
+    useStunAxis.value = s.useStunAxis
+  }
+  /**
+   * 应用轴预设：条件方案与固定轴**互斥**写入（resolveAxes 优先级 plans > stunAxes > 自动，留着另一条会遮蔽或被遮蔽），
+   * 写入后打开总开关。预设两者皆空 ⇒ 什么都不改、返回 false（内置预设全部非空，见 stunAxisState.test）。
+   */
+  function applyStunAxisPreset(p: { axes?: StunAxisState['stunAxes']; plans?: StunAxisState['stunAxisPlans'] }): boolean {
+    const plans = p.plans?.length ? p.plans : null
+    const axes = !plans && p.axes?.length ? p.axes : null
+    if (!plans && !axes) return false
+    setAxisState({ stunAxes: axes ?? [], stunAxisPlans: plans ?? [], useStunAxis: true })
+    return true
+  }
   // 章鱼自动轴（队伍含伊德海莉 1051 时按 章×有琉 自动开失衡轴并选预设；手动配置过轴时让路）
   const autoYidhariAxis = ref(true)
   /**
@@ -1381,6 +1415,9 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
     stunAxes,
     stunAxisPlans,
     useStunAxis,
+    getAxisState,
+    setAxisState,
+    applyStunAxisPreset,
     autoYidhariAxis,
     interactionScaleCeiling,
     interactionScaleMonotone,

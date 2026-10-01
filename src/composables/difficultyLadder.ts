@@ -20,7 +20,7 @@
  *
  * 判据测试：`__tests__/difficultyLadder.test.ts`（单调性 / 负收益被丢弃 / 目标契约）。
  */
-import { useConfigStore } from '@/stores/config'
+import { useConfigStore, type StunAxisState } from '@/stores/config'
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE } from '@/core/stunPlanProjection'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
@@ -149,9 +149,7 @@ interface LadderMutSnap {
   /** 动态合轴吸收上限（机制参数）；G5 写它，试开回滚必须一起还原 */
   absorb: number
   /** 轴状态（切轴档会写 stunAxes/stunAxisPlans/useStunAxis，试开回滚必须一起还原） */
-  axes: unknown[]
-  axisPlans: unknown[]
-  useStunAxis: boolean
+  axis: StunAxisState
 }
 function snapshot(ctx: LadderCtx): LadderMutSnap {
   return {
@@ -159,9 +157,7 @@ function snapshot(ctx: LadderCtx): LadderMutSnap {
     p: [0, 1, 2].map(s => ctx.config.team[s]!.parryCount ?? 0),
     align: JSON.parse(JSON.stringify(ctx.config.comboAlignOverrides ?? {})),
     absorb: ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
-    axes: JSON.parse(JSON.stringify(ctx.config.stunAxes)),
-    axisPlans: JSON.parse(JSON.stringify(ctx.config.stunAxisPlans)),
-    useStunAxis: ctx.config.useStunAxis,
+    axis: ctx.config.getAxisState(),
   }
 }
 function restore(ctx: LadderCtx, snap: LadderMutSnap) {
@@ -176,9 +172,7 @@ function restore(ctx: LadderCtx, snap: LadderMutSnap) {
     }
   }
   ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, snap.absorb)
-  ctx.config.stunAxes.splice(0, ctx.config.stunAxes.length, ...(snap.axes as never[]))
-  ctx.config.stunAxisPlans.splice(0, ctx.config.stunAxisPlans.length, ...(snap.axisPlans as never[]))
-  ctx.config.useStunAxis = snap.useStunAxis
+  ctx.config.setAxisState(snap.axis)
 }
 /** 关掉一个已录取目标（仅在试开回滚时用） */
 function undo(ctx: LadderCtx, goal: DifficultyGoal) {

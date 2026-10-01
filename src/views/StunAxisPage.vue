@@ -251,7 +251,7 @@ import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport } from '@/d
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
-import type { StunAxisAction, StunAxisPlan, StunAxis } from '@/types/resource'
+import type { StunAxisAction, StunAxis } from '@/types/resource'
 import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/data/bossEntryAnomalyOptions'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import { findUltimateMove, chainMoveKind } from '@/data/chainMoveKind'
@@ -596,19 +596,8 @@ const stackWarnings = computed(() => {
 function pct(t: number): string { return (t / maxDur.value * 100) + '%' }
 function laneTop(s: number): string { return (24 + s * 20) + 'px' }
 
-function clonePlans(plans: StunAxisPlan[]): StunAxisPlan[] {
-  return JSON.parse(JSON.stringify(plans))
-}
 function applyPreset(p: StunAxisPreset) {
-  if (p.plans && p.plans.length > 0) {
-    // 条件轴方案：整组替换方案列表，并清空手动轴
-    configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...clonePlans(p.plans))
-    configStore.stunAxes.splice(0, configStore.stunAxes.length)
-  } else if (p.axes && p.axes.length > 0) {
-    configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length)
-    configStore.stunAxes.splice(0, configStore.stunAxes.length, ...cloneStunAxes(p.axes))
-  }
-  configStore.useStunAxis = true
+  configStore.applyStunAxisPreset(p) // 方案 / 固定轴互斥写入的唯一实现（arena-D 第 368 轮，原在本页与 teamCompare 各写一份）
 }
 function exportPreset() {
   const teamIds = configStore.team.map(c => c.agentId)

@@ -65,12 +65,13 @@ describe('CC-251 分析器现场快照 / 恢复', () => {
         const rel = relative(root, p)
         // 内联快照：把 configStore.team 与其它字段打包深拷贝
         if (/JSON\.stringify\(\{\s*team:\s*configStore\.team\b/.test(src)) hits.push(`${rel}:snapshot`)
-        // 内联恢复：从快照变量整表回写失衡轴计划（teamCompare 从预设 JSON 写轴不算）
-        if (/stunAxisPlans\.splice\(0,\s*configStore\.stunAxisPlans\.length,\s*\.\.\.\(*\s*(snap|s)\b/.test(src)) hits.push(`${rel}:restore`)
+        // 内联恢复：整表回写失衡轴方案（arena-D 第 368 轮起轴状态只经 store 的 setAxisState / applyStunAxisPreset；
+        // 修前 difficultyLadder 用 `ctx.config.` 前缀抄了一份，旧正则只认 `configStore.` 没拦住）
+        if (!rel.split('\\').join('/').endsWith('stores/config.ts') && /stunAxisPlans(\.value)?\.splice\(0,\s*[\w.]*stunAxisPlans(\.value)?\.length,\s*\.\.\./.test(src)) hits.push(`${rel}:restore`)
       }
     }
     walk(root)
-    expect(hits).toEqual(['composables/configSnapshot.ts:restore'])
+    expect(hits).toEqual([])
   })
 
   it('CC-340：appliedBoss 深拷贝 + mechanicSettings / timeWeightStrategy 闭环恢复（防 syncBossInteractionPlan 原地改写与 guarantee.stun 泄漏）', async () => {
