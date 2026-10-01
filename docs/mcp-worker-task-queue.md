@@ -102,36 +102,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - 第 366 轮（arena-D）：boss-presets.json 唯一加载入口 `29aa7183`（9 处 fetch → `catalog#loadBossPresets`）。
 - 第 365 轮（arena-D）：抽卡规划第 3 房恒 0 分修复 `b719ba36`（精确分房 + 免费人下限 9），探针空房 6/36 → 0/36。- 第 364 轮（arena-D）：CC-342 第 3 步 `59ea97ea`，关卡 buff 随 `BossPresetPhase.layerBuffs`，所有分析器经 `applyBossRoom`。第 363 轮：CC-342 第 1、2 步 `602c0f94`。第 362 轮：候选队友 4 → 6 `3439c9d2`。
 
-**2026-10-01 arena-C 第 360 轮（开工 17:24 时无并行会话：HEAD `a8fffc89`；17:44 起 arena-D 第 361 轮提交 `08acb322` / `02cdfcb6`，第 362 轮在 `wtD-362` 审计 `pullPlannerEngine.ts`）：CC-341 危局 buff 牌条件随行写入、管线唯一解析，代码 `8f80b031`（已 rebase 到 `02cdfcb6` 后复跑全量 verify），文档见本轮 docs 提交，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：第 359 轮交接「下一步 2」里的 `runArchiveDeploy.ts` / `runArchiveImport.ts`。认领表由 arena-D 代登记，本 lane 17:57 确认。读码追到「房间上下文」（敌人参数 + 关卡固有 buff + 当期牌）的全部写入点，分析与数据见新文档 `docs/mcp-boss-room-context.md`（README §6 71 → 72 份）。
-  1. **CC-341（`8f80b031`，数值卡）**：
-     - 问题：buff 牌 `cond`（特性限定 / 人数分档）被 `applyBossLayerBuffs` / `applyPeriodBuff` 丢弃，对任何队满额生效。
-     - 改法：`cond` 随行写入全局 Buff（`GlobalBuffRow.cond`），由 `resolveSlotPanelBuffInputs` 按当前队伍唯一解析（`src/utils/phaseBuff.ts`）。
-     - teamCompare 的写入期解析与手写特性反表退役（零差）。
-     - 影响：40003 @ 690431 / 690441 非强攻队 −30~31%；实战部署页分档牌例 −13.5~13.9%。明细见 §24.184。
-  2. `runArchiveImport.ts` 是纯函数，没有 store 写入，无隔离问题。
-  3. 验证：`vue-tsc -b` 0；隔离 worktree `wtA-pbc` 全量 verify 两次 EXIT 0：基于 `a8fffc89` 445 文件通过 / 16 跳过、4100 测试通过 / 29 跳过；rebase 到 `02cdfcb6` 后 445 / 16、4104 / 29（日志 `/home/kaua/calc-arch/arenaC/v360-cc341.log`、`v360-cc341-rb.log`；基线 `a8fffc89` 为 4085 / 29，`v360-base.log`）；get_diagnostics 10 个文件 0。反例两组（新文档 §2）。
-- **下一步**：
-  1. 复核 r6 §8 重开条件（坑 25，2026-10-31）。
-  2. **CC-342 候选：房间上下文写入单源化**（新文档 §3），分三步：
-     - 已正确的 3 处收口，预期零差；
-     - 抽卡规划 / 角色兑现曲线用现成的 `periodViews` 写关卡固有 buff。属于数值卡，需要小规模规划的前后对比；
-     - 其余 6 类分析器先定口径再改。
-     - **`pullPlannerEngine.ts` 当前被 arena-D 第 362 轮认领**：先读 `/home/kaua/calc-arch/LANE-CLAIMS.md`；未 released 时只做第一步，不碰 pullPlannerEngine。
-  3. 附带项（未做、未量）：`applyDeployConfig` 先 `applyTeamPreset` 后写命座 / 精炼 / 音擎，上一队残留的命座会进 `applyBuildRecommendationForSlot` 的百暴计算（CC-340 同型）。可改用 `teamTimelineStore#applyTeamToStore(autoBuild=true)`，先量部署前后副词条是否随上一队变化。
-  4. 低优先：§24.140。
-- **待裁决**：
-  - testOnly 关卡牌是否写入（新文档 §1.3）；
-  - 解析器子句级条件 / 按受益人限定（§1.4，需要 nanoka 源数据重生成）。
+**2026-10-01 arena-C 第 369 轮（开工 19:24；r368 已被 arena-D 19:25 认领、19:31 收工，本轮记 369；19:37 起 arena-A 第 370 轮并行，认领 configSnapshot / runArchiveDeploy / RunArchivePage / modelingGaps；REQUIREMENTS.md 429 行无新条目）：CC-343 分析器独立场景第 1 阶段，代码 `02049db9`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：底座 + 一个试点。设计、验证、迁移进度和配方都在新文档 `docs/mcp-analyzer-scenario-isolation.md`（README §6 72 → 73 份）。
+  1. `createConfigModel(catalog, initialState?)`：独立场景出生态，写在全部 state ref 声明后、依赖 state 的 watcher 注册前（`config.ts`「独立场景出生态」段；键表 23 个 ref，未登记的键抛错）。
+  2. `useResourceCalc.ts`：函数体改为 `createResourceCalc(config, catalog)`，`useResourceCalc()` 一行绑定；导出类型 `ResourceCalc`。
+  3. 新 `composables/analysisScenario.ts`：`createAnalysisScenario` / `withAnalysisScenario` / `AnalysisContext` / `cloneConfigState`。
+  4. 试点 `charIncrement#computeIncrementPass` 改收 `scenario`、删快照恢复；`CharIncrementPage` 用 `withAnalysisScenario`。
+  5. 验证：`vue-tsc -b` 0；新测试 5 例（含朴素注水反例）；A/B 逐字节相同（md5 `53ecb939`，9 期 78 队）；全量 verify EXIT 0（449 文件 / 4126 测试通过，16 / 29 跳过，228.9s）。
+- **下一步**（配方见新文档 §5，一个分析器一张卡）：
+  1. 迁时间线 + 菲林：`teamTimeline.ts`（4 处快照）+ `teamTimelineFilm.ts`，调用方 `composables/charts/chartRunners.ts`、`teamCompareSweep.ts`。先读认领表；`configSnapshot.ts` 已被 arena-A 第 370 轮改过（执行卡 T1，`0c5e00cb`），迁移本身不需要改它。
+  2. 依次迁：抽卡规划 → 自由对比 → 位置对比 → 难度曲线 → 队伍对比（新文档 §4 表）。每个都做 A/B 逐字节比较 + 全量 verify。
+  3. 全部迁完再删 `configSnapshot.ts`（`TeamComparePage` 的缓存键改用状态指纹），然后接 `batchTask.ts`（新文档 §6）。
 - **坑**：
-  - 全局 Buff 行可能带 `cond`。展示 / 统计全局 Buff 一律取 `resolveSlotPanelBuffInputs(...).teammateBuffs` 里 `sourceKind === 'global'` 的条目；直接遍历 `configStore.globalBuffs` 会把条件不成立的行算进去。
-  - `statModeParity.test.ts` ②c 锚定调试页全局 Buff 行的调用形态，改那行要同步锚点。
-  - 主仓库 HEAD 在本轮中途前进过：worktree 先提交，再 `git rebase <新 HEAD>`，**复跑全量 verify** 后 `merge --ff-only`。
-- **第 359 轮交接（§2）下一步 2 的分领状态**：
-  - substatOptimizer / liveInteractions → arena-D 第 361 轮（`08acb322`）；
-  - runArchiveDeploy（buff 牌写入）→ 本轮 CC-341；runArchiveImport 本轮读过，无问题；
-  - pullPlannerEngine → arena-D 第 362 轮已完成（`3439c9d2`，见 arena-D 段）。
-- **回退点**：`git revert 8f80b031`。
+  - 场景的 `config` 没有 `$patch` / `$subscribe` / `$reset` / `$onAction`；
+  - 新增 state ref 必须登记进 `config.ts` 出生态键表，否则建场景抛错；
+  - 一次运行一个场景，不要跨运行复用；
+  - 去掉 `try / finally` 后函数体反缩进，diff 很大，复核用 `git diff -w`。
+- **回退点**：`git revert 02049db9`（UI 行为不变）。
+- 第 360 轮（arena-C）：CC-341 `8f80b031`（危局 buff 牌条件随行写入、管线唯一解析）。其交接里的 CC-342 已由 arena-D 第 363–364 轮完成；附带项「`applyDeployConfig` 装配顺序」由 arena-A 第 370 轮认领。原文：`git show 2d781b67:docs/mcp-worker-task-queue.md` 的 §2b。
 
 **2026-09-29 arena-B 第 1–4 轮**（抽卡规划线：孤儿 WIP 收养 `d3443e39`、收入按版本日历 `724f37cf`、购买窗口上界 `c8b76d2f`、购买阶梯数据化 `bf868983`）：已结项，抽卡规划线剩下的都待用户裁决（提案 §6「完全下位」标签、§5.5 阶梯内容）。原交接全文：`git show 08acb322~1:docs/mcp-worker-task-queue.md` 的 §2b。
 

@@ -4796,3 +4796,23 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   3. **`applyDeployConfig` 复用 `teamTimelineStore#applyTeamToStore(..., true)`**：先写入三槽目标 `cinemaLevel` / `wEngineModLevel` 再执行 `applyTeamPreset` 与音擎覆盖，消除跨队命座/精炼向百暴副词条分配的泄漏，并删去不再需要的尾随 `syncTeammateBuffsFromTeam()` 补丁（保留 `stunAxes.splice(0)` / `stunAxisPlans.splice(0)` 不动 `useStunAxis` 总开关，使自动轴照旧接管）。
 - **验证**：`npx vue-tsc -b --noEmit` 0 错；`configSnapshot.test.ts`（6/6）、`runArchiveDeploy.test.ts`（12/12，新增跨队高精残留百暴副词条与总伤回归断言）、`teamCompare.test.ts`（36/36）、`moveFusion.test.ts`（24/24）、`src/utils`（16 文件 107 用例）与 `checkGuards.test.ts`（143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。
 - **回退点**：`git revert 0c5e00cb`。
+
+### 24.186 CC-343（`02049db9`，第 369 轮，lane arena-C）：分析器独立场景第 1 阶段——出生态 + 资源计算工厂 + 场景，试点角色兑现曲线
+
+- **问题**：分析器直接改写 UI config store，跑完靠 `configSnapshot` 恢复。
+  - 快照是手列的字段子集，漏一个就泄漏（CC-251 / 278 / 338 / 339 / 340 都是这一类）；
+  - 异步分析器 yield 时 UI 看得见中间态，页面上的计算也会为每个中间态重算；
+  - `calc` 参数与分析器内部的 `useConfigStore()` 必须是同一份现场，类型系统看不出来。
+- **改法（`02049db9`）**：
+  - `createConfigModel(catalog, initialState?)`：出生态写在全部 state ref 声明之后、任何依赖 state 的 watcher 注册之前；键表 23 个 ref，未登记的键抛错。UI store 不传，行为不变。
+  - `createResourceCalc(config, catalog)`：原 `useResourceCalc` 的函数体，显式注入；`useResourceCalc()` 只剩一行绑定 UI store；导出类型 `ResourceCalc`。
+  - 新 `composables/analysisScenario.ts`：`createAnalysisScenario(source?, catalog?)`（在 effectScope 里建 model + calc，`$state` 视图供 memo 键）、`withAnalysisScenario`、`AnalysisContext`、`cloneConfigState`。
+  - 试点 `charIncrement#computeIncrementPass`：改收 `scenario`，删 `snapshotStore` / `restoreStore`；`CharIncrementPage` 改用 `withAnalysisScenario`。
+- **出生态为什么必须在 watcher 之前**：副词条预算 watcher（pre-flush）的 getter 每次返回新数组，整体替换 `mechanicSettings` 就会触发，下一拍把三个槽的配装刷回推荐值。测试「① 反例」实测：朴素注水后立刻比较相同，`await` 一拍后队伍配装不同。
+- **影响**：零差。A/B：旧 API（`2d781b67`）与新 API 各跑一遍全归档 `computeIncrementPass`，输出逐字节相同（md5 `53ecb939`，9 期 78 队），耗时 15.6s / 15.9s。
+- **测试与锁**：
+  - `src/composables/__tests__/analysisScenario.test.ts` 5 例：出生态 = 源现场、朴素注水反例、隔离、等值、源码锁（`MIGRATED_ANALYZERS` 不调 `useConfigStore()` / 快照恢复；`createResourceCalc` 函数体不查全局 store）。
+  - `charIncrementInt.test.ts`：原「快照恢复」只比跑完后的队伍 id，现为每次进度回报（紧接 yield）时调用方 `$state` 逐字不变。
+- **未改**：其余 7 个分析器模块（11 处快照恢复）与 `TeamComparePage` 的快照缓存键。迁移表与配方见 `docs/mcp-analyzer-scenario-isolation.md` §4–5。
+- **验证**：`vue-tsc -b` 0；全量 verify EXIT 0（449 文件 / 4126 测试通过，16 / 29 跳过，228.9s）。
+- **回退点**：`git revert 02049db9`。
