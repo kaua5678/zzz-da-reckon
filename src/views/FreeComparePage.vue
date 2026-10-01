@@ -237,6 +237,7 @@ import { computed, onMounted, ref } from 'vue'
 import { NAlert, NButton, NCard, NCheckbox, NInput, NInputNumber, NProgress, NSelect, NTag } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { colorOf } from '@/composables/charts/agentPresentation'
 import { computeFreeCompare } from '@/composables/freeCompare/engine'
@@ -325,7 +326,8 @@ function codeReadable(code: string): string {
 const computing = ref(false)
 const progress = ref<{ pct: number; text: string } | null>(null)
 const result = ref<Awaited<ReturnType<typeof computeFreeCompare>> | null>(null)
-let abortFlag = false
+/** 批任务归属（S4，CC-343）：新一次对比吊销前任，离开页面也吊销；进度/结果只归当前运行 */
+const batchOwner = useBatchOwner()
 
 /** 解析配置码序列（逗号/空格/顿号分隔；非法码返回 null 让调用方拦下并提示） */
 function parseSetupCodesText(): string[] | null {
@@ -372,12 +374,12 @@ async function runCompare() {
 
   if (axisId.value === 'period' && periodOptions.value.length === 0) { error.value = 'x = Boss 期数时，先在「条件」里选一个 Boss（期数 = 该 Boss 的各期危局）'; return }
 
+  const run = batchOwner.start()
   computing.value = true
   progress.value = null
-  abortFlag = false
   try {
     // r372：对比在独立场景上求值（逐档位 yield，UI store 全程看不到中间态）
-    result.value = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+    const res = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
       series: specs,
       axisId: axisId.value,
       axisOptions: { cinemaMax: cinemaMax.value, setupCodes: setupCodes.value ?? [], periods: periodOptions.value },
@@ -388,17 +390,22 @@ async function runCompare() {
         conditions: conditions.value,
         autoBuild: autoBuild.value,
       },
-      onProgress: p => { progress.value = p },
-      shouldAbort: () => abortFlag,
+      control: { signal: run.signal },
+      onProgress: p => run.commit(() => { progress.value = p }),
     }))
+    run.commit(() => { result.value = res })
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    run.commit(() => { error.value = e instanceof Error ? e.message : String(e) })
   } finally {
-    computing.value = false
-    progress.value = null
+    run.commit(() => { computing.value = false; progress.value = null })
   }
 }
-function abort() { abortFlag = true }
+/** 「取消」按钮：停掉当前运行；已算档位由该运行自己发布（求值器中止时保留已算部分） */
+function abort() {
+  batchOwner.cancel()
+  computing.value = false
+  progress.value = null
+}
 
 // ---------- 图 ----------
 const svgW = 900

@@ -2,6 +2,7 @@ import { computed, ref, type Ref } from 'vue'
 import { computeSlotSweepPoints, type SlotCompareSlot, type SlotSweepResult } from '@/composables/teamTimeline'
 import type { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
 import type { BossPreset } from '@/types/bossPreset'
 import type { Specialty } from '@/types/catalog'
 import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
@@ -43,8 +44,9 @@ export function useSlotSweep(opts: {
   const sweepCandidateSel = ref<string[]>([])
   const sweepBudget = ref(6)
   const sweepOptimalGold = ref(false)
-  const sweepAbort = ref(false)
   const sweepResult = ref<SlotSweepResult | null>(null)
+  /** 批任务归属（S4，CC-343）：新一次试算吊销前任，离开页面也吊销；提交权只归当前运行 */
+  const owner = useBatchOwner()
   /** 固定队友所在的两个槽位（按槽位序） */
   const sweepFixedSlots = computed(() => [0, 1, 2].filter(s => s !== sweepSlot.value))
   const agentOptions = computed(() =>
@@ -93,11 +95,11 @@ export function useSlotSweep(opts: {
       setTimeout(() => { progress.value = null }, 3000)
       return
     }
+    const run = owner.start()
     computing.value = true
-    sweepAbort.value = false
     progress.value = { pct: 0, text: '' }
     try {
-      sweepResult.value = await withAnalysisScenario(scenario => computeSlotSweepPoints(scenario, {
+      const res = await withAnalysisScenario(scenario => computeSlotSweepPoints(scenario, {
         slot: sweepSlot.value,
         fixed: [f0, f1],
         boss,
@@ -105,13 +107,20 @@ export function useSlotSweep(opts: {
         budget: sweepBudget.value,
         optimalGold: sweepOptimalGold.value,
         candidateIds,
-        shouldAbort: () => sweepAbort.value,
-        onProgress: p => { progress.value = p },
+        control: { signal: run.signal },
+        onProgress: p => run.commit(() => { progress.value = p }),
       }))
+      run.commit(() => { sweepResult.value = res })
     } finally {
-      sweepAbort.value = false
-      computing.value = false
+      run.commit(() => { computing.value = false })
     }
+  }
+
+  /** 「中止」按钮：停掉当前运行（已算候选由该运行自己发布），并收起跑批态 */
+  function cancelSweep(): void {
+    owner.cancel()
+    computing.value = false
+    progress.value = null
   }
 
   const sweepMaxDamage = computed(() => Math.max(...(sweepResult.value?.points ?? []).map(p => p.damage), 1))
@@ -128,7 +137,6 @@ export function useSlotSweep(opts: {
     sweepCandidateSel,
     sweepBudget,
     sweepOptimalGold,
-    sweepAbort,
     sweepResult,
     sweepFixedSlots,
     agentOptions,
@@ -137,6 +145,7 @@ export function useSlotSweep(opts: {
     sweepCandidates,
     sweepCandidateOptions,
     runSweep,
+    cancelSweep,
     sweepMaxDamage,
     sweepBarPct,
   }

@@ -42,6 +42,7 @@ import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
+import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import { bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
 type Calc = ReturnType<typeof useResourceCalc>
@@ -1028,8 +1029,8 @@ export interface SlotSweepOptions {
   optimalGold?: boolean
   /** 候选池覆盖（缺省 = 目录全部可见角色 − 固定 2 人；测试/定向复算用） */
   candidateIds?: string[]
-  /** 中止探测（粒度 = 一个候选；已算部分照常返回） */
-  shouldAbort?: () => boolean
+  /** 取消（粒度 = 一个候选；已算部分照常返回） */
+  control?: BatchControl
   onProgress?: (p: { pct: number; text: string }) => void
 }
 
@@ -1059,7 +1060,7 @@ export async function computeSlotSweepPoints(scenario: AnalysisContext, opts: Sl
   let skipped = 0
   let aborted = false
   for (let i = 0; i < candidateIds.length; i++) {
-    if (opts.shouldAbort?.()) { aborted = true; break }
+    if (isBatchAborted(opts.control)) { aborted = true; break }
     const agent = catalog.getAgent(candidateIds[i])!
     const team = sweepTeamForCandidate(opts.slot, opts.fixed, agent.id)
     const res = evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)

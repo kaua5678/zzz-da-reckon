@@ -1,14 +1,22 @@
 import { getCurrentScope, onScopeDispose } from 'vue'
 
-/** 批任务的协作式取消；只在独立场景上运行，不能替代数据隔离。 */
+/**
+ * 批任务的协作式取消；只在独立场景上运行，不能替代数据隔离。
+ *
+ * 取消通道只有一条：`signal`（AbortSignal，由 `createBatchOwner#start` 发车、`cancel` 吊销计算）。
+ * S4（CC-343）起分析器与页面统一走它，早期的 `shouldAbort: () => boolean` 页面回调已废除。
+ */
 export interface BatchControl {
   signal?: AbortSignal
-  /** 兼容旧调用方；新页面传 signal。 */
-  shouldAbort?: () => boolean
+}
+
+/** 非抛出的取消探测：已取消返回 true。「保留已算部分」式中止与抛错式中止共用它。 */
+export function isBatchAborted(control: BatchControl = {}): boolean {
+  return control.signal?.aborted === true
 }
 
 export function throwIfBatchAborted(control: BatchControl): void {
-  if (control.signal?.aborted || control.shouldAbort?.()) {
+  if (isBatchAborted(control)) {
     throw new DOMException('计算已取消', 'AbortError')
   }
 }
@@ -45,15 +53,18 @@ export interface BatchRun {
   commit(write: () => void): boolean
 }
 
-/** 一个页面/图表的任务所有者；新运行、输入失效与关闭均撤销前任的提交权。 */
+/**
+ * 一个页面/图表的任务所有者。**提交权（commit）只归当前运行**，吊销只来自两处：
+ * `start()` 被新运行顶掉、`dispose()` 页面关闭。
+ * `cancel()` 只停计算（页面「取消」/「中止」按钮），**不吊销提交权**——分析器中止时会带上
+ * 已算部分返回，那部分结果仍由该运行自己发布（曲线 / 海选「保留已算部分」的依据）。
+ */
 export function createBatchOwner() {
   let current: AbortController | null = null
   let disposed = false
 
   function cancel(): void {
-    const previous = current
-    current = null
-    previous?.abort()
+    current?.abort()
   }
 
   return {
@@ -63,7 +74,7 @@ export function createBatchOwner() {
       const controller = new AbortController()
       current = controller
       previous?.abort()
-      const isCurrent = () => !disposed && current === controller && !controller.signal.aborted
+      const isCurrent = () => !disposed && current === controller
       return {
         signal: controller.signal,
         isCurrent,

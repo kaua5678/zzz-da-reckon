@@ -239,7 +239,7 @@
         >
           {{ chartMode === 'scatter' ? '计算' : chartMode === 'curve' ? '计算曲线' : '计算第三人' }}
         </n-button>
-        <n-button v-if="(chartMode === 'curve' || chartMode === 'sweep') && computing" size="small" @click="chartMode === 'curve' ? (curveAbort = true) : (sweepAbort = true)">中止</n-button>
+        <n-button v-if="(chartMode === 'curve' || chartMode === 'sweep') && computing" size="small" @click="chartMode === 'curve' ? cancelCurrentRun() : cancelSweep()">中止</n-button>
       </div>
 
       <!-- 进度 -->
@@ -672,6 +672,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computeTeamComparePoints, goldAlternativesOfPoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type GoldAllocationAlternative } from '@/composables/teamCompare'
 import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
+import { isBatchAborted, useBatchOwner } from '@/composables/batchTask'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
@@ -1016,8 +1017,15 @@ function versionSlotOptions(presetId: string) {
   const p = teamPresets.find(t => t.id === presetId)
   return [0, 1, 2].map(slot => ({ value: slot, label: `${slotName(slot)} ${agentNameOf(p?.team[slot])}` }))
 }
-/** 曲线模式的中止标志（粒度 = 一队：单队阶梯是原子的；已算部分保留） */
-const curveAbort = ref(false)
+/** 批任务归属（S4，CC-343）：散点 / 曲线 / 海选三者共用——新一次计算吊销前任，离开页面也吊销。
+ *  中止粒度 = 一队（单队阶梯是原子的），已算部分照常出图：取消只停计算，不吊销提交权。 */
+const runOwner = useBatchOwner()
+/** 「中止」按钮（曲线）：停掉当前运行，已算曲线由该运行自己发布 */
+function cancelCurrentRun(): void {
+  runOwner.cancel()
+  computing.value = false
+  progress.value = null
+}
 
 /** ③ 会话级曲线缓存（2026-09-19 性能）：同一份输入（Boss/期数/难度权重/机制开关/权重策略/store 快照/预设内容）
  *  切来切去重跑时**零秒出图**。store 快照 = 数值类全量输入的确定性刻画，命中即数学等价；LRU 上限 24。 */
@@ -1082,6 +1090,7 @@ async function runCompare() {
   const boss = selectedBoss.value
   const phase = selectedPhase.value
   if (presets.length === 0 || !boss || !phase) return
+  const run = runOwner.start()
   computing.value = true
   progress.value = { pct: 0, text: '' }
   goldAlternatives.value = []
@@ -1091,7 +1100,7 @@ async function runCompare() {
   // 按队伍分批，让出主线程更新进度
   for (let i = 0; i < presets.length; i++) {
     const p = presets[i]
-    progress.value = { pct: i / presets.length, text: `计算 ${p.name}（${i + 1}/${presets.length}）...` }
+    run.commit(() => { progress.value = { pct: i / presets.length, text: `计算 ${p.name}（${i + 1}/${presets.length}）...` } })
     await new Promise(r => setTimeout(r, 0))
     const batch = await withAnalysisScenario(scenario => computeTeamComparePoints(scenario, {
       presets: [p],
@@ -1116,9 +1125,11 @@ async function runCompare() {
     // 同金分配候选经数组属性回传（未开启收集时为空数组）
     if (showGoldAlternatives.value) goldAlternatives.value.push(...goldAlternativesOfPoints(batch))
   }
-  points.value = all
-  progress.value = { pct: 1, text: `完成：${all.length} 个点` }
-  computing.value = false
+  run.commit(() => {
+    points.value = all
+    progress.value = { pct: 1, text: `完成：${all.length} 个点` }
+    computing.value = false
+  })
 }
 
 /**
@@ -1147,15 +1158,16 @@ async function runCurves() {
     setTimeout(() => { progress.value = null }, 2500)
     return
   }
+  const run = runOwner.start()
   computing.value = true
-  curveAbort.value = false
   progress.value = { pct: 0, text: '' }
   const all: DifficultyCurveRow[] = []
+  let aborted = false
   for (let i = 0; i < presets.length; i++) {
     // 中止粒度 = 一队（单队阶梯是原子的）；已算部分照样出图
-    if (curveAbort.value) break
+    if (isBatchAborted({ signal: run.signal })) { aborted = true; break }
     const p = presets[i]
-    progress.value = { pct: i / presets.length, text: `爬阶梯 ${p.name}（${i + 1}/${presets.length}，每队约 3~4 秒）...` }
+    run.commit(() => { progress.value = { pct: i / presets.length, text: `爬阶梯 ${p.name}（${i + 1}/${presets.length}，每队约 3~4 秒）...` } })
     await new Promise(r => setTimeout(r, 0))
     all.push(...await withAnalysisScenario(scenario => computeDifficultyCurves(scenario, {
       presets: [p],
@@ -1169,26 +1181,27 @@ async function runCurves() {
       },
     })))
   }
-  curveRows.value = all
-  if (!curveAbort.value) {
-    curveRunCache.set(cacheKey, { rows: all })
-    while (curveRunCache.size > CURVE_RUN_CACHE_MAX) {
-      const oldest = curveRunCache.keys().next().value
-      if (!oldest) break
-      curveRunCache.delete(oldest)
+  run.commit(() => {
+    curveRows.value = all
+    if (!aborted) {
+      curveRunCache.set(cacheKey, { rows: all })
+      while (curveRunCache.size > CURVE_RUN_CACHE_MAX) {
+        const oldest = curveRunCache.keys().next().value
+        if (!oldest) break
+        curveRunCache.delete(oldest)
+      }
     }
-  }
-  progress.value = { pct: 1, text: curveAbort.value ? `已中止：保留已算的 ${all.length} 条曲线` : `完成：${all.length} 条曲线` }
-  curveAbort.value = false
-  computing.value = false
+    progress.value = { pct: 1, text: aborted ? `已中止：保留已算的 ${all.length} 条曲线` : `完成：${all.length} 条曲线` }
+    computing.value = false
+  })
 }
 
 // ========== 选第三人（不依赖预设队伍：固定 2 队友 + 候选范围试算第三槽） ==========
 // 候选圈定 / 试算调度 / 结果条形比例搬到 composables/teamCompareSweep.ts（CC-92 结构熵切面，纯搬运）；
 // 求值口径在 teamTimeline.ts#computeSlotSweepPoints（@fact slotSweep），候选口径见 @fact sweepPage:第三人候选圈定。
 const {
-  slotLabels, sweepSlot, sweepSlotOptions, sweepFixedBySlot, sweepSpecFilter, sweepCandidateSel, sweepBudget, sweepOptimalGold, sweepAbort, sweepResult,
-  sweepFixedSlots, agentOptions, sweepSpecOptions, sweepSpecLabel, sweepCandidateOptions, runSweep, sweepBarPct,
+  slotLabels, sweepSlot, sweepSlotOptions, sweepFixedBySlot, sweepSpecFilter, sweepCandidateSel, sweepBudget, sweepOptimalGold, sweepResult,
+  sweepFixedSlots, agentOptions, sweepSpecOptions, sweepSpecLabel, sweepCandidateOptions, runSweep, cancelSweep, sweepBarPct,
 } = useSlotSweep({ catalogStore, selectedBoss, selectedPhase, progress, computing })
 
 function agentNameOf(id: string | null | undefined): string {

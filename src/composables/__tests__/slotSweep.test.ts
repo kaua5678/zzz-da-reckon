@@ -2,7 +2,8 @@
  * 第三人海选（computeSlotSweepPoints，队伍对比页「第三人海选」图型）测试：
  * - sweepTeamForCandidate 纯函数：候选补海选槽、固定队友按其余两槽槽位序填充
  * - 候选池：固定成员被剔除（即使显式出现在候选池）；candidateIds 覆盖生效
- * - 集成冒烟：伤害降序、槽位正确、现场快照恢复（跑完不留痕）
+ * - 集成冒烟：伤害降序、槽位正确、UI store 全程不被改写（跑完不留痕）
+ * - 取消：control.signal 已中止 ⇒ 一个候选都不算；onProgress 里中止 ⇒ 已算部分照常返回
  */
 import { describe, expect, it, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -74,7 +75,7 @@ describe('computeSlotSweepPoints（集成冒烟）', () => {
     expect(JSON.stringify(config.team)).toBe(before)
   })
 
-  it('固定成员即使被显式列入候选池也被剔除；shouldAbort 中止后保留已算部分', async () => {
+  it('固定成员即使被显式列入候选池也被剔除；取消后保留已算部分', async () => {
     await boot()
     const res = await computeSlotSweepPoints(scen(), {
       slot: 1,
@@ -86,6 +87,8 @@ describe('computeSlotSweepPoints（集成冒烟）', () => {
     })
     expect(res.points.map(p => p.candidateId)).toEqual(['1481'])
 
+    const aborted = new AbortController()
+    aborted.abort()
     const partial = await computeSlotSweepPoints(scen(), {
       slot: 2,
       fixed: ['1371', '1481'],
@@ -93,9 +96,23 @@ describe('computeSlotSweepPoints（集成冒烟）', () => {
       phase: firstPhase,
       budget: 6,
       candidateIds: ['1451', '1141'],
-      shouldAbort: () => true,
+      control: { signal: aborted.signal },
     })
     expect(partial.points).toEqual([])
+
+    // 取消粒度 = 一个候选：第一个 progress 才中止 ⇒ 至多再算一个候选，已算部分照常返回
+    const mid = new AbortController()
+    const midRes = await computeSlotSweepPoints(scen(), {
+      slot: 2,
+      fixed: ['1371', '1481'],
+      boss: firstBoss,
+      phase: firstPhase,
+      budget: 6,
+      candidateIds: ['1451', '1141'],
+      control: { signal: mid.signal },
+      onProgress: () => mid.abort(),
+    })
+    expect(midRes.points.length).toBeLessThanOrEqual(1)
   })
 
   it('默认候选池 = 目录可见角色 − 固定 2 人（slotSweepCandidates）', async () => {

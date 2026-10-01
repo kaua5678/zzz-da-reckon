@@ -21,6 +21,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedWEngine } from '@/composables/teamCompare'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
+import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import {
   type AxisId,
   type AxisLevel,
@@ -87,8 +88,8 @@ export interface FreeCompareOptions {
   constraints?: ConstraintSpec
   /** 单人系列挑哪个角色的分量（缺省 = 该系列自己的成员） */
   onProgress?: (p: { pct: number; text: string }) => void
-  /** 中断（页面「取消」按钮） */
-  shouldAbort?: () => boolean
+  /** 取消（页面「取消」经 BatchOwner 的 AbortSignal 传入；中止时保留已算档位） */
+  control?: BatchControl
 }
 
 // ========== 装配 ==========
@@ -304,7 +305,7 @@ export async function computeFreeCompare(
     out[si].label = seriesLabelOf(spec, nameOf)
 
     for (let li = 0; li < levels.length; li++) {
-      if (options.shouldAbort?.()) return finalize()
+      if (isBatchAborted(options.control)) return finalize()
       const level = levels[li]
 
       // ---- 装配：约束 → 系列成员 → x 档位覆盖 ----
