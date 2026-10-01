@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 375 轮**：CC-343 S5 收窄类型（`3c287f85`，新增 `EvalConfig`，dist 逐字节相同）——原 §2 交接，细节见隔离文档 §3.5；全文 `git show d43ba04f:docs/mcp-worker-task-queue.md` 的 §2。
+
 **2026-10-01 arena-C 第 374 轮**：CC-343 S4 接 `batchTask`（`423e9de4` + `962e8b9f`）——原 §2 交接，细节见 `docs/mcp-analyzer-scenario-isolation.md` §3.4；全文 `git show 9f3dacd2:docs/mcp-worker-task-queue.md` 的 §2。
 
 **2026-10-01 arena-C 第 372 轮**：CC-343 S2 抽卡规划 + 自由对比迁独立场景 + S3 删 `configSnapshot`（`dfe53a2e` + `81b0d2dc`）——已被第 374 轮 §2 取代，细节见 `docs/mcp-analyzer-scenario-isolation.md` §3.3。
@@ -128,23 +130,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 375 轮（lane arena-E，开工 00:15；无并行会话，认领表上一行全是 released；HEAD `9f3dacd2`；REQUIREMENTS.md R1–R8 全部已处理、无新条目）：CC-343 S5 收窄类型，代码 `3c287f85`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+**第 376 轮（lane arena-E，开工 00:26；无并行会话；HEAD `d43ba04f`；REQUIREMENTS.md R1–R8 已全部处理、无新条目）：补迁 CC-343 漏列的组件内分析器——CC-345 伤害影响 `56e2f697`、CC-346 主词条边际效用 `1962c4b0`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **怎么找到的**：上一轮交接说「无排定项 ⇒ 扫没扫过的区域」。CC-343 的 §4 表是按 `snapshotStore` 调用方列的，没覆盖「组件里直接改 UI store 再写回」的写法。按「写 configStore + 让出主线程」组合检索（方法见 `docs/mcp-analyzer-scenario-isolation.md` §8），找到 3 个：伤害影响 2D/3D、主词条边际效用、命座提升率。
 - **做到哪**：
-  1. **`3c287f85`**：`src/stores/config.ts` 新增 `EvalConfig = ConfigModel & { readonly $state }`；`createResourceCalc`、`AnalysisContext.config`、`createAnalysisScenario(source)` 收 `EvalConfig`；其余 28 个非测试模块的 `ReturnType<typeof useConfigStore>` → `ConfigModel`、`ReturnType<typeof useResourceCalc>` → `ResourceCalc`（77 处）。测试与 `src/test/harness.ts` 不改（它们拿的就是 Pinia store，类型是真话），只改了 `freeCompareEngine.test.ts` 的 `onEval` 参数。
-  2. **为什么值得做**（不是降计数）：场景的 config 是普通 reactive model，旧类型却声称它有 `$patch` / `$subscribe` / `$reset` / `$onAction`。现在「求值管线不依赖 Pinia」是编译期契约：管线里误调这些会编译失败；worker 化时也少一层假依赖。
-  3. **验证**：纯类型改动 ⇒ 主仓库 HEAD 与改后各 `vite build` 一次，`diff -r` 两个 dist（63 个文件）**逐字节相同**（这条比 A/B 探针更强，纯类型卡以后可以照用）；`vue-tsc -b` 0 错；全量 verify EXIT 0（448 文件 / 4125 测试通过，16 / 29 跳过，172.6s，worktree `wtE-s5`）。
-  4. 文档：隔离文档 §0 / §2.3 / §3.5（新）/ §6 / §9；卡表 CC-343 行；r6 §8 第 375 行。
-- **下一步**：
-  1. **CC-343 这条线已收口**，只剩未接线的 `createBatchScheduler`。它只在 worker 化时才需要，**没有排定，不要为了"把它接上"而接**（语义冲突见隔离文档 §3.4 末段）。
-  2. 没有排定项 ⇒ 按 §1 第一条：先读 `docs/mcp-r6-refactor-list.md` §8 的扫描记录，只查表里没扫过的区域；查不出「更通用 / 更简单」的项就追加扫描记录然后收尾，不造活。
+  1. **CC-345 `56e2f697`**：新 `src/composables/impactSampling.ts`（+ `impactSampling.test.ts`）；`components/ImpactChart.vue`、`components/charts/ResponseSurface3D.vue` 改成 `withAnalysisScenario` + `useBatchOwner`，删写回恢复与全仓唯一的 `$patch`。A/B 五组逐字节相同；实机点通 2D / 3D 均零 JS 错误。隔离文档 §3.6。
+  2. **CC-346 `1962c4b0`**：新 `src/composables/mainStatMarginal.ts`（+ `mainStatMarginal.test.ts`）；`components/MarginalUtilityCard.vue` 只剩发车与展示。**口径修正**：旧实现候选之间不还原（除第一组外都是累积替换的数，实测偏差可达 12%），现为单项替换。隔离文档 §3.7。
+  3. `analysisScenario.test.ts#MIGRATED_ANALYZERS` 加两项（现 10 个模块）。验证：`vue-tsc -b` 0 错；全量 verify EXIT 0（450 文件 / 4132 测试通过，16 / 29 跳过；含两张卡的合并态，worktree wtE-impact）；实机点通边际效用表正常出数；check-guards 25/25。
+  4. 文档：隔离文档 §0 / §2.3 / §3.6 / §3.7 / §4 表三行 / §6 第 5 条 / §8 / §9；卡表 CC-345 / 346 / 347；r6 §8 第 376 行。
+- **下一步（直接开工）**：**CC-347 命座提升率迁独立场景**——做法、A/B 方法、必须保持绿的测试都写在 `docs/mcp-analyzer-scenario-isolation.md` §6 第 5 条。要点：`analyzeCinemaUplift` 改收 `scenario`，三个读取器改在函数内从 `scenario.calc` 读，删命座 / `stunCountLock` 的恢复；调用方有页面 `ResourceUtilizationPage.vue#computeCinemaGains` 和测试 `allAgentsSweep` / `cinemaUplift.test`。做完后「改写 UI store 的分析器」这一类就清零了。
 - **本轮拍板（可逆）**：
-  - **CC-343 S5 的细节只写在隔离文档 §3.5，没有在 `docs/mcp-stun-dual-source.md` 再开 §24.189**。依据：隔离文档自称「这条线的唯一主档」，同一件事写四五处是维护成本、也是漂移来源。规则化为 §1 新增的「主档优先」一条。回退：补写 §24.189 并删掉 §1 那条。
-  - 桥接提示词第 2 条（「写长文件用 apply_patch，不要用 shell 的 echo/base64」）与提示词自带客户端的 `put`（base64 分块）字面冲突；已改提示词，说明这条只针对 Windows `run_command` 的 8191 字符上限，WSL 侧用 `put` 即可（备份 `bridge-prompt-arena.md.bak-put-vs-apply-patch-20261002-0040`，修改记录在提示词 §二）。
+  - CC-346 改成单项替换（依据：累积替换的数取决于候选表顺序、没有可解释含义；页面文案本来就写「替换后的伤害增量」）。回退：`git revert 1962c4b0`，或只删 `computeMainStatMarginals` 里还原那一行。
+  - CC-345 删掉旧 2D 循环里「整批先写一遍再让出」的空转段（A/B 证实无影响）。
+  - 3D 响应面被新运行顶掉 / 离开页面时不再展示半张网格（`complete=false` 直接丢弃）；旧实现没有取消入口，这是新增行为。
 - **已知坑**：
-  ① 纯类型卡的零差：直接比 `vite build` 产物（`npx vite build --outDir /tmp/x --emptyOutDir`，主仓库与 worktree 各一次，`diff -r`），约 20 秒，不必写探针。
-  ② 把 `ReturnType<typeof useConfigStore>` 机械替换后，**导入行要手工复查**：注释里提到 `useConfigStore` 会让脚本以为它还在用，留下 TS6196 未用导入（本轮 3 个文件）。`vue-tsc -b` 能抓到。
-  ③ 新代码里**求值入口**（要读 `$state` 的，目前只有 `createResourceCalc`）收 `EvalConfig`，其余管线 / 分析器函数收 `ConfigModel`；别再写 `ReturnType<typeof useConfigStore>`（会把 Pinia 依赖带回管线）。
-  ④ MCP 客户端与 wsl_exec 的坑同第 374 轮（尾部截断、`put` 写文件、超时后撞 JSON-RPC id ⇒ `rm -f /tmp/mcp.session`）。
+  ① 组件内分析器迁移时**让出主线程的位置要逐一照抄**（pre-flush watcher 只在让出时跑）；A/B 探针把旧循环逐行搬进测试在 UI store 上跑，比起 worktree 双跑省事（`/home/kaua/calc-arch/arenaE/zzImpactAB.test.ts` 可作模板）。
+  ② A/B 时**先跑新（场景）再跑旧（改 UI store）**，否则旧实现的残留会污染新实现的出生态。
+  ③ 实机点通：`/tmp/chromedeps` 若不存在按 `scripts/ui-check.mjs` 头注释用 `apt-get download` 补（本轮补过，WSL 重启后会丢）；`--radio` 在 `--step` 之前执行，切页签后的单选要用 `--step "eval:..."` 点；`--wait-for` 在全部 step 之后才轮询。
+  ⑤ **`pkill -f 模式` 会杀掉 wsl_exec 自己的 shell**（命令行含该模式，exit 15，后续命令静默不跑）：用 `pkill -f "[h]ttp.server 8199"` 方括号写法（已写进桥接提示词第 1 条）。
+  ④ `setsid nohup … npm run verify` 偶尔没起来（本轮一次，原因未明）：发车后 `sleep 4; ps … | grep "npm run verify"` 确认一下再去等。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
