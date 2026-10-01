@@ -770,21 +770,14 @@ export function computeOptimalGoldAllocations(
   }
   for (const e of stepsByKey.values()) e.values.sort((a, b) => a - b)
 
-  const cinemas: [number, number, number] = [0, 0, 0]
-  const wengineMods: [number, number, number] = [1, 1, 1]
-  // 基础音擎只认预设声明（与 baseGoldOf 同源）：不回读 store——setAgent 的自动推荐专武
-  // 不是持有物，泄漏进来会让下位替换被跳过、伤害虚高
-  const wEngines: [string, string, string] = [
-    preset.wEngines?.[0] ?? '',
-    preset.wEngines?.[1] ?? '',
-    preset.wEngines?.[2] ?? '',
-  ]
-  // 常驻配置（不占限定金，全量应用；含常驻音擎换装）
-  for (const s of preset.standardSteps ?? []) {
-    if (s.kind === 'cinema') cinemas[s.slot] = Math.max(cinemas[s.slot], s.value)
-    else if (s.kind === 'wengine' && s.wEngineId) wEngines[s.slot] = s.wEngineId
-    else wengineMods[s.slot] = Math.max(wengineMods[s.slot], s.value)
-  }
+  // CC-339：基础档（0 步限定金 + 全量常驻配置 + 预设基础音擎）统一复用 applyGoldSteps，消除三处手写初始化重复
+  const { cinemas, wengineMods, wEngines } = applyGoldSteps(
+    preset.goldSteps,
+    baseGold,
+    baseGold,
+    preset.standardSteps ?? [],
+    preset.wEngines ?? [],
+  )
   // 自动下位：非限定槽位换成装填池择优结果（覆盖 standardSteps 写入的常驻/A 音擎）；
   // 生效的限定下位按本体如实计入总限定金（有金就是金）
   const baseAutoLimited = substituteAutoEngines(wEngines, wengineMods, autoPicks)
@@ -985,6 +978,11 @@ function pickBestBuff(
  * （预设声明的静态权重/交互，而不是 `setAgent` 的 agent 默认值），见该文件头。
  */
 export function applyTeamToStore(configStore: ReturnType<typeof useConfigStore>, preset: TeamPreset) {
+  // CC-339：换人前先把三槽复位为 0命1精，防止上一预设末尾的高命座/高精炼残留进 setAgent 内的 syncTeammateBuffsFromTeam 与配装推荐
+  for (let slot = 0; slot < 3; slot++) {
+    configStore.setCinemaLevel(slot, 0)
+    configStore.setWEngineModLevel(slot, 1)
+  }
   for (let slot = 0; slot < 3; slot++) {
     configStore.setAgent(slot, preset.team[slot])
     if (preset.wEngines?.[slot]) configStore.setWEngine(slot, preset.wEngines[slot])
@@ -1064,8 +1062,9 @@ export function applyGoldToStore(
       .map(s => s.slot),
   )
   // 自动下位：最终非限定的槽位换成装填池择优结果（已买到限定专武的槽位不动）
-  substituteAutoEngines(wEngines, wengineMods, autoPicks, acquiredSlots)
+  const autoLimitedGold = substituteAutoEngines(wEngines, wengineMods, autoPicks, acquiredSlots)
   applyGoldAllocationToStore(configStore, { cinemas, wengineMods, wEngines })
+  return { ...applied, autoLimitedGold }
 }
 
 /**
@@ -1149,15 +1148,13 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
       applyTeamToStore(configStore, preset)
       // 难度变体轴绑定（未绑定 = 恢复快照轴状态，走自动匹配/用户轴）
       applyAxisBinding(configStore, snap, preset)
-      // 最优加金模式：先把队伍置于基础金分配（基础音擎 + 0命1精 + standardSteps），buff 推荐与贪婪搜索从同一起点
-      if (options.optimalGold) {
-        const b0 = baseGoldOf(preset)
-        applyGoldAllocationToStore(
-          configStore,
-          applyGoldSteps(preset.goldSteps, b0, b0, preset.standardSteps ?? [], preset.wEngines ?? []),
-        )
-      }
       const baseGold = baseGoldOf(preset)
+      // CC-339：无论是否开启 optimalGold，均先把队伍置于该预设基础金分配（基础音擎 + 0命1精 + standardSteps），
+      // 保证 buff 自动推荐（pickBestBuff）、自动下位音擎择优（computeAutoEnginePicks）与贪婪搜索从同一真实基础档出发
+      applyGoldAllocationToStore(
+        configStore,
+        applyGoldSteps(preset.goldSteps, baseGold, baseGold, preset.standardSteps ?? [], preset.wEngines ?? []),
+      )
       // boss 一次应用（与金数档无关）；必须在选 buff 前应用，推荐排序才基于所选期数的敌人配置
       configStore.applyBossPreset(
         { id: options.boss.id },
@@ -1203,10 +1200,9 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
         if (seen.has(totalGold)) continue
         seen.add(totalGold)
         const opt = optimalMap.get(totalGold)
+        const applied = opt ? null : applyGoldToStore(configStore, preset, gold, autoPicks)
         if (opt) {
           applyGoldAllocationToStore(configStore, opt)
-        } else {
-          applyGoldToStore(configStore, preset, gold, autoPicks)
         }
         const damage = opt ? opt.damage : calc.teamTotalDamage.value
         // 时间可行性校验：从引擎资源结果取精确动作总时间
@@ -1231,31 +1227,14 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
           stunWindowRatioOf(calc, configStore.enemy),
         )
         const std = preset.standardSteps ?? []
-        let cinemas: [number, number, number]
-        let wengineMods: [number, number, number]
-        let label: string
-        let standardLabel: string
+        const cinemas = opt ? opt.cinemas : applied!.cinemas
+        const wengineMods = opt ? opt.wengineMods : applied!.wengineMods
+        const label = opt ? opt.label : applied!.label
         // 自动下位中「仍穿在身上」的限定件数：有金就是金，按本体各计 1 金入总限定金
-        let autoLimitedGold = 0
-        if (opt) {
-          cinemas = opt.cinemas
-          wengineMods = opt.wengineMods
-          label = opt.label
-          autoLimitedGold = Math.max(0, opt.totalGold - totalGold)
-          standardLabel = std.length === 0 ? '' : `常驻：${std.map(s => s.label).join(' + ')}`
-        } else {
-          const r = applyGoldSteps(preset.goldSteps, gold, baseGold, std)
-          const acquiredSlots = new Set(
-            preset.goldSteps.slice(0, r.stepsApplied)
-              .filter(st => st.kind === 'wengine' && st.wEngineId)
-              .map(st => st.slot),
-          )
-          autoLimitedGold = substituteAutoEngines(r.wEngines, r.wengineMods, autoPicks, acquiredSlots)
-          cinemas = r.cinemas
-          wengineMods = r.wengineMods
-          label = r.label
-          standardLabel = r.standardLabel
-        }
+        const autoLimitedGold = opt ? Math.max(0, opt.totalGold - totalGold) : applied!.autoLimitedGold
+        let standardLabel = opt
+          ? (std.length === 0 ? '' : `常驻：${std.map(s => s.label).join(' + ')}`)
+          : applied!.standardLabel
         // 常驻配置行追加自动下位说明（两分支同格式：常驻：…｜自动下位：…｜含下位限定 N 金）
         const autoParts: string[] = []
         if (autoPicks.length > 0) autoParts.push(`自动下位：${autoPicks.map(p => p.label).join('、')}`)

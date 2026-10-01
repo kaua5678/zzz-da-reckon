@@ -159,8 +159,12 @@ export function computePositionCompare(
       const agentId = configStore.team[posSlot]?.agentId ?? ''
       const agentName = catalogStore.getAgent(agentId)?.name?.zhCN ?? agentId
 
+      // CC-339：第一次计算（真实队友增益下）一次性读取总伤、伤害明细、失衡池、异常积蓄池，
+      // 避免拐力差分关/开 buff 后触发第 3 次全量引擎求值，也防止盲目全开 group.buffs 绕过命座/额外能力门控污染失衡与积蓄
       const total = calc.teamTotalDamage.value
       const rows = calc.damagePoolRows.value
+      const pool = calc.stunPoolResult?.value
+      const anomalyPool = calc.anomalyPoolResult.value
       const selfDamage = rows
         .filter(r => r.slot === posSlot && r.sourceTag !== 'gift')
         .reduce((sum, r) => sum + r.totalDamage, 0)
@@ -183,22 +187,19 @@ export function computePositionCompare(
       let buffContribution = 0
       if (position !== 'main') {
         const group = catalogStore.getTeammateBuffGroup(agentId)
-        if (group) {
+        if (group && (group.buffs?.length ?? 0) > 0) {
           for (const buff of group.buffs ?? []) {
             configStore.toggleTeammateBuff(buff.id, false)
           }
           configStore.refreshTrigger++
           const withoutBuff = calc.teamTotalDamage.value
           buffContribution = Math.max(0, total - withoutBuff)
-          // 恢复该角色 buff（其余保持）
-          for (const buff of group.buffs ?? []) {
-            configStore.toggleTeammateBuff(buff.id, true)
-          }
+          // CC-339：按队伍真实门控（命座 / 额外能力 / 排他门）重同步恢复，禁止无条件全开 group.buffs
+          configStore.syncTeammateBuffsFromTeam()
           configStore.refreshTrigger++
         }
       }
 
-      const pool = calc.stunPoolResult?.value
       const stunCount = pool?.stunCount ?? 0
       // 逐槽失衡（含后台自动招式贡献）：该槽占比 = 该槽 / 全队合计
       const perSlot = pool?.perSlotStun ?? []
@@ -207,7 +208,7 @@ export function computePositionCompare(
       const dazeShare = totalDaze > 0 ? Math.round((daze / totalDaze) * 10000) / 100 : 0
 
       // 逐槽积蓄（异属性赠送归接收人口径）
-      const perSlotBuildUp = computePerSlotBuildUp(calc.anomalyPoolResult.value, team, catalogStore)
+      const perSlotBuildUp = computePerSlotBuildUp(anomalyPool, team, catalogStore)
       const buildUp = perSlotBuildUp[posSlot] ?? 0
       const totalBuildUp = perSlotBuildUp.reduce((sum, v) => sum + v, 0)
       const buildUpShare = totalBuildUp > 0 ? Math.round((buildUp / totalBuildUp) * 10000) / 100 : 0

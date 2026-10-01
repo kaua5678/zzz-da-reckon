@@ -1139,4 +1139,43 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
     expect(at4.wEngines[1]).toBe('13019')
     expect(at4.wengineMods[1]).toBe(5)
   })
+
+  it('CC-339：applyTeamToStore 换人前复位 0命1精，且非 optimalGold 下跨预设求值不残留上一预设高命座/高精炼', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const presetA = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
+    const presetB = teamPresets.find(p => p.team.includes('1191') || p.team.includes('1371')) ?? teamPresets[0]!
+
+    // 单独对 presetB 在 6 金下求值（干净 0命1精 起点）
+    const soloPoints = computeTeamComparePoints(calc, {
+      presets: [presetB],
+      goldLevels: [6],
+      boss: FAKE_BOSS,
+      phase: FAKE_PHASE,
+      buffs: [],
+      optimalGold: false,
+      autoEngine: true,
+    })
+
+    // 污染当前 store 为 6命5精，再先跑 presetA 直至 18 金、紧接着同批跑 presetB 6 金
+    config.setCinemaLevel(0, 6)
+    config.setWEngineModLevel(0, 5)
+    const batchPoints = computeTeamComparePoints(calc, {
+      presets: [presetA, presetB],
+      goldLevels: [6, 18],
+      boss: FAKE_BOSS,
+      phase: FAKE_PHASE,
+      buffs: [],
+      optimalGold: false,
+      autoEngine: true,
+    }).filter(pt => pt.presetId === presetB.id && pt.goldCount === soloPoints[0]!.goldCount)
+
+    expect(batchPoints[0]!.damage).toBeCloseTo(soloPoints[0]!.damage, 5)
+    expect(batchPoints[0]!.cinemas).toEqual(soloPoints[0]!.cinemas)
+    expect(batchPoints[0]!.wengineMods).toEqual(soloPoints[0]!.wengineMods)
+  })
 })

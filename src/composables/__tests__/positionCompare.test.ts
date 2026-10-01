@@ -74,4 +74,15 @@ describe('位置对比（主C/击破手/辅助，同款限定金）', () => {
     expect(r.dazeShare).toBeGreaterThanOrEqual(0)
     expect(r.dazeShare).toBeLessThanOrEqual(100)
   }, 120000)
+
+  it('CC-339：击破/辅助拐力差分后不误开未解锁命座 buff，三位置失衡次数与失衡/积蓄占比总和同源一致', async () => {
+    const [mainRow] = await runPosition('banyue-liuyin-lucia', 'main', 6)
+    const [breakerRow] = await runPosition('banyue-liuyin-lucia', 'breaker', 6)
+    const [supportRow] = await runPosition('banyue-liuyin-lucia', 'support', 6)
+    expect(breakerRow.stunCount).toBe(mainRow.stunCount)
+    expect(supportRow.stunCount).toBe(mainRow.stunCount)
+    expect(breakerRow.totalDamage).toBeCloseTo(mainRow.totalDamage, 5)
+    expect(supportRow.totalDamage).toBeCloseTo(mainRow.totalDamage, 5)
+    expect(mainRow.dazeShare + breakerRow.dazeShare + supportRow.dazeShare).toBeCloseTo(100, 1)
+  }, 120000)
 })

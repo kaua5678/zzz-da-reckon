@@ -133,7 +133,10 @@ export function clearDifficultyLevers(ctx: LadderCtx) {
  */
 export function resetDifficultyGoals(ctx: LadderCtx, team: [string, string, string]): number {
   clearDifficultyLevers(ctx)
-  for (let i = 0; i < 3; i++) ctx.config.setAgent(i, team[i])
+  for (let i = 0; i < 3; i++) {
+    ctx.config.setCinemaLevel(i, 0)
+    ctx.config.setWEngineModLevel(i, 1)
+  }
   ctx.config.applyTeamPreset(team)
   return ctx.calc.teamTotalDamage.value
 }
