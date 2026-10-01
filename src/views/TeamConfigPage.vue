@@ -806,7 +806,7 @@ const { statLabel, formatStatValue } = useStatLabel()
 
 // ========== 预设队伍（下拉，与「队伍对比」页共用 src/data/teamPresets/） ==========
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
-import { teamGoldOf, applyPresetInteractions } from '@/composables/teamCompare'
+import { teamGoldOf, applyTeamPresetConfig } from '@/composables/teamCompare'
 import { useTeamConfigPresetIO } from '@/composables/teamConfigPresetIO'
 const presetSelectValue = ref<string | null>(null)
 
@@ -859,10 +859,9 @@ function onPresetSelect(id: string | number | null) {
     return
   }
   try {
-    configStore.applyTeamPreset(preset.team)
+    // CC-351：与分析器同一映射（预设音擎 / 交互等），主页算的就是队伍对比报的那支队；命座 / 精炼保留用户档位
+    applyTeamPresetConfig(configStore, preset)
     lastAppliedPresetId.value = preset.id
-    // 预设交互清单 → 各角色交互次数（CC-257 唯一映射；未列的角色保持 setAgent 预填）
-    applyPresetInteractions(configStore, preset.interactions)
   } catch (cause: unknown) {
     message.error(cause instanceof Error ? cause.message : '应用队伍预设失败')
   }

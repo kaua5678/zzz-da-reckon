@@ -955,6 +955,20 @@ export function applyTeamToStore(configStore: ConfigModel, preset: TeamPreset) {
     configStore.setCinemaLevel(slot, 0)
     configStore.setWEngineModLevel(slot, 1)
   }
+  applyTeamPresetConfig(configStore, preset)
+}
+
+/**
+ * CC-351：**队伍预设 → store 的唯一映射**（主页选预设 `TeamConfigPage#onPresetSelect` 与分析器 `applyTeamToStore` 共用）。
+ * = 逐槽 `setAgent`（换人 + 推荐配装）→ 预设声明的音擎 / 驱动盘 / 连携 / 平A 权重覆盖 → 预设交互。
+ * 用逐槽 `setAgent` 而非 `applyTeamPreset`：后者在推荐未加载时抛错，而分析器单测普遍不加载推荐（金标在兜底盘上录制），
+ * 换过去会让金标整体漂移；主页入口自己先查 `catalogStore.buildRecsLoaded`（未就绪就提示返回），防线不丢。
+ * **不动命座 / 精炼**：分析器在外层先复位 0命1精（CC-339）；主页保留用户所选档位（有意的 UX，见 store#setAgent 注释）。
+ * 修前主页只做 `applyTeamPreset` + 交互 ⇒ 拿的是**推荐音擎**而非预设 `wEngines`（104 预设里 65 个槽不同，多为辅助位
+ * 预设用非限定音擎、推荐给限定专武）：主页算的不是队伍对比报的那支队，「预设金数 → 保存到预设文件」还会把推荐专武
+ * 当成「换限定音擎」凭空写出一条本体加金步（`buildGoldStepsFromConfig` 以预设 wEngines 为基础音擎比对）。
+ */
+export function applyTeamPresetConfig(configStore: ConfigModel, preset: TeamPreset) {
   for (let slot = 0; slot < 3; slot++) {
     configStore.setAgent(slot, preset.team[slot])
     if (preset.wEngines?.[slot]) configStore.setWEngine(slot, preset.wEngines[slot])
