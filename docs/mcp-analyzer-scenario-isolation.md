@@ -97,6 +97,14 @@
 - 新测试（`teamTimeline.test.ts` 末尾「CC-343 独立场景」）：时间线 + 菲林每次进度回报时 UI `$state` 与开跑前逐字相同。**反证**：同样的断言套在旧 API 上（base worktree 临时测试）失败——旧实现 yield 时 UI 确实看得见中间态。
 - 全量 verify EXIT 0（449 文件 / 4129 测试通过）。
 
+### 3.2 第 373 轮（位置对比 T3 + 难度曲线 + 队伍对比，`851f232f`）
+
+- `positionCompare.ts#computePositionCompare`（执行卡 T3）、`difficultyCurve.ts#computeDifficultyCurves`、`teamCompare.ts#computeTeamComparePoints` 三个入口改收 `scenario: AnalysisContext`，函数体首行 `const { config: configStore, calc } = scenario`，轴绑定基准改用 `const baseAxis = configStore.getAxisState()`（`applyAxisBinding` 签名同步收紧为 `snap: StunAxisState`）；删掉 3 处 `snapshotStore / restoreStore` 与 `try / finally`（`git diff -w`：12 文件 +56 / −70）。
+- `PositionComparePage.vue#run` 与 `TeamComparePage.vue` 的 `runCompare` / `runCurves` 改为 `await withAnalysisScenario(scenario => ...)`；两页只为传参存在的 `useResourceCalc()` 一并删除；`TeamComparePage.vue:1139` 会话缓存键的 `snap: snapshotStore(configStore)` 改为 `snap: cloneConfigState(configStore.$state)`。
+- **A/B 逐字节相同**：
+  - 位置对比（6 队 × breaker/support，6 金）：新旧输出 md5 均为 `93495371f9a5f532e43462089a36105f`（5191 字节，`cmp` 无输出）；
+  - 队伍对比 + 难度曲线（3 队 × 0/6/12 金开最优加金 + 自动下位 + 期牌，以及 `auto-1521-1361-1311` / `banyue-liuyin-lucia` 含切轴档爬梯）：新旧输出 md5 均为 `f0bf1c28269e365feb74a47b645b5d39`（12867 字节，`cmp` 无输出）。
+
 ## 4. 迁移进度（每迁一个：改本表 + 把文件加进 `analysisScenario.test.ts` 的 `MIGRATED_ANALYZERS`）
 
 | 分析器 | 入口 | 调用方 | 同步 / 异步 | 状态 |
@@ -106,10 +114,10 @@
 | 菲林模拟 `composables/teamTimelineFilm.ts` | `computeFilmSimulation` | `chartRunners.ts` | 异步 | ✅ 第 371 轮 `d9e39042`（arena-D） |
 | 抽卡规划 `composables/pullPlannerEngine.ts` | `runPullPlanner` | `components/charts/PullPlannerChart.vue` | 异步 | 待迁 |
 | 自由对比 `composables/freeCompare/engine.ts` | `computeFreeCompare` | `views/FreeComparePage.vue` | 异步 | 待迁 |
-| 位置对比 `composables/positionCompare.ts` | `computePositionCompare` | `views/PositionComparePage.vue` | 同步 | 待迁 |
-| 难度曲线 `composables/difficultyCurve.ts`（内含 `difficultyLadder`） | `computeDifficultyCurves` | `views/TeamComparePage.vue` | 同步 | 待迁 |
-| 队伍对比 `composables/teamCompare.ts` | `computeTeamComparePoints` | `views/TeamComparePage.vue` | 同步 | 待迁（单测用假 calc `engineScoreCalc(config, score)`，见 §5 第 5 步） |
-| `views/TeamComparePage.vue:1139` | 只用 `snapshotStore(configStore)` 拼会话缓存键，不恢复 | — | — | 删 configSnapshot 前改成状态指纹（如 `JSON.stringify(cloneConfigState(configStore.$state))`，或只取求值相关键） |
+| 位置对比 `composables/positionCompare.ts` | `computePositionCompare` | `views/PositionComparePage.vue` | 同步 | ✅ 第 373 轮 `851f232f`（arena-A，T3） |
+| 难度曲线 `composables/difficultyCurve.ts`（内含 `difficultyLadder`） | `computeDifficultyCurves` | `views/TeamComparePage.vue` | 同步 | ✅ 第 373 轮 `851f232f`（arena-A） |
+| 队伍对比 `composables/teamCompare.ts` | `computeTeamComparePoints` | `views/TeamComparePage.vue` | 同步 | ✅ 第 373 轮 `851f232f`（arena-A） |
+| `views/TeamComparePage.vue:1139` | 会话缓存键 `snap` | — | — | ✅ 第 373 轮 `851f232f` 改用 `cloneConfigState(configStore.$state)` |
 
 ## 5. 迁移配方（一个分析器一张卡，零差简化卡）
 

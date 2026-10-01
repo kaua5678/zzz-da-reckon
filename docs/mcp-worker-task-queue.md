@@ -79,16 +79,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
-**2026-10-01 arena-A 第 370 轮（与 arena-C 第 369 轮 `02049db9` 并行，worktree `wtA-370`）：CC-344 队列 §3 执行卡 T1/T2 完成 + `applyDeployConfig` 复用 `applyTeamToStore(autoBuild=true)` 收口跨队精炼/命座百暴泄漏，代码 `0c5e00cb`，文档见本轮 docs 提交，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+**2026-10-01 arena-A 第 373 轮（与 arena-C 第 372 轮 `wtA-s2b` 并行，worktree `wtA-373`）：CC-343 S2 位置对比（执行卡 T3）+ 难度曲线 + 队伍对比 + TeamComparePage 缓存键迁独立场景，代码 `851f232f`，文档见本轮 docs 提交，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
 - **做到哪**：
-  1. **T1 完成 `0c5e00cb`（`src/composables/configSnapshot.ts` + `configSnapshot.test.ts`）**：`StoreSnapshot.globalBuffs` 从 `unknown[]` 收紧为 `GlobalBuffRow[]`，`restoreStore` 去掉 `as never[]` 并改为 `...clone(snap.globalBuffs)` 深拷贝写回（补反复恢复后原地改写不污染快照的回归测试）。全仓 `src/` 非测试代码中的 store 状态 `unknown[]` 已清零（剩余 4 处均为 `globalThis.__fold*` 调试钩子与 `modelingGaps.ts` 的通用 `SetPieceLike.effects?: unknown[] | null`）。
-  2. **T2 完成 `0c5e00cb`（`src/utils/modelingGaps.ts` + `src/views/RunArchivePage.vue`）**：导出 `CinemaLedgerEntry` / `MechanicLedgerEntry`，`RunArchivePage.vue` 用 `readLedger<T>(url)` 收紧账本加载类型并去掉全部 4 处 `as any` / `as never`。
-  3. **`applyDeployConfig` 装配顺序收口（`src/composables/runArchiveDeploy.ts` + `runArchiveDeploy.test.ts`）**：改调 `teamTimelineStore#applyTeamToStore(..., true)` 先写命座/精炼再走 `applyTeamPreset`，消除上一队残留高精/高命漏入 `applyBuildRecommendationForSlot` 百暴副词条计算（实测艾莲 1 精在猫又 4 精队之后部署，修前 `critRate` 副词条从 12 步掉到 6 步、总伤漂移；修后两次部署副词条与总伤完全一致），删去不再需要的尾随 `syncTeammateBuffsFromTeam()` 补丁；保留 `stunAxes.splice(0)` / `stunAxisPlans.splice(0)` 不动总开关。详见 `docs/mcp-stun-dual-source.md` §24.185 与 `docs/mcp-r6-refactor-list.md` §8 第 370 行。
-  4. **验证**：rebase 到 `02049db9` 后 `npx vue-tsc -b --noEmit` 0 错；`configSnapshot.test.ts`（6/6）、`runArchiveDeploy.test.ts`（12/12）、`analysisScenario.test.ts`（5/5）、`teamCompare.test.ts`（36/36）、`moveFusion.test.ts`（24/24）、`src/utils`（16 文件 107 用例）、`checkGuards.test.ts`（143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 0c5e00cb`。
+  1. **T3 完成 `851f232f`（`src/composables/positionCompare.ts` + `src/views/PositionComparePage.vue` + 测试）**：`computePositionCompare` 改收 `scenario: AnalysisContext`，轴基准改用 `configStore.getAxisState()`，删 `snapshotStore / restoreStore` 与 `try / finally`；`PositionComparePage#run` 改用 `withAnalysisScenario` 并删 `useResourceCalc()`。A/B 零差：6 队 × breaker/support（6 金）新旧输出 md5 均为 `93495371f9a5f532e43462089a36105f`（5191 字节，`cmp` 无输出）。
+  2. **难度曲线 + 队伍对比迁独立场景 `851f232f`（`src/composables/difficultyCurve.ts` + `src/composables/teamCompare.ts` + `src/views/TeamComparePage.vue` + 测试）**：`computeDifficultyCurves` 与 `computeTeamComparePoints` 改收 `scenario: AnalysisContext`，`applyAxisBinding` 第二个参数收紧为 `StunAxisState`，删两处 `snapshotStore / restoreStore` 与 `try / finally`；`TeamComparePage.vue` 的 `runCompare` / `runCurves` 改用 `withAnalysisScenario`、删 `useResourceCalc()`，且 `1139` 行会话缓存键 `snap: snapshotStore(configStore)` 改为 `snap: cloneConfigState(configStore.$state)`。A/B 零差：3 队 × 0/6/12 金（最优加金 + 自动下位 + 期牌）与 2 队爬梯（含切轴档）新旧输出 md5 均为 `f0bf1c28269e365feb74a47b645b5d39`（12867 字节，`cmp` 无输出）。
+  3. **源码锁与验证**：`analysisScenario.test.ts#MIGRATED_ANALYZERS` 新增 `positionCompare.ts`、`difficultyCurve.ts`、`teamCompare.ts`（现已锁 6 个模块）；`npx vue-tsc -b --noEmit` 0 错；`analysisScenario.test.ts`（5/5）、`positionCompare.test.ts`（4/4）、`positionCompareDebug.test.ts`（3/3）、`difficultyCurve.test.ts`（24/24）、`teamCompare.test.ts`（36/36）、`timeLedger.test.ts`（2/2）、`checkGuards.test.ts`（143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 851f232f`。
+  4. 第 370 轮（arena-A）：CC-344 队列 §3 T1/T2 完成 + `applyDeployConfig` 复用 `applyTeamToStore(autoBuild=true)` `0c5e00cb`。
 - **下一步**：
-  1. 配合 arena-C 的 CC-343（`02049db9`，分析器独立场景 `createAnalysisScenario` / `withAnalysisScenario`）推进剩余分析器从 `snapshotStore/restoreStore` 向独立场景的阶段迁移（见 `docs/mcp-analyzer-scenario-isolation.md`）。
-  2. 复核 `docs/mcp-r6-refactor-list.md` §8 重开条件（坑 25，到期日 2026-10-31）。
-  3. 待裁决项保持不变（testOnly 关卡牌 §1.3 等）。
+  1. 待 arena-C 第 372 轮（`pullPlannerEngine.ts` + `freeCompare/engine.ts`）合入后，`docs/mcp-analyzer-scenario-isolation.md` §4 的全部 8 个分析器入口与 `TeamComparePage` 缓存键均已迁完，可直接执行 **S3：删除 `src/composables/configSnapshot.ts` 与 `src/composables/__tests__/configSnapshot.test.ts`**（那时 `configSnapshot.ts` 在全仓已无任何调用方）。
 
 **2026-10-01 21:45 arena-D 第 371 轮（开工 21:27 时无并行会话，HEAD `48f10d3e`；REQUIREMENTS.md 429 行无新条目）：CC-343 S2 时间线 + 菲林迁独立场景，代码 `d9e39042`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
 - **做到哪**：`teamTimeline.ts` 4 个入口 + `teamTimelineFilm.ts` 改收 `AnalysisContext`；运行器 / 4 个图表组件 / `useSlotSweep` 改用 `withAnalysisScenario`；A/B 逐字节相同（md5 `ad4581ba`）；新测试「yield 时 UI `$state` 不变」在旧 API 上反证失败。详见 `docs/mcp-analyzer-scenario-isolation.md` §3.1、§4。
@@ -255,49 +253,4 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 （T1、T2 已于第 370 轮 `0c5e00cb` 完成）
 
-<!-- card:T3 -->
-任务 T3：位置对比分析器改在独立场景求值（CC-343 迁移，零差简化）。仓库 /home/kaua/projects/zzz-calculator（WSL）。
-工作区：先 `git -C /home/kaua/projects/zzz-calculator worktree add --detach /home/kaua/calc-arch/wtT3 HEAD && ln -s /home/kaua/projects/zzz-calculator/node_modules /home/kaua/calc-arch/wtT3/node_modules`，**只在 /home/kaua/calc-arch/wtT3 里改**，不碰主仓库。
-背景：`src/composables/positionCompare.ts#computePositionCompare(calc, presets, boss, phase, options)` 现在内部 `useConfigStore()` 改写 UI store，用 `snapshotStore` / `restoreStore`（来自 '@/composables/configSnapshot'）在 try/finally 里恢复。新做法：调用方用 `withAnalysisScenario`（'@/composables/analysisScenario'）建独立场景传进来，分析器只在场景上改写。参照已迁好的 `src/composables/teamTimeline.ts#computeSlotSweepPoints`。
-要做：
-1. positionCompare.ts：第一个参数 `calc: Calc` 改成 `scenario: AnalysisContext`（`import type { AnalysisContext } from '@/composables/analysisScenario'`）；函数体第一行 `const configStore = useConfigStore()` 改成 `const { config: configStore, calc } = scenario`；删掉 `const snap = snapshotStore(configStore)`；删掉 `try {` 和 `} finally { restoreStore(configStore, snap) }`，中间代码整体左移 2 格，`return out` 保留在函数末尾；删掉不再用的 `useConfigStore` / `snapshotStore` / `restoreStore` 导入和 `type Calc` 别名（若不再用）。
-2. src/views/PositionComparePage.vue#run()：`const calc = useResourceCalc()` 与下一行改成 `results.value = await withAnalysisScenario(scenario => computePositionCompare(scenario, presets, boss, phase, { gold: gold.value, position: position.value }))`；`catalog.load()` / `loadTeammateBuffs()` 两行 await 保留在它前面；若 `useResourceCalc` 导入不再用就删。
-3. 测试 src/composables/__tests__/positionCompare.test.ts 与 positionCompareDebug.test.ts：`computePositionCompare(calc, ` 改成 `computePositionCompare({ config: useConfigStore(), calc }, `（这两个测试不测隔离，直接把 harness 的 store 与 calc 作为上下文；需要时补 `import { useConfigStore } from '@/stores/config'`）。positionCompareDebug.test.ts 第 70 行附近单独用 calc 读 damagePoolRows 的那段不要改。
-4. src/composables/__tests__/analysisScenario.test.ts：`MIGRATED_ANALYZERS` 数组末尾加 `'../positionCompare.ts'`。
-5. A/B 零差：在主仓库 HEAD 建第二个 worktree `/home/kaua/calc-arch/wtT3-base`（同第 0 步命令，换目录名）。写探针文件 zzPosAB.test.ts（内容见下），分别复制到两个 worktree 的 src/composables/__tests__/ 下，base 里用 `PROBE_API=old`、wtT3 里用 `PROBE_API=new`，各跑 `PROBE_OUT=/tmp/t3-<old|new>.json npx vitest run src/composables/__tests__/zzPosAB.test.ts`，然后 `cmp /tmp/t3-old.json /tmp/t3-new.json` 必须无输出；跑完删掉两个探针文件。
-探针 zzPosAB.test.ts：
-```ts
-import { readFileSync, writeFileSync } from 'node:fs'
-import { it } from 'vitest'
-import { setupHarness } from '@/test/harness'
-import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePositionCompare } from '@/composables/positionCompare'
-import { teamPresets } from '@/data/teamPresets'
-import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
-const bossData = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as BossPresetFile
-it('probe', async () => {
-  const boss = bossData.bosses[0] as BossPreset
-  const phase = boss.phases[0]
-  const presets = teamPresets.slice(0, 6)
-  await setupHarness([{ agentId: presets[0].team[0] }, { agentId: presets[0].team[1] }, { agentId: presets[0].team[2] }])
-  const catalog = useCatalogStore(); await catalog.load(); await catalog.loadTeammateBuffs()
-  const out: unknown[] = []
-  for (const position of ['breaker', 'support'] as const) {
-    const args = [presets, boss, phase, { gold: 6, position }] as const
-    if (process.env.PROBE_API === 'new') {
-      const { withAnalysisScenario } = await import('@/composables/analysisScenario')
-      out.push(await withAnalysisScenario(s => (computePositionCompare as any)(s, ...args)))
-    } else out.push((computePositionCompare as any)(useResourceCalc(), ...args))
-  }
-  writeFileSync(process.env.PROBE_OUT as string, JSON.stringify(out))
-}, 600000)
-```
-验收（全部满足才算 done）：
-- 在 wtT3 里 `timeout -s KILL 600 npx vue-tsc -b` 退出 0；
-- `npx vitest run src/composables/__tests__/positionCompare.test.ts src/composables/__tests__/positionCompareDebug.test.ts src/composables/__tests__/analysisScenario.test.ts` 全过；
-- `grep -nE "useConfigStore\(\)|snapshotStore|restoreStore" src/composables/positionCompare.ts` 无输出；
-- 第 5 步 `cmp` 无输出（贴两个 json 的 md5sum 和字节数）。
-不许：改上面以外的文件；新加 as any / as never（探针文件除外，它不入库）；git commit / push；删 worktree（主代理复核后删）。
-报告首行 `STATUS: done` 或 `STATUS: blocked`，随后贴 wtT3 里的 `git diff --stat`、`git diff -w --stat` 和各验收命令尾部输出。
-<!-- /card:T3 -->
+（当前无待办执行卡；T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成）
