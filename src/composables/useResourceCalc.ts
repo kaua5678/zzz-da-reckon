@@ -29,6 +29,7 @@ import type {
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { panelAt } from '@/core/panel'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG } from '@/core/anomalyPool/helpers'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import * as ResourceCalcHelpers from './resourceCalc/helpers'
 import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
@@ -612,27 +613,30 @@ export function useResourceCalc() {
   )
 
   const anomalyDamageEvents = computed<AnomalyEventRecord[]>(() => {
-    const specs: Record<string, { label: string; baseTicks?: number; tickInterval?: number; single?: boolean }> = {
-      fire: { label: '灼烧', baseTicks: 20, tickInterval: 0.5 },
-      electric: { label: '感电', baseTicks: 10, tickInterval: 1 },
-      ether: { label: '侵蚀', baseTicks: 20, tickInterval: 0.5 },
-      physical: { label: '强击', single: true },
-      ice: { label: '碎冰', single: true },
+    // CC-337：DoT 参数与单次倍率统一从 STANDARD_DOT_CONFIG / ANOMALY_SINGLE_HIT_MULTIPLIER 读取（与 damagePoolAnomaly 同源）
+    const labels: Record<string, string> = {
+      fire: '灼烧',
+      electric: '感电',
+      ether: '侵蚀',
+      physical: '强击',
+      ice: '碎冰',
     }
     const events: AnomalyEventRecord[] = []
     for (const build of anomalyVirtualPanels.value) {
       const prog = anomalyPoolResult.value?.perElement.find(item => item.element === build.element)
       if (!prog) continue
-      const spec = specs[prog.element]
-      if (!spec) continue
+      const label = labels[prog.element]
+      if (!label) continue
+      const dot = STANDARD_DOT_CONFIG[prog.element]
+      const singleMult = ANOMALY_SINGLE_HIT_MULTIPLIER[prog.element] ?? 0
       const durationBonus = getTeamAnomalyDurationBonus(configStore, catalogStore, prog.element)
-      const formula = spec.single
-        ? `${spec.label} ${prog.element === 'ice' ? '500%' : '713%'} 单次`
-        : `${spec.label} ${prog.element === 'electric' ? '125' : prog.element === 'ether' ? '62.5' : '50'}% × ${(spec.baseTicks ?? 0) + Math.round((durationBonus ?? 0) / (spec.tickInterval ?? 1))} tick`
+      const formula = dot
+        ? `${label} ${dot.tickMultiplier}% × ${dot.totalTicks + Math.round((durationBonus ?? 0) / dot.tickInterval)} tick`
+        : `${label} ${singleMult}% 单次`
       events.push({
         id: `anomaly-damage-event-${prog.element}`,
         type: 'anomaly_trigger',
-        label: spec.label,
+        label,
         source: `${elementLabel(prog.element)}异常虚拟面板`,
         count: prog.triggerCount,
         formula,

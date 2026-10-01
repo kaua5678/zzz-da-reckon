@@ -94,10 +94,23 @@ export const IMPACT_VARIABLES: ImpactVariable[] = [
   // { id: 'slot1Atk', label: '角色1攻击力', defaultRange: [1000, 5000], suffix: '' },
 ]
 
+const RESISTANCE_VAR_ELEMENTS: Readonly<Record<string, string>> = {
+  physicalResistance: 'physical',
+  fireResistance: 'fire',
+  iceResistance: 'ice',
+  electricResistance: 'electric',
+  etherResistance: 'ether',
+  windResistance: 'wind',
+}
+
 /**
  * 从 configStore 读取变量当前值。
  */
 export function readImpactVar(configStore: any, varId: string): number {
+  const resEl = RESISTANCE_VAR_ELEMENTS[varId]
+  if (resEl) {
+    return configStore.enemy.damageResistances?.[resEl] ?? configStore.enemy.resistances?.[resEl] ?? 20
+  }
   switch (varId) {
     case 'bossStunValue':
       return configStore.enemy.stunValue
@@ -109,18 +122,6 @@ export function readImpactVar(configStore: any, varId: string): number {
       return configStore.enemy.stunVuln ?? 1.5
     case 'anomalyCoeff':
       return configStore.enemy.anomalyCoeff ?? 1
-    case 'physicalResistance':
-      return configStore.enemy.damageResistances?.physical ?? configStore.enemy.resistances?.physical ?? 20
-    case 'fireResistance':
-      return configStore.enemy.damageResistances?.fire ?? configStore.enemy.resistances?.fire ?? 20
-    case 'iceResistance':
-      return configStore.enemy.damageResistances?.ice ?? configStore.enemy.resistances?.ice ?? 20
-    case 'electricResistance':
-      return configStore.enemy.damageResistances?.electric ?? configStore.enemy.resistances?.electric ?? 20
-    case 'etherResistance':
-      return configStore.enemy.damageResistances?.ether ?? configStore.enemy.resistances?.ether ?? 20
-    case 'windResistance':
-      return configStore.enemy.damageResistances?.wind ?? configStore.enemy.resistances?.wind ?? 20
     case 'slot1TimeWeight':
       return configStore.team?.[1]?.basicAttackTimeWeight ?? 1
     default:
@@ -132,6 +133,13 @@ export function readImpactVar(configStore: any, varId: string): number {
  * 向 configStore 写入变量值。
  */
 export function writeImpactVar(configStore: any, varId: string, value: number): void {
+  const resEl = RESISTANCE_VAR_ELEMENTS[varId]
+  if (resEl) {
+    const current = { ...(configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}) }
+    current[resEl] = value
+    configStore.setEnemy({ damageResistances: current })
+    return
+  }
   switch (varId) {
     case 'bossStunValue':
       configStore.setEnemy({ stunValue: value })
@@ -148,42 +156,6 @@ export function writeImpactVar(configStore: any, varId: string, value: number): 
     case 'anomalyCoeff':
       configStore.setEnemy({ anomalyCoeff: value })
       break
-    case 'physicalResistance': {
-      const current = { ...(configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}) }
-      current.physical = value
-      configStore.setEnemy({ damageResistances: current })
-      break
-    }
-    case 'fireResistance': {
-      const current = { ...(configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}) }
-      current.fire = value
-      configStore.setEnemy({ damageResistances: current })
-      break
-    }
-    case 'iceResistance': {
-      const current = { ...(configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}) }
-      current.ice = value
-      configStore.setEnemy({ damageResistances: current })
-      break
-    }
-    case 'electricResistance': {
-      const current = { ...(configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}) }
-      current.electric = value
-      configStore.setEnemy({ damageResistances: current })
-      break
-    }
-    case 'etherResistance': {
-      const current = { ...(configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}) }
-      current.ether = value
-      configStore.setEnemy({ damageResistances: current })
-      break
-    }
-    case 'windResistance': {
-      const current = { ...(configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}) }
-      current.wind = value
-      configStore.setEnemy({ damageResistances: current })
-      break
-    }
     case 'slot1TimeWeight':
       configStore.setBasicAttackTimeWeight(1, value)
       break

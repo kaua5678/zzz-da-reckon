@@ -78,6 +78,12 @@ export function buildMechanicTeamMembers(
 }
 
 /** 角色 combatBuffs 是否已自带 3/5 命技能等级提升（避免通用规则重复叠加） */
+function applyDefaultCinemaSkillLevelBonus(panel: PanelValues, agent: any, cinema: number): void {
+  if (!agentHasCinemaSkillLevelBuff(agent)) {
+    panel.skillLevelBonus = (panel.skillLevelBonus ?? 0) + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
+  }
+}
+
 function agentHasCinemaSkillLevelBuff(agent: any): boolean {
   return (agent?.combatBuffs?.cinemaBuffs ?? []).some((cinema: any) =>
     (cinema.buff?.effects ?? []).some((e: any) => e.stat === 'skillLevelBonus'),
@@ -557,17 +563,8 @@ export function computePanelPhases(
     },
   )
 
-  // 局外回能总计（基础 × 局外加成 + 固定），供回能转模按局外口径读取。
-  // 第 194 轮：同时盖到局外面板上——此前局外面板该字段恒为 emptyPanel 缺省 1.2（从未盖章），
-  // 任何经 `getOutOfCombatPanel` / `sourcePanelPhase: 'outOfCombat'` 读它的新消费方都会静默拿到陈旧值
-  // （CC-127 洛克茜读错回能字段同类陷阱）。当时无消费方读局外面板上的该字段 ⇒ 零差。
-  const energyRegenOutOfCombat = (result.outOfCombat.energyRegen ?? 1.2)
-    * (1 + (result.outOfCombat.energyRegenBonusPct ?? 0) / 100)
-    + (result.outOfCombat.energyRegenBonusFlat ?? 0)
-  result.outOfCombat.energyRegenOutOfCombat = energyRegenOutOfCombat
-  // 局内面板（全局 buff 已并入 calcPanel，不再后补）
+  // 局内面板（全局 buff 已并入 calcPanel，不再后补；energyRegenOutOfCombat 已由 calcPanel 在局外/局内面板统一盖章，CC-337）
   const panel: PanelValues = { ...result.inCombat }
-  panel.energyRegenOutOfCombat = energyRegenOutOfCombat
   // 额外能力触发条件统一判定（声明式 spec.additionalAbility）：满足才写面板标记，模块/伤害池按标记开关。
   const aaSpec = getAgentSpec(agent.id)?.additionalAbility
   if (aaSpec) {
@@ -633,10 +630,7 @@ export function computePanelPhases(
   // （走**队伍级面板效果**钩子，派发点在 `:740` 的 `teamPanelEffects` 循环——该加成**随目标槽
   // 不同而不同**，写进蕾米自己的 `applyPanel` 只会加到蕾米本人面板，即分诊 §2.1 的 P2 陷阱）。
   // 3命技能等级+2、5命+4，统一进入伤害/失衡倍率系数；角色buff已带此条的跳过通用规则
-  const cinema = char.cinemaLevel ?? 0
-  if (!agentHasCinemaSkillLevelBuff(agent)) {
-    panel.skillLevelBonus = (panel.skillLevelBonus ?? 0) + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
-  }
+  applyDefaultCinemaSkillLevelBonus(panel, agent, char.cinemaLevel ?? 0)
 
   // 入队时长加成按元素写入面板，异常池覆盖率/紊乱/乱流统一读取。
   // ★★ **必须是加法，不能是赋值**（R63，2026-09-20 round 63）：这四个字段**不止一个写者** ——
@@ -707,10 +701,7 @@ export function computeEntrySnapshotPanel(
     },
   )
   const panel = { ...result.inCombat }
-  const cinema = char.cinemaLevel ?? 0
-  if (!agentHasCinemaSkillLevelBuff(agent)) {
-    panel.skillLevelBonus = (panel.skillLevelBonus ?? 0) + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
-  }
+  applyDefaultCinemaSkillLevelBonus(panel, agent, char.cinemaLevel ?? 0)
   return panel
 }
 /**

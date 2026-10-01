@@ -16,6 +16,8 @@ import { wEngineConditionMet, wEngineEffectRequirementMet, type WEngineCondition
 // 此处 re-export 保持引擎侧既有调用点与 `@/core/buff` 引用零改动；展示层改 import `@/data/…`。
 export { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
+export { calcEnergyRegenTotal, calcFlashEnergyRegenTotal } from '@/data/agentPanelStats'
+import { calcEnergyRegenTotal, calcFlashEnergyRegenTotal } from '@/data/agentPanelStats'
 
 function targetedStatKey(stat: string, target?: string): string {
   const normalized = normalizeSkillDamageTarget(target)
@@ -390,34 +392,38 @@ function parseOutOfCombatStatRequirement(raw: unknown): { stat: string; min: num
   return null
 }
 
-/** 结构化属性门槛解析（teamBuff 通道复用；导出仅为 inCombatBuffs 门槛判断） */
-export const parseStatRequirement = parseOutOfCombatStatRequirement
-
 export interface DiscSetRequirementContext {
   agent: Agent
   /** 装备者精确局外面板（4 件套 outOfCombatStat 门槛判据，键为面板字段名；CC-108） */
   outOfCombatStats: Readonly<Record<string, number>>
 }
 
-function discRequirementMet(req: EffectRequirement | undefined, ctx: DiscSetRequirementContext): boolean {
+/**
+ * 驱动盘门槛判定（CC-337：selfBuff 与 inCombatBuffs#teamBuff 共用唯一实现）：
+ * 装备者特化 / 属性 + 精确局外面板属性门槛（未传面板或字段缺失时按不满足处理）。
+ */
+export function discRequirementMet(
+  req: EffectRequirement | undefined,
+  agent: Agent,
+  outOfCombatStats?: Readonly<Record<string, number>> | PanelValues,
+): boolean {
   if (!req) return true
-  if (req.specialty && ctx.agent.specialty !== req.specialty) return false
-  if (req.attribute && ctx.agent.attribute !== req.attribute) return false
+  if (req.specialty && agent.specialty !== req.specialty) return false
+  if (req.attribute && agent.attribute !== req.attribute) return false
   const statReq = parseOutOfCombatStatRequirement(req.outOfCombatStat)
-  if (statReq && (ctx.outOfCombatStats[statReq.stat] ?? 0) < statReq.min) return false
+  if (statReq) {
+    const value = outOfCombatStats ? (outOfCombatStats as Readonly<Record<string, number>>)[statReq.stat] : undefined
+    if (value == null || value < statReq.min) return false
+  }
   return true
 }
 
-function discEffectPassesRequirement(effect: BuffEffect, ctx: DiscSetRequirementContext): boolean {
-  return discRequirementMet(effect.requirement, ctx)
-}
-
-/** {attribute} 模板按装备者属性落成具体 stat（自由蓝调 4pc：对应属性异常积蓄抗性降低）。
+/** {attribute} 模板按装备者属性落成具体 stat（自由蓝调 4pc：对应属性异常积蓄抗性降低；CC-337 selfBuff/teamBuff 单源复用）。
  * 属性 id 是小写（ether/fire/…），敌方减益 stat 名里属性段首字母大写（enemyEther…）。 */
-function resolveDiscStatTemplate(effect: BuffEffect, ctx: DiscSetRequirementContext): BuffEffect {
+export function resolveDiscStatTemplate(effect: BuffEffect, attribute: string): BuffEffect {
   const stat = effect.stat as string
   if (!stat.includes('{attribute}')) return effect
-  return { ...effect, stat: resolveAttributeTemplateStat(stat, ctx.agent.attribute) as StatId }
+  return { ...effect, stat: resolveAttributeTemplateStat(stat, attribute) as StatId }
 }
 
 /** 属性模板解析（导出给 teamBuff 通道：自由蓝调挂在敌人 8s，全队同属性积蓄都吃，按装备者属性落键） */
@@ -447,18 +453,18 @@ function collectDriveDiscBuffs(
     // 2件套效果（count>=2 时生效）
     if (count >= 2 && set.twoPiece?.effects) {
       for (const e of set.twoPiece.effects) {
-        if (!discEffectPassesRequirement(e, ctx)) continue
-        out.push(resolveDiscStatTemplate(e, ctx))
+        if (!discRequirementMet(e.requirement, ctx.agent, ctx.outOfCombatStats)) continue
+        out.push(resolveDiscStatTemplate(e, ctx.agent.attribute))
       }
     }
 
     // 4件套效果
     if (count >= 4 && set.fourPiece?.selfBuff) {
       const group = set.fourPiece.selfBuff
-      if (!discRequirementMet(group.requirement, ctx)) continue
+      if (!discRequirementMet(group.requirement, ctx.agent, ctx.outOfCombatStats)) continue
       for (let e of group.effects ?? []) {
-        if (!discEffectPassesRequirement(e, ctx)) continue
-        e = resolveDiscStatTemplate(e, ctx)
+        if (!discRequirementMet(e.requirement, ctx.agent, ctx.outOfCombatStats)) continue
+        e = resolveDiscStatTemplate(e, ctx.agent.attribute)
         if (group.scope === 'outOfCombat') out.push(e)
         else inCombat.push(e)
       }
@@ -472,12 +478,8 @@ function collectDriveDiscBuffs(
 export type SourcePanelsByOwner = Record<string, Partial<Record<BuffScope, PanelValues>>>
 
 function getPanelSourceStatValue(panel: PanelValues, stat: string): number | undefined {
-  if (stat === 'energyRegenTotal') {
-    return (panel.energyRegen ?? 0) * (1 + (panel.energyRegenBonusPct ?? 0) / 100) + (panel.energyRegenBonusFlat ?? 0)
-  }
-  if (stat === 'flashEnergyRegenTotal') {
-    return (panel.flashEnergyRegen ?? 0) * (1 + (panel.flashEnergyRegenBonusPct ?? 0) / 100) + (panel.flashEnergyRegenBonusFlat ?? 0)
-  }
+  if (stat === 'energyRegenTotal') return calcEnergyRegenTotal(panel)
+  if (stat === 'flashEnergyRegenTotal') return calcFlashEnergyRegenTotal(panel)
   return panel[stat]
 }
 

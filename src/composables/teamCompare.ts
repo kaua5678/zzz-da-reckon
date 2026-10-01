@@ -789,14 +789,7 @@ export function computeOptimalGoldAllocations(
   // 生效的限定下位按本体如实计入总限定金（有金就是金）
   const baseAutoLimited = substituteAutoEngines(wEngines, wengineMods, autoPicks)
   const autoLimitedNow = () => countLimitedAutoApplied(wEngines, autoPicks, acquiredSlots)
-  const applyState = (c: number[], m: number[], w: string[]) => {
-    for (let i = 0; i < 3; i++) {
-      configStore.setCinemaLevel(i, c[i])
-      configStore.setWEngineModLevel(i, m[i])
-      if (w[i]) configStore.setWEngine(i, w[i])
-    }
-  }
-  applyState(cinemas, wengineMods, wEngines)
+  applyGoldAllocationToStore(configStore, { cinemas, wengineMods, wEngines })
 
   const allocations: OptimalGoldAllocation[] = [{
     totalGold: baseGold + baseAutoLimited,
@@ -1038,7 +1031,19 @@ export function applyPresetInteractions(
   }
 }
 
-function applyGoldToStore(
+/** 把金档状态（影画 / 精炼 / 音擎）写进 configStore（CC-337 单一实现） */
+export function applyGoldAllocationToStore(
+  configStore: ReturnType<typeof useConfigStore>,
+  alloc: { cinemas: readonly number[]; wengineMods: readonly number[]; wEngines: readonly string[] },
+): void {
+  for (let slot = 0; slot < 3; slot++) {
+    configStore.setCinemaLevel(slot, alloc.cinemas[slot] ?? 0)
+    configStore.setWEngineModLevel(slot, alloc.wengineMods[slot] ?? 1)
+    if (alloc.wEngines[slot]) configStore.setWEngine(slot, alloc.wEngines[slot]!)
+  }
+}
+
+export function applyGoldToStore(
   configStore: ReturnType<typeof useConfigStore>,
   preset: TeamPreset,
   targetTotalGold: number,
@@ -1060,11 +1065,7 @@ function applyGoldToStore(
   )
   // 自动下位：最终非限定的槽位换成装填池择优结果（已买到限定专武的槽位不动）
   substituteAutoEngines(wEngines, wengineMods, autoPicks, acquiredSlots)
-  for (let slot = 0; slot < 3; slot++) {
-    configStore.setCinemaLevel(slot, cinemas[slot])
-    configStore.setWEngineModLevel(slot, wengineMods[slot])
-    if (wEngines[slot]) configStore.setWEngine(slot, wEngines[slot])
-  }
+  applyGoldAllocationToStore(configStore, { cinemas, wengineMods, wEngines })
 }
 
 /**
@@ -1151,12 +1152,10 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
       // 最优加金模式：先把队伍置于基础金分配（基础音擎 + 0命1精 + standardSteps），buff 推荐与贪婪搜索从同一起点
       if (options.optimalGold) {
         const b0 = baseGoldOf(preset)
-        const baseAlloc = applyGoldSteps(preset.goldSteps, b0, b0, preset.standardSteps ?? [], preset.wEngines ?? [])
-        for (let slot = 0; slot < 3; slot++) {
-          configStore.setCinemaLevel(slot, baseAlloc.cinemas[slot])
-          configStore.setWEngineModLevel(slot, baseAlloc.wengineMods[slot])
-          if (baseAlloc.wEngines[slot]) configStore.setWEngine(slot, baseAlloc.wEngines[slot])
-        }
+        applyGoldAllocationToStore(
+          configStore,
+          applyGoldSteps(preset.goldSteps, b0, b0, preset.standardSteps ?? [], preset.wEngines ?? []),
+        )
       }
       const baseGold = baseGoldOf(preset)
       // boss 一次应用（与金数档无关）；必须在选 buff 前应用，推荐排序才基于所选期数的敌人配置
@@ -1205,11 +1204,7 @@ export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions
         seen.add(totalGold)
         const opt = optimalMap.get(totalGold)
         if (opt) {
-          for (let slot = 0; slot < 3; slot++) {
-            configStore.setCinemaLevel(slot, opt.cinemas[slot])
-            configStore.setWEngineModLevel(slot, opt.wengineMods[slot])
-            if (opt.wEngines[slot]) configStore.setWEngine(slot, opt.wEngines[slot])
-          }
+          applyGoldAllocationToStore(configStore, opt)
         } else {
           applyGoldToStore(configStore, preset, gold, autoPicks)
         }

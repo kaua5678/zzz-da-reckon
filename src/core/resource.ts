@@ -399,6 +399,7 @@ export { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 // `src/core/resource/moveLookup.ts`；此处 re-export 壳保持全仓调用方（`@/core/resource`）
 // 零改动。实现、职责注释与 @fact 锚随实现落在新文件。
 export {
+  parseMoveEnergyCost,
   findExSpecial,
   findUltimate,
   fusedGroupMetrics,

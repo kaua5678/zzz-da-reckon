@@ -1,4 +1,5 @@
 import type { PanelValues } from '@/types/catalog'
+import { calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import type { AttributeConversionSpec } from './types'
 
 /**
@@ -42,7 +43,7 @@ export function specConversionAmount(conversion: AttributeConversionSpec, source
 
 function resolveAttributeSource(panel: PanelValues, conversion: AttributeConversionSpec, sources?: SpecConversionSources): number {
   if (conversion.sourceValue === 'energyRegenTotal') {
-    return (panel.energyRegen ?? 1.2) * (1 + (panel.energyRegenBonusPct ?? 0) / 100) + (panel.energyRegenBonusFlat ?? 0)
+    return calcEnergyRegenTotal(panel, 1.2)
   }
   if (conversion.sourceValue === 'energyRegenOutOfCombat') {
     return panel.energyRegenOutOfCombat ?? (panel.energyRegen ?? 1.2)

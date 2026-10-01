@@ -46,7 +46,7 @@ import {
   DIFFICULTY_GOALS, type DifficultyGoal, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
 import {
-  applyAxisBinding, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, type DifficultyWeights,
+  applyAxisBinding, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, type DifficultyWeights,
 } from '@/composables/teamCompare'
 import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
@@ -158,11 +158,7 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
           clearDifficultyLevers(ctx)
           applyTeamToStore(ctx.config, preset)
           // 金步叠加：影画/精炼/音擎（驱动盘与权重/交互已由 applyTeamToStore 套好，金步不碰）
-          for (let slot = 0; slot < 3; slot++) {
-            ctx.config.setCinemaLevel(slot, applied.cinemas[slot])
-            ctx.config.setWEngineModLevel(slot, applied.wengineMods[slot])
-            if (applied.wEngines[slot]) ctx.config.setWEngine(slot, applied.wEngines[slot])
-          }
+          applyGoldAllocationToStore(ctx.config, applied)
           void team
           return ctx.calc.teamTotalDamage.value
         },
@@ -193,15 +189,16 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
  */
 export function measureOperationalDifficulty(
   ctx: { config: ReturnType<typeof useConfigStore>; calc: Calc },
-  preset: TeamPreset,
+  preset?: Pick<TeamPreset, 'interactions' | 'team'>,
   weights?: DifficultyWeights,
 ): number {
   const rr = ctx.calc.resourceResult.value
   const overflow = rr?.overflowSeconds ?? 0
   // 合轴抵扣出去的秒数：与硬溢出同属「必做前台超出 180s」这一笔，故交给 computeDifficulty 合成一项
   const saved = rr ? frontlineOccupationBreakdown(rr).saved : 0
+  const team = preset?.team ?? ctx.config.team.map(c => c?.agentId ?? null)
   return computeDifficulty(
-    liveInteractions(ctx.config, preset, rr), preset.team, overflow, weights, saved,
+    liveInteractions(ctx.config, preset, rr), team, overflow, weights, saved,
     stunWindowRatioOf(ctx.calc, ctx.config.enemy),
   ).difficulty
 }

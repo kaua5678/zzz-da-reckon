@@ -29,11 +29,7 @@
  */
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import type { LadderCtx } from './difficultyLadder'
-import { captureKeyCounts, captureDmgBySource, stunWindowRatioOf } from './difficultyCurve'
-import { computeDifficulty } from './teamCompare'
-import { engineInteractionItems, interactionSurvivalBySlot, roundInteractionCount } from './liveInteractions'
-import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
-import type { InteractionItem } from '@/types/teamPreset'
+import { captureKeyCounts, captureDmgBySource, measureOperationalDifficulty } from './difficultyCurve'
 
 
 
@@ -237,20 +233,7 @@ export function descendDifficultyCurve(
    * 读预设声明量不出变化。截断存活率缩沿用 `interactionSurvivalBySlot`（与 `liveInteractions` 同源）。
    * 缺省**开启**（用户口径「标注那个点是什么因素」需要难度增量；多一次纯函数调用，成本可忽略）。
    */
-  const measureDifficulty = (): number => {
-    const rr = ctx.calc.resourceResult.value
-    const survival = interactionSurvivalBySlot(rr)
-    // CC-258：引擎实打次数唯一读取（含角色专属类型名：般岳金身 / 双反）
-    const items: InteractionItem[] = engineInteractionItems(
-      ctx.config, (slot, raw) => roundInteractionCount(raw * (survival.get(slot) ?? 1)), rr?.convergence?.interactionScale,
-    ).filter(i => i.count > 0)
-    const overflow = rr?.overflowSeconds ?? 0
-    const saved = rr ? frontlineOccupationBreakdown(rr).saved : 0
-    return computeDifficulty(
-      items, ctx.config.team.map(c => c?.agentId ?? null), overflow, {}, saved,
-      stunWindowRatioOf(ctx.calc, ctx.config.enemy),
-    ).difficulty
-  }
+  const measureDifficulty = (): number => measureOperationalDifficulty(ctx)
 
   /** 施加当前级号组合，读一次伤害 + 快照 */
   const measure = (): { dmg: number; x: number; counts?: Record<string, number>; dmgBySource?: Record<string, number> } => {

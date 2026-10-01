@@ -22,32 +22,16 @@ import { moveFusionByMoveId } from '@/data/moveFusions'
 export type RowValueReader = (move: { id: string; rows?: { id: string; values: number[] }[] }, rowId: string) => number
 export const rawRowReader: RowValueReader = (move, rowId) => move.rows?.find(r => r.id === rowId)?.values[0] || 0
 
-/** 从倍率表数据提取强特信息
- *  在 special category 中找 "EX Special Attack" 的 move
- *  energyCost 从 move.energyCost 字段提取（如 {"Energy Cost": "60"}）
- *  多数角色只取第一个耗能的强特即可；复杂消耗（如柏妮思多种耗能）后续单独修改
- *  2026-09 成本类型化：energyCost 键按语义分类（energy/resource/free）——
- *  替代资源键（如克拉蕾 "Sharpness Cost"（锐能））不再被解析成能量消耗
+/**
+ * 解析招式 `energyCost` 字段（CC-337：从 `findExSpecial` 抽出，与 `roundInputs.ts#buildStackAxes` 单源复用）：
+ * 键名含 `energy` → 能量（含闪能，`energyConsume = costAmount`）；否则 → 替代资源（如 `Sharpness Cost`，`energyConsume = 0`）；无键 → 免费。
  */
-export function findExSpecial(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string }; energyCost?: Record<string, string>; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}, rowValue: RowValueReader = rawRowReader): { moveId: string; energyConsume: number; costType: ExSpecialCostType; costAmount: number; resourceId?: string; actionTime: number; decibelRecovery: number; energyCostRaw?: Record<string, string>; comboAlignRatio: number } | null {
-  const special = agentSkills.categories.find(c => c.id === 'special')
-  if (!special) return null
-
-  // 找第一个有 energyCost 且非空的 EX Special
-  const exMove = special.moves.find(m => {
-    const name = m.name?.en?.toLowerCase() || ''
-    return name.includes('ex special') && m.energyCost && Object.keys(m.energyCost).length > 0
-  })
-  // 如果没找到有 energyCost 的，退而找任意 EX Special
-  const fallbackMove = exMove || special.moves.find(m =>
-    (m.name?.en?.toLowerCase() || '').includes('ex special')
-  )
-  if (!fallbackMove) return null
-
-  // 成本类型化：键名含 energy → 能量（含闪能）；否则 → 替代资源；无键 → 免费
-  const energyCostRaw = fallbackMove.energyCost
+export function parseMoveEnergyCost(energyCostRaw: Record<string, string> | undefined): {
+  energyConsume: number
+  costType: ExSpecialCostType
+  costAmount: number
+  resourceId?: string
+} {
   const keys = energyCostRaw ? Object.keys(energyCostRaw) : []
   const energyKey = keys.find(k => /energy/i.test(k))
   let costType: ExSpecialCostType = 'energy'
@@ -82,6 +66,41 @@ export function findExSpecial(agentSkills: {
     }
     resourceId = keys[0]?.toLowerCase().includes('sharpness') ? 'sharpness' : keys[0]
   }
+  return {
+    energyConsume: costType === 'energy' ? costAmount : 0,
+    costType,
+    costAmount,
+    resourceId,
+  }
+}
+
+/** 从倍率表数据提取强特信息
+ *  在 special category 中找 "EX Special Attack" 的 move
+ *  energyCost 从 move.energyCost 字段提取（如 {"Energy Cost": "60"}）
+ *  多数角色只取第一个耗能的强特即可；复杂消耗（如柏妮思多种耗能）后续单独修改
+ *  2026-09 成本类型化：energyCost 键按语义分类（energy/resource/free）——
+ *  替代资源键（如克拉蕾 "Sharpness Cost"（锐能））不再被解析成能量消耗
+ */
+export function findExSpecial(agentSkills: {
+  categories: { id: string; moves: { id: string; name: { en?: string }; energyCost?: Record<string, string>; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
+}, rowValue: RowValueReader = rawRowReader): { moveId: string; energyConsume: number; costType: ExSpecialCostType; costAmount: number; resourceId?: string; actionTime: number; decibelRecovery: number; energyCostRaw?: Record<string, string>; comboAlignRatio: number } | null {
+  const special = agentSkills.categories.find(c => c.id === 'special')
+  if (!special) return null
+
+  // 找第一个有 energyCost 且非空的 EX Special
+  const exMove = special.moves.find(m => {
+    const name = m.name?.en?.toLowerCase() || ''
+    return name.includes('ex special') && m.energyCost && Object.keys(m.energyCost).length > 0
+  })
+  // 如果没找到有 energyCost 的，退而找任意 EX Special
+  const fallbackMove = exMove || special.moves.find(m =>
+    (m.name?.en?.toLowerCase() || '').includes('ex special')
+  )
+  if (!fallbackMove) return null
+
+  // 成本类型化：键名含 energy → 能量（含闪能）；否则 → 替代资源；无键 → 免费
+  const energyCostRaw = fallbackMove.energyCost
+  const { energyConsume, costType, costAmount, resourceId } = parseMoveEnergyCost(energyCostRaw)
 
   // 多段强特（登记融合组，如雅·飞雪斩击 = #1+#2）：时间与喧响按一次动作取整段；
   // **耗能不动**——nanoka 把耗能写在前缀项上，一次动作只计一次（坑 31）。
@@ -90,7 +109,7 @@ export function findExSpecial(agentSkills: {
   return {
     moveId: fallbackMove.id,
     // 能量型照旧计费；替代资源/免费型不再冒充能量 60
-    energyConsume: costType === 'energy' ? costAmount : 0,
+    energyConsume,
     costType,
     costAmount,
     resourceId,

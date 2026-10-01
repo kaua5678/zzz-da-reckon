@@ -4,7 +4,7 @@
  */
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { isLimitedAgent, isLimitedWEngine, applyGoldSteps } from '@/composables/teamCompare'
+import { isLimitedAgent, isLimitedWEngine, applyGoldSteps, applyGoldAllocationToStore } from '@/composables/teamCompare'
 import type { Agent } from '@/types/catalog'
 import type { TeamGoldState } from './teamTimeline'
 
@@ -135,13 +135,9 @@ export function applyTeamToStore(
       char.driveDisc.subStatAllocation = {}
     }
   }
-  for (let s = 0; s < 3; s++) {
-    configStore.setCinemaLevel(s, state.cinemas[s])
-    configStore.setWEngineModLevel(s, state.wengineMods[s])
-    if (state.wEngines[s]) configStore.setWEngine(s, state.wEngines[s])
-    // 交互 / 快支 / 连携基准不在这里写（CC-266）：上面两条分支都经 setAgent（applyTeamPreset 内部亦然），
-    // setAgent 已按 interactionBaselineFor + ASSIST_ACTION_BASELINE 预填——原先此处 6 行是逐位相同的第二写入者。
-  }
+  // 交互 / 快支 / 连携基准不在这里写（CC-266）：上面两条分支都经 setAgent（applyTeamPreset 内部亦然），
+  // setAgent 已按 interactionBaselineFor + ASSIST_ACTION_BASELINE 预填。
+  applyGoldAllocationToStore(configStore, state)
 }
 
 // ========== 让出事件循环 ==========

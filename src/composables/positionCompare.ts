@@ -34,7 +34,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { AnomalyPoolResult } from '@/types/resource'
-import { applyGoldSteps, baseGoldOf, applyAxisBinding, applyTeamToStore } from '@/composables/teamCompare' // CC-254：原私有副本漏 tauntCancel
+import { applyGoldToStore, applyAxisBinding, applyTeamToStore } from '@/composables/teamCompare' // CC-254：原私有副本漏 tauntCancel
 import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
 
 type Calc = ReturnType<typeof import('@/composables/useResourceCalc').useResourceCalc>
@@ -103,10 +103,10 @@ function findPositionSlot(
  * 异属性赠送/赋彩贡献（贡献元素 ≠ 角色伤害元素）记在接收人头上（该元素同属性主贡献者槽），
  * 不记赠送者。返回 [槽0, 槽1, 槽2] 的有效积蓄贡献。
  */
-function computePerSlotBuildUp(
+export function computePerSlotBuildUp(
   anomalyPoolResult: AnomalyPoolResult | null,
   team: { agentId?: string | null }[],
-  catalogStore: ReturnType<typeof useCatalogStore>,
+  catalogStore: { getAgent: (agentId: string) => { damageElement?: string } | undefined },
 ): number[] {
   const perSlot = [0, 0, 0]
   for (const prog of anomalyPoolResult?.perElement ?? []) {
@@ -145,24 +145,10 @@ export function computePositionCompare(
     const gold = options.gold ?? 6
     for (const preset of presets) {
       applyTeamToStore(configStore, preset)
-      // 同款限定金数：所有参比队伍按同一金档应用预设 goldSteps（复用队伍对比页 applyGoldSteps 口径）
-      const applied = applyGoldSteps(
-        preset.goldSteps,
-        gold,
-        baseGoldOf(preset),
-        preset.standardSteps ?? [],
-        preset.wEngines ?? [],
-      )
-      for (let slot = 0; slot < 3; slot++) {
-        configStore.setCinemaLevel(slot, applied.cinemas[slot])
-        configStore.setWEngineModLevel(slot, applied.wengineMods[slot])
-        if (applied.wEngines[slot]) configStore.setWEngine(slot, applied.wEngines[slot])
-      }
-      // 各自预设轴：先恢复快照轴状态，再按 preset.stunAxisPresetId 绑定变体轴（适用 5火10大 等变体）
-      configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(JSON.parse(JSON.stringify(snap.stunAxes)) as never[]))
-      configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(JSON.parse(JSON.stringify(snap.stunAxisPlans)) as never[]))
-      configStore.useStunAxis = snap.useStunAxis
-      applyAxisBinding(configStore, { stunAxes: snap.stunAxes, stunAxisPlans: snap.stunAxisPlans, useStunAxis: snap.useStunAxis }, preset)
+      // 同款限定金数：所有参比队伍按同一金档应用预设 goldSteps（复用队伍对比页 applyGoldToStore 口径，CC-337）
+      applyGoldToStore(configStore, preset, gold)
+      // 各自预设轴：applyAxisBinding 内部先恢复快照轴状态，再按 preset.stunAxisPresetId 绑定变体轴（CC-337 删重复恢复）
+      applyAxisBinding(configStore, snap, preset)
       configStore.syncTeammateBuffsFromTeam()
       configStore.applyBossPreset({ id: boss.id }, phase, boss.monster, boss.defaults)
 

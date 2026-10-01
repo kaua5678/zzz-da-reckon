@@ -108,7 +108,7 @@ export function engineInteractionItems(
  */
 export function liveInteractions(
   config: ReturnType<typeof useConfigStore>,
-  preset: TeamPreset,
+  preset?: Pick<TeamPreset, 'interactions'>,
   rr?: TeamResourceResult | null,
 ): InteractionItem[] {
   const survival = interactionSurvivalBySlot(rr)
@@ -123,7 +123,7 @@ export function liveInteractions(
   const caSlot = config.counterAssistSlot
   const caCount = caSlot >= 0 ? shrink(caSlot, config.appliedBoss?.counterAssistGroups?.length ?? 0) : 0
   if (caCount > 0) out.push({ type: 'counterAssist', count: caCount, slot: caSlot })
-  for (const it of preset.interactions ?? []) {
+  for (const it of preset?.interactions ?? []) {
     // 引擎侧已给出实打次数的类型不再吃预设声明（防双计）
     if (engineTypes.has(it.type)) continue
     if (it.type === 'counterAssist' && caCount > 0) continue

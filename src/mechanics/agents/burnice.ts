@@ -10,6 +10,7 @@ import type {
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { PanelValues } from '@/types/catalog'
+import { calcEnergyRegenTotal } from '@/core/buff'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
@@ -275,7 +276,7 @@ function resolveEnergyRegenTotal(panel: PanelValues): number {
   if (panel.energyRegenOutOfCombat != null && Number.isFinite(panel.energyRegenOutOfCombat)) {
     return panel.energyRegenOutOfCombat
   }
-  return (panel.energyRegen ?? 1.2) * (1 + (panel.energyRegenBonusPct ?? 0) / 100) + (panel.energyRegenBonusFlat ?? 0)
+  return calcEnergyRegenTotal(panel, 1.2)
 }
 
 function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {

@@ -819,6 +819,7 @@ import FinalPanel from '@/components/FinalPanel.vue'
 import DifficultyDescentPanel from '@/components/DifficultyDescentPanel.vue'
 import TeamDamage3DChart from '@/components/charts/TeamDamage3DChart.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
+import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
 import type { CharacterResourceResult, AnomalyEventRecord } from '@/types/resource'
 
@@ -994,27 +995,9 @@ const characterDamageShares = computed<CharacterDamageShare[]>(() => {
 const teamOverview = computed(() => {
   const damageTotal = teamTotalDamage.value
   const stunTotal = stunPoolResult.value?.totalStunBuildUp ?? 0
-  // 按 slot 汇总积蓄；异属性赠送/赋彩贡献（贡献元素 ≠ 角色伤害元素）记在接收人头上（该元素同属性主贡献者槽），不记赠送者
-  const perSlotBuildUp: number[] = [0, 0, 0]
-  let totalBuildUp = 0
-  for (const prog of anomalyPoolResult.value?.perElement ?? []) {
-    // 接收人槽 = 该元素同属性（非赠送）贡献者中积蓄最大的槽
-    let receiverSlot = -1
-    const receivers = (prog.contributions ?? []).filter(c => {
-      const el = catalogStore.getAgent(configStore.team[c.slot]?.agentId ?? '')?.damageElement
-      return el === prog.element
-    })
-    if (receivers.length > 0) {
-      receiverSlot = receivers.reduce((max, c) => (c.totalBuildUp > max.totalBuildUp ? c : max)).slot
-    }
-    for (const contrib of prog.contributions ?? []) {
-      const agentEl = catalogStore.getAgent(configStore.team[contrib.slot]?.agentId ?? '')?.damageElement
-      const gifted = !!agentEl && contrib.element !== agentEl
-      const targetSlot = gifted && receiverSlot >= 0 ? receiverSlot : contrib.slot
-      perSlotBuildUp[targetSlot] = (perSlotBuildUp[targetSlot] ?? 0) + contrib.totalBuildUp
-      totalBuildUp += contrib.totalBuildUp
-    }
-  }
+  // CC-337：逐槽积蓄归因（异属性赠送归接收人）与 positionCompare 共用 computePerSlotBuildUp 单一实现
+  const perSlotBuildUp = computePerSlotBuildUp(anomalyPoolResult.value, configStore.team, catalogStore)
+  const totalBuildUp = perSlotBuildUp.reduce((sum, v) => sum + v, 0)
   return configStore.team.map((char, slot) => {
     const share = characterDamageShares.value.find(item => item.slot === slot)
     const stun = stunPoolResult.value?.perSlotStun?.[slot] ?? 0

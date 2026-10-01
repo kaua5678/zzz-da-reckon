@@ -14,9 +14,8 @@
  */
 import type {
   Agent, WEngine, DriveDiscSet, DriveDiscConfig, TeammateBuff, TeammateBuffGroup,
-  EffectRequirement, PanelValues, StatId,
 } from '@/types/catalog'
-import { applyWEngineModLevel, parseStatRequirement, resolveAttributeTemplateStat } from './buff'
+import { applyWEngineModLevel, discRequirementMet, resolveDiscStatTemplate } from './buff'
 import type { SourcePanelsByOwner } from './buff'
 import { wEngineConditionMet, wEngineEffectRequirementMet } from './wengineConditions'
 
@@ -40,26 +39,6 @@ export interface InCombatBuffTeamMember {
   wEngineModLevel?: number
   driveDisc: DriveDiscConfig
   cinemaLevel: number
-}
-
-/**
- * 驱动盘 teamBuff 门槛：装备者特化/属性 + 局外面板属性（装备者源面板已算好，用精确值；面板缺失时门槛按不满足处理）。
- * selfBuff 侧自 CC-108（R5 D26）起也读精确局外面板（`calcPanel` 两段式），两侧口径相同。
- */
-function discTeamRequirementMet(
-  req: EffectRequirement | undefined,
-  agent: Agent,
-  wearerPanel: PanelValues | undefined,
-): boolean {
-  if (!req) return true
-  if (req.specialty && agent.specialty !== req.specialty) return false
-  if (req.attribute && agent.attribute !== req.attribute) return false
-  const statReq = parseStatRequirement(req.outOfCombatStat)
-  if (statReq) {
-    const value = wearerPanel ? (wearerPanel[statReq.stat as StatId] ?? 0) : undefined
-    if (value == null || value < statReq.min) return false
-  }
-  return true
 }
 
 export function collectInCombatTeamBuffs(
@@ -170,14 +149,12 @@ export function collectInCombatTeamBuffs(
       const set = deps.driveDiscSetsMap.get(char.driveDisc.fourPieceSetId)
       const group = set?.fourPiece?.teamBuff
       const wearerPanel = aliases.map(a => deps.wearerPanels?.[a]?.outOfCombat).find(p => p != null)
-      if (set && group?.effects?.length && discTeamRequirementMet(group.requirement, agent, wearerPanel)) {
+      if (set && group?.effects?.length && discRequirementMet(group.requirement, agent, wearerPanel)) {
         const effects = group.effects
-          .filter(e => e && e.stat && discTeamRequirementMet(e.requirement, agent, wearerPanel))
+          .filter(e => e && e.stat && discRequirementMet(e.requirement, agent, wearerPanel))
           // {attribute} 模板按【装备者】属性落键（自由蓝调 4pc：挂在敌人身上 8s，
           // 全队同属性积蓄都吃到——苍角装备时队友的冰系积蓄同样受益），不能按受益者属性解析
-          .map(e => (e.stat as string).includes('{attribute}')
-            ? { ...e, stat: resolveAttributeTemplateStat(e.stat as string, agent.attribute) }
-            : e)
+          .map(e => resolveDiscStatTemplate(e, agent.attribute))
         const exclusive = group.exclusiveGroup
         if (effects.length && !(exclusive && grantedExclusiveGroups.has(exclusive))) {
           if (exclusive) grantedExclusiveGroups.add(exclusive)

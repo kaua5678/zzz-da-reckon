@@ -29,7 +29,7 @@ import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } 
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById } from './skillRows'
 import { chainMoveKind } from '@/data/chainMoveKind'
-import { ULTIMATE_COST_DEFAULT } from '@/core/resource'
+import { ULTIMATE_COST_DEFAULT, parseMoveEnergyCost } from '@/core/resource'
 import { panelAt } from '@/core/panel'
 
 export function createConvergenceRoundInputs(deps: {
@@ -233,13 +233,7 @@ export function createConvergenceRoundInputs(deps: {
           }
         } else {
           const move = findMoveById(skills, act.moveId)
-          const raw = move?.energyCost as Record<string, string> | undefined
-          if (raw) {
-            for (const k of Object.keys(raw)) {
-              const n = parseFloat(raw[k])
-              if (!Number.isNaN(n) && n > 0) { energyCost = n; break }
-            }
-          }
+          energyCost = parseMoveEnergyCost(move?.energyCost as Record<string, string> | undefined).energyConsume
           // 轴块 duration 覆盖倍率表 actionTime（新机制：仪玄轴内凝云术可延长/缩短蓄力 0-2s）
           actionTime = typeof (act as { duration?: number }).duration === 'number'
             ? (act as { duration: number }).duration

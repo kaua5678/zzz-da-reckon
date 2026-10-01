@@ -4,7 +4,7 @@
 import type {
   Agent, WEngine, DriveDiscSet, PanelValues, DriveDiscConfig, TeammateBuff, BuffEffect, StatId,
 } from '@/types/catalog'
-import { applyBuffs, applyEffect, applyStat, collectAllBuffs, discSelfBuffNeedsOutOfCombatPanel, finalizeCoreStatBonuses, type CollectedBuffs } from './buff'
+import { applyBuffs, applyEffect, applyStat, calcEnergyRegenTotal, collectAllBuffs, discSelfBuffNeedsOutOfCombatPanel, finalizeCoreStatBonuses, type CollectedBuffs } from './buff'
 import { agentPanelStatInitials } from '@/data/agentPanelStats'
 import type { StatRules } from '@/types/catalog'
 import { driveDiscStatMode } from './discStatMode'
@@ -296,11 +296,17 @@ export function calcPanel(
 
   // 4. 局外面板 = 基础白值 + 音擎高级词条 + 驱动盘主副词条 + 局外 buff。
   // 攻击/生命/防御局外段：基础数据 × (1 + Σ局外百分比加成) + Σ局外固定值。
-  const outOfCombatOf = (b: CollectedBuffs) => applyBuffs(
-    applyDriveDiscConfig(base, driveDiscConfig, statRules, wEngineAdvancedStats, b.outOfCombat),
-    [],
-    config.effectCoverageMap,
-  )
+  const outOfCombatOf = (b: CollectedBuffs) => {
+    const p = applyBuffs(
+      applyDriveDiscConfig(base, driveDiscConfig, statRules, wEngineAdvancedStats, b.outOfCombat),
+      [],
+      config.effectCoverageMap,
+    )
+    // CC-337：局外总回能在 calcPanel 唯一出口盖章，保证 computePanelPhases / computeEntrySnapshotPanel /
+    // teammateBuffSource / substatOptimizer 等所有调用方的 outOfCombat 与 inCombat（applyBuffs 浅拷贝继承）同源一致。
+    p.energyRegenOutOfCombat = calcEnergyRegenTotal(p, 1.2)
+    return p
+  }
   let buffs = collect()
   let outOfCombat = outOfCombatOf(buffs)
   // 4b. 两段式（CC-108，R5 D26）：4 件套「装备者初始防御力 ≥1000」这类门槛按第一段的**精确局外面板**判定

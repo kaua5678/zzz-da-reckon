@@ -42,3 +42,13 @@ export function agentPanelStatInitials<G extends AgentPanelStatGroup>(group: G):
   for (const s of AGENT_PANEL_STATS) if (s.group === group) out[s.key] = s.initial
   return out as never // 精确键集由签名保证；运行时按 group 过滤
 }
+
+/** 面板能量自动回复总计 = 基础 × (1 + 百分比加成) + 固定加成（CC-337 单一事实源，放 data 层供 specs / core / mechanics 共用） */
+export function calcEnergyRegenTotal(panel: Readonly<PanelValues>, defaultBase = 0): number {
+  return (panel.energyRegen ?? defaultBase) * (1 + (panel.energyRegenBonusPct ?? 0) / 100) + (panel.energyRegenBonusFlat ?? 0)
+}
+
+/** 面板闪能自动回复总计 = 基础 × (1 + 百分比加成) + 固定加成（CC-337 单一事实源） */
+export function calcFlashEnergyRegenTotal(panel: Readonly<PanelValues>): number {
+  return (panel.flashEnergyRegen ?? 0) * (1 + (panel.flashEnergyRegenBonusPct ?? 0) / 100) + (panel.flashEnergyRegenBonusFlat ?? 0)
+}
