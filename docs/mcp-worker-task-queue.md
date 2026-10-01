@@ -96,24 +96,28 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 358 轮（lane arena-A，承接第 357 轮下一步 1–2）：CC-339 位置对比拐力差分门控恢复与单次求值收口、预设装配 0命1精 隔离与金档步进单源化（代码 `efd63a1f`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `c9c767ae`，工作区干净）。**
+**第 359 轮（lane arena-A，承接第 358 轮下一步 1–2）：CC-340 分析器现场快照闭环（`appliedBoss` 深拷贝 + `mechanicSettings` / `timeWeightStrategy`）、空槽清音擎与时间线/自由对比装配收口（代码 `8b613145`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `7b3ed9be`，工作区干净）。**
 
-- **CC-339（`efd63a1f`，位置对比拐力差分修复与求值去重 + 队伍对比跨预设 0命1精 隔离 + 金档步进单源化，见 `docs/mcp-stun-dual-source.md` §24.182）**：
-  1. **位置对比分析器（`src/composables/positionCompare.ts#computePositionCompare`）拐力差分恢复与单次求值收口**：
-     - 修前：对击破手/辅助（`position !== 'main'`），首轮求值只读 `teamTotalDamage / damagePoolRows`，关掉 `group.buffs` 算完 `withoutBuff` 后，用 `for (const buff of group.buffs) configStore.toggleTeammateBuff(buff.id, true)` + `refreshTrigger++` 恢复并触发第 3 次全量求值来读 `stunPoolResult / anomalyPoolResult`。无条件全开 `group.buffs` 绕过了 `deriveTeammateBuffEnabled` 的 `requiredCinema / aaGates / gateBlocked`，把低金下未解锁的 C1~C6 命座队友 buff 与未满足条件的额外能力 buff 强行打开，既污染失衡与积蓄读数，又多跑第 3 次全量引擎求值。
-     - 修后：在首轮求值（`syncTeammateBuffsFromTeam()` 生效态）一次性读取 `total / rows / stunPoolResult / anomalyPoolResult`；拐力差分后改用 `configStore.syncTeammateBuffsFromTeam()` 恢复真实门控状态。击破/辅助每预设引擎求值从 `3` 次降至 `2` 次（测试耗时下降约 30%），新增三位置 `stunCount / totalDamage / dazeShare` 同源一致性回归单测（`positionCompare.test.ts`）。
-  2. **队伍对比预设装配（`src/composables/teamCompare.ts`）与难度阶梯（`src/composables/difficultyLadder.ts`）跨预设 0命1精 隔离与金档步进单源化**：
-     - `teamCompare.ts#applyTeamToStore`：在 `setAgent` 前先将三槽复位为 `cinemaLevel = 0, wEngineModLevel = 1`，防止上一预设末尾的高命座/高精炼（如 18 金 R5 暴击率专武）残留进 `setAgent` 内部的 `syncTeammateBuffsFromTeam()` 与 `applyBuildRecommendationForSlot`（「百暴」副词条分配）。
-     - `teamCompare.ts#computeTeamComparePoints`：将预设基础金分配（`applyGoldSteps(preset.goldSteps, baseGold, baseGold, ...)`）从 `if (options.optimalGold)` 分支提为无条件前置步骤，修复 `optimalGold = false` 时 `pickBestBuff`（当期 buff 自动推荐）与 `computeAutoEnginePicks`（下位音擎择优）残留上一预设末尾金档试算的跨预设泄漏。
-     - `teamCompare.ts#computeOptimalGoldAllocations` 与 `applyGoldToStore`：基础态初始化统一复用 `applyGoldSteps(..., baseGold, baseGold, ...)`；`applyGoldToStore` 直接返回 `{ ...applied, autoLimitedGold }` 供 `computeTeamComparePoints` 复用，删去下半段漏传 `preset.wEngines ?? []` 的重复 `applyGoldSteps + substituteAutoEngines`。新增跨预设高金残留隔离回归单测（`teamCompare.test.ts`）。
-     - `difficultyLadder.ts#resetDifficultyGoals`：按注释契约先复位三槽 `0命1精` 再调 `applyTeamPreset`，并删去前面冗余的 3 次非 `defer` `setAgent`。
-- **验证**：`npx vue-tsc -b --noEmit` 0 错；相关套件（`positionCompare.test.ts`、`teamCompare.test.ts`、`difficultyLadder.test.ts`、`difficultyCurve.test.ts`、`difficultyDescent.test.ts`、`checkGuards.test.ts` 143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert efd63a1f`。
+- **CC-340（`8b613145`，分析器现场快照闭环 + 空槽清音擎 + 时间线/自由对比装配收口，见 `docs/mcp-stun-dual-source.md` §24.183）**：
+  1. **分析器现场快照闭环（`src/composables/configSnapshot.ts` + `src/composables/difficultyCurve.ts` + `src/views/TeamComparePage.vue`）**：
+     - `snapshotStore` / `restoreStore` 对 `appliedBoss` 改为 `clone(...)` 深拷贝，防止 `config.ts` 的 `watch([counterAssistSlot, ...], syncBossInteractionPlan, { flush: 'sync' })` 在分析器换队时原地改写 `snap.appliedBoss.parryTotal` / `parryNoFollowUpTotal`；
+     - 将 `mechanicSettings` 与 `timeWeightStrategy` 纳入 `StoreSnapshot` 统一快照与恢复，防止各分析器调 `applyBossPreset` 时自动写入的 `mechanicSettings['guarantee.stun'] = 1` 泄漏到用户现场，并删去 `difficultyCurve.ts` 与 `TeamComparePage.vue` 中重复手写的 `extra = { strategy, mechanics }` 旁路备份。
+  2. **空槽清空音擎与限定金统计对齐（`src/stores/config.ts#setAgent` + `src/composables/teamCompare.ts#teamGoldOf`）**：
+     - `setAgent(slot, '')` 清空角色槽位时同步将 `char.wEngineId = ''` 清空（并在非 `defer` 模式下触发 `syncTeammateBuffsFromTeam()`），避免旧角色专武残留在空槽上；
+     - `teamGoldOf` 在空槽位（`!agentId`）时直接跳过，与同文件 `buildGoldStepsFromConfig` 对齐，不计空槽残留音擎金数。
+  3. **时间线配装顺序、收敛守卫、单队求值去重与菲林模拟去重（`src/composables/teamTimelineStore.ts` + `src/composables/teamTimeline.ts` + `src/composables/teamTimelineFilm.ts`）**：
+     - `teamTimelineStore.ts#applyTeamToStore`：在调 `applyTeamPreset / syncTeammateBuffsFromTeam` 前先写入 `state.cinemas` 与 `state.wengineMods`，使 `autoBuild=true` 的默认副词条百暴计算与队友 buff 门控按目标金态求值；
+     - `teamTimeline.ts`：`computeOptimalTeamAllocation` 贪婪试算步增加 `Number.isFinite(d)` 守卫；`evalTeamByBudget` 扩充返回 `state: TeamGoldState` 并复用于 Chart 3 `computeNewCharacterPoints`；
+     - `teamTimelineFilm.ts#computeFilmSimulation`：复用买金 `while` 循环末次求出的 `best = searchBest(totalGold)`，消除每期退出循环后以同一 `totalGold` 重复扫描全候选池的双倍求值开销。
+  4. **自由对比槽位装配顺序与下位试算计数（`src/composables/freeCompare/engine.ts`）**：
+     - `applyCodeToSlot` 先写 `cinemaLevel / wEngineModLevel` 再调 `setAgent`；`pickEvaluations` 按 `n > 1 ? n : 0` 与 `pickDowngradeByDamage` 实际试算次数对齐。
+- **验证**：`npx vue-tsc -b --noEmit` 0 错；相关套件（`configSnapshot.test.ts`、`teamCompare.test.ts`、`teamTimeline.test.ts`、`freeCompareEngine.test.ts`、`difficultyCurve.test.ts`、`slotSweep.test.ts`、`checkGuards.test.ts` 143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 8b613145`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. **审计 `src/stores/`（`config.ts`、`catalog.ts`）及剩余编排层辅助模块（如 `runArchiveDeploy.ts`、`teamTimelineStore.ts`、`substatOptimizer.ts`、`liveInteractions.ts`）的状态隔离与单源化机会**：
-   - 第 350–358 轮已完成 `src/mechanics/agents/`（47 个角色模块）、`src/specs/`、`src/composables/resourceCalc/`、`src/core/` 结算子模块、`cinemaUplift`、`freeCompare`、`positionCompare`、`teamCompare`、`difficultyLadder` 的对账与单源化。
-   - 下一步可重点检查 `teamTimelineStore.ts#applyTeamToStore`（`autoBuild = true` 时 `applyTeamPreset` 与 `applyGoldAllocationToStore` 的调用顺序是否受残留命座/精炼影响）、`runArchiveDeploy.ts` 与 `stores/config.ts` 之间是否还有可合并的装配/复位逻辑。
+2. **审计剩余编排层工具模块（如 `runArchiveDeploy.ts`、`runArchiveImport.ts`、`substatOptimizer.ts`、`liveInteractions.ts`、`pullPlannerEngine.ts`）的状态隔离与单源化机会**：
+   - 第 350–359 轮已完成 `src/mechanics/agents/`（47 个角色模块）、`src/specs/`、`src/composables/resourceCalc/`、`src/core/` 结算子模块、`cinemaUplift`、`freeCompare`、`positionCompare`、`teamCompare`、`difficultyLadder`、`configSnapshot`、`teamTimeline*` 的对账与单源化。
+   - 下一步可重点检查 `runArchiveDeploy.ts` / `runArchiveImport.ts`（归档导入与部署到 `configStore` 时的槽位/Boss/机制设置清理）、`substatOptimizer.ts` 与 `pullPlannerEngine.ts` 是否还有边界泄漏或重复装配逻辑。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

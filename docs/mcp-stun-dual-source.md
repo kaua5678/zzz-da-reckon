@@ -4721,3 +4721,25 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
     - `applyGoldToStore` 直接返回 `{ ...applied, autoLimitedGold }`，`computeTeamComparePoints` 直接消费该返回值，删除下半段漏传 `preset.wEngines` 的重复 `applyGoldSteps` + `substituteAutoEngines`。新增跨预设高金残留隔离回归单测。
   - `src/composables/difficultyLadder.ts`：`resetDifficultyGoals` 先复位三槽 `0命1精` 再调 `applyTeamPreset`，并删除前面冗余的 3 次非 `defer` `setAgent`。
 - **验证**：`npx vue-tsc -b --noEmit` 0 错；相关套件（`positionCompare.test.ts`、`teamCompare.test.ts`、`difficultyLadder.test.ts`、`difficultyCurve.test.ts`、`difficultyDescent.test.ts`、`checkGuards.test.ts` 143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert efd63a1f`。
+
+### 24.183 CC-340（`8b613145`，第 359 轮）：分析器现场快照闭环（`appliedBoss` 深拷贝 + `mechanicSettings` / `timeWeightStrategy`）与时间线/自由对比装配收口
+
+- **根因**：
+  1. **分析器现场快照泄漏（`src/composables/configSnapshot.ts`）**：
+     - `snapshotStore` / `restoreStore` 原先对 `configStore.appliedBoss` 仅做浅引用赋值；而 `src/stores/config.ts` 的 `watch([counterAssistSlot, ...], syncBossInteractionPlan, { flush: 'sync' })` 会在分析器换队（改变队内是否有反制支援角色）时同步就地改写 `appliedBoss.parryTotal` 与 `parryNoFollowUpTotal`，导致快照里的 `snap.appliedBoss` 被原地污染、`restoreStore` 后弹刀总数错位。
+     - 所有调用 `configStore.applyBossPreset` 的分析器（散点对比、位置对比、自由对比、时间线、菲林模拟、抽卡规划、单人递增）在遇到带弹刀或控制技组的 Boss 时都会自动写入 `mechanicSettings['guarantee.stun'] = 1`（`config.ts:1186`），此前 `StoreSnapshot` 未纳入 `mechanicSettings` 导致分析器跑完后「保底 4 失衡」永久泄漏到用户现场；同时 `difficultyCurve.ts` 与 `TeamComparePage.vue` 还在快照外手写了一份重复的 `extra = { strategy, mechanics }` 旁路备份。
+  2. **空槽清空音擎与限定金统计（`src/stores/config.ts#setAgent` & `src/composables/teamCompare.ts#teamGoldOf`）**：
+     - `setAgent(slot, '')` 清空角色时 `if (agent)` 为假，未清空 `char.wEngineId`，导致旧角色的专武残留在空槽上；且 `teamGoldOf` 未像下方的 `buildGoldStepsFromConfig` 那样跳过 `!agentId` 的空槽，误将空槽残留限定音擎计入总限定金。
+  3. **时间线配装顺序、收敛守卫与菲林模拟重复求值（`src/composables/teamTimelineStore.ts` / `teamTimeline.ts` / `teamTimelineFilm.ts`）**：
+     - `teamTimelineStore.ts#applyTeamToStore` 原先在 `applyTeamPreset` / `syncTeammateBuffsFromTeam` 之后才调用 `applyGoldAllocationToStore`，导致 `autoBuild=true` 的默认副词条百暴计算（`applyBuildRecommendationForSlot`）与首轮队友 buff 同步读取上一队残留的命座/精炼；
+     - `teamTimeline.ts#computeOptimalTeamAllocation` 在贪婪试算中未校验 `Number.isFinite(d)`，当首候选未收敛（`maxIter` → `-Infinity`）时在 `best == null` 分支被误选；Chart 3 `computeNewCharacterPoints` 与 `evalTeamByBudget` 存在重复的 `if (opts.optimalGold) ... else ...` 求值分支；
+     - `teamTimelineFilm.ts#computeFilmSimulation` 在买金 `while` 循环内已算出当前 `totalGold` 的 `best = searchBest(totalGold)` 并因余额不足 `break`，退出循环后又无条件调了一次 `searchBest(totalGold)`，每期白跑一倍全候选池求值。
+  4. **自由对比槽位装配顺序与下位试算计数（`src/composables/freeCompare/engine.ts`）**：
+     - `applyCodeToSlot` 原先先调 `setAgent` 再写 `cinemaLevel / wEngineModLevel`，导致 `setAgent` 内部触发的 `applyBuildRecommendationForSlot` 与 `syncTeammateBuffsFromTeam` 按上一档残留命座/精炼求值；`pickEvaluations` 误按 `length - 1` 计次（`pickDowngradeByDamage` 在 `n > 1` 时实际试算全部 `n` 件候选）。
+- **修复（`8b613145`）**：
+  - `src/composables/configSnapshot.ts` + `src/composables/difficultyCurve.ts` + `src/views/TeamComparePage.vue`：`appliedBoss` 改为 `clone(...)` 深拷贝；将 `mechanicSettings` 与 `timeWeightStrategy` 纳入 `StoreSnapshot` 闭环恢复，并删去 `difficultyCurve.ts` 与 `TeamComparePage.vue` 的 `extra` 旁路备份。
+  - `src/stores/config.ts#setAgent` + `src/composables/teamCompare.ts#teamGoldOf`：`setAgent(slot, '')` 同步清空 `char.wEngineId = ''` 并在非 `defer` 下触发 `syncTeammateBuffsFromTeam()`；`teamGoldOf` 在 `!agentId` 时直接 `continue`。
+  - `src/composables/teamTimelineStore.ts` + `src/composables/teamTimeline.ts` + `src/composables/teamTimelineFilm.ts`：`applyTeamToStore` 先写 `state.cinemas / wengineMods` 再调 `applyTeamPreset / syncTeammateBuffsFromTeam`；`computeOptimalTeamAllocation` 增加 `Number.isFinite(d)` 守卫；`evalTeamByBudget` 扩充返回 `state` 并复用于 `computeNewCharacterPoints`；`computeFilmSimulation` 复用买金循环末次 `best`。
+  - `src/composables/freeCompare/engine.ts`：`applyCodeToSlot` 先写 `cinemaLevel / wEngineModLevel` 再调 `setAgent`；`pickEvaluations` 改为 `n > 1 ? n : 0`。
+  - `src/composables/__tests__/configSnapshot.test.ts`：新增两条 `CC-340` 回归单测。
+- **验证**：`npx vue-tsc -b --noEmit` 0 错；相关套件（`configSnapshot.test.ts`、`teamCompare.test.ts`、`teamTimeline.test.ts`、`freeCompareEngine.test.ts`、`difficultyCurve.test.ts`、`slotSweep.test.ts`、`checkGuards.test.ts` 143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 8b613145`。
