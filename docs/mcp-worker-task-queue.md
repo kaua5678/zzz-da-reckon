@@ -79,6 +79,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-01 arena-A 第 370 轮（与 arena-C 第 369 轮 `02049db9` 并行，worktree `wtA-370`）：CC-344 队列 §3 执行卡 T1/T2 完成 + `applyDeployConfig` 复用 `applyTeamToStore(autoBuild=true)` 收口跨队精炼/命座百暴泄漏，代码 `0c5e00cb`，文档见本轮 docs 提交，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：
+  1. **T1 完成 `0c5e00cb`（`src/composables/configSnapshot.ts` + `configSnapshot.test.ts`）**：`StoreSnapshot.globalBuffs` 从 `unknown[]` 收紧为 `GlobalBuffRow[]`，`restoreStore` 去掉 `as never[]` 并改为 `...clone(snap.globalBuffs)` 深拷贝写回（补反复恢复后原地改写不污染快照的回归测试）。全仓 `src/` 非测试代码中的 store 状态 `unknown[]` 已清零（剩余 4 处均为 `globalThis.__fold*` 调试钩子与 `modelingGaps.ts` 的通用 `SetPieceLike.effects?: unknown[] | null`）。
+  2. **T2 完成 `0c5e00cb`（`src/utils/modelingGaps.ts` + `src/views/RunArchivePage.vue`）**：导出 `CinemaLedgerEntry` / `MechanicLedgerEntry`，`RunArchivePage.vue` 用 `readLedger<T>(url)` 收紧账本加载类型并去掉全部 4 处 `as any` / `as never`。
+  3. **`applyDeployConfig` 装配顺序收口（`src/composables/runArchiveDeploy.ts` + `runArchiveDeploy.test.ts`）**：改调 `teamTimelineStore#applyTeamToStore(..., true)` 先写命座/精炼再走 `applyTeamPreset`，消除上一队残留高精/高命漏入 `applyBuildRecommendationForSlot` 百暴副词条计算（实测艾莲 1 精在猫又 4 精队之后部署，修前 `critRate` 副词条从 12 步掉到 6 步、总伤漂移；修后两次部署副词条与总伤完全一致），删去不再需要的尾随 `syncTeammateBuffsFromTeam()` 补丁；保留 `stunAxes.splice(0)` / `stunAxisPlans.splice(0)` 不动总开关。详见 `docs/mcp-stun-dual-source.md` §24.185 与 `docs/mcp-r6-refactor-list.md` §8 第 370 行。
+  4. **验证**：rebase 到 `02049db9` 后 `npx vue-tsc -b --noEmit` 0 错；`configSnapshot.test.ts`（6/6）、`runArchiveDeploy.test.ts`（12/12）、`analysisScenario.test.ts`（5/5）、`teamCompare.test.ts`（36/36）、`moveFusion.test.ts`（24/24）、`src/utils`（16 文件 107 用例）、`checkGuards.test.ts`（143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 0c5e00cb`。
+- **下一步**：
+  1. 配合 arena-C 的 CC-343（`02049db9`，分析器独立场景 `createAnalysisScenario` / `withAnalysisScenario`）推进剩余分析器从 `snapshotStore/restoreStore` 向独立场景的阶段迁移（见 `docs/mcp-analyzer-scenario-isolation.md`）。
+  2. 复核 `docs/mcp-r6-refactor-list.md` §8 重开条件（坑 25，到期日 2026-10-31）。
+  3. 待裁决项保持不变（testOnly 关卡牌 §1.3 等）。
+
 **2026-10-01 20:00 arena-D 第 368 轮（开工 19:22 时无并行会话，HEAD `914f1fa1`；REQUIREMENTS.md 429 行无新条目）：失衡轴状态唯一读写入口，代码 `a6264cf4`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
 - **做到哪**：config store 新增 `getAxisState` / `setAxisState` / `applyStunAxisPreset` + 类型 `StunAxisState`，5 处调用方改走它（configSnapshot、teamCompare、difficultyLadder、difficultyCurve、StunAxisPage）；CC-278 源码锁放宽到任意前缀。详见 r6 §8 第 368 行。
 - **已拍板**：① 「每组三人只评一个规范槽序」**不做**（有损：slot0 是真实建模维度，分差 ≤ 9%），理由见 r6 §8 第 368 行；② 静态 fetch 散落已清零，关闭。回退点：`git revert a6264cf4`。
@@ -254,31 +265,4 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > 做完：主代理按 §0 复核（真实 diff、vue-tsc、相关测试）→ 提交 → 删卡，在 §2b 留一行「T? 完成 `<commit>`」。
 > 写卡标准：改哪几个文件、改成什么样、怎么验收、不许碰什么，都写死；需要判断的活不写成卡。
 
-<!-- card:T1 -->
-任务 T1：给分析器快照的 globalBuffs 去掉类型逃逸。仓库 /home/kaua/projects/zzz-calculator（WSL）。
-背景：src/composables/configSnapshot.ts 的 interface StoreSnapshot 里 `globalBuffs: unknown[]`，restoreStore 里写回时用了 `as never[]` 绕类型。store 里的真实类型是 src/stores/config.ts 导出的 `GlobalBuffRow`（`const globalBuffs = ref<GlobalBuffRow[]>`）。
-要做：
-1. configSnapshot.ts：`globalBuffs: unknown[]` 改成 `globalBuffs: GlobalBuffRow[]`，从 '@/stores/config' 加 `type GlobalBuffRow` 导入（并到已有那行 import 里）。
-2. restoreStore 里 `...(snap.globalBuffs as never[])` 去掉 `as never[]`，改成 `...clone(snap.globalBuffs)`（深拷贝写入：同一份快照会被反复恢复，不能让 store 和快照共享对象）。
-3. 若 `npx vue-tsc -b` 在别的文件报错（有人用 unknown[] 构造快照），在那个文件把类型写对；**不许新加 as any / as never / as unknown**。
-验收（全部满足才算 done）：
-- `timeout -s KILL 600 npx vue-tsc -b` 退出 0；
-- `npx vitest run src/composables/__tests__/configSnapshot.test.ts src/composables/__tests__/teamCompare.test.ts` 全过；
-- `grep -n "as never" src/composables/configSnapshot.ts` 无输出。
-不许：碰上面以外的文件（除第 3 步必要的类型修正）；git commit / push。
-报告首行 `STATUS: done` 或 `STATUS: blocked`，随后贴 `git diff --stat` 和三条验收命令的尾部输出。
-<!-- /card:T1 -->
-
-<!-- card:T2 -->
-任务 T2：实战归档页的建模账本去掉 as any / as never。仓库 /home/kaua/projects/zzz-calculator（WSL）。
-背景：src/views/RunArchivePage.vue 的 `ensureModelingLedgers()` 用 `fetch('/static/character-constellations.json').then(r => (r.ok ? r.json() : {}) as any)`（mechanics 同样）读两份账本，存进 `modelingLedgers = ref<{ constellations?: Record<string, object>; mechanics?: Record<string, object> } | null>`，用的时候再 `as never` 传给 src/utils/modelingGaps.ts 的 `collectCinemaGaps(ledger: Record<string, CinemaLedgerEntry> | undefined, ...)` 和 `collectMechanicGaps(ledger: Record<string, MechanicLedgerEntry> | undefined, ...)`。
-要做：
-1. modelingGaps.ts：若 `CinemaLedgerEntry` / `MechanicLedgerEntry` 没有 export，加 `export`（只加关键字，不改字段）。
-2. RunArchivePage.vue：ref 类型改成 `{ constellations: Record<string, CinemaLedgerEntry>; mechanics: Record<string, MechanicLedgerEntry> } | null`；两个 fetch 的结果分别标成 `{ characters?: Record<string, CinemaLedgerEntry> }` 和 `{ characters?: Record<string, MechanicLedgerEntry> }`（写一个小函数 `async function readLedger<T>(url: string): Promise<{ characters?: Record<string, T> }>`，`!r.ok` 时返回 `{}`）；两处 `as never` 删掉。行为不变：请求失败仍当空账本，异常仍走原 catch。
-验收：
-- `timeout -s KILL 600 npx vue-tsc -b` 退出 0；
-- `npx vitest run src/utils` 全过；
-- `grep -nE "as (any|never)" src/views/RunArchivePage.vue` 里不再有 ensureModelingLedgers / modelingGapHints 这两段的行。
-不许：改 modelingGaps 的函数逻辑；新加 as any / as never / as unknown；git commit / push。
-报告首行 `STATUS: done` 或 `STATUS: blocked`，随后贴 `git diff --stat` 和验收命令尾部输出。
-<!-- /card:T2 -->
+（当前无待办执行卡；T1、T2 已于第 370 轮 `0c5e00cb` 完成）

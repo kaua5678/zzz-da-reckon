@@ -4783,3 +4783,16 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - 反例：管线忽略 `cond` ⇒ 红 4/5；写入方回到旧版 ⇒ 两条写入测试红。
 - **验证**：`vue-tsc -b` 0；隔离 worktree `wtA-pbc` 全量 verify 两次 EXIT 0：基于 `a8fffc89` 445 文件通过 / 16 跳过、4100 测试通过 / 29 跳过；rebase 到 `02cdfcb6` 后 445 / 16、4104 / 29（日志 `/home/kaua/calc-arch/arenaC/v360-cc341.log`、`v360-cc341-rb.log`；基线 `a8fffc89` 为 4085 / 29，`v360-base.log`）；get_diagnostics 10 个文件 0。
 - **回退点**：`git revert 8f80b031`。
+
+### 24.185 CC-344：快照 `globalBuffs` 与归档账本类型收紧（T1/T2）+ `applyDeployConfig` 复用 `applyTeamToStore`（2026-10-01，第 370 轮，`0c5e00cb`）
+
+- **问题**：
+  1. **T1（`src/composables/configSnapshot.ts`）**：`StoreSnapshot.globalBuffs` 标为 `unknown[]`，`restoreStore` 用 `as never[]` 绕过类型且未 `clone`（若同一份快照反复恢复并在中途原地改写 `configStore.globalBuffs[i]`，会直接污染快照对象）。
+  2. **T2（`src/utils/modelingGaps.ts` + `src/views/RunArchivePage.vue`）**：`CinemaLedgerEntry` / `MechanicLedgerEntry` 未导出，`RunArchivePage` 用 `as any` 读 JSON、用 `Record<string, object>` 存 ref、再用 `as never` 传给 `collectCinemaGaps` / `collectMechanicGaps`。
+  3. **实战归档部署跨队精炼/命座泄漏（`src/composables/runArchiveDeploy.ts#applyDeployConfig`，CC-340 同源）**：`applyDeployConfig` 先调 `configStore.applyTeamPreset(...)`，后在循环里 `setCinemaLevel` / `setWEngineModLevel` / `setWEngine` 并补一次 `syncTeammateBuffsFromTeam()`。虽然末尾重同步消除了队友 buff 门控泄漏，但 `applyTeamPreset` 内部的 `applyBuildRecommendationForSlot`（`computeDefaultSubStatAllocation` 百暴副词条计算）在 `setCinemaLevel` / `setWEngineModLevel` 之前执行，读到的是**上一队残留的命座与精炼等级**——例如先部署猫又 4 精队（槽位 0 `wEngineModLevel = 4`）再部署艾莲 1 精队（专武 14119 局内暴击率 1 精 +20% vs 4 精 +35%），百暴计算按残留 4 精（+35% 暴击率）分配，导致艾莲暴击率副词条少分 6 步（`critRate: 12 → 6`）且总伤漂移。
+- **修复（`0c5e00cb`）**：
+  1. **T1**：`StoreSnapshot.globalBuffs` 收紧为 `GlobalBuffRow[]`；`restoreStore` 改为 `...clone(snap.globalBuffs)` 深拷贝写回，删去 `as never[]`。至此全仓 `src/` 非测试代码中的 store 状态 `unknown[]` 清零。
+  2. **T2**：`modelingGaps.ts` 导出 `CinemaLedgerEntry` 与 `MechanicLedgerEntry`；`RunArchivePage.vue` 新增泛型 `readLedger<T>(url)`，收紧 `modelingLedgers` ref 类型并删去全部 4 处 `as any` / `as never`。
+  3. **`applyDeployConfig` 复用 `teamTimelineStore#applyTeamToStore(..., true)`**：先写入三槽目标 `cinemaLevel` / `wEngineModLevel` 再执行 `applyTeamPreset` 与音擎覆盖，消除跨队命座/精炼向百暴副词条分配的泄漏，并删去不再需要的尾随 `syncTeammateBuffsFromTeam()` 补丁（保留 `stunAxes.splice(0)` / `stunAxisPlans.splice(0)` 不动 `useStunAxis` 总开关，使自动轴照旧接管）。
+- **验证**：`npx vue-tsc -b --noEmit` 0 错；`configSnapshot.test.ts`（6/6）、`runArchiveDeploy.test.ts`（12/12，新增跨队高精残留百暴副词条与总伤回归断言）、`teamCompare.test.ts`（36/36）、`moveFusion.test.ts`（24/24）、`src/utils`（16 文件 107 用例）与 `checkGuards.test.ts`（143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。
+- **回退点**：`git revert 0c5e00cb`。
