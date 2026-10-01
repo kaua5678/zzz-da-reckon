@@ -29,112 +29,40 @@
 </template>
 
 <script setup lang="ts">
+// CC-346：候选生成与试换在 composables/mainStatMarginal.ts，跑在独立场景上（不改写 UI store；每个候选单项替换）
 import { ref, computed } from 'vue'
 import { NCard, NButton } from 'naive-ui'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
-import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
+import { computeMainStatMarginals } from '@/composables/mainStatMarginal'
 
 const configStore = useConfigStore()
-const catalogStore = useCatalogStore()
-const { teamTotalDamage } = useResourceCalc()
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 const computing = ref(false)
 const results = ref<{ label: string; damage: number; pct: number; isCurrent: boolean }[]>([])
 
-/** 主词条候选列表 */
-const SLOT_CANDIDATES: Record<number, string[]> = {
-  4: ['anomalyProficiency', 'atkPct', 'critRate', 'critDmg'],
-  5: ['penRatio', 'atkPct', 'physicalDmg', 'fireDmg', 'iceDmg', 'electricDmg', 'etherDmg', 'windDmg'],
-  6: ['atkPct', 'anomalyMastery', 'energyRegen', 'impact'],
-}
-
-const STAT_LABELS: Record<string, string> = {
-  anomalyProficiency: '精通', atkPct: '攻击%', critRate: '暴击率', critDmg: '暴伤',
-  penRatio: '穿透率', physicalDmg: '物理增伤', fireDmg: '火增伤', iceDmg: '冰增伤',
-  electricDmg: '电增伤', etherDmg: '以太增伤', windDmg: '风增伤',
-  anomalyMastery: '异常掌控', energyRegen: '能量回复', impact: '冲击力',
-}
-function statLabel(s: string) { return STAT_LABELS[s] ?? s }
-
-/** 元素增伤 statId → agent damageElement 映射（5号位筛选用） */
-const ELEMENT_DMG_TO_AGENT: Record<string, string> = {
-  physicalDmg: 'physical', fireDmg: 'fire', iceDmg: 'ice',
-  electricDmg: 'electric', etherDmg: 'ether', windDmg: 'wind', lumifluxDmg: 'lumiflux',
-}
+/** 批任务归属（同 CC-343 S4）：重算吊销上一次，离开页面也吊销 */
+const owner = useBatchOwner()
 
 async function run() {
+  const task = owner.start()
   computing.value = true
   results.value = []
-
-  // 收集所有需要测试的候选
-  interface Candidate { slot: number; statId: string; label: string }
-  const candidates: Candidate[] = []
-
-  for (let slot = 0; slot < 3; slot++) {
-    const char = configStore.team[slot]
-    if (!char?.agentId) continue
-    const disc = char.driveDisc
-    if (!disc?.mainStats) continue
-    const agent = catalogStore.getAgent(char.agentId)
-    const agentElement = agent?.damageElement
-
-    for (const [slotNum, opts] of Object.entries(SLOT_CANDIDATES)) {
-      const sn = Number(slotNum)
-      const current = disc.mainStats[sn as 4 | 5 | 6] as string
-      for (const statId of opts) {
-        if (statId === current) continue
-        // 5号位元素增伤：只保留与该角色 damageElement 匹配的
-        if (sn === 5 && ELEMENT_DMG_TO_AGENT[statId] && agentElement && ELEMENT_DMG_TO_AGENT[statId] !== agentElement) continue
-        candidates.push({ slot, statId, label: `槽${slot+1} #${slotNum} → ${statLabel(statId)}` })
-      }
-    }
-  }
-
-  // 记录当前各 slot 原值，用于恢复
-  const originals: { slot: number; slotNum: number; stat: string }[] = []
-  for (let slot = 0; slot < 3; slot++) {
-    const disc = configStore.team[slot]?.driveDisc
-    if (!disc?.mainStats) continue
-    for (const sn of [4, 5, 6] as const) {
-      originals.push({ slot, slotNum: sn, stat: disc.mainStats[sn] as string || '' })
-    }
-  }
-
-  // 当前伤害基准
-  await new Promise(r => setTimeout(r, 0))
-  const baseDamage = teamTotalDamage.value
-
-  const allResults = [...candidates.map(c => ({ ...c, damage: 0, pct: 0, isCurrent: false }))]
-
   try {
-    for (const c of allResults) {
-      const disc = configStore.team[c.slot]?.driveDisc
-      if (!disc?.mainStats) continue
-      const slotNum = Number(c.label.match(/#(\d)/)?.[1]) as 4 | 5 | 6
-      if (!slotNum) continue
-      disc.mainStats[slotNum] = c.statId as any
-      await new Promise(r => setTimeout(r, 0))
-      c.damage = teamTotalDamage.value
-      c.pct = baseDamage > 0 ? ((c.damage - baseDamage) / baseDamage) * 100 : 0
-    }
+    const { baseDamage, rows } = await withAnalysisScenario(s => computeMainStatMarginals(s, { control: { signal: task.signal } }))
+    // 按收益降序，当前配置置顶
+    task.commit(() => {
+      results.value = [
+        { label: '当前配置', damage: baseDamage, pct: 0, isCurrent: true },
+        ...rows.map(r => ({ label: r.label, damage: r.damage, pct: r.pct, isCurrent: false })).sort((x, y) => y.pct - x.pct),
+      ]
+    })
   } finally {
-    // 恢复原值
-    for (const o of originals) {
-      const disc = configStore.team[o.slot]?.driveDisc
-      if (disc?.mainStats) disc.mainStats[o.slotNum as 4 | 5 | 6] = o.stat as any
-    }
-    await new Promise(r => setTimeout(r, 0))
-    computing.value = false
+    task.commit(() => { computing.value = false })
   }
-
-  // 按收益降序，当前配置标出
-  results.value = [
-    { label: '当前配置', damage: baseDamage, pct: 0, isCurrent: true },
-    ...allResults.sort((a, b) => b.pct - a.pct),
-  ]
 }
 
 </script>
