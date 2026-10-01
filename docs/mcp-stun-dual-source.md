@@ -4697,3 +4697,27 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `src/utils/elementStatKeys.ts` + `src/core/buff.ts` + `src/core/damage.ts` + `src/core/anomalyPool/helpers.ts` + `src/core/stunPool.ts` + `src/utils/__tests__/elementStatKeys.test.ts`：`ElementStatKind` 补齐 `enemyAnomalyRes | enemyStunRes`；`core/buff.ts` 导出 `getTargetedElementStat(panel, kind, element, targetSkillType)`；删除 `damage.ts` 6 个私有 `getElement*` 包装与 `stunPool.ts` 的 `getElementEnemyStunResReduction`，`anomalyPool/helpers.ts` 4 个 `getElement*` 函数统一转调 `panelElementStat`；在 `elementStatKeys.test.ts` 加源码锁禁止除 `elementStatKeys.ts` 与 `enemyDebuffStats.ts` 外直调 `enemyDebuffElementStatId`。
   - `src/core/anomalyPool/helpers.ts` + `src/core/damage.ts`：在 `anomalyPool/helpers.ts` 导出单一事实源 `getAnomalyCritStats`（经 `getBaseElement` 识别物理族），`calcAnomalyCritExpect` 与 `damage.ts#calcAnomalyDamage` 共用同一实现。
 - **验证**：`npx vue-tsc -b --noEmit` 0 错；全量 `vitest run` 443 个测试文件 / 4081 passed（含 `timeGolden.test.ts` 414 条零差）；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 58c6c473`。
+
+### 24.182 CC-339：位置对比拐力差分门控恢复与单次求值收口、预设装配 0命1精 隔离与金档步进单源化（`efd63a1f`，第 358 轮）
+
+- **背景与问题**：
+  1. **位置对比分析器（`src/composables/positionCompare.ts#computePositionCompare`）拐力差分恢复时强开未解锁命座/额外能力 buff，且每支队伍多跑第 3 次全量求值**：
+     - 对击破手/辅助（`position !== 'main'`），第一遍求值（`syncTeammateBuffsFromTeam()` 生效状态）只读取了 `total = calc.teamTotalDamage.value` 与 `rows = calc.damagePoolRows.value`；随后将 `group.buffs` 全设为 `false` 求 `withoutBuff`（第二遍求值）；最后为读取 `calc.stunPoolResult.value` 与 `calc.anomalyPoolResult.value`，用 `for (const buff of group.buffs) configStore.toggleTeammateBuff(buff.id, true)` + `refreshTrigger++` 恢复（触发第三遍全量求值）。
+     - 无条件将 `group.buffs` 全置 `true` 绕过了 `deriveTeammateBuffEnabled` 的 `requiredCinema`、`aaGates` 与排他门（`gateBlocked`），导致低金（如 6 金 0 命）下该击破/辅助的 C1~C6 命座队友 buff 及未满足组队条件的额外能力 buff 被强行打开，既污染随后读取的失衡次数/失衡值/异常积蓄，又多付一次全量引擎求值（单队 3 次 → 2 次）。
+  2. **队伍对比预设装配（`src/composables/teamCompare.ts#applyTeamToStore` 与 `computeTeamComparePoints`）跨预设高命座/高精炼残留**：
+     - `applyTeamToStore` 直接调用 `configStore.setAgent(slot, preset.team[slot])`，未先复位 `cinemaLevel = 0` 与 `wEngineModLevel = 1`。当批量对比中上一预设跑完停在高金档（如 18 金 `cinemaLevel = 6, wEngineModLevel = 5`）或用户页面原处于高命座/高精炼时：
+       a) `setAgent` 内部同步执行的 `syncTeammateBuffsFromTeam()` 与 `applyBuildRecommendationForSlot(slot)`（`computeDefaultSubStatAllocation`）会读取上一预设残留的 `cinemaLevel` / `wEngineModLevel`（全库 15+ 把暴击率专武随精炼 1→5 增加暴击率，残留 R5 会使「百暴」副词条少分 3~8 词条暴击率）；
+       b) 在 `computeTeamComparePoints` 中，置基础金分配（`applyGoldSteps(preset.goldSteps, baseGold, baseGold, ...)`）此前仅在 `if (options.optimalGold)` 分支执行；当 `optimalGold = false` 时，`pickBestBuff`（当期 buff 自动推荐）与 `computeAutoEnginePicks`（下位音擎择优）直接带着上一预设末尾的金档状态试算。
+     - `difficultyLadder.ts#resetDifficultyGoals` 同样先跑 3 次非 `defer` 的 `setAgent` 再跑 `applyTeamPreset`，且未按注释契约复位 `0命1精`。
+  3. **金档步进初始化与结果提取重复（`src/composables/teamCompare.ts`）**：
+     - `computeOptimalGoldAllocations` 手写 16 行初始化 `cinemas / wengineMods / wEngines` 并遍历 `standardSteps`，与 `applyGoldSteps(preset.goldSteps, baseGold, baseGold, preset.standardSteps ?? [], preset.wEngines ?? [])` 完全同义。
+     - `computeTeamComparePoints` 的非 `optimalGold` 分支在调用 `applyGoldToStore(configStore, preset, gold, autoPicks)` 后，下半段又重复调用一次 `applyGoldSteps(preset.goldSteps, gold, baseGold, std)`（且漏传第 5 参数 `preset.wEngines ?? []`）+ `acquiredSlots` + `substituteAutoEngines`。
+- **修复**：
+  - `src/composables/positionCompare.ts` + `src/composables/__tests__/positionCompare.test.ts`：在第一次求值时同步读取 `total`、`rows`、`pool = calc.stunPoolResult?.value` 与 `anomalyPool = calc.anomalyPoolResult.value`；拐力差分求完 `withoutBuff` 后改用 `configStore.syncTeammateBuffsFromTeam()` 恢复真实门控状态（单队求值由 3 次降至 2 次，且消除未解锁命座/额外能力 buff 污染）。新增三位置 `stunCount` / `totalDamage` / `dazeShare` 同源一致性回归单测。
+  - `src/composables/teamCompare.ts` + `src/composables/__tests__/teamCompare.test.ts`：
+    - `applyTeamToStore` 在 `setAgent` 前先将三槽复位为 `cinemaLevel = 0, wEngineModLevel = 1`；
+    - `computeTeamComparePoints` 在 `pickBestBuff` 与 `computeAutoEnginePicks` 前无条件将队伍置于该预设基础金分配；
+    - `computeOptimalGoldAllocations` 基础态初始化统一复用 `applyGoldSteps(..., baseGold, baseGold, ...)`；
+    - `applyGoldToStore` 直接返回 `{ ...applied, autoLimitedGold }`，`computeTeamComparePoints` 直接消费该返回值，删除下半段漏传 `preset.wEngines` 的重复 `applyGoldSteps` + `substituteAutoEngines`。新增跨预设高金残留隔离回归单测。
+  - `src/composables/difficultyLadder.ts`：`resetDifficultyGoals` 先复位三槽 `0命1精` 再调 `applyTeamPreset`，并删除前面冗余的 3 次非 `defer` `setAgent`。
+- **验证**：`npx vue-tsc -b --noEmit` 0 错；相关套件（`positionCompare.test.ts`、`teamCompare.test.ts`、`difficultyLadder.test.ts`、`difficultyCurve.test.ts`、`difficultyDescent.test.ts`、`checkGuards.test.ts` 143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert efd63a1f`。

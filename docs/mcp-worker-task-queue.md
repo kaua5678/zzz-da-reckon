@@ -96,26 +96,24 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 357 轮（lane arena-A，承接第 356 轮下一步 1–2）：CC-338 元素定向面板字段与异常暴击统计单源化、命座提升率多槽隔离与去重、自由对比空槽清理（代码 `58c6c473`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `7d1a3bc3`，工作区干净）。**
+**第 358 轮（lane arena-A，承接第 357 轮下一步 1–2）：CC-339 位置对比拐力差分门控恢复与单次求值收口、预设装配 0命1精 隔离与金档步进单源化（代码 `efd63a1f`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `c9c767ae`，工作区干净）。**
 
-- **CC-338（`58c6c473`，元素面板字段与异常暴击单源化 + `cinemaUplift` 多槽隔离与去重 + `freeCompare` 空槽清理，全量 414 条 golden 零差）**：
-  1. **命座提升率分析器（`src/composables/cinemaUplift.ts#analyzeCinemaUplift`）多槽隔离修复与求值去重**：
-     - 此前外层 `for (const slot of slots)` 在跑完 `slot = 0` 的 `to = 1..6` 后未恢复 `slot = 0` 的命座（仅在 `finally` 恢复），导致页面默认 `slots = [0, 1, 2]` 下分析 `slot = 1` 时 `slot = 0` 留在 **C6**、分析 `slot = 2` 时 `slot = 0/1` 均留在 **C6**，污染后续槽位的命座提升率百分比。
-     - 修复：每槽循环末尾立即恢复 `configStore.setCinemaLevel(slot, originalCinemas[slot] ?? 0)` + `syncTeammateBuffsFromTeam()`；同时每槽只求值一次 C0 基线，内层 `to = 1..maxLevel` 复用上一档 `(after, panelAfter)` 作下一档 `(before, panelBefore)`（单槽完整引擎求值由 `2 × maxLevel = 12` 次降为 `maxLevel + 1 = 7` 次，`cinemaUplift.test.ts` 耗时由 `~15s` 降至 `4.1s`）。新增多槽隔离回归测试。
-  2. **自由对比工作台（`src/composables/freeCompare/engine.ts#computeFreeCompare`）默认轻量速算下空槽清理**：
-     - 此前槽位装配第一遍对 `!team[slot]` 直接 `continue`；当 `autoBuild = false`（默认轻量速算）且对比 1~2 人系列（如单角色 + 1 名基底队友）时，3 号槽不会清空，用户当前页面 3 号槽角色或上一条 3 人系列的 3 号槽角色会残留进当前求值。
-     - 修复：当 `!team[slot]` 时显式清空该槽（`setAgent(slot, '')` / `setCinemaLevel(slot, 0)` / `setWEngine(slot, '')` / `setWEngineModLevel(slot, 1)`），并在 `freeCompareEngine.test.ts` 新增空槽清理回归测试。
-  3. **元素定向面板字段与异常暴击统计单源化（`src/utils/elementStatKeys.ts` + `src/core/{buff,damage,stunPool,anomalyPool/helpers}.ts`）**：
-     - `ElementStatKind` 补齐 `enemyAnomalyRes | enemyStunRes`（覆盖全部 8 类元素面板字段）；`core/buff.ts` 导出 `getTargetedElementStat(panel, kind, element, targetSkillType)`。
-     - 删除 `core/damage.ts` 6 个私有 `getElement*` 包装函数与 `core/stunPool.ts#getElementEnemyStunResReduction`，`core/anomalyPool/helpers.ts` 的 4 个 `getElement*` 函数全部转调 `panelElementStat`；在 `elementStatKeys.test.ts` 新增源码锁禁止除 `elementStatKeys.ts` 与 `enemyDebuffStats.ts` 外直调 `enemyDebuffElementStatId`。
-     - 在 `core/anomalyPool/helpers.ts` 导出单一事实源 `getAnomalyCritStats`（经 `getBaseElement` 识别物理族），`calcAnomalyCritExpect` 与 `core/damage.ts#calcAnomalyDamage` 共用同一实现（根除 R59 类两份副本漏同步隐患）。
-- **验证**：`npx vue-tsc -b --noEmit` 0 错；全量 `vitest run` 443 个测试文件 / 4081 passed（含 `timeGolden.test.ts` 414 条零差）通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 58c6c473`。
+- **CC-339（`efd63a1f`，位置对比拐力差分修复与求值去重 + 队伍对比跨预设 0命1精 隔离 + 金档步进单源化，见 `docs/mcp-stun-dual-source.md` §24.182）**：
+  1. **位置对比分析器（`src/composables/positionCompare.ts#computePositionCompare`）拐力差分恢复与单次求值收口**：
+     - 修前：对击破手/辅助（`position !== 'main'`），首轮求值只读 `teamTotalDamage / damagePoolRows`，关掉 `group.buffs` 算完 `withoutBuff` 后，用 `for (const buff of group.buffs) configStore.toggleTeammateBuff(buff.id, true)` + `refreshTrigger++` 恢复并触发第 3 次全量求值来读 `stunPoolResult / anomalyPoolResult`。无条件全开 `group.buffs` 绕过了 `deriveTeammateBuffEnabled` 的 `requiredCinema / aaGates / gateBlocked`，把低金下未解锁的 C1~C6 命座队友 buff 与未满足条件的额外能力 buff 强行打开，既污染失衡与积蓄读数，又多跑第 3 次全量引擎求值。
+     - 修后：在首轮求值（`syncTeammateBuffsFromTeam()` 生效态）一次性读取 `total / rows / stunPoolResult / anomalyPoolResult`；拐力差分后改用 `configStore.syncTeammateBuffsFromTeam()` 恢复真实门控状态。击破/辅助每预设引擎求值从 `3` 次降至 `2` 次（测试耗时下降约 30%），新增三位置 `stunCount / totalDamage / dazeShare` 同源一致性回归单测（`positionCompare.test.ts`）。
+  2. **队伍对比预设装配（`src/composables/teamCompare.ts`）与难度阶梯（`src/composables/difficultyLadder.ts`）跨预设 0命1精 隔离与金档步进单源化**：
+     - `teamCompare.ts#applyTeamToStore`：在 `setAgent` 前先将三槽复位为 `cinemaLevel = 0, wEngineModLevel = 1`，防止上一预设末尾的高命座/高精炼（如 18 金 R5 暴击率专武）残留进 `setAgent` 内部的 `syncTeammateBuffsFromTeam()` 与 `applyBuildRecommendationForSlot`（「百暴」副词条分配）。
+     - `teamCompare.ts#computeTeamComparePoints`：将预设基础金分配（`applyGoldSteps(preset.goldSteps, baseGold, baseGold, ...)`）从 `if (options.optimalGold)` 分支提为无条件前置步骤，修复 `optimalGold = false` 时 `pickBestBuff`（当期 buff 自动推荐）与 `computeAutoEnginePicks`（下位音擎择优）残留上一预设末尾金档试算的跨预设泄漏。
+     - `teamCompare.ts#computeOptimalGoldAllocations` 与 `applyGoldToStore`：基础态初始化统一复用 `applyGoldSteps(..., baseGold, baseGold, ...)`；`applyGoldToStore` 直接返回 `{ ...applied, autoLimitedGold }` 供 `computeTeamComparePoints` 复用，删去下半段漏传 `preset.wEngines ?? []` 的重复 `applyGoldSteps + substituteAutoEngines`。新增跨预设高金残留隔离回归单测（`teamCompare.test.ts`）。
+     - `difficultyLadder.ts#resetDifficultyGoals`：按注释契约先复位三槽 `0命1精` 再调 `applyTeamPreset`，并删去前面冗余的 3 次非 `defer` `setAgent`。
+- **验证**：`npx vue-tsc -b --noEmit` 0 错；相关套件（`positionCompare.test.ts`、`teamCompare.test.ts`、`difficultyLadder.test.ts`、`difficultyCurve.test.ts`、`difficultyDescent.test.ts`、`checkGuards.test.ts` 143/143）全绿；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert efd63a1f`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. **继续审计 `src/composables/`（如 `teamCompare*.ts`、`pullValue.ts`、`pullPlanner*.ts`、`charIncrement.ts`、`difficultyCurve.ts`）或 `src/stores/` 的状态隔离与单源化机会**：
-   - 第 350–357 轮已完成 `src/mechanics/agents/`（47 个角色模块）、`src/specs/`、`src/composables/resourceCalc/`、`src/core/` 结算子模块以及 `cinemaUplift / freeCompare` 的对账与单源化。
-   - 下一步可重点排查其余多队/多档批处理 composables（`teamCompare`、`pullValue`、`pullPlannerEngine`、`charIncrement`、`difficultyCurve`）在跨队/跨档循环中是否存在槽位状态残留、重复求值或口径分叉。
+2. **审计 `src/stores/`（`config.ts`、`catalog.ts`）及剩余编排层辅助模块（如 `runArchiveDeploy.ts`、`teamTimelineStore.ts`、`substatOptimizer.ts`、`liveInteractions.ts`）的状态隔离与单源化机会**：
+   - 第 350–358 轮已完成 `src/mechanics/agents/`（47 个角色模块）、`src/specs/`、`src/composables/resourceCalc/`、`src/core/` 结算子模块、`cinemaUplift`、`freeCompare`、`positionCompare`、`teamCompare`、`difficultyLadder` 的对账与单源化。
+   - 下一步可重点检查 `teamTimelineStore.ts#applyTeamToStore`（`autoBuild = true` 时 `applyTeamPreset` 与 `applyGoldAllocationToStore` 的调用顺序是否受残留命座/精炼影响）、`runArchiveDeploy.ts` 与 `stores/config.ts` 之间是否还有可合并的装配/复位逻辑。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：
