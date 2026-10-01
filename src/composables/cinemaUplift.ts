@@ -25,12 +25,15 @@
  *   （执行级效果：moveId 增伤/暴伤/附伤，正常）；`unimplemented` = 面板无变化且伤害无提升
  *   （效果可能完全没接进计算 —— 需要人看的信号）。
  *
- * 注意：本函数会**临时改写 configStore**（命座等级 / stunCountLock）并在 finally 恢复现场。
- * 这是当前引擎只能「改全局 store → 读 computed」驱动的后果，不是本模块的设计选择。
+ * 现场隔离（CC-347，2026-10）：`analyzeCinemaUplift` 只在调用方给的独立场景（`AnalysisContext`，
+ * 见 `analysisScenario.ts`）里改命座等级 / stunCountLock 并读该场景的 `calc`，**不碰 UI store**；
+ * 迁移前它直接改 UI configStore、靠页面传入的三个读数闭包读 UI 现场、finally 再恢复。
  */
 import { nextTick } from 'vue'
-import type { ConfigModel } from '@/stores/config'
-import type { useCatalogStore } from '@/stores/catalog'
+import { useCatalogStore } from '@/stores/catalog'
+import type { AnalysisContext } from '@/composables/analysisScenario'
+import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
+import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
 
@@ -163,20 +166,8 @@ export interface SceneReading {
   metrics: Record<string, number> | null
 }
 
-export interface AnalyzeCinemaUpliftParams {
-  configStore: ConfigModel
-  catalogStore: ReturnType<typeof useCatalogStore>
-  /** 读当前配置下的全队总伤害（页面传 teamTotalDamage 的 getter） */
-  readDamage: () => number
-  /** 读当前配置下的全队终结技总次数 */
-  readUltimateTotal: () => number
-  /**
-   * 读当前配置下的附加指标（键 → 全队合计值，键集见 `CINEMA_METRICS`）。
-   * 页面传 `() => collectCinemaMetrics({ characters, stunPool, anomalyPool })`；
-   * 缺省 = 不算附加栏（`entry.metrics` 为空数组），既有调用方与既有测试不受影响。
-   */
-  readMetrics?: () => Record<string, number>
-  /** 锁定的失衡次数（页面传当前收敛的 stunPoolResult.stunCount；<=0 表示不锁） */
+export interface AnalyzeCinemaUpliftOptions {
+  /** 锁定的失衡次数（页面传 UI 现场当前收敛的 stunPoolResult.stunCount；<=0 表示不锁） */
   targetStunCount: number
   /** 要分析的槽位，默认 0/1/2 */
   slots?: number[]
@@ -184,97 +175,105 @@ export interface AnalyzeCinemaUpliftParams {
   maxLevel?: number
   /** 角色名解析（页面传 agentNames 映射；缺省回落 catalog 名） */
   resolveName?: (agentId: string, slot: number) => string
+  /** 页面「重新计算」/ 离开页面时中止；中止后返回已算完的槽位（未完成的槽位整行丢弃） */
+  control?: BatchControl
+}
+
+/**
+ * 场景当前结果的一帧读数：伤害 / 全队大招次数 / 附加指标（求和口径单源在 `collectCinemaMetrics`）。
+ * CC-347 前由页面以 `readDamage / readUltimateTotal / readMetrics` 三个闭包传入（读的是 UI 现场）；
+ * 现在三者都是 `calc` 的纯函数，分析器在自己的场景里直接读，调用方不再能传错现场。
+ */
+export function readCinemaScene(calc: ResourceCalc): SceneReading {
+  const characters = calc.resourceResult.value?.characters
+  return {
+    dmg: calc.teamTotalDamage.value,
+    ult: (characters ?? []).reduce((sum, c) => sum + (c.ultimateCount ?? 0), 0),
+    metrics: collectCinemaMetrics({
+      characters,
+      stunPool: calc.stunPoolResult.value,
+      anomalyPool: calc.anomalyPoolResult.value,
+    }),
+  }
 }
 
 /**
  * 逐槽位、逐级计算命座提升率与自检结论。
- * 全程只读结果、临时写 store，返回前恢复命座与失衡锁。
+ * 只改写 `scenario.config`（命座等级 / stunCountLock），UI 现场全程不动；场景由调用方 dispose
+ * （页面用 `withAnalysisScenario`），所以这里不再有「finally 恢复现场」。
  */
-export async function analyzeCinemaUplift(params: AnalyzeCinemaUpliftParams): Promise<CinemaUpliftRow[]> {
-  const {
-    configStore, catalogStore, readDamage, readUltimateTotal,
-    readMetrics,
-    targetStunCount, slots = [0, 1, 2], maxLevel = 6, resolveName,
-  } = params
-
-  const originalCinemas = configStore.team.map(c => c?.cinemaLevel ?? 0)
-  const originalStunLock = configStore.enemy.stunCountLock
+export async function analyzeCinemaUplift(
+  scenario: AnalysisContext,
+  opts: AnalyzeCinemaUpliftOptions,
+): Promise<CinemaUpliftRow[]> {
+  const { config, calc } = scenario
+  const { targetStunCount, slots = [0, 1, 2], maxLevel = 6, resolveName, control } = opts
+  const catalogStore = useCatalogStore()
+  const originalCinemas = config.team.map(c => c?.cinemaLevel ?? 0)
   const rows: CinemaUpliftRow[] = []
 
   /**
-   * 锁定失衡次数后读伤害：3/5 命抬技能等级 → 失衡值↑ → 失衡次数联动放大成假提升，
+   * 锁定失衡次数后读一帧：3/5 命抬技能等级 → 失衡值↑ → 失衡次数联动放大成假提升，
    * 故按「操作够就能打 N 次失衡」的用户口径把次数钉死再比。
-   * R1 起这一帧同时读大招次数与附加指标，保证各栏与伤害**同场景**（锁的加解锁序列与改前逐位一致）。
+   * 伤害 / 大招 / 附加指标同帧读，保证各栏**同场景**（锁的加解锁序列与迁移前逐位一致，结果零差异）。
    */
   async function readScene(): Promise<SceneReading> {
-    const take = (): SceneReading => ({
-      dmg: readDamage(),
-      ult: readUltimateTotal(),
-      metrics: readMetrics ? readMetrics() : null,
-    })
     if (targetStunCount > 0) {
-      configStore.enemy.stunCountLock = targetStunCount
+      config.enemy.stunCountLock = targetStunCount
       await nextTick()
-      const reading = take()
-      configStore.enemy.stunCountLock = -1
+      const reading = readCinemaScene(calc)
+      config.enemy.stunCountLock = -1
       await nextTick()
       return reading
     }
-    return take()
+    return readCinemaScene(calc)
   }
 
-  try {
-    for (const slot of slots) {
-      const char = configStore.team[slot]
-      if (!char?.agentId) continue
-      const name = resolveName?.(char.agentId, slot)
-        || catalogStore.getAgent(char.agentId)?.name?.zhCN
-        || `槽${slot + 1}`
-      const entries: CinemaUpliftEntry[] = []
+  for (const slot of slots) {
+    if (isBatchAborted(control)) break
+    const char = config.team[slot]
+    if (!char?.agentId) continue
+    const name = resolveName?.(char.agentId, slot)
+      || catalogStore.getAgent(char.agentId)?.name?.zhCN
+      || `槽${slot + 1}`
+    const entries: CinemaUpliftEntry[] = []
 
-      // CC-338：① C0 基线只求值一次，逐级复用上一档 (after, panelAfter) 作下一档 (before, panelBefore)，
-      // 单槽求值次数由 2×maxLevel 降为 maxLevel+1；② 每槽跑完立即把该槽命座恢复为 originalCinemas[slot]，
-      // 防止多槽分析（slots=[0,1,2]）时前序槽位留在 C6 污染后续槽位的命座提升率。
-      configStore.setCinemaLevel(slot, 0)
-      configStore.syncTeammateBuffsFromTeam()
-      let before = await readScene()
-      let panelBefore = computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
+    // CC-338：① C0 基线只求值一次，逐级复用上一档 (after, panelAfter) 作下一档 (before, panelBefore)，
+    // 单槽求值次数由 2×maxLevel 降为 maxLevel+1；② 每槽跑完立即把该槽命座恢复为 originalCinemas[slot]，
+    // 防止多槽分析（slots=[0,1,2]）时前序槽位留在 C6 污染后续槽位的命座提升率（场景内同样需要）。
+    config.setCinemaLevel(slot, 0)
+    config.syncTeammateBuffsFromTeam()
+    let before = await readScene()
+    let panelBefore = computePanelPhases(slot, config, catalogStore)?.inCombat ?? null
 
-      for (let to = 1; to <= maxLevel; to++) {
-        configStore.setCinemaLevel(slot, to)
-        configStore.syncTeammateBuffsFromTeam()
-        const after = await readScene()
-        const panelAfter = computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
-        const pb = panelBefore
+    for (let to = 1; to <= maxLevel; to++) {
+      if (isBatchAborted(control)) return rows
+      config.setCinemaLevel(slot, to)
+      config.syncTeammateBuffsFromTeam()
+      const after = await readScene()
+      const panelAfter = computePanelPhases(slot, config, catalogStore)?.inCombat ?? null
+      const pb = panelBefore
 
-        const changedFields = pb && panelAfter
-          ? Object.keys(panelAfter).filter(k => Math.abs((panelAfter[k] ?? 0) - (pb[k] ?? 0)) > 1e-9)
-          : []
-        const gainPct = before.dmg > 0 ? ((after.dmg - before.dmg) / before.dmg) * 100 : 0
-        const metrics = buildCinemaMetrics(before.metrics, after.metrics)
-        // 三态判定：面板字段变化 → ok；无面板变化但伤害移动（|gain| ≥ ε，含负号）→ execLevel
-        // ——伤害发生符号变化本身就是执行/资源级生效的证据（如卢西娅C4帷幕喧响挤占时间预算，
-        // 命座定案 2026-08：预算极紧时可为轻微负增益），不是死数据；零移动才是未接入。
-        const warn: CinemaUpliftEntry['warn'] = changedFields.length > 0
-          ? 'ok'
-          : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT
-            ? 'execLevel' // 面板无变化但伤害有移动：执行级效果（moveId 增伤/暴伤/附伤/资源侧联动等）
-            : 'unimplemented' // 无字段无伤害：效果可能未接进计算
-        entries.push({ to, gainPct, ultBefore: before.ult, ultAfter: after.ult, changedFields, warn, metrics })
-        before = after
-        panelBefore = panelAfter
-      }
-      configStore.setCinemaLevel(slot, originalCinemas[slot] ?? 0)
-      configStore.syncTeammateBuffsFromTeam()
-      rows.push({ slot, agentId: char.agentId, name, entries })
+      const changedFields = pb && panelAfter
+        ? Object.keys(panelAfter).filter(k => Math.abs((panelAfter[k] ?? 0) - (pb[k] ?? 0)) > 1e-9)
+        : []
+      const gainPct = before.dmg > 0 ? ((after.dmg - before.dmg) / before.dmg) * 100 : 0
+      const metrics = buildCinemaMetrics(before.metrics, after.metrics)
+      // 三态判定：面板字段变化 → ok；无面板变化但伤害移动（|gain| ≥ ε，含负号）→ execLevel
+      // ——伤害发生符号变化本身就是执行/资源级生效的证据（如卢西娅C4帷幕喧响挤占时间预算，
+      // 命座定案 2026-08：预算极紧时可为轻微负增益），不是死数据；零移动才是未接入。
+      const warn: CinemaUpliftEntry['warn'] = changedFields.length > 0
+        ? 'ok'
+        : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT
+          ? 'execLevel' // 面板无变化但伤害有移动：执行级效果（moveId 增伤/暴伤/附伤/资源侧联动等）
+          : 'unimplemented' // 无字段无伤害：效果可能未接进计算
+      entries.push({ to, gainPct, ultBefore: before.ult, ultAfter: after.ult, changedFields, warn, metrics })
+      before = after
+      panelBefore = panelAfter
     }
-  } finally {
-    for (let i = 0; i < configStore.team.length; i++) {
-      configStore.setCinemaLevel(i, originalCinemas[i] ?? 0)
-    }
-    configStore.enemy.stunCountLock = originalStunLock
-    configStore.syncTeammateBuffsFromTeam()
-    await nextTick()
+    config.setCinemaLevel(slot, originalCinemas[slot] ?? 0)
+    config.syncTeammateBuffsFromTeam()
+    rows.push({ slot, agentId: char.agentId, name, entries })
   }
 
   return rows

@@ -321,9 +321,10 @@ import { NButton, NCard, NInputNumber, NSelect } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
 import {
   analyzeCinemaUplift,
-  collectCinemaMetrics,
   CINEMA_METRICS,
   UPLIFT_EPSILON_PCT,
   type CinemaUpliftEntry,
@@ -340,7 +341,7 @@ import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, teamTotalDamage, stunPoolResult, autoActive, effectiveStunAxes } = useResourceCalc()
+const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, stunPoolResult, autoActive, effectiveStunAxes } = useResourceCalc()
 /** 命座提升率可信度：轴模式（用户开轴或自动命中预设轴）才可信；非轴是退化兜底，仅提示用途 */
 const axisActiveForUplift = computed(() =>
   (configStore.useStunAxis || autoActive.value) && (effectiveStunAxes.value?.length ?? 0) > 0,
@@ -482,9 +483,8 @@ const cinemaStunLock = ref(0)
 /** 栏位定义（顺序 + 中文列名）单源在 cinemaUplift.ts，页面不另抄 */
 const upliftMetricDefs = CINEMA_METRICS
 
-function teamUltimateTotal(): number {
-  return (resourceResult.value?.characters ?? []).reduce((sum, c) => sum + (c.ultimateCount ?? 0), 0)
-}
+/** 命座提升率的任务所有者：重复点「重新计算」顶掉旧运行，离开页面后旧运行不再提交 */
+const cinemaOwner = useBatchOwner()
 
 /** 命座自检角标样式：ok 正常灰、execLevel 蓝色提示、unimplemented 橙色警示 */
 function entryBadgeStyle(e: { warn: 'ok' | 'execLevel' | 'unimplemented' }): Record<string, string> {
@@ -554,28 +554,24 @@ function metricTitle(m: CinemaUpliftMetric | undefined): string {
 }
 
 async function computeCinemaGains() {
+  const task = cinemaOwner.start()
   cinemaComputing.value = true
   try {
-    // 算法已抽到 composables/cinemaUplift.ts（同一份实现同时服务页面与测试：
-    // 「命座必须有效果」的红灯断言见 composables/__tests__/cinemaUplift.test.ts 与 allAgentsSweep）
+    // 算法在 composables/cinemaUplift.ts（同一份实现同时服务页面与测试：
+    // 「命座必须有效果」的红灯断言见 composables/__tests__/cinemaUplift.test.ts 与 allAgentsSweep）。
+    // CC-347：在 UI 现场的独立拷贝里改命座 / 失衡锁并读数，UI store 全程不动（无需恢复现场）。
     const targetStun = stunPoolResult.value?.stunCount ?? 4 // 固定场景：以当前配置收敛的失衡次数为准
-    cinemaStunLock.value = targetStun
-    cinemaGains.value = await analyzeCinemaUplift({
-      configStore,
-      catalogStore,
-      readDamage: () => teamTotalDamage.value,
-      readUltimateTotal: teamUltimateTotal,
-      // R1：附加指标与伤害**同场景**读数；求和口径单源在 collectCinemaMetrics（页面不另抄一份）
-      readMetrics: () => collectCinemaMetrics({
-        characters: resourceResult.value?.characters,
-        stunPool: stunPoolResult.value,
-        anomalyPool: anomalyPoolResult.value,
-      }),
+    const rows = await withAnalysisScenario(s => analyzeCinemaUplift(s, {
       targetStunCount: targetStun,
       resolveName: agentId => agentNames.value[agentId] || '',
+      control: { signal: task.signal },
+    }))
+    task.commit(() => {
+      cinemaStunLock.value = targetStun
+      cinemaGains.value = rows
     })
   } finally {
-    cinemaComputing.value = false
+    task.commit(() => { cinemaComputing.value = false })
   }
 }
 

@@ -6,7 +6,7 @@
  * 「⚠无变化」角标——这是本项目最高频事故类型（死数据）的唯一检测手段，却只能靠人看。
  * 检测算法原先埋在 ResourceUtilizationPage.vue 里（含 store 改写 + nextTick），测试无法调用。
  * 抽到 composables/cinemaUplift.ts 后，这里锁三件事：
- *   ① 分析器不改坏现场（命座等级与失衡锁必须恢复原值）；
+ *   ① 分析器不碰 UI 现场（CC-347 起只在独立场景 `withAnalysisScenario` 里改命座 / 失衡锁）；
  *   ② 三态自检语义正确（ok / execLevel / unimplemented 的判据）；
  *   ③ 真实角色的已实现命座级别不会被判成 unimplemented。
  *
@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { useCatalogStore } from '@/stores/catalog'
+import { createAnalysisScenario, withAnalysisScenario } from '@/composables/analysisScenario'
 import {
   analyzeCinemaUplift,
   buildCinemaMetrics,
@@ -45,70 +45,43 @@ async function analyze(agentId: string, mates: string[] = [], configure?: (confi
   const { config } = await setupHarness([{ agentId }, ...mates.map(id => ({ agentId: id }))])
   configure?.(config)
   const calc = useResourceCalc()
-  const catalogStore = useCatalogStore()
-  const rows = await analyzeCinemaUplift({
-    configStore: config,
-    catalogStore,
-    readDamage: () => calc.teamTotalDamage.value,
-    readUltimateTotal: () => (calc.resourceResult.value?.characters ?? [])
-      .reduce((sum, c) => sum + (c.ultimateCount ?? 0), 0),
-    // R1：附加指标与伤害同场景读数（求和口径单源在 collectCinemaMetrics）
-    readMetrics: () => collectCinemaMetrics({
-      characters: calc.resourceResult.value?.characters,
-      stunPool: calc.stunPoolResult.value,
-      anomalyPool: calc.anomalyPoolResult.value,
-    }),
-    targetStunCount: calc.stunPoolResult.value?.stunCount ?? 4,
-    slots: [0],
-  })
+  // 与页面同口径：失衡锁取 UI 现场当前收敛值，分析在 UI 现场的独立拷贝里跑
+  const targetStunCount = calc.stunPoolResult.value?.stunCount ?? 4
+  const rows = await withAnalysisScenario(s => analyzeCinemaUplift(s, { targetStunCount, slots: [0] }))
   return { rows, config, calc }
 }
 
 describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
-  it('不改坏现场：命座等级与失衡锁在返回前恢复原值', async () => {
+  it('不碰 UI 现场（CC-347）：分析全程 UI config store 零写入，$state 逐位不变', async () => {
     const { config } = await setupHarness([{ agentId: '1371', cinemaLevel: 2 }, { agentId: '1251' }, { agentId: '1271' }])
     const calc = useResourceCalc()
-    const catalogStore = useCatalogStore()
-    const stunLockBefore = config.enemy.stunCountLock
-    const cinemasBefore = config.team.map(c => c?.cinemaLevel ?? 0)
-
-    await analyzeCinemaUplift({
-      configStore: config,
-      catalogStore,
-      readDamage: () => calc.teamTotalDamage.value,
-      readUltimateTotal: () => 0,
-      targetStunCount: calc.stunPoolResult.value?.stunCount ?? 4,
-      slots: [0],
-    })
-
-    expect(config.team.map(c => c?.cinemaLevel ?? 0)).toEqual(cinemasBefore)
-    expect(config.enemy.stunCountLock).toBe(stunLockBefore)
+    const before = JSON.stringify(config.$state)
+    let writes = 0
+    const stop = config.$subscribe(() => { writes++ }, { flush: 'sync' })
+    try {
+      const targetStunCount = calc.stunPoolResult.value?.stunCount ?? 4
+      const rows = await withAnalysisScenario(s => analyzeCinemaUplift(s, { targetStunCount, slots: [0] }))
+      expect(rows[0].entries).toHaveLength(6)
+    } finally {
+      stop()
+    }
+    expect(writes, 'UI store 被写过（分析器又回到了改全局 store 的老路）').toBe(0)
+    expect(JSON.stringify(config.$state)).toBe(before)
   })
 
   it('多槽隔离（CC-338）：slots=[0,1] 下槽 1 的提升率与单独分析 slots=[1] 逐位一致（槽 0 不残留 C6）', async () => {
-    const { config } = await setupHarness([{ agentId: '1371', cinemaLevel: 0 }, { agentId: '1251', cinemaLevel: 0 }, { agentId: '1271', cinemaLevel: 0 }])
+    await setupHarness([{ agentId: '1371', cinemaLevel: 0 }, { agentId: '1251', cinemaLevel: 0 }, { agentId: '1271', cinemaLevel: 0 }])
     const calc = useResourceCalc()
-    const catalogStore = useCatalogStore()
     const targetStunCount = calc.stunPoolResult.value?.stunCount ?? 4
-    const soloSlot1 = await analyzeCinemaUplift({
-      configStore: config,
-      catalogStore,
-      readDamage: () => calc.teamTotalDamage.value,
-      readUltimateTotal: () => 0,
-      targetStunCount,
-      slots: [1],
-      maxLevel: 2,
-    })
-    const bothSlots = await analyzeCinemaUplift({
-      configStore: config,
-      catalogStore,
-      readDamage: () => calc.teamTotalDamage.value,
-      readUltimateTotal: () => 0,
-      targetStunCount,
-      slots: [0, 1],
-      maxLevel: 2,
-    })
-    expect(bothSlots[1].entries).toEqual(soloSlot1[0].entries)
+    // 同一个场景先后跑两次：第二次的出生态就是第一次跑完的现场，槽内恢复（CC-338）缺失会在这里露馅
+    const scenario = createAnalysisScenario()
+    try {
+      const soloSlot1 = await analyzeCinemaUplift(scenario, { targetStunCount, slots: [1], maxLevel: 2 })
+      const bothSlots = await analyzeCinemaUplift(scenario, { targetStunCount, slots: [0, 1], maxLevel: 2 })
+      expect(bothSlots[1].entries).toEqual(soloSlot1[0].entries)
+    } finally {
+      scenario.dispose()
+    }
   })
 
   it('逐级返回 1..6 且字段自洽（gainPct 有限、warn 三态之一、ult 次数非负）', async () => {
@@ -220,56 +193,35 @@ describe('R1 附加指标栏（失衡值/积蓄/喧响/能量）', () => {
   })
 
   it('★ 同场景纪律：伤害/大招/附加指标都在「失衡次数锁定」窗口内读（R1 要求 3）', async () => {
-    // 机器面锁死口径：三个读取器被调用时 enemy.stunCountLock 必须都等于 targetStunCount。
-    // 若有人把 ult 或 metrics 移回锁外读（改前的形态），本用例立刻变红。
-    const { config } = await setupHarness([{ agentId: '1371' }, { agentId: '1251' }, { agentId: '1271' }])
-    const calc = useResourceCalc()
-    const catalogStore = useCatalogStore()
+    // 机器面锁死口径：分析器读场景结果（teamTotalDamage / resourceResult / stunPoolResult / anomalyPoolResult）时，
+    // 场景的 enemy.stunCountLock 必须都等于 targetStunCount。若有人把 ult 或 metrics 移回锁外读（R1 前的形态），本用例立刻变红。
+    // CC-347 前靠页面传入的三个读数闭包打点；现在读数在分析器内部，改为给 scenario.calc 套一层只记录不改值的 Proxy。
+    await setupHarness([{ agentId: '1371' }, { agentId: '1251' }, { agentId: '1271' }])
     const target = 2
-    const originalLock = config.enemy.stunCountLock
-    const seen: Record<string, number[]> = { dmg: [], ult: [], metrics: [] }
-    await analyzeCinemaUplift({
-      configStore: config,
-      catalogStore,
-      readDamage: () => { seen.dmg.push(config.enemy.stunCountLock); return calc.teamTotalDamage.value },
-      readUltimateTotal: () => { seen.ult.push(config.enemy.stunCountLock); return 0 },
-      readMetrics: () => {
-        seen.metrics.push(config.enemy.stunCountLock)
-        return collectCinemaMetrics({
-          characters: calc.resourceResult.value?.characters,
-          stunPool: calc.stunPoolResult.value,
-          anomalyPool: calc.anomalyPoolResult.value,
-        })
+    const scenario = createAnalysisScenario()
+    const seen: Record<string, number[]> = { teamTotalDamage: [], resourceResult: [], stunPoolResult: [], anomalyPoolResult: [] }
+    const calc = new Proxy(scenario.calc, {
+      get(obj, key, receiver) {
+        if (typeof key === 'string' && key in seen) seen[key].push(scenario.config.enemy.stunCountLock)
+        return Reflect.get(obj, key, receiver)
       },
-      targetStunCount: target,
-      slots: [0],
     })
-    for (const kind of ['dmg', 'ult', 'metrics'] as const) {
+    try {
+      await analyzeCinemaUplift({ config: scenario.config, calc }, { targetStunCount: target, slots: [0] })
+    } finally {
+      scenario.dispose()
+    }
+    for (const kind of Object.keys(seen)) {
       expect(seen[kind].length, `${kind} 一次都没被读到`).toBeGreaterThan(0)
       expect(
         seen[kind].filter(v => v !== target),
         `${kind} 有 ${seen[kind].filter(v => v !== target).length} 次读数不在锁定场景内（口径分裂）`,
       ).toEqual([])
     }
-    // 收工必须把锁恢复成原值（不改坏现场；原值可能本来就是 -1，故对比原值而不是硬编码 -1）
-    expect(config.enemy.stunCountLock).toBe(originalLock)
   })
 
-  it('向后兼容：不传 readMetrics 时 metrics 为空数组（既有调用方零改动）', async () => {
-    const { config } = await setupHarness([{ agentId: '1371' }, { agentId: '1251' }])
-    const calc = useResourceCalc()
-    const rows = await analyzeCinemaUplift({
-      configStore: config,
-      catalogStore: useCatalogStore(),
-      readDamage: () => calc.teamTotalDamage.value,
-      readUltimateTotal: () => 0,
-      targetStunCount: calc.stunPoolResult.value?.stunCount ?? 4,
-      slots: [0],
-    })
-    expect(rows[0].entries.every(e => e.metrics.length === 0)).toBe(true)
-    // 三态语义不受影响（仍按 changedFields / gainPct 判）
-    expect(rows[0].entries.every(e => ['ok', 'execLevel', 'unimplemented'].includes(e.warn))).toBe(true)
-  })
+  // （CC-347 删除）原「向后兼容：不传 readMetrics 时 metrics 为空数组」——读数闭包已收进分析器
+  // （`readCinemaScene`），附加指标恒在同一帧读，不存在「不传」这条分支，用例无对象可测。
 
   it('collectCinemaMetrics：求和口径（能量/喧响/强特逐角色求和，积蓄各属性求和，失衡值取池级总量）', () => {
     const fixture = {
