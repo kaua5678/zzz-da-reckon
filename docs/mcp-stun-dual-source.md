@@ -4656,3 +4656,26 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `specs/mechanics.ts` & `specs/resources.ts`：抽出 `isSpecEventEnabled`、复用 `resolveCarrierMoveId`、在 `resolveEventCount` 内统一先查 `counts[event.countField ?? event.id]`（补 `mechanics.test.ts` 断言），并为 `resolveGain` 增加可选 `countOverride` 参数供 `feedbackGainRules` 委托调用。
   - `helpers.ts`：`extractSkillExecutions` 改调 `findMoveById(skills, exec.moveId)`，两函数内以局部 `fusedOf` 收拢 7 处融合行回退取值；同步清理 `alice.ts` / `evelyn.ts` / `starlightBilly.ts` 的 3 处 `vue-tsc -b` 类型告警。
 - **验证**：`npm run check`（`vue-tsc -b --noEmit` 0 错 + 全量 442 个测试文件 / 4073 passed，含 `timeGolden.test.ts` 414 条零差）通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert f4c32bef`。
+
+### 24.180 CC-337：`calcPanel` 局外总回能出口盖章、轴块招式能量成本类型化与跨模块单源化（`f0c5b4b8`）
+
+- **背景与问题**：
+  1. **`calcPanel` 局外总回能（`energyRegenOutOfCombat`）口径分裂 + `calcEnergyRegenTotal` 四处手写**：
+     - `emptyPanel()`（`src/core/panel.ts`）将 `energyRegenOutOfCombat` 初值置为 `1.2`，而真实值 `(energyRegen ?? 1.2) * (1 + energyRegenBonusPct/100) + energyRegenBonusFlat` 仅在 `computePanelPhases`（`panelPhases.ts`）调用 `calcPanel` 之后事后盖章；其余 3 个生产 `calcPanel` 调用点（`computeEntrySnapshotPanel`、`buildTeammateBuffSourceContext`、`computeNoSubstatPanel`）及直接调 `calcPanel` 的调用方拿到的 `outOfCombat.energyRegenOutOfCombat` 与 `inCombat.energyRegenOutOfCombat` 恒停留在 `1.2`。
+     - 同时 `(panel.energyRegen ?? defaultBase) * (1 + (panel.energyRegenBonusPct ?? 0) / 100) + (panel.energyRegenBonusFlat ?? 0)` 在 `buff.ts`、`specs/runtime.ts`、`mechanics/agents/burnice.ts` 与 `panelPhases.ts` 各手写一遍。
+  2. **驱动盘门槛与 `{attribute}` 模板在 `buff.ts`（selfBuff）与 `inCombatBuffs.ts`（teamBuff）重复实现**：
+     - 自 CC-108 起两侧均读装备者精确局外面板，但 `inCombatBuffs.ts` 仍保留私有副本 `discTeamRequirementMet` 与内联 `{attribute}` 替换，并从 `buff.ts` 导出仅此一处使用的别名 `parseStatRequirement`。
+  3. **轴块招式能量成本（`roundInputs.ts#buildStackAxes`）未遵守 `@fact engine:exSpecialPlan/成本类型化`**：
+     - `findExSpecial`（`moveLookup.ts`）按 `/energy/i.test(k)` 区分能量与替代资源（如 `Sharpness Cost: 60` 判为 `resource`，`energyConsume = 0`），但 `buildStackAxes` 直接取 `move.energyCost` 第一个正数，把替代资源招式也当作能量扣减。
+  4. **异常伤害事件公式、逐槽积蓄归因、难度递降测量、金档写入与抗性变量读写跨文件重复**：
+     - `useResourceCalc.ts#anomalyDamageEvents` 硬编码 `20/10/20`、`0.5/1/0.5`、`50%/125%/62.5%` 与 `713%/500%`，未与 `@/core/anomalyPool/helpers` 的 `STANDARD_DOT_CONFIG` / `ANOMALY_SINGLE_HIT_MULTIPLIER` 同源。
+     - `ResultPage.vue#teamOverview` 与 `positionCompare.ts#computePerSlotBuildUp` 各写一份 20 行「异属性赠送积蓄归同属性主贡献者槽」循环；`positionCompare.ts` 在 `applyAxisBinding` 前手动 `splice` 恢复轴快照（而 `applyAxisBinding` 首行即恢复）。
+     - `difficultyDescent.ts` 私有 `measureDifficulty` 复制了 `difficultyCurve.ts#measureOperationalDifficulty` 但直接调 `engineInteractionItems`，在带 `counterAssistGroups` 的 Boss 上漏计 `counterAssist` 交互难度。
+     - 金档 `{ cinemas, wengineMods, wEngines }` 写入 `configStore` 的 3 槽循环在 `teamCompare.ts` / `positionCompare.ts` / `difficultyCurve.ts` / `teamTimelineStore.ts` 重复 7 处；`impactVars.ts` 在 `readImpactVar` / `writeImpactVar` 手写 6×2 个属性抗性 `case` 分支。
+- **修复**：
+  - `src/data/agentPanelStats.ts` + `src/core/{buff,panel}.ts` + `src/specs/runtime.ts` + `src/mechanics/agents/burnice.ts` + `src/composables/resourceCalc/panelPhases.ts`：在 `data/agentPanelStats.ts` 定义并导出 `calcEnergyRegenTotal` / `calcFlashEnergyRegenTotal`（`core/buff.ts` re-export，满足 `specsRuntimeDeps.test.ts` 分层锁）；在 `calcPanel` 的 `outOfCombatOf` 内统一盖章 `p.energyRegenOutOfCombat = calcEnergyRegenTotal(p, 1.2)`（`inCombat` 经 `applyBuffs` 浅拷贝自动继承）；`panelPhases.ts` 抽出 `applyDefaultCinemaSkillLevelBonus` 归一 `computePanelPhases` 与 `computeEntrySnapshotPanel` 的 3/5 命技能等级加成。
+  - `src/core/{buff,inCombatBuffs}.ts`：导出 `discRequirementMet` 与 `resolveDiscStatTemplate` 供 `inCombatBuffs.ts` 直接复用，删除 `discTeamRequirementMet` 与 `parseStatRequirement` 别名。
+  - `src/core/resource/moveLookup.ts` + `src/core/resource.ts` + `src/composables/resourceCalc/roundInputs.ts`：抽出并导出 `parseMoveEnergyCost`，`findExSpecial` 与 `buildStackAxes` 共用同一实现。
+  - `src/composables/useResourceCalc.ts`：`anomalyDamageEvents` 改读 `STANDARD_DOT_CONFIG` 与 `ANOMALY_SINGLE_HIT_MULTIPLIER`。
+  - `src/composables/{positionCompare,teamCompare,difficultyCurve,difficultyDescent,liveInteractions,teamTimelineStore}.ts` + `src/views/ResultPage.vue` + `src/core/impactVars.ts`：导出并复用 `computePerSlotBuildUp` 与 `applyGoldAllocationToStore`；删 `positionCompare.ts` 冗余轴快照恢复；`liveInteractions` / `measureOperationalDifficulty` 支持可选 `preset` 并由 `difficultyDescent.ts` 直接委托；`impactVars.ts` 以 `RESISTANCE_VAR_ELEMENTS` 归一 6 抗性读写。新增 `src/core/__tests__/cc337SingleSource.test.ts`（5 例）。
+- **验证**：`npm run check`（`vue-tsc -b --noEmit` 0 错 + 全量 443 个测试文件 / 4078 passed，含 `timeGolden.test.ts` 414 条零差）通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert f0c5b4b8`。
