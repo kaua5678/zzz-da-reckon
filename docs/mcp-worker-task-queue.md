@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 376 轮**：CC-345 伤害影响 `56e2f697` + CC-346 主词条边际效用 `1962c4b0`（含单项替换口径修正）——原 §2 交接，细节见隔离文档 §3.6 / §3.7；全文 `git show b444abf8:docs/mcp-worker-task-queue.md` 的 §2。
+
 **2026-10-02 arena-E 第 375 轮**：CC-343 S5 收窄类型（`3c287f85`，新增 `EvalConfig`，dist 逐字节相同）——原 §2 交接，细节见隔离文档 §3.5；全文 `git show d43ba04f:docs/mcp-worker-task-queue.md` 的 §2。
 
 **2026-10-01 arena-C 第 374 轮**：CC-343 S4 接 `batchTask`（`423e9de4` + `962e8b9f`）——原 §2 交接，细节见 `docs/mcp-analyzer-scenario-isolation.md` §3.4；全文 `git show 9f3dacd2:docs/mcp-worker-task-queue.md` 的 §2。
@@ -130,24 +132,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 376 轮（lane arena-E，开工 00:26；无并行会话；HEAD `d43ba04f`；REQUIREMENTS.md R1–R8 已全部处理、无新条目）：补迁 CC-343 漏列的组件内分析器——CC-345 伤害影响 `56e2f697`、CC-346 主词条边际效用 `1962c4b0`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **怎么找到的**：上一轮交接说「无排定项 ⇒ 扫没扫过的区域」。CC-343 的 §4 表是按 `snapshotStore` 调用方列的，没覆盖「组件里直接改 UI store 再写回」的写法。按「写 configStore + 让出主线程」组合检索（方法见 `docs/mcp-analyzer-scenario-isolation.md` §8），找到 3 个：伤害影响 2D/3D、主词条边际效用、命座提升率。
-- **做到哪**：
-  1. **CC-345 `56e2f697`**：新 `src/composables/impactSampling.ts`（+ `impactSampling.test.ts`）；`components/ImpactChart.vue`、`components/charts/ResponseSurface3D.vue` 改成 `withAnalysisScenario` + `useBatchOwner`，删写回恢复与全仓唯一的 `$patch`。A/B 五组逐字节相同；实机点通 2D / 3D 均零 JS 错误。隔离文档 §3.6。
-  2. **CC-346 `1962c4b0`**：新 `src/composables/mainStatMarginal.ts`（+ `mainStatMarginal.test.ts`）；`components/MarginalUtilityCard.vue` 只剩发车与展示。**口径修正**：旧实现候选之间不还原（除第一组外都是累积替换的数，实测偏差可达 12%），现为单项替换。隔离文档 §3.7。
-  3. `analysisScenario.test.ts#MIGRATED_ANALYZERS` 加两项（现 10 个模块）。验证：`vue-tsc -b` 0 错；全量 verify EXIT 0（450 文件 / 4132 测试通过，16 / 29 跳过；含两张卡的合并态，worktree wtE-impact）；实机点通边际效用表正常出数；check-guards 25/25。
-  4. 文档：隔离文档 §0 / §2.3 / §3.6 / §3.7 / §4 表三行 / §6 第 5 条 / §8 / §9；卡表 CC-345 / 346 / 347；r6 §8 第 376 行。
-- **下一步（直接开工）**：**CC-347 命座提升率迁独立场景**——做法、A/B 方法、必须保持绿的测试都写在 `docs/mcp-analyzer-scenario-isolation.md` §6 第 5 条。要点：`analyzeCinemaUplift` 改收 `scenario`，三个读取器改在函数内从 `scenario.calc` 读，删命座 / `stunCountLock` 的恢复；调用方有页面 `ResourceUtilizationPage.vue#computeCinemaGains` 和测试 `allAgentsSweep` / `cinemaUplift.test`。做完后「改写 UI store 的分析器」这一类就清零了。
-- **本轮拍板（可逆）**：
-  - CC-346 改成单项替换（依据：累积替换的数取决于候选表顺序、没有可解释含义；页面文案本来就写「替换后的伤害增量」）。回退：`git revert 1962c4b0`，或只删 `computeMainStatMarginals` 里还原那一行。
-  - CC-345 删掉旧 2D 循环里「整批先写一遍再让出」的空转段（A/B 证实无影响）。
-  - 3D 响应面被新运行顶掉 / 离开页面时不再展示半张网格（`complete=false` 直接丢弃）；旧实现没有取消入口，这是新增行为。
+**第 377 轮（lane arena-E，开工 00:52；无并行会话；HEAD `b444abf8`；REQUIREMENTS.md 无新条目）：CC-347 命座提升率迁独立场景 `887c0ebc`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：`analyzeCinemaUplift(scenario, { targetStunCount, slots?, maxLevel?, resolveName?, control? })`；新导出 `readCinemaScene(calc)`；
+  页面 `ResourceUtilizationPage.vue#computeCinemaGains` 改 `withAnalysisScenario` + `useBatchOwner`（删 `teamUltimateTotal`）；`cinemaUplift.test.ts` 改写 3 例、删 1 例；`MIGRATED_ANALYZERS` 现 11 个模块。细节与理由全在隔离文档 §3.8。
+- **验证**：A/B 三队逐字节相同（旧 API 在 HEAD worktree、新 API 在本 worktree 各跑一次；两个探针留在 `/home/kaua/calc-arch/arenaE/zzCu{Old,New}.test.ts`，可作下次 A/B 模板）；全量 verify 通过（check-guards 25、450 文件 / 4131 测试通过、16 / 29 跳过——比上轮少 1 例即删掉的向后兼容用例；build 成功），日志 `/home/kaua/calc-arch/arenaE/verify377c.log`；实机点通资源利用率页「命座提升率」计算 + 重新计算两次均出表、零 JS 错误（`arenaE/ui377.sh`）。
+- **结论**：按隔离文档 §8 的两条检索，**已没有在 UI store 上改写-让出-恢复的分析器**，CC-343 这条线收口。
+- **下一步**：无排定项。可选方向（都不是必须）：① `createBatchScheduler` 接线（只在 worker 化时有意义，§3.4 末段）；② 换区域扫——REQUIREMENTS.md 有新条目优先。不要为降计数开卡。
+- **本轮拍板（可逆）**：页面口径文案用的 `cinemaStunLock` 改为与结果一起 commit（原先点按钮即改）。回退：`git revert 887c0ebc`。
 - **已知坑**：
-  ① 组件内分析器迁移时**让出主线程的位置要逐一照抄**（pre-flush watcher 只在让出时跑）；A/B 探针把旧循环逐行搬进测试在 UI store 上跑，比起 worktree 双跑省事（`/home/kaua/calc-arch/arenaE/zzImpactAB.test.ts` 可作模板）。
-  ② A/B 时**先跑新（场景）再跑旧（改 UI store）**，否则旧实现的残留会污染新实现的出生态。
-  ③ 实机点通：`/tmp/chromedeps` 若不存在按 `scripts/ui-check.mjs` 头注释用 `apt-get download` 补（本轮补过，WSL 重启后会丢）；`--radio` 在 `--step` 之前执行，切页签后的单选要用 `--step "eval:..."` 点；`--wait-for` 在全部 step 之后才轮询。
-  ⑤ **`pkill -f 模式` 会杀掉 wsl_exec 自己的 shell**（命令行含该模式，exit 15，后续命令静默不跑）：用 `pkill -f "[h]ttp.server 8199"` 方括号写法（已写进桥接提示词第 1 条）。
-  ④ `setsid nohup … npm run verify` 偶尔没起来（本轮一次，原因未明）：发车后 `sleep 4; ps … | grep "npm run verify"` 确认一下再去等。
+  ① **WSL 会在没有 wsl_exec 连接时自己关机**（本轮 2 次：`journalctl --list-boots` 每次只隔几分钟，关机前无报错、只有时钟跳变；开工时还在的 dsh web 应该是之前的保活者，它没了以后，两次调用之间空几分钟 VM 就停）：
+     后台 verify 被杀、`/tmp` 清空（A/B 输出、`/tmp/chromedeps` 都没了）。**做法**：verify 发车后，用「在 WSL 里 `sleep`/轮询日志」的调用接力等（每次 ≤170s，调用之间不要在沙箱侧长 sleep）；本轮这样跑完一次全量。
+     判断是否被关过：`uptime` 或 `journalctl --list-boots | tail -3`。发车用的 `(…; echo EXIT=$?) &` 收尾行在本轮也没写出来，以日志里 `built in` / `Tests` 行为准。
+  ② A/B 输出放 `/tmp` 会随重启丢；要留证据就放 `/home/kaua/calc-arch/arenaE/`。
+  ③ 第 376 轮坑（让出位置照抄、先新后旧、ui-check 用法、pkill 方括号、verify 发车确认）仍有效，见 `git show b444abf8:docs/mcp-worker-task-queue.md` §2。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 

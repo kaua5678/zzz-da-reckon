@@ -11,7 +11,8 @@ S2 / S3 / S4 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage`
 `configSnapshot.ts`（快照 / 恢复）已删除（`81b0d2dc`），取消与结果归属已统一到 `batchTask.ts`（`423e9de4` + `962e8b9f`）。
 S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管线与分析器不再在类型上依赖 Pinia。
 第 376 轮（arena-E）补迁了 §4 原表漏掉的两个**组件内**分析器：伤害影响 2D/3D（CC-345 `56e2f697`，§3.6）与主词条边际效用（CC-346 `1962c4b0`，§3.7，顺带修了「候选之间不还原」的数值缺陷）。
-**还剩一个仍改写 UI store 的分析器：命座提升率 `composables/cinemaUplift.ts#analyzeCinemaUplift`**（调用方 `ResourceUtilizationPage.vue#computeCinemaGains`，改命座 / `stunCountLock` 后 finally 恢复）——下一张卡，做法见 §6 第 5 条。
+第 377 轮（arena-E）迁完最后一个改写 UI store 的分析器：命座提升率 `composables/cinemaUplift.ts#analyzeCinemaUplift`（CC-347 `887c0ebc`，§3.8，A/B 逐字节相同）。
+**至此按 §8 的两条检索，已没有在 UI store 上改写-让出-恢复的分析器。**
 `createBatchScheduler`（时间片让步）仍未接线，理由见 §3.4 末段——它只在 worker 化时才需要，没有排定。
 历史：第 1 阶段只落地底座 + 一个试点（角色兑现曲线 `computeIncrementPass`），其余 7 个模块当时仍靠 11 处
 `snapshotStore` / `restoreStore` 改写 UI store 再恢复。迁移清单与配方见 §4、§5。
@@ -222,6 +223,24 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 - **验证**：`mainStatMarginal.test.ts` 3 例（隔离 + 每行 = UI store 上单项替换的读数；反证：累积替换第一组相同、之后不同；取消）；
   `MIGRATED_ANALYZERS` 加 `mainStatMarginal.ts`；全量 verify 见队列 §2 第 376 轮交接。
 
+### 3.8 第 377 轮 CC-347：命座提升率（`887c0ebc`，lane arena-E；零差）
+
+- **旧实现**：`analyzeCinemaUplift({ configStore, catalogStore, readDamage, readUltimateTotal, readMetrics?, targetStunCount, ... })`
+  在 UI store 上改命座等级与 `enemy.stunCountLock`、每次 `nextTick` 后经页面传入的三个闭包读 UI 现场的 calc，`finally` 恢复全队命座与锁。
+  计算期间 UI 会看到中间态（命座 C0..C6 来回跳、失衡锁被钉住）；三个读数闭包让「读哪个现场」变成调用方的责任。
+- **改法**：签名改为 `analyzeCinemaUplift(scenario: AnalysisContext, { targetStunCount, slots?, maxLevel?, resolveName?, control? })`；
+  新导出 `readCinemaScene(calc)`（伤害 = `teamTotalDamage`，大招 = `resourceResult.characters[].ultimateCount` 之和，指标 = `collectCinemaMetrics`），
+  分析器在场景内锁 → `nextTick` → 读 → 解锁 → `nextTick` 的序列与旧实现逐位一致；槽内恢复（CC-338）保留（场景内多槽仍需要），
+  末尾的整队 `finally` 恢复删除（场景随 `withAnalysisScenario` dispose）。`catalogStore` 入参删除，内部 `useCatalogStore()`（§7 的决定）。
+  `readMetrics` 可选分支随之消失（附加指标恒同帧读）。
+- **页面**（`ResourceUtilizationPage.vue#computeCinemaGains`）：`withAnalysisScenario` + `useBatchOwner`；删 `teamUltimateTotal()` 与 `collectCinemaMetrics` / `teamTotalDamage` 的页面侧引用。
+  **唯一可见变化**：口径文案用的 `cinemaStunLock` 改为与结果一起 `commit`（原先点按钮即改写，计算中会显示新锁值配旧表），重复点击时旧运行不再覆盖新结果。
+- **验证**：A/B 三队（仪玄C2+青衣+赛斯 轴模式 / 1471+1481C1 / 1451+1051+1171，slots 0..2、带指标）旧 API 在 HEAD worktree、新 API 在本 worktree 各跑，JSON **逐字节相同**；
+  `cinemaUplift.test.ts` 改写 3 例：①「不碰 UI 现场」= UI store `$subscribe(flush:'sync')` 零写入 + `$state` 逐位相同（反证探针：直接写 store 时计数 > 0）；
+  ② 多槽隔离改为同一场景先后跑两次；③「同场景纪律」改为给 `scenario.calc` 套只记录的 Proxy，四个结果字段每次被读时场景锁 = target。
+  删「向后兼容：不传 readMetrics」一例（无此分支）。`MIGRATED_ANALYZERS` 加 `cinemaUplift.ts`。全量 verify 见队列 §2 第 377 轮交接。
+- **更正**：§6 第 5 条原写「`allAgentsSweep` 也调它」——实际不调（它自己做 C0 vs C6），调用方只有页面与 `cinemaUplift.test.ts`。
+
 ## 4. 迁移进度（每迁一个：改本表 + 把文件加进 `analysisScenario.test.ts` 的 `MIGRATED_ANALYZERS`）
 
 | 分析器 | 入口 | 调用方 | 同步 / 异步 | 状态 |
@@ -237,7 +256,7 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 | `views/TeamComparePage.vue:1139` | 会话缓存键 `snap` | — | — | ✅ 第 373 轮 `851f232f` 改用 `cloneConfigState(configStore.$state)` |
 | 伤害影响 2D / 3D（原在 `components/ImpactChart.vue` / `charts/ResponseSurface3D.vue`，**原表漏列**） | `impactSampling.ts#sampleImpactCurve` / `sampleImpactSurface` | 同左两个组件 | 异步 | ✅ 第 376 轮 `56e2f697`（CC-345，A/B 逐字节相同） |
 | 主词条边际效用（原在 `components/MarginalUtilityCard.vue`，**原表漏列**） | `mainStatMarginal.ts#computeMainStatMarginals` | 同左组件 | 异步 | ✅ 第 376 轮 `1962c4b0`（CC-346，含「单项替换」口径修正） |
-| 命座提升率 `composables/cinemaUplift.ts`（**原表漏列**） | `analyzeCinemaUplift` | `views/ResourceUtilizationPage.vue#computeCinemaGains` | 异步（nextTick） | ⬜ 仍改写 UI store + finally 恢复；下一张卡（§6 第 5 条） |
+| 命座提升率 `composables/cinemaUplift.ts`（**原表漏列**） | `analyzeCinemaUplift` | `views/ResourceUtilizationPage.vue#computeCinemaGains` | 异步（nextTick） | ✅ 第 377 轮 `887c0ebc`（CC-347，A/B 逐字节相同） |
 
 ## 5. 迁移配方（一个分析器一张卡，零差简化卡）
 
@@ -263,7 +282,7 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
    （废除 `shouldAbort` 回调），9 个调用点接 `createBatchOwner`（进度 / 结果 / finally 只归当前运行），
    7 个分析器穿 `control`（被顶掉时下一循环头停算）。「每个任务一个 `withAnalysisScenario`」在 S2 迁完时即已成立
    （`TeamComparePage` 逐队建场景，其余整次运行一个）。`createBatchScheduler` 仍未接线，理由见 §3.4；之后才谈 worker。
-5. **CC-347 命座提升率迁独立场景（下一张卡，可直接开工）**：`analyzeCinemaUplift` 现收 `configStore` + 页面 calc 的读取器
+5. ~~**CC-347 命座提升率迁独立场景**~~ ✅ 第 377 轮 `887c0ebc`（§3.8；下文「`allAgentsSweep` 也调它」有误，见 §3.8 更正）。原文：`analyzeCinemaUplift` 现收 `configStore` + 页面 calc 的读取器
    （`readDamage` / `readUltimateTotal` / `readMetrics`），在 UI store 上改命座与 `enemy.stunCountLock`、finally 恢复。改法：入参换成 `scenario: AnalysisContext`，
    读取器改为在函数内从 `scenario.calc` 读（`teamTotalDamage`、`teamUltimateTotal`、`collectCinemaMetrics({ characters: resourceResult, stunPool, anomalyPool })`——页面现在就是这么拼的，
    见 `ResourceUtilizationPage.vue#computeCinemaGains`），删 originalCinemas / originalStunLock 的恢复；页面改 `withAnalysisScenario` + `useBatchOwner`。
@@ -292,7 +311,7 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 - 场景的 `config` 没有 `$patch` / `$subscribe` / `$reset` / `$onAction`。分析器里需要「批量写」就直接赋值字段或调 action。
 - **盘点「还有谁改写 UI store」别只搜恢复函数**（第 376 轮教训：§4 原表按 `snapshotStore` 调用方列，漏了 3 个）。用过的检索：
   ① 同时含 `setTimeout(r, 0)` / `nextTick` 让出与 `configStore.<字段> =` / `set*` / `apply*` 写入的文件；② 组件 / 页面里同时读 `teamTotalDamage` 等计算结果又写 `configStore` 的文件，
-  再人工剔除「用户编辑回调」。第 376 轮跑完这两条后，剩下的只有 `cinemaUplift.ts`（同步的 `substatOptimizer#refineWithRealDamage` 改写后同一拍内还原、不让出，UI 看不到中间态，不算）。
+  再人工剔除「用户编辑回调」。第 376 轮跑完这两条后，剩下的只有 `cinemaUplift.ts`（第 377 轮已迁；同步的 `substatOptimizer#refineWithRealDamage` 改写后同一拍内还原、不让出，UI 看不到中间态，不算）。
 - **迁组件内的分析器要保住让出位置**：pre-flush watcher（如副词条预算设置）只在让出时跑，读数前少一次让出 / 多一次让出都可能改结果；3D 响应面旧实现每 8 点才让出一次、其余点同步读，新实现照抄。
 - `createResourceCalc` 与已迁移分析器里不得调 `useConfigStore()`：会静默读回 UI 现场（源码锁④）。`useCatalogStore()` 允许——见 §7 的决定（catalog 是全局只读数据）。
 - **写注释别出现被锁函数名的调用形态**：源码锁④ 按调用形态匹配，注释里写「不调 `useConfigStore()`」一样会红（第 372 轮实测踩到，改成「不读 UI config store」）。
@@ -314,3 +333,4 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 - S4：`git revert 962e8b9f` → `git revert 423e9de4`（S4b 用了 S4a 的 `BatchControl` / `isBatchAborted` / `BatchOwner`，顺序反了编译不过）。
 - S5：`git revert 3c287f85`（纯类型；与 S4 的回退互不依赖）。
 - CC-345（伤害影响）：`git revert 56e2f697`；CC-346（边际效用）：`git revert 1962c4b0`。两者互不依赖。
+- CC-347（命座提升率）：`git revert 887c0ebc`（恢复改 UI store + finally 路径与旧测试；与 CC-345/346 互不依赖）。
