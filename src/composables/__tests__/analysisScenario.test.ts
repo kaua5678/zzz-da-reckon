@@ -6,6 +6,7 @@
  * ② 隔离：场景内换人 / 进 Boss 房间 / 改机制设置 / 求值，源 store 的 $state 与 UI 计算结果都不变；
  * ③ 等值：同一现场，场景 calc 与 UI calc 的队伍总伤逐位相同，两边同步改写后仍相同；
  * ④ 源码锁：createResourceCalc 函数体不查全局 store；已迁移分析器不调 useConfigStore()、不做快照恢复。
+ * ④c 源码锁（CC-353）：views / components 里没有「同一循环体内既写 store 又读计算结果」的试算循环（应在独立场景里跑）。
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
@@ -152,6 +153,47 @@ describe('源码锁', () => {
       }
     }
     walk(root)
+    expect(hits).toEqual([])
+  })
+  it('④c CC-353：views / components 里不许在 UI store 上做试算循环（循环体内既写 store 又读计算结果）', () => {
+    // ④ 只扫 MIGRATED_ANALYZERS（composables），view 层漏过一次：RunArchivePage「当期牌自动选择」逐张写牌 → 读伤害（CC-352 修）。
+    // 判据只抓「写 + 读」同在一个循环体：只写不读（预设金数一次写三槽、联动覆盖）是正常用户动作，不报（r383 普查 3 处，全是这类）。
+    const WRITE = /\b(?:configStore|store|config)\.(?:set[A-Z]\w*|apply\w*|globalBuffs\.(?:push|splice))|\bapply[A-Z]\w*\(\s*configStore\b/
+    const READ = /\b(?:teamTotalDamage|resourceResult|damagePoolRows|stunPoolResult|anomalyPoolResult)\.value/
+    const trialLoops = (src: string): number[] => {
+      const at = src.indexOf('<script')
+      const sc = at < 0 ? src : src.slice(at)
+      const base = at < 0 ? 0 : src.slice(0, at).split('\n').length - 1
+      const hits: number[] = []
+      for (const m of sc.matchAll(/\b(?:for|while)\s*\(|\.(?:forEach|map)\(/g)) {
+        const open = sc.indexOf('{', m.index! + m[0].length)
+        if (open < 0 || open - (m.index! + m[0].length) > 200) continue
+        let depth = 0
+        let end = open
+        for (; end < sc.length; end++) {
+          if (sc[end] === '{') depth++
+          else if (sc[end] === '}' && --depth === 0) break
+        }
+        const body = sc.slice(open, end)
+        if (WRITE.test(body) && READ.test(body)) hits.push(base + sc.slice(0, open).split('\n').length)
+      }
+      return hits
+    }
+    // detector 自证：修前 RunArchivePage 的形态必须命中，只写不读的形态不命中
+    expect(trialLoops("<script>\nfor (const b of cs) {\n  applyPeriodBuff(configStore, id, b)\n  results.push(teamTotalDamage.value)\n}\n</script>")).toEqual([2])
+    expect(trialLoops("<script>\nfor (const slot of [0, 1, 2]) {\n  configStore.setCinemaLevel(slot, 0)\n}\n</script>")).toEqual([])
+    const root = resolve(__dirname, '../..')
+    const hits: string[] = []
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name)
+        if (statSync(p).isDirectory()) { if (name !== '__tests__') walk(p); continue }
+        if (!name.endsWith('.vue')) continue
+        for (const line of trialLoops(readFileSync(p, 'utf-8'))) hits.push(`${relative(root, p).split('\\').join('/')}:${line}`)
+      }
+    }
+    walk(join(root, 'views'))
+    walk(join(root, 'components'))
     expect(hits).toEqual([])
   })
 })
