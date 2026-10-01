@@ -152,12 +152,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 389 轮（lane arena-E，开工 04:07；无并行会话；HEAD `06a42d79`；REQUIREMENTS.md 无新条目）：CC-359 D2 类型层 `f2fea44e`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **先查的 r388 候选「角色专属动作字段改模块注册」——结论：store 侧单独迁移不做**。依据：新角色加一个动作次数要改 ①`CharacterConfig` 类型行 ②`defaultCharacter` ③`ACTION_COUNT_BOUNDS` ④模块声明与读取 ⑤`CharacterOperationConfig` 字段（模块 `buildCharConfig` 把 char 值拷进 cfg）。只搬 ②③ 到模块的 `characterCountInputs`（加 min/max）去不掉 ①⑤，还要给 `setActionCount` 加第二条「按角色查界」路径——不更简单。⑤ 才是大头 ⇒ 转做 D2。（另：`tauntCancelCount` / `perfectBlockCount` / `assaultOrderCount` 被引擎核心 helpers / liveInteractions / teamCompare / specs 读，是通用契约，本就该留在 store。）`CharacterConfig` 不进 localStorage、无预设/数据引用——日后真要做 char 侧「角色次数包」也没有持久化迁移负担。
-- **做到哪**：见卡表 CC-359 与 `docs/mcp-d2-cfg-fields.md`（约定 / 结果 / 下一步表 / 全矩阵）。
-- **验证**：vue-tsc 净；`vite build` 产物前后 `diff -r` 逐字节相同（`/home/kaua/calc-arch/arenaE/dist-before|after`）；zd `r389` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 / build（`arenaE/verify389.log`）；`vitest run --maxWorkers=4` 455 文件 / 16 跳过 / 4155 例过（`verify389-test.log`）。
+**第 390 轮（lane arena-E，开工 04:28；无并行会话；HEAD `885bf3cb`；REQUIREMENTS.md 无新条目）：CC-360 D2 续 `859cae1e`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：r389 的 14 个候选逐个判定完（`docs/mcp-d2-cfg-fields.md` §3：其余全是引擎契约，cfg 接口类型层到此为止）；同一规则推广到 `ModuleFeedback` / `CharacterResourceResult` / 整份角色结果类型（同文档 §4、卡表 CC-360）。
+- **顺带修的遗留**：r389 新建 `docs/mcp-d2-cfg-fields.md` 没登记 README §6 文档表 ⇒ master 上 `npm run check-guards` 红了一轮（r389 的 guards 是在写文档**之前**跑的）。已补登、改「74 份」。
+- **验证**：vue-tsc 净；`vite build` 产物前后 `diff -r` 逐字节相同；zd `r390`/`r390b` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189（`arenaE/verify390.log`）；`vitest run --maxWorkers=4` 455 文件 / 16 跳过 / 4158 例过（`verify390-test.log`）。
 - **开放项**：无。
-- **下一步（先查后定，可能结论是「不做」）**：`docs/mcp-d2-cfg-fields.md` §3 的 14 个「1 个角色模块 + 1 个非模块文件」字段逐个看非模块那一处：引擎核心（`core/resource/crossAgentEnergy.ts` / `resourceIncome.ts` / `core/resource.ts` / `convergence.ts`）若在按名读写某角色的字段 = 引擎认识角色 ⇒ 改为模块钩子或通用声明（先例 CC-35b）；若该字段其实是通用契约只是带了角色名 ⇒ 记一句「保留理由」即可，**不要为改名而改名**。`stores/config.ts` 的同名项是 CharacterConfig 同名误报，跳过。改完跑 `python3 scripts/d2-migrate-private-cfg.py .` 把新变私有的字段迁走（锁会提醒）。
+- **下一步（先查后定）**：`docs/mcp-d2-cfg-fields.md` §5——试点 `mechanics/agents/yixuan.ts`：把 `record.<键>`（`cfg as unknown as Record<string, unknown>`）用到的未声明键补进本模块扩充块、访问改回 `cfg.<键>`，让拼错键名编译失败。判据是「模块状态键全有类型」，不是 cast 计数；动态键（`record[field]`）的通用逻辑保留并记理由。验证同本轮（产物应逐字节相同）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -166,6 +166,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
   - 纯类型改动的最强判据是 `vite build --outDir A` / `--outDir B` 后 `diff -r A B`（逐字节相同 ⇒ 运行时零变化），比 zd 便宜且覆盖全产物。
   - 两个 `node /tmp/mcp.js` 并行调用会撞「Duplicate JSON-RPC request id」（每个进程 id 都从 1 起、共用 session）——MCP 调用别并行。
+
+  - **新建 `docs/*.md` 必须同步登记 README §6 文档表并改节标题份数**（守卫 `docs table`）；收尾在**文档提交之后**再跑一次 `npm run check-guards`，别只在代码提交前跑。
+  - `git stash -- <路径>` 可只撤某几处改动做锁的反证，`git stash pop` 复原（r390 用过）。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 

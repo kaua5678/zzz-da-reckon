@@ -33,40 +33,54 @@
   扩充块是可逆的下一步前置：要强隔离时把块改成 `interface XxxCfg {...}` + 模块内 `cfg as CharacterOperationConfig & XxxCfg` 即可。
 - 回滚：`git revert` CC-359 提交（纯类型，回滚无数值影响）。
 
-## 3. 下一步（剩下的 106 个公共字段）
+## 3. r389 留下的 14 个候选——逐个判定（r390）
 
-大头是引擎通用字段（`composables/resourceCalc/helpers.ts` 引用 63 个、`core/resource/rowBuild.ts` 38、
-`core/resource/helpers.ts` 31），**不动**。真正值得看的是「**1 个角色模块 + 1 个非模块文件**」的 14 个——
-非模块那一处若是引擎核心在读写角色专属字段，就是「引擎认识角色」的耦合，应改成模块钩子 / 通用声明（先例：CC-35b
-把仪玄 5 项从 helpers.ts#buildCharConfig 迁进模块 `buildCharConfig`）。逐个判断，**可能结论是「这是通用契约、名字起坏了」⇒ 只改名或不做**：
-
-| 字段 | 角色模块 | 非模块引用 |
+| 字段 | 判定 | 依据 |
 |---|---|---|
-| `promiaNiyingCount` | promia | `stores/config.ts` |
-| `chainCountTotalExtra` | yuzuha | `core/resource.ts` |
-| `aliceTeamAssaultCount` | alice | `mechanics/types.ts` |
-| `aliceDisorderCount` | alice | `mechanics/types.ts` |
-| `exRefundFreeCap` | yidhari | `core/resource/resourceIncome.ts` |
-| `timePressureSeconds` | yeshuguang | `core/resource/foldLoop.ts` |
-| `teamUltimateFlashBonus` | yixuan | `core/resource/crossAgentEnergy.ts` |
-| `crossAgentFlatEnergyBySource` | lighter | `core/resource/crossAgentEnergy.ts` |
-| `axisActionCounts` | nekomata | `composables/resourceCalc/convergence.ts` |
-| `axisUltimateTotal` | xixifu | `composables/resourceCalc/convergence.ts` |
-| `yixuanInk2Count` | yixuan | `stores/config.ts` |
-| `yixuanInk3Count` | yixuan | `stores/config.ts` |
-| `yixuanExtremeAssistCount` | yixuan | `stores/config.ts` |
-| `yixuanBackstageComboCount` | yixuan | `stores/config.ts` |
+| `chainCountTotalExtra` | 保留（通用契约） | 模块写、`core/resource.ts` 按通用口径加到连携总数；名字不带角色 |
+| `exRefundFreeCap` | 保留 | 「连续强特通道」通用字段族（引擎只认字段、不认 agentId） |
+| `timePressureSeconds` | 保留 | 引擎写、需要退化的模块读——引擎→模块的通用信号 |
+| `crossAgentFlatEnergyBySource` | 保留 | 多提供者跨角色定额能量通道（CC-32b 已泛化） |
+| `axisActionCounts` / `axisUltimateTotal` | 保留 | 编排层通用注入（轴内执行计数） |
+| `teamUltimateFlashBonus` | 保留，**不改名** | 机制是通用的「队友终结技 × 每次回能」，模块声明量；Flash 只是仪玄能量的叫法。为改名而改名 = 用户不要的空改动 |
+| `aliceTeamAssaultCount` / `aliceDisorderCount` | **已迁**（CC-360） | `mechanics/types.ts` 那一处是 `ModuleFeedback` 里的**同名键**，不是对 cfg 字段的引用 ⇒ 判据补「`name?:` 可选声明行不算引用」 |
+| `promiaNiyingCount` + 仪玄 4 项 | 保留 | `stores/config.ts` 的 `CharacterConfig` 同名字段 + `defaultCharacter` 字面量；cfg 同名字段由模块 `buildCharConfig` 从 char 拷入，正常 |
 
-注：`stores/config.ts` 的几项多半是与 `CharacterConfig` 同名字段（仪玄交互栏次数）造成的**同名误报**，
-cfg 上的同名字段由模块 `buildCharConfig` 从 char 拷入——属正常，跳过。
+结论：剩下的公共 cfg 字段都是引擎契约。**D2 在 cfg 接口上的类型层工作到此为止。**
 
-## 4. 字段矩阵（`python3 scripts/d2-cfg-field-matrix.py . --md <out>` 可重生成）
+## 4. CC-360：同一规则推广到另外三处（r390，`859cae1e`）
+
+规则不变：**只有一个角色模块用到的东西，声明随模块走；跨模块 / 跨层的留在公共处**。
+
+- `ModuleFeedback`（`mechanics/types.ts`，跨轮反馈键）：16 键里 14 个是「本模块自产、下一轮本模块读回」⇒ 迁到 10 个模块的扩充块；
+  公共接口只剩 `teamUltimateExtra` / `consumedTeamEnergy`，**这张表现在就是「角色↔编排层」反馈耦合的完整清单**（接口头注释已改）。
+- `CharacterResourceResult`（`types/resource/agentResources.ts`）：17 个「挂在结果上的角色专属数据」字段（`aliceSwordWillSource` 等）
+  只被各自模块写、再由模块自己产展示行读（视图不直接读）⇒ 迁到 17 个模块。
+- **整份角色结果类型**：`agentResources.ts` 里 17 份 interface（`AliceSwordWillSource` / `NormaMechanicSource` / `YixuanExChain` …）
+  各自只被一个模块引用 ⇒ 整份迁到模块末尾（保留 `export`），文件 722 → 251 行。留下的 `BurniceMechanicSource` / `BanyueRageCycle`
+  仍被公共结果接口的持有字段引用（展示契约）、`CorrosionSource` 被异常池引擎用，属正常。
+- 工具：`scripts/d2-migrate-private-cfg.py --target cfg|feedback|result|all`（成员级），`scripts/d2-migrate-agent-types.py`（整份类型）。
+  锁 `src/types/__tests__/privateCfgFields.test.ts` 4 条（3 个目标接口 + 整份类型），迁移前源码上全红（已反证）。
+- 验证：vue-tsc 净、产物 `diff -r` 逐字节相同、zd 0/0、全量 4158 例过。回滚 `git revert 859cae1e`（纯类型，无数值影响）。
+
+## 5. 下一步
+
+**D2 剩下的真痛点 = 编译期查不出的拼写错误**：角色模块里 `cfg as unknown as Record<string, unknown>` 共 228 处
+（yeshuguang 14 / banyue 11 / starlightBilly 10 / sigrid 9 / phoenix 8 / lucy 8 / yixuan 7 / yidhari 7 …），经 `record.<键>` 读写**未声明**的键，
+拼错键名 = 静默读到 `undefined`（守卫 25「无类型记录键死读」只抓「全仓零写入」的键，抓不到「写 A 读 A'」）。
+现在每个模块都有自己的 `declare module` 扩充块，可以逐模块把 `record.<键>` 用到的键补成声明、把访问改回 `cfg.<键>`。
+- 试点建议：`mechanics/agents/yixuan.ts`（`record.` 访问 36 处、cast 7 处，字段语义集中）。
+- 步骤：① `grep -o "record\.[a-zA-Z]*" <模块> | sort | uniq -c` 列键；② 每个键查是否已声明（公共接口或本模块扩充块），没有就在扩充块里加（类型看写入点）；
+  ③ 把 `record.<键>` 改回 `cfg.<键>`，删掉不再需要的 cast；④ vue-tsc + `vite build` 产物 `diff -r`（应逐字节相同；`Number(record.x ?? 0)` 之类的运行时包装**不要动**）。
+- **判据**：值得做的标准是「这个模块的状态键全部有类型、拼错会编译失败」，不是「cast 计数下降」。若某模块的 record 访问是按动态键（`record[field]`）的通用逻辑，保留，记理由。
+
+## 6. 字段矩阵（`python3 scripts/d2-cfg-field-matrix.py . --md <out>` 可重生成）
 
 分类：private = 只有 1 个角色模块引用（可迁模块私有）；agents-shared = 只在多个角色模块间；engine = 引擎/机制公共层/视图也引用；dead = 声明后无人引用。
 
 | 分类 | 字段数 |
 |---|---|
-| engine | 105 |
+| engine | 103 |
 | agents-shared | 1 |
 
 ## private 字段按模块
@@ -85,7 +99,7 @@ cfg 上的同名字段由模块 `buildCharConfig` 从 char 拷入——属正常
 | `outOfCombatPanel` | ? | engine | aire, ben, claret, harumasa, liuyin, luciaElowen, nangong, norma, promia, qianxia, vivian, xide, yuzuha, zhao, zhendou | composables/resourceCalc/helpers.ts, composables/resourceCalc/panelPhases.ts, mechanics/types.ts, views/TeamConfigPage.vue |
 | `basicAttackRegenPerSec` |  | engine |  | composables/resourceCalc/helpers.ts, core/resource/rowBuild.ts |
 | `basicAttackDecibelPerSec` |  | engine |  | composables/resourceCalc/helpers.ts, core/resource/rowBuild.ts |
-| `basicBenchmarkMoveId` | ? | engine |  | composables/resourceCalc/helpers.ts, composables/resourceCalc/skillRows.ts, core/resource/rowBuild.ts, types/catalog.ts |
+| `basicBenchmarkMoveId` | ? | engine |  | composables/resourceCalc/helpers.ts, composables/resourceCalc/skillRows.ts, core/resource/rowBuild.ts |
 | `exSpecialMoveId` |  | engine | claret, ellen, koleda, luciaElowen, phoenix, severian, sigrid, yidhari | composables/resourceCalc/helpers.ts, core/resource/assembleSlot.ts, core/resource/rowBuild.ts, types/resource/agentResources.ts |
 | `promiaNiyingCount` | ? | engine | promia | stores/config.ts |
 | `freeExSpecialCount` | ? | engine | nangong | core/resource/helpers.ts, core/resource/rowBuild.ts |
@@ -94,7 +108,7 @@ cfg 上的同名字段由模块 `buildCharConfig` 从 char 拷入——属正常
 | `exSpecialResourcePaidCount` | ? | engine |  | core/resource/helpers.ts |
 | `extraExPlans` | ? | engine |  | composables/resourceCalc/helpers.ts, core/resource/rowBuild.ts |
 | `inStunWindowTriggers` | ? | engine | nangong | composables/resourceCalc/convergence.ts, composables/resourceCalc/outerCycle.ts, composables/resourceCalc/roundThreads.ts |
-| `exSpecialEnergyConsume` |  | engine | ben, burnice, lighter, liuyin, lycaon, norma, phoenix, pulchra, roxy, severian, sigrid, soukaku, starlightBilly, velina, xide, yanagi, yaojiayin, yidhari, yixuan | components/ResourceResultCard.vue, composables/resourceCalc/helpers.ts, core/resource/assembleSlot.ts, core/resource/helpers.ts …+4 |
+| `exSpecialEnergyConsume` |  | engine | ben, burnice, lighter, liuyin, lycaon, norma, phoenix, pulchra, roxy, severian, sigrid, soukaku, starlightBilly, xide, yanagi, yaojiayin, yidhari, yixuan | components/ResourceResultCard.vue, composables/resourceCalc/helpers.ts, core/resource/assembleSlot.ts, core/resource/helpers.ts …+4 |
 | `exSpecialActionTime` |  | engine | ellen, liuyin, luciaElowen, lycaon, phoenix, qingyi, severian, sigrid, soldier11, soukaku, yeshuguang, yidhari, zhao | composables/resourceCalc/helpers.ts, core/resource/rowAccounting.ts, core/resource/rowBuild.ts |
 | `exSpecialDecibelRecovery` |  | engine | starlightBilly, yidhari, yixuan | composables/resourceCalc/helpers.ts, core/resource/rowBuild.ts |
 | `decibelRecoveryByMoveId` | ? | engine |  | composables/resourceCalc/helpers.ts, core/resource/rowAccounting.ts |
@@ -107,7 +121,7 @@ cfg 上的同名字段由模块 `buildCharConfig` 从 char 拷入——属正常
 | `chainActionTime` |  | engine | norma, qingyi, yidhari | composables/resourceCalc/helpers.ts, core/resource/assembleSlot.ts, core/resource/helpers.ts, core/resource/rowBuild.ts |
 | `chainDecibelRecovery` |  | engine | yidhari, yixuan | composables/resourceCalc/helpers.ts, core/resource/rowBuild.ts |
 | `chainComboAlignRatio` |  | engine |  | composables/resourceCalc/helpers.ts, core/resource/assembleSlot.ts, core/resource/helpers.ts, core/resource/rowBuild.ts |
-| `chainCountPerStun` |  | engine | anby, corin, liuyin, lycaon, sigrid, specPanelBuffs, yaojiayin | components/ResourceResultCard.vue, composables/resourceCalc/convergence.ts, composables/resourceCalc/helpers.ts, composables/resourceCalc/ultimatePromote.ts …+11 |
+| `chainCountPerStun` |  | engine | anby, corin, liuyin, lycaon, sigrid, specPanelBuffs, yaojiayin | components/ResourceResultCard.vue, composables/resourceCalc/convergence.ts, composables/resourceCalc/helpers.ts, composables/resourceCalc/ultimatePromote.ts …+10 |
 | `chainCountTotalOverride` | ? | engine | anby, claret, corin, liuyin, sigrid, soldier11, specPanelBuffs | composables/resourceCalc/convergence.ts, core/resource.ts, core/resource/helpers.ts |
 | `chainCountTotalExtra` | ? | engine | yuzuha | core/resource.ts |
 | `exSpecialComboAlignRatio` |  | engine | lycaon, phoenix, severian, sigrid, soldier11, soukaku | composables/resourceCalc/helpers.ts, core/resource/rowAccounting.ts, core/resource/rowBuild.ts |
@@ -117,7 +131,7 @@ cfg 上的同名字段由模块 `buildCharConfig` 从 char 拷入——属正常
 | `parryDecibelOnlyCount` |  | engine |  | composables/resourceCalc/convergence.ts, composables/resourceCalc/helpers.ts |
 | `dodgeCounterCount` |  | engine | anby, banyue, claret, lycaon, qingyi, roxy, severian, sigrid, starlightBilly, yeshuguang, yixuan | composables/liveInteractions.ts, composables/resourceCalc/convergence.ts, composables/resourceCalc/feasibilitySearch.ts, composables/resourceCalc/helpers.ts …+12 |
 | `quickAssistCount` |  | engine | corin, qingyi, starlightBilly, yaojiayin | composables/liveInteractions.ts, composables/resourceCalc/convergence.ts, composables/resourceCalc/helpers.ts, composables/teamCompare.ts …+9 |
-| `perfectBlockCount` |  | engine | specPanelBuffs, yixuan | composables/liveInteractions.ts, composables/resourceCalc/helpers.ts, specs/resources.ts, specs/types.ts …+2 |
+| `perfectBlockCount` |  | engine | specPanelBuffs, yixuan | composables/liveInteractions.ts, composables/resourceCalc/helpers.ts, specs/resources.ts, specs/types.ts …+1 |
 | `assaultOrderCount` |  | engine | specPanelBuffs | composables/resourceCalc/helpers.ts, stores/config.ts |
 | `dodgeCounterMoveId` |  | engine | claret | composables/resourceCalc/helpers.ts, core/resource/rowBuild.ts |
 | `dodgeCounterActionTime` |  | engine | qingyi, starlightBilly | composables/resourceCalc/helpers.ts, core/resource/helpers.ts, core/resource/rowBuild.ts |
@@ -141,8 +155,6 @@ cfg 上的同名字段由模块 `buildCharConfig` 从 char 拷入——属正常
 | `zhenyuanTriggerCount` | ? | engine |  | composables/resourceCalc/helpers.ts, core/resource/resourceIncome.ts |
 | `cannonRotorDamageMultiplier` | ? | engine |  | composables/resourceCalc/helpers.ts, core/resource/rowBuild.ts |
 | `cannonRotorCooldownSeconds` | ? | engine |  | composables/resourceCalc/helpers.ts, core/resource/rowBuild.ts |
-| `aliceTeamAssaultCount` | ? | engine | alice | mechanics/types.ts |
-| `aliceDisorderCount` | ? | engine | alice | mechanics/types.ts |
 | `skipGenericExSpecial` | ? | engine | banyue, ben, burnice, claret, grace, liuyin, luciaElowen, lycaon, norma, roxy, starlightBilly, yixuan | composables/resourceCalc/helpers.ts, core/resource/rowBuild.ts |
 | `exSpecialCountFractional` | ? | engine | burnice | composables/resourceCalc/helpers.ts, core/resource/helpers.ts |
 | `mechanicRowValues` | ? | engine | burnice, roxy | specs/mechanics.ts |
@@ -180,7 +192,7 @@ cfg 上的同名字段由模块 `buildCharConfig` 从 char 拷入——属正常
 | `yixuanBackstageComboCount` | ? | engine | yixuan | stores/config.ts |
 | `axisInSeconds` | ? | engine | nekomata, yixuan | composables/resourceCalc/convergence.ts |
 | `battleTime` | ? | engine | aire, billy, caesar, corin, evelyn, liuyin, nangong, nekomata, nicole, norma, phoenix, piper, promia, qianxia, qingyi, soldier11, trigger, vivian, xixifu, yeshuguang, yixuan | components/charts/TimeChartsControls.vue, composables/difficultyRatio.ts, composables/resourceCalc/helpers.ts, composables/resourceCalc/roundInputs.ts …+14 |
-| `invincibleTime` | ? | engine | lycaon | components/BossCard.vue, composables/difficultyRatio.ts, composables/resourceCalc/helpers.ts, composables/resourceCalc/roundInputs.ts …+17 |
-| `bodySize` | ? | engine | ellen, soukaku | composables/bossRoom.ts, composables/resourceCalc/helpers.ts, stores/config.ts, types/bossPreset.ts …+1 |
+| `invincibleTime` | ? | engine | lycaon | components/BossCard.vue, composables/difficultyRatio.ts, composables/resourceCalc/helpers.ts, composables/resourceCalc/roundInputs.ts …+16 |
+| `bodySize` | ? | engine | ellen, soukaku | composables/bossRoom.ts, composables/resourceCalc/helpers.ts, stores/config.ts, views/AttributeConfigPage.vue |
 | `blockCount` | ? | engine | banyue, starlightBilly | composables/agentMechanicView.ts, composables/liveInteractions.ts, composables/resourceCalc/convergence.ts, composables/resourceCalc/feasibilitySearch.ts …+10 |
 | `dualCounterCount` | ? | engine | banyue | composables/agentMechanicView.ts, composables/liveInteractions.ts, composables/resourceCalc/convergence.ts, composables/resourceCalc/feasibilitySearch.ts …+9 |

@@ -139,6 +139,7 @@
      * **阶段 B**：在 `resource.ts` 引入基于 Map / Record 的类型安全隔离访问层；
      * **阶段 C**：逐批迁移 43+ 角色，彻底拆除巨型接口。
   4. **进度（2026-10-02 第 389 轮，CC-359）**：阶段 A 矩阵 = `scripts/d2-cfg-field-matrix.py`；阶段 B 的类型层已做——188 个单模块私有字段用 `declare module` 扩充迁到各模块（零运行时），公共接口 294→106。未采用 `AgentSpecificConfig<T>` 强隔离（理由与下一步见 `docs/mcp-d2-cfg-fields.md`）。
+     **第 390 轮（CC-360）**：同一规则推广到 `ModuleFeedback`（14 键）、`CharacterResourceResult`（17 字段）与 17 份整份角色结果类型；下一步 = 模块内 `Record` cast 的未声明键补声明（见同文档 §5）。
 
 ### 战役 2：L0/L1 机制代码的 AST 自动生成器（Codegen Engine）
 * **现状痛点**：约 46% 的机制属于结构简单的确定性规则（L1），反复手写模板代码消耗大量精力且容易引入拼写失误。
