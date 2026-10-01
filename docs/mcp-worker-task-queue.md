@@ -60,6 +60,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 ## 1. 长期规则（从 2026-09-27 以前的逐轮交接里提炼，压缩时逐条保留）
 
 - **没有排定项时不造活**（第 237 轮）：REQUIREMENTS 无新条目、交接也没有下一步时，按 `docs/mcp-r6-refactor-list.md` §8 的扫描记录，只查表里没有的区域；查完仍没有满足「更通用 / 更简单」的项，就在 §8 追加扫描范围，然后收尾（写交接、push、zc done）。依据：用户明确不要只为降计数或凑工作量的改动。回退：删掉本条。
+- **主档优先**（第 375 轮）：一条工作线有专属主档（如 CC-343 的 `docs/mcp-analyzer-scenario-isolation.md`）时，验证细节、决定、回退点只写主档；卡表与 r6 §8 只留一行指针，不再在 `docs/mcp-stun-dual-source.md` 另开 §24 节。依据：同一件事写四五处既费 token 又会漂移。回退：删掉本条，按旧惯例补 §24。
 - **每轮收尾必须 `git push origin master`**（提示词 c2）：commit 不等于 push。2026-09-27 用户发现本地积压 436 个提交、远端停在 09-21。推送失败要写进交接，不能静默跳过。
 - **登记债务、豁免或改 burn-down**：改 `scripts/lib/guard-registries.mjs`，不要改 check-guards 本体（CC-85）。
 - **改角色机制实现的提交**：顺手 grep `public/static/character-mechanics.json` 和 `character-constellations.json` 里该角色的 pending，过时就同步改。状态表过时的根因，就是实现提交没回写（CC-89）。
@@ -78,6 +79,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-01 arena-C 第 374 轮**：CC-343 S4 接 `batchTask`（`423e9de4` + `962e8b9f`）——原 §2 交接，细节见 `docs/mcp-analyzer-scenario-isolation.md` §3.4；全文 `git show 9f3dacd2:docs/mcp-worker-task-queue.md` 的 §2。
 
 **2026-10-01 arena-C 第 372 轮**：CC-343 S2 抽卡规划 + 自由对比迁独立场景 + S3 删 `configSnapshot`（`dfe53a2e` + `81b0d2dc`）——已被第 374 轮 §2 取代，细节见 `docs/mcp-analyzer-scenario-isolation.md` §3.3。
 
@@ -125,26 +128,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 374 轮（lane arena-C，开工 22:43；无并行会话；HEAD `425f9412`；REQUIREMENTS.md 429 行无新条目）：CC-343 S4 接 `batchTask.ts`——取消契约统一为 `BatchControl.signal` + 结果归属，代码 `423e9de4`（S4a）+ `962e8b9f`（S4b），已 push。**
+**第 375 轮（lane arena-E，开工 00:15；无并行会话，认领表上一行全是 released；HEAD `9f3dacd2`；REQUIREMENTS.md R1–R8 全部已处理、无新条目）：CC-343 S5 收窄类型，代码 `3c287f85`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
 - **做到哪**：
-  1. **S4a `423e9de4`**：`batchTask.ts` 的 `BatchControl` 只留 `signal`（废除 `shouldAbort` 回调，当时全仓无生产调用方）、新增 `isBatchAborted(control?)`（非抛出探测）、导出 `BatchOwner` 类型；`createBatchOwner` 的 `cancel()` 改为**只停计算、不吊销提交权**（取消后已算部分仍由该运行自己发布 = 曲线/海选「保留已算部分」的依据），吊销只来自 `start()` 顶掉与 `dispose()` 关闭。`freeCompare/engine.ts` 与 `teamTimeline#computeSlotSweepPoints` 的 `shouldAbort?: () => boolean` → `control?: BatchControl`。`FreeComparePage` / `TeamComparePage`（runCompare + runCurves）/ `teamCompareSweep` 改用 `useBatchOwner()`，进度/结果/finally 一律经 `run.commit(...)`，删掉 `abortFlag` / `curveAbort` / `sweepAbort` 三个手写标志。
-  2. **S4b `962e8b9f`**：其余 6 个调用点接 owner（`CharIncrementPage`、`PullPlannerChart`、`PositionComparePage`、`chartRunners` 4 runner + 4 图表组件）；7 个分析器穿 `control`（`charIncrement`、`teamTimeline` 三个入口、`teamTimelineFilm`、`pullPlanner#planPullStrategy`、`pullPlannerEngine#runPullPlanner`），被顶掉时下一循环头 break（优雅中止，返回已算部分由页面 commit 丢弃，**不抛错**——这些页面没有 catch）。
-  3. **验证**：A/B 七路逐字节相同（planner `703c3db4`、freeCompare 命座轴 `3293188e` / 期数轴 `942e10a`、charincrement `4e98fd43`、teamtimeline `db19b112`、filmsim `3d5c0377`、slotsweep `1649163395`）；`vue-tsc -b` 0 错；定向 353 项全绿；check-guards 25/25；全量 verify EXIT 0（448 文件 / 4125 测试通过）。
-  4. **回退点**：`git revert 962e8b9f` → `git revert 423e9de4`（S4b 用 S4a 的类型与语义，顺序反了编译不过）。
-- **下一步（直接开工）**：
-  1. **S5 收窄类型（可选，顺手才做，不为降计数单独开卡）**：管线与分析器里 `ReturnType<typeof useConfigStore>` → `ConfigModel`（`config.ts` 已导出），10 处 `ReturnType<typeof useResourceCalc>` → `ResourceCalc`。做完场景的 `config` 就不必把 model 标成 store 类型（§2.3 的已知差随之消除）。
-  2. **`createBatchScheduler` 接线（先拍板再动手）**：它是抛错式取消，与现有分析器「保留已算部分」的优雅中止语义不同。要接就得先决定「中止到底丢不丢已算部分」，再给页面补 catch。真正需要它的场景是 worker（把求值搬进 Web Worker 时按时间片切分）。
-  3. CC-343 这条线的唯一主档是 `docs/mcp-analyzer-scenario-isolation.md`（§4 八行全 ✅，§6 只剩 S5；配方在 §5，A/B 模板 `/home/kaua/calc-arch/arenaC/ab-r374.sh` + `zzS4Probe.test.ts`）。
+  1. **`3c287f85`**：`src/stores/config.ts` 新增 `EvalConfig = ConfigModel & { readonly $state }`；`createResourceCalc`、`AnalysisContext.config`、`createAnalysisScenario(source)` 收 `EvalConfig`；其余 28 个非测试模块的 `ReturnType<typeof useConfigStore>` → `ConfigModel`、`ReturnType<typeof useResourceCalc>` → `ResourceCalc`（77 处）。测试与 `src/test/harness.ts` 不改（它们拿的就是 Pinia store，类型是真话），只改了 `freeCompareEngine.test.ts` 的 `onEval` 参数。
+  2. **为什么值得做**（不是降计数）：场景的 config 是普通 reactive model，旧类型却声称它有 `$patch` / `$subscribe` / `$reset` / `$onAction`。现在「求值管线不依赖 Pinia」是编译期契约：管线里误调这些会编译失败；worker 化时也少一层假依赖。
+  3. **验证**：纯类型改动 ⇒ 主仓库 HEAD 与改后各 `vite build` 一次，`diff -r` 两个 dist（63 个文件）**逐字节相同**（这条比 A/B 探针更强，纯类型卡以后可以照用）；`vue-tsc -b` 0 错；全量 verify EXIT 0（448 文件 / 4125 测试通过，16 / 29 跳过，172.6s，worktree `wtE-s5`）。
+  4. 文档：隔离文档 §0 / §2.3 / §3.5（新）/ §6 / §9；卡表 CC-343 行；r6 §8 第 375 行。
+- **下一步**：
+  1. **CC-343 这条线已收口**，只剩未接线的 `createBatchScheduler`。它只在 worker 化时才需要，**没有排定，不要为了"把它接上"而接**（语义冲突见隔离文档 §3.4 末段）。
+  2. 没有排定项 ⇒ 按 §1 第一条：先读 `docs/mcp-r6-refactor-list.md` §8 的扫描记录，只查表里没扫过的区域；查不出「更通用 / 更简单」的项就追加扫描记录然后收尾，不造活。
+- **本轮拍板（可逆）**：
+  - **CC-343 S5 的细节只写在隔离文档 §3.5，没有在 `docs/mcp-stun-dual-source.md` 再开 §24.189**。依据：隔离文档自称「这条线的唯一主档」，同一件事写四五处是维护成本、也是漂移来源。规则化为 §1 新增的「主档优先」一条。回退：补写 §24.189 并删掉 §1 那条。
+  - 桥接提示词第 2 条（「写长文件用 apply_patch，不要用 shell 的 echo/base64」）与提示词自带客户端的 `put`（base64 分块）字面冲突；已改提示词，说明这条只针对 Windows `run_command` 的 8191 字符上限，WSL 侧用 `put` 即可（备份 `bridge-prompt-arena.md.bak-put-vs-apply-patch-20261002-0040`，修改记录在提示词 §二）。
 - **已知坑**：
-  ① **取消语义的坑**：`owner.cancel()` 不吊销提交权（第 374 轮特意这么定，测试反证钉住）。若改回「取消即吊销」，`TeamComparePage` / `teamCompareSweep` / `FreeComparePage` 的中止按钮就不再展示部分结果——那是行为回退，不是修 bug。
-  ② **探针必须剔墙钟字段**：teamtimeline 第一轮 A/B 唯一差异是 `stats.durationMs`（453 vs 461ms）；planner 的 `stats.durationMs`、freeCompare 的 `durationMs` 同理。剔之前别看 AB_DIFF 就以为改坏了数值。
-  ③ **探针要自己加载数据**：`autoBuild: true` 的时间线探针必须先 `await catalogStore.loadBuildRecommendations()`，否则 `applyTeamPreset` 直接抛（两边同样抛 ⇒ 产出文件不存在，`cmp` 会误报 AB_DIFF）。
-  ④ **MCP 客户端并发撞 id**：一个 `sh` 超时后服务端那条请求仍在跑，下一次调用报 `Duplicate JSON-RPC request id`。除换会话外，可 `sed "s#/tmp/mcp.session#/tmp/mcp2.session#" /tmp/mcp.js > /tmp/mcp2.js` 起第二个会话（后台 verify + 同时读文档）。
-  ⑤ **wsl_exec 只回 stdout 尾部约 10 KB**：读长文件用 `cat`（分块 + 首尾标记），写文件用 `put`（base64 分块 + sha256）； heredoc 里的反引号会被执行，编辑脚本一律 write_file 到沙箱再 `put`。
-- **桥接提示词（`C:\Users\kaua\Desktop\bridge-prompt-arena.md`，WSL 视角 `/mnt/c/Users/kaua/Desktop/bridge-prompt-arena.md`）第 374 轮审查，**未改**：
-  逐条对照本轮实际流程（写客户端 → `list` → 读 REQUIREMENTS → 查现场 → 认领 → 干活 → 交接 / commit / push），没有哪条阻碍了正确决策；
-  「唯一不变量」下无收益的改动不做，故不动它（改动需 .bak + 修改记录 + 关键段落仍在，成本大于收益）。
-  下一轮若觉得某条成了束缚（例如固定分工、棘轮口径），按提示词自带的口径改掉并留痕。
+  ① 纯类型卡的零差：直接比 `vite build` 产物（`npx vite build --outDir /tmp/x --emptyOutDir`，主仓库与 worktree 各一次，`diff -r`），约 20 秒，不必写探针。
+  ② 把 `ReturnType<typeof useConfigStore>` 机械替换后，**导入行要手工复查**：注释里提到 `useConfigStore` 会让脚本以为它还在用，留下 TS6196 未用导入（本轮 3 个文件）。`vue-tsc -b` 能抓到。
+  ③ 新代码里**求值入口**（要读 `$state` 的，目前只有 `createResourceCalc`）收 `EvalConfig`，其余管线 / 分析器函数收 `ConfigModel`；别再写 `ReturnType<typeof useConfigStore>`（会把 Pinia 依赖带回管线）。
+  ④ MCP 客户端与 wsl_exec 的坑同第 374 轮（尾部截断、`put` 写文件、超时后撞 JSON-RPC id ⇒ `rm -f /tmp/mcp.session`）。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 

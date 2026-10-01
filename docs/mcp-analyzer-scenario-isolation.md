@@ -1,6 +1,6 @@
 # 分析器独立场景（数据隔离）：设计、验证与迁移进度
 
-> 第 369 轮（lane arena-C，2026-10-01）起草，CC-343。第 1 阶段代码 `02049db9`；第 372 轮（arena-C）迁完抽卡规划 + 自由对比（`dfe53a2e`）并删 `configSnapshot.ts`（S3，`81b0d2dc`）；第 374 轮（arena-C）S4 接 `batchTask`（取消契约统一 + 结果归属，`423e9de4` + `962e8b9f`）。
+> 第 369 轮（lane arena-C，2026-10-01）起草，CC-343。第 1 阶段代码 `02049db9`；第 372 轮（arena-C）迁完抽卡规划 + 自由对比（`dfe53a2e`）并删 `configSnapshot.ts`（S3，`81b0d2dc`）；第 374 轮（arena-C）S4 接 `batchTask`（取消契约统一 + 结果归属，`423e9de4` + `962e8b9f`）；第 375 轮（arena-E）S5 收窄类型（`3c287f85`）。
 > 本文是这条线的唯一主档：动机、设计、判据、逐个分析器的迁移状态、迁移配方、后续阶段、决定与回退点。
 > 代码侧入口：`src/composables/analysisScenario.ts`（头注释）、`src/stores/config.ts`「独立场景出生态」段、
 > `src/composables/useResourceCalc.ts#createResourceCalc`。判据：`src/composables/__tests__/analysisScenario.test.ts`。
@@ -9,7 +9,8 @@
 
 S2 / S3 / S4 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage` 会话缓存键都在独立场景上求值，
 `configSnapshot.ts`（快照 / 恢复）已删除（`81b0d2dc`），取消与结果归属已统一到 `batchTask.ts`（`423e9de4` + `962e8b9f`）。
-剩下只有可选的 S5（收窄类型）；`createBatchScheduler`（时间片让步）仍未接线，理由见 §3.4 末段。
+S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管线与分析器不再在类型上依赖 Pinia。
+这条线只剩未接线的 `createBatchScheduler`（时间片让步），理由见 §3.4 末段——它只在 worker 化时才需要，没有排定。
 历史：第 1 阶段只落地底座 + 一个试点（角色兑现曲线 `computeIncrementPass`），其余 7 个模块当时仍靠 11 处
 `snapshotStore` / `restoreStore` 改写 UI store 再恢复。迁移清单与配方见 §4、§5。
 
@@ -61,12 +62,12 @@ S2 / S3 / S4 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage`
 
 ### 2.3 场景的 `config` 对象
 
-`createAnalysisScenario` 返回的 `config` 是 `reactive({ ...model, $state })`，类型标成 config store：
+`createAnalysisScenario` 返回的 `config` 是 `reactive({ ...model, $state })`，类型是 `EvalConfig`（`config.ts`，= `ConfigModel & { $state }`；第 375 轮 S5 前标成 config store）：
 
 - 有 model 的全部 state / getter / action；
 - `$state` 是同一批 ref 的 reactive 视图，键集合取自源的 `$state`（memo 键 `calcOutputMemo` 读它，与 Pinia 的 `$state` 同语义）；
 - **没有** Pinia 的 `$patch` / `$subscribe` / `$reset` / `$onAction`：分析器与求值管线都不调它们（全仓只有 `ImpactChart.vue` 对 UI store 用 `$patch`）。
-  这是「类型比实际宽」的已知差，§6 第 5 步收窄类型后消除。
+  ~~这是「类型比实际宽」的已知差，§6 第 5 步收窄类型后消除。~~ 已消除（第 375 轮 S5）：`EvalConfig` 里没有这四个成员，误调会编译失败。
 
 深拷贝用 `cloneConfigState`：逐层 `toRaw`（state 里是响应式代理，`structuredClone` 不收代理），保留 `undefined` / `Infinity` / `NaN`（JSON 往返会把后两者变成 `null`）。
 
@@ -167,6 +168,22 @@ S2 / S3 / S4 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage`
   （新增「onProgress 中途取消 ⇒ 至多再算一个候选，已算部分照常返回」）。
   定向 353 项全绿；`vue-tsc -b` 0 错；check-guards 25/25；全量 verify EXIT 0（448 文件 / 4125 测试通过）。
 
+### 3.5 第 375 轮（S5 收窄类型，`3c287f85`，lane arena-E）
+
+- **问题**：管线（`resourceCalc/*`、`createResourceCalc`）与分析器的参数写的是 `ReturnType<typeof useConfigStore>`（Pinia store 类型），
+  而独立场景传进来的是普通 reactive model——类型声称「有 `$patch` / `$subscribe` / `$reset` / `$onAction`」，实际没有（§2.3 已知差）。
+  这让「求值管线不依赖 Pinia」只是事实、不是契约：日后谁在管线里调 `$patch`，编译期抓不到，场景里运行期才炸；worker 化时也得先拆这层假依赖。
+- **改法**：
+  - `config.ts` 新增 `EvalConfig = ConfigModel & { readonly $state }`（求值入口所需：model 全部成员 + memo 键读的 `$state`）。
+  - `createResourceCalc` 与 `AnalysisContext.config` / `createAnalysisScenario(source)` 收 `EvalConfig`；场景构造处的强转从 store 类型改成 `EvalConfig`。
+  - 其余 28 个非测试模块里的 `ReturnType<typeof useConfigStore>` → `ConfigModel`，`ReturnType<typeof useResourceCalc>` → `ResourceCalc`（共 76 处，
+    另 `damagePool.ts` 的 `ReturnType<typeof import('@/stores/config').useConfigStore>` 1 处），清掉随之变成无用的类型导入。机械替换脚本：`/home/kaua/calc-arch/arenaE/s5.mjs`（未入库）。
+  - 测试与 `src/test/harness.ts` **不改**：它们手里本来就是 Pinia store 实例，store 类型对它们是真话（store 可赋给 `ConfigModel` / `EvalConfig`，`vue-tsc` 证实）。
+    唯一改的测试是 `freeCompareEngine.test.ts` 的 `onEval` 回调参数（它收的是场景的 config，旧注解恰好是本轮要消除的那句假话，收窄后编译不过）。
+- **验证**：纯类型改动 ⇒ 运行期零差的最强证据是**产物逐字节相同**：主仓库 HEAD（`9f3dacd2`）与改后各 `vite build` 一次，`diff -r` 两个 dist（63 个文件）无输出。
+  `vue-tsc -b` 0 错；全量 verify EXIT 0（448 文件 / 4125 测试通过，16 / 29 跳过，172.6s）。
+- **回退点**：`git revert 3c287f85`（只动类型注解与类型导入，运行期无变化）。
+
 ## 4. 迁移进度（每迁一个：改本表 + 把文件加进 `analysisScenario.test.ts` 的 `MIGRATED_ANALYZERS`）
 
 | 分析器 | 入口 | 调用方 | 同步 / 异步 | 状态 |
@@ -205,7 +222,7 @@ S2 / S3 / S4 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage`
    （废除 `shouldAbort` 回调），9 个调用点接 `createBatchOwner`（进度 / 结果 / finally 只归当前运行），
    7 个分析器穿 `control`（被顶掉时下一循环头停算）。「每个任务一个 `withAnalysisScenario`」在 S2 迁完时即已成立
    （`TeamComparePage` 逐队建场景，其余整次运行一个）。`createBatchScheduler` 仍未接线，理由见 §3.4；之后才谈 worker。
-4. **S5 收窄类型（可选）**：管线与分析器里 `ReturnType<typeof useConfigStore>` 的参数改成 `ConfigModel`（`config.ts` 已导出），场景就不必把 model 标成 store 类型；
+4. ~~**S5 收窄类型（可选）**~~ ✅ 第 375 轮 `3c287f85`（§3.5）。原文：管线与分析器里 `ReturnType<typeof useConfigStore>` 的参数改成 `ConfigModel`（`config.ts` 已导出），场景就不必把 model 标成 store 类型；
    各文件里的 `ReturnType<typeof useResourceCalc>`（现 10 处）换成导入 `ResourceCalc`。只在顺手时做，不为降计数单独开卡。
 
 ## 7. 决定与依据
@@ -244,3 +261,4 @@ S2 / S3 / S4 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage`
 - 第 372 轮（抽卡规划 + 自由对比）：`git revert dfe53a2e`（恢复快照路径；调用方改回传 `calc`）。
 - S3（删 configSnapshot）：`git revert 81b0d2dc`。**顺序要紧**：S3 之后不能再单独把某个分析器退回快照路径——`configSnapshot.ts` 已不在，回退前必须先 `git revert 81b0d2dc`。
 - S4：`git revert 962e8b9f` → `git revert 423e9de4`（S4b 用了 S4a 的 `BatchControl` / `isBatchAborted` / `BatchOwner`，顺序反了编译不过）。
+- S5：`git revert 3c287f85`（纯类型；与 S4 的回退互不依赖）。
