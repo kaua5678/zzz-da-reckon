@@ -51,6 +51,18 @@ export interface ArchiveRoom {
   // （CC-95 删除；TS 结构类型对多余键无约束，要用时加回可选字段即可）
 }
 
+/**
+ * run-archive.json 整个文件（public/static；唯一加载入口 `catalog#loadRunArchive`，arena-D 第 367 轮）。
+ * 修前实战对比页、角色兑现曲线页各写一份局部 `interface ArchiveFile`（后者把 runs 写成 never[]），兑现价值图另有模块级缓存。
+ */
+export interface RunArchiveFile {
+  totalRuns: number
+  generatedAt: string
+  seasons: Record<string, { start: string; end: string }>
+  rooms: Record<string, ArchiveRoom & { seasonStart?: string }>
+  runs: ArchiveRun[]
+}
+
 /** boss-presets.json 里匹配所需的最小子集（不必引完整资源类型）。 */
 export interface BossPhaseEntry {
   /** 期相位 id（如 "69043" / "690431"；仅作阶段2 在 boss.phases 里定位的 key，不参与匹配判断） */

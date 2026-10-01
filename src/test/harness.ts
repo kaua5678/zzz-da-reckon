@@ -56,6 +56,8 @@ export function mockStaticFetch(): void {
     if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(teammateBuffsText) }
     if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(buildRecsText) }
     if (u.includes('/static/boss-presets.json')) return { ok: true, json: async () => JSON.parse(bossPresetsText) }
+    // 3 MB：按需读（不在模块加载时读，免得每个用 harness 的测试文件都付这笔）
+    if (u.includes('/static/run-archive.json')) return { ok: true, json: async () => JSON.parse(readFileSync(new URL('../../public/static/run-archive.json', import.meta.url), 'utf8')) }
     return { ok: false, json: async () => ({}) }
   }))
 }

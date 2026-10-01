@@ -225,7 +225,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { colorOf } from '@/composables/charts/agentPresentation'
 import { readSvgPointer } from '@/composables/svgPointer'
-import { MIN_PAIRS_FOR_GRADE, computePullValue, type PullValueInput, type PullValueResult, type PvCardRoomEffect, type PvCardValue } from '@/composables/pullValue'
+import { MIN_PAIRS_FOR_GRADE, computePullValue, type PullValueResult, type PvCardRoomEffect, type PvCardValue } from '@/composables/pullValue'
 import { PV_GRADE_DEFS as pvGradeDefs, buildPullValueChart, pvTierLabel } from '@/composables/pullValueChart'
 import { buildInflationFromFile, mapRoomsToInflation, type InflationSeries } from '@/composables/inflationCurve'
 
@@ -251,20 +251,14 @@ const pvTierFilterOptions = [
 const pvSelected = ref('')
 const pvHover = ref('')
 
-/** 归档懒加载缓存（会话内一次） */
-let pvArchive: PullValueInput | null = null
-
 async function runPullValue() {
   pvComputing.value = true
   pvError.value = ''
   try {
-    let archive: PullValueInput | null = pvArchive
-    if (!archive) {
-      const res = await fetch('/static/run-archive.json')
-      if (!res.ok) throw new Error(`归档加载失败（HTTP ${res.status}）——run-archive.json 不在 public/static 下`)
-      archive = (await res.json()) as PullValueInput
-      pvArchive = archive
-    }
+    // 会话内只下一次：catalog#loadRunArchive 缓存（原模块级 pvArchive 缓存，arena-D 第 367 轮收拢）
+    const archive = await useCatalogStore().loadRunArchive().catch((e: unknown) => {
+      throw new Error(`归档加载失败（${e instanceof Error ? e.message : String(e)}）——run-archive.json 不在 public/static 下`)
+    })
     pvResult.value = computePullValue(archive)
   } catch (e) {
     pvError.value = e instanceof Error ? e.message : String(e)

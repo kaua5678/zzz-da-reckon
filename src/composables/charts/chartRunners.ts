@@ -6,9 +6,8 @@
  * （`budget ?? 6`、`initialGold ?? 6`、`filmPerVersion ?? 15000`、`spendRatio ?? 0.5`、
  * `budgetYuan ?? 0`）、try/finally 结构逐字不变。
  *
- * ⚠ **为什么不搬 Chart 5 的 `runPullValue`**：它带**模块级缓存 + 全局 fetch**（`pvArchive` 缓存
- * `/static/run-archive.json`），属全局副作用深耦合，搬走要顺带决定缓存归属（模块级 vs 调用方）——
- * 那是行为改动不是搬迁，按任务约定跳过并留在此处。
+ * Chart 5 的 `runPullValue` 留在组件里：归档缓存已收进 `catalog#loadRunArchive`（arena-D 第 367 轮），
+ * 若要搬过来，只剩「调 loadRunArchive + computePullValue」两步。
  *
  * 依赖注入：`calc`（useResourceCalc 实例）与各 ref/getter 由页面传入，本文件不读 store、
  * 不碰组件生命周期，可单测。

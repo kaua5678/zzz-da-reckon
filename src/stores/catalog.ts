@@ -5,6 +5,7 @@ import { defineStore } from 'pinia'
 import { ref, shallowRef, computed } from 'vue'
 import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Boss, TeammateBuff, TeammateBuffGroup, BuildRecommendations, CharacterBuildRecommendation } from '@/types/catalog'
 import type { BossPresetFile } from '@/types/bossPreset'
+import type { RunArchiveFile } from '@/composables/runArchiveImport'
 import { getAgentSpecsByAgentId } from '@/specs/registry'
 import type { TeamBuffSpec } from '@/specs/types'
 
@@ -136,6 +137,9 @@ export const useCatalogStore = defineStore('catalog', () => {
   // ⚠ 各页面拿到的是**同一份对象**：只读。要排序 / 改字段先拷贝（`[...boss.phases].sort(...)`），否则会串到别的页面。
   const bossPresetFile = shallowRef<BossPresetFile | null>(null)
   let bossPresetsPromise: Promise<BossPresetFile> | null = null
+  // 实战归档（run-archive.json，3 MB）：同上约定（arena-D 第 367 轮；修前 3 处各自 fetch，兑现价值图另有模块级缓存）
+  const runArchiveFile = shallowRef<RunArchiveFile | null>(null)
+  let runArchivePromise: Promise<RunArchiveFile> | null = null
 
   // 索引 Map
   const agentsMap = computed(() => {
@@ -301,6 +305,24 @@ export const useCatalogStore = defineStore('catalog', () => {
     return bossPresetsPromise
   }
 
+  /** 加载实战归档；失败抛错、不缓存失败（同 loadBossPresets）。返回对象各页共享，只读。 */
+  async function loadRunArchive(): Promise<RunArchiveFile> {
+    if (runArchiveFile.value) return runArchiveFile.value
+    if (runArchivePromise) return runArchivePromise
+    runArchivePromise = Promise.resolve().then(async () => {
+      try {
+        const res = await fetch('/static/run-archive.json')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as RunArchiveFile
+        runArchiveFile.value = data
+        return data
+      } finally {
+        runArchivePromise = null
+      }
+    })
+    return runArchivePromise
+  }
+
   // 根据角色 ID 获取配装推荐
   function getBuildRecommendation(agentId: string): CharacterBuildRecommendation | undefined {
     return buildRecommendations.value?.characters[agentId]
@@ -355,6 +377,8 @@ export const useCatalogStore = defineStore('catalog', () => {
     loadBuildRecommendations,
     bossPresetFile,
     loadBossPresets,
+    runArchiveFile,
+    loadRunArchive,
     getAgent,
     getWEngine,
     getDriveDiscSet,

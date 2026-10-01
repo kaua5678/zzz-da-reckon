@@ -150,18 +150,14 @@ import { computeIncrementPass, computeCardIncrements, computeAllCardTotals, type
 import { pvReleaseDateOf } from '@/composables/pullValue'
 import { AGENT_RELEASE_NODE as RELEASE_NODE } from '@/data/versionTimeline'
 import { fmt, compact } from '@/utils/format'
-import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
-import type { ArchiveRoom } from '@/composables/runArchiveImport'
+import type { BossPreset } from '@/types/bossPreset'
+import type { RunArchiveFile } from '@/composables/runArchiveImport'
 
 const catalogStore = useCatalogStore()
 const calc = useResourceCalc()
 
 // ========== 数据加载（归档 + Boss 预设，页面挂载即取） ==========
-interface ArchiveFile {
-  runs: never[]
-  rooms: Record<string, ArchiveRoom & { seasonStart?: string }>
-}
-const archive = ref<ArchiveFile | null>(null)
+const archive = ref<RunArchiveFile | null>(null)
 const bosses = ref<BossPreset[]>([])
 const loading = ref(true)
 const error = ref('')
@@ -169,9 +165,9 @@ const error = ref('')
 onMounted(async () => {
   try {
     const [ra, bp] = (await Promise.all([
-      fetch('/static/run-archive.json').then(r => { if (!r.ok) throw new Error(`归档 HTTP ${r.status}`); return r.json() }),
+      useCatalogStore().loadRunArchive().catch((e: unknown) => { throw new Error(`归档 ${e instanceof Error ? e.message : String(e)}`) }),
       useCatalogStore().loadBossPresets().catch((e: unknown) => { throw new Error(`Boss 预设 ${e instanceof Error ? e.message : String(e)}`) }),
-    ])) as [ArchiveFile, BossPresetFile]
+    ]))
     archive.value = ra
     bosses.value = bp.bosses ?? []
   } catch (e) {

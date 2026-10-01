@@ -173,14 +173,14 @@ import { NCard, NSelect, NSwitch, NDataTable, NTag, NButton, NSpace, NDivider, N
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { submissionToDeploy, type ArchiveRun, type ArchiveRoom } from '@/composables/runArchiveImport'
+import { submissionToDeploy, type ArchiveRun, type RunArchiveFile } from '@/composables/runArchiveImport'
 import { applyDeployConfig, applyPeriodBuff } from '@/composables/runArchiveDeploy'
 import type { DeployConfig } from '@/composables/runArchiveImport'
 import { runLimitedGold, lowGoldFrontier } from '@/composables/limitedGold'
 import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { localized } from '@/utils/format'
-import type { BossPreset, BossPresetFile, PhaseView, PhaseBuffCard } from '@/types/bossPreset'
+import type { BossPreset, PhaseView, PhaseBuffCard } from '@/types/bossPreset'
 import {
   BANGBOO_GAP_HINT,
   collectCinemaGaps,
@@ -188,13 +188,6 @@ import {
   type ModelingGapHint,
 } from '@/utils/modelingGaps'
 
-interface ArchiveFile {
-  totalRuns: number
-  generatedAt: string
-  seasons: Record<string, { start: string; end: string }>
-  rooms: Record<string, ArchiveRoom & { seasonStart?: string }>
-  runs: ArchiveRun[]
-}
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -202,7 +195,7 @@ const { teamTotalDamage, resourceResult, stunPoolResult, anomalyPoolResult, agen
 
 const loading = ref(true)
 const error = ref('')
-const file = ref<ArchiveFile | null>(null)
+const file = ref<RunArchiveFile | null>(null)
 const presets = ref<BossPreset[]>([])
 const phaseViews = ref<PhaseView[]>([])
 
@@ -258,9 +251,9 @@ const goldWindowOptions = [
 onMounted(async () => {
   try {
     const [ra, bp] = (await Promise.all([
-      fetch('/static/run-archive.json').then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() }),
+      useCatalogStore().loadRunArchive(),
       useCatalogStore().loadBossPresets(),
-    ])) as [ArchiveFile, BossPresetFile]
+    ]))
     file.value = ra
     presets.value = bp.bosses ?? []
     phaseViews.value = bp.phaseViews ?? []
