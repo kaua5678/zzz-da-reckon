@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 383 轮**：CC-353 view 层试算循环源码锁（analysisScenario.test ④c）`44bddfb3`——原 §2；全文 `git show 1efb9dce:docs/mcp-worker-task-queue.md` 的 §2。
+
 **2026-10-02 arena-E 第 382 轮**：CC-352 实战部署页当期牌自动选择迁独立场景 `7967311a`——原 §2；全文 `git show d01283dd:docs/mcp-worker-task-queue.md` 的 §2。
 
 **2026-10-02 arena-E 第 381 轮**：CC-351 队伍预设 → store 单一映射 `ff1a64dc`（主页选预设改套预设音擎，与队伍对比同一支队；分析器 zd 零差）——原 §2；全文 `git show 02dfce35:docs/mcp-worker-task-queue.md` 的 §2。
@@ -144,15 +146,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 383 轮（lane arena-E，开工 02:52；无并行会话；HEAD `d01283dd`；REQUIREMENTS.md 无新条目）：CC-353 view 层试算循环源码锁 `44bddfb3`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **怎么选的**：r382 候选 ①。先估误报：「循环里写 store」3 误报 / 0 真命中 ⇒ 不做成那样；收窄为「循环体内写 store + 读计算结果」⇒ 0 误报、修前 RunArchivePage 命中 ⇒ 做。
-- **做到哪**：`src/composables/__tests__/analysisScenario.test.ts` 新增 ④c（含 detector 正反自证）；隔离文档 §8 加一条坑。没有改生产代码。
-- **验证**：④c 当前通过；把 `RunArchivePage.vue` 换回 `02dfce35` 版本时 ④c 报 `views/RunArchivePage.vue:387`（已还原）；全量 verify 通过（454 文件 / 16 跳过，build 成功；`/home/kaua/calc-arch/arenaE/verify383.log`）。
+**第 384 轮（lane arena-E，开工 03:00；无并行会话；HEAD `1efb9dce`；REQUIREMENTS.md 无新条目）：金档入口审计（不动）+ CC-354 删内部手动 refreshTrigger `ca616a22`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **金档审计结论**：所有写入都经 `setCinemaLevel` / `setWEngineModLevel` / `setWEngine`，无口径分叉 ⇒ 按 r383 规则不合并（r6 §8 第 384 行）。
+- **CC-354 做到哪**：store 8 处 + positionCompare×2 + timeWeightAllocation×2 + runArchiveDeploy + RunArchivePage 的 `refreshTrigger++`/`triggerRefresh()` 已删；`calcOutputMemo.test.ts` ⑤ 锁住（只允许 store 内 `triggerRefresh` 函数体）。
+- **验证**：零差 `zd.sh r384` DIFF 0/0（ROWS/DUMP）；定向测试（calcOutputMemo / positionCompare / timeWeight / runArchive / stores）通过；全量 verify 见 `/home/kaua/calc-arch/arenaE/verify384.log`。
 - **开放项（沿用 r379，待用户裁决，勿自行改）**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（卡表 CC-349）。
-- **下一步（可直接开工，先查后定）**：**金档（命座 / 精炼 / 音擎）写入有多个入口**——`teamCompare.ts` 的 `applyGoldSteps` / `applyGoldAllocationToStore` / `applyGoldToStore`、`teamTimelineStore#applyTeamToStore(config, team, state, …)`、`TeamConfigPage#applyGoldDraft`（直接循环 setCinemaLevel / setWEngineModLevel）。
-  做法：`grep -n "export function applyGold\|function applyGoldDraft\|setCinemaLevel\|setWEngineModLevel" src -r` 列出全部写入点 → 对比每个入口写哪些字段、按什么顺序（**特别看音擎换限定时是否同步重置精炼 / 是否触发队友 buff 同步**）→ 若有口径分叉（像 CC-351 那样）就归一，若只是参数形状不同就**不动**并在 r6 §8 记一句。
-  其它候选（非必须）：`createBatchScheduler`（worker 化时）；3D 图浏览器点验。不为降计数开卡。
-- **已知坑**：做源码判据前先量误报（写个一次性扫描脚本放 `/home/kaua/calc-arch/arenaE/`），并拿修前版本做反证——只「当前 0 命中」不能说明判据有牙。
+- **下一步（可直接开工，先查后定）**：**用户「刷新」按钮在记忆化下是 no-op**（ResultPage.vue 两处、ResourceUtilizationPage.vue 一处 `@click="configStore.triggerRefresh"`）。先在浏览器 / 测试里确认点击前后 `getCalcOutputMemoStats()` 只增 hits、结果不变 ⇒ 删按钮 + store 的 `refreshTrigger`/`triggerRefresh` + `CALC_MEMO_KEY_EXCLUDE` 里那一项 + `useResourceCalc.ts:~111` 的读取；同时改 `ccD3D1Verdict` / `comboAlignRelief` / `specTeamBuffDeadControl` / `allAgentsGuards` 测试里的 bump（多半也可直接删）。若发现记忆化关闭开关（`setCalcOutputMemoEnabled(false)`）场景下按钮仍有意义，则保留并在按钮旁注释。
+- **已知坑**：源码判据的正则会匹配函数声明本身（`function triggerRefresh(`），用 `(?<!function )` 排除；做完先故意让它红一次确认有牙。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
