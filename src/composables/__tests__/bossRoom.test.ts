@@ -6,9 +6,9 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { createEngineOracle } from '@/composables/pullPlannerEngine'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { applyBuffToStore } from '@/composables/teamCompare'
 import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
 
@@ -65,11 +65,16 @@ describe('bossRoom', () => {
     const { config } = await setupHarness([{ agentId: '1091' }, { agentId: '1511' }, { agentId: '1411' }])
     const { preset, phase } = roomWithLayerBuff()
     config.globalBuffs.push({ ...STALE } as never)
-    const engine = createEngineOracle({ calc: useResourceCalc(), bosses: [preset], candidatePool: [] })
-    engine.applyPeriodContext({ id: phase.phaseId, label: '', date: '', bosses: [{ bossId: preset.id, phaseId: phase.phaseId, bossName: preset.name, hp: phase.hp }] })
-    const rows = layerRows(config.globalBuffs)
-    expect(rows.length).toBeGreaterThan(0)
-    expect(rows.every(r => String(r.id).startsWith(`layer-buff:${preset.id}:${phase.phaseId}:`))).toBe(true)
+    const before = JSON.stringify(config.globalBuffs.map(r => r.id))
+    // r372：规划跑在独立场景上 ⇒ 关卡 buff 写进场景，UI store 的全局 Buff 一行都不该被碰
+    await withAnalysisScenario(scenario => {
+      const engine = createEngineOracle({ scenario, bosses: [preset], candidatePool: [] })
+      engine.applyPeriodContext({ id: phase.phaseId, label: '', date: '', bosses: [{ bossId: preset.id, phaseId: phase.phaseId, bossName: preset.name, hp: phase.hp }] })
+      const rows = layerRows(scenario.config.globalBuffs)
+      expect(rows.length).toBeGreaterThan(0)
+      expect(rows.every(r => String(r.id).startsWith(`layer-buff:${preset.id}:${phase.phaseId}:`))).toBe(true)
+    })
+    expect(JSON.stringify(config.globalBuffs.map(r => r.id))).toBe(before)
   }, 60000)
 
   it('队伍对比换牌：整表替换成所选牌，但保留关卡 buff 行（第 364 轮前连关卡 buff 一起清掉）', async () => {

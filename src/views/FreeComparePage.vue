@@ -231,12 +231,12 @@
  * - `versionChartGeometry` 的同款「优美步长纵轴」思路（本页自己算是因为 x 维度是动态的，
  *   版本节点数固定那套不适用）
  * - `agentPresentation.ts#colorOf`：系列配色（与全仓图表同一套）
- * - `configSnapshot.ts#snapshotStore/restoreStore`：现场快照恢复（求值器内部已封装，本页不碰）
+ * - `composables/analysisScenario.ts#withAnalysisScenario`：求值跑在独立场景上（r372，求值器内部已封装，本页不碰）
  */
 import { computed, onMounted, ref } from 'vue'
 import { NAlert, NButton, NCard, NCheckbox, NInput, NInputNumber, NProgress, NSelect, NTag } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { colorOf } from '@/composables/charts/agentPresentation'
 import { computeFreeCompare } from '@/composables/freeCompare/engine'
@@ -254,7 +254,6 @@ import { bestSeriesIndexByLevel, formatMetric, metricDef, metricOptions } from '
 import type { BossPreset } from '@/types/bossPreset'
 
 const catalog = useCatalogStore()
-const calc = useResourceCalc()
 
 // ---------- 数据 ----------
 const bossPresets = ref<BossPreset[]>([])
@@ -377,7 +376,8 @@ async function runCompare() {
   progress.value = null
   abortFlag = false
   try {
-    result.value = await computeFreeCompare(calc, {
+    // r372：对比在独立场景上求值（逐档位 yield，UI store 全程看不到中间态）
+    result.value = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
       series: specs,
       axisId: axisId.value,
       axisOptions: { cinemaMax: cinemaMax.value, setupCodes: setupCodes.value ?? [], periods: periodOptions.value },
@@ -390,7 +390,7 @@ async function runCompare() {
       },
       onProgress: p => { progress.value = p },
       shouldAbort: () => abortFlag,
-    })
+    }))
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {

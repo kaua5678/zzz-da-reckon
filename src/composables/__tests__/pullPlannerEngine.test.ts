@@ -3,7 +3,7 @@
  * - 期轴构造不变量（47 期、排序、房间 hp > 0）
  * - 卡清单构造（fresh/established/custom；常驻与赠送排除）
  * - 引擎 oracle 冒烟：候选分数 ∈ [0, 60000]、限定未持有不可入队、缓存命中
- * - runPullPlanner 集成：期数截短的成型号规划可跑通，总分 > 0，快照恢复
+ * - runPullPlanner 集成：期数截短的成型号规划可跑通，总分 > 0，调用方 store 全程不被改写（r372 独立场景）
  * - 用户钉子①：卢西娅（1451）VCG——命破队专属拐，禁用后被迫用潘引壶替代，分数显著降
  *   （受收敛过滤与真实 meta 偏差影响，钉子按「价值 > 0 且排名靠前」宽松断言，详见 FEATURES_GUIDE §4.5 已知偏差）
  * - 用户钉子②：星徽·比利（1531）vs 维琳娜（1561）——同一引擎同一算法下的 VCG 对比可计算
@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { setupHarness } from '@/test/harness'
 import {
   DAMAGE_SCORE_CAP,
@@ -145,7 +146,8 @@ describe('pullPlannerEngine · 引擎 oracle 冒烟', () => {
     const all = catalog.displayAgents.map(a => a.id)
     const free = freePoolRepresentatives(all, catalog, 2) // 性能剪枝口径（同 runPullPlanner 默认）
     const engine = createEngineOracle({
-      calc,
+      // r372：oracle 收场景（config + calc）；这里 config 就是 harness 的 UI store（与旧路径同一份现场）
+      scenario: { config: configStore, calc },
       bosses: [boss],
       candidatePool: [...free, '1371'], // 仪玄 = 唯一限定候选
     })
@@ -174,19 +176,20 @@ describe('pullPlannerEngine · 引擎 oracle 冒烟', () => {
     const stats = engine.stats()
     expect(again).toBe(withYixuan) // 同键返回缓存引用
     expect(stats.cacheHits).toBeGreaterThan(0)
-    void configStore
   }, 120000)
 })
 
 describe('pullPlannerEngine · 规划集成（截短期数）', () => {
-  it('成型号起点 3 期规划：总分 > 0、金数守恒、快照恢复', async () => {
+  it('成型号起点 3 期规划：总分 > 0、金数守恒、调用方 store 全程不变', async () => {
     await boot()
     const catalog = useCatalogStore()
     const configStore = useConfigStore()
-    const calc = useResourceCalc()
-    const before = JSON.stringify(configStore.team.map(t => t.agentId))
-    const res = await runPullPlanner({
-      calc,
+    // r372：规划跑在独立场景上 ⇒ 调用方 store 全程不该被改写（旧判据只比跑完后的队伍 id）
+    const before = JSON.stringify(configStore.$state)
+    let midRunChecks = 0
+    let midRunDiffs = 0
+    const res = await withAnalysisScenario(scenario => runPullPlanner({
+      scenario,
       boss: ALL_BOSSES[0],
       allAgentIds: catalog.displayAgents.map(a => a.id),
       allBosses: ALL_BOSSES,
@@ -195,14 +198,20 @@ describe('pullPlannerEngine · 规划集成（截短期数）', () => {
       maxPeriods: 2,
       initialBank: 30000,
       beamWidth: 2,
-    })
+      onProgress: () => {
+        midRunChecks++
+        if (JSON.stringify(configStore.$state) !== before) midRunDiffs++
+      },
+    }))
     expect(res.plan.totalScore).toBeGreaterThan(0)
     expect(res.plan.steps).toHaveLength(2)
     const spent = res.plan.steps.flatMap(s => s.purchases).reduce((s, p) => s + p.cost, 0)
     expect(spent).toBe(res.plan.totalSpent)
     expect(res.stats.evaluations).toBeGreaterThan(0)
-    // 快照恢复
-    expect(JSON.stringify(configStore.team.map(t => t.agentId))).toBe(before)
+    // 独立场景：调用方 store 跑完与开跑前逐字相同（含 beam 逐期 yield 中途，见 onProgress）
+    expect(midRunChecks).toBeGreaterThan(0)
+    expect(midRunDiffs).toBe(0)
+    expect(JSON.stringify(configStore.$state)).toBe(before)
   }, 280000)
 })
 
@@ -216,11 +225,9 @@ describe('pullPlannerEngine · 用户钉子（VCG 反事实）', () => {
   it('禁用窗口内已购卡 → 重规划总分不高于原规划（反事实不等式）', async () => {
     await boot()
     const catalog = useCatalogStore()
-    const calc = useResourceCalc()
     // 只给两个免费成员：不购买时无法组成三人队，购买窗口卡后才有正分。
     // 全免费池下卡价值允许为 0，不能把某版本的 meta 排名当作 VCG 契约。
     const runOpts = {
-      calc,
       boss: ALL_BOSSES[0],
       allAgentIds: catalog.displayAgents.map(a => a.id).filter(id => ['1021', '1031'].includes(id)),
       allBosses: ALL_BOSSES,
@@ -230,11 +237,12 @@ describe('pullPlannerEngine · 用户钉子（VCG 反事实）', () => {
       initialBank: 60000,
       beamWidth: 2,
       withVcg: true,
-    } satisfies Parameters<typeof runPullPlanner>[0]
-    const withoutBudget = await runPullPlanner({ ...runOpts, initialBank: 0, withVcg: false })
+    } satisfies Omit<Parameters<typeof runPullPlanner>[0], 'scenario'>
+    // r372：一次运行一个场景 ⇒ 两次规划各建一个（跨运行复用会让第二次从第一次的残留出发）
+    const withoutBudget = await withAnalysisScenario(s => runPullPlanner({ ...runOpts, scenario: s, initialBank: 0, withVcg: false }))
     expect(withoutBudget.plan.totalScore).toBe(0)
     expect(withoutBudget.plan.totalSpent).toBe(0)
-    const res = await runPullPlanner(runOpts)
+    const res = await withAnalysisScenario(s => runPullPlanner({ ...runOpts, scenario: s }))
     expect(res.plan.totalScore).toBeGreaterThan(0)
     // 1 期窗口窄（2026-07-29 起仅蕾米埃尔窗口开）：归因清单 ≥1 即可
     expect(res.values.length).toBeGreaterThanOrEqual(1)

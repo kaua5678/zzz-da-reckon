@@ -24,7 +24,12 @@ function instrument(damage: (lead: string) => number = () => 1_000_000, outerExi
   } as unknown as ReturnType<typeof useResourceCalc>
 }
 function oracle(calc = instrument(), candidatePool = pool) {
-  return createEngineOracle({ calc, bosses: [boss], candidatePool })
+  // r372：oracle 收场景；这里 config = harness 的 UI store（假 calc 读的就是它，与旧路径同一份现场）
+  return createEngineOracle({
+    scenario: { config: useConfigStore(), calc },
+    bosses: [boss],
+    candidatePool,
+  })
 }
 
 describe('planner free-member chain', () => {

@@ -1,6 +1,6 @@
 /**
  * 抽卡规划器的引擎 oracle 桥：把 pullPlanner 的 TeamOracle 接到真实伤害引擎
- * （teamTimeline 底座：轻量装配 teamTimelineStore#applyTeamToStore / 逐人持有档配装 / maxIter 收敛过滤 / 现场快照恢复）。
+ * （teamTimeline 底座：轻量装配 teamTimelineStore#applyTeamToStore / 逐人持有档配装 / maxIter 收敛过滤 / 独立场景求值）。
  *
  * 伤害 → 分数映射（分段线性，FEATURES_GUIDE §4.5）：
  *   score = scoreForDamageRatio(teamDamage / bossHp)（伤害分 0~60000，非线性——前段血值分多）
@@ -10,18 +10,15 @@
  * (有序 team × bossId/phaseId/HP × 逐人持有档)——同槽序同房同档只算一次，
  * beam 的 VCG 重规划大量命中缓存。规划期内 Boss/buff 逐期应用（同 Chart 4）。
  */
-import { useConfigStore } from '@/stores/config'
+import type { useConfigStore } from '@/stores/config'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { applyBossRoom } from '@/composables/bossRoom'
-import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedSWengineId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import type { BossPreset } from '@/types/bossPreset'
-import type { useResourceCalc } from '@/composables/useResourceCalc'
+import type { AnalysisContext } from '@/composables/analysisScenario'
 import { ladderRung, type PlannerBossRoom, type PlannerPeriod, type TeamOracle } from '@/composables/pullPlanner'
-
-type Calc = ReturnType<typeof useResourceCalc>
 
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 
@@ -29,7 +26,11 @@ import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 export { DEADLY_ASSAULT_SCORE_CAP as DAMAGE_SCORE_CAP } from '@/core/deadlyAssaultScore'
 
 export interface EngineOracleOptions {
-  calc: Calc
+  /**
+   * 求值场景（r372 独立场景）：oracle 在 `scenario.config` 上装配队伍 / Boss 房间，读 `scenario.calc`
+   * 的伤害。调用方（页面 / 运行器 / 测试）经 `withAnalysisScenario` 建场景并负责销毁。
+   */
+  scenario: AnalysisContext
   /** 全部 Boss 预设（按 bossRoom.bossId 定位该期相位——一期 3 房是 3 个不同 Boss，
    *  单预设只覆盖自己的出场期） */
   bosses: BossPreset[]
@@ -130,7 +131,8 @@ export function createEngineOracle(opts: EngineOracleOptions): {
   applyPeriodContext: (period: PlannerPeriod) => void
   stats: () => { evaluations: number; cacheHits: number; cacheSize: number }
 } {
-  const configStore = useConfigStore()
+  const { config: configStore, calc } = opts.scenario
+  // catalog 是全局只读数据、场景不持有独立副本 ⇒ 分析器内部直接取（见 docs §8 的决定）
   const catalog = useCatalogStore()
   const candidatePool = [...new Set(opts.candidatePool)]
   const roomKey = (room: PlannerBossRoom) => `${room.bossId}|${room.phaseId}|${room.hp > 0 ? room.hp : 1}`
@@ -175,12 +177,12 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     const goldState = holdingStateFor(team, holdings, catalog)
     applyTeamToStore(configStore, team, goldState) // CC-256：轻量装配唯一实现（原私有 applyTeamLite 逐行同义）
     state.evaluations++
-    const conv = opts.calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+    const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
     if (conv === 'maxIter') {
       teamScoreCache.set(key, null) // 未收敛也缓存；命中时仍返回 null，不能泄漏为负分候选
       return null
     }
-    const damage = opts.calc.teamTotalDamage.value
+    const damage = calc.teamTotalDamage.value
     const score = scoreForDamageRatio(damage / hp)
     teamScoreCache.set(key, score)
     return score
@@ -398,7 +400,8 @@ export function freePoolRepresentatives(
 }
 
 export interface PlannerRunOptions {
-  calc: Calc
+  /** 求值场景（r372 独立场景）：整次规划（beam 逐期 + VCG 重规划）只在 `scenario.config` 上改写 */
+  scenario: AnalysisContext
   /** 期轴数据源：全部 Boss 预设（期轴聚合需要；oracle 求值用 boss 单预设） */
   allBosses: BossPreset[]
   boss: BossPreset
@@ -427,59 +430,55 @@ export interface PlannerRunResult {
 }
 
 /**
- * 引擎版规划主入口（异步）：快照/恢复 store、构造卡清单与免费池、beam 规划、
+ * 引擎版规划主入口（异步）：在调用方给的独立场景上构造卡清单与免费池、beam 规划、
  * 可选 VCG 归因。VCG 每卡重规划复用同一 oracle 缓存（禁卡只影响持有集键，
  * 大部分 (phaseId × holdings) 键命中缓存，实测增量远小于首次规划）。
  */
 export async function runPullPlanner(opts: PlannerRunOptions): Promise<PlannerRunResult> {
-  const configStore = useConfigStore()
+  // r372：在调用方给的独立场景（opts.scenario）上求值——改写只落在场景里，跑完无需恢复
+  // （原 CC-278 的 snapshotStore / restoreStore 已删）；beam 逐期 yield 期间 UI 也看不到中间态
+  // （旧路径下页面会为每个中间态重算）。
   const catalog = useCatalogStore()
-  // CC-278：改用唯一实现 configSnapshot（原私有副本漏快照队友 buff 选择 ⇒ 跑完后用户手动开关被 team watcher 改写，CC-251 同类）
-  const snap = snapshotStore(configStore)
   const t0 = Date.now()
   const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
-  try {
-    const allCards = buildPlannerCards(opts.preset, opts.startDate, opts.customHoldings ?? {})
-    const periods = buildPlannerPeriods(opts.allBosses, { testServerVersions: plannerTestServerVersions() })
-      .filter(p => p.date >= opts.startDate)
-    const trimmed = opts.maxPeriods ? periods.slice(0, opts.maxPeriods) : periods
-    // 候选池 = 免费人 + **窗口与规划期相交**的限定 S（窗口早于起点的卡要么起点已持有
-    // （custom initialTier）、要么窗口已过永远买不到——不进池可把 C(池,3) 从数千砍到
-    // 数百，这是引擎求值量的决定性剪枝；VCG 归因同池（窗口外卡价值恒 0））
-    const lastDate = trimmed.length > 0 ? trimmed[trimmed.length - 1].date : opts.startDate
-    const inWindow = (c: { windowStart: string; initialTier?: number }) =>
-      (c.initialTier ?? 0) > 0 || (c.windowStart >= opts.startDate && c.windowStart <= lastDate)
-    const cards = allCards.filter(inWindow)
-    const free = freePoolRepresentatives(opts.allAgentIds, catalog, opts.freePoolPerSpecialty ?? 1)
-    const pool = [...new Set([...free, ...cards.map(c => c.agentId)])]
-    const engine = createEngineOracle({
-      calc: opts.calc,
-      bosses: opts.allBosses,
-      candidatePool: pool,
-    })
-    const plannerOpts: PlannerOptions = {
-      cards,
-      periods: trimmed,
-      startDate: opts.startDate,
-      initialBank: opts.initialBank ?? 0,
-      filmPerVersion: opts.filmPerVersion ?? PLANNER_FILM_PER_VERSION,
-      versionStartDates: plannerVersionStartDates(),
-      beamWidth: opts.beamWidth ?? 6,
-      oracle: engine.oracle,
-      onPeriod: engine.applyPeriodContext,
-      onProgress: p => report(p.pct * (opts.withVcg ? 0.7 : 1), p.text),
-    }
-    const plan = planPullStrategy(plannerOpts)
-    let values: CardValueVcg[] = []
-    if (opts.withVcg) {
-      report(0.7, 'VCG 反事实归因…')
-      await new Promise(r => setTimeout(r, 0))
-      values = computeCardValuesVcg(plannerOpts, plan)
-      report(1, '完成')
-    }
-    const stats = engine.stats()
-    return { plan, values, stats: { ...stats, durationMs: Date.now() - t0 } }
-  } finally {
-    restoreStore(configStore, snap)
+  const allCards = buildPlannerCards(opts.preset, opts.startDate, opts.customHoldings ?? {})
+  const periods = buildPlannerPeriods(opts.allBosses, { testServerVersions: plannerTestServerVersions() })
+    .filter(p => p.date >= opts.startDate)
+  const trimmed = opts.maxPeriods ? periods.slice(0, opts.maxPeriods) : periods
+  // 候选池 = 免费人 + **窗口与规划期相交**的限定 S（窗口早于起点的卡要么起点已持有
+  // （custom initialTier）、要么窗口已过永远买不到——不进池可把 C(池,3) 从数千砍到
+  // 数百，这是引擎求值量的决定性剪枝；VCG 归因同池（窗口外卡价值恒 0））
+  const lastDate = trimmed.length > 0 ? trimmed[trimmed.length - 1].date : opts.startDate
+  const inWindow = (c: { windowStart: string; initialTier?: number }) =>
+    (c.initialTier ?? 0) > 0 || (c.windowStart >= opts.startDate && c.windowStart <= lastDate)
+  const cards = allCards.filter(inWindow)
+  const free = freePoolRepresentatives(opts.allAgentIds, catalog, opts.freePoolPerSpecialty ?? 1)
+  const pool = [...new Set([...free, ...cards.map(c => c.agentId)])]
+  const engine = createEngineOracle({
+    scenario: opts.scenario,
+    bosses: opts.allBosses,
+    candidatePool: pool,
+  })
+  const plannerOpts: PlannerOptions = {
+    cards,
+    periods: trimmed,
+    startDate: opts.startDate,
+    initialBank: opts.initialBank ?? 0,
+    filmPerVersion: opts.filmPerVersion ?? PLANNER_FILM_PER_VERSION,
+    versionStartDates: plannerVersionStartDates(),
+    beamWidth: opts.beamWidth ?? 6,
+    oracle: engine.oracle,
+    onPeriod: engine.applyPeriodContext,
+    onProgress: p => report(p.pct * (opts.withVcg ? 0.7 : 1), p.text),
   }
+  const plan = planPullStrategy(plannerOpts)
+  let values: CardValueVcg[] = []
+  if (opts.withVcg) {
+    report(0.7, 'VCG 反事实归因…')
+    await new Promise(r => setTimeout(r, 0))
+    values = computeCardValuesVcg(plannerOpts, plan)
+    report(1, '完成')
+  }
+  const stats = engine.stats()
+  return { plan, values, stats: { ...stats, durationMs: Date.now() - t0 } }
 }

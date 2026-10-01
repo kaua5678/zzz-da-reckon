@@ -6,19 +6,21 @@
  * ```
  * metrics.ts   纯读（引擎值 → 数字向量）     零 store 写入
  * axes.ts      纯枚举（系列 → x 档位清单）    零 store 写入
- * engine.ts    装配 store → 求值 → 恢复现场  ← 本文件
+ * engine.ts    装配场景 config → 求值  ← 本文件
  * ```
  *
- * **现场快照/恢复口径**（照抄 `teamCompare.ts#computeTeamComparePoints` 的 `:1029/:1170-1172`，
- * 不另发明）：进函数先 `snapshotStore`（composables/configSnapshot），`try/finally` 里 `restoreStore`，跑完不留痕。
+ * **隔离口径**（r372，CC-343 第 2 阶段；取代此前的「快照 / 恢复」）：调用方经 `withAnalysisScenario`
+ * 建独立场景传进来，本文件只在 `scenario.config` 上装配、读 `scenario.calc`，不读 UI config store、
+ * 不做快照恢复 ⇒ UI store 全程不被碰（CC-251 / 278 / 338 / 339 / 340 那一类「漏快照 → 污染现场」不再可能）。
+ * catalog 仍取全局 `useCatalogStore()`：目录是只读数据，场景不持有独立副本（见 §8）。
  */
 
 import { applyBossRoom } from '@/composables/bossRoom'
-import { useConfigStore } from '@/stores/config'
+import type { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedWEngine } from '@/composables/teamCompare'
-import { snapshotStore, restoreStore } from '@/composables/configSnapshot'
 import type { useResourceCalc } from '@/composables/useResourceCalc'
+import type { AnalysisContext } from '@/composables/analysisScenario'
 import {
   type AxisId,
   type AxisLevel,
@@ -264,11 +266,12 @@ function makeDowngradeResolver(calc: Calc, configStore: ReturnType<typeof useCon
  * 「每队 ~10 次 ≈ 3~4 秒」推算）⇒ **默认要给出代价预告**，别让用户点下去才知道要等一分钟。
  */
 export async function computeFreeCompare(
-  calc: Calc,
+  scenario: AnalysisContext,
   options: FreeCompareOptions,
 ): Promise<FreeCompareResult> {
   const started = Date.now()
-  const configStore = useConfigStore()
+  // r372：装配与求值都落在调用方给的独立场景上（原 useConfigStore + snapshotStore/restoreStore 已删）
+  const { config: configStore, calc } = scenario
   const catalog = useCatalogStore()
 
   const axis = AXIS_BY_ID.get(options.axisId) ?? AXIS_BY_ID.get(DEFAULT_AXIS_ID)!
@@ -277,7 +280,6 @@ export async function computeFreeCompare(
   // 提前解包：TS 的窄化跨不过下面的闭包（`finalize` 会读它），显式收成一个非空的局部常量
   const m: MetricDef = metric
 
-  const snap = snapshotStore(configStore)
   const cs = options.constraints ?? {}
 
   const series = options.series
@@ -296,82 +298,78 @@ export async function computeFreeCompare(
   /** 择优自身的试算次数（池大小 × 首个未命中），单独计，避免它被误读成"档位求值" */
   let pickEvaluations = 0
 
-  try {
-    for (let si = 0; si < series.length; si++) {
-      const spec = series[si]
-      const nameOf = (id: string) => catalog.getAgent(id)?.name.zhCN ?? id
-      out[si].label = seriesLabelOf(spec, nameOf)
+  for (let si = 0; si < series.length; si++) {
+    const spec = series[si]
+    const nameOf = (id: string) => catalog.getAgent(id)?.name.zhCN ?? id
+    out[si].label = seriesLabelOf(spec, nameOf)
 
-      for (let li = 0; li < levels.length; li++) {
-        if (options.shouldAbort?.()) return finalize()
-        const level = levels[li]
+    for (let li = 0; li < levels.length; li++) {
+      if (options.shouldAbort?.()) return finalize()
+      const level = levels[li]
 
-        // ---- 装配：约束 → 系列成员 → x 档位覆盖 ----
-        // period 维度：档位的 periodId 覆盖约束里的 phaseId（CC-189；此前该覆盖从未被读 ⇒ 期数轴是假轴）
-        applyConstraintBaseline(configStore, catalog, spec, cs, level.override.periodId ?? cs.phaseId)
-        const code: SetupCode = {
-          cinema: level.override.cinema ?? spec.code.cinema,
-          wengine: level.override.wengine ?? spec.code.wengine,
-        }
-        const team = teamOf(spec, cs)
-        // 条件角色先定位槽位。条件与系列成员重叠时**条件胜**（用户原话「维琳娜0命1命2命的情况下」
-        // 是场景约束，系列只描述「谁跟谁比」；场景约束理应对该角色生效）
-        const condSlots = new Map<number, SetupCode>()
-        for (const c of cs.conditions ?? []) {
-          const s = team.indexOf(c.agentId)
-          if (s >= 0) condSlots.set(s, conditionToCode(c))
-        }
-        // 第一遍：把三槽的角色/命座/专武写全（**择优要读全队伤害，必须等队伍齐了再试**）
-        // CC-338：空槽（!agentId）必须显式清空——否则 autoBuild=false（默认轻量速算）时，
-        // 用户页面原有槽位或上一条 3 人系列的残留角色会漏进本系列的 1~2 人队求值。
-        const needPick: Array<{ slot: number; agentId: string; cinema: number }> = []
-        for (let slot = 0; slot < 3; slot++) {
-          const agentId = team[slot]
-          if (!agentId) {
-            configStore.setAgent(slot, '')
-            configStore.setCinemaLevel(slot, 0)
-            configStore.setWEngine(slot, '')
-            configStore.setWEngineModLevel(slot, 1)
-            continue
-          }
-          const slotCode = condSlots.get(slot) ?? code
-          applyCodeToSlot(configStore, catalog, slot, agentId, slotCode, '', 1)
-          if (slotCode.wengine === 0) needPick.push({ slot, agentId, cinema: slotCode.cinema })
-        }
-        // 第二遍：无专武的槽位按伤害择优挑下位（池>1 时内部会试算；缓存跨档位复用）
-        for (const p of needPick) {
-          const before = downgrade.size
-          downgrade.resolve(p.slot, p.agentId, p.cinema, `${team.join(',')}|${code.cinema}${code.wengine}`)
-          if (downgrade.size > before) {
-            // 新键 = 真的试算了；单件池（n <= 1）直接采用不试算，多件池逐件试算 n 次
-            const n = downgradeCandidates(catalog, p.agentId).length
-            pickEvaluations += n > 1 ? n : 0
-          }
-          const picked = downgrade.lastPicked
-          if (picked) {
-            const list = (out[si].downgrades ??= [])
-            const tag = `${nameOf(p.agentId)}：${picked.label}`
-            if (!list.includes(tag)) list.push(tag)
-          }
-        }
-
-        // ---- 求值 ----
-        // env 必须在装配之后读：Boss / 期数由装配段写入，提前读会拿到用户页面原来那个 Boss 的血量（CC-189 修）
-        const env: MetricEnv = { hp: configStore.enemy.hp ?? 0 }
-        const value = readMetric(calc, m, env, spec)
-        evaluations++
-        if (value === null) { skipped++; out[si].skipped++; out[si].values[li] = null }
-        else out[si].values[li] = value
-
-        const done = si * levels.length + li + 1
-        options.onProgress?.({
-          pct: (levels.length * series.length) > 0 ? done / (levels.length * series.length) : 1,
-          text: `${out[si].label} · ${level.label}`,
-        })
+      // ---- 装配：约束 → 系列成员 → x 档位覆盖 ----
+      // period 维度：档位的 periodId 覆盖约束里的 phaseId（CC-189；此前该覆盖从未被读 ⇒ 期数轴是假轴）
+      applyConstraintBaseline(configStore, catalog, spec, cs, level.override.periodId ?? cs.phaseId)
+      const code: SetupCode = {
+        cinema: level.override.cinema ?? spec.code.cinema,
+        wengine: level.override.wengine ?? spec.code.wengine,
       }
+      const team = teamOf(spec, cs)
+      // 条件角色先定位槽位。条件与系列成员重叠时**条件胜**（用户原话「维琳娜0命1命2命的情况下」
+      // 是场景约束，系列只描述「谁跟谁比」；场景约束理应对该角色生效）
+      const condSlots = new Map<number, SetupCode>()
+      for (const c of cs.conditions ?? []) {
+        const s = team.indexOf(c.agentId)
+        if (s >= 0) condSlots.set(s, conditionToCode(c))
+      }
+      // 第一遍：把三槽的角色/命座/专武写全（**择优要读全队伤害，必须等队伍齐了再试**）
+      // CC-338：空槽（!agentId）必须显式清空——否则 autoBuild=false（默认轻量速算）时，
+      // 用户页面原有槽位或上一条 3 人系列的残留角色会漏进本系列的 1~2 人队求值。
+      const needPick: Array<{ slot: number; agentId: string; cinema: number }> = []
+      for (let slot = 0; slot < 3; slot++) {
+        const agentId = team[slot]
+        if (!agentId) {
+          configStore.setAgent(slot, '')
+          configStore.setCinemaLevel(slot, 0)
+          configStore.setWEngine(slot, '')
+          configStore.setWEngineModLevel(slot, 1)
+          continue
+        }
+        const slotCode = condSlots.get(slot) ?? code
+        applyCodeToSlot(configStore, catalog, slot, agentId, slotCode, '', 1)
+        if (slotCode.wengine === 0) needPick.push({ slot, agentId, cinema: slotCode.cinema })
+      }
+      // 第二遍：无专武的槽位按伤害择优挑下位（池>1 时内部会试算；缓存跨档位复用）
+      for (const p of needPick) {
+        const before = downgrade.size
+        downgrade.resolve(p.slot, p.agentId, p.cinema, `${team.join(',')}|${code.cinema}${code.wengine}`)
+        if (downgrade.size > before) {
+          // 新键 = 真的试算了；单件池（n <= 1）直接采用不试算，多件池逐件试算 n 次
+          const n = downgradeCandidates(catalog, p.agentId).length
+          pickEvaluations += n > 1 ? n : 0
+        }
+        const picked = downgrade.lastPicked
+        if (picked) {
+          const list = (out[si].downgrades ??= [])
+          const tag = `${nameOf(p.agentId)}：${picked.label}`
+          if (!list.includes(tag)) list.push(tag)
+        }
+      }
+
+      // ---- 求值 ----
+      // env 必须在装配之后读：Boss / 期数由装配段写入，提前读会拿到用户页面原来那个 Boss 的血量（CC-189 修）
+      const env: MetricEnv = { hp: configStore.enemy.hp ?? 0 }
+      const value = readMetric(calc, m, env, spec)
+      evaluations++
+      if (value === null) { skipped++; out[si].skipped++; out[si].values[li] = null }
+      else out[si].values[li] = value
+
+      const done = si * levels.length + li + 1
+      options.onProgress?.({
+        pct: (levels.length * series.length) > 0 ? done / (levels.length * series.length) : 1,
+        text: `${out[si].label} · ${level.label}`,
+      })
     }
-  } finally {
-    restoreStore(configStore, snap)
   }
   return finalize()
 

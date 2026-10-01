@@ -1,11 +1,12 @@
 /**
- * 自由对比工作台 · 求值器集成测试（真引擎，快照/恢复 + 装配正确性）
+ * 自由对比工作台 · 求值器集成测试（真引擎，独立场景 + 装配正确性；r372 前是快照/恢复）
  *
  * 为什么需要这一层：纯函数测试（`freeCompare.test.ts`）证明不了「装配到 store 上的状态是对的」。
  * 而本工作台最危险的失败模式恰恰是**静默装错**——
  *   ① 无专武（wengine=0）没显式覆盖 ⇒ `setAgent` 自动给角色穿上专武（`config.ts:594-599`），
  *      得到「嘴上无专武、身上穿专武」的偏高数值，零报错；
- *   ② 忘了恢复现场 ⇒ 污染用户当前的队伍/Boss 配置（跑完对比发现自己队被换了）。
+ *   ② 忘了隔离 ⇒ 污染用户当前的队伍/Boss 配置（跑完对比发现自己队被换了；r372 起求值跑在独立
+ *      场景上，这条失败模式从结构上不再可能，用例相应改成「调用方 store 全程逐字不变」）。
  * 这两条都是**读代码看不出来、只有跑真引擎并对账才抓得到**的，所以必须各有一条会红的断言。
  *
  * 判据（AGENTS 规则 9）：每条断言针对一个真实失败模式，不是复读实现。
@@ -16,6 +17,7 @@ import { mockStaticFetch, setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { computeFreeCompare, downgradeCandidates, signatureWEngineId } from '@/composables/freeCompare/engine'
 import { parseSetupCode, type SeriesSpec } from '@/composables/freeCompare/axes'
 
@@ -45,13 +47,13 @@ describe('自由对比求值器（真引擎）', () => {
     expect(boss, 'boss-presets 里应有 30007').toBeTruthy()
     const [p1, p2] = boss.phases as Array<{ phaseId: string; label: string; hp: number }>
     expect(Math.round(p1.hp), '选两期血量不同的，否则本条测不出东西').not.toBe(Math.round(p2.hp))
-    const run = (metricId: string) => computeFreeCompare(useResourceCalc(), {
+    const run = (metricId: string) => withAnalysisScenario(scenario => computeFreeCompare(scenario, {
       series: [{ id: 'a', kind: 'agent', members: [BURNICE], code: code('01') }],
       axisId: 'period',
       axisOptions: { periods: [p1, p2].map(p => ({ id: p.phaseId, label: p.label })) },
       metricId,
       constraints: { boss, baseTeammates: [VELINA, ''] },
-    })
+    }))
     const dmg = (await run('teamTotalDamage')).series[0].values
     const ratio = (await run('dmgBossHpRatio')).series[0].values
     expect(dmg.every(v => typeof v === 'number' && v > 0)).toBe(true)
@@ -60,32 +62,34 @@ describe('自由对比求值器（真引擎）', () => {
     expect(ratio[1]! * Math.round(p2.hp)).toBeCloseTo(dmg[1]!, -2)
   })
 
-  it('★ 跑完不留痕：队伍/Boss/命座全部还原（防污染用户当前配置）', async () => {
+  it('★ 调用方 store 全程不被改写（r372：求值只在独立场景里发生，不再依赖「跑完还原」）', async () => {
     const config = useConfigStore()
-    const calc = useResourceCalc()
     // 先给一个「用户自己的配置」当现场
     await setupHarness([{ agentId: BURNICE }, { agentId: VELINA }, ''], { recommendedBuild: true })
-    const before = JSON.stringify({
-      team: config.team.map(c => ({ id: c.agentId, cine: c.cinemaLevel, mod: c.wEngineModLevel, w: c.wEngineId })),
-      hp: config.enemy.hp,
+    const snap = (c: typeof config) => JSON.stringify({
+      team: c.team.map(x => ({ id: x.agentId, cine: x.cinemaLevel, mod: x.wEngineModLevel, w: x.wEngineId })),
+      hp: c.enemy.hp,
     })
-
-    await computeFreeCompare(calc, {
-      series: [
+    const before = snap(config)
+    let midRunChecks = 0
+    let midRunDiffs = 0
+    const { run } = makeRunner()
+    await run(
+      [
         { id: 'a', kind: 'agent', members: [BURNICE], code: code('01') },
         { id: 'b', kind: 'agent', members: [PHOENIX], code: code('21') },
       ],
-      axisId: 'cinema',
-      axisOptions: { cinemaMax: 1 },
-      metricId: 'teamTotalDamage',
-      constraints: { baseTeammates: [VELINA, ''] },
-    })
-
-    const after = JSON.stringify({
-      team: config.team.map(c => ({ id: c.agentId, cine: c.cinemaLevel, mod: c.wEngineModLevel, w: c.wEngineId })),
-      hp: config.enemy.hp,
-    })
-    expect(after, '跑完对比后现场必须逐字段还原').toBe(before)
+      'cinema',
+      { cinemaMax: 1 },
+      { baseTeammates: [VELINA, ''] },
+      () => {
+        midRunChecks++
+        if (snap(config) !== before) midRunDiffs++
+      },
+    )
+    expect(midRunChecks, 'onProgress 至少该触发一次，否则本条没测到东西').toBeGreaterThan(0)
+    expect(midRunDiffs, '求值中途 UI store 也不该被改写').toBe(0)
+    expect(snap(config), '跑完对比后现场必须与开跑前逐字段相同').toBe(before)
   })
 
   it('★ 无专武（20）= 穿下位音擎，**不是裸奔**（用户口径 2026-09-15：「用了下位武器，比如 a 级武器」）', async () => {
@@ -185,10 +189,10 @@ describe('自由对比求值器（真引擎）', () => {
       'cinema',
       { cinemaMax: 0 },
       { baseTeammates: [VELINA, ''] },
-      () => { seenSlot2Agent = config.team[2].agentId },
+      c => { seenSlot2Agent = c.team[2].agentId },
     )
     expect(seenSlot2Agent, '求值期间 2 号空槽必须被清空，不能带着页面残留角色算').toBe('')
-    // 跑完后 finally 仍恢复用户原 3 号槽
+    // r372：求值只在独立场景里发生 ⇒ UI store 的 3 号槽全程是用户原来的菲欧妮（不再依赖 finally 恢复）
     expect(config.team[2].agentId).toBe(PHOENIX)
     expect(config.team[2].cinemaLevel).toBe(2)
   })
@@ -197,35 +201,30 @@ describe('自由对比求值器（真引擎）', () => {
 // ---------- 测试用小工具（不进产品代码） ----------
 
 /**
- * 求值器在 `finally` 里恢复现场（这是产品行为，必须保持）⇒ **跑完之后查 store 只会看到还原态**。
+ * 求值器在**独立场景**上装配（r372）⇒ 跑完之后查 UI store 只会看到「没被碰过」的现场。
  * 要断言「装配对了没有」，只能在**求值过程中**抓：借 `onProgress` 回调（它在每次求值之后触发、
- * 恢复之前）读当时的槽位状态。这是本文件三个 ★ 用例的共同手法。
+ * dispose 之前）读当时**场景**里的槽位状态。这是本文件三个 ★ 用例的共同手法。
  */
 function makeRunner() {
-  const calc = useResourceCalc()
-  const config = useConfigStore()
-
   async function run(
     series: SeriesSpec[],
     axisId: 'cinema' | 'setupCode',
     axisOptions: Record<string, unknown>,
     constraints: Record<string, unknown> = {},
-    onEval?: () => void,
+    onEval?: (config: ReturnType<typeof useConfigStore>) => void,
   ) {
-    return computeFreeCompare(calc, {
+    return withAnalysisScenario(scenario => computeFreeCompare(scenario, {
       series,
       axisId,
       axisOptions: axisOptions as never,
       metricId: 'teamTotalDamage',
       constraints: { baseTeammates: [VELINA, ''], ...constraints } as never,
-      onProgress: onEval,
-    })
+      onProgress: onEval ? () => onEval(scenario.config) : undefined,
+    }))
   }
 
   return {
-    calc,
-    config,
-    /** 跑单个系列（只要它装配后的 store 状态，不看结果数值） */
+    /** 跑单个系列（只要它装配后的场景状态，不看结果数值） */
     async runOne(s: SeriesSpec, constraints: Record<string, unknown> = {}) {
       return run([s], 'cinema', { cinemaMax: 0 }, constraints)
     },
@@ -245,10 +244,9 @@ function makeRunner() {
 
 /** 抓「0 号槽在求值那一刻」的音擎状态（无专武用例用） */
 async function captureSlot0(s: SeriesSpec): Promise<{ wEngineId: string; modLevel: number }> {
-  const config = useConfigStore()
   const { run } = makeRunner()
   let seen: { wEngineId: string; modLevel: number } | null = null
-  await run([s], 'cinema', { cinemaMax: 0 }, {}, () => {
+  await run([s], 'cinema', { cinemaMax: 0 }, {}, config => {
     seen ??= { wEngineId: config.team[0].wEngineId, modLevel: config.team[0].wEngineModLevel }
   })
   if (!seen) throw new Error('[测试] 求值没发生，抓不到槽位状态（onProgress 没被调用）')
@@ -260,10 +258,9 @@ async function captureSlot1(
   s: SeriesSpec,
   constraints: Record<string, unknown>,
 ): Promise<{ agentId: string; cinemaLevel: number }> {
-  const config = useConfigStore()
   const { run } = makeRunner()
   let seen: { agentId: string; cinemaLevel: number } | null = null
-  await run([s], 'cinema', { cinemaMax: 0 }, constraints, () => {
+  await run([s], 'cinema', { cinemaMax: 0 }, constraints, config => {
     seen ??= { agentId: config.team[1].agentId, cinemaLevel: config.team[1].cinemaLevel }
   })
   if (!seen) throw new Error('[测试] 求值没发生，抓不到槽位状态（onProgress 没被调用）')

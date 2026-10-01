@@ -180,7 +180,8 @@
 /**
  * Chart 6「抽卡规划器 · 危局最优策略」（2026-09-14 从 TimeChartsPage 抽组件，165 行模板 + 82 行脚本）。
  *
- * 与 Chart 4/7 同型：`calc`/`catalogStore`/`agentName` 在组件内自取，布局/数据经 props 注入。
+ * 与 Chart 4/7 同型：`catalogStore`/`agentName` 在组件内自取，布局/数据经 props 注入；
+ * 规划求值跑在独立场景上（r372，CC-343：beam 逐期 yield，UI store 全程看不到中间态）。
  * **组件内状态**（页面不关心，规划器自身就很大）：起点预设/起始节点/银行/每版本菲林/beam 宽度/
  * 期数上限/VCG 开关、跑批状态（ppComputing/ppProgress/ppResult）、泳道图例显隐、几何适配层。
  * **props 注入**（页面级状态，Chart 1/2/4/7 与顶部控件也在用，不许下沉）：
@@ -193,7 +194,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { NButton, NCard, NInputNumber, NProgress, NSelect } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { colorOf } from '@/composables/charts/agentPresentation'
 import {
@@ -218,7 +219,6 @@ const props = defineProps<{
 }>()
 
 const catalogStore = useCatalogStore()
-const calc = useResourceCalc()
 function agentName(id: string): string {
   return catalogStore.getAgent(id)?.name.zhCN ?? id
 }
@@ -257,8 +257,9 @@ async function runPlanner() {
   ppProgress.value = { pct: 0, text: '准备…' }
   await nextTick()
   try {
-    ppResult.value = await runPullPlanner({
-      calc,
+    // r372：规划在独立场景上求值（跑完 dispose，UI store 一行都不被碰）
+    ppResult.value = await withAnalysisScenario(scenario => runPullPlanner({
+      scenario,
       allBosses: props.bosses,
       boss,
       allAgentIds: catalog.displayAgents.map(a => a.id),
@@ -270,7 +271,7 @@ async function runPlanner() {
       beamWidth: ppBeamWidth.value,
       withVcg: ppWithVcg.value,
       onProgress: p => { ppProgress.value = p },
-    })
+    }))
   } catch (e) {
     ppProgress.value = { pct: 1, text: `规划失败：${e instanceof Error ? e.message : String(e)}` }
     setTimeout(() => { ppProgress.value = null }, 4000)
