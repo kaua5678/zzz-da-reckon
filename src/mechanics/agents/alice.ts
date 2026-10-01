@@ -654,3 +654,46 @@ export const aliceMechanic: AgentMechanicModule = {
     },
   ],
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 爱丽丝额外能力是否触发：队伍中存在另一名异常或支援角色 */
+    aliceAdditionalAbilityActive?: boolean
+    /** 爱丽丝普攻秒均剑意回复（attack_data[0]/actionTime 平均） */
+    aliceSwordWillPerSec?: number
+    /** 爱丽丝强特单次剑意回复（attack_data[0]） */
+    aliceExSpecialSwordWill?: number
+    /** 爱丽丝入场剑意赠送（额外能力=300，否则0） */
+    aliceInitialSwordWill?: number
+    /** 爱丽丝星芒圆舞曲 #3 move id = 1401012 */
+    aliceSwordWillMoveId?: string
+    /** 爱丽丝星芒圆舞曲 #3 actionTime = 3.983 */
+    aliceSwordWillActionTime?: number
+    /** 爱丽丝星芒圆舞曲 #3 喧响回复 = 76.6975 */
+    aliceSwordWillDecibelRecovery?: number
+    /** 爱丽丝星芒圆舞曲 #3 合轴率：设默认使前台时间=1s */
+    aliceSwordWillComboAlignRatio?: number
+    /** 爱丽丝极性强击每次回复剑意 = 10 */
+    alicePolarityAssaultSwordWill?: number
+    /** 爱丽丝全队强击每次回复剑意 = 10 */
+    aliceTeamAssaultSwordWill?: number
+    /** 爱丽丝紊乱每次回复剑意 = 30 */
+    aliceDisorderSwordWill?: number
+    /** 爱丽丝畏缩 DOT 伤害比例（% 强击伤害），默认 2.5 */
+    aliceCoweringDotRatio?: number
+    /** 爱丽丝畏缩 DOT 间隔（秒），默认 0.95 */
+    aliceCoweringDotInterval?: number
+    /** 爱丽丝畏缩紊乱倍率加成每剩余秒数（%），默认 18 */
+    aliceCoweringDisorderBonusPerSec?: number
+    /** 爱丽丝畏缩紊乱倍率加成上限（%），默认 180 */
+    aliceCoweringDisorderBonusMax?: number
+    /** 爱丽丝二命：终结技命中触发极性强击（额外 spark） */
+    aliceCinema2UltSpark?: boolean
+    /** 是否为爱丽丝，用于剑意专属资源 */
+    aliceEnabled?: boolean
+  }
+}

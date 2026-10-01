@@ -321,3 +321,22 @@ export const yuzuhaMechanic: AgentMechanicModule = {
   resourceSections: buildYuzuhaResourceSections,
   settings,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 柚叶连携入场次数（其他角色连携技入场+1甜度点，滑块 yuzuha.chainEntryCount） */
+    yuzuhaChainEntryCount?: number
+    /** 十人十色转积蓄目标元素（applyTeamConfig 定位异常专精队友写入，buildExecutions 行级 element 消费） */
+    yuzuhaTransferElement?: string
+    /** 柚叶命座等级（影画6） */
+    yuzuhaCinemaLevel?: number
+    /** 柚叶初始（局外）攻击力：资源卡「40%初始攻击力」展示用（CC-126；计算侧走 formula teammate buff） */
+    yuzuhaInitialAtk?: number
+    /** 柚叶影画4：支援突击行预存的缩放后异常积蓄（buildCharConfig 从倍率表 ×1.2，patchExecutions 消费） */
+    yuzuhaC4AssistBuildUp?: number
+  }
+}

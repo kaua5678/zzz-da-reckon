@@ -876,3 +876,32 @@ export const starlightBillyMechanic: AgentMechanicModule = {
   combos: BILLY_COMBOS,
   settings,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 星徽·比利招式 actionTime 表（buildCharConfig 从倍率表预存） */
+    billyMoveTimes?: Record<string, number>
+    /** 星徽·比利招式 damage 倍率表（buildCharConfig 从倍率表预存） */
+    billyMoveDmg?: Record<string, number>
+    /** 星徽·比利招式 decibel_recovery 表（buildCharConfig 从倍率表预存） */
+    billyMoveDecibel?: Record<string, number>
+    /** 星徽·比利链数实数化 opt-in（buildCharConfig 恒置位；外部直调不带 → 整数口径保持历史行为） */
+    billyContinuousChain?: boolean
+    /** 星徽·比利普攻秒均决意（attack_data_0 四段总和/四段时长，buildCharConfig 从倍率表预存） */
+    billyBasicDeterminationPerSec?: number
+    /** 星徽·比利普攻秒均回血%（attack_data_1 四段总和/四段时长，buildCharConfig 从倍率表预存） */
+    billyBasicHealPerSec?: number
+    /** 星徽·比利失衡轴内捏的动作次数（useResourceCalc 注入，moveId → 总次数，组合块已展开） */
+    billyAxisEx?: Record<string, number>
+    /** 星徽·比利是否失衡轴模式（useResourceCalc 注入） */
+    billyAxisActive?: boolean
+    /** 星徽·比利终局整数重推旗标（calcTeamResources 置位：迭代期实数链数 → 终局 floor；最终装配后复位） */
+    billyFinalizeChain?: boolean
+    /** 星徽·比利失衡覆盖率（useResourceCalc 注入，涡轮增压「失衡动力压制」获得计数用） */
+    billyStunCoverage?: number
+  }
+}

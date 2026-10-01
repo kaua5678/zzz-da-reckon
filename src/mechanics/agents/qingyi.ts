@@ -398,3 +398,43 @@ export const qingyiMechanic: AgentMechanicModule = {
     }]
   },
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 青衣命座等级 */
+    qingyiCinemaLevel?: number
+    /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
+    qingyiStunCount?: number
+    /** 青衣可分配循环秒均（一煞#4 连打→醉花月云转） */
+    qingyiLoopRates?: {
+      yisha4Voltage: number
+      yisha4ActionTime: number
+      hitsPerRound: number
+      yisha4TimePerRound: number
+      zuiHuaTimePerRound: number
+      dmgPerSec: number
+      dazePerSec: number
+      anomalyPerSec: number
+    }
+    /** 青衣醉花月云转 #1/#2 倍率行（含 +25% 伤害 / +12.5% 失衡） */
+    qingyiZuiHuaMove1?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
+    qingyiZuiHuaMove2?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
+    /** 青衣一煞#4（1251004）倍率行——补电压专用快段（≈25 电压/秒） */
+    qingyiYisha4?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
+    /** 青衣通用招式电压回复量（attack_data） */
+    qingyiExSpecialVoltage?: number
+    qingyiUltimateVoltage?: number
+    qingyiChainVoltage?: number
+    qingyiDodgeCounterVoltage?: number
+    qingyiQuickAssistVoltage?: number
+    qingyiAssistFollowUpVoltage?: number
+    /** 青衣影画4·稳态电弧屏障：回能冷却间隔（10秒） */
+    qingyiC4TriggerInterval?: number
+    /** 青衣影画4·稳态电弧屏障：护盾刷新每次回能（5；未达4命为 0） */
+    qingyiC4EnergyPerTrigger?: number
+  }
+}

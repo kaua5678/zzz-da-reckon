@@ -396,3 +396,16 @@ function applyLucyTeamEnergyFlags(characters: CharacterOperationConfig[]): void 
 }
 
 export default lucyMechanic
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 露西影画1：回旋挥击全队回能标记 */
+    lucyC1Enabled?: number
+    /** 露西：队友强特合计（编排注入） */
+    lucyTeammateExTotal?: number
+  }
+}

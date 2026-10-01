@@ -469,3 +469,14 @@ export const roxyMechanic: AgentMechanicModule = {
   resourceSections: buildRoxyResourceSections,
   settings,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 洛克茜小旋风持续秒数，默认 5 */
+    roxyMiniTornadoSeconds?: number
+  }
+}

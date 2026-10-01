@@ -1045,3 +1045,18 @@ export const banyueMechanic: AgentMechanicModule = {
   },
   settings,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 般岳招式 actionTime 表（buildCharConfig 从倍率表预存） */
+    banyueMoveTimes?: Record<string, number>
+    /** 般岳招式 damage 倍率表（buildCharConfig 从倍率表预存） */
+    banyueMoveDmg?: Record<string, number>
+    /** 般岳失衡轴内捏的强特/连段块次数（useResourceCalc 注入，moveId → 总次数；先扣闪能，剩余自动补连段） */
+    banyueAxisEx?: Record<string, number>
+  }
+}

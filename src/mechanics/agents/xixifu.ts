@@ -294,3 +294,24 @@ export const xixifuMechanic: AgentMechanicModule = {
   resourceSections: buildXixifuResourceSections,
   directRowAxisSplit: xixifuDirectRowAxisSplit,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 希希芙命座等级（毒素初始值门控影画1） */
+    xixifuCinemaLevel?: number
+    /** 希希芙进场毒素（3，影画1→6；computeXixifuToxinTotal 写入） */
+    xixifuInitialToxin?: number
+    /** 希希芙队伍电属性角色数（含自身；buildCharConfig 写入，蚀骨失衡值 +40%/60% 门控） */
+    xixifuElectricCount?: number
+    /** 希希芙局内攻击力（蚀骨核心附加 335% 的 flatDamageBonus 基数，buildCharConfig 写入） */
+    xixifuAtk?: number
+    /** 希希芙失衡次数（applyTeamConfig converge 写入，影画2 失衡下终结+3毒素门控） */
+    xixifuStunCount?: number
+    /** 希希芙影画2 失衡下连携/终结额外毒素合计（computeXixifuToxinTotal 写入，spec gain rule cfgField 读取） */
+    xixifuC2Toxin?: number
+  }
+}

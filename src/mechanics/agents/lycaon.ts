@@ -465,3 +465,46 @@ function pushEx(
 function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v))
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 莱卡恩围猎后台蓄力普攻秒均伤害倍率（buildCharConfig 预存，蓄力短循环 #2→#4→#6） */
+    lycaonChargePerSec?: number
+    /** 莱卡恩围猎后台蓄力普攻秒均失衡（buildCharConfig 预存，蓄力短循环 #2→#4→#6） */
+    lycaonChargeDazePerSec?: number
+    /** 莱卡恩前台普攻秒均伤害（buildCharConfig 预存，全部蓄力段 #2/#4/#6/#8/#10/#11 平均，用户口径） */
+    lycaonFrontChargePerSec?: number
+    /** 莱卡恩前台普攻秒均失衡（buildCharConfig 预存，全部蓄力段平均） */
+    lycaonFrontChargeDazePerSec?: number
+    /** 莱卡恩围猎后台闪避反击单次失衡倍率（1141019，buildCharConfig 预存） */
+    lycaonDodgeDaze?: number
+    /** 莱卡恩冰舞（1141027）异常积蓄表值（buildCharConfig 预存，围猎开场/收尾冰舞有积蓄/喧响） */
+    lycaonIceDanceAnomaly?: number
+    /** 莱卡恩冰舞（1141027）喧响表值（buildCharConfig 预存） */
+    lycaonIceDanceDecibel?: number
+    /** 莱卡恩强特三段（1141015-1141017）喧响表值（buildCharConfig 预存） */
+    lycaonExDecibels?: Record<string, number>
+    /** 莱卡恩命座等级（buildCharConfig 写入，buildExecutions 读取） */
+    lycaonCinemaLevel?: number
+    /** 莱卡恩影画1强特失衡强化覆盖率（滑块 lycaon.c1Coverage，8s CD 折算） */
+    lycaonC1Coverage?: number
+    /** 莱卡恩影画2回能（5 能量/次；次数 = 失衡次数 + 队伍连携总次数，由 useResourceCalc 注入总额） */
+    lycaonC2EnergyPerTrigger?: number
+    /** 莱卡恩失衡次数（外层不动点传入，围猎次数 = 失衡次数，用户口径） */
+    lycaonStunCount?: number
+    /** 莱卡恩单次失衡窗口时长（秒，外层注入 = stunTime + 4 + 全队失衡延长） */
+    lycaonWindowDuration?: number
+    /** 莱卡恩总战斗时间（秒，外层注入） */
+    lycaonTotalTime?: number
+    /** 莱卡恩 boss 无敌时间（秒，外层注入，围猎后台时间扣减） */
+    lycaonInvincibleTime?: number
+    /** 莱卡恩围猎后台跟随闪反次数 = 队伍其他角色闪避反击次数之和（useResourceCalc 注入） */
+    lycaonBackstageDodgeCount?: number
+    /** 莱卡恩影画2回能总额（useResourceCalc 注入 = (失衡次数 + 队伍连携总次数) × 5） */
+    lycaonC2Energy?: number
+  }
+}

@@ -1153,3 +1153,34 @@ export const yixuanMechanic: AgentMechanicModule = {
     }]
   },
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 仪玄招式 actionTime 表（buildCharConfig 从倍率表预存） */
+    yixuanMoveTimes?: Record<string, number>
+    /** 仪玄招式 damage 倍率表（buildCharConfig 从倍率表预存） */
+    yixuanMoveDmg?: Record<string, number>
+    /** 仪玄招式 daze 表（buildCharConfig 从倍率表预存） */
+    yixuanMoveDaze?: Record<string, number>
+    /** 仪玄术法值初始值（影画1：立即获得 120；spec 术法值 initialValueSource=cfgField 读取） */
+    yixuanShufaInitial?: number
+    /** 仪玄·墨影凝云合轴自动填充（反推至保底4失衡，由 useResourceCalc 线程收敛注入；手动输入 >0 时优先） */
+    yixuanBackstageAutoCount?: number
+    /** 仪玄额外闪能总账（模块汇总：完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次，calcEnergySource 通用读取） */
+    yixuanFlashBonus?: number
+    /** 仪玄失衡轴内强特次数（useResourceCalc 注入，moveId → 总次数） */
+    yixuanAxisEx?: Record<string, number>
+    /** 仪玄轴内凝云术蓄力时长（轴 action.duration 加权，默认满蓄 2s） */
+    yixuanAxisCloudSeconds?: number
+    /** 仪玄失衡轴模式标记（useResourceCalc 注入） */
+    yixuanAxisActive?: boolean
+    /** 仪玄玄墨异常触发回闪能（外层收敛注入：触发次数 × 10，10s CD 封顶） */
+    yixuanAnomalyTriggerFlash?: number
+    /** 仪玄极限支援换场次数上限 = 队友正常弹刀次数求和（useResourceCalc 注入，用户口径） */
+    yixuanExtremeAssistCap?: number
+  }
+}

@@ -337,3 +337,18 @@ export const orphieMechanic: AgentMechanicModule = {
     },
   ],
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 奥菲丝命座等级（patchExecutions 门控影画6 激光附加伤害） */
+    orphieCinemaLevel?: number
+    /** 奥菲丝局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */
+    orphieAtk?: number
+    /** 奥菲丝影画6 火刀触发次数（buildResourceResult 按 cinema>=6 写入，蓄炎资源读取） */
+    orphieBladeHits?: number
+  }
+}

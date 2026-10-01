@@ -601,3 +601,18 @@ export const lighterMechanic: AgentMechanicModule = {
 }
 
 export default lighterMechanic
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 莱特：全队普通能量消耗（士气能量来源；编排注入，不含闪能） */
+    lighterTeamEnergyConsumed?: number
+    /** 莱特影画等级（模块缓存） */
+    lighterCinemaLevel?: number
+    /** 莱特后场时间占比（影画4 前场效率覆盖） */
+    lighterBackstageRatio?: number
+  }
+}

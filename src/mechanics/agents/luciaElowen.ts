@@ -570,3 +570,24 @@ export const luciaElowenMechanic: AgentMechanicModule = {
   resourceSections: buildLuciaResourceSections,
   settings,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 卢西娅4命帷幕触发利用率（0-1，帷幕连着放卡15s CD 时调低），默认 1 */
+    luciaC4CurtainCoverage?: number
+    /** 卢西娅4命帷幕触发中**自开/自延**部分（同点写入，供卡片按来源拆分；零求值影响） */
+    luciaCurtainSelfCount?: number
+    /** 卢西娅4命帷幕的队友来源分摊（展示用）：rawCount=队友原始触发次数，triggers=边际法计入总次数的份额（总 − 自开） */
+    luciaCurtainTeammates?: { agentId: string; rawCount: number; triggers: number }[]
+    /** 卢西娅 A5（随想 1451005）actionTime，buildCharConfig 从倍率表读取 */
+    luciaA5ActionTime?: number
+    /** 卢西娅4命本局帷幕触发总次数（收敛后由资源池按最终终结技次数写入，供模块展示） */
+    luciaCurtainTriggerCount?: number
+    /** 卢西娅命座等级（buildCharConfig 写入，供 patchExecutions 按命座补合唱行专属字段） */
+    luciaCinemaLevel?: number
+  }
+}

@@ -191,3 +191,14 @@ export const billyMechanic: AgentMechanicModule = {
 }
 
 export default billyMechanic
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 比利影画1：冲刺/闪反额外回能总额（模块按原始次数与5秒冷却计算） */
+    billyC1Energy?: number
+  }
+}

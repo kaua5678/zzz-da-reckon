@@ -571,3 +571,28 @@ export const velinaMechanic: AgentMechanicModule = {
     },
   ],
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 维琳娜额外能力是否触发：队伍中存在其他异常角色或同属性角色 */
+    velinaAdditionalAbilityActive?: boolean
+    /** 维琳娜2命：赋彩属性获得同等积蓄 */
+    velinaCinema2?: boolean
+    /** 风华广域：Eye of the Storm move id */
+    velinaEyeMoveId?: string
+    /** 风华广域：Eye of the Storm actionTime */
+    velinaEyeActionTime?: number
+    /** 风华广域：Eye of the Storm 喧响回复 */
+    velinaEyeDecibelRecovery?: number
+    /** 风华广域：Sweeping Cyclone #1 move id */
+    velinaSweepingCyclone1MoveId?: string
+    /** 风华广域：Sweeping Cyclone #2 move id */
+    velinaSweepingCyclone2MoveId?: string
+    /** 是否为维琳娜，用于风华/风蚀专属资源 */
+    velinaEnabled?: boolean
+  }
+}

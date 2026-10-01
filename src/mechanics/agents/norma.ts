@@ -640,3 +640,36 @@ export const normaMechanic: AgentMechanicModule = {
   resourceSections: buildNormaResourceSections,
   settings,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 诺姆额外能力是否触发（队伍有强攻/命破/同阵营） */
+    normaAdditionalAbilityActive?: boolean
+    /** 诺姆技术鸿沟失衡易伤（额外能力触发时，+3%/层×10层） */
+    normaTechGapStunBonus?: number
+    /** 诺姆额外能力攻击提升（44~870，随等级） */
+    normaExtraAbilityAtkBonus?: number
+    /** 诺姆失衡次数（外层不动点传入，供火力实验导弹舱次数） */
+    normaStunCount?: number
+    /** 诺姆失衡覆盖率（外层不动点传入，供火力实验高爆/破甲按失衡时长拆分） */
+    normaStunCoverage?: number
+    /** 诺姆战斗时间（外层注入，供炮塔全程射击/导弹舱时长封顶） */
+    normaBattleTime?: number
+    /** 诺姆嗯呢弹幕 6 段 actionTime（1571007-1571012，buildCharConfig 预存） */
+    normaBarrageActionTimes?: number[]
+    /** 诺姆嗯呢弹幕 6 段 damage/daze 表值（buildCharConfig 预存，供 C6 技能专属加成缩放） */
+    normaBarrageRowValues?: { damage: number[]; daze: number[] }
+    /** 诺姆火力实验导弹 2 段 damage/daze 表值（1571014 破甲/1571015 高爆，buildCharConfig 预存） */
+    normaMissileRowValues?: { damage: number[]; daze: number[] }
+    /** 诺姆影画2·帽子把戏触发间隔（20秒） */
+    normaC2TriggerInterval?: number
+    /** 诺姆命座等级 */
+    normaCinemaLevel?: number
+    /** 诺姆影画2·帽子把戏每次回能（25；未达2命为 0） */
+    normaC2EnergyPerTrigger?: number
+  }
+}

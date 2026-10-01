@@ -650,3 +650,30 @@ export const liuyinMechanic: AgentMechanicModule = {
   resourceSections: buildLiuyinResourceSections,
   settings,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 琉音命座等级 */
+    liuyinCinemaLevel?: number
+    /** 琉音额外能力是否触发（队伍存在强攻或命破角色） */
+    liuyinExtraAbilityActive?: boolean
+    /** 琉音专属直伤读取的上一位队友槽位（已解析） */
+    liuyinPreviousTeammateSlot?: number
+    /** 琉音送客长按（客诉抱拳）move id = 1481009 */
+    liuyinFarewellMoveId?: string
+    /** 琉音送客长按伤害倍率（1481009 damage 行） */
+    liuyinFarewellDamage?: number
+    /** 琉音送客长按动作时间（1481009 actionTime） */
+    liuyinFarewellActionTime?: number
+    /** 琉音送客长按喧响回复（1481009 decibel_recovery 行） */
+    liuyinFarewellDecibel?: number
+    /** 琉音强化A（普通攻击：猜拳把戏 #1-#4）一轮总时长（秒）；= 4 段 actionTime 之和 */
+    liuyinJankenRoundSeconds?: number
+    /** 琉音强化A 4 段（1481005-1481008）各段 actionTime */
+    liuyinJankenActionTimes?: number[]
+  }
+}

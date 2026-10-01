@@ -891,3 +891,26 @@ export const claretMechanic: AgentMechanicModule = {
   resourceSections: buildClaretResourceSections,
   settings,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 克拉蕾斩金断铁使用次数（残痕消耗来源之一） */
+    claretCleaveCount?: number
+    /** 克拉蕾葬血强袭使用次数（消耗个人资源并提升伤害） */
+    claretBloodBurialCount?: number
+    /** 克拉蕾秘血铸锋（锐能强特）单次动作时长（秒，倍率表） */
+    claretExActionTime?: number
+    /** 克拉蕾秘血铸锋（锐能强特）单次喧响回复（倍率表行） */
+    claretExDecibelRecovery?: number
+    /** 克拉蕾葬血强袭基础伤害倍率（倍率表 1611014 damage 行） */
+    claretBloodBurialDamageMultiplier?: number
+    /** 克拉蕾命中残痕状态覆盖率（0-1，默认 1） */
+    claretGashCoverage?: number
+    /** 克拉蕾命座等级（用于二命锐能额外回复） */
+    claretCinemaLevel?: number
+  }
+}

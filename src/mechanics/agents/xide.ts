@@ -375,3 +375,28 @@ export const xideMechanic: AgentMechanicModule = {
     },
   },
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 席德命座等级（patchExecutions 门控影画6 激光附加伤害） */
+    xideCinemaLevel?: number
+    /** 席德局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */
+    xideAtk?: number
+    /** 席德正兵槽位（applyTeamConfig build 阶段确定：初始攻击最高的强攻队友；无强攻队友为 -1） */
+    xideVanguardSlot?: number
+    /** 席德额外能力门控（buildCharConfig 写入：additionalAbilityActive>0 为 1；patchExecutions 招式限定用） */
+    xideAAActive?: number
+    /** 席德钢能平A秒均（四段 attack_data 总和 ÷ 四段 actionTime 总和） */
+    xideBasicSteelPerSec?: number
+    /** 席德钢能各招式 attack_data 总和（moveId → 钢能点，buildCharConfig 统一对全部倍率页求和） */
+    xideAttackDataMap?: Record<string, number>
+    /** 席德钢能招式攻击数据总回复（buildExecutions 统一对全部执行行求和写入） */
+    xideAttackSteel?: number
+    /** 席德正兵实际耗能（calcCrossAgentEnergy 算席德能量时写入 = 正兵强特次数 × 正兵强特耗能） */
+    xideVanguardEnergySpent?: number
+  }
+}

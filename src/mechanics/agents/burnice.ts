@@ -716,3 +716,30 @@ export const burniceMechanic: AgentMechanicModule = {
     return []
   },
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 柏妮思单喷持续秒数（0 表示不放） */
+    burniceSingleSpraySeconds?: number
+    /** 柏妮思双喷持续秒数（0 表示不放） */
+    burniceDoubleSpraySeconds?: number
+    /** 柏妮思搅拌式次数：0 表示自动按溢出燃点取上限 */
+    burniceStirringCount?: number
+    /** 柏妮思搅拌式（1171007 融合）单次动作时长（秒） */
+    burniceStirringActionTimeSeconds?: number
+    /** 柏妮思流火计数利用率（0-1），默认 1 */
+    burniceFlowCountUtilization?: number
+    /** 搅拌式融合倍率 = Mixed Flame Blend #1×0.5 + #2 */
+    burniceStirringDamageRatio?: number
+    /** 灼热抛接法伤害倍率（1171026） */
+    burniceTossingDamageRatio?: number
+    /** 流火·灼热抛接法（1171026）单次动作时长（秒） */
+    burniceTossingActionTimeSeconds?: number
+    /** 柏妮思命座等级（1命强化余烬伤害与积蓄） */
+    burniceCinemaLevel?: number
+  }
+}

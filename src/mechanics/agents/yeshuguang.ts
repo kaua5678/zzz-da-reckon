@@ -852,3 +852,31 @@ export const yeshuguangMechanic: AgentMechanicModule = {
 }
 
 export default yeshuguangMechanic
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 叶瞬光青溟剑势初始（影画1：进场 6 点；未达1命为 0） */
+    yeshuguangSwordInitial?: number
+    /** 叶瞬光：琉音转大赠送逐云次数（编排层注入） */
+    yeshuguangGiftUltCount?: number
+    /**
+     * CC-160：终局冻结的照影轮数 = 终局入口态实数照影轮数 floor 一次（`finalizePass.begin` 写入、`reset` 清除）。
+     * 存在时终局重推不再从平A重推照影（`@fact agent:1431/终局整数化`「floor 一次」）。
+     */
+    yeshuguangFrozenZhaoying?: number
+    /**
+     * 叶瞬光终局整数化旗标（引擎写入，同 `exFinalize` / `billyFinalizeChain` 骨架）。
+     *
+     * 迭代期明心境轮数以**实数**参与收敛（防「平A↑→剑势↑→轮数+1整轮→必要时间↑→平A↓」正反馈环，
+     * 见 `@fact agent:1431/轮数实数化`）；收敛后置 true ⇒ 模块把**资源推导的触发次数**（照影）
+     * floor 一次，再重推 ≤12 轮到全状态逐位稳定。语义 = 余数剑势留着不打（不足 6 点不能变身），
+     * 「多出的那一轮」由合轴率 + 缩时轴承担，而不是把离散轮数切成小数。
+     * 旗标在最终装配后才复位（与 1531 同款：装配行必须按终局语义出账）。
+     */
+    yeshuguangFinalizeForms?: boolean
+  }
+}

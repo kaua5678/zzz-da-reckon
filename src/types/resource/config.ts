@@ -6,7 +6,6 @@
  */
 
 import type { PanelValues } from '../catalog'
-import type { YidhariLoopMove } from './agentResources'
 import type { StunPlanProjection } from './time'
 
 // ============ 计算输入 ============
@@ -70,24 +69,6 @@ export interface CharacterOperationConfig {
   basicAttackDecibelPerSec: number
   /** 平A基准段 move id（`getBasicComboMoves`；汇总平A行据此写 `benchmarkMoveId`，CC-193）。缺省 = 汇总行不带基准段（旧行为） */
   basicBenchmarkMoveId?: string
-  /** 蕾米一/四命特殊虚耀跟随的「普通攻击：垂虹」move id（CC-34b 起垂虹 / Radiant Turn 各字段只由 `remielle.ts#buildRemielleCharConfig` 写，非蕾米槽缺省） */
-  remielleRainbowEndMoveId?: string
-  /** 蕾米「普通攻击：垂虹」actionTime */
-  remielleRainbowEndActionTime?: number
-  /** 蕾米「普通攻击：垂虹」喧响回复 */
-  remielleRainbowEndDecibelRecovery?: number
-  /** 蕾米「普通攻击：垂虹」合轴率 0-1 */
-  remielleRainbowEndComboAlignRatio?: number
-  /** 蕾米后台飞行状态每5秒自动释放一次 Radiant Turn */
-  remielleEnabled?: boolean
-  /** 蕾米后台 Radiant Turn move id */
-  remielleRadiantTurnMoveId?: string
-  /** 蕾米后台 Radiant Turn actionTime */
-  remielleRadiantTurnActionTime?: number
-  /** 蕾米后台 Radiant Turn 喧响回复 */
-  remielleRadiantTurnDecibelRecovery?: number
-  /** 蕾米额外能力：Luminous Reflection 状态失衡提升（6/12/35） */
-  remielleRadiantTurnDazeBonusPct?: number
   /** 强特 move id */
   exSpecialMoveId: string
   /** 强特单次能量消耗 */
@@ -213,46 +194,6 @@ export interface CharacterOperationConfig {
   cannonRotorDamageMultiplier?: number
   /** 加农转子触发冷却，按精修等级 8/7.5/7/6.5/6 秒 */
   cannonRotorCooldownSeconds?: number
-  /** 是否为维琳娜，用于风华/风蚀专属资源 */
-  velinaEnabled?: boolean
-  /** 维琳娜额外能力是否触发：队伍中存在其他异常角色或同属性角色 */
-  velinaAdditionalAbilityActive?: boolean
-  /** 维琳娜2命：赋彩属性获得同等积蓄 */
-  velinaCinema2?: boolean
-  /** 风华广域：Eye of the Storm move id */
-  velinaEyeMoveId?: string
-  /** 风华广域：Eye of the Storm actionTime */
-  velinaEyeActionTime?: number
-  /** 风华广域：Eye of the Storm 喧响回复 */
-  velinaEyeDecibelRecovery?: number
-  /** 风华广域：Sweeping Cyclone #1 move id */
-  velinaSweepingCyclone1MoveId?: string
-  /** 风华广域：Sweeping Cyclone #2 move id */
-  velinaSweepingCyclone2MoveId?: string
-  /** 是否为爱丽丝，用于剑意专属资源 */
-  aliceEnabled?: boolean
-  /** 爱丽丝额外能力是否触发：队伍中存在另一名异常或支援角色 */
-  aliceAdditionalAbilityActive?: boolean
-  /** 爱丽丝普攻秒均剑意回复（attack_data[0]/actionTime 平均） */
-  aliceSwordWillPerSec?: number
-  /** 爱丽丝强特单次剑意回复（attack_data[0]） */
-  aliceExSpecialSwordWill?: number
-  /** 爱丽丝入场剑意赠送（额外能力=300，否则0） */
-  aliceInitialSwordWill?: number
-  /** 爱丽丝星芒圆舞曲 #3 move id = 1401012 */
-  aliceSwordWillMoveId?: string
-  /** 爱丽丝星芒圆舞曲 #3 actionTime = 3.983 */
-  aliceSwordWillActionTime?: number
-  /** 爱丽丝星芒圆舞曲 #3 喧响回复 = 76.6975 */
-  aliceSwordWillDecibelRecovery?: number
-  /** 爱丽丝星芒圆舞曲 #3 合轴率：设默认使前台时间=1s */
-  aliceSwordWillComboAlignRatio?: number
-  /** 爱丽丝极性强击每次回复剑意 = 10 */
-  alicePolarityAssaultSwordWill?: number
-  /** 爱丽丝全队强击每次回复剑意 = 10 */
-  aliceTeamAssaultSwordWill?: number
-  /** 爱丽丝紊乱每次回复剑意 = 30 */
-  aliceDisorderSwordWill?: number
   /**
    * 爱丽丝剑仪：**全队强击次数**（`physical` + `physical_polar_assault` 两键触发数之和）。
    * 由爱丽丝模块的 `applyTeamConfig` 在 converge 阶段按**上一轮**异常池收敛值写入
@@ -262,18 +203,6 @@ export interface CharacterOperationConfig {
   aliceTeamAssaultCount?: number
   /** 爱丽丝剑仪：**全队紊乱次数**（上一轮异常池收敛值）。对应 spec `alice_disorder_gain` */
   aliceDisorderCount?: number
-  /** 洛克茜小旋风持续秒数，默认 5 */
-  roxyMiniTornadoSeconds?: number
-  /** 克拉蕾斩金断铁使用次数（残痕消耗来源之一） */
-  claretCleaveCount?: number
-  /** 克拉蕾葬血强袭使用次数（消耗个人资源并提升伤害） */
-  claretBloodBurialCount?: number
-  /** 克拉蕾秘血铸锋（锐能强特）单次动作时长（秒，倍率表） */
-  claretExActionTime?: number
-  /** 克拉蕾秘血铸锋（锐能强特）单次喧响回复（倍率表行） */
-  claretExDecibelRecovery?: number
-  /** 克拉蕾葬血强袭基础伤害倍率（倍率表 1611014 damage 行） */
-  claretBloodBurialDamageMultiplier?: number
   /** 跳过通用强特执行，由机制模块自行生成强特执行（柏妮思等可变耗能强特） */
   skipGenericExSpecial?: boolean
   /**
@@ -283,52 +212,8 @@ export interface CharacterOperationConfig {
    * 接管产行却漏设 floor 的 1181 格莉丝 / 1621 洛克茜被按小数记资源、按整数产行。
    */
   exSpecialCountFractional?: boolean
-  /** 柏妮思单喷持续秒数（0 表示不放） */
-  burniceSingleSpraySeconds?: number
-  /** 柏妮思双喷持续秒数（0 表示不放） */
-  burniceDoubleSpraySeconds?: number
-  /** 柏妮思命座等级（1命强化余烬伤害与积蓄） */
-  burniceCinemaLevel?: number
-  /** 柚叶连携入场次数（其他角色连携技入场+1甜度点，滑块 yuzuha.chainEntryCount） */
-  yuzuhaChainEntryCount?: number
-  /** 十人十色转积蓄目标元素（applyTeamConfig 定位异常专精队友写入，buildExecutions 行级 element 消费） */
-  yuzuhaTransferElement?: string
-  /** 柚叶命座等级（影画6） */
-  yuzuhaCinemaLevel?: number
-  /** 柚叶初始（局外）攻击力：资源卡「40%初始攻击力」展示用（CC-126；计算侧走 formula teammate buff） */
-  yuzuhaInitialAtk?: number
-  /** 柚叶影画4：支援突击行预存的缩放后异常积蓄（buildCharConfig 从倍率表 ×1.2，patchExecutions 消费） */
-  yuzuhaC4AssistBuildUp?: number
-  /** 柏妮思搅拌式次数：0 表示自动按溢出燃点取上限 */
-  burniceStirringCount?: number
-  /** 柏妮思搅拌式（1171007 融合）单次动作时长（秒） */
-  burniceStirringActionTimeSeconds?: number
-  /** 柏妮思流火计数利用率（0-1），默认 1 */
-  burniceFlowCountUtilization?: number
-  /** 搅拌式融合倍率 = Mixed Flame Blend #1×0.5 + #2 */
-  burniceStirringDamageRatio?: number
-  /** 灼热抛接法伤害倍率（1171026） */
-  burniceTossingDamageRatio?: number
-  /** 流火·灼热抛接法（1171026）单次动作时长（秒） */
-  burniceTossingActionTimeSeconds?: number
   /** 机制模块引用的倍率表基础值（moveId → 行值），供事件→倍率表映射使用 */
   mechanicRowValues?: Record<string, number>
-  /** 克拉蕾命中残痕状态覆盖率（0-1，默认 1） */
-  claretGashCoverage?: number
-  /** 克拉蕾命座等级（用于二命锐能额外回复） */
-  claretCinemaLevel?: number
-  /** 星见雅命座等级（影画1 招式限定减防等按此门控） */
-  miyabiCinemaLevel?: number
-  /** 爱丽丝畏缩 DOT 伤害比例（% 强击伤害），默认 2.5 */
-  aliceCoweringDotRatio?: number
-  /** 爱丽丝畏缩 DOT 间隔（秒），默认 0.95 */
-  aliceCoweringDotInterval?: number
-  /** 爱丽丝畏缩紊乱倍率加成每剩余秒数（%），默认 18 */
-  aliceCoweringDisorderBonusPerSec?: number
-  /** 爱丽丝畏缩紊乱倍率加成上限（%），默认 180 */
-  aliceCoweringDisorderBonusMax?: number
-  /** 爱丽丝二命：终结技命中触发极性强击（额外 spark） */
-  aliceCinema2UltSpark?: boolean
   /** 开局赠送能量（普通人40，仪玄120闪能等） */
   initialEnergyGift: number
   /** 开局赠送喧响（默认1000，部分命座额外） */
@@ -344,18 +229,6 @@ export interface CharacterOperationConfig {
    * 写入方须**覆盖**写（幂等）；未写 = 0。
    */
   ultimateEquivalentCount?: number
-  /** 伊德海莉 4 命：生命值降低时喧响获得提升 10% */
-  yidhariCinema4Enabled?: boolean
-  /** 伊德海莉每降低 1% 生命值获得的喧响（含命座修正） */
-  yidhariDecibelPerHpPct?: number
-  /** 伊德海莉强特释放时已损失生命值比例（0-1，默认0.75） */
-  yidhariExHealMissingHpPct?: number
-  /** 伊德海莉失衡次数（外层不动点传入，供失衡内极寒重碾次数） */
-  yidhariStunCount?: number
-  /** 伊德海莉每次失衡极寒重碾次数（0命2 / 1命3） */
-  yidhariExPerStun?: number
-  /** 伊德海莉寒冰触手触发间隔（秒，默认13.5） */
-  yidhariTentacleInterval?: number
 
   // ============ 连续强特通道（引擎通用，模块声明）============
   // 正反馈资源环（强特次数 → 回能 → 强特次数）的通用表达：引擎只认下列字段，
@@ -374,8 +247,6 @@ export interface CharacterOperationConfig {
   /** 非保留模式下不返还的强特次数上限（`exRefundFreeCap`） */
   exRefundFreeCap?: number
 
-  /** 伊德海莉外部回血（%自身最大生命值）：如卢西娅星光汇聚之地等，由其他机制换算后累加 */
-  yidhariExternalHealPct?: number
   /**
    * 帷幕提供者每次终结技给**本槽**的回血（%本槽最大生命值；通用字段，CC-313 由 `yidhariExternalHealPerUltPct` 改名）。
    * 现唯一写入方：卢西娅[星光汇聚之地]（写给全队每槽）；现唯一消费者：伊德海莉烧血→喧响（按提供者终结技次数结算）。
@@ -386,17 +257,6 @@ export interface CharacterOperationConfig {
    * 引擎按「帷幕触发次数（`curtainTriggers` 能力）× 本值」计入自身喧响。现唯一写入方：卢西娅4命（全队每人 100），未开时为 undefined。
    */
   decibelPerCurtainTrigger?: number
-  /** 卢西娅4命帷幕触发利用率（0-1，帷幕连着放卡15s CD 时调低），默认 1 */
-  luciaC4CurtainCoverage?: number
-  /** 卢西娅4命本局帷幕触发总次数（收敛后由资源池按最终终结技次数写入，供模块展示） */
-  luciaCurtainTriggerCount?: number
-  /** 卢西娅4命帷幕触发中**自开/自延**部分（同点写入，供卡片按来源拆分；零求值影响） */
-  luciaCurtainSelfCount?: number
-  /** 卢西娅4命帷幕的队友来源分摊（展示用）：rawCount=队友原始触发次数，triggers=边际法计入总次数的份额（总 − 自开） */
-  luciaCurtainTeammates?: { agentId: string; rawCount: number; triggers: number }[]
-  /** 伊德海莉蓄力循环招式（buildExecutions 消费） */
-  yidhariChargeSlam?: YidhariLoopMove
-  yidhariBasicFollow?: YidhariLoopMove
   /** 喧响伴随获得比例（默认0.5，部分角色0.525） */
   decibelShareRatio: number
   /** 辅助大招给队友回能量（如柚叶25，无则0） */
@@ -429,236 +289,14 @@ export interface CharacterOperationConfig {
   tauntCancelCount?: number
   /** 资源利用率覆盖：actionId/eventId -> 释放率/上限 */
   resourceUtilization?: Record<string, ResourceUtilizationRule>
-  /** 雅霜月架势三段 actionTime = 3.434 */
-  miyabiFrostMoonActionTime?: number
-  /** 琉音命座等级 */
-  liuyinCinemaLevel?: number
-  /** 琉音额外能力是否触发（队伍存在强攻或命破角色） */
-  liuyinExtraAbilityActive?: boolean
-  /** 琉音专属直伤读取的上一位队友槽位（已解析） */
-  liuyinPreviousTeammateSlot?: number
-  /** 琉音送客长按（客诉抱拳）move id = 1481009 */
-  liuyinFarewellMoveId?: string
-  /** 琉音送客长按伤害倍率（1481009 damage 行） */
-  liuyinFarewellDamage?: number
-  /** 琉音送客长按动作时间（1481009 actionTime） */
-  liuyinFarewellActionTime?: number
-  /** 琉音送客长按喧响回复（1481009 decibel_recovery 行） */
-  liuyinFarewellDecibel?: number
-  /** 琉音强化A（普通攻击：猜拳把戏 #1-#4）一轮总时长（秒）；= 4 段 actionTime 之和 */
-  liuyinJankenRoundSeconds?: number
-  /** 琉音强化A 4 段（1481005-1481008）各段 actionTime */
-  liuyinJankenActionTimes?: number[]
-  /** 诺姆命座等级 */
-  normaCinemaLevel?: number
-  /** 诺姆额外能力是否触发（队伍有强攻/命破/同阵营） */
-  normaAdditionalAbilityActive?: boolean
-  /** 诺姆技术鸿沟失衡易伤（额外能力触发时，+3%/层×10层） */
-  normaTechGapStunBonus?: number
-  /** 诺姆额外能力攻击提升（44~870，随等级） */
-  normaExtraAbilityAtkBonus?: number
-  /** 诺姆失衡次数（外层不动点传入，供火力实验导弹舱次数） */
-  normaStunCount?: number
-  /** 诺姆失衡覆盖率（外层不动点传入，供火力实验高爆/破甲按失衡时长拆分） */
-  normaStunCoverage?: number
-  /** 诺姆战斗时间（外层注入，供炮塔全程射击/导弹舱时长封顶） */
-  normaBattleTime?: number
-  /** 诺姆嗯呢弹幕 6 段 actionTime（1571007-1571012，buildCharConfig 预存） */
-  normaBarrageActionTimes?: number[]
-  /** 诺姆嗯呢弹幕 6 段 damage/daze 表值（buildCharConfig 预存，供 C6 技能专属加成缩放） */
-  normaBarrageRowValues?: { damage: number[]; daze: number[] }
-  /** 诺姆火力实验导弹 2 段 damage/daze 表值（1571014 破甲/1571015 高爆，buildCharConfig 预存） */
-  normaMissileRowValues?: { damage: number[]; daze: number[] }
-  /** 诺姆影画2·帽子把戏每次回能（25；未达2命为 0） */
-  normaC2EnergyPerTrigger?: number
-  /** 诺姆影画2·帽子把戏触发间隔（20秒） */
-  normaC2TriggerInterval?: number
-  /** 青衣命座等级 */
-  qingyiCinemaLevel?: number
-  /** 希格莉德命座等级（patchExecutions 门控影画2/1/6 执行级效果） */
-  sigridCinemaLevel?: number
-  /** 希格莉德局内攻击力（敛枪式最后一击附加伤害的基数，buildCharConfig 预存） */
-  sigridAtk?: number
-  /** 奥菲丝命座等级（patchExecutions 门控影画6 激光附加伤害） */
-  orphieCinemaLevel?: number
-  /** 奥菲丝局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */
-  orphieAtk?: number
-  /** 奥菲丝影画6 火刀触发次数（buildResourceResult 按 cinema>=6 写入，蓄炎资源读取） */
-  orphieBladeHits?: number
-  /** 席德命座等级（patchExecutions 门控影画6 激光附加伤害） */
-  xideCinemaLevel?: number
-  /** 席德局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */
-  xideAtk?: number
-  /** 席德正兵槽位（applyTeamConfig build 阶段确定：初始攻击最高的强攻队友；无强攻队友为 -1） */
-  xideVanguardSlot?: number
-  /** 席德正兵实际耗能（calcCrossAgentEnergy 算席德能量时写入 = 正兵强特次数 × 正兵强特耗能） */
-  xideVanguardEnergySpent?: number
-  /** 席德额外能力门控（buildCharConfig 写入：additionalAbilityActive>0 为 1；patchExecutions 招式限定用） */
-  xideAAActive?: number
-  /** 席德钢能平A秒均（四段 attack_data 总和 ÷ 四段 actionTime 总和） */
-  xideBasicSteelPerSec?: number
-  /** 席德钢能各招式 attack_data 总和（moveId → 钢能点，buildCharConfig 统一对全部倍率页求和） */
-  xideAttackDataMap?: Record<string, number>
-  /** 席德钢能招式攻击数据总回复（buildExecutions 统一对全部执行行求和写入） */
-  xideAttackSteel?: number
-  /** 希希芙命座等级（毒素初始值门控影画1） */
-  xixifuCinemaLevel?: number
-  /** 希希芙进场毒素（3，影画1→6；computeXixifuToxinTotal 写入） */
-  xixifuInitialToxin?: number
-  /** 希希芙队伍电属性角色数（含自身；buildCharConfig 写入，蚀骨失衡值 +40%/60% 门控） */
-  xixifuElectricCount?: number
-  /** 希希芙局内攻击力（蚀骨核心附加 335% 的 flatDamageBonus 基数，buildCharConfig 写入） */
-  xixifuAtk?: number
-  /** 希希芙失衡次数（applyTeamConfig converge 写入，影画2 失衡下终结+3毒素门控） */
-  xixifuStunCount?: number
-  /** 希希芙影画2 失衡下连携/终结额外毒素合计（computeXixifuToxinTotal 写入，spec gain rule cfgField 读取） */
-  xixifuC2Toxin?: number
-  /** 朱鸢命座等级（霰弹资源门控影画1 快速装填/影画6 以太余温） */
-  zhuyuanCinemaLevel?: number
-  /** 朱鸢影画1 快速装填连携回复量（6，非影画1 为 0；computeZhuYuanShellsTotal 写入） */
-  zhuyuanC1ChainReload?: number
-  /** 朱鸢影画1 快速装填终结回复量（9，非影画1 为 0；computeZhuYuanShellsTotal 写入） */
-  zhuyuanC1UltReload?: number
-  /** 黄光交互次数（= parryCount；「弹刀 or 回避支援」是同一次交互的两种分支，一个角色只能其一，
-   *  用户 2026-09-15 口径）。buildCharConfig 写入，spec 规则 shells_def_assist 按它给
-   *  支援突击·自卫还击(1241025) +3 强化霰弹/次——与 core 产支援突击行用同一个次数源，不是双计 */
-  defAssistCount?: number
-  /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
-  qingyiStunCount?: number
-  /** 青衣可分配循环秒均（一煞#4 连打→醉花月云转） */
-  qingyiLoopRates?: {
-    yisha4Voltage: number
-    yisha4ActionTime: number
-    hitsPerRound: number
-    yisha4TimePerRound: number
-    zuiHuaTimePerRound: number
-    dmgPerSec: number
-    dazePerSec: number
-    anomalyPerSec: number
-  }
-  /** 青衣醉花月云转 #1/#2 倍率行（含 +25% 伤害 / +12.5% 失衡） */
-  qingyiZuiHuaMove1?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
-  qingyiZuiHuaMove2?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
-  /** 青衣一煞#4（1251004）倍率行——补电压专用快段（≈25 电压/秒） */
-  qingyiYisha4?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
-  /** 青衣通用招式电压回复量（attack_data） */
-  qingyiExSpecialVoltage?: number
-  qingyiUltimateVoltage?: number
-  qingyiChainVoltage?: number
-  qingyiDodgeCounterVoltage?: number
-  qingyiQuickAssistVoltage?: number
-  qingyiAssistFollowUpVoltage?: number
-  /** 青衣影画4·稳态电弧屏障：护盾刷新每次回能（5；未达4命为 0） */
-  qingyiC4EnergyPerTrigger?: number
-  /** 青衣影画4·稳态电弧屏障：回能冷却间隔（10秒） */
-  qingyiC4TriggerInterval?: number
-  /** 莱卡恩失衡次数（外层不动点传入，围猎次数 = 失衡次数，用户口径） */
-  lycaonStunCount?: number
-  /** 莱卡恩单次失衡窗口时长（秒，外层注入 = stunTime + 4 + 全队失衡延长） */
-  lycaonWindowDuration?: number
-  /** 莱卡恩总战斗时间（秒，外层注入） */
-  lycaonTotalTime?: number
-  /** 莱卡恩 boss 无敌时间（秒，外层注入，围猎后台时间扣减） */
-  lycaonInvincibleTime?: number
-  /** 莱卡恩围猎后台蓄力普攻秒均伤害倍率（buildCharConfig 预存，蓄力短循环 #2→#4→#6） */
-  lycaonChargePerSec?: number
-  /** 莱卡恩围猎后台蓄力普攻秒均失衡（buildCharConfig 预存，蓄力短循环 #2→#4→#6） */
-  lycaonChargeDazePerSec?: number
-  /** 莱卡恩前台普攻秒均伤害（buildCharConfig 预存，全部蓄力段 #2/#4/#6/#8/#10/#11 平均，用户口径） */
-  lycaonFrontChargePerSec?: number
-  /** 莱卡恩前台普攻秒均失衡（buildCharConfig 预存，全部蓄力段平均） */
-  lycaonFrontChargeDazePerSec?: number
-  /** 莱卡恩围猎后台跟随闪反次数 = 队伍其他角色闪避反击次数之和（useResourceCalc 注入） */
-  lycaonBackstageDodgeCount?: number
-  /** 莱卡恩围猎后台闪避反击单次失衡倍率（1141019，buildCharConfig 预存） */
-  lycaonDodgeDaze?: number
-  /** 莱卡恩冰舞（1141027）异常积蓄表值（buildCharConfig 预存，围猎开场/收尾冰舞有积蓄/喧响） */
-  lycaonIceDanceAnomaly?: number
-  /** 莱卡恩冰舞（1141027）喧响表值（buildCharConfig 预存） */
-  lycaonIceDanceDecibel?: number
-  /** 莱卡恩强特三段（1141015-1141017）喧响表值（buildCharConfig 预存） */
-  lycaonExDecibels?: Record<string, number>
-  /** 莱卡恩命座等级（buildCharConfig 写入，buildExecutions 读取） */
-  lycaonCinemaLevel?: number
-  /** 莱卡恩影画1强特失衡强化覆盖率（滑块 lycaon.c1Coverage，8s CD 折算） */
-  lycaonC1Coverage?: number
-  /** 莱卡恩影画2回能（5 能量/次；次数 = 失衡次数 + 队伍连携总次数，由 useResourceCalc 注入总额） */
-  lycaonC2EnergyPerTrigger?: number
-  /** 莱卡恩影画2回能总额（useResourceCalc 注入 = (失衡次数 + 队伍连携总次数) × 5） */
-  lycaonC2Energy?: number
-  /** 卢西娅 A5（随想 1451005）actionTime，buildCharConfig 从倍率表读取 */
-  luciaA5ActionTime?: number
-  /** 卢西娅命座等级（buildCharConfig 写入，供 patchExecutions 按命座补合唱行专属字段） */
-  luciaCinemaLevel?: number
-  /** 般岳失衡轴内捏的强特/连段块次数（useResourceCalc 注入，moveId → 总次数；先扣闪能，剩余自动补连段） */
-  banyueAxisEx?: Record<string, number>
-  /** 般岳招式 actionTime 表（buildCharConfig 从倍率表预存） */
-  banyueMoveTimes?: Record<string, number>
-  /** 般岳招式 damage 倍率表（buildCharConfig 从倍率表预存） */
-  banyueMoveDmg?: Record<string, number>
-  /** 比利影画1：冲刺/闪反额外回能总额（模块按原始次数与5秒冷却计算） */
-  billyC1Energy?: number
-  /** 星徽·比利招式 actionTime 表（buildCharConfig 从倍率表预存） */
-  billyMoveTimes?: Record<string, number>
-  /** 星徽·比利招式 damage 倍率表（buildCharConfig 从倍率表预存） */
-  billyMoveDmg?: Record<string, number>
-  /** 星徽·比利招式 decibel_recovery 表（buildCharConfig 从倍率表预存） */
-  billyMoveDecibel?: Record<string, number>
-  /** 仪玄招式 actionTime 表（buildCharConfig 从倍率表预存） */
-  yixuanMoveTimes?: Record<string, number>
-  /** 仪玄招式 damage 倍率表（buildCharConfig 从倍率表预存） */
-  yixuanMoveDmg?: Record<string, number>
-  /** 仪玄招式 daze 表（buildCharConfig 从倍率表预存） */
-  yixuanMoveDaze?: Record<string, number>
-  /** 仪玄额外闪能总账（模块汇总：完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次，calcEnergySource 通用读取） */
-  yixuanFlashBonus?: number
   /** 仪玄额外能力：队友释放终结技时回复闪能（2/s×10s=20/次；队伍有击破/支援/防护时生效，iterate 补算） */
   teamUltimateFlashBonus?: number
-  /** 仪玄术法值初始值（影画1：立即获得 120；spec 术法值 initialValueSource=cfgField 读取） */
-  yixuanShufaInitial?: number
-  /** 橘福福威风初始值（影画1：进场立即获得 100；spec 威风 initialValueSource=cfgField 读取） */
-  jufufuAweInitial?: number
-  /** 橘福福影画2：任意角色终结技时威势回复量/次（未达2命为 0；spec gain valueSource=cfgField） */
-  jufufuC2WeishiPerUlt?: number
-  /** 橘福福·山君鼎戏·威势旋转命中次数（= 威势消耗） */
-  jufufuSpinCount?: number
-  /** 橘福福影画等级（模块缓存） */
-  jufufuCinemaLevel?: number
-  /** 叶瞬光青溟剑势初始（影画1：进场 6 点；未达1命为 0） */
-  yeshuguangSwordInitial?: number
-  /** 叶瞬光：琉音转大赠送逐云次数（编排层注入） */
-  yeshuguangGiftUltCount?: number
-  /**
-   * 叶瞬光终局整数化旗标（引擎写入，同 `exFinalize` / `billyFinalizeChain` 骨架）。
-   *
-   * 迭代期明心境轮数以**实数**参与收敛（防「平A↑→剑势↑→轮数+1整轮→必要时间↑→平A↓」正反馈环，
-   * 见 `@fact agent:1431/轮数实数化`）；收敛后置 true ⇒ 模块把**资源推导的触发次数**（照影）
-   * floor 一次，再重推 ≤12 轮到全状态逐位稳定。语义 = 余数剑势留着不打（不足 6 点不能变身），
-   * 「多出的那一轮」由合轴率 + 缩时轴承担，而不是把离散轮数切成小数。
-   * 旗标在最终装配后才复位（与 1531 同款：装配行必须按终局语义出账）。
-   */
-  yeshuguangFinalizeForms?: boolean
-  /**
-   * CC-160：终局冻结的照影轮数 = 终局入口态实数照影轮数 floor 一次（`finalizePass.begin` 写入、`reset` 清除）。
-   * 存在时终局重推不再从平A重推照影（`@fact agent:1431/终局整数化`「floor 一次」）。
-   */
-  yeshuguangFrozenZhaoying?: number
-  /** 露西影画1：回旋挥击全队回能标记 */
-  lucyC1Enabled?: number
-  /** 露西：队友强特合计（编排注入） */
-  lucyTeammateExTotal?: number
-  /** 莱特：全队普通能量消耗（士气能量来源；编排注入，不含闪能） */
-  lighterTeamEnergyConsumed?: number
-  /** 莱特影画等级（模块缓存） */
-  lighterCinemaLevel?: number
   /**
    * 定额队友联动能量（CC-32b 2026-09-27，通用）：模块在 applyTeamConfig 里给**落点** cfg 预写「本槽额外获得的
    * 队友联动能量」，键 = 展示键（并入 `CrossAgentEnergy.bySource`）。莱特影画4 士气喷发写 `{ lighterC4Energy }`
    * （原 `lighterC4BurstEnergy`）。多提供者请合并写（`{ ...旧值, 我的键: 量 }`），不要整体覆盖。
    */
   crossAgentFlatEnergyBySource?: Record<string, number>
-  /** 莱特后场时间占比（影画4 前场效率覆盖） */
-  lighterBackstageRatio?: number
   /** 全队通用：当前轮失衡时间覆盖率（0-1；编排层按失衡次数×窗口时长/有效时间统一注入，供模块近似拆失衡内外） */
   teamStunCoverage?: number
   /** 全队通用：轴内各 moveId 捏块总次数（块数×窗口数；轴模式由编排层注入，非轴为空对象） */
@@ -673,42 +311,12 @@ export interface CharacterOperationConfig {
   yixuanInk3Count?: number
   /** 仪玄·完美格挡次数（主页交互栏；#2 赠送 + 回10闪能/次） */
   yixuanPerfectBlockCount?: number
-  /** 仪玄失衡轴内强特次数（useResourceCalc 注入，moveId → 总次数） */
-  yixuanAxisEx?: Record<string, number>
-  /** 仪玄轴内凝云术蓄力时长（轴 action.duration 加权，默认满蓄 2s） */
-  yixuanAxisCloudSeconds?: number
-  /** 仪玄失衡轴模式标记（useResourceCalc 注入） */
-  yixuanAxisActive?: boolean
-  /** 仪玄玄墨异常触发回闪能（外层收敛注入：触发次数 × 10，10s CD 封顶） */
-  yixuanAnomalyTriggerFlash?: number
-  /** 仪玄极限支援换场次数上限 = 队友正常弹刀次数求和（useResourceCalc 注入，用户口径） */
-  yixuanExtremeAssistCap?: number
   /** 仪玄极限支援换场次数（主页录入；缺省 = 上限） */
   yixuanExtremeAssistCount?: number
   /** 仪玄·墨影凝云合轴次数（后台墨影凝云+霄云劲#5，不占战场时间但有倍率行调用） */
   yixuanBackstageComboCount?: number
-  /** 仪玄·墨影凝云合轴自动填充（反推至保底4失衡，由 useResourceCalc 线程收敛注入；手动输入 >0 时优先） */
-  yixuanBackstageAutoCount?: number
   /** 失衡轴内总时间（秒）= Σ窗口数 × 窗口时长（useResourceCalc 轴模式注入；CD 自动动作如仪玄C1落雷/卢西娅追击按此折算次数） */
   axisInSeconds?: number
-  /** 星徽·比利失衡轴内捏的动作次数（useResourceCalc 注入，moveId → 总次数，组合块已展开） */
-  billyAxisEx?: Record<string, number>
-  /** 星徽·比利是否失衡轴模式（useResourceCalc 注入） */
-  billyAxisActive?: boolean
-  /** 星徽·比利终局整数重推旗标（calcTeamResources 置位：迭代期实数链数 → 终局 floor；最终装配后复位） */
-  billyFinalizeChain?: boolean
-  /** 星徽·比利链数实数化 opt-in（buildCharConfig 恒置位；外部直调不带 → 整数口径保持历史行为） */
-  billyContinuousChain?: boolean
-  /** 希格莉德轴内破阵连段套数（useResourceCalc 注入：破阵块 + C6 时诺姆赠送连携触发的破阵，经窗口时间门控） */
-  sigridAxisPozhenSets?: number
-  /** 希格莉德是否失衡轴模式（useResourceCalc 注入） */
-  sigridAxisActive?: boolean
-  /** 星徽·比利失衡覆盖率（useResourceCalc 注入，涡轮增压「失衡动力压制」获得计数用） */
-  billyStunCoverage?: number
-  /** 星徽·比利普攻秒均决意（attack_data_0 四段总和/四段时长，buildCharConfig 从倍率表预存） */
-  billyBasicDeterminationPerSec?: number
-  /** 星徽·比利普攻秒均回血%（attack_data_1 四段总和/四段时长，buildCharConfig 从倍率表预存） */
-  billyBasicHealPerSec?: number
   /** 总战斗时间（秒，默认 180；全战斗时间类来源使用，如星徽·比利决意缓慢回复 2 点/秒） */
   battleTime?: number
   /** boss 无敌时间（秒，缺省 0）。后台/CD 伤害通道按 core/effectiveTime.ts 扣减折算；能量/喧响通道不扣 */

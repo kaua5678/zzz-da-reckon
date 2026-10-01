@@ -566,3 +566,29 @@ export const yidhariMechanic: AgentMechanicModule = {
     suffix: 's',
   }],
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 伊德海莉 4 命：生命值降低时喧响获得提升 10% */
+    yidhariCinema4Enabled?: boolean
+    /** 伊德海莉强特释放时已损失生命值比例（0-1，默认0.75） */
+    yidhariExHealMissingHpPct?: number
+    /** 伊德海莉每次失衡极寒重碾次数（0命2 / 1命3） */
+    yidhariExPerStun?: number
+    /** 伊德海莉寒冰触手触发间隔（秒，默认13.5） */
+    yidhariTentacleInterval?: number
+    /** 伊德海莉蓄力循环招式（buildExecutions 消费） */
+    yidhariChargeSlam?: YidhariLoopMove
+    yidhariBasicFollow?: YidhariLoopMove
+    /** 伊德海莉每降低 1% 生命值获得的喧响（含命座修正） */
+    yidhariDecibelPerHpPct?: number
+    /** 伊德海莉失衡次数（外层不动点传入，供失衡内极寒重碾次数） */
+    yidhariStunCount?: number
+    /** 伊德海莉外部回血（%自身最大生命值）：如卢西娅星光汇聚之地等，由其他机制换算后累加 */
+    yidhariExternalHealPct?: number
+  }
+}

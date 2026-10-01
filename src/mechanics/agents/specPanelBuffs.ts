@@ -888,3 +888,19 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   attachedEvents: { [JUFUFU_MOVE.spinWeishi]: [JUFUFU_MOVE.popcorn] },
 }
 
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 橘福福威风初始值（影画1：进场立即获得 100；spec 威风 initialValueSource=cfgField 读取） */
+    jufufuAweInitial?: number
+    /** 橘福福影画2：任意角色终结技时威势回复量/次（未达2命为 0；spec gain valueSource=cfgField） */
+    jufufuC2WeishiPerUlt?: number
+    /** 橘福福·山君鼎戏·威势旋转命中次数（= 威势消耗） */
+    jufufuSpinCount?: number
+    /** 橘福福影画等级（模块缓存） */
+    jufufuCinemaLevel?: number
+  }
+}

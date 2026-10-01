@@ -290,3 +290,22 @@ export const zhuYuanMechanic: AgentMechanicModule = {
   resourceSections: buildZhuYuanResourceSections,
   settings,
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 朱鸢命座等级（霰弹资源门控影画1 快速装填/影画6 以太余温） */
+    zhuyuanCinemaLevel?: number
+    /** 朱鸢影画1 快速装填连携回复量（6，非影画1 为 0；computeZhuYuanShellsTotal 写入） */
+    zhuyuanC1ChainReload?: number
+    /** 朱鸢影画1 快速装填终结回复量（9，非影画1 为 0；computeZhuYuanShellsTotal 写入） */
+    zhuyuanC1UltReload?: number
+    /** 黄光交互次数（= parryCount；「弹刀 or 回避支援」是同一次交互的两种分支，一个角色只能其一，
+     *  用户 2026-09-15 口径）。buildCharConfig 写入，spec 规则 shells_def_assist 按它给
+     *  支援突击·自卫还击(1241025) +3 强化霰弹/次——与 core 产支援突击行用同一个次数源，不是双计 */
+    defAssistCount?: number
+  }
+}

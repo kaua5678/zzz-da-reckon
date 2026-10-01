@@ -771,3 +771,30 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
     },
   ] as AnomalyEventRecord[]).filter(event => event.count > 0)
 }
+
+/**
+ * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 蕾米「普通攻击：垂虹」actionTime */
+    remielleRainbowEndActionTime?: number
+    /** 蕾米「普通攻击：垂虹」喧响回复 */
+    remielleRainbowEndDecibelRecovery?: number
+    /** 蕾米「普通攻击：垂虹」合轴率 0-1 */
+    remielleRainbowEndComboAlignRatio?: number
+    /** 蕾米后台 Radiant Turn move id */
+    remielleRadiantTurnMoveId?: string
+    /** 蕾米后台 Radiant Turn actionTime */
+    remielleRadiantTurnActionTime?: number
+    /** 蕾米后台 Radiant Turn 喧响回复 */
+    remielleRadiantTurnDecibelRecovery?: number
+    /** 蕾米一/四命特殊虚耀跟随的「普通攻击：垂虹」move id（CC-34b 起垂虹 / Radiant Turn 各字段只由 `remielle.ts#buildRemielleCharConfig` 写，非蕾米槽缺省） */
+    remielleRainbowEndMoveId?: string
+    /** 蕾米后台飞行状态每5秒自动释放一次 Radiant Turn */
+    remielleEnabled?: boolean
+    /** 蕾米额外能力：Luminous Reflection 状态失衡提升（6/12/35） */
+    remielleRadiantTurnDazeBonusPct?: number
+  }
+}
