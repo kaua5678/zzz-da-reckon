@@ -24,8 +24,8 @@ import { isLimitedSAgentId, isLimitedSWengineId } from '@/composables/limitedGol
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { interactionFieldForType, teamCompareInteractionTypes } from '@/composables/agentMechanicView'
-import { useConfigStore } from '@/stores/config'
-import { restoreStore, snapshotStore, type StoreSnapshot } from '@/composables/configSnapshot'
+import { type useConfigStore, type StunAxisState } from '@/stores/config'
+import type { AnalysisContext } from '@/composables/analysisScenario'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 import { phaseBuffRows } from '@/utils/phaseBuff'
@@ -1050,7 +1050,7 @@ export function applyGoldToStore(
  */
 export function applyAxisBinding(
   configStore: ReturnType<typeof useConfigStore>,
-  snap: Pick<StoreSnapshot, 'stunAxes' | 'stunAxisPlans' | 'useStunAxis'>,
+  snap: StunAxisState,
   preset: Pick<TeamPreset, 'stunAxisPresetId'>,
 ): boolean {
   configStore.setAxisState(snap)
@@ -1098,129 +1098,125 @@ function actionTimeTotal(
  * 计算所有点（同步）。调用方负责分批调度避免卡 UI（见 TeamComparePage）。
  * 计算完成/异常后自动恢复现场。
  */
-export function computeTeamComparePoints(calc: Calc, options: TeamCompareOptions): TeamComparePoint[] {
-  const configStore = useConfigStore()
-  const snap = snapshotStore(configStore)
+export function computeTeamComparePoints(scenario: AnalysisContext, options: TeamCompareOptions): TeamComparePoint[] {
+  const { config: configStore, calc } = scenario
+  const baseAxis = configStore.getAxisState()
   const points: TeamComparePoint[] = []
   /** 同队同金不同分配候选（`options.recordGoldAlternatives` 时收集；经数组属性回传） */
   const goldAlternatives: Array<GoldAllocationAlternative & { presetId: string; presetName: string }> = []
-  try {
-    for (const preset of options.presets) {
-      applyTeamToStore(configStore, preset)
-      // 难度变体轴绑定（未绑定 = 恢复快照轴状态，走自动匹配/用户轴）
-      applyAxisBinding(configStore, snap, preset)
-      const baseGold = baseGoldOf(preset)
-      // CC-339：无论是否开启 optimalGold，均先把队伍置于该预设基础金分配（基础音擎 + 0命1精 + standardSteps），
-      // 保证 buff 自动推荐（pickBestBuff）、自动下位音擎择优（computeAutoEnginePicks）与贪婪搜索从同一真实基础档出发
-      applyGoldAllocationToStore(
-        configStore,
-        applyGoldSteps(preset.goldSteps, baseGold, baseGold, preset.standardSteps ?? [], preset.wEngines ?? []),
+  for (const preset of options.presets) {
+    applyTeamToStore(configStore, preset)
+    // 难度变体轴绑定（未绑定 = 恢复快照轴状态，走自动匹配/用户轴）
+    applyAxisBinding(configStore, baseAxis, preset)
+    const baseGold = baseGoldOf(preset)
+    // CC-339：无论是否开启 optimalGold，均先把队伍置于该预设基础金分配（基础音擎 + 0命1精 + standardSteps），
+    // 保证 buff 自动推荐（pickBestBuff）、自动下位音擎择优（computeAutoEnginePicks）与贪婪搜索从同一真实基础档出发
+    applyGoldAllocationToStore(
+      configStore,
+      applyGoldSteps(preset.goldSteps, baseGold, baseGold, preset.standardSteps ?? [], preset.wEngines ?? []),
+    )
+    // boss 一次应用（与金数档无关）；必须在选 buff 前应用，推荐排序才基于所选期数的敌人配置
+    applyBossRoom(configStore, options.boss, options.phase)
+    // 选 buff：手动指定 > 每队自动取三张牌伤害最高（用第一个金数档推荐）
+    let chosen: PhaseBuffCard | null = null
+    if (options.manualBuffTitle) {
+      chosen = (options.buffs ?? []).find(b => b.title === options.manualBuffTitle) ?? null
+    } else {
+      chosen = pickBestBuff(calc, configStore, options)
+    }
+    applyBuffToStore(configStore, chosen)
+    // 自动下位音擎（缺省开）：boss/buff 已应用，从真实场景出发在装填池内择优；每队一次
+    const autoPicks = options.autoEngine === false
+      ? []
+      : computeAutoEnginePicks(calc, configStore, preset, options)
+    // 最优加金：预计算 ≤12 金各档的最优分配（含伤害，避免点循环里重算）
+    // `recordAlternatives` 只在页面要「同队同金不同分配」表时才开（缺省零额外开销）
+    const optimalMap = new Map<number, OptimalGoldAllocation>()
+    if (options.optimalGold) {
+      const allocs = computeOptimalGoldAllocations(
+        calc, configStore, preset, baseGold, autoPicks,
+        { recordAlternatives: options.recordGoldAlternatives === true },
       )
-      // boss 一次应用（与金数档无关）；必须在选 buff 前应用，推荐排序才基于所选期数的敌人配置
-      applyBossRoom(configStore, options.boss, options.phase)
-      // 选 buff：手动指定 > 每队自动取三张牌伤害最高（用第一个金数档推荐）
-      let chosen: PhaseBuffCard | null = null
-      if (options.manualBuffTitle) {
-        chosen = (options.buffs ?? []).find(b => b.title === options.manualBuffTitle) ?? null
-      } else {
-        chosen = pickBestBuff(calc, configStore, options)
+      for (const a of allocs) {
+        optimalMap.set(a.budgetGold, a) // 预算域键：resolveGoldLevel 的钳制口径不含限定下位附加
       }
-      applyBuffToStore(configStore, chosen)
-      // 自动下位音擎（缺省开）：boss/buff 已应用，从真实场景出发在装填池内择优；每队一次
-      const autoPicks = options.autoEngine === false
-        ? []
-        : computeAutoEnginePicks(calc, configStore, preset, options)
-      // 最优加金：预计算 ≤12 金各档的最优分配（含伤害，避免点循环里重算）
-      // `recordAlternatives` 只在页面要「同队同金不同分配」表时才开（缺省零额外开销）
-      const optimalMap = new Map<number, OptimalGoldAllocation>()
-      if (options.optimalGold) {
-        const allocs = computeOptimalGoldAllocations(
-          calc, configStore, preset, baseGold, autoPicks,
-          { recordAlternatives: options.recordGoldAlternatives === true },
-        )
-        for (const a of allocs) {
-          optimalMap.set(a.budgetGold, a) // 预算域键：resolveGoldLevel 的钳制口径不含限定下位附加
+      if (options.recordGoldAlternatives) {
+        for (const alt of goldAlternativesOf(allocs)) {
+          goldAlternatives.push({ ...alt, presetId: preset.id, presetName: preset.name })
         }
-        if (options.recordGoldAlternatives) {
-          for (const alt of goldAlternativesOf(allocs)) {
-            goldAlternatives.push({ ...alt, presetId: preset.id, presetName: preset.name })
-          }
-        }
-      }
-      const seen = new Set<number>()
-      for (const gold of options.goldLevels) {
-        // 难度门槛：低于该难度要求的最低总限定金不生成点（如 5嗔火10大 需琉音配置足够高）
-        if (gold < (preset.minGold ?? 0)) continue
-        // 目标限定金越界时钳制到最近档位；同一队伍同一钳制结果只出一个点
-        const { totalGold } = resolveGoldLevel(preset.goldSteps, gold, baseGold)
-        if (seen.has(totalGold)) continue
-        seen.add(totalGold)
-        const opt = optimalMap.get(totalGold)
-        const applied = opt ? null : applyGoldToStore(configStore, preset, gold, autoPicks)
-        if (opt) {
-          applyGoldAllocationToStore(configStore, opt)
-        }
-        const damage = opt ? opt.damage : calc.teamTotalDamage.value
-        // 时间可行性校验：从引擎资源结果取精确动作总时间
-        const invTime = configStore.enemy.invincibleTime ?? 0
-        const battleTime = configStore.enemy.battleTime ?? 180
-        const { timeExceeded, timeDetail } = actionTimeTotal(calc, invTime, battleTime)
-        // 时间压力（硬溢出 + 合轴抵扣，同一笔秒数）并入操作难度：默认 1 秒 = 1 难度点，权重可被用户覆盖（难度权重弹层）
-        const rrHere = calc.resourceResult.value
-        const { difficulty, detail } = computeDifficulty(
-          // CC-259：交互项 = 引擎实打次数（与难度曲线同一函数 liveInteractions：按槽截断存活率缩；预设只补引擎没有的类型）。
-          // 修前读预设声明（auto 预设 parry8/dodge4 = 未校准占位，用户 2026-09-11「完全不需要以前这个死数值」），
-          // 而同一个点的伤害按 setAgent 预填 + 预设覆盖的实打次数算 ⇒ 97/104 个预设 x 与伤害不同口径。
-          liveInteractions(configStore, preset, rrHere), preset.team, rrHere?.overflowSeconds ?? 0,
-          options.difficultyWeights,
-          // 合轴抵扣掉的那一半（两图同一把尺：难度曲线也用它）
-          rrHere ? frontlineOccupationBreakdown(rrHere).saved : 0,
-          /**
-           * 非失衡占比修正（用户口径 2026-09-20）——**散点页与难度曲线页必须同一把尺**，
-           * 漏传会让同一支队在两张图上得到不同 x（实机点通抓到：散点明细缺 `÷非失衡占比…` 项）。
-           * 口径 = `calc.stunCoverage`（含决算截断损失秒的权威值）。
-           */
-          stunWindowRatioOf(calc, configStore.enemy),
-        )
-        const std = preset.standardSteps ?? []
-        const cinemas = opt ? opt.cinemas : applied!.cinemas
-        const wengineMods = opt ? opt.wengineMods : applied!.wengineMods
-        const label = opt ? opt.label : applied!.label
-        // 自动下位中「仍穿在身上」的限定件数：有金就是金，按本体各计 1 金入总限定金
-        const autoLimitedGold = opt ? Math.max(0, opt.totalGold - totalGold) : applied!.autoLimitedGold
-        let standardLabel = opt
-          ? (std.length === 0 ? '' : `常驻：${std.map(s => s.label).join(' + ')}`)
-          : applied!.standardLabel
-        // 常驻配置行追加自动下位说明（两分支同格式：常驻：…｜自动下位：…｜含下位限定 N 金）
-        const autoParts: string[] = []
-        if (autoPicks.length > 0) autoParts.push(`自动下位：${autoPicks.map(p => p.label).join('、')}`)
-        if (autoLimitedGold > 0) autoParts.push(`含下位限定 ${autoLimitedGold} 金`)
-        const autoLabel = autoParts.join('｜')
-        const withAuto = (base: string) => [base, autoLabel].filter(Boolean).join('｜')
-        standardLabel = withAuto(standardLabel)
-        points.push({
-          presetId: preset.id,
-          presetName: preset.name,
-          // 显示用金数 = 总限定金（限定角色本体+限定音擎本体+影画/精炼步+仍穿的限定下位本体）
-          goldCount: totalGold + autoLimitedGold,
-          goldLabel: label,
-          standardGoldLabel: standardLabel || undefined,
-          cinemas,
-          wengineMods,
-          difficulty,
-          difficultyDetail: detail,
-          interactions: preset.interactions,
-          damage,
-          hpRatio: Math.round((damage / options.phase.hp) * 10000) / 100,
-          bossHp: options.phase.hp,
-          buffTitle: chosen?.title,
-          timeExceeded,
-          timeDetail,
-        })
       }
     }
-  } finally {
-    restoreStore(configStore, snap)
+    const seen = new Set<number>()
+    for (const gold of options.goldLevels) {
+      // 难度门槛：低于该难度要求的最低总限定金不生成点（如 5嗔火10大 需琉音配置足够高）
+      if (gold < (preset.minGold ?? 0)) continue
+      // 目标限定金越界时钳制到最近档位；同一队伍同一钳制结果只出一个点
+      const { totalGold } = resolveGoldLevel(preset.goldSteps, gold, baseGold)
+      if (seen.has(totalGold)) continue
+      seen.add(totalGold)
+      const opt = optimalMap.get(totalGold)
+      const applied = opt ? null : applyGoldToStore(configStore, preset, gold, autoPicks)
+      if (opt) {
+        applyGoldAllocationToStore(configStore, opt)
+      }
+      const damage = opt ? opt.damage : calc.teamTotalDamage.value
+      // 时间可行性校验：从引擎资源结果取精确动作总时间
+      const invTime = configStore.enemy.invincibleTime ?? 0
+      const battleTime = configStore.enemy.battleTime ?? 180
+      const { timeExceeded, timeDetail } = actionTimeTotal(calc, invTime, battleTime)
+      // 时间压力（硬溢出 + 合轴抵扣，同一笔秒数）并入操作难度：默认 1 秒 = 1 难度点，权重可被用户覆盖（难度权重弹层）
+      const rrHere = calc.resourceResult.value
+      const { difficulty, detail } = computeDifficulty(
+        // CC-259：交互项 = 引擎实打次数（与难度曲线同一函数 liveInteractions：按槽截断存活率缩；预设只补引擎没有的类型）。
+        // 修前读预设声明（auto 预设 parry8/dodge4 = 未校准占位，用户 2026-09-11「完全不需要以前这个死数值」），
+        // 而同一个点的伤害按 setAgent 预填 + 预设覆盖的实打次数算 ⇒ 97/104 个预设 x 与伤害不同口径。
+        liveInteractions(configStore, preset, rrHere), preset.team, rrHere?.overflowSeconds ?? 0,
+        options.difficultyWeights,
+        // 合轴抵扣掉的那一半（两图同一把尺：难度曲线也用它）
+        rrHere ? frontlineOccupationBreakdown(rrHere).saved : 0,
+        /**
+         * 非失衡占比修正（用户口径 2026-09-20）——**散点页与难度曲线页必须同一把尺**，
+         * 漏传会让同一支队在两张图上得到不同 x（实机点通抓到：散点明细缺 `÷非失衡占比…` 项）。
+         * 口径 = `calc.stunCoverage`（含决算截断损失秒的权威值）。
+         */
+        stunWindowRatioOf(calc, configStore.enemy),
+      )
+      const std = preset.standardSteps ?? []
+      const cinemas = opt ? opt.cinemas : applied!.cinemas
+      const wengineMods = opt ? opt.wengineMods : applied!.wengineMods
+      const label = opt ? opt.label : applied!.label
+      // 自动下位中「仍穿在身上」的限定件数：有金就是金，按本体各计 1 金入总限定金
+      const autoLimitedGold = opt ? Math.max(0, opt.totalGold - totalGold) : applied!.autoLimitedGold
+      let standardLabel = opt
+        ? (std.length === 0 ? '' : `常驻：${std.map(s => s.label).join(' + ')}`)
+        : applied!.standardLabel
+      // 常驻配置行追加自动下位说明（两分支同格式：常驻：…｜自动下位：…｜含下位限定 N 金）
+      const autoParts: string[] = []
+      if (autoPicks.length > 0) autoParts.push(`自动下位：${autoPicks.map(p => p.label).join('、')}`)
+      if (autoLimitedGold > 0) autoParts.push(`含下位限定 ${autoLimitedGold} 金`)
+      const autoLabel = autoParts.join('｜')
+      const withAuto = (base: string) => [base, autoLabel].filter(Boolean).join('｜')
+      standardLabel = withAuto(standardLabel)
+      points.push({
+        presetId: preset.id,
+        presetName: preset.name,
+        // 显示用金数 = 总限定金（限定角色本体+限定音擎本体+影画/精炼步+仍穿的限定下位本体）
+        goldCount: totalGold + autoLimitedGold,
+        goldLabel: label,
+        standardGoldLabel: standardLabel || undefined,
+        cinemas,
+        wengineMods,
+        difficulty,
+        difficultyDetail: detail,
+        interactions: preset.interactions,
+        damage,
+        hpRatio: Math.round((damage / options.phase.hp) * 10000) / 100,
+        bossHp: options.phase.hp,
+        buffTitle: chosen?.title,
+        timeExceeded,
+        timeDetail,
+      })
+    }
   }
   // 候选经数组属性回传（保持返回类型不变 ⇒ 既有调用方零改动）
   if (options.recordGoldAlternatives) {

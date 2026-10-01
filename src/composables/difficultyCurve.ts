@@ -40,7 +40,7 @@
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
  */
 import { applyBossRoom } from '@/composables/bossRoom'
-import { useConfigStore, type StunAxisState } from '@/stores/config'
+import { type useConfigStore, type StunAxisState } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
@@ -49,7 +49,7 @@ import {
 import {
   applyAxisBinding, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, type DifficultyWeights,
 } from '@/composables/teamCompare'
-import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
+import type { AnalysisContext } from '@/composables/analysisScenario'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 export { stunWindowRatioOf }
@@ -117,48 +117,44 @@ export function makeAltAxisGoal(
  * 逐队算难度曲线（同步）。调用方按队分批调度避免卡 UI（同 `computeTeamComparePoints`）。
  * 计算完成/异常后恢复现场（队伍/敌方/轴/全局 buff + 机制开关 + 权重分配策略）。
  */
-export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOptions): DifficultyCurveRow[] {
-  const configStore = useConfigStore()
-  const snap = snapshotStore(configStore)
+export function computeDifficultyCurves(scenario: AnalysisContext, options: DifficultyCurveOptions): DifficultyCurveRow[] {
+  const { config: configStore, calc } = scenario
+  const baseAxis = configStore.getAxisState()
   const rows: DifficultyCurveRow[] = []
-  try {
-    applyBossRoom(configStore, options.boss, options.phase)
-    // 「全关」= 不跑自动权重分配；阶梯里的 G1/G2 自己显式跑均衡/联合
-    configStore.timeWeightStrategy = 'static'
-    for (const preset of options.presets) {
-      applyAxisBinding(configStore, snap, preset)
-      // 切轴档（preset.altAxes，2026-09-13）：快照阶梯起点轴态 → 备选轴做成「切轴」目标；
-      // 显式传 goals = 完全覆盖（不含切轴档），缺省 = DIFFICULTY_GOALS + 切轴档
-      const baseAxisSnap = configStore.getAxisState()
-      const goals = options.goals ?? [
-        ...(options.baseGoals ?? DIFFICULTY_GOALS),
-        ...(preset.altAxes ?? []).map(a => makeAltAxisGoal(a, baseAxisSnap)),
-      ]
-      // 配装口径：套该队**预设基础金**的 `applyGoldSteps`（含 standardSteps 常驻步；缺省路径也走它，
-      // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
-      // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
-      const applied = applyGoldSteps(
-        preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
-      )
-      const ladder = climbDifficultyLadder({ config: configStore, calc }, preset.team as [string, string, string], {
-        goals,
-        minGainRatio: options.minGainRatio,
-        capture: ctx => captureLadderSnapshot(ctx.calc),
-        // x 轴 = 自动算的操作难度（不是手填代价）：每个目标实测 Δ难度
-        costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
-        base: (ctx, team) => {
-          clearDifficultyLevers(ctx)
-          applyTeamToStore(ctx.config, preset)
-          // 金步叠加：影画/精炼/音擎（驱动盘与权重/交互已由 applyTeamToStore 套好，金步不碰）
-          applyGoldAllocationToStore(ctx.config, applied)
-          void team
-          return ctx.calc.teamTotalDamage.value
-        },
-      })
-      rows.push({ presetId: preset.id, name: preset.name, ladder })
-    }
-  } finally {
-    restoreStore(configStore, snap)
+  applyBossRoom(configStore, options.boss, options.phase)
+  // 「全关」= 不跑自动权重分配；阶梯里的 G1/G2 自己显式跑均衡/联合
+  configStore.timeWeightStrategy = 'static'
+  for (const preset of options.presets) {
+    applyAxisBinding(configStore, baseAxis, preset)
+    // 切轴档（preset.altAxes，2026-09-13）：快照阶梯起点轴态 → 备选轴做成「切轴」目标；
+    // 显式传 goals = 完全覆盖（不含切轴档），缺省 = DIFFICULTY_GOALS + 切轴档
+    const baseAxisSnap = configStore.getAxisState()
+    const goals = options.goals ?? [
+      ...(options.baseGoals ?? DIFFICULTY_GOALS),
+      ...(preset.altAxes ?? []).map(a => makeAltAxisGoal(a, baseAxisSnap)),
+    ]
+    // 配装口径：套该队**预设基础金**的 `applyGoldSteps`（含 standardSteps 常驻步；缺省路径也走它，
+    // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
+    // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
+    const applied = applyGoldSteps(
+      preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
+    )
+    const ladder = climbDifficultyLadder({ config: configStore, calc }, preset.team as [string, string, string], {
+      goals,
+      minGainRatio: options.minGainRatio,
+      capture: ctx => captureLadderSnapshot(ctx.calc),
+      // x 轴 = 自动算的操作难度（不是手填代价）：每个目标实测 Δ难度
+      costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
+      base: (ctx, team) => {
+        clearDifficultyLevers(ctx)
+        applyTeamToStore(ctx.config, preset)
+        // 金步叠加：影画/精炼/音擎（驱动盘与权重/交互已由 applyTeamToStore 套好，金步不碰）
+        applyGoldAllocationToStore(ctx.config, applied)
+        void team
+        return ctx.calc.teamTotalDamage.value
+      },
+    })
+    rows.push({ presetId: preset.id, name: preset.name, ladder })
   }
   return rows
 }

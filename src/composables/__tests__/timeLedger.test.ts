@@ -92,7 +92,7 @@ describe('队伍对比超时判定（只累计前台行）', () => {
     config.setAgent(1, '1141')
     config.setAgent(2, '1451'); config.setWEngine(2, '14145'); config.setCinemaLevel(2, 1)
     const calc = useResourceCalc()
-    const points = computeTeamComparePoints(calc, {
+    const points = computeTeamComparePoints({ config, calc }, {
       presets: [{
         id: 'ledger-team', name: '账本队', team: ['1051', '1141', '1451'],
         wEngines: ['14105', '', '14145'],

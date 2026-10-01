@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs'
 import { describe, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { useConfigStore } from '@/stores/config'
 import { teamPresets } from '@/data/teamPresets'
 import { attributeDmgChanges, buildCurveChart, computeDifficultyCurves, linkCountToDmg, type CurveDatum } from '@/composables/difficultyCurve'
 import { summarizeLadder } from '@/composables/difficultyLadder'
@@ -98,7 +99,7 @@ describe.runIf(active)('探针：逐目标贪心阶梯（每队自己的难度�
 
     const rows: string[] = []
     for (const p of targets) {
-      const [row] = computeDifficultyCurves(calc, { presets: [p], boss, phase })
+      const [row] = computeDifficultyCurves({ config: useConfigStore(), calc }, { presets: [p], boss, phase })
       const r = row!.ladder
       const s = summarizeLadder(r)
       rows.push([

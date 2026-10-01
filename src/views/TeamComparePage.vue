@@ -670,9 +670,8 @@ import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.v
 import { deriveVersionAxis, buildBossHpOverlay } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints, goldAlternativesOfPoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type GoldAllocationAlternative } from '@/composables/teamCompare'
-import { snapshotStore } from '@/composables/configSnapshot'
+import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
@@ -688,7 +687,6 @@ import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const calc = useResourceCalc()
 
 // ========== Boss 预设 ==========
 const bossPresets = ref<BossPreset[]>([])
@@ -1095,7 +1093,7 @@ async function runCompare() {
     const p = presets[i]
     progress.value = { pct: i / presets.length, text: `计算 ${p.name}（${i + 1}/${presets.length}）...` }
     await new Promise(r => setTimeout(r, 0))
-    const batch = computeTeamComparePoints(calc, {
+    const batch = await withAnalysisScenario(scenario => computeTeamComparePoints(scenario, {
       presets: [p],
       goldLevels: levels,
       boss,
@@ -1113,7 +1111,7 @@ async function runCompare() {
         interactionFormula: diffWeights.value.interactionFormula,
         interactionExponent: diffWeights.value.interactionExponent,
       },
-    })
+    }))
     all.push(...batch)
     // 同金分配候选经数组属性回传（未开启收集时为空数组）
     if (showGoldAlternatives.value) goldAlternatives.value.push(...goldAlternativesOfPoints(batch))
@@ -1136,7 +1134,7 @@ async function runCurves() {
   const cacheKey = JSON.stringify({
     boss: boss.id,
     phase,
-    snap: snapshotStore(configStore),
+    snap: cloneConfigState(configStore.$state),
     weights: diffWeights.value,
     presets,
   })
@@ -1159,7 +1157,7 @@ async function runCurves() {
     const p = presets[i]
     progress.value = { pct: i / presets.length, text: `爬阶梯 ${p.name}（${i + 1}/${presets.length}，每队约 3~4 秒）...` }
     await new Promise(r => setTimeout(r, 0))
-    all.push(...computeDifficultyCurves(calc, {
+    all.push(...await withAnalysisScenario(scenario => computeDifficultyCurves(scenario, {
       presets: [p],
       boss,
       phase,
@@ -1169,7 +1167,7 @@ async function runCurves() {
         interactionFormula: diffWeights.value.interactionFormula,
         interactionExponent: diffWeights.value.interactionExponent,
       },
-    }))
+    })))
   }
   curveRows.value = all
   if (!curveAbort.value) {

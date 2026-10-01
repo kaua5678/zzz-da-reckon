@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { useCatalogStore } from '@/stores/catalog'
+import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { computePositionCompare, type ComparePosition } from '@/composables/positionCompare'
@@ -31,7 +32,7 @@ describe('位置对比（主C/击破手/辅助，同款限定金）', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs()
     const calc = useResourceCalc()
-    return computePositionCompare(calc, [preset!], boss, phase, { gold, position })
+    return computePositionCompare({ config: useConfigStore(), calc }, [preset!], boss, phase, { gold, position })
   }
 
   it('击破手：金数应用 + 位置识别 + 失衡值/占比输出', async () => {

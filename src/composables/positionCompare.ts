@@ -30,15 +30,12 @@
  * 赋彩/赠送等异属性贡献（贡献元素 ≠ 角色伤害元素）记在该元素同属性主贡献者槽，不记赠送者。
  */
 import { applyBossRoom } from '@/composables/bossRoom'
-import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { AnomalyPoolResult } from '@/types/resource'
 import { applyGoldToStore, applyAxisBinding, applyTeamToStore } from '@/composables/teamCompare' // CC-254：原私有副本漏 tauntCancel
-import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
-
-type Calc = ReturnType<typeof import('@/composables/useResourceCalc').useResourceCalc>
+import type { AnalysisContext } from '@/composables/analysisScenario'
 
 /** 对比位置 */
 export type ComparePosition = 'main' | 'breaker' | 'support'
@@ -131,114 +128,110 @@ export function computePerSlotBuildUp(
 }
 
 export function computePositionCompare(
-  calc: Calc,
+  scenario: AnalysisContext,
   presets: TeamPreset[],
   boss: BossPreset,
   phase: BossPresetPhase,
   options: { gold?: number; position?: ComparePosition } = {},
 ): PositionCompareRow[] {
-  const configStore = useConfigStore()
+  const { config: configStore, calc } = scenario
   const catalogStore = useCatalogStore()
   const position = options.position ?? 'breaker'
-  const snap = snapshotStore(configStore)
+  const baseAxis = configStore.getAxisState()
   const out: PositionCompareRow[] = []
-  try {
-    const gold = options.gold ?? 6
-    for (const preset of presets) {
-      applyTeamToStore(configStore, preset)
-      // 同款限定金数：所有参比队伍按同一金档应用预设 goldSteps（复用队伍对比页 applyGoldToStore 口径，CC-337）
-      applyGoldToStore(configStore, preset, gold)
-      // 各自预设轴：applyAxisBinding 内部先恢复快照轴状态，再按 preset.stunAxisPresetId 绑定变体轴（CC-337 删重复恢复）
-      applyAxisBinding(configStore, snap, preset)
-      configStore.syncTeammateBuffsFromTeam()
-      applyBossRoom(configStore, boss, phase)
+  const gold = options.gold ?? 6
+  for (const preset of presets) {
+    applyTeamToStore(configStore, preset)
+    // 同款限定金数：所有参比队伍按同一金档应用预设 goldSteps（复用队伍对比页 applyGoldToStore 口径，CC-337）
+    applyGoldToStore(configStore, preset, gold)
+    // 各自预设轴：applyAxisBinding 内部先恢复快照轴状态，再按 preset.stunAxisPresetId 绑定变体轴（CC-337 删重复恢复）
+    applyAxisBinding(configStore, baseAxis, preset)
+    configStore.syncTeammateBuffsFromTeam()
+    applyBossRoom(configStore, boss, phase)
 
-      // 识别目标位置角色
-      const team = configStore.team.map(c => ({ agentId: c?.agentId ?? null }))
-      const posSlot = findPositionSlot(team, catalogStore, position)
-      if (posSlot < 0) continue
-      const agentId = configStore.team[posSlot]?.agentId ?? ''
-      const agentName = catalogStore.getAgent(agentId)?.name?.zhCN ?? agentId
+    // 识别目标位置角色
+    const team = configStore.team.map(c => ({ agentId: c?.agentId ?? null }))
+    const posSlot = findPositionSlot(team, catalogStore, position)
+    if (posSlot < 0) continue
+    const agentId = configStore.team[posSlot]?.agentId ?? ''
+    const agentName = catalogStore.getAgent(agentId)?.name?.zhCN ?? agentId
 
-      // CC-339：第一次计算（真实队友增益下）一次性读取总伤、伤害明细、失衡池、异常积蓄池，
-      // 避免拐力差分关/开 buff 后触发第 3 次全量引擎求值，也防止盲目全开 group.buffs 绕过命座/额外能力门控污染失衡与积蓄
-      const total = calc.teamTotalDamage.value
-      const rows = calc.damagePoolRows.value
-      const pool = calc.stunPoolResult?.value
-      const anomalyPool = calc.anomalyPoolResult.value
-      const selfDamage = rows
-        .filter(r => r.slot === posSlot && r.sourceTag !== 'gift')
-        .reduce((sum, r) => sum + r.totalDamage, 0)
-      const giftDamage = rows
-        .filter(r => r.sourceTag === 'gift')
-        .reduce((sum, r) => sum + r.totalDamage, 0)
-      // 自身伤害构成拆解（直伤 / 异放 / 紊乱 / 其余异常；均限非赠送行，与 selfDamage 口径一致）
-      const directDamage = rows
-        .filter(r => r.slot === posSlot && r.sourceTag !== 'gift' && r.type === '直伤')
-        .reduce((sum, r) => sum + r.totalDamage, 0)
-      const releaseDamage = rows
-        .filter(r => r.slot === posSlot && r.sourceTag !== 'gift' && r.type === '异放')
-        .reduce((sum, r) => sum + r.totalDamage, 0)
-      const disorderDamage = rows
-        .filter(r => r.slot === posSlot && r.sourceTag !== 'gift' && r.type === '紊乱')
-        .reduce((sum, r) => sum + r.totalDamage, 0)
-      const anomalyOtherDamage = Math.max(0, selfDamage - directDamage - releaseDamage - disorderDamage)
+    // CC-339：第一次计算（真实队友增益下）一次性读取总伤、伤害明细、失衡池、异常积蓄池，
+    // 避免拐力差分关/开 buff 后触发第 3 次全量引擎求值，也防止盲目全开 group.buffs 绕过命座/额外能力门控污染失衡与积蓄
+    const total = calc.teamTotalDamage.value
+    const rows = calc.damagePoolRows.value
+    const pool = calc.stunPoolResult?.value
+    const anomalyPool = calc.anomalyPoolResult.value
+    const selfDamage = rows
+      .filter(r => r.slot === posSlot && r.sourceTag !== 'gift')
+      .reduce((sum, r) => sum + r.totalDamage, 0)
+    const giftDamage = rows
+      .filter(r => r.sourceTag === 'gift')
+      .reduce((sum, r) => sum + r.totalDamage, 0)
+    // 自身伤害构成拆解（直伤 / 异放 / 紊乱 / 其余异常；均限非赠送行，与 selfDamage 口径一致）
+    const directDamage = rows
+      .filter(r => r.slot === posSlot && r.sourceTag !== 'gift' && r.type === '直伤')
+      .reduce((sum, r) => sum + r.totalDamage, 0)
+    const releaseDamage = rows
+      .filter(r => r.slot === posSlot && r.sourceTag !== 'gift' && r.type === '异放')
+      .reduce((sum, r) => sum + r.totalDamage, 0)
+    const disorderDamage = rows
+      .filter(r => r.slot === posSlot && r.sourceTag !== 'gift' && r.type === '紊乱')
+      .reduce((sum, r) => sum + r.totalDamage, 0)
+    const anomalyOtherDamage = Math.max(0, selfDamage - directDamage - releaseDamage - disorderDamage)
 
-      // 拐力差分：仅非输出位（主C 的 buff 多为自拐，非「拐队友」，差分无对比意义且多一倍全量重算）
-      let buffContribution = 0
-      if (position !== 'main') {
-        const group = catalogStore.getTeammateBuffGroup(agentId)
-        if (group && (group.buffs?.length ?? 0) > 0) {
-          for (const buff of group.buffs ?? []) {
-            configStore.toggleTeammateBuff(buff.id, false)
-          }
-          configStore.refreshTrigger++
-          const withoutBuff = calc.teamTotalDamage.value
-          buffContribution = Math.max(0, total - withoutBuff)
-          // CC-339：按队伍真实门控（命座 / 额外能力 / 排他门）重同步恢复，禁止无条件全开 group.buffs
-          configStore.syncTeammateBuffsFromTeam()
-          configStore.refreshTrigger++
+    // 拐力差分：仅非输出位（主C 的 buff 多为自拐，非「拐队友」，差分无对比意义且多一倍全量重算）
+    let buffContribution = 0
+    if (position !== 'main') {
+      const group = catalogStore.getTeammateBuffGroup(agentId)
+      if (group && (group.buffs?.length ?? 0) > 0) {
+        for (const buff of group.buffs ?? []) {
+          configStore.toggleTeammateBuff(buff.id, false)
         }
+        configStore.refreshTrigger++
+        const withoutBuff = calc.teamTotalDamage.value
+        buffContribution = Math.max(0, total - withoutBuff)
+        // CC-339：按队伍真实门控（命座 / 额外能力 / 排他门）重同步恢复，禁止无条件全开 group.buffs
+        configStore.syncTeammateBuffsFromTeam()
+        configStore.refreshTrigger++
       }
-
-      const stunCount = pool?.stunCount ?? 0
-      // 逐槽失衡（含后台自动招式贡献）：该槽占比 = 该槽 / 全队合计
-      const perSlot = pool?.perSlotStun ?? []
-      const daze = perSlot[posSlot] ?? 0
-      const totalDaze = perSlot.reduce((sum, v) => sum + v, 0)
-      const dazeShare = totalDaze > 0 ? Math.round((daze / totalDaze) * 10000) / 100 : 0
-
-      // 逐槽积蓄（异属性赠送归接收人口径）
-      const perSlotBuildUp = computePerSlotBuildUp(anomalyPool, team, catalogStore)
-      const buildUp = perSlotBuildUp[posSlot] ?? 0
-      const totalBuildUp = perSlotBuildUp.reduce((sum, v) => sum + v, 0)
-      const buildUpShare = totalBuildUp > 0 ? Math.round((buildUp / totalBuildUp) * 10000) / 100 : 0
-
-      out.push({
-        presetId: preset.id,
-        presetName: preset.name,
-        position,
-        agentId,
-        agentName,
-        slot: posSlot,
-        stunCount,
-        totalDamage: total,
-        selfDamage,
-        giftDamage,
-        buffContribution,
-        otherDamage: Math.max(0, total - selfDamage - giftDamage - buffContribution),
-        directDamage,
-        releaseDamage,
-        disorderDamage,
-        anomalyOtherDamage,
-        daze,
-        dazeShare,
-        buildUp,
-        buildUpShare,
-      })
     }
-  } finally {
-    restoreStore(configStore, snap)
+
+    const stunCount = pool?.stunCount ?? 0
+    // 逐槽失衡（含后台自动招式贡献）：该槽占比 = 该槽 / 全队合计
+    const perSlot = pool?.perSlotStun ?? []
+    const daze = perSlot[posSlot] ?? 0
+    const totalDaze = perSlot.reduce((sum, v) => sum + v, 0)
+    const dazeShare = totalDaze > 0 ? Math.round((daze / totalDaze) * 10000) / 100 : 0
+
+    // 逐槽积蓄（异属性赠送归接收人口径）
+    const perSlotBuildUp = computePerSlotBuildUp(anomalyPool, team, catalogStore)
+    const buildUp = perSlotBuildUp[posSlot] ?? 0
+    const totalBuildUp = perSlotBuildUp.reduce((sum, v) => sum + v, 0)
+    const buildUpShare = totalBuildUp > 0 ? Math.round((buildUp / totalBuildUp) * 10000) / 100 : 0
+
+    out.push({
+      presetId: preset.id,
+      presetName: preset.name,
+      position,
+      agentId,
+      agentName,
+      slot: posSlot,
+      stunCount,
+      totalDamage: total,
+      selfDamage,
+      giftDamage,
+      buffContribution,
+      otherDamage: Math.max(0, total - selfDamage - giftDamage - buffContribution),
+      directDamage,
+      releaseDamage,
+      disorderDamage,
+      anomalyOtherDamage,
+      daze,
+      dazeShare,
+      buildUp,
+      buildUpShare,
+    })
   }
   return out
 }

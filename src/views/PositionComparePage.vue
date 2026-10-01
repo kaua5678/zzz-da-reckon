@@ -133,7 +133,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { useCatalogStore } from '@/stores/catalog'
-import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { computePositionCompare, type ComparePosition, type PositionCompareRow } from '@/composables/positionCompare'
 import type { BossPreset } from '@/types/bossPreset'
 
@@ -219,8 +219,7 @@ async function run() {
     const catalog = useCatalogStore()
     await catalog.load()
     await catalog.loadTeammateBuffs()
-    const calc = useResourceCalc()
-    results.value = computePositionCompare(calc, presets, boss, phase, { gold: gold.value, position: position.value })
+    results.value = await withAnalysisScenario(scenario => computePositionCompare(scenario, presets, boss, phase, { gold: gold.value, position: position.value }))
   } finally {
     computing.value = false
   }

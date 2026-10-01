@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import {
   assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
   captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
@@ -210,9 +211,8 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
   it('集成：x 轴 = 实测操作难度（绝对值，与散点同尺），伤害单调增', async () => {
     const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
-    const calc = useResourceCalc()
     const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
-    const [row] = computeDifficultyCurves(calc, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE })
+    const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
     const pts = row!.ladder.points
     expect(pts[0]!.x).toBeGreaterThan(0)          // x = 绝对操作难度（全关也不是 0：有基础交互）
     expect(pts[0]!.x).toBe(pts[0]!.difficulty)    // 与散点横轴同一口径，直接可比
@@ -472,7 +472,6 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
   it('每队一条曲线、伤害单调不减，且算完恢复现场（队伍/敌方/机制开关/权重策略）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
-    const calc = useResourceCalc()
     const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')
     expect(preset, '预设数据里应有 auto-1521-1361-1311（实测 +42.9% 的爬梯样本）').toBeTruthy()
 
@@ -484,7 +483,7 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
       boss: config.appliedBoss,
     }
 
-    const rows = computeDifficultyCurves(calc, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE })
+    const rows = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE }))
 
     expect(rows).toHaveLength(1)
     const ladder = rows[0]!.ladder
@@ -537,7 +536,6 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
   it('切轴档（altAxes，2026-09-13）：作为 AXIS 目标进入爬梯，录取或如实丢弃，且不破坏单调与现场', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
-    const calc = useResourceCalc()
     const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')
     expect(preset?.altAxes, '般琉卢应带 10大轴切轴档').toHaveLength(1)
 
@@ -546,7 +544,7 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     // 与 G2 无关，G2 的真实爬梯已由上一条集成用例（缺省全目标）覆盖。切轴档仍由生产路径
     // `baseGoals` + preset.altAxes 生成（不在测试里复刻 baseAxisSnap，防绑错轴仍绿）。
     const baseGoals = DIFFICULTY_GOALS.filter(g => g.id !== 'G2')
-    const rows = computeDifficultyCurves(calc, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE, baseGoals })
+    const rows = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE, baseGoals }))
     const ladder = rows[0]!.ladder
     // 每一档的录取 id ∈ 基础目标集 ∪ AXIS:*；切轴档要么被录取（曲线高难段）、要么如实进 dropped
     const baseIds = new Set(baseGoals.map(g => g.id))

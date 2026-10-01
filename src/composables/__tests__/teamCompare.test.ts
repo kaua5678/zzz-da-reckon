@@ -4,6 +4,7 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { interactionSurvivalBySlot, roundInteractionCount } from '@/composables/liveInteractions'
 import {
   applyAxisBinding,
@@ -469,7 +470,7 @@ describe('teamCompare 金数/难度口径', () => {
         { type: 'tauntCancel', count: 3, slot: 2 },
       ],
     }
-    computeTeamComparePoints(calc, {
+    computeTeamComparePoints({ config, calc }, {
       presets: [preset],
       goldLevels: [0],
       boss: FAKE_BOSS,
@@ -505,8 +506,8 @@ describe('teamCompare 金数/难度口径', () => {
      * 绝对值随该队的失衡占比浮动（那是数据，不是接线），而**权重透传的倍数关系恒定**：
      * 弹刀权重 ×2.5 ⇒ 弹刀那部分贡献 ×2.5（占比修正对两项是同一个除数，比值不变）。
      */
-    const def = computeTeamComparePoints(calc, opts)
-    const over = computeTeamComparePoints(calc, { ...opts, difficultyWeights: { interaction: { parry: 2.5 } } })
+    const def = computeTeamComparePoints({ config, calc }, opts)
+    const over = computeTeamComparePoints({ config, calc }, { ...opts, difficultyWeights: { interaction: { parry: 2.5 } } })
     /**
      * CC-259：散点 x 读**引擎实打次数**（与难度曲线同一函数 liveInteractions），不再读预设声明。
      * 本队 1561 / 1261 / 1411：预设声明槽0 弹刀 8；setAgent 按职业基准预填 1561 闪反 10、1261 弹刀 6 + 闪反 10、
@@ -765,14 +766,13 @@ describe('teamCompare 批量计算', () => {
 
     const teamBefore = JSON.stringify(config.team)
     const enemyBefore = JSON.stringify(config.enemy)
-    const calc = useResourceCalc()
 
-    const points = computeTeamComparePoints(calc, {
+    const points = await withAnalysisScenario(s => computeTeamComparePoints(s, {
       presets: [TEST_PRESET],
       goldLevels: [3, 4, 5, 6], // 目标总限定金：3(0步) ~ 6(3步)
       boss: FAKE_BOSS,
       phase: FAKE_PHASE,
-    })
+    }))
 
     expect(points.length).toBe(4)
     for (const p of points) {
@@ -815,7 +815,7 @@ describe('teamCompare 批量计算', () => {
     config.team[2] = { ...config.team[0], slot: 2 }
     const calc = useResourceCalc()
     // TEST_PRESET：3 限定无专武 → base 3，3 步 → 最多 6 金（≤12 全走最优）
-    const points = computeTeamComparePoints(calc, {
+    const points = computeTeamComparePoints({ config, calc }, {
       presets: [TEST_PRESET],
       goldLevels: [0, 4, 8, 12, 14], // 钳制后 3/4/6/6/6 → 去重 3/4/6
       boss: FAKE_BOSS,
@@ -849,7 +849,7 @@ describe('teamCompare 批量计算', () => {
     config.team[2] = { ...config.team[0], slot: 2 }
     const calc = useResourceCalc()
     // TEST_PRESET 基础 3 金 + 3 步（最高 6 金）；minGold 5 → 只出 5/6 金档
-    const points = computeTeamComparePoints(calc, {
+    const points = computeTeamComparePoints({ config, calc }, {
       presets: [{ ...TEST_PRESET, id: 'test-min-gold', minGold: 5 }],
       goldLevels: [3, 4, 5, 6],
       boss: FAKE_BOSS,
@@ -887,13 +887,12 @@ describe('teamCompare 批量计算', () => {
     expect(config.stunAxisPlans.length).toBe(0)
     // 批量计算走绑定且结束后现场恢复（stunAxisPlans 回到计算前）
     const plansBefore = JSON.stringify(config.stunAxisPlans)
-    const calc = useResourceCalc()
-    const points = computeTeamComparePoints(calc, {
+    const points = await withAnalysisScenario(s => computeTeamComparePoints(s, {
       presets: [{ ...TEST_PRESET, id: 'test-axis-bind', stunAxisPresetId: 'preset-1471-1481-1451' }],
       goldLevels: [3],
       boss: FAKE_BOSS,
       phase: FAKE_PHASE,
-    })
+    }))
     expect(points.length).toBe(1)
     expect(JSON.stringify(config.stunAxisPlans)).toBe(plansBefore)
     expect(config.stunAxes.length).toBe(1)
@@ -908,7 +907,6 @@ describe('teamCompare 批量计算', () => {
     config.team[1] = { ...config.team[0], slot: 1 }
     config.team[2] = { ...config.team[0], slot: 2 }
     const globalBefore = JSON.stringify(config.globalBuffs)
-    const calc = useResourceCalc()
 
     const buffs: PhaseBuffCard[] = [
       { title: '强攻牌', testOnly: false, effects: [{ stat: 'atkPct', value: 10 }], unparsed: [] },
@@ -917,17 +915,17 @@ describe('teamCompare 批量计算', () => {
     ]
 
     // 自动：推荐一张牌（testOnly 排除）
-    const auto = computeTeamComparePoints(calc, {
+    const auto = await withAnalysisScenario(s => computeTeamComparePoints(s, {
       presets: [TEST_PRESET], goldLevels: [2], boss: FAKE_BOSS, phase: FAKE_PHASE, buffs,
-    })
+    }))
     expect(['强攻牌', '暴伤牌']).toContain(auto[0].buffTitle)
     expect(auto[0].buffTitle).not.toBe('测试服牌')
 
     // 手动：指定一张
-    const manual = computeTeamComparePoints(calc, {
+    const manual = await withAnalysisScenario(s => computeTeamComparePoints(s, {
       presets: [TEST_PRESET], goldLevels: [2], boss: FAKE_BOSS, phase: FAKE_PHASE, buffs,
       manualBuffTitle: '暴伤牌',
-    })
+    }))
     expect(manual[0].buffTitle).toBe('暴伤牌')
 
     // 现场恢复：全局 buff 表回到计算前
@@ -956,7 +954,7 @@ describe('teamCompare 批量计算', () => {
       { title: '前期牌', testOnly: false, effects: [{ stat: 'atkPct', value: 10 }], unparsed: [] },
       { title: '后期牌', testOnly: false, effects: [{ stat: 'critDmg', value: 30 }], unparsed: [] },
     ]
-    const points = computeTeamComparePoints(calc, {
+    const points = computeTeamComparePoints({ config, calc }, {
       presets: [TEST_PRESET], goldLevels: [3], boss: FAKE_BOSS, phase: FAKE_PHASE, buffs,
     })
     expect(points.length).toBe(1)
@@ -999,7 +997,7 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
     const config = setupTeam([{ slot: 0, agentId: '1531' }])
     const calc = engineScoreCalc(config, (wId, mod) => (wId === '13019' ? 30 * mod : 0))
     const preset: TeamPreset = { id: 'auto-a', name: '自动下位A', team: ['1531', '', ''], wEngines: ['', '', ''], goldSteps: [], interactions: [] }
-    const run = (aMod: number, pool?: string[]) => computeTeamComparePoints(calc, {
+    const run = (aMod: number, pool?: string[]) => computeTeamComparePoints({ config, calc }, {
       presets: [preset], goldLevels: [3], boss: FAKE_BOSS, phase: FAKE_PHASE,
       autoEngine: true, autoEngineMods: { aRank: aMod },
       ...(pool ? { autoEnginePool: pool } : {}),
@@ -1136,7 +1134,7 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
     const presetB = teamPresets.find(p => p.team.includes('1191') || p.team.includes('1371')) ?? teamPresets[0]!
 
     // 单独对 presetB 在 6 金下求值（干净 0命1精 起点）
-    const soloPoints = computeTeamComparePoints(calc, {
+    const soloPoints = computeTeamComparePoints({ config, calc }, {
       presets: [presetB],
       goldLevels: [6],
       boss: FAKE_BOSS,
@@ -1149,7 +1147,7 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
     // 污染当前 store 为 6命5精，再先跑 presetA 直至 18 金、紧接着同批跑 presetB 6 金
     config.setCinemaLevel(0, 6)
     config.setWEngineModLevel(0, 5)
-    const batchPoints = computeTeamComparePoints(calc, {
+    const batchPoints = computeTeamComparePoints({ config, calc }, {
       presets: [presetA, presetB],
       goldLevels: [6, 18],
       boss: FAKE_BOSS,
