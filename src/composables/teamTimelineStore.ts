@@ -122,10 +122,18 @@ export function applyTeamToStore(
   state: TeamGoldState,
   autoBuild = false,
 ) {
+  // CC-340：先将命座/精炼写入槽位，使 autoBuild（applyTeamPreset → applyBuildRecommendationForSlot）与
+  // syncTeammateBuffsFromTeam 按本队目标金态（而非上一队残留命座/精炼）计算默认副词条与队友 buff 门控
+  for (let s = 0; s < 3; s++) {
+    configStore.setCinemaLevel(s, state.cinemas[s])
+    configStore.setWEngineModLevel(s, state.wengineMods[s])
+  }
   if (autoBuild) {
     configStore.applyTeamPreset(team)
+    applyGoldAllocationToStore(configStore, state)
   } else {
     for (let s = 0; s < 3; s++) configStore.setAgent(s, team[s], { defer: true })
+    applyGoldAllocationToStore(configStore, state)
     configStore.syncTeammateBuffsFromTeam()
     for (let s = 0; s < 3; s++) {
       const char = configStore.team[s]
@@ -137,7 +145,6 @@ export function applyTeamToStore(
   }
   // 交互 / 快支 / 连携基准不在这里写（CC-266）：上面两条分支都经 setAgent（applyTeamPreset 内部亦然），
   // setAgent 已按 interactionBaselineFor + ASSIST_ACTION_BASELINE 预填。
-  applyGoldAllocationToStore(configStore, state)
 }
 
 // ========== 让出事件循环 ==========

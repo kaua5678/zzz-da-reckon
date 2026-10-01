@@ -124,18 +124,19 @@ function applyCodeToSlot(
   fallbackWEngine: string,
   fallbackMod: number,
 ): void {
-  configStore.setAgent(slot, agentId)
+  // CC-340：先设命座与精炼再调 setAgent，保证 setAgent 内部的 applyBuildRecommendationForSlot
+  // （默认副词条百暴计算）与 syncTeammateBuffsFromTeam 按本档目标命座/精炼求值，而非上一档残留值
   configStore.setCinemaLevel(slot, code.cinema)
+  const modLevel = code.wengine >= 1 ? Math.max(1, Math.min(5, code.wengine)) : (fallbackWEngine ? fallbackMod : 1)
+  configStore.setWEngineModLevel(slot, modLevel)
+  configStore.setAgent(slot, agentId)
   if (code.wengine >= 1) {
     const sig = signatureWEngineId(catalog, agentId)
     // 该角色没有专武（A 级/常驻）时退回基础音擎：假装有专武会静默给一个不存在的 id
     const wid = sig ?? fallbackWEngine
     configStore.setWEngine(slot, wid)
-    configStore.setWEngineModLevel(slot, Math.max(1, Math.min(5, code.wengine)))
   } else {
     configStore.setWEngine(slot, fallbackWEngine)
-    // A 级默认精炼 5、常驻 S 默认精炼 3（与 `computeAutoEnginePicks` 的 mods 口径一致）
-    configStore.setWEngineModLevel(slot, fallbackWEngine ? fallbackMod : 1)
   }
 }
 
@@ -341,8 +342,9 @@ export async function computeFreeCompare(
           const before = downgrade.size
           downgrade.resolve(p.slot, p.agentId, p.cinema, `${team.join(',')}|${code.cinema}${code.wengine}`)
           if (downgrade.size > before) {
-            // 新键 = 真的试算了；池大小由候选数决定（异常职业 3 件）
-            pickEvaluations += Math.max(0, downgradeCandidates(catalog, p.agentId).length - 1)
+            // 新键 = 真的试算了；单件池（n <= 1）直接采用不试算，多件池逐件试算 n 次
+            const n = downgradeCandidates(catalog, p.agentId).length
+            pickEvaluations += n > 1 ? n : 0
           }
           const picked = downgrade.lastPicked
           if (picked) {

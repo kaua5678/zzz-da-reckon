@@ -196,17 +196,19 @@ export async function computeFilmSimulation(calc: Calc, opts: FilmSimulationOpti
       filmWallet += spend
       filmInvestedTotal += spend
       // ---- 买金：按当前最优队的下一步成本；换队时累计金数按新队主C 优先重新解释 ----
+      let best: ReturnType<typeof searchBest> = null
       let guard = 0
       while (guard++ < 40) {
-        const best = searchBest(totalGold)
+        best = searchBest(totalGold)
         if (!best) break
         const cost = nextGoldStepCost(best.team, totalGold, catalog)
         if (cost == null || filmWallet < cost) break
         filmWallet -= cost
         totalGold++
+        best = null
       }
-      // ---- 最终最优队 + 本期强度 ----
-      const best = searchBest(totalGold)
+      // ---- 最终最优队 + 本期强度（CC-340：正常从 while 买完退出时 best 已是当前 totalGold 的最优解，免重复全池求值） ----
+      if (!best && guard > 40) best = searchBest(totalGold)
       if (!best) {
         nonConverged++
         continue

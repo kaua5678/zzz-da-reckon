@@ -11,6 +11,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { restoreStore, snapshotStore } from '@/composables/configSnapshot'
+import { teamGoldOf } from '@/composables/teamCompare'
 
 beforeEach(() => { newPinia(); mockStaticFetch() })
 
@@ -70,5 +71,42 @@ describe('CC-251 分析器现场快照 / 恢复', () => {
     }
     walk(root)
     expect(hits).toEqual(['composables/configSnapshot.ts:restore'])
+  })
+
+  it('CC-340：appliedBoss 深拷贝 + mechanicSettings / timeWeightStrategy 闭环恢复（防 syncBossInteractionPlan 原地改写与 guarantee.stun 泄漏）', async () => {
+    const { config } = await setupHarness([{ agentId: '1191' }, { agentId: '1211' }, { agentId: '1311' }])
+    const zeroRes = { physical: 0, fire: 0, ice: 0, electric: 0, ether: 0 }
+    config.applyBossPreset(
+      { id: 'b-test' },
+      { phaseId: 'p1', hp: 10000000, stunValue: 4000, defense: 953, level: 70, bossAnomalyCoeff: 0.875, damageResistances: zeroRes, stunResistances: zeroRes, anomalyResistances: zeroRes },
+      { stunVuln: 150, stunTime: 15 },
+      { battleTime: 180, shieldCount: 0, energyShield: 0, parryTotal: 4, parryNoFollowUpTotal: 0, counterAssistGroups: [2, 2] },
+    )
+    // 1191 队内无反制支援角色（counterAssistSlot = -1），2 组控制技折入弹刀：parryTotal = 4 + 2 = 6
+    expect(config.appliedBoss?.parryTotal).toBe(6)
+    delete config.mechanicSettings['guarantee.stun']
+    config.timeWeightStrategy = 'static'
+
+    const snap = snapshotStore(config)
+    // 模拟分析器换入带反制支援的角色（1611 克拉蕾 → counterAssistSlot = 0，触发 syncBossInteractionPlan 将 parryTotal 改为 4）+ 写入 guarantee.stun=1
+    config.setAgent(0, '1611')
+    expect(config.appliedBoss?.parryTotal).toBe(4)
+    expect(snap.appliedBoss?.parryTotal, '快照里的 appliedBoss 不能被 syncBossInteractionPlan 原地改写').toBe(6)
+    config.setMechanicSetting('guarantee.stun', 1)
+    config.timeWeightStrategy = 'balanced'
+
+    restoreStore(config, snap)
+    expect(config.appliedBoss?.parryTotal).toBe(6)
+    expect(config.mechanicSettings['guarantee.stun']).toBeUndefined()
+    expect(config.timeWeightStrategy).toBe('static')
+  })
+
+  it('CC-340：setAgent(slot, "") 清空空槽音擎，且 teamGoldOf 跳过空槽不计残留限定音擎金数', async () => {
+    const { config } = await setupHarness([{ agentId: '1191' }, { agentId: '1371', wEngineId: '14137' }, { agentId: '1311' }])
+    expect(config.team[1].wEngineId).toBe('14137')
+    config.setAgent(1, '')
+    expect(config.team[1].agentId).toBe('')
+    expect(config.team[1].wEngineId, '清空角色槽位时必须同步清空 wEngineId').toBe('')
+    expect(teamGoldOf(['1191', '', ''], ['14119', '14137', '14137'], [0, 2, 2], [1, 5, 5])).toBe(2)
   })
 })

@@ -1140,7 +1140,6 @@ async function runCurves() {
     boss: boss.id,
     phase,
     snap: snapshotStore(configStore),
-    extra: { strategy: configStore.timeWeightStrategy, mechanics: configStore.mechanicSettings },
     weights: diffWeights.value,
     presets,
   })

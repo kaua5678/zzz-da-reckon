@@ -119,11 +119,6 @@ export function makeAltAxisGoal(
 export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOptions): DifficultyCurveRow[] {
   const configStore = useConfigStore()
   const snap = snapshotStore(configStore)
-  // 机制开关与权重策略**不在** StoreSnapshot 里（散点页不碰它们，故不去改那个共享契约）
-  const extra = {
-    strategy: configStore.timeWeightStrategy,
-    mechanics: { ...configStore.mechanicSettings },
-  }
   const rows: DifficultyCurveRow[] = []
   try {
     configStore.applyBossPreset({ id: options.boss.id }, options.phase, options.boss.monster, options.boss.defaults)
@@ -166,9 +161,6 @@ export function computeDifficultyCurves(calc: Calc, options: DifficultyCurveOpti
       rows.push({ presetId: preset.id, name: preset.name, ladder })
     }
   } finally {
-    configStore.timeWeightStrategy = extra.strategy
-    for (const k of Object.keys(configStore.mechanicSettings)) delete configStore.mechanicSettings[k]
-    Object.assign(configStore.mechanicSettings, extra.mechanics)
     restoreStore(configStore, snap)
   }
   return rows

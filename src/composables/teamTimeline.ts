@@ -344,7 +344,7 @@ export function computeOptimalTeamAllocation(
       configStore.setCinemaLevel(c.slot, prevC)
       configStore.setWEngine(c.slot, prevW)
       configStore.setWEngineModLevel(c.slot, prevM)
-      if (best == null || d > best.dmg + 1e-9) best = { cand: c, dmg: d }
+      if (Number.isFinite(d) && (best == null || d > best.dmg + 1e-9)) best = { cand: c, dmg: d }
     }
     if (!best) break
     // 提交最佳步
@@ -751,28 +751,8 @@ export async function computeNewCharacterPoints(calc: Calc, opts: NewCharacterCh
     const points: NewCharacterPoint[] = []
     for (let i = 0; i < tasks.length; i++) {
       const { row, team } = tasks[i]
-      let damage: number
-      let totalGold: number
-      let goldLabel: string
-      let nodeState: TeamGoldState
-      if (opts.optimalGold) {
-        const alloc = computeOptimalTeamAllocation(calc, configStore, team, opts.budget, opts.autoBuild === true)
-        // 基础态未收敛 → 返回 -Inf，跳过该点
-        if (!Number.isFinite(alloc.damage)) continue
-        damage = alloc.damage
-        totalGold = alloc.totalGold
-        goldLabel = alloc.label
-        nodeState = { cinemas: alloc.cinemas, wengineMods: alloc.wengineMods, wEngines: alloc.wEngines }
-      } else {
-        const budgetAware = budgetAwareStateFor(team, opts.budget, catalog)
-        applyTeamToStore(configStore, team, budgetAware.state, opts.autoBuild === true)
-        const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
-        if (conv === 'maxIter') continue
-        damage = calc.teamTotalDamage.value
-        totalGold = budgetAware.totalGold
-        goldLabel = budgetAware.label
-        nodeState = budgetAware.state
-      }
+      const res = evalTeamByBudget(calc, configStore, catalog, team, opts.budget, opts.autoBuild === true, opts.optimalGold === true)
+      if (!res) continue
       const char = catalog.getAgent(row.charId)
       points.push({
         charId: row.charId,
@@ -782,11 +762,11 @@ export async function computeNewCharacterPoints(calc: Calc, opts: NewCharacterCh
         ...(row.nodeNote ? { nodeNote: row.nodeNote } : {}),
         team,
         teamIndex: (opts.teams[row.charId] ?? []).indexOf(team),
-        state: nodeState,
-        totalGold,
-        goldLabel,
-        damage,
-        hpRatio: opts.phase.hp > 0 ? Math.round((damage / opts.phase.hp) * 10000) / 100 : 0,
+        state: res.state,
+        totalGold: res.totalGold,
+        goldLabel: res.goldLabel,
+        damage: res.damage,
+        hpRatio: opts.phase.hp > 0 ? Math.round((res.damage / opts.phase.hp) * 10000) / 100 : 0,
       })
       report((i + 1) / tasks.length, `强队强度 ${i + 1}/${tasks.length}（${char?.name.zhCN ?? row.charId}）…`)
       if (i % 2 === 0) await yieldNow()
@@ -925,17 +905,27 @@ function evalTeamByBudget(
   budget: number,
   autoBuild: boolean,
   optimalGold: boolean,
-): { damage: number; totalGold: number; goldLabel: string } | null {
+): { damage: number; totalGold: number; goldLabel: string; state: TeamGoldState } | null {
   if (optimalGold) {
     const alloc = computeOptimalTeamAllocation(calc, configStore, team, budget, autoBuild)
     if (!Number.isFinite(alloc.damage)) return null
-    return { damage: alloc.damage, totalGold: alloc.totalGold, goldLabel: alloc.label }
+    return {
+      damage: alloc.damage,
+      totalGold: alloc.totalGold,
+      goldLabel: alloc.label,
+      state: { cinemas: alloc.cinemas, wengineMods: alloc.wengineMods, wEngines: alloc.wEngines },
+    }
   }
   const budgetAware = budgetAwareStateFor(team, budget, catalog)
   applyTeamToStore(configStore, team, budgetAware.state, autoBuild)
   const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
   if (conv === 'maxIter') return null
-  return { damage: calc.teamTotalDamage.value, totalGold: budgetAware.totalGold, goldLabel: budgetAware.label }
+  return {
+    damage: calc.teamTotalDamage.value,
+    totalGold: budgetAware.totalGold,
+    goldLabel: budgetAware.label,
+    state: budgetAware.state,
+  }
 }
 
 /**

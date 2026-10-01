@@ -658,6 +658,10 @@ export function createConfigModel(catalogStore: ConfigCatalogReader) {
         syncTeammateBuffsFromTeam()
         applyBuildRecommendationForSlot(slot)
       }
+    } else {
+      // CC-340：清空槽位（setAgent(slot, '')）时一并清空音擎，避免旧角色的专武残留在空槽上
+      char.wEngineId = ''
+      if (!opts?.defer) syncTeammateBuffsFromTeam()
     }
   }
 

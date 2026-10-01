@@ -8,7 +8,8 @@
  * 队友 buff 选择必须在 team 之后恢复：`team.splice` 会触发 team watcher（flush:'sync'）→ syncTeammateBuffsFromTeam
  * 按派生结果改写 enabled，覆盖掉用户手动开关（CC-251 修前 teamCompare / teamTimelineStore 两份副本漏了这一项，
  * 只有 positionCompare 的私有副本是对的）。
- * 不在快照里：机制开关与权重策略（difficultyCurve 自行处理）、副词条设置等分析器不碰的状态。
+ * CC-340：appliedBoss 改为 clone 深拷贝（防 syncBossInteractionPlan 就地改写 parryTotal 污染快照），
+ * 并把 mechanicSettings 与 timeWeightStrategy 纳入快照（防 applyBossPreset 自动写 guarantee.stun=1 泄漏到用户现场）。
  */
 import { type useConfigStore, type CharacterConfig, type EnemyConfig } from '@/stores/config'
 
@@ -24,6 +25,8 @@ export interface StoreSnapshot {
   useStunAxis: boolean
   globalBuffs: unknown[]
   buffSelections: TeammateBuffSelections
+  mechanicSettings: Record<string, number>
+  timeWeightStrategy: ConfigStore['timeWeightStrategy']
 }
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v))
@@ -32,19 +35,21 @@ export function snapshotStore(configStore: ConfigStore): StoreSnapshot {
   return {
     team: clone(configStore.team),
     enemy: clone(configStore.enemy),
-    appliedBoss: configStore.appliedBoss,
+    appliedBoss: clone(configStore.appliedBoss),
     stunAxes: clone(configStore.stunAxes),
     stunAxisPlans: clone(configStore.stunAxisPlans),
     useStunAxis: configStore.useStunAxis,
     globalBuffs: clone(configStore.globalBuffs),
     buffSelections: clone(configStore.teammateBuffSelections as TeammateBuffSelections),
+    mechanicSettings: { ...configStore.mechanicSettings },
+    timeWeightStrategy: configStore.timeWeightStrategy,
   }
 }
 
 export function restoreStore(configStore: ConfigStore, snap: StoreSnapshot): void {
   configStore.team.splice(0, configStore.team.length, ...snap.team)
   configStore.setEnemy(snap.enemy)
-  configStore.appliedBoss = snap.appliedBoss
+  configStore.appliedBoss = clone(snap.appliedBoss)
   configStore.stunAxes.splice(0, configStore.stunAxes.length, ...(snap.stunAxes as never[]))
   configStore.stunAxisPlans.splice(0, configStore.stunAxisPlans.length, ...(snap.stunAxisPlans as never[]))
   configStore.useStunAxis = snap.useStunAxis
@@ -53,4 +58,7 @@ export function restoreStore(configStore: ConfigStore, snap: StoreSnapshot): voi
   const selections = configStore.teammateBuffSelections as TeammateBuffSelections
   for (const key of Object.keys(selections)) delete selections[key]
   Object.assign(selections, clone(snap.buffSelections))
+  for (const key of Object.keys(configStore.mechanicSettings)) delete configStore.mechanicSettings[key]
+  Object.assign(configStore.mechanicSettings, snap.mechanicSettings)
+  configStore.timeWeightStrategy = snap.timeWeightStrategy
 }

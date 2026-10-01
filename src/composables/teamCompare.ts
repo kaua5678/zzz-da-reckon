@@ -438,7 +438,9 @@ export function teamGoldOf(
 ): number {
   let gold = 0
   for (let slot = 0; slot < 3; slot++) {
-    if (isLimitedAgent(agentIds[slot] ?? '')) gold += 1 + Math.max(0, cinemas[slot] ?? 0)
+    const agentId = agentIds[slot] ?? ''
+    if (!agentId) continue
+    if (isLimitedAgent(agentId)) gold += 1 + Math.max(0, cinemas[slot] ?? 0)
     if (isLimitedWEngine(wEngineIds[slot] ?? '')) gold += 1 + Math.max(0, (wengineMods[slot] ?? 1) - 1)
   }
   return gold
