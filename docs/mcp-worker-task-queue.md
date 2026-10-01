@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-02 arena-E 第 379 轮**：CC-349 自动轴保底预填去页面依赖 `3f5dcb1e`（UI store 会话效果，不进场景 Model）；**开放项仍有效**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效（待用户裁决，细节见卡表 CC-349 与 `git show 8e53d9ec:docs/mcp-worker-task-queue.md` 的 §2）。
+
 **2026-10-02 arena-E 第 378 轮**：CC-348 Canvas 主题桥单源 `4b4490f3`（三个 3D 组件取色归一 + 修切主题不重绘；像素 A/B 相同）——原 §2 交接；全文 `git show 79e3039c:docs/mcp-worker-task-queue.md` 的 §2。
 
 **2026-10-02 arena-E 第 377 轮**：CC-347 命座提升率迁独立场景 `887c0ebc`（A/B 逐字节相同；改写 UI store 的分析器清零）——原 §2 交接，细节见隔离文档 §3.8；全文 `git show cfb8c30f:docs/mcp-worker-task-queue.md` 的 §2。
@@ -136,20 +138,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 379 轮（lane arena-E，开工 02:09；无并行会话；HEAD `79e3039c`；REQUIREMENTS.md 无新条目）：CC-349 保底预填去页面依赖 `3f5dcb1e`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **怎么选的**：r378 交接候选 ① 扫 `TeamConfigPage.vue`。页内唯一结构问题 = `watch(autoPreset)` 在页面里写全局 store（只在配装页挂载时生效 ⇒ 状态依赖导航史）。
-- **做到哪**：`src/data/stunAxisPresets.ts` 新增 `autoStunAxisPresetOf`（自动轴唯一选择入口）+ `presetGuaranteeWrites`（guarantee → 设置写入表）；`resourceCalc/roundInputs#autoPreset` 改调前者；
-  `src/stores/config.ts` 的 `useConfigStore` 外壳装 `installUiSessionEffects`（只 UI store，**不进 `createConfigModel`**——理由写在注释里：场景模型在 yield 间隙换队，挂 watcher 会让结果依赖时序）；TeamConfigPage 删 watcher；
-  新测试 `src/stores/__tests__/autoAxisGuaranteePrefill.test.ts`（4 例）；`agentMechanicViewCc60.test.ts` 源码锁改指新入口（两处生产调用都传 `AUTO_AXIS_PRESET_HINTS`）。
-- **验证**：新测试反证（撤 store 改动 → UI store 用例红）；全量 verify 通过（日志 `/home/kaua/calc-arch/arenaE/verify379b.log`）。数值零变化的依据：当前数据下自动命中路径选不到声明 guarantee 的预设（下条）。
-- **开放项（待用户裁决，勿自行改）**：预设 `guarantee` 字段现**实际不生效**——唯一声明者「5火10大」（`preset-1471-1481-*-fury5-ult10`）与「般琉通用」同队，选择器「条件轴优先」总选后者；
-  手动「应用」（StunAxisPage）与难度变体 altAxes 绑定（teamCompare / difficultyCurve / positionCompare 经 `applyStunAxisPreset`）都不写 guarantee ⇒ 般琉卢「10大轴」高难段是在**未开保底**下算的。
-  若要让绑定也生效：须同时让 `StunAxisState` 快照 / `setAxisState` 覆盖 `guarantee.*`（否则批量对比里前一队的写入漏给后一队），且会改变难度曲线数值 ⇒ 口径决定，留给用户。
-- **下一步**：无排定项。候选（非必须）：① `createBatchScheduler`（只在 worker 化时有意义）；② DifficultyCurve3DChart / ResponseSurface3D 浏览器点验（r378 未覆盖，按 `arenaE/pix378.sh` 写法）。不为降计数开卡。
-- **本轮拍板（可逆）**：会话效果放 `useConfigStore` 外壳而非 App.vue / CalculatorView——store 生命周期与页面无关，且测试不用挂组件。回退：`git revert 3f5dcb1e`。
-- **已知坑**：
-  ① 源码锁类测试（如 CC-60）会钉住调用表达式原文；改调用形状时先 `grep -rn "<旧表达式>" src/**/__tests__`。
-  ② verify 日志里出现 `failed` 字样时 vitest 仍在跑后续文件；判结束看 `Test Files` 与 `built in` 两行。
+**第 380 轮（lane arena-E，开工 02:24；无并行会话；HEAD `8e53d9ec`；REQUIREMENTS.md 无新条目）：CC-350 敌方体型并入 Boss 房间入口 `83f9b665`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **怎么选的**：r379 在 TeamConfigPage 发现「页面 watcher 写全局 store」⇒ 本轮全仓普查同一模式（`/home/kaua/calc-arch/arenaE/scanw.py`：扫 views/components 所有 `watch(` 块里的 store 写入）。唯一真命中 = TeamComparePage 选 Boss 写体型。
+- **做到哪**：`src/composables/bossRoom.ts` 新 `DEFAULT_BOSS_BODY_SIZE` + `applyBossRoom` 写体型；`TeamComparePage.vue` 删 watcher；`types/bossPreset.ts` 注释改口径；`bossRoom.test.ts` +2 例；`docs/mcp-boss-room-context.md` 末尾补 CC-350 节。
+- **验证**：全量 verify 通过（452 文件通过 / 16 跳过，build 成功；日志 `/home/kaua/calc-arch/arenaE/verify380.log`）；无金标变化。
+- **口径变化（本轮拍板，可逆）**：所有进房间路径（含主计算器 BossSelectCard、各分析器）体型都跟 Boss；依据 = 用户 2026-09-05「体型跟随 boss、未录入默认中型」+ CC-342「房间上下文唯一入口」。影响 = 艾莲 / 苍角在分析器里的数值可能变（变到正确值）。回退：`git revert 83f9b665`。
+- **开放项（沿用 r379，待用户裁决，勿自行改）**：预设 `guarantee` 在手动应用 / altAxes 绑定路径不生效 ⇒ 般琉卢「10大轴」高难段在未开保底下计算。细节见卡表 CC-349。
+- **下一步**：无排定项。views/components 已无写 store 的 watcher。候选（非必须）：① composables 里同类普查（`watch(` 写 store 且不在场景里——注意 `stores/config.ts` 内部 watcher 是 Model 自身不变量，不算）；② `createBatchScheduler`（只在 worker 化时有意义）；③ 两个 3D 图浏览器点验（`arenaE/pix378.sh` 写法）。不为降计数开卡。
+- **已知坑**：① 普查脚本的正则会把「写页面局部 ref」误报（如 `selectedAgentId.value = …`），命中要逐条看；② 同一 worktree 里 verify 在跑时别为反证去还原源文件（会污染 verify），反证改在另一份副本里做或按用例构造推理。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 

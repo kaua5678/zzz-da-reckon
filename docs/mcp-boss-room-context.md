@@ -221,3 +221,9 @@ CC-341 前「任何队满额生效」更接近原文。要再精确，需要：
 - **验证**：worktree `wtD-364`：`vue-tsc -b` 0；verify EXIT 0（446 个文件、4109 例）。全量测试里没有分析器测试钉住受关卡 buff 影响的数值。
 - **回退点**：`git revert 59ea97ea`。JSON 会回到不带 `layerBuffs` 的版本，`applyBossRoom` 恢复读 `phaseViews` 的第 363 轮写法。
 - **维护提示**：改了 `phase-buff-parser.mjs` 或 raw 数据后，要重跑 `node scripts/import-nanoka-bosses.mjs`；数据锁会拦住 brief 与 phase 不一致。
+
+## CC-350（2026-10-02 arena-E 第 380 轮）：敌方体型并入房间入口
+
+- 房间上下文 = 敌人参数 + **敌方体型** + 关卡固有 buff。`applyBossRoom` 写 `bodySize = boss.bodySize ?? DEFAULT_BOSS_BODY_SIZE`（`'medium'`，用户口径 2026-09-05）。
+- 修前唯一写体型的是 `TeamComparePage.vue` 的页面 watcher（写 UI store）⇒ 主计算器选 Boss 不变体型；各分析器场景继承「上次在队伍对比页选的 Boss」的体型。
+- 手动改体型（属性页）保持到下次进房间。提交 `83f9b665`；判据 `src/composables/__tests__/bossRoom.test.ts`。
