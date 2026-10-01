@@ -80,6 +80,6 @@ describe('CC-65 角色专属计数输入框 → characterCountInputs', () => {
     const src = readFileSync(resolve(__dirname, '../../views/TeamConfigPage.vue'), 'utf-8')
     for (const id of ['1551', '1541', '1371']) expect(src).not.toContain(`agentId === '${id}'`)
     expect(src).toContain('v-for="inp in characterCountInputs"')
-    expect(src).toContain('configStore.setActionCount(configStore.selectedSlot, inp.field')
+    expect(src).toContain('configStore.setActionCount(uiStore.selectedSlot, inp.field')
   })
 })

@@ -13,6 +13,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
+import { useUiStore } from '@/stores/ui'
 import { getCalcOutputMemoStats, setCalcOutputMemoEnabled, useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
@@ -163,10 +164,13 @@ describe('calcOutput 记忆化', () => {
     applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1521-1361-1311')!)
     config.timeWeightStrategy = 'static'
     const d0 = calc.teamTotalDamage.value
-    // 纯 UI 态：不进键 ⇒ 不重算
+    // 纯界面态住在 ui store（CC-356）：不在 config `$state` 里 ⇒ 不进键、不重算
+    expect(Object.keys(config.$state)).not.toContain('activeTab')
+    expect(Object.keys(config.$state)).not.toContain('selectedSlot')
+    const ui = useUiStore()
     const s0 = getCalcOutputMemoStats()
-    config.activeTab = config.activeTab === 'team' ? 'result' : 'team'
-    config.selectedSlot = (config.selectedSlot + 1) % 3
+    ui.activeTab = ui.activeTab === 'team' ? 'result' : 'team'
+    ui.selectSlot((ui.selectedSlot + 1) % 3)
     expect(calc.teamTotalDamage.value).toBe(d0)
     const s1 = getCalcOutputMemoStats()
     expect(s1.misses).toBe(s0.misses)

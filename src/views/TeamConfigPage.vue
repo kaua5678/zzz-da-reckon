@@ -54,8 +54,8 @@
         v-for="i in 3"
         :key="i - 1"
         :slot="i - 1"
-        :is-selected="configStore.selectedSlot === i - 1"
-        @select="configStore.selectSlot"
+        :is-selected="uiStore.selectedSlot === i - 1"
+        @select="uiStore.selectSlot"
       />
     </div>
 
@@ -66,7 +66,7 @@
         <n-gi :span="2">
           <n-card size="small" :bordered="true" class="detail-card">
             <template #header>
-              <span>角色详细配置 - 槽位 {{ configStore.selectedSlot + 1 }}</span>
+              <span>角色详细配置 - 槽位 {{ uiStore.selectedSlot + 1 }}</span>
             </template>
 
             <n-grid :cols="2" :x-gap="20">
@@ -96,7 +96,7 @@
                         :max="6"
                         :step="1"
                         style="flex: 1"
-                        @update:value="v => configStore.setCinemaLevel(configStore.selectedSlot, v)"
+                        @update:value="v => configStore.setCinemaLevel(uiStore.selectedSlot, v)"
                       />
                       <n-input-number
                         :value="selectedChar.cinemaLevel"
@@ -104,7 +104,7 @@
                         :max="6"
                         size="small"
                         style="width: 80px; margin-left: 12px"
-                        @update:value="v => configStore.setCinemaLevel(configStore.selectedSlot, v ?? 0)"
+                        @update:value="v => configStore.setCinemaLevel(uiStore.selectedSlot, v ?? 0)"
                       />
                     </div>
                   </div>
@@ -119,7 +119,7 @@
                         :max="6"
                         :step="1"
                         style="flex: 1"
-                        @update:value="v => configStore.setPotentialLevel(configStore.selectedSlot, v)"
+                        @update:value="v => configStore.setPotentialLevel(uiStore.selectedSlot, v)"
                       />
                       <n-input-number
                         :value="selectedChar.potentialLevel ?? 6"
@@ -127,7 +127,7 @@
                         :max="6"
                         size="small"
                         style="width: 80px; margin-left: 12px"
-                        @update:value="v => configStore.setPotentialLevel(configStore.selectedSlot, v ?? 6)"
+                        @update:value="v => configStore.setPotentialLevel(uiStore.selectedSlot, v ?? 6)"
                       />
                     </div>
                   </div>
@@ -155,7 +155,7 @@
                         :max="5"
                         :step="1"
                         style="flex: 1"
-                        @update:value="v => configStore.setWEngineModLevel(configStore.selectedSlot, v)"
+                        @update:value="v => configStore.setWEngineModLevel(uiStore.selectedSlot, v)"
                       />
                       <n-input-number
                         :value="selectedChar.wEngineModLevel"
@@ -163,7 +163,7 @@
                         :max="5"
                         size="small"
                         style="width: 80px; margin-left: 12px"
-                        @update:value="v => configStore.setWEngineModLevel(configStore.selectedSlot, v ?? 1)"
+                        @update:value="v => configStore.setWEngineModLevel(uiStore.selectedSlot, v ?? 1)"
                       />
                     </div>
                   </div>
@@ -205,7 +205,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setParryCount(configStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setParryCount(uiStore.selectedSlot, v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -218,7 +218,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setDodgeCounterCount(configStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setDodgeCounterCount(uiStore.selectedSlot, v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -231,7 +231,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setBlockCount(configStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setBlockCount(uiStore.selectedSlot, v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -244,7 +244,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setDualCounterCount(configStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setDualCounterCount(uiStore.selectedSlot, v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -259,7 +259,7 @@
                             size="small"
                             style="width: 100%"
                             :placeholder="inp.mode === 'autoIfNonPositive' ? '自动' : undefined"
-                            @update:value="v => configStore.setActionCount(configStore.selectedSlot, inp.field, v ?? characterCountInputClearValue(inp))"
+                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, inp.field, v ?? characterCountInputClearValue(inp))"
                           />
                         </div>
                       </n-gi>
@@ -272,7 +272,7 @@
                             :max="99"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setQuickAssistCount(configStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setQuickAssistCount(uiStore.selectedSlot, v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -285,7 +285,7 @@
                             :max="3"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setChainCountPerStun(configStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setChainCountPerStun(uiStore.selectedSlot, v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -299,7 +299,7 @@
                             :step="0.1"
                             size="small"
                             style="width: 100%"
-                            @update:value="v => configStore.setBasicAttackTimeWeight(configStore.selectedSlot, v ?? 0)"
+                            @update:value="v => configStore.setBasicAttackTimeWeight(uiStore.selectedSlot, v ?? 0)"
                           />
                         </div>
                       </n-gi>
@@ -410,7 +410,7 @@
                             filterable
                             size="small"
                             placeholder="选择4件套"
-                            @update:value="v => configStore.setFourPieceSet(configStore.selectedSlot, v || '')"
+                            @update:value="v => configStore.setFourPieceSet(uiStore.selectedSlot, v || '')"
                           />
                         </div>
                       </n-gi>
@@ -423,7 +423,7 @@
                             filterable
                             size="small"
                             placeholder="选择2件套"
-                            @update:value="v => configStore.setTwoPieceSet(configStore.selectedSlot, v || '')"
+                            @update:value="v => configStore.setTwoPieceSet(uiStore.selectedSlot, v || '')"
                           />
                         </div>
                       </n-gi>
@@ -483,7 +483,7 @@
                             :options="mainStatOptions(slot)"
                             size="small"
                             placeholder="主词条"
-                            @update:value="v => configStore.setMainStat(configStore.selectedSlot, slot, v)"
+                            @update:value="v => configStore.setMainStat(uiStore.selectedSlot, slot, v)"
                           />
                         </div>
                       </n-gi>
@@ -514,7 +514,7 @@
                           :max="54"
                           size="small"
                           style="width: 96px"
-                          @update:value="v => configStore.setSubStatCount(configStore.selectedSlot, stat, v ?? 0)"
+                          @update:value="v => configStore.setSubStatCount(uiStore.selectedSlot, stat, v ?? 0)"
                         />
                         <n-text depth="3" style="font-size: 11px; width: 56px; text-align: right">
                           {{ getSubStatValue(stat) }}
@@ -691,7 +691,7 @@
         <template #header>
           <n-space align="center" justify="space-between" style="width: 100%">
             <span>配装推荐 - {{ buildRec.name.zhCN || buildRec.name.en }}</span>
-            <n-button size="tiny" type="primary" secondary @click="configStore.applyBuildRecommendationForSlot(configStore.selectedSlot)">
+            <n-button size="tiny" type="primary" secondary @click="configStore.applyBuildRecommendationForSlot(uiStore.selectedSlot)">
               一键应用
             </n-button>
           </n-space>
@@ -777,6 +777,7 @@ import {
   NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, NTooltip, useMessage,
 } from 'naive-ui'
 import { useConfigStore, getInteractionDefaults, ACTION_COUNT_BOUNDS } from '@/stores/config'
+import { useUiStore } from '@/stores/ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { useStatLabel } from '@/composables/useStatLabel'
 import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
@@ -801,6 +802,7 @@ import type { CharacterConfig } from '@/stores/config'
 import { agentCharacterCountInputs, characterCountInputValue, characterCountInputClearValue, agentInteractionInputs, teamHasGuaranteeFuryOwner } from '@/composables/agentMechanicView'
 
 const configStore = useConfigStore()
+const uiStore = useUiStore()
 const catalogStore = useCatalogStore()
 const { statLabel, formatStatValue } = useStatLabel()
 
@@ -932,7 +934,7 @@ function agentName(slot: number): string {
 const { saveTargetPreset, saveTeamMismatch, saveStepsPreview, savePresetJson, copyPresetJson } =
   useTeamConfigPresetIO({ configStore, goldDraft, saveTargetPresetId, message })
 
-const selectedChar = computed<CharacterConfig>(() => configStore.team[configStore.selectedSlot])
+const selectedChar = computed<CharacterConfig>(() => configStore.team[uiStore.selectedSlot])
 // CC-65：角色专属计数输入框（模块声明）
 const characterCountInputs = computed(() => agentCharacterCountInputs(selectedChar.value?.agentId))
 // CC-65b：交互栏专属输入框（格挡/双反）
@@ -986,13 +988,13 @@ const guaranteeStunHint = computed(() => {
 })
 const interactionTopUpForSlot = computed(() => {
   const t = interactionTopUp.value
-  return t && t.slot === configStore.selectedSlot ? t : null
+  return t && t.slot === uiStore.selectedSlot ? t : null
 })
 // Boss 预设弹刀反推（保底4失衡）：击破位显示「→ 有效次数（含无突击弹刀/保底反推）」、未手填的主C 显示「→ 剩余（Boss 默认）」
 const parrySplitForSlot = computed<{ label: string } | null>(() => {
   const p = parrySplitResult.value
   if (!p) return null
-  const slot = configStore.selectedSlot
+  const slot = uiStore.selectedSlot
   const char = configStore.team[slot]
   if (!char?.agentId) return null
   if (slot === p.breakerSlot) {
@@ -1012,7 +1014,7 @@ const parrySplitForSlot = computed<{ label: string } | null>(() => {
 /** 本槽位承接的反制支援次数（= boss 控制技组数，store 折算；0 = 该槽位不替换/未应用带控制技的 Boss）。
  *  次数由 Boss 预设决定、非手填，故只在标签里露出，不给输入框（避免与「弹刀次数」抢同一个数）。 */
 const counterAssistForSlot = computed(() =>
-  configStore.counterAssistSlot === configStore.selectedSlot
+  configStore.counterAssistSlot === uiStore.selectedSlot
     ? (configStore.appliedBoss?.counterAssistGroups?.length ?? 0)
     : 0,
 )
@@ -1070,10 +1072,10 @@ const currentPanel = computed<PanelValues | null>(() => {
   const char = selectedChar.value
   if (!char?.agentId) return null
   if (panelMode.value === 'inCombat') {
-    return computePanel(configStore.selectedSlot, configStore, catalogStore)
+    return computePanel(uiStore.selectedSlot, configStore, catalogStore)
   }
   // CC-51：局外面板（基础面板 + 全局 Buff）搬到编排层，与局内 computePanel 对称（判据 7）
-  return computeOutOfCombatPanel(configStore.selectedSlot, configStore, catalogStore)
+  return computeOutOfCombatPanel(uiStore.selectedSlot, configStore, catalogStore)
 })
 
 // 特化/属性中文名：定义已外置到 utils/agentLabelMaps.ts（角色下拉标签 + 套装效果门槛标签共用同一份）
@@ -1125,13 +1127,13 @@ const discEffectRows = computed(() => {
 
 function onSelectAgent(id: string | null) {
   if (id) {
-    configStore.setAgent(configStore.selectedSlot, id)
+    configStore.setAgent(uiStore.selectedSlot, id)
   }
 }
 
 function onSelectWEngine(id: string | null) {
   if (id) {
-    configStore.setWEngine(configStore.selectedSlot, id)
+    configStore.setWEngine(uiStore.selectedSlot, id)
   }
 }
 

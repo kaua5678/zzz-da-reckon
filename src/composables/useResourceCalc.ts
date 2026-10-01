@@ -46,9 +46,8 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
  *
  * 正确性护栏：
  *  - 键 = `config.$state` 的 JSON（**经响应式代理读取**，于是每个字段都建立依赖；不能 toRaw——那样读到的是 ref 对象且不追踪），
- *    **默认全部 state 进键**（漏字段 = 静默错值，这正是高风险所在；宁可多失效）。store 的 24 个 ref 全部在 `$state` 里（已核）。
- *    唯一排除的是 `CALC_MEMO_KEY_EXCLUDE`：**引擎不读的纯 UI 态**（已 grep 核引擎/编排/机制/数据层零引用）。
- *    排除项**连读都不读**（不经 replacer），否则会建立依赖、切 tab 也触发重算。
+ *    **默认全部 state 进键**（漏字段 = 静默错值，这正是高风险所在；宁可多失效）。store 的全部 state ref 都在 `$state` 里（出生态键表逐个登记，见 config.ts）。
+ *    **无排除项**：纯界面态（页签 / 选中槽位）已搬到 `stores/ui.ts`（CC-356），config `$state` 只含计算输入。
  *  - 因此**没有手动失效**：任何 state 写入本身就让计算失效。原 `refreshTrigger`/`triggerRefresh()` 与三个「刷新」按钮
  *    已删（CC-354 删内部调用、CC-355 删按钮与字段）。store 外的输入要么是响应式的（行融合规则），要么是测试专用开关。
  *  - 目录数据按**对象身份**进键（`catalog` / `teammateBuffGroups` / `buildRecommendations` 整体替换才会变；
@@ -61,8 +60,6 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
  */
 /** 容量 16：难度爬梯单队 G2 实测 12 个不同配置（8 装不下、命中率掉一半）；每个 useResourceCalc 实例各一份 */
 const CALC_OUTPUT_MEMO_MAX = 16
-/** 不进 calcOutput 记忆化键的 state 字段（见上）。新增字段**默认进键**；只有确认引擎不读的纯 UI 态才可加到这里。 */
-const CALC_MEMO_KEY_EXCLUDE: ReadonlySet<string> = new Set(['activeTab', 'selectedSlot'])
 /** 对象身份 → 序号（目录数据进键用；WeakMap 不阻止回收） */
 const memoIdentity = new WeakMap<object, number>()
 let memoIdentitySeq = 0
@@ -230,11 +227,8 @@ export function createResourceCalc(
       calcOutputMemoStats.bypass++
       return freezeCached(computeCalcOutput())
     }
-    const state = configStore.$state as unknown as Record<string, unknown>
-    const stateForKey: Record<string, unknown> = {}
-    for (const k of Object.keys(state)) if (!CALC_MEMO_KEY_EXCLUDE.has(k)) stateForKey[k] = state[k]
     const key = JSON.stringify([
-      stateForKey,
+      configStore.$state,
       identityOf(catalogStore.catalog),
       identityOf(catalogStore.teammateBuffGroups),
       identityOf(catalogStore.buildRecommendations),

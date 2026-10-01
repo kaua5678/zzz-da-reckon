@@ -103,10 +103,10 @@
 import { computed } from 'vue'
 import { NButton, NIcon, NTabs, NTabPane, NTooltip } from 'naive-ui'
 import { MoonOutline, SunnyOutline } from '@vicons/ionicons5'
-import { useConfigStore } from '@/stores/config'
+import { useUiStore } from '@/stores/ui'
 import { useThemeStore } from '@/stores/theme'
 
-const configStore = useConfigStore()
+const uiStore = useUiStore()
 const themeStore = useThemeStore()
 
 const setupTabs = ['team', 'attribute', 'resource']
@@ -115,7 +115,7 @@ const compareTabs = ['teamCompare', 'breakerCompare', 'freeCompare', 'runArchive
 const planTabs = ['charIncrement', 'bossHp']
 const developerTabs = ['debug', 'wengineFields', 'logic', 'mechanic', 'multiplierCoeff']
 const sectionValue = (tabs: string[]) =>
-  computed(() => (tabs.includes(configStore.activeTab) ? configStore.activeTab : ''))
+  computed(() => (tabs.includes(uiStore.activeTab) ? uiStore.activeTab : ''))
 const setupTabValue = sectionValue(setupTabs)
 const analyzeTabValue = sectionValue(analyzeTabs)
 const compareTabValue = sectionValue(compareTabs)
@@ -123,7 +123,7 @@ const planTabValue = sectionValue(planTabs)
 const developerTabValue = sectionValue(developerTabs)
 
 function onTabChange(tab: string) {
-  configStore.activeTab = tab
+  uiStore.activeTab = tab
 }
 </script>
 

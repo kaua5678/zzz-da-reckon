@@ -32,14 +32,14 @@
 <script setup lang="ts">
 import { computed, onMounted, defineAsyncComponent, h, type AsyncComponentLoader, type Component } from 'vue'
 import { NSpin, NAlert, NButton } from 'naive-ui'
-import { useConfigStore } from '@/stores/config'
+import { useUiStore } from '@/stores/ui'
 import { useTimeWeightAutoAllocation } from '@/composables/timeWeightAllocation'
 import { useCalculatorStartup } from '@/composables/calculatorStartup'
 import AppHeader from '@/components/AppHeader.vue'
 // 默认页保持 eager（首屏即时渲染）；其余 13 页懒加载按需拆 chunk，降低首包 JS（原全量打进 index ~1.6MB）。
 import TeamConfigPage from '@/views/TeamConfigPage.vue'
 
-const configStore = useConfigStore()
+const uiStore = useUiStore()
 const { status: startupStatus, error: startupError, start } = useCalculatorStartup()
 
 // 平A池权重·分配策略**三态**（用户裁决）：'static' 不跑（静态/手填权重）/ 'balanced' 默认＝边际均衡（B，
@@ -79,7 +79,7 @@ const pageMap: Record<string, any> = {
   bossHp: lazyPage(() => import('@/views/BossHpInflationPage.vue')),
 }
 
-const currentPage = computed(() => pageMap[configStore.activeTab] ?? TeamConfigPage)
+const currentPage = computed(() => pageMap[uiStore.activeTab] ?? TeamConfigPage)
 
 // 完整依赖成功前不挂编辑页；重试复用同一入口，默认队伍的防覆写由 config store 自身保证。
 onMounted(() => { void start() })

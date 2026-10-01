@@ -10,7 +10,7 @@
               :options="slotOptions"
               size="small"
               style="width: 180px"
-              @update:value="v => configStore.selectSlot(v)"
+              @update:value="v => uiStore.selectSlot(v)"
             />
           </n-space>
         </template>
@@ -100,6 +100,7 @@
 import { computed, onMounted } from 'vue'
 import { NAlert, NCard, NGi, NGrid, NSelect, NSpace, NTag } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
+import { useUiStore } from '@/stores/ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { computePanel, resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
 import { effectAtModLevel, wEngineEffectBlockReason } from '@/composables/wEngineEffectDisplay'
@@ -124,13 +125,14 @@ interface DebugRow {
 }
 
 const configStore = useConfigStore()
+const uiStore = useUiStore()
 const catalogStore = useCatalogStore()
 
 onMounted(async () => {
   await catalogStore.loadTeammateBuffs()
 })
 
-const selectedSlot = computed(() => configStore.selectedSlot)
+const selectedSlot = computed(() => uiStore.selectedSlot)
 const selectedChar = computed(() => configStore.team[selectedSlot.value])
 const selectedAgent = computed(() => selectedChar.value?.agentId ? catalogStore.getAgent(selectedChar.value.agentId) : undefined)
 const selectedWEngine = computed(() => selectedChar.value?.wEngineId ? catalogStore.getWEngine(selectedChar.value.wEngineId) : undefined)
@@ -146,8 +148,8 @@ const slotOptions = computed(() => configStore.team.map((char, index) => {
 // CC-208：本槽实际生效的队友 buff = 引擎面板输入（门控 / 钩子否决 / 接收槽过滤 / 修饰器改写均已生效），
 // 不再按勾选状态自己重筛（旧写法会列出引擎丢弃的条目）。全局 Buff 由 addGlobalRows 单列，这里排除。
 const slotPanelBuffs = computed<TeammateBuff[]>(() => {
-  if (!configStore.team[configStore.selectedSlot]?.agentId) return []
-  return resolveSlotPanelBuffInputs(configStore.selectedSlot, configStore, catalogStore).teammateBuffs
+  if (!configStore.team[uiStore.selectedSlot]?.agentId) return []
+  return resolveSlotPanelBuffInputs(uiStore.selectedSlot, configStore, catalogStore).teammateBuffs
 })
 const enabledTeammateBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value.filter(buff => buff.sourceKind !== 'global'))
 // CC-341：全局 Buff 同样取引擎实际收下的条目（危局 buff 牌的特性限定 / 人数分档已按当前队伍解析，值为生效档），
@@ -155,7 +157,7 @@ const enabledTeammateBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value
 const engineGlobalBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value.filter(buff => buff.sourceKind === 'global'))
 
 const currentPanel = computed<PanelValues | null>(() => {
-  return computePanel(configStore.selectedSlot, configStore, catalogStore)
+  return computePanel(uiStore.selectedSlot, configStore, catalogStore)
 })
 
 const panelSummary = computed(() => {

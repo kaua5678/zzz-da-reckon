@@ -471,9 +471,6 @@ export type ConfigCatalogReader = Readonly<Pick<ReturnType<typeof useCatalogStor
  */
 export function createConfigModel(catalogStore: ConfigCatalogReader, initialState?: Readonly<Record<string, unknown>>) {
 
-  // 当前选中的角色槽位（用于队伍配置页的详细编辑）
-  const selectedSlot = ref<number>(0)
-
   // 3人队伍
   const team = ref<CharacterConfig[]>([
     defaultCharacter(0, '', 'physical'),
@@ -580,24 +577,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     timeWeightStrategy.value = v === 'static' || v === 'joint' ? v : 'balanced'
   }
 
-  // 当前 Tab
-  const activeTab = ref<string>('team')
-
   // ========== Computed ==========
-
-  const selectedChar = computed<CharacterConfig>(() => team.value[selectedSlot.value])
-
-  const selectedAgent = computed<Agent | null>(() => {
-    const id = selectedChar.value.agentId
-    if (!id) return null
-    return catalogStore.getAgent(id) ?? null
-  })
-
-  const selectedWEngine = computed<WEngine | null>(() => {
-    const id = selectedChar.value.wEngineId
-    if (!id) return null
-    return catalogStore.getWEngine(id) ?? null
-  })
 
   // 获取某个槽位的角色
   function getChar(slot: number): CharacterConfig {
@@ -622,10 +602,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   )
 
   // ========== Actions - 队伍 ==========
-
-  function selectSlot(slot: number) {
-    selectedSlot.value = slot
-  }
 
   /**
    * 换人 + 自动推荐。
@@ -1141,10 +1117,10 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   // 判据：analysisScenario.test.ts「出生态 = 源现场」及其反例。新增 state ref 必须登记进下表，未登记的键直接抛错。
   if (initialState) {
     const stateRefs: Record<string, { value: unknown }> = {
-      selectedSlot, team, globalBuffs, teammateBuffSelections, wEngineEffectCoverages, discEffectCoverages,
+      team, globalBuffs, teammateBuffSelections, wEngineEffectCoverages, discEffectCoverages,
       resourceUtilization, mechanicSettings, teamMechanicSettings, anomalyUtilizationRates, anomalySettlementShares,
       enemy, comboAlignOverrides, stunAxes, stunAxisPlans, useStunAxis, autoYidhariAxis,
-      interactionScaleCeiling, interactionScaleMonotone, timeWeightStrategy, activeTab, appliedBoss,
+      interactionScaleCeiling, interactionScaleMonotone, timeWeightStrategy, appliedBoss,
     }
     for (const [key, value] of Object.entries(initialState)) {
       const target = stateRefs[key]
@@ -1343,7 +1319,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   return {
     // state
-    selectedSlot,
     team,
     globalBuffs,
     teammateBuffSelections,
@@ -1356,15 +1331,10 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     anomalySettlementShares,
     velinaCinema2CorrosionRate,
     enemy,
-    activeTab,
     // computed
-    selectedChar,
-    selectedAgent,
-    selectedWEngine,
     usedAgentIds,
     effectiveTime,
     // actions
-    selectSlot,
     getChar,
     getAgent,
     getWEngine,
