@@ -174,4 +174,33 @@ describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
       expect('skillDamageTarget' in g, '诺姆赠连携行刻意不写定向键（写了会吃连携定向增伤）').toBe(false)
     }
   }, 180000)
+
+  it('CC-336 诺姆与琉音同队同槽赠送共存：主C 同时收到琉音赠大与诺姆赠链时互不覆写，各自保留倍率与定向语义', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const config = useConfigStore()
+    // 槽 0 = 猫又（主 C）、槽 1 = 诺姆（上一位队友 = 槽 0）、槽 2 = 琉音（指定目标槽 0）
+    const team: [string, string, string] = ['1021', '1571', '1481']
+    for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
+    config.applyTeamPreset(team)
+    config.setMechanicSetting('liuyin.ultimateTargetSlot', 0)
+    const calc = useResourceCalc()
+    const rr = calc.resourceResult.value!
+    const main = rr.characters.find(c => c.slot === 0)!
+    const liuyinGift = (main.executions ?? []).find(e => e.source === 'gift' && !e.chainGift)
+    const normaGift = (main.executions ?? []).find(e => e.chainGift === true)
+    expect(liuyinGift, '主C 存在琉音好评转大赠行').toBeDefined()
+    expect(normaGift, '主C 存在诺姆膛温换连携赠行').toBeDefined()
+    // 琉音赠大行：保留终结技倍率与 skillDamageTarget='ultimate'，不带 dazeMultiplier
+    expect(liuyinGift!.damageMultiplier).toBeGreaterThan(0)
+    expect(liuyinGift!.skillDamageTarget).toBe('ultimate')
+    expect('dazeMultiplier' in liuyinGift!).toBe(false)
+    // 诺姆赠链行：保留连携技伤害与失衡倍率，不带 skillDamageTarget
+    expect(normaGift!.damageMultiplier).toBeGreaterThan(0)
+    expect(normaGift!.dazeMultiplier).toBeGreaterThan(0)
+    expect('skillDamageTarget' in normaGift!).toBe(false)
+    // 时间守恒：主C 前台 + 后台 = 战斗总时长
+    const sumFront = (main.executions ?? []).filter(e => (e.totalTime ?? 0) > 0).reduce((s, e) => s + (e.totalTime ?? 0), 0)
+    expect(sumFront + (main.timeAllocation.backstageTime ?? 0)).toBeCloseTo(rr.totalTime ?? 180, 6)
+  }, 180000)
 })

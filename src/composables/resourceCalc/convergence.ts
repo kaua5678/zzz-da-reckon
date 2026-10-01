@@ -925,16 +925,11 @@ export function createRunCalcRound(deps: {
     const adj1 = applyUltimatePromote(rr, sp1, catalogStore)
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
     const adj2 = applyChainGift(adj1 ?? rr, configStore, catalogStore, base.characters)
-    // 展示层：resourceResult 也带上诺姆赠送连携（执行计划/次数在资源利用率页可见），
+    // 展示层：resourceResult 也带上诺姆赠送连携与琉音好评转大（与 adj2 同一入参链，CC-336 消除重复求值），
     // 不动点/失衡池仍用原始 rr（baseStun），避免赠送连携失衡反作用于转大收敛。
-    // 琉音好评转大同样并入展示层（转大=目标队友真实打一次终结技，时间表/资源页应能看见耗时——
-    // 曾只进 adjustedResourceResult（伤害池）导致时间表看不到转大耗时，用户 2026-09 般琉卢排查；
-    // 时间从目标平A池挤出，总前台守恒，不撑破预算）。
-    const rrShown0 = applyUltimatePromote(rr, sp1, catalogStore) ?? rr
     // 展示口径归一：赠送行（诺姆赠链 / 琉音赠大，含轴模式 post-hoc carve 路径）在装配后追加，
     // 引擎 timeAllocation 看不到 → 按**最终行**重算前台/后台（单一展示口径，见 normalizeDisplayTime）
-    const rrShown = ResourceCalcHelpers.normalizeDisplayTime(
-      applyChainGift(rrShown0, configStore, catalogStore, base.characters) ?? rrShown0)
+    const rrShown = ResourceCalcHelpers.normalizeDisplayTime(adj2 ?? adj1 ?? rr)
 
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, giftedPolarAssaultThisRound, giftedPolarAssaultSlot)

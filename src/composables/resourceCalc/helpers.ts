@@ -353,6 +353,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
             // 招式类型定向（伤害路径按此读 X__<target> 定向键，如驱动盘/音擎的普攻/冲刺限定增伤）
             const foundCategory = skills?.categories?.find(cat => (cat.moves ?? []).some(m => String(m.id) === String(exec.moveId)))
             const skillDamageTarget = foundCategory ? inferSkillDamageTarget(foundCategory, move) : undefined
+            const fusedOf = (rowId: string) => fusedRowValue(skills, exec.moveId, rowId) ?? getRowValue(move, rowId)
             const specialResourceRecovery = getSpecialResourceRecovery(move)
             const healingAmount = getHealingAmount(move)
             // exec.anomalyBuildUp 显式为 0 = 模块显式禁用异常积蓄（如莱卡恩围猎后台招式"仅伤害+失衡值"）；
@@ -361,30 +362,28 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
               ? (exec.anomalyBuildUp ?? 0)
               : exec.anomalyBuildUp === 0
                 ? 0
-                : (fusedRowValue(skills, exec.moveId, 'anomaly_buildup') ?? getRowValue(move, 'anomaly_buildup'))
+                : fusedOf('anomaly_buildup')
             // 同上：decibel/energy 显式 0 = 模块显式禁用回填（围猎后台闪反无喧响/能量）；
             // 未提供（undefined）= 交倍率表回填——能量与喧响同构三态（2026-09-09 能量债务审计）。
             // decibelRecoveryOverride = 模块显式给定口径换算后的行值（如洛克茜自旋：表值为每秒，
             // 行值 = 每秒 × spinSeconds），跳过表值覆盖——与 damage/anomaly override 同构。
             // 登记融合组的主段行：喧响/能量取「一次动作」的整段和（与 damage/daze/anomaly 同一函数
             // 同一口径）；只回头段会把雅一次连携的 230.15 记成 69.05（坑 31）。
-            const tableDecibel = fusedRowValue(skills, exec.moveId, 'decibel_recovery')
-              ?? getRowValue(move, 'decibel_recovery')
+            const tableDecibel = fusedOf('decibel_recovery')
             const decibelValue = exec.decibelRecoveryOverride
               ? (exec.decibelRecovery ?? 0)
               : exec.decibelRecovery === 0 ? 0 : (tableDecibel || (exec.decibelRecovery ?? 0))
-            const tableEnergy = fusedRowValue(skills, exec.moveId, 'energy_recovery')
-              ?? getRowValue(move, 'energy_recovery')
+            const tableEnergy = fusedOf('energy_recovery')
             const energyValue = exec.energyRecovery === 0 ? 0 : (tableEnergy || (exec.energyRecovery ?? 0))
             patch = {
               actionCode: move.id,
               moveName: move.name?.zhCN || move.name?.en || exec.moveName,
               damageMultiplier: exec.damageMultiplierOverride
                 ? exec.damageMultiplier
-                : (fusedRowValue(skills, exec.moveId, 'damage') ?? getRowValue(move, 'damage')),
+                : fusedOf('damage'),
               dazeMultiplier: exec.dazeMultiplierOverride
                 ? exec.dazeMultiplier
-                : (fusedRowValue(skills, exec.moveId, 'daze') ?? getRowValue(move, 'daze')),
+                : fusedOf('daze'),
               anomalyBuildUp: bu,
               totalAnomalyBuildUp: bu * Math.max(0, exec.count),
               energyRecovery: energyValue,
@@ -718,18 +717,8 @@ export function extractSkillExecutions(
     if (opts?.skipGift && (exec.source === 'gift' || exec.chainGift)) continue
 
     // 在倍率表中查找对应的 move
-    let foundMove: SkillMove | null = null
-    let foundElement: string | undefined
-    for (const cat of skills.categories) {
-      for (const move of cat.moves) {
-        if (move.id === exec.moveId) {
-          foundMove = move
-          foundElement = exec.element ?? move.damageElement ?? fallbackElement
-          break
-        }
-      }
-      if (foundMove) break
-    }
+    const foundMove = findMoveById(skills, exec.moveId)
+    const foundElement = foundMove ? (exec.element ?? foundMove.damageElement ?? fallbackElement) : undefined
 
     // 平A汇总行（moveId = 'basic_attack'）：用基准段（第3段）秒均数据 × 时间
     if (exec.moveId === 'basic_attack' && exec.totalTime > 0) {
@@ -781,13 +770,14 @@ export function extractSkillExecutions(
     // 其他招式（强特、终结技、连携等）
     if (foundMove) {
       const count = exec.count
+      const fusedOf = (rowId: string) => fusedRowValue(skills, exec.moveId, rowId) ?? getRowValue(foundMove, rowId)
       // 模块可用 dazeMultiplierOverride 覆盖失衡倍率（如诺姆影画6 破甲弹头失衡值+30%），与 damageMultiplierOverride 同机制
-      const tableDaze = fusedRowValue(skills, exec.moveId, 'daze') ?? getRowValue(foundMove, 'daze')
+      const tableDaze = fusedOf('daze')
       const daze = exec.dazeMultiplierOverride && (exec.dazeMultiplier ?? 0) > 0
         ? exec.dazeMultiplier!
         : tableDaze
       // 假 id/合成执行支持执行级异常积蓄覆盖（如仪玄符法千重-破 226.7，倍率行被隐藏）
-      const anomaly = exec.anomalyBuildUp ?? (fusedRowValue(skills, exec.moveId, 'anomaly_buildup') ?? getRowValue(foundMove, 'anomaly_buildup'))
+      const anomaly = exec.anomalyBuildUp ?? fusedOf('anomaly_buildup')
       const moveName = exec.moveName.replace(/（.*）/g, '').trim()
       // 模块能力 `skillDazeMultiplier`：招式级失衡独立乘区，缺省 1（CC-34c② 2026-09-27，原蕾米埃尔 Radiant Turn 内联分支）
       const skillDazeMult = mechanic?.skillDazeMultiplier?.({ moveId: foundMove.id, panel }) ?? 1

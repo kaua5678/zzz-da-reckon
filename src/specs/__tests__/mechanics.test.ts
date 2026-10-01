@@ -194,4 +194,55 @@ describe('spec mechanics interpreter', () => {
     expect(executions[1].damageMultiplier).toBe(555)
     expect(executions[1].damageMultiplierOverride).toBe(true)
   })
+
+  it('CC-336 buildSpecAnomalyEvents 与 buildSpecEventExecutions 统一支持按 countField ?? event.id 从 counts 解析次数', () => {
+    const spec: AgentMechanicSpec = {
+      schemaVersion: 1,
+      id: 'agent:cc336',
+      name: 'CC336',
+      agentIds: ['cc336'],
+      status: 'implemented',
+      attributeConversions: [],
+      resources: [],
+      rowFusions: [],
+      events: [
+        {
+          id: 'anomaly_by_id',
+          name: 'AnomalyById',
+          trigger: 'x',
+          eventType: 'release',
+          carrierMoveId: 'm_anom',
+          status: 'implemented',
+        },
+        {
+          id: 'exec_by_id',
+          name: 'ExecById',
+          trigger: 'y',
+          eventType: 'direct_damage',
+          executionKind: 'execution',
+          carrierMoveId: 'm_exec',
+          status: 'implemented',
+        },
+      ],
+      verifications: [],
+      stateMachines: [],
+      notes: [],
+    }
+    const cfg = { mechanicRowValues: { m_exec: 400 } } as unknown as CharacterOperationConfig
+    const state = {} as IterationState
+
+    const anomalyEvents = buildSpecAnomalyEvents(spec, cfg, state, { anomaly_by_id: 3 })
+    expect(anomalyEvents).toHaveLength(1)
+    expect(anomalyEvents[0].eventId).toBe('anomaly_by_id')
+    expect(anomalyEvents[0].count).toBe(3)
+
+    const execEvents = buildSpecEventExecutions(spec, {
+      cfg,
+      state,
+      counts: { exec_by_id: 4 },
+    })
+    expect(execEvents).toHaveLength(1)
+    expect(execEvents[0].moveId).toBe('m_exec')
+    expect(execEvents[0].count).toBe(4)
+  })
 })

@@ -82,37 +82,25 @@ export function applyChainGift(
       //
       // 阶段1 ②（2026-09-10）：**行由引擎物化**（存在/行序），本函数补倍率 + 连携计数，并把
       // 计数/时长**以池为准**写回；找不到行时兜底追加。
-      const giftIdx = (char.executions ?? []).findIndex(e => e.chainGift || e.source === 'gift')
-      const giftPatch = {
+      // CC-336：按 `e.chainGift` 精确定位诺姆赠链占位行（避免同槽存在琉音 `source === 'gift'` 赠大行时误覆写），
+      // 统一经 `buildGiftRow` 构造行字段，消除补丁与兜底追加两套 13 字段重复。
+      const giftIdx = (char.executions ?? []).findIndex(e => Boolean(e.chainGift))
+      const giftRow = buildGiftRow({
+        moveId: chainInfo.moveId,
+        moveName: `${giftedMove?.name?.zhCN || '连携技'}（${gift.label}）`,
         count: hatCount,
         actionTime: chainInfo.actionTime,
-        totalTime: hatCount * chainInfo.actionTime,
-        totalComboAlignTime: hatCount * chainInfo.actionTime * chainInfo.comboAlignRatio,
-        moveName: `${giftedMove?.name?.zhCN || '连携技'}（${gift.label}）`,
+        comboAlignRatio: chainInfo.comboAlignRatio,
         decibelRecovery: chainInfo.decibelRecovery,
-        totalDecibelRecovery: chainInfo.decibelRecovery * hatCount,
         damageMultiplier: giftedDamage,
-        damageMultiplierOverride: giftedDamage > 0,
         dazeMultiplier: giftedDaze,
-        dazeMultiplierOverride: giftedDaze > 0,
         anomalyBuildUp: giftedAnomaly,
-        totalAnomalyBuildUp: giftedAnomaly * hatCount,
-      }
+        skillTableNote: gift.note,
+        chainGift: true,
+      })
       const executions = giftIdx >= 0
-        ? (char.executions ?? []).map((e, i) => (i === giftIdx ? { ...e, ...giftPatch } : e))
-        : [...(char.executions ?? []), buildGiftRow({
-          moveId: chainInfo.moveId,
-          moveName: giftPatch.moveName,
-          count: hatCount,
-          actionTime: chainInfo.actionTime,
-          comboAlignRatio: chainInfo.comboAlignRatio,
-          decibelRecovery: chainInfo.decibelRecovery,
-          damageMultiplier: giftedDamage,
-          dazeMultiplier: giftedDaze,
-          anomalyBuildUp: giftedAnomaly,
-          skillTableNote: gift.note,
-          chainGift: true,
-        })]
+        ? (char.executions ?? []).map((e, i) => (i === giftIdx ? { ...e, ...giftRow } : e))
+        : [...(char.executions ?? []), giftRow]
       return {
         ...char,
         chainCountTotal: (char.chainCountTotal ?? 0) + hatCount,

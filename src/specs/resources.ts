@@ -74,11 +74,8 @@ function computeOneResource(
     const totalSparkCount = baseSparkCount + bonusCount
 
     for (const rule of resource.feedbackGainRules) {
-      const count = rule.countSource === 'totalSparkCount'
-        ? totalSparkCount
-        : resolveGainCount(rule, cfg, state, context)
-      const amount = applyAdjustable(rule, cfg, resolveRuleAmount(rule, cfg))
-      const gain = count * amount * (rule.coverage ?? 1)
+      const countOverride = rule.countSource === 'totalSparkCount' ? totalSparkCount : undefined
+      const gain = resolveGain(rule, cfg, state, context, countOverride)
       gains[rule.id ?? 'feedback_gain'] = gain
       totalGain += gain
     }
@@ -134,8 +131,9 @@ function resolveGain(
   cfg: CharacterOperationConfig,
   state: IterationState,
   context: SpecResourceContext,
+  countOverride?: number,
 ): number {
-  const count = resolveGainCount(rule, cfg, state, context)
+  const count = countOverride ?? resolveGainCount(rule, cfg, state, context)
   const amount = applyAdjustable(rule, cfg, resolveRuleAmount(rule, cfg))
   return count * amount * (rule.coverage ?? 1)
 }

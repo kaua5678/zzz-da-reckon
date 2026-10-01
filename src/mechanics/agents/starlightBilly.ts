@@ -11,7 +11,7 @@ import type {
 import type { BillyChain, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
-import { computeSpecResources } from '@/specs/resources'
+import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'

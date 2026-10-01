@@ -186,48 +186,6 @@ function buildAliceCharConfig({
 
 // ============ buildExecutions ============
 
-function aliceSwordWillTotal(
-  cfg: {
-    aliceEnabled?: boolean
-    aliceSwordWillPerSec?: number
-    aliceExSpecialSwordWill?: number
-    aliceInitialSwordWill?: number
-    alicePolarityAssaultSwordWill?: number
-    aliceTeamAssaultSwordWill?: number
-    aliceDisorderSwordWill?: number
-    aliceCinema2UltSpark?: boolean
-  },
-  state: { basicAttackTime: number; exSpecialCount: number; ultimateCount?: number },
-  /** 来自异常池的额外数据（极性强击=spark 自身计算，全队强击和紊乱需外部传入） */
-  anomalyPoolData?: { assaultTriggerCount?: number; disorderCount?: number },
-): { total: number; basicAttackGain: number; exSpecialGain: number; polarityAssaultGain: number; teamAssaultGain: number; disorderGain: number; c2UltSparkCount: number } {
-  if (!cfg.aliceEnabled) return { total: 0, basicAttackGain: 0, exSpecialGain: 0, polarityAssaultGain: 0, teamAssaultGain: 0, disorderGain: 0, c2UltSparkCount: 0 }
-
-  const spec = getAgentSpec(ALICE_AGENT_ID)
-  if (!spec) return { total: 0, basicAttackGain: 0, exSpecialGain: 0, polarityAssaultGain: 0, teamAssaultGain: 0, disorderGain: 0, c2UltSparkCount: 0 }
-
-  const resource = computeSpecResources(
-    spec,
-    cfg as unknown as CharacterOperationConfig,
-    state as unknown as IterationState,
-    {
-      teamAssaultCount: anomalyPoolData?.assaultTriggerCount ?? 0,
-      disorderCount: anomalyPoolData?.disorderCount ?? 0,
-    },
-  ).get('alice_sword_will')
-  if (!resource) return { total: 0, basicAttackGain: 0, exSpecialGain: 0, polarityAssaultGain: 0, teamAssaultGain: 0, disorderGain: 0, c2UltSparkCount: 0 }
-
-  return {
-    total: resource.total,
-    basicAttackGain: resource.gains['alice_basic_gain'] ?? 0,
-    exSpecialGain: resource.gains['alice_ex_gain'] ?? 0,
-    polarityAssaultGain: resource.gains['alice_polarity_feedback'] ?? 0,
-    teamAssaultGain: resource.gains['alice_team_assault_gain'] ?? 0,
-    disorderGain: resource.gains['alice_disorder_gain'] ?? 0,
-    c2UltSparkCount: resource.bonusCount,
-  }
-}
-
 function buildAliceSwordWillSource(
   cfg: {
     aliceEnabled?: boolean

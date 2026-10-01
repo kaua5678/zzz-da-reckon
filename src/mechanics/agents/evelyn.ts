@@ -247,14 +247,14 @@ function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
   // 面板字段直接委托 computeEvelynCycle 求值（coreCritRate / c4CritDmg / c1DefIgnore）。
   const cycle = computeEvelynCycle({
     cinemaLevel,
-    basicAttackTime: 0,
-    exSpecialCount: 0,
-    chainCountTotal: 0,
+    garroteCount: 0,
     ultimateCount: 0,
+    baseCritRate: 0,
     additionalActive: false,
     restraintCoverage: settings['evelyn.restraintCoverage'] ?? 1,
     c1DefIgnoreCoverage: settings['evelyn.c1DefIgnoreCoverage'] ?? 1,
     c4ShieldCoverage: settings['evelyn.c4ShieldCoverage'] ?? 1,
+    c6FollowUpCount: 0,
   })
   panel.critRate = (panel.critRate ?? 0) + cycle.coreCritRate
   if (cinemaLevel >= 4) {

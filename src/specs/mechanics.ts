@@ -37,6 +37,12 @@ export interface SpecEventExecutionInput {
   getRowValue?: (moveId: string, rowId: string) => number
 }
 
+function isSpecEventEnabled(event: EventSpec, cfg: CharacterOperationConfig): boolean {
+  if (!event.enabledField) return true
+  const record = cfg as unknown as Record<string, unknown>
+  return Boolean(record[event.enabledField])
+}
+
 export function buildSpecAnomalyEvents(
   spec: AgentMechanicSpec,
   cfg: CharacterOperationConfig,
@@ -45,10 +51,7 @@ export function buildSpecAnomalyEvents(
 ): AnomalyEventExecution[] {
   return spec.events.flatMap(event => {
     if (event.executionKind === 'execution') return []
-    if (event.enabledField) {
-      const record = cfg as unknown as Record<string, unknown>
-      if (!record[event.enabledField]) return []
-    }
+    if (!isSpecEventEnabled(event, cfg)) return []
     const count = resolveEventCount(event, state, counts)
     if (count <= 0) return []
     return [{
@@ -76,17 +79,15 @@ export function buildSpecEventExecutions(
   const executions: SkillExecution[] = []
   for (const event of spec.events) {
     if (event.executionKind !== 'execution') continue
-    if (event.enabledField) {
-      const record = input.cfg as unknown as Record<string, unknown>
-      if (!record[event.enabledField]) continue
-    }
+    if (!isSpecEventEnabled(event, input.cfg)) continue
     const moveId = resolveCarrierMoveId(event, input.cfg)
     if (!moveId) continue
 
     const override = input.overrides?.[event.id]
-    let count = input.counts?.[event.countField ?? event.id] ?? resolveEventCount(event, input.state, input.counts ?? {})
-    if (override?.count != null) count = override.count
-    count = Math.max(0, Math.floor(count))
+    const count = Math.max(
+      0,
+      Math.floor(override?.count ?? resolveEventCount(event, input.state, input.counts ?? {})),
+    )
     if (count <= 0) continue
 
     const rowId = event.multiplierRowId ?? 'damage'
@@ -141,9 +142,7 @@ export function specToMechanicModule(spec: AgentMechanicSpec): AgentMechanicModu
       if (!hasEvents) return
       const rowValues: Record<string, number> = {}
       for (const event of spec.events) {
-        const moveId = event.carrierField
-          ? String((cfg as unknown as Record<string, unknown>)[event.carrierField] ?? '')
-          : event.carrierMoveId ?? ''
+        const moveId = resolveCarrierMoveId(event, cfg)
         if (!moveId) continue
         // CC-241：取值走 data getRowValue（吃逻辑编辑器行规则，作用面见 docs/mcp-stun-dual-source.md §24.85 ④）。
         // mechanicRowValues 即事件 base（无二次乘）。生效面（第 263 轮探针）：下游仅在 usesOverride（ratio≠1 或 cinema override）
@@ -237,8 +236,12 @@ function resolveEventCount(
   state: IterationState,
   counts: SpecEventCounts,
 ): number {
+  const direct = counts[event.countField ?? event.id]
+  if (direct != null) {
+    return Math.max(0, Math.floor(direct))
+  }
   if (event.countField) {
-    return Math.max(0, Math.floor(counts[event.countField] ?? 0))
+    return 0
   }
   switch (event.countSource) {
     case 'ultimateCount':

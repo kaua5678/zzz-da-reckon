@@ -128,40 +128,28 @@ export function applyUltimatePromote(
       // 转大白送的终结技独立成行（source='gift'），不并入目标原始终结技行——否则赠送归因（击破手对比的 gift 列）会丢失。
       // 阶段1 ②（2026-09-10）：**行由引擎物化**（存在/行序），本函数补倍率 + carve，并把
       // 计数/时长**以池为准**写回（引擎推导在退化配置下会与池不同）；找不到行时兜底追加。
-      const giftIdx = char.executions.findIndex(e => e.source === 'gift' && e.moveId === ultimateMoveId)
+      // CC-336：与上方 `promote <= 0` 分支一致加 `!e.chainGift` 门控，统一经 `buildGiftRow` 构造行字段。
+      const giftIdx = char.executions.findIndex(e => e.source === 'gift' && !e.chainGift && e.moveId === ultimateMoveId)
+      const giftRow = buildGiftRow({
+        moveId: ultimateMoveId,
+        moveName: '好评转大·队友终结技',
+        count: promote,
+        actionTime: ultActionTime,
+        comboAlignRatio: giftIdx >= 0 ? (char.executions[giftIdx].comboAlignRatio ?? 0) : 0,
+        damageMultiplier: ultMult,
+        anomalyBuildUp: ultBuildUp,
+        skillDamageTarget: ultTarget,
+        skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
+      })
       const patched = char.executions.map((e, i) => {
         if (i === basicIdx) return { ...e, totalTime: Math.max(0, (e.totalTime ?? 0) - carve + refund) }
         if (i !== giftIdx) return e
-        return {
-          ...e,
-          count: promote,
-          actionTime: ultActionTime,
-          totalTime: promoteTime,
-          totalComboAlignTime: promoteTime * (e.comboAlignRatio ?? 0),
-          moveName: '好评转大·队友终结技',
-          damageMultiplier: ultMult,
-          damageMultiplierOverride: ultMult > 0,
-          anomalyBuildUp: ultBuildUp,
-          totalAnomalyBuildUp: ultBuildUp * promote,
-          skillDamageTarget: ultTarget,
-          skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
-        }
+        return { ...e, ...giftRow }
       })
       return {
         ...char,
         ultimateCount: (char.ultimateCount ?? 0) + promote,
-        executions: giftIdx >= 0
-          ? patched
-          : [...patched, buildGiftRow({
-            moveId: ultimateMoveId,
-            moveName: '好评转大·队友终结技',
-            count: promote,
-            actionTime: ultActionTime,
-            damageMultiplier: ultMult,
-            anomalyBuildUp: ultBuildUp,
-            skillDamageTarget: ultTarget,
-            skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
-          })],
+        executions: giftIdx >= 0 ? patched : [...patched, giftRow],
       }
     }),
   }
