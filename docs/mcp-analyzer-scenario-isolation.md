@@ -1,14 +1,15 @@
 # 分析器独立场景（数据隔离）：设计、验证与迁移进度
 
-> 第 369 轮（lane arena-C，2026-10-01）起草，CC-343。第 1 阶段代码 `02049db9`；第 372 轮（arena-C）迁完抽卡规划 + 自由对比（`dfe53a2e`）并删 `configSnapshot.ts`（S3，`81b0d2dc`）。
+> 第 369 轮（lane arena-C，2026-10-01）起草，CC-343。第 1 阶段代码 `02049db9`；第 372 轮（arena-C）迁完抽卡规划 + 自由对比（`dfe53a2e`）并删 `configSnapshot.ts`（S3，`81b0d2dc`）；第 374 轮（arena-C）S4 接 `batchTask`（取消契约统一 + 结果归属，`423e9de4` + `962e8b9f`）。
 > 本文是这条线的唯一主档：动机、设计、判据、逐个分析器的迁移状态、迁移配方、后续阶段、决定与回退点。
 > 代码侧入口：`src/composables/analysisScenario.ts`（头注释）、`src/stores/config.ts`「独立场景出生态」段、
 > `src/composables/useResourceCalc.ts#createResourceCalc`。判据：`src/composables/__tests__/analysisScenario.test.ts`。
 
 ## 0. 现状一句话
 
-S2 / S3 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage` 会话缓存键都在独立场景上求值，
-`configSnapshot.ts`（快照 / 恢复）已删除（`81b0d2dc`）。剩下的路是 S4（接 `batchTask.ts`）与可选的 S5（收窄类型）。
+S2 / S3 / S4 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage` 会话缓存键都在独立场景上求值，
+`configSnapshot.ts`（快照 / 恢复）已删除（`81b0d2dc`），取消与结果归属已统一到 `batchTask.ts`（`423e9de4` + `962e8b9f`）。
+剩下只有可选的 S5（收窄类型）；`createBatchScheduler`（时间片让步）仍未接线，理由见 §3.4 末段。
 历史：第 1 阶段只落地底座 + 一个试点（角色兑现曲线 `computeIncrementPass`），其余 7 个模块当时仍靠 11 处
 `snapshotStore` / `restoreStore` 改写 UI store 再恢复。迁移清单与配方见 §4、§5。
 
@@ -129,6 +130,43 @@ S2 / S3 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage` 会�
   `analysisScenario.test.ts` ④b，`setAgent(slot, "")` 同步清空该槽音擎 → `stores/__tests__/configModel.test.ts`。
 - 全量 verify：`dfe53a2e` EXIT 0（449 文件 / 4129 测试通过，16 / 29 跳过）；`81b0d2dc` EXIT 0（448 文件 / 4125 测试通过，16 / 29 跳过，178.8s）。
 
+### 3.4 第 374 轮（S4 接 `batchTask`：取消契约统一 + 结果归属，`423e9de4` + `962e8b9f`）
+
+- **问题**：`batchTask.ts`（`9b523a0a`，提交说明即写「接线须先完成数据隔离」）自建成起**没有生产调用方**——
+  它要解决的两件事在页面上各写了一份：取消（`FreeComparePage` 的 `abortFlag` + `shouldAbort: () => abortFlag`、
+  `TeamComparePage` 的 `curveAbort`、`teamCompareSweep` 的 `sweepAbort`），而「只有当前运行才许写进度/结果」
+  **一处都没有**（`result.value = await ...` 无条件赋值 ⇒ 旧运行算完会把新运行的结果盖掉）。
+- **改法（`423e9de4`，S4a）**：
+  - `batchTask.ts`：`BatchControl` 只留 `signal`（废除 `shouldAbort` 回调——此时全仓无生产调用方）；
+    新增 `isBatchAborted(control?)`（非抛出探测，给「保留已算部分」的优雅中止用）；导出 `BatchOwner` 类型。
+  - `freeCompare/engine.ts` 与 `teamTimeline.ts#computeSlotSweepPoints`：`shouldAbort?: () => boolean` → `control?: BatchControl`，探测改 `isBatchAborted`。
+  - `FreeComparePage` / `TeamComparePage`（runCompare + runCurves）/ `teamCompareSweep`：改用 `useBatchOwner()`，
+    进度 / 结果 / finally 一律经 `run.commit(...)`，中止按钮改调 `owner.cancel()`；删掉三个手写标志。
+- **改法（`962e8b9f`，S4b）**：其余 6 个调用点同样接 owner（`CharIncrementPage`、`PullPlannerChart`、`PositionComparePage`、
+  `chartRunners` 的 4 个 runner + 4 个图表组件），并把 `control: { signal: run.signal }` 穿进 7 个分析器
+  （`charIncrement`、`teamTimeline` 三个入口、`teamTimelineFilm`、`pullPlanner#planPullStrategy`、`pullPlannerEngine#runPullPlanner`）：
+  被新运行顶掉时，旧运行在下一个循环头 `break`（优雅中止，返回已算部分，页面侧 `commit` 丢弃）——不再白跑完 15~27 秒。
+- **决定（取消语义）**：`owner.cancel()` **只停计算、不吊销提交权**。原实现（既停算又吊销）与页面
+  「取消 / 中止保留已算部分」的既定行为冲突——曲线与海选的进度文案本来就写着「已中止：保留已算的 N 条」。
+  吊销只来自两处：`start()` 被新运行顶掉、`dispose()` 页面关闭；`isCurrent()` 因此去掉 `!signal.aborted` 从句
+  （它对吊销是冗余的）。`batchTask.test.ts` 把这三条钉成反证。
+- **决定（不抛错）**：分析器的 `control` 是优雅中止（break 后返回已算部分），**不改成 `throwIfBatchAborted`**——
+  这些页面没有 catch，抛出来会变成未处理的 Promise 拒绝。
+- **有意未接的一块**：`createBatchScheduler`（时间片让步）仍未接线。现有分析器全是「保留已算部分」的优雅中止
+  （粒度 = 循环头），调度器的 `checkpoint()` 是抛错式取消，语义不同；接它之前要先决定「中止到底丢不丢已算部分」。
+  留给必须硬停的路径（worker；把求值搬进 Web Worker 时按时间片切分）。
+- **A/B 零差**：同一现场同一输入，HEAD（`425f9412`）与 S4 后各跑一遍，七路输出逐字节相同——
+  抽卡规划 md5 `703c3db4553f628755a21d7c7fca8fc2`（1818 字节）、自由对比命座轴 `3293188e4febe623ed3c595367b46b07`（539）、
+  自由对比期数轴 `942e10ac47a7cbe76e51c93178076351`（410）、charincrement `4e98fd435d6fdbd58b5a9540b16bd0a9`（1029）、
+  teamtimeline `db19b112a7b01581cab65120182cc45f`（5984）、filmsim `3d5c0377ea9469072d84a3ccc6573a71`（2419）、
+  slotsweep `1649163395d9c01b44231c2b0b7f3286`（633）。探针未入库：`/home/kaua/calc-arch/arenaC/zzS4Probe.test.ts`、`ab-r374.sh` / `ab-r374b.sh`。
+  插曲：teamtimeline 第一轮**两边同样**报「配装推荐数据未加载」（探针忘了 `loadBuildRecommendations`），
+  补齐后重跑；随后唯一差异是 `stats.durationMs`（墙钟），剔掉后才逐字节相同——探针剔墙钟字段的规矩由此又多一条。
+- **测试**：`batchTask.test.ts` 5/5（新语义反证：取消后可提交、被 `start()` 顶掉后不可提交、卸载后不可提交；
+  `isBatchAborted` 与 `throwIfBatchAborted` 同口径、无 control 不炸）；`slotSweep.test.ts` 4/4
+  （新增「onProgress 中途取消 ⇒ 至多再算一个候选，已算部分照常返回」）。
+  定向 353 项全绿；`vue-tsc -b` 0 错；check-guards 25/25；全量 verify EXIT 0（448 文件 / 4125 测试通过）。
+
 ## 4. 迁移进度（每迁一个：改本表 + 把文件加进 `analysisScenario.test.ts` 的 `MIGRATED_ANALYZERS`）
 
 | 分析器 | 入口 | 调用方 | 同步 / 异步 | 状态 |
@@ -163,7 +201,10 @@ S2 / S3 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage` 会�
 
 1. ~~**S2 迁完 §4 的 7 个模块**~~ ✅ 第 371 / 372 / 373 轮全部完成：时间线 + 菲林 `d9e39042`；抽卡规划 + 自由对比 `dfe53a2e`；位置对比（T3）+ 难度曲线 + 队伍对比 `851f232f`。
 2. ~~**S3 删 `configSnapshot.ts`**~~ ✅ 第 372 轮 `81b0d2dc`：8 个分析器 + `TeamComparePage` 缓存键迁完后调用方为零，删模块与测试。`TeamComparePage` 的缓存键已由第 373 轮改成 `cloneConfigState(configStore.$state)`；CC-278 的内联快照源码锁搬到 `analysisScenario.test.ts` ④b（`MIGRATED_ANALYZERS` 现已覆盖全部分析器）。
-3. **S4 接 `batchTask.ts`**：每个任务一个场景（或一个场景跑完一批再 dispose），任务间天然隔离；之后才谈 worker。
+3. ~~**S4 接 `batchTask.ts`**~~ ✅ 第 374 轮（`423e9de4` + `962e8b9f`）：取消契约统一为 `BatchControl.signal`
+   （废除 `shouldAbort` 回调），9 个调用点接 `createBatchOwner`（进度 / 结果 / finally 只归当前运行），
+   7 个分析器穿 `control`（被顶掉时下一循环头停算）。「每个任务一个 `withAnalysisScenario`」在 S2 迁完时即已成立
+   （`TeamComparePage` 逐队建场景，其余整次运行一个）。`createBatchScheduler` 仍未接线，理由见 §3.4；之后才谈 worker。
 4. **S5 收窄类型（可选）**：管线与分析器里 `ReturnType<typeof useConfigStore>` 的参数改成 `ConfigModel`（`config.ts` 已导出），场景就不必把 model 标成 store 类型；
    各文件里的 `ReturnType<typeof useResourceCalc>`（现 10 处）换成导入 `ResourceCalc`。只在顺手时做，不为降计数单独开卡。
 
@@ -175,6 +216,11 @@ S2 / S3 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage` 会�
   后者要求场景模块知道「哪个 watcher 怎么触发」，且把建场景变成异步；出生态对未来新增的 watcher 也成立。
 - **`$state` 视图键取自源的 `$state`**：与 Pinia 对 state 的分类完全一致，memo 键覆盖的字段与 UI 实例相同。
 - **不改其余 7 个分析器模块**：第 1 阶段只证明底座与一个试点（A/B 逐字节相同）；逐个迁移是机械活，按 §5 一张卡一个，单独可回退。（S2 已由第 371 / 372 / 373 轮做完。）
+- **取消与归属走 `batchTask`，不进 `AnalysisContext`**（第 374 轮决定）：场景是数据沙箱，任务是生命周期，
+  两者都每次运行一份但职责不同。分析器在选项里收 `control?: BatchControl`（替换原来的 `shouldAbort`），
+  调用方建 owner 并发车；`withAnalysisScenario` 保持「只负责建/销场景」这一件事。
+- **`cancel()` 不吊销提交权**（第 374 轮决定）：见 §3.4。若日后要「取消即丢弃已算部分」，
+  回退点 = 把 `cancel()` 改回 `current = null; previous?.abort()`，并去掉三个页面中止按钮旁的部分结果展示。
 - **catalog 不进 `AnalysisContext`，分析器内部仍 `useCatalogStore()`**（第 372 轮决定）：目录是全局只读数据（角色 / 音引擎 / 推荐配装，加载后不再被用户改写），场景不持有独立副本——`createAnalysisScenario` 也是把同一个 catalog store 直接传给 `createResourceCalc`。把它收进上下文对隔离没有收益，却会让每个测试都多传一个字段。源码锁④因此只查 `useConfigStore()`。**再收窄的时机**：等 worker 真的需要自己的目录快照时（S4 / worker 化），那时 `AnalysisContext` 加 `catalog` 才是必要改动。
 
 ## 8. 坑
@@ -184,6 +230,11 @@ S2 / S3 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage` 会�
 - **写注释别出现被锁函数名的调用形态**：源码锁④ 按调用形态匹配，注释里写「不调 `useConfigStore()`」一样会红（第 372 轮实测踩到，改成「不读 UI config store」）。
 - 新增 state ref 必须登记进 `config.ts` 出生态键表，否则建场景直接抛错。
 - 一次运行一个场景；`withAnalysisScenario` 出错也会 dispose。
+- `owner.cancel()` 只停计算；要「连已算部分一起丢」得调用方自己丢（当前没有这种需求）。
+- `useBatchOwner()` 在组件 setup 里调才有 `onScopeDispose`；在 composable 里调（如 `useSlotSweep`）同样生效
+  （composable 也在 setup 作用域内被调用）。
+- 分析器的 `control` 是优雅中止：break 后返回已算部分，页面侧 `commit` 丢弃。别改成 throw——页面没有 catch。
+- 页面里延时的「收起提示」定时器也要过 `run.commit`，否则被顶掉的旧运行会把新运行的进度条清掉。
 - 场景里 `effectScope(true)` 是脱离父作用域的：在组件 setup 里建也不会随组件卸载自动停，必须 `dispose()`（用 `withAnalysisScenario` 就不会漏）。
 
 ## 9. 回退点
@@ -192,3 +243,4 @@ S2 / S3 已全部完成：§4 的 8 个分析器入口与 `TeamComparePage` 会�
 - 只回退试点：恢复 `charIncrement.ts` / `CharIncrementPage.vue` / `charIncrementInt.test.ts` 三个文件到 `2d781b67`，并从 `MIGRATED_ANALYZERS` 删掉该项。
 - 第 372 轮（抽卡规划 + 自由对比）：`git revert dfe53a2e`（恢复快照路径；调用方改回传 `calc`）。
 - S3（删 configSnapshot）：`git revert 81b0d2dc`。**顺序要紧**：S3 之后不能再单独把某个分析器退回快照路径——`configSnapshot.ts` 已不在，回退前必须先 `git revert 81b0d2dc`。
+- S4：`git revert 962e8b9f` → `git revert 423e9de4`（S4b 用了 S4a 的 `BatchControl` / `isBatchAborted` / `BatchOwner`，顺序反了编译不过）。

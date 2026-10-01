@@ -4825,3 +4825,18 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **影响**：零差。A/B 三项逐字节相同：抽卡规划（2 期 + VCG）md5 `703c3db4553f628755a21d7c7fca8fc2`（1818 字节，27.3s / 27.5s）；自由对比命座轴 md5 `3293188e4febe623ed3c595367b46b07`（539 字节）；自由对比期数轴 md5 `942e10ac47a7cbe76e51c93178076351`（410 字节）。全量 verify 两次 EXIT 0（4129 / 4125 测试通过）。
 - **决定**：`catalog` 不进 `AnalysisContext`，分析器内部仍 `useCatalogStore()`——目录是全局只读数据、场景不持有独立副本；源码锁④只查 `useConfigStore()`。等 worker 需要自己的目录快照时再收窄（依据见 `docs/mcp-analyzer-scenario-isolation.md` §7）。
 - **回退点**：先 `git revert 81b0d2dc` 再 `git revert dfe53a2e`——顺序反了编译不过（`configSnapshot.ts` 已不在）。
+
+### 24.188 CC-343 S4（`423e9de4` + `962e8b9f`，第 374 轮，lane arena-C）：接 `batchTask`——取消契约统一为 AbortSignal + 结果归属
+
+- **问题**：`batchTask.ts`（`9b523a0a`）没有生产调用方；取消在页面上手写三份（`abortFlag` / `curveAbort` / `sweepAbort`），
+  而「只有当前运行才许写进度/结果」一处都没有——`result.value = await ...` 无条件赋值，旧运行算完会盖掉新运行的结果。
+- **改法**：`BatchControl` 只留 `signal`（废除 `shouldAbort` 回调）+ 新增 `isBatchAborted` + 导出 `BatchOwner` 类型；
+  `freeCompare/engine.ts` 与 `teamTimeline#computeSlotSweepPoints` 的 `shouldAbort` 选项换成 `control`；
+  9 个调用点（FreeComparePage / TeamComparePage runCompare+runCurves / teamCompareSweep / CharIncrementPage / PullPlannerChart /
+  PositionComparePage / chartRunners 4 runner）接 `useBatchOwner`，进度/结果/finally 走 `run.commit`；
+  7 个分析器穿 `control`，被顶掉时在下一个循环头 break（优雅中止，返回已算部分由页面丢弃）。
+- **决定**：`cancel()` 只停计算、**不吊销提交权**（取消后已算部分仍由该运行自己发布 = 曲线/海选「保留已算部分」的依据）；
+  吊销只来自 `start()` 顶掉与 `dispose()` 页面关闭。`createBatchScheduler` 仍未接线（抛错式取消与现有优雅中止语义不同，留给 worker）。
+- **影响**：零差，A/B 七路逐字节相同（md5 `703c3db4` / `3293188e` / `942e10a` / `4e98fd43` / `db19b112` / `3d5c0377` / `1649163395`）。
+  全量 verify EXIT 0（448 文件 / 4125 测试通过）；`vue-tsc -b` 0 错；check-guards 25/25。
+- **回退点**：`git revert 962e8b9f` → `git revert 423e9de4`。
