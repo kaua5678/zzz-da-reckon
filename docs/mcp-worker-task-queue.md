@@ -96,25 +96,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 356 轮（lane arena-A，承接第 355 轮下一步 1–2）：CC-337 `calcPanel` 局外总回能出口盖章、轴块招式能量成本类型化与跨模块单源化（代码 `f0c5b4b8`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `7dca5daf`，工作区干净）。**
+**第 357 轮（lane arena-A，承接第 356 轮下一步 1–2）：CC-338 元素定向面板字段与异常暴击统计单源化、命座提升率多槽隔离与去重、自由对比空槽清理（代码 `58c6c473`），文档见本轮 docs 提交，已 push（若 `git rev-list --count origin/master..HEAD` 不为 0，说明 push 失败，请先补推）。现场：开工时无并行会话（`HEAD` = `7d1a3bc3`，工作区干净）。**
 
-- **CC-337（`f0c5b4b8`，`calcPanel` 局外总回能盖章 + 轴块成本类型化 + 跨模块单源化，全量 414 条 golden 零差）**：
-  1. **`calcPanel` 局外总回能（`energyRegenOutOfCombat`）出口盖章 + `calcEnergyRegenTotal` 单一事实源**：
-     - 此前 `emptyPanel()` 将 `energyRegenOutOfCombat` 置为 `1.2`，仅 `computePanelPhases` 在 `calcPanel` 后事后盖章，其余 3 个生产调用点（`computeEntrySnapshotPanel`、`buildTeammateBuffSourceContext`、`computeNoSubstatPanel`）及直接调 `calcPanel` 的调用方拿到的 `energyRegenOutOfCombat` 恒停留在 `1.2`。
-     - 修复：在 `src/data/agentPanelStats.ts` 定义并导出 `calcEnergyRegenTotal` / `calcFlashEnergyRegenTotal`（`src/core/buff.ts` re-export，遵守 `specsRuntimeDeps.test.ts` 分层锁），在 `src/core/panel.ts#calcPanel` 的 `outOfCombatOf` 内统一盖章 `p.energyRegenOutOfCombat = calcEnergyRegenTotal(p, 1.2)`（`inCombat` 经 `applyBuffs` 浅拷贝继承），并在 `buff.ts`、`specs/runtime.ts`、`mechanics/agents/burnice.ts` 复用；`panelPhases.ts` 抽出 `applyDefaultCinemaSkillLevelBonus` 归一 `computePanelPhases` 与 `computeEntrySnapshotPanel` 的 3/5 命技能等级加成。
-  2. **驱动盘门槛与 `{attribute}` 模板单源化（`src/core/buff.ts` ↔ `src/core/inCombatBuffs.ts`）**：
-     - 从 `buff.ts` 导出 `discRequirementMet` 与 `resolveDiscStatTemplate` 供 `inCombatBuffs.ts#collectInCombatTeamBuffs` 直接复用，删除 `discTeamRequirementMet`、内联 `{attribute}` 替换与 `parseStatRequirement` 别名。
-  3. **轴块招式能量成本类型化（`src/core/resource/moveLookup.ts` ↔ `src/composables/resourceCalc/roundInputs.ts`）**：
-     - 抽出并导出 `parseMoveEnergyCost(energyCostRaw)`（经 `src/core/resource.ts` re-export），`findExSpecial` 与 `buildStackAxes` 共用同一实现——防止轴块将替代资源招式（如 `Sharpness Cost: 60`）误作能量扣减。
-  4. **编排层与展示层跨模块重复管道归一**：
-     - `useResourceCalc.ts#anomalyDamageEvents` 改读 `STANDARD_DOT_CONFIG` 与 `ANOMALY_SINGLE_HIT_MULTIPLIER`（与 `damagePoolAnomaly` 同源）；`positionCompare.ts` 导出 `computePerSlotBuildUp` 供 `ResultPage.vue#teamOverview` 复用并删 `applyAxisBinding` 前冗余轴恢复；`liveInteractions` / `measureOperationalDifficulty` 支持可选 `preset` 并由 `difficultyDescent.ts` 直接委托（修复带 `counterAssistGroups` 的 Boss 递降难度漏计 `counterAssist`）；`teamCompare.ts` 导出 `applyGoldAllocationToStore` 归一 7 处金档写入；`impactVars.ts` 以 `RESISTANCE_VAR_ELEMENTS` 归一 6 种属性抗性读写。新增 `src/core/__tests__/cc337SingleSource.test.ts`（5 例）。
-- **验证**：`npm run check`（`vue-tsc -b --noEmit` 0 错 + 全量 443 个测试文件 / 4078 passed）通过；`timeGolden.test.ts` 414 条零差通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert f0c5b4b8`。
+- **CC-338（`58c6c473`，元素面板字段与异常暴击单源化 + `cinemaUplift` 多槽隔离与去重 + `freeCompare` 空槽清理，全量 414 条 golden 零差）**：
+  1. **命座提升率分析器（`src/composables/cinemaUplift.ts#analyzeCinemaUplift`）多槽隔离修复与求值去重**：
+     - 此前外层 `for (const slot of slots)` 在跑完 `slot = 0` 的 `to = 1..6` 后未恢复 `slot = 0` 的命座（仅在 `finally` 恢复），导致页面默认 `slots = [0, 1, 2]` 下分析 `slot = 1` 时 `slot = 0` 留在 **C6**、分析 `slot = 2` 时 `slot = 0/1` 均留在 **C6**，污染后续槽位的命座提升率百分比。
+     - 修复：每槽循环末尾立即恢复 `configStore.setCinemaLevel(slot, originalCinemas[slot] ?? 0)` + `syncTeammateBuffsFromTeam()`；同时每槽只求值一次 C0 基线，内层 `to = 1..maxLevel` 复用上一档 `(after, panelAfter)` 作下一档 `(before, panelBefore)`（单槽完整引擎求值由 `2 × maxLevel = 12` 次降为 `maxLevel + 1 = 7` 次，`cinemaUplift.test.ts` 耗时由 `~15s` 降至 `4.1s`）。新增多槽隔离回归测试。
+  2. **自由对比工作台（`src/composables/freeCompare/engine.ts#computeFreeCompare`）默认轻量速算下空槽清理**：
+     - 此前槽位装配第一遍对 `!team[slot]` 直接 `continue`；当 `autoBuild = false`（默认轻量速算）且对比 1~2 人系列（如单角色 + 1 名基底队友）时，3 号槽不会清空，用户当前页面 3 号槽角色或上一条 3 人系列的 3 号槽角色会残留进当前求值。
+     - 修复：当 `!team[slot]` 时显式清空该槽（`setAgent(slot, '')` / `setCinemaLevel(slot, 0)` / `setWEngine(slot, '')` / `setWEngineModLevel(slot, 1)`），并在 `freeCompareEngine.test.ts` 新增空槽清理回归测试。
+  3. **元素定向面板字段与异常暴击统计单源化（`src/utils/elementStatKeys.ts` + `src/core/{buff,damage,stunPool,anomalyPool/helpers}.ts`）**：
+     - `ElementStatKind` 补齐 `enemyAnomalyRes | enemyStunRes`（覆盖全部 8 类元素面板字段）；`core/buff.ts` 导出 `getTargetedElementStat(panel, kind, element, targetSkillType)`。
+     - 删除 `core/damage.ts` 6 个私有 `getElement*` 包装函数与 `core/stunPool.ts#getElementEnemyStunResReduction`，`core/anomalyPool/helpers.ts` 的 4 个 `getElement*` 函数全部转调 `panelElementStat`；在 `elementStatKeys.test.ts` 新增源码锁禁止除 `elementStatKeys.ts` 与 `enemyDebuffStats.ts` 外直调 `enemyDebuffElementStatId`。
+     - 在 `core/anomalyPool/helpers.ts` 导出单一事实源 `getAnomalyCritStats`（经 `getBaseElement` 识别物理族），`calcAnomalyCritExpect` 与 `core/damage.ts#calcAnomalyDamage` 共用同一实现（根除 R59 类两份副本漏同步隐患）。
+- **验证**：`npx vue-tsc -b --noEmit` 0 错；全量 `vitest run` 443 个测试文件 / 4081 passed（含 `timeGolden.test.ts` 414 条零差）通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 58c6c473`。
 
 **下一步（直接开工）**：
 1. **复核 `docs/mcp-r6-refactor-list.md` §8 表的「重开条件」**。有日期的条件：坑 25，到期日 2026-10-31。
-2. **继续审计 `src/core/`（如 `buff.ts`、`damage.ts`、`anomalyPool/`、`stunPool.ts`）或 `src/composables/`（如 `teamCompare*.ts`、`freeCompare.ts`、`cinemaUplift.ts`）的规格-实现对账与同构简化**：
-   - 第 350–355 轮已完成 `src/mechanics/agents/`（47 个角色模块）、`src/specs/` 与 `src/composables/resourceCalc/` 核心编排链的对账与单源化。
-   - 下一步可转向 `src/core/` 结算子模块或外围分析 composables（`teamCompare` / `freeCompare` / `cinemaUplift` / `substatOptimizer`）检查是否存在重复拼装或口径漂移。
+2. **继续审计 `src/composables/`（如 `teamCompare*.ts`、`pullValue.ts`、`pullPlanner*.ts`、`charIncrement.ts`、`difficultyCurve.ts`）或 `src/stores/` 的状态隔离与单源化机会**：
+   - 第 350–357 轮已完成 `src/mechanics/agents/`（47 个角色模块）、`src/specs/`、`src/composables/resourceCalc/`、`src/core/` 结算子模块以及 `cinemaUplift / freeCompare` 的对账与单源化。
+   - 下一步可重点排查其余多队/多档批处理 composables（`teamCompare`、`pullValue`、`pullPlannerEngine`、`charIncrement`、`difficultyCurve`）在跨队/跨档循环中是否存在槽位状态残留、重复求值或口径分叉。
 3. 低优先：off 投影下连携 / 窗口仍读计划实数（§24.140，默认不做）。
 
 **已知坑**：

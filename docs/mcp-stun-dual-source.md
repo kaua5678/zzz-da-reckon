@@ -4679,3 +4679,21 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
   - `src/composables/useResourceCalc.ts`：`anomalyDamageEvents` 改读 `STANDARD_DOT_CONFIG` 与 `ANOMALY_SINGLE_HIT_MULTIPLIER`。
   - `src/composables/{positionCompare,teamCompare,difficultyCurve,difficultyDescent,liveInteractions,teamTimelineStore}.ts` + `src/views/ResultPage.vue` + `src/core/impactVars.ts`：导出并复用 `computePerSlotBuildUp` 与 `applyGoldAllocationToStore`；删 `positionCompare.ts` 冗余轴快照恢复；`liveInteractions` / `measureOperationalDifficulty` 支持可选 `preset` 并由 `difficultyDescent.ts` 直接委托；`impactVars.ts` 以 `RESISTANCE_VAR_ELEMENTS` 归一 6 抗性读写。新增 `src/core/__tests__/cc337SingleSource.test.ts`（5 例）。
 - **验证**：`npm run check`（`vue-tsc -b --noEmit` 0 错 + 全量 443 个测试文件 / 4078 passed，含 `timeGolden.test.ts` 414 条零差）通过；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert f0c5b4b8`。
+
+### §24.181 CC-338（第 357 轮）：元素定向面板字段与异常暴击统计单源化 + 命座提升率多槽隔离与去重 + 自由对比空槽清理（`58c6c473`）
+
+- **背景与问题**：
+  1. **命座提升率分析器（`src/composables/cinemaUplift.ts#analyzeCinemaUplift`）多槽串染与重复求值**：
+     - 页面（`ResourceUtilizationPage.vue`）默认调用 `analyzeCinemaUplift({ ..., slots: [0, 1, 2] })`。原实现在外层 `for (const slot of slots)` 循环内跑完 `slot = 0` 的 `to = 1..6` 后，**未将 `slot = 0` 恢复为 `originalCinemas[0]`**（仅在全部槽位跑完后的 `finally` 恢复），导致分析 `slot = 1` 时 `slot = 0` 残留在 **C6**，分析 `slot = 2` 时 `slot = 0` 与 `slot = 1` 均残留在 **C6**——主 C 满命的伤害基数与队友命座 Buff 直接污染 2/3 号槽的命座提升率百分比。
+     - 同时内层 `for (let to = 1; to <= maxLevel; to++)` 每步重算 `to - 1` 与 `to` 两次 `readScene()` + `computePanelPhases()`，单槽触发 `2 × maxLevel = 12` 次完整引擎求值（其中 C1..C5 各被连续求值两遍）。
+  2. **自由对比工作台（`src/composables/freeCompare/engine.ts#computeFreeCompare`）默认轻量速算下空槽残留**：
+     - 槽位装配第一遍 `for (let slot = 0; slot < 3; slot++)` 对 `!team[slot]` 直接 `continue`。当 `autoBuild = false`（默认轻量速算，不调 `applyTeamPreset`）且对比 1~2 人系列（如单角色 + 1 名基底队友 `[BURNICE, VELINA, '']`）时，3 号槽不会清空，用户当前页面 3 号槽角色或上一条 3 人系列的 3 号槽角色会静默残留进本次求值。
+  3. **元素面板字段查表与异常暴击统计在 `src/core/` 内仍保留多份副本**：
+     - `src/utils/elementStatKeys.ts`（CC-224/225）定义了 `ElementStatKind`，但未收录 `enemyAnomalyRes` 与 `enemyStunRes`，导致 `core/damage.ts`（6 个私有 `getElement*` 包装）、`core/anomalyPool/helpers.ts`（4 个 `getElement*` 函数）与 `core/stunPool.ts`（`getElementEnemyStunResReduction`）各自拼装 `enemyDebuffElementStatId(..., resolveStatElement(element))` + `getTargetedStat`。
+     - `core/damage.ts#getAnomalyCritStats` 与 `core/anomalyPool/helpers.ts#calcAnomalyCritExpect` 各写一份异常暴击率/暴伤 + 物理强击暴击 + `selfAssaultCritDmgBonus` 汇总（R59 简潜能暴伤在直伤强击路径端到端恒 0 正是这两份副本不同步所致，且 `damage.ts` 写成 `element === 'physical'` 未经 `getBaseElement` 归一极性强击）。
+- **修复**：
+  - `src/composables/cinemaUplift.ts` + `src/composables/__tests__/cinemaUplift.test.ts`：每槽先求值一次 C0 基线，内层 `to = 1..maxLevel` 复用上一档 `(after, panelAfter)` 作下一档 `(before, panelBefore)`（单槽求值次数 `12 → 7`，测试耗时 `~15s → 4.1s`）；每槽跑完立即恢复 `configStore.setCinemaLevel(slot, originalCinemas[slot] ?? 0)` + `syncTeammateBuffsFromTeam()`。新增多槽隔离回归断言（`slots: [0, 1]` 下槽 1 结果与 `slots: [1]` 逐位一致）。
+  - `src/composables/freeCompare/engine.ts` + `src/composables/freeCompare/__tests__/freeCompareEngine.test.ts`：当 `!team[slot]` 时显式清空该槽（`setAgent(slot, '')` / `setCinemaLevel(slot, 0)` / `setWEngine(slot, '')` / `setWEngineModLevel(slot, 1)`），并补真引擎空槽清理回归测试。
+  - `src/utils/elementStatKeys.ts` + `src/core/buff.ts` + `src/core/damage.ts` + `src/core/anomalyPool/helpers.ts` + `src/core/stunPool.ts` + `src/utils/__tests__/elementStatKeys.test.ts`：`ElementStatKind` 补齐 `enemyAnomalyRes | enemyStunRes`；`core/buff.ts` 导出 `getTargetedElementStat(panel, kind, element, targetSkillType)`；删除 `damage.ts` 6 个私有 `getElement*` 包装与 `stunPool.ts` 的 `getElementEnemyStunResReduction`，`anomalyPool/helpers.ts` 4 个 `getElement*` 函数统一转调 `panelElementStat`；在 `elementStatKeys.test.ts` 加源码锁禁止除 `elementStatKeys.ts` 与 `enemyDebuffStats.ts` 外直调 `enemyDebuffElementStatId`。
+  - `src/core/anomalyPool/helpers.ts` + `src/core/damage.ts`：在 `anomalyPool/helpers.ts` 导出单一事实源 `getAnomalyCritStats`（经 `getBaseElement` 识别物理族），`calcAnomalyCritExpect` 与 `damage.ts#calcAnomalyDamage` 共用同一实现。
+- **验证**：`npx vue-tsc -b --noEmit` 0 错；全量 `vitest run` 443 个测试文件 / 4081 passed（含 `timeGolden.test.ts` 414 条零差）；`node scripts/check-guards.mjs` 25/25 通过。回退点：`git revert 58c6c473`。
