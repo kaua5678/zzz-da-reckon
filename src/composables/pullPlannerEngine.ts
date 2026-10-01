@@ -47,6 +47,9 @@ interface OracleState {
   cacheHits: number
 }
 
+/** 每期危局房间数上限（一期 3 房；早期数据不全的期可能更少）。候选队友数按它定。 */
+const PLANNER_ROOMS_PER_PERIOD = 3
+
 /** 免费特例 = 赠送 S ∪ A 级特例（CC-272 由 versionTimeline 两个集合派生）；购买清单、入队及代表剪枝共享。 */
 const FREE_SPECIAL_AGENT_IDS: ReadonlySet<string> = new Set([...FREE_GIFT_S_AGENT_IDS, ...A_RANK_RELEASE_SPECIAL_IDS])
 
@@ -200,17 +203,22 @@ export function createEngineOracle(opts: EngineOracleOptions): {
         return []
       }
       // 候选限流（性能主控项）：不跑全量 C(n,3)（池 12 人 = 220 队 × ~70ms = 慢机分钟级，
-      // 这是规划器卡顿的根因）。改为「每个 slot0 主C候选 × 前 4 强双队友」：队数 ≈ n×C(4,2)=6n
-      // （池 12 → ~72 队，-67%），且 slot0 互异的队天然成员错开——3 房不重叠匹配的多样性
-      // 反而比全量分数序截断更好。队友序 = 免费池代表序（每职业最强代表在前），
-      // 最强双队友近似最优配对（精确配对的损失由 beam 多状态与 3 房匹配吸收）。
+      // 这是规划器卡顿的根因）。改为「每个 slot0 主C候选 × 前 MATE_TOP 名双队友」：队数 ≈ n×C(MATE_TOP,2)。
+      // 精确配对的损失由 beam 多状态与 3 房匹配吸收。
+      //
+      // arena-D 第 362 轮修正两处结构缺陷（探针见 docs/mcp-r6-refactor-list.md §8 第 362 行）：
+      // ① MATE_TOP 原为 4：每队占 2 名队友，只有 4 名队友时最多凑出 2 支不重叠的队 ⇒ **第 3 房恒为 0 分**
+      //    （探针 12 期 × 3 房，第 3 房全部空）。3 房不重叠至少要 2 × 3 = 6 名不同队友。
+      // ② 队友序原为候选池序（免费代表在前、限定卡在末尾）⇒ 买到的限定 S **只能当 slot0、永远进不了队友位**
+      //    （探针里买到的卡 100% 在 s0）。改为持有档高者在前（稳定排序，免费成员档位 0 保持原序）。
       const isStun = (id: string) => (catalog.getAgent(id)?.specialty ?? '') === 'stun'
-      const MATE_TOP = 4
+      const MATE_TOP = 2 * PLANNER_ROOMS_PER_PERIOD
+      const mateOrder = [...members].sort((a, b) => (holdings[b] ?? 0) - (holdings[a] ?? 0))
       const results: Array<{ team: [string, string, string]; score: number }> = []
       for (let i = 0; i < members.length; i++) {
         const lead = members[i]
         // 队友候选 = 非本人、且与主C合计 ≤1 击破
-        const mates = members
+        const mates = mateOrder
           .filter(m => m !== lead && ((isStun(lead) ? 1 : 0) + (isStun(m) ? 1 : 0)) <= 1)
           .slice(0, MATE_TOP)
         for (let a = 0; a < mates.length; a++) {

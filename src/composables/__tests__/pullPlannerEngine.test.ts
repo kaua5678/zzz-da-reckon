@@ -161,6 +161,14 @@ describe('pullPlannerEngine · 引擎 oracle 冒烟', () => {
     expect(withYixuan.length).toBeGreaterThan(noYixuan.length)
     // 仪玄可入队（不再假设限定必胜——真实强度由引擎决定，可能弱于配合好的免费三人组）
     expect(withYixuan.some(c => c.team.includes('1371'))).toBe(true)
+    // arena-D 第 362 轮：持有的限定 S 能进队友位（修前队友序 = 池序，限定卡排在末尾，只能当 slot0）
+    expect(withYixuan.some(c => c.team.indexOf('1371') > 0)).toBe(true)
+    // arena-D 第 362 轮：候选里存在 3 支两两不重叠的队（修前只取 4 名队友 ⇒ 最多 2 支不重叠，第 3 房恒 0 分）
+    const hasDisjointTriple = (cs: { team: string[] }[]) => cs.some((x, i) => cs.some((y, j) => j > i
+      && !y.team.some(m => x.team.includes(m))
+      && cs.some((z, k) => k > j && !z.team.some(m => x.team.includes(m) || y.team.includes(m)))))
+    expect(hasDisjointTriple(noYixuan)).toBe(true)
+    expect(hasDisjointTriple(withYixuan)).toBe(true)
     // 缓存命中
     const again = engine.oracle.candidates(room, { '1371': 1 })
     const stats = engine.stats()
