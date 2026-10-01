@@ -73,7 +73,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 | 类型 | 职责 | 谁产生 / 谁消费 |
 |---|---|---|
 | `PanelValues` | 角色面板（属性/乘区/敌方减益全字段，索引签名） | computePanelPhases 产生 → cfg.panel / 伤害池消费 |
-| `CharacterOperationConfig` | 单角色计算配置（可被机制模块改写）——`types/resource/config.ts` | buildCharConfig 产生 → 引擎 + 模块钩子消费 |
+| `CharacterOperationConfig` | 单角色计算配置（可被机制模块改写）——公共字段在 `types/resource/config.ts`，单模块私有字段在各 `mechanics/agents/<x>.ts` 末尾的 `declare module` 扩充块（CC-359） | buildCharConfig 产生 → 引擎 + 模块钩子消费 |
 | `IterationState` | 单轮迭代状态（次数/时间分配）——`types/resource/time.ts` | iterate 产生/消费 |
 | `SkillExecution` | 执行计划一行（moveId/倍率/时间/增伤字段）——`types/resource/execution.ts` | buildExecutions 产生 → enrich 回填 → 各池消费 |
 | `TeamResourceResult` | 队伍资源结果（characters[] + executions + specResources）——`types/resource/team.ts` | calcTeamResources 产生 → 页面/池消费 |

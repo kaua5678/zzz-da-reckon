@@ -152,17 +152,20 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 388 轮（lane arena-E，开工 03:57；无并行会话；HEAD `991589cf`；REQUIREMENTS.md 无新条目）：CC-358 自行裁决并关闭 CC-349 开放项 `5e7f9b4c`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：见卡表 CC-358。预设 `guarantee` = 应用到 UI 现场的预填（自动命中 + 轴页手动应用，共用 `prefillPresetGuarantee`）；批量求值（altAxes / 对比 / 爬梯）不写，因为保底是难度爬梯独立目标档 G3。补丁脚本 `/home/kaua/calc-arch/arenaE/p388.py`。
-- **验证**：零差 `zd.sh r388` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 / build 过（`arenaE/verify388.log`）；`vitest run --maxWorkers=4` 454 文件 / 16 跳过 / 4154 例过（`verify388-test.log`）。
-- **开放项**：无。（规则：文档里不再留「待用户裁决，勿自行改」——遇到就按代码依据自行定案、写明依据与回滚点。）
-- **下一步（沿用 r387 候选，先查后定，可能结论是「不做」）**：**角色专属动作字段仍写死在通用类型 / 界表里**。`src/stores/config.ts` 的 `ACTION_COUNT_BOUNDS`（~213 行）与角色默认模板（~150–165 行）、`CharacterConfig` 类型里有 `yixuanInk2Count` / `yixuanInk3Count` / `yixuanPerfectBlockCount` / `yixuanExtremeAssistCount` / `yixuanBackstageComboCount` / `promiaNiyingCount` / `tauntCancelCount`（以及可能专属的 `assaultOrderCount` / `perfectBlockCount`），新角色要动 store。仓库已有「模块注册」先例：`MechanicSetting`（如 `mechanics/agents/jane.ts#settings`，ResourceUtilizationPage 泛型渲染）、TeamConfigPage 的 `agentCharacterCountInputs(agentId)`。
-  步骤：① `grep -rn "<字段>" src --include=*.ts --include=*.vue | grep -v __tests__` 逐字段列读写点（引擎 helpers.ts:~562 等、预设 `teamPresets` / 导入导出 / 实战存档）；② 看 `agentCharacterCountInputs` 的字段表是否已由角色模块声明——若是，界表上下界能否同处声明；③ **判据**：若迁移后「新角色加动作次数 = 只改自己的模块」且持久化格式不变（或有迁移），就做；若要改存档 / 预设格式、或读点 > 10 处分散在引擎核心，就**不做**，在 r6 §8 记一句「字段留在 CharacterConfig 的理由」。
+**第 389 轮（lane arena-E，开工 04:07；无并行会话；HEAD `06a42d79`；REQUIREMENTS.md 无新条目）：CC-359 D2 类型层 `f2fea44e`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **先查的 r388 候选「角色专属动作字段改模块注册」——结论：store 侧单独迁移不做**。依据：新角色加一个动作次数要改 ①`CharacterConfig` 类型行 ②`defaultCharacter` ③`ACTION_COUNT_BOUNDS` ④模块声明与读取 ⑤`CharacterOperationConfig` 字段（模块 `buildCharConfig` 把 char 值拷进 cfg）。只搬 ②③ 到模块的 `characterCountInputs`（加 min/max）去不掉 ①⑤，还要给 `setActionCount` 加第二条「按角色查界」路径——不更简单。⑤ 才是大头 ⇒ 转做 D2。（另：`tauntCancelCount` / `perfectBlockCount` / `assaultOrderCount` 被引擎核心 helpers / liveInteractions / teamCompare / specs 读，是通用契约，本就该留在 store。）`CharacterConfig` 不进 localStorage、无预设/数据引用——日后真要做 char 侧「角色次数包」也没有持久化迁移负担。
+- **做到哪**：见卡表 CC-359 与 `docs/mcp-d2-cfg-fields.md`（约定 / 结果 / 下一步表 / 全矩阵）。
+- **验证**：vue-tsc 净；`vite build` 产物前后 `diff -r` 逐字节相同（`/home/kaua/calc-arch/arenaE/dist-before|after`）；zd `r389` DIFF 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 / build（`arenaE/verify389.log`）；`vitest run --maxWorkers=4` 455 文件 / 16 跳过 / 4155 例过（`verify389-test.log`）。
+- **开放项**：无。
+- **下一步（先查后定，可能结论是「不做」）**：`docs/mcp-d2-cfg-fields.md` §3 的 14 个「1 个角色模块 + 1 个非模块文件」字段逐个看非模块那一处：引擎核心（`core/resource/crossAgentEnergy.ts` / `resourceIncome.ts` / `core/resource.ts` / `convergence.ts`）若在按名读写某角色的字段 = 引擎认识角色 ⇒ 改为模块钩子或通用声明（先例 CC-35b）；若该字段其实是通用契约只是带了角色名 ⇒ 记一句「保留理由」即可，**不要为改名而改名**。`stores/config.ts` 的同名项是 CharacterConfig 同名误报，跳过。改完跑 `python3 scripts/d2-migrate-private-cfg.py .` 把新变私有的字段迁走（锁会提醒）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
 
   - 源码锁写完要反证（临时撤掉被锁的改动看是否变红），r388 用 `git show HEAD:<file> > <file>` 换回旧版验证后再复原。
+
+  - 纯类型改动的最强判据是 `vite build --outDir A` / `--outDir B` 后 `diff -r A B`（逐字节相同 ⇒ 运行时零变化），比 zd 便宜且覆盖全产物。
+  - 两个 `node /tmp/mcp.js` 并行调用会撞「Duplicate JSON-RPC request id」（每个进程 id 都从 1 起、共用 session）——MCP 调用别并行。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
