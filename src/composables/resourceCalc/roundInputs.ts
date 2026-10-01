@@ -20,7 +20,7 @@ import type { StunSkillExecution } from '@/core/stunPool'
 import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { StackActionCost } from '@/core/stunAxisStack'
-import { resolveStunAxisPlan, selectAutoStunAxisPreset, cloneStunAxes } from '@/data/stunAxisPresets'
+import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
@@ -136,13 +136,7 @@ export function createConvergenceRoundInputs(deps: {
   /** 通用自动轴（用户口径：所有预设队伍都对应预设失衡轴，捏了轴就自动启用）：
    * 按槽位通配匹配 stunAxisPresets 命中即自动选用（章鱼体系按 命座 chapter × 有琉 选档）；
    * 手动配置过轴（条件方案或手动轴）时手动优先，自动让路。 */
-  const autoPreset = computed(() => {
-    if (!configStore.autoYidhariAxis) return null
-    const ids = configStore.team.map(c => c.agentId)
-    const cinemaBySlot: Record<number, number> = {}
-    configStore.team.forEach((c, i) => { cinemaBySlot[i] = c.cinemaLevel ?? 0 })
-    return selectAutoStunAxisPreset(ids, cinemaBySlot, undefined, AUTO_AXIS_PRESET_HINTS)
-  })
+  const autoPreset = computed(() => autoStunAxisPresetOf(configStore, AUTO_AXIS_PRESET_HINTS)) // CC-349 单源
   const autoActive = computed(() => {
     if (!autoPreset.value) return false
     return configStore.stunAxisPlans.length === 0 && configStore.stunAxes.length === 0

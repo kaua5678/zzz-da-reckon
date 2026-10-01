@@ -65,7 +65,10 @@ export interface StunAxisPreset {
    */
   chapter?: number
   /**
-   * 保底目标（≥ N，0 = 不保底）：应用/自动命中该预设时自动勾选配装页「保底目标」。
+   * 保底目标（≥ N，0 = 不保底）：**通用自动轴命中**该预设时自动勾选「保底目标」（UI store 会话效果，
+   * 见 `stores/config#useConfigStore`；写入表 = `presetGuaranteeWrites`）。
+   * 注意（CC-349 核实）：手动「应用」与难度变体 altAxes 绑定（`applyStunAxisPreset`）**不**写本字段；
+   * 现唯一声明者「5火10大」与「般琉通用」同队、后者带 plans 优先 ⇒ 自动命中路径当前也选不到它。
    * - stun：保底 N 次失衡；fury：保底 N 次嗔火（般岳怒相）；ultimate：保底 N 次喧响（终结技）。
    * 如 5火10大 = { stun: 4, fury: 4, ultimate: 4 }（另需琉音好评≥6，见 note）。
    */
@@ -251,6 +254,44 @@ export function selectAutoStunAxisPreset(
   const plans = candidates.filter(p => p.plans && p.plans.length > 0)
   if (plans.length > 0) candidates = plans
   return candidates[0] ?? null
+}
+
+/**
+ * 通用自动轴的**唯一选择入口**（CC-349）：开关关 → null；否则按槽位 agentId + 影画等级选预设。
+ * 消费者两处且必须同口径：`resourceCalc/roundInputs#autoPreset`（计算用的轴）与
+ * `stores/config#useConfigStore` 的保底预填会话效果（预填依据的轴）——分开各算一份会让两者分叉。
+ */
+export function autoStunAxisPresetOf(
+  config: {
+    readonly autoYidhariAxis: boolean
+    readonly team: readonly { readonly agentId?: string | null; readonly cinemaLevel?: number }[]
+  },
+  hints: AutoAxisPresetHints,
+  presets: StunAxisPreset[] = stunAxisPresets,
+): StunAxisPreset | null {
+  if (!config.autoYidhariAxis) return null
+  const cinemaBySlot: Record<number, number> = {}
+  config.team.forEach((c, i) => { cinemaBySlot[i] = c.cinemaLevel ?? 0 })
+  return selectAutoStunAxisPreset(config.team.map(c => c.agentId), cinemaBySlot, presets, hints)
+}
+
+export type GuaranteeSettingKey = 'guarantee.stun' | 'guarantee.fury' | 'guarantee.ultimate'
+
+/**
+ * 预设声明的保底目标 → `guarantee.*` 写入表（CC-349）：只列预设**声明了**的键（N>0 → 1、0 → 0）；
+ * 未声明的键不出现 ⇒ 调用方不会清掉用户手勾。
+ */
+export function presetGuaranteeWrites(
+  preset: Pick<StunAxisPreset, 'guarantee'> | null | undefined,
+): ReadonlyArray<readonly [GuaranteeSettingKey, 0 | 1]> {
+  const g = preset?.guarantee
+  if (!g) return []
+  const out: Array<readonly [GuaranteeSettingKey, 0 | 1]> = []
+  for (const k of ['stun', 'fury', 'ultimate'] as const) {
+    const n = g[k]
+    if (n !== undefined) out.push([`guarantee.${k}`, n > 0 ? 1 : 0])
+  }
+  return out
 }
 
 /** 深拷贝轴（应用/导出预设时隔离编辑器改动；用 JSON 序列化，兼容 Vue 响应式 Proxy） */

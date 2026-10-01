@@ -10,7 +10,8 @@ import type {
 import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget, SUBSTAT_BUDGET_SETTINGS } from '@/core/substatOptimizer'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { useCatalogStore } from './catalog'
-import { getAgentMechanic } from '@/mechanics'
+import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic } from '@/mechanics'
+import { autoStunAxisPresetOf, presetGuaranteeWrites } from '@/data/stunAxisPresets'
 import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
 import type { MechanicTeamMember } from '@/mechanics/types'
 import type { AppliedBossPreset, PhaseBuffEffect } from '@/types/bossPreset'
@@ -1480,5 +1481,27 @@ export type ConfigModel = UnwrapRef<ReturnType<typeof createConfigModel>>
  */
 export type EvalConfig = ConfigModel & { readonly $state: ReturnType<typeof useConfigStore>['$state'] }
 
-/** UI Adapter；批量场景直接实例化 Model，不创建或替换全局 Pinia。 */
-export const useConfigStore = defineStore('config', () => createConfigModel(useCatalogStore()))
+/**
+ * UI Adapter；批量场景直接实例化 Model，不创建或替换全局 Pinia。
+ * UI store = Model + **UI 会话效果**（CC-349）。会话效果只装在这里、**不进** `createConfigModel`：
+ * 独立场景（analysisScenario / CC-343）会在 `await yieldNow()` 间隙反复换队，场景模型若也挂这类 watcher，
+ * 预填会在批量求值中途按调度时序写进场景 ⇒ 分析结果依赖时序。
+ */
+export const useConfigStore = defineStore('config', () => {
+  const model = createConfigModel(useCatalogStore())
+  installUiSessionEffects(model)
+  return model
+})
+
+/**
+ * 通用自动轴命中的预设**变化**时，按预设 `guarantee` 预填「保底目标」（只写预设声明的键，不清除用户手勾）。
+ * 原住 TeamConfigPage（`watch(autoPreset)`）⇒ 只在配装页挂载期间生效：别页换队 / 档案部署时不预填，
+ * 同一队伍的 guarantee.* 取决于用户走过哪些页。非 immediate：建 store 时不触发；默认页即配装页，
+ * 故启动时默认队伍写入触发与否与旧口径一致。判据：`src/stores/__tests__/autoAxisGuaranteePrefill.test.ts`。
+ */
+function installUiSessionEffects(model: ReturnType<typeof createConfigModel>): void {
+  watch(
+    () => autoStunAxisPresetOf({ autoYidhariAxis: model.autoYidhariAxis.value, team: model.team.value }, AUTO_AXIS_PRESET_HINTS),
+    (p) => { for (const [key, v] of presetGuaranteeWrites(p)) model.setMechanicSetting(key, v) },
+  )
+}

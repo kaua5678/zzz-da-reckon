@@ -88,6 +88,11 @@ describe('CC-60 自动失衡轴选档提示 → 模块声明', () => {
     const body = fn.slice(0, fn.indexOf('\n}\n'))
     for (const id of ['1051', '1481']) expect(body).not.toContain(`'${id}'`)
     const ri = readFileSync(resolve(__dirname, '../resourceCalc/roundInputs.ts'), 'utf-8')
-    expect(ri).toContain('selectAutoStunAxisPreset(ids, cinemaBySlot, undefined, AUTO_AXIS_PRESET_HINTS)')
+    // CC-349：生产入口收敛为 data#autoStunAxisPresetOf（roundInputs 与 UI store 保底预填同一选择口径），两处都传模块提示
+    expect(ri).toContain('autoStunAxisPresetOf(configStore, AUTO_AXIS_PRESET_HINTS)')
+    const store = readFileSync(resolve(__dirname, '../../stores/config.ts'), 'utf-8')
+    expect(store).toMatch(/autoStunAxisPresetOf\([^\n]*, AUTO_AXIS_PRESET_HINTS\)/)
+    const af = data.slice(data.indexOf('export function autoStunAxisPresetOf'))
+    expect(af.slice(0, af.indexOf('\n}\n'))).toContain('cinemaBySlot, presets, hints)')
   })
 })
