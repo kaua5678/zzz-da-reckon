@@ -11,7 +11,7 @@
  * CC-340：appliedBoss 改为 clone 深拷贝（防 syncBossInteractionPlan 就地改写 parryTotal 污染快照），
  * 并把 mechanicSettings 与 timeWeightStrategy 纳入快照（防 applyBossPreset 自动写 guarantee.stun=1 泄漏到用户现场）。
  */
-import { type useConfigStore, type CharacterConfig, type EnemyConfig, type StunAxisState } from '@/stores/config'
+import { type useConfigStore, type CharacterConfig, type EnemyConfig, type GlobalBuffRow, type StunAxisState } from '@/stores/config'
 
 type ConfigStore = ReturnType<typeof useConfigStore>
 type TeammateBuffSelections = Record<string, { enabled: boolean; coverage: number }>
@@ -20,7 +20,7 @@ export interface StoreSnapshot extends StunAxisState {
   team: CharacterConfig[]
   enemy: EnemyConfig
   appliedBoss: ConfigStore['appliedBoss']
-  globalBuffs: unknown[]
+  globalBuffs: GlobalBuffRow[]
   buffSelections: TeammateBuffSelections
   mechanicSettings: Record<string, number>
   timeWeightStrategy: ConfigStore['timeWeightStrategy']
@@ -46,7 +46,7 @@ export function restoreStore(configStore: ConfigStore, snap: StoreSnapshot): voi
   configStore.setEnemy(snap.enemy)
   configStore.appliedBoss = clone(snap.appliedBoss)
   configStore.setAxisState(snap)
-  configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...(snap.globalBuffs as never[]))
+  configStore.globalBuffs.splice(0, configStore.globalBuffs.length, ...clone(snap.globalBuffs))
   // 必须在 team 之后：team.splice 已同步触发 sync 改写 enabled，这里整表覆盖回快照
   const selections = configStore.teammateBuffSelections as TeammateBuffSelections
   for (const key of Object.keys(selections)) delete selections[key]

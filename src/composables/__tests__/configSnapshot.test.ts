@@ -102,6 +102,22 @@ describe('CC-251 分析器现场快照 / 恢复', () => {
     expect(config.timeWeightStrategy).toBe('static')
   })
 
+  it('T1：globalBuffs 深拷贝恢复（同一份快照反复恢复后原地改写 store 不污染快照）', async () => {
+    const { config } = await setupHarness([{ agentId: '1191' }, { agentId: '1211' }, { agentId: '1311' }])
+    config.globalBuffs.push({ id: 'test-gb', name: '测试增益', stat: 'atkPct', value: 25, enabled: true })
+    const snap = snapshotStore(config)
+
+    config.globalBuffs.splice(0)
+    restoreStore(config, snap)
+    const restored = config.globalBuffs.find(b => b.id === 'test-gb')
+    expect(restored?.value).toBe(25)
+
+    // 恢复后原地改写 store 内的行，再次恢复仍应回到快照原值 25
+    restored!.value = 99
+    restoreStore(config, snap)
+    expect(config.globalBuffs.find(b => b.id === 'test-gb')?.value).toBe(25)
+  })
+
   it('CC-340：setAgent(slot, "") 清空空槽音擎，且 teamGoldOf 跳过空槽不计残留限定音擎金数', async () => {
     const { config } = await setupHarness([{ agentId: '1191' }, { agentId: '1371', wEngineId: '14137' }, { agentId: '1311' }])
     expect(config.team[1].wEngineId).toBe('14137')

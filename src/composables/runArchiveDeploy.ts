@@ -14,6 +14,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
 import { phaseBuffRows } from '@/utils/phaseBuff'
 import { applyBossRoom } from '@/composables/bossRoom'
+import { applyTeamToStore } from '@/composables/teamTimelineStore'
 
 export interface ResolvedBossApply {
   preset: BossPreset
@@ -60,7 +61,18 @@ export function applyDeployConfig(
   deploy: DeployConfig,
   presets: BossPreset[],
 ): void {
-  configStore.applyTeamPreset(deploy.team.map((s) => s.agentId) as [string, string, string])
+  // 复用 teamTimelineStore#applyTeamToStore(autoBuild=true)：先写命座/精炼再调 applyTeamPreset，
+  // 防止上一队残留命座/精炼漏入 applyBuildRecommendationForSlot 的百暴副词条分配与队友 buff 门控（CC-340 同源收口）。
+  applyTeamToStore(
+    configStore,
+    deploy.team.map((s) => s.agentId) as [string, string, string],
+    {
+      cinemas: [deploy.team[0].cinemaLevel, deploy.team[1].cinemaLevel, deploy.team[2].cinemaLevel],
+      wengineMods: [deploy.team[0].wEngineModLevel, deploy.team[1].wEngineModLevel, deploy.team[2].wEngineModLevel],
+      wEngines: [deploy.team[0].wEngineId ?? '', deploy.team[1].wEngineId ?? '', deploy.team[2].wEngineId ?? ''],
+    },
+    true,
+  )
 
   // 交互基准（2026-08-30 修订；2026-08-31 喧响改四舍五入）：不预设弹刀——弹刀由
   // 「保底4失衡（Boss 预设反推）+ 保底4喧响（缺口≤1500 才补弹刀，超过=实战打不出不硬凑）」运行时反推；
@@ -68,10 +80,6 @@ export function applyDeployConfig(
   // 快支固定 3 作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
   for (let s = 0; s < 3; s++) {
     const slot = deploy.team[s]
-    configStore.setCinemaLevel(s, slot.cinemaLevel)
-    configStore.setWEngineModLevel(s, slot.wEngineModLevel)
-    if (slot.wEngineId) configStore.setWEngine(s, slot.wEngineId)
-
     // CC-255：基准取 interactionBaselineFor（含 noGenericInteraction）；本口径「不预设弹刀」⇒ 非专属角色只取闪反
     const custom = hasCustomInteractionDefaults(slot.agentId)
     const base = interactionBaselineFor(slot.agentId, useCatalogStore().getAgent(slot.agentId)?.specialty)
@@ -81,12 +89,6 @@ export function applyDeployConfig(
     configStore.setBlockCount(s, custom ? base.block : 0)
     configStore.setDualCounterCount(s, custom ? base.dual : 0)
   }
-
-  // 修复跨队泄漏：applyTeamPreset 在 setCinemaLevel 之前同步队友 buff，读到上一队残留命座，
-  // 会把命座门控的队友 buff（如蕾米埃尔 C1 队友异常增伤 / C2 异常防御无视）错误开启。
-  // 命座/精炼/音擎落定后重同步队友 buff（附：副词条优化器也读 enabledTeammateBuffs，
-  // 但优化器只影响副词条分配、不影响 buff 开关，这里重同步即可消除主差异）。
-  configStore.syncTeammateBuffsFromTeam()
 
   // 启用自动轴 + 保底4喧响（弹刀反推的两个驱动）；保底4失衡由 applyBossPreset 按 Boss 预设自动勾选。
   configStore.autoYidhariAxis = true

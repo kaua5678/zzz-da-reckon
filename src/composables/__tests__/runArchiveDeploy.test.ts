@@ -187,6 +187,52 @@ describe('applyDeployConfig 确定性（跨队不泄漏命座门控队友 buff�
     // 相对误差 < 1e-6（bug 形态下 d2/d1 ≈ 1.317，蕾米埃尔 C1/C2 被错误开启）
     expect(Math.abs(d2 - d1) / d1).toBeLessThan(1e-6)
   }, 120000)
+
+  it('同一支直伤队两次部署副词条与伤害一致（中间部署高精别队不泄漏精炼暴击率至默认副词条百暴分配）', async () => {
+    const { config, catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const boss = { presetId: '30033', name: '秽息司祭', phaseId: '690431' }
+    // 艾莲（1191）推荐专武 14119 深海访客：局内暴击率 1精+20% / 4精+35%，直接影响百暴副词条分配
+    const ellenR1: DeployConfig = {
+      supported: true,
+      mode: 'Deadly Assault',
+      team: [
+        { slot: 0, agentId: '1191', cinemaLevel: 0, wEngineId: null, wEngineModLevel: 1 },
+        { slot: 1, agentId: '1141', cinemaLevel: 0, wEngineId: null, wEngineModLevel: 1 },
+        { slot: 2, agentId: '1131', cinemaLevel: 6, wEngineId: null, wEngineModLevel: 5 },
+      ],
+      boss,
+      warnings: [],
+    }
+    const nekoHighMod: DeployConfig = {
+      supported: true,
+      mode: 'Deadly Assault',
+      team: [
+        { slot: 0, agentId: '1021', cinemaLevel: 6, wEngineId: null, wEngineModLevel: 4 },
+        { slot: 1, agentId: '1571', cinemaLevel: 2, wEngineId: null, wEngineModLevel: 1 },
+        { slot: 2, agentId: '1211', cinemaLevel: 6, wEngineId: null, wEngineModLevel: 5 },
+      ],
+      boss,
+      warnings: [],
+    }
+
+    applyDeployConfig(config, ellenR1, presets)
+    const alloc1 = { ...config.team[0].driveDisc.subStatAllocation }
+    const d1 = calc.teamTotalDamage.value
+
+    applyDeployConfig(config, nekoHighMod, presets)
+    void calc.teamTotalDamage.value
+
+    applyDeployConfig(config, ellenR1, presets)
+    const alloc2 = { ...config.team[0].driveDisc.subStatAllocation }
+    const d2 = calc.teamTotalDamage.value
+
+    // 修前 applyTeamPreset 先于 setWEngineModLevel 执行：第二次部署读到槽位0残留的 4精（+35% 暴击），
+    // 导致艾莲 1精暴击率副词条少分 6 步（alloc1.critRate=12 vs alloc2.critRate=6）且总伤漂移
+    expect(alloc2).toEqual(alloc1)
+    expect(Math.abs(d2 - d1) / d1).toBeLessThan(1e-6)
+  }, 120000)
 })
 
 describe('保底4喧响 → 弹刀反推（通用）', () => {

@@ -185,6 +185,8 @@ import {
   BANGBOO_GAP_HINT,
   collectCinemaGaps,
   collectMechanicGaps,
+  type CinemaLedgerEntry,
+  type MechanicLedgerEntry,
   type ModelingGapHint,
 } from '@/utils/modelingGaps'
 
@@ -208,21 +210,29 @@ const selected = ref<ArchiveRun | null>(null)
 const lastWarnings = ref<string[]>([])
 
 // ========== 建模缺口提示（信息展示，不做拦截——归档不作误差判据的用户裁决不变） ==========
-const modelingLedgers = ref<{ constellations?: Record<string, object>; mechanics?: Record<string, object> } | null>(null)
+const modelingLedgers = ref<{
+  constellations: Record<string, CinemaLedgerEntry>
+  mechanics: Record<string, MechanicLedgerEntry>
+} | null>(null)
 const modelingLedgersLoaded = ref(false)
 /** 缺口清单折叠（账本 Open #3：pending 非空即列后可达 100+ 条，默认只展开前若干条） */
 const GAPS_COLLAPSE_AT = 8
 const showAllGaps = ref(false)
+
+async function readLedger<T>(url: string): Promise<{ characters?: Record<string, T> }> {
+  const r = await fetch(url)
+  return r.ok ? (await r.json() as { characters?: Record<string, T> }) : {}
+}
 
 async function ensureModelingLedgers(): Promise<void> {
   if (modelingLedgersLoaded.value) return
   modelingLedgersLoaded.value = true
   try {
     const [cin, mec] = await Promise.all([
-      fetch('/static/character-constellations.json').then(r => (r.ok ? r.json() : {}) as any),
-      fetch('/static/character-mechanics.json').then(r => (r.ok ? r.json() : {}) as any),
+      readLedger<CinemaLedgerEntry>('/static/character-constellations.json'),
+      readLedger<MechanicLedgerEntry>('/static/character-mechanics.json'),
     ])
-    modelingLedgers.value = { constellations: cin?.characters ?? {}, mechanics: mec?.characters ?? {} }
+    modelingLedgers.value = { constellations: cin.characters ?? {}, mechanics: mec.characters ?? {} }
   } catch {
     modelingLedgers.value = null
   }
@@ -234,8 +244,8 @@ const modelingGapHints = computed<ModelingGapHint[]>(() => {
   if (!agentIds.length) return []
   return [
     BANGBOO_GAP_HINT,
-    ...collectCinemaGaps(modelingLedgers.value?.constellations as never, agentIds),
-    ...collectMechanicGaps(modelingLedgers.value?.mechanics as never, agentIds),
+    ...collectCinemaGaps(modelingLedgers.value?.constellations, agentIds),
+    ...collectMechanicGaps(modelingLedgers.value?.mechanics, agentIds),
   ]
 })
 

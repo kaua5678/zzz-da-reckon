@@ -52,7 +52,7 @@ export interface ModelingGapHint {
   text: string
 }
 
-interface CinemaLedgerEntry {
+export interface CinemaLedgerEntry {
   name?: { zhCN?: string; en?: string }
   cinemas?: Array<{
     cinema?: number
@@ -61,7 +61,7 @@ interface CinemaLedgerEntry {
   }>
 }
 
-interface MechanicLedgerEntry {
+export interface MechanicLedgerEntry {
   name?: { zhCN?: string; en?: string }
   mechanics?: Array<{
     name?: string | { zhCN?: string }
