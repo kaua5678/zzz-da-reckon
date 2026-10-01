@@ -294,8 +294,7 @@ export function computeYixuanNingshenBlocks(
 }
 
 function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = (record.yixuanAxisEx ?? {}) as Record<string, number>
+  const raw = cfg.yixuanAxisEx ?? {}
   const out: Record<string, number> = {}
   for (const [k, v] of Object.entries(raw)) {
     const n = Math.max(0, Math.floor(Number(v) || 0))
@@ -318,8 +317,7 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCh
   cfg.yixuanExtremeAssistCount = char?.yixuanExtremeAssistCount ?? -1
   cfg.yixuanBackstageComboCount = char?.yixuanBackstageComboCount ?? 0
 
-  const record = cfg as unknown as Record<string, unknown>
-  record.yixuanCinemaLevel = cinemaLevel
+  cfg.yixuanCinemaLevel = cinemaLevel
 
   // 喧响收入常量（倍率表 decibel_recovery，用户口径 2026-09-07：4 失衡 ⇒ 主C 4 喧响）。
   // 此前模块行显式 0 且未设常量 → 喧响收入近零（仪玄 8030/12000）。
@@ -340,12 +338,12 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCh
   // 额外闪能总账（文本明确数值，次数按现有交互输入近似）：
   // 完美格挡 +10/次（yixuanPerfectBlockCount，≤0=自动=弹刀次数全完美）、极限闪避 +5/次（dodgeCounterCount）、
   // 影画1 落雷 +5/次（6s CD 战斗时间驱动）、玄墨异常触发 +10/次（外层收敛注入 cfg.yixuanAnomalyTriggerFlash）
-  const perfectBlocks = resolveYixuanPerfectBlocks(record, cfg)
+  const perfectBlocks = resolveYixuanPerfectBlocks(cfg)
   const dodges = Math.max(0, Math.floor(cfg.dodgeCounterCount ?? 0))
-  const anomalyFlash = Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(record.yixuanAnomalyTriggerFlash ?? 0))))
+  const anomalyFlash = Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(cfg.yixuanAnomalyTriggerFlash ?? 0))))
   // 极限支援换场落雷（额外能力，用户口径）：默认次数 = 队友正常弹刀次数求和（上限），主页可录入；
   // 次数由 useResourceCalc merged 注入 cap 后在本模块 buildExecutions 结算（闪能已在 merged 注入计入总账）
-  record.yixuanExtremeAssistCountInput = Number(record.yixuanExtremeAssistCount ?? -1)
+  cfg.yixuanExtremeAssistCountInput = Number(cfg.yixuanExtremeAssistCount ?? -1)
   // 影画1·追加落雷：次数与闪能由 useResourceCalc merged 按 CD 注入（轴模式轴内时间/6，非轴战斗时间/6）
   const flashBonus = perfectBlocks * PERFECT_BLOCK_FLASH + dodges * DODGE_FLASH + anomalyFlash * ANOMALY_TRIGGER_FLASH
   cfg.yixuanFlashBonus = flashBonus
@@ -366,10 +364,10 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCh
     daze[key] = rowValue(mv, 'daze')
     daze[id] = rowValue(mv, 'daze')
   }
-  record.yixuanMoveTimes = times
   cfg.yixuanMoveTimes = times
-  record.yixuanMoveDmg = dmg
-  record.yixuanMoveDaze = daze
+  cfg.yixuanMoveTimes = times
+  cfg.yixuanMoveDmg = dmg
+  cfg.yixuanMoveDaze = daze
 
   // spec 侧：mechanicRowValues 预存（术法值事件倍率行；符法千重实际执行由本模块按次数生成）
   specBase.buildCharConfig?.({ skills, cinemaLevel, cfg } as AgentCharConfigInput)
@@ -414,7 +412,6 @@ function applyYixuanTeamConfig(
   { cfg, phase, slot, threads, axis, interactions }: AgentTeamConfigInput,
 ): void {
   if (phase !== 'converge') return
-  const record = cfg as unknown as Record<string, unknown>
   const ownSlot = Number(slot ?? cfg.slot)
 
   // 轴内总时间：原局部量 `axisInSeconds`（`convergence.ts` 的
@@ -444,10 +441,10 @@ function applyYixuanTeamConfig(
         }
       })
     }
-    record.yixuanAxisEx = axisEx
+    cfg.yixuanAxisEx = axisEx
     // ⚠ 无权重时写 2（不是 0）——照抄原式，见上方注③
-    record.yixuanAxisCloudSeconds = cloudSecWeight > 0 ? cloudSecTotal / cloudSecWeight : CLOUD_MAX_SECONDS
-    record.yixuanAxisActive = axis.active
+    cfg.yixuanAxisCloudSeconds = cloudSecWeight > 0 ? cloudSecTotal / cloudSecWeight : CLOUD_MAX_SECONDS
+    cfg.yixuanAxisActive = axis.active
   }
 
   // ── 通道② 影画1·落雷次数（只需本槽 cfg + 上面的 `axisInSeconds`）──────────────
@@ -455,18 +452,18 @@ function applyYixuanTeamConfig(
   // （战斗时间扣 boss 无敌，落雷不在无敌期间结算）。
   // ⚠ 二分点是算出来的 `axisInSeconds > 0`（= 轴生效且至少一个窗口），**不是** `axis.active`。
   // ⚠ 原实现**无条件**写该字段（分支内无门控）⇒ 此处也不挂任何通道门控。
-  const yixuanCinema = Math.max(0, Math.floor(Number(record.yixuanCinemaLevel ?? 0)))
+  const yixuanCinema = Math.max(0, Math.floor(Number(cfg.yixuanCinemaLevel ?? 0)))
   const battleTime = effectiveBattleTime(cfg)
   const c1Lightnings = yixuanCinema >= 1
     ? Math.max(0, Math.floor((axisInSeconds > 0 ? axisInSeconds : battleTime) / C1_LIGHTNING_CD))
     : 0
-  record.yixuanC1LightningCount = c1Lightnings
+  cfg.yixuanC1LightningCount = c1Lightnings
 
   // ── 通道③ 线程量（`threads` 契约：轴无关的跨轮标量）──────────────────────
   // 原实现解构的是 `threads` 里已解构出的局部量（恒有值）⇒ 这里同样按「对象在就写」，
   // 缺失的**单个字段**按 0 计（`?? 0` 与原式 `Math.floor(prevAuricInkFlash)` 的取值面一致）。
   if (threads) {
-    record.yixuanAnomalyTriggerFlash =
+    cfg.yixuanAnomalyTriggerFlash =
       Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads.moduleFeedback?.auricInkTriggers ?? 0))))
   }
   const auricInkTriggers = Math.min(
@@ -480,7 +477,7 @@ function applyYixuanTeamConfig(
   // 此前本通道按身份找橘福福（'1391'）并自抄 300 常量累加进 extraSelfDecibelReward（规则拥有者与消费者倒置）。
   // ⚠ 写在 `interactions` 门控**之前**：挂在后面会让「契约漏传」静默吞掉这部分喧响。
   const prevFuFa = Number((threads?.moduleFeedback?.teamUltimateExtra ?? 0))
-  record.ultimateEquivalentCount = prevFuFa > 0 ? prevFuFa : 0
+  cfg.ultimateEquivalentCount = prevFuFa > 0 ? prevFuFa : 0
 
   // ── 通道⑤ 未缩放交互次数（`interactions` 契约；本轮的契约缺口）──────────────
   // ⚠ 双判据门控：走到这里 `phase === 'converge'` 已满足，缺 `interactions` 即**直接 return、
@@ -496,16 +493,16 @@ function applyYixuanTeamConfig(
     if (Number(slotKey) === ownSlot) continue
     assistCap += snap?.parryCount ?? 0
   }
-  record.yixuanExtremeAssistCap = assistCap
+  cfg.yixuanExtremeAssistCap = assistCap
 
   // 极限支援换场落雷（用户口径）：次数上限 = 队友正常弹刀次数求和；默认次数 = 上限（主页可录入）。
   // 输入读 `cfg` 上的 `yixuanExtremeAssistCount`——**与原式同一字段**（`merged.yixuanExtremeAssistCount ?? -1`）。
-  const extremeAssists = resolveYixuanExtremeAssists(cfg, assistCap, record.yixuanExtremeAssistCount)
+  const extremeAssists = resolveYixuanExtremeAssists(cfg, assistCap, cfg.yixuanExtremeAssistCount)
 
   // 玄墨异常触发回闪能（10s CD 封顶 18 次）+ 极限支援落雷闪能（5/次）+ C1 落雷闪能（5/次）。
   // ⚠ **`+=`（不是覆盖）**：`buildCharConfig` 已写「完美格挡/极限闪避/玄墨异常」三项，
   // 覆盖会静默丢掉它们（见上方注①）。
-  record.yixuanFlashBonus = Number(record.yixuanFlashBonus ?? 0)
+  cfg.yixuanFlashBonus = Number(cfg.yixuanFlashBonus ?? 0)
     + auricInkTriggers * ANOMALY_TRIGGER_FLASH
     + extremeAssists * EXTREME_ASSIST_FLASH
     + c1Lightnings * C1_LIGHTNING_FLASH
@@ -530,11 +527,11 @@ function applyYixuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
  * 总闪能先打完失衡内（轴内凝云等）消耗，剩余闪能全部在轴外打 3连墨痕化形（60/次）；
  * 完美格挡按「全完美」= 弹刀次数（每次 +10 闪能进收入）。手填 ≥1 覆盖自动值。
  */
-function resolveYixuanPerfectBlocks(record: Record<string, unknown>, cfg: AgentCharConfigInput['cfg']): number {
-  const pbRaw = Number(record.yixuanPerfectBlockCount ?? 0)
+function resolveYixuanPerfectBlocks(cfg: AgentCharConfigInput['cfg']): number {
+  const pbRaw = Number(cfg.yixuanPerfectBlockCount ?? 0)
   return pbRaw >= 1
     ? Math.floor(pbRaw)
-    : Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).parryCount ?? 0)))
+    : Math.max(0, Math.floor(Number(cfg.parryCount ?? 0)))
 }
 
 function resolveYixuanExtremeAssists(
@@ -549,20 +546,19 @@ function resolveYixuanExtremeAssists(
 }
 
 function resolveYixuanAutoInputs(
-  record: Record<string, unknown>,
   cfg: AgentCharConfigInput['cfg'],
   income: number,
   ink2: number,
   axisCloudSpent: number,
 ): { ink3: number; perfectBlocks: number } {
-  const ink3Raw = Number(record.yixuanInk3Count ?? 0)
+  const ink3Raw = Number(cfg.yixuanInk3Count ?? 0)
   const ink3 = ink3Raw >= 1
     ? Math.floor(ink3Raw)
     : Math.floor(Math.max(0, income - ink2 * INK2_COST - axisCloudSpent) / INK3_COST)
-  const perfectBlocks = resolveYixuanPerfectBlocks(record, cfg)
+  const perfectBlocks = resolveYixuanPerfectBlocks(cfg)
   // 影画4 静心（增伤载体=凝云/墨烬影消）：自动口径下留 1 轮凝云（60 闪能）当载体，
   // 否则轴外凝云全被 3 连吃掉 → C4 0 增幅 —— 用户口径 2026-08
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.yixuanCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.yixuanCinemaLevel ?? 0)))
   if (cinemaLevel >= 4 && ink3 > 0) {
     const reserved = Math.min(ink3, 1) // 留 1 轮凝云 = 少打 1 次 3 连
     return { ink3: ink3 - reserved, perfectBlocks }
@@ -572,15 +568,14 @@ function resolveYixuanAutoInputs(
 
 /** 从 cfg 读链输入并分解（buildExecutions/estimate/resourceSections 共用） */
 function resolveYixuanChain(cfg: AgentCharConfigInput['cfg'], exSpecialCount: number): YixuanExChain {
-  const record = cfg as unknown as Record<string, unknown>
-  const ink2 = Math.max(0, Math.floor(Number(record.yixuanInk2Count ?? 0)))
+  const ink2 = Math.max(0, Math.floor(Number(cfg.yixuanInk2Count ?? 0)))
   const axisEx = readAxisEx(cfg)
   const axisCloud = axisEx[MOVE.cloud] ?? 0
-  const axisSec = Number(record.yixuanAxisCloudSeconds ?? CLOUD_MAX_SECONDS) || CLOUD_MAX_SECONDS
+  const axisSec = Number(cfg.yixuanAxisCloudSeconds ?? CLOUD_MAX_SECONDS) || CLOUD_MAX_SECONDS
   // 池子隐含收入（上轮口径）：exSpecialCount × 循环当量 60 —— 收敛后 ≈ 闪能总收入（含队友终结/异常触发）
   const income = Math.max(0, exSpecialCount) * CLOUD_CYCLE_COST
   const axisCloudSpent = axisCloud * (ASHEN_COST + axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS))
-  const { ink3, perfectBlocks } = resolveYixuanAutoInputs(record, cfg, income, ink2, axisCloudSpent)
+  const { ink3, perfectBlocks } = resolveYixuanAutoInputs(cfg, income, ink2, axisCloudSpent)
   return computeYixuanExChain(income, ink2, ink3, perfectBlocks, axisCloud, axisSec)
 }
 
@@ -595,16 +590,15 @@ function shufaUltCountOf(cfg: AgentResourceResultInput['cfg'], resources: Readon
 }
 
 function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   const chain = resolveYixuanChain(cfg, state.exSpecialCount ?? 0)
   // spec 术法值按 cfgField 读取实际总耗闪能
-  record.yixuanFlashEnergySpent = chain.flashSpent
+  cfg.yixuanFlashEnergySpent = chain.flashSpent
 
-  const axisActive = Boolean(record.yixuanAxisActive)
+  const axisActive = Boolean(cfg.yixuanAxisActive)
   const stunExCov = axisActive ? 0 : cfgNum(cfg, 'yixuan.stunExCoverage', DEFAULT_STUN_EX_COVERAGE)
   const axisCloud = chain.axisCloud ?? 0
   const cloudOut = chain.cloudOut ?? 0
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.yixuanCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.yixuanCinemaLevel ?? 0)))
   const ultCount = Math.max(0, Math.floor(state.ultimateCount ?? 0))
   // 玄墨值 M = 符法千重总次数（术法值消耗 + 影画6 调息赠送）——合轴替换/聚墨破/C4 静心共用
   const shufaResources = computeSpecResources(getAgentSpec(AGENT_ID)!, cfg, state)
@@ -617,7 +611,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
     ? Math.max(0, Math.min(giftSlider >= 0 ? giftSlider : ultCount, giftCap))
     : 0
   const totalFuFaUlts = shufaUlts + giftUlts
-  record.yixuanXuanmoGain = totalFuFaUlts
+  cfg.yixuanXuanmoGain = totalFuFaUlts
 
   // 影画4·静心：层数来源 = 全部终结技（青溟云影 ultimateCount + 符法千重 totalFuFaUlts，用户口径），
   // 每次终结 +1 层；增伤次数 = min(大招总次数, 凝云墨消总数)，摊入凝云/墨消全部执行（期望加权）
@@ -627,9 +621,9 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
     ? Math.round(C4_STUN_EX_BONUS * Math.min(totalUltCount, cloudTotal) / cloudTotal)
     : 0
 
-  const times = (record.yixuanMoveTimes ?? {}) as Record<string, number>
-  const dmgRows = (record.yixuanMoveDmg ?? {}) as Record<string, number>
-  const dazeRows = (record.yixuanMoveDaze ?? {}) as Record<string, number>
+  const times = cfg.yixuanMoveTimes ?? {}
+  const dmgRows = cfg.yixuanMoveDmg ?? {}
+  const dazeRows = cfg.yixuanMoveDaze ?? {}
   const push = (moveId: string, name: string, count: number, category: string, note: string, energyConsume = 0, dmgBonus = 0) => {
     if (count <= 0) return
     executions.push({
@@ -716,10 +710,10 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   // （N ≤ M 全打玄墨极阵+青溟震击；N > M 超出部分打墨影凝云+A5）；全部 actionTime=0 不占战场时间
   // 合轴次数：手动输入 >0 优先；否则吃自动填充（useResourceCalc 反推至保底4失衡，
   // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度）
-  const manualBackstage = Math.max(0, Math.floor(Number(record.yixuanBackstageComboCount ?? 0)))
+  const manualBackstage = Math.max(0, Math.floor(Number(cfg.yixuanBackstageComboCount ?? 0)))
   const backstageCount = manualBackstage > 0
     ? manualBackstage
-    : Math.max(0, Math.floor(Number(record.yixuanBackstageAutoCount ?? 0)))
+    : Math.max(0, Math.floor(Number(cfg.yixuanBackstageAutoCount ?? 0)))
   // 后台合轴行的喧响由**行级通道**进账（rowDecibelTotal 按 cfg.decibelRecoveryByMoveId 查表，
   // 即下面 push 的四行自带收入）。旧的聚合加项 cfg.yixuanBackstageDecibel 已随喧响行级化删除
   // （@fact engine:喧响收入行级Σ）——阶段1 第二刀 2026-09-09 清掉这段遗留回写（全仓零消费者）。
@@ -754,7 +748,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 影画1·落雷（队伍任意角色命中，6s 最多一次 → 战斗时间驱动）：50% 贯穿力附加伤害，
   // 假 id 不进失衡/异常池（坑5 约定），伤害池按 damageMultiplierOverride 消费
-  const c1Lightnings = Math.max(0, Math.floor(Number(record.yixuanC1LightningCount ?? 0)))
+  const c1Lightnings = Math.max(0, Math.floor(Number(cfg.yixuanC1LightningCount ?? 0)))
   if (c1Lightnings > 0) {
     executions.push({
       moveId: C1_LIGHTNING_MOVE_ID,
@@ -776,9 +770,9 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 
   // 额外能力·极限支援换场落雷：225% 贯穿力 + 5 闪能/次（默认队友弹刀和上限，主页可录入；假 id 不进失衡/异常池）
-  const assistCap = Math.max(0, Math.floor(Number(record.yixuanExtremeAssistCap ?? 0)))
-  const extremeAssists = resolveYixuanExtremeAssists(cfg, assistCap, record.yixuanExtremeAssistCountInput ?? -1)
-  record.yixuanExtremeAssistCount = extremeAssists
+  const assistCap = Math.max(0, Math.floor(Number(cfg.yixuanExtremeAssistCap ?? 0)))
+  const extremeAssists = resolveYixuanExtremeAssists(cfg, assistCap, cfg.yixuanExtremeAssistCountInput ?? -1)
+  cfg.yixuanExtremeAssistCount = extremeAssists
   if (extremeAssists > 0) {
     executions.push({
       moveId: EXTREME_ASSIST_MOVE_ID,
@@ -872,8 +866,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
 }
 
 function patchYixuanExecutions({ cfg, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.yixuanCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.yixuanCinemaLevel ?? 0)))
   for (const exec of executions) {
     if (!exec.moveId) continue
     // 玄墨异常独立积蓄槽：异常分桶到 ether_ink（直伤元素仍走倍率表 ether，不受影响）
@@ -909,7 +902,7 @@ function buildYixuanResourceResult({ cfg, state }: AgentResourceResultInput): Pa
 }
 
 function buildYixuanResourceSections({ result }: AgentResourceSectionsInput) {
-  const chain = result.yixuanExChain as YixuanExChain | undefined
+  const chain = result.yixuanExChain
   const specSections = specBase.resourceSections?.({ result }) ?? []
   if (!chain) return specSections
   const axisCloud = chain.axisCloud ?? 0
@@ -1160,6 +1153,17 @@ export const yixuanMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    // r391（D2 §5）：以下 5 项原经 Record 强转读写、无声明（拼错键名不报错），现补声明
+    /** 仪玄影画等级（buildCharConfig 写，buildExecutions / 链 / 结果卡读） */
+    yixuanCinemaLevel?: number
+    /** 极限支援手填次数的转交值（buildCharConfig 从 `yixuanExtremeAssistCount` 拷，-1 = 自动；buildExecutions 结算后回写 `yixuanExtremeAssistCount`） */
+    yixuanExtremeAssistCountInput?: number
+    /** 影画1 追加落雷次数（applyAxisContext 按 CD 写，buildExecutions 读） */
+    yixuanC1LightningCount?: number
+    /** 强特链实际耗闪能（buildExecutions 写；spec 术法值按 cfgField 读） */
+    yixuanFlashEnergySpent?: number
+    /** 符法千重类终结次数（玄墨值来源；buildExecutions 写） */
+    yixuanXuanmoGain?: number
     /** 仪玄招式 actionTime 表（buildCharConfig 从倍率表预存） */
     yixuanMoveTimes?: Record<string, number>
     /** 仪玄招式 damage 倍率表（buildCharConfig 从倍率表预存） */

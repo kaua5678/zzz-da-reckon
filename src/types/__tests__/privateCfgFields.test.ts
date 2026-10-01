@@ -73,3 +73,19 @@ describe('CC-360：角色专属结果类型随模块走', () => {
   })
 })
 
+/**
+ * D2 §5（r391 起）：模块内 `cfg as unknown as Record<string, unknown>` 绕开类型读写**未声明**的键，
+ * 拼错键名 = 静默读到 undefined。逐模块补声明（本模块扩充块）并改回 `cfg.<键>` 后，把模块名加进下表，锁住不回退。
+ * 判据是「这个模块的 cfg 状态键全有类型」，不是 cast 计数；按动态键（`record[field]`）的通用逻辑可保留，但该模块就别进表。
+ */
+const TYPED_CFG_MODULES = ['yixuan'] as const
+
+describe('D2 §5：已完成模块不再经 Record 强转读写 cfg', () => {
+  for (const m of TYPED_CFG_MODULES) {
+    it(`mechanics/agents/${m}.ts`, () => {
+      const src = stripComments(readFileSync(join(SRC, `mechanics/agents/${m}.ts`), 'utf-8'))
+      expect(src).not.toMatch(/as unknown as Record<string,\s*unknown>/)
+    })
+  }
+})
+
