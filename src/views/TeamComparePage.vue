@@ -681,7 +681,7 @@ import { fmt, compact } from '@/utils/format'
 import { useScatterGeometry } from '@/composables/teamCompareScatter'
 import { useSlotSweep } from '@/composables/teamCompareSweep'
 import { encodePointTimes, timeLegendRows } from '@/composables/pointTimeAxis'
-import type { BossPreset, BossPresetFile, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, PhaseView } from '@/types/bossPreset'
 import { releaseNodeOf, nodeIndexOf, VERSION_NODES } from '@/data/versionTimeline'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
@@ -698,15 +698,12 @@ const selectedBossId = ref('')
 
 onMounted(async () => {
   try {
-    const res = await fetch('/static/boss-presets.json')
-    if (res.ok) {
-      const data = (await res.json()) as BossPresetFile
-      bossPresets.value = data.bosses ?? []
-      phaseViews.value = data.phaseViews ?? []
-      // 默认选最新期数 + 该期第一个 Boss
-      const first = allPeriods.value[0]
-      if (first) selectedPeriodId.value = first.phaseId
-    }
+    const data = await useCatalogStore().loadBossPresets()
+    bossPresets.value = data.bosses ?? []
+    phaseViews.value = data.phaseViews ?? []
+    // 默认选最新期数 + 该期第一个 Boss
+    const first = allPeriods.value[0]
+    if (first) selectedPeriodId.value = first.phaseId
   } catch { /* boss 数据缺失时页面显示引导 */ }
   // 预选全部队伍（不自动计算：计算含 buff 遍历较慢，由用户点「计算」触发）
   selectedPresetIds.value = teamPresets.map(t => t.id)

@@ -132,12 +132,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useCatalogStore } from '@/stores/catalog'
 import { NCard, NSpace, NSelect, NButton, NTag, NCollapse, NCollapseItem } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { applyBossRoom } from '@/composables/bossRoom'
 import BossCard from './BossCard.vue'
 import { bossBuffEffectLabel as effectLabel } from '@/utils/bossEffectLabel'
-import type { BossPreset, BossPresetFile, BossPresetPhase, PhaseBossBrief, PhaseView } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase, PhaseBossBrief, PhaseView } from '@/types/bossPreset'
 
 const configStore = useConfigStore()
 
@@ -151,9 +152,7 @@ const selectedPhaseId = ref('')
 
 onMounted(async () => {
   try {
-    const res = await fetch('/static/boss-presets.json')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = (await res.json()) as BossPresetFile
+    const data = await useCatalogStore().loadBossPresets()
     presets.value = data.bosses ?? []
     phaseViews.value = data.phaseViews ?? []
     // 默认选最新期（从所有 Boss phases 数据中取最新；覆盖 1.4–3.2）
@@ -292,7 +291,7 @@ function jumpToBoss(boss: BossPreset) {
   const viewIds = new Set(phaseViews.value.map(v => v.phaseId))
   const target = boss.phases.find(p => p.modeType === 'critical_assault' && viewIds.has(p.phaseId))
     ?? boss.phases.find(p => viewIds.has(p.phaseId))
-    ?? boss.phases.sort((a, b) => b.begin.localeCompare(a.begin))[0]
+    ?? [...boss.phases].sort((a, b) => b.begin.localeCompare(a.begin))[0] // 拷贝再排：预设数据各页共享（catalog#loadBossPresets）
   if (target) {
     const parts = target.version.split('.')
     selectedMajor.value = parts[0]

@@ -419,7 +419,7 @@ import { benchText, bossCellText, bossCellTitle, colorOf, swapKindLabel } from '
 import { timelineHoverRows as buildTimelineHoverRows } from '@/composables/charts/hoverCardRows'
 import { runTeamTimelineCompute } from '@/composables/charts/chartRunners'
 import { fmt, compact } from '@/utils/format'
-import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
+import type { BossPreset } from '@/types/bossPreset'
 
 useConfigStore()
 const catalogStore = useCatalogStore()
@@ -456,17 +456,14 @@ const bossOptions = computed(() =>
 
 onMounted(async () => {
   try {
-    const res = await fetch('/static/boss-presets.json')
-    if (res.ok) {
-      const data = (await res.json()) as BossPresetFile
-      bossPresets.value = data.bosses ?? []
-      // 默认选最新危局 Boss（无危局期数的 Boss 不作默认）
-      const withCA = bossOptions.value.filter(o => {
-        const b = bossPresets.value.find(x => x.id === o.value)
-        return b?.phases.some(p => p.modeType === 'critical_assault')
-      })
-      selectedBossId.value = withCA[0]?.value ?? bossOptions.value[0]?.value ?? ''
-    }
+    const data = await useCatalogStore().loadBossPresets()
+    bossPresets.value = data.bosses ?? []
+    // 默认选最新危局 Boss（无危局期数的 Boss 不作默认）
+    const withCA = bossOptions.value.filter(o => {
+      const b = bossPresets.value.find(x => x.id === o.value)
+      return b?.phases.some(p => p.modeType === 'critical_assault')
+    })
+    selectedBossId.value = withCA[0]?.value ?? bossOptions.value[0]?.value ?? ''
   } catch { /* boss 数据缺失时页面显示引导 */ }
 })
 

@@ -158,7 +158,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { NCard, NAlert } from 'naive-ui'
 import { useSeriesFilter } from '@/composables/seriesFilter'
-import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
+import type { BossPreset } from '@/types/bossPreset'
 import { fmt } from '@/utils/format'
 import { buildInflationSeries, buildReleaseStrengths, type InflationMode } from '@/composables/inflationCurve'
 import { INFLATION_SVG_WIDTH, buildInflationChart, inflationSvgHeight } from '@/composables/inflationChart'
@@ -189,9 +189,7 @@ const hover = ref<null | { name: string; color: string; seasonIdx: number; coeff
 
 onMounted(async () => {
   try {
-    const res = await fetch('/static/boss-presets.json')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const j = (await res.json()) as BossPresetFile
+    const j = await useCatalogStore().loadBossPresets()
     presets.value = j.bosses ?? []
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)

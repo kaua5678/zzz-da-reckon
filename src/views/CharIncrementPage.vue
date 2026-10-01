@@ -170,7 +170,7 @@ onMounted(async () => {
   try {
     const [ra, bp] = (await Promise.all([
       fetch('/static/run-archive.json').then(r => { if (!r.ok) throw new Error(`归档 HTTP ${r.status}`); return r.json() }),
-      fetch('/static/boss-presets.json').then(r => { if (!r.ok) throw new Error(`Boss 预设 HTTP ${r.status}`); return r.json() }),
+      useCatalogStore().loadBossPresets().catch((e: unknown) => { throw new Error(`Boss 预设 ${e instanceof Error ? e.message : String(e)}`) }),
     ])) as [ArchiveFile, BossPresetFile]
     archive.value = ra
     bosses.value = bp.bosses ?? []

@@ -259,7 +259,7 @@ onMounted(async () => {
   try {
     const [ra, bp] = (await Promise.all([
       fetch('/static/run-archive.json').then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() }),
-      fetch('/static/boss-presets.json').then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() }),
+      useCatalogStore().loadBossPresets(),
     ])) as [ArchiveFile, BossPresetFile]
     file.value = ra
     presets.value = bp.bosses ?? []

@@ -507,9 +507,7 @@ function cellText(v: number | null): string {
 
 onMounted(async () => {
   try {
-    const res = await fetch('/static/boss-presets.json')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
+    const data = await useCatalogStore().loadBossPresets()
     bossPresets.value = data.bosses ?? []
   } catch (e) {
     error.value = `Boss 预设加载失败：${e instanceof Error ? e.message : String(e)}`

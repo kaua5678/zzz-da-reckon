@@ -282,9 +282,7 @@ const inflationSeries = ref<InflationSeries | null>(null)
 onMounted(async () => {
   // 与图数据同源（boss-presets.json 的 phase.hp 按版本聚合）；失败则整块不显示（不影响主读数）
   try {
-    const res = await fetch('/static/boss-presets.json')
-    if (!res.ok) return
-    inflationSeries.value = buildInflationFromFile(await res.json(), 'defense')
+    inflationSeries.value = buildInflationFromFile(await useCatalogStore().loadBossPresets(), 'defense')
   } catch { /* 拿不到就只显示原来的摘要 */ }
 })
 

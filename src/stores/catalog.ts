@@ -4,6 +4,7 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef, computed } from 'vue'
 import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Boss, TeammateBuff, TeammateBuffGroup, BuildRecommendations, CharacterBuildRecommendation } from '@/types/catalog'
+import type { BossPresetFile } from '@/types/bossPreset'
 import { getAgentSpecsByAgentId } from '@/specs/registry'
 import type { TeamBuffSpec } from '@/specs/types'
 
@@ -129,6 +130,12 @@ export const useCatalogStore = defineStore('catalog', () => {
   const buildRecsLoading = computed(() => buildRecsStatus.value === 'loading')
   const buildRecsLoaded = computed(() => buildRecsStatus.value === 'ready')
   let buildRecsPromise: Promise<BuildRecommendations | null> | null = null
+
+  // Boss 预设（boss-presets.json：bosses + phaseViews）。arena-D 第 366 轮：原 9 处页面 / 组件各自 fetch 一份，
+  // 切页面就重下 360 KB、各自写错误处理；收成唯一加载入口（同目录：浅层、整体赋值、并发去重、失败可重试）。
+  // ⚠ 各页面拿到的是**同一份对象**：只读。要排序 / 改字段先拷贝（`[...boss.phases].sort(...)`），否则会串到别的页面。
+  const bossPresetFile = shallowRef<BossPresetFile | null>(null)
+  let bossPresetsPromise: Promise<BossPresetFile> | null = null
 
   // 索引 Map
   const agentsMap = computed(() => {
@@ -276,6 +283,24 @@ export const useCatalogStore = defineStore('catalog', () => {
     return buildRecsPromise
   }
 
+  /** 加载 Boss 预设；失败抛错（调用方沿用各自的 catch 口径），不缓存失败 ⇒ 下次调用重试。 */
+  async function loadBossPresets(): Promise<BossPresetFile> {
+    if (bossPresetFile.value) return bossPresetFile.value
+    if (bossPresetsPromise) return bossPresetsPromise
+    bossPresetsPromise = Promise.resolve().then(async () => {
+      try {
+        const res = await fetch('/static/boss-presets.json')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as BossPresetFile
+        bossPresetFile.value = data
+        return data
+      } finally {
+        bossPresetsPromise = null
+      }
+    })
+    return bossPresetsPromise
+  }
+
   // 根据角色 ID 获取配装推荐
   function getBuildRecommendation(agentId: string): CharacterBuildRecommendation | undefined {
     return buildRecommendations.value?.characters[agentId]
@@ -328,6 +353,8 @@ export const useCatalogStore = defineStore('catalog', () => {
     load,
     loadTeammateBuffs,
     loadBuildRecommendations,
+    bossPresetFile,
+    loadBossPresets,
     getAgent,
     getWEngine,
     getDriveDiscSet,

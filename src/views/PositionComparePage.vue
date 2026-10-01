@@ -137,11 +137,6 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePositionCompare, type ComparePosition, type PositionCompareRow } from '@/composables/positionCompare'
 import type { BossPreset } from '@/types/bossPreset'
 
-interface BossPresetFile {
-  bosses: BossPreset[]
-  phaseViews: unknown[]
-}
-
 const bossPresets = ref<BossPreset[]>([])
 const catalogStore = useCatalogStore()
 const selectedBossId = ref('')
@@ -164,12 +159,9 @@ const isMain = computed(() => position.value === 'main')
 
 onMounted(async () => {
   try {
-    const res = await fetch('/static/boss-presets.json')
-    if (res.ok) {
-      const data = (await res.json()) as BossPresetFile
-      bossPresets.value = data.bosses ?? []
-      if (bossPresets.value.length > 0) selectedBossId.value = bossPresets.value[0].id
-    }
+    const data = await useCatalogStore().loadBossPresets()
+    bossPresets.value = data.bosses ?? []
+    if (bossPresets.value.length > 0) selectedBossId.value = bossPresets.value[0].id
   } catch { /* 忽略 */ }
 })
 
