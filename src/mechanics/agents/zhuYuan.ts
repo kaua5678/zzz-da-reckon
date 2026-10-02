@@ -85,13 +85,12 @@ function applyZhuYuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
 const settings: MechanicSetting[] = []
 
 function buildZhuYuanCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.zhuyuanCinemaLevel = cinemaLevel
-  record.zhuYuanStunCoverage = 0 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
+  cfg.zhuyuanCinemaLevel = cinemaLevel
+  cfg.zhuYuanStunCoverage = 0 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
   // 自卫还击（支援突击 1241025）「招式发动时，获得3枚强化霰弹」的次数源。
   // @fact agent:1241/自卫还击霰弹次数源 口径: defAssistCount = cfg.parryCount —— core 的支援突击行本身按 `cfg.parryCount` 产（core/resource/rowBuild.ts 支援突击块 count = parryCount），霰弹 +3/次 与该伤害行**同源同次数**、不是双计；不带支援突击的弹刀（parryNoFollowUpCount）不产支援突击行 ⇒ 不计入 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…给有回避的分配一个回避支援」+ 原文 data/raw/nanoka_missing/full/1241.json「发动[回避支援]后，点按[普通攻击]发动…获得3枚[强化霰弹]」·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/zhuYuan.test.ts#自卫还击霰弹接黄光交互次数 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanCharConfig | 信 确认
   // ⟳复核: 若「回避支援行」按用户裁决补进 core（黄光交互另计 1.166s 时停）或 core 支援突击行的次数源改动，本字段必须同步改读同一个源，否则伤害行与霰弹收益会脱钩 | 到期 2026-12-15
-  record.defAssistCount = Math.max(0, Math.floor(Number(cfg.parryCount ?? 0)))
+  cfg.defAssistCount = Math.max(0, Math.floor(Number(cfg.parryCount ?? 0)))
 }
 
 /**
@@ -109,10 +108,9 @@ function buildZhuYuanCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
  */
 function applyZhuYuanTeamConfig({ cfg, phase, stunCount, combatTime, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const record = cfg as unknown as Record<string, unknown>
   const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
   const battle = Math.max(1, Number(combatTime) || 180)
-  record.zhuYuanStunCoverage = Math.min(1, resolvedStun * ZHUYUAN_STUN_WINDOW_SECONDS / battle)
+  cfg.zhuYuanStunCoverage = Math.min(1, resolvedStun * ZHUYUAN_STUN_WINDOW_SECONDS / battle)
   if (!axis) return
   const slot = Number(cfg.slot)
   let axisEther = 0
@@ -124,8 +122,8 @@ function applyZhuYuanTeamConfig({ cfg, phase, stunCount, combatTime, axis }: Age
       if ((ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS as readonly string[]).includes(act.moveId)) axisEther += act.count * wins
     }
   })
-  record.zhuYuanAxisActive = axis.active
-  record.zhuYuanAxisEther = axisEther
+  cfg.zhuYuanAxisActive = axis.active
+  cfg.zhuYuanAxisEther = axisEther
 }
 
 function resolveZhuYuanResources(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']) {
@@ -133,9 +131,9 @@ function resolveZhuYuanResources(cfg: AgentResourceInput['cfg'], state: AgentRes
   if (!spec) return null
   // 影画1 快速装填：连携+6/终结+9（initialValue/gain 的 cfgField 门控；
   // buildExecutions 先于 buildResourceResult 调用，此处写入保证两条路径一致）
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
-  ;(cfg as any).zhuyuanC1ChainReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_CHAIN : 0
-  ;(cfg as any).zhuyuanC1UltReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_ULTIMATE : 0
+  const cinema = Math.max(0, Math.floor(Number(cfg.zhuyuanCinemaLevel ?? 0)))
+  cfg.zhuyuanC1ChainReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_CHAIN : 0
+  cfg.zhuyuanC1UltReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_ULTIMATE : 0
   return computeSpecResources(spec, cfg, state)
 }
 
@@ -147,18 +145,17 @@ function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentR
 
 // @fact agent:1241/压制以太弹时间 口径: 1 枚霰弹 = 1 段平A（用户 2026-08-26 口径），所以以太弹行占的**就是平A池那份时间**，必须从通用 basic_attack 聚合行里挤出（琉音转大 carve 同款），不能在它之外另占一份；挤出后剩余时间仍归通用平A（总前台占用守恒） | 据 用户@2026-08-26·2026-09-05 复核（此前未挤出→同一段时间计两次）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/zhuYuan.test.ts#压制以太弹的时间占用 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanExecutions | 信 确认
 function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).zhuyuanCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.zhuyuanCinemaLevel ?? 0)))
   const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
   // 影画6 余温强特耗能-30 → 回能口径：余温次数 × 30 并入开局能量总账（用户口径 2026-08）。
   // CC-289：原先写在 buildResourceResult（装配末尾，能量账 resourceIncome 早已算完）⇒ 这笔能量从未进账
   // （探针：golden 里 1241 C6 余温 13～16 次，resourceIncome 读到的 initialEnergyGift 恒为 40）。
   // 改到 buildExecutions（与潘引壶 C2 同一钩子、同一幂等写法：先扣本模块上次写入量再写新值）。
-  const record = cfg as unknown as Record<string, unknown>
   const afterglowGift = cinema >= 6 ? Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST) * ZHUYUAN_C6_AFTERGLOW_ENERGY : 0
-  const prevAfterglowGift = Math.max(0, Number(record.zhuYuanC6AfterglowEnergy ?? 0))
+  const prevAfterglowGift = Math.max(0, Number(cfg.zhuYuanC6AfterglowEnergy ?? 0))
   if (afterglowGift > 0 || prevAfterglowGift > 0) {
     cfg.initialEnergyGift = Math.max(0, Number(cfg.initialEnergyGift ?? 0) - prevAfterglowGift) + afterglowGift
-    record.zhuYuanC6AfterglowEnergy = afterglowGift
+    cfg.zhuYuanC6AfterglowEnergy = afterglowGift
   }
   // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款），非轴按覆盖率近似（默认0），轴模式待接入
   // 压制模式·请勿抵抗：1 枚霰弹 = 1 段以太强化霰弹（1241010/1241011/1241012 三段轮转），
@@ -166,11 +163,11 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
   const maxByTime = Math.max(0, Math.floor((state.basicAttackTime ?? 0) / ZHUYUAN_SUPPRESS_ETHER_AVG_TIME))
   const bullets = Math.min(shellsTotal, maxByTime)
   // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款）；轴模式按轴内压制以太占比（捏轴），非轴按反推覆盖率
-  const axisActive = (cfg as any).zhuYuanAxisActive === true
-  const axisEther = Math.max(0, Math.floor(Number((cfg as any).zhuYuanAxisEther ?? 0)))
+  const axisActive = cfg.zhuYuanAxisActive === true
+  const axisEther = Math.max(0, Math.floor(Number(cfg.zhuYuanAxisEther ?? 0)))
   const effectiveStunCov = axisActive
     ? (bullets > 0 ? Math.min(1, axisEther / bullets) : 0)
-    : Math.max(0, Math.min(1, Number((cfg as any).zhuYuanStunCoverage ?? 0)))
+    : Math.max(0, Math.min(1, Number(cfg.zhuYuanStunCoverage ?? 0)))
   const stunBonus = effectiveStunCov > 0 ? Math.round(ZHUYUAN_CORE_STUN_DMG * effectiveStunCov) : 0
   // 压制以太弹占的**就是平A池那份时间**（用户口径：1 枚霰弹 = 1 段平A，超出平A池的霰弹浪费），
   // 所以必须从通用 `basic_attack` 聚合行里把这段时间**挤出**，而不是在它之外另占一份。
@@ -297,6 +294,14 @@ export const zhuYuanMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 朱鸢失衡窗口覆盖率（applyTeamConfig converge 由失衡次数反推；buildCharConfig 先兜底 0） */
+    zhuYuanStunCoverage?: number
+    /** 朱鸢轴模式是否生效（applyTeamConfig 写，资源阶段读） */
+    zhuYuanAxisActive?: boolean
+    /** 朱鸢轴内压制以太数（applyTeamConfig 写，核心被动失衡增伤读） */
+    zhuYuanAxisEther?: number
+    /** 朱鸢影画6 余晖回能：上一轮已计入的赠送量（重算前扣回，防外层环累加） */
+    zhuYuanC6AfterglowEnergy?: number
     /** 朱鸢命座等级（霰弹资源门控影画1 快速装填/影画6 以太余温） */
     zhuyuanCinemaLevel?: number
     /** 朱鸢影画1 快速装填连携回复量（6，非影画1 为 0；computeZhuYuanShellsTotal 写入） */

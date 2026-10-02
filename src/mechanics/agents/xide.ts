@@ -196,8 +196,8 @@ function xideTeammateBuffRecipientFilter({ team, slot, recipientSlot, getOutOfCo
 /** 钢能招式攻击数据回复：统一对「所有执行行」求和（moveId → attack_data × 次数；平A按秒均 × 时间） */
 function computeXideAttackSteelFromExecutions(cfg: AgentResourceInput['cfg'], executions: SkillExecution[]): number {
   const num = (v: unknown) => { const x = Number(v); return Number.isFinite(x) ? Math.max(0, x) : 0 }
-  const map = ((cfg as any).xideAttackDataMap ?? {}) as Record<string, number>
-  const basicPerSec = num((cfg as any).xideBasicSteelPerSec)
+  const map: Record<string, number> = cfg.xideAttackDataMap ?? {}
+  const basicPerSec = num(cfg.xideBasicSteelPerSec)
   let total = 0
   for (const e of executions) {
     if (e.moveId === 'basic_attack') total += basicPerSec * num(e.totalTime)
@@ -212,9 +212,9 @@ function resolveXideSteelResources(
   state: AgentResourceInput['state'],
   attackSteel: number,
 ) {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).xideCinemaLevel ?? 0)))
-  ;(cfg as any).xideInitialSteel = XIDE_STEEL_INITIAL + (cinema >= 1 ? XIDE_STEEL_C1_ENTRY_BONUS : 0)
-  ;(cfg as any).xideC1UltSteel = cinema >= 1 ? XIDE_STEEL_C1_ULTIMATE_BONUS : 0
+  const cinema = Math.max(0, Math.floor(Number(cfg.xideCinemaLevel ?? 0)))
+  cfg.xideInitialSteel = XIDE_STEEL_INITIAL + (cinema >= 1 ? XIDE_STEEL_C1_ENTRY_BONUS : 0)
+  cfg.xideC1UltSteel = cinema >= 1 ? XIDE_STEEL_C1_ULTIMATE_BONUS : 0
   const spec = getAgentSpec(XIDE_AGENT_ID)
   const cost = cinema >= 1 ? XIDE_STEEL_BENGZHUI_COST_C1 : XIDE_STEEL_BENGZHUI_COST
   if (!spec) return { resources: null, totalSteel: 0, cycle: 0 }
@@ -238,10 +238,10 @@ function resolveXideSteelResources(
 
 /** 钢能消耗出口：三招落华（重戮快速释放 + 崩坠一式 + 崩坠二式）+ 铁萼雨幕衔接重戮 */
 function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).xideCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.xideCinemaLevel ?? 0)))
   // 统一对当前执行行求和（通用行 + 后续追加的落华/崩坠行 attack_data 均为 0，不影响）
   const attackSteel = computeXideAttackSteelFromExecutions(cfg, executions)
-  ;(cfg as any).xideAttackSteel = attackSteel
+  cfg.xideAttackSteel = attackSteel
   const { cycle } = resolveXideSteelResources(cfg, state, attackSteel)
 
   const mkRow = (moveId: string, moveName: string, count: number, actionTime: number, extra: Partial<SkillExecution> = {}): SkillExecution => ({
@@ -275,9 +275,9 @@ function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): vo
 }
 
 function patchXideExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).xideCinemaLevel ?? 0)))
-  const atk = Math.max(0, Number((cfg as any).xideAtk ?? 0))
-  const aaActive = Number((cfg as any).xideAAActive ?? 0) > 0
+  const cinema = Math.max(0, Math.floor(Number(cfg.xideCinemaLevel ?? 0)))
+  const atk = Math.max(0, Number(cfg.xideAtk ?? 0))
+  const aaActive = Number(cfg.xideAAActive ?? 0) > 0
   for (const exec of executions) {
     // 额外能力·奇兵轰临（招式限定）：落华·重戮/崩坠/终结技 增伤+30% + 无视25%电抗
     if (aaActive && (
@@ -304,7 +304,7 @@ function patchXideExecutions({ cfg, executions }: AgentResourceInput): void {
 
 /** 钢能资源：复用 resolveXideSteelResources 统一求解 */
 function buildXideResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const attackSteel = Math.max(0, Number((cfg as any).xideAttackSteel ?? 0))
+  const attackSteel = Math.max(0, Number(cfg.xideAttackSteel ?? 0))
   const { resources } = resolveXideSteelResources(cfg, state, attackSteel)
   if (!resources) return {}
   return { specResources: Object.fromEntries(resources) }
@@ -331,20 +331,20 @@ export const xideVanguardSupply: CrossAgentSupplySpec = {
   displayKey: 'xideVanguardEnergy',
   supply: () => 0,
   perTargetAmounts({ ownSlot, cfg, state }) {
-    const raw = (cfg as unknown as Record<string, unknown>).xideVanguardSlot
+    const raw = cfg.xideVanguardSlot
     if (raw === undefined) return {}
     const vanguardSlot = Math.floor(xideNum(raw))
     if (vanguardSlot < 0 || vanguardSlot === ownSlot) return {}
     return { [vanguardSlot]: Math.max(0, xideNum(state.frontlineTime) - xideNum(state.comboAlignTime)) * 2 }
   },
   onOwnSlotCrossAgentEnergy({ ownSlot, cfg, configs, states }) {
-    const raw = (cfg as unknown as Record<string, unknown>).xideVanguardSlot
+    const raw = cfg.xideVanguardSlot
     if (raw === undefined) return
     const vanguardSlot = Math.floor(xideNum(raw))
     const vanguardEnergySpent = vanguardSlot >= 0 && vanguardSlot < configs.length && vanguardSlot !== ownSlot
       ? Math.max(0, Math.floor(states[vanguardSlot].exSpecialCount ?? 0)) * Math.max(0, configs[vanguardSlot].exSpecialEnergyConsume ?? 0)
       : 0
-    ;(cfg as unknown as Record<string, unknown>).xideVanguardEnergySpent = vanguardEnergySpent
+    cfg.xideVanguardEnergySpent = vanguardEnergySpent
   },
 }
 
@@ -382,6 +382,10 @@ export const xideMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 席德初始钢能（resolveXideSteelResources 写，影画1 含入场加成；spec 资源 JSON 按字段名读取） */
+    xideInitialSteel?: number
+    /** 席德影画1 终结技额外钢能（同上，spec 资源 JSON 按字段名读取） */
+    xideC1UltSteel?: number
     /** 席德命座等级（patchExecutions 门控影画6 激光附加伤害） */
     xideCinemaLevel?: number
     /** 席德局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */

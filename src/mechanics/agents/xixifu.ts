@@ -87,21 +87,21 @@ function applyXixifuTeamConfig({ characters, phase, stunCount }: AgentTeamConfig
 function resolveXixifuResources(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']) {
   const spec = getAgentSpec(XIXIFU_AGENT_ID)
   if (!spec) return null
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).xixifuCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.xixifuCinemaLevel ?? 0)))
   // 影画1：进场毒素 3→6（initialValueSource=cfgField，buildExecutions 先于
   // buildResourceResult 调用，此处写入保证两条路径一致）
-  ;(cfg as any).xixifuInitialToxin = cinema >= 1 ? XIXIFU_TOXIN_INITIAL_C1 : XIXIFU_TOXIN_INITIAL
+  cfg.xixifuInitialToxin = cinema >= 1 ? XIXIFU_TOXIN_INITIAL_C1 : XIXIFU_TOXIN_INITIAL
   // 影画2：失衡下连携/终结命中额外+3毒素（资源回复端）。
   // 非轴：连携默认全吃（全在失衡内），终结 = min(终结次数, 失衡次数)。
   // 轴模式（2026-08-31 接入）：连携/终结都由轴内块精确反推——轴内连携 override 进
   // state.chainCountTotal、终结读 cfg.axisUltimateTotal（编排层按窗口数加权注入），
   // 轴内块全在失衡窗口内，不吃 min(ult, stun) 折扣。
-  const axisUlt = Math.max(0, Math.floor(Number((cfg as any).axisUltimateTotal ?? 0) || 0))
+  const axisUlt = Math.max(0, Math.floor(Number(cfg.axisUltimateTotal ?? 0) || 0))
   const chain = Math.max(0, Math.floor(state.chainCountTotal ?? 0))
   const ult = axisUlt > 0 ? axisUlt : Math.max(0, Math.floor(state.ultimateCount ?? 0))
-  const stun = Math.max(0, Math.floor(Number((cfg as any).xixifuStunCount ?? 0)))
+  const stun = Math.max(0, Math.floor(Number(cfg.xixifuStunCount ?? 0)))
   const stunnedUlt = axisUlt > 0 ? ult : Math.min(ult, stun)
-  ;(cfg as any).xixifuC2Toxin = cinema >= 2 ? (chain + stunnedUlt) * 3 : 0
+  cfg.xixifuC2Toxin = cinema >= 2 ? (chain + stunnedUlt) * 3 : 0
   return computeSpecResources(spec, cfg, state)
 }
 
@@ -115,7 +115,7 @@ function computeXixifuToxinTotal(cfg: AgentResourceInput['cfg'], state: AgentRes
 function computeXixifuCounts(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']) {
   const toxinTotal = computeXixifuToxinTotal(cfg, state)
   const shekissCount = Math.floor(toxinTotal / XIXIFU_SHEKISS_TOXIN_COST)
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).xixifuCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.xixifuCinemaLevel ?? 0)))
   // 蚀骨基础：每消耗1点毒素触发1次（接战每5秒/蛇吻快速消耗/溢出，总量口径）
   const baseShigu = toxinTotal
   // 影画4 [觉悟]：强特/连携/终结各+1层，默认全消耗 → 特殊蚀骨 = 三者次数之和，无失衡值
@@ -135,9 +135,9 @@ function computeXixifuCounts(cfg: AgentResourceInput['cfg'], state: AgentResourc
 function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const { shekissCount, baseShigu, shiguTotal, cinema } = computeXixifuCounts(cfg, state)
   if (shiguTotal <= 0 && shekissCount <= 0) return
-  const electric = Math.max(1, Math.floor(Number((cfg as any).xixifuElectricCount ?? 1)))
+  const electric = Math.max(1, Math.floor(Number(cfg.xixifuElectricCount ?? 1)))
   const stunBonus = electric >= 2 ? XIXIFU_SHIGU_STUN_2E : XIXIFU_SHIGU_STUN_1E
-  const atk = Math.max(0, Number((cfg as any).xixifuAtk ?? 0))
+  const atk = Math.max(0, Number(cfg.xixifuAtk ?? 0))
   const flatAddition = atk * XIXIFU_SHIGU_ADDITION_RATIO
   const c1ResIgnore = cinema >= 1 ? XIXIFU_SHIGU_C1_RES_IGNORE : 0
 
