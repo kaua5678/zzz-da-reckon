@@ -67,10 +67,7 @@ const C6_DAMAGE_RATIO = 33
 function applyAlicePanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelInput): void {
   const aa = specAdditionalAbilityActive(team, slot, agent)
   panel.aliceAdditionalAbilityActive = aa ? 1 : 0
-  panel.aliceCinema1 = cinemaLevel >= 1 ? 1 : 0
-  panel.aliceCinema2 = cinemaLevel >= 2 ? 1 : 0
   panel.aliceCinema4 = cinemaLevel >= 4 ? 1 : 0
-  panel.aliceCinema6 = cinemaLevel >= 6 ? 1 : 0
 
   // 畏缩：全局物理异常积蓄效率 +25%（默认覆盖 100%）
   if (aa) {

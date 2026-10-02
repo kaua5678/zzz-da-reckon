@@ -156,11 +156,9 @@ export const VELINA_C2_CORROSION_RATE_DEFAULT = 2 / 3
 
 function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: AgentPanelInput): void {
   const additionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
-  panel.velinaCinema1 = cinemaLevel >= 1 ? 1 : 0
   // 乱流抗性无视（通用面板字段，core/anomalyPool/helpers.ts#calcTurbulenceSettlement 读；CC-36b）
   panel.turbulenceResIgnore = cinemaLevel >= 1 ? 20 : 0
   panel.velinaCinema2 = cinemaLevel >= 2 ? 1 : 0
-  panel.velinaCinema4 = cinemaLevel >= 4 ? 1 : 0
   panel.velinaCinema6 = cinemaLevel >= 6 ? 1 : 0
   // CC-27（2026-09-28）：2 命风蚀利用率由本模块在面板阶段读自己的滑块盖章，风蚀状态机（本模块
   // `resolveVelinaCorrosion`）读回——写读同属本模块。此前该字段零写入、恒回落到编排层穿线传入的

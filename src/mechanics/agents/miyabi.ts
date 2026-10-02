@@ -101,9 +101,7 @@ function getFrostFallResource(
 function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: AgentPanelInput): void {
   const aa = isAdditionalAbilityActive(team, slot, agent)
   const hasWind = hasWindTeammate(team, slot)
-  panel.miyabiEnabled = 1
   panel.miyabiAdditionalAbilityActive = aa ? 1 : 0
-  panel.miyabiCinema2 = cinemaLevel >= 2 ? 1 : 0
   panel.miyabiCinema4 = cinemaLevel >= 4 ? 1 : 0
   panel.miyabiCinema6 = cinemaLevel >= 6 ? 1 : 0
   // 标记风队伍状态（用于霜灼buff覆盖率）
@@ -125,16 +123,13 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
   // C2：暴击率+15%；风花/闪避反击伤害+30%
   if (cinemaLevel >= 2) {
     panel.critRate = (panel.critRate ?? 0) + C2_CRIT_RATE
-    panel.miyabiCinema2EntryFrostFall = 6
     // 风花（普攻）与闪避反击：通过 targetSkillType 定向增伤
     panel['skillDmgBonus__basic'] = (panel['skillDmgBonus__basic'] ?? 0) + C2_NA_AND_DODGE_COUNTER_DMG
     panel['skillDmgBonus__dodgeCounter'] = (panel['skillDmgBonus__dodgeCounter'] ?? 0) + C2_NA_AND_DODGE_COUNTER_DMG
   }
 
-  // C4：霜灼·破伤害+30%
-  if (cinemaLevel >= 4) {
-    panel.miyabiFrostburnDmgBonus = C4_FROSTBURN_DMG
-  }
+  // C4：霜灼·破伤害+30% —— 在执行级结算（本文件 `C4_FROSTBURN_DMG` 的 resolveExecutionDamage 读者），面板无字段。
+  // r400：原在此写 `panel.miyabiFrostburnDmgBonus`，全仓零读者，只会让命座自检误判「面板有变化」（docs/mcp-panel-fields.md §2）。
 
   // C6：极意霜月伤害+30%（限定基本攻击）
   if (cinemaLevel >= 6) {
