@@ -153,15 +153,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 418 轮（lane arena-E；无并行会话；HEAD `7e928003`；REQUIREMENTS.md 无新条目）：CC-392 三个代码提交 `0e282a10` / `e7453962` / `48ffeaf9` + 文档，已 push。**
-- **做到哪**：OPEN-ITEMS D1 全部落地。多父伴随行（vivian 悬落、pulchra 噬爪）跟随全部父动作的轴内占比；lycaon 后台闪反按失衡占比近似；轴编辑器不再提供放了不起作用的块（伴随子行、自动行、以 [表] 形式漏出的已建模招式）。详见架构卡 CC-392。
-- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0；vitest(4) 463 文件 / 4268 测试；build 通过；zd `r418a` 0/0（步 1），`r418b` 只有 `auto-1051-1141-1451` 两条结构哈希变、伤害零变化；timeGolden 不变；截图前后对比两队。
-- **回滚点**：三个提交可分别 `git revert`（步 3 → 步 2 → 步 1 顺序最安全）。
-- **拍板**：① 步 1 单独提交并以 zd 0/0 证明零差，再做登记。② lycaon 1141019 不扩跨槽契约，按 (b) 近似（理由写在卡片）。③ [表] 池去重口径改成伤害侧 `backed`（本角色全部执行行），不另列隐藏表。
+**第 419 轮（lane arena-E；无并行会话；HEAD `7bbf3be2`；REQUIREMENTS.md 无新条目）：CC-393 `5ed1315b` / `d7128f8e` + 文档，已 push。**
+- **做到哪**：
+  - ①「换人后该不该跟着走」审计（r416 起挂账）**结论：无实害，不改代码**。`CharacterConfig` 上随角色的字段（全部动作次数、潜能、交互基准、音擎、平A权重、驱动盘）`setAgent` 都会重置或重新预填；命座和精炼保留是有意的 UX（代码注释已写）；资源利用率 / 异常利用率 / 结算占比 / 合轴率已按角色存（CC-386 / 388）；`mechanicSettings` 的键都带角色命名空间（`alice.` / `liuyin.` …）；`boss.counterAssistSlot` / `wind.infectionTargetSlot` 的值本身就是槽位（描述位置）；`teamMechanicSettings` 只有雷米埃尔 Q 分配（键 = 前缀:她的槽位，只有她的模块读）。
+  - ② 轴内 [表] 直读判定单一来源（架构卡 CC-393）：编辑器与结算共用 `resourceCalc/axisTableDirect.ts`；融合并入段、模块隐藏招式不可直读；顺带修了希希芙预设的毒牙 #2 重复计伤，以及伊德海莉 1051015、雨果 1291010。
+- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0；vitest(4) 464 文件 / 4273 测试；build 通过；zd `r419a` 只有希希芙 4 队 + `__ms` 伤害下降、失衡池零变化，`r419b` 0/0；timeGolden 重生成 4 行（逐条解释见 CC-393）；截图对比 1051 / 1521 / 1091 队。
+- **回滚点**：`git revert d7128f8e`（雨果）→ `git revert 5ed1315b`（含 timeGolden 4 行）。
+- **拍板**：① 「是否已建模」不按 `#N` 后缀或名字判断，只认两类证据：`data/moveFusions.ts`（来自 nanoka param.desc）与模块声明的 `axisHiddenMoves` / `attachedEvents`。② [表] 倍率口径对齐执行行（融合主段取整组和）。③ 希希芙预设里的 1521009 块不删：模块用它算蚀骨轴内占比，只是不再出 [表] 直伤。
 - **下一步（按价值排）**：
-  1. 「换人后该不该跟着走」收尾审计（r416 第 2 项，仍未动）：`stores/config.ts` 里仍按槽位存的用户设置逐个归类，有实害才改。
-  2. [表] 池去重逻辑在 `StunAxisPage.vue` 的候选循环里，没有单测。若要锁：把候选生成（执行行 + 连段 + [表]）抽到 composable，再写「有执行行的 moveId 不出 [表]」的不变式；顺带核对 1051「[表]连携技：踱寒践约」——执行行的连携 moveId 与技能表 moveId 不同，判断是不是同一招重复提供。
-  3. 日后 `attachedEvents` 支持跨槽或按类别的父动作时，把 lycaon 1141019 从 `autoSplitByStun` 改为登记（目前是近似）。
+  1. **剩余同基名 [表] 候选逐个核对**（命座 0，`agentId moveId 名称 ← 同基名的执行行`；清单来自 `/home/kaua/calc-arch/arenaE/r419/tbl-census2.out` 的 TWIN 行）。做法：读角色模块与 `data/raw/nanoka_missing/full/<id>.json` 该招式的 param.desc，三选一——(i) 模块已用别的行表达它 ⇒ 加进该模块 `axisHiddenMoves` 并写依据（零差，同 hugo）；(ii) 原文说是同一次动作的多段、模块没建模 ⇒ 加融合组到 `data/moveFusions.ts`（**会改伤害**，要 zd + timeGolden 逐条解释）；(iii) 独立动作 ⇒ 不动。**优先**：青衣 1251021 / 1251022（`scripts/extract-move-fusions.mjs` 给出「月上海棠 = 1251011 + 1251021 + 1251022」，模块无引用 ⇒ 疑似强特只算了第 1 段，伤害偏低）；莱卡恩 1141016（脚本给出「狂猎时刻 = 1141015 + 1141016」，但 `lycaon.ts:279` 在点按次数 > 0 时按 1141016 出执行行，需判断）。其余：1071012、1101106、1101402、1121008 / 1121009（ben.ts 有引用）、1131013 / 1131014（soukaku.ts 引用 013）、1151013、1161015、1181018、1201023、1271009、1321012、1351005、1381009、1401007、1451017、1461022、1541007 / 1541011 / 1541012（promia.ts 引用 011）、1561010、1571009 / 1571012（norma.ts 有引用）、1611011 / 1611012、1621019（roxy.ts 有引用）。1091011 是星见雅第二次 E 的融合主段（已登记 `MIYABI_EX_FOLLOWUP`，可直读、倍率整组），不用动。
+  2. [表] 块的「不占时间预算、窗内不产失衡值」是既定口径（`damagePoolDirect.ts` 注释），若第 1 项发现大量独立动作被用户放进轴，再评估是否要给 [表] 块加时间账。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -169,11 +170,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - 纯类型改动的最强判据是 `vite build --outDir A` / `--outDir B` 后 `diff -r A B`（逐字节相同 ⇒ 运行时零变化），比 zd 便宜且覆盖全产物。
   - 两个 `node /tmp/mcp.js` 并行调用会撞「Duplicate JSON-RPC request id」（每个进程 id 都从 1 起、共用 session）——MCP 调用别并行。
   - **新建 `docs/*.md` 必须同步登记 README §6 文档表并改节标题份数**（守卫 `docs table`）；收尾在**文档提交之后**再跑一次 `npm run check-guards`，别只在代码提交前跑。
-  - `git stash -- <路径>` 可只撤某几处改动做锁的反证，`git stash pop` 复原（r390 用过）。
+  - **反证别用 `git stash push -- <路径>` + `git stash pop`**：stash 列表是全部 worktree 共用的，路径上没有改动时 push 什么都不存，紧跟的 pop 会弹出**别人的** stash（r419 实测：弹出 wtE-d2b 的旧 WIP，18 个文件冲突；`git reset --hard HEAD` 恢复，那条 stash 因冲突被保留）。改用 `cp <文件> <备份>; git show HEAD:<文件> > <文件>; 跑测试; cp <备份> <文件>`。
   - 只做机械改写时**别**把 `Number(raw ?? x)` 换成 `cfgMechanicSetting`：后者对非有限数取 fallback，脏值行为不同（零差不保）。
   - check:fast / verify 别整条跑：拆成 guards→tokens→data→specs（一调用）/ recording / `vitest --maxWorkers=4` / build 分别前台跑。
   - **隐藏某类候选后要检查有没有从别的池子漏回来**：轴编辑器有三个候选来源（执行行 / 连段表 / [表] 技能表直读），只过滤执行行时，被隐藏的招式会以 `[表]…×99` 形式重新出现（r418 截图发现）。改候选池要截图看全部来源。
   - **verify 拆分时脚本名照 `package.json` 的 `verify` 写**：是 `check-guards` / `check-tokens` / `validate:data` / `validate:specs` / `verify:recording`，写成 `guards` / `check-data` 会直接失败（r418 踩到）。
+  - **「是否已建模」别按 `#N` 后缀判断**：catalog 的 `#N` 可能是同一招的分段（飞雪 #1~#4）、互斥版本（踱寒践约 #1 / #2）或完全不同的子攻击（1051024「极寒重碾 #2」= 寒冰触手）。证据只认 `data/moveFusions.ts`（nanoka param.desc）、模块代码与模块声明（r419）。
   - 只剩 15 个工具（无 wsl_exec）、run_command PTY 起不来、文件工具 EIO ⇒ WSL 挂了，没有替代路径，停手；ngrok `404 ERR_NGROK_3200` ⇒ 隧道离线，什么都做不了。恢复后先 `git status` 核对 worktree 再续。
   - 锁的判据要覆盖「同一个病的所有写法」：CC-235 只锁模板字面量、D2 §5 只锁 Record 强转，结果各漏了一类（r393 补）。新写锁时先列出这个病的全部语法形态。
   - Python 补丁里 `assert s.count(a)==n` 先于写文件：计数写错时文件不会半改（r393 orphie 实测）。
