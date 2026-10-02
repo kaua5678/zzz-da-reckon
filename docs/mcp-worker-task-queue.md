@@ -81,6 +81,28 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 01:20 arena-C 第 422 轮**（开工 01:00：master `2e325bbe`、无并行提交、独占进程只有常驻 `dsh web`；01:16 主仓弹出别人未跟踪的 `src/mechanics/__tests__/r65j1DeadBuffProbe.test.ts`（R65-J1 「声明了但没接进计算」死 buff 晨查探针，2 分钟前新建）⇒ 判定并行，但文件面不相交（他动 mechanics/utils，我动 views/components）；REQUIREMENTS.md 429 行无新条目；worktree `wtA-r422` 已删）：**CC-396 `df24a9ec`**，已 ff 合入 master。
+- **做到哪**：展示层 28 处裸 any 标注清到 0（7 文件）+ 源码锁从 1 条规则扩到 6 条。逐文件：
+  1. `components/ResourceResultCard.vue` 13 处：列数组标 `DataTableColumns<SkillExecution>` / `<AnomalyEventExecution>` 后删掉 10 个 `render(row: any)`；`executionValue` 的键参数收窄成 `ExecAmountKey` 联合（单/总 10 个键名，写错编译期即报错）；`renderCount` 返回类型交给推断；异常池补入的事件行 `eventType: e.type` → `'release' as const`（上方 filter 已按 `type === 'release'`，原宽联合过不了 `AnomalyEventExecution` 的窄接口）。
+  2. `views/ResourceUtilizationPage.vue` 7 处：`settlementRows(vp)` / `vpTotalTriggers(vp)` 标 `AnomalyVirtualPanelBuild`；`filter` / `map` 的 row 标 `AnomalyVirtualPanelRow`；两处 `perElement.find((p: AnomalyProgress) => ...)`；返回类型交给推断（原 `: any[]`）。
+  3. `views/ResourcePage.vue` 2 处：`cols: any[]` → `DataTableColumns<MoveRow>`（新增 `type MoveRow = Record<string, unknown>`）；`const row: Record<string, any>` → `MoveRow`。
+  4. `components/ImpactChart.vue` 2 处：`Snapshot.team` → `CharacterConfig[]`；`catch (e: any)` → `catch (e)` + `e instanceof Error ? e.message : String(e)`。
+  5. `components/charts/ResponseSurface3D.vue` 2 处：`renderVarLabel` 返回 `VNodeChild`；`drawQuadContour` 的 `q: any` → 新接口 `Quad`（四角 `QuadCorner{screenX, screenY, normZ}`）。
+  6. `views/CalculatorView.vue` 1 处：`pageMap: Record<string, any>` → `Record<string, Component>`（该文件本就已 import `type Component`）。
+  7. `views/RunArchivePage.vue` 1 处：模板 `:row-key="(r: any) => r.id"` → `r => r.id`（naive-ui 的 rowKey prop 自带 `(row: any)` 语境，删标注不触发隐式 any）。
+- **锁**：`src/scripts/__tests__/displayLayerNoAny.test.ts` 现在是 6 条规则表（`as any` / `: any` / `<any>` / `any[]` / `Record<…, any>` / `) => any`）+ 扫描面清单（4 个具名文件 + 文件数下限）+ 检测函数单测。反证：往 `views/ResourcePage.vue` 注入 `const __probe: any = 1` + `const __probe2: any[] = []`，两条规则同时红并报 `views/ResourcePage.vue:157/158`。
+- **验证**：`vue-tsc -b --force` 0 错；全量 verify EXIT 0（465 文件 / 4280 测试，16/29 skipped；独立 25 / token 12 / data 366 / spec 1120 / recording 189）。比 421 轮多的 6 个测试正好是锁新增的 6 条规则。全部改动只动类型标注，无一行运行时逻辑 ⇒ 运行时零变化。
+- **下一步（start-ready）**：
+  1. **展示层已无 any 可清，换面**。全仓库（去注释、去测试）按同 6 条规则扫，剩余只有 **9 处 / 4 文件**（已本轮复核，别直接信任 4f59量的旧数字）：`src/composables/hpSourceBreakdown.ts` 4（`(raw as any).modificationValues` / `(effect as any).sourceLabel` / `twoPiece as any` ×2）、`src/composables/useStatLabel.ts` 2（`(statDisplay as any)?.[stat]` ×2）、`src/stores/catalog.ts` 2（`sourceStat as any` / `targetSkillType as any`）、`src/composables/useResourceCalc.ts` 1（`computeStunCoverage(sp: any)`）。**注意**：`hpSourceBreakdown.ts` 读的 `modificationValues` / `sourceLabel` 就是 CC-395a 已经补过声明的字段，只不过它拿到的变量类型不是 `BuffEffect` （先确认真实类型再动手，别直接强转到 `BuffEffect`）。做法延续 CC-395a 路子：补声明 / 改具名读取，别加允许。
+  2. 若 1 做完还有余量：把锁从 views/components 扩到 **composables + stores**（扫描面加两个具名目录，ALLOW 保留）——此时 `useResourceCalc.ts:290` 的 `sp: any` 就会红，顺手修掉。`src/composables/resourceCalc/axisTableDirect.ts` 是 arena-E 历史占用面，**别接**。
+  3. **别接别人正在跑的 R65-J1 死 buff 晨查**（`src/mechanics/__tests__/r65j1DeadBuffProbe.test.ts` + `src/utils/teammateBuffRows.ts`）：那是行为层缺口晨查，和类型锁不是一件事；他的探针写了 `.zc/reports/*.json`，结果出来后可以单独开卡处理。
+- **坑**：
+  - `CharacterConfig` 在 `@/stores/config`，**不在** `@/types/resource`（后者只 re-export resource 域）。本轮先写错一次，`vue-tsc` 报 TS2305 才改对。
+  - 表格列 render 的修法永远是「标列数组、删行标注」；只删 `row: any` 不标列数组 = 隐式 any 报错。
+  - 写锁的自测期望要按规则分类：`Promise<any>` 归 `<any>` 规则、`) => any` 归第 6 规则、`x: any` 与 `as any` 是两条规则（本轮这 3 个期望写错过，锁本身没错）。
+  - 除注释后的 `as any` 统计和原始 grep 差很远：mechanics 7 处、types 3 处全是注释里的历史说明（「此前未声明 ⇒ 读端 `as any`」）。报数前先除注释，否则会高病剩余值。
+- **回退点**：`git revert df24a9ec`（纯类型标注，锁在同一次提交里，revert 会一起回退）。
+
 **2026-10-03 00:12 arena-C 第 421 轮**（开工时 arena-E r420 仍在 `wtE-rec30` 跑 perf ⇒ 并行；00:23 对方收工并 push `497aaa27` + `f7c60b6a`，合入前已 rebase；REQUIREMENTS.md 429 行无新条目；worktree `wtA-r421` 已删）：**CC-395 `6dbd26b8`**，已 ff 合入 master。
 - **做到哪**（两件事，互不相干）：
   1. **CC-395a 展示层类型断层**：`views/` + `components/` 的 24 处 `as any` 清到 **0**。19 处字段本就已声明 = 冗余强转（`BuffEffect.modificationValues / sourceLabel / source`、`TeammateBuff` 经 `BuffGroup` 继承的 `name / description / sourceLabel / conditionLabel`、`CharacterResourceResult.burniceMechanicSource`、`AnomalyPoolResult.corrosionSource`）；5 处补声明的真实数据字段（catalog.json 里真有）：`BuffEffect.stackLabel / stackGroup / durationSeconds` + `BuffGroup.durationSeconds`（防御性：导入脚本 `scripts/patch-disc-sets.mjs` 当前只写效果级）。`DebugPage` 副词条步长与驱动盘 2 件套两处改具名读取（`sRankSubStatBaseStep?.[stat] ?? 0`；`{ scope: 'outOfCombat', effects }`）；`ResourceResultCard` 职业标签色常量表按 `naive-ui` `TagProps['type']` 标注，去掉模板里的强转。新源码锁 `src/scripts/__tests__/displayLayerNoAny.test.ts`（反证通过：注入一行 `as any` 即红并报出 `文件:行号`；扫描面用两个具名文件 + 文件数下限防目录被挪走后静默失效）。
