@@ -94,6 +94,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   2. **CC-343 线（隔离文档 §6）已无剩余项**（S1–S5 全完，scheduler 已删）。worker 化仍是「需要时再谈」：取消走 `signal` + 页面发布权，硬停走 `worker.terminate()`，届时再决定 `AnalysisContext` 要不要加 catalog 快照（§7 那条决定的「再收窄时机」）。
   3. 主队列 §2（arena-E r420）的下一步不变：剩余同基名 [表] TWIN 候选逐个核对（清单在 §2 r420 段）。
 - **拍板**：① 删 scheduler 而不是「留着备用」。② `BuffGroup.durationSeconds` 按防御性字段声明，不删 `TeamConfigPage` 的组级检查。③ 本轮不动 `: any`（23 处需要行类型，半做比不做更糟），写成下一步 1。
+- **提示词本轮改了一处**（Windows 侧 `bridge-prompt-arena.md`，备份 `.bak-client-authority-20261003-0045`，「改了什么 + 为什么」已写进该文件 §二 修改记录）：在「现成客户端」那段之前加**客户端权威顺序**（WSL 端 `/home/kaua/calc-arch/arena-mcp-client.js` > 文件内嵌代码 > 粘贴版）+ 沙箱 `/tmp` 每轮清空、跨轮持久副本 `/home/user/mcp.js`。改后已 grep 核对：MCP 端点、`wsl_exec` 用法、第 7 条文档纪律原样都在，`let id = process.pid * 1000` 未被改回旧版。
 - **回退点**：`git revert 6dbd26b8`（展示层清理与 scheduler 删除同一个提交；只需恢复 scheduler 时 `git revert -n` 后从该提交里拣回那两段）。
 
 **2026-10-02 arena-E 第 386 轮**：CC-356 纯界面态 activeTab / selectedSlot 搬到 `stores/ui.ts` `3914192b`——原 §2；全文 `git show 5ee3d6f6:docs/mcp-worker-task-queue.md` 的 §2（含 ui-check 用法坑）。
