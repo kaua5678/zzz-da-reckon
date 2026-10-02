@@ -223,9 +223,8 @@ function pushExec(
   } as SkillExecution)
 }
 
-function cfgNum(cfg: CharacterOperationConfig, key: string, fallback = 0): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = Number(record[key] ?? fallback)
+function cfgNum(cfg: CharacterOperationConfig, key: keyof CharacterOperationConfig, fallback = 0): number {
+  const raw = Number(cfg[key] ?? fallback)
   return Number.isFinite(raw) ? raw : fallback
 }
 
@@ -265,29 +264,26 @@ function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput):
 }
 
 function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   const cinema = cinemaLevel ?? 0
-  record.lighterCinemaLevel = cinema
-  record.lighterImpact = panel.impact ?? 0
-  record.lighterMoraleDmgBonus = Number(panel.lighterMoraleDmgBonus ?? 0) || 0
+  cfg.lighterCinemaLevel = cinema
+  cfg.lighterImpact = panel.impact ?? 0
+  cfg.lighterMoraleDmgBonus = Number(panel.lighterMoraleDmgBonus ?? 0) || 0
   if (cinema >= 6) {
-    record.lighterFlameShockMult = computeLighterFlameShockMultiplier(panel.impact ?? 0)
+    cfg.lighterFlameShockMult = computeLighterFlameShockMultiplier(panel.impact ?? 0)
   }
 }
 
 function lighterMoraleOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): LighterMoraleResult {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.lighterCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.lighterCinemaLevel ?? 0)))
   return computeLighterMorale({
     combatTime: effectiveCombatTime(state, cfg),
-    teamEnergyConsumed: Math.max(0, Number(record.lighterTeamEnergyConsumed ?? 0)),
+    teamEnergyConsumed: Math.max(0, Number(cfg.lighterTeamEnergyConsumed ?? 0)),
     cinemaLevel: cinema,
   })
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.lighterCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.lighterCinemaLevel ?? 0)))
   const combatTime = effectiveCombatTime(state, cfg)
   const morale = lighterMoraleOf(cfg, state)
 
@@ -330,8 +326,8 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 
   // C6 火焰冲击
   if (cinema >= 6) {
-    const mult = Number(record.lighterFlameShockMult ?? 0)
-      || computeLighterFlameShockMultiplier(Number(record.lighterImpact ?? 0))
+    const mult = Number(cfg.lighterFlameShockMult ?? 0)
+      || computeLighterFlameShockMultiplier(Number(cfg.lighterImpact ?? 0))
     const count = computeLighterFlameShockCount(combatTime, morale.powerFinisherCount)
     pushExec(
       executions,
@@ -360,8 +356,7 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.lighterCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.lighterCinemaLevel ?? 0)))
   const combatTime = effectiveCombatTime(state as any, cfg)
   const morale = lighterMoraleOf(cfg, state)
   const flameCount = cinema >= 6
@@ -428,9 +423,9 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
 }
 
 /**
- * C4：莱特后场时，给前场角色能量获得效率。
- * 覆盖率 = 莱特后台时间 / 总时长（迭代态写入 lighterBackstageRatio）。
- * 喷发回能：后场角色每次喷发 +4，18s CD。
+ * C4 喷发回能：后场角色每次喷发 +4，18s CD（写落点 cfg 通用字段 crossAgentFlatEnergyBySource）。
+ * 前场能量获得效率不在这里：见本模块 `teamPanelEffects`（直接读滑块 `lighter.backstageRatio`）。
+ * r403：删除旧的 cfg 侧链路 build 写 `lighterBackstageRatio` → 本函数读 → 写队友 `lighterC4FrontEfficiency`（R20 迁到 teamPanelEffects 后全链零消费者）。
  */
 function applyLighterTeamEnergyFlags(
   characters: CharacterOperationConfig[],
@@ -444,20 +439,17 @@ function applyLighterTeamEnergyFlags(
   const estimated = estimateTeamNormalEnergyConsumed(characters, exCounts)
   const teamEnergy = Math.max(
     0,
-    Number(opts?.teamEnergyConsumed ?? (lighter as any).lighterTeamEnergyConsumed ?? estimated) || 0,
+    Number(opts?.teamEnergyConsumed ?? lighter.lighterTeamEnergyConsumed ?? estimated) || 0,
   )
-  ;(lighter as any).lighterTeamEnergyConsumed = teamEnergy
+  lighter.lighterTeamEnergyConsumed = teamEnergy
 
   if (cinema < 4) {
     for (const ch of characters) {
-      ;(ch as any).crossAgentFlatEnergyBySource = { ...((ch as any).crossAgentFlatEnergyBySource ?? {}), lighterC4Energy: 0 }
-      ;(ch as any).lighterC4FrontEfficiency = 0
+      ch.crossAgentFlatEnergyBySource = { ...(ch.crossAgentFlatEnergyBySource ?? {}), lighterC4Energy: 0 }
     }
     return
   }
 
-  // 后台覆盖：用 lighter 自身 backstage 比例（若尚未收敛则默认 2/3）
-  const ratio = Math.max(0, Math.min(1, Number((lighter as any).lighterBackstageRatio ?? 2 / 3)))
   const bursts = computeLighterMorale({
     combatTime,
     teamEnergyConsumed: teamEnergy,
@@ -467,13 +459,11 @@ function applyLighterTeamEnergyFlags(
   const burstEnergy = capped * LIGHTER_C4_BURST_ENERGY
   for (const ch of characters) {
     if (ch.agentId === LIGHTER_ID) {
-      ;(ch as any).crossAgentFlatEnergyBySource = { ...((ch as any).crossAgentFlatEnergyBySource ?? {}), lighterC4Energy: 0 }
-      ;(ch as any).lighterC4FrontEfficiency = 0
+      ch.crossAgentFlatEnergyBySource = { ...(ch.crossAgentFlatEnergyBySource ?? {}), lighterC4Energy: 0 }
       continue
     }
-    // 前场效率在 helpers 面板层按占比写入 energyGainEfficiency；此处仅保留喷发定额回能。
-    ;(ch as any).lighterC4FrontEfficiency = LIGHTER_C4_FRONT_EFFICIENCY * ratio
-    ;(ch as any).crossAgentFlatEnergyBySource = { ...((ch as any).crossAgentFlatEnergyBySource ?? {}), lighterC4Energy: burstEnergy }
+    // 前场效率由本模块面板钩子按占比写 energyGainEfficiency（LIGHTER_C4_FRONT_EFFICIENCY）；此处仅写喷发定额回能。
+    ch.crossAgentFlatEnergyBySource = { ...(ch.crossAgentFlatEnergyBySource ?? {}), lighterC4Energy: burstEnergy }
   }
 }
 
@@ -539,16 +529,14 @@ export const lighterMechanic: AgentMechanicModule = {
    * 队伍级机制（原先 useResourceCalc 手工 import 并在**三处**调用
    * `applyLighterTeamEnergyFlags`——漏掉任一处就是静默错值；后场占比也在编排层内联写 cfg）。
    * 三个阶段对应迁移前的三个调用点，语义逐一保持：
-   * - build：写后场占比滑块 + 用 exCounts=0 预置标记；
+   * - build：用 exCounts=0 预置标记；
    * - converge：用**上一轮**全队能量消耗重算喷发回能；
    * - postRound：用本轮收敛的 exCounts 估出全队能量消耗，供下一轮使用。
    */
-  applyTeamConfig: ({ characters, phase, settings, combatTime, exCounts, teamEnergyConsumed, threads }) => {
+  applyTeamConfig: ({ characters, phase, combatTime, exCounts, teamEnergyConsumed, threads }) => {
     const lighter = characters.find(c => c.agentId === LIGHTER_ID)
     if (!lighter) return
     if (phase === 'build') {
-      const ratio = Math.max(0, Math.min(1, settings['lighter.backstageRatio'] ?? 2 / 3))
-      ;(lighter as any).lighterBackstageRatio = ratio
       applyLighterTeamEnergyFlags(characters, { exCounts: characters.map(() => 0), combatTime: 180 })
       return
     }
@@ -560,7 +548,7 @@ export const lighterMechanic: AgentMechanicModule = {
       // 2026-09-15 arch 棘轮第 2 批：本槽的「上一轮全队能量消耗」线程值写进 cfg（莱特 C4 消费）。
       // 自 `convergence.ts` 原 `merged.agentId === '1161'` 分支搬入（规则 6）；地板语义逐位保留。
       if (threads) {
-        ;(lighter as any).lighterTeamEnergyConsumed = Math.max(0, (threads.moduleFeedback?.consumedTeamEnergy ?? 0) || 0)
+        lighter.lighterTeamEnergyConsumed = Math.max(0, (threads.moduleFeedback?.consumedTeamEnergy ?? 0) || 0)
       }
       return
     }
@@ -586,7 +574,7 @@ export const lighterMechanic: AgentMechanicModule = {
     if (targetAgent.id === LIGHTER_ID) return // 莱特本人不吃
     if ((cinemaLevel ?? 0) < 4) return
     const ratio = Math.max(0, Math.min(1, settings['lighter.backstageRatio'] ?? 2 / 3))
-    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 10 * ratio
+    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + LIGHTER_C4_FRONT_EFFICIENCY * ratio
   },
   buildCharConfig,
   buildExecutions,
@@ -604,12 +592,16 @@ export default lighterMechanic
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 莱特冲击力：buildCharConfig 从面板 impact 写入 */
+    lighterImpact?: number
+    /** 额外能力「昂扬」增伤：buildCharConfig 从 panel.lighterMoraleDmgBonus 读入 */
+    lighterMoraleDmgBonus?: number
+    /** 6 命烈焰冲击倍率：按冲击力算，buildCharConfig 仅 6 命写入 */
+    lighterFlameShockMult?: number
     /** 莱特：全队普通能量消耗（士气能量来源；编排注入，不含闪能） */
     lighterTeamEnergyConsumed?: number
     /** 莱特影画等级（模块缓存） */
     lighterCinemaLevel?: number
-    /** 莱特后场时间占比（影画4 前场效率覆盖） */
-    lighterBackstageRatio?: number
   }
 }
 
