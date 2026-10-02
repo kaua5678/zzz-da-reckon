@@ -429,7 +429,7 @@ function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInp
   cfg.yeshuguangAtk0Dodge = rowVal(findMove(skills, '1431022'), 'attack_data_0')
   cfg.yeshuguangAtk0Ex = rowVal(findMove(skills, '1431016'), 'attack_data_0')
   cfg.yeshuguangAtk0Chain = rowVal(findMove(skills, '1431024'), 'attack_data_0')
-  cfg.yeshuguangAdditionalAbilityActive = (panel as any)?.additionalAbilityActive ?? 0
+  cfg.yeshuguangAdditionalAbilityActive = panel?.additionalAbilityActive ?? 0
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {

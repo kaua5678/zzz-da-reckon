@@ -381,7 +381,7 @@ function buildMiyabiResourceResult({ cfg, state }: AgentResourceResultInput): Pa
 }
 
 function buildMiyabiResourceSections({ result }: AgentResourceSectionsInput): SpecialResourceSection[] {
-  const src = (result as any)?.miyabiFrostFallSource
+  const src = result.miyabiFrostFallSource
   if (!src) return []
   return [{
     id: 'miyabi-frost-fall',

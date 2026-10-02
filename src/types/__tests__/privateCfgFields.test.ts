@@ -78,7 +78,7 @@ describe('CC-360：角色专属结果类型随模块走', () => {
  * 拼错键名 = 静默读到 undefined。逐模块补声明（本模块扩充块）并改回 `cfg.<键>` 后，把模块名加进下表，锁住不回退。
  * 判据是「这个模块的 cfg 状态键全有类型」，不是 cast 计数；按动态键（`record[field]`）的通用逻辑可保留，但该模块就别进表。
  */
-const TYPED_CFG_MODULES = ['yixuan', 'yeshuguang', 'banyue', 'starlightBilly', 'orphie', 'caesar', 'anton', 'remielle', 'xide', 'xixifu', 'zhuYuan', 'ben', 'grace', 'specPanelBuffs', 'nicole', 'panYinhu', 'sigrid', 'zhao', 'nangong', 'severian', 'lucy', 'promia', 'vivian', 'phoenix'] as const
+const TYPED_CFG_MODULES = ['yixuan', 'yeshuguang', 'banyue', 'starlightBilly', 'orphie', 'caesar', 'anton', 'remielle', 'xide', 'xixifu', 'zhuYuan', 'ben', 'grace', 'specPanelBuffs', 'nicole', 'panYinhu', 'sigrid', 'zhao', 'nangong', 'severian', 'lucy', 'promia', 'vivian', 'phoenix', 'miyabi'] as const
 
 describe('D2 §5：已完成模块不再经 Record 强转 / as any 读写 cfg', () => {
   for (const m of TYPED_CFG_MODULES) {
@@ -102,6 +102,27 @@ describe('D2 §5：全仓不得 (cfg as any).键', () => {
     for (const p of walk(SRC)) {
       const t = stripComments(readFileSync(p, 'utf-8'))
       t.split('\n').forEach((l, i) => { if (/\((?:input\.)?cfg as any\)\.\w/.test(l)) hits.push(`${relative(SRC, p)}:${i + 1}`) })
+    }
+    expect(hits).toEqual([])
+  })
+})
+
+/**
+ * CC-376（r402）：全仓不变式——非测试源码不得用 `as any` / `as unknown as Record` 绕过 `PanelValues` 类型。
+ * r402 起索引签名只剩模板签名 `${string}__${string}`，未声明键编译失败；`(panel as any).xxx` 是剩下唯一的夹带后门
+ * （r402 收口时实测还有 ben / lighter / yeshuguang 4 处，盘点脚本看不见：它靠编译报错，而 `as any` 让编译器闭嘴）。
+ * 私有字段在本模块 `declare module '@/types/catalog'` 声明；键名来自数据走 `utils/panelStat.ts`（那里是唯一允许的断言）。
+ */
+describe('PanelValues：全仓不得 (xxxPanel as any) / as unknown as Record 绕过面板类型', () => {
+  it('src 非测试源码零命中（utils/panelStat.ts 除外）', () => {
+    const hits: string[] = []
+    for (const p of walk(SRC)) {
+      const rel = relative(SRC, p)
+      if (rel.replace(/\\/g, '/') === 'utils/panelStat.ts') continue
+      const t = stripComments(readFileSync(p, 'utf-8'))
+      t.split('\n').forEach((l, i) => {
+        if (/\b\w*[pP]anel\w*\)?\s+as\s+(?:any\b|unknown\s+as\s+Record\b)/.test(l)) hits.push(`${rel}:${i + 1}`)
+      })
     }
     expect(hits).toEqual([])
   })

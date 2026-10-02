@@ -255,17 +255,13 @@ function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput):
     // 策略：昂扬改由模块写入，teammate-buffs 额外能力条标记 singleSourced（原字段名 hidden）或由 helpers 过滤。
     // 实际由 helpers 过滤 lighter.additional_* 后在此统一写入（含本人+通过 teammates 循环？）
     // applyPanel 只作用于本人面板。全队昂扬在 helpers 的 lighter 块给每个角色加。
-    ;(panel as any).lighterMoraleDmgBonus = computeLighterMoraleDmgBonus({
+    panel.lighterMoraleDmgBonus = computeLighterMoraleDmgBonus({
       impact: panel.impact ?? 0,
       cinemaLevel: cinema,
       additionalActive: true,
     })
   }
 
-  // C1 强力终结 +30% 标记（执行级 patch）
-  if (cinema >= 1) {
-    ;(panel as any).lighterC1FinisherDmgBonus = LIGHTER_C1_FINISHER_DMG
-  }
 }
 
 function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
@@ -273,7 +269,7 @@ function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): voi
   const cinema = cinemaLevel ?? 0
   record.lighterCinemaLevel = cinema
   record.lighterImpact = panel.impact ?? 0
-  record.lighterMoraleDmgBonus = Number((panel as any).lighterMoraleDmgBonus ?? 0) || 0
+  record.lighterMoraleDmgBonus = Number(panel.lighterMoraleDmgBonus ?? 0) || 0
   if (cinema >= 6) {
     record.lighterFlameShockMult = computeLighterFlameShockMultiplier(panel.impact ?? 0)
   }
@@ -614,5 +610,16 @@ declare module '@/types/resource/config' {
     lighterCinemaLevel?: number
     /** 莱特后场时间占比（影画4 前场效率覆盖） */
     lighterBackstageRatio?: number
+  }
+}
+
+/**
+ * D2（r402 CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）：本模块私有的面板字段——只有本文件读写（测试读不算引用者），声明随模块走。
+ * 仍是 `PanelValues` 的成员（模块扩充，纯类型、零运行时）；出现第二个**生产**引用者时迁回 `types/catalog.ts`。
+ */
+declare module '@/types/catalog' {
+  interface PanelValues {
+    /** 额外能力「昂扬」增伤：applyPanel 按冲击力算出写入，buildCharConfig 读回进 cfg */
+    lighterMoraleDmgBonus?: number
   }
 }

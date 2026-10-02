@@ -137,7 +137,7 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `roxy` | 5 | 5 | 0 | 待做 |
 | `claret` | 4 | 4 | 0 | 待做 |
 | `evelyn` | 4 | 4 | 0 | 待做 |
-| `miyabi` | 4 | 2 | 0 | 待做 |
+| `miyabi` | 4 | 0 | 0 | done 8efcb274（r402 CC-376：`miyabiCinemaLevel` 2 处 Record 强转改 `cfg.miyabiCinemaLevel`；`(cfg.panel as any)?.miyabiCinema4/6` 改按命座门控；`(result as any)` 改读已声明的 `result.miyabiFrostFallSource`；进锁表） |
 | `qianxia` | 4 | 4 | 0 | 待做 |
 | `soukaku` | 4 | 1 | 0 | 实质完成 c7627ef3，**不进锁表**：`soukakuPerExExtraTime(cfg: unknown)` 公开签名（测试直传字面量）保留 1 处局部 Record 读取；另 1 处 `as unknown as Record` 在 `state` 上，逐模块锁的正则会误伤 |
 | `zhendou` | 4 | 4 | 0 | 待做 |
