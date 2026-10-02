@@ -232,6 +232,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       timeBucket: 'backstage',
+      autoSplitByStun: true, // CC-391 D1：后台自动施放，次数 = 有效后台时间 / 等效 CD ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
       skillTableNote: name,
     })
   }
@@ -288,6 +289,8 @@ function buildOrphieResourceSections(input: AgentResourceSectionsInput) {
 export const orphieMechanic: AgentMechanicModule = {
   id: 'agent:orphie_magusa',
   agentIds: [ORPHIE_AGENT_ID],
+  // CC-391 D1：与火共舞 #2 是终结技 #1 的融合后半段（buildExecutions 按 #1 次数推出），易伤跟随 #1 的轴内占比
+  attachedEvents: { [ORPHIE_ULT_1]: [ORPHIE_ULT_2] },
   name: '奥菲丝&「鬼火」',
   description: '自身暴击率+25%、追加攻击增伤+85%（增伤区，按 additionalAttack tag 定向）、影画1/2/4自身部分；影画6 激光附加伤害在 patchExecutions（moveId 限定）；蓄炎资源循环走 spec resource。',
   applyPanel: applyOrphiePanel,

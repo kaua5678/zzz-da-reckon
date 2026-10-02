@@ -181,6 +181,7 @@ function pushQianxiaExecution(executions: AgentResourceInput['executions'], inpu
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     timeBucket: 'backstage',
+    autoSplitByStun: true, // CC-391 D1：凝视由队友持续命中触发、泡泡在后场消耗磨爪器自动攻击 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
     ...(input.damageMultiplier == null ? {} : { damageMultiplier: input.damageMultiplier, damageMultiplierOverride: true }),
     ...(input.critRateBonus ? { critRateBonus: input.critRateBonus } : {}),
     ...(input.critDmgBonus ? { critDmgBonus: input.critDmgBonus } : {}),

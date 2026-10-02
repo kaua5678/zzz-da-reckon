@@ -163,6 +163,7 @@ function buildZhaoExecutions(input: AgentResourceInput): void {
     totalEnergyConsume: 0,
     flatDamageBonus: cycle.chargeLifePerHit,
     timeBucket: 'backstage',
+    autoSplitByStun: true, // CC-391 D1：霜寒值满自动开帷幕并后台蓄力，霜寒随时间 / 队友命中累积，不对应可放置动作 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
   })
 }
 

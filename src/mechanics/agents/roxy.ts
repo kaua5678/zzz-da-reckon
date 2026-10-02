@@ -450,6 +450,8 @@ const settings: MechanicSetting[] = [
 export const roxyMechanic: AgentMechanicModule = {
   id: 'agent:roxy',
   agentIds: [ROXY_AGENT_ID],
+  // CC-391 D1：自旋（每秒）是小心风寒启动后的持续段（次数 = EX 次数），易伤跟随 EX 启动的轴内占比
+  attachedEvents: { [EX_CHILL_MOVE_ID]: [SPIN_SECOND_MOVE_ID] },
   // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
   // 洛克茜（1621）：防御→攻击/冲击力（局内）→ defPct 优先
   substatTemplate: {

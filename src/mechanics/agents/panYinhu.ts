@@ -66,6 +66,8 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 export const panYinhuMechanic: AgentMechanicModule = {
   id: 'agent:pan_yinhu',
   agentIds: [PAN_YINHU_ID],
+  // CC-391 D1：断脉破穴手三段在每发 EX（贴山震脉靠 1421006）后自动释放，易伤跟随 EX 的轴内占比
+  attachedEvents: { '1421006': [...PAN_YINHU_TOUCH_OF_DEATH_MOVE_IDS] },
   name: '潘引壶·破劲连段',
   description: 'EX 后自动释放断脉破穴手×3（后台追攻行）+ 影画2 每消耗6点破劲回4能量；主体拐力在 teammate-buffs 1421 组。',
   buildCharConfig,

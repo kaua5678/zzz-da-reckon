@@ -690,6 +690,7 @@ export function remielleRadiantTurnRows({ cfg, state, executions }: AgentResourc
       decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
       totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
       timeBucket: 'backstage',
+      autoSplitByStun: true, // CC-391 D1：后台飞行每 5 秒自动释放一次 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
     })
     }
   }

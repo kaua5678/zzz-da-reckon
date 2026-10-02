@@ -196,6 +196,7 @@ function pushBackstageRow(
     totalEnergyRecovery: 0,
     ...(element ? { element } : {}),
     timeBucket: 'backstage',
+    autoSplitByStun: true, // CC-391 D1：硬糖射击 8 秒 CD 由队友命中触发、彩糖花火每秒一次、·极由硬糖重击触发 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
   })
 }
 
