@@ -89,13 +89,14 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 - **CC-364 判据补洞**：r391/r392 的「完成」只查 `as unknown as Record`，而 `(cfg as any).k` 是同一个病（键无类型、拼错静默）——r392 标 done 的 yeshuguang 还留着一处。完成锁加 `/\b(input\.)?cfg as any\b/`；本表加两列现值（Record 强转 / `cfg as any`），补登只有 `as any` 的 `xixifu`。**剩余：Record 189 + `cfg as any` 47**（r393 收尾前快照，含非 cfg 对象的 Record）。
 - **CC-365**：`orphie` / `caesar` / `anton` 按新判据清零，`remielle` 随 CC-363 归零直接入锁。anton 的 `setRecord(cfg, key, value)` 是「按字符串键写 cfg」的局部 helper，和强转同病 ⇒ 删掉改直接赋值（新坑形态：**按字符串键写 cfg 的小 helper**，执行时 `grep -n "Record<string, unknown>)\[" ` 能扫到）。
 
+**r394（CC-366 `d6c8455f` / CC-367 `88187356`）——脚本泛化 + 3 模块**：两个助手脚本改用同一套强转识别（三种写法），keys 输出声明骨架；`xide` / `xixifu` / `zhuYuan` 共 32 处 cfg 强转全部由脚本机械改写，人工只写了 6 个键的声明注释和 1 处受检注解，tsc 一次过（注入拼错键反证：tsc 报错 ⇒ 键确实受检）。**查读者别只 grep ts**：`xideInitialSteel` / `xideC1UltSteel` 在 ts 里只写不读，实际由 spec 资源 JSON 按字段名读取（`computeSpecResources(spec, cfg)`），不是死写。**剩余：Record 180 + `cfg as any` 16**（`as any` 只剩 ben 5 / grace 4 / specPanelBuffs 2 / nicole·panYinhu·sigrid·soukaku·zhao 各 1）。
+
 ### 执行卡（每个模块一张，机械活，可派执行模型）
 
-1. （r393 起）先 `grep -nE "\b(input\.)?cfg as any\b" src/mechanics/agents/<模块>.ts`——脚本不统计 `as any`，这些点同样要补声明、改回 `cfg.<键>`。
-   然后 `python3 scripts/d2-record-keys.py . <模块名>`：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
+1. `python3 scripts/d2-record-keys.py . <模块名> <声明骨架文件>`（r394 CC-366 起三种强转 `as unknown as Record` / `as Record` / `as any` 都统计，并把未声明键写成声明骨架——**骨架里的类型是按用法猜的、注释是 TODO**：先查每个键的全部读写点（`grep -rn <键> src`，**含 `src/data` 的 JSON**——spec 资源会按字段名读 cfg），写清含义与写入方再用）：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
 2. 来源是本槽 `cfg` 的：未声明键补进**本模块**的 `declare module '@/types/resource/config'` 扩充块（类型看写入点；拿不准写 `number`，tsc 会报）。
    **只有本模块用的键**放本模块；若 `privateCfgFields` 锁或脚本显示别处也用，放公共接口 `types/resource/config.ts`。
-3. （第 2–3 步可用 `python3 scripts/d2-record-apply.py . <模块> <声明文件>` 一次完成，再按它的「剩余」清单手改）把 `record.<键>` 改成 `cfg.<键>`、删 `const record = cfg as …`、内联 `(cfg as unknown as Record<string, unknown>).k` 改 `cfg.k`；
+3. （第 2–3 步用 `python3 scripts/d2-record-apply.py . <模块> <声明文件>` 一次完成——r394 起也改写 `(cfg as any).k` / `(input.cfg as any).k` / 行首 `;(…)`，并列出剩余强转行与 `record` 引用，按清单手改）把 `record.<键>` 改成 `cfg.<键>`、删 `const record = cfg as …`、内联 `(cfg as unknown as Record<string, unknown>).k` 改 `cfg.k`；
    辅助函数若收 `record: Record<string, unknown>` 参数，去掉它、改收 `cfg`。**`Number(x ?? 0)` 等运行时包装一律不动**（保零差）。
 4. 字段有类型后变冗余的 `as` 删掉；若 tsc 因 `readonly` 等报错，说明原强转在绕约束——停下来读清楚再决定，别再套一层强转。
 5. 来源**不是**本槽 cfg 的（`mateRecord ← mateCfg` 是队友 cfg，同接口，可同样处理；`exec` / `state` / `result` 是别的接口）：查对应接口，同理补声明；不确定就本轮跳过、表里记一句。
@@ -141,10 +142,10 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `qingyi` | 3 | 3 | 0 | 待做 |
 | `seth` | 3 | 3 | 0 | 待做 |
 | `trigger` | 3 | 3 | 0 | 待做 |
-| `xide` | 3 | 3 | 11 | 待做 |
+| `xide` | 3 | 0 | 0 | done 88187356 |
 | `yanagi` | 3 | 3 | 0 | 待做 |
 | `yaojiayin` | 3 | 3 | 0 | 待做 |
-| `zhuYuan` | 3 | 3 | 7 | 待做 |
+| `zhuYuan` | 3 | 0 | 0 | done 88187356 |
 | `anton` | 2 | 0 | 0 | done e2cfa3c8 |
 | `jane` | 2 | 2 | 0 | 待做 |
 | `koleda` | 2 | 2 | 0 | 待做 |
@@ -162,7 +163,7 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `norma` | 1 | 1 | 0 | 待做 |
 | `orphie` | 1 | 0 | 0 | done e2cfa3c8 |
 | `remielle` | 1 | 0 | 0 | done 8175e6b0（唯一强转是设置读取，CC-363 已改） |
-| `xixifu` | — | 0 | 8 | 待做（r393 补登：r391 表没统计 `cfg as any`） |
+| `xixifu` | — | 0 | 0 | done 88187356（r393 补登） |
 
 ## 6. 字段矩阵（`python3 scripts/d2-cfg-field-matrix.py . --md <out>` 可重生成）
 

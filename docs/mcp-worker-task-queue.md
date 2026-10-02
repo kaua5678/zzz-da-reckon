@@ -152,11 +152,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 393 轮（lane arena-E，开工 12:17；无并行会话；HEAD `490fd7cd`；REQUIREMENTS.md 无新条目）：CC-363 `bb697b35` / CC-364 `a0d4f8a6` / CC-365 `e2cfa3c8`+`8175e6b0`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：① 机制设置键全仓只剩 `utils/mechanicSettingCfg.ts` 一处知道格式（24 处硬编码读取收口，锁扩到引号字面量）；② D2 §5 完成判据补上 `cfg as any`（锁 + 表两列现值）；③ orphie / caesar / anton / remielle 完成，`TYPED_CFG_MODULES` 8 个。详见 `docs/mcp-d2-cfg-fields.md` §5「r393」段。
-- **验证**：vue-tsc `--force` 净；两把锁都反证过；zd `r393`/`r393b`/`r393c` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 455 文件 / 4166 例；build（`arenaE/v393*-*.log`）。
+**第 394 轮（lane arena-E，开工 12:39；无并行会话；HEAD `03b59fbd`；REQUIREMENTS.md 无新条目）：CC-366 `d6c8455f` + CC-367 `88187356`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：D2 §5 两个脚本覆盖全部三种强转写法、能出声明骨架 ⇒ 执行卡现在基本是「跑 keys → 写注释 → 跑 apply → tsc」；xide / xixifu / zhuYuan 完成，`TYPED_CFG_MODULES` 11 个。详见 `docs/mcp-d2-cfg-fields.md` §5「r394」段。
+- **验证**：vue-tsc `--force` 净（注入拼错键反证）；锁 15/15 + 反证；zd `r394` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 455 文件 / 4170 例；build（`arenaE/v394-*.log`）。
 - **开放项**：无。
-- **下一步**：按 §5 表继续，**先挑 `cfg as any` 多的**（它们连脚本都扫不到）：`xide` 11 / `xixifu` 8 / `zhuYuan` 7 / `ben` 5 / `grace` 4；然后 Record 大户 `sigrid` / `lucy` / `phoenix`。每个模块：grep `cfg as any` + `d2-record-keys.py` 列键 → 写声明 → `d2-record-apply.py` → 手改剩余 → tsc `--force` / 加锁名单并反证 / zd。可选后续（低优先）：CC-363 改出的 `Number(cfgMechanicSettingRaw(…) ?? d)` 逐个判断能否收敛到 `cfgMechanicSetting(cfg, id, d)`（非有限值时行为不同，需要单独零差 + 看是否有字符串值）。
+- **下一步**：`cfg as any` 收尾：`ben` 5 / `grace` 4（两者也有 Record 强转），然后 Record 大户 `sigrid` / `lucy` / `phoenix` / `promia` / `yidhari`。每模块：`python3 scripts/d2-record-keys.py . <m> /home/kaua/calc-arch/<lane>/decl-<m>.txt` → 查键的全部读者（含 `src/data` JSON）、改骨架注释/类型、公共 vs 私有 → `python3 scripts/d2-record-apply.py . <m> <decl>` → 手改「人工」行 → tsc `--force` → 加 `TYPED_CFG_MODULES` 并反证 → zd。一次 3–5 个，适合执行模型。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -170,6 +170,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - 只剩 15 个工具（无 wsl_exec）、run_command PTY 起不来、文件工具 EIO ⇒ WSL 挂了，没有替代路径，停手；ngrok `404 ERR_NGROK_3200` ⇒ 隧道离线，什么都做不了。恢复后先 `git status` 核对 worktree 再续。
   - 锁的判据要覆盖「同一个病的所有写法」：CC-235 只锁模板字面量、D2 §5 只锁 Record 强转，结果各漏了一类（r393 补）。新写锁时先列出这个病的全部语法形态。
   - Python 补丁里 `assert s.count(a)==n` 先于写文件：计数写错时文件不会半改（r393 orphie 实测）。
+  - 找 cfg 键的读者要连 `src/data/**/*.json` 一起 grep：spec 资源按字段名读 cfg，ts 里看像死写（r394 xide）。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
