@@ -524,9 +524,13 @@ export function createResourceCalc(
    * 替代旧的「axisDetails 布尔 OR」：①父动作被 basicMoveIdsBySlot 改写为 'basic' 导致按原
    * moveId 查不到（爱丽丝 SW3 极性强击轴内易伤整段丢失）；②多次出现一窗在内即全量易伤、
    * 跨边界分数 inAxisRatio<1 反而归 0——布尔口径与直伤的分数期望模型不一致。
+   * **多父合计**（CC-392）：同一子事件可登记在多个父动作下（如薇薇安悬落 = 自身强特 / 终结 / 支援突击 / 连携
+   * 各衔接一次），占比按全部父动作合计 = Σ各父轴内单位 / Σ各父总单位（每个父单位触发等量子事件）。
+   * 原实现逐父 `out[child] = frac` ⇒ 最后一个父动作覆盖前面的，占比取决于登记顺序。
    */
   const attachedInAxisMap = computed<Record<string, number>>(() => {
     const out: Record<string, number> = {}
+    const acc: Record<string, { inAxis: number; total: number }> = {}
     const alloc = axisAllocation.value
     if (!alloc || Object.keys(alloc).length === 0) return out
     const totalUnits: Record<string, number> = {}
@@ -550,10 +554,14 @@ export function createResourceCalc(
         for (const [key, t] of Object.entries(totalUnits)) {
           if (key.endsWith(`:${parent}`)) total += t
         }
-        const frac = total > 0 ? Math.max(0, Math.min(1, inAxis / total)) : 0
-        for (const child of children) out[child] = frac
+        for (const child of children) {
+          const c = (acc[child] ??= { inAxis: 0, total: 0 })
+          c.inAxis += inAxis
+          c.total += total
+        }
       }
     }
+    for (const [child, c] of Object.entries(acc)) out[child] = c.total > 0 ? Math.max(0, Math.min(1, c.inAxis / c.total)) : 0
     return out
   })
 
