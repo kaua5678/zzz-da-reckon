@@ -31,7 +31,7 @@ export interface GiftRowInput {
   /** 单次喧响回复（诺姆赠连携走目标连携表的 decibel_recovery；琉音赠大为 0） */
   decibelRecovery?: number
   /** 伤害定向键（琉音赠大 = 'ultimate'；诺姆赠连携不写，与旧口径一致） */
-  skillDamageTarget?: string
+  skillDamageTarget?: SkillExecution['skillDamageTarget']
   skillTableNote: string
   /** 诺姆赠连携标记（击破手对比的归因列依赖） */
   chainGift?: boolean

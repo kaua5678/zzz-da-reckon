@@ -5,6 +5,7 @@
  * 消费方一律经 `@/types/resource`（barrel = ./index.ts）引用，勿深链本目录内部文件。
  */
 
+import type { SkillDamageTarget } from '@/types/catalog'
 
 // ============ 招式执行计划 ============
 
@@ -78,8 +79,8 @@ export interface SkillExecution {
   critRateBonus?: number
   /** 本行招式专属暴击伤害加成（%），只加给该行（如青衣6命醉花月云转暴伤+100%） */
   critDmgBonus?: number
-  /** 招式类型定向（如 'exSpecial'），用于技能专属 buff（增伤/暴伤等）匹配 */
-  skillDamageTarget?: string
+  /** 招式类型定向（如 'exSpecial'），用于技能专属 buff（增伤/暴伤等）匹配。r408 起收窄为 SkillDamageTarget（原 string 经行接口 any 静默流入 core/damage） */
+  skillDamageTarget?: SkillDamageTarget
   /** 本行招式专属增伤（%，进增伤区加算，如伊德海莉满蓄碎惘沉击 +30%） */
   dmgBonus?: number
   /** 本行招式专属贯穿增伤（%，进贯穿增伤乘区，如星徽·比利影画6 骑士飞踢/最高马力星光 +18%） */

@@ -138,7 +138,7 @@ function pushExec(
     critRateBonus?: number
     damageMultiplierOverride?: boolean
     category?: string
-    skillDamageTarget?: string
+    skillDamageTarget?: SkillExecution['skillDamageTarget']
   },
 ) {
   if (count <= 0 || dmg <= 0) return

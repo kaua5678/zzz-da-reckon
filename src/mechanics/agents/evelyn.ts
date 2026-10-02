@@ -28,7 +28,7 @@ import type {
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
-import type { CharacterResourceResult } from '@/types/resource'
+import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
@@ -162,7 +162,7 @@ function pushEvelynExecution(executions: AgentResourceInput['executions'], input
   category: string
   actionTime: number
   damageMultiplier?: number
-  skillDamageTarget?: string
+  skillDamageTarget?: SkillExecution['skillDamageTarget']
 }): void {
   if (input.count <= 0) return
   executions.push({

@@ -588,7 +588,7 @@ function pushJufufuExec(
   category: string,
   count: number,
   multiplier: number,
-  opts: { override?: boolean; dmgBonus?: number; skillDamageTarget?: string; note?: string; element?: string } = {},
+  opts: { override?: boolean; dmgBonus?: number; skillDamageTarget?: SkillExecution['skillDamageTarget']; note?: string; element?: string } = {},
 ) {
   if (count <= 0 || multiplier <= 0) return
   executions.push({

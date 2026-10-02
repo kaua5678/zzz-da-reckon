@@ -18,7 +18,7 @@ import { panelAt } from '@/core/panel'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { getAgentMechanic } from '@/mechanics'
 import { getSkillLevelCoef } from '@/core/skillLevel'
-import type { Agent, AgentSkills, PanelValues } from '@/types/catalog'
+import type { Agent, AgentSkills, PanelValues, SkillDamageTarget } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
 import type { DirectRowAxisSplit } from '@/mechanics/types'
 import { findMoveById, getRowValue } from './skillRows'
@@ -35,12 +35,12 @@ export interface CharLocals {
   skills: AgentSkills | undefined
 }
 
-/** `pushDirect` 的行入参（照 `damagePool.ts` 原内联类型，逐位保留）。 */
+/** `pushDirect` 的行入参（单一来源：`damagePool.ts` 的 pushDirect 直接引用本接口，r408 删除其重复内联类型）。 */
 export interface DirectRowInput {
-  id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: any; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; defIgnore?: number; penRatioBonus?: number; sourceTag?: 'gift' | 'stun' | 'self'
+  id: string; slot: number; agentId: string; name: string; element: string; source: string; count: number; multiplier: number; note?: string; skillDamageTarget?: SkillDamageTarget; moveId?: string; critRateBonus?: number; critDmgBonus?: number; dmgBonus?: number; sheerDmgBonus?: number; flatDamageBonus?: number; resIgnore?: number; basisValueOverride?: number; basisLabelOverride?: string; stunOverride?: number; defIgnore?: number; penRatioBonus?: number; sourceTag?: 'gift' | 'stun' | 'self'
 }
 
-/** `pushRelease` 的行入参（照 `damagePool.ts` 原内联类型，逐位保留）。 */
+/** `pushRelease` 的行入参（单一来源：`damagePool.ts` 的 pushRelease 直接引用本接口，r408 删除其重复内联类型）。 */
 export interface ReleaseRowInput {
   id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues; releaseCrit?: AnomalyEventExecution['releaseCrit']; stunnedOverride?: number
 }
@@ -296,7 +296,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     for (const [mid, count] of placedTable) {
       if (count <= 0) continue
       const move = findMoveById(tblSkills, mid)
-      const dmgRow = (move?.rows ?? []).find((r: any) => r.kind === 'damageMultiplier')
+      const dmgRow = (move?.rows ?? []).find((r) => r.kind === 'damageMultiplier')
       const mult = dmgRow ? getRowValue(move, dmgRow.id) : 0 // CC-239：吃逻辑编辑器行规则
       if (!move || !(mult > 0)) continue
       pushDirect({
