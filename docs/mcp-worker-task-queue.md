@@ -153,16 +153,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 415 轮（lane arena-E；无并行会话；HEAD `47c681d9`；REQUIREMENTS.md 无新条目）：CC-389 `a4fcc9a6` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
-- **做到哪**：关闭 r414 未决项「失衡轴换人语义」。探针证明不是语义问题而是计算错误：换人后旧角色的轴动作被栈遍历当零成本动作执行。已在 `roundInputs.ts#resolveAxes` 出口丢弃「本槽解析不了且能证明属于别人」的动作（架构卡 CC-389，含判据取舍与数据）。
-- **验证**：vue-tsc `--force` 0；zd `r415a` 0/0；guards 链 EXIT 0（25 guard / recording 189）；vitest(4) 462 文件 / 4261 测试；build 通过。
-- **回滚点**：`git revert a4fcc9a6`（单提交；不改存储结构）。
-- **拍板**：① 采用保守判据（只丢能证明属于别人的），不用「本人能否解析」——后者误杀 7 个合法合成行；不用上一轮执行行——依赖迭代轮次。② 只过滤生效轴、不改 `configStore.stunAxes`：换回原角色时轴原样生效。
-- **未决项**：别人的**合成行**残留时仍当零成本动作执行（判据证明不了归属）。见下一步第 1 项，已写做法与风险。
+**第 416 轮（lane arena-E；无并行会话；HEAD `929e56c5`；REQUIREMENTS.md 无新条目）：CC-390 `786535ac` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
+- **做到哪**：r415 交接三项全部结案（架构卡 CC-390）。① 「模块声明合成轴块归属」以探针数据判**不做**；② 轴编辑器标灰残留块（已做）；③ composables 直读原始表扫描无问题。
+- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0（25 guard / 12 token / recording 189）；vitest(4) 462 文件 / 4261 测试；build 通过；headless 截图 DOM 计数 stale=1 / blocks=2（脚本 `/home/kaua/calc-arch/arenaE/r416/shot.cjs`）。未跑 zd：只改 view，引擎零改动。
+- **回滚点**：`git revert 786535ac`（单提交）。
+- **拍板**：① 不加 `axisOwnedMoveIds`——合成行随命座变化（命座 0 解析不了 7 个、命座 6 解析不了 13 个，另 17 个只能靠前缀猜），要手工登记 ≥25 项，只换来「放了某人合成块再换走该人」这一窄场景的正确性；重开条件写在 CC-390。② 提示复用引擎判据，不在 view 另写规则，保证「标灰 = 引擎丢弃」同源。
+- **未决项**：无新增。CC-389 残余（别人的合成行残留时仍当零成本执行）按 CC-390 维持现状，重开条件已写。
 - **下一步（按价值排）**：
-  1. **让合成轴块的归属可证明**：给 `AgentMechanicModule` 加可选声明（如 `axisOwnedMoveIds?: readonly string[]`，列出本模块产生、不在招式表里、可放上轴的 moveId），`roundInputs.ts#axisActionResolvableBy` 多查这一项。要声明的已知 id（r415 探针，`/home/kaua/calc-arch/arenaE/r415/pred2.out`）：1021 `nekomata_chaoxiong_claw`、1091 `miyabi_frostburn_break`、1471 `banyue-recovery-lundao`、1291 `1291_ultimate_verdict_bonus`。`evade_assist`（1081 / 1181 / 1241 / 1351 共用）先查它由谁产生：若是数据驱动的通用行（任何有该能力的角色都有），它本就不属于某个角色，保持「不认领」。锁：在 `staleAxisActionCc389.test.ts` 加一条「编辑器可放置的全部块 = 本人可解析」（照 r415 probe4 的写法：62 角色跑引擎收集 executions，排除 `basic_attack`），声明补齐后 miss 应只剩 evade_assist；再加一条残留合成行判残留。风险：新声明是又一个「模块要记得登记」的表——锁里的「全部可放置块本人可解析」能抓到漏登记。
-  2. 轴编辑器对残留块的提示：现在 `configStore.stunAxes` 里的残留块在编辑器里照样显示，但已不参与计算。可在 `views/StunAxisPage.vue` 用 `isStaleAxisActionFor` 标灰并提示「该块属于已不在此槽的角色」。纯展示，价值中等。
-  3. 全仓扫描 `composables/` 里直接读 `configStore.<原始表>` 而不经 store 方法的位置（CC-386 / 388 的同类），逐个判断键构造是否只有一处。
+  1. **D1 待实现**（`.claude/OPEN-ITEMS.md` §2「D1 待实现」，用户 2026-09-25 已裁决）：主C 未认领招式的易伤，只有后台 / 自动攻击类招式可回落全局覆盖率，主动招式轴内未提及 ⇒ 计 0。先查招式数据里有没有可靠字段区分两类（来源 / 触发类型）；**找不到就维持现状并写明证据，不按名字猜**。动全库数值：先预测，再逐队 delta 归因，`timeGolden` / `timeFillRatchet` 重排。
+  2. **「换人后该不该跟着走」收尾审计**：CC-386 / 388 / 389 已处理利用率、合轴率、失衡轴。剩下 `stores/config.ts` 里仍按槽位存的用户设置逐个归类「描述这个角色怎么打（应随 agentId）/ 描述这个位置（按槽位）」。先 grep 长度为 3 的数组和 `Record<number, …>` 列出候选，每条用 r412 的探针法实测换人前后差异，有实害才改。
+  3. 把 r416 的截图脚本收成可复用工具（例如 `.zc/ui-shot.cjs`，参数为 store 注入片段 + 选择器计数），以后 UI 改动都能有 DOM 级验证。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -223,6 +223,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **按字段名枚举「入参有没有本人」会误报**：CC-387 的编译器探针把 `resourceSections`（入参 `result` 就是本人结果）判成「无本人」。探针结果只是待查名单，每一条都要打开实现确认；纯函数（只收数值 / 读取器）本就不需要本人。
   - **「还原后与之前相等」的锁要在非空状态上测**：天梯「试开回滚不留痕」原测试在合轴率覆盖为空时比较前后 JSON，键形态拼错照样绿。而且天梯入口 `resetDifficultyGoals` 会有意清空覆盖——要让被还原的东西真的存在，得用 `opts.base` 跳过重置。写这类锁前先断言「之前」不是空的。
   - **「展示路径看起来无害」不代表引擎无害**：失衡轴的展示计算按资源池给残留动作 0，栈遍历却照单执行（成本全 0 = 免费）。判断某个残留输入有没有害，要看真正产出伤害的路径（这里是 `calcOutput.axisStack.executed`），并用「同一路径、只差该输入」做对照——直接新建队伍和走 setAgent 的配装 / 命座不同，两者比较会把差异错归到被测输入上。另外：用 `effectiveStunAxes` 数动作会撞上求解器回退（`forceNoAxis` 清空 resolvedAxes），锁判据要直接锁纯函数。
+  - **check-tokens 的 alias 棘轮「进步也红」**：新增一处 `var()` 会报「var() 总数 800→801：是进步，把 VAR_TOTAL_BASELINE 上调」。按提示改 `scripts/check-tokens.mjs` 的基线并在注释里记轮次。新样式别写字面色值（硬编码色值棘轮），从 `App.vue` 的 `--app-*` 里挑（没有专门的警告色，r416 用 `--app-accent-gold`）。
+  - **UI 改动的 headless 验证配方（r416）**：Chromium 用 `~/.cache/ms-playwright/chromium_headless_shell-1234`，缺的库已解压在 `/home/kaua/calc-arch/chromedeps`（`LD_LIBRARY_PATH=$D/root/usr/lib/x86_64-linux-gnu`）；`playwright-core` 借 `/mnt/f/proj/workbuddyai2api/node_modules/playwright-core`。状态注入：`document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('config')`，切页用 `ui.activeTab`。vite 与脚本写在同一调用：`npx vite --port 5199 & VP=$!; …; kill $VP`。截图里中文是方块（缺 CJK 字体），以 DOM 计数为准。
+  - **mcp.js 输出长时直接打印原始 stdout、只留尾部约 6000 字节**（不是 JSON）：拉二进制要先 base64，再按 5000 字节 `cut -c` 分段取回，拼接后核对长度 / sha256。`get_diagnostics` 只接受 IDE 工作区内的相对路径，worktree 用 `vue-tsc -b --force` 代替。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
