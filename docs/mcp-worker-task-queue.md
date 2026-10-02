@@ -153,18 +153,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 407 轮（lane arena-E；无并行会话；HEAD `c4363518`；REQUIREMENTS.md 无新条目）：CC-381 `30abf0aa` + `84ec4c0b` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：**计算层（core / types / specs / utils / data / mechanics）非测试源码零 `any`**，由全目录不变式锁住（架构卡 CC-381）。
-  - r406 交接列的 11 处（core 9 / types 2）都是同一个病：catalog 漏声明数据里真实存在的字段，或 core 为不依赖 store 而用 `any`（改为结构类型 `ImpactVarConfig`）。
-  - 补查 `Record<string, any>` 时挖出更大的一处：**`specResources` 被 18 个模块当私有结果夹带通道**。已拆开：`specResources` 只放 spec 账本（`SpecResourceResult`），私有对象走具名结果键（`aireCycle` / `hugoAbyssEcho` / `triggerResolve` …，全表见 `.zc/perf/dump.perf.ts` 的 `SPEC_FOLD`）。
-  - panYinhu `buildResourceResult` 零读者，已删除（如需展示影画 2 换能，从 `cfg.panYinhuC2EnergyTotal` 读，那才是真实通道）。
-- **验证**：vue-tsc `--force` 0；zd `r407c` 0/0（`r407a` 未加折叠时结构哈希 276 / 281 处变化，总伤害段与失衡池段全同，见下方新坑）；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 458 个文件 / 4244 个测试；build 通过（日志 `arenaE/r407/`）。锁 7 条正则逐一注入 `core/panel.ts` 均红。
-- **回滚点**：`git revert 84ec4c0b 30abf0aa`（按此顺序）。`.zc/perf` 的 `SPEC_FOLD` 不入 git，回滚后留着无害（只在对象含这些键时生效）。
-- **开放项**：OPEN-ITEMS 的 D2 追加 r407。spec JSON 里 hugo（1291）/ piper（1281）的 `resources` 对引擎是死声明（notes 已写明由 TS 模块承担），本轮没动；如要清理，先确认 validate:specs 与 UI 有无读者。
+**第 408 轮（lane arena-E；无并行会话；HEAD `db4085a5`；REQUIREMENTS.md 无新条目）：CC-382 `da412bbd` + `4c71f09a` + `670b0405` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
+- **做到哪**：编排层 `composables/resourceCalc/` 非测试源码零 `any`，已并入 CC-381 的全目录锁（`CALC_DIRS`）。16 处里有价值的是 3 类（详见架构卡 CC-382）：
+  - `damagePool.ts` 两个行类型与 `damagePoolDirect.ts` 导出接口逐位重复 → 删内联，单一来源。
+  - 行接口 `skillDamageTarget?: any` 掩盖了上游 `string` / 下游 `SkillDamageTarget` 的断层 → 收窄 `SkillExecution.skillDamageTarget`。
+  - `backstageAutoFill` 字段名是 `string`，编排层只能 `as any` 读写 cfg → 新增 `NumericCfgField`，CC-369 注释里「动态访问放行」一句同步改掉。
+- **验证**：vue-tsc `--force` 0；zd `r408a` 0/0；guards 链 EXIT 0（specs 1120 / recording 189）；vitest(4) 458 文件 / 4244 测试；build 通过。
+- **回滚点**：`git revert 670b0405 4c71f09a da412bbd`（按此顺序；C1 单独回滚前要先回滚 C3，因 anbyZero 依赖字段已有类型）。
+- **开放项**：OPEN-ITEMS 的 D2 追加 r408。`SkillDamageTarget` 的写入方现在都受类型约束；如将来要从外部数据（录制 / 保存的配置）读入该字段，入口处须经 `normalizeSkillDamageTarget` 收窄，不要把字段放宽回 `string`。
 - **下一步（按价值排）**：
-  1. **`composables/resourceCalc/` 零 any 并入 CALC_DIRS**：它是计算编排层，不是纯 UI。现有 13 处（skillRows 5 / panelPhases 4 / helpers 2 / damagePoolDirect 2），先逐处判断同病与否，清零后在 `privateCfgFields.test.ts` 的 `CALC_DIRS` 加 `'composables/resourceCalc/'` 并反证。计数命令：`cd src && grep -rPn "\bas\s+any\b|:\s*any\b|<any\b|\bany\[\]|,\s*any\s*[>,\]]|\|\s*any\b" composables/resourceCalc --include=*.ts | grep -v __tests__`。
-  2. 继续找「派给全部、各自认领」的同类（CC-373 / CC-377）。判据是派发处有没有给身份。
-  3. UI 层（composables 其余 10 / stores 9 / components 18 / views 28）价值较低，`stores/config.ts` 的 7 处优先（store 是计算输入的源头）。
+  1. 继续找「派给全部、各自认领」的同类（CC-373 / CC-377）。判据是派发处有没有给身份。
+  2. `stores/config.ts` 的 7 处 any（store 是计算输入的源头，漏声明会一路流进计算层）。清零后可考虑把 `stores/` 加进 `CALC_DIRS`，或另起一个 UI 层锁。
+  3. UI 层其余（composables 除 resourceCalc 外约 10 / components 18 / views 28）价值较低，只做能暴露真实类型断层的。计数命令见 r6 文档的 any 扫描正则（必须含 `,\s*any\s*[>,\]]` 与 `\|\s*any\b`）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -211,6 +211,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **迁移结果键后全仓 grep 旧键名字面量（含测试）**：测试里 `(x.specResources as any).key`、字符串键辅助函数、`Object.keys(...).toContain('key')` 都躲得过 tsc（r407 有 5 处）。
   - **Python 补 import 别只按单行 `^import` 定位**：会插进多行 `import type {\n…\n} from` 块中间（r407 zhao 语法错）。以 `} from '…'\n` 结束行为锚。
   - **外部不可信数据的参数用 `unknown` + 收窄，别为收紧类型去改测试的防御语义**：r407 先把 `getGlobalBuffStatOptions` 收紧成 `StatRules['statDisplay']`，测试（字符串条目 / 缺 label 回落）随即报错——测试是对的，签名应如实表达「不可信」。
+  - **行级 `any` 改成具名类型后 tsc 报的那一处，往往就是上下游的类型断层**（r408 `skillDamageTarget`：上游 `string`、下游联合类型）。修上游声明，不要在消费端插归一化函数：`normalizeSkillDamageTarget` 会把 undefined 映射成 `'all'`，改变语义。
+  - **模块按字段名声明 cfg 键时，用 `NumericCfgField` 这类映射类型约束键名**，编排层就不需要 `(cfg as any)[decl.field]`。前提是 `CharacterOperationConfig` 没有索引签名；一旦加了索引签名，`keyof` 会退化成 `string`，约束失效。
+  - **反证注入要选本轮没改过的文件**，事后用 `git checkout -- <这些文件>` 还原（先 `git status --short <文件>` 确认为空）。在改过的文件上注入再 checkout，会把本轮改动一起冲掉。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
