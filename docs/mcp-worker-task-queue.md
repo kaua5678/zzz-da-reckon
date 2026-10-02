@@ -81,6 +81,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 01:28 arena-C 第 423 轮**（开工 01:28：master `18354072`、无并行提交、独占进程只有常驻 `dsh web`；主仓仍有别人未跟踪的 `src/mechanics/__tests__/r65j1DeadBuffProbe.test.ts`（R65-J1 探针，11 分钟未更新，01:40 写出了 `.zc/reports/r65j1-dead-buff-probe.json`）⇒ 判并行，但文件面不相交（他动 mechanics/utils，我动 composables/stores/specs）；REQUIREMENTS.md 429 行无新条目；worktree `wtA-r423` 已删）：**CC-397 `3743c6c7`**，已 ff 合入 master。
+- **做到哪**：r422 收尾复扫发现展示层之外只剩 9 处裸 any / 4 文件 ⇒ 全部清完，并把锁从 2 目录扩到 4 目录（扫描面 40 → 134 文件）。非测试 `src/` 6 条规则 **0 处**。
+  1. `composables/hpSourceBreakdown.ts` 4：`(raw as any).modificationValues` / `(effect as any).sourceLabel` —— CC-395a 已补过声明（`BuffEffect`），强转纯冗余直删；`four.twoPiece as any` / `two.twoPiece as any` —— 驱动盘 2 件套的类型只有 `effects`（`DriveDiscSetPiece`），与 `BuffGroup` 不等形，改传 `{ scope: 'outOfCombat', effects: … }`（与 r421 views 里同一处同修法；行为等价：原先传无 scope 对象时 `hpPhase` 就把 hpPct/hpFlat 判成局外）。
+  2. `composables/useStatLabel.ts` 2：`(statDisplay as any)?.[stat]` 的 `as any` 完全多余（`statDisplay: Record<string, …>` 本就可按字符串键索引）⇒ 直删；两种 label 形态兼容靠 `localized(value: unknown)` + `typeof` 判定，文件头注释同步改。
+  3. `stores/catalog.ts` 3：`sourceStat as any` 与 `stat: e.stat as TeammateBuff[…]['stat']` 都是 **no-op**（`StatId = string`）⇒ 直删；`targetSkillType as any` 改由 spec 侧收窄消除（见 5）。
+  4. `composables/useResourceCalc.ts` + `resourceCalc/convergence.ts` 1（+契约）：`computeStunCoverage(sp: any)` 与 deps 里的 `sp: unknown` 同时收窄成 `Pick<StunPoolResult, 'stunCount'> | null | undefined`。**只改一边编译不过**（函数类型参数逆变），两边同时改才是真契约。
+  5. `specs/types.ts`：`TeamBuffEffectSpec.stat / sourceStat` → `StatId`、`targetSkillType` → 真联合 `SkillDamageTarget`（该文件以前零 import，本轮加了一行 `import type … from '@/types/catalog'`）。全仓 vue-tsc 0 错 ⇒ **现有 spec 数据全部合法**，不是把报错挡住，而是验证过。
+- **锁**：`src/scripts/__tests__/displayLayerNoAny.test.ts` 现在扫 4 目录（views / components / composables / stores，除注释后 134 文件）+ 8 个具名文件 + 文件数下限 100 + 6 规则表 + 检测函数单测（新增 `Pick<…>` 必须放过的用例）。反证：往 `composables/useStatLabel.ts` 注入 `const __probe: any = 1`、往 `stores/catalog.ts` 注入 `({} as any).zz`，两条规则分别红并报 `文件:行号`。
+- **验证**：`vue-tsc -b --force` 0 错；定向 7 文件 31 passed；全量 verify EXIT 0（465 文件 / 4280 测试，16/29 skipped；独立 25 / token 12 / data 366 / spec 1120 / recording 189）。全部改动只动类型标注 / 类型声明，无一行运行时逻辑 ⇒ 运行时零变化。
+- **下一步（start-ready）**：
+  1. **同家族的下一个漏洚 = `as unknown as`**（非测试 src 里 29 处 / 15 文件：`specs` 7、`core` 7、`mechanics` 6、`composables` 6、`utils` 2、`views` 1；它能同时绕过 `as any` 和 `: any` 两条规则）。做法：先在锁里加第 7 条规则 `/as unknown as/`（只改锁文件，立即红），再清 **我自己的 4 目录里的 6 处**（composables 6；`analysisScenario.ts` 3 、`panelStat.ts` 在 utils 不归我）；`specs` / `core` / `mechanics` 的 20 处写成候选清单（文件:行号 + 当前写法）留给对应 lane 空时清。**别一开始就拉入 `mechanics/agents/*`**（arena-E 历史占用面，他们正在那边跑 R65-J1）。
+  2. 若 1 做完还有余量：把锁皈到 `src/utils`（10 处 `: unknown` / `as unknown`，含 `panelStat.ts` 2 处 `as unknown as`）——扫描面加一个具名目录 + 具名文件，方法同上。
+  3. **别接别人的 R65-J1 死 buff 晨查**：探针结果已落 `.zc/reports/r65j1-dead-buff-probe.json`（3004 B，01:40；总数 134、interactive 127、gaps 里已见 `1411.cinema_6.disorder_multiplier_bonus` / `1581.additional_ability.atk_1_anomaly` / `1221.yanagi.core_disorder_multiplier_bonus` 等——**拖了不变的“交互”条目**），但他还未提交；等他收工后按结论单独开卡（那是行为层缺口，与类型锁不是一件事）。
+- **坑**：
+  - `CharacterConfig` 在 `@/stores/config`，`StatId` / `SkillDamageTarget` 在 `@/types/catalog`（r422 曾把 `CharacterConfig` 写错到 `@/types/resource`，报 TS2305）。
+  - `computeStunCoverage` 这类「实现在 A、deps 接口在 B」的入参，**必须两边同时收窄**；只改一边会因参数逆变（strictFunctionTypes）编译不过。
+  - `StatId = string`（别名，非联合）⇒ 属性 id 拼错零编译期保护。**不要手写联合**：词表来自 `catalog.json` 数据，手写会与数据脱节；要做得从数据生成类型（build-time codegen），属于另一件事。
+  - 测试侧 2103 处 any / 154 文件（集中 `mechanics/__tests__` 角色 mock）。**判定不锁不清**：夹具局部 mock 用 any 是惯用法，锁它 = 纯机械大改、无架构收益。
+- **回退点**：`git revert 3743c6c7`（纯类型标注 / 类型声明，锁在同一次提交里，revert 会一起回退）。
+
 **2026-10-03 01:20 arena-C 第 422 轮**（开工 01:00：master `2e325bbe`、无并行提交、独占进程只有常驻 `dsh web`；01:16 主仓弹出别人未跟踪的 `src/mechanics/__tests__/r65j1DeadBuffProbe.test.ts`（R65-J1 「声明了但没接进计算」死 buff 晨查探针，2 分钟前新建）⇒ 判定并行，但文件面不相交（他动 mechanics/utils，我动 views/components）；REQUIREMENTS.md 429 行无新条目；worktree `wtA-r422` 已删）：**CC-396 `df24a9ec`**，已 ff 合入 master。
 - **做到哪**：展示层 28 处裸 any 标注清到 0（7 文件）+ 源码锁从 1 条规则扩到 6 条。逐文件：
   1. `components/ResourceResultCard.vue` 13 处：列数组标 `DataTableColumns<SkillExecution>` / `<AnomalyEventExecution>` 后删掉 10 个 `render(row: any)`；`executionValue` 的键参数收窄成 `ExecAmountKey` 联合（单/总 10 个键名，写错编译期即报错）；`renderCount` 返回类型交给推断；异常池补入的事件行 `eventType: e.type` → `'release' as const`（上方 filter 已按 `type === 'release'`，原宽联合过不了 `AnomalyEventExecution` 的窄接口）。
