@@ -76,12 +76,20 @@
 字段有类型后 4 处 `(cfg.x ?? {}) as Record<string, number>` 与 1 处 `as YixuanExChain | undefined` 变冗余，删掉（强转会掩盖类型不匹配）。
 vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被编译器证明的事）；zd 0/0；全量 4159 例过。
 
+**r392（CC-362 `2b0743ce`）`yeshuguang` / `banyue` / `starlightBilly`**：35 处强转 → 0，三模块进 `TYPED_CFG_MODULES`。新出现的三种形态与处理（后续模块照做）：
+- **读机制设置键**（`record['setting:<id>']`）：用新增的 `cfgMechanicSettingRaw(cfg, id)`（`utils/mechanicSettingCfg.ts`，返回原始值、不做数字转换；外层 `Number(… ?? x)` 原样保留 ⇒ 零差）。纯数字场景本来就该用 `cfgMechanicSetting(cfg, id, fallback)`，但它对非有限数取 fallback，与原 `Number(raw ?? x)` 在脏值上行为不同 ⇒ 机械迁移一律用 Raw，语义收敛另开卡。
+  **同形态待迁**（不经 `const record`，脚本「变量」段看不到）：`orphie.ts` 4 处 `(cfg as any)['setting:orphie.*']`、`remielle.ts` 1 处、`nekomata.ts` / `qianxia.ts` 各 1 处 `record['setting:…']`。
+- **模块私有的执行标记**（`(exec as Record<…>).<键>`）：在本模块加 `declare module '@/types/resource/execution' { interface SkillExecution { … } }` 扩充，和 cfg 扩充同一规则。
+- **`(cfg.x ?? {}) as T`**：改成受检注解 `const n: T = cfg.x ?? {}`——强转会掩盖不匹配，注解会报错（本轮补的类型全靠 tsc 一次过证明）。另删 17 处变冗余的 `as`。
+- **坑**：原代码有「`record.k = v` 后又 `cfg.k = v`」的双写（banyue `banyueMoveTimes/Dmg`），改写后变成同一行写两遍 ⇒ 删掉一份（同一对象，零差）。改完 `git diff` 扫一眼相邻重复行。
+机械步骤（执行卡第 2–3 步）现由 `scripts/d2-record-apply.py <repo> <模块> [<声明文件>]`（`06b53326`）完成：删 `const record = cfg as …`、`record.`→`cfg.`、把声明文件（4 空格缩进的成员行）并入本模块扩充块，并列出需人工处理的剩余 `record` 引用。验证：vue-tsc `--force` 净（注入错误反证过）、锁反证、zd 0/0、全量 455 文件 / 4162 例、build。
+
 ### 执行卡（每个模块一张，机械活，可派执行模型）
 
 1. `python3 scripts/d2-record-keys.py . <模块名>`：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
 2. 来源是本槽 `cfg` 的：未声明键补进**本模块**的 `declare module '@/types/resource/config'` 扩充块（类型看写入点；拿不准写 `number`，tsc 会报）。
    **只有本模块用的键**放本模块；若 `privateCfgFields` 锁或脚本显示别处也用，放公共接口 `types/resource/config.ts`。
-3. 把 `record.<键>` 改成 `cfg.<键>`、删 `const record = cfg as …`、内联 `(cfg as unknown as Record<string, unknown>).k` 改 `cfg.k`；
+3. （第 2–3 步可用 `python3 scripts/d2-record-apply.py . <模块> <声明文件>` 一次完成，再按它的「剩余」清单手改）把 `record.<键>` 改成 `cfg.<键>`、删 `const record = cfg as …`、内联 `(cfg as unknown as Record<string, unknown>).k` 改 `cfg.k`；
    辅助函数若收 `record: Record<string, unknown>` 参数，去掉它、改收 `cfg`。**`Number(x ?? 0)` 等运行时包装一律不动**（保零差）。
 4. 字段有类型后变冗余的 `as` 删掉；若 tsc 因 `readonly` 等报错，说明原强转在绕约束——停下来读清楚再决定，别再套一层强转。
 5. 来源**不是**本槽 cfg 的（`mateRecord ← mateCfg` 是队友 cfg，同接口，可同样处理；`exec` / `state` / `result` 是别的接口）：查对应接口，同理补声明；不确定就本轮跳过、表里记一句。
@@ -94,9 +102,9 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | 模块 | 强转处数（r391） | 状态 |
 |---|---|---|
 | `yixuan` | 7 | done a5e054d1 |
-| `yeshuguang` | 14 | 待做 |
-| `banyue` | 11 | 待做 |
-| `starlightBilly` | 10 | 待做 |
+| `yeshuguang` | 14 | done 2b0743ce |
+| `banyue` | 11 | done 2b0743ce |
+| `starlightBilly` | 10 | done 2b0743ce |
 | `sigrid` | 9 | 待做 |
 | `lucy` | 8 | 待做 |
 | `phoenix` | 8 | 待做 |

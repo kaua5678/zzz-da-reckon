@@ -152,11 +152,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 391 轮（lane arena-E，开工 04:51；无并行会话；HEAD `0bd70573`；REQUIREMENTS.md 无新条目）：CC-361 D2 §5 试点 `a5e054d1` + 助手脚本 `b05146d3`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：`yixuan.ts` 不再经 `Record` 强转读写 cfg，全部状态键有类型（卡表 CC-361）。做法已固化成执行卡 + 54 模块待办表：`docs/mcp-d2-cfg-fields.md` §5。
-- **验证**：vue-tsc 净；zd `r391` DIFF 0/0（本轮变量改名，产物不再逐字节相同，零差是主判据）；仪玄 3 个测试文件 69 例；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189 / build（`arenaE/verify391.log`）；全量 455 文件 / 4159 例过（`verify391-test.log`）。
+**第 392 轮（lane arena-E，开工 05:03；无并行会话；HEAD `242e32fb`；REQUIREMENTS.md 无新条目）：CC-362 `2b0743ce` + 脚本 `06b53326`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：D2 §5 待办表前三个模块 `yeshuguang` / `banyue` / `starlightBilly` 完成（35 处强转 → 0，进 `TYPED_CFG_MODULES`）；新形态处理法写进 `docs/mcp-d2-cfg-fields.md` §5「r392」段。剩 51 个模块（186 处）。
+- **中断记录**：本轮 05:10 跑 check:fast 时 WSL 挂掉（原因未确认），随后 ngrok 隧道离线（`404 ERR_NGROK_3200`），共 36 个会话（约 21:10–次日 01:28）无法工作；第 37 个会话恢复，worktree 改动完好，重验后收尾。代码在中断前已全部验证，恢复后补跑 check:fast 拆段 / 全量 / build。
+- **验证**：vue-tsc `--force` 净（注入错误反证）；锁 8/8 + 反证；zd `r392`/`r392b` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 455 文件 / 4162 例（+3 = 锁表新增 3 模块）；build 过（`arenaE/v392-*.log`）。
 - **开放项**：无。
-- **下一步**：按 `docs/mcp-d2-cfg-fields.md` §5 执行卡逐模块做，从表头往下（`yeshuguang` 14 / `banyue` 11 / `starlightBilly` 10 …），一次 3–5 个、一模块一提交；每做完一个把模块名加进 `TYPED_CFG_MODULES` 并改表状态。这是机械活，适合执行模型 / dsh 并行（不同模块文件不相交；`privateCfgFields.test.ts` 的名单行与 d2 文档表格会冲突 ⇒ 由收尾的人统一合并）。
+- **下一步**：①（小，先做）`orphie` / `remielle` / `nekomata` / `qianxia` 的 `setting:` 键读取改 `cfgMechanicSettingRaw`（7 处，见 d2 §5 r392 段），orphie 的 `(cfg as any)` 顺带消失；② 按 §5 表继续 `sigrid` 9 / `lucy` 8 / `phoenix` 8 / `grace` 7 / `promia` 7，先 `d2-record-keys.py` 列键 → 写声明文件 → `d2-record-apply.py` → 手改剩余 → tsc/锁/zd。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -168,7 +169,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
   - **新建 `docs/*.md` 必须同步登记 README §6 文档表并改节标题份数**（守卫 `docs table`）；收尾在**文档提交之后**再跑一次 `npm run check-guards`，别只在代码提交前跑。
   - `git stash -- <路径>` 可只撤某几处改动做锁的反证，`git stash pop` 复原（r390 用过）。
-
+  - 只做机械改写时**别**把 `Number(raw ?? x)` 换成 `cfgMechanicSetting`：后者对非有限数取 fallback，脏值行为不同（零差不保）。
+  - check:fast / verify 别整条跑：拆成 guards→tokens→data→specs（一调用）/ recording / `vitest --maxWorkers=4` / build 分别前台跑。
+  - 只剩 15 个工具（无 wsl_exec）、run_command PTY 起不来、文件工具 EIO ⇒ WSL 挂了，没有替代路径，停手；ngrok `404 ERR_NGROK_3200` ⇒ 隧道离线，什么都做不了。恢复后先 `git status` 核对 worktree 再续。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
