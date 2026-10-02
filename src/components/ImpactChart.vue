@@ -122,7 +122,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { sampleImpactCurve, type ImpactPoint } from '@/composables/impactSampling'
-import { useConfigStore } from '@/stores/config'
+import { useConfigStore, type CharacterConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
 import { buildImpactVariables, readImpactVariable } from '@/composables/impactVariables'
@@ -180,7 +180,7 @@ function readVar(id: string): number {
 
 
 // ========== 快照 ==========
-interface Snapshot { label: string; team: any }
+interface Snapshot { label: string; team: CharacterConfig[] }
 const snapshots = ref<Snapshot[]>([])
 const snapActive = ref<boolean[]>([])
 
@@ -339,8 +339,8 @@ async function run() {
       all.push({ label: sn.label, points: pts, color: CURVE_COLORS[1 + (i % 3)], isMain: false })
     }
     task.commit(() => { curves.value = all })
-  } catch (e: any) {
-    task.commit(() => { errorMsg.value = `计算失败：${e?.message ?? e}` })
+  } catch (e) {
+    task.commit(() => { errorMsg.value = `计算失败：${e instanceof Error ? e.message : String(e)}` })
   } finally {
     task.commit(() => { progress.value = null; computing.value = false })
   }

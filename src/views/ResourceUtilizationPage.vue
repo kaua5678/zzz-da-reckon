@@ -320,6 +320,8 @@ import { NButton, NCard, NInputNumber, NSelect } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import type { AnomalyVirtualPanelBuild, AnomalyVirtualPanelRow } from '@/composables/resourceCalc/anomalyPanels'
+import type { AnomalyProgress } from '@/types/resource'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import {
@@ -436,16 +438,16 @@ const windInfectionConfig = computed<{
   return { autoRate, coverage, candidates, windSlot: pick.windSlot, autoSlot: pick.autoSlot, targetSlot: pick.targetSlot }
 })
 
-function settlementRows(vp: any): any[] {
-  const sameElement = vp.rows.filter((row: any) => row.settlementEligible !== false)
+function settlementRows(vp: AnomalyVirtualPanelBuild) {
+  const sameElement = vp.rows.filter((row: AnomalyVirtualPanelRow) => row.settlementEligible !== false)
   const rows = sameElement.length > 0 ? sameElement : vp.rows
   const isSingle = rows.length === 1
 
   // 从 anomalyPoolResult 取触发总数
-  const prog = anomalyPoolResult.value?.perElement?.find((p: any) => p.element === vp.element)
+  const prog = anomalyPoolResult.value?.perElement?.find((p: AnomalyProgress) => p.element === vp.element)
   const totalTriggers = prog?.triggerCount ?? 0
 
-  return rows.map((row: any) => {
+  return rows.map((row: AnomalyVirtualPanelRow) => {
     // 单人强制 100%；多人按 weight
     const share = isSingle ? 1 : row.weight
     const triggerCount = Math.round(share * totalTriggers)
@@ -468,8 +470,8 @@ function settlementRows(vp: any): any[] {
   })
 }
 
-function vpTotalTriggers(vp: any): number {
-  const prog = anomalyPoolResult.value?.perElement?.find((p: any) => p.element === vp.element)
+function vpTotalTriggers(vp: AnomalyVirtualPanelBuild): number {
+  const prog = anomalyPoolResult.value?.perElement?.find((p: AnomalyProgress) => p.element === vp.element)
   return prog?.triggerCount ?? 0
 }
 

@@ -58,7 +58,7 @@ const PageLoading = {
 const lazyPage = (loader: AsyncComponentLoader<Component>) =>
   defineAsyncComponent({ loader, loadingComponent: PageLoading, delay: 120 })
 
-const pageMap: Record<string, any> = {
+const pageMap: Record<string, Component> = {
   team: TeamConfigPage,
   attribute: lazyPage(() => import('@/views/AttributeConfigPage.vue')),
   resource: lazyPage(() => import('@/views/ResourcePage.vue')),

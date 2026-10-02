@@ -304,8 +304,8 @@
 
 <script setup lang="ts">
 import { computed, h } from 'vue'
-import { NCard, NTag, NDataTable, type TagProps } from 'naive-ui'
-import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult } from '@/types/resource'
+import { NCard, NTag, NDataTable, type TagProps, type DataTableColumns } from 'naive-ui'
+import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult, SkillExecution, AnomalyEventExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { damageElementLabel as elementLabel, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import { agentResourceSections, agentResultCardCorrosion } from '@/composables/agentMechanicView'
@@ -588,16 +588,21 @@ function fmtCell(value: number | undefined, digits = 1): string {
   return value && value > 0 ? fmt(value, digits) : '-'
 }
 
-function executionValue(row: any, key: string, totalKey?: string): string {
-  const single = row[key] ?? 0
-  const total = totalKey ? row[totalKey] ?? 0 : 0
+/** 执行计划可按「单次 / 总计」口径展示的数值列键（键名写错编译期即报错） */
+type ExecAmountKey =
+  | 'energyRecovery' | 'decibelRecovery' | 'anomalyBuildUp' | 'specialResourceRecovery' | 'healingAmount'
+  | 'totalEnergyRecovery' | 'totalDecibelRecovery' | 'totalAnomalyBuildUp' | 'totalSpecialResourceRecovery' | 'totalHealingAmount'
+
+function executionValue(row: SkillExecution, key: ExecAmountKey, totalKey?: ExecAmountKey): string {
+  const single = (row[key] as number | undefined) ?? 0
+  const total = totalKey ? (row[totalKey] as number | undefined) ?? 0 : 0
   if (single <= 0 && total <= 0) return '-'
   if (totalKey && row.count > 0) return `${fmt(single, 1)} × ${row.count} = ${fmt(total, 1)}`
   return fmt(single, 1)
 }
 
 /** 次数列：Sweeping Cyclone #1 附加风蚀替换广域次数（微域升级广域） */
-function renderCount(row: any): any {
+function renderCount(row: SkillExecution) {
   const base = row.count ?? 0
   const corrosion = props.anomalyPoolResult?.corrosionSource
   const cc = agentResultCardCorrosion(props.result.agentId) // CC-66
@@ -609,12 +614,12 @@ function renderCount(row: any): any {
 }
 
 // 执行计划表格数据
-const executionColumns = [
+const executionColumns: DataTableColumns<SkillExecution> = [
   {
     title: '招式',
     key: 'moveName',
     width: 128,
-    render(row: any) {
+    render(row) {
       return h('div', [
         h('span', { class: 'exec-name' }, row.moveName),
         h('div', { class: 'exec-note' }, `${row.actionCode || row.moveId} · ${row.category}`),
@@ -628,56 +633,56 @@ const executionColumns = [
     key: 'damageMultiplier',
     width: 78,
     align: 'right' as const,
-    render(row: any) { return fmtCell(row.damageMultiplier, 1) },
+    render(row) { return fmtCell(row.damageMultiplier, 1) },
   },
   {
     title: '失衡倍率',
     key: 'dazeMultiplier',
     width: 78,
     align: 'right' as const,
-    render(row: any) { return fmtCell(row.dazeMultiplier, 1) },
+    render(row) { return fmtCell(row.dazeMultiplier, 1) },
   },
   {
     title: '能量回复',
     key: 'energyRecovery',
     width: 92,
     align: 'right' as const,
-    render(row: any) { return executionValue(row, 'energyRecovery', 'totalEnergyRecovery') },
+    render(row) { return executionValue(row, 'energyRecovery', 'totalEnergyRecovery') },
   },
   {
     title: '喧响回复',
     key: 'decibelRecovery',
     width: 92,
     align: 'right' as const,
-    render(row: any) { return executionValue(row, 'decibelRecovery', 'totalDecibelRecovery') },
+    render(row) { return executionValue(row, 'decibelRecovery', 'totalDecibelRecovery') },
   },
   {
     title: '异常积蓄',
     key: 'anomalyBuildUp',
     width: 120,
     align: 'right' as const,
-    render(row: any) { return executionValue(row, 'anomalyBuildUp', 'totalAnomalyBuildUp') },
+    render(row) { return executionValue(row, 'anomalyBuildUp', 'totalAnomalyBuildUp') },
   },
   {
     title: '特殊资源',
     key: 'specialResourceRecovery',
     width: 86,
     align: 'right' as const,
-    render(row: any) { return executionValue(row, 'specialResourceRecovery', 'totalSpecialResourceRecovery') },
+    render(row) { return executionValue(row, 'specialResourceRecovery', 'totalSpecialResourceRecovery') },
   },
   {
     title: '回血量',
     key: 'healingAmount',
     width: 78,
     align: 'right' as const,
-    render(row: any) { return executionValue(row, 'healingAmount', 'totalHealingAmount') },
+    render(row) { return executionValue(row, 'healingAmount', 'totalHealingAmount') },
   },
   {
     title: '动作/合轴',
     key: 'actionTime',
     width: 96,
     align: 'right' as const,
-    render(row: any) {
+    render(row) {
       const action = row.totalTime > 0 ? `${row.totalTime.toFixed(1)}s` : '-'
       const align = row.totalComboAlignTime > 0 ? ` / -${row.totalComboAlignTime.toFixed(1)}s` : ''
       return `${action}${align}`
@@ -717,7 +722,7 @@ const executionsData = computed(() => {
   return rows
 })
 
-const anomalyEventColumns = [
+const anomalyEventColumns: DataTableColumns<AnomalyEventExecution> = [
   { title: '事件', key: 'eventName', width: 110 },
   { title: '类型', key: 'eventType', width: 80 },
   { title: '载体动作', key: 'carrierMoveName', width: 120 },
@@ -725,7 +730,7 @@ const anomalyEventColumns = [
   {
     title: '公式/字段',
     key: 'formula',
-    render(row: any) {
+    render(row) {
       return h('div', [
         h('div', { class: 'exec-formula' }, row.formula),
         h('div', { class: 'exec-note' }, row.fields?.join(' · ') ?? ''),
@@ -746,7 +751,7 @@ const anomalyEventExecutionsData = computed(() => {
       .map(e => ({
         eventId: e.id,
         eventName: e.label,
-        eventType: e.type,
+        eventType: 'release' as const,  // 上面已按 type === 'release' 过滤
         count: e.count,
         formula: e.formula ?? '',
         fields: e.fields ?? [],

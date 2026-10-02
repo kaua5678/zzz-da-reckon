@@ -194,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, type VNodeChild } from 'vue'
 import { NButton, NSelect, NProgress } from 'naive-ui'
 import { fmt } from '@/utils/format'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
@@ -215,7 +215,7 @@ const props = defineProps<{
   teamTotalDamage: number
   hasTeam: boolean
   varOptions: Array<{ label: string; value: string }>
-  renderVarLabel: (opt: { label: string; value: string }) => any
+  renderVarLabel: (opt: { label: string; value: string }) => VNodeChild
 }>()
 
 // 预设双变量对
@@ -762,8 +762,23 @@ function drawSurfaceMesh(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
   }
 }
 
+/** 面元角点：投影后的屏幕坐标 + 归一化高度 */
+interface QuadCorner {
+  screenX: number
+  screenY: number
+  normZ: number
+}
+
+/** 一个面元（四角按逆时针 p00 -> p10 -> p11 -> p01） */
+interface Quad {
+  p00: QuadCorner
+  p10: QuadCorner
+  p11: QuadCorner
+  p01: QuadCorner
+}
+
 // 单面元内等高线生成 (Marching linear cuts)
-function drawQuadContour(ctx: CanvasRenderingContext2D, q: any) {
+function drawQuadContour(ctx: CanvasRenderingContext2D, q: Quad) {
   const levels = [0.2, 0.4, 0.6, 0.8]
   ctx.strokeStyle = `rgba(${inkRgb}, 0.45)`
   ctx.lineWidth = 0.8

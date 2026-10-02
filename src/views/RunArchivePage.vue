@@ -30,7 +30,7 @@
               :columns="columns"
               :data="filteredRuns"
               :pagination="{ pageSize: 20 }"
-              :row-key="(r: any) => r.id"
+              :row-key="r => r.id"
               size="small"
               :bordered="false"
             />

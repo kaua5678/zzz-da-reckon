@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { NSelect, NDataTable, NTag } from 'naive-ui'
+import { NSelect, NDataTable, NTag, type DataTableColumns } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { getImageUrl } from '@/utils/image'
@@ -124,9 +124,12 @@ const attributeLabel = computed(() => {
 })
 const attributeTag = computed(() => attributeTagColor(currentAgent.value?.attribute))
 
+/** 招式表行：固定列 + 倍率表动态列（动态列的键是 move row id，值只用于展示） */
+type MoveRow = Record<string, unknown>
+
 // 构建列定义
 function buildColumns(category: SkillCategory) {
-  const cols: any[] = [
+  const cols: DataTableColumns<MoveRow> = [
     { title: '招式', key: 'name', fixed: 'left', width: 200 },
     { title: '类型', key: 'skillType', width: 80 },
     { title: '时间类型', key: 'timeType', width: 110 },
@@ -154,7 +157,7 @@ function buildColumns(category: SkillCategory) {
 // 构建行数据
 function buildRows(category: SkillCategory) {
   return category.moves.map((move: SkillMove) => {
-    const row: Record<string, any> = {
+    const row: MoveRow = {
       name: move.name.zhCN || move.name.en,
       skillType: move.skillType || '-',
       timeType: move.timeType || '-',
