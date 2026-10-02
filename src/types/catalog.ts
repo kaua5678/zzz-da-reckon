@@ -179,6 +179,44 @@ export interface PanelValues {
   additionalAbilityActive: number
   /** 失衡持续时间延长（秒）：角色级，敌人进入失衡后的持续时间 +N 秒（琉音恶意投诉、诺姆技术鸿沟等） */
   stunDurationBonusSeconds: number
+  // ---- r401（docs/mcp-panel-fields.md §4 S1）：以下 15 个跨层字段原先只靠末尾索引签名成立，现显式声明 ----
+  // 能量/喧响类：音擎·驱动盘效果按 catalog.json 统计键写入（`utils/statMeta.ts` 登记标签），
+  // `core/resource/resourceIncome.ts` 读；`core/panel.ts#emptyPanel` 初始化为 0。
+  // ⚠ 过渡期一律**必填** `number`：末尾 `[key: string]: number` 还在时，`?: number`（= number | undefined）与索引签名冲突（TS2411）。
+  // 下面 5 个原先缺省 = undefined 的字段，emptyPanel 里给的初值与所有读者的兜底同值（potentialLevel 读者全是 `?? 6`，其余 `?? 0`）⇒ 行为不变。
+  /** 后台固定回能 */
+  backstageEnergyRegenFlat: number
+  /** 非操作固定回能 */
+  nonOperatingEnergyRegenFlat: number
+  /** 德玛拉能量获得效率 */
+  demaraEnergyGainEfficiency: number
+  /** 真元奇枢受伤/回血回能 */
+  zhenyuanEnergyPerTrigger: number
+  /** 时光切片闪反喧响 */
+  timeSliceDodgeCounterDecibel: number
+  /** 时光切片强特喧响 */
+  timeSliceExSpecialDecibel: number
+  /** 时光切片支援喧响 */
+  timeSliceAssistDecibel: number
+  /** 时光切片连携喧响 */
+  timeSliceChainDecibel: number
+  /** 时光切片触发回能 */
+  timeSliceEnergyPerTrigger: number
+  /** 回血量（statMeta 登记的统计键，emptyPanel 初值 0；面板上目前没有代码读者，招式回血走 `resourceCalc/helpers.ts#getHealingAmount`） */
+  healingAmount: number
+  /** 旧字段：灼心摇壶后台回能（兼容旧数据；新数据用 `backstageEnergyRegenFlat`，resourceIncome 两者相加） */
+  roaringRideBackstageEnergyRegen: number
+  /** 潜能等级（1..6）：`core/panel.ts` 算局外面板时盖章，`core/buff.ts` 动态潜能效果读 */
+  potentialLevel: number
+  /** 乱流抗性无视（%）：角色模块 applyPanel 写（现为维琳娜 1 命 20），`core/anomalyPool/helpers.ts` 乱流结算读 */
+  turbulenceResIgnore: number
+  /**
+   * 风化侵染覆盖率原值（0..1）：`composables/useResourceCalc.ts` 构造 damagePanels 时以对象展开盖章（无风角色 ⇒ 0），
+   * `composables/resourceCalc/panelPhases.ts` 传给 `axisWindowOverlays`（希格莉德浸染增伤）。
+   */
+  windInfectionRate: number
+  /** 异化度展示值（%）：只出现在异常虚拟面板（`composables/resourceCalc/anomalyPanels.ts`） */
+  refringe: number
   /**
    * 槽位号（0/1/2）**印章** —— 面板数组是**按位置压缩**的（`computePanel` 跳过空槽），
    * 故 `panels[i]` 的下标 i ≠ 槽位号。凡按槽位取面板一律走 `core/panel.ts#panelAt`

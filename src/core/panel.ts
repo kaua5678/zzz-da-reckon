@@ -123,6 +123,12 @@ export function emptyPanel(): PanelValues {
     anomalyDurationBonusSeconds: 0,
     // -1 = **未盖章**（见 `panelAt`）：真实槽位号由 `computePanel(slot, …)` 的调用方盖上。
     // 不写 0——那会让「槽1/槽2 的空面板」冒充槽0，`panelAt` 的身份查找随即失真。
+    // r401 S1：原先只靠索引签名、缺省 undefined 的 5 个字段；初值 = 各读者的兜底值（docs/mcp-panel-fields.md §4 S1）
+    roaringRideBackstageEnergyRegen: 0,
+    potentialLevel: 6,
+    turbulenceResIgnore: 0,
+    windInfectionRate: 0,
+    refringe: 0,
     slot: -1,
   }
 }

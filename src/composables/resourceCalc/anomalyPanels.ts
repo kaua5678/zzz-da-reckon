@@ -296,7 +296,7 @@ export function buildAnomalyVirtualPanel(
     refringe: weighted('refringe'),
   }
 
-  panel.refringe = (virtual.refringe ?? 0) as any
+  panel.refringe = virtual.refringe ?? 0
 
   return { element: prog.element, totalBuildUp, rows, virtual, panel }
 }
