@@ -14,13 +14,20 @@ s = open(p, encoding='utf-8').read()
 CAST = r'as (?:unknown as )?(?:Record<string,\s*unknown>|any\b)'
 ON_CFG = re.compile(r'\b(?:input\.)?cfg\s+' + CAST)
 n0 = len(ON_CFG.findall(s))
-s, nl = re.subn(r'^[ \t]*const record = cfg ' + CAST + r'\n', '', s, flags=re.M)
+# r395：别名来源可能是 `cfg` 或 `input.cfg`；只有全部同源时才自动改（混源留给人工，见下方「人工」清单）
+srcs = set(re.findall(r'^[ \t]*const record = ((?:input\.)?cfg) ' + CAST + r'\n', s, flags=re.M))
+if len(srcs) > 1:
+    print(f'{mod}: const record 混源 {sorted(srcs)} ⇒ 不改 record.*（逐函数手改：删别名、record.→对应来源.）')
+    tgt, nl = None, 0
+else:
+    tgt = srcs.pop() if srcs else 'cfg'
+    s, nl = re.subn(r'^[ \t]*const record = ' + re.escape(tgt) + ' ' + CAST + r'\n', '', s, flags=re.M)
 # 行首 `;(cfg as any).k = v`（ASI 防护分号）→ `cfg.k = v`
 s, ns = re.subn(r'^([ \t]*);\((input\.)?cfg ' + CAST + r'\)\.', lambda m: m.group(1) + (m.group(2) or '') + 'cfg.', s, flags=re.M)
 s, ni = re.subn(r'\((input\.)?cfg ' + CAST + r'\)\.', lambda m: (m.group(1) or '') + 'cfg.', s)
 ni += ns
 body, sep, aug = s.partition("\ndeclare module '")
-body, nr = re.subn(r'\brecord\.', 'cfg.', body)
+body, nr = re.subn(r'\brecord\.', tgt + '.', body) if nl and tgt else (body, 0)
 s = body + sep + aug
 if decl:
     head = "declare module '@/types/resource/config' {\n  interface CharacterOperationConfig {\n"
