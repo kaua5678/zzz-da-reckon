@@ -227,21 +227,20 @@ export function computeRoxyWindEnergy(input: {
 
 function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true
-  const record = cfg as unknown as Record<string, unknown>
-  record.roxyCinemaLevel = cinemaLevel ?? 0
+  cfg.roxyCinemaLevel = cinemaLevel ?? 0
   // v12 moveIds
-  record.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2.5))
+  cfg.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2.5))
   // CC-109（R5 D28）：一次强特 = 小心风寒启动 + 自旋 spinSeconds 秒，耗能按 catalog 两项合计。
   // 修前沿用通用 findExSpecial 的「Energy Cost」10（只算启动），自旋 30/s 零扣费 ⇒ 强特次数按 能量/10 推，
   // 而风能账本 computeRoxyWindEnergy 按 10 + 30×秒 记耗能，两本账不一致。
   const exCost = roxyExEnergyCost(findMoveById(skills, EX_CHILL_MOVE_ID))
-  record.roxyExStartEnergy = exCost.start
-  record.roxySpinEnergyPerSecond = exCost.perSecond
-  cfg.exSpecialEnergyConsume = exCost.start + exCost.perSecond * Number(record.roxySpinSeconds)
-  record.roxySpinSecondDamage = getRowValue(findMoveById(skills, SPIN_SECOND_MOVE_ID), 'damage')
+  cfg.roxyExStartEnergy = exCost.start
+  cfg.roxySpinEnergyPerSecond = exCost.perSecond
+  cfg.exSpecialEnergyConsume = exCost.start + exCost.perSecond * Number(cfg.roxySpinSeconds)
+  cfg.roxySpinSecondDamage = getRowValue(findMoveById(skills, SPIN_SECOND_MOVE_ID), 'damage')
   // 自旋喧响表值（1621008 decibel_recovery，每秒口径——与同行 damage 已录的「每秒 × spinSeconds」口径一致；
   // 行值经 decibelRecoveryOverride 跳过表值回填，见 buildRoxyExecutions）
-  record.roxySpinSecondDecibel = getRowValue(findMoveById(skills, SPIN_SECOND_MOVE_ID), 'decibel_recovery')
+  cfg.roxySpinSecondDecibel = getRowValue(findMoveById(skills, SPIN_SECOND_MOVE_ID), 'decibel_recovery')
   cfg.mechanicRowValues = {
     [PER_ENERGY_EXTRA_MOVE_ID]: getRowValue(findMoveById(skills, PER_ENERGY_EXTRA_MOVE_ID), 'damage'),
     [EYE_BURST_MOVE_ID]: getRowValue(findMoveById(skills, EYE_BURST_MOVE_ID), 'damage'),
@@ -258,13 +257,13 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + ROXY_AA_ENTER_ENERGY
   // 影画失衡值（v12 原文「失衡值提升」）：预缩倍率表 daze 值，patchRoxyExecutions 经 dazeMultiplierOverride 精确结算
   if ((cinemaLevel ?? 0) >= 2) {
-    record.roxyExChillDaze = getRowValue(findMoveById(skills, EX_CHILL_MOVE_ID), 'daze') * (1 + ROXY_C2_EX_CHILL_DAZE_BONUS / 100)
+    cfg.roxyExChillDaze = getRowValue(findMoveById(skills, EX_CHILL_MOVE_ID), 'daze') * (1 + ROXY_C2_EX_CHILL_DAZE_BONUS / 100)
   }
   if ((cinemaLevel ?? 0) >= 4) {
-    record.roxyUltDaze = getRowValue(findMoveById(skills, ROXY_ULT_MOVE_ID), 'daze') * (1 + ROXY_C4_ULT_DAZE_BONUS / 100)
+    cfg.roxyUltDaze = getRowValue(findMoveById(skills, ROXY_ULT_MOVE_ID), 'daze') * (1 + ROXY_C4_ULT_DAZE_BONUS / 100)
   }
   if ((cinemaLevel ?? 0) >= 6) {
-    record.roxyMegaDaze = getRowValue(findMoveById(skills, MEGA_TORNADO_MOVE_ID), 'daze') * (1 + ROXY_C6_MEGA_DAZE_BONUS / 100)
+    cfg.roxyMegaDaze = getRowValue(findMoveById(skills, MEGA_TORNADO_MOVE_ID), 'daze') * (1 + ROXY_C6_MEGA_DAZE_BONUS / 100)
   }
 }
 
@@ -298,13 +297,12 @@ function roxyWindEnergySourceOf(
   cfg: AgentResourceInput['cfg'],
   state: Pick<AgentResourceInput['state'], 'exSpecialCount' | 'ultimateCount'>,
 ): RoxyWindEnergySource {
-  const record = cfg as unknown as Record<string, unknown>
   return computeRoxyWindEnergy({
     exSpecialCount: state.exSpecialCount,
     exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
     ultimateCount: state.ultimateCount,
-    spinSeconds: Number(record.roxySpinSeconds ?? 2.5),
-    cinemaLevel: Number(record.roxyCinemaLevel ?? 0),
+    spinSeconds: Number(cfg.roxySpinSeconds ?? 2.5),
+    cinemaLevel: Number(cfg.roxyCinemaLevel ?? 0),
     energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
     eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID, 1),
   })
@@ -317,7 +315,6 @@ function buildRoxyResourceResult({ cfg, state }: AgentResourceResultInput): Part
 }
 
 function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   const source = roxyWindEnergySourceOf(cfg, state)
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount > 0) {
@@ -326,20 +323,20 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
       moveId: EX_CHILL_MOVE_ID, moveName: '强化特殊技：小心风寒', category: 'special',
       count: exCount, actionTime: 0, comboAlignRatio: 0,
       totalTime: 0, totalComboAlignTime: 0,
-      energyConsume: Number(record.roxyExStartEnergy ?? 10), totalEnergyConsume: exCount * Number(record.roxyExStartEnergy ?? 10),
+      energyConsume: Number(cfg.roxyExStartEnergy ?? 10), totalEnergyConsume: exCount * Number(cfg.roxyExStartEnergy ?? 10),
       energyRecovery: 0, totalEnergyRecovery: 0,
       timeBucket: 'necessary',
     })
-    const spinMoveMult = Number((cfg as unknown as Record<string, unknown>).roxySpinSecondDamage ?? 0)
-    const spinDecibelPerSec = Number(record.roxySpinSecondDecibel ?? 0)
+    const spinMoveMult = Number(cfg.roxySpinSecondDamage ?? 0)
+    const spinDecibelPerSec = Number(cfg.roxySpinSecondDecibel ?? 0)
     if (source.spinSeconds > 0) {
       // @fact agent:1621/自旋喧响每秒口径 口径: 自旋(1621008)倍率表 damage=2608.6 与 decibel_recovery=84.343 同为「每秒」值——damage 侧已按 每秒×spinSeconds 录入并被 roxy 测试锁定，喧响同构：行值=84.343×spinSeconds/次、总=×exCount；表值直填会把持续段少算 spinSeconds 倍，故 decibelRecoveryOverride 跳过 enrich 表值覆盖 | 据 catalog 1621008 行值+damage 侧已录口径@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/mechanics/agents/roxy.ts#SPIN_SECOND_MOVE_ID | 信 高
       executions.push({
         moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（每秒，耗能 30/s）', category: 'special',
         count: exCount, actionTime: 0, comboAlignRatio: 0,
         totalTime: 0, totalComboAlignTime: 0,
-        energyConsume: Number(record.roxySpinEnergyPerSecond ?? 30) * source.spinSeconds,
-        totalEnergyConsume: exCount * Number(record.roxySpinEnergyPerSecond ?? 30) * source.spinSeconds,
+        energyConsume: Number(cfg.roxySpinEnergyPerSecond ?? 30) * source.spinSeconds,
+        totalEnergyConsume: exCount * Number(cfg.roxySpinEnergyPerSecond ?? 30) * source.spinSeconds,
         decibelRecovery: spinDecibelPerSec * source.spinSeconds,
         totalDecibelRecovery: exCount * spinDecibelPerSec * source.spinSeconds,
         decibelRecoveryOverride: true,
@@ -375,12 +372,11 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
 }
 
 function patchRoxyExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.roxyCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.roxyCinemaLevel ?? 0)))
   for (const exec of executions) {
     // 影画2：小心风寒（1621007）失衡值 +5%
     if (cinema >= 2 && exec.moveId === EX_CHILL_MOVE_ID) {
-      const d = Number(record.roxyExChillDaze ?? 0)
+      const d = Number(cfg.roxyExChillDaze ?? 0)
       if (d > 0) {
         exec.dazeMultiplier = d
         exec.dazeMultiplierOverride = true
@@ -389,7 +385,7 @@ function patchRoxyExecutions({ cfg, state: _state, executions }: AgentResourceIn
     if (cinema >= 4 && exec.moveId === ROXY_ULT_MOVE_ID) {
       exec.dmgBonus = (exec.dmgBonus ?? 0) + ROXY_C4_ULT_DMG
       // 影画4：终结技（1621012）失衡值 +10%
-      const d = Number(record.roxyUltDaze ?? 0)
+      const d = Number(cfg.roxyUltDaze ?? 0)
       if (d > 0) {
         exec.dazeMultiplier = d
         exec.dazeMultiplierOverride = true
@@ -399,7 +395,7 @@ function patchRoxyExecutions({ cfg, state: _state, executions }: AgentResourceIn
     if (cinema >= 6 && exec.moveId === MEGA_TORNADO_MOVE_ID) {
       exec.damageMultiplier = (exec.damageMultiplier ?? 0) * ROXY_C6_MEGA_TORNADO_MULT
       exec.damageMultiplierOverride = true
-      const d = Number(record.roxyMegaDaze ?? 0)
+      const d = Number(cfg.roxyMegaDaze ?? 0)
       if (d > 0) {
         exec.dazeMultiplier = d
         exec.dazeMultiplierOverride = true
@@ -476,6 +472,24 @@ export const roxyMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 命座等级：buildCharConfig 写 */
+    roxyCinemaLevel?: number
+    /** 旋转持续秒数：机制设置 roxy.spinSeconds，默认 2.5 */
+    roxySpinSeconds?: number
+    /** 强化特殊技起手耗能（exCost.start） */
+    roxyExStartEnergy?: number
+    /** 旋转每秒耗能（exCost.perSecond） */
+    roxySpinEnergyPerSecond?: number
+    /** 旋转每秒段伤害倍率（技能表 damage） */
+    roxySpinSecondDamage?: number
+    /** 旋转每秒段喧响回复（技能表 decibel_recovery） */
+    roxySpinSecondDecibel?: number
+    /** 强化特殊技「寒意」失衡值（含影画2 加成） */
+    roxyExChillDaze?: number
+    /** 终结技失衡值（含影画4 加成） */
+    roxyUltDaze?: number
+    /** 「巨型龙卷」失衡值（含影画6 加成） */
+    roxyMegaDaze?: number
     /** 洛克茜小旋风持续秒数，默认 5 */
     roxyMiniTornadoSeconds?: number
   }

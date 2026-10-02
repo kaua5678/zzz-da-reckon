@@ -216,21 +216,20 @@ export function computeEllenCycle(input: {
 }
 
 function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.ellenCinemaLevel = cinemaLevel
-  record.ellenPotentialLevel = potentialLevel
+  cfg.ellenCinemaLevel = cinemaLevel
+  cfg.ellenPotentialLevel = potentialLevel
   // 强化特殊技主招 = 鲨卷风（影画2 全鲨卷风；0命由 buildExecutions 补横扫实现「横扫+鲨卷风」）
   cfg.exSpecialMoveId = ELLEN_EX_MOVE_IDS[1]
   cfg.exSpecialActionTime = ELLEN_EX_SHARK_ACTION_TIME
-  record.ellenC1CritStacks = clamp(setting(cfg, 'ellen.c1CritStacks', 6), 0, ELLEN_C1_MAX_STACKS)
-  record.ellenC2AvgCharge = clamp(setting(cfg, 'ellen.c2AvgCharge', 3), 0, 3)
-  record.ellenStormSurgeStacks = clamp(setting(cfg, 'ellen.stormSurgeStacks', 10), 0, ELLEN_STORM_SURGE_MAX_STACKS)
-  record.ellenC6PenCoverage = clamp(setting(cfg, 'ellen.c6PenCoverage', 1), 0, 1)
-  record.ellenC4CdRate = clamp(setting(cfg, 'ellen.c4CdRate', 1), 0, 1)
-  record.ellenC6FeastCoverage = clamp(setting(cfg, 'ellen.c6FeastCoverage', 1), 0, 1)
-  record.ellenFreezeCount = 0 // 由 useResourceCalc 从异常池 ice 触发数注入；失衡次数由 applyTeamConfig converge 写入
-  record.ellenStunCount = 0
-  record.ellenAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.ellenC1CritStacks = clamp(setting(cfg, 'ellen.c1CritStacks', 6), 0, ELLEN_C1_MAX_STACKS)
+  cfg.ellenC2AvgCharge = clamp(setting(cfg, 'ellen.c2AvgCharge', 3), 0, 3)
+  cfg.ellenStormSurgeStacks = clamp(setting(cfg, 'ellen.stormSurgeStacks', 10), 0, ELLEN_STORM_SURGE_MAX_STACKS)
+  cfg.ellenC6PenCoverage = clamp(setting(cfg, 'ellen.c6PenCoverage', 1), 0, 1)
+  cfg.ellenC4CdRate = clamp(setting(cfg, 'ellen.c4CdRate', 1), 0, 1)
+  cfg.ellenC6FeastCoverage = clamp(setting(cfg, 'ellen.c6FeastCoverage', 1), 0, 1)
+  cfg.ellenFreezeCount = 0 // 由 useResourceCalc 从异常池 ice 触发数注入；失衡次数由 applyTeamConfig converge 写入
+  cfg.ellenStunCount = 0
+  cfg.ellenAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
 }
 
 /**
@@ -241,40 +240,38 @@ function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: Agent
  */
 function applyEllenTeamConfig({ cfg, cinemaLevel, phase, stunCount, threads }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const record = cfg as unknown as Record<string, unknown>
   // 2026-09-15 arch 棘轮第 2 批：先写上一轮异常池 ice 触发数（下方 freezeCount 消费）。
   // 语义 = `convergence.ts` 原 `merged.agentId === '1191'` 分支（规则 6），地板逐位保留。
   // ⚠ 必须写在 cinemaLevel 门之前：原分支对任意命座都写该字段，且 cycleFromInput 在 C0-C3 也读它。
   if (threads) {
-    record.ellenFreezeCount = Math.max(0, Math.floor(Number((threads.moduleFeedback?.ellenFreezeCount ?? 0))))
+    cfg.ellenFreezeCount = Math.max(0, Math.floor(Number((threads.moduleFeedback?.ellenFreezeCount ?? 0))))
   }
   if (cinemaLevel < 4) return
   const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
-  record.ellenStunCount = resolvedStun
-  const freezeCount = Math.max(0, Math.floor(Number(record.ellenFreezeCount) || 0))
-  const cdRate = clamp(Number(record.ellenC4CdRate ?? 1), 0, 1)
+  cfg.ellenStunCount = resolvedStun
+  const freezeCount = Math.max(0, Math.floor(Number(cfg.ellenFreezeCount) || 0))
+  const cdRate = clamp(Number(cfg.ellenC4CdRate ?? 1), 0, 1)
   const gift = (freezeCount + resolvedStun) * ELLEN_C4_ENERGY_PER_TRIGGER * cdRate
-  const prev = Math.max(0, Number(record.ellenC4EnergyTotal ?? 0))
+  const prev = Math.max(0, Number(cfg.ellenC4EnergyTotal ?? 0))
   cfg.initialEnergyGift = Math.max(0, (cfg.initialEnergyGift ?? 0) - prev) + gift
-  record.ellenC4EnergyTotal = gift
+  cfg.ellenC4EnergyTotal = gift
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): EllenCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeEllenCycle({
-    cinemaLevel: Number(record.ellenCinemaLevel ?? 0),
-    potentialLevel: Number(record.ellenPotentialLevel ?? 6),
+    cinemaLevel: Number(cfg.ellenCinemaLevel ?? 0),
+    potentialLevel: Number(cfg.ellenPotentialLevel ?? 6),
     basicAttackTime: Number(state.basicAttackTime ?? 0),
     exSpecialCount: state.exSpecialCount,
-    freezeCount: Number(record.ellenFreezeCount ?? 0),
-    stunCount: Number(record.ellenStunCount ?? 0),
-    c4CdRate: Number(record.ellenC4CdRate ?? 1),
-    additionalActive: record.ellenAdditionalActive === true,
-    c1CritStacks: Number(record.ellenC1CritStacks ?? 6),
-    c2AvgCharge: Number(record.ellenC2AvgCharge ?? 3),
-    stormSurgeStacks: Number(record.ellenStormSurgeStacks ?? 10),
-    c6PenCoverage: Number(record.ellenC6PenCoverage ?? 1),
-    c6FeastCoverage: Number(record.ellenC6FeastCoverage ?? 1),
+    freezeCount: Number(cfg.ellenFreezeCount ?? 0),
+    stunCount: Number(cfg.ellenStunCount ?? 0),
+    c4CdRate: Number(cfg.ellenC4CdRate ?? 1),
+    additionalActive: cfg.ellenAdditionalActive === true,
+    c1CritStacks: Number(cfg.ellenC1CritStacks ?? 6),
+    c2AvgCharge: Number(cfg.ellenC2AvgCharge ?? 3),
+    stormSurgeStacks: Number(cfg.ellenStormSurgeStacks ?? 10),
+    c6PenCoverage: Number(cfg.ellenC6PenCoverage ?? 1),
+    c6FeastCoverage: Number(cfg.ellenC6FeastCoverage ?? 1),
   })
 }
 
@@ -351,7 +348,7 @@ function buildEllenExecutions({ cfg, state, executions }: AgentResourceInput): v
   })
 
   // 霜锋（免费自动，倍率表融合）：挥刀(1191027)×3 耗时 + 剑气(1191028)×N 不耗时（N 按敌方体型 0/3/6）
-  const bodySize = String((cfg as unknown as Record<string, unknown>).bodySize ?? 'large')
+  const bodySize = String(cfg.bodySize ?? 'large')
   const qiPerEdge = bodySize === 'small' ? 0 : bodySize === 'medium' ? 3 : 6
   pushEllenExecution(executions, {
     moveId: ELLEN_FROST_EDGE_MOVE_IDS[0],
@@ -540,5 +537,38 @@ declare module '@/mechanics/types' {
   interface ModuleFeedback {
     /** 艾莲影画4 冻结次数（异常池 ice 触发数） */
     ellenFreezeCount?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 命座等级：buildCharConfig 写 */
+    ellenCinemaLevel?: number
+    /** 潜能等级：buildCharConfig 写 */
+    ellenPotentialLevel?: number
+    /** 影画1 暴击层数：机制设置 ellen.c1CritStacks，夹到 0–ELLEN_C1_MAX_STACKS */
+    ellenC1CritStacks?: number
+    /** 影画2 平均蓄力段数：机制设置 ellen.c2AvgCharge，夹到 0–3 */
+    ellenC2AvgCharge?: number
+    /** 「急冻」层数：机制设置 ellen.stormSurgeStacks，夹到 0–ELLEN_STORM_SURGE_MAX_STACKS */
+    ellenStormSurgeStacks?: number
+    /** 影画6 穿透覆盖率：机制设置 ellen.c6PenCoverage，夹到 0–1 */
+    ellenC6PenCoverage?: number
+    /** 影画4 冷却命中率：机制设置 ellen.c4CdRate，夹到 0–1 */
+    ellenC4CdRate?: number
+    /** 影画6「盛宴」覆盖率：机制设置 ellen.c6FeastCoverage，夹到 0–1 */
+    ellenC6FeastCoverage?: number
+    /** 冻结次数：build 置 0，applyTeamConfig converge 从跨轮线程 moduleFeedback.ellenFreezeCount 写入 */
+    ellenFreezeCount?: number
+    /** 失衡次数：build 置 0，applyTeamConfig converge 写入 */
+    ellenStunCount?: number
+    /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
+    ellenAdditionalActive?: boolean
+    /** 影画4 回能总额（资源钩子写） */
+    ellenC4EnergyTotal?: number
   }
 }

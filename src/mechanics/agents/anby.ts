@@ -130,19 +130,18 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
 /* 读机制滑块的 `cfgNum` 自 CC-235 起是 `utils/mechanicSettingCfg#cfgMechanicSetting` 的别名（见 import）。
  *
  * ⚠ 历史缺陷（2026-09-20 round 48 管理员AA 分诊实测，与般岳 `rageGainCoverage` 同源）：
- * `patchAnbyExecutions` 读的是 `record.anbyC2StunCoverage`——该字段**全仓无人写入**
+ * `patchAnbyExecutions` 读的是 `cfg.anbyC2StunCoverage`——该字段**全仓无人写入**
  * （`buildAnbyCharConfig` 不写、派发器也不写）⇒ 永远回落 `?? 0.5`，
  * 滑块 `anby.c2StunCoverage` 在 UI 上可拖但**恒等于 0.5**：实测滑块 0 与 1 的
  * 落雷 `dmgBonus` **都是 15**（真管线 `computePanelPhases` 与执行级双证）。
  * 修法按 `evelyn.ts`/`koleda.ts`/`soldier11.ts` 同款：走 `setting:` 前缀读**已注册**的滑块 id。
  */
 function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.anbyCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
-  record.anbyAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
-  record.anbyEnergyGainEfficiency = panel.energyGainEfficiency ?? 0
+  cfg.anbyCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
+  cfg.anbyAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.anbyEnergyGainEfficiency = panel.energyGainEfficiency ?? 0
   // 影画2 失衡覆盖率：滑块 → cfg 的**唯一**通道（读法见 cfgNum 头注释）
-  record.anbyC2StunCoverage = cfgNum(cfg, 'anby.c2StunCoverage', 0.5)
+  cfg.anbyC2StunCoverage = cfgNum(cfg, 'anby.c2StunCoverage', 0.5)
   // 平A循环分段元数据预存（buildExecutions 输入无 skills；单一事实源仍是倍率表）。
   // 元素取 catalog 的 move.damageElement——#1~#3 物理 / #4、落雷 电（原文口径，见文件头②）。
   const basicMoves = skills?.categories?.find(c => c.id === 'basic')?.moves ?? []
@@ -155,23 +154,22 @@ function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfi
       moveName: move?.name?.zhCN || moveId,
     }
   })
-  record.anbyBasicCycle = cycle
+  cfg.anbyBasicCycle = cycle
 }
 
 /** 并联电路（converge）+ 影画4 电荷传导（postRound）回能，幂等并入各槽初始能量礼物 */
 // 本模块那份 cfg 由派发器直给（`characters` 按位置压缩，`characters[slot]` 在空槽时取错对象）。
 function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, combatTime, stunCount, ultimateCounts }: AgentTeamConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
 
   if (phase === 'converge') {
     // 并联电路：闪反回 7.2 能量/5s（additionalAbility 门控）
-    const active = record.anbyAdditionalActive === true
+    const active = cfg.anbyAdditionalActive === true
     const gift = active
       ? computeAnbyParallelCircuitEnergy(cfg.dodgeCounterCount ?? 0, combatTime)
       : 0
-    const prev = Math.max(0, Number(record.anbyParallelEnergyTotal ?? 0))
+    const prev = Math.max(0, Number(cfg.anbyParallelEnergyTotal ?? 0))
     cfg.initialEnergyGift = Math.max(0, (cfg.initialEnergyGift ?? 0) - prev) + gift
-    record.anbyParallelEnergyTotal = gift
+    cfg.anbyParallelEnergyTotal = gift
   }
 
   if (phase === 'postRound' && cinemaLevel >= 4) {
@@ -179,7 +177,7 @@ function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, 
     const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
     const ult = Math.max(0, Math.floor(Number(ultimateCounts?.[slot] ?? 0)))
     const triggers = Math.max(0, Math.floor(chainTotal)) + ult
-    const perTrigger = computeAnbyC4ChargeEnergy(Number(record.anbyEnergyGainEfficiency ?? 0))
+    const perTrigger = computeAnbyC4ChargeEnergy(Number(cfg.anbyEnergyGainEfficiency ?? 0))
     const energy = triggers * perTrigger
     for (const mate of team) {
       if (mate.slot === slot) continue
@@ -188,10 +186,9 @@ function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, 
       // 压缩（空槽被跳过），槽位号 ≠ 下标：前导/中间空槽时会把能量写进**别人那份 cfg**。
       const mateCfg = characters.find(c => c.slot === mate.slot)
       if (!mateCfg) continue
-      const mateRecord = mateCfg as unknown as Record<string, unknown>
-      const prevC4 = Math.max(0, Number(mateRecord.anbyC4EnergyTotal ?? 0))
+      const prevC4 = Math.max(0, Number(mateCfg.anbyC4EnergyTotal ?? 0))
       mateCfg.initialEnergyGift = Math.max(0, (mateCfg.initialEnergyGift ?? 0) - prevC4) + energy
-      mateRecord.anbyC4EnergyTotal = energy
+      mateCfg.anbyC4EnergyTotal = energy
     }
   }
 }
@@ -204,10 +201,7 @@ function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, 
  *   否则 #1~#3 会重新吃上电属性加成（本批正是来修这个）。
  */
 function buildAnbyExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cycle = (record.anbyBasicCycle as
-    | { moveId: string; actionTime: number; element: string; moveName: string }[]
-    | undefined) ?? []
+  const cycle = cfg.anbyBasicCycle ?? []
   const poolIdx = executions.findIndex(e => e.moveId === MOVE_BASIC_POOL)
   const basicTime = Math.max(0, Number(state.basicAttackTime ?? 0))
   if (poolIdx < 0 || cycle.length !== ANBY_BASIC_CYCLE_IDS.length || basicTime <= 0) return
@@ -218,7 +212,7 @@ function buildAnbyExecutions({ cfg, state, executions }: AgentResourceInput): vo
   const fullCycles = Math.floor(basicTime / cycleTime)
   if (fullCycles <= 0) return
 
-  const cinema = Math.max(0, Math.floor(Number(record.anbyCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.anbyCinemaLevel ?? 0)))
   const totalHits = fullCycles * cycle.length
   let chargesLeft = cinema >= 6
     ? computeAnbyChargeConsumed(Number(state.exSpecialCount ?? 0), totalHits)
@@ -287,9 +281,8 @@ function pushAnbyBasicSegment(
 
 /** 波动电压（招式限定失衡+64%）+ 影画2（落雷增伤/强特失衡，同招式限定） */
 function patchAnbyExecutions({ cfg, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.anbyCinemaLevel ?? 0)))
-  const stunCov = clampRatio(Number(record.anbyC2StunCoverage ?? 0.5))
+  const cinema = Math.max(0, Math.floor(Number(cfg.anbyCinemaLevel ?? 0)))
+  const stunCov = clampRatio(Number(cfg.anbyC2StunCoverage ?? 0.5))
   for (const exec of executions) {
     if (!exec.moveId) continue
     // 波动电压：落雷/特殊技/强特 失衡 +64%（招式限定；平A聚合行不再吃）
@@ -357,4 +350,27 @@ export const anbyMechanic: AgentMechanicModule = {
   patchExecutions: patchAnbyExecutions,
   buildResourceResult: buildAnbyResourceResult,
   resourceSections: buildAnbyResourceSections,
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 命座等级：buildCharConfig 写 */
+    anbyCinemaLevel?: number
+    /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
+    anbyAdditionalActive?: boolean
+    /** 建配置时的能量获得效率快照（面板 energyGainEfficiency） */
+    anbyEnergyGainEfficiency?: number
+    /** 影画2 失衡覆盖率：机制设置 anby.c2StunCoverage，默认 0.5 */
+    anbyC2StunCoverage?: number
+    /** 普攻分段循环（#1~#4 + 落雷；buildCharConfig 从 catalog 取动作时长 / 元素缓存，buildAnbyExecutions 按它拆平A池） */
+    anbyBasicCycle?: { moveId: string; actionTime: number; element: string; moveName: string }[]
+    /** 额外能力给队友的能量总额（本人 cfg，资源钩子写） */
+    anbyParallelEnergyTotal?: number
+    /** 影画4 给该队友的能量总额：写在**队友** cfg 上（落点），重复写取增量 */
+    anbyC4EnergyTotal?: number
+  }
 }

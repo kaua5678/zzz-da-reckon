@@ -113,12 +113,11 @@ export function computeAireCycle(input: {
 }
 
 function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.aireCinemaLevel = cinemaLevel
+  cfg.aireCinemaLevel = cinemaLevel
   // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 局外面板（CC-125，与 CC-118/123/124 同口径）
-  record.aireInitialMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
-  record.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage', 1))
-  record.aireAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.aireInitialMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
+  cfg.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage', 1))
+  cfg.aireAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   if (cinemaLevel >= 4) {
     // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
     // 异放次数 = 应援能量/2 + 全场应援；典型整局 ≫ floor(t/10)，故触发次数取 10s CD 上限
@@ -131,10 +130,10 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + AIRE_C6_DECIBEL_GIFT
   }
   // CC-196：甜心律动 #4 应援能量按普攻时长折算（CC-195 通用口径 basicComboCycleSeconds）
-  record.aireBasicCheerCycleSeconds = basicComboCycleSeconds(skills, AIRE_SWEET_BASIC4_MOVE_ID)
+  cfg.aireBasicCheerCycleSeconds = basicComboCycleSeconds(skills, AIRE_SWEET_BASIC4_MOVE_ID)
   // CC-197：绝对音准直伤行动作时长（倍率表）
-  record.airePitchActionTime = findMoveById(skills, AIRE_ABSOLUTE_PITCH_MOVE_ID)?.actionTime ?? 1
-  record.aireEnhancedPitchActionTime = findMoveById(skills, AIRE_ENHANCED_PITCH_MOVE_ID)?.actionTime ?? 1
+  cfg.airePitchActionTime = findMoveById(skills, AIRE_ABSOLUTE_PITCH_MOVE_ID)?.actionTime ?? 1
+  cfg.aireEnhancedPitchActionTime = findMoveById(skills, AIRE_ENHANCED_PITCH_MOVE_ID)?.actionTime ?? 1
 }
 
 /**
@@ -149,12 +148,11 @@ export function aireAbsolutePitchCount(
   state: { exSpecialCount: number; chainCountTotal: number; basicAttackTime?: number; ultimateCount?: number },
   totalTime: number,
 ): number {
-  const record = cfg as unknown as Record<string, unknown>
   const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 0)))
   if (manualCount > 0) return manualCount
-  const additionalActive = record.aireAdditionalActive === true
-  const teamVeilCount = Math.max(0, Math.floor(Number(record.teamVeilCountTotal ?? 0) || 0))
-  const basicCycle = Number(record.aireBasicCheerCycleSeconds ?? 0)
+  const additionalActive = cfg.aireAdditionalActive === true
+  const teamVeilCount = Math.max(0, Math.floor(Number(cfg.teamVeilCountTotal ?? 0) || 0))
+  const basicCycle = Number(cfg.aireBasicCheerCycleSeconds ?? 0)
   const basic4Hits = basicCycle > 0 ? Math.floor(Math.max(0, Number(state.basicAttackTime ?? 0)) / basicCycle) : 0
   const cheerEnergy = state.exSpecialCount * AIRE_CHEER_EX
     + state.chainCountTotal * AIRE_CHEER_CHAIN
@@ -166,7 +164,7 @@ export function aireAbsolutePitchCount(
   // - 「妄想时刻内异常触发 +1 层 / 6s」是影画6 专属（talent.6 原文），旧实现对全命座无门控计 floor(t/6)。
   // C6 妄想不退出 ⇒ 仅首次进入给 3 层（后续终结是否算「进入」原文未明，保守不计；回退点=本段）。
   const ultCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0) || 0))
-  const cheerGain = Number(record.aireCinemaLevel ?? 0) >= 6
+  const cheerGain = Number(cfg.aireCinemaLevel ?? 0) >= 6
     ? Math.floor(totalTime / AIRE_CHEER_CD_SECONDS) + (ultCount > 0 ? 3 : 0)
     : 3 * ultCount
   return Math.floor(cheerEnergy / 2) + cheerGain
@@ -188,30 +186,28 @@ export function aireEnhancedPitchShare(cinemaLevel: number, ultimateCount: numbe
  */
 export function aireExtraNecessaryActions(cfg: AgentResourceInput['cfg'], state?: Readonly<AgentResourceInput['state']>): ExtraNecessaryAction[] | null {
   if (!state) return null
-  const record = cfg as unknown as Record<string, unknown>
   const totalTime = Number(cfg.battleTime ?? 180)
   const pitch = aireAbsolutePitchCount(cfg, state, totalTime)
   if (pitch <= 0) return null
-  const share = aireEnhancedPitchShare(Number(record.aireCinemaLevel ?? 0), Number(state.ultimateCount ?? 0), totalTime)
+  const share = aireEnhancedPitchShare(Number(cfg.aireCinemaLevel ?? 0), Number(state.ultimateCount ?? 0), totalTime)
   const enhanced = Math.round(pitch * share)
   const rows: ExtraNecessaryAction[] = []
   if (pitch - enhanced > 0) {
     rows.push({ count: pitch - enhanced, moveId: AIRE_ABSOLUTE_PITCH_MOVE_ID, moveName: '普通攻击：绝对音准 #3',
-      actionTime: Number(record.airePitchActionTime ?? 1), comboAlignRatio: 0 })
+      actionTime: Number(cfg.airePitchActionTime ?? 1), comboAlignRatio: 0 })
   }
   if (enhanced > 0) {
     rows.push({ count: enhanced, moveId: AIRE_ENHANCED_PITCH_MOVE_ID, moveName: '普通攻击：绝对音准（强化·妄想时刻）',
-      actionTime: Number(record.aireEnhancedPitchActionTime ?? 1), comboAlignRatio: 0 })
+      actionTime: Number(cfg.aireEnhancedPitchActionTime ?? 1), comboAlignRatio: 0 })
   }
   return rows
 }
 
-function cycleFromCfg(cfg: unknown): AireCycle {
-  const record = cfg as Record<string, unknown>
+function cycleFromCfg(cfg: AgentResourceResultInput['cfg']): AireCycle {
   return computeAireCycle({
-    cinemaLevel: Number(record.aireCinemaLevel ?? 0),
-    additionalActive: record.aireAdditionalActive === true,
-    c2DelusionCoverage: Number(record.aireC2DelusionCoverage ?? 1),
+    cinemaLevel: Number(cfg.aireCinemaLevel ?? 0),
+    additionalActive: cfg.aireAdditionalActive === true,
+    c2DelusionCoverage: Number(cfg.aireC2DelusionCoverage ?? 1),
   })
 }
 
@@ -237,10 +233,9 @@ function buildAireResourceResult({ cfg }: AgentResourceResultInput) {
 }
 
 function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Number(record.aireCinemaLevel ?? 0)
+  const cinemaLevel = Number(cfg.aireCinemaLevel ?? 0)
   // 初始（局外）掌控；buildCharConfig 未跑（单测直调）时 undefined ⇒ 引擎回落局内面板
-  const initialMastery = record.aireInitialMastery === undefined ? undefined : Number(record.aireInitialMastery)
+  const initialMastery = cfg.aireInitialMastery === undefined ? undefined : Number(cfg.aireInitialMastery)
   // 绝对音准#3 次数（CC-196 纯函数 aireAbsolutePitchCount）
   const pitchCount = aireAbsolutePitchCount(cfg, state, totalTime)
   if (pitchCount <= 0) return
@@ -278,7 +273,7 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
 }
 
 function patchAireExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Number((cfg as unknown as Record<string, unknown>).aireCinemaLevel ?? 0)
+  const cinema = Number(cfg.aireCinemaLevel ?? 0)
   if (cinema < 6) return
   // 6命：妄想时刻不退出 → 强化版绝对音准全覆盖，强化直伤 +40% 全占比
   for (const exec of executions) {
@@ -333,3 +328,26 @@ export const aireMechanic: AgentMechanicModule = {
 }
 
 export default aireMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 命座等级：buildCharConfig 写 */
+    aireCinemaLevel?: number
+    /** 局外异常掌控（无局外面板时取局内）；spec 1501.json 按字段名读 */
+    aireInitialMastery?: number
+    /** 影画2「妄想」覆盖率：机制设置 aire.c2DelusionCoverage，夹到 0–1 */
+    aireC2DelusionCoverage?: number
+    /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
+    aireAdditionalActive?: boolean
+    /** 甜蜜普攻四段的循环秒数（basicComboCycleSeconds） */
+    aireBasicCheerCycleSeconds?: number
+    /** 「绝对音高」动作时长（秒，缺省 1） */
+    airePitchActionTime?: number
+    /** 强化「绝对音高」动作时长（秒，缺省 1） */
+    aireEnhancedPitchActionTime?: number
+  }
+}

@@ -411,19 +411,18 @@ function resolveNormalBenchmark(skills: AgentSkills | undefined): SkillMove | nu
  * 完整的两态加权入口（`buildCharConfig` 与 `buildClaretResourceSource` 共用）：
  * 从已缓存的两套基准 moveId 现算秒均，避免两处各写一遍混合公式。
  */
-function computeClaretBasicPerSecFromCfg(record: Record<string, unknown>, share: number) {
-  const skills = record.claretSkills as AgentSkills | undefined
+function computeClaretBasicPerSecFromCfg(cfg: AgentCharConfigInput['cfg'], share: number) {
+  const skills = cfg.claretSkills
   return computeClaretBasicPerSec(
-    findMoveById(skills, String(record.claretNormalBenchmarkMoveId ?? '')),
-    findMoveById(skills, String(record.claretInscriptionBenchmarkMoveId ?? '')),
+    findMoveById(skills, String(cfg.claretNormalBenchmarkMoveId ?? '')),
+    findMoveById(skills, String(cfg.claretInscriptionBenchmarkMoveId ?? '')),
     share,
   )
 }
 
 function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.claretSkills = skills
-  // （2026-09-19 R37 清理）曾在此写 record.claretExMoveId / claretExDamageMultiplier：全仓零读取点的死诊断键
+  cfg.claretSkills = skills
+  // （2026-09-19 R37 清理）曾在此写 cfg.claretExMoveId / claretExDamageMultiplier：全仓零读取点的死诊断键
   //   （EX 行倍率由 enrichExecutionPlan 按 moveId 从倍率表回填，不经这里），判据 14 看不见 record 动态键 ⇒ 手工核销。
   /**
    * 残痕积累表（moveId → 该招一发的 `gash_buildup` 点数）——**平A 段不入表**：
@@ -440,46 +439,46 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
       if (v > 0) gashByMoveId[String(m.id)] = v
     }
   }
-  record.claretGashByMoveId = gashByMoveId
-  record.claretMaimDamageMultiplier = getRowValue(findMoveById(skills, MAIM_MOVE_ID), 'damage') || 1625.6
-  record.claretBloodBurialDamageMultiplier = getRowValue(findMoveById(skills, BLOOD_BURIAL_MOVE_ID), 'damage') || 626.3
+  cfg.claretGashByMoveId = gashByMoveId
+  cfg.claretMaimDamageMultiplier = getRowValue(findMoveById(skills, MAIM_MOVE_ID), 'damage') || 1625.6
+  cfg.claretBloodBurialDamageMultiplier = getRowValue(findMoveById(skills, BLOOD_BURIAL_MOVE_ID), 'damage') || 626.3
   // 平A两态基准（秒均）：常态=血锻基准段、猩红铭刻=锻星#3（用户口径 2026-09-11）
-  record.claretNormalBenchmarkMoveId = resolveNormalBenchmark(skills)?.id ?? ''
-  record.claretInscriptionBenchmarkMoveId = INSCRIPTION_BENCHMARK_MOVE_ID
+  cfg.claretNormalBenchmarkMoveId = resolveNormalBenchmark(skills)?.id ?? ''
+  cfg.claretInscriptionBenchmarkMoveId = INSCRIPTION_BENCHMARK_MOVE_ID
   // 锐能收入两条腿（用户口径 2026-09-11）：
   //   ① 基础**自动累积** 1.5/s（不进招式表，来自 catalog `level60.sharpnessRegen` ← nanoka `stats.ep_recover`/100）
   //   ② 常态血锻四式的招式增益（`sharpness_gain` 列 3.0/s；锻星/E/连携全 0）
-  record.claretSharpnessAutoPerSec = Math.max(0, Number(agent?.level60?.sharpnessRegen ?? 0))
-  record.claretNormalAttackSharpnessPerSec = perSeconds(resolveNormalBenchmark(skills), 'sharpness_gain')
-  record.claretNormalSharpnessPerSec = Number(record.claretSharpnessAutoPerSec)
-    + Number(record.claretNormalAttackSharpnessPerSec)
+  cfg.claretSharpnessAutoPerSec = Math.max(0, Number(agent?.level60?.sharpnessRegen ?? 0))
+  cfg.claretNormalAttackSharpnessPerSec = perSeconds(resolveNormalBenchmark(skills), 'sharpness_gain')
+  cfg.claretNormalSharpnessPerSec = Number(cfg.claretSharpnessAutoPerSec)
+    + Number(cfg.claretNormalAttackSharpnessPerSec)
   // 窗口覆盖率项要用的动作时长（停表口径：连携/终结发动期间窗口不减 = 等价白送该动作时长）
   const chainMove = findMoveById(skills, CHAIN_MOVE_ID)
   const ultMove = findMoveById(skills, ULTIMATE_MOVE_ID)
-  record.claretChainActionSeconds = chainMove?.actionTime ?? 0
-  record.claretUltimateActionSeconds = ultMove?.actionTime ?? 0
+  cfg.claretChainActionSeconds = chainMove?.actionTime ?? 0
+  cfg.claretUltimateActionSeconds = ultMove?.actionTime ?? 0
   // 面板滑块：0 = 账本推导（默认），1–100 = 手动覆盖（见 deriveClaretTwoStateTime）
-  record.claretInscriptionShareSetting = Math.max(
+  cfg.claretInscriptionShareSetting = Math.max(
     0,
     Math.min(100, cfgSetting(cfg, 'claret.inscriptionBasicTimeShare', DEFAULT_INSCRIPTION_BASIC_TIME_SHARE)),
   )
-  record.claretChainInWindowCoverage = Math.max(
+  cfg.claretChainInWindowCoverage = Math.max(
     0,
     Math.min(1, cfgSetting(cfg, 'claret.chainInWindowCoverage', DEFAULT_CHAIN_IN_WINDOW_COVERAGE * 100) / 100),
   )
   // 静态初值（账本推导时常态时间 = 0 → 整段铭刻）；真实占比在 buildClaretResourceSource 里按账本重算
-  const bench = computeClaretBasicPerSecFromCfg(record, 1)
-  record.claretBasicDazePerSec = bench.daze
-  record.claretNormalDamagePerSec = bench.normalDamage
-  record.claretInscriptionDamagePerSec = bench.inscriptionDamage
-  record.claretCinemaLevel = cinemaLevel
-  record.claretCleaveCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount', 1)))
-  record.claretBloodBurialCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount', 1)))
-  record.claretGashCoverage = Math.max(0, Math.min(1, Math.min(100, cfgSetting(cfg, 'claret.gashCoverage', 100)) / 100))
+  const bench = computeClaretBasicPerSecFromCfg(cfg, 1)
+  cfg.claretBasicDazePerSec = bench.daze
+  cfg.claretNormalDamagePerSec = bench.normalDamage
+  cfg.claretInscriptionDamagePerSec = bench.inscriptionDamage
+  cfg.claretCinemaLevel = cinemaLevel
+  cfg.claretCleaveCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount', 1)))
+  cfg.claretBloodBurialCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount', 1)))
+  cfg.claretGashCoverage = Math.max(0, Math.min(1, Math.min(100, cfgSetting(cfg, 'claret.gashCoverage', 100)) / 100))
   // 秘血铸锋是锐能强特（costType=resource）：通用引擎不扣能量，强特行由本模块按锐能账本发行
   const exMove = findMoveById(skills, EX_MOVE_ID)
-  record.claretExActionTime = exMove?.actionTime ?? 0
-  record.claretExDecibelRecovery = getRowValue(exMove, 'decibel_recovery')
+  cfg.claretExActionTime = exMove?.actionTime ?? 0
+  cfg.claretExDecibelRecovery = getRowValue(exMove, 'decibel_recovery')
   cfg.skipGenericExSpecial = true
 }
 
@@ -614,15 +613,14 @@ function computeInscriptionExtension(params: {
 
 
 function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state']) {
-  const record = cfg as unknown as Record<string, unknown>
   const ultimateCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0)))
   // 全局总延长秒（总额口径，不算每窗摊多少连携）：连携×2s + 停表白送时长
-  const stopwatchCoverage = Math.max(0, Math.min(1, Number(record.claretChainInWindowCoverage ?? DEFAULT_CHAIN_IN_WINDOW_COVERAGE)))
+  const stopwatchCoverage = Math.max(0, Math.min(1, Number(cfg.claretChainInWindowCoverage ?? DEFAULT_CHAIN_IN_WINDOW_COVERAGE)))
   const totalExtensionSeconds = computeInscriptionExtension({
     chainCount: Math.max(0, Number(state.chainCountTotal ?? 0)),
-    chainActionSeconds: Number(record.claretChainActionSeconds ?? 0),
+    chainActionSeconds: Number(cfg.claretChainActionSeconds ?? 0),
     ultimateCount,
-    ultimateActionSeconds: Number(record.claretUltimateActionSeconds ?? 0),
+    ultimateActionSeconds: Number(cfg.claretUltimateActionSeconds ?? 0),
     stopwatchCoverage,
   })
   // 两态时间：账本推导（滑块 0 = auto）
@@ -635,24 +633,24 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
   const twoState = deriveClaretTwoStateTime({
     basicAttackTime,
     ultimateCount,
-    normalSharpnessPerSec: Number(record.claretNormalSharpnessPerSec ?? 0),
-    sharpnessAutoPerSec: Number(record.claretSharpnessAutoPerSec ?? 0),
+    normalSharpnessPerSec: Number(cfg.claretNormalSharpnessPerSec ?? 0),
+    sharpnessAutoPerSec: Number(cfg.claretSharpnessAutoPerSec ?? 0),
     totalExtensionSeconds,
     combatTime,
-    inscriptionTimeShareSetting: Number(record.claretInscriptionShareSetting ?? 0),
+    inscriptionTimeShareSetting: Number(cfg.claretInscriptionShareSetting ?? 0),
     // 影画2「猩红铭刻最大持续时间延长2秒」⇒ 单窗 16s → 18s（★ R55 建模，旧实现整条漏掉）
     windowSeconds: DEFAULT_INSCRIPTION_WINDOW_SECONDS
-      + (Number(record.claretCinemaLevel ?? 0) >= 2 ? C2_INSCRIPTION_WINDOW_BONUS_SECONDS : 0),
+      + (Number(cfg.claretCinemaLevel ?? 0) >= 2 ? C2_INSCRIPTION_WINDOW_BONUS_SECONDS : 0),
   })
   // EX 发数 = 循环轮数（每轮 = 一次 EX 进场；窗口内也在回锐能，故轮数由上面的双约束解出）
   const affordableExCount = Math.max(0, Math.floor(twoState.entries))
-  const blended = computeClaretBasicPerSecFromCfg(record, twoState.share)
+  const blended = computeClaretBasicPerSecFromCfg(cfg, twoState.share)
   // ── 残痕：平A 之外的**全部招式**按「本局实打次数 × 该招 `gash_buildup` 表值」累加 ──
   // 次数取**引擎发行那些行时读的同一批字段**，不去翻已生成的行：模块的 buildExecutions 钩子在
   // 闪反/弹刀/支援突击/反制支援行**之前**派发（core/resource/helpers#buildExecutions 的顺序），
   // 按行求和会随调用点漏项。平A 段不入这张表（按两态秒均×时间算，再按行算=双计）。
   // 无物化行的交互（快速支援）不计积累 —— 与伤害/失衡侧同一近似。
-  const gashByMoveId = (record.claretGashByMoveId ?? {}) as Record<string, number>
+  const gashByMoveId = cfg.claretGashByMoveId ?? {}
   const gashOf = (moveId: string | undefined) => (moveId ? gashByMoveId[moveId] ?? 0 : 0)
   const moveGashTotal
     = gashOf(cfg.exSpecialMoveId) * affordableExCount
@@ -666,10 +664,10 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     basicGashPerSec: blended.gash,
     basicAttackTime: Math.max(0, Number(state.basicAttackTime ?? 0)),
     moveGashTotal,
-    cleaveSpecialCount: Number(record.claretCleaveCount ?? 0),
-    bloodBurialCount: Number(record.claretBloodBurialCount ?? 0),
-    gashCoverage: Number(record.claretGashCoverage ?? 1),
-    cinemaLevel: Number(record.claretCinemaLevel ?? 0),
+    cleaveSpecialCount: Number(cfg.claretCleaveCount ?? 0),
+    bloodBurialCount: Number(cfg.claretBloodBurialCount ?? 0),
+    gashCoverage: Number(cfg.claretGashCoverage ?? 1),
+    cinemaLevel: Number(cfg.claretCinemaLevel ?? 0),
     chainCountTotal: state.chainCountTotal ?? 0,
     ultimateCount,
     basicDamagePerSec: blended.damage,
@@ -679,10 +677,10 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     normalBasicTimeNeeded: twoState.normalBasicTimeNeeded,
     inscriptionBasicTime: twoState.inscriptionTime,
     derivedInscriptionTimeShare: twoState.share,
-    normalSharpnessPerSec: Number(record.claretNormalSharpnessPerSec ?? 0),
+    normalSharpnessPerSec: Number(cfg.claretNormalSharpnessPerSec ?? 0),
     combatTime,
-    sharpnessAutoPerSec: Number(record.claretSharpnessAutoPerSec ?? 0),
-    normalAttackSharpnessPerSec: Number(record.claretNormalAttackSharpnessPerSec ?? 0),
+    sharpnessAutoPerSec: Number(cfg.claretSharpnessAutoPerSec ?? 0),
+    normalAttackSharpnessPerSec: Number(cfg.claretNormalAttackSharpnessPerSec ?? 0),
     inscriptionEntries: twoState.entries,
     inscriptionWindowSeconds: twoState.extensionSeconds,
     inscriptionWindowSecondsPerEntry: twoState.windowSeconds,
@@ -700,8 +698,7 @@ function buildClaretResourceResult({ cfg, state }: AgentResourceResultInput): Pa
 }
 
 function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.claretCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.claretCinemaLevel ?? 0)))
   // 残痕值来源：平A（两态秒均×时间）+ 其余全部招式（实打次数 × gash_buildup 表值）
   const source = buildClaretResourceSource(cfg, state)
   // 平A双基准覆盖：引擎只认一个基准段（默认血锻#3），但克拉蕾常态/铭刻两态招式不同
@@ -709,11 +706,11 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
   const basicRow = executions.find(e => e.moveId === 'basic_attack')
   if (basicRow) {
     const share = source.inscriptionBasicTimeShare
-    const normalDps = Number(record.claretNormalDamagePerSec ?? 0)
-    const inscriptionDps = Number(record.claretInscriptionDamagePerSec ?? 0)
+    const normalDps = Number(cfg.claretNormalDamagePerSec ?? 0)
+    const inscriptionDps = Number(cfg.claretInscriptionDamagePerSec ?? 0)
     const blendedDps = share * inscriptionDps + (1 - share) * normalDps
     basicRow.damageMultiplier = blendedDps
-    basicRow.dazeMultiplier = Number(record.claretBasicDazePerSec ?? 0)
+    basicRow.dazeMultiplier = Number(cfg.claretBasicDazePerSec ?? 0)
     basicRow.anomalyBuildUp = source.basicGashPerSec
     basicRow.totalAnomalyBuildUp = source.basicGashPerSec * Math.max(0, basicRow.totalTime ?? 0)
     basicRow.damageMultiplierOverride = true
@@ -728,14 +725,14 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
       moveName: '强化特殊技（EX Special）：秘血铸锋（锐能 60/发）',
       category: 'special',
       count: exCount,
-      actionTime: Number(record.claretExActionTime ?? 0),
+      actionTime: Number(cfg.claretExActionTime ?? 0),
       comboAlignRatio: 0,
-      totalTime: exCount * Number(record.claretExActionTime ?? 0),
+      totalTime: exCount * Number(cfg.claretExActionTime ?? 0),
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: Number(record.claretExDecibelRecovery ?? 0),
-      totalDecibelRecovery: exCount * Number(record.claretExDecibelRecovery ?? 0),
+      decibelRecovery: Number(cfg.claretExDecibelRecovery ?? 0),
+      totalDecibelRecovery: exCount * Number(cfg.claretExDecibelRecovery ?? 0),
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       timeBucket: 'necessary',
@@ -747,24 +744,23 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
     cfg,
     state,
     counts: {
-      claretCleaveCount: Math.max(0, Math.floor(Number(record.claretCleaveCount ?? 0))),
-      claretBloodBurialCount: Math.max(0, Math.floor(Number(record.claretBloodBurialCount ?? 0))),
+      claretCleaveCount: Math.max(0, Math.floor(Number(cfg.claretCleaveCount ?? 0))),
+      claretBloodBurialCount: Math.max(0, Math.floor(Number(cfg.claretBloodBurialCount ?? 0))),
       claretMaimCount: Math.max(0, Math.floor(source.maimCount)),
       claretMaimFromCleave: Math.max(0, Math.floor(source.maimFromCleave)),
       claretMaimFromBurial: Math.max(0, Math.floor(source.maimFromBurial)),
       claretMaimFromC6: Math.max(0, Math.floor(source.maimFromC6)),
     },
     overrides: {
-      claret_maim: { multiplier: Number(record.claretMaimDamageMultiplier ?? 1625.6) * (cinemaLevel >= 1 ? C1_MAIM_MULT : 1) },
-      claret_blood_burial: { multiplier: Number(record.claretBloodBurialDamageMultiplier ?? 626.3) },
+      claret_maim: { multiplier: Number(cfg.claretMaimDamageMultiplier ?? 1625.6) * (cinemaLevel >= 1 ? C1_MAIM_MULT : 1) },
+      claret_blood_burial: { multiplier: Number(cfg.claretBloodBurialDamageMultiplier ?? 626.3) },
     },
   })
   executions.push(...generated)
 }
 
 function patchClaretExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.claretCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.claretCinemaLevel ?? 0)))
   if (cinema < 4) return
   for (const exec of executions) {
     if (exec.moveId && M4_MOVE_IDS.has(exec.moveId)) {
@@ -898,6 +894,36 @@ export const claretMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 技能表缓存：buildCharConfig 写，供 computeClaretBasicPerSecFromCfg 现算两套基准 */
+    claretSkills?: AgentSkills
+    /** 各招式「割伤」值（moveId → 值，只收 >0） */
+    claretGashByMoveId?: Record<string, number>
+    /** 「致残」伤害倍率（技能表，缺省 1625.6） */
+    claretMaimDamageMultiplier?: number
+    /** 常态平A基准段 moveId（catalog basicBenchmarkMoveId 优先，回落第 3 段） */
+    claretNormalBenchmarkMoveId?: string
+    /** 铭刻态基准段 moveId（常量 INSCRIPTION_BENCHMARK_MOVE_ID） */
+    claretInscriptionBenchmarkMoveId?: string
+    /** 锐度自然回复/秒（level60.sharpnessRegen） */
+    claretSharpnessAutoPerSec?: number
+    /** 常态平A基准段的锐度获取/秒 */
+    claretNormalAttackSharpnessPerSec?: number
+    /** 常态锐度/秒（取 claretSharpnessAutoPerSec） */
+    claretNormalSharpnessPerSec?: number
+    /** 连携技动作时长（秒） */
+    claretChainActionSeconds?: number
+    /** 终结技动作时长（秒） */
+    claretUltimateActionSeconds?: number
+    /** 铭刻态占比（机制设置，夹到 0–1） */
+    claretInscriptionShareSetting?: number
+    /** 连携技落在窗口内的覆盖率 */
+    claretChainInWindowCoverage?: number
+    /** 两态加权后的平A失衡/秒 */
+    claretBasicDazePerSec?: number
+    /** 常态平A伤害倍率/秒 */
+    claretNormalDamagePerSec?: number
+    /** 铭刻态平A伤害倍率/秒 */
+    claretInscriptionDamagePerSec?: number
     /** 克拉蕾斩金断铁使用次数（残痕消耗来源之一） */
     claretCleaveCount?: number
     /** 克拉蕾葬血强袭使用次数（消耗个人资源并提升伤害） */
