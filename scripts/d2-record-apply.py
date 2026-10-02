@@ -16,7 +16,13 @@ ON_CFG = re.compile(r'\b(?:input\.)?cfg\s+' + CAST)
 n0 = len(ON_CFG.findall(s))
 # r395：别名来源可能是 `cfg` 或 `input.cfg`；只有全部同源时才自动改（混源留给人工，见下方「人工」清单）
 srcs = set(re.findall(r'^[ \t]*const record = ((?:input\.)?cfg) ' + CAST + r'\n', s, flags=re.M))
-if len(srcs) > 1:
+# r396 CC-370：`record` 还绑定了别的对象（`const record = c as …` 遍历队友、`record: Record<…>` 形参）时，
+# 全文 `record.`→`cfg.` 会把那些访问一起错改成写自己的 cfg（lucy 的 nextRound 循环里实际出过：写全队 → 只写自己）⇒ 同按混源停手。
+others = set(re.findall(r'^[ \t]*(?:const|let) record\b\s*(?::[^=\n]+)?=\s*(?!(?:input\.)?cfg\s+as\b)(\S+)', s, flags=re.M))
+others |= {'形参'} if re.search(r'[(,]\s*record\??\s*:', s) else set()
+if others:
+    srcs |= {f'其他:{o}' for o in others}
+if len(srcs) > 1 or others:
     print(f'{mod}: const record 混源 {sorted(srcs)} ⇒ 不改 record.*（逐函数手改：删别名、record.→对应来源.）')
     tgt, nl = None, 0
 else:

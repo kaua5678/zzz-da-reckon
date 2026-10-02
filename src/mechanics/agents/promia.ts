@@ -32,6 +32,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
+import type { CharacterOperationConfig } from '@/types/resource'
 import { emptyPanel } from '@/core/panel'
 import { applyEffect } from '@/core/buff'
 import type { BuffEffect } from '@/types/catalog'
@@ -120,21 +121,19 @@ export function computePromiaCycle(input: {
 }
 
 function buildPromiaCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, char }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   // 处刑式·匿影次数（交互栏用户输入；CC-35b 2026-09-27 由 helpers.ts cfg 字面量迁入）
   cfg.promiaNiyingCount = char?.promiaNiyingCount ?? 0
-  record.promiaCinemaLevel = cinemaLevel
+  cfg.promiaCinemaLevel = cinemaLevel
   // 展示值与面板 / teamBuff 同口径：初始（局外）掌控（CC-123 订正 CC-116 遗留的局内口径）
-  record.promiaAnomalyMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
-  record.promiaAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.promiaAnomalyMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
+  cfg.promiaAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
 }
 
-function cycleFromCfg(cfg: unknown): PromiaCycle {
-  const record = cfg as Record<string, unknown>
+function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'promiaCinemaLevel' | 'promiaAnomalyMastery' | 'promiaAdditionalActive'>): PromiaCycle {
   return computePromiaCycle({
-    cinemaLevel: Number(record.promiaCinemaLevel ?? 0),
-    anomalyMastery: Number(record.promiaAnomalyMastery ?? 0),
-    additionalActive: record.promiaAdditionalActive === true,
+    cinemaLevel: Number(cfg.promiaCinemaLevel ?? 0),
+    anomalyMastery: Number(cfg.promiaAnomalyMastery ?? 0),
+    additionalActive: cfg.promiaAdditionalActive === true,
   })
 }
 
@@ -215,14 +214,13 @@ export const PROMIA_ZHUISHUANG_MOVE_ID = '1541010'
 function computePromiaVerdict({ cfg, state, battleTime }: { cfg: AgentCharConfigInput['cfg']; state: { exSpecialCount?: number }; battleTime: number }): {
   count: number; specialCount: number; baseFrostGain: number; initial: number
 } {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.promiaCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.promiaCinemaLevel ?? 0)))
   const override = Math.max(0, Math.floor(setting(cfg, 'promia.releaseCountOverride', 0)))
-  const triggerHits = Math.max(0, Math.floor(Number(record.promiaTriggerHitCount ?? 0)))
-  const teammateReleases = Math.max(0, Math.floor(Number(record.promiaTeammateReleaseCount ?? 0)))
+  const triggerHits = Math.max(0, Math.floor(Number(cfg.promiaTriggerHitCount ?? 0)))
+  const teammateReleases = Math.max(0, Math.floor(Number(cfg.promiaTeammateReleaseCount ?? 0)))
   const exCasts = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
-  const attackFrost = Math.max(0, Math.floor(Number(record.promiaAttackFrostGain ?? 0)))
-  const niying = Math.max(0, Math.min(99, Math.floor(Number(record.promiaNiyingCount ?? 0))))
+  const attackFrost = Math.max(0, Math.floor(Number(cfg.promiaAttackFrostGain ?? 0)))
+  const niying = Math.max(0, Math.min(99, Math.floor(Number(cfg.promiaNiyingCount ?? 0))))
   const baseFrostGain = triggerHits * 5 + exCasts * 10 + niying * 10 + teammateReleases * 15 + attackFrost
   const initial = 2 + (cinemaLevel >= 1 ? 1 : 0)
 
@@ -251,10 +249,9 @@ function computePromiaVerdict({ cfg, state, battleTime }: { cfg: AgentCharConfig
  * 绝裁本体直伤（1541014）在 buildExecutions 单独生成（普通招式，失衡吃易伤）。
  */
 function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.promiaCinemaLevel ?? 0)))
-  const niying = Math.max(0, Math.min(99, Math.floor(Number(record.promiaNiyingCount ?? 0))))
-  const attackFrost = Math.max(0, Math.floor(Number(record.promiaAttackFrostGain ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.promiaCinemaLevel ?? 0)))
+  const niying = Math.max(0, Math.min(99, Math.floor(Number(cfg.promiaNiyingCount ?? 0))))
+  const attackFrost = Math.max(0, Math.floor(Number(cfg.promiaAttackFrostGain ?? 0)))
   const { count, specialCount, baseFrostGain, initial } = computePromiaVerdict({ cfg, state, battleTime: totalTime })
 
   if (count <= 0) return
@@ -295,9 +292,8 @@ function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
  */
 function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const attackFrost = executions.reduce((s, e) => s + (e.totalSpecialResourceRecovery ?? 0), 0)
-  ;(cfg as unknown as Record<string, unknown>).promiaAttackFrostGain = Math.max(0, Math.floor(attackFrost))
-  const record = cfg as unknown as Record<string, unknown>
-  const niying = Math.max(0, Math.min(99, Math.floor(Number(record.promiaNiyingCount ?? 0))))
+  cfg.promiaAttackFrostGain = Math.max(0, Math.floor(attackFrost))
+  const niying = Math.max(0, Math.min(99, Math.floor(Number(cfg.promiaNiyingCount ?? 0))))
   const exCasts = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
 
   // 强特 = 封喉霜径(起手，资源池已生成) + 坠霜(普通终结) / 重霜(匿影终结)。
@@ -340,7 +336,7 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
     })
   }
   // 绝裁本体直伤（异放载体）：普通招式，失衡吃易伤；次数 = 霜刑（绝裁异放）次数
-  const verdict = computePromiaVerdict({ cfg, state, battleTime: Number(record.battleTime ?? 180) })
+  const verdict = computePromiaVerdict({ cfg, state, battleTime: Number(cfg.battleTime ?? 180) })
   if (verdict.count > 0) {
     executions.push({
       moveId: PROMIA_VERDICT_MOVE_ID,
@@ -395,6 +391,8 @@ function promiaNextRoundFeedback({ cfg, characters, teamResult, displayResult, a
       .reduce((sum, e) => sum + Math.floor(e.count), 0)
     promiaReleaseDecibelNext = promiaReleaseTotal * 100
     if (prevPromiaTriggerHits <= 0 && prevPromiaTeammateReleases <= 0) {
+      // r396 CC-370：nextRound 钩子的 cfg 是 DeepReadonly（49ecb777「钩子输入只有输出通道可写」），此处写回是保留的原实现、
+      // 不跨轮生效（typesHooks AgentNextRoundFeedbackInput.characters 注释）——强转写回待 zd 判死后删，见 OPEN-ITEMS「nextRound cfg 写回」。
       const record = cfg as unknown as Record<string, unknown>
       record.promiaTriggerHitCount = promiaTriggerHitsNext
       record.promiaTeammateReleaseCount = promiaTeammateReleasesNext
@@ -421,11 +419,10 @@ export const promiaMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    const record = cfg as unknown as Record<string, unknown>
-    record.promiaTriggerHitCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTriggerHits ?? 0)))
-    record.promiaTeammateReleaseCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTeammateReleases ?? 0)))
-    record.extraSelfDecibelReward =
-      Math.max(0, Number(record.extraSelfDecibelReward ?? 0)) + Math.max(0, Math.floor((threads.moduleFeedback?.promiaReleaseDecibel ?? 0)))
+    cfg.promiaTriggerHitCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTriggerHits ?? 0)))
+    cfg.promiaTeammateReleaseCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTeammateReleases ?? 0)))
+    cfg.extraSelfDecibelReward =
+      Math.max(0, Number(cfg.extraSelfDecibelReward ?? 0)) + Math.max(0, Math.floor((threads.moduleFeedback?.promiaReleaseDecibel ?? 0)))
   },
   buildExecutions: buildPromiaExecutions,
   buildAnomalyEvents: buildPromiaAnomalyEvents,
@@ -462,5 +459,26 @@ declare module '@/mechanics/types' {
     promiaTeammateReleases?: number
     /** 普罗米娅自身异放回喧响（绝裁/影画6 各 +100） */
     promiaReleaseDecibel?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 普罗米娅命座等级（buildCharConfig 写） */
+    promiaCinemaLevel?: number
+    /** 普罗米娅额外能力是否生效（buildCharConfig 由 panel 写） */
+    promiaAdditionalActive?: boolean
+    /** 普罗米娅初始（局外）异常掌控（buildCharConfig 预存） */
+    promiaAnomalyMastery?: number
+    /** 普罗米娅攻击数据霜值获取（资源阶段写，取整） */
+    promiaAttackFrostGain?: number
+    /** 普罗米娅：下一轮用的触发命中数（nextRound 线程化写回） */
+    promiaTriggerHitCount?: number
+    /** 普罗米娅：下一轮用的队友释放次数（nextRound 线程化写回） */
+    promiaTeammateReleaseCount?: number
   }
 }

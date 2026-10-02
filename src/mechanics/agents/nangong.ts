@@ -88,9 +88,9 @@ function nangongVibratoStackPct(cinemaLevel: number): number {
   return VIBRATO_STACK_PCT + (cinemaLevel >= 2 ? 10 : 0)
 }
 
-function nangongVibratoStacks(cfg: AgentResourceInput['cfg'], record: Record<string, unknown>): number {
+function nangongVibratoStacks(cfg: AgentResourceInput['cfg']): number {
   const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
-  const systemTriggers = Math.max(0, Number(record.inStunWindowTriggers ?? 0))
+  const systemTriggers = Math.max(0, Number(cfg.inStunWindowTriggers ?? 0))
   return sliderStacks > 0
     ? Math.min(VIBRATO_MAX, sliderStacks)
     : (systemTriggers > 0 ? Math.min(VIBRATO_MAX, Math.floor(systemTriggers)) : VIBRATO_MAX)
@@ -142,11 +142,10 @@ function applyNangongPanel({ panel, outOfCombatPanel, cinemaLevel, settings }: A
 function buildNangongCharConfig({ skills, cinemaLevel, cfg, getRowValue, panel, outOfCombatPanel }: AgentCharConfigInput): void {
   const t2 = findMoveById(skills, MINE2_MOVE_ID)?.actionTime ?? 0
   const t3 = findMoveById(skills, MINE3_MOVE_ID)?.actionTime ?? 0
-  const record = cfg as unknown as Record<string, unknown>
-  record.nangongCinemaLevel = cinemaLevel
+  cfg.nangongCinemaLevel = cinemaLevel
   // 展示值「掌控转冲击」与面板同口径：初始（局外）掌控（CC-123）
-  record.nangongInitialMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
-  record.nangongMinePairSeconds = t2 + t3
+  cfg.nangongInitialMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
+  cfg.nangongMinePairSeconds = t2 + t3
   // 影画4：地雷撞 #2/#3 行的**表值积蓄**在此预存（`enrichExecutionPlan` 会从倍率表回填
   // `anomalyBuildUp` ⇒ `patchExecutions` 阶段读不到表值；先例 `yuzuha.ts:117` / `seth.ts:98`）。
   // 仅 C4 且表值 >0 时写（C0 不写 ⇒ 门控语义逐位保留）。
@@ -154,7 +153,7 @@ function buildNangongCharConfig({ skills, cinemaLevel, cfg, getRowValue, panel, 
     const scale = 1 + C4_MINE_BUILDUP_PCT / 100
     for (const [key, moveId] of [['nangongC4Mine2BuildUp', MINE2_MOVE_ID], ['nangongC4Mine3BuildUp', MINE3_MOVE_ID]] as const) {
       const base = getRowValue(findMoveById(skills, moveId), 'anomaly_buildup')
-      if (base > 0) record[key] = base * scale
+      if (base > 0) cfg[key] = base * scale
     }
   }
 }
@@ -163,7 +162,7 @@ function buildNangongTeamConfig(input: AgentTeamConfigInput): void {
   // converge 阶段把收敛量写进自己槽位 cfg。⚠ 用派发器直给的 `cfg`，不用 `input.characters[input.slot]`
   // ——该数组**按位置压缩**（`buildCharConfig` 跳过空槽），槽位号 ≠ 下标：前导/中间空槽时会取到
   // undefined 或别人那份。
-  const own = input.cfg as unknown as Record<string, unknown> | undefined
+  const own = input.cfg
   if (!own || input.phase !== 'converge') return
 
   // ── 路径①：标量（与轴无关）────────────────────────────────────────────────
@@ -214,13 +213,12 @@ export function nangongBeatIncome(cinemaLevel: number, frontlineSeconds: number,
 }
 
 function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
-  const pairSeconds = Number(record.nangongMinePairSeconds ?? 0)
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.nangongCinemaLevel ?? 0)))
+  const pairSeconds = Number(cfg.nangongMinePairSeconds ?? 0)
   // 快速支援（1511013）动作块：非轴/未放置 = count 0（动作池 ×0 灰块，不进伤害/时间预算）；
   // 捏轴放置后引擎注入 nangongQuickAssistPlaced → 按块数生成真实行（吃失衡易伤+时间门控，
   // 倍率/失衡值由 enrich 按技能表回填）。快支重击是极性紊乱载体之一。
-  const quickAssistPlaced = Math.max(0, Math.floor(Number(record.nangongQuickAssistPlaced ?? 0)))
+  const quickAssistPlaced = Math.max(0, Math.floor(Number(cfg.nangongQuickAssistPlaced ?? 0)))
   executions.push({
     moveId: NANGONG_QUICK_ASSIST_MOVE_ID,
     moveName: '快速支援：救场技巧',
@@ -238,14 +236,14 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
   })
   // 地雷撞套数每次装配先归零再按本次重算（CC-288）：原实现在 pairs≤0 / 无普攻行时提前 return，
   // 上一次装配（甚至上一个场景）的套数残留在 cfg 上，被 C6 颤音:改叠层计数读到。
-  record.nangongMinePairs = 0
+  cfg.nangongMinePairs = 0
   const basicExec = executions.find(e => e.moveId === 'basic_attack')
   if (!basicExec || pairSeconds <= 0) return
-  const battleTime = Math.max(0, Number(record.battleTime ?? 180))
+  const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
   const totalBeat = nangongBeatIncome(cinemaLevel, Number(state.frontlineTime ?? 0), battleTime)
   const pairs = computeNangongMinePairs(totalBeat, Number(basicExec.totalTime ?? 0), pairSeconds)
   if (pairs <= 0) return
-  record.nangongMinePairs = pairs
+  cfg.nangongMinePairs = pairs
   basicExec.totalTime = Math.max(0, Number(basicExec.totalTime ?? 0) - pairs * pairSeconds)
   const halfSeconds = pairSeconds / 2
   executions.push({
@@ -303,12 +301,11 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
  * ⚠ 不用 `+=`（`buildCharConfig` 预存值已含 ×1.35，`+=` 会双计）。
  */
 function patchNangongExecutions({ cfg, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.nangongCinemaLevel ?? 0)))
   if (cinemaLevel < 4) return
   const preBuilt: Record<string, number> = {
-    [MINE2_MOVE_ID]: Number(record.nangongC4Mine2BuildUp ?? 0),
-    [MINE3_MOVE_ID]: Number(record.nangongC4Mine3BuildUp ?? 0),
+    [MINE2_MOVE_ID]: Number(cfg.nangongC4Mine2BuildUp ?? 0),
+    [MINE3_MOVE_ID]: Number(cfg.nangongC4Mine3BuildUp ?? 0),
   }
   for (const exec of executions) {
     const value = preBuilt[String(exec.moveId)]
@@ -320,12 +317,11 @@ function patchNangongExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
-  const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.nangongCinemaLevel ?? 0)))
+  const stunCount = Math.max(0, Math.floor(Number(cfg.nangongStunCount ?? 0)))
   // 颤音层数与每层加成（CC-333：事件侧与资源结果共用 nangongVibratoStacks / nangongVibratoStackPct）
   const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
-  const stacks = nangongVibratoStacks(cfg, record)
+  const stacks = nangongVibratoStacks(cfg)
   const stackPct = nangongVibratoStackPct(cinemaLevel)
   const coverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
   const releaseCount = Math.round(stunCount * coverage)
@@ -367,7 +363,7 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
   // 异放（固定倍率 500%，每层+25%）——回复端按执行计数器近似（用户指令：需要计数器做回复端）
   if (cinemaLevel >= 6 && stunCount > 0) {
     const gained = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
-      + Math.max(0, Math.floor(Number(record.nangongMinePairs ?? 0))) * 2
+      + Math.max(0, Math.floor(Number(cfg.nangongMinePairs ?? 0))) * 2
       + Math.max(0, Math.floor(Number(state.ultimateCount ?? 0))) * 2
     const stacks6 = Math.min(VIBRATO_MAX, Math.floor(gained / Math.max(1, stunCount)))
     if (stacks6 > 0) {
@@ -382,27 +378,26 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
         inStunBound: true,
         formula: `releaseMultiplier = ${flat6}（500%统一倍率 × 层数系数(1+25%×${stacks6})）`,
         fields: [`primeStacks=${stacks6}`, `gained=${gained}`, `releaseMultiplier=${flat6}`],
-        note: `非失衡期获取计数 强特${Math.floor(Number(state.exSpecialCount ?? 0))} + 地雷撞段${Math.floor(Number(record.nangongMinePairs ?? 0)) * 2} + 终结×2 ${Math.floor(Number(state.ultimateCount ?? 0)) * 2} = ${gained}，均摊每窗 ${stacks6} 层。`,
+        note: `非失衡期获取计数 强特${Math.floor(Number(state.exSpecialCount ?? 0))} + 地雷撞段${Math.floor(Number(cfg.nangongMinePairs ?? 0)) * 2} + 终结×2 ${Math.floor(Number(state.ultimateCount ?? 0)) * 2} = ${gained}，均摊每窗 ${stacks6} 层。`,
       } as never)
     }
   }
 }
 
 function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.nangongCinemaLevel ?? 0)))
-  const battleTime = Math.max(0, Number(record.battleTime ?? 180))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.nangongCinemaLevel ?? 0)))
+  const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
   const frontline = Math.max(0, Number(state.frontlineTime ?? 0))
   const beatInitial = cinemaLevel >= 1 ? BEAT_CAP : BEAT_INITIAL
   const totalBeat = nangongBeatIncome(cinemaLevel, frontline, battleTime)
-  const stacks = nangongVibratoStacks(cfg, record)
+  const stacks = nangongVibratoStacks(cfg)
   const releaseCoverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
-  const stunCount = Math.max(0, Math.floor(Number(record.nangongStunCount ?? 0)))
-  const minePairs = record.nangongMinePairs !== undefined
-    ? Math.max(0, Math.floor(Number(record.nangongMinePairs)))
+  const stunCount = Math.max(0, Math.floor(Number(cfg.nangongStunCount ?? 0)))
+  const minePairs = cfg.nangongMinePairs !== undefined
+    ? Math.max(0, Math.floor(Number(cfg.nangongMinePairs)))
     : Math.floor(totalBeat / MINE_COST_PER_PAIR)
   const source = computeNangongMechanic({
-    anomalyMastery: Number(record.nangongInitialMastery ?? cfg.panel.anomalyMastery ?? 0),
+    anomalyMastery: Number(cfg.nangongInitialMastery ?? cfg.panel.anomalyMastery ?? 0),
     frontlineSeconds: frontline,
     battleTime,
     beatInitial,
@@ -522,4 +517,29 @@ export interface NangongMechanicSource {
   beatTotal: number
   beatCap: number
   note: string
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 南宫羽命座等级（buildCharConfig 写） */
+    nangongCinemaLevel?: number
+    /** 南宫羽初始（局外）异常掌控（展示「掌控转冲击」用，CC-123） */
+    nangongInitialMastery?: number
+    /** 南宫羽地雷 #2+#3 动作时间之和 */
+    nangongMinePairSeconds?: number
+    /** 南宫羽影画4 地雷 #2 表值积蓄 ×(1+加成)（仅 C4 且表值 >0 时写） */
+    nangongC4Mine2BuildUp?: number
+    /** 南宫羽影画4 地雷 #3 表值积蓄 ×(1+加成)（同上） */
+    nangongC4Mine3BuildUp?: number
+    /** 南宫羽地雷对数（资源阶段写） */
+    nangongMinePairs?: number
+    /** 南宫羽：本轮失衡次数（applyTeamConfig converge 写） */
+    nangongStunCount?: number
+    /** 南宫羽轴内快速支援放置块计数（applyTeamConfig converge 写） */
+    nangongQuickAssistPlaced?: number
+  }
 }

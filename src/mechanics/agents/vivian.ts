@@ -173,37 +173,35 @@ export function computeVivianCycle(input: {
 export const VIVIAN_ANOMALY_TRIGGER_CD = 0.5
 
 function buildVivianCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.vivianCinemaLevel = cinemaLevel
-  record.vivianC4AtkCoverage = clampRatio(setting(cfg, 'vivian.c4AtkCoverage', 1))
-  record.vivianAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.vivianCinemaLevel = cinemaLevel
+  cfg.vivianC4AtkCoverage = clampRatio(setting(cfg, 'vivian.c4AtkCoverage', 1))
+  cfg.vivianAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   // 落羽生花双源由 useResourceCalc 收敛注入（vivianTeamExTotal / vivianAnomalyTriggerTotal），
   // 首轮缺省时 buildExecutions 内回退到 state.exSpecialCount。
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): VivianCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeVivianCycle({
-    cinemaLevel: Number(record.vivianCinemaLevel ?? 0),
+    cinemaLevel: Number(cfg.vivianCinemaLevel ?? 0),
     // 源1：全队强特命中次数（useResourceCalc 收敛注入 vivianTeamExTotal，含薇薇安自己）
-    teamExSpecialCount: Number(record.vivianTeamExTotal ?? state.exSpecialCount ?? 0),
+    teamExSpecialCount: Number(cfg.vivianTeamExTotal ?? state.exSpecialCount ?? 0),
     // 自身强特次数（飞羽强特源 + 悬落衔接源）
     selfExSpecialCount: Number(state.exSpecialCount ?? 0),
     // 源2：全队异常触发次数（useResourceCalc 收敛注入 vivianAnomalyTriggerTotal）
-    teammateAnomalyCount: Number(record.vivianAnomalyTriggerTotal ?? 0),
+    teammateAnomalyCount: Number(cfg.vivianAnomalyTriggerTotal ?? 0),
     // 落羽生花源2 的 0.5s CD 封顶按有效战斗时间（扣 boss 无敌，core/effectiveTime.ts）
-    battleTime: minusInvincibleTime(Number(record.battleTime ?? 180), cfg),
+    battleTime: minusInvincibleTime(Number(cfg.battleTime ?? 180), cfg),
     // 淑女礼仪·舞步命中 +1 飞羽（原文）：迭代态无逐招式次数，无法派生 ⇒ 未建模，显式 0。
-    // 旧实现读 `record.vivianDanceHit`，全仓零写入恒 0（死通道，CC-91 2026-09-27 移除）。
+    // 旧实现读 `cfg.vivianDanceHit`，全仓零写入恒 0（死通道，CC-91 2026-09-27 移除）。
     danceHitCount: 0,
     chainCount: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
     // 支援突击次数 = 本槽弹刀次数（招架支援后接支援突击；`parryNoFollowUpCount` 不接，
     // 与 claret.ts assistFollowUpMoveId × parryCount 同口径）。原文「支援突击：裁决羽刃」回复2点飞羽、
-    // 发动后进入裙裾浮游（→ 悬落）。旧实现读 `record.vivianAssistCount`，全仓零写入恒 0（CC-91 接通）。
+    // 发动后进入裙裾浮游（→ 悬落）。旧实现读 `cfg.vivianAssistCount`，全仓零写入恒 0（CC-91 接通）。
     assistCount: Math.max(0, Number(cfg.parryCount ?? 0)),
-    additionalActive: record.vivianAdditionalActive === true,
-    c4AtkCoverage: Number(record.vivianC4AtkCoverage ?? 1),
+    additionalActive: cfg.vivianAdditionalActive === true,
+    c4AtkCoverage: Number(cfg.vivianC4AtkCoverage ?? 1),
   })
 }
 
@@ -450,6 +448,8 @@ function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool, pre
     )
     // 首轮无 prev → 用本轮值直接注入（buildExecutions 读 cfg）
     if ((prevThreads.moduleFeedback?.vivianTeamEx ?? 0) <= 0) {
+      // r396 CC-370：nextRound 钩子的 cfg 是 DeepReadonly（49ecb777「钩子输入只有输出通道可写」），此处写回是保留的原实现、
+      // 不跨轮生效（typesHooks AgentNextRoundFeedbackInput.characters 注释）——强转写回待 zd 判死后删，见 OPEN-ITEMS「nextRound cfg 写回」。
       const record = cfg as unknown as Record<string, unknown>
       record.vivianTeamExTotal = vivianTeamExNext
       record.vivianAnomalyTriggerTotal = vivianAnomalyTriggersNext
@@ -478,9 +478,8 @@ export const vivianMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    const record = cfg as unknown as Record<string, unknown>
-    record.vivianTeamExTotal = (threads.moduleFeedback?.vivianTeamEx ?? 0)
-    record.vivianAnomalyTriggerTotal = (threads.moduleFeedback?.vivianAnomalyTriggers ?? 0)
+    cfg.vivianTeamExTotal = (threads.moduleFeedback?.vivianTeamEx ?? 0)
+    cfg.vivianAnomalyTriggerTotal = (threads.moduleFeedback?.vivianAnomalyTriggers ?? 0)
   },
   buildExecutions: buildVivianExecutions,
   patchExecutions: patchVivianExecutions,
@@ -504,5 +503,24 @@ declare module '@/mechanics/types' {
     vivianTeamEx?: number
     /** 薇薇安落羽生花源2：全队异常触发次数 */
     vivianAnomalyTriggers?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 薇薇安命座等级（buildCharConfig 写） */
+    vivianCinemaLevel?: number
+    /** 薇薇安影画4 攻击覆盖率（机制设置 clamp 到 [0,1]） */
+    vivianC4AtkCoverage?: number
+    /** 薇薇安额外能力是否生效（buildCharConfig 由 panel 写） */
+    vivianAdditionalActive?: boolean
+    /** 薇薇安：队伍强特总数（nextRound 线程化写回；specs/agents/1331.json 按字段名读） */
+    vivianTeamExTotal?: number
+    /** 薇薇安：异常触发总数（nextRound 线程化写回；specs/agents/1331.json 按字段名读） */
+    vivianAnomalyTriggerTotal?: number
   }
 }

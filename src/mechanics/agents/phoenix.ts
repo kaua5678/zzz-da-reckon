@@ -157,9 +157,8 @@ export function phoenixBasicCombustionHits(basicTime: number, cycle: { moveId: s
  *（追斩后点按）是操作向量，不计自动收入。
  */
 function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const meta = (record.phoenixCombustionMeta as Record<string, number> | undefined) ?? {}
-  const basicCycle = (record.phoenixBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  const meta = (cfg.phoenixCombustionMeta as Record<string, number> | undefined) ?? {}
+  const basicCycle = (cfg.phoenixBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
   const basicTime = Math.max(0, Number((state as { basicAttackTime?: number } | undefined)?.basicAttackTime ?? 0))
   const { third, fourth } = phoenixBasicCombustionHits(basicTime, basicCycle)
   let income = third * (meta['1641003'] ?? 0) + fourth * (meta['1641004'] ?? 0)
@@ -175,18 +174,17 @@ function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResour
 export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
   const override = setting(cfg, 'phoenix.chargedAttackCount', 0)
   if (override > 0) return whole(override)
-  const cinema = whole(Number((cfg as unknown as Record<string, unknown>).phoenixCinemaLevel ?? 0))
+  const cinema = whole(Number(cfg.phoenixCinemaLevel ?? 0))
   const eff = cinema >= 1 ? 1 + PHOENIX_C1_EMBER_EFFICIENCY / 100 : 1
   return Math.floor(phoenixEmberIncome(cfg, state, executions) * eff / PHOENIX_CHARGED_EMBER_COST)
 }
 
 function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.phoenixCinemaLevel = cinemaLevel
-  record.phoenixAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
-  record.phoenixAnomalyMastery = panel.anomalyMastery ?? 0
+  cfg.phoenixCinemaLevel = cinemaLevel
+  cfg.phoenixAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.phoenixAnomalyMastery = panel.anomalyMastery ?? 0
   const teamAnomalyCount = team ? team.filter(m => m.agent?.specialty === 'anomaly').length : 0
-  record.phoenixTeamAnomalyCount = teamAnomalyCount > 0 ? teamAnomalyCount : 1
+  cfg.phoenixTeamAnomalyCount = teamAnomalyCount > 0 ? teamAnomalyCount : 1
   // 影画4：长按普攻 +200 喧响/次——行级 decibel 会被 enrich 按倍率表回填，改走 initialDecibelGift。
   // 次数：滑块覆盖优先；自动按 战斗时长/15s 一次长按普攻估算 [猜测·低]（余火循环收敛值在 buildExecutions 才有）。
   if (cinemaLevel >= 4) {
@@ -228,11 +226,11 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: Agent
     const m = all.find(mm => mm.id === moveId)
     combustion[moveId] = getRowValue(m, 'attack_data_0')
   }
-  record.phoenixCombustionMeta = combustion
-  record.phoenixBasicCycle = PHOENIX_BASIC_SEGMENT_IDS.map(metaOf)
-  record.phoenixChargedMeta = metaOf(PHOENIX_CHARGED_MOVE_ID)
-  record.phoenixEnergizeMeta = metaOf(PHOENIX_ENERGIZE_MOVE_ID)
-  record.phoenixEntryMeta = metaOf(PHOENIX_ENTRY_MOVE_ID)
+  cfg.phoenixCombustionMeta = combustion
+  cfg.phoenixBasicCycle = PHOENIX_BASIC_SEGMENT_IDS.map(metaOf)
+  cfg.phoenixChargedMeta = metaOf(PHOENIX_CHARGED_MOVE_ID)
+  cfg.phoenixEnergizeMeta = metaOf(PHOENIX_ENERGIZE_MOVE_ID)
+  cfg.phoenixEntryMeta = metaOf(PHOENIX_ENTRY_MOVE_ID)
 }
 
 /**
@@ -263,14 +261,13 @@ function phoenixReleaseModifier({ panels }: ReleaseModifierInput): { enemyResRed
 
 /** 长按普攻/强化特殊技第二段/蓄能附加攻击执行行 */
 function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = whole(Number(record.phoenixCinemaLevel ?? 0))
+  const cinema = whole(Number(cfg.phoenixCinemaLevel ?? 0))
   const chargedCount = phoenixChargedCount(cfg, state, executions)
-  record.phoenixChargedCount = chargedCount
+  cfg.phoenixChargedCount = chargedCount
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
   const ultCount = Math.max(0, Number(state.ultimateCount ?? 0))
 
-  const chargedMeta = record.phoenixChargedMeta as { moveId: string; actionTime: number } | undefined
+  const chargedMeta = cfg.phoenixChargedMeta as { moveId: string; actionTime: number } | undefined
   if (chargedMeta && chargedCount > 0) {
     executions.push({
       moveId: chargedMeta.moveId,
@@ -292,7 +289,7 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
   // 不再单独 push（2026-09-12 组队对账修正：第一/二段是点按/长按二选一变体，非连段）。
   // 蓄能附加攻击（视为强化特殊技）：重击命中来源 = 强特(第二段) + 长按普攻 + 终结
   const energizeCount = exCount + chargedCount + ultCount
-  const energizeMeta = record.phoenixEnergizeMeta as { moveId: string; actionTime: number } | undefined
+  const energizeMeta = cfg.phoenixEnergizeMeta as { moveId: string; actionTime: number } | undefined
   if (energizeMeta && energizeCount > 0) {
     executions.push({
       moveId: energizeMeta.moveId,
@@ -313,7 +310,7 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
   //（用户口径 2026-09-12「喧响大后按攻击可以触发一次」，仪玄影画6「赠送次数=大招次数」同款计数）。
   // **不占前台时间**（2026-09-12 组队对账修正：终结收尾追加攻击，卢西娅追加攻击 1451007 同款 0 时间先例；
   // 计 2.4s×N 会把队内平A池挤光→余火断供→长按普攻打到 1 次，时间账失真放大近似误差）。
-  const entryMeta = record.phoenixEntryMeta as { moveId: string; actionTime: number } | undefined
+  const entryMeta = cfg.phoenixEntryMeta as { moveId: string; actionTime: number } | undefined
   if (entryMeta && ultCount > 0) {
     executions.push({
       moveId: entryMeta.moveId,
@@ -361,10 +358,9 @@ function patchPhoenixExecutions({ state, executions }: AgentResourceInput): void
 /** 必做前台时间：通用强特（第二段/长按优选）+ 长按普攻（次数读上一轮 buildExecutions 的收敛值）。
  *  终结入场 = 收尾追加攻击不计时（1451007 先例）；强特点按变体（第一段）不进自动循环。 */
 function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
-  const record = cfg as unknown as Record<string, unknown>
   const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
-  const chargedMeta = record.phoenixChargedMeta as { actionTime: number } | undefined
-  const chargedCount = whole(Number(record.phoenixChargedCount ?? 0))
+  const chargedMeta = cfg.phoenixChargedMeta as { actionTime: number } | undefined
+  const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
   const chargedTime = chargedMeta ? chargedCount * chargedMeta.actionTime : 0
   return {
     necessaryTime: exTime + chargedTime,
@@ -374,12 +370,11 @@ function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput):
 
 /** 异放事件：长按普攻终结一击 + 终结技终结一击（+ 影画6 强特） */
 function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = whole(Number(record.phoenixCinemaLevel ?? 0))
+  const cinema = whole(Number(cfg.phoenixCinemaLevel ?? 0))
   const s = phoenixSkillLevel(cinema)
   const coverage = clamp01(setting(cfg, 'phoenix.releaseCoverage', 1))
   if (coverage <= 0) return
-  const chargedCount = whole(Number(record.phoenixChargedCount ?? 0))
+  const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
   const ultCount = Math.max(0, Number(state.ultimateCount ?? 0))
 
@@ -438,13 +433,12 @@ function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEvent
 }
 
 function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput) {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = whole(Number(record.phoenixCinemaLevel ?? 0))
-  const additionalActive = record.phoenixAdditionalActive === true
-  const chargedCount = whole(Number(record.phoenixChargedCount ?? 0))
-  const teamAnomalyCount = Math.max(1, whole(Number(record.phoenixTeamAnomalyCount ?? 2)))
+  const cinema = whole(Number(cfg.phoenixCinemaLevel ?? 0))
+  const additionalActive = cfg.phoenixAdditionalActive === true
+  const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
+  const teamAnomalyCount = Math.max(1, whole(Number(cfg.phoenixTeamAnomalyCount ?? 2)))
   const weakness = computePhoenixWeaknessCrit({
-    anomalyMastery: Number(record.phoenixAnomalyMastery ?? 0),
+    anomalyMastery: Number(cfg.phoenixAnomalyMastery ?? 0),
     additionalActive,
     teamAnomalyCount,
     cinemaLevel: cinema,
@@ -546,3 +540,32 @@ export const phoenixMechanic: AgentMechanicModule = {
 }
 
 export default phoenixMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 菲尼克斯命座等级（buildCharConfig 写） */
+    phoenixCinemaLevel?: number
+    /** 菲尼克斯额外能力是否生效（buildCharConfig 由 panel 写） */
+    phoenixAdditionalActive?: boolean
+    /** 菲尼克斯异常掌控（buildCharConfig 由 panel 预存） */
+    phoenixAnomalyMastery?: number
+    /** 菲尼克斯：队伍异常角色数（buildCharConfig 写，最少 1） */
+    phoenixTeamAnomalyCount?: number
+    /** 菲尼克斯燃烧攻击余火获取（moveId → 每次命中余火，attack_data_0 列） */
+    phoenixCombustionMeta?: Record<string, number>
+    /** 菲尼克斯平A各段元数据（buildCharConfig 从 catalog 预存） */
+    phoenixBasicCycle?: { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }[]
+    /** 菲尼克斯蓄力招式元数据 */
+    phoenixChargedMeta?: { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }
+    /** 菲尼克斯充能招式元数据 */
+    phoenixEnergizeMeta?: { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }
+    /** 菲尼克斯入场招式元数据 */
+    phoenixEntryMeta?: { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }
+    /** 菲尼克斯蓄力次数（资源阶段写） */
+    phoenixChargedCount?: number
+  }
+}

@@ -19,6 +19,9 @@ for root, ds, fs in os.walk(os.path.join(src, 'mechanics')):
                 declared |= {m.group(1) for m in re.finditer(r'^    (\w+)\??:', b, re.M)}
 p = os.path.join(src, 'mechanics/agents', mod + '.ts')
 t = open(p, encoding='utf-8').read()
+# r396 CC-370：先剥注释——注释里提到的旧键（如 vivian.ts 记录 CC-91 已移除的 `record.vivianDanceHit`）不是访问，原实现会误报成未声明
+t = re.sub(r'/\*.*?\*/', '', t, flags=re.S)
+t = re.sub(r'(^|[^:\'"\\])//[^\n]*', r'\1', t, flags=re.M)
 # r394 CC-366：三种绕类型写法同病，一并统计：as unknown as Record<string, unknown> / as Record<string, unknown> / as any
 CAST = r'as (?:unknown as )?(?:Record<string,\s*unknown>|any\b)'
 SRC = r'([\w.?\[\]]+)'

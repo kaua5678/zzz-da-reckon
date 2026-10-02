@@ -28,7 +28,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import type { MechanicSetting } from '@/types/resource'
+import type { CharacterOperationConfig, MechanicSetting } from '@/types/resource'
 import { execMatchesMove } from '@/types/resource'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
@@ -145,9 +145,8 @@ export function severianBasicFinisherHits(basicTime: number, cycle: { moveId: st
 
 /** 流息基础收入（不含影画6[风起]反馈项，反馈在 severianFlowState 定点迭代里加） */
 function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = whole(Number(record.severianCinemaLevel ?? 0))
-  const basicCycle = (record.severianBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  const cinema = whole(Number(cfg.severianCinemaLevel ?? 0))
+  const basicCycle = (cfg.severianBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
   const basicTime = Math.max(0, Number((state as { basicAttackTime?: number } | undefined)?.basicAttackTime ?? 0))
   const finisher = severianBasicFinisherHits(basicTime, basicCycle)
   const liexuan = severianLiexuanCount(cfg)
@@ -167,8 +166,7 @@ function severianFlowState(
   cfg: AgentCharConfigInput['cfg'],
   state: AgentResourceInput['state'] | undefined,
 ): { flowIncome: number; shadowHuntCount: number } {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = whole(Number(record.severianCinemaLevel ?? 0))
+  const cinema = whole(Number(cfg.severianCinemaLevel ?? 0))
   const base = severianFlowIncome(cfg, state)
   const override = setting(cfg, 'severian.shadowHuntCount', 0)
   if (override > 0) {
@@ -198,9 +196,8 @@ function severianLiexuanCount(cfg: AgentCharConfigInput['cfg']): number {
 }
 
 function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.severianCinemaLevel = cinemaLevel
-  record.severianAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.severianCinemaLevel = cinemaLevel
+  cfg.severianAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   // 强化特殊技（组合技 1631008）走通用强特通道
   const special = skills?.categories?.find(c => c.id === 'special')?.moves?.find(m => m.id === '1631008')
   if (special) {
@@ -217,11 +214,11 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
     const m = all.find(mm => mm.id === moveId)
     return { moveId, actionTime: m?.actionTime ?? 0, damage: multOf(moveId) }
   }
-  record.severianCarrierMeta = [SEVERIAN_CHAIN_MOVE_ID, SEVERIAN_ULT_MOVE_ID, SEVERIAN_ENTRY_MOVE_ID].map(metaOf)
-  record.severianShadowMeta = metaOf(SEVERIAN_SHADOW_MOVE_ID)
-  record.severianLiexuanMeta = metaOf(SEVERIAN_LIEXUAN_MOVE_ID)
-  record.severianWindBladeMeta = metaOf(SEVERIAN_WIND_BLADE_MOVE_ID)
-  record.severianBasicCycle = SEVERIAN_BASIC_SEGMENT_IDS.map(metaOf)
+  cfg.severianCarrierMeta = [SEVERIAN_CHAIN_MOVE_ID, SEVERIAN_ULT_MOVE_ID, SEVERIAN_ENTRY_MOVE_ID].map(metaOf)
+  cfg.severianShadowMeta = metaOf(SEVERIAN_SHADOW_MOVE_ID)
+  cfg.severianLiexuanMeta = metaOf(SEVERIAN_LIEXUAN_MOVE_ID)
+  cfg.severianWindBladeMeta = metaOf(SEVERIAN_WIND_BLADE_MOVE_ID)
+  cfg.severianBasicCycle = SEVERIAN_BASIC_SEGMENT_IDS.map(metaOf)
   // 凭风层数 / 影画4 覆盖率：滑块 → cfg 的**唯一**通道。
   // ⚠ 历史缺陷（2026-09-20 round 48 管理员AA 分诊实测，与般岳 `rageGainCoverage`、安比
   // `c2StunCoverage` 同源）：`cycleFromCfg`（:224-225）读的是 `severianFengfengStacks` /
@@ -231,17 +228,16 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
   // 资源区块仍报 `c4DefIgnore: 16`）。
   // 注意执行行路径（`patchSeverianExecutions` :333）走的是 `setting(cfg, 'severian.fengfengStacks')`
   // **正确读法** ⇒ 同一滑块在"执行行"生效、在"资源区块"失效（两路读数不一致，用户看到的区块骗人）。
-  record.severianFengfengStacks = whole(setting(cfg, 'severian.fengfengStacks', 1))
-  record.severianC4Coverage = clamp01(setting(cfg, 'severian.c4Coverage', 1))
+  cfg.severianFengfengStacks = whole(setting(cfg, 'severian.fengfengStacks', 1))
+  cfg.severianC4Coverage = clamp01(setting(cfg, 'severian.c4Coverage', 1))
 }
 
-function cycleFromCfg(cfg: unknown): SeverianCycle {
-  const record = cfg as Record<string, unknown>
+function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'severianCinemaLevel' | 'severianAdditionalActive' | 'severianFengfengStacks' | 'severianC4Coverage'>): SeverianCycle {
   return computeSeverianCycle({
-    cinemaLevel: Number(record.severianCinemaLevel ?? 0),
-    additionalActive: record.severianAdditionalActive === true,
-    fengfengStacks: Number(record.severianFengfengStacks ?? 1),
-    c4Coverage: Number(record.severianC4Coverage ?? 1),
+    cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
+    additionalActive: cfg.severianAdditionalActive === true,
+    fengfengStacks: Number(cfg.severianFengfengStacks ?? 1),
+    c4Coverage: Number(cfg.severianC4Coverage ?? 1),
   })
 }
 
@@ -261,10 +257,9 @@ function applySeverianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): 
 
 /** 苍风影猎/烈旋执行行（真实 moveId → enrich 从倍率表回填；倍率含影画6 +900 用 override 同区加算） */
 function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = whole(Number(record.severianCinemaLevel ?? 0))
-  const shadowMeta = record.severianShadowMeta as { moveId: string; actionTime: number; damage: number } | undefined
-  const liexuanMeta = record.severianLiexuanMeta as { moveId: string; actionTime: number; damage: number } | undefined
+  const cinema = whole(Number(cfg.severianCinemaLevel ?? 0))
+  const shadowMeta = cfg.severianShadowMeta as { moveId: string; actionTime: number; damage: number } | undefined
+  const liexuanMeta = cfg.severianLiexuanMeta as { moveId: string; actionTime: number; damage: number } | undefined
 
   const shadowCount = severianShadowHuntCount(cfg, state)
   if (shadowMeta && shadowCount > 0) {
@@ -306,7 +301,7 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
   // 长按风刃段（1631009，收益高：满倍率 818.4%）：每次强特长按持续消耗能量（满充 40 点）发动；
   // 满充比例滑块 severian.windBladeChargeRatio——倍率/耗能/时间均按比例缩放（总量口径）。
   // 「能量消耗达最大时额外获得一层烁影」未建模（烁影为操作向量）。
-  const windBladeMeta = record.severianWindBladeMeta as { moveId: string; actionTime: number; damage: number } | undefined
+  const windBladeMeta = cfg.severianWindBladeMeta as { moveId: string; actionTime: number; damage: number } | undefined
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
   const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio', 1))
   if (windBladeMeta && exCount > 0 && bladeRatio > 0) {
@@ -331,11 +326,10 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
 
 /** 必做前台时间：苍风影猎 + 烈旋 + 长按风刃段（估时与 buildExecutions 同源计数） */
 function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
-  const record = cfg as unknown as Record<string, unknown>
   const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
-  const shadowMeta = record.severianShadowMeta as { actionTime: number } | undefined
-  const liexuanMeta = record.severianLiexuanMeta as { actionTime: number } | undefined
-  const windBladeMeta = record.severianWindBladeMeta as { actionTime: number } | undefined
+  const shadowMeta = cfg.severianShadowMeta as { actionTime: number } | undefined
+  const liexuanMeta = cfg.severianLiexuanMeta as { actionTime: number } | undefined
+  const windBladeMeta = cfg.severianWindBladeMeta as { actionTime: number } | undefined
   const shadowTime = shadowMeta ? severianShadowHuntCount(cfg, state) * shadowMeta.actionTime : 0
   const liexuanTime = liexuanMeta ? severianLiexuanCount(cfg) * liexuanMeta.actionTime : 0
   const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio', 1))
@@ -347,19 +341,18 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
 }
 
 function patchSeverianExecutions({ cfg, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   // CC-333：执行行与资源区块共用 computeSeverianCycle（优先读 buildCharConfig 写入的字段，单测直调未跑 buildCharConfig 时回落 setting）
   const cycle = computeSeverianCycle({
-    cinemaLevel: Number(record.severianCinemaLevel ?? 0),
-    additionalActive: record.severianAdditionalActive === true,
-    fengfengStacks: record.severianFengfengStacks !== undefined
-      ? Number(record.severianFengfengStacks)
+    cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
+    additionalActive: cfg.severianAdditionalActive === true,
+    fengfengStacks: cfg.severianFengfengStacks !== undefined
+      ? Number(cfg.severianFengfengStacks)
       : setting(cfg, 'severian.fengfengStacks', 1),
-    c4Coverage: record.severianC4Coverage !== undefined
-      ? Number(record.severianC4Coverage)
+    c4Coverage: cfg.severianC4Coverage !== undefined
+      ? Number(cfg.severianC4Coverage)
       : setting(cfg, 'severian.c4Coverage', 1),
   })
-  const carrierMeta = (record.severianCarrierMeta as { moveId: string; damage: number }[] | undefined) ?? []
+  const carrierMeta = (cfg.severianCarrierMeta as { moveId: string; damage: number }[] | undefined) ?? []
   for (const exec of executions) {
     if (!exec.moveId) continue
     // 影画1：普通攻击暴击伤害 +60%（basic 组 moveId 限定，执行级）
@@ -478,3 +471,30 @@ export const severianMechanic: AgentMechanicModule = {
 }
 
 export default severianMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 塞维林命座等级（buildCharConfig 写） */
+    severianCinemaLevel?: number
+    /** 塞维林额外能力是否生效（buildCharConfig 由 panel 写） */
+    severianAdditionalActive?: boolean
+    /** 塞维林连携/终结/入场载体招式元数据 */
+    severianCarrierMeta?: { moveId: string; actionTime: number; damage: number }[]
+    /** 塞维林影招式元数据 */
+    severianShadowMeta?: { moveId: string; actionTime: number; damage: number }
+    /** 塞维林裂旋招式元数据 */
+    severianLiexuanMeta?: { moveId: string; actionTime: number; damage: number }
+    /** 塞维林风刃招式元数据 */
+    severianWindBladeMeta?: { moveId: string; actionTime: number; damage: number }
+    /** 塞维林平A各段元数据 */
+    severianBasicCycle?: { moveId: string; actionTime: number; damage: number }[]
+    /** 塞维林锋锋层数（机制设置取整） */
+    severianFengfengStacks?: number
+    /** 塞维林影画4 覆盖率（机制设置 clamp 到 [0,1]） */
+    severianC4Coverage?: number
+  }
+}

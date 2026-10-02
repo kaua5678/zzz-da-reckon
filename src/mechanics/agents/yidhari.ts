@@ -98,17 +98,16 @@ function buildYidhariCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInp
   const props = yidhariProps()
   const cinema4Enabled = cinemaLevel >= 4
   const decibelPerHpPct = props.decibelPerHpPct * (cinema4Enabled ? 1 + props.cinema4DecibelBonusPct / 100 : 1)
-  const record = cfg as unknown as Record<string, unknown>
   const missingHpPct = Math.max(0, Math.min(1, Number(cfgMechanicSettingRaw(cfg, 'yidhari.exHealMissingHpPct') ?? 75) / 100))
   const hpBurnPctPerSecond = Math.max(0, Math.min(100, Number(cfgMechanicSettingRaw(cfg, 'yidhari.hpBurnPctPerSecond') ?? 0.15)))
   const exPerStun = Math.max(1, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'yidhari.exPerStun') ?? (cinemaLevel >= 1 ? 3 : 2))))
   const tentacleInterval = Math.max(1, Number(cfgMechanicSettingRaw(cfg, 'yidhari.tentacleInterval') ?? 13.5))
 
-  record.yidhariCinema4Enabled = cinema4Enabled
-  record.yidhariDecibelPerHpPct = decibelPerHpPct
-  record.yidhariExHealMissingHpPct = missingHpPct
-  record.yidhariHpBurnPctPerSecond = hpBurnPctPerSecond
-  record.yidhariCinemaLevel = cinemaLevel
+  cfg.yidhariCinema4Enabled = cinema4Enabled
+  cfg.yidhariDecibelPerHpPct = decibelPerHpPct
+  cfg.yidhariExHealMissingHpPct = missingHpPct
+  cfg.yidhariHpBurnPctPerSecond = hpBurnPctPerSecond
+  cfg.yidhariCinemaLevel = cinemaLevel
 
   // 蓄力循环招式（先提取，用于计算循环时长 → 烧血喧响率）
   const slam = findMoveById(skills, CHARGE_SLAM)
@@ -281,7 +280,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
 
   // 溯寒追碾 + 极寒重碾#2（追击段）：每个强特序列先打溯寒追碾（0耗能触发），再打极寒重碾
   const exCount = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
-  const cinemaLevel = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).yidhariCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.yidhariCinemaLevel ?? 0)))
   // 0命：1 溯寒追碾配 1 重碾；1命：1 溯寒追碾配 2 重碾（C1 连续释放）
   const surgeCount = Math.ceil(exCount / (cinemaLevel >= 1 ? 2 : 1))
   if (surgeCount > 0) {
@@ -309,7 +308,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   }
   // 寒冰触手（额外能力·完形叙事）：需击破/支援触发，每 13.5s 一次，只有伤害（倍率随强特技能等级，吃3/5命）；
   // 按有效战斗时间折算，无敌期间不结算（core/effectiveTime.ts）
-  const tentacleInterval = Math.max(1, Number((cfg as unknown as Record<string, unknown>).yidhariTentacleInterval ?? 13.5))
+  const tentacleInterval = Math.max(1, Number(cfg.yidhariTentacleInterval ?? 13.5))
   const tentacleCount = Math.max(0, Math.floor(effectiveBattleTime(cfg) / tentacleInterval))
   const additionalAbilityActive = (cfg.panel?.additionalAbilityActive ?? 0) > 0
   if (tentacleCount > 0 && additionalAbilityActive) {
@@ -338,13 +337,12 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
 }
 
 function buildYidhariResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const record = cfg as unknown as Record<string, unknown>
   const source = computeYidhariHpSource(
-    record,
+    cfg as unknown as Record<string, unknown>, // 导出函数收 Record（测试传字面量）——按 D2 §5「公开签名保留局部读取」
     state,
-    Boolean(record.yidhariCinema4Enabled),
-    Number(record.yidhariExHealMissingHpPct ?? 0.75),
-    Number(record.yidhariHpBurnPctPerSecond ?? 0.15),
+    Boolean(cfg.yidhariCinema4Enabled),
+    Number(cfg.yidhariExHealMissingHpPct ?? 0.75),
+    Number(cfg.yidhariHpBurnPctPerSecond ?? 0.15),
   )
   return { yidhariHpSource: source }
 }
@@ -388,13 +386,12 @@ function buildYidhariResourceSections({ result }: AgentResourceSectionsInput) {
  */
 function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, team, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const record = cfg as unknown as Record<string, unknown>
-  record.yidhariStunCount = stunCount
+  cfg.yidhariStunCount = stunCount
   // 连续强特通道：非保留模式（非轴）下不返还的强特次数上限。
   // 原式 = `n(cfg.yidhariExPerStun ?? 2) * n(cfg.yidhariStunCount ?? 0)`（消费端 resourceIncome 非轴分支），
   // 而 `yidhariStunCount` 的唯一写入方就是上面那行 ⇒ 此处用同一 stunCount 逐位复刻。
   const fin = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0
-  record.exRefundFreeCap = fin(cfg.yidhariExPerStun ?? 2) * fin(stunCount)
+  cfg.exRefundFreeCap = fin(cfg.yidhariExPerStun ?? 2) * fin(stunCount)
   if (!axis) return
   let inStunEx = 0
   let inStunEnergy = 0
@@ -418,8 +415,8 @@ function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, team, axis
     })
   }
   if (inStunEx > 0) {
-    record.exReservedCount = inStunEx
-    record.exReservedEnergyCost = inStunEnergy
+    cfg.exReservedCount = inStunEx
+    cfg.exReservedEnergyCost = inStunEnergy
   }
 }
 
@@ -574,6 +571,10 @@ export const yidhariMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 伊德海莉命座等级（buildCharConfig 写） */
+    yidhariCinemaLevel?: number
+    /** 伊德海莉每秒生命燃烧百分比（buildCharConfig 由机制设置 clamp 后写） */
+    yidhariHpBurnPctPerSecond?: number
     /** 伊德海莉 4 命：生命值降低时喧响获得提升 10% */
     yidhariCinema4Enabled?: boolean
     /** 伊德海莉强特释放时已损失生命值比例（0-1，默认0.75） */

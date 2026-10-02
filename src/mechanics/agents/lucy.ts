@@ -152,37 +152,34 @@ export function computeLucyBoarCount(frontlineTime: number, cd: number): number 
 
 function buildCharConfig({ skills, cinemaLevel, team: _team, cfg }: AgentCharConfigInput): void {
   const cinema = cinemaLevel ?? 0
-  const record = cfg as unknown as Record<string, unknown>
-  record.lucyCinemaLevel = cinema
+  cfg.lucyCinemaLevel = cinema
 
   const spin = findMove(skills, MOVE_SPIN)
-  record.lucySpinDmg = rowVal(spin, 'damage')
+  cfg.lucySpinDmg = rowVal(spin, 'damage')
 
   // 抄家伙：三段倍率之和作为单次调用总倍率
   const boarDmg =
     rowVal(findMove(skills, MOVE_BOAR_1), 'damage')
     + rowVal(findMove(skills, MOVE_BOAR_2), 'damage')
     + rowVal(findMove(skills, MOVE_BOAR_3), 'damage')
-  record.lucyBoarComboDmg = boarDmg
+  cfg.lucyBoarComboDmg = boarDmg
 }
 
 /** 「cfg + state → 加油循环」的唯一装配（CC-283：buildExecutions 与 buildResourceResult 共用）。 */
 function lucyCheerOf(cfg: AgentResourceResultInput['cfg'], state: AgentResourceResultInput['state']) {
-  const record = cfg as unknown as Record<string, unknown>
   return computeLucyCheer({
-    cinemaLevel: Math.max(0, Math.floor(Number(record.lucyCinemaLevel ?? 0))),
+    cinemaLevel: Math.max(0, Math.floor(Number(cfg.lucyCinemaLevel ?? 0))),
     exSpecialCount: state.exSpecialCount ?? 0,
     chainCountTotal: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
-    teammateExSpecialTotal: Math.max(0, Math.floor(Number(record.lucyTeammateExTotal ?? 0))),
+    teammateExSpecialTotal: Math.max(0, Math.floor(Number(cfg.lucyTeammateExTotal ?? 0))),
   })
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   const cheer = lucyCheerOf(cfg, state)
 
-  const spinDmg = Number(record.lucySpinDmg ?? 0) || 0
+  const spinDmg = Number(cfg.lucySpinDmg ?? 0) || 0
   pushExec(
     executions,
     MOVE_SPIN,
@@ -198,7 +195,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   // 抄家伙：4–6 秒调用一次，每次打出三段倍率之和；后台自动，不占前台时间
   const boarCd = lucyBoarCd(cfg)
   const boarCount = computeLucyBoarCount(state.frontlineTime ?? 0, boarCd)
-  const boarDmg = Number(record.lucyBoarComboDmg ?? 0) || 0
+  const boarDmg = Number(cfg.lucyBoarComboDmg ?? 0) || 0
   pushExec(
     executions,
     MOVE_BOAR_1,
@@ -292,11 +289,12 @@ function lucyNextRoundFeedback({ cfg, characters, teamResult }: AgentNextRoundFe
   if (lucyCh) {
     // console 取自**露西自己那份 cfg**（迁移前是 `characters.find(c => c.agentId === '1151')`，
     // 同对象；⚠ 不用 `characters[slot]`——该数组按位置压缩，槽位号 ≠ 下标）。
-    const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>)?.lucyCinemaLevel ?? 0)))
+    const cinema = Math.max(0, Math.floor(Number(cfg.lucyCinemaLevel ?? 0)))
     const spins = Math.max(0, Math.floor(lucyCh.exSpecialCount ?? 0))
       + (cinema >= 2 ? Math.max(0, Math.floor(lucyCh.chainCountTotal ?? 0)) + Math.max(0, Math.floor(lucyCh.ultimateCount ?? 0)) : 0)
       + (cinema >= 6 ? mateEx : 0)
     for (const c of characters) {
+      // 写的是**每个队友** c（不是自己的 cfg）；同 promia/vivian 的 nextRound 只读写回，见 OPEN-ITEMS「nextRound cfg 写回」
       const record = c as unknown as Record<string, unknown>
       record.lucyCheerSpinsEstimate = spins
       record.lucyTeammateExTotal = mateEx
@@ -313,7 +311,7 @@ export const lucyMechanic: AgentMechanicModule = {
       // 2026-09-15 arch 棘轮第 2 批：注入上一轮「队友强特合计（不含自己）」——影画1 回能预估用。
       // 自 `convergence.ts` 的 `merged.agentId === '1151'` 分支搬入（规则 6）。
       if (cfg && threads) {
-        ;(cfg as unknown as Record<string, unknown>).lucyTeammateExTotal = (threads.moduleFeedback?.lucyTeammateEx ?? 0)
+        cfg.lucyTeammateExTotal = (threads.moduleFeedback?.lucyTeammateEx ?? 0)
       }
       return
     }
@@ -337,21 +335,20 @@ export const lucyMechanic: AgentMechanicModule = {
     displayKey: 'lucyEnergy',
     supply: () => 0,
     perTargetAmounts: ({ ownSlot, teamSize, cfg, state }) => {
-      const rec = cfg as unknown as Record<string, unknown>
       const slots = Array.from({ length: teamSize }, (_, i) => i)
       const ults = Math.max(0, Math.floor(state.ultimateCount ?? 0))
       const per = assignLucyUltNeighborEnergy(slots, ownSlot)
       const out: Record<number, number> = {}
       for (const [slot, amount] of Object.entries(per)) out[Number(slot)] = amount * ults
       // 影画1 回旋全队回能：每个非自己槽位都得同一份
-      if (Number(rec.lucyC1Enabled ?? 0) > 0) {
-        const hint = Math.max(0, Number(rec.lucyCheerSpinsEstimate ?? 0))
-        const cinema = Math.max(0, Math.floor(Number(rec.lucyCinemaLevel ?? 0)))
+      if (Number(cfg.lucyC1Enabled ?? 0) > 0) {
+        const hint = Math.max(0, Number(cfg.lucyCheerSpinsEstimate ?? 0))
+        const cinema = Math.max(0, Math.floor(Number(cfg.lucyCinemaLevel ?? 0)))
         const spinEst = hint > 0
           ? hint
           : Math.max(0, Math.floor(state.exSpecialCount ?? 0))
             + (cinema >= 2 ? Math.max(0, Math.floor(state.chainCountTotal ?? 0)) + ults : 0)
-            + (cinema >= 6 ? Math.max(0, Number(rec.lucyTeammateExTotal ?? 0)) : 0)
+            + (cinema >= 6 ? Math.max(0, Number(cfg.lucyTeammateExTotal ?? 0)) : 0)
         // ⚠ C1 回旋回能是**全队每人**（含露西自己）——迁移前原式无条件 `lucyEnergy += spinEst*2`，
         // 与上面「邻位回能不给提供者自己」不同。第一版我照邻位习惯跳过自己 ⇒ timeGolden 红
         // （agent:1151:c6.slot0）。逐位保留原语义。
@@ -403,6 +400,14 @@ export default lucyMechanic
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 露西命座等级（buildCharConfig 写） */
+    lucyCinemaLevel?: number
+    /** 露西旋转攻击伤害倍率（buildCharConfig 从倍率表预存） */
+    lucySpinDmg?: number
+    /** 露西野猪连击伤害倍率（buildCharConfig 预存） */
+    lucyBoarComboDmg?: number
+    /** 露西加油旋转次数估计（applyTeamConfig 写给全队，见 typesHooks 说明） */
+    lucyCheerSpinsEstimate?: number
     /** 露西影画1：回旋挥击全队回能标记 */
     lucyC1Enabled?: number
     /** 露西：队友强特合计（编排注入） */
