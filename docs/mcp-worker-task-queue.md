@@ -68,6 +68,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **文档提交之后至少再跑一次 `node scripts/check-guards.mjs`**：docs 里以 `@fact ` 开头的散文会被解析成 fact 声明（CC-93）。
 - **drift 复核**：要看从原始口径日期到现在的全部改动（`git log <原始据日期>..HEAD -- <锚文件>`），不要只看上次 `·复核@` 之后的。另外，有些条目的竖线前没有空格（`·复核@2026-09-25| 验`），不要把戳打进「验」或「锚」段（CC-87）。
 - **`src/views/TeamComparePage.vue` 只剩约 38 行结构熵余量**：给该页加功能，写到 `src/composables/teamCompare*.ts`（CC-92）。
+- **反空洞下限要量「扫描面」，不要量「被扫描的问题」**（r404 CC-378）：判据 25 原先以 Record 读取数作下限，而 D2 §5 正在有意消灭这些读取，结果每推进一批就被推红一次。防「扫描器失明」的下限用扫描到的文件数这类只随仓库规模变的量。它和下一条不矛盾：下一条说的是计数**凭空**下降要追查；这里是下降原因已知、且就是重构目标。
 - **等号基线（「计数下降也报错，要求下调基线」）是有意设计，不要改成「≤」**：2026-09-14 它两次抓到扫描器盲区，计数凭空下降其实是扫描器看不见了，而不是代码变好了（`scripts/check-tokens.mjs` 头注释；`docs/mcp-working-model.md` §2.5）。
 
 ## 2b. 并行 lane 交接（§2 「每轮替换」时**不要**连本节一起删；每个 lane 一段，过时的段压成一行指针）
@@ -152,16 +153,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 403 轮（lane arena-E；无并行会话；HEAD `9d10d41a`；REQUIREMENTS.md 无新条目）：CC-377 `0eedc197` + D2 §5 `9ee2bcf8` / `9263750f` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+**第 404 轮（lane arena-E；无并行会话；HEAD `2a3c5580`；REQUIREMENTS.md 无新条目）：CC-378 `98c6904f` + D2 §5 `a2b2479b` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
 - **做到哪**：
-  - r399 下一步 2 **收口**：`getRegisteredAgentMechanics()` 的运行期派发方只有 `teammateBuffGateBlocks` 一个，已改为只问组拥有者（CC-377，见架构卡）。剩下的调用方 `teamMechanicSlots` 默认参（先按在队过滤）和 `agentMechanicView`（UI 声明查询）都属于合法的全量查询，**不用改**，也不加名单锁。`getRegisteredMechanicSettings()`（`panelPhases.ts`）遍历的是设置默认值，同样属于声明查询。
-  - D2 §5 完成 5 个模块：hugo / zhendou / pulchra / trigger / lighter。lighter 顺带删掉一条 R20 迁移遗留、零消费者的 cfg 链路（详见提交信息和 d2 表）。
-- **验证**：vue-tsc `--force` 0；zd `r403` / `r403d2` / `r403d2b` 均为 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 457 个文件 / 4207 个测试；build 通过（日志 `arenaE/*403*`）。两处锁都已反证：旧派发器下 owner 锁 4 条红 3 条；trigger 注入 Record 强转后 TYPED_CFG_MODULES 变红。
+  - D2 §5 第二批完成 5 个模块：aire / anby / ellen / roxy / claret，共 50 键。tsc 纠正了两处：`anbyBasicCycle` 实为数组；aire 的 `cycleFromCfg(cfg: unknown)` 原来靠强转硬读。细节见 d2 表和提交信息。
+  - 判据 25 的反空洞下限换了口径（CC-378，见架构卡和 §1 新增长期规则）。
+  - 提示词和客户端：`let id = 1` 改成 `let id = process.pid * 1000`，根治并行调用的 Duplicate request id。提示词已备份为 `.bak-mcp-id-20261002-1639`，§二 有记录。
+- **验证**：vue-tsc `--force` 0；zd `r404` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 457 个文件 / 4212 个测试；build 通过（日志 `arenaE/*404*`、`arenaE/d2-404/`）。两处反证都做过：claret 注入强转后锁变红；判据 25 截短扫描面后判红。
 - **开放项**：无新增。
 - **下一步（按价值排）**：
-  1. d2 §5 剩余「待做」模块（`docs/mcp-d2-cfg-fields.md` §5 表，约 25 个）。流程照执行卡走：keys → 按写入点写注释 → apply → 混源手改 → 锁 → zd。每批 4–5 个，纯机械模块和带删除的模块分开提交。
-  2. `(result as any)` / `(exec as any)` / `(state as any)` 等其他契约对象上的强转（lighter 里就有现成样本）：先 grep 计数，确认是不是同一个病（结果字段多半已有 `declare module`，强转是多余的），再决定做不做。不要为了降计数去做。
-  3. 继续找「派给全部、各自认领」的同类：CC-373 和 CC-377 是同一个病的两处。判据是派发处有没有给身份（槽位 / 组拥有者）。
+  1. d2 §5 剩余「待做」模块，约 20 个，3 键以下的小模块居多。流程照执行卡走。本轮新增的扫描脚本 `arenaE/scan2.py`（逐键统计模块内读次数，找死写）和 `arenaE/wr.py`（列出每个键的写入语句，用来定类型）很好用，值得收进 `scripts/`，或者并进 `d2-record-keys.py`。
+  2. `(result as any)` / `(exec as any)` / `(state as any)` 等其他契约对象上的强转，先 grep 计数并判断是不是同一个病。
+  3. 继续找「派给全部、各自认领」的同类（CC-373 / CC-377）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -196,6 +198,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **删死写会连锁**：删掉一个零读者写入后，tsc 的 TS6133 会指出只为它服务的变量 / 解构 / 字段，要顺着删到底（r403 lighter：写比例 → 读比例 → 写效率，三段全空转）。删前同时 grep TS、JSON、测试、文档，并确认没有代码遍历 cfg 键。
   - **常量失去引用时，先找同值字面量**：如果真实写入点写死了同一个数，就让写入点引用常量，而不是删常量（r403 `LIGHTER_C4_FRONT_EFFICIENCY` 对应 teamPanelEffects 里的 `10`）。
   - **TYPED_CFG_MODULES 锁只认 `cfg` 这个变量名**：同接口的别名（`lighter` / `ch` / `mate` 等队友 cfg）上的 `as any` 它看不到。做模块时要 grep 全部 `as any`，按接口归类后再处理。
+  - **骨架类型要靠 tsc 纠正，别手猜**：写入值是数组或对象的键（`anbyBasicCycle`），骨架会猜成 `number`。tsc 报 TS2322 时，以读者处原有的 `as {…}` 断言为准写声明，再删掉那个断言（r404）。
+  - **形参是 `cfg: unknown` 的辅助函数**：apply 脚本处理不了，tsc 会报 TS18046。按调用方传入的类型改形参（如 `AgentResourceResultInput['cfg']`）（r404 aire）。
+  - **死通道 C 类（dts 漂移）守卫**：改 `scripts/lib/*.mjs` 的导出名时，同名 `.d.mts` 必须同步改，否则 guards 会红（r404 实测抓到）。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）

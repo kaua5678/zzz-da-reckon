@@ -129,13 +129,13 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `nangong` | 6 | 0 | 0 | done 9543b79f |
 | `severian` | 6 | 0 | 0 | done 9543b79f |
 | `vivian` | 6 | 0 | 0 | done 07c17341（r397 删 nextRound 死写回） |
-| `aire` | 5 | 6 | 0 | 待做 |
-| `anby` | 5 | 5 | 0 | 待做 |
-| `ellen` | 5 | 5 | 0 | 待做 |
+| `aire` | 5 | 6 | 0 | done a2b2479b（`cycleFromCfg(cfg: unknown)` 形参改真实类型） |
+| `anby` | 5 | 5 | 0 | done a2b2479b（anbyBasicCycle 是数组，按读者断言声明；队友 mateRecord 手改） |
+| `ellen` | 5 | 5 | 0 | done a2b2479b |
 | `hugo` | 5 | 5 | 0 | done 9ee2bcf8 |
 | `lighter` | 5 | 5 | 0 | done 9263750f：另删 R20 遗留的零消费者 cfg 链路（lighterBackstageRatio → lighterC4FrontEfficiency）；`exec` / `result` / `state` 上的 `as any` 属其它接口，未动 |
-| `roxy` | 5 | 5 | 0 | 待做 |
-| `claret` | 4 | 4 | 0 | 待做 |
+| `roxy` | 5 | 5 | 0 | done a2b2479b |
+| `claret` | 4 | 4 | 0 | done a2b2479b（辅助函数 record 形参改收 cfg） |
 | `evelyn` | 4 | 4 | 0 | 待做 |
 | `miyabi` | 4 | 0 | 0 | done 8efcb274（r402 CC-376：`miyabiCinemaLevel` 2 处 Record 强转改 `cfg.miyabiCinemaLevel`；`(cfg.panel as any)?.miyabiCinema4/6` 改按命座门控；`(result as any)` 改读已声明的 `result.miyabiFrostFallSource`；进锁表） |
 | `qianxia` | 4 | 4 | 0 | 待做 |
