@@ -281,7 +281,11 @@ export function phaseStatLabel(stat: string, scope?: 'outOfCombat' | 'inCombat')
   return getStatMeta(stat).label
 }
 
-export function getGlobalBuffStatOptions(display?: Record<string, any>) {
+/**
+ * @param display 外部 `statRules.statDisplay`，按**不可信输入**处理（测试锁定：条目可能是字符串 / 缺 label / 非对象，
+ * 一律回落元数据标签）。r407 前为 `Record<string, any>`。
+ */
+export function getGlobalBuffStatOptions(display?: Readonly<Record<string, unknown>>) {
   const grouped = new Map<FormulaZone, StatMeta[]>()
   for (const item of STAT_META) {
     if (LEGACY_ENEMY_DEBUFF_STAT_IDS.includes(item.value)) continue
@@ -295,7 +299,8 @@ export function getGlobalBuffStatOptions(display?: Record<string, any>) {
     key: zone,
     children: items.map(item => {
       // LocalizedString 解析走单一事实源（@fact utils/format#localized）；空串 zhCN 不回退 en
-      const label = localized(display?.[item.value]?.label, item.label)
+      const entry = display?.[item.value]
+      const label = localized(entry && typeof entry === 'object' ? (entry as { label?: unknown }).label : undefined, item.label)
       return {
         label: `${label} (${item.value})`,
         value: item.value,

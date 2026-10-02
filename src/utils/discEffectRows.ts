@@ -12,6 +12,7 @@
  *   - gateText：属性/职业/局外属性门槛 → 引擎自动判定，不折算 uptime
  *   - unmodeled：有官方文本但无数值效果（生存向/机制向）→ 明说未建模，不留空白
  */
+import type { EffectRequirement } from '@/types/catalog'
 import { getStatMeta, isPctStat } from './statMeta'
 import { localized } from './format'
 
@@ -26,7 +27,7 @@ interface EffectLike {
   defaultStacks?: number
   condition?: string
   coverage?: unknown
-  requirement?: unknown
+  requirement?: EffectRequirement
   target?: unknown
   stackGroup?: string
   durationSeconds?: number | null
@@ -35,7 +36,7 @@ interface EffectLike {
 interface PieceLike {
   effects?: EffectLike[] | null
   condition?: string | null
-  requirement?: unknown
+  requirement?: EffectRequirement
   durationSeconds?: number | null
 }
 
@@ -91,13 +92,13 @@ const REQUIREMENT_STAT_ZH: Record<string, string> = {
   atk: '局外攻击',
 }
 
-function requirementText(raw: unknown, labels: DiscRowLabels): string {
-  if (!raw || typeof raw !== 'object') return ''
-  const req = raw as Record<string, any>
+function requirementText(req: EffectRequirement | undefined, labels: DiscRowLabels): string {
+  if (!req || typeof req !== 'object') return ''
   const parts: string[] = []
   if (req.specialty) parts.push(`限${(labels.specialty ?? String)(req.specialty)}角色`)
   if (req.attribute) parts.push(`限${(labels.attribute ?? String)(req.attribute)}属性`)
-  const oos = req.outOfCombatStat
+  // 旧字符串格式（"stat=def min=1000"）不在此展示——与 r407 前 `(string).stat === undefined` 行为一致
+  const oos = typeof req.outOfCombatStat === 'object' ? req.outOfCombatStat : undefined
   if (oos?.stat) parts.push(`${REQUIREMENT_STAT_ZH[oos.stat] ?? oos.stat}≥${oos.min ?? '?'}（自动判定）`)
   return parts.join(' · ')
 }

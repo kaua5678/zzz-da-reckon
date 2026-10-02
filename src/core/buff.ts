@@ -275,8 +275,8 @@ function extractEffects(group: BuffGroup | null | undefined): BuffEffect[] {
 
 /** 按音擎精修等级替换固定值/每层值 */
 export function applyWEngineModLevel(effect: BuffEffect, modLevel: number): BuffEffect {
-  const mod = (effect as any).modificationValues?.value
-  const modPerStack = (effect as any).modificationValues?.valuePerStack
+  const mod = effect.modificationValues?.value
+  const modPerStack = effect.modificationValues?.valuePerStack
   let next = effect
   if (mod && modLevel >= 1 && modLevel <= mod.length) {
     next = { ...next, value: mod[modLevel - 1] }
@@ -323,7 +323,7 @@ function collectAgentBuffs(agent: Agent, cinemaLevel: number): CollectedBuffs {
           id: `coreSkill_${s.stat}`,
           type: 'fixed',
           stat: s.stat,
-          mode: s.mode as any,
+          mode: s.mode,
           value: s.value,
         })
       }
@@ -498,8 +498,8 @@ function cloneEffectWithSourceValue(effect: BuffEffect, buff: TeammateBuff, sour
 function isExcludedForTarget(effect: BuffEffect, buff: TeammateBuff, targetAgent?: Agent): boolean {
   if (!targetAgent) return false
   const excluded = [
-    ...((effect as any).excludeTargetAgentIds ?? []),
-    ...((buff as any).excludeTargetAgentIds ?? []),
+    ...(effect.excludeTargetAgentIds ?? []),
+    ...(buff.excludeTargetAgentIds ?? []),
   ]
   return excluded.includes(targetAgent.id)
 }
@@ -599,7 +599,7 @@ function evalFormulaExpression(expression: string, x: number, s: number, p: numb
 }
 
 function getEffectSourceValue(effect: BuffEffect, panel?: PanelValues): number {
-  const source = (effect as any).source
+  const source = effect.source
   const panelValue = effect.sourceStat && panel ? getPanelStat(panel, effect.sourceStat) : undefined
   return Number(effect.dynamicSourceValue ?? panelValue ?? source?.defaultValue ?? effect.defaultSourceValue ?? 0)
 }

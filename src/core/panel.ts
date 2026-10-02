@@ -171,7 +171,7 @@ export function calcBasePanel(agent: Agent, wEngine: WEngine | undefined): Panel
   panel.def = s.defBase
   panel.critRate = s.critRate
   panel.critDmg = s.critDmg
-  panel.sharpCritDmg = (s as any).sharpCritDmg ?? 50
+  panel.sharpCritDmg = s.sharpCritDmg ?? 50
   panel.impact = s.impact
   panel.anomalyProficiency = s.anomalyProficiency
   panel.anomalyMastery = s.anomalyMastery

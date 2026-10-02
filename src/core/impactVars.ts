@@ -5,6 +5,25 @@
  * 用于 ImpactChart.vue 的 x 轴采样。
  */
 
+/**
+ * r407：读写影响变量所需的最小配置面（**结构类型**；Pinia configStore 天然满足，测试可传最小桩）。
+ * core 不 import `@/stores/*`，所以此前用 `configStore: any`——键拼错不报。现只声明这里真正读写的成员。
+ * 旧版单表 `enemy.resistances` 回退已删：store 的 `damageResistances` 必填且加载时迁移（stores/config.ts），回退永不触发（死通道守卫 B 类）。
+ */
+export interface ImpactVarConfig {
+  enemy: {
+    stunValue: number
+    invincibleTime?: number
+    battleTime?: number
+    stunVuln?: number
+    anomalyCoeff?: number
+    damageResistances?: Record<string, number>
+  }
+  team?: ReadonlyArray<{ basicAttackTimeWeight?: number } | undefined>
+  setEnemy(patch: { stunValue?: number; invincibleTime?: number; battleTime?: number; stunVuln?: number; anomalyCoeff?: number; damageResistances?: Record<string, number> }): void
+  setActionCount(slot: number, field: 'basicAttackTimeWeight', count: number): void
+}
+
 export interface ImpactVariable {
   /** 显示名称（下拉选单） */
   label: string
@@ -106,10 +125,10 @@ const RESISTANCE_VAR_ELEMENTS: Readonly<Record<string, string>> = {
 /**
  * 从 configStore 读取变量当前值。
  */
-export function readImpactVar(configStore: any, varId: string): number {
+export function readImpactVar(configStore: ImpactVarConfig, varId: string): number {
   const resEl = RESISTANCE_VAR_ELEMENTS[varId]
   if (resEl) {
-    return configStore.enemy.damageResistances?.[resEl] ?? configStore.enemy.resistances?.[resEl] ?? 20
+    return configStore.enemy.damageResistances?.[resEl] ?? 20
   }
   switch (varId) {
     case 'bossStunValue':
@@ -132,10 +151,10 @@ export function readImpactVar(configStore: any, varId: string): number {
 /**
  * 向 configStore 写入变量值。
  */
-export function writeImpactVar(configStore: any, varId: string, value: number): void {
+export function writeImpactVar(configStore: ImpactVarConfig, varId: string, value: number): void {
   const resEl = RESISTANCE_VAR_ELEMENTS[varId]
   if (resEl) {
-    const current = { ...(configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}) }
+    const current = { ...(configStore.enemy.damageResistances ?? {}) }
     current[resEl] = value
     configStore.setEnemy({ damageResistances: current })
     return

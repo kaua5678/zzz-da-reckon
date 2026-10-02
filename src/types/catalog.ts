@@ -37,6 +37,8 @@ export interface Level60Stats {
   energyMax?: number        // 能量上限（默认 120 点）
   flashEnergyMax?: number   // 闪能上限（默认 0，命破角色才有）
   penRatio: number
+  /** 锐暴伤害基值（仅少数角色数据带；缺省时面板取 50）。r407 前经 `(s as any)` 读取、未声明 */
+  sharpCritDmg?: number
 }
 
 export interface PanelValues {
@@ -307,6 +309,23 @@ export interface BuffEffect {
   defaultStacks?: number
   // formula 类型
   formula?: { expression?: string; valueUnit?: string }
+  /** 音擎精修 1–5 档的替换值（catalog 音擎 effect 带，`applyWEngineModLevel` 读）。r407 前 `as any` 读取、未声明 */
+  modificationValues?: { value?: number[]; valuePerStack?: number[] }
+  /** 该效果不作用于这些目标角色 id（teammate-buffs 数据带，`isExcludedForTarget` 读） */
+  excludeTargetAgentIds?: string[]
+  /** derived 来源变量声明（teammate-buffs 数据带；`defaultValue` 为来源值缺省，UI 滑块用 min/max） */
+  source?: { variable?: string; label?: LocalizedString; defaultValue?: number; min?: number; max?: number }
+}
+
+/** buff 修饰器（队友 buff / 选择拐数据带）：把目标 buff 某些效果的已解析值乘以 factor（丽娜 C1 / 莱特 C2 / 悠夜 C1 等） */
+export interface BuffModifier {
+  id: string
+  operation: 'multiplyResolvedValue'
+  factor: number
+  targetBuffIds?: string[]
+  /** 空 / 缺省 = 目标 buff 的全部效果 */
+  targetEffectIds?: string[]
+  label?: LocalizedString
 }
 
 export interface BuffGroup {
@@ -314,7 +333,7 @@ export interface BuffGroup {
   name?: LocalizedString
   description?: LocalizedString
   effects: BuffEffect[]
-  buffModifiers?: any[]
+  buffModifiers?: BuffModifier[]
   /** 与 `scope === 'outOfCombat'` 同义的导入冗余字段，引擎不读（局外判定只看 scope）。同义性由 r5DataInvariants.test.ts 钉住（R6 C3）。 */
   appliesToOutOfCombatPanel?: boolean
   condition?: string
@@ -352,6 +371,8 @@ export interface TeammateBuff extends BuffGroup {
   teammateId: string
   teammateName: LocalizedString
   conditionLabel?: LocalizedString
+  /** 整条 buff 不作用于这些目标角色 id（teammate-buffs 数据带，`isExcludedForTarget` 读） */
+  excludeTargetAgentIds?: string[]
 }
 
 export interface TeammateBuffGroup {
@@ -555,7 +576,6 @@ export interface Boss {
   defense: number
   resistance: Record<DamageElement, number>
   stunMultiplier?: number
-  [key: string]: any
 }
 
 // ============ StatRules ============

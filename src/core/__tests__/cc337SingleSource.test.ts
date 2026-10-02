@@ -195,6 +195,7 @@ describe('CC-337: 单一事实源与跨模块对账守护', () => {
       setEnemy(patch: Record<string, any>) {
         state.enemy = { ...state.enemy, ...patch }
       },
+      setActionCount() {},
     }
     expect(readImpactVar(store, 'physicalResistance')).toBe(10)
     expect(readImpactVar(store, 'fireResistance')).toBe(-20)

@@ -10,7 +10,7 @@ function makeStore() {
   ]
   return {
     team,
-    enemy: {},
+    enemy: { stunValue: 0 },
     setEnemy(patch: any) { Object.assign(this.enemy, patch) },
     setActionCount(slot: number, field: string, count: number) {
       if (field === 'basicAttackTimeWeight' && team[slot]) team[slot].basicAttackTimeWeight = Math.max(0, Math.min(99, count))

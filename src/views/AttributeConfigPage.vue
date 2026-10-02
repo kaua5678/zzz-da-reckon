@@ -376,7 +376,7 @@ function getResistance(kind: 'damage' | 'stun' | 'anomaly', element: string): nu
   return enemy.anomalyResistances?.[element] ?? enemy.resistances?.[element] ?? 0
 }
 
-const statOptions = computed(() => getGlobalBuffStatOptions(catalogStore.statRules?.statDisplay as any))
+const statOptions = computed(() => getGlobalBuffStatOptions(catalogStore.statRules?.statDisplay))
 
 const skillDmgTargetOptions = SKILL_DMG_TARGETS.map(value => ({
   value,
