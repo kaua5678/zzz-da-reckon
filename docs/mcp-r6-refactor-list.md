@@ -556,3 +556,4 @@
 | 403 | 第 403 轮（lane arena-E；无并行会话，HEAD `9d10d41a`）：r399 下一步 2 收口 + d2 §5 五个模块 | **CC-377 `0eedc197`**：teammateBuffGate 从「问全部已注册模块」改为「只问组拥有者」，契约删 groupId；**D2 §5 `9ee2bcf8`**（hugo / zhendou / pulchra / trigger）+ **`9263750f`**（lighter，并删一条零消费者 cfg 链路） | zd 0/0 ×3；全量 457 / 4207 |
 | 404 | 第 404 轮（lane arena-E；无并行会话，HEAD `2a3c5580`）：d2 §5 第二批 | **D2 §5 `a2b2479b`**（aire / anby / ellen / roxy / claret，50 键）；**CC-378 `98c6904f`**：判据 25 反空洞下限改为扫描文件数（原读取数口径被 D2 本身推红）；提示词与客户端：请求 id 按进程错开，根治并行调用的 Duplicate id | zd 0/0；全量 457 / 4212 |
 | 405 | 第 405 轮（lane arena-E；无并行会话，HEAD `e1e0a2b8`）：D2 §5 收尾 | **CC-379**：`3a1009e4` 骨架脚本增强；`767beca2` 剩余 19 模块；`f3a2363d` 消掉 yidhari / soukaku 例外 + 名单锁 → 全目录不变式。D2 §5 表清零 | zd 0/0；全量 457 / 4239 |
+| 406 | 第 406 轮（lane arena-E；无并行会话，HEAD `c79409dd`）：契约对象上的 `as any` | **CC-380**：`5afa8951` orphie 影画2 CD 上限真 bug；`908055ed` agents 目录零 any（10 个结果键 + 3 个佩洛 cfg 键 + 2 个执行行/catalog 字段补声明，remielle 死读删除）+ 全目录不变式扩到 any 类型 | zd 0/0；全量 458 / 4242 |

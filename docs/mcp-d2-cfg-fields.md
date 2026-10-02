@@ -65,6 +65,8 @@
 
 ## 5. D2 §5：模块内 `Record` 强转 → 有类型的 `cfg.<键>`（r405 完成）
 
+> **r406 后续（CC-380）**：同一个病的其余入口（结果 / 执行行字段的 `as any`、钩子参数 `: any`、`typeof x & Record` 强转）一并清掉，全目录不变式扩到「agents 零 any 类型」。详见架构卡 CC-380。
+
 **状态（r405）**：下表全部 done，两个「不进锁表」例外（yidhari / soukaku）也已消掉。锁由 `TYPED_CFG_MODULES` 名单升级为**全目录不变式**（`src/types/__tests__/privateCfgFields.test.ts`：`src/mechanics/agents/*.ts` 全部文件不得出现 `as unknown as Record<string, unknown>` / `<…cfg/Cfg> as any` / `<…cfg/Cfg> as Record<string, unknown>`），**新角色模块不需要登记，写了就红**。公开函数要收任意字面量（测试传 `setting:` 动态键）时，用 `cfg as Partial<CharacterOperationConfig>` 这种**带类型**的断言读静态键（soukaku 先例）。
 剩余同类问题不在本节：其他契约对象（result / state / exec 等）上的 `as any`，见 `docs/mcp-worker-task-queue.md` §2 的下一步。
 

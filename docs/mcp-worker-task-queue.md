@@ -153,18 +153,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 405 轮（lane arena-E；无并行会话；HEAD `e1e0a2b8`；REQUIREMENTS.md 无新条目）：CC-379 `3a1009e4` + `767beca2` + `f3a2363d` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：**D2 §5 完成**（见 `docs/mcp-d2-cfg-fields.md` §5 状态段和架构卡 CC-379）。
-  - 先增强了 `scripts/d2-record-keys.py`：骨架直接带写入点、读次数和 DEAD 标记，替代 r403/r404 临时用的 `arenaE/scan2.py` / `wr.py`，那两个已不需要。
-  - 然后一次做完剩下的 19 个模块，消掉 yidhari / soukaku 两个例外。
-  - 最后把名单锁升级为全目录不变式：新角色模块不用登记，执行卡第 6 步作废。
-- **验证**：vue-tsc `--force` 0；zd `r405` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 457 个文件 / 4239 个测试（名单锁 35 条换成不变式 62 条）；build 通过（日志 `arenaE/r405/`）。锁的四个反证都做过。
-- **开放项**：OPEN-ITEMS 的 D2 已追加 r403–r405 进度。D2 的「数据模型」部分（立项原文的需用户裁决项）不变。
+**第 406 轮（lane arena-E；无并行会话；HEAD `c79409dd`；REQUIREMENTS.md 无新条目）：CC-380 `5afa8951` + `908055ed` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：**`src/mechanics/agents/` 零 `any` 类型**（架构卡 CC-380）。r405 交接的判断成立：result / state / exec 上的 `as any` 和 D2 §5 是同一个病（模块私有字段没声明，读写两头无类型）。
+  - 结果字段**并没有**像交接猜的那样「已有 declare」：10 个结果键全都没声明，结果钩子也没标返回类型，所以写端的对象字面量也不受检查。现按 claret 先例补齐。
+  - 盘点时发现锁的另一个盲区：`: any` **参数标注**（佩洛 7 个钩子）和 `typeof x & Record<string, unknown>`。前者掩盖了 3 个从未声明的 cfg 键。
+  - 两个行为发现：orphie 影画2 喧响上限恒按 180s（真 bug，已修，单独提交 `5afa8951` 便于回滚）；remielle `row.luminizeLevelValues` 死读（删）。
+  - 锁：`privateCfgFields.test.ts` 新增 `AGENT_ANY_TYPE`，和 D2 正则合并成一个逐文件不变式。
+- **验证**：vue-tsc `--force` 0；zd `r406a` 0/0（orphie 修正在夹具上不可观测：追加攻击次数 < 上限）；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 458 个文件 / 4242 个测试（+orphieC2DecibelCap 3 条）；build 通过（日志 `arenaE/r406/`）。锁的 5 条正则逐一反证均红；orphie 单测换回旧码三例皆 2925。
+- **回滚点**：`git revert 908055ed 5afa8951`（按此顺序）。`5afa8951` 只含 orphie.ts 与两个测试文件；若只想撤 orphie 行为而单独 revert 它，旧码的 `(state as any)` 会让 `908055ed` 的新锁变红，需改用 `effectiveCombatTime` 以外的带类型写法。
+- **开放项**：OPEN-ITEMS 的 D2 追加 r406。`idempotentCfgWrite.test.ts` 第 84 行 grace 夹具里的 `combatTime: 180` 是惰性字段（grace 不读 state.combatTime），无害，未动。
 - **下一步（按价值排）**：
-  1. **其他契约对象上的 `as any`**：agents 模块里还剩 30 处，分布在 13 个文件。按对象分是 result 10 / state 6 / row 3 / exec 3 / existing 2 / c 2 / p 1。计数命令：`cd src/mechanics/agents && grep -ohE "\(?\b\w+\)? as any\b" *.ts | sort | uniq -c`。
-     - 先逐类判断是不是同一个病：结果字段多半已有 `declare module`（D2 r390 推广到 CharacterResourceResult），那强转就是多余的，删掉后 tsc 能过就说明是。
-     - 是同一个病就照 D2 §5 的做法清掉，再把 `privateCfgFields.test.ts` 的不变式扩到 `\b(result|state|exec)\)?\s+as\s+any\b`。
-     - 不是就记下理由。不要为降计数去做。
+  1. **计算核心零 any**：非测试源码中 core 9 处、types 2 处（specs / utils / data 已为 0）。先逐处判断是否同病（未声明字段 / 参数标注），能清则清，然后把 `AGENT_ANY_TYPE` 的扫描面从 agents 扩到 `core/` `types/` `specs/` `utils/`（全仓不变式，不列名单）。计数命令：`cd src && grep -rPn "\bas\s+any\b|:\s*any\b|<any\b|\bany\[\]" core types --include=*.ts | grep -v __tests__`。UI 层（composables 23 / components 18 / stores 9）价值较低，排在后面，单独立项。
   2. 继续找「派给全部、各自认领」的同类（CC-373 / CC-377）。判据是派发处有没有给身份。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
@@ -205,6 +204,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **死通道 C 类（dts 漂移）守卫**：改 `scripts/lib/*.mjs` 的导出名时，同名 `.d.mts` 必须同步改，否则 guards 会红（r404 实测抓到）。
   - **源码锁反证时，注入的代码不能在模块加载时求值**：vitest 用 esbuild 转译，`declare const x` 会被删掉，`(x as any).k` 加载时就抛 ReferenceError，整个测试文件变成「no tests」。这看起来也不是绿，但并不能证明是正则抓到的。正确做法是把注入写进一个不调用的函数，名字当形参：`export function __p(fooCfg: object) { return (fooCfg as any).x }`（r405）。
   - **收 `Record` 形参的导出函数，先看测试怎么传**：传 `as never` 或 `any` 的，形参直接改成真实类型或 `Partial<…>`，不需要登记例外。只有传带动态键的新鲜字面量（`{ 'setting:x': 1 }`）时，才在函数内用带类型的断言读静态键（r405 yidhari / soukaku）。
+  - **`: any` 参数标注和 `as any` 等价，但只锁强转的正则看不到它**：`mod.hook = ({ cfg }: any) =>` 让整个 cfg 失去类型。这种钩子赋值去掉标注即可拿到上下文类型，tsc 会把背后未声明的键全报出来（r406 佩洛：3 个）。写锁时连同 `<any>` / `any[]` / `& Record<string, unknown>` 一起列。
+  - **结果钩子不标返回类型，写端同样无类型**：函数先推断出字面量类型，再赋给模块槽位，不触发多余属性检查，拼错键不报。统一标 `Partial<CharacterResourceResult>`（claret 先例）。
+  - **修掉被 any 掩盖的读法后，测试夹具可能沿用同一个不存在的字段**（r406 `state: { combatTime: 180 }`）：改夹具为真实字段，断言不动；不要为了让旧夹具通过去保留兜底。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
