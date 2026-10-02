@@ -309,6 +309,12 @@ export interface BuffEffect {
   defaultStacks?: number
   // formula 类型
   formula?: { expression?: string; valueUnit?: string }
+  /** stacked 类型的叠层显示名（catalog 数据带，如「青溟同行层数」；展示层读，引擎不读） */
+  stackLabel?: LocalizedString
+  /** 同 stackGroup 的效果共享叠层状态（catalog 数据带，如 qingming_companion；覆盖率滑块联动用，引擎仍按 effect.id 读） */
+  stackGroup?: string
+  /** 效果自带持续时间秒数（`scripts/patch-disc-sets.mjs` 写在效果级；CC-111 据此给 fixed 效果覆盖率滑块） */
+  durationSeconds?: number
   /** 音擎精修 1–5 档的替换值（catalog 音擎 effect 带，`applyWEngineModLevel` 读）。r407 前 `as any` 读取、未声明 */
   modificationValues?: { value?: number[]; valuePerStack?: number[] }
   /** 该效果不作用于这些目标角色 id（teammate-buffs 数据带，`isExcludedForTarget` 读） */
@@ -337,6 +343,9 @@ export interface BuffGroup {
   /** 与 `scope === 'outOfCombat'` 同义的导入冗余字段，引擎不读（局外判定只看 scope）。同义性由 r5DataInvariants.test.ts 钉住（R6 C3）。 */
   appliesToOutOfCombatPanel?: boolean
   condition?: string
+  /** 组级持续时间秒数。**防御性字段**：导入脚本当前只在效果级写 `durationSeconds`（见 `BuffEffect`），
+   *  组级真被写上时 `TeamConfigPage` 的覆盖率滑块自动生效。 */
+  durationSeconds?: number
   /**
    * 数值**单源化**标记：true = **不要**把本条的 effects 放进 `collectInCombatTeamBuffs`
    * （数值由角色模块 / helpers 单独接入），防「同一效果算两遍」。

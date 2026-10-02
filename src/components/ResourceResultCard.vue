@@ -4,7 +4,7 @@
       <div class="card-header">
         <span class="char-name">{{ agentName }}</span>
         <n-tag v-if="result.isFlashUser" size="tiny" type="warning" round>命破</n-tag>
-        <n-tag v-if="specialtyInfo.label" size="tiny" :type="specialtyInfo.type as any" round>{{ specialtyInfo.label }}</n-tag>
+        <n-tag v-if="specialtyInfo.label" size="tiny" :type="specialtyInfo.type" round>{{ specialtyInfo.label }}</n-tag>
       </div>
     </template>
 
@@ -304,7 +304,7 @@
 
 <script setup lang="ts">
 import { computed, h } from 'vue'
-import { NCard, NTag, NDataTable } from 'naive-ui'
+import { NCard, NTag, NDataTable, type TagProps } from 'naive-ui'
 import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { damageElementLabel as elementLabel, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
@@ -325,7 +325,7 @@ const props = defineProps<{
 }>()
 
 // 职业标签：文案走 SPECIALTY_LABEL（CC-215：原表缺命破 / 锋御，这 6 个角色标签为空）；颜色是本卡自己的展示选择，未列出的职业用 default
-const SPECIALTY_TAG_TYPE: Record<string, string> = {
+const SPECIALTY_TAG_TYPE: Record<string, NonNullable<TagProps['type']>> = {
   attack: 'error',
   stun: 'warning',
   anomaly: 'info',
@@ -437,7 +437,7 @@ const actionOperationRows = computed<ActionOperationRow[]>(() => {
   }
 
   // 柏妮思的搅拌式/流火招式按倍率表动作展示动作时长（不依赖通用分类）
-  const burniceSource = (props.result as any).burniceMechanicSource
+  const burniceSource = props.result.burniceMechanicSource
   if (burniceSource) {
     const stirringTime = (burniceSource.stirringCount ?? 0) * (burniceSource.stirringActionTimeSeconds ?? 0)
     if (stirringTime > 0) {
@@ -599,7 +599,7 @@ function executionValue(row: any, key: string, totalKey?: string): string {
 /** 次数列：Sweeping Cyclone #1 附加风蚀替换广域次数（微域升级广域） */
 function renderCount(row: any): any {
   const base = row.count ?? 0
-  const corrosion = props.anomalyPoolResult?.corrosionSource as any
+  const corrosion = props.anomalyPoolResult?.corrosionSource
   const cc = agentResultCardCorrosion(props.result.agentId) // CC-66
   if (cc && row.moveId === cc.broadCycloneMoveId && corrosion?.broadCycloneCount) {
     const extra = corrosion.broadCycloneCount * 10

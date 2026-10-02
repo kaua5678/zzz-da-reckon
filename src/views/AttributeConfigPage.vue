@@ -396,8 +396,8 @@ const filteredGroups = computed(() => {
   return teammateBuffGroups.value
     .map(group => {
       const matchedBuffs = group.buffs.filter(buff => {
-        const name = localized((buff as any).name, (buff as any).sourceLabel?.zhCN ?? '')
-        const desc = localized((buff as any).description)
+        const name = localized(buff.name, buff.sourceLabel?.zhCN ?? '')
+        const desc = localized(buff.description)
         const groupName = localized(group.name)
         return name.toLowerCase().includes(search) ||
           desc.toLowerCase().includes(search) ||
@@ -416,26 +416,24 @@ function groupName(group: TeammateBuffGroup): string {
 
 // 辅助：获取 buff 显示名
 function buffName(buff: TeammateBuff): string {
-  const b = buff as any
-  if (b.name?.zhCN) return b.name.zhCN
-  if (b.name?.en) return b.name.en
-  if (b.sourceLabel?.zhCN) return b.sourceLabel.zhCN
-  if (b.sourceLabel?.en) return b.sourceLabel.en
+  if (buff.name?.zhCN) return buff.name.zhCN
+  if (buff.name?.en) return buff.name.en
+  if (buff.sourceLabel?.zhCN) return buff.sourceLabel.zhCN
+  if (buff.sourceLabel?.en) return buff.sourceLabel.en
   return buff.id
 }
 
 // 辅助：获取 buff 描述
 function buffDesc(buff: TeammateBuff): string {
-  const b = buff as any
-  if (b.description?.zhCN) return b.description.zhCN
-  if (b.description?.en) return b.description.en
-  if (b.conditionLabel?.zhCN) return b.conditionLabel.zhCN
-  if (b.conditionLabel?.en) return b.conditionLabel.en
+  if (buff.description?.zhCN) return buff.description.zhCN
+  if (buff.description?.en) return buff.description.en
+  if (buff.conditionLabel?.zhCN) return buff.conditionLabel.zhCN
+  if (buff.conditionLabel?.en) return buff.conditionLabel.en
   return ''
 }
 
 function formulaDefaultValue(effect: BuffEffect): string {
-  const source = (effect as any).source
+  const source = effect.source
   const expression = effect.formula?.expression ?? '公式'
   const sourceLabel = localized(source?.label, 'x')
   const defaultValue = source?.defaultValue
@@ -449,7 +447,7 @@ function effectLabel(effect: BuffEffect): string {
   if (effect.type === 'fixed') {
     valueStr = formatStatValue(effect.stat, effect.value, effect.mode)
   } else if (effect.type === 'derived') {
-    const source = localized((effect as any).sourceLabel, '某属性')
+    const source = localized(effect.sourceLabel, '某属性')
     const ratio = effect.ratio ?? 0
     const cap = effect.cap
     valueStr = `${source}的${ratio}%` + (cap ? ` (上限${cap})` : '')

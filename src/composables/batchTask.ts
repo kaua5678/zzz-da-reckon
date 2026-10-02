@@ -1,50 +1,26 @@
 import { getCurrentScope, onScopeDispose } from 'vue'
 
 /**
- * 批任务的协作式取消；只在独立场景上运行，不能替代数据隔离。
+ * 批任务的协作式取消与结果归属；只在独立场景上运行，不能替代数据隔离。
  *
  * 取消通道只有一条：`signal`（AbortSignal，由 `createBatchOwner#start` 发车、`cancel` 吊销计算）。
  * S4（CC-343）起分析器与页面统一走它，早期的 `shouldAbort: () => boolean` 页面回调已废除。
+ *
+ * **中止语义只有一种：优雅式**——分析器在循环头 `isBatchAborted` 后 `break`，带上已算部分返回，
+ * 发布还是丢弃由页面决定（曲线 / 海选「保留已算部分」）。第 421 轮删掉了从未接线的抛错式
+ * `createBatchScheduler` / `throwIfBatchAborted`（时间片让步 + 抛错），依据见
+ * `docs/mcp-analyzer-scenario-isolation.md` §7：生产零调用方；Web Worker 里也不必向主线程让步；
+ * 两种取消惯用法共处一个 100 行模块，正是第 374 轮差点接错线的诱因。
  */
 export interface BatchControl {
   signal?: AbortSignal
 }
 
-/** 非抛出的取消探测：已取消返回 true。「保留已算部分」式中止与抛错式中止共用它。 */
+/** 非抛出的取消探测：已取消返回 true。之后由调用方决定发布已算部分还是丢弃。 */
 export function isBatchAborted(control: BatchControl = {}): boolean {
   return control.signal?.aborted === true
 }
 
-export function throwIfBatchAborted(control: BatchControl): void {
-  if (isBatchAborted(control)) {
-    throw new DOMException('计算已取消', 'AbortError')
-  }
-}
-
-interface SchedulerPlatform {
-  timeSliceMs?: number
-  now?: () => number
-  yieldToMain?: () => Promise<void>
-}
-
-/**
- * 首次调用先让出主线程，之后按时间预算让步；调用方在求值点之间 await checkpoint()。
- * 单次同步求值不可抢占：预算限制连续工作，不是单次求值耗时的承诺。
- */
-export function createBatchScheduler(control: BatchControl = {}, platform: SchedulerPlatform = {}) {
-  const now = platform.now ?? (() => performance.now())
-  const yieldToMain = platform.yieldToMain ?? (() => new Promise<void>(resolve => setTimeout(resolve, 0)))
-  const timeSliceMs = platform.timeSliceMs ?? 8
-  if (!Number.isFinite(timeSliceMs) || timeSliceMs < 0) throw new RangeError('timeSliceMs must be finite and non-negative')
-  let deadline = -Infinity
-  return async function checkpoint(): Promise<void> {
-    throwIfBatchAborted(control)
-    if (now() < deadline) return
-    await yieldToMain()
-    throwIfBatchAborted(control)
-    deadline = now() + timeSliceMs
-  }
-}
 
 export interface BatchRun {
   readonly signal: AbortSignal

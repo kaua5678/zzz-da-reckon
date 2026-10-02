@@ -196,7 +196,7 @@ function effectValue(raw: BuffEffect, modLevel?: number): number | string {
   const effect = effectAtModLevel(raw, modLevel)
   if (effect.type === 'fixed') return effect.value
   if (effect.type === 'derived') {
-    const source = localized((effect as any).sourceLabel) || effect.basis || '来源属性'
+    const source = localized(effect.sourceLabel) || effect.basis || '来源属性'
     return `${source} × ${effect.ratio ?? 0}%${effect.cap ? `，上限 ${effect.cap}` : ''}`
   }
   if (effect.type === 'stacked') {
@@ -272,17 +272,17 @@ function addDriveRows(rows: DebugRow[]) {
     if (!stat) continue
     rows.push(row('驱动盘', `${slot}号位主词条`, stat, maxMain[stat] ?? 0, getStatMeta(stat).mode, 'S级驱动盘满级主词条，属于局外属性', phaseStatLabel(stat, 'outOfCombat')))
   }
-  const subStep = catalogStore.statRules?.driveDisc.sRankSubStatBaseStep ?? {}
   for (const [stat, count] of Object.entries(char.driveDisc.subStatAllocation ?? {})) {
     if (!count) continue
-    rows.push(row('驱动盘', `副词条 ${count} 步`, stat, (subStep as any)[stat] * count || 0, getStatMeta(stat).mode, `副词条步长 × 步数：${(subStep as any)[stat] ?? 0} × ${count}；驱动盘副词条属于局外属性`, phaseStatLabel(stat, 'outOfCombat')))
+    const step = catalogStore.statRules?.driveDisc.sRankSubStatBaseStep?.[stat] ?? 0
+    rows.push(row('驱动盘', `副词条 ${count} 步`, stat, step * count || 0, getStatMeta(stat).mode, `副词条步长 × 步数：${step} × ${count}；驱动盘副词条属于局外属性`, phaseStatLabel(stat, 'outOfCombat')))
   }
   const four = char.driveDisc.fourPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.fourPieceSetId) : undefined
   const two = char.driveDisc.twoPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.twoPieceSetId) : undefined
-  addEffectRows(rows, '驱动盘', `${localized(four?.name)} 2件套`, four?.twoPiece as any)
+  addEffectRows(rows, '驱动盘', `${localized(four?.name)} 2件套`, four?.twoPiece ? { scope: 'outOfCombat', effects: four.twoPiece.effects } : undefined)
   addEffectRows(rows, '驱动盘', `${localized(four?.name)} 4件套自身`, four?.fourPiece?.selfBuff)
   addEffectRows(rows, '驱动盘', `${localized(four?.name)} 4件套团队`, four?.fourPiece?.teamBuff)
-  if (two && two.id !== four?.id) addEffectRows(rows, '驱动盘', `${localized(two.name)} 2件套`, two.twoPiece as any)
+  if (two && two.id !== four?.id) addEffectRows(rows, '驱动盘', `${localized(two.name)} 2件套`, { scope: 'outOfCombat', effects: two.twoPiece.effects })
 }
 
 function addTeamBuffRows(rows: DebugRow[]) {

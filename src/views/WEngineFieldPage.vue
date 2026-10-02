@@ -151,14 +151,14 @@ function phaseStatId(stat: string, scope?: 'outOfCombat' | 'inCombat'): string {
   return map[stat]?.[phase] ?? stat
 }
 function formatAdvancedStat(stat: WEngineAdvancedStat): string { return stat.mode === 'pct' || stat.mode === 'decimal' ? `${stat.value}%` : String(stat.value) }
-function modificationSeries(effect: BuffEffect, key: 'value' | 'valuePerStack'): number[] | null { const raw = (effect as any).modificationValues?.[key]; return Array.isArray(raw) ? raw : null }
+function modificationSeries(effect: BuffEffect, key: 'value' | 'valuePerStack'): number[] | null { const raw = effect.modificationValues?.[key]; return Array.isArray(raw) ? raw : null }
 function valueText(effect: BuffEffect): string {
   const values = modificationSeries(effect, 'value')
   const perStackValues = modificationSeries(effect, 'valuePerStack')
   if (perStackValues) return perStackValues.map((v, i) => `${i + 1}精:${v}×${effect.defaultStacks ?? effect.maxStacks ?? 1}层`).join(' / ')
   if (values) return values.map((v, i) => `${i + 1}精:${v}`).join(' / ')
   if (effect.type === 'stacked') return `${effect.valuePerStack ?? effect.value} × ${effect.defaultStacks ?? effect.maxStacks ?? 1}层`
-  if (effect.type === 'derived') return `${localized((effect as any).sourceLabel) || effect.basis || effect.sourceStat || '来源属性'} × ${effect.ratio ?? 0}%${effect.cap ? `，上限 ${effect.cap}` : ''}`
+  if (effect.type === 'derived') return `${localized(effect.sourceLabel) || effect.basis || effect.sourceStat || '来源属性'} × ${effect.ratio ?? 0}%${effect.cap ? `，上限 ${effect.cap}` : ''}`
   if (effect.type === 'formula') return effect.formula?.expression ?? '公式'
   return `${effect.value ?? 0}`
 }
@@ -167,7 +167,7 @@ function pctText(v: number | undefined): string {
 }
 function stackCoverageText(effect: BuffEffect): string {
   const parts: string[] = []
-  if (effect.type === 'stacked') parts.push(`${localized((effect as any).stackLabel) || '叠层'} ${effect.defaultStacks ?? effect.maxStacks ?? 1}/${effect.maxStacks ?? effect.defaultStacks ?? 1}`)
+  if (effect.type === 'stacked') parts.push(`${localized(effect.stackLabel) || '叠层'} ${effect.defaultStacks ?? effect.maxStacks ?? 1}/${effect.maxStacks ?? effect.defaultStacks ?? 1}`)
   // coverage 在数据里是 0..1 的比例（R5 D20），展示成百分比
   if (effect.coverage) parts.push(`覆盖 ${pctText(effect.coverage.default)}%（${pctText(effect.coverage.min)}-${pctText(effect.coverage.max)}%，步进${pctText(effect.coverage.step)}%）`)
   else if (effect.type === 'stacked') parts.push('覆盖默认 100%')

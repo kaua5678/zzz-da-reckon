@@ -1160,7 +1160,7 @@ function effectValueText(raw: BuffEffect): string {
   // CC-210：精炼取值走引擎同一函数 applyWEngineModLevel（经 composable），不再自己索引 modificationValues
   const effect = effectAtModLevel(raw, selectedChar.value.wEngineModLevel)
   if (effect.type === 'stacked') return `${effect.valuePerStack ?? effect.value} × ${effect.defaultStacks ?? effect.maxStacks ?? 1}层`
-  if (effect.type === 'derived') return `${localized((effect as any).sourceLabel) || effect.basis || effect.sourceStat || '来源'} × ${effect.ratio ?? 0}%${effect.cap ? `，上限 ${effect.cap}` : ''}`
+  if (effect.type === 'derived') return `${localized(effect.sourceLabel) || effect.basis || effect.sourceStat || '来源'} × ${effect.ratio ?? 0}%${effect.cap ? `，上限 ${effect.cap}` : ''}`
   if (effect.type === 'formula') return effect.formula?.expression ?? '公式'
   return `${effect.value ?? 0}`
 }
@@ -1168,7 +1168,7 @@ function effectValueText(raw: BuffEffect): string {
 function collectWEngineGroupEffects(group: BuffGroup | null | undefined, source: string) {
   return (group?.effects ?? []).map(effect => {
     const stackText = effect.type === 'stacked'
-      ? `${localized((effect as any).stackLabel) || '叠层'} ${effect.defaultStacks ?? effect.maxStacks ?? 1}/${effect.maxStacks ?? effect.defaultStacks ?? 1}`
+      ? `${localized(effect.stackLabel) || '叠层'} ${effect.defaultStacks ?? effect.maxStacks ?? 1}/${effect.maxStacks ?? effect.defaultStacks ?? 1}`
       : ''
     return {
       ...effect,
@@ -1178,7 +1178,7 @@ function collectWEngineGroupEffects(group: BuffGroup | null | undefined, source:
       stackText,
       // CC-111（R5 D7）：带持续时间（效果级或组级）的 fixed 效果也给滑块（引擎 applyEffect 对 fixed 同样乘覆盖率；默认 100% 不变）
       hasCoverage: effect.type === 'stacked' || !!effect.coverage
-        || (effect as any).durationSeconds != null || (group as any)?.durationSeconds != null,
+        || effect.durationSeconds != null || group?.durationSeconds != null,
     }
   })
 }
@@ -1193,7 +1193,7 @@ const wEngineLogicEffects = computed(() => {
 
 // CC-111（R5 D3）：同 stackGroup 的效果共享叠层状态 ⇒ 覆盖率滑块联动（引擎仍按 effect.id 读）。
 function setWEngineCoverageLinked(effectId: string, v: number) {
-  const members = wEngineLogicEffects.value.filter(e => !!e.id).map(e => ({ id: e.id as string, stackGroup: (e as any).stackGroup }))
+  const members = wEngineLogicEffects.value.filter(e => !!e.id).map(e => ({ id: e.id as string, stackGroup: e.stackGroup }))
   for (const id of stackGroupPeerIds(members, effectId)) configStore.setWEngineEffectCoverage(id, v)
 }
 function setDiscCoverageLinked(setId: string, key: string, v: number) {
@@ -1223,7 +1223,7 @@ function getSubStatCount(stat: string): number {
 function getSubStatValue(stat: string): string {
   const count = getSubStatCount(stat)
   if (!count) return '-'
-  const step = (catalogStore.statRules?.driveDisc?.sRankSubStatBaseStep as any)?.[stat] ?? 0
+  const step = catalogStore.statRules?.driveDisc?.sRankSubStatBaseStep?.[stat] ?? 0
   if (!step) return '-'
   const value = step * count // count即升级步数，不再乘2.25
   return formatStatValue(stat, value, isPctStat(stat) ? 'pct' : 'flat')

@@ -1,66 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { effectScope } from 'vue'
 import {
-  createBatchScheduler,
   isBatchAborted,
-  throwIfBatchAborted,
   useBatchOwner,
 } from '@/composables/batchTask'
 
-describe('批任务调度', () => {
-  it('首次求值前让出宏任务，使已经排队的取消生效', async () => {
-    const controller = new AbortController()
-    let timerRan = false
-    const timer = setTimeout(() => { timerRan = true; controller.abort() }, 0)
-    const checkpoint = createBatchScheduler({ signal: controller.signal })
-    try {
-      await expect(checkpoint()).rejects.toMatchObject({ name: 'AbortError' })
-      expect(timerRan).toBe(true)
-    } finally {
-      clearTimeout(timer)
-    }
-  })
-
-  it('按时间预算合并轻量步骤，并在预算耗尽后再次让出', async () => {
-    let now = 0
-    let yields = 0
-    const checkpoint = createBatchScheduler({}, {
-      timeSliceMs: 10,
-      now: () => now,
-      yieldToMain: async () => { yields++ },
-    })
-    await checkpoint()
-    expect(yields).toBe(1)
-    now = 9
-    await checkpoint()
-    expect(yields).toBe(1)
-    now = 10
-    await checkpoint()
-    expect(yields).toBe(2)
-  })
-
-  it('取消在预算内也会立即检查', async () => {
-    const controller = new AbortController()
-    let yields = 0
-    const checkpoint = createBatchScheduler({ signal: controller.signal }, {
-      now: () => 0,
-      yieldToMain: async () => { yields++ },
-    })
-    await checkpoint()
-    controller.abort()
-    await expect(checkpoint()).rejects.toMatchObject({ name: 'AbortError' })
-    expect(yields).toBe(1)
-  })
-
-  it('isBatchAborted 与 throwIfBatchAborted 同口径；无 control 也不炸', () => {
+describe('批任务取消探测', () => {
+  it('isBatchAborted：无 control / 空 control 不炸，取消后为 true', () => {
     expect(isBatchAborted()).toBe(false)
     expect(isBatchAborted({})).toBe(false)
     const controller = new AbortController()
     expect(isBatchAborted({ signal: controller.signal })).toBe(false)
     controller.abort()
     expect(isBatchAborted({ signal: controller.signal })).toBe(true)
-    expect(() => throwIfBatchAborted({ signal: controller.signal })).toThrow('计算已取消')
-    expect(() => throwIfBatchAborted({})).not.toThrow()
   })
 })
 
