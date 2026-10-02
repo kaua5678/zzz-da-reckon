@@ -347,6 +347,9 @@ export const lycaonMechanic: AgentMechanicModule = {
         energyRecovery: 0,
         totalEnergyRecovery: 0,
         anomalyBuildUp: 0,
+        // CC-392 D1：次数 = 队友闪反次数之和。理想口径是跟随队友闪反的轴内占比，但队友不固定、attachedEvents 是静态表
+        // 登记不了 ⇒ 近似按失衡时间占比（autoSplitByStun）。若日后 attachedEvents 支持按类别 / 跨槽父动作，改登记并删此标记。
+        autoSplitByStun: true,
         skillTableNote: `围猎后台跟随闪反 × ${backstageDodgeCount} 次（队伍其他角色闪反次数之和）；仅伤害+失衡值（吃核心被动闪反失衡+80%）`,
         timeBucket: 'backstage',
       })

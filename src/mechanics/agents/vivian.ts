@@ -454,6 +454,9 @@ function vivianNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeed
 export const vivianMechanic: AgentMechanicModule = {
   id: 'agent:vivian',
   agentIds: [VIVIAN_ID],
+  // CC-392 D1：悬落在自身强特(1331010) / 终结(1331014) / 支援突击(1331019) / 连携(1331013) 后各衔接一次
+  // （xuanluoCount = 四者次数之和）⇒ 易伤跟随四个父动作合计的轴内占比（attachedInAxisMap 多父合计）
+  attachedEvents: { '1331010': ['1331006'], '1331014': ['1331006'], '1331019': ['1331006'], '1331013': ['1331006'] },
   // CC-64：新上阵默认不分配平A时间（后台/合轴快切，基本不平A；原 stores/config.ts 写死 1331）
   defaultBasicAttackTimeWeight: 0,
   name: '薇薇安·命运悲歌',

@@ -20,10 +20,6 @@ const tick = () => new Promise(r => setTimeout(r, 40))
 const UNCLASSIFIED_OK: Record<string, string> = {
   '1331:1331010': '(c) 薇薇安强化特殊技全部合轴：玩家主动打，按放置',
   '1301:1301009': '(c) 奥菲丝席德队前台小心脚下：前台主动施放，与必做行同 moveId，按放置',
-  '1331:1331006': '推迟：悬落父动作 = 自身 E / 终结 / 支援突击 / 连携（按类别合成次数），attachedEvents 需扩「类别父动作 + 多父合计」',
-  '1351:1351006': '推迟：噬爪父动作 = 强特 / 支援突击 / 连携 / 终结（猎步进入），同上',
-  '1351:1351007': '推迟：同 1351006',
-  '1141:1141019': '推迟：后台闪避反击跟随队友闪反（跨角色类别父动作），同上',
 }
 
 async function runAxis(team: string[], actions: StunAxisAction[], cinemaLevel = 0) {
@@ -102,6 +98,21 @@ describe('CC-391 D1 后台行在失衡轴模式下的易伤归类', () => {
     }
     const bare = await runAxis(team, basicOnly())
     for (const [slot, moveId] of kids) expect(inAxisDamage(bare.calc, slot, moveId).inAxis, moveId).toBe(0)
+  })
+
+  it('(a) 多父伴随（CC-392）：只放一个父动作 ⇒ 子行按全部父动作合计拆段（不是被某一个父动作覆盖成 0 或满）', async () => {
+    // 薇薇安悬落 1331006 的父 = 1331010 / 1331014 / 1331019 / 1331013；波可娜噬爪的父 = 1351008 / 1351014 / 1351011 / 1351012。
+    // 只放终结技：多父合计 ⇒ 0 < 失衡内 < 全部；修前逐父覆盖 ⇒ 结果取决于登记顺序（最后一个父动作没放就是 0）。
+    const { calc } = await runAxis(['1621', '1331', '1351'], [
+      { slot: 1, moveId: '1331014', count: 1, startTime: 0 },
+      { slot: 2, moveId: '1351012', count: 1, startTime: 1 },
+    ])
+    for (const [slot, moveId] of [[1, '1331006'], [2, '1351006'], [2, '1351007']] as [number, string][]) {
+      const d = inAxisDamage(calc, slot, moveId)
+      expect(d.total, `反空洞 ${moveId}`).toBeGreaterThan(0)
+      expect(d.inAxis, `${moveId} 有失衡内段`).toBeGreaterThan(0)
+      expect(d.inAxis, `${moveId} 只放一个父动作 ⇒ 不全段`).toBeLessThan(d.total)
+    }
   })
 
   it('(c) 主动招式没放进轴 = 零易伤（薇薇安合轴强化特殊技 1331010 不回落覆盖率）', async () => {

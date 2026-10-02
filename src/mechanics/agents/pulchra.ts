@@ -150,6 +150,9 @@ function buildPulchraResourceSections(input: AgentResourceSectionsInput) {
 export const pulchraMechanic: AgentMechanicModule = {
   id: 'agent:1351',
   agentIds: [PULCHRA_ID],
+  // CC-392 D1：每次进入猎步打一轮噬爪（猎步进入 = 强特 1351008 + 支援突击 1351014 + 连携 1351011 + 终结 1351012，
+  // computePulchraHuntStepCount）⇒ 易伤跟随四个父动作合计的轴内占比
+  attachedEvents: Object.fromEntries(['1351008', '1351014', '1351011', '1351012'].map(p => [p, [MOVE_NIGHTMARE_1, MOVE_NIGHTMARE_2]])),
   // CC-64c：C6 困迹增伤从「仅追加攻击」扩展为「全伤害」——base 条 pulchra_extra_trap_followup 在 C6 禁用，防与
   // pulchra_cinema_6_trap_all 双计。原在 stores/config.ts#deriveTeammateBuffEnabled 写死 `agentId === '1351' && … && cinemaLevel >= 6`。
   teammateBuffGate: ({ buffId, self }) => (buffId === 'pulchra_extra_trap_followup' ? !(self.cinemaLevel >= 6) : undefined),
