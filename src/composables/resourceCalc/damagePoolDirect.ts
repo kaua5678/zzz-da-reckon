@@ -21,11 +21,12 @@ import { getSkillLevelCoef } from '@/core/skillLevel'
 import type { Agent, AgentSkills, PanelValues, SkillDamageTarget } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
 import type { DirectRowAxisSplit } from '@/mechanics/types'
-import { findMoveById, getRowValue } from './skillRows'
+import { findMoveById } from './skillRows'
 import { buildMechanicTeamMembers } from './panelPhases'
 import type { DamagePoolRow } from './helpers'
 // 纯类型：运行时被擦除，与 damagePool.ts 的 `emitCharDirectRows` 值导入不构成运行时环。
 import type { DamagePoolContext } from './damagePool'
+import { axisTableDirectMove, type AxisTableDirectMove } from './axisTableDirect'
 
 /** 循环头（`damagePool.ts` :416–421）定义的 4 个本槽局部量 + charResult。 */
 export interface CharLocals {
@@ -280,25 +281,27 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
   // 轴内直读技能表（通用兜底）：动作池「[表]」块被放置但模块未生成执行行的招式——
   // 按放置块数×窗口数出直伤（吃全额易伤）；不占时间预算、窗内不产失衡值（引擎既定口径）
   if (isAxis) {
+    // CC-393：可直读判定与编辑器候选池共用 `axisTableDirectMove`（隐藏招式 / 融合并入段 / 分类 / 倍率同一口径；
+    // 倍率 = 融合主段整组求和，否则单段 getRowValue，CC-239 吃逻辑编辑器行规则）
     const backed = new Set(charResult.executions.map(e => e.moveId))
+    const tblAgentId = configStore.team[slot]?.agentId ?? ''
+    const tblSkills = catalogStore.agentSkillsByAgentMap.get(tblAgentId)
     const tblAlloc = allocateAxisWindows(effectiveStunAxes, Math.round(stunPoolResult?.stunCount ?? 0))
-    const placedTable = new Map<string, number>()
+    const placedTable = new Map<string, { hit: AxisTableDirectMove; count: number }>()
     effectiveStunAxes.forEach((axis, ai) => {
       const wins = tblAlloc[ai] ?? 0
       for (const act of axis.actions) {
         if (act.slot !== slot) continue
         const mid = act.moveId
-        if (backed.has(mid) || !/^\d+$/.test(mid)) continue
-        placedTable.set(mid, (placedTable.get(mid) ?? 0) + Math.max(0, Math.floor(act.count || 1)) * wins)
+        const prev = placedTable.get(mid)
+        const hit = prev?.hit ?? axisTableDirectMove(tblAgentId, tblSkills, mid, backed)
+        if (!hit) continue
+        placedTable.set(mid, { hit, count: (prev?.count ?? 0) + Math.max(0, Math.floor(act.count || 1)) * wins })
       }
     })
-    const tblSkills = catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? '')
-    for (const [mid, count] of placedTable) {
+    for (const [mid, { hit, count }] of placedTable) {
       if (count <= 0) continue
-      const move = findMoveById(tblSkills, mid)
-      const dmgRow = (move?.rows ?? []).find((r) => r.kind === 'damageMultiplier')
-      const mult = dmgRow ? getRowValue(move, dmgRow.id) : 0 // CC-239：吃逻辑编辑器行规则
-      if (!move || !(mult > 0)) continue
+      const { move, multiplier: mult } = hit
       pushDirect({
         id: `direct-${slot}-${mid}-table`,
         slot, agentId: charResult.agentId,

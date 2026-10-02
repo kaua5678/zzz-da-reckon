@@ -256,6 +256,7 @@ import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMov
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import { isStaleAxisActionFor } from '@/composables/resourceCalc/roundInputs'
+import { axisTableDirectCandidates } from '@/composables/resourceCalc/axisTableDirect'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
 import type { StunAxisAction, StunAxis } from '@/types/resource'
@@ -790,17 +791,13 @@ const allMoves = computed(() => {
     // 放置后由结算按技能表倍率出直伤（吃易伤；不占时间预算、窗内不产失衡值）
     // 去重口径 = 伤害侧 `damagePoolDirect` 的 `backed`（本角色全部执行行 moveId）：有执行行的招式放 [表] 块不出伤害。
     // CC-392：原只看已进候选的招式 ⇒ 被隐藏的行（伴随子行 / 自动行 / axisHiddenMoves）会以 [表] 块重新冒出来。
-    const seenTbl = new Set([...out.filter(m => m.slot === c.slot).map(m => m.moveId), ...c.executions.map(e => e.moveId)])
-    const tblSkills = catalogStore.getAgentSkills(configStore.team[c.slot]?.agentId ?? '')
-    for (const cat of tblSkills?.categories ?? []) {
-      if (!['special', 'assist', 'ultimate', 'chain'].includes(cat.id ?? '')) continue
-      for (const m of cat.moves ?? []) {
-        if (seenTbl.has(m.id)) continue
-        const dmg = (m.rows ?? []).find(r => r.kind === 'damageMultiplier')
-        if (!dmg || !dmg.values?.[0]) continue
-        seenTbl.add(m.id)
-        out.push({ slot: c.slot, moveId: m.id, label: `[表]${(m.name?.zhCN || m.id).slice(0, 8)}`, actionTime: m.actionTime ?? 0, remaining: 99, key: `${c.slot}:${m.id}:table` })
-      }
+    // CC-393：可直读判定与结算共用 `axisTableDirectCandidates`（隐藏招式 / 融合并入段 / 分类 / 倍率同一口径）；
+    // 这里只额外跳过已作为别的块出现的 moveId（如伊德海莉触手 1051024），那是显示去重，不是判定。
+    const shownIds = new Set(out.filter(m => m.slot === c.slot).map(m => m.moveId))
+    const tblAgentId = configStore.team[c.slot]?.agentId ?? ''
+    for (const { move: m } of axisTableDirectCandidates(tblAgentId, catalogStore.getAgentSkills(tblAgentId), new Set(c.executions.map(e => e.moveId)))) {
+      if (shownIds.has(m.id)) continue
+      out.push({ slot: c.slot, moveId: m.id, label: `[表]${(m.name?.zhCN || m.id).slice(0, 8)}`, actionTime: m.actionTime ?? 0, remaining: 99, key: `${c.slot}:${m.id}:table` })
     }
   }
   return out

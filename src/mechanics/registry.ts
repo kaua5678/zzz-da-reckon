@@ -38,6 +38,17 @@ export function getAgentMechanic(agentId: string): AgentMechanicModule | undefin
   return agentMechanics.get(agentId)
 }
 
+/**
+ * 「放进轴不起作用」的招式（唯一实现，CC-393 由 composables/agentMechanicView 下沉到本层）：
+ * 模块声明的 `axisHiddenMoves` ∪ `attachedEvents` 全部子行（伴随行跟随父动作的轴内占比，自身放置不计，CC-392）。
+ * 消费方：轴编辑器候选池（经 agentMechanicView 门面）与 [表] 直读判定（resourceCalc/axisTableDirect）。
+ */
+export function axisHiddenMovesOf(agentId: string | null | undefined): readonly string[] {
+  const mod = agentId ? agentMechanics.get(agentId) : undefined
+  if (!mod) return []
+  return [...(mod.axisHiddenMoves ?? []), ...Object.values(mod.attachedEvents ?? {}).flat()]
+}
+
 type TeamLike = ReadonlyArray<{ agentId?: string | null } | null | undefined>
 
 /**

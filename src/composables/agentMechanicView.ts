@@ -5,7 +5,7 @@
  * settings（机制设置表）/ combos（轴连段定义）/ resourceSections（资源卡专属分区）。
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
-import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
+import { AUTO_AXIS_PRESET_HINTS, axisHiddenMovesOf, getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import type { AgentMechanicModule, AxisEditorBlockMark, CharacterCountInputDecl } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
 
@@ -76,9 +76,7 @@ export function agentAxisMoveMeta(agentId: string | null | undefined): AgentMech
  *   放置无效且白占栈遍历时间预算。行级 `autoSplitByStun` 同理，由页面按执行行判断（不是模块级声明）。
  */
 export function agentAxisHiddenMoves(agentId: string | null | undefined): readonly string[] {
-  const mod = agentId ? getAgentMechanic(agentId) : undefined
-  if (!mod) return []
-  return [...(mod.axisHiddenMoves ?? []), ...Object.values(mod.attachedEvents ?? {}).flat()]
+  return axisHiddenMovesOf(agentId) // CC-393：规则下沉 mechanics/registry（resourceCalc 的 [表] 判定也要用，不得反向依赖本门面）
 }
 
 /** 轴编辑器候选块名后缀（CC-57）：模块声明 `axisMoveSuffix`；未声明 ⇒ ''。原位置 StunAxisPage.vue 写死 1371 + 1371022/1371026 */

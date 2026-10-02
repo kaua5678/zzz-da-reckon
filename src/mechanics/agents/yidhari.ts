@@ -483,7 +483,9 @@ export const yidhariMechanic: AgentMechanicModule = {
     return [{ moveId: CHARGE_SLAM, count: loops }, { moveId: BASIC_FOLLOW, count: loops }]
   },
   // CC-57：轴编辑器候选池隐藏裸极寒重碾（原 StunAxisPage 写死 `c.agentId === '1051' && moveId === '1051012'`）
-  axisHiddenMoves: ['1051012'],
+  // CC-393：连携固定用 1051025（涌泉帷幕强化连携，见 buildYidhariCharConfig「覆盖默认的 1051015 #1」，无条件）⇒ 1051015 永不出手；
+  // 不隐藏时编辑器会以 [表] 块提供它，放进轴 = 在 #2 的连携次数之外再按 #1 倍率加一份直伤（重复计伤）
+  axisHiddenMoves: ['1051012', '1051015'],
   name: '伊德海莉',
   description: '蓄力循环（1s烧血→霜寒拥覆#3→碎惘沉击#4）+ 极寒重碾（失衡内2/非失衡回15闪能）+ 低血增伤100%覆盖。',
   applyPanel: applyYidhariPanel,
