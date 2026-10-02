@@ -287,7 +287,6 @@ function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: Ag
   }
   // 影画2 异放精通收益 ×130%（buildAnomalyEvents perTen 放大）；无视15%全抗走 releaseModifier（仅异放结算）
   if (cinemaLevel >= 2) {
-    ;(panel as Record<string, unknown>).vivianCinemaLevel = cinemaLevel
     // 影画2：以太异常积蓄效率 +25%（薇薇安含物理积蓄，用元素限定字段避免污染物理积蓄）
     panel.etherAnomalyBuildUpEfficiency = (panel.etherAnomalyBuildUpEfficiency ?? 0) + VIVIAN_C2_BUILDUP_EFF
   }
@@ -421,8 +420,8 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
 }
 
 /** 影画2：异放无视 15% 全属性伤害抗性（releaseModifier 仅作用于异放结算，不作用于普通伤害） */
-function vivianReleaseModifier({ panels }: ReleaseModifierInput): { enemyResReduction: number; note: string } {
-  const hasC2 = panels.some(panel => (panel.vivianCinemaLevel ?? 0) >= 2)
+function vivianReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduction: number; note: string } {
+  const hasC2 = self.cinemaLevel >= 2
   return hasC2
     ? { enemyResReduction: VIVIAN_C2_RELEASE_RES_IGNORE, note: '；影画2：异放无视 15% 全属性伤害抗性（releaseModifier 异放限定）' }
     : { enemyResReduction: 0, note: '' }

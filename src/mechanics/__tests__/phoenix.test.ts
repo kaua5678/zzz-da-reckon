@@ -173,9 +173,9 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     const cfgC0 = useResourceCalc().resourceConfig.value!.characters.find(c => c.agentId === '1641')!
     expect(cfgC0.initialDecibelGift ?? 0).toBe(1000)
 
-    const mod = phoenixMechanic.releaseModifier!({ panels: [{ phoenixCinemaLevel: 6 } as any] })
+    const mod = phoenixMechanic.releaseModifier!({ self: { slot: 0, cinemaLevel: 6, panel: undefined } })
     expect(mod.enemyDefReduction).toBe(15)
-    const mod0 = phoenixMechanic.releaseModifier!({ panels: [{ phoenixCinemaLevel: 0 } as any] })
+    const mod0 = phoenixMechanic.releaseModifier!({ self: { slot: 0, cinemaLevel: 0, panel: undefined } })
     expect(mod0.enemyDefReduction).toBeUndefined()
 
     await setup(['1641', '1171', ''], 0)

@@ -447,8 +447,8 @@ function resolveVelinaExecutionDamage(input: AgentDamageResolutionInput): { elem
   }
 }
 
-function velinaReleaseModifier({ panels }: ReleaseModifierInput): { enemyResReduction: number; note: string } {
-  const hasCinema1 = panels.some(panel => (panel.velinaCinema1 ?? 0) > 0)
+function velinaReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduction: number; note: string } {
+  const hasCinema1 = self.cinemaLevel >= 1 // 与 applyVelinaPanel 的 velinaCinema1 同式（cinemaLevel >= 1）
   return hasCinema1
     ? { enemyResReduction: 0, note: '；维琳娜1命：风属性异常伤害无视20%风抗（已写入面板，异放继承风底）' }
     : { enemyResReduction: 0, note: '' }

@@ -147,9 +147,6 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
     // 影画6：普罗米娅自身属性异常/紊乱伤害无视 15% 全属性抗性（挂面板 enemyResReduction，异放走 releaseModifier）
     panel.enemyResReduction = (panel.enemyResReduction ?? 0) + PROMIA_C6_ALL_RES_IGNORE
   }
-  // releaseModifier 用（异放限定减防需读普罗米娅命座与额外能力门控）
-  panel.promiaCinemaLevel = cinemaLevel
-  panel.promiaAdditionalActive = panel.additionalAbilityActive ?? 0
   // 额外能力：冰异常积蓄效率 +30%（需 additionalAbilityActive 门控）——依赖全是静态
   // （cinema/掌控/AA），改在 applyPanel 算；曾由 transformSkillExecutions 写面板（布尔守卫防累积）。
   const cycle = computePromiaCycle({
@@ -163,11 +160,10 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
 }
 
 /** 异放限定减防（有罪推定 40% + 影画1 20%，原文均为「全队角色对[有罪推定]状态的敌人」）：只作用于异放结算；作用域 team（全队异放行，CC-121 / CC-333 与 computePromiaCycle.guiltyDefIgnore 同源）。 */
-function promiaReleaseModifier({ panels }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
-  const promia = panels.find(p => (p as Record<string, unknown>).promiaCinemaLevel !== undefined)
-  if (!promia) return { enemyResReduction: 0, note: '' }
-  const cinema = Number((promia as Record<string, unknown>).promiaCinemaLevel ?? 0)
-  const additionalActive = Number((promia as Record<string, unknown>).promiaAdditionalActive ?? 0) > 0
+function promiaReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
+  if (self.slot < 0) return { enemyResReduction: 0, note: '' }
+  const cinema = self.cinemaLevel
+  const additionalActive = Number(self.panel?.additionalAbilityActive ?? 0) > 0
   const defIgnore = computePromiaCycle({ cinemaLevel: cinema, anomalyMastery: 0, additionalActive }).guiltyDefIgnore
   return defIgnore > 0
     ? { enemyResReduction: 0, enemyDefReduction: defIgnore, note: `；有罪推定/C1：异放无视 ${defIgnore}% 防御（releaseModifier 异放限定）` }

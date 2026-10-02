@@ -246,15 +246,11 @@ function applyPhoenixPanel({ cinemaLevel, panel, settings }: AgentPanelInput): v
     const cov = clamp01(settingOf(settings, 'phoenix.c2IncinerationCoverage', 1))
     panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + PHOENIX_C2_BUILDUP_EFF * cov
   }
-  // releaseModifier 用（影画6 异放限定无视防御需读命座）
-  ;(panel as unknown as Record<string, unknown>).phoenixCinemaLevel = cinemaLevel
 }
 
 /** 影画6：异放限定无视 15% 防御（普罗米娅同款通道） */
-function phoenixReleaseModifier({ panels }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
-  const phoenix = panels.find(p => (p as Record<string, unknown>).phoenixCinemaLevel !== undefined)
-  const cinema = phoenix ? Number((phoenix as Record<string, unknown>).phoenixCinemaLevel ?? 0) : 0
-  return cinema >= 6
+function phoenixReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
+  return self.cinemaLevel >= 6
     ? { enemyResReduction: 0, enemyDefReduction: PHOENIX_C6_RELEASE_DEF_IGNORE, note: `；影画6：异放无视 ${PHOENIX_C6_RELEASE_DEF_IGNORE}% 防御（releaseModifier 异放限定）` }
     : { enemyResReduction: 0, note: '' }
 }

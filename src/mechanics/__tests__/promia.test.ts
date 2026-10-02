@@ -13,6 +13,8 @@ import {
   promiaMechanic,
 } from '@/mechanics/agents/promia'
 import { setupHarness } from '@/test/harness'
+import { releaseModifierSelf } from '@/composables/resourceCalc/damagePool'
+import { useConfigStore } from '@/stores/config'
 
 async function setup(mateId = '1181', cinemaLevel = 0) {
   const result = await setupHarness([
@@ -106,7 +108,7 @@ describe('普罗米娅完整计算链', () => {
   it('releaseModifier：有罪推定 40% + 影画1 20% 只作用于异放结算，且额外能力未激活时 C1 不越门控生效（CC-333）', async () => {
     await setup('1181', 1)
     const calc = useResourceCalc()
-    const mod = promiaMechanic.releaseModifier!({ panels: calc.panels.value })
+    const mod = promiaMechanic.releaseModifier!({ self: releaseModifierSelf(promiaMechanic, useConfigStore().team, calc.panels.value) })
     // 额外能力激活（格莉丝1181=异常）+ 影画1 → 40 + 20
     expect(mod.enemyDefReduction).toBe(PROMIA_GUILTY_DEF_IGNORE + PROMIA_C1_DEF_IGNORE)
     expect(mod.enemyResReduction).toBe(0)
@@ -114,7 +116,7 @@ describe('普罗米娅完整计算链', () => {
     // 负例：额外能力未激活（艾莲1191=强攻·异阵营）时，敌人无法进入[有罪推定]，C1 额外 20% 不得生效
     await setup('1191', 1)
     const calcNeg = useResourceCalc()
-    const modNeg = promiaMechanic.releaseModifier!({ panels: calcNeg.panels.value })
+    const modNeg = promiaMechanic.releaseModifier!({ self: releaseModifierSelf(promiaMechanic, useConfigStore().team, calcNeg.panels.value) })
     expect(modNeg.enemyDefReduction).toBeUndefined()
     expect(modNeg.note).toBe('')
   })

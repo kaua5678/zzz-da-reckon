@@ -17,6 +17,7 @@ import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from 
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement } from '@/core/anomalyPool/helpers'
 import { getAgentMechanic } from '@/mechanics'
+import type { AgentMechanicModule, ReleaseModifierInput } from '@/mechanics'
 import type { AgentAxisOverlays, AxisScalarOverlays } from '@/mechanics'
 // 2026-09-16 round 17（R15-c）：`YESHUGUANG_FULL_STUN_MOVES` 与 `HUGO_FULL_STUN_MOVES` 的 import
 // 已删——两处白名单判据迁进各自模块的 `stunOverrideForMove` 钩子。
@@ -232,7 +233,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const sources = own?.releaseModifier ? [own, ...teamReleaseModules.filter(m => m !== own)] : teamReleaseModules
       const acc = { enemyResReduction: 0, enemyDefReduction: 0, note: '' }
       for (const m of sources) {
-        const r = m!.releaseModifier!({ panels: damagePanels })
+        const r = m!.releaseModifier!({ self: releaseModifierSelf(m!, configStore.team, damagePanels) })
         acc.enemyResReduction += r.enemyResReduction
         acc.enemyDefReduction += r.enemyDefReduction ?? 0
         acc.note += r.note
@@ -412,4 +413,19 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     })
 
   return rows.filter(row => row.totalDamage > 0)
+}
+
+/**
+ * `releaseModifier` 的 `self` 入参（r398 CC-372）：按模块 `agentIds` 在队伍里定位本模块角色的槽位；
+ * 命座取 `team[slot].cinemaLevel`（与面板阶段 `applyPanel` 的 cinemaLevel 同源，命座提升率也是改这里再恢复），
+ * 面板按身份 `panelAt` 取（面板数组按位置压缩，下标 ≠ 槽位号）。导出给测试复用同一定位逻辑。
+ */
+export function releaseModifierSelf(
+  module: Pick<AgentMechanicModule, 'agentIds'>,
+  team: ReadonlyArray<{ agentId?: string | null; cinemaLevel?: number } | null | undefined>,
+  panels: readonly PanelValues[],
+): ReleaseModifierInput['self'] {
+  const slot = team.findIndex(c => !!c?.agentId && module.agentIds.includes(c.agentId))
+  if (slot < 0) return { slot, cinemaLevel: 0, panel: undefined }
+  return { slot, cinemaLevel: team[slot]?.cinemaLevel ?? 0, panel: panelAt(panels, slot) }
 }

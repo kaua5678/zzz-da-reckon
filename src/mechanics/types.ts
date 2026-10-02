@@ -575,8 +575,17 @@ export interface AgentDamageResolutionInput {
 }
 
 export interface ReleaseModifierInput {
-  /** 缓存面板（跨读者共享）⇒ 只读 */
-  panels: DeepReadonly<PanelValues[]>
+  /**
+   * 本模块角色**自己那一槽**（r398 CC-372）：派发方按模块 `agentIds` 在队伍里定位后给出
+   * （`composables/resourceCalc/damagePool.ts#releaseModifierSelf`；命座与面板阶段同源 = `team[slot].cinemaLevel`）。
+   *
+   * 为什么不再给全队 `panels`：模块要的从来是「我自己的命座 / 面板」，却拿不到「我是哪一槽」，
+   * 于是 phoenix / promia / vivian 各自在 `applyPanel` 里往自己面板上夹带 `xxxCinemaLevel`，再用
+   * `panels.find(p => p.xxxCinemaLevel !== undefined)` 把自己认回来——三份同构 hack，靠 `PanelValues`
+   * 的 `[key: string]: number` 索引签名才成立。契约补上身份后，夹带字段全部删除。
+   * `slot = -1` ⇒ 本模块不在队（派发只对在队模块发生，防御性给 0 命、无面板）。
+   */
+  self: { slot: number; cinemaLevel: number; panel: DeepReadonly<PanelValues> | undefined }
 }
 
 export interface AgentResourceSectionsInput {
