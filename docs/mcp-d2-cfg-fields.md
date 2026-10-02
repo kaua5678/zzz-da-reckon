@@ -63,7 +63,10 @@
   锁 `src/types/__tests__/privateCfgFields.test.ts` 4 条（3 个目标接口 + 整份类型），迁移前源码上全红（已反证）。
 - 验证：vue-tsc 净、产物 `diff -r` 逐字节相同、zd 0/0、全量 4158 例过。回滚 `git revert 859cae1e`（纯类型，无数值影响）。
 
-## 5. D2 §5：模块内 `Record` 强转 → 有类型的 `cfg.<键>`（进行中）
+## 5. D2 §5：模块内 `Record` 强转 → 有类型的 `cfg.<键>`（r405 完成）
+
+**状态（r405）**：下表全部 done，两个「不进锁表」例外（yidhari / soukaku）也已消掉。锁由 `TYPED_CFG_MODULES` 名单升级为**全目录不变式**（`src/types/__tests__/privateCfgFields.test.ts`：`src/mechanics/agents/*.ts` 全部文件不得出现 `as unknown as Record<string, unknown>` / `<…cfg/Cfg> as any` / `<…cfg/Cfg> as Record<string, unknown>`），**新角色模块不需要登记，写了就红**。公开函数要收任意字面量（测试传 `setting:` 动态键）时，用 `cfg as Partial<CharacterOperationConfig>` 这种**带类型**的断言读静态键（soukaku 先例）。
+剩余同类问题不在本节：其他契约对象（result / state / exec 等）上的 `as any`，见 `docs/mcp-worker-task-queue.md` §2 的下一步。
 
 **为什么做**：D2 立项时的痛点是「跨角色拼写错误无法在编译期暴露」。角色模块里 `X as unknown as Record<string, unknown>` 之后
 `record.<键>` 读写**未声明**的键，拼错键名 = 静默读到 `undefined`（守卫 25 只抓「全仓零写入」的键，抓不到「写 A 读 A'」）。
@@ -101,14 +104,14 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 
 ### 执行卡（每个模块一张，机械活，可派执行模型）
 
-1. `python3 scripts/d2-record-keys.py . <模块名> <声明骨架文件>`（r394 CC-366 起三种强转 `as unknown as Record` / `as Record` / `as any` 都统计，并把未声明键写成声明骨架——**骨架里的类型是按用法猜的、注释是 TODO**：先查每个键的全部读写点（`grep -rn <键> src`，**含 `src/data` 的 JSON**——spec 资源会按字段名读 cfg），写清含义与写入方再用）：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
+1. （r405 起骨架注释自带「写入 L<n>: 语句；模块内读 N；外部: …」，读 0 且无外部生产读者标 **DEAD?** ⇒ 先查死写再补声明；r405 的注释口径是把它改写成「写入：<语句>」，去掉行号）`python3 scripts/d2-record-keys.py . <模块名> <声明骨架文件>`（r394 CC-366 起三种强转 `as unknown as Record` / `as Record` / `as any` 都统计，并把未声明键写成声明骨架——**骨架里的类型是按用法猜的、注释是 TODO**：先查每个键的全部读写点（`grep -rn <键> src`，**含 `src/data` 的 JSON**——spec 资源会按字段名读 cfg），写清含义与写入方再用）：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
 2. 来源是本槽 `cfg` 的：未声明键补进**本模块**的 `declare module '@/types/resource/config'` 扩充块（类型看写入点；拿不准写 `number`，tsc 会报）。
    **只有本模块用的键**放本模块；若 `privateCfgFields` 锁或脚本显示别处也用，放公共接口 `types/resource/config.ts`。
 3. （第 2–3 步用 `python3 scripts/d2-record-apply.py . <模块> <声明文件>` 一次完成——r394 起也改写 `(cfg as any).k` / `(input.cfg as any).k` / 行首 `;(…)`，并列出剩余强转行与 `record` 引用，按清单手改）把 `record.<键>` 改成 `cfg.<键>`、删 `const record = cfg as …`、内联 `(cfg as unknown as Record<string, unknown>).k` 改 `cfg.k`；
    辅助函数若收 `record: Record<string, unknown>` 参数，去掉它、改收 `cfg`。**`Number(x ?? 0)` 等运行时包装一律不动**（保零差）。
 4. 字段有类型后变冗余的 `as` 删掉；若 tsc 因 `readonly` 等报错，说明原强转在绕约束——停下来读清楚再决定，别再套一层强转。
 5. 来源**不是**本槽 cfg 的（`mateRecord ← mateCfg` 是队友 cfg，同接口，可同样处理；`exec` / `state` / `result` 是别的接口）：查对应接口，同理补声明；不确定就本轮跳过、表里记一句。
-6. 把模块名加进 `src/types/__tests__/privateCfgFields.test.ts` 的 `TYPED_CFG_MODULES`（锁住不回退）。
+6. ~~把模块名加进 `TYPED_CFG_MODULES`~~ —— r405 起锁是全目录不变式，自动覆盖所有 `src/mechanics/agents/*.ts`，无需登记。
 7. 验证：vue-tsc；`ZD_REPO=<wt> bash .zc/perf/zd.sh <tag>` 必须 0/0（变量改名后产物不再逐字节相同，零差是主判据）；该模块相关测试；收尾全量 vitest `--maxWorkers=4`。
 8. 本表把状态改为 `done <提交号>`。一次做 3–5 个模块为宜，一个模块一个提交便于回滚。
 
@@ -125,7 +128,7 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `phoenix` | 8 | 0 | 0 | done 468d0e05（r398 CC-372 1259abd5：releaseModifier 契约补 `self` 后删掉 panel 夹带） |
 | `grace` | 7 | 0 | 0 | done c7627ef3 |
 | `promia` | 7 | 0 | 0 | done 07c17341（r397 删 nextRound 死写回） |
-| `yidhari` | 7 | 3 | 0 | 实质完成 9543b79f，**不进锁表**：导出 `computeYidhariHpSource(cfg: Record…)`（测试直传字面量）的 3 个调用点保留局部强转 |
+| `yidhari` | 7 | 3 | 0 | 实质完成 9543b79f，~~不进锁表~~ → **r405 f3a2363d 例外已消（形参 Partial / 带类型断言）**：导出 `computeYidhariHpSource(cfg: Record…)`（测试直传字面量）的 3 个调用点保留局部强转 |
 | `nangong` | 6 | 0 | 0 | done 9543b79f |
 | `severian` | 6 | 0 | 0 | done 9543b79f |
 | `vivian` | 6 | 0 | 0 | done 07c17341（r397 删 nextRound 死写回） |
@@ -136,39 +139,39 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `lighter` | 5 | 5 | 0 | done 9263750f：另删 R20 遗留的零消费者 cfg 链路（lighterBackstageRatio → lighterC4FrontEfficiency）；`exec` / `result` / `state` 上的 `as any` 属其它接口，未动 |
 | `roxy` | 5 | 5 | 0 | done a2b2479b |
 | `claret` | 4 | 4 | 0 | done a2b2479b（辅助函数 record 形参改收 cfg） |
-| `evelyn` | 4 | 4 | 0 | 待做 |
+| `evelyn` | 4 | 4 | 0 | done 767beca2 |
 | `miyabi` | 4 | 0 | 0 | done 8efcb274（r402 CC-376：`miyabiCinemaLevel` 2 处 Record 强转改 `cfg.miyabiCinemaLevel`；`(cfg.panel as any)?.miyabiCinema4/6` 改按命座门控；`(result as any)` 改读已声明的 `result.miyabiFrostFallSource`；进锁表） |
-| `qianxia` | 4 | 4 | 0 | 待做 |
-| `soukaku` | 4 | 1 | 0 | 实质完成 c7627ef3，**不进锁表**：`soukakuPerExExtraTime(cfg: unknown)` 公开签名（测试直传字面量）保留 1 处局部 Record 读取；另 1 处 `as unknown as Record` 在 `state` 上，逐模块锁的正则会误伤 |
+| `qianxia` | 4 | 4 | 0 | done 767beca2 |
+| `soukaku` | 4 | 1 | 0 | 实质完成 c7627ef3，~~不进锁表~~ → **r405 f3a2363d 例外已消（形参 Partial / 带类型断言）**：`soukakuPerExExtraTime(cfg: unknown)` 公开签名（测试直传字面量）保留 1 处局部 Record 读取；另 1 处 `as unknown as Record` 在 `state` 上，逐模块锁的正则会误伤 |
 | `zhendou` | 4 | 4 | 0 | done 9ee2bcf8 |
-| `anbyZero` | 3 | 3 | 0 | 待做 |
-| `billy` | 3 | 3 | 0 | 待做 |
-| `corin` | 3 | 3 | 0 | 待做 |
-| `harumasa` | 3 | 3 | 0 | 待做 |
-| `luciaElowen` | 3 | 3 | 0 | 待做 |
+| `anbyZero` | 3 | 3 | 0 | done 767beca2 |
+| `billy` | 3 | 3 | 0 | done 767beca2 |
+| `corin` | 3 | 3 | 0 | done 767beca2 |
+| `harumasa` | 3 | 3 | 0 | done 767beca2 |
+| `luciaElowen` | 3 | 3 | 0 | done 767beca2 |
 | `pulchra` | 3 | 3 | 0 | done 9ee2bcf8 |
-| `qingyi` | 3 | 3 | 0 | 待做 |
-| `seth` | 3 | 3 | 0 | 待做 |
+| `qingyi` | 3 | 3 | 0 | done 767beca2 |
+| `seth` | 3 | 3 | 0 | done 767beca2 |
 | `trigger` | 3 | 3 | 0 | done 9ee2bcf8（混源 cfg / own，手改） |
 | `xide` | 3 | 0 | 0 | done 88187356 |
-| `yanagi` | 3 | 3 | 0 | 待做 |
-| `yaojiayin` | 3 | 3 | 0 | 待做 |
+| `yanagi` | 3 | 3 | 0 | done 767beca2 |
+| `yaojiayin` | 3 | 3 | 0 | done 767beca2 |
 | `zhuYuan` | 3 | 0 | 0 | done 88187356 |
 | `anton` | 2 | 0 | 0 | done e2cfa3c8 |
-| `jane` | 2 | 2 | 0 | 待做 |
-| `koleda` | 2 | 2 | 0 | 待做 |
-| `nekomata` | 2 | 2 | 0 | 待做 |
+| `jane` | 2 | 2 | 0 | done 767beca2 |
+| `koleda` | 2 | 2 | 0 | done 767beca2 |
+| `nekomata` | 2 | 2 | 0 | done 767beca2 |
 | `nicole` | 2 | 0 | 0 | done c7627ef3 |
 | `panYinhu` | 2 | 0 | 0 | done c7627ef3 |
-| `piper` | 2 | 2 | 0 | 待做 |
-| `rina` | 2 | 2 | 0 | 待做 |
-| `soldier11` | 2 | 2 | 0 | 待做 |
+| `piper` | 2 | 2 | 0 | done 767beca2 |
+| `rina` | 2 | 2 | 0 | done 767beca2 |
+| `soldier11` | 2 | 2 | 0 | done 767beca2 |
 | `specPanelBuffs` | 2 | 0 | 0 | done c7627ef3 |
-| `yuzuha` | 2 | 2 | 0 | 待做 |
+| `yuzuha` | 2 | 2 | 0 | done 767beca2 |
 | `zhao` | 2 | 0 | 0 | done c7627ef3 |
 | `ben` | 1 | 0 | 0 | done c7627ef3 |
 | `caesar` | 1 | 0 | 0 | done e2cfa3c8 |
-| `norma` | 1 | 1 | 0 | 待做 |
+| `norma` | 1 | 1 | 0 | done 767beca2 |
 | `orphie` | 1 | 0 | 0 | done e2cfa3c8 |
 | `remielle` | 1 | 0 | 0 | done 8175e6b0（唯一强转是设置读取，CC-363 已改） |
 | `xixifu` | — | 0 | 0 | done 88187356（r393 补登） |

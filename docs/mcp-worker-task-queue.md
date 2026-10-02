@@ -153,17 +153,19 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 404 轮（lane arena-E；无并行会话；HEAD `2a3c5580`；REQUIREMENTS.md 无新条目）：CC-378 `98c6904f` + D2 §5 `a2b2479b` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：
-  - D2 §5 第二批完成 5 个模块：aire / anby / ellen / roxy / claret，共 50 键。tsc 纠正了两处：`anbyBasicCycle` 实为数组；aire 的 `cycleFromCfg(cfg: unknown)` 原来靠强转硬读。细节见 d2 表和提交信息。
-  - 判据 25 的反空洞下限换了口径（CC-378，见架构卡和 §1 新增长期规则）。
-  - 提示词和客户端：`let id = 1` 改成 `let id = process.pid * 1000`，根治并行调用的 Duplicate request id。提示词已备份为 `.bak-mcp-id-20261002-1639`，§二 有记录。
-- **验证**：vue-tsc `--force` 0；zd `r404` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 457 个文件 / 4212 个测试；build 通过（日志 `arenaE/*404*`、`arenaE/d2-404/`）。两处反证都做过：claret 注入强转后锁变红；判据 25 截短扫描面后判红。
-- **开放项**：无新增。
+**第 405 轮（lane arena-E；无并行会话；HEAD `e1e0a2b8`；REQUIREMENTS.md 无新条目）：CC-379 `3a1009e4` + `767beca2` + `f3a2363d` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：**D2 §5 完成**（见 `docs/mcp-d2-cfg-fields.md` §5 状态段和架构卡 CC-379）。
+  - 先增强了 `scripts/d2-record-keys.py`：骨架直接带写入点、读次数和 DEAD 标记，替代 r403/r404 临时用的 `arenaE/scan2.py` / `wr.py`，那两个已不需要。
+  - 然后一次做完剩下的 19 个模块，消掉 yidhari / soukaku 两个例外。
+  - 最后把名单锁升级为全目录不变式：新角色模块不用登记，执行卡第 6 步作废。
+- **验证**：vue-tsc `--force` 0；zd `r405` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 457 个文件 / 4239 个测试（名单锁 35 条换成不变式 62 条）；build 通过（日志 `arenaE/r405/`）。锁的四个反证都做过。
+- **开放项**：OPEN-ITEMS 的 D2 已追加 r403–r405 进度。D2 的「数据模型」部分（立项原文的需用户裁决项）不变。
 - **下一步（按价值排）**：
-  1. d2 §5 剩余「待做」模块，约 20 个，3 键以下的小模块居多。流程照执行卡走。本轮新增的扫描脚本 `arenaE/scan2.py`（逐键统计模块内读次数，找死写）和 `arenaE/wr.py`（列出每个键的写入语句，用来定类型）很好用，值得收进 `scripts/`，或者并进 `d2-record-keys.py`。
-  2. `(result as any)` / `(exec as any)` / `(state as any)` 等其他契约对象上的强转，先 grep 计数并判断是不是同一个病。
-  3. 继续找「派给全部、各自认领」的同类（CC-373 / CC-377）。
+  1. **其他契约对象上的 `as any`**：agents 模块里还剩 30 处，分布在 13 个文件。按对象分是 result 10 / state 6 / row 3 / exec 3 / existing 2 / c 2 / p 1。计数命令：`cd src/mechanics/agents && grep -ohE "\(?\b\w+\)? as any\b" *.ts | sort | uniq -c`。
+     - 先逐类判断是不是同一个病：结果字段多半已有 `declare module`（D2 r390 推广到 CharacterResourceResult），那强转就是多余的，删掉后 tsc 能过就说明是。
+     - 是同一个病就照 D2 §5 的做法清掉，再把 `privateCfgFields.test.ts` 的不变式扩到 `\b(result|state|exec)\)?\s+as\s+any\b`。
+     - 不是就记下理由。不要为降计数去做。
+  2. 继续找「派给全部、各自认领」的同类（CC-373 / CC-377）。判据是派发处有没有给身份。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -201,6 +203,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **骨架类型要靠 tsc 纠正，别手猜**：写入值是数组或对象的键（`anbyBasicCycle`），骨架会猜成 `number`。tsc 报 TS2322 时，以读者处原有的 `as {…}` 断言为准写声明，再删掉那个断言（r404）。
   - **形参是 `cfg: unknown` 的辅助函数**：apply 脚本处理不了，tsc 会报 TS18046。按调用方传入的类型改形参（如 `AgentResourceResultInput['cfg']`）（r404 aire）。
   - **死通道 C 类（dts 漂移）守卫**：改 `scripts/lib/*.mjs` 的导出名时，同名 `.d.mts` 必须同步改，否则 guards 会红（r404 实测抓到）。
+  - **源码锁反证时，注入的代码不能在模块加载时求值**：vitest 用 esbuild 转译，`declare const x` 会被删掉，`(x as any).k` 加载时就抛 ReferenceError，整个测试文件变成「no tests」。这看起来也不是绿，但并不能证明是正则抓到的。正确做法是把注入写进一个不调用的函数，名字当形参：`export function __p(fooCfg: object) { return (fooCfg as any).x }`（r405）。
+  - **收 `Record` 形参的导出函数，先看测试怎么传**：传 `as never` 或 `any` 的，形参直接改成真实类型或 `Partial<…>`，不需要登记例外。只有传带动态键的新鲜字面量（`{ 'setting:x': 1 }`）时，才在函数内用带类型的断言读静态键（r405 yidhari / soukaku）。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
