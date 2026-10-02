@@ -83,8 +83,7 @@ function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: A
 }
 
 function buildZhendouCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.zhendouCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
+  cfg.zhendouCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
 }
 
 /** 归烬·舍身（特殊技）两段：点按 #1 + 长按蓄力释放 #2（actionTime 来自 catalog） */
@@ -117,8 +116,7 @@ export function computeZhendouChargeCount(i: ZhendouChargeInput): number {
 
 /** 耗血暴伤 +50%（炽风·胧切/支援突击）；影画6 支援突击火伤 +15% */
 function patchZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.zhendouCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.zhendouCinemaLevel ?? 0)))
   for (const exec of executions) {
     if (!exec.moveId) continue
     if (execMatchesMove(exec, ZHENDOU_HP_DRAIN_MOVE_IDS)) {
@@ -133,19 +131,17 @@ function patchZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
 /** converge 阶段：写 cfg.zhendouChargeCount（蓄力次数反推）+ cfg.zhendouC6StunFuryCount（影画6 失衡次数） */
 function applyZhendouTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const record = cfg as unknown as Record<string, unknown>
-  record.zhendouChargeCount = computeZhendouChargeCount({
+  cfg.zhendouChargeCount = computeZhendouChargeCount({
     combatTime,
     parryCount: cfg.parryCount ?? 0,
     c6StunCount: cinemaLevel >= 6 ? Math.max(0, Math.floor(Number(stunCount) || 0)) : 0,
   })
-  record.zhendouC6StunFuryCount = cinemaLevel >= 6 ? Math.max(0, Math.floor(Number(stunCount) || 0)) : 0
+  cfg.zhendouC6StunFuryCount = cinemaLevel >= 6 ? Math.max(0, Math.floor(Number(stunCount) || 0)) : 0
 }
 
 /** 归烬·舍身（特殊技）前台执行行：蓄力攒炽心，占前台时间（掉伤害） */
 function buildZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const chargeCount = Math.max(0, Math.floor(Number(record.zhendouChargeCount ?? 0)))
+  const chargeCount = Math.max(0, Math.floor(Number(cfg.zhendouChargeCount ?? 0)))
   if (chargeCount <= 0) return
   pushSpecial(executions, MOVE_GUIJIN_1, '特殊技：归烬 #1（点按）', chargeCount, GUIJIN_1_TIME)
   pushSpecial(executions, MOVE_GUIJIN_2, '特殊技：归烬 #2（长按蓄力释放）', chargeCount, GUIJIN_2_TIME)
@@ -214,5 +210,20 @@ declare module '@/types/catalog' {
   interface PanelValues {
     /** 4 命生命加成留痕：与 `panel.hp` 增量同块写入 */
     zhendouC4HpBonus?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 命座等级：buildCharConfig 写 */
+    zhendouCinemaLevel?: number
+    /** 蓄力次数（computeZhendouChargeCount）；spec 1441.json 按字段名读 */
+    zhendouChargeCount?: number
+    /** 影画6 按失衡次数计的次数（不足 6 命为 0）；spec 1441.json 按字段名读 */
+    zhendouC6StunFuryCount?: number
   }
 }

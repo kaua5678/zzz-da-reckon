@@ -215,11 +215,10 @@ function applyTriggerPanel({ panel }: AgentPanelInput): void {
 }
 
 function buildTriggerCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.triggerCinemaLevel = cinemaLevel
-  record.triggerNormalCountOverride = whole(cfgSetting(cfg, 'trigger.normalCoordinatedCount'))
-  record.triggerHellCountOverride = whole(cfgSetting(cfg, 'trigger.hellCoordinatedCount'))
-  record.triggerSniperHitOverride = whole(cfgSetting(cfg, 'trigger.sniperHitCount'))
+  cfg.triggerCinemaLevel = cinemaLevel
+  cfg.triggerNormalCountOverride = whole(cfgSetting(cfg, 'trigger.normalCoordinatedCount'))
+  cfg.triggerHellCountOverride = whole(cfgSetting(cfg, 'trigger.hellCoordinatedCount'))
+  cfg.triggerSniperHitOverride = whole(cfgSetting(cfg, 'trigger.sniperHitCount'))
 }
 
 /** postRound：本轮全队强特/终结已收敛 → 写入冥狱触发源（下一轮 buildExecutions 生效） */
@@ -237,24 +236,22 @@ function applyTriggerTeamConfig(input: AgentTeamConfigInput): void {
     // 支援突击跟随招架支援规划（引擎按 parryCount 生成 assist follow-up 行）
     mateAssistCount += Math.max(0, Math.floor(mate.parryCount ?? 0))
   })
-  const record = own as unknown as Record<string, unknown>
-  record.triggerMateExCount = mateExCount
-  record.triggerMateUltimateCount = mateUltimateCount
-  record.triggerMateAssistCount = mateAssistCount
+  own.triggerMateExCount = mateExCount
+  own.triggerMateUltimateCount = mateUltimateCount
+  own.triggerMateAssistCount = mateAssistCount
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): TriggerCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeTriggerCycle({
-    cinemaLevel: Number(record.triggerCinemaLevel ?? 0),
+    cinemaLevel: Number(cfg.triggerCinemaLevel ?? 0),
     // 协奏狙杀/冥狱 CD 折算按有效战斗时间（扣 boss 无敌，core/effectiveTime.ts）
-    battleTime: minusInvincibleTime(Number(record.battleTime ?? 180), cfg),
-    normalCountOverride: Number(record.triggerNormalCountOverride ?? 0),
-    hellCountOverride: Number(record.triggerHellCountOverride ?? 0),
-    sniperHitCountOverride: Number(record.triggerSniperHitOverride ?? 0),
-    mateExCount: Number(record.triggerMateExCount ?? 0),
-    mateUltimateCount: Number(record.triggerMateUltimateCount ?? 0),
-    mateAssistCount: Number(record.triggerMateAssistCount ?? 0),
+    battleTime: minusInvincibleTime(Number(cfg.battleTime ?? 180), cfg),
+    normalCountOverride: Number(cfg.triggerNormalCountOverride ?? 0),
+    hellCountOverride: Number(cfg.triggerHellCountOverride ?? 0),
+    sniperHitCountOverride: Number(cfg.triggerSniperHitOverride ?? 0),
+    mateExCount: Number(cfg.triggerMateExCount ?? 0),
+    mateUltimateCount: Number(cfg.triggerMateUltimateCount ?? 0),
+    mateAssistCount: Number(cfg.triggerMateAssistCount ?? 0),
     ownExSpecialCount: state.exSpecialCount,
     ownUltimateCount: state.ultimateCount,
   })
@@ -459,5 +456,28 @@ declare module '@/types/catalog' {
   interface PanelValues {
     /** 额外能力失衡积蓄量：本文件写读 */
     triggerAdditionalStunBuildUp?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 命座等级：buildCharConfig 写 */
+    triggerCinemaLevel?: number
+    /** 机制设置 trigger.normalCoordinatedCount 的取整覆盖值 */
+    triggerNormalCountOverride?: number
+    /** 机制设置 trigger.hellCoordinatedCount 的取整覆盖值 */
+    triggerHellCountOverride?: number
+    /** 机制设置 trigger.sniperHitCount 的取整覆盖值 */
+    triggerSniperHitOverride?: number
+    /** 队友强化特殊技次数（协同计数用） */
+    triggerMateExCount?: number
+    /** 队友终结技次数（协同计数用） */
+    triggerMateUltimateCount?: number
+    /** 队友支援次数（协同计数用） */
+    triggerMateAssistCount?: number
   }
 }

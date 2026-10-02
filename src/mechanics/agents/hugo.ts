@@ -163,31 +163,29 @@ function applyHugoPanel({ slot, team, cinemaLevel, panel, settings }: AgentPanel
 }
 
 function buildHugoCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.hugoCinemaLevel = cinemaLevel
-  record.hugoExVerdictRatio = clampRatio(setting(cfg, 'hugo.exVerdictRatio', 1))
-  record.hugoUltimateVerdictRatio = clampRatio(setting(cfg, 'hugo.ultimateVerdictRatio', 1))
-  record.hugoRemainingStunSeconds = Math.max(0, Math.min(15, setting(cfg, 'hugo.remainingStunSeconds', 5)))
-  record.hugoEchoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(setting(cfg, 'hugo.echoCoverage', 1))
-  record.hugoC4Coverage = cinemaLevel >= 4 ? clampRatio(setting(cfg, 'hugo.c4Coverage', 1)) : 0
-  record.hugoAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.hugoCinemaLevel = cinemaLevel
+  cfg.hugoExVerdictRatio = clampRatio(setting(cfg, 'hugo.exVerdictRatio', 1))
+  cfg.hugoUltimateVerdictRatio = clampRatio(setting(cfg, 'hugo.ultimateVerdictRatio', 1))
+  cfg.hugoRemainingStunSeconds = Math.max(0, Math.min(15, setting(cfg, 'hugo.remainingStunSeconds', 5)))
+  cfg.hugoEchoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(setting(cfg, 'hugo.echoCoverage', 1))
+  cfg.hugoC4Coverage = cinemaLevel >= 4 ? clampRatio(setting(cfg, 'hugo.c4Coverage', 1)) : 0
+  cfg.hugoAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): HugoCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeHugoCycle({
-    cinemaLevel: Number(record.hugoCinemaLevel ?? 0),
+    cinemaLevel: Number(cfg.hugoCinemaLevel ?? 0),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
-    exVerdictRatio: Number(record.hugoExVerdictRatio ?? 1),
-    ultimateVerdictRatio: Number(record.hugoUltimateVerdictRatio ?? 1),
-    remainingStunSeconds: Number(record.hugoRemainingStunSeconds ?? 5),
-    echoCoverage: Number(record.hugoEchoCoverage ?? 1),
-    exVerdictCountOverride: record.hugoAxisExVerdictCount !== undefined
-      ? Number(record.hugoAxisExVerdictCount)
+    exVerdictRatio: Number(cfg.hugoExVerdictRatio ?? 1),
+    ultimateVerdictRatio: Number(cfg.hugoUltimateVerdictRatio ?? 1),
+    remainingStunSeconds: Number(cfg.hugoRemainingStunSeconds ?? 5),
+    echoCoverage: Number(cfg.hugoEchoCoverage ?? 1),
+    exVerdictCountOverride: cfg.hugoAxisExVerdictCount !== undefined
+      ? Number(cfg.hugoAxisExVerdictCount)
       : undefined,
-    ultimateVerdictCountOverride: record.hugoAxisUltVerdictCount !== undefined
-      ? Number(record.hugoAxisUltVerdictCount)
+    ultimateVerdictCountOverride: cfg.hugoAxisUltVerdictCount !== undefined
+      ? Number(cfg.hugoAxisUltVerdictCount)
       : undefined,
   })
 }
@@ -235,8 +233,7 @@ function pushExecution(executions: AgentResourceInput['executions'], input: {
 
 function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
-  const record = cfg as unknown as Record<string, unknown>
-  const additionalActive = record.hugoAdditionalActive === true
+  const additionalActive = cfg.hugoAdditionalActive === true
   pushExecution(executions, {
     moveId: HUGO_EX_VERDICT_MOVE_ID,
     moveName: '魂狩·惩戒·决算终结一击',
@@ -284,11 +281,10 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
 }
 
 function patchHugoExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   const cycle = cycleFromInput({ cfg, state })
-  const cinemaLevel = Number(record.hugoCinemaLevel ?? 0)
-  const additionalActive = record.hugoAdditionalActive === true
-  const c4Coverage = Number(record.hugoC4Coverage ?? 0)
+  const cinemaLevel = Number(cfg.hugoCinemaLevel ?? 0)
+  const additionalActive = cfg.hugoAdditionalActive === true
+  const c4Coverage = Number(cfg.hugoC4Coverage ?? 0)
   const exOutOfStunRatio = cycle.exSpecialCount > 0
     ? cycle.exNormalCount / cycle.exSpecialCount
     : 0
@@ -354,7 +350,7 @@ function buildHugoResourceResult({ cfg, state }: AgentResourceResultInput) {
  * - **条件写形态逐位保留**（⚠ 本批最容易写错的地方）：原式是**整个块**以
  *   `hugoAxisRemainingStunSeconds !== undefined` 为门控，块内三个字段**一起**写；而
  *   `hugoAxisExVerdictCount` / `hugoAxisUltVerdictCount` 在块内用 `?? 0`。
- *   `hugo.ts` 的消费端（`cycleFromInput`）用 `record.hugoAxisExVerdictCount !== undefined`
+ *   `hugo.ts` 的消费端（`cycleFromInput`）用 `cfg.hugoAxisExVerdictCount !== undefined`
  *   **选通路** ⇒ 「写 0」与「不写」语义不同（恒写 0 会让决算次数被 override 成 0 而不是回落滑块比例）。
  *   故此处门控只认 `maxEnd >= 0`（= 原式给三个标量赋值的那一支），不额外加别的判据。
  * - `Math.max(0, Math.min(15, windowDur - maxEnd))` 的夹取逐字保留。
@@ -395,14 +391,13 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
     }
   })
   if (maxEnd < 0) return
-  const record = cfg as unknown as Record<string, unknown>
   // @fact engine:轴内块数落地 口径: 雨果轴内决算次数 = 轴内决算块数 × **上一轮失衡池整数次数**（prevPoolStunCount 线程，与池/轴栈同源）；外层不动点的连续小数计划次数只作收敛输入，不得用于轴内块数（曾致 0.82 窗被 Math.floor 归零、轴栈说 5 池只落地 1，坑36） | 据 用户@2026-09-10「失衡易伤为什么静默不算」查证 + 引擎日志实测 0.824·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/mechanics/agents/hugo.ts#applyHugoTeamConfig | 信 确认
   // ⟳复核: 轴内决算块数是否仍按「上一轮失衡池整数次数」重算（失衡池投影改为实数 / 引入新池口径时，本式的 `prevPoolStunCount` 输入需重核；坑36 的分叉形态是否复现） | 到期 2026-12-31
   // 轴模式：决算剩余失衡时间覆盖滑块 `hugo.remainingStunSeconds`、决算次数覆盖滑块
   // `exVerdictRatio` / `ultimateVerdictRatio`（`cycleFromInput` 按 `!== undefined` 选通路）。
-  record.hugoRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))
-  record.hugoAxisExVerdictCount = exVerdictBlocks
-  record.hugoAxisUltVerdictCount = ultVerdictBlocks
+  cfg.hugoRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))
+  cfg.hugoAxisExVerdictCount = exVerdictBlocks
+  cfg.hugoAxisUltVerdictCount = ultVerdictBlocks
 }
 
 function buildHugoResourceSections({ result }: AgentResourceSectionsInput) {
@@ -490,5 +485,32 @@ declare module '@/types/catalog' {
     hugoStunTeammateAtkBonus?: number
     /** 暗渊回响覆盖率（影画6 恒 1）：与暴击/暴伤增量同块写入；测试读 */
     hugoEchoCoverage?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 命座等级：buildCharConfig 写 */
+    hugoCinemaLevel?: number
+    /** 强化特殊技决算比例：机制设置 hugo.exVerdictRatio，夹到 0–1 */
+    hugoExVerdictRatio?: number
+    /** 终结技决算比例：机制设置 hugo.ultimateVerdictRatio，夹到 0–1 */
+    hugoUltimateVerdictRatio?: number
+    /** 决算时剩余失衡秒数：机制设置 hugo.remainingStunSeconds，夹到 0–15，默认 5 */
+    hugoRemainingStunSeconds?: number
+    /** 暗渊回响覆盖率：影画6 恒 1，否则机制设置 hugo.echoCoverage */
+    hugoEchoCoverage?: number
+    /** 影画4 覆盖率：不足 4 命为 0，否则机制设置 hugo.c4Coverage */
+    hugoC4Coverage?: number
+    /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
+    hugoAdditionalActive?: boolean
+    /** 失衡轴内强化特殊技决算块数：只在轴模式写入（非轴不写，读者按 undefined 门控） */
+    hugoAxisExVerdictCount?: number
+    /** 失衡轴内终结技决算块数：只在轴模式写入 */
+    hugoAxisUltVerdictCount?: number
   }
 }

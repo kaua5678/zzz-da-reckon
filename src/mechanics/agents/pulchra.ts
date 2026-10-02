@@ -74,13 +74,12 @@ function applyPulchraPanel({ panel, cinemaLevel }: AgentPanelInput): void {
 }
 
 function buildPulchraCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.pulchraCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
+  cfg.pulchraCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
   // 影画4：强化特殊技·噬爪瞬步能量消耗 -5
   if (cinemaLevel >= 4) {
-    const prev = Number(record.pulchraC4EnergyCut ?? 0)
+    const prev = Number(cfg.pulchraC4EnergyCut ?? 0)
     cfg.exSpecialEnergyConsume = Math.max(0, (cfg.exSpecialEnergyConsume ?? 0) + prev - PULCHRA_C4_EX_ENERGY_CUT)
-    record.pulchraC4EnergyCut = PULCHRA_C4_EX_ENERGY_CUT
+    cfg.pulchraC4EnergyCut = PULCHRA_C4_EX_ENERGY_CUT
   }
 }
 
@@ -110,8 +109,7 @@ function pushBackstage(executions: SkillExecution[], moveId: string, moveName: s
 
 /** 核心循环：猎步进入次数 → 后台追加攻击特殊技（噬爪·噩梦袭影） */
 function buildPulchraExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.pulchraCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.pulchraCinemaLevel ?? 0)))
   const n = computePulchraHuntStepCount({
     exSpecialCount: state.exSpecialCount ?? 0,
     parryCount: cfg.parryCount ?? 0,
@@ -128,8 +126,7 @@ function buildPulchraExecutions({ cfg, state, executions }: AgentResourceInput):
 
 /** 影画6：噬爪·噩梦袭影伤害 +15% */
 function patchPulchraExecutions({ cfg, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.pulchraCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.pulchraCinemaLevel ?? 0)))
   if (cinema < 6) return
   for (const exec of executions) {
     if (exec.moveId && PULCHRA_C6_NIGHTMARE_MOVE_IDS.has(exec.moveId)) {
@@ -164,4 +161,17 @@ export const pulchraMechanic: AgentMechanicModule = {
   patchExecutions: patchPulchraExecutions,
   buildResourceResult: buildPulchraResourceResult,
   resourceSections: buildPulchraResourceSections,
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 命座等级：buildCharConfig 写 */
+    pulchraCinemaLevel?: number
+    /** 影画4 强化特殊技耗能削减（常量 PULCHRA_C4_EX_ENERGY_CUT） */
+    pulchraC4EnergyCut?: number
+  }
 }
