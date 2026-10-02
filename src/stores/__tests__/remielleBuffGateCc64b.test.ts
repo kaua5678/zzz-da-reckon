@@ -64,8 +64,9 @@ describe('CC-64b 蕾米埃尔档位门控 → 模块钩子 teammateBuffGate', ()
       run(['1581', x, y], '1581')
       run([x, '1581', y], '1581')
     }
-    // 蕾米埃尔不在队、但 buff 组所属角色在队（base 真）⇒ 门控条必须 false（原 store 口径）
-    for (const [x, y] of pairs.slice(0, 200)) run([x, y, ''], x)
+    // r403 CC-377：原有一段「把 1581 的门控 buff 放进别的角色组 x、x 在队」——真实数据里这 5 条只在 1581 组（buff id 全局唯一），
+    // 钩子改为只问组拥有者后该情形不再由蕾米埃尔表态，删除。蕾米埃尔不在队 ⇒ 1581 组 base 为 false，下面这段覆盖。
+    for (const [x, y] of pairs.slice(0, 200)) run([x, y, ''], '1581')
     expect(checked).toBeGreaterThan(1000)
     expect(trues).toBeGreaterThan(0)
   }, 120000)

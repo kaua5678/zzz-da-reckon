@@ -427,7 +427,7 @@ export function deriveTeammateBuffEnabled(
   // 此前这里另算一份 aaActiveMap（只看 spec 声明、不经模块修正）⇒ 凯撒有异阵营队友时引擎放行、这里默认不勾；
   // 菲欧妮 tier3 异常数不足时这里默认勾上、引擎丢弃。现在「默认勾不勾」==「引擎认不认」。
   const aaGates = evalAdditionalAbilityBuffGates(mechanicTeam, aid => getAgent(aid) ?? null, groups)
-  // CC-64b / CC-207：模块钩子 teammateBuffGate（蕾米埃尔档位、波可娜 C6 互斥）——与引擎共用 teammateBuffGateBlocks
+  // CC-64b / CC-207：模块钩子 teammateBuffGate（蕾米埃尔档位、波可娜 C6 互斥）——与引擎共用 teammateBuffGateBlocks（r403 起只问组拥有者）
   const gateBlocked = teammateBuffGateBlocks(mechanicTeam, groups)
 
   const out: Array<{ id: string; enabled: boolean }> = []

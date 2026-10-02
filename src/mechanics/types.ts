@@ -821,17 +821,16 @@ export interface AgentMechanicModule {
    */
   defaultBasicAttackTimeWeight?: number
   /**
-   * CC-64b（2026-09-27）：队友 buff 的**附加启用条件**。CC-207 起 store 默认门控与引擎面板阶段共读
+   * CC-64b（2026-09-27）：**本角色 buff 组**里队友 buff 的附加启用条件。CC-207 起 store 默认门控与引擎面板阶段共读
    * （`mechanics/additionalAbilityGates.ts#teammateBuffGateBlocks`）：返回 false ⇒ 默认不勾，且用户强行勾上也不生效。
    * 只放**正确性约束**（互斥档位、防双计）；纯默认值偏好不要用本钩子。
-   * store 对每条 buff 询问**全部已注册模块**的本钩子；最终启用 = baseEnabled && 所有返回 boolean 的值（逻辑与，与注册顺序无关；CC-76）；
-   * 返回 undefined = 这条 buff 不归我管。`team` = 队内查得到 Agent 的角色（槽位顺序）；模块自己在 team 里找本角色
-   * （不在队也会被询问——须按「不在队」口径作答，与迁移前逐值一致）。
+   * r403 CC-377：只对**拥有者**派发——组 id = 拥有者 agentId，引擎只把该组的 buff 交给 `getAgentMechanic(group.id)` 的本钩子，
+   * 模块不必（也不能）认领别人组里的 buff；返回 undefined = 不表态。`selfCinema` = 本角色在队影画（不在队 undefined，
+   * 此时仍会被询问，按「不在队」口径作答）。`team` = 队内查得到 Agent 的角色（槽位顺序）。
    * 现实现：蕾米埃尔（额外能力 tier 1..3 三条攻击 buff、核心被动 refringe_3、prismatic_buildup）；
    * 波可娜（C6 禁用 pulchra_extra_trap_followup，防与 pulchra_cinema_6_trap_all 双计；CC-64c）。
    */
-  // CC-64c：入参加 groupId（buff 组 id = 来源角色 id 或 teammateBuffId）/ groupCinema（该组来源角色在队影画；不在队 undefined）
-  teammateBuffGate?(input: { buffId: string; team: ReadonlyArray<Agent>; groupId: string; groupCinema: number | undefined }): boolean | undefined
+  teammateBuffGate?(input: { buffId: string; team: ReadonlyArray<Agent>; selfCinema: number | undefined }): boolean | undefined
   /**
    * CC-65：TeamConfigPage「角色专属计数输入框」声明（展示层；原页面按角色写死的 v-if 块）。
    * 按数组顺序渲染在「双反」之后；min/max 取 `ACTION_COUNT_BOUNDS[field]`；写入统一走 `configStore.setActionCount`。

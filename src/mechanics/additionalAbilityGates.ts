@@ -8,7 +8,7 @@
  */
 import type { Agent, TeammateBuffGroup } from '@/types/catalog'
 import type { ReadonlyTeam } from './types'
-import { getAgentMechanic, getRegisteredAgentMechanics } from './registry'
+import { getAgentMechanic } from './registry'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import type { TeamConditionTeam } from '@/specs/teamCondition'
@@ -60,33 +60,34 @@ export function evalAdditionalAbilityBuffGates(
 
 /**
  * CC-207：模块钩子 `teammateBuffGate` 的求值（store 默认门控与引擎共用，同 CC-206 的做法）。
- * 返回被任一模块否决（返回 false）的 buff id 集合；多个模块表态时为逻辑与（CC-76），与注册顺序无关。
+ * 返回被拥有者模块否决（返回 false）的 buff id 集合。
  *
  * 为什么引擎也要执行：现有两个声明者都是**正确性约束**，不是默认值偏好——
  * - 蕾米埃尔 atk_1/2/3 是互斥档位，refringe_3 只在 3 档成立；强行全勾会叠加多档；
  * - 波可娜 6 命时基础条 `pulchra_extra_trap_followup` 必须关，否则与 `pulchra_cinema_6_trap_all` 重复计算。
  * CC-207 之前只有 store 读本钩子 ⇒ 用户强行勾上时引擎照算。
  *
- * `groupCinema` 按组 id 查在队影画（组 id = agentId 或 `agent.teammateBuffId` 别名；不在队 undefined），
- * 与迁移前 store 的 teamCinema 双键逐值一致。`team` 传给钩子的是队内查得到 Agent 的角色（槽位顺序）。
+ * **只问拥有者**（r403 CC-377）：buff 组 id = 拥有者 agentId（CC-275 加载处归一，spec teamBuffs 也并进本人组），
+ * 所以每个组只派给 `getAgentMechanic(group.id)` 的钩子，并给出 `selfCinema`（本角色在队影画，不在队 undefined）。
+ * 原先每条 buff 都问**全部已注册模块**，模块再按 buffId / groupId 自己认领——与 r399 CC-373 修掉的
+ * 「派给所有人、各自扫一遍找自己」是同一个病。两个声明者的 6 条门控 buff 都只在本人组（数据核对见 CC-377），故逐值等价。
+ * 拥有者不在队时仍会被询问（与原口径一致；store 侧 base 本就为 false）。
  */
 export function teammateBuffGateBlocks(team: ReadonlyTeam, groups: readonly TeammateBuffGroup[]): Set<string> {
   const blocked = new Set<string>()
-  const gates = getRegisteredAgentMechanics().flatMap(m => (m.teammateBuffGate ? [m.teammateBuffGate] : []))
-  if (gates.length === 0) return blocked
   const agents: Agent[] = []
-  const cinemaByGroup = new Map<string, number>()
+  const cinemaByAgent = new Map<string, number>()
   for (const member of team) {
     if (!member.agent || !member.agentId) continue
     agents.push(member.agent)
-    cinemaByGroup.set(member.agentId, member.cinemaLevel ?? 0)
+    cinemaByAgent.set(member.agentId, member.cinemaLevel ?? 0)
   }
   for (const group of groups) {
-    const groupCinema = cinemaByGroup.get(group.id)
+    const gate = getAgentMechanic(group.id)?.teammateBuffGate
+    if (!gate) continue
+    const selfCinema = cinemaByAgent.get(group.id)
     for (const buff of group.buffs ?? []) {
-      for (const gate of gates) {
-        if (gate({ buffId: buff.id, team: agents, groupId: group.id, groupCinema }) === false) { blocked.add(buff.id); break }
-      }
+      if (gate({ buffId: buff.id, team: agents, selfCinema }) === false) blocked.add(buff.id)
     }
   }
   return blocked
