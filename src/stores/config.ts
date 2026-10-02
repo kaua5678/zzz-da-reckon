@@ -126,9 +126,9 @@ function defaultDriveDisc(element: string): DriveDiscConfig {
     fourPieceSetId: '',
     twoPieceSetId: '',
     mainStats: {
-      4: 'atkPct' as any,
-      5: (elementStatKey('dmg', element) ?? 'atkPct') as any, // CC-225：旧 `${element}Dmg` || 'atkPct' 的回落是死代码（模板串恒真）
-      6: 'critRate' as any,
+      4: 'atkPct',
+      5: elementStatKey('dmg', element) ?? 'atkPct', // CC-225：旧 `${element}Dmg` || 'atkPct' 的回落是死代码（模板串恒真）
+      6: 'critRate',
     },
     subStatAllocation: {},
   }
@@ -651,7 +651,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
       // 自动设置驱动盘5号位主词条
       const dmgKey = elementStatKey('dmg', agent.damageElement) // CC-225 单一来源
       if (dmgKey && char.driveDisc.mainStats) {
-        char.driveDisc.mainStats[5] = dmgKey as any
+        char.driveDisc.mainStats[5] = dmgKey
       }
 
       // 自动设置平A时间分配权重：蕾米埃尔、支援、防护默认不分配平A时间
@@ -712,14 +712,14 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   function setMainStat(slot: number, slotNum: 4 | 5 | 6, statId: string) {
     const char = team.value[slot]
     if (!char?.driveDisc.mainStats) return
-    ;(char.driveDisc.mainStats as any)[slotNum] = statId
+    char.driveDisc.mainStats[slotNum] = statId
   }
 
   function setSubStatCount(slot: number, statId: string, count: number) {
     const char = team.value[slot]
     if (!char?.driveDisc.subStatAllocation) return
     const pool = catalogStore.statRules?.driveDisc?.subStatPool ?? []
-    if (pool.length > 0 && !pool.includes(statId as any)) {
+    if (pool.length > 0 && !pool.includes(statId)) {
       delete char.driveDisc.subStatAllocation[statId]
       return
     }
@@ -778,7 +778,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     for (const slotNum of [4, 5, 6] as const) {
       const recStat = rec.main_stats?.[String(slotNum) as '4' | '5' | '6']
       const statId = recStat ? REC_MAIN_STAT_MAP[recStat.name] : undefined
-      if (statId) char.driveDisc.mainStats[slotNum] = statId as any
+      if (statId) char.driveDisc.mainStats[slotNum] = statId
     }
 
     char.driveDisc.subStatAllocation = {}
