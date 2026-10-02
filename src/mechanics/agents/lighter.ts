@@ -428,11 +428,10 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
  * r403：删除旧的 cfg 侧链路 build 写 `lighterBackstageRatio` → 本函数读 → 写队友 `lighterC4FrontEfficiency`（R20 迁到 teamPanelEffects 后全链零消费者）。
  */
 function applyLighterTeamEnergyFlags(
+  lighter: CharacterOperationConfig,
   characters: CharacterOperationConfig[],
   opts?: { exCounts?: number[]; combatTime?: number; teamEnergyConsumed?: number },
 ): void {
-  const lighter = characters.find(c => c.agentId === LIGHTER_ID)
-  if (!lighter) return
   const cinema = Math.max(0, Math.floor(cfgNum(lighter, 'lighterCinemaLevel', 0)))
   const combatTime = Math.max(0, Number(opts?.combatTime ?? 180))
   const exCounts = opts?.exCounts ?? characters.map(() => 0)
@@ -533,15 +532,14 @@ export const lighterMechanic: AgentMechanicModule = {
    * - converge：用**上一轮**全队能量消耗重算喷发回能；
    * - postRound：用本轮收敛的 exCounts 估出全队能量消耗，供下一轮使用。
    */
-  applyTeamConfig: ({ characters, phase, combatTime, exCounts, teamEnergyConsumed, threads }) => {
-    const lighter = characters.find(c => c.agentId === LIGHTER_ID)
-    if (!lighter) return
+  applyTeamConfig: ({ cfg: lighter, characters, phase, combatTime, exCounts, teamEnergyConsumed, threads }) => {
+    // （CC-383：本人 = 派发器给的 `cfg`；派发器只对在队模块、按 cfg.agentId 取模块调用，不再在 characters 里自找）
     if (phase === 'build') {
-      applyLighterTeamEnergyFlags(characters, { exCounts: characters.map(() => 0), combatTime: 180 })
+      applyLighterTeamEnergyFlags(lighter, characters, { exCounts: characters.map(() => 0), combatTime: 180 })
       return
     }
     if (phase === 'converge') {
-      applyLighterTeamEnergyFlags(characters, {
+      applyLighterTeamEnergyFlags(lighter, characters, {
         combatTime,
         teamEnergyConsumed: Math.max(0, teamEnergyConsumed || 0),
       })
@@ -553,7 +551,7 @@ export const lighterMechanic: AgentMechanicModule = {
       return
     }
     // postRound：本轮次数已知 → 估下一轮全队普通能量消耗
-    applyLighterTeamEnergyFlags(characters, {
+    applyLighterTeamEnergyFlags(lighter, characters, {
       exCounts,
       combatTime,
       teamEnergyConsumed: estimateTeamNormalEnergyConsumed(characters, exCounts),

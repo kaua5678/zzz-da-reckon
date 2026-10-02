@@ -495,14 +495,9 @@ function buildEllenResourceSections({ result }: AgentResourceSectionsInput) {
  * 跨轮真正生效路径 = 返回值 → `threadsNext.ellenFreezeCount` → 下一轮 `applyEllenTeamConfig`
  * 的 converge 分支（`(threads.moduleFeedback?.ellenFreezeCount ?? 0)` 地板后写 cfg，供影画4 回能消费）。
  */
-function ellenNextRoundFeedback({ cfg, characters, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
-  let ellenFreezeCountNext = 0
-  // 迁移前判据 =「队里有 1191」。⚠ 用派发器给的 `cfg`，不用 `characters[slot]`
-  // （该数组按位置压缩，前导空槽时槽位号 ≠ 下标）。
-  if (cfg && characters.some(c => c.agentId === ELLEN_ID)) {
-    ellenFreezeCountNext = anomalyPool?.perElement?.find(p => p.element === 'ice')?.triggerCount ?? 0
-  }
-  return { ellenFreezeCount: ellenFreezeCountNext }
+function ellenNextRoundFeedback({ anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
+  // 迁移前判据 =「队里有 1191」；派发器只对在队模块调用本钩子 ⇒ 恒真，CC-383 删去死判据。
+  return { ellenFreezeCount: anomalyPool?.perElement?.find(p => p.element === 'ice')?.triggerCount ?? 0 }
 }
 
 export const ellenMechanic: AgentMechanicModule = {

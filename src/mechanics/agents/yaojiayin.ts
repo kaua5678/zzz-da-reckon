@@ -171,23 +171,20 @@ function pushExec(
  * 入场触发次数：全队快支+招架+回避支援 + 全队连携（编排注入 yaojiayinTeamChainTotal）。
  * 耀嘉音本人连携/终结进华彩不额外计「队友入场」，但队友连携入场会计入。
  */
-function estimateYaojiayinEntries(characters: CharacterOperationConfig[]): number {
+function estimateYaojiayinEntries(yj: CharacterOperationConfig, characters: CharacterOperationConfig[]): number {
   let entries = 0
   for (const ch of characters) {
     entries += Math.max(0, Math.floor(ch.quickAssistCount ?? 0))
     entries += Math.max(0, Math.floor(ch.parryCount ?? 0))
   }
   // 连携入场：编排写入 yaojiayinTeamChainTotal（全队 chainCountPerStun × 失衡次数）
-  const injected = characters.find(c => c.agentId === YAOJIAYIN_ID)
-  const injectedChains = Math.max(0, Math.floor(Number(injected?.yaojiayinTeamChainTotal ?? 0)))
+  const injectedChains = Math.max(0, Math.floor(Number(yj.yaojiayinTeamChainTotal ?? 0)))
   entries += injectedChains
   return entries
 }
 
-function applyYaojiayinTeamFlags(characters: CharacterOperationConfig[]): void {
-  const yj = characters.find(c => c.agentId === YAOJIAYIN_ID)
-  if (!yj) return
-  const entries = estimateYaojiayinEntries(characters)
+function applyYaojiayinTeamFlags(yj: CharacterOperationConfig, characters: CharacterOperationConfig[]): void {
+  const entries = estimateYaojiayinEntries(yj, characters)
   yj.yaojiayinEntryCount = entries
 }
 
@@ -198,10 +195,9 @@ function applyYaojiayinTeamFlags(characters: CharacterOperationConfig[]): void {
  * `yaojiayinQuickAssistEntries`），现在在模块内自算，编排层不再有 1311 特判分支。
  */
 function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
-  const { characters, phase, stunCount } = input
+  // （CC-383：本人 = 派发器给的 `cfg`；派发器只对在队模块、按 cfg.agentId 取模块调用，不再在 characters 里自找）
+  const { cfg: yj, characters, phase, stunCount } = input
   if (phase !== 'build' && phase !== 'converge') return
-  const yj = characters.find(c => c.agentId === YAOJIAYIN_ID)
-  if (!yj) return
   if (phase === 'converge') {
     let teamChains = 0
     let quickAssists = 0
@@ -212,7 +208,7 @@ function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
     yj.yaojiayinTeamChainTotal = teamChains
     yj.yaojiayinQuickAssistEntries = quickAssists
   }
-  applyYaojiayinTeamFlags(characters)
+  applyYaojiayinTeamFlags(yj, characters)
 }
 
 function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {

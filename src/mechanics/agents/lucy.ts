@@ -299,7 +299,7 @@ export const lucyMechanic: AgentMechanicModule = {
       return
     }
     if (phase !== 'build') return
-    applyLucyTeamEnergyFlags(characters)
+    applyLucyTeamEnergyFlags(cfg, characters)
   },
   /**
    * 跨槽位供给：终结技**邻位回能** + 影画1 回旋全队回能（每次 +2）。
@@ -358,9 +358,8 @@ export const lucyMechanic: AgentMechanicModule = {
 }
 
 /** 组队后写入各槽位：C1 标记与命座（邻位回能走 crossAgentSupply；原 lucyEnergyPerLucyUlt 写入从无读取方，CC-191 删） */
-function applyLucyTeamEnergyFlags(characters: CharacterOperationConfig[]): void {
-  const lucy = characters.find(c => c.agentId === LUCY_ID)
-  if (!lucy) return
+function applyLucyTeamEnergyFlags(lucy: CharacterOperationConfig, characters: CharacterOperationConfig[]): void {
+  // （CC-383：本人 = 派发器给的 `cfg`；派发器只对在队模块、按 cfg.agentId 取模块调用，不再在 characters 里自找）
   const cinema = Math.max(0, Math.floor(Number(lucy.lucyCinemaLevel ?? 0)))
   for (const c of characters) {
     c.lucyC1Enabled = cinema >= 1 ? 1 : 0

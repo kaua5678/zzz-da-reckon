@@ -437,12 +437,11 @@ function vivianReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduct
  * 原先的首轮 cfg 写回是死写——写在 `runCalcRound` 的本轮局部克隆上，所有读者都在钩子之前的资源装配阶段，
  * 写后零读，判死依据见 `docs/mcp-nextround-writeback.md`）。
  */
-function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function vivianNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let vivianTeamExNext = 0
   let vivianAnomalyTriggersNext = 0
-  // 迁移前判据 =「队里有 1331」；迁进模块后即「本模块被派发」。⚠ 用派发器给的 `cfg`，不用
-  // `characters[slot]`（该数组按位置压缩，前导空槽时槽位号 ≠ 下标 ⇒ 会取到别人那份）。
-  if (cfg && characters.some(c => c.agentId === VIVIAN_ID)) {
+  // 迁移前判据 =「队里有 1331」；派发器只对在队模块调用本钩子 ⇒ 恒真（CC-383 删去死判据，块结构保留）。
+  {
     vivianTeamExNext = teamResult.characters.reduce((sum, ch) => sum + (ch.exSpecialCount ?? 0), 0)
     vivianAnomalyTriggersNext = (anomalyPool?.perElement ?? []).reduce(
       (sum, prog) => sum + (prog.triggerCount ?? 0),

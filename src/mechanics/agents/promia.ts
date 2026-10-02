@@ -362,16 +362,15 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
  * 原先的首轮 cfg 写回是死写——写在 `runCalcRound` 的本轮局部克隆上，所有读者都在钩子之前的资源装配阶段，
  * 写后零读，判死依据见 `docs/mcp-nextround-writeback.md`）。
  */
-function promiaNextRoundFeedback({ cfg, characters, teamResult, displayResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function promiaNextRoundFeedback({ teamResult, displayResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
   // 展示口径行集优先（displayResult = rrShown），缺失回退装配结果——迁移前语义。
   const shown = displayResult ?? teamResult
   let promiaTriggerHitsNext = 0
   let promiaTeammateReleasesNext = 0
   let promiaReleaseDecibelNext = 0
-  // 迁移前判据是「队里有没有 1541」；迁进模块后「本模块就是 1541」，等价条件 = 本槽 cfg 存在
-  // （编排层按 cfg 遍历派发，空槽不会被派到）。⚠ 用派发器给的 `cfg`，不用 `characters[slot]`
-  // ——后者在「前导空槽」时会取错对象（数组按位置压缩，槽位号 ≠ 下标）。
-  if (cfg && characters.some(c => c.agentId === PROMIA_ID)) {
+  // 迁移前判据是「队里有没有 1541」；派发器只对在队模块调用本钩子 ⇒ 恒真（CC-383 删去 `cfg && characters.some(本人)` 死判据，
+  // 块结构保留以免大段缩进改动）。
+  {
     promiaTriggerHitsNext = anomalyPool?.totalTriggerCount ?? 0
     // 队友异放 = 除普罗米娅自身外的全队 release 事件（原文「队友触发异放」，自身异放回喧响另走 promiaReleaseDecibel）
     promiaTeammateReleasesNext = shown.characters

@@ -26,6 +26,7 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
+import { collectNextRoundFeedback } from '@/composables/resourceCalc/helpers'
 import type { AgentNextRoundFeedbackInput } from '@/mechanics/types'
 import { ELLEN_C4_ENERGY_PER_TRIGGER, type EllenCycle } from '@/mechanics/agents/ellen'
 
@@ -81,15 +82,17 @@ describe('普罗米娅 1541：触发命中 / 队友异放 / 自身异放回喧�
     eventType: 'release', eventId: 'promia_execution_release', count: 1, ...o,
   })
 
-  it('队内无 1541 → 三值全 0 且不写回任何角色', () => {
-    // 用 1471 的 cfg 调 1541 的钩子（等价「队里没有普罗米娅」：派发器不会派到她）
-    const chars = [row({ agentId: '1471' }), row({ agentId: '1481' })]
-    const { ret } = run('1541', {
-      cfg: { agentId: '1471', slot: 0 } as never,
-      characters: chars as never,
+  it('队内无 1541 → 真派发器不调她的钩子：反馈无 promia* 键（消费方 `?? 0`）且不写回任何角色', async () => {
+    // r409 CC-383：原写法用 1471 的 cfg 直调 1541 钩子——派发器永远不会产生这种输入（只对在队模块、按 cfg.agentId 派发），
+    // 钩子内的「队里有没有 1541」守卫随之判死删除；「不在队 ⇒ 0」改由派发器保证，在这里锁派发器。
+    const { catalog } = await setupHarness([])
+    const chars = [row({ agentId: '1471', slot: 0 }), row({ agentId: '1481', slot: 1 })]
+    const fb = collectNextRoundFeedback({
+      characters: chars as never, teamResult: teamResult([]),
       anomalyPool: { totalTriggerCount: 7 } as never,
-    })
-    expect(ret).toEqual({ promiaTriggerHits: 0, promiaTeammateReleases: 0, promiaReleaseDecibel: 0 })
+      prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
+    }) as Record<string, unknown>
+    expect(Object.keys(fb).filter(k => k.startsWith('promia'))).toEqual([])
     expect(chars.every(c => !('promiaTriggerHitCount' in c))).toBe(true)
   })
 
@@ -195,7 +198,7 @@ describe('零号·安比 1381（白雷层数）', () => {
 
 // ── 薇薇安 1331 / 艾莲 1191（同款首轮守卫） ──────────────────────────────────────
 describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
-  it('薇薇安：结果行集无 1331 全 0；有则源1 含自身强特、源2 求和 perElement 触发数', () => {
+  it('薇薇安：在队时源1 含自身强特、源2 求和 perElement 触发数；不在队 ⇒ 真派发器不调钩子', async () => {
     const cfg: Record<string, unknown> = { agentId: '1331', slot: 0 }
     const r = run('1331', {
       cfg: cfg as never, characters: [cfg] as never,
@@ -204,12 +207,15 @@ describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
     })
     expect(r.ret).toEqual({ vivianTeamEx: 5, vivianAnomalyTriggers: 5 })
 
-    const { ret } = run('1331', {
-      cfg: { agentId: 'a', slot: 0 } as never,
-      characters: [row({ agentId: 'a' }) as never],
-      teamResult: teamResult([row({ agentId: 'a', exSpecialCount: 9 })]),
-    })
-    expect(ret).toEqual({ vivianTeamEx: 0, vivianAnomalyTriggers: 0 })
+    // r409 CC-383：不在队的情形改锁派发器（原写法用别人的 cfg 直调 1331 钩子，派发器不会产生这种输入）。
+    const { catalog } = await setupHarness([])
+    const fb = collectNextRoundFeedback({
+      characters: [row({ agentId: '1041', slot: 0 })] as never,
+      teamResult: teamResult([row({ agentId: '1041', exSpecialCount: 9 })]),
+      anomalyPool: anomalyPool({ perElement: [{ triggerCount: 4 }] }),
+      prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
+    }) as Record<string, unknown>
+    expect(Object.keys(fb).filter(k => k.startsWith('vivian'))).toEqual([])
   })
 
   it('艾莲：只数 ice 元素触发', () => {
