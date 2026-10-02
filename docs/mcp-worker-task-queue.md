@@ -152,13 +152,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 398 轮（lane arena-E，开工 13:58；无并行会话；HEAD `e30ae68b`；REQUIREMENTS.md 无新条目）：CC-372 `1259abd5` + `468d0e05`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：r397 下一步 1 的 phoenix 部分已完成。查下来根因不是「只读入参被写」，而是 `releaseModifier` 契约缺身份，于是补了 `self`，三份夹带 hack 一并删除。TYPED 24。详见 `docs/mcp-nextround-writeback.md` §6。
-- **验证**：vue-tsc `--force` 0；zd `r398` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 455 个文件 / 4192 个测试；build 通过（`arenaE/v398-*.log`）。
-- **开放项**：OPEN-ITEMS 新增「PanelValues 索引签名」。
+**第 399 轮（lane arena-E，开工 14:15；无并行会话；HEAD `d6b84bf9`；REQUIREMENTS.md 无新条目）：CC-373 `2a563496`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：r398 下一步 1「core 认维琳娜」已完成。核查发现 import 层面早已解决（CC-6d），真病是异常池钩子派给全部已注册模块且入参缺身份。改为只派发给在队模块并附 `self`；velina、alice 的面板自认标记全部删除。详见 `docs/mcp-nextround-writeback.md` §7。
+- **验证**：vue-tsc `--force` 0；zd `r399` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 456 个文件 / 4196 个测试；build 通过（`arenaE/*399*.log`）。
+- **开放项**：无新增（OPEN-ITEMS「PanelValues 索引签名」仍在）。
 - **下一步（按价值排）**：
-  1. **core 认维琳娜**：`core/anomalyPool.ts:325`、`core/anomalyPool/helpers.ts:1167` 通过 `velina.ts#findVelinaPanel`（扫 `panel.velinaEnabled`）决定风蚀归属，等于 core 层在认具体角色，违反规则 6。先读这两处和 `findVelinaPanel` 的全部调用方，再看 `AgentMechanicModule.anomalyPoolSetup`（types.ts 约 1109 行）的现有返回结构。目标是由模块能力声明「风蚀归属」（比如 `anomalyPoolSetup` 返回 `windErosionOwner: true`，或新增一个声明字段），core 只读声明。zd 0/0 是硬判据。
-  2. **PanelValues 索引签名盘点**（OPEN-ITEMS）：先用脚本统计所有被写到 panel 上、却不在 `PanelValues` 显式声明里的字段（写入方 / 读取方 / 是否只有单模块用到），产出 `docs/mcp-panel-fields.md`，再决定是否按 D2 的做法迁成模块扩充。只做盘点，不要直接收紧签名。
+  1. **PanelValues 索引签名盘点**（OPEN-ITEMS）：先用脚本统计所有被写到 panel 上、却不在 `PanelValues` 显式声明里的字段（写入方 / 读取方 / 是否只有单模块用到），产出 `docs/mcp-panel-fields.md`（记得登记 README §6），再决定是否按 D2 的做法迁成模块扩充。只做盘点，不要直接收紧签名。盘点时特别留意**只被写入、无人读取**的字段（r398、r399 已经删掉 5 个这类「身份标记」，可能还有）。
+  2. **按模块派发的钩子是否还有缺身份的**：grep `getRegisteredAgentMechanics()` 的全部调用方，判断每处是「全量声明查询」（合法，例如设置项、预设提示）还是「派发运行期钩子」（应改用 `teamMechanicSlots`）。定位器只能用 `findModuleSlot`。
   3. d2 §5 表剩余「待做」模块。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
@@ -180,6 +180,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **遍历注册表写锁时，模块身份字段是 `agentIds`（数组）不是 `agentId`**；写错了夹具会绕过全部守卫、锁形同虚设，vue-tsc 也不报 ⇒ 每个锁都必须反证（r397）。
   - **契约缺身份 ≠ 输入可写性问题**：看到「往数据里塞标记、再扫一遍找自己」，先查钩子入参是不是缺了槽位 / 命座，补契约比加锁更根本（r398）。
   - **永远不要并行发两个 mcp.js 调用**：r398 又踩了一次（检查组和 vitest 一起发，后者报 Duplicate id），换新会话串行重发即可。
+  - **先核实上一轮的诊断再动手**：r398 交接写的是「core 认维琳娜」，但 core 早已不 import velina；照字面修会加一个只服务风蚀的声明字段。r399 按「派发给谁、给不给身份」重新诊断，一次修掉了 velina 和 alice 两份 hack。
+  - **删代码后守卫要求豁免销号**（`compactedSlotIndex` 的 `IDX_SAFE_ALLOWLIST`）：全量 vitest 红一条「豁免失效」属于正常现象，删掉对应条目即可。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 

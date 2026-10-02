@@ -65,3 +65,24 @@
 - **剩余同类**：
   - **`velina.ts#findVelinaPanel`** 用 `panel.velinaEnabled` 标记扫面板认维琳娜，消费方是 **core 层**：`core/anomalyPool.ts:325`、`core/anomalyPool/helpers.ts:1167` 的风蚀归属。这比上面那个更深：core 在认一个具体角色，违反了规则 6「编排层不认人」。修法方向：异常池输入里由模块能力声明「风蚀归属槽位」（参照 `anomalyPoolSetup` 钩子的写法），core 只读声明。
   - **`PanelValues` 的索引签名**（`types/catalog.ts:190`）是所有夹带的根源。直接去掉牵涉面很大，要先盘点所有「模块私有面板字段」，按 D2 的做法改成模块 `declare module` 扩充，再收紧签名。登记在 OPEN-ITEMS「PanelValues 索引签名」。
+
+## 7. r399 进展：异常池钩子只派发给在队模块并附 self（CC-373 `2a563496`）
+
+- **先纠正 §6 的判断**：「core 认维琳娜」在 import 层面早已不成立。CC-6d 起 core 不再 import velina，而是走模块能力（`core/anomalyPool/corrosion.ts#resolveAnomalyCorrosion` 遍历模块、调 `anomalyCorrosion`）。所以 §6 设想的「模块声明风蚀归属槽位」并不对症。
+- **真正的病**和 r398 同类，只是落在异常池这条派发路径上：
+  - `roundInputs.ts` 传给异常池的是 `getRegisteredAgentMechanics()`，即**全部已注册**模块，而且不带槽位。
+  - `transformAnomalyPool` / `anomalyCorrosion` 的入参也没有身份。
+  - 因此每个模块只能自己判断「我在不在队、哪一槽是我」：velina 在 `applyPanel` 给面板盖 `velinaEnabled`，再用 `findVelinaPanel` 扫回来；alice 盖 `aliceEnabled`，再 `panels.findIndex(p => (p as any).aliceEnabled)`。
+  - 同一份模块列表上，`nextRound`、`releaseModifier` 都只派发给在队模块；异常池是唯一的例外。
+- **改法（通用，不为风蚀单开字段）**：
+  - `mechanics/registry.ts` 新增 `findModuleSlot(module, team)`，作为**唯一定位器**（r398 的 `releaseModifierSelf` 也改用它）；新增 `teamMechanicSlots(team)`，返回在队模块 + 槽位，**按注册顺序**排列。钩子调用顺序与原来遍历全部模块时一致，所以 zd 0/0。
+  - `AnomalyPoolInput.agentMechanics` 改名为 `teamMechanics: TeamMechanic[]`。改名是故意的：语义从「全部注册」变成「在队 + 槽位」，旧调用点必须编译报错。
+  - `AgentAnomalyTransformInput` 加 `self: AnomalyHookSelf {slot, panel}`；`anomalyCorrosion` 的入参由 `panels` 改为 `self`。引擎用 `panelAt(panels, slot)` 取面板（面板数组按位置压缩，不能按下标取）。`resolveAnomalyCorrosion` 从**调用方传入的那份**面板里取：终局重结算用 `panels`，乱流结算用 `damagePanels`，与原来读哪份保持一致。
+  - 删除内容：`findVelinaPanel`、`panel.velinaEnabled = 1`、`panel.aliceEnabled = 1`，以及 `(p as any).aliceEnabled` 扫描。cfg 上的 `velinaEnabled` / `aliceEnabled` 是另一回事（anomalyPoolSetup 门控），保留。
+  - 顺带销号：`scripts/lib/compacted-slot-index.mjs` 的 `IDX_SAFE_ALLOWLIST` 中 alice `panels[aliceIdx]` 那条豁免（代码已消失，守卫测试要求销号）。
+- **锁**：
+  - 类型本身就是锁。`anomalyCorrosion` 入参没有 `panels`，「扫全队面板认自己」写不出来。反证：Cc71 测试里沿用旧写法 `anomalyCorrosion({ panels })`，在 vue-tsc 报 TS2353。
+  - `src/mechanics/__tests__/teamMechanicSlots.test.ts` 锁两条语义：只含在队模块；按注册顺序而非槽位顺序。
+- **验证**：vue-tsc `--force` 0；zd `r399` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；vitest(4) 456 个文件 / 4196 个测试；build 通过。
+- **回滚**：`git revert 2a563496`。
+- **还剩什么**：`transformAnomalyPool` 的入参仍然保留全队 `panels`，因为模块可能要给别的槽位注入积蓄，这是合法的跨槽需求。今后如果有模块为了**认自己**去扫 `panels`，应改用 `self`。按模块派发的钩子如果还有别处缺身份，一律走 `findModuleSlot`，不要再写第二个定位器。
