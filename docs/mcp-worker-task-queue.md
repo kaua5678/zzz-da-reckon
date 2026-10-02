@@ -153,18 +153,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 406 轮（lane arena-E；无并行会话；HEAD `c79409dd`；REQUIREMENTS.md 无新条目）：CC-380 `5afa8951` + `908055ed` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：**`src/mechanics/agents/` 零 `any` 类型**（架构卡 CC-380）。r405 交接的判断成立：result / state / exec 上的 `as any` 和 D2 §5 是同一个病（模块私有字段没声明，读写两头无类型）。
-  - 结果字段**并没有**像交接猜的那样「已有 declare」：10 个结果键全都没声明，结果钩子也没标返回类型，所以写端的对象字面量也不受检查。现按 claret 先例补齐。
-  - 盘点时发现锁的另一个盲区：`: any` **参数标注**（佩洛 7 个钩子）和 `typeof x & Record<string, unknown>`。前者掩盖了 3 个从未声明的 cfg 键。
-  - 两个行为发现：orphie 影画2 喧响上限恒按 180s（真 bug，已修，单独提交 `5afa8951` 便于回滚）；remielle `row.luminizeLevelValues` 死读（删）。
-  - 锁：`privateCfgFields.test.ts` 新增 `AGENT_ANY_TYPE`，和 D2 正则合并成一个逐文件不变式。
-- **验证**：vue-tsc `--force` 0；zd `r406a` 0/0（orphie 修正在夹具上不可观测：追加攻击次数 < 上限）；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 458 个文件 / 4242 个测试（+orphieC2DecibelCap 3 条）；build 通过（日志 `arenaE/r406/`）。锁的 5 条正则逐一反证均红；orphie 单测换回旧码三例皆 2925。
-- **回滚点**：`git revert 908055ed 5afa8951`（按此顺序）。`5afa8951` 只含 orphie.ts 与两个测试文件；若只想撤 orphie 行为而单独 revert 它，旧码的 `(state as any)` 会让 `908055ed` 的新锁变红，需改用 `effectiveCombatTime` 以外的带类型写法。
-- **开放项**：OPEN-ITEMS 的 D2 追加 r406。`idempotentCfgWrite.test.ts` 第 84 行 grace 夹具里的 `combatTime: 180` 是惰性字段（grace 不读 state.combatTime），无害，未动。
+**第 407 轮（lane arena-E；无并行会话；HEAD `c4363518`；REQUIREMENTS.md 无新条目）：CC-381 `30abf0aa` + `84ec4c0b` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：**计算层（core / types / specs / utils / data / mechanics）非测试源码零 `any`**，由全目录不变式锁住（架构卡 CC-381）。
+  - r406 交接列的 11 处（core 9 / types 2）都是同一个病：catalog 漏声明数据里真实存在的字段，或 core 为不依赖 store 而用 `any`（改为结构类型 `ImpactVarConfig`）。
+  - 补查 `Record<string, any>` 时挖出更大的一处：**`specResources` 被 18 个模块当私有结果夹带通道**。已拆开：`specResources` 只放 spec 账本（`SpecResourceResult`），私有对象走具名结果键（`aireCycle` / `hugoAbyssEcho` / `triggerResolve` …，全表见 `.zc/perf/dump.perf.ts` 的 `SPEC_FOLD`）。
+  - panYinhu `buildResourceResult` 零读者，已删除（如需展示影画 2 换能，从 `cfg.panYinhuC2EnergyTotal` 读，那才是真实通道）。
+- **验证**：vue-tsc `--force` 0；zd `r407c` 0/0（`r407a` 未加折叠时结构哈希 276 / 281 处变化，总伤害段与失衡池段全同，见下方新坑）；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 458 个文件 / 4244 个测试；build 通过（日志 `arenaE/r407/`）。锁 7 条正则逐一注入 `core/panel.ts` 均红。
+- **回滚点**：`git revert 84ec4c0b 30abf0aa`（按此顺序）。`.zc/perf` 的 `SPEC_FOLD` 不入 git，回滚后留着无害（只在对象含这些键时生效）。
+- **开放项**：OPEN-ITEMS 的 D2 追加 r407。spec JSON 里 hugo（1291）/ piper（1281）的 `resources` 对引擎是死声明（notes 已写明由 TS 模块承担），本轮没动；如要清理，先确认 validate:specs 与 UI 有无读者。
 - **下一步（按价值排）**：
-  1. **计算核心零 any**：非测试源码中 core 9 处、types 2 处（specs / utils / data 已为 0）。先逐处判断是否同病（未声明字段 / 参数标注），能清则清，然后把 `AGENT_ANY_TYPE` 的扫描面从 agents 扩到 `core/` `types/` `specs/` `utils/`（全仓不变式，不列名单）。计数命令：`cd src && grep -rPn "\bas\s+any\b|:\s*any\b|<any\b|\bany\[\]" core types --include=*.ts | grep -v __tests__`。UI 层（composables 23 / components 18 / stores 9）价值较低，排在后面，单独立项。
+  1. **`composables/resourceCalc/` 零 any 并入 CALC_DIRS**：它是计算编排层，不是纯 UI。现有 13 处（skillRows 5 / panelPhases 4 / helpers 2 / damagePoolDirect 2），先逐处判断同病与否，清零后在 `privateCfgFields.test.ts` 的 `CALC_DIRS` 加 `'composables/resourceCalc/'` 并反证。计数命令：`cd src && grep -rPn "\bas\s+any\b|:\s*any\b|<any\b|\bany\[\]|,\s*any\s*[>,\]]|\|\s*any\b" composables/resourceCalc --include=*.ts | grep -v __tests__`。
   2. 继续找「派给全部、各自认领」的同类（CC-373 / CC-377）。判据是派发处有没有给身份。
+  3. UI 层（composables 其余 10 / stores 9 / components 18 / views 28）价值较低，`stores/config.ts` 的 7 处优先（store 是计算输入的源头）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -207,6 +207,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **`: any` 参数标注和 `as any` 等价，但只锁强转的正则看不到它**：`mod.hook = ({ cfg }: any) =>` 让整个 cfg 失去类型。这种钩子赋值去掉标注即可拿到上下文类型，tsc 会把背后未声明的键全报出来（r406 佩洛：3 个）。写锁时连同 `<any>` / `any[]` / `& Record<string, unknown>` 一起列。
   - **结果钩子不标返回类型，写端同样无类型**：函数先推断出字面量类型，再赋给模块槽位，不触发多余属性检查，拼错键不报。统一标 `Partial<CharacterResourceResult>`（claret 先例）。
   - **修掉被 any 掩盖的读法后，测试夹具可能沿用同一个不存在的字段**（r406 `state: { combatTime: 180 }`）：改夹具为真实字段，断言不动；不要为了让旧夹具通过去保留兜底。
+  - **zd 的 dump 第二段是整个 resourceResult 的结构哈希**：只搬键 / 改嵌套也会 DIFF，但不是行为变化。判别：DIFF 条目的总伤害段（第一段）与失衡池哈希（第三段）全同 ⇒ 纯结构。证明：在 `.zc/perf/dump.perf.ts` 与 `rowsnap.perf.ts` 的 `remap` 加 `PERF_KEY_ALIAS` 折叠（r407 `SPEC_FOLD` 先例），折叠条件要能识别对象类型——新旧同名键（`triggerResolve`）会让折叠无限递归（r407 实测栈溢出）。`.zc` 不入 git：worktree 与主仓两份都要改。
+  - **迁移结果键后全仓 grep 旧键名字面量（含测试）**：测试里 `(x.specResources as any).key`、字符串键辅助函数、`Object.keys(...).toContain('key')` 都躲得过 tsc（r407 有 5 处）。
+  - **Python 补 import 别只按单行 `^import` 定位**：会插进多行 `import type {\n…\n} from` 块中间（r407 zhao 语法错）。以 `} from '…'\n` 结束行为锚。
+  - **外部不可信数据的参数用 `unknown` + 收窄，别为收紧类型去改测试的防御语义**：r407 先把 `getGlobalBuffStatOptions` 收紧成 `StatRules['statDisplay']`，测试（字符串条目 / 缺 label 回落）随即报错——测试是对的，签名应如实表达「不可信」。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
