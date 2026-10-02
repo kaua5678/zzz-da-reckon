@@ -153,17 +153,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 414 轮（lane arena-E；无并行会话；HEAD `45058378`；REQUIREMENTS.md 无新条目）：CC-388 `3420fab9` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
-- **做到哪**：r413 交接第 1 项的合轴率部分完成（架构卡 CC-388）：探针证实招式 id 跨角色共用（`basic_attack` 52 人），合轴率覆盖换人会被新角色继承；键已改为 agentId，难度天梯的快照 / 还原改走 store 新接口。
-- **验证**：vue-tsc `--force` 0；zd `r414a` 0/0；guards 链 EXIT 0（recording 189）；vitest(4) 461 文件 / 4256 测试；build 通过。
-- **回滚点**：`git revert 3420fab9`（单提交；config store 不持久化，无存档迁移）。
-- **拍板**：失衡轴 `stunAxes` / `stunAxisPlans` 本轮**不改**——它是整队时间轴计划，动作存 `{ slot, moveId }`，「换人后轴该失效 / 保留 / 过滤」是语义选择，不是「用户覆盖该随角色」那一类，没有证据前不动。候选与风险见下一步第 1 项。
-- **未决项**：失衡轴换人语义（见下一步第 1 项，已写候选与探针）。
+**第 415 轮（lane arena-E；无并行会话；HEAD `47c681d9`；REQUIREMENTS.md 无新条目）：CC-389 `a4fcc9a6` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
+- **做到哪**：关闭 r414 未决项「失衡轴换人语义」。探针证明不是语义问题而是计算错误：换人后旧角色的轴动作被栈遍历当零成本动作执行。已在 `roundInputs.ts#resolveAxes` 出口丢弃「本槽解析不了且能证明属于别人」的动作（架构卡 CC-389，含判据取舍与数据）。
+- **验证**：vue-tsc `--force` 0；zd `r415a` 0/0；guards 链 EXIT 0（25 guard / recording 189）；vitest(4) 462 文件 / 4261 测试；build 通过。
+- **回滚点**：`git revert a4fcc9a6`（单提交；不改存储结构）。
+- **拍板**：① 采用保守判据（只丢能证明属于别人的），不用「本人能否解析」——后者误杀 7 个合法合成行；不用上一轮执行行——依赖迭代轮次。② 只过滤生效轴、不改 `configStore.stunAxes`：换回原角色时轴原样生效。
+- **未决项**：别人的**合成行**残留时仍当零成本动作执行（判据证明不了归属）。见下一步第 1 项，已写做法与风险。
 - **下一步（按价值排）**：
-  1. **失衡轴换人后旧动作怎么处理**（`types/resource/pools.ts#StunAxisAction` = `{ slot, moveId, count, … }`，moveId 是倍率表 id 如 `1401010`，或通用 `basic`）。
-     - 先探针、不先改：套一个带轴的预设（`teamPresets` 里 stunAxes 非空的），记录 `teamTotalDamage`；`setAgent(0, 另一个角色)` 后看 ① 引擎对「该槽新角色没有的 moveId」怎么处理（丢弃 / 报错 / 按 0 计 / 照算）；② `basic` 动作是否照常算到新角色头上；③ UI 轴编辑器显示什么。消费入口从 `resolveStunAxisPlan` 与 `useStunAxis` 往下追。
-     - 候选 (a) 引擎侧不变式：轴动作的 moveId 不属于该槽当前角色（`basic` 除外）就跳过，并在结果里计数提示——同 CC-385「引擎不信任靠同步维护的表」；风险：静默丢动作，用户以为轴还在。(b) `setAgent` 时清掉引用该槽的轴动作——风险：预设 / 独立场景不经 setAgent（CC-386 的教训），且用户换回原角色时轴丢失。(c) 维持现状并写明「轴是队伍级计划，换人后需重编」——仅当探针显示引擎已安全丢弃外来 moveId 时可选。
-  2. 若第 1 项结案，全仓扫描 `composables/` 里直接读 `configStore.<原始表>` 而不经 store 方法的位置（CC-386 的 helpers、CC-388 的天梯都是这种），逐个判断键构造是否只有一处。
+  1. **让合成轴块的归属可证明**：给 `AgentMechanicModule` 加可选声明（如 `axisOwnedMoveIds?: readonly string[]`，列出本模块产生、不在招式表里、可放上轴的 moveId），`roundInputs.ts#axisActionResolvableBy` 多查这一项。要声明的已知 id（r415 探针，`/home/kaua/calc-arch/arenaE/r415/pred2.out`）：1021 `nekomata_chaoxiong_claw`、1091 `miyabi_frostburn_break`、1471 `banyue-recovery-lundao`、1291 `1291_ultimate_verdict_bonus`。`evade_assist`（1081 / 1181 / 1241 / 1351 共用）先查它由谁产生：若是数据驱动的通用行（任何有该能力的角色都有），它本就不属于某个角色，保持「不认领」。锁：在 `staleAxisActionCc389.test.ts` 加一条「编辑器可放置的全部块 = 本人可解析」（照 r415 probe4 的写法：62 角色跑引擎收集 executions，排除 `basic_attack`），声明补齐后 miss 应只剩 evade_assist；再加一条残留合成行判残留。风险：新声明是又一个「模块要记得登记」的表——锁里的「全部可放置块本人可解析」能抓到漏登记。
+  2. 轴编辑器对残留块的提示：现在 `configStore.stunAxes` 里的残留块在编辑器里照样显示，但已不参与计算。可在 `views/StunAxisPage.vue` 用 `isStaleAxisActionFor` 标灰并提示「该块属于已不在此槽的角色」。纯展示，价值中等。
+  3. 全仓扫描 `composables/` 里直接读 `configStore.<原始表>` 而不经 store 方法的位置（CC-386 / 388 的同类），逐个判断键构造是否只有一处。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -223,6 +222,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **按槽位存的用户设置要问「换人后该不该跟着走」**：描述「这个角色怎么打」的覆盖（利用率、份额）应随角色，键用 agentId（`ownerKeyOf`）；描述「这个位置」的设置才按槽位。判断不清时，先看 setAgent 换人后旧值还被不被引擎读到。
   - **按字段名枚举「入参有没有本人」会误报**：CC-387 的编译器探针把 `resourceSections`（入参 `result` 就是本人结果）判成「无本人」。探针结果只是待查名单，每一条都要打开实现确认；纯函数（只收数值 / 读取器）本就不需要本人。
   - **「还原后与之前相等」的锁要在非空状态上测**：天梯「试开回滚不留痕」原测试在合轴率覆盖为空时比较前后 JSON，键形态拼错照样绿。而且天梯入口 `resetDifficultyGoals` 会有意清空覆盖——要让被还原的东西真的存在，得用 `opts.base` 跳过重置。写这类锁前先断言「之前」不是空的。
+  - **「展示路径看起来无害」不代表引擎无害**：失衡轴的展示计算按资源池给残留动作 0，栈遍历却照单执行（成本全 0 = 免费）。判断某个残留输入有没有害，要看真正产出伤害的路径（这里是 `calcOutput.axisStack.executed`），并用「同一路径、只差该输入」做对照——直接新建队伍和走 setAgent 的配装 / 命座不同，两者比较会把差异错归到被测输入上。另外：用 `effectiveStunAxes` 数动作会撞上求解器回退（`forceNoAxis` 清空 resolvedAxes），锁判据要直接锁纯函数。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
