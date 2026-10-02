@@ -153,16 +153,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 417 轮（lane arena-E；无并行会话；HEAD `2330da2b`；REQUIREMENTS.md 无新条目）：CC-391 `3b8d2fbe` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
-- **做到哪**：OPEN-ITEMS D1（主C 未认领招式易伤，用户 2026-09-25 已裁决）大部分落地：轴槽位里没放进轴的后台行，CD / 时间驱动的 9 行改按失衡占比吃易伤，单父伴随的 3 组跟随父动作的轴内占比（架构卡 CC-391，含逐行证据与普查数据）。
-- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0（25 guard / 12 token / 366 data / 1120 spec / recording 189）；vitest(4) 463 文件 / 4266 测试（timeGolden 重生成 1 行后全绿）；build 通过；zd `r417a` 有伤害变化的只有 `auto-1041-1571-1341`（+0.041%），其余 218 条是结构哈希。
-- **回滚点**：`git revert 3b8d2fbe`（单提交，含 timeGolden 基线 1 行）。
-- **拍板**：① 不用 `timeBucket=backstage` 做分类依据——普查证明它混着合轴主动招式（1331010），一律回落会给主动招式白送易伤；按模块代码里的触发说明逐条归类，不按名字猜。② (b) 复用行级 `autoSplitByStun`、(a) 复用模块级 `attachedEvents`，不新增契约。③ yuzuha 1411021（彩糖花火·极，硬糖 / 夹心硬糖重击触发）证据两可（夹心硬糖是支援突击），按 (b) 处理：次数口径本身就是「≈招架次数」的近似，跟随某个可放置父动作并不更准。
-- **未决项**：多父伴随行仍按「按放置」= 0：vivian 1331006、pulchra 1351006 / 1351007、lycaon 1141019（锁里 `UNCLASSIFIED_OK` 白名单逐条注明）。做法见下一步第 1 项。
+**第 418 轮（lane arena-E；无并行会话；HEAD `7e928003`；REQUIREMENTS.md 无新条目）：CC-392 三个代码提交 `0e282a10` / `e7453962` / `48ffeaf9` + 文档，已 push。**
+- **做到哪**：OPEN-ITEMS D1 全部落地。多父伴随行（vivian 悬落、pulchra 噬爪）跟随全部父动作的轴内占比；lycaon 后台闪反按失衡占比近似；轴编辑器不再提供放了不起作用的块（伴随子行、自动行、以 [表] 形式漏出的已建模招式）。详见架构卡 CC-392。
+- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0；vitest(4) 463 文件 / 4268 测试；build 通过；zd `r418a` 0/0（步 1），`r418b` 只有 `auto-1051-1141-1451` 两条结构哈希变、伤害零变化；timeGolden 不变；截图前后对比两队。
+- **回滚点**：三个提交可分别 `git revert`（步 3 → 步 2 → 步 1 顺序最安全）。
+- **拍板**：① 步 1 单独提交并以 zd 0/0 证明零差，再做登记。② lycaon 1141019 不扩跨槽契约，按 (b) 近似（理由写在卡片）。③ [表] 池去重口径改成伤害侧 `backed`（本角色全部执行行），不另列隐藏表。
 - **下一步（按价值排）**：
-  1. **多父伴随（D1 收尾）**：① `composables/useResourceCalc.ts#attachedInAxisMap` 现在对同一个子行**按最后一个父动作覆盖**（`out[child] = frac`），改成跨全部父动作（含跨模块）合计：Σ父动作轴内单位 / Σ父动作总单位。现有模块没有多父子行 ⇒ 这一步应 zd 伤害零变化，先单独提交并跑 zd 证明。② vivian 登记 `{ 自身 EX, 终结 1331014, 支援突击 1331019, 连携 1331013 } → 1331006`（悬落次数 = selfEx + 终结 + 支援突击 + 连携，见 `vivian.ts` xuanluoCount；自身 EX 的 moveId 先查 `selfExSpecialCount` 数的是哪些行，1331010 是合轴 EX）；pulchra 登记 `{ 1351008, 1351014, 1351011, 1351012 } → 1351006 / 1351007`（猎步进入 = 强特 + 支援突击 + 连携 + 终结）。③ lycaon 1141019 跟随**队友**闪反：父动作在别的槽，需要跨槽聚合；若只为它扩契约不划算，改按 (b) 处理并在卡片写明近似。④ 每做一个就从锁的 `UNCLASSIFIED_OK` 删掉对应条目，再跑 timeGolden（预期有变化的话按 D1 口径逐条解释后重生成）。
-  2. **轴编辑器隐藏 `autoSplitByStun` 行**：这些行的伤害分支在放置之前，放进轴也会被忽略，但编辑器动作池照样提供（候选来自执行行）。在候选生成处过滤 `autoSplitByStun`，避免用户放一个不起作用的块。先找候选来源（`views/StunAxisPage.vue#slotMoves` → composables），过滤后用 r416 的截图配方确认。
-  3. 「换人后该不该跟着走」收尾审计（r416 第 2 项，未动）：`stores/config.ts` 里仍按槽位存的用户设置逐个归类，有实害才改。
+  1. 「换人后该不该跟着走」收尾审计（r416 第 2 项，仍未动）：`stores/config.ts` 里仍按槽位存的用户设置逐个归类，有实害才改。
+  2. [表] 池去重逻辑在 `StunAxisPage.vue` 的候选循环里，没有单测。若要锁：把候选生成（执行行 + 连段 + [表]）抽到 composable，再写「有执行行的 moveId 不出 [表]」的不变式；顺带核对 1051「[表]连携技：踱寒践约」——执行行的连携 moveId 与技能表 moveId 不同，判断是不是同一招重复提供。
+  3. 日后 `attachedEvents` 支持跨槽或按类别的父动作时，把 lycaon 1141019 从 `autoSplitByStun` 改为登记（目前是近似）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -173,6 +172,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - `git stash -- <路径>` 可只撤某几处改动做锁的反证，`git stash pop` 复原（r390 用过）。
   - 只做机械改写时**别**把 `Number(raw ?? x)` 换成 `cfgMechanicSetting`：后者对非有限数取 fallback，脏值行为不同（零差不保）。
   - check:fast / verify 别整条跑：拆成 guards→tokens→data→specs（一调用）/ recording / `vitest --maxWorkers=4` / build 分别前台跑。
+  - **隐藏某类候选后要检查有没有从别的池子漏回来**：轴编辑器有三个候选来源（执行行 / 连段表 / [表] 技能表直读），只过滤执行行时，被隐藏的招式会以 `[表]…×99` 形式重新出现（r418 截图发现）。改候选池要截图看全部来源。
+  - **verify 拆分时脚本名照 `package.json` 的 `verify` 写**：是 `check-guards` / `check-tokens` / `validate:data` / `validate:specs` / `verify:recording`，写成 `guards` / `check-data` 会直接失败（r418 踩到）。
   - 只剩 15 个工具（无 wsl_exec）、run_command PTY 起不来、文件工具 EIO ⇒ WSL 挂了，没有替代路径，停手；ngrok `404 ERR_NGROK_3200` ⇒ 隧道离线，什么都做不了。恢复后先 `git status` 核对 worktree 再续。
   - 锁的判据要覆盖「同一个病的所有写法」：CC-235 只锁模板字面量、D2 §5 只锁 Record 强转，结果各漏了一类（r393 补）。新写锁时先列出这个病的全部语法形态。
   - Python 补丁里 `assert s.count(a)==n` 先于写文件：计数写错时文件不会半改（r393 orphie 实测）。
