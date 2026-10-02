@@ -40,7 +40,7 @@ function hpPhase(effect: BuffEffect, group: BuffGroup | null | undefined): 'in' 
 function hpEffectValue(raw: BuffEffect, cov: number, modLevel?: number): { text: string; num: number } {
   // CC-210：精炼取值走引擎同一函数（此前只替换 value，stacked 的 valuePerStack 用原值）
   const effect = effectAtModLevel(raw, modLevel)
-  const suffix = modLevel && (raw as any).modificationValues ? `（精炼${modLevel}）` : ''
+  const suffix = modLevel && raw.modificationValues ? `（精炼${modLevel}）` : ''
   // 全局 buff 等无 type 的项按 fixed 处理
   if (!effect.type || effect.type === 'fixed') {
     const v = effect.value ?? 0
@@ -54,7 +54,7 @@ function hpEffectValue(raw: BuffEffect, cov: number, modLevel?: number): { text:
   }
   if (effect.type === 'derived') {
     return {
-      text: `转模 ${pct(effect.ratio ?? 0)}×${localized((effect as any).sourceLabel) || effect.basis || '来源'}` + (effect.cap != null ? `（上限 ${fmt(effect.cap, 0)}）` : ''),
+      text: `转模 ${pct(effect.ratio ?? 0)}×${localized(effect.sourceLabel) || effect.basis || '来源'}` + (effect.cap != null ? `（上限 ${fmt(effect.cap, 0)}）` : ''),
       num: 0,
     }
   }
@@ -119,11 +119,12 @@ export function collectHpSources(
   const four = char.driveDisc?.fourPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.fourPieceSetId) : undefined
   const two = char.driveDisc?.twoPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.twoPieceSetId) : undefined
   if (four) {
-    add(localized(four.name) || four.id, '2件套', four.twoPiece as any)
+    // 驱动盘 2 件套只有 effects（无 scope）；局外效果显式写出，与 hpPhase 的判定一致
+    add(localized(four.name) || four.id, '2件套', { scope: 'outOfCombat', effects: four.twoPiece.effects })
     add(localized(four.name) || four.id, '4件套自身', four.fourPiece?.selfBuff)
     add(localized(four.name) || four.id, '4件套团队', four.fourPiece?.teamBuff)
   }
-  if (two && two.id !== four?.id) add(localized(two.name) || two.id, '2件套', two.twoPiece as any)
+  if (two && two.id !== four?.id) add(localized(two.name) || two.id, '2件套', { scope: 'outOfCombat', effects: two.twoPiece.effects })
 
   // 5. 全局 Buff（属性配置页手动添加）：取引擎并入后的条目——此前自己包成无 scope 的伪分组，
   //    hpPct 会被判成「局外」，而引擎按局内结算
