@@ -37,12 +37,26 @@ export interface TeammateBuffSourceContext {
   sourcePanelsByOwner: SourcePanelsByOwner
 }
 
+/**
+ * 把 agent.id 的面板挂进 sourcePanelsByOwner，并补**别名键**。
+ *
+ * 为什么要有别名：catalog `teammate-buffs.json` 里 5 个角色的 buff `ownerId` 写的是
+ * **英文 slug**（youye/remielle/nangongyu/burnice_white/jane_doe）而不是数字 agentId。
+ * 虽然 `mergeSpecTeamBuffs`（stores/catalog）在加载时已把 ownerId 归一到组 id，
+ * 但 spec `teamBuffs` 侧的 `specTeamBuffToTeammateBuff` 转换产物**不经过**那一步归一
+ * （spec 侧 ownerId 由转换器生成，可能仍是 slug 或拼音）⇒ 防御性保留别名通道。
+ *
+ * 别名键来源：teammateBuffGroups 里该组所有 buff 的 `ownerId`/`teammateId` 并集
+ * （数字 id 自身由 `map[agent.id]` 覆盖，slug 别名只是补充）。
+ */
 function addSourcePanelAliases(
   map: SourcePanelsByOwner,
   agent: Agent,
   panels: { outOfCombat: PanelValues; inCombat: PanelValues },
+  aliasKeys: readonly string[] = [],
 ): void {
   map[agent.id] = panels
+  for (const key of aliasKeys) map[key] = panels
 }
 
 /**
@@ -54,6 +68,20 @@ export function buildTeammateBuffSourceContext(
   deps: TeammateBuffSourceDeps,
 ): TeammateBuffSourceContext {
   const sourcePanelsByOwner: SourcePanelsByOwner = {}
+
+  // 一次性扫全库 buff，建「数字 agentId → slug 别名键」表
+  // （teammate-buffs.json 的 ownerId/teammateId 里混着英文 slug，见 addSourcePanelAliases 头注）
+  const aliasByAgentId = new Map<string, string[]>()
+  for (const group of deps.teammateBuffGroups) {
+    for (const buff of group.buffs ?? []) {
+      for (const key of [buff.ownerId, buff.teammateId]) {
+        if (!key || /^\d+$/.test(key)) continue // 纯数字 = agentId，不是别名
+        const list = aliasByAgentId.get(group.id) ?? []
+        if (!list.includes(key)) list.push(key)
+        aliasByAgentId.set(group.id, list)
+      }
+    }
+  }
 
   for (const char of team) {
     if (!char?.agentId) continue
@@ -78,7 +106,7 @@ export function buildTeammateBuffSourceContext(
     addSourcePanelAliases(sourcePanelsByOwner, agent, {
       outOfCombat: result.outOfCombat,
       inCombat: result.inCombat,
-    })
+    }, aliasByAgentId.get(agent.id))
   }
 
   const enabledTeammateBuffs: TeammateBuff[] = collectInCombatTeamBuffs(team, {
