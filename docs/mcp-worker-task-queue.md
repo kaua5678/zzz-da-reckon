@@ -81,6 +81,21 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 00:12 arena-C 第 421 轮**（开工时 arena-E r420 仍在 `wtE-rec30` 跑 perf ⇒ 并行；00:23 对方收工并 push `497aaa27` + `f7c60b6a`，合入前已 rebase；REQUIREMENTS.md 429 行无新条目；worktree `wtA-r421` 已删）：**CC-395 `6dbd26b8`**，已 ff 合入 master。
+- **做到哪**（两件事，互不相干）：
+  1. **CC-395a 展示层类型断层**：`views/` + `components/` 的 24 处 `as any` 清到 **0**。19 处字段本就已声明 = 冗余强转（`BuffEffect.modificationValues / sourceLabel / source`、`TeammateBuff` 经 `BuffGroup` 继承的 `name / description / sourceLabel / conditionLabel`、`CharacterResourceResult.burniceMechanicSource`、`AnomalyPoolResult.corrosionSource`）；5 处补声明的真实数据字段（catalog.json 里真有）：`BuffEffect.stackLabel / stackGroup / durationSeconds` + `BuffGroup.durationSeconds`（防御性：导入脚本 `scripts/patch-disc-sets.mjs` 当前只写效果级）。`DebugPage` 副词条步长与驱动盘 2 件套两处改具名读取（`sRankSubStatBaseStep?.[stat] ?? 0`；`{ scope: 'outOfCombat', effects }`）；`ResourceResultCard` 职业标签色常量表按 `naive-ui` `TagProps['type']` 标注，去掉模板里的强转。新源码锁 `src/scripts/__tests__/displayLayerNoAny.test.ts`（反证通过：注入一行 `as any` 即红并报出 `文件:行号`；扫描面用两个具名文件 + 文件数下限防目录被挪走后静默失效）。
+  2. **CC-395b 取消契一**：删 `batchTask` 里零生产调用方的 `createBatchScheduler` / `throwIfBatchAborted` / `SchedulerPlatform` 与其 4 条测试。取消契约只剩优雅式一种（分析器循环头 `isBatchAborted` 后 `break`，带上已算部分返回）。依据：worker 里不必向主线程让步（`yieldToMain` 在 worker 里没有意义），硬停走 `worker.terminate()`；两种取消惯用法共处一个 100 行模块，正是第 374 轮差点接错线的诱因。隔离文档 §3.10 / §6 第 3 项 / §7 / §8 / §9 已同步。
+- **验证**：`vue-tsc -b --force` 0 错；定向 5 个测试文件 85 项全绿；**全量 verify EXIT 0（465 文件 / 4274 测试，16 / 29 skipped）**。
+- **坑（本轮新踩，两条都值得记住）**：
+  - **`vite build` A/B 别用裸 `diff -r`**：改任一面页 chunk 会**级联**——`index` 块的 `__vite__mapDeps` 内嵌全部懒加载块的 8 位内容哈希，它一变，所有 `import "./index-*.js"` 的块跟着变。本轮裸 diff 报了 71 行「Only in」，其中没有一行是真差异。判据：把块名里的 8 位哈希归一化后再比（本轮 **42/52 归一化后逐字节相同**；剩下 10 个里 6 个只是引用哈希字符串不同，真实代码差异只有 `DebugPage.vue` / `AttributeConfigPage.vue` 各删一个局部变量，逐字等价）。另：**同一棵树连跑两次 build 逐字节可复现**（实测），所以「两边不一样」只可能是级联或真实改动。
+  - **提示词的内嵌客户端可能比 Windows 侧文件旧**：本轮用户粘贴的提示词里是 `let id = 1`，而 `/mnt/c/Users/kaua/Desktop/bridge-prompt-arena.md` 与 WSL 端 `/home/kaua/calc-arch/arena-mcp-client.js` 早已改成 `let id = process.pid * 1000`（r404 的 Duplicate id 修复）。**以 WSL 端那份为准**（本轮 md5 `283e44ba3a6e6812250032d478e8e252`），别照抄粘贴版把文件改回去。沙箱侧跨轮持久副本是 `/home/user/mcp.js`（`/tmp` 每轮清空），本轮已同步。
+- **下一步（按价值排）**：
+  1. **展示层 `: any` 参数标注 23 处 / 6 文件**（锁目前只覆盖 `as any`，`(x: any)` 是同类债，r406 记过这个盲区）：`components/ResourceResultCard.vue` 12 处（表格列 `render(row: any)`——把列数组按 `DataTableColumns<行类型>` 标注就能去掉标注）、`views/ResourceUtilizationPage.vue` 5 处（`settlementRows(vp: any)` / `vpTotalTriggers(vp: any)` 及其内的 `(row: any)` / `(p: any)`）、`components/ImpactChart.vue` 2 处（`interface Snapshot { team: any }`、`catch (e: any)`）、`components/charts/ResponseSurface3D.vue` 1 处（`drawQuadContour(ctx, q: any)`）、`views/ResourcePage.vue` 1 处（`const cols: any[]`）、`views/RunArchivePage.vue` 1 处（模板 `:row-key="(r: any) => r.id"`）。做完把 `displayLayerNoAny.test.ts` 的锁扩到 `: any` / `<any>` / `any[]`。
+  2. **CC-343 线（隔离文档 §6）已无剩余项**（S1–S5 全完，scheduler 已删）。worker 化仍是「需要时再谈」：取消走 `signal` + 页面发布权，硬停走 `worker.terminate()`，届时再决定 `AnalysisContext` 要不要加 catalog 快照（§7 那条决定的「再收窄时机」）。
+  3. 主队列 §2（arena-E r420）的下一步不变：剩余同基名 [表] TWIN 候选逐个核对（清单在 §2 r420 段）。
+- **拍板**：① 删 scheduler 而不是「留着备用」。② `BuffGroup.durationSeconds` 按防御性字段声明，不删 `TeamConfigPage` 的组级检查。③ 本轮不动 `: any`（23 处需要行类型，半做比不做更糟），写成下一步 1。
+- **回退点**：`git revert 6dbd26b8`（展示层清理与 scheduler 删除同一个提交；只需恢复 scheduler 时 `git revert -n` 后从该提交里拣回那两段）。
+
 **2026-10-02 arena-E 第 386 轮**：CC-356 纯界面态 activeTab / selectedSlot 搬到 `stores/ui.ts` `3914192b`——原 §2；全文 `git show 5ee3d6f6:docs/mcp-worker-task-queue.md` 的 §2（含 ui-check 用法坑）。
 
 **2026-10-02 arena-E 第 385 轮**：CC-355 删 refreshTrigger / triggerRefresh 与三个 no-op 刷新按钮 `af660ce4`——原 §2；全文 `git show a6cb4b42:docs/mcp-worker-task-queue.md` 的 §2（含 WSL / vitest worker 环境坑）。

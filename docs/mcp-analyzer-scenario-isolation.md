@@ -247,6 +247,24 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 - 迁成 `runArchiveDeploy#pickBestPeriodBuff(ctx, phaseId, cards)`，页面 `withAnalysisScenario` 调用后只写最终结果一次。比较口径与旧 reduce 相同（基准「不用」排第一、严格大于才替换）。
 - 普查 views/components 的「await + 读 teamTotalDamage」：其余都已在场景内。
 
+### 3.10 第 421 轮（lane arena-C，CC-395b，`6dbd26b8`）：删掉未接线的抛错式取消，取消契一
+
+- **问题**：`batchTask.ts` 里同时存在两种取消惯用法——生产在用的**优雅式**（分析器循环头 `isBatchAborted` 后 `break`，
+  带上已算部分返回）与零调用方的**抛错式**（`createBatchScheduler` 的时间片让步 + `throwIfBatchAborted` 抛 `AbortError`）。
+  后者只有自己的测试在调。第 374 轮接线时，「要不要把 scheduler 接进分析器」正是被这两种语义的冲突挡下来的
+  （抛错式会丢掉已算部分，与三个页面的「保留已算部分」按钮冲突），最后靠「不接」绕开——**模块里留着一条没人走的取消路径，
+  本身就是下一轮再绊一次人的坑**。
+- **改法**：删 `createBatchScheduler` / `throwIfBatchAborted` / `SchedulerPlatform` 与其 4 条测试；
+  `isBatchAborted` 注释去掉「与抛错式中止共用」的措辞；模块头写清「中止语义只有一种：优雅式」。
+  产物 JS 逐字节相同（死代码本就被 tree-shake，A/B 方法见 §8）。
+- **依据**：① 生产零调用方，删除无行为风险；② 「留给 worker」的理由不成立——Web Worker 里不需要向主线程让步
+  （`yieldToMain` 在 worker 里没有意义），硬停走 `worker.terminate()`；③ 一个 100 行模块里两种取消语义，
+  正是第 374 轮差点接错线的诱因，删掉比「留着备用」更简单也更通用。
+- **影响**：`BatchControl` 的公开面只剩 `signal` + `isBatchAborted`。日后若真要时间片让步，按当轮需求重写，
+  比维护一条没人验证过的路径可靠。
+- **回退点**：`git revert 6dbd26b8`（与 CC-395a 的展示层清理同一个提交；只需恢复 scheduler 时
+  `git revert -n` 后从该提交里拣回那两段）。
+
 ## 4. 迁移进度（每迁一个：改本表 + 把文件加进 `analysisScenario.test.ts` 的 `MIGRATED_ANALYZERS`）
 
 | 分析器 | 入口 | 调用方 | 同步 / 异步 | 状态 |
@@ -288,7 +306,7 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 3. ~~**S4 接 `batchTask.ts`**~~ ✅ 第 374 轮（`423e9de4` + `962e8b9f`）：取消契约统一为 `BatchControl.signal`
    （废除 `shouldAbort` 回调），9 个调用点接 `createBatchOwner`（进度 / 结果 / finally 只归当前运行），
    7 个分析器穿 `control`（被顶掉时下一循环头停算）。「每个任务一个 `withAnalysisScenario`」在 S2 迁完时即已成立
-   （`TeamComparePage` 逐队建场景，其余整次运行一个）。`createBatchScheduler` 仍未接线，理由见 §3.4；之后才谈 worker。
+   （`TeamComparePage` 逐队建场景，其余整次运行一个）。~~`createBatchScheduler` 仍未接线~~ **第 421 轮已删除**（连同 `throwIfBatchAborted`）：取消契约只剩优雅式一种，见 §3.10 与 §7。
 5. ~~**CC-347 命座提升率迁独立场景**~~ ✅ 第 377 轮 `887c0ebc`（§3.8；下文「`allAgentsSweep` 也调它」有误，见 §3.8 更正）。原文：`analyzeCinemaUplift` 现收 `configStore` + 页面 calc 的读取器
    （`readDamage` / `readUltimateTotal` / `readMetrics`），在 UI store 上改命座与 `enemy.stunCountLock`、finally 恢复。改法：入参换成 `scenario: AnalysisContext`，
    读取器改为在函数内从 `scenario.calc` 读（`teamTotalDamage`、`teamUltimateTotal`、`collectCinemaMetrics({ characters: resourceResult, stunPool, anomalyPool })`——页面现在就是这么拼的，
@@ -311,6 +329,9 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
   调用方建 owner 并发车；`withAnalysisScenario` 保持「只负责建/销场景」这一件事。
 - **`cancel()` 不吊销提交权**（第 374 轮决定）：见 §3.4。若日后要「取消即丢弃已算部分」，
   回退点 = 把 `cancel()` 改回 `current = null; previous?.abort()`，并去掉三个页面中止按钮旁的部分结果展示。
+- **取消契一：只保留优雅式中止**（第 421 轮决定，见 §3.10）：`batchTask` 不再保留抛错式 `createBatchScheduler` /
+  `throwIfBatchAborted`。若日后要「取消即丢弃已算部分」，不要恢复抛错式，而是在调用方丢结果（页面本来就持有 `commit`
+  的发布权）；若需要时间片让步，按当轮需求重写。
 - **catalog 不进 `AnalysisContext`，分析器内部仍 `useCatalogStore()`**（第 372 轮决定）：目录是全局只读数据（角色 / 音引擎 / 推荐配装，加载后不再被用户改写），场景不持有独立副本——`createAnalysisScenario` 也是把同一个 catalog store 直接传给 `createResourceCalc`。把它收进上下文对隔离没有收益，却会让每个测试都多传一个字段。源码锁④因此只查 `useConfigStore()`。**再收窄的时机**：等 worker 真的需要自己的目录快照时（S4 / worker 化），那时 `AnalysisContext` 加 `catalog` 才是必要改动。
 
 ## 8. 坑
@@ -331,6 +352,11 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 - 页面里延时的「收起提示」定时器也要过 `run.commit`，否则被顶掉的旧运行会把新运行的进度条清掉。
 - 场景里 `effectScope(true)` 是脱离父作用域的：在组件 setup 里建也不会随组件卸载自动停，必须 `dispose()`（用 `withAnalysisScenario` 就不会漏）。
 
+- **`vite build` A/B 别用裸 `diff -r`**（第 421 轮实测）：改任一面页 chunk 会**级联**——`index` 块的
+  `__vite__mapDeps` 内嵌全部懒加载块的 8 位内容哈希，它一变，所有 `import "./index-*.js"` 的块跟着变，
+  裸 `diff -r` 会报几十条「Only in / 文件不同」（本轮 71 行，其中没有一行是真差异）。判据：把块名里的 8 位哈希
+  归一化后再比（本轮 42/52 归一化后逐字节相同；剩下 10 个里 6 个只是引用哈希字符串不同）。
+  另：**同一棵树连跑两次 build 逐字节可复现**（本轮实测），所以「两边不一样」只可能是级联或真实改动，不是构建不确定性。
 - **（r383 CC-353）view 层的试算循环由 ④c 锁住**：`views/` + `components/` 里同一循环体既写 store 又读计算结果即红。新页面要「逐项试 → 取最优」就写成 `composables/` 里收 `AnalysisContext` 的纯函数，页面 `withAnalysisScenario` 调用（参照 `runArchiveDeploy#pickBestPeriodBuff`）。
 
 ## 9. 回退点
@@ -342,4 +368,6 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
 - S4：`git revert 962e8b9f` → `git revert 423e9de4`（S4b 用了 S4a 的 `BatchControl` / `isBatchAborted` / `BatchOwner`，顺序反了编译不过）。
 - S5：`git revert 3c287f85`（纯类型；与 S4 的回退互不依赖）。
 - CC-345（伤害影响）：`git revert 56e2f697`；CC-346（边际效用）：`git revert 1962c4b0`。两者互不依赖。
+- 第 421 轮（CC-395）：`git revert 6dbd26b8`（展示层 as any 清理 + scheduler 删除同一个提交；只需恢复 scheduler 时
+  `git revert -n` 后从该提交里拣回那两段）。
 - CC-347（命座提升率）：`git revert 887c0ebc`（恢复改 UI store + finally 路径与旧测试；与 CC-345/346 互不依赖）。
