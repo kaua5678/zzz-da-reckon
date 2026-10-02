@@ -152,13 +152,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 397 轮（lane arena-E，开工 13:40；无并行会话；HEAD `4ed00f79`（开工时先补推了 r396，上一轮收尾时 ngrok 掉线没推上）；REQUIREMENTS.md 无新条目）：CC-371 `07c17341`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：r396 下一步 1 已完成。nextRound 的 cfg 写回全部判死并删除，运行时只读锁覆盖全部 11 个钩子模块，TYPED 23。依据、锁、坑都在 `docs/mcp-nextround-writeback.md`。
-- **验证**：vue-tsc `--force` 0；zd `r397` / `r397b` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 455 个文件 / 4192 个测试；build 通过（`arenaE/v397-*.log`）。只读锁反证：塞回艾莲写回 → 红。
-- **开放项**：OPEN-ITEMS D2-NR 已标 done；无新增。
+**第 398 轮（lane arena-E，开工 13:58；无并行会话；HEAD `e30ae68b`；REQUIREMENTS.md 无新条目）：CC-372 `1259abd5` + `468d0e05`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：r397 下一步 1 的 phoenix 部分已完成。查下来根因不是「只读入参被写」，而是 `releaseModifier` 契约缺身份，于是补了 `self`，三份夹带 hack 一并删除。TYPED 24。详见 `docs/mcp-nextround-writeback.md` §6。
+- **验证**：vue-tsc `--force` 0；zd `r398` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 455 个文件 / 4192 个测试；build 通过（`arenaE/v398-*.log`）。
+- **开放项**：OPEN-ITEMS 新增「PanelValues 索引签名」。
 - **下一步（按价值排）**：
-  1. **「只读入参被写」的其余落点**（同病、同法）：先做 phoenix——`applyPanelBuffs` 里 `;(panel as unknown as Record<string, unknown>).phoenixCinemaLevel = cinemaLevel` 借 panel 夹带命座，`releaseModifier` 再通过 `panels.find(p => p.phoenixCinemaLevel !== undefined)` 读出来（phoenix.ts 约 250–256 行）。查 `releaseModifier` 的入参能不能直接拿到 cfg 或命座；能拿到就改走正式通道，删掉夹带（vivian 的 `releaseModifier` 用 `panel.vivianCinemaLevel`，可能同型，一起看）。然后在 `types.ts` / `typesHooks.ts` 的其他 `DeepReadonly` 入参上（`grep -n "DeepReadonly<" src/mechanics/types*.ts`）复用 `nextRoundFeedback.test.ts` 末段的深冻结夹具做同类锁；每个锁都要反证。
-  2. 继续 d2 §5 表剩余「待做」模块（流程见执行卡；apply 脚本报「混源 … 其他:…」时只改 cfg 别名所在的函数）。
+  1. **core 认维琳娜**：`core/anomalyPool.ts:325`、`core/anomalyPool/helpers.ts:1167` 通过 `velina.ts#findVelinaPanel`（扫 `panel.velinaEnabled`）决定风蚀归属，等于 core 层在认具体角色，违反规则 6。先读这两处和 `findVelinaPanel` 的全部调用方，再看 `AgentMechanicModule.anomalyPoolSetup`（types.ts 约 1109 行）的现有返回结构。目标是由模块能力声明「风蚀归属」（比如 `anomalyPoolSetup` 返回 `windErosionOwner: true`，或新增一个声明字段），core 只读声明。zd 0/0 是硬判据。
+  2. **PanelValues 索引签名盘点**（OPEN-ITEMS）：先用脚本统计所有被写到 panel 上、却不在 `PanelValues` 显式声明里的字段（写入方 / 读取方 / 是否只有单模块用到），产出 `docs/mcp-panel-fields.md`，再决定是否按 D2 的做法迁成模块扩充。只做盘点，不要直接收紧签名。
+  3. d2 §5 表剩余「待做」模块。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -177,6 +178,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **apply 脚本报「混源 … 其他:…」时别手动全文替换**：那是同文件 `record` 还指别的对象（队友 / 形参），只改 cfg 别名所在函数（r396 CC-370）。
   - 元数据类键（`*Meta` / `*Cycle`）骨架写的是 `number`，要按写入处（`metaOf()` 等）的实际返回改成对象类型；读者处原有的 `as {…}` 断言会成为对比依据。
   - **遍历注册表写锁时，模块身份字段是 `agentIds`（数组）不是 `agentId`**；写错了夹具会绕过全部守卫、锁形同虚设，vue-tsc 也不报 ⇒ 每个锁都必须反证（r397）。
+  - **契约缺身份 ≠ 输入可写性问题**：看到「往数据里塞标记、再扫一遍找自己」，先查钩子入参是不是缺了槽位 / 命座，补契约比加锁更根本（r398）。
+  - **永远不要并行发两个 mcp.js 调用**：r398 又踩了一次（检查组和 vitest 一起发，后者报 Duplicate id），换新会话串行重发即可。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 

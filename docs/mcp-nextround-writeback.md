@@ -52,3 +52,16 @@
 - `types.ts` / `typesHooks.ts` 里其他标了 `DeepReadonly<…>` 的入参（`panels`、`charResult`、`exec`、`result`、`anomalyPoolSetup(cfg)`、`axes`）。
 
 做法同本轮：先查写入落在哪个对象上、之后谁读；死写就删；活写就改走正式通道（例如 phoenix 的 `releaseModifier` 能不能直接拿到 cfg 或命座）。最后把「深冻结调用」锁推广到对应钩子。具体见 `docs/mcp-worker-task-queue.md` §2 下一步。
+
+## 6. r398 进展：releaseModifier 契约补「我是谁」（CC-372 `1259abd5` / 锁表 `468d0e05`）
+
+- **病**：`ReleaseModifierInput` 只给全队 `panels`，模块不知道哪一槽是自己。于是 phoenix、promia、vivian 都在 `applyPanel` 里往自己面板上**夹带**命座（promia 还夹带了额外能力门控），再用 `panels.find(p => p.xxxCinemaLevel !== undefined)` 把自己认回来。三份同构 hack，能写成全靠 `PanelValues` 的 `[key: string]: number` 索引签名。
+- **它不是「只读入参被写」**：面板阶段的 panel 本来就是可写的输出通道。真正的问题是**契约缺身份**，模块只能把身份塞进数据里。所以修法是补契约，而不是加冻结锁。
+- **改法**：
+  - 新契约：`ReleaseModifierInput = { self: { slot, cinemaLevel, panel } }`。`panels` 删掉后，「扫全队面板认自己」在**编译期**就写不出来，类型本身就是锁。
+  - 派发方：`damagePool.ts#releaseModifierSelf` 按模块的 `agentIds` 定位槽位。命座取 `team[slot].cinemaLevel`，和 `panelPhases` 的 `applyPanel` 同一来源；命座提升率（`cinemaUplift.ts:212`）也是改这里再恢复，所以不会读错。面板用 `panelAt` 按身份取。测试也调用同一个函数。
+  - 4 个模块（phoenix / promia / vivian / velina）改为读 `self`；3 个模块的夹带写入删除。velina 的 `velinaCinema*` 面板字段另有消费方，保留。
+  - 验证：zd 0/0。phoenix 因此零强转，进了锁表（TYPED 24）。
+- **剩余同类**：
+  - **`velina.ts#findVelinaPanel`** 用 `panel.velinaEnabled` 标记扫面板认维琳娜，消费方是 **core 层**：`core/anomalyPool.ts:325`、`core/anomalyPool/helpers.ts:1167` 的风蚀归属。这比上面那个更深：core 在认一个具体角色，违反了规则 6「编排层不认人」。修法方向：异常池输入里由模块能力声明「风蚀归属槽位」（参照 `anomalyPoolSetup` 钩子的写法），core 只读声明。
+  - **`PanelValues` 的索引签名**（`types/catalog.ts:190`）是所有夹带的根源。直接去掉牵涉面很大，要先盘点所有「模块私有面板字段」，按 D2 的做法改成模块 `declare module` 扩充，再收紧签名。登记在 OPEN-ITEMS「PanelValues 索引签名」。

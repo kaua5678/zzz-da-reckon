@@ -97,6 +97,8 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 
 **r397（CC-371 `07c17341`）——nextRound cfg 写回判死**：r396 剩下的「结构问题 ①」已解决。lucy / promia / vivian / ellen 在 `nextRoundFeedback` 里强转写 cfg，经静态（写在本轮局部克隆上，读者都在钩子之前）+ 动态（zd 0/0、管线锚点不变）判定为死写，已删；依据和锁见 `docs/mcp-nextround-writeback.md`。没有放宽钩子类型，而是在 `nextRoundFeedback.test.ts` 加了**运行时只读锁**：遍历注册表，深冻结输入后调用全部钩子。`TYPED_CFG_MODULES` 23 个（+lucy +promia +vivian）。**剩余：非测试源码 `as unknown as Record` 115 行（含非 cfg 对象）**。剩下的结构问题：② yidhari 导出签名收 Record；③ phoenix 借 panel 夹带（同属「只读入参被写」，见 nextround 文档 §5）。
 
+**r398（CC-372 `1259abd5` / `468d0e05`）——结构问题 ③（phoenix 借 panel 夹带）已解**：根因是 `releaseModifier` 契约缺「我是谁」，于是补上 `self {slot, cinemaLevel, panel}`，同类 hack（phoenix / promia / vivian）一并删除，详见 `docs/mcp-nextround-writeback.md` §6。TYPED 24。**剩余：非测试源码 `as unknown as Record` 114 行（含非 cfg 对象）**；结构问题只剩 ② yidhari 导出签名收 Record。
+
 ### 执行卡（每个模块一张，机械活，可派执行模型）
 
 1. `python3 scripts/d2-record-keys.py . <模块名> <声明骨架文件>`（r394 CC-366 起三种强转 `as unknown as Record` / `as Record` / `as any` 都统计，并把未声明键写成声明骨架——**骨架里的类型是按用法猜的、注释是 TODO**：先查每个键的全部读写点（`grep -rn <键> src`，**含 `src/data` 的 JSON**——spec 资源会按字段名读 cfg），写清含义与写入方再用）：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
@@ -120,7 +122,7 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `starlightBilly` | 10 | 0 | 0 | done 2b0743ce |
 | `sigrid` | 9 | 0 | 0 | done c7627ef3 |
 | `lucy` | 8 | 0 | 0 | done 07c17341（r397：nextRound 死写回删除 + `applyLucyTeamEnergyFlags` 多余强转去掉；剩 3 处 `(result as any)` 在结果对象上，不属 cfg） |
-| `phoenix` | 8 | 1 | 0 | 实质完成 9543b79f，**不进锁表**：剩 1 处在 `panel` 上（夹带 `phoenixCinemaLevel` 给 releaseModifier，panel 类型问题） |
+| `phoenix` | 8 | 0 | 0 | done 468d0e05（r398 CC-372 1259abd5：releaseModifier 契约补 `self` 后删掉 panel 夹带） |
 | `grace` | 7 | 0 | 0 | done c7627ef3 |
 | `promia` | 7 | 0 | 0 | done 07c17341（r397 删 nextRound 死写回） |
 | `yidhari` | 7 | 3 | 0 | 实质完成 9543b79f，**不进锁表**：导出 `computeYidhariHpSource(cfg: Record…)`（测试直传字面量）的 3 个调用点保留局部强转 |
