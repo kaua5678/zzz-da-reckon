@@ -153,15 +153,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 410 轮（lane arena-E；无并行会话；HEAD `3fbb6ceb`；REQUIREMENTS.md 无新条目）：CC-384 `6431c93d` + `f657b139` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
-- **做到哪**：r409 交接第 1 项「其他钩子族的自找」。`findSlotByIdentity` 早在 CC-277 删除（只剩注释，交接里那条已过时）。真正的漏网是 teammateBuffGate：入参没有本人，蕾米埃尔在压缩 `Agent[]` 里自找、拿下标当槽位 → 派发器改给 `self` + `ReadonlyTeam`（架构卡 CC-384）。另补 alice 的循环自找变体、删死导出 `aliceSlotOf`，CC-383 锁扩展（team 接收者 / `.id` 比较 / 循环变体）。
-- **验证**：vue-tsc `--force` 0；zd `r410a` 0/0；guards 链 EXIT 0（specs 1120 / recording 189）；vitest(4) 459 文件 / 4246 测试；build 通过。
-- **回滚点**：`git revert f657b139 6431c93d`（**必须按此顺序**：f657b139 的锁扩展依赖 6431c93d 删掉 remielle 的 `team.findIndex` 自找）。
-- **拍板**：门控「拥有者不在队仍询问」保留（store 侧 base 本为 false，改成不询问需要另核 store 默认勾选口径，不在本轮范围）；`self` 的判定口径照搬原 `selfCinema`（agent 可查）。
+**第 411 轮（lane arena-E；无并行会话；HEAD `f86bbae3`；REQUIREMENTS.md 无新条目）：CC-385 `1ae2b9af` + `5e2137cf` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
+- **做到哪**：关闭 r410 未决项「teammateBuffGate 拥有者不在队仍询问」。追到根上是引擎缺一条不变式：队友 buff 不检查拥有者在不在队，残留勾选会漏进面板。已在 `collectInCombatTeamBuffs` 下沉「只收在队拥有者」，门控随之只问在队拥有者、`self` 必填（架构卡 CC-385）。
+- **验证**：vue-tsc `--force` 0；zd `r411a` 0/0；guards 链 EXIT 0（specs 1120 / recording 189）；vitest(4) 460 文件 / 4247 测试；build 通过。
+- **回滚点**：`git revert 5e2137cf 1ae2b9af`（**按此顺序**：5e2137cf 的等价性依赖 1ae2b9af 的引擎过滤）。
+- **拍板**：拥有者判据用 agentId（不要求 agent 可查）——查不到 agent 时 store 侧 base 本为 false，两种口径在正常流程下无差别，选更简单的。store 的 `syncTeammateBuffsFromTeam` 保留：它决定 UI 默认勾选，不是计算正确性的保障，不再承担后者。
+- **未决项**：无（r410 那条已关闭）。
 - **下一步（按价值排）**：
-  1. **审一遍钩子入参有没有本人**：在 `mechanics/types.ts` / `typesHooks.ts` 里列出 `AgentMechanicModule` 每个钩子的入参类型，标出既没有 `slot` 也没有 `self` / `cfg` 的那些；再看对应实现里有没有按 agentId 找自己（CC-383 锁只覆盖裸变量 `characters` / `team`，像 `input.members`、`rr.characters` 这类接收者不在锁内）。有就照 CC-384 的做法由派发器给 self。
-  2. `stores/config.ts` 的 7 处 any（store 是计算输入的源头）。清零后考虑把 `stores/` 加进 CC-381 的 `CALC_DIRS`。
-  3. UI 层其余 any（composables 除 resourceCalc 外约 10 / components 18 / views 28），只做能暴露真实类型断层的。
+  1. **找同类「正确性靠 store 同步保证」的引擎输入**：CC-385 的病是「引擎信任一张按 id 存的选择表，而表的正确性靠 store 在改队伍时同步」。同样按 id 存、由 `sync*` / watch 维护的还有：音擎效果覆盖率 `wEngineEffectCoverages`、驱动盘覆盖率、`mechanicSettings`（键含槽位号）。逐个检查：换角色 / 换槽位后旧键残留时，引擎会不会读到？判据同 CC-385：写一个探针，把残留键设成非默认值，看面板 / 结果是否变化。
+  2. 审钩子入参有没有本人（r410 交接第 1 项，未做）：列 `AgentMechanicModule` 每个钩子的入参，标出既无 `slot` 也无 `self` / `cfg` 的，再看实现里有没有按 agentId 自找。
+  3. `stores/config.ts` 的 7 处 any。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -215,6 +216,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **模块文件的本人 ID 以 `agentIds: [...]` 为准**（每个模块都有，CC-383 的锁就靠它）；不要按「文件里声明的第一个 `_ID` 常量」猜，有的文件同时声明了队友 ID。
   - **交接里的「下一步」可能已过时**：r409 交接写「查 `findSlotByIdentity`（18 处调用）」，实际 18 处全是注释，函数在 CC-277 就删了。开工先 grep 核对，别照单全收。
   - **自找有多种写法，正则锁要按形态补**：`.find/.some(x => x.agentId === 本人)`、`team.findIndex(a => a?.id === 本人)`、`for (c of characters) { if (c.agentId !== 本人) continue`。新发现一种形态就加进 `selfFromDispatcherCc383.test.ts`，并用 `git show master:<文件>` 回放做反证。
+  - **「不在本轮范围」式的拍板等于留了一个未决项**：r410 写「保留，改成不询问需要另核 store 口径，不在本轮范围」，没写候选方案和风险，下一轮被当作未完成项追问。要推迟，就把「不确定点 + 两个候选 + 各自风险」写进未决项；能在半小时内查清的，当轮查完。
+  - **夹具角色要先确认有数据**：CC-385 测试第一版用 1041+1191，两人都没有队友 buff 组 ⇒ 反空洞断言失败。挑夹具前先打印 `catalog.teammateBuffGroups` 的 id 列表。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
