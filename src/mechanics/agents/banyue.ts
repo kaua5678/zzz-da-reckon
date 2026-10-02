@@ -442,23 +442,21 @@ function banyueAutoTopUpEnabled(
 
 function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, threads }: AgentTeamConfigInput): void {
   if (phase !== 'converge' || !axis || !guarantee) return
-  const record = cfg as unknown as Record<string, unknown>
-  record.banyueAxisEx = axis.actionCountsBySlot[slot] ?? {}
-  record.banyueAxisActive = axis.active
+  cfg.banyueAxisEx = axis.actionCountsBySlot[slot] ?? {}
+  cfg.banyueAxisActive = axis.active
   // 轴模式自动补齐（保底）：轴模式之外，保底开关也可独立驱动（非轴亦生效）；设置可整体关闭。
   const autoTopUp = banyueAutoTopUpEnabled(axis.active, guarantee, settings)
   const topUp = autoTopUp ? (threads?.interactionTopUp ?? { parry: 0, dual: 0 }) : { parry: 0, dual: 0 }
   if (topUp.parry > 0 || topUp.dual > 0) {
-    record.parryCount = (cfg.parryCount ?? 0) + topUp.parry
-    record.dualCounterCount = (cfg.dualCounterCount ?? 0) + topUp.dual
+    cfg.parryCount = (cfg.parryCount ?? 0) + topUp.parry
+    cfg.dualCounterCount = (cfg.dualCounterCount ?? 0) + topUp.dual
   }
-  record.banyueInteractionTopUp = topUp
+  cfg.banyueInteractionTopUp = topUp
 }
 
 function buildBanyueCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true // 强特全部由模块生成（怒相山威/怒相外论道/地动）
-  const record = cfg as unknown as Record<string, unknown>
-  record.banyueCinemaLevel = cinemaLevel
+  cfg.banyueCinemaLevel = cinemaLevel
 
   // 预存倍率/动作时间（双键：常量名供 estimateExSpecialTime，moveId 供 buildExecutions 按招式查表）
   const times: Record<string, number> = {}
@@ -470,8 +468,6 @@ function buildBanyueCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInpu
     times[id] = mv?.actionTime ?? 0
     dmg[id] = rowValue(mv, 'damage')
   }
-  record.banyueMoveTimes = times
-  record.banyueMoveDmg = dmg
   cfg.banyueMoveTimes = times
   cfg.banyueMoveDmg = dmg
 }
@@ -504,13 +500,12 @@ function applyBanyuePanel({ panel, cinemaLevel, settings }: AgentPanelInput): vo
 }
 
 function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.banyueCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.banyueCinemaLevel ?? 0)))
   const axisEx = readAxisExCounts(cfg)
   const cycle = computeBanyueCycleFromCfg(cfg)
 
-  const times = (record.banyueMoveTimes ?? {}) as Record<string, number>
-  const dmg = (record.banyueMoveDmg ?? {}) as Record<string, number>
+  const times: Record<string, number> = cfg.banyueMoveTimes ?? {}
+  const dmg: Record<string, number> = cfg.banyueMoveDmg ?? {}
   const rage = cycle.rageCount
   if (rage <= 0) return
 
@@ -611,15 +606,14 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
 }
 
 function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.banyueCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.banyueCinemaLevel ?? 0)))
 
   // 闪反/普通弹刀走通用路径（dodgeCounterCount→扬砾、parryCount→铁壁+昂霄，与所有角色一致）；
   // 般岳专属：金身弹刀 + 双反（双反 = 完美闪避不打出扬砾 + 金身弹刀）→ 不动如山 + 冲霄 行
   const dual = Math.max(0, Math.floor(Number(cfg.dualCounterCount ?? 0)))
   const block = Math.max(0, Math.floor(Number(cfg.blockCount ?? 0)))
   const chongXiao = block + dual
-  const times = (record.banyueMoveTimes ?? {}) as Record<string, number>
+  const times: Record<string, number> = cfg.banyueMoveTimes ?? {}
   // 不动如山（招架/金身动作）：金身弹刀 + 双反 次数 → 动作行（0.666s 耗时 + daze 143.7，失衡贡献）
   if (chongXiao > 0 && !executions.some(e => e.moveId === MOVE.buDongRuShan)) {
     const time = times[MOVE.buDongRuShan] ?? 0.666
@@ -677,7 +671,7 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
   if (cinemaLevel < 6) return
   for (const exec of executions) {
     if (exec.moveId === MOVE.qingShan) {
-      ;(exec as unknown as Record<string, unknown>).banyueC6CrushAttach = C6_ATTACH_RATIO
+      exec.banyueC6CrushAttach = C6_ATTACH_RATIO
     }
   }
 }
@@ -686,7 +680,7 @@ function buildBanyueResourceResult({ cfg, state: _state }: AgentResourceResultIn
   return {
     banyueRageCycle: computeBanyueCycleFromCfg(cfg),
     // 轴模式自动补齐量（useResourceCalc 注入 cfg.banyueInteractionTopUp，保底语义）
-    banyueInteractionTopUp: (cfg as unknown as Record<string, unknown>).banyueInteractionTopUp as BanyueInteractionTopUp | undefined,
+    banyueInteractionTopUp: cfg.banyueInteractionTopUp,
   }
 }
 
@@ -759,8 +753,7 @@ export const AXIS_EX_COST: Record<string, number> = {
 }
 
 export function readAxisExCounts(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = (record.banyueAxisEx ?? {}) as Record<string, number>
+  const raw: Record<string, number> = cfg.banyueAxisEx ?? {}
   const out: Record<string, number> = {}
   for (const [k, v] of Object.entries(raw)) {
     const n = Math.max(0, Math.floor(Number(v) || 0))
@@ -789,13 +782,13 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): Ban
     cfgNum(cfg, 'banyue.diDongComboCount', DEFAULT_DIDONG_COMBO),
     axisExSpendOf(axisEx),
     axisEx['banyue-combo'] ?? 0,
-    Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).banyueCinemaLevel ?? 0))),
+    Math.max(0, Math.floor(Number(cfg.banyueCinemaLevel ?? 0))),
     // 怒相内「地动→山摇·怒」连段组数 = 轴内捏的 banyue-combo-didong 块（非轴模式 banyueAxisEx 为空 → 0）
     axisEx['banyue-combo-didong'] ?? 0,
     // 失衡外连段末尾后摇的嘲讽取消次数（主页交互栏录入，每次取消一次后摇）
-    Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).tauntCancelCount ?? 0))),
+    Math.max(0, Math.floor(Number(cfg.tauntCancelCount ?? 0))),
     // 轴模式：失衡内 = 轴内实际捏的连段块，失衡外 = 全部连段 − 轴内捏块（后摇按轴外单位数计）
-    !!(cfg as unknown as Record<string, unknown>).banyueAxisActive,
+    !!cfg.banyueAxisActive,
   )
 }
 
@@ -889,10 +882,9 @@ export const banyueMechanic: AgentMechanicModule = {
       + axisNormal
   },
   estimateExSpecialTime: ({ cfg, exSpecialCount: _exSpecialCount, ultimateCount: _ultimateCount }) => {
-    const record = cfg as unknown as Record<string, unknown>
     const axisEx = readAxisExCounts(cfg)
     const cycle = computeBanyueCycleFromCfg(cfg)
-    const times = (record.banyueMoveTimes ?? {}) as Record<string, number>
+    const times: Record<string, number> = cfg.banyueMoveTimes ?? {}
     const rage = cycle.rageCount
     // 计划内必做动作：焚身+倾山+摧岳（每次怒相）+ 全部强特（山威连段 + 怒相外连段 + 地动 + 轴内捏的强特/连段块）
     const sequenceTime = rage * ((times.fenShen ?? 0) + (times.qingShan ?? 0) + (times.cuiYue ?? 0))
@@ -993,10 +985,10 @@ export const banyueMechanic: AgentMechanicModule = {
    * 截断后的倾山行 count（原 `executions.find(...)` 读的就是同一行）——换源 = 静默改语义。
    */
   extraDirectRows: ({ charResult, slot, panel, axisStunFor }) => {
-    const crushAttachExec = charResult.executions.find(e => (e as any).banyueC6CrushAttach !== undefined)
+    const crushAttachExec = charResult.executions.find(e => e.banyueC6CrushAttach !== undefined)
     if (!crushAttachExec) return []
     const attachCount = Math.max(0, Math.floor(crushAttachExec.count))
-    const attachRatio = Number((crushAttachExec as any).banyueC6CrushAttach)
+    const attachRatio = Number(crushAttachExec.banyueC6CrushAttach)
     if (!(attachCount > 0 && attachRatio > 0)) return []
     // 不变量同 :609 —— 有 cfg 必有面板，缺失即契约破坏，响亮失败。
     const row: DirectRowInput = {
@@ -1052,6 +1044,13 @@ export const banyueMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    // r392（D2 §5）：以下原经 Record 强转读写、无声明（拼错键名不报错），现补声明
+    /** 是否失衡轴模式（applyAxisContext 写） */
+    banyueAxisActive?: boolean
+    /** 轴模式自动补齐的交互量（保底语义；applyAxisContext 写，结果卡读） */
+    banyueInteractionTopUp?: { parry: number; dual: number }
+    /** 影画等级（buildCharConfig 写） */
+    banyueCinemaLevel?: number
     /** 般岳招式 actionTime 表（buildCharConfig 从倍率表预存） */
     banyueMoveTimes?: Record<string, number>
     /** 般岳招式 damage 倍率表（buildCharConfig 从倍率表预存） */
@@ -1069,5 +1068,13 @@ declare module '@/types/resource/agentResources' {
   interface CharacterResourceResult {
     /** 般岳轴模式自动补齐的交互次数（保底语义：在交互栏输入之上补多少） */
     banyueInteractionTopUp?: { parry: number; dual: number }
+  }
+}
+
+/** D2（CC-362）：本模块自写自读的执行行标记——倾山行挂 C6 附伤比，结果层 `extraDirectRows` 按它找行（原经 Record / any 强转读写、无声明） */
+declare module '@/types/resource/execution' {
+  interface SkillExecution {
+    /** 影画6 倾山附伤比（patchExecutions 写在倾山行上；extraDirectRows 读） */
+    banyueC6CrushAttach?: number
   }
 }

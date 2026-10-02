@@ -36,7 +36,7 @@ import type {
 } from '../types'
 import type { CharacterOperationConfig, MechanicSetting, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting as cfgNum, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 
 export const YESHUGUANG_ID = '1431'
@@ -126,8 +126,7 @@ const C6_MINGDENG_CAP_NOTE = 4
 const AUTO_AXIS_DEGRADE_THRESHOLD = 5
 
 function cfgAxis(cfg: CharacterOperationConfig): YeshuguangFormAxis {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = String(record[`setting:yeshuguang.formAxis`] ?? 'auto')
+  const raw = String(cfgMechanicSettingRaw(cfg, 'yeshuguang.formAxis') ?? 'auto')
   if (raw === 'short_pair' || raw === 'short_mie' || raw === 'full') return raw
   // 兼容数值滑块：0 full / 1 short_pair / 2 short_mie / -1 auto
   const n = Number(raw)
@@ -135,7 +134,7 @@ function cfgAxis(cfg: CharacterOperationConfig): YeshuguangFormAxis {
   if (n === 2) return 'short_mie'
   if (n === 0) return 'full'
   // auto：时间不够时按超支信号逐级退化（estimateExSpecialTime 写 yeshuguangAutoAxis）
-  const auto = record.yeshuguangAutoAxis
+  const auto = cfg.yeshuguangAutoAxis
   if (auto === 'short_pair' || auto === 'short_mie') return auto
   return 'full'
 }
@@ -307,14 +306,13 @@ export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   dodgeCounterCount?: number
   chainCountTotal?: number
 }): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const initial = Math.max(0, Number(record.yeshuguangSwordInitial ?? 0) || 0)
-  const atk0PerSec = Math.max(0, Number(record.yeshuguangAtk0PerSec ?? 0) || 0)
+  const initial = Math.max(0, Number(cfg.yeshuguangSwordInitial ?? 0) || 0)
+  const atk0PerSec = Math.max(0, Number(cfg.yeshuguangAtk0PerSec ?? 0) || 0)
   const basic = Math.max(0, state.basicAttackTime ?? 0)
   const fromBasic = basic * atk0PerSec
-  const perDodge = Math.max(0, Number(record.yeshuguangAtk0Dodge ?? 0) || 0)
-  const perEx = Math.max(0, Number(record.yeshuguangAtk0Ex ?? 0) || 0)
-  const perChain = Math.max(0, Number(record.yeshuguangAtk0Chain ?? 0) || 0)
+  const perDodge = Math.max(0, Number(cfg.yeshuguangAtk0Dodge ?? 0) || 0)
+  const perEx = Math.max(0, Number(cfg.yeshuguangAtk0Ex ?? 0) || 0)
+  const perChain = Math.max(0, Number(cfg.yeshuguangAtk0Chain ?? 0) || 0)
   const fromDodge = (cfg.dodgeCounterCount ?? 0) * perDodge
   // 定风波：文本明确发动后 +1 青溟剑势（局外）；attack_data_0 表值为 0，单独 +1/次
   const fromEx = (state.exSpecialCount ?? 0) * (perEx + 1)
@@ -322,9 +320,9 @@ export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   // 额外能力·溯影惊鸿：队友开帷幕 +3 局外剑势/次。手动滑块 >0 优先；否则自动用全队帷幕次数
   //（useResourceCalc 收敛注入 teamVeilCountTotal：照 veilCount + 爱芮/叶瞬光大招 + 千夏强特，2026-08-31）。
   const manualCurtains = Math.max(0, Math.floor(cfgNum(cfg, 'yeshuguang.teamCurtainCount', 0) || 0))
-  const autoCurtains = Math.max(0, Math.floor(Number(record.teamVeilCountTotal ?? 0) || 0))
+  const autoCurtains = Math.max(0, Math.floor(Number(cfg.teamVeilCountTotal ?? 0) || 0))
   const curtains = manualCurtains > 0 ? manualCurtains : autoCurtains
-  const aa = Number(record.yeshuguangAdditionalAbilityActive ?? 0) > 0
+  const aa = Number(cfg.yeshuguangAdditionalAbilityActive ?? 0) > 0
   const fromCurtain = aa ? curtains * 3 : 0
   return initial + fromBasic + fromDodge + fromEx + fromChain + fromCurtain
 }
@@ -368,10 +366,9 @@ function resolveCycle(cfg: CharacterOperationConfig, state: {
   basicAttackTime?: number
   chainCountTotal?: number
 }): YeshuguangCycleResult {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.yeshuguangCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.yeshuguangCinemaLevel ?? 0)))
   const outside = computeOutsideSwordGain(cfg, state)
-  const gift = Math.max(0, Math.floor(Number(record.yeshuguangGiftUltCount ?? 0) || 0))
+  const gift = Math.max(0, Math.floor(Number(cfg.yeshuguangGiftUltCount ?? 0) || 0))
   return computeYeshuguangCycle({
     ultimateCount: state.ultimateCount ?? 0,
     giftUltCount: gift,
@@ -380,19 +377,18 @@ function resolveCycle(cfg: CharacterOperationConfig, state: {
     cinemaLevel: cinema,
     battleTime: cfg.battleTime ?? 180,
     // 终局整数化旗标（引擎在收敛后置位；见 cfg.yeshuguangFinalizeForms 的语义说明）
-    finalizeForms: Number(record.yeshuguangFinalizeForms ?? 0) > 0,
-    frozenZhaoying: typeof record.yeshuguangFrozenZhaoying === 'number' ? record.yeshuguangFrozenZhaoying : undefined,
+    finalizeForms: Number(cfg.yeshuguangFinalizeForms ?? 0) > 0,
+    frozenZhaoying: typeof cfg.yeshuguangFrozenZhaoying === 'number' ? cfg.yeshuguangFrozenZhaoying : undefined,
     formAxis: cfgAxis(cfg),
   })
 }
 
 function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInput): void {
   const cinema = cinemaLevel ?? 0
-  const record = cfg as unknown as Record<string, unknown>
-  record.yeshuguangCinemaLevel = cinema
+  cfg.yeshuguangCinemaLevel = cinema
   // 自动选轴：初始打满（full），estimateExSpecialTime 按超支信号逐级退化。
-  if (record.yeshuguangAutoAxis !== 'short_pair' && record.yeshuguangAutoAxis !== 'short_mie') {
-    record.yeshuguangAutoAxis = 'full'
+  if (cfg.yeshuguangAutoAxis !== 'short_pair' && cfg.yeshuguangAutoAxis !== 'short_mie') {
+    cfg.yeshuguangAutoAxis = 'full'
   }
 
   cfg.yeshuguangSwordInitial = cinema >= 1 ? 6 : 0
@@ -401,7 +397,7 @@ function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInp
    * 「迭代期实数 + 终局整数化」的收尾骨架（1051 `exContinuous` / 1531 `billyFinalizeChain` 同款）。
    * 引擎据本字段置 `yeshuguangFinalizeForms` 并做整数态重推；见 `cfg.yeshuguangFinalizeForms` 语义。
    */
-  record.yeshuguangContinuousForms = true
+  cfg.yeshuguangContinuousForms = true
   if (cinema >= 4) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + 1000
   }
@@ -418,8 +414,8 @@ function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInp
     dmg[id] = rowVal(mv, 'damage')
     times[id] = mv?.actionTime ?? 0
   }
-  record.yeshuguangMoveDmg = dmg
-  record.yeshuguangMoveTimes = times
+  cfg.yeshuguangMoveDmg = dmg
+  cfg.yeshuguangMoveTimes = times
 
   const basicIds = ['1431001', '1431002', '1431003', '1431005']
   let basicAtk0 = 0
@@ -429,17 +425,16 @@ function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInp
     basicAtk0 += rowVal(mv, 'attack_data_0')
     basicTime += mv?.actionTime ?? 0
   }
-  record.yeshuguangAtk0PerSec = basicTime > 0 ? basicAtk0 / basicTime : 0
-  record.yeshuguangAtk0Dodge = rowVal(findMove(skills, '1431022'), 'attack_data_0')
-  record.yeshuguangAtk0Ex = rowVal(findMove(skills, '1431016'), 'attack_data_0')
-  record.yeshuguangAtk0Chain = rowVal(findMove(skills, '1431024'), 'attack_data_0')
-  record.yeshuguangAdditionalAbilityActive = (panel as any)?.additionalAbilityActive ?? 0
+  cfg.yeshuguangAtk0PerSec = basicTime > 0 ? basicAtk0 / basicTime : 0
+  cfg.yeshuguangAtk0Dodge = rowVal(findMove(skills, '1431022'), 'attack_data_0')
+  cfg.yeshuguangAtk0Ex = rowVal(findMove(skills, '1431016'), 'attack_data_0')
+  cfg.yeshuguangAtk0Chain = rowVal(findMove(skills, '1431024'), 'attack_data_0')
+  cfg.yeshuguangAdditionalAbilityActive = (panel as any)?.additionalAbilityActive ?? 0
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const dmg = (record.yeshuguangMoveDmg ?? {}) as Record<string, number>
-  const times = (record.yeshuguangMoveTimes ?? {}) as Record<string, number>
+  const dmg: Record<string, number> = cfg.yeshuguangMoveDmg ?? {}
+  const times: Record<string, number> = cfg.yeshuguangMoveTimes ?? {}
   const cycle = resolveCycle(cfg, state)
   // cycle 的相位写入（供下一轮 estimate 复用）已拆到 materializePhaseState——本钩子对 cfg 只读
   // （阶段1 第二刀 2026-09-09）。
@@ -512,7 +507,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: AgentExSpecialTimeInput): AgentExSpecialTimeEstimate | null {
-  const record = cfg as unknown as Record<string, unknown>
   // 自动选轴：**真实时间压力**（cfg.timePressureSeconds = 本槽物化行 − 战斗窗口，不减队友占用）
   // 超过阈值时逐级退化 full→short_pair→short_mie，并把旧轴的折叠残差清零——否则换轴后 necessary
   // 仍被旧轴残差虚高、平A池照样被挤 0。
@@ -520,22 +514,22 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: Ag
   // 巨大值）→ 「其实装得下」的队被误判超支、一路退化到仅灭；② 减了队友账本净占用的相对压力
   // （2026-09-25 前）→ 队友吃掉前台就把满命队顶过阈值、白丢灭极段伤害 −11%。现读「自己行绝对
   // 超窗口」的诚实信号（用户裁决 2026-09-25：只有绝对打不完才退化，能打完不退）。
-  const rawAxis = String(record[`setting:yeshuguang.formAxis`] ?? 'auto')
+  const rawAxis = String(cfgMechanicSettingRaw(cfg, 'yeshuguang.formAxis') ?? 'auto')
   const isAuto = rawAxis !== 'full' && rawAxis !== 'short_pair' && rawAxis !== 'short_mie'
     && Number(rawAxis) !== 0 && Number(rawAxis) !== 1 && Number(rawAxis) !== 2
   if (isAuto) {
     const excess = Number(cfg.timePressureSeconds ?? 0)
     if (excess > AUTO_AXIS_DEGRADE_THRESHOLD) {
-      const cur = record.yeshuguangAutoAxis ?? 'full'
-      if (cur === 'full') record.yeshuguangAutoAxis = 'short_pair'
-      else if (cur === 'short_pair') record.yeshuguangAutoAxis = 'short_mie'
+      const cur = cfg.yeshuguangAutoAxis ?? 'full'
+      if (cur === 'full') cfg.yeshuguangAutoAxis = 'short_pair'
+      else if (cur === 'short_pair') cfg.yeshuguangAutoAxis = 'short_mie'
       // 换轴后旧轴的折叠残差不适用新轴，清零让 necessary 从新轴重估；同时失效旧轴缓存的 cycle
       cfg.timeBudgetExcess = 0
-      record.yeshuguangCycle = undefined
+      cfg.yeshuguangCycle = undefined
     }
   }
 
-  const times = (record.yeshuguangMoveTimes ?? {}) as Record<string, number>
+  const times: Record<string, number> = cfg.yeshuguangMoveTimes ?? {}
   // 估计与物化单源（R37-J5 ④，2026-09-19；与星徽·比利同款——AgentExSpecialTimeInput.state 的设计意图）：
   // 引擎 iterate 传入上一轮收敛状态时，用**与 buildExecutions 同一份输入**（basicAttackTime / exSpecialCount / chainCountTotal +
   // 本轮 ultimateCount）现算 cycle；此前读相位缓存 `yeshuguangCycle`（上一 pass 物化时的状态）或缺 basicAttackTime 的
@@ -548,7 +542,7 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: Ag
       basicAttackTime: state.basicAttackTime,
       chainCountTotal: state.chainCountTotal,
     })
-    : (record.yeshuguangCycle as YeshuguangCycleResult | undefined) ?? resolveCycle(cfg, { ultimateCount })
+    : cfg.yeshuguangCycle ?? resolveCycle(cfg, { ultimateCount })
   if (cycle.totalForms <= 0) return null
 
   const melee =
@@ -570,10 +564,9 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: Ag
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.yeshuguangCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.yeshuguangCinemaLevel ?? 0)))
   const cycle = resolveCycle(cfg, state)
-  record.yeshuguangCycle = cycle
+  cfg.yeshuguangCycle = cycle
   const formSwordTotal = cycle.totalForms * cycle.swordSpentPerForm
   const guanzhiTotal = cycle.totalForms * cycle.guanzhiPerForm
   return {
@@ -793,7 +786,7 @@ export const yeshuguangMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    ;(cfg as unknown as Record<string, unknown>).yeshuguangGiftUltCount = (threads.moduleFeedback?.yeshuguangGiftUlt ?? 0)
+    ;cfg.yeshuguangGiftUltCount = (threads.moduleFeedback?.yeshuguangGiftUlt ?? 0)
   },
   /**
    * 终局整数重推（规则 6 引擎落点，2026-09-25 CC-6c）：明心境轮数实数化收尾。
@@ -804,32 +797,30 @@ export const yeshuguangMechanic: AgentMechanicModule = {
    */
   finalizePass: {
     stage: 'preTail',
-    applies: cfg => Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1,
+    applies: cfg => Number(cfg.yeshuguangContinuousForms ?? 0) === 1,
     // CC-160（第 187 轮）：先按入口态（实数期，旗标未置）算照影轮数并 floor 一次冻结，再置旗标。
     // 旧行为 = 终局每轮都从上一态平A重推照影，整数态下增益 >1 ⇒ 跨盆 2-循环（c3–c6：强特 15↔6、平A 18↔165），
     // 停点与账本不自洽。冻结后终局只剩终结技/平A随资源变化，配合引擎终局后重折消掉过期折叠残差。
     // `@fact agent:1431/终局整数化`「各 floor 一次」的字面实现。回退点：删冻结两行。docs/mcp-stun-dual-source.md §24.9。
     begin: (cfg, entry) => {
-      const record = cfg as unknown as Record<string, unknown>
-      record.yeshuguangFinalizeForms = false
-      delete record.yeshuguangFrozenZhaoying
-      record.yeshuguangFrozenZhaoying = Math.floor(resolveCycle(cfg, entry).zhaoyingForms + 1e-9)
-      record.yeshuguangFinalizeForms = true
+      cfg.yeshuguangFinalizeForms = false
+      delete cfg.yeshuguangFrozenZhaoying
+      cfg.yeshuguangFrozenZhaoying = Math.floor(resolveCycle(cfg, entry).zhaoyingForms + 1e-9)
+      cfg.yeshuguangFinalizeForms = true
     },
     refoldAfter: true,
     reset: cfg => {
-      if (Number((cfg as unknown as Record<string, unknown>).yeshuguangContinuousForms ?? 0) === 1) {
-        (cfg as unknown as Record<string, unknown>).yeshuguangFinalizeForms = false
-        delete (cfg as unknown as Record<string, unknown>).yeshuguangFrozenZhaoying
+      if (Number(cfg.yeshuguangContinuousForms ?? 0) === 1) {
+        cfg.yeshuguangFinalizeForms = false
+        delete cfg.yeshuguangFrozenZhaoying
       }
     },
   },
   buildExecutions,
   /** 相位写入（引擎在物化调用点补写）：本次物化的明心境 cycle 缓存，供下一轮 estimate 复用 */
   materializePhaseState: ({ cfg, state }) => {
-    const record = cfg as unknown as Record<string, unknown>
     const cycle = resolveCycle(cfg, state)
-    record.yeshuguangCycle = cycle
+    cfg.yeshuguangCycle = cycle
   },
   patchExecutions,
   estimateExSpecialTime,
@@ -859,6 +850,29 @@ export default yeshuguangMechanic
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    // r392（D2 §5）：以下原经 Record 强转读写、无声明（拼错键名不报错），现补声明
+    /** 影画等级（buildCharConfig 写） */
+    yeshuguangCinemaLevel?: number
+    /** auto 明心境轴当前退化档（estimateExSpecialTime 按 timePressureSeconds 逐级写） */
+    yeshuguangAutoAxis?: YeshuguangFormAxis
+    /** 连续形态开关（buildCharConfig 恒写 true） */
+    yeshuguangContinuousForms?: boolean
+    /** 招式伤害行 moveId → 倍率（buildCharConfig 预存） */
+    yeshuguangMoveDmg?: Record<string, number>
+    /** 招式次数 moveId → 次数（buildCharConfig 预存） */
+    yeshuguangMoveTimes?: Record<string, number>
+    /** 普攻秒均 attack_data_0 */
+    yeshuguangAtk0PerSec?: number
+    /** 闪避反击 attack_data_0（1431022） */
+    yeshuguangAtk0Dodge?: number
+    /** 强特 attack_data_0（1431016） */
+    yeshuguangAtk0Ex?: number
+    /** 连携 attack_data_0（1431024） */
+    yeshuguangAtk0Chain?: number
+    /** 额外能力是否生效（面板 additionalAbilityActive） */
+    yeshuguangAdditionalAbilityActive?: number
+    /** 本轮循环结算（resolveCycle 结果；换轴时清空） */
+    yeshuguangCycle?: YeshuguangCycleResult
     /** 叶瞬光青溟剑势初始（影画1：进场 6 点；未达1命为 0） */
     yeshuguangSwordInitial?: number
     /** 叶瞬光：琉音转大赠送逐云次数（编排层注入） */

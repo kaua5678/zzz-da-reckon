@@ -184,7 +184,7 @@ export function computeBillyChain(
  * 摇曳/抓地次数保持整数（付费强特次数是闪能池的整数推导量，链预算只裁剪摇曳链）。
  * quantize=true 与原 8 轮循环逐位等价（先按整数预算裁摇曳 → 预算重算 → max(轴内, floor(预算))）。
  */
-// @fact agent:1531/链数实数化 口径: 动力压制链数与最高马力星光在迭代期以**实数**参与收敛（HP 池 ∝ 普攻回血 ∝ 平A时间 = 正反馈连续信道，floor 一次翻转 = 一条整链 ≈10s 是环增益>1 原产地）——估时钩子收 `state` 直推当轮 basicAttackTime（与 buildExecutions 共用同一求解器，消掉「读上一轮 record.billyChainCount」的无意稳定器滞后），终局 `billyFinalizeChain` 整数重推 floor 一次；轴模式恒整数（捏轴是用户意图，重推与行时间物化均跳过轴）；最高马力星光 3.1s 行时间必须物化到行本身（否则账本>行 idle 被回填成 refund 双击，实测超预算 16s） | 据 实测@2026-09-06 + 1051/1431 targeted 前例·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/billySmoke.test.ts#星徽·比利链数实数化 | 锚 src/mechanics/agents/starlightBilly.ts#computeBillyHpModel | 信 高
+// @fact agent:1531/链数实数化 口径: 动力压制链数与最高马力星光在迭代期以**实数**参与收敛（HP 池 ∝ 普攻回血 ∝ 平A时间 = 正反馈连续信道，floor 一次翻转 = 一条整链 ≈10s 是环增益>1 原产地）——估时钩子收 `state` 直推当轮 basicAttackTime（与 buildExecutions 共用同一求解器，消掉「读上一轮 cfg.billyChainCount」的无意稳定器滞后），终局 `billyFinalizeChain` 整数重推 floor 一次；轴模式恒整数（捏轴是用户意图，重推与行时间物化均跳过轴）；最高马力星光 3.1s 行时间必须物化到行本身（否则账本>行 idle 被回填成 refund 双击，实测超预算 16s） | 据 实测@2026-09-06 + 1051/1431 targeted 前例·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/billySmoke.test.ts#星徽·比利链数实数化 | 锚 src/mechanics/agents/starlightBilly.ts#computeBillyHpModel | 信 高
 export function computeBillyHpModel(
   paidEx: number,
   rocking: number,
@@ -254,7 +254,6 @@ const BILLY_COMBOS: NonNullable<AgentMechanicModule['combos']> = {
  */
 function applyBillyTeamConfig({ cfg, phase, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge' || !axis) return
-  const record = cfg as unknown as Record<string, unknown>
   const slot = Number(cfg.slot)
   const billyAxisEx: Record<string, number> = {}
   if (axis.active) {
@@ -277,14 +276,13 @@ function applyBillyTeamConfig({ cfg, phase, axis }: AgentTeamConfigInput): void 
       }
     })
   }
-  record.billyAxisEx = billyAxisEx
-  record.billyAxisActive = axis.active
-  record.billyStunCoverage = cfg.teamStunCoverage ?? 0
+  cfg.billyAxisEx = billyAxisEx
+  cfg.billyAxisActive = axis.active
+  cfg.billyStunCoverage = cfg.teamStunCoverage ?? 0
 }
 
 function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = (record.billyAxisEx ?? {}) as Record<string, number>
+  const raw: Record<string, number> = cfg.billyAxisEx ?? {}
   const out: Record<string, number> = {}
   for (const [k, v] of Object.entries(raw)) {
     const n = Math.max(0, Math.floor(Number(v) || 0))
@@ -305,8 +303,7 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   // 外部直调模块（单元测试/面板探针）不带此旗标 → 走整数口径，保持历史行为。
   cfg.billyContinuousChain = true
 
-  const record = cfg as unknown as Record<string, unknown>
-  record.billyCinemaLevel = cinemaLevel
+  cfg.billyCinemaLevel = cinemaLevel
 
   // 交互次数默认值（用户确认，主页「战斗动作次数」预填展示，与 getInteractionDefaults 一致）：格挡 5 / 招架 4 / 闪反 0
   if (!cfg.parryCount) cfg.parryCount = BILLY_INTERACTION_DEFAULTS.parry
@@ -330,10 +327,10 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
     attackData0[id] = rowValue(mv, 'attack_data_0')
     attackData1[id] = rowValue(mv, 'attack_data_1')
   }
-  record.billyMoveTimes = times
-  record.billyMoveDmg = dmg
-  record.billyMoveDecibel = decibel
-  record.billyAttackData0 = attackData0
+  cfg.billyMoveTimes = times
+  cfg.billyMoveDmg = dmg
+  cfg.billyMoveDecibel = decibel
+  cfg.billyAttackData0 = attackData0
   cfg.billyMoveTimes = times
   cfg.billyMoveDmg = dmg
   cfg.billyMoveDecibel = decibel
@@ -352,8 +349,8 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   }
   const basicDeterminationPerSec = basicTimeSum > 0 ? basicAtk0Sum / basicTimeSum : 0
   const basicHealPerSec = basicTimeSum > 0 ? basicAtk1Sum / basicTimeSum : 0
-  record.billyBasicDeterminationPerSec = basicDeterminationPerSec
-  record.billyBasicHealPerSec = basicHealPerSec
+  cfg.billyBasicDeterminationPerSec = basicDeterminationPerSec
+  cfg.billyBasicHealPerSec = basicHealPerSec
   cfg.billyBasicDeterminationPerSec = basicDeterminationPerSec
   cfg.billyBasicHealPerSec = basicHealPerSec
 
@@ -366,10 +363,9 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
 }
 
 function billyExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
-  const record = cfg as unknown as Record<string, unknown>
-  const times = (record.billyMoveTimes ?? {}) as Record<string, number>
-  const axisActive = Number(record.billyAxisActive ?? 0) === 1
-  const quantize = axisActive || record.billyFinalizeChain === true || record.billyContinuousChain !== true
+  const times: Record<string, number> = cfg.billyMoveTimes ?? {}
+  const axisActive = Number(cfg.billyAxisActive ?? 0) === 1
+  const quantize = axisActive || cfg.billyFinalizeChain === true || cfg.billyContinuousChain !== true
   const chain = computeBillyChain(
     exSpecialCount,
     cfgNum(cfg, '1531.rockingRatio', DEFAULT_ROCKING_RATIO),
@@ -379,16 +375,16 @@ function billyExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeIn
     cfg.dodgeCounterCount ?? 0,
   )
   // ===== 消滞后 + 实数化（2026-09-06，1051 targeted 骨架）=====
-  // 旧实现读上一轮 buildExecutions 写入的 record.billyChainCount / billyFullThrottleCount——
+  // 旧实现读上一轮 buildExecutions 写入的 cfg.billyChainCount / billyFullThrottleCount——
   // 那个滞后是「无意的稳定器」：链数 ∝ HP 池 ∝ 回血 ∝ 平A时间 是正反馈环，整数 floor
   // 一次翻转就是一条整链（≈10s），滞后把环冻结一整个外层轮，代价是估时与物化各算各的
   // （1531 系三队全 outerExit=cycle、留白 14.3s 的来源）。现在与 buildExecutions 共用同一
   // 求解器：从当轮 state.basicAttackTime 直接推导链数（迭代期实数、终局 billyFinalizeChain
   // 才 floor），同一份秒数不再被「平A」和「动作」各花一次，且环增益回到 <1。
   let chainFinal = chain.chain
-  let fullThrottle = Number(record.billyFullThrottleCount ?? 0)
+  let fullThrottle = Number(cfg.billyFullThrottleCount ?? 0)
   if (!axisActive) {
-    const healPerSec = Number(record.billyBasicHealPerSec ?? 0)
+    const healPerSec = Number(cfg.billyBasicHealPerSec ?? 0)
     const basicHealPct = Math.max(0, state?.basicAttackTime ?? 0) * healPerSec
     const hp = computeBillyHpModel(
       exSpecialCount,
@@ -510,8 +506,7 @@ function computeAttackDataDetermination(
   parryCount: number,
   quickAssistCount: number,
 ): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const atk0 = (record.billyAttackData0 ?? {}) as Record<string, number>
+  const atk0: Record<string, number> = cfg.billyAttackData0 ?? {}
   const atk = (id: string) => atk0[id] ?? 0
   return Math.max(0,
     chain.chain * atk(MOVE.driveSuppression)
@@ -525,7 +520,7 @@ function computeAttackDataDetermination(
     + parryCount * atk(MOVE.defensiveAssist)
     + parryCount * atk(MOVE.assistFollowUp)
     + quickAssistCount * atk(MOVE.quickAssist)
-    + Math.max(0, state.basicAttackTime) * Number(record.billyBasicDeterminationPerSec ?? 0),
+    + Math.max(0, state.basicAttackTime) * Number(cfg.billyBasicDeterminationPerSec ?? 0),
   )
 }
 
@@ -534,27 +529,25 @@ function computeBasicHealPct(
   state: { basicAttackTime: number },
   cfg: AgentCharConfigInput['cfg'],
 ): number {
-  const record = cfg as unknown as Record<string, unknown>
-  return Math.max(0, state.basicAttackTime) * Number(record.billyBasicHealPerSec ?? 0)
+  return Math.max(0, state.basicAttackTime) * Number(cfg.billyBasicHealPerSec ?? 0)
 }
 
 function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.billyCinemaLevel ?? 0)))
-  const times = (record.billyMoveTimes ?? {}) as Record<string, number>
-  const dmg = (record.billyMoveDmg ?? {}) as Record<string, number>
-  const decibel = (record.billyMoveDecibel ?? {}) as Record<string, number>
-  const axisActive = Number(record.billyAxisActive ?? 0) === 1
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.billyCinemaLevel ?? 0)))
+  const times: Record<string, number> = cfg.billyMoveTimes ?? {}
+  const dmg: Record<string, number> = cfg.billyMoveDmg ?? {}
+  const decibel: Record<string, number> = cfg.billyMoveDecibel ?? {}
+  const axisActive = Number(cfg.billyAxisActive ?? 0) === 1
   const axisEx = readAxisEx(cfg)
   // 迭代期实数 / 终局整数（与 estimateExSpecialTime 同旗标同求解器：calcTeamResources 的
   // billyFinalizeChain 终局重推置 true；轴模式恒整数——捏轴次数是用户意图）
-  const quantize = axisActive || record.billyFinalizeChain === true || record.billyContinuousChain !== true
+  const quantize = axisActive || cfg.billyFinalizeChain === true || cfg.billyContinuousChain !== true
 
   // EX 链结构（摇曳/抓地由闪能池定；动力压制链由 HP 池收敛）
   let chain = computeBillyChain(
     state.exSpecialCount,
     cfgNum(cfg, '1531.rockingRatio', DEFAULT_ROCKING_RATIO),
-    Number(record.billyFullThrottleCount ?? 0),
+    Number(cfg.billyFullThrottleCount ?? 0),
     axisEx,
     axisActive,
     cfg.dodgeCounterCount ?? 0,
@@ -575,32 +568,32 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
     chain: hp.chain,
     galaxy: galaxyFinal,
   }
-  record.billyChainCount = hp.chain // 供 estimateExSpecialTime 下一轮计时间（收敛）
-  record.billyChainHp = { hpCostPct: hp.hpCostPct, healPct: hp.healPct, hpFloorPct: hp.hpFloorPct, discountRatio: hpDiscountRatio }
+  cfg.billyChainCount = hp.chain // 供 estimateExSpecialTime 下一轮计时间（收敛）
+  cfg.billyChainHp = { hpCostPct: hp.hpCostPct, healPct: hp.healPct, hpFloorPct: hp.hpFloorPct, discountRatio: hpDiscountRatio }
 
   // 决意：招式命中（attack_data_0）+ 孤轮特技额外 +8（按孤轮总次数）写入 cfg，
   // spec 解释器按 cfgField 计入；随后 spec 事件生成最高马力星光
-  record.billyAttackDataDetermination = computeAttackDataDetermination(
+  cfg.billyAttackDataDetermination = computeAttackDataDetermination(
     chain,
     { chainCountTotal: state.chainCountTotal, ultimateCount: state.ultimateCount, dodgeCounterCount: cfg.dodgeCounterCount ?? 0, basicAttackTime: state.basicAttackTime },
     cfg,
     cfg.parryCount ?? 0,
     cfg.quickAssistCount ?? 0,
   )
-  record.billyExExtraDetermination = chain.chain * EX_EXTRA_DETERMINATION
-  record.billyCoolWheelieCount = chain.chain // 星辉/煊赫星辉的孤轮来源（含免费衔接的孤轮）
+  cfg.billyExExtraDetermination = chain.chain * EX_EXTRA_DETERMINATION
+  cfg.billyCoolWheelieCount = chain.chain // 星辉/煊赫星辉的孤轮来源（含免费衔接的孤轮）
   specBase.buildExecutions?.({ cfg, state, executions })
   const resources = computeSpecResources(getAgentSpec(AGENT_ID)!, cfg, state)
   // 终局整数 = spec spendCounts（floor(total/100)）；迭代期实数 = total/100（同 estimate 求解器）
   const fullThrottle = billyFullThrottleFromDetermination(resources, quantize)
-  record.billyFullThrottleCount = fullThrottle
+  cfg.billyFullThrottleCount = fullThrottle
   chain = { ...chain, fullThrottle }
   // ===== 最高马力星光时间物化（坑19③ 的对称侧，2026-09-06）=====
   // 3.1s 原本只进估时（necessaryTime）、事件行 actionTime=0（坑6 设计）→「账本 > 行」的
   // 系统性 idle 在消滞后后被 pass0 回填测成 refund 双击（实测 auto-1531-1571-1451 超预算 16s：
   // refund 26.5s → Σ账本 = 预算 + refund）。行时间 = 物化行本身，次数/伤害/决意字段不动。
   // 迭代期用实数次数物化（折叠环只量时间，终局整数纪律由 billyFinalizeChain 保证）。
-  // **轴模式除外**：轴内捏轴时间由栈引擎窗口时间轴计账，估时仍走 record.billyFullThrottleCount
+  // **轴模式除外**：轴内捏轴时间由栈引擎窗口时间轴计账，估时仍走 cfg.billyFullThrottleCount
   // 滞后口径（旧行为），行时间物化会把轴顶出预算触发轴退化（实测比琉通用轴 axisMode 丢失）。
   const fullThrottleRow = executions.find(e => e.moveId === MOVE.fullThrottle)
   if (fullThrottleRow && !axisActive) {
@@ -668,8 +661,7 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
 }
 
 function patchBillyExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.billyCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.billyCinemaLevel ?? 0)))
   const spec = getAgentSpec(AGENT_ID)!
   const resources = computeSpecResources(spec, cfg, state)
 
@@ -708,9 +700,8 @@ function patchBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
 }
 
 function buildBillyResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const record = cfg as unknown as Record<string, unknown>
   const resources = computeSpecResources(getAgentSpec(AGENT_ID)!, cfg, state)
-  const axisActive = Number(record.billyAxisActive ?? 0) === 1
+  const axisActive = Number(cfg.billyAxisActive ?? 0) === 1
   const chain = computeBillyChain(
     state.exSpecialCount,
     cfgNum(cfg, '1531.rockingRatio', DEFAULT_ROCKING_RATIO),
@@ -719,13 +710,13 @@ function buildBillyResourceResult({ cfg, state }: AgentResourceResultInput): Par
     axisActive,
     cfg.dodgeCounterCount ?? 0,
   )
-  const hp = (record.billyChainHp ?? {}) as { hpCostPct?: number; healPct?: number; hpFloorPct?: number; discountRatio?: number }
+  const hp: { hpCostPct?: number; healPct?: number; hpFloorPct?: number; discountRatio?: number } = cfg.billyChainHp ?? {}
   return {
     specResources: Object.fromEntries(resources),
     billyChain: {
       ...chain,
-      chain: Number(record.billyChainCount ?? 0),
-      galaxy: axisActive ? 0 : Math.min(chain.galaxy, Number(record.billyChainCount ?? 0)),
+      chain: Number(cfg.billyChainCount ?? 0),
+      galaxy: axisActive ? 0 : Math.min(chain.galaxy, Number(cfg.billyChainCount ?? 0)),
       hpCostPct: Number(hp.hpCostPct ?? 0),
       healPct: Number(hp.healPct ?? 0),
       hpFloorPct: Number(hp.hpFloorPct ?? 100),
@@ -862,7 +853,7 @@ export const starlightBillyMechanic: AgentMechanicModule = {
    */
   finalizePass: {
     stage: 'preTail',
-    applies: cfg => Number((cfg as unknown as Record<string, unknown>).billyAxisActive ?? 0) !== 1,
+    applies: cfg => Number(cfg.billyAxisActive ?? 0) !== 1,
     begin: cfg => { cfg.billyFinalizeChain = true },
     reset: cfg => { cfg.billyFinalizeChain = false },
   },
@@ -881,6 +872,23 @@ export const starlightBillyMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    // r392（D2 §5）：以下原经 Record 强转读写、无声明（拼错键名不报错），现补声明
+    /** 影画等级（buildCharConfig 写） */
+    billyCinemaLevel?: number
+    /** 招式 attack_data_0 表 moveId → 值（buildCharConfig 预存） */
+    billyAttackData0?: Record<string, number>
+    /** 上一轮连段数（供 estimateExSpecialTime 下一轮计时间，收敛） */
+    billyChainCount?: number
+    /** 连段 HP 模型（耗血 / 回血 / 血线 / 折扣比） */
+    billyChainHp?: { hpCostPct: number; healPct: number; hpFloorPct: number; discountRatio: number }
+    /** attack_data 决意回复（computeAttackDataDetermination） */
+    billyAttackDataDetermination?: number
+    /** 强特额外决意（连段数 × EX_EXTRA_DETERMINATION） */
+    billyExExtraDetermination?: number
+    /** 孤轮次数（星辉/煊赫星辉来源，含免费衔接） */
+    billyCoolWheelieCount?: number
+    /** 全速次数 */
+    billyFullThrottleCount?: number
     /** 星徽·比利招式 actionTime 表（buildCharConfig 从倍率表预存） */
     billyMoveTimes?: Record<string, number>
     /** 星徽·比利招式 damage 倍率表（buildCharConfig 从倍率表预存） */
