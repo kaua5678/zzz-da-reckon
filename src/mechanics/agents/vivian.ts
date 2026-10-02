@@ -431,11 +431,13 @@ function vivianReleaseModifier({ panels }: ReleaseModifierInput): { enemyResRedu
 /**
  * 薇薇安落羽生花双源「下一轮注入」（`nextRoundFeedback` 钩子，2026-09-16 arch 棘轮第 6 批自
  * `convergence.ts#computeVivianNextRoundFeedback` 逐字搬入，规则 6）：
- * 源1 = 全队强特命中（含自己，同一招式至多一次由行计数保证）；源2 = 全队异常触发次数。首轮直接写回。
+ * 源1 = 全队强特命中（含自己，同一招式至多一次由行计数保证）；源2 = 全队异常触发次数。
  *
- * ⚠ 首轮守卫逐位保留：只在 `(prevThreads.moduleFeedback?.vivianTeamEx ?? 0) <= 0` 时写回 cfg（同族里露西**没有**这个守卫）。
+ * 只读结果、只返回线程值，**不写 cfg**（r397 CC-371：钩子输入 `DeepReadonly`，49ecb777「钩子输入只有输出通道可写」；
+ * 原先的首轮 cfg 写回是死写——写在 `runCalcRound` 的本轮局部克隆上，所有读者都在钩子之前的资源装配阶段，
+ * 写后零读，判死依据见 `docs/mcp-nextround-writeback.md`）。
  */
-function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let vivianTeamExNext = 0
   let vivianAnomalyTriggersNext = 0
   // 迁移前判据 =「队里有 1331」；迁进模块后即「本模块被派发」。⚠ 用派发器给的 `cfg`，不用
@@ -446,14 +448,6 @@ function vivianNextRoundFeedback({ cfg, characters, teamResult, anomalyPool, pre
       (sum, prog) => sum + (prog.triggerCount ?? 0),
       0,
     )
-    // 首轮无 prev → 用本轮值直接注入（buildExecutions 读 cfg）
-    if ((prevThreads.moduleFeedback?.vivianTeamEx ?? 0) <= 0) {
-      // r396 CC-370：nextRound 钩子的 cfg 是 DeepReadonly（49ecb777「钩子输入只有输出通道可写」），此处写回是保留的原实现、
-      // 不跨轮生效（typesHooks AgentNextRoundFeedbackInput.characters 注释）——强转写回待 zd 判死后删，见 OPEN-ITEMS「nextRound cfg 写回」。
-      const record = cfg as unknown as Record<string, unknown>
-      record.vivianTeamExTotal = vivianTeamExNext
-      record.vivianAnomalyTriggerTotal = vivianAnomalyTriggersNext
-    }
   }
   return { vivianTeamEx: vivianTeamExNext, vivianAnomalyTriggers: vivianAnomalyTriggersNext }
 }

@@ -12,23 +12,19 @@
  * - `npx vitest run timeGolden` → **3 passed，0 delta**（它只看伤害/时间账，不看这些 cfg 字段）；
  * - `npm run check` → 只有 `convergence.test.ts` 的 5 条单测变红（迁移后即本文件）。
  * ⇒ 这些写回**唯一的护栏就是本文件**（交接文档纪律 4 的实证：`timeGolden` 覆盖不到非轴路径）。
- * ⚠ 注意区分：**写回 cfg** 与**返回值 → threads 跨轮生效** 是两条不同的路（见下方「写回的真实作用域」）；
- * 上表测的是前者。后者 `timeGolden` 是**部分**看得见的（5 站点里 4 个红、露西盲），见管线级用例段。
  *
- * ## 首轮守卫语义**各不相同**，逐位钉死（迁移时最容易"顺手统一"的地方）
- * - 普罗米娅 1541 / 薇薇安 1331 / 艾莲 1191 = `prev* <= 0`（首轮）**才**写回 cfg；
- * - 露西 1151 = **每轮无条件写**（消费端 `crossAgentSupply.perTargetAmounts` 读的就是本轮估计值）。
- *
- * ## ⚠ 写回的真实作用域（迁移时探明，别被字段名骗）
- * `runCalcRound` 每轮从 `base.characters` **重新 spread** 出 cfg 数组 ⇒ 写回**不跨轮留存**。
- * 跨轮真正生效的通道 = 钩子**返回值** → `threadsNext` → 下一轮 `applyTeamConfig(converge)`
- * 读 `threads` 写 cfg。所以本文件两条腿都要测：① 返回值（生效路径）；② cfg 写回（展示口径 +
- * 守卫语义，迁移前就在写，逐位保留）。
+ * ## r397 CC-371：cfg 写回已删除，本文件改测「只返回、不写」
+ * 上面那张实测表说明的恰恰是：那 4 处写回**对任何输出都不敏感**。r397 静态 + 动态判死
+ * （`docs/mcp-nextround-writeback.md`）：写在 `runCalcRound` 的本轮局部克隆上，所有读者都在钩子之前的资源装配阶段，
+ * 写后零读；删掉后 zd 0/0、下方管线级锚点（露西 58 / 艾莲冻结回能）不变。
+ * ⇒ 唯一生效通道 = 钩子**返回值** → `threadsNext` → 下一轮 `applyTeamConfig(converge)` 读 `threads` 写 cfg。
+ * 本文件现在测：① 返回值；② **全部已注册钩子**在深冻结输入下不抛错（= 不写输入，见文末「只读输入」段，
+ * 新模块自动受约束，不靠名单）；③ 管线级端到端锚点。
  */
 import { describe, expect, it, vi } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { AgentNextRoundFeedbackInput } from '@/mechanics/types'
 import { ELLEN_C4_ENERGY_PER_TRIGGER, type EllenCycle } from '@/mechanics/agents/ellen'
@@ -129,20 +125,15 @@ describe('普罗米娅 1541：触发命中 / 队友异放 / 自身异放回喧�
     expect(ret.promiaReleaseDecibel).toBe(300)
   })
 
-  it('★ 写回只在首轮（上轮两线程皆 ≤0）；二轮起 characters 不再被触碰', () => {
-    const first = run('1541', {
+  it('返回值与上一轮线程无关（r397 删首轮写回后不再读 prevThreads）', () => {
+    const o = {
       teamResult: teamResult([row({ agentId: '1471', anomalyEventExecutions: [ev({ count: 2 })] })]),
       anomalyPool: { totalTriggerCount: 5 } as never,
-    })
-    expect(first.cfg.promiaTriggerHitCount).toBe(5)
-    expect(first.cfg.promiaTeammateReleaseCount).toBe(2)
-
-    // 二轮：prevThreads 带上轮值 ⇒ 守卫不成立 ⇒ 不写
-    const second = run('1541', {
-      teamResult: teamResult([row({ agentId: '1471', anomalyEventExecutions: [ev({ count: 2 })] })]),
-      prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { promiaTriggerHits: 5, promiaTeammateReleases: 2 } },
-    })
-    expect('promiaTriggerHitCount' in second.cfg).toBe(false)
+    }
+    const first = run('1541', o).ret
+    expect(first).toMatchObject({ promiaTriggerHits: 5, promiaTeammateReleases: 2 })
+    const second = run('1541', { ...o, prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { promiaTriggerHits: 5, promiaTeammateReleases: 2 } } }).ret
+    expect(second).toEqual(first)
   })
 
   it('displayResult 优先于 teamResult（展示口径行集与装配同源），缺失回退 teamResult', () => {
@@ -163,43 +154,8 @@ describe('露西 1151（C6 回旋预估）', () => {
     expect(ret.lucyTeammateEx).toBe(3)
   })
 
-  it('★ 写回无首轮守卫（每轮都做）：C6 spins = 自身强特 + C2(连携+终结) + C6(队友合计)', () => {
-    const cfg: Record<string, unknown> = { agentId: '1151', slot: 0, lucyCinemaLevel: 6 }
-    const rr = teamResult([
-      row({ agentId: '1151', exSpecialCount: 2, chainCountTotal: 1, ultimateCount: 1 }),
-      row({ agentId: 'a', exSpecialCount: 3 }),
-    ])
-    const r1 = run('1151', { cfg: cfg as never, characters: [cfg] as never, teamResult: rr })
-    expect(r1.cfg.lucyCheerSpinsEstimate).toBe(2 + 2 + 3)
-    expect(r1.cfg.lucyTeammateExTotal).toBe(3)
-    // 再来一轮（非首轮）仍写回——与 promia/vivian/ellen 的守卫不同，此差异是口径
-    const r2 = run('1151', {
-      cfg: cfg as never, characters: [cfg] as never,
-      teamResult: teamResult([row({ agentId: '1151', exSpecialCount: 5 })]),
-      prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { lucyTeammateEx: 99 } },
-    })
-    expect(r2.cfg.lucyCheerSpinsEstimate).toBe(5)
-  })
-
-  it('C0 无连携/终结附加项', () => {
-    const cfg: Record<string, unknown> = { agentId: '1151', slot: 0 }
-    const { cfg: out } = run('1151', {
-      cfg: cfg as never, characters: [cfg] as never,
-      teamResult: teamResult([row({ agentId: '1151', exSpecialCount: 4, chainCountTotal: 9, ultimateCount: 9 })]),
-    })
-    expect(out.lucyCheerSpinsEstimate).toBe(4)
-  })
-
-  it('★ 写回目标是**全队每一份 cfg**（crossAgentSupply 会读落点那份）', () => {
-    const lucy: Record<string, unknown> = { agentId: '1151', slot: 0, lucyCinemaLevel: 6 }
-    const mate: Record<string, unknown> = { agentId: 'a', slot: 1 }
-    run('1151', {
-      cfg: lucy as never, characters: [lucy, mate] as never,
-      teamResult: teamResult([row({ agentId: '1151', exSpecialCount: 2 }), row({ agentId: 'a', exSpecialCount: 3 })]),
-    })
-    expect(mate.lucyCheerSpinsEstimate, '队友那份 cfg 也要写（落点读取）').toBe(2 + 0 + 3)
-    expect(mate.lucyTeammateExTotal).toBe(3)
-  })
+  // r397 CC-371：原「每轮写回全队 lucyCheerSpinsEstimate」三条用例随死通道删除（唯一读者 perTargetAmounts
+  // 在钩子之前执行、恒读 0）；回旋预估的端到端护栏 = 文末管线级「露西 C6 = 58」。
 })
 
 // ── 零号·安比 1381 ─────────────────────────────────────────────────────────────
@@ -247,15 +203,6 @@ describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
       anomalyPool: anomalyPool({ perElement: [{ triggerCount: 4 }, { triggerCount: 1 }] }),
     })
     expect(r.ret).toEqual({ vivianTeamEx: 5, vivianAnomalyTriggers: 5 })
-    expect(r.cfg.vivianTeamExTotal).toBe(5)
-
-    const cfg2: Record<string, unknown> = { agentId: '1331', slot: 0 }
-    run('1331', {
-      cfg: cfg2 as never, characters: [cfg2] as never,
-      teamResult: teamResult([]), anomalyPool: anomalyPool(),
-      prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { vivianTeamEx: 5 } },
-    })
-    expect('vivianTeamExTotal' in cfg2).toBe(false) // 非首轮不写回
 
     const { ret } = run('1331', {
       cfg: { agentId: 'a', slot: 0 } as never,
@@ -265,22 +212,13 @@ describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
     expect(ret).toEqual({ vivianTeamEx: 0, vivianAnomalyTriggers: 0 })
   })
 
-  it('艾莲：只数 ice 元素触发；首轮写回守卫', () => {
+  it('艾莲：只数 ice 元素触发', () => {
     const cfg: Record<string, unknown> = { agentId: '1191', slot: 0 }
     const r = run('1191', {
       cfg: cfg as never, characters: [cfg] as never,
       anomalyPool: anomalyPool({ perElement: [{ element: 'ice', triggerCount: 6 }, { element: 'fire', triggerCount: 9 }] }),
     })
     expect(r.ret.ellenFreezeCount).toBe(6)
-    expect(r.cfg.ellenFreezeCount).toBe(6)
-
-    const cfg2: Record<string, unknown> = { agentId: '1191', slot: 0 }
-    run('1191', {
-      cfg: cfg2 as never, characters: [cfg2] as never,
-      anomalyPool: anomalyPool({ perElement: [{ element: 'ice', triggerCount: 6 }] }),
-      prevThreads: { ...initialCalcRoundThreads(), moduleFeedback: { ellenFreezeCount: 3 } },
-    })
-    expect('ellenFreezeCount' in cfg2).toBe(false) // 非首轮不写回
   })
 })
 
@@ -289,8 +227,8 @@ describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
 // 2026-09-16 实测：`['', 1041, 1191]` 时槽 2 的 `characters[2]` 是 undefined。
 // ⚠ 这是本批**新引入的**契约要求（`AgentNextRoundFeedbackInput.cfg`）；既有 19 处
 // `characters[slot]`（applyTeamConfig 等）仍有同一缺陷，属既存问题、本批不动。
-describe('★ 前导空槽：写回落到正确的 cfg 对象', () => {
-  it('槽位号 ≠ 数组下标时，写回仍落在本模块自己那份 cfg 上', () => {
+describe('★ 前导空槽：按派发器给的 cfg 识别自己', () => {
+  it('槽位号 ≠ 数组下标时，仍识别本模块且不碰任何 cfg', () => {
     const mate = { agentId: '1041', slot: 1 } as Record<string, unknown>
     const ellenCfg = { agentId: '1191', slot: 2 } as Record<string, unknown>
     // 派发器遍历压缩数组：给 ellen 的 cfg = ellenCfg，slot = 2（但数组下标是 1）
@@ -306,8 +244,8 @@ describe('★ 前导空槽：写回落到正确的 cfg 对象', () => {
       getAgentSkills: () => undefined,
     } as AgentNextRoundFeedbackInput)
     expect(ret?.ellenFreezeCount).toBe(6)
-    expect(ellenCfg.ellenFreezeCount, '写回必须落在艾莲自己那份 cfg').toBe(6)
-    expect('ellenFreezeCount' in mate, '不能污染队友那份 cfg').toBe(false)
+    expect(ellenCfg).toEqual({ agentId: '1191', slot: 2 })
+    expect(mate).toEqual({ agentId: '1041', slot: 1 })
   })
 })
 
@@ -370,4 +308,42 @@ describe('★ 管线级：timeGolden 盲区（露西 C6 / 艾莲影画4 冻结�
       feedback.mockRestore()
     }
   })
+})
+
+// ── ★ 只读输入（r397 CC-371）：全部已注册钩子，深冻结输入下调用不得抛错 ─────────────────
+// 钩子契约：输入 `DeepReadonly`、唯一输出 = 返回值（typesHooks `AgentNextRoundFeedbackInput`）。
+// 类型挡不住 `cfg as unknown as Record<…>` 强转写回（r396 前 4 个模块都这么写过，且全是死写），
+// 这里在运行时兜底：ESM 严格模式下写冻结对象抛 TypeError。遍历注册表 ⇒ 新模块自动受约束、不靠名单。
+// 夹具让常见分支都能走到：本角色在结果行里、有队友、异常池非空、首轮线程（旧写回都挂在首轮守卫下）。
+describe('★ 只读输入：nextRoundFeedback 不写任何入参', () => {
+  const deepFreeze = <T,>(o: T, seen = new Set<unknown>()): T => {
+    if (o === null || typeof o !== 'object' || seen.has(o)) return o
+    seen.add(o)
+    for (const v of Object.values(o as object)) deepFreeze(v, seen)
+    return Object.freeze(o)
+  }
+  const hooked = getRegisteredAgentMechanics().filter(m => typeof m.nextRoundFeedback === 'function')
+  it('注册表里确有带钩子的模块（夹具自检）', () => {
+    expect(hooked.length).toBeGreaterThanOrEqual(10)
+  })
+  // ⚠ 模块身份字段是 `agentIds`（数组），不是 `agentId`——第一版写成 `m.agentId` 时 cfg 没有 agentId，
+  // 各钩子「本角色在队」守卫全不成立 ⇒ 写回分支根本没走到，反证（塞回艾莲写回）不红。
+  for (const [m, agentId] of hooked.flatMap(m => m.agentIds.map(id => [m, id] as const))) {
+    it(`${m.id} / ${agentId}：冻结的 cfg / characters / 结果 / 线程上调用不抛错`, () => {
+      const cfg = { agentId, slot: 0, cinemaLevel: 6 }
+      const mate = { agentId: 'mate', slot: 1 }
+      const ev = (eventId: string, count: number) => ({ eventType: 'release', eventId, count })
+      const rr = teamResult([
+        row({ agentId, slot: 0, exSpecialCount: 2, chainCountTotal: 1, ultimateCount: 1, executions: [], anomalyEventExecutions: [ev('promia_execution_release', 2)] }),
+        row({ agentId: 'mate', slot: 1, exSpecialCount: 3, executions: [{ skillDamageTarget: 'additionalAttack', count: 4 }], anomalyEventExecutions: [ev('x', 1)] }),
+      ])
+      const input = deepFreeze({
+        slot: 0, cfg, characters: [cfg, mate],
+        teamResult: rr, displayResult: rr, adjustedResult: null,
+        anomalyPool: anomalyPool({ totalTriggerCount: 3, perElement: [{ element: 'ice', triggerCount: 2, contributions: [] }] }),
+        prevThreads: initialCalcRoundThreads(), combatTime: 180, getAgentSkills: () => undefined,
+      }) as unknown as AgentNextRoundFeedbackInput
+      expect(() => m.nextRoundFeedback!(input)).not.toThrow()
+    })
+  }
 })

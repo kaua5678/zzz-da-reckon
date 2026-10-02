@@ -54,9 +54,8 @@ export interface CrossAgentSupplySpec {
    * 返回的 `Record` 的 key 是**槽位下标**，value 是该落点获得的量（本类别语义 = 能量总量）。
    * 引擎遍历提供者求和（见 `neighborUltEnergyByProvider`）；不需要多落点的类别继续用 `supply()`+`targetSlot()`。
    *
-   * ⚠ `targetCfg` 语义：部分机制的量依赖**落点自己那份 cfg** 上的字段（如露西影画1 的
-   * `lucyCheerSpinsEstimate` 是编排层**写给全队**的估计值，提供者自己那份可能还没写）。
-   * 迁移前引擎正是读目标 cfg 取的这些值，故此处显式提供，模块按需读。
+   * （r397 CC-371 删除了从未被引擎提供、也无模块读取的 `targetCfgOf` 入参；它服务的露西
+   * `lucyCheerSpinsEstimate` 是死通道，见 `docs/mcp-nextround-writeback.md`。要按落点读 cfg 时再按需加回。）
    */
   perTargetAmounts?(input: {
     /** 提供者的 `configs` 下标（返回 Record 的 key 同为 `configs` 下标） */
@@ -65,8 +64,6 @@ export interface CrossAgentSupplySpec {
     teamSize: number
     cfg: CharacterOperationConfig
     state: IterationState
-    /** 各槽位的 cfg（模块需要按落点读字段时用；`targetCfgOf(slot)` 取不到则 undefined） */
-    targetCfgOf?: (slot: number) => CharacterOperationConfig | undefined
   }): Record<number, number>
   /**
    * 提供者**自己那一槽**的回写钩子（可选，CC-32a 2026-09-27）：`calcCrossAgentEnergy` 在算提供者自己
@@ -310,7 +307,11 @@ export interface AgentAnomalyTransformInput {
 }
 
 /**
- * `nextRoundFeedback` 钩子输入 —— 本轮已收敛的**结果快照** + 上一轮线程 + 可写的 cfg 数组。
+ * `nextRoundFeedback` 钩子输入 —— 本轮已收敛的**结果快照** + 上一轮线程 + 本轮 cfg（全部只读）。
+ *
+ * **唯一输出通道 = 返回值**（→ `threadsNext.moduleFeedback` → 下一轮 `applyTeamConfig(converge)` 读 `threads` 写 cfg）。
+ * r397 CC-371：曾有 4 个模块在这里强转写回 cfg，经证实全是死写（本轮局部克隆、写后零读）已删；
+ * `nextRoundFeedback.test.ts` 用深冻结输入调用**全部**已注册钩子，任何写入都会抛错。
  *
  * 与 `AgentTeamConfigInput` 的关系（为什么不能复用）：那个钩子的语义是「按相位写 cfg」，
  * 入参是**次数类标量**（exCounts/stunCount/combatTime）；本钩子的语义是「读本轮全队结果、
@@ -322,19 +323,15 @@ export interface AgentNextRoundFeedbackInput {
   /** 本模块角色所在槽位（编排层按槽位序逐模块派发；模块无需自己 findIndex） */
   slot: number
   /**
-   * **本模块自己那份 cfg**（可写）。由派发器直接给（它正在遍历这个对象），模块**不要**用
+   * **本模块自己那份 cfg**（只读）。由派发器直接给（它正在遍历这个对象），模块**不要**用
    * `characters[slot]` 反查——`characters` 是**按位置压缩**的数组（`buildCharConfig` 跳过空槽），
    * 槽位号 ≠ 下标：前导空槽时 `characters[slot]` 会取到 `undefined` 或**别人那份 cfg**
    * （2026-09-16 实测：`['', 1041, 1191]` 时 1191 的 `characters[2]` 为 undefined）。
    */
   cfg: DeepReadonly<CharacterOperationConfig>
   /**
-   * 本轮全队 cfg（**可写**：写自己那份正是「模块自读字段」的通道）。
-   *
-   * ⚠ 实测语义（2026-09-16 迁移时探明）：`runCalcRound` 每轮从 `base.characters` **重新
-   * spread** 出这份数组，故写回**不会**跨轮留存——跨轮真正生效的通道是返回值 →
-   * `threadsNext` → 下一轮 `applyTeamConfig(converge)` 读 `threads` 写 cfg。写回仍逐位保留
-   * （原实现如此，且有单测断言其守卫差异），但它**不是**反馈生效路径。
+   * 本轮全队 cfg（只读）。这是 `runCalcRound` 从 `base.characters` 逐轮 spread 出的**本轮局部克隆**，
+   * 钩子派发时本轮资源装配已结束 ⇒ 就算写进去也没有读者（r397 CC-371 实证，见 `docs/mcp-nextround-writeback.md`）。
    */
   characters: DeepReadonly<CharacterOperationConfig[]>
   /** 本轮装配后（`calcTeamResources` + `enrichExecutionPlan`）的全队资源结果 */

@@ -362,14 +362,13 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
  * **唯一保留的副作用** = 首轮（上轮两线程皆 0）把触发/队友异放计数写回 `characters` 元素
  * ——展示端直接读那些字段，迁移前就在此处写，原地语义不变（同数组对象引用传入）。
  *
- * ⚠ 首轮守卫语义是本角色口径（同族里露西**没有**这个守卫），逐位保留：
- * 只在 `(prevThreads.moduleFeedback?.promiaTriggerHits ?? 0) <= 0 && (prevThreads.moduleFeedback?.promiaTeammateReleases ?? 0) <= 0` 时写回。
+ * 只读结果、只返回线程值，**不写 cfg**（r397 CC-371：钩子输入 `DeepReadonly`，49ecb777「钩子输入只有输出通道可写」；
+ * 原先的首轮 cfg 写回是死写——写在 `runCalcRound` 的本轮局部克隆上，所有读者都在钩子之前的资源装配阶段，
+ * 写后零读，判死依据见 `docs/mcp-nextround-writeback.md`）。
  */
-function promiaNextRoundFeedback({ cfg, characters, teamResult, displayResult, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function promiaNextRoundFeedback({ cfg, characters, teamResult, displayResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
   // 展示口径行集优先（displayResult = rrShown），缺失回退装配结果——迁移前语义。
   const shown = displayResult ?? teamResult
-  const prevPromiaTriggerHits = (prevThreads.moduleFeedback?.promiaTriggerHits ?? 0)
-  const prevPromiaTeammateReleases = (prevThreads.moduleFeedback?.promiaTeammateReleases ?? 0)
   let promiaTriggerHitsNext = 0
   let promiaTeammateReleasesNext = 0
   let promiaReleaseDecibelNext = 0
@@ -390,13 +389,6 @@ function promiaNextRoundFeedback({ cfg, characters, teamResult, displayResult, a
       .filter(e => e.eventType === 'release' && e.count > 0 && (e.eventId === 'promia_execution_release' || e.eventId === 'promia_c6_special_release'))
       .reduce((sum, e) => sum + Math.floor(e.count), 0)
     promiaReleaseDecibelNext = promiaReleaseTotal * 100
-    if (prevPromiaTriggerHits <= 0 && prevPromiaTeammateReleases <= 0) {
-      // r396 CC-370：nextRound 钩子的 cfg 是 DeepReadonly（49ecb777「钩子输入只有输出通道可写」），此处写回是保留的原实现、
-      // 不跨轮生效（typesHooks AgentNextRoundFeedbackInput.characters 注释）——强转写回待 zd 判死后删，见 OPEN-ITEMS「nextRound cfg 写回」。
-      const record = cfg as unknown as Record<string, unknown>
-      record.promiaTriggerHitCount = promiaTriggerHitsNext
-      record.promiaTeammateReleaseCount = promiaTeammateReleasesNext
-    }
   }
   return { promiaTriggerHits: promiaTriggerHitsNext, promiaTeammateReleases: promiaTeammateReleasesNext, promiaReleaseDecibel: promiaReleaseDecibelNext }
 }

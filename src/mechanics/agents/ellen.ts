@@ -491,19 +491,18 @@ function buildEllenResourceSections({ result }: AgentResourceSectionsInput) {
  * `convergence.ts#computeEllenNextRoundFeedback` 逐字搬入，规则 6）：读异常池 ice 触发数；
  * 薇薇安同款首轮守卫。
  *
- * ⚠ 首轮守卫逐位保留：只在 `(prevThreads.moduleFeedback?.ellenFreezeCount ?? 0) <= 0` 时写回 cfg（同族里露西**没有**）。
+ * 只读结果、只返回线程值，**不写 cfg**（r397 CC-371：钩子输入 `DeepReadonly`，49ecb777「钩子输入只有输出通道可写」；
+ * 原先的首轮 cfg 写回是死写——写在 `runCalcRound` 的本轮局部克隆上，所有读者都在钩子之前的资源装配阶段，
+ * 写后零读，判死依据见 `docs/mcp-nextround-writeback.md`）。
  * 跨轮真正生效路径 = 返回值 → `threadsNext.ellenFreezeCount` → 下一轮 `applyEllenTeamConfig`
  * 的 converge 分支（`(threads.moduleFeedback?.ellenFreezeCount ?? 0)` 地板后写 cfg，供影画4 回能消费）。
  */
-function ellenNextRoundFeedback({ cfg, characters, anomalyPool, prevThreads }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function ellenNextRoundFeedback({ cfg, characters, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let ellenFreezeCountNext = 0
   // 迁移前判据 =「队里有 1191」。⚠ 用派发器给的 `cfg`，不用 `characters[slot]`
-  // （该数组按位置压缩，前导空槽时槽位号 ≠ 下标 ⇒ 会写错对象）。
+  // （该数组按位置压缩，前导空槽时槽位号 ≠ 下标）。
   if (cfg && characters.some(c => c.agentId === ELLEN_ID)) {
     ellenFreezeCountNext = anomalyPool?.perElement?.find(p => p.element === 'ice')?.triggerCount ?? 0
-    if ((prevThreads.moduleFeedback?.ellenFreezeCount ?? 0) <= 0) {
-      ;(cfg as unknown as Record<string, unknown>).ellenFreezeCount = ellenFreezeCountNext
-    }
   }
   return { ellenFreezeCount: ellenFreezeCountNext }
 }

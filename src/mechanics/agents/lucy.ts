@@ -270,37 +270,20 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
 
 /**
  * 露西 C6「下一轮反馈」（`nextRoundFeedback` 钩子，2026-09-16 arch 棘轮第 6 批自
- * `convergence.ts#computeLucyNextRoundFeedback` 逐字搬入，规则 6）：队友强特合计 + 回旋预估。
+ * `convergence.ts#computeLucyNextRoundFeedback` 逐字搬入，规则 6）：队友强特合计（→ 下一轮 `applyTeamConfig(converge)` 写 `lucyTeammateExTotal`，影画6 回旋预估用）。
  *
- * ⚠ **与普罗米娅/薇薇安/艾莲不同：写回 `characters` 每轮都做**（无首轮守卫——消费端
- * `crossAgentSupply.perTargetAmounts` 读的就是本轮估计值）。这是口径差异不是疏忽，
- * 迁移时逐位保留；对应单测在 `src/mechanics/__tests__/nextRoundFeedback.test.ts`。
- *
- * ⚠ 写回目标是**全队每一份 cfg**（`lucyCheerSpinsEstimate`/`lucyTeammateExTotal`），
- * 不只是露西自己那份——`crossAgentSupply` 的 `targetCfgOf` 会读**落点**那份 cfg。
+ * 只读结果、只返回线程值，**不写 cfg**（r397 CC-371：钩子输入 `DeepReadonly`，49ecb777「钩子输入只有输出通道可写」；
+ * 原先的首轮 cfg 写回是死写——写在 `runCalcRound` 的本轮局部克隆上，所有读者都在钩子之前的资源装配阶段，
+ * 写后零读，判死依据见 `docs/mcp-nextround-writeback.md`）。
+ * 原先还每轮给全队写 `lucyCheerSpinsEstimate`「回旋预估提示」：唯一读者 `perTargetAmounts` 在钩子**之前**执行 ⇒
+ * 恒读到 0、恒走现算分支（与提示同一公式、取本轮 state），连同读取与声明一起删除。
  */
-function lucyNextRoundFeedback({ cfg, characters, teamResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function lucyNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let mateEx = 0
   for (const ch of teamResult.characters) {
     if (ch.agentId !== LUCY_ID) mateEx += ch.exSpecialCount ?? 0
   }
-  const lucyTeammateExNext = mateEx
-  const lucyCh = teamResult.characters.find(c => c.agentId === LUCY_ID)
-  if (lucyCh) {
-    // console 取自**露西自己那份 cfg**（迁移前是 `characters.find(c => c.agentId === '1151')`，
-    // 同对象；⚠ 不用 `characters[slot]`——该数组按位置压缩，槽位号 ≠ 下标）。
-    const cinema = Math.max(0, Math.floor(Number(cfg.lucyCinemaLevel ?? 0)))
-    const spins = Math.max(0, Math.floor(lucyCh.exSpecialCount ?? 0))
-      + (cinema >= 2 ? Math.max(0, Math.floor(lucyCh.chainCountTotal ?? 0)) + Math.max(0, Math.floor(lucyCh.ultimateCount ?? 0)) : 0)
-      + (cinema >= 6 ? mateEx : 0)
-    for (const c of characters) {
-      // 写的是**每个队友** c（不是自己的 cfg）；同 promia/vivian 的 nextRound 只读写回，见 OPEN-ITEMS「nextRound cfg 写回」
-      const record = c as unknown as Record<string, unknown>
-      record.lucyCheerSpinsEstimate = spins
-      record.lucyTeammateExTotal = mateEx
-    }
-  }
-  return { lucyTeammateEx: lucyTeammateExNext }
+  return { lucyTeammateEx: mateEx }
 }
 
 export const lucyMechanic: AgentMechanicModule = {
@@ -326,9 +309,8 @@ export const lucyMechanic: AgentMechanicModule = {
    * （下一位 30 / 上一位 10）× 露西终结技次数；② 影画1 门控下 `spinEst × 2` 给**全队每人**
    * （故 perTargetAmounts 对每个非自己槽位都加同一份 spinEst×2）。
    *
-   * `spinEst` 的取值优先级逐位保留原实现：`lucyCheerSpinsEstimate`（上一轮线程写入的估计值）
-   * >0 时优先；否则按 1 命基础 + 影画2（＋连携＋终结）+ 影画6（＋队友强特合计）现算。
-   * 这三个字段都写在**露西自己的 cfg** 上（本模块 `applyLucyTeamEnergyFlags` 与 converge 注入）。
+   * `spinEst` = 1 命基础 + 影画2（＋连携＋终结）+ 影画6（＋队友强特合计 `lucyTeammateExTotal`，converge 注入），
+   * 读**露西自己的 cfg** + 本轮 state 现算（r397 CC-371 删掉了恒为 0 的 `lucyCheerSpinsEstimate` 优先分支）。
    */
   crossAgentSupply: {
     kind: 'neighbor-ult-energy',
@@ -342,13 +324,10 @@ export const lucyMechanic: AgentMechanicModule = {
       for (const [slot, amount] of Object.entries(per)) out[Number(slot)] = amount * ults
       // 影画1 回旋全队回能：每个非自己槽位都得同一份
       if (Number(cfg.lucyC1Enabled ?? 0) > 0) {
-        const hint = Math.max(0, Number(cfg.lucyCheerSpinsEstimate ?? 0))
         const cinema = Math.max(0, Math.floor(Number(cfg.lucyCinemaLevel ?? 0)))
-        const spinEst = hint > 0
-          ? hint
-          : Math.max(0, Math.floor(state.exSpecialCount ?? 0))
-            + (cinema >= 2 ? Math.max(0, Math.floor(state.chainCountTotal ?? 0)) + ults : 0)
-            + (cinema >= 6 ? Math.max(0, Number(cfg.lucyTeammateExTotal ?? 0)) : 0)
+        const spinEst = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
+          + (cinema >= 2 ? Math.max(0, Math.floor(state.chainCountTotal ?? 0)) + ults : 0)
+          + (cinema >= 6 ? Math.max(0, Number(cfg.lucyTeammateExTotal ?? 0)) : 0)
         // ⚠ C1 回旋回能是**全队每人**（含露西自己）——迁移前原式无条件 `lucyEnergy += spinEst*2`，
         // 与上面「邻位回能不给提供者自己」不同。第一版我照邻位习惯跳过自己 ⇒ timeGolden 红
         // （agent:1151:c6.slot0）。逐位保留原语义。
@@ -382,14 +361,13 @@ export const lucyMechanic: AgentMechanicModule = {
 function applyLucyTeamEnergyFlags(characters: CharacterOperationConfig[]): void {
   const lucy = characters.find(c => c.agentId === LUCY_ID)
   if (!lucy) return
-  const cinema = Math.max(0, Math.floor(Number((lucy as any).lucyCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(lucy.lucyCinemaLevel ?? 0)))
   for (const c of characters) {
-    const rec = c as unknown as Record<string, unknown>
-    rec.lucyC1Enabled = cinema >= 1 ? 1 : 0
-    rec.lucyCinemaLevel = cinema
+    c.lucyC1Enabled = cinema >= 1 ? 1 : 0
+    c.lucyCinemaLevel = cinema
   }
   // 队友强特合计（收敛时 iterate 用 prev；执行层用最终 state，先占位 0，useResourceCalc 注入）
-  ;(lucy as any).lucyTeammateExTotal = (lucy as any).lucyTeammateExTotal ?? 0
+  lucy.lucyTeammateExTotal = lucy.lucyTeammateExTotal ?? 0
 }
 
 export default lucyMechanic
@@ -406,8 +384,6 @@ declare module '@/types/resource/config' {
     lucySpinDmg?: number
     /** 露西野猪连击伤害倍率（buildCharConfig 预存） */
     lucyBoarComboDmg?: number
-    /** 露西加油旋转次数估计（applyTeamConfig 写给全队，见 typesHooks 说明） */
-    lucyCheerSpinsEstimate?: number
     /** 露西影画1：回旋挥击全队回能标记 */
     lucyC1Enabled?: number
     /** 露西：队友强特合计（编排注入） */
