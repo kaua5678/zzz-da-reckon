@@ -80,11 +80,13 @@ describe('CC-360：角色专属结果类型随模块走', () => {
  */
 const TYPED_CFG_MODULES = ['yixuan', 'yeshuguang', 'banyue', 'starlightBilly'] as const
 
-describe('D2 §5：已完成模块不再经 Record 强转读写 cfg', () => {
+describe('D2 §5：已完成模块不再经 Record 强转 / as any 读写 cfg', () => {
   for (const m of TYPED_CFG_MODULES) {
     it(`mechanics/agents/${m}.ts`, () => {
       const src = stripComments(readFileSync(join(SRC, `mechanics/agents/${m}.ts`), 'utf-8'))
       expect(src).not.toMatch(/as unknown as Record<string,\s*unknown>/)
+      // CC-363：`(cfg as any).k` 与 Record 强转同病（键无类型、拼错静默），r392 漏判了 yeshuguang 一处
+      expect(src).not.toMatch(/\b(?:input\.)?cfg as any\b/)
     })
   }
 })

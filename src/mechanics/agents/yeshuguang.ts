@@ -710,7 +710,7 @@ export const yeshuguangSettings: MechanicSetting[] = [
 const C2_DEF_IGNORE_MOVES = new Set<string>([MOVE.feiguang, MOVE.zhanwang])
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).yeshuguangCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.yeshuguangCinemaLevel ?? 0)))
   if (cinema < 2) return
   // 影画2：飞光、斩妄开天 无视目标 40% 防御（moveId 限定）
   for (const exec of executions) {
