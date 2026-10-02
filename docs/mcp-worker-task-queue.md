@@ -153,17 +153,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 419 轮（lane arena-E；无并行会话；HEAD `7bbf3be2`；REQUIREMENTS.md 无新条目）：CC-393 `5ed1315b` / `d7128f8e` + 文档，已 push。**
-- **做到哪**：
-  - ①「换人后该不该跟着走」审计（r416 起挂账）**结论：无实害，不改代码**。`CharacterConfig` 上随角色的字段（全部动作次数、潜能、交互基准、音擎、平A权重、驱动盘）`setAgent` 都会重置或重新预填；命座和精炼保留是有意的 UX（代码注释已写）；资源利用率 / 异常利用率 / 结算占比 / 合轴率已按角色存（CC-386 / 388）；`mechanicSettings` 的键都带角色命名空间（`alice.` / `liuyin.` …）；`boss.counterAssistSlot` / `wind.infectionTargetSlot` 的值本身就是槽位（描述位置）；`teamMechanicSettings` 只有雷米埃尔 Q 分配（键 = 前缀:她的槽位，只有她的模块读）。
-  - ② 轴内 [表] 直读判定单一来源（架构卡 CC-393）：编辑器与结算共用 `resourceCalc/axisTableDirect.ts`；融合并入段、模块隐藏招式不可直读；顺带修了希希芙预设的毒牙 #2 重复计伤，以及伊德海莉 1051015、雨果 1291010。
-- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0；vitest(4) 464 文件 / 4273 测试；build 通过；zd `r419a` 只有希希芙 4 队 + `__ms` 伤害下降、失衡池零变化，`r419b` 0/0；timeGolden 重生成 4 行（逐条解释见 CC-393）；截图对比 1051 / 1521 / 1091 队。
-- **回滚点**：`git revert d7128f8e`（雨果）→ `git revert 5ed1315b`（含 timeGolden 4 行）。
-- **拍板**：① 「是否已建模」不按 `#N` 后缀或名字判断，只认两类证据：`data/moveFusions.ts`（来自 nanoka param.desc）与模块声明的 `axisHiddenMoves` / `attachedEvents`。② [表] 倍率口径对齐执行行（融合主段取整组和）。③ 希希芙预设里的 1521009 块不删：模块用它算蚀骨轴内占比，只是不再出 [表] 直伤。
+**第 420 轮（lane arena-E；无并行会话；起点 `2dcdc2bf`（外来 docs 提交，已补推）；REQUIREMENTS.md 无新条目）：CC-394 `497aaa27` + 文档，已 push。**
+- **做到哪**：r419 下一步 1 的两条优先项。
+  - ① 青衣 1251021 / 1251022 = 情形 (ii)：nanoka param.desc 明写强特 = 三段和，模块无引用 ⇒ `data/moveFusions.ts` 加 `QINGYI_EX_MOONLIT`。**改伤害**：修前强特只算 #1（301.4% / 0.383s），修后 1206.7% / 1.533s。
+  - ② 莱卡恩 1141016 = 情形 (i)：`lycaon.ts` 点按路线已出它的执行行 ⇒ `axisHiddenMoves`（零差）。
+- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0；vitest(4) 464 文件 / 4275 测试（+2）；build 通过；zd `r420a` changed 31/625 全是含青衣的队；timeGolden 35 行、timeFillRatchet 2 队重生成（逐队解释见 CC-394）；cinemaMonotone 登记 1251:c3->c4；yixuanSmoke 期望 3 处更新。
+- **回滚点**：`git revert 497aaa27`。
+- **拍板**：① auto-1371-1251-1451 −9.86% 接受：不是融合算错，是更真实的强特时长让仪玄自动轴超预算、引擎按既定「轴太厚 ⇒ 退化非轴」口径处理（探针 `/home/kaua/calc-arch/arenaE/r420/probe2.test.ts`，两侧输出 `p2-*.out`：master 轴「轴1」、stun 3；修后轴空、stun 4）。② 「长按追加连打」不建模：原文只说「提升连打次数」，没有次数 / 倍率，凭空猜会引入无据数字。
 - **下一步（按价值排）**：
-  1. **剩余同基名 [表] 候选逐个核对**（命座 0，`agentId moveId 名称 ← 同基名的执行行`；清单来自 `/home/kaua/calc-arch/arenaE/r419/tbl-census2.out` 的 TWIN 行）。做法：读角色模块与 `data/raw/nanoka_missing/full/<id>.json` 该招式的 param.desc，三选一——(i) 模块已用别的行表达它 ⇒ 加进该模块 `axisHiddenMoves` 并写依据（零差，同 hugo）；(ii) 原文说是同一次动作的多段、模块没建模 ⇒ 加融合组到 `data/moveFusions.ts`（**会改伤害**，要 zd + timeGolden 逐条解释）；(iii) 独立动作 ⇒ 不动。**优先**：青衣 1251021 / 1251022（`scripts/extract-move-fusions.mjs` 给出「月上海棠 = 1251011 + 1251021 + 1251022」，模块无引用 ⇒ 疑似强特只算了第 1 段，伤害偏低）；莱卡恩 1141016（脚本给出「狂猎时刻 = 1141015 + 1141016」，但 `lycaon.ts:279` 在点按次数 > 0 时按 1141016 出执行行，需判断）。其余：1071012、1101106、1101402、1121008 / 1121009（ben.ts 有引用）、1131013 / 1131014（soukaku.ts 引用 013）、1151013、1161015、1181018、1201023、1271009、1321012、1351005、1381009、1401007、1451017、1461022、1541007 / 1541011 / 1541012（promia.ts 引用 011）、1561010、1571009 / 1571012（norma.ts 有引用）、1611011 / 1611012、1621019（roxy.ts 有引用）。1091011 是星见雅第二次 E 的融合主段（已登记 `MIYABI_EX_FOLLOWUP`，可直读、倍率整组），不用动。
-  2. [表] 块的「不占时间预算、窗内不产失衡值」是既定口径（`damagePoolDirect.ts` 注释），若第 1 项发现大量独立动作被用户放进轴，再评估是否要给 [表] 块加时间账。
+  1. **剩余 TWIN 候选逐个核对**（方法同 r419：读模块 + `data/raw/nanoka_missing/full/<id>.json` param.desc，三选一 (i) 隐藏 / (ii) 融合 / (iii) 不动；清单出处 `/home/kaua/calc-arch/arenaE/r419/tbl-census2.out`）：1071012、1101106、1101402、1121008 / 1121009（ben.ts 有引用）、1131013 / 1131014（soukaku.ts 引用 013）、1151013、1161015、1181018、1201023、1271009、1321012、1351005、1381009、1401007、1451017、1461022、1541007 / 1541011 / 1541012（promia.ts 引用 011）、1561010、1571009 / 1571012（norma.ts 有引用）、1611011 / 1611012、1621019（roxy.ts 有引用）。r419 `fusions.out` 里能找到 nanoka 求和式的只有青衣、莱卡恩、雨果、雅（均已处理）⇒ 余下大概率是 (i) 或 (iii)，零差为主。
+  2. **yidhari-qingyi-lucia 外层收敛 cycle**（r420 新增，第 4 支 cycle 队）：先用 `.zc/perf` 打印外层每轮的青衣强特次数，看是否 7↔8 振荡；若是，属整数环停点问题（参考 `docs/mcp-integer-cycle-stop.md` CC-326），别加容差。
+  3. **「能量全部打强特」口径复核**：青衣 4 命回能后强特 +1 反而降伤（每秒收益低于平A）。若别的角色也出现同类下降，再评估引擎是否该按每秒收益决定能量用途（要用户口径，先写进 OPEN-ITEMS 候选，不要直接改）。
+  4. 仪玄自动轴预设（`stunAxisPresets/仪其他.json` 的「轴1」）是在青衣强特 0.383s 时代配的；4 次失衡下轴太厚而退化。要不要按新时长重配，看用户是否在意该队走轴。
 - **已知坑**：
+  - **插入新常量时别把上一个常量的文档注释切开**：r420 补丁按 `const QIANXIA_EX_PHOTOGRAPHY` 定位插入，结果插在千夏的 `/** … */` 与它的 const 之间，注释被挂到青衣上。锚点用文档注释的开头，不用 const 行。
+  - **游戏语义 `@fact … 口径:` 必须紧跟一行 `⟳复核: … | 到期 YYYY-MM-DD`**，否则 checkGuards 判据 15 红（全量 vitest 才看得到，单跑目标测试看不到）。
+  - **改伤害的数据修正会牵动 4 类锁**：timeGolden、timeFillRatchet（含 outerExit）、cinemaMonotone、按数值写死的冒烟测试（yixuanSmoke）。先跑全量看红哪些，再逐条归因写进注释，别只重生成 golden。
+  - **自动轴「消失」先查轴退化**：`effectiveStunAxes` 为空不等于预设没匹配上——`autoStunAxisPresetOf` 只看队伍与命座；空轴多半是 `stageResolveFeasibility` 判轴超预算后退化（`forceNoAxis`）。
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
   - 源码锁写完要反证（临时撤掉被锁的改动看是否变红），r388 用 `git show HEAD:<file> > <file>` 换回旧版验证后再复原。
