@@ -62,9 +62,9 @@ function loopMove(move: SkillMove | null, dmgBonusPct = 0): YidhariLoopMove {
 }
 
 /** 蓄力循环单轮时长 = 蓄力1s + 下砸 + 平A */
-function chargeCycleTime(cfg: Record<string, unknown>): number {
-  const slam = cfg.yidhariChargeSlam as YidhariLoopMove | undefined
-  const follow = cfg.yidhariBasicFollow as YidhariLoopMove | undefined
+function chargeCycleTime(cfg: Partial<CharacterOperationConfig>): number {
+  const slam = cfg.yidhariChargeSlam
+  const follow = cfg.yidhariBasicFollow
   return CHARGE_SECONDS + (slam?.actionTime ?? 0) + (follow?.actionTime ?? 0)
 }
 
@@ -141,7 +141,8 @@ function buildYidhariCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInp
 }
 
 export function computeYidhariHpSource(
-  cfg: Record<string, unknown>,
+  // r405：原收 Record<string, unknown>（测试传字面量）；Partial 同样接受测试的 any / 字面量，且键有类型
+  cfg: Partial<CharacterOperationConfig>,
   state: IterationState,
   cinema4Enabled: boolean,
   exHealMissingHpPct = 0.75,
@@ -197,9 +198,9 @@ export function computeYidhariHpSource(
 }
 
 function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const slam = cfg.yidhariChargeSlam as YidhariLoopMove | undefined
-  const follow = cfg.yidhariBasicFollow as YidhariLoopMove | undefined
-  const cycleTime = chargeCycleTime(cfg as unknown as Record<string, unknown>)
+  const slam = cfg.yidhariChargeSlam
+  const follow = cfg.yidhariBasicFollow
+  const cycleTime = chargeCycleTime(cfg)
 
   // 蓄力循环：把平A时间折算成 下砸(1051007) + 平A(1051003×1.3) 两个显式招式
   // 迭代期 cycles 实数化（2026-09-09，能量收入行级 Σ 的耦合坑）：Σ 把 slam/follow 行值计入
@@ -338,7 +339,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
 
 function buildYidhariResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const source = computeYidhariHpSource(
-    cfg as unknown as Record<string, unknown>, // 导出函数收 Record（测试传字面量）——按 D2 §5「公开签名保留局部读取」
+    cfg,
     state,
     Boolean(cfg.yidhariCinema4Enabled),
     Number(cfg.yidhariExHealMissingHpPct ?? 0.75),
@@ -446,7 +447,7 @@ function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, provider
   const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
   const external = Math.max(0, (cfg.yidhariExternalHealPct ?? 0)
     + (cfg.healPctPerCurtainProviderUlt ?? 0) * providerUltCount)
-  const cycleTime = chargeCycleTime(cfg as unknown as Record<string, unknown>)
+  const cycleTime = chargeCycleTime(cfg)
   const cycles = cycleTime > 0 ? Math.floor(basicAttackTime / cycleTime) : 0
   const exHeal = exSpecialCount * EX_HEAL_RATIO_PCT * missing
   const followHeal = cycles * BASIC_FOLLOW_HEAL_PCT

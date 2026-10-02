@@ -112,10 +112,11 @@ function clampSwings(cfg: unknown): number {
  * 改产行时同步本函数；`soukakuExTimeCc200.test.ts` 用真队伍断言两边相等。
  */
 export function soukakuPerExExtraTime(cfg: unknown): { necessaryTime: number; comboAlignTime: number } {
-  // 公开签名收 unknown（soukakuExTimeCc200.test 直传字面量 cfg），故保留这一处局部 Record 读取（D2 §5 记理由）
-  const record = cfg as Record<string, unknown>
+  // 公开签名收 unknown（soukakuExTimeCc200.test 直传带 `setting:` 动态键的字面量；设置走 cfgMechanicSettingRaw 通用通道）。
+  // r405：静态键按 Partial<CharacterOperationConfig> 读——键有类型（拼错会报错），不再经 Record。
+  const typed = cfg as Partial<AgentResourceInput['cfg']>
   const swings = clampSwings(cfg)
-  const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[String(record.bodySize ?? 'large')] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
+  const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[String(typed.bodySize ?? 'large')] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
   const chop = Math.round(Number(cfgMechanicSettingRaw(cfg, 'soukaku.chopSlam') ?? 0)) >= 1
   const fan2 = swings >= 2 ? SOUKAKU_FAN_ACTION_TIME : 0
   const balls = hits > 0 ? swings * SOUKAKU_WIND_BALL_ACTION_TIME : 0
@@ -140,7 +141,7 @@ function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
 }
 
 function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const exCount = Math.max(0, Math.floor(Number((state as unknown as Record<string, unknown>).exSpecialCount ?? 0)))
+  const exCount = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
   if (exCount <= 0) return
   const swings = clampSwings(cfg)
   const bodySize = String(cfg.bodySize ?? 'large')

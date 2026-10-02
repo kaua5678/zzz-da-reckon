@@ -74,19 +74,30 @@ describe('CC-360：角色专属结果类型随模块走', () => {
 })
 
 /**
- * D2 §5（r391 起）：模块内 `cfg as unknown as Record<string, unknown>` 绕开类型读写**未声明**的键，
- * 拼错键名 = 静默读到 undefined。逐模块补声明（本模块扩充块）并改回 `cfg.<键>` 后，把模块名加进下表，锁住不回退。
- * 判据是「这个模块的 cfg 状态键全有类型」，不是 cast 计数；按动态键（`record[field]`）的通用逻辑可保留，但该模块就别进表。
+ * D2 §5（r391 起逐模块补声明，r405 全部完成）：角色模块里经 `Record<string, unknown>` / `as any` 读写 cfg，
+ * 键就没有类型，拼错键名 = 静默读到 undefined。
+ * r405 起由逐模块名单（TYPED_CFG_MODULES，35 个）升级为**全目录不变式**：`src/mechanics/agents/*.ts` 全部文件都不许这样写，
+ * 新模块写了就红（名单只能防回退，挡不住新模块重犯，见长期规则 r395 CC-369）。
+ * 覆盖这个病的三种写法：`as unknown as Record<string, unknown>`（任何对象）、`<…cfg/Cfg> as any`、`<…cfg/Cfg> as Record<string, unknown>`
+ * （最后一种是 r405 补的：soukaku 曾用它绕过旧正则）。
+ * 公开签名要收「任意字面量」时（测试传带 `setting:` 动态键的对象），用 `cfg as Partial<CharacterOperationConfig>` 这类**带类型**的断言读静态键（soukaku 先例）。
  */
-const TYPED_CFG_MODULES = ['yixuan', 'yeshuguang', 'banyue', 'starlightBilly', 'orphie', 'caesar', 'anton', 'remielle', 'xide', 'xixifu', 'zhuYuan', 'ben', 'grace', 'specPanelBuffs', 'nicole', 'panYinhu', 'sigrid', 'zhao', 'nangong', 'severian', 'lucy', 'promia', 'vivian', 'phoenix', 'miyabi', 'lighter', 'hugo', 'zhendou', 'pulchra', 'trigger', 'aire', 'anby', 'ellen', 'roxy', 'claret'] as const
+const AGENT_DIR = join(SRC, 'mechanics/agents')
+const UNTYPED_CFG_ACCESS = [
+  /as unknown as Record<string,\s*unknown>/,
+  /\b\w*[cC]fg\)?\s+as\s+any\b/,
+  /\b\w*[cC]fg\)?\s+as\s+Record<string,\s*unknown>/,
+]
 
-describe('D2 §5：已完成模块不再经 Record 强转 / as any 读写 cfg', () => {
-  for (const m of TYPED_CFG_MODULES) {
-    it(`mechanics/agents/${m}.ts`, () => {
-      const src = stripComments(readFileSync(join(SRC, `mechanics/agents/${m}.ts`), 'utf-8'))
-      expect(src).not.toMatch(/as unknown as Record<string,\s*unknown>/)
-      // CC-363：`(cfg as any).k` 与 Record 强转同病（键无类型、拼错静默），r392 漏判了 yeshuguang 一处
-      expect(src).not.toMatch(/\b(?:input\.)?cfg as any\b/)
+describe('D2 §5：角色模块不经 Record 强转 / as any 读写 cfg（全目录不变式）', () => {
+  const files = readdirSync(AGENT_DIR).filter(f => f.endsWith('.ts'))
+  it('扫描面非空（防目录改名后全绿）', () => {
+    expect(files.length).toBeGreaterThanOrEqual(50)
+  })
+  for (const f of files) {
+    it(`mechanics/agents/${f}`, () => {
+      const src = stripComments(readFileSync(join(AGENT_DIR, f), 'utf-8'))
+      for (const rx of UNTYPED_CFG_ACCESS) expect(src).not.toMatch(rx)
     })
   }
 })
