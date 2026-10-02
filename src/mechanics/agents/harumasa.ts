@@ -183,13 +183,12 @@ function applyPanel({ potentialLevel, outOfCombatPanel, panel }: AgentPanelInput
 }
 
 function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.harumasaCinemaLevel = cinemaLevel
-  record.harumasaPotentialLevel = Math.max(1, Math.min(6, whole(potentialLevel ?? 6)))
-  record.harumasaA5Count = whole(setting(cfg, 'harumasa.a5Count', 2))
-  record.harumasaStunCoverage = 0.5 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
-  record.harumasaAbnormalCoverage = clampRatio(setting(cfg, 'harumasa.abnormalCoverage', 1))
-  record.harumasaEdgeAverageStacks = Math.min(HARUMASA_EDGE_MAX,
+  cfg.harumasaCinemaLevel = cinemaLevel
+  cfg.harumasaPotentialLevel = Math.max(1, Math.min(6, whole(potentialLevel ?? 6)))
+  cfg.harumasaA5Count = whole(setting(cfg, 'harumasa.a5Count', 2))
+  cfg.harumasaStunCoverage = 0.5 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
+  cfg.harumasaAbnormalCoverage = clampRatio(setting(cfg, 'harumasa.abnormalCoverage', 1))
+  cfg.harumasaEdgeAverageStacks = Math.min(HARUMASA_EDGE_MAX,
     Math.max(0, setting(cfg, 'harumasa.edgeAverageStacks', 6)))
 }
 
@@ -207,10 +206,9 @@ function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentChar
  */
 function applyHarumasaTeamConfig({ cfg, phase, stunCount, combatTime, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const record = cfg as unknown as Record<string, unknown>
   const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
   const battle = Math.max(1, Number(combatTime) || 180)
-  record.harumasaStunCoverage = Math.min(1, resolvedStun * HARUMASA_STUN_WINDOW_SECONDS / battle)
+  cfg.harumasaStunCoverage = Math.min(1, resolvedStun * HARUMASA_STUN_WINDOW_SECONDS / battle)
   if (!axis) return
   const slot = Number(cfg.slot)
   let axisSlash = 0
@@ -224,26 +222,25 @@ function applyHarumasaTeamConfig({ cfg, phase, stunCount, combatTime, axis }: Ag
       else if (act.moveId === HARUMASA_ARROW_MOVE_ID) axisArrow += act.count * wins
     }
   })
-  record.harumasaAxisActive = axis.active
-  record.harumasaAxisSlash = axisSlash
-  record.harumasaAxisArrow = axisArrow
+  cfg.harumasaAxisActive = axis.active
+  cfg.harumasaAxisSlash = axisSlash
+  cfg.harumasaAxisArrow = axisArrow
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): HarumasaCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeHarumasaCycle({
-    cinemaLevel: Number(record.harumasaCinemaLevel ?? 0),
-    potentialLevel: Number(record.harumasaPotentialLevel ?? 6),
-    a5Count: Number(record.harumasaA5Count ?? 2),
+    cinemaLevel: Number(cfg.harumasaCinemaLevel ?? 0),
+    potentialLevel: Number(cfg.harumasaPotentialLevel ?? 6),
+    a5Count: Number(cfg.harumasaA5Count ?? 2),
     chainCount: state.chainCountTotal,
     ultimateCount: state.ultimateCount,
     exSpecialCount: state.exSpecialCount,
-    stunCoverage: Number(record.harumasaStunCoverage ?? 0.5),
-    abnormalCoverage: Number(record.harumasaAbnormalCoverage ?? 1),
-    edgeAverageStacks: Number(record.harumasaEdgeAverageStacks ?? 6),
-    axisActive: record.harumasaAxisActive === true,
-    axisSlash: Number(record.harumasaAxisSlash ?? 0),
-    axisArrow: Number(record.harumasaAxisArrow ?? 0),
+    stunCoverage: Number(cfg.harumasaStunCoverage ?? 0.5),
+    abnormalCoverage: Number(cfg.harumasaAbnormalCoverage ?? 1),
+    edgeAverageStacks: Number(cfg.harumasaEdgeAverageStacks ?? 6),
+    axisActive: cfg.harumasaAxisActive === true,
+    axisSlash: Number(cfg.harumasaAxisSlash ?? 0),
+    axisArrow: Number(cfg.harumasaAxisArrow ?? 0),
   })
 }
 
@@ -412,5 +409,32 @@ declare module '@/types/catalog' {
   interface PanelValues {
     /** 潜能攻击加成的留痕：与 `panel.atk` 增量同块写入，便于 DebugPage / 命座自检看到来源 */
     harumasaPotentialAtk?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：whole(setting(cfg, 'harumasa.a5Count', 2)) */
+    harumasaA5Count?: number
+    /** 写入：clampRatio(setting(cfg, 'harumasa.abnormalCoverage', 1)) */
+    harumasaAbnormalCoverage?: number
+    /** 写入：axis.active */
+    harumasaAxisActive?: boolean
+    /** 写入：axisArrow */
+    harumasaAxisArrow?: number
+    /** 写入：axisSlash；specs/agents/1201.json 按字段名读 */
+    harumasaAxisSlash?: number
+    /** 写入：cinemaLevel */
+    harumasaCinemaLevel?: number
+    /** 写入：Math.min(HARUMASA_EDGE_MAX, */
+    harumasaEdgeAverageStacks?: number
+    /** 写入：Math.max(1, Math.min(6, whole(potentialLevel ?? 6))) */
+    harumasaPotentialLevel?: number
+    /** 写入：0.5；Math.min(1, resolvedStun * HARUMASA_STUN_WINDOW_SECONDS / battle) */
+    harumasaStunCoverage?: number
   }
 }

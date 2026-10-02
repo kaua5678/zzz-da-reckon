@@ -179,7 +179,7 @@ function estimateYaojiayinEntries(characters: CharacterOperationConfig[]): numbe
   }
   // 连携入场：编排写入 yaojiayinTeamChainTotal（全队 chainCountPerStun × 失衡次数）
   const injected = characters.find(c => c.agentId === YAOJIAYIN_ID)
-  const injectedChains = Math.max(0, Math.floor(Number((injected as any)?.yaojiayinTeamChainTotal ?? 0)))
+  const injectedChains = Math.max(0, Math.floor(Number(injected?.yaojiayinTeamChainTotal ?? 0)))
   entries += injectedChains
   return entries
 }
@@ -188,7 +188,7 @@ function applyYaojiayinTeamFlags(characters: CharacterOperationConfig[]): void {
   const yj = characters.find(c => c.agentId === YAOJIAYIN_ID)
   if (!yj) return
   const entries = estimateYaojiayinEntries(characters)
-  ;(yj as any).yaojiayinEntryCount = entries
+  yj.yaojiayinEntryCount = entries
 }
 
 /**
@@ -209,8 +209,8 @@ function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
       teamChains += Math.max(0, (c.chainCountPerStun ?? 0) * stunCount)
       quickAssists += Math.max(0, c.quickAssistCount ?? 0)
     }
-    ;(yj as any).yaojiayinTeamChainTotal = teamChains
-    ;(yj as any).yaojiayinQuickAssistEntries = quickAssists
+    yj.yaojiayinTeamChainTotal = teamChains
+    yj.yaojiayinQuickAssistEntries = quickAssists
   }
   applyYaojiayinTeamFlags(characters)
 }
@@ -261,12 +261,11 @@ function applyYaojiayinTeamPanelEffects({
 
 function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharConfigInput): void {
   const cinema = cinemaLevel ?? 0
-  const record = cfg as unknown as Record<string, unknown>
-  record.yaojiayinCinemaLevel = cinema
-  record.yaojiayinAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0 ? 1 : 0
-  record.yaojiayinTremoloDmg = rowVal(findMove(skills, MOVE_TREMOLO), 'damage')
-  record.yaojiayinClusterDmg = rowVal(findMove(skills, MOVE_CLUSTER), 'damage')
-  record.yaojiayinCapriccioDmg = rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage')
+  cfg.yaojiayinCinemaLevel = cinema
+  cfg.yaojiayinAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0 ? 1 : 0
+  cfg.yaojiayinTremoloDmg = rowVal(findMove(skills, MOVE_TREMOLO), 'damage')
+  cfg.yaojiayinClusterDmg = rowVal(findMove(skills, MOVE_CLUSTER), 'damage')
+  cfg.yaojiayinCapriccioDmg = rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage')
 
   // 不走通用强特耗能：能量全部供给和弦震音
   cfg.exSpecialEnergyConsume = 0
@@ -280,19 +279,18 @@ function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharCon
   const specs = new Set(
     team.filter(m => m.agentId && m.agentId !== YAOJIAYIN_ID).map(m => m.agent?.specialty).filter(Boolean),
   )
-  record.yaojiayinTeamHasAttack = specs.has('attack') ? 1 : 0
+  cfg.yaojiayinTeamHasAttack = specs.has('attack') ? 1 : 0
 }
 
 function yaojiayinTremolosOf(
   cfg: AgentResourceInput['cfg'],
   state: AgentResourceInput['state'],
 ): YaojiayinTremoloResult {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.yaojiayinCinemaLevel ?? 0)))
-  const additionalActive = Number(record.yaojiayinAdditionalActive ?? 0) > 0
+  const cinema = Math.max(0, Math.floor(Number(cfg.yaojiayinCinemaLevel ?? 0)))
+  const additionalActive = Number(cfg.yaojiayinAdditionalActive ?? 0) > 0
   return computeYaojiayinTremolos({
     totalEnergy: Math.max(0, Number(state.totalEnergy ?? 0)),
-    entryCount: Math.max(0, Math.floor(Number(record.yaojiayinEntryCount ?? 0))),
+    entryCount: Math.max(0, Math.floor(Number(cfg.yaojiayinEntryCount ?? 0))),
     combatTime: effectiveCombatTime(state, cfg),
     cinemaLevel: cinema,
     additionalActive,
@@ -300,13 +298,12 @@ function yaojiayinTremolosOf(
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.yaojiayinCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.yaojiayinCinemaLevel ?? 0)))
   const combatTime = effectiveCombatTime(state, cfg)
   const result = yaojiayinTremolosOf(cfg, state)
 
-  const tremoloDmg = Number(record.yaojiayinTremoloDmg ?? 0) || 0
-  const clusterDmg = Number(record.yaojiayinClusterDmg ?? 0) || 0
+  const tremoloDmg = Number(cfg.yaojiayinTremoloDmg ?? 0) || 0
+  const clusterDmg = Number(cfg.yaojiayinClusterDmg ?? 0) || 0
   const c6Mult = cinema >= 6 ? 2 : 1
   const c6Crit = cinema >= 6 ? 80 : 0
 
@@ -334,7 +331,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   )
 
   if (result.c6Capriccio > 0) {
-    const capDmg = Number(record.yaojiayinCapriccioDmg ?? 0) || 0
+    const capDmg = Number(cfg.yaojiayinCapriccioDmg ?? 0) || 0
     pushExec(
       executions,
       MOVE_CAPRICCIO_CHARGED,
@@ -347,8 +344,8 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   }
 
   // C4 强攻分支：快支入场 3s CD，300% 耀嘉音攻击附加
-  if (cinema >= 4 && Number(record.yaojiayinTeamHasAttack ?? 0) > 0) {
-    const qaEntries = Math.max(0, Math.floor(Number(record.yaojiayinQuickAssistEntries ?? 0)))
+  if (cinema >= 4 && Number(cfg.yaojiayinTeamHasAttack ?? 0) > 0) {
+    const qaEntries = Math.max(0, Math.floor(Number(cfg.yaojiayinQuickAssistEntries ?? 0)))
     const triggers = Math.min(qaEntries > 0 ? qaEntries : result.entries, Math.floor(combatTime / YAOJIAYIN_C4_BRANCH_CD))
     if (triggers > 0) {
       pushExec(
@@ -449,3 +446,30 @@ export const yaojiayinMechanic: AgentMechanicModule = {
 }
 
 export default yaojiayinMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 ? 1 : 0 */
+    yaojiayinAdditionalActive?: number
+    /** 写入：rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage') */
+    yaojiayinCapriccioDmg?: number
+    /** 写入：cinema */
+    yaojiayinCinemaLevel?: number
+    /** 写入：rowVal(findMove(skills, MOVE_CLUSTER), 'damage') */
+    yaojiayinClusterDmg?: number
+    /** 写入：entries */
+    yaojiayinEntryCount?: number
+    /** 写入：teamChains（编排期全队 chainCountPerStun × 失衡次数）；estimateYaojiayinEntries 读作连携入场 */
+    yaojiayinTeamChainTotal?: number
+    /** 写入：quickAssists */
+    yaojiayinQuickAssistEntries?: number
+    /** 写入：specs.has('attack') ? 1 : 0 */
+    yaojiayinTeamHasAttack?: number
+    /** 写入：rowVal(findMove(skills, MOVE_TREMOLO), 'damage') */
+    yaojiayinTremoloDmg?: number
+  }
+}

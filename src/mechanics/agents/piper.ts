@@ -86,9 +86,8 @@ export function computePiperMomentum(input: { cinemaLevel: number; buildupCovera
 }
 
 function buildPiperCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.piperCinemaLevel = cinemaLevel
-  record.piperMomentumCoverage = cfgSetting(cfg, 'piper.momentumCoverage', PIPER_BUILDUP_COVERAGE_DEFAULT)
+  cfg.piperCinemaLevel = cinemaLevel
+  cfg.piperMomentumCoverage = cfgSetting(cfg, 'piper.momentumCoverage', PIPER_BUILDUP_COVERAGE_DEFAULT)
   if (cinemaLevel >= 4) {
     const maxTriggers = Math.max(1, Math.ceil((cfg.battleTime ?? 180) / PIPER_C4_CD))
     const triggers = Math.min(maxTriggers, Math.max(0, Math.floor(cfgSetting(cfg, 'piper.c4AnomalyTriggers', 1))))
@@ -97,10 +96,9 @@ function buildPiperCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void 
 }
 
 function cycleFromInput({ cfg }: Pick<AgentResourceInput, 'cfg' | 'state'>): PiperMomentumCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computePiperMomentum({
-    cinemaLevel: Number(record.piperCinemaLevel ?? 0),
-    buildupCoverage: Number(record.piperMomentumCoverage ?? PIPER_BUILDUP_COVERAGE_DEFAULT),
+    cinemaLevel: Number(cfg.piperCinemaLevel ?? 0),
+    buildupCoverage: Number(cfg.piperMomentumCoverage ?? PIPER_BUILDUP_COVERAGE_DEFAULT),
   })
 }
 
@@ -175,5 +173,18 @@ declare module '@/types/catalog' {
   interface PanelValues {
     /** 满层通道（影画1 起 30 层，否则 20）：影画2 侧吃满层，与积蓄侧的平均层数口径不同，别合并 */
     piperMomentumStacks?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：cinemaLevel */
+    piperCinemaLevel?: number
+    /** 写入：cfgSetting(cfg, 'piper.momentumCoverage', PIPER_BUILDUP_COVERAGE_DEFAULT) */
+    piperMomentumCoverage?: number
   }
 }

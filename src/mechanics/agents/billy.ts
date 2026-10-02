@@ -94,28 +94,26 @@ export function computeBillyCycle(input: {
 }
 
 function buildBillyCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.billyCinemaLevel = cinemaLevel
-  record.billyCoreCrouchCoverage = clampRatio(setting(cfg, 'billy.coreCrouchCoverage', 1))
-  record.billyC4ExCrit = Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit', 32)))
-  const battleTime = Math.max(0, Number((cfg as unknown as Record<string, unknown>).battleTime ?? 180))
-  record.billyBattleTime = battleTime
-  record.billyC1Energy = cinemaLevel >= 1
+  cfg.billyCinemaLevel = cinemaLevel
+  cfg.billyCoreCrouchCoverage = clampRatio(setting(cfg, 'billy.coreCrouchCoverage', 1))
+  cfg.billyC4ExCrit = Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit', 32)))
+  const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
+  cfg.billyBattleTime = battleTime
+  cfg.billyC1Energy = cinemaLevel >= 1
     ? resolveBillyC1TriggerCount(battleTime) * BILLY_C1_ENERGY
     : 0
-  record.billyAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.billyAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): BillyCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeBillyCycle({
-    cinemaLevel: Number(record.billyCinemaLevel ?? 0),
-    additionalActive: record.billyAdditionalActive === true,
-    coreCrouchCoverage: Number(record.billyCoreCrouchCoverage ?? 1),
+    cinemaLevel: Number(cfg.billyCinemaLevel ?? 0),
+    additionalActive: cfg.billyAdditionalActive === true,
+    coreCrouchCoverage: Number(cfg.billyCoreCrouchCoverage ?? 1),
     chainCountTotal: Number(state.chainCountTotal ?? 0),
     ultimateCount: Number(state.ultimateCount ?? 0),
-    c4ExCrit: Number(record.billyC4ExCrit ?? 32),
-    battleTime: Number(record.billyBattleTime ?? 180),
+    c4ExCrit: Number(cfg.billyC4ExCrit ?? 32),
+    battleTime: Number(cfg.billyBattleTime ?? 180),
   })
 }
 
@@ -198,6 +196,14 @@ export default billyMechanic
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    billyAdditionalActive?: boolean
+    /** 写入：battleTime */
+    billyBattleTime?: number
+    /** 写入：Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit', 32))) */
+    billyC4ExCrit?: number
+    /** 写入：clampRatio(setting(cfg, 'billy.coreCrouchCoverage', 1)) */
+    billyCoreCrouchCoverage?: number
     /** 比利影画1：冲刺/闪反额外回能总额（模块按原始次数与5秒冷却计算） */
     billyC1Energy?: number
   }

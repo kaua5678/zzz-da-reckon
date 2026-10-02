@@ -185,10 +185,10 @@ function qingyiGenericRowsTimeOf(executions: readonly SkillExecution[]): number 
  * genericRowsTime：物化钩子派发前的通用行总时间（CC-287 前经 `cfg.qingyiGenericRowsTime` 回写传递）。
  * buildExecutions 传钩子当时的行、buildResourceResult 传 `preModuleExecutions` 算出的同一值；缺省 0 ⇒ 只用公式估算。
  */
-export function computeQingyiSource(cfg: Record<string, unknown>, state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number }, genericRowsTime = 0): QingyiMechanicSource {
+export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number }, genericRowsTime = 0): QingyiMechanicSource {
   const stunCount = Math.max(0, Math.floor(Number(cfg.qingyiStunCount ?? 0)))
   const cinemaLevel = Math.max(0, Math.floor(Number(cfg.qingyiCinemaLevel ?? 0)))
-  const loop = cfg.qingyiLoopRates as LoopRates | undefined
+  const loop = cfg.qingyiLoopRates
   const yisha4Voltage = loop?.yisha4Voltage ?? 0
   const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
 
@@ -254,7 +254,7 @@ export function computeQingyiSource(cfg: Record<string, unknown>, state: { exSpe
 }
 
 function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const source = computeQingyiSource(cfg as unknown as Record<string, unknown>, state, qingyiGenericRowsTimeOf(executions))
+  const source = computeQingyiSource(cfg, state, qingyiGenericRowsTimeOf(executions))
   const loop = cfg.qingyiLoopRates
   const cinemaLevel = Math.max(0, Math.floor(cfg.qingyiCinemaLevel ?? 0))
 
@@ -343,7 +343,7 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
 }
 
 function buildQingyiResourceResult({ cfg, state, preModuleExecutions }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  return { qingyiMechanicSource: computeQingyiSource(cfg as unknown as Record<string, unknown>, state, qingyiGenericRowsTimeOf(preModuleExecutions ?? [])) }
+  return { qingyiMechanicSource: computeQingyiSource(cfg, state, qingyiGenericRowsTimeOf(preModuleExecutions ?? [])) }
 }
 
 function buildQingyiResourceSections({ result }: AgentResourceSectionsInput) {
@@ -377,7 +377,7 @@ export const qingyiMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, stunCount }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
-    ;(cfg as unknown as Record<string, unknown>).qingyiStunCount = stunCount
+    cfg.qingyiStunCount = stunCount
   },
   buildExecutions: buildQingyiExecutions,
   buildResourceResult: buildQingyiResourceResult,

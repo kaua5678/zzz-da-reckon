@@ -151,13 +151,12 @@ function pushExec(
 }
 
 function buildCharConfig({ skills, cfg }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   // 晨间清扫：三段倍率之和作为单次发动总倍率
-  record.rinaSweepComboDmg =
+  cfg.rinaSweepComboDmg =
     rowVal(findMove(skills, MOVE_SWEEP_1), 'damage')
     + rowVal(findMove(skills, MOVE_SWEEP_2), 'damage')
     + rowVal(findMove(skills, MOVE_SWEEP_3), 'damage')
-  record.rinaMidnightDmg = rowVal(findMove(skills, MOVE_MIDNIGHT), 'damage')
+  cfg.rinaMidnightDmg = rowVal(findMove(skills, MOVE_MIDNIGHT), 'damage')
 }
 
 function rinaBangbooOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): RinaBangbooResult {
@@ -170,10 +169,9 @@ function rinaBangbooOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   const bangboo = rinaBangbooOf(cfg, state)
 
-  const sweepDmg = Number(record.rinaSweepComboDmg ?? 0) || 0
+  const sweepDmg = Number(cfg.rinaSweepComboDmg ?? 0) || 0
   // 晨间清扫：单次三段合计倍率对半拆物理/电（用户口径）
   const sweepHalf = sweepDmg * 0.5
   pushExec(
@@ -196,7 +194,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     'electric',
   )
 
-  const midnightDmg = Number(record.rinaMidnightDmg ?? 0) || 0
+  const midnightDmg = Number(cfg.rinaMidnightDmg ?? 0) || 0
   pushExec(
     executions,
     MOVE_MIDNIGHT,
@@ -347,5 +345,18 @@ declare module '@/types/catalog' {
     rinaPotentialPenRatio?: number
     /** 4 命全队能量回复增量（0.5 × 覆盖率）留痕：与 `energyRegenBonusFlat` 同块写入 */
     rinaCinema4EnergyRegen?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：rowVal(findMove(skills, MOVE_MIDNIGHT), 'damage') */
+    rinaMidnightDmg?: number
+    /** 写入： */
+    rinaSweepComboDmg?: number
   }
 }

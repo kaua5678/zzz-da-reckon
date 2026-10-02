@@ -47,13 +47,12 @@ const YANAGI_EXTRA_THRUST_MAX_C2 = 2
 const YANAGI_EXTRA_THRUST_MAX_C6 = 4
 
 function buildYanagiCharConfig({ cfg, cinemaLevel, skills }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   const cinema = cinemaLevel ?? 0
-  record.yanagiCinemaLevel = cinema
+  cfg.yanagiCinemaLevel = cinema
   const thrust = findMove(skills, YANAGI_THRUST_MOVE_ID)
-  record.yanagiThrustDamage = rowValue(thrust, 'damage')
-  record.yanagiThrustDaze = rowValue(thrust, 'daze')
-  record.yanagiThrustAnomaly = rowValue(thrust, 'anomaly_buildup')
+  cfg.yanagiThrustDamage = rowValue(thrust, 'damage')
+  cfg.yanagiThrustDaze = rowValue(thrust, 'daze')
+  cfg.yanagiThrustAnomaly = rowValue(thrust, 'anomaly_buildup')
   // 影画2 追加突刺次数（滑块可调；0 命恒 0）。上限：2 命 = 2 次、6 命 = 4 次；
   // 能量：2 命每次 +10，6 命前 4 次能量减半（+5）。基础 40 = 突刺 + 下砸。
   const maxThrusts = cinema >= 6 ? YANAGI_EXTRA_THRUST_MAX_C6 : YANAGI_EXTRA_THRUST_MAX_C2
@@ -61,14 +60,13 @@ function buildYanagiCharConfig({ cfg, cinemaLevel, skills }: AgentCharConfigInpu
   const extraThrusts = cinema >= 2
     ? Math.max(0, Math.min(maxThrusts, Math.floor(setting(cfg, 'yanagi.extraThrustCount', 1))))
     : 0
-  record.yanagiExtraThrustCount = extraThrusts
+  cfg.yanagiExtraThrustCount = extraThrusts
   cfg.exSpecialEnergyConsume = YANAGI_EX_BASE_ENERGY + energyPerThrust * extraThrusts
 }
 
 /** 影画2：长按可额外消耗 10 能量再发动一次突刺（每次 EX 额外 N 段突刺，N=滑块，倍率与首段突刺一致） */
 function buildYanagiExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const extraThrusts = Math.max(0, Math.floor(Number(record.yanagiExtraThrustCount ?? 0)))
+  const extraThrusts = Math.max(0, Math.floor(Number(cfg.yanagiExtraThrustCount ?? 0)))
   if (extraThrusts <= 0) return
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount <= 0) return
@@ -88,11 +86,11 @@ function buildYanagiExecutions({ cfg, state, executions }: AgentResourceInput): 
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
-    damageMultiplier: Number(record.yanagiThrustDamage ?? 0),
+    damageMultiplier: Number(cfg.yanagiThrustDamage ?? 0),
     damageMultiplierOverride: true,
-    dazeMultiplier: Number(record.yanagiThrustDaze ?? 0),
+    dazeMultiplier: Number(cfg.yanagiThrustDaze ?? 0),
     dazeMultiplierOverride: true,
-    anomalyBuildUp: Number(record.yanagiThrustAnomaly ?? 0),
+    anomalyBuildUp: Number(cfg.yanagiThrustAnomaly ?? 0),
     anomalyBuildUpOverride: true,
     timeBucket: 'necessary',
   })
@@ -124,12 +122,11 @@ function applyYanagiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
 
 /** 极性紊乱：每次月华流转下落攻击命中异常状态敌人触发 1 次（≈强特次数）；倍率随命座/突刺数变化。 */
 function buildYanagiAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.yanagiCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.yanagiCinemaLevel ?? 0)))
   const count = Math.max(0, Math.floor(state.exSpecialCount))
   if (count <= 0) return
   // C0 = 15%；C2 = 20% + 每额外突刺 15%（额外突刺次数读滑块，上限 2 次）
-  const extraThrusts = Math.max(0, Math.floor(Number(record.yanagiExtraThrustCount ?? 0)))
+  const extraThrusts = Math.max(0, Math.floor(Number(cfg.yanagiExtraThrustCount ?? 0)))
   const maxThrusts = cinema >= 6 ? YANAGI_EXTRA_THRUST_MAX_C6 : YANAGI_EXTRA_THRUST_MAX_C2
   const ratio = cinema >= 2
     ? YANAGI_POLAR_RATIO_C2_BASE + YANAGI_POLAR_RATIO_PER_THRUST * Math.min(maxThrusts, extraThrusts)
@@ -177,4 +174,23 @@ export const yanagiMechanic: AgentMechanicModule = {
       moves: [{ moveId: '1221022', count: 1 }, { moveId: '1221023', count: 1 }],
     },
   },
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：cinema */
+    yanagiCinemaLevel?: number
+    /** 写入：extraThrusts */
+    yanagiExtraThrustCount?: number
+    /** 写入：rowValue(thrust, 'anomaly_buildup') */
+    yanagiThrustAnomaly?: number
+    /** 写入：rowValue(thrust, 'damage') */
+    yanagiThrustDamage?: number
+    /** 写入：rowValue(thrust, 'daze') */
+    yanagiThrustDaze?: number
+  }
 }

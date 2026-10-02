@@ -569,10 +569,9 @@ export const normaMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, stunCount, combatTime }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
-    const record = cfg as unknown as Record<string, unknown>
-    record.normaStunCount = stunCount
-    record.normaStunCoverage = (cfg as unknown as { teamStunCoverage?: number }).teamStunCoverage ?? 0
-    record.normaBattleTime = combatTime
+    cfg.normaStunCount = stunCount
+    cfg.normaStunCoverage = (cfg as unknown as { teamStunCoverage?: number }).teamStunCoverage ?? 0
+    cfg.normaBattleTime = combatTime
   },
   /**
    * 跨槽位供给：膛温帽子把戏 → 送给「上一位队友」的连携行（规则 6 在引擎层的落点）。

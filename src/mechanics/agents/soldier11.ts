@@ -89,8 +89,7 @@ const CYCLE_TIME = A4_QUICK_TIME + A5_QUICK_TIME
 const specBase = specToMechanicModule(getAgentSpec(AGENT_ID)!)
 
 function buildSoldier11CharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.soldier11CinemaLevel = cinemaLevel
+  cfg.soldier11CinemaLevel = cinemaLevel
   // 影画1 快速升温：整局口径注入（不做 50s 时间轴，整局总量近似）
   if (cinemaLevel >= 1) {
     const battleTime = cfg.battleTime ?? 180
@@ -100,8 +99,7 @@ function buildSoldier11CharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): v
 }
 
 export function patchSoldier11Executions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.soldier11CinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.soldier11CinemaLevel ?? 0)))
   const coreCov = cfgNum(cfg, 'soldier11.fireSuppressCoverage', 1)
   const c2Cov = cfgNum(cfg, 'soldier11.c2StackCoverage', 1)
 
@@ -264,4 +262,15 @@ export const soldier11Mechanic: AgentMechanicModule = {
       ],
     },
   },
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：cinemaLevel */
+    soldier11CinemaLevel?: number
+  }
 }

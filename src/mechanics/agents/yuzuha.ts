@@ -226,12 +226,12 @@ function buildYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
  * 并同步 `totalAnomalyBuildUp`（先例 `phoenix.ts:358`、`nicole.ts:104`）。
  */
 function patchYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).yuzuhaCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.yuzuhaCinemaLevel ?? 0)))
   if (cinema < 4) return
   const assistId = cfg.assistFollowUpMoveId
   if (!assistId) return
   // 积蓄预存值（buildCharConfig 从倍率表读，含 ×1.2）；enrich 会用表值覆盖 ⇒ 需 override。
-  const preBuilt = Number((cfg as unknown as Record<string, unknown>).yuzuhaC4AssistBuildUp ?? 0)
+  const preBuilt = Number(cfg.yuzuhaC4AssistBuildUp ?? 0)
   for (const exec of executions) {
     if (exec.moveId !== assistId) continue
     exec.dmgBonus = (exec.dmgBonus ?? 0) + YUZUHA_C4_ASSIST_DMG_PCT

@@ -116,43 +116,41 @@ export function computeEvelynCycle(input: {
 }
 
 function buildEvelynCharConfig({ cinemaLevel, skills, cfg, panel, getRowValue }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.evelynCinemaLevel = cinemaLevel
-  record.evelynGarroteCount = whole(setting(cfg, 'evelyn.garroteCount', 4))
-  record.evelynRestraintCoverage = clampRatio(setting(cfg, 'evelyn.restraintCoverage', 1))
-  record.evelynC1DefIgnoreCoverage = clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage', 1))
-  record.evelynC4ShieldCoverage = clampRatio(setting(cfg, 'evelyn.c4ShieldCoverage', 1))
-  record.evelynC6FollowUpCount = whole(setting(cfg, 'evelyn.c6FollowUpCount', 16))
-  record.evelynAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.evelynCinemaLevel = cinemaLevel
+  cfg.evelynGarroteCount = whole(setting(cfg, 'evelyn.garroteCount', 4))
+  cfg.evelynRestraintCoverage = clampRatio(setting(cfg, 'evelyn.restraintCoverage', 1))
+  cfg.evelynC1DefIgnoreCoverage = clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage', 1))
+  cfg.evelynC4ShieldCoverage = clampRatio(setting(cfg, 'evelyn.c4ShieldCoverage', 1))
+  cfg.evelynC6FollowUpCount = whole(setting(cfg, 'evelyn.c6FollowUpCount', 16))
+  cfg.evelynAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   if (cinemaLevel >= 1) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + EVELYN_C1_DECIBEL_GIFT
   }
   // 额外能力×1.25：预缩倍率表值，patchExecutions 经 damageMultiplierOverride 精确结算。
   // panel.critRate 已含 applyPanel 施加的核心被动暴击（EVELYN_CORE_CRIT_RATE × restraintCoverage），
   // 故直接按总暴击率判定，不再重复 + coreCritRate。
-  const additionalActive = record.evelynAdditionalActive === true
+  const additionalActive = cfg.evelynAdditionalActive === true
   const multiplierActive = additionalActive
     && (panel.critRate ?? 0) >= EVELYN_CRIT_THRESHOLD
-  record.evelynMultiplierActive = multiplierActive
+  cfg.evelynMultiplierActive = multiplierActive
   if (multiplierActive) {
-    record.evelynChainMultScaled = getRowValue(findMove(skills, EVELYN_CHAIN_MOVE_ID), 'damage') * EVELYN_MULTIPLIER
-    record.evelynUltMultScaled = getRowValue(findMove(skills, EVELYN_ULT_MOVE_ID), 'damage') * EVELYN_MULTIPLIER
+    cfg.evelynChainMultScaled = getRowValue(findMove(skills, EVELYN_CHAIN_MOVE_ID), 'damage') * EVELYN_MULTIPLIER
+    cfg.evelynUltMultScaled = getRowValue(findMove(skills, EVELYN_ULT_MOVE_ID), 'damage') * EVELYN_MULTIPLIER
   }
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): EvelynCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeEvelynCycle({
-    cinemaLevel: Number(record.evelynCinemaLevel ?? 0),
-    garroteCount: Number(record.evelynGarroteCount ?? 4),
+    cinemaLevel: Number(cfg.evelynCinemaLevel ?? 0),
+    garroteCount: Number(cfg.evelynGarroteCount ?? 4),
     ultimateCount: state.ultimateCount,
     baseCritRate: Number((cfg.panel?.critRate as number | undefined) ?? 0),
-    additionalActive: record.evelynAdditionalActive === true,
-    restraintCoverage: Number(record.evelynRestraintCoverage ?? 1),
-    c1DefIgnoreCoverage: Number(record.evelynC1DefIgnoreCoverage ?? 1),
-    c4ShieldCoverage: Number(record.evelynC4ShieldCoverage ?? 1),
-    c6FollowUpCount: Number(record.evelynC6FollowUpCount ?? 16),
-    battleTime: Number((cfg as unknown as Record<string, unknown>).battleTime ?? 180),
+    additionalActive: cfg.evelynAdditionalActive === true,
+    restraintCoverage: Number(cfg.evelynRestraintCoverage ?? 1),
+    c1DefIgnoreCoverage: Number(cfg.evelynC1DefIgnoreCoverage ?? 1),
+    c4ShieldCoverage: Number(cfg.evelynC4ShieldCoverage ?? 1),
+    c6FollowUpCount: Number(cfg.evelynC6FollowUpCount ?? 16),
+    battleTime: Number(cfg.battleTime ?? 180),
   })
 }
 
@@ -221,15 +219,14 @@ function buildEvelynExecutions({ cfg, state, executions }: AgentResourceInput): 
 
 function patchEvelynExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
-  const record = cfg as unknown as Record<string, unknown>
-  const scaledChain = Number(record.evelynChainMultScaled ?? 0)
-  const scaledUlt = Number(record.evelynUltMultScaled ?? 0)
+  const scaledChain = Number(cfg.evelynChainMultScaled ?? 0)
+  const scaledUlt = Number(cfg.evelynUltMultScaled ?? 0)
   for (const exec of executions) {
     if (CHAIN_ULT_TARGETS.has(exec.moveId)) {
       if (cycle.additionalDmg > 0) {
         exec.dmgBonus = (exec.dmgBonus ?? 0) + cycle.additionalDmg
       }
-      if (record.evelynMultiplierActive === true) {
+      if (cfg.evelynMultiplierActive === true) {
         const scaled = exec.moveId === EVELYN_CHAIN_MOVE_ID ? scaledChain : scaledUlt
         if (scaled > 0) {
           exec.damageMultiplier = scaled
@@ -324,3 +321,32 @@ export const evelynMechanic: AgentMechanicModule = {
 }
 
 export default evelynMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    evelynAdditionalActive?: boolean
+    /** 写入：clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage', 1)) */
+    evelynC1DefIgnoreCoverage?: number
+    /** 写入：clampRatio(setting(cfg, 'evelyn.c4ShieldCoverage', 1)) */
+    evelynC4ShieldCoverage?: number
+    /** 写入：whole(setting(cfg, 'evelyn.c6FollowUpCount', 16)) */
+    evelynC6FollowUpCount?: number
+    /** 写入：getRowValue(findMove(skills, EVELYN_CHAIN_MOVE_ID), 'damage') * EVELYN_MULTIPLIER */
+    evelynChainMultScaled?: number
+    /** 写入：cinemaLevel */
+    evelynCinemaLevel?: number
+    /** 写入：whole(setting(cfg, 'evelyn.garroteCount', 4)) */
+    evelynGarroteCount?: number
+    /** 写入：multiplierActive */
+    evelynMultiplierActive?: boolean
+    /** 写入：clampRatio(setting(cfg, 'evelyn.restraintCoverage', 1)) */
+    evelynRestraintCoverage?: number
+    /** 写入：getRowValue(findMove(skills, EVELYN_ULT_MOVE_ID), 'damage') * EVELYN_MULTIPLIER */
+    evelynUltMultScaled?: number
+  }
+}

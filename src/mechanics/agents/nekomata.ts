@@ -128,12 +128,11 @@ function planWithMap(
 ): NekomataPiercePlan {
   const purr = map.get('nekomata_purr')
   // 攻击数据命中回复由 buildExecutions 上一轮写入 cfg（iterate/buildExecutions 分离惯例），随外层环收敛
-  const record = cfg as unknown as Record<string, unknown>
-  const budget = (purr?.total ?? 0) + Math.max(0, Number(record.nekomataHitPurrGain ?? 0))
-  const axisMode = Number(record.axisInSeconds ?? 0) > 0
-  const axisPicks = Number((record.axisActionCounts as Record<string, number> | undefined)?.[PIERCE_MOVE_ID] ?? 0)
+  const budget = (purr?.total ?? 0) + Math.max(0, Number(cfg.nekomataHitPurrGain ?? 0))
+  const axisMode = Number(cfg.axisInSeconds ?? 0) > 0
+  const axisPicks = Number(cfg.axisActionCounts?.[PIERCE_MOVE_ID] ?? 0)
   const rawSetting = Number(cfgMechanicSettingRaw(cfg, 'nekomata.stunCastShare') ?? -1)
-  const share = Number.isFinite(rawSetting) && rawSetting >= 0 ? rawSetting : Math.max(0, Math.min(1, Number(record.teamStunCoverage ?? 0)))
+  const share = Number.isFinite(rawSetting) && rawSetting >= 0 ? rawSetting : Math.max(0, Math.min(1, Number(cfg.teamStunCoverage ?? 0)))
   const plan = planNekomataPierceCasts(budget, axisMode && axisPicks > 0 ? { axisHoldPicks: axisPicks } : { holdBudgetShare: share })
   // 回写 spendCounts/spendCosts 供资源卡展示（与 spec spendRule id 对齐）
   if (purr) {
@@ -266,7 +265,7 @@ function buildNekoExecutions({ cfg, state, executions }: AgentResourceInput): vo
   }
 
   // 攻击数据命中回复：本轮回执行行 × attack_data_0 写回 cfg，供下一轮资源预算收敛
-  ;(cfg as unknown as Record<string, unknown>).nekomataHitPurrGain = estimateNekomataHitPurrGain(executions)
+  cfg.nekomataHitPurrGain = estimateNekomataHitPurrGain(executions)
 }
 
 /** 超凶爪印固定物理元素（合成 id 无倍率表行） */
@@ -277,7 +276,7 @@ function resolveNekoExecutionDamage({ exec }: { exec: SkillExecution }): { eleme
 
 /** 猫步秀（额外能力门控）：[强化特殊技]/[闪避反击]命中 +35%×2 层 = +70%，限定招式 */
 function patchNekoExecutions({ cfg, executions }: AgentResourceInput): void {
-  const aaOn = ((cfg.panel as { additionalAbilityActive?: number } | undefined)?.additionalAbilityActive ?? 0) > 0
+  const aaOn = (cfg.panel?.additionalAbilityActive ?? 0) > 0
   if (!aaOn) return
   for (const exec of executions) {
     if (exec.moveId && NEKOMATA_CATSHOW_MOVE_IDS.includes(exec.moveId)) {
@@ -323,4 +322,15 @@ export const nekomataMechanic: AgentMechanicModule = {
       suffix: '%',
     },
   ],
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：estimateNekomataHitPurrGain(executions) */
+    nekomataHitPurrGain?: number
+  }
 }

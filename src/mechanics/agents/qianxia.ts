@@ -136,19 +136,18 @@ function computeQianxiaGazeCycle(input: {
 }
 
 function buildQianxiaCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.qianxiaCinemaLevel = cinemaLevel
+  cfg.qianxiaCinemaLevel = cinemaLevel
   // CC-195：普攻 #4 标记折算用——鬼马流星锤 #1–#4 一整套时长（每套出一次 #4）
-  record.qianxiaBasicMarkCycleSeconds = basicComboCycleSeconds(skills, QIANXIA_BASIC_MARK_MOVE_ID)
+  cfg.qianxiaBasicMarkCycleSeconds = basicComboCycleSeconds(skills, QIANXIA_BASIC_MARK_MOVE_ID)
   // 凝视触发者：队内强攻/异常角色数（千夏自己是支援不计；team 缺省容错空数组）
   const members = team ?? []
   const attackAgents = members.filter(m => m.agent?.specialty === 'attack').length
   const anomalyAgents = members.filter(m => m.agent?.specialty === 'anomaly').length
-  record.qianxiaAttackAgents = attackAgents
-  record.qianxiaAnomalyAgents = anomalyAgents
+  cfg.qianxiaAttackAgents = attackAgents
+  cfg.qianxiaAnomalyAgents = anomalyAgents
   // 触发者命中数近似：滑块 0 = 按标记供给同量级（postRound 后标记供给写入）
   const manualHits = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'qianxia.gazeTriggerHits') ?? 0) || 0))
-  record.qianxiaTriggerHits = manualHits
+  cfg.qianxiaTriggerHits = manualHits
   if ((panel?.additionalAbilityActive ?? 0) > 0) {
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + QIANXIA_FIELD_ENTRY_ENERGY
   }
@@ -195,34 +194,32 @@ function pushQianxiaExecution(executions: AgentResourceInput['executions'], inpu
  * 行重算——CC-198 起这批行是「patchExecutions 派发前」（prePatchExecutions），含额外强特 1491008。
  */
 function markSupplyOf(cfg: AgentResourceInput['cfg'], executions: readonly AgentResourceInput['executions'][number][]): number {
-  const record = cfg as unknown as Record<string, unknown>
   let markSupply = 0
   for (const exec of executions) {
     if (exec.moveId && QIANXIA_GAZE_MARK_MOVE_IDS.has(exec.moveId)) markSupply += whole(exec.count)
   }
   // CC-195：普攻 #4 不会以独立行出现（普攻 = 一条汇总行），按「每打满一套鬼马流星锤出一次 #4」折算。
   // 此前普攻对标记供给恒为 0，而凝视次数 = min(标记供给, 触发者命中) 默认就等于供给。
-  const markCycle = Number(record.qianxiaBasicMarkCycleSeconds ?? 0)
+  const markCycle = Number(cfg.qianxiaBasicMarkCycleSeconds ?? 0)
   if (markCycle > 0) markSupply += Math.floor(basicSummarySeconds(executions) / markCycle)
   return markSupply
 }
 
 function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state'], markSupply: number): QianxiaGazeCycle {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = whole(Number(record.qianxiaCinemaLevel ?? 0))
+  const cinemaLevel = whole(Number(cfg.qianxiaCinemaLevel ?? 0))
   return computeQianxiaGazeCycle({
     cinemaLevel,
     markSupply,
-    attackAgents: whole(Number(record.qianxiaAttackAgents ?? 0)),
-    anomalyAgents: whole(Number(record.qianxiaAnomalyAgents ?? 0)),
-    triggerHits: whole(Number(record.qianxiaTriggerHits ?? 0)) || markSupply,
-    teamVeilCount: whole(Number(record.teamVeilCountTotal ?? 0)),
+    attackAgents: whole(Number(cfg.qianxiaAttackAgents ?? 0)),
+    anomalyAgents: whole(Number(cfg.qianxiaAnomalyAgents ?? 0)),
+    triggerHits: whole(Number(cfg.qianxiaTriggerHits ?? 0)) || markSupply,
+    teamVeilCount: whole(Number(cfg.teamVeilCountTotal ?? 0)),
     // 异常施加次数：队内有异常角色时按 10s CD 上限近似（异常队施加远超 CD；爱芮全场应援同款口径）
-    anomalyTriggerCount: whole(Number(record.qianxiaAnomalyAgents ?? 0)) > 0
-      ? Math.floor(Math.max(1, Number(record.battleTime ?? 180)) / QIANXIA_SCRATCHER_CD_SECONDS)
+    anomalyTriggerCount: whole(Number(cfg.qianxiaAnomalyAgents ?? 0)) > 0
+      ? Math.floor(Math.max(1, Number(cfg.battleTime ?? 180)) / QIANXIA_SCRATCHER_CD_SECONDS)
       : 0,
     ultimateCount: whole(Number(state.ultimateCount ?? 0)),
-    battleTime: Math.max(1, Number(record.battleTime ?? 180)),
+    battleTime: Math.max(1, Number(cfg.battleTime ?? 180)),
   })
 }
 
@@ -233,8 +230,7 @@ function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput[
  * 本函数推的行都是 backstage、totalTime 0、倍率自带（damageMultiplierOverride），放在末尾不影响任何时间/计数通道。
  */
 function buildQianxiaExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = whole(Number(record.qianxiaCinemaLevel ?? 0))
+  const cinemaLevel = whole(Number(cfg.qianxiaCinemaLevel ?? 0))
   // 标记供给 = 千夏标记招式命中数（真实执行行直数，含连携/终结由倍率表物化）+ 普攻 #4 折算
   const cycle = cycleFromCfg(cfg, state, markSupplyOf(cfg, executions))
   const c6Bonus = cinemaLevel >= 6 ? QIANXIA_C6_GAZE_DMG_BONUS : 0
@@ -335,3 +331,22 @@ export const qianxiaMechanic: AgentMechanicModule = {
 }
 
 export default qianxiaMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：anomalyAgents */
+    qianxiaAnomalyAgents?: number
+    /** 写入：attackAgents */
+    qianxiaAttackAgents?: number
+    /** 写入：basicComboCycleSeconds(skills, QIANXIA_BASIC_MARK_MOVE_ID) */
+    qianxiaBasicMarkCycleSeconds?: number
+    /** 写入：cinemaLevel */
+    qianxiaCinemaLevel?: number
+    /** 写入：manualHits */
+    qianxiaTriggerHits?: number
+  }
+}

@@ -76,22 +76,20 @@ export function computeKoledaCycle(input: {
 }
 
 function buildKoledaCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.koledaCinemaLevel = cinemaLevel
-  record.koledaChainStunCoverage = clampRatio(setting(cfg, 'koleda.chainStunCoverage', 1))
-  record.koledaC1Coverage = clampRatio(setting(cfg, 'koleda.c1Coverage', 1))
-  record.koledaC4ChargeStacks = Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks', 2)))
-  record.koledaAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.koledaCinemaLevel = cinemaLevel
+  cfg.koledaChainStunCoverage = clampRatio(setting(cfg, 'koleda.chainStunCoverage', 1))
+  cfg.koledaC1Coverage = clampRatio(setting(cfg, 'koleda.c1Coverage', 1))
+  cfg.koledaC4ChargeStacks = Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks', 2)))
+  cfg.koledaAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): KoledaCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeKoledaCycle({
-    cinemaLevel: Number(record.koledaCinemaLevel ?? 0),
-    additionalActive: record.koledaAdditionalActive === true,
-    chainStunCoverage: Number(record.koledaChainStunCoverage ?? 1),
-    c1Coverage: Number(record.koledaC1Coverage ?? 1),
-    c4ChargeStacks: Number(record.koledaC4ChargeStacks ?? 2),
+    cinemaLevel: Number(cfg.koledaCinemaLevel ?? 0),
+    additionalActive: cfg.koledaAdditionalActive === true,
+    chainStunCoverage: Number(cfg.koledaChainStunCoverage ?? 1),
+    c1Coverage: Number(cfg.koledaC1Coverage ?? 1),
+    c4ChargeStacks: Number(cfg.koledaC4ChargeStacks ?? 2),
     exSpecialCount: state.exSpecialCount,
     chainCount: state.chainCountTotal,
     ultimateCount: state.ultimateCount,
@@ -207,3 +205,22 @@ export const koledaMechanic: AgentMechanicModule = {
 }
 
 export default koledaMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    koledaAdditionalActive?: boolean
+    /** 写入：clampRatio(setting(cfg, 'koleda.c1Coverage', 1)) */
+    koledaC1Coverage?: number
+    /** 写入：Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks', 2))) */
+    koledaC4ChargeStacks?: number
+    /** 写入：clampRatio(setting(cfg, 'koleda.chainStunCoverage', 1)) */
+    koledaChainStunCoverage?: number
+    /** 写入：cinemaLevel */
+    koledaCinemaLevel?: number
+  }
+}

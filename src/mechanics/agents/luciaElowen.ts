@@ -123,8 +123,7 @@ export function computeLuciaHealPctPerUlt(skillLevelBonus = 0): number {
 function buildLuciaCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true // 强特由本模块生成：计划内接 A5，计划外合轴 0 秒
   cfg.timeWeight = 0 // 卢西娅不打通用平A，只打计划内 A5（由本模块生成）
-  const record = cfg as unknown as Record<string, unknown>
-  record.luciaCinemaLevel = cinemaLevel
+  cfg.luciaCinemaLevel = cinemaLevel
   const a5Move = findMoveById(skills, A5_MOVE_ID)
   cfg.luciaA5ActionTime = a5Move?.actionTime ?? 1.887
 }
@@ -157,8 +156,7 @@ function applyChorusBonuses(exec: SkillExecution, cinemaLevel: number, panel: { 
 
 /** 执行计划完全构建后：给全部[合唱]行（强特/追加攻击/连携/终结技/支援突击）补专属字段；随想行（A5/闪反/快支）不补 */
 function patchLuciaExecutions({ cfg, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinemaLevel = Math.max(0, Math.floor(Number(record.luciaCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.luciaCinemaLevel ?? 0)))
   const panel = cfg.panel
   if (!panel) return
   const chorusMoveIds = new Set([
@@ -268,14 +266,14 @@ function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): v
 }
 
 function computeLuciaSource(
-  cfg: Record<string, unknown>,
+  cfg: AgentResourceInput['cfg'],
   state: { exSpecialCount: number; ultimateCount: number },
   additionalAttackCap: number,
   healingCoverage: number,
 ): LuciaMechanicSource {
   const plan = computeLuciaDreamPlan(state.exSpecialCount, state.ultimateCount, additionalAttackCap)
   const q = Math.max(0, Math.floor(state.ultimateCount))
-  const panel = cfg.panel as { skillLevelBonus?: number } | undefined
+  const panel = cfg.panel
   const healPctPerUlt = computeLuciaHealPctPerUlt(panel?.skillLevelBonus ?? 0)
   const curtainTriggerCount = Number.isFinite(Number(cfg.luciaCurtainTriggerCount))
     ? Math.max(0, Number(cfg.luciaCurtainTriggerCount))
@@ -286,7 +284,7 @@ function computeLuciaSource(
   const curtainSelfCount = Number.isFinite(curtainSelfRaw) ? Math.max(0, curtainSelfRaw) : curtainTriggerCount
   const { curtainOpens, curtainExtends } = computeLuciaCurtainBreakdown(state.exSpecialCount, state.ultimateCount)
   const curtainTeammatesRaw = Array.isArray(cfg.luciaCurtainTeammates)
-    ? cfg.luciaCurtainTeammates as { agentId: string; rawCount: number; triggers: number }[]
+    ? cfg.luciaCurtainTeammates
     : []
   const curtainTeammates = curtainTeammatesRaw
     .map(m => ({
@@ -329,7 +327,7 @@ function buildLuciaResourceResult({ cfg, state, preModuleExecutions }: AgentReso
   )
   return {
     luciaMechanicSource: computeLuciaSource(
-      cfg as unknown as Record<string, unknown>,
+      cfg,
       state,
       cap,
       cfgNum(cfg, 'lucia.healingCoverage', DEFAULT_HEALING_COVERAGE),

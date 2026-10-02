@@ -235,12 +235,12 @@ const settings: MechanicSetting[] = [
 
 /** 记录命座等级（萨霍夫跳次数用） */
 function buildJaneCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
-  ;(cfg as unknown as Record<string, unknown>).janeCinemaLevel = cinemaLevel ?? 0
+  cfg.janeCinemaLevel = cinemaLevel ?? 0
 }
 
 /** 萨霍夫跳：狂热进场 1 次 + 影画1 额外 1 次；数值同平A、仅额外回复狂热（融合组见 moveFusions）。 */
 function buildJaneExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).janeCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.janeCinemaLevel ?? 0)))
   const count = 1 + (cinema >= 1 ? 1 : 0)
   if (count <= 0) return
   executions.push({
@@ -376,4 +376,15 @@ export interface JaneMechanicSource {
   frenzyActive: boolean
   biteSeconds: number
   note: string
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：cinemaLevel ?? 0 */
+    janeCinemaLevel?: number
+  }
 }

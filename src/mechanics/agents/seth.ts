@@ -67,27 +67,25 @@ export function computeSethCycle(input: {
 }
 
 function buildSethCharConfig({ cinemaLevel, cfg, panel, skills, getRowValue }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.sethCinemaLevel = cinemaLevel
-  record.sethShieldCoverage = clampRatio(setting(cfg, 'seth.shieldCoverage', 1))
-  record.sethAdditionalResCoverage = clampRatio(setting(cfg, 'seth.additionalResCoverage', 1))
-  record.sethC6FinishCount = whole(setting(cfg, 'seth.c6FinishCount', 6))
-  record.sethAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.sethCinemaLevel = cinemaLevel
+  cfg.sethShieldCoverage = clampRatio(setting(cfg, 'seth.shieldCoverage', 1))
+  cfg.sethAdditionalResCoverage = clampRatio(setting(cfg, 'seth.additionalResCoverage', 1))
+  cfg.sethC6FinishCount = whole(setting(cfg, 'seth.c6FinishCount', 6))
+  cfg.sethAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   // 影画4 招架支援迅雷盾失衡值 +25%：预缩倍率表 daze 值，patchExecutions 经 dazeMultiplierOverride 精确结算。
   if (cinemaLevel >= 4) {
     const baseDaze = getRowValue(findMove(skills, cfg.defensiveAssistMoveId ?? ''), 'daze')
-    record.sethC4DefensiveDaze = baseDaze * (1 + SETH_C4_DEFENSIVE_DAZE_BONUS / 100)
+    cfg.sethC4DefensiveDaze = baseDaze * (1 + SETH_C4_DEFENSIVE_DAZE_BONUS / 100)
   }
 }
 
 function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' | 'state'>): SethCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeSethCycle({
-    cinemaLevel: Number(record.sethCinemaLevel ?? 0),
-    additionalActive: record.sethAdditionalActive === true,
-    shieldCoverage: Number(record.sethShieldCoverage ?? 1),
-    additionalResCoverage: Number(record.sethAdditionalResCoverage ?? 1),
-    c6FinishCount: Number(record.sethC6FinishCount ?? 6),
+    cinemaLevel: Number(cfg.sethCinemaLevel ?? 0),
+    additionalActive: cfg.sethAdditionalActive === true,
+    shieldCoverage: Number(cfg.sethShieldCoverage ?? 1),
+    additionalResCoverage: Number(cfg.sethAdditionalResCoverage ?? 1),
+    c6FinishCount: Number(cfg.sethC6FinishCount ?? 6),
   })
 }
 
@@ -118,9 +116,8 @@ function buildSethExecutions({ cfg, state, executions }: AgentResourceInput): vo
 }
 
 function patchSethExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  if ((Number(record.sethCinemaLevel ?? 0)) < 4) return
-  const scaled = Number(record.sethC4DefensiveDaze ?? 0)
+  if ((Number(cfg.sethCinemaLevel ?? 0)) < 4) return
+  const scaled = Number(cfg.sethC4DefensiveDaze ?? 0)
   if (scaled <= 0) return
   const defMoveId = cfg.defensiveAssistMoveId
   for (const exec of executions) {
@@ -186,3 +183,24 @@ export const sethMechanic: AgentMechanicModule = {
 }
 
 export default sethMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    sethAdditionalActive?: boolean
+    /** 写入：clampRatio(setting(cfg, 'seth.additionalResCoverage', 1)) */
+    sethAdditionalResCoverage?: number
+    /** 写入：baseDaze * (1 + SETH_C4_DEFENSIVE_DAZE_BONUS / 100) */
+    sethC4DefensiveDaze?: number
+    /** 写入：whole(setting(cfg, 'seth.c6FinishCount', 6)) */
+    sethC6FinishCount?: number
+    /** 写入：cinemaLevel */
+    sethCinemaLevel?: number
+    /** 写入：clampRatio(setting(cfg, 'seth.shieldCoverage', 1)) */
+    sethShieldCoverage?: number
+  }
+}

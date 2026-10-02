@@ -147,25 +147,23 @@ export function computeAnbyZeroCycle(input: {
 }
 
 function buildAnbyZeroCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.anbyZeroCinemaLevel = cinemaLevel
-  record.anbyZeroPotentialLevel = potentialLevel
-  record.anbyZeroCangguangCount = whole(setting(cfg, 'anbyZero.cangguangCount', 6))
-  record.anbyZeroSilverStarCoverage = clampRatio(setting(cfg, 'anbyZero.silverStarCoverage', 1))
-  record.anbyZeroAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.anbyZeroCinemaLevel = cinemaLevel
+  cfg.anbyZeroPotentialLevel = potentialLevel
+  cfg.anbyZeroCangguangCount = whole(setting(cfg, 'anbyZero.cangguangCount', 6))
+  cfg.anbyZeroSilverStarCoverage = clampRatio(setting(cfg, 'anbyZero.silverStarCoverage', 1))
+  cfg.anbyZeroAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): AnbyZeroCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeAnbyZeroCycle({
-    cinemaLevel: Number(record.anbyZeroCinemaLevel ?? 0),
-    potentialLevel: Number(record.anbyZeroPotentialLevel ?? 6),
-    cangguangCount: Number(record.anbyZeroCangguangCount ?? 6),
+    cinemaLevel: Number(cfg.anbyZeroCinemaLevel ?? 0),
+    potentialLevel: Number(cfg.anbyZeroPotentialLevel ?? 6),
+    cangguangCount: Number(cfg.anbyZeroCangguangCount ?? 6),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
-    teammateWhiteLightning: Number(record.anbyZeroTeammateWhiteLightning ?? 0),
-    additionalActive: record.anbyZeroAdditionalActive === true,
-    silverStarCoverage: Number(record.anbyZeroSilverStarCoverage ?? 1),
+    teammateWhiteLightning: Number(cfg.anbyZeroTeammateWhiteLightning ?? 0),
+    additionalActive: cfg.anbyZeroAdditionalActive === true,
+    silverStarCoverage: Number(cfg.anbyZeroSilverStarCoverage ?? 1),
   })
 }
 
@@ -335,7 +333,7 @@ export const anbyZeroMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    ;(cfg as unknown as Record<string, unknown>).anbyZeroTeammateWhiteLightning = (threads.moduleFeedback?.anbyZeroTeammateWl ?? 0)
+    cfg.anbyZeroTeammateWhiteLightning = (threads.moduleFeedback?.anbyZeroTeammateWl ?? 0)
   },
   buildExecutions: buildAnbyZeroExecutions,
   buildResourceResult: buildAnbyZeroResourceResult,
@@ -353,5 +351,26 @@ declare module '@/mechanics/types' {
   interface ModuleFeedback {
     /** 零号·安比：队友追加攻击命中折算白雷层数 */
     anbyZeroTeammateWl?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    anbyZeroAdditionalActive?: boolean
+    /** 写入：whole(setting(cfg, 'anbyZero.cangguangCount', 6)) */
+    anbyZeroCangguangCount?: number
+    /** 写入：cinemaLevel */
+    anbyZeroCinemaLevel?: number
+    /** 写入：potentialLevel */
+    anbyZeroPotentialLevel?: number
+    /** 写入：clampRatio(setting(cfg, 'anbyZero.silverStarCoverage', 1)) */
+    anbyZeroSilverStarCoverage?: number
+    /** 写入：(threads.moduleFeedback?.anbyZeroTeammateWl ?? 0) */
+    anbyZeroTeammateWhiteLightning?: number
   }
 }
