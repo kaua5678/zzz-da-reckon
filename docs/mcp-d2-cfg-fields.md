@@ -91,6 +91,8 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 
 **r394（CC-366 `d6c8455f` / CC-367 `88187356`）——脚本泛化 + 3 模块**：两个助手脚本改用同一套强转识别（三种写法），keys 输出声明骨架；`xide` / `xixifu` / `zhuYuan` 共 32 处 cfg 强转全部由脚本机械改写，人工只写了 6 个键的声明注释和 1 处受检注解，tsc 一次过（注入拼错键反证：tsc 报错 ⇒ 键确实受检）。**查读者别只 grep ts**：`xideInitialSteel` / `xideC1UltSteel` 在 ts 里只写不读，实际由 spec 资源 JSON 按字段名读取（`computeSpecResources(spec, cfg)`），不是死写。**剩余：Record 180 + `cfg as any` 16**（`as any` 只剩 ben 5 / grace 4 / specPanelBuffs 2 / nicole·panYinhu·sigrid·soukaku·zhao 各 1）。
 
+**r395（CC-368 `8f383bd3` / CC-369 `c7627ef3`）——`cfg as any` 全仓清零 + 全仓不变式锁**：8 个模块（ben / grace / specPanelBuffs / nicole / panYinhu / sigrid / soukaku / zhao）补 29 个私有声明，cfg 强转全部改回 `cfg.<键>`；`privateCfgFields.test.ts` 新增**全仓**锁「非测试源码零 `(cfg as any).<键>`」——这是病本身，对所有文件成立，新模块写了就红，不再靠逐模块名单（`(cfg as any)[decl.field]` 动态访问放行：convergence.ts 按声明字段名读，是通用逻辑）。`TYPED_CFG_MODULES` 18 个。**apply 脚本新坑**（CC-368 已修）：别名 `const record = input.cfg as …` 时原实现删不掉该行、却把 `record.` 改成 `cfg.`（未定义变量）；现在同源按来源替换，**混源（同文件既有 `cfg` 又有 `input.cfg` 别名）整体不动并列人工清单**。**公开签名收 `unknown` 的函数**（测试直传字面量）别硬改参数类型，保留局部读取并注明（soukaku）。**剩余：Record 153（含非 cfg 对象）+ `cfg as any` 0**。
+
 ### 执行卡（每个模块一张，机械活，可派执行模型）
 
 1. `python3 scripts/d2-record-keys.py . <模块名> <声明骨架文件>`（r394 CC-366 起三种强转 `as unknown as Record` / `as Record` / `as any` 都统计，并把未声明键写成声明骨架——**骨架里的类型是按用法猜的、注释是 TODO**：先查每个键的全部读写点（`grep -rn <键> src`，**含 `src/data` 的 JSON**——spec 资源会按字段名读 cfg），写清含义与写入方再用）：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
@@ -112,10 +114,10 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `yeshuguang` | 14 | 0 | 0 | done 2b0743ce |
 | `banyue` | 11 | 0 | 0 | done 2b0743ce |
 | `starlightBilly` | 10 | 0 | 0 | done 2b0743ce |
-| `sigrid` | 9 | 9 | 1 | 待做 |
+| `sigrid` | 9 | 0 | 0 | done c7627ef3 |
 | `lucy` | 8 | 8 | 0 | 待做 |
 | `phoenix` | 8 | 10 | 0 | 待做 |
-| `grace` | 7 | 7 | 4 | 待做 |
+| `grace` | 7 | 0 | 0 | done c7627ef3 |
 | `promia` | 7 | 11 | 0 | 待做 |
 | `yidhari` | 7 | 7 | 0 | 待做 |
 | `nangong` | 6 | 6 | 0 | 待做 |
@@ -131,7 +133,7 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `evelyn` | 4 | 4 | 0 | 待做 |
 | `miyabi` | 4 | 2 | 0 | 待做 |
 | `qianxia` | 4 | 4 | 0 | 待做 |
-| `soukaku` | 4 | 4 | 1 | 待做 |
+| `soukaku` | 4 | 1 | 0 | 实质完成 c7627ef3，**不进锁表**：`soukakuPerExExtraTime(cfg: unknown)` 公开签名（测试直传字面量）保留 1 处局部 Record 读取；另 1 处 `as unknown as Record` 在 `state` 上，逐模块锁的正则会误伤 |
 | `zhendou` | 4 | 4 | 0 | 待做 |
 | `anbyZero` | 3 | 3 | 0 | 待做 |
 | `billy` | 3 | 3 | 0 | 待做 |
@@ -150,15 +152,15 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `jane` | 2 | 2 | 0 | 待做 |
 | `koleda` | 2 | 2 | 0 | 待做 |
 | `nekomata` | 2 | 2 | 0 | 待做 |
-| `nicole` | 2 | 2 | 1 | 待做 |
-| `panYinhu` | 2 | 2 | 1 | 待做 |
+| `nicole` | 2 | 0 | 0 | done c7627ef3 |
+| `panYinhu` | 2 | 0 | 0 | done c7627ef3 |
 | `piper` | 2 | 2 | 0 | 待做 |
 | `rina` | 2 | 2 | 0 | 待做 |
 | `soldier11` | 2 | 2 | 0 | 待做 |
-| `specPanelBuffs` | 2 | 2 | 2 | 待做 |
+| `specPanelBuffs` | 2 | 0 | 0 | done c7627ef3 |
 | `yuzuha` | 2 | 2 | 0 | 待做 |
-| `zhao` | 2 | 2 | 1 | 待做 |
-| `ben` | 1 | 1 | 5 | 待做 |
+| `zhao` | 2 | 0 | 0 | done c7627ef3 |
+| `ben` | 1 | 0 | 0 | done c7627ef3 |
 | `caesar` | 1 | 0 | 0 | done e2cfa3c8 |
 | `norma` | 1 | 1 | 0 | 待做 |
 | `orphie` | 1 | 0 | 0 | done e2cfa3c8 |
