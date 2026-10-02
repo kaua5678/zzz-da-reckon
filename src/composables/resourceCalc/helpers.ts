@@ -513,12 +513,8 @@ export function buildCharConfig(
   // 开局赠送能量：普通角色40点
   const initialEnergyGift = 40
 
-  const resourceUtilizationPrefix = `${slot}:`
-  const resourceUtilization = Object.fromEntries(
-    Object.entries(configStore.resourceUtilization ?? {})
-      .filter(([key]) => key.startsWith(resourceUtilizationPrefix))
-      .map(([key, value]) => [key.slice(resourceUtilizationPrefix.length), value]),
-  )
+  // CC-386：键随角色（store 内唯一键构造点 ownerKeyOf），引擎不自己拼键
+  const resourceUtilization = configStore.resourceUtilizationOf(slot)
 
   const cfg: CharacterOperationConfig = {
     slot,

@@ -495,7 +495,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     return discEffectCoverageOf(discEffectCoverages.value, effectId)
   }
 
-  // 资源利用率（slot:actionId -> { rate, cap }），用于把资源池上限折算为实际释放次数
+  // 资源利用率（agentId:actionId -> { rate, cap }），用于把资源池上限折算为实际释放次数（CC-386：键随角色，见 ownerKeyOf）
   const resourceUtilization = ref<Record<string, ResourceUtilizationOverride>>({})
   // 机制模块通用可调参数：settingId -> 数值
   const mechanicSettings = ref<Record<string, number>>({})
@@ -503,8 +503,9 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   const teamMechanicSettings = ref<Record<string, number>>({})
   // 每个角色异常积蓄利用率（0-1）：默认 1（应用率已由执行次数体现，支援/防护同样按实际招式积蓄——
   // 旧「支援/防护 0.1」启发式会把丽娜等电异常支援的总积蓄 ÷10，与实际应用量不符；用户可经滑块微调）
-  const anomalyUtilizationRates = ref<Record<number, number>>({})
-  // 每个元素/槽位的结算占比覆盖：key = `${element}:${slot}`，值为0-1
+  // CC-386：key = agentId（不是槽位）
+  const anomalyUtilizationRates = ref<Record<string, number>>({})
+  // 每个元素/角色的结算占比覆盖：key = `${element}:${agentId}`（CC-386），值为0-1
   const anomalySettlementShares = ref<Record<string, number>>({})
 
   // 敌人配置
@@ -875,16 +876,41 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     return wEngineEffectCoverages.value[effectId] ?? 100
   }
 
-  function resourceUtilizationKey(slot: number, actionId: string): string {
-    return `${slot}:${actionId}`
+  // CC-386：随角色的用户覆盖（资源利用率 / 异常积蓄利用率 / 异常结算份额）的**唯一键构造点**。
+  // 键 = 槽上当前 agentId，不是槽位：换人（setAgent / 预设 / 独立场景直写 team）后旧角色的覆盖天然读不到，
+  // 换回或挪槽时设置跟着角色走。修前按槽位存、引擎按槽位直读，换人不清 ⇒ 上一个角色的 0.3 利用率原样作用到新角色
+  // （锁：stores/__tests__/agentKeyedOverridesCc386.test.ts）。对外 API 仍收槽位——调用方不必知道键的形态。
+  // 空槽返回 null：读默认、写无效。
+  function ownerKeyOf(slot: number): string | null {
+    const agentId = team.value[slot]?.agentId
+    return agentId ? agentId : null
+  }
+
+  function resourceUtilizationKey(slot: number, actionId: string): string | null {
+    const owner = ownerKeyOf(slot)
+    return owner ? `${owner}:${actionId}` : null
   }
 
   function getResourceUtilization(slot: number, actionId: string): ResourceUtilizationOverride {
-    return resourceUtilization.value[resourceUtilizationKey(slot, actionId)] ?? { rate: 1, cap: null }
+    const key = resourceUtilizationKey(slot, actionId)
+    return (key ? resourceUtilization.value[key] : undefined) ?? { rate: 1, cap: null }
+  }
+
+  /** 该槽当前角色的全部资源利用率覆盖（actionId -> 覆盖）。引擎经此读取，不自己拼键。 */
+  function resourceUtilizationOf(slot: number): Record<string, ResourceUtilizationOverride> {
+    const owner = ownerKeyOf(slot)
+    if (!owner) return {}
+    const prefix = `${owner}:`
+    return Object.fromEntries(
+      Object.entries(resourceUtilization.value)
+        .filter(([key]) => key.startsWith(prefix))
+        .map(([key, value]) => [key.slice(prefix.length), value]),
+    )
   }
 
   function setResourceUtilization(slot: number, actionId: string, patch: Partial<ResourceUtilizationOverride>) {
     const key = resourceUtilizationKey(slot, actionId)
+    if (!key) return
     const current = resourceUtilization.value[key] ?? { rate: 1, cap: null }
     const next = { ...current, ...patch }
     next.rate = Math.max(0, Math.min(1, Number.isFinite(next.rate) ? next.rate : 1))
@@ -894,15 +920,19 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   }
 
   function resetResourceUtilization(slot?: number, actionId?: string) {
-    if (slot !== undefined && actionId) {
-      delete resourceUtilization.value[resourceUtilizationKey(slot, actionId)]
-    } else if (slot !== undefined) {
-      const prefix = `${slot}:`
+    if (slot === undefined) {
+      resourceUtilization.value = {}
+      return
+    }
+    const owner = ownerKeyOf(slot)
+    if (!owner) return
+    if (actionId) {
+      delete resourceUtilization.value[`${owner}:${actionId}`]
+    } else {
+      const prefix = `${owner}:`
       for (const key of Object.keys(resourceUtilization.value)) {
         if (key.startsWith(prefix)) delete resourceUtilization.value[key]
       }
-    } else {
-      resourceUtilization.value = {}
     }
   }
 
@@ -926,7 +956,8 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   }
 
   function getAnomalyUtilizationRate(slot: number): number {
-    const override = anomalyUtilizationRates.value[slot]
+    const owner = ownerKeyOf(slot)
+    const override = owner ? anomalyUtilizationRates.value[owner] : undefined
     if (typeof override === 'number' && Number.isFinite(override)) {
       return Math.max(0, Math.min(1, override))
     }
@@ -934,16 +965,21 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   }
 
   function setAnomalyUtilizationRate(slot: number, rate: number) {
-    anomalyUtilizationRates.value[slot] = Math.max(0, Math.min(1, Number.isFinite(rate) ? rate : 1))
+    const owner = ownerKeyOf(slot)
+    if (!owner) return
+    anomalyUtilizationRates.value[owner] = Math.max(0, Math.min(1, Number.isFinite(rate) ? rate : 1))
   }
 
   function getAnomalySettlementShare(element: string, slot: number): number | null {
-    const value = anomalySettlementShares.value[`${element}:${slot}`]
+    const owner = ownerKeyOf(slot)
+    const value = owner ? anomalySettlementShares.value[`${element}:${owner}`] : undefined
     return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : null
   }
 
   function setAnomalySettlementShare(element: string, slot: number, share: number) {
-    anomalySettlementShares.value[`${element}:${slot}`] = clampRatio(share)
+    const owner = ownerKeyOf(slot)
+    if (!owner) return
+    anomalySettlementShares.value[`${element}:${owner}`] = clampRatio(share)
   }
 
 
@@ -1315,6 +1351,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     setDiscEffectCoverage,
     getDiscEffectCoverage,
     getResourceUtilization,
+    resourceUtilizationOf,
     setResourceUtilization,
     resetResourceUtilization,
     getMechanicSetting,
