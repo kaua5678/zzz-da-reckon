@@ -1,3 +1,4 @@
+import { setPanelStat } from '@/utils/panelStat'
 import { describe, expect, it } from 'vitest'
 import { emptyPanel } from '@/core/panel'
 import { calcPerHitBuildUp } from '@/core/anomalyPool/helpers'
@@ -114,7 +115,7 @@ describe('calcDirectDamage', () => {
     panel.def = 1000
     panel.critRate = 0
     panel.sharpDmgBonus = 15
-    panel.electricSharpDmg = 12
+    setPanelStat(panel, 'electricSharpDmg', 12) // 元素键族只经网关流动（docs/mcp-panel-fields.md §5）
 
     const sharpenProfile: SpecialDamageProfile = {
       kind: 'sharpen',

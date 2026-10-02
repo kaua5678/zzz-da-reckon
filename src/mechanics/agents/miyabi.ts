@@ -102,8 +102,6 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
   const aa = isAdditionalAbilityActive(team, slot, agent)
   const hasWind = hasWindTeammate(team, slot)
   panel.miyabiAdditionalAbilityActive = aa ? 1 : 0
-  panel.miyabiCinema4 = cinemaLevel >= 4 ? 1 : 0
-  panel.miyabiCinema6 = cinemaLevel >= 6 ? 1 : 0
   // 标记风队伍状态（用于霜灼buff覆盖率）
   panel.miyabiHasWindTeammate = hasWind ? 1 : 0
 
@@ -174,8 +172,8 @@ function buildMiyabiCharConfig({ skills: _skills, cfg, panel, cinemaLevel }: Age
  * 与产行逐项对齐：`miyabiFrostMoonReserveCc202.test.ts`。回退：删模块登记里的 extraNecessaryAction。
  */
 function hasMiyabiCinema6(cfg: CharacterOperationConfig, cinemaLevel?: number): boolean {
-  const c = cinemaLevel ?? Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).miyabiCinemaLevel ?? 0)))
-  return c >= 6 || Boolean((cfg.panel as any)?.miyabiCinema6)
+  const c = cinemaLevel ?? Math.max(0, Math.floor(Number(cfg.miyabiCinemaLevel ?? 0)))
+  return c >= 6
 }
 
 export function miyabiFrostMoonReserve(cfg: CharacterOperationConfig, state?: Readonly<IterationState>): ExtraNecessaryAction[] | null {
@@ -202,7 +200,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
   const frostMoonCount = res.frostMoonCount
   const actionTime = cfg.miyabiFrostMoonActionTime ?? FROST_MOON_ACTION_TIME
   // 影画1（招式限定）：三段蓄力的每一段按已消耗落霜无视防御——#1(2豆)=12%、#2(4豆)=24%、#3(6豆)=36%
-  const cinemaLevel = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).miyabiCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.miyabiCinemaLevel ?? 0)))
   const m1DefShred = cinemaLevel >= 1
 
   // 霜月架势三段
@@ -262,7 +260,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
     : Math.max(0, Math.floor((state.exSpecialCount ?? 0) * safeRate))
   const frostbreakCount = baseCount
   if (frostbreakCount > 0) {
-    const hasC4 = Boolean((cfg.panel as any)?.miyabiCinema4)
+    const hasC4 = cinemaLevel >= 4
     const perDecibel = hasC4 ? C4_FROSTBURN_DECIBEL : 0
     executions.push({
       moveId: 'miyabi_frostburn_break',
@@ -497,4 +495,19 @@ declare module '@/types/resource/agentResources' {
 export interface MiyabiFrostFallSource {
   total: number
   frostMoonCount: number
+}
+
+/**
+ * D2（r402 CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）：本模块私有的面板字段——只有本文件读写（测试读不算引用者），声明随模块走。
+ * 仍是 `PanelValues` 的成员（模块扩充，纯类型、零运行时）；出现第二个**生产**引用者时迁回 `types/catalog.ts`。
+ */
+declare module '@/types/catalog' {
+  interface PanelValues {
+    /** 额外能力是否触发（0/1）：本文件写读 */
+    miyabiAdditionalAbilityActive?: number
+    /** 队伍里是否有风属性队友（0/1）：霜灼 buff 覆盖率用 */
+    miyabiHasWindTeammate?: number
+    /** 冰焰覆盖率：与积蓄效率增量同块写入；测试读 */
+    miyabiIceFlameCoverage?: number
+  }
 }

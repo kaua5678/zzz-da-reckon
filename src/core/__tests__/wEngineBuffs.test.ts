@@ -1,3 +1,4 @@
+import { getPanelStat } from '@/utils/panelStat'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { calcPanel } from '@/core/panel'
@@ -182,11 +183,11 @@ describe('w-engine buff application', () => {
     expect(r1.critRate - none.critRate).toBeCloseTo(25, 6)
     expect(r1.electricDmg - none.electricDmg).toBeCloseTo(15, 6)
     // 电属性锐化增伤不在 panel 初始字段里（只在有来源时经 applyEffect 的 default 分支落键）
-    expect((r1.electricSharpDmg ?? 0) - (none.electricSharpDmg ?? 0)).toBeCloseTo(10, 6)
+    expect((getPanelStat(r1, 'electricSharpDmg') ?? 0) - (getPanelStat(none, 'electricSharpDmg') ?? 0)).toBeCloseTo(10, 6)
     // R5 = 35% / 25% / 16%
     expect(r5.critRate - none.critRate).toBeCloseTo(35, 6)
     expect(r5.electricDmg - none.electricDmg).toBeCloseTo(25, 6)
-    expect((r5.electricSharpDmg ?? 0) - (none.electricSharpDmg ?? 0)).toBeCloseTo(16, 6)
+    expect((getPanelStat(r5, 'electricSharpDmg') ?? 0) - (getPanelStat(none, 'electricSharpDmg') ?? 0)).toBeCloseTo(16, 6)
   })
 
   it('applies 14162 绯月银棺正式服数值（暴击率 / 风抗无视 / 失衡值 + 全队增伤）', () => {

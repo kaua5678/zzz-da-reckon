@@ -24,7 +24,7 @@ function inCombat(agentId: string, wEngineId?: string) {
   return calcPanel(getAgent(agentId), wEngineId ? getWEngine(wEngineId) : undefined, disc(), setsMap, [], statRules, {
     cinemaLevel: 0,
     wEngineModLevel: 1,
-  }).inCombat as Record<string, number>
+  }).inCombat as unknown as Record<string, number>
 }
 function delta(agentId: string, key: string) {
   return (inCombat(agentId, '14150')[key] ?? 0) - (inCombat(agentId)[key] ?? 0)

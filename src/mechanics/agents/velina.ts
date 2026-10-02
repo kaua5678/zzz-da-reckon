@@ -115,7 +115,7 @@ export function resolveVelinaCorrosion(
     windTriggerCount,
     (panel.velinaCinema2 ?? 0) > 0,
     (panel.velinaCinema6 ?? 0) > 0,
-    (panel.velinaCinema2CorrosionRate as number | undefined) ?? VELINA_C2_CORROSION_RATE_DEFAULT,
+    panel.velinaCinema2CorrosionRate ?? VELINA_C2_CORROSION_RATE_DEFAULT,
   )
 }
 
@@ -609,4 +609,21 @@ export interface VelinaFloriaSource {
   broadCycloneCost: number
   /** 结余风华 */
   remaining: number
+}
+
+/**
+ * D2（r402 CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）：本模块私有的面板字段——只有本文件读写（测试读不算引用者），声明随模块走。
+ * 仍是 `PanelValues` 的成员（模块扩充，纯类型、零运行时）；出现第二个**生产**引用者时迁回 `types/catalog.ts`。
+ */
+declare module '@/types/catalog' {
+  interface PanelValues {
+    /** 2 命标记（0/1）：本文件读 */
+    velinaCinema2?: number
+    /** 6 命标记（0/1）：本文件读 */
+    velinaCinema6?: number
+    /** 2 命风蚀利用率（CC-27）：applyPanel 读滑块写入，`resolveVelinaCorrosion` 读回 */
+    velinaCinema2CorrosionRate?: number
+    /** 额外能力是否触发（0/1）：spec 1561.json 的 `enabledField` 按名读 */
+    velinaAdditionalAbilityActive?: number
+  }
 }

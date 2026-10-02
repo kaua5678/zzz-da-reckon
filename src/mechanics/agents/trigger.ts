@@ -450,3 +450,14 @@ export const triggerMechanic: AgentMechanicModule = {
   buildResourceResult: buildTriggerResourceResult,
   resourceSections: buildTriggerResourceSections,
 }
+
+/**
+ * D2（r402 CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）：本模块私有的面板字段——只有本文件读写（测试读不算引用者），声明随模块走。
+ * 仍是 `PanelValues` 的成员（模块扩充，纯类型、零运行时）；出现第二个**生产**引用者时迁回 `types/catalog.ts`。
+ */
+declare module '@/types/catalog' {
+  interface PanelValues {
+    /** 额外能力失衡积蓄量：本文件写读 */
+    triggerAdditionalStunBuildUp?: number
+  }
+}

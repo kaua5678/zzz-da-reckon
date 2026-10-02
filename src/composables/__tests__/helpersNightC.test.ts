@@ -86,7 +86,7 @@ async function panelOf(
   const { catalog, config } = await ctx(ids, opts.settings ?? {}, cin)
   const p = computePanelPhases(slot, config, catalog)
   expect(p, `槽 ${slot} 面板为空`).not.toBeNull()
-  return p!.inCombat as Record<string, number>
+  return p!.inCombat as unknown as Record<string, number>
 }
 
 // ════════════════════════════════════════════════ 层②：真派发器接线

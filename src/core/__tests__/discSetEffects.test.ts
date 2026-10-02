@@ -17,6 +17,15 @@ import { normalizeResourceSkillType } from '@/composables/resourceCalc/helpers'
 import { calcDirectDamage } from '@/core/damage'
 import { setupHarness } from '@/test/harness'
 import { computePanel } from '@/composables/resourceCalc/helpers'
+import { setPanelStat } from '@/utils/panelStat'
+import type { PanelValues } from '@/types/catalog'
+
+/** 元素键族（`elementStatKey` 拼出）只经网关流动，不在 PanelValues 声明（docs/mcp-panel-fields.md §5） */
+function withPanelStat(p: PanelValues, key: string, value: number): PanelValues {
+  const q = { ...p }
+  setPanelStat(q, key, value)
+  return q
+}
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
@@ -173,13 +182,13 @@ describe('招式类型定向接线（字段对应）', () => {
       count: 1,
     }
     const noBuff = calcDirectDamage({ ...baseInput, damageElement: 'fire', critMode: 'crit' }).damage
-    const withBuff = calcDirectDamage({ ...baseInput, damageElement: 'fire', critMode: 'crit', panel: { ...p, fireCritDmg: 30 } }).damage
+    const withBuff = calcDirectDamage({ ...baseInput, damageElement: 'fire', critMode: 'crit', panel: withPanelStat(p, 'fireCritDmg', 30) }).damage
     expect(withBuff).toBeCloseTo(noBuff * 1.2, 6)
     // 其它元素行不吃火元素暴伤
-    const otherEl = calcDirectDamage({ ...baseInput, damageElement: 'electric', critMode: 'crit', panel: { ...p, fireCritDmg: 30 } }).damage
+    const otherEl = calcDirectDamage({ ...baseInput, damageElement: 'electric', critMode: 'crit', panel: withPanelStat(p, 'fireCritDmg', 30) }).damage
     expect(otherEl).toBe(noBuff)
     // 烈霜行按冰读 iceCritDmg
-    const frost = calcDirectDamage({ ...baseInput, damageElement: 'frostfire' as any, critMode: 'crit', panel: { ...p, iceCritDmg: 30 } }).damage
+    const frost = calcDirectDamage({ ...baseInput, damageElement: 'frostfire' as any, critMode: 'crit', panel: withPanelStat(p, 'iceCritDmg', 30) }).damage
     const frostNone = calcDirectDamage({ ...baseInput, damageElement: 'frostfire' as any, critMode: 'crit' }).damage
     expect(frost).toBeCloseTo(frostNone * 1.2, 6)
   })

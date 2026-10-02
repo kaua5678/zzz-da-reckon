@@ -35,7 +35,7 @@ async function readSkillLevelBonus(agentId: string, cinemaLevel: number): Promis
     { agentId: '1211', cinemaLevel: 6 },
     '',
   ])
-  const panel = computePanelPhases(0, useConfigStore(), useCatalogStore())!.inCombat as Record<string, unknown>
+  const panel = computePanelPhases(0, useConfigStore(), useCatalogStore())!.inCombat as unknown as Record<string, unknown>
   return Number(panel.skillLevelBonus ?? 0)
 }
 
@@ -155,7 +155,7 @@ describe('R62 batchA · 影画轴「边界差一」判据', () => {
       const { useResourceCalc } = await import('@/composables/useResourceCalc')
       const calc = useResourceCalc()
       await new Promise(r => setTimeout(r, 0))
-      const panel = computePanelPhases(0, useConfigStore(), useCatalogStore())!.inCombat as Record<string, unknown>
+      const panel = computePanelPhases(0, useConfigStore(), useCatalogStore())!.inCombat as unknown as Record<string, unknown>
       expect(Number(calc.teamTotalDamage.value ?? 0), `c${cinemaLevel} 伤害应 > 0（反空洞下限）`)
         .toBeGreaterThan(0)
       return getSkillLevelCoef(Number(panel.skillLevelBonus ?? 0)).skillLevel

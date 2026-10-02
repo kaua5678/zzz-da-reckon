@@ -54,7 +54,7 @@ async function panelOf(
 ) {
   const { catalog, config } = await setupHarness(team)
   for (const [k, v] of Object.entries(settings)) config.setMechanicSetting(k, v)
-  return computePanelPhases(slot, config, catalog)!.inCombat as Record<string, number>
+  return computePanelPhases(slot, config, catalog)!.inCombat as unknown as Record<string, number>
 }
 
 // ---------------------------------------------------------------- 层③：真派发器接线

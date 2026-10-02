@@ -166,3 +166,14 @@ export const piperMechanic: AgentMechanicModule = {
 }
 
 export default piperMechanic
+
+/**
+ * D2（r402 CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）：本模块私有的面板字段——只有本文件读写（测试读不算引用者），声明随模块走。
+ * 仍是 `PanelValues` 的成员（模块扩充，纯类型、零运行时）；出现第二个**生产**引用者时迁回 `types/catalog.ts`。
+ */
+declare module '@/types/catalog' {
+  interface PanelValues {
+    /** 满层通道（影画1 起 30 层，否则 20）：影画2 侧吃满层，与积蓄侧的平均层数口径不同，别合并 */
+    piperMomentumStacks?: number
+  }
+}

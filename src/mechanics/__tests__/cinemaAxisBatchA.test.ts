@@ -101,7 +101,7 @@ describe('R61 batchA · 影画轴「档位表类实现」判据', () => {
         { agentId: '1411', cinemaLevel, parryCount: 6, dodgeCounterCount: 0, quickAssistCount: 0 }, '', '',
       ])
       await new Promise(r => setTimeout(r, 0))
-      const panel = computePanelPhases(0, config, useCatalogStore())?.inCombat as Record<string, number> | null
+      const panel = computePanelPhases(0, config, useCatalogStore())?.inCombat as unknown as Record<string, number> | null
       return Number(panel?.dmgBonus ?? 0)
     }
     expect(

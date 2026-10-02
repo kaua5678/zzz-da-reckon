@@ -479,3 +479,16 @@ export const hugoMechanic: AgentMechanicModule = {
 }
 
 export default hugoMechanic
+
+/**
+ * D2（r402 CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）：本模块私有的面板字段——只有本文件读写（测试读不算引用者），声明随模块走。
+ * 仍是 `PanelValues` 的成员（模块扩充，纯类型、零运行时）；出现第二个**生产**引用者时迁回 `types/catalog.ts`。
+ */
+declare module '@/types/catalog' {
+  interface PanelValues {
+    /** 击破队友数带来的攻击加成（0/300/900）留痕：与 `panel.atk` 增量同块写入；测试读 */
+    hugoStunTeammateAtkBonus?: number
+    /** 暗渊回响覆盖率（影画6 恒 1）：与暴击/暴伤增量同块写入；测试读 */
+    hugoEchoCoverage?: number
+  }
+}

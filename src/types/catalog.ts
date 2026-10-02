@@ -182,7 +182,7 @@ export interface PanelValues {
   // ---- r401（docs/mcp-panel-fields.md §4 S1）：以下 15 个跨层字段原先只靠末尾索引签名成立，现显式声明 ----
   // 能量/喧响类：音擎·驱动盘效果按 catalog.json 统计键写入（`utils/statMeta.ts` 登记标签），
   // `core/resource/resourceIncome.ts` 读；`core/panel.ts#emptyPanel` 初始化为 0。
-  // ⚠ 过渡期一律**必填** `number`：末尾 `[key: string]: number` 还在时，`?: number`（= number | undefined）与索引签名冲突（TS2411）。
+  // 一律**必填** `number`（emptyPanel 都有初值）。r401 时是被迫的：当时末尾还是 `[key: string]: number`，`?:` 会撞 TS2411；r402 换成模板签名后不再冲突。
   // 下面 5 个原先缺省 = undefined 的字段，emptyPanel 里给的初值与所有读者的兜底同值（potentialLevel 读者全是 `?? 6`，其余 `?? 0`）⇒ 行为不变。
   /** 后台固定回能 */
   backstageEnergyRegenFlat: number
@@ -224,8 +224,14 @@ export interface PanelValues {
    * 测试手工构造的密集数组（下标 == 槽位号）可缺省，`panelAt` 对「整体无章」的数组按下标兜底。
    */
   slot: number
-  // 其他
-  [key: string]: number
+  /**
+   * 定向属性键 `${stat}__${target}`（`core/buff.ts#targetedStatKey`，如 `skillDmgBonus__basic`）：buff 系统合法的动态通道。
+   * r402（CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）前这里是 `[key: string]: number`，任何模块都能往面板塞未声明的键、编译器不拦。
+   * 现在未声明的键一律编译失败：通用字段在本接口声明；只有一个模块读写的字段在该模块里
+   * `declare module '@/types/catalog' { interface PanelValues { xxx?: number } }`（D2 规则）；
+   * 键名来自数据（catalog stat、`elementStatKey` 元素键族、`Object.keys`）时走 `utils/panelStat.ts`。
+   */
+  [key: `${string}__${string}`]: number
 }
 
 // ============ Buff 效果系统 ============
