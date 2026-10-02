@@ -27,7 +27,7 @@ export const PAN_YINHU_POJIN_PER_EX = 3
 export const PAN_YINHU_TOUCH_OF_DEATH_MOVE_IDS = ['1421007', '1421008', '1421009'] as const
 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  ;(cfg as unknown as Record<string, unknown>).panYinhuCinemaLevel = cinemaLevel ?? 0
+  cfg.panYinhuCinemaLevel = cinemaLevel ?? 0
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
@@ -54,15 +54,14 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   }
 
   // 2) 影画2 破劲换能（仅 C2+；幂等：先扣上一轮本模块写入量再写新值）
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).panYinhuCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.panYinhuCinemaLevel ?? 0)))
   if (cinema < 2) return
   const groups = Math.floor(PAN_YINHU_POJIN_PER_EX * exCount / 6)
   const gift = PAN_YINHU_C2_ENERGY_PER_6_POJIN * groups
-  const record = cfg as unknown as Record<string, unknown>
-  const prev = Math.max(0, Number(record.panYinhuC2EnergyTotal ?? 0))
+  const prev = Math.max(0, Number(cfg.panYinhuC2EnergyTotal ?? 0))
   // 幂等（同可琳 C4 口径）：先扣上一轮本模块写入量再写新值，内层迭代收敛后不叠加。
   cfg.initialEnergyGift = Math.max(0, Number(cfg.initialEnergyGift ?? 0) - prev) + gift
-  record.panYinhuC2EnergyTotal = gift
+  cfg.panYinhuC2EnergyTotal = gift
 }
 
 function buildResourceResult({ state }: AgentResourceResultInput) {
@@ -82,3 +81,16 @@ export const panYinhuMechanic: AgentMechanicModule = {
 }
 
 export default panYinhuMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 潘引壶命座等级（buildCharConfig 写） */
+    panYinhuCinemaLevel?: number
+    /** 潘引壶影画2 上次计入 initialEnergyGift 的回能（幂等：先扣再加） */
+    panYinhuC2EnergyTotal?: number
+  }
+}

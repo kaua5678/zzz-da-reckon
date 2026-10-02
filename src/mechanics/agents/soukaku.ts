@@ -112,6 +112,7 @@ function clampSwings(cfg: unknown): number {
  * 改产行时同步本函数；`soukakuExTimeCc200.test.ts` 用真队伍断言两边相等。
  */
 export function soukakuPerExExtraTime(cfg: unknown): { necessaryTime: number; comboAlignTime: number } {
+  // 公开签名收 unknown（soukakuExTimeCc200.test 直传字面量 cfg），故保留这一处局部 Record 读取（D2 §5 记理由）
   const record = cfg as Record<string, unknown>
   const swings = clampSwings(cfg)
   const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[String(record.bodySize ?? 'large')] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
@@ -126,8 +127,7 @@ export function soukakuPerExExtraTime(cfg: unknown): { necessaryTime: number; co
 }
 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.soukakuCinemaLevel = cinemaLevel ?? 0
+  cfg.soukakuCinemaLevel = cinemaLevel ?? 0
   // 强特能量成本 = 30 能量×击数（60 能量 = 2 击 + 2 风团，2026-09-05 用户口径）：
   // 强特次数按总能量/此成本收敛，击数滑块联动自我能量循环的供给侧。
   cfg.exSpecialEnergyConsume = SOUKAKU_SWING_ENERGY * clampSwings(cfg)
@@ -143,7 +143,7 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
   const exCount = Math.max(0, Math.floor(Number((state as unknown as Record<string, unknown>).exSpecialCount ?? 0)))
   if (exCount <= 0) return
   const swings = clampSwings(cfg)
-  const bodySize = String((cfg as unknown as Record<string, unknown>).bodySize ?? 'large')
+  const bodySize = String(cfg.bodySize ?? 'large')
   const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[bodySize] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
   const chop = Math.round(Number(cfgMechanicSettingRaw(cfg, 'soukaku.chopSlam') ?? 0)) >= 1
 
@@ -251,7 +251,7 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).soukakuCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.soukakuCinemaLevel ?? 0)))
   if (cinema < 6) return
   for (const exec of executions) {
     if (!exec.moveId || !SOUKAKU_FROST_MOVE_IDS.has(exec.moveId)) continue
@@ -332,3 +332,14 @@ export const soukakuMechanic: AgentMechanicModule = {
 }
 
 export default soukakuMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 苍角命座等级（buildCharConfig 写） */
+    soukakuCinemaLevel?: number
+  }
+}

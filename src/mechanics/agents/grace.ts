@@ -103,9 +103,8 @@ export function graceRotationSeconds(cycles: number, exUsed: number): number {
 
 function buildGraceCharConfig(input: AgentCharConfigInput): void {
   base.buildCharConfig?.(input)
-  const record = input.cfg as unknown as Record<string, unknown>
-  record.skipGenericExSpecial = true // 特殊技由本模块按轮换生成（普通档免费填充/强特按能量）
-  record.graceCinemaLevel = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
+  input.cfg.skipGenericExSpecial = true // 特殊技由本模块按轮换生成（普通档免费填充/强特按能量）
+  input.cfg.graceCinemaLevel = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
 }
 
 // @fact agent:1181/潜能觉醒电伤 口径: 潜能觉醒·超频工程引擎（钢械交响曲 II~VI）按 `potentialLevel` 取档 10/15/20/25/30%，与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1181.json `potential_detail` + R58 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/graceCinemaTier.test.ts | 锚 src/mechanics/agents/grace.ts#GRACE_POTENTIAL_ELECTRIC_DMG | 信 确认
@@ -142,27 +141,26 @@ function applyGraceTeamConfig({ cfg, phase, characters, cinemaLevel, threads }: 
   // 2026-09-15 arch 棘轮第 2 批：先把上一轮收敛的「轮换数」线程值写进本槽 cfg（下方消费）。
   // 语义 = `convergence.ts` 原 `merged.agentId === '1181'` 分支（规则 6），取整/地板逐位保留。
   if (threads) {
-    ;(cfg as unknown as Record<string, unknown>).graceC1Cycles =
+    cfg.graceC1Cycles =
       Math.max(0, Math.floor(Number((threads.moduleFeedback?.graceC1Cycles ?? 0))))
   }
   if ((cinemaLevel ?? 0) < 1) return
-  const cycles = Math.max(0, Math.floor(Number((cfg as any).graceC1Cycles ?? 0)))
+  const cycles = Math.max(0, Math.floor(Number(cfg.graceC1Cycles ?? 0)))
   const gift = GRACE_C1_TEAM_ENERGY_PER_CYCLE * cycles
-  const prev = Math.max(0, Number((cfg as any).graceC1TeamEnergyTotal ?? 0))
+  const prev = Math.max(0, Number(cfg.graceC1TeamEnergyTotal ?? 0))
   for (const c of characters) {
     if (!c) continue
     ;(c as any).initialEnergyGift = Math.max(0, Number((c as any).initialEnergyGift ?? 0) - prev) + gift
   }
-  ;(cfg as any).graceC1TeamEnergyTotal = gift
+  cfg.graceC1TeamEnergyTotal = gift
 }
 
 /** 相位量（纯函数，产行与相位写入共用同一求解器，避免两处口径分叉）。 */
 function gracePhaseValues(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): {
   basicPool: number; cycles: number; c4Energy: number; c4Applies: boolean; pulseGrenades: number
 } {
-  const record = cfg as unknown as Record<string, unknown>
   const basicPool = state.basicAttackTime ?? 0
-  const cinema = Math.max(0, Math.floor(Number(record.graceCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.graceCinemaLevel ?? 0)))
   const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0)
   const slots = plan.cycles * 2
   // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
@@ -184,9 +182,8 @@ function gracePhaseValues(cfg: AgentResourceInput['cfg'], state: AgentResourceIn
 }
 
 function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
   const basicPool = state.basicAttackTime ?? 0
-  const cinema = Math.max(0, Math.floor(Number(record.graceCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.graceCinemaLevel ?? 0)))
   // 全部 cfg 写入（平A池/C1 轮数/C4 回能/脉冲手雷/initialEnergyGift）已拆到 materializePhaseState
   // ——本钩子对 cfg 只读（阶段1 第二刀 2026-09-09：写在产行钩子里会让 materializeRows 必须靠
   // 快照/恢复兜底，且试探测量与装配的相位会互相污染）。
@@ -247,7 +244,7 @@ function transformGraceExecutions({ anomalyExecs, cinemaLevel }: { anomalyExecs:
 }
 
 function buildGraceAnomalyEvents({ cfg, events }: { cfg: AgentResourceInput['cfg']; events: AnomalyEventExecution[] }): void {
-  const count = Math.max(0, Math.floor(Number((cfg as unknown as Record<string, unknown>).gracePulseGrenadeCount ?? 0)))
+  const count = Math.max(0, Math.floor(Number(cfg.gracePulseGrenadeCount ?? 0)))
   if (count <= 0) return
   events.push({
     eventId: 'grace_pulse_grenade_release',
@@ -294,7 +291,7 @@ function buildGraceResourceSections(_input: AgentResourceSectionsInput) {
 
 /** 本轮物化后的轮换数 → 下一轮线程；自身 cfg 由派发器直给，不按压缩数组下标取。 */
 function graceNextRoundFeedback({ cfg }: AgentNextRoundFeedbackInput) {
-  return { graceC1Cycles: Math.max(0, Math.floor(Number((cfg as any).graceC1Cycles ?? 0))) }
+  return { graceC1Cycles: Math.max(0, Math.floor(Number(cfg.graceC1Cycles ?? 0))) }
 }
 
 export const graceMechanic: AgentMechanicModule = {
@@ -308,28 +305,27 @@ export const graceMechanic: AgentMechanicModule = {
   buildExecutions: buildGraceExecutions,
   /** 相位写入（引擎在物化调用点补写）：平A池/C1 轮数/C4 回能/脉冲手雷/初始回能礼包 */
   materializePhaseState: ({ cfg, state }) => {
-    const record = cfg as unknown as Record<string, unknown>
     const v = gracePhaseValues(cfg, state)
-    const cinema = Math.max(0, Math.floor(Number(record.graceCinemaLevel ?? 0)))
-    record.graceBasicPoolPrev = v.basicPool
+    const cinema = Math.max(0, Math.floor(Number(cfg.graceCinemaLevel ?? 0)))
+    cfg.graceBasicPoolPrev = v.basicPool
     // 影画1 再充能弹膛：一次 A4（每轮换一格）给全队每人回 2 能量——存 cycles，由 applyGraceTeamConfig 分发
-    record.graceC1Cycles = cinema >= 1 ? v.cycles : 0
+    cfg.graceC1Cycles = cinema >= 1 ? v.cycles : 0
     // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
     // CC-291：幂等写入（先扣本钩子上次写入量再加新值）。原实现每次调用都 `+= c4Energy`，而本钩子在
     // 同一份 cfg 上随内层迭代反复调用 ⇒ 能量账读到的 initialEnergyGift 随迭代次数单调增长
     // （探针：1181 C6 从 124 涨到 853.9，本应只加一次约 70）。
-    const prevC4 = Math.max(0, Number(record.graceC4EnergyGift ?? 0))
+    const prevC4 = Math.max(0, Number(cfg.graceC4EnergyGift ?? 0))
     const c4Gift = v.c4Applies ? v.c4Energy : 0
     if (c4Gift > 0 || prevC4 > 0) {
-      record.initialEnergyGift = Math.max(0, Number(record.initialEnergyGift ?? 0) - prevC4) + c4Gift
-      record.graceC4EnergyGift = c4Gift
+      cfg.initialEnergyGift = Math.max(0, Number(cfg.initialEnergyGift ?? 0) - prevC4) + c4Gift
+      cfg.graceC4EnergyGift = c4Gift
     }
-    record.gracePulseGrenadeCount = v.pulseGrenades
+    cfg.gracePulseGrenadeCount = v.pulseGrenades
   },
   transformSkillExecutions: transformGraceExecutions,
   buildAnomalyEvents: buildGraceAnomalyEvents,
   estimateExSpecialTime: ({ cfg, exSpecialCount }) => {
-    const prevPool = Math.max(0, Number((cfg as unknown as Record<string, unknown>).graceBasicPoolPrev ?? 0))
+    const prevPool = Math.max(0, Number(cfg.graceBasicPoolPrev ?? 0))
     const plan = planGraceRotation(prevPool, exSpecialCount)
     return {
       necessaryTime: graceRotationSeconds(plan.cycles, plan.exUsed),
@@ -359,5 +355,26 @@ declare module '@/mechanics/types' {
   interface ModuleFeedback {
     /** 格莉丝影画1 全队回能轮换数 */
     graceC1Cycles?: number
+  }
+}
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 格莉丝命座等级（buildCharConfig 写） */
+    graceCinemaLevel?: number
+    /** 格莉丝上一轮平A池（materializePhaseState 写） */
+    graceBasicPoolPrev?: number
+    /** 格莉丝影画1 轮换数（materializePhaseState 写本轮值；applyTeamConfig converge 先写入编排层线程化的上一轮值再消费） */
+    graceC1Cycles?: number
+    /** 格莉丝影画4 上次计入 initialEnergyGift 的回能（幂等：先扣再加） */
+    graceC4EnergyGift?: number
+    /** 格莉丝脉冲手雷数（materializePhaseState 写） */
+    gracePulseGrenadeCount?: number
+    /** 格莉丝影画1 上次分发给全队每人的回能（幂等：先扣再加） */
+    graceC1TeamEnergyTotal?: number
   }
 }

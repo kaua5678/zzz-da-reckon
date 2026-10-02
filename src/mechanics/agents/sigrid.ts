@@ -175,13 +175,13 @@ function buildSigridCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCon
       energyRecovery: row('energy_recovery'),
     }
   })
-  ;(cfg as unknown as Record<string, unknown>).sigridLanceSegments = segments
+  cfg.sigridLanceSegments = segments
   // 平A四段元数据（凛冽枪尖 #1-#4）：#4 命中次数按段循环计数（用户口径：不用平均值×秒数）
   const basicCycle = SIGRID_BASIC_SEGMENT_MOVE_IDS.map(moveId => ({
     moveId,
     actionTime: basicMoves.find(m => m.id === moveId)?.actionTime ?? 0,
   }))
-  ;(cfg as unknown as Record<string, unknown>).sigridBasicCycle = basicCycle
+  cfg.sigridBasicCycle = basicCycle
 }
 
 /**
@@ -245,8 +245,7 @@ export function countBasicSegments(
  */
 function applySigridTeamConfig({ cfg, phase, stunCount, axis, cinemaLevel }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const record = cfg as unknown as Record<string, unknown>
-  record.sigridStunCount = stunCount
+  cfg.sigridStunCount = stunCount
   if (!axis) return
   const slot = Number(cfg.slot)
   // 不 floor / 不 clamp：原实现直接比较 `configStore.team[cfg.slot]?.cinemaLevel ?? 0`，
@@ -269,8 +268,8 @@ function applySigridTeamConfig({ cfg, phase, stunCount, axis, cinemaLevel }: Age
       sigridAxisPozhenSets = Math.min(sigridAxisPozhenSets, axis.windows.reduce((a, b) => a + b, 0))
     }
   }
-  record.sigridAxisPozhenSets = sigridAxisPozhenSets
-  record.sigridAxisActive = axis.active
+  cfg.sigridAxisPozhenSets = sigridAxisPozhenSets
+  cfg.sigridAxisActive = axis.active
 }
 
 /** N 次轮转（一→二→三循环）各段次数：N=4 → (2,1,1) */
@@ -288,13 +287,12 @@ export function splitLanceRotation(count: number): [number, number, number] {
  */
 function sigridPozhenSets(
   cfg: AgentCharConfigInput['cfg'],
-  record: Record<string, unknown>,
 ): number {
-  if (record.sigridAxisActive === true) return Math.max(0, Math.floor(Number(record.sigridAxisPozhenSets ?? 0)))
-  const cinema = Math.max(0, Math.floor(Number(record.sigridCinemaLevel ?? 0)))
+  if (cfg.sigridAxisActive === true) return Math.max(0, Math.floor(Number(cfg.sigridAxisPozhenSets ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.sigridCinemaLevel ?? 0)))
   const raw = cinema >= 6
-    ? (cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * Number(record.sigridStunCount ?? 0))
-    : Number(record.sigridStunCount ?? 0)
+    ? (cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * Number(cfg.sigridStunCount ?? 0))
+    : Number(cfg.sigridStunCount ?? 0)
   return Math.max(0, Math.floor(raw))
 }
 
@@ -306,10 +304,7 @@ function sigridPozhenSets(
  */
 // @fact agent:1591/影画1溢出 口径: 影画1「机会**溢出时**下一次敛枪式最后一击+100%攻击力」默认**不计算**（`sigrid.c1OverflowCoverage` 缺省 0，代码侧 fallback 同步为 0）——机会上限 1 次而引擎按「立刻打光」建模（实测 spend 42 / 收入 42.7，储存位常年为空）⇒ 溢出条件不成立；模块无逐事件溢出判定（敛枪式段数状态机未建模），要模拟「攒着不打导致溢出」才调高该滑块 | 据 用户@2026-09-07「不溢出那就不计算呗」·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30| 验 src/mechanics/__tests__/sigrid.test.ts#影画1溢出 | 锚 src/mechanics/agents/sigrid.ts#buildSigridExecutions | 信 确认
 function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  const segments = (record.sigridLanceSegments as
-    | { moveId: string; actionTime: number; decibelRecovery: number; energyRecovery: number }[]
-    | undefined) ?? []
+  const segments = cfg.sigridLanceSegments ?? []
   if (segments.length !== 3) return
 
   // 机会 spend + 破阵套数：与 sigridExSpecialTime 共用同一求解器（估时/物化不分裂）。
@@ -317,7 +312,7 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   // patch 写入）让敛枪式行与估时差一整个轮次演化（≈40s lance）→ 折叠 `+=` 风卷虚增账本。
   const { rotation, pozhenSets, cinema, axisActive } = sigridLanceCounts(cfg, state)
 
-  const atk = Math.max(0, Number(record.sigridAtk ?? 0))
+  const atk = Math.max(0, Number(cfg.sigridAtk ?? 0))
   // 溢出覆盖率缺省 0：引擎按「机会 100% 立刻打光」建模（实测 spend 42 / 收入 42.7，储存位常年为空），
   // 而原文的触发条件是「机会**溢出时**」——储存上限 1 且从不积压 ⇒ 永不溢出 ⇒ 不计算。
   // 代码没有逐事件溢出判定（段数状态机未建模），要模拟「攒着不打导致溢出」才调高此滑块。
@@ -326,7 +321,7 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 出枪式（凛冽枪尖 #1-4）行级物化（用户口径 2026-09-03）：真实分段行 + 真实时间——
   // 平A汇总行只保留时间载体（patchSigridExecutions 归零伤害/失衡/积蓄），伤害由分段行承载；
   // 压枪开 = 只打 #3/#4（1.765s/循环），关 = 打 #1-#4（2.983s/循环）。
-  const basicCycle = (record.sigridBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  const basicCycle = cfg.sigridBasicCycle ?? []
   let segTime = 0
   if (basicCycle.length > 0) {
     const pressCancel = cfgSetting(cfg, 'sigrid.pressCancel', 0) >= 0.5
@@ -431,8 +426,7 @@ export function sigridChuqiangFromState(
   state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number; basicAttackTime: number },
   cfg: AgentCharConfigInput['cfg'],
 ): number {
-  const record = cfg as unknown as Record<string, unknown>
-  const basicCycle = (record.sigridBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  const basicCycle = cfg.sigridBasicCycle ?? []
   const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel', 0)) > 0
   const finisherHits = countBasicFinisherHits(Math.max(0, state.basicAttackTime ?? 0), basicCycle, pressCancel)
   return Math.max(0, state.exSpecialCount ?? 0) // 碎玉（出枪式）
@@ -467,10 +461,9 @@ function sigridLanceCounts(
   cfg: AgentCharConfigInput['cfg'],
   state: AgentResourceInput['state'] | undefined,
 ): { rotation: [number, number, number]; pozhenSets: number; cinema: number; axisActive: boolean } {
-  const record = cfg as unknown as Record<string, unknown>
-  const cinema = Math.max(0, Math.floor(Number(record.sigridCinemaLevel ?? 0)))
-  const axisActive = record.sigridAxisActive === true
-  const pozhenSets = sigridPozhenSets(cfg, record)
+  const cinema = Math.max(0, Math.floor(Number(cfg.sigridCinemaLevel ?? 0)))
+  const axisActive = cfg.sigridAxisActive === true
+  const pozhenSets = sigridPozhenSets(cfg)
   /** 用给定机会收入解一次 spec 账本 → 轮转总次数 */
   const solveSpend = (income: number): number => {
     const spec = getAgentSpec(SIGRID_AGENT_ID)
@@ -514,10 +507,7 @@ function sigridPozhenTimeFactor(cinema: number, axisActive: boolean): number {
  * 出枪式段（凛冽枪尖 #1-4）占的是平A池时间、不进必要时间。
  */
 function sigridExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
-  const record = cfg as unknown as Record<string, unknown>
-  const segments = (record.sigridLanceSegments as
-    | { moveId: string; actionTime: number }[]
-    | undefined) ?? []
+  const segments = cfg.sigridLanceSegments ?? []
   const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
   if (segments.length !== 3) return { necessaryTime: exTime, comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0) }
 
@@ -535,7 +525,7 @@ function sigridExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeI
 }
 
 function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).sigridCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.sigridCinemaLevel ?? 0)))
   // 机会来源（原文：任意[出枪式]命中获得1次机会）：统计出枪式招式次数 + 凛冽枪尖#4 近似，
   // 写 cfg 供下一轮 spec 资源账本读取（cfgField sigridChuqiangHits，轮间收敛）
   const segmentRowIds = new Set<string>(SIGRID_BASIC_SEGMENT_MOVE_IDS)
@@ -549,11 +539,10 @@ function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
     }
   }
   // #4 命中：按段循环计数（用户口径 2026-02），压枪开关取消 a1/a2 → 循环 1.765s
-  const record = cfg as unknown as Record<string, unknown>
-  const basicCycle = (record.sigridBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
+  const basicCycle = cfg.sigridBasicCycle ?? []
   const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel', 0)) > 0
   chuqiangHits += countBasicFinisherHits(Math.max(0, (state as any)?.basicAttackTime ?? 0), basicCycle, pressCancel)
-  ;(cfg as unknown as Record<string, unknown>).sigridChuqiangHits = chuqiangHits
+  cfg.sigridChuqiangHits = chuqiangHits
 
   for (const exec of executions) {
     if (!exec.moveId) continue
@@ -701,6 +690,14 @@ export const sigridMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 席格丽德敛枪式三段元数据（buildCharConfig 从 catalog 预存） */
+    sigridLanceSegments?: { moveId: string; actionTime: number; decibelRecovery: number; energyRecovery: number }[]
+    /** 席格丽德平A四段元数据（buildCharConfig 从 catalog 预存） */
+    sigridBasicCycle?: { moveId: string; actionTime: number }[]
+    /** 席格丽德：本轮失衡次数（applyTeamConfig converge 写） */
+    sigridStunCount?: number
+    /** 席格丽德出枪式命中数（写 cfg 供下一轮 spec 资源账本按 countField 读取，specs/agents/1591.json） */
+    sigridChuqiangHits?: number
     /** 希格莉德命座等级（patchExecutions 门控影画2/1/6 执行级效果） */
     sigridCinemaLevel?: number
     /** 希格莉德局内攻击力（敛枪式最后一击附加伤害的基数，buildCharConfig 预存） */

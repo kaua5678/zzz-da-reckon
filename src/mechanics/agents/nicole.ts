@@ -43,8 +43,7 @@ export const NICOLE_C1_FIELD_SECONDS_PER_CHARGE_SECOND = 1.5
 
 function buildCharConfig({ cinemaLevel, cfg, skills }: AgentCharConfigInput): void {
   const cinema = cinemaLevel ?? 0
-  const record = cfg as unknown as Record<string, unknown>
-  record.nicoleCinemaLevel = cinema
+  cfg.nicoleCinemaLevel = cinema
 
   // 影画1：能量场倍率行等比延长（蓄力秒/能量场基准秒）。蓄力秒取持续段 1 段 = 1031103.actionTime。
   const chargeMove = findMove(skills, NICOLE_CHARGE_MOVE)
@@ -54,10 +53,10 @@ function buildCharConfig({ cinemaLevel, cfg, skills }: AgentCharConfigInput): vo
   const scale = cinema >= 1 && chargeSeconds > 0 && fieldBaseSeconds > 0
     ? 1 + NICOLE_C1_FIELD_SECONDS_PER_CHARGE_SECOND * chargeSeconds / fieldBaseSeconds
     : 1
-  record.nicoleC1EnergyFieldScale = scale
-  record.nicoleC1EnergyFieldDamage = rowValue(fieldMove, 'damage') * scale
-  record.nicoleC1EnergyFieldDaze = rowValue(fieldMove, 'daze') * scale
-  record.nicoleC1EnergyFieldAnomaly = rowValue(fieldMove, 'anomaly_buildup') * scale
+  cfg.nicoleC1EnergyFieldScale = scale
+  cfg.nicoleC1EnergyFieldDamage = rowValue(fieldMove, 'damage') * scale
+  cfg.nicoleC1EnergyFieldDaze = rowValue(fieldMove, 'daze') * scale
+  cfg.nicoleC1EnergyFieldAnomaly = rowValue(fieldMove, 'anomaly_buildup') * scale
 
   // 影画2：核心减益触发回 5 能量 / 15s → 整局 floor(t/15)×5
   if (cinema >= 2) {
@@ -68,22 +67,21 @@ function buildCharConfig({ cinemaLevel, cfg, skills }: AgentCharConfigInput): vo
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).nicoleCinemaLevel ?? 0)))
-  const record = cfg as unknown as Record<string, unknown>
-  const fieldScale = Number(record.nicoleC1EnergyFieldScale ?? 1)
+  const cinema = Math.max(0, Math.floor(Number(cfg.nicoleCinemaLevel ?? 0)))
+  const fieldScale = Number(cfg.nicoleC1EnergyFieldScale ?? 1)
   if (cinema < 1) return
   for (const exec of executions) {
     if (!exec.moveId || !NICOLE_EX_MOVE_IDS.has(exec.moveId)) continue
     exec.dmgBonus = (exec.dmgBonus ?? 0) + NICOLE_C1_EX_BONUS
     if (exec.moveId === NICOLE_ENERGY_FIELD_MOVE && fieldScale > 1) {
       // 影画1：能量场持续时间等比延长 → 倍率行等比放大（增伤区 +16% 另计）
-      exec.damageMultiplier = Number(record.nicoleC1EnergyFieldDamage ?? 0)
+      exec.damageMultiplier = Number(cfg.nicoleC1EnergyFieldDamage ?? 0)
       exec.damageMultiplierOverride = true
-      exec.dazeMultiplier = Number(record.nicoleC1EnergyFieldDaze ?? 0)
+      exec.dazeMultiplier = Number(cfg.nicoleC1EnergyFieldDaze ?? 0)
       exec.dazeMultiplierOverride = true
-      exec.anomalyBuildUp = Number(record.nicoleC1EnergyFieldAnomaly ?? 0)
+      exec.anomalyBuildUp = Number(cfg.nicoleC1EnergyFieldAnomaly ?? 0)
       exec.anomalyBuildUpOverride = true
-      exec.totalAnomalyBuildUp = Number(record.nicoleC1EnergyFieldAnomaly ?? 0) * (exec.count ?? 0)
+      exec.totalAnomalyBuildUp = Number(cfg.nicoleC1EnergyFieldAnomaly ?? 0) * (exec.count ?? 0)
     }
     if ((exec.anomalyBuildUp ?? 0) > 0) {
       exec.anomalyBuildUp = (exec.anomalyBuildUp ?? 0) * (1 + NICOLE_C1_EX_BONUS / 100)
@@ -106,3 +104,22 @@ export const nicoleMechanic: AgentMechanicModule = {
 }
 
 export default nicoleMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 妮可命座等级（buildCharConfig 写） */
+    nicoleCinemaLevel?: number
+    /** 妮可影画1 能量场倍率缩放（buildCharConfig 写） */
+    nicoleC1EnergyFieldScale?: number
+    /** 妮可影画1 能量场伤害倍率（行值 × 缩放） */
+    nicoleC1EnergyFieldDamage?: number
+    /** 妮可影画1 能量场失衡值（行值 × 缩放） */
+    nicoleC1EnergyFieldDaze?: number
+    /** 妮可影画1 能量场异常积蓄（行值 × 缩放） */
+    nicoleC1EnergyFieldAnomaly?: number
+  }
+}

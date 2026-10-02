@@ -78,7 +78,7 @@ describe('CC-360：角色专属结果类型随模块走', () => {
  * 拼错键名 = 静默读到 undefined。逐模块补声明（本模块扩充块）并改回 `cfg.<键>` 后，把模块名加进下表，锁住不回退。
  * 判据是「这个模块的 cfg 状态键全有类型」，不是 cast 计数；按动态键（`record[field]`）的通用逻辑可保留，但该模块就别进表。
  */
-const TYPED_CFG_MODULES = ['yixuan', 'yeshuguang', 'banyue', 'starlightBilly', 'orphie', 'caesar', 'anton', 'remielle', 'xide', 'xixifu', 'zhuYuan'] as const
+const TYPED_CFG_MODULES = ['yixuan', 'yeshuguang', 'banyue', 'starlightBilly', 'orphie', 'caesar', 'anton', 'remielle', 'xide', 'xixifu', 'zhuYuan', 'ben', 'grace', 'specPanelBuffs', 'nicole', 'panYinhu', 'sigrid', 'zhao'] as const
 
 describe('D2 §5：已完成模块不再经 Record 强转 / as any 读写 cfg', () => {
   for (const m of TYPED_CFG_MODULES) {
@@ -91,3 +91,18 @@ describe('D2 §5：已完成模块不再经 Record 强转 / as any 读写 cfg', 
   }
 })
 
+/**
+ * CC-369（r395）：全仓不变式——非测试源码不得用 `(cfg as any).<键>` 静态访问 cfg。
+ * 这是 D2 §5 的「病」本身（键无类型、拼错静默），对所有文件成立，不再逐模块列名单：新模块写了就红。
+ * 只锁**静态键**；`(cfg as any)[decl.field]` 这类按声明字段名的动态访问是通用逻辑（convergence.ts），放行。
+ */
+describe('D2 §5：全仓不得 (cfg as any).键', () => {
+  it('src 非测试源码零命中', () => {
+    const hits: string[] = []
+    for (const p of walk(SRC)) {
+      const t = stripComments(readFileSync(p, 'utf-8'))
+      t.split('\n').forEach((l, i) => { if (/\((?:input\.)?cfg as any\)\.\w/.test(l)) hits.push(`${relative(SRC, p)}:${i + 1}`) })
+    }
+    expect(hits).toEqual([])
+  })
+})

@@ -635,7 +635,7 @@ function jufufuCycleOf(
     cinemaLevel: cinema,
     aweInitial: cfg.jufufuAweInitial ?? 0,
     c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
-    teamUltimateCount: (cfg as any).jufufuTeamUltimateCount,
+    teamUltimateCount: cfg.jufufuTeamUltimateCount,
     assistRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
     teamUltRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
   })
@@ -660,7 +660,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       // 自 `convergence.ts` 的 `merged.agentId === '1391'` 分支搬入（规则 6）。语义与原分支逐位一致：
       // 上一轮值 ≤0 时写 undefined（= 不覆盖 build 阶段的初值），>0 才注入。
       if (cfg && threads) {
-        ;(cfg as unknown as Record<string, unknown>).jufufuTeamUltimateCount =
+        cfg.jufufuTeamUltimateCount =
           threads.teamUltimateForJufufu > 0 ? threads.teamUltimateForJufufu : undefined
       }
       return
@@ -711,8 +711,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
     // 影画2：终结回威势量/次（0命=0）
     cfg.jufufuC2WeishiPerUlt = cinema >= 2 ? 3 : 0
     // 预存倍率
-    const record = cfg as unknown as Record<string, unknown>
-    record.jufufuMoveDmg = {
+    cfg.jufufuMoveDmg = {
       [JUFUFU_MOVE.huwei]: jufufuRowValue(input.skills, JUFUFU_MOVE.huwei, 'damage'),
       [JUFUFU_MOVE.spinWeishi]: jufufuRowValue(input.skills, JUFUFU_MOVE.spinWeishi, 'damage'),
       [JUFUFU_MOVE.tigerChain]: jufufuRowValue(input.skills, JUFUFU_MOVE.tigerChain, 'damage'),
@@ -722,7 +721,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   buildExecutions: ({ cfg, state, executions }) => {
     // 不再走 spec 事件（虎釜震煞改由账本精确次数生成）
     const cinema = jufufuCinemaOf(cfg)
-    const dmg = ((cfg as any).jufufuMoveDmg ?? {}) as Record<string, number>
+    const dmg: Record<string, number> = cfg.jufufuMoveDmg ?? {}
     const cycle = jufufuCycleOf(cfg, state, executions)
     cfg.jufufuSpinCount = cycle.spinCount
 
@@ -894,6 +893,10 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 扶扶各招式伤害倍率（build 阶段按 moveId 预存） */
+    jufufuMoveDmg?: Record<string, number>
+    /** 扶扶：上一轮全队终结技次数（converge 由编排层线程注入；≤0 时写 undefined = 不覆盖初值） */
+    jufufuTeamUltimateCount?: number
     /** 橘福福威风初始值（影画1：进场立即获得 100；spec 威风 initialValueSource=cfgField 读取） */
     jufufuAweInitial?: number
     /** 橘福福影画2：任意角色终结技时威势回复量/次（未达2命为 0；spec gain valueSource=cfgField） */

@@ -79,8 +79,7 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
 }
 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.zhaoCinemaLevel = cinemaLevel ?? 0
+  cfg.zhaoCinemaLevel = cinemaLevel ?? 0
   if ((cinemaLevel ?? 0) >= 4) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + ZHAO_C4_DECIBEL
   }
@@ -137,9 +136,8 @@ function cycleFromInput({
   state,
   teamFrontlineSeconds,
 }: Pick<AgentResourceInput, 'cfg' | 'state' | 'teamFrontlineSeconds'>): ZhaoFrostCycle {
-  const record = cfg as unknown as Record<string, unknown>
   return computeZhaoFrostCycle({
-    cinemaLevel: Number(record.zhaoCinemaLevel ?? 0),
+    cinemaLevel: Number(cfg.zhaoCinemaLevel ?? 0),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     teamFrontlineSeconds: teamFrontlineSeconds ?? 0,
@@ -168,7 +166,7 @@ function buildZhaoExecutions(input: AgentResourceInput): void {
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number((cfg as any).zhaoCinemaLevel ?? 0)))
+  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.zhaoCinemaLevel ?? 0)))
   if (cinemaLevel < 4) return
   for (const exec of executions) {
     if (!exec.moveId || !ZHAO_C4_MOVE_IDS.has(exec.moveId)) continue
@@ -224,3 +222,14 @@ export const zhaoMechanic: AgentMechanicModule = {
 }
 
 export default zhaoMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 照命座等级（buildCharConfig 写） */
+    zhaoCinemaLevel?: number
+  }
+}

@@ -85,11 +85,10 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
 }
 
 function buildCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
-  const record = cfg as unknown as Record<string, unknown>
-  record.benCinemaLevel = cinemaLevel ?? 0
-  record.benDef = panel.def ?? 0
-  record.benExParrySuccessRate = clamp01(cfgMechanicSettingRaw(cfg, BEN_EX_PARRY_RATE_SETTING), 1)
-  record.benExActionTimes = Object.fromEntries(
+  cfg.benCinemaLevel = cinemaLevel ?? 0
+  cfg.benDef = panel.def ?? 0
+  cfg.benExParrySuccessRate = clamp01(cfgMechanicSettingRaw(cfg, BEN_EX_PARRY_RATE_SETTING), 1)
+  cfg.benExActionTimes = Object.fromEntries(
     [...BEN_EX_NORMAL_MOVE_IDS, ...BEN_EX_PARRY_MOVE_IDS]
       .map(moveId => [moveId, findMoveActionTime(skills, moveId)]),
   )
@@ -125,14 +124,14 @@ function pushExPart(
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).benCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.benCinemaLevel ?? 0)))
   const comboCount = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
   if (comboCount <= 0) return
 
-  const successRate = clamp01((cfg as any).benExParrySuccessRate, 1)
+  const successRate = clamp01(cfg.benExParrySuccessRate, 1)
   const successCount = comboCount * successRate
   const normalCount = comboCount - successCount
-  const actionTimes = ((cfg as any).benExActionTimes ?? {}) as Record<string, number>
+  const actionTimes: Record<string, number> = cfg.benExActionTimes ?? {}
 
   for (const moveId of BEN_EX_NORMAL_MOVE_IDS) {
     pushExPart(executions, moveId, normalCount, actionTimes[moveId] ?? 0, '强化特殊技·未招架')
@@ -143,7 +142,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 
   // C2 只由成功触发格挡反击的强特组触发；成功率允许期望值小数。
   if (cinema < 2 || successCount <= 0) return
-  const def = Math.max(0, Number((cfg as any).benDef ?? 0))
+  const def = Math.max(0, Number(cfg.benDef ?? 0))
   executions.push({
     moveId: MOVE_C2_COUNTER,
     moveName: '影画2·格挡反击附加',
@@ -169,7 +168,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).benCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.benCinemaLevel ?? 0)))
   if (cinema < 4) return
   for (const exec of executions) {
     if (!exec.moveId || !BEN_C4_MOVE_IDS.has(exec.moveId)) continue
@@ -199,3 +198,20 @@ export const benMechanic: AgentMechanicModule = {
 }
 
 export default benMechanic
+
+/**
+ * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 本命座等级（buildCharConfig 写） */
+    benCinemaLevel?: number
+    /** 本局内防御力（buildCharConfig 从 panel 预存，防御转攻击用） */
+    benDef?: number
+    /** 本强化特殊技各招式动作时间（buildCharConfig 按 moveId 预存） */
+    benExActionTimes?: Record<string, number>
+    /** 本强化特殊技格挡成功率（buildCharConfig 由机制设置 clamp 到 [0,1]） */
+    benExParrySuccessRate?: number
+  }
+}
