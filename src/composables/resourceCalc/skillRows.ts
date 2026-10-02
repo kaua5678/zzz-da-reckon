@@ -26,7 +26,7 @@
  * （先例 `sharpCritMultiplier`），判据 19 `layer-inversion` 盯着录入层不再值导入 `composables`。
  */
 import type { useCatalogStore } from '@/stores/catalog'
-import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { AgentSkills, SkillMove, SkillRow } from '@/types/catalog'
 import type { SkillExecution } from '@/types/resource'
 
 // ---- 4 个纯查询的定义在 `data/moveTableQueries.ts`（2026-09-19 round 37 下沉 4 个；CC-253 加、CC-273 删 findMoveByEnglishName），这里是壳 ----
@@ -40,7 +40,7 @@ export { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment }
 
 // ---- 元素 → 面板字段名：CC-224 起单一来源 `@/utils/elementStatKeys`（原 3 张表与本壳已删，不要在此重建） ----
 
-export function isHealingRow(row: any): boolean {
+export function isHealingRow(row: SkillRow): boolean {
   const id = String(row.id ?? '').toLowerCase()
   const kind = String(row.kind ?? '').toLowerCase()
   const label = `${row.label?.zhCN ?? ''}${row.label?.en ?? ''}`.toLowerCase()
@@ -50,7 +50,7 @@ export function isHealingRow(row: any): boolean {
 
 export function getHealingAmount(move: SkillMove): number {
   let total = 0
-  for (const row of move.rows as any[]) {
+  for (const row of move.rows) {
     if (!isHealingRow(row)) continue
     // CC-240：吃逻辑编辑器行规则（按 row.id 取；catalog 1352 招行 id 唯一、无缺 id）
     total += getRowValue(move, row.id)
@@ -61,14 +61,14 @@ export function getHealingAmount(move: SkillMove): number {
 export function getSpecialResourceRecovery(move: SkillMove): number {
   // 专属资源回复：attack_data_0（kind=special 第一行 = 席德钢能/比利决意/青衣电压/普罗米娅寒蚀）。
   // attack_data_1/2… 是其他通道（如回血），不混入本字段；观察：attack_data_0 秒均 ≈ 11（钢能）。
-  for (const row of move.rows as any[]) {
-    if (String((row as any).kind ?? '') === 'special') {
+  for (const row of move.rows) {
+    if (String(row.kind ?? '') === 'special') {
       return getRowValue(move, row.id) // CC-240：吃逻辑编辑器行规则
     }
   }
   // 兜底：非标准 recovery 行（旧式专属回复）求和
   let total = 0
-  for (const row of move.rows as any[]) {
+  for (const row of move.rows) {
     const id = String(row.id ?? '')
     if (!id.includes('recovery')) continue
     if (id === 'energy_recovery' || id === 'decibel_recovery') continue

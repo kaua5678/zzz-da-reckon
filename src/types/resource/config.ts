@@ -48,6 +48,14 @@ export interface ExtraExPlanRow {
   note: string
 }
 
+/**
+ * `CharacterOperationConfig` 上值为数字的键（r408）。供模块声明式字段名（如 `backstageAutoFill.cfgField`）
+ * 约束键名：编排层按声明字段动态读写 cfg 时无需 `as any`，字段拼错/未声明在编译期报错。
+ */
+export type NumericCfgField = {
+  [K in keyof CharacterOperationConfig]-?: NonNullable<CharacterOperationConfig[K]> extends number ? K : never
+}[keyof CharacterOperationConfig]
+
 export interface CharacterOperationConfig {
   /** 槽位 */
   slot: number

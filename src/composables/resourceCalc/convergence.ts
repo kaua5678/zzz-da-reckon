@@ -434,7 +434,7 @@ export function createRunCalcRound(deps: {
       // 后台合轴自动填充（模块 backstageAutoFill 声明驱动，上一轮反推值；手动字段 >0 时模块优先用手动）
       {
         const decl = getAgentMechanic(cfg.agentId)?.backstageAutoFill
-        if (decl) (merged as any)[decl.cfgField] = threads.backstageAuto?.[cfg.agentId] ?? 0
+        if (decl) merged[decl.cfgField] = threads.backstageAuto?.[cfg.agentId] ?? 0
       }
       // Boss 预设弹刀反推注入（上一轮拆分；首轮 prev 为空 → 击破位注入 ≥1 探针保证轻弹刀行存在，
       // 供本轮失衡池读出每次弹刀失衡值，后续轮按真实拆分注入、不强制）
@@ -901,7 +901,7 @@ export function createRunCalcRound(deps: {
       for (const cfg of base.characters) {
         const decl = getAgentMechanic(cfg.agentId)?.backstageAutoFill
         if (!decl) continue
-        const manual = Math.max(0, Math.floor(Number((cfg as any)[decl.manualField] ?? 0)))
+        const manual = Math.max(0, Math.floor(Number(cfg[decl.manualField] ?? 0)))
         if (manual > 0) { backstageNext[cfg.agentId] = manual; continue }
         const ownRows = (sp1.pool?.contributions ?? []).filter(r => decl.moveIds.includes(String(r.moveId)) && r.slot === cfg.slot)
         const ownDaze = ownRows.reduce((sum, r) => sum + r.effectiveStun, 0)

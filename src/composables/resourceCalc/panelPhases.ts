@@ -54,7 +54,7 @@ import type {
   CharacterOperationConfig,
   StunAxis,
 } from '@/types/resource'
-import type { PanelValues, TeammateBuff, DriveDiscConfig } from '@/types/catalog'
+import type { Agent, PanelValues, TeammateBuff, DriveDiscConfig } from '@/types/catalog'
 // 结算口径单一事实源（全局 Buff → TeammateBuff.effect.mode）。**不要**用展示口径 `isPctStat`：
 // 两者对本仓 39 个字段结论相反（其中 34 个 mode 敏感），详见 statMeta.ts#statSettlementMode 头注释。
 import { statSettlementMode } from '@/utils/statMeta'
@@ -80,15 +80,15 @@ export function buildMechanicTeamMembers(
 }
 
 /** 角色 combatBuffs 是否已自带 3/5 命技能等级提升（避免通用规则重复叠加） */
-function applyDefaultCinemaSkillLevelBonus(panel: PanelValues, agent: any, cinema: number): void {
+function applyDefaultCinemaSkillLevelBonus(panel: PanelValues, agent: Agent | undefined, cinema: number): void {
   if (!agentHasCinemaSkillLevelBuff(agent)) {
     panel.skillLevelBonus = (panel.skillLevelBonus ?? 0) + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
   }
 }
 
-function agentHasCinemaSkillLevelBuff(agent: any): boolean {
-  return (agent?.combatBuffs?.cinemaBuffs ?? []).some((cinema: any) =>
-    (cinema.buff?.effects ?? []).some((e: any) => e.stat === 'skillLevelBonus'),
+function agentHasCinemaSkillLevelBuff(agent: Agent | undefined): boolean {
+  return (agent?.combatBuffs?.cinemaBuffs ?? []).some((cinema) =>
+    (cinema.buff?.effects ?? []).some((e) => e.stat === 'skillLevelBonus'),
   )
 }
 

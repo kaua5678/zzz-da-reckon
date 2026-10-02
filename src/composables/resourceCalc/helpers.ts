@@ -47,7 +47,7 @@ import type {
   SkillExecution,
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
-import type { PanelValues, AgentSkills, SkillMove } from '@/types/catalog'
+import type { DamageElement, PanelValues, AgentSkills, SkillMove } from '@/types/catalog'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 // `getAgentSpec`（@/specs/registry）/ `evalAdditionalAbility`（@/specs/teamCondition）/ `fmt`
 // （@/utils/format）的 import 已随 D 簇（异常面板）迁去 `./anomalyPanels.ts`——本文件不再用它们。
@@ -196,8 +196,8 @@ export function computeDamageSourceBreakdown(rows: DamagePoolRow[]): DamageSourc
   return out
 }
 
-export function safeElement(element?: string): any {
-  return (element || 'physical') as any
+export function safeElement(element?: string): DamageElement {
+  return (element || 'physical') as DamageElement
 }
 
 

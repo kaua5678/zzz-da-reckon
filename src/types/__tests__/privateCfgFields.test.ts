@@ -124,13 +124,19 @@ describe('D2 §5 + r406：角色模块不经 Record 强转读写 cfg、全目录
  * 清理时的发现（详见架构卡 CC-381）：catalog 漏声明 5 个数据真实字段（音擎精修值 / 排除目标 / derived 来源 / 修饰器 / 锐暴基值）；
  * `specResources` 被 18 个模块当私有结果的夹带通道（`Record<string, any>`），现收紧为 `Record<string, SpecResourceResult>`，
  * 私有对象改为各模块 `declare module` 的具名结果键。core 需要 store 的地方用**结构类型**（`ImpactVarConfig`），不要回退到 any；
- * 外部不可信输入用 `unknown` + 收窄（`getGlobalBuffStatOptions`）。UI 层（composables / components / stores / views）不在此锁内。
+ * 外部不可信输入用 `unknown` + 收窄（`getGlobalBuffStatOptions`）。
+ *
+ * r408（CC-382）：扩到编排层 `composables/resourceCalc/`。发现：`damagePool.ts` 的 pushDirect/pushRelease 内联行类型与
+ * `damagePoolDirect.ts` 导出接口逐位重复（已删，单一来源）；行接口 `skillDamageTarget?: any` 掩盖了上游 `SkillExecution`
+ * 声明 `string`、下游 `core/damage` 要求 `SkillDamageTarget` 的断层（已收窄执行记录字段）；`backstageAutoFill.cfgField/manualField`
+ * 改为 `NumericCfgField`（cfg 上数字键），编排层按声明字段读写 cfg 不再需要 `as any`。
+ * 其余 UI 层（composables 其余 / components / stores / views）不在此锁内。
  */
-const CALC_DIRS = ['core/', 'types/', 'specs/', 'utils/', 'data/', 'mechanics/']
+const CALC_DIRS = ['core/', 'types/', 'specs/', 'utils/', 'data/', 'mechanics/', 'composables/resourceCalc/']
 describe('r407 CC-381：计算层非测试源码零 any 类型（全目录不变式）', () => {
   const files = ALL.filter(x => CALC_DIRS.some(d => x.rel.startsWith(d)) && !/\.test\.ts$/.test(x.rel))
   it('扫描面非空（防目录改名后全绿）', () => {
-    expect(files.length).toBeGreaterThanOrEqual(140)
+    expect(files.length).toBeGreaterThanOrEqual(180)
   })
   it('零命中（违规列出 文件 + 命中的正则）', () => {
     const hits = files.flatMap(x => {
@@ -144,7 +150,7 @@ describe('r407 CC-381：计算层非测试源码零 any 类型（全目录不变
 /**
  * CC-369（r395）：全仓不变式——非测试源码不得用 `(cfg as any).<键>` 静态访问 cfg。
  * 这是 D2 §5 的「病」本身（键无类型、拼错静默），对所有文件成立，不再逐模块列名单：新模块写了就红。
- * 只锁**静态键**；`(cfg as any)[decl.field]` 这类按声明字段名的动态访问是通用逻辑（convergence.ts），放行。
+ * 只锁**静态键**；按声明字段名的动态访问（convergence.ts 的 backstageAutoFill）自 r408 起由 `NumericCfgField` 约束键类型，已无 `as any`。
  */
 describe('D2 §5：全仓不得 (cfg as any).键', () => {
   it('src 非测试源码零命中', () => {

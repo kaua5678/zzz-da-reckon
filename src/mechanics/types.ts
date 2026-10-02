@@ -9,6 +9,7 @@ import type {
   CharacterOperationConfig,
   CharacterResourceResult,
   IterationState,
+  NumericCfgField,
   MechanicSetting,
   SkillExecution,
   SpecialResourceSection,
@@ -666,10 +667,10 @@ export interface AgentMechanicModule {
     moveIds: string[]
     /** 每对基础失衡（catalog 倍率和；首轮探测用，次轮起实测） */
     perPairBase: number
-    /** 自动次数写回的 cfg 字段名 */
-    cfgField: string
-    /** 手动输入字段名（>0 优先于自动） */
-    manualField: string
+    /** 自动次数写回的 cfg 字段名（须为 cfg 上声明的数字字段） */
+    cfgField: NumericCfgField
+    /** 手动输入字段名（>0 优先于自动；须为 cfg 上声明的数字字段） */
+    manualField: NumericCfgField
     /** 一对合轴的最短节奏（秒）——供给上限分母 */
     minPeriodSeconds: number
     /** 跟随招式与主招式的失衡值比（每对 = 主招式实测 × (1+ratio)；主招式须为后台独占行，防基础轮转行污染实测） */
