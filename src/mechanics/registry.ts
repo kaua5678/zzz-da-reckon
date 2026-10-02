@@ -1,4 +1,4 @@
-import type { AgentMechanicModule } from './types'
+import type { AgentMechanicModule, TeamMechanic } from './types'
 import type { MechanicSetting } from '@/types/resource'
 import type { AutoAxisPresetHints } from '@/data/stunAxisPresets'
 
@@ -36,6 +36,34 @@ export function registerAgentMechanic(module: AgentMechanicModule): void {
 
 export function getAgentMechanic(agentId: string): AgentMechanicModule | undefined {
   return agentMechanics.get(agentId)
+}
+
+type TeamLike = ReadonlyArray<{ agentId?: string | null } | null | undefined>
+
+/**
+ * 模块在队槽位（r399 CC-373）：队中第一个 agentId ∈ `module.agentIds` 的槽位；不在队 ⇒ -1。
+ * 「按模块派发、钩子要知道我是谁」的派发点共用的**唯一定位器**（`teamMechanicSlots`、
+ * `composables/resourceCalc/damagePool.ts#releaseModifierSelf`）——模块不再往自己面板盖标记、再扫面板认自己。
+ */
+export function findModuleSlot(module: Pick<AgentMechanicModule, 'agentIds'>, team: TeamLike): number {
+  return team.findIndex(c => !!c?.agentId && module.agentIds.includes(c.agentId))
+}
+
+/**
+ * 在队模块 + 槽位（r399 CC-373），**按注册顺序**排列（不是槽位顺序：多个模块的同类钩子按注册顺序执行，
+ * 与原「遍历全部已注册模块」的调用顺序一致）。不在队的模块不出现 ⇒ 钩子只对在队模块派发。
+ * 生产入口：`composables/resourceCalc/roundInputs.ts` → `AnomalyPoolInput.teamMechanics`。
+ */
+export function teamMechanicSlots(
+  team: TeamLike,
+  modules: readonly AgentMechanicModule[] = getRegisteredAgentMechanics(),
+): TeamMechanic[] {
+  const out: TeamMechanic[] = []
+  for (const module of modules) {
+    const slot = findModuleSlot(module, team)
+    if (slot >= 0) out.push({ module, slot })
+  }
+  return out
 }
 
 /**

@@ -42,10 +42,10 @@ describe('CC-71 风蚀气旋事件 → anomalyCorrosionEvents', () => {
     const velina = getAgentMechanic('1561')!
     for (const [micro, broad] of [[0, 0], [3, 0], [0, 2], [7, 4]]) {
       const src = { microCycloneCount: micro, broadCycloneCount: broad } as unknown as CorrosionSource
-      expect(resolveAnomalyCorrosionEvents([velina], src)).toEqual(legacy(src))
-      expect(resolveAnomalyCorrosionEvents([getAgentMechanic('1211')!, velina], src)).toEqual(legacy(src))
+      expect(resolveAnomalyCorrosionEvents([{ module: velina, slot: 0 }], src)).toEqual(legacy(src))
+      expect(resolveAnomalyCorrosionEvents([{ module: getAgentMechanic('1211')!, slot: 0 }, { module: velina, slot: 1 }], src)).toEqual(legacy(src))
     }
-    // CC-179：agentMechanics 改必填后「不传」不再合法；空列表 ⇒ 无事件
+    // CC-179：改必填后「不传」不再合法；空列表 ⇒ 无事件（r399：参数为在队模块 teamMechanics）
     expect(resolveAnomalyCorrosionEvents([], {} as CorrosionSource)).toEqual([])
   })
 
@@ -53,7 +53,7 @@ describe('CC-71 风蚀气旋事件 → anomalyCorrosionEvents', () => {
     const src = readFileSync(resolve(__dirname, '../../core/anomalyPool.ts'), 'utf-8')
     expect(src).not.toContain('维琳娜微域气旋风异放')
     expect(src).not.toContain('维琳娜风蚀替换广域气旋')
-    expect(src).toContain('resolveAnomalyCorrosionEvents(input.agentMechanics, corrosionSource)')
+    expect(src).toContain('resolveAnomalyCorrosionEvents(input.teamMechanics, corrosionSource)')
   })
 
   it('CC-27：2 命风蚀利用率由维琳娜 applyPanel 读 settings 盖章、风蚀能力读回；core / 编排层不再穿线', () => {
@@ -61,19 +61,19 @@ describe('CC-71 风蚀气旋事件 → anomalyCorrosionEvents', () => {
       expect(readFileSync(resolve(__dirname, f), 'utf-8'), f).not.toContain('cinema2CorrosionRate')
     }
     const velina = getAgentMechanic('1561')!
-    const velinaPanels = (rate?: number) => {
+    const velinaPanel = (rate?: number) => {
       const panel = emptyPanel()
       velina.applyPanel!({ slot: 0, agent: { damageElement: 'wind' }, cinemaLevel: 2, team: [], panel,
         settings: rate === undefined ? {} : { 'velina.cinema2CorrosionRate': rate } } as never)
-      return [panel, emptyPanel(), emptyPanel()]
+      return panel
     }
     // 盖章值驱动状态机：c2WindGainExpected = 风化次数 × 利用率
     for (const rate of [0, 0.5, 1]) {
-      const src = velina.anomalyCorrosion!({ panels: velinaPanels(rate), turbulenceCount: 6, windTriggerCount: 9 })!
+      const src = velina.anomalyCorrosion!({ self: { slot: 0, panel: velinaPanel(rate) }, turbulenceCount: 6, windTriggerCount: 9 })!
       expect(src.c2WindGainExpected).toBeCloseTo(9 * rate, 9)
     }
     // 未提供滑块值 ⇒ 模块缺省 2/3（与 settings default 同值）
-    expect(velina.anomalyCorrosion!({ panels: velinaPanels(), turbulenceCount: 6, windTriggerCount: 9 })!.c2WindGainExpected)
+    expect(velina.anomalyCorrosion!({ self: { slot: 0, panel: velinaPanel() }, turbulenceCount: 6, windTriggerCount: 9 })!.c2WindGainExpected)
       .toBeCloseTo(9 * 2 / 3, 9)
   })
 })

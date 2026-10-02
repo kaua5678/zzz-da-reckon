@@ -20,7 +20,7 @@ import type {
   CorrosionSource,
   AnomalyEventRecord,
 } from '@/types/resource'
-import { panelAt, emptyPanel } from '@/core/panel'
+import { emptyPanel } from '@/core/panel'
 import { CORROSION_CYCLONE_RELEASE_ID_PREFIX } from '@/core/anomalyPool/helpers'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
@@ -80,10 +80,11 @@ function buildVelinaFloriaSource(
 }
 
 /**
- * 维琳娜面板（风蚀的**唯一归属者**）。
+ * 风蚀归属（**唯一归属者 = 维琳娜本人**）。
  *
- * 判据 = `panel.velinaEnabled` 标记（**唯一写入方 = 本模块 `applyVelinaPanel`**，见下）⇒
- * 字段存在即蕴含「该槽是维琳娜」，与仓库「字段即身份」的既有判据同族（T6）。
+ * 判据 = 派发方给的 `self`（r399 CC-373：异常池只对**在队**模块派发 `transformAnomalyPool` /
+ * `anomalyCorrosion`，按模块 `agentIds` 定位槽位，见 `mechanics/registry.ts#teamMechanicSlots`）。
+ * 原判据是本模块往自己面板盖的 `velinaEnabled` 标记 + `findVelinaPanel` 扫面板认人——契约缺身份时的补丁，已删。
  *
  * ⚠ **为什么不能按「风属性」找**（CC-D3 裁决 2026-09-25）：风蚀是维琳娜专属资源
  * （`docs/GAME_TERM_TO_CODE_FIELD.md` §8.2「风蚀（维琳娜专属资源）」、spec `velina_corrosion`
@@ -94,30 +95,20 @@ function buildVelinaFloriaSource(
  * `{turbulence:3, micro:2, broad:1, boosted:1}` 与两条「维琳娜…气旋」行共 15 702 伤害，
  * 归到洛克茜身上；1631 队 5 936 归赛维里安 ⇒ 数值缺陷，已按「专属资源不给人」修。
  *
- * ⟳复核: 若未来有**第二个**角色也用「风蚀」（或维琳娜改名/换 id），本函数的
- * 「标记 = 维琳娜本人」前提要重审——届时按 agentId 列表查 `findSlotByIdentity`，
- * 不要退回按 `damageElement === 'wind'` 找槽 | 到期 2027-06-30
+ * ⟳复核: 若未来有**第二个**角色也用「风蚀」，`anomalyCorrosion` 的「同一队至多一个模块认领」前提要重审
+ * （引擎按注册顺序取首个）；不要退回按 `damageElement === 'wind'` 找槽 | 到期 2027-06-30
  *
- * @returns 维琳娜面板；队里没有维琳娜 ⇒ `undefined`（调用方据此整套跳过风蚀结算）
- */
-export function findVelinaPanel(panels: readonly PanelValues[]): PanelValues | undefined {
-  return panels.find(p => (p.velinaEnabled ?? 0) > 0)
-}
-
-/**
- * 风蚀状态机的**归属安全**入口（三个生产调用点共用，单一事实源）。
+ * 风蚀状态机的**归属安全**入口（transform 与 anomalyCorrosion 两处共用，单一事实源）。
+ * 与直接调 `simulateVelinaCorrosionState` 的区别：**没有维琳娜面板 ⇒ 返回 `undefined`**（不是全零对象）——
+ * 调用方据此「整套不结算」，而不是「结算出 0 次」；后者仍会把 `corrosionSource`/事件行推给别的风角色。
  *
- * 与直接调 `simulateVelinaCorrosionState` 的区别：本函数先按 `findVelinaPanel` 认人，
- * **队里没有维琳娜 ⇒ 返回 `undefined`**（不是全零对象）——调用方据此「整套不结算」，
- * 而不是「结算出 0 次」；后者仍会把 `corrosionSource`/事件行推给别的风角色。
- *
+ * @param panel 维琳娜自己的面板（= 派发方给的 `self.panel`；不在队 ⇒ 根本不派发）
  */
 export function resolveVelinaCorrosion(
-  panels: readonly PanelValues[],
+  panel: PanelValues | undefined,
   turbulenceCount: number,
   windTriggerCount: number,
 ): CorrosionSource | undefined {
-  const panel = findVelinaPanel(panels)
   if (!panel) return undefined
   return simulateVelinaCorrosionState(
     turbulenceCount,
@@ -165,9 +156,6 @@ export const VELINA_C2_CORROSION_RATE_DEFAULT = 2 / 3
 
 function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: AgentPanelInput): void {
   const additionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
-  // 维琳娜专属资源标记（**本模块唯一写入方**）⇒ 该标记即「本槽是维琳娜」的判据，
-  // 供风蚀状态机按归属认人（2026-09-25 CC-D3：风蚀不按「队里第一个风属性」归属）。
-  panel.velinaEnabled = 1
   panel.velinaCinema1 = cinemaLevel >= 1 ? 1 : 0
   // 乱流抗性无视（通用面板字段，core/anomalyPool/helpers.ts#calcTurbulenceSettlement 读；CC-36b）
   panel.turbulenceResIgnore = cinemaLevel >= 1 ? 20 : 0
@@ -301,14 +289,14 @@ function buildVelinaAnomalyEvents({ cfg, state, events }: AgentEventInput): void
  */
 function transformVelinaAnomalyPool(input: AgentAnomalyTransformInput): void {
   if (!input.hasWindChar) return
-  // 风蚀是维琳娜专属资源 ⇒ 按**面板标记**认人，不按「队里第一个风属性角色」
-  // （CC-D3 2026-09-25：1621/1631 队原本也会跑本状态机，见 `findVelinaPanel` 头注释）。
+  // 风蚀是维琳娜专属资源 ⇒ 按派发方给的 `self` 认人（r399 CC-373），不按「队里第一个风属性角色」
+  // （CC-D3 2026-09-25：1621/1631 队原本也会跑本状态机，见 `resolveVelinaCorrosion` 头注释）。
   // 队里没有维琳娜 ⇒ 整套不结算。
   // CC-D4（2026-09-25）：原先这里还把 corrosion 写进 `input.store.corrosionSource`——全仓无读
   // （引擎在 `anomalyPool.ts` 经能力 `anomalyCorrosion` 按最终乱流次数**重新结算**同一份结果），
   // 已随 `AgentAnomalyTransformInput.store` 字段一并删除。
   const corrosion = resolveVelinaCorrosion(
-    input.panels,
+    input.self.panel,
     input.preTurbulenceCount,
     input.preWindTriggerCount,
   )
@@ -317,10 +305,10 @@ function transformVelinaAnomalyPool(input: AgentAnomalyTransformInput): void {
   const bcCount = corrosion.broadCycloneCount
   if (bcCount <= 0) return
   // 每次风蚀替换广域 = Sweeping Cyclone #1(1561007) ×10 段，单次积蓄 45
-  // 积蓄归属维琳娜自己的槽位（`findVelinaPanel` 盖章），不是 windCharSlot：
+  // 积蓄归属维琳娜自己的槽位（`self.slot`），不是 windCharSlot：
   // 旧写法把广域积蓄记到「第一个风角色」名下，非维琳娜风队会凭空多出风积蓄。
-  const velinaSlot = findVelinaPanel(input.panels)?.slot ?? input.windCharSlot
-  const velinaPanel = panelAt(input.panels, velinaSlot) ?? emptyPanel()
+  const velinaSlot = input.self.slot
+  const velinaPanel = input.self.panel ?? emptyPanel()
   const windRes = input.enemyAnomalyResistances['wind'] ?? 0
   const perHit = input.calcPerHitBuildUp(45, velinaPanel, windRes, 'wind')
   const totalCount = bcCount * 10
@@ -547,11 +535,11 @@ export const velinaMechanic: AgentMechanicModule = {
     return { pct: c6BonusPct, note: ` · 6命风化期望+${c6BonusPct.toFixed(1)}%（平均剩余${avgRemaining.toFixed(1)}s）` }
   },
   // 风蚀状态机的**引擎期求值**入口（规则 6 引擎落点，2026-09-25 CC-6d）：
-  // 引擎遍历 `AnomalyPoolInput.agentMechanics` 调 `anomalyCorrosion`（`core/anomalyPool/corrosion.ts#resolveAnomalyCorrosion`），不再值导入本模块
+  // 引擎遍历 `AnomalyPoolInput.teamMechanics`（在队模块 + 槽位，r399）调 `anomalyCorrosion`（`core/anomalyPool/corrosion.ts#resolveAnomalyCorrosion`），不再值导入本模块
   // （`core/anomalyPool.ts` 终局重结算 + `helpers.ts#calcTurbulenceDamage`）。
   // 2 命利用率读本模块 applyPanel 盖章的 `panel.velinaCinema2CorrosionRate`（CC-27）。
-  anomalyCorrosion: ({ panels, turbulenceCount, windTriggerCount }) =>
-    resolveVelinaCorrosion(panels, turbulenceCount, windTriggerCount),
+  anomalyCorrosion: ({ self, turbulenceCount, windTriggerCount }) =>
+    resolveVelinaCorrosion(self.panel, turbulenceCount, windTriggerCount),
   // CC-71：风蚀气旋异放事件记录（原写死在 core/anomalyPool.ts）
   anomalyCorrosionEvents: buildVelinaCorrosionEvents,
   resolveExecutionDamage: resolveVelinaExecutionDamage,

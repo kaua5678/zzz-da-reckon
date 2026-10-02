@@ -16,7 +16,7 @@ import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from 
 // 面板数组按位置压缩（下标 ≠ 槽位号）⇒ 一律 panelAt 按身份取，不用 damagePanels[slot]（见 core/panel.ts）。
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement } from '@/core/anomalyPool/helpers'
-import { getAgentMechanic } from '@/mechanics'
+import { findModuleSlot, getAgentMechanic } from '@/mechanics'
 import type { AgentMechanicModule, ReleaseModifierInput } from '@/mechanics'
 import type { AgentAxisOverlays, AxisScalarOverlays } from '@/mechanics'
 // 2026-09-16 round 17（R15-c）：`YESHUGUANG_FULL_STUN_MOVES` 与 `HUGO_FULL_STUN_MOVES` 的 import
@@ -425,7 +425,7 @@ export function releaseModifierSelf(
   team: ReadonlyArray<{ agentId?: string | null; cinemaLevel?: number } | null | undefined>,
   panels: readonly PanelValues[],
 ): ReleaseModifierInput['self'] {
-  const slot = team.findIndex(c => !!c?.agentId && module.agentIds.includes(c.agentId))
+  const slot = findModuleSlot(module, team) // r399：与异常池派发同一个定位器
   if (slot < 0) return { slot, cinemaLevel: 0, panel: undefined }
   return { slot, cinemaLevel: team[slot]?.cinemaLevel ?? 0, panel: panelAt(panels, slot) }
 }

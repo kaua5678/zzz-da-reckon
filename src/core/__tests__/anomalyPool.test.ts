@@ -70,7 +70,7 @@ describe('calcAnomalyPool', () => {
       hasWindChar: true,
       windCharSlot: 0,
       globalAnomalyMultiplier: 1,
-      agentMechanics: [],
+      teamMechanics: [],
     } as unknown as AnomalyPoolInput)
 
     expect(res.coverage.windCoverageRate).toBeGreaterThan(0)
@@ -86,9 +86,8 @@ describe('calcAnomalyPool', () => {
         { moveId: 'physical_basic', moveName: 'Jane buildup', slot: 1, count: 1, baseBuildUp: 39600, element: 'physical' },
       ],
       panels: [
-        // `velinaEnabled` = 维琳娜专属资源标记（`applyVelinaPanel` 盖章，真实管线自带）；
-        // CC-D3 起它是风蚀归属的判据 ⇒ 手工 fixture 必须带上，否则整套风蚀不结算。
-        { anomalyMastery: 100, velinaEnabled: 1, velinaCinema2: 1, velinaCinema6: 1 },
+        // 风蚀归属 = 派发方给的 `self`（r399 CC-373）⇒ 维琳娜在 teamMechanics 里登记为槽 0
+        { anomalyMastery: 100, velinaCinema2: 1, velinaCinema6: 1 },
         { anomalyMastery: 100 },
         { anomalyMastery: 100 },
       ],
@@ -108,7 +107,7 @@ describe('calcAnomalyPool', () => {
       hasWindChar: true,
       windCharSlot: 0,
       globalAnomalyMultiplier: 1,
-      agentMechanics: [velinaMechanic],
+      teamMechanics: [{ module: velinaMechanic, slot: 0 }],
     } as unknown as AnomalyPoolInput)
 
     const wind = (res.perElement as any[]).find(p => p.element === 'wind')
@@ -121,12 +120,12 @@ describe('calcAnomalyPool', () => {
   })
 
   /**
-   * CC-D3（2026-09-25）：风蚀是**维琳娜专属资源**，判据必须是「面板有 `velinaEnabled`」，
+   * CC-D3（2026-09-25）：风蚀是**维琳娜专属资源**，判据必须是「维琳娜在队」（r399 起 = teamMechanics 里有她），
    * 不能是「队里第一个风属性角色」。旧实现按 `windCharSlot` 取面板 ⇒ 洛克茜(1621) /
    * 赛维里安(1631) 这类**别的风属性角色**在队时也会跑维琳娜风蚀状态机，并把
    * 「维琳娜微域/广域气旋」的异放行挂在他们名下（实测 1621 队 2 条行共 1.5w 伤害）。
    *
-   * 本用例是**反向验证**：把 `velinaEnabled` 拿掉（等价于队里是别的风角色），
+   * 本用例是**反向验证**：teamMechanics 里没有维琳娜（队里是别的风角色），
    * 风蚀整套必须消失——不只是「次数变 0」，`corrosionSource` 本身必须为 undefined
    * （否则下游仍会推事件行）。
    */
@@ -152,13 +151,13 @@ describe('calcAnomalyPool', () => {
       hasWindChar: true,          // 队伍**有**风角色（1621 洛克茜这类），但**不是**维琳娜
       windCharSlot: 0,
       globalAnomalyMultiplier: 1,
-      agentMechanics: [velinaMechanic],
     }
     // ① 有维琳娜（对照）：正常产出
     const withVelina = calcAnomalyPool({
       ...base,
+      teamMechanics: [{ module: velinaMechanic, slot: 0 }],
       panels: [
-        { anomalyMastery: 100, velinaEnabled: 1, velinaCinema2: 1, velinaCinema6: 1 },
+        { anomalyMastery: 100, velinaCinema2: 1, velinaCinema6: 1 },
         { anomalyMastery: 100 },
         { anomalyMastery: 100 },
       ],
@@ -170,8 +169,9 @@ describe('calcAnomalyPool', () => {
     // ② 无维琳娜：整套消失（乱流本身仍在——它是风化状态的通用机制，不是维琳娜专属）
     const withoutVelina = calcAnomalyPool({
       ...base,
+      teamMechanics: [],           // 维琳娜不在队（r399：不在队的模块不派发）
       panels: [
-        { anomalyMastery: 100 },   // 风槽是别的风角色：无 velinaEnabled 标记
+        { anomalyMastery: 100 },   // 风槽是别的风角色
         { anomalyMastery: 100 },
         { anomalyMastery: 100 },
       ],

@@ -21,7 +21,7 @@ describe('calcAnomalyPool 失衡内积蓄效率（OnStunBonus）', () => {
       })],
       stunned: 0.5,
       totalTime: 180,
-      agentMechanics: [], // CC-179：必填；本用例不需要角色模块
+      teamMechanics: [], // CC-179 / r399：必填；本用例不需要角色模块
     })
     const byMove = new Map(r.perElement.flatMap(p => p.contributions).map(c => [c.moveId, c.perHitBuildUp]))
     expect(byMove.get('m1')).toBeCloseTo(115)  // 100×(1+30×0.5/100)
@@ -29,7 +29,7 @@ describe('calcAnomalyPool 失衡内积蓄效率（OnStunBonus）', () => {
   })
 
   it('零覆盖不加成；面板未设字段不产生 NaN', () => {
-    const r = calcAnomalyPool({ executions: execs, panels: [panel()], stunned: true, totalTime: 180, agentMechanics: [] })
+    const r = calcAnomalyPool({ executions: execs, panels: [panel()], stunned: true, totalTime: 180, teamMechanics: [] })
     const byMove = new Map(r.perElement.flatMap(p => p.contributions).map(c => [c.moveId, c.perHitBuildUp]))
     expect(byMove.get('m1')).toBeCloseTo(100)
     expect(byMove.get('m2')).toBeCloseTo(100)

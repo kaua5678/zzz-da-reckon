@@ -25,7 +25,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
 
 /** 队伍中某个槽位的最小上下文快照 */
 export interface MechanicTeamMember {
@@ -599,6 +599,15 @@ export interface AgentResourceSectionsInput {
 }
 
 /**
+ * 在队模块 + 其槽位（r399 CC-373）—— `mechanics/registry.ts#teamMechanicSlots` 产出；
+ * 异常池（`AnomalyPoolInput.teamMechanics`）据此只对在队模块派发钩子并附 `self`。
+ */
+export interface TeamMechanic {
+  module: AgentMechanicModule
+  slot: number
+}
+
+/**
  * 角色机制模块。
  *
  * 普通角色不需要实现任何钩子，只有专属战斗、资源、命座或展示逻辑才实现对应函数。
@@ -1140,7 +1149,7 @@ export interface AgentMechanicModule {
    * `@/mechanics/agents/velina#resolveVelinaCorrosion`（`anomalyPool.ts:332` 终局按最终乱流次数
    * 重结算；`helpers.ts:1210` 的 `calcTurbulenceDamage` 内）——引擎静态 import 角色模块正是规则 6
    * 要消灭的形状（判据 12 core 角色 import 棘轮盯着）。风蚀是**维琳娜专属资源**，归属判据
-   * `panel.velinaEnabled`（`velina.ts#applyVelinaPanel` 唯一写入方，CC-D3 2026-09-25）。
+   * = 派发方给的 `self`（r399 CC-373：引擎只对在队模块派发；原为 `panel.velinaEnabled` 面板标记，CC-D3 2026-09-25）。
    *
    * 契约：**纯函数**（同 `crossAgentSupply.supply` / `exSpecialCount`），只读入参；返回 `undefined`
    * = 本模块不认领 / 队里没有该资源持有者（调用方据此整套跳过风蚀结算）。同一队至多一个模块返回
@@ -1148,7 +1157,8 @@ export interface AgentMechanicModule {
    * 读 `settings` 盖章到自己的面板字段、在此读回（CC-27）——本入参不携带任何角色专属量。
    */
   anomalyCorrosion?(input: {
-    panels: readonly PanelValues[]
+    /** 本模块角色自己那一槽（r399 CC-373，同 `AgentAnomalyTransformInput.self`）；不再给全队 `panels` */
+    self: AnomalyHookSelf
     turbulenceCount: number
     windTriggerCount: number
   }): CorrosionSource | undefined
@@ -1342,4 +1352,4 @@ export interface AgentMechanicModule {
 // 导入方继续写 `from '@/mechanics/types'`。AgentMechanicModule 本体与各 Agent*Input 留在本文件。
 export type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
-export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AxisScalarOverlays, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AxisScalarOverlays, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'

@@ -21,7 +21,7 @@ import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/r
 import type { PanelValues } from '@/types/catalog'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
-import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
+import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
@@ -129,7 +129,7 @@ export function createConvergenceRoundInputs(deps: {
       // CC-78：赠送注入不再要求 anomalyPoolSetup 声明者（原 `setup &&`）；槽位 setup 优先，否则第一个有赠送的槽（giftedPolarAssault.ts 头注释）
       giftedTriggerCounts: giftedPolarAssault > 0 ? { 'physical_polar_assault': giftedPolarAssault } : undefined,
       giftedTriggerSlot: setup?.slot ?? giftedSlotFallback,
-      agentMechanics: getRegisteredAgentMechanics(),
+      teamMechanics: teamMechanicSlots(configStore.team),
     })
   }
 

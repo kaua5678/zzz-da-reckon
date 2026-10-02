@@ -66,7 +66,6 @@ const C6_DAMAGE_RATIO = 33
 
 function applyAlicePanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelInput): void {
   const aa = specAdditionalAbilityActive(team, slot, agent)
-  panel.aliceEnabled = 1
   panel.aliceAdditionalAbilityActive = aa ? 1 : 0
   panel.aliceCinema1 = cinemaLevel >= 1 ? 1 : 0
   panel.aliceCinema2 = cinemaLevel >= 2 ? 1 : 0
@@ -309,10 +308,9 @@ function buildAliceExecutions({ cfg, state, executions }: AgentResourceInput): v
 // ============ buildAnomalyEvents ============
 
 function transformAliceAnomalyPool(input: AgentAnomalyTransformInput): void {
-  const aliceIdx = input.panels.findIndex(p => (p as any).aliceEnabled)
-  if (aliceIdx < 0) return
-  const panel = input.panels[aliceIdx]
-  if ((panel.aliceCinema4 ?? 0) <= 0) return
+  // 自己的面板 = 派发方给的 `self`（r399 CC-373；原为 applyPanel 盖 `aliceEnabled` 再 `(p as any)` 扫面板认人）
+  const panel = input.self.panel
+  if (!panel || (panel.aliceCinema4 ?? 0) <= 0) return
 
   // 四命：强化后的普通攻击：星仪序曲（1401005）物理异常积蓄 +25%
   for (const contrib of input.elementMap.get('physical') ?? []) {

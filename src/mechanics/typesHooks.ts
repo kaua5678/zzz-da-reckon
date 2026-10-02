@@ -287,7 +287,21 @@ export interface AxisScalarOverlays {
 
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */
+/** 异常池钩子收到的身份（r399 CC-373）：`transformAnomalyPool` 与 `anomalyCorrosion` 共用。 */
+export interface AnomalyHookSelf {
+  slot: number
+  /** `panelAt(panels, slot)`（`panels` 按位置压缩，不能按下标取）；面板缺失 ⇒ undefined */
+  panel: DeepReadonly<PanelValues> | undefined
+}
+
 export interface AgentAnomalyTransformInput {
+  /**
+   * 本模块角色**自己那一槽**（r399 CC-373）：引擎只对**在队**模块派发本钩子，并按模块 `agentIds`
+   * 定位槽位（`mechanics/registry.ts#teamMechanicSlots`）。原先引擎把钩子派给**全部已注册**模块，
+   * velina / alice 只好在 `applyPanel` 往自己面板盖 `velinaEnabled` / `aliceEnabled` 标记、再扫 `panels`
+   * 认回自己（同 r398 `ReleaseModifierInput.self` 修掉的那类 hack）；标记已删。
+   */
+  self: AnomalyHookSelf
   /** 已按元素分组的积蓄贡献（可变：模块可 push 新贡献） */
   elementMap: Map<string, AnomalyContribution[]>
   panels: DeepReadonly<PanelValues[]>

@@ -94,8 +94,9 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     const preCap = Math.floor(preWindTime / TURBULENCE_CD_SECONDS)
     return Math.min(nonWindPreTrigSum * preWindRate, preCap)
   })()
-  for (const mech of input.agentMechanics) {
-    mech.transformAnomalyPool?.({
+  for (const { module, slot } of input.teamMechanics) {
+    module.transformAnomalyPool?.({
+      self: { slot, panel: panelAt(panels, slot) },
       elementMap,
       panels,
       bossCoeff,
@@ -319,16 +320,16 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       dmgConfig,
       elementTriggerCounts.wind ?? 0,
       turbulenceCap,
-      input.agentMechanics,
+      input.teamMechanics,
     )
     // 风蚀状态机按最终乱流次数重新结算（注入积蓄仍基于预构建的 preTurbulenceCount）
-    // ⚠ 风蚀是**维琳娜专属资源** ⇒ 归属按 `panel.velinaEnabled` 认人（模块唯一写入方），
+    // ⚠ 风蚀是**维琳娜专属资源** ⇒ 归属按在队模块的 `self` 认人（r399 CC-373：只对在队模块派发），
     // **不**按「队里第一个风属性角色」（CC-D3 2026-09-25）：1621/1631 等非维琳娜风队原本
     // 也会跑这套状态机并把气旋异放行挂在他们名下。队里没有维琳娜 ⇒ `undefined`
     // ⇒ 下面两条气旋事件 `count=0`（`anomalyEvents` 末尾按 count>0 过滤后整条不出现）。
     // CC-6d：改经模块能力 `anomalyCorrosion` 查询（不再值导入 velina 模块）。
     corrosionSource = resolveAnomalyCorrosion(
-      input.agentMechanics,
+      input.teamMechanics,
       panels,
       turbulenceCount,
       windTriggerCount,
@@ -361,7 +362,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     })
     // CC-71：两条风蚀气旋异放事件（微域 / 风蚀替换广域）由认领风蚀的模块产出（原在此写死维琳娜文案与倍率字段）；
     // 无认领（队里没有维琳娜）⇒ 不追加——原实现此时追加 count=0 的两条、再被末尾 count>0 过滤掉，结果相同。
-    if (corrosionSource) anomalyEvents.push(...resolveAnomalyCorrosionEvents(input.agentMechanics, corrosionSource))
+    if (corrosionSource) anomalyEvents.push(...resolveAnomalyCorrosionEvents(input.teamMechanics, corrosionSource))
   }
 
   // 非风时间窗内的紊乱：紊乱需要2种以上元素交替触发（新异常覆盖老异常），wind不参与

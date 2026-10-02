@@ -40,7 +40,7 @@
  *    覆盖率 = 有效DoT时间 / 总战斗时间
  */
 import type { PanelValues } from '@/types/catalog'
-import type { AgentMechanicModule } from '@/mechanics/types'
+import type { TeamMechanic } from '@/mechanics/types'
 import type {
   AnomalyProgress, AnomalyContribution,
   AnomalyCoverageResult,
@@ -299,11 +299,12 @@ export interface AnomalyPoolInput {
   /** 赠送触发归属的槽位（用于 per-slot 统计和紊乱 applier 归属），默认 0 */
   giftedTriggerSlot?: number
   /**
-   * 角色机制模块列表（transformAnomalyPool 钩子注入积蓄 + 风蚀 anomalyCorrosion 查询）。生产 = `getRegisteredAgentMechanics()`（roundInputs.ts）。
+   * **在队**角色机制模块 + 槽位（transformAnomalyPool 钩子注入积蓄 + 风蚀 anomalyCorrosion 查询）。生产 = `teamMechanicSlots(configStore.team)`（roundInputs.ts）。
+   * r399 CC-373：原为 `agentMechanics`（**全部已注册**模块、无槽位）⇒ 模块只能靠面板标记自认在不在队；改名迫使调用点按新语义改。
    * CC-179（第 202 轮）改为**必填**：缺省曾静默跳过全部模块钩子（不注入积蓄、不结算风蚀），结果被悄悄改变；
    * 测试不需要模块时显式传 `[]`。
    */
-  agentMechanics: readonly import('@/mechanics/types').AgentMechanicModule[]
+  teamMechanics: readonly import('@/mechanics/types').TeamMechanic[]
 }
 
 /**
@@ -1144,7 +1145,7 @@ export function calcDisorderDamage(
  * @param windSlot 风属性角色slot（用于乱流结算区）
  * @param panels 各角色面板
  * @param config 伤害计算全局配置
- * @param agentMechanics 已注册角色机制模块列表（风蚀状态经 `anomalyCorrosion` 能力查询；CC-179 起必填）
+ * @param teamMechanics 在队角色机制模块 + 槽位（风蚀状态经 `anomalyCorrosion` 能力查询；r399 CC-373）
  */
 export function calcTurbulenceDamage(
   nonWindElements: { element: string; triggerCount: number; applierSlot: number }[],
@@ -1153,7 +1154,7 @@ export function calcTurbulenceDamage(
   config: DamageCalcConfig,
   windTriggerCount = 0,
   maxCount = Number.POSITIVE_INFINITY,
-  agentMechanics: readonly AgentMechanicModule[],
+  teamMechanics: readonly TeamMechanic[],
 ): TurbulenceDamageResult | undefined {
   if (nonWindElements.length === 0) return undefined
 
@@ -1164,14 +1165,14 @@ export function calcTurbulenceDamage(
 
   if (turbulenceCount <= 0) return undefined
 
-  // 风蚀 = 维琳娜专属资源 ⇒ 按 `panel.velinaEnabled` 认人，不按「队里第一个风属性角色」
+  // 风蚀 = 维琳娜专属资源 ⇒ 按在队模块的 `self` 认人（r399 CC-373），不按「队里第一个风属性角色」
   // （CC-D3 2026-09-25）。队里无维琳娜 ⇒ `undefined` ⇒ 本次乱流**不吃** +150% 强化倍率
   // （旧的按风槽取面板的写法会给 1621/1631 队凭空加 150% 倍率区）。
   // 结算区仍用 `windPanel`（乱流触发者 = 风底属性提供者，**与风蚀归属无关**：乱流本身是
   // 风化状态的通用机制，谁提供风化谁结算；只有风蚀/气旋是维琳娜专属）。
   const windPanel = panelAt(panels, windSlot) ?? emptyPanel()
   const corrosionState = resolveAnomalyCorrosion(
-    agentMechanics,
+    teamMechanics,
     panels,
     turbulenceCount,
     windTriggerCount,

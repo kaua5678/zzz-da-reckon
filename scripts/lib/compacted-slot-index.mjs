@@ -49,13 +49,6 @@ export const IDX_SAFE_ALLOWLIST = [
       + '且该分支只读不写、不盖章（盖章会让后续查找把密集数组误判成压缩数组 —— 实测踩过）。',
   },
   {
-    file: 'src/mechanics/agents/alice.ts',
-    array: 'panels',
-    key: 'aliceIdx',
-    reason: '`aliceIdx` 是 `panels.findIndex(p => p.aliceEnabled)` 的**返回值**，即数组下标本身，'
-      + '不是槽位号 —— 下标当下标用，语义正确。',
-  },
-  {
     file: 'src/mechanics/agents/lighter.ts',
     array: 'characters',
     key: 'i',
