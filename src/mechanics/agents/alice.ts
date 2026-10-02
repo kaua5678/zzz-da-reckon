@@ -171,8 +171,8 @@ function buildAliceCharConfig({
   cfg.aliceDisorderSwordWill = DISORDER_SWORD_WILL
   // 全队强击 / 紊乱 的**次数**由 applyTeamConfig 的 converge 阶段按上一轮收敛值写入
   // （见 `applyTeamConfig` 本模块实现；build 阶段先置 0，语义与莱特 teamEnergyConsumed 同款）
-  cfg.aliceTeamAssaultCount = (cfg as { aliceTeamAssaultCount?: number }).aliceTeamAssaultCount ?? 0
-  cfg.aliceDisorderCount = (cfg as { aliceDisorderCount?: number }).aliceDisorderCount ?? 0
+  cfg.aliceTeamAssaultCount = cfg.aliceTeamAssaultCount ?? 0
+  cfg.aliceDisorderCount = cfg.aliceDisorderCount ?? 0
   cfg.aliceCoweringDotRatio = COWERING_DOT_RATIO
   cfg.aliceCoweringDotInterval = COWERING_DOT_INTERVAL
   cfg.aliceCoweringDisorderBonusPerSec = COWERING_DISORDER_BONUS_PER_SEC
@@ -418,15 +418,6 @@ export function aliceExternalCountsOf(
   return { assaultCount, disorderCount: anomalyPool.disorderCount ?? 0 }
 }
 
-/**
- * 从资源结果里数出爱丽丝的槽位（-1 = 本队无爱丽丝）。
- * 与模块能力 `giftedPolarAssaultCount` 同款：提取逻辑留模块侧，编排层不写 agentId 字面量（规则 6 棘轮）。
- */
-export function aliceSlotOf(rr: { characters: Array<{ slot?: number; agentId?: string }> } | null | undefined): number {
-  if (!rr) return -1
-  return rr.characters.find(c => c.agentId === ALICE_AGENT_ID)?.slot ?? -1
-}
-
 export const aliceMechanic: AgentMechanicModule = {
   id: 'agent:alice',
   agentIds: [ALICE_AGENT_ID],
@@ -474,25 +465,18 @@ export const aliceMechanic: AgentMechanicModule = {
    * （异常池要消费执行行），读不到本轮次数——这正是它必须走跨轮反馈的原因（同
    * `vivianAnomalyTriggers` / `consumedTeamEnergy` 的存在理由）。
    */
-  applyTeamConfig: ({ characters, phase, threads }) => {
+  applyTeamConfig: ({ cfg, phase, threads }) => {
+    // r410（CC-383 补漏）：本人 = 派发器给的 cfg；原为遍历 characters 跳过非 1401（字段已由 declare module 声明，强转一并删）
     if (phase === 'build') {
-      for (const c of characters) {
-        if (c.agentId !== ALICE_AGENT_ID) continue
-        const cc = c as { aliceTeamAssaultCount?: number; aliceDisorderCount?: number }
-        cc.aliceTeamAssaultCount = 0
-        cc.aliceDisorderCount = 0
-      }
+      cfg.aliceTeamAssaultCount = 0
+      cfg.aliceDisorderCount = 0
       return
     }
     if (phase !== 'converge') return
-    for (const c of characters) {
-      if (c.agentId !== ALICE_AGENT_ID) continue
-      const cc = c as { aliceTeamAssaultCount?: number; aliceDisorderCount?: number }
-      // CC-22：两条次数改从 `threads`（上一轮收敛快照）读，不再占 AgentTeamConfigInput 专用字段；
-      // 产出方 = 本模块 `nextRoundFeedback`（下方）。threads 缺省 ⇒ 0（与原入参缺省逐位等价）。
-      cc.aliceTeamAssaultCount = Math.max(0, (threads?.moduleFeedback?.aliceTeamAssaultCount ?? 0))
-      cc.aliceDisorderCount = Math.max(0, (threads?.moduleFeedback?.aliceDisorderCount ?? 0))
-    }
+    // CC-22：两条次数改从 `threads`（上一轮收敛快照）读，不再占 AgentTeamConfigInput 专用字段；
+    // 产出方 = 本模块 `nextRoundFeedback`（下方）。threads 缺省 ⇒ 0（与原入参缺省逐位等价）。
+    cfg.aliceTeamAssaultCount = Math.max(0, (threads?.moduleFeedback?.aliceTeamAssaultCount ?? 0))
+    cfg.aliceDisorderCount = Math.max(0, (threads?.moduleFeedback?.aliceDisorderCount ?? 0))
   },
   // 伴随事件：三蓄 SW3(1401012) 末尾赠送极性强击（polar_assault），易伤跟随父动作
   attachedEvents: { '1401012': ['polar_assault'] },
