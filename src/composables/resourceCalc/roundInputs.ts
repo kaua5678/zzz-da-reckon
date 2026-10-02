@@ -32,6 +32,42 @@ import { chainMoveKind } from '@/data/chainMoveKind'
 import { ULTIMATE_COST_DEFAULT, parseMoveEnergyCost } from '@/core/resource'
 import { panelAt } from '@/core/panel'
 
+type StunAxisAction = StunAxis['actions'][number]
+type AxisOwnerCatalog = Pick<ReturnType<typeof useCatalogStore>, 'agentSkillsByAgentMap'>
+
+/** 该角色能否把这个轴动作解析成自己的东西：连段 / 招式表 / 模块轴块展开（与 buildStackAxes 的解析链同序） */
+function axisActionResolvableBy(agentId: string, act: StunAxisAction, catalog: AxisOwnerCatalog): boolean {
+  if (!agentId) return false
+  const mod = getAgentMechanic(agentId)
+  if (mod?.combos?.[act.moveId]) return true
+  const skills = catalog.agentSkillsByAgentMap.get(agentId)
+  if (findMoveById(skills, act.moveId)) return true
+  return !!mod?.expandAxisAction?.({
+    slot: act.slot, moveId: act.moveId, count: act.count, startTime: act.startTime ?? 0, cinemaLevel: 0,
+    actionTimeOf: id => findMoveById(skills, id)?.actionTime ?? 0,
+  })
+}
+
+/**
+ * CC-389 残留判据（保守）：本槽当前角色解析不了，**且**能证明属于另一个角色 ⇒ 残留（换人后留在轴上的别人的动作）。
+ * 谁都不认领的 id 维持原口径不丢——模块合成行（雨果 `1291_ultimate_verdict_bonus`、`miyabi_frostburn_break` 等）
+ * 与通用 `evade_assist` 不在招式表里，按「本人能否解析」判会误杀（r415 探针：编辑器可放置的 492 个块里 7 个如此）。
+ * `basic` / `norma-hat-chain` 是位置性标记块，不属于任何角色。锁：`composables/__tests__/staleAxisActionCc389.test.ts`。
+ */
+export function isStaleAxisActionFor(
+  act: StunAxisAction,
+  team: ReadonlyArray<{ agentId?: string | null } | null | undefined>,
+  catalog: AxisOwnerCatalog,
+): boolean {
+  if (act.moveId === 'basic' || act.moveId === 'norma-hat-chain') return false
+  const own = team[act.slot]?.agentId ?? ''
+  if (axisActionResolvableBy(own, act, catalog)) return false
+  for (const other of catalog.agentSkillsByAgentMap.keys()) {
+    if (other !== own && axisActionResolvableBy(other, act, catalog)) return true
+  }
+  return false
+}
+
 export function createConvergenceRoundInputs(deps: {
   configStore: ConfigModel
   catalogStore: ReturnType<typeof useCatalogStore>
@@ -142,8 +178,28 @@ export function createConvergenceRoundInputs(deps: {
     return configStore.stunAxisPlans.length === 0 && configStore.stunAxes.length === 0
   })
 
-  /** 解析当前轮生效的轴：手动条件轴方案 → 手动 stunAxes → 通用自动预设（按资源量自选） */
+  /**
+   * CC-389：本轮生效轴的唯一出口——先按来源解析（resolveAxesBySource），再丢掉「换人后残留的别人的动作」。
+   * 轴动作存 `{ slot, moveId }`，`setAgent` / 预设 / 独立场景换人都不改轴。修前：新角色招式表里查不到旧角色的 moveId ⇒
+   * buildStackAxes 的能量 / 时长 / 喧响成本全 0 ⇒ 栈遍历把它当免费零时长动作照单执行（r415 实测：换上来的 1311 执行席德 1461015
+   * 4 次 + 连段 xide-bengzhui 6 次，伤害 +6.5%；另一预设 −2.5%）。放在这里 ⇒ 展示（effectiveStunAxes）、栈遍历、决算截断同源。
+   */
   function resolveAxes(stunCount: number, goodReview: number, energyBySlot: Record<number, number>): { axes: StunAxis[]; planName: string | null } {
+    const r = resolveAxesBySource(stunCount, goodReview, energyBySlot)
+    return { axes: dropStaleAxisActions(r.axes), planName: r.planName }
+  }
+
+  /** 无残留时原样返回（不复制，保持引用）；有残留时只复制受影响的轴 */
+  function dropStaleAxisActions(axes: StunAxis[]): StunAxis[] {
+    const isStaleAxisAction = (act: StunAxisAction) => isStaleAxisActionFor(act, configStore.team, catalogStore)
+    if (!axes.some(ax => ax.actions.some(isStaleAxisAction))) return axes
+    return axes.map(ax => (ax.actions.some(isStaleAxisAction)
+      ? { ...ax, actions: ax.actions.filter(a => !isStaleAxisAction(a)) }
+      : ax))
+  }
+
+  /** 按来源解析当前轮生效的轴：手动条件轴方案 → 手动 stunAxes → 通用自动预设（按资源量自选） */
+  function resolveAxesBySource(stunCount: number, goodReview: number, energyBySlot: Record<number, number>): { axes: StunAxis[]; planName: string | null } {
     const cinemaBySlot: Record<number, number> = {}
     configStore.team.forEach((c, i) => { cinemaBySlot[i] = c.cinemaLevel ?? 0 })
     if (configStore.stunAxisPlans.length > 0) {
