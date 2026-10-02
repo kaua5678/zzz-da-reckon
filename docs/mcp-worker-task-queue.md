@@ -153,15 +153,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 411 轮（lane arena-E；无并行会话；HEAD `f86bbae3`；REQUIREMENTS.md 无新条目）：CC-385 `1ae2b9af` + `5e2137cf` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
-- **做到哪**：关闭 r410 未决项「teammateBuffGate 拥有者不在队仍询问」。追到根上是引擎缺一条不变式：队友 buff 不检查拥有者在不在队，残留勾选会漏进面板。已在 `collectInCombatTeamBuffs` 下沉「只收在队拥有者」，门控随之只问在队拥有者、`self` 必填（架构卡 CC-385）。
-- **验证**：vue-tsc `--force` 0；zd `r411a` 0/0；guards 链 EXIT 0（specs 1120 / recording 189）；vitest(4) 460 文件 / 4247 测试；build 通过。
-- **回滚点**：`git revert 5e2137cf 1ae2b9af`（**按此顺序**：5e2137cf 的等价性依赖 1ae2b9af 的引擎过滤）。
-- **拍板**：拥有者判据用 agentId（不要求 agent 可查）——查不到 agent 时 store 侧 base 本为 false，两种口径在正常流程下无差别，选更简单的。store 的 `syncTeammateBuffsFromTeam` 保留：它决定 UI 默认勾选，不是计算正确性的保障，不再承担后者。
-- **未决项**：无（r410 那条已关闭）。
+**第 412 轮（lane arena-E；无并行会话；HEAD `219e2b29`；REQUIREMENTS.md 无新条目）：CC-386 `cb76abe1` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
+- **做到哪**：完成 r411 交接第 1 项「找同类『正确性靠 store 同步保证』的引擎输入」。排查结论见架构卡 CC-386：效果覆盖率、机制设置天然无害；资源利用率 / 异常利用率 / 结算份额三张表按槽位存、换人不清，旧角色覆盖会作用到新角色（实测 ×0.3）。已把键改成 agentId（store 内唯一键构造点 `ownerKeyOf`）。
+- **验证**：vue-tsc `--force` 0；zd `r412a` 0/0；guards 链 EXIT 0（recording 189）；vitest(4) 461 文件 / 4252 测试；build 通过。
+- **回滚点**：`git revert cb76abe1`（单提交；无存档格式变化，回滚后旧行为即恢复）。
+- **拍板**：改键（方案 a）而不是在 setAgent 里清表（方案 b）。b 改动更小，但仍靠每条换人路径都经过 setAgent，预设 / 独立场景 / 直写 team 的路径会漏；a 不需要存档迁移（config store 不持久化），对外 API 不变。若将来要给 config store 加持久化，这三张表的键已是 agentId，可直接存。
+- **未决项**：无。
 - **下一步（按价值排）**：
-  1. **找同类「正确性靠 store 同步保证」的引擎输入**：CC-385 的病是「引擎信任一张按 id 存的选择表，而表的正确性靠 store 在改队伍时同步」。同样按 id 存、由 `sync*` / watch 维护的还有：音擎效果覆盖率 `wEngineEffectCoverages`、驱动盘覆盖率、`mechanicSettings`（键含槽位号）。逐个检查：换角色 / 换槽位后旧键残留时，引擎会不会读到？判据同 CC-385：写一个探针，把残留键设成非默认值，看面板 / 结果是否变化。
-  2. 审钩子入参有没有本人（r410 交接第 1 项，未做）：列 `AgentMechanicModule` 每个钩子的入参，标出既无 `slot` 也无 `self` / `cfg` 的，再看实现里有没有按 agentId 自找。
+  1. 审钩子入参有没有本人（r410 交接项，仍未做）：列 `AgentMechanicModule` 每个钩子的入参，标出既无 `slot` 也无 `self` / `cfg` 的，再看实现里有没有按 agentId 自找。
+  2. **机制设置键的模块前缀目前只是约定**：`mechanicSettings` / `teamMechanicSettings` 的无害性依赖「键以本角色模块名开头」（如 `remielle.q:`）。候选 (a) 在 check-guards 加一条规则：扫 mechanics/agents 里 settingId / settingPrefix 字面量，必须以本模块名开头——风险：前缀形态多样，正则要按形态补（见已知坑「自找有多种写法」）；(b) 改成按 `ownerKeyOf` 存（同 CC-386）——风险：settingId 是模块声明的公开 id，UI 与 spec 都在用，改动面大。建议先做 (a) 的普查：grep 全部 settingId，看有没有不带前缀的。
   3. `stores/config.ts` 的 7 处 any。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
@@ -218,6 +218,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **自找有多种写法，正则锁要按形态补**：`.find/.some(x => x.agentId === 本人)`、`team.findIndex(a => a?.id === 本人)`、`for (c of characters) { if (c.agentId !== 本人) continue`。新发现一种形态就加进 `selfFromDispatcherCc383.test.ts`，并用 `git show master:<文件>` 回放做反证。
   - **「不在本轮范围」式的拍板等于留了一个未决项**：r410 写「保留，改成不询问需要另核 store 口径，不在本轮范围」，没写候选方案和风险，下一轮被当作未完成项追问。要推迟，就把「不确定点 + 两个候选 + 各自风险」写进未决项；能在半小时内查清的，当轮查完。
   - **夹具角色要先确认有数据**：CC-385 测试第一版用 1041+1191，两人都没有队友 buff 组 ⇒ 反空洞断言失败。挑夹具前先打印 `catalog.teammateBuffGroups` 的 id 列表。
+  - **只测 store 的锁守不住引擎读取路径**：CC-386 第一版锁全在 store 层，引擎 `helpers.ts` 若漏改仍自拼旧前缀，测试照样全绿（全仓原本没有任何测试调 `setResourceUtilization`）。改键 / 改读法时，每个引擎读取点至少一条端到端断言，并用「只回放该读取点」做反证。
+  - **按槽位存的用户设置要问「换人后该不该跟着走」**：描述「这个角色怎么打」的覆盖（利用率、份额）应随角色，键用 agentId（`ownerKeyOf`）；描述「这个位置」的设置才按槽位。判断不清时，先看 setAgent 换人后旧值还被不被引擎读到。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）

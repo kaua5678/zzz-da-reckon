@@ -562,3 +562,4 @@
 | 409 | 第 409 轮（lane arena-E；无并行会话，HEAD `24358f49`）：模块钩子去自找 | **CC-383**：`5f87bf26` applyTeamConfig / nextRoundFeedback 的本人 = 派发器给的 `cfg`；9 处自找 / 死判据删除 + 按 `agentIds` 判本人的锁 | zd 0/0；全量 459 / 4246 |
 | 410 | 第 410 轮（lane arena-E；无并行会话，HEAD `3fbb6ceb`）：门控给 self | **CC-384**：`6431c93d` teammateBuffGate 入参 `self` + `ReadonlyTeam`（删 remielle 自找 / 下标当槽位）；`f657b139` CC-383 补漏（alice 循环自找、`aliceSlotOf` 死导出）+ 锁扩展 | zd 0/0；全量 459 / 4246 |
 | 411 | 第 411 轮（lane arena-E；无并行会话，HEAD `f86bbae3`）：关闭 r410 未决项 | **CC-385**：`1ae2b9af` 队友 buff「拥有者在队」规则下沉引擎（残留勾选曾漏入 95 条）；`5e2137cf` teammateBuffGate 只问在队拥有者、`self` 必填 | zd 0/0；全量 460 / 4247 |
+| 412 | 第 412 轮（lane arena-E；无并行会话，HEAD `219e2b29`）：r411 交接第 1 项 | **CC-386**：`cb76abe1` 资源利用率 / 异常利用率 / 结算份额的键从槽位改为 agentId（换人后旧角色覆盖曾原样作用到新角色，实测 ×0.3）；引擎经 `resourceUtilizationOf` 读取 | zd 0/0；全量 461 / 4252 |
