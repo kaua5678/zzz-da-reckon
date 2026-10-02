@@ -52,7 +52,11 @@ export function collectInCombatTeamBuffs(
   // `singleSourced`（原字段名 `hidden`，2026-09-20 R65 改名）条**不进数值通道**：
   // 其数值由角色模块/helpers 单通道接入，此处过滤是防「同一效果算两遍」。
   // ⚠ 该字段与 UI 可见性**无关** —— 渲染面不读它，可交互性由 src/utils/teammateBuffRows.ts 派生。
-  const enabledAgentBuffs = deps.teammateBuffGroups.flatMap(group =>
+  // r411（CC-385）：**队友 buff 只来自在队拥有者**（组 id = 拥有者 agentId，CC-275 归一；45 组全部是角色 id）。
+  // 此前引擎完全依赖 store `syncTeammateBuffsFromTeam` 把不在队拥有者的勾选关掉——残留勾选（存档恢复 / defer /
+  // 独立调用方）会直接进面板（探针：不在队拥有者 132 条全勾时 95 条漏进）。规则下沉到这个唯一收集入口。
+  const owners = new Set(team.map(member => member.agentId).filter(Boolean))
+  const enabledAgentBuffs = deps.teammateBuffGroups.filter(group => owners.has(group.id)).flatMap(group =>
     (group.buffs ?? []).filter(buff => buff.singleSourced !== true && deps.isTeammateBuffEnabled(buff.id)),
   )
   // 收集所有已启用 buff 上的 multiplyResolvedValue 修饰器（丽娜C1 / 莱特C2 等）

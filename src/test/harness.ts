@@ -20,7 +20,7 @@ import { useConfigStore, interactionBaselineFor } from '@/stores/config'
 import { collectInCombatTeamBuffs } from '@/core/inCombatBuffs'
 import { applyEffect } from '@/core/buff'
 import { emptyPanel } from '@/core/panel'
-import type { PanelValues } from '@/types/catalog'
+import type { DriveDiscConfig, PanelValues } from '@/types/catalog'
 
 const catalogText = readFileSync(new URL('../../public/static/catalog.json', import.meta.url), 'utf8')
 const teammateBuffsText = readFileSync(new URL('../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
@@ -153,7 +153,11 @@ export async function setupHarness(
  */
 export function resolveTeammateBuffsOnEmptyPanel(enabledBuffIds: readonly string[], sourceValue: number): PanelValues {
   const catalog = useCatalogStore()
-  const buffs = collectInCombatTeamBuffs([], {
+  // r411 CC-385：引擎只收在队拥有者的 buff ⇒ 队伍 = 被启用 buff 所在组的拥有者
+  const owners = catalog.teammateBuffGroups
+    .filter(g => (g.buffs ?? []).some(b => enabledBuffIds.includes(b.id)))
+    .map(g => ({ agentId: g.id, cinemaLevel: 6, driveDisc: {} as DriveDiscConfig }))
+  const buffs = collectInCombatTeamBuffs(owners, {
     teammateBuffGroups: catalog.teammateBuffGroups,
     driveDiscSetsMap: catalog.driveDiscSetsMap,
     getAgent: id => catalog.getAgent(id),
