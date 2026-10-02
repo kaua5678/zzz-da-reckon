@@ -352,7 +352,7 @@ export function createResourceCalc(
   /** 轴编辑器同口径：当前失衡窗口时长（含全队失衡延时） */
   const windowDuration = computed<number>(() => computeWindowDuration())
 
-  function computeStunCoverage(sp: Pick<StunPoolResult, 'stunCount'> | null | undefined, lostSeconds = 0): number {
+  function computeStunCoverage(sp: any, lostSeconds = 0): number {
     // 决算截断：有效失衡时长 = 窗口总时长 − 截断损失秒数（佩洛伊斯右分支做完即清空剩余失衡时间）
     return stunWindowFraction(sp?.stunCount ?? 0, computeWindowDuration(), effectiveBattleTime(configStore.enemy), lostSeconds)
   }

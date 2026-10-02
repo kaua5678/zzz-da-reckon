@@ -1,5 +1,3 @@
-import type { SkillDamageTarget, StatId } from '@/types/catalog'
-
 export type SpecStatus =
   | 'implemented'
   | 'implemented_approximation'
@@ -135,15 +133,15 @@ export interface VerificationSpec {
 export interface TeamBuffEffectSpec {
   id?: string
   type?: 'fixed' | 'derived' | 'stacked' | 'formula'
-  stat: StatId
+  stat: string
   value?: number
   mode?: 'flat' | 'pct'
-  sourceStat?: StatId
+  sourceStat?: string
   sourcePanelPhase?: 'outOfCombat' | 'inCombat'
   ratio?: number
   cap?: number
   formula?: { expression?: string; valueUnit?: string }
-  targetSkillType?: SkillDamageTarget
+  targetSkillType?: string
   note?: string
 }
 

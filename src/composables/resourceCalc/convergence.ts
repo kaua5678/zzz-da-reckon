@@ -7,7 +7,7 @@ import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
-import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult, StunPoolResult } from '@/types/resource'
+import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
@@ -88,7 +88,7 @@ export function createRunCalcRound(deps: {
   panels: ComputedRef<PanelValues[]>
   resourceConfig: ComputedRef<ResourceCalcConfig | null>
   computeWindowDuration: () => number
-  computeStunCoverage: (sp: Pick<StunPoolResult, 'stunCount'> | null | undefined, lostSeconds?: number) => number
+  computeStunCoverage: (sp: unknown, lostSeconds?: number) => number
   buildStackAxes: (axes: StunAxis[]) => { actions: import('@/core/stunAxisStack').StackActionCost[]; count?: number; basicFillerSlot?: number }[]
   expandExecutedToCounts: (executed: Record<string, { slot: number; moveId: string; count: number }>, basicFillBySlot: Record<number, number>) => Record<string, { slot: number; moveId: string; count: number }>
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
