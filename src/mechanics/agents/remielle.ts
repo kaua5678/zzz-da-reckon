@@ -88,7 +88,7 @@ export function getRemielleLevelValue(row: SkillMove['rows'][number] | undefined
   const values = row.values ?? []
   if (!values.length) return 0
   const skillLevel = getSkillLevelCoef(skillLevelBonus).skillLevel
-  const levelValues = (row as any).levelValues ?? (row as any).luminizeLevelValues
+  const levelValues = row.levelValues
   if (Array.isArray(levelValues)) {
     const idx = levelValues.indexOf(skillLevel)
     if (idx >= 0) return values[idx] ?? values[0] ?? 0

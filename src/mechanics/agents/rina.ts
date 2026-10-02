@@ -21,7 +21,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import type { SkillExecution } from '@/types/resource'
+import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
@@ -206,7 +206,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   )
 }
 
-function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
+function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const ex = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
   const chain = Math.max(0, Math.floor(state.chainCountTotal ?? 0))
   const ult = Math.max(0, Math.floor(state.ultimateCount ?? 0))
@@ -232,7 +232,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
 }
 
 function resourceSections({ result }: AgentResourceSectionsInput) {
-  const bangboo = (result as any)?.rinaBangboo as RinaBangbooResult | undefined
+  const bangboo = result?.rinaBangboo
   if (!bangboo || bangboo.triggers <= 0) return []
   return [{
     id: 'rina-bangboo',
@@ -339,6 +339,17 @@ export default rinaMechanic
  * D2（r402 CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）：本模块私有的面板字段——只有本文件读写（测试读不算引用者），声明随模块走。
  * 仍是 `PanelValues` 的成员（模块扩充，纯类型、零运行时）；出现第二个**生产**引用者时迁回 `types/catalog.ts`。
  */
+/**
+ * r406：本模块 `buildResourceResult` 写、`resourceSections` 等读的结果字段（模块扩充，纯类型、零运行时）。
+ * 此前未声明 ⇒ 写端无类型、读端 `as any`，拼错键两头都不报错。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 丽娜邦布明细 */
+    rinaBangboo?: RinaBangbooResult
+  }
+}
+
 declare module '@/types/catalog' {
   interface PanelValues {
     /** 潜能 2 级起的穿透率增量留痕：与 `panel.penRatio` 同块写入 */

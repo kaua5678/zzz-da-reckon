@@ -17,7 +17,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
-import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 
@@ -219,7 +219,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   }
 }
 
-function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
+function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const cheer = lucyCheerOf(cfg, state)
   const boarCd = lucyBoarCd(cfg)
   const boarCount = computeLucyBoarCount(state.frontlineTime ?? 0, boarCd)
@@ -249,10 +249,10 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
 }
 
 function resourceSections({ result }: AgentResourceSectionsInput) {
-  const cheer = (result as any)?.lucyCheer as LucyCheerResult | undefined
+  const cheer = result?.lucyCheer
   if (!cheer) return []
-  const boarCount = Number((result as any)?.lucyBoarCount ?? 0) || 0
-  const boarCd = Number((result as any)?.lucyBoarCd ?? LUCY_BOAR_CD_DEFAULT) || LUCY_BOAR_CD_DEFAULT
+  const boarCount = Number(result?.lucyBoarCount ?? 0) || 0
+  const boarCd = Number(result?.lucyBoarCd ?? LUCY_BOAR_CD_DEFAULT) || LUCY_BOAR_CD_DEFAULT
   return [{
     id: 'lucy-cheer',
     title: '露西·加油/小猪',
@@ -376,6 +376,21 @@ export default lucyMechanic
  * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
  */
+/**
+ * r406：本模块 `buildResourceResult` 写、`resourceSections` 等读的结果字段（模块扩充，纯类型、零运行时）。
+ * 此前未声明 ⇒ 写端无类型、读端 `as any`，拼错键两头都不报错。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 露西加油循环明细 */
+    lucyCheer?: LucyCheerResult
+    /** 露西野猪次数 */
+    lucyBoarCount?: number
+    /** 露西野猪 CD（秒） */
+    lucyBoarCd?: number
+  }
+}
+
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 露西命座等级（buildCharConfig 写） */

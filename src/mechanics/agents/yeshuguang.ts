@@ -34,7 +34,7 @@ import type {
   AgentStunOverrideInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { CharacterOperationConfig, MechanicSetting, SkillExecution } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
@@ -501,7 +501,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
       executions, MOVE.c6Attach, '影画6·收尾附伤（明灯愿）', 'chain',
       cycle.c6AttachCount, 0, C6_ATTACH_MULT,
       `明灯愿附伤 ×${cycle.c6AttachCount}（每轮白毛收尾 1500% 攻击力，吃满易伤）`,
-      { skillDamageTarget: 'ultimate' as any },
+      { skillDamageTarget: 'ultimate' },
     )
   }
 }
@@ -563,7 +563,7 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: Ag
   return { necessaryTime: melee + feiguangTime + zhao + genericExTime, comboAlignTime: 0 }
 }
 
-function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
+function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const cinema = Math.max(0, Math.floor(Number(cfg.yeshuguangCinemaLevel ?? 0)))
   const cycle = resolveCycle(cfg, state)
   cfg.yeshuguangCycle = cycle
@@ -648,7 +648,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
 }
 
 function resourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = (result as any)?.yeshuguangCycle as YeshuguangCycleResult | undefined
+  const cycle = result?.yeshuguangCycle
   if (!cycle) return []
   const axisLabel = cycle.formAxis === 'full' ? '打满'
     : cycle.formAxis === 'short_pair' ? '短轴·灭极'
@@ -848,6 +848,17 @@ export default yeshuguangMechanic
  * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
  */
+/**
+ * r406：本模块 `buildResourceResult` 写、`resourceSections` 等读的结果字段（模块扩充，纯类型、零运行时）。
+ * 此前未声明 ⇒ 写端无类型、读端 `as any`，拼错键两头都不报错。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 叶曙光循环明细 */
+    yeshuguangCycle?: YeshuguangCycleResult
+  }
+}
+
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     // r392（D2 §5）：以下原经 Record 强转读写、无声明（拼错键名不报错），现补声明

@@ -325,7 +325,7 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   let segTime = 0
   if (basicCycle.length > 0) {
     const pressCancel = cfgSetting(cfg, 'sigrid.pressCancel', 0) >= 0.5
-    const segCounts = countBasicSegments(Math.max(0, Number((state as any).basicAttackTime ?? 0)), basicCycle, pressCancel)
+    const segCounts = countBasicSegments(Math.max(0, Number(state.basicAttackTime ?? 0)), basicCycle, pressCancel)
     for (const seg of basicCycle) {
       const n = segCounts[seg.moveId] ?? 0
       if (n <= 0) continue
@@ -541,7 +541,7 @@ function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   // #4 命中：按段循环计数（用户口径 2026-02），压枪开关取消 a1/a2 → 循环 1.765s
   const basicCycle = cfg.sigridBasicCycle ?? []
   const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel', 0)) > 0
-  chuqiangHits += countBasicFinisherHits(Math.max(0, (state as any)?.basicAttackTime ?? 0), basicCycle, pressCancel)
+  chuqiangHits += countBasicFinisherHits(Math.max(0, state?.basicAttackTime ?? 0), basicCycle, pressCancel)
   cfg.sigridChuqiangHits = chuqiangHits
 
   for (const exec of executions) {

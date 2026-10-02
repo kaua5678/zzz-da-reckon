@@ -91,9 +91,9 @@ const XIDE_BASIC_MOVE_IDS = ['1461001', '1461002', '1461003', '1461004']
 /** 招式钢能 = attack_data_0（kind=special 第一行；attack_data_1/2 是其他通道，不混入；秒均 ≈ 11） */
 function getAttackData0(move: SkillMove | null | undefined): number {
   if (!move) return 0
-  for (const row of (move.rows ?? []) as any[]) {
+  for (const row of move.rows ?? []) {
     // CC-242：按 kind 定位行，取值走 getRowValue（吃行规则）
-    if (String((row as any).kind ?? '') === 'special') return getRowValue(move, String(row.id))
+    if (String(row.kind ?? '') === 'special') return getRowValue(move, String(row.id))
   }
   return 0
 }

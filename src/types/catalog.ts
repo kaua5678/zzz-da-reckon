@@ -421,6 +421,8 @@ export interface SkillRow {
   id: string
   label: LocalizedString
   kind: string
+  /** 按技能等级取值的等级档（与 values 等长，如耀变倍率行 [12,14,16]；remielle 读取，parity 测试锁定） */
+  levelValues?: number[]
   values: number[]
   /** 导入脚本合成的展示字段（scripts/resolve.mjs 打印用）。**引擎不读**：伤害基底由 core/damage.ts resolveSpecialDamageProfile 按 specialty 决定；
    *  命破角色此处写 atk 但实际按贯穿力算（R5 D6）。R6 C5 决定保留字段、不让引擎改读（字段不是规格）。 */

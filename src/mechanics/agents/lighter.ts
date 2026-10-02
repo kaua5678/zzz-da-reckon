@@ -36,7 +36,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
-import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 
@@ -295,7 +295,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     if (existing) {
       existing.count = (existing.count ?? 0) + morale.powerFinisherCount
       if (c1Bonus > 0) {
-        ;(existing as any).dmgBonus = ((existing as any).dmgBonus ?? 0) + c1Bonus
+        existing.dmgBonus = (existing.dmgBonus ?? 0) + c1Bonus
       }
       existing.skillTableNote =
         `${existing.skillTableNote ?? ''}；士气喷发强力终结 +${morale.powerFinisherCount}`
@@ -348,16 +348,16 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
   const bonus = LIGHTER_C1_FINISHER_DMG
   for (const exec of executions) {
     if (exec.moveId !== MOVE_POWER_FINISHER) continue
-    const cur = Number((exec as any).dmgBonus ?? 0) || 0
+    const cur = Number(exec.dmgBonus ?? 0) || 0
     // buildExecutions 可能已加过，避免双加
     if (cur >= bonus) continue
-    ;(exec as any).dmgBonus = cur + bonus
+    exec.dmgBonus = cur + bonus
   }
 }
 
-function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
+function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const cinema = Math.max(0, Math.floor(Number(cfg.lighterCinemaLevel ?? 0)))
-  const combatTime = effectiveCombatTime(state as any, cfg)
+  const combatTime = effectiveCombatTime(state, cfg)
   const morale = lighterMoraleOf(cfg, state)
   const flameCount = cinema >= 6
     ? computeLighterFlameShockCount(combatTime, morale.powerFinisherCount)
@@ -391,9 +391,9 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
 }
 
 function resourceSections({ result }: AgentResourceSectionsInput) {
-  const morale = (result as any)?.lighterMorale as LighterMoraleResult | undefined
+  const morale = result?.lighterMorale
   if (!morale) return []
-  const flame = Number((result as any)?.lighterFlameShockCount ?? 0) || 0
+  const flame = Number(result?.lighterFlameShockCount ?? 0) || 0
   return [{
     id: 'lighter-morale',
     title: '莱特·士气喷发',
@@ -590,6 +590,19 @@ export default lighterMechanic
  * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
  */
+/**
+ * r406：本模块 `buildResourceResult` 写、`resourceSections` 等读的结果字段（模块扩充，纯类型、零运行时）。
+ * 此前未声明 ⇒ 写端无类型、读端 `as any`，拼错键两头都不报错。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 莱特士气循环明细 */
+    lighterMorale?: LighterMoraleResult
+    /** 莱特火焰冲击次数 */
+    lighterFlameShockCount?: number
+  }
+}
+
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 莱特冲击力：buildCharConfig 从面板 impact 写入 */

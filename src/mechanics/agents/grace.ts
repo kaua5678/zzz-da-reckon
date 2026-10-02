@@ -150,7 +150,7 @@ function applyGraceTeamConfig({ cfg, phase, characters, cinemaLevel, threads }: 
   const prev = Math.max(0, Number(cfg.graceC1TeamEnergyTotal ?? 0))
   for (const c of characters) {
     if (!c) continue
-    ;(c as any).initialEnergyGift = Math.max(0, Number((c as any).initialEnergyGift ?? 0) - prev) + gift
+    c.initialEnergyGift = Math.max(0, Number(c.initialEnergyGift ?? 0) - prev) + gift
   }
   cfg.graceC1TeamEnergyTotal = gift
 }

@@ -164,7 +164,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     basisLabelOverride: '本的防御力',
     element: 'fire',
     skillTableNote: `C2 格挡反击附加 ×${successCount}（仅成功招架；300% 防御力）`,
-  } as any)
+  })
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {

@@ -27,7 +27,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { CharacterOperationConfig, SkillExecution } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 
@@ -361,7 +361,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   }
 }
 
-function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
+function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const result = yaojiayinTremolosOf(cfg, state)
   return {
     yaojiayinTremolo: result,
@@ -388,7 +388,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput) {
 }
 
 function resourceSections({ result }: AgentResourceSectionsInput) {
-  const tr = (result as any)?.yaojiayinTremolo as YaojiayinTremoloResult | undefined
+  const tr = result?.yaojiayinTremolo
   if (!tr || tr.totalTremolos <= 0 && tr.clusters <= 0) return []
   return [{
     id: 'yaojiayin-tremolo',
@@ -451,6 +451,17 @@ export default yaojiayinMechanic
  * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
  */
+/**
+ * r406：本模块 `buildResourceResult` 写、`resourceSections` 等读的结果字段（模块扩充，纯类型、零运行时）。
+ * 此前未声明 ⇒ 写端无类型、读端 `as any`，拼错键两头都不报错。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 耀嘉音颤音明细 */
+    yaojiayinTremolo?: YaojiayinTremoloResult
+  }
+}
+
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：(panel.additionalAbilityActive ?? 0) > 0 ? 1 : 0 */

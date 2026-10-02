@@ -88,8 +88,23 @@ const UNTYPED_CFG_ACCESS = [
   /\b\w*[cC]fg\)?\s+as\s+any\b/,
   /\b\w*[cC]fg\)?\s+as\s+Record<string,\s*unknown>/,
 ]
+/**
+ * r406（CC-380）：agents 目录**零 `any` 类型**。D2 §5 的锁只认 cfg 强转，但同一个病还有别的入口：
+ * `(result|state|exec|row) as any` 读未声明的结果/执行行字段（26 处）、钩子参数标 `({ cfg, … }: any)`
+ * 让 cfg 整体失去类型（佩洛 7 个钩子，掩盖 3 个未声明 cfg 键）、`cfgIn as typeof cfgIn & Record<string, unknown>`。
+ * 清理中顺带抓出 1 个真 bug（orphie 影画2 读不存在的 `state.combatTime` ⇒ CD 上限恒按 180s）和 1 处死读
+ * （remielle `row.luminizeLevelValues`，该键只在 move 层）。模块私有字段一律用 `declare module` 扩充
+ * （`CharacterResourceResult` / `CharacterOperationConfig` / `SkillExecution`），不要回退到 any。
+ */
+const AGENT_ANY_TYPE = [
+  /\bas\s+any\b/,
+  /:\s*any\b/,
+  /<any\b/,
+  /\bany\[\]/,
+  /&\s*Record<string,\s*unknown>/,
+]
 
-describe('D2 §5：角色模块不经 Record 强转 / as any 读写 cfg（全目录不变式）', () => {
+describe('D2 §5 + r406：角色模块不经 Record 强转读写 cfg、全目录零 any 类型（全目录不变式）', () => {
   const files = readdirSync(AGENT_DIR).filter(f => f.endsWith('.ts'))
   it('扫描面非空（防目录改名后全绿）', () => {
     expect(files.length).toBeGreaterThanOrEqual(50)
@@ -97,7 +112,7 @@ describe('D2 §5：角色模块不经 Record 强转 / as any 读写 cfg（全目
   for (const f of files) {
     it(`mechanics/agents/${f}`, () => {
       const src = stripComments(readFileSync(join(AGENT_DIR, f), 'utf-8'))
-      for (const rx of UNTYPED_CFG_ACCESS) expect(src).not.toMatch(rx)
+      for (const rx of [...UNTYPED_CFG_ACCESS, ...AGENT_ANY_TYPE]) expect(src).not.toMatch(rx)
     })
   }
 })

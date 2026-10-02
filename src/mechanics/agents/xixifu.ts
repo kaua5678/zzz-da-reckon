@@ -249,7 +249,7 @@ function buildXixifuResourceSections(input: AgentResourceSectionsInput) {
 /** 希希芙蚀骨轴内占比（CC-33b 2026-09-27 由 `damagePool.ts` 逐字搬入）：失衡内回复的毒素占总毒素比例（蛇吻手动消耗 → 失衡内爆发，用户口径 2026-08）。
  *  毒牙/终结/连携按轴内单位数折算；C2（连携/终结失衡命中）视为全轴内；平A吐信按非平A轴内占比近似。 */
 function xixifuToxinInAxisFraction(input: DirectRowAxisSplitInput): number {
-  const cr: any = input.charResult
+  const cr = input.charResult
   const { axisInUnits } = input
   const toxin = cr.specResources?.['xixifu_toxin']
   const total = Math.max(0, (toxin?.initialValue ?? 0) + (toxin?.totalGain ?? 0))

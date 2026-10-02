@@ -1,11 +1,12 @@
 import type {
+  AgentCharConfigInput,
   AgentMechanicModule,
   AgentPanelInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import type { SkillExecution } from '@/types/resource'
+import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds } from '@/types/resource'
@@ -105,7 +106,7 @@ peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes, isAxis, settings })
  */
 peiluoProminenceMechanic.directRowBonus = ({ exec, isAxis, buckets, scalar }) => {
   const moveId = exec.moveId ?? ''
-  const pair = moveId === PEILUO_ULT_VERDICT ? ((exec as any).peiluoKagerouPairRatio ?? 0) : 1
+  const pair = moveId === PEILUO_ULT_VERDICT ? (exec.peiluoKagerouPairRatio ?? 0) : 1
   const crit = isAxis
     ? (buckets?.peiluoKagerouMap?.get(moveId) ?? 0)
     : (scalar?.peiluoKagerouPct ?? 0) * pair
@@ -125,14 +126,13 @@ peiluoProminenceMechanic.directRowBonus = ({ exec, isAxis, buckets, scalar }) =>
  *    而不是覆盖——原分支写的也是 `(merged.extraSelfDecibelReward ?? 0) + …`。
  *    因为共享，本钩子的 phase 门只按 converge（与其它角色的写入时机一致）。
  */
-peiluoProminenceMechanic.applyTeamConfig = ({ cfg: cfgIn, phase, cinemaLevel, stunCount }: AgentTeamConfigInput) => {
+peiluoProminenceMechanic.applyTeamConfig = ({ cfg, phase, cinemaLevel, stunCount }: AgentTeamConfigInput) => {
   if (phase !== 'converge') return
-  const cfg = cfgIn as typeof cfgIn & Record<string, unknown>
   const cinema = cinemaLevel ?? 0
   // 连携总次数：轴模式用轴内加权后的覆盖值（由编排层通用注入 cfg），否则 chainCountPerStun × 失衡次数
   // CC-335：额外能力·辉煌军势「连携技回复300喧响」与 applyPanel 暴伤+40% 同门控（未传 panel 的单测桩默认视为激活）
   const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
-  const aaActive = (cfgIn.panel?.additionalAbilityActive ?? 1) > 0
+  const aaActive = (cfg.panel?.additionalAbilityActive ?? 1) > 0
   const chainDecibels = aaActive ? chainTotal * 300 : 0
   cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0) + chainDecibels + (cinema >= 2 ? 1500 : 0)
   // ⚠ 必须**无条件**写（含轴模式）——原编排层分支就是 `peiluoVerdictCount: stunCount`、无门控。
@@ -141,7 +141,7 @@ peiluoProminenceMechanic.applyTeamConfig = ({ cfg: cfgIn, phase, cinemaLevel, st
   // 门控 ⇒ 轴模式行为静默改变（timeGolden 未覆盖该路径、不红）——已改回逐位等价。
   cfg.peiluoVerdictCount = stunCount
 }
-peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel, skills }: any) => {
+peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel, skills }) => {
   // CC-195：日珥账本折算普攻用——余晖 #1–#3 一整套时长（引擎普攻基准段 = 余晖 #3）
   cfg.peiluoBasicCycleSeconds = basicComboCycleSeconds(skills, '1551003')
   // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
@@ -179,14 +179,14 @@ peiluoProminenceMechanic.applyPanel = ({ panel, cinemaLevel }: AgentPanelInput) 
   panel.dmgBonus = (panel.dmgBonus ?? 0) + PEILUO_FLARE_DMG
 }
 // 日珥≥30 暴伤的旧工厂 transform 已由额外能力（applyPanel）取代（d0ecf19）；不挂任何 transform。
-peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }: any) => {
+peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }) => {
   const ultCount = Math.max(0, Math.floor(state.ultimateCount ?? 0))
   if (ultCount <= 0) return
   const lower = 1
   const verdict = Math.min(Math.max(0, Math.floor(Number(cfg.peiluoVerdictCount ?? 0))), ultCount - lower)
   const upper = ultCount - lower - verdict
   // 通用大招行（moveId = 上分支）改写为剩余上分支次数；阳炎暴伤挂执行行
-  const genericIdx = executions.findIndex((e: any) => e.moveId === PEILUO_ULT_UPPER && e.category === 'chain')
+  const genericIdx = executions.findIndex((e) => e.moveId === PEILUO_ULT_UPPER && e.category === 'chain')
   const ultActionTime = genericIdx >= 0 ? (executions[genericIdx].actionTime ?? 0) : (cfg.ultimateActionTime ?? 0)
   const ultCar = genericIdx >= 0 ? (executions[genericIdx].comboAlignRatio ?? 0) : (cfg.ultimateComboAlignRatio ?? 0)
   if (genericIdx >= 0) {
@@ -226,9 +226,19 @@ peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }: any) => 
   // 阳炎配对比例（非轴模式用）：决算只在失衡内放，通常一次失衡 = 上分支+决算各一（都吃阳炎）；
   // 喧响不够只打决算时没有上分支铺垫 → 不吃阳炎。可受益决算数 = min(上分支次数, 决算次数)。
   if (verdict > 0) {
-    const row = executions.find((e: any) => e.moveId === PEILUO_ULT_VERDICT)
+    const row = executions.find((e) => e.moveId === PEILUO_ULT_VERDICT)
     if (row) row.peiluoKagerouPairRatio = Math.min(upper, verdict) / verdict
   }
+}
+
+/** 佩洛日珥账本（patchExecutions 写 cfg → buildResourceResult 搬进结果 → resourceSections 展示） */
+export interface PeiluoProminenceLedger {
+  hitGain: number
+  spend: number
+  lowSpend: number
+  a3: number
+  a4: number
+  basicLoops?: number
 }
 
 /* 日珥账本（数据源 catalog attack_data_0=回复 / attack_data_1=消耗，原始值已 ÷100）：
@@ -257,7 +267,7 @@ const PEILUO_BASIC_GAIN_PER_LOOP = PEILUO_PROMINENCE_GAIN['1551001'] + PEILUO_PR
 const PEILUO_CHAIN_COST = PEILUO_PROMINENCE_SPEND['1551006'] + PEILUO_PROMINENCE_SPEND['1551007'] // a3+a4 连段单价 26.4341
 
 const peiluoUltBranchPatch = peiluoProminenceMechanic.patchExecutions!
-peiluoProminenceMechanic.patchExecutions = (input: any) => {
+peiluoProminenceMechanic.patchExecutions = (input) => {
   peiluoUltBranchPatch(input)
   const { cfg, executions } = input
   let hitGain = 0
@@ -285,7 +295,7 @@ peiluoProminenceMechanic.patchExecutions = (input: any) => {
   cfg.peiluoProminenceLedger = { hitGain, spend, lowSpend, a3, a4, basicLoops }
 }
 
-peiluoProminenceMechanic.buildResourceResult = ({ cfg, state }: any) => {
+peiluoProminenceMechanic.buildResourceResult = ({ cfg, state }): Partial<CharacterResourceResult> => {
   const spec = getAgentSpec('1551')
   const specResources: Record<string, SpecResourceResult> = spec
     ? Object.fromEntries(computeSpecResources(spec, cfg, state))
@@ -311,7 +321,7 @@ peiluoProminenceMechanic.buildResourceResult = ({ cfg, state }: any) => {
 peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) => {
   const spec = getAgentSpec('1551')
   const specSections = spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
-  const result = input.result as any
+  const result = input.result
   const prom = result.specResources?.['peiluo_prominence'] as SpecResourceResult | undefined
   const ledger = result.peiluoProminenceLedger ?? { hitGain: 0, spend: 0, lowSpend: 0, a3: 0, a4: 0 }
   if (!prom) return specSections
@@ -347,7 +357,7 @@ peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) 
  * [终结技]对失衡敌人的暴伤 +40%。用户口径：触发块自身也享受；受益限定上分支与右分支决算（1551016）。
  * 返回 moveId → 实例加权平均暴伤（0-40），非轴模式由调用方按覆盖率滑块近似。 */
 // 特殊技：强袭训令（1551022，佩洛伊斯格挡招式）：主页交互栏填写次数 → 执行行（倍率表 166.4% 以太）
-peiluoProminenceMechanic.buildExecutions = ({ cfg, executions }: any) => {
+peiluoProminenceMechanic.buildExecutions = ({ cfg, executions }) => {
   const count = Math.max(0, Math.floor(cfg.assaultOrderCount ?? 0))
   if (count <= 0) return
   executions.push({
@@ -559,11 +569,11 @@ function jufufuAdjustableRate(cfg: unknown, id: string): number {
 const JUFUFU_WEISHI_ASSIST_RATE = '1391.jufufu_weishi.jufufu_weishi_assist.rate'
 const JUFUFU_WEISHI_TEAM_ULT_RATE = '1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate'
 
-function jufufuRowValue(skills: any, moveId: string, rowId: string): number {
+function jufufuRowValue(skills: AgentCharConfigInput['skills'], moveId: string, rowId: string): number {
   for (const cat of skills?.categories ?? []) {
-    const move = (cat.moves ?? []).find((m: any) => m.id === moveId)
+    const move = (cat.moves ?? []).find(m => m.id === moveId)
     if (!move) continue
-    const row = (move.rows ?? []).find((r: any) => r.id === rowId)
+    const row = (move.rows ?? []).find(r => r.id === rowId)
     const vals = row?.values ?? []
     if (!vals.length) return 0
     return Number(vals[11] ?? vals[vals.length - 1] ?? 0) || 0
@@ -572,7 +582,7 @@ function jufufuRowValue(skills: any, moveId: string, rowId: string): number {
 }
 
 function pushJufufuExec(
-  executions: any[],
+  executions: SkillExecution[],
   moveId: string,
   moveName: string,
   category: string,
@@ -844,7 +854,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
     }
   },
   resourceSections: (input: AgentResourceSectionsInput) => {
-    const cycle = (input.result as any)?.jufufuCycle as JufufuCycleResult | undefined
+    const cycle = input.result?.jufufuCycle
     const awe = input.result.specResources?.['jufufu_awe']
     const weishi = input.result.specResources?.['jufufu_weishi']
     const rows = [
@@ -891,8 +901,34 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
  * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
  */
+/**
+ * r406：本模块 `buildResourceResult` 写、`resourceSections` 等读的结果字段（模块扩充，纯类型、零运行时）。
+ * 此前未声明 ⇒ 写端无类型、读端 `as any`，拼错键两头都不报错。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 佩洛日珥账本 */
+    peiluoProminenceLedger?: PeiluoProminenceLedger
+    /** 橘福福威风/威势循环明细 */
+    jufufuCycle?: JufufuCycleResult
+  }
+}
+
+/** r406：佩洛决算行的阳炎配对比例（patchExecutions 写在决算执行行上，directRowBonus 读） */
+declare module '@/types/resource/execution' {
+  interface SkillExecution {
+    peiluoKagerouPairRatio?: number
+  }
+}
+
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 佩洛非轴决算次数（converge 写 = 失衡次数；patchExecutions 拆大招三分支读）。r406 前经 `: any` 参数读写、未声明 */
+    peiluoVerdictCount?: number
+    /** 佩洛余晖 #1–#3 一整套时长（buildCharConfig 写；日珥账本折算普攻汇总行读） */
+    peiluoBasicCycleSeconds?: number
+    /** 佩洛日珥账本（patchExecutions 写 → buildResourceResult 搬进结果） */
+    peiluoProminenceLedger?: PeiluoProminenceLedger
     /** 扶扶各招式伤害倍率（build 阶段按 moveId 预存） */
     jufufuMoveDmg?: Record<string, number>
     /** 扶扶：上一轮全队终结技次数（converge 由编排层线程注入；≤0 时写 undefined = 不覆盖初值） */
