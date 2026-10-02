@@ -133,6 +133,8 @@
             </div>
             <div v-for="(act, aii) in axis.actions" :key="aii"
               class="sap-block"
+              :class="{ stale: isStaleAct(act) }"
+              :title="isStaleAct(act) ? STALE_TITLE : undefined"
               :style="blockStyle(act, aii === dragging?.aii)"
               @pointerdown.prevent="startDrag($event, ai, aii)">
               <span class="sap-block-text">{{ act.label || moveLabel(act.moveId) }}×{{ act.count }}{{ act.promoteVariant ? '·' + act.promoteVariant : '' }}{{ act.sourceTag === 'gift' ? '·赠' : '' }}<span v-if="actDuration(act) > 0" style="opacity:0.7"> {{ actDuration(act).toFixed(1) }}s</span></span>
@@ -147,6 +149,7 @@
           <div class="sap-stack" v-if="axis.actions.length > 0">
             <div v-for="(act, aii) in axis.actions" :key="aii" class="sap-stack-row">
               <span class="sap-prio" :class="{ top: aii === 0 }">{{ aii + 1 }}</span>
+              <span v-if="isStaleAct(act)" class="sap-warn" :title="STALE_TITLE">已失效</span>
               <n-select :value="act.slot" @update:value="v => editAction(ai, aii, a => { a.slot = v })" :options="slotOptions" size="tiny" style="width:92px" />
               <n-select :value="act.moveId" :options="moveOptions(act.slot)" size="tiny" style="width:168px" @update:value="v => editAction(ai, aii, a => { a.moveId = v; a.sourceTag = undefined })" />
               <span>×</span>
@@ -216,6 +219,9 @@
         </n-collapse-item>
       </n-collapse>
 
+      <div v-if="useAxes && staleActCount > 0" class="sap-warn" style="margin-top:6px">
+        有 {{ staleActCount }} 个轴块属于已不在对应槽位的角色，已不参与计算（换回原角色后恢复生效）
+      </div>
       <!-- 统计 -->
       <div v-if="axisResult && useAxes" class="sap-stats">
         <div class="sap-stat-row">
@@ -249,6 +255,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
+import { isStaleAxisActionFor } from '@/composables/resourceCalc/roundInputs'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
 import type { StunAxisAction, StunAxis } from '@/types/resource'
@@ -258,6 +265,14 @@ import { findUltimateMove, chainMoveKind } from '@/data/chainMoveKind'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
+/**
+ * CC-389 残留块：换人后留在本槽、属于别的角色的动作。引擎已在 `roundInputs#resolveAxes` 出口丢弃（不执行），
+ * 但手动轴（configStore.stunAxes）原样保留——换回原角色时恢复生效。这里标灰提示，免得用户以为它还在起作用。
+ */
+function isStaleAct(act: DeepReadonly<StunAxisAction>): boolean {
+  return isStaleAxisActionFor(act, configStore.team, catalogStore)
+}
+const STALE_TITLE = '该块属于已不在此槽的角色，不参与计算（换回原角色后恢复生效）'
 const message = useMessage()
 const { resourceResult, stunAxisResult: axisResult, stunPoolResult, stackTraversalResult: stack, matchedPlanName, effectiveStunAxes, autoPreset, autoActive, windowDuration, inStunAnomalyState, bossAnomalyState, damagePoolRows } = useResourceCalc()
 
@@ -285,6 +300,7 @@ const hasPlans = computed(() => configStore.stunAxisPlans.length > 0)
 // ⚠ vue-tsc 查不到组件 `v-model` 的赋值（只查显式 `x = …`）⇒ 本页禁用 v-model 绑轴字段，一律 :value + editAxis。
 const axes = computed<DeepReadonly<StunAxis[]>>(() =>
   hasPlans.value || autoActive.value ? effectiveStunAxes.value : configStore.stunAxes)
+const staleActCount = computed(() => axes.value.reduce((n, ax) => n + ax.actions.filter(isStaleAct).length, 0))
 const useAxes = computed({
   get: () => configStore.useStunAxis || autoActive.value,
   set: (v) => {
@@ -941,4 +957,5 @@ function agentName(s: number) {
 .sap-stats { margin-top: 16px; padding: 10px; background: var(--wa-20); border-radius: 6px; }
 .sap-stat-row { display: flex; gap: 14px; font-size: 12px; color: var(--wa-550); }
 .sap-warn { font-size: 10px; color: #f0a020; }
+.sap-block.stale { opacity: .35; border: 1px dashed var(--app-accent-gold); }
 </style>
