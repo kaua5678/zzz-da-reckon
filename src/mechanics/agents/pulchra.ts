@@ -152,7 +152,7 @@ export const pulchraMechanic: AgentMechanicModule = {
   agentIds: [PULCHRA_ID],
   // CC-64c：C6 困迹增伤从「仅追加攻击」扩展为「全伤害」——base 条 pulchra_extra_trap_followup 在 C6 禁用，防与
   // pulchra_cinema_6_trap_all 双计。原在 stores/config.ts#deriveTeammateBuffEnabled 写死 `agentId === '1351' && … && cinemaLevel >= 6`。
-  teammateBuffGate: ({ buffId, self }) => (buffId === 'pulchra_extra_trap_followup' ? !((self?.cinemaLevel ?? -1) >= 6) : undefined),
+  teammateBuffGate: ({ buffId, self }) => (buffId === 'pulchra_extra_trap_followup' ? !(self.cinemaLevel >= 6) : undefined),
   name: '波可娜·猎步/困迹/噬爪',
   description: '核心被动猎步（失衡+30%）+ 核心循环噬爪·噩梦袭影（后台追加攻击，猎步次数×(5/7+1)）+ 额外能力困迹（全队追加攻击+30%）+ 影画1 暴击/影画2 攻击/影画4 耗能-5/影画6 送数+伤害+困迹范围。',
   applyPanel: applyPulchraPanel,

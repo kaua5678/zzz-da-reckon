@@ -72,7 +72,8 @@ export function evalAdditionalAbilityBuffGates(
  * team 也由压缩 `Agent[]` 改为同一份 `ReadonlyTeam`，模块不再按 id 自找、拿下标当槽位）。
  * 原先每条 buff 都问**全部已注册模块**，模块再按 buffId / groupId 自己认领——与 r399 CC-373 修掉的
  * 「派给所有人、各自扫一遍找自己」是同一个病。两个声明者的 6 条门控 buff 都只在本人组（数据核对见 CC-377），故逐值等价。
- * 拥有者不在队时仍会被询问（与原口径一致；store 侧 base 本就为 false）。
+ * r411 CC-385：拥有者不在队时**不询问**（原「仍询问」）。依据：store 侧该组 base 恒为 false；引擎侧不在队拥有者的 buff
+ * 已由 `core/inCombatBuffs.ts#collectInCombatTeamBuffs` 丢弃 ⇒ 询问结果不可能生效，留着只会让模块多写一条「不在队」分支。
  */
 export function teammateBuffGateBlocks(team: ReadonlyTeam, groups: readonly TeammateBuffGroup[]): Set<string> {
   const blocked = new Set<string>()
@@ -81,6 +82,7 @@ export function teammateBuffGateBlocks(team: ReadonlyTeam, groups: readonly Team
     if (!gate) continue
     // 本人判据与原 selfCinema 口径一致：agentId 匹配且 agent 可查
     const self = team.find(member => member.agentId === group.id && !!member.agent)
+    if (!self) continue
     for (const buff of group.buffs ?? []) {
       if (gate({ buffId: buff.id, team, self }) === false) blocked.add(buff.id)
     }

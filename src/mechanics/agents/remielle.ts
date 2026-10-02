@@ -424,12 +424,12 @@ const REMIELLE_BUFF_GATES: Readonly<Record<string, (st: ReturnType<typeof comput
 
 /**
  * CC-64b 档位门控。r410 CC-384：本人由派发器给（`self`），与失衡加成（`remielleDazeTier`）共用同一份 `ReadonlyTeam` + 真实槽位求值；
- * 原 `remielleAdditionalState` 在压缩 `Agent[]` 里按 id 自找、拿下标当槽位，已删。不在队 ⇒ 全 0。
+ * 原 `remielleAdditionalState` 在压缩 `Agent[]` 里按 id 自找、拿下标当槽位，已删。r411 CC-385：不在队不会被询问。
  */
 function remielleTeammateBuffGate({ buffId, team, self }: TeammateBuffGateInput): boolean | undefined {
   const gate = REMIELLE_BUFF_GATES[buffId]
   if (!gate) return undefined
-  return gate(self ? computeRemielleAdditionalState(team, self.slot, self.agent) : { active: false, anomalyCount: 0, tier: 0 })
+  return gate(computeRemielleAdditionalState(team, self.slot, self.agent))
 }
 
 export const remielleMechanic: AgentMechanicModule = {

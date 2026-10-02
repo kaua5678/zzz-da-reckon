@@ -46,8 +46,8 @@ export type ReadonlyTeam = ReadonlyArray<Readonly<MechanicTeamMember>>
 export interface TeammateBuffGateInput {
   buffId: string
   team: ReadonlyTeam
-  /** 本人那一槽（组 id = 本人 agentId 且 agent 可查）；不在队 ⇒ undefined */
-  self: Readonly<MechanicTeamMember> | undefined
+  /** 本人那一槽（组 id = 本人 agentId 且 agent 可查）。拥有者不在队时派发器不询问（r411 CC-385） */
+  self: Readonly<MechanicTeamMember>
 }
 
 export interface AgentPanelInput {
@@ -835,9 +835,10 @@ export interface AgentMechanicModule {
    * 只放**正确性约束**（互斥档位、防双计）；纯默认值偏好不要用本钩子。
    * r403 CC-377：只对**拥有者**派发——组 id = 拥有者 agentId，引擎只把该组的 buff 交给 `getAgentMechanic(group.id)` 的本钩子，
    * 模块不必（也不能）认领别人组里的 buff；返回 undefined = 不表态。
-   * r410 CC-384：`team` = 与其它钩子同一份 `ReadonlyTeam`（真实槽位）；`self` = 派发器给的本人那一槽（要求 agent 可查；
-   * 不在队 ⇒ undefined，此时仍会被询问，按「不在队」口径作答）。原入参是压缩 `Agent[]` + `selfCinema`，模块只能在列表里
-   * 按 id 自找、拿下标当槽位（蕾米埃尔），与同模块其它钩子走两套队伍表示。
+   * r410 CC-384：`team` = 与其它钩子同一份 `ReadonlyTeam`（真实槽位）；`self` = 派发器给的本人那一槽（要求 agent 可查）。
+   * 原入参是压缩 `Agent[]` + `selfCinema`，模块只能在列表里按 id 自找、拿下标当槽位（蕾米埃尔）。
+   * r411 CC-385：**只在拥有者在队时询问**，`self` 必填——不在队拥有者的 buff 在引擎侧已被 `collectInCombatTeamBuffs` 丢弃，
+   * store 侧基础值本为 false，询问结果不可能生效。
    * 现实现：蕾米埃尔（额外能力 tier 1..3 三条攻击 buff、核心被动 refringe_3、prismatic_buildup）；
    * 波可娜（C6 禁用 pulchra_extra_trap_followup，防与 pulchra_cinema_6_trap_all 双计；CC-64c）。
    */
