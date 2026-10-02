@@ -432,6 +432,9 @@ export const hugoMechanic: AgentMechanicModule = {
     getMechanicSetting('hugo.ultimateVerdictRatio', 1),
   ),
   agentIds: [HUGO_ID],
+  // CC-393：强特终结 1291010 由合成行 HUGO_EX_VERDICT_MOVE_ID / HUGO_EX_NORMAL_MOVE_ID 结算（见文件头「本模块补齐终结一击」）；
+  // 不隐藏时编辑器会以 [表] 块提供它，放进轴 = 再按技能表倍率加一份终结一击（重复计伤）
+  axisHiddenMoves: ['1291010'],
   name: '雨果·终末裁决',
   description: '暗渊回响、击破队友攻击、决算倍率、额外能力与影画1/2/4/6。',
   settings: [

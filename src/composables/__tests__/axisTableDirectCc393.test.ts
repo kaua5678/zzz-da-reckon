@@ -65,9 +65,14 @@ describe('CC-393 轴内 [表] 直读判定（编辑器与结算同源）', () =>
     expect(tableRows(calc, 0).map(r => r.moveId)).toEqual([])
   })
 
-  it('结算：模块隐藏招式（伊德海莉连携 #1 1051015，连携固定用 #2）放进轴不出 [表] 直伤', async () => {
-    const calc = await runAxis(['1051', '1211', '1031'], [{ slot: 0, moveId: '1051015', count: 1, startTime: 0 }])
+  it('结算：模块隐藏招式放进轴不出 [表] 直伤（伊德海莉连携 #1 1051015 / 雨果强特终结 1291010）', async () => {
+    // 1051015：连携无条件固定用 #2 1051025；1291010：模块用合成行补齐终结一击（按决算与否拆分）
+    const calc = await runAxis(['1051', '1291', '1031'], [
+      { slot: 0, moveId: '1051015', count: 1, startTime: 0 },
+      { slot: 1, moveId: '1291010', count: 1, startTime: 1 },
+    ])
     expect(tableRows(calc, 0).map(r => r.moveId)).toEqual([])
+    expect(tableRows(calc, 1).map(r => r.moveId)).toEqual([])
   })
 
   it('结算：真正没建模的融合主段（星见雅追击 1091011）可直读，倍率 = 整组求和（#3 + #4）', async () => {
