@@ -270,7 +270,7 @@ function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: Ag
   if (cinemaLevel >= 6) panel.etherDmg = (panel.etherDmg ?? 0) + VIVIAN_C6_ETHER_DMG
   // 影画4：攻击力 +12% → 局内百分比攻击乘区（atkPct），非独立乘算。
   // ⚠ R60 修复：原写 `panel.atkPct = (panel.atkPct ?? 0) + …` —— `applyPanel` 跑在 `calcPanel`
-  // **之后**（`panelPhases.ts:570` vs `:597`），此时累加器 `__atkAccum` 已被 `finalizeCoreStatBonuses`
+  // **之后**（`panelPhases.ts:570` vs `:597`），此时atk 的批次累加器（`buff.ts` batchAccum，r401 前是隐藏键 `__atkAccum`）已被 `finalizeCoreStatBonuses`
   // 清掉；直写 `atkPct` 只写了个**零消费者**的旁路字段（实测 c3→c4 的 `panel.atk` 逐位不变
   // = 1436.0342400000002），滑块静默失效 ⇒ C4 只兑现了「必定暴击」，攻击 +12% 整条没算。
   // ⚠ **不能**改用 `applyStat(panel, 'atkPct', …)`：那会以**当前局内 atk**（已含局内固定加成）为基数

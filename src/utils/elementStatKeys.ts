@@ -1,3 +1,4 @@
+import { getPanelStat } from '@/utils/panelStat'
 import type { PanelValues } from '@/types/catalog'
 import { resolveStatElement } from '@/data/anomalyElement'
 import { ELEMENT_FIELD_PREFIX, enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
@@ -44,5 +45,5 @@ export function elementStatKey(kind: ElementStatKind, element?: string | null): 
 /** 读面板上该元素的字段值；元素无对应字段 ⇒ 0 */
 export function panelElementStat(panel: PanelValues, kind: ElementStatKind, element?: string): number {
   const key = elementStatKey(kind, element)
-  return key ? ((panel as unknown as Record<string, number | undefined>)[key] ?? 0) : 0
+  return key ? (getPanelStat(panel, key) ?? 0) : 0
 }

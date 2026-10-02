@@ -1,3 +1,4 @@
+import { addPanelStat, getPanelStat } from '@/utils/panelStat'
 import type { PanelValues } from '@/types/catalog'
 import { calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import type { AttributeConversionSpec } from './types'
@@ -23,7 +24,7 @@ export function applySpecAttributeConversions(
     // 旧写法 min(cap, 值×覆盖率) 在覆盖率<1 且超上限时偏高。改动时全仓覆盖率恒为 1（调用方不传或传 1、
     // spec 仅 1451 lucia_c6_hp_to_atk 写 coverage:1）⇒ 逐位零差。
     const value = specConversionAmount(conversion, source) * coverage * (conversion.coverage ?? 1)
-    panel[conversion.targetStat] = (panel[conversion.targetStat] ?? 0) + value
+    addPanelStat(panel, conversion.targetStat, value)
   }
 }
 
@@ -49,5 +50,5 @@ function resolveAttributeSource(panel: PanelValues, conversion: AttributeConvers
     return panel.energyRegenOutOfCombat ?? (panel.energyRegen ?? 1.2)
   }
   const from: Readonly<PanelValues> = conversion.sourcePanelPhase === 'outOfCombat' && sources?.outOfCombat ? sources.outOfCombat : panel
-  return from[conversion.sourceStat] ?? 0
+  return getPanelStat(from, conversion.sourceStat) ?? 0
 }

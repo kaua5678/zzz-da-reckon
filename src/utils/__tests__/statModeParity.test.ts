@@ -43,11 +43,10 @@ const BASE_CHAR = {
   parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
-/** 面板字段快照比较（忽略 applyStat 的 `__xxxAccum` 内部累加器） */
+/** 面板字段快照比较（r401 起批次累加器不再挂在面板上，故不再跳过 `__xxxAccum` 键——泄漏会直接判不等） */
 function panelDiffers(a: PanelValues, b: PanelValues): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)])
   for (const k of keys) {
-    if (k.startsWith('__')) continue
     if ((a as any)[k] !== (b as any)[k]) return true
   }
   return false

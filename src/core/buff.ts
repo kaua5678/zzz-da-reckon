@@ -2,6 +2,7 @@
  * Buff 系统核心 - 收集、过滤、应用 buff 效果
  * 支持 fixed / derived / stacked 三种效果类型
  */
+import { addPanelStat, getPanelStat, setPanelStat } from '@/utils/panelStat'
 import type {
   Agent, WEngine, DriveDiscSet, BuffEffect, BuffGroup,
   PanelValues, StatId, TeammateBuff, DriveDiscConfig, SkillDamageTarget, BuffScope, EffectRequirement, StatRules
@@ -104,7 +105,7 @@ export function applyTargetedStat(
   const normalizedStat = normalizeEnemyDebuffStatAlias(stat)
   if (TARGETABLE_STATS.has(stat) && target !== 'all') {
     const key = targetedStatKey(normalizedStat, target)
-    panel[key] = (panel[key] ?? 0) + value
+    addPanelStat(panel, key, value)
     return
   }
   applyStat(panel, normalizedStat, value, mode)
@@ -112,9 +113,9 @@ export function applyTargetedStat(
 
 export function getTargetedStat(panel: PanelValues, stat: string, targetSkillType?: string): number {
   const target = normalizeSkillDamageTarget(targetSkillType)
-  const all = panel[stat] ?? 0
+  const all = getPanelStat(panel, stat) ?? 0
   if (target === 'all') return all
-  return all + (panel[targetedStatKey(stat, target)] ?? 0)
+  return all + (getPanelStat(panel, targetedStatKey(stat, target)) ?? 0)
 }
 
 /** CC-338：按元素族 + 招式目标读取面板字段（内部经 elementStatKey → resolveStatElement 单一来源） */
@@ -131,7 +132,7 @@ export function getTargetedElementStat(
 export function getTargetedStatExtra(panel: PanelValues, stat: string, targetSkillType?: string): number {
   const target = normalizeSkillDamageTarget(targetSkillType)
   if (target === 'all') return 0
-  return panel[targetedStatKey(stat, target)] ?? 0
+  return getPanelStat(panel, targetedStatKey(stat, target)) ?? 0
 }
 
 export function getSkillDmgBonus(panel: PanelValues, targetSkillType?: string): number {
@@ -143,7 +144,7 @@ export function getStunBuildUpBonus(panel: PanelValues, targetSkillType?: string
 }
 
 function addPanelValue(panel: PanelValues, stat: string, value: number): void {
-  panel[stat] = (panel[stat] ?? 0) + value
+  addPanelStat(panel, stat, value)
 }
 
 function applyLegacyEnemyAlias(panel: PanelValues, stat: string, value: number): boolean {
@@ -168,13 +169,7 @@ type PhaseScalarPctStat = 'impactPct' | 'outOfCombatImpactPct' | 'inCombatImpact
 type PhaseScalarFlatStat = 'impactFlat' | 'outOfCombatImpactFlat' | 'inCombatImpactFlat'
 type PhaseScalarStatBonus = PhaseScalarPctStat | PhaseScalarFlatStat
 
-interface CoreStatAccumState {
-  base: number
-  pct: number
-  flat: number
-}
-
-interface ScalarStatAccumState {
+interface StatAccumState {
   base: number
   pct: number
   flat: number
@@ -210,32 +205,42 @@ const PHASE_SCALAR_STAT_BY_BONUS: Partial<Record<StatId, { base: 'impact'; kind:
   inCombatImpactFlat: { base: 'impact', kind: 'flat' },
 }
 
-function coreAccumKey(base: CoreBaseStat): string {
-  return `__${base}Accum`
-}
+/**
+ * 单批次累加器（r401 CC-375）：按**面板对象**存在模块级 WeakMap 里。
+ * r401 前挂在面板的隐藏键 `__hpAccum` 等上（`(panel as any)[key] = state`）——把对象塞进「全是 number」的
+ * `PanelValues`，展开拷贝会把累加器（同一引用）一起带走（`applyBuffs` 因此先 finalize 拷贝），测试快照得跳过 `__` 键，
+ * 且 `__xxxAccum` 恰好匹配 S4 计划的 `${string}__${string}` 模板签名。语义不变：同一面板对象在 finalize 前共享状态；
+ * 新对象（含展开拷贝）没有状态 ≡ 旧写法「拷贝后立即 finalize」。用累加器的只有下面 5 个属性，旧 finalize 删的正是这 5 个键。
+ */
+type AccumStat = CoreBaseStat | 'impact' | 'anomalyMastery'
+const batchAccum = new WeakMap<PanelValues, Map<AccumStat, StatAccumState>>()
 
-function getCoreAccumState(panel: PanelValues, base: CoreBaseStat): CoreStatAccumState {
-  const key = coreAccumKey(base)
-  const existing = (panel as any)[key] as CoreStatAccumState | undefined
+function getAccumState(panel: PanelValues, stat: AccumStat): StatAccumState {
+  let byStat = batchAccum.get(panel)
+  if (!byStat) {
+    byStat = new Map()
+    batchAccum.set(panel, byStat)
+  }
+  const existing = byStat.get(stat)
   if (existing) return existing
-  const state: CoreStatAccumState = { base: panel[base] ?? 0, pct: 0, flat: 0 }
-  ;(panel as any)[key] = state
+  const state: StatAccumState = { base: panel[stat] ?? 0, pct: 0, flat: 0 }
+  byStat.set(stat, state)
   return state
 }
 
-function recalcCoreStat(panel: PanelValues, base: CoreBaseStat, state: CoreStatAccumState): void {
+function recalcAccumStat(panel: PanelValues, stat: AccumStat, state: StatAccumState): void {
   // 同一批次内：先汇总百分比，再统一乘入，最后加固定值。
   // 例如：最终局内攻击 = 局外攻击 × (1 + Σ局内大攻击) + Σ局内小攻击。
-  panel[base] = state.base * (1 + state.pct / 100) + state.flat
+  panel[stat] = state.base * (1 + state.pct / 100) + state.flat
 }
 
 function applyCoreStatBonus(panel: PanelValues, stat: CoreStatBonus, value: number): void {
   const meta = CORE_STAT_BY_BONUS[stat]
   if (!meta) return
-  const state = getCoreAccumState(panel, meta.base)
+  const state = getAccumState(panel, meta.base)
   if (meta.kind === 'pct') state.pct += value
   else state.flat += value
-  recalcCoreStat(panel, meta.base, state)
+  recalcAccumStat(panel, meta.base, state)
 }
 
 function applyPhaseScalarStatBonus(panel: PanelValues, stat: PhaseScalarStatBonus, value: number): void {
@@ -244,38 +249,16 @@ function applyPhaseScalarStatBonus(panel: PanelValues, stat: PhaseScalarStatBonu
   applyScalarStatBonus(panel, meta.base, value, meta.kind)
 }
 
-function scalarAccumKey(stat: string): string {
-  return `__${stat}Accum`
-}
-
-function getScalarAccumState(panel: PanelValues, stat: string): ScalarStatAccumState {
-  const key = scalarAccumKey(stat)
-  const existing = (panel as any)[key] as ScalarStatAccumState | undefined
-  if (existing) return existing
-  const state: ScalarStatAccumState = { base: panel[stat] ?? 0, pct: 0, flat: 0 }
-  ;(panel as any)[key] = state
-  return state
-}
-
-function recalcScalarStat(panel: PanelValues, stat: string, state: ScalarStatAccumState): void {
-  // 同一批次内：百分比加成先汇总乘基础值，再加固定值。
-  panel[stat] = state.base * (1 + state.pct / 100) + state.flat
-}
-
-function applyScalarStatBonus(panel: PanelValues, stat: StatId, value: number, mode: string): void {
-  const state = getScalarAccumState(panel, stat)
+function applyScalarStatBonus(panel: PanelValues, stat: 'impact' | 'anomalyMastery', value: number, mode: string): void {
+  const state = getAccumState(panel, stat)
   if (mode === 'pct') state.pct += value
   else state.flat += value
-  recalcScalarStat(panel, stat, state)
+  recalcAccumStat(panel, stat, state)
 }
 
 /** 清理 applyStat 在单个批次内使用的累计状态 */
 export function finalizeCoreStatBonuses(panel: PanelValues): PanelValues {
-  delete (panel as any).__hpAccum
-  delete (panel as any).__atkAccum
-  delete (panel as any).__defAccum
-  delete (panel as any).__impactAccum
-  delete (panel as any).__anomalyMasteryAccum
+  batchAccum.delete(panel)
   return panel
 }
 
@@ -492,7 +475,7 @@ export type SourcePanelsByOwner = Record<string, Partial<Record<BuffScope, Panel
 function getPanelSourceStatValue(panel: PanelValues, stat: string): number | undefined {
   if (stat === 'energyRegenTotal') return calcEnergyRegenTotal(panel)
   if (stat === 'flashEnergyRegenTotal') return calcFlashEnergyRegenTotal(panel)
-  return panel[stat]
+  return getPanelStat(panel, stat)
 }
 
 function cloneEffectWithSourceValue(effect: BuffEffect, buff: TeammateBuff, sourcePanels?: SourcePanelsByOwner): BuffEffect {
@@ -617,7 +600,7 @@ function evalFormulaExpression(expression: string, x: number, s: number, p: numb
 
 function getEffectSourceValue(effect: BuffEffect, panel?: PanelValues): number {
   const source = (effect as any).source
-  const panelValue = effect.sourceStat && panel ? panel[effect.sourceStat] : undefined
+  const panelValue = effect.sourceStat && panel ? getPanelStat(panel, effect.sourceStat) : undefined
   return Number(effect.dynamicSourceValue ?? panelValue ?? source?.defaultValue ?? effect.defaultSourceValue ?? 0)
 }
 
@@ -797,8 +780,8 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     // 角色专属面板属性（`@/data/agentPanelStats`，如蕾米埃尔 14 项）也走这里：`emptyPanel()` 已按表铺好初值，
     // 按键名直加即可（CC-34a 2026-09-27 删掉了与本分支等价的 14 个逐字段 case）。
     default:
-      if (!(stat in panel)) panel[stat] = 0
-      panel[stat] += value
+      if (!(stat in panel)) setPanelStat(panel, stat, 0)
+      setPanelStat(panel, stat, (getPanelStat(panel, stat) as number) + value)
       break
   }
 }

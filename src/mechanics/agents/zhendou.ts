@@ -69,7 +69,7 @@ function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: A
   }
   if (cinemaLevel >= 4) {
     // ⚠ R60 修复：原写 `panel.hpPct = (panel.hpPct ?? 0) + 8` —— `applyPanel` 跑在 `calcPanel`
-    // **之后**（`panelPhases.ts:570` vs `:597`），累加器 `__hpAccum` 已被 `finalizeCoreStatBonuses`
+    // **之后**（`panelPhases.ts:570` vs `:597`），hp 的批次累加器（`buff.ts` batchAccum，r401 前是隐藏键 `__hpAccum`）已被 `finalizeCoreStatBonuses`
     // 清掉；直写 `hpPct` 只写了个**零消费者**的旁路字段（实测 c3→c4 的 `panel.hp` 逐位不变
     // = 11315.3304）。真斗的贯穿力基底 = `atk×0.3 + hp×0.1 + sheerForceFlat`（`damage.ts:187`）
     // ⇒ 该字段是**伤害通道**（不是生存向），静默失效会低估 C4。

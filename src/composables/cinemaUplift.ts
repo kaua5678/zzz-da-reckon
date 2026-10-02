@@ -29,6 +29,7 @@
  * 见 `analysisScenario.ts`）里改命座等级 / stunCountLock 并读该场景的 `calc`，**不碰 UI store**；
  * 迁移前它直接改 UI configStore、靠页面传入的三个读数闭包读 UI 现场、finally 再恢复。
  */
+import { getPanelStat } from '@/utils/panelStat'
 import { nextTick } from 'vue'
 import { useCatalogStore } from '@/stores/catalog'
 import type { AnalysisContext } from '@/composables/analysisScenario'
@@ -255,7 +256,7 @@ export async function analyzeCinemaUplift(
       const pb = panelBefore
 
       const changedFields = pb && panelAfter
-        ? Object.keys(panelAfter).filter(k => Math.abs((panelAfter[k] ?? 0) - (pb[k] ?? 0)) > 1e-9)
+        ? Object.keys(panelAfter).filter(k => Math.abs((getPanelStat(panelAfter, k) ?? 0) - (getPanelStat(pb, k) ?? 0)) > 1e-9)
         : []
       const gainPct = before.dmg > 0 ? ((after.dmg - before.dmg) / before.dmg) * 100 : 0
       const metrics = buildCinemaMetrics(before.metrics, after.metrics)

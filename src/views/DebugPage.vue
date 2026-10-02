@@ -97,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { getPanelStat } from '@/utils/panelStat'
 import { computed, onMounted } from 'vue'
 import { NAlert, NCard, NGi, NGrid, NSelect, NSpace, NTag } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
@@ -329,7 +330,7 @@ const debugRows = computed<DebugRow[]>(() => {
 function lineValue(stat: string): string {
   const p = currentPanel.value
   if (!p) return '-'
-  const value = p[stat] ?? 0
+  const value = getPanelStat(p, stat) ?? 0
   return isPctStat(stat) ? pct(value) : fmt(value, 2)
 }
 
@@ -343,7 +344,7 @@ function elementSheerDmgBonus(): number {
   const element = selectedAgent.value?.damageElement
   if (!p || !element) return 0
   const key = elementStatKey('sheerDmg', element)
-  return key ? p[key] ?? 0 : 0
+  return key ? getPanelStat(p, key) ?? 0 : 0
 }
 
 const attributeFormulaSections = computed(() => {
@@ -390,7 +391,7 @@ const attributeFormulaSections = computed(() => {
       title: '增伤区',
       formula: 'dmgBonusZone = dmgBonus + elementDmg + skillDmgBonus(target)',
       lines: [
-        `通用增伤 ${pct(p.dmgBonus ?? 0)}；当前元素字段 ${elementKey} = ${pct(p[elementKey] ?? 0)}`,
+        `通用增伤 ${pct(p.dmgBonus ?? 0)}；当前元素字段 ${elementKey} = ${pct(getPanelStat(p, elementKey) ?? 0)}`,
         `定向招式增伤：${skillTargeted}`,
       ],
     },

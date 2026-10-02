@@ -1,4 +1,5 @@
 /** spec 可执行校验执行器（CC-248：自 src/specs/verify.ts 迁入测试基础设施——依赖 core/panel.emptyPanel，唯一调用者为 specs/__tests__/verify.test.ts） */
+import { getPanelStat, setPanelStat } from '@/utils/panelStat'
 import { emptyPanel } from '@/core/panel'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 import type { AgentMechanicSpec, VerificationSpec } from '@/specs/types'
@@ -29,7 +30,7 @@ function runSpecVerification(
 ): SpecVerificationResult {
   const panel = emptyPanel()
   for (const [stat, value] of Object.entries(verification.panel)) {
-    panel[stat] = value
+    setPanelStat(panel, stat, value)
   }
 
   applySpecAttributeConversions(panel, spec.attributeConversions)
@@ -39,7 +40,7 @@ function runSpecVerification(
   let pass = true
 
   for (const [stat, expected] of Object.entries(verification.expected)) {
-    const value = panel[stat] ?? 0
+    const value = getPanelStat(panel, stat) ?? 0
     actual[stat] = value
     if (Math.abs(value - expected) > tolerance) {
       pass = false

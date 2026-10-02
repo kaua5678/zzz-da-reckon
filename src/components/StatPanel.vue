@@ -498,6 +498,7 @@
 </template>
 
 <script setup lang="ts">
+import { getPanelStat } from '@/utils/panelStat'
 import { ref, computed } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
 import type { DamageElement, PanelValues } from '@/types/catalog'
@@ -563,7 +564,7 @@ const SKILL_DMG_LABELS: Record<string, string> = {
 
 const skillDmgRows = computed(() => {
   return Object.entries(SKILL_DMG_LABELS)
-    .map(([key, label]) => ({ key, label, value: props.panel[key] ?? 0 }))
+    .map(([key, label]) => ({ key, label, value: getPanelStat(props.panel, key) ?? 0 }))
     .filter(row => row.value !== 0)
 })
 
@@ -608,7 +609,7 @@ const ELEMENT_SHEER_DMG_LABELS: Record<string, string> = {
 
 const elementDmg = computed(() => {
   const key = elementStatKey('dmg', props.damageElement)
-  if (key) return props.panel[key] ?? 0
+  if (key) return getPanelStat(props.panel, key) ?? 0
   const p = props.panel
   return Math.max(p.physicalDmg, p.fireDmg, p.iceDmg,
     p.electricDmg, p.etherDmg, p.windDmg, p.lumifluxDmg)
@@ -619,7 +620,7 @@ const elementDmgRows = computed(() => {
   const currentKey = elementStatKey('dmg', props.damageElement)
   return Object.entries(ELEMENT_DMG_LABELS)
     .filter(([key]) => !compactPreview.value || !currentKey || key === currentKey)
-    .map(([key, label]) => ({ key, label, value: p[key] ?? 0 }))
+    .map(([key, label]) => ({ key, label, value: getPanelStat(p, key) ?? 0 }))
     .filter(row => row.value !== 0)
 })
 
@@ -632,7 +633,7 @@ const elementSheerDmgRows = computed(() => {
   const currentKey = elementStatKey('sheerDmg', props.damageElement)
   return Object.entries(ELEMENT_SHEER_DMG_LABELS)
     .filter(([key]) => !currentKey || key === currentKey)
-    .map(([key, label]) => ({ key, label, value: p[key] ?? 0 }))
+    .map(([key, label]) => ({ key, label, value: getPanelStat(p, key) ?? 0 }))
     .filter(row => row.value !== 0)
 })
 

@@ -96,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import { getPanelStat } from '@/utils/panelStat'
 import { computed, onMounted, ref } from 'vue'
 import { NCard, NCollapse, NCollapseItem, NGi, NGrid, NTabPane, NTabs } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
@@ -124,7 +125,7 @@ interface FinalRow { stat: string; label: string; out: string; in: string; delta
 interface ZoneSummary { title: string; main: string; lines: string[] }
 
 function num(p: PanelValues | null, stat: string): number {
-  return p ? (p[stat] ?? 0) : 0
+  return p ? (getPanelStat(p, stat) ?? 0) : 0
 }
 function disp(stat: string, v: number): string {
   return isPctStat(stat) ? pct(v) : fmt(v, 2)
@@ -277,8 +278,8 @@ const panels = computed(() => {
     ]
 
     // ---- 乘区数值汇总（直伤链 / 异常链，按公式位置） ----
-    const elementDmg = elementDmgKey ? pIn[elementDmgKey] ?? 0 : 0
-    const elementRes = elementResKey ? pIn[elementResKey] ?? 0 : 0
+    const elementDmg = elementDmgKey ? getPanelStat(pIn, elementDmgKey) ?? 0 : 0
+    const elementRes = elementResKey ? getPanelStat(pIn, elementResKey) ?? 0 : 0
     const skillDmg = pIn.skillDmgBonus ?? 0
     const dmgTotal = (pIn.dmgBonus ?? 0) + elementDmg + skillDmg
     const critRateRaw = pIn.critRate ?? 0
@@ -287,8 +288,8 @@ const panels = computed(() => {
     const critMult = isSharpen
       ? sharpCritMultiplier(critRateRaw, pIn.sharpCritDmg ?? 0)
       : expectedCritMultiplier(critRateRaw, pIn.critDmg ?? 0)
-    const sharpTotal = (pIn.sharpDmgBonus ?? 0) + (elementSharpKey ? (pIn[elementSharpKey] ?? 0) : 0)
-    const penDmgTotal = (pIn.penDmgBonus ?? 0) + (pIn.sheerDmgBonus ?? 0) + (elementSheerKey ? (pIn[elementSheerKey] ?? 0) : 0)
+    const sharpTotal = (pIn.sharpDmgBonus ?? 0) + (elementSharpKey ? (getPanelStat(pIn, elementSharpKey) ?? 0) : 0)
+    const penDmgTotal = (pIn.penDmgBonus ?? 0) + (pIn.sheerDmgBonus ?? 0) + (elementSheerKey ? (getPanelStat(pIn, elementSheerKey) ?? 0) : 0)
     const resTotal = (pIn.enemyResReduction ?? 0) + elementRes
     const stunMultTotal = (pIn.stunDmgMultiplierBonus ?? 0) + (pIn.stunDmgMultiplierBonusAlways ?? 0)
     // CC-223：风异常增伤只对风属性异常生效（引擎按异常元素判定：damage.ts / anomalyPool helpers），不并入通用异常增伤，单列
@@ -318,12 +319,12 @@ const panels = computed(() => {
       {
         title: '锐化增伤乘区（锋御独立，公式3.5）',
         main: `1 + ${pct(sharpTotal)} = ${fmt(1 + sharpTotal / 100, 4)}`,
-        lines: [`锐化增伤 ${pct(pIn.sharpDmgBonus ?? 0)}${elementSharpKey ? ` + 元素锐化 ${pct(pIn[elementSharpKey] ?? 0)}` : ''}`, '仅锋御（防御力基底）角色生效'],
+        lines: [`锐化增伤 ${pct(pIn.sharpDmgBonus ?? 0)}${elementSharpKey ? ` + 元素锐化 ${pct(getPanelStat(pIn, elementSharpKey) ?? 0)}` : ''}`, '仅锋御（防御力基底）角色生效'],
       },
       {
         title: '贯穿增伤乘区（命破独立，公式4）',
         main: `1 + ${pct(penDmgTotal)} = ${fmt(1 + penDmgTotal / 100, 4)}`,
-        lines: [`贯穿增伤 ${pct(pIn.penDmgBonus ?? 0)} + 贯穿伤害 ${pct(pIn.sheerDmgBonus ?? 0)}${elementSheerKey ? ` + 元素贯穿 ${pct(pIn[elementSheerKey] ?? 0)}` : ''}`, '仅命破（贯穿力基底）角色生效'],
+        lines: [`贯穿增伤 ${pct(pIn.penDmgBonus ?? 0)} + 贯穿伤害 ${pct(pIn.sheerDmgBonus ?? 0)}${elementSheerKey ? ` + 元素贯穿 ${pct(getPanelStat(pIn, elementSheerKey) ?? 0)}` : ''}`, '仅命破（贯穿力基底）角色生效'],
       },
       isSharpen
         ? {
