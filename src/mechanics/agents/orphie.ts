@@ -4,6 +4,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
+import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 /**
  * 奥菲丝&「鬼火」（1301，火·强攻，新艾利都防卫军）—— 自身机制补录模块。
@@ -189,7 +190,7 @@ function applyOrphieTeamConfig(input: AgentTeamConfigInput): void {
 /** 后台自动招式：蚀光一闪（基础） + 灼红旋涡（能量替换）；席德队额外前台小心脚下；影画6 火刀衔接灼红旋涡 */
 function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
-  const n = Number((cfg as any)['setting:orphie.backstageCastCount'] ?? -1)
+  const n = Number(cfgMechanicSettingRaw(cfg, 'orphie.backstageCastCount') ?? -1)
   // 次数 = 有效后台时间 / 相位延后等效 CD（2026-08-30 通用口径，core/effectiveTime.ts）：
   // 原主C 21/副C 30 静态分档删除——本人前台时间占比由等效 CD 接管（主C 前台长 → 后台自动自然少）；
   // 前台块长 = 前台时间 / 切上次数（切上前台频率滑块 × 非平A前台动作次数）；滑块为手动出手次数，仍受时间上限封顶。
@@ -197,12 +198,12 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   const block = frontBlockSeconds(
     state.frontlineTime ?? 0,
     countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
-    Number((cfg as any)['setting:orphie.frontSwitchRatio'] ?? 1),
+    Number(cfgMechanicSettingRaw(cfg, 'orphie.frontSwitchRatio') ?? 1),
     ORPHIE_BACKSTAGE_CD_SECONDS,
   )
   const timeCap = Math.floor(backstageEff / phaseDelayedCooldown(ORPHIE_BACKSTAGE_CD_SECONDS, state.frontlineTime, effectiveBattleTime(cfg), block))
   const backstageCast = n >= 0 ? Math.min(Math.max(0, Math.floor(n)), timeCap) : timeCap
-  const rRaw = Number((cfg as any)['setting:orphie.frontEnergyRatio'] ?? -1)
+  const rRaw = Number(cfgMechanicSettingRaw(cfg, 'orphie.frontEnergyRatio') ?? -1)
   const frontRatio = Math.max(0, Math.min(1, rRaw >= 0 ? rRaw : Number((cfg as any).orphieAutoFrontRatio ?? 0)))
 
   // 回能副C：能量必须走迭代能量总账（state.totalEnergy），不再用种子近似
@@ -263,7 +264,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 影画6 火刀衔接灼红旋涡（前台）：高压火枪火刀（basicAttackTime/2 口径）后点按衔接，默认全操作
   if (cinema >= 6) {
-    const linkRatio = Math.max(0, Math.min(1, Number((cfg as any)['setting:orphie.bladeLinkRatio'] ?? 1)))
+    const linkRatio = Math.max(0, Math.min(1, Number(cfgMechanicSettingRaw(cfg, 'orphie.bladeLinkRatio') ?? 1)))
     const bladeHits = Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2))
     const linkCount = Math.floor(bladeHits * linkRatio)
     push(ORPHIE_EX_VORTEX, '强化特殊技：灼红旋涡（火刀衔接，前台）', linkCount)

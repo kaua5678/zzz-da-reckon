@@ -14,6 +14,7 @@ import { getSkillLevelCoef } from '@/core/skillLevel'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
+import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 const YIDHARI_AGENT_ID = '1051'
 
@@ -98,10 +99,10 @@ function buildYidhariCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInp
   const cinema4Enabled = cinemaLevel >= 4
   const decibelPerHpPct = props.decibelPerHpPct * (cinema4Enabled ? 1 + props.cinema4DecibelBonusPct / 100 : 1)
   const record = cfg as unknown as Record<string, unknown>
-  const missingHpPct = Math.max(0, Math.min(1, Number(record['setting:yidhari.exHealMissingHpPct'] ?? 75) / 100))
-  const hpBurnPctPerSecond = Math.max(0, Math.min(100, Number(record['setting:yidhari.hpBurnPctPerSecond'] ?? 0.15)))
-  const exPerStun = Math.max(1, Math.floor(Number(record['setting:yidhari.exPerStun'] ?? (cinemaLevel >= 1 ? 3 : 2))))
-  const tentacleInterval = Math.max(1, Number(record['setting:yidhari.tentacleInterval'] ?? 13.5))
+  const missingHpPct = Math.max(0, Math.min(1, Number(cfgMechanicSettingRaw(cfg, 'yidhari.exHealMissingHpPct') ?? 75) / 100))
+  const hpBurnPctPerSecond = Math.max(0, Math.min(100, Number(cfgMechanicSettingRaw(cfg, 'yidhari.hpBurnPctPerSecond') ?? 0.15)))
+  const exPerStun = Math.max(1, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'yidhari.exPerStun') ?? (cinemaLevel >= 1 ? 3 : 2))))
+  const tentacleInterval = Math.max(1, Number(cfgMechanicSettingRaw(cfg, 'yidhari.tentacleInterval') ?? 13.5))
 
   record.yidhariCinema4Enabled = cinema4Enabled
   record.yidhariDecibelPerHpPct = decibelPerHpPct

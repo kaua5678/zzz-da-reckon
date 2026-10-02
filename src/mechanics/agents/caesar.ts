@@ -22,6 +22,7 @@ import type {
   AgentPanelInput,
   AgentResourceInput,
 } from '../types'
+import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 export const CAESAR_ID = '1071'
 
@@ -65,7 +66,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const supportPoints = CAESAR_C4_SUPPORT_POINTS_PER_CHAIN_ULT * (chainTotal + ultCount)
   const icdCap = Math.max(0, Math.floor(Number((cfg as any).battleTime ?? 180) / CAESAR_C4_SUBSTITUTE_ICD_SECONDS))
   const maxExtra = Math.min(supportPoints, icdCap)
-  const slider = Math.max(0, Math.floor(Number((cfg as any)['setting:caesar.c4SubstitutionCount'] ?? 0)))
+  const slider = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'caesar.c4SubstitutionCount') ?? 0)))
   const extraEx = Math.min(maxExtra, slider)
   if (extraEx <= 0) return
   executions.push({

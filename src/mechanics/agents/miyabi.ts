@@ -22,6 +22,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { findMoveById } from '@/data/moveTableQueries'
+import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 const MIYABI_AGENT_ID = '1091'
 /** 烈霜元素（独立元素，可在紊乱中与冰互紊） */
@@ -258,8 +259,8 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 霜灼·破直伤执行（倍率固定1500%×（1+C4），毕业终局）
   // 次数：默认按紊乱次数估算（每次紊乱伴随烈霜异常触发，贴近霜灼·破频率），用户可调上限
-  const frostburnCountSetting = Number((cfg as unknown as Record<string, unknown>)['setting:miyabi.frostburnBreakCount'] ?? 0)
-  const frostburnRate = Number((cfg as unknown as Record<string, unknown>)['setting:miyabi.frostburnBreakRate'] ?? 1)
+  const frostburnCountSetting = Number(cfgMechanicSettingRaw(cfg, 'miyabi.frostburnBreakCount') ?? 0)
+  const frostburnRate = Number(cfgMechanicSettingRaw(cfg, 'miyabi.frostburnBreakRate') ?? 1)
   const safeRate = Math.max(0, Math.min(2, Number.isFinite(frostburnRate) ? frostburnRate : 1))
   const baseCount = frostburnCountSetting > 0
     ? frostburnCountSetting

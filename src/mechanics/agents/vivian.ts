@@ -34,7 +34,7 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting as setting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
@@ -337,7 +337,7 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
   if (followUpCount <= 0) return
 
   // 命中异常目标占比：异常角色异常覆盖率高，默认满覆盖（用户口径 2026-08）
-  const hitAnomalyRatio = clampRatio(Number((cfg as unknown as Record<string, unknown>)['setting:vivian.releaseCoverage'] ?? 1))
+  const hitAnomalyRatio = clampRatio(Number(cfgMechanicSettingRaw(cfg, 'vivian.releaseCoverage') ?? 1))
   const releaseCount = Math.max(0, Math.floor(followUpCount * hitAnomalyRatio))
 
   const perTen: Record<string, number> = {}
@@ -402,7 +402,7 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
   // 预言 DoT：悬落/落羽生花命中异常目标施加，每 0.55 秒 55% 攻击力以太伤害。
   // 次数 = floor(战斗时长 × 异常覆盖占比 × 命中异常占比 / 0.55)；异常角色默认满覆盖。
   // 战斗时长扣 boss 无敌（dot 不在无敌期间结算，core/effectiveTime.ts）。
-  const dotCoverage = clampRatio(Number((cfg as unknown as Record<string, unknown>)['setting:vivian.dotCoverage'] ?? 1))
+  const dotCoverage = clampRatio(Number(cfgMechanicSettingRaw(cfg, 'vivian.dotCoverage') ?? 1))
   const dotEffectiveSeconds = minusInvincibleTime(totalTime, cfg)
   const dotTicks = Math.max(0, Math.floor((dotEffectiveSeconds * dotCoverage * hitAnomalyRatio) / VIVIAN_PREDICTION_DOT_INTERVAL))
   if (dotTicks > 0) {

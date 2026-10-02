@@ -9,6 +9,7 @@ import type {
 } from '../types'
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds } from '@/types/resource'
+import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
@@ -146,7 +147,7 @@ function buildQianxiaCharConfig({ cfg, cinemaLevel, team, panel, skills }: Agent
   record.qianxiaAttackAgents = attackAgents
   record.qianxiaAnomalyAgents = anomalyAgents
   // 触发者命中数近似：滑块 0 = 按标记供给同量级（postRound 后标记供给写入）
-  const manualHits = Math.max(0, Math.floor(Number(record['setting:qianxia.gazeTriggerHits'] ?? 0) || 0))
+  const manualHits = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'qianxia.gazeTriggerHits') ?? 0) || 0))
   record.qianxiaTriggerHits = manualHits
   if ((panel?.additionalAbilityActive ?? 0) > 0) {
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + QIANXIA_FIELD_ENTRY_ENERGY

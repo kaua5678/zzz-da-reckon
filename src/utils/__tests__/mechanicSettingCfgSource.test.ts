@@ -3,11 +3,15 @@
  *
  * 此前 `setting:${id}` 与读取 helper 在 30 多个角色模块各抄一份，语义有 4 种变体。
  * 新代码请用 `mechanicSettingCfgKey(id)`（写/取键）或 `cfgMechanicSetting(cfg, id, fallback)`（读值）。
+ *
+ * CC-363（r393）：原锁只认模板字面量 `` `setting:${` ``，带引号的硬编码键 `'setting:<id>'` 漏网——
+ * 11 个模块 24 处绕过 helper 直接 `(cfg as any)['setting:…']` / `record['setting:…']`。已全部改走
+ * `cfgMechanicSettingRaw(cfg, id)`（原始值，外层 `Number(… ?? d)` 原样保留 ⇒ 零差），并把引号字面量也锁上。
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { cfgMechanicSetting, mechanicSettingCfgKey } from '../mechanicSettingCfg'
+import { cfgMechanicSetting, cfgMechanicSettingRaw, mechanicSettingCfgKey } from '../mechanicSettingCfg'
 
 const SRC = resolve(__dirname, '../..')
 const OWNER = 'utils/mechanicSettingCfg.ts'
@@ -25,7 +29,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe('CC-235 机制设置 cfg 键单一来源', () => {
-  it('除 utils/mechanicSettingCfg.ts 外，非测试源码不出现 `setting:${` 模板字面量', () => {
+  it('除 utils/mechanicSettingCfg.ts 外，非测试源码不出现 `setting:${` 模板字面量或 \'setting:…\' 引号字面量', () => {
     const hits: string[] = []
     for (const p of walk(SRC)) {
       const rel = relative(SRC, p).split('\\').join('/')
@@ -33,7 +37,7 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
       readFileSync(p, 'utf-8').split('\n').forEach((line, i) => {
         const t = line.trim()
         if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return
-        if (line.includes('`setting:${')) hits.push(`${rel}:${i + 1}`)
+        if (line.includes('`setting:${') || /['"]setting:/.test(line)) hits.push(`${rel}:${i + 1}`)
       })
     }
     expect(hits).toEqual([])
@@ -50,5 +54,13 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
     expect(cfgMechanicSetting({ [key]: NaN }, 'x.y', 5)).toBe(5)
     expect(cfgMechanicSetting({ [key]: 'abc' }, 'x.y', 5)).toBe(5)
     expect(cfgMechanicSetting(undefined, 'x.y', 5)).toBe(5)
+  })
+
+  it('cfgMechanicSettingRaw 返回原始值、不转换（字符串轴值兼容）', () => {
+    const key = mechanicSettingCfgKey('x.y')
+    expect(cfgMechanicSettingRaw({ [key]: 0.3 }, 'x.y')).toBe(0.3)
+    expect(cfgMechanicSettingRaw({ [key]: 'full' }, 'x.y')).toBe('full')
+    expect(cfgMechanicSettingRaw({}, 'x.y')).toBeUndefined()
+    expect(cfgMechanicSettingRaw(undefined, 'x.y')).toBeUndefined()
   })
 })

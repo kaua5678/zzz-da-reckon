@@ -12,7 +12,7 @@ import { basicSummarySeconds } from '@/types/resource'
 import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
-import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 /** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
 export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
@@ -628,7 +628,7 @@ function jufufuCycleOf(
     frontActionCount: executions
       ? countFrontActions(executions as SkillExecution[], { fusedMoveIds: [cfg.assistFollowUpMoveId] })
       : undefined,
-    frontSwitchRatio: Number((cfg as any)['setting:jufufu.frontSwitchRatio'] ?? 0.7),
+    frontSwitchRatio: Number(cfgMechanicSettingRaw(cfg, 'jufufu.frontSwitchRatio') ?? 0.7),
       exSpecialCount: state.exSpecialCount ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
     parryCount: cfg.parryCount ?? 0,

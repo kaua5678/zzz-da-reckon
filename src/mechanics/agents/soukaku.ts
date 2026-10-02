@@ -29,6 +29,7 @@ import type {
   AgentMechanicModule,
   AgentResourceInput,
 } from '../types'
+import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 export const SOUKAKU_ID = '1131'
 
@@ -100,7 +101,7 @@ export function assignSoukakuUltNeighborEnergy(
 }
 
 function clampSwings(cfg: unknown): number {
-  const raw = Math.floor(Number((cfg as Record<string, unknown>)['setting:soukaku.exPressCount'] ?? SOUKAKU_SWINGS_DEFAULT))
+  const raw = Math.floor(Number(cfgMechanicSettingRaw(cfg, 'soukaku.exPressCount') ?? SOUKAKU_SWINGS_DEFAULT))
   return Math.min(SOUKAKU_SWINGS_MAX, Math.max(SOUKAKU_SWINGS_MIN, raw))
 }
 
@@ -114,7 +115,7 @@ export function soukakuPerExExtraTime(cfg: unknown): { necessaryTime: number; co
   const record = cfg as Record<string, unknown>
   const swings = clampSwings(cfg)
   const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[String(record.bodySize ?? 'large')] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
-  const chop = Math.round(Number(record['setting:soukaku.chopSlam'] ?? 0)) >= 1
+  const chop = Math.round(Number(cfgMechanicSettingRaw(cfg, 'soukaku.chopSlam') ?? 0)) >= 1
   const fan2 = swings >= 2 ? SOUKAKU_FAN_ACTION_TIME : 0
   const balls = hits > 0 ? swings * SOUKAKU_WIND_BALL_ACTION_TIME : 0
   const slam = chop ? SOUKAKU_CHOP_SLAM_ACTION_TIME : SOUKAKU_SLAM_ACTION_TIME
@@ -133,7 +134,7 @@ function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   // 影画2 满层转回能：涡流满层后再获得涡流 → 回复 1.2 能量。逐帧概率/涡流状态机未建模，
   // 按可调触发次数注入能量池（默认 5 次，用户按实际对局调整）。
   if ((cinemaLevel ?? 0) >= 2) {
-    const count = Math.max(0, Math.floor(Number((cfg as any)['setting:soukaku.c2RefundCount'] ?? 5)))
+    const count = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'soukaku.c2RefundCount') ?? 5)))
     cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + SOUKAKU_C2_ENERGY_PER_TRIGGER * count
   }
 }
@@ -144,7 +145,7 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
   const swings = clampSwings(cfg)
   const bodySize = String((cfg as unknown as Record<string, unknown>).bodySize ?? 'large')
   const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[bodySize] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
-  const chop = Math.round(Number((cfg as unknown as Record<string, unknown>)['setting:soukaku.chopSlam'] ?? 0)) >= 1
+  const chop = Math.round(Number(cfgMechanicSettingRaw(cfg, 'soukaku.chopSlam') ?? 0)) >= 1
 
   // 扇风·扇子：首击由通用强特行（1131011 × 强特次数，60→30×击能量）发行，这里补第 2 击。
   // 扇/团段喧响不另计（衍生段口径，decibel 置 0 = 显式禁用回填）。

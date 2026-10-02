@@ -27,6 +27,7 @@ import { panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { channelMetricsOf } from '@/core/resource/moveLookup'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
+import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 const REMIELLE_AGENT_ID = '1581'
 const VOIDFLARE_MAX = 3
@@ -676,7 +677,7 @@ export function remielleRadiantTurnRows({ cfg, state, executions }: AgentResourc
     const block = frontBlockSeconds(
       state.frontlineTime ?? 0,
       countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
-      Number((cfg as unknown as Record<string, unknown>)['setting:remielle.frontSwitchRatio'] ?? 1),
+      Number(cfgMechanicSettingRaw(cfg, 'remielle.frontSwitchRatio') ?? 1),
       5,
     )
     const radiantInterval = phaseDelayedCooldown(5, state.frontlineTime, effectiveBattleTime(cfg), block)

@@ -30,7 +30,7 @@ import type {
   AgentPanelInput,
   AgentResourceInput,
 } from '../types'
-import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 export const BEN_ID = '1121'
 
@@ -88,7 +88,7 @@ function buildCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInp
   const record = cfg as unknown as Record<string, unknown>
   record.benCinemaLevel = cinemaLevel ?? 0
   record.benDef = panel.def ?? 0
-  record.benExParrySuccessRate = clamp01(record[mechanicSettingCfgKey(BEN_EX_PARRY_RATE_SETTING)], 1)
+  record.benExParrySuccessRate = clamp01(cfgMechanicSettingRaw(cfg, BEN_EX_PARRY_RATE_SETTING), 1)
   record.benExActionTimes = Object.fromEntries(
     [...BEN_EX_NORMAL_MOVE_IDS, ...BEN_EX_PARRY_MOVE_IDS]
       .map(moveId => [moveId, findMoveActionTime(skills, moveId)]),

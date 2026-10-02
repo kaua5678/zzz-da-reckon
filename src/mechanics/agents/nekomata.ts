@@ -11,6 +11,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions, specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { effectiveBattleTime } from '@/core/effectiveTime'
+import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 /**
  * 猫又（1021）战斗逻辑（用户口供 2026-08-23 两批）：
@@ -131,7 +132,7 @@ function planWithMap(
   const budget = (purr?.total ?? 0) + Math.max(0, Number(record.nekomataHitPurrGain ?? 0))
   const axisMode = Number(record.axisInSeconds ?? 0) > 0
   const axisPicks = Number((record.axisActionCounts as Record<string, number> | undefined)?.[PIERCE_MOVE_ID] ?? 0)
-  const rawSetting = Number(record['setting:nekomata.stunCastShare'] ?? -1)
+  const rawSetting = Number(cfgMechanicSettingRaw(cfg, 'nekomata.stunCastShare') ?? -1)
   const share = Number.isFinite(rawSetting) && rawSetting >= 0 ? rawSetting : Math.max(0, Math.min(1, Number(record.teamStunCoverage ?? 0)))
   const plan = planNekomataPierceCasts(budget, axisMode && axisPicks > 0 ? { axisHoldPicks: axisPicks } : { holdBudgetShare: share })
   // 回写 spendCounts/spendCosts 供资源卡展示（与 spec spendRule id 对齐）
