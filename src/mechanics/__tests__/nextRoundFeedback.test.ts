@@ -287,7 +287,7 @@ describe('★ 管线级：timeGolden 盲区（露西 C6 / 艾莲影画4 冻结�
       ], { recommendedBuild: true })
       config.enemy.stunCountLock = 0
       const rr = useResourceCalc().resourceResult.value!
-      const cycle = rr.characters.find(c => c.agentId === '1191')?.specResources?.ellen_cycle as EllenCycle | undefined
+      const cycle = rr.characters.find(c => c.agentId === '1191')?.ellenCycle as EllenCycle | undefined
       expect(cycle, '艾莲循环资源必须存在').toBeTruthy()
       return cycle!
     }

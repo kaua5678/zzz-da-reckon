@@ -27,6 +27,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const KOLEDA_ID = '1101'
 export const KOLEDA_CORE_STUN = 60
@@ -165,12 +166,12 @@ function patchKoledaExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
-function buildKoledaResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { koleda_cycle: cycleFromInput({ cfg, state }) } }
+function buildKoledaResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { koledaCycle: cycleFromInput({ cfg, state }) }
 }
 
 function buildKoledaResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.koleda_cycle as KoledaCycle | undefined
+  const cycle = result.koledaCycle
   if (!cycle) return []
   return [{
     id: 'koleda-cycle',
@@ -222,5 +223,13 @@ declare module '@/types/resource/config' {
     koledaChainStunCoverage?: number
     /** 写入：cinemaLevel */
     koledaCinemaLevel?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['koleda_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 珂蕾妲循环明细 */
+    koledaCycle?: KoledaCycle
   }
 }

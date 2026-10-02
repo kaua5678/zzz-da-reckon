@@ -43,6 +43,7 @@ import type {
 } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const TRIGGER_AGENT_ID = '1361'
 export const TRIGGER_ADDITIONAL_MOVE_IDS = new Set(['1361008', '1361020', '1361022'])
@@ -378,7 +379,7 @@ function injectTriggerDuanliStun({
   stunExecs,
   normalizeResourceSkillType,
 }: AgentSkillTransformInput): void {
-  const cycle = charResult.specResources?.triggerResolve as TriggerCycle | undefined
+  const cycle = charResult.triggerResolve
   if (!cycle || cycle.c4DuanliCount <= 0) return
   stunExecs.push({
     moveId: TRIGGER_DUANLI_MOVE_ID,
@@ -391,12 +392,12 @@ function injectTriggerDuanliStun({
   })
 }
 
-function buildTriggerResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { triggerResolve: cycleFromInput({ cfg, state }) } }
+function buildTriggerResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { triggerResolve: cycleFromInput({ cfg, state }) }
 }
 
 function buildTriggerResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.triggerResolve as TriggerCycle | undefined
+  const cycle = result.triggerResolve
   if (!cycle) return []
   return [{
     id: 'trigger-resolve',
@@ -479,5 +480,13 @@ declare module '@/types/resource/config' {
     triggerMateUltimateCount?: number
     /** 队友支援次数（协同计数用） */
     triggerMateAssistCount?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['triggerResolve']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 「扳机」决意循环明细（stunExecs 钩子跨钩子读） */
+    triggerResolve?: TriggerCycle
   }
 }

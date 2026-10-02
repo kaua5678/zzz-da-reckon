@@ -31,7 +31,7 @@ describe('CC-195 普攻汇总行 → 段命中折算', () => {
       .reduce((s, e) => s + Math.floor(e.count ?? 0), 0)
     const skills = useCatalogStore().agentSkillsByAgentMap.get('1491')
     const expected = cardHits + Math.floor(basic / basicComboCycleSeconds(skills, '1491004'))
-    const supply = (ch as any)?.specResources?.qianxia_gaze?.markSupply
+    const supply = (ch as any)?.qianxiaGaze?.markSupply
     expect(supply).toBe(expected)
     expect(supply).toBeGreaterThan(cardHits)
   }, 120000)

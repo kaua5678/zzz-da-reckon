@@ -171,7 +171,7 @@ describe('派派动力覆盖率滑块（校准对照实验的唯一入口）', (
   it('滑块生效（端到端）：积蓄覆盖率 40% → 积蓄层数与全队总伤同时下降', async () => {
     const full = await setup('1411', 1)
     const calcFull = useResourceCalc()
-    const cycleFull = calcFull.resourceResult.value?.characters?.[0]?.specResources?.piper_momentum as { stacks: number; buildupStacks: number } | undefined
+    const cycleFull = calcFull.resourceResult.value?.characters?.[0]?.piperMomentum as { stacks: number; buildupStacks: number } | undefined
     const dmgFull = calcFull.teamTotalDamage.value ?? 0
     expect(cycleFull?.stacks).toBe(30)
     expect(cycleFull?.buildupStacks).toBe(30) // 默认满覆盖
@@ -181,7 +181,7 @@ describe('派派动力覆盖率滑块（校准对照实验的唯一入口）', (
     const low = await setup('1411', 1)
     low.config.setMechanicSetting('piper.momentumCoverage', 0.4)
     const calcLow = useResourceCalc()
-    const cycleLow = calcLow.resourceResult.value?.characters?.[0]?.specResources?.piper_momentum as { stacks: number; buildupStacks: number } | undefined
+    const cycleLow = calcLow.resourceResult.value?.characters?.[0]?.piperMomentum as { stacks: number; buildupStacks: number } | undefined
     const dmgLow = calcLow.teamTotalDamage.value ?? 0
     expect(cycleLow?.buildupStacks).toBe(12) // round(30 × 0.4)
     expect(cycleLow?.stacks).toBe(30) // 满层不受影响

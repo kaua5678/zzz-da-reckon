@@ -26,6 +26,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const BILLY_ID = '1081'
 export const BILLY_CORE_CROUCH_DMG = 50
@@ -136,12 +137,12 @@ function applyBillyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
   }
 }
 
-function buildBillyResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { billy_cycle: cycleFromInput({ cfg, state }) } }
+function buildBillyResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { billyCycle: cycleFromInput({ cfg, state }) }
 }
 
 function buildBillyResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.billy_cycle as BillyCycle | undefined
+  const cycle = result.billyCycle
   if (!cycle) return []
   return [{
     id: 'billy-cycle',
@@ -206,5 +207,13 @@ declare module '@/types/resource/config' {
     billyCoreCrouchCoverage?: number
     /** 比利影画1：冲刺/闪反额外回能总额（模块按原始次数与5秒冷却计算） */
     billyC1Energy?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['billy_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 比利循环明细 */
+    billyCycle?: BillyCycle
   }
 }

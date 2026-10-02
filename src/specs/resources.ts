@@ -1,6 +1,7 @@
 import type {
   CharacterOperationConfig,
   IterationState,
+  SpecResourceResult,
 } from '@/types/resource'
 import type { AgentMechanicSpec, ResourceRuleSpec, ResourceSpec } from './types'
 import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
@@ -16,19 +17,8 @@ export interface SpecResourceContext {
   teamFrontlineSeconds?: number
 }
 
-export interface SpecResourceResult {
-  id: string
-  name: string
-  initialValue: number
-  maxValue: number | null
-  totalGain: number
-  gains: Record<string, number>
-  bonusCount: number
-  total: number
-  remaining: number
-  spendCounts: Record<string, number>
-  spendCosts: Record<string, number>
-}
+/** r407：契约类型下沉到 `@/types/resource`（`CharacterResourceResult.specResources` 要用它），此处原名再导出、调用方零改动 */
+export type { SpecResourceResult } from '@/types/resource'
 
 export function computeSpecResources(
   spec: AgentMechanicSpec,

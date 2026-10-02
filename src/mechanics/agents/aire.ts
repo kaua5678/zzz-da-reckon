@@ -33,6 +33,7 @@ import type {
 } from '../types'
 import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const AIRE_ID = '1501'
 export const AIRE_CORE_PROFICIENCY = 90
@@ -228,8 +229,8 @@ function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
   }
 }
 
-function buildAireResourceResult({ cfg }: AgentResourceResultInput) {
-  return { specResources: { aire_cycle: cycleFromCfg(cfg) } }
+function buildAireResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { aireCycle: cycleFromCfg(cfg) }
 }
 
 function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
@@ -289,7 +290,7 @@ function patchAireExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.aire_cycle as AireCycle | undefined
+  const cycle = result.aireCycle
   if (!cycle) return []
   return [{
     id: 'aire-cycle',
@@ -349,5 +350,13 @@ declare module '@/types/resource/config' {
     airePitchActionTime?: number
     /** 强化「绝对音高」动作时长（秒，缺省 1） */
     aireEnhancedPitchActionTime?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['aire_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 艾瑞循环明细 */
+    aireCycle?: AireCycle
   }
 }

@@ -205,14 +205,14 @@ describe('薇薇安完整计算链', () => {
     const calc = useResourceCalc()
     const vivian = calc.resourceResult.value!.characters.find(row => row.agentId === '1331')!
     expect(vivian.executions.some(row => row.moveId === VIVIAN_LUOYU_MOVE_ID)).toBe(true)
-    expect(vivian.specResources?.vivian_cycle).toBeTruthy()
+    expect(vivian.vivianCycle).toBeTruthy()
   })
 
   it('面板增益进入最终面板（影画6以太增伤/影画4攻击力/影画2以太积蓄效率）', async () => {
     await setup('1181', 6)
     const calc = useResourceCalc()
     // 先触发完整资源/失衡计算（transformSkillExecutions 在失衡/异常池提取时施加面板增益）
-    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1331')!.specResources?.vivian_cycle).toBeTruthy()
+    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1331')!.vivianCycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
     expect(panel.etherDmg).toBeGreaterThanOrEqual(VIVIAN_C6_ETHER_DMG)
     expect(panel.etherAnomalyBuildUpEfficiency).toBeGreaterThanOrEqual(VIVIAN_C2_BUILDUP_EFF)

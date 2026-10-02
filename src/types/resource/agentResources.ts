@@ -208,8 +208,8 @@ export interface CharacterResourceResult {
   burniceMechanicSource?: BurniceMechanicSource
   /** 般岳嗔火/怒相循环明细 */
   banyueRageCycle?: BanyueRageCycle
-  /** 通用 spec 资源计算结果：key = spec resource.id */
-  specResources?: Record<string, any>
+  /** 通用 spec 资源计算结果：key = spec resource.id。r407 前为 `Record<string, any>`，读者各自 `as SpecResourceResult` */
+  specResources?: Record<string, SpecResourceResult>
 
   // --- 连携 ---
   /** 每次失衡的连携次数（用户可调） */
@@ -248,4 +248,19 @@ export interface SpecialActionBonusResult {
   perSlotQuickAssist: number[]
   /** 各角色获得的特殊动作喧响（含伴随） */
   perSlotBonus: number[]
+}
+
+/** spec 声明式资源的单项结算（`specs/resources.ts#computeSpecResources` 产出；r407 自 specs 下沉为契约类型） */
+export interface SpecResourceResult {
+  id: string
+  name: string
+  initialValue: number
+  maxValue: number | null
+  totalGain: number
+  gains: Record<string, number>
+  bonusCount: number
+  total: number
+  remaining: number
+  spendCounts: Record<string, number>
+  spendCosts: Record<string, number>
 }

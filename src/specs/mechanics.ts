@@ -181,7 +181,7 @@ export function specToMechanicModule(spec: AgentMechanicSpec): AgentMechanicModu
     },
     resourceSections: ({ result }: AgentResourceSectionsInput) => {
       if (!hasResources) return []
-      const map = (result?.specResources ?? {}) as Record<string, SpecResourceResult>
+      const map = result?.specResources ?? {}
       return spec.resources.map(resource => {
         const r = map[resource.id]
         return {

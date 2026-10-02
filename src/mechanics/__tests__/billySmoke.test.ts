@@ -121,7 +121,7 @@ describe('星徽·比利全管线冒烟（1531）', () => {
     expect(moveIds.has('1531009')).toBe(true)
 
     // 决意：2 点/秒 × 全战斗时间（接战状态 = 整场战斗，180×2=360）+ attack_data_0 招式命中 → 最高马力星光
-    const determination = billy.specResources?.['billy_determination']
+    const determination = billy.specResources?.['billy_determination']!
     expect(determination).toBeTruthy()
     expect(determination.totalGain).toBeGreaterThan(0)
     expect(determination.gains['billy_frontline_determination_gain']).toBeCloseTo(180 * 2, 5)
@@ -144,7 +144,7 @@ describe('星徽·比利全管线冒烟（1531）', () => {
     }
 
     // 星辉（额外能力已触发）：2 层封顶 → 目标招式 dmgBonus +40（C6 再叠 +18）
-    const star = billy.specResources?.['billy_star_glow']
+    const star = billy.specResources?.['billy_star_glow']!
     expect(star).toBeTruthy()
     const patched = billy.executions.filter(e => ['1531010', '1531015', '1531016', '1531009'].includes(e.moveId ?? ''))
     for (const exec of patched) {

@@ -322,7 +322,7 @@ peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) 
   const spec = getAgentSpec('1551')
   const specSections = spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
   const result = input.result
-  const prom = result.specResources?.['peiluo_prominence'] as SpecResourceResult | undefined
+  const prom = result.specResources?.['peiluo_prominence']
   const ledger = result.peiluoProminenceLedger ?? { hitGain: 0, spend: 0, lowSpend: 0, a3: 0, a4: 0 }
   if (!prom) return specSections
   const pf = (n: number) => String(Math.round(n * 10) / 10)

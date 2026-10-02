@@ -32,7 +32,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
-import type { CharacterOperationConfig } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult } from '@/types/resource'
 import { emptyPanel } from '@/core/panel'
 import { applyEffect } from '@/core/buff'
 import type { BuffEffect } from '@/types/catalog'
@@ -170,12 +170,12 @@ function promiaReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduct
     : { enemyResReduction: 0, note: '' }
 }
 
-function buildPromiaResourceResult({ cfg }: AgentResourceResultInput) {
-  return { specResources: { promia_cycle: cycleFromCfg(cfg) } }
+function buildPromiaResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { promiaCycle: cycleFromCfg(cfg) }
 }
 
 function buildPromiaResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.promia_cycle as PromiaCycle | undefined
+  const cycle = result.promiaCycle
   if (!cycle) return []
   return [{
     id: 'promia-cycle',
@@ -468,5 +468,13 @@ declare module '@/types/resource/config' {
     promiaTriggerHitCount?: number
     /** 普罗米娅：下一轮用的队友释放次数（nextRound 线程化写回） */
     promiaTeammateReleaseCount?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['promia_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 普罗米娅循环明细 */
+    promiaCycle?: PromiaCycle
   }
 }

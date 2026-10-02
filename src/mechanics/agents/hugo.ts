@@ -23,6 +23,7 @@ import type {
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
@@ -321,8 +322,8 @@ function patchHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
   }
 }
 
-function buildHugoResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { hugo_abyss_echo: cycleFromInput({ cfg, state }) } }
+function buildHugoResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { hugoAbyssEcho: cycleFromInput({ cfg, state }) }
 }
 
 /**
@@ -401,7 +402,7 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
 }
 
 function buildHugoResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.hugo_abyss_echo as HugoCycle | undefined
+  const cycle = result.hugoAbyssEcho
   if (!cycle) return []
   return [{
     id: 'hugo-verdict',
@@ -512,5 +513,13 @@ declare module '@/types/resource/config' {
     hugoAxisExVerdictCount?: number
     /** 失衡轴内终结技决算块数：只在轴模式写入 */
     hugoAxisUltVerdictCount?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['hugo_abyss_echo']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 雨果暗渊回响循环明细（spec 同名资源对引擎是死声明，见 1291.json notes） */
+    hugoAbyssEcho?: HugoCycle
   }
 }

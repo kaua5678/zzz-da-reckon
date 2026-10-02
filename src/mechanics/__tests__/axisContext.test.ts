@@ -1036,7 +1036,7 @@ describe('真管线：converge 有值、build/postRound 为 undefined（跳①�
     }]
     const calc = useResourceCalc()
     const cyc = calc.resourceResult.value!.characters
-      .find(c => c.agentId === '1201')!.specResources!.harumasa_cycle as {
+      .find(c => c.agentId === '1201')!.harumasaCycle as {
         axisActive: boolean; thunderCount: number; slashCount: number
       }
     expect(cyc.axisActive, '轴模式没接上 ⇒ 逐雷/影画6电抗会静默回落到并集近似').toBe(true)

@@ -26,6 +26,7 @@ import type {
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const SETH_ID = '1271'
 export const SETH_SHIELD_PROFICIENCY = 100
@@ -143,12 +144,12 @@ function applySethPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
   }
 }
 
-function buildSethResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { seth_cycle: cycleFromInput({ cfg, state }) } }
+function buildSethResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { sethCycle: cycleFromInput({ cfg, state }) }
 }
 
 function buildSethResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.seth_cycle as SethCycle | undefined
+  const cycle = result.sethCycle
   if (!cycle) return []
   return [{
     id: 'seth-cycle',
@@ -202,5 +203,13 @@ declare module '@/types/resource/config' {
     sethCinemaLevel?: number
     /** 写入：clampRatio(setting(cfg, 'seth.shieldCoverage', 1)) */
     sethShieldCoverage?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['seth_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 赛斯循环明细 */
+    sethCycle?: SethCycle
   }
 }

@@ -152,7 +152,7 @@ describe('仪玄 spec 机制（1371）', () => {
     expect(chain.ink4).toBe(1)
     expect(chain.cloudOut).toBeGreaterThan(0)
     expect(chain.flashSpent).toBeGreaterThan(0)
-    const shufa = yixuan.specResources?.['yixuan_shufa_value']
+    const shufa = yixuan.specResources?.['yixuan_shufa_value']!
     expect(shufa.totalGain).toBeGreaterThan(0)
     const extraUlts = yixuan.executions.filter(e => e.moveId === '1371020')
     expect(extraUlts[0].count).toBeGreaterThan(0)
@@ -415,7 +415,7 @@ describe('仪玄 spec 机制（1371）', () => {
       config.setMechanicSetting('yixuan.shufaUltCount', override ?? -1)
       const calc = useResourceCalc()
       const yixuan = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!
-      const shufa = yixuan.specResources?.['yixuan_shufa_value']
+      const shufa = yixuan.specResources?.['yixuan_shufa_value']!
       const theoretical = Math.floor(shufa.total / 120)
       const actual = shufa?.spendCounts?.['yixuan_extra_ult_spend'] ?? 0
       return { theoretical, actual }
@@ -456,7 +456,7 @@ describe('仪玄 spec 机制（1371）', () => {
     const extraUlts = yixuan.executions.filter(e => e.moveId === '1371020')
     const totalUlts = extraUlts.reduce((sum, e) => sum + e.count, 0)
     expect(totalUlts).toBeGreaterThan(0)
-    const shufa = yixuan.specResources?.['yixuan_shufa_value']
+    const shufa = yixuan.specResources?.['yixuan_shufa_value']!
     const shufaUlts = Math.floor(shufa.total / 120)
     // 轨口径（2026-08-31）：调息赠送默认 = 大招次数，大招被轨削减时赠送可为 0 → 锁 ≥（不恒正）
     expect(totalUlts).toBeGreaterThanOrEqual(shufaUlts)

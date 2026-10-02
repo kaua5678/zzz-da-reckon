@@ -155,13 +155,13 @@ describe('可琳完整计算链', () => {
     await setup('1021', 6)
     const calc = useResourceCalc()
     const corin = calc.resourceResult.value!.characters.find(row => row.agentId === '1061')!
-    expect(corin.specResources?.corin_cycle).toBeTruthy()
+    expect(corin.corinCycle).toBeTruthy()
   })
 
   it('面板增益进入最终面板（电锯全招式+影画1增伤、影画2物理减抗单通道=10）', async () => {
     await setup('1021', 2)
     const calc = useResourceCalc()
-    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1061')!.specResources?.corin_cycle).toBeTruthy()
+    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1061')!.corinCycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
     // 电锯 37.5（全招式普通增伤）+ 影画1 12 = 49.5；额外能力不进面板（走伤害行分支）
     expect(panel.dmgBonus).toBeCloseTo(CORIN_CORE_SAW_DMG + CORIN_C1_DMG, 6)
@@ -184,13 +184,13 @@ describe('可琳完整计算链', () => {
     }
     const calc0 = await withLock(0)
     const corin0 = calc0.resourceResult.value!.characters.find(row => row.agentId === '1061')!
-    expect(corin0.specResources?.corin_cycle?.c4EnergyTotal ?? 0).toBe(0)
+    expect(corin0.corinCycle?.c4EnergyTotal ?? 0).toBe(0)
     const gift0 = corin0.energySource.initialGift
 
     const calc4 = await withLock(4)
     const corin4 = calc4.resourceResult.value!.characters.find(row => row.agentId === '1061')!
     const expected = 6 * CORIN_C4_ENERGY
-    expect(corin4.specResources?.corin_cycle?.c4EnergyTotal).toBeCloseTo(expected, 6)
+    expect(corin4.corinCycle?.c4EnergyTotal).toBeCloseTo(expected, 6)
     expect(corin4.energySource.initialGift - gift0).toBeCloseTo(expected, 6)
   })
 })

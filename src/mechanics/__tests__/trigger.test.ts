@@ -230,7 +230,7 @@ describe('「扳机」执行计划与失衡池', () => {
       slot: 0,
       agent: { damageElement: 'electric' },
       skills: undefined,
-      charResult: { specResources: { triggerResolve: cycle } },
+      charResult: { triggerResolve: cycle },
       panel: null,
       cinemaLevel: 4,
       team: [],

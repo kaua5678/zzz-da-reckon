@@ -131,7 +131,7 @@ describe('珂蕾妲完整计算链', () => {
     await setup('1121', 6)
     const calc = useResourceCalc()
     const koleda = calc.resourceResult.value!.characters.find(row => row.agentId === '1101')!
-    expect(koleda.specResources?.koleda_cycle).toBeTruthy()
+    expect(koleda.koledaCycle).toBeTruthy()
   })
 
   it('强化普攻（熔炉升温）进入执行计划：一段+二段融合 = 1133.3%', async () => {

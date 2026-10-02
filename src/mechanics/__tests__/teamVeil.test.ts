@@ -38,7 +38,7 @@ describe('全队帷幕通道端到端（2026-09 修复：teamVeilCountTotal 收�
     const calc = useResourceCalc()
     const qx = calc.resourceResult.value!.characters.find(c => c.agentId === '1491')!
     const ys = calc.resourceResult.value!.characters.find(c => c.agentId === '1431')!
-    const qxCycle = (qx.specResources as any).qianxia_gaze
+    const qxCycle = qx.qianxiaGaze!
 
     // 这条测试要证的是「teamVeilCountTotal 收敛线程真的注入并被消费」（此前 postRound 写克隆
     // 永不生效），所以断言必须对着**模块实际消费的那个帷幕数**算——而不是赌它等于末轮显示值：

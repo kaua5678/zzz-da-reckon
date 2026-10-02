@@ -37,6 +37,7 @@ import type {
 import type { ModuleFeedback } from '../types'
 import { inferSkillDamageTarget } from '@/core/damage'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
@@ -246,12 +247,12 @@ function applyAnbyZeroPanel({ cinemaLevel, potentialLevel, panel, settings }: Ag
   }
 }
 
-function buildAnbyZeroResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { anby_zero_cycle: cycleFromInput({ cfg, state }) } }
+function buildAnbyZeroResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { anbyZeroCycle: cycleFromInput({ cfg, state }) }
 }
 
 function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.anby_zero_cycle as AnbyZeroCycle | undefined
+  const cycle = result.anbyZeroCycle
   if (!cycle) return []
   return [{
     id: 'anby-zero-cycle',
@@ -372,5 +373,13 @@ declare module '@/types/resource/config' {
     anbyZeroSilverStarCoverage?: number
     /** 写入：(threads.moduleFeedback?.anbyZeroTeammateWl ?? 0) */
     anbyZeroTeammateWhiteLightning?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['anby_zero_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 零号安比循环明细 */
+    anbyZeroCycle?: AnbyZeroCycle
   }
 }

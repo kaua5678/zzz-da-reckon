@@ -65,13 +65,13 @@ describe('爱芮完整计算链', () => {
     await setup('1141', 6)
     const calc = useResourceCalc()
     const aire = calc.resourceResult.value!.characters.find(row => row.agentId === '1501')!
-    expect(aire.specResources?.aire_cycle).toBeTruthy()
+    expect(aire.aireCycle).toBeTruthy()
   })
 
   it('面板增益进入最终面板（异常精通/影画1抗性无视/影画2无视防御）', async () => {
     await setup('1141', 2)
     const calc = useResourceCalc()
-    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1501')!.specResources?.aire_cycle).toBeTruthy()
+    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1501')!.aireCycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
     expect(panel.anomalyProficiency).toBeGreaterThanOrEqual(AIRE_CORE_PROFICIENCY)
     expect(panel.enemyEtherAnomalyResReduction).toBeGreaterThanOrEqual(AIRE_C1_ETHER_ANOMALY_RES_IGNORE)

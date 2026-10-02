@@ -28,7 +28,7 @@ import type {
   AgentResourceSectionsInput,
   ReleaseModifierInput,
 } from '../types'
-import type { MechanicSetting } from '@/types/resource'
+import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 
@@ -428,7 +428,7 @@ function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEvent
   }
 }
 
-function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput) {
+function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const cinema = whole(Number(cfg.phoenixCinemaLevel ?? 0))
   const additionalActive = cfg.phoenixAdditionalActive === true
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
@@ -440,24 +440,22 @@ function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput) {
     cinemaLevel: cinema,
   })
   return {
-    specResources: {
-      phoenix_cycle: {
-        cinemaLevel: cinema,
-        additionalActive,
-        coreProficiency: PHOENIX_CORE_PROFICIENCY,
-        weaknessCritRate: Math.round(weakness.rate * 100) / 100,
-        weaknessCritDmg: weakness.dmg,
-        teamAnomalyCount,
-        c2BuildUpEff: cinema >= 2 ? PHOENIX_C2_BUILDUP_EFF : 0,
-        chargedCount,
-        note: '脆弱暴击承载 = spec teamBuffs（含队友受益）；重生/消亡状态机未建模；余火按总量口径。',
-      } as PhoenixCycle,
-    },
+    phoenixCycle: {
+      cinemaLevel: cinema,
+      additionalActive,
+      coreProficiency: PHOENIX_CORE_PROFICIENCY,
+      weaknessCritRate: Math.round(weakness.rate * 100) / 100,
+      weaknessCritDmg: weakness.dmg,
+      teamAnomalyCount,
+      c2BuildUpEff: cinema >= 2 ? PHOENIX_C2_BUILDUP_EFF : 0,
+      chargedCount,
+      note: '脆弱暴击承载 = spec teamBuffs（含队友受益）；重生/消亡状态机未建模；余火按总量口径。',
+    } as PhoenixCycle,
   }
 }
 
 function buildPhoenixResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.phoenix_cycle as PhoenixCycle | undefined
+  const cycle = result.phoenixCycle
   if (!cycle) return []
   return [{
     id: 'phoenix-cycle',
@@ -563,5 +561,13 @@ declare module '@/types/resource/config' {
     phoenixEntryMeta?: { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }
     /** 菲尼克斯蓄力次数（资源阶段写） */
     phoenixChargedCount?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['phoenix_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 不死鸟循环明细 */
+    phoenixCycle?: PhoenixCycle
   }
 }

@@ -17,7 +17,6 @@ import type {
   AgentCharConfigInput,
   AgentMechanicModule,
   AgentResourceInput,
-  AgentResourceResultInput,
 } from '../types'
 
 export const PAN_YINHU_ID = '1421'
@@ -64,12 +63,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   cfg.panYinhuC2EnergyTotal = gift
 }
 
-function buildResourceResult({ state }: AgentResourceResultInput) {
-  const exCount = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
-  const groups = Math.floor(PAN_YINHU_POJIN_PER_EX * exCount / 6)
-  return { specResources: { pan_yinhu_c2: { energy: PAN_YINHU_C2_ENERGY_PER_6_POJIN * groups } } }
-}
-
 export const panYinhuMechanic: AgentMechanicModule = {
   id: 'agent:pan_yinhu',
   agentIds: [PAN_YINHU_ID],
@@ -77,7 +70,6 @@ export const panYinhuMechanic: AgentMechanicModule = {
   description: 'EX 后自动释放断脉破穴手×3（后台追攻行）+ 影画2 每消耗6点破劲回4能量；主体拐力在 teammate-buffs 1421 组。',
   buildCharConfig,
   buildExecutions,
-  buildResourceResult,
 }
 
 export default panYinhuMechanic

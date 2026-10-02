@@ -29,6 +29,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const HARUMASA_ID = '1201'
 export const HARUMASA_ARROW_MOVE_ID = '1201008'
@@ -353,12 +354,12 @@ function patchHarumasaExecutions({ cfg, state, executions }: AgentResourceInput)
   }
 }
 
-function buildHarumasaResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { harumasa_cycle: cycleFromInput({ cfg, state }) } }
+function buildHarumasaResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { harumasaCycle: cycleFromInput({ cfg, state }) }
 }
 
 function buildHarumasaResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.harumasa_cycle as HarumasaCycle | undefined
+  const cycle = result.harumasaCycle
   if (!cycle) return []
   return [{
     id: 'harumasa-cycle',
@@ -436,5 +437,13 @@ declare module '@/types/resource/config' {
     harumasaPotentialLevel?: number
     /** 写入：0.5；Math.min(1, resolvedStun * HARUMASA_STUN_WINDOW_SECONDS / battle) */
     harumasaStunCoverage?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['harumasa_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 浅羽悠真循环明细 */
+    harumasaCycle?: HarumasaCycle
   }
 }

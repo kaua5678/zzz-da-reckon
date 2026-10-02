@@ -56,7 +56,7 @@ describe('真斗（1441）炽心资源与耗血暴伤', () => {
     ])
     const calc = useResourceCalc()
     const zhendou = calc.resourceResult.value!.characters.find(c => c.agentId === '1441')!
-    const heartfire = zhendou.specResources?.['zhendou_heartfire']
+    const heartfire = zhendou.specResources?.['zhendou_heartfire']!
     expect(heartfire).toBeTruthy()
     expect(heartfire.totalGain).toBeGreaterThan(0)
     expect(heartfire.gains['zhendou_parry_heartfire_gain']).toBe(6 * 75)
@@ -90,7 +90,7 @@ describe('真斗（1441）炽心资源与耗血暴伤', () => {
     expect(guijin2).toBeTruthy()
     expect(guijin1!.count).toBeGreaterThan(0)
     // 炽心总量 ≥ 熔锋消耗（覆盖）
-    const hf = zhendou.specResources?.['zhendou_heartfire']
+    const hf = zhendou.specResources?.['zhendou_heartfire']!
     expect(hf.totalGain).toBeGreaterThanOrEqual(3.3 * 180)
   })
 
@@ -102,9 +102,9 @@ describe('真斗（1441）炽心资源与耗血暴伤', () => {
     ])
     const calc = useResourceCalc()
     const zhendou = calc.resourceResult.value!.characters.find(c => c.agentId === '1441')!
-    const hf = zhendou.specResources?.['zhendou_heartfire']
+    const hf = zhendou.specResources?.['zhendou_heartfire']!
     expect(hf.gains['zhendou_c6_heartfire_gain']).toBeGreaterThan(0)
-    const rf = zhendou.specResources?.['zhendou_remnant_flame']
+    const rf = zhendou.specResources?.['zhendou_remnant_flame']!
     expect(rf.gains['zhendou_c6_remnant_gain']).toBeGreaterThan(0)
   })
 })

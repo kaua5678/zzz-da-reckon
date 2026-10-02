@@ -89,13 +89,13 @@ describe('普罗米娅完整计算链', () => {
     await setup('1181', 2)
     const calc = useResourceCalc()
     const promia = calc.resourceResult.value!.characters.find(row => row.agentId === '1541')!
-    expect(promia.specResources?.promia_cycle).toBeTruthy()
+    expect(promia.promiaCycle).toBeTruthy()
   })
 
   it('面板增益进入最终面板（影画2精通/积蓄效率；有罪推定减防改走 releaseModifier）', async () => {
     await setup('1181', 2)
     const calc = useResourceCalc()
-    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1541')!.specResources?.promia_cycle).toBeTruthy()
+    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1541')!.promiaCycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
     // 影画2精通+40（面板层 applyPanel）
     expect(panel.anomalyProficiency).toBeGreaterThanOrEqual(PROMIA_C2_PROFICIENCY)

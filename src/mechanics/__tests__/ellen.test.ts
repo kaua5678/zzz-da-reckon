@@ -327,7 +327,7 @@ describe('艾莲完整计算链', () => {
     await setup('1141', 6)
     const calc = useResourceCalc()
     const ellen = calc.resourceResult.value!.characters.find(row => row.agentId === '1191')!
-    const cycleRes = ellen.specResources?.ellen_cycle as any
+    const cycleRes = ellen.ellenCycle as any
     expect(cycleRes).toBeTruthy()
     expect(cycleRes.c1CritRate).toBe(12)
     expect(cycleRes.stormSurgeIceDmg).toBe(30)

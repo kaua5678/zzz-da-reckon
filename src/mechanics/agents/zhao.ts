@@ -22,6 +22,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const ZHAO_ID = '1341'
 export const ZHAO_CORE_CRIT_PER_1000_HP = 1.4
@@ -174,8 +175,8 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
   }
 }
 
-function buildResourceResult({ cfg, state, teamFrontlineSeconds }: AgentResourceResultInput) {
-  return { specResources: { zhao_frost: cycleFromInput({ cfg, state, teamFrontlineSeconds }) } }
+function buildResourceResult({ cfg, state, teamFrontlineSeconds }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { zhaoFrost: cycleFromInput({ cfg, state, teamFrontlineSeconds }) }
 }
 
 /** 照：霜寒值满开帷幕次数（总量口径；队友命中按战斗时间近似——postRound 无队友前台秒数）。
@@ -190,7 +191,7 @@ export function computeZhaoVeilCount(exSpecialCount: number, ultimateCount: numb
 }
 
 function buildResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.zhao_frost as ZhaoFrostCycle | undefined
+  const cycle = result.zhaoFrost
   if (!cycle) return []
   return [{
     id: 'zhao-frost',
@@ -244,5 +245,13 @@ declare module '@/types/catalog' {
     zhaoCoreCritRate?: number
     /** 2 命自身攻击加成留痕：与 `panel.atk` 增量同块写入 */
     zhaoCinema2SelfAtk?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['zhao_frost']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 照霜寒循环明细 */
+    zhaoFrost?: ZhaoFrostCycle
   }
 }

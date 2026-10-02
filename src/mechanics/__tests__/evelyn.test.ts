@@ -208,7 +208,7 @@ describe('伊芙琳完整计算链', () => {
     await setup('1141', 4)
     const calc = useResourceCalc()
     const evelyn = calc.resourceResult.value!.characters.find(row => row.agentId === '1321')!
-    expect(Object.keys(evelyn.specResources ?? {})).toContain('evelyn_cycle')
+    expect(evelyn.evelynCycle).toBeDefined()
     const panel = calc.panels.value[0] as any
     // C4：核心暴击+25、影画4暴伤+40、影画1减防+12（C4 已满）；无 C6 追击
     expect(panel.critRate).toBeGreaterThanOrEqual(EVELYN_CORE_CRIT_RATE)

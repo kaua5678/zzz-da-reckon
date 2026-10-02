@@ -102,6 +102,8 @@ const AGENT_ANY_TYPE = [
   /<any\b/,
   /\bany\[\]/,
   /&\s*Record<string,\s*unknown>/,
+  /,\s*any\s*[>,\]]/,
+  /\|\s*any\b/,
 ]
 
 describe('D2 §5 + r406：角色模块不经 Record 强转读写 cfg、全目录零 any 类型（全目录不变式）', () => {
@@ -115,6 +117,28 @@ describe('D2 §5 + r406：角色模块不经 Record 强转读写 cfg、全目录
       for (const rx of [...UNTYPED_CFG_ACCESS, ...AGENT_ANY_TYPE]) expect(src).not.toMatch(rx)
     })
   }
+})
+
+/**
+ * r407（CC-381）：**计算层非测试源码零 `any` 类型**（core / types / specs / utils / data / mechanics，全目录不变式）。
+ * 清理时的发现（详见架构卡 CC-381）：catalog 漏声明 5 个数据真实字段（音擎精修值 / 排除目标 / derived 来源 / 修饰器 / 锐暴基值）；
+ * `specResources` 被 18 个模块当私有结果的夹带通道（`Record<string, any>`），现收紧为 `Record<string, SpecResourceResult>`，
+ * 私有对象改为各模块 `declare module` 的具名结果键。core 需要 store 的地方用**结构类型**（`ImpactVarConfig`），不要回退到 any；
+ * 外部不可信输入用 `unknown` + 收窄（`getGlobalBuffStatOptions`）。UI 层（composables / components / stores / views）不在此锁内。
+ */
+const CALC_DIRS = ['core/', 'types/', 'specs/', 'utils/', 'data/', 'mechanics/']
+describe('r407 CC-381：计算层非测试源码零 any 类型（全目录不变式）', () => {
+  const files = ALL.filter(x => CALC_DIRS.some(d => x.rel.startsWith(d)) && !/\.test\.ts$/.test(x.rel))
+  it('扫描面非空（防目录改名后全绿）', () => {
+    expect(files.length).toBeGreaterThanOrEqual(140)
+  })
+  it('零命中（违规列出 文件 + 命中的正则）', () => {
+    const hits = files.flatMap(x => {
+      const t = stripComments(x.raw)
+      return AGENT_ANY_TYPE.filter(rx => rx.test(t)).map(rx => `${x.rel} ${rx}`)
+    })
+    expect(hits).toEqual([])
+  })
 })
 
 /**

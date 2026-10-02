@@ -21,7 +21,7 @@
  * ③ **硬崩**：奥菲丝 / 薇薇安 / 蕾米埃尔 在「槽0 空 + 该角色在槽2」时抛 TypeError
  *
  * ## 断言口径（读的是**最终可见产物**，不是内部 cfg 字段）
- * - 影画4 的可见产物 = `resourceResult.characters[].specResources.ellen_cycle`
+ * - 影画4 的可见产物 = `resourceResult.characters[].ellenCycle`
  *   （`c4EnergyTotal`/`freezeCount`）；同款口径见 `nextRoundFeedback.test.ts`。
  * - 崩溃 = 直接跑 `teamTotalDamage` 并断言不抛。
  * - ⚠ `resourceConfig.value.characters` 是 **cfg 数组**（可写、跨轮重建），
@@ -48,9 +48,10 @@ const slotRow = (rr: TeamResourceResult | null, slot: number) =>
   rr?.characters.find(c => c.slot === slot)
 
 /** 取某槽的 specResources 某键（角色模块自报的循环产物） */
-function specOf<T>(rr: TeamResourceResult | null, slot: number, key: string): T | undefined {
-  const row = slotRow(rr, slot) as unknown as { specResources?: Record<string, unknown> } | undefined
-  return row?.specResources?.[key] as T | undefined
+/** 槽位结果行上的模块私有结果键（r407：原经 `specResources[key]` 夹带，现为具名键） */
+function resultKeyOf<T>(rr: TeamResourceResult | null, slot: number, key: string): T | undefined {
+  const row = slotRow(rr, slot) as unknown as Record<string, unknown> | undefined
+  return row?.[key] as T | undefined
 }
 
 describe('压缩数组：前提（数组确实被压缩）', () => {
@@ -67,10 +68,10 @@ describe('压缩数组：前导空槽（槽0 空）', () => {
   it('★ 艾莲影画4 不得静默归零（缺陷 ① 静默错值）', async () => {
     // 对照组：艾莲在槽0（满槽）
     const full = await calc([{ agentId: '1191', cinemaLevel: 6 }, { agentId: '1481' }, { agentId: '1311' }])
-    const fullCycle = specOf<{ freezeCount: number; c4EnergyTotal: number }>(full.rr, 0, 'ellen_cycle')
+    const fullCycle = resultKeyOf<{ freezeCount: number; c4EnergyTotal: number }>(full.rr, 0, 'ellenCycle')
     // 实验组：艾莲在槽2（槽0 空）
     const pre = await calc(['', { agentId: '1481' }, { agentId: '1191', cinemaLevel: 6 }])
-    const preCycle = specOf<{ freezeCount: number; c4EnergyTotal: number }>(pre.rr, 2, 'ellen_cycle')
+    const preCycle = resultKeyOf<{ freezeCount: number; c4EnergyTotal: number }>(pre.rr, 2, 'ellenCycle')
 
     expect(fullCycle?.c4EnergyTotal, '对照组（满槽）影画4 回能应非零').toBeGreaterThan(0)
     // 修复前实测：前导空槽下 freeze=0 / c4=0（写进了空气）——这条断言就是那个回归的护栏
@@ -83,7 +84,7 @@ describe('压缩数组：中间空槽（槽1 空）', () => {
   it('★ 艾莲在槽2、槽1 空 ⇒ 影画4 仍生效（槽位号 2 ≠ 下标 1）', async () => {
     const { rr } = await calc([{ agentId: '1191', cinemaLevel: 6 }, '', { agentId: '1481' }])
     expect(rr?.characters.map(c => c.slot)).toEqual([0, 2])
-    const cycle = specOf<{ c4EnergyTotal: number }>(rr, 0, 'ellen_cycle')
+    const cycle = resultKeyOf<{ c4EnergyTotal: number }>(rr, 0, 'ellenCycle')
     expect(cycle?.c4EnergyTotal, '中间空槽下影画4 回能静默归零').toBeGreaterThan(0)
   })
 })

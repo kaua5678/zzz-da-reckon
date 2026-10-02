@@ -32,6 +32,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const CORIN_ID = '1061'
 export const CORIN_CORE_SAW_DMG = 37.5
@@ -242,12 +243,12 @@ function applyCorinPanel({ cinemaLevel, panel, settings }: AgentPanelInput): voi
   }
 }
 
-function buildCorinResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { corin_cycle: cycleFromInput({ cfg, state }) } }
+function buildCorinResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { corinCycle: cycleFromInput({ cfg, state }) }
 }
 
 function buildCorinResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.corin_cycle as CorinCycle | undefined
+  const cycle = result.corinCycle
   if (!cycle) return []
   return [{
     id: 'corin-cycle',
@@ -365,5 +366,13 @@ declare module '@/types/resource/config' {
     corinCinemaLevel?: number
     /** 写入：clampRatio(setting(cfg, 'corin.coreSawCoverage', 1)) */
     corinCoreSawCoverage?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['corin_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 可琳循环明细 */
+    corinCycle?: CorinCycle
   }
 }

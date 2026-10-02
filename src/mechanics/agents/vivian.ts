@@ -35,6 +35,7 @@ import type {
 import type { ModuleFeedback } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as setting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
@@ -292,12 +293,12 @@ function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: Ag
   }
 }
 
-function buildVivianResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { vivian_cycle: cycleFromInput({ cfg, state }) } }
+function buildVivianResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { vivianCycle: cycleFromInput({ cfg, state }) }
 }
 
 function buildVivianResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.vivian_cycle as VivianCycle | undefined
+  const cycle = result.vivianCycle
   if (!cycle) return []
   return [{
     id: 'vivian-cycle',
@@ -526,5 +527,13 @@ declare module '@/types/catalog' {
   interface PanelValues {
     /** 4 命攻击加成留痕：与 `panel.atk` 增量同块写入 */
     vivianC4AtkBonus?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['vivian_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 薇薇安循环明细 */
+    vivianCycle?: VivianCycle
   }
 }

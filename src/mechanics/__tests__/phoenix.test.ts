@@ -227,7 +227,7 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     expect(charged).toBeTruthy()
     expect(charged!.count).toBeGreaterThan(0)
     // 单人缺省盘实测 8 次（180s）；队内平A时间被分走会更少，下界取 1 保结构性回归检测
-    expect(phoenix.specResources?.phoenix_cycle?.chargedCount).toBeGreaterThan(0)
+    expect(phoenix.phoenixCycle?.chargedCount).toBeGreaterThan(0)
   })
 
   it('专武 14164 生效差分（2026-09-12 录入）：装 vs 不装 → 异常精通+120、火伤+64%（特化门=anomaly 对齐；测试 wEngineModLevel=5 → 精炼5值）', async () => {

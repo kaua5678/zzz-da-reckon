@@ -118,13 +118,13 @@ describe('零号·安比完整计算链', () => {
     const calc = useResourceCalc()
     const anby = calc.resourceResult.value!.characters.find(row => row.agentId === '1381')!
     expect(anby.executions.some(row => row.moveId === ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID)).toBe(true)
-    expect(anby.specResources?.anby_zero_cycle).toBeTruthy()
+    expect(anby.anbyZeroCycle).toBeTruthy()
   })
 
   it('面板增益进入最终面板（暴击率/银星增伤/影画4电抗无视）', async () => {
     await setup('1141', 4)
     const calc = useResourceCalc()
-    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1381')!.specResources?.anby_zero_cycle).toBeTruthy()
+    expect(calc.resourceResult.value!.characters.find(row => row.agentId === '1381')!.anbyZeroCycle).toBeTruthy()
     const panel = calc.panels.value[0] as any
     expect(panel.critRate).toBeGreaterThanOrEqual(ANBY_ZERO_ADDITIONAL_CRIT_RATE + ANBY_ZERO_C2_CRIT_RATE)
     expect(panel.dmgBonus).toBeGreaterThanOrEqual(ANBY_ZERO_CORE_DMG)

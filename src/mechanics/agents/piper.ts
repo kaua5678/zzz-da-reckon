@@ -27,6 +27,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const PIPER_ID = '1281'
 export const PIPER_C2_BASE_DMG = 10
@@ -102,8 +103,8 @@ function cycleFromInput({ cfg }: Pick<AgentResourceInput, 'cfg' | 'state'>): Pip
   })
 }
 
-function buildPiperResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { piper_momentum: cycleFromInput({ cfg, state }) } }
+function buildPiperResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { piperMomentum: cycleFromInput({ cfg, state }) }
 }
 
 function applyPiperPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
@@ -132,7 +133,7 @@ function patchPiperExecutions({ cfg, state, executions }: AgentResourceInput): v
 }
 
 function buildPiperResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.piper_momentum as PiperMomentumCycle | undefined
+  const cycle = result.piperMomentum
   if (!cycle) return []
   return [{
     id: 'piper-momentum',
@@ -186,5 +187,13 @@ declare module '@/types/resource/config' {
     piperCinemaLevel?: number
     /** 写入：cfgSetting(cfg, 'piper.momentumCoverage', PIPER_BUILDUP_COVERAGE_DEFAULT) */
     piperMomentumCoverage?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['piper_momentum']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 派派动力循环明细（spec 同名资源对引擎是死声明，见 1281.json notes） */
+    piperMomentum?: PiperMomentumCycle
   }
 }

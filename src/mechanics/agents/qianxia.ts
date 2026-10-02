@@ -10,6 +10,7 @@ import type {
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds } from '@/types/resource'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
@@ -261,12 +262,12 @@ function buildQianxiaExecutions({ cfg, state, executions }: AgentResourceInput):
   })
 }
 
-function buildQianxiaResourceResult({ cfg, state, prePatchExecutions }: AgentResourceResultInput) {
-  return { specResources: { qianxia_gaze: cycleFromCfg(cfg, state, markSupplyOf(cfg, prePatchExecutions ?? [])) } }
+function buildQianxiaResourceResult({ cfg, state, prePatchExecutions }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { qianxiaGaze: cycleFromCfg(cfg, state, markSupplyOf(cfg, prePatchExecutions ?? [])) }
 }
 
 function buildQianxiaResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.qianxia_gaze as QianxiaGazeCycle | undefined
+  const cycle = result.qianxiaGaze
   if (!cycle) return []
   return [{
     id: 'qianxia-gaze',
@@ -348,5 +349,13 @@ declare module '@/types/resource/config' {
     qianxiaCinemaLevel?: number
     /** 写入：manualHits */
     qianxiaTriggerHits?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['qianxia_gaze']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 千夏凝视循环明细 */
+    qianxiaGaze?: QianxiaGazeCycle
   }
 }

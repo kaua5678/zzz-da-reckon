@@ -28,7 +28,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import type { CharacterOperationConfig, MechanicSetting } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { execMatchesMove } from '@/types/resource'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
@@ -223,7 +223,7 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
   // ⚠ 历史缺陷（2026-09-20 round 48 管理员AA 分诊实测，与般岳 `rageGainCoverage`、安比
   // `c2StunCoverage` 同源）：`cycleFromCfg`（:224-225）读的是 `severianFengfengStacks` /
   // `severianC4Coverage`，而这两个字段**全仓无人写入** ⇒ 永远回落 `?? 1`
-  // ⇒ `buildSeverianResourceResult` 产出的 `severian_flow` 里 `fengfengStacks` 恒 1、
+  // ⇒ `buildSeverianResourceResult` 产出的 `severianFlow` 里 `fengfengStacks` 恒 1、
   // `c4DefIgnore` 恒 = `SEVERIAN_C4_DEF_IGNORE × 1`（实测把 `severian.c4Coverage` 设为 0，
   // 资源区块仍报 `c4DefIgnore: 16`）。
   // 注意执行行路径（`patchSeverianExecutions` :333）走的是 `setting(cfg, 'severian.fengfengStacks')`
@@ -369,21 +369,25 @@ function patchSeverianExecutions({ cfg, executions }: AgentResourceInput): void 
   }
 }
 
-function buildSeverianResourceResult({ cfg, state }: AgentResourceResultInput) {
+/** 塞维利安流转结果 = 循环明细 + 本轮流转收入 / 影猎次数（r407 由读者处交叉类型提为具名） */
+export interface SeverianFlowResult extends SeverianCycle {
+  flowIncome: number
+  shadowHuntCount: number
+}
+
+function buildSeverianResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const { flowIncome, shadowHuntCount } = severianFlowState(cfg as AgentCharConfigInput['cfg'], state as AgentResourceInput['state'])
   return {
-    specResources: {
-      severian_flow: {
-        ...cycleFromCfg(cfg),
-        flowIncome: Math.round(flowIncome),
-        shadowHuntCount,
-      },
+    severianFlow: {
+      ...cycleFromCfg(cfg),
+      flowIncome: Math.round(flowIncome),
+      shadowHuntCount,
     },
   }
 }
 
 function buildSeverianResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.severian_flow as (SeverianCycle & { flowIncome: number; shadowHuntCount: number }) | undefined
+  const cycle = result.severianFlow
   if (!cycle) return []
   return [{
     id: 'severian-flow',
@@ -496,5 +500,13 @@ declare module '@/types/resource/config' {
     severianFengfengStacks?: number
     /** 塞维林影画4 覆盖率（机制设置 clamp 到 [0,1]） */
     severianC4Coverage?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['severian_flow']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 塞维利安流转明细 */
+    severianFlow?: SeverianFlowResult
   }
 }

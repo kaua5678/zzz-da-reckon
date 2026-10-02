@@ -28,6 +28,7 @@ import type {
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
@@ -275,12 +276,12 @@ function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
   }
 }
 
-function buildEvelynResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { evelyn_cycle: cycleFromInput({ cfg, state }) } }
+function buildEvelynResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { evelynCycle: cycleFromInput({ cfg, state }) }
 }
 
 function buildEvelynResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.evelyn_cycle as EvelynCycle | undefined
+  const cycle = result.evelynCycle
   if (!cycle) return []
   return [{
     id: 'evelyn-cycle',
@@ -348,5 +349,13 @@ declare module '@/types/resource/config' {
     evelynRestraintCoverage?: number
     /** 写入：getRowValue(findMove(skills, EVELYN_ULT_MOVE_ID), 'damage') * EVELYN_MULTIPLIER */
     evelynUltMultScaled?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['evelyn_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 伊芙琳循环明细 */
+    evelynCycle?: EvelynCycle
   }
 }

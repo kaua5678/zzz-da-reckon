@@ -488,9 +488,9 @@ describe('夜D · 层③ 真管线端到端', () => {
     expect(config.getMechanicSetting('hugo.remainingStunSeconds', 5), '滑块默认必须是 5（对照基准）').toBe(5)
     const calc = useResourceCalc()
     const ch = calc.resourceResult.value?.characters.find(c => c.slot === 0) as unknown as {
-      specResources?: { hugo_abyss_echo?: { remainingStunSeconds: number; exVerdictCount: number } }
+      hugoAbyssEcho?: { remainingStunSeconds: number; exVerdictCount: number }
     }
-    const cycle = ch?.specResources?.hugo_abyss_echo
+    const cycle = ch?.hugoAbyssEcho
     expect(cycle, '雨果资源卡必须存在').toBeTruthy()
     // 精确值 = 轴内反推（窗口 18 − maxEnd），与滑块 5 可分辨
     expect(cycle!.remainingStunSeconds).toBeCloseTo(11.429, 3)

@@ -202,14 +202,14 @@ describe('赛维里安（1631）⚠️3.3 测试服临时录入', () => {
   // 无人写入** ⇒ 恒回落 `?? 1`。后果：滑块 `severian.c4Coverage` 设 0，资源区块仍报
   // `c4DefIgnore: 16`（= 常量 ×1）。同一滑块的**执行行**路径（`patchSeverianExecutions` 走
   // `setting(cfg, …)`）却是对的 ⇒ 两路读数不一致（"区块骗人"）。本用例锁死资源区块侧。
-  it('滑块经真管线生效：sev 凭风层数 / 影画4 覆盖率必须进 `severian_flow` 资源区块', async () => {
+  it('滑块经真管线生效：sev 凭风层数 / 影画4 覆盖率必须进 `severianFlow` 结果键', async () => {
     const readCycle = async (fengfeng: number, c4: number, cinemaLevel: number) => {
       const { config } = await setup(['1631', '1251', ''], cinemaLevel)
       config.setMechanicSetting('severian.fengfengStacks', fengfeng)
       config.setMechanicSetting('severian.c4Coverage', c4)
       const calc = useResourceCalc()
       const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
-      return (ch.specResources as any).severian_flow as { fengfengStacks: number; fengfengMultBonus: number; c4DefIgnore: number }
+      return ch.severianFlow!
     }
     // 凭风：0 层 → 0 加成；2 层 → 满值（SEVERIAN_FENGFENG_MULT[2]）
     const f0 = await readCycle(0, 1, 0)

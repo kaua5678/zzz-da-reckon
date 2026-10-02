@@ -41,6 +41,7 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import type { CharacterResourceResult } from '@/types/resource'
 
 export const ELLEN_ID = '1191'
 export const ELLEN_FROST_TRIM_MOVE_IDS = ['1191006'] as const
@@ -452,12 +453,12 @@ function applyEllenPanel({ cinemaLevel, potentialLevel, panel, settings }: Agent
   if (cinemaLevel >= 6) panel.penRatio = (panel.penRatio ?? 0) + cycle.c6PenRatio
 }
 
-function buildEllenResourceResult({ cfg, state }: AgentResourceResultInput) {
-  return { specResources: { ellen_cycle: cycleFromInput({ cfg, state }) } }
+function buildEllenResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  return { ellenCycle: cycleFromInput({ cfg, state }) }
 }
 
 function buildEllenResourceSections({ result }: AgentResourceSectionsInput) {
-  const cycle = result.specResources?.ellen_cycle as EllenCycle | undefined
+  const cycle = result.ellenCycle
   if (!cycle) return []
   return [{
     id: 'ellen-cycle',
@@ -570,5 +571,13 @@ declare module '@/types/resource/config' {
     ellenAdditionalActive?: boolean
     /** 影画4 回能总额（资源钩子写） */
     ellenC4EnergyTotal?: number
+  }
+}
+
+/** r407：本模块私有结果键（原塞在 `specResources['ellen_cycle']`，与 spec 账本混用同一无类型通道） */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 艾莲循环明细 */
+    ellenCycle?: EllenCycle
   }
 }
