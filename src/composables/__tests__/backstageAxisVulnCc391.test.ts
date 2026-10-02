@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentMechanic } from '@/mechanics'
+import { agentAxisHiddenMoves } from '@/composables/agentMechanicView'
 import type { StunAxisAction } from '@/types/resource'
 
 const tick = () => new Promise(r => setTimeout(r, 40))
@@ -113,6 +114,22 @@ describe('CC-391 D1 后台行在失衡轴模式下的易伤归类', () => {
       expect(d.inAxis, `${moveId} 有失衡内段`).toBeGreaterThan(0)
       expect(d.inAxis, `${moveId} 只放一个父动作 ⇒ 不全段`).toBeLessThan(d.total)
     }
+  })
+
+  it('编辑器候选池（CC-392）：全部模块的伴随子行都在 agentAxisHiddenMoves 里（放进轴不起作用）', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1211' }, { agentId: '1181' }, { agentId: '1031' }])
+    let n = 0
+    const missing: string[] = []
+    for (const id of catalog.agentsMap.keys()) {
+      const hidden = new Set(agentAxisHiddenMoves(id))
+      for (const child of Object.values(getAgentMechanic(id)?.attachedEvents ?? {}).flat()) {
+        n++
+        if (!hidden.has(child)) missing.push(`${id}:${child}`)
+      }
+    }
+    expect(n, '反空洞').toBeGreaterThanOrEqual(10)
+    expect(missing).toEqual([])
+    expect(agentAxisHiddenMoves('1051')).toContain('1051012') // CC-57 原声明保留
   })
 
   it('(c) 主动招式没放进轴 = 零易伤（薇薇安合轴强化特殊技 1331010 不回落覆盖率）', async () => {

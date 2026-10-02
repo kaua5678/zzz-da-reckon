@@ -69,9 +69,16 @@ export function agentAxisMoveMeta(agentId: string | null | undefined): AgentMech
   return agentId ? getAgentMechanic(agentId)?.axisMoveMeta : undefined
 }
 
-/** 轴编辑器候选池隐藏的招式（CC-57）：模块声明 `axisHiddenMoves`；原位置 StunAxisPage.vue 写死 1051/1051012 */
+/**
+ * 轴编辑器候选池隐藏的招式：放进轴也不起作用的块。
+ * - 模块声明 `axisHiddenMoves`（CC-57；原位置 StunAxisPage.vue 写死 1051/1051012）；
+ * - 伴随事件子行（`attachedEvents` 的值，CC-392）：易伤跟随父动作的轴内占比，伤害分支在「按放置」之前，
+ *   放置无效且白占栈遍历时间预算。行级 `autoSplitByStun` 同理，由页面按执行行判断（不是模块级声明）。
+ */
 export function agentAxisHiddenMoves(agentId: string | null | undefined): readonly string[] {
-  return (agentId ? getAgentMechanic(agentId)?.axisHiddenMoves : undefined) ?? []
+  const mod = agentId ? getAgentMechanic(agentId) : undefined
+  if (!mod) return []
+  return [...(mod.axisHiddenMoves ?? []), ...Object.values(mod.attachedEvents ?? {}).flat()]
 }
 
 /** 轴编辑器候选块名后缀（CC-57）：模块声明 `axisMoveSuffix`；未声明 ⇒ ''。原位置 StunAxisPage.vue 写死 1371 + 1371022/1371026 */

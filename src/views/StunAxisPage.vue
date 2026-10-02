@@ -663,7 +663,8 @@ const allMoves = computed(() => {
     for (const exec of c.executions) {
       if (exec.moveId === 'basic_attack') continue
       // 模块声明隐藏的招式（CC-57，现唯一 = 伊德海莉裸极寒重碾 1051012：用连段表达能量消耗更准，避免误导闪能计算）
-      if (agentAxisHiddenMoves(c.agentId).includes(exec.moveId)) continue
+      // CC-392：伴随子行（并入 agentAxisHiddenMoves）与 CD / 时间驱动的自动行（autoSplitByStun）放进轴不起作用，不进候选池
+      if (exec.autoSplitByStun || agentAxisHiddenMoves(c.agentId).includes(exec.moveId)) continue
       // 固定轴：资源不足（count 0）的招式也显示为 ×0 灰色块，供轴放置/标记 60/90 转大；
       // 连携/赠送动作的可用数按失衡次数兜底（连携可用 = 失衡次数）。
       const mid = exec.moveId
@@ -787,7 +788,9 @@ const allMoves = computed(() => {
     }
     // 未单独建模招式（技能表有伤害倍率行、模块未生成执行行）：也进动作池供轴内直读，
     // 放置后由结算按技能表倍率出直伤（吃易伤；不占时间预算、窗内不产失衡值）
-    const seenTbl = new Set(out.filter(m => m.slot === c.slot).map(m => m.moveId))
+    // 去重口径 = 伤害侧 `damagePoolDirect` 的 `backed`（本角色全部执行行 moveId）：有执行行的招式放 [表] 块不出伤害。
+    // CC-392：原只看已进候选的招式 ⇒ 被隐藏的行（伴随子行 / 自动行 / axisHiddenMoves）会以 [表] 块重新冒出来。
+    const seenTbl = new Set([...out.filter(m => m.slot === c.slot).map(m => m.moveId), ...c.executions.map(e => e.moveId)])
     const tblSkills = catalogStore.getAgentSkills(configStore.team[c.slot]?.agentId ?? '')
     for (const cat of tblSkills?.categories ?? []) {
       if (!['special', 'assist', 'ultimate', 'chain'].includes(cat.id ?? '')) continue
