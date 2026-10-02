@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest'
 import { resolve } from 'node:path'
 import {
-  RECORD_KEY_MIN_READS,
+  RECORD_KEY_MIN_SCANNED_FILES,
   detectorSelfTest,
   findRecordKeyDeadReads,
   maskSource,
@@ -56,7 +56,7 @@ describe('判据 25 仓库级', () => {
     const r = scanRecordKeyDeadReads(ROOT, RECORD_KEY_DEAD_READ_ALLOWLIST)
     expect(r.fresh).toEqual([])
     expect(r.staleAllow).toEqual([])
-    expect(r.reads).toBeGreaterThanOrEqual(RECORD_KEY_MIN_READS)
+    expect(r.scanned).toBeGreaterThanOrEqual(RECORD_KEY_MIN_SCANNED_FILES)
     expect(r.ok).toBe(true)
   })
 })

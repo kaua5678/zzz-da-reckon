@@ -22,14 +22,17 @@
  *
  * ## 反空洞
  * `detectorSelfTest()` 用判别性 fixture 自证：死读必报 / 别处有写入必不报 / 字符串里的「x.key」不算读取；
- * 另设读取总数下限 RECORD_KEY_MIN_READS，扫描面缩水时判红而不是报零问题。
+ * 另设扫描文件数下限 RECORD_KEY_MIN_SCANNED_FILES，扫描面塌了（glob 失效 / 目录改名）时判红而不是报零问题。
+ * r404：原先的下限是「记录读取总数 ≥ 150」——但 D2 §5 正是在**有意消灭**这些 Record 读取（约 400 → 188 → 108），
+ * 读取数下限会随重构进度必然误报、逼人一路下调数字（棘轮当目标）。改为文件数口径（与 json-dup-keys 同法）：
+ * 它只随仓库规模变，不随 D2 进度变。D2 做完后读取数趋近 0 属正常，届时本判据自然失去对象、由编译器接管。
  */
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-/** 反空洞下限：记录读取总数低于此值 ⇒ 扫描面缺失，「零命中」不可采信（2026-09-27 实测约 400） */
-export const RECORD_KEY_MIN_READS = 150
+/** 反空洞下限：扫描到的非测试 src 文件数低于此值 ⇒ 扫描面缺失，「零命中」不可采信（2026-10-02 实测 319，取 250） */
+export const RECORD_KEY_MIN_SCANNED_FILES = 250
 
 const DECL = /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*(?::\s*Record<string,\s*(?:unknown|any)>\s*)?=\s*[^;\n]*?\bas\s+(?:unknown\s+as\s+)?Record<string,\s*(?:unknown|any)>/g
 
@@ -116,14 +119,14 @@ export function scanRecordKeyDeadReads(root, allowlist = {}) {
   const fresh = dead.filter(d => !(d.key in allowlist))
   const staleAllow = Object.keys(allowlist).filter(k => !dead.some(d => d.key === k))
   const selfTest = detectorSelfTest()
-  const belowFloor = reads < RECORD_KEY_MIN_READS
+  const belowFloor = files.length < RECORD_KEY_MIN_SCANNED_FILES
   return { scanned: files.length, reads, dead, fresh, staleAllow, selfTest, belowFloor,
     ok: fresh.length === 0 && staleAllow.length === 0 && selfTest.ok && !belowFloor }
 }
 
 export function formatRecordKeyDeadReads(report) {
   const lines = []
-  if (report.belowFloor) lines.push(`  ✗ 记录读取仅 ${report.reads} 处 < 下限 ${RECORD_KEY_MIN_READS}：扫描面缺失，零命中不可采信`)
+  if (report.belowFloor) lines.push(`  ✗ 仅扫到 ${report.scanned} 个文件 < 下限 ${RECORD_KEY_MIN_SCANNED_FILES}：扫描面缺失，零命中不可采信`)
   if (!report.selfTest.ok) lines.push('  ✗ detector 自证失败：', ...report.selfTest.failures.map(f => '    ' + f))
   for (const d of report.fresh) lines.push(`  ✗ ${d.key}：全仓除记录读取外零出现（无写入/声明）⇒ 恒取缺省值 — ${d.sites.join(' ')}`)
   if (report.fresh.length) lines.push('    → 接通写入方（模块 buildCharConfig / 编排层注入），或删除读取并如实登记 pending；确属有意的存量才登记 RECORD_KEY_DEAD_READ_ALLOWLIST（guard-registries.mjs）')

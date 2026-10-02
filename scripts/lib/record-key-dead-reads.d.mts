@@ -1,6 +1,6 @@
 /** scripts/lib/record-key-dead-reads.mjs 的类型声明（供 vitest/TS 消费，先例：json-dup-keys.d.mts） */
 
-export declare const RECORD_KEY_MIN_READS: number
+export declare const RECORD_KEY_MIN_SCANNED_FILES: number
 
 export interface RecordKeyDeadRead {
   /** 只被当作记录读取、别处零出现的键 */
