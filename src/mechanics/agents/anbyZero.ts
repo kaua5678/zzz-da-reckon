@@ -293,7 +293,7 @@ function anbyNextRoundFeedback({ cfg, teamResult, adjustedResult, combatTime, ge
     .reduce((sum, c) => {
       const skills = getAgentSkills(c.agentId)
       return sum + (c.executions ?? []).reduce((a, e) => {
-        if ((e as unknown as { skillDamageTarget?: string }).skillDamageTarget === 'additionalAttack') return a + (e.count ?? 0)
+        if (e.skillDamageTarget === 'additionalAttack') return a + (e.count ?? 0)
         // resourceResult 行上没有现成标记：按 catalog moveId 现场推断（同伤害池 infer 口径）
         for (const cat of skills?.categories ?? []) {
           const mv = (cat.moves ?? []).find(m => String(m.id) === String(e.moveId))
