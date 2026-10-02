@@ -91,10 +91,11 @@ describe('CC-291 重复调用钩子的 cfg 累加写入幂等', () => {
   it('② 奥菲丝 patchExecutions 重复调用不累加 extraSelfDecibelReward', () => {
     const cfg: any = { orphieCinemaLevel: 6, extraSelfDecibelReward: 100 }
     const mk = () => [{ moveId: 'x', skillDamageTarget: 'additionalAttack', count: 10, totalTime: 1 }] as any[]
-    orphieMechanic.patchExecutions!({ cfg, state: { combatTime: 180 }, executions: mk() } as any)
+    // r406：战斗时长走 IterationState 真实字段（orphie 现读 effectiveCombatTime；旧夹具的 `combatTime` 不存在于 state）
+    orphieMechanic.patchExecutions!({ cfg, state: { frontlineTime: 180, backstageTime: 0 }, executions: mk() } as any)
     const once = cfg.extraSelfDecibelReward
     expect(once).toBeGreaterThan(100)
-    for (let i = 0; i < 5; i++) orphieMechanic.patchExecutions!({ cfg, state: { combatTime: 180 }, executions: mk() } as any)
+    for (let i = 0; i < 5; i++) orphieMechanic.patchExecutions!({ cfg, state: { frontlineTime: 180, backstageTime: 0 }, executions: mk() } as any)
     expect(cfg.extraSelfDecibelReward).toBe(once)
   })
 })

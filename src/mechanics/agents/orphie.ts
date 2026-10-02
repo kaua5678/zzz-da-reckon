@@ -3,7 +3,7 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
+import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, effectiveCombatTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
 /**
@@ -88,7 +88,7 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
     for (const exec of executions) {
       if (exec.skillDamageTarget === 'additionalAttack') aaCount += Math.max(0, exec.count)
     }
-    const combatTime = Math.max(0, Number((state as any)?.combatTime ?? (state as any)?.totalTime ?? 180))
+    const combatTime = effectiveCombatTime(state, cfg)
     const cdCap = Math.floor(combatTime / 4)
     // CC-291：幂等写入（extraSelfDecibelReward 是跨角色共享累加通道，只能扣掉本模块上次写入量再加新值）。
     // 原实现每次调用都 `+=`，patchExecutions 在同一份 cfg 上被重复调用 ⇒ 喧响账读到 2 倍（探针：2925 → 5850）。
@@ -206,7 +206,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   const frontRatio = Math.max(0, Math.min(1, rRaw >= 0 ? rRaw : Number(cfg.orphieAutoFrontRatio ?? 0)))
 
   // 回能副C：能量必须走迭代能量总账（state.totalEnergy），不再用种子近似
-  const energy = Math.max(0, Number((state as any).totalEnergy ?? 0))
+  const energy = Math.max(0, Number(state.totalEnergy ?? 0))
   const frontCast = Math.floor(backstageCast * frontRatio)
   const backCast = backstageCast - frontCast
   const vortexCount = Math.min(backCast, Math.floor(energy / ORPHIE_VORTEX_ENERGY))
