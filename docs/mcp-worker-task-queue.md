@@ -153,14 +153,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 409 轮（lane arena-E；无并行会话；HEAD `24358f49`；REQUIREMENTS.md 无新条目）：CC-383 `5f87bf26` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
-- **做到哪**：「派给全部、各自认领」同类（r408 交接第 1 项）查到第三种形态：派发处**已经给了**本人 `cfg`，模块仍在 `characters` 里自找 / 自证在队。9 处已删（yaojiayin 3 / lighter 2 / lucy / ellen / promia / vivian），由 `selfFromDispatcherCc383.test.ts` 锁住（详见架构卡 CC-383）。
-- **验证**：vue-tsc `--force` 0；zd `r409a` 0/0；guards 链 EXIT 0（specs 1120 / recording 189）；vitest(4) 459 文件 / 4246 测试；build 通过。
-- **回滚点**：`git revert 5f87bf26`（单提交，含锁与测试改写）。
-- **拍板**：结果行里按 agentId 取本人行（yixuan:1004 / yeshuguang:726 / promia:383 / alice `aliceSlotOf`）不改。派发器要为三套结果各递一个 self 行，契约变复杂、收益小。
-  lighter:499 / anbyZero:310 的「结果行集有无本人」判据有意保留，语义不同于「cfg 在不在队」。
+**第 410 轮（lane arena-E；无并行会话；HEAD `3fbb6ceb`；REQUIREMENTS.md 无新条目）：CC-384 `6431c93d` + `f657b139` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
+- **做到哪**：r409 交接第 1 项「其他钩子族的自找」。`findSlotByIdentity` 早在 CC-277 删除（只剩注释，交接里那条已过时）。真正的漏网是 teammateBuffGate：入参没有本人，蕾米埃尔在压缩 `Agent[]` 里自找、拿下标当槽位 → 派发器改给 `self` + `ReadonlyTeam`（架构卡 CC-384）。另补 alice 的循环自找变体、删死导出 `aliceSlotOf`，CC-383 锁扩展（team 接收者 / `.id` 比较 / 循环变体）。
+- **验证**：vue-tsc `--force` 0；zd `r410a` 0/0；guards 链 EXIT 0（specs 1120 / recording 189）；vitest(4) 459 文件 / 4246 测试；build 通过。
+- **回滚点**：`git revert f657b139 6431c93d`（**必须按此顺序**：f657b139 的锁扩展依赖 6431c93d 删掉 remielle 的 `team.findIndex` 自找）。
+- **拍板**：门控「拥有者不在队仍询问」保留（store 侧 base 本为 false，改成不询问需要另核 store 默认勾选口径，不在本轮范围）；`self` 的判定口径照搬原 `selfCinema`（agent 可查）。
 - **下一步（按价值排）**：
-  1. 其他钩子族同一检查：在 `mechanics/agents` 里搜 `teamResult.characters.find(… === 本人ID)` 之外的自找形态，例如 `team.find(m => m.agentId === 本人ID)`（ReadonlyTeam）、`findSlotByIdentity`（18 处调用）。判据：这个钩子的入参有没有 `slot` / `self`？有就改用入参；没有就看派发器该不该给（参照 CC-373 的 `AnomalyHookSelf`）。
+  1. **审一遍钩子入参有没有本人**：在 `mechanics/types.ts` / `typesHooks.ts` 里列出 `AgentMechanicModule` 每个钩子的入参类型，标出既没有 `slot` 也没有 `self` / `cfg` 的那些；再看对应实现里有没有按 agentId 找自己（CC-383 锁只覆盖裸变量 `characters` / `team`，像 `input.members`、`rr.characters` 这类接收者不在锁内）。有就照 CC-384 的做法由派发器给 self。
   2. `stores/config.ts` 的 7 处 any（store 是计算输入的源头）。清零后考虑把 `stores/` 加进 CC-381 的 `CALC_DIRS`。
   3. UI 层其余 any（composables 除 resourceCalc 外约 10 / components 18 / views 28），只做能暴露真实类型断层的。
 - **已知坑**：
@@ -214,6 +213,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **反证注入要选本轮没改过的文件**，事后用 `git checkout -- <这些文件>` 还原（先 `git status --short <文件>` 确认为空）。在改过的文件上注入再 checkout，会把本轮改动一起冲掉。
   - **测试直接调钩子时，别构造派发器不会产生的输入**（r409：用 1471 的 cfg 调 1541 的钩子来锁「不在队 ⇒ 0」）。这种断言会把钩子里的死判据锁成「必须保留」。「不在队」这类保证属于派发器，应该在 `collectNextRoundFeedback` / 真管线上锁。
   - **模块文件的本人 ID 以 `agentIds: [...]` 为准**（每个模块都有，CC-383 的锁就靠它）；不要按「文件里声明的第一个 `_ID` 常量」猜，有的文件同时声明了队友 ID。
+  - **交接里的「下一步」可能已过时**：r409 交接写「查 `findSlotByIdentity`（18 处调用）」，实际 18 处全是注释，函数在 CC-277 就删了。开工先 grep 核对，别照单全收。
+  - **自找有多种写法，正则锁要按形态补**：`.find/.some(x => x.agentId === 本人)`、`team.findIndex(a => a?.id === 本人)`、`for (c of characters) { if (c.agentId !== 本人) continue`。新发现一种形态就加进 `selfFromDispatcherCc383.test.ts`，并用 `git show master:<文件>` 回放做反证。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
