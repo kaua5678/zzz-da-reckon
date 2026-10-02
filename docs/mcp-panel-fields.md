@@ -1,8 +1,8 @@
 # PanelValues 未声明字段盘点（r400 / CC-374）
 
 > lane arena-E · 2026-10-02 第 400 轮。代码提交 `823b7261`（删 9 个零读者字段）。
-> 复跑：`node scripts/audit-panel-fields.mjs <临时worktree> [none|template] [out.json]`（约 15s；**别在主工作区跑**，见脚本头注释）。
-> **r401 进度**：S1 `632e4009`、S3 `72feeeee` 已完成（template 模式 87→52，dynamic 34→0）；剩 **S2+S4 合并为一个提交**（§4，原计划分开做不可行，§5 TS2411）。
+> 复跑：r402 起不再需要。签名收紧后 vue-tsc 本身就是这份盘点，脚本已删（回滚：`git show 1f5094bb:scripts/audit-panel-fields.mjs`）。
+> **r402 全部完成，D2-PV 销号**：S1 `632e4009`、S3 `72feeeee`（r401）；S2+S4 `8efcb274`、堵 `as any` 后门 `5b899453`（r402）。之后新增面板字段按 §6 规则。
 > 关系：`docs/mcp-write-only-props.md`（CC-190）按**已声明属性的符号**查只写不读；索引签名上的**未声明**字段是它的盲区，本文补这一块。
 
 ## 0. 结论
@@ -109,14 +109,21 @@
 
 ## 4. 分阶段执行卡（每阶段一提交；验收 = vue-tsc `--force` 0 + zd 0/0 + 全量 vitest(4)）
 
-> r401 修订：原 S2 / S4 分两步做不可行（§5 TS2411），合并为一个提交；S3 前移。进度：S1 ✅、S3 ✅，剩 S2+S4。
+> r401 修订：原 S2 / S4 分两步做不可行（§5 TS2411），合并为一个提交；S3 前移。进度：全部 ✅（r402）。
 
 - **S1 声明通用属性** ✅ r401 `632e4009`：共 15 个（原 14 个 `cross`，加上 emptyPanel 里早有初值却未声明的 `healingAmount`），全部声明为**必填** `number`，不是原计划的 `?:`（§5 TS2411）。emptyPanel 补 5 个初值：`roaringRideBackstageEnergyRegen` 0、`potentialLevel` 6（三个读者原本都 `?? 6`）、`turbulenceResIgnore` 0、`windInfectionRate` 0、`refringe` 0。去掉 `anomalyPanels.ts` 的 `as any`。`cross` 行清零。
 - **S3 动态键网关** ✅ r401 `72feeeee`：
   - `src/utils/panelStat.ts` 的 `getPanelStat / setPanelStat / addPanelStat` 是「键名来自数据」时唯一的入口，内部做一次断言。34 处全部改完，template 模式 dynamic 34→0（总数 87→52）。
   - 没采用原计划的「展示组件的 key 取 `keyof PanelValues`」：键来自 statMeta、`elementStatKey`、`Object.keys`，类型上就是 string。硬收紧只能在各个列表处断言，等于把断言分散到各处。
   - 同一提交把 `core/buff.ts` 的批次累加器从面板隐藏键（`__hpAccum` 等，值是对象）移进模块级 WeakMap，两套同构的累加器合并为一套。原因是 `__hpAccum` 匹配 S4 的模板签名：不搬的话，S4 会把一个对象当成 number 放行。锁：`core/__tests__/batchAccum.test.ts`。
-- **S2+S4 同一提交（下一步，r402）**：
+- **S2+S4 同一提交** ✅ r402 `8efcb274`（下面 1–6 是当时的执行卡，保留作记录）。结果：签名换成模板签名；13 个模块共声明 21 个私有字段；删 3 个零读者标记（`miyabiCinema4/6`、面板侧的 `aliceAdditionalAbilityActive`）。探针：雅 C4 自检 ok → `execLevel`（如实，效果在执行层），收益 4.43 / 33.775 不变。测试 10 处按计划改完。反证：`panel.fooBar` 报 TS2339、拼错的 `hugoEchoCoverag` 报 TS2551、`panel.foo__bar` 放行。
+- **S5（计划外，r402 `5b899453`）堵 `as any` 后门**：签名收紧后，`(panel as any).k` 成了唯一的夹带通道，而盘点脚本看不见它（脚本靠编译报错，`as any` 让编译器闭嘴）。实测 4 处：
+  - ben `benDefToAtk`：留痕，声明；
+  - lighter `lighterMoraleDmgBonus`：本模块写读，声明；
+  - lighter `lighterC1FinisherDmgBonus`：零读者的 C1 标记，删；
+  - yeshuguang：多余的 `as any`，去掉。
+  加全仓不变式锁（`types/__tests__/privateCfgFields.test.ts`，已反证）。同一提交里 miyabi 的 cfg 强转清零，进 D2 §5 锁表。
+- 原执行卡：
   1. 签名换成 `` [key: `${string}__${string}`]: number ``。定向属性键（`skillDmgBonus__basic` 这类）仍然合法。
   2. 同一提交里，24 个 single 字段在所属模块写 `declare module '@/types/catalog' { interface PanelValues { xxx?: number } }`（D2 规则，见 `docs/mcp-d2-cfg-fields.md`；出现第二个**生产**引用者就迁回公共接口）。签名换完后 `?:` 不再与索引签名冲突。字段和所属模块的清单在 r401 后重跑：`node scripts/audit-panel-fields.mjs <临时wt> template out.json`（r401 的结果在 `calc-arch/arenaE/pv401b.json`，25 行具名 + 10 处其他）。改之前每个字段先按 §2 判据确认有读者，零读者的删除，并跑探针。
   3. 剩下 10 处「其他」：
@@ -136,3 +143,15 @@
 - **盘点盲区（r401）**：对象展开或非字面量写入（如 `.map(p => ({ ...p, x }))`）不触发多余属性检查，所以表里 W0 不能证明没有写入方，要 grep 核实（`windInfectionRate` 就是在 `useResourceCalc.ts` 里用展开写入的）。另外 TS 对每个对象字面量只报**第一个**多余属性：emptyPanel 要用脚本比较全部键（`healingAmount` 就是这样漏掉的）。
 - **只经网关流动的键编译器永远看不到**：数据里的 stat 经 `applyStat` 的 default 分支写入、经 `getPanelStat` 读出（例如 `fireCritDmg`），S4 之后也不会报错。它们的「声明」是 catalog 数据加 statMeta，不是 `PanelValues`。不要把「编译通过」理解为「所有键都已声明」。
 - **面板上不要挂非数字的东西**：批次状态这类临时数据按面板对象存 WeakMap（r401 `buff.ts` batchAccum 先例）。挂在面板上会被展开拷贝带走（共享同一引用），被 `Object.keys` 读者看到，还会被模板签名误放行。
+- **`as any` 是类型收紧的盲区（r402）**：靠编译报错做的盘点永远看不到 `(x as any).k`。收紧任何类型之后，都要再 grep 一遍 `as any` / `as unknown as Record` 绕过该类型的写法，并加不变式锁。
+
+## 6. 终态之后的规则（r402 起，给后续会话）
+
+- **新面板字段放哪**：
+  - 多个模块读写的通用属性：在 `types/catalog.ts` 的 `PanelValues` 里声明（emptyPanel 有初值的写必填）。
+  - 只有一个模块读写：在该模块末尾 `declare module '@/types/catalog' { interface PanelValues { xxx?: number } }`。出现第二个**生产**引用者时迁回公共接口（测试读不算）。
+  - 键名来自数据（catalog stat、`elementStatKey` 元素键族、`Object.keys`）：用 `utils/panelStat.ts` 的 `getPanelStat / setPanelStat / addPanelStat`，不声明。
+  - 批次状态这类非数字的临时数据：不要挂在面板上，按面板对象存 WeakMap（`core/buff.ts` batchAccum 先例）。
+- **禁止**：`(panel as any).k`、`panel as unknown as Record`（锁：`privateCfgFields.test.ts`）。测试里需要动态键时，用 `as unknown as Record` 或网关。
+- **新增字段前先问「谁读」**：没有读者的标记（尤其是 `xxxCinemaN = 1`）只会让命座自检（`cinemaUplift` 的 changedFields）误判为 ok。要留痕，就和真实属性写在同一块里（§2 判据）。
+- 可选的后续收紧（不急，记在这里）：模板签名可以收紧成 `` `${StatKey}__${SkillTargetKind}` ``；元素键族（`fireCritDmg` 等）也可以用映射类型声明。两者都要先确认收益：能拦住哪一类真实错误。没有实例就不做。

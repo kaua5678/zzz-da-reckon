@@ -304,4 +304,4 @@
 - **同名局部变量**：名字兜底按名字匹配，同名局部变量会让死字段漏报。
 - **结构类型参数**：TS `findReferences` 连不到内联结构类型的同名属性，所以 ① 段的候选量很大，靠 ② 段收敛。
 - 审计**不做守卫**（理由见 §0），只作只读审计。
-- **索引签名上的未声明字段**（如 `PanelValues` 的 `[key: string]: number`）：没有符号可查，本审计看不到。已由 `docs/mcp-panel-fields.md`（r400，`scripts/audit-panel-fields.mjs`：删签名跑 tsc）补上。
+- **索引签名上的未声明字段**（如 `PanelValues` 的 `[key: string]: number`）：没有符号可查，本审计看不到。已由 `docs/mcp-panel-fields.md`（r400，`scripts/audit-panel-fields.mjs`：删签名跑 tsc）补上。（r402 CC-376：`PanelValues` 已收紧为模板签名，这块盲区已关闭，见 `docs/mcp-panel-fields.md` §6。）

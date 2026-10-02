@@ -152,14 +152,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 401 轮（lane arena-E；无并行会话；HEAD `1f5094bb`；REQUIREMENTS.md 无新条目）：CC-375 `632e4009`（S1）+ `72feeeee`（S3）+ 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：`docs/mcp-panel-fields.md` §4 的 S1 和 S3 完成。template 模式 87→52：dynamic 34→0，`cross` 行清零，其他 11→10。执行中修订了计划：S2 不能单独做，必须和 S4 同一提交（TS2411，见该文 §5）。
-- **验证**：vue-tsc `--force` 0；zd `r401` / `r401b` 均为 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 456 个文件 / 4196 个测试；build 通过（日志在 `arenaE/*401*`）。新锁 `batchAccum.test.ts` 已反证：换回旧版 buff.ts 后有两条失败。
-- **开放项**：OPEN-ITEMS 的 D2-PV 追加 r401 进度。
+**第 402 轮（lane arena-E；无并行会话；HEAD `6e0dcd4a`；REQUIREMENTS.md 无新条目）：CC-376 `8efcb274` + `5b899453` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：PanelValues 线（r398 起的 D2-PV）**收尾**。签名已收紧为 `` [key: `${string}__${string}`]: number ``，未声明的键编译失败；新增字段规则写在 `docs/mcp-panel-fields.md` §6。计划外多做了一步 S5：堵住 `(panel as any)` 后门并加全仓锁。miyabi 进 D2 §5 锁表。
+- **验证**：vue-tsc `--force` 0；zd `r402` / `r402b` 均为 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 457 个文件 / 4201 个测试；build 通过。探针（`arenaE/probe402*.json`）：雅 C4 自检 ok → execLevel，其余只是 changedFields 少了被删的标记，收益全部不变。三处锁 / 反证全部做过。
+- **开放项**：OPEN-ITEMS 的 D2-PV 已标 done。
 - **下一步（按价值排）**：
-  1. **`docs/mcp-panel-fields.md` §4「S2+S4 同一提交」**：换模板签名，同时把 24 个 single 字段改为模块内 `declare module ... ?: number`，并处理剩下 10 处「其他」。清单先重跑盘点脚本得到。需要逐字段判断有没有读者，不是纯机械活，留给能跑探针的会话。
-  2. r399 下一步 2：逐个检查 `getRegisteredAgentMechanics()` 的调用方，区分「全量声明查询」和「运行期钩子派发」，后者改用 `teamMechanicSlots`。
-  3. d2 §5 剩余待做模块（miyabi 的 `miyabiCinemaLevel` Record 强转在其中）。
+  1. r399 下一步 2：逐个检查 `getRegisteredAgentMechanics()` 的调用方，区分「全量声明查询」和「运行期钩子派发」，后者改用 `teamMechanicSlots`。先 grep 调用点并列表，判据见 r399 交接（`docs/mcp-calc-core-architecture.md` CC-373 行）。
+  2. d2 §5 剩余「待做」模块（`docs/mcp-d2-cfg-fields.md` §5 表）：lighter 的 `const record = cfg as unknown as Record` 就是现成的一例，本轮看到但没动（不在本线范围）。机械部分有 `scripts/d2-record-apply.py`。
+  3. `(result as any)`、`(exec as any)` 等其他契约对象上的 `as any`：可以照 §6 的做法盘点。先 grep 计数并确认是不是同一个病（结果字段多半已有 `declare module`，强转是多余的），再决定做不做。不要为了降计数去做。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -188,6 +188,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **把一个测试当锁之前先反证**：r401 以为 `statModeParity` 能锁住累加器泄漏，换回旧代码后它照样通过（它比较的面板都已 finalize），于是另写了 `batchAccum.test.ts`。
   - **wsl_exec 里用 `nohup … &` 起的后台进程，会在调用返回时被回收**（r401 vitest 跑到一半就没了，日志也没有 EXIT 行）。全量 vitest 用前台 `timeout 285` 跑，约 200 秒。
   - 面板上不要挂非数字数据，批次状态按面板对象存 WeakMap（r401 先例）。
+  - **收紧类型后必须再查 `as any`**：靠编译报错的盘点看不到 `(x as any).k`。r402 换完签名、tsc 全绿后，又 grep 出 4 处 `(panel as any)` 夹带。
+  - **按命座门控用命座等级，别读面板上的命座标记**：`(cfg.panel as any)?.miyabiCinema4` 这类写法既是夹带，又让命座自检误判。r402 改成 `cfg.miyabiCinemaLevel` 后，探针证明收益逐位不变。
+  - **全量 vitest 和 zd 都能在一次前台调用内跑完**（约 240s / 80s，`timeout 285`），不要放后台（r401 实测后台进程不跨调用存活）。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
