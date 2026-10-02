@@ -152,13 +152,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 396 轮（lane arena-E，开工 13:08；无并行会话；HEAD `80ae9f1b`；REQUIREMENTS.md 无新条目）：CC-370 `9543b79f`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：§5 表 7 个模块（lucy / phoenix / promia / yidhari / nangong / severian / vivian）补声明；nangong、severian 进锁表（20 个）；其余 5 个剩的强转都是结构问题，表格行逐个注明原因。两个 d2 脚本各修一处误改/误报。详见 `docs/mcp-d2-cfg-fields.md` §5 r396 段。
-- **验证**：vue-tsc `--force` 0；锁 25/25 + 反证（severian 注入强转 → 红）；zd `r396` 0/0；guards / tokens / data / specs 1120 / recording 189；全量 455 文件 / 4180 例；build（`arenaE/v396-*.log`）。
-- **开放项**：OPEN-ITEMS「nextRound cfg 写回」（新）。
-- **下一步（二选一，按价值排）**：
-  1. **nextRound 写回判死**：lucy / promia / vivian / hugo / ellen / anbyZero / lighter 的 `nextRoundFeedback` 里对 DeepReadonly cfg 强转写回。typesHooks 注释称每轮重新 spread、写回不跨轮——逐个删写回跑 zd：0/0 ⇒ 删（连同对应单测里断言「守卫差异」的用例要先读懂再改）；非 0 ⇒ 说明本轮内有读者，改走返回值 → threads 通道。**不要**把钩子 cfg 放宽成可写（违背 49ecb777）。
-  2. 继续 §5 表剩余「待做」模块（keys 出骨架 → 查 data/specs JSON 读者 → 写真实类型 → apply → 人工行 → tsc → 锁 + 反证 → zd）。
+**第 397 轮（lane arena-E，开工 13:40；无并行会话；HEAD `4ed00f79`（开工时先补推了 r396，上一轮收尾时 ngrok 掉线没推上）；REQUIREMENTS.md 无新条目）：CC-371 `07c17341`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：r396 下一步 1 已完成。nextRound 的 cfg 写回全部判死并删除，运行时只读锁覆盖全部 11 个钩子模块，TYPED 23。依据、锁、坑都在 `docs/mcp-nextround-writeback.md`。
+- **验证**：vue-tsc `--force` 0；zd `r397` / `r397b` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 455 个文件 / 4192 个测试；build 通过（`arenaE/v397-*.log`）。只读锁反证：塞回艾莲写回 → 红。
+- **开放项**：OPEN-ITEMS D2-NR 已标 done；无新增。
+- **下一步（按价值排）**：
+  1. **「只读入参被写」的其余落点**（同病、同法）：先做 phoenix——`applyPanelBuffs` 里 `;(panel as unknown as Record<string, unknown>).phoenixCinemaLevel = cinemaLevel` 借 panel 夹带命座，`releaseModifier` 再通过 `panels.find(p => p.phoenixCinemaLevel !== undefined)` 读出来（phoenix.ts 约 250–256 行）。查 `releaseModifier` 的入参能不能直接拿到 cfg 或命座；能拿到就改走正式通道，删掉夹带（vivian 的 `releaseModifier` 用 `panel.vivianCinemaLevel`，可能同型，一起看）。然后在 `types.ts` / `typesHooks.ts` 的其他 `DeepReadonly` 入参上（`grep -n "DeepReadonly<" src/mechanics/types*.ts`）复用 `nextRoundFeedback.test.ts` 末段的深冻结夹具做同类锁；每个锁都要反证。
+  2. 继续 d2 §5 表剩余「待做」模块（流程见执行卡；apply 脚本报「混源 … 其他:…」时只改 cfg 别名所在的函数）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -176,6 +176,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - 收紧锁时优先「全仓不变式」而不是「名单」：名单只能防回退，挡不住新模块重犯（r395 CC-369）。
   - **apply 脚本报「混源 … 其他:…」时别手动全文替换**：那是同文件 `record` 还指别的对象（队友 / 形参），只改 cfg 别名所在函数（r396 CC-370）。
   - 元数据类键（`*Meta` / `*Cycle`）骨架写的是 `number`，要按写入处（`metaOf()` 等）的实际返回改成对象类型；读者处原有的 `as {…}` 断言会成为对比依据。
+  - **遍历注册表写锁时，模块身份字段是 `agentIds`（数组）不是 `agentId`**；写错了夹具会绕过全部守卫、锁形同虚设，vue-tsc 也不报 ⇒ 每个锁都必须反证（r397）。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 

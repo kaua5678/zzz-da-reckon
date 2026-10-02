@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（74 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（75 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -107,6 +107,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-engine-perf.md` | **引擎性能活文档**：现状读数、等价验证手段（全库 dump / profile / 纯度探针）、已落地手段及其前提、否决记录、剩余热点；每轮更新本文不新开 |
 | `docs/mcp-calc-core-architecture.md` | **计算核心架构优化**：五个结构问题诊断（阶段闭包共享可变态 / 引擎层角色特判 / 求解器绑 Vue / 公式副本 / 职责混装）、目标形态、零行为搬迁通用验收（dump A/B）与 CC-* 分批任务卡；活文档，卡做完改状态 |
 | `docs/mcp-d2-cfg-fields.md` | **D2 公共接口去巨型化（类型层）**：单模块私有成员用 `declare module` 扩充随模块走（`CharacterOperationConfig` / `ModuleFeedback`），约定、结果、剩余公共字段的下一步与字段矩阵；脚本 `scripts/d2-*.py`，锁 `src/types/__tests__/privateCfgFields.test.ts`（CC-359/360） |
+| `docs/mcp-nextround-writeback.md` | **nextRoundFeedback cfg 写回判死**（r397 CC-371）：静态 + 动态判死依据、删掉的死通道（`lucyCheerSpinsEstimate` / `targetCfgOf`）、「深冻结调用全部已注册钩子」只读锁及其反证坑、同病其他落点（phoenix panel 夹带等） |
 | `docs/round2-intent-charter.md` | **下一轮委托：意图与验收闸门**（云端作者）：为什么做/何时值得做/什么不能做、六条长期意图、证伪闸门两行、权限与升级条件；不含现场操作参数，配套 field-sheet 由首席现场填写 |
 | `docs/round2-field-sheet.md` | **下一轮现场执行单（已填写）**：本轮现场事实与授权、操作能力（workflow 路由现场核验）、现场选题与每条任务证伪闸门/白名单、首席派发回收检查与最终回报 |
 | `docs/cloud-guidance-model-playbook.md` | **云端指导模型协作指南**：astra 类模型的最大贡献点（意图→闸门）与帮倒忙区（现场操作手册）、两轮实测对照、点修 vs 泛化阈值与基线全盲验收等待补闸门、何时需要云端再来一轮 |
@@ -156,4 +157,4 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/REQUIREMENTS.md` | **用户需求唯一入口**：用户经助手写入的 `R<编号>` 需求；每轮开工先读、优先于自选待办，做完标 `[done <commit>]` 不删条目 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（74 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（75 份，与节标题一致），新增文档需同步本表。

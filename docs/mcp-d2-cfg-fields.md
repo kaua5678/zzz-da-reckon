@@ -95,6 +95,8 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 
 **r396（CC-370 `9543b79f`）——第 7 批 7 模块 + 两处脚本误改修复**：lucy / phoenix / promia / yidhari / nangong / severian / vivian 补 44 个私有声明（元数据键按 `metaOf()` 实际返回写对象类型，不再是 `number` 骨架）；nangong 动态写 `cfg[key]`（key 来自字面量元组）可直接受检；promia / severian 私有 `cycleFromCfg(cfg: unknown)` 改 `Pick<CharacterOperationConfig, …>`。`TYPED_CFG_MODULES` 20 个（+nangong +severian）。**apply 脚本新坑（已修）**：同文件里 `record` 还绑定别的对象（lucy nextRound 里 `for (const c of characters) { const record = c as … }` 写**每个队友**；nangong `record:` 形参）时，旧实现全文 `record.`→`cfg.` 会把「写全队」错改成「只写自己」——本轮靠 vue-tsc 的 DeepReadonly 报错才拦下，换个可写类型就是静默错算。现在这类文件按混源停手。**keys 脚本误报（已修）**：先剥注释，注释里提到的已删旧键（vivian CC-91 的 `vivianDanceHit` / `vivianAssistCount`）不再报成未声明。**剩下的不是「漏改」而是三类结构问题**（各模块表格行已注明）：① nextRound 钩子对 `DeepReadonly` cfg 强转写回（lucy / promia / vivian，另有 hugo / ellen / anbyZero / lighter 同型）——49ecb777 定了「钩子输入只有输出通道可写」，而 typesHooks 注释说写回不跨轮生效 ⇒ 下一步用 zd 判死后删写回，而不是放宽类型；② 导出函数签名收 `Record`（yidhari）；③ 借 `panel` 夹带 cfg 字段（phoenix）。**剩余：非测试源码 `as unknown as Record` 120 行（`git grep -n` 计，含非 cfg 对象）+ `cfg as any` 0**。
 
+**r397（CC-371 `07c17341`）——nextRound cfg 写回判死**：r396 剩下的「结构问题 ①」已解决。lucy / promia / vivian / ellen 在 `nextRoundFeedback` 里强转写 cfg，经静态（写在本轮局部克隆上，读者都在钩子之前）+ 动态（zd 0/0、管线锚点不变）判定为死写，已删；依据和锁见 `docs/mcp-nextround-writeback.md`。没有放宽钩子类型，而是在 `nextRoundFeedback.test.ts` 加了**运行时只读锁**：遍历注册表，深冻结输入后调用全部钩子。`TYPED_CFG_MODULES` 23 个（+lucy +promia +vivian）。**剩余：非测试源码 `as unknown as Record` 115 行（含非 cfg 对象）**。剩下的结构问题：② yidhari 导出签名收 Record；③ phoenix 借 panel 夹带（同属「只读入参被写」，见 nextround 文档 §5）。
+
 ### 执行卡（每个模块一张，机械活，可派执行模型）
 
 1. `python3 scripts/d2-record-keys.py . <模块名> <声明骨架文件>`（r394 CC-366 起三种强转 `as unknown as Record` / `as Record` / `as any` 都统计，并把未声明键写成声明骨架——**骨架里的类型是按用法猜的、注释是 TODO**：先查每个键的全部读写点（`grep -rn <键> src`，**含 `src/data` 的 JSON**——spec 资源会按字段名读 cfg），写清含义与写入方再用）：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
@@ -117,14 +119,14 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `banyue` | 11 | 0 | 0 | done 2b0743ce |
 | `starlightBilly` | 10 | 0 | 0 | done 2b0743ce |
 | `sigrid` | 9 | 0 | 0 | done c7627ef3 |
-| `lucy` | 8 | 2 | 0 | 实质完成 9543b79f，**不进锁表**：剩 2 处强转在**队友** `c` 上（nextRound 写回 + 读），见 OPEN-ITEMS「nextRound cfg 写回」 |
+| `lucy` | 8 | 0 | 0 | done 07c17341（r397：nextRound 死写回删除 + `applyLucyTeamEnergyFlags` 多余强转去掉；剩 3 处 `(result as any)` 在结果对象上，不属 cfg） |
 | `phoenix` | 8 | 1 | 0 | 实质完成 9543b79f，**不进锁表**：剩 1 处在 `panel` 上（夹带 `phoenixCinemaLevel` 给 releaseModifier，panel 类型问题） |
 | `grace` | 7 | 0 | 0 | done c7627ef3 |
-| `promia` | 7 | 1 | 0 | 实质完成 9543b79f，**不进锁表**：剩 1 处 nextRound 对 DeepReadonly cfg 的写回 |
+| `promia` | 7 | 0 | 0 | done 07c17341（r397 删 nextRound 死写回） |
 | `yidhari` | 7 | 3 | 0 | 实质完成 9543b79f，**不进锁表**：导出 `computeYidhariHpSource(cfg: Record…)`（测试直传字面量）的 3 个调用点保留局部强转 |
 | `nangong` | 6 | 0 | 0 | done 9543b79f |
 | `severian` | 6 | 0 | 0 | done 9543b79f |
-| `vivian` | 6 | 1 | 0 | 实质完成 9543b79f，**不进锁表**：剩 1 处 nextRound 对 DeepReadonly cfg 的写回 |
+| `vivian` | 6 | 0 | 0 | done 07c17341（r397 删 nextRound 死写回） |
 | `aire` | 5 | 6 | 0 | 待做 |
 | `anby` | 5 | 5 | 0 | 待做 |
 | `ellen` | 5 | 5 | 0 | 待做 |
