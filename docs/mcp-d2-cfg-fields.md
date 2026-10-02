@@ -132,24 +132,24 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `aire` | 5 | 6 | 0 | 待做 |
 | `anby` | 5 | 5 | 0 | 待做 |
 | `ellen` | 5 | 5 | 0 | 待做 |
-| `hugo` | 5 | 5 | 0 | 待做 |
-| `lighter` | 5 | 5 | 0 | 待做 |
+| `hugo` | 5 | 5 | 0 | done 9ee2bcf8 |
+| `lighter` | 5 | 5 | 0 | done 9263750f：另删 R20 遗留的零消费者 cfg 链路（lighterBackstageRatio → lighterC4FrontEfficiency）；`exec` / `result` / `state` 上的 `as any` 属其它接口，未动 |
 | `roxy` | 5 | 5 | 0 | 待做 |
 | `claret` | 4 | 4 | 0 | 待做 |
 | `evelyn` | 4 | 4 | 0 | 待做 |
 | `miyabi` | 4 | 0 | 0 | done 8efcb274（r402 CC-376：`miyabiCinemaLevel` 2 处 Record 强转改 `cfg.miyabiCinemaLevel`；`(cfg.panel as any)?.miyabiCinema4/6` 改按命座门控；`(result as any)` 改读已声明的 `result.miyabiFrostFallSource`；进锁表） |
 | `qianxia` | 4 | 4 | 0 | 待做 |
 | `soukaku` | 4 | 1 | 0 | 实质完成 c7627ef3，**不进锁表**：`soukakuPerExExtraTime(cfg: unknown)` 公开签名（测试直传字面量）保留 1 处局部 Record 读取；另 1 处 `as unknown as Record` 在 `state` 上，逐模块锁的正则会误伤 |
-| `zhendou` | 4 | 4 | 0 | 待做 |
+| `zhendou` | 4 | 4 | 0 | done 9ee2bcf8 |
 | `anbyZero` | 3 | 3 | 0 | 待做 |
 | `billy` | 3 | 3 | 0 | 待做 |
 | `corin` | 3 | 3 | 0 | 待做 |
 | `harumasa` | 3 | 3 | 0 | 待做 |
 | `luciaElowen` | 3 | 3 | 0 | 待做 |
-| `pulchra` | 3 | 3 | 0 | 待做 |
+| `pulchra` | 3 | 3 | 0 | done 9ee2bcf8 |
 | `qingyi` | 3 | 3 | 0 | 待做 |
 | `seth` | 3 | 3 | 0 | 待做 |
-| `trigger` | 3 | 3 | 0 | 待做 |
+| `trigger` | 3 | 3 | 0 | done 9ee2bcf8（混源 cfg / own，手改） |
 | `xide` | 3 | 0 | 0 | done 88187356 |
 | `yanagi` | 3 | 3 | 0 | 待做 |
 | `yaojiayin` | 3 | 3 | 0 | 待做 |

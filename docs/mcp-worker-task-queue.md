@@ -152,14 +152,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 402 轮（lane arena-E；无并行会话；HEAD `6e0dcd4a`；REQUIREMENTS.md 无新条目）：CC-376 `8efcb274` + `5b899453` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：PanelValues 线（r398 起的 D2-PV）**收尾**。签名已收紧为 `` [key: `${string}__${string}`]: number ``，未声明的键编译失败；新增字段规则写在 `docs/mcp-panel-fields.md` §6。计划外多做了一步 S5：堵住 `(panel as any)` 后门并加全仓锁。miyabi 进 D2 §5 锁表。
-- **验证**：vue-tsc `--force` 0；zd `r402` / `r402b` 均为 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 457 个文件 / 4201 个测试；build 通过。探针（`arenaE/probe402*.json`）：雅 C4 自检 ok → execLevel，其余只是 changedFields 少了被删的标记，收益全部不变。三处锁 / 反证全部做过。
-- **开放项**：OPEN-ITEMS 的 D2-PV 已标 done。
+**第 403 轮（lane arena-E；无并行会话；HEAD `9d10d41a`；REQUIREMENTS.md 无新条目）：CC-377 `0eedc197` + D2 §5 `9ee2bcf8` / `9263750f` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：
+  - r399 下一步 2 **收口**：`getRegisteredAgentMechanics()` 的运行期派发方只有 `teammateBuffGateBlocks` 一个，已改为只问组拥有者（CC-377，见架构卡）。剩下的调用方 `teamMechanicSlots` 默认参（先按在队过滤）和 `agentMechanicView`（UI 声明查询）都属于合法的全量查询，**不用改**，也不加名单锁。`getRegisteredMechanicSettings()`（`panelPhases.ts`）遍历的是设置默认值，同样属于声明查询。
+  - D2 §5 完成 5 个模块：hugo / zhendou / pulchra / trigger / lighter。lighter 顺带删掉一条 R20 迁移遗留、零消费者的 cfg 链路（详见提交信息和 d2 表）。
+- **验证**：vue-tsc `--force` 0；zd `r403` / `r403d2` / `r403d2b` 均为 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 457 个文件 / 4207 个测试；build 通过（日志 `arenaE/*403*`）。两处锁都已反证：旧派发器下 owner 锁 4 条红 3 条；trigger 注入 Record 强转后 TYPED_CFG_MODULES 变红。
+- **开放项**：无新增。
 - **下一步（按价值排）**：
-  1. r399 下一步 2：逐个检查 `getRegisteredAgentMechanics()` 的调用方，区分「全量声明查询」和「运行期钩子派发」，后者改用 `teamMechanicSlots`。先 grep 调用点并列表，判据见 r399 交接（`docs/mcp-calc-core-architecture.md` CC-373 行）。
-  2. d2 §5 剩余「待做」模块（`docs/mcp-d2-cfg-fields.md` §5 表）：lighter 的 `const record = cfg as unknown as Record` 就是现成的一例，本轮看到但没动（不在本线范围）。机械部分有 `scripts/d2-record-apply.py`。
-  3. `(result as any)`、`(exec as any)` 等其他契约对象上的 `as any`：可以照 §6 的做法盘点。先 grep 计数并确认是不是同一个病（结果字段多半已有 `declare module`，强转是多余的），再决定做不做。不要为了降计数去做。
+  1. d2 §5 剩余「待做」模块（`docs/mcp-d2-cfg-fields.md` §5 表，约 25 个）。流程照执行卡走：keys → 按写入点写注释 → apply → 混源手改 → 锁 → zd。每批 4–5 个，纯机械模块和带删除的模块分开提交。
+  2. `(result as any)` / `(exec as any)` / `(state as any)` 等其他契约对象上的强转（lighter 里就有现成样本）：先 grep 计数，确认是不是同一个病（结果字段多半已有 `declare module`，强转是多余的），再决定做不做。不要为了降计数去做。
+  3. 继续找「派给全部、各自认领」的同类：CC-373 和 CC-377 是同一个病的两处。判据是派发处有没有给身份（槽位 / 组拥有者）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -191,6 +193,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **收紧类型后必须再查 `as any`**：靠编译报错的盘点看不到 `(x as any).k`。r402 换完签名、tsc 全绿后，又 grep 出 4 处 `(panel as any)` 夹带。
   - **按命座门控用命座等级，别读面板上的命座标记**：`(cfg.panel as any)?.miyabiCinema4` 这类写法既是夹带，又让命座自检误判。r402 改成 `cfg.miyabiCinemaLevel` 后，探针证明收益逐位不变。
   - **全量 vitest 和 zd 都能在一次前台调用内跑完**（约 240s / 80s，`timeout 285`），不要放后台（r401 实测后台进程不跨调用存活）。
+  - **删死写会连锁**：删掉一个零读者写入后，tsc 的 TS6133 会指出只为它服务的变量 / 解构 / 字段，要顺着删到底（r403 lighter：写比例 → 读比例 → 写效率，三段全空转）。删前同时 grep TS、JSON、测试、文档，并确认没有代码遍历 cfg 键。
+  - **常量失去引用时，先找同值字面量**：如果真实写入点写死了同一个数，就让写入点引用常量，而不是删常量（r403 `LIGHTER_C4_FRONT_EFFICIENCY` 对应 teamPanelEffects 里的 `10`）。
+  - **TYPED_CFG_MODULES 锁只认 `cfg` 这个变量名**：同接口的别名（`lighter` / `ch` / `mate` 等队友 cfg）上的 `as any` 它看不到。做模块时要 grep 全部 `as any`，按接口归类后再处理。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
