@@ -153,16 +153,18 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 412 轮（lane arena-E；无并行会话；HEAD `219e2b29`；REQUIREMENTS.md 无新条目）：CC-386 `cb76abe1` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
-- **做到哪**：完成 r411 交接第 1 项「找同类『正确性靠 store 同步保证』的引擎输入」。排查结论见架构卡 CC-386：效果覆盖率、机制设置天然无害；资源利用率 / 异常利用率 / 结算份额三张表按槽位存、换人不清，旧角色覆盖会作用到新角色（实测 ×0.3）。已把键改成 agentId（store 内唯一键构造点 `ownerKeyOf`）。
-- **验证**：vue-tsc `--force` 0；zd `r412a` 0/0；guards 链 EXIT 0（recording 189）；vitest(4) 461 文件 / 4252 测试；build 通过。
-- **回滚点**：`git revert cb76abe1`（单提交；无存档格式变化，回滚后旧行为即恢复）。
-- **拍板**：改键（方案 a）而不是在 setAgent 里清表（方案 b）。b 改动更小，但仍靠每条换人路径都经过 setAgent，预设 / 独立场景 / 直写 team 的路径会漏；a 不需要存档迁移（config store 不持久化），对外 API 不变。若将来要给 config store 加持久化，这三张表的键已是 agentId，可直接存。
+**第 413 轮（lane arena-E；无并行会话；HEAD `9c693b9a`；REQUIREMENTS.md 无新条目）：CC-387 `22ea2f2e` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
+- **做到哪**：r412 交接三项全部结案（架构卡 CC-387）。① 机制设置键：注册表对重复 id 抛错，已注册 id 不可能串值，不加前缀规则；未注册字面量全是队伍级键，其中两个存槽位号但读取处有校验回退。② 钩子入参：65 个钩子逐个用编译器 API 核过，没有缺本人的；按 agentId 自找本人的 3 处维持 CC-383「不做」。③ 删 config.ts 7 处死 `as any`（`StatId = string`）。
+- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0（recording 189）；vitest(4) 461 文件 / 4252 测试；build 通过。未跑 zd：只删类型转换，编译产物相同。
+- **回滚点**：`git revert 22ea2f2e`（单提交，纯类型）。
+- **拍板**：两项审查都判「不改」，依据写在 CC-387；判据是「改了架构会不会更简单」——前缀规则复述运行时已保证的性质，按 slot 自找只是换键，都没有收益。
 - **未决项**：无。
 - **下一步（按价值排）**：
-  1. 审钩子入参有没有本人（r410 交接项，仍未做）：列 `AgentMechanicModule` 每个钩子的入参，标出既无 `slot` 也无 `self` / `cfg` 的，再看实现里有没有按 agentId 自找。
-  2. **机制设置键的模块前缀目前只是约定**：`mechanicSettings` / `teamMechanicSettings` 的无害性依赖「键以本角色模块名开头」（如 `remielle.q:`）。候选 (a) 在 check-guards 加一条规则：扫 mechanics/agents 里 settingId / settingPrefix 字面量，必须以本模块名开头——风险：前缀形态多样，正则要按形态补（见已知坑「自找有多种写法」）；(b) 改成按 `ownerKeyOf` 存（同 CC-386）——风险：settingId 是模块声明的公开 id，UI 与 spec 都在用，改动面大。建议先做 (a) 的普查：grep 全部 settingId，看有没有不带前缀的。
-  3. `stores/config.ts` 的 7 处 any。
+  1. **把 CC-385/386 这条线收尾：剩下几张 store 表换人后旧值会不会被引擎读到**。
+     - `comboAlignOverrides`（`stores/config.ts` 约 516 行，键 = 槽位 → moveId，`getComboAlign(slot, moveId)` 约 813 行读）：setAgent 不清。若全部 moveId 都以本角色 agentId 开头（如丽娜 EX `1211009`），残留天然读不到，只需写进文档；探针：遍历 catalog 全部角色的招式 id，统计不以本人 agentId 开头的。若有通用 id，照 CC-386 改为 `ownerKeyOf(slot)` 键（外部 API 仍收槽位），锁写引擎端到端断言。
+     - `stunAxes` / `stunAxisPlans`（约 519–521 行）：看 `StunAxis` 里有没有存槽位号或 moveId；有就做同样的「残留设成非默认值 → 换人 → 与显式默认比较」探针（写法见 `stores/__tests__/agentKeyedOverridesCc386.test.ts` 最后一条）。
+     - `teammateBuffSelections` 已由 CC-385 在引擎侧过滤，不用再查。
+  2. 没有更多已知的架构项。若第 1 项也以「无害」结案，下一轮先跑一次全仓扫描找新问题，不要为降计数找活：例如列出 `composables/resourceCalc/` 里仍直接读 `configStore.<表>` 而不经 store 方法的位置（CC-386 的 helpers 就是这种），逐个判断键构造是否只有一处。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -220,6 +222,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **夹具角色要先确认有数据**：CC-385 测试第一版用 1041+1191，两人都没有队友 buff 组 ⇒ 反空洞断言失败。挑夹具前先打印 `catalog.teammateBuffGroups` 的 id 列表。
   - **只测 store 的锁守不住引擎读取路径**：CC-386 第一版锁全在 store 层，引擎 `helpers.ts` 若漏改仍自拼旧前缀，测试照样全绿（全仓原本没有任何测试调 `setResourceUtilization`）。改键 / 改读法时，每个引擎读取点至少一条端到端断言，并用「只回放该读取点」做反证。
   - **按槽位存的用户设置要问「换人后该不该跟着走」**：描述「这个角色怎么打」的覆盖（利用率、份额）应随角色，键用 agentId（`ownerKeyOf`）；描述「这个位置」的设置才按槽位。判断不清时，先看 setAgent 换人后旧值还被不被引擎读到。
+  - **按字段名枚举「入参有没有本人」会误报**：CC-387 的编译器探针把 `resourceSections`（入参 `result` 就是本人结果）判成「无本人」。探针结果只是待查名单，每一条都要打开实现确认；纯函数（只收数值 / 读取器）本就不需要本人。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
