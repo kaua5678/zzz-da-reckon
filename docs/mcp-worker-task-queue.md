@@ -153,18 +153,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 408 轮（lane arena-E；无并行会话；HEAD `db4085a5`；REQUIREMENTS.md 无新条目）：CC-382 `da412bbd` + `4c71f09a` + `670b0405` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
-- **做到哪**：编排层 `composables/resourceCalc/` 非测试源码零 `any`，已并入 CC-381 的全目录锁（`CALC_DIRS`）。16 处里有价值的是 3 类（详见架构卡 CC-382）：
-  - `damagePool.ts` 两个行类型与 `damagePoolDirect.ts` 导出接口逐位重复 → 删内联，单一来源。
-  - 行接口 `skillDamageTarget?: any` 掩盖了上游 `string` / 下游 `SkillDamageTarget` 的断层 → 收窄 `SkillExecution.skillDamageTarget`。
-  - `backstageAutoFill` 字段名是 `string`，编排层只能 `as any` 读写 cfg → 新增 `NumericCfgField`，CC-369 注释里「动态访问放行」一句同步改掉。
-- **验证**：vue-tsc `--force` 0；zd `r408a` 0/0；guards 链 EXIT 0（specs 1120 / recording 189）；vitest(4) 458 文件 / 4244 测试；build 通过。
-- **回滚点**：`git revert 670b0405 4c71f09a da412bbd`（按此顺序；C1 单独回滚前要先回滚 C3，因 anbyZero 依赖字段已有类型）。
-- **开放项**：OPEN-ITEMS 的 D2 追加 r408。`SkillDamageTarget` 的写入方现在都受类型约束；如将来要从外部数据（录制 / 保存的配置）读入该字段，入口处须经 `normalizeSkillDamageTarget` 收窄，不要把字段放宽回 `string`。
+**第 409 轮（lane arena-E；无并行会话；HEAD `24358f49`；REQUIREMENTS.md 无新条目）：CC-383 `5f87bf26` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
+- **做到哪**：「派给全部、各自认领」同类（r408 交接第 1 项）查到第三种形态：派发处**已经给了**本人 `cfg`，模块仍在 `characters` 里自找 / 自证在队。9 处已删（yaojiayin 3 / lighter 2 / lucy / ellen / promia / vivian），由 `selfFromDispatcherCc383.test.ts` 锁住（详见架构卡 CC-383）。
+- **验证**：vue-tsc `--force` 0；zd `r409a` 0/0；guards 链 EXIT 0（specs 1120 / recording 189）；vitest(4) 459 文件 / 4246 测试；build 通过。
+- **回滚点**：`git revert 5f87bf26`（单提交，含锁与测试改写）。
+- **拍板**：结果行里按 agentId 取本人行（yixuan:1004 / yeshuguang:726 / promia:383 / alice `aliceSlotOf`）不改。派发器要为三套结果各递一个 self 行，契约变复杂、收益小。
+  lighter:499 / anbyZero:310 的「结果行集有无本人」判据有意保留，语义不同于「cfg 在不在队」。
 - **下一步（按价值排）**：
-  1. 继续找「派给全部、各自认领」的同类（CC-373 / CC-377）。判据是派发处有没有给身份。
-  2. `stores/config.ts` 的 7 处 any（store 是计算输入的源头，漏声明会一路流进计算层）。清零后可考虑把 `stores/` 加进 `CALC_DIRS`，或另起一个 UI 层锁。
-  3. UI 层其余（composables 除 resourceCalc 外约 10 / components 18 / views 28）价值较低，只做能暴露真实类型断层的。计数命令见 r6 文档的 any 扫描正则（必须含 `,\s*any\s*[>,\]]` 与 `\|\s*any\b`）。
+  1. 其他钩子族同一检查：在 `mechanics/agents` 里搜 `teamResult.characters.find(… === 本人ID)` 之外的自找形态，例如 `team.find(m => m.agentId === 本人ID)`（ReadonlyTeam）、`findSlotByIdentity`（18 处调用）。判据：这个钩子的入参有没有 `slot` / `self`？有就改用入参；没有就看派发器该不该给（参照 CC-373 的 `AnomalyHookSelf`）。
+  2. `stores/config.ts` 的 7 处 any（store 是计算输入的源头）。清零后考虑把 `stores/` 加进 CC-381 的 `CALC_DIRS`。
+  3. UI 层其余 any（composables 除 resourceCalc 外约 10 / components 18 / views 28），只做能暴露真实类型断层的。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -214,6 +212,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **行级 `any` 改成具名类型后 tsc 报的那一处，往往就是上下游的类型断层**（r408 `skillDamageTarget`：上游 `string`、下游联合类型）。修上游声明，不要在消费端插归一化函数：`normalizeSkillDamageTarget` 会把 undefined 映射成 `'all'`，改变语义。
   - **模块按字段名声明 cfg 键时，用 `NumericCfgField` 这类映射类型约束键名**，编排层就不需要 `(cfg as any)[decl.field]`。前提是 `CharacterOperationConfig` 没有索引签名；一旦加了索引签名，`keyof` 会退化成 `string`，约束失效。
   - **反证注入要选本轮没改过的文件**，事后用 `git checkout -- <这些文件>` 还原（先 `git status --short <文件>` 确认为空）。在改过的文件上注入再 checkout，会把本轮改动一起冲掉。
+  - **测试直接调钩子时，别构造派发器不会产生的输入**（r409：用 1471 的 cfg 调 1541 的钩子来锁「不在队 ⇒ 0」）。这种断言会把钩子里的死判据锁成「必须保留」。「不在队」这类保证属于派发器，应该在 `collectNextRoundFeedback` / 真管线上锁。
+  - **模块文件的本人 ID 以 `agentIds: [...]` 为准**（每个模块都有，CC-383 的锁就靠它）；不要按「文件里声明的第一个 `_ID` 常量」猜，有的文件同时声明了队友 ID。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
