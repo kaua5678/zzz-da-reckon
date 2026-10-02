@@ -98,3 +98,44 @@ describe('CC-386 随角色的用户覆盖按 agentId 存', () => {
     expect(afterSwap).toBeCloseTo(explicitFull, 3)
   })
 })
+
+/**
+ * CC-388 锁：合轴率覆盖同属「随角色的用户覆盖」，键 = agentId。
+ * 修前按「槽位 → moveId」存；招式 id 跨角色共用（`basic_attack` 52 人、`evade_assist` 4 人，r414 探针）
+ * ⇒ 槽 0 给 A 的普攻设合轴率，换成 B 后 B 的普攻直接继承。
+ */
+describe('CC-388 合轴率覆盖按 agentId 存', () => {
+  it('换人后共用招式 id 的覆盖对新角色回到默认；换回恢复', async () => {
+    const { config } = await setup()
+    config.setComboAlignOverride(0, 'basic_attack', 0.7)
+    expect(config.getComboAlignOverride(0, 'basic_attack', -1)).toBeCloseTo(0.7)
+    config.setAgent(0, '1311')
+    expect(config.getComboAlignOverride(0, 'basic_attack', -1)).toBe(-1)
+    config.setAgent(0, '1211')
+    expect(config.getComboAlignOverride(0, 'basic_attack', -1)).toBeCloseTo(0.7)
+  })
+
+  it('整表快照 / 还原往返不丢值（难度天梯试开回滚走这对接口，不按键形态自己拼）', async () => {
+    const { config } = await setup()
+    config.setComboAlignOverride(0, 'basic_attack', 0.4)
+    config.setComboAlignOverride(1, 'evade_assist', 0.6)
+    const snap = config.getComboAlignState()
+    config.clearComboAlignOverrides(0)
+    config.setComboAlignOverride(1, 'evade_assist', 0.1)
+    config.setComboAlignState(snap)
+    expect(config.getComboAlignOverride(0, 'basic_attack', -1)).toBeCloseTo(0.4)
+    expect(config.getComboAlignOverride(1, 'evade_assist', -1)).toBeCloseTo(0.6)
+    // 快照是拷贝：还原后再改不回写快照
+    config.setComboAlignOverride(0, 'basic_attack', 0.9)
+    config.setComboAlignState(snap)
+    expect(config.getComboAlignOverride(0, 'basic_attack', -1)).toBeCloseTo(0.4)
+  })
+
+  it('空槽读默认、写无效', async () => {
+    const { config } = await setup()
+    config.team[2].agentId = ''
+    config.setComboAlignOverride(2, 'basic_attack', 0.5)
+    expect(config.getComboAlignOverride(2, 'basic_attack', -1)).toBe(-1)
+    expect(Object.keys(config.comboAlignOverrides)).toEqual([])
+  })
+})

@@ -274,6 +274,9 @@ export function hasCustomInteractionDefaults(agentId: string): boolean {
 
 /** 推荐主词条 prop name → catalog statId 映射（含中文别名）。
  *  探针（panelProbe.test.ts）与配装推荐应用共用，导出防两处漂移。 */
+/** 合轴率覆盖整表快照（CC-388）：不透明值，只经 getComboAlignState / setComboAlignState 存取 */
+export type ComboAlignState = Readonly<Record<string, Readonly<Record<string, number>>>>
+
 export const REC_MAIN_STAT_MAP: Record<string, string> = {
   'ATK': 'atkPct',
   'HP': 'hpPct',
@@ -511,9 +514,11 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   // 敌人配置
   const enemy = ref<EnemyConfig>(defaultEnemy())
 
-  // 合轴率覆盖（slot → moveId → ratio 0-1）
-  // 用户在结果页调节，覆盖倍率表中的默认值（默认0）
-  const comboAlignOverrides = ref<Record<number, Record<string, number>>>({})
+  // 合轴率覆盖（agentId → moveId → ratio 0-1）
+  // 用户在结果页调节，覆盖倍率表中的默认值（默认0）。
+  // CC-388：键 = agentId（经 ownerKeyOf，同 CC-386），不是槽位——招式 id 跨角色共用（basic_attack 52 人 / evade_assist 4 人），
+  // 按槽位存时换人会把上一个角色的普攻合轴率原样给新角色。整表快照 / 还原只走 getComboAlignState / setComboAlignState。
+  const comboAlignOverrides = ref<Record<string, Record<string, number>>>({})
 
   // 失衡轴配置
   const stunAxes = ref<import('@/types/resource').StunAxis[]>([])
@@ -810,20 +815,34 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   /** 获取某角色某招式的合轴率覆盖值，无覆盖时返回 defaultValue */
   function getComboAlignOverride(slot: number, moveId: string, defaultValue: number = 0): number {
-    return comboAlignOverrides.value[slot]?.[moveId] ?? defaultValue
+    const owner = ownerKeyOf(slot)
+    return (owner ? comboAlignOverrides.value[owner]?.[moveId] : undefined) ?? defaultValue
   }
 
   /** 设置某角色某招式的合轴率覆盖值 */
   function setComboAlignOverride(slot: number, moveId: string, ratio: number) {
-    if (!comboAlignOverrides.value[slot]) {
-      comboAlignOverrides.value[slot] = {}
+    const owner = ownerKeyOf(slot)
+    if (!owner) return
+    if (!comboAlignOverrides.value[owner]) {
+      comboAlignOverrides.value[owner] = {}
     }
-    comboAlignOverrides.value[slot][moveId] = Math.max(0, Math.min(1, ratio))
+    comboAlignOverrides.value[owner][moveId] = Math.max(0, Math.min(1, ratio))
   }
 
   /** 清除某角色所有合轴率覆盖 */
   function clearComboAlignOverrides(slot: number) {
-    delete comboAlignOverrides.value[slot]
+    const owner = ownerKeyOf(slot)
+    if (owner) delete comboAlignOverrides.value[owner]
+  }
+
+  /** 合轴率覆盖整表快照（深拷贝；调用方当不透明值保存，不要按键形态读写——见 CC-388） */
+  function getComboAlignState(): ComboAlignState {
+    return JSON.parse(JSON.stringify(comboAlignOverrides.value))
+  }
+
+  /** 用 getComboAlignState 的快照整表还原（深拷贝，快照本身不被后续写入改动） */
+  function setComboAlignState(s: ComboAlignState) {
+    comboAlignOverrides.value = JSON.parse(JSON.stringify(s))
   }
 
   // ========== Actions - 全局 Buff ==========
@@ -1341,6 +1360,8 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     getComboAlignOverride,
     setComboAlignOverride,
     clearComboAlignOverrides,
+    getComboAlignState,
+    setComboAlignState,
     addGlobalBuff,
     removeGlobalBuff,
     updateGlobalBuff,

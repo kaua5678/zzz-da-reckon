@@ -317,6 +317,28 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0) // 吸收上限也还原到全关的 0
     expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeCloseTo(0, 6)
   }, 300_000)
+
+  it('CC-388 试开回滚按整表快照还原：试开时已存在的合轴率覆盖原样回来（非空表才看得出键形态拼错）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const preset = teamPresets.find(p => p.id === 'auto-1371-1481-1451')!
+    const ctx = { config, calc }
+    clearDifficultyLevers(ctx)
+    applyTeamToStore(config, preset)
+    // opts.base 跳过「全关」重置（resetDifficultyGoals 会有意清空合轴率覆盖），让覆盖在试开时确实存在
+    config.setComboAlignOverride(0, 'basic_attack', 0.37)
+    const before = JSON.stringify(config.comboAlignOverrides ?? {})
+    expect(before).not.toBe('{}')
+    const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
+      goals: [DIFFICULTY_GOALS.find(g => g.id === 'G5')!],
+      minGainRatio: 10,
+      base: c => c.calc.teamTotalDamage.value,
+    })
+    expect(r.dropped.map(d => d.id)).toEqual(['G5'])
+    expect(JSON.stringify(config.comboAlignOverrides ?? {})).toBe(before)
+    expect(config.getComboAlignOverride(0, 'basic_attack', -1)).toBeCloseTo(0.37, 9)
+  }, 300_000)
 })
 
 describe('合轴节省秒数上曲线（用户：只需管合轴了多少时间出来）', () => {

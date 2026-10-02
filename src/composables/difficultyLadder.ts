@@ -20,7 +20,7 @@
  *
  * 判据测试：`__tests__/difficultyLadder.test.ts`（单调性 / 负收益被丢弃 / 目标契约）。
  */
-import { type StunAxisState, type ConfigModel } from '@/stores/config'
+import { type StunAxisState, type ConfigModel, type ComboAlignState } from '@/stores/config'
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE } from '@/core/stunPlanProjection'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
@@ -144,8 +144,8 @@ export function resetDifficultyGoals(ctx: LadderCtx, team: [string, string, stri
 interface LadderMutSnap {
   w: number[]
   p: number[]
-  /** 合轴率覆盖（slot → moveId → ratio）；G5 会写它，试开回滚必须一起还原 */
-  align: Record<number, Record<string, number>>
+  /** 合轴率覆盖整表快照（不透明，CC-388 键已是 agentId）；G5 会写它，试开回滚必须一起还原 */
+  align: ComboAlignState
   /** 动态合轴吸收上限（机制参数）；G5 写它，试开回滚必须一起还原 */
   absorb: number
   /** 轴状态（切轴档会写 stunAxes/stunAxisPlans/useStunAxis，试开回滚必须一起还原） */
@@ -155,7 +155,7 @@ function snapshot(ctx: LadderCtx): LadderMutSnap {
   return {
     w: [0, 1, 2].map(s => ctx.config.team[s]!.basicAttackTimeWeight),
     p: [0, 1, 2].map(s => ctx.config.team[s]!.parryCount ?? 0),
-    align: JSON.parse(JSON.stringify(ctx.config.comboAlignOverrides ?? {})),
+    align: ctx.config.getComboAlignState(),
     absorb: ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
     axis: ctx.config.getAxisState(),
   }
@@ -165,12 +165,7 @@ function restore(ctx: LadderCtx, snap: LadderMutSnap) {
     ctx.config.setActionCount(s, 'basicAttackTimeWeight', snap.w[s])
     ctx.config.setActionCount(s, 'parryCount', snap.p[s])
   }
-  for (let s = 0; s < 3; s++) {
-    ctx.config.clearComboAlignOverrides(s)
-    for (const [moveId, ratio] of Object.entries(snap.align[s] ?? {})) {
-      ctx.config.setComboAlignOverride(s, moveId, ratio)
-    }
-  }
+  ctx.config.setComboAlignState(snap.align)
   ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, snap.absorb)
   ctx.config.setAxisState(snap.axis)
 }
