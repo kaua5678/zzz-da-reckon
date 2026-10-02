@@ -153,16 +153,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 416 轮（lane arena-E；无并行会话；HEAD `929e56c5`；REQUIREMENTS.md 无新条目）：CC-390 `786535ac` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
-- **做到哪**：r415 交接三项全部结案（架构卡 CC-390）。① 「模块声明合成轴块归属」以探针数据判**不做**；② 轴编辑器标灰残留块（已做）；③ composables 直读原始表扫描无问题。
-- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0（25 guard / 12 token / recording 189）；vitest(4) 462 文件 / 4261 测试；build 通过；headless 截图 DOM 计数 stale=1 / blocks=2（脚本 `/home/kaua/calc-arch/arenaE/r416/shot.cjs`）。未跑 zd：只改 view，引擎零改动。
-- **回滚点**：`git revert 786535ac`（单提交）。
-- **拍板**：① 不加 `axisOwnedMoveIds`——合成行随命座变化（命座 0 解析不了 7 个、命座 6 解析不了 13 个，另 17 个只能靠前缀猜），要手工登记 ≥25 项，只换来「放了某人合成块再换走该人」这一窄场景的正确性；重开条件写在 CC-390。② 提示复用引擎判据，不在 view 另写规则，保证「标灰 = 引擎丢弃」同源。
-- **未决项**：无新增。CC-389 残余（别人的合成行残留时仍当零成本执行）按 CC-390 维持现状，重开条件已写。
+**第 417 轮（lane arena-E；无并行会话；HEAD `2330da2b`；REQUIREMENTS.md 无新条目）：CC-391 `3b8d2fbe` + 文档，已 push（`git rev-list --count origin/master..HEAD` = 0）。**
+- **做到哪**：OPEN-ITEMS D1（主C 未认领招式易伤，用户 2026-09-25 已裁决）大部分落地：轴槽位里没放进轴的后台行，CD / 时间驱动的 9 行改按失衡占比吃易伤，单父伴随的 3 组跟随父动作的轴内占比（架构卡 CC-391，含逐行证据与普查数据）。
+- **验证**：vue-tsc `--force` 0；guards 链 EXIT 0（25 guard / 12 token / 366 data / 1120 spec / recording 189）；vitest(4) 463 文件 / 4266 测试（timeGolden 重生成 1 行后全绿）；build 通过；zd `r417a` 有伤害变化的只有 `auto-1041-1571-1341`（+0.041%），其余 218 条是结构哈希。
+- **回滚点**：`git revert 3b8d2fbe`（单提交，含 timeGolden 基线 1 行）。
+- **拍板**：① 不用 `timeBucket=backstage` 做分类依据——普查证明它混着合轴主动招式（1331010），一律回落会给主动招式白送易伤；按模块代码里的触发说明逐条归类，不按名字猜。② (b) 复用行级 `autoSplitByStun`、(a) 复用模块级 `attachedEvents`，不新增契约。③ yuzuha 1411021（彩糖花火·极，硬糖 / 夹心硬糖重击触发）证据两可（夹心硬糖是支援突击），按 (b) 处理：次数口径本身就是「≈招架次数」的近似，跟随某个可放置父动作并不更准。
+- **未决项**：多父伴随行仍按「按放置」= 0：vivian 1331006、pulchra 1351006 / 1351007、lycaon 1141019（锁里 `UNCLASSIFIED_OK` 白名单逐条注明）。做法见下一步第 1 项。
 - **下一步（按价值排）**：
-  1. **D1 待实现**（`.claude/OPEN-ITEMS.md` §2「D1 待实现」，用户 2026-09-25 已裁决）：主C 未认领招式的易伤，只有后台 / 自动攻击类招式可回落全局覆盖率，主动招式轴内未提及 ⇒ 计 0。先查招式数据里有没有可靠字段区分两类（来源 / 触发类型）；**找不到就维持现状并写明证据，不按名字猜**。动全库数值：先预测，再逐队 delta 归因，`timeGolden` / `timeFillRatchet` 重排。
-  2. **「换人后该不该跟着走」收尾审计**：CC-386 / 388 / 389 已处理利用率、合轴率、失衡轴。剩下 `stores/config.ts` 里仍按槽位存的用户设置逐个归类「描述这个角色怎么打（应随 agentId）/ 描述这个位置（按槽位）」。先 grep 长度为 3 的数组和 `Record<number, …>` 列出候选，每条用 r412 的探针法实测换人前后差异，有实害才改。
-  3. 把 r416 的截图脚本收成可复用工具（例如 `.zc/ui-shot.cjs`，参数为 store 注入片段 + 选择器计数），以后 UI 改动都能有 DOM 级验证。
+  1. **多父伴随（D1 收尾）**：① `composables/useResourceCalc.ts#attachedInAxisMap` 现在对同一个子行**按最后一个父动作覆盖**（`out[child] = frac`），改成跨全部父动作（含跨模块）合计：Σ父动作轴内单位 / Σ父动作总单位。现有模块没有多父子行 ⇒ 这一步应 zd 伤害零变化，先单独提交并跑 zd 证明。② vivian 登记 `{ 自身 EX, 终结 1331014, 支援突击 1331019, 连携 1331013 } → 1331006`（悬落次数 = selfEx + 终结 + 支援突击 + 连携，见 `vivian.ts` xuanluoCount；自身 EX 的 moveId 先查 `selfExSpecialCount` 数的是哪些行，1331010 是合轴 EX）；pulchra 登记 `{ 1351008, 1351014, 1351011, 1351012 } → 1351006 / 1351007`（猎步进入 = 强特 + 支援突击 + 连携 + 终结）。③ lycaon 1141019 跟随**队友**闪反：父动作在别的槽，需要跨槽聚合；若只为它扩契约不划算，改按 (b) 处理并在卡片写明近似。④ 每做一个就从锁的 `UNCLASSIFIED_OK` 删掉对应条目，再跑 timeGolden（预期有变化的话按 D1 口径逐条解释后重生成）。
+  2. **轴编辑器隐藏 `autoSplitByStun` 行**：这些行的伤害分支在放置之前，放进轴也会被忽略，但编辑器动作池照样提供（候选来自执行行）。在候选生成处过滤 `autoSplitByStun`，避免用户放一个不起作用的块。先找候选来源（`views/StunAxisPage.vue#slotMoves` → composables），过滤后用 r416 的截图配方确认。
+  3. 「换人后该不该跟着走」收尾审计（r416 第 2 项，未动）：`stores/config.ts` 里仍按槽位存的用户设置逐个归类，有实害才改。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -226,6 +226,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **check-tokens 的 alias 棘轮「进步也红」**：新增一处 `var()` 会报「var() 总数 800→801：是进步，把 VAR_TOTAL_BASELINE 上调」。按提示改 `scripts/check-tokens.mjs` 的基线并在注释里记轮次。新样式别写字面色值（硬编码色值棘轮），从 `App.vue` 的 `--app-*` 里挑（没有专门的警告色，r416 用 `--app-accent-gold`）。
   - **UI 改动的 headless 验证配方（r416）**：Chromium 用 `~/.cache/ms-playwright/chromium_headless_shell-1234`，缺的库已解压在 `/home/kaua/calc-arch/chromedeps`（`LD_LIBRARY_PATH=$D/root/usr/lib/x86_64-linux-gnu`）；`playwright-core` 借 `/mnt/f/proj/workbuddyai2api/node_modules/playwright-core`。状态注入：`document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('config')`，切页用 `ui.activeTab`。vite 与脚本写在同一调用：`npx vite --port 5199 & VP=$!; …; kill $VP`。截图里中文是方块（缺 CJK 字体），以 DOM 计数为准。
   - **mcp.js 输出长时直接打印原始 stdout、只留尾部约 6000 字节**（不是 JSON）：拉二进制要先 base64，再按 5000 字节 `cut -c` 分段取回，拼接后核对长度 / sha256。`get_diagnostics` 只接受 IDE 工作区内的相对路径，worktree 用 `vue-tsc -b --force` 代替。
+  - **「数据里有没有可靠字段」要普查验证，别看字段名下结论**：`timeBucket: 'backstage'` 看起来就是「后台招式」，普查发现它的语义是「不占前台时间账」，混着合轴打完的主动招式（r417）。分类前先列出全集，逐条对照模块注释里的触发条件。
+  - **探针要先确认轴模式真的生效**：只设 `useStunAxis` + 预设轴时 `effectiveStunAxes` 可能为空（求解器回退），而大多数预设槽位是 `*` 通配、直接跑不了。可靠做法：自建轴（三槽各放一个 `basic`），用伤害行备注里有没有「轴外」判断轴模式（r417 probe2）。
+  - **zd 的大面积 DIFF 先分段看**：给执行行加字段会让 dump 第二段（结构哈希）全变；用 `/home/kaua/calc-arch/arenaE/r417/zdsum.js` 按队汇总第一段（伤害）与第三段（失衡池），才看得出真正的数值变化（r417：223 条 DIFF 里只有 5 条伤害变化）。
 
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）

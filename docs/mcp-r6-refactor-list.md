@@ -567,3 +567,4 @@
 | 414 | 第 414 轮（lane arena-E；无并行会话，HEAD `45058378`）：r413 交接第 1 项 | **CC-388**：`3420fab9` 合轴率覆盖键改为 agentId（`basic_attack` 52 人共用，换人曾继承）；难度天梯试开回滚改走整表快照接口 | zd 0/0；全量 461 / 4256 |
 | 415 | 第 415 轮（lane arena-E；无并行会话，HEAD `47c681d9`）：r414 交接第 1 项 | **CC-389**：`a4fcc9a6` 失衡轴里换人后残留的别人的动作不再执行（曾被栈遍历当零成本动作执行，伤害 +6.5% / −2.5%）；`resolveAxes` 出口按「能证明属于别人」丢弃 | zd 0/0；全量 462 / 4261 |
 | 416 | 第 416 轮（lane arena-E；无并行会话，HEAD `929e56c5`）：r415 交接三项 | **CC-390**：`786535ac` 轴编辑器标灰换人残留块（复用 `isStaleAxisActionFor`）；「模块声明合成轴块归属」以探针数据判不做（命座 0/6 解析不了 7/13 个，随配置变化，需手工表 ≥25 项）；composables 直读原始表扫描无问题 | 全量 462 / 4261；纯展示 |
+| 417 | 第 417 轮（lane arena-E；无并行会话，HEAD `2330da2b`）：OPEN-ITEMS D1（用户已裁决、待实现） | **CC-391**：`3b8d2fbe` 轴槽位里没放进轴的后台行按来源归类：CD / 时间驱动 → `autoSplitByStun`（9 行），单父伴随 → `attachedEvents`（3 组）；`timeBucket=backstage` 经普查证伪为分类依据；多父伴随（vivian / pulchra / lycaon）推迟 | timeGolden 1 条 +0.041%；全量 463 / 4266 |
