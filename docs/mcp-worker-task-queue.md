@@ -152,11 +152,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 395 轮（lane arena-E，开工 12:50；无并行会话；HEAD `58575c82`；REQUIREMENTS.md 无新条目）：CC-368 `8f383bd3` + CC-369 `c7627ef3`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：`(cfg as any).键` 全仓清零，并由**全仓不变式锁**守住（`privateCfgFields.test.ts` 末段）；`TYPED_CFG_MODULES` 18 个；apply 脚本能处理 `input.cfg` 别名、混源自动停手。详见 `docs/mcp-d2-cfg-fields.md` §5「r395」段。
-- **验证**：vue-tsc `--force` 净；锁 23/23 + 反证（7 模块各自红、全仓锁报 16 处）；zd `r395` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 455 文件 / 4178 例；build（`arenaE/v395-*.log`）。
-- **开放项**：无。
-- **下一步**：剩 Record 强转（153，含非 cfg 对象）。按 §5 表从大到小：`lucy` / `phoenix` / `promia` / `yidhari` / `nangong` / `severian` / `vivian`。流程同执行卡（keys 出骨架 → 查读者含 data JSON → 写注释 → apply → 手改「人工」行 → tsc → 进名单反证 → zd）。**考虑收口**：等 cfg 上的 Record 强转也清零时，同样把逐模块名单换成全仓不变式（「非测试源码零 `cfg as unknown as Record` 静态键访问」），名单可删——届时注意 `state`/`result` 等非 cfg 对象的强转不在此病范围（soukaku 的 state 强转就是例子），锁要只匹配 cfg。
+**第 396 轮（lane arena-E，开工 13:08；无并行会话；HEAD `80ae9f1b`；REQUIREMENTS.md 无新条目）：CC-370 `9543b79f`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：§5 表 7 个模块（lucy / phoenix / promia / yidhari / nangong / severian / vivian）补声明；nangong、severian 进锁表（20 个）；其余 5 个剩的强转都是结构问题，表格行逐个注明原因。两个 d2 脚本各修一处误改/误报。详见 `docs/mcp-d2-cfg-fields.md` §5 r396 段。
+- **验证**：vue-tsc `--force` 0；锁 25/25 + 反证（severian 注入强转 → 红）；zd `r396` 0/0；guards / tokens / data / specs 1120 / recording 189；全量 455 文件 / 4180 例；build（`arenaE/v396-*.log`）。
+- **开放项**：OPEN-ITEMS「nextRound cfg 写回」（新）。
+- **下一步（二选一，按价值排）**：
+  1. **nextRound 写回判死**：lucy / promia / vivian / hugo / ellen / anbyZero / lighter 的 `nextRoundFeedback` 里对 DeepReadonly cfg 强转写回。typesHooks 注释称每轮重新 spread、写回不跨轮——逐个删写回跑 zd：0/0 ⇒ 删（连同对应单测里断言「守卫差异」的用例要先读懂再改）；非 0 ⇒ 说明本轮内有读者，改走返回值 → threads 通道。**不要**把钩子 cfg 放宽成可写（违背 49ecb777）。
+  2. 继续 §5 表剩余「待做」模块（keys 出骨架 → 查 data/specs JSON 读者 → 写真实类型 → apply → 人工行 → tsc → 锁 + 反证 → zd）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -172,6 +174,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - Python 补丁里 `assert s.count(a)==n` 先于写文件：计数写错时文件不会半改（r393 orphie 实测）。
   - 找 cfg 键的读者要连 `src/data/**/*.json` 一起 grep：spec 资源按字段名读 cfg，ts 里看像死写（r394 xide）。
   - 收紧锁时优先「全仓不变式」而不是「名单」：名单只能防回退，挡不住新模块重犯（r395 CC-369）。
+  - **apply 脚本报「混源 … 其他:…」时别手动全文替换**：那是同文件 `record` 还指别的对象（队友 / 形参），只改 cfg 别名所在函数（r396 CC-370）。
+  - 元数据类键（`*Meta` / `*Cycle`）骨架写的是 `number`，要按写入处（`metaOf()` 等）的实际返回改成对象类型；读者处原有的 `as {…}` 断言会成为对比依据。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 

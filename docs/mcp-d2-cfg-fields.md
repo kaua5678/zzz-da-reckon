@@ -93,6 +93,8 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 
 **r395（CC-368 `8f383bd3` / CC-369 `c7627ef3`）——`cfg as any` 全仓清零 + 全仓不变式锁**：8 个模块（ben / grace / specPanelBuffs / nicole / panYinhu / sigrid / soukaku / zhao）补 29 个私有声明，cfg 强转全部改回 `cfg.<键>`；`privateCfgFields.test.ts` 新增**全仓**锁「非测试源码零 `(cfg as any).<键>`」——这是病本身，对所有文件成立，新模块写了就红，不再靠逐模块名单（`(cfg as any)[decl.field]` 动态访问放行：convergence.ts 按声明字段名读，是通用逻辑）。`TYPED_CFG_MODULES` 18 个。**apply 脚本新坑**（CC-368 已修）：别名 `const record = input.cfg as …` 时原实现删不掉该行、却把 `record.` 改成 `cfg.`（未定义变量）；现在同源按来源替换，**混源（同文件既有 `cfg` 又有 `input.cfg` 别名）整体不动并列人工清单**。**公开签名收 `unknown` 的函数**（测试直传字面量）别硬改参数类型，保留局部读取并注明（soukaku）。**剩余：Record 153（含非 cfg 对象）+ `cfg as any` 0**。
 
+**r396（CC-370 `9543b79f`）——第 7 批 7 模块 + 两处脚本误改修复**：lucy / phoenix / promia / yidhari / nangong / severian / vivian 补 44 个私有声明（元数据键按 `metaOf()` 实际返回写对象类型，不再是 `number` 骨架）；nangong 动态写 `cfg[key]`（key 来自字面量元组）可直接受检；promia / severian 私有 `cycleFromCfg(cfg: unknown)` 改 `Pick<CharacterOperationConfig, …>`。`TYPED_CFG_MODULES` 20 个（+nangong +severian）。**apply 脚本新坑（已修）**：同文件里 `record` 还绑定别的对象（lucy nextRound 里 `for (const c of characters) { const record = c as … }` 写**每个队友**；nangong `record:` 形参）时，旧实现全文 `record.`→`cfg.` 会把「写全队」错改成「只写自己」——本轮靠 vue-tsc 的 DeepReadonly 报错才拦下，换个可写类型就是静默错算。现在这类文件按混源停手。**keys 脚本误报（已修）**：先剥注释，注释里提到的已删旧键（vivian CC-91 的 `vivianDanceHit` / `vivianAssistCount`）不再报成未声明。**剩下的不是「漏改」而是三类结构问题**（各模块表格行已注明）：① nextRound 钩子对 `DeepReadonly` cfg 强转写回（lucy / promia / vivian，另有 hugo / ellen / anbyZero / lighter 同型）——49ecb777 定了「钩子输入只有输出通道可写」，而 typesHooks 注释说写回不跨轮生效 ⇒ 下一步用 zd 判死后删写回，而不是放宽类型；② 导出函数签名收 `Record`（yidhari）；③ 借 `panel` 夹带 cfg 字段（phoenix）。**剩余：非测试源码 `as unknown as Record` 120 行（`git grep -n` 计，含非 cfg 对象）+ `cfg as any` 0**。
+
 ### 执行卡（每个模块一张，机械活，可派执行模型）
 
 1. `python3 scripts/d2-record-keys.py . <模块名> <声明骨架文件>`（r394 CC-366 起三种强转 `as unknown as Record` / `as Record` / `as any` 都统计，并把未声明键写成声明骨架——**骨架里的类型是按用法猜的、注释是 TODO**：先查每个键的全部读写点（`grep -rn <键> src`，**含 `src/data` 的 JSON**——spec 资源会按字段名读 cfg），写清含义与写入方再用）：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
@@ -115,14 +117,14 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 | `banyue` | 11 | 0 | 0 | done 2b0743ce |
 | `starlightBilly` | 10 | 0 | 0 | done 2b0743ce |
 | `sigrid` | 9 | 0 | 0 | done c7627ef3 |
-| `lucy` | 8 | 8 | 0 | 待做 |
-| `phoenix` | 8 | 10 | 0 | 待做 |
+| `lucy` | 8 | 2 | 0 | 实质完成 9543b79f，**不进锁表**：剩 2 处强转在**队友** `c` 上（nextRound 写回 + 读），见 OPEN-ITEMS「nextRound cfg 写回」 |
+| `phoenix` | 8 | 1 | 0 | 实质完成 9543b79f，**不进锁表**：剩 1 处在 `panel` 上（夹带 `phoenixCinemaLevel` 给 releaseModifier，panel 类型问题） |
 | `grace` | 7 | 0 | 0 | done c7627ef3 |
-| `promia` | 7 | 11 | 0 | 待做 |
-| `yidhari` | 7 | 7 | 0 | 待做 |
-| `nangong` | 6 | 6 | 0 | 待做 |
-| `severian` | 6 | 7 | 0 | 待做 |
-| `vivian` | 6 | 5 | 0 | 待做 |
+| `promia` | 7 | 1 | 0 | 实质完成 9543b79f，**不进锁表**：剩 1 处 nextRound 对 DeepReadonly cfg 的写回 |
+| `yidhari` | 7 | 3 | 0 | 实质完成 9543b79f，**不进锁表**：导出 `computeYidhariHpSource(cfg: Record…)`（测试直传字面量）的 3 个调用点保留局部强转 |
+| `nangong` | 6 | 0 | 0 | done 9543b79f |
+| `severian` | 6 | 0 | 0 | done 9543b79f |
+| `vivian` | 6 | 1 | 0 | 实质完成 9543b79f，**不进锁表**：剩 1 处 nextRound 对 DeepReadonly cfg 的写回 |
 | `aire` | 5 | 6 | 0 | 待做 |
 | `anby` | 5 | 5 | 0 | 待做 |
 | `ellen` | 5 | 5 | 0 | 待做 |
