@@ -42,6 +42,14 @@ export interface MechanicTeamMember {
 /** 钩子收到的队伍快照：只读（队伍是全部钩子共享的派生输入，不是任何钩子的输出通道） */
 export type ReadonlyTeam = ReadonlyArray<Readonly<MechanicTeamMember>>
 
+/** `teammateBuffGate` 入参（r410 CC-384）：本人由派发器给出，模块不在 team 里自找。 */
+export interface TeammateBuffGateInput {
+  buffId: string
+  team: ReadonlyTeam
+  /** 本人那一槽（组 id = 本人 agentId 且 agent 可查）；不在队 ⇒ undefined */
+  self: Readonly<MechanicTeamMember> | undefined
+}
+
 export interface AgentPanelInput {
   slot: number
   agent: Agent
@@ -826,12 +834,14 @@ export interface AgentMechanicModule {
    * （`mechanics/additionalAbilityGates.ts#teammateBuffGateBlocks`）：返回 false ⇒ 默认不勾，且用户强行勾上也不生效。
    * 只放**正确性约束**（互斥档位、防双计）；纯默认值偏好不要用本钩子。
    * r403 CC-377：只对**拥有者**派发——组 id = 拥有者 agentId，引擎只把该组的 buff 交给 `getAgentMechanic(group.id)` 的本钩子，
-   * 模块不必（也不能）认领别人组里的 buff；返回 undefined = 不表态。`selfCinema` = 本角色在队影画（不在队 undefined，
-   * 此时仍会被询问，按「不在队」口径作答）。`team` = 队内查得到 Agent 的角色（槽位顺序）。
+   * 模块不必（也不能）认领别人组里的 buff；返回 undefined = 不表态。
+   * r410 CC-384：`team` = 与其它钩子同一份 `ReadonlyTeam`（真实槽位）；`self` = 派发器给的本人那一槽（要求 agent 可查；
+   * 不在队 ⇒ undefined，此时仍会被询问，按「不在队」口径作答）。原入参是压缩 `Agent[]` + `selfCinema`，模块只能在列表里
+   * 按 id 自找、拿下标当槽位（蕾米埃尔），与同模块其它钩子走两套队伍表示。
    * 现实现：蕾米埃尔（额外能力 tier 1..3 三条攻击 buff、核心被动 refringe_3、prismatic_buildup）；
    * 波可娜（C6 禁用 pulchra_extra_trap_followup，防与 pulchra_cinema_6_trap_all 双计；CC-64c）。
    */
-  teammateBuffGate?(input: { buffId: string; team: ReadonlyArray<Agent>; selfCinema: number | undefined }): boolean | undefined
+  teammateBuffGate?(input: TeammateBuffGateInput): boolean | undefined
   /**
    * CC-65：TeamConfigPage「角色专属计数输入框」声明（展示层；原页面按角色写死的 v-if 块）。
    * 按数组顺序渲染在「双反」之后；min/max 取 `ACTION_COUNT_BOUNDS[field]`；写入统一走 `configStore.setActionCount`。

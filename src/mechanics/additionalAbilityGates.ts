@@ -68,26 +68,21 @@ export function evalAdditionalAbilityBuffGates(
  * CC-207 之前只有 store 读本钩子 ⇒ 用户强行勾上时引擎照算。
  *
  * **只问拥有者**（r403 CC-377）：buff 组 id = 拥有者 agentId（CC-275 加载处归一，spec teamBuffs 也并进本人组），
- * 所以每个组只派给 `getAgentMechanic(group.id)` 的钩子，并给出 `selfCinema`（本角色在队影画，不在队 undefined）。
+ * 所以每个组只派给 `getAgentMechanic(group.id)` 的钩子，并给出 `self`（本人那一槽，不在队 undefined；r410 CC-384 取代 `selfCinema`，
+ * team 也由压缩 `Agent[]` 改为同一份 `ReadonlyTeam`，模块不再按 id 自找、拿下标当槽位）。
  * 原先每条 buff 都问**全部已注册模块**，模块再按 buffId / groupId 自己认领——与 r399 CC-373 修掉的
  * 「派给所有人、各自扫一遍找自己」是同一个病。两个声明者的 6 条门控 buff 都只在本人组（数据核对见 CC-377），故逐值等价。
  * 拥有者不在队时仍会被询问（与原口径一致；store 侧 base 本就为 false）。
  */
 export function teammateBuffGateBlocks(team: ReadonlyTeam, groups: readonly TeammateBuffGroup[]): Set<string> {
   const blocked = new Set<string>()
-  const agents: Agent[] = []
-  const cinemaByAgent = new Map<string, number>()
-  for (const member of team) {
-    if (!member.agent || !member.agentId) continue
-    agents.push(member.agent)
-    cinemaByAgent.set(member.agentId, member.cinemaLevel ?? 0)
-  }
   for (const group of groups) {
     const gate = getAgentMechanic(group.id)?.teammateBuffGate
     if (!gate) continue
-    const selfCinema = cinemaByAgent.get(group.id)
+    // 本人判据与原 selfCinema 口径一致：agentId 匹配且 agent 可查
+    const self = team.find(member => member.agentId === group.id && !!member.agent)
     for (const buff of group.buffs ?? []) {
-      if (gate({ buffId: buff.id, team: agents, selfCinema }) === false) blocked.add(buff.id)
+      if (gate({ buffId: buff.id, team, self }) === false) blocked.add(buff.id)
     }
   }
   return blocked

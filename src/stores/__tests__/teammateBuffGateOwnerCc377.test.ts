@@ -45,12 +45,12 @@ describe('teammateBuffGate 只问组拥有者（r403 CC-377）', () => {
     expect(deriveTeammateBuffEnabled(team, [mkGroup('1351', ['ctl', B])], getAgent)).toEqual(before)
   })
 
-  it('拥有者表态 false ⇒ 禁用；表态 true 不会启用 base 关闭的条；selfCinema = 本人在队影画', async () => {
+  it('拥有者表态 false ⇒ 禁用；表态 true 不会启用 base 关闭的条；self = 派发器给的本人那一槽（r410 CC-384，原 selfCinema）；本人在队影画', async () => {
     const { catalog } = await setupHarness([{ agentId: '1351' }, '', ''])
     const getAgent = (id: string) => catalog.agentsMap.get(id) as Agent | undefined
     const seen: Array<number | undefined> = []
-    patch(getAgentMechanic('1351')!, ({ buffId, selfCinema }) => {
-      seen.push(selfCinema)
+    patch(getAgentMechanic('1351')!, ({ buffId, self }) => {
+      seen.push(self?.cinemaLevel)
       return buffId === 'ctl' ? false : buffId === 'c6only' ? true : undefined
     })
     const team = [slot('1351', 0, 2)]
@@ -60,7 +60,7 @@ describe('teammateBuffGate 只问组拥有者（r403 CC-377）', () => {
     expect(new Set(seen)).toEqual(new Set([2]))
   })
 
-  it('波可娜 C6：真实钩子禁用 base 条（selfCinema ≥ 6）', async () => {
+  it('波可娜 C6：真实钩子禁用 base 条（self.cinemaLevel ≥ 6）', async () => {
     const { catalog } = await setupHarness([{ agentId: '1351' }, '', ''])
     const getAgent = (id: string) => catalog.agentsMap.get(id) as Agent | undefined
     expect(deriveTeammateBuffEnabled([slot('1351', 0, 6)], [mkGroup('1351', [B, 'ctl'])], getAgent))

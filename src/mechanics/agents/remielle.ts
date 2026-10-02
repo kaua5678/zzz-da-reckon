@@ -13,6 +13,7 @@ import type {
   AgentNextRoundFeedbackInput,
   AgentTeamConfigInput,
   ModuleFeedback,
+  TeammateBuffGateInput,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
@@ -412,21 +413,8 @@ const REMIELLE_Q_SPLIT = {
   batchNote: 'Q 每次固定打 3 个耀变',
 } as const
 
-/**
- * CC-64b：蕾米埃尔额外能力档位（原 stores/config.ts#deriveTeammateBuffEnabled 内 getRemielleAdditionalState，逐字搬入）。
- * active = 其余队友里有异常职业或与蕾米埃尔同阵营；anomalyCount = 全队异常职业数（含本人）；tier = active ? clamp(anomalyCount, 1, 3) : 0。
- * 按 `agent.id` 识别本人；不在队 ⇒ { active: false, anomalyCount: 0, tier: 0 }。
- */
-export function remielleAdditionalState(team: ReadonlyArray<Agent>): { active: boolean; anomalyCount: number; tier: number } {
-  const selfIdx = team.findIndex(agent => agent?.id === REMIELLE_AGENT_ID)
-  if (selfIdx < 0) return { active: false, anomalyCount: 0, tier: 0 }
-  // CC-306：同一 spec 求值器（压缩 Agent 列表按下标当槽位；条件只看「本人以外」⇒ 下标 ≠ 真实槽位无影响）
-  const members = team.map((agent, i) => ({ slot: i, agentId: agent?.id ?? '', agent: agent ?? null }))
-  return computeRemielleAdditionalState(members, selfIdx, team[selfIdx])
-}
-
 /** CC-64b：受档位门控的 buff id → 附加条件（原 store resolveSpecialTeammateBuffEnabled 的 5 个分支） */
-const REMIELLE_BUFF_GATES: Readonly<Record<string, (st: ReturnType<typeof remielleAdditionalState>) => boolean>> = {
+const REMIELLE_BUFF_GATES: Readonly<Record<string, (st: ReturnType<typeof computeRemielleAdditionalState>) => boolean>> = {
   '1581.additional_ability.atk_1_anomaly': st => st.active && st.tier === 1,
   '1581.additional_ability.atk_2_anomaly': st => st.active && st.tier === 2,
   '1581.additional_ability.atk_3_anomaly': st => st.active && st.tier === 3,
@@ -434,9 +422,14 @@ const REMIELLE_BUFF_GATES: Readonly<Record<string, (st: ReturnType<typeof remiel
   '1581.additional_ability.prismatic_buildup': st => st.active,
 }
 
-function remielleTeammateBuffGate(input: { buffId: string; team: ReadonlyArray<Agent> }): boolean | undefined {
-  const gate = REMIELLE_BUFF_GATES[input.buffId]
-  return gate ? gate(remielleAdditionalState(input.team)) : undefined
+/**
+ * CC-64b 档位门控。r410 CC-384：本人由派发器给（`self`），与失衡加成（`remielleDazeTier`）共用同一份 `ReadonlyTeam` + 真实槽位求值；
+ * 原 `remielleAdditionalState` 在压缩 `Agent[]` 里按 id 自找、拿下标当槽位，已删。不在队 ⇒ 全 0。
+ */
+function remielleTeammateBuffGate({ buffId, team, self }: TeammateBuffGateInput): boolean | undefined {
+  const gate = REMIELLE_BUFF_GATES[buffId]
+  if (!gate) return undefined
+  return gate(self ? computeRemielleAdditionalState(team, self.slot, self.agent) : { active: false, anomalyCount: 0, tier: 0 })
 }
 
 export const remielleMechanic: AgentMechanicModule = {
