@@ -138,14 +138,16 @@ describe('仪玄 spec 机制（1371）', () => {
     // 旧聚合通道从不计行值）首次进账本 → 青衣强特↑ → 其行级喧响收入↑ → 队友进窗回到 3000
     // 之上 → 轨削减解除 [2,3]→[3,3]
     // 2026-09-28 CC-154：模块计数改读计数通道（physical 物理次数）⇒ 青衣醉花轮数 2×失衡按物理次数计 ⇒ 青衣终结 3→4 ⇒ [3,4]
-    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([3, 4])
+    // 2026-10-03 CC-394（r420）：青衣强特月上海棠融合三段（喧响随融合组同源相加，moveLookup#channelMetricsOf）⇒ 青衣喧响↑ ⇒ 青衣终结 3→4 ⇒ [4,4]
+    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([4, 4])
     // 2026-09-03 用户裁决：能量总账/derived 的数值断言删除——计算器未定型前数值断言会
     // 钉死中间态（展示=内核同源不变式由 energyConsistency.test 承担）；玄墨回能字段断言语义保留。
     // 2026-09-07：队友大招 [2,2]→[3,3] → 队友终结闪能 80→120
     // 2026-09-08 行级账本：队友大招 [3,3]→[2,3] → 队友终结闪能 120→100（5×20）
     // 2026-09-09 能量行级 Σ：队友大招 [2,3]→[3,3] → 队友终结闪能 100→120（6×20）
     // 2026-09-28 CC-154：队友大招 [3,3]→[3,4] → 队友终结闪能 120→140（7×20）
-    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(140)
+    // 2026-10-03 CC-394（r420）：队友大招 [3,4]→[4,4] → 队友终结闪能 140→160（8×20）
+    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(160)
     const chain = yixuan.yixuanExChain!
     // 手填口径锁结构（轨 2026-08-31：income 随队友大招削减回落，cloudOut/flashSpent 为收敛值不锁数）
     expect(chain.ink1).toBe(3)
@@ -214,8 +216,9 @@ describe('仪玄 spec 机制（1371）', () => {
     // 2026-09-19 R37-J5 v2（动态合轴）：轴态超预算 → 弃轴后非轴态的溢出由队友前台按溢出量被合轴吸收 ⇒ 净占用装得下、
     // 不再触发降配 → 有效弹刀回到配置值 6，#2 赠送行同步 6。
     // 2026-09-28 CC-154：青衣醉花轮数改按计数通道（physical 物理次数）⇒ 青衣必要时间↑ ⇒ 再次触发降配 ⇒ 有效弹刀 6→5，#2 同步 5。
-    expect(chain.perfectBlockCount).toBe(5)
-    expect(chain.ink2).toBe(5)
+    // 2026-10-03 CC-394（r420）：青衣强特融合三段（时长 0.383→1.533s/次）⇒ 青衣必要时间再↑ ⇒ 降配更深 ⇒ 有效弹刀 5→4，#2 同步 4。
+    expect(chain.perfectBlockCount).toBe(4)
+    expect(chain.ink2).toBe(4)
     // 自动 3 连：income（= 循环当量 × 60）打完轴内消耗后剩余全部打 3 连（60/次）→ 轴外凝云清零
     expect(chain.ink2Count).toBe(0)
     // 时间轴喧响轨（2026-08-31）：队友大招削减 → 玄墨暗涌闪能归零 → income 回落。

@@ -417,7 +417,7 @@
  },
  "auto-1521-1251-1311": {
   "slack": 0,
-  "over": 0.1,
+  "over": 0,
   "stun": 4,
   "outerExit": "stable"
  },
@@ -590,10 +590,10 @@
   "outerExit": "stable"
  },
  "yidhari-qingyi-lucia": {
-  "slack": 1,
+  "slack": 3.4,
   "over": 0,
   "stun": 2,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "yidhari-roxy-lucia": {
   "slack": 0.8,

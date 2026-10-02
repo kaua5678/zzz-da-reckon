@@ -206,6 +206,22 @@ const QIANXIA_EX_BUBBLEGUM_BARRAGE: MoveFusionGroup = {
   note: 'full/1491.json「泡泡糖轰炸伤害倍率」={{Skill:1491007}+{Skill:1491018}}；引擎只取第一个带能耗的强特(1491007)。',
 }
 
+// @fact engine:moveFusion/月上海棠 口径: 青衣强化特殊技·月上海棠一次点按 = 上挑#1 + 转身连打#2 + 下砸#3 三段求和（1251011+1251021+1251022）；长按额外耗能追加的连打次数未建模 | 据 nanoka full/1251.json param.desc「{{Skill:1251011}+{Skill:1251021}+{Skill:1251022}}」+ 招式说明「点按发动：上挑后腾空跃起，转身连打后发动强力的下砸攻击」 | 验 src/composables/__tests__/axisTableDirectCc393.test.ts#青衣 | 锚 src/data/moveFusions.ts#QINGYI_EX_MOONLIT | 信 确认
+// ⟳复核: 若补建「长按额外耗能追加连打」或 nanoka 1251 param.desc 组成变了（增删 1251021/1251022 段），须重对本组与 cc393 锁 | 到期 2026-12-31
+
+/** 青衣·强化特殊技·月上海棠（一次点按）＝ 上挑 #1 + 转身连打 #2 + 下砸 #3（CC-394；修前引擎只取 #1：倍率 301.4% / 时长 0.383s，全量为 1206.7% / 1.533s） */
+const QINGYI_EX_MOONLIT: MoveFusionGroup = {
+  moveId: '1251011',
+  agentId: '1251',
+  label: '青衣·强化特殊技·月上海棠（点按）',
+  terms: [
+    { moveId: '1251011', count: 1 },
+    { moveId: '1251021', count: 1 },
+    { moveId: '1251022', count: 1 },
+  ],
+  note: 'full/1251.json「伤害倍率」={{Skill:1251011}+{Skill:1251021}+{Skill:1251022}}（失衡 Prop 1002 同组）；招式说明「点按：上挑→转身连打→下砸」；「长按额外消耗能量提升连打次数」未建模（额外能量消耗 20）。',
+}
+
 /** 千夏·强化特殊技·特别拍照技巧（协同）＝ #1 + #2——引擎不选该行（无能耗），仅登记口径；
  *  该动作需模块接入（每 [天使协律] 40s 窗口一次、0 耗能，见 qianxia.ts 未建模项）。 */
 const QIANXIA_EX_PHOTOGRAPHY: MoveFusionGroup = {
@@ -310,6 +326,7 @@ export const MOVE_FUSION_GROUPS: MoveFusionGroup[] = [
   ZHENDOU_ASSIST_BREAKING_FANG,
   QIANXIA_EX_BUBBLEGUM_BARRAGE,
   QIANXIA_EX_PHOTOGRAPHY,
+  QINGYI_EX_MOONLIT,
   CLARET_COUNTER_ASSIST,
 ]
 

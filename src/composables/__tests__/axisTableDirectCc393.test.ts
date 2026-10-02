@@ -85,6 +85,25 @@ describe('CC-393 轴内 [表] 直读判定（编辑器与结算同源）', () =>
     expect(rows[0].multiplier).toBeCloseTo(expected, 6)
   })
 
+  it('青衣强化特殊技按三段融合（CC-394）：执行行倍率 = #1 + #2 + #3，#2 / #3 不再作为 [表] 候选', async () => {
+    const calc = await runAxis(['1251', '1211', '1031'], basicOnly())
+    const skills = useCatalogStore().getAgentSkills('1251')
+    const seg = (id: string) => getRowValue(findMoveById(skills, id), 'damage')
+    const expected = seg('1251011') + seg('1251021') + seg('1251022')
+    expect(seg('1251021'), '反空洞').toBeGreaterThan(0)
+    const row = calc.damagePoolRows.value.find(r => r.slot === 0 && r.moveId === '1251011' && r.type === '直伤')
+    expect(row?.multiplier).toBeCloseTo(expected, 6)
+    const c = calc.resourceResult.value?.characters?.[0]
+    const ids = axisTableDirectCandidates('1251', skills, new Set((c?.executions ?? []).map(e => e.moveId))).map(h => h.move.id)
+    expect(ids).not.toContain('1251021')
+    expect(ids).not.toContain('1251022')
+  })
+
+  it('莱卡恩点按段 1141016 不作为 [表] 候选（CC-394：模块按点按次数出行）', async () => {
+    const calc = await runAxis(['1141', '1211', '1031'], [{ slot: 0, moveId: '1141016', count: 1, startTime: 0 }])
+    expect(tableRows(calc, 0).map(r => r.moveId)).toEqual([])
+  })
+
   it('源码：编辑器与结算都调用 axisTableDirect，不各自重写判定', () => {
     const page = readFileSync(resolve(__dirname, '../../views/StunAxisPage.vue'), 'utf8')
     const pool = readFileSync(resolve(__dirname, '../resourceCalc/damagePoolDirect.ts'), 'utf8')

@@ -59,6 +59,9 @@ export const LYCAON_POTENTIAL_IMPACT_PCT = [0, 0, 5, 7.5, 10, 12.5, 15] as const
 export const lycaonMechanic: AgentMechanicModule = {
   id: 'agent:1141',
   agentIds: ['1141'],
+  // CC-394：狂猎时刻 #2 1141016 是点按路线的段（buildExecutions 按点按次数出 #1 + #2 行；原文「伤害倍率」= 1141015 + 1141016）。
+  // 点按次数为 0 时它没有执行行，[表] 会把它当「没建模」提供 ⇒ 放进轴 = 不耗能的半个强特。点按应改点按次数，不经 [表]。
+  axisHiddenMoves: ['1141016'],
 
   applyPanel({ cinemaLevel, panel, potentialLevel }: AgentPanelInput) {
     // 核心被动·金属狼足：普攻蓄力/闪反/冲刺失衡 +80%（Lv7 满级；增强后含闪反/冲刺）
