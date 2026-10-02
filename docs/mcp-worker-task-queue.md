@@ -152,14 +152,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 399 轮（lane arena-E，开工 14:15；无并行会话；HEAD `d6b84bf9`；REQUIREMENTS.md 无新条目）：CC-373 `2a563496`，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：r398 下一步 1「core 认维琳娜」已完成。核查发现 import 层面早已解决（CC-6d），真病是异常池钩子派给全部已注册模块且入参缺身份。改为只派发给在队模块并附 `self`；velina、alice 的面板自认标记全部删除。详见 `docs/mcp-nextround-writeback.md` §7。
-- **验证**：vue-tsc `--force` 0；zd `r399` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 456 个文件 / 4196 个测试；build 通过（`arenaE/*399*.log`）。
-- **开放项**：无新增（OPEN-ITEMS「PanelValues 索引签名」仍在）。
+**第 400 轮（lane arena-E，开工 14:38；无并行会话；HEAD `71215acb`；REQUIREMENTS.md 无新条目）：CC-374 `823b7261` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：r399 下一步 1「PanelValues 索引签名盘点」已完成，产出 `docs/mcp-panel-fields.md` 和 `scripts/audit-panel-fields.mjs`（删签名跑 tsc，编译器级清单）。盘点中发现命座自检被零读者字段短路，删了 9 个（文档 §2，探针证据）。
+- **验证**：vue-tsc `--force` 0；zd `r400b` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 456 个文件 / 4196 个测试；build 通过（`arenaE/*400*.log`）。
+- **开放项**：OPEN-ITEMS D2-PV 改为指向 `docs/mcp-panel-fields.md` §4。
 - **下一步（按价值排）**：
-  1. **PanelValues 索引签名盘点**（OPEN-ITEMS）：先用脚本统计所有被写到 panel 上、却不在 `PanelValues` 显式声明里的字段（写入方 / 读取方 / 是否只有单模块用到），产出 `docs/mcp-panel-fields.md`（记得登记 README §6），再决定是否按 D2 的做法迁成模块扩充。只做盘点，不要直接收紧签名。盘点时特别留意**只被写入、无人读取**的字段（r398、r399 已经删掉 5 个这类「身份标记」，可能还有）。
-  2. **按模块派发的钩子是否还有缺身份的**：grep `getRegisteredAgentMechanics()` 的全部调用方，判断每处是「全量声明查询」（合法，例如设置项、预设提示）还是「派发运行期钩子」（应改用 `teamMechanicSlots`）。定位器只能用 `findModuleSlot`。
-  3. d2 §5 表剩余「待做」模块。
+  1. **`docs/mcp-panel-fields.md` §4 S1**：把 14 个 `cross` 字段显式声明进 `PanelValues`（清单见该文 §3 表中 `cross` 行），去掉 `anomalyPanels.ts:299` 的 `as any`。机械活，可交给执行模型。完成后用 `node scripts/audit-panel-fields.mjs <临时wt> template` 确认 `cross` 行消失。
+  2. **§4 S2**：24 个单模块字段改为模块内 `declare module`。改之前每个字段先按 §2 判据判断有没有读者；零读者的直接删，并用探针确认命座自检的变化如实。miyabi 的 `(cfg.panel as any)` 两处一起改。
+  3. §4 S3（动态键网关）→ S4（换签名，锁）。顺序不能颠倒，理由见该文。
+  4. r399 下一步 2：逐个检查 `getRegisteredAgentMechanics()` 的调用方，区分「全量声明查询」和「运行期钩子派发」，后者改用 `teamMechanicSlots`。
+  5. d2 §5 剩余待做模块（miyabi 的 `miyabiCinemaLevel` Record 强转在其中）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -182,6 +184,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **永远不要并行发两个 mcp.js 调用**：r398 又踩了一次（检查组和 vitest 一起发，后者报 Duplicate id），换新会话串行重发即可。
   - **先核实上一轮的诊断再动手**：r398 交接写的是「core 认维琳娜」，但 core 早已不 import velina；照字面修会加一个只服务风蚀的声明字段。r399 按「派发给谁、给不给身份」重新诊断，一次修掉了 velina 和 alice 两份 hack。
   - **删代码后守卫要求豁免销号**（`compactedSlotIndex` 的 `IDX_SAFE_ALLOWLIST`）：全量 vitest 红一条「豁免失效」属于正常现象，删掉对应条目即可。
+  - **命座自检（`cinemaUplift`）是面板的全键读者**：删任何面板字段都可能改变 `warn`，zd 测不到。要用单人队 `analyzeCinemaUplift` 删前删后对比（r400 探针法，见 `docs/mcp-panel-fields.md` §2/§5）。
+  - **盘点「靠宽类型才成立的访问」最准的办法是临时收紧类型跑 tsc**，比正则可靠（r400：DeepReadonly 读、解构都能定位）。只在临时 worktree 里改，跑完 `git status` 确认已恢复。
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
