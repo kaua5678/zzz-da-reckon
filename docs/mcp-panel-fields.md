@@ -2,6 +2,7 @@
 
 > lane arena-E · 2026-10-02 第 400 轮。代码提交 `823b7261`（删 9 个零读者字段）。
 > 复跑：`node scripts/audit-panel-fields.mjs <临时worktree> [none|template] [out.json]`（约 15s；**别在主工作区跑**，见脚本头注释）。
+> **r401 进度**：S1 `632e4009`、S3 `72feeeee` 已完成（template 模式 87→52，dynamic 34→0）；剩 **S2+S4 合并为一个提交**（§4，原计划分开做不可行，§5 TS2411）。
 > 关系：`docs/mcp-write-only-props.md`（CC-190）按**已声明属性的符号**查只写不读；索引签名上的**未声明**字段是它的盲区，本文补这一块。
 
 ## 0. 结论
@@ -10,7 +11,7 @@
 - **方法**：把签名临时删掉跑 `vue-tsc -b --force`，编译器报出的每一处就是一次「靠索引签名才成立」的访问。比正则扫描准：变量名、解构、`DeepReadonly` 面板都能定位。
 - **规模比预想小**（删掉 9 个字段之后）：全删签名 164 处报错，其中具名字段 51 个、动态键访问 53 处、其他 11 处。若改用模板字面量签名 `` [key: `${string}__${string}`]: number `` 覆盖定向属性键，剩 111 处：具名 39 个、动态 34 处、其他 11 处。
 - **意外发现：命座自检被零读者字段短路**。`composables/cinemaUplift.ts` 的三态判据是「`changedFields` 非空 ⇒ `ok`」，模块在 `applyPanel` 里盖的 `xxxCinemaN = 1` 这类**没人读**的标记会让面板「变了」，于是**不管效果是否在面板生效，自检都显示 ok**。r400 删了 9 个（§2）。
-- **终态（决定）**：去掉 `[key: string]: number`，让编译器成为锁。§4 分四个阶段做，每阶段可单独提交、zd 0/0 验收。不做「名单守卫」：签名去掉后类型系统本身就拦住新夹带，比任何名单都全。
+- **终态（决定）**：去掉 `[key: string]: number`，让编译器成为锁。§4 分四个阶段做，每阶段可单独提交、zd 0/0 验收。不做「名单守卫」：签名去掉后类型系统本身就拦住新夹带，比任何名单都全。（r401 修订顺序：S1 → S3 → S2+S4 同一提交。）
 
 ## 1. 四类访问与各自的正确归宿
 
@@ -108,13 +109,22 @@
 
 ## 4. 分阶段执行卡（每阶段一提交；验收 = vue-tsc `--force` 0 + zd 0/0 + 全量 vitest(4)）
 
-- **S1 声明通用属性**（低风险，可交给执行模型）：把 §3 表里 `cross` 的 14 个字段加进 `PanelValues`，用 `?: number`；`emptyPanel()`（`core/panel.ts:62` 起）里已经初始化的用必填 `number`。每个字段写一行注释：谁写（catalog.json 键 / 模块）、谁读。`refringe` 由 `composables/resourceCalc/anomalyPanels.ts:299` 写进虚拟面板（现为 `as any`），声明后去掉强转。完成判据：`audit-panel-fields.mjs` 输出里不再有 `cross` 行。
-- **S2 模块私有字段 → `declare module`**：按 D2 规则（`docs/mcp-d2-cfg-fields.md`），只被一个模块引用的字段在该模块里 `declare module '@/types/catalog' { interface PanelValues { xxx?: number } }`，出现第二处引用就迁回公共接口。顺手：miyabi 的 `(cfg.panel as any)?.miyabiCinema4` / `miyabiCinema6`（`miyabi.ts` 约 183/270 行，经 cfg 夹带面板）改成正式读法；miyabi 的 `(cfg as unknown as Record…).miyabiCinemaLevel` 属于 d2 §5 待做。
-- **S3 动态键网关**：`core/buff.ts` 的 `panel[key]`（key: string）是 buff 系统的正当通道，收敛成一个导出的 `panelStatRef(panel, key: string)` 读写器（内部一次断言）。展示组件（FinalPanel / StatPanel / DebugPage）的 `p[key]` 改为 key 类型取 `keyof PanelValues`（键来自 `statMeta` 列表时可做到），或者调用同一个读写器。测试里 `as Record<string, number>` 的 7 处同理。
-- **S4 换签名（终态 + 锁）**：S1–S3 做完后，`audit-panel-fields.mjs . template` 应当只剩 0 处（或个位数）。这时把 `[key: string]: number` 换成 `` [key: `${string}__${string}`]: number ``：定向属性键（`skillDmgBonus__basic` 这类，buff 系统合法的动态通道）仍然合法，其余未声明的键一律编译失败。更精确的 `` `${StatKey}__${SkillTargetKind}` `` 可以以后再收紧。
-  - **顺序不能颠倒**：只要还有 S2 的私有字段或 S3 的 string 键访问，换签名就会编译失败。所以换签名必须放在最后，不能先换。
-  - **反证**：在某个 `applyPanel` 里写 `panel.fooBar = 1`，vue-tsc 必须报 TS2339；写 `panel.foo__bar = 1` 则不报（模板签名放行）。
-  - 换完后，新模块想往面板塞未声明的键会直接编译失败，必须先 `declare module`，夹带就无处藏身。这时 OPEN-ITEMS 的 D2-PV 可以销号。
+> r401 修订：原 S2 / S4 分两步做不可行（§5 TS2411），合并为一个提交；S3 前移。进度：S1 ✅、S3 ✅，剩 S2+S4。
+
+- **S1 声明通用属性** ✅ r401 `632e4009`：共 15 个（原 14 个 `cross`，加上 emptyPanel 里早有初值却未声明的 `healingAmount`），全部声明为**必填** `number`，不是原计划的 `?:`（§5 TS2411）。emptyPanel 补 5 个初值：`roaringRideBackstageEnergyRegen` 0、`potentialLevel` 6（三个读者原本都 `?? 6`）、`turbulenceResIgnore` 0、`windInfectionRate` 0、`refringe` 0。去掉 `anomalyPanels.ts` 的 `as any`。`cross` 行清零。
+- **S3 动态键网关** ✅ r401 `72feeeee`：
+  - `src/utils/panelStat.ts` 的 `getPanelStat / setPanelStat / addPanelStat` 是「键名来自数据」时唯一的入口，内部做一次断言。34 处全部改完，template 模式 dynamic 34→0（总数 87→52）。
+  - 没采用原计划的「展示组件的 key 取 `keyof PanelValues`」：键来自 statMeta、`elementStatKey`、`Object.keys`，类型上就是 string。硬收紧只能在各个列表处断言，等于把断言分散到各处。
+  - 同一提交把 `core/buff.ts` 的批次累加器从面板隐藏键（`__hpAccum` 等，值是对象）移进模块级 WeakMap，两套同构的累加器合并为一套。原因是 `__hpAccum` 匹配 S4 的模板签名：不搬的话，S4 会把一个对象当成 number 放行。锁：`core/__tests__/batchAccum.test.ts`。
+- **S2+S4 同一提交（下一步，r402）**：
+  1. 签名换成 `` [key: `${string}__${string}`]: number ``。定向属性键（`skillDmgBonus__basic` 这类）仍然合法。
+  2. 同一提交里，24 个 single 字段在所属模块写 `declare module '@/types/catalog' { interface PanelValues { xxx?: number } }`（D2 规则，见 `docs/mcp-d2-cfg-fields.md`；出现第二个**生产**引用者就迁回公共接口）。签名换完后 `?:` 不再与索引签名冲突。字段和所属模块的清单在 r401 后重跑：`node scripts/audit-panel-fields.mjs <临时wt> template out.json`（r401 的结果在 `calc-arch/arenaE/pv401b.json`，25 行具名 + 10 处其他）。改之前每个字段先按 §2 判据确认有读者，零读者的删除，并跑探针。
+  3. 剩下 10 处「其他」：
+     - 测试里 7 处 `as Record<string, …>`（TS2352）：改用 `getPanelStat`，或改成 `as unknown as`。
+     - `discSetEffects.test.ts` 里 `fireCritDmg` / `iceCritDmg` 对象字面量 3 处：`elementStatKey('critDmg', …)` 会拼出这两个键，它们只经网关流动（§5）。改成 `setPanelStat` 写入，**不要**为了让测试编译而在 PanelValues 里声明它们。
+  4. 顺手：miyabi 的 `(cfg.panel as any)?.miyabiCinema4 / 6`（`miyabi.ts` 约 183 / 270 行）改成正式读法。
+  5. 反证：在某个 `applyPanel` 里写 `panel.fooBar = 1`，必须报 TS2339；写 `panel.foo__bar = 1` 则不报。
+  6. 完成后 OPEN-ITEMS 的 D2-PV 销号。不做名单守卫。
 
 ## 5. 已知坑
 
@@ -122,3 +132,7 @@
 - 盘点脚本会临时改 `catalog.ts`。被 kill 时 finally 不执行，会留下改坏的文件，所以只在临时 worktree 里跑，跑完 `git status` 确认干净。
 - `vue-tsc -b` 必须 `--force`，否则增量缓存让报错数偏少。
 - 字段归属按「生产代码出现的文件」判断：测试里出现不算第二个引用者。
+- **TS2411（r401）**：只要 `[key: string]: number` 还在，显式成员就不能写 `?: number`（`undefined` 不能赋给 `number` 索引）。所以 S1 只能声明为必填（emptyPanel 必须有初值），S2 的模块私有 `?:` 声明也不能先于 S4 换签名。
+- **盘点盲区（r401）**：对象展开或非字面量写入（如 `.map(p => ({ ...p, x }))`）不触发多余属性检查，所以表里 W0 不能证明没有写入方，要 grep 核实（`windInfectionRate` 就是在 `useResourceCalc.ts` 里用展开写入的）。另外 TS 对每个对象字面量只报**第一个**多余属性：emptyPanel 要用脚本比较全部键（`healingAmount` 就是这样漏掉的）。
+- **只经网关流动的键编译器永远看不到**：数据里的 stat 经 `applyStat` 的 default 分支写入、经 `getPanelStat` 读出（例如 `fireCritDmg`），S4 之后也不会报错。它们的「声明」是 catalog 数据加 statMeta，不是 `PanelValues`。不要把「编译通过」理解为「所有键都已声明」。
+- **面板上不要挂非数字的东西**：批次状态这类临时数据按面板对象存 WeakMap（r401 `buff.ts` batchAccum 先例）。挂在面板上会被展开拷贝带走（共享同一引用），被 `Object.keys` 读者看到，还会被模板签名误放行。

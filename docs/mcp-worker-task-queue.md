@@ -152,16 +152,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 2. 最近一轮交接（每轮替换本节）
 
-**第 400 轮（lane arena-E，开工 14:38；无并行会话；HEAD `71215acb`；REQUIREMENTS.md 无新条目）：CC-374 `823b7261` + 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
-- **做到哪**：r399 下一步 1「PanelValues 索引签名盘点」已完成，产出 `docs/mcp-panel-fields.md` 和 `scripts/audit-panel-fields.mjs`（删签名跑 tsc，编译器级清单）。盘点中发现命座自检被零读者字段短路，删了 9 个（文档 §2，探针证据）。
-- **验证**：vue-tsc `--force` 0；zd `r400b` 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 456 个文件 / 4196 个测试；build 通过（`arenaE/*400*.log`）。
-- **开放项**：OPEN-ITEMS D2-PV 改为指向 `docs/mcp-panel-fields.md` §4。
+**第 401 轮（lane arena-E；无并行会话；HEAD `1f5094bb`；REQUIREMENTS.md 无新条目）：CC-375 `632e4009`（S1）+ `72feeeee`（S3）+ 文档，已 push（`git rev-list --count origin/master..HEAD` 不为 0 = push 失败，先补推）。**
+- **做到哪**：`docs/mcp-panel-fields.md` §4 的 S1 和 S3 完成。template 模式 87→52：dynamic 34→0，`cross` 行清零，其他 11→10。执行中修订了计划：S2 不能单独做，必须和 S4 同一提交（TS2411，见该文 §5）。
+- **验证**：vue-tsc `--force` 0；zd `r401` / `r401b` 均为 0/0；guards 25 / tokens 12 / data 366 / specs 1120 / recording 189；全量 456 个文件 / 4196 个测试；build 通过（日志在 `arenaE/*401*`）。新锁 `batchAccum.test.ts` 已反证：换回旧版 buff.ts 后有两条失败。
+- **开放项**：OPEN-ITEMS 的 D2-PV 追加 r401 进度。
 - **下一步（按价值排）**：
-  1. **`docs/mcp-panel-fields.md` §4 S1**：把 14 个 `cross` 字段显式声明进 `PanelValues`（清单见该文 §3 表中 `cross` 行），去掉 `anomalyPanels.ts:299` 的 `as any`。机械活，可交给执行模型。完成后用 `node scripts/audit-panel-fields.mjs <临时wt> template` 确认 `cross` 行消失。
-  2. **§4 S2**：24 个单模块字段改为模块内 `declare module`。改之前每个字段先按 §2 判据判断有没有读者；零读者的直接删，并用探针确认命座自检的变化如实。miyabi 的 `(cfg.panel as any)` 两处一起改。
-  3. §4 S3（动态键网关）→ S4（换签名，锁）。顺序不能颠倒，理由见该文。
-  4. r399 下一步 2：逐个检查 `getRegisteredAgentMechanics()` 的调用方，区分「全量声明查询」和「运行期钩子派发」，后者改用 `teamMechanicSlots`。
-  5. d2 §5 剩余待做模块（miyabi 的 `miyabiCinemaLevel` Record 强转在其中）。
+  1. **`docs/mcp-panel-fields.md` §4「S2+S4 同一提交」**：换模板签名，同时把 24 个 single 字段改为模块内 `declare module ... ?: number`，并处理剩下 10 处「其他」。清单先重跑盘点脚本得到。需要逐字段判断有没有读者，不是纯机械活，留给能跑探针的会话。
+  2. r399 下一步 2：逐个检查 `getRegisteredAgentMechanics()` 的调用方，区分「全量声明查询」和「运行期钩子派发」，后者改用 `teamMechanicSlots`。
+  3. d2 §5 剩余待做模块（miyabi 的 `miyabiCinemaLevel` Record 强转在其中）。
 - **已知坑**：
   - 改名类重构必须同步改**反向源码锁**（`not.toMatch(/旧名/)`）：旧名消失后它永远绿，等于静默失效。
   - MCP「Duplicate JSON-RPC request id」：`rm -f /tmp/mcp.session` 后重发。
@@ -186,6 +184,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   - **删代码后守卫要求豁免销号**（`compactedSlotIndex` 的 `IDX_SAFE_ALLOWLIST`）：全量 vitest 红一条「豁免失效」属于正常现象，删掉对应条目即可。
   - **命座自检（`cinemaUplift`）是面板的全键读者**：删任何面板字段都可能改变 `warn`，zd 测不到。要用单人队 `analyzeCinemaUplift` 删前删后对比（r400 探针法，见 `docs/mcp-panel-fields.md` §2/§5）。
   - **盘点「靠宽类型才成立的访问」最准的办法是临时收紧类型跑 tsc**，比正则可靠（r400：DeepReadonly 读、解构都能定位）。只在临时 worktree 里改，跑完 `git status` 确认已恢复。
+  - **TS2411**：带 `[key: string]: number` 的接口里，显式成员不能写 `?: number`。收紧类型的计划要先在 scratch 里试编译一次，再定步骤顺序（r401：原定 S2 先于 S4，实际做不到）。
+  - **把一个测试当锁之前先反证**：r401 以为 `statModeParity` 能锁住累加器泄漏，换回旧代码后它照样通过（它比较的面板都已 finalize），于是另写了 `batchAccum.test.ts`。
+  - **wsl_exec 里用 `nohup … &` 起的后台进程，会在调用返回时被回收**（r401 vitest 跑到一半就没了，日志也没有 EXIT 行）。全量 vitest 用前台 `timeout 285` 跑，约 200 秒。
+  - 面板上不要挂非数字数据，批次状态按面板对象存 WeakMap（r401 先例）。
+
 
 ## 3. 执行卡（输入输出写死的机械活，可交给执行模型或 dsh；第 368 轮新增本节）
 
