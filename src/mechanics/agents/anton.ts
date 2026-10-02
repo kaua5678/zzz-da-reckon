@@ -5,7 +5,7 @@
  *   结算为 release 事件（element=electric 固定 45% 感电倍率，倍率基准=感电施加者的感电伤害）。
  */
 import { clampRatio } from '@/utils/finiteClamp'
-import type { AgentEventInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
+import type { AgentEventInput, AgentMechanicModule, AgentResourceInput } from '../types'
 import type { AnomalyEventExecution } from '../../types/resource'
 import { execMatchesMove } from '../../types/resource'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
@@ -23,10 +23,6 @@ const ANTON_C1_MAX_PER_MOVE = 5
 /** 额外能力·通力合作：每 4 次暴击触发一次感电追加，额外结算 45% 感电伤害 */
 export const ANTON_ADDITIONAL_SHOCK_RATIO = 45
 export const ANTON_ADDITIONAL_SHOCK_CRIT_DIVISOR = 4
-
-function setRecord(cfg: AgentPanelInput['panel'] | AgentResourceInput['cfg'], key: string, value: unknown) {
-  ;(cfg as unknown as Record<string, unknown>)[key] = value
-}
 
 // ⚠⚠ **R62 订正：本文件原有 `applyPanel` 钩子，只做「3/5 命技能等级 +2/+4」——那是第二写者 ⇒ 双计。**
 //
@@ -60,7 +56,7 @@ function setRecord(cfg: AgentPanelInput['panel'] | AgentResourceInput['cfg'], ke
 // ⟳复核: 跑 `npx vitest run cinemaAxisBatchR62` —— 若 c3/c5 的 skillLevelBonus 又变回 4/8（或 `agentHasCinemaSkillLevelBuff` 被改成认「描述文本」而安东 catalog 补了 effects），说明双计回来了 | 到期 2027-03-31
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).antonCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.antonCinemaLevel ?? 0)))
   let c1Energy = 0
   let c1Moves = 0
   for (const exec of executions) {
@@ -79,8 +75,8 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
     }
   }
   // 进入 calcEnergySource 的单一总账；不按 hit 放大，按实际执行招式计一次上限。
-  setRecord(cfg, 'antonC1EnergyGift', c1Energy)
-  setRecord(cfg, 'antonC1DrillMoveCount', c1Moves)
+  cfg.antonC1EnergyGift = c1Energy
+  cfg.antonC1DrillMoveCount = c1Moves
 }
 
 /** 额外能力·通力合作：爆发状态内暴击次数 → 感电追加 release 事件（固定 45% 感电倍率）。
@@ -93,7 +89,7 @@ function buildAntonAnomalyEvents({ cfg, events }: AgentEventInput): void {
   const additionalActive = (cfg.panel.additionalAbilityActive ?? 0) > 0
   if (!additionalActive) return
   // 爆发状态内的攻击次数近似：安东整局的电钻+打桩执行行（爆发状态是安东输出主形态）
-  const burstHits = Number((cfg as any).antonC1DrillMoveCount ?? 0)
+  const burstHits = Number(cfg.antonC1DrillMoveCount ?? 0)
   const count = Math.floor(burstHits / ANTON_ADDITIONAL_SHOCK_CRIT_DIVISOR * ratio)
   if (count <= 0) return
   events.push({
@@ -116,22 +112,37 @@ export const antonMechanic: AgentMechanicModule = {
   settings: [
     { id: 'anton.additionalShockRatio', label: '感电追加触发率', description: '额外能力·通力合作：爆发状态内每4次暴击触发一次感电追加的触发率（含暴击率折算；安东在感电队默认满触发）', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
   ],
-  buildCharConfig: ({ cfg, cinemaLevel }) => setRecord(cfg, 'antonCinemaLevel', cinemaLevel),
+  buildCharConfig: ({ cfg, cinemaLevel }) => { cfg.antonCinemaLevel = cinemaLevel },
   patchExecutions,
   buildAnomalyEvents: buildAntonAnomalyEvents,
   /**
    * 影画1 回能（2026-09-26 CC-14a）：每个实际电钻招式最多回 5 能量，由 `patchExecutions`
-   * 预计算写入 `cfg.antonC1EnergyGift`。字段未在 `CharacterOperationConfig` 声明（历史写入方只此一处）。
+   * 预计算写入 `cfg.antonC1EnergyGift`（本模块扩充块声明，CC-365）。
    */
   bonusEnergy({ cfg }) {
     const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
     return [{
       key: 'antonC1EnergyGift',
       label: '影画1回能',
-      value: n((cfg as any).antonC1EnergyGift),
+      value: n(cfg.antonC1EnergyGift),
       detail: '安东影画1：钻击招式回能（每招上限）',
     }]
   },
 }
 
 export default antonMechanic
+
+/**
+ * D2（CC-359/365）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 安东命座等级（buildCharConfig 写） */
+    antonCinemaLevel?: number
+    /** 安东影画1 回能总账（patchExecutions 写，bonusEnergy 读） */
+    antonC1EnergyGift?: number
+    /** 安东电钻招式执行次数（patchExecutions 写，感电追加事件读） */
+    antonC1DrillMoveCount?: number
+  }
+}

@@ -80,8 +80,8 @@ function buildOrphieCharConfig({ cfg, cinemaLevel, panel }: AgentCharConfigInput
 }
 
 function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
-  const atk = Math.max(0, Number((cfg as any).orphieAtk ?? 0))
+  const cinema = Math.max(0, Math.floor(Number(cfg.orphieCinemaLevel ?? 0)))
+  const atk = Math.max(0, Number(cfg.orphieAtk ?? 0))
   // 影画2：追加攻击回 65 喧响（4s 至多一次）——按 additionalAttack tag 计次数（融合前原行），4s CD 上限近似
   if (cinema >= 2) {
     let aaCount = 0
@@ -92,11 +92,10 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
     const cdCap = Math.floor(combatTime / 4)
     // CC-291：幂等写入（extraSelfDecibelReward 是跨角色共享累加通道，只能扣掉本模块上次写入量再加新值）。
     // 原实现每次调用都 `+=`，patchExecutions 在同一份 cfg 上被重复调用 ⇒ 喧响账读到 2 倍（探针：2925 → 5850）。
-    const record = cfg as unknown as Record<string, unknown>
     const gift = ORPHIE_C2_AA_DECIBEL * Math.min(aaCount, cdCap)
-    const prev = Math.max(0, Number(record.orphieC2DecibelGift ?? 0))
-    record.extraSelfDecibelReward = Math.max(0, Number(record.extraSelfDecibelReward ?? 0) - prev) + gift
-    record.orphieC2DecibelGift = gift
+    const prev = Math.max(0, Number(cfg.orphieC2DecibelGift ?? 0))
+    cfg.extraSelfDecibelReward = Math.max(0, Number(cfg.extraSelfDecibelReward ?? 0) - prev) + gift
+    cfg.orphieC2DecibelGift = gift
   }
   // 倍率融合（2026-08-27）：蓄热充能(1301011) 打完全自动接燥焰迸射(1301022)；
   // 终结技 与火共舞 #1(1301015)+#2(1301016) 合一计一次终结技。
@@ -184,12 +183,12 @@ function applyOrphieTeamConfig(input: AgentTeamConfigInput): void {
   // （`buildCharConfig` 跳过空槽），槽位号 ≠ 下标。此处曾是**硬崩点**：队 `['', 1041, 1301]`
   // （奥菲丝在槽2）时 `characters[2]` 为 undefined，且本行无 `if` 守卫 ⇒
   // `Cannot set properties of undefined (setting 'orphieAutoFrontRatio')`（2026-09-16 实测）。
-  ;(input.cfg as any).orphieAutoFrontRatio = hasXide ? 0.8 : 0 // 席德队 80% 前台小心脚下；通用副C 全后台
+  ;input.cfg.orphieAutoFrontRatio = hasXide ? 0.8 : 0 // 席德队 80% 前台小心脚下；通用副C 全后台
 }
 
 /** 后台自动招式：蚀光一闪（基础） + 灼红旋涡（能量替换）；席德队额外前台小心脚下；影画6 火刀衔接灼红旋涡 */
 function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.orphieCinemaLevel ?? 0)))
   const n = Number(cfgMechanicSettingRaw(cfg, 'orphie.backstageCastCount') ?? -1)
   // 次数 = 有效后台时间 / 相位延后等效 CD（2026-08-30 通用口径，core/effectiveTime.ts）：
   // 原主C 21/副C 30 静态分档删除——本人前台时间占比由等效 CD 接管（主C 前台长 → 后台自动自然少）；
@@ -204,7 +203,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   const timeCap = Math.floor(backstageEff / phaseDelayedCooldown(ORPHIE_BACKSTAGE_CD_SECONDS, state.frontlineTime, effectiveBattleTime(cfg), block))
   const backstageCast = n >= 0 ? Math.min(Math.max(0, Math.floor(n)), timeCap) : timeCap
   const rRaw = Number(cfgMechanicSettingRaw(cfg, 'orphie.frontEnergyRatio') ?? -1)
-  const frontRatio = Math.max(0, Math.min(1, rRaw >= 0 ? rRaw : Number((cfg as any).orphieAutoFrontRatio ?? 0)))
+  const frontRatio = Math.max(0, Math.min(1, rRaw >= 0 ? rRaw : Number(cfg.orphieAutoFrontRatio ?? 0)))
 
   // 回能副C：能量必须走迭代能量总账（state.totalEnergy），不再用种子近似
   const energy = Math.max(0, Number((state as any).totalEnergy ?? 0))
@@ -273,8 +272,8 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
 
 /** 蓄炎资源：影画6 火刀次数写入 cfg（cinema>=6 才计），spec 解释器按 cfgField 读取 */
 function buildOrphieResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).orphieCinemaLevel ?? 0)))
-  ;(cfg as any).orphieBladeHits = cinema >= 6 ? Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2)) : 0
+  const cinema = Math.max(0, Math.floor(Number(cfg.orphieCinemaLevel ?? 0)))
+  ;cfg.orphieBladeHits = cinema >= 6 ? Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2)) : 0
   const spec = getAgentSpec(ORPHIE_AGENT_ID)
   return {
     specResources: spec ? Object.fromEntries(computeSpecResources(spec, cfg, state)) : {},
@@ -345,6 +344,10 @@ export const orphieMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /** 奥菲丝自动前台比例（buildTeamConfig 写：席德队 0.8、否则 0；setting:orphie.frontEnergyRatio < 0 时回落到它） */
+    orphieAutoFrontRatio?: number
+    /** 奥菲丝影画2 上一轮已计入 extraSelfDecibelReward 的喧响赠送（重算前先扣回，防外层环累加） */
+    orphieC2DecibelGift?: number
     /** 奥菲丝命座等级（patchExecutions 门控影画6 激光附加伤害） */
     orphieCinemaLevel?: number
     /** 奥菲丝局内攻击力（影画6 激光附加伤害的基数，buildCharConfig 预存） */

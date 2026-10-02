@@ -52,11 +52,11 @@ function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
 }
 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  ;(cfg as unknown as Record<string, unknown>).caesarCinemaLevel = cinemaLevel ?? 0
+  cfg.caesarCinemaLevel = cinemaLevel ?? 0
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).caesarCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.caesarCinemaLevel ?? 0)))
   if (cinema < 4) return
   // 影画4 阿瑞斯攻城锤：连携/终结各 +3 支援点数；能量<20 时消耗1点支援点代替发动超强力盾击（5s ICD）。
   // 能量不足才触发（条件向），总量模型无法判「能量是否吃紧」→ 用可调次数滑杆表达实际代替次数，
@@ -64,7 +64,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const chainTotal = Math.max(0, Math.floor(Number(state.chainCountTotal ?? 0)))
   const ultCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0)))
   const supportPoints = CAESAR_C4_SUPPORT_POINTS_PER_CHAIN_ULT * (chainTotal + ultCount)
-  const icdCap = Math.max(0, Math.floor(Number((cfg as any).battleTime ?? 180) / CAESAR_C4_SUBSTITUTE_ICD_SECONDS))
+  const icdCap = Math.max(0, Math.floor(Number(cfg.battleTime ?? 180) / CAESAR_C4_SUBSTITUTE_ICD_SECONDS))
   const maxExtra = Math.min(supportPoints, icdCap)
   const slider = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'caesar.c4SubstitutionCount') ?? 0)))
   const extraEx = Math.min(maxExtra, slider)
@@ -89,7 +89,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number((cfg as any).caesarCinemaLevel ?? 0)))
+  const cinema = Math.max(0, Math.floor(Number(cfg.caesarCinemaLevel ?? 0)))
   if (cinema < 6) return
   for (const exec of executions) {
     if (!exec.moveId || !CAESAR_C6_MOVE_IDS.has(exec.moveId)) continue
@@ -129,3 +129,14 @@ export const caesarMechanic: AgentMechanicModule = {
 }
 
 export default caesarMechanic
+
+/**
+ * D2（CC-359/365）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
+ * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/config' {
+  interface CharacterOperationConfig {
+    /** 凯撒命座等级（buildCharConfig 写，影画4/6 分支门控） */
+    caesarCinemaLevel?: number
+  }
+}
