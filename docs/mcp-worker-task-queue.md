@@ -88,6 +88,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 18:03 arena-F 第 447 轮**（开工：origin = 本地 = `0d41b93e`，无人在跑；REQUIREMENTS.md R1–R8 全 done 无新条目；评估 T10，worktree `wt-T15`（已删）；产物 `/home/kaua/calc-arch/arenaF/r447/`：`patch-cc420.py`（注释补丁，已应用勿重跑）/ `tsc.log` / `guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log`）：**CC-420 `bf2d1c23`**（**已推**）+ 本文档提交。
+- **做到哪**：T10 从「猜作者意图」变成「实测事实 + 三条修法 + 明确不做的理由」。关键发现：回填 watch 是绕 store 的环，创建即两遍管线，一步到达不动点是巧合（回填值不影响次数）。落了事实锁 `wEngineCoverageFixpointT10.test.ts`（3 用例）+ `useResourceCalc.ts` 两段注释纠正；**未改任何求值路径**（zd 未跑，理由写在 arch 行）。全量基线见 r6 §8 行 447。
+- **决定**：T10 修法 ① 暂不做（侵入 51 个 `computePanelPhases` 调用点中的若干 + UI 滑块读数，而当前代价只是创建时多算一遍）；锁变红时再做。依据与回退点见 T10 卡。
+- **别人的 WIP**（`kaua5678`）：grace/velina/graceRotation.test 仍未动（grace.ts md5 前缀 `f27e6b94`，自 17:25）。**18:30 起孤儿规则生效**，步骤见 r444 块。
+- **下一步（start-ready）**：① ≥ 18:30 且 md5 未变 ⇒ 孤儿处置（r444 步骤）；② 否则按 §0 找新题。本轮顺手发现的候选：`useResourceCalc.ts` 里 `panels`(:154) / `entrySnapshotPanels`(:167) / `damagePanels`(:340) 三份面板 computed 的职责边界（资源侧 vs 展示侧）没有命名区分，是 T10 ① 的前置整理，可以先做纯命名/注释层的澄清（零行为）。
+- **回滚点**：`git revert bf2d1c23`。
+
 **2026-10-03 17:50 arena-F 第 446 轮**（开工：origin = 本地 = `ff68b463`，无人在跑；REQUIREMENTS.md 无新条目；做 r445「下一步 ②」，worktree `wt-T14`（已删）；产物 `/home/kaua/calc-arch/arenaF/r446/`：`patch-cc419.py`（已应用勿重跑）/ `tsc.log` / `guards.log` / `build.log` / `zd.log` / `vt-s1.log` / `vt-s2.log`）：**CC-419 `2dcd06d1`**（**已推**）+ 本文档提交。
 - **做到哪**：`SolveTeamInput.resourceConfig` 非 null（2 文件 +14/−12，锁追加 1 用例）。CC-417 → 418 → 419 三步把「空失衡池 / null 轮 / 可空配置」三个幻影状态从 solveTeam 层清掉；solveTeam 现在的输入契约全部非 null、输出 `out` 非 null。全量基线 **472 文件 / 4314 用例**。
 - **刻意没做**：`runCalcRound` 闭包读 `resourceConfig.value` 的 throw 守卫（CC-418）保留——拿掉它要改 `createRunCalcRound` deps 契约，且 `createConvergenceRoundInputs` 还有同一 ref 的闭包读点，评估见 arch CC-419 行末。
@@ -491,9 +498,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 <!-- /card:T9 -->
 
 <!-- card:T10 -->
-### T10（备选，不急）· 音擎叠层覆盖率回填从「副作用 watch」改成「computed 链上的一环」
-**现状**（`31fdfe8f`，2026-10-03）：`useResourceCalc()` 里 `watch(wEngineStackAutoCoverages, auto => configStore.applyWEngineEffectCoverageAuto(auto), { immediate: true, flush: 'post' })`——composable 一创建就把整条资源管线算一遍写回 store；面板再读 store 重算。**问题**：① 创建即算（没人读结果也算）；② 测试里任何 `await` 之后管线都可能已被这个 watcher 算过并缓存（r438 `outerCyclePick` 就是这么红的）；③ 数据流绕一圈 store 才回到面板。
-**目标**：回填值作为 `calcOutput` 链上的一个 computed（或 `panelPhases` 的输入参数）直接消费，手调 sticky 逻辑保留在 store；去掉 watch。**验收**：`wEngineStackCoverage.test.ts` 6 条 + 面板相关测试绿；zd DIFF 0（面板覆盖率数值不变）；`outerCyclePick.test.ts` 的观察窗口提前那段注释可删。**先问作者的意图**：看 `src/data/wEngineStackCoverage.ts` 头注释与 `useResourceCalc.ts` 该段注释里「声明位置硬约束 / TDZ」那几行——他选 watch 很可能是为了绕 `runCalcRound` 的 TDZ，改之前把这层依赖理顺。
+### T10（备选，不急；**r447 CC-420 已按实测重写**）· 音擎叠层覆盖率回填：从「绕 store 的隐藏不动点」改成显式数据流
+**实测事实（CC-420，别再凭注释推断）**：`useResourceCalc()` 里 `watch(wEngineStackAutoCoverages, auto => configStore.applyWEngineEffectCoverageAuto(auto), { immediate: true, flush: 'post' })` 形成环 `calcOutput → 回填 → store.wEngineEffectCoverages → panels(resolveSlotPanelBuffInputs) → runCalcRound → calcOutput`。创建即跑 pass 1（默认覆盖）、首读再跑 pass 2（回填后覆盖），**每次创建两遍整条管线**；不跑第三遍只因回填值不影响执行次数（pass 1 == pass 2 逐位）。锁：`__tests__/wEngineCoverageFixpointT10.test.ts`（3 支队，miss 计数 1→2→2 + 重折算 == store）。
+**原卡「回填值作为 calcOutput 链上的 computed、去掉 watch」为什么不能直接做**：面板的消费端 `computePanelPhases(slot, configStore, catalogStore)` 有 51 个调用点，覆盖率是从 `configStore.wEngineEffectCoverages` 整表读的——没有 store 写回，面板就拿不到自动值。要去 watch 必须先给面板一条显式的覆盖率入口。
+**修法（按侵入度排序，选 ① 即可满足「去 watch、去双算」）**：
+① **资源侧 panels 用「手调表」、展示侧 panels 用「手调 + 自动」**：`resolveSlotPanelBuffInputs` 加可选参数 `effectCoverages?: Record<string, number>`（缺省仍读 store），`computePanelPhases`/`computePanel` 透传；`useResourceCalc` 里 `panels`（喂 runCalcRound）传 **`store.manualOnlyCoverages`**（新 getter：只含 manual 标记的条目），新 `displayPanels = computed(() => 用 {…manual, …auto(calcOutput)} 再算一遍 computePanel)` 给伤害池/面板页；删 watch 与 `applyWEngineEffectCoverageAuto`。效果：资源迭代不再依赖自动值（环断开），创建不再双算；展示面板仍含自动值。**代价**：面板页 / 伤害池凡是读 `calc.panels` 的要改读 `displayPanels`（grep `\.panels\b` 消费者，含 `damagePanels` :340），且 `getWEngineEffectCoverage` 的 UI 滑块读数要改成读 `displayCoverages`。zd 预期 DIFF 0（pass 2 == pass 1 已实测）。
+② 只去双算不去环：watch 改成 `flush:'sync'` + 不 immediate，首读时在 `calcOutput` 内部回填——不推荐，仍是 store 副作用。
+③ 什么都不改，只靠本锁盯着「一步不动点」何时被打破——当前选择（r447），因为 ① 要碰 51 个调用点中的若干 + UI，而现有代价只是创建时多算一遍。
+**开工条件**：出现「面板量 → 次数」的机制（锁变红）或创建双算成为性能瓶颈时再做 ①。做 ① 时先跑 `grep -rn "\.panels\b\|wEngineEffectCoverages" src --include=*.ts --include=*.vue` 列全消费者。
 <!-- /card:T10 -->
 
 <!-- card:T11 -->
