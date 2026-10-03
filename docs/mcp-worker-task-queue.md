@@ -92,6 +92,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 01:57 arena-F 第 483 轮**（开工：主仓 = origin = `b20c9e1c`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T49`，收工已删）。
+- **落地 CC-443** `2635bcb6`（arch 表有行）：`src/composables/persistedRef.ts#persistedRef(key, parse, fallback)`；TeamComparePage 两处 + TimeChartsPage 一处手写 localStorage 读写删除；锁 `persistedRef.test.ts`。UI 层改动，无引擎路径，zd 不适用。回滚 `git revert 2635bcb6`。
+- **结论落盘**：编排层 / core 的 agentId 字面量分支已为 0（只剩迁移注释）；页面手写 localStorage 已为 0。两条镜头都收完。
+- **下一步（start-ready）**：题序 REQUIREMENTS → §3 → §8.0 触发 → 本轮无题。若要找题：按 r454 页面镜头扫 `ResultPage.vue` / `ResourceResultCard.vue` / `StunAxisPage.vue` / `AttributeConfigPage.vue`（r6 §8 第 483 行列了判据）；扫完无题就写「本轮无题」收工。
+
 **2026-10-04 01:54 arena-F 第 482 轮**（开工：主仓 = origin = `d184c37b`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；**本轮无题，仅文档**，无 worktree）。
 - 普查「共享类型里的角色前缀字段」：新增 r6 §8.0 **#15**（角色计数输入四处声明 → 等下一个要计数框的角色进来时做 `mechanicCounts` 袋子 + 存档迁移，现在不做）；`liuyinHug` 字段名不改（量是引擎通用的、分层正确，见 r6 §8 第 482 行）。
 - **下一步（start-ready）**：题序 REQUIREMENTS → §3 → §8.0 触发（含新 #15）→ 本轮无题。已收完、别再扫的镜头：逐字相同函数体（r481）、≥3 处内联结构类型（r480）、角色前缀字段（r482）、`(x ?? 0) + y` 累加习语（r479）、`SkillExecution` 字面量（r478，只随模块触碰迁移）。
