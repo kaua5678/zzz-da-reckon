@@ -12,6 +12,7 @@ import { execMatchesMove } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 /**
  * 真斗（1441，命破/火 DPS）—— 整局近似口径
@@ -89,8 +90,7 @@ function buildZhendouCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
 /** 归烬·舍身（特殊技）两段：点按 #1 + 长按蓄力释放 #2（actionTime 来自 catalog） */
 const MOVE_GUIJIN_1 = '1441013'
 const MOVE_GUIJIN_2 = '1441014'
-const GUIJIN_1_TIME = 0.475
-const GUIJIN_2_TIME = 1.225
+// 归烬两段 actionTime 读 cfg.moveActionTimes（catalog，CC-409；原常量 0.475 / 1.225 与表相等）
 /** 熔锋状态炽心消耗（点/秒） */
 const ZHENDOU_FURY_DRAIN_PER_SEC = 3.3
 
@@ -143,8 +143,8 @@ function applyZhendouTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount
 function buildZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
   const chargeCount = Math.max(0, Math.floor(Number(cfg.zhendouChargeCount ?? 0)))
   if (chargeCount <= 0) return
-  pushSpecial(executions, MOVE_GUIJIN_1, '特殊技：归烬 #1（点按）', chargeCount, GUIJIN_1_TIME)
-  pushSpecial(executions, MOVE_GUIJIN_2, '特殊技：归烬 #2（长按蓄力释放）', chargeCount, GUIJIN_2_TIME)
+  pushSpecial(executions, MOVE_GUIJIN_1, '特殊技：归烬 #1（点按）', chargeCount, cfgMoveActionTime(cfg, MOVE_GUIJIN_1))
+  pushSpecial(executions, MOVE_GUIJIN_2, '特殊技：归烬 #2（长按蓄力释放）', chargeCount, cfgMoveActionTime(cfg, MOVE_GUIJIN_2))
 }
 
 function pushSpecial(executions: SkillExecution[], moveId: string, moveName: string, count: number, actionTime: number): void {

@@ -32,7 +32,7 @@ import {
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
 // CC-243：find* 族 / 平A回能的行取值注入（吃逻辑编辑器行规则；core 默认原始读取）
-import { fusedRowReader, segmentSwapped } from '@/data/moveTableQueries'
+import { fusedRowReader, segmentSwapped, moveActionTimesOf } from '@/data/moveTableQueries'
 import { teammateSegmentResolver } from '@/data/moveVariants'
 import { counterAssistOf } from '@/data/counterAssists'
 import { findWEnginePeriodicDirect } from '@/data/wEnginePeriodicDirect'
@@ -591,6 +591,7 @@ export function buildCharConfig(
     zhenyuanTriggerCount: 0,
     cannonRotorDamageMultiplier: hasCannonRotorEvent ? periodicDirect!.damageMultiplier : 0,
     cannonRotorCooldownSeconds: hasCannonRotorEvent ? periodicDirect!.cooldownByModLevel[cannonRotorModIndex] : 0,
+    moveActionTimes: moveActionTimesOf(skills as AgentSkills), // CC-409
     initialEnergyGift,
     initialDecibelGift: 1000 + (configStore.appliedBoss?.decibelGift?.slot === slot ? (configStore.appliedBoss?.decibelGift?.amount ?? 0) : 0),
     battleTime: configStore.enemy.battleTime ?? 180,

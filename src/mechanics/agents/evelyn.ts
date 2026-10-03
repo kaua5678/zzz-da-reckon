@@ -29,15 +29,14 @@ import type {
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
 export const EVELYN_ULT_MOVE_ID = '1321016'
 export const EVELYN_GARROTE_1_MOVE_ID = '1321006'
 export const EVELYN_GARROTE_2_MOVE_ID = '1321007'
-export const EVELYN_GARROTE_1_ACTION_TIME = 1.1
-export const EVELYN_GARROTE_2_ACTION_TIME = 1.134
-export const EVELYN_CHAIN_ACTION_TIME = 2.15
+// 绞勒式 I/II 型、月辉丝·绊 的动作时间：CC-409 起读 cfg.moveActionTimes（catalog），不再写常量
 export const EVELYN_CORE_CRIT_RATE = 25
 export const EVELYN_ADDITIONAL_DMG = 30
 export const EVELYN_MULTIPLIER = 1.25
@@ -191,21 +190,21 @@ function buildEvelynExecutions({ cfg, state, executions }: AgentResourceInput): 
     moveName: '普通攻击：绞勒式·I型',
     count: cycle.garroteType1Count,
     category: 'basic',
-    actionTime: EVELYN_GARROTE_1_ACTION_TIME,
+    actionTime: cfgMoveActionTime(cfg, EVELYN_GARROTE_1_MOVE_ID),
   })
   pushEvelynExecution(executions, {
     moveId: EVELYN_GARROTE_2_MOVE_ID,
     moveName: '普通攻击：绞勒式·II型',
     count: cycle.garroteType2Count,
     category: 'basic',
-    actionTime: EVELYN_GARROTE_2_ACTION_TIME,
+    actionTime: cfgMoveActionTime(cfg, EVELYN_GARROTE_2_MOVE_ID),
   })
   pushEvelynExecution(executions, {
     moveId: EVELYN_CHAIN_MOVE_ID,
     moveName: '连携技：月辉丝·绊（燎索点追加）',
     count: cycle.anchorChainCount,
     category: 'chain',
-    actionTime: EVELYN_CHAIN_ACTION_TIME,
+    actionTime: cfgMoveActionTime(cfg, EVELYN_CHAIN_MOVE_ID),
   })
   pushEvelynExecution(executions, {
     moveId: '1321_c6_moonlight_followup',

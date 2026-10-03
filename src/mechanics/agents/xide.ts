@@ -6,6 +6,7 @@ import { getRowValue } from '@/data/moveTableQueries'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 /**
  * 「席德」（1461，电·强攻，新艾利都防卫军）—— 正兵拐 + 自身机制 + 钢能消耗出口模块。
@@ -59,15 +60,13 @@ const XIDE_AA_ELECTRIC_RES_IGNORE = 25
 const XIDE_C4_ULTIMATE_DMG = 20
 const XIDE_C4_DECIBEL_EFFICIENCY = 10
 const XIDE_C6_CRIT_DMG = 50
-/** 落华·重戮（1461006：倍率 333.8%、失衡 217.4%、actionTime 1.316s） */
+// 三招落华的倍率与 actionTime 都读 catalog（actionTime 经 cfg.moveActionTimes，CC-409；此前常量 1.316 / 0.617 / 1.534 与表相等）
+/** 落华·重戮（1461006） */
 const XIDE_ZHONGLU_MOVE_ID = '1461006'
-const XIDE_ZHONGLU_ACTION_TIME = 1.316
-/** 落华·崩坠一式（1461007：倍率 1057.4%、actionTime 0.617s） */
+/** 落华·崩坠一式（1461007） */
 const XIDE_BENGZHUI_1_MOVE_ID = '1461007'
-const XIDE_BENGZHUI_1_ACTION_TIME = 0.617
-/** 落华·崩坠二式（1461008：倍率 1979.4%、actionTime 1.534s） */
+/** 落华·崩坠二式（1461008） */
 const XIDE_BENGZHUI_2_MOVE_ID = '1461008'
-const XIDE_BENGZHUI_2_ACTION_TIME = 1.534
 /** 终结技：机芯花园·绽放！ */
 const XIDE_ULTIMATE_MOVE_ID = '1461015'
 /** 影画1 落华·崩坠暴伤 +30%（一式/二式都吃） */
@@ -260,9 +259,9 @@ function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): vo
   })
 
   if (cycle > 0) {
-    executions.push(mkRow(XIDE_ZHONGLU_MOVE_ID, '落华·重戮（钢能快速释放）', cycle, XIDE_ZHONGLU_ACTION_TIME))
-    executions.push(mkRow(XIDE_BENGZHUI_1_MOVE_ID, '落华·崩坠一式', cycle, XIDE_BENGZHUI_1_ACTION_TIME))
-    executions.push(mkRow(XIDE_BENGZHUI_2_MOVE_ID, '落华·崩坠二式', cycle, XIDE_BENGZHUI_2_ACTION_TIME))
+    executions.push(mkRow(XIDE_ZHONGLU_MOVE_ID, '落华·重戮（钢能快速释放）', cycle, cfgMoveActionTime(cfg, XIDE_ZHONGLU_MOVE_ID)))
+    executions.push(mkRow(XIDE_BENGZHUI_1_MOVE_ID, '落华·崩坠一式', cycle, cfgMoveActionTime(cfg, XIDE_BENGZHUI_1_MOVE_ID)))
+    executions.push(mkRow(XIDE_BENGZHUI_2_MOVE_ID, '落华·崩坠二式', cycle, cfgMoveActionTime(cfg, XIDE_BENGZHUI_2_MOVE_ID)))
   }
 
   // 铁萼雨幕每次消耗60能量自动发动一次落华·重戮（时间已含在 EX 2.7s 内，actionTime 0）

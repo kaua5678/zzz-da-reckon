@@ -14,7 +14,6 @@ import {
   HARUMASA_POTENTIAL_RES_IGNORE,
   HARUMASA_SLASH_MOVE_IDS,
   HARUMASA_THUNDER_MOVE_ID,
-  HARUMASA_ULT_FOLLOW_ACTION_TIME,
   HARUMASA_ULT_FOLLOW_MOVE_ID,
   computeHarumasaCycle,
   harumasaMechanic,
@@ -230,13 +229,14 @@ describe('悠真招式定向机制', () => {
         harumasaStunCoverage: 0,
         harumasaAbnormalCoverage: 0,
         harumasaEdgeAverageStacks: 6,
+        moveActionTimes: { '1201024': 1.765 }, // CC-409
       },
       state: { exSpecialCount: 0, ultimateCount: 2, chainCountTotal: 0 },
       executions,
     } as any)
     const follow = executions.find(row => row.moveId === HARUMASA_ULT_FOLLOW_MOVE_ID)
     expect(follow.count).toBe(2)
-    expect(follow.actionTime).toBe(HARUMASA_ULT_FOLLOW_ACTION_TIME)
+    expect(follow.actionTime).toBe(1.765) // CC-409：来自 cfg.moveActionTimes（本用例手填 = catalog 1201024）
     expect(follow.damageMultiplierOverride).toBeUndefined()
   })
 

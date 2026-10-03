@@ -42,6 +42,7 @@ import type {
 import type { ModuleFeedback } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 export const ELLEN_ID = '1191'
 export const ELLEN_FROST_TRIM_MOVE_IDS = ['1191006'] as const
@@ -56,9 +57,7 @@ export const ELLEN_FROST_EDGE_MOVE_IDS = ['1191027', '1191028'] as const
 export const ELLEN_FROST_EDGE_ACTION_TIMES = [0.234, 0] as const
 export const ELLEN_ICE_WAVE_MOVE_IDS = ['1191029', '1191030'] as const
 export const ELLEN_EX_MOVE_IDS = ['1191011', '1191012'] as const
-/** 强化特殊技：横扫（1191011）与鲨卷风（1191012）动作时间；0命 EX = 横扫+鲨卷风、影画2 全鲨卷风 */
-export const ELLEN_EX_SWEEP_ACTION_TIME = 1.55
-export const ELLEN_EX_SHARK_ACTION_TIME = 1.317
+// 横扫（1191011）/ 鲨卷风（1191012）动作时间：CC-409 起读 cfg.moveActionTimes（catalog），不再写常量；0命 EX = 横扫+鲨卷风、影画2 全鲨卷风
 export const ELLEN_CORE_CRIT_DMG = 100
 export const ELLEN_C1_CRIT_RATE_PER_STACK = 2
 export const ELLEN_C1_MAX_STACKS = 6
@@ -221,7 +220,7 @@ function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: Agent
   cfg.ellenPotentialLevel = potentialLevel
   // 强化特殊技主招 = 鲨卷风（影画2 全鲨卷风；0命由 buildExecutions 补横扫实现「横扫+鲨卷风」）
   cfg.exSpecialMoveId = ELLEN_EX_MOVE_IDS[1]
-  cfg.exSpecialActionTime = ELLEN_EX_SHARK_ACTION_TIME
+  cfg.exSpecialActionTime = cfgMoveActionTime(cfg, ELLEN_EX_MOVE_IDS[1])
   cfg.ellenC1CritStacks = clamp(setting(cfg, 'ellen.c1CritStacks', 6), 0, ELLEN_C1_MAX_STACKS)
   cfg.ellenC2AvgCharge = clamp(setting(cfg, 'ellen.c2AvgCharge', 3), 0, 3)
   cfg.ellenStormSurgeStacks = clamp(setting(cfg, 'ellen.stormSurgeStacks', 10), 0, ELLEN_STORM_SURGE_MAX_STACKS)
@@ -338,14 +337,14 @@ function buildEllenExecutions({ cfg, state, executions }: AgentResourceInput): v
     moveName: '强化特殊技：横扫',
     count: sweepCount,
     category: 'special',
-    actionTime: ELLEN_EX_SWEEP_ACTION_TIME,
+    actionTime: cfgMoveActionTime(cfg, ELLEN_EX_MOVE_IDS[0]),
   })
   pushEllenExecution(executions, {
     moveId: ELLEN_EX_MOVE_IDS[1],
     moveName: '强化特殊技：鲨卷风（影画2全鲨卷风追加）',
     count: extraSharkCount,
     category: 'special',
-    actionTime: ELLEN_EX_SHARK_ACTION_TIME,
+    actionTime: cfgMoveActionTime(cfg, ELLEN_EX_MOVE_IDS[1]),
   })
 
   // 霜锋（免费自动，倍率表融合）：挥刀(1191027)×3 耗时 + 剑气(1191028)×N 不耗时（N 按敌方体型 0/3/6）

@@ -219,6 +219,12 @@ export interface CharacterOperationConfig {
   sustainedEx?: SustainedExPlan
   /** 机制模块引用的倍率表基础值（moveId → 行值），供事件→倍率表映射使用 */
   mechanicRowValues?: Record<string, number>
+  /**
+   * catalog 招式 actionTime（moveId → 秒，只含 >0）。写入方：helpers.ts buildCharConfig（`moveActionTimesOf(skills)`）；
+   * 读取方：角色模块经 `utils/moveActionTimeCfg#cfgMoveActionTime`（CC-409：替代模块内手抄的 `X_ACTION_TIME` 常量）。
+   * 可选只为了测试手搭 cfg 不必全填；引擎路径恒有。
+   */
+  moveActionTimes?: Record<string, number>
   /** 开局赠送能量（普通人40，仪玄120闪能等） */
   initialEnergyGift: number
   /** 开局赠送喧响（默认1000，部分命座额外） */

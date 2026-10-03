@@ -93,6 +93,24 @@ export function segmentSwapped(moveId: string, segmentOf: SegmentResolver): bool
  * 按招式 id 取招式（分类顺序中的第一个）——**单一来源**（CC-236：此前 25 个角色模块各抄一份）。
  * 结构化泛型签名：`AgentSkills`、`{ categories: { moves: SkillMove[] }[] }` 或更窄的招式形状都能传入。
  */
+/**
+ * 全部招式的 actionTime 表（moveId → 秒；只收 >0 的）。CC-409：`buildCharConfig` 用它预填 `cfg.moveActionTimes`，
+ * 角色模块经 `utils/moveActionTimeCfg#cfgMoveActionTime` 读，**不再在模块里写 `X_ACTION_TIME = 1.55` 这类常量**
+ * （r435 普查：13 个模块 35 个常量与 catalog 逐个相等，是同一数据的第二份）。
+ */
+export function moveActionTimesOf(
+  skills: { readonly categories: readonly { readonly moves: readonly { id: string; actionTime?: number | null }[] }[] } | undefined,
+): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const cat of skills?.categories ?? []) {
+    for (const m of cat.moves ?? []) {
+      const at = m.actionTime
+      if (typeof at === 'number' && Number.isFinite(at) && at > 0) out[String(m.id)] = at
+    }
+  }
+  return out
+}
+
 export function findMoveById<M extends { id: string } = SkillMove>(
   skills: { readonly categories: readonly { readonly moves: readonly M[] }[] } | undefined,
   moveId: string,

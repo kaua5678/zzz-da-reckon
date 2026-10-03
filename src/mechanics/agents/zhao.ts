@@ -23,6 +23,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { CharacterResourceResult } from '@/types/resource'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 export const ZHAO_ID = '1341'
 export const ZHAO_CORE_CRIT_PER_1000_HP = 1.4
@@ -40,7 +41,7 @@ export const ZHAO_C4_MOVE_IDS = new Set([
 
 /** 最终裁决蓄力生命附伤 */
 export const ZHAO_VERDICT_MOVE_ID = '1341008'
-export const ZHAO_VERDICT_ACTION_TIME = 0.475
+// 最终裁决 actionTime 读 cfg.moveActionTimes（catalog，CC-409；原常量 0.475 与表相等）
 export const ZHAO_CHARGE_MAX_SECONDS = 5
 /** 每 1 秒蓄力时长 = 0.12 + 11×0.01 = 0.23（Lv.12）最大生命值 */
 export const ZHAO_CHARGE_LIFE_RATIO = 0.23
@@ -149,15 +150,16 @@ function cycleFromInput({
 function buildZhaoExecutions(input: AgentResourceInput): void {
   const cycle = cycleFromInput(input)
   if (cycle.verdictCount <= 0) return
+  const verdictActionTime = cfgMoveActionTime(input.cfg, ZHAO_VERDICT_MOVE_ID)
   input.executions.push({
     moveId: ZHAO_VERDICT_MOVE_ID,
     moveName: '普通攻击：最终裁决（蓄力生命附伤）',
     category: 'basic',
     element: 'ice',
     count: cycle.verdictCount,
-    actionTime: ZHAO_VERDICT_ACTION_TIME,
+    actionTime: verdictActionTime,
     comboAlignRatio: 0,
-    totalTime: cycle.verdictCount * ZHAO_VERDICT_ACTION_TIME,
+    totalTime: cycle.verdictCount * verdictActionTime,
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,

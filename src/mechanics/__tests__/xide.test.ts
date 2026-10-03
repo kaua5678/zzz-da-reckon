@@ -152,6 +152,8 @@ describe('席德钢能资源循环（spec resource）', () => {
     xideBasicSteelPerSec: 0,
     xideAttackDataMap: {},
     xideAttackSteel: 0,
+    // CC-409：三招落华 actionTime 来自 cfg.moveActionTimes（引擎由 catalog 预填；这里手填 = full/1461.json）
+    moveActionTimes: { '1461006': 1.316, '1461007': 0.617, '1461008': 1.534 },
     ...opts,
   }) as any
 

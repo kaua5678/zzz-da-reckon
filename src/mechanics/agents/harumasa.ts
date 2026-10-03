@@ -30,12 +30,13 @@ import type {
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 export const HARUMASA_ID = '1201'
 export const HARUMASA_ARROW_MOVE_ID = '1201008'
 export const HARUMASA_ULT_MOVE_ID = '1201014'
 export const HARUMASA_ULT_FOLLOW_MOVE_ID = '1201024'
-export const HARUMASA_ULT_FOLLOW_ACTION_TIME = 1.765
+// 残心·散华 actionTime 读 cfg.moveActionTimes（catalog，CC-409；原常量 1.765 与表相等）
 export const HARUMASA_SLASH_MOVE_IDS = ['1201020', '1201021', '1201022'] as const
 /** 飞弦·斩第一段 0.6s（秽盾公式 50t）；第二/三段 0.417/0.45s */
 export const HARUMASA_SLASH_ACTION_TIMES = [0.6, 0.417, 0.45] as const
@@ -295,7 +296,7 @@ function buildHarumasaExecutions({ cfg, state, executions }: AgentResourceInput)
     moveName: '残心·散华',
     count: whole(state.ultimateCount),
     category: 'chain',
-    actionTime: HARUMASA_ULT_FOLLOW_ACTION_TIME,
+    actionTime: cfgMoveActionTime(cfg, HARUMASA_ULT_FOLLOW_MOVE_ID),
   })
   pushHarumasaExecution(executions, {
     moveId: HARUMASA_ARROW_MOVE_ID,
