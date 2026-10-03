@@ -51,7 +51,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **出卡前 grep 断言的全部消费者；brief 里给工人「没说清就选最小改动继续」的授权（2026-10-03 r436 CC-410）**：卡面写「:61 兜底删掉」，实际那行是 `axisMoveActionTime` 钩子的实现、有测试锁着——工人读到矛盾后推敲 9 分钟零改动。
   判据：派发后 >5 分钟 `git status` 零改动 ⇒ 看 `worker.err` 尾部它在纠结什么，多半卡面错了；`kill <pid>`（pid 取自 `pgrep -af '^node .*dsh --profile headless'`）、改卡、重派，比等便宜。第二次派发 8 分钟收工。
 - **全量 vitest 单独一条 `wsl_exec`（2026-10-03 r437 实测）**：guards 链（~45s）+ build（~47s）+ vitest(4)（~250s）串在一条调用里，总时长撞上桥的 ~285s 上限，整条被杀、vitest 日志半截还没有 summary——看起来像「跑了但没结果」。guards / build 一条，vitest 另一条，各自 `timeout 280`。
-- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439）**：`npx vitest run --maxWorkers=4 --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`，两片的 Test Files / Tests 相加应等于基线（现 469 / 4302）。别人在主仓跑默认 worker 的 vitest 时尤其要这样——本轮单条全量两次 rc=124。
+- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 473 / 4320，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
 ### 0.R2 收尾流程（2026-09-27 R2 定稿；依据与数字见 `docs/mcp-dev-process-speed.md`）
 
 - **强度不变，顺序和并行方式变了**：全量 `npm run verify`、零差、文档提交后重跑 check-guards 三道都保留。
@@ -89,6 +89,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 18:56 arena-F 第 450 轮**（开工：origin = 本地 = `d19894d5`，**另一会话在跑**：dsh web（pid 563263）下的 `npm run check` 在主仓按默认 16 fork 连跑 3 次（18:5x / 19:0x / 19:2x，各约 6 分钟，load 20～44），主仓 WIP 仍是 grace/velina 三件（md5 `f27e6b94` 未变）；REQUIREMENTS.md 无新条目；worktree `wt-T18`（已删）；产物 `/home/kaua/calc-arch/arenaF/r450/`：`tsc.log` / `guards.log` / `build.log` / `vt-q1..q3.log` `vt-e7.log` `vt-e8.log`（绿分片）/ `vt-s1.log`（**红**的那次，T14 证据）/ `forks*.count` / `patch-prompt.py` / `patch-docs.py`）：**CC-424 `b55ca97a`**（**已推**）+ 提示词改动 + 本文档提交。
+- **做到哪**：① r449 交接的「roundResult 余下 4 个 `| null`」查完，全是真 null，T13 卡收线。② 没按原计划找算法题，改做了一件基础设施：vitest worker 上限进 `vite.config.ts`（CC-424）。理由：规则「全量加 `--maxWorkers=4`」只约束读过提示词的会话，本轮另一会话按默认 16 fork 连跑把 VM 打到 load 44，我的 2 分片两次 rc=124；把它写进配置后所有入口（npm test / check / verify / dsh）默认安全。③ 提示词 `bridge-prompt-arena.md` 第 1 条对应段改写（备份 `.bak-maxworkers-config-20261003-1938`，修改记录已写在提示词 §二）。
+- **意外发现 → T14 卡**：高负载分片里 `timeFillRatchet` 两队（都含 1181）slack 0↔0.4 互换，单跑绿、复跑绿。这不是 flaky 可以忽略的那种：同配置的引擎输出随负载变 = 求值路径里有顺序依赖，最可疑的是 CC-420 记录的那条 `flush:'post'` 回填 watch。卡里写了复现法和禁止项。
+- **别人的 WIP**（`kaua5678` / dsh web）：作者**回来了**（在主仓循环跑 check），grace.ts 内容未变。按 r447 规则：不收养、不预检；他的 check 里 `grace.test.ts` 2 红是他自己的口径冲突。主仓 ff-merge 到 `b55ca97a` 之后他的下一次 `npm run check` 会自动变成 4 worker。
+- **下一步（start-ready）**：T14 ①（复现）。开工先 `pgrep -fc "[w]orkers/forks.js"` 看他在不在跑；在跑就正好拿他的负载当复现条件：worktree 里循环单跑 `timeFillRatchet.test.ts` 3 次看红不红。
+- **回滚点**：`git revert b55ca97a`；提示词还原 `.bak-maxworkers-config-20261003-1938`。
 
 **2026-10-03 18:28 arena-F 第 449 轮**（开工：origin = 本地 = `b547cf3a`，无人在跑；REQUIREMENTS.md 无新条目；做 T13-a / T13-b，worktree `wt-T17`（已删）；产物 `/home/kaua/calc-arch/arenaF/r449/`：`patch-cc422.py` / `patch-cc423.py`（已应用勿重跑）/ `tsc.log` `tsc2.log` / `guards.log` `guards2.log` / `build.log` `build2.log` / `zd.log` `zd2.log` / `vt-s1.log` `vt-s2.log`（CC-422 后）/ `vt2-s1.log` `vt2-s2.log`（CC-423 后）；`patch-docs.py`）：**CC-422 `64a260bf`** + **CC-423 `aa4ff23e`**（**均已推**，两个独立提交可各自回滚）+ 本文档提交。
 - **做到哪**：T13-a 纯类型收口按卡做完（5 文件 +18/−12 含锁，顺手删了只被幻影分支读的 `baseAnomaly` 死声明——是 vue-tsc TS6133 指出来的，不是我找的）。T13-b 探针结果 = `calcAnomalyPool` 对空 execs 给合法空池 ⇒ 幻影，流水线层收掉（7 文件 +31/−11 含锁 + 一处夹具）。全量基线 **473 文件 / 4320 用例**（+2 新锁）。
@@ -544,9 +551,26 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 - [x] **T13-b `anomalyPool` 是否幻影 null（先探针再决定）**（r449 探针 = 合法空池 ⇒ 幻影；CC-423 `aa4ff23e` 完成流水线层）：`roundInputs.ts:151 if (execs.length === 0) return null` 与 CC-417 同款。步骤：`src/__scratch__/` 探针调用 `calcAnomalyPool({ executions: [], panels, … })` 看是否抛错 / NaN / 给出 `perElement: []` 的合法空池；若合法 ⇒ 删那行守卫、`CalcRoundResult.anomalyPool` 非 null、`anomalyPool?.perSlotBonus ?? []` 等防御收掉（grep `anomalyPool?\.` 全仓，含 `.vue`）；若不合法 ⇒ 在 arch 记一行「anomalyPool 的 null 是真 null：原因 …」并勾掉本项不改代码。注意 `useResourceCalc.ts` 的 `anomalyPoolResult` computed 对外仍 `| null`。
 - [ ] **T13-b′ 钩子契约 `AgentNextRoundFeedbackInput.anomalyPool` 的 `| null`（可不做）**：流水线自 CC-423 起恒传非 null，但 `typesHooks.ts:358` 仍 `| null`，8 个模块 `anomalyPool?.`（promia:377 / remielle:398,526 / yixuan:1021 / vivian:446 / ellen:499 / alice:394,590）与 10 个模块测试的 `anomalyPool: null` 夹具（remielle/burnice/jane/nextRoundFeedback/R19/R20）靠它编译。收法：契约去 `| null` → 夹具改成 `emptyAnomalyPool()`（需在 `core/anomalyPool` 导出一个与探针结果同形的工厂，或直接 `calcAnomalyPool({ executions: [], panels: [], teamMechanics: [] })`）→ 模块去 `?.`。收益：模块侧少一个永不发生的分支；代价：10 个测试文件夹具改动。**默认不做**，除非有模块因 `anomalyPool` 为 null 的分支写出了错误口径（目前 `alice.ts:394 !anomalyPool → return null` 是唯一带语义的分支，其余都是 `?? 0 / ?? []`）。
 - [ ] **T13-c `createRunCalcRound` 的 throw 守卫**（CC-418 遗留，最后做、可不做）：`convergence.ts:143` 仍经闭包读 `resourceConfig.value`。若要拿掉 throw，需让 `runCalcRound` 按次收 `base`（`solveTeam` 已持有非 null `resourceConfig`，可经 `opts` 传入）。但 `createConvergenceRoundInputs`（`useResourceCalc.ts:202`）也闭包读同一 ref，只改一处收益很小——**除非顺手把 roundInputs 的闭包读点也改成按次传参，否则不做**。
+- **收线（r450）**：`roundResult.ts` 余下 4 个 `| null` 逐一查过生产者，都是真 null：`matchedPlanName`（`roundInputs.ts:214/226` 手动轴 / 无轴 ⇒ 无方案名；`convergence.ts:1114 forceNoAxis ⇒ null`）、`inStunAnomalyState` / `bossAnomalyState`（`convergence.ts:985-1090` 仅在 `axisActive && contribMap.size > 0` 下赋值；UI `StunAxisPage.vue:177-194` 用 `v-if` 隐藏整块，"轴内无积蓄贡献" 与 "非轴" 同一显示）、`axisStack`（`:373-381` 仅 `axisActive` 下赋值，"非轴 = null" 是字段注释写明的契约）。幻影 null 这条线在 resourceCalc 流水线层**到此为止**，不再扫。
 <!-- /card:T13 -->
 
-（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前待执行卡：T13 仅剩 c（默认不做）与 b′（默认不做）；T10 备选。幻影 null 这条线在 resourceCalc 流水线层已收完，下一题按 §0 另找。）
+<!-- card:T14 -->
+### T14 · `timeFillRatchet` 高负载下非确定性（r450 发现，排查卡；先复现再改，别改基线）
+
+**现象**（r450，worktree `wt-T18` = origin `d19894d5` + 仅 `vite.config.ts` 改 maxWorkers）：`npx vitest run --shard=1/2` 在另一会话 16 fork 满载（load 20+）时，`timeFillRatchet.test.ts` 第三条「基线自洽零容差」红：`auto-1181-1511-1411` slack 基线 0 ≠ 实测 0.4、`auto-1181-1561-1581` 基线 0.4 ≠ 实测 0（两队**互换**，都含 1181）。同一 worktree 单跑该文件绿（4 用例 7s）；低负载分片复跑绿（r449 两次、r450 1/4 分片）。日志 `/home/kaua/calc-arch/arenaF/r450/vt-s1.log`（第一次，红）。
+
+**已排除**：worker 数（配置 4 = CLI 4）；引擎里没有 `Date.now()/performance.now()` 决策（grep 只在 stats/durationMs）；`globalThis.__foldTrace/__foldPasses` 只在 `PROBE_TRACE_FOLD=1` 下写、只读 `.length` 作标签。
+
+**待验证的假设（按可能性）**：
+1. `measureWithResidual` 逐队 `await setupHarness` → `useResourceCalc()` → 同步读 `resourceResult`；r447 CC-420 已证创建即跑两遍管线且有 `watch(flush:'post')` 回填 store。若 harness 复用同一 pinia / 同一 configStore 实例，上一队的 post-flush 回填可能在**下一队**的 `setAgent` 之后才落地 ⇒ 下一队读到上一队的 `effectCoverages`。负载只是让「谁先谁后」更容易翻面（`setupHarness` 里若有真实 I/O await，微任务与 I/O 回调的相对顺序就会随负载变）。**验证法**：在测试里每队 `await nextTick()` 两次后再读；或在 `setupHarness` 后断言 `effectCoverages` 为初值。
+2. 同一 fork 内跨文件残留（vitest forks `isolate` 默认 true 应隔离；若配置被改过要查）。
+3. `determinism.test` 是否覆盖「同进程连续两队不同配置」这一场景——它可能只测同配置两次。
+
+**做法**：① 先复现：`stress --cpu 12`（没有就并行跑两份 `npx vitest run src/mechanics/__tests__`）制造负载，同时循环 3 次单跑 `timeFillRatchet.test.ts`；红了就把两队的 `rr.convergence` / `effectCoverages` / `threads` dump 到 `/home/kaua/calc-arch/arenaF/<轮>/`。② 复现后按假设 1 加 `nextTick` 观察；真因若是 CC-420 那条回填 watch，就直接做 T10 修法 ①（显式数据流、删 watch），这就是 T10 卡等的「锁变红」信号。③ **禁止**：`TIME_RATCHET_UPDATE=1` 重生成基线、加容差——两队互换不是数值漂移。
+**验收**：高负载下连续 3 次全绿；若改了求值路径，zd DIFF 0（或逐队归因）。
+<!-- /card:T14 -->
+
+（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前待执行卡：**T14**（timeFillRatchet 负载相关非确定性，先复现）；T13 仅剩 c / b′（默认不做）；T10 备选（T14 若坐实回填 watch，T10 修法 ① 即刻升为必做）。）
 
 
 
