@@ -672,6 +672,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computeTeamComparePoints, goldAlternativesOfPoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type GoldAllocationAlternative } from '@/composables/teamCompare'
 import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
+import { persistedRef } from '@/composables/persistedRef'
 import { isBatchAborted, useBatchOwner } from '@/composables/batchTask'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
@@ -852,23 +853,11 @@ const autoModA = ref(5)
 const autoModStd = ref(3)
 // 装填池：玩家可增删，localStorage 持久化；种子 = 用户准信五件（击破：人为刀俎/燃狱齿轮，辅助：阿炮/逍遥游球/啜泣摇篮）
 const AUTO_ENGINE_POOL_KEY = 'zzz-compare-auto-engine-pool'
-function loadAutoEnginePool(): string[] {
-  try {
-    const raw = localStorage.getItem(AUTO_ENGINE_POOL_KEY)
-    if (raw) {
-      const arr = JSON.parse(raw)
-      if (Array.isArray(arr)) {
-        const valid = [...new Set(arr.filter((id: unknown) => typeof id === 'string' && catalogStore.getWEngine(id as string)))] as string[]
-        if (valid.length > 0) return valid
-      }
-    }
-  } catch { /* 损坏回落默认 */ }
-  return [...DEFAULT_AUTO_ENGINE_POOL]
-}
-const autoEnginePool = ref<string[]>(loadAutoEnginePool())
-watch(autoEnginePool, v => {
-  try { localStorage.setItem(AUTO_ENGINE_POOL_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
-}, { deep: true })
+const autoEnginePool = persistedRef<string[]>(AUTO_ENGINE_POOL_KEY, arr => {
+  if (!Array.isArray(arr)) return undefined
+  const valid = [...new Set(arr.filter((id: unknown) => typeof id === 'string' && catalogStore.getWEngine(id as string)))] as string[]
+  return valid.length > 0 ? valid : undefined
+}, () => [...DEFAULT_AUTO_ENGINE_POOL])
 
 // ========== 难度权重（主观量，用户自填；INTERACTION_WEIGHTS 与 1秒=1点只是默认值） ==========
 const DIFF_WEIGHTS_KEY = 'zzz-compare-difficulty-weights'
@@ -891,41 +880,31 @@ const DEFAULT_DIFF_WEIGHTS: DiffWeightsState = {
   interactionFormula: {},
   interactionExponent: {},
 }
-function loadDiffWeights(): DiffWeightsState {
+function parseDiffWeights(stored: unknown): DiffWeightsState {
   const base: DiffWeightsState = { timePressure: 1, interaction: { ...INTERACTION_WEIGHTS }, interactionFormula: {}, interactionExponent: {} }
-  try {
-    const raw = localStorage.getItem(DIFF_WEIGHTS_KEY)
-    if (raw) {
-      const obj = JSON.parse(raw)
-      // 旧版存的是两个旋钮（overflow/align）——合并成一项后取两者中用户改过的那个（都=默认 1 时不变）
-      const legacy = [obj?.overflow, obj?.align].filter((v: unknown) => typeof v === 'number' && Number.isFinite(v))
-      const tp = typeof obj?.timePressure === 'number' && Number.isFinite(obj.timePressure) ? obj.timePressure : legacy[0]
-      if (typeof tp === 'number' && Number.isFinite(tp) && tp >= 0) base.timePressure = tp
-      // 旧版存的是单个全局指数（nonStunExponent）——已改为逐类型公式，旧值**不迁移**
-      // （语义不同：旧的是全局乘数，新的是逐项公式；强行映射会造出用户没写过的公式）
-      if (obj?.interactionFormula && typeof obj.interactionFormula === 'object') {
-        for (const [k, v] of Object.entries(obj.interactionFormula)) {
-          if (typeof v === 'string') base.interactionFormula[k] = v
-        }
-      }
-      if (obj?.interactionExponent && typeof obj.interactionExponent === 'object') {
-        for (const [k, v] of Object.entries(obj.interactionExponent)) {
-          if (typeof v === 'number' && Number.isFinite(v)) base.interactionExponent[k] = v
-        }
-      }
-      if (obj?.interaction && typeof obj.interaction === 'object') {
-        for (const [k, v] of Object.entries(obj.interaction)) {
-          if (typeof v === 'number' && Number.isFinite(v) && v >= 0) base.interaction[k] = v
-        }
-      }
-    }
-  } catch { /* 损坏回落默认 */ }
+  const obj: Record<string, unknown> = stored && typeof stored === 'object' ? stored as Record<string, unknown> : {}
+  const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
+  const rec = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? v as Record<string, unknown> : {})
+  // 旧版存的是两个旋钮（overflow/align）——合并成一项后取两者中用户改过的那个（都=默认 1 时不变）
+  const legacy = [obj.overflow, obj.align].map(num).filter((v): v is number => v !== undefined)
+  const tp = num(obj.timePressure) ?? legacy[0]
+  if (tp !== undefined && tp >= 0) base.timePressure = tp
+  // 旧版存的是单个全局指数（nonStunExponent）——已改为逐类型公式，旧值**不迁移**
+  // （语义不同：旧的是全局乘数，新的是逐项公式；强行映射会造出用户没写过的公式）
+  for (const [k, v] of Object.entries(rec(obj.interactionFormula))) {
+    if (typeof v === 'string') base.interactionFormula[k] = v
+  }
+  for (const [k, v] of Object.entries(rec(obj.interactionExponent))) {
+    const n = num(v)
+    if (n !== undefined) base.interactionExponent[k] = n
+  }
+  for (const [k, v] of Object.entries(rec(obj.interaction))) {
+    const n = num(v)
+    if (n !== undefined && n >= 0) base.interaction[k] = n
+  }
   return base
 }
-const diffWeights = ref<DiffWeightsState>(loadDiffWeights())
-watch(diffWeights, v => {
-  try { localStorage.setItem(DIFF_WEIGHTS_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
-}, { deep: true })
+const diffWeights = persistedRef<DiffWeightsState>(DIFF_WEIGHTS_KEY, parseDiffWeights, () => parseDiffWeights(undefined))
 /**
  * 难度权重弹层的行（每个交互类型一行）：
  *  · `bossAttack` = 该类型**需要怪物一次攻击**（`BOSS_ATTACK_INTERACTIONS`）⇒ 显示「吃非失衡占比」开关；

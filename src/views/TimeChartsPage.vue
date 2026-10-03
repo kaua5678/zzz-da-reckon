@@ -385,9 +385,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NCard, NInputNumber } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
+import { persistedRef } from '@/composables/persistedRef'
 import { useCatalogStore } from '@/stores/catalog'
 import { type TeamTimelineResult } from '@/composables/teamTimeline'
 import {
@@ -512,24 +513,12 @@ const budget = ref(6)
 
 // ========== 候选队友策展池（localStorage 持久化；轻量速算 = 只枚举池内 C(n,2) 组合） ==========
 const CANDIDATE_POOL_KEY = 'zzz-timeline-candidate-pool'
-const candidatePool = ref<string[]>(loadCandidatePool())
-function loadCandidatePool(): string[] {
-  try {
-    const raw = localStorage.getItem(CANDIDATE_POOL_KEY)
-    if (raw) {
-      const arr = JSON.parse(raw)
-      if (Array.isArray(arr)) {
-        // CC-431：排除的是**当前**主 C（原写死 '1371'：换主 C 后旧池可能把主 C 自己当候选）
-        const valid = arr.filter((id: unknown) => typeof id === 'string' && id !== mainAgentId.value && AGENT_RELEASE_NODE[id as string])
-        if (valid.length >= 2) return valid as string[]
-      }
-    }
-  } catch { /* 损坏回落默认 */ }
-  return [...TIMELINE_DEFAULT_CANDIDATE_POOL]
-}
-watch(candidatePool, v => {
-  try { localStorage.setItem(CANDIDATE_POOL_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }
-}, { deep: true })
+const candidatePool = persistedRef<string[]>(CANDIDATE_POOL_KEY, arr => {
+  if (!Array.isArray(arr)) return undefined
+  // CC-431：排除的是**当前**主 C（原写死 '1371'：换主 C 后旧池可能把主 C 自己当候选）
+  const valid = arr.filter((id: unknown) => typeof id === 'string' && id !== mainAgentId.value && AGENT_RELEASE_NODE[id as string])
+  return valid.length >= 2 ? valid as string[] : undefined
+}, () => [...TIMELINE_DEFAULT_CANDIDATE_POOL])
 const autoBuild = ref(false)
 const optimalGold = ref(false)
 const candidateOptions = Object.keys(AGENT_RELEASE_NODE)
