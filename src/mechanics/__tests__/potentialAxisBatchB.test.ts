@@ -230,6 +230,7 @@ describe('R59 · 1171 柏妮思潜能觉醒·沸点派对（潜能 II~VI per-0.1
       exSpecialCount: 10, totalTime: 120, atk: 2000, anomalyProficiency: 200,
       cinemaLevel: 0, energyRegen: 2.2, ultimateCount: 1,
       singleSpraySeconds: 1.89, doubleSpraySeconds: 2.274,
+      exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
     }
     const rows = [2, 3, 4, 5, 6].map(p => computeBurniceMechanic({ ...base, potentialLevel: p }))
     const mastery = rows.map(r => r.potentialAnomalyMasteryBonus)

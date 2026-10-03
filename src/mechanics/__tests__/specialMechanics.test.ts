@@ -342,6 +342,7 @@ describe('Jane mechanic', () => {
 describe('Burnice ignition / ember', () => {
   it('computes fixed-count EX cast, ignition gain and ember triggers', () => {
     const result = computeBurniceMechanic({
+      exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
       exSpecialCount: 4,
       totalTime: 180,
       atk: 1000,
@@ -386,6 +387,7 @@ describe('Burnice ignition / ember', () => {
 
   it('adds 50 ignition per ultimate without a battle-wide cap', () => {
     const result = computeBurniceMechanic({
+      exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
       exSpecialCount: 0,
       totalTime: 180,
       atk: 1000,
@@ -406,6 +408,7 @@ describe('Burnice ignition / ember', () => {
 
   it('applies C2/C4/C6 constellation logic', () => {
     const result = computeBurniceMechanic({
+      exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
       exSpecialCount: 20,
       totalTime: 180,
       atk: 1000,
@@ -435,6 +438,7 @@ describe('Burnice ignition / ember', () => {
 
   it('derives stirring overflow and flow fire utilization', () => {
     const result = computeBurniceMechanic({
+      exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
       exSpecialCount: 20,
       totalTime: 180,
       atk: 1000,
@@ -461,6 +465,7 @@ describe('Burnice ignition / ember', () => {
 
   it('drops the whole cast type when spray seconds is zero', () => {
     const result = computeBurniceMechanic({
+      exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
       exSpecialCount: 4,
       totalTime: 180,
       atk: 1000,
@@ -478,6 +483,7 @@ describe('Burnice ignition / ember', () => {
 
   it('supports fractional virtual EX counts after averaging', () => {
     const result = computeBurniceMechanic({
+      exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
       exSpecialCount: 3,
       totalTime: 180,
       atk: 1000,
@@ -496,6 +502,7 @@ describe('Burnice ignition / ember', () => {
 
   it('activates potential when total energy regen reaches 1.8 after percentage bonus', () => {
     const result = computeBurniceMechanic({
+      exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
       exSpecialCount: 2,
       totalTime: 180,
       atk: 1000,

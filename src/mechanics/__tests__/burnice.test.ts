@@ -33,6 +33,8 @@ function mechanicInput(overrides: Partial<Parameters<typeof computeBurniceMechan
     ultimateCount: 0,
     singleSpraySeconds: 1.89,
     doubleSpraySeconds: 2.274,
+    // CC-408：强特四行表值由调用方给（引擎从 catalog 读）；这里写 full/1171.json 当前值当夹具
+    exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
     ...overrides,
   }
 }
@@ -191,7 +193,8 @@ describe('柏妮思面板与执行计划', () => {
         burniceDoubleSpraySeconds: 2.274,
         panel: { atk: 1000, anomalyProficiency: 500 },
         skipGenericExSpecial: true,
-        mechanicRowValues: {},
+        // CC-408：四行倍率只来自这里（buildCharConfig 读 catalog 写入），模块里没有常量兜底
+        mechanicRowValues: { '1171010': 1088.3, '1171011': 193.5, '1171012': 1916.2, '1171013': 574.2 },
       },
       state: { exSpecialCount: 2, ultimateCount: 0, frontlineTime: 170, backstageTime: 10 },
       executions,
@@ -208,6 +211,32 @@ describe('柏妮思面板与执行计划', () => {
     const explosion = executions.find(e => e.moveId === '1171011')!
     expect(explosion.damageMultiplierOverride ?? false).toBe(false)
     expect(explosion.damageMultiplier).toBeCloseTo(193.5, 3)
+  })
+
+  it('CC-408 强特持续段行值跟倍率表走：表值变则行值变，表缺则为 0（不回退到模块常量）', () => {
+    const run = (mechanicRowValues: Record<string, number>) => {
+      const executions: any[] = []
+      burniceMechanic.buildExecutions!({
+        cfg: {
+          burniceCinemaLevel: 0,
+          burniceSingleSpraySeconds: 1.89,
+          burniceDoubleSpraySeconds: 1.137, // 双喷半时长 ⇒ 持续段按 1.137/2.274 等比
+          panel: { atk: 1000, anomalyProficiency: 500 },
+          skipGenericExSpecial: true,
+          mechanicRowValues,
+        },
+        state: { exSpecialCount: 2, ultimateCount: 0, frontlineTime: 170, backstageTime: 10 },
+        executions,
+      } as any)
+      const by = (id: string) => executions.find(e => e.moveId === id)!
+      return { single: by('1171010').damageMultiplier, double: by('1171012').damageMultiplier }
+    }
+    const scaled = run({ '1171010': 2000, '1171011': 193.5, '1171012': 1000, '1171013': 574.2 })
+    expect(scaled.single).toBeCloseTo(2000, 6)
+    expect(scaled.double).toBeCloseTo(500, 6)
+    const missing = run({})
+    expect(missing.single).toBe(0)
+    expect(missing.double).toBe(0)
   })
 
   it('完整计算链：资源池出双喷行、异放事件注册、面板含潜能', async () => {
