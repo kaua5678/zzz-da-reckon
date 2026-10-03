@@ -90,6 +90,16 @@
             />
           </div>
           <div class="ctl-field">
+            <span class="ctl-label">当期 Buff</span>
+            <n-select
+              v-model:value="buffChoice"
+              :options="buffOptions"
+              size="small"
+              style="width: 300px"
+              :disabled="!bossId"
+            />
+          </div>
+          <div class="ctl-field">
             <span class="ctl-label">队友（单人系列用）</span>
             <n-select v-model:value="mateA" :options="agentOptions" size="small" filterable clearable style="width: 150px" placeholder="队友1" />
             <n-select v-model:value="mateB" :options="agentOptions" size="small" filterable clearable style="width: 150px" placeholder="队友2" />
@@ -149,7 +159,13 @@
         >
           <span class="fc-dot" :style="{ background: colorOf(s.id) }"></span>{{ s.label }}
         </span>
-        <span class="legend-hint">点系列名显隐（纵轴按剩下的线缩放）</span>
+        <span class="legend-hint">点系列名显隐（纵轴按剩下的线缩放）<template v-if="hasBuffSplit"> · 实线 = 本体（无 buff），虚线 = 吃当期牌</template></span>
+      </div>
+
+      <!-- 环境声明（用户裁决 2026-10-02：环境条件是数据质量关键，不能掐头去尾 ⇒ 每张图自带完整口径） -->
+      <div class="fc-note fc-env">
+        <span class="fc-note-label">环境：</span>
+        <span>{{ result.environmentSummary }}</span>
       </div>
 
       <!-- 无专武档实际穿的下位件：按伤害择优挑的（实测同职业三把 A 级差 3~8pp），不显示就没法核对 -->
@@ -167,7 +183,11 @@
           <g v-for="(lv, i) in result.levels" :key="'x' + i">
             <text :x="levelX(i)" :y="svgH - 8" class="axis-label x-label" text-anchor="middle">{{ lv.label }}</text>
           </g>
-          <polyline v-for="s in visibleLines" :key="s.id" :points="s.points" class="fc-line" :style="{ stroke: colorOf(s.id) }" />
+          <polyline
+            v-for="s in visibleLines" :key="s.id" :points="s.points" class="fc-line"
+            :style="{ stroke: colorOf(s.id) }"
+            :stroke-dasharray="s.buffTitle ? '6 4' : undefined"
+          />
           <template v-for="s in visibleLines" :key="'p' + s.id">
             <circle
               v-for="(p, i) in s.pts"
@@ -233,7 +253,7 @@
  * - `agentPresentation.ts#colorOf`：系列配色（与全仓图表同一套）
  * - `composables/analysisScenario.ts#withAnalysisScenario`：求值跑在独立场景上（r372，求值器内部已封装，本页不碰）
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { NAlert, NButton, NCard, NCheckbox, NInput, NInputNumber, NProgress, NSelect, NTag } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
@@ -252,12 +272,13 @@ import {
   setupCodeLabel,
 } from '@/composables/freeCompare/axes'
 import { bestSeriesIndexByLevel, formatMetric, metricDef, metricOptions } from '@/composables/freeCompare/metrics'
-import type { BossPreset } from '@/types/bossPreset'
+import type { BossPreset, PhaseView } from '@/types/bossPreset'
 
 const catalog = useCatalogStore()
 
 // ---------- 数据 ----------
 const bossPresets = ref<BossPreset[]>([])
+const phaseViews = ref<PhaseView[]>([])
 const error = ref('')
 
 /** 用户原话的三个实体（规则 15：已 `node scripts/resolve.mjs` 查证，非名字联想） */
@@ -290,6 +311,34 @@ const setupCodesText = ref('01,11,21,20')
 const autoBuild = ref(false)
 
 const bossId = ref('')
+// ---------- 当期 Buff（用户裁决 2026-10-02：可以带也可以不带；全状态 = 本体 vs 吃拐并排）----------
+/**
+ * buff 三态：'none' = 不使用 / 'all' = 全状态对比（每系列拆 本体+每张牌 多条线）/ 牌名 = 手动指定一张。
+ * 与队伍对比页同口径，但把「自动推荐」换成「全状态对比」——推荐只给赢家，全状态给归因
+ * （用户裁决：「自带的结论不智能，不如直接呈现原数据，人类自会分析归因」）。
+ */
+const buffChoice = ref<string>('none')
+/** 当前 Boss 所选期的 buff 牌（期视图按 phaseId 对齐；未选 Boss = 空） */
+const currentBuffs = computed(() => {
+  const boss = bossPresets.value.find(b => b.id === bossId.value)
+  if (!boss) return []
+  const phaseId = boss.phases[0]?.phaseId
+  return phaseViews.value.find(v => v.phaseId === phaseId)?.buffs ?? []
+})
+const buffOptions = computed(() => [
+  { value: 'none', label: '不使用（默认，快）' },
+  { value: 'all', label: `全状态对比（本体 + 每张牌各一条线，慢 ${currentBuffs.value.filter(b => !b.testOnly).length + 1} 倍）` },
+  ...currentBuffs.value.map(b => ({
+    value: `card:${b.title}`,
+    label: `${b.title || '(未命名)'}${b.testOnly ? '（测试服）' : ''}`,
+    disabled: b.testOnly,
+  })),
+])
+watch(currentBuffs, () => {
+  // 换 Boss 后若手动选的牌不在当期，回到不使用（防「嘴上 A 期牌、身上 B 期」的静默错配）
+  const cur = buffChoice.value
+  if (cur.startsWith('card:') && !currentBuffs.value.some(b => `card:${b.title}` === cur)) buffChoice.value = 'none'
+})
 const mateA = ref(VELINA) // 默认把维琳娜当基底队友（对上用户原话的场景）
 const mateB = ref('')
 const condAgentId = ref('')
@@ -347,13 +396,16 @@ const costHint = computed(() => {
     { id: '', kind: 'agent', members: [], code: { cinema: 0, wengine: 1 } },
     { cinemaMax: cinemaMax.value, setupCodes: setupCodes.value ?? [], periods: periodOptions.value },
   ).length ?? 0
-  const n = levels * series.value.filter(s => s.agentId).length
+  const nSeries = series.value.filter(s => s.agentId).length
+  // 全状态对比：每个主系列拆 本体+每张可用牌 条输出系列（求值量 ×(牌数+1)）
+  const buffMult = buffChoice.value === 'all' ? currentBuffs.value.filter(b => !b.testOnly).length + 1 : 1
+  const n = levels * nSeries * buffMult
   if (n === 0) return ''
-  // 含「无专武」档时每系列多 ~(池大小−1) 次择优试算（同 (队友,角色,命座) 键后续档位走缓存）
+  // 含「无专武」档时每系列多 ~(池大小−1) 次择优试算（同 (队友,角色,命座) 键后续档位走缓存；择优结果跨 buff 态复用同缓存）
   const hasNoWengine = (setupCodes.value ?? []).some(c => c[1] === '0')
-  const picks = hasNoWengine ? series.value.filter(s => s.agentId).length * 2 : 0
+  const picks = hasNoWengine ? nSeries * buffMult * 2 : 0
   const sec = Math.round((n + picks) * 0.35)
-  return `预计 ${n + picks} 次求值 ≈ ${sec}s${autoBuild.value ? '（开了推荐配装，会更慢）' : ''}`
+  return `预计 ${n + picks} 次求值 ≈ ${sec}s${autoBuild.value ? '（开了推荐配装，会更慢）' : ''}${buffMult > 1 ? `（全状态对比 ×${buffMult}）` : ''}`
 })
 
 async function runCompare() {
@@ -389,6 +441,12 @@ async function runCompare() {
         baseTeammates: [mateA.value, mateB.value],
         conditions: conditions.value,
         autoBuild: autoBuild.value,
+        buffs: currentBuffs.value,
+        buffChoice: buffChoice.value === 'all'
+          ? 'all'
+          : buffChoice.value === 'none'
+            ? 'none'
+            : currentBuffs.value.find(b => `card:${b.title}` === buffChoice.value) ?? 'none',
       },
       control: { signal: run.signal },
       onProgress: p => run.commit(() => { progress.value = p }),
@@ -493,9 +551,12 @@ const visibleLines = computed(() => {
       y: v === null ? yOf(yRange.value.min) : yOf(v),
       text: v === null ? '—' : def ? formatMetric(def, v) : String(v),
     }))
-    return { id: s.id, label: s.label, pts, points: pts.map(p => `${p.x},${p.y}`).join(' ') }
+    return { id: s.id, label: s.label, buffTitle: s.buffTitle, pts, points: pts.map(p => `${p.x},${p.y}`).join(' ') }
   })
 })
+
+/** 本次结果是否含 buff 拆分（全状态对比 ⇒ 图例提示线型口径） */
+const hasBuffSplit = computed(() => (result.value?.series ?? []).some(s => s.buffTitle !== null))
 
 /** 无专武档实际穿的下位件（去重；空 = 本次没跑无专武档） */
 const downgradeNotes = computed(() => {
@@ -516,6 +577,7 @@ onMounted(async () => {
   try {
     const data = await useCatalogStore().loadBossPresets()
     bossPresets.value = data.bosses ?? []
+    phaseViews.value = data.phaseViews ?? []
   } catch (e) {
     error.value = `Boss 预设加载失败：${e instanceof Error ? e.message : String(e)}`
   }

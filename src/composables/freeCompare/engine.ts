@@ -16,6 +16,8 @@
  */
 
 import { applyBossRoom } from '@/composables/bossRoom'
+import { applyBuffToStore } from '@/composables/teamCompare'
+import type { PhaseBuffCard } from '@/types/bossPreset'
 import type { ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedWEngine } from '@/composables/teamCompare'
@@ -31,7 +33,7 @@ import {
   AXIS_BY_ID,
   DEFAULT_AXIS_ID,
 } from './axes'
-import { type ConstraintSpec, conditionToCode } from './constraints'
+import { type ConstraintSpec, conditionToCode, constraintSummary } from './constraints'
 import {
   type MetricDef,
   type MetricEnv,
@@ -45,9 +47,13 @@ export type Calc = ResourceCalc
 // ========== 结果 ==========
 
 export interface FreeCompareSeries {
-  /** 系列 id（= SeriesSpec.id） */
+  /** 系列 id（buff 拆分后 = `${SeriesSpec.id}|${buffKey}`，全状态模式下每个 buff 态一条） */
   id: string
   label: string
+  /** 拆分前的主系列 id（全状态模式下同组系列共享；图例分组/本体线型用） */
+  baseId: string
+  /** 该系列应用的当期 buff 牌标题；`null` = 本体（无 buff）。展示与归因用 */
+  buffTitle: string | null
   /** 该系列在各 x 档位上的取值（与 `result.levels` 同序） */
   values: Array<number | null>
   /** 未取到值的档位数（如未收敛/跳过） */
@@ -78,6 +84,11 @@ export interface FreeCompareResult {
    * 池大小 × 首个未命中的 (队友,角色,命座) 键；同键后续档位走缓存不重复试算。
    */
   pickEvaluations: number
+  /**
+   * 环境摘要（`constraintSummary` 产出）：Boss（期数）· 锁定条件 · 配装模式 · 当期 buff 状态 · 交互/失衡轴声明。
+   * 用户裁决 2026-10-02：「环境条件是决定数据质量的关键，不能掐头去尾给结论」⇒ 每张图必须自带完整环境声明。
+   */
+  environmentSummary: string
 }
 
 export interface FreeCompareOptions {
@@ -287,8 +298,37 @@ export async function computeFreeCompare(
   // 档位按第一个系列枚举（x 维度与系列无关 ⇒ 取任一即可，取第一个保证 label 稳定）
   const levels = series.length > 0 ? axis.levels(series[0], options.axisOptions ?? {}) : []
 
-  const out: FreeCompareSeries[] = series.map(s => ({
-    id: s.id,
+  // ---- buff 状态展开（用户裁决 2026-10-02「本体强度 + 吃 buff 强度都要算」）----
+  // 三态：'none' = 不使用（每个主系列 1 条输出）；'all' = 全状态对比（本体 + 每张可用牌各一条）；
+  // PhaseBuffCard = 手动指定一张牌（每个主系列 1 条输出，该牌生效）。
+  // 拆分在装配前完成 ⇒ 主循环对「输出系列」无差别遍历，buff 只是输出系列自带的装配参数。
+  const usableBuffs = (cs.buffs ?? []).filter(b => !b.testOnly)
+  interface RunRow { spec: SeriesSpec; baseId: string; buff: PhaseBuffCard | null; outKey: string }
+  const runRows: RunRow[] = []
+  for (const spec of series) {
+    const choice = cs.buffChoice ?? 'none'
+    if (choice === 'all') {
+      // 全状态：本体（无 buff）+ 每张可用牌；无可用牌时退化为只有本体
+      runRows.push({ spec, baseId: spec.id, buff: null, outKey: `${spec.id}|base` })
+      for (const card of usableBuffs) {
+        runRows.push({ spec, baseId: spec.id, buff: card, outKey: `${spec.id}|buff:${card.title}` })
+      }
+    } else if (choice === 'none') {
+      runRows.push({ spec, baseId: spec.id, buff: null, outKey: `${spec.id}|base` })
+    } else {
+      runRows.push({ spec, baseId: spec.id, buff: choice, outKey: `${spec.id}|buff:${choice.title}` })
+    }
+  }
+  /** 图头摘要里的 buff 状态（模式级，不逐系列重复牌名） */
+  const choice0 = cs.buffChoice ?? 'none'
+  const buffModeLabel = choice0 === 'all'
+    ? (usableBuffs.length > 0 ? `全状态对比（本体 + ${usableBuffs.length} 张牌）` : '全状态对比（当期无可用牌，仅本体）')
+    : choice0 === 'none' ? '' : (choice0 as PhaseBuffCard).title
+
+  const out: FreeCompareSeries[] = runRows.map(r => ({
+    id: r.outKey,
+    baseId: r.baseId,
+    buffTitle: r.buff?.title ?? null,
     label: '',
     values: new Array(levels.length).fill(null),
     skipped: 0,
@@ -299,10 +339,12 @@ export async function computeFreeCompare(
   /** 择优自身的试算次数（池大小 × 首个未命中），单独计，避免它被误读成"档位求值" */
   let pickEvaluations = 0
 
-  for (let si = 0; si < series.length; si++) {
-    const spec = series[si]
-    const nameOf = (id: string) => catalog.getAgent(id)?.name.zhCN ?? id
-    out[si].label = seriesLabelOf(spec, nameOf)
+  const nameOf = (id: string) => catalog.getAgent(id)?.name.zhCN ?? id
+  for (let si = 0; si < runRows.length; si++) {
+    const { spec, buff } = runRows[si]
+    const baseLabel = seriesLabelOf(spec, nameOf)
+    // 全状态模式下牌名进系列标签（「柏妮思 21 · 本体」/「柏妮思 21 · 异象」）；单牌/无牌模式保持原标签
+    out[si].label = (cs.buffChoice ?? 'none') === 'all' && buff ? `${baseLabel} · ${buff.title}` : baseLabel
 
     for (let li = 0; li < levels.length; li++) {
       if (isBatchAborted(options.control)) return finalize()
@@ -311,6 +353,8 @@ export async function computeFreeCompare(
       // ---- 装配：约束 → 系列成员 → x 档位覆盖 ----
       // period 维度：档位的 periodId 覆盖约束里的 phaseId（CC-189；此前该覆盖从未被读 ⇒ 期数轴是假轴）
       applyConstraintBaseline(configStore, catalog, spec, cs, level.override.periodId ?? cs.phaseId)
+      // 当期 buff 牌：整表替换成这张牌（保留关卡固有 layer-buff；`applyBuffToStore` 单一口径，与队伍对比页同源）
+      applyBuffToStore(configStore, buff)
       const code: SetupCode = {
         cinema: level.override.cinema ?? spec.code.cinema,
         wengine: level.override.wengine ?? spec.code.wengine,
@@ -367,7 +411,7 @@ export async function computeFreeCompare(
 
       const done = si * levels.length + li + 1
       options.onProgress?.({
-        pct: (levels.length * series.length) > 0 ? done / (levels.length * series.length) : 1,
+        pct: (levels.length * runRows.length) > 0 ? done / (levels.length * runRows.length) : 1,
         text: `${out[si].label} · ${level.label}`,
       })
     }
@@ -386,6 +430,7 @@ export async function computeFreeCompare(
       evaluations,
       skipped,
       pickEvaluations,
+      environmentSummary: constraintSummary(cs, nameOf, buffModeLabel || undefined),
     }
   }
 }

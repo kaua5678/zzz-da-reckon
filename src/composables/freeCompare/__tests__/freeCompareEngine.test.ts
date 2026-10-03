@@ -196,6 +196,90 @@ describe('自由对比求值器（真引擎）', () => {
     expect(config.team[2].agentId).toBe(PHOENIX)
     expect(config.team[2].cinemaLevel).toBe(2)
   })
+
+  // ---------- 当期 buff 三态（2026-10-02 用户裁决：可以带也可以不带；本体 vs 吃拐并排呈现）----------
+
+  /** 测试夹具：30007 恶名·死路屠夫最新期（690441，3 张非测试服牌：摧心/冰袭/异变） */
+  async function bossWithBuffs() {
+    const data = await (await fetch('/static/boss-presets.json')).json()
+    const boss = data.bosses.find((b: { id: string }) => b.id === '30007')
+    const phase = boss.phases[0] // 最新期
+    const view = (data.phaseViews ?? []).find((v: { phaseId: string }) => v.phaseId === phase.phaseId)
+    const buffs = (view?.buffs ?? []).filter((b: { testOnly: boolean; effects: unknown[] }) => !b.testOnly && b.effects.length > 0)
+    expect(buffs.length, '夹具前提：30007 最新期应有 ≥2 张可用 buff 牌').toBeGreaterThanOrEqual(2)
+    return { boss, buffs }
+  }
+
+  it('★ buffChoice=\'all\'（全状态对比）：每个主系列拆 本体+每张牌 各一条系列，互不混合', async () => {
+    const { boss, buffs } = await bossWithBuffs()
+    const res = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+      series: [{ id: 'a', kind: 'agent', members: [BURNICE], code: code('21') }],
+      axisId: 'cinema',
+      axisOptions: { cinemaMax: 0 },
+      metricId: 'teamTotalDamage',
+      constraints: { boss, baseTeammates: [VELINA, ''], buffs, buffChoice: 'all' },
+    }))
+    // 1 主系列 × (本体 + N 张牌) 条输出系列
+    expect(res.series).toHaveLength(1 + buffs.length)
+    // 每条系列标了自己的 buff 态：本体 buffTitle=null、牌系列带牌名
+    expect(res.series[0].buffTitle).toBeNull()
+    expect(res.series[0].label, '本体线标签不带牌名').not.toContain('·')
+    for (let i = 1; i < res.series.length; i++) {
+      expect(res.series[i].buffTitle).toBe(buffs[i - 1].title)
+      expect(res.series[i].label).toContain(buffs[i - 1].title)
+      expect(res.series[i].baseId).toBe('a') // 同组归因（图例分组/线型用）
+    }
+    // 全部档都有读数（buff 装配不该让任何一档 null）
+    for (const s of res.series) expect(s.values[0], `${s.label} 应有读数`).not.toBeNull()
+    // 环境摘要必须含 buff 模式（用户裁决：不能掐头去尾）
+    expect(res.environmentSummary).toContain('全状态对比')
+    expect(res.environmentSummary).toContain(boss.name)
+  })
+
+  it('★ buffChoice=具体牌：只出一条系列且该牌真的写进全局 Buff 表（防「选了不算」的静默失效）', async () => {
+    const { boss, buffs } = await bossWithBuffs()
+    const card = buffs[0]
+    let seenBuffIds: string[] = []
+    await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+      series: [{ id: 'a', kind: 'agent', members: [BURNICE], code: code('21') }],
+      axisId: 'cinema',
+      axisOptions: { cinemaMax: 0 },
+      metricId: 'teamTotalDamage',
+      constraints: { boss, baseTeammates: [VELINA, ''], buffs, buffChoice: card },
+      onProgress: () => {
+        if (seenBuffIds.length === 0) {
+          seenBuffIds = scenario.config.globalBuffs.map(r => String(r.id)).filter(id => id.startsWith('phase-buff:'))
+        }
+      },
+    }))
+    expect(seenBuffIds.length, `求值期间全局 Buff 表应含「${card.title}」的 phase-buff 行`).toBeGreaterThan(0)
+    expect(seenBuffIds.every(id => id.includes(card.title))).toBe(true)
+    // 关卡固有 buff（layer-buff）必须保留（CC-342：当期牌替换整表时不清房间 buff）
+  })
+
+  it('★ buffChoice 缺省 = 不使用：无 phase-buff 行、只出一条本体系列，且结果与「手动选牌」数值不同（证明牌真的进了计算）', async () => {
+    const { boss, buffs } = await bossWithBuffs()
+    const base = { boss, baseTeammates: [VELINA, ''] as [string, string], buffs }
+    const run = (buffChoice: unknown) => withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+      series: [{ id: 'a', kind: 'agent', members: [BURNICE], code: code('21') }],
+      axisId: 'cinema',
+      axisOptions: { cinemaMax: 0 },
+      metricId: 'teamTotalDamage',
+      constraints: { ...base, buffChoice } as never,
+    }))
+    const none = await run('none')
+    expect(none.series).toHaveLength(1)
+    expect(none.series[0].buffTitle).toBeNull()
+    // 至少有一张牌会改变读数（否则「buff 进计算」这条机制根本没生效，测试白搭）
+    let anyDiff = false
+    for (const card of buffs) {
+      const withCard = await run(card)
+      const v0 = none.series[0].values[0]!
+      const v1 = withCard.series[0].values[0]!
+      if (Math.abs(v1 - v0) / Math.max(1, Math.abs(v0)) > 1e-6) { anyDiff = true; break }
+    }
+    expect(anyDiff, '当期三张牌对柏妮思队全是零影响——要么牌没进计算，要么夹具选错了 Boss').toBe(true)
+  })
 })
 
 // ---------- 测试用小工具（不进产品代码） ----------

@@ -319,7 +319,13 @@ try {
   if (tab) {
     // expectActivate：点完必须真的变成 active 页签（点了个不存在/不可点的东西不能算通过）
     await recordAction(`点页签「${tab}」`, 'tab', () => evaluate(inPageCall(performClick, '.n-tabs-tab', tab, false, true)))
-    await step('等页面渲染（图型控件）', () => waitFor(`document.body.textContent.includes('图型') || document.querySelectorAll('.n-card').length > 1`, 30000, '目标页'))
+    // 目标页就绪判据 = active 页签 = 目标 + 主内容区（.calc-content，CalculatorView 的页面容器）
+    // 挂出该页的控件（页签切换是 component :is 直挂，没有 .n-tab-pane 包裹——上一版按 n-tab-pane 判永远等不到）。
+    // 修前的「图型 文本或 n-card>1」是按队伍对比页写的：自由对比页是单卡工作台（n-card=1 且无「图型」）⇒ 三次实测超时。
+    await step('等页面渲染（目标页签内容挂载）', () => waitFor(
+      `document.querySelector('.n-tabs-tab--active')?.textContent?.includes(${JSON.stringify(tab)})`
+      + ` && document.querySelectorAll('.calc-content .n-card, .calc-content .n-button, .calc-content .n-base-selection').length > 0`,
+      30000, '目标页'))
   }
   const radio = arg('radio')
   if (radio) await recordAction(`点选项「${radio}」`, 'radio', () => evaluate(inPageCall(performClick, '.n-radio-button', radio, true)))
