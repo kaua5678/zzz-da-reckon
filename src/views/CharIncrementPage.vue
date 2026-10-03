@@ -143,6 +143,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { CHAR_INCREMENT_DEFAULT_AGENT_ID } from '@/data/viewAgentDefaults'
 import { NAlert, NButton, NCard, NInputNumber, NProgress, NSelect } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
@@ -215,7 +216,7 @@ async function runPass() {
 }
 
 // ========== 角色选择（全部收录角色：S 级为主，名字可检索） ==========
-const selectedAgentId = ref('1451') // 默认卢西娅（用户例子）
+const selectedAgentId = ref(CHAR_INCREMENT_DEFAULT_AGENT_ID) // 默认值见 data/viewAgentDefaults（CC-431）
 const agentOptions = computed(() =>
   Object.keys(RELEASE_NODE)
     .map(id => ({ value: id, label: catalogStore.getAgent(id)?.name?.zhCN ?? id }))

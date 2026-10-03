@@ -95,6 +95,7 @@
 
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
+import { MULTIPLIER_COEFF_DEFAULT_AGENT_ID } from '@/data/viewAgentDefaults'
 import { NCard, NDataTable, NSelect, NTag } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
@@ -199,7 +200,7 @@ const verticalColumns: DataTableColumns<AgentVerticalRow> = [
   },
 ]
 
-const selectedAgentId = ref<string>('1401')
+const selectedAgentId = ref<string>(MULTIPLIER_COEFF_DEFAULT_AGENT_ID)
 
 function verticalRowProps(row: AgentVerticalRow) {
   return {

@@ -254,6 +254,7 @@
  * - `composables/analysisScenario.ts#withAnalysisScenario`：求值跑在独立场景上（r372，求值器内部已封装，本页不碰）
  */
 import { computed, onMounted, ref, watch } from 'vue'
+import { FREE_COMPARE_AGENTS } from '@/data/viewAgentDefaults'
 import { NAlert, NButton, NCard, NCheckbox, NInput, NInputNumber, NProgress, NSelect, NTag } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
@@ -282,10 +283,10 @@ const bossPresets = ref<BossPreset[]>([])
 const phaseViews = ref<PhaseView[]>([])
 const error = ref('')
 
-/** 用户原话的三个实体（规则 15：已 `node scripts/resolve.mjs` 查证，非名字联想） */
-const BURNICE = '1171' // 柏妮思 异常·火
-const PHOENIX = '1641' // 菲欧妮 异常·火（用户写的「菲欧尼」是笔误）
-const VELINA = '1561' // 维琳娜 异常·风
+/** 用户原话的三个实体，id 见 data/viewAgentDefaults（CC-431） */
+const BURNICE = FREE_COMPARE_AGENTS.burnice
+const PHOENIX = FREE_COMPARE_AGENTS.phoenix
+const VELINA = FREE_COMPARE_AGENTS.velina
 
 interface SeriesRow {
   key: number

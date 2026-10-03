@@ -411,6 +411,7 @@ import TimeChartsControls from '@/components/charts/TimeChartsControls.vue'
 import { buildTimelineHoverInfo } from '@/composables/charts/hoverInfoBuilders'
 import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
+import { TIMELINE_DEFAULT_MAIN_AGENT_ID, TIMELINE_DEFAULT_CANDIDATE_POOL } from '@/data/viewAgentDefaults'
 import { buildDirectDamageTimeline } from '@/composables/multiplierCoefficients'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 // 第一片拆分（2026-09-13）：纯展示助手 / 悬浮卡行 / 跑批编排 出函到 composables/charts/
@@ -425,7 +426,7 @@ useConfigStore()
 const catalogStore = useCatalogStore()
 
 // ========== 主C 选择（只列 S 级：AGENT_RELEASE_NODE 收录即 S 级） ==========
-const mainAgentId = ref('1371') // 默认仪玄（用户指定先做仪玄验证）
+const mainAgentId = ref(TIMELINE_DEFAULT_MAIN_AGENT_ID) // 默认值见 data/viewAgentDefaults（CC-431）
 const mainAgentOptions = computed(() =>
   Object.keys(AGENT_RELEASE_NODE)
     .sort((a, b) => nodeIndexOf(AGENT_RELEASE_NODE[a]) - nodeIndexOf(AGENT_RELEASE_NODE[b]))
@@ -511,8 +512,6 @@ const budget = ref(6)
 
 // ========== 候选队友策展池（localStorage 持久化；轻量速算 = 只枚举池内 C(n,2) 组合） ==========
 const CANDIDATE_POOL_KEY = 'zzz-timeline-candidate-pool'
-/** 用户口径种子：仪玄演变路径的队友（青衣/潘引壶/橘福福/卢西娅/琉音） */
-const DEFAULT_CANDIDATE_POOL = ['1251', '1421', '1391', '1451', '1481']
 const candidatePool = ref<string[]>(loadCandidatePool())
 function loadCandidatePool(): string[] {
   try {
@@ -520,12 +519,13 @@ function loadCandidatePool(): string[] {
     if (raw) {
       const arr = JSON.parse(raw)
       if (Array.isArray(arr)) {
-        const valid = arr.filter((id: unknown) => typeof id === 'string' && id !== '1371' && AGENT_RELEASE_NODE[id as string])
+        // CC-431：排除的是**当前**主 C（原写死 '1371'：换主 C 后旧池可能把主 C 自己当候选）
+        const valid = arr.filter((id: unknown) => typeof id === 'string' && id !== mainAgentId.value && AGENT_RELEASE_NODE[id as string])
         if (valid.length >= 2) return valid as string[]
       }
     }
   } catch { /* 损坏回落默认 */ }
-  return [...DEFAULT_CANDIDATE_POOL]
+  return [...TIMELINE_DEFAULT_CANDIDATE_POOL]
 }
 watch(candidatePool, v => {
   try { localStorage.setItem(CANDIDATE_POOL_KEY, JSON.stringify(v)) } catch { /* 忽略 */ }

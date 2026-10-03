@@ -153,6 +153,7 @@
  * 用于「默认跟随顶部」的 watch）——两者留在页面是因为 Chart 1/2/4 与顶部控件也用它们。
  */
 import { computed, ref, watch } from 'vue'
+import { SLOT_COMPARE_DEFAULT_AGENT_A, SLOT_COMPARE_DEFAULT_AGENT_B } from '@/data/viewAgentDefaults'
 import { NButton, NCard, NProgress, NSelect } from 'naive-ui'
 import { fmt, compact } from '@/utils/format'
 import { useCatalogStore } from '@/stores/catalog'
@@ -211,8 +212,8 @@ const scSlotOptions: Array<{ value: SlotCompareSlot; label: string }> = [
   { value: 1, label: '击破槽' },
   { value: 2, label: '支援槽' },
 ]
-const scAgentA = ref('1481') // 琉音（用户口径示例的对比对象之一）
-const scAgentB = ref('1571') // 诺姆·霍洛维尔
+const scAgentA = ref(SLOT_COMPARE_DEFAULT_AGENT_A) // 默认值见 data/viewAgentDefaults（CC-431）
+const scAgentB = ref(SLOT_COMPARE_DEFAULT_AGENT_B)
 const scComputing = ref(false)
 const scProgress = ref<{ pct: number; text: string } | null>(null)
 const scPoints = ref<SlotComparePoint[]>([])
