@@ -93,7 +93,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 **2026-10-03 18:56 arena-F 第 450 轮**（开工：origin = 本地 = `d19894d5`，**另一会话在跑**：dsh web（pid 563263）下的 `npm run check` 在主仓按默认 16 fork 连跑 3 次（18:5x / 19:0x / 19:2x，各约 6 分钟，load 20～44），主仓 WIP 仍是 grace/velina 三件（md5 `f27e6b94` 未变）；REQUIREMENTS.md 无新条目；worktree `wt-T18`（已删）；产物 `/home/kaua/calc-arch/arenaF/r450/`：`tsc.log` / `guards.log` / `build.log` / `vt-q1..q3.log` `vt-e7.log` `vt-e8.log`（绿分片）/ `vt-s1.log`（**红**的那次，T14 证据）/ `forks*.count` / `patch-prompt.py` / `patch-docs.py`）：**CC-424 `b55ca97a`**（**已推**）+ 提示词改动 + 本文档提交。
 - **做到哪**：① r449 交接的「roundResult 余下 4 个 `| null`」查完，全是真 null，T13 卡收线。② 没按原计划找算法题，改做了一件基础设施：vitest worker 上限进 `vite.config.ts`（CC-424）。理由：规则「全量加 `--maxWorkers=4`」只约束读过提示词的会话，本轮另一会话按默认 16 fork 连跑把 VM 打到 load 44，我的 2 分片两次 rc=124；把它写进配置后所有入口（npm test / check / verify / dsh）默认安全。③ 提示词 `bridge-prompt-arena.md` 第 1 条对应段改写（备份 `.bak-maxworkers-config-20261003-1938`，修改记录已写在提示词 §二）。
 - **意外发现 → T14 卡**：高负载分片里 `timeFillRatchet` 两队（都含 1181）slack 0↔0.4 互换，单跑绿、复跑绿。这不是 flaky 可以忽略的那种：同配置的引擎输出随负载变 = 求值路径里有顺序依赖，最可疑的是 CC-420 记录的那条 `flush:'post'` 回填 watch。卡里写了复现法和禁止项。
-- **别人的 WIP**（`kaua5678` / dsh web）：作者**回来了**（在主仓循环跑 check），grace.ts 内容未变。按 r447 规则：不收养、不预检；他的 check 里 `grace.test.ts` 2 红是他自己的口径冲突。主仓 ff-merge 到 `b55ca97a` 之后他的下一次 `npm run check` 会自动变成 4 worker。
+- **别人的 WIP（已提交）**：作者回来了，19:4x 在主仓提交 `592c66f6`「refactor(grace): 轮换计划改精确闭式解 + 维琳娜平A权重交边际均衡」（7 文件 +161/−39，含 timeGolden 36 行 / timeFillRatchet 两队 / grace.test / idempotentCfgWrite 夹具 / 新 graceRotation.test），叠在我的 `b0b33b47` 之上，**本地未推**。不是我的提交、我没验证过，按规则不替他推；下一轮开工 `rev-list origin/master..HEAD` 会看到 1——先看它是不是还在、作者推了没有，再决定（他若在线会自己推；若 24h 还躺着，按孤儿规则在 worktree 全量验证后以他的名义推或入分支）。它的 1181 基线改动与 T14 的关系见卡。主仓 ff-merge 到 `b0b33b47` 之后他的后续 `npm run check` 已是 4 worker。
 - **下一步（start-ready）**：T14 ①（复现）。开工先 `pgrep -fc "[w]orkers/forks.js"` 看他在不在跑；在跑就正好拿他的负载当复现条件：worktree 里循环单跑 `timeFillRatchet.test.ts` 3 次看红不红。
 - **回滚点**：`git revert b55ca97a`；提示词还原 `.bak-maxworkers-config-20261003-1938`。
 
@@ -559,9 +559,12 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 
 **现象**（r450，worktree `wt-T18` = origin `d19894d5` + 仅 `vite.config.ts` 改 maxWorkers）：`npx vitest run --shard=1/2` 在另一会话 16 fork 满载（load 20+）时，`timeFillRatchet.test.ts` 第三条「基线自洽零容差」红：`auto-1181-1511-1411` slack 基线 0 ≠ 实测 0.4、`auto-1181-1561-1581` 基线 0.4 ≠ 实测 0（两队**互换**，都含 1181）。同一 worktree 单跑该文件绿（4 用例 7s）；低负载分片复跑绿（r449 两次、r450 1/4 分片）。日志 `/home/kaua/calc-arch/arenaF/r450/vt-s1.log`（第一次，红）。
 
-**已排除**：worker 数（配置 4 = CLI 4）；引擎里没有 `Date.now()/performance.now()` 决策（grep 只在 stats/durationMs）；`globalThis.__foldTrace/__foldPasses` 只在 `PROBE_TRACE_FOLD=1` 下写、只读 `.length` 作标签。
+**r450 收尾时的新证据（改变了排查方向）**：另一会话同一时段在主仓做 grace 重构并于 19:4x 提交 `592c66f6`（本地、未推），其 `timeFillRatchet.baseline.json` 的 diff **恰好只有**这两队：`auto-1181-1511-1411` 0→0.4、`auto-1181-1561-1581` 0.4→0——与我在 HEAD 代码的 worktree 里看到的红**逐字相同**（1181 = 格莉丝，正是他改的模块）。两种解释：**A 污染**——我的 worktree 运行到了主仓的 WIP grace.ts；**B 双稳态**——这两队的外层不动点有两个吸引子（`docs/mcp-integer-cycle-stop.md` §10 记过 1181-1511-1411 slack 0.8→0.4→0 的历史），他的改动把它们确定地推到另一个吸引子，而高负载让 HEAD 代码**偶发**落到同一个吸引子。**决定性实验（r450 已做，排除 A 的单跑形态）**：worktree 固定在 `b0b33b47`（grace 改动之前，grace.ts md5 `143e5e5c`），主仓在 `592c66f6` 之后，单跑 `timeFillRatchet.test.ts` ⇒ **绿**（旧基线、旧值）。⇒ 不存在「共享 node_modules 软链 / public/static 读主仓」这类路径污染；剩下 B，或「并发满载分片形态下」才出现的 A（概率低，但下一轮复现时 worktree 里顺手 `md5sum src/mechanics/agents/grace.ts` 一次就能排除）。**红日志已丢**：`vt-s1.log` 被同名的第二次运行覆盖（教训：同一轮重跑换文件名 `vt-s1-2.log`），红的原文只剩本卡引用的两行。
+
+**已排除**：worker 数（配置 4 = CLI 4）；路径污染（上面的实验）；引擎里没有 `Date.now()/performance.now()` 决策（grep 只在 stats/durationMs）；`globalThis.__foldTrace/__foldPasses` 只在 `PROBE_TRACE_FOLD=1` 下写、只读 `.length` 作标签。
 
 **待验证的假设（按可能性）**：
+0. **双稳态 + 顺序依赖**（现在最可能）：外层不动点对这两队有两个稳定解，起点（warm start / `threads` 初值 / 上一队残留）决定落哪个。验证法：worktree（HEAD）里把 `presets` 顺序反转或只跑这两队（互换先后），看 slack 是否随顺序变——不需要负载。若随顺序变 ⇒ 不是 flaky，是 CC-420 那类「状态经 store 跨队泄漏」，直接接 T10 修法 ①。
 1. `measureWithResidual` 逐队 `await setupHarness` → `useResourceCalc()` → 同步读 `resourceResult`；r447 CC-420 已证创建即跑两遍管线且有 `watch(flush:'post')` 回填 store。若 harness 复用同一 pinia / 同一 configStore 实例，上一队的 post-flush 回填可能在**下一队**的 `setAgent` 之后才落地 ⇒ 下一队读到上一队的 `effectCoverages`。负载只是让「谁先谁后」更容易翻面（`setupHarness` 里若有真实 I/O await，微任务与 I/O 回调的相对顺序就会随负载变）。**验证法**：在测试里每队 `await nextTick()` 两次后再读；或在 `setupHarness` 后断言 `effectCoverages` 为初值。
 2. 同一 fork 内跨文件残留（vitest forks `isolate` 默认 true 应隔离；若配置被改过要查）。
 3. `determinism.test` 是否覆盖「同进程连续两队不同配置」这一场景——它可能只测同配置两次。
