@@ -365,9 +365,9 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
  * 原先的首轮 cfg 写回是死写——写在 `runCalcRound` 的本轮局部克隆上，所有读者都在钩子之前的资源装配阶段，
  * 写后零读，判死依据见 `docs/mcp-nextround-writeback.md`）。
  */
-function promiaNextRoundFeedback({ teamResult, displayResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
-  // 展示口径行集优先（displayResult = rrShown），缺失回退装配结果——迁移前语义。
-  const shown = displayResult ?? teamResult
+function promiaNextRoundFeedback({ displayResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
+  // 展示口径行集（displayResult = rrShown；CC-436 起契约必填，原「缺失回退 teamResult」分支不会发生、已删）。
+  const shown = displayResult
   let promiaTriggerHitsNext = 0
   let promiaTeammateReleasesNext = 0
   let promiaReleaseDecibelNext = 0

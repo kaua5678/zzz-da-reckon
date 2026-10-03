@@ -48,7 +48,8 @@ function run(agentId: string, o: { cfg?: Record<string, unknown> } & Partial<Age
     slot: 0,
     characters: [cfg],
     teamResult: teamResult([]),
-    displayResult: undefined,
+    // CC-436：displayResult 必填；未显式给时 = 本轮 teamResult（流水线 rrShown 与 rr 同形的最小夹具）
+    displayResult: rest.displayResult ?? rest.teamResult ?? teamResult([]),
     // CC-435：adjustedResult 必填；未显式给时 = 本轮 teamResult（流水线无调整时的同形传入）
     adjustedResult: rest.adjustedResult ?? rest.teamResult ?? teamResult([]),
     anomalyPool: emptyAnomalyPool(),
@@ -90,7 +91,7 @@ describe('普罗米娅 1541：触发命中 / 队友异放 / 自身异放回喧�
     const { catalog } = await setupHarness([])
     const chars = [row({ agentId: '1471', slot: 0 }), row({ agentId: '1481', slot: 1 })]
     const fb = collectNextRoundFeedback({
-      characters: chars as never, teamResult: teamResult([]), adjustedResult: teamResult([]),
+      characters: chars as never, teamResult: teamResult([]), displayResult: teamResult([]), adjustedResult: teamResult([]),
       anomalyPool: { totalTriggerCount: 7 } as never,
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
     }) as Record<string, unknown>
@@ -141,7 +142,7 @@ describe('普罗米娅 1541：触发命中 / 队友异放 / 自身异放回喧�
     expect(second).toEqual(first)
   })
 
-  it('displayResult 优先于 teamResult（展示口径行集与装配同源），缺失回退 teamResult', () => {
+  it('读 displayResult（展示口径行集；CC-436 起必填，夹具缺省 = teamResult 同形）', () => {
     const o = {
       teamResult: teamResult([row({ agentId: '1471', anomalyEventExecutions: [ev({ count: 4 })] })]),
     }
@@ -214,6 +215,7 @@ describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
     const fb = collectNextRoundFeedback({
       characters: [row({ agentId: '1041', slot: 0 })] as never,
       teamResult: teamResult([row({ agentId: '1041', exSpecialCount: 9 })]),
+      displayResult: teamResult([row({ agentId: '1041', exSpecialCount: 9 })]),
       adjustedResult: teamResult([row({ agentId: '1041', exSpecialCount: 9 })]),
       anomalyPool: anomalyPool({ perElement: [{ triggerCount: 4 }] }),
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
@@ -246,7 +248,7 @@ describe('★ 前导空槽：按派发器给的 cfg 识别自己', () => {
       slot: 2,
       cfg: ellenCfg as never,
       characters: [mate, ellenCfg] as never,
-      teamResult: teamResult([]), adjustedResult: teamResult([]),
+      teamResult: teamResult([]), displayResult: teamResult([]), adjustedResult: teamResult([]),
       anomalyPool: anomalyPool({ perElement: [{ element: 'ice', triggerCount: 6 }] }),
       prevThreads: initialCalcRoundThreads(),
       combatTime: 180,

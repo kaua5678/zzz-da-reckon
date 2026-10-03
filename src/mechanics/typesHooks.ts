@@ -350,8 +350,8 @@ export interface AgentNextRoundFeedbackInput {
   characters: DeepReadonly<CharacterOperationConfig[]>
   /** 本轮装配后（`calcTeamResources` + `enrichExecutionPlan`）的全队资源结果 */
   teamResult: DeepReadonly<TeamResourceResult>
-  /** 展示口径结果（`normalizeDisplayTime` 后，含赠链/赠大行）；缺省 = 与 teamResult 同源 */
-  displayResult?: DeepReadonly<TeamResourceResult>
+  /** 展示口径结果（`normalizeDisplayTime` 后，含赠链/赠大行）。**必填**（CC-436）：流水线恒传 `rrShown`，模块侧不再 `?? teamResult`。 */
+  displayResult: DeepReadonly<TeamResourceResult>
   /**
    * 调整后结果（诺姆赠链 / 琉音转大落地后，伤害池与执行计划口径）。**必填、非 null**（CC-435）：
    * 流水线自 CC-422 起恒传 `adj2`（无调整时与 `teamResult` 同形），模块侧不再需要 `?? teamResult` 兜底。

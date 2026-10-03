@@ -41,6 +41,7 @@ function feedback(agentId: string, overrides: Partial<AgentNextRoundFeedbackInpu
     teamResult: { characters: [] } as never,
     // CC-435：adjustedResult 必填；未显式给时 = 覆盖后的 teamResult（流水线无调整时的同形传入）
     adjustedResult: overrides.adjustedResult ?? overrides.teamResult ?? ({ characters: [] } as never),
+    displayResult: overrides.displayResult ?? overrides.teamResult ?? ({ characters: [] } as never),  // CC-436 同款
     anomalyPool: emptyAnomalyPool(), prevThreads: initialCalcRoundThreads(),
     combatTime: 180, getAgentSkills: () => undefined,
     ...overrides,
@@ -152,11 +153,11 @@ describe('C-β next-round feedback', () => {
       { agentId: '1161', exSpecialCount: 3 },
     ])
     expect(collectNextRoundFeedback({
-      characters, teamResult, adjustedResult: teamResult, anomalyPool: emptyAnomalyPool(),
+      characters, teamResult, displayResult: teamResult, adjustedResult: teamResult, anomalyPool: emptyAnomalyPool(),
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
     })).toEqual({ teamUltimateExtra: 2.5, consumedTeamEnergy: 60 * 4 + 30 * 3 })
     expect(collectNextRoundFeedback({
-      characters: [], teamResult, adjustedResult: teamResult, anomalyPool: emptyAnomalyPool(),
+      characters: [], teamResult, displayResult: teamResult, adjustedResult: teamResult, anomalyPool: emptyAnomalyPool(),
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
     })).toEqual({})
   })

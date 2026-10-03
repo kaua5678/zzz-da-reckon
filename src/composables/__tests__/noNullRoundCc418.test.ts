@@ -123,4 +123,16 @@ describe('CC-418 runCalcRound 非 null 化 / null 轮退役', () => {
     const pp = read('panelPhases.ts')
     expect(pp).toMatch(/\n  adjustedResult: AgentNextRoundFeedbackInput\['adjustedResult'\]\n/)
   })
+
+  it('CC-436（T13-e）：displayResult 必填（反馈入参再无结果类可选字段）；promia 无 `displayResult ?? teamResult`', () => {
+    const hooks = readFileSync(resolve(__dirname, '../../mechanics/typesHooks.ts'), 'utf-8')
+    expect(hooks).toMatch(/\n  displayResult: DeepReadonly<TeamResourceResult>\n/)
+    // 反馈入参接口体内三份结果都必填：teamResult / displayResult / adjustedResult 均无 `?:`
+    const iface = hooks.match(/export interface AgentNextRoundFeedbackInput \{[\s\S]*?\n\}\n/)?.[0] ?? ''
+    expect(iface.length).toBeGreaterThan(0)
+    expect(iface.split('\n').filter(l => /^\s+(teamResult|displayResult|adjustedResult)\?:/.test(l))).toEqual([])
+    const promia = readFileSync(resolve(__dirname, '../../mechanics/agents/promia.ts'), 'utf-8')
+    expect(promia.includes('displayResult ?? teamResult')).toBe(false)
+    expect(read('panelPhases.ts')).toMatch(/\n  displayResult: AgentNextRoundFeedbackInput\['displayResult'\]\n/)
+  })
 })

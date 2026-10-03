@@ -283,8 +283,8 @@ export function collectNextRoundFeedback(params: {
   characters: AgentNextRoundFeedbackInput['characters']
   /** 本轮装配后的全队资源结果 */
   teamResult: AgentNextRoundFeedbackInput['teamResult']
-  /** 展示口径结果（缺省 = teamResult） */
-  displayResult?: AgentNextRoundFeedbackInput['displayResult']
+  /** 展示口径结果（rrShown；CC-436 必填） */
+  displayResult: AgentNextRoundFeedbackInput['displayResult']
   /** 调整后结果（诺姆赠链 / 琉音转大落地后）；无调整时与 teamResult 同形（CC-435 必填） */
   adjustedResult: AgentNextRoundFeedbackInput['adjustedResult']
   anomalyPool: AgentNextRoundFeedbackInput['anomalyPool']
