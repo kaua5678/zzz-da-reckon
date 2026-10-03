@@ -82,6 +82,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 14:14 arena-F 第 435 轮**（开工：master `5f4df62c` 干净、已推；**14:16 起别人在主仓改 `AGENTS.md` / `useResourceCalc.ts` / `stores/config.ts` + 新文件 `data/wEngineStackCoverage.ts`、`__tests__/wEngineStackCoverage.test.ts`，无认领行、无进程**——文件面与我不相交，我改在 worktree `wtF-r435` 验证后 ff 进 master，没动它们；REQUIREMENTS.md 无新条目；产物 `/home/kaua/calc-arch/arenaF/r435/`：`dupProbe.cjs` / `dupProbe.out`（普查）、`patch-cc409.py`、`patch-tests.py`、`zd.log`、`guards.log`、`build.log`、`vt.log`）：**CC-409 `67f6672b`**（代码，已推）+ 本文档提交。
+- **做到哪**：CC-408 的普查推广成机器探针（模块数字常量 = 同角色 catalog 值）：13 个模块 35 个 actionTime 常量 + 少量倍率/能量常量是 catalog 的手抄本。加了通用机制 `cfg.moveActionTimes`（引擎预填）+ `cfgMoveActionTime` 读；迁了 6 个直读模块（12 个常量），其余 7 个模块写成 **§3 卡 T8**、倍率/能量常量写成 **卡 T9**——两张卡输入输出写死、验收是零差，适合执行模型 / dsh。
+- **为什么是通用 cfg 字段而不是每个模块自己读表**：模块 `buildExecutions` 拿不到 `skills`，29 个已读表的模块各开了一个私有 cfg 字段中转；再加 13 个就是 13 个新字段。一个引擎填的表 + 一个读函数，以后新模块不用再想「时间从哪来」。
+- **下一步（start-ready）**：T8（按表逐模块，建议先 miyabi / yixuan / anbyZero / hugo 这四个小的，再 soukaku / grace / burnice）；T9。派 dsh 的配方见 §2b「arena-F r424–r428 摘要」。
+- **拍板**：① `moveActionTimes` 类型上**可选**——只为了 ~40 个手搭 cfg 的模块测试不必全填；引擎路径恒有；缺表读 0。② 本轮不迁纯函数型的 7 个模块——它们每个都要动入参 + 多处测试夹具，一轮做 13 个模块的 verify 代价高且回滚粒度差；拆成卡按模块提交。③ 别人的 WIP 没处理（还不到 1 小时，且在活跃改）。
+- **坑**：worktree 里 `node_modules` 软链在 `git status` 显示 `?? node_modules`，别 `git add -A`；`git merge --ff-only` 进带别人 WIP 的主仓没问题，前提是提交不碰他们改的文件。
+- **回滚点**：`git revert 67f6672b`（含 2 个测试文件与新锁）。
+
 **2026-10-03 14:02 arena-F 第 434 轮**（开工：master `8e8234a2` 干净、已推、unpushed 0；无 verify / vitest 进程；REQUIREMENTS.md 无新条目（R1–R8 全 done）；§3 空；在主仓直接做（无并行 lane，认领表已登记）；产物 `/home/kaua/calc-arch/arenaF/r434/`：`patch-cc408.py`、`patch-test.py`、`zd.log`、`guards.log`、`build.log`、`vt.log`）：**CC-408 `1fbfd797`**（代码）+ 本文档提交。
 - **做到哪**：普查 16 个读倍率表的角色模块 → 只有柏妮思有「常量 + 表」双源，且引擎真正用的是常量（持续段两行）；改成只读表、删常量、缺表为 0 不静默兜底。细节、没动的同类（burnice 两个 FALLBACK、claret 两个 `||` 兜底）与理由见卡表 CC-408。
 - **为什么值得**：这是 R6「单一事实源」的直接违例（同 CC-321 删空硬编码表的那类），而且不是「等价冗余」——表变了持续段不跟。改动零差（常量 = 表值），但以后数据重导 / 版本改倍率只改 catalog 一处就对。
@@ -374,7 +382,49 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > 做完：主代理按 §0 复核（真实 diff、vue-tsc、相关测试）→ 提交 → 删卡，在 §2b 留一行「T? 完成 `<commit>`」。
 > 写卡标准：改哪几个文件、改成什么样、怎么验收、不许碰什么，都写死；需要判断的活不写成卡。
 
-（T1、T2 已于第 370 轮 `0c5e00cb` 完成）
+（T1、T2 已于第 370 轮 `0c5e00cb` 完成；T4～T7 已于 r425～r428 完成）
+
+<!-- card:T8 -->
+### T8 · 7 个模块的 `*_ACTION_TIME / *_TIME / *_SECONDS` 常量改读 `cfg.moveActionTimes`（CC-409 续，零差）
+
+**背景（只需知道这些）**：引擎在 `src/composables/resourceCalc/helpers.ts#buildCharConfig` 已把该角色全部招式的 catalog actionTime 预填到 `cfg.moveActionTimes`（moveId → 秒）。模块读法：`import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'`，`cfgMoveActionTime(cfg, '1131011')`。已迁好的样板：`src/mechanics/agents/ellen.ts`（直接在 buildExecutions 用）、`zhao.ts`（先取成局部变量再给 actionTime / totalTime）。
+
+**要改的常量（全部与 catalog 相等，改完数值零差）**：
+
+| 文件 | 常量 → 招式 | 用在哪（行号为 r435 时） | 注意 |
+|---|---|---|---|
+| `soukaku.ts` | `SOUKAKU_FAN_ACTION_TIME` 1.16 → 1131011；`SOUKAKU_WIND_BALL_ACTION_TIME` 0.271 → 1131010；`SOUKAKU_SLAM_ACTION_TIME` 1.25 → 1131012；`SOUKAKU_CHOP_SLAM_ACTION_TIME` 0.7 → 1131013；`SOUKAKU_FROST_DASH_ACTION_TIME` 0.4 → 1131016；`SOUKAKU_FROST_BASIC3_ACTION_TIME` 2.632 → 1131006 | :121–126 纯函数算 `necessaryTime` / `comboAlignTime`；:160 / :182 / :197 / :223 行 actionTime | 纯函数没有 cfg ⇒ 给它加一个入参对象 `times: { fan, windBall, slam, chopSlam, frostDash, frostBasic3 }`，调用处从 cfg 取；`:182` 的 `/ hits` 保留 |
+| `grace.ts` | `A1_TIME` 0.171 → 1181001；`A2_TIME` 0.33 → 1181002；`A3_TIME` 0.682 → 1181003；`A4_TIME` 1.134 → 1181004；`SP_TIME` 0.2 → 1181005；`EX_TIME` 0.342 → 1181006 | :91 `cycleBound`；:101 时间合计；:211 行 | 同上，纯函数加入参；`A?_ENERGY` 四个是 energy_recovery 行值，归 T9 |
+| `miyabi.ts` | `FROST_MOON_ACTION_TIME` 3.434 → 1091029；`FROST_MOON_1_ACTION_TIME` 0.4 → 1091027；`FROST_MOON_2_ACTION_TIME` 0.567 → 1091028 | :159 写 `cfg.miyabiFrostMoonActionTime`；:184 / :201 `?? FROST_MOON_ACTION_TIME` 兜底；:190–191 / :230–231 行 | `cfg.miyabiFrostMoonActionTime` 私有字段**删掉**（它只是常量中转），读处直接 `cfgMoveActionTime(cfg, '1091029')`；模块底部的 augmentation 声明一起删 |
+| `burnice.ts` | `SINGLE_EXPLOSION_TIME` 0.315 → 1171011；`DOUBLE_EXPLOSION_TIME` 1.1 → 1171013 | `computeBurniceMechanic` 内 `singleCastTime` / `doubleCastTime`；`buildExecutions` 的 pushEx | 走 CC-408 同一条路：加进 `exRowMultipliers` 旁边的必填入参（建议改名为 `exRows: { …Multiplier, singleExplosionTime, doubleExplosionTime }` 或另加 `exRowTimes`），`burniceMechanicSourceOf` 从 cfg 取；测试 9 处入参夹具同步补。**`DOUBLE_SPRAY_MAX_SECONDS` 2.274 不要动**——它是「双喷最长秒数」语义（恰好等于 1171012 的 actionTime），是可调设置的上限不是行时长 |
+| `yixuan.ts` | `INK2_SECONDS` 0.2 → 1371024；`ASHEN_SECONDS` 0.3 → 1371026 | :198–199 时间合计 | 看该函数是否有 cfg；没有就加入参 |
+| `anbyZero.ts` | `ANBY_ZERO_CRITICAL_ACTION_TIME` 0.867 → 1381023（苍光·临界；:53 是 `export const`，先 grep 测试有没有 import） | :120–121 | 同上 |
+| `hugo.ts` | `HUGO_EX_FINAL_ACTION_TIME` 1.805 → 1291010 | :61 `catalogActionTime <= 0 ? 常量` 兜底；:243 行 | :61 的兜底**删掉**（缺表 = 0，CC-408 口径）；:243 改读 cfg |
+
+**不许碰**：任何倍率 / 能量数字（归 T9）；`DOUBLE_SPRAY_MAX_SECONDS`；行的 count / 口径；其它模块。
+
+**验收（每个模块可单独一个提交，也可合一个）**：
+1. `grep -n "_ACTION_TIME = \|_TIME = \|_SECONDS = " src/mechanics/agents/{soukaku,grace,miyabi,burnice,yixuan,anbyZero,hugo}.ts` 只剩表里标「不要动」的；
+2. `npx vue-tsc -b --force` 0 错；
+3. `npx vitest run src/mechanics/__tests__/<模块>*.test.ts src/composables/__tests__/moveActionTimesCc409.test.ts` 绿（手搭 cfg 的测试要补 `moveActionTimes: {...}`，照 `xide.test.ts#mkCfg` 的写法）；
+4. `bash .zc/perf/zd.sh t8-<模块>` DUMP / ROWS **DIFF 0**（常量 = 表值，必须零差；不是 0 就是改错了，不要调期望值）；
+5. 顺手在 `moveActionTimesCc409.test.ts` 的 `CASES` 里给每个迁移模块加一对 (agentId, moveId)。
+<!-- /card:T8 -->
+
+<!-- card:T9 -->
+### T9 · 模块内「= catalog 行值」的倍率 / 能量常量改读表（CC-408 同款，零差）
+
+**对象（r435 探针 `/home/kaua/calc-arch/arenaF/r435/dupProbe.out`）**：
+- `hugo.ts:64 HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8` = 1291010 damage；用于 :244 / :255 / :266 的 `damageMultiplier`（带 override 的加法）。
+- `xixifu.ts:42 XIXIFU_SHIGU_BASE = 254.4` = 1521019 damage（:161 / :189 行 + :167 备注文案）；`xixifu.ts:54 XIXIFU_SHEKISS_RATIO = 1009.1` = 1521006 damage。
+- `grace.ts:43–46 A1_ENERGY..A4_ENERGY` = 1181001–1181004 energy_recovery。
+
+**做法**：在模块 `buildCharConfig`（有 `skills`）用 `getRowValue(findMoveById(skills, id), 'damage' | 'energy_recovery')` 读进 `cfg.mechanicRowValues[id]`（已有协议，见 burnice / roxy），纯函数处改为入参、调用处从 `cfg.mechanicRowValues` 取；常量删除；**缺表为 0，不加 `|| 常量` 兜底**（CC-408 拍板）。
+
+**验收**：vue-tsc 0；该模块测试 + 全量 `npx vitest run --maxWorkers=4` 绿；`zd.sh t9-<模块>` DIFF 0；手搭 cfg 的测试补 `mechanicRowValues`。
+
+**不许碰**：`claret.ts:443–444` 与 burnice 的 `STIRRING/TOSSING_DAMAGE_FALLBACK`——那两个引擎路径已经先读表，是 CC-408 明示「下次碰该模块顺手改」的项，要改放在同一提交里也可以，但不要为它们单独改测试口径。
+<!-- /card:T9 -->
 
 （T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**。）
 
