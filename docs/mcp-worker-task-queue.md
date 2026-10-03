@@ -51,7 +51,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **出卡前 grep 断言的全部消费者；brief 里给工人「没说清就选最小改动继续」的授权（2026-10-03 r436 CC-410）**：卡面写「:61 兜底删掉」，实际那行是 `axisMoveActionTime` 钩子的实现、有测试锁着——工人读到矛盾后推敲 9 分钟零改动。
   判据：派发后 >5 分钟 `git status` 零改动 ⇒ 看 `worker.err` 尾部它在纠结什么，多半卡面错了；`kill <pid>`（pid 取自 `pgrep -af '^node .*dsh --profile headless'`）、改卡、重派，比等便宜。第二次派发 8 分钟收工。
 - **全量 vitest 单独一条 `wsl_exec`（2026-10-03 r437 实测）**：guards 链（~45s）+ build（~47s）+ vitest(4)（~250s）串在一条调用里，总时长撞上桥的 ~285s 上限，整条被杀、vitest 日志半截还没有 summary——看起来像「跑了但没结果」。guards / build 一条，vitest 另一条，各自 `timeout 280`。
-- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 474 / 4325，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
+- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 475 / 4327，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
 ### 0.R2 收尾流程（2026-09-27 R2 定稿；依据与数字见 `docs/mcp-dev-process-speed.md`）
 
 - **强度不变，顺序和并行方式变了**：全量 `npm run verify`、零差、文档提交后重跑 check-guards 三道都保留。
@@ -91,6 +91,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 20:19 arena-F 第 455 轮**（开工：origin = 主仓 = `b6925316`，unpushed 0；**主仓有别人 20:19 起的 WIP**：`src/composables/resourceCalc/solveTeam.ts` 加了 `TRACE_OUTER` 插桩（注释写明「临时插桩，yql-cycle 探针用，随探针一起回滚」）+ 未跟踪 `src/composables/__tests__/yqlCycleProbe.test.ts`，LANE-CLAIMS 未认领——不是我的，没碰；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 无可开工项；worktree `wt-T23`（已删）；产物 `/home/kaua/calc-arch/arenaF/r455/`）：**CC-426 `454177d0`** + 本文档提交。
+- **做到哪**：按 r454 交接的「从未扫过的大文件」线扫 `ResultPage.vue`，结构面干净（见 r6 §8 行 455）；写侧残留两处手写 180（总时间输入反算、资源卡时间条分母）⇒ CC-426：卡片加必填 `totalTime` prop、页面读 `enemy.battleTime`、新锁 `battleTimeDisplaySingleSource.test`。零行为（zd DIFF 0）。
+- **踩坑（有用）**：第一版想给 prop 配「缺省 = 前台 + 后台」兜底，CC-252 锁当场拦下（展示层不许内联 frontline+backstage）。锁是对的——必填 prop 更干净。**新规则**：给展示组件加「可从已有字段推」的兜底前，先 `grep` 一下 `src/core/__tests__/*SingleSource*.test.ts` 的 PATTERN，多半已经有锁。
+- **沉淀**：`?? 180` 死兜底约 25 处记为 r6 §8.0 第 13 条，给的是方向（模块读钩子入参 combatTime）而不是「全仓替换常量」；不排期。
+- **给别的 lane**：主仓那个 `solveTeam.ts` TRACE 插桩若 > 1 小时没动静且没认领，按 §1 孤儿流程处理（注释已说明随探针一起回滚 ⇒ 大概率直接 `git checkout -- solveTeam.ts` + 删探针文件，但先看 `yqlCycleProbe.test.ts` 里有没有写出结论）。
+- **下一步（start-ready）**：无排定卡。找题顺序不变（REQUIREMENTS → §3 → §8.0）。「从未扫过的大文件」线还剩：`StunAxisPage.vue`（960）、`ResourceUtilizationPage.vue`（888）、`FreeComparePage.vue`（786，r6 零提及）、`StatPanel.vue`（986）、`ResponseSurface3D.vue`（1371，纯图形）。四步看法同 r454。每轮一个，没发现就记一行结项。
+- **回滚点**：`git revert 454177d0`。
 
 **2026-10-03 20:08 arena-F 第 454 轮**（开工：origin = 主仓 = `f01a63aa`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；按 r453 找题顺序读 r6 §8.0 ⇒ 取第 13 条「`TeamConfigPage.vue` 从未扫过」；worktree `wt-T22`（已删）；产物 `/home/kaua/calc-arch/arenaF/r454/`）：**CC-425 `fd834990`** + 本文档提交。
 - **做到哪**：扫完 `TeamConfigPage.vue`。结构面干净（见 r6 §8 行 454），唯一的「同一物理量两份」是保底4喧响提示里手写的 `1500`（引擎 `DECIBEL_ROUND_THRESHOLD`）⇒ 引擎结果补 `roundThreshold` 字段、页面插值、CC-229 锁追加禁 `\b1500\b`。零行为（zd DIFF 0），分片 474 / 4325 不变（只加断言）。
