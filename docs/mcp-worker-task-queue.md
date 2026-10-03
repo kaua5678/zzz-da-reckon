@@ -86,6 +86,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 16:08 arena-F 第 440 轮**（开工：origin `ccbe094f`；本地 master 仍带别人未推的 `4933cb83`/`4749ff51`（红）+ 我的两个重复 patch；别人的 freeCompare WIP 在主仓、15:55 后暂歇；REQUIREMENTS.md 无新条目；派 dsh 做 T9 hugo，worktree `wt-T9h`（基于 **origin/master** 而不是本地 HEAD——本地 HEAD 带别人的红）；产物 `/home/kaua/calc-arch/arenaF/r440/`：`dispatch-t9h.sh`、`worker-T9h.report`、`guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log`；`arenaF/wip-backup-1608/`、`wip-backup-16xx/` 是 rebase 时别人 WIP 的临时备份，可删）：**CC-413 `35ac4d1f`**（代码，**已推 origin/master**）+ 本文档提交。
+- **做到哪**：T9 的 hugo 完成（含 T8 漏网的两行 actionTime）；T9 剩 xixifu（254.4 / 1009.1）与 grace（A1–A4_ENERGY），卡面已更新。工人 8 分钟一次过，还自己多跑了一遍全量（470/4303）——我另跑分片复核一致。
+- **本地 master 与 origin 的关系（本轮两次整理）**：开工时用「备份 WIP → 还原到 HEAD → `git rebase origin/master` → 放回 WIP」把本地 master 落到 origin 之上，我的重复 patch 自动消失，别人的提交只换 hash（`4933cb83→93c4f842`，`4749ff51→2817d19b`）；推完 CC-413 后再做一次（他 16:24 又提交了 `ba04b897 feat(freeCompare)…`，三个一起换成 `e8e32827 / 716ada7a / 803a48e3`）。**现在本地 master = origin `35ac4d1f` + 他的 3 个未推提交，无重复**。这套动作安全的前提：他的提交和 WIP 都不碰我们推上去的文件；每次 rebase 前 `git status` 必须为空（备份还原后），rebase 用时 ~1s。
+- **⚠ 别人的 3 个提交仍未推、仍带红**：`e8e32827`（harness 平A权重兜底）在 r439 隔离确认使 `backstageAxisVulnCc391` / `adjustableEffect`×2 / `lateCfgWrite` 4 条红；`803a48e3`（freeCompare 三态）没验过。他 16:19 在主仓跑了 `npm run check`（默认 worker，load 29，把我的分片挤超时一次）——说明他**看得到**红，可能在修。16:55 起若仍未推且无新动作 ⇒ 下一轮按孤儿规则：worktree 基于本地 HEAD 跑那 3 个测试文件 + freeCompare 测试，决定 push 全部 / 只 revert `e8e32827` 后 push，写明理由。**不要**把红推上 origin。
+- **流程备忘**：worktree 一律 `git worktree add <wt> origin/master`（不是 HEAD），验证基线才是干净的；合入用 `git push origin <worktree 提交>:master`，然后把本地 master rebase 到 origin 上，而不是 cherry-pick 制造重复。
+- **下一步（start-ready）**：T9 xixifu（`XIXIFU_SHIGU_BASE` 254.4 → 1521019 damage：:161 / :189 行 + :167 备注文案里的数字改成模板插值；`XIXIFU_SHEKISS_RATIO` 1009.1 → 1521006 damage :211；锁进 `mechanicRowValuesT9.test.ts` CASES）→ T9 grace（`A1–A4_ENERGY` → 1181001–1181004 energy_recovery，`A_SEG_ENERGY` 数组从 cfg 组装）→ T10 备选。
+- **回滚点**：`git revert 35ac4d1f`。
+
 **2026-10-03 15:38 arena-F 第 439 轮**（开工：origin = 本地 `57537e6e` 干净已推，但另一 lane 正在主仓跑**默认 worker 的 `vitest run`**（load 22）并改 `src/composables/freeCompare/*`；REQUIREMENTS.md 无新条目；等它跑完后派 dsh 做 T8 末段 burnice，worktree `wt-T8d`（已删）；产物 `/home/kaua/calc-arch/arenaF/r439/`：`dispatch-t8d.sh`、`worker-T8d.report`、`guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log`（基线上的全量，分片）、`tsc-head.log` / `guards-head.log` / `vt-head-s1.log`（含别人提交的 HEAD）、`vt.log`（两次被 280s 超时杀掉的全量，见教训））：**CC-412 `64e8d13f`**（代码，**已推 origin/master**）+ 本文档提交。
 - **做到哪**：T8 全部完成（卡已压成一段 ✅）。工人 5 分钟一次过。
 - **⚠ 又一次分叉（与 r437 同型，下一轮先读）**：合入时发现同一 lane（`kaua5678`）15:54 / 15:55 在主仓又提交了 `4933cb83 fix(test): harness 平A时间权重按生产口径兜底（支援/防护=0）`（改 `src/test/harness.ts`）和 `4749ff51 docs(test): …`，未推、无认领。我 cherry-pick 成 `9a5c75ea` 叠上去跑全量分片 1：**3 文件 4 用例红**——`backstageAxisVulnCc391.test.ts (b)`、`adjustableEffect.test.ts` 两条（7 条严格线性型 / 17 条 rate 0/1/2）、`lateCfgWrite.test.ts`（全角色晚写锁）。隔离：这 3 个文件在 `57537e6e` 全绿、在 `4749ff51`（不含我的）全红 ⇒ **是 `4933cb83` 的 harness 改动引入的**（harness 兜底改了平A时间权重 ⇒ 全角色扫描类测试的基准变了）。处置同 r437：**origin/master 只推到 `64e8d13f`（= 57537e6e + CC-412，全绿）**；本地 master = `4933cb83 → 4749ff51 → 9a5c75ea（dup）→ 本文档 cherry-pick（dup）`。作者 `git pull --rebase origin master` 后重复 patch 自动丢弃，剩他两个提交重放——**重放后那 4 条红归他修**（是 harness 口径该改还是测试该改，只有他知道意图）。若 1 小时内无动静：下一轮按孤儿规则在 worktree 里 rebase 他的两提交到 origin 上、跑那 3 个文件，修不了就 `git revert 4933cb83`（文档类 `4749ff51` 可留）并在这里写明。主仓不许 `git reset`——他的工作树还有 freeCompare 4 个文件未提交。
@@ -426,10 +434,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 <!-- /card:T8 -->
 
 <!-- card:T9 -->
-### T9 · 模块内「= catalog 行值」的倍率 / 能量常量改读表（CC-408 同款，零差）
+### T9 · 模块内「= catalog 行值」的倍率 / 能量常量改读表（CC-408 同款，零差；**hugo 已于 r440 CC-413 `35ac4d1f` 完成**，剩 xixifu / grace）
 
 **对象（r435 探针 `/home/kaua/calc-arch/arenaF/r435/dupProbe.out`）**：
-- `hugo.ts:64 HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8` = 1291010 damage；用于 :244 / :255 / :266 的 `damageMultiplier`（带 override 的加法）。
+- ~~`hugo.ts:64 HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8`~~ ✅ CC-413（样板：`buildHugoCharConfig` 写 `cfg.mechanicRowValues`，`buildHugoExecutions` 开头取一次局部量；锁在 `src/composables/__tests__/mechanicRowValuesT9.test.ts`——xixifu / grace 往它的 CASES 里加，不要另起文件）。
 - `xixifu.ts:42 XIXIFU_SHIGU_BASE = 254.4` = 1521019 damage（:161 / :189 行 + :167 备注文案）；`xixifu.ts:54 XIXIFU_SHEKISS_RATIO = 1009.1` = 1521006 damage。
 - `grace.ts:43–46 A1_ENERGY..A4_ENERGY` = 1181001–1181004 energy_recovery。
 - **不要碰** `norma.ts:29 HEAT_PER_ENERGY = 0.4`（探针里它与 1571010 actionTime 相等是巧合，语义是每点能量的热量）和 `norma.ts:32 EX_SPECIAL_ENERGY_COST = 40`（与 ether_purify 相等也是巧合）。
