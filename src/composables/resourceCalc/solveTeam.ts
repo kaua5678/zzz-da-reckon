@@ -55,8 +55,8 @@ export interface SolveTeamInput {
   stunWindowDur: number
   /** 原 :253 —— 有效战斗时间（扣无敌时间） */
   stunEffTime: number
-  /** = `resourceConfig.value`（原闭包经 .value 读；函数体内改 `resourceConfig?.x`） */
-  resourceConfig: ResourceCalcConfig | null
+  /** = 守卫后的 `resourceConfig.value`（CC-419 起非 null：`calcOutput` 已前置守卫并显式下传） */
+  resourceConfig: ResourceCalcConfig
 }
 
 /** 外层求解产物：`out` = 组装好的整轮结果；`ceilingWriteBack` 非 null ⇒ 调用方执行降配闸门写回。 */
@@ -176,7 +176,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // `m.prev.stunPool`，即 `threads.prevPoolStunCount`）分配了 K 个窗，池却撑不住（实测 yixuan-trigger-lucia 读入 4 → 池 3，
       // 资源行连携 4 / 池与轴栈 3）。判据在纯函数 outerCycle.ts#pickOuterCycleMember ⓪″；这里只算 `feasible`（非 physical 不传）。
       // 同理 physical 下 ⓪ 零窗判据的「窗数」= 读入 K（`windowsIn`），不是规划值 stunIn（实测 auto-1401-1511-1411 可行成员读入 2、规划 0.015）。
-      const physical = resourceConfig?.stunPlanProjection === 'physical'
+      const physical = resourceConfig.stunPlanProjection === 'physical'
       const feasibleOf = (m: OuterCycleMember): boolean | undefined => {
         if (!physical) return undefined
         const kIn = m.prev?.stunPool?.stunCount
@@ -293,7 +293,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     // 取读入 K（按 K 分配时池撑得住 ≥ K，即最大自洽可行整数），报告池同步钳到 K；K+1 那次没有分配时间，不兑现。
     // 只处理「池 > 读入」的一侧；「池 < 读入」（引擎多分配了窗口）的成员已在 pickOuterCycleMember ⓪″（CC-153）排除出参选。
     // 回退点：删本块与 `core/stunPool.ts#withStunCount`。
-    if (outerExit === 'cycle' && resourceConfig?.stunPlanProjection === 'physical' && out.stunPool && outPrev?.stunPool) {
+    if (outerExit === 'cycle' && resourceConfig.stunPlanProjection === 'physical' && out.stunPool && outPrev?.stunPool) {
       const kIn = outPrev.stunPool.stunCount
       if (out.stunPool.stunCount > kIn) out = { ...out, stunPool: withStunCount(out.stunPool, kIn) }
     }
@@ -419,8 +419,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
          * 治「合轴率↓ 但降配档回升 ⇒ 伤害反而涨」的反转（实测 C0：合轴率 0.20→0.10 时
          * 交互档 0.25→0.375、闪反 3→4、伤害 24.21M→24.36M）。缺省 ceiling=1 ⇒ 候选集不变。
          */
-        const monotoneGate = resourceConfig?.interactionScaleMonotone === true
-        const scaleCeiling = resourceConfig?.interactionScaleCeiling ?? 1
+        const monotoneGate = resourceConfig.interactionScaleMonotone === true
+        const scaleCeiling = resourceConfig.interactionScaleCeiling ?? 1
         const candidates = scaleCeiling >= 1
           ? DOWNSCALE_SCALES
           : DOWNSCALE_SCALES.filter(s => s <= scaleCeiling + 1e-9)
@@ -453,7 +453,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           r = best.value
           axisFallback = hadAxis
           interactionScale = best.scale
-        } else if (resourceConfig?.interactionScaleMonotone && candidates.length > 0) {
+        } else if (resourceConfig.interactionScaleMonotone && candidates.length > 0) {
           /**
            * **闸门下的退化兜底**（用户口径 2026-09-20：正因子单调）：
            *

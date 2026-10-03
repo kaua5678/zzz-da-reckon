@@ -223,10 +223,12 @@ export function createResourceCalc(
    * 同时追踪失衡次数/连携次数/好评转大等反馈，区分固定点、离散环与耗尽未收敛。
    */
   const calcOutput = computed(() => {
-    if (!resourceConfig.value || !catalogStore.ready) return null
+    // CC-419：守卫后的 `base` 显式下传（computeCalcOutput → solveTeam），下游不再接受 `ResourceCalcConfig | null`。
+    const base = resourceConfig.value
+    if (!base || !catalogStore.ready) return null
     if (!calcOutputMemoEnabled || configStore.interactionScaleMonotone) {
       calcOutputMemoStats.bypass++
-      return freezeCached(computeCalcOutput())
+      return freezeCached(computeCalcOutput(base))
     }
     const key = JSON.stringify([
       configStore.$state,
@@ -245,7 +247,7 @@ export function createResourceCalc(
     }
     calcOutputMemoStats.misses++
     // 记忆化命中会把同一对象交给下一位读者 ⇒ 测试环境深冻结，任何下游原地改写立即抛错
-    const out = freezeCached(computeCalcOutput())
+    const out = freezeCached(computeCalcOutput(base))
     calcOutputMemo.set(key, out)
     if (calcOutputMemo.size > CALC_OUTPUT_MEMO_MAX) calcOutputMemo.delete(calcOutputMemo.keys().next().value!)
     return out
@@ -253,7 +255,7 @@ export function createResourceCalc(
   /** calcOutput 记忆化 LRU（本实例私有；见文件头 CALC_OUTPUT_MEMO_MAX 注释） */
   const calcOutputMemo = new Map<string, ReturnType<typeof computeCalcOutput>>()
 
-  function computeCalcOutput() {
+  function computeCalcOutput(base: ResourceCalcConfig) {
     // 锁定失衡次数（命座对比固定场景）：stunCount 固定输入不回填（"操作够就能打 N 次失衡"口径），
     // 但异常喧响/终结技次数反馈仍收敛，避免与资源利用率页口径分裂
     const lockedStunCount = configStore.enemy.stunCountLock ?? -1
@@ -264,7 +266,7 @@ export function createResourceCalc(
     // stageResolveFeasibility 的最后一条语句，之后到原 :653 再无 resourceConfig/configStore 读，
     // 故读写时序逐位不变（详见 solveTeam.ts 头注释）。
     const { out, ceilingWriteBack } = solveTeam({
-      runCalcRound, lockedStunCount, stunWindowDur, stunEffTime, resourceConfig: resourceConfig.value,
+      runCalcRound, lockedStunCount, stunWindowDur, stunEffTime, resourceConfig: base,
     })
     if (ceilingWriteBack !== null) {
       configStore.interactionScaleCeiling = Math.min(configStore.interactionScaleCeiling, ceilingWriteBack)

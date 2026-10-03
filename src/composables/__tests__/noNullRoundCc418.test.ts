@@ -36,4 +36,15 @@ describe('CC-418 runCalcRound 非 null 化 / null 轮退役', () => {
     expect(src).not.toMatch(/\bthreadsAfterNullRound\s*\(/)
     expect(src).not.toMatch(/\bout\?\./)
   })
+
+  it('CC-419：SolveTeamInput.resourceConfig 非 null（calcOutput 守卫后显式下传），函数体无 `resourceConfig?.`', () => {
+    const src = read('solveTeam.ts')
+    expect(src).toMatch(/export interface SolveTeamInput \{[\s\S]*?\n  resourceConfig: ResourceCalcConfig\n/)
+    expect(src).not.toContain('resourceConfig: ResourceCalcConfig | null')
+    // 只看代码行（头注释里保留着 CC-10 的搬迁史，提到过 `resourceConfig?.`）
+    const codeLines = src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l))
+    expect(codeLines.filter(l => l.includes('resourceConfig?.'))).toEqual([])
+    const orch = readFileSync(resolve(__dirname, '..', 'useResourceCalc.ts'), 'utf-8')
+    expect(orch).toMatch(/function computeCalcOutput\(base: ResourceCalcConfig\)/)
+  })
 })
