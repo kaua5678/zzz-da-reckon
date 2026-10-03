@@ -92,6 +92,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 01:17 arena-F 第 478 轮**（开工：主仓 = origin = `029fd878`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T46`（已删）；产物 `/home/kaua/calc-arch/arenaF/r478/`）：**CC-440 `b9ea3367`** 模块自造执行行骨架 `moduleExecRow`，五份 `pushExec` 试点迁入。
+- **找题**：按 r477 交接的「同名私抄 helper ≥3 份、逐字相同才收」扫描，命中 `pushExec` ×5（lighter / lucy / rina / yaojiayin / yeshuguang）——不是逐字相同，但同形：整个 `SkillExecution` 字面量 + 6～9 个账本字段全 0；全仓同形字面量 55 处。`SkillExecution` 再加必填账本字段就要改 55 处 ⇒ 值得一个骨架。
+- **做了**：`src/mechanics/moduleExecRow.ts`：只默认 6 个必填账本字段，语义字段调用方给，键序与原字面量一致（zd 按 JSON 键序哈希）。五份 pushExec 改调骨架，各自的 `count<=0||dmg<=0` 过滤与语义字段原样。零差：zd 0、timeGolden 不变、两 shard 479/4345。
+- **坑（已写进骨架 doc 注释与 arch CC-440 行）**：`decibelRecovery / totalDecibelRecovery / energyRecovery / totalEnergyRecovery` 是三态——`undefined` 回填取表、显式 `0` 禁用、`*Override` 模块换算。第一版骨架把它们默认成 0，yeshuguang 原本不写 decibel 的行被禁掉 ⇒ 1431 各队 ult 2→1、golden 18 条红、zd 258。改成不默认后零差。**凡是给执行行造默认值，先读 `composables/resourceCalc/helpers.ts:380-382`。**
+- **回退点**：`git revert b9ea3367`。
+- **下一步（start-ready）**：剩余 ~50 处字面量**不开扫描卡**（触碰模块时顺手迁：删 `count` 后面的账本零行、`executions.push({…})` → `executions.push(moduleExecRow({…}))`，显式 0 的回能字段**保留**，每次 zd 0）。题序回到 REQUIREMENTS → §3 → §8.0 触发 → 「本轮无题」。可选扫描式找题：`grep -rn "executions.push({" src/mechanics/agents/*.ts \| wc -l` 之外，看 `patchExecutions` 里对已有行的改写是否也有同形私抄（如 `exec.damageMultiplierOverride = true; exec.damageMultiplier = …` 三连）——同样判据：同形 ≥3 份且能零差收口才动。
+
 **2026-10-04 01:07 arena-F 第 477 轮**（开工：主仓 = origin = `30e7c878`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T45`（已删）；产物 `/home/kaua/calc-arch/arenaF/r477/`）：**CC-439 `6cc0e88f`** 面板侧设置读口 `mechanicSettingOf`。
 - **r476 交接续核**：`severian.c4Coverage` 三读一致（无事）；seth / evelyn / corin / piper 面板侧 `settings[id] ?? 1` 不钳 vs cfg 侧 clamp——只在越界值上有别、UI 有 min/max，**不动**。
 - **做了**：corin / phoenix / severian / sigrid 四份逐字相同的 `settingOf` 删除，改 import `mechanicSettingOf`（放在 CC-235 的 `utils/mechanicSettingCfg.ts`，与 `cfgMechanicSetting` 并列：同一协议的 cfg 侧 / 面板侧两个读口）。零差：zd 0、timeGolden 不变、两 shard 479/4345。
