@@ -64,5 +64,11 @@ export default defineConfig({
     // 默认 30s 会让它们随机超时（测的是机器负载，不是断言）。**真正的性能判据**已改为
     // 「同进程参照量归一化」的比值（见 `charIncrementInt.test.ts`），这里只放开基础设施超时。
     testTimeout: 180_000,
+    // CC-424（2026-10-03 r450）：worker 上限进配置，不再靠每个人记得加 `--maxWorkers=4`。
+    // 本机 16 vCPU / 9 GB 内存，vitest 默认按 CPU 数起 16 个 fork，每个 fork 载入全部角色模块后
+    // 内存合计超过物理内存 ⇒ 整个 WSL VM 被拖死（2026-10-02 r385 两次；2026-10-03 r450 另一会话
+    // 跑 `npm run check` 时 load 20+）。4 个 worker 实测全量约 200~240s、稳定。
+    // 覆盖方式：`VITEST_MAX_WORKERS=8 npx vitest run` 或命令行 `--maxWorkers=N`（CLI 优先于配置）。
+    maxWorkers: Number(process.env.VITEST_MAX_WORKERS) || 4,
   },
 })
