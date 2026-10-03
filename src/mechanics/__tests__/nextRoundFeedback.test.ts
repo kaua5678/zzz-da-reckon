@@ -28,6 +28,7 @@ import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import { collectNextRoundFeedback } from '@/composables/resourceCalc/helpers'
 import type { AgentNextRoundFeedbackInput } from '@/mechanics/types'
+import { emptyAnomalyPool } from '@/core/anomalyPool'
 import { ELLEN_C4_ENERGY_PER_TRIGGER, type EllenCycle } from '@/mechanics/agents/ellen'
 
 // ── 构造器：只填钩子真正读到的字段，其余用最小代价补齐（真实对象形状见 types/resource） ──
@@ -49,7 +50,7 @@ function run(agentId: string, o: { cfg?: Record<string, unknown> } & Partial<Age
     teamResult: teamResult([]),
     displayResult: undefined,
     adjustedResult: null,
-    anomalyPool: null,
+    anomalyPool: emptyAnomalyPool(),
     prevThreads: initialCalcRoundThreads(),
     combatTime: 180,
     getAgentSkills: () => undefined,
@@ -96,9 +97,9 @@ describe('普罗米娅 1541：触发命中 / 队友异放 / 自身异放回喧�
     expect(chars.every(c => !('promiaTriggerHitCount' in c))).toBe(true)
   })
 
-  it('触发命中数读异常池 totalTriggerCount；池为 null → 0', () => {
+  it('触发命中数读异常池 totalTriggerCount；空池 → 0（CC-434：契约不再接受 null）', () => {
     expect(run('1541', { anomalyPool: { totalTriggerCount: 9 } as never }).ret.promiaTriggerHits).toBe(9)
-    expect(run('1541', { anomalyPool: null }).ret.promiaTriggerHits).toBe(0)
+    expect(run('1541', { anomalyPool: emptyAnomalyPool() }).ret.promiaTriggerHits).toBe(0)
   })
 
   it('队友异放：排除普罗米娅自身、只数 release 且 count>0、逐事件 floor 求和', () => {

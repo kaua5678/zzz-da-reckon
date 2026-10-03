@@ -91,4 +91,22 @@ describe('CC-418 runCalcRound 非 null 化 / null 轮退役', () => {
       expect(src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l) && /\banomalyPool\?\.|\bap[01]\?\./.test(l)), f).toEqual([])
     }
   })
+
+  it('CC-434（T13-b′）：模块钩子契约 AgentNextRoundFeedbackInput.anomalyPool 不带 `| null`，反馈钩子无 `anomalyPool?.`，夹具不再传 null', () => {
+    const hooks = readFileSync(resolve(__dirname, '../../mechanics/typesHooks.ts'), 'utf-8')
+    expect(hooks).toMatch(/\n  anomalyPool: DeepReadonly<AnomalyPoolResult>\n/)
+    expect(hooks).not.toContain('anomalyPool: DeepReadonly<AnomalyPoolResult> | null')
+    // 反馈钩子函数体（`function <x>NextRoundFeedback(` 到下一个顶层 `}`）内不得再出现 `anomalyPool?.`；
+    // remielle / alice 在**行上下文**（typesRows DamagePoolContext.anomalyPoolResult，另一层、仍可 null）里的 `anomalyPool?.` 不在本锁范围。
+    for (const m of ['promia', 'remielle', 'yixuan', 'vivian', 'ellen']) {
+      const src = readFileSync(resolve(__dirname, `../../mechanics/agents/${m}.ts`), 'utf-8')
+      const body = src.match(/\nfunction \w+NextRoundFeedback\([\s\S]*?\n\}\n/g) ?? []
+      expect(body.length, m).toBeGreaterThan(0)
+      expect(body.join('').includes('anomalyPool?.'), m).toBe(false)
+    }
+    for (const t of ['remielle', 'burnice', 'jane', 'nextRoundFeedback', 'nextRoundFeedbackR19', 'nextRoundFeedbackR20']) {
+      const src = readFileSync(resolve(__dirname, `../../mechanics/__tests__/${t}.test.ts`), 'utf-8')
+      expect(src.includes('anomalyPool: null'), t).toBe(false)
+    }
+  })
 })

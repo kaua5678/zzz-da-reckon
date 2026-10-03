@@ -443,7 +443,7 @@ function vivianNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeed
   // 迁移前判据 =「队里有 1331」；派发器只对在队模块调用本钩子 ⇒ 恒真（CC-383 删去死判据，块结构保留）。
   {
     vivianTeamExNext = teamResult.characters.reduce((sum, ch) => sum + (ch.exSpecialCount ?? 0), 0)
-    vivianAnomalyTriggersNext = (anomalyPool?.perElement ?? []).reduce(
+    vivianAnomalyTriggersNext = anomalyPool.perElement.reduce(
       (sum, prog) => sum + (prog.triggerCount ?? 0),
       0,
     )

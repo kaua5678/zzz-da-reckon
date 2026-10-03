@@ -6,6 +6,7 @@ import { emptyPanel } from '@/core/panel'
 import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts, remielleFleetingGraceMultiplier, remielleSpecialVoidflareCount, remielleSpecialVoidflareRainbowCount, remielleSpecialVoidflareUseCount } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
+import { emptyAnomalyPool } from '@/core/anomalyPool'
 
 /** 3异常队（蕾米+薇薇安+月城柳），额外能力 tier=3；globalBuffs 关掉防污染（SOP §7） */
 async function setup(cinemaLevel = 0) {
@@ -178,7 +179,7 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     ultimateInAxisFraction: () => 1,
     axisInUnits: () => 0,
     getMechanicSetting: (_k: string, d: number) => d,
-    anomalyPool: null,
+    anomalyPool: emptyAnomalyPool(),
     entryPanel: panel() as never,
     skills: skills() as unknown as AgentSkills,
     panelOf: (s: number) => (s === 1 || s === 2 ? panel() as never : undefined),

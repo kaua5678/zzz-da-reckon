@@ -354,8 +354,8 @@ export interface AgentNextRoundFeedbackInput {
   displayResult?: DeepReadonly<TeamResourceResult>
   /** 调整后结果（诺姆赠链 / 琉音转大落地后，伤害池与执行计划口径）；null = 本轮无调整 */
   adjustedResult?: DeepReadonly<TeamResourceResult> | null
-  /** 本轮异常池结果（无异常行队伍为 null） */
-  anomalyPool: DeepReadonly<AnomalyPoolResult> | null
+  /** 本轮异常池结果。无异常行队伍 = 合法空池（`core/anomalyPool#emptyAnomalyPool` 同形），**不是 null**（CC-423 流水线层 / CC-434 契约层）。 */
+  anomalyPool: DeepReadonly<AnomalyPoolResult>
   /**
    * **上一轮**收敛线程快照（只读）。两个用途：① 首轮守卫（`prev* <= 0` 才写 cfg）；
    * ② 自身反馈输入（如上一轮队友强特合计）。

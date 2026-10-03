@@ -374,7 +374,7 @@ function promiaNextRoundFeedback({ teamResult, displayResult, anomalyPool }: Age
   // 迁移前判据是「队里有没有 1541」；派发器只对在队模块调用本钩子 ⇒ 恒真（CC-383 删去 `cfg && characters.some(本人)` 死判据，
   // 块结构保留以免大段缩进改动）。
   {
-    promiaTriggerHitsNext = anomalyPool?.totalTriggerCount ?? 0
+    promiaTriggerHitsNext = anomalyPool.totalTriggerCount
     // 队友异放 = 除普罗米娅自身外的全队 release 事件（原文「队友触发异放」，自身异放回喧响另走 promiaReleaseDecibel）
     promiaTeammateReleasesNext = shown.characters
       .filter(ch => ch.agentId !== PROMIA_ID)

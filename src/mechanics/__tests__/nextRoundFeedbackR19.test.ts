@@ -8,6 +8,7 @@ import { collectNextRoundFeedback } from '@/composables/resourceCalc/helpers'
 import type { AgentTeamConfigInput } from '@/mechanics/types'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { AgentNextRoundFeedbackInput } from '@/mechanics/types'
+import { emptyAnomalyPool } from '@/core/anomalyPool'
 
 function feedback(agentId: string, overrides: Partial<AgentNextRoundFeedbackInput> = {}) {
   const cfg = { agentId, slot: 2 } as AgentNextRoundFeedbackInput['cfg']
@@ -16,7 +17,7 @@ function feedback(agentId: string, overrides: Partial<AgentNextRoundFeedbackInpu
   return hook!({
     slot: 2, cfg, characters: [cfg],
     teamResult: { characters: [] } as never,
-    anomalyPool: null, prevThreads: initialCalcRoundThreads(),
+    anomalyPool: emptyAnomalyPool(), prevThreads: initialCalcRoundThreads(),
     combatTime: 180, getAgentSkills: () => undefined,
     ...overrides,
   })
@@ -60,7 +61,7 @@ describe('C-α next-round feedback', () => {
     const characters = [grace, ye] as unknown as AgentTeamConfigInput['characters']
     const next = collectNextRoundFeedback({
       characters, teamResult: result(100), adjustedResult: result(2.25),
-      displayResult: result(200), anomalyPool: null,
+      displayResult: result(200), anomalyPool: emptyAnomalyPool(),
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
     })
     expect(next).toEqual({ graceC1Cycles: 3, yeshuguangGiftUlt: 2.25 })
@@ -73,7 +74,7 @@ describe('C-α next-round feedback', () => {
     getAgentMechanic('1431')!.applyTeamConfig!({ ...input, slot: 1, cfg: characters[1]! })
     expect((ye as Record<string, unknown>).yeshuguangGiftUltCount).toBe(2.25)
     expect(collectNextRoundFeedback({
-      characters: [], teamResult: result(100), anomalyPool: null,
+      characters: [], teamResult: result(100), anomalyPool: emptyAnomalyPool(),
       prevThreads: threads, catalogStore: catalog,
     })).toEqual({})
   })

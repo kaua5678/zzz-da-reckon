@@ -395,7 +395,7 @@ export function remielleFlowerFeatherDanceCasts(
 function remielleNextRoundFeedback({ slot, teamResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
   return {
     remielleFlowerFeatherDanceCasts: remielleFlowerFeatherDanceCasts(
-      slot, anomalyPool?.perSlotAnomalyTriggers, teamResult?.totalTime ?? 180),
+      slot, anomalyPool.perSlotAnomalyTriggers, teamResult?.totalTime ?? 180),
   }
 }
 

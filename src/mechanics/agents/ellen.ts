@@ -496,7 +496,7 @@ function buildEllenResourceSections({ result }: AgentResourceSectionsInput) {
  */
 function ellenNextRoundFeedback({ anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
   // 迁移前判据 =「队里有 1191」；派发器只对在队模块调用本钩子 ⇒ 恒真，CC-383 删去死判据。
-  return { ellenFreezeCount: anomalyPool?.perElement?.find(p => p.element === 'ice')?.triggerCount ?? 0 }
+  return { ellenFreezeCount: anomalyPool.perElement.find(p => p.element === 'ice')?.triggerCount ?? 0 }
 }
 
 export const ellenMechanic: AgentMechanicModule = {

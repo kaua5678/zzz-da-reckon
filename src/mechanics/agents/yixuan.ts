@@ -1018,7 +1018,7 @@ function yixuanNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeed
   }
   // CC-318：玄墨异常触发次数（下一轮通道③回闪能）。原由编排层无条件算进具名线程 `auricInkFlash`、
   // 并在外层 stable 条件里单独比较；现归仪玄模块产出，走 moduleFeedback（CC-314 起整体入签名）。
-  const auricInkTriggers = anomalyPool?.perElement?.find(p => p.element === 'ether_ink')?.triggerCount ?? 0
+  const auricInkTriggers = anomalyPool.perElement.find(p => p.element === 'ether_ink')?.triggerCount ?? 0
   return auricInkTriggers > 0 ? { teamUltimateExtra, auricInkTriggers } : { teamUltimateExtra }
 }
 

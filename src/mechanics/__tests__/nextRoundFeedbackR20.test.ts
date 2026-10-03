@@ -29,6 +29,7 @@ import { setupHarness } from '@/test/harness'
 import { collectNextRoundFeedback } from '@/composables/resourceCalc/helpers'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { AgentNextRoundFeedbackInput, AgentTeamConfigInput } from '@/mechanics/types'
+import { emptyAnomalyPool } from '@/core/anomalyPool'
 
 /** 直接调某个角色的钩子（层①②的最小复现；层③另走真派发器） */
 function feedback(agentId: string, overrides: Partial<AgentNextRoundFeedbackInput> = {}) {
@@ -38,7 +39,7 @@ function feedback(agentId: string, overrides: Partial<AgentNextRoundFeedbackInpu
   return hook!({
     slot: 2, cfg, characters: [cfg],
     teamResult: { characters: [] } as never,
-    anomalyPool: null, prevThreads: initialCalcRoundThreads(),
+    anomalyPool: emptyAnomalyPool(), prevThreads: initialCalcRoundThreads(),
     combatTime: 180, getAgentSkills: () => undefined,
     ...overrides,
   })
@@ -149,11 +150,11 @@ describe('C-β next-round feedback', () => {
       { agentId: '1161', exSpecialCount: 3 },
     ])
     expect(collectNextRoundFeedback({
-      characters, teamResult, anomalyPool: null,
+      characters, teamResult, anomalyPool: emptyAnomalyPool(),
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
     })).toEqual({ teamUltimateExtra: 2.5, consumedTeamEnergy: 60 * 4 + 30 * 3 })
     expect(collectNextRoundFeedback({
-      characters: [], teamResult, anomalyPool: null,
+      characters: [], teamResult, anomalyPool: emptyAnomalyPool(),
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
     })).toEqual({})
   })
