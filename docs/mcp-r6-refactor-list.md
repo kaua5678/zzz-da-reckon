@@ -393,7 +393,6 @@
 | 10 | `chartRunners#runPullValue` 可搬（「带全局缓存不能搬」理由已不成立） | 367 | 有人要改 chartRunners 时顺手，不单开卡 |
 | 11 | `StoreSnapshot.globalBuffs: unknown[]` + `as never[]`（src 剩 1 处） | 368 / 370 | 顺手收窄，不为降计数开卡（S5 规则） |
 | 12 | 新增页面级 `watch(...) → store.set*` / 新增「逐项试→取最优」页面功能 / 新增自绘 canvas 组件 | 380 / 382 / 378 | 评审纪律：分别按「房间属性 vs 页面属性」判断、一律 `withAnalysisScenario`、走 canvasTheme；view 层无锁，靠评审 |
-| 13 | `TeamConfigPage.vue`（1255 行）从未扫过 | 378 | 想找展示层题目时从它开始 |
 
 **第 4 列语义（r453 起明示）**：第 237–395 行 = 重开条件；第 396 行起 = 验证结果（zd / vitest 数字）。以后新行第 4 列写验证结果即可，**人工触发条件写到 §8.0**。
 
@@ -593,6 +592,7 @@
 | 418 | 第 418 轮（lane arena-E；无并行会话，HEAD `7e928003`）：OPEN-ITEMS D1 收尾 | **CC-392**：`0e282a10` 伴随轴内占比跨全部父动作合计（零差）；`e7453962` vivian / pulchra 多父伴随登记，lycaon 后台闪反按失衡占比近似；`48ffeaf9` 轴编辑器隐藏伴随子行与自动行，[表] 池去重对齐伤害侧 | 伤害零变化（zd 只 2 条结构哈希）；全量 463 / 4268 |
 | 419 | 第 419 轮（lane arena-E；无并行会话，HEAD `7bbf3be2`）：r418 下一步（换人审计 + [表] 池） | **CC-393**：`5ed1315b` 轴内 [表] 直读判定抽成 `resourceCalc/axisTableDirect.ts`，编辑器与结算共用；融合并入段与模块隐藏招式不可直读；`d7128f8e` 雨果 1291010 隐藏。换人审计结论：无实害，不改代码 | timeGolden 4 条（希希芙队 −0.66% ~ −0.84%，去重复计伤）；全量 464 / 4273 |
 | 420 | 第 420 轮（lane arena-E；无并行会话，HEAD `2dcdc2bf`，外来提交已补推）：r419 下一步 1 的两条优先项 |
+| 454 | 第 454 轮（lane arena-F；开工 20:08；干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目）：消费 §8.0 第 13 条——扫 `TeamConfigPage.vue`（1249 行；31 computed / 6 watch / 17 函数） | 6 个 watch 全是 UI 态（预设筛选联动、图片错误复位），无 `watch → store.set*`；store 写入全经 setter；面板走 `computePanel` / `computeOutOfCombatPanel`（CC-51）；保底提示直读 `decibelGuaranteeResult`（CC-229）。唯一发现：提示文案手写 `1500` = 引擎 `DECIBEL_ROUND_THRESHOLD` 的副本 ⇒ **CC-425 `fd834990`**（结果带 `roundThreshold`、页面插值、锁禁字面量）。该页扫描结项，§8.0 第 13 条删除 | vue-tsc 0 / guards 0 / build 0 / zd DIFF 0 / 分片 474 / 4325 |
 | 453 | 第 453 轮（lane arena-F；开工 20:03；主仓干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目）：按 r452 交接「看 §8 重开条件列有没有被满足的」| 无代码题。① 逐条核 §8 第 4 列：第 396 行起该列已是验证结果而非条件；237–395 的条件绝大多数已被后续轮消费 ⇒ 整理成 **§8.0 活着的重开条件索引**（13 条，各附查法），以后找题读一屏；② 顺手复核了 r452 代推的 grace 提交（diff 无旧实现残留、注释/`@fact`/`⟳复核` 齐全，无需跟进）；③ `⟳复核 到期` 无已到期项 | 纯文档；guards + tokens 绿 |
 | 452 | 第 452 轮（lane arena-F；开工 19:54；REQUIREMENTS.md 无新条目）：代推别人的未推提交 | 无自己的代码提交。kaua5678「refactor(grace)…」cherry-pick 到 origin/master 全套验证后代推为 `c1897046`；§1 新增「已提交未推 ⇒ 验证后代推」规则；`⟳复核 到期` 无已到期项 | vue-tsc 0 / guards 0 / build 0 / 分片 **474 / 4325**（+1 文件 +5 用例，graceRotation.test） |
 | 451 | 第 451 轮（lane arena-F；开工 19:46；主仓有别人的未推提交 `refactor(grace)…`；REQUIREMENTS.md 无新条目）：T14 排查 | 无代码提交。T14 关卡：两队 1181 顺序/负载/全量分片三种形态下 HEAD 恒 `0 / 0.4`（14×4 次测量），另一会话 grace 提交的 timeGolden diff 7 键全是 1181 ⇒ r450 的红 = 跑到了 grace WIP，机制不可考；证伪「worktree 经 node_modules 软链读到主仓」 | 分片 1/2 236/2077 绿（pre-grace worktree vs post-grace 主仓） |

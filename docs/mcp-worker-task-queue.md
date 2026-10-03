@@ -92,6 +92,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 20:08 arena-F 第 454 轮**（开工：origin = 主仓 = `f01a63aa`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；按 r453 找题顺序读 r6 §8.0 ⇒ 取第 13 条「`TeamConfigPage.vue` 从未扫过」；worktree `wt-T22`（已删）；产物 `/home/kaua/calc-arch/arenaF/r454/`）：**CC-425 `fd834990`** + 本文档提交。
+- **做到哪**：扫完 `TeamConfigPage.vue`。结构面干净（见 r6 §8 行 454），唯一的「同一物理量两份」是保底4喧响提示里手写的 `1500`（引擎 `DECIBEL_ROUND_THRESHOLD`）⇒ 引擎结果补 `roundThreshold` 字段、页面插值、CC-229 锁追加禁 `\b1500\b`。零行为（zd DIFF 0），分片 474 / 4325 不变（只加断言）。
+- **沉淀**：§8.0 第 13 条消费并删除；§8.0 现剩 12 条，全部是「事件 / 日期 / 需求触发」，没有可主动开工的。
+- **下一步（start-ready）**：无排定卡。开工按找题顺序（REQUIREMENTS → §3 → r6 §8.0）；§8.0 最近的日期触发是 2026-10-31（坑 25）。没有题就记「本轮无题」收工，别造活。若想继续「从未扫过的大文件」这条线：`wc -l src/views/*.vue src/components/*.vue | sort -n | tail`，挑一个 r6 §8 全文 grep 不到文件名的，用本轮同样的四步看（watch → store 写入 / 自算量 vs 引擎字段 / 数字字面量 / 角色 id 字面量）。
+- **回滚点**：`git revert fd834990`。
+
 **2026-10-03 20:03 arena-F 第 453 轮**（开工：origin = 主仓 = `52bf7f13`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目（R1–R8 全部 done / 撤销）；worktree `wt-T21`（已删））：**本轮无代码题**，只做一件把「找题」变便宜的整理。
 - **做到哪**：r452 交接让下一轮「看 r6 §8 的重开条件列有没有被满足的」——照做后发现这列从第 396 行起已经改放验证数字、237–395 的条件绝大多数早被消费（逐条核了 310/314/315/373/381/384/385–387，全部已关）。215 行读一遍只为确认「没有」，是每轮重复付的开销 ⇒ 写成 **r6 §8.0「仍开着的重开条件索引」**（13 条，每条一句查法 + 维护规则：消费即删、新条件加这里）。
 - **沉淀**：找题顺序改为 ① REQUIREMENTS.md → ② 本文 §3 执行卡 → ③ **r6 §8.0 一屏** → ④ 都没有就记「本轮无题」收工。§8 大表只是日志，不再要求逐行读。
