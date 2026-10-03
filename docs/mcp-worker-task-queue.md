@@ -92,6 +92,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 02:04 arena-F 第 484 轮**（开工：主仓 = origin = `2059ecf6`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T50`，收工已删）。
+- **落地 CC-444** `40c9cc3f`（arch 表有行）：`AgentMechanicModule.poolSummary` 钩子 + `agentMechanicView.ts#teamPoolSummaries` 门面；`ResultPage.vue` 爱丽丝伤害汇总专块（interface + 2 computed + 内联 n-input-number + 模板块）删除，改 `v-for="sec in poolSummarySections"` 通用段；`alice.ts#buildAlicePoolSummary` 承接。锁 `alicePoolSummary.test.ts`。展示层改动，无引擎路径，zd 不适用。回滚 `git revert 40c9cc3f`。
+- **可见行为差异（有意）**：结果页不再显示「畏缩紊乱加成 +0 / 每剩余1s物理异常 +18%」行（页面常量，与配置无关、恒为 0）；六命「每次状态 N 次」内联输入框去掉，改文案提示到资源利用率页「机制参数」调（同一设置 `alice.cinema6PerStateCount`）。若用户要回这个内联框，正确做法是给 `PoolSummaryStat` 加 `settingId?` 由页面通用渲染，而不是回退页面专块。
+- **结论落盘**：`ResultPage.vue` 页面镜头扫完（r6 §8 第 484 行）；剩余未扫大页 `ResourceResultCard.vue` / `StunAxisPage.vue` / `AttributeConfigPage.vue`。
+- **下一步（start-ready）**：题序 REQUIREMENTS → §3 → §8.0 触发 → 本轮无题。若要找题：挑上面三页之一按 r454 判据扫；无题就写「本轮无题」收工。
 **2026-10-04 01:57 arena-F 第 483 轮**（开工：主仓 = origin = `b20c9e1c`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T49`，收工已删）。
 - **落地 CC-443** `2635bcb6`（arch 表有行）：`src/composables/persistedRef.ts#persistedRef(key, parse, fallback)`；TeamComparePage 两处 + TimeChartsPage 一处手写 localStorage 读写删除；锁 `persistedRef.test.ts`。UI 层改动，无引擎路径，zd 不适用。回滚 `git revert 2635bcb6`。
 - **结论落盘**：编排层 / core 的 agentId 字面量分支已为 0（只剩迁移注释）；页面手写 localStorage 已为 0。两条镜头都收完。
