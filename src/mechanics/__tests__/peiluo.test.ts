@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
-import { peiluoProminenceMechanic } from '@/mechanics/agents/specPanelBuffs'
+import { peiluoProminenceMechanic, peiluoOverlay } from '@/mechanics/agents/specPanelBuffs'
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
@@ -328,30 +328,31 @@ describe('CC-17：佩洛伊斯 directRowBonus（阳炎，轴臂桶 / 非轴标�
   const exec = (moveId: string, pair?: number) => ({ moveId, ...(pair !== undefined ? { peiluoKagerouPairRatio: pair } : {}) } as never)
 
   it('轴臂：查本槽桶（值恒 40）；桶里没有 → null', () => {
-    const buckets = { peiluoKagerouMap: new Map([['1551016', 40]]) }
+    // CC-437：overlay 不透明，用模块 channel 构造
+    const overlay = peiluoOverlay.wrap({ byMove: new Map([['1551016', 40]]) })
     const rb = peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551016'), isAxis: true, stunOverride: 1, buckets: buckets as never, scalar: undefined,
+      exec: exec('1551016'), isAxis: true, stunOverride: 1, overlay, buckets: undefined, scalar: undefined,
     })!
     expect(rb.critDmgBonus).toBe(40)
     expect(rb.note).toBeUndefined()   // 阳炎不进 note
     expect(peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551015'), isAxis: true, stunOverride: 1, buckets: buckets as never, scalar: undefined,
+      exec: exec('1551015'), isAxis: true, stunOverride: 1, overlay, buckets: undefined, scalar: undefined,
     })).toBeNull()
   })
 
   it('非轴臂：标量 × 行级配对比例；只有决算 1551016 乘比例，其余行恒 1', () => {
-    const scalar = { peiluoKagerouPct: 40 }
+    const overlay = peiluoOverlay.wrap({ flatPct: 40 })
     // 决算：比例 0.5 ⇒ 20
     expect(peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551016', 0.5), isAxis: false, stunOverride: 0, buckets: undefined, scalar: scalar as never,
+      exec: exec('1551016', 0.5), isAxis: false, stunOverride: 0, overlay, buckets: undefined, scalar: undefined,
     })!.critDmgBonus).toBe(20)
     // 上分支：无比例字段 ⇒ 恒 1 ⇒ 40
     expect(peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551015'), isAxis: false, stunOverride: 0, buckets: undefined, scalar: scalar as never,
+      exec: exec('1551015'), isAxis: false, stunOverride: 0, overlay, buckets: undefined, scalar: undefined,
     })!.critDmgBonus).toBe(40)
     // 比例 0（无铺垫决算）⇒ 0 ⇒ null
     expect(peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551016', 0), isAxis: false, stunOverride: 0, buckets: undefined, scalar: scalar as never,
+      exec: exec('1551016', 0), isAxis: false, stunOverride: 0, overlay, buckets: undefined, scalar: undefined,
     })).toBeNull()
   })
 

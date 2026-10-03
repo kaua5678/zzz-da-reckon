@@ -25,7 +25,7 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { peiluoProminenceMechanic, PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
+import { peiluoProminenceMechanic, peiluoOverlay, PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
 import { yixuanMechanic } from '@/mechanics/agents/yixuan'
 
 type Harness = Awaited<ReturnType<typeof setupHarness>>
@@ -322,35 +322,35 @@ describe('R21 夜A 跳② 仪玄 1371 凝神三臂（:510 整段迁进 yixuan.ts
 // 跳③ 佩洛伊斯阳炎 :524 —— 两臂全迁（轴 → 桶 / 非轴 → 标量 × 行级配对比例）
 // ══════════════════════════════════════════════════════════════════════════════
 describe('R21 夜A 跳③ 佩洛伊斯 1551 阳炎两臂（:524 整段迁进 specPanelBuffs.ts）', () => {
-  it('钩子层：非轴臂产标量 `peiluoKagerouPct = 40 × 覆盖率`（0 / 20 / 40 精确值）', () => {
-    const run = (cov: number) => peiluoProminenceMechanic.axisWindowOverlays!({
+  it('钩子层：非轴臂产标量 `flatPct = 40 × 覆盖率`（0 / 20 / 40 精确值；CC-437 起经 peiluoOverlay 读）', () => {
+    const run = (cov: number) => peiluoOverlay.read(peiluoProminenceMechanic.axisWindowOverlays!({
       slot: 1, axes: [], getAgentSkills: () => undefined, cinemaLevel: 0,
       isAxis: false, additionalAbilityActive: false, windInfectionRate: 0,
       settings: { 'peiluo.kagerouCoverage': cov },
-    } as never)!
-    expect(run(0).scalarBySlot!.get(1)!.peiluoKagerouPct).toBe(0)
-    expect(run(0.5).scalarBySlot!.get(1)!.peiluoKagerouPct).toBe(PEILUO_KAGEROU_CRIT * 0.5)
-    expect(run(1).scalarBySlot!.get(1)!.peiluoKagerouPct).toBe(40)
+    } as never)!)!
+    expect(run(0).flatPct).toBe(0)
+    expect(run(0.5).flatPct).toBe(PEILUO_KAGEROU_CRIT * 0.5)
+    expect(run(1).flatPct).toBe(40)
     // 滑块缺省（未给键）回落 1 = 满覆盖（与注册 default 同值）
-    const dflt = peiluoProminenceMechanic.axisWindowOverlays!({
+    const dflt = peiluoOverlay.read(peiluoProminenceMechanic.axisWindowOverlays!({
       slot: 1, axes: [], getAgentSkills: () => undefined, cinemaLevel: 0,
       isAxis: false, additionalAbilityActive: false, windInfectionRate: 0, settings: {},
-    } as never)!
-    expect(dflt.scalarBySlot!.get(1)!.peiluoKagerouPct).toBe(40)
+    } as never)!)!
+    expect(dflt.flatPct).toBe(40)
     // ⚠ 本机制出自**核心被动**⇒ **无**额外能力门控（别照抄般岳/可琳）
     // 上面几例传的就是 additionalAbilityActive: false 而仍出标量，即该不变量的判据。
-    // 标量按本槽键控
-    const at2 = peiluoProminenceMechanic.axisWindowOverlays!({
+    // 「按本槽键控」CC-437 起由编排层 `collectAxisWindowOverlays` 的 `bucketsBySlot.set(slot, 返回值)` 保证（模块返回值不再自带 slot 键）；
+    // 这里只验模块对 slot 无感：换 slot 值不变。
+    const at2 = peiluoOverlay.read(peiluoProminenceMechanic.axisWindowOverlays!({
       slot: 2, axes: [], getAgentSkills: () => undefined, cinemaLevel: 0,
       isAxis: false, additionalAbilityActive: false, windInfectionRate: 0,
       settings: { 'peiluo.kagerouCoverage': 1 },
-    } as never)!
-    expect(at2.scalarBySlot!.has(2)).toBe(true)
-    expect(at2.scalarBySlot!.has(1)).toBe(false)
+    } as never)!)!
+    expect(at2.flatPct).toBe(40)
   })
 
-  it('钩子层：轴臂产桶（`peiluoKagerouMap`），**不产**标量（两臂互斥）', () => {
-    const res = peiluoProminenceMechanic.axisWindowOverlays!({
+  it('钩子层：轴臂产桶（`byMove`），**不产**标量（两臂互斥）', () => {
+    const res = peiluoOverlay.read(peiluoProminenceMechanic.axisWindowOverlays!({
       slot: 1,
       axes: [{ actions: [
         { slot: 1, moveId: '1551015', count: 1, startTime: 0 },
@@ -359,10 +359,10 @@ describe('R21 夜A 跳③ 佩洛伊斯 1551 阳炎两臂（:524 整段迁进 spe
       getAgentSkills: () => undefined, cinemaLevel: 0,
       isAxis: true, additionalAbilityActive: false, windInfectionRate: 0,
       settings: { 'peiluo.kagerouCoverage': 1 },
-    } as never)!
-    expect(res.peiluoKagerouMap!.get('1551015')).toBe(40)
-    expect(res.peiluoKagerouMap!.get('1551016')).toBe(40)
-    expect(res.scalarBySlot).toBeUndefined()
+    } as never)!)!
+    expect(res.byMove!.get('1551015')).toBe(40)
+    expect(res.byMove!.get('1551016')).toBe(40)
+    expect(res.flatPct).toBeUndefined()
   })
 
   it('★ 非轴真管线：阳炎暴伤**真乘**行级配对比例（ratio 0.5→1 时决算增益**恰翻倍**）', async () => {

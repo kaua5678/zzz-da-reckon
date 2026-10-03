@@ -243,7 +243,7 @@ export function axisOverlayChannel<T>() {
  * 四个桶的数值语义：
  * - `banyueMingwangStacks`：moveId → 明王层数（消费端 × MINGWANG_BASE_PER_STACK）
  * - `yixuanNingshenMap`：moveId → { critDmg, sheerDmg }
- * - `peiluoKagerouMap`：moveId → 阳炎暴伤（0-40）
+ * - （`peiluoKagerouMap` 已于 CC-437c 迁入 specPanelBuffs.ts 的私有 `PeiluoOverlay.byMove`）
  * - `corinStunBonusMap`：moveId → 扫除帮手增伤%（轴内恒 CORIN_ADDITIONAL_DMG）
  *
  * ⚠ **CC-17（2026-09-26）起四个桶不再跨模块合并**：`panelPhases.ts#collectAxisWindowOverlays`
@@ -258,7 +258,6 @@ export function axisOverlayChannel<T>() {
 export interface AgentAxisOverlays {
   banyueMingwangStacks?: Map<string, number>
   yixuanNingshenMap?: Map<string, { critDmg: number; sheerDmg: number }>
-  peiluoKagerouMap?: Map<string, number>
   corinStunBonusMap?: Map<string, number>
   /**
    * **按槽位索引的标量覆盖**（与四个「按 moveId 索引」的桶并列）。
@@ -291,22 +290,7 @@ export interface AxisScalarOverlays {
    * 本标量只覆盖「对本槽全部行同值」的两臂（见本接口头注释的泄漏论证）。
    */
   yixuanNingshen?: { critDmg: number; sheerDmg: number }
-  /**
-   * 佩洛伊斯阳炎·**非轴折算臂**：百分比 = `PEILUO_KAGEROU_CRIT × 覆盖率滑块`（0-40）。
-   *
-   * ⚠ **为什么是标量**：非轴臂的算式是 `40 × 覆盖率 × 配对比例`，其中**配对比例是行级的**
-   * （只有决算 `1551016` 乘 `min(上分支,决算)/决算`，其余行恒 1）。配对比例由模块自己写在
-   * 该行的 `peiluoKagerouPairRatio` 上（`patchExecutions`），消费端读行取用 ⇒ 本标量只需承载
-   * 「与行无关的那一半」（`40 × 覆盖率`），标量 × 行级比例即得原式。
-   *
-   * ⚠ 与 `yixuanNingshen`/`banyueMingwangPct` 一样是「对本槽全部行同值」⇒ 必须走 `scalarBySlot`。
-   * 消费端只在**非轴**模式读它（轴模式仍走 `peiluoKagerouMap` 桶）。
-   *
-   * ⚠ 参与门控 = **仅「本模块被派发」（= 1551 在队）**，**不**门控 `additionalAbilityActive`——
-   * 阳炎出自**核心被动**（上分支终结技），不是额外能力（`PEILUO_KAGEROU_CRIT` 头注释）。
-   * 逐位保留原伤害池行为（原式除 agentId 外无参与门控）。
-   */
-  peiluoKagerouPct?: number
+  // （`peiluoKagerouPct` 已于 CC-437c 迁入 specPanelBuffs.ts 的私有 `PeiluoOverlay.flatPct`，此处删除）
   // （`sigridInfectionPct` 已于 CC-437b 迁入 sigrid.ts 的私有 `SigridOverlay`，此处删除）
 }
 

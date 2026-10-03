@@ -6,6 +6,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
+import { axisOverlayChannel } from '../types'
 import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
@@ -68,6 +69,19 @@ peiluoProminenceMechanic.settings = [{
 }]
 
 /**
+ * CC-437（T15-c）：佩洛伊斯阳炎的私有轴窗口 overlay（编排层不透明；两臂互斥，只填其一）。
+ * 原 `AgentAxisOverlays.peiluoKagerouMap` → `byMove`，原 `AxisScalarOverlays.peiluoKagerouPct` → `flatPct`；值与门控逐位不变。
+ * 「按槽归属」由编排层 `collectAxisWindowOverlays` 的 `bucketsBySlot.set(slot, 返回值)` 保证，模块不再自带 slot 键。
+ */
+export interface PeiluoOverlay {
+  /** 轴臂：moveId → 阳炎暴伤（21s 窗口扫描，实例加权平均；`computePeiluoKagerouBonus`） */
+  byMove?: Map<string, number>
+  /** 非轴臂：折算标量 = `PEILUO_KAGEROU_CRIT × 覆盖率滑块`（0-40）；行级配对比例由 `directRowBonus` 乘回 */
+  flatPct?: number
+}
+export const peiluoOverlay = axisOverlayChannel<PeiluoOverlay>()
+
+/**
  * 阳炎轴窗口覆盖（规则 6 迁入，棘轮站点 6/8，2026-09-12 #10 真清偿；
  * **非轴折算臂** 2026-09-17 round 21 夜 A 自 `damagePool.ts:540` 迁入）：
  * 原本由 `useResourceCalc` 的 `peiluoKagerouMap` computed 按 agentId '1551' 找槽位后直调。
@@ -78,7 +92,7 @@ peiluoProminenceMechanic.settings = [{
  *   阳炎出自**核心被动**（上分支终结技），不是额外能力（见 `PEILUO_KAGEROU_CRIT` 头注释与
  *   spec §②「阳炎只给大招」）。⚠ 别照抄般岳/可琳那两支的额外能力门控：那两处是额外能力机制。
  * - `isAxis` 真 → 轴内 21s 窗口扫描桶（`computePeiluoKagerouBonus`，值 = 实例加权平均暴伤）。
- * - `isAxis` 假 → **折算标量** `peiluoKagerouPct = PEILUO_KAGEROU_CRIT × 覆盖率滑块`。
+ * - `isAxis` 假 → **折算标量** `flatPct = PEILUO_KAGEROU_CRIT × 覆盖率滑块`。
  *   ⚠ 原式还要乘一个**行级**配对比例（决算 `1551016` 的 `peiluoKagerouPairRatio`，
  *   由本模块 `patchExecutions` 写在该行上）——那一半**留在行上**由消费端乘，
  *   故本标量只承载「与行无关的那一半」（标量 × 行级比例 = 原式，逐位等价）。
@@ -92,24 +106,23 @@ peiluoProminenceMechanic.settings = [{
 peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes, isAxis, settings }) => {
   if (isAxis) {
     const map = computePeiluoKagerouBonus(slot, axes)
-    return map.size > 0 ? { peiluoKagerouMap: map } : null
+    return map.size > 0 ? peiluoOverlay.wrap({ byMove: map }) : null
   }
   const cov = Math.max(0, Math.min(1, Number(settings['peiluo.kagerouCoverage'] ?? 1)))
-  return {
-    scalarBySlot: new Map([[slot, { peiluoKagerouPct: PEILUO_KAGEROU_CRIT * cov }]]),
-  }
+  return peiluoOverlay.wrap({ flatPct: PEILUO_KAGEROU_CRIT * cov })
 }
 /**
  * 阳炎行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
  * 轴模式查**本槽**桶；非轴模式 = 本槽折算标量 × **行级配对比例**（决算 `1551016` 才乘，
  * 其余行恒 1）。算式与 note 模板逐字照原 `damagePoolDirect.ts#emitExecDirect`（阳炎不进 note）。
  */
-peiluoProminenceMechanic.directRowBonus = ({ exec, isAxis, buckets, scalar }) => {
+peiluoProminenceMechanic.directRowBonus = ({ exec, isAxis, overlay }) => {
+  const o = peiluoOverlay.read(overlay)
   const moveId = exec.moveId ?? ''
   const pair = moveId === PEILUO_ULT_VERDICT ? (exec.peiluoKagerouPairRatio ?? 0) : 1
   const crit = isAxis
-    ? (buckets?.peiluoKagerouMap?.get(moveId) ?? 0)
-    : (scalar?.peiluoKagerouPct ?? 0) * pair
+    ? (o?.byMove?.get(moveId) ?? 0)
+    : (o?.flatPct ?? 0) * pair
   if (crit <= 0) return null
   return { critDmgBonus: crit }
 }

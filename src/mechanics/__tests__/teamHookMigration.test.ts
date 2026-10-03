@@ -12,7 +12,7 @@ import { jufufuTigerRoarMechanic } from '@/mechanics/agents/specPanelBuffs'
 import { banyueMechanic } from '@/mechanics/agents/banyue'
 import { yixuanMechanic } from '@/mechanics/agents/yixuan'
 import { corinMechanic } from '@/mechanics/agents/corin'
-import { peiluoProminenceMechanic } from '@/mechanics/agents/specPanelBuffs'
+import { peiluoProminenceMechanic, peiluoOverlay } from '@/mechanics/agents/specPanelBuffs'
 import { sigridMechanic, sigridOverlay } from '@/mechanics/agents/sigrid'
 
 /** 构造 applyTeamConfig 入参（只填被测逻辑读到的字段） */
@@ -211,26 +211,25 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     // 改为「桶留空 + 标量表给 `40 × 覆盖率`」。⚠ 行级配对比例（决算的 `peiluoKagerouPairRatio`）
     // **不进标量**（逐 moveId 不同 ⇒ 进不了「全行同值」的标量），由消费端乘回
     // —— 真管线判据在 `damagePoolNightA.test.ts`（那条会因漏乘而红）。
-    const nonAxis: any = peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))
-    expect(nonAxis.peiluoKagerouMap).toBeUndefined()
-    expect(nonAxis.scalarBySlot.get(0).peiluoKagerouPct).toBe(40)   // 默认覆盖率 1
-    expect((peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'peiluo.kagerouCoverage': 0.5 } })) as any)
-      .scalarBySlot.get(0).peiluoKagerouPct).toBe(20)
-    expect((peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'peiluo.kagerouCoverage': 0 } })) as any)
-      .scalarBySlot.get(0).peiluoKagerouPct).toBe(0)
+    // CC-437：返回值对编排层不透明，用模块 channel 读（`byMove` = 原桶，`flatPct` = 原标量）
+    const rd = (o: Record<string, unknown> = {}) => peiluoOverlay.read(peiluoProminenceMechanic.axisWindowOverlays!(overlayInput(o))!)!
+    const nonAxis = rd({ isAxis: false })
+    expect(nonAxis.byMove).toBeUndefined()
+    expect(nonAxis.flatPct).toBe(40)   // 默认覆盖率 1
+    expect(rd({ isAxis: false, settings: { 'peiluo.kagerouCoverage': 0.5 } }).flatPct).toBe(20)
+    expect(rd({ isAxis: false, settings: { 'peiluo.kagerouCoverage': 0 } }).flatPct).toBe(0)
     // ⚠ 阳炎出自**核心被动**（上分支终结技）⇒ **无**额外能力门控（别照抄般岳/可琳那两支）；
     // 下面这行是这条不变量的判据：额外能力关掉，非轴臂**仍然**出标量。
-    expect((peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, additionalAbilityActive: false })) as any)
-      .scalarBySlot.get(0).peiluoKagerouPct).toBe(40)
+    expect(rd({ isAxis: false, additionalAbilityActive: false }).flatPct).toBe(40)
     // 轴臂：桶
     const axes = axis([
       { slot: 0, moveId: '1551015', count: 1, startTime: 0 },
       { slot: 0, moveId: '1551016', count: 1, startTime: 5 },
     ])
-    const res: any = peiluoProminenceMechanic.axisWindowOverlays!(overlayInput({ axes }))
-    expect(res.peiluoKagerouMap.get('1551016')).toBe(40)
+    const res = rd({ axes })
+    expect(res.byMove!.get('1551016')).toBe(40)
     // 轴臂不产标量（两臂互斥）
-    expect(res.scalarBySlot).toBeUndefined()
+    expect(res.flatPct).toBeUndefined()
   })
 
   it('可琳扫除帮手：轴内招式 +35%，普攻段归并到 basic_attack 聚合行键；额外能力未触发不参与', () => {
