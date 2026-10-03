@@ -51,7 +51,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **出卡前 grep 断言的全部消费者；brief 里给工人「没说清就选最小改动继续」的授权（2026-10-03 r436 CC-410）**：卡面写「:61 兜底删掉」，实际那行是 `axisMoveActionTime` 钩子的实现、有测试锁着——工人读到矛盾后推敲 9 分钟零改动。
   判据：派发后 >5 分钟 `git status` 零改动 ⇒ 看 `worker.err` 尾部它在纠结什么，多半卡面错了；`kill <pid>`（pid 取自 `pgrep -af '^node .*dsh --profile headless'`）、改卡、重派，比等便宜。第二次派发 8 分钟收工。
 - **全量 vitest 单独一条 `wsl_exec`（2026-10-03 r437 实测）**：guards 链（~45s）+ build（~47s）+ vitest(4)（~250s）串在一条调用里，总时长撞上桥的 ~285s 上限，整条被杀、vitest 日志半截还没有 summary——看起来像「跑了但没结果」。guards / build 一条，vitest 另一条，各自 `timeout 280`。
-- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 477 / 4333，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
+- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 478 / 4336，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
 ### 0.R2 收尾流程（2026-09-27 R2 定稿；依据与数字见 `docs/mcp-dev-process-speed.md`）
 
 - **强度不变，顺序和并行方式变了**：全量 `npm run verify`、零差、文档提交后重跑 check-guards 三道都保留。
@@ -91,6 +91,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 21:22 arena-F 第 460 轮**（开工：origin = 主仓 = `65a1b45e`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 全部仅触发项；worktree `wt-T28`（已删）；产物 `/home/kaua/calc-arch/arenaF/r460/`）：**CC-431 `39991a9e`** + 本文档提交。
+- **做到哪**：「从未扫过的大文件」线扫完 `DebugPage.vue`（无改动，理由见 arch CC-431「不改的」）与 `TimeChartsPage.vue`（r6 §8 行 460）。展示层 5 文件 10 处默认角色 id 字面量收口到 `data/viewAgentDefaults.ts`，锁测试把「views/components 零角色 id 字面量」变成机器检查；顺手修候选池排除主 C 写死的潜伏 bug。分片 478 / 4336。
+- **沉淀**：(1) **四步法第 4 步此前四轮都是假阴性**——`grep -E` 不解释 `\x27`；经 `mcp.js sh '…'` 单引号包裹时要写 `grep -P "\x27…\x27"`。凡是「扫了没发现」的结论，先用一个**已知应命中**的样本验证 grep 本身。(2) 「用户给的例子 / 口径」类默认值也是单源对象：它们不是引擎规则，但散在页面里同样会在角色改 id 时静默失效，且无人知道哪些页面默认选了谁。
+- **未决 / 坑**：`src/mechanics/agents/*.ts` 里按设计含本角色 id（模块自描述），不在锁范围；`src/composables` / `src/stores` 下是否还有角色 id 字面量未扫（`grep -rnP "\x271[0-9]{2}1\x27" src/composables src/stores --include=*.ts | grep -v __tests__`），下一轮顺手看一眼：若有且不是 CC-55 那类「查模块声明」已处理过的，按同一思路归到 data 层或模块声明。
+- **下一步（start-ready）**：无排定卡。找题顺序不变（REQUIREMENTS → §3 → §8.0）。「从未扫过的大文件」线只剩 `StunAxisPage.vue`（960；r6/arch 已多次提及，低优先）与 `ResponseSurface3D.vue`（1371，纯图形）。建议下一轮先跑上面那条 composables/stores 的角色 id grep（15 分钟内能定性），再决定是扫 `StunAxisPage` 还是换线（§8.0 的 13 项里挑一项到期 / 触发的）。
+- **回滚点**：`git revert 39991a9e`。
 
 **2026-10-03 21:06 arena-F 第 459 轮**（开工：origin = 主仓 = `c19dfd67`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 全部仅触发项；worktree `wt-T27`（已删）；产物 `/home/kaua/calc-arch/arenaF/r459/`）：**CC-430 `047fa11a`** + 本文档提交。
 - **做到哪**：「从未扫过的大文件」线扫 `FinalPanel.vue`（r6 §8 行 459）。数值层已干净（CC-222/223/228 都落实了），但贯穿力系数 0.3 / 0.1 在 9 处**文案**里手写 ⇒ 系数常量 + 两个文案函数进 data 层，9 处改调，锁正则扩到文案形态。分片 477 / 4333。
