@@ -92,6 +92,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 22:30 arena-F 第 466 轮**（开工：origin = 主仓 = `f35d823a`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无未勾卡 ⇒ 做 r465 候选的设计；worktree `wt-T34`（已删）；产物 `/home/kaua/calc-arch/arenaF/r466/`）：**仅文档提交**（无代码）。
+- **做到哪**：核实 `AgentAxisOverlays` / `AxisScalarOverlays` 的 9 个角色前缀字段全是模块私有往返（写读同模块；`scalarBySlot` 五处都只写本槽；编排层按槽存原始返回、`damagePoolDirect.ts:168` 交还本行所属模块；无第二读者）⇒ 写 **CC-437 设计稿** `docs/mcp-cc437-axis-overlay-opaque.md`（目标形状 / 零差论证 / 7 步迁移 / 不做的边界 / 回退点），README §6 登记（77 份），arch 加 `CC-437 | design` 行，§3 加 **T15 卡**（a→g）。
+- **拍板**：① 不透明 brand + `axisOverlayChannel<T>()`（两个 cast）而不是泛型化 `AgentMechanicModule<TOverlay>`——模块是对象字面量、泛型会传染到注册表与 `getAgentMechanic` 的返回类型，收益不成比例；② 不统一 overlay 值域（理由见设计稿 §5）；③ 分 7 步而不是一次性做：改动横跨 5 模块 + 4 编排文件 + 8 测试（≈90 处引用），一轮做完风险高、也不利于交给执行模型。r465 §2b 写的「先写设计再动」在此兑现。
+- **下一步（start-ready）**：**T15-a**（基础设施，预期零行为变化，无测试改动；卡面在 §3 T15）。之后 b→g 任何 lane 都可按卡逐步做；每步都要 zd 0。
+- **其余可选**：r462 (b) StunAxisPage 三份 `consumed` 累加抽局部函数；r462 (c) CC-61 对照测试改快照式。
+
 **2026-10-03 22:19 arena-F 第 465 轮**（开工：origin = 主仓 = `549f4fd4`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；按 §3 T13-e 卡开工；worktree `wt-T33`（已删）；产物 `/home/kaua/calc-arch/arenaF/r465/`）：**CC-436 `ce08000f`** + 本文档提交。
 - **做到哪**：`displayResult` 契约必填、panelPhases 参数同步、promia 去 `?? teamResult`、三个夹具助手缺省 = 覆盖后的 teamResult、6 处直调站点补字段；锁加「反馈入参三份结果均无 `?:`」。zd DIFF 0；分片 **478 / 4339**（新基线，§0 已改）。**T13 卡结项**（标题已标 ✅）。
 - **下一步**：§3 已无未勾卡。按 r453 找题顺序：`docs/REQUIREMENTS.md`（md5 现 `807ee09623a9`）→ §3（无）→ §8.0 触发项是否触发 → 否则「本轮无题」只写 §8 一行。
@@ -692,6 +698,18 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 **做法**：① 先复现：`stress --cpu 12`（没有就并行跑两份 `npx vitest run src/mechanics/__tests__`）制造负载，同时循环 3 次单跑 `timeFillRatchet.test.ts`；红了就把两队的 `rr.convergence` / `effectCoverages` / `threads` dump 到 `/home/kaua/calc-arch/arenaF/<轮>/`。② 复现后按假设 1 加 `nextTick` 观察；真因若是 CC-420 那条回填 watch，就直接做 T10 修法 ①（显式数据流、删 watch），这就是 T10 卡等的「锁变红」信号。③ **禁止**：`TIME_RATCHET_UPDATE=1` 重生成基线、加容差——两队互换不是数值漂移。
 **验收**：高负载下连续 3 次全绿；若改了求值路径，zd DIFF 0（或逐队归因）。
 <!-- /card:T14 -->
+
+<!-- card:T15 -->
+### T15 · CC-437 轴窗口 overlay 模块私有化（设计稿 `docs/mcp-cc437-axis-overlay-opaque.md`；一次只做一步、各自独立提交、各自 zd 0；可交执行模型）
+**卡面就是全部上下文**：读设计稿 §2（目标形状）与 §4（本步那一行），其余别读。**验收通用**：`timeout 280 npx vue-tsc -b --force` 0；`ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>` 期望 `DIFF 0 NON1581 0 []`（两段 DUMP / ROWS 都要）；本步涉及的测试文件定向绿 + 全量分片（两片 passed 之和 = §0 基线，锁新增则 +N 并更新 §0）；arch 加 `CC-437<步>` 行、r6 §8 加行、本卡勾掉对应项。worktree 基于 `origin/master`，只 `git add` 自己的路径，提交身份 `-c user.name=<lane>`。**过渡期规则**：T15-g 之前 `buckets` / `scalar` 旧字段与 `AgentAxisOverlays` 类型都保留，未迁的模块继续用旧字段；已迁模块只用 `overlay`。
+- [ ] **T15-a 基础设施（start-ready）**：`src/mechanics/typesHooks.ts` 加 `AgentAxisOverlay`（brand）+ `axisOverlayChannel<T>()`，`src/mechanics/index.ts` / `types.ts` 的 re-export 跟上；`src/mechanics/typesRows.ts DirectRowBonusInput` 加 `overlay: AgentAxisOverlay | undefined`；`types.ts:948 axisWindowOverlays` 返回类型改 `AgentAxisOverlays | AgentAxisOverlay | null`；`src/composables/resourceCalc/damagePoolDirect.ts:168` 的调用加 `overlay: overlayBuckets as unknown as AgentAxisOverlay | undefined`；`panelPhases.ts:388` 的 scalar 合并改为 `if ('scalarBySlot' in res && res.scalarBySlot)`（新形状没有这个键）。预期：行为零变化（zd 0、分片基线不变）；没有测试要改。
+- [ ] **T15-b sigrid**（只有标量；设计稿 §4 b 行）：`src/mechanics/agents/sigrid.ts:648-659 / 677`；测试 `src/mechanics/__tests__/sigrid.test.ts:583,589`、`teamHookMigration.test.ts:261-263`。
+- [ ] **T15-c peiluo**（`src/mechanics/agents/specPanelBuffs.ts:73-112`）；测试 `peiluo.test.ts`、`teamHookMigration.test.ts:216-233`。
+- [ ] **T15-d corin**（`src/mechanics/agents/corin.ts:287-333`）；测试 `corin.test.ts`、`teamHookMigration.test.ts:251-255`。
+- [ ] **T15-e banyue**（`src/mechanics/agents/banyue.ts:927-970`）；测试 `banyue.test.ts`（14 处）、`teamHookMigration.test.ts:163-168`、`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 的般岳夹具。
+- [ ] **T15-f yixuan**（`src/mechanics/agents/yixuan.ts:1080-1140`；读取优先级 `ningshen ?? (isAxis ? ningshenByMove.get(moveId) : undefined) ?? {0,0}` 逐字保留）；测试 `yixuanSmoke.test.ts`、`teamHookMigration.test.ts:181-206`。
+- [ ] **T15-g 收口**：删旧类型 / 旧字段 / scalar 合并；`useResourceCalc.ts:647-648`、`damagePool.ts:85-90`、`damagePoolDirect.ts:160-173` 合成 `axisOverlayBySlot`；`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 输入夹具改 `axisOverlayBySlot`；加锁 `src/composables/__tests__/axisOverlayOpaqueCc437.test.ts`（三条见设计稿 §4 g 行）；arch CC-437 置 done；设计稿状态行改「已落地 <commit>」。
+<!-- /card:T15 -->
 
 （T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**（T14 r451 关掉；T13 仅剩 c / b′ 默认不做；T10 备选，等锁变红）。下一题按 §0「没有排定项时不造活」+ r6 §8 扫描记录另找。）
 
