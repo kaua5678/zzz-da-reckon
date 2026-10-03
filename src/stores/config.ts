@@ -488,6 +488,8 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   // 音擎效果覆盖率（effectId -> 0-100）；默认未设置时按100%覆盖
   const wEngineEffectCoverages = ref<Record<string, number>>({})
+  /** 手调标记：effectId → 用户显式拖过滑块（自动回填跳过这些；不在 persist 白名单 ⇒ 刷新后重回自动） */
+  const wEngineEffectCoverageManual = ref<Record<string, boolean>>({})
 
   // 驱动盘套装效果覆盖率（effectId -> 0-100）：条件类 4pc/2pc 效果的 uptime 折算，与音擎覆盖率同模式
   const discEffectCoverages = ref<Record<string, number>>({})
@@ -889,6 +891,21 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   function setWEngineEffectCoverage(effectId: string, coverage: number) {
     wEngineEffectCoverages.value[effectId] = Math.max(0, Math.min(100, coverage))
+    // 手调标记：用户拖过滑块后，自动折算（useResourceCalc 的叠层覆盖率回填）不再覆盖本效果
+    wEngineEffectCoverageManual.value[effectId] = true
+  }
+
+  /**
+   * 音擎叠层覆盖率的自动回填（数据源 = src/data/wEngineStackCoverage.ts，按执行行次数×持续/战斗时长折算）。
+   * 仅回填**未手调**的效果；手调过的（`wEngineEffectCoverageManual`）跳过。回填值写进同一
+   * `wEngineEffectCoverages` 表（两个消费端 panelPhases 面板/进场快照无需改），但自动值不进
+   * manual 标记 ⇒ 下次资源结果变化会重算覆盖，手调值则sticky。
+   */
+  function applyWEngineEffectCoverageAuto(auto: Record<string, number>) {
+    for (const [effectId, coverage] of Object.entries(auto)) {
+      if (wEngineEffectCoverageManual.value[effectId]) continue
+      wEngineEffectCoverages.value[effectId] = Math.max(0, Math.min(100, coverage))
+    }
   }
 
   function getWEngineEffectCoverage(effectId: string): number {
@@ -1368,6 +1385,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     toggleTeammateBuff,
     setTeammateBuffCoverage,
     setWEngineEffectCoverage,
+    applyWEngineEffectCoverageAuto,
     getWEngineEffectCoverage,
     setDiscEffectCoverage,
     getDiscEffectCoverage,

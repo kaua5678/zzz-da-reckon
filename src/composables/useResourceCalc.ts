@@ -1,4 +1,4 @@
-import { computed, toRaw } from 'vue'
+import { computed, toRaw, watch } from 'vue'
 import { guaranteeStunShortfall, type GuaranteeStunShortfall } from '@/core/parrySplit'
 import { useConfigStore, type EvalConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -31,6 +31,7 @@ import type { PanelValues } from '@/types/catalog'
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG } from '@/core/anomalyPool/helpers'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
+import { stackDurationSeconds, stackEnergyEvents, stacksToCoverage } from '@/data/wEngineStackCoverage'
 import * as ResourceCalcHelpers from './resourceCalc/helpers'
 import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
 
@@ -463,6 +464,53 @@ export function createResourceCalc(
     computeWindowDuration, computeStunCoverage, buildStackAxes, expandExecutedToCounts,
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   })
+
+  /**
+   * 音擎叠层覆盖率的自动回填（数据源 `src/data/wEngineStackCoverage.ts`，口径见其头注释 @fact）。
+   *
+   * ⚠ **声明位置硬约束**：必须在 `runCalcRound`（上方）创建**之后**——computed 首次求值会级联到
+   * `calcOutput` → `solveTeam(runCalcRound)`，若声明在 509 行前则回调内 `runCalcRound` 仍处 TDZ。
+   * 时序：依赖 `adjustedResourceResult`（资源已收敛）⇒ 资源迭代之后求值；面板读同一份
+   * `configStore.wEngineEffectCoverages` ⇒ 回填后面板自动重算。资源迭代**不读**
+   * wEngineEffectCoverages（消费端只有面板与进场快照，见 panelPhases.ts 两处）⇒ 不搅动收敛。
+   * 只回填已登记触发源的效果；未登记 = 回退手调滑块（旧行为）。手调优先在 store 侧拦。
+   */
+  const wEngineStackAutoCoverages = computed<Record<string, number>>(() => {
+    const res = adjustedResourceResult.value
+    if (!res) return {}
+    const battleSeconds = effectiveBattleTime(configStore.enemy)
+    const out: Record<string, number> = {}
+    for (const ch of res.characters ?? []) {
+      const slot = ch.slot
+      const char = configStore.team[slot]
+      const wEngineId = char?.wEngineId
+      if (!wEngineId) continue
+      const wEngine = catalogStore.wEnginesMap.get(wEngineId)
+      const selfEffects = wEngine?.effect?.selfBuff?.effects ?? []
+      for (const e of selfEffects) {
+        if (e.type !== 'stacked' || !e.id) continue
+        const durationSeconds = stackDurationSeconds(e.id)
+        if (durationSeconds == null) continue // 未登记折算器 ⇒ 不折算（保持手调/默认满层）
+        const stacks = stackEnergyEvents(e.id, {
+          agentId: ch.agentId ?? char.agentId ?? '',
+          exSpecialCount: ch.exSpecialCount ?? 0,
+          executions: ch.executions ?? [],
+        })
+        if (stacks == null) continue
+        const cov = stacksToCoverage(stacks, durationSeconds, battleSeconds, e.maxStacks ?? e.defaultStacks ?? 1)
+        if (cov != null) out[e.id] = cov
+      }
+    }
+    return out
+  })
+
+  // 回填进 store（面板 computed 经 effectCoverageMap 消费）。手调效果由 store 侧 manual 标记跳过。
+  // immediate:true 安全（本 watch 声明在 runCalcRound 之后，首次同步回调已出 TDZ 区）；
+  // flush:'post' 让回填在组件渲染/面板首算之后落 store，面板再随 store 变化重算（幂等）。
+  watch(wEngineStackAutoCoverages,
+    auto => configStore.applyWEngineEffectCoverageAuto(auto),
+    { immediate: true, flush: 'post' })
+
 
   /** Boss 预设弹刀反推（保底4失衡，最终收敛值）：交互栏显示「击破位弹刀 +N / 主C 剩余」用 */
   const parrySplitResult = computed<{ breakerSlot: number; topUp: number; breakerParry: number; mainDpsParry: number; breakerNoFollowUp: number; mainDpsNoFollowUp: number; breakerDecibelOnly: number; parryTotal: number; parryNoFollowUpTotal: number } | null>(() => {
