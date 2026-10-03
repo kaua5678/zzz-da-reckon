@@ -352,8 +352,11 @@ export interface AgentNextRoundFeedbackInput {
   teamResult: DeepReadonly<TeamResourceResult>
   /** 展示口径结果（`normalizeDisplayTime` 后，含赠链/赠大行）；缺省 = 与 teamResult 同源 */
   displayResult?: DeepReadonly<TeamResourceResult>
-  /** 调整后结果（诺姆赠链 / 琉音转大落地后，伤害池与执行计划口径）；null = 本轮无调整 */
-  adjustedResult?: DeepReadonly<TeamResourceResult> | null
+  /**
+   * 调整后结果（诺姆赠链 / 琉音转大落地后，伤害池与执行计划口径）。**必填、非 null**（CC-435）：
+   * 流水线自 CC-422 起恒传 `adj2`（无调整时与 `teamResult` 同形），模块侧不再需要 `?? teamResult` 兜底。
+   */
+  adjustedResult: DeepReadonly<TeamResourceResult>
   /** 本轮异常池结果。无异常行队伍 = 合法空池（`core/anomalyPool#emptyAnomalyPool` 同形），**不是 null**（CC-423 流水线层 / CC-434 契约层）。 */
   anomalyPool: DeepReadonly<AnomalyPoolResult>
   /**

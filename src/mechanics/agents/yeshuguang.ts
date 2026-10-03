@@ -721,9 +721,9 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 /** 调整后赠大行反馈；兼容既有名称标记，迁移不改变行匹配口径。 */
-function yeshuguangNextRoundFeedback({ adjustedResult, teamResult }: AgentNextRoundFeedbackInput) {
+function yeshuguangNextRoundFeedback({ adjustedResult }: AgentNextRoundFeedbackInput) {
   let yeshuguangGiftUlt = 0
-  const ye = (adjustedResult ?? teamResult).characters.find(c => c.agentId === YESHUGUANG_ID)
+  const ye = adjustedResult.characters.find(c => c.agentId === YESHUGUANG_ID)
   for (const e of ye?.executions ?? []) {
     if (e.source === 'gift' || (e.moveName ?? '').includes('好评转大')) {
       yeshuguangGiftUlt += e.count ?? 0

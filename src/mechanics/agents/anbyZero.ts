@@ -286,11 +286,11 @@ function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
  *
  * ⚠ 战斗时间口径逐位保留：迁移前传的是 `configStore.enemy.battleTime`（**可能 undefined**，
  * 由算式里的 `?? 180` 兜底），不是 `base.totalTime`；二者通常同源但缺省路径不同，不合并。
- * 输入侧用调整后结果（诺姆赠链/琉音转大落地后）优先，`adjustedResult` 为 null 时回退本轮装配结果。
+ * 输入侧读调整后结果 `adjustedResult`（诺姆赠链/琉音转大落地后；无调整时流水线传入的就是本轮装配结果同形，CC-435 起必填非 null）。
  */
-function anbyNextRoundFeedback({ cfg, teamResult, adjustedResult, combatTime, getAgentSkills }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function anbyNextRoundFeedback({ cfg, adjustedResult, combatTime, getAgentSkills }: AgentNextRoundFeedbackInput): ModuleFeedback {
   if (!cfg) return {}
-  const az = adjustedResult ?? teamResult
+  const az = adjustedResult
   let anbyZeroTeammateWlNext = 0
   const hits = az.characters
     .filter(c => c.agentId !== ANBY_ZERO_ID)

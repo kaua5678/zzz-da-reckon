@@ -285,8 +285,8 @@ export function collectNextRoundFeedback(params: {
   teamResult: AgentNextRoundFeedbackInput['teamResult']
   /** 展示口径结果（缺省 = teamResult） */
   displayResult?: AgentNextRoundFeedbackInput['displayResult']
-  /** 调整后结果（诺姆赠链 / 琉音转大落地后）；null/缺省 = 本轮无调整 */
-  adjustedResult?: AgentNextRoundFeedbackInput['adjustedResult']
+  /** 调整后结果（诺姆赠链 / 琉音转大落地后）；无调整时与 teamResult 同形（CC-435 必填） */
+  adjustedResult: AgentNextRoundFeedbackInput['adjustedResult']
   anomalyPool: AgentNextRoundFeedbackInput['anomalyPool']
   /** 上一轮收敛线程快照（首轮守卫与自身反馈输入） */
   prevThreads: Readonly<CalcRoundThreads>

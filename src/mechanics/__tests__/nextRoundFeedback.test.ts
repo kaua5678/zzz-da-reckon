@@ -49,7 +49,8 @@ function run(agentId: string, o: { cfg?: Record<string, unknown> } & Partial<Age
     characters: [cfg],
     teamResult: teamResult([]),
     displayResult: undefined,
-    adjustedResult: null,
+    // CC-435：adjustedResult 必填；未显式给时 = 本轮 teamResult（流水线无调整时的同形传入）
+    adjustedResult: rest.adjustedResult ?? rest.teamResult ?? teamResult([]),
     anomalyPool: emptyAnomalyPool(),
     prevThreads: initialCalcRoundThreads(),
     combatTime: 180,
@@ -89,7 +90,7 @@ describe('普罗米娅 1541：触发命中 / 队友异放 / 自身异放回喧�
     const { catalog } = await setupHarness([])
     const chars = [row({ agentId: '1471', slot: 0 }), row({ agentId: '1481', slot: 1 })]
     const fb = collectNextRoundFeedback({
-      characters: chars as never, teamResult: teamResult([]),
+      characters: chars as never, teamResult: teamResult([]), adjustedResult: teamResult([]),
       anomalyPool: { totalTriggerCount: 7 } as never,
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
     }) as Record<string, unknown>
@@ -188,7 +189,7 @@ describe('零号·安比 1381（白雷层数）', () => {
     expect(ret.anbyZeroTeammateWl).toBe(Math.floor(8 * 0.5 * 0.75))
   })
 
-  it('adjustedResult 优先于 teamResult（诺姆赠链/琉音转大落地后口径）', () => {
+  it('读 adjustedResult 而非 teamResult（诺姆赠链/琉音转大落地后口径；CC-435 起必填）', () => {
     const { ret } = run('1381', {
       teamResult: teamResult([row({ agentId: '1381' }), additional(99)]),
       adjustedResult: teamResult([row({ agentId: '1381' }), additional(10)]),
@@ -213,6 +214,7 @@ describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
     const fb = collectNextRoundFeedback({
       characters: [row({ agentId: '1041', slot: 0 })] as never,
       teamResult: teamResult([row({ agentId: '1041', exSpecialCount: 9 })]),
+      adjustedResult: teamResult([row({ agentId: '1041', exSpecialCount: 9 })]),
       anomalyPool: anomalyPool({ perElement: [{ triggerCount: 4 }] }),
       prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
     }) as Record<string, unknown>
@@ -244,7 +246,7 @@ describe('★ 前导空槽：按派发器给的 cfg 识别自己', () => {
       slot: 2,
       cfg: ellenCfg as never,
       characters: [mate, ellenCfg] as never,
-      teamResult: teamResult([]),
+      teamResult: teamResult([]), adjustedResult: teamResult([]),
       anomalyPool: anomalyPool({ perElement: [{ element: 'ice', triggerCount: 6 }] }),
       prevThreads: initialCalcRoundThreads(),
       combatTime: 180,
@@ -346,7 +348,7 @@ describe('★ 只读输入：nextRoundFeedback 不写任何入参', () => {
       ])
       const input = deepFreeze({
         slot: 0, cfg, characters: [cfg, mate],
-        teamResult: rr, displayResult: rr, adjustedResult: null,
+        teamResult: rr, displayResult: rr, adjustedResult: rr,
         anomalyPool: anomalyPool({ totalTriggerCount: 3, perElement: [{ element: 'ice', triggerCount: 2, contributions: [] }] }),
         prevThreads: initialCalcRoundThreads(), combatTime: 180, getAgentSkills: () => undefined,
       }) as unknown as AgentNextRoundFeedbackInput

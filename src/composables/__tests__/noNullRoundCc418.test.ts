@@ -109,4 +109,18 @@ describe('CC-418 runCalcRound 非 null 化 / null 轮退役', () => {
       expect(src.includes('anomalyPool: null'), t).toBe(false)
     }
   })
+
+  it('CC-435（T13-d）：AgentNextRoundFeedbackInput.adjustedResult 必填非 null；typesHooks.ts 整文件无 `| null`；yeshuguang / anbyZero 无 `adjustedResult ?? teamResult`', () => {
+    // typesHooks 的钩子入参全部来自流水线；流水线自 CC-418~423 起无 null 轮 / null 池 / null 调整结果。
+    // 新增合法 null 入参前先开 CC 卡再改本锁。
+    const hooks = readFileSync(resolve(__dirname, '../../mechanics/typesHooks.ts'), 'utf-8')
+    expect(hooks).toMatch(/\n  adjustedResult: DeepReadonly<TeamResourceResult>\n/)
+    expect(hooks.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l) && l.includes('| null'))).toEqual([])
+    for (const m of ['yeshuguang', 'anbyZero']) {
+      const src = readFileSync(resolve(__dirname, `../../mechanics/agents/${m}.ts`), 'utf-8')
+      expect(src.includes('adjustedResult ?? teamResult'), m).toBe(false)
+    }
+    const pp = read('panelPhases.ts')
+    expect(pp).toMatch(/\n  adjustedResult: AgentNextRoundFeedbackInput\['adjustedResult'\]\n/)
+  })
 })

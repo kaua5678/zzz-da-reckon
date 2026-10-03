@@ -17,6 +17,8 @@ function feedback(agentId: string, overrides: Partial<AgentNextRoundFeedbackInpu
   return hook!({
     slot: 2, cfg, characters: [cfg],
     teamResult: { characters: [] } as never,
+    // CC-435：adjustedResult 必填；未显式给时 = 覆盖后的 teamResult（流水线无调整时的同形传入）
+    adjustedResult: overrides.adjustedResult ?? overrides.teamResult ?? ({ characters: [] } as never),
     anomalyPool: emptyAnomalyPool(), prevThreads: initialCalcRoundThreads(),
     combatTime: 180, getAgentSkills: () => undefined,
     ...overrides,
@@ -74,7 +76,7 @@ describe('C-α next-round feedback', () => {
     getAgentMechanic('1431')!.applyTeamConfig!({ ...input, slot: 1, cfg: characters[1]! })
     expect((ye as Record<string, unknown>).yeshuguangGiftUltCount).toBe(2.25)
     expect(collectNextRoundFeedback({
-      characters: [], teamResult: result(100), anomalyPool: emptyAnomalyPool(),
+      characters: [], teamResult: result(100), adjustedResult: result(100), anomalyPool: emptyAnomalyPool(),
       prevThreads: threads, catalogStore: catalog,
     })).toEqual({})
   })
@@ -96,8 +98,8 @@ describe('C-α next-round feedback', () => {
     })).toEqual({ yeshuguangGiftUlt: 6.75 })
   })
 
-  it('C8: null adjustment falls back to team, never display; absent character returns zero', () => {
-    expect(feedback('1431', { adjustedResult: null, teamResult: result(2.25), displayResult: result(100) }))
+  it('C8: reads adjustedResult only — never team / display (CC-435: adjustedResult is required); absent character returns zero', () => {
+    expect(feedback('1431', { adjustedResult: result(2.25), teamResult: result(100), displayResult: result(100) }))
       .toEqual({ yeshuguangGiftUlt: 2.25 })
     expect(feedback('1431', { adjustedResult: { characters: [] } as never, teamResult: result(100) }))
       .toEqual({ yeshuguangGiftUlt: 0 })
