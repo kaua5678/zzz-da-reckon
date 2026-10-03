@@ -292,3 +292,18 @@ return { end: structuredClone(integerCycleStop(members)), clean: isFloatNoiseCyc
 1. 18 例 `converged=true` 的变化完全由「前序/终局 pass 真整数环消除透支」因果解释，不存在预期外的旁路污染。
 2. 机制 ①② 属于「带截断/取整的迭代求解器在中途遇到整数环时，后续轨迹依赖环出口选择」的固有性质；只要内层中途仍使用整数次数（而非全局实数化松弛、仅终局取整，即 DEBT 1a），任何环停点规则都会决定后续折叠轨迹。在整数环存在的前提下，取不透支的可行成员（`over=0`）比取透支成员向后续 pass 注入虚假的 `timeBudgetExcess` 更自洽。
 3. 本项**结项**，无需额外代码改动。
+
+## 10. 第 430 轮：外层 outerExit 的「顺序无关、配装有关」实测（arena-F，仅记录）
+
+起因：队列 §2 r420 下一步 2 问 yidhari-qingyi-lucia 外层是否 7↔8 振荡。复核方法：`PROBE_CONV_SCAN=1 PROBE_CONV_TEAM=yidhari-qingyi-lucia npx vitest run src/composables/__tests__/convergenceProbe.test.ts`（冷跑/热跑/换队三读数）+ 一次性探针（`/home/kaua/calc-arch/arenaF/r430/outerExitProbe.test.ts`，日志 `probe.log`）对全部 104 支三人预设跑三种口径：
+A = 顺序热跑 + `applyTeamPreset`（= convergenceProbe 口径，套推荐配装）；B = 顺序热跑、只 `setAgent`（= timeFillRatchet 口径，缺省配装）；C = 每队 `setupHarness` 冷跑 + `applyTeamPreset`。
+
+**结果**：
+1. yidhari-qingyi-lucia：A/C `stable/5`，B `stable/4`，三读数逐位一致 ⇒ 不振，§2 该条关掉。
+2. **A ≡ C 逐队相同**（104/104）⇒ 外层出口与「之前算过哪队」无关，没有跨队状态泄漏。
+3. **A ≠ B 的队 39 支**，差别只在轮数（±1～2）和 8 支的出口类型：
+   - 缺省配装（B）cycle：auto-1021-1481-1341、auto-1191-1481-1311（= ratchet 基线里的 2 支）。
+   - 推荐配装（A/C）cycle：auto-1041-1361-1311（6 轮）、yixuan-trigger-lucia（6）、yixuan-jufufu-lucia（20，长环回查判出）、auto-1371-1571-1451（20，长环）、auto-1511-1561-1411（5）、auto-1181-1511-1411（5）。
+   - 两套名单互不相交；两种口径都 **0 maxIter**。
+
+**解读与拍板**：cycle 是 §1–§8 规则的正常产物（整数次数环 + 规范选点；长环由 CC-327 的 20 轮后回查接住），配装一变、净失衡/时间预算的整数停点就换地方，名单变化不是回归。`timeFillRatchet` 的 `outerExit` 只锁缺省配装一面，这是**已知的覆盖面**而不是缺陷；要不要再锁一面「推荐配装下 0 maxIter」——多一条锁、无架构收益，不做（想做时把探针的 A 口径接进 ratchet 的 `绝对不变量` 分支即可）。不改代码。

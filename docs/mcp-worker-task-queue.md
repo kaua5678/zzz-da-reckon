@@ -82,6 +82,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 13:27 arena-F 第 430 轮**（开工：master `014a58f7` 干净、已推；主仓零 WIP；REQUIREMENTS.md 无新条目；本轮**无代码改动**，产物 `/home/kaua/calc-arch/arenaF/r430/`：`outerExitProbe.test.ts`（一次性探针，已从仓库删除）、`probe.log`）
+- **做到哪**：r420 下一步 2（yidhari-qingyi-lucia 外层振荡）**复核并关掉**：`PROBE_CONV_TEAM` 三读数 + 自写 A/B/C 探针都给 `stable`（套推荐配装 5 轮、缺省配装 4 轮），不是 7↔8 振荡。§2 该条已加指针。
+- **顺手量到的、值得知道的两件事**（写进 `mcp-integer-cycle-stop.md` §10）：① **外层 outerExit 与跑的先后顺序无关**（104 队顺序热跑 vs 每队冷跑逐队相同）；② 但**与配装有关**：缺省配装（ratchet 基线口径）cycle 只有 2 队（auto-1021-1481-1341 / auto-1191-1481-1311），套推荐配装（`applyTeamPreset`，convergenceProbe 口径）cycle 是另外 6 队（auto-1041-1361-1311、yixuan-trigger-lucia、yixuan-jufufu-lucia（长环，20 轮后判出）、auto-1371-1571-1451（长环）、auto-1511-1561-1411、auto-1181-1511-1411），两套名单**不相交**；两种口径都没有 maxIter。所以 `timeFillRatchet` 的 outerExit 基线只锁了缺省配装这一面，别拿它当「全部 cycle 队名单」。
+- **拍板**：不改代码。cycle 本身是 CC-326/327/328 已定的整数环停点规则在正常工作（长环 20 轮后回查、规范选点），没有 maxIter 就没有缺陷；要锁「推荐配装下也无 maxIter」可以给 ratchet 加一面，但那是多一条锁不是架构收益，先不做。
+- **下一步候选**（不排序）：r420 下一步 3/4 需用户口径，只能写候选；CC-405 偏差 ①（轴表/技能行 UI 显示协同值，要把 `teamAgentIds` 送进 `axisTableDirect` / `skillRows` 查表口）；§3 空——如果没别的，去 `docs/mcp-r6-refactor-list.md` 未结项里挑。
+- **回滚点**：无代码；docs 一个提交。
+
 **2026-10-03 13:08 arena-F 第 429 轮**（开工：master `ecf7bfa0` 干净、已推；主仓零 WIP（r428 清掉孤儿后第一次）；REQUIREMENTS.md 无新条目；worktree `wtF-coop` 已删，产物 `/home/kaua/calc-arch/arenaF/r429/`：`helpers.diff`、`vt.log`、`guards.log`、`build.log`、patch 脚本）
 - **做到哪**：r427/r428 挂着的「珂蕾妲协同版」**做完**（CC-405 `84b3210e`）。不是 koleda 特判，而是加了一层通用的「队友在队招式变体」表（`src/data/moveVariants.ts`），融合求和前换段、`enrichExecutionPlan` 一处消费；以后任何「X 在队时 Y 的某段换倍率」都是表里加一行。
 - **为什么 golden/zd 一动不动**：预设库里没有珂蕾妲，所以 zd DIFF 0 不是「没改伤害」而是「改的伤害没被预设覆盖」——真实影响只在含珂蕾妲+本的自定义队（强化普攻 +17%、引爆 +10%、终结 +9.4%）。锁靠 `moveVariants.test.ts` 真引擎用例（珂蕾妲+本+妮可）。
@@ -301,7 +308,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **拍板**：① auto-1371-1251-1451 −9.86% 接受：不是融合算错，是更真实的强特时长让仪玄自动轴超预算、引擎按既定「轴太厚 ⇒ 退化非轴」口径处理（探针 `/home/kaua/calc-arch/arenaE/r420/probe2.test.ts`，两侧输出 `p2-*.out`：master 轴「轴1」、stun 3；修后轴空、stun 4）。② 「长按追加连打」不建模：原文只说「提升连打次数」，没有次数 / 倍率，凭空猜会引入无据数字。
 - **下一步（按价值排）**：
   1. **[r427 arena-F 已全部裁决，见卡表 CC-402，别重扫]** **剩余 TWIN 候选逐个核对**（方法同 r419：读模块 + `data/raw/nanoka_missing/full/<id>.json` param.desc，三选一 (i) 隐藏 / (ii) 融合 / (iii) 不动；清单出处 `/home/kaua/calc-arch/arenaE/r419/tbl-census2.out`）：1071012、1101106、1101402、1121008 / 1121009（ben.ts 有引用）、1131013 / 1131014（soukaku.ts 引用 013）、1151013、1161015、1181018、1201023、1271009、1321012、1351005、1381009、1401007、1451017、1461022、1541007 / 1541011 / 1541012（promia.ts 引用 011）、1561010、1571009 / 1571012（norma.ts 有引用）、1611011 / 1611012、1621019（roxy.ts 有引用）。r419 `fusions.out` 里能找到 nanoka 求和式的只有青衣、莱卡恩、雨果、雅（均已处理）⇒ 余下大概率是 (i) 或 (iii)，零差为主。
-  2. **yidhari-qingyi-lucia 外层收敛 cycle**（r420 新增，第 4 支 cycle 队）：先用 `.zc/perf` 打印外层每轮的青衣强特次数，看是否 7↔8 振荡；若是，属整数环停点问题（参考 `docs/mcp-integer-cycle-stop.md` CC-326），别加容差。
+  2. **[r430 arena-F 已复核关掉：该队 outerExit=stable、outerRounds=5（缺省配装 4），冷跑/热跑/换队/套推荐配装四种口径一致，不振；全库 cycle 名单与口径差见 `docs/mcp-integer-cycle-stop.md` §10]** **yidhari-qingyi-lucia 外层收敛 cycle**（r420 新增，第 4 支 cycle 队）：先用 `.zc/perf` 打印外层每轮的青衣强特次数，看是否 7↔8 振荡；若是，属整数环停点问题（参考 `docs/mcp-integer-cycle-stop.md` CC-326），别加容差。
   3. **「能量全部打强特」口径复核**：青衣 4 命回能后强特 +1 反而降伤（每秒收益低于平A）。若别的角色也出现同类下降，再评估引擎是否该按每秒收益决定能量用途（要用户口径，先写进 OPEN-ITEMS 候选，不要直接改）。
   4. 仪玄自动轴预设（`stunAxisPresets/仪其他.json` 的「轴1」）是在青衣强特 0.383s 时代配的；4 次失衡下轴太厚而退化。要不要按新时长重配，看用户是否在意该队走轴。
 - **已知坑**：
