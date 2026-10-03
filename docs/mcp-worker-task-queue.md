@@ -88,6 +88,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **下一步（start-ready）**：T8（按表逐模块，建议先 miyabi / yixuan / anbyZero / hugo 这四个小的，再 soukaku / grace / burnice）；T9。派 dsh 的配方见 §2b「arena-F r424–r428 摘要」。
 - **拍板**：① `moveActionTimes` 类型上**可选**——只为了 ~40 个手搭 cfg 的模块测试不必全填；引擎路径恒有；缺表读 0。② 本轮不迁纯函数型的 7 个模块——它们每个都要动入参 + 多处测试夹具，一轮做 13 个模块的 verify 代价高且回滚粒度差；拆成卡按模块提交。③ 别人的 WIP 没处理（还不到 1 小时，且在活跃改）。
 - **坑**：worktree 里 `node_modules` 软链在 `git status` 显示 `?? node_modules`，别 `git add -A`；`git merge --ff-only` 进带别人 WIP 的主仓没问题，前提是提交不碰他们改的文件。
+- **收工现场注记（14:30）**：主仓 `npm run -s check-guards` **红 2 项，全部来自别人未提交的 `src/data/wEngineStackCoverage.ts`**（:9 / :15 两条 `@fact` 缺「据」「锚」，`wengine:stackedCoverage/折算口径`、`/触发语义` 缺 `⟳复核 | 到期`）；HEAD `78cfcc4d` 在干净 worktree 里 25/25 绿。给那条 lane：补槽位格式照 `src/data/moveVariants.ts:33-34`。给下一轮：主仓红先 `git status` 看是不是这份 WIP，别归到 CC-409。
 - **回滚点**：`git revert 67f6672b`（含 2 个测试文件与新锁）。
 
 **2026-10-03 14:02 arena-F 第 434 轮**（开工：master `8e8234a2` 干净、已推、unpushed 0；无 verify / vitest 进程；REQUIREMENTS.md 无新条目（R1–R8 全 done）；§3 空；在主仓直接做（无并行 lane，认领表已登记）；产物 `/home/kaua/calc-arch/arenaF/r434/`：`patch-cc408.py`、`patch-test.py`、`zd.log`、`guards.log`、`build.log`、`vt.log`）：**CC-408 `1fbfd797`**（代码）+ 本文档提交。
