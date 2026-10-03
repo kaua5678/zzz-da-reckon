@@ -647,6 +647,14 @@ const axisWindowCountList = computed(() => axisWindowCounts(axes.value, stunPool
 function axisTimes(ai: number): number {
   return axisWindowCountList.value[ai] ?? 0
 }
+/** 轴内已放置量：全部轴上「本槽 + 满足谓词」的块 count × 该轴窗口数（r475：原五处同式求和合一，口径不变） */
+function consumedOnAxes(slot: number, match: (a: DeepReadonly<StunAxisAction>) => boolean): number {
+  let consumed = 0
+  axes.value.forEach((ax, ai) => {
+    for (const a of ax.actions) if (a.slot === slot && match(a)) consumed += a.count * axisTimes(ai)
+  })
+  return consumed
+}
 const allMoves = computed(() => {
   const out: { slot: number; moveId: string; label: string; actionTime: number; remaining: number; key: string; promoteVariant?: '60' | '90'; sourceTag?: 'gift' }[] = []
   const chars = resourceResult.value?.characters ?? []
@@ -654,10 +662,7 @@ const allMoves = computed(() => {
   for (const c of chars) {
     const basicTime = c.timeAllocation.basicAttackTime
     if (basicTime > 0) {
-      let consumed = 0
-      axes.value.forEach((ax, ai) => {
-        for (const a of ax.actions) if (a.slot === c.slot && a.moveId === 'basic') consumed += a.count * axisTimes(ai)
-      })
+      const consumed = consumedOnAxes(c.slot, a => a.moveId === 'basic')
       out.push({ slot: c.slot, moveId: 'basic', label: '平A', actionTime: 1, remaining: Math.max(0, Math.floor(basicTime) - consumed), key: c.slot + ':basic' })
     }
     for (const exec of c.executions) {
@@ -669,10 +674,7 @@ const allMoves = computed(() => {
       // 连携/赠送动作的可用数按失衡次数兜底（连携可用 = 失衡次数）。
       const mid = exec.moveId
       // 自身招式只统计「无转大变体」的轴内块，避免 60/90 转大块把常规终结技的次数吃掉
-      let consumed = 0
-      axes.value.forEach((ax, ai) => {
-        for (const a of ax.actions) if (a.slot === c.slot && a.moveId === mid && !a.promoteVariant && (a.sourceTag === 'gift') === (exec.source === 'gift')) consumed += a.count * axisTimes(ai)
-      })
+      const consumed = consumedOnAxes(c.slot, a => a.moveId === mid && !a.promoteVariant && (a.sourceTag === 'gift') === (exec.source === 'gift'))
       const skills = catalogStore.getAgentSkills(configStore.team[c.slot]?.agentId ?? '')
       const move = findMove(skills, mid)
       const rawName = exec.moveName?.replace(/（.*/g, '').trim() || mid
@@ -718,10 +720,7 @@ const allMoves = computed(() => {
     const ultMove = findUltimateMove(skills) // CC-319：原 findMoveByEn(skills,'ultimate') 不看分类，青衣会取到普攻 1251001
     if (ultMove && promoteOwnerSlot.value >= 0 && !agentOwnsPromoteVariantAxisBlocks(c.agentId)) {
       for (const v of ['60', '90'] as const) {
-        let consumed = 0
-        axes.value.forEach((ax, ai) => {
-          for (const a of ax.actions) if (a.slot === c.slot && a.moveId === ultMove.id && a.promoteVariant === v) consumed += a.count * axisTimes(ai)
-        })
+        const consumed = consumedOnAxes(c.slot, a => a.moveId === ultMove.id && a.promoteVariant === v)
         out.push({ slot: c.slot, moveId: ultMove.id, label: '转大·' + v, actionTime: ultMove.actionTime ?? 0, remaining: Math.max(0, 9 - consumed), key: `${c.slot}:${ultMove.id}:promote:${v}` })
       }
     }
@@ -735,10 +734,7 @@ const allMoves = computed(() => {
         actionTimeOf: mid => findMove(exSkills, mid)?.actionTime ?? 0,
       })
       for (const blk of extraBlocks) {
-        let consumed = 0
-        axes.value.forEach((ax, ai) => {
-          for (const a of ax.actions) if (a.slot === c.slot && a.moveId === blk.moveId) consumed += a.count * axisTimes(ai)
-        })
+        const consumed = consumedOnAxes(c.slot, a => a.moveId === blk.moveId)
         out.push({ slot: c.slot, moveId: blk.moveId, label: blk.label, actionTime: blk.actionTime, remaining: Math.max(0, blk.quota - consumed), key: `${c.slot}:${blk.moveId}` })
       }
     }
@@ -758,15 +754,10 @@ const allMoves = computed(() => {
         // CC-59：经模块声明 axisRageCombos（原写死 agentId 1471 + 两个 comboId 字面量）
         const rageCombos = agentAxisRageCombos(c.agentId)
         const isRageCombo = !!rageCombos && (comboId === rageCombos.primary || comboId === rageCombos.didong)
-        let consumed = 0
-        let didongConsumed = 0
-        axes.value.forEach((ax, ai) => {
-          for (const a of ax.actions) {
-            if (a.slot !== c.slot) continue
-            if (a.moveId === comboId) consumed += a.count * axisTimes(ai)
-            if (rageCombos && comboId === rageCombos.primary && a.moveId === rageCombos.didong) didongConsumed += a.count * axisTimes(ai)
-          }
-        })
+        const consumed = consumedOnAxes(c.slot, a => a.moveId === comboId)
+        const didongConsumed = rageCombos && comboId === rageCombos.primary
+          ? consumedOnAxes(c.slot, a => a.moveId === rageCombos.didong)
+          : 0
         const rageQuota = c.banyueRageCycle ? c.banyueRageCycle.rageCount * 2 : 0
         const available = isRageCombo && c.banyueRageCycle
           ? comboId === rageCombos?.primary
