@@ -850,7 +850,7 @@ export function createRunCalcRound(deps: {
     // 正常弹刀每次失衡 = 轻弹刀 + 支援突击；不带支援突击弹刀每次失衡 = 仅轻弹刀。无行 = 无招架失衡来源，不反推。
     let parrySplitNext = prevParrySplit ?? { breakerParry: 0, mainDpsParry: 0, breakerNoFollowUp: 0, mainDpsNoFollowUp: 0, topUp: 0, perParryDaze: 0, perNoFollowUpDaze: 0 }
     let backstageAutoNext: Record<string, number> = threads.backstageAuto ?? {}
-    if (parrySplitActive && sp1.pool) {
+    if (parrySplitActive) {
       const breakerCfg = base.characters.find(c => c.slot === effectiveBreakerSlot)
       const breakerDefMoveId = breakerCfg?.defensiveAssistMoveId ?? ''
       const breakerFollowUpMoveId = breakerCfg?.assistFollowUpMoveId ?? ''
@@ -910,15 +910,13 @@ export function createRunCalcRound(deps: {
         if (!decl) continue
         const manual = Math.max(0, Math.floor(Number(cfg[decl.manualField] ?? 0)))
         if (manual > 0) { backstageNext[cfg.agentId] = manual; continue }
-        const ownRows = (sp1.pool?.contributions ?? []).filter(r => decl.moveIds.includes(String(r.moveId)) && r.slot === cfg.slot)
+        const ownRows = sp1.pool.contributions.filter(r => decl.moveIds.includes(String(r.moveId)) && r.slot === cfg.slot)
         const ownDaze = ownRows.reduce((sum, r) => sum + r.effectiveStun, 0)
         const pairRows = ownRows.filter(r => decl.moveIds.slice(0, 2).includes(String(r.moveId)))
         const pairCount = pairRows.reduce((sum, r) => sum + (r.count ?? 0), 0)
         const perPair = pairCount > 0 ? ownDaze / pairCount : decl.perPairBase
         const pool = sp1.pool
-        const deficit = pool
-          ? Math.max(0, 4 * pool.bossStunValue - (pool.totalStunBuildUp - ownDaze))
-          : 0
+        const deficit = Math.max(0, 4 * pool.bossStunValue - (pool.totalStunBuildUp - ownDaze))
         const ownField = rr.characters.find(c => c.slot === cfg.slot)
         const ownFieldTime = (ownField?.timeAllocation?.necessaryTime ?? 0) + (ownField?.timeAllocation?.basicAttackTime ?? 0)
         const supplyCap = Math.max(0, Math.floor(Math.max(0, (base.totalTime ?? 180) - ownFieldTime) / decl.minPeriodSeconds))
@@ -1160,7 +1158,7 @@ export function createRunCalcRound(deps: {
           rr.characters.map(c => [c.slot, c.decibelSource?.total ?? 0]),
         ),
         // 上一轮失衡池整数次数：轴内块数落地（雨果决算 坑36）与池同源的滞后注入
-        prevPoolStunCount: sp1.pool?.stunCount ?? 0,
+        prevPoolStunCount: sp1.pool.stunCount,
       },
     }
   }

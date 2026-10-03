@@ -8,7 +8,8 @@ import type { StackTraversalResult } from '@/core/stunAxisStack'
 /** 单轮计算输出：下游 computed 消费的 13 字段 + 下一轮收敛线程 */
 export interface CalcRoundResult {
     resourceResult: TeamResourceResult
-    stunPool: StunPoolResult | null
+    /** CC-421：恒非 null（来源 `promoteFixpoint().pool`；空失衡贡献 ⇒ stunCount 0 的合法池，见 CC-417） */
+    stunPool: StunPoolResult
     anomalyPool: AnomalyPoolResult | null
     adjustedResourceResult: TeamResourceResult | null
     promote: number

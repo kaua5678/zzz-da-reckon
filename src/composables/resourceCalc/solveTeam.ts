@@ -179,12 +179,12 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       const physical = resourceConfig.stunPlanProjection === 'physical'
       const feasibleOf = (m: OuterCycleMember): boolean | undefined => {
         if (!physical) return undefined
-        const kIn = m.prev?.stunPool?.stunCount
-        const pool = m.out.stunPool?.stunCount
-        return kIn === undefined || pool === undefined || pool >= kIn
+        const kIn = m.prev?.stunPool.stunCount
+        const pool = m.out.stunPool.stunCount
+        return kIn === undefined || pool >= kIn
       }
       const picked = pickOuterCycleMember(
-        all.map(m => ({ stunIn: m.stunIn, next: m.next, disc: discreteInconsistencyOf(m), time: timeInconsistencyOf(m), feasible: feasibleOf(m), windowsIn: physical ? m.prev?.stunPool?.stunCount : undefined })),
+        all.map(m => ({ stunIn: m.stunIn, next: m.next, disc: discreteInconsistencyOf(m), time: timeInconsistencyOf(m), feasible: feasibleOf(m), windowsIn: physical ? m.prev?.stunPool.stunCount : undefined })),
         { stun: OUTER_STUN_TOLERANCE, disc: TIME_BUDGET_TOLERANCE_SECONDS, time: AXIS_FALLBACK_TOLERANCE_SEC },
       )
       const best = all[picked.index]
@@ -205,7 +205,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // 原「null 轮 ⇒ threadsAfterNullRound 回退 + 签名清空 + continue」分支随之删除。
       out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale })
       const t = out.threadsNext
-      const rawNext = out.stunPool?.stunCount ?? 0
+      const rawNext = out.stunPool.stunCount
       // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
       let next = rawNext
       if (!locked && stunWindowDur > 0 && stunEffTime > 0) {
@@ -293,7 +293,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     // 取读入 K（按 K 分配时池撑得住 ≥ K，即最大自洽可行整数），报告池同步钳到 K；K+1 那次没有分配时间，不兑现。
     // 只处理「池 > 读入」的一侧；「池 < 读入」（引擎多分配了窗口）的成员已在 pickOuterCycleMember ⓪″（CC-153）排除出参选。
     // 回退点：删本块与 `core/stunPool.ts#withStunCount`。
-    if (outerExit === 'cycle' && resourceConfig.stunPlanProjection === 'physical' && out.stunPool && outPrev?.stunPool) {
+    if (outerExit === 'cycle' && resourceConfig.stunPlanProjection === 'physical' && outPrev) {
       const kIn = outPrev.stunPool.stunCount
       if (out.stunPool.stunCount > kIn) out = { ...out, stunPool: withStunCount(out.stunPool, kIn) }
     }

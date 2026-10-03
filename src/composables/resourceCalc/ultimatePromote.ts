@@ -39,7 +39,8 @@ export interface UltimatePromoteParams {
 }
 
 export interface PromoteFixpointResult {
-  pool: StunPoolResult | null
+  /** CC-421：恒非 null——`calcStunPool` 无 null 出口且不动点循环至少跑一轮。 */
+  pool: StunPoolResult
   hug60: number
   promote: number
   targetSlot: number
@@ -308,7 +309,8 @@ export function promoteFixpoint(
   let stunCount = 0
   let hug60 = 0
   let promote = 0
-  let pool: StunPoolResult | null = null
+  /** CC-421：`MAX_PROMOTE_ITER ≥ 1` ⇒ 首轮必执行 `pool = runPool(...)` 后才可能 break ⇒ 定赋值断言成立。 */
+  let pool!: StunPoolResult
   const seenStunCounts = new Set<number>()
   const bossStunValue = configStore.enemy.stunValue
   const locked = lockedStunCount != null && lockedStunCount >= 0
@@ -333,10 +335,10 @@ export function promoteFixpoint(
     // 传上一轮的 stunCount 折算窗口占比（首轮 0 = 与旧行为一致，之后逐轮收敛）
     pool = runPool(execs, inAxisFraction, stunCount)
     if (locked) {
-      if (pool && pool.stunCount !== stunCount) pool = withStunCount(pool, stunCount)
+      if (pool.stunCount !== stunCount) pool = withStunCount(pool, stunCount)
       break
     }
-    const next = pool?.stunCount ?? 0
+    const next = pool.stunCount
     if (next === stunCount) break
     // **两种模式统一走连续闭式求根**（用户 2026-09-10 裁决「顺序：边打边攒 → 攒够开窗 → 剩多久」）：
     // 轴模式原先走「整数迭代 + 2-循环环检测」，其窗口占比只来自轴内逐招 fraction，与「N 次窗口占用
@@ -353,8 +355,8 @@ export function promoteFixpoint(
     //   E(N) = (毛失衡 + Boss白送) × (1 − xN)，N = E/阈值（雨果返还 r 段：N = (E/阈值 − r)/(1 − r)）
     //   ⇒ N* = (g + gf − r) / ((1 − r) + g·x)，g = 毛失衡/阈值、gf = 白送/阈值。
     // 收缩快（一次迭代即到连续不动点附近），次数不再依赖迭代入口/热启动历史。
-    const g = (pool?.grossStunBuildUp ?? 0) / Math.max(1e-9, bossStunValue)
-    const gf = (pool?.stunGift ?? 0) / Math.max(1e-9, bossStunValue)
+    const g = pool.grossStunBuildUp / Math.max(1e-9, bossStunValue)
+    const gf = pool.stunGift / Math.max(1e-9, bossStunValue)
     const x = windowDur / Math.max(1e-9, effTime)
     const fixed = (g + gf - refundStunRatio) / ((1 - refundStunRatio) + g * x)
     if (!Number.isFinite(fixed) || Math.abs(fixed - stunCount) < 1e-6) break

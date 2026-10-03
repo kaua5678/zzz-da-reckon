@@ -47,4 +47,18 @@ describe('CC-418 runCalcRound 非 null 化 / null 轮退役', () => {
     const orch = readFileSync(resolve(__dirname, '..', 'useResourceCalc.ts'), 'utf-8')
     expect(orch).toMatch(/function computeCalcOutput\(base: ResourceCalcConfig\)/)
   })
+
+  it('CC-421：失衡池恒非 null——PromoteFixpointResult.pool 与 CalcRoundResult.stunPool 都不带 `| null`', () => {
+    const up = read('ultimatePromote.ts')
+    expect(up).toMatch(/export interface PromoteFixpointResult \{[\s\S]*?\n  pool: StunPoolResult\n/)
+    expect(up).not.toContain('pool: StunPoolResult | null')
+    const rr = read('roundResult.ts')
+    expect(rr).toMatch(/export interface CalcRoundResult \{[\s\S]*?\n    stunPool: StunPoolResult\n/)
+    expect(rr).not.toContain('stunPool: StunPoolResult | null')
+    // 消费端不再对池做可选链（prev 为 null 的 `prev?.stunPool` 是对 prev 的判空，不在此列）
+    for (const f of ['convergence.ts', 'solveTeam.ts', 'ultimatePromote.ts']) {
+      const src = read(f)
+      expect(src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l) && /\bstunPool\?\.|\bpool\?\./.test(l)), f).toEqual([])
+    }
+  })
 })
