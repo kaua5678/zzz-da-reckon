@@ -92,6 +92,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 21:33 arena-F 第 461 轮**（开工：origin = 主仓 = `77f23455`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 全部仅触发项；worktree `wt-T29`（已删）；产物 `/home/kaua/calc-arch/arenaF/r461/`）：**CC-432 `bc0d606b`** + 本文档提交。
+- **做到哪**：CC-431 收尾（composables / stores 两处默认角色归 data，锁扩到四层，`specs/additionalGate` 判为引擎配置表不搬）；`StunAxisPage.vue` 四步扫完（r6 §8 行 461），「从未扫过的大文件」线至此只剩 `ResponseSurface3D.vue`（1371，纯图形，不值得按四步看）——**这条线结项**。分片 478 / 4336。
+- **下一步（start-ready，建议直接开工）**：**StunAxisPage 页面内角色专属轴块迁模块声明**。
+  1. 读 `src/views/StunAxisPage.vue` L715–740（`findMove(skills, '1051024')` 寒冰触手块：id / 标签 / 配额 9 / `actionTime: 0` 全在页面）与 CC-61 的 `axisExtraBlocks` 契约（`grep -rn "axisExtraBlocks" src/mechanics src/composables | head`，看诺姆 `norma-hat-chain` / 希格莉德 `sigrid-pozhen` 是怎么声明的、页面 L740 后是怎么消费的）。
+  2. 1051 是哪位：`node scripts/resolve.mjs 1051`（规则 15）；在 `src/mechanics/agents/<该角色>.ts` 加 `axisExtraBlocks` 声明（moveId `1051024`、label、quota 9、actionTime 0），页面删掉 tentacle 分支。配额 9 的依据先查 r6 / arch（`grep -n "触手" docs/mcp-r6-refactor-list.md docs/mcp-calc-core-architecture.md | head`），查不到就在声明旁写 `@fact` 带到期复核。
+  3. 验证：`npx vitest run src/composables/__tests__/stunAxis* src/mechanics/__tests__` + vue-tsc + guards + build；轴块是展示侧候选列表，不进求值 ⇒ zd 可跳过但要在文档里说明；若模块声明被求值侧读到（看 CC-61 卡），则跑 zd。
+  4. 转大 60/90 配额 9 与般岳 `banyueRageCycle` 的页面内推导是第二刀，先不碰：需要 `axisExtraBlocks` 能表达「配额 = f(资源周期)」，先在 arch 卡里写设计再动。
+- **未决 / 坑**：`ResponseSurface3D.vue` 不扫（纯 three.js 几何）。四步法第 4 步已由 `viewAgentDefaults.test.ts` ③ 接管（views / components / composables / stores）；`src/utils` / `src/core` / `src/specs` 当前也无展示型默认值（grep 过），没纳入锁是因为 `specs/additionalGate` 之类合法键表会误报。
+- **回滚点**：`git revert bc0d606b`。
+
 **2026-10-03 21:22 arena-F 第 460 轮**（开工：origin = 主仓 = `65a1b45e`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 全部仅触发项；worktree `wt-T28`（已删）；产物 `/home/kaua/calc-arch/arenaF/r460/`）：**CC-431 `39991a9e`** + 本文档提交。
 - **做到哪**：「从未扫过的大文件」线扫完 `DebugPage.vue`（无改动，理由见 arch CC-431「不改的」）与 `TimeChartsPage.vue`（r6 §8 行 460）。展示层 5 文件 10 处默认角色 id 字面量收口到 `data/viewAgentDefaults.ts`，锁测试把「views/components 零角色 id 字面量」变成机器检查；顺手修候选池排除主 C 写死的潜伏 bug。分片 478 / 4336。
 - **沉淀**：(1) **四步法第 4 步此前四轮都是假阴性**——`grep -E` 不解释 `\x27`；经 `mcp.js sh '…'` 单引号包裹时要写 `grep -P "\x27…\x27"`。凡是「扫了没发现」的结论，先用一个**已知应命中**的样本验证 grep 本身。(2) 「用户给的例子 / 口径」类默认值也是单源对象：它们不是引擎规则，但散在页面里同样会在角色改 id 时静默失效，且无人知道哪些页面默认选了谁。
