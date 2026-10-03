@@ -90,6 +90,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 19:46 arena-F 第 451 轮**（开工：origin = `4643887a`，主仓多一个**别人的本地提交** `77ea33b7`（kaua5678，19:44，未推），工作区干净，无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T19`（已删）；产物 `/home/kaua/calc-arch/arenaF/r451/`：`vt-s1-pregrace-wt.log` / `loadgen.log`）：**无代码提交**，只有本文档提交。
+- **做到哪**：T14 ①②③ 做完，结论「HEAD 确定、红值 = grace WIP 行为、机制不可考」，卡关掉（详见 §3 T14）。顺带证实了 r450 担心的「共享 node_modules 软链会让 worktree 读到主仓」**不成立**（单文件与全量分片两种形态）。
+- **别人的提交 `77ea33b7`**：仍在主仓本地、未推。不是我验的，不替他推；每轮我 rebase 主仓时它的哈希会变（已变过一次 592c66f6→77ea33b7），**以后引用只认消息**「refactor(grace): 轮换计划改精确闭式解…」。若 24h（≈10-04 19:44）后仍未推：在 worktree 里 `git cherry-pick` 它、全量验证，绿就以他的名义 `git push origin <sha>:master`，红就入分支 `wip/kaua5678-grace-rotation` 并把主仓 reset 到 origin。
+- **这轮踩到的**：`pkill -f "[m]echanics/__tests__ src/core"` 仍把自己的 shell 杀了（exit 15）——方括号技巧只对「模式不出现在自己命令行」有效，而我同一条命令里先用这个字符串**启动**了负载进程，命令行里就有字面量。要杀自己起的后台进程：启动时记 `$!`，用 pid 杀。
+- **下一步（start-ready）**：没有排定卡。按 §1「没有排定项时不造活」：先 `cat docs/REQUIREMENTS.md`；无新条目就按 r6 §8 扫描记录找表里没有的区域。候选起点（r449 留的）：`grep -rn "| null" src/composables/resourceCalc/*.ts`——solveTeam 10 / convergence 9 / damagePool 6，但 roundResult 的 4 个已证真 null，其余多半同类，别为降计数去碰。
+- **回滚点**：无代码改动。
+
 **2026-10-03 18:56 arena-F 第 450 轮**（开工：origin = 本地 = `d19894d5`，**另一会话在跑**：dsh web（pid 563263）下的 `npm run check` 在主仓按默认 16 fork 连跑 3 次（18:5x / 19:0x / 19:2x，各约 6 分钟，load 20～44），主仓 WIP 仍是 grace/velina 三件（md5 `f27e6b94` 未变）；REQUIREMENTS.md 无新条目；worktree `wt-T18`（已删）；产物 `/home/kaua/calc-arch/arenaF/r450/`：`tsc.log` / `guards.log` / `build.log` / `vt-q1..q3.log` `vt-e7.log` `vt-e8.log`（绿分片）/ `vt-s1.log`（**红**的那次，T14 证据）/ `forks*.count` / `patch-prompt.py` / `patch-docs.py`）：**CC-424 `b55ca97a`**（**已推**）+ 提示词改动 + 本文档提交。
 - **做到哪**：① r449 交接的「roundResult 余下 4 个 `| null`」查完，全是真 null，T13 卡收线。② 没按原计划找算法题，改做了一件基础设施：vitest worker 上限进 `vite.config.ts`（CC-424）。理由：规则「全量加 `--maxWorkers=4`」只约束读过提示词的会话，本轮另一会话按默认 16 fork 连跑把 VM 打到 load 44，我的 2 分片两次 rc=124；把它写进配置后所有入口（npm test / check / verify / dsh）默认安全。③ 提示词 `bridge-prompt-arena.md` 第 1 条对应段改写（备份 `.bak-maxworkers-config-20261003-1938`，修改记录已写在提示词 §二）。
 - **意外发现 → T14 卡**：高负载分片里 `timeFillRatchet` 两队（都含 1181）slack 0↔0.4 互换，单跑绿、复跑绿。这不是 flaky 可以忽略的那种：同配置的引擎输出随负载变 = 求值路径里有顺序依赖，最可疑的是 CC-420 记录的那条 `flush:'post'` 回填 watch。卡里写了复现法和禁止项。
@@ -555,7 +562,22 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 <!-- /card:T13 -->
 
 <!-- card:T14 -->
-### T14 · `timeFillRatchet` 高负载下非确定性（r450 发现，排查卡；先复现再改，别改基线）
+### T14 · ✅ 关卡（r451）：`timeFillRatchet` 的一次红**无法复现**，HEAD 引擎在三种形态下确定性已证；留「再现时的第一步」
+
+**r451 实验（worktree `wt-T19` = origin `4643887a`，grace.ts md5 `143e5e5c`；主仓同时是另一会话 grace 重构后的 `77ea33b7`，md5 `024cdb69`）**：
+① 探针 `src/__scratch__/t14probe.test.ts`（worktree 里已删；源码存 `/home/kaua/calc-arch/arenaF/r451/t14probe.test.ts`）：两队按 AB / BA / AAA / BBB / 夹 6 支别的队之后 AB 共 14 次测量，`auto-1181-1511-1411` 恒 `slack 0 / stun 3 / stable / 4 轮 / dmg 24623260`，`auto-1181-1561-1581` 恒 `slack 0.4 / stun 2 / stable / 4 轮 / dmg 17381462` ⇒ **无顺序依赖、无残留**（每队 `setupHarness` 新建 pinia）。
+② 同探针在人工负载下（并行 `VITEST_MAX_WORKERS=14 vitest run src/mechanics/__tests__ src/core/__tests__`，load 7→15）连跑 3 轮，14×3 次全部同值 ⇒ **与负载无关**。
+③ 全量分片 `--shard=1/2` 在该 worktree 跑（主仓此时已是 grace 重构后版本）⇒ 236/2077 全绿，timeFillRatchet 绿 ⇒ **多文件形态下也没有「读到主仓」的路径污染**。
+④ 另一会话提交 `77ea33b7`（消息「refactor(grace): 轮换计划改精确闭式解 + 维琳娜平A权重交边际均衡」）的 timeGolden 基线 diff 逐键比对：变化的 7 个键**全是 1181**（`agent:1181:c0/c3/c4/c5/c6`、`preset:auto-1181-1511-1411`、`preset:auto-1181-1561-1411`）⇒ 两队 slack 0↔0.4 的互换就是 grace 改动的确定性结果，不是什么双稳态。
+
+**结论**：r450 那次红 = 我的 worktree 在那一刻跑到了 grace **WIP** 版本的行为。HEAD 代码本身确定（①②③），所以唯一没被证伪的前提是「红跑时 `wt-T18/src/mechanics/agents/grace.ts` 确实是 HEAD」——当时没 md5，事后无法核对（红日志也被同名重跑覆盖）。机制猜不出来就不猜了；**本卡关掉**，T10 不因此升级。
+
+**再现时的第一步（写给下一个看到同类红的人）**：红的那一刻立刻在 worktree 里 `md5sum` 相关模块文件并与 `git show HEAD:<file> | md5sum` 比；`git status --short`；`ls -la --time-style=full-iso` 看 mtime；日志用唯一文件名。先排除「文件不是 HEAD」，再谈引擎非确定性。
+
+---
+
+*以下为 r450 的原始排查记录，保留作证据：*
+
 
 **现象**（r450，worktree `wt-T18` = origin `d19894d5` + 仅 `vite.config.ts` 改 maxWorkers）：`npx vitest run --shard=1/2` 在另一会话 16 fork 满载（load 20+）时，`timeFillRatchet.test.ts` 第三条「基线自洽零容差」红：`auto-1181-1511-1411` slack 基线 0 ≠ 实测 0.4、`auto-1181-1561-1581` 基线 0.4 ≠ 实测 0（两队**互换**，都含 1181）。同一 worktree 单跑该文件绿（4 用例 7s）；低负载分片复跑绿（r449 两次、r450 1/4 分片）。日志 `/home/kaua/calc-arch/arenaF/r450/vt-s1.log`（第一次，红）。
 
@@ -573,7 +595,7 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 **验收**：高负载下连续 3 次全绿；若改了求值路径，zd DIFF 0（或逐队归因）。
 <!-- /card:T14 -->
 
-（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前待执行卡：**T14**（timeFillRatchet 负载相关非确定性，先复现）；T13 仅剩 c / b′（默认不做）；T10 备选（T14 若坐实回填 watch，T10 修法 ① 即刻升为必做）。）
+（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**（T14 r451 关掉；T13 仅剩 c / b′ 默认不做；T10 备选，等锁变红）。下一题按 §0「没有排定项时不造活」+ r6 §8 扫描记录另找。）
 
 
 
