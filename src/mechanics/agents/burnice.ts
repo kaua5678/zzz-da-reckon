@@ -18,6 +18,7 @@ import { fmt } from '@/utils/format'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue, rawRowValue } from '@/data/moveTableQueries'
 
 const BURNICE_AGENT_ID = '1171'
@@ -75,8 +76,6 @@ const SINGLE_SPRAY_PER_SECOND = 12.5
 const DOUBLE_SPRAY_PER_SECOND = 25
 const SINGLE_EXPLOSION_COST = 5
 const DOUBLE_EXPLOSION_COST = 10
-const SINGLE_EXPLOSION_TIME = 0.315
-const DOUBLE_EXPLOSION_TIME = 1.1
 const SINGLE_SUSTAINED_MOVE = '1171010'
 const SINGLE_EXPLOSION_MOVE = '1171011'
 const DOUBLE_SUSTAINED_MOVE = '1171012'
@@ -119,6 +118,9 @@ export function computeBurniceMechanic(input: {
   /** 强特四行的满时长表值（catalog damage 行：1171010 单喷持续 / 1171011 单喷爆炸 / 1171012 双喷持续 / 1171013 双喷爆炸）。
    *  引擎经 cfg.mechanicRowValues 传入；持续段按喷射秒数等比缩放后作为 override 行值，爆炸段原值透传（enrich 仍按表回填）。 */
   exRowMultipliers: { singleSustained: number; singleExplosion: number; doubleSustained: number; doubleExplosion: number }
+  /** 爆炸段行时长（catalog actionTime：1171011 单喷爆炸 0.315s / 1171013 双喷爆炸 1.1s）。
+   *  CC-409：由调用方从 `cfg.moveActionTimes` 取，替代模块常量 `SINGLE/DOUBLE_EXPLOSION_TIME`。 */
+  explosionTimes: { single: number; double: number }
 }): BurniceMechanicSource {
   // 强特已按单双喷平均成虚拟强特，允许小数计数（期望值模型）。
   const exCount = Math.max(0, input.exSpecialCount)
@@ -133,8 +135,8 @@ export function computeBurniceMechanic(input: {
 
   const singleCastEnergy = s1 > 0 ? s1 * SINGLE_SPRAY_PER_SECOND + SINGLE_EXPLOSION_COST : 0
   const doubleCastEnergy = s2 > 0 ? s2 * DOUBLE_SPRAY_PER_SECOND + DOUBLE_EXPLOSION_COST : 0
-  const singleCastTime = s1 > 0 ? s1 + SINGLE_EXPLOSION_TIME : 0
-  const doubleCastTime = s2 > 0 ? s2 + DOUBLE_EXPLOSION_TIME : 0
+  const singleCastTime = s1 > 0 ? s1 + input.explosionTimes.single : 0
+  const doubleCastTime = s2 > 0 ? s2 + input.explosionTimes.double : 0
   const totalExEnergy = singleCount * singleCastEnergy + doubleCount * doubleCastEnergy
   const totalExTime = singleCount * singleCastTime + doubleCount * doubleCastTime
   const singleSustainedMultiplier = s1 > 0 ? input.exRowMultipliers.singleSustained * (s1 / SINGLE_SPRAY_MAX_SECONDS) : 0
@@ -163,7 +165,7 @@ export function computeBurniceMechanic(input: {
   const emberBuildUpPerHit = EMBER_BUILD_UP_PER_HIT
   const emberDamagePerHit = input.atk * emberDamageRatio * (1 + masteryBonusPct / 100)
   const cinema6SpecialEmberPerCast = cinemaLevel >= 6 && s2 > 0
-    ? Math.max(1, Math.ceil((s2 + DOUBLE_EXPLOSION_TIME) / CINEMA6_SPECIAL_EMBER_COOLDOWN_SECONDS))
+    ? Math.max(1, Math.ceil((s2 + input.explosionTimes.double) / CINEMA6_SPECIAL_EMBER_COOLDOWN_SECONDS))
     : 0
   const cinema6SpecialEmberCount = cinemaLevel >= 6 ? doubleCount * cinema6SpecialEmberPerCast : 0
   const cinema6SpecialEmberBaseRatio = cinemaLevel >= 6
@@ -358,6 +360,11 @@ function burniceMechanicSourceOf(cfg: CharacterOperationConfig, state: Iteration
       doubleSustained: row[DOUBLE_SUSTAINED_MOVE] ?? 0,
       doubleExplosion: row[DOUBLE_EXPLOSION_MOVE] ?? 0,
     },
+    // CC-409：爆炸段行时长读 cfg.moveActionTimes（catalog，原常量与表值相等）
+    explosionTimes: {
+      single: cfgMoveActionTime(cfg, SINGLE_EXPLOSION_MOVE),
+      double: cfgMoveActionTime(cfg, DOUBLE_EXPLOSION_MOVE),
+    },
     exSpecialCount: state.exSpecialCount,
     totalTime: effectiveCombatTime(state, cfg),
     atk: cfg.panel.atk ?? 0,
@@ -380,9 +387,9 @@ function burniceMechanicSourceOf(cfg: CharacterOperationConfig, state: Iteration
 function buildBurniceExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const source = burniceMechanicSourceOf(cfg, state)
   pushEx(executions, SINGLE_SUSTAINED_MOVE, source.singleCastCount, source.singleSpraySeconds, source.singleSustainedMultiplier, true, source.singleCastCount > 0 ? source.singleSpraySeconds * SINGLE_SPRAY_PER_SECOND : 0)
-  pushEx(executions, SINGLE_EXPLOSION_MOVE, source.singleCastCount, SINGLE_EXPLOSION_TIME, source.singleExplosionMultiplier, false, SINGLE_EXPLOSION_COST)
+  pushEx(executions, SINGLE_EXPLOSION_MOVE, source.singleCastCount, cfgMoveActionTime(cfg, SINGLE_EXPLOSION_MOVE), source.singleExplosionMultiplier, false, SINGLE_EXPLOSION_COST)
   pushEx(executions, DOUBLE_SUSTAINED_MOVE, source.doubleCastCount, source.doubleSpraySeconds, source.doubleSustainedMultiplier, true, source.doubleCastCount > 0 ? source.doubleSpraySeconds * DOUBLE_SPRAY_PER_SECOND : 0)
-  pushEx(executions, DOUBLE_EXPLOSION_MOVE, source.doubleCastCount, DOUBLE_EXPLOSION_TIME, source.doubleExplosionMultiplier, false, DOUBLE_EXPLOSION_COST)
+  pushEx(executions, DOUBLE_EXPLOSION_MOVE, source.doubleCastCount, cfgMoveActionTime(cfg, DOUBLE_EXPLOSION_MOVE), source.doubleExplosionMultiplier, false, DOUBLE_EXPLOSION_COST)
 }
 
 function buildBurniceAnomalyEvents({ cfg, state, events }: AgentEventInput): void {

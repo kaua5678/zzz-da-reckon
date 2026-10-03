@@ -42,6 +42,8 @@ describe('CC-409 招式 actionTime 来自 catalog（cfg.moveActionTimes）', () 
     // T8b（CC-409 续）：苍角 / 格莉丝 的迁移行
     { agentId: '1131', moveId: '1131011' }, // 苍角 强特扇子（1.16s）
     { agentId: '1181', moveId: '1181006' }, // 格莉丝 强化特殊技（0.342s）
+    // T8d（CC-409 续）：柏妮思 单喷爆炸行（0.315s）
+    { agentId: '1171', moveId: '1171011' },
   ]
 
   it('真引擎：迁移模块的行 actionTime === catalog actionTime（至少 4 条行真实出现）', async () => {
@@ -66,7 +68,7 @@ describe('CC-409 招式 actionTime 来自 catalog（cfg.moveActionTimes）', () 
     }
     expect(seen).toBeGreaterThanOrEqual(4)
     // T8 的迁移模块必须各有一条行真实出现（缺行 = 夹具失效，不许静默跳过）
-    for (const id of ['1091', '1371', '1381', '1291', '1131', '1181']) {
+    for (const id of ['1091', '1371', '1381', '1291', '1131', '1181', '1171']) {
       expect(seenAgents.has(id), `T8 模块 ${id} 的迁移行未出现`).toBe(true)
     }
   })

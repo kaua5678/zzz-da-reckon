@@ -35,6 +35,7 @@ function mechanicInput(overrides: Partial<Parameters<typeof computeBurniceMechan
     doubleSpraySeconds: 2.274,
     // CC-408：强特四行表值由调用方给（引擎从 catalog 读）；这里写 full/1171.json 当前值当夹具
     exRowMultipliers: { singleSustained: 1088.3, singleExplosion: 193.5, doubleSustained: 1916.2, doubleExplosion: 574.2 },
+    explosionTimes: { single: 0.315, double: 1.1 },
     ...overrides,
   }
 }
@@ -195,6 +196,8 @@ describe('柏妮思面板与执行计划', () => {
         skipGenericExSpecial: true,
         // CC-408：四行倍率只来自这里（buildCharConfig 读 catalog 写入），模块里没有常量兜底
         mechanicRowValues: { '1171010': 1088.3, '1171011': 193.5, '1171012': 1916.2, '1171013': 574.2 },
+        // CC-409：爆炸段行时长来自 cfg.moveActionTimes（引擎由 catalog 预填；这里手填 = 表值）
+        moveActionTimes: { '1171011': 0.315, '1171013': 1.1 },
       },
       state: { exSpecialCount: 2, ultimateCount: 0, frontlineTime: 170, backstageTime: 10 },
       executions,
@@ -224,6 +227,8 @@ describe('柏妮思面板与执行计划', () => {
           panel: { atk: 1000, anomalyProficiency: 500 },
           skipGenericExSpecial: true,
           mechanicRowValues,
+          // CC-409：爆炸段行时长来自 cfg.moveActionTimes
+          moveActionTimes: { '1171011': 0.315, '1171013': 1.1 },
         },
         state: { exSpecialCount: 2, ultimateCount: 0, frontlineTime: 170, backstageTime: 10 },
         executions,
