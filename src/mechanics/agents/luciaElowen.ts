@@ -3,8 +3,7 @@ import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentR
 import type { CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
-import { getAgentSpec } from '@/specs/registry'
-import { applySpecAttributeConversions } from '@/specs/runtime'
+import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 
@@ -133,7 +132,7 @@ function applyLuciaPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelInp
   // CC-118（第 145 轮）：spec `lucia_c6_hp_to_atk` 声明 sourcePanelPhase=outOfCombat，经 sources.outOfCombat 真读局外生命；
   // 此前按局内生命（含涌泉 +5% 等局内生命加成）执行并注释「近似接受」，属规格与实现不一致（R5 口径：数据可信）。
   if (cinemaLevel >= 6) {
-    applySpecAttributeConversions(panel, getAgentSpec(LUCIA_AGENT_ID)?.attributeConversions ?? [], 1, { outOfCombat: outOfCombatPanel })
+    applyAgentAttributeConversions(panel, LUCIA_AGENT_ID, 1, { outOfCombat: outOfCombatPanel })
   }
 }
 

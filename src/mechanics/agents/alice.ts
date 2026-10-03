@@ -24,7 +24,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
-import { applySpecAttributeConversions } from '@/specs/runtime'
+import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 
 const ALICE_AGENT_ID = '1401'
@@ -82,10 +82,7 @@ function applyAlicePanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelIn
     panel.enemyPhysicalResReduction = (panel.enemyPhysicalResReduction ?? 0) + C4_PHYSICAL_RES_REDUCTION
   }
 
-  applySpecAttributeConversions(
-    panel,
-    getAgentSpec(ALICE_AGENT_ID)?.attributeConversions ?? [],
-  )
+  applyAgentAttributeConversions(panel, ALICE_AGENT_ID)
   // 掌控转精通（>140 每点 +1.6）只由上面 spec `alice_mastery_to_proficiency` 执行（缺省 floor 整步）。
   // R6 C7（第 142 轮）删除了原来零读取的 `panel.aliceMasteryToProficiencyBonus`（连续公式）与 `cfg.aliceMasteryToProficiencyRate`：
   // 它们是同一机制的第二份常数，且口径（连续）与实际执行（取整）不同，只会误导。

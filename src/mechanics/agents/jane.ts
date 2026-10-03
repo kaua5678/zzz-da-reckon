@@ -14,10 +14,9 @@ import type { AnomalyEventRecord, CharacterResourceResult, MechanicSetting } fro
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
-import { getAgentSpec } from '@/specs/registry'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
-import { applySpecAttributeConversions } from '@/specs/runtime'
+import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { clampCritRatePct } from '@/data/critMultiplier'
 
 const JANE_AGENT_ID = '1261'
@@ -30,20 +29,14 @@ const FRENZY_BUILD_UP_BONUS_CORE = 25
 // 狂热「精通 > 120 每点 +2 攻击、上限 600」的常数只在 spec 1261.json `jane_proficiency_to_atk`（R6 C7，第 144 轮）；
 // 面板与展示值都经 spec runtime 执行（面板传 frenzyFactor 作覆盖率，runtime 先封顶再乘覆盖率）。
 const JANE_PROFICIENCY_TO_ATK_ID = 'jane_proficiency_to_atk'
-const janeConversions = () => getAgentSpec(JANE_AGENT_ID)?.attributeConversions ?? []
-function requireJaneProficiencyToAtk() {
-  const conversion = janeConversions().find(c => c.id === JANE_PROFICIENCY_TO_ATK_ID)
-  if (!conversion) throw new Error(`spec 1261 缺少属性转化 ${JANE_PROFICIENCY_TO_ATK_ID}`)
-  return conversion
-}
 function atkFromProficiencyOf(anomalyProficiency: number): number {
   const probe = emptyPanel()
   probe.anomalyProficiency = anomalyProficiency
-  applySpecAttributeConversions(probe, janeConversions())
+  applyAgentAttributeConversions(probe, JANE_AGENT_ID)
   return probe.atk
 }
 function janeProficiencyToAtkDetail(): string {
-  const c = requireJaneProficiencyToAtk()
+  const c = requireAgentAttributeConversion(JANE_AGENT_ID, JANE_PROFICIENCY_TO_ATK_ID)
   return `精通>${c.threshold}每点+${c.valuePerStep}，上限${c.cap}`
 }
 /**
@@ -150,7 +143,7 @@ function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, poten
 
   // 狂热：物理积蓄+25%；精通>120时每点+2攻击，最多600。
   panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + 25 * frenzyFactor
-  applySpecAttributeConversions(panel, janeConversions(), frenzyFactor)
+  applyAgentAttributeConversions(panel, JANE_AGENT_ID, frenzyFactor)
 
   // 额外能力：痛点。物理积蓄+20%；敌人处于异常状态时额外+15%（按100%覆盖）。
   // ⚠ 不吃 `frenzy` 总闸（额外能力与狂热状态无关，见函数头注释）。

@@ -11,9 +11,8 @@ import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
-import { getAgentSpec } from '@/specs/registry'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
-import { applySpecAttributeConversions } from '@/specs/runtime'
+import { applyAgentAttributeConversions } from '@/specs/runtime'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
@@ -175,7 +174,7 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPa
   // 口径：缺省 floor 整步（CC-134 第 158 轮，「每超过 N」统一按整步计，docs/mcp-r6-refactor-list.md §2.18）；
   // 此前为 stepRounding=none 连续口径（迁移前 `min(100, max(0, crit-50)×2)`）。回退 = spec 1481 恢复该字段。
   // 原文「初始暴击率」⇒ 读局外面板（spec sourcePanelPhase=outOfCombat，CC-123）
-  applySpecAttributeConversions(panel, getAgentSpec(LIUYIN_AGENT_ID)?.attributeConversions ?? [], 1, { outOfCombat: outOfCombatPanel })
+  applyAgentAttributeConversions(panel, LIUYIN_AGENT_ID, 1, { outOfCombat: outOfCombatPanel })
 
   // 额外能力：强化特殊技伤害暴击伤害 +50%（技能专属 buff，仅强化特殊技生效）。
   if (extraAbilityActive) {

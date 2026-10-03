@@ -8,7 +8,7 @@
  * - status 语义：not_described_not_implemented（没收到机制描述）/ implemented_approximation
  *   （近似实现，通常带可调滑块）/ implemented / partially_implemented。
  * - 死数据检查（AGENTS 规则 4）：已在 src/mechanics/agents/*.ts 注册模块的角色，
- *   spec attributeConversions 必须可证明被消费（模块显式调用 applySpecAttributeConversions，
+ *   spec attributeConversions 必须可证明被消费（模块显式调用 applyAgentAttributeConversions / applySpecAttributeConversions，
  *   或条目 note 标注「实现位置：」），否则 FAIL；adjustable 滑块给出 WARN。
  * - 完整字段说明见 src/specs/template.json 的 _comment；完整角色示例见
  *   src/specs/agents/1451.json（卢西娅·艾洛温）。
@@ -63,7 +63,7 @@ for (const agent of catalog.agents ?? []) {
 // ===== 死数据检查（AGENTS 规则 4）：自定义 TS 模块角色的 spec 字段无解释器消费者 =====
 // 模块来源 = src/mechanics/agents/*.ts 里声明的 agentIds（含 const 解析）。
 // attributeConversions 必须可证明被消费，否则 FAIL：
-//   ① 模块文件显式调用 applySpecAttributeConversions；或
+//   ① 模块文件显式调用 applyAgentAttributeConversions（CC-442 模块侧入口）或 applySpecAttributeConversions；或
 //   ①′ 模块调用 specConversionAmount 且源码里出现该条目 id（逐条证据；模块自取来源 / 落点、常数读 spec，CC-212）；或
 //   ② 条目 note 标注「实现位置：」（纯记录条目）。
 // adjustable 资源（滑块）给出 WARN（无可靠静态证据，先警示不打断）。
@@ -222,7 +222,7 @@ for (const file of files) {
   const hasCustomModule = spec.agentIds.some(id => moduleSourceByAgent.has(id))
   if (hasCustomModule) {
     const moduleCallsConverter = spec.agentIds.some(id =>
-      /applySpecAttributeConversions\s*\(/.test(moduleSourceByAgent.get(id) ?? ''))
+      /apply(?:Agent|Spec)AttributeConversions\s*\(/.test(moduleSourceByAgent.get(id) ?? ''))
     for (const conv of spec.attributeConversions ?? []) {
       const noteMarked = typeof conv.note === 'string' && conv.note.includes('实现位置：')
       const readsById = spec.agentIds.some(id => {
@@ -230,7 +230,7 @@ for (const file of files) {
         return /specConversionAmount\s*\(/.test(src) && src.includes(`'${conv.id}'`)
       })
       check(
-        `${label}: conversion ${conv.id} 有消费者（模块调用 applySpecAttributeConversions / 按 id 经 specConversionAmount 读取 / note 标注「实现位置：」）`,
+        `${label}: conversion ${conv.id} 有消费者（模块调用 applyAgentAttributeConversions|applySpecAttributeConversions / 按 id 经 specConversionAmount 读取 / note 标注「实现位置：」）`,
         moduleCallsConverter || readsById || noteMarked,
         `自定义模块角色的 attributeConversions 不会被 spec 解释器消费（死数据）。机制须在模块实现并在 note 写「实现位置：<模块/函数>」，或删除该条目（防双计，参见般岳 hp→贯穿力 修复）。`
       )

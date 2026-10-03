@@ -27,7 +27,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
-import { applySpecAttributeConversions } from '@/specs/runtime'
+import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { simulateCounterStateMachine } from '@/specs/stateMachine'
 import { findMoveById } from '@/data/moveTableQueries'
 
@@ -173,10 +173,7 @@ function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
 
   // 回能转模：原文「初始能量自动回复」⇒ spec sourceValue = energyRegenOutOfCombat（局外总回能 = 基础 × (1 + 局外%) + 局外固定，
   // panelPhases 在 applyPanel 前写入）；不是 energyRegen（恒为基础值）也不是含局内 buff 的 energyRegenTotal。
-  applySpecAttributeConversions(
-    panel,
-    getAgentSpec(VELINA_AGENT_ID)?.attributeConversions ?? [],
-  )
+  applyAgentAttributeConversions(panel, VELINA_AGENT_ID)
 
   if (additionalAbilityActive) {
     const bonus = 10 + (cinemaLevel >= 2 ? 15 : 0)

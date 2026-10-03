@@ -12,8 +12,7 @@ import type {
 import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
-import { getAgentSpec } from '@/specs/registry'
-import { applySpecAttributeConversions } from '@/specs/runtime'
+import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 
@@ -38,11 +37,10 @@ const MASTERY_BONUS = 120
 const C4_MASTERY_BONUS = 40
 // 掌控转冲击（阈值 110、每点 +1、连续）的常数只在 spec 1511.json `nangong_mastery_to_impact`（R6 C7），
 // 面板与展示值都经 spec runtime 执行，保证两处永远同一口径。
-const masteryConversions = () => getAgentSpec(NANGONG_AGENT_ID)?.attributeConversions ?? []
 function impactFromMasteryOf(anomalyMastery: number): number {
   const probe = emptyPanel()
   probe.anomalyMastery = anomalyMastery
-  applySpecAttributeConversions(probe, masteryConversions())
+  applyAgentAttributeConversions(probe, NANGONG_AGENT_ID)
   return probe.impact
 }
 const BEAT_INITIAL = 30
@@ -131,7 +129,7 @@ function applyNangongPanel({ panel, outOfCombatPanel, cinemaLevel, settings }: A
   const coverage = clampRatio(settings['nangong.coreBuffCoverage'] ?? 1)
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + MASTERY_BONUS + (cinemaLevel >= 4 ? C4_MASTERY_BONUS : 0)
   // 原文「初始异常掌控」⇒ 读局外面板（spec sourcePanelPhase=outOfCombat，CC-123）
-  applySpecAttributeConversions(panel, masteryConversions(), 1, { outOfCombat: outOfCombatPanel })
+  applyAgentAttributeConversions(panel, NANGONG_AGENT_ID, 1, { outOfCombat: outOfCombatPanel })
   // 核心被动命中增益（30s 刷新）：自身积蓄效率 / 自身失衡值（C6 追加 +50）
   panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + CORE_EFFICIENCY_BONUS * coverage
   panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + (CORE_BUILD_UP_BONUS + (cinemaLevel >= 6 ? C6_BUILD_UP_BONUS : 0)) * coverage

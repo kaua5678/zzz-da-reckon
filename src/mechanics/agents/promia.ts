@@ -38,21 +38,15 @@ import { applyEffect } from '@/core/buff'
 import type { BuffEffect } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { specEffectToBuffEffect } from '@/specs/teamBuffConvert'
-import { applySpecAttributeConversions } from '@/specs/runtime'
+import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
 export const PROMIA_ID = '1541'
 // 掌控转精通的常数只在 spec 1541.json `promia_mastery_to_proficiency`（R6 C7，第 143 轮）；
 // 面板经 spec runtime 执行（传 sources.outOfCombat 真读局外面板），展示值走同一执行器，导出常量从 spec 读。
 const PROMIA_MASTERY_CONVERSION_ID = 'promia_mastery_to_proficiency'
-const promiaConversions = () => getAgentSpec(PROMIA_ID)?.attributeConversions ?? []
-function requirePromiaMasteryConversion() {
-  const conversion = promiaConversions().find(c => c.id === PROMIA_MASTERY_CONVERSION_ID)
-  if (!conversion) throw new Error(`spec 1541 缺少属性转化 ${PROMIA_MASTERY_CONVERSION_ID}`)
-  return conversion
-}
-export const PROMIA_MASTERY_THRESHOLD = requirePromiaMasteryConversion().threshold
-export const PROMIA_PROF_PER_MASTERY = requirePromiaMasteryConversion().valuePerStep
+export const PROMIA_MASTERY_THRESHOLD = requireAgentAttributeConversion(PROMIA_ID, PROMIA_MASTERY_CONVERSION_ID).threshold
+export const PROMIA_PROF_PER_MASTERY = requireAgentAttributeConversion(PROMIA_ID, PROMIA_MASTERY_CONVERSION_ID).valuePerStep
 // 全队异放增伤（0.35%/点）的常数只在 spec 1541.json teamBuff `promia_ice_team_release_dmg`（CC-119）；
 // 实际生效走 spec teamBuffs 通道（每个队员面板），展示值在探针面板上执行同一条 effect。
 const PROMIA_TEAM_RELEASE_BUFF_ID = 'promia_ice_team_release_dmg'
@@ -100,7 +94,7 @@ export function computePromiaCycle(input: {
   const masteryExcess = Math.max(0, anomalyMastery - PROMIA_MASTERY_THRESHOLD)
   const probe = emptyPanel()
   probe.anomalyMastery = anomalyMastery
-  applySpecAttributeConversions(probe, promiaConversions(), 1, { outOfCombat: probe })
+  applyAgentAttributeConversions(probe, PROMIA_ID, 1, { outOfCombat: probe })
   const proficiencyFromMastery = probe.anomalyProficiency
   applyEffect(probe, requirePromiaTeamReleaseEffect(), 1)
   const c2Proficiency = cinemaLevel >= 2 ? PROMIA_C2_PROFICIENCY : 0
@@ -142,7 +136,7 @@ function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'promiaCinemaLevel' | 
 
 /** 面板层：异常掌控转精通（复现 attributeConversions）+ 影画2精通+40 + 影画6自身异常/紊乱无视全抗 + 额外能力冰积蓄效率。 */
 function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
-  applySpecAttributeConversions(panel, promiaConversions(), 1, { outOfCombat: outOfCombatPanel })
+  applyAgentAttributeConversions(panel, PROMIA_ID, 1, { outOfCombat: outOfCombatPanel })
   if (cinemaLevel >= 2) {
     panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + PROMIA_C2_PROFICIENCY
   }
