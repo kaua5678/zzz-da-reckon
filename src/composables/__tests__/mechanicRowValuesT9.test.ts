@@ -3,6 +3,7 @@ import { getRowValue, findMoveById } from '@/data/moveTableQueries'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { HUGO_VERDICT_BASE_MULTIPLIER, computeHugoVerdictMultiplier } from '@/mechanics/agents/hugo'
+import { GRACE_C4_ENERGY_EFFICIENCY, graceMechanic } from '@/mechanics/agents/grace'
 
 /**
  * T9（CC-408 同款）：模块内「= catalog 行值」的倍率常量改读表，零差。
@@ -76,5 +77,37 @@ describe('T9 希希芙蚀骨/蛇吻倍率来自 catalog（cfg.mechanicRowValues�
       expect(exec, `${moveId} 行真实出现`).toBeTruthy()
       expect(exec!.damageMultiplier, `${moveId} 倍率 === 表值`).toBeCloseTo(tableDamage, 9)
     }
+  })
+})
+
+/**
+ * T9 格莉丝（CC-415）：A1-A4 每段能量回复原为模块常量 0.615/1.189/2.454/4.081，现由 `buildGraceCharConfig`
+ * 读 catalog energy_recovery 进 `cfg.mechanicRowValues['1181001'..'1181004']`，影画4 爆破电容按段折算从该处取。
+ * 反空洞两层：① 真 catalog + 真 buildCharConfig 写出的四个行值 === 表值且 > 0；
+ * ② materializePhaseState 的 C4 回能 = 20% × Σ(受益段表值)（exUsed=1 ⇒ 6 段 = 整轮 4 段 + A1 + A2），
+ *    且去掉表值（缺表）时回能为 0 —— 证明口径只来自表，没有常量兜底。
+ */
+describe('T9 格莉丝 A1-A4 回能来自 catalog（cfg.mechanicRowValues）', () => {
+  const SEG = ['1181001', '1181002', '1181003', '1181004']
+
+  it('buildCharConfig 写出的四段 energy_recovery === 表值；C4 回能 = 20% × 受益段表值之和；缺表 = 0', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1181', cinemaLevel: 4 }, '', ''])
+    const skills = catalog.getAgentSkills('1181')!
+    const table = SEG.map(id => getRowValue(findMoveById(skills, id), 'energy_recovery'))
+    for (const [i, v] of table.entries()) expect(v, `catalog ${SEG[i]} energy_recovery`).toBeGreaterThan(0)
+
+    const cfg: any = { moveActionTimes: { '1181001': 0.171, '1181002': 0.33, '1181003': 0.682, '1181004': 1.134, '1181005': 0.2, '1181006': 0.342 } }
+    graceMechanic.buildCharConfig!({ cinemaLevel: 4, cfg, panel: {} as any, skills, settings: {} } as any)
+    for (const [i, id] of SEG.entries()) expect(cfg.mechanicRowValues?.[id], `cfg.mechanicRowValues[${id}]`).toBeCloseTo(table[i], 12)
+
+    // 平A池 60s ⇒ cycles ≥ 2；exUsed = 1 ⇒ 受益 6 段 = 整轮(4 段) + A1 + A2
+    const state: any = { exSpecialCount: 1, basicAttackTime: 60, ultimateCount: 0 }
+    graceMechanic.materializePhaseState!({ cfg, state, executions: [] } as any)
+    const expected = (GRACE_C4_ENERGY_EFFICIENCY / 100) * (table[0] + table[1] + table[2] + table[3] + table[0] + table[1])
+    expect(cfg.initialEnergyGift, 'C4 回能 = 20% × 受益段表值之和').toBeCloseTo(expected, 9)
+
+    const bare: any = { ...cfg, mechanicRowValues: {}, initialEnergyGift: 0, graceC4EnergyGift: 0 }
+    graceMechanic.materializePhaseState!({ cfg: bare, state, executions: [] } as any)
+    expect(bare.initialEnergyGift ?? 0, '缺表 ⇒ 回能 0（无常量兜底）').toBe(0)
   })
 })

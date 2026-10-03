@@ -12,6 +12,7 @@ import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 
 /**
  * 格莉丝（1181）战斗逻辑（用户口供 2026-08-23）：
@@ -35,18 +36,13 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
  */
 
 const GRACE_AGENT_ID = '1181'
-/** A1-A4 每段能量回复（catalog energy_recovery，Lv.12；影画4 按段精确折算） */
-const A1_ENERGY = 0.615
-const A2_ENERGY = 1.189
-const A3_ENERGY = 2.454
-const A4_ENERGY = 4.081
-/** A 段顺序 = A1,A2,A3(连段) → A4，每轮换各一次 */
-const A_SEG_ENERGY = [A1_ENERGY, A2_ENERGY, A3_ENERGY, A4_ENERGY]
-const A_CYCLE_ENERGY = A_SEG_ENERGY.reduce((a, b) => a + b, 0) // 8.339
 const A1_MOVE_ID = '1181001'
 const A2_MOVE_ID = '1181002'
 const A3_MOVE_ID = '1181003'
 const A4_MOVE_ID = '1181004'
+/** A 段顺序 = A1,A2,A3(连段) → A4，每轮换各一次。每段能量回复 = catalog energy_recovery 行值
+ *  （CC-415：由 buildGraceCharConfig 读表进 cfg.mechanicRowValues[moveId]，影画4 按段精确折算；缺表 = 0，无常量兜底） */
+const A_SEG_MOVE_IDS = [A1_MOVE_ID, A2_MOVE_ID, A3_MOVE_ID, A4_MOVE_ID]
 const SP_MOVE_ID = '1181005'
 const EX_MOVE_ID = '1181006'
 /** 循环各段 actionTime（CC-409 起由调用方从 cfg.moveActionTimes 取，catalog 单一来源；原常量 0.171/0.33/0.682/1.134/0.2/0.342 与表相等） */
@@ -128,6 +124,11 @@ function buildGraceCharConfig(input: AgentCharConfigInput): void {
   base.buildCharConfig?.(input)
   input.cfg.skipGenericExSpecial = true // 特殊技由本模块按轮换生成（普通档免费填充/强特按能量）
   input.cfg.graceCinemaLevel = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
+  // CC-415：A1-A4 每段能量回复由引擎读 catalog 进 cfg.mechanicRowValues（原模块常量 0.615/1.189/2.454/4.081 与表相等）。
+  input.cfg.mechanicRowValues = {
+    ...(input.cfg.mechanicRowValues ?? {}),
+    ...Object.fromEntries(A_SEG_MOVE_IDS.map(id => [id, getRowValue(findMoveById(input.skills, id), 'energy_recovery')])),
+  }
 }
 
 // @fact agent:1181/潜能觉醒电伤 口径: 潜能觉醒·超频工程引擎（钢械交响曲 II~VI）按 `potentialLevel` 取档 10/15/20/25/30%，与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1181.json `potential_detail` + R58 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/graceCinemaTier.test.ts | 锚 src/mechanics/agents/grace.ts#GRACE_POTENTIAL_ELECTRIC_DMG | 信 确认
@@ -190,11 +191,15 @@ function gracePhaseValues(cfg: AgentResourceInput['cfg'], state: AgentResourceIn
   const c4Applies = cinema >= 4 && plan.cycles > 0 && plan.exUsed > 0
   let c4Energy = 0
   if (c4Applies) {
+    // CC-415：每段回能读 cfg.mechanicRowValues（buildCharConfig 写入的 catalog energy_recovery）；缺表 = 0。
+    const row = cfg.mechanicRowValues ?? {}
+    const segEnergy = A_SEG_MOVE_IDS.map(id => row[id] ?? 0)
+    const cycleEnergy = segEnergy.reduce((a, b) => a + b, 0)
     const totalBasicHits = 4 * plan.cycles
     const boosted = Math.min(plan.exUsed * 6, totalBasicHits)
     const fullCycles = Math.floor(boosted / 4)
     const rem = boosted % 4
-    const boostedEnergy = fullCycles * A_CYCLE_ENERGY + A_SEG_ENERGY.slice(0, rem).reduce((a, b) => a + b, 0)
+    const boostedEnergy = fullCycles * cycleEnergy + segEnergy.slice(0, rem).reduce((a, b) => a + b, 0)
     c4Energy = (GRACE_C4_ENERGY_EFFICIENCY / 100) * boostedEnergy
   }
   // [脉冲]：终结技 ×25 层、**上限 25**（用户口供：留 1 层，多大都卡在 25）→

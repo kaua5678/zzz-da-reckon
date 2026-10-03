@@ -80,10 +80,12 @@ describe('CC-291 重复调用钩子的 cfg 累加写入幂等', () => {
   })
 
   it('② 格莉丝 materializePhaseState 重复调用不累加 initialEnergyGift', () => {
-    const cfg: any = { graceCinemaLevel: 6, initialEnergyGift: 40 }
+    // CC-415：A 段回能读 cfg.mechanicRowValues（缺表 = 0 会让 C4 分支静默为 0，夹具补表值保住断言意义）
+    const cfg: any = { graceCinemaLevel: 6, initialEnergyGift: 40, mechanicRowValues: { '1181001': 0.615, '1181002': 1.189, '1181003': 2.454, '1181004': 4.081 } }
     const state: any = { exSpecialCount: 30, basicAttackTime: 120, totalEnergy: 1000, combatTime: 180 }
     graceMechanic.materializePhaseState!({ cfg, state, executions: [] } as any)
     const once = cfg.initialEnergyGift
+    expect(once).toBeGreaterThan(40) // C4 回能真的写入了（反空洞）
     for (let i = 0; i < 5; i++) graceMechanic.materializePhaseState!({ cfg, state, executions: [] } as any)
     expect(cfg.initialEnergyGift).toBe(once)
   })
