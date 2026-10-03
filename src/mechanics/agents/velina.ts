@@ -48,23 +48,23 @@ function velinaColorElement(team: ReadonlyTeam, _slot: number): string {
 
 /** 风华：开局45点，每消耗1点能量获得1点；90点触发一次广域气旋。 */
 function velinaBroadCycloneCountFromFloria(
-  cfg: { velinaEnabled?: boolean; exSpecialEnergyConsume?: number },
-  state: { exSpecialCount: number },
+  cfg: CharacterOperationConfig,
+  state: IterationState,
 ): number {
   return buildVelinaFloriaSource(cfg, state)?.broadCycloneCount ?? 0
 }
 
 function buildVelinaFloriaSource(
-  cfg: { velinaEnabled?: boolean; exSpecialEnergyConsume?: number },
-  state: { exSpecialCount: number },
+  cfg: CharacterOperationConfig,
+  state: IterationState,
 ): VelinaFloriaSource | undefined {
   if (!cfg.velinaEnabled) return undefined
   const spec = getAgentSpec(VELINA_AGENT_ID)
   if (!spec) return undefined
   const floria = computeSpecResources(
     spec,
-    cfg as unknown as CharacterOperationConfig,
-    state as unknown as IterationState,
+    cfg,
+    state,
   ).get('velina_floria')
   if (!floria) return undefined
   const broadCycloneCount = floria.spendCounts['floria_broad_cyclone'] ?? 0

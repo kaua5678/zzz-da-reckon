@@ -182,17 +182,8 @@ function buildAliceCharConfig({
 // ============ buildExecutions ============
 
 function buildAliceSwordWillSource(
-  cfg: {
-    aliceEnabled?: boolean
-    aliceSwordWillPerSec?: number
-    aliceExSpecialSwordWill?: number
-    aliceInitialSwordWill?: number
-    alicePolarityAssaultSwordWill?: number
-    aliceTeamAssaultSwordWill?: number
-    aliceDisorderSwordWill?: number
-    aliceCinema2UltSpark?: boolean
-  },
-  state: { basicAttackTime: number; exSpecialCount: number; ultimateCount?: number },
+  cfg: CharacterOperationConfig,
+  state: IterationState,
   anomalyPoolData?: { assaultTriggerCount?: number; disorderCount?: number },
 ): AliceSwordWillSource | undefined {
   if (!cfg.aliceEnabled) return undefined
@@ -200,8 +191,8 @@ function buildAliceSwordWillSource(
   const resource = spec
     ? computeSpecResources(
         spec,
-        cfg as unknown as CharacterOperationConfig,
-        state as unknown as IterationState,
+        cfg,
+        state,
         {
           teamAssaultCount: anomalyPoolData?.assaultTriggerCount ?? 0,
           disorderCount: anomalyPoolData?.disorderCount ?? 0,
