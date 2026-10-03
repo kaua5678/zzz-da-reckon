@@ -11,7 +11,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { agentAxisHiddenMoves } from '@/composables/agentMechanicView'
-import { axisTableDirectCandidates } from '@/composables/resourceCalc/axisTableDirect'
+import { axisTableDirectCandidates, VARIANT_TARGETS } from '@/composables/resourceCalc/axisTableDirect'
 import { getRegisteredAgentMechanics } from '@/mechanics'
 import { BEN_EX_NORMAL_MOVE_IDS, BEN_EX_PARRY_MOVE_IDS, BEN_EX_PARRY_RATE_SETTING } from '@/mechanics/agents/ben'
 import { MOVE_FUSION_GROUPS } from '@/data/moveFusions'
@@ -67,7 +67,7 @@ describe('CC-393 轴内 [表] 直读判定（编辑器与结算同源）', () =>
         const hidden = new Set(agentAxisHiddenMoves(c.agentId))
         for (const { move } of axisTableDirectCandidates(c.agentId, catalog.getAgentSkills(c.agentId), backed)) {
           total++
-          if (FUSED_MEMBERS.has(move.id) || hidden.has(move.id) || backed.has(move.id)) bad.push(`${c.agentId}:${move.id}`)
+          if (FUSED_MEMBERS.has(move.id) || VARIANT_TARGETS.has(move.id) || hidden.has(move.id) || backed.has(move.id)) bad.push(`${c.agentId}:${move.id}`)
         }
       }
     }
@@ -129,6 +129,29 @@ describe('CC-393 轴内 [表] 直读判定（编辑器与结算同源）', () =>
     const c = calc.resourceResult.value?.characters?.[0]
     const ids = axisTableDirectCandidates('1451', skills, new Set((c?.executions ?? []).map(e => e.moveId))).map(h => h.move.id)
     expect(ids).not.toContain('1451017')
+  })
+
+  it('CC-406 变体协同段：珂蕾妲 1101106 / 1101402 无论本在不在队都不是 [表] 候选；放进轴不出直伤', async () => {
+    expect(VARIANT_TARGETS.has('1101106') && VARIANT_TARGETS.has('1101402'), '反空洞：变体表确有这两段').toBe(true)
+    for (const mate of ['1121', '1211']) {
+      const calc = await runAxis(['1101', mate, '1031'], [
+        ...basicOnly(),
+        { slot: 0, moveId: '1101106', count: 1, startTime: 10 },
+        { slot: 0, moveId: '1101402', count: 1, startTime: 12 },
+      ])
+      const skills = useCatalogStore().getAgentSkills('1101')
+      const c = calc.resourceResult.value?.characters?.[0]
+      const ids = axisTableDirectCandidates('1101', skills, new Set((c?.executions ?? []).map(e => e.moveId))).map(h => h.move.id)
+      expect(ids, `mate=${mate}`).not.toContain('1101106')
+      expect(ids, `mate=${mate}`).not.toContain('1101402')
+      // 真正没建模的非强化特殊技协同引爆 1101103 仍可直读（反空洞：排除的是变体段，不是整个角色）
+      expect(ids, `mate=${mate}`).toContain('1101103')
+      const direct = calc.damagePoolRows.value.filter(r => r.slot === 0 && (r.moveId === '1101106' || r.moveId === '1101402') && r.totalDamage > 0)
+      expect(direct, `mate=${mate}`).toEqual([])
+      // 终结技执行行本身仍在结算（本在队 = 协同倍率）
+      const ult = calc.damagePoolRows.value.find(r => r.slot === 0 && r.moveId === '1101401' && r.totalDamage > 0)
+      expect(ult, `mate=${mate} 反空洞：终结技执行行`).toBeTruthy()
+    }
   })
 
   it('莱卡恩点按段 1141016 不作为 [表] 候选（CC-394：模块按点按次数出行）', async () => {

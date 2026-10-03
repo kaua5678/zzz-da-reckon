@@ -9,6 +9,8 @@
  *      ∪ `moveBranchGroups` 里「本角色另一分支有执行行」的互斥成员，CC-402）——
  *      模块用别的方式表达了它（如伊德海莉连携固定用 1051025，1051015 永不出手）；
  *   4. 不是倍率融合组的**并入段**（`data/moveFusions.ts`：同一次动作的多段已求和进主段，再直读 = 重复计伤）；
+ *   4b. 不是队友在队招式变体的**协同段**（`data/moveVariants.ts`，CC-406）：它是某个已建模招式在队友在队时的替身——
+ *       队友在队时倍率已换进执行行，不在队时该段打不出来；两种情况直读都是重复计伤（珂蕾妲 1101106 / 1101402）；
  *   5. 技能分类属于特殊技 / 支援 / 终结 / 连携，且伤害倍率 > 0。
  * 倍率取法与执行行相同：融合主段取整组求和（`fusedRowValue`），否则单段（`getRowValue`，含逻辑编辑器行规则）。
  *
@@ -17,6 +19,7 @@
  */
 import type { AgentSkills, SkillMove } from '@/types/catalog'
 import { MOVE_FUSION_GROUPS } from '@/data/moveFusions'
+import { TEAMMATE_MOVE_VARIANTS } from '@/data/moveVariants'
 import { fusedRowValue, getRowValue } from '@/data/moveTableQueries'
 import { axisHiddenMovesOf } from '@/mechanics'
 
@@ -25,6 +28,11 @@ export const AXIS_TABLE_DIRECT_CATEGORIES: readonly string[] = ['special', 'assi
 /** 融合组里除主段以外的段（倍率已并进主段） */
 const FUSED_MEMBERS: ReadonlySet<string> = new Set(
   MOVE_FUSION_GROUPS.flatMap(g => g.terms.map(t => t.moveId).filter(id => id !== g.moveId)),
+)
+
+/** 队友在队变体的协同段（CC-406：是已建模招式的替身，不是独立招式） */
+export const VARIANT_TARGETS: ReadonlySet<string> = new Set(
+  TEAMMATE_MOVE_VARIANTS.flatMap(v => Object.values(v.swaps)),
 )
 
 export interface AxisTableDirectMove {
@@ -41,7 +49,7 @@ export function axisTableDirectMove(
   moveId: string,
   backed: ReadonlySet<string>,
 ): AxisTableDirectMove | null {
-  if (!/^\d+$/.test(moveId) || backed.has(moveId) || FUSED_MEMBERS.has(moveId)) return null
+  if (!/^\d+$/.test(moveId) || backed.has(moveId) || FUSED_MEMBERS.has(moveId) || VARIANT_TARGETS.has(moveId)) return null
   if (axisHiddenMovesOf(agentId, backed).includes(moveId)) return null
   for (const cat of skills?.categories ?? []) {
     const move = (cat.moves ?? []).find(m => m.id === moveId)
