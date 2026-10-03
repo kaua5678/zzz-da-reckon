@@ -51,7 +51,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **出卡前 grep 断言的全部消费者；brief 里给工人「没说清就选最小改动继续」的授权（2026-10-03 r436 CC-410）**：卡面写「:61 兜底删掉」，实际那行是 `axisMoveActionTime` 钩子的实现、有测试锁着——工人读到矛盾后推敲 9 分钟零改动。
   判据：派发后 >5 分钟 `git status` 零改动 ⇒ 看 `worker.err` 尾部它在纠结什么，多半卡面错了；`kill <pid>`（pid 取自 `pgrep -af '^node .*dsh --profile headless'`）、改卡、重派，比等便宜。第二次派发 8 分钟收工。
 - **全量 vitest 单独一条 `wsl_exec`（2026-10-03 r437 实测）**：guards 链（~45s）+ build（~47s）+ vitest(4)（~250s）串在一条调用里，总时长撞上桥的 ~285s 上限，整条被杀、vitest 日志半截还没有 summary——看起来像「跑了但没结果」。guards / build 一条，vitest 另一条，各自 `timeout 280`。
-- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 476 / 4330，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
+- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 477 / 4332，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
 ### 0.R2 收尾流程（2026-09-27 R2 定稿；依据与数字见 `docs/mcp-dev-process-speed.md`）
 
 - **强度不变，顺序和并行方式变了**：全量 `npm run verify`、零差、文档提交后重跑 check-guards 三道都保留。
@@ -91,6 +91,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 20:54 arena-F 第 458 轮**（开工：origin = 主仓 = `be8731c1`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 全部仅触发项；worktree `wt-T26`（已删）；产物 `/home/kaua/calc-arch/arenaF/r458/`）：**CC-429 `66ad9576`** + 本文档提交。
+- **做到哪**：「从未扫过的大文件」线扫 `StatPanel.vue`（r6 §8 行 458）。两处与引擎平行的手抄公式（异常积蓄两区、自动回能括号项）并到 data 层单源；引擎侧只是换调用、运算顺序不变（zd DIFF 0 ×2）。分片 477 / 4332。
+- **沉淀**：(1) 「某 CC 已立单源」≠「全仓都在用」——CC-337 改了 core / specs / mechanics，展示层那份留到今天。立单源的那一刀应顺手 `grep` 全仓同形算式（含 `.vue`），并用源码锁封死，而不是只改引擎侧。(2) 展示层要复用引擎公式时，公式住 `data/`（展示层禁止按值 import core），引擎 import data；把 base 做成参数、展示传 1，可以让乘法顺序逐字不变从而零差位级不动。
+- **未决 / 坑**：失衡乘区展示（面板级）与引擎（分招式 `getStunBuildUpBonus`）口径不同，没并；若要并，先决定 StatPanel 是否按招式类型显示（需要一个 skillType 选择 UI），再把 `impact/100 × (1+bonus/100)` 搬 data 层。喧响上限 `3000` 无可引用常量，留。
+- **下一步（start-ready）**：无排定卡。找题顺序不变（REQUIREMENTS → §3 → §8.0）。该线剩余：`TimeChartsPage.vue`（668）、`DebugPage.vue`（613）、`FinalPanel.vue`（522）、`StunAxisPage.vue`（960；多次提及，低优先）、`ResponseSurface3D.vue`（1371，纯图形，最后）。建议下一个 `FinalPanel.vue`（与 StatPanel 同属面板展示，最可能有同型手抄）：`ls src/components/FinalPanel.vue src/views/FinalPanel.vue` 定位后 `grep -n "watch(\|Store\.set\|Math\.\|/ 100\|\* 100" <文件>`，重点看是否还有 `Math.floor(...Mastery` / 回能 / 暴击期望之类引擎已有单源的算式。
+- **回滚点**：`git revert 66ad9576`。
 
 **2026-10-03 20:42 arena-F 第 457 轮**（开工：origin = 主仓 = `1fbccd91`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 全部仅触发项；worktree `wt-T25`（已删）；产物 `/home/kaua/calc-arch/arenaF/r457/`）：**CC-428 `ed733734`** + 本文档提交。
 - **做到哪**：「从未扫过的大文件」线扫 `ResourceUtilizationPage.vue`（r6 §8 行 457）。唯一发现：「异常结算角色占比」卡自算份额 / 次数，忽略用户覆盖、不归一、无余数补正，与伤害侧结算分叉 ⇒ 页面改调 `buildAnomalySettlementEntries(..., { keepZero: true })`，引擎加可选参数、默认行为不变（zd DIFF 0 ×2）。分片 476 / 4330。
