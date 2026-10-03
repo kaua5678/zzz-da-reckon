@@ -92,6 +92,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 23:33 arena-F 第 471 轮**（开工：主仓 = origin = `02257b15`，干净、无人在跑；另一 lane 23:31 新开 worktree `/tmp/wt-W35`@`4892484b`，整轮内无改动、未提交；REQUIREMENTS.md 无新条目；worktree `wt-T39`（已删）；产物 `/home/kaua/calc-arch/arenaF/r471/`）：**CC-437e `808710cf`**，5 文件 +55/−44。
+- **做到哪**：banyue 两臂合成私有 `BanyueOverlay { stacksByMove?: Map<moveId, 层数>; flatPct?: 百分比 }`；`directRowBonus` 内 `stacks × MINGWANG_BASE_PER_STACK` 乘法位置不动；删 `banyueMingwangStacks` / `banyueMingwangPct`。「标量是百分比、桶是层数、不许复用」的断言（BatchR16b ★）改读 `flatPct` / `stacksByMove`。按 c→f 通用步骤一次过，无返工。
+- **对 T16 的解禁**：T16（般岳怒相轴内覆盖）的前置「等 T15/CC-437 落地」就 banyue.ts 而言已满足——e 之后 T15 不再碰 `banyue.ts`（g 只动 typesHooks / typesRows / panelPhases / damagePool* / 测试夹具）。T16 现在可以开，若它要新增轴窗口 overlay 字段，直接加进 `BanyueOverlay`（模块私有，不再碰共享类型）。
+- **验证**：vue-tsc 0；guards 五项全绿；build 0；zd `DIFF 0 NON1581 0 []`；vitest 分片 238/2082 + 240/2257 = 478/4339。
+- **回退点**：`git revert 808710cf`。
+- **下一步（start-ready）**：**T15-f yixuan**（`yixuan.ts:1080-1140`，桶 `yixuanNingshenMap`（moveId → `{critDmg, sheerDmg}`）+ 标量 `yixuanNingshen`（同形）；先 `grep -rn "yixuanNingshen" src`——已知读者 yixuan.ts / typesHooks / yixuanSmoke.test / teamHookMigration:181-206 / damagePoolBatchR16b？/ damagePoolNightA？；形状建议 `YixuanOverlay { byMove?: Map<string, Ningshen>; flat?: Ningshen }`，`directRowBonus` 内**保留 `flat ?? byMove.get(moveId) ?? {0,0}` 的优先顺序**（C6 满覆盖臂优先于轴臂）。之后 g 收口。
+
 **2026-10-03 23:24 arena-F 第 470 轮**（开工：主仓 = origin = `4892484b`，干净、无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T38`（已删）；产物 `/home/kaua/calc-arch/arenaF/r470/`）：**CC-437d `3a9a8f5f`**，5 文件 +56/−43。
 - **做到哪**：corin 两臂合成私有 `CorinOverlay { byMove?: Map<moveId, number>; flatPct?: number }`；`directRowBonus` 保留 `isAxis ? (stunOverride > 0 ? byMove : 0) : flatPct` 段级门控；删 `corinStunBonusMap` / `corinStunBonusPct`。「桶值恒 35、折算值不许进桶」的不变量仍由 `teamHookMigration` / `damagePoolBatchR16b` 精确断言（改读 `byMove` / `flatPct`）。按 c→f 通用步骤 grep 全读者，一次过，无返工。
 - **验证**：vue-tsc 0；guards 五项全绿；build 0；zd `DIFF 0 NON1581 0 []`；vitest 分片 238/2082 + 240/2257 = 478/4339。
@@ -735,7 +742,7 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 - **c→f 通用步骤（r468 从 b 卡学到）**：① 开工先 `grep -rn "<桶名>\|<标量名>" src` 列全读者（b 卡漏了 `damagePoolBatchR16b.test.ts`，只在全量分片才红）；② 模块里定义 `XxxOverlay` 接口 + `export const xxxOverlay = axisOverlayChannel<XxxOverlay>()`，`axisWindowOverlays` 返回 `xxxOverlay.wrap(...)`，`directRowBonus` 用 `xxxOverlay.read(overlay)`；③ 测试改 `xxxOverlay.read(hook(...)!)!.字段`、直接调 `directRowBonus` 的改传 `overlay: xxxOverlay.wrap({...})`；④ **顺手删 `AgentAxisOverlays`/`AxisScalarOverlays` 里该模块的字段**（vue-tsc 兜底找漏网读者）；⑤ 轴/非轴双臂的模块（c/d/e/f）把「桶 + 标量」合成一个对象（如 `{ byMove: Map<moveId, …>, flat?: number }`），`directRowBonus` 内保留原「桶优先 / 标量回落」顺序。
 - [x] **T15-c peiluo（done `37e97ec9`，r469；`PeiluoOverlay { byMove?, flatPct? }`；两字段已删）**（`src/mechanics/agents/specPanelBuffs.ts:73-112`）；测试 `peiluo.test.ts`、`teamHookMigration.test.ts:216-233`。
 - [x] **T15-d corin（done `3a9a8f5f`，r470；`CorinOverlay { byMove?, flatPct? }`；两字段已删）**（`src/mechanics/agents/corin.ts:287-333`）；测试 `corin.test.ts`、`teamHookMigration.test.ts:251-255`。
-- [ ] **T15-e banyue**（`src/mechanics/agents/banyue.ts:927-970`）；测试 `banyue.test.ts`（14 处）、`teamHookMigration.test.ts:163-168`、`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 的般岳夹具。
+- [x] **T15-e banyue（done `808710cf`，r471；`BanyueOverlay { stacksByMove?, flatPct? }`；两字段已删；T16 现可开）**（`src/mechanics/agents/banyue.ts:927-970`）；测试 `banyue.test.ts`（14 处）、`teamHookMigration.test.ts:163-168`、`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 的般岳夹具。
 - [ ] **T15-f yixuan**（`src/mechanics/agents/yixuan.ts:1080-1140`；读取优先级 `ningshen ?? (isAxis ? ningshenByMove.get(moveId) : undefined) ?? {0,0}` 逐字保留）；测试 `yixuanSmoke.test.ts`、`teamHookMigration.test.ts:181-206`。
 - [ ] **T15-g 收口**：删旧类型 / 旧字段 / scalar 合并；`useResourceCalc.ts:647-648`、`damagePool.ts:85-90`、`damagePoolDirect.ts:160-173` 合成 `axisOverlayBySlot`；`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 输入夹具改 `axisOverlayBySlot`；加锁 `src/composables/__tests__/axisOverlayOpaqueCc437.test.ts`（三条见设计稿 §4 g 行）；arch CC-437 置 done；设计稿状态行改「已落地 <commit>」。
 <!-- /card:T15 -->
