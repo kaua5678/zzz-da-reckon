@@ -103,7 +103,7 @@ export function createRunCalcRound(deps: {
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   } = deps
 
-  function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number }): CalcRoundResult | null {
+  function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number }): CalcRoundResult {
     const {
       goodReview: prevGoodReview,
       energyBySlot: prevEnergyBySlot,
@@ -140,7 +140,12 @@ export function createRunCalcRound(deps: {
       // 该模块经 `threads.prevPoolStunCount` 契约自取（规则 6：编排层不写角色规则）。
     } = threads
     const base = resourceConfig.value
-    if (!base || !catalogStore.ready) return null
+    // CC-418：`runCalcRound` 不再有 null 出口。唯一调用链 `calcOutput → solveTeam → runCalcRound` 在
+    // 同一次同步求值内已前置守卫 `resourceConfig.value && catalogStore.ready`（useResourceCalc#calcOutput），
+    // 本条件不可达；CC-417 删掉空失衡池 `return null` 后「null 轮」概念整体退役（solveTeam 的 null 轮
+    // 分支 / roundThreads#threadsAfterNullRound 同步删除）。保留为不变量断言而非静默 null：真走到这里
+    // 说明调用链被改坏，宁可显式炸。回退点：恢复 `return null` + 调用方 `| null` 类型 + threadsAfterNullRound。
+    if (!base || !catalogStore.ready) throw new Error('runCalcRound: resourceConfig/catalog 未就绪（calcOutput 已前置守卫，此处不可达）')
     /**
      * **计数通道**用的失衡次数（C7 实验，见 `core/stunPlanProjection.ts`）。
      * `stunPlanProjection='off'` 时恒等于 `stunCount`（现行口径 0 delta）；打开则把计划值投影成整数，

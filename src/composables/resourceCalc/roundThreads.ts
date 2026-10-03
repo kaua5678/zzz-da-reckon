@@ -9,9 +9,10 @@
  * 同步评估终止判据并补真实管线测试。“字段传到了下一轮”不代表求解器会等到它稳定。
  *
  * 语义约定（与旧位置参数版逐字段等价）：
- * - 轮内持久（null 轮不清零）：goodReview / energyBySlot / interactionTopUp / parrySplit / decibelParry / decibelParryBasisShort
+ * - 持久组：goodReview / energyBySlot / interactionTopUp / parrySplit / decibelParry / decibelParryBasisShort
  *   —— 它们的下一轮值在 runCalcRound 内部已由 prev 兜底（如 interactionTopUpNext 初值 = prev.interactionTopUp）。
- * - 其余字段：null 轮（runCalcRound 返回 null，如无失衡行队伍）重置为初值。
+ * - CC-418：runCalcRound 不再返回 null（CC-417 删空失衡池 null 后唯一剩余出口与 calcOutput 守卫同条件、不可达），
+ *   原「null 轮重置其余字段」规则 `threadsAfterNullRound` 随之删除；线程只经 `initialCalcRoundThreads` 起始、经 `threadsNext` 推进。
  */
 import type { ModuleFeedback } from '@/mechanics/types'
 import type { InteractionTopUp } from '@/mechanics/types'
@@ -62,7 +63,7 @@ export interface CalcRoundThreads {
    * CC-194：上一轮收敛的 `applyTeamConfig({phase:'postRound'})` 输入（全队强特/终结次数；失衡次数自 CC-316 起由派发处取本轮 countStun）。
    * 本轮在 converge 之前用它对**本轮新克隆的 cfg** 派发 postRound。旧实现在本轮末尾对本轮克隆派发，
    * 而下一轮会从 `base.characters` 重新克隆，写入全部丢失（扳机冥狱恒 0、千夏自身次数、安比影画4 回能）。
-   * null = 首轮 / null 轮（不派发，与旧首轮行为一致）。
+   * null = 首轮 （不派发，与旧首轮行为一致；CC-418 起无 null 轮）。
    */
   postRoundInput: PostRoundInput | null
   /** 上一轮失衡池整数次数（坑36：轴内块数落地与池同源——0 命轴决算次数 = 轴认领块 × 池窗口数） */
@@ -89,19 +90,3 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
   }
 }
 
-/**
- * null 轮（runCalcRound 返回 null）的线程回退：持久组保留，其余重置初值。
- * 与旧版 calcOutput 里 `?? prev` / `?? 0` 混合更新规则逐字段等价。
- */
-export function threadsAfterNullRound(prev: CalcRoundThreads): CalcRoundThreads {
-  return {
-    ...initialCalcRoundThreads(),
-    goodReview: prev.goodReview,
-    energyBySlot: prev.energyBySlot,
-    interactionTopUp: prev.interactionTopUp,
-    parrySplit: prev.parrySplit,
-    backstageAuto: prev.backstageAuto,
-    decibelParry: prev.decibelParry,
-    decibelParryBasisShort: prev.decibelParryBasisShort,
-  }
-}

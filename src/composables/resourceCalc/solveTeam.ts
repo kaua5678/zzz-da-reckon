@@ -22,7 +22,7 @@ import { netFrontlineOccupation } from '@/core/resource/helpers'
 import { withStunCount } from '@/core/stunPool'
 import { stunWindowFraction } from '@/core/effectiveTime'
 import type { ResourceCalcConfig } from '@/types/resource'
-import { initialCalcRoundThreads, threadsAfterNullRound } from './roundThreads'
+import { initialCalcRoundThreads } from './roundThreads'
 import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
 import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './feasibilitySearch'
 // 仅类型：`ReturnType<typeof createRunCalcRound>` 与 `CalcRoundResult` 都用不到运行时值，
@@ -61,7 +61,8 @@ export interface SolveTeamInput {
 
 /** 外层求解产物：`out` = 组装好的整轮结果；`ceilingWriteBack` 非 null ⇒ 调用方执行降配闸门写回。 */
 export interface SolveTeamResult {
-  out: CalcRoundResult | null
+  /** CC-418：恒非 null —— `runCalcRound` 已无 null 出口（null 轮概念退役），外层至少跑一轮。 */
+  out: CalcRoundResult
   /** 降配档单调闸门写回：非 null ⇒ 调用方执行 `configStore.interactionScaleCeiling = Math.min(当前值, 该值)` */
   ceilingWriteBack: number | null
 }
@@ -79,8 +80,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   const AXIS_FALLBACK_TOLERANCE_SEC = 2
   /** Σ前台行净占用（扣轴内合轴节省 + 招式合轴抵扣，max 不叠加；与 iterate 平A池、
    *  teamCompare.actionTimeTotal 同口径，单一事实源 netFrontlineOccupation） */
-  const frontlineTotalOf = (r: CalcRoundResult | null): number => {
-    if (!r?.resourceResult) return 0
+  const frontlineTotalOf = (r: CalcRoundResult): number => {
+    if (!r.resourceResult) return 0
     return netFrontlineOccupation(r.resourceResult)
   }
   /**
@@ -93,16 +94,17 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * ⚠ 别用「补齐量单调夹住上一轮」根治：模块按 215/弹刀估，实测 ≈291/弹刀，夹住 = 锁死首轮超补（1471 锚 12→20 弹刀），
    *   见 docs/mcp-stun-dual-source.md §24.135；要根治应改割线步（用实测 Δ喧响/Δ弹刀）。
    */
-  const pendingTopUpSeconds = (x: CalcRoundResult | null, prev: CalcRoundResult | null): number =>
-    Math.max(0, (x?.interactionTopUp?.requiredSeconds ?? 0) - (prev?.interactionTopUp?.requiredSeconds ?? 0))
+  const pendingTopUpSeconds = (x: CalcRoundResult, prev: CalcRoundResult | null): number =>
+    Math.max(0, (x.interactionTopUp?.requiredSeconds ?? 0) - (prev?.interactionTopUp?.requiredSeconds ?? 0))
   /**
    * 跑完整外层不动点。forceNoAxis = 轴退化重算（用户口径 2026-08：轴的资源需求
    * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
    * （需 boss 秽盾等外界环境才打得成）→ 退化为一般轴（不注入轴块/连携覆盖/自动补齐）重算）。
    */
-  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult | null; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; outerCyclePickedEarlier: boolean } {
+  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; outerCyclePickedEarlier: boolean } {
     let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
-    let out: CalcRoundResult | null = null
+    /** CC-418：`MAX_OUTER_ITER ≥ 1` ⇒ 循环体至少执行一次、首轮即赋值（runCalcRound 无 null 出口），故可定赋值断言。 */
+    let out!: CalcRoundResult
     let threads = initialCalcRoundThreads()
     let prevFeedbackSignature: string | null = null
     /** 上一轮输入 x[k-1]：与本轮推导的 x[k+1] 比较，首轮没有候选。 */
@@ -112,7 +114,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     /** 与 `outerSigHistory` 同步的 `stunCount` 历史（同相位比对用）。 */
     const outerStunHistory: number[] = []
     /** 与上面两个历史同步的每轮结果（cycle 规范停点选点用；轮数 ≤ MAX_OUTER_ITER，持有引用不复制） */
-    const outerOutHistory: (CalcRoundResult | null)[] = []
+    const outerOutHistory: CalcRoundResult[] = []
     /** 与 `outerStunHistory` 同步的每轮**输出**失衡次数（= 下一轮输入；环内成员失衡自洽度用） */
     const outerNextHistory: number[] = []
     let outerCyclePickedEarlier = false
@@ -134,10 +136,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      *   ③ 同级取最后一轮（与旧行为一致 ⇒ 对既有 stable / 未分出高下的 cycle 队逐位零影响）。
      * 选点纯函数见 outerCycle.ts#pickOuterCycleMember。
      */
-    type OuterCycleMember = { out: CalcRoundResult | null; prev: CalcRoundResult | null; stunIn: number; next: number }
+    type OuterCycleMember = { out: CalcRoundResult; prev: CalcRoundResult | null; stunIn: number; next: number }
     const timeInconsistencyOf = (m: OuterCycleMember): number => {
       const r = m.out
-      if (!r?.resourceResult) return Number.POSITIVE_INFINITY
+      if (!r.resourceResult) return Number.POSITIVE_INFINITY
       return Math.abs(stunEffTime - (frontlineTotalOf(r) + pendingTopUpSeconds(r, m.prev))) + (r.resourceResult.convergence?.timeTruncatedSeconds ?? 0)
     }
     /**
@@ -156,12 +158,12 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      */
     const discreteInconsistencyOf = (m: OuterCycleMember): number => {
       const r = m.out
-      if (!r?.resourceResult) return Number.POSITIVE_INFINITY
+      if (!r.resourceResult) return Number.POSITIVE_INFINITY
       return r.resourceResult.convergence?.timeTruncatedSeconds ?? 0
     }
     /** 选中成员的前一轮结果（= 它的输入线程来源；轴退化判据用它算「还没装进计划的补齐量」） */
     let outPrev: CalcRoundResult | null = null
-    const pickCanonical = (all: OuterCycleMember[]): CalcRoundResult | null => {
+    const pickCanonical = (all: OuterCycleMember[]): CalcRoundResult => {
       /**
        * ⓪ **零窗成员不参选**（⑥″，2026-09-19 吸收上限落地时实测）：输入 stunCount ≈ 0（冷启动首轮 / 时间充足性约束把
        * 次数钳到 0 的那轮，计划里一个失衡窗都没有）的成员是瞬态——失衡是积蓄的结果不是玩家的选择，只要环里还有带窗成员，
@@ -178,7 +180,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       const feasibleOf = (m: OuterCycleMember): boolean | undefined => {
         if (!physical) return undefined
         const kIn = m.prev?.stunPool?.stunCount
-        const pool = m.out?.stunPool?.stunCount
+        const pool = m.out.stunPool?.stunCount
         return kIn === undefined || pool === undefined || pool >= kIn
       }
       const picked = pickOuterCycleMember(
@@ -199,16 +201,11 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
       const locked = lockedStunCount >= 0
+      // CC-418：runCalcRound 无 null 出口（CC-417 删空失衡池 null 后，剩余守卫与 calcOutput 同条件不可达），
+      // 原「null 轮 ⇒ threadsAfterNullRound 回退 + 签名清空 + continue」分支随之删除。
       out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale })
-      // null 轮（如无失衡行队伍）：反馈线程按 threadsAfterNullRound 规则回退（持久组保留、其余重置）
-      if (!out) {
-        threads = threadsAfterNullRound(threads)
-        // null 轮不能沿用上次非 null 结果的快照。
-        prevFeedbackSignature = null
-        continue
-      }
       const t = out.threadsNext
-      const rawNext = out?.stunPool?.stunCount ?? 0
+      const rawNext = out.stunPool?.stunCount ?? 0
       // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
       let next = rawNext
       if (!locked && stunWindowDur > 0 && stunEffTime > 0) {
@@ -225,7 +222,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // 会被挤到没有足够非失衡时间去执行，打法循环本身就不成立。
       // 收敛到非失衡时间 ≥ 该轮实际必要时间（含链的保守上界，但安全）。
       if (!locked && stunEffTime > 0 && stunWindowDur > 0) {
-        const totalNecessary = (out?.resourceResult?.characters ?? []).reduce(
+        const totalNecessary = (out.resourceResult?.characters ?? []).reduce(
           (s, c) => s + (c.timeAllocation?.necessaryTime ?? 0), 0)
         const nonStunTime = stunEffTime - next * stunWindowDur
         if (nonStunTime < totalNecessary) {
@@ -254,7 +251,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           outerExit = 'cycle'
           // 2-循环两个成员 = 上一轮（输入 prevStunValue → 输出 stunCount）与本轮（输入 stunCount → 输出 next）；按环内判据取点
           out = pickCanonical([
-            { out: outerOutHistory[outerOutHistory.length - 1] ?? null, prev: outerOutHistory[outerOutHistory.length - 2] ?? null, stunIn: prevStunValue ?? stunCount, next: stunCount },
+            // 2-环判定要求 history 非空（签名历史里有同相位轮）⇒ history[-1] 必存在；`!` 仅为类型收窄
+            { out: outerOutHistory[outerOutHistory.length - 1]!, prev: outerOutHistory[outerOutHistory.length - 2] ?? null, stunIn: prevStunValue ?? stunCount, next: stunCount },
             { out, prev: outerOutHistory[outerOutHistory.length - 1] ?? null, stunIn: stunCount, next },
           ])
           break
@@ -270,7 +268,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       }
       // 线程推进：anomalyDecibelBonus 旧版从 out.anomalyPool 现取（threadsNext 内置空数组占位），
       // 其余 = threadsNext（runCalcRound 已按 prev 兜底算好下一轮值）
-      threads = { ...t, anomalyDecibelBonus: out?.anomalyPool?.perSlotBonus ?? [] }
+      threads = { ...t, anomalyDecibelBonus: out.anomalyPool?.perSlotBonus ?? [] }
       prevFeedbackSignature = curSig
     }
     /**
@@ -295,7 +293,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     // 取读入 K（按 K 分配时池撑得住 ≥ K，即最大自洽可行整数），报告池同步钳到 K；K+1 那次没有分配时间，不兑现。
     // 只处理「池 > 读入」的一侧；「池 < 读入」（引擎多分配了窗口）的成员已在 pickOuterCycleMember ⓪″（CC-153）排除出参选。
     // 回退点：删本块与 `core/stunPool.ts#withStunCount`。
-    if (outerExit === 'cycle' && resourceConfig?.stunPlanProjection === 'physical' && out?.stunPool && outPrev?.stunPool) {
+    if (outerExit === 'cycle' && resourceConfig?.stunPlanProjection === 'physical' && out.stunPool && outPrev?.stunPool) {
       const kIn = outPrev.stunPool.stunCount
       if (out.stunPool.stunCount > kIn) out = { ...out, stunPool: withStunCount(out.stunPool, kIn) }
     }
@@ -354,9 +352,9 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     /** 净占用（计划 + 待装补齐，见 pendingTopUpSeconds） */
     const netOf = (x: RoundOut) => frontlineTotalOf(x.out) + pendingTopUpSeconds(x.out, x.outPrev)
     const overBudgetNet = (x: RoundOut) =>
-      stunEffTime > 0 && x.out != null && netOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
-    const truncatedToo = (x: CalcRoundResult | null) =>
-      (x?.resourceResult?.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS
+      stunEffTime > 0 && netOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
+    const truncatedToo = (x: CalcRoundResult) =>
+      (x.resourceResult?.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS
     const overBudget = overBudgetNet
     let axisFallback = false
     let interactionScale: number | undefined
@@ -366,9 +364,9 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     if (lockedStunCount < 0) {
       // 非法补齐（自动填充交互 > 200s，用户口径 2026-09-01）与超预算同等对待：
       // 轴要的资源根本填不出来 ⇒ 轴不可操作 ⇒ 走同一条退化路径（补齐次数已在源头清零）
-      const topUpIllegal = (x: CalcRoundResult | null) => x?.interactionTopUp?.illegal === true
+      const topUpIllegal = (x: CalcRoundResult) => x.interactionTopUp?.illegal === true
       // 轴太厚判据按「计划 + 待装补齐」算（见 pendingTopUpSeconds 注释）
-      if ((overBudget(r) || topUpIllegal(r.out)) && r.out?.resolvedAxes?.length) {
+      if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes?.length) {
         hadAxis = true
         const noAxis = runOuterLoop(true)
         if (!overBudget(noAxis) && !topUpIllegal(noAxis.out)) axisFallback = true
@@ -388,7 +386,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       //   ③ `slack(trial) ≤ slack(base) + 1s` —— 不许把省下的时间变成留白/发呆（用户：「不搞表面工程」）。
       // 这三条一起 = 「**不比改动前更差**，且尽量消掉截断」⇒ 相对棘轮（只拦变差）**构造上不可能变红**，
       // 变红的只可能是 timeGolden 的硬字段（那是有意的改进，按规则 10 归因后重生）。
-      if ((overBudget(r) || truncatedToo(r.out)) && !r.out?.resolvedAxes?.length) {
+      if ((overBudget(r) || truncatedToo(r.out)) && !r.out.resolvedAxes?.length) {
         // 搜索策略（2026-09-11 第三版，用户裁决）：**枚举候选 scale + 硬约束「真撑得下」取最大可行**。
         // 前两版教训：① 二分假定"可行域是 scale 的下闭区间"，把「截断 ≤1s」并进验收后会在
         // `yixuan-roxy-lucia` 上把好试算全拒（基线 3.78s 超预算）；② "最小截断优先"会把结构性溢出队压到
@@ -405,8 +403,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         // （0.25 单独跑与跟在 0.0625 后跑，net 均 180.191）；真因是**可行集非下闭**（全库 21 队中 7 队
         // 「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行）⇒「最小档不行 ⇒ 全体不行」的前提为假。
         const baseNet = netOf(r)
-        const baseTruncation = r.out?.resourceResult?.overflowSeconds ?? 0
-        const acceptsTrial = (x: RoundOut): boolean => x.out != null && downscaleTrialAccepted({
+        const baseTruncation = r.out.resourceResult?.overflowSeconds ?? 0
+        const acceptsTrial = (x: RoundOut): boolean => downscaleTrialAccepted({
           trialNet: netOf(x),
           trialTruncation: x.out.resourceResult?.overflowSeconds ?? 0,
           baseNet,
@@ -431,7 +429,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         const best = selectDownscaleScale(candidates, scale => {
           const trial = runOuterLoop(true, scale)
           lastCandidateTrial = { scale, trial }
-          const trialTruncation = trial.out?.resourceResult?.overflowSeconds ?? 0
+          const trialTruncation = trial.out.resourceResult?.overflowSeconds ?? 0
           // CC-149（第 179 轮）：绝对可行**独立判定**，且绝对可行即接受。
           // 旧写法 `feasible = accepted && …` 让兜底的相对三臂否决了首选的绝对可行——违背两层字典序
           // （@fact engine:降配搜索/绝对可行优先）。绝对可行 ⇒ 臂①②必然满足，差别只在臂③「留白不增」：
@@ -473,11 +471,9 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           // 省一次完整外层不动点。防御：档不匹配（将来搜索策略改成惰性跳档）就照旧重跑。
           const reuse = lastCandidateTrial as { scale: number; trial: RoundOut } | null
           const trial = reuse && reuse.scale === floorScale ? reuse.trial : runOuterLoop(true, floorScale)
-          if (trial.out) {
-            r = trial
-            axisFallback = hadAxis
-            interactionScale = floorScale
-          }
+          r = trial
+          axisFallback = hadAxis
+          interactionScale = floorScale
         }
         // 采纳后把闸门下调到本次落点（单调不进位）：下一次求值只允许 ≤ 本次。
         // 写回经 SolveTeamResult.ceilingWriteBack 交给 composable 执行（唯一 store 副作用外移；读写时序不变）。
@@ -492,7 +488,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   const { r: rAfterFeasibility, axisFallback, interactionScale } = stageResolveFeasibility(r)
   r = rAfterFeasibility
   const { out: baseOut, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier } = r
-  const out = baseOut?.resourceResult
+  const out = baseOut.resourceResult
     ? {
         ...baseOut,
         resourceResult: {
