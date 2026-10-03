@@ -10,7 +10,7 @@ import { calcStunMultiplier, getAnomalyCritStats } from './anomalyPool/helpers'
 import { defenseMultiplierDetail, resistanceMultiplierDetail } from './damageMultipliers'
 import { getSkillDmgBonus, getTargetedElementStat, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
 import { fmt } from '@/utils/format'
-import { calcPenetrationPower } from '@/data/penetrationPower'
+import { calcPenetrationPower, penetrationPowerFormulaLabel, penetrationPowerFormulaText } from '@/data/penetrationPower'
 
 
 export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove): SkillDamageTarget {
@@ -143,7 +143,7 @@ const RUPTURE_DAMAGE_PROFILE: SpecialDamageProfile = {
   kind: 'rupture',
   label: '命破伤害',
   basisLabel: '贯穿力区',
-  basisFormula: panel => `atk × 0.3 + hp × 0.1 + 贯穿力提升 = ${fmt(panel.atk)} × 0.3 + ${fmt(panel.hp)} × 0.1 + ${fmt(panel.sheerForceFlat ?? 0)}`,
+  basisFormula: panel => `${penetrationPowerFormulaLabel('atk', 'hp', '贯穿力提升')} = ${penetrationPowerFormulaText(panel, n => fmt(n))}`,
   calcBasisValue: panel => calcPenetrationPower(panel),
   ignoresDefense: true,
   usesPenDmgBonus: true,

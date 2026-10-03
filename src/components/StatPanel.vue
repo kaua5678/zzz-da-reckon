@@ -288,8 +288,8 @@
           </div>
           <div class="formula-box">
             <div class="formula-title">贯穿力公式</div>
-            <div class="formula-text">攻击力 × 0.3 + 生命值 × 0.1 + 贯穿力提升</div>
-            <div class="formula-text">= {{ formatNumber(panel.atk, 0) }} × 0.3 + {{ formatNumber(panel.hp, 0) }} × 0.1 + {{ formatNumber(panel.sheerForceFlat ?? 0, 0) }}</div>
+            <div class="formula-text">{{ penetrationPowerFormulaLabel('攻击力', '生命值', '贯穿力提升') }}</div>
+            <div class="formula-text">= {{ penetrationPowerFormulaText(panel, n => formatNumber(n, 0)) }}</div>
             <div class="formula-text result">= {{ formatNumber(penetrationPower, 2) }}</div>
           </div>
           <div class="stat-row" v-if="panel.sheerForceFlat !== 0">
@@ -463,7 +463,7 @@
               <div class="formula-section-title">直伤公式</div>
               <div class="formula-line">伤害 = 攻击力/贯穿力区 × 技能倍率区 × 增伤区</div>
               <div class="formula-line">　 × 防御区 × 抗性区 × 易伤区 × 失衡易伤 × 暴击区</div>
-              <div class="formula-sub">普通：攻击力区 = 攻击力；命破：贯穿力 = 攻击力×0.3 + 生命值×0.1</div>
+              <div class="formula-sub">普通：攻击力区 = 攻击力；命破：贯穿力 = {{ penetrationPowerFormulaLabel('攻击力', '生命值', '贯穿力提升') }}</div>
               <div class="formula-sub">锋御：防御力区 = 防御力；锋御伤害使用锐暴伤害替代暴击伤害</div>
               <div class="formula-sub">增伤区 = 1 + (通用增伤 + 对应元素增伤 + 对应招式增伤) / 100</div>
               <div class="formula-sub">命破防御区 = 1；贯穿增伤为独立额外乘区</div>
@@ -505,7 +505,7 @@ import type { DamageElement, PanelValues } from '@/types/catalog'
 import { getStatMeta, isPctStat } from '@/utils/statMeta'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
-import { calcPenetrationPower } from '@/data/penetrationPower'
+import { calcPenetrationPower, penetrationPowerFormulaLabel, penetrationPowerFormulaText } from '@/data/penetrationPower'
 import { elementAnomalyBuildUpEfficiency, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
 import { calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'

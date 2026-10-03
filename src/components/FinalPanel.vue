@@ -105,7 +105,7 @@ import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { collectHpSources, hpBreakdownTotals } from '@/composables/hpSourceBreakdown'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { clampCritRatePct, expectedCritMultiplier } from '@/data/critMultiplier'
-import { calcPenetrationPower } from '@/data/penetrationPower'
+import { calcPenetrationPower, penetrationPowerFormulaLabel, penetrationPowerFormulaText } from '@/data/penetrationPower'
 import { isPctStat } from '@/utils/statMeta'
 import { elementStatKey } from '@/utils/elementStatKeys'
 import { fmt, pct } from '@/utils/format'
@@ -189,7 +189,7 @@ const panels = computed(() => {
     ]
     if (isRupture) {
       baseRows.push({
-        stat: 'penPower', label: '贯穿力合计（atk×0.3+hp×0.1+固定）', out: disp('penPower', 0), in: disp('penPower', penPower),
+        stat: 'penPower', label: `贯穿力合计（${penetrationPowerFormulaLabel('atk', 'hp', '固定')}）`, out: disp('penPower', 0), in: disp('penPower', penPower),
         delta: penPower, deltaText: fmt(penPower, 0),
       })
     }
@@ -303,7 +303,7 @@ const panels = computed(() => {
       {
         title: '基础区',
         main: isRupture
-          ? `贯穿力 ${fmt(penPower, 0)} = ${fmt(pIn.atk, 0)}×0.3 + ${fmt(pIn.hp, 0)}×0.1 + ${fmt(pIn.sheerForceFlat ?? 0, 0)}`
+          ? `贯穿力 ${fmt(penPower, 0)} = ${penetrationPowerFormulaText(pIn, n => fmt(n, 0))}`
           : `攻击力 ${fmt(pIn.atk, 0)}${isSharpen ? ` · 防御力基底 ${fmt(pIn.def, 0)}（锋御）` : ''}`,
         lines: isRupture ? ['命破伤害基底，无视防御'] : isSharpen ? ['锋御伤害基底，防御力区'] : ['非命破伤害基底'],
       },

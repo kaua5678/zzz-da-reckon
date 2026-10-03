@@ -1,4 +1,5 @@
 import { localized } from '@/utils/format'
+import { penetrationPowerFormulaLabel } from '@/data/penetrationPower'
 import { DAMAGE_ELEMENTS, ELEMENT_LABEL, ENEMY_DEBUFF_KIND_CONFIG, LEGACY_ENEMY_DEBUFF_STAT_IDS, enemyDebuffStatId, type EnemyDebuffKind } from '@/utils/enemyDebuffStats'
 
 export type FormulaZone =
@@ -63,7 +64,7 @@ export const STAT_META: StatMeta[] = [
   { value: 'windDmg', label: '风属性伤害加成', zone: '增伤区', mode: 'pct', description: '风属性技能对应元素增伤' },
   { value: 'lumifluxDmg', label: '辉光伤害加成', zone: '增伤区', mode: 'pct', description: '辉光属性技能对应元素增伤' },
   { value: 'penDmgBonus', label: '贯穿增伤', zone: '贯穿增伤区', mode: 'pct', description: '命破角色额外独立乘区：1 + 贯穿增伤' },
-  { value: 'sheerForceFlat', label: '贯穿力提升', zone: '贯穿力区', mode: 'flat', description: '直接加到命破贯穿力：局内攻击力×0.3 + 局内生命值×0.1 + 固定贯穿力提升' },
+  { value: 'sheerForceFlat', label: '贯穿力提升', zone: '贯穿力区', mode: 'flat', description: `直接加到命破贯穿力：${penetrationPowerFormulaLabel('局内攻击力', '局内生命值', '固定贯穿力提升')}` },
   { value: 'sheerDmgBonus', label: '贯穿伤害提升', zone: '贯穿增伤区', mode: 'pct', description: '命破角色贯穿伤害提升，与贯穿增伤加算进入独立乘区' },
   { value: 'sharpDmgBonus', label: '锐化增伤', zone: '锐化增伤区', mode: 'pct', description: '锋御角色额外独立乘区：1 + 锐化增伤' },
   { value: 'physicalSheerDmg', label: '物理贯穿增伤', zone: '贯穿增伤区', mode: 'pct', description: '只在物理属性命破/贯穿伤害结算时，与通用贯穿增伤加算进入独立乘区' },

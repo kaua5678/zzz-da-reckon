@@ -108,7 +108,7 @@ import { effectAtModLevel, wEngineEffectBlockReason } from '@/composables/wEngin
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt, pct, localized } from '@/utils/format'
 import { elementStatKey } from '@/utils/elementStatKeys'
-import { calcPenetrationPower } from '@/data/penetrationPower'
+import { calcPenetrationPower, penetrationPowerFormulaLabel, penetrationPowerFormulaText } from '@/data/penetrationPower'
 // `isPctStat` = **展示**口径（lineValue 的格式化），`statSettlementMode` = **结算**口径（全局 Buff 的 mode 实参）
 import { getStatMeta, isPctStat, phaseStatLabel, statSettlementMode } from '@/utils/statMeta'
 import type { BuffEffect, BuffGroup, PanelValues, TeammateBuff } from '@/types/catalog'
@@ -373,9 +373,9 @@ const attributeFormulaSections = computed(() => {
     },
     {
       title: '贯穿力',
-      formula: 'sheerForce = 局内 atk × 0.3 + 局内 hp × 0.1 + sheerForceFlat',
+      formula: `sheerForce = ${penetrationPowerFormulaLabel('局内 atk', '局内 hp')}`,
       lines: [
-        `= ${fmt(p.atk, 0)} × 0.3 + ${fmt(p.hp, 0)} × 0.1 + ${fmt(p.sheerForceFlat ?? 0, 0)} = ${fmt(penetrationPower, 0)}`,
+        `= ${penetrationPowerFormulaText(p, n => fmt(n, 0))} = ${fmt(penetrationPower, 0)}`,
         'sheerForceFlat 是固定贯穿力提升，只进入贯穿力本体，不进入贯穿增伤乘区。',
       ],
     },
@@ -419,7 +419,7 @@ const formulaSections = [
     title: '直伤',
     formula: 'damage = basis × damageMultiplier × dmgBonus × def × res × taken × stun × crit × count',
     lines: [
-      'basis：非命破 atk；命破贯穿力 = 局内 atk × 0.3 + 局内 hp × 0.1 + sheerForceFlat',
+      `basis：非命破 atk；命破贯穿力 = ${penetrationPowerFormulaLabel('局内 atk', '局内 hp')}`,
       'damageMultiplier 只读取倍率表直伤行；luminizeMultiplier 已单独派生为耀变直伤展示行',
       '命破角色防御区固定为 1；贯穿增伤 = penDmgBonus + sheerDmgBonus + 对应元素贯穿增伤，是独立额外乘区',
       'crit = 1 + min(critRate, 100%) × critDmg（期望）；锋御锐暴 200% 封顶、100% 以上额外判定乘算（core/damage.ts sharpCritMultiplier）',
