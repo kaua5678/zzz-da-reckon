@@ -63,7 +63,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 ## 1. 长期规则（从 2026-09-27 以前的逐轮交接里提炼，压缩时逐条保留）
 
-- **没有排定项时不造活**（第 237 轮）：REQUIREMENTS 无新条目、交接也没有下一步时，按 `docs/mcp-r6-refactor-list.md` §8 的扫描记录，只查表里没有的区域；查完仍没有满足「更通用 / 更简单」的项，就在 §8 追加扫描范围，然后收尾（写交接、push、zc done）。依据：用户明确不要只为降计数或凑工作量的改动。回退：删掉本条。
+- **没有排定项时不造活**（第 237 轮）：REQUIREMENTS 无新条目、交接也没有下一步时，先读 `docs/mcp-r6-refactor-list.md` **§8.0 活着的重开条件索引**（一屏，r453 起；§8 大表只是日志，不用逐行读），有被满足的就做；没有就只查表里没有的区域；查完仍没有满足「更通用 / 更简单」的项，就在 §8 追加一行、然后收尾（写交接、push）。「本轮无题」是正常状态。依据：用户明确不要只为降计数或凑工作量的改动。回退：删掉本条。
 - **主档优先**（第 375 轮）：一条工作线有专属主档（如 CC-343 的 `docs/mcp-analyzer-scenario-isolation.md`）时，验证细节、决定、回退点只写主档；卡表与 r6 §8 只留一行指针，不再在 `docs/mcp-stun-dual-source.md` 另开 §24 节。依据：同一件事写四五处既费 token 又会漂移。回退：删掉本条，按旧惯例补 §24。
 - **每轮收尾必须 `git push origin master`**（提示词 c2）：commit 不等于 push。2026-09-27 用户发现本地积压 436 个提交、远端停在 09-21。推送失败要写进交接，不能静默跳过。
 - **登记债务、豁免或改 burn-down**：改 `scripts/lib/guard-registries.mjs`，不要改 check-guards 本体（CC-85）。
@@ -91,6 +91,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 20:03 arena-F 第 453 轮**（开工：origin = 主仓 = `52bf7f13`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目（R1–R8 全部 done / 撤销）；worktree `wt-T21`（已删））：**本轮无代码题**，只做一件把「找题」变便宜的整理。
+- **做到哪**：r452 交接让下一轮「看 r6 §8 的重开条件列有没有被满足的」——照做后发现这列从第 396 行起已经改放验证数字、237–395 的条件绝大多数早被消费（逐条核了 310/314/315/373/381/384/385–387，全部已关）。215 行读一遍只为确认「没有」，是每轮重复付的开销 ⇒ 写成 **r6 §8.0「仍开着的重开条件索引」**（13 条，每条一句查法 + 维护规则：消费即删、新条件加这里）。
+- **沉淀**：找题顺序改为 ① REQUIREMENTS.md → ② 本文 §3 执行卡 → ③ **r6 §8.0 一屏** → ④ 都没有就记「本轮无题」收工。§8 大表只是日志，不再要求逐行读。
+- **顺手核过、无需跟进**：r452 代推的 `c1897046`（grace 精确闭式解）diff 干净，旧 cycleBound 实现已删，`@fact` / `⟳复核 到期 2027-03-31` 齐全；`src/` 内 `⟳复核 … 到期` 无已到期项。
+- **下一步（start-ready）**：无排定卡。开工按上面的找题顺序；§8.0 第 1 条（坑 25）2026-10-31 才到期。没有题就别造——这是正常状态，不是失败。
+- **回滚点**：纯文档，`git revert` 本提交即可。
 
 **2026-10-03 19:54 arena-F 第 452 轮**（开工：origin = `e4a9e0ce`，主仓多一个别人的本地提交（kaua5678「refactor(grace): 轮换计划改精确闭式解 + 维琳娜平A权重交边际均衡」，19:44 提交、rebase 两次后哈希已是 `a5e6bbc1`），工作区干净，无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T20`（已删）；产物 `/home/kaua/calc-arch/arenaF/r452/`：`tsc.log` / `guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log`）：**代推 `c1897046`**（他的提交，cherry-pick 到 origin/master 上验证后推送）+ 本文档提交。
 - **做到哪**：不再按 24h 孤儿规则等。把他的提交 cherry-pick 到 `wt-T20`（基于 origin `e4a9e0ce`）跑全套：vue-tsc 0；guards 链 0（check-guards / check-tokens / validate:data / validate:specs / verify:recording）；build 0；vitest 分片 236/2075 + 238/2250 = **474 文件 / 4325 用例**（新增 `graceRotation.test.ts` 5 条）。绿 ⇒ `git push origin c1897046:master`；主仓 `git rebase origin/master` 自动跳过了同补丁的 `a5e6bbc1`，现在主仓 = origin，unpushed 0。他的 timeGolden / timeFillRatchet 基线改动全是 1181 条目（r451 已逐键比过），属于他重构的预期结果，我不审口径。
