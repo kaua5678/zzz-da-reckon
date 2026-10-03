@@ -11,7 +11,8 @@ export interface CalcRoundResult {
     /** CC-421：恒非 null（来源 `promoteFixpoint().pool`；空失衡贡献 ⇒ stunCount 0 的合法池，见 CC-417） */
     stunPool: StunPoolResult
     anomalyPool: AnomalyPoolResult | null
-    adjustedResourceResult: TeamResourceResult | null
+    /** CC-422：恒非 null（= applyChainGift(applyUltimatePromote(rr))，两者对非 null 入参恒返回非 null） */
+    adjustedResourceResult: TeamResourceResult
     promote: number
     /** 琉音好评转大 60 档（吃连携窗口）收敛终值（90 档 = promote − promoteHug60）。纯展示载荷，零求值影响。 */
     promoteHug60: number

@@ -61,11 +61,11 @@ export interface PromoteFixpointDeps {
  */
 // @fact engine:实战档位喧响计数 口径: 「实战 N 喧响大」这类档位说法（含「叶释渊 3 例外」）的**口径主体 = 主C 自攒喧响 floor(总/消耗)，不计琉音好评赠大**——赠大只加进展示 `ultimateCount` 并独立成 `source='gift'` 行，是队友产出、不是自己攒的条。实测 Boss 30042（无敌24s/弹刀13）下：叶瞬光自攒 11227 → 3 ✓ 正落该档；仪玄自攒 12087 → 4，超 3 档线仅 87 喧响（边界敏感，**不据此改账**） | 据 用户@2026-09-08（裁决「不计琉音赠大，看自攒 floor」）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/giftConsumption.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#applyUltimatePromote | 信 确认
 export function applyUltimatePromote(
-  base: TeamResourceResult | null,
+  base: TeamResourceResult,
   adj: { promote: number; hug60: number; targetSlot: number; chainMoveId: string; ultimateMoveId: string } | null,
   catalogStore: ReturnType<typeof useCatalogStore>,
-): TeamResourceResult | null {
-  if (!base) return base
+): TeamResourceResult {
+  // CC-422：`base` 恒非 null（唯一调用点 convergence 传本轮 rr），返回也恒非 null。
   // 引擎占位行（阶段1 ②）以**池口径**为准：转大次数为 0 时撤掉占位行（引擎推导在退化配置下会多算）
   const promote = adj && adj.targetSlot >= 0 ? adj.promote : 0
   if (promote <= 0 || !adj) {

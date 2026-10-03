@@ -61,4 +61,21 @@ describe('CC-418 runCalcRound 非 null 化 / null 轮退役', () => {
       expect(src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l) && /\bstunPool\?\.|\bpool\?\./.test(l)), f).toEqual([])
     }
   })
+
+  it('CC-422：adjustedResourceResult 恒非 null——applyUltimatePromote / applyChainGift 入参与返回都不带 `| null`，convergence 无 `adj1 ?? rr` 兜底', () => {
+    const up = read('ultimatePromote.ts')
+    expect(up).toMatch(/export function applyUltimatePromote\(\n  base: TeamResourceResult,\n/)
+    expect(up).toMatch(/\): TeamResourceResult \{\n/)
+    expect(up).not.toContain('): TeamResourceResult | null {')
+    const cg = read('chainGift.ts')
+    expect(cg).toMatch(/export function applyChainGift\(\n  base: TeamResourceResult,\n/)
+    expect(cg).not.toContain('): TeamResourceResult | null {')
+    const rr = read('roundResult.ts')
+    expect(rr).toMatch(/export interface CalcRoundResult \{[\s\S]*?\n    adjustedResourceResult: TeamResourceResult\n/)
+    expect(rr).not.toContain('adjustedResourceResult: TeamResourceResult | null')
+    const cv = read('convergence.ts')
+    for (const dead of ['adj1 ?? rr', 'adj2 ?? adj1', 'adj0 ? extractAnomalyExecsFrom', 'adj2 ? extractAnomalyExecsFrom']) {
+      expect(cv, dead).not.toContain(dead)
+    }
+  })
 })

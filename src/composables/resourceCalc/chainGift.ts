@@ -23,12 +23,12 @@ import { buildGiftRow } from '@/core/resource/giftRows'
  * 诺姆 C4 的 +200 不可分享喧响不在这里（资源池 calcDecibelSource 已计入）。
  */
 export function applyChainGift(
-  base: TeamResourceResult | null,
+  base: TeamResourceResult,
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   configs: readonly CharacterOperationConfig[],
-): TeamResourceResult | null {
-  if (!base) return null
+): TeamResourceResult {
+  // CC-422：`base` 恒非 null（唯一调用点 convergence 传 applyUltimatePromote 的结果），返回也恒非 null。
   // 提供者槽位 = 首个实现 `chainGift` 的在队模块（CC-35d-A；原按身份 findSlotByIdentity(['1571'])，
   // 本库 teammateBuffId 均等于自身 id，按 agentId 派发与之等价）
   const providerSlot = configStore.team.findIndex(m => !!m.agentId && !!getAgentMechanic(m.agentId)?.chainGift)

@@ -765,7 +765,7 @@ export function createRunCalcRound(deps: {
     }
     // 赠行由引擎物化 → rr 里已有赠行；池侧赠送口径单独结算，故基准提取跳过赠行（防双计）
     const baseStun = extractStunExecsFrom(rr, true)
-    const baseAnomaly = extractAnomalyExecsFrom(rr, true)
+    // CC-422：原 baseAnomaly = extractAnomalyExecsFrom(rr, true) 仅作 adj0/adj2 为 null 的兜底读取，而两者恒非 null ⇒ 死声明已删。
     const p = buildPromoteParams(configStore, catalogStore, rr, base.characters)
     // CC-417（T12）：原 `if (baseStun.length === 0) return null`（初始提交遗留）把「没有任何失衡贡献行」
     // 放大成「整轮无结果」——生产里单人支援/防护默认 weight 0 ⇒ 无平A行 ⇒ 只剩终结技 ⇒ 伤害池/能量账全部消失。
@@ -839,7 +839,7 @@ export function createRunCalcRound(deps: {
     const giftedPolarAssaultThisRound = sumGiftedPolarAssault(rr.characters)
     // CC-78：无 anomalyPoolSetup 声明者时赠送的归属槽（有 setup 时 roundInputs 仍用 setup.slot）
     const giftedPolarAssaultSlot = firstGiftedPolarAssaultSlot(rr.characters)
-    const ap0 = calcAnomalyPoolInput(0, adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly, giftedPolarAssaultThisRound, giftedPolarAssaultSlot)
+    const ap0 = calcAnomalyPoolInput(0, extractAnomalyExecsFrom(adj0), giftedPolarAssaultThisRound, giftedPolarAssaultSlot)
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
@@ -929,15 +929,15 @@ export function createRunCalcRound(deps: {
 
     const adj1 = applyUltimatePromote(rr, sp1, catalogStore)
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
-    const adj2 = applyChainGift(adj1 ?? rr, configStore, catalogStore, base.characters)
+    const adj2 = applyChainGift(adj1, configStore, catalogStore, base.characters)
     // 展示层：resourceResult 也带上诺姆赠送连携与琉音好评转大（与 adj2 同一入参链，CC-336 消除重复求值），
     // 不动点/失衡池仍用原始 rr（baseStun），避免赠送连携失衡反作用于转大收敛。
     // 展示口径归一：赠送行（诺姆赠链 / 琉音赠大，含轴模式 post-hoc carve 路径）在装配后追加，
     // 引擎 timeAllocation 看不到 → 按**最终行**重算前台/后台（单一展示口径，见 normalizeDisplayTime）
-    const rrShown = ResourceCalcHelpers.normalizeDisplayTime(adj2 ?? adj1 ?? rr)
+    const rrShown = ResourceCalcHelpers.normalizeDisplayTime(adj2)
 
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
-    const ap1 = calcAnomalyPoolInput(cov1, adj2 ? extractAnomalyExecsFrom(adj2) : baseAnomaly, giftedPolarAssaultThisRound, giftedPolarAssaultSlot)
+    const ap1 = calcAnomalyPoolInput(cov1, extractAnomalyExecsFrom(adj2), giftedPolarAssaultThisRound, giftedPolarAssaultSlot)
 
     // 「下一轮反馈」统一派发（2026-09-16 arch 棘轮第 6 批）：普罗米娅(1541)/零号·安比(1381)/
     // 露西(1151)/薇薇安(1331)/艾莲(1191) 的算法已迁进各自模块的 `nextRoundFeedback` 钩子
