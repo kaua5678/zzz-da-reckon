@@ -188,6 +188,12 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
   `provider`/`model`/`reasoning_effort` 三个字段，没有则只能继承父路由。
   可选路由见 profile 的 `llm-pi-ai` provider 段（`~/.dsh/profiles/web/cordis.patch.yml`）；
   **不必**在此维护可用性清单——有些 provider 已注册但不可用，撞到就换一个，别照抄旧结论。
+- **⚠ `subagent` 工具的两种模式路由不同**（2026-09-30 实测，badge `_dsh_external_subagent_model_badge_status` 实证）：
+  - `one-shot`（一次性勘察）：走 `model-routing.yaml` 的 `route`（`wb/deepseek-v4.1-flash`，250 tok/s）。
+  - `continuable`（可续跑，默认）：继承**父代理的 `modelSelection.lastUsed`**（父代理跑什么它跑什么，
+    如父代理是 `cn:kimi-k3-1@max` 则子代理也是 kimi，44 tok/s）。
+  **快速勘察/找东西/读代码用 `one-shot`**（`run_in_background: false` 的 `subagent` 调用默认 continuable，
+  需显式传 `run_in_background: true` 才是 one-shot）；**需要多轮续跑/回收上下文才用 `continuable`**。
 - **子代理不能再派子代理**：`maxDepth: 1`，实测报错 `subagent depth 2 exceeds maxDepth 1`。
   要再拆，由你回收上下文后另开任务（同 §5「不允许工人继续发孙代理」）。
 - **怎么知道子代理实际跑了哪个模型**（前端不显示）：① badge 插件工具
