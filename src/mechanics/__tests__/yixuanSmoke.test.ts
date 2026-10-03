@@ -549,7 +549,7 @@ describe('CC-17：仪玄 directRowBonus（凝神，标量优先 / 轴臂桶 / �
 
   it('非轴臂：读本槽标量，note「凝神暴伤…（覆盖率近似）」（无贯穿段）', () => {
     const rb = yixuanMechanic.directRowBonus!({
-      exec: exec('1371009'), isAxis: false, stunOverride: 0, buckets: undefined, scalar: undefined,
+      exec: exec('1371009'), isAxis: false, stunOverride: 0,
       overlay: yixuanOverlay.wrap({ flat: { critDmg: 20, sheerDmg: 0 } }),  // CC-437：不透明 overlay 经模块 channel 构造
     })!
     expect(rb.critDmgBonus).toBe(20)
@@ -559,7 +559,7 @@ describe('CC-17：仪玄 directRowBonus（凝神，标量优先 / 轴臂桶 / �
 
   it('轴臂：标量缺席时查本槽桶，note「（buff轴）」', () => {
     const rb = yixuanMechanic.directRowBonus!({
-      exec: exec('1371009'), isAxis: true, stunOverride: 1, buckets: undefined, scalar: undefined,
+      exec: exec('1371009'), isAxis: true, stunOverride: 1,
       overlay: yixuanOverlay.wrap({ byMove: new Map([['1371009', { critDmg: 40, sheerDmg: 0 }]]) }),
     })!
     expect(rb.critDmgBonus).toBe(40)
@@ -568,7 +568,7 @@ describe('CC-17：仪玄 directRowBonus（凝神，标量优先 / 轴臂桶 / �
 
   it('C6 标量优先于轴桶；note **先暴伤后贯穿**', () => {
     const rb = yixuanMechanic.directRowBonus!({
-      exec: exec('1371009'), isAxis: true, stunOverride: 1, buckets: undefined, scalar: undefined,
+      exec: exec('1371009'), isAxis: true, stunOverride: 1,
       overlay: yixuanOverlay.wrap({
         byMove: new Map([['1371009', { critDmg: 40, sheerDmg: 0 }]]),
         flat: { critDmg: 40, sheerDmg: 20 },
@@ -581,7 +581,7 @@ describe('CC-17：仪玄 directRowBonus（凝神，标量优先 / 轴臂桶 / �
 
   it('两段皆 0 → null', () => {
     expect(yixuanMechanic.directRowBonus!({
-      exec: exec('1371009'), isAxis: false, stunOverride: 0, overlay: undefined, buckets: undefined, scalar: undefined,
+      exec: exec('1371009'), isAxis: false, stunOverride: 0, overlay: undefined,
     })).toBeNull()
   })
 })

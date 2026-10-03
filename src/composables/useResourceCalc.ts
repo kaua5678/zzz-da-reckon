@@ -313,7 +313,7 @@ export function createResourceCalc(
    * 用 `effectiveStunAxes.length > 0` 代替会让 `forceNoAxis` 轴退化态静默走错支。
    *
    * 2026-09-26 CC-17：四个 moveId 桶不再跨模块合并成全局表（会泄漏 `basic_attack`），
-   * 改为按槽归属的 `bucketsBySlot`（设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §3）。
+   * 改为按槽归属（设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §3）；CC-437 起值对编排层不透明（`Map<slot, AgentAxisOverlay>`）。
    */
   const axisOverlays = computed(() => collectAxisWindowOverlays(
     effectiveStunAxes.value,
@@ -644,8 +644,7 @@ export function createResourceCalc(
     ultPromoteCount: ultPromoteCount.value,
     agentNames: agentNames.value,
     isAxis: axisMode.value,
-    axisBucketsBySlot: axisOverlays.value.bucketsBySlot,
-    axisScalarBySlot: axisOverlays.value.scalarBySlot,
+    axisOverlayBySlot: axisOverlays.value,
     computeWindowDuration,
   }))
 

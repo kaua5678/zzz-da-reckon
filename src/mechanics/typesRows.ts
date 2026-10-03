@@ -9,14 +9,14 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
 import type { calcPoolAnomalyDamage as calcPoolAnomalyDamageFn, calcPoolDirectDamage as calcPoolDirectDamageFn, PoolAnomalyRow, PoolDirectRow } from '@/composables/resourceCalc/poolDamage'
 import type { buildAnomalyVirtualPanel as buildAnomalyVirtualPanelFn, buildAnomalySettlementEntries as buildAnomalySettlementEntriesFn } from '@/composables/resourceCalc/anomalyPanels'
-import type { AgentAxisOverlay, AgentAxisOverlays, AxisScalarOverlays } from './typesHooks'
+import type { AgentAxisOverlay } from './typesHooks'
 
 /**
  * `directRowBonus` 钩子输入（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §3）。
  *
- * 契约：`buckets` / `scalar` 都是**本行所属槽位**的 overlay（`bucketsBySlot.get(slot)` /
- * `scalarBySlot.get(slot)`），故模块读到的永远是「自己这个角色的」覆盖量——这是 CC-17 修
- * 可琳 `basic_attack` 泄漏的关键（旧实现把四个桶跨模块合并成全局表，见 `AgentAxisOverlays` 头注释）。
+ * 契约：`overlay` 是**本行所属槽位**模块同帧 `axisWindowOverlays` 的返回（`axisOverlayBySlot.get(slot)`），
+ * 故模块读到的永远是「自己这个角色的」覆盖量——这是 CC-17 修可琳 `basic_attack` 泄漏的关键
+ * （旧实现把四个桶跨模块合并成全局表；CC-437 起连字段也不再共享，见 `AgentAxisOverlay` 头注释）。
  */
 /**
  * `directRowAxisSplit` 钩子入参（CC-33b 2026-09-27）：轴模式下，某些直伤行的「轴内（吃失衡易伤）占比」
@@ -51,14 +51,9 @@ export interface DirectRowBonusInput {
   stunOverride: number
   /**
    * 本行所属模块同帧 `axisWindowOverlays` 的返回（不透明，CC-437）；undefined = 本模块本帧不参与。
-   * 已迁模块用 `axisOverlayChannel<T>().read(overlay)` 读；过渡期未迁模块仍读下面的 `buckets` / `scalar`（T15-g 删）。
-   * 过渡期可选（既有测试直接构造入参不传）；T15-g 删 `buckets`/`scalar` 时改为必填。
+   * 模块用自己导出的 `axisOverlayChannel<T>().read(overlay)` 解回私有形状。
    */
-  overlay?: AgentAxisOverlay | undefined
-  /** = `bucketsBySlot.get(本行 slot)`，即本槽模块 `axisWindowOverlays` 的原始返回 */
-  buckets: AgentAxisOverlays | undefined
-  /** = `scalarBySlot.get(本行 slot)`（与原 `overlayScalar` 同一个值） */
-  scalar: AxisScalarOverlays | undefined
+  overlay: AgentAxisOverlay | undefined
 }
 
 /**

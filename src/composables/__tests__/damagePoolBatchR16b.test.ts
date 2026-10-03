@@ -8,7 +8,7 @@
  *  · `:466` 希格莉德浸染 —— 原 `=== '1591' && aaActive > 0`（**与轴模式无关**）→ `sigrid.ts#axisWindowOverlays`。
  *
  * 契约面：`AgentAxisOverlayInput` 补 `isAxis` / `additionalAbilityActive` / `windInfectionRate` / `settings`；
- * `AgentAxisOverlays` 新增 `scalarBySlot`（按槽位键控的标量表）。
+ * `AgentAxisOverlays` 新增 `scalarBySlot`（按槽位键控的标量表）。（CC-437g 起两者都已删：标量在各模块私有 overlay 里随槽归属）
  *
  * 为什么必须单独有这个文件（不是「补测试」的仪式）：
  *  · `:441`/`:455` 的**非轴臂**在迁移前**物理不可达**（派发器在 `axes.length === 0` 时早退，
@@ -20,7 +20,7 @@
  *    `5×3×0.5 = 7.5`、`35×0.5 = 17.5` 都是「看着就合法」的数。故本文件**每个断言写精确值**，
  *    并把滑块推到 **1 与 0** 两个端点（端点值与默认值不同 ⇒ 数值巧合无法伪装）。
  *  · ⚠ **标量表按槽位键控是本批最易错处**：合并成裸标量会把本角色增伤泄漏给**队友行**
- *    （四个既有桶不受影响是因为 moveId 全局唯一 —— 见 `AxisScalarOverlays` 头注释）。
+ *    （四个既有桶不受影响是因为 moveId 全局唯一 —— 原 `AxisScalarOverlays` 头注释，现见 `AgentAxisOverlay`）。
  *    故下面每个角色用例都带**跨槽泄漏反锁**（队友行必须拿不到该标记）。
  */
 import { describe, expect, it } from 'vitest'

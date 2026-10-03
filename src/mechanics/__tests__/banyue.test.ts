@@ -954,7 +954,7 @@ describe('CC-17：般岳 directRowBonus（明王行级加成，轴/非轴两臂 
 
   it('轴臂：桶层数 × MINGWANG_BASE_PER_STACK，note「（轴内覆盖）」', () => {
     const rb = banyueMechanic.directRowBonus!({
-      exec: exec('1471010'), isAxis: true, stunOverride: 1, overlay: stacks(2), buckets: undefined, scalar: undefined,
+      exec: exec('1471010'), isAxis: true, stunOverride: 1, overlay: stacks(2),
     })!
     expect(rb.dmgBonus).toBe(2 * MINGWANG_BASE_PER_STACK)
     expect(rb.note).toBe(' · 明王+10.0%（轴内覆盖）')
@@ -962,13 +962,13 @@ describe('CC-17：般岳 directRowBonus（明王行级加成，轴/非轴两臂 
 
   it('轴臂：桶里查不到的 moveId → null（不产 0 段）', () => {
     expect(banyueMechanic.directRowBonus!({
-      exec: exec('9999'), isAxis: true, stunOverride: 1, overlay: stacks(2), buckets: undefined, scalar: undefined,
+      exec: exec('9999'), isAxis: true, stunOverride: 1, overlay: stacks(2),
     })).toBeNull()
   })
 
   it('非轴臂：读本槽标量，note「（覆盖率近似）」', () => {
     const rb = banyueMechanic.directRowBonus!({
-      exec: exec('1471010'), isAxis: false, stunOverride: 0, overlay: flat(7.5), buckets: undefined, scalar: undefined,
+      exec: exec('1471010'), isAxis: false, stunOverride: 0, overlay: flat(7.5),
     })!
     expect(rb.dmgBonus).toBe(7.5)
     expect(rb.note).toBe(' · 明王+7.5%（覆盖率近似）')
@@ -976,7 +976,7 @@ describe('CC-17：般岳 directRowBonus（明王行级加成，轴/非轴两臂 
 
   it('两臂皆 0 → null（不产空 note）', () => {
     expect(banyueMechanic.directRowBonus!({
-      exec: exec('1471010'), isAxis: false, stunOverride: 0, overlay: flat(0), buckets: undefined, scalar: undefined,
+      exec: exec('1471010'), isAxis: false, stunOverride: 0, overlay: flat(0),
     })).toBeNull()
   })
 })

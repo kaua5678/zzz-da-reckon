@@ -20,7 +20,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import type { Agent, AgentSkills, PanelValues, SkillDamageTarget } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
-import type { AgentAxisOverlay, DirectRowAxisSplit } from '@/mechanics/types'
+import type { DirectRowAxisSplit } from '@/mechanics/types'
 import { findMoveById } from './skillRows'
 import { buildMechanicTeamMembers } from './panelPhases'
 import type { DamagePoolRow } from './helpers'
@@ -87,8 +87,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     configStore, catalogStore,
     damagePanels, stunCoverage, axisAllocation: allocMap, attachedInAxisMap: attachedInAxis,
     stunPoolResult, effectiveStunAxes,
-    axisBucketsBySlot,
-    axisScalarBySlot,
+    axisOverlayBySlot,
   } = env.ctx
   const {
     isAxis, axisSlots, axisSplitFor, pushDirect, seenDirectIds,
@@ -155,24 +154,18 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     const baseNote = `${resolved?.note ?? exec.skillTableNote ?? ''}${isPerSecondRow ? '（平A：秒均倍率 × 时间）' : ''}${execSkillLevelBonus > 0 ? ` · 技能等级系数×${execDamageCoef.toFixed(4)}` : ''}`
     const emitExecDirect = (units: number, stunOverride: number, idSuffix: string, extraNote: string, sourceTag?: 'gift' | 'stun' | 'self') => {
       if (units <= 0 || unitMultiplier <= 0) return
-      // 本槽的标量覆盖（非轴折算臂 + 与轴无关的标量臂）。**按槽位取**——这些值对全角色全部行同值，
-      // 没有 moveId 可索引，合并成裸标量会泄漏给队友行（见 `AxisScalarOverlays` 头注释）。
-      const overlayScalar = axisScalarBySlot.get(slot)
-      // 本槽的轴窗口 overlay 原始返回（含 4 个 moveId 桶）。**按槽位取**——CC-17 起不再跨模块
-      // 合并成全局表：`'basic_attack'` 是所有角色普攻聚合行的公共键，全局桶会让可琳扫除帮手
-      // 泄漏给队友轴内普攻行（设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §2/§3）。
-      const overlayBuckets = axisBucketsBySlot.get(slot)
+      // 本槽模块的轴窗口 overlay（不透明，CC-437）。**按槽位取**——CC-17 起不再跨模块合并成全局表：
+      // `'basic_attack'` 是所有角色普攻聚合行的公共键，全局桶会让可琳扫除帮手泄漏给队友轴内普攻行
+      // （设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §2/§3）；标量臂同在模块私有对象里随槽归属。
+      const overlay = axisOverlayBySlot.get(slot)
       // 行级 overlay 加成（明王 / 可琳 / 希格莉德 / 仪玄 / 佩洛）**整段迁进行所属角色的模块**
       // （`AgentMechanicModule.directRowBonus`，规则 6 迁移落点，CC-17 2026-09-26）：
-      // 模块只读本槽的桶与标量，消费端在此合并。算式/note 模板逐字照旧（见各模块 directRowBonus）。
+      // 模块只读本槽 overlay，消费端在此合并。算式/note 模板逐字照旧（见各模块 directRowBonus）。
       const rb = getAgentMechanic(charResult.agentId)?.directRowBonus?.({
         exec,
         isAxis,
         stunOverride,
-        // CC-437：本槽模块的原始返回原样交还（不透明）；过渡期与下面两个命名字段并存，T15-g 只留 overlay
-        overlay: overlayBuckets as AgentAxisOverlay | undefined,
-        buckets: overlayBuckets,
-        scalar: overlayScalar,
+        overlay,
       }) ?? null
       // 悠真额外能力（失衡/异常并集 +40%）：轴模式「失衡专属 buff 轴内直加」（2026-09-03，
       // 可琳扫除帮手同款分段通道）——patchHarumasaExecutions 已把公共异常部分（40×异常覆盖率）

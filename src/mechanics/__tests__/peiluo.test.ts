@@ -331,12 +331,12 @@ describe('CC-17：佩洛伊斯 directRowBonus（阳炎，轴臂桶 / 非轴标�
     // CC-437：overlay 不透明，用模块 channel 构造
     const overlay = peiluoOverlay.wrap({ byMove: new Map([['1551016', 40]]) })
     const rb = peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551016'), isAxis: true, stunOverride: 1, overlay, buckets: undefined, scalar: undefined,
+      exec: exec('1551016'), isAxis: true, stunOverride: 1, overlay,
     })!
     expect(rb.critDmgBonus).toBe(40)
     expect(rb.note).toBeUndefined()   // 阳炎不进 note
     expect(peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551015'), isAxis: true, stunOverride: 1, overlay, buckets: undefined, scalar: undefined,
+      exec: exec('1551015'), isAxis: true, stunOverride: 1, overlay,
     })).toBeNull()
   })
 
@@ -344,15 +344,15 @@ describe('CC-17：佩洛伊斯 directRowBonus（阳炎，轴臂桶 / 非轴标�
     const overlay = peiluoOverlay.wrap({ flatPct: 40 })
     // 决算：比例 0.5 ⇒ 20
     expect(peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551016', 0.5), isAxis: false, stunOverride: 0, overlay, buckets: undefined, scalar: undefined,
+      exec: exec('1551016', 0.5), isAxis: false, stunOverride: 0, overlay,
     })!.critDmgBonus).toBe(20)
     // 上分支：无比例字段 ⇒ 恒 1 ⇒ 40
     expect(peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551015'), isAxis: false, stunOverride: 0, overlay, buckets: undefined, scalar: undefined,
+      exec: exec('1551015'), isAxis: false, stunOverride: 0, overlay,
     })!.critDmgBonus).toBe(40)
     // 比例 0（无铺垫决算）⇒ 0 ⇒ null
     expect(peiluoProminenceMechanic.directRowBonus!({
-      exec: exec('1551016', 0), isAxis: false, stunOverride: 0, overlay, buckets: undefined, scalar: undefined,
+      exec: exec('1551016', 0), isAxis: false, stunOverride: 0, overlay,
     })).toBeNull()
   })
 

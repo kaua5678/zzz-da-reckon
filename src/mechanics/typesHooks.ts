@@ -221,67 +221,24 @@ export interface AgentAxisOverlayInput {
  * 若将来出现「模块 A 的窗口要加成到模块 B 的行」（跨槽 overlay），不透明值做不到，应另开显式的跨角色
  * 供给钩子（`crossAgentSupply` 一族），不要回到共享命名桶。
  *
- * 过渡期（T15-a…f）：下面的 `AgentAxisOverlays` / `AxisScalarOverlays` 命名桶仍在，未迁模块继续用；本类型暂时与
- * `AgentAxisOverlays` 做交叉（结构兼容 ⇒ 钩子返回类型与既有测试都不用改），T15-g 删掉命名桶后只剩 brand。
+ * 历史（CC-17 2026-09-26 → CC-437 2026-10-03）：此前编排层把各模块的轴窗口结果合并成一张共享命名桶表
+ * （`AgentAxisOverlays` 4 个 moveId 桶 + `AxisScalarOverlays` 5 个按槽标量）。CC-17 发现全局合并会让可琳扫除帮手
+ * 经公共键 `'basic_attack'` 泄漏给队友轴内普攻行，改为**按槽归属**；CC-437 再把字段本身迁回各模块私有
+ * （sigrid / peiluo / corin / banyue / yixuan 各自的 `XxxOverlay` + `xxxOverlay` channel），共享类型只剩这个 brand。
+ * 「对本角色全部行同值、没有 moveId 可索引」的标量与「逐 moveId」的桶现在都在模块私有对象里并存，
+ * 按槽归属由编排层 `collectAxisWindowOverlays` → `axisOverlayBySlot.get(本行 slot)` 保证。
  */
-export type AgentAxisOverlay = AgentAxisOverlays & { readonly [AXIS_OVERLAY_BRAND]: true }
+export type AgentAxisOverlay = { readonly [AXIS_OVERLAY_BRAND]: true }
 declare const AXIS_OVERLAY_BRAND: unique symbol
 
 /** 模块侧类型收窄助手：`wrap` 在 `axisWindowOverlays` 用，`read` 在 `directRowBonus` 用；建议导出供测试读返回值。 */
 export function axisOverlayChannel<T>() {
   return {
     wrap: (v: T): AgentAxisOverlay => v as unknown as AgentAxisOverlay,
-    // 过渡期参数并上 `AgentAxisOverlays`：测试可直接喂 `module.axisWindowOverlays!(…)!` 的返回（钩子返回 null 时测试自己 `!`；
-    // 本文件按 noNullRoundCc418 锁不写 `| null`）；T15-g 收口为 `AgentAxisOverlay | undefined`
-    read: (o: AgentAxisOverlay | AgentAxisOverlays | undefined): T | undefined => o as unknown as T | undefined,
+    // 测试读钩子返回时自己 `!` 掉 null（本文件按 noNullRoundCc418 锁不写 `| null`）
+    read: (o: AgentAxisOverlay | undefined): T | undefined => o as unknown as T | undefined,
   }
 }
-
-/**
- * 轴窗口覆盖结果：四个**按 moveId 索引**的桶（与 `DamagePoolContext` 同名）+ 一个**按槽位索引**的标量表。
- *
- * 四个桶的数值语义：
- * - （`banyueMingwangStacks` 已于 CC-437e 迁入 banyue.ts 的私有 `BanyueOverlay.stacksByMove`）
- * - （`yixuanNingshenMap` 已于 CC-437f 迁入 yixuan.ts 的私有 `YixuanOverlay.byMove`）
- * - （`peiluoKagerouMap` 已于 CC-437c 迁入 specPanelBuffs.ts 的私有 `PeiluoOverlay.byMove`）
- * - （`corinStunBonusMap` 已于 CC-437d 迁入 corin.ts 的私有 `CorinOverlay.byMove`）
- *
- * ⚠ **CC-17（2026-09-26）起四个桶不再跨模块合并**：`panelPhases.ts#collectAxisWindowOverlays`
- * 改为 `bucketsBySlot: Map<slot, AgentAxisOverlays>`，消费端（`directRowBonus`）只读**本行所属槽**
- * 的桶。**原注释「moveId 全局唯一所以不会串味」已被证伪**：所有角色的普攻聚合行 moveId 都是
- * `'basic_attack'`，而可琳 `corinStunBonusMap` 正是把平A块归并到该键 ⇒ 旧实现（全局桶）会把
- * 可琳扫除帮手 +35% 泄漏给队友的轴内 `basic_attack` 行（设计稿 `docs/mcp-cc17-axis-overlay-consume.md`
- * §2 已实测）。按槽归属后此泄漏面消失；`scalarBySlot` 的按槽口径不变。
- *
- * 新增字段仍遵循：只要值对「全角色全部行」同值（没有 moveId 可索引），就必须走 `scalarBySlot`。
- */
-export interface AgentAxisOverlays {
-  // （四个 moveId 桶已全部迁入各模块私有 overlay：CC-437c/d/e/f；本 interface 与下面的 `AxisScalarOverlays` 在 T15-g 删除）
-  /**
-   * **按槽位索引的标量覆盖**（与四个「按 moveId 索引」的桶并列）。
-   *
-   * 存在的理由：非轴折算臂与「与轴模式无关的标量臂」的值对**该角色的全部行同值**，没有 moveId 可索引；
-   * 若像四个桶那样合并成一个裸标量，**队友行也会读到它**（静默把本角色的增伤泄漏给全队，
-   * 且 `damagePoolAdditionalAbilityGate.test.ts` 的反锁会红 —— 这条是 2026-09-16 round 16 设计时
-   * 发现的真实泄漏面，四个桶不受影响是因为 moveId 全局唯一）。
-   */
-  scalarBySlot?: Map<number, AxisScalarOverlays>
-}
-
-/**
- * 单槽位的**标量**覆盖（`AgentAxisOverlays.scalarBySlot` 的值类型）。
- *
- * 每个字段的**写入方唯一 = 对应角色模块** ⇒ 「字段存在」即蕴含「是本角色」（判据同 T6）。
- * 所有字段都只在模块自己的参与门控（额外能力/命座/轴模式）通过时才写。
- */
-export interface AxisScalarOverlays {
-  // （`banyueMingwangPct` 已于 CC-437e 迁入 banyue.ts 的私有 `BanyueOverlay.flatPct`，此处删除）
-  // （`corinStunBonusPct` 已于 CC-437d 迁入 corin.ts 的私有 `CorinOverlay.flatPct`，此处删除）
-  // （`yixuanNingshen` 已于 CC-437f 迁入 yixuan.ts 的私有 `YixuanOverlay.flat`，此处删除）
-  // （`peiluoKagerouPct` 已于 CC-437c 迁入 specPanelBuffs.ts 的私有 `PeiluoOverlay.flatPct`，此处删除）
-  // （`sigridInfectionPct` 已于 CC-437b 迁入 sigrid.ts 的私有 `SigridOverlay`，此处删除）
-}
-
 
 /** transformAnomalyPool 钩子输入（calcAnomalyPool 内部，perElement 之前） */
 /** 异常池钩子收到的身份（r399 CC-373）：`transformAnomalyPool` 与 `anomalyCorrosion` 共用。 */

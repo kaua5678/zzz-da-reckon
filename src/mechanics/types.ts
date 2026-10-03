@@ -26,7 +26,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
 
 /** 队伍中某个槽位的最小上下文快照 */
 export interface MechanicTeamMember {
@@ -942,12 +942,11 @@ export interface AgentMechanicModule {
    * 此前 4 个函数分别被 useResourceCalc 直接 import + 在 computed 里按 agentId 找槽位调用，
    * 每个新角色都要再改编排层（正是规则 6 要消灭的形状）。
    *
-   * 返回 null/缺省 = 本模块本帧不参与（无该角色/无轴/命座已满覆盖等）；返回对象即按桶名覆盖。
-   * 桶名与伤害池入参同名（1:1 合并，编排层零映射逻辑）。
+   * 返回 null/缺省 = 本模块本帧不参与（无该角色/无轴/命座已满覆盖等）；返回值对编排层**不透明**（CC-437）：
+   * 模块用 `axisOverlayChannel<T>().wrap` 包自己的私有形状，编排层按槽存入 `axisOverlayBySlot`，
+   * 同帧 `directRowBonus` 经 `overlay` 原样拿回、用同一 channel 的 `read` 解。
    */
-  axisWindowOverlays?(input: AgentAxisOverlayInput): AgentAxisOverlays | null
-  // ↑ CC-437 过渡：已迁模块返回不透明 `AgentAxisOverlay`（经 `axisOverlayChannel<T>().wrap`，过渡期它是 `AgentAxisOverlays` 的子类型故可直接返回），
-  //   未迁模块仍返回命名桶；T15-g 收口为 `AgentAxisOverlay | null`。
+  axisWindowOverlays?(input: AgentAxisOverlayInput): AgentAxisOverlay | null
   /**
    * **行级 overlay 加成**（规则 6 迁移落点，CC-17 2026-09-26，设计稿
    * `docs/mcp-cc17-axis-overlay-consume.md` §3/§4）：
@@ -1374,4 +1373,4 @@ export interface AgentMechanicModule {
 export type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
 export { axisOverlayChannel } from './typesHooks'
-export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AgentAxisOverlay, AxisScalarOverlays, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'

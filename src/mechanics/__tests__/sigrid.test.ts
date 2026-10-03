@@ -581,19 +581,19 @@ describe('CC-17：希格莉德 directRowBonus（浸染增伤，与轴模式无�
   it('读本槽标量，note 逐字；0 不产出；轴/非轴同值', () => {
     const exec = { moveId: 'basic_attack' } as never
     const rb = sigridMechanic.directRowBonus!({
-      exec, isAxis: false, stunOverride: 0, overlay: sigridOverlay.wrap({ infectionPct: 7.5 }), buckets: undefined, scalar: undefined,
+      exec, isAxis: false, stunOverride: 0, overlay: sigridOverlay.wrap({ infectionPct: 7.5 }),
     })!
     expect(rb.dmgBonus).toBe(7.5)
     expect(rb.note).toBe(' · 浸染增伤+7.5%（风化覆盖率×15%）')
     // 与轴模式无关：轴模式给同一值（原分支里 isAxis 不出现）
     const onAxis = sigridMechanic.directRowBonus!({
-      exec, isAxis: true, stunOverride: 1, overlay: sigridOverlay.wrap({ infectionPct: 15 }), buckets: undefined, scalar: undefined,
+      exec, isAxis: true, stunOverride: 1, overlay: sigridOverlay.wrap({ infectionPct: 15 }),
     })!
     expect(onAxis.dmgBonus).toBe(15)
     expect(onAxis.note).toBe(' · 浸染增伤+15.0%（风化覆盖率×15%）')
     // 0 ⇒ null
     expect(sigridMechanic.directRowBonus!({
-      exec, isAxis: false, stunOverride: 0, overlay: undefined, buckets: undefined, scalar: undefined,
+      exec, isAxis: false, stunOverride: 0, overlay: undefined,
     })).toBeNull()
   })
 })
