@@ -52,3 +52,29 @@ describe('T9 雨果强特终结 1291010 倍率来自 catalog（cfg.mechanicRowVa
     }
   })
 })
+
+/**
+ * 希希芙（1521）蚀骨 1521019 / 蛇吻 1521006 damage 行原由模块常量 `XIXIFU_SHIGU_BASE = 254.4`
+ * 与 `XIXIFU_SHEKISS_RATIO = 1009.1` 结算；现由 `buildXixifuCharConfig` 读 catalog 进
+ * `cfg.mechanicRowValues`，执行行从该处取。反空洞：真引擎跑出的行倍率必须 === catalog 该行值，
+ * 且两行真实出现（蛇吻需毒素 ≥6，180s 默认战斗时长下必然出现）。
+ */
+describe('T9 希希芙蚀骨/蛇吻倍率来自 catalog（cfg.mechanicRowValues）', () => {
+  it('真引擎：1521019 / 1521006 行倍率 === catalog damage 行值（行真实出现）', async () => {
+    const { catalog } = await setupHarness([
+      { agentId: '1521', cinemaLevel: 0 },
+      { agentId: '1621', cinemaLevel: 0 }, // 洛克茜（风·击破）触发额外能力，且战斗时长下毒素充足
+      '',
+    ])
+    const calc = useResourceCalc()
+    const ch = calc.resourceResult.value!.characters.find(x => x.agentId === '1521')!
+
+    for (const moveId of ['1521019', '1521006']) {
+      const tableDamage = getRowValue(findMoveById(catalog.getAgentSkills('1521'), moveId), 'damage')
+      expect(tableDamage, `catalog ${moveId} damage 行值`).toBeGreaterThan(0)
+      const exec = ch.executions.find(e => e.moveId === moveId)
+      expect(exec, `${moveId} 行真实出现`).toBeTruthy()
+      expect(exec!.damageMultiplier, `${moveId} 倍率 === 表值`).toBeCloseTo(tableDamage, 9)
+    }
+  })
+})

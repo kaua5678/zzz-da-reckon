@@ -3,6 +3,7 @@ import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentR
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 
 /**
  * 希希芙（1521，电·强攻，新艾利都治安局）—— 额外能力自身暴伤 + 毒素循环模块。
@@ -36,10 +37,8 @@ import { specToMechanicModule } from '@/specs/mechanics'
 const XIXIFU_AGENT_ID = '1521'
 const XIXIFU_SELF_CRIT_DMG = 10
 const XIXIFU_TOXIN_RESOURCE_ID = 'xixifu_toxin'
-/** 蚀骨真实 moveId（1521019：基础倍率 254.4% + 失衡倍率 233.2% 由倍率表回填） */
+/** 蚀骨真实 moveId（1521019：基础倍率 + 失衡倍率 233.2% 由倍率表回填） */
 const XIXIFU_SHIGU_MOVE_ID = '1521019'
-/** 蚀骨基础倍率（倍率表 Lv.12，随技能等级缩放） */
-const XIXIFU_SHIGU_BASE = 254.4
 /** 蚀骨核心被动附加（335%，不随技能等级缩放 → flatDamageBonus = 攻击力 × 3.35） */
 const XIXIFU_SHIGU_ADDITION_RATIO = 3.35
 /** 影画1：蚀骨伤害无视 10% 电抗（resIgnore 招式限定） */
@@ -49,9 +48,8 @@ const XIXIFU_SHIGU_CRIT_RATE = 18
 /** 队伍 1/2 名电属性角色时，蚀骨失衡值 +40%/60% */
 const XIXIFU_SHIGU_STUN_1E = 40
 const XIXIFU_SHIGU_STUN_2E = 60
-/** 蛇吻真实 moveId（1521006：倍率 1009.1% Lv.12） */
+/** 蛇吻真实 moveId（1521006：倍率随技能等级缩放，读倍率表） */
 const XIXIFU_SHEKISS_MOVE_ID = '1521006'
-const XIXIFU_SHEKISS_RATIO = 1009.1
 /** 影画2：蛇吻伤害 +35% */
 const XIXIFU_SHEKISS_C2_DMG = 35
 const XIXIFU_SHEKISS_TOXIN_COST = 6
@@ -67,13 +65,20 @@ function applyXixifuPanel({ panel }: AgentPanelInput): void {
   panel.critDmg = (panel.critDmg ?? 0) + XIXIFU_SELF_CRIT_DMG
 }
 
-function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel }: AgentCharConfigInput): void {
+function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentCharConfigInput): void {
   cfg.xixifuCinemaLevel = cinemaLevel
   // 蚀骨核心附加 335% 的基数（flatDamageBonus = 攻击力 × 3.35）
   cfg.xixifuAtk = Math.max(0, panel?.atk ?? 0)
   // 蚀骨失衡值 +40%/60% 的门控：队伍电属性角色数（含自身，自身恒为电）
   const electric = team.filter(m => m.agent?.attribute === 'electric').length
   cfg.xixifuElectricCount = Math.max(1, electric)
+  // CC-408：蚀骨 1521019 / 蛇吻 1521006 的 damage 行值由引擎读 catalog 进 cfg.mechanicRowValues
+  // （原模块常量 XIXIFU_SHIGU_BASE = 254.4 / XIXIFU_SHEKISS_RATIO = 1009.1 是同一数据的第二份）。
+  // 缺表为 0，**不回退常量**——缺表要在结果里看得见。
+  cfg.mechanicRowValues = {
+    ['1521019']: getRowValue(findMoveById(skills, '1521019'), 'damage'),
+    ['1521006']: getRowValue(findMoveById(skills, '1521006'), 'damage'),
+  }
 }
 
 /** 影画2 失衡下连携/终结额外+3毒素：需要失衡次数门控，converge 阶段写入 cfg；轴模式由 cfg.axisUltimateTotal 精确反推 */
@@ -135,13 +140,17 @@ function computeXixifuCounts(cfg: AgentResourceInput['cfg'], state: AgentResourc
 function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const { shekissCount, baseShigu, shiguTotal, cinema } = computeXixifuCounts(cfg, state)
   if (shiguTotal <= 0 && shekissCount <= 0) return
+  // CC-408：1521019 / 1521006 damage 行值读表（buildCharConfig 写 cfg.mechanicRowValues）；缺表 = 0，无常量兜底。
+  const row = cfg.mechanicRowValues ?? {}
+  const shiguBase = row['1521019'] ?? 0
+  const shekissRatio = row['1521006'] ?? 0
   const electric = Math.max(1, Math.floor(Number(cfg.xixifuElectricCount ?? 1)))
   const stunBonus = electric >= 2 ? XIXIFU_SHIGU_STUN_2E : XIXIFU_SHIGU_STUN_1E
   const atk = Math.max(0, Number(cfg.xixifuAtk ?? 0))
   const flatAddition = atk * XIXIFU_SHIGU_ADDITION_RATIO
   const c1ResIgnore = cinema >= 1 ? XIXIFU_SHIGU_C1_RES_IGNORE : 0
 
-  // 蚀骨（毒素消耗，有失衡值）：真实 moveId 1521019；基础 254.4%（随技能等级）+ 附加 335%（flat 不随等级）
+  // 蚀骨（毒素消耗，有失衡值）：真实 moveId 1521019；基础倍率随技能等级（读表）+ 附加 335%（flat 不随等级）
   if (baseShigu > 0) {
     executions.push({
       moveId: XIXIFU_SHIGU_MOVE_ID,
@@ -158,13 +167,13 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
-      damageMultiplier: XIXIFU_SHIGU_BASE,
+      damageMultiplier: shiguBase,
       damageMultiplierOverride: true,
       flatDamageBonus: flatAddition,
       element: 'electric',
       stunBuildUpBonus: stunBonus,
       resIgnore: c1ResIgnore,
-      skillTableNote: `蚀骨 ×${baseShigu}：基础 ${XIXIFU_SHIGU_BASE}%（随技能等级）+ 核心附加 ${Math.round(XIXIFU_SHIGU_ADDITION_RATIO * 100)}%（flat）；队伍 ${electric} 名电属性 → 失衡值 +${stunBonus}%${cinema >= 1 ? '；影画1 无视 10% 电抗' : ''}`,
+      skillTableNote: `蚀骨 ×${baseShigu}：基础 ${shiguBase}%（随技能等级）+ 核心附加 ${Math.round(XIXIFU_SHIGU_ADDITION_RATIO * 100)}%（flat）；队伍 ${electric} 名电属性 → 失衡值 +${stunBonus}%${cinema >= 1 ? '；影画1 无视 10% 电抗' : ''}`,
     })
   }
 
@@ -186,7 +195,7 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
-      damageMultiplier: XIXIFU_SHIGU_BASE,
+      damageMultiplier: shiguBase,
       damageMultiplierOverride: true,
       flatDamageBonus: flatAddition,
       element: 'electric',
@@ -195,7 +204,7 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
     })
   }
 
-  // 蛇吻（普通攻击：蛇吻）：真实 moveId 1521006，倍率 1009.1%（Lv.12，随技能等级）；影画2 +35%
+  // 蛇吻（普通攻击：蛇吻）：真实 moveId 1521006，倍率随技能等级（读表）；影画2 +35%
   if (shekissCount > 0) {
     executions.push({
       moveId: XIXIFU_SHEKISS_MOVE_ID,
@@ -208,7 +217,7 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      damageMultiplier: XIXIFU_SHEKISS_RATIO,
+      damageMultiplier: shekissRatio,
       damageMultiplierOverride: true,
       element: 'electric',
       dmgBonus: cinema >= 2 ? XIXIFU_SHEKISS_C2_DMG : 0,
