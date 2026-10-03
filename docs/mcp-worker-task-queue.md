@@ -87,6 +87,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **CC-405 偏差 ① 现在只剩显示面**：轴表 / 技能行 UI 的查表值（非伤害路径）在珂蕾妲+本时仍显示非协同倍率；伤害与 [表] 候选都已正确。要改得把 `teamAgentIds` 送进 `skillRows` 的查表口，收益只是显示，仍不排期。
 - **踩坑**：全量 vitest 第一次跑超 285s 被 `timeout` 杀掉（load 24——紧接在 vue-tsc + guards + zd 之后起跑，worker 还没凉）。被杀的 vitest 子进程会拖十几秒才退，期间 `pgrep vitest` 看到的是**自己的尸体**，别误判成别的 lane。等 load 降到 15 以下重跑一次就 235s 过了。⇒ 重任务之间 `sleep 20` 再起下一段。
 - **下一步候选**（不排序）：r420 下一步 3/4 需用户口径，只能写候选；§3 空；可以做的通用项：① `标准倍率表 / 技能行 UI` 的队伍上下文（显示面，低优先）；② 用 `convergenceProbe` 的 A 口径（推荐配装）给 `timeFillRatchet` 的绝对不变量加「0 maxIter」一面（r430 §10 写了做法，多一条锁、无架构收益，有空再做）。
+- **收工时现场**（13:47）：主仓出现别人**未认领**的 `src/mechanics/agents/remielle.ts` +5 行（只加注释：「anomalyCount 含本人（2026-09-30 用户裁决）…此前改成不含本人是误改已回滚」）。结论方向与 CC-403 一致（含本人），但它引用的「09-30 用户裁决」在 docs 里仍然不存在（CC-403 已核：09-30 的 1581 裁决是 C6 耀变）。是 1 分钟前的活 WIP，不是孤儿，**没动**；接手的人若收养它，把那句出处改成「CC-403 原文解读」而不是不存在的裁决。
 - **回滚点**：`git revert edddeb39`。
 
 **2026-10-03 13:27 arena-F 第 430 轮**（开工：master `014a58f7` 干净、已推；主仓零 WIP；REQUIREMENTS.md 无新条目；本轮**无代码改动**，产物 `/home/kaua/calc-arch/arenaF/r430/`：`outerExitProbe.test.ts`（一次性探针，已从仓库删除）、`probe.log`）
