@@ -82,6 +82,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 13:49 arena-F 第 432 轮**（开工：master `7c211ece` 干净、已推；主仓仍有别人 13:47 的 `remielle.ts` +5 行注释 WIP、无认领、无进程——没动；REQUIREMENTS.md 无新条目；本轮代码只改一行注释；产物 `/home/kaua/calc-arch/arenaF/r432/`：`exProbe.test.ts`、`exprobe.tsv`、`exprobe.log`）
+- **做到哪**：r420 §2 下一步 3 / 4 **都关掉**（CC-407，口径裁决卡）。3 = 「能量全部打强特」用 60 角色探针量过：强特每秒直伤普遍是平A的 1.3～9.7 倍，青衣 4 命 / 安东是个例 ⇒ 维持，不引入「能量闲置」。4 = 仪其他.json「轴1」是仪玄通用轴，没有青衣成分，原交接的「重配」前提不成立。至此 **r420 的四个下一步全部有归宿**（1→CC-402，2→r430 §10，3/4→CC-407）。
+- **顺手**：`cinemaMonotone.test.ts` ALLOW 注释里的「待办」改指 CC-407（注释行，零行为）。`.claude/OPEN-ITEMS.md`（**不入 git**）§2 的 D3（蕾米 atk_1）仍写着三个修法选项像待开工——已在该条顶部加一行指针到 CC-403（含本人、维持、重开条件），免得下一个会话第三次去改「不含本人」（13:47 那份 remielle.ts WIP 就是又一次）。
+- **探针的坑**（下次复用注意）：按 `moveId === 'basic_attack'` 归平A直伤、按强特执行行 moveId 归强特直伤，对模块重写平A循环（青衣醉花、安比、伊德海莉、希格莉德）或强特走模块行（琉音、普罗米娅、洛克茜）的角色读 0；要全覆盖得按 `damagePoolRows.source` / 模块行名归因。
+- **下一步候选**（不排序）：§3 空；CC-405 偏差 ①（技能行 UI 队伍上下文，显示面）；ratchet 推荐配装「0 maxIter」一面（r430 §10）；主仓 remielle.ts 注释 WIP 若 >1h 仍无人认领按孤儿规则处理（方向与 CC-403 一致，只需把「09-30 用户裁决」改成「CC-403 原文解读」再收养）。
+- **回滚点**：无代码行为改动。
+
 **2026-10-03 13:33 arena-F 第 431 轮**（开工：master `458a38cc` 干净、已推；零 WIP；REQUIREMENTS.md 无新条目；worktree `wtF-variant` 已删，产物 `/home/kaua/calc-arch/arenaF/r431/`：`patch.py`、`vt.log`、`guards.log`、`build.log`）
 - **做到哪**：CC-406 `edddeb39`——CC-405 建了变体表之后，协同段 1101106 / 1101402 仍是珂蕾妲的 [表] 候选（r419 普查 TWIN 行，CC-402 当时记「未决」），放进轴就与执行行双计。`axisTableDirect` 现在从变体表推导 `VARIANT_TARGETS` 排除，和融合并入段同级；以后变体表加一行，排除自动跟上。CC-402 (iii) 珂蕾妲项与 CC-405「已知偏差」的 [表] 部分都结了。
 - **CC-405 偏差 ① 现在只剩显示面**：轴表 / 技能行 UI 的查表值（非伤害路径）在珂蕾妲+本时仍显示非协同倍率；伤害与 [表] 候选都已正确。要改得把 `teamAgentIds` 送进 `skillRows` 的查表口，收益只是显示，仍不排期。
@@ -317,8 +324,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **下一步（按价值排）**：
   1. **[r427 arena-F 已全部裁决，见卡表 CC-402，别重扫]** **剩余 TWIN 候选逐个核对**（方法同 r419：读模块 + `data/raw/nanoka_missing/full/<id>.json` param.desc，三选一 (i) 隐藏 / (ii) 融合 / (iii) 不动；清单出处 `/home/kaua/calc-arch/arenaE/r419/tbl-census2.out`）：1071012、1101106、1101402、1121008 / 1121009（ben.ts 有引用）、1131013 / 1131014（soukaku.ts 引用 013）、1151013、1161015、1181018、1201023、1271009、1321012、1351005、1381009、1401007、1451017、1461022、1541007 / 1541011 / 1541012（promia.ts 引用 011）、1561010、1571009 / 1571012（norma.ts 有引用）、1611011 / 1611012、1621019（roxy.ts 有引用）。r419 `fusions.out` 里能找到 nanoka 求和式的只有青衣、莱卡恩、雨果、雅（均已处理）⇒ 余下大概率是 (i) 或 (iii)，零差为主。
   2. **[r430 arena-F 已复核关掉：该队 outerExit=stable、outerRounds=5（缺省配装 4），冷跑/热跑/换队/套推荐配装四种口径一致，不振；全库 cycle 名单与口径差见 `docs/mcp-integer-cycle-stop.md` §10]** **yidhari-qingyi-lucia 外层收敛 cycle**（r420 新增，第 4 支 cycle 队）：先用 `.zc/perf` 打印外层每轮的青衣强特次数，看是否 7↔8 振荡；若是，属整数环停点问题（参考 `docs/mcp-integer-cycle-stop.md` CC-326），别加容差。
-  3. **「能量全部打强特」口径复核**：青衣 4 命回能后强特 +1 反而降伤（每秒收益低于平A）。若别的角色也出现同类下降，再评估引擎是否该按每秒收益决定能量用途（要用户口径，先写进 OPEN-ITEMS 候选，不要直接改）。
-  4. 仪玄自动轴预设（`stunAxisPresets/仪其他.json` 的「轴1」）是在青衣强特 0.383s 时代配的；4 次失衡下轴太厚而退化。要不要按新时长重配，看用户是否在意该队走轴。
+  3. **[r432 arena-F 已裁决关掉：维持，见卡 CC-407（60 角色探针：55/56 条强特每秒直伤 ≥1.3× 平A，唯一 <1 是安东 0.85）；重开条件写在卡里]** **「能量全部打强特」口径复核**：青衣 4 命回能后强特 +1 反而降伤（每秒收益低于平A）。若别的角色也出现同类下降，再评估引擎是否该按每秒收益决定能量用途（要用户口径，先写进 OPEN-ITEMS 候选，不要直接改）。
+  4. **[r432 arena-F 已关掉：该轴是 `[1371,*,*]` 仪玄通用轴、不含青衣动作，没有「按青衣时长重配」这回事；专属薄轴需用户口径，见 CC-407 末段]** 仪玄自动轴预设（`stunAxisPresets/仪其他.json` 的「轴1」）是在青衣强特 0.383s 时代配的；4 次失衡下轴太厚而退化。要不要按新时长重配，看用户是否在意该队走轴。
 - **已知坑**：
   - **插入新常量时别把上一个常量的文档注释切开**：r420 补丁按 `const QIANXIA_EX_PHOTOGRAPHY` 定位插入，结果插在千夏的 `/** … */` 与它的 const 之间，注释被挂到青衣上。锚点用文档注释的开头，不用 const 行。
   - **游戏语义 `@fact … 口径:` 必须紧跟一行 `⟳复核: … | 到期 YYYY-MM-DD`**，否则 checkGuards 判据 15 红（全量 vitest 才看得到，单跑目标测试看不到）。
