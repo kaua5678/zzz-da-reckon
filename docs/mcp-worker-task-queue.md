@@ -86,6 +86,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 16:43 arena-F 第 442 轮**（开工：origin `8c84e92f`；本地 master = origin + 别人 3 个未推提交；REQUIREMENTS.md 无新条目（mtime 未变）；自己做 T9 grace（改动 3 文件，没派 dsh），worktree `wt-T9g`；孤儿处置 worktree `wtF-orphan`；两者已删；产物 `/home/kaua/calc-arch/arenaF/r442/`：`patch-grace.py`、`tsc.log` / `guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log` / `zd.log`、`orphan-*.log`）：**CC-415 `c3dd09fe`**（grace，**已推**）+ **孤儿处置 `9992aa23`/`f86a9418`/`3c9a2afb`/`4f8e04b6`（已推）** + 本文档提交。
+- **做到哪**：T9 三张全部收口（hugo / xixifu / grace 都读 `cfg.mechanicRowValues`，锁集中在 `mechanicRowValuesT9.test.ts`）。
+- **孤儿处置（已执行，依据 r441 §2b 写好的步骤）**：别人的 3 个提交在 origin 之上复跑仍 4 红 ⇒ 在 worktree 里 `git revert` harness 那条（`4f8e04b6`，提交信息里写了原因），保留 docs(test) + feat(freeCompare)；复验：vue-tsc 0、5 个相关测试文件绿、guards 0、build 0、分片全量 **470 / 4308** 绿；整段推上 origin。本地 master 现在 **= origin（unpushed 0）**，不再分叉。harness 对齐的意图转成 **§3 新卡 T11**（含 4 条红的逐条判断方向 + velina 2 行 WIP 的收养办法）。
+- **未决**：`velina.ts` 2 行 WIP 仍在主仓（16:29 起未动、无认领），处理办法见 T11「顺带」。`wEngineStackCoverage.test.ts` 头注释的基准数字对应被回退的夹具（已加 ⚠ 两行说明）。
+- **下一步（start-ready）**：T11（先跑那 3 个测试文件看红的具体输出，再按卡面逐条判断）→ T10 备选。
+- **回滚点**：grace `git revert c3dd09fe`；要恢复别人的 harness 改动 `git revert 4f8e04b6`（= T11 第 1 步）。
+
 **2026-10-03 16:31 arena-F 第 441 轮**（开工：origin `4e208672` = 本地 master 去掉别人 3 个未推提交；他的 WIP `velina.ts` 16:31 还在改；REQUIREMENTS.md 无新条目；派 dsh 做 T9 xixifu，worktree `wt-T9x`（基于 origin/master，已删）；产物 `/home/kaua/calc-arch/arenaF/r441/`：`dispatch-t9x.sh`、`worker-T9x.report`、`guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log`）：**CC-414 `68e144d0`**（代码，**已推 origin/master**）+ 本文档提交。
 - **做到哪**：T9 的 xixifu 完成，工人 5 分钟一次过（brief 里给了 hugo 的提交号当样板 + 预先 grep 好的 8 处夹具位置）。T9 只剩 grace（卡面已把行号与消费入口 `A_SEG_ENERGY` 写清）。
 - **别人的 3 个提交**（提交信息 `fix(test): harness 平A时间权重按生产口径兜底` / `docs(test): 修正 wEngineStackCoverage 头注释…` / `feat(freeCompare): 当期 buff 三态…`；**hash 每次被我 rebase 到 origin 之上都会变，按提交信息认，别抄这里的 hash**）**仍未推**，harness 那条带 4 条红（r439 隔离确认），他 16:31 后只在改 `velina.ts`。**下一轮开工若仍未推（≥ 17:00 即满 1 小时）就按孤儿规则处理**：`git worktree add wtF-orphan <本地 HEAD>`，跑 `npx vitest run src/composables/__tests__/backstageAxisVulnCc391.test.ts src/specs/__tests__/adjustableEffect.test.ts src/mechanics/__tests__/lateCfgWrite.test.ts src/composables/freeCompare` ——还红就在 worktree 里 `git revert <harness 那条的当前 hash>`（只回退 harness 那条；它的意图「支援/防护平A权重=0 与生产口径对齐」写进 §3 当新卡 T11，让下一个人连测试一起改），然后 push 整段；绿了就直接 push 三个。主仓不 `git reset`。
@@ -440,12 +447,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 <!-- /card:T8 -->
 
 <!-- card:T9 -->
-### T9 · 模块内「= catalog 行值」的倍率 / 能量常量改读表（CC-408 同款，零差；**hugo 已于 r440 CC-413 `35ac4d1f`、xixifu 已于 r441 CC-414 `68e144d0` 完成**，只剩 grace）
+### T9 · ✅ 全部完成（r440–r442：CC-413 `35ac4d1f` hugo → CC-414 `68e144d0` xixifu → CC-415 `c3dd09fe` grace；锁集中在 `src/composables/__tests__/mechanicRowValuesT9.test.ts`）
 
 **对象（r435 探针 `/home/kaua/calc-arch/arenaF/r435/dupProbe.out`）**：
 - ~~`hugo.ts:64 HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8`~~ ✅ CC-413（样板：`buildHugoCharConfig` 写 `cfg.mechanicRowValues`，`buildHugoExecutions` 开头取一次局部量；锁在 `src/composables/__tests__/mechanicRowValuesT9.test.ts`——xixifu / grace 往它的 CASES 里加，不要另起文件）。
 - ~~`xixifu.ts:42 XIXIFU_SHIGU_BASE = 254.4` / `:54 XIXIFU_SHEKISS_RATIO = 1009.1`~~ ✅ CC-414。
-- `grace.ts:39–42 A1_ENERGY..A4_ENERGY` = 1181001–1181004 energy_recovery（r441 复核行号；`:44 const A_SEG_ENERGY = [A1_ENERGY, …]` 数组是唯一消费入口——改成在 `buildGraceCharConfig`（CC-411 后已有 `skills`？没有就加）写 `cfg.mechanicRowValues[1181001..1181004] = getRowValue(…, 'energy_recovery')`，用处把 `A_SEG_ENERGY[i]` 换成从 cfg 取的数组；grep `A_SEG_ENERGY` 看消费点是不是纯函数，是就加入参。锁加进 `mechanicRowValuesT9.test.ts`，断言的是**能量回复行值**（`energyRecovery` 字段或 grace 自己的能量账），先看 grace 行把它放在哪个字段）。
+- ~~`grace.ts:39–42 A1_ENERGY..A4_ENERGY` = 1181001–1181004 energy_recovery~~ ✅ CC-415（`A_SEG_MOVE_IDS` + `gracePhaseValues` 读 `cfg.mechanicRowValues`）。
 - **不要碰** `norma.ts:29 HEAT_PER_ENERGY = 0.4`（探针里它与 1571010 actionTime 相等是巧合，语义是每点能量的热量）和 `norma.ts:32 EX_SPECIAL_ENERGY_COST = 40`（与 ether_purify 相等也是巧合）。
 
 **做法**：在模块 `buildCharConfig`（有 `skills`）用 `getRowValue(findMoveById(skills, id), 'damage' | 'energy_recovery')` 读进 `cfg.mechanicRowValues[id]`（已有协议，见 burnice / roxy），纯函数处改为入参、调用处从 `cfg.mechanicRowValues` 取；常量删除；**缺表为 0，不加 `|| 常量` 兜底**（CC-408 拍板）。
@@ -460,6 +467,23 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 **现状**（`31fdfe8f`，2026-10-03）：`useResourceCalc()` 里 `watch(wEngineStackAutoCoverages, auto => configStore.applyWEngineEffectCoverageAuto(auto), { immediate: true, flush: 'post' })`——composable 一创建就把整条资源管线算一遍写回 store；面板再读 store 重算。**问题**：① 创建即算（没人读结果也算）；② 测试里任何 `await` 之后管线都可能已被这个 watcher 算过并缓存（r438 `outerCyclePick` 就是这么红的）；③ 数据流绕一圈 store 才回到面板。
 **目标**：回填值作为 `calcOutput` 链上的一个 computed（或 `panelPhases` 的输入参数）直接消费，手调 sticky 逻辑保留在 store；去掉 watch。**验收**：`wEngineStackCoverage.test.ts` 6 条 + 面板相关测试绿；zd DIFF 0（面板覆盖率数值不变）；`outerCyclePick.test.ts` 的观察窗口提前那段注释可删。**先问作者的意图**：看 `src/data/wEngineStackCoverage.ts` 头注释与 `useResourceCalc.ts` 该段注释里「声明位置硬约束 / TDZ」那几行——他选 watch 很可能是为了绕 `runCalcRound` 的 TDZ，改之前把这层依赖理顺。
 <!-- /card:T10 -->
+
+<!-- card:T11 -->
+### T11 · 测试夹具平A权重与生产对齐（收养别人被回退的 harness 改动；连带 4 条红一起修）
+
+**背景**：同机另一 lane（`kaua5678`）15:54 提交 `fix(test): harness 平A时间权重按生产口径兜底（支援/防护=0）`——把 `src/test/harness.ts` 的 `TEST_BASE_CHAR.basicAttackTimeWeight: 1` 改成按 `defaultBasicAttackTimeWeight` 口径（支援/防护 = 0、模块声明优先、其余 = 1），意图正确（用户 2026-10-01 报：维丹队探针里柚叶 weight=1 分走 1/3 平A池，高估辅助/低估主C）。但它连带 **4 条红**，1 小时未推无认领，arena-F r442 按孤儿规则 **`git revert` 成 `4f8e04b6`** 并把 docs(test) / feat(freeCompare) 两条一起推上 origin。
+
+**要做**：
+1. worktree（基于 origin/master）里 `git revert --no-edit 4f8e04b6`（= 重新应用 harness 改动；`wEngineStackCoverage.test.ts` 头注释里的「⚠ r442」那两行顺手删掉）。
+2. 跑 `npx vitest run src/composables/__tests__/backstageAxisVulnCc391.test.ts src/mechanics/__tests__/lateCfgWrite.test.ts src/specs/__tests__/adjustableEffect.test.ts` —— 预期 4 红（r442 日志 `/home/kaua/calc-arch/arenaF/r442/orphan-targeted.log`）：
+   - `backstageAxisVulnCc391` (b)「自动行：轴里只放 basic 时仍按失衡占比吃到易伤」——大概率是夹具队里被测角色成了支援/防护 ⇒ 平A池 0 ⇒ 无 basic 行；**改夹具**（换成 weight=1 的角色或在该用例显式给 `basicAttackTimeWeight: 1`），不要改引擎。
+   - `lateCfgWrite`「全角色 × 命座 0/6 + 全部三人预设：除允许名单外无晚写」——这条**可能是真 bug**：某模块在支援 weight=0（平A池 0）路径上才会在 `buildResourceResult` 里写 cfg。先把失败输出里的「角色 / 字段」抄下来，查该模块的产行钩子；是真晚写就按 CC-290 口径移到 `materializePhaseState`，并单开 CC 号；只是允许名单漏项才改测试。
+   - `adjustableEffect` ×2（7 条严格线性型 / 17 条全部）——基准绝对值随平A池变化；按新夹具**重算基准**（测试文件里有三点对齐的生成方式），别放宽容差。
+3. 验收：vue-tsc 0；全量 vitest(4) 分片绿；`zd.sh t11-harness` DIFF 0（harness 只影响测试，zd 不该动；动了说明顺手改了引擎——拆成独立 CC）。
+4. 提交信息写明「re-apply <原提交> + 4 条测试基准」；arch 文档记 CC 号。
+
+**顺带（同一主题，二选一都行）**：主仓里还躺着同 lane 未提交的 2 行 WIP `src/mechanics/agents/velina.ts`（`defaultBasicAttackTimeWeight: 0`，注释引用用户 2026-10-01 裁决「异常副C不站场平A，同 remielle/vivian 的 CC-64 口径」），16:29 起没再动。**这是生产口径变更，不是测试**：若下一轮它还在且无人认领 ⇒ 收养：worktree 里加这 2 行，跑 velina 测试 + zd（预期只有含维琳娜的队 DIFF ≠ 0，把差异行数记进 arch），独立 CC 号提交；主仓那份用 `git show HEAD:… >` 还原（别 stash）。
+<!-- /card:T11 -->
 
 （T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**。）
 
