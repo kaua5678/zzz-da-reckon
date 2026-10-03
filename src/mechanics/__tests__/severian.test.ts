@@ -5,6 +5,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import {
   computeSeverianCycle,
+  resolveSeverianFengfengStacks,
   severianBasicFinisherHits,
   severianMechanic,
   SEVERIAN_FENGFENG_MULT,
@@ -229,5 +230,42 @@ describe('赛维里安（1631）⚠️3.3 测试服临时录入', () => {
     // 反向哨兵：C0 不该有无视防御（防"把覆盖率当常数塞进去"也能过上面几条）
     const c0 = await readCycle(1, 1, 0)
     expect(c0.c4DefIgnore, 'C0 无影画4 效果').toBe(0)
+  })
+
+  // T17（2026-10-04，队列 §3）：影画2「每次苍风影猎 +2 层凭风」且上限 2 ⇒ 本局有影猎就是满层，滑块不参与。
+  // 口径与「为什么不是显式滑块优先」见 `resolveSeverianFengfengStacks` 头注释。
+  it('纯函数：resolveSeverianFengfengStacks —— C2 + ≥1 次影猎封顶 2；否则读滑块（夹 0..2）', () => {
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 2, shadowHuntCount: 1, sliderStacks: 1 })).toBe(2)
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 2, shadowHuntCount: 3, sliderStacks: 0 })).toBe(2)
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 6, shadowHuntCount: 1, sliderStacks: 0 })).toBe(2)
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 2, shadowHuntCount: 0, sliderStacks: 1 }), 'C2 但 0 次影猎仍读滑块').toBe(1)
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 1, shadowHuntCount: 5, sliderStacks: 1 }), 'C1 无自动补层').toBe(1)
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 0, shadowHuntCount: 5, sliderStacks: 7 }), '滑块夹到 2').toBe(2)
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 0, shadowHuntCount: 5, sliderStacks: -1 }), '滑块夹到 0').toBe(0)
+  })
+
+  it('真管线：C2 默认滑块(1) ⇒ 资源区块与执行行都报凭风 2 层；C2 显式滑块 0 也封顶；C0 仍读滑块', async () => {
+    const read = async (cinema: number, slider?: number) => {
+      const { config } = await setup(['1631', '1251', ''], cinema)
+      if (slider !== undefined) config.setMechanicSetting('severian.fengfengStacks', slider)
+      const calc = useResourceCalc()
+      const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
+      // 执行行侧看倍率（`skillTableNote` 会被 enrich 的「已从倍率表 rows 回填…」整体覆盖，不可作判据）
+      const carrier = ch.executions.find(e => e.moveId === '1631012') as { damageMultiplier?: number; damageMultiplierOverride?: boolean } | undefined
+      return { flow: ch.severianFlow!, mult: carrier?.damageMultiplierOverride ? carrier.damageMultiplier : undefined }
+    }
+    // 同一 pinia 内滑块设置会跨 setup 残留 ⇒ 先读默认态，再设显式值
+    const c0 = await read(0)
+    const c2 = await read(2)
+    expect(c2.flow.shadowHuntCount, '前置：本局确有苍风影猎').toBeGreaterThanOrEqual(1)
+    expect(c2.flow.fengfengStacks).toBe(2)
+    expect(c2.flow.fengfengMultBonus).toBe(SEVERIAN_FENGFENG_MULT[2])
+    const c2s0 = await read(2, 0)
+    expect(c2s0.flow.fengfengStacks, 'C2 下滑块不参与').toBe(2)
+    expect(c0.flow.fengfengStacks, 'C0 读滑块默认 1').toBe(1)
+    // 执行行与资源区块同口径：连携行（若有）倍率差 = MULT[2] − MULT[1]
+    if (c2.mult !== undefined && c0.mult !== undefined) {
+      expect(c2.mult - c0.mult).toBeCloseTo(SEVERIAN_FENGFENG_MULT[2] - SEVERIAN_FENGFENG_MULT[1], 3)
+    }
   })
 })

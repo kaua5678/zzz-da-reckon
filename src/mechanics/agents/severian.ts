@@ -7,7 +7,8 @@
  *   100+10/级，局内小攻击自拐，希格莉德 840 同款）；影画2 触发时额外 +15% 攻击力。
  * - 影画1：普通攻击暴击伤害 +60%（basic 组 moveId 限定 → patchExecutions critDmgBonus）。
  * - 影画4：极限闪避/苍风影猎 → 无视 16% 防御 × 覆盖率滑块（panel.enemyDefReduction）。
- * - [凭风]（入场技/连携/终结最后一击固定倍率 +60%/300%，层数滑块）与
+ * - [凭风]（入场技/连携/终结最后一击固定倍率 +60%/300%，层数滑块；**影画2 且本局有苍风影猎时自动满 2 层、
+ *   滑块不参与**——T17 2026-10-04，口径见 `resolveSeverianFengfengStacks`）与
  *   影画6 苍风影猎最后一击 +900% 走 damageMultiplierOverride 同区加算。
  * - [流息]→苍风影猎：buildExecutions 产行（次数=流息收入/100，定点迭代含影画6[风起]反馈），
  *   estimateExSpecialTime 计入必要时间（青衣/希格莉德同款估时-物化同源）。
@@ -130,6 +131,23 @@ export function computeSeverianCycle(input: {
 }
 
 /**
+ * 凭风层数的**唯一口径**（T17 2026-10-04，队列 §3 T17）：影画2「每次苍风影猎获得 2 层凭风」且上限 2 层
+ * ⇒ 只要本局有 ≥1 次苍风影猎，之后每个载体（入场技/连携/终结最后一击）入场时都是满 2 层，
+ * 滑块在 C2 下**不再参与**（它是「极限闪避攒层」的手动近似，C2 后被影猎自动封顶覆盖）。
+ * 非 C2、或 C2 但 0 次影猎（流息不足 100）⇒ 仍读滑块。
+ *
+ * ⚠ 为什么不是卡面原话「滑块显式设置时优先」：机制设置协议（`buildCharConfig` 写 `setting:<id>`，恒为数字、
+ * 缺省填 default，见 `utils/mechanicSettingCfg.ts`）分不出「用户设了 1」与「默认 1」；要区分就得给协议加 unset 哨兵，
+ * 为一个滑块改全局协议不值。且 C2 下低于 2 层在物理上只可能发生在首次影猎之前的那一个载体，忽略。
+ * 三个读者（执行行 `patchSeverianExecutions` / 资源区块 `buildSeverianResourceResult`）都经本函数，不再各自读滑块
+ * （2026-09-20 round 48 那次「两路读数不一致」的教训）。
+ */
+export function resolveSeverianFengfengStacks(input: { cinemaLevel: number; shadowHuntCount: number; sliderStacks: number }): number {
+  if (whole(input.cinemaLevel) >= 2 && input.shadowHuntCount >= 1) return 2
+  return Math.max(0, Math.min(2, whole(input.sliderStacks)))
+}
+
+/**
  * 疾锋第四段命中次数（平A 段循环，希格莉德 countBasicFinisherHits 同构：
  * 完整循环 1-4 各 1 次 #4；尾部余量推进到 #4 再计 1 次）。
  */
@@ -232,11 +250,12 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
   cfg.severianC4Coverage = clamp01(setting(cfg, 'severian.c4Coverage', 1))
 }
 
-function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'severianCinemaLevel' | 'severianAdditionalActive' | 'severianFengfengStacks' | 'severianC4Coverage'>): SeverianCycle {
+/** `fengfengStacks` 由调用方经 `resolveSeverianFengfengStacks` 给定（需要影猎次数，cfg 上没有） */
+function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'severianCinemaLevel' | 'severianAdditionalActive' | 'severianC4Coverage'>, fengfengStacks: number): SeverianCycle {
   return computeSeverianCycle({
     cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
     additionalActive: cfg.severianAdditionalActive === true,
-    fengfengStacks: Number(cfg.severianFengfengStacks ?? 1),
+    fengfengStacks,
     c4Coverage: Number(cfg.severianC4Coverage ?? 1),
   })
 }
@@ -340,14 +359,18 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
   }
 }
 
-function patchSeverianExecutions({ cfg, executions }: AgentResourceInput): void {
+function patchSeverianExecutions({ cfg, state, executions }: AgentResourceInput): void {
   // CC-333：执行行与资源区块共用 computeSeverianCycle（优先读 buildCharConfig 写入的字段，单测直调未跑 buildCharConfig 时回落 setting）
   const cycle = computeSeverianCycle({
     cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
     additionalActive: cfg.severianAdditionalActive === true,
-    fengfengStacks: cfg.severianFengfengStacks !== undefined
-      ? Number(cfg.severianFengfengStacks)
-      : setting(cfg, 'severian.fengfengStacks', 1),
+    fengfengStacks: resolveSeverianFengfengStacks({
+      cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
+      shadowHuntCount: severianShadowHuntCount(cfg, state),
+      sliderStacks: cfg.severianFengfengStacks !== undefined
+        ? Number(cfg.severianFengfengStacks)
+        : setting(cfg, 'severian.fengfengStacks', 1),
+    }),
     c4Coverage: cfg.severianC4Coverage !== undefined
       ? Number(cfg.severianC4Coverage)
       : setting(cfg, 'severian.c4Coverage', 1),
@@ -377,9 +400,14 @@ export interface SeverianFlowResult extends SeverianCycle {
 
 function buildSeverianResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const { flowIncome, shadowHuntCount } = severianFlowState(cfg as AgentCharConfigInput['cfg'], state as AgentResourceInput['state'])
+  const fengfengStacks = resolveSeverianFengfengStacks({
+    cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
+    shadowHuntCount,
+    sliderStacks: Number(cfg.severianFengfengStacks ?? 1),
+  })
   return {
     severianFlow: {
-      ...cycleFromCfg(cfg),
+      ...cycleFromCfg(cfg, fengfengStacks),
       flowIncome: Math.round(flowIncome),
       shadowHuntCount,
     },
@@ -410,7 +438,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'severian.fengfengStacks',
     label: '赛维里安·凭风层数',
-    description: '入场技/连携技/终结技入场时消耗的[凭风]层数：1层最后一击倍率固定+60、2层+300。极限闪避获得（最多2层），影画2苍风影猎+2层。',
+    description: '入场技/连携技/终结技入场时消耗的[凭风]层数：1层最后一击倍率固定+60、2层+300。极限闪避获得（最多2层）。影画2 每次苍风影猎+2层 ⇒ 影画2 且本局有苍风影猎时自动按 2 层，本滑块不参与。',
     default: 1,
     min: 0,
     max: 2,
