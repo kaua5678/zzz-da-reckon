@@ -82,6 +82,15 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 12:26 arena-F 第 427 轮**（开工：master `56821c49` 干净、已推；无 verify 进程；别人 11:40–11:57 的 `remielle.ts` / `remielle.test.ts` / `helpersNightC.test.ts` 仍未提交、未认领，**没动**（收工时闲置已 >1h，下一轮按孤儿规则处理）；REQUIREMENTS.md 无新条目；worktree `wtF-r427` 已删，产物 `/home/kaua/calc-arch/arenaF/r427/`）
+- **做到哪**：r420 §2「下一步 1」（27 个 [表] TWIN 候选）**全部裁决**，见卡表 CC-402。只有卢西娅终结技改了代码（`1f78ccb6`，改伤害）；其余 26 个零改动，分类与理由都在卡里，**别再扫同一清单**。
+- **卢西娅为什么现在改、r338 为什么没改**：r338 要求 nanoka 求和编码才登记融合；本轮按妮可终结技先例（param 分列、无求和编码、靠招式说明判「一次发动全打」）放行，因为「终结技主伤害 3805.7% 整段漏掉 + 终结技 0 秒」是两个肉眼可见的缺陷。撞击次数按 1 计是**可逆口径**：有用户口径就改 `LUCIA_ULTIMATE` 的 count。
+- **夹具样例依赖卢西娅 0 秒终结技的，这次集中暴露了**：teamTimeSummary 的「账本虚高」样例（扫描里所有 slack>2 的队都含卢西娅——虚高本身就是这个数据缺陷造成的）、outerCyclePick 的长环相位、nightD 般岳补齐精确值、archiveDeploy 弹刀门槛。改法与理由在各测试注释里。**教训**：样例型测试（「找一个有 X 现象的队」）寿命取决于造成 X 的根因；换样例前先问 X 是不是缺陷副产物。
+- **新卡 T7（§3）**：6 个「模块按 cfg 二选一分支」的招式（本 1121008/1121009、苍角 1131013、诺姆 1571009/1571012、洛克茜 1621019）在非当前分支下会以 [表] 出现、放了就双计。静态 `axisHiddenMoves` 要列全两个分支且普查锁只跑缺省 cfg 锁不住 ⇒ 让模块声明「分支组」、`axisHiddenMovesOf` 读它。卡面写了文件与验收。
+- **未决（记录，不排期）**：珂蕾妲有本时协同版引爆 1101106 / 终结 1101402 是替换 1101105 / 1101401（倍率 666.6% vs 1101105、1694% vs 1548.8%），koleda.ts 只建模了协同二段普攻 1101007；要做得在模块里按队内有无 1121 切换 moveId（同 1101007 的做法），改伤害，需单独一卡 + golden 归因。
+- **下一步候选**：remielle 三文件孤儿处理（先 `git diff` 看是否成形，隔离 worktree 全量 verify，提交或丢弃，§2b 写明）；T7；arena-E §2 其余下一步（yidhari-qingyi-lucia 外层 cycle 振荡——注意本轮后该队 ratchet 已从 cycle 变 stable，先复核还振不振）。
+- **回滚点**：`git revert 1f78ccb6`。
+
 **2026-10-03 12:14 arena-F 第 426 轮**（开工：master `a582aa33` 干净、已推；无 verify 进程；别人 11:40–11:57 的 `remielle.ts` / `remielle.test.ts` / `helpersNightC.test.ts` 仍未提交、未认领，**没动**（闲置满 1 小时后按孤儿规则处理，本轮收工时还没到）；REQUIREMENTS.md 无新条目；worktree `wt-T4` 已删，产物 `/home/kaua/calc-arch/arenaF/r426/`）
 - **做到哪**：① §3 最后一张卡 **T4** 由 dsh 工人完成（CC-400 `13602152`，卡已删），`as unknown as` 家族到此收口：非测试代码行 20 → 14，剩的全是 CC-398 判合理项，**别再动这个计数**。② CC-398 的「条XX%」接线做了**真页面**复核（CC-401，只有文档）：无头 chromium 开捏轴页读 DOM，确认页面渲染出 `条电34%·以太95%` / `条电34%`，与组件 setupState 里 `inStunAnomalyState.gaugeSnapshots` 一致。**第一次跑看不到标签**（6 以太 +18 电：两条槽恰好在块末归零 → 页面按设计过滤 0%），差点误判成修复无效——做页面复核时先看状态再看 DOM。
 - **复核页面的现成工具**：`arenaF/r426/shot.cjs`（`playwright-core` + `chrome-headless-shell`，配方见下方 r416 条目），本轮加了一招：从 `document.querySelector('.sap-block').__vueParentComponent` 往 `.parent` 爬到 `setupState` 里含 `inStunAnomalyState` 的组件直接读 core 摘要——比截图准，以后查「算了但没显示」类问题照抄。
@@ -277,7 +286,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **回滚点**：`git revert 497aaa27`。
 - **拍板**：① auto-1371-1251-1451 −9.86% 接受：不是融合算错，是更真实的强特时长让仪玄自动轴超预算、引擎按既定「轴太厚 ⇒ 退化非轴」口径处理（探针 `/home/kaua/calc-arch/arenaE/r420/probe2.test.ts`，两侧输出 `p2-*.out`：master 轴「轴1」、stun 3；修后轴空、stun 4）。② 「长按追加连打」不建模：原文只说「提升连打次数」，没有次数 / 倍率，凭空猜会引入无据数字。
 - **下一步（按价值排）**：
-  1. **剩余 TWIN 候选逐个核对**（方法同 r419：读模块 + `data/raw/nanoka_missing/full/<id>.json` param.desc，三选一 (i) 隐藏 / (ii) 融合 / (iii) 不动；清单出处 `/home/kaua/calc-arch/arenaE/r419/tbl-census2.out`）：1071012、1101106、1101402、1121008 / 1121009（ben.ts 有引用）、1131013 / 1131014（soukaku.ts 引用 013）、1151013、1161015、1181018、1201023、1271009、1321012、1351005、1381009、1401007、1451017、1461022、1541007 / 1541011 / 1541012（promia.ts 引用 011）、1561010、1571009 / 1571012（norma.ts 有引用）、1611011 / 1611012、1621019（roxy.ts 有引用）。r419 `fusions.out` 里能找到 nanoka 求和式的只有青衣、莱卡恩、雨果、雅（均已处理）⇒ 余下大概率是 (i) 或 (iii)，零差为主。
+  1. **[r427 arena-F 已全部裁决，见卡表 CC-402，别重扫]** **剩余 TWIN 候选逐个核对**（方法同 r419：读模块 + `data/raw/nanoka_missing/full/<id>.json` param.desc，三选一 (i) 隐藏 / (ii) 融合 / (iii) 不动；清单出处 `/home/kaua/calc-arch/arenaE/r419/tbl-census2.out`）：1071012、1101106、1101402、1121008 / 1121009（ben.ts 有引用）、1131013 / 1131014（soukaku.ts 引用 013）、1151013、1161015、1181018、1201023、1271009、1321012、1351005、1381009、1401007、1451017、1461022、1541007 / 1541011 / 1541012（promia.ts 引用 011）、1561010、1571009 / 1571012（norma.ts 有引用）、1611011 / 1611012、1621019（roxy.ts 有引用）。r419 `fusions.out` 里能找到 nanoka 求和式的只有青衣、莱卡恩、雨果、雅（均已处理）⇒ 余下大概率是 (i) 或 (iii)，零差为主。
   2. **yidhari-qingyi-lucia 外层收敛 cycle**（r420 新增，第 4 支 cycle 队）：先用 `.zc/perf` 打印外层每轮的青衣强特次数，看是否 7↔8 振荡；若是，属整数环停点问题（参考 `docs/mcp-integer-cycle-stop.md` CC-326），别加容差。
   3. **「能量全部打强特」口径复核**：青衣 4 命回能后强特 +1 反而降伤（每秒收益低于平A）。若别的角色也出现同类下降，再评估引擎是否该按每秒收益决定能量用途（要用户口径，先写进 OPEN-ITEMS 候选，不要直接改）。
   4. 仪玄自动轴预设（`stunAxisPresets/仪其他.json` 的「轴1」）是在青衣强特 0.383s 时代配的；4 次失衡下轴太厚而退化。要不要按新时长重配，看用户是否在意该队走轴。
@@ -364,6 +373,27 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 （T1、T2 已于第 370 轮 `0c5e00cb` 完成）
 
-（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**。）
+（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。第 427 轮新增 **T7**（CC-402 分诊）。）
+
+<!-- card:T7 -->
+### T7 · 模块「cfg 二选一分支」招式的 [表] 隐藏改为声明式分支组（CC-402 分诊）
+
+**背景**：`composables/resourceCalc/axisTableDirect.ts` 判「可直读 [表]」= 本角色无该 moveId 执行行 ∧ 不在 `mechanics/registry#axisHiddenMovesOf`（= 模块 `axisHiddenMoves` ∪ `attachedEvents` 子行）。6 个招式是模块按 cfg **二选一**发射的分支：当前分支有执行行、另一分支既无执行行也不在名单 ⇒ 以 [表] 出现，放进轴 = 双计。
+清单（候选 → 模块、分支依据）：
+- 本 `1121008` / `1121009`（未招架版）↔ `1121010` / `1121011`（招架版）：`ben.ts:20,47`，默认发招架版。
+- 苍角 `1131013`（快速展旗）↔ `1131012`（展旗）：`soukaku.ts:66`，按 cfg 二选一。
+- 诺姆 `1571009`（失衡高爆弹头）↔ `1571008`（破甲）；`1571012`（延长高爆）↔ `1571011`（延长破甲）：`norma.ts:50-57`，按失衡态 / 长按。
+- 洛克茜 `1621019`（微型风旋）↔ `1621020`（巨型风旋）：`roxy.ts:43-52`，按风眼数。
+
+**改法**（声明式，不加静态名单）：
+1. `mechanics/types.ts` 的 `AgentMechanicModule` 加可选 `moveBranchGroups?: readonly (readonly string[])[]`——「同一动作的互斥分支组，组内任一成员有执行行时其余成员不可作为 [表] 直读」。
+2. `mechanics/registry.ts#axisHiddenMovesOf(agentId, executedMoveIds)` 增加：对每个分支组，若组内任一 id ∈ executedMoveIds，则组内其余 id 并入隐藏集。签名需要带 `executedMoveIds`（现有调用方 `axisTableDirect.ts` 已经有这个集合；`agentMechanicView` 门面同步）。
+3. 四个模块各加 `moveBranchGroups`（按上面清单，两段都列）。
+4. 锁：`axisTableDirectCc393.test.ts` 加一条：对每个带 `moveBranchGroups` 的模块，用命座 0 缺省 cfg 跑一次，断言组内非执行行成员不在候选；再对本 1121 切到未招架 cfg（看 `ben.ts` 的 setting id）跑一次，断言 1121010/1121011 也不在候选（锁「两个方向都隐藏」）。反证：注释掉 `registry` 里的分支组过滤 ⇒ 两条都红。
+
+**不许碰**：`axisHiddenMoves` 现有名单不改；不改任何模块的发射逻辑；不改 `moveFusions.ts`。
+**验收**：`vue-tsc -b --force` 0；`npx vitest run src/composables/__tests__/axisTableDirectCc393.test.ts src/mechanics` 通过；zd DIFF 0（纯候选池改动，不进计算）；`npm run check-guards`。
+**报告**：`git diff --stat`、新增锁的反证记录（注释掉过滤后红了哪两条）、`STATUS: done|blocked` 首行。
+<!-- /card:T7 -->
 
 
