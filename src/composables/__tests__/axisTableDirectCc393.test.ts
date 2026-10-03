@@ -9,8 +9,11 @@ import { resolve } from 'path'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useCatalogStore } from '@/stores/catalog'
+import { useConfigStore } from '@/stores/config'
 import { agentAxisHiddenMoves } from '@/composables/agentMechanicView'
 import { axisTableDirectCandidates } from '@/composables/resourceCalc/axisTableDirect'
+import { getRegisteredAgentMechanics } from '@/mechanics'
+import { BEN_EX_NORMAL_MOVE_IDS, BEN_EX_PARRY_MOVE_IDS, BEN_EX_PARRY_RATE_SETTING } from '@/mechanics/agents/ben'
 import { MOVE_FUSION_GROUPS } from '@/data/moveFusions'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import type { StunAxisAction } from '@/types/resource'
@@ -19,15 +22,31 @@ const tick = () => new Promise(r => setTimeout(r, 40))
 const FUSED_MEMBERS = new Set(MOVE_FUSION_GROUPS.flatMap(g => g.terms.map(t => t.moveId).filter(id => id !== g.moveId)))
 const basicOnly = (): StunAxisAction[] => [0, 1, 2].map(slot => ({ slot, moveId: 'basic', count: 1, startTime: slot }))
 
-async function runAxis(team: string[], actions: StunAxisAction[]) {
+async function runAxis(
+  team: string[],
+  actions: StunAxisAction[],
+  mutateConfig?: (config: ReturnType<typeof useConfigStore>) => void,
+) {
   const { config } = await setupHarness(team.map(agentId => ({ agentId, cinemaLevel: 0 })))
   config.autoYidhariAxis = false
   config.stunAxisPlans = []
   config.stunAxes = [{ name: '轴1', actions }]
   config.useStunAxis = true
+  mutateConfig?.(config)
   const calc = useResourceCalc()
   await tick()
   return calc
+}
+
+/** 本角色命座 0 缺省 cfg 下的 [表] 候选 id 集合 + 执行行集合 */
+async function candidatesFor(agentId: string) {
+  const calc = await runAxis([agentId, '1211', '1031'], basicOnly())
+  const c = calc.resourceResult.value?.characters?.find(ch => ch.agentId === agentId)
+  const backed = new Set((c?.executions ?? []).map(e => e.moveId))
+  const cands = new Set(
+    axisTableDirectCandidates(agentId, useCatalogStore().getAgentSkills(agentId), backed).map(h => h.move.id),
+  )
+  return { backed, cands }
 }
 const tableRows = (calc: ReturnType<typeof useResourceCalc>, slot: number) =>
   calc.damagePoolRows.value.filter(r => r.slot === slot && r.source === '轴内·技能表直读')
@@ -115,6 +134,46 @@ describe('CC-393 轴内 [表] 直读判定（编辑器与结算同源）', () =>
   it('莱卡恩点按段 1141016 不作为 [表] 候选（CC-394：模块按点按次数出行）', async () => {
     const calc = await runAxis(['1141', '1211', '1031'], [{ slot: 0, moveId: '1141016', count: 1, startTime: 0 }])
     expect(tableRows(calc, 0).map(r => r.moveId)).toEqual([])
+  })
+
+  /**
+   * CC-402：cfg 二选一分支（`moveBranchGroups`）——模块按 cfg / 失衡态 / 长按 / 风眼数只发射一个分支，
+   * 另一分支既无执行行、又不在静态 `axisHiddenMoves` 名单 ⇒ 会以 [表] 出现、放进轴即双计。
+   * 锁「两个方向都隐藏」：组内任一成员有执行行 ⇒ 组内其余成员不可为 [表] 候选。
+   */
+  it('CC-402 分支组：缺省 cfg 下每个带 moveBranchGroups 的模块，组内非执行行成员不在 [表] 候选', async () => {
+    const mods = getRegisteredAgentMechanics().filter(m => (m.moveBranchGroups?.length ?? 0) > 0)
+    expect(mods.length, '反空洞：确有模块声明 moveBranchGroups').toBeGreaterThanOrEqual(4)
+    for (const mod of mods) {
+      const agentId = mod.agentIds[0]
+      const { backed, cands } = await candidatesFor(agentId)
+      for (const group of mod.moveBranchGroups ?? []) {
+        const executed = group.filter(id => backed.has(id))
+        expect(executed.length, `${agentId} 分支组 ${group.join('/')} 应恰有一个分支在执行`).toBeGreaterThan(0)
+        for (const id of group) {
+          if (backed.has(id)) continue
+          expect(cands.has(id), `${agentId} 非执行分支 ${id} 不应为 [表] 候选`).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('CC-402 分支组：本切到未招架 cfg（ben.exParrySuccessRate=0）后，招架两段 1121010/1121011 也不在候选', async () => {
+    const calc = await runAxis(
+      ['1121', '1211', '1031'],
+      basicOnly(),
+      config => config.setMechanicSetting(BEN_EX_PARRY_RATE_SETTING, 0),
+    )
+    const c = calc.resourceResult.value?.characters?.find(ch => ch.agentId === '1121')
+    const backed = new Set((c?.executions ?? []).map(e => e.moveId))
+    // 反空洞：切到未招架后确实由 1121008/1121009 出行
+    for (const id of BEN_EX_NORMAL_MOVE_IDS) expect(backed.has(id), `${id} 应有执行行`).toBe(true)
+    for (const id of BEN_EX_PARRY_MOVE_IDS) expect(backed.has(id), `${id} 不应有执行行`).toBe(false)
+    const cands = new Set(
+      axisTableDirectCandidates('1121', useCatalogStore().getAgentSkills('1121'), backed).map(h => h.move.id),
+    )
+    for (const id of BEN_EX_PARRY_MOVE_IDS) expect(cands.has(id), `招架分支 ${id} 不应为 [表] 候选`).toBe(false)
+    for (const id of BEN_EX_NORMAL_MOVE_IDS) expect(cands.has(id), `执行分支 ${id} 不应为 [表] 候选`).toBe(false)
   })
 
   it('源码：编辑器与结算都调用 axisTableDirect，不各自重写判定', () => {

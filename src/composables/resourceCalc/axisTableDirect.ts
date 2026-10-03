@@ -5,7 +5,8 @@
  * [表] 块的语义 = 「模块没建模的招式，放进轴就按技能表倍率出直伤」。所以只有**真正没被建模**的招式才可直读：
  *   1. moveId 是数字（catalog 招式；`basic` / 连段 id / 模块专属块不是）；
  *   2. 本角色没有该 moveId 的执行行（`backed`；有执行行的招式由执行行结算）；
- *   3. 不是模块声明的隐藏招式（`axisHiddenMovesOf` = `axisHiddenMoves` ∪ `attachedEvents` 子行）——
+ *   3. 不是模块声明的隐藏招式（`axisHiddenMovesOf(agentId, backed)` = `axisHiddenMoves` ∪ `attachedEvents` 子行
+ *      ∪ `moveBranchGroups` 里「本角色另一分支有执行行」的互斥成员，CC-402）——
  *      模块用别的方式表达了它（如伊德海莉连携固定用 1051025，1051015 永不出手）；
  *   4. 不是倍率融合组的**并入段**（`data/moveFusions.ts`：同一次动作的多段已求和进主段，再直读 = 重复计伤）；
  *   5. 技能分类属于特殊技 / 支援 / 终结 / 连携，且伤害倍率 > 0。
@@ -41,7 +42,7 @@ export function axisTableDirectMove(
   backed: ReadonlySet<string>,
 ): AxisTableDirectMove | null {
   if (!/^\d+$/.test(moveId) || backed.has(moveId) || FUSED_MEMBERS.has(moveId)) return null
-  if (axisHiddenMovesOf(agentId).includes(moveId)) return null
+  if (axisHiddenMovesOf(agentId, backed).includes(moveId)) return null
   for (const cat of skills?.categories ?? []) {
     const move = (cat.moves ?? []).find(m => m.id === moveId)
     if (!move) continue

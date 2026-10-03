@@ -452,6 +452,8 @@ export const roxyMechanic: AgentMechanicModule = {
   agentIds: [ROXY_AGENT_ID],
   // CC-391 D1：自旋（每秒）是小心风寒启动后的持续段（次数 = EX 次数），易伤跟随 EX 启动的轴内占比
   attachedEvents: { [EX_CHILL_MOVE_ID]: [SPIN_SECOND_MOVE_ID] },
+  /** CC-402：恕不远送两分支互斥（引爆满 3 风眼 → 巨旋风 1621020；不足 → 小旋风 1621019）；两段都列。 */
+  moveBranchGroups: [[MINI_TORNADO_MOVE_ID, MEGA_TORNADO_MOVE_ID]],
   // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
   // 洛克茜（1621）：防御→攻击/冲击力（局内）→ defPct 优先
   substatTemplate: {

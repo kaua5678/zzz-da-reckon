@@ -557,6 +557,15 @@ export const normaMechanic: AgentMechanicModule = {
   axisExtraBlocks: () => [{ moveId: 'norma-hat-chain', label: '诺姆转连携', actionTime: 0, quota: 9 }],
   name: '诺姆',
   description: '预热膛温资源、嗯呢弹幕（6段+炮塔+全队增伤）、膛温帽子把戏→连携替换、火力实验导弹、技术鸿沟失衡易伤。',
+  /**
+   * CC-402：嗯呢弹幕两组互斥分支（按失衡态 / 长按二选一）；两段都列。
+   * - 基础弹头：破甲 1571008（未失衡）↔ 高爆 1571009（失衡），`norma.barrageStunShare` 决定占比；
+   * - 延长弹头：延长破甲 1571011 ↔ 延长高爆 1571012，长按（`norma.holdSeconds`）时才发射。
+   */
+  moveBranchGroups: [
+    [ARMOR_PIERCE_SHOT_MOVE, HIGH_EXPLOSIVE_SHOT_MOVE],
+    [EXTEND_ARMOR_PIERCE_MOVE, EXTEND_HIGH_EXPLOSIVE_MOVE],
+  ],
   applyPanel: applyNormaPanel,
   buildCharConfig: buildNormaCharConfig,
   /**

@@ -191,6 +191,8 @@ export const benMechanic: AgentMechanicModule = {
     max: 1,
     step: 0.1,
   }],
+  /** CC-402：强特连招两分支互斥（未招架 1121008/1121009 ↔ 招架成功 1121010/1121011）；两段都列。 */
+  moveBranchGroups: [[...BEN_EX_NORMAL_MOVE_IDS, ...BEN_EX_PARRY_MOVE_IDS]],
   applyPanel,
   buildCharConfig,
   buildExecutions,

@@ -316,6 +316,8 @@ export const soukakuMechanic: AgentMechanicModule = {
       suffix: '次',
     },
   ],
+  /** CC-402：下砸两分支互斥（展旗·集合啦#1 1131012 ↔ 快速展旗·集合啦#2 1131013，`soukaku.chopSlam` 二选一）；两段都列。 */
+  moveBranchGroups: [[SOUKAKU_SLAM_MOVE_ID, SOUKAKU_CHOP_SLAM_MOVE_ID]],
   buildCharConfig,
   buildExecutions: buildSoukakuExecutions,
   // CC-200：账本估时 = 通用强特（首击扇子）+ 本模块每次强特补行（与 buildSoukakuExecutions 同源）。

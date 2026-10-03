@@ -42,11 +42,27 @@ export function getAgentMechanic(agentId: string): AgentMechanicModule | undefin
  * 「放进轴不起作用」的招式（唯一实现，CC-393 由 composables/agentMechanicView 下沉到本层）：
  * 模块声明的 `axisHiddenMoves` ∪ `attachedEvents` 全部子行（伴随行跟随父动作的轴内占比，自身放置不计，CC-392）。
  * 消费方：轴编辑器候选池（经 agentMechanicView 门面）与 [表] 直读判定（resourceCalc/axisTableDirect）。
+ *
+ * CC-402：额外参数 `executedMoveIds`（本角色**有执行行**的 moveId 集合）——给了才展开 `moveBranchGroups`：
+ * 组内任一成员有执行行 ⇒ 组内其余成员并入隐藏集（同一动作的互斥分支，另一分支以 [表] 出现即双计）。
+ * 不传 ⇒ 行为与旧签名逐位一致（展示门面 `agentMechanicView#agentAxisHiddenMoves` 不传）。
  */
-export function axisHiddenMovesOf(agentId: string | null | undefined): readonly string[] {
+export function axisHiddenMovesOf(
+  agentId: string | null | undefined,
+  executedMoveIds?: ReadonlySet<string>,
+): readonly string[] {
   const mod = agentId ? agentMechanics.get(agentId) : undefined
   if (!mod) return []
-  return [...(mod.axisHiddenMoves ?? []), ...Object.values(mod.attachedEvents ?? {}).flat()]
+  const out = [...(mod.axisHiddenMoves ?? []), ...Object.values(mod.attachedEvents ?? {}).flat()]
+  if (executedMoveIds) {
+    for (const group of mod.moveBranchGroups ?? []) {
+      if (!group.some(id => executedMoveIds.has(id))) continue
+      for (const id of group) {
+        if (!executedMoveIds.has(id) && !out.includes(id)) out.push(id)
+      }
+    }
+  }
+  return out
 }
 
 type TeamLike = ReadonlyArray<{ agentId?: string | null } | null | undefined>

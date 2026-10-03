@@ -797,6 +797,14 @@ export interface AgentMechanicModule {
   axisMoveMeta?: Readonly<Record<string, { tag: string; cost: number }>>
   /** 轴编辑器候选池隐藏的招式（CC-57；展示层专用）。现唯一：伊德海莉 1051012 裸极寒重碾（用连段表达能量消耗更准，避免误导闪能计算） */
   axisHiddenMoves?: readonly string[]
+  /**
+   * CC-402：同一动作的**互斥分支组**（模块按 cfg 二选一发射的两个分支，如本强特的未招架/招架两段）。
+   * 组内任一成员**有执行行**（∈ executedMoveIds）⇒ 组内其余成员不可作为 [表] 直读（否则同一动作双计）。
+   * 两段都列（不是只列「非当前分支」）：执行集合随 cfg / 失衡态 / 长按 / 风眼数变化，静态名单只能钉死一侧；
+   * 声明式分支组让「两个方向都隐藏」自动成立，模块不必感知当前 cfg。
+   * 消费方：`registry#axisHiddenMovesOf`（[表] 直读判定与编辑器候选池同源）。
+   */
+  moveBranchGroups?: readonly (readonly string[])[]
   /** 轴编辑器候选块名后缀（CC-57；展示层专用）：moveId → 后缀。现唯一：仪玄 1371022/1371026「·+30%失衡」（额外能力：命中失衡敌人 +30%） */
   axisMoveSuffix?: Readonly<Record<string, string>>
   /**
