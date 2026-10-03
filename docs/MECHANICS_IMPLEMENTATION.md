@@ -180,6 +180,7 @@
 - **当前实现状态 [已实现·近似 2026-09-14 补段]**（实现位置：`src/mechanics/agents/norma.ts` + spec `1571.json`；测试 `src/mechanics/__tests__/normaSmoke.test.ts`）。含：膛温账本（进场+60、耗能×0.4% 转膛温、终结+30）、嗯呢弹幕 40 激活 + 长按 20/s、炮塔自动射击 3s / 强化 2s、影画。
 - 口径：「嗯呢弹幕期间」生效的攻击 +44~870 与全队 +20% 按**弹幕覆盖率**折算；技术鸿沟失衡易伤/失衡时长 +2s 为命中即叠、全程生效（曾错按 applyPanel 直接加满 cap，已修）；进场「+60%」是**预热膛温**（非攻击/喧响，spec 已注明）。
 - 实现：`src/mechanics/agents/norma.ts`（`EX_SPECIAL_ENERGY_COST=40`、`HOLD_ENERGY_PER_SEC=20`、`HEAT_PER_EX=16`、`TOWER_AUTO_SHOT_INTERVAL`；礼帽代积膛温语义并入 heatTotal）。
+- 长按秒数口径（CC-438，r476 `ea18ed8d`）：`norma.holdSeconds` 滑块只经 `resolveNormaHoldSeconds(cfg)`（clamp[0,2]）读；能量 40+20×hold、膛温 8/s×次数、伤害延长行 = 次数 × hold（不再 floor）同一个值。**已知分叉**：`estimateExSpecialTime` 的长按仍整局一次（改按次会扰动外层折叠环，r6 §8.0 #14；最终必要时间不受影响）。
 
 ### 露西（lucy / 1151）—— 辅助拐力 + 小猪
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/lucy.ts` + spec `1151.json`；测试 `src/mechanics/__tests__/lucy.test.ts` 10 例）。含：加油全队攻击拐（min(600, 初始攻×25.8%+104)，spec teamBuffs）、终结邻位回能、回旋挥击、抄家伙后台自动（floor(前台时间/冷却)）、影画 1/2/4/6（影画6 队友强特 300% 攻火伤落地炸）。近似点见下（抄家伙按冷却周期整局折算）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。

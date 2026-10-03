@@ -92,6 +92,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 00:41 arena-F 第 476 轮**（开工：主仓 = origin = `07cd9c99`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T44`（已删）；产物 `/home/kaua/calc-arch/arenaF/r476/`）：**CC-438 `ea18ed8d`** 诺姆 `norma.holdSeconds` 单一口径。
+- **找题**：REQUIREMENTS 全 done；§3 无卡；r475 交接的两个候选——`agentId === 'NNNN'` 残留扫描 **0 处**（composables/views/core/stores 非测试代码里只剩注释）；r462 (c) **不做**（CC-61 的 `legacy()` 期望依赖 cinema 与 skills，改成表/快照并不比函数简单，且会把 catalog 实数钉进测试）。改用 T17 同型扫描「一个滑块多个读者」：`norma.holdSeconds` 5 读者、3 种写法 ⇒ 立做。
+- **做了**：`resolveNormaHoldSeconds(cfg)` = clamp[0,2]，能量 / 膛温源 / 伤害行 / 赠链 / 前台时间 5 处改读；伤害行长按秒数不再 floor（默认 2 逐位不变）；`normaSmoke` +1。zd DIFF 0；timeGolden 不变；两 shard 479/4345。
+- **量过故意不改（重要，别再踩）**：`estimateExSpecialTime` 里长按仍是整局一次，与其他 4 读者「每次弹幕都长按」分叉。改成按次 ⇒ 诺姆最终 necessaryTime **不变**（折叠环补齐），但外层 `iterations` 1→0，12 个诺姆预设 zd 全变、heavy ±3～7%、`timeFillRatchet` 两队留白/超预算 0→2s 判红（`auto-1321-1571-1311` 留白 2.2s、`auto-1591-1571-1211` 超预算 1.7s）。这是折叠环的路径依赖，不是诺姆的问题，已登 r6 §8.0 **#14**（DEBT 1a 一起动）。代码注释也写了。
+- **回退点**：`git revert ea18ed8d`。
+- **下一步（start-ready）**：沿同一 grep 继续核「一个 id ≥2 个运行期读者且写法不一致」：`severian.c4Coverage`（`severian.ts:250/269/376` 三读，两处 clamp01、一处裸 `setting(...)`——先看 376 那条是不是同一物理量），其余 `seth.* / evelyn.* / corin.*` 4 次多为声明 + `fields` 列表，预计无事。判据不满足就记「本轮无题」，不为统一而统一。
+
 **2026-10-04 00:27 arena-F 第 475 轮**（开工：主仓 = origin = `6745ccb0`，干净、无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T43`（已删）；产物 `/home/kaua/calc-arch/arenaF/r475/`）：**T16 分诊 → 不做** + **r462 lead (b) `fe376bcc`**。
 - **T16**：按上轮交接先写设计稿，核原文时发现卡面触发源写错（焚身 vs 每次强特/支援突击），据此量化覆盖率 ≈ 1 ⇒ 判定不做，稿子 `docs/mcp-t16-banyue-rage-window.md`（事实表 F1–F6、量化、备选路线 a/b 到可开工粒度、双计防线）。§3 T16 卡改「⛔ 量过不做」并把纠正写在卡头。pending 台账 `.claude/pending-triage-2026-10-03.md` 不入 git，不改。
 - **r462 (b)**：`StunAxisPage.vue` 「轴内已放置量」五处同式求和（平A / 自身招式 / 转大 60·90 / axisExtraBlocks / 连段块含般岳 didong 配额）合成页面局部 `consumedOnAxes(slot, match)`，口径逐字不变（−25 +16）。页面代码不在 zd 覆盖面（zd 只看引擎行），以 vue-tsc 0 + CC-57/58/59 页面文本锁 + 两 shard 479/4344 为验收。
