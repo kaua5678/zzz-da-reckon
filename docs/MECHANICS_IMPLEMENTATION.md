@@ -471,6 +471,7 @@
 - **能量消耗（2026-09-12 用户纠错）**：真实值组合技 1631008=80 / 风刃 1631009=40——耗能在「能量消耗」param 展示行的 **desc 文本**里（如「(Test1)80点」），不在 param 数值字典；第一版漏抓误按 60 兜底，找法见 `docs/DATA_FETCHING.md`「耗能位置」。
 - **未建模**：烁影层数状态机/自动闪避触发率；疾锋四段闪避强化（1631020 无计数来源）；影画2「登场技替换为连携技」；流息上限截断（总量口径）。
 - 实现：`src/mechanics/agents/severian.ts`（口径见其头注释）+ spec `src/specs/agents/1631.json` notes。
+- **凭风层数口径（T17 2026-10-04 `544100b9`）**：`resolveSeverianFengfengStacks`——影画2 且本局 ≥1 次苍风影猎 ⇒ 自动 2 层（滑块 `severian.fengfengStacks` 不参与）；否则读滑块。执行行与资源区块同经此函数。
 
 ### 菲欧妮（phoenix / 1641）—— ⚠️ 3.3 测试服临时录入（火异常·坎卜斯黑枝）
 - **当前实现状态 [已实现·近似 2026-09-12]**（实现位置：`src/mechanics/agents/phoenix.ts` + spec `1641.json` + catalog 骨架（同上脚本，双源对账 `data/raw/gachabase/1641.json`）；测试 `src/mechanics/__tests__/phoenix.test.ts` 13 例 + allAgentsSweep 不变量）。**数据为 3.3 测试服快照（文本带 (Test1) 前缀）**。**专武 14164 已录**（ownerAgentId=1641，效果取 talents.1：异常精通+75、队伍异常暴击触发火伤+40%；装 vs 不装差分测试在案）；配装推荐 = nanoka fairy_recommend 真实数据（4pc 自由蓝调+2pc 法厄同之歌，主词条 异常掌控/异常精通/火伤）。

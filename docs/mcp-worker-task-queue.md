@@ -92,6 +92,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 00:09 arena-F 第 474 轮**（开工：主仓 = origin = `8d111dfd`，干净、无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T42`（已删）；产物 `/home/kaua/calc-arch/arenaF/r474/`）：**T17 `544100b9`**，3 文件 +79/−13。
+- **选题**：§3 只剩 T16（行为变化、需设计）与 T17（小、start-ready）⇒ 先做 T17。
+- **做到哪**：见 §3 T17 卡（已勾完）。要点：`resolveSeverianFengfengStacks` 成为凭风层数唯一口径；偏离卡面「显式滑块优先」已拍板并写明原因与回退点。
+- **验证**：vue-tsc 0；severian 12/12；guards 五项全绿；build 0；zd `DIFF 0 NON1581 0 []`；timeGolden 4 条 delta 全部可归因（仅 1631 c3–c6 dmg，+240 倍率点）后重生成；分片 239/2089 + 240/2255 = **479/4344**（新基线）。
+- **下一步（start-ready）**：**T16 般岳怒相轴内覆盖**——但它**不是**一张可直接开工的卡：怒相增益现在是 **panel 级**（`applyBanyuePanel` 把 `sheerForceFlat +300 / fireDmg +36 / critDmg +36` 乘覆盖率滑块加进面板），而行级通道 `DirectRowBonus` 目前只有 `critDmgBonus` / `sheerDmgBonus` / `note`（看 `typesRows.ts`）。轴内精确化需要：① `DirectRowBonus` 扩 `fireDmgBonus?` 与 `sheerForceFlat?`（或等价行级面板覆盖）并让 `damagePoolDirect.ts#emitExecDirect` 消费；② 轴模式下 `applyBanyuePanel` 的怒相段**不加**（否则双计），改由 `BanyueOverlay` 加 `rageWindowByMove?: Map<moveId, 窗内占比>`，`axisWindowOverlays` 扫怒相进入点（焚身 = 强特/支援突击块）起 30s；③ 非轴臂维持滑块。先写 `docs/mcp-cc439-banyue-rage-window.md` 设计稿（含「行级贯穿力 flat 怎么进伤害公式」的核查——贯穿伤害 = 贯穿力 × 倍率，flat 加在面板 sheerForce 上，行级必须在该行的贯穿力上加），再拆 a（通道扩字段，零差）/ b（般岳迁入，非零差归因）两步。或先做 r462 两条小 lead 热身。
+
 **2026-10-03 23:57 arena-F 第 473 轮**（开工：主仓 = origin = `7743e5c7`，干净、无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T41`（已删）；产物 `/home/kaua/calc-arch/arenaF/r473/`）：**CC-437g `38adb975`**，14 文件 +118/−140，**CC-437 全部落地（T15 a→g 七步、七次 zd 0）**。
 - **做到哪**：共享类型只剩纯 brand `AgentAxisOverlay = { readonly [AXIS_OVERLAY_BRAND]: true }`；`AgentAxisOverlays` / `AxisScalarOverlays` / `scalarBySlot` 全删；`axisWindowOverlays` 返回 `AgentAxisOverlay | null`；`DirectRowBonusInput` 只剩必填 `overlay`；编排层 `collectAxisWindowOverlays → Map<slot, AgentAxisOverlay>` → `DamagePoolContext.axisOverlayBySlot` → `damagePoolDirect` 的 `overlay = axisOverlayBySlot.get(slot)` 一条线，零 cast、零解释。锁测试 `axisOverlayOpaqueCc437.test.ts` 三条（文本锁，因为「成员不存在」类型系统钉不住）。
 - **决定**：锁 ② 比设计稿多钉了三个编排层文件（damagePool / damagePoolDirect / useResourceCalc）与 `bucketsBySlot` / `overlayBuckets` 两个名字——依据：这些名字一旦回来就意味着编排层又开始解释 overlay 内容；回退点 = 改锁测试名单。`AgentAxisOverlays` 与 `AxisScalarOverlays` 两个头注释里的 CC-17 泄漏论证压缩进 `AgentAxisOverlay` 的历史段，不另存文档（设计稿 §1 已有全文）。
@@ -772,11 +778,11 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 <!-- /card:T16 -->
 
 <!-- card:T17 -->
-### T17 · 赛维里安(1631) C2 凭风自动补层（真缺口 G3，2026-10-03 pending 分诊立项）
+### T17 · ✅ 完成（r474 `544100b9`）· 赛维里安(1631) C2 凭风自动补层（真缺口 G3，2026-10-03 pending 分诊立项）
 **卡面就是全部上下文**：`src/mechanics/agents/severian.ts:39-71`（`cycleFromCfg` 读 `severian.fengfengStacks`）+ `:249`。**缺口**：C2「每次苍风影猎获得 2 层凭风」现并入凭风层数滑块 `severian.fengfengStacks` 手动调（默认 1）；苍风影猎次数已由 buildExecutions 自算（流息收入/100）⇒ C2 后 1 次苍风影猎即满 2 层，应自动封顶、无需手调。
-- [ ] `cycleFromCfg`：C2 且 `severian.fengfengStacks` 未显式覆盖时按苍风影猎次数自动给满 2 层；显式滑块仍优先（用户校准通道）。
-- [ ] 锁：`severian.test.ts` 加 C2 自动补层用例（默认滑块 vs 显式滑块两态）。
-- [ ] 验收：`timeout 280 npx vue-tsc -b --force` 0；`npx vitest run severian`；zd 0（默认 1→2 只影响 C2+ 且未显式调滑块的队——若有 delta 逐队归因）。
+- [x] ~~`cycleFromCfg`：C2 且 `severian.fengfengStacks` 未显式覆盖时按苍风影猎次数自动给满 2 层；显式滑块仍优先（用户校准通道）。~~ **实做偏离（r474 拍板）**：`resolveSeverianFengfengStacks({cinemaLevel, shadowHuntCount, sliderStacks})` = C2 且 ≥1 次影猎 ⇒ **2，滑块不参与**；否则滑块夹 0..2。原因：机制设置协议（`buildCharConfig` 写 `setting:<id>` 恒为数字、缺省填 default）分不出「用户设 1」与「默认 1」，要做「显式优先」得给协议加 unset 哨兵，为一个滑块改全局协议不值；物理上 C2 下低于 2 层只可能发生在首次影猎前的那一个载体。回退点 `git revert 544100b9`。两读者（`patchSeverianExecutions` / `buildSeverianResourceResult`）都经该函数，`cycleFromCfg` 改为显式传层数。
+- [x] 锁：`severian.test.ts` 加纯函数 7 断言 + 真管线用例（C0 默认 1 / C2 默认 ⇒ 2 / C2 显式 0 ⇒ 2；连携行倍率差 = MULT[2]−MULT[1]）。⚠ 坑：同一 `it` 内多次 `setup` 共用 pinia，`setMechanicSetting` 会残留 ⇒ 先读默认态再设显式值；`skillTableNote` 被 enrich 的「已从倍率表 rows 回填…」整体覆盖（预存问题，模块 patch 写的「凭风N层」注释到不了最终行），不能当判据。
+- [x] 验收：vue-tsc 0；severian 12/12；zd `DIFF 0`（夹具无 C2+ 赛维里安）；timeGolden 4 条 delta 全部 `agent:1631` c3/c4/c5/c6 dmg +0.62%~0.75%（载体末击倍率 +240），c0 不变、时间账零变化 ⇒ `TIME_GOLDEN_UPDATE=1` 重生成，归因在提交说明。
 <!-- /card:T17 -->
 
 （T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。**当前待执行卡**：T15（CC-437，arena-F r467 进行中）、T16（般岳怒相轴内覆盖，等 T15）、T17（赛维里安 C2 凭风自动补层，start-ready）——T16/T17 由 2026-10-03 pending 分诊立项（146 条 pending 三分类，台账 `.claude/pending-triage-2026-10-03.md`）。T13 仅剩 c / b′ 默认不做；T10 备选，等锁变红。）
