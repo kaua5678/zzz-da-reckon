@@ -762,7 +762,9 @@ export function createRunCalcRound(deps: {
     const baseStun = extractStunExecsFrom(rr, true)
     const baseAnomaly = extractAnomalyExecsFrom(rr, true)
     const p = buildPromoteParams(configStore, catalogStore, rr, base.characters)
-    if (baseStun.length === 0) return null
+    // CC-417（T12）：原 `if (baseStun.length === 0) return null`（初始提交遗留）把「没有任何失衡贡献行」
+    // 放大成「整轮无结果」——生产里单人支援/防护默认 weight 0 ⇒ 无平A行 ⇒ 只剩终结技 ⇒ 伤害池/能量账全部消失。
+    // 空失衡池是合法状态：下游 promoteFixpoint / 失衡池按空数组算出 stunCount 0，伤害池照常给行（实测无 NaN / 抛错）。
     const goodReview = ultimateGiftSourceOf(configStore, rr)?.goodReviewTotal ?? -1  // CC-35d-B3
     const energyBySlot: Record<number, number> = {}
     for (const c of rr.characters) energyBySlot[c.slot] = c.energySource?.total ?? 0
