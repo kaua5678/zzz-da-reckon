@@ -69,6 +69,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **drift 复核**：要看从原始口径日期到现在的全部改动（`git log <原始据日期>..HEAD -- <锚文件>`），不要只看上次 `·复核@` 之后的。另外，有些条目的竖线前没有空格（`·复核@2026-09-25| 验`），不要把戳打进「验」或「锚」段（CC-87）。
 - **`src/views/TeamComparePage.vue` 只剩约 38 行结构熵余量**：给该页加功能，写到 `src/composables/teamCompare*.ts`（CC-92）。
 - **反空洞下限要量「扫描面」，不要量「被扫描的问题」**（r404 CC-378）：判据 25 原先以 Record 读取数作下限，而 D2 §5 正在有意消灭这些读取，结果每推进一批就被推红一次。防「扫描器失明」的下限用扫描到的文件数这类只随仓库规模变的量。它和下一条不矛盾：下一条说的是计数**凭空**下降要追查；这里是下降原因已知、且就是重构目标。
+- **开工在自己的 worktree 跑一次 `npx vue-tsc -b --force`，先知道 master 本来红不红**（r424）：`c47e153b`（02:24）提交时 vue-tsc 没过（4 个错全在新测试文件里，vitest 不做类型检查所以全绿），master 类型检查红了 9 小时没人发现；r423 又记过「别人的红被归到自己头上然后 revert」。红了就修掉或在 §2b 记一行，别带着红继续、也别 revert 别人。回退：删掉本条。
 - **等号基线（「计数下降也报错，要求下调基线」）是有意设计，不要改成「≤」**：2026-09-14 它两次抓到扫描器盲区，计数凭空下降其实是扫描器看不见了，而不是代码变好了（`scripts/check-tokens.mjs` 头注释；`docs/mcp-working-model.md` §2.5）。
 
 ## 2b. 并行 lane 交接（§2 「每轮替换」时**不要**连本节一起删；每个 lane 一段，过时的段压成一行指针）
@@ -80,6 +81,29 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 11:40 arena-F 第 424 轮**（开工：master `c47e153b` 干净、1 个未推提交（R65-J1）已补推；无 verify / vitest 进程；11:40 起另一 lane 在主仓改 `src/mechanics/agents/remielle.ts` + `remielle.test.ts`（无认领行，到本轮收尾仍未提交）⇒ 判并行，文件面不相交；REQUIREMENTS.md 无新条目；worktree `/home/kaua/calc-arch/wtF-r424`，产物 `/home/kaua/calc-arch/arenaF/r424/`）：**CC-398 `70a16851`**，已 ff 合入 master。
+- **做到哪**：接 r423「下一步 1」（`as unknown as` 29 处）。**没有加锁第 7 条**，逐处读后分成四类（下表），只修了真断契约的 3 处 + 顺手修别人提交带进来的 4 个 tsc 错；详情见卡表 CC-398。
+  | 类 | 处数 | 位置 | 处置 |
+  |---|---|---|---|
+  | 真断契约 | 3 | `StunAxisPage.vue:592` gaugeSnapshots、`rowBuild.ts:325` + `helpers.ts:638` sustainedEx、`norma.ts:573` teamStunCoverage | **本轮修掉**（`70a16851`） |
+  | 等形但要抽共享代码 | 4 | `promia.ts:61`；`velina.ts:66-67`、`alice.ts:203-204` | §3 卡 **T6** / **T5** |
+  | 数据驱动字段名读写 | 8 | `specs/resources.ts:113,138,196,204,216`、`specs/mechanics.ts:42,228`、`resourceCalc/helpers.ts:601` | §3 卡 **T4**（收成辅助，不是去掉） |
+  | 合理，不动不锁 | 14 | 反射快照 `rowBuild.ts:44` / `truncationRefold.ts:68`；globalThis 调试钩子 `foldLoop.ts:242,244` / `core/resource.ts:347`；面板袋 `panel.ts:322` / `utils/panelStat.ts:17,21`；DOM `svgPointer.ts:37`；reactive 组装 `analysisScenario.ts:59,65,68` | 不动 |
+- **最重要的发现**：捏轴页「条XX%」（每个动作块末尾的积蓄槽百分比，用户口径④）**自 2026-08-24 起从未显示过**——core 产出、页面在读、中间的摘要没透传，`as unknown as` 让 tsc 闭嘴。这和 R65-J1 的「声明了但没接进计算」是同一个病在 UI 层。现在有端到端锁（`inStunAttribution.test.ts`「摘要透传每个动作块末尾的积蓄槽快照」）。**没有截图验证**（本轮没起浏览器）；若下一轮有余量，按 r416 的 headless 配方切到捏轴页、设一条含 1511006 / 1181005 的手动轴，确认块上出现「条电NN%」字样。
+- **master 在 02:24～12:00 之间类型检查是红的**：`c47e153b` 的 `r65j1DeadBuffProbe.test.ts` 带 4 个 vue-tsc 错进了 master（vitest 全绿掩盖）。本轮最小修（只改类型标注，探针逻辑不变），已在 §1 加长期规则「开工先 vue-tsc 看 master 红不红」。
+- **验证**：`vue-tsc -b --force` 0 错；guards / tokens / data / specs / recording EXIT 0；vitest(4) **466 文件通过**（比 r423 多 1 个文件 = 别人新增的 r65j1 探针）；build EXIT 0；zd `r424-cc398` DUMP / ROWS DIFF 0。反证：把 `convergence.ts` 换回 HEAD，新锁红、其余 38 条绿。
+- **下一步（start-ready，按价值排）**：
+  1. **§3 卡 T5（velina / alice helper 形参改真类型，机械、零差）** —— 可直接派 dsh 或执行模型，卡面写死了。
+  2. **§3 卡 T6（promia spec effect → BuffEffect 共享转换器）** —— 含一个调查项：`stores/catalog.ts#specTeamBuffToTeammateBuff` 把 spec effect 的 `source`（formula 变量 x 的 `defaultValue` / `min` / `max`）**丢掉了**；真实通道靠运行时注入 `dynamicSourceValue` 所以可能无害，但「formula 型 spec teamBuff 在没有 source 角色面板时回落什么值」要核。做法写在卡里。
+  3. **§3 卡 T4（spec 侧数据驱动字段名读写收成 `readCfgField` / `writeMechanicSettingCfg`）** —— 机械，8 处 → 2 个辅助；注意 r420 坑：`Number(raw ?? default)` 不要换成 `cfgMechanicSetting`（非有限数行为不同）。
+  4. 主队列 §2（arena-E r420）的 TWIN 候选逐个核对不变。
+- **拍板**：① 不加 `as unknown as` 锁（理由见卡表）。② gaugeSnapshots 直接接通而不是先问「该不该显示」——用户口径④白纸黑字、core 测试 16 条一直在测它、页面代码一直在等它，接通是实现既定口径，不是新功能。③ `TeammateBuff` **不**补 `note` 字段：spec 的 note 是录入备注，不是展示数据，探针改读 `description` 即可。
+- **坑**：
+  - `TS2367` 出现在 `A || (B && A)` 的第二个 `A` 上：TS 在 `||` 右支把 `A` 的判别值收窄掉了，报「无重叠」。不是联合类型缺成员，是条件冗余。
+  - `types/resource` 不 import `@/core`（本轮核实为 0 处）；core 的结果类型要给编排层摘要复用时，把类型**搬到 types** 再从 core `export type { X }` 转出，别反向 import。
+  - worktree 里 `.zc` 不入 git：`mkdir -p <wt>/.zc && cp -r .zc/perf <wt>/.zc/perf`（r423 写法照用，正常）。
+- **回退点**：`git revert 70a16851`。
 
 **2026-10-03 01:28 arena-C 第 423 轮**（开工 01:28：master `18354072`、无并行提交、独占进程只有常驻 `dsh web`；主仓仍有别人未跟踪的 `src/mechanics/__tests__/r65j1DeadBuffProbe.test.ts`（R65-J1 探针，11 分钟未更新，01:40 写出了 `.zc/reports/r65j1-dead-buff-probe.json`）⇒ 判并行，但文件面不相交（他动 mechanics/utils，我动 composables/stores/specs）；REQUIREMENTS.md 429 行无新条目；worktree `wtA-r423` 已删）：**CC-397 `3743c6c7`**，已 ff 合入 master。
 - **⚠ 事故（被误 revert 又恢复，下一轮看这里）**：01:45:38 CC-397（`3743c6c7`）ff 合入 master；01:46:48 并行 lane 把它 `git revert` 掉了（`41f169b8`，无原因说明）；01:49 本轮 revert 掉那个 revert（`8936dfb9`，commit 正文里写了证据）。**判定误伤的两步实验**（都在隔离 worktree 里做，没动别人在飞的文件）：把 `3743c6c7` 检出来 + 把主仓里别人未跟踪的两个文件（`src/core/teammateBuffSource.ts` 的 WIP、`src/mechanics/__tests__/r65j1DeadBuffProbe.test.ts`）原样拷进去跑 `vue-tsc` ⇒ 报 `r65j1DeadBuffProbe.test.ts(283,1): error TS1005: '}' expected.`；在**已 revert 的状态**做同样一件事 ⇒ **同一个错、同一行同一列**。⇒ 这个语法错与 CC-397 无关：那个探针文件当时是**写到一半的状态**（282 行、末尾块没合上），任何人那时刻全仓库跑 vue-tsc / verify 都会红。时间线也合踐：revert 之后 01:47:39 他们还在继续改那个探针。
@@ -310,4 +334,82 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 （T1、T2 已于第 370 轮 `0c5e00cb` 完成）
 
-（当前无待办执行卡；T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成）
+（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出。）
+
+<!-- card:T4 -->
+### T4 · spec 侧「按数据给的字段名读写 cfg」收成两个辅助（机械、零差）
+
+**仓库** `/home/kaua/projects/zzz-calculator`（先 `git worktree add --detach /home/kaua/calc-arch/wt-T4 HEAD && ln -s /home/kaua/projects/zzz-calculator/node_modules /home/kaua/calc-arch/wt-T4/node_modules`，在 worktree 里做；**不许碰主仓库**）。
+
+**背景**：spec JSON 用 `valueField` / `initialValueField` / `enabledField` / `carrierField` / `bonusEnabledField` 这类字段名指定「去 cfg 的哪个键读」，所以这些读取天然是动态键，代码里写成 8 处各自的 `cfg as unknown as Record<string, unknown>`。目标不是去掉动态读取，而是让「spec 按字段名读 cfg」只有一个入口。
+
+**改法**：
+1. 新建 `src/specs/cfgField.ts`，内容只有两个导出：
+   ```ts
+   import type { CharacterOperationConfig } from '@/types/resource'
+   /** spec 数据按字段名读 cfg（valueField / enabledField / carrierField …）。唯一入口：动态键只在这里出现。 */
+   export function readCfgField(cfg: CharacterOperationConfig, field: string): unknown {
+     return (cfg as unknown as Record<string, unknown>)[field]
+   }
+   /** 机制可调设置写入 cfg（键 = mechanicSettingCfgKey(id)）；读端是 utils/mechanicSettingCfg.ts 的 cfgMechanicSetting*。 */
+   export function writeMechanicSettingCfg(cfg: CharacterOperationConfig, settingId: string, value: unknown): void {
+     ;(cfg as unknown as Record<string, unknown>)[mechanicSettingCfgKey(settingId)] = value
+   }
+   ```
+   （`mechanicSettingCfgKey` 从 `@/utils/mechanicSettingCfg` import。）
+2. 把下面 8 处改成调用辅助，**表达式其余部分逐字不变**（尤其 `Number(... ?? default)`、`Math.max(0, …) || 0`、`Boolean(...)`、`String(... ?? '')` 原样保留）：
+   - `src/specs/resources.ts` 113 / 196 / 204 / 216：`record[X]` → `readCfgField(cfg, X)`，删掉对应的 `const record = …` 行；
+   - `src/specs/resources.ts` 138：`record[mechanicSettingCfgKey(adjustable.id)]` → `readCfgField(cfg, mechanicSettingCfgKey(adjustable.id))`（**不要**换成 `cfgMechanicSetting`：它对非有限数取 fallback，和现有 `Number(raw ?? default)` + `isFinite` 判定不同，r420 踩过）；
+   - `src/specs/mechanics.ts` 42 / 228：同上；
+   - `src/composables/resourceCalc/helpers.ts` 601：`record[mechanicSettingCfgKey(setting.id)] = …` → `writeMechanicSettingCfg(cfg, setting.id, configStore.getMechanicSetting(setting.id, setting.default))`，删掉 `const record = …`。
+3. 改完 `grep -n "as unknown as Record" src/specs src/composables/resourceCalc/helpers.ts` 应只剩 `src/specs/cfgField.ts` 里的 2 处。
+
+**验收**（都在 worktree 里，前台跑）：
+- `timeout 280 npx vue-tsc -b --force` 退出 0；
+- `timeout 280 npx vitest run --maxWorkers=2 src/specs src/composables/__tests__/sustainedEx.test.ts src/composables/__tests__/moveFusion.test.ts` 全绿；
+- 零差：`cd /home/kaua/projects/zzz-calculator && mkdir -p /home/kaua/calc-arch/wt-T4/.zc && cp -r .zc/perf /home/kaua/calc-arch/wt-T4/.zc/perf && ZD_REPO=/home/kaua/calc-arch/wt-T4 timeout 280 bash .zc/perf/zd.sh T4` 输出 `DUMP DIFF 0` 且 `ROWS DIFF 0`。
+
+**不许**：改任何 JSON；改 `utils/mechanicSettingCfg.ts`；动 `rowBuild.ts:44` / `truncationRefold.ts:68`（那两处是整对象反射快照，不是字段读取）。
+
+**报告**：首行 `STATUS: done|blocked`，然后贴 `git -C /home/kaua/calc-arch/wt-T4 diff --stat` 与三条验收的最后 3 行输出。
+<!-- /card:T4 -->
+
+<!-- card:T5 -->
+### T5 · velina / alice 的资源 helper 形参改成真类型，删 `as unknown as`（机械、零差）
+
+**仓库 / worktree** 同 T4（用 `/home/kaua/calc-arch/wt-T5`）。
+
+**背景**：`src/mechanics/agents/velina.ts` 的 `buildVelinaFloriaSource` / `velinaBroadCycloneCountFromFloria` 与 `src/mechanics/agents/alice.ts` 的 `buildAliceSwordWillSource` 把形参 `cfg` / `state` 自己缩成结构类型（只列自己读的几个字段），然后调 `computeSpecResources(spec, cfg as unknown as CharacterOperationConfig, state as unknown as IterationState, …)` 向上撒谎。三个函数全部是模块内部函数，调用点（velina 217 / 279 / 329，alice 258 / 321 / 332）传的都是钩子入参里的真 `cfg: CharacterOperationConfig` 与 `state: IterationState`。
+
+**改法**：
+1. velina.ts：两个函数的形参改为 `cfg: CharacterOperationConfig, state: IterationState`；删掉第 66–67 行两个 `as unknown as`，直接传 `cfg, state`。`IterationState` 的 import 若缺，从 `@/types/resource` 加 `import type`。
+2. alice.ts：`buildAliceSwordWillSource` 的 `cfg` 形参（现在是一个 11 字段的内联对象类型）改为 `CharacterOperationConfig`，`state` 改为 `IterationState`；删掉第 203–204 行两个 `as unknown as`。第 3 参 `anomalyPoolData` 不动。
+3. 若 vue-tsc 报某个被读的字段不在 `CharacterOperationConfig` 上（例如 `alicePolarityAssaultSwordWill`），**不要**把形参改回内联类型：那说明该字段本来就没声明，去 `src/types/resource/config.ts` 里按同名字段的注释风格补一行 `xxx?: number`（写清写入方），这是 CC-395 以来的既定修法。
+4. `grep -n "as unknown as" src/mechanics/agents/velina.ts src/mechanics/agents/alice.ts` 应为 0 行。
+
+**验收**：`timeout 280 npx vue-tsc -b --force` 退出 0；`timeout 280 npx vitest run --maxWorkers=2 src/mechanics/__tests__/velina.test.ts src/mechanics/__tests__/alice.test.ts src/mechanics/__tests__/selfFromDispatcherCc383.test.ts` 全绿（测试里若有用部分对象直接调这两个 helper 的用例，改夹具为真 cfg/state——`setupHarness` 产出——断言不动；不要为了旧夹具保留窄形参）；零差同 T4（tag `T5`）。
+
+**不许**：改 `computeSpecResources` 的签名；改任何 spec JSON；碰 `promia.ts`（那是 T6）。
+
+**报告**：同 T4 格式。
+<!-- /card:T5 -->
+
+<!-- card:T6 -->
+### T6 · promia 展示值的 spec effect → `BuffEffect` 走共享转换器（含一个调查项；需要判断，不派 dsh）
+
+**仓库 / worktree** 同 T4（用 `/home/kaua/calc-arch/wt-T6`）。
+
+**背景**：`src/mechanics/agents/promia.ts:58-62 requirePromiaTeamReleaseEffect()` 把 spec `1541.json` teamBuff `promia_ice_team_release_dmg` 的 `effects[0]`（类型 `TeamBuffEffectSpec`，字段几乎全可选）`as unknown as BuffEffect` 后喂给 `applyEffect` 算展示值。真实生效通道是 `src/stores/catalog.ts#specTeamBuffToTeammateBuff`（约 47–75 行）：它把 spec effect 转成 `BuffEffect`，补 `id / type / mode / value / target / coverage` 默认值，透传 `sourceStat / sourcePanelPhase / formula / ratio / cap / targetSkillType`，**但不透传 `source`**（spec 里 formula 变量 x 的 `defaultValue / min / max / label`）。promia 走的是未转换的原件（带 `source`），store 走的是转换件（不带）——同一条数据两种形状。
+
+**步骤**：
+1. **先调查再动手**：读 `src/core/buff.ts#applyEffect` 的 `formula` 分支与 `getEffectSourceValue`，回答：当 effect 没有 `dynamicSourceValue` 时，x 取 `defaultSourceValue` 还是 `source.defaultValue`？转换器丢掉 `source` 之后，真实通道里「没有来源角色面板可注入」的场景（有没有这种场景？看 `collectInCombatTeamBuffs` 怎么注入 `dynamicSourceValue`）回落到什么值。把结论写进 `docs/mcp-calc-core-architecture.md` 的 CC-398 行末尾（一句话 + 文件:行号）。
+2. 把转换器从 store 闭包里抽成纯函数：新建 `src/specs/teamBuffConvert.ts`，导出 `specEffectToBuffEffect(tb: TeamBuffSpec, e: TeamBuffEffectSpec, i: number, coverage: number): BuffEffect` 与 `specTeamBuffToTeammateBuff(agentId, agent, tb)`（后者就是现在 store 里那段，搬过去；store 改为 import）。**逐字搬**，不顺手改字段。
+3. promia.ts：`requirePromiaTeamReleaseEffect` 改为 `specEffectToBuffEffect(tb, tb.effects[0], 0, tb.coverage ?? 1)`，删 `as unknown as`。
+4. **A/B**：改前改后各跑一次 `src/mechanics/__tests__/promia.test.ts` 里会打印 / 断言 `masteryExcess` 与异放增伤展示值的用例；若展示值变了，原因只可能是步骤 1 查出来的 `source` 丢失 ⇒ 在转换器里补透传 `source`（这是修真实通道的隐患，不是迁就 promia），然后重跑全量 vitest 看 teammate buff 相关 golden 有没有动，动了逐条解释。
+
+**验收**：vue-tsc 0 错；`promia.test.ts` + `src/stores/__tests__` + `src/core/__tests__/buff*.test.ts` 全绿；零差（tag `T6`）；若步骤 4 补了 `source` 透传，还要全量 vitest(4) 前台跑一次。
+
+**不许**：改 1541.json；改 `applyEffect` 的语义。
+
+**报告**：同 T4 格式，外加步骤 1 的结论原文。
+<!-- /card:T6 -->
