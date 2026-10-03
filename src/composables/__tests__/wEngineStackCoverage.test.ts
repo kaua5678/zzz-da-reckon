@@ -6,6 +6,8 @@
  * 所以**行数/招式数 ≠ 事件数**，必须逐角色按耗能段结构折算。
  *
  * 防的回归形态（般岳 rageGainCoverage 同款）：滑块/折算改了，面板与伤害却不变 = 通道静默断。
+ * ⚠ r442（arena-F）：下面这段基准对应的 harness 改动（TEST_BASE_CHAR 平A权重按生产口径支援/防护=0）
+ *   因连带 4 条红已回退，夹具暂仍是 weight=1；基准数字留着给队列 §3 T11 落地时核对，别照它改断言。
  * 实测基准（180s 局，夹具按生产口径支援/防护 weight=0）：
  *   格莉丝主C独吞平A池 ⇒ 普E吃满覆盖 100；与异常队友(维丹队)分平A池(30.1s) ⇒ 强特12+普E8
  *   =20事件 ⇒ 覆盖 29.6%（+22.2 精通 vs 旧满层 +75）；
@@ -57,19 +59,17 @@ describe('音擎叠层覆盖率自动回填（嵌合编译器 14118，能耗事�
   })
 
   it('通道活着：格莉丝主C回填后异常精通面板显著低于满层默认，覆盖率落时间加权口径', async () => {
-    // 格莉丝主C + 双异常队友（维琳娜/月城柳，weight 1 与她分平A池，她分不全 ⇒ 普E受限、覆盖<100）。
-    // 不用支援队友：夹具按生产口径支援 weight=0，此时格莉丝独吞平A池普E吃满覆盖 100（测不出「<60」）。
-    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1561' }, { agentId: '1221' }])
+    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1411' }, { agentId: '1211' }])
     config.team[0].wEngineId = '14118'
     const calc = useResourceCalc()
     void calc.panels.value // 触发回填链
     const stored = config.getWEngineEffectCoverage(EFFECT_ID)
-    // 与异常队友分平A池 ⇒ 普E受限 ⇒ 覆盖显著低于旧行为恒 100
+    // 实测 24 事件 ⇒ 35.6%；旧行为恒 100 ⇒ 必须显著低于 100
     expect(stored).toBeLessThan(60)
     expect(stored).toBeGreaterThan(0)
     const panel = calc.panels.value.find(p => (p as { slot?: number }).slot === 0)
     const ap = (panel as { anomalyProficiency?: number } | undefined)?.anomalyProficiency ?? 0
-    // 满层 +75 ⇒ 基础 90 + 75 = 165；回填后应明显低于 165
+    // 满层 +75 ⇒ 基础 90 + 75 = 165；回填后（约 +27）应明显低于 165
     expect(ap).toBeLessThan(160)
   })
 
