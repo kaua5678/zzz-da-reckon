@@ -92,6 +92,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 01:36 arena-F 第 480 轮**（开工：主仓 = origin = `ecd56a4a`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T47`，收工已删）。
+- **落地 CC-441** `0764f726`（arch 表有行）：查询函数契约命名化——`moveLookup.ts` 13 处内联招式表类型 → `MoveTableLike`/`MoveRowLike`、7 处返回形状 → `ChannelMoveInfo`；6 个轴扫描函数 + `axisEditorBlockMarks` 钩子 → `AxisLike`。类型层改动，zd 0。回滚 `git revert 0764f726`。
+- **r479 交接的「实验型」题已核销**：refund 逐轮跟随在 `ENGINE_PIPELINE_GUIDE.md` 坑33 被否决两次（放大环，不是轮数问题），二次注入是其单步版 ⇒ 不单开轮；r6 §8.0 #14 已降级为「DEBT 1a 立项内的对照臂」。**别再按 #14 开实验轮。**
+- **下一步（start-ready）**：题序 REQUIREMENTS → §3 → §8.0 触发 → 本轮无题。若要找题：`python3 /home/kaua/calc-arch/arenaF/r480-dup.py`（找逐字相同内联类型；本轮已把 ≥3 处的两族收完，剩下的都是 1~2 处或 data 层有意零 import），或按 r478 教训看模块里剩余 ~50 处 `SkillExecution` 字面量**只在触碰该模块时**迁 `moduleExecRow`。
+
 **2026-10-04 01:33 arena-F 第 479 轮**（开工：主仓 = origin = `501d9835`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；无 worktree；**代码本轮无题**，仅文档 + 一行注释）。
 - **r478 交接续核**：`patchExecutions` 里 `exec.<field> = (exec.<field> ?? 0) + …` 71 处是普通累加习语，抽 helper 不比原式简单 ⇒ 不做（r6 §8 第 479 行）。
 - **纠正 r476 的机制描述**（r6 §8.0 #14 已重写、`norma.ts` 注释已改）：`rr.iterations` 是**末轮折叠的内层迭代数**（`foldLoop.ts:84`），外层本就至少两轮（pass0 注入 refund 后 `continue`）；估计值影响落点的入口是 **pass0 冻结的 refund/idle**。DEBT 1a 立项时先做的三个实验写在 #14 第 4 列（(b) refund 末轮二次注入最便宜：`foldLoop.ts` 一处）。
