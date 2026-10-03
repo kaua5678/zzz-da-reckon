@@ -85,9 +85,17 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 15:28 arena-F 第 438 轮**（开工：origin `e61543ca`，本地 master 分叉 = `9d818b7b`（别人，未推）+ 我的两个重复 patch；无进程；REQUIREMENTS.md 无新条目；本轮不派工人，专门收敛分叉 + 修红；产物 `/home/kaua/calc-arch/arenaF/r438-{tsc,guards,vt,build}.log`、`arenaF/AGENTS.md.other-lane-wip-1529`）：**`f64753db` 已推 origin/master，master 全绿**。
+- **做了什么**：① `cp AGENTS.md 备份; git show HEAD:AGENTS.md > AGENTS.md; git rebase origin/master; cp 备份回来`——本地 master 直接落到 origin 之上，我那两个重复 patch 被 rebase 自动丢弃，别人的提交**重写为 `31fdfe8f`**（内容同 `9d818b7b`，作者不变；下一轮若看到 `9d818b7b` 的引用，就是这个）。② 诊断 `outerCyclePick.test.ts` 的红：不是环算法变了，是 **`31fdfe8f` 在 `useResourceCalc()` 里加了 `watch(wEngineStackAutoCoverages, …, { immediate: true, flush: 'post' })`**——建队后的第一个 `await` 让 Vue 调度器 flush 这个 watcher，经 `adjustedResourceResult` 把整条管线算完并缓存；旧测试在建队**之后**才清空 `observed`，再读 `resourceResult` 命中缓存 ⇒ 长环分支「0 次」。**修法（测试侧，最小）**：把清空 `observed` 提前到建队之前（空队阶段不出长环，`members.length >= 3` 过滤天然排除），提交 `f64753db`。③ 全量验证在 `wtF-r438`（= 31fdfe8f + 修测）：vue-tsc 0、guards 链 0、build 0、**vitest(4) 469 文件 / 4302 用例（新基线，+1 文件 +6 用例来自 `wEngineStackCoverage.test.ts`）**。④ 推送 `f64753db`，unpushed 0。
+- **拍板**：没有 revert 别人的功能、也没有改它的实现；只改了测试的观察窗口。依据：功能本身的 6 条测试绿、guards 绿、面板口径是作者有意的改动；红的根因是测试对「管线惰性求值」的隐含假设，而不是功能错。**但要记一笔设计味道**：composable 创建即 `immediate` 触发整条资源管线（哪怕没有任何 UI 读结果），以后若发现启动慢 / 测试里莫名多算一轮，先查这里；更干净的做法是让回填成为 `calcOutput` 链上的一个 computed 而不是副作用 watch——放进 §3 当备选卡（T10），不急。
+- **孤儿收养**：`AGENTS.md` 的 6 行未提交改动（别人 14:19 起、无认领、>1h）是 dsh `subagent` 工具 one-shot / continuable 路由说明，纯文档，随本轮文档提交一起入库（提交信息注明来源）。
+- **给 `31fdfe8f` 作者的话**：你的提交已在 master（hash 变了，因 rebase）；`outerCyclePick` 红的原因与修法见上；如果你本地还有基于 `9d818b7b` 的分支，`git rebase origin/master` 即可。
+- **下一步（start-ready）**：§3 T8 burnice（卡面就绪）→ T9；T10（备选）见 §3。
+- **回滚点**：`git revert f64753db`（只回退测试窗口；回退后 master 会重新红）。
+
 **2026-10-03 14:58 arena-F 第 437 轮**（开工：master `aa499bca` 干净已推；别人的 wEngineStackCoverage WIP 仍在主仓、未认领；REQUIREMENTS.md 无新条目；派 dsh 做 §3 卡 T8 后半 soukaku / grace，worktree `wt-T8b`（已删）；产物 `/home/kaua/calc-arch/arenaF/r437/`：`dispatch-t8c.sh`、`worker-T8sg.report`、`guards.log` / `build.log` / `vt.log`（基线 aa499bca 上的全量）、`guards-head.log` / `tsc-head.log` / `vt-head.log`（含别人提交的 HEAD 上的全量））：**CC-411 `db9e0655`**（代码，**已推到 origin/master**）+ 本文档提交。
 - **做到哪**：T8 的 soukaku / grace 完成（工人 8 分钟一次过，brief 里预先 grep 好的事实起作用了）；T8 只剩 burnice（卡面已把 r437 核过的行号 / 8 处夹具写进去，可直接派）。
-- **⚠ 现场分叉（下一轮先读这条）**：15:16 另一条 lane（提交者 `kaua5678`，无认领行）在**主仓**提交了 `9d818b7b feat(wengine): 嵌合编译器等叠层音擎buff覆盖率…`（4 文件，与本轮不相交）。我 ff 失败后 cherry-pick 成 `e651e5c7` 叠在它上面，然后在干净 worktree 对 HEAD 跑全量：**`outerCyclePick.test.ts › yixuan-jufufu-lucia 长环分支只调用一次`，实测 0 次 ⇒ 红**；单测隔离：`aa499bca` 绿、`9d818b7b` 红 ⇒ **是 `9d818b7b` 引入的**（它改了 `useResourceCalc.ts` 50 行，推测动到外环选点的接线）。按规则我不回滚别人的提交；也不把红的 master 推上去——所以 **origin/master 推的是 `db9e0655`（= aa499bca + CC-411，全量 468/4296 绿）**，本地 master 仍是 `9d818b7b → e651e5c7 → （本文档 cherry-pick）`，与远端**内容等价但历史分叉**。处置：`9d818b7b` 的作者下次 `git pull --rebase origin master` 即可——`e651e5c7` 与 `db9e0655` patch-id 相同会被自动丢弃，只剩他那一个提交重放；重放后**先修 `outerCyclePick.test.ts` 再推**。若他 1 小时内没动静，下一轮 arena 会话按孤儿规则处理：在 worktree 里 `git rebase origin/master` 他的提交 → 看那条测试 → 要么修要么 `git revert` 并在这里写明。**不要**在主仓做 `git reset`——他的工作树还有未提交的 `AGENTS.md`。
+- **⚠ 现场分叉（r438 已收敛，见上方 r438 块；此条留作记录）**：15:16 另一条 lane（提交者 `kaua5678`，无认领行）在**主仓**提交了 `9d818b7b feat(wengine): 嵌合编译器等叠层音擎buff覆盖率…`（4 文件，与本轮不相交）。我 ff 失败后 cherry-pick 成 `e651e5c7` 叠在它上面，然后在干净 worktree 对 HEAD 跑全量：**`outerCyclePick.test.ts › yixuan-jufufu-lucia 长环分支只调用一次`，实测 0 次 ⇒ 红**；单测隔离：`aa499bca` 绿、`9d818b7b` 红 ⇒ **是 `9d818b7b` 引入的**（它改了 `useResourceCalc.ts` 50 行，推测动到外环选点的接线）。按规则我不回滚别人的提交；也不把红的 master 推上去——所以 **origin/master 推的是 `db9e0655`（= aa499bca + CC-411，全量 468/4296 绿）**，本地 master 仍是 `9d818b7b → e651e5c7 → （本文档 cherry-pick）`，与远端**内容等价但历史分叉**。处置：`9d818b7b` 的作者下次 `git pull --rebase origin master` 即可——`e651e5c7` 与 `db9e0655` patch-id 相同会被自动丢弃，只剩他那一个提交重放；重放后**先修 `outerCyclePick.test.ts` 再推**。若他 1 小时内没动静，下一轮 arena 会话按孤儿规则处理：在 worktree 里 `git rebase origin/master` 他的提交 → 看那条测试 → 要么修要么 `git revert` 并在这里写明。**不要**在主仓做 `git reset`——他的工作树还有未提交的 `AGENTS.md`。
 - **流程教训（入 §0）**：guards 链 + build + 全量 vitest 串在**一条** `wsl_exec` 里，总时长超过桥的上限（~285s），vitest 被连带杀掉、日志半截（`vt.log` 第一版）——全量 vitest 必须**单独一条调用**，前面的 guards / build 另起一条。
 - **下一步（start-ready）**：① 派工人做 T8 burnice（卡面已就绪）；② T9（倍率 / 能量常量 → `mechanicRowValues`，hugo 709.8 / xixifu 254.4、1009.1 / grace A?_ENERGY）；③ 若 `9d818b7b` 仍红且无人认领，按上面的孤儿处置。
 - **回滚点**：`git revert db9e0655`。
@@ -305,6 +313,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 **2026-09-29 arena-B 第 1–4 轮**（抽卡规划线：孤儿 WIP 收养 `d3443e39`、收入按版本日历 `724f37cf`、购买窗口上界 `c8b76d2f`、购买阶梯数据化 `bf868983`）：已结项，抽卡规划线剩下的都待用户裁决（提案 §6「完全下位」标签、§5.5 阶梯内容）。原交接全文：`git show 08acb322~1:docs/mcp-worker-task-queue.md` 的 §2b。
 
+- **观察管线调用次数的测试，观察窗口要在 `useResourceCalc()` 之前打开（2026-10-03 r438）**：composable 里可以有 `immediate` watcher（`31fdfe8f` 的音擎覆盖率回填就是），首个 `await` 后管线已算完并缓存；建队后再清空观察数组 ⇒ 读到的是缓存，计数为 0。对应地，往 composable 里加会触发管线的 `immediate` watch 时，`grep -l "observed\." src/composables/__tests__` 看一眼哪些测试在数调用。
+
 ## 2. 最近一轮交接（每轮替换本节）
 
 **第 420 轮（lane arena-E；无并行会话；起点 `2dcdc2bf`（外来 docs 提交，已补推）；REQUIREMENTS.md 无新条目）：CC-394 `497aaa27` + 文档，已 push。**
@@ -437,6 +447,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 **不许碰**：`claret.ts:443–444` 与 burnice 的 `STIRRING/TOSSING_DAMAGE_FALLBACK`——那两个引擎路径已经先读表，是 CC-408 明示「下次碰该模块顺手改」的项，要改放在同一提交里也可以，但不要为它们单独改测试口径。
 <!-- /card:T9 -->
+
+<!-- card:T10 -->
+### T10（备选，不急）· 音擎叠层覆盖率回填从「副作用 watch」改成「computed 链上的一环」
+**现状**（`31fdfe8f`，2026-10-03）：`useResourceCalc()` 里 `watch(wEngineStackAutoCoverages, auto => configStore.applyWEngineEffectCoverageAuto(auto), { immediate: true, flush: 'post' })`——composable 一创建就把整条资源管线算一遍写回 store；面板再读 store 重算。**问题**：① 创建即算（没人读结果也算）；② 测试里任何 `await` 之后管线都可能已被这个 watcher 算过并缓存（r438 `outerCyclePick` 就是这么红的）；③ 数据流绕一圈 store 才回到面板。
+**目标**：回填值作为 `calcOutput` 链上的一个 computed（或 `panelPhases` 的输入参数）直接消费，手调 sticky 逻辑保留在 store；去掉 watch。**验收**：`wEngineStackCoverage.test.ts` 6 条 + 面板相关测试绿；zd DIFF 0（面板覆盖率数值不变）；`outerCyclePick.test.ts` 的观察窗口提前那段注释可删。**先问作者的意图**：看 `src/data/wEngineStackCoverage.ts` 头注释与 `useResourceCalc.ts` 该段注释里「声明位置硬约束 / TDZ」那几行——他选 watch 很可能是为了绕 `runCalcRound` 的 TDZ，改之前把这层依赖理顺。
+<!-- /card:T10 -->
 
 （T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**。）
 
