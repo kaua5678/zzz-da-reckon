@@ -14,7 +14,7 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting as cfgSetting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 
 /**
@@ -120,11 +120,6 @@ export const SIGRID_C6_LAST_HIT_RATIOS: readonly number[] = [80, 90, 100]
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
-}
-
-function settingOf(settings: Readonly<Record<string, number>>, id: string, fallback: number): number {
-  const value = Number(settings?.[id])
-  return Number.isFinite(value) ? value : fallback
 }
 
 /**

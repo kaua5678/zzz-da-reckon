@@ -29,7 +29,7 @@ import type {
   ReleaseModifierInput,
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 
 export const PHOENIX_ID = '1641'
@@ -98,10 +98,6 @@ export function phoenixSkillLevel(cinemaLevel: number): number {
   return 12 + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
 }
 
-function settingOf(settings: Readonly<Record<string, number>>, id: string, fallback: number): number {
-  const v = Number(settings?.[id])
-  return Number.isFinite(v) ? v : fallback
-}
 function clamp01(value: number): number { return Math.max(0, Math.min(1, value)) }
 
 export interface PhoenixCycle {

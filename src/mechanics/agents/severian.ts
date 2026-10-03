@@ -31,7 +31,7 @@ import type {
 } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { execMatchesMove } from '@/types/resource'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 
 export const SEVERIAN_ID = '1631'
@@ -87,10 +87,6 @@ export const SEVERIAN_BASIC_MOVE_IDS: ReadonlySet<string> = new Set([
   SEVERIAN_SHADOW_MOVE_ID,
 ])
 
-function settingOf(settings: Readonly<Record<string, number>>, id: string, fallback: number): number {
-  const v = Number(settings?.[id])
-  return Number.isFinite(v) ? v : fallback
-}
 function clamp01(value: number): number { return Math.max(0, Math.min(1, value)) }
 
 export interface SeverianCycle {

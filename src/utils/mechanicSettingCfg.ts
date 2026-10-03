@@ -26,3 +26,14 @@ export function cfgMechanicSetting(cfg: unknown, id: string, fallback: number): 
   const value = typeof raw === 'number' ? raw : Number(raw)
   return Number.isFinite(value) ? value : fallback
 }
+
+/**
+ * 读 `applyPanel` 一侧的机制设置记录（键 = 设置 id，不带 `setting:` 前缀；CC-439）：
+ * 可转成有限数就用，否则取 fallback。与 `cfgMechanicSetting` 是同一协议的两个读口
+ * （引擎把同一份 store 值既写进 cfg 袋子、也以记录形式递给面板钩子）。
+ * 此前 corin / phoenix / severian / sigrid 各私抄一份逐字相同的 `settingOf`。
+ */
+export function mechanicSettingOf(settings: Readonly<Record<string, number>> | null | undefined, id: string, fallback: number): number {
+  const value = Number(settings?.[id])
+  return Number.isFinite(value) ? value : fallback
+}

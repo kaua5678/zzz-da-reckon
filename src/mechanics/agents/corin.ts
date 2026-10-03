@@ -32,7 +32,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { axisOverlayChannel } from '../types'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 
 export const CORIN_ID = '1061'
@@ -57,11 +57,6 @@ export interface CorinCycle {
   c6DetonationCount: number
   c6DamagePerDetonation: number
   note: string
-}
-
-function settingOf(settings: Readonly<Record<string, number>>, id: string, fallback: number): number {
-  const value = Number(settings?.[id])
-  return Number.isFinite(value) ? value : fallback
 }
 
 export function computeCorinCycle(input: {
