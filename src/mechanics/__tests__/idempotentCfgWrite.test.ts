@@ -80,8 +80,14 @@ describe('CC-291 重复调用钩子的 cfg 累加写入幂等', () => {
   })
 
   it('② 格莉丝 materializePhaseState 重复调用不累加 initialEnergyGift', () => {
-    // CC-415：A 段回能读 cfg.mechanicRowValues（缺表 = 0 会让 C4 分支静默为 0，夹具补表值保住断言意义）
-    const cfg: any = { graceCinemaLevel: 6, initialEnergyGift: 40, mechanicRowValues: { '1181001': 0.615, '1181002': 1.189, '1181003': 2.454, '1181004': 4.081 } }
+    // CC-415：A 段回能读 cfg.mechanicRowValues（缺表 = 0 会让 C4 分支静默为 0，夹具补表值保住断言意义）；
+    // CC-409：循环各段时长读 cfg.moveActionTimes（缺它 = 全 0 ⇒ planGraceRotation 的 aSum+2sp=0 提前返回 cycles=0、
+    // C4 不触发 ⇒ once 停在 40，曾让本断言在精确解重构后假红）。夹具两表都补。
+    const cfg: any = {
+      graceCinemaLevel: 6, initialEnergyGift: 40,
+      mechanicRowValues: { '1181001': 0.615, '1181002': 1.189, '1181003': 2.454, '1181004': 4.081 },
+      moveActionTimes: { '1181001': 0.171, '1181002': 0.33, '1181003': 0.682, '1181004': 1.134, '1181005': 0.2, '1181006': 0.342 },
+    }
     const state: any = { exSpecialCount: 30, basicAttackTime: 120, totalEnergy: 1000, combatTime: 180 }
     graceMechanic.materializePhaseState!({ cfg, state, executions: [] } as any)
     const once = cfg.initialEnergyGift

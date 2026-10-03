@@ -513,6 +513,9 @@ export const velinaMechanic: AgentMechanicModule = {
   id: 'agent:velina',
   agentIds: [VELINA_AGENT_ID],
   name: '维琳娜',
+  // ⚠ 平A权重**不设** defaultBasicAttackTimeWeight（用户裁决 2026-10-01）：维琳娜是**前台打法**的
+  // 辅助向异常，非后台玩法（区别于蕾米埃尔/薇薇安的角色固有 0）⇒ 默认 weight=1（通用兜底），
+  // 交给边际均衡按队型压 0（有真主C时）或顶上（没主C时）。写死 0 会让「没主C队」平A池蒸发留白。
   // CC-66：ResourceResultCard 腐蚀状态机展示（原组件写死本角色 id / Sweeping Cyclone #1 moveId）
   resultCardCorrosion: { poolReleaseEventMarker: CORROSION_CYCLONE_RELEASE_ID_PREFIX, broadCycloneMoveId: VELINA_SWEEPING_CYCLONE_1_MOVE_ID },
   description: '风华/风蚀专属资源、广域/微域气旋、赋彩属性与风化乱流命座机制。',

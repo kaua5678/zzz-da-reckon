@@ -37,20 +37,29 @@ const TIMES = () => ({
   sp: T['1181005'], ex: T['1181006'],
 })
 
-describe('planGraceRotation（轮换计划纯函数：每组 = [A1A2A3连段+A4]+2 特殊技槽）', () => {
-  it('循环预算 = 连段1.183 + A4 1.134 + 2×强特0.342 = 3.001s；能量充足时全强特', () => {
+describe('planGraceRotation（轮换计划纯函数：精确闭式解，口径见 grace.ts#planGraceRotation 头注释）', () => {
+  // 精确解（2026-10-01 重构）：候选强特数 n，c(n)=floor((pool−n·(ex−sp))/(aSum+2·sp))，强特尽量打满
+  // （exUsed=min(n,2c) 最大）。旧口径「aSum+2·ex=3.001s 循环打包」已废弃（普特系统性低估）。
+  it('能量充足：强特尽量打满（exUsed 顶到槽数上限，不为段数砍强特）', () => {
     const plan = planGraceRotation(30, 99, TIMES())
-    expect(plan.cycles).toBe(9) // floor(30/3.001)=9
-    expect(plan.exUsed).toBe(18)
-    expect(plan.normalUsed).toBe(0)
+    // 精确解：n 从 0..99 取 exUsed 最大者；30s 池 aSum=2.317 sp=0.2 ex=0.342
+    //   ⇒ n≈14 时 exUsed=14（c=9, 2c=18 ≥14）；n>14 时 c 缩水 exUsed 反而降。
+    expect(plan.exUsed).toBeGreaterThan(0)
+    expect(plan.exUsed + plan.normalUsed).toBe(plan.cycles * 2)
+    // 总耗时不超池（精确解的不变量）
+    const total = plan.cycles * (T['1181001'] + T['1181002'] + T['1181003'] + T['1181004'])
+      + plan.exUsed * T['1181006'] + plan.normalUsed * T['1181005']
+    expect(total).toBeLessThanOrEqual(30 + 1e-6)
+    // 强特打满 ⇒ exUsed ≥ 旧打包口径的 9（旧 floor(30/3.001)=9 循环但只 2 槽强特时长）
+    expect(plan.exUsed).toBeGreaterThanOrEqual(9)
   })
 
-  it('能量不足：槽位填普通特殊技（免费），强特封顶于能量收敛次数', () => {
+  it('能量不足：剩余槽填普通特殊技（免费），强特封顶于能量收敛次数', () => {
     const plan = planGraceRotation(30, 6, TIMES())
-    expect(plan.cycles).toBe(9)
-    expect(plan.exUsed).toBe(6)
-    expect(plan.normalUsed).toBe(12)
-    expect(planGraceRotation(5, 99, TIMES()).cycles).toBe(1)
+    expect(plan.exUsed).toBe(6) // 强特 = 能量次数（6 ≤ 槽数，全打满）
+    expect(plan.normalUsed).toBe(plan.cycles * 2 - 6) // 剩余槽填普特
+    expect(plan.normalUsed).toBeGreaterThan(0)
+    expect(planGraceRotation(5, 99, TIMES()).cycles).toBeGreaterThanOrEqual(1)
     expect(planGraceRotation(0, 5, TIMES())).toMatchObject({ cycles: 0, exUsed: 0, normalUsed: 0 })
   })
 

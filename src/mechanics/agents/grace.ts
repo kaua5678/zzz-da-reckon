@@ -51,6 +51,8 @@ export interface GraceRotationTimes {
   a2: number
   a3: number
   a4: number
+  /** 普通特殊技时长（精确闭式解需要；旧打包口径只用 ex 故此前未声明） */
+  sp: number
   ex: number
 }
 /** 特殊技行 actionTime（普通 SP / 强化 EX；CC-409 起从 cfg.moveActionTimes 取） */
@@ -86,20 +88,55 @@ export const GRACE_C6_GRENADE_DMG_BONUS = 100
 const spec = getAgentSpec(GRACE_AGENT_ID)!
 const base = specToMechanicModule(spec) // 垫层：catalog 派生 cfg 字段由它统一填充
 
-/** 轮换计划：平A池能塞几组 [连段+特+A4+特]，能量决定其中几发放强特 */
+/**
+ * 轮换计划（**精确闭式解**，2026-10-01 重构）：平A池能塞几组 [连段+特+A4+特]，能量决定其中几发放强特。
+ *
+ * A1-A4 时长固定、强特(ex)/普特(sp)时长各自固定、能量定强特数 ⇒ 不需「循环打包」近似。
+ * 设 n = 强特数、c = 循环数（每循环 4 段 A + 2 特殊技槽），总耗时：
+ *   T(n, c) = c·aSum + n·ex + (2c − n)·sp  ≤  平A池（aSum = a1+a2+a3+a4）
+ * 原始口径（头注释：有能量放强特、没能量放普特填槽）= **强特尽量打满**（用户裁决 2026-10-01，
+ * 优先于「段数最大」）：`exUsed = min(能量次数, 实际能塞下的槽位数)`，剩余槽放普特，总耗时不超平A池。
+ * ⇒ 对每个候选 n ∈ [0, exMax]，恰好塞满平A池的循环数 c(n) = floor((pool − n·(ex−sp)) / (aSum + 2·sp))；
+ * **强特尽量打满 ⇒ 取最大可行 n**（n 越大强特越多；n 过大则 c(n) 缩水、槽位 2c(n) < n 时 n 被槽数封顶）。
+ * 最优 n = 使 exUsed = min(n, 2c(n)) 最大的那个（即从 exMax 往下第一个 exUsed 不再因 c 缩水而掉的 n）。
+ *
+ * ⚠ 旧实现（2026-08 口供版）用 cycleBound = aSum + 2·ex 把两特殊技槽**都按强特时长**保守估 ⇒
+ * 循环数被压小、普特系统性低估（30.1s 池实测只得 8 普特，精确解 14）。
+ *
+ * @fact agent:1181/轮换精确解 口径: 格莉丝特殊技槽按精确闭式解 T(n,c)=c·aSum+n·ex+(2c−n)·sp≤平A池求(n,c)，强特优先占位、剩余槽放普特；不再用 aSum+2·ex 的循环打包上界 | 据 用户@2026-10-01「精确强特和普特次数,时间也确定,a1-a4也确定」裁决 | 验 src/mechanics/__tests__/graceRotation.test.ts | 锚 src/mechanics/agents/grace.ts#planGraceRotation | 信 确认
+ * ⟳复核: 若格莉丝特殊技时长 catalog 改动或循环结构变(非2槽),重核闭式解与实测循环数 | 到期 2027-03-31
+ */
 export interface GraceRotationPlan {
+  /** 实际循环数（每循环 4 段平A + 2 特殊技槽） */
   cycles: number
+  /** 强特次数（占特殊技槽，≤ min(能量次数, 槽位数)） */
   exUsed: number
+  /** 普特次数（= 槽位数 − 强特数） */
   normalUsed: number
 }
 
 export function planGraceRotation(basicPool: number, engineExCount: number, times: GraceRotationTimes): GraceRotationPlan {
-  // 每循环 = [A1A2A3 连段 1.183s + A4 1.134s] + 2 特殊技槽；预算按最长强特变体取保守上界
-  const cycleBound = times.a1 + times.a2 + times.a3 + times.a4 + 2 * times.ex
-  const cycles = Math.max(0, Math.floor(Math.max(0, basicPool) / cycleBound))
-  const slots = cycles * 2
-  const exUsed = Math.min(Math.max(0, Math.floor(engineExCount)), slots)
-  return { cycles, exUsed, normalUsed: slots - exUsed }
+  const aSum = times.a1 + times.a2 + times.a3 + times.a4
+  const pool = Math.max(0, basicPool)
+  const exMax = Math.max(0, Math.floor(engineExCount))
+  if (pool <= 0 || aSum + 2 * times.sp <= 0) return { cycles: 0, exUsed: 0, normalUsed: 0 }
+  // 强特尽量打满：从 exMax 往下找最大 n 使 exUsed = min(n, 2c(n)) 尽量大。
+  // c(n)：c·aSum + n·ex + (2c−n)·sp ≤ pool  ⇒  c ≤ (pool − n·(ex−sp)) / (aSum + 2·sp)
+  const cyclesFor = (n: number) =>
+    Math.max(0, Math.floor((pool - n * (times.ex - times.sp) + 1e-9) / (aSum + 2 * times.sp)))
+  // exUsed(n) = min(n, 2·c(n))：n ≤ 2c(n) 时 exUsed=n 随 n 增；n > 2c(n) 时 exUsed=2c(n) 随 n 减
+  //   （c 被 n 的时长压缩）⇒ exUsed 单峰，峰值在 n ≈ 2c(n) 附近。线性扫 [0, exMax] 取峰。
+  let best: GraceRotationPlan = { cycles: 0, exUsed: 0, normalUsed: 0 }
+  for (let n = 0; n <= exMax; n++) {
+    const c = cyclesFor(n)
+    const exUsed = Math.min(n, c * 2)
+    const normalUsed = c * 2 - exUsed
+    // 主目标 exUsed 最大（强特打满）；并列取 cycles 大（段数多）
+    if (exUsed > best.exUsed || (exUsed === best.exUsed && c > best.cycles)) {
+      best = { cycles: c, exUsed, normalUsed }
+    }
+  }
+  return best
 }
 
 /** 特殊技前台时间（仅两发特殊技；A 段由通用 basic 池行表达，不计入必要时间） */
