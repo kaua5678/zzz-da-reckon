@@ -76,6 +76,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **开工在自己的 worktree 跑一次 `npx vue-tsc -b --force`，先知道 master 本来红不红**（r424）：`c47e153b`（02:24）提交时 vue-tsc 没过（4 个错全在新测试文件里，vitest 不做类型检查所以全绿），master 类型检查红了 9 小时没人发现；r423 又记过「别人的红被归到自己头上然后 revert」。红了就修掉或在 §2b 记一行，别带着红继续、也别 revert 别人。回退：删掉本条。
 - **等号基线（「计数下降也报错，要求下调基线」）是有意设计，不要改成「≤」**：2026-09-14 它两次抓到扫描器盲区，计数凭空下降其实是扫描器看不见了，而不是代码变好了（`scripts/check-tokens.mjs` 头注释；`docs/mcp-working-model.md` §2.5）。
 
+- **探针 / 分析脚本用 harness 时传 `productionBasicWeights: true`**（CC-416）：harness 默认每槽平A权重 1 是回归基准口径，不是生产口径；拿默认档评「辅助分走多少平A池」会系统性高估辅助（用户 2026-10-01 报）。回归测试不要动这个默认。
+
 ## 2b. 并行 lane 交接（§2 「每轮替换」时**不要**连本节一起删；每个 lane 一段，过时的段压成一行指针）
 
 
@@ -85,6 +87,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 17:04 arena-F 第 443 轮**（开工：origin = 本地 = `a5306515`，无人在跑；REQUIREMENTS.md 无新条目；做 T11，worktree `wt-T11`（已删）；产物 `/home/kaua/calc-arch/arenaF/r443/`：`patch-t11-harness.py`、`t11-red.log`（重新应用后 4 条红的原始输出）、`vt-s2.log`（重新应用 + 修 4 条后全量仍 16 红的证据）、`vt2-s1.log` / `vt2-s2.log`（最终绿）、`tsc*.log` / `guards*.log` / `build.log`）：**CC-416 `79dec912`**（+ 红的中间提交 `c7daefed`，**都已推**）+ 本文档提交。
+- **做到哪**：T11 收口为 opt-in（卡面已改写结论）。中途试过「改默认 + 修 4 条」：4 条修好后全量又出 16 条（golden 320 条差异等），据此改方向——证据在 `vt-s2.log`。顺带发现 T12（单人支援 weight 0 ⇒ 整轮 null）。
+- **别人（`kaua5678`）17:24 起在主仓改 `grace.ts`**（`planGraceRotation` 改精确闭式解，产品口径变更，带 @fact）+ 新 `graceRotation.test.ts`，未提交、无认领；`velina.ts` 2 行 WIP 仍在。**下一轮别碰 grace / velina**；若他提交了但没推，按 r441 §2b 孤儿规则（先隔离跑全量再推）。
+- **下一步（start-ready）**：T12（小）或 T10（备选）。两者都不和 grace / velina 相交。
+- **回滚点**：`git revert 79dec912 c7daefed`。
 
 **2026-10-03 16:43 arena-F 第 442 轮**（开工：origin `8c84e92f`；本地 master = origin + 别人 3 个未推提交；REQUIREMENTS.md 无新条目（mtime 未变）；自己做 T9 grace（改动 3 文件，没派 dsh），worktree `wt-T9g`；孤儿处置 worktree `wtF-orphan`；两者已删；产物 `/home/kaua/calc-arch/arenaF/r442/`：`patch-grace.py`、`tsc.log` / `guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log` / `zd.log`、`orphan-*.log`）：**CC-415 `c3dd09fe`**（grace，**已推**）+ **孤儿处置 `9992aa23`/`f86a9418`/`3c9a2afb`/`4f8e04b6`（已推）** + 本文档提交。
 - **做到哪**：T9 三张全部收口（hugo / xixifu / grace 都读 `cfg.mechanicRowValues`，锁集中在 `mechanicRowValuesT9.test.ts`）。
@@ -469,21 +477,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 <!-- /card:T10 -->
 
 <!-- card:T11 -->
-### T11 · 测试夹具平A权重与生产对齐（收养别人被回退的 harness 改动；连带 4 条红一起修）
+### T11 · ✅ 完成（r443 CC-416 `79dec912`）——结论是「opt-in」而不是「改默认」
 
-**背景**：同机另一 lane（`kaua5678`）15:54 提交 `fix(test): harness 平A时间权重按生产口径兜底（支援/防护=0）`——把 `src/test/harness.ts` 的 `TEST_BASE_CHAR.basicAttackTimeWeight: 1` 改成按 `defaultBasicAttackTimeWeight` 口径（支援/防护 = 0、模块声明优先、其余 = 1），意图正确（用户 2026-10-01 报：维丹队探针里柚叶 weight=1 分走 1/3 平A池，高估辅助/低估主C）。但它连带 **4 条红**，1 小时未推无认领，arena-F r442 按孤儿规则 **`git revert` 成 `4f8e04b6`** 并把 docs(test) / feat(freeCompare) 两条一起推上 origin。
-
-**要做**：
-1. worktree（基于 origin/master）里 `git revert --no-edit 4f8e04b6`（= 重新应用 harness 改动；`wEngineStackCoverage.test.ts` 头注释里的「⚠ r442」那两行顺手删掉）。
-2. 跑 `npx vitest run src/composables/__tests__/backstageAxisVulnCc391.test.ts src/mechanics/__tests__/lateCfgWrite.test.ts src/specs/__tests__/adjustableEffect.test.ts` —— 预期 4 红（r442 日志 `/home/kaua/calc-arch/arenaF/r442/orphan-targeted.log`）：
-   - `backstageAxisVulnCc391` (b)「自动行：轴里只放 basic 时仍按失衡占比吃到易伤」——大概率是夹具队里被测角色成了支援/防护 ⇒ 平A池 0 ⇒ 无 basic 行；**改夹具**（换成 weight=1 的角色或在该用例显式给 `basicAttackTimeWeight: 1`），不要改引擎。
-   - `lateCfgWrite`「全角色 × 命座 0/6 + 全部三人预设：除允许名单外无晚写」——这条**可能是真 bug**：某模块在支援 weight=0（平A池 0）路径上才会在 `buildResourceResult` 里写 cfg。先把失败输出里的「角色 / 字段」抄下来，查该模块的产行钩子；是真晚写就按 CC-290 口径移到 `materializePhaseState`，并单开 CC 号；只是允许名单漏项才改测试。
-   - `adjustableEffect` ×2（7 条严格线性型 / 17 条全部）——基准绝对值随平A池变化；按新夹具**重算基准**（测试文件里有三点对齐的生成方式），别放宽容差。
-3. 验收：vue-tsc 0；全量 vitest(4) 分片绿；`zd.sh t11-harness` DIFF 0（harness 只影响测试，zd 不该动；动了说明顺手改了引擎——拆成独立 CC）。
-4. 提交信息写明「re-apply <原提交> + 4 条测试基准」；arch 文档记 CC 号。
-
-**顺带（同一主题，二选一都行）**：主仓里还躺着同 lane 未提交的 2 行 WIP `src/mechanics/agents/velina.ts`（`defaultBasicAttackTimeWeight: 0`，注释引用用户 2026-10-01 裁决「异常副C不站场平A，同 remielle/vivian 的 CC-64 口径」），16:29 起没再动。**这是生产口径变更，不是测试**：若下一轮它还在且无人认领 ⇒ 收养：worktree 里加这 2 行，跑 velina 测试 + zd（预期只有含维琳娜的队 DIFF ≠ 0，把差异行数记进 arch），独立 CC 号提交；主仓那份用 `git show HEAD:… >` 还原（别 stash）。
+harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeights: true })` ⇒ 逐槽 = `configStore.getDefaultBasicAttackTimeWeight`。
+依据：重新应用别人的「默认支援/防护 = 0」后全量 20 条红（golden 320 条差异 + 单人支援 null + 探针失效），不是卡面预估的 4 条；回归基准整体建立在三人均分上。
+**探针 / 分析脚本**（`docs/` 里提到的维丹队探针之类）以后要加这个开关，否则辅助平A被高估——这条写进 §1 长期规则。
 <!-- /card:T11 -->
+
+<!-- card:T12 -->
+### T12（小，可选）· 单人支援/防护 weight=0 ⇒ 整个 resourceResult 为 null
+
+**现象（r443 实测）**：`setupHarness([{ agentId: '1311' }], { productionBasicWeights: true })`（= 生产里只上一个耀嘉音的默认配置）⇒ `useResourceCalc().resourceResult.value === null`。
+**链路**：weight 0 ⇒ 无平A行；她的行只剩 `1311012 ×0` / `1311008 ×3`（终结技，无失衡贡献）⇒ `convergence.ts:765 if (baseStun.length === 0) return null` ⇒ `runCalcRound` null ⇒ 整轮 null（伤害池也没了）。
+**要判断的**：空失衡池是不是应该让整轮消失。倾向：**不该**——失衡池空 = 失衡次数 0 / 无连携，伤害池与能量账仍应给出；把 `:765` 的 `return null` 改成「空失衡池结果」（`stunPool` 空、stunCount 0）需要看 `buildPromoteParams` 之后那段对 `baseStun` 的依赖。做之前先 grep 调用方对 null 的分支（`solveTeam.ts:83/140/159` 把 null 当 +∞ / 0）。
+**验收**：单人 1311 weight 0 有 resourceResult（伤害池非空）；zd DIFF 0（正常三人队不受影响）；`allAgentsSweep` 等不需改。
+**顺带（已在 r442 T11 卡写过，仍有效）**：主仓 `velina.ts` 2 行 WIP（`defaultBasicAttackTimeWeight: 0`）——r443 时同 lane 又在主仓改 `grace.ts`（轮换精确闭式解，17:24 起）+ 新文件 `graceRotation.test.ts`，说明他活跃，velina 那 2 行归他；**别收养**，除非再次 > 1 小时无人动且他没别的改动在跑。
+<!-- /card:T12 -->
 
 （T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**。）
 
