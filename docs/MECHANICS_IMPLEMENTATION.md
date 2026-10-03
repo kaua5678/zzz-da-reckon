@@ -100,6 +100,8 @@
 
 ## 4. 已实现机制的角色
 
+> **pending 待办口径（2026-10-03 分诊，loop goal-c90b9578）**：`character-constellations.json` / `character-mechanics.json` 两文件的 `pending` 字段共 146 条，已三分类——真缺口 3（安东爆发状态 / 般岳怒相轴内覆盖=T16 / 赛维里安 C2 凭风自动补层=T17，卡见 `docs/mcp-worker-task-queue.md` §3）、有意近似 ~130（覆盖率/满层/总量口径，各角色段「未建模」行已逐条承载）、死数据·记录 13（规则4：spec 仅记录，真值在模块）。逐条台账 `.claude/pending-triage-2026-10-03.md`。**各角色段的「未建模/明确未建模」行 = 有意近似的消歧落点，不再逐条复制 pending 文本进档案**（规则8：单一事实源在 spec+模块，手册只收口径指针）。
+
 ### 安比（1011）—— 波动电压·强攻
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/anby.ts` + spec `1011.json`；测试 `src/mechanics/__tests__/anby.test.ts` 4 例 + `anbyCinema1.test.ts`）。含：核心被动波动电压（强特/落雷 招式限定失衡 +64%）、额外能力并联电路（闪反回 7.2 能量/5s）、影画1 快充/影画2 精准放电/影画6 充能电场。近似点见下（落雷在 basic 聚合行、影画2 按失衡覆盖率、影画4 电荷传导纯函数待 calcCrossAgentEnergy）。
 - 口径：本角色无档案独有裁决；数值/公式单一事实源 = `src/mechanics/agents/anby.ts` 头注释 + `src/specs/agents/1011.json` notes。

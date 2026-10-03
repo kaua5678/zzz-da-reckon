@@ -719,7 +719,24 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 - [ ] **T15-g 收口**：删旧类型 / 旧字段 / scalar 合并；`useResourceCalc.ts:647-648`、`damagePool.ts:85-90`、`damagePoolDirect.ts:160-173` 合成 `axisOverlayBySlot`；`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 输入夹具改 `axisOverlayBySlot`；加锁 `src/composables/__tests__/axisOverlayOpaqueCc437.test.ts`（三条见设计稿 §4 g 行）；arch CC-437 置 done；设计稿状态行改「已落地 <commit>」。
 <!-- /card:T15 -->
 
-（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**（T14 r451 关掉；T13 仅剩 c / b′ 默认不做；T10 备选，等锁变红）。下一题按 §0「没有排定项时不造活」+ r6 §8 扫描记录另找。）
+<!-- card:T16 -->
+### T16 · 般岳(1471) 怒相增益轴内「释放后覆盖」（真缺口 G2，2026-10-03 pending 分诊立项；**前置：等 T15/CC-437 落地**，同区防冲突）
+**卡面就是全部上下文**：`docs/MECHANICS_IMPLEMENTATION.md` 般岳段 + `src/mechanics/agents/banyue.ts:478`（`rageGainCoverage` 滑块消费点）+ 头注释 L42。**缺口**：怒相增益（贯穿+300/火伤+36%/暴伤+36%，C2 各+15）现按 `banyue.rageGainCoverage` 滑块**整局覆盖率**近似；真值是「每次进入怒相后 30s 窗口内生效」——轴模式下能在轴内精确（入怒相时刻已知 ⇒ 窗口精确）。**非轴模式维持滑块**（R4 撤销时序仿真，非轴不建逐秒轴）。
+- [ ] 轴模式：扫失衡轴/动作轴，怒相进入点（焚身）起 30s 窗内行吃满增益、窗外不吃——复用明王同款轴扫描（般岳明王 8s 窗口先例 / `computeCorinStunBonusMoves`）；走 T15 落地后的 overlay 通道。
+- [ ] 非轴模式：保持滑块，卡面注明。
+- [ ] 锁：`banyue.test.ts` 加轴内/轴外差分用例；`timeGolden` delta 逐队归因后按规则 10 重生成。
+- [ ] 验收：`timeout 280 npx vue-tsc -b --force` 0；`npx vitest run banyue timeGolden`；zd 期望**非零可归因 delta**（轴模式般岳队增益更精确），归因写提交说明。
+<!-- /card:T16 -->
+
+<!-- card:T17 -->
+### T17 · 赛维里安(1631) C2 凭风自动补层（真缺口 G3，2026-10-03 pending 分诊立项）
+**卡面就是全部上下文**：`src/mechanics/agents/severian.ts:39-71`（`cycleFromCfg` 读 `severian.fengfengStacks`）+ `:249`。**缺口**：C2「每次苍风影猎获得 2 层凭风」现并入凭风层数滑块 `severian.fengfengStacks` 手动调（默认 1）；苍风影猎次数已由 buildExecutions 自算（流息收入/100）⇒ C2 后 1 次苍风影猎即满 2 层，应自动封顶、无需手调。
+- [ ] `cycleFromCfg`：C2 且 `severian.fengfengStacks` 未显式覆盖时按苍风影猎次数自动给满 2 层；显式滑块仍优先（用户校准通道）。
+- [ ] 锁：`severian.test.ts` 加 C2 自动补层用例（默认滑块 vs 显式滑块两态）。
+- [ ] 验收：`timeout 280 npx vue-tsc -b --force` 0；`npx vitest run severian`；zd 0（默认 1→2 只影响 C2+ 且未显式调滑块的队——若有 delta 逐队归因）。
+<!-- /card:T17 -->
+
+（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。**当前待执行卡**：T15（CC-437，arena-F r467 进行中）、T16（般岳怒相轴内覆盖，等 T15）、T17（赛维里安 C2 凭风自动补层，start-ready）——T16/T17 由 2026-10-03 pending 分诊立项（146 条 pending 三分类，台账 `.claude/pending-triage-2026-10-03.md`）。T13 仅剩 c / b′ 默认不做；T10 备选，等锁变红。）
 
 
 
