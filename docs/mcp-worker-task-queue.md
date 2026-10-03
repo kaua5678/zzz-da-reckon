@@ -78,6 +78,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 - **探针 / 分析脚本用 harness 时传 `productionBasicWeights: true`**（CC-416）：harness 默认每槽平A权重 1 是回归基准口径，不是生产口径；拿默认档评「辅助分走多少平A池」会系统性高估辅助（用户 2026-10-01 报）。回归测试不要动这个默认。
 
+- **「幻影 null」猎法（r444–r448，CC-417→421 五连，每个都是零行为、zd DIFF 0）**：类型里带 `| null` 的输出，先找**全部**生产者的 null 出口（`grep -n "return null\|: .* | null = null"` + 对每条出口问「调用方在同一次同步求值里是否已经排除了这个条件」或「循环是否至少跑一轮」），再找**全部**消费者的 `?.` / `?? 0` / `x != null` 防御。null 出口不可达 ⇒ 把出口改成不变量 `throw`（不是留着 `return null`——留着就得保留整套 `| null`，等于类型层继续承认一个不存在的状态），类型收成非 null，防御全部收掉，加形状锁。**判别真 null 与幻影 null**：真 null 表达一个会发生的事实（首轮无前一轮 `prev: null`、首轮无上轮计数 `postRoundInput: null`、没有挂能力的槽 `slot < 0`）——保留；幻影 null 是「某个空集合被放大成整个结果不存在」（CC-417 空失衡贡献 ⇒ 整轮 null）或「上游守卫早已排除」（CC-418/419/421）——收掉。每收一层，下一层才露出来（CC-418 之前看不出 CC-421），所以一次只收一层、每层单独验证。
+
 ## 2b. 并行 lane 交接（§2 「每轮替换」时**不要**连本节一起删；每个 lane 一段，过时的段压成一行指针）
 
 
@@ -87,6 +89,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 18:14 arena-F 第 448 轮**（开工：origin = 本地 = `e526d69d`，无人在跑；REQUIREMENTS.md 无新条目；按 §1 新增的「幻影 null 猎法」找到 CC-421，worktree `wt-T16`（已删）；产物 `/home/kaua/calc-arch/arenaF/r448/`：`patch-cc421.py`（已应用勿重跑）/ `tsc.log` / `guards.log` / `build.log` / `zd.log` / `vt-s1.log` / `vt-s2.log`）：**CC-421 `0e7dd4d5`**（**已推**）+ 本文档提交。
+- **做到哪**：失衡池非 null（4 文件 +34/−19 含锁）。CC-417→421 五连把 solveTeam / convergence / ultimatePromote 这条链上的幻影 null 收到只剩 T13 列的三项。全量基线 **473 文件 / 4318 用例**。
+- **沉淀**：猎法写进 §1（方法 + 真/幻影判别），剩余项出成 **T13 卡**（a/b 可直接派给执行模型，c 默认不做）。r447 提过的「三份面板 computed 命名澄清」**撤回**：grep 发现 `calc.panels` 在 `useResourceCalc.ts` 与测试之外没有消费者，`damagePanels` 只喂伤害上下文（:633），没有混淆面，改名是无收益改动。
+- **别人的 WIP**（`kaua5678`）：grace.ts md5 前缀仍 `f27e6b94`（自 17:25），按 r447 补记：不再每轮预检，24h 后入 `wip/kaua5678-grace-rotation` 分支。
+- **下一步（start-ready）**：T13-a（纯类型收口，预期 30 分钟内含验证）→ T13-b（先探针）。都做完后下一层会露出什么现在看不见，照 §1 猎法再扫一遍 `grep -rn "| null" src/composables/resourceCalc/*.ts`。
+- **回滚点**：`git revert 0e7dd4d5`。
 
 **2026-10-03 18:03 arena-F 第 447 轮**（开工：origin = 本地 = `0d41b93e`，无人在跑；REQUIREMENTS.md R1–R8 全 done 无新条目；评估 T10，worktree `wt-T15`（已删）；产物 `/home/kaua/calc-arch/arenaF/r447/`：`patch-cc420.py`（注释补丁，已应用勿重跑）/ `tsc.log` / `guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log`）：**CC-420 `bf2d1c23`**（**已推**）+ 本文档提交。
 - **做到哪**：T10 从「猜作者意图」变成「实测事实 + 三条修法 + 明确不做的理由」。关键发现：回填 watch 是绕 store 的环，创建即两遍管线，一步到达不动点是巧合（回填值不影响次数）。落了事实锁 `wEngineCoverageFixpointT10.test.ts`（3 用例）+ `useResourceCalc.ts` 两段注释纠正；**未改任何求值路径**（zd 未跑，理由写在 arch 行）。全量基线见 r6 §8 行 447。
@@ -520,8 +529,15 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 ### T12 · ✅ 完成（r444 CC-417 `a21d952c`）：删 `convergence.ts` 的 `baseStun.length === 0 → null` 守卫；空失衡池 ⇒ stunCount 0、伤害池照常。锁 `emptyStunPoolCc417.test.ts`。
 **仍有效的提醒**：主仓 `velina.ts` 2 行 WIP（`defaultBasicAttackTimeWeight: 0`）+ `grace.ts` 轮换闭式解 WIP + 新 `graceRotation.test.ts` 都是同 lane（`kaua5678`）17:25 前的未提交改动；按孤儿规则（> 1 小时无人动）处理，处理时 grace 那份是**产品口径变更**（@fact 已写在他的注释里），要跑 grace 全部测试 + zd 并把差异写进 arch。
 <!-- /card:T12 -->
+<!-- card:T13 -->
+### T13 · 幻影 null 收口（CC-421 同族，可交给执行模型；一次只做一项、各自独立提交）
+**方法**：§1「幻影 null 猎法」。**验收通用**：`timeout 280 npx vue-tsc -b --force` 0；`ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>` DIFF 0；相关测试 + 全量分片绿；`noNullRoundCc418.test.ts` 追加一条形状锁；arch 加 CC 行、r6 §8 加行、本卡勾掉对应项。worktree 基于 `origin/master`，只 `git add` 自己的路径，提交身份 `-c user.name=<lane>`。
+- [ ] **T13-a `adjustedResourceResult` 非 null**：`roundResult.ts#CalcRoundResult.adjustedResourceResult: TeamResourceResult | null` → 非 null。依据：`convergence.ts:934 adj2 = applyChainGift(adj1 ?? rr, …)`，`adj1 = applyUltimatePromote(rr, sp1, …)`，`rr` 在该处非 null；`ultimatePromote.ts#applyUltimatePromote(base: TeamResourceResult | null): TeamResourceResult | null` 两个调用点（:836 / :932）传的都是 `rr` ⇒ 把 `base` 入参与返回收成非 null、删 `if (!base) return base`，`adj1 ?? rr` 的 `?? rr` 随之删。消费端：`useResourceCalc.ts` `adjustedResourceResult` computed 仍 `| null`（calcOutput 为 null 时），`convergence.ts` 内 `adj0 ? extractAnomalyExecsFrom(adj0) : baseAnomaly`（:842）/ `adj2 ? … : baseAnomaly`（:942）两处三元可收成直接调用——**先 grep `applyChainGift` 的返回类型**，它若也 `| null` 就一起看。预期零行为、zd DIFF 0。
+- [ ] **T13-b `anomalyPool` 是否幻影 null（先探针再决定）**：`roundInputs.ts:151 if (execs.length === 0) return null` 与 CC-417 同款。步骤：`src/__scratch__/` 探针调用 `calcAnomalyPool({ executions: [], panels, … })` 看是否抛错 / NaN / 给出 `perElement: []` 的合法空池；若合法 ⇒ 删那行守卫、`CalcRoundResult.anomalyPool` 非 null、`anomalyPool?.perSlotBonus ?? []` 等防御收掉（grep `anomalyPool?\.` 全仓，含 `.vue`）；若不合法 ⇒ 在 arch 记一行「anomalyPool 的 null 是真 null：原因 …」并勾掉本项不改代码。注意 `useResourceCalc.ts` 的 `anomalyPoolResult` computed 对外仍 `| null`。
+- [ ] **T13-c `createRunCalcRound` 的 throw 守卫**（CC-418 遗留，最后做、可不做）：`convergence.ts:143` 仍经闭包读 `resourceConfig.value`。若要拿掉 throw，需让 `runCalcRound` 按次收 `base`（`solveTeam` 已持有非 null `resourceConfig`，可经 `opts` 传入）。但 `createConvergenceRoundInputs`（`useResourceCalc.ts:202`）也闭包读同一 ref，只改一处收益很小——**除非顺手把 roundInputs 的闭包读点也改成按次传参，否则不做**。
+<!-- /card:T13 -->
 
-（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**。）
+（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前待执行卡：T13（幻影 null 收口，r448 出卡）；T10 备选。）
 
 
 
