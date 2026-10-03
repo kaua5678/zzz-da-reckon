@@ -1,6 +1,6 @@
 # CC-437 设计稿：轴窗口 overlay 改为「模块私有、编排层不透明」（去掉 `typesHooks.ts` 里 9 个角色前缀字段）
 
-> 状态：**T15-a 已落地 `f287adde`（r467），b→g 未动**（设计 arena-F r466，2026-10-03）。执行卡见 `docs/mcp-worker-task-queue.md` §3 **T15**（a→g，每步独立提交、各自 zd 0）。
+> 状态：**T15-a `f287adde`（r467）、T15-b `0f643e81`（r468）已落地，c→g 未动**（设计 arena-F r466，2026-10-03）。执行卡见 `docs/mcp-worker-task-queue.md` §3 **T15**（a→g，每步独立提交、各自 zd 0）。
 > 前置设计：`docs/mcp-cc17-axis-overlay-consume.md`（CC-17：按槽归属 + `directRowBonus`）。本稿是它的下一步，不推翻它。
 
 ## 0. 一句话
@@ -123,7 +123,7 @@ directRowBonus: ({ exec, isAxis, overlay }) => {
 | 步 | 做什么 | 文件 | 验收 |
 |---|---|---|---|
 | **T15-a** | ✅ `f287adde`（r467）。**实做偏差两处**：① 过渡期 `AgentAxisOverlay = AgentAxisOverlays & { [BRAND]: true }`（交叉），钩子返回类型**不改**（改联合会让 8 个测试文件 56 处返回值属性访问报 TS2339），`panelPhases` 不需要 `in` 守卫；② `overlay` 过渡期**可选**（5 个测试文件 19 处直接调用不传）。两者 T15-g 归位：brand 独立、返回类型 `AgentAxisOverlay \| null`、`overlay` 必填。原卡面 → `typesHooks.ts` 加 `AgentAxisOverlay` brand 类型 + `axisOverlayChannel<T>()`（并从 `mechanics/index.ts` 导出）；`typesRows.ts DirectRowBonusInput` 加 `overlay: AgentAxisOverlay \| undefined`；`axisWindowOverlays` 返回类型改为 `AgentAxisOverlays \| AgentAxisOverlay \| null`（过渡联合）；`damagePoolDirect.ts` 传 `overlay: overlayBuckets as unknown as AgentAxisOverlay \| undefined`；`panelPhases.ts` 收集处：若返回值不是旧形状（没有 `scalarBySlot` 且没有四个桶名之一）则不做 scalar 合并（用 `'scalarBySlot' in res` 判） | typesHooks / typesRows / types / mechanics index / damagePoolDirect / panelPhases | vue-tsc 0；全量分片基线不变；zd 0（行为未变） |
-| **T15-b** | 迁 **sigrid**（最小：只有标量）：定义 `SigridOverlay { infectionPct: number }`，导出 `sigridOverlay` channel，`axisWindowOverlays` 返回 `sigridOverlay.wrap(...)`，`directRowBonus` 读 `sigridOverlay.read(overlay)`；测试 `sigrid.test.ts:583/589` 的 `scalar: {...} as never` 改 `overlay: sigridOverlay.wrap({ infectionPct: 7.5 })`；`teamHookMigration.test.ts:261-263` 改读 `sigridOverlay.read(res)?.infectionPct` | sigrid.ts + 2 测试 | 定向 + zd 0 |
+| **T15-b** | ✅ `0f643e81`（r468）。实做补充：`sigridInfectionPct` 字段**随手删了**（无读者，不等 g）；`channel.read` 参数过渡期并上 `AgentAxisOverlays`（不含 `\| null`，守 noNullRoundCc418 锁；测试写 `read(hook(...)!)!`）；卡面漏列读者 `damagePoolBatchR16b.test.ts:133-144`。原卡面 → 迁 **sigrid**（最小：只有标量）：定义 `SigridOverlay { infectionPct: number }`，导出 `sigridOverlay` channel，`axisWindowOverlays` 返回 `sigridOverlay.wrap(...)`，`directRowBonus` 读 `sigridOverlay.read(overlay)`；测试 `sigrid.test.ts:583/589` 的 `scalar: {...} as never` 改 `overlay: sigridOverlay.wrap({ infectionPct: 7.5 })`；`teamHookMigration.test.ts:261-263` 改读 `sigridOverlay.read(res)?.infectionPct` | sigrid.ts + 2 测试 | 定向 + zd 0 |
 | **T15-c** | 迁 **peiluo**（`specPanelBuffs.ts`：桶 + 标量）；测试 `peiluo.test.ts`、`teamHookMigration.test.ts:216-233` | specPanelBuffs.ts + 2 测试 | 同上 |
 | **T15-d** | 迁 **corin**；测试 `corin.test.ts`、`teamHookMigration.test.ts:251-255` | corin.ts + 2 测试 | 同上 |
 | **T15-e** | 迁 **banyue**；测试 `banyue.test.ts`（14 处）、`teamHookMigration.test.ts:163-168`、`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 里构造 `axisBucketsBySlot` / `axisScalarBySlot` 的般岳夹具改 `axisOverlayBySlot`（见 T15-g 说明：这两份测试在 g 之前仍可用旧字段名，但建议在 e 时一并改成 `overlay`，少跑一次） | banyue.ts + 4 测试 | 同上 |
