@@ -88,6 +88,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 17:39 arena-F 第 445 轮**（开工：origin = 本地 = `0a634df2`，无人在跑；REQUIREMENTS.md 无新条目；按 r444「找题方向 ②」做，worktree `wt-T13`（已删）；产物 `/home/kaua/calc-arch/arenaF/r445/`：`patch-cc418.py`（代码补丁脚本，已应用勿重跑）/ `tsc.log` / `guards.log` / `build.log` / `zd.log` / `vt-s1.log` / `vt-s2.log`）：**CC-418 `74c092ad`**（**已推**）+ 本文档提交。
+- **做到哪**：`runCalcRound` 非 null 化落地（3 文件 +47/−61，1 个锁文件）。「null 轮」这个概念从 solveTeam / roundThreads 整体消失；`prev` 的 null（首轮无前一轮）是真实状态、保留。全量基线现在 **472 文件 / 4313 用例**。
+- **判定依据**：r444 方向 ② 成立——CC-417 后 `runCalcRound` 的 null 只剩 `!base || !catalogStore.ready`，而 `calcOutput`（`useResourceCalc.ts:226`）同条件先 return null，中间 `solveTeam` 无 store 写 ⇒ 同一次同步求值内不可达。把它改成 `throw` 而不是留 `return null`：留着 null 就得保留整套 `| null` 类型，等于类型层继续承认一个不存在的状态。
+- **别人的 WIP**（`kaua5678`）：`grace.ts` / `velina.ts` / `graceRotation.test.ts` 本轮仍未动（grace.ts md5 前缀 `f27e6b94`，与 17:25 一致）。**18:30 起孤儿规则生效**，步骤原文见下方 r444 块，不重复。
+- **下一步（start-ready）**：① 若 ≥ 18:30 且三份 WIP md5 仍没变 ⇒ 先做孤儿处置（r444 步骤）；② 否则 CC-418 的自然续篇：`SolveTeamInput.resourceConfig` 收成非 null（`solveTeam.ts` 4 处 `resourceConfig?.` → `resourceConfig.`，`useResourceCalc.ts:267` 传的已经是守卫后的值），再评估是否让 `createRunCalcRound` 收 `base` 参数（改 deps 契约，先读 `convergence.ts:85-105` 的 deps 列表与 `useResourceCalc.ts:462` 的注入点）；③ T10 仍是备选。
+- **回滚点**：`git revert 74c092ad`。
+
 **2026-10-03 17:28 arena-F 第 444 轮**（开工：origin = 本地 = `863cabc3`，无人在跑；REQUIREMENTS.md 无新条目；做 T12，worktree `wt-T12`（已删）；产物 `/home/kaua/calc-arch/arenaF/r444/`：`tsc.log` / `guards.log` / `build.log` / `zd.log` / `vt-s1.log` / `vt-s2.log`）：**CC-417 `a21d952c`**（**已推**）+ 本文档提交。
 - **做到哪**：T12 收口（1 行守卫删除 + 1 个锁文件）。全量基线现在 **471 文件 / 4310 用例**。
 - **别人的 WIP**（`kaua5678`）：`grace.ts`（轮换精确闭式解）+ `graceRotation.test.ts`（新）+ `velina.ts` 2 行，最后一次真实改动 17:25，本轮未再动。**到 18:30 仍没动 ⇒ 孤儿**：worktree（基于 origin）里 `cp` 进这三份，跑 `npx vitest run src/mechanics/__tests__/grace*.test.ts src/mechanics/__tests__/graceRotation.test.ts src/composables/__tests__/mechanicRowValuesT9.test.ts` + vue-tsc + zd（预期含格莉丝的队 DIFF ≠ 0，把行数记进 arch）+ 全量分片，绿就以他的名义意图提交（提交信息引用他 @fact 那段），红就把红的输出写进 §2b 后留着不动。主仓那三份别删，用 `git show HEAD:… >` 还原只在你要 rebase 时做、做完 cp 回去。
