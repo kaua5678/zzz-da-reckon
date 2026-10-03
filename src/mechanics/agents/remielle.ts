@@ -213,6 +213,11 @@ export function isRemielleAgent(agent: { id?: string } | null | undefined): bool
  * `active` 门控与档位封顶逐位照搬原 `helpers.ts#resolveRemielleDazeBonus`（原实现读
  * `buildMechanicTeamMembers` + `agent.faction`，本模块从钩子入参拿同一份 `team` 与 `agent`）。
  * 空槽（`agent` 为 null）不参与计数，也不与本人同槽比较 —— 与原实现的 `member.slot === slot` 等价。
+ *
+ * ⚠ **anomalyCount 含本人**（2026-09-30 用户裁决）：原文「队伍中有 N 名异常角色」含蕾米自己——
+ * 蕾米+2 异常队友 = 3 异常 ⇒ tier3；不算蕾米则 3 异常不可能由 2 个队友达到。
+ * 此前改成「不含本人」是误改，已回滚（R65-J1 行为层实测：atk_1 的「三态逐位相同」是
+ * 互斥档位门控的设计行为——非当前档被 `teammateBuffGate` 过滤，不是数值没接）。
  */
 function computeRemielleAdditionalState(
   members: ReadonlyArray<{ slot: number; agentId: string; agent: Agent | null }>,
