@@ -23,8 +23,8 @@
                 :value="configStore.effectiveTime"
                 size="small"
                 :min="0"
-                :max="180"
-                @update:value="v => configStore.setEnemy({ invincibleTime: 180 - (v ?? 180) })"
+                :max="configStore.enemy.battleTime"
+                @update:value="v => configStore.setEnemy({ invincibleTime: configStore.enemy.battleTime - (v ?? configStore.enemy.battleTime) })"
               />
             </div>
           </n-gi>
@@ -276,6 +276,7 @@
           :anomaly-pool-result="anomalyPoolResult"
           :liuyin-hug="liuyinHugSplit"
           :agent-names="agentNames"
+          :total-time="resourceResult.totalTime"
         />
       </div>
       <div v-else class="placeholder">
@@ -878,7 +879,7 @@ const totalQuickAssistCount = computed(() =>
 // 计算在 composables/teamTimeSummary.ts（纯函数 + 生效测试），本文件只渲染。
 const teamTimeSummary = computed(() => buildTeamTimeSummary({
   rr: resourceResult.value,
-  battleTime: resourceResult.value?.totalTime ?? configStore.enemy.battleTime ?? 180,
+  battleTime: resourceResult.value?.totalTime ?? configStore.enemy.battleTime,
   invincibleTime: configStore.enemy.invincibleTime ?? 0,
   nameOf: (agentId, slot) => agentNames.value[agentId] || `槽${slot}`,
 }))

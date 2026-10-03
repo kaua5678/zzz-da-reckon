@@ -322,6 +322,8 @@ const props = defineProps<{
   liuyinHug?: { hug60: number; hug90: number } | null
   /** 全队 agentId→展示名（卢西娅帷幕队友来源行用；缺省回退显示 agentId） */
   agentNames?: Record<string, string>
+  /** 战斗总时间（秒）= `TeamResourceResult.totalTime`，时间分配条的分母（CC-426：原写死 180；不在卡内推导——CC-252 锁） */
+  totalTime: number
 }>()
 
 // 职业标签：文案走 SPECIALTY_LABEL（CC-215：原表缺命破 / 锋御，这 6 个角色标签为空）；颜色是本卡自己的展示选择，未列出的职业用 default
@@ -373,10 +375,9 @@ const specialResourceSections = computed(() =>
   }),
 )
 
-// 时间占比百分比
+// 时间占比百分比（分母 = 战斗总时间 prop）
 function pct(time: number): string {
-  const total = 180 // totalTime
-  return `${(time / total * 100).toFixed(1)}%`
+  return props.totalTime > 0 ? `${(time / props.totalTime * 100).toFixed(1)}%` : '0%'
 }
 
 /** 释放次数文本（时间分配行）：接近整数取整、零次显示 —（如合轴 0 秒的计划外强特） */

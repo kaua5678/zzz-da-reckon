@@ -157,6 +157,7 @@
             :specialty="getSpecialty(c.agentId)"
             :stun-pool-result="stunPoolResult"
             :anomaly-pool-result="anomalyPoolResult"
+            :total-time="resourceResult.totalTime"
           />
         </div>
         <div class="pool-hint muted">
@@ -360,7 +361,7 @@ const selectedBuffTitle = ref<string>('none')
 const killTimeText = computed(() => {
   const ratio = hpRatio.value
   if (ratio <= 100) return ''
-  const battle = configStore.enemy.battleTime ?? 180
+  const battle = configStore.enemy.battleTime
   return Math.round(battle * 100 / ratio)
 })
 function pickPeriodBuff(card: PhaseBuffCard | null) {
