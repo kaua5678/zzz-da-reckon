@@ -92,6 +92,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 01:46 arena-F 第 481 轮**（开工：主仓 = origin = `d55b4a46`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T48`，收工已删）。
+- **落地 CC-442** `a8803c0a`（arch 表有行）：`specs/runtime.ts#applyAgentAttributeConversions(panel, agentId, coverage?, sources?)` + `requireAgentAttributeConversion(agentId, id)`；7 个角色模块的 `getAgentSpec(ID)?.attributeConversions ?? []` 与 jane/promia 的 `requireXxxConversion` 收口；`scripts/validate-specs.mjs` 死数据判据正则同步。零差。回滚 `git revert a8803c0a`。
+- **结论落盘**：全仓 `src/**/*.ts`（非测试）**已无逐字相同的函数体**（`r481-dup.py`，1274 函数、≥80 字符归一化）。「逐字相同 helper → 共享 util」与「内联结构类型 ≥3 处 → 命名」两条线均已收完，**下一轮不要再用 dup 扫描找题**。
+- **下一步（start-ready）**：题序 REQUIREMENTS → §3 → §8.0 触发 → 本轮无题。若 REQUIREMENTS 仍空、§3 仍空：可以直接写「本轮无题」收工（r453/r458 有先例），不必为了有产出硬找题——这是用户判据（只为降计数的改动 = 毫无作用的大改）。
+
 **2026-10-04 01:36 arena-F 第 480 轮**（开工：主仓 = origin = `ecd56a4a`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T47`，收工已删）。
 - **落地 CC-441** `0764f726`（arch 表有行）：查询函数契约命名化——`moveLookup.ts` 13 处内联招式表类型 → `MoveTableLike`/`MoveRowLike`、7 处返回形状 → `ChannelMoveInfo`；6 个轴扫描函数 + `axisEditorBlockMarks` 钩子 → `AxisLike`。类型层改动，zd 0。回滚 `git revert 0764f726`。
 - **r479 交接的「实验型」题已核销**：refund 逐轮跟随在 `ENGINE_PIPELINE_GUIDE.md` 坑33 被否决两次（放大环，不是轮数问题），二次注入是其单步版 ⇒ 不单开轮；r6 §8.0 #14 已降级为「DEBT 1a 立项内的对照臂」。**别再按 #14 开实验轮。**
