@@ -644,7 +644,7 @@ export const normaMechanic: AgentMechanicModule = {
     // 一次强特 = 点射 #1(0.493) + 弹头 #2/#3(0.74)；长按延长（#4 0.4 + 延长弹头 0.6）/s
     // ⚠ 已知口径分叉（CC-438 r476 量过、**故意不改**）：这里长按整局只算一次（`+ holdSeconds × holdTime`），
     // 而伤害行 / 膛温 / 能量都按「每次弹幕都长按」计。最终必要时间不受影响——外层折叠环按 Σ物化行补齐残差
-    // （实测 6 次弹幕两种写法 necessaryTime 都是 53.073）；但改成按次计会让折叠环少迭代一轮（iters 1→0），
+    // （实测 6 次弹幕两种写法 necessaryTime 都是 53.073）；但改成按次计会改变折叠环的落点（`rr.iterations`——末轮内层迭代数——1→0；r479 核实：外层本就至少跑两轮，差异来自 pass0 冻结的 refund/idle 吃进了估计值），
     // 12 个诺姆预设 zd 全变、heavy 变体 ±3～7%，timeFillRatchet 两队留白/超预算 0→2s 判红。
     // 要改必须和 DEBT 1a（折叠环 / 停点规则）一起动，见 docs/mcp-r6-refactor-list.md §8 r476 行。
     const times = cfg.normaBarrageActionTimes ?? [0.493, 0.74, 0.74, 0.4, 0.6, 0.6]

@@ -92,6 +92,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 01:33 arena-F 第 479 轮**（开工：主仓 = origin = `501d9835`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；无 worktree；**代码本轮无题**，仅文档 + 一行注释）。
+- **r478 交接续核**：`patchExecutions` 里 `exec.<field> = (exec.<field> ?? 0) + …` 71 处是普通累加习语，抽 helper 不比原式简单 ⇒ 不做（r6 §8 第 479 行）。
+- **纠正 r476 的机制描述**（r6 §8.0 #14 已重写、`norma.ts` 注释已改）：`rr.iterations` 是**末轮折叠的内层迭代数**（`foldLoop.ts:84`），外层本就至少两轮（pass0 注入 refund 后 `continue`）；估计值影响落点的入口是 **pass0 冻结的 refund/idle**。DEBT 1a 立项时先做的三个实验写在 #14 第 4 列（(b) refund 末轮二次注入最便宜：`foldLoop.ts` 一处）。
+- **下一步（start-ready）**：题序 REQUIREMENTS → §3 → §8.0 触发 → 本轮无题。若要开「实验型」轮：按 #14 (b) 在 worktree 里改 `foldLoop.ts`（`refundFrozen` 后在末轮再重算一次 refund 并多跑一轮 iterate），读数三件套 `timeFillRatchet`（总留白/超预算是否单调下降）、zd（变动队集合）、timeGolden（逐队归因），**只要 ratchet 有一队变差就不落地**，把读数写回 #14。
+
 **2026-10-04 01:17 arena-F 第 478 轮**（开工：主仓 = origin = `029fd878`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T46`（已删）；产物 `/home/kaua/calc-arch/arenaF/r478/`）：**CC-440 `b9ea3367`** 模块自造执行行骨架 `moduleExecRow`，五份 `pushExec` 试点迁入。
 - **找题**：按 r477 交接的「同名私抄 helper ≥3 份、逐字相同才收」扫描，命中 `pushExec` ×5（lighter / lucy / rina / yaojiayin / yeshuguang）——不是逐字相同，但同形：整个 `SkillExecution` 字面量 + 6～9 个账本字段全 0；全仓同形字面量 55 处。`SkillExecution` 再加必填账本字段就要改 55 处 ⇒ 值得一个骨架。
 - **做了**：`src/mechanics/moduleExecRow.ts`：只默认 6 个必填账本字段，语义字段调用方给，键序与原字面量一致（zd 按 JSON 键序哈希）。五份 pushExec 改调骨架，各自的 `count<=0||dmg<=0` 过滤与语义字段原样。零差：zd 0、timeGolden 不变、两 shard 479/4345。
