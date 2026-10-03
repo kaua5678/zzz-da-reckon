@@ -244,7 +244,7 @@ export function axisOverlayChannel<T>() {
  * - `banyueMingwangStacks`：moveId → 明王层数（消费端 × MINGWANG_BASE_PER_STACK）
  * - `yixuanNingshenMap`：moveId → { critDmg, sheerDmg }
  * - （`peiluoKagerouMap` 已于 CC-437c 迁入 specPanelBuffs.ts 的私有 `PeiluoOverlay.byMove`）
- * - `corinStunBonusMap`：moveId → 扫除帮手增伤%（轴内恒 CORIN_ADDITIONAL_DMG）
+ * - （`corinStunBonusMap` 已于 CC-437d 迁入 corin.ts 的私有 `CorinOverlay.byMove`）
  *
  * ⚠ **CC-17（2026-09-26）起四个桶不再跨模块合并**：`panelPhases.ts#collectAxisWindowOverlays`
  * 改为 `bucketsBySlot: Map<slot, AgentAxisOverlays>`，消费端（`directRowBonus`）只读**本行所属槽**
@@ -258,7 +258,6 @@ export function axisOverlayChannel<T>() {
 export interface AgentAxisOverlays {
   banyueMingwangStacks?: Map<string, number>
   yixuanNingshenMap?: Map<string, { critDmg: number; sheerDmg: number }>
-  corinStunBonusMap?: Map<string, number>
   /**
    * **按槽位索引的标量覆盖**（与四个「按 moveId 索引」的桶并列）。
    *
@@ -279,8 +278,7 @@ export interface AgentAxisOverlays {
 export interface AxisScalarOverlays {
   /** 般岳明王·**非轴折算臂**：百分比 = `MINGWANG_BASE_PER_STACK × 3 × 覆盖率滑块` */
   banyueMingwangPct?: number
-  /** 可琳扫除帮手·**非轴折算臂**：百分比 = `CORIN_ADDITIONAL_DMG × 覆盖率滑块` */
-  corinStunBonusPct?: number
+  // （`corinStunBonusPct` 已于 CC-437d 迁入 corin.ts 的私有 `CorinOverlay.flatPct`，此处删除）
   /**
    * 仪玄凝神。两个来源共用本字段（消费端同形同义，故不拆）：
    * - **C6 满覆盖臂**（不分轴/非轴，优先于轴臂）：`{ critDmg: round(40×c6滑块), sheerDmg: round(20×c6滑块) }`

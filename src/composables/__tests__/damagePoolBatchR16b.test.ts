@@ -27,7 +27,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { banyueMechanic } from '@/mechanics/agents/banyue'
-import { corinMechanic } from '@/mechanics/agents/corin'
+import { corinMechanic, corinOverlay } from '@/mechanics/agents/corin'
 import { sigridMechanic, sigridOverlay } from '@/mechanics/agents/sigrid'
 
 /** 关掉全部全局 buff（含额外能力），让门控/命座差异成为唯一变量 */
@@ -98,22 +98,22 @@ describe('R15-b 跳③：可琳扫除帮手非轴折算臂（精确值 + 桶值�
   } as never)
 
   it('非轴：不产桶、只产标量；默认 0.5 → 精确 17.5；端点 1→35 / 0→0', () => {
-    const d = corinMechanic.axisWindowOverlays!(input())!
-    expect(d.corinStunBonusMap).toBeUndefined()
-    expect(d.scalarBySlot!.get(0)!.corinStunBonusPct).toBe(17.5)
+    // CC-437：返回值不透明，用模块 channel 读（`byMove` = 原桶，`flatPct` = 原标量）
+    const rd = (o: Record<string, unknown> = {}) => corinOverlay.read(corinMechanic.axisWindowOverlays!(input(o))!)!
+    const d = rd()
+    expect(d.byMove).toBeUndefined()
+    expect(d.flatPct).toBe(17.5)
 
-    expect(corinMechanic.axisWindowOverlays!(input({ settings: { 'corin.additionalStunCoverage': 1 } }))!
-      .scalarBySlot!.get(0)!.corinStunBonusPct).toBe(35)
-    expect(corinMechanic.axisWindowOverlays!(input({ settings: { 'corin.additionalStunCoverage': 0 } }))!
-      .scalarBySlot!.get(0)!.corinStunBonusPct).toBe(0)
+    expect(rd({ settings: { 'corin.additionalStunCoverage': 1 } }).flatPct).toBe(35)
+    expect(rd({ settings: { 'corin.additionalStunCoverage': 0 } }).flatPct).toBe(0)
   })
 
   it('★ 桶值恒 35 的不变量不被污染：非轴折算时桶缺席；轴臂桶值仍精确 35', () => {
-    expect(corinMechanic.axisWindowOverlays!(input())!.corinStunBonusMap).toBeUndefined()
-    const axisRes = corinMechanic.axisWindowOverlays!(input({
+    expect(corinOverlay.read(corinMechanic.axisWindowOverlays!(input())!)!.byMove).toBeUndefined()
+    const axisRes = corinOverlay.read(corinMechanic.axisWindowOverlays!(input({
       isAxis: true, axes: [{ name: 'a', actions: [{ slot: 0, moveId: '1061009', count: 1, startTime: 0 }] }],
-    }))!
-    expect(axisRes.corinStunBonusMap!.get('1061009')).toBe(35)   // 恒 35，不是 35×cov
+    }))!)!
+    expect(axisRes.byMove!.get('1061009')).toBe(35)   // 恒 35，不是 35×cov
   })
 
   it('门控：额外能力未触发 ⇒ 两条臂都不参与', () => {

@@ -31,6 +31,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
+import { axisOverlayChannel } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 
@@ -266,6 +267,19 @@ function buildCorinResourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
+/**
+ * CC-437（T15-d）：可琳扫除帮手的私有轴窗口 overlay（编排层不透明；两臂互斥，只填其一）。
+ * 原 `AgentAxisOverlays.corinStunBonusMap` → `byMove`（值**恒** `CORIN_ADDITIONAL_DMG`），原 `AxisScalarOverlays.corinStunBonusPct` → `flatPct`（`35 × 覆盖率`）。
+ * 「折算值不许进桶」的不变量照旧：`flatPct` 与 `byMove` 分字段，桶值恒 35 的断言不受污染。
+ */
+export interface CorinOverlay {
+  /** 轴臂：moveId → 增伤%（恒 `CORIN_ADDITIONAL_DMG`；平A块归并到 `'basic_attack'`） */
+  byMove?: Map<string, number>
+  /** 非轴臂：折算标量 = `CORIN_ADDITIONAL_DMG × 覆盖率滑块` */
+  flatPct?: number
+}
+export const corinOverlay = axisOverlayChannel<CorinOverlay>()
+
 export const corinMechanic: AgentMechanicModule = {
   id: 'agent:corin',
   agentIds: [CORIN_ID],
@@ -292,9 +306,9 @@ export const corinMechanic: AgentMechanicModule = {
    * - 门控 = 额外能力触发（`additionalAbilityActive`，与伤害池 `execPanel` 同源同值）。
    * - `isAxis` 真 → 扫描桶（值**恒** `CORIN_ADDITIONAL_DMG`，由 `computeCorinStunBonusMoves` 写死）。
    * - `isAxis` 假 → 覆盖率折算（**标量百分比** = `CORIN_ADDITIONAL_DMG × 覆盖率`）。
-   *   ⚠ **不能复用 `corinStunBonusMap`**：桶的数值语义是「恒 35」这条**被模块与
-   *   `types.ts` 双重文档化的不变量**，往里写 `35×cov` 会让「桶值恒 35」这个已断言的性质失真
-   *   （`teamHookMigration.test.ts` 精确断言 `beam.get(...) === 35`）⇒ 必须走 `scalarBySlot`。
+   *   ⚠ **不能复用 `byMove`**：桶的数值语义是「恒 35」这条**被模块文档化的不变量**，
+   *   往里写 `35×cov` 会让「桶值恒 35」这个已断言的性质失真
+   *   （`teamHookMigration.test.ts` 精确断言 `byMove.get(...) === 35`）⇒ 必须走 `flatPct`。
    * - 滑块缺省回落 **0.5**（与 `settings` 表 `corin.additionalStunCoverage` 的 default 同值，
    *   也与伤害池原式 `getMechanicSetting(…, 0.5)` 同值）。
    */
@@ -305,12 +319,10 @@ export const corinMechanic: AgentMechanicModule = {
         (getAgentSkills(CORIN_ID)?.categories ?? []).find(c => c.id === 'basic')?.moves.map(m => m.id) ?? [],
       )
       const map = computeCorinStunBonusMoves(slot, axes, basicMoveIds)
-      return map.size > 0 ? { corinStunBonusMap: map } : null
+      return map.size > 0 ? corinOverlay.wrap({ byMove: map }) : null
     }
     const cov = clampRatio(Number(settings['corin.additionalStunCoverage'] ?? 0.5))
-    return {
-      scalarBySlot: new Map([[slot, { corinStunBonusPct: CORIN_ADDITIONAL_DMG * cov }]]),
-    }
+    return corinOverlay.wrap({ flatPct: CORIN_ADDITIONAL_DMG * cov })
   },
   buildExecutions: buildCorinExecutions,
   applyPanel: applyCorinPanel,
@@ -324,13 +336,14 @@ export const corinMechanic: AgentMechanicModule = {
    * ⚠ 只读**本行所属槽**的桶（CC-17 前是跨模块全局桶）：可琳平A块归并键 `'basic_attack'`
    * 与所有角色普攻聚合行同名，全局桶会把 +35% 泄漏给队友轴内普攻行（设计稿 §2）。
    */
-  directRowBonus: ({ exec, isAxis, stunOverride, buckets, scalar }) => {
+  directRowBonus: ({ exec, isAxis, stunOverride, overlay }) => {
+    const o = corinOverlay.read(overlay)
     const moveId = exec.moveId ?? ''
     let v = 0
     if (isAxis) {
-      v = stunOverride > 0 ? (buckets?.corinStunBonusMap?.get(moveId) ?? 0) : 0
+      v = stunOverride > 0 ? (o?.byMove?.get(moveId) ?? 0) : 0
     } else {
-      v = scalar?.corinStunBonusPct ?? 0
+      v = o?.flatPct ?? 0
     }
     if (v <= 0) return null
     return {

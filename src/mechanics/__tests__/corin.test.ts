@@ -13,6 +13,7 @@ import {
   computeCorinCycle,
   computeCorinStunBonusMoves,
   corinMechanic,
+  corinOverlay,
 } from '@/mechanics/agents/corin'
 import { setupHarness } from '@/test/harness'
 
@@ -344,20 +345,21 @@ describe('可琳额外能力 buff 轴（轴模式：轴内全招式+35%，般岳
 
   it('CC-17：directRowBonus 轴臂按 stunOverride 段级门控，非轴读标量，note 逐字', () => {
     const exec = { moveId: 'basic_attack' } as never
-    const buckets = { corinStunBonusMap: new Map([['basic_attack', CORIN_ADDITIONAL_DMG]]) }
+    // CC-437：overlay 不透明，用模块 channel 构造
+    const overlay = corinOverlay.wrap({ byMove: new Map([['basic_attack', CORIN_ADDITIONAL_DMG]]) })
     // 轴内段：吃桶值，note「（buff轴）」
     const inAxis = corinMechanic.directRowBonus!({
-      exec, isAxis: true, stunOverride: 1, buckets: buckets as never, scalar: undefined,
+      exec, isAxis: true, stunOverride: 1, overlay, buckets: undefined, scalar: undefined,
     })!
     expect(inAxis.dmgBonus).toBe(CORIN_ADDITIONAL_DMG)
     expect(inAxis.note).toBe(' · 失衡增伤+35.0%（buff轴）')
     // 轴外段（stunOverride=0）：桶里有键也不吃（段级门控）
     expect(corinMechanic.directRowBonus!({
-      exec, isAxis: true, stunOverride: 0, buckets: buckets as never, scalar: undefined,
+      exec, isAxis: true, stunOverride: 0, overlay, buckets: undefined, scalar: undefined,
     })).toBeNull()
     // 非轴：读本槽标量，note「（覆盖率近似）」
     const nonAxis = corinMechanic.directRowBonus!({
-      exec, isAxis: false, stunOverride: 0, buckets: undefined, scalar: { corinStunBonusPct: 17.5 } as never,
+      exec, isAxis: false, stunOverride: 0, overlay: corinOverlay.wrap({ flatPct: 17.5 }), buckets: undefined, scalar: undefined,
     })!
     expect(nonAxis.dmgBonus).toBe(17.5)
     expect(nonAxis.note).toBe(' · 失衡增伤+17.5%（覆盖率近似）')

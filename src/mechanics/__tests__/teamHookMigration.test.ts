@@ -11,7 +11,7 @@ import { luciaElowenMechanic } from '@/mechanics/agents/luciaElowen'
 import { jufufuTigerRoarMechanic } from '@/mechanics/agents/specPanelBuffs'
 import { banyueMechanic } from '@/mechanics/agents/banyue'
 import { yixuanMechanic } from '@/mechanics/agents/yixuan'
-import { corinMechanic } from '@/mechanics/agents/corin'
+import { corinMechanic, corinOverlay } from '@/mechanics/agents/corin'
 import { peiluoProminenceMechanic, peiluoOverlay } from '@/mechanics/agents/specPanelBuffs'
 import { sigridMechanic, sigridOverlay } from '@/mechanics/agents/sigrid'
 
@@ -238,20 +238,20 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
       { slot: 0, moveId: 'b1', count: 1, startTime: 0 },       // 倍率表 basic 段 → 归并
       { slot: 0, moveId: '1061009', count: 1, startTime: 1 },  // 非 basic → 原键
     ])
-    const res: any = corinMechanic.axisWindowOverlays!(overlayInput({ axes }))
-    expect(res.corinStunBonusMap.get('basic_attack')).toBe(35)
-    expect(res.corinStunBonusMap.get('1061009')).toBe(35)
-    expect(res.corinStunBonusMap.has('b1')).toBe(false)
+    // CC-437：返回值对编排层不透明，用模块 channel 读（`byMove` = 原桶，`flatPct` = 原标量）
+    const res = corinOverlay.read(corinMechanic.axisWindowOverlays!(overlayInput({ axes }))!)!
+    expect(res.byMove!.get('basic_attack')).toBe(35)
+    expect(res.byMove!.get('1061009')).toBe(35)
+    expect(res.byMove!.has('b1')).toBe(false)
   })
 
   it('可琳扫除帮手·非轴折算臂：桶留空、标量表 = 35×覆盖率（精确值）；桶值恒 35 的不变量不受污染', () => {
-    const res: any = corinMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))
-    expect(res.corinStunBonusMap).toBeUndefined()   // 折算值**不许**进桶（桶值恒 35 是被断言的语义）
-    expect(res.scalarBySlot.get(0).corinStunBonusPct).toBe(17.5)
-    expect(corinMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'corin.additionalStunCoverage': 1 } }))!
-      .scalarBySlot!.get(0)!.corinStunBonusPct).toBe(35)
-    expect(corinMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'corin.additionalStunCoverage': 0 } }))!
-      .scalarBySlot!.get(0)!.corinStunBonusPct).toBe(0)
+    const rd = (o: Record<string, unknown> = {}) => corinOverlay.read(corinMechanic.axisWindowOverlays!(overlayInput(o))!)!
+    const res = rd({ isAxis: false })
+    expect(res.byMove).toBeUndefined()   // 折算值**不许**进桶（桶值恒 35 是被断言的语义）
+    expect(res.flatPct).toBe(17.5)
+    expect(rd({ isAxis: false, settings: { 'corin.additionalStunCoverage': 1 } }).flatPct).toBe(35)
+    expect(rd({ isAxis: false, settings: { 'corin.additionalStunCoverage': 0 } }).flatPct).toBe(0)
   })
 
   it('希格莉德浸染：15×风化覆盖率（精确值）；无风/门控关不产出', () => {
