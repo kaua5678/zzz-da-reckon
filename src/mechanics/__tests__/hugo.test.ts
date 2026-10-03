@@ -82,6 +82,8 @@ describe('雨果（1291）核心与决算', () => {
         hugoEchoCoverage: 1,
         // CC-409：强特终结 1291010 动作时间读 cfg.moveActionTimes（引擎由 catalog 预填；这里手填 = 表值）
         moveActionTimes: { '1291010': 1.805 },
+        // CC-408：强特终结 1291010 damage 行值由引擎读表进 cfg.mechanicRowValues（手搭 = 表值）
+        mechanicRowValues: { '1291010': 709.8 },
       },
       state: { exSpecialCount: 2, ultimateCount: 1 },
       executions,

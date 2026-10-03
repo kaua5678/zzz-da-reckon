@@ -23,7 +23,7 @@ import type {
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
-import { findMoveById as findMove } from '@/data/moveTableQueries'
+import { findMoveById as findMove, getRowValue } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
 
 export const HUGO_ID = '1291'
@@ -62,7 +62,6 @@ export function hugoMoveActionTime(moveId: string, catalogActionTime: number): n
   if (moveId === HUGO_EX_VERDICT_MOVE_ID && catalogActionTime <= 0) return HUGO_EX_FINAL_ACTION_TIME
   return catalogActionTime
 }
-export const HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8
 export const HUGO_EX_FINAL_ACTION_TIME = 1.805
 export const HUGO_VERDICT_BASE_MULTIPLIER = 1000
 export const HUGO_VERDICT_MAX_MULTIPLIER = 3400
@@ -164,7 +163,7 @@ function applyHugoPanel({ slot, team, cinemaLevel, panel, settings }: AgentPanel
   panel.hugoEchoCoverage = echoCoverage
 }
 
-function buildHugoCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildHugoCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
   cfg.hugoCinemaLevel = cinemaLevel
   cfg.hugoExVerdictRatio = clampRatio(setting(cfg, 'hugo.exVerdictRatio', 1))
   cfg.hugoUltimateVerdictRatio = clampRatio(setting(cfg, 'hugo.ultimateVerdictRatio', 1))
@@ -172,6 +171,11 @@ function buildHugoCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput):
   cfg.hugoEchoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(setting(cfg, 'hugo.echoCoverage', 1))
   cfg.hugoC4Coverage = cinemaLevel >= 4 ? clampRatio(setting(cfg, 'hugo.c4Coverage', 1)) : 0
   cfg.hugoAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  // CC-408：强特终结 1291010 的 damage 行值由引擎读 catalog 进 cfg.mechanicRowValues（原模块常量
+  // HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8 是同一数据的第二份）。缺表为 0，**不回退常量**——缺表要在结果里看得见。
+  cfg.mechanicRowValues = {
+    ['1291010']: getRowValue(findMove(skills, '1291010'), 'damage'),
+  }
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): HugoCycle {
@@ -236,13 +240,15 @@ function pushExecution(executions: AgentResourceInput['executions'], input: {
 function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
   const additionalActive = cfg.hugoAdditionalActive === true
+  // CC-408：1291010 damage 行值读表（buildCharConfig 写 cfg.mechanicRowValues）；缺表 = 0，无常量兜底。
+  const exFinalBase = (cfg.mechanicRowValues ?? {})['1291010'] ?? 0
   pushExecution(executions, {
     moveId: HUGO_EX_VERDICT_MOVE_ID,
     moveName: '魂狩·惩戒·决算终结一击',
     category: 'special',
     count: cycle.exVerdictCount,
     actionTime: cfgMoveActionTime(cfg, '1291010'),
-    damageMultiplier: HUGO_EX_FINAL_BASE_MULTIPLIER + cycle.verdictMultiplier,
+    damageMultiplier: exFinalBase + cycle.verdictMultiplier,
     verdict: true,
     cinemaLevel: cycle.cinemaLevel,
     additionalActive,
@@ -252,8 +258,8 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
     moveName: '魂狩·惩戒·终结一击',
     category: 'special',
     count: cycle.cinemaLevel >= 6 ? 0 : cycle.exNormalCount,
-    actionTime: HUGO_EX_FINAL_ACTION_TIME,
-    damageMultiplier: HUGO_EX_FINAL_BASE_MULTIPLIER,
+    actionTime: cfgMoveActionTime(cfg, '1291010'),
+    damageMultiplier: exFinalBase,
     verdict: false,
     cinemaLevel: cycle.cinemaLevel,
     additionalActive,
@@ -263,8 +269,8 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
     moveName: '魂狩·惩戒·荆棘决算',
     category: 'special',
     count: cycle.c6OutOfStunVerdictCount,
-    actionTime: HUGO_EX_FINAL_ACTION_TIME,
-    damageMultiplier: HUGO_EX_FINAL_BASE_MULTIPLIER + HUGO_VERDICT_BASE_MULTIPLIER,
+    actionTime: cfgMoveActionTime(cfg, '1291010'),
+    damageMultiplier: exFinalBase + HUGO_VERDICT_BASE_MULTIPLIER,
     verdict: true,
     cinemaLevel: cycle.cinemaLevel,
     additionalActive,
