@@ -1,6 +1,6 @@
 # CC-437 设计稿：轴窗口 overlay 改为「模块私有、编排层不透明」（去掉 `typesHooks.ts` 里 9 个角色前缀字段）
 
-> 状态：**T15-a `f287adde`（r467）、T15-b `0f643e81`（r468）、T15-c `37e97ec9`（r469）、T15-d `3a9a8f5f`（r470）、T15-e `808710cf`（r471）已落地，f→g 未动**（设计 arena-F r466，2026-10-03）。执行卡见 `docs/mcp-worker-task-queue.md` §3 **T15**（a→g，每步独立提交、各自 zd 0）。
+> 状态：**T15-a `f287adde`（r467）、T15-b `0f643e81`（r468）、T15-c `37e97ec9`（r469）、T15-d `3a9a8f5f`（r470）、T15-e `808710cf`（r471）、T15-f `f5bddaf6`（r472）已落地，g 收口未动**（设计 arena-F r466，2026-10-03）。执行卡见 `docs/mcp-worker-task-queue.md` §3 **T15**（a→g，每步独立提交、各自 zd 0）。
 > 前置设计：`docs/mcp-cc17-axis-overlay-consume.md`（CC-17：按槽归属 + `directRowBonus`）。本稿是它的下一步，不推翻它。
 
 ## 0. 一句话
@@ -127,7 +127,7 @@ directRowBonus: ({ exec, isAxis, overlay }) => {
 | **T15-c** | ✅ `37e97ec9`（r469）。形状 `PeiluoOverlay { byMove?: Map; flatPct?: number }`（两臂互斥）；两字段已删；NightA 的「按槽键控」断言改为「模块对 slot 无感」（键控是编排层职责）。原卡面 → 迁 **peiluo**（`specPanelBuffs.ts`：桶 + 标量）；测试 `peiluo.test.ts`、`teamHookMigration.test.ts:216-233` | specPanelBuffs.ts + 2 测试 | 同上 |
 | **T15-d** | ✅ `3a9a8f5f`（r470）。形状 `CorinOverlay { byMove?: Map; flatPct?: number }`；两字段已删；「桶值恒 35」断言改读 `byMove`。原卡面 → 迁 **corin**；测试 `corin.test.ts`、`teamHookMigration.test.ts:251-255` | corin.ts + 2 测试 | 同上 |
 | **T15-e** | ✅ `808710cf`（r471）。形状 `BanyueOverlay { stacksByMove?: Map<层数>; flatPct?: 百分比 }`；两字段已删。原卡面 → 迁 **banyue**；测试 `banyue.test.ts`（14 处）、`teamHookMigration.test.ts:163-168`、`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 里构造 `axisBucketsBySlot` / `axisScalarBySlot` 的般岳夹具改 `axisOverlayBySlot`（见 T15-g 说明：这两份测试在 g 之前仍可用旧字段名，但建议在 e 时一并改成 `overlay`，少跑一次） | banyue.ts + 4 测试 | 同上 |
-| **T15-f** | 迁 **yixuan**（桶 + 标量，C6 臂与非轴臂都进私有对象 `{ ningshen?: {critDmg, sheerDmg}; ningshenByMove?: Map }`，读取优先级保持 `ningshen ?? (isAxis ? ningshenByMove.get(moveId) : undefined) ?? {0,0}`）；测试 `yixuanSmoke.test.ts`、`teamHookMigration.test.ts:181-206` | yixuan.ts + 2 测试 | 同上 |
+| **T15-f** | ✅ `f5bddaf6`（r472）。形状 `YixuanOverlay { byMove?: Map<moveId, YixuanNingshen>; flat?: YixuanNingshen }`（字段名落地为 `flat` / `byMove`，与 c/d 对齐）；两字段已删；NightA 槽键控断言改槽无关。原卡面 → 迁 **yixuan**（桶 + 标量，读取优先级保持 `flat ?? (isAxis ? byMove.get(moveId) : undefined) ?? {0,0}`）；测试 `yixuanSmoke.test.ts`、`teamHookMigration.test.ts:181-206`、`damagePoolNightA.test.ts:293-318` | yixuan.ts + 3 测试 | 同上 |
 | **T15-g** | **收口**：删 `AgentAxisOverlays` / `AxisScalarOverlays` 与 9 个字段；`axisWindowOverlays` 返回类型只剩 `AgentAxisOverlay \| null`；`DirectRowBonusInput` 删 `buckets` / `scalar`；`collectAxisWindowOverlays` 返回 `Map<number, AgentAxisOverlay>`（删 scalar 合并）；`useResourceCalc.ts:647-648` / `damagePool.ts:85-90` 合成 `axisOverlayBySlot`；`damagePoolDirect.ts` 删 `overlayScalar`；`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 的输入夹具改 `axisOverlayBySlot`；加形状锁 `src/composables/__tests__/axisOverlayOpaqueCc437.test.ts`：① `typesHooks.ts` 非注释行不含 `MingwangStacks\|NingshenMap\|KagerouMap\|StunBonusMap\|MingwangPct\|StunBonusPct\|KagerouPct\|InfectionPct`；② `panelPhases.ts` 不含 `scalarBySlot`；③ `DirectRowBonusInput` 无 `buckets` / `scalar` 成员 | 见左 | vue-tsc 0 / guards / build / zd 0 / 全量分片；arch 卡 CC-437 置 done；本稿状态行改「已落地」 |
 
 每步的 arch 行写 `CC-437<步>`；r6 §8 一行；T15 卡勾对应项。**谁做都行**（可交给执行模型，卡面 = 本稿 §2 + §4 对应行 + 常规验收）。
