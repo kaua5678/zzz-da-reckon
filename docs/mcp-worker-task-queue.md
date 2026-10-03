@@ -82,6 +82,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 12:14 arena-F 第 426 轮**（开工：master `a582aa33` 干净、已推；无 verify 进程；别人 11:40–11:57 的 `remielle.ts` / `remielle.test.ts` / `helpersNightC.test.ts` 仍未提交、未认领，**没动**（闲置满 1 小时后按孤儿规则处理，本轮收工时还没到）；REQUIREMENTS.md 无新条目；worktree `wt-T4` 已删，产物 `/home/kaua/calc-arch/arenaF/r426/`）
+- **做到哪**：① §3 最后一张卡 **T4** 由 dsh 工人完成（CC-400 `13602152`，卡已删），`as unknown as` 家族到此收口：非测试代码行 20 → 14，剩的全是 CC-398 判合理项，**别再动这个计数**。② CC-398 的「条XX%」接线做了**真页面**复核（CC-401，只有文档）：无头 chromium 开捏轴页读 DOM，确认页面渲染出 `条电34%·以太95%` / `条电34%`，与组件 setupState 里 `inStunAnomalyState.gaugeSnapshots` 一致。**第一次跑看不到标签**（6 以太 +18 电：两条槽恰好在块末归零 → 页面按设计过滤 0%），差点误判成修复无效——做页面复核时先看状态再看 DOM。
+- **复核页面的现成工具**：`arenaF/r426/shot.cjs`（`playwright-core` + `chrome-headless-shell`，配方见下方 r416 条目），本轮加了一招：从 `document.querySelector('.sap-block').__vueParentComponent` 往 `.parent` 爬到 `setupState` 里含 `inStunAnomalyState` 的组件直接读 core 摘要——比截图准，以后查「算了但没显示」类问题照抄。
+- **坑**：同一个 `wsl_exec` 命令里既写了 `npx vite --port 5199` 又用 `pkill -f "[v]ite --port 5199"` 收尾，括号技巧失效（包装 shell 自己的命令行被匹配）→ 把自己杀了。改用 `ss -ltnp | grep ":5199 "` 取 pid 再 kill，已验证能收干净。
+- **下一步候选**（不排序）：remielle 三文件若仍无人认领且闲置 >1h，按队列孤儿规则（先读 diff 判断是否成形，再决定 stash-free 的处理方式，§2b 写明原因）；arena-E §2 的 TWIN 候选复查；CC-398 ①的页面复核已做，②③无 UI 面，不用再查。
+- **回滚点**：`git revert 13602152`（T4 独立）；CC-401 无代码。
+
 **2026-10-03 12:01 arena-F 第 425 轮**（开工：master `c55d9c64` 干净、已推；无 verify 进程；主仓有别人 11:40 起持续在改的 `src/mechanics/agents/remielle.ts` + `remielle.test.ts` + `composables/__tests__/helpersNightC.test.ts`（无认领行；内容 = 1581 蕾米 daze 档位按「异常角色数不含本人」的 2026-09-30 用户裁决重算，tier3 在 3 人队结构性不可达），**没动它**；REQUIREMENTS.md 无新条目；worktree `wtF-r425` 已删，产物 `/home/kaua/calc-arch/arenaF/r425/`）：**CC-399 = T5 `df3e7c42` + T6 `1b771511`**，已 ff 合入 master。
 - **做到哪**：r424 §3 的 T5 / T6 两张卡收口（卡已从 §3 删除）。T5 派给 dsh 工人（worktree `wt-T5`），本人同时做 T6（worktree `wtF-r425`），两边文件不相交；工人 diff 并进 `wtF-r425` 后一次性 zd + 全量 verify，再分两个提交（各自可独立 revert）。详见卡表 CC-399。
 - **T6 调查结论**（卡里的未决项，已关）：`specTeamBuffToTeammateBuff` 丢 spec effect 的 `source` **无害**——`getEffectSourceValue` 的兜底链里 `source.defaultValue` 排在目标面板之后、`0` 之前，全仓只有 1541 带 `source` 且 `defaultValue = 0`，`TeamBuffEffectSpec` 也没声明它。**不补透传**。若将来有 spec 录入非 0 的 `source.defaultValue`，先在 `specs/types.ts` 声明再在 `teamBuffConvert.ts` 透传，别绕过转换器。
@@ -357,43 +364,6 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 （T1、T2 已于第 370 轮 `0c5e00cb` 完成）
 
-（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的。）
+（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**。）
 
-<!-- card:T4 -->
-### T4 · spec 侧「按数据给的字段名读写 cfg」收成两个辅助（机械、零差）
-
-**仓库** `/home/kaua/projects/zzz-calculator`（先 `git worktree add --detach /home/kaua/calc-arch/wt-T4 HEAD && ln -s /home/kaua/projects/zzz-calculator/node_modules /home/kaua/calc-arch/wt-T4/node_modules`，在 worktree 里做；**不许碰主仓库**）。
-
-**背景**：spec JSON 用 `valueField` / `initialValueField` / `enabledField` / `carrierField` / `bonusEnabledField` 这类字段名指定「去 cfg 的哪个键读」，所以这些读取天然是动态键，代码里写成 8 处各自的 `cfg as unknown as Record<string, unknown>`。目标不是去掉动态读取，而是让「spec 按字段名读 cfg」只有一个入口。
-
-**改法**：
-1. 新建 `src/specs/cfgField.ts`，内容只有两个导出：
-   ```ts
-   import type { CharacterOperationConfig } from '@/types/resource'
-   /** spec 数据按字段名读 cfg（valueField / enabledField / carrierField …）。唯一入口：动态键只在这里出现。 */
-   export function readCfgField(cfg: CharacterOperationConfig, field: string): unknown {
-     return (cfg as unknown as Record<string, unknown>)[field]
-   }
-   /** 机制可调设置写入 cfg（键 = mechanicSettingCfgKey(id)）；读端是 utils/mechanicSettingCfg.ts 的 cfgMechanicSetting*。 */
-   export function writeMechanicSettingCfg(cfg: CharacterOperationConfig, settingId: string, value: unknown): void {
-     ;(cfg as unknown as Record<string, unknown>)[mechanicSettingCfgKey(settingId)] = value
-   }
-   ```
-   （`mechanicSettingCfgKey` 从 `@/utils/mechanicSettingCfg` import。）
-2. 把下面 8 处改成调用辅助，**表达式其余部分逐字不变**（尤其 `Number(... ?? default)`、`Math.max(0, …) || 0`、`Boolean(...)`、`String(... ?? '')` 原样保留）：
-   - `src/specs/resources.ts` 113 / 196 / 204 / 216：`record[X]` → `readCfgField(cfg, X)`，删掉对应的 `const record = …` 行；
-   - `src/specs/resources.ts` 138：`record[mechanicSettingCfgKey(adjustable.id)]` → `readCfgField(cfg, mechanicSettingCfgKey(adjustable.id))`（**不要**换成 `cfgMechanicSetting`：它对非有限数取 fallback，和现有 `Number(raw ?? default)` + `isFinite` 判定不同，r420 踩过）；
-   - `src/specs/mechanics.ts` 42 / 228：同上；
-   - `src/composables/resourceCalc/helpers.ts` 601：`record[mechanicSettingCfgKey(setting.id)] = …` → `writeMechanicSettingCfg(cfg, setting.id, configStore.getMechanicSetting(setting.id, setting.default))`，删掉 `const record = …`。
-3. 改完 `grep -n "as unknown as Record" src/specs src/composables/resourceCalc/helpers.ts` 应只剩 `src/specs/cfgField.ts` 里的 2 处。
-
-**验收**（都在 worktree 里，前台跑）：
-- `timeout 280 npx vue-tsc -b --force` 退出 0；
-- `timeout 280 npx vitest run --maxWorkers=2 src/specs src/composables/__tests__/sustainedEx.test.ts src/composables/__tests__/moveFusion.test.ts` 全绿；
-- 零差：`cd /home/kaua/projects/zzz-calculator && mkdir -p /home/kaua/calc-arch/wt-T4/.zc && cp -r .zc/perf /home/kaua/calc-arch/wt-T4/.zc/perf && ZD_REPO=/home/kaua/calc-arch/wt-T4 timeout 280 bash .zc/perf/zd.sh T4` 输出 `DUMP DIFF 0` 且 `ROWS DIFF 0`。
-
-**不许**：改任何 JSON；改 `utils/mechanicSettingCfg.ts`；动 `rowBuild.ts:44` / `truncationRefold.ts:68`（那两处是整对象反射快照，不是字段读取）。
-
-**报告**：首行 `STATUS: done|blocked`，然后贴 `git -C /home/kaua/calc-arch/wt-T4 diff --stat` 与三条验收的最后 3 行输出。
-<!-- /card:T4 -->
 
