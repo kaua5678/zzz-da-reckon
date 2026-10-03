@@ -960,7 +960,7 @@ const guaranteeUltimateHint = computed(() => {
   if (g.parry <= 0) {
     return g.roundable
       ? '（保底4喧响：主C喧响已够 4 次终结技，无需补弹刀）'
-      : `（喧响缺口 ${Math.round(g.residualShort)} > 1500，实战打不出下一次大 → 不硬凑）`
+      : `（喧响缺口 ${Math.round(g.residualShort)} > ${g.roundThreshold}，实战打不出下一次大 → 不硬凑）`
   }
   const raw = g.basisShort / g.perParry
   return `（保底4喧响：缺口 ${Math.round(g.basisShort)} 喧响 → 补只给喧响弹刀 ⌈${Math.round(g.basisShort)}÷${g.perParry}⌉ = ${g.parry} 次，${raw.toFixed(2)} 次向上取整）`

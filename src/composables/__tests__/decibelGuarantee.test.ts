@@ -16,7 +16,10 @@ describe('CC-229 decibelGuarantee 引擎直出', () => {
     expect(g.active).toBe(true)
     expect(g.parry).toBeGreaterThan(0)
     expect(g.parry).toBe(Math.ceil(g.basisShort / g.perParry))
-    expect(g.basisShort).toBeLessThanOrEqual(1500)
+    expect(g.basisShort).toBeLessThanOrEqual(g.roundThreshold)
+    // CC-425：roundable 与阈值同源（页面提示插值 roundThreshold，不再手写 1500）
+    expect(g.roundThreshold).toBe(1500)
+    expect(g.roundable).toBe(g.residualShort <= g.roundThreshold)
   })
   it('补齐角色（般岳）在队 ⇒ active=false、parry=0', async () => {
     const { config } = await setupHarness([{ agentId: '1371' }, { agentId: '1471' }, { agentId: '1311' }], { recommendedBuild: true })
@@ -31,6 +34,7 @@ describe('CC-229 decibelGuarantee 引擎直出', () => {
     expect(src).not.toMatch(/\/\s*215\b/)
     expect(src).not.toMatch(/÷\s*215\b/)
     expect(src).not.toMatch(/ULTIMATE_COST_DEFAULT/)
+    expect(src).not.toMatch(/\b1500\b/) // CC-425：阈值由 decibelGuarantee.roundThreshold 提供
     expect(src).toMatch(/decibelGuaranteeResult/)
   })
 })

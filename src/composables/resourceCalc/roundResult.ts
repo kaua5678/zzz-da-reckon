@@ -38,8 +38,10 @@ export interface CalcRoundResult {
       basisShort: number
       /** 本轮结果（已含注入）上的剩余缺口 */
       residualShort: number
-      /** 剩余缺口 ≤ 1500（可补档） */
+      /** 剩余缺口 ≤ roundThreshold（可补档） */
       roundable: boolean
+      /** 四舍五入阈值（convergence `DECIBEL_ROUND_THRESHOLD`，半次大招；CC-425：页面提示插值，不再手写 1500） */
+      roundThreshold: number
       /** 单次弹刀个人喧响（PARRY_DECIBEL_BONUS） */
       perParry: number
     }

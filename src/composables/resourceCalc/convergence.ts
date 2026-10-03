@@ -1121,6 +1121,7 @@ export function createRunCalcRound(deps: {
         basisShort: decibelParryActive ? prevDecibelParryBasisShort : 0,
         residualShort: decibelResidualShort,
         roundable: decibelRoundable,
+        roundThreshold: DECIBEL_ROUND_THRESHOLD,
         perParry: PARRY_DECIBEL_BONUS,
       },
       inStunAnomalyState: inStunAnomalyStateNext,
