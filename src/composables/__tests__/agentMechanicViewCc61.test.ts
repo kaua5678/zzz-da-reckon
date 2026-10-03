@@ -12,6 +12,8 @@ import type { AgentSkills } from '@/types/catalog'
 // 对照基准：照抄原页面两段 if 块（remaining 的 9 = quota）
 function legacy(agentId: string, cinemaLevel: number, skills: AgentSkills | undefined) {
   if (agentId === '1571') return [{ moveId: 'norma-hat-chain', label: '诺姆转连携', actionTime: 0, quota: 9 }]
+  // CC-433：原页面 `findMove(skills, '1051024')` 分支（伊德海莉寒冰触手，0 时长，remaining 9）
+  if (agentId === '1051') return [{ moveId: '1051024', label: '寒冰触手', actionTime: 0, quota: 9 }]
   if (agentId === '1591') {
     const pzSum = ['1591007', '1591008', '1591022'].reduce((sum, mid) => sum + (findMoveById(skills, mid)?.actionTime ?? 0), 0)
     const pzScale = cinemaLevel >= 6 ? 0.75 : 1
@@ -34,7 +36,7 @@ describe('CC-61 专属轴块 → 模块声明 axisExtraBlocks', () => {
         hits += got.length
       }
     }
-    expect(hits).toBe(14)
+    expect(hits).toBe(21)  // 3 个角色 × 影画 0..6（CC-433 加伊德海莉）
     // 破阵块行动时间非零（技能表三段都查得到），C6 恰为 0.75 倍
     const sk = catalog.getAgentSkills('1591')
     const at = (c: number) => agentAxisExtraBlocks('1591', { cinemaLevel: c, actionTimeOf: mid => findMoveById(sk, mid)?.actionTime ?? 0 })[0]?.actionTime ?? 0
@@ -47,5 +49,6 @@ describe('CC-61 专属轴块 → 模块声明 axisExtraBlocks', () => {
     const src = readFileSync(resolve(__dirname, '../../views/StunAxisPage.vue'), 'utf8')
     expect(src.includes("=== '1571'")).toBe(false)
     expect(src.includes("=== '1591'")).toBe(false)
+    expect(src.includes("'1051024'"), 'CC-433：触手块不再写死在页面').toBe(false)
   })
 })

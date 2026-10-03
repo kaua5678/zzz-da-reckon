@@ -712,7 +712,7 @@ const allMoves = computed(() => {
     }
   }
   // 额外可放置：60/90 转大（琉音好评专属，只给转大目标、不给转大发起者自己；琉音不在队则不显示）
-  // + 触手（即使当前执行数为 0 也常驻显示）
+  // （触手常驻块已迁模块声明，见下方 axisExtraBlocks 循环）
   for (const c of chars) {
     const skills = catalogStore.getAgentSkills(c.agentId)
     const ultMove = findUltimateMove(skills) // CC-319：原 findMoveByEn(skills,'ultimate') 不看分类，青衣会取到普攻 1251001
@@ -725,15 +725,8 @@ const allMoves = computed(() => {
         out.push({ slot: c.slot, moveId: ultMove.id, label: '转大·' + v, actionTime: ultMove.actionTime ?? 0, remaining: Math.max(0, 9 - consumed), key: `${c.slot}:${ultMove.id}:promote:${v}` })
       }
     }
-    const tentacle = findMove(skills, '1051024')
-    if (tentacle) {
-      let consumed = 0
-      axes.value.forEach((ax, ai) => {
-        for (const a of ax.actions) if (a.slot === c.slot && a.moveId === '1051024') consumed += a.count * axisTimes(ai)
-      })
-      out.push({ slot: c.slot, moveId: '1051024', label: '寒冰触手', actionTime: 0, remaining: Math.max(0, 9 - consumed), key: `${c.slot}:1051024:tentacle` })
-    }
-    // CC-61：角色专属轴块经模块声明 axisExtraBlocks（现：诺姆转连携 norma-hat-chain / 希格莉德破阵连段 sigrid-pozhen；
+    // 伊德海莉寒冰触手块：CC-433 起经模块声明 axisExtraBlocks（下面的通用循环），不再在页面写死 1051024
+    // CC-61：角色专属轴块经模块声明 axisExtraBlocks（现：诺姆转连携 norma-hat-chain / 希格莉德破阵连段 sigrid-pozhen / 伊德海莉寒冰触手 1051024（CC-433）；
     // 原为两段写死 c.agentId 1571 / 1591 的 if 块，数值口径逐字搬进各自模块）
     {
       const exSkills = catalogStore.getAgentSkills(c.agentId)

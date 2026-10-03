@@ -486,6 +486,10 @@ export const yidhariMechanic: AgentMechanicModule = {
   // CC-393：连携固定用 1051025（涌泉帷幕强化连携，见 buildYidhariCharConfig「覆盖默认的 1051015 #1」，无条件）⇒ 1051015 永不出手；
   // 不隐藏时编辑器会以 [表] 块提供它，放进轴 = 在 #2 的连携次数之外再按 #1 倍率加一份直伤（重复计伤）
   axisHiddenMoves: ['1051012', '1051015'],
+  // CC-433：轴编辑器「寒冰触手」常驻候选块（原 StunAxisPage 写死 findMove(skills, '1051024') 分支，逐字段搬入）。
+  // 0 时长（额外能力触发，不占行动时间）；quota 9 与诺姆转连携同为候选「可放」提示上限，不是机制次数——
+  // 机制次数在上面 tentacleCount = floor(有效战斗时长 / 13.5)。core/stunAxis 按 moveId 1051024 识别为轴专属块。
+  axisExtraBlocks: () => [{ moveId: TENTACLE, label: '寒冰触手', actionTime: 0, quota: 9 }],
   name: '伊德海莉',
   description: '蓄力循环（1s烧血→霜寒拥覆#3→碎惘沉击#4）+ 极寒重碾（失衡内2/非失衡回15闪能）+ 低血增伤100%覆盖。',
   applyPanel: applyYidhariPanel,
