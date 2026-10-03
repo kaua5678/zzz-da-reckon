@@ -51,7 +51,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **出卡前 grep 断言的全部消费者；brief 里给工人「没说清就选最小改动继续」的授权（2026-10-03 r436 CC-410）**：卡面写「:61 兜底删掉」，实际那行是 `axisMoveActionTime` 钩子的实现、有测试锁着——工人读到矛盾后推敲 9 分钟零改动。
   判据：派发后 >5 分钟 `git status` 零改动 ⇒ 看 `worker.err` 尾部它在纠结什么，多半卡面错了；`kill <pid>`（pid 取自 `pgrep -af '^node .*dsh --profile headless'`）、改卡、重派，比等便宜。第二次派发 8 分钟收工。
 - **全量 vitest 单独一条 `wsl_exec`（2026-10-03 r437 实测）**：guards 链（~45s）+ build（~47s）+ vitest(4)（~250s）串在一条调用里，总时长撞上桥的 ~285s 上限，整条被杀、vitest 日志半截还没有 summary——看起来像「跑了但没结果」。guards / build 一条，vitest 另一条，各自 `timeout 280`。
-- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 477 / 4332，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
+- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 477 / 4333，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
 ### 0.R2 收尾流程（2026-09-27 R2 定稿；依据与数字见 `docs/mcp-dev-process-speed.md`）
 
 - **强度不变，顺序和并行方式变了**：全量 `npm run verify`、零差、文档提交后重跑 check-guards 三道都保留。
@@ -91,6 +91,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 21:06 arena-F 第 459 轮**（开工：origin = 主仓 = `c19dfd67`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 全部仅触发项；worktree `wt-T27`（已删）；产物 `/home/kaua/calc-arch/arenaF/r459/`）：**CC-430 `047fa11a`** + 本文档提交。
+- **做到哪**：「从未扫过的大文件」线扫 `FinalPanel.vue`（r6 §8 行 459）。数值层已干净（CC-222/223/228 都落实了），但贯穿力系数 0.3 / 0.1 在 9 处**文案**里手写 ⇒ 系数常量 + 两个文案函数进 data 层，9 处改调，锁正则扩到文案形态。分片 477 / 4333。
+- **沉淀**：(1) 「单源」= 数值 **和** 解释文案；只并数值，UI 上的公式说明在改数时会说谎。(2) 第一版手工只找到 5 处，锁的正则一扩就扫出另外 4 处——**先写锁再改**比「改完补锁」省一轮；新锁扫到的误报（`×0.1%`、`/**` 单行注释）用 `(?!%)` 与注释前缀过滤，不要放宽到让真漏网过去。
+- **未决 / 坑**：无新未决。失衡乘区展示口径（r458）与喧响上限 `3000` 仍按 r458 结论留。收尾推送时 origin 已多出 kaua5678 的 `19aa5b8f`（只改 `docs/implementation-status.md`，docs-drift CI 收敛，与本轮零交集）⇒ 本轮两个提交 rebase 到其上（代码哈希由 c5b98235 变为 047fa11a，文档已同步改），guards+tokens 复跑 0 后再推。
+- **下一步（start-ready）**：无排定卡。找题顺序不变（REQUIREMENTS → §3 → §8.0）。该线剩余：`TimeChartsPage.vue`（668）、`DebugPage.vue`（613；本轮只改了 3 行文案，未按四步看）、`StunAxisPage.vue`（960；多次提及，低优先）、`ResponseSurface3D.vue`（1371，纯图形，最后）。建议下一个 `DebugPage.vue`（它罗列全部公式说明，最可能还有「文案里手写系数」同型问题）：`grep -nE "× ?[0-9]+(\.[0-9]+)?|/ 100|\* 100|Math\." src/views/DebugPage.vue`，逐条问「这个系数在 data/core 里有没有常量」。
+- **回滚点**：`git revert 047fa11a`。
 
 **2026-10-03 20:54 arena-F 第 458 轮**（开工：origin = 主仓 = `be8731c1`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 全部仅触发项；worktree `wt-T26`（已删）；产物 `/home/kaua/calc-arch/arenaF/r458/`）：**CC-429 `66ad9576`** + 本文档提交。
 - **做到哪**：「从未扫过的大文件」线扫 `StatPanel.vue`（r6 §8 行 458）。两处与引擎平行的手抄公式（异常积蓄两区、自动回能括号项）并到 data 层单源；引擎侧只是换调用、运算顺序不变（zd DIFF 0 ×2）。分片 477 / 4332。
