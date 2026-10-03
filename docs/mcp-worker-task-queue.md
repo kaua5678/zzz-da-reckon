@@ -88,6 +88,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 17:50 arena-F 第 446 轮**（开工：origin = 本地 = `ff68b463`，无人在跑；REQUIREMENTS.md 无新条目；做 r445「下一步 ②」，worktree `wt-T14`（已删）；产物 `/home/kaua/calc-arch/arenaF/r446/`：`patch-cc419.py`（已应用勿重跑）/ `tsc.log` / `guards.log` / `build.log` / `zd.log` / `vt-s1.log` / `vt-s2.log`）：**CC-419 `2dcd06d1`**（**已推**）+ 本文档提交。
+- **做到哪**：`SolveTeamInput.resourceConfig` 非 null（2 文件 +14/−12，锁追加 1 用例）。CC-417 → 418 → 419 三步把「空失衡池 / null 轮 / 可空配置」三个幻影状态从 solveTeam 层清掉；solveTeam 现在的输入契约全部非 null、输出 `out` 非 null。全量基线 **472 文件 / 4314 用例**。
+- **刻意没做**：`runCalcRound` 闭包读 `resourceConfig.value` 的 throw 守卫（CC-418）保留——拿掉它要改 `createRunCalcRound` deps 契约，且 `createConvergenceRoundInputs` 还有同一 ref 的闭包读点，评估见 arch CC-419 行末。
+- **别人的 WIP**（`kaua5678`）：grace/velina/graceRotation.test 本轮仍未动（grace.ts md5 前缀 `f27e6b94` = 17:25）。**18:30 起孤儿规则生效**，步骤见 r444 块。
+- **下一步（start-ready）**：① ≥ 18:30 且 md5 未变 ⇒ 孤儿处置；② 否则 T10（备选）或按 §0 找新题——建议方向：`roundThreads.ts` `postRoundInput: null`「首轮」语义与 `prev: null`（首轮无前一轮）是否能统一成一个显式的「首轮」标志（现在两处各自用 null 表达同一事实）；`git log -S "return null" -- src/composables/resourceCalc/roundInputs.ts` 看轮输入簇里有无同类初始提交遗留。
+- **回滚点**：`git revert 2dcd06d1`。
+
 **2026-10-03 17:39 arena-F 第 445 轮**（开工：origin = 本地 = `0a634df2`，无人在跑；REQUIREMENTS.md 无新条目；按 r444「找题方向 ②」做，worktree `wt-T13`（已删）；产物 `/home/kaua/calc-arch/arenaF/r445/`：`patch-cc418.py`（代码补丁脚本，已应用勿重跑）/ `tsc.log` / `guards.log` / `build.log` / `zd.log` / `vt-s1.log` / `vt-s2.log`）：**CC-418 `74c092ad`**（**已推**）+ 本文档提交。
 - **做到哪**：`runCalcRound` 非 null 化落地（3 文件 +47/−61，1 个锁文件）。「null 轮」这个概念从 solveTeam / roundThreads 整体消失；`prev` 的 null（首轮无前一轮）是真实状态、保留。全量基线现在 **472 文件 / 4313 用例**。
 - **判定依据**：r444 方向 ② 成立——CC-417 后 `runCalcRound` 的 null 只剩 `!base || !catalogStore.ready`，而 `calcOutput`（`useResourceCalc.ts:226`）同条件先 return null，中间 `solveTeam` 无 store 写 ⇒ 同一次同步求值内不可达。把它改成 `throw` 而不是留 `return null`：留着 null 就得保留整套 `| null` 类型，等于类型层继续承认一个不存在的状态。
