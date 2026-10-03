@@ -10,7 +10,8 @@ export interface CalcRoundResult {
     resourceResult: TeamResourceResult
     /** CC-421：恒非 null（来源 `promoteFixpoint().pool`；空失衡贡献 ⇒ stunCount 0 的合法池，见 CC-417） */
     stunPool: StunPoolResult
-    anomalyPool: AnomalyPoolResult | null
+    /** CC-423：恒非 null（calcAnomalyPoolInput 对空 execs 返回合法空池） */
+    anomalyPool: AnomalyPoolResult
     /** CC-422：恒非 null（= applyChainGift(applyUltimatePromote(rr))，两者对非 null 入参恒返回非 null） */
     adjustedResourceResult: TeamResourceResult
     promote: number

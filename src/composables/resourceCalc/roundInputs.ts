@@ -16,6 +16,7 @@ import { computed, type ComputedRef } from 'vue'
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { calcAnomalyPool, type AnomalySkillExecution } from '@/core/anomalyPool'
+import type { AnomalyPoolResult } from '@/types/resource/pools'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
@@ -146,9 +147,12 @@ export function createConvergenceRoundInputs(deps: {
     return res ? { slot, ...res } : null
   })
 
-  /** 构建积蓄池（参数化 stunCoverage + 异常 execs） */
-  function calcAnomalyPoolInput(stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number) {
-    if (execs.length === 0) return null
+  /**
+   * 构建积蓄池（参数化 stunCoverage + 异常 execs）。恒返回 AnomalyPoolResult：
+   * CC-423 删除原 `if (execs.length === 0) return null`——calcAnomalyPool 对空 execs 返回合法空池
+   * （perElement [] / 触发 0 / perSlotBonus 全 0 / coverage 全 0），空集不是整池缺失（CC-417 同型）。
+   */
+  function calcAnomalyPoolInput(stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number): AnomalyPoolResult {
     const wind = windInfo.value; const setup = anomalyPoolSetupInfo.value
     const giftedPolarAssault = giftedPolarAssaultOverride ?? 0
     return calcAnomalyPool({

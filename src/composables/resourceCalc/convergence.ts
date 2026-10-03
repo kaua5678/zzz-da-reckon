@@ -92,7 +92,7 @@ export function createRunCalcRound(deps: {
   buildStackAxes: (axes: StunAxis[]) => { actions: import('@/core/stunAxisStack').StackActionCost[]; count?: number; basicFillerSlot?: number }[]
   expandExecutedToCounts: (executed: Record<string, { slot: number; moveId: string; count: number }>, basicFillBySlot: Record<number, number>) => Record<string, { slot: number; moveId: string; count: number }>
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
-  calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number) => AnomalyPoolResult | null
+  calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number) => AnomalyPoolResult
   extractAnomalyExecsFrom: (res: TeamResourceResult, skipGift?: boolean) => AnomalySkillExecution[]
   extractStunExecsFrom: (res: TeamResourceResult, skipGift?: boolean) => StunSkillExecution[]
   autoActive: { value: boolean }
@@ -842,7 +842,7 @@ export function createRunCalcRound(deps: {
     const ap0 = calcAnomalyPoolInput(0, extractAnomalyExecsFrom(adj0), giftedPolarAssaultThisRound, giftedPolarAssaultSlot)
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
-    const flinch1 = ap0?.coverage?.physicalCoverageRate ?? 0
+    const flinch1 = ap0.coverage.physicalCoverageRate
     const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio, lockForPool)
 
     // Boss 预设弹刀反推下一轮量（保底4失衡）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
@@ -989,7 +989,7 @@ export function createRunCalcRound(deps: {
     let bossAnomalyStateNext: BossAnomalyStateResult | null = null
     if (axisActive) {
       const contribMap = new Map<string, { element: string; perHit: number }>()
-      for (const prog of ap1?.perElement ?? []) {
+      for (const prog of ap1.perElement) {
         for (const c of prog.contributions ?? []) contribMap.set(c.moveId, { element: prog.element, perHit: c.perHitBuildUp })
       }
       if (contribMap.size > 0) {

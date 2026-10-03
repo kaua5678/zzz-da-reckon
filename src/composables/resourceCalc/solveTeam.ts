@@ -268,7 +268,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       }
       // 线程推进：anomalyDecibelBonus 旧版从 out.anomalyPool 现取（threadsNext 内置空数组占位），
       // 其余 = threadsNext（runCalcRound 已按 prev 兜底算好下一轮值）
-      threads = { ...t, anomalyDecibelBonus: out.anomalyPool?.perSlotBonus ?? [] }
+      threads = { ...t, anomalyDecibelBonus: out.anomalyPool.perSlotBonus }
       prevFeedbackSignature = curSig
     }
     /**

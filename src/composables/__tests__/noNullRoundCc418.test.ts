@@ -78,4 +78,17 @@ describe('CC-418 runCalcRound 非 null 化 / null 轮退役', () => {
       expect(cv, dead).not.toContain(dead)
     }
   })
+
+  it('CC-423：异常池恒非 null——calcAnomalyPoolInput 无空集 null 出口，CalcRoundResult.anomalyPool 不带 `| null`，流水线消费端无 `anomalyPool?.`', () => {
+    const ri = read('roundInputs.ts')
+    expect(ri).toMatch(/function calcAnomalyPoolInput\([^)]*\): AnomalyPoolResult \{\n/)
+    expect(ri.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l) && l.includes('execs.length === 0'))).toEqual([])
+    const rr = read('roundResult.ts')
+    expect(rr).toMatch(/export interface CalcRoundResult \{[\s\S]*?\n    anomalyPool: AnomalyPoolResult\n/)
+    expect(rr).not.toContain('anomalyPool: AnomalyPoolResult | null')
+    for (const f of ['convergence.ts', 'solveTeam.ts', 'outerCycle.ts']) {
+      const src = read(f)
+      expect(src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l) && /\banomalyPool\?\.|\bap[01]\?\./.test(l)), f).toEqual([])
+    }
+  })
 })
