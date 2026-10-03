@@ -8,6 +8,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
+import { axisOverlayChannel } from '../types'
 import type { MechanicSetting } from '@/types/resource'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import { getAgentSpec } from '@/specs/registry'
@@ -100,6 +101,12 @@ export const SIGRID_CORE_STUN_VULN = 20
 export const SIGRID_ADDITIONAL_ATK_FLAT = 840
 /** 浸染增伤：15% × 风化侵染覆盖率（emitExecDirect 分支读 damagePanels 的 windInfectionRate，用户口径 2026-02） */
 export const SIGRID_INFECTION_DMG = 15
+/**
+ * CC-437（T15-b）：本模块私有的轴窗口 overlay 形状——编排层只按槽搬运、不解释；
+ * `axisWindowOverlays` 用 `sigridOverlay.wrap` 产出，`directRowBonus` 用 `sigridOverlay.read` 读回。导出供测试读返回值。
+ */
+export interface SigridOverlay { infectionPct: number }
+export const sigridOverlay = axisOverlayChannel<SigridOverlay>()
 /** [砥砺]（连携技发动时获得）：后续敛枪式伤害 +20%，默认全覆盖（用户口径 2026-02） */
 export const SIGRID_DILI_DMG = 20
 export const SIGRID_C2_DECIBEL_EFFICIENCY = 10
@@ -652,11 +659,11 @@ export const sigridMechanic: AgentMechanicModule = {
    * 值与门控**逐位保留**：额外能力触发才写；`clamp01(rate)` 与消费端原式同口径；
    * 队伍无风角色时编排层已盖章 0 ⇒ 不产出（与原式 `15 × 0 = 0` 后 note 段不出现等价）。
    */
-  axisWindowOverlays: ({ slot, additionalAbilityActive, windInfectionRate }) => {
+  axisWindowOverlays: ({ additionalAbilityActive, windInfectionRate }) => {
     if (!additionalAbilityActive) return null
     const pct = SIGRID_INFECTION_DMG * clamp01(Number(windInfectionRate))
     if (pct <= 0) return null
-    return { scalarBySlot: new Map([[slot, { sigridInfectionPct: pct }]]) }
+    return sigridOverlay.wrap({ infectionPct: pct })
   },
   // spec 资源（敛枪式发动机会）与资源卡沿用 spec 解释器
   buildResourceResult: ({ cfg, state }: AgentResourceResultInput) => ({
@@ -671,10 +678,10 @@ export const sigridMechanic: AgentMechanicModule = {
   },
   /**
    * 浸染增伤行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
-   * **与轴模式无关**，只读本槽标量（原伤害池分支整支迁入 `axisWindowOverlays`，此处只取值）。
+   * **与轴模式无关**，只读本模块同帧 overlay（原伤害池分支整支迁入 `axisWindowOverlays`，此处只取值；CC-437 起不透明）。
    */
-  directRowBonus: ({ scalar }) => {
-    const v = scalar?.sigridInfectionPct ?? 0
+  directRowBonus: ({ overlay }) => {
+    const v = sigridOverlay.read(overlay)?.infectionPct ?? 0
     if (v <= 0) return null
     return {
       dmgBonus: v,

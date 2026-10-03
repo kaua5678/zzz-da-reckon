@@ -28,7 +28,7 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { banyueMechanic } from '@/mechanics/agents/banyue'
 import { corinMechanic } from '@/mechanics/agents/corin'
-import { sigridMechanic } from '@/mechanics/agents/sigrid'
+import { sigridMechanic, sigridOverlay } from '@/mechanics/agents/sigrid'
 
 /** 关掉全部全局 buff（含额外能力），让门控/命座差异成为唯一变量 */
 function isolate(config: Awaited<ReturnType<typeof setupHarness>>['config']) {
@@ -130,18 +130,17 @@ describe('R15-b 跳③：希格莉德浸染（与轴模式无关的标量臂）'
   } as never)
 
   it('精确值：覆盖率 0.5→7.5 / 1→15 / 0→不产出（不是产 0）', () => {
-    expect(sigridMechanic.axisWindowOverlays!(input({ windInfectionRate: 0.5 }))!
-      .scalarBySlot!.get(2)!.sigridInfectionPct).toBe(7.5)
-    expect(sigridMechanic.axisWindowOverlays!(input({ windInfectionRate: 1 }))!
-      .scalarBySlot!.get(2)!.sigridInfectionPct).toBe(15)
+    // CC-437：返回值对编排层不透明（不再是 scalarBySlot 表），用模块导出的 channel 读
+    expect(sigridOverlay.read(sigridMechanic.axisWindowOverlays!(input({ windInfectionRate: 0.5 }))!)!.infectionPct).toBe(7.5)
+    expect(sigridOverlay.read(sigridMechanic.axisWindowOverlays!(input({ windInfectionRate: 1 }))!)!.infectionPct).toBe(15)
     expect(sigridMechanic.axisWindowOverlays!(input({ windInfectionRate: 0 }))).toBeNull()
   })
 
   it('★ 与轴模式无关：isAxis 真/假给出**同一**标量（原分支里 isAxis 不出现）', () => {
     const onAxis = sigridMechanic.axisWindowOverlays!(input({ windInfectionRate: 0.5, isAxis: true }))!
     const offAxis = sigridMechanic.axisWindowOverlays!(input({ windInfectionRate: 0.5, isAxis: false }))!
-    expect(onAxis.scalarBySlot!.get(2)!.sigridInfectionPct).toBe(7.5)
-    expect(offAxis.scalarBySlot!.get(2)!.sigridInfectionPct).toBe(7.5)
+    expect(sigridOverlay.read(onAxis)!.infectionPct).toBe(7.5)
+    expect(sigridOverlay.read(offAxis)!.infectionPct).toBe(7.5)
   })
 
   it('门控：额外能力未触发 ⇒ 不参与', () => {

@@ -231,7 +231,9 @@ declare const AXIS_OVERLAY_BRAND: unique symbol
 export function axisOverlayChannel<T>() {
   return {
     wrap: (v: T): AgentAxisOverlay => v as unknown as AgentAxisOverlay,
-    read: (o: AgentAxisOverlay | undefined): T | undefined => o as unknown as T | undefined,
+    // 过渡期参数并上 `AgentAxisOverlays`：测试可直接喂 `module.axisWindowOverlays!(…)!` 的返回（钩子返回 null 时测试自己 `!`；
+    // 本文件按 noNullRoundCc418 锁不写 `| null`）；T15-g 收口为 `AgentAxisOverlay | undefined`
+    read: (o: AgentAxisOverlay | AgentAxisOverlays | undefined): T | undefined => o as unknown as T | undefined,
   }
 }
 
@@ -305,8 +307,7 @@ export interface AxisScalarOverlays {
    * 逐位保留原伤害池行为（原式除 agentId 外无参与门控）。
    */
   peiluoKagerouPct?: number
-  /** 希格莉德浸染增伤（**与轴模式无关**）：百分比 = `SIGRID_INFECTION_DMG × 队伍风化侵染覆盖率` */
-  sigridInfectionPct?: number
+  // （`sigridInfectionPct` 已于 CC-437b 迁入 sigrid.ts 的私有 `SigridOverlay`，此处删除）
 }
 
 

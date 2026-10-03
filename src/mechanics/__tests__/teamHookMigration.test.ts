@@ -13,7 +13,7 @@ import { banyueMechanic } from '@/mechanics/agents/banyue'
 import { yixuanMechanic } from '@/mechanics/agents/yixuan'
 import { corinMechanic } from '@/mechanics/agents/corin'
 import { peiluoProminenceMechanic } from '@/mechanics/agents/specPanelBuffs'
-import { sigridMechanic } from '@/mechanics/agents/sigrid'
+import { sigridMechanic, sigridOverlay } from '@/mechanics/agents/sigrid'
 
 /** 构造 applyTeamConfig 入参（只填被测逻辑读到的字段） */
 /** 构造 applyTeamConfig 入参（只填被测逻辑读到的字段）。
@@ -257,10 +257,9 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
 
   it('希格莉德浸染：15×风化覆盖率（精确值）；无风/门控关不产出', () => {
     // windInfectionRate 由编排层从 damagePanels 盖章递入（**不是** cfg.panel —— round 16 实测为 undefined）
-    const res: any = sigridMechanic.axisWindowOverlays!(overlayInput({ windInfectionRate: 0.5 }))
-    expect(res.scalarBySlot.get(0).sigridInfectionPct).toBe(7.5)
-    expect(sigridMechanic.axisWindowOverlays!(overlayInput({ windInfectionRate: 1 }))!
-      .scalarBySlot!.get(0)!.sigridInfectionPct).toBe(15)
+    // CC-437：返回值对编排层不透明，用模块导出的 channel 读
+    expect(sigridOverlay.read(sigridMechanic.axisWindowOverlays!(overlayInput({ windInfectionRate: 0.5 }))!)!.infectionPct).toBe(7.5)
+    expect(sigridOverlay.read(sigridMechanic.axisWindowOverlays!(overlayInput({ windInfectionRate: 1 }))!)!.infectionPct).toBe(15)
     // 覆盖率为 0（队伍无风角色）⇒ 不产出（与原式 15×0 后 note 段不出现等价）
     expect(sigridMechanic.axisWindowOverlays!(overlayInput({ windInfectionRate: 0 }))).toBeNull()
     // 额外能力未触发 ⇒ 不产出
