@@ -86,6 +86,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 16:31 arena-F 第 441 轮**（开工：origin `4e208672` = 本地 master 去掉别人 3 个未推提交；他的 WIP `velina.ts` 16:31 还在改；REQUIREMENTS.md 无新条目；派 dsh 做 T9 xixifu，worktree `wt-T9x`（基于 origin/master，已删）；产物 `/home/kaua/calc-arch/arenaF/r441/`：`dispatch-t9x.sh`、`worker-T9x.report`、`guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log`）：**CC-414 `68e144d0`**（代码，**已推 origin/master**）+ 本文档提交。
+- **做到哪**：T9 的 xixifu 完成，工人 5 分钟一次过（brief 里给了 hugo 的提交号当样板 + 预先 grep 好的 8 处夹具位置）。T9 只剩 grace（卡面已把行号与消费入口 `A_SEG_ENERGY` 写清）。
+- **别人的 3 个提交**（`e6d31edd` harness 兜底 / `133b2121` / `13a55e28` freeCompare 三态，hash 是我 r440 rebase 后的）**仍未推**，harness 那条带 4 条红（r439 隔离确认），他 16:31 后只在改 `velina.ts`。**下一轮开工若仍未推（≥ 17:00 即满 1 小时）就按孤儿规则处理**：`git worktree add wtF-orphan <本地 HEAD>`，跑 `npx vitest run src/composables/__tests__/backstageAxisVulnCc391.test.ts src/specs/__tests__/adjustableEffect.test.ts src/mechanics/__tests__/lateCfgWrite.test.ts src/composables/freeCompare` ——还红就在 worktree 里 `git revert e6d31edd`（只回退 harness 那条；它的意图「支援/防护平A权重=0 与生产口径对齐」写进 §3 当新卡 T11，让下一个人连测试一起改），然后 push 整段；绿了就直接 push 三个。主仓不 `git reset`。
+- **下一步（start-ready）**：T9 grace（见卡）→ 处理上面的孤儿 → T10 备选。
+- **回滚点**：`git revert 68e144d0`。
+
 **2026-10-03 16:08 arena-F 第 440 轮**（开工：origin `ccbe094f`；本地 master 仍带别人未推的 `4933cb83`/`4749ff51`（红）+ 我的两个重复 patch；别人的 freeCompare WIP 在主仓、15:55 后暂歇；REQUIREMENTS.md 无新条目；派 dsh 做 T9 hugo，worktree `wt-T9h`（基于 **origin/master** 而不是本地 HEAD——本地 HEAD 带别人的红）；产物 `/home/kaua/calc-arch/arenaF/r440/`：`dispatch-t9h.sh`、`worker-T9h.report`、`guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log`；`arenaF/wip-backup-1608/`、`wip-backup-16xx/` 是 rebase 时别人 WIP 的临时备份，可删）：**CC-413 `35ac4d1f`**（代码，**已推 origin/master**）+ 本文档提交。
 - **做到哪**：T9 的 hugo 完成（含 T8 漏网的两行 actionTime）；T9 剩 xixifu（254.4 / 1009.1）与 grace（A1–A4_ENERGY），卡面已更新。工人 8 分钟一次过，还自己多跑了一遍全量（470/4303）——我另跑分片复核一致。
 - **本地 master 与 origin 的关系（本轮两次整理）**：开工时用「备份 WIP → 还原到 HEAD → `git rebase origin/master` → 放回 WIP」把本地 master 落到 origin 之上，我的重复 patch 自动消失，别人的提交只换 hash（`4933cb83→93c4f842`，`4749ff51→2817d19b`）；推完 CC-413 后再做一次（他 16:24 又提交了 `ba04b897 feat(freeCompare)…`，三个一起换成 `e8e32827 / 716ada7a / 803a48e3`）。**现在本地 master = origin `35ac4d1f` + 他的 3 个未推提交，无重复**。这套动作安全的前提：他的提交和 WIP 都不碰我们推上去的文件；每次 rebase 前 `git status` 必须为空（备份还原后），rebase 用时 ~1s。
@@ -434,12 +440,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 <!-- /card:T8 -->
 
 <!-- card:T9 -->
-### T9 · 模块内「= catalog 行值」的倍率 / 能量常量改读表（CC-408 同款，零差；**hugo 已于 r440 CC-413 `35ac4d1f` 完成**，剩 xixifu / grace）
+### T9 · 模块内「= catalog 行值」的倍率 / 能量常量改读表（CC-408 同款，零差；**hugo 已于 r440 CC-413 `35ac4d1f`、xixifu 已于 r441 CC-414 `68e144d0` 完成**，只剩 grace）
 
 **对象（r435 探针 `/home/kaua/calc-arch/arenaF/r435/dupProbe.out`）**：
 - ~~`hugo.ts:64 HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8`~~ ✅ CC-413（样板：`buildHugoCharConfig` 写 `cfg.mechanicRowValues`，`buildHugoExecutions` 开头取一次局部量；锁在 `src/composables/__tests__/mechanicRowValuesT9.test.ts`——xixifu / grace 往它的 CASES 里加，不要另起文件）。
-- `xixifu.ts:42 XIXIFU_SHIGU_BASE = 254.4` = 1521019 damage（:161 / :189 行 + :167 备注文案）；`xixifu.ts:54 XIXIFU_SHEKISS_RATIO = 1009.1` = 1521006 damage。
-- `grace.ts:43–46 A1_ENERGY..A4_ENERGY` = 1181001–1181004 energy_recovery。
+- ~~`xixifu.ts:42 XIXIFU_SHIGU_BASE = 254.4` / `:54 XIXIFU_SHEKISS_RATIO = 1009.1`~~ ✅ CC-414。
+- `grace.ts:39–42 A1_ENERGY..A4_ENERGY` = 1181001–1181004 energy_recovery（r441 复核行号；`:44 const A_SEG_ENERGY = [A1_ENERGY, …]` 数组是唯一消费入口——改成在 `buildGraceCharConfig`（CC-411 后已有 `skills`？没有就加）写 `cfg.mechanicRowValues[1181001..1181004] = getRowValue(…, 'energy_recovery')`，用处把 `A_SEG_ENERGY[i]` 换成从 cfg 取的数组；grep `A_SEG_ENERGY` 看消费点是不是纯函数，是就加入参。锁加进 `mechanicRowValuesT9.test.ts`，断言的是**能量回复行值**（`energyRecovery` 字段或 grace 自己的能量账），先看 grace 行把它放在哪个字段）。
 - **不要碰** `norma.ts:29 HEAT_PER_ENERGY = 0.4`（探针里它与 1571010 actionTime 相等是巧合，语义是每点能量的热量）和 `norma.ts:32 EX_SPECIAL_ENERGY_COST = 40`（与 ether_purify 相等也是巧合）。
 
 **做法**：在模块 `buildCharConfig`（有 `skills`）用 `getRowValue(findMoveById(skills, id), 'damage' | 'energy_recovery')` 读进 `cfg.mechanicRowValues[id]`（已有协议，见 burnice / roxy），纯函数处改为入参、调用处从 `cfg.mechanicRowValues` 取；常量删除；**缺表为 0，不加 `|| 常量` 兜底**（CC-408 拍板）。
