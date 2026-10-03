@@ -92,6 +92,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 21:44 arena-F 第 462 轮**（开工：origin = 主仓 = `b732b097`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；按 r461 start-ready 卡直接开工；worktree `wt-T30`（已删）；产物 `/home/kaua/calc-arch/arenaF/r462/`）：**CC-433 `dc722b65`** + 本文档提交。
+- **做到哪**：伊德海莉寒冰触手块迁模块声明（`yidhari.ts` `axisExtraBlocks`，复用常量 `TENTACLE`），StunAxisPage 删写死 `'1051024'` 分支；CC-61 对照测试加 1051 基准（hits 21）+ 页面源码断言。配额 9 查无依据记录，判为 UI 提示上限（非机制次数）并在声明旁注明，不立 @fact。zd 跳过（展示层候选池，不进求值）。分片 478 / 4336 不变。
+- **r461 卡的第二刀已评估、关闭**（理由写在 arch CC-433）：转大 60/90 块是琉音在队时给**其他**队友的赠予块，不是「本角色专属块」；般岳 `rageCount × 2` 读自引擎 `banyueRageCycle`。StunAxisPage 可放置块构造里已无角色专属分支。
+- **下一步**：无 start-ready 卡。按 r453 找题顺序：先 `docs/REQUIREMENTS.md`（md5 现 `807ee09623a9`）→ §3 卡 → §8.0 触发项是否触发 → 否则「本轮无题」只写 §8 一行。可选低优先线索（未验证，各 ≤1 小时）：(a) `src/views/StunAxisPage.vue` L714–727 转大块与 L758–775 般岳连段块都在页面内按 `axes.value` 累加 consumed——与 CC-61 循环是同一段「按 slot+moveId(+variant) 数已放次数」逻辑的三份复制，可抽页面内局部函数 `consumedOf(slot, pred)`（纯页面整理，不涉模块）；(b) `agentMechanicViewCc61.test.ts` 的 legacy 对照函数随模块声明增长会越来越像「第二份真相」，若再加第 4 个角色，改为快照式（声明结果 toMatchInlineSnapshot）更稳。
+
 **2026-10-03 21:33 arena-F 第 461 轮**（开工：origin = 主仓 = `77f23455`，干净、unpushed 0、无人在跑；REQUIREMENTS.md 无新条目；§3 无卡；§8.0 全部仅触发项；worktree `wt-T29`（已删）；产物 `/home/kaua/calc-arch/arenaF/r461/`）：**CC-432 `bc0d606b`** + 本文档提交。
 - **做到哪**：CC-431 收尾（composables / stores 两处默认角色归 data，锁扩到四层，`specs/additionalGate` 判为引擎配置表不搬）；`StunAxisPage.vue` 四步扫完（r6 §8 行 461），「从未扫过的大文件」线至此只剩 `ResponseSurface3D.vue`（1371，纯图形，不值得按四步看）——**这条线结项**。分片 478 / 4336。
 - **下一步（start-ready，建议直接开工）**：**StunAxisPage 页面内角色专属轴块迁模块声明**。
