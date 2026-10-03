@@ -21,6 +21,7 @@
  * C6 明灯愿：进场 2 + 每进明心境 1；强化次数 = floor(次数/3) 把归尘换成斩妄；
  * 每次白毛收尾（归尘/斩妄）附伤 1500% 攻击力物理（吃满易伤）。
  */
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import type {
   AgentCharConfigInput,
   AgentExSpecialTimeInput,
@@ -339,17 +340,13 @@ function pushExec(
   extra?: Partial<SkillExecution>,
 ) {
   if (count <= 0 || dmg <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName,
     category,
     count,
     actionTime,
-    comboAlignRatio: 0,
     totalTime: actionTime * count,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     damageMultiplier: dmg,
@@ -357,7 +354,7 @@ function pushExec(
     element: 'physical',
     skillTableNote: note,
     ...extra,
-  } as SkillExecution)
+  }))
 }
 
 function resolveCycle(cfg: CharacterOperationConfig, state: {

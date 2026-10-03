@@ -8,6 +8,7 @@
  * 影画1：回旋挥击命中全队 +2 能量。
  * 影画6：加油下队友强特命中 → 小猪落地 300% 攻火伤 + 一次回旋挥击。
  */
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -115,17 +116,12 @@ function pushExec(
   actionTime = 0,
 ) {
   if (count <= 0 || dmg <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName,
     category,
     count,
     actionTime,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -134,7 +130,7 @@ function pushExec(
     damageMultiplierOverride: true,
     element: 'fire',
     skillTableNote: note,
-  } as SkillExecution)
+  }))
 }
 
 /** 抄家伙调用冷却（秒），钳制到 4–6；缺省 4 */

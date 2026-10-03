@@ -25,6 +25,7 @@
  *
  * 未建模：士气喷发逐帧进出、垫步/组合拳段数、逐敌火焰冲击独立 CD（按整场单目标 8s CD 近似）。
  */
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -200,17 +201,11 @@ function pushExec(
   opts?: { dmgBonus?: number; category?: string },
 ) {
   if (count <= 0 || dmg <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName,
     category: opts?.category ?? 'basic',
     count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -220,7 +215,7 @@ function pushExec(
     element: 'fire',
     skillTableNote: note,
     ...(opts?.dmgBonus ? { dmgBonus: opts.dmgBonus } : {}),
-  } as SkillExecution)
+  }))
 }
 
 function cfgNum(cfg: CharacterOperationConfig, key: keyof CharacterOperationConfig, fallback = 0): number {
