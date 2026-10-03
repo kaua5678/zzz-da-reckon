@@ -82,6 +82,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 14:02 arena-F 第 434 轮**（开工：master `8e8234a2` 干净、已推、unpushed 0；无 verify / vitest 进程；REQUIREMENTS.md 无新条目（R1–R8 全 done）；§3 空；在主仓直接做（无并行 lane，认领表已登记）；产物 `/home/kaua/calc-arch/arenaF/r434/`：`patch-cc408.py`、`patch-test.py`、`zd.log`、`guards.log`、`build.log`、`vt.log`）：**CC-408 `1fbfd797`**（代码）+ 本文档提交。
+- **做到哪**：普查 16 个读倍率表的角色模块 → 只有柏妮思有「常量 + 表」双源，且引擎真正用的是常量（持续段两行）；改成只读表、删常量、缺表为 0 不静默兜底。细节、没动的同类（burnice 两个 FALLBACK、claret 两个 `||` 兜底）与理由见卡表 CC-408。
+- **为什么值得**：这是 R6「单一事实源」的直接违例（同 CC-321 删空硬编码表的那类），而且不是「等价冗余」——表变了持续段不跟。改动零差（常量 = 表值），但以后数据重导 / 版本改倍率只改 catalog 一处就对。
+- **下一步候选**（不排序）：§3 空；下次碰 burnice / claret 时顺手把 `STIRRING/TOSSING_DAMAGE_FALLBACK` 改必填、`claret.ts:443-444` 去 `||` 兜底（CC-408 已写清）；r433 的两条（ratchet 推荐配装 0 maxIter 探针；vitest setup 150s 的三个大头）仍在。
+- **拍板**：① `exRowMultipliers` 做成**必填**而不是可选 + 常量缺省——可选就把双源留在纯函数里；代价是 9 处测试入参，一次性。② 爆炸段仍 override=false 让 enrich 按表回填（与改前一致），没有顺手改成 override——那会让爆炸行脱离变体 / 融合 / 行规则的统一回填口。③ 缺表取 0 不取常量：缺表是数据问题，应在 zd / golden 里红出来，而不是被 2024 年的数字遮住。
+- **坑**：`mechanicSettingsEffect.test.ts` 的 burnice 用例文案写着「mult ≈ 1088.3·v/1.89」——它经真引擎跑，读的是表值，常量删了照过；若将来表值变了它会红，那是对的（改期望值，不要把常量加回去）。
+- **回滚点**：`git revert 1fbfd797`（代码 + 4 个测试文件一起回）。
+
 **2026-10-03 13:55 arena-F 第 433 轮**（开工：master `f0edf893` 干净、已推、unpushed 0；无 verify / vitest 进程；别人 13:54 已自行提交 remielle.ts 注释 WIP `98716970`（方向 = CC-403，不用再处理）；REQUIREMENTS.md 无新条目；§3 空；**本轮零代码**，产物目录 `/home/kaua/calc-arch/arenaF/r433/`）
 - **做到哪**：
   1. **CC-405 偏差 ①（「轴表 / 技能行 UI 查表没有队伍上下文」）关闭，不是不排期而是没有消费点**。逐个查了 `moveTableQueries` 的全部非测试引用：两个页面（`StunAxisPage.vue:264`、`LogicEditorPage.vue:186`）只用 `findMoveById` 查名字不查倍率；[表] 直读（`damagePoolDirect.ts:285` / `axisTableDirect`）在 CC-406 后已排除变体目标段，而变体源段 1101006 / 1101105 / 1101401 都是有执行行的招式、本来就不是 [表] 候选；`skillRows` 自己只剩 `averageBasicRows`（平A基准段秒均，变体源段是强化普攻二段 / 引爆 / 终结技，基准段落不到它们）；`composables/multiplierCoefficients.ts` 及其 4 个 view 消费者（DirectDamageChart / BossHpInflation / MultiplierCoeff / TimeCharts）是按版本的**单角色**静态推导，天然无队伍概念。⇒ 没有任何界面在珂蕾妲+本时显示非协同倍率。卡表 CC-405 已加指针。
