@@ -79,9 +79,13 @@ async function setupYixuanPreset() {
 
 describe('环内选点的接线：长环成员切片首尾对齐且取规范停点', () => {
   it('yixuan-jufufu-lucia：长环分支只调用一次且成员闭环、选点与相位无关', async () => {
-    const { calc } = await setupYixuanPreset()
+    // 观察窗口从建队**之前**就打开：2026-10-03 `31fdfe8f`（音擎叠层覆盖率回填）在 useResourceCalc 里加了
+    // `watch(..., { immediate: true, flush: 'post' })`，建队后的首个 await 就把整条管线算完并缓存，
+    // 若此时才清空 observed，再读 resourceResult 命中缓存 ⇒ 长环分支「0 次」。建队期间（空队）不出长环，
+    // 下面 `members.length >= 3` 的过滤天然把它们排除，不影响「恰好一次」的断言。
     observed.rounds = []
     observed.calls = []
+    const { calc } = await setupYixuanPreset()
     const rr = calc.resourceResult.value
     expect(rr, '预设队无资源结果').toBeTruthy()
 
