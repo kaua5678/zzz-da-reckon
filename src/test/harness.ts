@@ -11,6 +11,8 @@
  * - 加载 catalog + teammate-buffs（额外能力/拐力门控需要）；
  * - 装配 config.team 后调用 syncTeammateBuffsFromTeam()；
  * - 每槽位默认 TEST_BASE_CHAR，可经 HarnessTeamSlot 逐字段覆盖。
+ * - ⚠ 平A时间权重默认每槽 **1**（不是生产的「支援/防护 = 0」）：回归套件的 golden / 基准全建立在三人均分上，
+ *   探针 / 分析脚本要生产口径传 `productionBasicWeights: true`（T11）。
  */
 import { readFileSync } from 'node:fs'
 import { createPinia, setActivePinia } from 'pinia'
@@ -20,7 +22,6 @@ import { useConfigStore, interactionBaselineFor } from '@/stores/config'
 import { collectInCombatTeamBuffs } from '@/core/inCombatBuffs'
 import { applyEffect } from '@/core/buff'
 import { emptyPanel } from '@/core/panel'
-import { getAgentMechanic } from '@/mechanics'
 import type { DriveDiscConfig, PanelValues } from '@/types/catalog'
 
 const catalogText = readFileSync(new URL('../../public/static/catalog.json', import.meta.url), 'utf8')
@@ -84,9 +85,16 @@ async function loadCatalogStore(loadTeammateBuffs = true) {
  * 也发 10 次闪反/6 次弹刀，与部署路径（`runArchiveDeploy` 同一基准）语义不一致，曾让探针把
  * "辅助被主C抢时间"当成机制缺陷报出（2026-09-07）。槽位显式传入的值优先，测试要什么数就写什么。
  */
+/** setTeam / setupHarness 的夹具口径开关 */
+export interface HarnessTeamOptions {
+  /** true ⇒ 每槽 `basicAttackTimeWeight` 走生产 `configStore.getDefaultBasicAttackTimeWeight`（支援/防护 = 0）；默认 false = 每槽 1 */
+  productionBasicWeights?: boolean
+}
+
 export function setTeam(
   config: ReturnType<typeof useConfigStore>,
   team: Array<HarnessTeamSlot | ''>,
+  opts: HarnessTeamOptions = {},
 ): void {
   const catalog = useCatalogStore()
   for (let i = 0; i < 3; i++) {
@@ -102,13 +110,11 @@ export function setTeam(
     const base = agentId
       ? interactionBaselineFor(agentId, agent?.specialty)
       : { parry: 0, dodge: 0, block: 0, dual: 0 }
-    // 平A时间权重按生产 `defaultBasicAttackTimeWeight` 口径兜底（支援/防护/声明0的角色=0，
-    // 否则=1）——此前 TEST_BASE_CHAR 写死 1，支援也分平A池，曾让维丹队探针里柚叶 weight=1
-    // 与生产 setAgent（665 行 weight=0）口径分裂、高估辅助平A/低估主C（用户 2026-10-01 报）。
-    // 模块声明 defaultBasicAttackTimeWeight 的角色（蕾米埃尔/薇薇安=0）由 mechanic 直给。
-    const declaredWeight = agentId ? getAgentMechanic(agentId)?.defaultBasicAttackTimeWeight : undefined
-    const weightDefault = declaredWeight
-      ?? (agent?.specialty === 'support' || agent?.specialty === 'defense' ? 0 : 1)
+    // 平A时间权重：**默认每槽 1（TEST_BASE_CHAR），有意不随生产口径**——回归套件 40+ 文件的 golden / 基准都建立在
+    // 「三人均分平A池」上；探针 / 分析脚本要生产口径（模块声明优先，支援/防护 = 0，否则 1）时传
+    // `productionBasicWeights: true`，走 configStore 同一函数，不在夹具里复制判定逻辑（T11 2026-10-03；
+    // 背景：维丹队探针里柚叶 weight=1 分走 1/3 平A池、高估辅助/低估主C，用户 2026-10-01 报）。
+    const weightDefault = opts.productionBasicWeights ? config.getDefaultBasicAttackTimeWeight(agent) : TEST_BASE_CHAR.basicAttackTimeWeight
     config.team[i] = {
       slot: i,
       agentId,
@@ -141,13 +147,13 @@ export function setTeam(
  */
 export async function setupHarness(
   team: Array<HarnessTeamSlot | ''>,
-  opts: { loadTeammateBuffs?: boolean; recommendedBuild?: boolean } = {},
+  opts: { loadTeammateBuffs?: boolean; recommendedBuild?: boolean } & HarnessTeamOptions = {},
 ) {
   setActivePinia(createPinia())
   mockStaticFetch()
   const catalog = await loadCatalogStore(opts.loadTeammateBuffs ?? true)
   const config = useConfigStore()
-  setTeam(config, team)
+  setTeam(config, team, { productionBasicWeights: opts.productionBasicWeights })
   if (opts.recommendedBuild) {
     await catalog.loadBuildRecommendations()
     for (let i = 0; i < 3; i++) if (team[i]) config.applyBuildRecommendationForSlot(i)

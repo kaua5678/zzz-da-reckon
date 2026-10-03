@@ -33,3 +33,25 @@ describe('CC-64 默认平A权重 → 模块声明', () => {
     expect(config.getDefaultBasicAttackTimeWeight(alias)).toBe(legacy(alias))
   }, 60000)
 })
+
+/**
+ * T11（2026-10-03）：harness 的平A权重口径开关。默认每槽 1（回归基准不动）；`productionBasicWeights: true`
+ * 时与 `configStore.getDefaultBasicAttackTimeWeight` 逐槽一致（支援/防护 = 0、模块声明优先、其余 1），
+ * 槽位显式值仍最优先。反空洞：三种口径（声明 0 / 职业 0 / 默认 1）各取一个真角色。
+ */
+describe('T11 harness productionBasicWeights 开关', () => {
+  const TEAM = ['1311', '1581', '1181'] // 耀嘉音（support → 0）/ 蕾米埃尔（模块声明 0）/ 格莉丝（anomaly → 1）
+
+  it('默认：每槽 1；开关开：逐槽 === getDefaultBasicAttackTimeWeight；显式值最优先', async () => {
+    const { config } = await setupHarness(TEAM.map(agentId => ({ agentId })))
+    expect(config.team.map(c => c.basicAttackTimeWeight)).toEqual([1, 1, 1])
+
+    const prod = await setupHarness(TEAM.map(agentId => ({ agentId })), { productionBasicWeights: true })
+    const expected = TEAM.map(id => prod.config.getDefaultBasicAttackTimeWeight(prod.catalog.getAgent(id)))
+    expect(expected, '三种口径都在场（反空洞）').toEqual([0, 0, 1])
+    expect(prod.config.team.map(c => c.basicAttackTimeWeight)).toEqual(expected)
+
+    const explicit = await setupHarness([{ agentId: '1311', basicAttackTimeWeight: 1 }, '', ''], { productionBasicWeights: true })
+    expect(explicit.config.team[0]!.basicAttackTimeWeight).toBe(1)
+  })
+})
