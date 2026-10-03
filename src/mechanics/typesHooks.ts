@@ -242,7 +242,7 @@ export function axisOverlayChannel<T>() {
  *
  * 四个桶的数值语义：
  * - （`banyueMingwangStacks` 已于 CC-437e 迁入 banyue.ts 的私有 `BanyueOverlay.stacksByMove`）
- * - `yixuanNingshenMap`：moveId → { critDmg, sheerDmg }
+ * - （`yixuanNingshenMap` 已于 CC-437f 迁入 yixuan.ts 的私有 `YixuanOverlay.byMove`）
  * - （`peiluoKagerouMap` 已于 CC-437c 迁入 specPanelBuffs.ts 的私有 `PeiluoOverlay.byMove`）
  * - （`corinStunBonusMap` 已于 CC-437d 迁入 corin.ts 的私有 `CorinOverlay.byMove`）
  *
@@ -256,7 +256,7 @@ export function axisOverlayChannel<T>() {
  * 新增字段仍遵循：只要值对「全角色全部行」同值（没有 moveId 可索引），就必须走 `scalarBySlot`。
  */
 export interface AgentAxisOverlays {
-  yixuanNingshenMap?: Map<string, { critDmg: number; sheerDmg: number }>
+  // （四个 moveId 桶已全部迁入各模块私有 overlay：CC-437c/d/e/f；本 interface 与下面的 `AxisScalarOverlays` 在 T15-g 删除）
   /**
    * **按槽位索引的标量覆盖**（与四个「按 moveId 索引」的桶并列）。
    *
@@ -277,15 +277,7 @@ export interface AgentAxisOverlays {
 export interface AxisScalarOverlays {
   // （`banyueMingwangPct` 已于 CC-437e 迁入 banyue.ts 的私有 `BanyueOverlay.flatPct`，此处删除）
   // （`corinStunBonusPct` 已于 CC-437d 迁入 corin.ts 的私有 `CorinOverlay.flatPct`，此处删除）
-  /**
-   * 仪玄凝神。两个来源共用本字段（消费端同形同义，故不拆）：
-   * - **C6 满覆盖臂**（不分轴/非轴，优先于轴臂）：`{ critDmg: round(40×c6滑块), sheerDmg: round(20×c6滑块) }`
-   * - **非 C6 非轴折算臂**：`{ critDmg: round(40×覆盖率滑块), sheerDmg: 0 }`（贯穿只由 C6 给）
-   *
-   * ⚠ 与 `yixuanNingshenMap` 桶的**分工**：非 C6 **轴**模式仍走桶（逐 moveId 扫描值），
-   * 本标量只覆盖「对本槽全部行同值」的两臂（见本接口头注释的泄漏论证）。
-   */
-  yixuanNingshen?: { critDmg: number; sheerDmg: number }
+  // （`yixuanNingshen` 已于 CC-437f 迁入 yixuan.ts 的私有 `YixuanOverlay.flat`，此处删除）
   // （`peiluoKagerouPct` 已于 CC-437c 迁入 specPanelBuffs.ts 的私有 `PeiluoOverlay.flatPct`，此处删除）
   // （`sigridInfectionPct` 已于 CC-437b 迁入 sigrid.ts 的私有 `SigridOverlay`，此处删除）
 }

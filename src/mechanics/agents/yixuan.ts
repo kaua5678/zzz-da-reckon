@@ -1,6 +1,7 @@
 import { clampRatio } from '@/utils/finiteClamp'
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { ModuleFeedback } from '../types'
+import { axisOverlayChannel } from '../types'
 import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
@@ -1022,6 +1023,20 @@ function yixuanNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeed
   return auricInkTriggers > 0 ? { teamUltimateExtra, auricInkTriggers } : { teamUltimateExtra }
 }
 
+/** 凝神加成值（暴伤 % / 贯穿 %）；C6 臂、非轴折算臂、轴臂桶值同形。 */
+export interface YixuanNingshen { critDmg: number; sheerDmg: number }
+/**
+ * CC-437（T15-f）：仪玄凝神的私有轴窗口 overlay（编排层不透明）。
+ * 原 `AxisScalarOverlays.yixuanNingshen` → `flat`（C6 满覆盖臂 / 非 C6 非轴折算臂，对本槽全部行同值），
+ * 原 `AgentAxisOverlays.yixuanNingshenMap` → `byMove`（非 C6 轴臂，逐 moveId 扫描值）。
+ * `directRowBonus` 的优先顺序逐位保留：`flat ?? (isAxis ? byMove.get(moveId) : undefined) ?? {0,0}`。
+ */
+export interface YixuanOverlay {
+  byMove?: Map<string, YixuanNingshen>
+  flat?: YixuanNingshen
+}
+export const yixuanOverlay = axisOverlayChannel<YixuanOverlay>()
+
 export const yixuanMechanic: AgentMechanicModule = {
   // CC-57：凝云术/墨烬影消命中失衡敌人 +30%（额外能力）——轴编辑器块名后缀（原 StunAxisPage 写死 1371 + 两个 moveId）
   axisMoveSuffix: { '1371022': '·+30%失衡', '1371026': '·+30%失衡' },
@@ -1091,9 +1106,8 @@ export const yixuanMechanic: AgentMechanicModule = {
    * - 非 6 命 + 非轴 → **折算标量** `{critDmg: round(40×覆盖率滑块), sheerDmg: 0}`
    *   （贯穿只由 C6 给）。
    *
-   * ⚠ **C6 臂与折算臂都是「对本槽全部行同值」的标量**（没有 moveId 可索引）⇒ 必须走
-   * `scalarBySlot`，复用 `yixuanNingshenMap` 桶会让队友行读到（见 `AgentAxisOverlays.scalarBySlot`
-   * 头注释的泄漏论证）；只有非 C6 轴臂走桶。
+   * ⚠ **C6 臂与折算臂都是「对本槽全部行同值」的标量**（没有 moveId 可索引）⇒ 走 `flat`；
+   * 只有非 C6 轴臂走 `byMove`（CC-437 起 overlay 按槽归属由编排层保证，泄漏面已不存在）。
    *
    * 滑块缺省回落与伤害池原式**同值**：C6 臂 `?? 1`（= `yixuan.c6NingshenCoverage` 注册 default）、
    * 非轴臂 `?? DEFAULT_NINGSHEN_COVERAGE`（= **0.5**，2026-09-17 用户裁决归一，见其头注释）。
@@ -1105,32 +1119,25 @@ export const yixuanMechanic: AgentMechanicModule = {
     if (!additionalAbilityActive) return null
     if (cinemaLevel >= 6) {
       const cov = clampRatio(Number(settings['yixuan.c6NingshenCoverage'] ?? 1))
-      return {
-        scalarBySlot: new Map([[slot, {
-          yixuanNingshen: { critDmg: Math.round(40 * cov), sheerDmg: Math.round(20 * cov) },
-        }]]),
-      }
+      return yixuanOverlay.wrap({ flat: { critDmg: Math.round(40 * cov), sheerDmg: Math.round(20 * cov) } })
     }
     if (isAxis) {
       const map = computeYixuanNingshenBonus(slot, axes, 0)
-      return map.size > 0 ? { yixuanNingshenMap: map } : null
+      return map.size > 0 ? yixuanOverlay.wrap({ byMove: map }) : null
     }
     const cov = clampRatio(Number(settings['yixuan.ningshenCoverage'] ?? DEFAULT_NINGSHEN_COVERAGE))
-    return {
-      scalarBySlot: new Map([[slot, {
-        yixuanNingshen: { critDmg: Math.round(40 * cov), sheerDmg: 0 },
-      }]]),
-    }
+    return yixuanOverlay.wrap({ flat: { critDmg: Math.round(40 * cov), sheerDmg: 0 } })
   },
   /**
    * 凝神行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
    * 优先用本槽标量（C6 满覆盖臂 / 非 C6 非轴折算臂），否则轴模式查**本槽**桶，否则取 0。
    * note **先暴伤后贯穿**，模板逐字照原 `damagePoolDirect.ts#emitExecDirect`。
    */
-  directRowBonus: ({ exec, isAxis, buckets, scalar }) => {
+  directRowBonus: ({ exec, isAxis, overlay }) => {
+    const o = yixuanOverlay.read(overlay)
     const moveId = exec.moveId ?? ''
-    const ns = scalar?.yixuanNingshen
-      ?? (isAxis ? buckets?.yixuanNingshenMap?.get(moveId) : undefined)
+    const ns = o?.flat
+      ?? (isAxis ? o?.byMove?.get(moveId) : undefined)
       ?? { critDmg: 0, sheerDmg: 0 }
     if (ns.critDmg <= 0 && ns.sheerDmg <= 0) return null
     let note = ''

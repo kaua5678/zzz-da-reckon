@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { luciaElowenMechanic } from '@/mechanics/agents/luciaElowen'
 import { jufufuTigerRoarMechanic } from '@/mechanics/agents/specPanelBuffs'
 import { banyueMechanic, banyueOverlay } from '@/mechanics/agents/banyue'
-import { yixuanMechanic } from '@/mechanics/agents/yixuan'
+import { yixuanMechanic, yixuanOverlay } from '@/mechanics/agents/yixuan'
 import { corinMechanic, corinOverlay } from '@/mechanics/agents/corin'
 import { peiluoProminenceMechanic, peiluoOverlay } from '@/mechanics/agents/specPanelBuffs'
 import { sigridMechanic, sigridOverlay } from '@/mechanics/agents/sigrid'
@@ -178,16 +178,14 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     // 「桶留空 + 标量表给折算值」。⚠ 本断言**加强**而非放宽：原来只钉「非轴时什么都不做」，
     // 现在钉「非轴时给出哪个精确值」，把「分支删掉」与「分支迁走」真正区分开
     // （删掉会让这里变 null，仍有判据）。
-    expect((yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false })) as any)?.scalarBySlot
-      ?.get(0)?.yixuanNingshen).toEqual({ critDmg: 20, sheerDmg: 0 })  // 40 × 默认 0.5
+    // CC-437：返回值对编排层不透明，用模块 channel 读（`flat` = 原标量，`byMove` = 原桶）
+    const rd = (o: Record<string, unknown> = {}) => yixuanOverlay.read(yixuanMechanic.axisWindowOverlays!(overlayInput(o))!)!
+    expect(rd({ isAxis: false }).flat).toEqual({ critDmg: 20, sheerDmg: 0 })  // 40 × 默认 0.5
     // 非 C6 非轴：滑块两端精确值（0 ⇒ 0；1 ⇒ 40），且**不给贯穿**（贯穿只由 C6 给）
-    expect((yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 0 } })) as any)
-      ?.scalarBySlot?.get(0)?.yixuanNingshen).toEqual({ critDmg: 0, sheerDmg: 0 })
-    expect((yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 1 } })) as any)
-      ?.scalarBySlot?.get(0)?.yixuanNingshen).toEqual({ critDmg: 40, sheerDmg: 0 })
+    expect(rd({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 0 } }).flat).toEqual({ critDmg: 0, sheerDmg: 0 })
+    expect(rd({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 1 } }).flat).toEqual({ critDmg: 40, sheerDmg: 0 })
     // C6 非轴：满覆盖 40 暴伤 + 20 贯穿（与非 C6 臂**同字段不同值**，证明命座分支真在模块里）
-    expect((yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, cinemaLevel: 6 })) as any)
-      ?.scalarBySlot?.get(0)?.yixuanNingshen).toEqual({ critDmg: 40, sheerDmg: 20 })
+    expect(rd({ isAxis: false, cinemaLevel: 6 }).flat).toEqual({ critDmg: 40, sheerDmg: 20 })
     // 额外能力未触发 ⇒ 一律不参与（门控逐位保留）
     expect(yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, additionalAbilityActive: false }))).toBeNull()
     // 轴臂：桶（非 C6 + 轴）
@@ -195,15 +193,15 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
       { slot: 0, moveId: '1371014', count: 1, startTime: 0 },
       { slot: 0, moveId: '1371009', count: 1, startTime: 3 },
     ])
-    const res: any = yixuanMechanic.axisWindowOverlays!(overlayInput({ axes }))
-    expect(res.yixuanNingshenMap.get('1371009').critDmg).toBe(40)
-    expect(res.yixuanNingshenMap.has('1371014')).toBe(false)
-    // 轴臂**不产标量**（两臂互斥；若实现把两者同时产出，标量会盖掉桶 ⇒ 这里红）
-    expect(res.scalarBySlot).toBeUndefined()
+    const res = rd({ axes })
+    expect(res.byMove!.get('1371009')!.critDmg).toBe(40)
+    expect(res.byMove!.has('1371014')).toBe(false)
+    // 轴臂**不产标量**（两臂互斥；若实现把两者同时产出，`flat` 会盖掉 `byMove` ⇒ 这里红）
+    expect(res.flat).toBeUndefined()
     // ★ C6 臂**优先于轴臂**：轴态 + C6 仍走满覆盖标量、不查桶（原伤害池三元顺序逐位保留）
-    const c6Axis: any = yixuanMechanic.axisWindowOverlays!(overlayInput({ axes, cinemaLevel: 6 }))
-    expect(c6Axis.yixuanNingshenMap).toBeUndefined()
-    expect(c6Axis.scalarBySlot.get(0).yixuanNingshen).toEqual({ critDmg: 40, sheerDmg: 20 })
+    const c6Axis = rd({ axes, cinemaLevel: 6 })
+    expect(c6Axis.byMove).toBeUndefined()
+    expect(c6Axis.flat).toEqual({ critDmg: 40, sheerDmg: 20 })
   })
 
   it('佩洛伊斯阳炎：上分支开 21s 窗，仅上分支/决算受益；**非轴臂已迁入本模块**（标量）', () => {

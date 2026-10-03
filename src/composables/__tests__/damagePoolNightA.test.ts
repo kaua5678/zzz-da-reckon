@@ -26,7 +26,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { peiluoProminenceMechanic, peiluoOverlay, PEILUO_KAGEROU_CRIT } from '@/mechanics/agents/specPanelBuffs'
-import { yixuanMechanic } from '@/mechanics/agents/yixuan'
+import { yixuanMechanic, yixuanOverlay } from '@/mechanics/agents/yixuan'
 
 type Harness = Awaited<ReturnType<typeof setupHarness>>
 
@@ -290,31 +290,31 @@ describe('R21 夜A 跳② 仪玄 1371 凝神三臂（:510 整段迁进 yixuan.ts
     expect(leaked.length).toBe(0)
   })
 
-  it('跳③ 钩子层：C6 臂与非 C6 非轴臂都产**标量**（scalarBySlot），非 C6 轴臂产桶', () => {
+  it('跳③ 钩子层：C6 臂与非 C6 非轴臂都产**标量**（`flat`），非 C6 轴臂产桶（`byMove`）；CC-437 起经 yixuanOverlay 读', () => {
     const base = {
       slot: 0, axes: [], getAgentSkills: () => undefined,
       additionalAbilityActive: true, windInfectionRate: 0,
       settings: { 'yixuan.c6NingshenCoverage': 1, 'yixuan.ningshenCoverage': 1 } as Record<string, number>,
     }
     // C6（非轴）：标量 {40,20}
-    const c6 = yixuanMechanic.axisWindowOverlays!({ ...base, cinemaLevel: 6, isAxis: false } as never)!
-    expect(c6.yixuanNingshenMap).toBeUndefined()
-    expect(c6.scalarBySlot!.get(0)!.yixuanNingshen).toEqual({ critDmg: 40, sheerDmg: 20 })
+    const rd = (o: Record<string, unknown>) => yixuanOverlay.read(yixuanMechanic.axisWindowOverlays!({ ...base, ...o } as never)!)!
+    const c6 = rd({ cinemaLevel: 6, isAxis: false })
+    expect(c6.byMove).toBeUndefined()
+    expect(c6.flat).toEqual({ critDmg: 40, sheerDmg: 20 })
     // C6（轴）：同样是标量（C6 臂优先于轴臂）
-    const c6Axis = yixuanMechanic.axisWindowOverlays!({ ...base, cinemaLevel: 6, isAxis: true } as never)!
-    expect(c6Axis.scalarBySlot!.get(0)!.yixuanNingshen).toEqual({ critDmg: 40, sheerDmg: 20 })
+    const c6Axis = rd({ cinemaLevel: 6, isAxis: true })
+    expect(c6Axis.flat).toEqual({ critDmg: 40, sheerDmg: 20 })
     // 非 C6 非轴：标量 {40,0}（不给贯穿）
-    const nonC6 = yixuanMechanic.axisWindowOverlays!({ ...base, cinemaLevel: 0, isAxis: false } as never)!
-    expect(nonC6.scalarBySlot!.get(0)!.yixuanNingshen).toEqual({ critDmg: 40, sheerDmg: 0 })
+    const nonC6 = rd({ cinemaLevel: 0, isAxis: false })
+    expect(nonC6.flat).toEqual({ critDmg: 40, sheerDmg: 0 })
     // 非 C6 轴：**无标量**，走桶（空轴 ⇒ 桶为空 ⇒ 返回 null）
     const nonC6Axis = yixuanMechanic.axisWindowOverlays!({ ...base, cinemaLevel: 0, isAxis: true } as never)
-    expect(nonC6Axis?.scalarBySlot).toBeUndefined()
+    expect(yixuanOverlay.read(nonC6Axis ?? undefined)?.flat).toBeUndefined()
     // 额外能力未触发 ⇒ 一律 null（门控逐位保留）
     expect(yixuanMechanic.axisWindowOverlays!({ ...base, cinemaLevel: 6, isAxis: false, additionalAbilityActive: false } as never)).toBeNull()
-    // 标量按**本槽**键控（不许写成固定 0 —— 那会让槽 2 的仪玄拿不到）
-    const at2 = yixuanMechanic.axisWindowOverlays!({ ...base, slot: 2, cinemaLevel: 6, isAxis: false } as never)!
-    expect(at2.scalarBySlot!.has(2)).toBe(true)
-    expect(at2.scalarBySlot!.has(0)).toBe(false)
+    // CC-437：overlay 按槽归属由编排层（`axisOverlayBySlot` → T15-g 后的 per-slot map）保证，
+    // 模块值本身**槽无关**：槽 2 的仪玄读到与槽 0 完全相同的 `flat`
+    expect(rd({ slot: 2, cinemaLevel: 6, isAxis: false }).flat).toEqual({ critDmg: 40, sheerDmg: 20 })
   })
 })
 
