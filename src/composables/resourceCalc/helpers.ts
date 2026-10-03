@@ -13,7 +13,7 @@
  *     → calcStunPool / calcAnomalyPool (失衡池 + 积蓄池)
  */
 import { damageElementLabel } from '@/utils/agentLabelMaps'
-import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
+import { writeMechanicSettingCfg } from '@/specs/cfgField'
 // CC-245：只在类型位置使用（store 实例由调用方注入）⇒ type-only，resourceCalc/ 运行时不依赖 stores/config、stores/catalog
 // （锁：resourceCalcStoreDeps.test；ARCHITECTURE.md §0「管线后半段并入 core」前提）
 import type { ConfigModel } from '@/stores/config'
@@ -598,8 +598,7 @@ export function buildCharConfig(
   // 先把机制模块声明的可调设置写入 cfg，模块的 buildCharConfig 随后才能读到。
   const charModule = getAgentMechanic(agent.id)
   for (const setting of charModule?.settings ?? []) {
-    const record = cfg as unknown as Record<string, unknown>
-    record[mechanicSettingCfgKey(setting.id)] = configStore.getMechanicSetting(setting.id, setting.default)
+    writeMechanicSettingCfg(cfg, setting.id, configStore.getMechanicSetting(setting.id, setting.default))
   }
 
   charModule?.buildCharConfig?.({

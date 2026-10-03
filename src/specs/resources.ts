@@ -5,6 +5,7 @@ import type {
 } from '@/types/resource'
 import type { AgentMechanicSpec, ResourceRuleSpec, ResourceSpec } from './types'
 import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
+import { readCfgField } from './cfgField'
 
 export interface SpecResourceContext {
   broadCycloneCount?: number
@@ -110,8 +111,7 @@ function computeOneResource(
 
 function resolveInitialValue(resource: ResourceSpec, cfg: CharacterOperationConfig): number {
   if (resource.initialValueSource === 'cfgField' && resource.initialValueField) {
-    const record = cfg as unknown as Record<string, unknown>
-    return Math.max(0, Number(record[resource.initialValueField] ?? 0) || 0)
+    return Math.max(0, Number(readCfgField(cfg, resource.initialValueField) ?? 0) || 0)
   }
   return resource.initialValue ?? 0
 }
@@ -135,8 +135,7 @@ function applyAdjustable(
 ): number {
   const adjustable = rule.adjustable
   if (!adjustable) return amount
-  const record = cfg as unknown as Record<string, unknown>
-  const raw = Number(record[mechanicSettingCfgKey(adjustable.id)] ?? adjustable.default)
+  const raw = Number(readCfgField(cfg, mechanicSettingCfgKey(adjustable.id)) ?? adjustable.default)
   const rate = Number.isFinite(raw)
     ? Math.max(adjustable.min ?? 0, Math.min(adjustable.max ?? Infinity, raw))
     : adjustable.default
@@ -193,7 +192,7 @@ function resolveGainCount(
       return Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2))
     case 'cfgField':
       // 次数由模块写入 cfg 字段（countField），如星徽·比利招式命中决意合计（attack_data_0）
-      return Math.max(0, Number((cfg as unknown as Record<string, unknown>)[rule.countField ?? ''] ?? 0) || 0)
+      return Math.max(0, Number(readCfgField(cfg, rule.countField ?? '') ?? 0) || 0)
     default:
       return 0
   }
@@ -201,8 +200,7 @@ function resolveGainCount(
 
 function resolveRuleAmount(rule: ResourceRuleSpec, cfg: CharacterOperationConfig): number {
   if (rule.valueSource === 'cfgField' && rule.valueField) {
-    const record = cfg as unknown as Record<string, unknown>
-    return Math.max(0, Number(record[rule.valueField] ?? 0) || 0)
+    return Math.max(0, Number(readCfgField(cfg, rule.valueField) ?? 0) || 0)
   }
   return rule.amountPerCount ?? (typeof rule.amount === 'number' ? rule.amount : 0)
 }
@@ -213,8 +211,7 @@ function resolveBonusCount(
   state: IterationState,
 ): number {
   if (rule.bonusCountSource !== 'ultimateCount' || !rule.bonusEnabledField) return 0
-  const record = cfg as unknown as Record<string, unknown>
-  return record[rule.bonusEnabledField] ? Math.max(0, Math.floor(state.ultimateCount)) : 0
+  return readCfgField(cfg, rule.bonusEnabledField) ? Math.max(0, Math.floor(state.ultimateCount)) : 0
 }
 
 function parseCost(cost: string | number | undefined): number {

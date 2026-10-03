@@ -14,6 +14,7 @@ import type {
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { applySpecAttributeConversions } from './runtime'
 import { computeSpecResources, type SpecResourceResult } from './resources'
+import { readCfgField } from './cfgField'
 import type { AgentMechanicSpec, EventSpec, ResourceRuleSpec } from './types'
 
 export interface SpecEventCounts {
@@ -39,8 +40,7 @@ export interface SpecEventExecutionInput {
 
 function isSpecEventEnabled(event: EventSpec, cfg: CharacterOperationConfig): boolean {
   if (!event.enabledField) return true
-  const record = cfg as unknown as Record<string, unknown>
-  return Boolean(record[event.enabledField])
+  return Boolean(readCfgField(cfg, event.enabledField))
 }
 
 export function buildSpecAnomalyEvents(
@@ -225,8 +225,7 @@ function resourceEventCounts(resources: Map<string, SpecResourceResult>): Record
 
 function resolveCarrierMoveId(event: EventSpec, cfg: CharacterOperationConfig): string {
   if (event.carrierField) {
-    const record = cfg as unknown as Record<string, unknown>
-    return String(record[event.carrierField] ?? '')
+    return String(readCfgField(cfg, event.carrierField) ?? '')
   }
   return event.carrierMoveId ?? ''
 }
