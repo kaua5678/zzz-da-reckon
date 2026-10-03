@@ -127,7 +127,7 @@ const KOLEDA_BOILING_FURNACE: MoveFusionGroup = {
     { moveId: '1101104', count: 1 },
     { moveId: '1101105', count: 1 },
   ],
-  note: 'full/1101.json「打击伤害倍率」={1101104}、「引爆伤害倍率」={1101105}；有班协同时引爆=协同引爆(1101106)，属替换而非叠加。',
+  note: 'full/1101.json「打击伤害倍率」={1101104}、「引爆伤害倍率」={1101105}；本在队时引爆=协同引爆(1101106)，属替换而非叠加（data/moveVariants.ts，CC-405）。',
 }
 
 /** 月城柳·强化特殊技·月华流转＝ 突刺(#1) + 下砸(#2)（C2 长按可追加突刺，另见 yanagi.ts） */
@@ -164,7 +164,7 @@ const KOLEDA_ENHANCED_BASIC: MoveFusionGroup = {
     { moveId: '1101005', count: 1 },
     { moveId: '1101006', count: 1 },
   ],
-  note: 'full/1101.json「强化普攻一段」={1101005}、「强化普攻二段」={1101006}；协同二段={1101007}替二段（有本）；消耗层数额外火伤 75%/150% 未建模。',
+  note: 'full/1101.json「强化普攻一段」={1101005}、「强化普攻二段」={1101006}；本在队时二段=协同二段(1101007)（data/moveVariants.ts，CC-405）；消耗层数额外火伤 75%/150% 未建模。',
 }
 
 // @fact engine:moveFusion/兔兔连斩 口径: 照终结技·兔兔连斩一次 = #1+#2 两段求和（1341014+1341023，引擎只取 #1 主段） | 据 nanoka full/1341.json param.desc + 用户@2026-09 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/data/moveFusions.ts#ZHAO_ULT_BUNNY_BARRAGE | 信 确认

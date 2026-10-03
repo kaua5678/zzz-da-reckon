@@ -27,6 +27,7 @@ import { getRowFusionMultiplier } from '@/logicEditor/fusion'
 import { moveFusionByMoveId } from '@/data/moveFusions'
 import { isNumberedBasicSegment } from '@/data/basicSegment'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
+import type { SegmentResolver } from '@/data/moveVariants'
 
 /**
  * 从 SkillMove 的 rows 中提取指定 row 的值——**含逻辑编辑器行规则乘数**（`logicEditor/fusion`）。
@@ -67,17 +68,25 @@ export function rawRowValue(move: SkillMove | null | undefined, rowId: string): 
  * 倍率融合（src/data/moveFusions.ts 单一事实源）：moveId 登记了融合组时，
  * 该 row 值 = Σ 组内 term.moveId 的同行值 × term.count。
  * 返回 null = 未登记（走原 getRowValue 单段值）；组内缺段时整组回退 null（保守，防半融合）。
+ * `segmentOf`（CC-405，可选）= 队友在队段替换器（`data/moveVariants.ts`）：求和前先对每个 term 换段，
+ * 使融合组内的段也能被协同段替换（珂蕾妲引爆→协同引爆）。不传 = 原行为。
  */
-export function fusedRowValue(skills: AgentSkills | undefined, moveId: string, rowId: string): number | null {
+export function fusedRowValue(skills: AgentSkills | undefined, moveId: string, rowId: string, segmentOf?: SegmentResolver | null): number | null {
   const group = moveFusionByMoveId.get(moveId)
   if (!group) return null
   let sum = 0
   for (const term of group.terms) {
-    const member = findMoveById(skills, term.moveId)
+    const member = findMoveById(skills, segmentOf ? segmentOf(term.moveId) : term.moveId)
     if (!member) return null
     sum += getRowValue(member, rowId) * term.count
   }
   return sum
+}
+
+/** CC-405：该招式本身或其融合组内任一段是否被 `segmentOf` 替换过——仅供执行行备注使用。 */
+export function segmentSwapped(moveId: string, segmentOf: SegmentResolver): boolean {
+  if (segmentOf(moveId) !== moveId) return true
+  return moveFusionByMoveId.get(moveId)?.terms.some(t => segmentOf(t.moveId) !== t.moveId) ?? false
 }
 
 /**

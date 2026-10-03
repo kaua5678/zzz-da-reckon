@@ -134,15 +134,23 @@ describe('珂蕾妲完整计算链', () => {
     expect(koleda.koledaCycle).toBeTruthy()
   })
 
-  it('强化普攻（熔炉升温）进入执行计划：一段+二段融合 = 1133.3%', async () => {
-    await setup('1121', 0)
-    const calc = useResourceCalc()
+  it('强化普攻（熔炉升温）进入执行计划：一段+二段融合 = 1133.3%（无本）/ 一段+协同二段 = 1325.4%（本在队，CC-405）', async () => {
+    // 无本：原融合口径 322.5 + 810.8
+    await setup('1441', 0)
+    let calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
-    const koleda = calc.resourceResult.value!.characters.find(row => row.agentId === '1101')!
-    const enh = koleda.executions.find(e => e.moveId === '1101005')
+    let koleda = calc.resourceResult.value!.characters.find(row => row.agentId === '1101')!
+    let enh = koleda.executions.find(e => e.moveId === '1101005')
     expect(enh).toBeTruthy()
     expect(enh!.count).toBeGreaterThan(0)
     expect(enh!.damageMultiplier).toBeCloseTo(322.5 + 810.8, 3)
+    // 本在队：二段换协同二段 1101007（data/moveVariants.ts）322.5 + 1002.9
+    await setup('1121', 0)
+    calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 50))
+    koleda = calc.resourceResult.value!.characters.find(row => row.agentId === '1101')!
+    enh = koleda.executions.find(e => e.moveId === '1101005')
+    expect(enh!.damageMultiplier).toBeCloseTo(322.5 + 1002.9, 3)
   })
 })
 

@@ -32,7 +32,8 @@ import {
   ULTIMATE_COST_DEFAULT,
 } from '@/core/resource'
 // CC-243：find* 族 / 平A回能的行取值注入（吃逻辑编辑器行规则；core 默认原始读取）
-import { fusedRowReader } from '@/data/moveTableQueries'
+import { fusedRowReader, segmentSwapped } from '@/data/moveTableQueries'
+import { teammateSegmentResolver } from '@/data/moveVariants'
 import { counterAssistOf } from '@/data/counterAssists'
 import { findWEnginePeriodicDirect } from '@/data/wEnginePeriodicDirect'
 
@@ -310,10 +311,14 @@ export function normalizeDisplayTime(rr: TeamResourceResult): TeamResourceResult
 }
 
 export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: ReturnType<typeof useCatalogStore>): TeamResourceResult {
+  const teamAgentIds = result.characters.map(c => c.agentId)
   return {
     ...result,
     characters: result.characters.map(char => {
       const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
+      // CC-405：队友在队招式变体（`data/moveVariants.ts`）——本处是唯一有全队上下文的倍率回填点。
+      // 替换只作用于倍率行（damage/daze/anomaly/energy/decibel），actionCode/moveName/actionTime 仍是原段。
+      const segmentOf = teammateSegmentResolver(char.agentId, teamAgentIds)
       // 模块声明的伤害定向覆盖（`AgentMechanicModule.skillDamageTargetOverrides`，唯一入口）：
       // 推断值之后应用，赠行也应用（赠的是本角色自己的招，定向口径随招走）。
       const targetOverrides = getAgentMechanic(char.agentId)?.skillDamageTargetOverrides
@@ -353,7 +358,9 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
             // 招式类型定向（伤害路径按此读 X__<target> 定向键，如驱动盘/音擎的普攻/冲刺限定增伤）
             const foundCategory = skills?.categories?.find(cat => (cat.moves ?? []).some(m => String(m.id) === String(exec.moveId)))
             const skillDamageTarget = foundCategory ? inferSkillDamageTarget(foundCategory, move) : undefined
-            const fusedOf = (rowId: string) => fusedRowValue(skills, exec.moveId, rowId) ?? getRowValue(move, rowId)
+            const variantMove = segmentOf ? (findMoveById(skills, segmentOf(exec.moveId)) ?? move) : move
+            const coopSwapped = !!segmentOf && segmentSwapped(exec.moveId, segmentOf)
+            const fusedOf = (rowId: string) => fusedRowValue(skills, exec.moveId, rowId, segmentOf) ?? getRowValue(variantMove, rowId)
             const specialResourceRecovery = getSpecialResourceRecovery(move)
             const healingAmount = getHealingAmount(move)
             // exec.anomalyBuildUp 显式为 0 = 模块显式禁用异常积蓄（如莱卡恩围猎后台招式"仅伤害+失衡值"）；
@@ -396,7 +403,9 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
               totalHealingAmount: healingAmount * Math.max(0, exec.count),
               skillTableResolved: true,
               skillDamageTarget,
-              skillTableNote: '已从倍率表 rows 回填 damage/daze/energy_recovery/decibel_recovery/anomaly_buildup。',
+              skillTableNote: coopSwapped
+                ? '已从倍率表 rows 回填（队友在队协同段替换，CC-405）damage/daze/energy_recovery/decibel_recovery/anomaly_buildup。'
+                : '已从倍率表 rows 回填 damage/daze/energy_recovery/decibel_recovery/anomaly_buildup。',
             }
           } else {
             patch = {
