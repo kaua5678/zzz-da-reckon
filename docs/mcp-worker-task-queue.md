@@ -92,6 +92,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 01:07 arena-F 第 477 轮**（开工：主仓 = origin = `30e7c878`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T45`（已删）；产物 `/home/kaua/calc-arch/arenaF/r477/`）：**CC-439 `6cc0e88f`** 面板侧设置读口 `mechanicSettingOf`。
+- **r476 交接续核**：`severian.c4Coverage` 三读一致（无事）；seth / evelyn / corin / piper 面板侧 `settings[id] ?? 1` 不钳 vs cfg 侧 clamp——只在越界值上有别、UI 有 min/max，**不动**。
+- **做了**：corin / phoenix / severian / sigrid 四份逐字相同的 `settingOf` 删除，改 import `mechanicSettingOf`（放在 CC-235 的 `utils/mechanicSettingCfg.ts`，与 `cfgMechanicSetting` 并列：同一协议的 cfg 侧 / 面板侧两个读口）。零差：zd 0、timeGolden 不变、两 shard 479/4345。
+- **对账结论（落盘，别重跑）**：`/home/kaua/calc-arch/arenaF/r477-scan.py` 扫 `src/mechanics/agents/*.ts`：141 个滑块声明、178 处读点，读点 fallback 与声明 `default` **全部一致**。不加锁（零实例、regex 锁易碎）；要复查就重跑脚本。
+- **回退点**：`git revert 6cc0e88f`。
+- **下一步（start-ready）**：滑块线收口，§3 无卡。题序回到 REQUIREMENTS → §3 → r6 §8.0 触发（#1 坑 25 到期 10-31；#14 DEBT 1a 需立项）→ 「本轮无题」。可选的扫描式找题（按 CC-280 / CC-439 同款「逐字相同的私抄 helper」）：`grep -rhn "^function [a-zA-Z0-9]*(" src/mechanics/agents/*.ts \| sed "s/.*function //" \| sort \| uniq -c \| sort -rn \| head`——同名 ≥3 份的先 diff 正文，**逐字相同才收**，近名不同义（CC-280 列的 clamp01 / clampRatio 变体）不碰。
+
 **2026-10-04 00:41 arena-F 第 476 轮**（开工：主仓 = origin = `07cd9c99`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T44`（已删）；产物 `/home/kaua/calc-arch/arenaF/r476/`）：**CC-438 `ea18ed8d`** 诺姆 `norma.holdSeconds` 单一口径。
 - **找题**：REQUIREMENTS 全 done；§3 无卡；r475 交接的两个候选——`agentId === 'NNNN'` 残留扫描 **0 处**（composables/views/core/stores 非测试代码里只剩注释）；r462 (c) **不做**（CC-61 的 `legacy()` 期望依赖 cinema 与 skills，改成表/快照并不比函数简单，且会把 catalog 实数钉进测试）。改用 T17 同型扫描「一个滑块多个读者」：`norma.holdSeconds` 5 读者、3 种写法 ⇒ 立做。
 - **做了**：`resolveNormaHoldSeconds(cfg)` = clamp[0,2]，能量 / 膛温源 / 伤害行 / 赠链 / 前台时间 5 处改读；伤害行长按秒数不再 floor（默认 2 逐位不变）；`normaSmoke` +1。zd DIFF 0；timeGolden 不变；两 shard 479/4345。
