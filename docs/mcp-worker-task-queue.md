@@ -51,7 +51,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **出卡前 grep 断言的全部消费者；brief 里给工人「没说清就选最小改动继续」的授权（2026-10-03 r436 CC-410）**：卡面写「:61 兜底删掉」，实际那行是 `axisMoveActionTime` 钩子的实现、有测试锁着——工人读到矛盾后推敲 9 分钟零改动。
   判据：派发后 >5 分钟 `git status` 零改动 ⇒ 看 `worker.err` 尾部它在纠结什么，多半卡面错了；`kill <pid>`（pid 取自 `pgrep -af '^node .*dsh --profile headless'`）、改卡、重派，比等便宜。第二次派发 8 分钟收工。
 - **全量 vitest 单独一条 `wsl_exec`（2026-10-03 r437 实测）**：guards 链（~45s）+ build（~47s）+ vitest(4)（~250s）串在一条调用里，总时长撞上桥的 ~285s 上限，整条被杀、vitest 日志半截还没有 summary——看起来像「跑了但没结果」。guards / build 一条，vitest 另一条，各自 `timeout 280`。
-- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 473 / 4320，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
+- **全量 vitest 跑不进 280s 时用分片（2026-10-03 r439；r450 更新）**：`npx vitest run --shard=1/2` 与 `--shard=2/2` 各一条 `wsl_exec`（worker 上限自 CC-424 起在 `vite.config.ts` 里默认 4，不必再加 `--maxWorkers=4`），两片的 **passed** 数相加应等于基线（现 474 / 4325，以 r6 §8 最新行为准）。开工先 `pgrep -fc "[w]orkers/forks.js"`：>0 = 别人在跑测试，先 ≤170s 轮询等它结束再跑自己的；高负载下 2 分片仍 rc=124 时拆 4 或 8 份（r450 实测 1/4、2/4、3/4、7/8、8/8 凑齐）。
 ### 0.R2 收尾流程（2026-09-27 R2 定稿；依据与数字见 `docs/mcp-dev-process-speed.md`）
 
 - **强度不变，顺序和并行方式变了**：全量 `npm run verify`、零差、文档提交后重跑 check-guards 三道都保留。
@@ -80,6 +80,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 - **「幻影 null」猎法（r444–r448，CC-417→421 五连，每个都是零行为、zd DIFF 0）**：类型里带 `| null` 的输出，先找**全部**生产者的 null 出口（`grep -n "return null\|: .* | null = null"` + 对每条出口问「调用方在同一次同步求值里是否已经排除了这个条件」或「循环是否至少跑一轮」），再找**全部**消费者的 `?.` / `?? 0` / `x != null` 防御。null 出口不可达 ⇒ 把出口改成不变量 `throw`（不是留着 `return null`——留着就得保留整套 `| null`，等于类型层继续承认一个不存在的状态），类型收成非 null，防御全部收掉，加形状锁。**判别真 null 与幻影 null**：真 null 表达一个会发生的事实（首轮无前一轮 `prev: null`、首轮无上轮计数 `postRoundInput: null`、没有挂能力的槽 `slot < 0`）——保留；幻影 null 是「某个空集合被放大成整个结果不存在」（CC-417 空失衡贡献 ⇒ 整轮 null）或「上游守卫早已排除」（CC-418/419/421）——收掉。每收一层，下一层才露出来（CC-418 之前看不出 CC-421），所以一次只收一层、每层单独验证。
 
+- **别人的「已提交、未推」不是孤儿，是没推完的活（r452）**：开工 `rev-list origin/master..HEAD` ≠ 0 且那些提交**不是自己的**时，先看作者是否还在动（`ps`、文件 mtime、提交时间 < 10 分钟 ⇒ 等）；不在动就 **cherry-pick 到自己的 worktree（基于 origin/master）跑全套**（vue-tsc / guards 链 / build / vitest 分片），**绿就以他的名义 `git push origin <sha>:master`**（cherry-pick 保留作者与消息），红就入分支 `wip/<作者>-<主题>` 并把主仓 reset 到 origin。不审他的口径（那是他 lane 的事），只验「不弄红 master」。依据：用户唯一盯着看的就是 GitHub 有没有新东西（§7 c2 的 436 个未推提交事故）；而主仓每多一个未推提交，后面每个 lane 的 ff-merge 都要改成 rebase、哈希一轮一变、文档引用全失效。先例：r452 代推 kaua5678 的「refactor(grace): 轮换计划改精确闭式解…」（cherry-pick 后哈希 `c1897046`），验证记录在 §2b r452。**不要**用它来绕过自己的验证：自己的提交仍然自己验、自己推。
+
 ## 2b. 并行 lane 交接（§2 「每轮替换」时**不要**连本节一起删；每个 lane 一段，过时的段压成一行指针）
 
 
@@ -89,6 +91,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 19:54 arena-F 第 452 轮**（开工：origin = `e4a9e0ce`，主仓多一个别人的本地提交（kaua5678「refactor(grace): 轮换计划改精确闭式解 + 维琳娜平A权重交边际均衡」，19:44 提交、rebase 两次后哈希已是 `a5e6bbc1`），工作区干净，无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T20`（已删）；产物 `/home/kaua/calc-arch/arenaF/r452/`：`tsc.log` / `guards.log` / `build.log` / `vt-s1.log` / `vt-s2.log`）：**代推 `c1897046`**（他的提交，cherry-pick 到 origin/master 上验证后推送）+ 本文档提交。
+- **做到哪**：不再按 24h 孤儿规则等。把他的提交 cherry-pick 到 `wt-T20`（基于 origin `e4a9e0ce`）跑全套：vue-tsc 0；guards 链 0（check-guards / check-tokens / validate:data / validate:specs / verify:recording）；build 0；vitest 分片 236/2075 + 238/2250 = **474 文件 / 4325 用例**（新增 `graceRotation.test.ts` 5 条）。绿 ⇒ `git push origin c1897046:master`；主仓 `git rebase origin/master` 自动跳过了同补丁的 `a5e6bbc1`，现在主仓 = origin，unpushed 0。他的 timeGolden / timeFillRatchet 基线改动全是 1181 条目（r451 已逐键比过），属于他重构的预期结果，我不审口径。
+- **沉淀**：规则写进 §1（「别人的已提交未推：验证后代推」）。T14 的最终解释不变。
+- **顺手查了**：`⟳复核 … 到期` 在 `src/` 里没有已到期项（只有 checkGuards 测试夹具里的日期）；r6 §8 扫描表 237–309 行的范围没新线索。
+- **下一步（start-ready）**：没有排定卡。① 先 `cat docs/REQUIREMENTS.md`；② 无新条目则看 r6 §8 扫描表的「重开条件」列是否有被满足的（每行一个条件，grep 对应符号即可）；③ 都没有就记一行「本轮无题」收工，**别造活**（§1 第一条）。
+- **回滚点**：`git revert c1897046`（那是他的改动，回滚前先在 §2b 写理由）。
 
 **2026-10-03 19:46 arena-F 第 451 轮**（开工：origin = `4643887a`，主仓多一个**别人的本地提交** `77ea33b7`（kaua5678，19:44，未推），工作区干净，无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T19`（已删）；产物 `/home/kaua/calc-arch/arenaF/r451/`：`vt-s1-pregrace-wt.log` / `loadgen.log`）：**无代码提交**，只有本文档提交。
 - **做到哪**：T14 ①②③ 做完，结论「HEAD 确定、红值 = grace WIP 行为、机制不可考」，卡关掉（详见 §3 T14）。顺带证实了 r450 担心的「共享 node_modules 软链会让 worktree 读到主仓」**不成立**（单文件与全量分片两种形态）。
