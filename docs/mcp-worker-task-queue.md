@@ -82,6 +82,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 12:51 arena-F 第 428 轮**（开工：master `7077bd4c` 干净、已推；无 verify 进程；REQUIREMENTS.md 无新条目；worktree `wt-T7` 已删，产物 `/home/kaua/calc-arch/arenaF/r428/`）
+- **做到哪**：① remielle 三文件孤儿**丢弃**（CC-403，理由与重开条件在卡里；diff 在 `arenaF/r428/remielle-orphan.diff`）——主仓现在干净，verify 不再被它弄红。② §3 卡 **T7** 由 dsh 工人完成（5d081fb5），卡已删；详见 CC-404。
+- **孤儿处置的教训**：别人 WIP 里写的「用户裁决」要回 docs 核对日期与内容——这份把 09-30 的 C6 裁决（CC-166）错按到了档位计数上。处置前把 diff 整份存到 calc-arch，让「丢弃」可逆。
+- **下一步候选**（不排序）：arena-E §2 r420 下一步 2（yidhari-qingyi-lucia 外层振荡——CC-402 后该队 ratchet 已 cycle→stable，先确认还振不振，不振就在 §2 加一行指针关掉）；r420 下一步 3/4（需用户口径，只能写候选）；珂蕾妲协同版 1101106/1101402（CC-402 未决，改伤害，单独一卡）。
+- **回滚点**：CC-403 无代码；T7 `git revert 5d081fb5`。
+
 **2026-10-03 12:26 arena-F 第 427 轮**（开工：master `56821c49` 干净、已推；无 verify 进程；别人 11:40–11:57 的 `remielle.ts` / `remielle.test.ts` / `helpersNightC.test.ts` 仍未提交、未认领，**没动**（收工时闲置已 >1h，下一轮按孤儿规则处理）；REQUIREMENTS.md 无新条目；worktree `wtF-r427` 已删，产物 `/home/kaua/calc-arch/arenaF/r427/`）
 - **做到哪**：r420 §2「下一步 1」（27 个 [表] TWIN 候选）**全部裁决**，见卡表 CC-402。只有卢西娅终结技改了代码（`1f78ccb6`，改伤害）；其余 26 个零改动，分类与理由都在卡里，**别再扫同一清单**。
 - **卢西娅为什么现在改、r338 为什么没改**：r338 要求 nanoka 求和编码才登记融合；本轮按妮可终结技先例（param 分列、无求和编码、靠招式说明判「一次发动全打」）放行，因为「终结技主伤害 3805.7% 整段漏掉 + 终结技 0 秒」是两个肉眼可见的缺陷。撞击次数按 1 计是**可逆口径**：有用户口径就改 `LUCIA_ULTIMATE` 的 count。
@@ -373,27 +379,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 （T1、T2 已于第 370 轮 `0c5e00cb` 完成）
 
-（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。第 427 轮新增 **T7**（CC-402 分诊）。）
+（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**。）
 
-<!-- card:T7 -->
-### T7 · 模块「cfg 二选一分支」招式的 [表] 隐藏改为声明式分支组（CC-402 分诊）
-
-**背景**：`composables/resourceCalc/axisTableDirect.ts` 判「可直读 [表]」= 本角色无该 moveId 执行行 ∧ 不在 `mechanics/registry#axisHiddenMovesOf`（= 模块 `axisHiddenMoves` ∪ `attachedEvents` 子行）。6 个招式是模块按 cfg **二选一**发射的分支：当前分支有执行行、另一分支既无执行行也不在名单 ⇒ 以 [表] 出现，放进轴 = 双计。
-清单（候选 → 模块、分支依据）：
-- 本 `1121008` / `1121009`（未招架版）↔ `1121010` / `1121011`（招架版）：`ben.ts:20,47`，默认发招架版。
-- 苍角 `1131013`（快速展旗）↔ `1131012`（展旗）：`soukaku.ts:66`，按 cfg 二选一。
-- 诺姆 `1571009`（失衡高爆弹头）↔ `1571008`（破甲）；`1571012`（延长高爆）↔ `1571011`（延长破甲）：`norma.ts:50-57`，按失衡态 / 长按。
-- 洛克茜 `1621019`（微型风旋）↔ `1621020`（巨型风旋）：`roxy.ts:43-52`，按风眼数。
-
-**改法**（声明式，不加静态名单）：
-1. `mechanics/types.ts` 的 `AgentMechanicModule` 加可选 `moveBranchGroups?: readonly (readonly string[])[]`——「同一动作的互斥分支组，组内任一成员有执行行时其余成员不可作为 [表] 直读」。
-2. `mechanics/registry.ts#axisHiddenMovesOf(agentId, executedMoveIds)` 增加：对每个分支组，若组内任一 id ∈ executedMoveIds，则组内其余 id 并入隐藏集。签名需要带 `executedMoveIds`（现有调用方 `axisTableDirect.ts` 已经有这个集合；`agentMechanicView` 门面同步）。
-3. 四个模块各加 `moveBranchGroups`（按上面清单，两段都列）。
-4. 锁：`axisTableDirectCc393.test.ts` 加一条：对每个带 `moveBranchGroups` 的模块，用命座 0 缺省 cfg 跑一次，断言组内非执行行成员不在候选；再对本 1121 切到未招架 cfg（看 `ben.ts` 的 setting id）跑一次，断言 1121010/1121011 也不在候选（锁「两个方向都隐藏」）。反证：注释掉 `registry` 里的分支组过滤 ⇒ 两条都红。
-
-**不许碰**：`axisHiddenMoves` 现有名单不改；不改任何模块的发射逻辑；不改 `moveFusions.ts`。
-**验收**：`vue-tsc -b --force` 0；`npx vitest run src/composables/__tests__/axisTableDirectCc393.test.ts src/mechanics` 通过；zd DIFF 0（纯候选池改动，不进计算）；`npm run check-guards`。
-**报告**：`git diff --stat`、新增锁的反证记录（注释掉过滤后红了哪两条）、`STATUS: done|blocked` 首行。
-<!-- /card:T7 -->
 
 
