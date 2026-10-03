@@ -50,6 +50,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 - **出卡前 grep 断言的全部消费者；brief 里给工人「没说清就选最小改动继续」的授权（2026-10-03 r436 CC-410）**：卡面写「:61 兜底删掉」，实际那行是 `axisMoveActionTime` 钩子的实现、有测试锁着——工人读到矛盾后推敲 9 分钟零改动。
   判据：派发后 >5 分钟 `git status` 零改动 ⇒ 看 `worker.err` 尾部它在纠结什么，多半卡面错了；`kill <pid>`（pid 取自 `pgrep -af '^node .*dsh --profile headless'`）、改卡、重派，比等便宜。第二次派发 8 分钟收工。
+- **全量 vitest 单独一条 `wsl_exec`（2026-10-03 r437 实测）**：guards 链（~45s）+ build（~47s）+ vitest(4)（~250s）串在一条调用里，总时长撞上桥的 ~285s 上限，整条被杀、vitest 日志半截还没有 summary——看起来像「跑了但没结果」。guards / build 一条，vitest 另一条，各自 `timeout 280`。
 ### 0.R2 收尾流程（2026-09-27 R2 定稿；依据与数字见 `docs/mcp-dev-process-speed.md`）
 
 - **强度不变，顺序和并行方式变了**：全量 `npm run verify`、零差、文档提交后重跑 check-guards 三道都保留。
@@ -83,6 +84,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 14:58 arena-F 第 437 轮**（开工：master `aa499bca` 干净已推；别人的 wEngineStackCoverage WIP 仍在主仓、未认领；REQUIREMENTS.md 无新条目；派 dsh 做 §3 卡 T8 后半 soukaku / grace，worktree `wt-T8b`（已删）；产物 `/home/kaua/calc-arch/arenaF/r437/`：`dispatch-t8c.sh`、`worker-T8sg.report`、`guards.log` / `build.log` / `vt.log`（基线 aa499bca 上的全量）、`guards-head.log` / `tsc-head.log` / `vt-head.log`（含别人提交的 HEAD 上的全量））：**CC-411 `db9e0655`**（代码，**已推到 origin/master**）+ 本文档提交。
+- **做到哪**：T8 的 soukaku / grace 完成（工人 8 分钟一次过，brief 里预先 grep 好的事实起作用了）；T8 只剩 burnice（卡面已把 r437 核过的行号 / 8 处夹具写进去，可直接派）。
+- **⚠ 现场分叉（下一轮先读这条）**：15:16 另一条 lane（提交者 `kaua5678`，无认领行）在**主仓**提交了 `9d818b7b feat(wengine): 嵌合编译器等叠层音擎buff覆盖率…`（4 文件，与本轮不相交）。我 ff 失败后 cherry-pick 成 `e651e5c7` 叠在它上面，然后在干净 worktree 对 HEAD 跑全量：**`outerCyclePick.test.ts › yixuan-jufufu-lucia 长环分支只调用一次`，实测 0 次 ⇒ 红**；单测隔离：`aa499bca` 绿、`9d818b7b` 红 ⇒ **是 `9d818b7b` 引入的**（它改了 `useResourceCalc.ts` 50 行，推测动到外环选点的接线）。按规则我不回滚别人的提交；也不把红的 master 推上去——所以 **origin/master 推的是 `db9e0655`（= aa499bca + CC-411，全量 468/4296 绿）**，本地 master 仍是 `9d818b7b → e651e5c7 → （本文档 cherry-pick）`，与远端**内容等价但历史分叉**。处置：`9d818b7b` 的作者下次 `git pull --rebase origin master` 即可——`e651e5c7` 与 `db9e0655` patch-id 相同会被自动丢弃，只剩他那一个提交重放；重放后**先修 `outerCyclePick.test.ts` 再推**。若他 1 小时内没动静，下一轮 arena 会话按孤儿规则处理：在 worktree 里 `git rebase origin/master` 他的提交 → 看那条测试 → 要么修要么 `git revert` 并在这里写明。**不要**在主仓做 `git reset`——他的工作树还有未提交的 `AGENTS.md`。
+- **流程教训（入 §0）**：guards 链 + build + 全量 vitest 串在**一条** `wsl_exec` 里，总时长超过桥的上限（~285s），vitest 被连带杀掉、日志半截（`vt.log` 第一版）——全量 vitest 必须**单独一条调用**，前面的 guards / build 另起一条。
+- **下一步（start-ready）**：① 派工人做 T8 burnice（卡面已就绪）；② T9（倍率 / 能量常量 → `mechanicRowValues`，hugo 709.8 / xixifu 254.4、1009.1 / grace A?_ENERGY）；③ 若 `9d818b7b` 仍红且无人认领，按上面的孤儿处置。
+- **回滚点**：`git revert db9e0655`。
 
 **2026-10-03 14:31 arena-F 第 436 轮**（开工：master `14dc6980` 干净、已推；别人的 wEngineStackCoverage WIP 仍在主仓、仍在改（`useResourceCalc.ts` 14:30）、无认领——没动；REQUIREMENTS.md 无新条目；本轮按 §0 派 dsh 做 §3 卡 T8 前半，worktree `wt-T8`（已删）；产物 `/home/kaua/calc-arch/arenaF/r436/`：`dispatch-t8.sh` / `dispatch-t8b.sh`（两次 brief）、`worker-T8-attempt1.err`（第一次卡住的思考流）、`worker-T8.report`、`guards.log`、`build.log`、`vt.log`）：**CC-410 `015b6a61`**（代码，已推）+ 本文档提交。
 - **做到哪**：T8 的 4 个小模块（miyabi / yixuan / anbyZero / hugo）由工人完成，我复核 diff（白名单内、改法与卡一致）后自己跑 guards / build / 全量 vitest(4)，ff 进 master。卡 T8 收缩为 soukaku / grace / burnice 三个（表已删做完的行）。
@@ -395,7 +403,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 （T1、T2 已于第 370 轮 `0c5e00cb` 完成；T4～T7 已于 r425～r428 完成）
 
 <!-- card:T8 -->
-### T8 · 剩余 3 个模块（soukaku / grace / burnice）的 `*_ACTION_TIME / *_TIME` 常量改读 `cfg.moveActionTimes`（CC-409 续，零差；miyabi / yixuan / anbyZero / hugo 已于 r436 CC-410 `015b6a61` 完成）
+### T8 · 最后 1 个模块 burnice 的 `SINGLE/DOUBLE_EXPLOSION_TIME` 改读 `cfg.moveActionTimes`（CC-409 续，零差；miyabi / yixuan / anbyZero / hugo 已于 r436 CC-410 `015b6a61`、soukaku / grace 已于 r437 CC-411 `db9e0655` 完成）
 
 **背景（只需知道这些）**：引擎在 `src/composables/resourceCalc/helpers.ts#buildCharConfig` 已把该角色全部招式的 catalog actionTime 预填到 `cfg.moveActionTimes`（moveId → 秒）。模块读法：`import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'`，`cfgMoveActionTime(cfg, '1131011')`。已迁好的样板：`src/mechanics/agents/ellen.ts`（直接在 buildExecutions 用）、`zhao.ts`（先取成局部变量再给 actionTime / totalTime）、**`yixuan.ts` / `anbyZero.ts`（纯函数加入参、调用处从 cfg 取——soukaku / grace 照这个做）**、`burnice.ts` 的 `exRowMultipliers`（CC-408，必填入参 + 测试夹具）。
 
@@ -403,14 +411,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 | 文件 | 常量 → 招式 | 用在哪（行号为 r435 时） | 注意 |
 |---|---|---|---|
-| `soukaku.ts` | `SOUKAKU_FAN_ACTION_TIME` 1.16 → 1131011；`SOUKAKU_WIND_BALL_ACTION_TIME` 0.271 → 1131010；`SOUKAKU_SLAM_ACTION_TIME` 1.25 → 1131012；`SOUKAKU_CHOP_SLAM_ACTION_TIME` 0.7 → 1131013；`SOUKAKU_FROST_DASH_ACTION_TIME` 0.4 → 1131016；`SOUKAKU_FROST_BASIC3_ACTION_TIME` 2.632 → 1131006 | :121–126 纯函数算 `necessaryTime` / `comboAlignTime`；:160 / :182 / :197 / :223 行 actionTime | 纯函数没有 cfg ⇒ 给它加一个入参对象 `times: { fan, windBall, slam, chopSlam, frostDash, frostBasic3 }`，调用处从 cfg 取；`:182` 的 `/ hits` 保留 |
-| `grace.ts` | `A1_TIME` 0.171 → 1181001；`A2_TIME` 0.33 → 1181002；`A3_TIME` 0.682 → 1181003；`A4_TIME` 1.134 → 1181004；`SP_TIME` 0.2 → 1181005；`EX_TIME` 0.342 → 1181006 | :91 `cycleBound`；:101 时间合计；:211 行 | 同上，纯函数加入参；`A?_ENERGY` 四个是 energy_recovery 行值，归 T9 |
-| `burnice.ts` | `SINGLE_EXPLOSION_TIME` 0.315 → 1171011；`DOUBLE_EXPLOSION_TIME` 1.1 → 1171013 | `computeBurniceMechanic` 内 `singleCastTime` / `doubleCastTime`；`buildExecutions` 的 pushEx | 走 CC-408 同一条路：加进 `exRowMultipliers` 旁边的必填入参（建议改名为 `exRows: { …Multiplier, singleExplosionTime, doubleExplosionTime }` 或另加 `exRowTimes`），`burniceMechanicSourceOf` 从 cfg 取；测试 9 处入参夹具同步补。**`DOUBLE_SPRAY_MAX_SECONDS` 2.274 不要动**——它是「双喷最长秒数」语义（恰好等于 1171012 的 actionTime），是可调设置的上限不是行时长 |
+| `burnice.ts`（r437 已核：常量在 :78–79；用处 :136–137 `singleCastTime/doubleCastTime`、:166 C6 余烬冷却、:383/:385 `pushEx`；`computeBurniceMechanic` 的 `input.exRowMultipliers` 是 CC-408 加的必填入参样板，照它再加一个 `explosionTimes: { single, double }`；**8 处测试夹具**要补：`burnice.test.ts:37`、`potentialAxisBatchB.test.ts:233`、`specialMechanics.test.ts:345/390/411/441/468/486/505`，值从 catalog 取或写表值 0.315 / 1.1） | `SINGLE_EXPLOSION_TIME` 0.315 → 1171011；`DOUBLE_EXPLOSION_TIME` 1.1 → 1171013 | `computeBurniceMechanic` 内 `singleCastTime` / `doubleCastTime`；`buildExecutions` 的 pushEx | 走 CC-408 同一条路：加进 `exRowMultipliers` 旁边的必填入参（建议改名为 `exRows: { …Multiplier, singleExplosionTime, doubleExplosionTime }` 或另加 `exRowTimes`），`burniceMechanicSourceOf` 从 cfg 取；测试 9 处入参夹具同步补。**`DOUBLE_SPRAY_MAX_SECONDS` 2.274 不要动**——它是「双喷最长秒数」语义（恰好等于 1171012 的 actionTime），是可调设置的上限不是行时长 |
 
 **不许碰**：任何倍率 / 能量数字（归 T9）；`DOUBLE_SPRAY_MAX_SECONDS`；行的 count / 口径；其它模块；`hugo.ts` 的 `hugoMoveActionTime` / `HUGO_EX_FINAL_ACTION_TIME`（合成轴块钩子没有 cfg，CC-410 已判保留——要去掉它需要让合成招式声明代表的真招式、钩子改别名，另开卡）。
 
 **验收（每个模块可单独一个提交，也可合一个）**：
-1. `grep -n "_ACTION_TIME = \|_TIME = \|_SECONDS = " src/mechanics/agents/{soukaku,grace,burnice}.ts` 只剩表里标「不要动」的；
+1. `grep -n "_ACTION_TIME = \|_TIME = \|_SECONDS = " src/mechanics/agents/burnice.ts` 只剩 `DOUBLE_SPRAY_MAX_SECONDS`；
 2. `npx vue-tsc -b --force` 0 错；
 3. `npx vitest run src/mechanics/__tests__/<模块>*.test.ts src/composables/__tests__/moveActionTimesCc409.test.ts` 绿（手搭 cfg 的测试要补 `moveActionTimes: {...}`，照 `xide.test.ts#mkCfg` 的写法）；
 4. `bash .zc/perf/zd.sh t8-<模块>` DUMP / ROWS **DIFF 0**（常量 = 表值，必须零差；不是 0 就是改错了，不要调期望值）；
