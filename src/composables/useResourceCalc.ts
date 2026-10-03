@@ -473,8 +473,15 @@ export function createResourceCalc(
    * ⚠ **声明位置硬约束**：必须在 `runCalcRound`（上方）创建**之后**——computed 首次求值会级联到
    * `calcOutput` → `solveTeam(runCalcRound)`，若声明在 509 行前则回调内 `runCalcRound` 仍处 TDZ。
    * 时序：依赖 `adjustedResourceResult`（资源已收敛）⇒ 资源迭代之后求值；面板读同一份
-   * `configStore.wEngineEffectCoverages` ⇒ 回填后面板自动重算。资源迭代**不读**
-   * wEngineEffectCoverages（消费端只有面板与进场快照，见 panelPhases.ts 两处）⇒ 不搅动收敛。
+   * `configStore.wEngineEffectCoverages` ⇒ 回填后面板自动重算。
+   * ⚠ CC-420（r447 实测纠正）：资源迭代**直接**不读 wEngineEffectCoverages，但**经 `panels` 间接读**——
+   * `runCalcRound(deps.panels)` ← `panels` ← `computePanel` → `resolveSlotPanelBuffInputs` 读的就是这张表。
+   * 所以这是一个绕 store 的环：calcOutput → 回填 → store → panels → calcOutput。`useResourceCalc()` 一创建
+   * 就跑**两遍**整条管线（pass 1 用默认覆盖算回填；store 变后首读再算 pass 2），不跑第三遍只因为回填值
+   * 只改面板量（精通/攻击）而执行行次数不依赖它们 ⇒ pass 2 的回填 == pass 1 ⇒ 写同值不触发。
+   * 这是「当前没有角色让面板量影响次数」撑着的一步不动点，不是结构保证；锁在
+   * `__tests__/wEngineCoverageFixpointT10.test.ts`（创建+首读恰 2 次 miss、之后稳定、重折算 == store）。
+   * 结构性修法见 docs/mcp-worker-task-queue.md §3 T10 卡。
    * 只回填已登记触发源的效果；未登记 = 回退手调滑块（旧行为）。手调优先在 store 侧拦。
    */
   const wEngineStackAutoCoverages = computed<Record<string, number>>(() => {
@@ -509,6 +516,8 @@ export function createResourceCalc(
   // 回填进 store（面板 computed 经 effectCoverageMap 消费）。手调效果由 store 侧 manual 标记跳过。
   // immediate:true 安全（本 watch 声明在 runCalcRound 之后，首次同步回调已出 TDZ 区）；
   // flush:'post' 让回填在组件渲染/面板首算之后落 store，面板再随 store 变化重算（幂等）。
+  // ⚠ 代价（CC-420 实测）：immediate 回调同步跑完整条管线 = 创建即算 pass 1；store 写回使 panels 失效 ⇒
+  // 首读再算 pass 2。测试里「创建后任何 await 之前管线已算过并缓存」就是这里来的（r438 outerCyclePick 教训）。
   watch(wEngineStackAutoCoverages,
     auto => configStore.applyWEngineEffectCoverageAuto(auto),
     { immediate: true, flush: 'post' })
