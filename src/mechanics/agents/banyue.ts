@@ -1,4 +1,5 @@
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionTopUp, InteractionTopUpInput } from '../types'
+import { axisOverlayChannel } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { calcPenetrationPower } from '@/core/damage'
@@ -834,6 +835,20 @@ const settings: MechanicSetting[] = [
   },
 ]
 
+/**
+ * CC-437（T15-e）：般岳明王的私有轴窗口 overlay（编排层不透明；两臂互斥，只填其一）。
+ * 原 `AgentAxisOverlays.banyueMingwangStacks` → `stacksByMove`（**层数**，消费端 × `MINGWANG_BASE_PER_STACK`），
+ * 原 `AxisScalarOverlays.banyueMingwangPct` → `flatPct`（**百分比** = 每层 × 满层 3 × 覆盖率）。
+ * 两字段量纲不同（层数 vs 百分比），分字段即是「不复用桶」不变量的类型化表达。
+ */
+export interface BanyueOverlay {
+  /** 轴臂：moveId → 明王层数（`computeBanyueMingwangStacks`） */
+  stacksByMove?: Map<string, number>
+  /** 非轴臂：折算百分比 = `MINGWANG_BASE_PER_STACK × MINGWANG_MAX_STACKS × 覆盖率滑块` */
+  flatPct?: number
+}
+export const banyueOverlay = axisOverlayChannel<BanyueOverlay>()
+
 export const banyueMechanic: AgentMechanicModule = {
   // CC-48：轴编辑器展示层标注 / 招式元数据（经 composables/agentMechanicView 门面；StunAxisPage 不再值导入本模块）
   axisEditorBlockMarks: ({ axes, slot, cinemaLevel }) => {
@@ -933,7 +948,7 @@ export const banyueMechanic: AgentMechanicModule = {
    * - 门控 = 额外能力触发 **且非 6 命**（6 命走 `applyBanyuePanel` 的全局 +39%，不在此产出）。
    * - `isAxis` 真 → 轴内时间轴扫描，桶值仍是**层数**（消费端 × `MINGWANG_BASE_PER_STACK`）。
    * - `isAxis` 假 → 覆盖率折算（**标量**，本槽全部行同值）。⚠ 折算结果是**百分比**
-   *   （`每层 × 满层 3 × 覆盖率`），**不是层数** ⇒ 必须走 `scalarBySlot`，复用桶会让消费端
+   *   （`每层 × 满层 3 × 覆盖率`），**不是层数** ⇒ 必须走 `flatPct`，复用 `stacksByMove` 会让消费端
    *   再乘一次每层 5%（数值静默变大）。
    * - 滑块缺省回落 **0.5**（与 `settings` 表里 `banyue.mingwangCoverage` 的 default 同值，
    *   也与伤害池原式的 `getMechanicSetting(…, 0.5)` 同值）。
@@ -943,28 +958,25 @@ export const banyueMechanic: AgentMechanicModule = {
     if (cinemaLevel >= 6) return null
     if (isAxis) {
       const map = computeBanyueMingwangStacks(slot, axes, cinemaLevel)
-      return map.size > 0 ? { banyueMingwangStacks: map } : null
+      return map.size > 0 ? banyueOverlay.wrap({ stacksByMove: map }) : null
     }
     const cov = Math.max(0, Math.min(1, Number(settings['banyue.mingwangCoverage'] ?? 0.5)))
-    return {
-      scalarBySlot: new Map([[slot, {
-        banyueMingwangPct: MINGWANG_BASE_PER_STACK * MINGWANG_MAX_STACKS * cov,
-      }]]),
-    }
+    return banyueOverlay.wrap({ flatPct: MINGWANG_BASE_PER_STACK * MINGWANG_MAX_STACKS * cov })
   },
   /**
    * 明王行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
    * 由伤害池消费端按**本行所属槽**的 overlay 调用——轴模式用桶层数 × `MINGWANG_BASE_PER_STACK`，
    * 非轴模式用折算标量。算式与 note 模板逐字照原 `damagePoolDirect.ts#emitExecDirect`。
    */
-  directRowBonus: ({ exec, isAxis, buckets, scalar }) => {
+  directRowBonus: ({ exec, isAxis, overlay }) => {
+    const o = banyueOverlay.read(overlay)
     const moveId = exec.moveId ?? ''
     let dmg = 0
     if (isAxis) {
-      const stacks = buckets?.banyueMingwangStacks?.get(moveId) ?? 0
+      const stacks = o?.stacksByMove?.get(moveId) ?? 0
       if (stacks > 0) dmg = stacks * MINGWANG_BASE_PER_STACK
     } else {
-      dmg = scalar?.banyueMingwangPct ?? 0
+      dmg = o?.flatPct ?? 0
     }
     if (dmg <= 0) return null
     return {

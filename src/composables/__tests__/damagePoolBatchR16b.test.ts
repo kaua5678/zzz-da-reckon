@@ -26,7 +26,7 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { banyueMechanic } from '@/mechanics/agents/banyue'
+import { banyueMechanic, banyueOverlay } from '@/mechanics/agents/banyue'
 import { corinMechanic, corinOverlay } from '@/mechanics/agents/corin'
 import { sigridMechanic, sigridOverlay } from '@/mechanics/agents/sigrid'
 
@@ -62,23 +62,23 @@ describe('R15-b 跳③：般岳明王非轴折算臂（精确值 + 桶语义不�
   } as never)
 
   it('非轴：不产桶、只产标量；默认 0.5 → 精确 7.5；滑块端点 1→15 / 0→0（端点值排除数值巧合）', () => {
-    const d = banyueMechanic.axisWindowOverlays!(input())!
-    expect(d.banyueMingwangStacks).toBeUndefined()
-    expect(d.scalarBySlot!.get(1)!.banyueMingwangPct).toBe(7.5)
+    // CC-437：返回值不透明，用模块 channel 读（`stacksByMove` = 原桶，`flatPct` = 原标量）
+    const rd = (o: Record<string, unknown> = {}) => banyueOverlay.read(banyueMechanic.axisWindowOverlays!(input(o))!)!
+    const d = rd()
+    expect(d.stacksByMove).toBeUndefined()
+    expect(d.flatPct).toBe(7.5)
 
-    expect(banyueMechanic.axisWindowOverlays!(input({ settings: { 'banyue.mingwangCoverage': 1 } }))!
-      .scalarBySlot!.get(1)!.banyueMingwangPct).toBe(15)
-    expect(banyueMechanic.axisWindowOverlays!(input({ settings: { 'banyue.mingwangCoverage': 0 } }))!
-      .scalarBySlot!.get(1)!.banyueMingwangPct).toBe(0)
+    expect(rd({ settings: { 'banyue.mingwangCoverage': 1 } }).flatPct).toBe(15)
+    expect(rd({ settings: { 'banyue.mingwangCoverage': 0 } }).flatPct).toBe(0)
   })
 
   it('★ 标量值是**百分比**而桶值是**层数**：同一份滑块下两者数值必须不同（防「复用桶」回归）', () => {
     // 轴臂：桶给层数（这里轴内无动作 ⇒ 空表 ⇒ null，故直接用纯函数对照）
     // 非轴臂：标量 = 5 × 3 × cov = 15（cov=1）
-    const nonAxis = banyueMechanic.axisWindowOverlays!(input({ settings: { 'banyue.mingwangCoverage': 1 } }))!
-    expect(nonAxis.scalarBySlot!.get(1)!.banyueMingwangPct).toBe(15)
-    // 若误把 15 当层数塞进桶，消费端会再乘 5% ⇒ 75%（错 5 倍）。桶必须缺席：
-    expect(nonAxis.banyueMingwangStacks).toBeUndefined()
+    const nonAxis = banyueOverlay.read(banyueMechanic.axisWindowOverlays!(input({ settings: { 'banyue.mingwangCoverage': 1 } }))!)!
+    expect(nonAxis.flatPct).toBe(15)
+    // 若误把 15 当层数塞进 `stacksByMove`，消费端会再乘 5% ⇒ 75%（错 5 倍）。层数臂必须缺席：
+    expect(nonAxis.stacksByMove).toBeUndefined()
   })
 
   it('门控：额外能力未触发 / 6 命 ⇒ 两条臂都不参与（返回 null，不是产 0）', () => {

@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import { luciaElowenMechanic } from '@/mechanics/agents/luciaElowen'
 import { jufufuTigerRoarMechanic } from '@/mechanics/agents/specPanelBuffs'
-import { banyueMechanic } from '@/mechanics/agents/banyue'
+import { banyueMechanic, banyueOverlay } from '@/mechanics/agents/banyue'
 import { yixuanMechanic } from '@/mechanics/agents/yixuan'
 import { corinMechanic, corinOverlay } from '@/mechanics/agents/corin'
 import { peiluoProminenceMechanic, peiluoOverlay } from '@/mechanics/agents/specPanelBuffs'
@@ -150,22 +150,22 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
       { slot: 0, moveId: 'banyue-combo', count: 1, startTime: 0 },
       { slot: 0, moveId: '1471010', count: 1, startTime: 2 },  // 窗内
     ])
-    const res: any = banyueMechanic.axisWindowOverlays!(overlayInput({ axes }))
-    expect(res.banyueMingwangStacks.get('1471010')).toBe(2)
+    // CC-437：返回值对编排层不透明，用模块 channel 读（`stacksByMove` = 原桶，`flatPct` = 原标量）
+    const res = banyueOverlay.read(banyueMechanic.axisWindowOverlays!(overlayInput({ axes }))!)!
+    expect(res.stacksByMove!.get('1471010')).toBe(2)
     // C6：computeBanyueMingwangStacks 直接返回空 → 钩子按「空表 = 不参与」返 null
     expect(banyueMechanic.axisWindowOverlays!(overlayInput({ axes, cinemaLevel: 6 }))).toBeNull()
   })
 
   it('般岳明王·非轴折算臂：桶留空、标量表给「满层3×5%×覆盖率」；滑块可调且精确', () => {
     // 默认 0.5 ⇒ 5 × 3 × 0.5 = 7.5（精确值；原伤害池 `else` 臂的同一算式）
-    const res: any = banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false }))
-    expect(res.banyueMingwangStacks).toBeUndefined()
-    expect(res.scalarBySlot.get(0).banyueMingwangPct).toBe(7.5)
+    const rd = (o: Record<string, unknown> = {}) => banyueOverlay.read(banyueMechanic.axisWindowOverlays!(overlayInput(o))!)!
+    const res = rd({ isAxis: false })
+    expect(res.stacksByMove).toBeUndefined()
+    expect(res.flatPct).toBe(7.5)
     // 滑块 1 ⇒ 15；滑块 0 ⇒ 0（精确值，不是 `> 0`）
-    expect(banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'banyue.mingwangCoverage': 1 } }))!
-      .scalarBySlot!.get(0)!.banyueMingwangPct).toBe(15)
-    expect(banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, settings: { 'banyue.mingwangCoverage': 0 } }))!
-      .scalarBySlot!.get(0)!.banyueMingwangPct).toBe(0)
+    expect(rd({ isAxis: false, settings: { 'banyue.mingwangCoverage': 1 } }).flatPct).toBe(15)
+    expect(rd({ isAxis: false, settings: { 'banyue.mingwangCoverage': 0 } }).flatPct).toBe(0)
     // 6 命不走折算（满覆盖由 applyPanel 全局 +39% 承担）
     expect(banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, cinemaLevel: 6 }))).toBeNull()
     // 额外能力未触发不走折算

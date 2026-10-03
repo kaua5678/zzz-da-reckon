@@ -241,7 +241,7 @@ export function axisOverlayChannel<T>() {
  * 轴窗口覆盖结果：四个**按 moveId 索引**的桶（与 `DamagePoolContext` 同名）+ 一个**按槽位索引**的标量表。
  *
  * 四个桶的数值语义：
- * - `banyueMingwangStacks`：moveId → 明王层数（消费端 × MINGWANG_BASE_PER_STACK）
+ * - （`banyueMingwangStacks` 已于 CC-437e 迁入 banyue.ts 的私有 `BanyueOverlay.stacksByMove`）
  * - `yixuanNingshenMap`：moveId → { critDmg, sheerDmg }
  * - （`peiluoKagerouMap` 已于 CC-437c 迁入 specPanelBuffs.ts 的私有 `PeiluoOverlay.byMove`）
  * - （`corinStunBonusMap` 已于 CC-437d 迁入 corin.ts 的私有 `CorinOverlay.byMove`）
@@ -256,7 +256,6 @@ export function axisOverlayChannel<T>() {
  * 新增字段仍遵循：只要值对「全角色全部行」同值（没有 moveId 可索引），就必须走 `scalarBySlot`。
  */
 export interface AgentAxisOverlays {
-  banyueMingwangStacks?: Map<string, number>
   yixuanNingshenMap?: Map<string, { critDmg: number; sheerDmg: number }>
   /**
    * **按槽位索引的标量覆盖**（与四个「按 moveId 索引」的桶并列）。
@@ -276,8 +275,7 @@ export interface AgentAxisOverlays {
  * 所有字段都只在模块自己的参与门控（额外能力/命座/轴模式）通过时才写。
  */
 export interface AxisScalarOverlays {
-  /** 般岳明王·**非轴折算臂**：百分比 = `MINGWANG_BASE_PER_STACK × 3 × 覆盖率滑块` */
-  banyueMingwangPct?: number
+  // （`banyueMingwangPct` 已于 CC-437e 迁入 banyue.ts 的私有 `BanyueOverlay.flatPct`，此处删除）
   // （`corinStunBonusPct` 已于 CC-437d 迁入 corin.ts 的私有 `CorinOverlay.flatPct`，此处删除）
   /**
    * 仪玄凝神。两个来源共用本字段（消费端同形同义，故不拆）：
