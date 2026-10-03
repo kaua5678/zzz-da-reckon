@@ -207,6 +207,18 @@ export type AgentTeamPhase = 'build' | 'converge' | 'postRound'
  * `runCalcRound` 内）；postRound 相位的语义是「为下一轮」，本轮轴已用过 ⇒ 一律 `undefined`
  * （不是空快照——空快照会让「漏传」与「本轮无轴」不可区分，见测试 `axisContext.test.ts`）。
  */
+/**
+ * CC-441：轴扫描（buff 轴窗口 / 轴编辑器块标注）只读的**最小轴结构**（`types/resource/pools#StunAxis` 的结构子集；
+ * 测试可用裸对象）。此前般岳/仪玄/珮罗/可琳 6 处 + `axisEditorBlockMarks` 钩子各自手写同一段内联类型。
+ */
+export interface AxisActionLike {
+  readonly slot: number
+  readonly moveId: string
+  readonly count: number
+  readonly startTime?: number
+}
+export interface AxisLike { readonly actions: ReadonlyArray<AxisActionLike> }
+
 export interface AgentAxisContext {
   /** 轴模式是否生效（= `runCalcRound` 的 `axisActive`，含 `forceNoAxis` 退化判据：退化时为 false） */
   active: boolean
@@ -792,7 +804,7 @@ export interface AgentMechanicModule {
    * 展示层经 `composables/agentMechanicView.ts#agentAxisBlockMarks` 以「本角色所在槽位」调用（判据 7：页面不值导入角色模块）。
    * 现实现：般岳（明王窗口，computeBanyueMingwangBlocks）、仪玄（凝神窗口，computeYixuanNingshenBlocks）。
    */
-  axisEditorBlockMarks?(input: { axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>; slot: number; cinemaLevel: number }): Map<string, AxisEditorBlockMark>
+  axisEditorBlockMarks?(input: { axes: ReadonlyArray<AxisLike>; slot: number; cinemaLevel: number }): Map<string, AxisEditorBlockMark>
   /** 轴编辑器招式元数据（CC-48；展示层专用）：moveId → { tag 名称前缀, cost 单次耗能 }。现唯一实现：般岳 `BANYUE_AXIS_MOVE_META` */
   axisMoveMeta?: Readonly<Record<string, { tag: string; cost: number }>>
   /** 轴编辑器候选池隐藏的招式（CC-57；展示层专用）。现唯一：伊德海莉 1051012 裸极寒重碾（用连段表达能量消耗更准，避免误导闪能计算） */

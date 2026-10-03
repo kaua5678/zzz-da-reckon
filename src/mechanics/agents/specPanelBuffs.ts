@@ -6,7 +6,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import { axisOverlayChannel } from '../types'
+import { axisOverlayChannel, type AxisLike } from '../types'
 import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
@@ -395,7 +395,7 @@ peiluoProminenceMechanic.buildExecutions = ({ cfg, executions }) => {
 export const PEILUO_KAGEROU_SECONDS = 21
 export function computePeiluoKagerouBonus(
   slot: number,
-  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
+  axes: ReadonlyArray<AxisLike>,
 ): Map<string, number> {
   const TRIGGER = '1551015'
   const BENEFICIARIES = new Set<string>(['1551015', '1551016'])

@@ -1,7 +1,7 @@
 import { clampRatio } from '@/utils/finiteClamp'
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { ModuleFeedback } from '../types'
-import { axisOverlayChannel } from '../types'
+import { axisOverlayChannel, type AxisLike } from '../types'
 import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
@@ -232,7 +232,7 @@ export function computeYixuanExChain(
  */
 export function computeYixuanNingshenBonus(
   slot: number,
-  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
+  axes: ReadonlyArray<AxisLike>,
   _cinemaLevel = 0,
 ): Map<string, { critDmg: number; sheerDmg: number }> {
   const triggerIds = new Set<string>(['1371014', '1371020'])
@@ -272,7 +272,7 @@ export function computeYixuanNingshenBonus(
  * 触发块（终结技）标 trigger=true（自身不享受）；落窗动作标 active=true（暴伤+40%）。
  */
 export function computeYixuanNingshenBlocks(
-  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
+  axes: ReadonlyArray<AxisLike>,
   yixuanSlot: number,
 ): Map<string, { trigger: boolean; active: boolean }> {
   const out = new Map<string, { trigger: boolean; active: boolean }>()

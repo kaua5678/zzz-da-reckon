@@ -23,6 +23,31 @@ export type RowValueReader = (move: { id: string; rows?: { id: string; values: n
 export const rawRowReader: RowValueReader = (move, rowId) => move.rows?.find(r => r.id === rowId)?.values[0] || 0
 
 /**
+ * CC-441：`find*` 族 / 融合组 / 平A回能查询只读的招式表**最小结构**（`types/catalog#AgentSkills` 的结构子集，
+ * 全字段按「查询会读到的」声明；测试可用裸对象）。此前 13 处各自手写的内联结构类型已彼此漂移
+ * （有的带 `zhCN` / `timeType` / `energyCost`，有的 `rows` 必填），改为一处命名；新加查询函数直接用它。
+ */
+export interface MoveRowLike {
+  id: string
+  name?: { en?: string; zhCN?: string }
+  energyCost?: Record<string, string>
+  rows?: { id: string; values: number[] }[]
+  actionTime?: number | null
+  comboAlignRatio?: number
+  timeType?: string
+}
+export interface MoveTableLike {
+  categories: ReadonlyArray<{ id?: string; moves: ReadonlyArray<MoveRowLike> }>
+}
+/** `find*` 族的统一产物：一条通道「一次动作」的 moveId / 前台时长 / 喧响 / 合轴率。 */
+export interface ChannelMoveInfo {
+  moveId: string
+  actionTime: number
+  decibelRecovery: number
+  comboAlignRatio: number
+}
+
+/**
  * 解析招式 `energyCost` 字段（CC-337：从 `findExSpecial` 抽出，与 `roundInputs.ts#buildStackAxes` 单源复用）：
  * 键名含 `energy` → 能量（含闪能，`energyConsume = costAmount`）；否则 → 替代资源（如 `Sharpness Cost`，`energyConsume = 0`）；无键 → 免费。
  */
@@ -81,9 +106,7 @@ export function parseMoveEnergyCost(energyCostRaw: Record<string, string> | unde
  *  2026-09 成本类型化：energyCost 键按语义分类（energy/resource/free）——
  *  替代资源键（如克拉蕾 "Sharpness Cost"（锐能））不再被解析成能量消耗
  */
-export function findExSpecial(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string }; energyCost?: Record<string, string>; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}, rowValue: RowValueReader = rawRowReader): { moveId: string; energyConsume: number; costType: ExSpecialCostType; costAmount: number; resourceId?: string; actionTime: number; decibelRecovery: number; energyCostRaw?: Record<string, string>; comboAlignRatio: number } | null {
+export function findExSpecial(agentSkills: MoveTableLike, rowValue: RowValueReader = rawRowReader): (ChannelMoveInfo & { energyConsume: number; costType: ExSpecialCostType; costAmount: number; resourceId?: string; energyCostRaw?: Record<string, string> }) | null {
   const special = agentSkills.categories.find(c => c.id === 'special')
   if (!special) return null
 
@@ -124,9 +147,7 @@ export function findExSpecial(agentSkills: {
  *  在 chain category 中找 "Ultimate" 的 move（区别于 "Chain Attack"）
  *  注意：终结技消耗3000喧响释放，数据行本身无 decibel_recovery，故 decibelRecovery 恒为0
  */
-export function findUltimate(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+export function findUltimate(agentSkills: MoveTableLike, rowValue: RowValueReader = rawRowReader): ChannelMoveInfo | null {
   const chain = agentSkills.categories.find(c => c.id === 'chain')
   if (!chain) return null
 
@@ -162,17 +183,13 @@ export function findUltimate(agentSkills: {
  * 声明 → 锚 `findExSpecial`）。
  */
 export function fusedGroupMetrics(
-  agentSkills: {
-    categories: {
-      moves: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] }[]
-    }[]
-  },
+  agentSkills: MoveTableLike,
   moveId: string,
   rowValue: RowValueReader = rawRowReader,
 ): { actionTime: number; decibelRecovery: number } | null {
   const group = moveFusionByMoveId.get(moveId)
   if (!group) return null
-  const segments = new Map<string, { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] }>()
+  const segments = new Map<string, MoveRowLike>()
   for (const cat of agentSkills.categories) {
     for (const m of cat.moves ?? []) segments.set(String(m.id), m)
   }
@@ -189,7 +206,7 @@ export function fusedGroupMetrics(
 
 /** 只要时长的那一侧（能力场段按 0 计）——留给只需要 actionTime 的调用方。 */
 export function fusedGroupActionTime(
-  agentSkills: { categories: { moves: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] }[] }[] },
+  agentSkills: MoveTableLike,
   moveId: string,
 ): number | null {
   return fusedGroupMetrics(agentSkills, moveId)?.actionTime ?? null
@@ -202,12 +219,8 @@ export function fusedGroupActionTime(
  * 的其余段整段漏掉（坑 31：雅连携显示 0.515s，实际一次打三段 1.717s）。
  */
 export function channelMetricsOf(
-  agentSkills: {
-    categories: {
-      moves: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] }[]
-    }[]
-  },
-  move: { id: string; actionTime?: number | null; rows?: { id: string; values: number[] }[] },
+  agentSkills: MoveTableLike,
+  move: MoveRowLike,
   rowValue: RowValueReader = rawRowReader,
 ): { actionTime: number; decibelRecovery: number } {
   const fused = fusedGroupMetrics(agentSkills, move.id, rowValue)
@@ -224,9 +237,7 @@ export function channelMetricsOf(
  *  结果页同屏显示「1258.3% / 单次 0.515s」两套口径即为该错配（坑 31）。
  */
 // 口径声明 `engine:findChainAttack/多段连携` 随 re-export 壳留在 `core/resource.ts`，锚改指本函数。
-export function findChainAttack(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+export function findChainAttack(agentSkills: MoveTableLike, rowValue: RowValueReader = rawRowReader): ChannelMoveInfo | null {
   const chain = agentSkills.categories.find(c => c.id === 'chain')
   if (!chain) return null
 
@@ -247,9 +258,7 @@ export function findChainAttack(agentSkills: {
  *  在 assist category 中找 name 含 "Defensive Assist" 且含 "#1" 的 move
  */
 /** 从倍率表提取闪避反击（Dodge Counter）信息 */
-export function findDodgeCounter(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number; timeType?: string }[] }[]
-}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+export function findDodgeCounter(agentSkills: MoveTableLike, rowValue: RowValueReader = rawRowReader): ChannelMoveInfo | null {
   const dodge = agentSkills.categories.find(c => c.id === 'dodge' || c.id === 'dodgecounter')
   if (!dodge) return null
 
@@ -271,9 +280,7 @@ export function findDodgeCounter(agentSkills: {
   }
 }
 
-export function findDefensiveAssist(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+export function findDefensiveAssist(agentSkills: MoveTableLike, rowValue: RowValueReader = rawRowReader): ChannelMoveInfo | null {
   const assist = agentSkills.categories.find(c => c.id === 'assist')
   if (!assist) return null
 
@@ -304,9 +311,7 @@ export function findDefensiveAssist(agentSkills: {
 /** 从倍率表提取支援突击（Assist Follow-Up）信息
  *  在 assist category 中找 name 含 "Assist Follow-Up" 的 move（取第一个）
  */
-export function findAssistFollowUp(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+export function findAssistFollowUp(agentSkills: MoveTableLike, rowValue: RowValueReader = rawRowReader): ChannelMoveInfo | null {
   const assist = agentSkills.categories.find(c => c.id === 'assist')
   if (!assist) return null
 
@@ -333,10 +338,8 @@ export function findAssistFollowUp(agentSkills: {
  *  融合组（`data/moveFusions.ts#CLARET_COUNTER_ASSIST`）已登记 → 时间/喧响走「一次动作」整段口径：
  *  反制支援本体 + 紧随的专属支援突击（琢形）合成一行，前台动作也只计 1 次。
  */
-export function findCounterAssist(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}, moveId: string, rowValue: RowValueReader = rawRowReader): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
-  let move: { id: string; actionTime?: number | null; comboAlignRatio?: number; rows: { id: string; values: number[] }[] } | null = null
+export function findCounterAssist(agentSkills: MoveTableLike, moveId: string, rowValue: RowValueReader = rawRowReader): ChannelMoveInfo | null {
+  let move: MoveRowLike | null = null
   for (const cat of agentSkills.categories) {
     const hit = cat.moves.find(m => String(m.id) === String(moveId))
     if (hit) { move = hit; break }
@@ -357,9 +360,7 @@ export function findCounterAssist(agentSkills: {
 /** 计算平A秒均回能
  *  遍历 basic category，取 #1-#N 普通平A段（排除强化平A），求秒均回能平均值
  */
-export function calcBasicAttackRegenPerSec(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string }; actionTime?: number | null; rows: { id: string; values: number[] }[] }[] }[]
-}, rowValue: RowValueReader = rawRowReader, opts?: { fallbackMoveId?: string }): { energyPerSec: number; decibelPerSec: number } {
+export function calcBasicAttackRegenPerSec(agentSkills: MoveTableLike, rowValue: RowValueReader = rawRowReader, opts?: { fallbackMoveId?: string }): { energyPerSec: number; decibelPerSec: number } {
   const basic = agentSkills.categories.find(c => c.id === 'basic')
   if (!basic) return { energyPerSec: 0, decibelPerSec: 0 }
 
@@ -375,10 +376,10 @@ export function calcBasicAttackRegenPerSec(agentSkills: {
   // 「>200% = 强化平A」启发式排除（1511 南宫羽：流星步 #1–#3 本身就是 230/274/528% 的普通平A，
   // 6 段全灭 ⇒ 秒均回复恒 0；其地雷行按 rowAccounting 口径显式 0、回能本应留在平A聚合行）。
   // 启发式本身保留：catalog 实测它把其余 59 人的秒均能量拉回普通段的 ≈3.6/s（不过滤反被强化段拉偏）。
-  const rawDamage = (move: { rows: { id: string; values: number[] }[] }): number => {
+  const rawDamage = (move: MoveRowLike): number => {
     // 强化平A判定是**分类**，保持原始倍率（不吃行规则；同 panelPhases:212 裁决）
     let damage = 0
-    for (const row of move.rows) if (row.id === 'damage') damage = row.values[0] || 0
+    for (const row of move.rows ?? []) if (row.id === 'damage') damage = row.values[0] || 0
     return damage
   }
   const numbered = basic.moves.filter(isNumberedBasicSegment)
@@ -392,7 +393,7 @@ export function calcBasicAttackRegenPerSec(agentSkills: {
 
     let energy = 0
     let decibel = 0
-    for (const row of move.rows) {
+    for (const row of move.rows ?? []) {
       if (row.id === 'energy_recovery') energy = rowValue(move, row.id)
       // 命破角色用闪能：平A回复读 flash_energy_recovery（能量回复读 energy_recovery，二者互斥）
       if (row.id === 'flash_energy_recovery') energy = rowValue(move, row.id)

@@ -1,5 +1,5 @@
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionTopUp, InteractionTopUpInput } from '../types'
-import { axisOverlayChannel } from '../types'
+import { axisOverlayChannel, type AxisLike } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { calcPenetrationPower } from '@/core/damage'
@@ -336,7 +336,7 @@ export function computeBanyueRageCycle(
  */
 export function computeBanyueMingwangStacks(
   slot: number,
-  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
+  axes: ReadonlyArray<AxisLike>,
   cinemaLevel: number,
 ): Map<string, number> {
   if (cinemaLevel >= 6) return new Map<string, number>()
@@ -377,7 +377,7 @@ export function computeBanyueMingwangStacks(
  * 6命不扫描（满覆盖，UI 单独提示）。
  */
 export function computeBanyueMingwangBlocks(
-  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
+  axes: ReadonlyArray<AxisLike>,
   banyueSlot: number,
   cinemaLevel: number,
 ): Map<string, { layers: number; trigger: boolean }> {

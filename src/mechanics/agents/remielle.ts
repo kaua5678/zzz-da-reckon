@@ -26,7 +26,7 @@ import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } fr
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import { panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
-import { channelMetricsOf } from '@/core/resource/moveLookup'
+import { channelMetricsOf, type ChannelMoveInfo, type MoveTableLike } from '@/core/resource/moveLookup'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 
@@ -294,9 +294,7 @@ function applyRemielleTeamPanelEffects({ slot, cinemaLevel, team, panel }: Agent
 }
 
 /** 从倍率表提取蕾米「普通攻击：垂虹」信息（CC-34b 2026-09-27 由 `core/resource/moveLookup.ts` 逐字迁入）（特殊虚耀跟随该动作触发） */
-export function findRemielleRainbowEnd(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+export function findRemielleRainbowEnd(agentSkills: MoveTableLike): ChannelMoveInfo | null {
   const basic = agentSkills.categories.find(c => c.id === 'basic')
   if (!basic) return null
 
@@ -319,9 +317,7 @@ export function findRemielleRainbowEnd(agentSkills: {
 }
 
 /** 从倍率表提取蕾米后台 Radiant Turn 信息 */
-export function findRemielleRadiantTurn(agentSkills: {
-  categories: { id: string; moves: { id: string; name: { en?: string; zhCN?: string }; rows: { id: string; values: number[] }[]; actionTime?: number | null; comboAlignRatio?: number }[] }[]
-}): { moveId: string; actionTime: number; decibelRecovery: number; comboAlignRatio: number } | null {
+export function findRemielleRadiantTurn(agentSkills: MoveTableLike): ChannelMoveInfo | null {
   const special = agentSkills.categories.find(c => c.id === 'special')
   if (!special) return null
 

@@ -31,7 +31,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import { axisOverlayChannel } from '../types'
+import { axisOverlayChannel, type AxisLike } from '../types'
 import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 
@@ -115,7 +115,7 @@ export function computeCorinC4Triggers(input: {
  */
 export function computeCorinStunBonusMoves(
   slot: number,
-  axes: ReadonlyArray<{ readonly actions: ReadonlyArray<{ readonly slot: number; readonly moveId: string; readonly count: number; readonly startTime?: number }> }>,
+  axes: ReadonlyArray<AxisLike>,
   basicMoveIds: ReadonlySet<string>,
 ): Map<string, number> {
   const out = new Map<string, number>()
