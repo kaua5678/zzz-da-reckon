@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（77 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（78 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -125,7 +125,8 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-substat-contract.md` | **副词条契约（R28-J2）**：合法池 mode 可观测性、步长/步数/混合结算与白名单反控；不以等价注入冒充缺测 |
 | `docs/mcp-workspace-integrity.md` | **共享工作区完整性**：Git 路径无损读取、收工快照与归属分离、隔离 CLI 回归及兼容策略 |
 | `docs/mcp-cc17-axis-overlay-consume.md` | **CC-17 设计稿**：axis overlay 消费端能力化（按槽归属 + `directRowBonus`），修可琳 `basic_attack` 轴模式泄漏；含接口/逐模块迁移表/零差论证/测试 |
-| `docs/mcp-cc437-axis-overlay-opaque.md` | **CC-437 设计稿**（r466，未落地）：轴窗口 overlay 改为模块私有、编排层不透明——`AgentAxisOverlays` / `AxisScalarOverlays` 的 9 个角色前缀字段写读都在各自模块内（逐处核过），改成 `AgentAxisOverlay` brand + `axisOverlayChannel<T>()`；分 7 步（队列 §3 T15）各自 zd 0；含零差论证与不做的边界 |
+| `docs/mcp-cc437-axis-overlay-opaque.md` | **CC-437 设计稿**（r466 设计，r467–r473 a→g 全部落地，形状锁 `axisOverlayOpaqueCc437.test.ts`）：轴窗口 overlay 改为模块私有、编排层不透明——`AgentAxisOverlays` / `AxisScalarOverlays` 的 9 个角色前缀字段写读都在各自模块内（逐处核过），改成 `AgentAxisOverlay` brand + `axisOverlayChannel<T>()`；分 7 步（队列 §3 T15）各自 zd 0；含零差论证与不做的边界 |
+| `docs/mcp-t16-banyue-rage-window.md` | **T16 分诊稿（r475，判定不做）**：般岳怒相增益「轴内精确覆盖」——纠正卡面事实（触发源是**每次强特/支援突击** 30s 刷新，不是焚身），量化覆盖率 ≈ 0.95～1 ⇒ 现有 `rageGainCoverage` 滑块已是正确近似；行级贯穿力 flat 通道 + 轴态 panel 停加的代价不值。§3 留了可开工的备选路线（a 零差通道 / b 般岳迁入），只在出现第二个行级贯穿力需求时再做。 |
 | `docs/mcp-cc18-extra-direct-rows.md` | **CC-18 设计稿**：角色专属附加直伤行迁模块能力 `extraDirectRows`（18a 柏妮思 + 半月 C6 摧岳附伤；18b 琉音、18c 柏妮思异常侧立项） |
 | `docs/mcp-cc19-extra-anomaly-rows.md` | **CC-19 设计稿**：异常尾段角色块迁模块能力 `extraAnomalyRows`（分组 + 顺序键保 rowsnap 行序；19a 柏妮思 C6 灼烧迸发 = 原 18c，19b 爱丽丝/简，19c 蕾米埃尔） |
 | `docs/mcp-cc35d-gift-chain.md` | **CC-35d 设计稿**：诺玛 / 琉音「装配后赠送行」去角色化（A 诺玛模块能力 `chainGift` + `resourceCalc/chainGift.ts`；B1 出口改名 / B2 伤害池跳行能力 / B3 好评转大去身份查找） |
@@ -159,4 +160,4 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/REQUIREMENTS.md` | **用户需求唯一入口**：用户经助手写入的 `R<编号>` 需求；每轮开工先读、优先于自选待办，做完标 `[done <commit>]` 不删条目 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（77 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（78 份，与节标题一致），新增文档需同步本表。

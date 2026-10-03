@@ -92,6 +92,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 00:27 arena-F 第 475 轮**（开工：主仓 = origin = `6745ccb0`，干净、无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T43`（已删）；产物 `/home/kaua/calc-arch/arenaF/r475/`）：**T16 分诊 → 不做** + **r462 lead (b) `fe376bcc`**。
+- **T16**：按上轮交接先写设计稿，核原文时发现卡面触发源写错（焚身 vs 每次强特/支援突击），据此量化覆盖率 ≈ 1 ⇒ 判定不做，稿子 `docs/mcp-t16-banyue-rage-window.md`（事实表 F1–F6、量化、备选路线 a/b 到可开工粒度、双计防线）。§3 T16 卡改「⛔ 量过不做」并把纠正写在卡头。pending 台账 `.claude/pending-triage-2026-10-03.md` 不入 git，不改。
+- **r462 (b)**：`StunAxisPage.vue` 「轴内已放置量」五处同式求和（平A / 自身招式 / 转大 60·90 / axisExtraBlocks / 连段块含般岳 didong 配额）合成页面局部 `consumedOnAxes(slot, match)`，口径逐字不变（−25 +16）。页面代码不在 zd 覆盖面（zd 只看引擎行），以 vue-tsc 0 + CC-57/58/59 页面文本锁 + 两 shard 479/4344 为验收。
+- **验证**：vue-tsc 0；guards 五项全绿；build 0；分片 239/2089 + 240/2255 = 479/4344（不变）。
+- **回退点**：代码 `git revert fe376bcc`；T16 判定是文档，若日后要做按分诊稿 §3 开工即可。
+- **下一步（start-ready）**：§3 现已**无 pending 卡**（T10 备选等锁红；T16 不做；T17 done）。题序回到 REQUIREMENTS → §3 → §8.0 触发 → 「本轮无题」。剩余小 lead 只有 r462 (c)「CC-61 比较器 → 快照」（`src/composables/__tests__/agentMechanicViewCc61*.test.ts`，把逐字段比较器改成快照断言，纯测试简化）。再往后建议开一轮**扫描式分诊**：`grep -rn "agentId === '" src/composables src/views` 列出仍残留的角色 id 写死判据（T6 判据族），有则立卡，无则记「本轮无题」。
+
 **2026-10-04 00:09 arena-F 第 474 轮**（开工：主仓 = origin = `8d111dfd`，干净、无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T42`（已删）；产物 `/home/kaua/calc-arch/arenaF/r474/`）：**T17 `544100b9`**，3 文件 +79/−13。
 - **选题**：§3 只剩 T16（行为变化、需设计）与 T17（小、start-ready）⇒ 先做 T17。
 - **做到哪**：见 §3 T17 卡（已勾完）。要点：`resolveSeverianFengfengStacks` 成为凭风层数唯一口径；偏离卡面「显式滑块优先」已拍板并写明原因与回退点。
@@ -769,7 +776,8 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 <!-- /card:T15 -->
 
 <!-- card:T16 -->
-### T16 · 般岳(1471) 怒相增益轴内「释放后覆盖」（真缺口 G2，2026-10-03 pending 分诊立项；**前置 T15/CC-437 已于 r473 `38adb975` 全部落地，可开**——新增轴窗口数据直接加进 `banyue.ts` 私有 `BanyueOverlay`，经 `banyueOverlay.wrap/read`，不碰共享类型）
+### T16 · ⛔ 量过不做（r475，分诊稿 `docs/mcp-t16-banyue-rage-window.md`）· 般岳(1471) 怒相增益轴内「释放后覆盖」（原 pending 分诊 G2）
+**r475 纠正**：卡面「怒相进入点（焚身）起 30s」**与原文不符**——核心被动原文是「发动**[强化特殊技]或[支援突击]**时 …持续 30 秒，重复触发时刷新」（`data/raw/nanoka_missing/full/1471.json`）。每次怒相 4 个山威强特 + 怒相外全部闪能打成强特连段 + 招架后支援突击 ⇒ 30s 窗口几乎不断，实战覆盖率 ≈ 0.95～1，`banyue.rageGainCoverage` 滑块默认 100% 已是正确近似。精确化需要行级贯穿力 flat 新通道（`penRatioBonus` 式面板浅克隆）+ 轴态 `applyBanyuePanel` 停加 + 双计防线，收益 ≈ 0 ⇒ **不做**。备选路线（a 零差通道 / b 般岳迁入）写在分诊稿 §3，触发条件 = 出现第二个需要行级贯穿力 flat 的角色。下面原卡面保留作历史：
 **卡面就是全部上下文**：`docs/MECHANICS_IMPLEMENTATION.md` 般岳段 + `src/mechanics/agents/banyue.ts:478`（`rageGainCoverage` 滑块消费点）+ 头注释 L42。**缺口**：怒相增益（贯穿+300/火伤+36%/暴伤+36%，C2 各+15）现按 `banyue.rageGainCoverage` 滑块**整局覆盖率**近似；真值是「每次进入怒相后 30s 窗口内生效」——轴模式下能在轴内精确（入怒相时刻已知 ⇒ 窗口精确）。**非轴模式维持滑块**（R4 撤销时序仿真，非轴不建逐秒轴）。
 - [ ] 轴模式：扫失衡轴/动作轴，怒相进入点（焚身）起 30s 窗内行吃满增益、窗外不吃——复用明王同款轴扫描（般岳明王 8s 窗口先例 / `computeCorinStunBonusMoves`）；走 T15 落地后的 overlay 通道。
 - [ ] 非轴模式：保持滑块，卡面注明。
