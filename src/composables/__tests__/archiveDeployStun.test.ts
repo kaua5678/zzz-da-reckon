@@ -55,11 +55,13 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     expect(ratio, `伤害占比 ${(ratio * 100).toFixed(1)}%`).toBeGreaterThan(0.35)
     expect(guaranteeStunShortfall(sp!.stunCount, split), '保底已达成 ⇒ 无未达成提示').toBeNull()
 
-    // CC-156：弹刀预算压到 6 次 ⇒ 6 次全部反推给击破位仍只有 3 次失衡 ⇒ 诊断为「预算用满」（此前静默降级）
-    ;(configStore.appliedBoss as { parryTotal?: number }).parryTotal = 6
+    // CC-156：弹刀预算压到 5 次 ⇒ 5 次全部反推给击破位仍只有 3 次失衡 ⇒ 诊断为「预算用满」（此前静默降级）
+    // 2026-10-03 第 427 轮 CC-402：卢西娅终结技并入 #2 段（失衡倍率随之并入）后，6 次弹刀已够 4 次失衡（实测 8/6 ⇒ 4，5…1 ⇒ 3），
+    // 原「6 次仍只有 3 次」不再成立 ⇒ 预算改压到 5（锁的是诊断链，不是具体门槛）。
+    ;(configStore.appliedBoss as { parryTotal?: number }).parryTotal = 5
     const sp6 = calc.stunPoolResult.value!
     const split6 = calc.parrySplitResult.value
-    expect(split6?.breakerParry).toBe(6)
+    expect(split6?.breakerParry).toBe(5)
     expect(guaranteeStunShortfall(sp6.stunCount, split6)).toEqual({ target: 4, stunCount: 3, cause: 'parry-exhausted' })
   }, 120000)
 })

@@ -22,6 +22,7 @@ const observed = vi.hoisted(() => ({
   calls: [] as Array<{
     members: Array<{ stunIn: number; next: number; disc: number; time: number }>
     result: { index: number; pickedEarlier: boolean }
+    tol: { stun: number; disc: number; time: number }
     /** 调用时刻最近 members.length 轮的输出 = 各成员对应的轮结果（长环成员 = 历史末尾一个周期）。 */
     tail: CalcRoundResult[]
   }>,
@@ -54,6 +55,7 @@ vi.mock('@/composables/resourceCalc/outerCycle', async (importOriginal) => {
       observed.calls.push({
         members: members.map(m => ({ ...m })),
         result: { ...result },
+        tol: { ...tol },
         tail: observed.rounds.slice(-members.length),
       })
       return result
@@ -76,7 +78,7 @@ async function setupYixuanPreset() {
 }
 
 describe('环内选点的接线：长环成员切片首尾对齐且取规范停点', () => {
-  it('yixuan-jufufu-lucia：长环分支只调用一次且成员闭环、index 非末轮', async () => {
+  it('yixuan-jufufu-lucia：长环分支只调用一次且成员闭环、选点与相位无关', async () => {
     const { calc } = await setupYixuanPreset()
     observed.rounds = []
     observed.calls = []
@@ -86,7 +88,7 @@ describe('环内选点的接线：长环成员切片首尾对齐且取规范停�
     const longCalls = observed.calls.filter(c => c.members.length >= 3)
     expect(longCalls.length, `长环分支应恰好调用一次，实测 ${longCalls.length} 次（总调用 ${observed.calls.length} 次）`).toBe(1)
 
-    const { members, result, tail } = longCalls[0]
+    const { members, result, tail, tol } = longCalls[0]
     const n = members.length
     // ① 切片对齐：成员 j 的输出失衡 = 成员 j+1 的输入失衡（严格相等）
     for (let j = 0; j < n - 1; j++) {
@@ -94,14 +96,24 @@ describe('环内选点的接线：长环成员切片首尾对齐且取规范停�
     }
     // ② 闭环：末轮输出回到首轮输入（容差 = 判稳容差）
     expect(Math.abs(members[n - 1].next - members[0].stunIn), '长环切片未闭环').toBeLessThan(0.05)
-    // ③ 规范停点不是末轮（末轮是「碰巧最后算的那轮」，正是要避免的）
-    expect(result.index, '规范停点退化成了末轮').not.toBe(n - 1)
+    // ③ 规范停点与相位无关：把成员环任意旋转后再调纯函数，选中的必须是同一个成员（按 stunIn/next 值认）。
+    //    2026-10-03 第 427 轮 CC-402（卢西娅终结技两段融合改了本队的环）后，规范成员（③′ 输入失衡最小者 stunIn≈0.309）
+    //    恰好落在环的末相位 ⇒ 原「index 不是末轮」断言失效——它锁的本来就是「选点不随检出相位变」，改成直接锁这个性质。
+    //    代价：本夹具在当前相位下分辨不出「适配层改取末轮」的回归（⑤ 的引用同一性在 picked == 末轮时两边相同）；
+    //    若将来要恢复这层判别力，换一个规范成员不在末相位的长环队。
+    const actualPick = (await vi.importActual<typeof import('@/composables/resourceCalc/outerCycle')>('@/composables/resourceCalc/outerCycle')).pickOuterCycleMember
+    const picked = members[result.index]
+    for (let r = 1; r < n; r++) {
+      const rotated = [...members.slice(r), ...members.slice(0, r)]
+      const rp = actualPick(rotated, tol)
+      expect([rotated[rp.index].stunIn, rotated[rp.index].next], `旋转 ${r} 后选中的不是同一成员`).toEqual([picked.stunIn, picked.next])
+    }
     // ④ 出口与选点标志
     expect(rr!.convergence?.outerExit).toBe('cycle')
-    expect(rr!.convergence?.outerCyclePickedEarlier).toBe(true)
+    expect(Boolean(rr!.convergence?.outerCyclePickedEarlier)).toBe(result.pickedEarlier) // 与纯函数返回值同源（r427 前恒 true，取决于相位；false 时字段不写）
     // ⑤ 落点同一性：最终结果就是纯函数选中的那一轮，而不是末轮（适配层吞掉 index 时只有这条会红）
     expect(tail.length).toBe(n)
     expect(rr!.characters, '最终结果不是纯函数选中的那一轮').toBe(tail[result.index].resourceResult!.characters)
-    expect(rr!.characters, '最终结果退化成了末轮').not.toBe(tail[n - 1].resourceResult!.characters)
+    if (result.index !== n - 1) expect(rr!.characters, '最终结果退化成了末轮').not.toBe(tail[n - 1].resourceResult!.characters)
   }, 300_000)
 })

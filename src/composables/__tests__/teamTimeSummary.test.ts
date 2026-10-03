@@ -108,9 +108,14 @@ describe('时间分配汇总：两口径并列 + 留白归因', () => {
     // 2026-09-30 第 344 轮：CC-326（内层真整数环停点改「不透支成员中次数最多者」）后爱丽丝/南宫羽/柚叶 slack 3.98 → 0 ⇒ 再换。
     // 同口径重扫（预设 + 默认口径各一遍，calc-arch/arenaC/tsscan.txt）：默认口径「slack > 2 且 虚高 ≈ 留白、池分完」只剩
     // 伊德海莉/「扳机」/卢西娅（slack 3.65 = 虚高 3.65，CC-326 前后同值）与伊德海莉/莱卡恩/卢西娅（2.32）⇒ 现样例 = 前者。
-    await setupHarness(['', '', ''])
+    // 2026-10-03 第 427 轮：CC-402（卢西娅终结技两段融合：时长 0 → 1.767s、倍率 186.5% → 3992.2%）后，默认口径的伊德海莉/「扳机」/卢西娅
+    // slack 3.65 → 0.12（原留白正是终结技 0 时长在账本里虚高出来的那部分）⇒ 再换。同口径重扫（calc-arch/arenaF/r427/zzProbe427.test.ts）：
+    // 「slack > 2 且 虚高 ≈ 留白、池分完」只剩同队**套推荐构筑**（slack 3.95 = 虚高 3.95、池差 0）⇒ 现样例 = 同队 + applyTeamPreset。
+    const { catalog } = await setupHarness(['', '', ''])
     const cs = useConfigStore()
     for (const [i, id] of ['1051', '1361', '1451'].entries()) cs.setAgent(i, id)
+    await catalog.loadBuildRecommendations()
+    cs.applyTeamPreset(['1051', '1361', '1451'])
     const rr = useResourceCalc().resourceResult.value!
     const t = buildTeamTimeSummary({ rr, battleTime: rr.totalTime, invincibleTime: useConfigStore().enemy.invincibleTime ?? 0, nameOf: () => '' })
     expect(t.slack).toBeGreaterThan(2)

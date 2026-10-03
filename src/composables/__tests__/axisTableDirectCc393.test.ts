@@ -99,6 +99,19 @@ describe('CC-393 轴内 [表] 直读判定（编辑器与结算同源）', () =>
     expect(ids).not.toContain('1251022')
   })
 
+  it('卢西娅终结技按两段融合（CC-402）：执行行倍率 = 撞击 #1 + 强力打击 #2，#2 不再作为 [表] 候选', async () => {
+    const calc = await runAxis(['1451', '1211', '1031'], basicOnly())
+    const skills = useCatalogStore().getAgentSkills('1451')
+    const seg = (id: string) => getRowValue(findMoveById(skills, id), 'damage')
+    const expected = seg('1451024') + seg('1451017')
+    expect(seg('1451017'), '反空洞').toBeGreaterThan(seg('1451024'))
+    const row = calc.damagePoolRows.value.find(r => r.slot === 0 && r.moveId === '1451024' && r.type === '直伤')
+    expect(row?.multiplier).toBeCloseTo(expected, 6)
+    const c = calc.resourceResult.value?.characters?.[0]
+    const ids = axisTableDirectCandidates('1451', skills, new Set((c?.executions ?? []).map(e => e.moveId))).map(h => h.move.id)
+    expect(ids).not.toContain('1451017')
+  })
+
   it('莱卡恩点按段 1141016 不作为 [表] 候选（CC-394：模块按点按次数出行）', async () => {
     const calc = await runAxis(['1141', '1211', '1031'], [{ slot: 0, moveId: '1141016', count: 1, startTime: 0 }])
     expect(tableRows(calc, 0).map(r => r.moveId)).toEqual([])

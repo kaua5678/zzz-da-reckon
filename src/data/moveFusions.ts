@@ -222,6 +222,21 @@ const QINGYI_EX_MOONLIT: MoveFusionGroup = {
   note: 'full/1251.json「伤害倍率」={{Skill:1251011}+{Skill:1251021}+{Skill:1251022}}（失衡 Prop 1002 同组）；招式说明「点按：上挑→转身连打→下砸」；「长按额外消耗能量提升连打次数」未建模（额外能量消耗 20）。',
 }
 
+// @fact engine:moveFusion/进击大铠甲 口径: 卢西娅终结技·进击，大铠甲！一次发动 = 突进撞击 #1（1451024）×1 + 突进停止时的强力打击 #2（1451017）×1；按住方向键延长突进追加的撞击次数未建模（按最短突进 1 次计） | 据 nanoka full/1451.json 招式说明「骑乘以骸向前突进……在突进停止时对周身大范围区域发动强力打击」+ param「突进单次撞击伤害倍率 {Skill:1451024}」「终结技伤害倍率 {Skill:1451017}」分列两条、无求和编码（CC-402 拍板：#2 无条件发生，是终结技主伤害；修前引擎只取 #1 186.5% / 时长 null⇒0s，#2 3805.7% / 1.767s 整段漏掉） | 验 src/composables/__tests__/axisTableDirectCc393.test.ts#卢西娅 | 锚 src/data/moveFusions.ts#LUCIA_ULTIMATE | 信 推断
+// ⟳复核: 若用户给出突进撞击次数口径（延长至 3 秒的撞击数）或 nanoka 1451 param.desc 改成求和编码，调整 1451024 的 count 并重对 cc393 锁 | 到期 2026-12-31
+
+/** 卢西娅·终结技·进击，大铠甲！＝ 突进撞击 #1 ×1 + 停止时强力打击 #2（CC-402；修前引擎只取 #1：倍率 186.5% / 时长 0，全量为 3992.2% / 1.767s；撞击按最短突进 1 次计） */
+const LUCIA_ULTIMATE: MoveFusionGroup = {
+  moveId: '1451024',
+  agentId: '1451',
+  label: '卢西娅·终结技·进击，大铠甲！（撞击 + 强力打击）',
+  terms: [
+    { moveId: '1451024', count: 1 },
+    { moveId: '1451017', count: 1 },
+  ],
+  note: 'full/1451.json chain「突进单次撞击伤害倍率」={Skill:1451024}、「终结技伤害倍率」={Skill:1451017}（Prop 1002 同组）；招式说明「突进（可按住延长至 3s）→ 突进停止时强力打击」；撞击次数按 1 计，延长突进未建模。#1 的 actionTime 为 null（按 0），整段时长 = #2 的 1.767s。',
+}
+
 /** 千夏·强化特殊技·特别拍照技巧（协同）＝ #1 + #2——引擎不选该行（无能耗），仅登记口径；
  *  该动作需模块接入（每 [天使协律] 40s 窗口一次、0 耗能，见 qianxia.ts 未建模项）。 */
 const QIANXIA_EX_PHOTOGRAPHY: MoveFusionGroup = {
@@ -327,6 +342,7 @@ export const MOVE_FUSION_GROUPS: MoveFusionGroup[] = [
   QIANXIA_EX_BUBBLEGUM_BARRAGE,
   QIANXIA_EX_PHOTOGRAPHY,
   QINGYI_EX_MOONLIT,
+  LUCIA_ULTIMATE,
   CLARET_COUNTER_ASSIST,
 ]
 
