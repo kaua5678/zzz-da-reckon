@@ -946,6 +946,8 @@ export interface AgentMechanicModule {
    * 桶名与伤害池入参同名（1:1 合并，编排层零映射逻辑）。
    */
   axisWindowOverlays?(input: AgentAxisOverlayInput): AgentAxisOverlays | null
+  // ↑ CC-437 过渡：已迁模块返回不透明 `AgentAxisOverlay`（经 `axisOverlayChannel<T>().wrap`，过渡期它是 `AgentAxisOverlays` 的子类型故可直接返回），
+  //   未迁模块仍返回命名桶；T15-g 收口为 `AgentAxisOverlay | null`。
   /**
    * **行级 overlay 加成**（规则 6 迁移落点，CC-17 2026-09-26，设计稿
    * `docs/mcp-cc17-axis-overlay-consume.md` §3/§4）：
@@ -1371,4 +1373,5 @@ export interface AgentMechanicModule {
 // 导入方继续写 `from '@/mechanics/types'`。AgentMechanicModule 本体与各 Agent*Input 留在本文件。
 export type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
-export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AxisScalarOverlays, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+export { axisOverlayChannel } from './typesHooks'
+export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlays, AgentAxisOverlay, AxisScalarOverlays, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'

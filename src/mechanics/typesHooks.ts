@@ -212,6 +212,30 @@ export interface AgentAxisOverlayInput {
 }
 
 /**
+ * 模块私有的轴窗口 overlay（CC-437，设计稿 `docs/mcp-cc437-axis-overlay-opaque.md`）：
+ * 编排层只按槽存取、**不解释内容**；只有产出它的模块会在 `directRowBonus` 里把它读回。
+ * 形状由模块自己定义，经 `axisOverlayChannel<T>()` 收窄（wrap / read 两个零开销 cast）。
+ *
+ * 不变量（编排层保证，CC-17 起即成立）：`DirectRowBonusInput.overlay` 恒为**本行所属模块**在同帧
+ * `axisWindowOverlays` 的返回或 undefined——所以模块内的 cast 是安全的。
+ * 若将来出现「模块 A 的窗口要加成到模块 B 的行」（跨槽 overlay），不透明值做不到，应另开显式的跨角色
+ * 供给钩子（`crossAgentSupply` 一族），不要回到共享命名桶。
+ *
+ * 过渡期（T15-a…f）：下面的 `AgentAxisOverlays` / `AxisScalarOverlays` 命名桶仍在，未迁模块继续用；本类型暂时与
+ * `AgentAxisOverlays` 做交叉（结构兼容 ⇒ 钩子返回类型与既有测试都不用改），T15-g 删掉命名桶后只剩 brand。
+ */
+export type AgentAxisOverlay = AgentAxisOverlays & { readonly [AXIS_OVERLAY_BRAND]: true }
+declare const AXIS_OVERLAY_BRAND: unique symbol
+
+/** 模块侧类型收窄助手：`wrap` 在 `axisWindowOverlays` 用，`read` 在 `directRowBonus` 用；建议导出供测试读返回值。 */
+export function axisOverlayChannel<T>() {
+  return {
+    wrap: (v: T): AgentAxisOverlay => v as unknown as AgentAxisOverlay,
+    read: (o: AgentAxisOverlay | undefined): T | undefined => o as unknown as T | undefined,
+  }
+}
+
+/**
  * 轴窗口覆盖结果：四个**按 moveId 索引**的桶（与 `DamagePoolContext` 同名）+ 一个**按槽位索引**的标量表。
  *
  * 四个桶的数值语义：

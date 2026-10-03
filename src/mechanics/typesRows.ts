@@ -9,7 +9,7 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
 import type { calcPoolAnomalyDamage as calcPoolAnomalyDamageFn, calcPoolDirectDamage as calcPoolDirectDamageFn, PoolAnomalyRow, PoolDirectRow } from '@/composables/resourceCalc/poolDamage'
 import type { buildAnomalyVirtualPanel as buildAnomalyVirtualPanelFn, buildAnomalySettlementEntries as buildAnomalySettlementEntriesFn } from '@/composables/resourceCalc/anomalyPanels'
-import type { AgentAxisOverlays, AxisScalarOverlays } from './typesHooks'
+import type { AgentAxisOverlay, AgentAxisOverlays, AxisScalarOverlays } from './typesHooks'
 
 /**
  * `directRowBonus` 钩子输入（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §3）。
@@ -49,6 +49,12 @@ export interface DirectRowBonusInput {
   isAxis: boolean
   /** 本段是否轴内（>0 = 敌人失衡）；可琳的**段级**门控用 */
   stunOverride: number
+  /**
+   * 本行所属模块同帧 `axisWindowOverlays` 的返回（不透明，CC-437）；undefined = 本模块本帧不参与。
+   * 已迁模块用 `axisOverlayChannel<T>().read(overlay)` 读；过渡期未迁模块仍读下面的 `buckets` / `scalar`（T15-g 删）。
+   * 过渡期可选（既有测试直接构造入参不传）；T15-g 删 `buckets`/`scalar` 时改为必填。
+   */
+  overlay?: AgentAxisOverlay | undefined
   /** = `bucketsBySlot.get(本行 slot)`，即本槽模块 `axisWindowOverlays` 的原始返回 */
   buckets: AgentAxisOverlays | undefined
   /** = `scalarBySlot.get(本行 slot)`（与原 `overlayScalar` 同一个值） */

@@ -20,7 +20,7 @@ import { getAgentMechanic } from '@/mechanics'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import type { Agent, AgentSkills, PanelValues, SkillDamageTarget } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
-import type { DirectRowAxisSplit } from '@/mechanics/types'
+import type { AgentAxisOverlay, DirectRowAxisSplit } from '@/mechanics/types'
 import { findMoveById } from './skillRows'
 import { buildMechanicTeamMembers } from './panelPhases'
 import type { DamagePoolRow } from './helpers'
@@ -169,6 +169,8 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
         exec,
         isAxis,
         stunOverride,
+        // CC-437：本槽模块的原始返回原样交还（不透明）；过渡期与下面两个命名字段并存，T15-g 只留 overlay
+        overlay: overlayBuckets as AgentAxisOverlay | undefined,
         buckets: overlayBuckets,
         scalar: overlayScalar,
       }) ?? null

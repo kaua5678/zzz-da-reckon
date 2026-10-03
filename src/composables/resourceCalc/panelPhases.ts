@@ -383,7 +383,9 @@ export function collectAxisWindowOverlays(
       settings,
     })
     if (!res) continue
-    // 按槽归属存各模块原始返回（CC-17）；消费端只读本行 slot 的桶
+    // 按槽归属存各模块原始返回（CC-17）；消费端只读本行 slot 的桶。
+    // CC-437 过渡：已迁模块返回不透明 `AgentAxisOverlay`（无 scalarBySlot 键），与命名桶同表按槽存，消费端原样交还本模块；
+    // T15-g 收口为 `Map<slot, AgentAxisOverlay>` 并删掉下面的 scalar 合并。
     out.bucketsBySlot.set(member.slot, res)
     if (res.scalarBySlot) {
       for (const [slot, scalar] of res.scalarBySlot) out.scalarBySlot.set(slot, scalar)
