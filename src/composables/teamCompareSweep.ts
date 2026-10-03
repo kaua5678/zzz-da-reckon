@@ -1,4 +1,5 @@
 import { computed, ref, type Ref } from 'vue'
+import { SWEEP_DEFAULT_FIXED_BY_SLOT } from '@/data/viewAgentDefaults'
 import { computeSlotSweepPoints, type SlotCompareSlot, type SlotSweepResult } from '@/composables/teamTimeline'
 import type { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
@@ -37,7 +38,7 @@ export function useSlotSweep(opts: {
   ]
   // @fact sweepPage:第三人候选圈定 口径: 候选池 = 「候选职业」多选（空=全部 specialty）过滤后的可见角色 − 固定 2 人；「候选角色」可再手选收窄（空=筛选后全部）；默认态 = 用户 2026-09-13 示例（固定 蕾米埃尔(1581)+维琳娜(1561)、候选职业=异常） | 据 用户 2026-09-13「第三人不是海选，是选定部分角色。比如蕾米+维琳娜，第三人就是任何异常角色」·复核@2026-09-25·复核@2026-09-27（CC-92 纯搬运，口径未变）·复核@2026-09-30 | 验 src/composables/__tests__/slotSweep.test.ts（candidateIds 收窄口径） | 锚 src/composables/teamCompareSweep.ts#sweepCandidates | 信 确认
   /** 三个槽位各自固定的队友（第三人槽位上的值不读）；默认 = 蕾米埃尔 + 维琳娜（用户示例） */
-  const sweepFixedBySlot = ref<Record<number, string | null>>({ 0: '1581', 1: null, 2: '1561' })
+  const sweepFixedBySlot = ref<Record<number, string | null>>({ ...SWEEP_DEFAULT_FIXED_BY_SLOT })
   /** 候选职业（空 = 全部）；默认异常 = 用户示例「第三人就是任何异常角色」 */
   const sweepSpecFilter = ref<Specialty[]>(['anomaly'])
   /** 在职业筛选内再手选候选（空 = 筛选后全部） */

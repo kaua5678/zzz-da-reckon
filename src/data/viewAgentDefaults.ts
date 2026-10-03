@@ -2,10 +2,12 @@
  * 展示层「默认选中 / 示例」角色 id 的单一来源（CC-431，2026-10-03）。
  *
  * 这些都是**用户给的例子或口径**（不是引擎规则）：页面初始下拉选谁、对比图默认比谁、候选池种子是哪几位。
- * 此前散落在 5 个 .vue 里（TimeChartsPage / MultiplierCoeffPage / CharIncrementPage / SlotCompareChart / FreeComparePage），
+ * 此前散落在 5 个 .vue 里（TimeChartsPage / MultiplierCoeffPage / CharIncrementPage / SlotCompareChart / FreeComparePage）
+ * 与 composables/teamCompareSweep、stores/logicEditor（CC-432 并入），
  * 展示层带角色 id 字面量 ⇒ 角色下架 / 改 id 时页面静默指向不存在的角色，且 grep 不到「哪些页面默认选了谁」。
  * 锁：`src/data/__tests__/viewAgentDefaults.test.ts`——每个 id 必须在 catalog 里；时间线相关的必须在 AGENT_RELEASE_NODE 里；
- * `src/views` / `src/components` 下不许再出现 `'1xxx'` 形态的角色 id 字面量（新页面的默认值加到这里，不要写在页面里）。
+ * `src/views` / `src/components` / `src/composables` / `src/stores` 下不许再出现 `'1xx1'` 形态的角色 id 字面量（新页面的默认值加到这里，不要写在页面里）。
+ * 不在锁范围、也不该搬来的：`mechanics/agents/*`（模块自描述）、`specs/additionalGate.ts` 这类**按角色 id 键入的引擎配置表**（它们是规则，不是展示默认值）。
  *
  * 改默认值：只改这里；名字对照用 `node scripts/resolve.mjs <id>`（规则 15，不要凭名字联想）。
  */
@@ -33,6 +35,11 @@ export const FREE_COMPARE_AGENTS = {
   velina: '1561',
 } as const
 
+/** 队伍对比扫描（composables/teamCompareSweep）三个槽位的固定队友默认：蕾米埃尔 1581 + 维琳娜 1561（用户示例；第三人槽位为 null） */
+export const SWEEP_DEFAULT_FIXED_BY_SLOT: Readonly<Record<number, string | null>> = { 0: '1581', 1: null, 2: '1561' }
+/** 逻辑编辑器（stores/logicEditor）「新倍率融合」规则的示例角色 / 招式：维琳娜 1561 的 1561007 */
+export const LOGIC_EDITOR_DEFAULT_FUSION = { agentId: '1561', moveId: '1561007' } as const
+
 /** 供锁测试 / 巡检用：全部展示层默认角色 id（去重） */
 export const ALL_VIEW_DEFAULT_AGENT_IDS: readonly string[] = Array.from(new Set([
   TIMELINE_DEFAULT_MAIN_AGENT_ID,
@@ -42,4 +49,6 @@ export const ALL_VIEW_DEFAULT_AGENT_IDS: readonly string[] = Array.from(new Set(
   SLOT_COMPARE_DEFAULT_AGENT_A,
   SLOT_COMPARE_DEFAULT_AGENT_B,
   ...Object.values(FREE_COMPARE_AGENTS),
+  ...Object.values(SWEEP_DEFAULT_FIXED_BY_SLOT).filter((id): id is string => !!id),
+  LOGIC_EDITOR_DEFAULT_FUSION.agentId,
 ]))

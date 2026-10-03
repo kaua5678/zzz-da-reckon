@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { LOGIC_EDITOR_DEFAULT_FUSION } from '@/data/viewAgentDefaults'
 import { computed, ref, watch } from 'vue'
 import { createDefaultLogicEditorState } from '@/logicEditor/defaults'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
@@ -118,8 +119,8 @@ export const useLogicEditorStore = defineStore('logicEditor', () => {
       id: nextId('fusion'),
       specId: 'agent:custom',
       name: '新倍率融合',
-      agentId: '1561',
-      moveId: '1561007',
+      agentId: LOGIC_EDITOR_DEFAULT_FUSION.agentId,
+      moveId: LOGIC_EDITOR_DEFAULT_FUSION.moveId,
       rowId: 'damage',
       multiplier: 1,
       enabled: false,
