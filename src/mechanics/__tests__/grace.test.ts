@@ -5,7 +5,7 @@
  * - 能量决定强特比例：强特数 ≤ 引擎按能量收敛次数，其余槽位填普通特殊技（免费）。
  * - AA 感电强化层数滑杆走面板 anomalyDmgBonus；潜能电伤 C2-C6 永续。
  */
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, beforeAll, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import {
   GRACE_C1_TEAM_ENERGY_PER_CYCLE,
@@ -19,29 +19,44 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
+import { moveActionTimesOf } from '@/data/moveTableQueries'
 function useConfigStoreForPanel() { return useConfigStore() }
 function useCatalogStoreForPanel() { return useCatalogStore() }
 
+// CC-409：六段 actionTime 来自 cfg.moveActionTimes（引擎由 catalog 预填）；测试从 catalog 取真值构造
+let T: Record<string, number> = {}
+beforeAll(async () => {
+  newPinia()
+  mockStaticFetch()
+  const catalog = useCatalogStore()
+  await catalog.load()
+  T = moveActionTimesOf(catalog.getAgentSkills('1181'))
+})
+const TIMES = () => ({
+  a1: T['1181001'], a2: T['1181002'], a3: T['1181003'], a4: T['1181004'],
+  sp: T['1181005'], ex: T['1181006'],
+})
+
 describe('planGraceRotation（轮换计划纯函数：每组 = [A1A2A3连段+A4]+2 特殊技槽）', () => {
   it('循环预算 = 连段1.183 + A4 1.134 + 2×强特0.342 = 3.001s；能量充足时全强特', () => {
-    const plan = planGraceRotation(30, 99)
+    const plan = planGraceRotation(30, 99, TIMES())
     expect(plan.cycles).toBe(9) // floor(30/3.001)=9
     expect(plan.exUsed).toBe(18)
     expect(plan.normalUsed).toBe(0)
   })
 
   it('能量不足：槽位填普通特殊技（免费），强特封顶于能量收敛次数', () => {
-    const plan = planGraceRotation(30, 6)
+    const plan = planGraceRotation(30, 6, TIMES())
     expect(plan.cycles).toBe(9)
     expect(plan.exUsed).toBe(6)
     expect(plan.normalUsed).toBe(12)
-    expect(planGraceRotation(5, 99).cycles).toBe(1)
-    expect(planGraceRotation(0, 5)).toMatchObject({ cycles: 0, exUsed: 0, normalUsed: 0 })
+    expect(planGraceRotation(5, 99, TIMES()).cycles).toBe(1)
+    expect(planGraceRotation(0, 5, TIMES())).toMatchObject({ cycles: 0, exUsed: 0, normalUsed: 0 })
   })
 
   it('特殊技前台时间 = 仅两发特殊技（A 段由通用 basic 池行表达，避免必要时间=平A池震荡）', () => {
-    expect(graceRotationSeconds(9, 0)).toBeCloseTo(18 * 0.2, 4)
-    expect(graceRotationSeconds(9, 18)).toBeCloseTo(18 * 0.342, 4)
+    expect(graceRotationSeconds(9, 0, TIMES())).toBeCloseTo(18 * T['1181005'], 4)
+    expect(graceRotationSeconds(9, 18, TIMES())).toBeCloseTo(18 * T['1181006'], 4)
   })
 })
 

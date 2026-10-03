@@ -1,19 +1,14 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, beforeAll, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { neighborUltEnergyByProvider } from '@/core/resource/crossAgentSupply'
+import { moveActionTimesOf } from '@/data/moveTableQueries'
 import {
   assignSoukakuUltNeighborEnergy,
   SOUKAKU_C6_DMG_BONUS,
-  SOUKAKU_CHOP_SLAM_ACTION_TIME,
-  SOUKAKU_FAN_ACTION_TIME,
-  SOUKAKU_FROST_BASIC3_ACTION_TIME,
-  SOUKAKU_FROST_DASH_ACTION_TIME,
-  SOUKAKU_SLAM_ACTION_TIME,
   SOUKAKU_SWING_ENERGY,
-  SOUKAKU_WIND_BALL_ACTION_TIME,
   soukakuMechanic,
 } from '@/mechanics/agents/soukaku'
 
@@ -23,6 +18,16 @@ const baseConfig = {
   parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
   quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
 }
+
+// CC-409：六段 actionTime 来自 cfg.moveActionTimes（引擎由 catalog 预填）；测试从 catalog 取真值构造
+let T: Record<string, number> = {}
+beforeAll(async () => {
+  newPinia()
+  mockStaticFetch()
+  const catalog = useCatalogStore()
+  await catalog.load()
+  T = moveActionTimesOf(catalog.getAgentSkills('1131'))
+})
 
 async function setup(cinemaLevel = 0, mateId = '1091') {
   const catalog = useCatalogStore()
@@ -89,7 +94,7 @@ describe('苍角纯函数', () => {
 
 describe('强特自循环：扇风（扇子+风团体型段数）+ 下砸 + 霜染冲刺/合轴#3', () => {
   const run = ({ exCount = 3, swings, chop, bodySize }: { exCount?: number; swings?: number; chop?: number; bodySize?: string }) => {
-    const cfg: any = {}
+    const cfg: any = { moveActionTimes: T }
     if (swings !== undefined) cfg['setting:soukaku.exPressCount'] = swings
     if (chop !== undefined) cfg['setting:soukaku.chopSlam'] = chop
     if (bodySize !== undefined) cfg.bodySize = bodySize
@@ -104,22 +109,22 @@ describe('强特自循环：扇风（扇子+风团体型段数）+ 下砸 + 霜�
     const fan2 = rowOf(rows, '1131011')
     expect(fan2).toHaveLength(1) // 首击扇子由通用强特行发行，模块只补第2击
     expect(fan2[0].count).toBe(3)
-    expect(fan2[0].actionTime).toBe(SOUKAKU_FAN_ACTION_TIME)
+    expect(fan2[0].actionTime).toBe(T['1131011'])
     const balls = rowOf(rows, '1131010')
     expect(balls[0].count).toBe(3 * 2 * 6)
-    expect(balls[0].totalTime).toBeCloseTo(3 * 2 * SOUKAKU_WIND_BALL_ACTION_TIME) // 体型段数不额外耗时
+    expect(balls[0].totalTime).toBeCloseTo(3 * 2 * T['1131010']) // 体型段数不额外耗时
     const slam = rowOf(rows, '1131012')
     expect(slam).toHaveLength(1)
     expect(slam[0].count).toBe(3)
-    expect(slam[0].actionTime).toBe(SOUKAKU_SLAM_ACTION_TIME)
+    expect(slam[0].actionTime).toBe(T['1131012'])
     const dash = rowOf(rows, '1131016')
     expect(dash[0].count).toBe(3)
-    expect(dash[0].actionTime).toBe(SOUKAKU_FROST_DASH_ACTION_TIME)
+    expect(dash[0].actionTime).toBe(T['1131016'])
     const basic3 = rowOf(rows, '1131006')
     expect(basic3[0].count).toBe(3)
-    expect(basic3[0].actionTime).toBe(SOUKAKU_FROST_BASIC3_ACTION_TIME)
+    expect(basic3[0].actionTime).toBe(T['1131006'])
     expect(basic3[0].comboAlignRatio).toBe(1) // 全合轴
-    expect(basic3[0].totalComboAlignTime).toBeCloseTo(3 * SOUKAKU_FROST_BASIC3_ACTION_TIME)
+    expect(basic3[0].totalComboAlignTime).toBeCloseTo(3 * T['1131006'])
   })
 
   it('劈斩开：下砸换成快速展旗·集合啦#2（更快），不再发行集合啦#1', () => {
@@ -127,8 +132,8 @@ describe('强特自循环：扇风（扇子+风团体型段数）+ 下砸 + 霜�
     expect(rowOf(rows, '1131012')).toHaveLength(0)
     const chopSlam = rowOf(rows, '1131013')
     expect(chopSlam).toHaveLength(1)
-    expect(chopSlam[0].actionTime).toBe(SOUKAKU_CHOP_SLAM_ACTION_TIME)
-    expect(chopSlam[0].actionTime).toBeLessThan(SOUKAKU_SLAM_ACTION_TIME)
+    expect(chopSlam[0].actionTime).toBe(T['1131013'])
+    expect(chopSlam[0].actionTime).toBeLessThan(T['1131012'])
   })
 
   it('风团按敌方体型：小0（风团行不发，其余轮次招式照发）/中3/大6（同艾莲剑气）', () => {

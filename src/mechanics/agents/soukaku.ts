@@ -30,6 +30,7 @@ import type {
   AgentResourceInput,
 } from '../types'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 export const SOUKAKU_ID = '1131'
 
@@ -49,28 +50,22 @@ export const SOUKAKU_SWING_ENERGY = 30
 export const SOUKAKU_SWINGS_DEFAULT = 2
 export const SOUKAKU_SWINGS_MIN = 1
 export const SOUKAKU_SWINGS_MAX = 2
-/** 扇子直伤行（首击由通用强特行发行，模块补第 2 击） */
+/** 扇子直伤行（首击由通用强特行发行，模块补第 2 击）；actionTime 读 cfg.moveActionTimes（catalog，CC-409） */
 export const SOUKAKU_FAN_MOVE_ID = '1131011'
-export const SOUKAKU_FAN_ACTION_TIME = 1.16
-/** 风团投射物行：每击一个，命中数按敌人体型（小0/中3/大6，同艾莲剑气口径） */
+/** 风团投射物行：每击一个，命中数按敌人体型（小0/中3/大6，同艾莲剑气口径）；actionTime 读 catalog */
 export const SOUKAKU_WIND_BALL_MOVE_ID = '1131010'
-export const SOUKAKU_WIND_BALL_ACTION_TIME = 0.271
 export const SOUKAKU_WIND_HITS_BY_BODY_SIZE: Record<string, number> = {
   small: 0,
   medium: 3,
   large: 6,
 }
-/** 下砸（劈斩关 = 展旗·集合啦#1）；劈斩开 = 快速展旗·集合啦#2（更快） */
+/** 下砸（劈斩关 = 展旗·集合啦#1）；劈斩开 = 快速展旗·集合啦#2（更快）；actionTime 读 catalog */
 export const SOUKAKU_SLAM_MOVE_ID = '1131012'
-export const SOUKAKU_SLAM_ACTION_TIME = 1.25
 export const SOUKAKU_CHOP_SLAM_MOVE_ID = '1131013'
-export const SOUKAKU_CHOP_SLAM_ACTION_TIME = 0.7
-/** 下砸后直接跟的冲刺攻击·霜染刃旗 */
+/** 下砸后直接跟的冲刺攻击·霜染刃旗；actionTime 读 catalog */
 export const SOUKAKU_FROST_DASH_MOVE_ID = '1131016'
-export const SOUKAKU_FROST_DASH_ACTION_TIME = 0.4
-/** 接全合轴的打年糕·霜染#3（次数 = 展旗次数 = 强特次数） */
+/** 接全合轴的打年糕·霜染#3（次数 = 展旗次数 = 强特次数）；actionTime 读 catalog */
 export const SOUKAKU_FROST_BASIC3_MOVE_ID = '1131006'
-export const SOUKAKU_FROST_BASIC3_ACTION_TIME = 2.632
 export const SOUKAKU_FROST_BASIC3_COMBO_ALIGN = 1
 /** enrich 回填占位：非 0 → 倍率表值优先回填；0 = 显式禁用回填（引擎口径，见 enrichExecutionPlan） */
 const RECOVERY_BACKFILL_PLACEHOLDER = 1
@@ -118,12 +113,17 @@ export function soukakuPerExExtraTime(cfg: unknown): { necessaryTime: number; co
   const swings = clampSwings(cfg)
   const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[String(typed.bodySize ?? 'large')] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
   const chop = Math.round(Number(cfgMechanicSettingRaw(cfg, 'soukaku.chopSlam') ?? 0)) >= 1
-  const fan2 = swings >= 2 ? SOUKAKU_FAN_ACTION_TIME : 0
-  const balls = hits > 0 ? swings * SOUKAKU_WIND_BALL_ACTION_TIME : 0
-  const slam = chop ? SOUKAKU_CHOP_SLAM_ACTION_TIME : SOUKAKU_SLAM_ACTION_TIME
+  // 六段 actionTime 读 cfg.moveActionTimes（catalog，CC-409；原常量与表值逐个相等）
+  const fanAt = cfgMoveActionTime(typed, SOUKAKU_FAN_MOVE_ID)
+  const ballAt = cfgMoveActionTime(typed, SOUKAKU_WIND_BALL_MOVE_ID)
+  const slamAt = cfgMoveActionTime(typed, chop ? SOUKAKU_CHOP_SLAM_MOVE_ID : SOUKAKU_SLAM_MOVE_ID)
+  const dashAt = cfgMoveActionTime(typed, SOUKAKU_FROST_DASH_MOVE_ID)
+  const basic3At = cfgMoveActionTime(typed, SOUKAKU_FROST_BASIC3_MOVE_ID)
+  const fan2 = swings >= 2 ? fanAt : 0
+  const balls = hits > 0 ? swings * ballAt : 0
   return {
-    necessaryTime: fan2 + balls + slam + SOUKAKU_FROST_DASH_ACTION_TIME + SOUKAKU_FROST_BASIC3_ACTION_TIME,
-    comboAlignTime: SOUKAKU_FROST_BASIC3_ACTION_TIME * SOUKAKU_FROST_BASIC3_COMBO_ALIGN,
+    necessaryTime: fan2 + balls + slamAt + dashAt + basic3At,
+    comboAlignTime: basic3At * SOUKAKU_FROST_BASIC3_COMBO_ALIGN,
   }
 }
 
@@ -147,6 +147,12 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
   const bodySize = String(cfg.bodySize ?? 'large')
   const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[bodySize] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
   const chop = Math.round(Number(cfgMechanicSettingRaw(cfg, 'soukaku.chopSlam') ?? 0)) >= 1
+  // 六段 actionTime 读 cfg.moveActionTimes（catalog，CC-409）
+  const fanAt = cfgMoveActionTime(cfg, SOUKAKU_FAN_MOVE_ID)
+  const ballAt = cfgMoveActionTime(cfg, SOUKAKU_WIND_BALL_MOVE_ID)
+  const slamAt = cfgMoveActionTime(cfg, chop ? SOUKAKU_CHOP_SLAM_MOVE_ID : SOUKAKU_SLAM_MOVE_ID)
+  const dashAt = cfgMoveActionTime(cfg, SOUKAKU_FROST_DASH_MOVE_ID)
+  const basic3At = cfgMoveActionTime(cfg, SOUKAKU_FROST_BASIC3_MOVE_ID)
 
   // 扇风·扇子：首击由通用强特行（1131011 × 强特次数，60→30×击能量）发行，这里补第 2 击。
   // 扇/团段喧响不另计（衍生段口径，decibel 置 0 = 显式禁用回填）。
@@ -157,9 +163,9 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
       category: 'special',
       element: 'ice',
       count: exCount,
-      actionTime: SOUKAKU_FAN_ACTION_TIME,
+      actionTime: fanAt,
       comboAlignRatio: 0,
-      totalTime: exCount * SOUKAKU_FAN_ACTION_TIME,
+      totalTime: exCount * fanAt,
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
@@ -179,9 +185,9 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
       category: 'special',
       element: 'ice',
       count,
-      actionTime: SOUKAKU_WIND_BALL_ACTION_TIME / hits,
+      actionTime: ballAt / hits,
       comboAlignRatio: 0,
-      totalTime: exCount * swings * SOUKAKU_WIND_BALL_ACTION_TIME,
+      totalTime: exCount * swings * ballAt,
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
@@ -194,7 +200,7 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
   }
   // 下砸（展旗）：劈斩关 = 集合啦#1（500.9%/1.25s）；开 = 快速展旗·集合啦#2（280.9%/0.7s 更快）。
   // 集合啦#3 被玩家冲刺打断，不录。扇/团之后的正式招式，回能/喧响按倍率表回填（非 0 占位）。
-  const slamActionTime = chop ? SOUKAKU_CHOP_SLAM_ACTION_TIME : SOUKAKU_SLAM_ACTION_TIME
+  const slamActionTime = slamAt
   executions.push({
     moveId: chop ? SOUKAKU_CHOP_SLAM_MOVE_ID : SOUKAKU_SLAM_MOVE_ID,
     moveName: chop ? '强化特殊技：下砸（劈斩·快速展旗）' : '强化特殊技：下砸（展旗）',
@@ -220,9 +226,9 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
     category: 'dodge',
     element: 'ice',
     count: exCount,
-    actionTime: SOUKAKU_FROST_DASH_ACTION_TIME,
+    actionTime: dashAt,
     comboAlignRatio: 0,
-    totalTime: exCount * SOUKAKU_FROST_DASH_ACTION_TIME,
+    totalTime: exCount * dashAt,
     totalComboAlignTime: 0,
     energyConsume: 0,
     totalEnergyConsume: 0,
@@ -238,10 +244,10 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
     category: 'basic',
     element: 'ice',
     count: exCount,
-    actionTime: SOUKAKU_FROST_BASIC3_ACTION_TIME,
+    actionTime: basic3At,
     comboAlignRatio: SOUKAKU_FROST_BASIC3_COMBO_ALIGN,
-    totalTime: exCount * SOUKAKU_FROST_BASIC3_ACTION_TIME,
-    totalComboAlignTime: exCount * SOUKAKU_FROST_BASIC3_ACTION_TIME * SOUKAKU_FROST_BASIC3_COMBO_ALIGN,
+    totalTime: exCount * basic3At,
+    totalComboAlignTime: exCount * basic3At * SOUKAKU_FROST_BASIC3_COMBO_ALIGN,
     energyConsume: 0,
     totalEnergyConsume: 0,
     decibelRecovery: RECOVERY_BACKFILL_PLACEHOLDER,

@@ -39,6 +39,9 @@ describe('CC-409 招式 actionTime 来自 catalog（cfg.moveActionTimes）', () 
     { agentId: '1371', moveId: '1371026', cinema: 4 }, // 仪玄 墨烬影消（0.3s，轴外凝云链；C4 留 1 轮凝云保证行出现）
     { agentId: '1381', moveId: '1381023' }, // 零号·安比 苍光·临界（0.867s）
     { agentId: '1291', moveId: '1291_ex_verdict_final', catalogMoveId: '1291010' }, // 雨果 强特终结合成行（时长读 1291010 = 1.805s）
+    // T8b（CC-409 续）：苍角 / 格莉丝 的迁移行
+    { agentId: '1131', moveId: '1131011' }, // 苍角 强特扇子（1.16s）
+    { agentId: '1181', moveId: '1181006' }, // 格莉丝 强化特殊技（0.342s）
   ]
 
   it('真引擎：迁移模块的行 actionTime === catalog actionTime（至少 4 条行真实出现）', async () => {
@@ -62,8 +65,8 @@ describe('CC-409 招式 actionTime 来自 catalog（cfg.moveActionTimes）', () 
       seenAgents.add(c.agentId)
     }
     expect(seen).toBeGreaterThanOrEqual(4)
-    // T8 的四个迁移模块必须各有一条行真实出现（缺行 = 夹具失效，不许静默跳过）
-    for (const id of ['1091', '1371', '1381', '1291']) {
+    // T8 的迁移模块必须各有一条行真实出现（缺行 = 夹具失效，不许静默跳过）
+    for (const id of ['1091', '1371', '1381', '1291', '1131', '1181']) {
       expect(seenAgents.has(id), `T8 模块 ${id} 的迁移行未出现`).toBe(true)
     }
   })

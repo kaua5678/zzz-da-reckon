@@ -11,6 +11,7 @@ import type { AnomalyEventExecution, SkillExecution } from '@/types/resource'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 /**
  * 格莉丝（1181）战斗逻辑（用户口供 2026-08-23）：
@@ -34,11 +35,6 @@ import { specToMechanicModule } from '@/specs/mechanics'
  */
 
 const GRACE_AGENT_ID = '1181'
-/** 动作时间取 catalog（A1+A2+A3 = 1.183s ≈ 口供实测 1.1827；A4 = 1.134 ≈ 口供 1.1335） */
-const A1_TIME = 0.171
-const A2_TIME = 0.33
-const A3_TIME = 0.682
-const A4_TIME = 1.134
 /** A1-A4 每段能量回复（catalog energy_recovery，Lv.12；影画4 按段精确折算） */
 const A1_ENERGY = 0.615
 const A2_ENERGY = 1.189
@@ -47,10 +43,25 @@ const A4_ENERGY = 4.081
 /** A 段顺序 = A1,A2,A3(连段) → A4，每轮换各一次 */
 const A_SEG_ENERGY = [A1_ENERGY, A2_ENERGY, A3_ENERGY, A4_ENERGY]
 const A_CYCLE_ENERGY = A_SEG_ENERGY.reduce((a, b) => a + b, 0) // 8.339
+const A1_MOVE_ID = '1181001'
+const A2_MOVE_ID = '1181002'
+const A3_MOVE_ID = '1181003'
+const A4_MOVE_ID = '1181004'
 const SP_MOVE_ID = '1181005'
 const EX_MOVE_ID = '1181006'
-const SP_TIME = 0.2
-const EX_TIME = 0.342
+/** 循环各段 actionTime（CC-409 起由调用方从 cfg.moveActionTimes 取，catalog 单一来源；原常量 0.171/0.33/0.682/1.134/0.2/0.342 与表相等） */
+export interface GraceRotationTimes {
+  a1: number
+  a2: number
+  a3: number
+  a4: number
+  ex: number
+}
+/** 特殊技行 actionTime（普通 SP / 强化 EX；CC-409 起从 cfg.moveActionTimes 取） */
+export interface GraceSpecialTimes {
+  sp: number
+  ex: number
+}
 /** 强特附带[涡流集束手雷]（电能满层额外投掷）：1181020 表值 175.5，at=0 */
 const VORTEX_MOVE_ID = '1181020'
 /** [脉冲]兑换附带[脉冲手雷]（8 层换一次额外投掷）：1181019 表值 84.9，at=0；附带异放事件 */
@@ -86,9 +97,9 @@ export interface GraceRotationPlan {
   normalUsed: number
 }
 
-export function planGraceRotation(basicPool: number, engineExCount: number): GraceRotationPlan {
+export function planGraceRotation(basicPool: number, engineExCount: number, times: GraceRotationTimes): GraceRotationPlan {
   // 每循环 = [A1A2A3 连段 1.183s + A4 1.134s] + 2 特殊技槽；预算按最长强特变体取保守上界
-  const cycleBound = A1_TIME + A2_TIME + A3_TIME + A4_TIME + 2 * EX_TIME
+  const cycleBound = times.a1 + times.a2 + times.a3 + times.a4 + 2 * times.ex
   const cycles = Math.max(0, Math.floor(Math.max(0, basicPool) / cycleBound))
   const slots = cycles * 2
   const exUsed = Math.min(Math.max(0, Math.floor(engineExCount)), slots)
@@ -96,9 +107,21 @@ export function planGraceRotation(basicPool: number, engineExCount: number): Gra
 }
 
 /** 特殊技前台时间（仅两发特殊技；A 段由通用 basic 池行表达，不计入必要时间） */
-export function graceRotationSeconds(cycles: number, exUsed: number): number {
+export function graceRotationSeconds(cycles: number, exUsed: number, times: GraceSpecialTimes): number {
   const normalUsed = cycles * 2 - exUsed
-  return exUsed * EX_TIME + normalUsed * SP_TIME
+  return exUsed * times.ex + normalUsed * times.sp
+}
+
+/** 从 cfg 读循环各段 actionTime（catalog，CC-409）；结构同时满足 GraceRotationTimes / GraceSpecialTimes。 */
+function graceTimesOf(cfg: AgentResourceInput['cfg']): GraceRotationTimes & GraceSpecialTimes {
+  return {
+    a1: cfgMoveActionTime(cfg, A1_MOVE_ID),
+    a2: cfgMoveActionTime(cfg, A2_MOVE_ID),
+    a3: cfgMoveActionTime(cfg, A3_MOVE_ID),
+    a4: cfgMoveActionTime(cfg, A4_MOVE_ID),
+    sp: cfgMoveActionTime(cfg, SP_MOVE_ID),
+    ex: cfgMoveActionTime(cfg, EX_MOVE_ID),
+  }
 }
 
 function buildGraceCharConfig(input: AgentCharConfigInput): void {
@@ -161,7 +184,7 @@ function gracePhaseValues(cfg: AgentResourceInput['cfg'], state: AgentResourceIn
 } {
   const basicPool = state.basicAttackTime ?? 0
   const cinema = Math.max(0, Math.floor(Number(cfg.graceCinemaLevel ?? 0)))
-  const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0)
+  const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0, graceTimesOf(cfg))
   const slots = plan.cycles * 2
   // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
   const c4Applies = cinema >= 4 && plan.cycles > 0 && plan.exUsed > 0
@@ -187,13 +210,13 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
   // 全部 cfg 写入（平A池/C1 轮数/C4 回能/脉冲手雷/initialEnergyGift）已拆到 materializePhaseState
   // ——本钩子对 cfg 只读（阶段1 第二刀 2026-09-09：写在产行钩子里会让 materializeRows 必须靠
   // 快照/恢复兜底，且试探测量与装配的相位会互相污染）。
-  const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0)
+  const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0, graceTimesOf(cfg))
   const phase = gracePhaseValues(cfg, state)
 
   // A1-A4 走通用 basic 池行（平A秒均），这里发两发电能强化特殊技（真实 id，enrich 回填伤害/积蓄，
   // 积蓄 ×2.3 由 transformSkillExecutions 只对这两行限定）
   if (plan.exUsed > 0) {
-    const exRow = graceRow(EX_MOVE_ID, '强化特殊技：超规工程清障（电能强化）', plan.exUsed, EX_TIME)
+    const exRow = graceRow(EX_MOVE_ID, '强化特殊技：超规工程清障（电能强化）', plan.exUsed, cfgMoveActionTime(cfg, EX_MOVE_ID))
     // 电能满层时强特额外投掷一枚[涡流集束手雷]（1181020，表值 175.5）
     const vortexRow = graceRow(VORTEX_MOVE_ID, '涡流集束手雷（电能满层·强特附带）', plan.exUsed, 0)
     if (cinema >= 6) {
@@ -208,7 +231,7 @@ function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): v
     executions.push(exRow, vortexRow)
   }
   if (plan.normalUsed > 0) {
-    const spRow = graceRow(SP_MOVE_ID, '特殊技：工程清障（电能强化）', plan.normalUsed, SP_TIME)
+    const spRow = graceRow(SP_MOVE_ID, '特殊技：工程清障（电能强化）', plan.normalUsed, cfgMoveActionTime(cfg, SP_MOVE_ID))
     if (cinema >= 6) {
       // 影画6：特殊技 1 手雷 → 2 手雷——额外手雷所有数据 ×2；伤害另 ×2（增伤 +100）
       spRow.damageMultiplier = 170 // catalog 85 × 2
@@ -326,9 +349,10 @@ export const graceMechanic: AgentMechanicModule = {
   buildAnomalyEvents: buildGraceAnomalyEvents,
   estimateExSpecialTime: ({ cfg, exSpecialCount }) => {
     const prevPool = Math.max(0, Number(cfg.graceBasicPoolPrev ?? 0))
-    const plan = planGraceRotation(prevPool, exSpecialCount)
+    const times = graceTimesOf(cfg)
+    const plan = planGraceRotation(prevPool, exSpecialCount, times)
     return {
-      necessaryTime: graceRotationSeconds(plan.cycles, plan.exUsed),
+      necessaryTime: graceRotationSeconds(plan.cycles, plan.exUsed, times),
       comboAlignTime: 0,
     }
   },
