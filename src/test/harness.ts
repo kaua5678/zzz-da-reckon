@@ -20,6 +20,7 @@ import { useConfigStore, interactionBaselineFor } from '@/stores/config'
 import { collectInCombatTeamBuffs } from '@/core/inCombatBuffs'
 import { applyEffect } from '@/core/buff'
 import { emptyPanel } from '@/core/panel'
+import { getAgentMechanic } from '@/mechanics'
 import type { DriveDiscConfig, PanelValues } from '@/types/catalog'
 
 const catalogText = readFileSync(new URL('../../public/static/catalog.json', import.meta.url), 'utf8')
@@ -97,9 +98,17 @@ export function setTeam(
         + '请用对象形式 { agentId } 或空串占位（裸 id 会静默变成空队伍）')
     }
     const agentId = t ? t.agentId : ''
+    const agent = agentId ? catalog.getAgent(agentId) : null
     const base = agentId
-      ? interactionBaselineFor(agentId, catalog.getAgent(agentId)?.specialty)
+      ? interactionBaselineFor(agentId, agent?.specialty)
       : { parry: 0, dodge: 0, block: 0, dual: 0 }
+    // 平A时间权重按生产 `defaultBasicAttackTimeWeight` 口径兜底（支援/防护/声明0的角色=0，
+    // 否则=1）——此前 TEST_BASE_CHAR 写死 1，支援也分平A池，曾让维丹队探针里柚叶 weight=1
+    // 与生产 setAgent（665 行 weight=0）口径分裂、高估辅助平A/低估主C（用户 2026-10-01 报）。
+    // 模块声明 defaultBasicAttackTimeWeight 的角色（蕾米埃尔/薇薇安=0）由 mechanic 直给。
+    const declaredWeight = agentId ? getAgentMechanic(agentId)?.defaultBasicAttackTimeWeight : undefined
+    const weightDefault = declaredWeight
+      ?? (agent?.specialty === 'support' || agent?.specialty === 'defense' ? 0 : 1)
     config.team[i] = {
       slot: i,
       agentId,
@@ -109,6 +118,7 @@ export function setTeam(
       parryCount: base.parry,
       dodgeCounterCount: base.dodge,
       blockCount: base.block,
+      basicAttackTimeWeight: weightDefault,
       // driveDisc 深拷贝：TEST_BASE_CHAR 是模块级常量，浅展开会让三槽共享同一 driveDisc
       //（mainStats/subStatAllocation 互相污染——曾让诊断/deploy 测试的配装推荐互相覆盖）
       driveDisc: structuredClone(TEST_BASE_CHAR.driveDisc),

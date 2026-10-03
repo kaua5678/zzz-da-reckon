@@ -55,17 +55,19 @@ describe('音擎叠层覆盖率自动回填（嵌合编译器 14118，能耗事�
   })
 
   it('通道活着：格莉丝主C回填后异常精通面板显著低于满层默认，覆盖率落时间加权口径', async () => {
-    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1411' }, { agentId: '1211' }])
+    // 格莉丝主C + 双异常队友（维琳娜/月城柳，weight 1 与她分平A池，她分不全 ⇒ 普E受限、覆盖<100）。
+    // 不用支援队友：夹具按生产口径支援 weight=0，此时格莉丝独吞平A池普E吃满覆盖 100（测不出「<60」）。
+    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1561' }, { agentId: '1221' }])
     config.team[0].wEngineId = '14118'
     const calc = useResourceCalc()
     void calc.panels.value // 触发回填链
     const stored = config.getWEngineEffectCoverage(EFFECT_ID)
-    // 实测 24 事件 ⇒ 35.6%；旧行为恒 100 ⇒ 必须显著低于 100
+    // 与异常队友分平A池 ⇒ 普E受限 ⇒ 覆盖显著低于旧行为恒 100
     expect(stored).toBeLessThan(60)
     expect(stored).toBeGreaterThan(0)
     const panel = calc.panels.value.find(p => (p as { slot?: number }).slot === 0)
     const ap = (panel as { anomalyProficiency?: number } | undefined)?.anomalyProficiency ?? 0
-    // 满层 +75 ⇒ 基础 90 + 75 = 165；回填后（约 +27）应明显低于 165
+    // 满层 +75 ⇒ 基础 90 + 75 = 165；回填后应明显低于 165
     expect(ap).toBeLessThan(160)
   })
 
