@@ -226,7 +226,7 @@ function buildNormaCharConfig({ slot, agent, cinemaLevel, team, skills, cfg }: A
   cfg.skipGenericExSpecial = true // 嗯呢弹幕由本模块生成 6 段
   // 嗯呢弹幕耗能（用户确认）：40 激活 + 长按 20/s（默认 2s）→ 每次 80 能量；
   // 资源池按此驱动强特次数（长按能量此前漏算 → 次数被高估，2026-08 修复）
-  const holdSeconds = Math.max(0, Math.min(2, cfgNum(cfg, 'norma.holdSeconds', 2)))
+  const holdSeconds = resolveNormaHoldSeconds(cfg)
   cfg.exSpecialEnergyConsume = EX_SPECIAL_ENERGY_COST + HOLD_ENERGY_PER_SEC * holdSeconds
   // 预存嗯呢弹幕 6 段 actionTime，供 buildExecutions 使用（不依赖运行期查倍率表）
   cfg.normaBarrageActionTimes = BARRAGE_MOVES.map(id => findMoveById(skills, id)?.actionTime ?? 0.5)
@@ -271,6 +271,16 @@ function buildNormaCharConfig({ slot, agent, cinemaLevel, team, skills, cfg }: A
 }
 
 /**
+ * `norma.holdSeconds` 滑块的**唯一口径**（CC-438，2026-10-04）：钳到 [0, 2]（20 能量/秒，最多 2 秒）。
+ * 此前 5 个读者各读各的（能量 / 膛温 / 伤害行 / 赠链 / 前台时间），其中 3 处自带钳位、2 处靠 `computeNormaSource`
+ * 内部再钳。现在所有读者都经本函数拿同一个值（钳位只写一次）。注意 `estimateExSpecialTime` 里长按仍是整局一次，
+ * 原因见该处注释（量过：改成按次会扰动外层折叠环，不单改）。
+ */
+export function resolveNormaHoldSeconds(cfg: unknown): number {
+  return Math.max(0, Math.min(2, cfgNum(cfg, 'norma.holdSeconds', 2)))
+}
+
+/**
  * cfg + 迭代状态 → 诺姆机制源（CC-279：执行行与资源结果原先各抄一份入参装配，新增入参只改一处会让
  * 伤害行与展示结果静默分叉；收成唯一装配点）。
  */
@@ -284,7 +294,7 @@ function normaSourceOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput
     stunCount: cfg.normaStunCount ?? 0,
     stunCoverage: cfg.normaStunCoverage ?? 0,
     battleTime: cfg.normaBattleTime ?? 180,
-    holdSeconds: cfgNum(cfg, 'norma.holdSeconds', 2),
+    holdSeconds: resolveNormaHoldSeconds(cfg),
     extraAbilityAtkBonus: cfg.normaExtraAbilityAtkBonus ?? 0,
     techGapStunBonus: cfg.normaTechGapStunBonus ?? 0,
   })
@@ -299,7 +309,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   const times = cfg.normaBarrageActionTimes ?? BARRAGE_MOVES.map(() => 0.5)
   const stunShare = Math.max(0, Math.min(1, cfgNum(cfg, 'norma.barrageStunShare', 0)))
-  const holdSeconds = Math.max(0, Math.min(2, cfgNum(cfg, 'norma.holdSeconds', 2)))
+  const holdSeconds = resolveNormaHoldSeconds(cfg)
   // 影画6：破甲弹头失衡值+30%（1571008/1571011/1571014）、高爆弹头伤害+30%（1571009/1571012/1571015），
   // 技能专属效果：只作用于对应倍率行，按表值缩放（damageMultiplierOverride/dazeMultiplierOverride）。
   const cinema = cfg.normaCinemaLevel ?? 0
@@ -343,10 +353,10 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
     pushBarrage(HIGH_EXPLOSIVE_SHOT_MOVE, '嗯呢弹幕·高爆弹头', Math.round(exCount * stunShare), 2, `失衡目标：高爆弹头 683.5%（占比 ${Math.round(stunShare * 100)}%）`)
     // 长按：延长射击每秒（1571010）+ 延长破甲/高爆每秒（1571011/1571012）。
     // 每次弹幕都长按 holdSeconds（能量已按 40+20×hold/次 收费），延长总秒数 = 次数 × holdSeconds。
-    const holdInt = Math.max(0, Math.floor(holdSeconds))
-    if (holdInt > 0) {
-      const holdSecs = holdInt * exCount
-      pushBarrage(EXTEND_SHOT_MOVE, '嗯呢弹幕·延长射击', holdSecs, 3, `每次长按 ${holdInt}s × ${exCount} 次：延长点射 261.5%/s`)
+    // CC-438：秒数不再 floor——滑块步长 0.5、倍率按每秒、能量按 20/s 收费，伤害同比例（默认 2 时逐位不变）。
+    if (holdSeconds > 0) {
+      const holdSecs = holdSeconds * exCount
+      pushBarrage(EXTEND_SHOT_MOVE, '嗯呢弹幕·延长射击', holdSecs, 3, `每次长按 ${holdSeconds}s × ${exCount} 次：延长点射 261.5%/s`)
       pushBarrage(EXTEND_ARMOR_PIERCE_MOVE, '嗯呢弹幕·延长破甲', Math.max(0, Math.round(holdSecs * (1 - stunShare))), 4, `长按延长：破甲 392.8%/s（占比 ${Math.round((1 - stunShare) * 100)}%）`)
       pushBarrage(EXTEND_HIGH_EXPLOSIVE_MOVE, '嗯呢弹幕·延长高爆', Math.max(0, Math.round(holdSecs * stunShare)), 5, `长按延长：高爆 433.4%/s（占比 ${Math.round(stunShare * 100)}%）`)
     }
@@ -599,7 +609,7 @@ export const normaMechanic: AgentMechanicModule = {
         frontlineTime: state.frontlineTime,
         battleTime: cfg.normaBattleTime ?? totalTime,
       },
-      cfgNum(cfg, 'norma.holdSeconds', 2),
+      resolveNormaHoldSeconds(cfg),
     ),
     // 落点 = 缺省「上一位队友」（不声明 targetSlot；CC-294）。此处原读 `liuyin.ultimateTargetSlot`（注释称与琉音共用下拉），
     // 但 buildCharConfig 只把**本模块**设置写进 cfg ⇒ 诺姆 cfg 上恒无此键、恒取 -1：引擎一直按上一位预留，
@@ -631,9 +641,14 @@ export const normaMechanic: AgentMechanicModule = {
   },
   estimateExSpecialTime({ cfg, exSpecialCount }) {
     // 嗯呢弹幕真实前台时间（修复：通用公式只用 #1 单段 0.493s → 严重低估）：
-    // 一次强特 = 点射 #1(0.493) + 弹头 #2/#3(0.74) + 长按延长（#4 0.4 + 延长弹头 0.6）/s
+    // 一次强特 = 点射 #1(0.493) + 弹头 #2/#3(0.74)；长按延长（#4 0.4 + 延长弹头 0.6）/s
+    // ⚠ 已知口径分叉（CC-438 r476 量过、**故意不改**）：这里长按整局只算一次（`+ holdSeconds × holdTime`），
+    // 而伤害行 / 膛温 / 能量都按「每次弹幕都长按」计。最终必要时间不受影响——外层折叠环按 Σ物化行补齐残差
+    // （实测 6 次弹幕两种写法 necessaryTime 都是 53.073）；但改成按次计会让折叠环少迭代一轮（iters 1→0），
+    // 12 个诺姆预设 zd 全变、heavy 变体 ±3～7%，timeFillRatchet 两队留白/超预算 0→2s 判红。
+    // 要改必须和 DEBT 1a（折叠环 / 停点规则）一起动，见 docs/mcp-r6-refactor-list.md §8 r476 行。
     const times = cfg.normaBarrageActionTimes ?? [0.493, 0.74, 0.74, 0.4, 0.6, 0.6]
-    const holdSeconds = Math.max(0, Math.min(2, cfgNum(cfg, 'norma.holdSeconds', 2)))
+    const holdSeconds = resolveNormaHoldSeconds(cfg)
     const baseTime = (times[0] ?? 0.493) + Math.max(times[1] ?? 0, times[2] ?? 0)
     const holdTime = (times[3] ?? 0.4) + Math.max(times[4] ?? 0, times[5] ?? 0)
     const necessaryTime = Math.max(0, Math.floor(exSpecialCount)) * baseTime + holdSeconds * holdTime

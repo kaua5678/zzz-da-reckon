@@ -3,6 +3,8 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { normaMechanic, resolveNormaHoldSeconds } from '@/mechanics/agents/norma'
+import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
@@ -226,5 +228,22 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
     expect(inStun).toBeGreaterThan(0)
     // 普通连携行仍存在（stun 归因）
     expect(rows.some(r => r.moveId === '1011010' && r.sourceTag !== 'gift')).toBe(true)
+  })
+
+  // CC-438：norma.holdSeconds 唯一口径 + 前台时间按次计长按
+  it('CC-438 norma.holdSeconds 单一口径：resolver 钳 [0,2]；estimateExSpecialTime 经 resolver 读（越界值同 2）', () => {
+    const key = mechanicSettingCfgKey('norma.holdSeconds')
+    expect(resolveNormaHoldSeconds({})).toBe(2)
+    expect(resolveNormaHoldSeconds({ [key]: 5 })).toBe(2)
+    expect(resolveNormaHoldSeconds({ [key]: -1 })).toBe(0)
+    expect(resolveNormaHoldSeconds({ [key]: 1.5 })).toBe(1.5)
+    const times = [0.5, 0.7, 0.7, 0.4, 0.6, 0.6]
+    const est = (hold: number, ex: number) => normaMechanic.estimateExSpecialTime!({
+      cfg: { normaBarrageActionTimes: times, [key]: hold } as never, exSpecialCount: ex, ultimateCount: 0,
+    })!.necessaryTime
+    // 现口径：次数 × (0.5 + 0.7) + hold × (0.4 + 0.6)（长按整局一次——已知分叉，见 norma.ts estimateExSpecialTime 注释）
+    expect(est(0, 6)).toBeCloseTo(6 * 1.2, 10)
+    expect(est(2, 6)).toBeCloseTo(6 * 1.2 + 2, 10)
+    expect(est(5, 6)).toBeCloseTo(est(2, 6), 10) // 越界经 resolver 钳到 2
   })
 })
