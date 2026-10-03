@@ -82,16 +82,26 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 13:55 arena-F 第 433 轮**（开工：master `f0edf893` 干净、已推、unpushed 0；无 verify / vitest 进程；别人 13:54 已自行提交 remielle.ts 注释 WIP `98716970`（方向 = CC-403，不用再处理）；REQUIREMENTS.md 无新条目；§3 空；**本轮零代码**，产物目录 `/home/kaua/calc-arch/arenaF/r433/`）
+- **做到哪**：
+  1. **CC-405 偏差 ①（「轴表 / 技能行 UI 查表没有队伍上下文」）关闭，不是不排期而是没有消费点**。逐个查了 `moveTableQueries` 的全部非测试引用：两个页面（`StunAxisPage.vue:264`、`LogicEditorPage.vue:186`）只用 `findMoveById` 查名字不查倍率；[表] 直读（`damagePoolDirect.ts:285` / `axisTableDirect`）在 CC-406 后已排除变体目标段，而变体源段 1101006 / 1101105 / 1101401 都是有执行行的招式、本来就不是 [表] 候选；`skillRows` 自己只剩 `averageBasicRows`（平A基准段秒均，变体源段是强化普攻二段 / 引爆 / 终结技，基准段落不到它们）；`composables/multiplierCoefficients.ts` 及其 4 个 view 消费者（DirectDamageChart / BossHpInflation / MultiplierCoeff / TimeCharts）是按版本的**单角色**静态推导，天然无队伍概念。⇒ 没有任何界面在珂蕾妲+本时显示非协同倍率。卡表 CC-405 已加指针。
+  2. **变体表（`data/moveVariants.ts`）的迁移对象已穷尽**：grep `src/mechanics/agents/*.ts` 里所有「队友条件」逻辑，只有 `caesar.ts:109`（门控）、`lighter.ts:245`（队友特长/阵营）、`miyabi.ts:84`（风属性队友）、`orphie.ts:178-186`（席德在队 ⇒ `orphieAutoFrontRatio` 默认 0.8，是比例默认值不是换段）——没有第二个「队友在队换招式段」的手写特判。**别再以「还有哪个角色能迁进变体表」为由开轮**；新角色若有协同段，录入时直接加表（CC-405 / CC-406 排除自动跟上）。
+  3. **变体表的演进规则（拍板，写死以免反复讨论）**：现在变体只换倍率行，时间通道不跟（CC-405 已知偏差 ②）。量过差额：终结技 1.8→1.733 = −0.067s/次，180s 窗约 2 次 ⇒ 0.13s；强化普攻二段 1.659→2.031 但珂蕾妲强化普攻行由模块发射、`actionTime` 走平A池不读该段；引爆 1101106 与 1101105 同 1.366s。即**现状只差终结技 0.13s/窗**，低于 ratchet 可见阈值，不改。**何时改、怎么改**：变体表 ≥3 条、或某条变体的时间差 ≥ 0.5s/窗时，不要在 `enrichExecutionPlan` 之外再加第二个消费点（那会回到「三处各写一遍」），而是改成「队伍视角的技能表覆盖」——在拿到全队 agentId 的同一处（`buildCharConfig` / 编排层）用 `teammateSegmentResolver` 生成一份把目标段的**行值与 actionTime 都盖到源段上**的 `AgentSkills` 视图，下游 `find*` / enrich / 轴表全部自动吃到，然后删掉 `fusedRowValue` 的 `segmentOf` 参数。这是比 CC-405 更通用的形态，但现在只有 1 条变体、时间差 0.13s，为它改 `agentSkillsByAgentMap` 的全部取用点（≥6 处）不值。
+  4. **§2b 本 lane r424～r428 五段压成一节**（见下「arena-F r424–r428 摘要」）：五轮的卡（CC-398～CC-404）、r6 §8 行都齐，开放项全部关闭（r420 四个下一步已在 r432 关完），逐轮全文在 `git show f0edf893:docs/mcp-worker-task-queue.md`。保留了里面的通用配方与坑（dsh setsid 派发、无头页面读 core 摘要、vite pkill 自杀、TS2367、types↔core 方向、worktree .zc），没丢。§2b 从 56 KB 降到 49 KB。
+- **下一步候选**（不排序；没有排定项，按 §1「没有排定项时不造活」）：§3 空；ratchet「推荐配装下 0 maxIter」是否成立（r430 §10，只需一次探针）；全量 vitest 236s 里 `setup 150s` 占大头（r431 `vt.log`：deadChannelLs 44s、pullPlannerEngine 42s、charIncrementInt 35s）——若以后 285s 上限再被打穿，先看这三个文件的 setup 而不是加 worker；主仓无 WIP、无孤儿。
+- **拍板**：① 偏差 ① 标「关」而不是「不排期」，依据是消费点清单（上面第 1 条），不是估值。② 变体表演进阈值（≥3 条或 ≥0.5s/窗）是我定的，无用户口径；改阈值只需改本段。③ 压缩 r424–r428 用「一行一轮 + 坑清单」而不是纯指针，因为那五轮的坑没有别处落脚。
+- **回滚点**：本轮只有文档，`git revert <本轮提交>`；压缩前原文 `git show f0edf893:docs/mcp-worker-task-queue.md`。
+
 **2026-10-03 13:49 arena-F 第 432 轮**（开工：master `7c211ece` 干净、已推；主仓仍有别人 13:47 的 `remielle.ts` +5 行注释 WIP、无认领、无进程——没动；REQUIREMENTS.md 无新条目；本轮代码只改一行注释；产物 `/home/kaua/calc-arch/arenaF/r432/`：`exProbe.test.ts`、`exprobe.tsv`、`exprobe.log`）
 - **做到哪**：r420 §2 下一步 3 / 4 **都关掉**（CC-407，口径裁决卡）。3 = 「能量全部打强特」用 60 角色探针量过：强特每秒直伤普遍是平A的 1.3～9.7 倍，青衣 4 命 / 安东是个例 ⇒ 维持，不引入「能量闲置」。4 = 仪其他.json「轴1」是仪玄通用轴，没有青衣成分，原交接的「重配」前提不成立。至此 **r420 的四个下一步全部有归宿**（1→CC-402，2→r430 §10，3/4→CC-407）。
 - **顺手**：`cinemaMonotone.test.ts` ALLOW 注释里的「待办」改指 CC-407（注释行，零行为）。`.claude/OPEN-ITEMS.md`（**不入 git**）§2 的 D3（蕾米 atk_1）仍写着三个修法选项像待开工——已在该条顶部加一行指针到 CC-403（含本人、维持、重开条件），免得下一个会话第三次去改「不含本人」（13:47 那份 remielle.ts WIP 就是又一次）。
 - **探针的坑**（下次复用注意）：按 `moveId === 'basic_attack'` 归平A直伤、按强特执行行 moveId 归强特直伤，对模块重写平A循环（青衣醉花、安比、伊德海莉、希格莉德）或强特走模块行（琉音、普罗米娅、洛克茜）的角色读 0；要全覆盖得按 `damagePoolRows.source` / 模块行名归因。
-- **下一步候选**（不排序）：§3 空；CC-405 偏差 ①（技能行 UI 队伍上下文，显示面）；ratchet 推荐配装「0 maxIter」一面（r430 §10）；主仓 remielle.ts 注释 WIP 若 >1h 仍无人认领按孤儿规则处理（方向与 CC-403 一致，只需把「09-30 用户裁决」改成「CC-403 原文解读」再收养）。
+- **下一步候选**（不排序）：§3 空；CC-405 偏差 ①（技能行 UI 队伍上下文，显示面）【r433 已关：无消费点】；ratchet 推荐配装「0 maxIter」一面（r430 §10）；主仓 remielle.ts 注释 WIP 若 >1h 仍无人认领按孤儿规则处理（方向与 CC-403 一致，只需把「09-30 用户裁决」改成「CC-403 原文解读」再收养）。
 - **回滚点**：无代码行为改动。
 
 **2026-10-03 13:33 arena-F 第 431 轮**（开工：master `458a38cc` 干净、已推；零 WIP；REQUIREMENTS.md 无新条目；worktree `wtF-variant` 已删，产物 `/home/kaua/calc-arch/arenaF/r431/`：`patch.py`、`vt.log`、`guards.log`、`build.log`）
 - **做到哪**：CC-406 `edddeb39`——CC-405 建了变体表之后，协同段 1101106 / 1101402 仍是珂蕾妲的 [表] 候选（r419 普查 TWIN 行，CC-402 当时记「未决」），放进轴就与执行行双计。`axisTableDirect` 现在从变体表推导 `VARIANT_TARGETS` 排除，和融合并入段同级；以后变体表加一行，排除自动跟上。CC-402 (iii) 珂蕾妲项与 CC-405「已知偏差」的 [表] 部分都结了。
-- **CC-405 偏差 ① 现在只剩显示面**：轴表 / 技能行 UI 的查表值（非伤害路径）在珂蕾妲+本时仍显示非协同倍率；伤害与 [表] 候选都已正确。要改得把 `teamAgentIds` 送进 `skillRows` 的查表口，收益只是显示，仍不排期。
+- **CC-405 偏差 ① 现在只剩显示面**：轴表 / 技能行 UI 的查表值（非伤害路径）在珂蕾妲+本时仍显示非协同倍率；伤害与 [表] 候选都已正确。要改得把 `teamAgentIds` 送进 `skillRows` 的查表口，收益只是显示，仍不排期。 → **r433 复核：实际没有任何 UI 读那条倍率（消费点清单见 §2b r433 第 1 条），偏差 ① 关。**
 - **踩坑**：全量 vitest 第一次跑超 285s 被 `timeout` 杀掉（load 24——紧接在 vue-tsc + guards + zd 之后起跑，worker 还没凉）。被杀的 vitest 子进程会拖十几秒才退，期间 `pgrep vitest` 看到的是**自己的尸体**，别误判成别的 lane。等 load 降到 15 以下重跑一次就 235s 过了。⇒ 重任务之间 `sleep 20` 再起下一段。
 - **下一步候选**（不排序）：r420 下一步 3/4 需用户口径，只能写候选；§3 空；可以做的通用项：① `标准倍率表 / 技能行 UI` 的队伍上下文（显示面，低优先）；② 用 `convergenceProbe` 的 A 口径（推荐配装）给 `timeFillRatchet` 的绝对不变量加「0 maxIter」一面（r430 §10 写了做法，多一条锁、无架构收益，有空再做）。
 - **收工时现场**（13:47）：主仓出现别人**未认领**的 `src/mechanics/agents/remielle.ts` +5 行（只加注释：「anomalyCount 含本人（2026-09-30 用户裁决）…此前改成不含本人是误改已回滚」）。结论方向与 CC-403 一致（含本人），但它引用的「09-30 用户裁决」在 docs 里仍然不存在（CC-403 已核：09-30 的 1581 裁决是 C6 耀变）。是 1 分钟前的活 WIP，不是孤儿，**没动**；接手的人若收养它，把那句出处改成「CC-403 原文解读」而不是不存在的裁决。
@@ -112,73 +122,22 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **下一步候选**（不排序，承接 r428）：arena-E §2 r420 下一步 2（yidhari-qingyi-lucia 外层振荡：CC-402 后 ratchet 已 cycle→stable，先确认还振不振，不振在 §2 加一行指针关掉）；r420 下一步 3/4 需用户口径，只能写候选；若用户要 UI 也显示协同值，走上面偏差 ①。
 - **回滚点**：`git revert 84b3210e`（docs 单独一提交）。
 
-**2026-10-03 12:51 arena-F 第 428 轮**（开工：master `7077bd4c` 干净、已推；无 verify 进程；REQUIREMENTS.md 无新条目；worktree `wt-T7` 已删，产物 `/home/kaua/calc-arch/arenaF/r428/`）
-- **做到哪**：① remielle 三文件孤儿**丢弃**（CC-403，理由与重开条件在卡里；diff 在 `arenaF/r428/remielle-orphan.diff`）——主仓现在干净，verify 不再被它弄红。② §3 卡 **T7** 由 dsh 工人完成（5d081fb5），卡已删；详见 CC-404。
-- **孤儿处置的教训**：别人 WIP 里写的「用户裁决」要回 docs 核对日期与内容——这份把 09-30 的 C6 裁决（CC-166）错按到了档位计数上。处置前把 diff 整份存到 calc-arch，让「丢弃」可逆。
-- **下一步候选**（不排序）：arena-E §2 r420 下一步 2（yidhari-qingyi-lucia 外层振荡——CC-402 后该队 ratchet 已 cycle→stable，先确认还振不振，不振就在 §2 加一行指针关掉）；r420 下一步 3/4（需用户口径，只能写候选）；珂蕾妲协同版 1101106/1101402（CC-402 未决，改伤害，单独一卡）。
-- **回滚点**：CC-403 无代码；T7 `git revert 5d081fb5`。
-
-**2026-10-03 12:26 arena-F 第 427 轮**（开工：master `56821c49` 干净、已推；无 verify 进程；别人 11:40–11:57 的 `remielle.ts` / `remielle.test.ts` / `helpersNightC.test.ts` 仍未提交、未认领，**没动**（收工时闲置已 >1h，下一轮按孤儿规则处理）；REQUIREMENTS.md 无新条目；worktree `wtF-r427` 已删，产物 `/home/kaua/calc-arch/arenaF/r427/`）
-- **做到哪**：r420 §2「下一步 1」（27 个 [表] TWIN 候选）**全部裁决**，见卡表 CC-402。只有卢西娅终结技改了代码（`1f78ccb6`，改伤害）；其余 26 个零改动，分类与理由都在卡里，**别再扫同一清单**。
-- **卢西娅为什么现在改、r338 为什么没改**：r338 要求 nanoka 求和编码才登记融合；本轮按妮可终结技先例（param 分列、无求和编码、靠招式说明判「一次发动全打」）放行，因为「终结技主伤害 3805.7% 整段漏掉 + 终结技 0 秒」是两个肉眼可见的缺陷。撞击次数按 1 计是**可逆口径**：有用户口径就改 `LUCIA_ULTIMATE` 的 count。
-- **夹具样例依赖卢西娅 0 秒终结技的，这次集中暴露了**：teamTimeSummary 的「账本虚高」样例（扫描里所有 slack>2 的队都含卢西娅——虚高本身就是这个数据缺陷造成的）、outerCyclePick 的长环相位、nightD 般岳补齐精确值、archiveDeploy 弹刀门槛。改法与理由在各测试注释里。**教训**：样例型测试（「找一个有 X 现象的队」）寿命取决于造成 X 的根因；换样例前先问 X 是不是缺陷副产物。
-- **新卡 T7（§3）**：6 个「模块按 cfg 二选一分支」的招式（本 1121008/1121009、苍角 1131013、诺姆 1571009/1571012、洛克茜 1621019）在非当前分支下会以 [表] 出现、放了就双计。静态 `axisHiddenMoves` 要列全两个分支且普查锁只跑缺省 cfg 锁不住 ⇒ 让模块声明「分支组」、`axisHiddenMovesOf` 读它。卡面写了文件与验收。
-- **未决（记录，不排期）**：珂蕾妲有本时协同版引爆 1101106 / 终结 1101402 是替换 1101105 / 1101401（倍率 666.6% vs 1101105、1694% vs 1548.8%），koleda.ts 只建模了协同二段普攻 1101007；要做得在模块里按队内有无 1121 切换 moveId（同 1101007 的做法），改伤害，需单独一卡 + golden 归因。
-- **下一步候选**：remielle 三文件孤儿处理（先 `git diff` 看是否成形，隔离 worktree 全量 verify，提交或丢弃，§2b 写明）；T7；arena-E §2 其余下一步（yidhari-qingyi-lucia 外层 cycle 振荡——注意本轮后该队 ratchet 已从 cycle 变 stable，先复核还振不振）。
-- **回滚点**：`git revert 1f78ccb6`。
-
-**2026-10-03 12:14 arena-F 第 426 轮**（开工：master `a582aa33` 干净、已推；无 verify 进程；别人 11:40–11:57 的 `remielle.ts` / `remielle.test.ts` / `helpersNightC.test.ts` 仍未提交、未认领，**没动**（闲置满 1 小时后按孤儿规则处理，本轮收工时还没到）；REQUIREMENTS.md 无新条目；worktree `wt-T4` 已删，产物 `/home/kaua/calc-arch/arenaF/r426/`）
-- **做到哪**：① §3 最后一张卡 **T4** 由 dsh 工人完成（CC-400 `13602152`，卡已删），`as unknown as` 家族到此收口：非测试代码行 20 → 14，剩的全是 CC-398 判合理项，**别再动这个计数**。② CC-398 的「条XX%」接线做了**真页面**复核（CC-401，只有文档）：无头 chromium 开捏轴页读 DOM，确认页面渲染出 `条电34%·以太95%` / `条电34%`，与组件 setupState 里 `inStunAnomalyState.gaugeSnapshots` 一致。**第一次跑看不到标签**（6 以太 +18 电：两条槽恰好在块末归零 → 页面按设计过滤 0%），差点误判成修复无效——做页面复核时先看状态再看 DOM。
-- **复核页面的现成工具**：`arenaF/r426/shot.cjs`（`playwright-core` + `chrome-headless-shell`，配方见下方 r416 条目），本轮加了一招：从 `document.querySelector('.sap-block').__vueParentComponent` 往 `.parent` 爬到 `setupState` 里含 `inStunAnomalyState` 的组件直接读 core 摘要——比截图准，以后查「算了但没显示」类问题照抄。
-- **坑**：同一个 `wsl_exec` 命令里既写了 `npx vite --port 5199` 又用 `pkill -f "[v]ite --port 5199"` 收尾，括号技巧失效（包装 shell 自己的命令行被匹配）→ 把自己杀了。改用 `ss -ltnp | grep ":5199 "` 取 pid 再 kill，已验证能收干净。
-- **下一步候选**（不排序）：remielle 三文件若仍无人认领且闲置 >1h，按队列孤儿规则（先读 diff 判断是否成形，再决定 stash-free 的处理方式，§2b 写明原因）；arena-E §2 的 TWIN 候选复查；CC-398 ①的页面复核已做，②③无 UI 面，不用再查。
-- **回滚点**：`git revert 13602152`（T4 独立）；CC-401 无代码。
-
-**2026-10-03 12:01 arena-F 第 425 轮**（开工：master `c55d9c64` 干净、已推；无 verify 进程；主仓有别人 11:40 起持续在改的 `src/mechanics/agents/remielle.ts` + `remielle.test.ts` + `composables/__tests__/helpersNightC.test.ts`（无认领行；内容 = 1581 蕾米 daze 档位按「异常角色数不含本人」的 2026-09-30 用户裁决重算，tier3 在 3 人队结构性不可达），**没动它**；REQUIREMENTS.md 无新条目；worktree `wtF-r425` 已删，产物 `/home/kaua/calc-arch/arenaF/r425/`）：**CC-399 = T5 `df3e7c42` + T6 `1b771511`**，已 ff 合入 master。
-- **做到哪**：r424 §3 的 T5 / T6 两张卡收口（卡已从 §3 删除）。T5 派给 dsh 工人（worktree `wt-T5`），本人同时做 T6（worktree `wtF-r425`），两边文件不相交；工人 diff 并进 `wtF-r425` 后一次性 zd + 全量 verify，再分两个提交（各自可独立 revert）。详见卡表 CC-399。
-- **T6 调查结论**（卡里的未决项，已关）：`specTeamBuffToTeammateBuff` 丢 spec effect 的 `source` **无害**——`getEffectSourceValue` 的兜底链里 `source.defaultValue` 排在目标面板之后、`0` 之前，全仓只有 1541 带 `source` 且 `defaultValue = 0`，`TeamBuffEffectSpec` 也没声明它。**不补透传**。若将来有 spec 录入非 0 的 `source.defaultValue`，先在 `specs/types.ts` 声明再在 `teamBuffConvert.ts` 透传，别绕过转换器。
-- **派 dsh 的实测配方**（§0 的写法照用，本轮 2 分钟收工）：
-  ```bash
-  BRIEF="$(awk -v c=T4 '$0=="<!-- card:" c " -->"{f=1;next} $0=="<!-- /card:" c " -->"{f=0} f' docs/mcp-worker-task-queue.md)
-
-  补充给工人：worktree /home/kaua/calc-arch/wt-T4 已经建好（node_modules 已软链），直接在里面改；不要 git commit；零差跳过（主代理复核时跑）；报告写到 /home/kaua/calc-arch/arenaF/<轮>/worker-T4.report（首行 STATUS: done|blocked）。"
-  cd /home/kaua/calc-arch/wt-T4 && setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" > …/worker-T4.out 2> …/worker-T4.err < /dev/null & disown
-  ```
-  `setsid nohup … & disown` 的 dsh **能**跨 `wsl_exec` 调用存活（与 r401 「nohup vitest 死掉」不矛盾：那次没 `setsid`）。回收：`pgrep -af '^node .*dsh --profile headless'` 为空 + report 首行 `STATUS: done`；然后**亲自** `git diff` 看是否越白名单，再 `git diff > T4.diff` 并到自己的 worktree 跑 zd + verify。
-- **验证**：`vue-tsc -b --force` 0；guards / tokens / data / specs / recording / build EXIT 0；vitest(4) 466 文件通过（与 r424 同）；zd `r425-t5t6` DIFF 0；promia 展示值 7 点 A/B 逐字相同。
-- **下一步（start-ready，按价值排）**：
-  1. **§3 卡 T4**（spec 侧 8 处数据驱动字段名读写收成 `readCfgField` / `writeMechanicSettingCfg`）——按上面的配方直接派 dsh；复核时注意 r420 坑（`Number(raw ?? default)` 不要换成 `cfgMechanicSetting`）。做完 `as unknown as` 非测试面应恰为 CC-398 判合理的 14 处，**到此为止**，别再「清」那 14 处。
-  2. **捏轴页「条XX%」截图验证**（r424 接通的，仍没看过真实渲染）：r416 headless 配方，切 `ui.activeTab` 到捏轴页、手动轴放 1511006 ×6 + 1181005 ×18，DOM 里应出现 `条电` / `条以太` 字样的 `.mw-l2` 块。
-  3. 等 remielle 那条 lane 收工后看他有没有写交接；若 1 小时后还是未提交、无认领 ⇒ 按提示词第 9 条「孤儿」流程处理（审查 → 隔离 verify → 提交或丢弃，写清）。
-  4. 主队列 §2（arena-E r420）的 TWIN 候选逐个核对不变。
-- **拍板**：① T5 / T6 分两个提交、一次 verify——revert 粒度与验证成本的折中。② `source` 不透传（依据见上）。③ 工人报告里「零差跳过」是我在 brief 里允许的，不是工人偷懒；主代理复核时必须自己跑。
-- **坑**：
-  - 工人收工后 `wt-T5` 要用 `git worktree remove --force` 删（里面有 node_modules 软链，普通 remove 会拒）。
-  - `TeamBuffEffectSpec` 没有 `source` 字段，但 1541.json 里有——JSON 未声明字段 tsc 不报。要知道「数据里有没有」只能扫 JSON（本轮用 python 扫了全部 `src/specs/agents/*.json` 的 teamBuffs effects，8 条 formula/带 source）。
-- **回退点**：`git revert 1b771511`（T6）/ `git revert df3e7c42`（T5），互不依赖。
-
-**2026-10-03 11:40 arena-F 第 424 轮**（开工：master `c47e153b` 干净、1 个未推提交（R65-J1）已补推；无 verify / vitest 进程；11:40 起另一 lane 在主仓改 `src/mechanics/agents/remielle.ts` + `remielle.test.ts`（无认领行，到本轮收尾仍未提交）⇒ 判并行，文件面不相交；REQUIREMENTS.md 无新条目；worktree `/home/kaua/calc-arch/wtF-r424`，产物 `/home/kaua/calc-arch/arenaF/r424/`）：**CC-398 `70a16851`**，已 ff 合入 master。
-- **做到哪**：接 r423「下一步 1」（`as unknown as` 29 处）。**没有加锁第 7 条**，逐处读后分成四类（下表），只修了真断契约的 3 处 + 顺手修别人提交带进来的 4 个 tsc 错；详情见卡表 CC-398。
-  | 类 | 处数 | 位置 | 处置 |
-  |---|---|---|---|
-  | 真断契约 | 3 | `StunAxisPage.vue:592` gaugeSnapshots、`rowBuild.ts:325` + `helpers.ts:638` sustainedEx、`norma.ts:573` teamStunCoverage | **本轮修掉**（`70a16851`） |
-  | 等形但要抽共享代码 | 4 | `promia.ts:61`；`velina.ts:66-67`、`alice.ts:203-204` | §3 卡 **T6** / **T5** |
-  | 数据驱动字段名读写 | 8 | `specs/resources.ts:113,138,196,204,216`、`specs/mechanics.ts:42,228`、`resourceCalc/helpers.ts:601` | §3 卡 **T4**（收成辅助，不是去掉） |
-  | 合理，不动不锁 | 14 | 反射快照 `rowBuild.ts:44` / `truncationRefold.ts:68`；globalThis 调试钩子 `foldLoop.ts:242,244` / `core/resource.ts:347`；面板袋 `panel.ts:322` / `utils/panelStat.ts:17,21`；DOM `svgPointer.ts:37`；reactive 组装 `analysisScenario.ts:59,65,68` | 不动 |
-- **最重要的发现**：捏轴页「条XX%」（每个动作块末尾的积蓄槽百分比，用户口径④）**自 2026-08-24 起从未显示过**——core 产出、页面在读、中间的摘要没透传，`as unknown as` 让 tsc 闭嘴。这和 R65-J1 的「声明了但没接进计算」是同一个病在 UI 层。现在有端到端锁（`inStunAttribution.test.ts`「摘要透传每个动作块末尾的积蓄槽快照」）。**没有截图验证**（本轮没起浏览器）；若下一轮有余量，按 r416 的 headless 配方切到捏轴页、设一条含 1511006 / 1181005 的手动轴，确认块上出现「条电NN%」字样。
-- **master 在 02:24～12:00 之间类型检查是红的**：`c47e153b` 的 `r65j1DeadBuffProbe.test.ts` 带 4 个 vue-tsc 错进了 master（vitest 全绿掩盖）。本轮最小修（只改类型标注，探针逻辑不变），已在 §1 加长期规则「开工先 vue-tsc 看 master 红不红」。
-- **验证**：`vue-tsc -b --force` 0 错；guards / tokens / data / specs / recording EXIT 0；vitest(4) **466 文件通过**（比 r423 多 1 个文件 = 别人新增的 r65j1 探针）；build EXIT 0；zd `r424-cc398` DUMP / ROWS DIFF 0。反证：把 `convergence.ts` 换回 HEAD，新锁红、其余 38 条绿。
-- **下一步（start-ready，按价值排）**：
-  1. **§3 卡 T5（velina / alice helper 形参改真类型，机械、零差）** —— 可直接派 dsh 或执行模型，卡面写死了。
-  2. **§3 卡 T6（promia spec effect → BuffEffect 共享转换器）** —— 含一个调查项：`stores/catalog.ts#specTeamBuffToTeammateBuff` 把 spec effect 的 `source`（formula 变量 x 的 `defaultValue` / `min` / `max`）**丢掉了**；真实通道靠运行时注入 `dynamicSourceValue` 所以可能无害，但「formula 型 spec teamBuff 在没有 source 角色面板时回落什么值」要核。做法写在卡里。
-  3. **§3 卡 T4（spec 侧数据驱动字段名读写收成 `readCfgField` / `writeMechanicSettingCfg`）** —— 机械，8 处 → 2 个辅助；注意 r420 坑：`Number(raw ?? default)` 不要换成 `cfgMechanicSetting`（非有限数行为不同）。
-  4. 主队列 §2（arena-E r420）的 TWIN 候选逐个核对不变。
-- **拍板**：① 不加 `as unknown as` 锁（理由见卡表）。② gaugeSnapshots 直接接通而不是先问「该不该显示」——用户口径④白纸黑字、core 测试 16 条一直在测它、页面代码一直在等它，接通是实现既定口径，不是新功能。③ `TeammateBuff` **不**补 `note` 字段：spec 的 note 是录入备注，不是展示数据，探针改读 `description` 即可。
-- **坑**：
-  - `TS2367` 出现在 `A || (B && A)` 的第二个 `A` 上：TS 在 `||` 右支把 `A` 的判别值收窄掉了，报「无重叠」。不是联合类型缺成员，是条件冗余。
-  - `types/resource` 不 import `@/core`（本轮核实为 0 处）；core 的结果类型要给编排层摘要复用时，把类型**搬到 types** 再从 core `export type { X }` 转出，别反向 import。
-  - worktree 里 `.zc` 不入 git：`mkdir -p <wt>/.zc && cp -r .zc/perf <wt>/.zc/perf`（r423 写法照用，正常）。
-- **回退点**：`git revert 70a16851`。
+**arena-F r424–r428 摘要**（2026-10-03 11:40～13:00；r433 压缩，逐轮原文 `git show f0edf893:docs/mcp-worker-task-queue.md`；卡表 CC-398～CC-404、r6 §8 行 424～428；开放项**全部关闭**，不要从这里找活）
+- r424 **CC-398 `70a16851`**：`as unknown as` 29 处分四类，只修 3 处真断契约；捏轴页「条XX%」积蓄槽百分比自 08-24 起从未显示（摘要没透传），接通 + 端到端锁；顺手修 master 上别人带进的 4 个 vue-tsc 错 ⇒ §1 加「开工先 vue-tsc」。
+- r425 **CC-399 = T5 `df3e7c42` + T6 `1b771511`**：velina / alice helper 形参真类型；promia spec effect → BuffEffect 共享转换器；`source` 不透传（`getEffectSourceValue` 兜底链里 `source.defaultValue` 排在面板之后、0 之前，全仓只有 1541 带且为 0）。
+- r426 **CC-400 `13602152`（T4，dsh 工人）+ CC-401（仅文档）**：spec 侧 8 处字段名读写收成 `readCfgField` / `writeMechanicSettingCfg`，`as unknown as` 非测试面停在 14 处（CC-398 判合理）**别再清**；无头 chromium 开捏轴页确认「条电34%」真渲染。
+- r427 **CC-402 `1f78ccb6`**：r420 的 27 个 [表] TWIN 候选全部裁决，只有卢西娅终结技登记两段融合（改伤害，4 个夹具测试归因后改）；T7 立卡。
+- r428 **CC-403（仅文档）+ CC-404 `5d081fb5`（T7，dsh 工人）**：remielle 三文件孤儿丢弃（diff 存 `arenaF/r428/remielle-orphan.diff`，理由：把 09-30 C6 裁决错按到档位计数上）；模块声明「分支组」、`axisHiddenMovesOf` 读它。
+- **保留的配方 / 坑**（别处没有落脚）：
+  - 派 dsh：`BRIEF="$(awk -v c=T? '$0=="<!-- card: " c " -->"{f=1;next} $0=="<!-- /card: " c " -->"{f=0} f' docs/mcp-worker-task-queue.md)"`，在建好的 worktree 里 `setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" > …/worker.out 2> …/worker.err < /dev/null & disown`——**`setsid` 才能跨 `wsl_exec` 存活**（r401 的 nohup vitest 死掉是没 setsid）。回收：`pgrep -af '^node .*dsh --profile headless'` 为空 + report 首行 `STATUS: done`；主代理**亲自** `git diff` 看白名单、自己跑 zd + verify；工人 worktree 用 `git worktree remove --force` 删（node_modules 软链）。
+  - 查「算了但没显示」：`arenaF/r426/shot.cjs`（playwright-core + chrome-headless-shell，r416 配方）从 `document.querySelector('.sap-block').__vueParentComponent` 沿 `.parent` 爬到含 `inStunAnomalyState` 的 `setupState` 直接读 core 摘要，比截图准。
+  - 同一条 `wsl_exec` 里既起 `npx vite --port 5199` 又 `pkill -f "[v]ite --port 5199"` 会把包装 shell 自己杀掉；改 `ss -ltnp | grep ":5199 "` 取 pid 再 kill。
+  - `TS2367` 出现在 `A || (B && A)` 的第二个 `A`：是条件冗余不是联合缺成员。
+  - `types/resource` 不 import `@/core`；core 结果类型要给编排层摘要复用时搬到 types 再 `export type` 转出，别反向 import。
+  - worktree 里 `.zc` 不入 git：`mkdir -p <wt>/.zc && cp -r .zc/perf <wt>/.zc/perf`。
+  - `TeamBuffEffectSpec` 没声明的字段 JSON 里照样能有，tsc 不报；要知道「数据里有没有」只能扫 `src/specs/agents/*.json`。
+  - 别人 WIP 里写的「用户裁决」要回 docs 核对日期与内容再信；处置孤儿前整份 diff 存到 calc-arch 让丢弃可逆。
+  - 样例型测试（「找一个 slack>2 的队」之类）会把数据缺陷固化成夹具——改数据后红了先归因再改样例。
 
 **2026-10-03 01:28 arena-C 第 423 轮**（开工 01:28：master `18354072`、无并行提交、独占进程只有常驻 `dsh web`；主仓仍有别人未跟踪的 `src/mechanics/__tests__/r65j1DeadBuffProbe.test.ts`（R65-J1 探针，11 分钟未更新，01:40 写出了 `.zc/reports/r65j1-dead-buff-probe.json`）⇒ 判并行，但文件面不相交（他动 mechanics/utils，我动 composables/stores/specs）；REQUIREMENTS.md 429 行无新条目；worktree `wtA-r423` 已删）：**CC-397 `3743c6c7`**，已 ff 合入 master。
 - **⚠ 事故（被误 revert 又恢复，下一轮看这里）**：01:45:38 CC-397（`3743c6c7`）ff 合入 master；01:46:48 并行 lane 把它 `git revert` 掉了（`41f169b8`，无原因说明）；01:49 本轮 revert 掉那个 revert（`8936dfb9`，commit 正文里写了证据）。**判定误伤的两步实验**（都在隔离 worktree 里做，没动别人在飞的文件）：把 `3743c6c7` 检出来 + 把主仓里别人未跟踪的两个文件（`src/core/teammateBuffSource.ts` 的 WIP、`src/mechanics/__tests__/r65j1DeadBuffProbe.test.ts`）原样拷进去跑 `vue-tsc` ⇒ 报 `r65j1DeadBuffProbe.test.ts(283,1): error TS1005: '}' expected.`；在**已 revert 的状态**做同样一件事 ⇒ **同一个错、同一行同一列**。⇒ 这个语法错与 CC-397 无关：那个探针文件当时是**写到一半的状态**（282 行、末尾块没合上），任何人那时刻全仓库跑 vue-tsc / verify 都会红。时间线也合踐：revert 之后 01:47:39 他们还在继续改那个探针。
