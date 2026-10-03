@@ -14,7 +14,7 @@
  * - 角色标记只画有 `environmentIndex` 的（无环境数据的**不画**，不猜位置）。
  */
 import { VERSION_NODES } from '@/data/versionTimeline'
-import { versionXOf, type PlotBox } from './versionChartGeometry'
+import { versionXOf, niceStep as niceStepOf, type PlotBox } from './versionChartGeometry'
 import type { InflationPoint, InflationSeries, ReleaseStrengthPoint } from './inflationCurve'
 
 export interface InflationChartLayout extends PlotBox {
@@ -37,14 +37,10 @@ export const INFLATION_LAYOUT: InflationChartLayout = {
   bottom: 278,
 }
 
-/** 「优美步长」1/2/5 × 10^n，目标 4~6 条网格线 */
+/** 「优美步长」1/2/5 × 10^n，目标 4~6 条网格线（算法单源 versionChartGeometry#niceStep，CC-427；此处只做 range/ticks 换算） */
 export function niceStep(range: number, targetTicks = 5): number {
   if (!(range > 0)) return 1
-  const raw = range / Math.max(1, targetTicks)
-  const mag = 10 ** Math.floor(Math.log10(raw))
-  const norm = raw / mag
-  const mult = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10
-  return mult * mag
+  return niceStepOf(range / Math.max(1, targetTicks))
 }
 
 export interface InflationYAxis {

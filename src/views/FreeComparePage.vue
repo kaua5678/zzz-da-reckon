@@ -248,8 +248,8 @@
  *
  * 复用（规则 12，逐个真查过再引用）：
  * - `seriesFilter.ts#useSeriesFilter`：图例点选显隐（隐藏必须同时退出派生量 —— 纵轴按可见线缩放）
- * - `versionChartGeometry` 的同款「优美步长纵轴」思路（本页自己算是因为 x 维度是动态的，
- *   版本节点数固定那套不适用）
+ * - `versionChartGeometry#scYRangeOf / scYStepOf / scYOf / scYGridOf / scGridStartOf`：纵轴几何直接复用（CC-427；
+ *   此前本页手抄了一份，理由写的是「x 维度动态」——但纵轴几何只吃 y 值与 PlotBox，与 x 无关）
  * - `agentPresentation.ts#colorOf`：系列配色（与全仓图表同一套）
  * - `composables/analysisScenario.ts#withAnalysisScenario`：求值跑在独立场景上（r372，求值器内部已封装，本页不碰）
  */
@@ -272,6 +272,7 @@ import {
   setupCodeLabel,
 } from '@/composables/freeCompare/axes'
 import { bestSeriesIndexByLevel, formatMetric, metricDef, metricOptions } from '@/composables/freeCompare/metrics'
+import { scGridStartOf, scYGridOf, scYOf, scYRangeOf, scYStepOf } from '@/composables/versionChartGeometry'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
 
 const catalog = useCatalogStore()
@@ -476,54 +477,24 @@ const plotH = 250
 const legend = useSeriesFilter(() => (result.value?.series ?? []).map(s => ({ id: s.id, name: s.label })))
 const visibleSeries = computed(() => legend.filter(result.value?.series ?? []))
 
-/** 纵轴范围：只看可见系列（隐藏必须退出派生量，否则筛选看着没生效） */
-const yRange = computed(() => {
-  const vals = visibleSeries.value
-    .flatMap(s => s.values)
-    .filter((v): v is number => v !== null && Number.isFinite(v))
-  if (vals.length === 0) return { min: 0, max: 1 }
-  let min = Math.min(...vals)
-  let max = Math.max(...vals)
-  if (max - min < 1e-9) { min -= 1; max += 1 }
-  const pad = (max - min) * 0.08
-  return { min: min - pad, max: max + pad }
-})
-
-/** 优美步长（1/2/5×10^n），目标 4~5 条网格线 */
-function niceStep(raw: number): number {
-  if (raw <= 0) return 1
-  const exp = Math.floor(Math.log10(raw))
-  const base = Math.pow(10, exp)
-  const f = raw / base
-  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * base
-}
-const yStep = computed(() => niceStep((yRange.value.max - yRange.value.min) / 4))
-const yGrid = computed(() => {
-  const { min, max } = yRange.value
-  const step = yStep.value
-  const start = Math.ceil(min / step) * step
-  const out: number[] = []
-  for (let v = start; v <= max + 1e-9; v += step) out.push(yOf(v))
-  return out
-})
-const yGridValues = computed(() => {
-  const { min, max } = yRange.value
-  const step = yStep.value
-  const start = Math.ceil(min / step) * step
-  const out: number[] = []
-  for (let v = start; v <= max + 1e-9; v += step) out.push(v)
-  return out
-})
+/** 纵轴范围：只看可见系列（隐藏必须退出派生量，否则筛选看着没生效）；几何复用 versionChartGeometry（CC-427） */
+const yRange = computed(() =>
+  scYRangeOf(
+    visibleSeries.value
+      .flatMap(s => s.values)
+      .filter((v): v is number => v !== null && Number.isFinite(v)),
+  ),
+)
+const plotBox = { padT, plotH }
+const yGrid = computed(() => scYGridOf(yRange.value, plotBox))
 function yOf(v: number): number {
-  const { min, max } = yRange.value
-  const t = max - min < 1e-9 ? 0.5 : (v - min) / (max - min)
-  return padT + plotH - t * plotH
+  return scYOf(v, yRange.value, plotBox)
 }
 function yLabel(i: number): string {
+  const step = scYStepOf(yRange.value)
+  const v = scGridStartOf(yRange.value, step) + i * step
   const def = resultDef.value
-  const v = yGridValues.value[i] ?? 0
-  if (!def) return String(Math.round(v))
-  return def.unit === '%' ? `${(v * 100).toFixed(def.digits)}%` : formatMetric(def, v)
+  return def ? formatMetric(def, v) : String(Math.round(v))
 }
 function levelX(i: number): number {
   const n = result.value?.levels.length ?? 0

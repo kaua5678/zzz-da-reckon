@@ -132,6 +132,20 @@ describe('Chart 7 纵轴（贴合可见伤害、±8%、优美步长）', () => {
     expect(niceStep(120)).toBe(200)
     expect(niceStep(0)).toBe(1)      // 防除零
   })
+  it('CC-427 源码锁：1/2/5 阶梯只在 versionChartGeometry 一处', async () => {
+    const { readFileSync, readdirSync, statSync } = await import('node:fs')
+    const { join, resolve, relative } = await import('node:path')
+    const SRC = resolve(__dirname, '../..')
+    const walk = (d: string): string[] => readdirSync(d).flatMap(n => {
+      const p = join(d, n)
+      if (n === 'node_modules' || n === '__tests__') return []
+      return statSync(p).isDirectory() ? walk(p) : (/\.(ts|vue)$/.test(n) ? [p] : [])
+    })
+    const hits = walk(SRC)
+      .filter(p => /<=\s*2\s*\?\s*2\s*:\s*\w+\s*<=\s*5\s*\?\s*5\s*:\s*10/.test(readFileSync(p, 'utf8')))
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+    expect(hits).toEqual(['composables/versionChartGeometry.ts'])
+  })
 
   it('网格与标签同源：起点上取整到步长整数倍', () => {
     const r = { min: 117, max: 1000 }
