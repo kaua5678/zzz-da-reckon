@@ -609,6 +609,30 @@ export interface ReleaseModifierInput {
   self: { slot: number; cinemaLevel: number; panel: DeepReadonly<PanelValues> | undefined }
 }
 
+/** CC-444：`poolSummary` 钩子的伤害池行子集（展示层 `DamagePoolRow` 的命名结构子集，mechanics 不 import composables） */
+export interface PoolSummaryRowLike {
+  agentId: string
+  type: string
+  count: number
+  totalDamage: number
+}
+export interface AgentPoolSummaryInput {
+  /** 全队伤害池行（含其他角色；模块按 agentId / type 自取） */
+  damagePoolRows: ReadonlyArray<PoolSummaryRowLike>
+  anomalyPoolResult: AnomalyPoolResult | null
+  getMechanicSetting: (id: string, fallback: number) => number
+}
+export interface PoolSummaryStat {
+  label: string
+  value: string
+  detail?: string
+  /** 样式语义：highlight=主行 / bonus=加成行；缺省普通行 */
+  tone?: 'highlight' | 'bonus'
+}
+export interface PoolSummarySection {
+  title: string
+  stats: PoolSummaryStat[]
+}
 export interface AgentResourceSectionsInput {
   result: DeepReadonly<CharacterResourceResult>
   anomalyPoolResult?: AnomalyPoolResult | null
@@ -788,6 +812,12 @@ export interface AgentMechanicModule {
   releaseModifierScope?: 'self' | 'team'
   /** 生成资源池卡片上的通用专属资源展示段 */
   resourceSections?(input: AgentResourceSectionsInput): SpecialResourceSection[]
+  /**
+   * CC-444：结果页「伤害池」卡尾部的角色专属伤害汇总段（纯展示）。原 ResultPage.vue 按爱丽丝行类型字符串
+   * （'极性强击' / '爱丽丝6命附伤'）硬编码一块 `aliceDamageSummary`，页面复制了模块默认值（0.95s / 18% / 5 次）。
+   * 现由模块自己从伤害池行 + 异常池结果汇总；无可展示内容 ⇒ null。页面经 `teamPoolSummaries` 门面按在场模块收集。
+   */
+  poolSummary?(input: AgentPoolSummaryInput): PoolSummarySection | null
   /** 声明可在资源利用率页调整的机制参数 */
   settings?: MechanicSetting[]
   /**

@@ -395,42 +395,14 @@
               </div>
             </div>
 
-            <!-- 爱丽丝畏缩 DOT + 专属伤害汇总 -->
-            <div v-if="aliceDamageSummary" class="pool-coverage-section">
-              <div class="pool-subtitle">爱丽丝伤害汇总</div>
+            <!-- 角色模块伤害汇总段（CC-444：原爱丽丝专块 → poolSummary 钩子） -->
+            <div v-for="sec in poolSummarySections" :key="sec.title" class="pool-coverage-section">
+              <div class="pool-subtitle">{{ sec.title }}</div>
               <div class="pool-summary-body">
-                <div class="pool-stat highlight">
-                  <span class="pool-stat-label">极性强击</span>
-                  <span class="pool-stat-value">{{ fmt(aliceDamageSummary.polarAssaultDamage) }}</span>
-                  <span class="pool-stat-detail">{{ aliceDamageSummary.polarAssaultEvents }} 次</span>
-                </div>
-                <div class="pool-stat">
-                  <span class="pool-stat-label">畏缩 DOT</span>
-                  <span class="pool-stat-value">{{ fmt(aliceDamageSummary.coweringDotDamage) }}</span>
-                  <span class="pool-stat-detail">{{ aliceDamageSummary.dotTicks }} tick · {{ aliceDamageSummary.dotInterval }}s/次</span>
-                </div>
-                <div class="pool-stat bonus">
-                  <span class="pool-stat-label">畏缩紊乱加成</span>
-                  <span class="pool-stat-value">+{{ fmt(aliceDamageSummary.coweringDisorderBonus) }}</span>
-                  <span class="pool-stat-detail">每剩余1s物理异常 +{{ aliceDamageSummary.disorderBonusPerSec }}%</span>
-                </div>
-                <div class="pool-stat">
-                  <span class="pool-stat-label">六命额外攻击</span>
-                  <span class="pool-stat-value">{{ fmt(aliceDamageSummary.cinema6Damage) }}</span>
-                  <span class="pool-stat-detail">
-                    {{ aliceDamageSummary.cinema6Count }} 次 ·
-                    每次状态
-                    <n-input-number
-                      :value="aliceCinema6PerStateCount"
-                      size="tiny"
-                      :min="0"
-                      :max="6"
-                      :step="1"
-                      style="width: 56px; display: inline-flex; vertical-align: middle"
-                      @update:value="v => configStore.setMechanicSetting('alice.cinema6PerStateCount', v ?? 5)"
-                    />
-                    次
-                  </span>
+                <div v-for="st in sec.stats" :key="st.label" class="pool-stat" :class="st.tone">
+                  <span class="pool-stat-label">{{ st.label }}</span>
+                  <span class="pool-stat-value">{{ st.value }}</span>
+                  <span v-if="st.detail" class="pool-stat-detail">{{ st.detail }}</span>
                 </div>
               </div>
             </div>
@@ -801,6 +773,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { fmt } from '@/utils/format'
+import { teamPoolSummaries } from '@/composables/agentMechanicView'
 import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS, QUICK_ASSIST_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 import { DECIBEL_COMPANION_RATIO } from '@/data/decibelCompanion'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
@@ -1034,63 +1007,12 @@ const anomalyEventRows = computed<AnomalyEventRecord[]>(() => {
   return rows
 })
 
-// ============ 爱丽丝伤害汇总 ============
-
-interface AliceDamageSummary {
-  polarAssaultDamage: number
-  polarAssaultEvents: number
-  coweringDotDamage: number
-  dotTicks: number
-  dotInterval: number
-  coweringDisorderBonus: number
-  disorderBonusPerSec: number
-  cinema6Damage: number
-  cinema6Count: number
-}
-
-const aliceDamageSummary = computed<AliceDamageSummary | null>(() => {
-  const dot = anomalyPoolResult.value?.coweringDot
-  const hasDot = dot && dot.totalDotDamage > 0
-
-  // 从 damagePoolRows 中汇总爱丽丝专属行
-  let polarAssaultDamage = 0
-  let polarAssaultEvents = 0
-  let cinema6Damage = 0
-  let cinema6Count = 0
-  for (const row of damagePoolRows.value) {
-    if (row.type === '极性强击') {
-      polarAssaultDamage += row.totalDamage
-      polarAssaultEvents += row.count
-    }
-    if (row.type === '爱丽丝6命附伤') {
-      cinema6Damage += row.totalDamage
-      cinema6Count += row.count
-    }
-  }
-
-  if (!hasDot && polarAssaultDamage <= 0 && cinema6Damage <= 0) return null
-
-  // 畏缩紊乱加成 = 每剩余1秒物理异常 +bonusPerSec%，从紊乱公式读取
-  const disorderBonusPerSec = 18 // 默认值，来自 CoweringConfig
-
-  return {
-    polarAssaultDamage,
-    polarAssaultEvents,
-    coweringDotDamage: dot?.totalDotDamage ?? 0,
-    dotTicks: dot?.totalTicks ?? 0,
-    dotInterval: dot?.dotInterval ?? 0.95,
-    coweringDisorderBonus: 0, // 紊乱回伤加成在 disorder detail 中已计入，此处仅展示信息
-    disorderBonusPerSec,
-    cinema6Damage,
-    cinema6Count,
-  }
-})
-
-/** 爱丽丝 6 命每状态额外攻击次数（从 config store 读取，用户可在资源利用率页或此处调节） */
-const aliceCinema6PerStateCount = computed(() =>
-  configStore.getMechanicSetting('alice.cinema6PerStateCount', 5),
-)
-
+// ============ 角色模块伤害汇总段（CC-444）============
+const poolSummarySections = computed(() => teamPoolSummaries(configStore.team, {
+  damagePoolRows: damagePoolRows.value,
+  anomalyPoolResult: anomalyPoolResult.value,
+  getMechanicSetting: (id, fallback) => configStore.getMechanicSetting(id, fallback),
+}))
 // ============ 子 tabs ============
 
 const activeResultTab = ref('pool')

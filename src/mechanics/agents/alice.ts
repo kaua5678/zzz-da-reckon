@@ -6,9 +6,11 @@ import type {
   AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
+  AgentPoolSummaryInput,
   AgentResourceSectionsInput,
   ExtraAnomalyRowGroup,
   ExtraAnomalyRowsInput,
+  PoolSummarySection,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { AgentSkills } from '@/types/catalog'
@@ -406,6 +408,43 @@ export function aliceExternalCountsOf(
   return { assaultCount, disorderCount: anomalyPool.disorderCount ?? 0 }
 }
 
+// ============ poolSummary（CC-444）============
+/** 伤害池行类型字面量：与下方 extraAnomalyRows 产出行的 `type` 同源（单一归属，页面不再复制） */
+const POLAR_ASSAULT_ROW_TYPE = '极性强击'
+const CINEMA6_ROW_TYPE = '爱丽丝6命附伤'
+/**
+ * 结果页「爱丽丝伤害汇总」段（原 ResultPage.vue `aliceDamageSummary` 逐字搬迁，CC-444）。
+ * 极性强击 / 六命附伤从伤害池行按 type 聚合；畏缩 DOT 读异常池 `coweringDot`。
+ * 原页面「畏缩紊乱加成 +0」行为常量 0（紊乱回伤已计入 disorder detail），属死展示，本次删除。
+ */
+function buildAlicePoolSummary({ damagePoolRows, anomalyPoolResult, getMechanicSetting }: AgentPoolSummaryInput): PoolSummarySection | null {
+  const dot = anomalyPoolResult?.coweringDot
+  const hasDot = !!dot && dot.totalDotDamage > 0
+  let polarAssaultDamage = 0
+  let polarAssaultEvents = 0
+  let cinema6Damage = 0
+  let cinema6Count = 0
+  for (const row of damagePoolRows) {
+    if (row.agentId !== ALICE_AGENT_ID) continue
+    if (row.type === POLAR_ASSAULT_ROW_TYPE) {
+      polarAssaultDamage += row.totalDamage
+      polarAssaultEvents += row.count
+    } else if (row.type === CINEMA6_ROW_TYPE) {
+      cinema6Damage += row.totalDamage
+      cinema6Count += row.count
+    }
+  }
+  if (!hasDot && polarAssaultDamage <= 0 && cinema6Damage <= 0) return null
+  const perStateCount = getMechanicSetting('alice.cinema6PerStateCount', 5)
+  return {
+    title: '爱丽丝伤害汇总',
+    stats: [
+      { label: '极性强击', value: fmt(polarAssaultDamage), detail: `${polarAssaultEvents} 次`, tone: 'highlight' },
+      { label: '畏缩 DOT', value: fmt(dot?.totalDotDamage ?? 0), detail: `${dot?.totalTicks ?? 0} tick · ${dot?.dotInterval ?? 0}s/次` },
+      { label: '六命额外攻击', value: fmt(cinema6Damage), detail: `${cinema6Count} 次 · 每次状态 ${perStateCount} 次（资源利用率页「机制参数」可调）` },
+    ],
+  }
+}
 export const aliceMechanic: AgentMechanicModule = {
   id: 'agent:alice',
   agentIds: [ALICE_AGENT_ID],
@@ -435,6 +474,7 @@ export const aliceMechanic: AgentMechanicModule = {
   buildAnomalyEvents: buildAliceAnomalyEvents,
   buildResourceResult: buildAliceResourceResult,
   resourceSections: buildAliceResourceSections,
+  poolSummary: buildAlicePoolSummary,
   /**
    * 剑仪的两条**外部次数源**注入（全队强击 / 紊乱）。
    *

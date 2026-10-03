@@ -6,7 +6,7 @@
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
 import { AUTO_AXIS_PRESET_HINTS, axisHiddenMovesOf, getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
-import type { AgentMechanicModule, AxisEditorBlockMark, CharacterCountInputDecl } from '@/mechanics/types'
+import type { AgentMechanicModule, AgentPoolSummaryInput, AxisEditorBlockMark, CharacterCountInputDecl, PoolSummarySection } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
 
 /**
@@ -48,6 +48,26 @@ export function agentResourceSections(
 ): AgentResourceSections {
   const mod = agentId ? getAgentMechanic(agentId) : undefined
   return mod?.resourceSections?.(input) ?? []
+}
+
+/**
+ * 队伍在场模块的伤害池汇总段（CC-444，原位置：ResultPage.vue `aliceDamageSummary` 爱丽丝专块）。
+ * 顺序 = 槽位顺序；同一 agentId 只取一次；模块未实现或返回 null 的跳过。
+ */
+export function teamPoolSummaries(
+  team: ReadonlyArray<{ agentId?: string | null } | null | undefined>,
+  input: AgentPoolSummaryInput,
+): PoolSummarySection[] {
+  const seen = new Set<string>()
+  const out: PoolSummarySection[] = []
+  for (const char of team) {
+    const id = char?.agentId
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    const sec = getAgentMechanic(id)?.poolSummary?.(input)
+    if (sec) out.push(sec)
+  }
+  return out
 }
 
 export type AgentAxisBlockMarksInput = Parameters<NonNullable<AgentMechanicModule['axisEditorBlockMarks']>>[0]
