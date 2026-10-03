@@ -80,6 +80,8 @@ describe('雨果（1291）核心与决算', () => {
         hugoUltimateVerdictRatio: 1,
         hugoRemainingStunSeconds: 5,
         hugoEchoCoverage: 1,
+        // CC-409：强特终结 1291010 动作时间读 cfg.moveActionTimes（引擎由 catalog 预填；这里手填 = 表值）
+        moveActionTimes: { '1291010': 1.805 },
       },
       state: { exSpecialCount: 2, ultimateCount: 1 },
       executions,

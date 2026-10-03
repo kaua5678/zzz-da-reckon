@@ -9,6 +9,7 @@ import { fmt } from '@/utils/format'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
@@ -76,9 +77,7 @@ const ASHEN_COST = 20 // 墨烬影消（凝云术前置）
 const CLOUD_MAX_COST = 40 // 凝云术满蓄耗能
 const CLOUD_MAX_SECONDS = 2 // 凝云术满蓄时长
 const CLOUD_CYCLE_COST = 60 // 凝云术链满状态（墨烬影消 20 + 凝云满蓄 40）
-const INK2_SECONDS = 0.2 // 墨痕化形 #2（完美格挡赠送）
 const INK2_CHAIN_SECONDS = 1.083 + 1.567 // #1+#3 = 2.65s
-const ASHEN_SECONDS = 0.3 // 墨烬影消动作时间
 const CORE_DMG_BONUS = 60 // 核心被动 Lv.7 招式限定增伤
 const STUN_EX_BONUS = 30 // 额外能力：凝云术/墨烬影消命中失衡敌人伤害+30%
 const NINGSHEN_CRIT_DMG = 40 // 额外能力：终结技后凝神 15s 暴伤+40%
@@ -162,7 +161,9 @@ const DEFAULT_C6_GIFT_ULT_COUNT = -1 // 调息赠送符法千重次数：-1 = �
 const DEFAULT_SHUFA_ULT_COUNT = -1
 const SHUFA_ULT_COST = 120 // 术法值单次符法千重消耗（与 spec spendRules 一致）
 
-/** 强特链分解（用户确认口径；纯函数便于测试） */
+/** 强特链分解（用户确认口径；纯函数便于测试）
+ *  `ink2Seconds` / `ashenSeconds` = 墨痕化形 #2（1371024）/ 墨烬影消（1371026）动作时间，
+ *  CC-409 起由调用方从 `cfg.moveActionTimes`（catalog）取传入，纯函数本身不读 cfg。 */
 export function computeYixuanExChain(
   income: number,
   ink2Count: number,
@@ -170,7 +171,9 @@ export function computeYixuanExChain(
   perfectBlockCount: number,
   axisCloudCount: number,
   axisCloudSeconds: number,
+  times: { ink2Seconds: number; ashenSeconds: number },
 ): YixuanExChain {
+  const { ink2Seconds, ashenSeconds } = times
   const incomeSafe = Math.max(0, income)
   const ink2 = Math.max(0, Math.floor(ink2Count))
   const ink3 = Math.max(0, Math.floor(ink3Count))
@@ -195,8 +198,8 @@ export function computeYixuanExChain(
   const cloudTotal = axisCloud + cloudOut
 
   const flashSpent = inkSpent + axisCloudSpent + cloudOut * CLOUD_CYCLE_COST
-  const chainSeconds = ink1 * INK2_CHAIN_SECONDS + ink4 * 0.966 + ink2Move * INK2_SECONDS
-    + axisCloud * (ASHEN_SECONDS + axisSec) + cloudOut * (ASHEN_SECONDS + CLOUD_MAX_SECONDS)
+  const chainSeconds = ink1 * INK2_CHAIN_SECONDS + ink4 * 0.966 + ink2Move * ink2Seconds
+    + axisCloud * (ashenSeconds + axisSec) + cloudOut * (ashenSeconds + CLOUD_MAX_SECONDS)
 
   return {
     cycles: ink1 + ink4 + ashenTotal + cloudTotal,
@@ -576,7 +579,11 @@ function resolveYixuanChain(cfg: AgentCharConfigInput['cfg'], exSpecialCount: nu
   const income = Math.max(0, exSpecialCount) * CLOUD_CYCLE_COST
   const axisCloudSpent = axisCloud * (ASHEN_COST + axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS))
   const { ink3, perfectBlocks } = resolveYixuanAutoInputs(cfg, income, ink2, axisCloudSpent)
-  return computeYixuanExChain(income, ink2, ink3, perfectBlocks, axisCloud, axisSec)
+  // 动作时间读 cfg.moveActionTimes（catalog，CC-409）
+  return computeYixuanExChain(income, ink2, ink3, perfectBlocks, axisCloud, axisSec, {
+    ink2Seconds: cfgMoveActionTime(cfg, MOVE.ink2),
+    ashenSeconds: cfgMoveActionTime(cfg, MOVE.ashen),
+  })
 }
 
 /**

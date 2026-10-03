@@ -37,6 +37,7 @@ import type {
 import type { ModuleFeedback } from '../types'
 import { inferSkillDamageTarget } from '@/core/damage'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 
 export const ANBY_ZERO_ID = '1381'
@@ -50,7 +51,6 @@ export const ANBY_ZERO_C1_WHITE_LIGHTNING_PER_EX = 3
 export const ANBY_ZERO_RAIJITU_PER_LIGHTNING = 3
 export const ANBY_ZERO_VORTEX_PER_LIGHTNING = 6
 export const ANBY_ZERO_CRITICAL_MOVE_ID = '1381023'
-export const ANBY_ZERO_CRITICAL_ACTION_TIME = 0.867
 /** 影画2：每次终结技获得 6 层电鸣（等效白雷触发，计入总量） */
 export const ANBY_ZERO_C2_THUNDER_PER_ULT = 6
 /** 影画2：每消耗 3 层电鸣，下一次苍光·临界速度加快 50%（动作时间 ÷1.5） */
@@ -93,6 +93,8 @@ export function computeAnbyZeroCycle(input: {
   teammateWhiteLightning?: number
   additionalActive: boolean
   silverStarCoverage: number
+  /** 苍光·临界（1381023）动作时间（秒）：CC-409 起由调用方从 cfg.moveActionTimes 取；面板阶段不消费时间 */
+  criticalActionTime: number
 }): AnbyZeroCycle {
   const cinemaLevel = whole(input.cinemaLevel)
   const potentialLevel = Math.max(1, Math.min(6, whole(input.potentialLevel)))
@@ -117,8 +119,8 @@ export function computeAnbyZeroCycle(input: {
   const criticalFastCount = cinemaLevel >= 2 ? Math.min(criticalCount, ultimateCount * 2) : 0
   const criticalSlowCount = criticalCount - criticalFastCount
   const criticalActionTime = criticalCount > 0
-    ? ANBY_ZERO_CRITICAL_ACTION_TIME * (criticalFastCount / ANBY_ZERO_C2_CRITICAL_SPEEDUP + criticalSlowCount) / criticalCount
-    : ANBY_ZERO_CRITICAL_ACTION_TIME
+    ? input.criticalActionTime * (criticalFastCount / ANBY_ZERO_C2_CRITICAL_SPEEDUP + criticalSlowCount) / criticalCount
+    : input.criticalActionTime
   return {
     cinemaLevel,
     potentialLevel,
@@ -165,6 +167,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     teammateWhiteLightning: Number(cfg.anbyZeroTeammateWhiteLightning ?? 0),
     additionalActive: cfg.anbyZeroAdditionalActive === true,
     silverStarCoverage: Number(cfg.anbyZeroSilverStarCoverage ?? 1),
+    criticalActionTime: cfgMoveActionTime(cfg, ANBY_ZERO_CRITICAL_MOVE_ID),
   })
 }
 
@@ -239,6 +242,7 @@ function applyAnbyZeroPanel({ cinemaLevel, potentialLevel, panel, settings }: Ag
     teammateWhiteLightning: 0,
     additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
     silverStarCoverage: settings['anbyZero.silverStarCoverage'] ?? 1,
+    criticalActionTime: 0, // 面板阶段不消费苍光·临界动作时间（仅 buildExecutions 用）
   })
   if (cycle.critRateGain > 0) panel.critRate = (panel.critRate ?? 0) + cycle.critRateGain
   panel.dmgBonus = (panel.dmgBonus ?? 0) + cycle.coreDmgBonus

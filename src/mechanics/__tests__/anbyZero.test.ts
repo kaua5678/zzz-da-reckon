@@ -33,6 +33,7 @@ function cycle(overrides: Partial<Parameters<typeof computeAnbyZeroCycle>[0]> = 
     exSpecialCount: 2,
     additionalActive: true,
     silverStarCoverage: 1,
+    criticalActionTime: 0.867, // CC-409：苍光·临界 1381023 表值
     ...overrides,
   })
 }
@@ -71,6 +72,8 @@ describe('零号·安比执行行', () => {
     anbyZeroCangguangCount: 6,
     anbyZeroSilverStarCoverage: 1,
     anbyZeroAdditionalActive: true,
+    // CC-409：苍光·临界 1381023 动作时间来自 cfg.moveActionTimes（引擎由 catalog 预填；这里手填 = 表值）
+    moveActionTimes: { '1381023': 0.867 },
     ...extra,
   })
 
@@ -193,7 +196,7 @@ describe('零号·安比全队追加攻击增伤（teamBuff 全队通道）', ()
 })
 
 describe('零号安比滑块生效差分（防守卫冻结，SOP §3.5）', () => {
-  const base = { cinemaLevel: 0, potentialLevel: 6, exSpecialCount: 2, additionalActive: true, silverStarCoverage: 1 }
+  const base = { cinemaLevel: 0, potentialLevel: 6, exSpecialCount: 2, additionalActive: true, silverStarCoverage: 1, criticalActionTime: 0.867 }
 
   it('anbyZero.cangguangCount → 白雷总量差分（苍光次数直接入白雷池 → 雷缀次数）', () => {
     const on = computeAnbyZeroCycle({ ...base, cangguangCount: 6 })

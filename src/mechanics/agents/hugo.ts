@@ -22,6 +22,7 @@ import type {
 } from '../types'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
 
@@ -240,7 +241,7 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
     moveName: '魂狩·惩戒·决算终结一击',
     category: 'special',
     count: cycle.exVerdictCount,
-    actionTime: HUGO_EX_FINAL_ACTION_TIME,
+    actionTime: cfgMoveActionTime(cfg, '1291010'),
     damageMultiplier: HUGO_EX_FINAL_BASE_MULTIPLIER + cycle.verdictMultiplier,
     verdict: true,
     cinemaLevel: cycle.cinemaLevel,

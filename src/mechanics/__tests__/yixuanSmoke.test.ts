@@ -43,7 +43,7 @@ describe('仪玄 spec 机制（1371）', () => {
 
   it('强特链分解：2连/3连墨痕化形 + 完美格挡 + 剩余全凝云（用户口径）', () => {
     // 收入 540：2连×2（40/次）+ 3连×1（60/次）+ 完美格挡×3（免费）→ 剩余 540-140=400 → 凝云 floor(400/60)=6
-    const chain = computeYixuanExChain(540, 2, 1, 3, 0, 2)
+    const chain = computeYixuanExChain(540, 2, 1, 3, 0, 2, { ink2Seconds: 0.2, ashenSeconds: 0.3 })
     expect(chain.ink1).toBe(3)
     expect(chain.ink3).toBe(3)
     expect(chain.ink4).toBe(1)
@@ -55,12 +55,12 @@ describe('仪玄 spec 机制（1371）', () => {
     expect(chain.chainSeconds).toBeCloseTo(3 * 2.65 + 1 * 0.966 + 3 * 0.2 + 6 * 2.3, 3)
 
     // 全部凝云：无墨痕 → 9 循环
-    const allCloud = computeYixuanExChain(540, 0, 0, 0, 0, 2)
+    const allCloud = computeYixuanExChain(540, 0, 0, 0, 0, 2, { ink2Seconds: 0.2, ashenSeconds: 0.3 })
     expect(allCloud.cloudOut).toBe(9)
     expect(allCloud.flashSpent).toBe(540)
 
     // 轴内凝云：2 次 × 蓄力 1s（耗能 20+20/次）→ 剩余 540-80=460 → 轴外 7 循环
-    const axisChain = computeYixuanExChain(540, 0, 0, 0, 2, 1)
+    const axisChain = computeYixuanExChain(540, 0, 0, 0, 2, 1, { ink2Seconds: 0.2, ashenSeconds: 0.3 })
     expect(axisChain.axisCloud).toBe(2)
     expect(axisChain.cloudOut).toBe(7)
     expect(axisChain.flashSpent).toBe(2 * 40 + 7 * 60)

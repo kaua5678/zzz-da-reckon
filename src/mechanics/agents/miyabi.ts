@@ -23,6 +23,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { findMoveById } from '@/data/moveTableQueries'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 const MIYABI_AGENT_ID = '1091'
 /** 烈霜元素（独立元素，可在紊乱中与冰互紊） */
@@ -31,8 +32,6 @@ const FROSTFIRE = 'frostfire'
 const FROST_MOON_MOVE_ID = '1091029'
 /** 0命且无风队时冰焰覆盖率的自动默认：手法上总是打出霜寒后才够6豆，三段蓄力全打在[霜寒]上，全吃不到 80% 加成（用户口径） */
 const MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE = 0
-/** 霜月架势三段动作时间（秒） */
-const FROST_MOON_ACTION_TIME = 3.434
 /** 霜月架势三段消耗落霜 */
 const FROST_MOON_COST = 6
 /** 冰焰积蓄效率 = 暴击率×100%，上限80% */
@@ -59,10 +58,6 @@ const C6_FROST_MOON_DMG = 30
 const FROST_MOON_1_MOVE_ID = '1091027'
 /** 霜月 #2 move id（C6 赠送） */
 const FROST_MOON_2_MOVE_ID = '1091028'
-/** 霜月 #1 actionTime（秒） */
-const FROST_MOON_1_ACTION_TIME = 0.4
-/** 霜月 #2 actionTime（秒） */
-const FROST_MOON_2_ACTION_TIME = 0.567
 /** 霜月 #3 合轴锁定时间（秒）：非6命蓄力1秒后即可合轴 */
 const FROST_MOON_3_LOCK_SECONDS = 1.0
 
@@ -155,8 +150,8 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
 
 // ============ buildCharConfig ============
 
-function buildMiyabiCharConfig({ skills: _skills, cfg, panel, cinemaLevel }: AgentCharConfigInput): void {
-  cfg.miyabiFrostMoonActionTime = FROST_MOON_ACTION_TIME
+function buildMiyabiCharConfig({ cfg, panel, cinemaLevel }: AgentCharConfigInput): void {
+  // 霜月架势三段 actionTime 读 cfg.moveActionTimes（catalog，CC-409）
   cfg.miyabiCinemaLevel = cinemaLevel
   // 冰焰覆盖率已由 applyPanel 静态算好（settings + 队伍/命座自动默认），buildCharConfig 只读
   void panel
@@ -181,14 +176,14 @@ export function miyabiFrostMoonReserve(cfg: CharacterOperationConfig, state?: Re
   const res = getFrostFallResource(cfg, state as IterationState)
   if (!res || res.frostMoonCount <= 0) return null
   const count = res.frostMoonCount
-  const actionTime = cfg.miyabiFrostMoonActionTime ?? FROST_MOON_ACTION_TIME
+  const actionTime = cfgMoveActionTime(cfg, FROST_MOON_MOVE_ID)
   const out: ExtraNecessaryAction[] = [{
     count, moveName: '霜月 #3（账本预留）', actionTime,
     comboAlignRatio: (actionTime - FROST_MOON_3_LOCK_SECONDS) / actionTime, decibelRecovery: 0,
   }]
   if (hasMiyabiCinema6(cfg)) {
-    out.push({ count, moveName: '霜月 #1（C6赠送，账本预留）', actionTime: FROST_MOON_1_ACTION_TIME, comboAlignRatio: 0, decibelRecovery: 0 })
-    out.push({ count, moveName: '霜月 #2（C6赠送，账本预留）', actionTime: FROST_MOON_2_ACTION_TIME, comboAlignRatio: 0, decibelRecovery: 0 })
+    out.push({ count, moveName: '霜月 #1（C6赠送，账本预留）', actionTime: cfgMoveActionTime(cfg, FROST_MOON_1_MOVE_ID), comboAlignRatio: 0, decibelRecovery: 0 })
+    out.push({ count, moveName: '霜月 #2（C6赠送，账本预留）', actionTime: cfgMoveActionTime(cfg, FROST_MOON_2_MOVE_ID), comboAlignRatio: 0, decibelRecovery: 0 })
   }
   return out
 }
@@ -198,7 +193,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
   if (!res || res.frostMoonCount <= 0) return
 
   const frostMoonCount = res.frostMoonCount
-  const actionTime = cfg.miyabiFrostMoonActionTime ?? FROST_MOON_ACTION_TIME
+  const actionTime = cfgMoveActionTime(cfg, FROST_MOON_MOVE_ID)
   // 影画1（招式限定）：三段蓄力的每一段按已消耗落霜无视防御——#1(2豆)=12%、#2(4豆)=24%、#3(6豆)=36%
   const cinemaLevel = Math.max(0, Math.floor(Number(cfg.miyabiCinemaLevel ?? 0)))
   const m1DefShred = cinemaLevel >= 1
@@ -227,8 +222,8 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
   const hasC6 = hasMiyabiCinema6(cfg, cinemaLevel)
   if (hasC6 && frostMoonCount > 0) {
     for (const gift of [
-      { moveId: FROST_MOON_1_MOVE_ID, moveName: '普通攻击：霜月 #1（C6赠送）', at: FROST_MOON_1_ACTION_TIME },
-      { moveId: FROST_MOON_2_MOVE_ID, moveName: '普通攻击：霜月 #2（C6赠送）', at: FROST_MOON_2_ACTION_TIME },
+      { moveId: FROST_MOON_1_MOVE_ID, moveName: '普通攻击：霜月 #1（C6赠送）', at: cfgMoveActionTime(cfg, FROST_MOON_1_MOVE_ID) },
+      { moveId: FROST_MOON_2_MOVE_ID, moveName: '普通攻击：霜月 #2（C6赠送）', at: cfgMoveActionTime(cfg, FROST_MOON_2_MOVE_ID) },
     ]) {
       executions.push({
         moveId: gift.moveId,
@@ -473,8 +468,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 星见雅命座等级（影画1 招式限定减防等按此门控） */
     miyabiCinemaLevel?: number
-    /** 雅霜月架势三段 actionTime = 3.434 */
-    miyabiFrostMoonActionTime?: number
   }
 }
 
