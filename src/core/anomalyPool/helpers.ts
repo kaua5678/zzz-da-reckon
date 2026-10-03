@@ -51,7 +51,7 @@ import type {
 } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
-import { VARIANT_ELEMENT_TO_BASE, getBaseElement, elementAnomalyBuildUpEfficiency, resolveStatElement } from '@/data/anomalyElement'
+import { VARIANT_ELEMENT_TO_BASE, getBaseElement, resolveStatElement, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
 import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { LEVEL_COEFF_60, LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
@@ -470,15 +470,9 @@ export function calcPerHitBuildUp(
   element: string,
   rowEfficiencyBonusPct = 0,
 ): number {
-  // 异常掌控区（anomalyMastery / 100，无上限）
-  const mastery = Math.floor(panel.anomalyMastery ?? 0)
-  const afterMastery = baseBuildUp * (mastery / 100)
-
-  // 异常积蓄效率区（面板 + 元素 + 行级招式限定，全部**加算**）
-  const buildUpEff = (panel.anomalyBuildUpEfficiency ?? 0)
-    + elementAnomalyBuildUpEfficiency(panel, element)
-    + rowEfficiencyBonusPct
-  const afterEff = afterMastery * (1 + buildUpEff / 100)
+  // 异常掌控区（floor(anomalyMastery) / 100，无上限）× 异常积蓄效率区（面板 + 元素 + 行级招式限定，全部**加算**）
+  // CC-429：两区搬到 data/anomalyElement#anomalyBuildUpAfterMasteryAndEfficiency，与 StatPanel「当前面板积蓄乘数」同源
+  const afterEff = anomalyBuildUpAfterMasteryAndEfficiency(baseBuildUp, panel, element, rowEfficiencyBonusPct)
 
   // 异常积蓄抗性区
   const anomalyResRed = (panel.enemyAnomalyResReduction ?? 0) + getElementEnemyAnomalyResReduction(panel, element)

@@ -47,3 +47,24 @@ export function elementAnomalyBuildUpEfficiency(panel: PanelValues, element: str
   if (baseElement === 'ether') return panel.etherAnomalyBuildUpEfficiency ?? 0
   return 0
 }
+
+/**
+ * 异常积蓄的「异常掌控区 × 积蓄效率区」（CC-429 单一事实源；引擎 `calcPerHitBuildUp` 与 StatPanel 展示共用）。
+ * - 掌控区 = floor(anomalyMastery) / 100，无上限（整数截断是引擎口径，展示层不得自己抄一份）
+ * - 效率区 = 1 + (面板通用效率 + 元素限定效率 + 行级招式限定效率) / 100，全部**加算**
+ * 乘法顺序 `base × 掌控 × 效率` 与改前引擎逐字一致（零差快照位级不变）；展示层传 `base = 1` 得到「当前面板积蓄乘数」。
+ * 积蓄抗性区不在这里（它依赖敌方抗性，展示层不显示）。
+ */
+export function anomalyBuildUpAfterMasteryAndEfficiency(
+  baseBuildUp: number,
+  panel: PanelValues,
+  element: string,
+  rowEfficiencyBonusPct = 0,
+): number {
+  const mastery = Math.floor(panel.anomalyMastery ?? 0)
+  const afterMastery = baseBuildUp * (mastery / 100)
+  const buildUpEff = (panel.anomalyBuildUpEfficiency ?? 0)
+    + elementAnomalyBuildUpEfficiency(panel, element)
+    + rowEfficiencyBonusPct
+  return afterMastery * (1 + buildUpEff / 100)
+}

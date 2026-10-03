@@ -506,7 +506,8 @@ import { getStatMeta, isPctStat } from '@/utils/statMeta'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { calcPenetrationPower } from '@/data/penetrationPower'
-import { elementAnomalyBuildUpEfficiency } from '@/data/anomalyElement'
+import { elementAnomalyBuildUpEfficiency, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
+import { calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'
 import { ELEMENT_FIELD_PREFIX } from '@/utils/enemyDebuffStats'
 import { damageElementLabel } from '@/utils/agentLabelMaps'
@@ -650,12 +651,8 @@ const stunBuildUpMultiplier = computed(() => {
 const currentElementAnomalyBuildUpEfficiency = computed(() => props.damageElement ? elementAnomalyBuildUpEfficiency(props.panel, props.damageElement) : 0)
 const currentElementLabel = computed(() => props.damageElement ? ELEMENT_NAME_BY_ELEMENT[props.damageElement] ?? '' : '')
 
-const anomalyBuildUpMultiplier = computed(() => {
-  const p = props.panel
-  const mastery = Math.floor(p.anomalyMastery) / 100
-  const efficiency = 1 + ((p.anomalyBuildUpEfficiency ?? 0) + currentElementAnomalyBuildUpEfficiency.value) / 100
-  return mastery * efficiency
-})
+// CC-429：掌控区 × 效率区直读引擎同一函数（base = 1）；此前 floor 规则与加算口径在这里各抄一份
+const anomalyBuildUpMultiplier = computed(() => anomalyBuildUpAfterMasteryAndEfficiency(1, props.panel, props.damageElement ?? ''))
 
 const anomalyDamageTypes = [
   { name: '瞬间出伤', desc: '强击、碎冰等一次性异常伤害，触发时立即结算。' },
@@ -674,13 +671,10 @@ const hasEnergyBonus = computed(() => {
   return p.energyRegenBonusPct !== 0 || p.energyRegenBonusFlat !== 0 || p.energyGainEfficiency !== 0
 })
 
+// CC-429：括号内三项用 CC-337 的单一事实源 calcEnergyRegenTotal（此前这里是第三份手抄）；获得效率是展示层的秒级口径
 const energyRegenPerSec = computed(() => {
   const p = props.panel
-  const base = p.energyRegen
-  const pctBonus = 1 + (p.energyRegenBonusPct ?? 0) / 100
-  const flatBonus = p.energyRegenBonusFlat ?? 0
-  const efficiency = 1 + (p.energyGainEfficiency ?? 0) / 100
-  return (base * pctBonus + flatBonus) * efficiency
+  return calcEnergyRegenTotal(p) * (1 + (p.energyGainEfficiency ?? 0) / 100)
 })
 
 function isOtherElementSpecificField(key: string): boolean {
