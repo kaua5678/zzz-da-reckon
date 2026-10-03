@@ -82,6 +82,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 13:33 arena-F 第 431 轮**（开工：master `458a38cc` 干净、已推；零 WIP；REQUIREMENTS.md 无新条目；worktree `wtF-variant` 已删，产物 `/home/kaua/calc-arch/arenaF/r431/`：`patch.py`、`vt.log`、`guards.log`、`build.log`）
+- **做到哪**：CC-406 `edddeb39`——CC-405 建了变体表之后，协同段 1101106 / 1101402 仍是珂蕾妲的 [表] 候选（r419 普查 TWIN 行，CC-402 当时记「未决」），放进轴就与执行行双计。`axisTableDirect` 现在从变体表推导 `VARIANT_TARGETS` 排除，和融合并入段同级；以后变体表加一行，排除自动跟上。CC-402 (iii) 珂蕾妲项与 CC-405「已知偏差」的 [表] 部分都结了。
+- **CC-405 偏差 ① 现在只剩显示面**：轴表 / 技能行 UI 的查表值（非伤害路径）在珂蕾妲+本时仍显示非协同倍率；伤害与 [表] 候选都已正确。要改得把 `teamAgentIds` 送进 `skillRows` 的查表口，收益只是显示，仍不排期。
+- **踩坑**：全量 vitest 第一次跑超 285s 被 `timeout` 杀掉（load 24——紧接在 vue-tsc + guards + zd 之后起跑，worker 还没凉）。被杀的 vitest 子进程会拖十几秒才退，期间 `pgrep vitest` 看到的是**自己的尸体**，别误判成别的 lane。等 load 降到 15 以下重跑一次就 235s 过了。⇒ 重任务之间 `sleep 20` 再起下一段。
+- **下一步候选**（不排序）：r420 下一步 3/4 需用户口径，只能写候选；§3 空；可以做的通用项：① `标准倍率表 / 技能行 UI` 的队伍上下文（显示面，低优先）；② 用 `convergenceProbe` 的 A 口径（推荐配装）给 `timeFillRatchet` 的绝对不变量加「0 maxIter」一面（r430 §10 写了做法，多一条锁、无架构收益，有空再做）。
+- **回滚点**：`git revert edddeb39`。
+
 **2026-10-03 13:27 arena-F 第 430 轮**（开工：master `014a58f7` 干净、已推；主仓零 WIP；REQUIREMENTS.md 无新条目；本轮**无代码改动**，产物 `/home/kaua/calc-arch/arenaF/r430/`：`outerExitProbe.test.ts`（一次性探针，已从仓库删除）、`probe.log`）
 - **做到哪**：r420 下一步 2（yidhari-qingyi-lucia 外层振荡）**复核并关掉**：`PROBE_CONV_TEAM` 三读数 + 自写 A/B/C 探针都给 `stable`（套推荐配装 5 轮、缺省配装 4 轮），不是 7↔8 振荡。§2 该条已加指针。
 - **顺手量到的、值得知道的两件事**（写进 `mcp-integer-cycle-stop.md` §10）：① **外层 outerExit 与跑的先后顺序无关**（104 队顺序热跑 vs 每队冷跑逐队相同）；② 但**与配装有关**：缺省配装（ratchet 基线口径）cycle 只有 2 队（auto-1021-1481-1341 / auto-1191-1481-1311），套推荐配装（`applyTeamPreset`，convergenceProbe 口径）cycle 是另外 6 队（auto-1041-1361-1311、yixuan-trigger-lucia、yixuan-jufufu-lucia（长环，20 轮后判出）、auto-1371-1571-1451（长环）、auto-1511-1561-1411、auto-1181-1511-1411），两套名单**不相交**；两种口径都没有 maxIter。所以 `timeFillRatchet` 的 outerExit 基线只锁了缺省配装这一面，别拿它当「全部 cycle 队名单」。
