@@ -82,6 +82,29 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 12:01 arena-F 第 425 轮**（开工：master `c55d9c64` 干净、已推；无 verify 进程；主仓有别人 11:40 起持续在改的 `src/mechanics/agents/remielle.ts` + `remielle.test.ts` + `composables/__tests__/helpersNightC.test.ts`（无认领行；内容 = 1581 蕾米 daze 档位按「异常角色数不含本人」的 2026-09-30 用户裁决重算，tier3 在 3 人队结构性不可达），**没动它**；REQUIREMENTS.md 无新条目；worktree `wtF-r425` 已删，产物 `/home/kaua/calc-arch/arenaF/r425/`）：**CC-399 = T5 `df3e7c42` + T6 `1b771511`**，已 ff 合入 master。
+- **做到哪**：r424 §3 的 T5 / T6 两张卡收口（卡已从 §3 删除）。T5 派给 dsh 工人（worktree `wt-T5`），本人同时做 T6（worktree `wtF-r425`），两边文件不相交；工人 diff 并进 `wtF-r425` 后一次性 zd + 全量 verify，再分两个提交（各自可独立 revert）。详见卡表 CC-399。
+- **T6 调查结论**（卡里的未决项，已关）：`specTeamBuffToTeammateBuff` 丢 spec effect 的 `source` **无害**——`getEffectSourceValue` 的兜底链里 `source.defaultValue` 排在目标面板之后、`0` 之前，全仓只有 1541 带 `source` 且 `defaultValue = 0`，`TeamBuffEffectSpec` 也没声明它。**不补透传**。若将来有 spec 录入非 0 的 `source.defaultValue`，先在 `specs/types.ts` 声明再在 `teamBuffConvert.ts` 透传，别绕过转换器。
+- **派 dsh 的实测配方**（§0 的写法照用，本轮 2 分钟收工）：
+  ```bash
+  BRIEF="$(awk -v c=T4 '$0=="<!-- card:" c " -->"{f=1;next} $0=="<!-- /card:" c " -->"{f=0} f' docs/mcp-worker-task-queue.md)
+
+  补充给工人：worktree /home/kaua/calc-arch/wt-T4 已经建好（node_modules 已软链），直接在里面改；不要 git commit；零差跳过（主代理复核时跑）；报告写到 /home/kaua/calc-arch/arenaF/<轮>/worker-T4.report（首行 STATUS: done|blocked）。"
+  cd /home/kaua/calc-arch/wt-T4 && setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" > …/worker-T4.out 2> …/worker-T4.err < /dev/null & disown
+  ```
+  `setsid nohup … & disown` 的 dsh **能**跨 `wsl_exec` 调用存活（与 r401 「nohup vitest 死掉」不矛盾：那次没 `setsid`）。回收：`pgrep -af '^node .*dsh --profile headless'` 为空 + report 首行 `STATUS: done`；然后**亲自** `git diff` 看是否越白名单，再 `git diff > T4.diff` 并到自己的 worktree 跑 zd + verify。
+- **验证**：`vue-tsc -b --force` 0；guards / tokens / data / specs / recording / build EXIT 0；vitest(4) 466 文件通过（与 r424 同）；zd `r425-t5t6` DIFF 0；promia 展示值 7 点 A/B 逐字相同。
+- **下一步（start-ready，按价值排）**：
+  1. **§3 卡 T4**（spec 侧 8 处数据驱动字段名读写收成 `readCfgField` / `writeMechanicSettingCfg`）——按上面的配方直接派 dsh；复核时注意 r420 坑（`Number(raw ?? default)` 不要换成 `cfgMechanicSetting`）。做完 `as unknown as` 非测试面应恰为 CC-398 判合理的 14 处，**到此为止**，别再「清」那 14 处。
+  2. **捏轴页「条XX%」截图验证**（r424 接通的，仍没看过真实渲染）：r416 headless 配方，切 `ui.activeTab` 到捏轴页、手动轴放 1511006 ×6 + 1181005 ×18，DOM 里应出现 `条电` / `条以太` 字样的 `.mw-l2` 块。
+  3. 等 remielle 那条 lane 收工后看他有没有写交接；若 1 小时后还是未提交、无认领 ⇒ 按提示词第 9 条「孤儿」流程处理（审查 → 隔离 verify → 提交或丢弃，写清）。
+  4. 主队列 §2（arena-E r420）的 TWIN 候选逐个核对不变。
+- **拍板**：① T5 / T6 分两个提交、一次 verify——revert 粒度与验证成本的折中。② `source` 不透传（依据见上）。③ 工人报告里「零差跳过」是我在 brief 里允许的，不是工人偷懒；主代理复核时必须自己跑。
+- **坑**：
+  - 工人收工后 `wt-T5` 要用 `git worktree remove --force` 删（里面有 node_modules 软链，普通 remove 会拒）。
+  - `TeamBuffEffectSpec` 没有 `source` 字段，但 1541.json 里有——JSON 未声明字段 tsc 不报。要知道「数据里有没有」只能扫 JSON（本轮用 python 扫了全部 `src/specs/agents/*.json` 的 teamBuffs effects，8 条 formula/带 source）。
+- **回退点**：`git revert 1b771511`（T6）/ `git revert df3e7c42`（T5），互不依赖。
+
 **2026-10-03 11:40 arena-F 第 424 轮**（开工：master `c47e153b` 干净、1 个未推提交（R65-J1）已补推；无 verify / vitest 进程；11:40 起另一 lane 在主仓改 `src/mechanics/agents/remielle.ts` + `remielle.test.ts`（无认领行，到本轮收尾仍未提交）⇒ 判并行，文件面不相交；REQUIREMENTS.md 无新条目；worktree `/home/kaua/calc-arch/wtF-r424`，产物 `/home/kaua/calc-arch/arenaF/r424/`）：**CC-398 `70a16851`**，已 ff 合入 master。
 - **做到哪**：接 r423「下一步 1」（`as unknown as` 29 处）。**没有加锁第 7 条**，逐处读后分成四类（下表），只修了真断契约的 3 处 + 顺手修别人提交带进来的 4 个 tsc 错；详情见卡表 CC-398。
   | 类 | 处数 | 位置 | 处置 |
@@ -334,7 +357,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 （T1、T2 已于第 370 轮 `0c5e00cb` 完成）
 
-（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出。）
+（T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的。）
 
 <!-- card:T4 -->
 ### T4 · spec 侧「按数据给的字段名读写 cfg」收成两个辅助（机械、零差）
@@ -374,42 +397,3 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 **报告**：首行 `STATUS: done|blocked`，然后贴 `git -C /home/kaua/calc-arch/wt-T4 diff --stat` 与三条验收的最后 3 行输出。
 <!-- /card:T4 -->
 
-<!-- card:T5 -->
-### T5 · velina / alice 的资源 helper 形参改成真类型，删 `as unknown as`（机械、零差）
-
-**仓库 / worktree** 同 T4（用 `/home/kaua/calc-arch/wt-T5`）。
-
-**背景**：`src/mechanics/agents/velina.ts` 的 `buildVelinaFloriaSource` / `velinaBroadCycloneCountFromFloria` 与 `src/mechanics/agents/alice.ts` 的 `buildAliceSwordWillSource` 把形参 `cfg` / `state` 自己缩成结构类型（只列自己读的几个字段），然后调 `computeSpecResources(spec, cfg as unknown as CharacterOperationConfig, state as unknown as IterationState, …)` 向上撒谎。三个函数全部是模块内部函数，调用点（velina 217 / 279 / 329，alice 258 / 321 / 332）传的都是钩子入参里的真 `cfg: CharacterOperationConfig` 与 `state: IterationState`。
-
-**改法**：
-1. velina.ts：两个函数的形参改为 `cfg: CharacterOperationConfig, state: IterationState`；删掉第 66–67 行两个 `as unknown as`，直接传 `cfg, state`。`IterationState` 的 import 若缺，从 `@/types/resource` 加 `import type`。
-2. alice.ts：`buildAliceSwordWillSource` 的 `cfg` 形参（现在是一个 11 字段的内联对象类型）改为 `CharacterOperationConfig`，`state` 改为 `IterationState`；删掉第 203–204 行两个 `as unknown as`。第 3 参 `anomalyPoolData` 不动。
-3. 若 vue-tsc 报某个被读的字段不在 `CharacterOperationConfig` 上（例如 `alicePolarityAssaultSwordWill`），**不要**把形参改回内联类型：那说明该字段本来就没声明，去 `src/types/resource/config.ts` 里按同名字段的注释风格补一行 `xxx?: number`（写清写入方），这是 CC-395 以来的既定修法。
-4. `grep -n "as unknown as" src/mechanics/agents/velina.ts src/mechanics/agents/alice.ts` 应为 0 行。
-
-**验收**：`timeout 280 npx vue-tsc -b --force` 退出 0；`timeout 280 npx vitest run --maxWorkers=2 src/mechanics/__tests__/velina.test.ts src/mechanics/__tests__/alice.test.ts src/mechanics/__tests__/selfFromDispatcherCc383.test.ts` 全绿（测试里若有用部分对象直接调这两个 helper 的用例，改夹具为真 cfg/state——`setupHarness` 产出——断言不动；不要为了旧夹具保留窄形参）；零差同 T4（tag `T5`）。
-
-**不许**：改 `computeSpecResources` 的签名；改任何 spec JSON；碰 `promia.ts`（那是 T6）。
-
-**报告**：同 T4 格式。
-<!-- /card:T5 -->
-
-<!-- card:T6 -->
-### T6 · promia 展示值的 spec effect → `BuffEffect` 走共享转换器（含一个调查项；需要判断，不派 dsh）
-
-**仓库 / worktree** 同 T4（用 `/home/kaua/calc-arch/wt-T6`）。
-
-**背景**：`src/mechanics/agents/promia.ts:58-62 requirePromiaTeamReleaseEffect()` 把 spec `1541.json` teamBuff `promia_ice_team_release_dmg` 的 `effects[0]`（类型 `TeamBuffEffectSpec`，字段几乎全可选）`as unknown as BuffEffect` 后喂给 `applyEffect` 算展示值。真实生效通道是 `src/stores/catalog.ts#specTeamBuffToTeammateBuff`（约 47–75 行）：它把 spec effect 转成 `BuffEffect`，补 `id / type / mode / value / target / coverage` 默认值，透传 `sourceStat / sourcePanelPhase / formula / ratio / cap / targetSkillType`，**但不透传 `source`**（spec 里 formula 变量 x 的 `defaultValue / min / max / label`）。promia 走的是未转换的原件（带 `source`），store 走的是转换件（不带）——同一条数据两种形状。
-
-**步骤**：
-1. **先调查再动手**：读 `src/core/buff.ts#applyEffect` 的 `formula` 分支与 `getEffectSourceValue`，回答：当 effect 没有 `dynamicSourceValue` 时，x 取 `defaultSourceValue` 还是 `source.defaultValue`？转换器丢掉 `source` 之后，真实通道里「没有来源角色面板可注入」的场景（有没有这种场景？看 `collectInCombatTeamBuffs` 怎么注入 `dynamicSourceValue`）回落到什么值。把结论写进 `docs/mcp-calc-core-architecture.md` 的 CC-398 行末尾（一句话 + 文件:行号）。
-2. 把转换器从 store 闭包里抽成纯函数：新建 `src/specs/teamBuffConvert.ts`，导出 `specEffectToBuffEffect(tb: TeamBuffSpec, e: TeamBuffEffectSpec, i: number, coverage: number): BuffEffect` 与 `specTeamBuffToTeammateBuff(agentId, agent, tb)`（后者就是现在 store 里那段，搬过去；store 改为 import）。**逐字搬**，不顺手改字段。
-3. promia.ts：`requirePromiaTeamReleaseEffect` 改为 `specEffectToBuffEffect(tb, tb.effects[0], 0, tb.coverage ?? 1)`，删 `as unknown as`。
-4. **A/B**：改前改后各跑一次 `src/mechanics/__tests__/promia.test.ts` 里会打印 / 断言 `masteryExcess` 与异放增伤展示值的用例；若展示值变了，原因只可能是步骤 1 查出来的 `source` 丢失 ⇒ 在转换器里补透传 `source`（这是修真实通道的隐患，不是迁就 promia），然后重跑全量 vitest 看 teammate buff 相关 golden 有没有动，动了逐条解释。
-
-**验收**：vue-tsc 0 错；`promia.test.ts` + `src/stores/__tests__` + `src/core/__tests__/buff*.test.ts` 全绿；零差（tag `T6`）；若步骤 4 补了 `source` 透传，还要全量 vitest(4) 前台跑一次。
-
-**不许**：改 1541.json；改 `applyEffect` 的语义。
-
-**报告**：同 T4 格式，外加步骤 1 的结论原文。
-<!-- /card:T6 -->
