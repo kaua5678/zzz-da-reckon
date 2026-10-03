@@ -13,6 +13,7 @@ import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, getBaseElement } from '@/cor
 // 此处 re-export 保持引擎侧 `bossEntryAnomalyElement()` 与既有 `@/core/stunAxis/inStunAnomaly`
 // 引用零改动；展示层（失衡轴页）改 import `@/data/…`。
 import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/data/bossEntryAnomalyOptions'
+import type { InStunGaugeSnapshot } from '@/types/resource'
 export { BOSS_ENTRY_ANOMALY_OPTIONS }
 
 export interface InStunAction {
@@ -58,14 +59,8 @@ export interface InStunTrigger {
   id?: string
 }
 
-/** 动作完成后的积蓄槽快照（用户口径：每个动作块末尾显示对应积蓄槽状态） */
-export interface InStunGaugeSnapshot {
-  windowIndex: number
-  /** 原始动作索引（InStunAction.srcIndex 回传） */
-  srcIndex?: number
-  /** 各元素槽占第一管百分比（0-100，超满截断到 100） */
-  pct: Record<string, number>
-}
+/** 动作完成后的积蓄槽快照：类型搬到 `@/types/resource`（CC-398，编排层摘要与 core 结果共用同一声明），此处只转出 */
+export type { InStunGaugeSnapshot }
 
 export interface InStunAnomalyResult {
   triggers: InStunTrigger[]

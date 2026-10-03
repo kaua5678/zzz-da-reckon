@@ -51,6 +51,29 @@ describe('失衡内异常时间线门槛推广（v2.1）', () => {
       expect(el.avgCoverage).toBeLessThanOrEqual(1)
     }
   })
+
+  // CC-398（r424）：core 自 2026-08-24 起就产出 gaugeSnapshots，捏轴页也一直在读，但编排层摘要从未透传——
+  // 页面用 `as unknown as` 读，tsc 看不见，「条XX%」块级标注因此静默死了 40 天。这里按页面的查找方式
+  // （`windowIndex === entryFirstWindow(ai) && srcIndex === 动作序`）端到端锁住透传。
+  it('摘要透传每个动作块末尾的积蓄槽快照（捏轴页「条XX%」标注的数据源）', async () => {
+    const { calc } = await setupTeam([{ agentId: '1511' }, { agentId: '1181' }], { axis: true })
+    const st = calc.inStunAnomalyState.value!
+    expect(st.gaugeSnapshots, 'gaugeSnapshots 必须透传到摘要').toBeDefined()
+    const wi = (st.windowEntryIdx ?? []).indexOf(0)
+    expect(wi).toBeGreaterThanOrEqual(0)
+    // 轴条目 0 的两个动作（srcIndex 0 / 1）都要有本窗快照，且百分比在 [0, 100]
+    for (const srcIndex of [0, 1]) {
+      const snap = st.gaugeSnapshots!.find(g => g.windowIndex === wi && g.srcIndex === srcIndex)
+      expect(snap, `动作 ${srcIndex} 的快照`).toBeDefined()
+      for (const v of Object.values(snap!.pct)) {
+        expect(v).toBeGreaterThanOrEqual(0)
+        expect(v).toBeLessThanOrEqual(100)
+      }
+    }
+    // 电（1181005 ×18 过管）在动作 1 末尾要么刚触发清空、要么有残量；以太（1511006 ×6）在动作 0 末尾同理 ⇒ 至少一个非零值
+    const anyNonZero = st.gaugeSnapshots!.some(g => g.windowIndex === wi && Object.values(g.pct).some(v => v > 0))
+    expect(anyNonZero, '代表窗内至少一个动作块末尾槽值非零').toBe(true)
+  })
 })
 
 describe('异常事件 dominant 归因走失衡内时间线（v2.1）', () => {

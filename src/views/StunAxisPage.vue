@@ -589,8 +589,7 @@ function anomalyTagsFor(ai: number, aii: number): Array<{ text: string; cls: str
     out.push({ text: `触${entryBarLabel(t.element)}${replaced ? '·紊' : ''}`, cls: replaced ? 'mw-l3' : 'mw-trigger' })
   }
   // 动作块末尾积蓄槽状态（用户口径：每个动作块都有对应积蓄值与槽状态）
-  const snap = (st as unknown as { gaugeSnapshots?: Array<{ windowIndex: number; srcIndex?: number; pct: Record<string, number> }> })
-    .gaugeSnapshots?.find(g => g.windowIndex === wi && g.srcIndex === aii)
+  const snap = st.gaugeSnapshots?.find(g => g.windowIndex === wi && g.srcIndex === aii)
   if (snap) {
     const txt = Object.entries(snap.pct).filter(([, v]) => v > 0)
       .map(([el, v]) => `${entryBarLabel(el)}${Math.round(v)}%`).join('·')

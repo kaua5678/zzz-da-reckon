@@ -211,6 +211,12 @@ export interface CharacterOperationConfig {
    * 接管产行却漏设 floor 的 1181 格莉丝 / 1621 洛克茜被按小数记资源、按整数产行。
    */
   exSpecialCountFractional?: boolean
+  /**
+   * 通用「单次释放必打招 + 可持续招」强特的预存执行计划（`src/data/sustainedEx.ts` 注册表）。
+   * 写入方：resourceCalc/helpers.ts buildCharConfig（倍率已按满蓄秒数缩放）；读取方：core/resource/rowBuild.ts 按次数产行。
+   * CC-398 前两边各用 `cfg as unknown as Record` 读写、形状只写在读端 ⇒ 改字段名 tsc 不报；现在是声明契约。
+   */
+  sustainedEx?: SustainedExPlan
   /** 机制模块引用的倍率表基础值（moveId → 行值），供事件→倍率表映射使用 */
   mechanicRowValues?: Record<string, number>
   /** 开局赠送能量（普通人40，仪玄120闪能等） */
@@ -455,4 +461,24 @@ export interface ResourceCalcConfig {
   anomalyDecibelBonusPerSlot?: number[]
   /** 3个角色的操作配置 */
   characters: CharacterOperationConfig[]
+}
+
+/** 持续型强特的一段（起手 / 收尾）：招式 id + 该段占用的动作时间（能力场 / 自动攻击段记 0） */
+export interface SustainedExSegment {
+  moveId: string
+  actionTime: number
+}
+
+/** 持续型强特执行计划（见 `CharacterOperationConfig.sustainedEx`） */
+export interface SustainedExPlan {
+  opener: SustainedExSegment[]
+  sustain: {
+    moveId: string
+    /** 持续段满蓄秒数 */
+    actionTime: number
+    damageMultiplier: number
+    dazeMultiplier: number
+    anomalyBuildUp: number
+  }
+  finisher: SustainedExSegment[]
 }

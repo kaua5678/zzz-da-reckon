@@ -1063,6 +1063,7 @@ export function createRunCalcRound(deps: {
           triggerSources: tl.triggers
             .filter(t => t.moveId && t.id)
             .map(t => ({ windowIndex: t.windowIndex, moveId: t.moveId!, element: getBaseElement(t.element), offsetSeconds: t.offsetSeconds, id: t.id!, srcIndex: t.srcIndex })),
+          gaugeSnapshots: tl.gaugeSnapshots,
           note: `轴内逐窗积蓄槽模拟（${windows.length} 窗）：进窗继承上一窗余量，积蓄超阈值即触发对应异常；覆盖=异常激活时长占窗口比例。`,
         }
         // ⚠ 2026-09-16 round 12 复核、round 13 删除的死写（规则 16①）：

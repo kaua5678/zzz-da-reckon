@@ -148,7 +148,8 @@ function buildTeamForBuff(
 
   // ★ 追加攻击 buff 且主C=owner 时：需要一个激活额外能力条件的第三人
   // （owner 的 AA 行由自己的模块通道产出，但额外能力需要队友满足条件才激活）
-  const isAABuff = buff?.effects?.some(e => e.targetSkillType === 'additionalAttack' || (e.stat === 'skillDmgBonus' && e.targetSkillType === 'additionalAttack')) ?? false
+  // （r424：原写法 `A || (stat===skillDmgBonus && A)` 的右支被 TS 收窄成永假 ⇒ TS2367；两支等价，只留 A）
+  const isAABuff = buff?.effects?.some(e => e.targetSkillType === 'additionalAttack') ?? false
   if (isAABuff) {
     // 优先用 owner 自己当主C（模块通道产出 AA 行），再补一个激活条件的第三人
     const conds = ownerAgent ? getAgentSpec(ownerAgent.id)?.additionalAbility?.teamConditions ?? [] : []
@@ -198,9 +199,9 @@ function rowHash(rows: Array<Record<string, unknown>>): string {
 }
 
 async function readingsFor(
-  owner: string,
+  _owner: string,
   buffId: string,
-  cinema: number,
+  _cinema: number,
   team: Array<{ agentId: string; cinemaLevel: number }>,
 ): Promise<Array<{ mode: string; hash: string; total: number; rows: number }>> {
   const out: Array<{ mode: string; hash: string; total: number; rows: number }> = []
@@ -265,7 +266,8 @@ describe('R65-J1 · 声明了但没接进计算 · 行为层全库普查', () =>
         if (KNOWN_SINGLE_SOURCE.has(r.buff.id)) {
           console.log(`  [已知单源] ${r.group}/${r.buff.id} — 模块通道已实现，拨动恒定是设计预期`)
         } else {
-          gaps.push({ owner: r.group, id: r.buff.id, note: r.buff.note ?? '', seen: seen.map(s => ({ mode: s.mode, total: s.total })) })
+          // （r424：`TeammateBuff` 没有 `note`——spec 的 note 不经 specTeamBuffToTeammateBuff 透传，原读法恒 ''；改读 description）
+          gaps.push({ owner: r.group, id: r.buff.id, note: r.buff.description?.zhCN ?? '', seen: seen.map(s => ({ mode: s.mode, total: s.total })) })
           console.log(`  [缺口] ${r.group}/${r.buff.id}`)
         }
       }

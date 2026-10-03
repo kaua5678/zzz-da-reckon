@@ -322,13 +322,7 @@ export function buildExecutions(
   getAgentMechanic(cfg.agentId)?.buildExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
 
   // 通用「单次释放必打招 + 可持续招」强特（buildCharConfig 已 skipGenericExSpecial + 预存缩放倍率）。
-  const sustainedEx = (cfg as unknown as Record<string, unknown>).sustainedEx as
-    | {
-        opener: { moveId: string; actionTime: number }[]
-        sustain: { moveId: string; actionTime: number; damageMultiplier: number; dazeMultiplier: number; anomalyBuildUp: number }
-        finisher: { moveId: string; actionTime: number }[]
-      }
-    | undefined
+  const sustainedEx = cfg.sustainedEx
   if (sustainedEx) {
     const count = Math.max(0, state.exSpecialCount)
     const pushSeg = (moveId: string, actionTime: number) => {

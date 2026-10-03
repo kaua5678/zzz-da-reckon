@@ -635,7 +635,7 @@ export function buildCharConfig(
     const finisher = sustainedSpec.finisher.map((t) => ({ moveId: t.moveId, actionTime: segSeconds(t) }))
     // 动作总时间（供 estimateExSpecialTime 时间预算）：起手 + 持续满蓄 + 收尾
     cfg.exSpecialActionTime = opener.reduce((s, o) => s + o.actionTime, 0) + secs + finisher.reduce((s, f) => s + f.actionTime, 0)
-    ;(cfg as unknown as Record<string, unknown>).sustainedEx = {
+    cfg.sustainedEx = {
       opener,
       sustain: {
         moveId: sustainedSpec.sustain.moveId,

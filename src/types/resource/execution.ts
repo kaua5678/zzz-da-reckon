@@ -268,6 +268,15 @@ export interface InStunAnomalyElementState {
   avgCoverage: number
 }
 
+/** 动作完成后的积蓄槽快照（用户口径：每个动作块末尾显示对应积蓄槽状态）；由 core/stunAxis/inStunAnomaly.ts 产出 */
+export interface InStunGaugeSnapshot {
+  windowIndex: number
+  /** 原始动作索引（InStunAction.srcIndex 回传） */
+  srcIndex?: number
+  /** 各元素槽占第一管百分比（0-100，超满截断到 100） */
+  pct: Record<string, number>
+}
+
 export interface InStunAnomalySummary {
   windows: number
   elements: InStunAnomalyElementState[]
@@ -275,6 +284,12 @@ export interface InStunAnomalySummary {
   windowEntryIdx?: number[]
   /** 触发来源明细（动作带 moveId 时回填，id=抑制引用键）：捏轴页块级「这个招式触发了什么」可视化用 */
   triggerSources?: Array<{ windowIndex: number; moveId: string; element: string; offsetSeconds: number; id: string; srcIndex?: number }>
+  /**
+   * 每个动作块末尾的积蓄槽快照（捏轴页块级「条XX%」标注用）。
+   * CC-398：2026-08-24 起 core 已产出、页面已读取，但编排层从未透传——页面用 `as unknown as` 读，tsc 看不见，
+   * 该标注因此静默死了 40 天。现在是显式契约：core 产出 → 这里声明 → convergence 透传 → 页面直接读。
+   */
+  gaugeSnapshots?: InStunGaugeSnapshot[]
   note: string
 }
 

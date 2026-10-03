@@ -570,7 +570,7 @@ export const normaMechanic: AgentMechanicModule = {
   applyTeamConfig: ({ cfg, phase, stunCount, combatTime }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
     cfg.normaStunCount = stunCount
-    cfg.normaStunCoverage = (cfg as unknown as { teamStunCoverage?: number }).teamStunCoverage ?? 0
+    cfg.normaStunCoverage = cfg.teamStunCoverage ?? 0
     cfg.normaBattleTime = combatTime
   },
   /**
