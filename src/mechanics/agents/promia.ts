@@ -37,6 +37,7 @@ import { emptyPanel } from '@/core/panel'
 import { applyEffect } from '@/core/buff'
 import type { BuffEffect } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
+import { specEffectToBuffEffect } from '@/specs/teamBuffConvert'
 import { applySpecAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 
@@ -56,9 +57,11 @@ export const PROMIA_PROF_PER_MASTERY = requirePromiaMasteryConversion().valuePer
 // 实际生效走 spec teamBuffs 通道（每个队员面板），展示值在探针面板上执行同一条 effect。
 const PROMIA_TEAM_RELEASE_BUFF_ID = 'promia_ice_team_release_dmg'
 function requirePromiaTeamReleaseEffect(): BuffEffect {
-  const effect = getAgentSpec(PROMIA_ID)?.teamBuffs?.find(b => b.id === PROMIA_TEAM_RELEASE_BUFF_ID)?.effects[0]
-  if (!effect) throw new Error(`spec 1541 缺少 teamBuff ${PROMIA_TEAM_RELEASE_BUFF_ID}`)
-  return effect as unknown as BuffEffect
+  const tb = getAgentSpec(PROMIA_ID)?.teamBuffs?.find(b => b.id === PROMIA_TEAM_RELEASE_BUFF_ID)
+  const effect = tb?.effects[0]
+  if (!tb || !effect) throw new Error(`spec 1541 缺少 teamBuff ${PROMIA_TEAM_RELEASE_BUFF_ID}`)
+  // CC-399：与真实通道（stores/catalog mergeSpecTeamBuffs）走同一个转换器，不再把 spec 原件 `as unknown as BuffEffect`
+  return specEffectToBuffEffect(tb, effect, 0)
 }
 export const PROMIA_C2_PROFICIENCY = 40
 export const PROMIA_ADDITIONAL_BUILDUP_EFF = 30

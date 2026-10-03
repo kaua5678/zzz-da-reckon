@@ -3,11 +3,11 @@
  */
 import { defineStore } from 'pinia'
 import { ref, shallowRef, computed } from 'vue'
-import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Boss, TeammateBuff, TeammateBuffGroup, BuildRecommendations, CharacterBuildRecommendation } from '@/types/catalog'
+import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Boss, TeammateBuffGroup, BuildRecommendations, CharacterBuildRecommendation } from '@/types/catalog'
 import type { BossPresetFile } from '@/types/bossPreset'
 import type { RunArchiveFile } from '@/composables/runArchiveImport'
 import { getAgentSpecsByAgentId } from '@/specs/registry'
-import type { TeamBuffSpec } from '@/specs/types'
+import { specTeamBuffToTeammateBuff } from '@/specs/teamBuffConvert'
 
 export type CatalogLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -39,50 +39,7 @@ export const useCatalogStore = defineStore('catalog', () => {
   // 并发 fetch 曾一次跑出 3 个请求；存 promise 让并发调用共享同一次加载
   let teammateBuffsPromise: Promise<TeammateBuffGroup[] | null> | null = null
 
-  /**
-   * spec teamBuffs（人工录入）→ 采集文件同构条目。
-   * 教训修复：录入侧双轨（spec vs teammate-buffs.json），消费端只读采集文件 → spec 录的增益成了死数据。
-   * 现在加载时合并：spec 条目按 id 去重并优先（人工确认覆盖原始采集），组不存在则新建。
-   */
-  function specTeamBuffToTeammateBuff(agentId: string, agent: Agent | null, tb: TeamBuffSpec): TeammateBuff {
-    const nameZh = tb.name || `${agent?.name?.zhCN ?? agentId}｜${tb.source}`
-    return {
-      id: tb.id,
-      source: { zhCN: tb.source },
-      description: { zhCN: tb.description },
-      scope: 'inCombat',
-      effects: tb.effects.map((e, i) => ({
-        id: e.id ?? `${tb.id}_effect_${i}`,
-        type: e.type ?? 'fixed',
-        target: { kind: 'default' as const },
-        stat: e.stat,
-        mode: e.mode ?? 'flat',
-        value: e.value ?? 0,
-        coverage: { default: tb.coverage ?? 1, min: 0, max: 1, step: 0.1 },
-        // 公式/转模字段：spec teamBuffs 人工录入时必须透传，否则加油/虎啸等公式增益变死数据
-        ...(e.sourceStat ? { sourceStat: e.sourceStat } : {}),
-        ...(e.sourcePanelPhase ? { sourcePanelPhase: e.sourcePanelPhase } : {}),
-        ...(e.formula ? { formula: e.formula } : {}),
-        ...(e.ratio != null ? { ratio: e.ratio } : {}),
-        ...(e.cap != null ? { cap: e.cap } : {}),
-        ...(e.targetSkillType ? { targetSkillType: e.targetSkillType } : {}),
-      })) as TeammateBuff['effects'],
-      buffModifiers: [],
-      sourceType: 'teammate',
-      sourceCategory: 'agent',
-      sourceKind: 'teammate',
-      sourceLabel: { zhCN: tb.source },
-      ownerId: agentId,
-      ownerName: { zhCN: agent?.name?.zhCN ?? agentId },
-      teammateId: agentId,
-      teammateName: { zhCN: agent?.name?.zhCN ?? agentId },
-      conditionLabel: { zhCN: tb.description },
-      name: { zhCN: nameZh },
-      // SOP §6.4：`singleSourced`（原 `hidden`，R65 改名）条不进 collectInCombatTeamBuffs
-      // —— 数值由模块/helpers 单通道接入，防双计（**不是** UI 隐藏，见 src/utils/teammateBuffRows.ts）
-      ...(tb.singleSourced ? { singleSourced: true } : {}),
-    }
-  }
+  // spec teamBuffs → TeammateBuff 的转换在 `@/specs/teamBuffConvert`（CC-399：与 promia 展示值共用同一转换器）
 
   function mergeSpecTeamBuffs(data: TeammateBuffGroup[]): TeammateBuffGroup[] {
     // CC-275：拥有者身份归一到组 id（= 拥有者 agentId，CC-199 口径）。采集数据里 1171/1261/1411/1511/1581 的
