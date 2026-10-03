@@ -92,6 +92,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 01:54 arena-F 第 482 轮**（开工：主仓 = origin = `d184c37b`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；**本轮无题，仅文档**，无 worktree）。
+- 普查「共享类型里的角色前缀字段」：新增 r6 §8.0 **#15**（角色计数输入四处声明 → 等下一个要计数框的角色进来时做 `mechanicCounts` 袋子 + 存档迁移，现在不做）；`liuyinHug` 字段名不改（量是引擎通用的、分层正确，见 r6 §8 第 482 行）。
+- **下一步（start-ready）**：题序 REQUIREMENTS → §3 → §8.0 触发（含新 #15）→ 本轮无题。已收完、别再扫的镜头：逐字相同函数体（r481）、≥3 处内联结构类型（r480）、角色前缀字段（r482）、`(x ?? 0) + y` 累加习语（r479）、`SkillExecution` 字面量（r478，只随模块触碰迁移）。
+
 **2026-10-04 01:46 arena-F 第 481 轮**（开工：主仓 = origin = `d55b4a46`，干净、无人在跑；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T48`，收工已删）。
 - **落地 CC-442** `a8803c0a`（arch 表有行）：`specs/runtime.ts#applyAgentAttributeConversions(panel, agentId, coverage?, sources?)` + `requireAgentAttributeConversion(agentId, id)`；7 个角色模块的 `getAgentSpec(ID)?.attributeConversions ?? []` 与 jane/promia 的 `requireXxxConversion` 收口；`scripts/validate-specs.mjs` 死数据判据正则同步。零差。回滚 `git revert a8803c0a`。
 - **结论落盘**：全仓 `src/**/*.ts`（非测试）**已无逐字相同的函数体**（`r481-dup.py`，1274 函数、≥80 字符归一化）。「逐字相同 helper → 共享 util」与「内联结构类型 ≥3 处 → 命名」两条线均已收完，**下一轮不要再用 dup 扫描找题**。
