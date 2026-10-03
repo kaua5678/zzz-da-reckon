@@ -48,6 +48,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
   后到者 force-claim 后只追加独立复核（§10 模式），工人按卡面纪律自洽解决了，但浪费一个并发位、
   同路径 `/tmp/worker-*.out|.err` 相互覆盖，且若后到者不守纪会覆盖整份报告（`.zc/` 不入 git，丢了就真丢了）。
 
+- **出卡前 grep 断言的全部消费者；brief 里给工人「没说清就选最小改动继续」的授权（2026-10-03 r436 CC-410）**：卡面写「:61 兜底删掉」，实际那行是 `axisMoveActionTime` 钩子的实现、有测试锁着——工人读到矛盾后推敲 9 分钟零改动。
+  判据：派发后 >5 分钟 `git status` 零改动 ⇒ 看 `worker.err` 尾部它在纠结什么，多半卡面错了；`kill <pid>`（pid 取自 `pgrep -af '^node .*dsh --profile headless'`）、改卡、重派，比等便宜。第二次派发 8 分钟收工。
 ### 0.R2 收尾流程（2026-09-27 R2 定稿；依据与数字见 `docs/mcp-dev-process-speed.md`）
 
 - **强度不变，顺序和并行方式变了**：全量 `npm run verify`、零差、文档提交后重跑 check-guards 三道都保留。
@@ -81,6 +83,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
+
+**2026-10-03 14:31 arena-F 第 436 轮**（开工：master `14dc6980` 干净、已推；别人的 wEngineStackCoverage WIP 仍在主仓、仍在改（`useResourceCalc.ts` 14:30）、无认领——没动；REQUIREMENTS.md 无新条目；本轮按 §0 派 dsh 做 §3 卡 T8 前半，worktree `wt-T8`（已删）；产物 `/home/kaua/calc-arch/arenaF/r436/`：`dispatch-t8.sh` / `dispatch-t8b.sh`（两次 brief）、`worker-T8-attempt1.err`（第一次卡住的思考流）、`worker-T8.report`、`guards.log`、`build.log`、`vt.log`）：**CC-410 `015b6a61`**（代码，已推）+ 本文档提交。
+- **做到哪**：T8 的 4 个小模块（miyabi / yixuan / anbyZero / hugo）由工人完成，我复核 diff（白名单内、改法与卡一致）后自己跑 guards / build / 全量 vitest(4)，ff 进 master。卡 T8 收缩为 soukaku / grace / burnice 三个（表已删做完的行）。
+- **派工教训（新，写进 §0 第 3 条）**：① 卡面里「删掉 X」这种断言，出卡前要 grep X 的**全部**消费者——我写 hugo「:61 兜底删掉」时没看到它是 `axisMoveActionTime` 钩子的实现，工人读到矛盾后花 9 分钟推敲、零改动。② brief 里加一句「卡面没说清的，选改动最小的一种、写进报告、继续做」，第二次派发 8 分钟收工（4 模块 + 4 测试 + 锁扩充 + zd + guards）。③ 工人卡住的判据：>5 分钟 `git status` 零改动 ⇒ 看 `.err` 尾部它在纠结什么，多半是卡面错了；杀掉（`kill <pid>`，pid 从 `pgrep -af "^node .*dsh --profile headless"` 取）、改卡、重派，比等便宜。
+- **下一步（start-ready）**：T8 剩余三个（soukaku 6 个常量进纯函数 `necessaryTime`；grace 6 个进 `cycleBound`；burnice 2 个走 CC-408 的必填入参）——可以一次派一个模块；T9（倍率 / 能量常量）。
+- **拍板**：hugo 的轴钩子常量保留（理由见 CC-410）；anbyZero 面板阶段 `criticalActionTime: 0` 接受（该调用不消费时间，工人已核）。
+- **回滚点**：`git revert 015b6a61`。
 
 **2026-10-03 14:14 arena-F 第 435 轮**（开工：master `5f4df62c` 干净、已推；**14:16 起别人在主仓改 `AGENTS.md` / `useResourceCalc.ts` / `stores/config.ts` + 新文件 `data/wEngineStackCoverage.ts`、`__tests__/wEngineStackCoverage.test.ts`，无认领行、无进程**——文件面与我不相交，我改在 worktree `wtF-r435` 验证后 ff 进 master，没动它们；REQUIREMENTS.md 无新条目；产物 `/home/kaua/calc-arch/arenaF/r435/`：`dupProbe.cjs` / `dupProbe.out`（普查）、`patch-cc409.py`、`patch-tests.py`、`zd.log`、`guards.log`、`build.log`、`vt.log`）：**CC-409 `67f6672b`**（代码，已推）+ 本文档提交。
 - **做到哪**：CC-408 的普查推广成机器探针（模块数字常量 = 同角色 catalog 值）：13 个模块 35 个 actionTime 常量 + 少量倍率/能量常量是 catalog 的手抄本。加了通用机制 `cfg.moveActionTimes`（引擎预填）+ `cfgMoveActionTime` 读；迁了 6 个直读模块（12 个常量），其余 7 个模块写成 **§3 卡 T8**、倍率/能量常量写成 **卡 T9**——两张卡输入输出写死、验收是零差，适合执行模型 / dsh。
@@ -386,9 +395,9 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 （T1、T2 已于第 370 轮 `0c5e00cb` 完成；T4～T7 已于 r425～r428 完成）
 
 <!-- card:T8 -->
-### T8 · 7 个模块的 `*_ACTION_TIME / *_TIME / *_SECONDS` 常量改读 `cfg.moveActionTimes`（CC-409 续，零差）
+### T8 · 剩余 3 个模块（soukaku / grace / burnice）的 `*_ACTION_TIME / *_TIME` 常量改读 `cfg.moveActionTimes`（CC-409 续，零差；miyabi / yixuan / anbyZero / hugo 已于 r436 CC-410 `015b6a61` 完成）
 
-**背景（只需知道这些）**：引擎在 `src/composables/resourceCalc/helpers.ts#buildCharConfig` 已把该角色全部招式的 catalog actionTime 预填到 `cfg.moveActionTimes`（moveId → 秒）。模块读法：`import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'`，`cfgMoveActionTime(cfg, '1131011')`。已迁好的样板：`src/mechanics/agents/ellen.ts`（直接在 buildExecutions 用）、`zhao.ts`（先取成局部变量再给 actionTime / totalTime）。
+**背景（只需知道这些）**：引擎在 `src/composables/resourceCalc/helpers.ts#buildCharConfig` 已把该角色全部招式的 catalog actionTime 预填到 `cfg.moveActionTimes`（moveId → 秒）。模块读法：`import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'`，`cfgMoveActionTime(cfg, '1131011')`。已迁好的样板：`src/mechanics/agents/ellen.ts`（直接在 buildExecutions 用）、`zhao.ts`（先取成局部变量再给 actionTime / totalTime）、**`yixuan.ts` / `anbyZero.ts`（纯函数加入参、调用处从 cfg 取——soukaku / grace 照这个做）**、`burnice.ts` 的 `exRowMultipliers`（CC-408，必填入参 + 测试夹具）。
 
 **要改的常量（全部与 catalog 相等，改完数值零差）**：
 
@@ -396,20 +405,16 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 |---|---|---|---|
 | `soukaku.ts` | `SOUKAKU_FAN_ACTION_TIME` 1.16 → 1131011；`SOUKAKU_WIND_BALL_ACTION_TIME` 0.271 → 1131010；`SOUKAKU_SLAM_ACTION_TIME` 1.25 → 1131012；`SOUKAKU_CHOP_SLAM_ACTION_TIME` 0.7 → 1131013；`SOUKAKU_FROST_DASH_ACTION_TIME` 0.4 → 1131016；`SOUKAKU_FROST_BASIC3_ACTION_TIME` 2.632 → 1131006 | :121–126 纯函数算 `necessaryTime` / `comboAlignTime`；:160 / :182 / :197 / :223 行 actionTime | 纯函数没有 cfg ⇒ 给它加一个入参对象 `times: { fan, windBall, slam, chopSlam, frostDash, frostBasic3 }`，调用处从 cfg 取；`:182` 的 `/ hits` 保留 |
 | `grace.ts` | `A1_TIME` 0.171 → 1181001；`A2_TIME` 0.33 → 1181002；`A3_TIME` 0.682 → 1181003；`A4_TIME` 1.134 → 1181004；`SP_TIME` 0.2 → 1181005；`EX_TIME` 0.342 → 1181006 | :91 `cycleBound`；:101 时间合计；:211 行 | 同上，纯函数加入参；`A?_ENERGY` 四个是 energy_recovery 行值，归 T9 |
-| `miyabi.ts` | `FROST_MOON_ACTION_TIME` 3.434 → 1091029；`FROST_MOON_1_ACTION_TIME` 0.4 → 1091027；`FROST_MOON_2_ACTION_TIME` 0.567 → 1091028 | :159 写 `cfg.miyabiFrostMoonActionTime`；:184 / :201 `?? FROST_MOON_ACTION_TIME` 兜底；:190–191 / :230–231 行 | `cfg.miyabiFrostMoonActionTime` 私有字段**删掉**（它只是常量中转），读处直接 `cfgMoveActionTime(cfg, '1091029')`；模块底部的 augmentation 声明一起删 |
 | `burnice.ts` | `SINGLE_EXPLOSION_TIME` 0.315 → 1171011；`DOUBLE_EXPLOSION_TIME` 1.1 → 1171013 | `computeBurniceMechanic` 内 `singleCastTime` / `doubleCastTime`；`buildExecutions` 的 pushEx | 走 CC-408 同一条路：加进 `exRowMultipliers` 旁边的必填入参（建议改名为 `exRows: { …Multiplier, singleExplosionTime, doubleExplosionTime }` 或另加 `exRowTimes`），`burniceMechanicSourceOf` 从 cfg 取；测试 9 处入参夹具同步补。**`DOUBLE_SPRAY_MAX_SECONDS` 2.274 不要动**——它是「双喷最长秒数」语义（恰好等于 1171012 的 actionTime），是可调设置的上限不是行时长 |
-| `yixuan.ts` | `INK2_SECONDS` 0.2 → 1371024；`ASHEN_SECONDS` 0.3 → 1371026 | :198–199 时间合计 | 看该函数是否有 cfg；没有就加入参 |
-| `anbyZero.ts` | `ANBY_ZERO_CRITICAL_ACTION_TIME` 0.867 → 1381023（苍光·临界；:53 是 `export const`，先 grep 测试有没有 import） | :120–121 | 同上 |
-| `hugo.ts` | `HUGO_EX_FINAL_ACTION_TIME` 1.805 → 1291010 | :61 `catalogActionTime <= 0 ? 常量` 兜底；:243 行 | :61 的兜底**删掉**（缺表 = 0，CC-408 口径）；:243 改读 cfg |
 
-**不许碰**：任何倍率 / 能量数字（归 T9）；`DOUBLE_SPRAY_MAX_SECONDS`；行的 count / 口径；其它模块。
+**不许碰**：任何倍率 / 能量数字（归 T9）；`DOUBLE_SPRAY_MAX_SECONDS`；行的 count / 口径；其它模块；`hugo.ts` 的 `hugoMoveActionTime` / `HUGO_EX_FINAL_ACTION_TIME`（合成轴块钩子没有 cfg，CC-410 已判保留——要去掉它需要让合成招式声明代表的真招式、钩子改别名，另开卡）。
 
 **验收（每个模块可单独一个提交，也可合一个）**：
-1. `grep -n "_ACTION_TIME = \|_TIME = \|_SECONDS = " src/mechanics/agents/{soukaku,grace,miyabi,burnice,yixuan,anbyZero,hugo}.ts` 只剩表里标「不要动」的；
+1. `grep -n "_ACTION_TIME = \|_TIME = \|_SECONDS = " src/mechanics/agents/{soukaku,grace,burnice}.ts` 只剩表里标「不要动」的；
 2. `npx vue-tsc -b --force` 0 错；
 3. `npx vitest run src/mechanics/__tests__/<模块>*.test.ts src/composables/__tests__/moveActionTimesCc409.test.ts` 绿（手搭 cfg 的测试要补 `moveActionTimes: {...}`，照 `xide.test.ts#mkCfg` 的写法）；
 4. `bash .zc/perf/zd.sh t8-<模块>` DUMP / ROWS **DIFF 0**（常量 = 表值，必须零差；不是 0 就是改错了，不要调期望值）；
-5. 顺手在 `moveActionTimesCc409.test.ts` 的 `CASES` 里给每个迁移模块加一对 (agentId, moveId)。
+5. 顺手在 `moveActionTimesCc409.test.ts` 的 `CASES` 里给每个迁移模块加一对 (agentId, moveId)，并把 agentId 加进末尾「各至少一条行真实出现」的守卫名单。
 <!-- /card:T8 -->
 
 <!-- card:T9 -->
