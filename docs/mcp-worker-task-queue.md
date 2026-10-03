@@ -92,6 +92,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 23:57 arena-F 第 473 轮**（开工：主仓 = origin = `7743e5c7`，干净、无人在跑；REQUIREMENTS.md 无新条目；worktree `wt-T41`（已删）；产物 `/home/kaua/calc-arch/arenaF/r473/`）：**CC-437g `38adb975`**，14 文件 +118/−140，**CC-437 全部落地（T15 a→g 七步、七次 zd 0）**。
+- **做到哪**：共享类型只剩纯 brand `AgentAxisOverlay = { readonly [AXIS_OVERLAY_BRAND]: true }`；`AgentAxisOverlays` / `AxisScalarOverlays` / `scalarBySlot` 全删；`axisWindowOverlays` 返回 `AgentAxisOverlay | null`；`DirectRowBonusInput` 只剩必填 `overlay`；编排层 `collectAxisWindowOverlays → Map<slot, AgentAxisOverlay>` → `DamagePoolContext.axisOverlayBySlot` → `damagePoolDirect` 的 `overlay = axisOverlayBySlot.get(slot)` 一条线，零 cast、零解释。锁测试 `axisOverlayOpaqueCc437.test.ts` 三条（文本锁，因为「成员不存在」类型系统钉不住）。
+- **决定**：锁 ② 比设计稿多钉了三个编排层文件（damagePool / damagePoolDirect / useResourceCalc）与 `bucketsBySlot` / `overlayBuckets` 两个名字——依据：这些名字一旦回来就意味着编排层又开始解释 overlay 内容；回退点 = 改锁测试名单。`AgentAxisOverlays` 与 `AxisScalarOverlays` 两个头注释里的 CC-17 泄漏论证压缩进 `AgentAxisOverlay` 的历史段，不另存文档（设计稿 §1 已有全文）。
+- **验证**：vue-tsc 0（一次过，vue-tsc 自己把 18 处 `buckets: undefined, scalar: undefined` 占位全列出来了——这次先 grep 后改，没返工）；定向 vitest 15 文件 222 用例；guards 五项全绿；build 0；zd `DIFF 0 NON1581 0 []`；vitest 分片 239/2089 + 240/2253 = **479/4342**（基线 +1 文件 +3 用例 = 锁）。
+- **回退点**：`git revert 38adb975`（单提交；锁测试随之消失）。
+- **下一步（start-ready）**：按 §0 题序 REQUIREMENTS → §3 → §8.0 触发：§3 里 **T16 般岳怒相轴内覆盖**前置已清（卡面已改）——实做落点 `banyue.ts` `BanyueOverlay` 加 `rageWindowByMove?: Map<moveId, 覆盖占比>` 之类字段、`axisWindowOverlays` 轴臂扫怒相进入点 30s 窗、`directRowBonus` 把贯穿/火伤/暴伤三段按窗内占比给值，非轴臂保持 `rageGainCoverage` 滑块；先读 `banyue.ts:478` 与 L42 头注释、`docs/MECHANICS_IMPLEMENTATION.md` 般岳段。它是**行为变化**（非零差），验收用 banyue.test 新锚点 + zd 允许般岳行差异并逐行解释。也可先做 r462 两条小 lead（StunAxisPage `consumed` 求和 → 本地函数；CC-61 比较器 → 快照）热身。
+
 **2026-10-03 23:43 arena-F 第 472 轮**（开工：主仓 = origin = `ac1b8200`，干净、无人在跑；另一 lane 的 `/tmp/wt-W35` 已消失、`wt-T8d`@`64e8d13f` 仍在未动；REQUIREMENTS.md 无新条目；worktree `wt-T40`（已删）；产物 `/home/kaua/calc-arch/arenaF/r472/`）：**CC-437f `f5bddaf6`**，5 文件 +64/−65。
 - **做到哪**：yixuan 三臂合成私有 `YixuanOverlay { byMove?: Map<moveId, YixuanNingshen>; flat?: YixuanNingshen }`（C6 臂与非 C6 非轴臂 → `flat`，非 C6 轴臂 → `byMove`）；`directRowBonus` 的 `flat ?? byMove.get ?? {0,0}` 顺序不动（yixuanSmoke「C6 标量优先于轴桶」用例改为同一 overlay 里同时带 `byMove` + `flat`，仍钉 `flat` 赢）；删 `yixuanNingshenMap` / `yixuanNingshen`。**至此 `AgentAxisOverlays` / `AxisScalarOverlays` 的 9 个 agent 前缀字段全部迁出**，两个 interface 只剩注释空壳，等 g 删。
 - **返工一次**：首轮 grep `yixuanNingshen` 漏了 `damagePoolNightA.test.ts:315-318`（断言 `scalarBySlot.has(2)` 用的是容器名、不含字段名）→ 定向 vitest 红 → 改为「槽 2 读到与槽 0 相同的 `flat`」（与 c 对 NightA 的处理一致：键控是编排层职责）。**教训写进 c→f 通用步骤**：除 grep 字段名外，还要 grep 该模块测试文件里的 `scalarBySlot` / `axisBucketsBySlot` 容器名。
@@ -743,7 +750,7 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 <!-- /card:T14 -->
 
 <!-- card:T15 -->
-### T15 · CC-437 轴窗口 overlay 模块私有化（设计稿 `docs/mcp-cc437-axis-overlay-opaque.md`；一次只做一步、各自独立提交、各自 zd 0；可交执行模型）
+### T15 · ✅ 完成（r467–r473，a `f287adde` → g `38adb975`）· CC-437 轴窗口 overlay 模块私有化（设计稿 `docs/mcp-cc437-axis-overlay-opaque.md`；一次只做一步、各自独立提交、各自 zd 0）
 **卡面就是全部上下文**：读设计稿 §2（目标形状）与 §4（本步那一行），其余别读。**验收通用**：`timeout 280 npx vue-tsc -b --force` 0；`ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>` 期望 `DIFF 0 NON1581 0 []`（两段 DUMP / ROWS 都要）；本步涉及的测试文件定向绿 + 全量分片（两片 passed 之和 = §0 基线，锁新增则 +N 并更新 §0）；arch 加 `CC-437<步>` 行、r6 §8 加行、本卡勾掉对应项。worktree 基于 `origin/master`，只 `git add` 自己的路径，提交身份 `-c user.name=<lane>`。**过渡期规则**：T15-g 之前 `buckets` / `scalar` 旧字段与 `AgentAxisOverlays` 类型都保留，未迁的模块继续用旧字段；已迁模块只用 `overlay`。
 - [x] **T15-a 基础设施（done `f287adde`，r467；实做与下文卡面两处偏差——`overlay` 过渡期可选、钩子返回类型不改联合而是 `AgentAxisOverlay = AgentAxisOverlays & brand` 交叉——见设计稿 §4 a 行；T15-g 归位）**：`src/mechanics/typesHooks.ts` 加 `AgentAxisOverlay`（brand）+ `axisOverlayChannel<T>()`，`src/mechanics/index.ts` / `types.ts` 的 re-export 跟上；`src/mechanics/typesRows.ts DirectRowBonusInput` 加 `overlay: AgentAxisOverlay | undefined`；`types.ts:948 axisWindowOverlays` 返回类型改 `AgentAxisOverlays | AgentAxisOverlay | null`；`src/composables/resourceCalc/damagePoolDirect.ts:168` 的调用加 `overlay: overlayBuckets as unknown as AgentAxisOverlay | undefined`；`panelPhases.ts:388` 的 scalar 合并改为 `if ('scalarBySlot' in res && res.scalarBySlot)`（新形状没有这个键）。预期：行为零变化（zd 0、分片基线不变）；没有测试要改。
 - [x] **T15-b sigrid（done `0f643e81`，r468；`sigridInfectionPct` 字段已随手删；卡面漏列读者 `damagePoolBatchR16b.test.ts:133-144`）**：`src/mechanics/agents/sigrid.ts:648-659 / 677`；测试 `src/mechanics/__tests__/sigrid.test.ts:583,589`、`teamHookMigration.test.ts:261-263`。
@@ -752,11 +759,11 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 - [x] **T15-d corin（done `3a9a8f5f`，r470；`CorinOverlay { byMove?, flatPct? }`；两字段已删）**（`src/mechanics/agents/corin.ts:287-333`）；测试 `corin.test.ts`、`teamHookMigration.test.ts:251-255`。
 - [x] **T15-e banyue（done `808710cf`，r471；`BanyueOverlay { stacksByMove?, flatPct? }`；两字段已删；T16 现可开）**（`src/mechanics/agents/banyue.ts:927-970`）；测试 `banyue.test.ts`（14 处）、`teamHookMigration.test.ts:163-168`、`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 的般岳夹具。
 - [x] **T15-f yixuan（done `f5bddaf6`，r472；`YixuanOverlay { byMove?, flat? }`；两字段已删，共享类型 9 字段清零）**（`src/mechanics/agents/yixuan.ts:1080-1140`；读取优先级 `flat ?? (isAxis ? byMove.get(moveId) : undefined) ?? {0,0}` 逐字保留）；测试 `yixuanSmoke.test.ts`、`teamHookMigration.test.ts:181-206`、`damagePoolNightA.test.ts:293-318`（槽键控断言改槽无关）。
-- [ ] **T15-g 收口**：删旧类型 / 旧字段 / scalar 合并；`useResourceCalc.ts:647-648`、`damagePool.ts:85-90`、`damagePoolDirect.ts:160-173` 合成 `axisOverlayBySlot`；`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 输入夹具改 `axisOverlayBySlot`；加锁 `src/composables/__tests__/axisOverlayOpaqueCc437.test.ts`（三条见设计稿 §4 g 行）；arch CC-437 置 done；设计稿状态行改「已落地 <commit>」。
+- [x] **T15-g 收口（done `38adb975`，r473；CC-437 全部落地，形状锁 `axisOverlayOpaqueCc437.test.ts` 已加；T15 卡关闭）**：删旧类型 / 旧字段 / scalar 合并；`useResourceCalc.ts:647-648`、`damagePool.ts:85-90`、`damagePoolDirect.ts:160-173` 合成 `axisOverlayBySlot`；`damagePoolNightA.test.ts` / `damagePoolBatchR16b.test.ts` 输入夹具改 `axisOverlayBySlot`；加锁 `src/composables/__tests__/axisOverlayOpaqueCc437.test.ts`（三条见设计稿 §4 g 行）；arch CC-437 置 done；设计稿状态行改「已落地 <commit>」。
 <!-- /card:T15 -->
 
 <!-- card:T16 -->
-### T16 · 般岳(1471) 怒相增益轴内「释放后覆盖」（真缺口 G2，2026-10-03 pending 分诊立项；**前置：等 T15/CC-437 落地**，同区防冲突）
+### T16 · 般岳(1471) 怒相增益轴内「释放后覆盖」（真缺口 G2，2026-10-03 pending 分诊立项；**前置 T15/CC-437 已于 r473 `38adb975` 全部落地，可开**——新增轴窗口数据直接加进 `banyue.ts` 私有 `BanyueOverlay`，经 `banyueOverlay.wrap/read`，不碰共享类型）
 **卡面就是全部上下文**：`docs/MECHANICS_IMPLEMENTATION.md` 般岳段 + `src/mechanics/agents/banyue.ts:478`（`rageGainCoverage` 滑块消费点）+ 头注释 L42。**缺口**：怒相增益（贯穿+300/火伤+36%/暴伤+36%，C2 各+15）现按 `banyue.rageGainCoverage` 滑块**整局覆盖率**近似；真值是「每次进入怒相后 30s 窗口内生效」——轴模式下能在轴内精确（入怒相时刻已知 ⇒ 窗口精确）。**非轴模式维持滑块**（R4 撤销时序仿真，非轴不建逐秒轴）。
 - [ ] 轴模式：扫失衡轴/动作轴，怒相进入点（焚身）起 30s 窗内行吃满增益、窗外不吃——复用明王同款轴扫描（般岳明王 8s 窗口先例 / `computeCorinStunBonusMoves`）；走 T15 落地后的 overlay 通道。
 - [ ] 非轴模式：保持滑块，卡面注明。
