@@ -82,6 +82,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 13:08 arena-F 第 429 轮**（开工：master `ecf7bfa0` 干净、已推；主仓零 WIP（r428 清掉孤儿后第一次）；REQUIREMENTS.md 无新条目；worktree `wtF-coop` 已删，产物 `/home/kaua/calc-arch/arenaF/r429/`：`helpers.diff`、`vt.log`、`guards.log`、`build.log`、patch 脚本）
+- **做到哪**：r427/r428 挂着的「珂蕾妲协同版」**做完**（CC-405 `84b3210e`）。不是 koleda 特判，而是加了一层通用的「队友在队招式变体」表（`src/data/moveVariants.ts`），融合求和前换段、`enrichExecutionPlan` 一处消费；以后任何「X 在队时 Y 的某段换倍率」都是表里加一行。
+- **为什么 golden/zd 一动不动**：预设库里没有珂蕾妲，所以 zd DIFF 0 不是「没改伤害」而是「改的伤害没被预设覆盖」——真实影响只在含珂蕾妲+本的自定义队（强化普攻 +17%、引爆 +10%、终结 +9.4%）。锁靠 `moveVariants.test.ts` 真引擎用例（珂蕾妲+本+妮可）。
+- **留下的已知偏差**（不是 bug 票，是记录）：① 轴表 / 技能行 UI 查表没有队伍上下文，珂蕾妲+本时仍显示非协同值——要改得把 `teamAgentIds` 送进 `axisTableDirect` / `skillRows` 的查表口，改动面大、收益只是显示，没做；② 协同段 actionTime 未跟随（终结 1.8→1.733、二段 1.659→2.031），时间通道仍按原段。
+- **扫过、确认不属于变体表的**：全库 17 条「协同」param 中千夏 1491019（泡泡，已在 QIANXIA_EX_PHOTOGRAPHY 融合组）、爱芮 1501022（CC-197 归属不明）、南宫羽 1511018、柚叶 1411022 都是自身召唤/机制协同，与队友无关——别再把它们当 CC-405 的续篇。
+- **下一步候选**（不排序，承接 r428）：arena-E §2 r420 下一步 2（yidhari-qingyi-lucia 外层振荡：CC-402 后 ratchet 已 cycle→stable，先确认还振不振，不振在 §2 加一行指针关掉）；r420 下一步 3/4 需用户口径，只能写候选；若用户要 UI 也显示协同值，走上面偏差 ①。
+- **回滚点**：`git revert 84b3210e`（docs 单独一提交）。
+
 **2026-10-03 12:51 arena-F 第 428 轮**（开工：master `7077bd4c` 干净、已推；无 verify 进程；REQUIREMENTS.md 无新条目；worktree `wt-T7` 已删，产物 `/home/kaua/calc-arch/arenaF/r428/`）
 - **做到哪**：① remielle 三文件孤儿**丢弃**（CC-403，理由与重开条件在卡里；diff 在 `arenaF/r428/remielle-orphan.diff`）——主仓现在干净，verify 不再被它弄红。② §3 卡 **T7** 由 dsh 工人完成（5d081fb5），卡已删；详见 CC-404。
 - **孤儿处置的教训**：别人 WIP 里写的「用户裁决」要回 docs 核对日期与内容——这份把 09-30 的 C6 裁决（CC-166）错按到了档位计数上。处置前把 diff 整份存到 calc-arch，让「丢弃」可逆。
