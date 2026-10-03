@@ -336,7 +336,7 @@ import { fmt } from '@/utils/format'
 import { panelElementStat } from '@/utils/elementStatKeys'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
 import { teamMechanicSettings, teamReleaseShares, teamTeammateSplit } from '@/composables/agentMechanicView'
-import { resolveWindInfectionPick, getWindInfectionCoverage } from '@/composables/resourceCalc/helpers'
+import { resolveWindInfectionPick, getWindInfectionCoverage, buildAnomalySettlementEntries } from '@/composables/resourceCalc/helpers'
 import type { TeammateSplitDecl } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
@@ -439,33 +439,30 @@ const windInfectionConfig = computed<{
 })
 
 function settlementRows(vp: AnomalyVirtualPanelBuild) {
-  const sameElement = vp.rows.filter((row: AnomalyVirtualPanelRow) => row.settlementEligible !== false)
-  const rows = sameElement.length > 0 ? sameElement : vp.rows
-  const isSingle = rows.length === 1
-
-  // 从 anomalyPoolResult 取触发总数
-  const prog = anomalyPoolResult.value?.perElement?.find((p: AnomalyProgress) => p.element === vp.element)
-  const totalTriggers = prog?.triggerCount ?? 0
-
-  return rows.map((row: AnomalyVirtualPanelRow) => {
-    // 单人强制 100%；多人按 weight
-    const share = isSingle ? 1 : row.weight
-    const triggerCount = Math.round(share * totalTriggers)
-    // 从该角色的真实面板取结算属性
-    const panel = panels.value[row.slot] ?? null
+  // CC-428：份额 / 次数直读引擎 buildAnomalySettlementEntries（同属性筛选、单人 100%、用户覆盖、归一化、余数补正全在那一处）。
+  // 此前页面按 row.weight 自算 round(share × total)：用户改了份额后显示不变、也不归一，与实际结算分叉。
+  // 分母用积蓄池的触发总数（伤害侧另按风化阻断折成 effectiveTriggerCount，那是伤害口径，这里展示配比）。
+  const entries = buildAnomalySettlementEntries(vp, panels.value, vpTotalTriggers(vp), configStore, catalogStore, { keepZero: true })
+  const isSingle = entries.length === 1
+  return entries.map(e => {
+    const row = vp.rows.find((r: AnomalyVirtualPanelRow) => r.slot === e.slot)
+    const panel = e.panel
     return {
-      ...row,
-      displayShare: isSingle ? '100%' : `${(share * 100).toFixed(1)}%`,
-      triggerCount: isSingle ? totalTriggers : triggerCount,
-      anomalyDmgBonus: panel?.anomalyDmgBonus ?? 0,
-      anomalyCritRate: panel?.anomalyCritRate ?? 0,
-      anomalyCritDmg: panel?.anomalyCritDmg ?? 0,
-      assaultCritRate: panel?.assaultCritRate ?? 0,
-      assaultCritDmg: panel?.assaultCritDmg ?? 0,
-      enemyAnomalyDefReduction: panel?.enemyAnomalyDefReduction ?? 0,
-      enemyAssaultDefReduction: panel?.enemyAssaultDefReduction ?? 0,
-      enemyResReduction: panel?.enemyResReduction ?? 0,
-      elementResReduction: panel ? panelElementStat(panel, 'enemyRes', vp.element) : 0,
+      slot: e.slot,
+      name: e.name,
+      /** 份额输入框的缺省值（无用户覆盖时 = 引擎展示权重） */
+      weight: row?.weight ?? e.share,
+      displayShare: isSingle ? '100%' : `${(e.share * 100).toFixed(1)}%`,
+      triggerCount: e.triggerCount,
+      anomalyDmgBonus: panel.anomalyDmgBonus ?? 0,
+      anomalyCritRate: panel.anomalyCritRate ?? 0,
+      anomalyCritDmg: panel.anomalyCritDmg ?? 0,
+      assaultCritRate: panel.assaultCritRate ?? 0,
+      assaultCritDmg: panel.assaultCritDmg ?? 0,
+      enemyAnomalyDefReduction: panel.enemyAnomalyDefReduction ?? 0,
+      enemyAssaultDefReduction: panel.enemyAssaultDefReduction ?? 0,
+      enemyResReduction: panel.enemyResReduction ?? 0,
+      elementResReduction: panelElementStat(panel, 'enemyRes', vp.element),
     }
   })
 }

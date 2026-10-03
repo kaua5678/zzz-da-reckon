@@ -322,6 +322,8 @@ export interface AnomalySettlementEntry {
  *
  * - 同属性角色（同色共享积蓄池）才有资格触发
  * - 触发次数 = round(share × totalTriggers)，末端补余保证总数一致
+ * - `opts.keepZero`：保留 triggerCount = 0 的行（展示层「异常结算角色占比」要列出每个可结算角色让用户改份额；
+ *   伤害侧不传 ⇒ 行为不变）。CC-428：此前页面按 `row.weight` 自算份额 / 次数，用户覆盖后显示与实际结算分叉
  */
 export function buildAnomalySettlementEntries(
   build: AnomalyVirtualPanelBuild,
@@ -329,6 +331,7 @@ export function buildAnomalySettlementEntries(
   totalTriggers: number,
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  opts?: { keepZero?: boolean },
 ): AnomalySettlementEntry[] {
   // 同属性角色筛选（用 virtual panel row 的 settlementEligible 字段）
   const settlementRows = build.rows.filter(row => row.settlementEligible)
@@ -361,7 +364,7 @@ export function buildAnomalySettlementEntries(
       panel: panelAt(panels, row.slot) ?? emptyPanel(),
       name: agent?.name?.zhCN || `槽${row.slot + 1}`,
     }
-  }).filter(e => e.triggerCount > 0)
+  }).filter(e => opts?.keepZero || e.triggerCount > 0)
 }
 
 // ============================================================================
