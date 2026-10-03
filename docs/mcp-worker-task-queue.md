@@ -88,6 +88,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-03 17:28 arena-F 第 444 轮**（开工：origin = 本地 = `863cabc3`，无人在跑；REQUIREMENTS.md 无新条目；做 T12，worktree `wt-T12`（已删）；产物 `/home/kaua/calc-arch/arenaF/r444/`：`tsc.log` / `guards.log` / `build.log` / `zd.log` / `vt-s1.log` / `vt-s2.log`）：**CC-417 `a21d952c`**（**已推**）+ 本文档提交。
+- **做到哪**：T12 收口（1 行守卫删除 + 1 个锁文件）。全量基线现在 **471 文件 / 4310 用例**。
+- **别人的 WIP**（`kaua5678`）：`grace.ts`（轮换精确闭式解）+ `graceRotation.test.ts`（新）+ `velina.ts` 2 行，最后一次真实改动 17:25，本轮未再动。**到 18:30 仍没动 ⇒ 孤儿**：worktree（基于 origin）里 `cp` 进这三份，跑 `npx vitest run src/mechanics/__tests__/grace*.test.ts src/mechanics/__tests__/graceRotation.test.ts src/composables/__tests__/mechanicRowValuesT9.test.ts` + vue-tsc + zd（预期含格莉丝的队 DIFF ≠ 0，把行数记进 arch）+ 全量分片，绿就以他的名义意图提交（提交信息引用他 @fact 那段），红就把红的输出写进 §2b 后留着不动。主仓那三份别删，用 `git show HEAD:… >` 还原只在你要 rebase 时做、做完 cp 回去。
+- **下一步（start-ready）**：§3 只剩 T10（备选，wEngine 覆盖率回填 watch → computed；先读 `useResourceCalc.ts` 里该 watch 的注释与 `src/data/wEngineStackCoverage.ts` 头注释）。T10 之外没有排队的卡——下一轮若不做 T10，先按 §0 的方法找新题：候选方向 ① `convergence.ts` 里其它「初始提交遗留」的 `return null` / 兜底（`git log -S` 看出处），② `solveTeam.ts` 把 null 当 +∞/0 的三处是否还有存在意义（CC-417 后 `runCalcRound` 只在 `resourceConfig` 为 null 时返回 null，而那时 `calcOutput` 根本不会调它）。
+- **回滚点**：`git revert a21d952c`。
+
 **2026-10-03 17:04 arena-F 第 443 轮**（开工：origin = 本地 = `a5306515`，无人在跑；REQUIREMENTS.md 无新条目；做 T11，worktree `wt-T11`（已删）；产物 `/home/kaua/calc-arch/arenaF/r443/`：`patch-t11-harness.py`、`t11-red.log`（重新应用后 4 条红的原始输出）、`vt-s2.log`（重新应用 + 修 4 条后全量仍 16 红的证据）、`vt2-s1.log` / `vt2-s2.log`（最终绿）、`tsc*.log` / `guards*.log` / `build.log`）：**CC-416 `79dec912`**（+ 红的中间提交 `c7daefed`，**都已推**）+ 本文档提交。
 - **做到哪**：T11 收口为 opt-in（卡面已改写结论）。中途试过「改默认 + 修 4 条」：4 条修好后全量又出 16 条（golden 320 条差异等），据此改方向——证据在 `vt-s2.log`。顺带发现 T12（单人支援 weight 0 ⇒ 整轮 null）。
 - **别人（`kaua5678`）17:24 起在主仓改 `grace.ts`**（`planGraceRotation` 改精确闭式解，产品口径变更，带 @fact）+ 新 `graceRotation.test.ts`，未提交、无认领；`velina.ts` 2 行 WIP 仍在。**下一轮别碰 grace / velina**；若他提交了但没推，按 r441 §2b 孤儿规则（先隔离跑全量再推）。
@@ -485,13 +491,8 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 <!-- /card:T11 -->
 
 <!-- card:T12 -->
-### T12（小，可选）· 单人支援/防护 weight=0 ⇒ 整个 resourceResult 为 null
-
-**现象（r443 实测）**：`setupHarness([{ agentId: '1311' }], { productionBasicWeights: true })`（= 生产里只上一个耀嘉音的默认配置）⇒ `useResourceCalc().resourceResult.value === null`。
-**链路**：weight 0 ⇒ 无平A行；她的行只剩 `1311012 ×0` / `1311008 ×3`（终结技，无失衡贡献）⇒ `convergence.ts:765 if (baseStun.length === 0) return null` ⇒ `runCalcRound` null ⇒ 整轮 null（伤害池也没了）。
-**要判断的**：空失衡池是不是应该让整轮消失。倾向：**不该**——失衡池空 = 失衡次数 0 / 无连携，伤害池与能量账仍应给出；把 `:765` 的 `return null` 改成「空失衡池结果」（`stunPool` 空、stunCount 0）需要看 `buildPromoteParams` 之后那段对 `baseStun` 的依赖。做之前先 grep 调用方对 null 的分支（`solveTeam.ts:83/140/159` 把 null 当 +∞ / 0）。
-**验收**：单人 1311 weight 0 有 resourceResult（伤害池非空）；zd DIFF 0（正常三人队不受影响）；`allAgentsSweep` 等不需改。
-**顺带（已在 r442 T11 卡写过，仍有效）**：主仓 `velina.ts` 2 行 WIP（`defaultBasicAttackTimeWeight: 0`）——r443 时同 lane 又在主仓改 `grace.ts`（轮换精确闭式解，17:24 起）+ 新文件 `graceRotation.test.ts`，说明他活跃，velina 那 2 行归他；**别收养**，除非再次 > 1 小时无人动且他没别的改动在跑。
+### T12 · ✅ 完成（r444 CC-417 `a21d952c`）：删 `convergence.ts` 的 `baseStun.length === 0 → null` 守卫；空失衡池 ⇒ stunCount 0、伤害池照常。锁 `emptyStunPoolCc417.test.ts`。
+**仍有效的提醒**：主仓 `velina.ts` 2 行 WIP（`defaultBasicAttackTimeWeight: 0`）+ `grace.ts` 轮换闭式解 WIP + 新 `graceRotation.test.ts` 都是同 lane（`kaua5678`）17:25 前的未提交改动；按孤儿规则（> 1 小时无人动）处理，处理时 grace 那份是**产品口径变更**（@fact 已写在他的注释里），要跑 grace 全部测试 + zd 并把差异写进 arch。
 <!-- /card:T12 -->
 
 （T1/T2 已于第 370 轮 `0c5e00cb` 完成，T3 已于第 373 轮 `851f232f` 完成。T4–T6 由第 424 轮（arena-F，CC-398）写出；T5 `df3e7c42` / T6 `1b771511` 已于第 425 轮完成并删卡，T5 是 dsh 工人做的；T4 `13602152` 已于第 426 轮由 dsh 工人完成并删卡。T7 5d081fb5 已于第 428 轮由 dsh 工人完成并删卡。§3 当前**没有待执行卡**。）
