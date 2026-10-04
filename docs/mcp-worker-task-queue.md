@@ -96,6 +96,7 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - 21:29 开工核查主仓干净；21:29:46（我 `git add docs/… && commit` 的同一秒级窗口）`src/core/resource/helpers.ts:515` 冒出 **另一条 lane 的 4 行临时测量桩**：`// [TEMP INSTRUMENT — 一次性测量，测完立即回退]` + `globalThis.__capLog.push({ s: rawScale, n: sumAbsorbedNet, b: budget })`（`iterateBody` 封顶处）。LANE-CLAIMS 无对应认领；无 vitest 进程在跑。做法与 r510 那条 lane 的 `helpers.ts` 一行实验同款（那次后来自己撤了）。
 - **arena-F 未碰它**：本轮提交 `b0fb9bf2` 只 `git add` 了 `docs/mcp-r6-refactor-list.md`（显式路径），折叠行 `517–520` 的「主仓干净」指 21:29 核查时刻，属实。
 - **下一轮接手者**：开工 `git diff --stat` 看该桩是否已回退。① 已回退 ⇒ 无事；② 仍在且 mtime > 1 小时、仍无认领 ⇒ 按提示词 §9「孤儿」流程：它只是测量桩不是功能，**直接 `git checkout -- src/core/resource/helpers.ts` 丢弃**（在 §2b 记一行「何时丢、依据 = 作者自注一次性」），不要带着它跑 zd / 全量（`globalThis` 侧写不影响数值，但会污染 `.zc/perf` 的 purity 类探针）。③ 若那条 lane 把测量结论写进了 docs（grep `__capLog` / `capLog`），把指针补到 §8.0 #14（折叠环封顶）下。
+- **闭环（同轮 21:30）**：文档提交 `c8e5ed20` 后 `git status` 已空、`helpers.ts` mtime 21:30:35 已回退 ⇒ 那条 lane 自己撤了桩（存活 < 1 分钟）。上一条「下一轮接手者」流程仅在**再次**出现且滞留时适用；本次无需处理。观察价值：有一条未认领 lane 在用「插桩 → 跑一次 → 立刻撤」的方式做封顶处测量（`rawScale / sumAbsorbedNet / budget`），与 §8.0 #14 主题相关；它若落了结论会在 docs 里出现 `capLog`，grep 即可。
 - 现场其余与 r516 收口一致：REQUIREMENTS 7 done + R4 撤销；§3 仅 T10 备选 / T16 不做；§8.0 无触发。
 
 **2026-10-04 21:05 arena-F 第 516 轮**（开工：主仓 = origin = `58873efd` 干净；md5 三者未变；REQUIREMENTS / §8.0 空；§3 仅 T18 阶段 2 开放且无人认领 ⇒ 自做）
