@@ -92,6 +92,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 17:00 arena-F 第 487 轮**（开工：主仓 = origin = `30dfd0cc`；主 lane 当时有未提交 `core/resource/foldLoop.ts` WIP（未认领、后自行撤掉），本轮文件不相交；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T53`，收工已删）。
+- **落地 CC-447** `0acf5cd1`（arch 表有行）：`AttributeConfigPage.vue` 抗性元素列表 → `STANDARD_ENEMY_DEBUFF_ELEMENTS × damageElementLabel`；`StunAxisPage.vue` `ENTRY_ANOMALY_LABELS` 删除；`elementLabelSingleSource.test.ts` 正则补洞（数组写法）、StunAxisPage 例外撤销。UI 层，zd 不适用。回滚 `git revert 0acf5cd1`。
+- **结论落盘**：r483 列的四大页页面镜头全部扫完（r6 §8 第 487 行）；`src/views`+`src/components` 已无 agentId/moveId 字面量、手写 localStorage、元素中文名副本。`StatPanel`/`enemyDebuffStats` 的「火属性」后缀对仍按 CC-214 不合并。
+- **下一步（start-ready）**：题序 REQUIREMENTS → §3 → §8.0 触发 → 本轮无题。可选小题：读 `StunAxisPage.vue` L330-520 的 computed 语义（班月怒窗 / 凝神窗口 / 候选池；判据 r454）。页面镜头此后收官，不要再按行数挑页扫；三者皆空就写「本轮无题」（r453/r458/r482 先例）。
 **2026-10-04 16:50 arena-F 第 486 轮**（开工：主仓 = origin = `c09f5a67`，干净；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T52`，收工已删）。
 - **落地 CC-446** `d0a9e9b9`（arch 表有行）：`AgentMechanicModule.axisDurationInputs` + 门面 `agentAxisDurationInput` / `agentAxisMoveBadge`；`StunAxisPage.vue` 模板 `moveId === '1371022'` 蓄力框与 `stunExTag` 删除，按块所属槽位的模块声明渲染；yixuan 声明默认 = `CLOUD_MAX_SECONDS`（与引擎缺省同源）。zd 零差。锁 `axisDurationInput.test.ts`。回滚 `git revert d0a9e9b9`。
 - **裁定**：r485 候选 `ACTION_ROW_DEFS`（卡片按招式名子串挑颜色）**不做**，理由与触发条件见 r6 §8 第 486 行。
