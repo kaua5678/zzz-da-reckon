@@ -261,6 +261,7 @@ import { isStaleAxisActionFor } from '@/composables/resourceCalc/roundInputs'
 import { axisTableDirectCandidates } from '@/composables/resourceCalc/axisTableDirect'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
+import { damageElementLabel } from '@/utils/agentLabelMaps'
 import type { StunAxisAction, StunAxis } from '@/types/resource'
 import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/data/bossEntryAnomalyOptions'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
@@ -407,10 +408,10 @@ function setFiller(ai: number, v: number) {
 }
 
 // 进窗初始异常状态/异常条（随预设导出；引擎取首个生效轴条目上的显式设置，未填回落全局 boss.*）
-const ENTRY_ANOMALY_LABELS: Record<string, string> = { fire: '火', electric: '电', ice: '冰', ether: '以太', physical: '物理', wind: '风' }
+// CC-447：进窗异常元素中文名走 CC-214 单一来源 `damageElementLabel`（原页面私有 6 键表，CC-214 登记为「有意的子集」，但子集不需要自己的文案）
 const entryAnomalyOptions = [
   { label: '无', value: 0 },
-  ...BOSS_ENTRY_ANOMALY_OPTIONS.filter(o => o.value > 0).map(o => ({ label: ENTRY_ANOMALY_LABELS[o.element] ?? o.element, value: o.value })),
+  ...BOSS_ENTRY_ANOMALY_OPTIONS.filter(o => o.value > 0).map(o => ({ label: damageElementLabel(o.element), value: o.value })),
 ]
 // ===== 轴编辑的**唯一写入口** =====
 // 自动命中/条件方案模式下展示的是解析副本，直接改不落盘（且会污染计算缓存）——
@@ -457,7 +458,7 @@ function entryBarCandidates(axis: DeepReadonly<StunAxis>): string[] {
   const used = new Set(entryBarList(axis))
   return BOSS_ENTRY_ANOMALY_OPTIONS.filter(o => o.value > 0 && !used.has(o.element)).map(o => o.element)
 }
-function entryBarLabel(el: string): string { return ENTRY_ANOMALY_LABELS[el] ?? el }
+function entryBarLabel(el: string): string { return damageElementLabel(el) }
 function addEntryBar(ai: number, el: string) {
   editAxis(ai, target => { (target.entryBars ??= {})[el] = 50 })
 }

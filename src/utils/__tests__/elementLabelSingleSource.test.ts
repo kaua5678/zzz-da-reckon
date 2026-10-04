@@ -3,8 +3,9 @@
  * - 伤害元素：`utils/agentLabelMaps#DAMAGE_ELEMENT_LABEL`（含变种元素）；
  * - 角色属性：`utils/agentLabelMaps#ATTRIBUTE_LABEL`；
  * - 允许的其他用途：`utils/enemyDebuffStats#ELEMENT_LABEL`（「火属性」后缀，拼减抗标签）、
- *   `views/StunAxisPage.vue` 进窗异常下拉（有意的子集）、
  *   `components/StatPanel.vue` 乘区说明（「火属性」后缀风格；lumiflux 写「辉光」而 enemyDebuffStats 写「辉光/耀变」，合并会改文案口径，CC-214 不做）。
+ * - CC-447（r487）：`views/StunAxisPage.vue` 进窗异常下拉与 `views/AttributeConfigPage.vue` 抗性格子的私有表删除，改 `damageElementLabel`；
+ *   正则同时覆盖 `{ key: 'physical', label: '物理' }` 这种数组写法（CC-214 的 `physical:\s*'物理'` 匹配不到它，AttributeConfigPage 因此漏网）。
  * 新写一份 `physical: '物理'` 映射会让本测试变红：改为导入上面的共享映射，或把新用途登记进 ALLOWED 并写明理由。
  */
 import { describe, it, expect } from 'vitest'
@@ -16,9 +17,10 @@ const SRC = join(__dirname, '..', '..')
 const ALLOWED = new Set([
   'utils/agentLabelMaps.ts',
   'utils/enemyDebuffStats.ts',
-  'views/StunAxisPage.vue',
   'components/StatPanel.vue',
 ])
+/** `physical: '物理'`（对象写法）或 `'physical', label: '物理'`（选项数组写法） */
+const PHYSICAL_LABEL_COPY = /physical:\s*'物理'|'physical',\s*label:\s*'物理'/
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -47,7 +49,7 @@ describe('职业中文名映射单一来源（CC-215）', () => {
 describe('元素中文名映射单一来源（CC-214）', () => {
   it('只有登记过的文件定义「physical → 物理」映射', () => {
     const hits = walk(SRC)
-      .filter(p => /physical:\s*'物理'/.test(readFileSync(p, 'utf8')))
+      .filter(p => PHYSICAL_LABEL_COPY.test(readFileSync(p, 'utf8')))
       .map(p => relative(SRC, p).replace(/\\/g, '/'))
       .sort()
     expect(hits).toEqual([...ALLOWED].sort())

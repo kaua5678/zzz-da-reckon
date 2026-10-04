@@ -312,6 +312,8 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useStatLabel } from '@/composables/useStatLabel'
 import { getGlobalBuffStatOptions } from '@/utils/statMeta'
 import { localized } from '@/utils/format'
+import { damageElementLabel } from '@/utils/agentLabelMaps'
+import { STANDARD_ENEMY_DEBUFF_ELEMENTS } from '@/utils/enemyDebuffStats'
 import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import { isTeammateBuffInteractive, declaredOnlyReason } from '@/utils/teammateBuffRows'
 import { phaseBuffCondLabel } from '@/utils/phaseBuff'
@@ -354,14 +356,9 @@ function setEnemyNumber(f: EnemyNumberField, v: number | null) {
   configStore.setEnemy({ [f.key]: v ?? f.fallback } as Partial<EnemyConfig>)
 }
 
-const resistanceElements = [
-  { key: 'physical', label: '物理' },
-  { key: 'fire', label: '火' },
-  { key: 'ice', label: '冰' },
-  { key: 'electric', label: '电' },
-  { key: 'ether', label: '以太' },
-  { key: 'wind', label: '风' },
-]
+// CC-447：抗性格子的元素列表 = 引擎减抗所认的标准 6 元素（`STANDARD_ENEMY_DEBUFF_ELEMENTS`），中文名走 CC-214 单一来源；
+// 原为页面手写 6 行 `{ key, label }`（CC-214 的源码锁正则 `physical:\s*'物理'` 匹配不到这种写法，本轮补洞）
+const resistanceElements = STANDARD_ENEMY_DEBUFF_ELEMENTS.map(key => ({ key, label: damageElementLabel(key) }))
 
 const resistanceGroups = [
   { key: 'damage' as const, label: '伤害抗性' },
