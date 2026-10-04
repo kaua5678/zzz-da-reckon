@@ -144,3 +144,4 @@ npx vitest run --config .zc/perf/vitest.perf.config.ts t19census
   **唯一豁免 = 模块自己声明** `estimateExSpecialTime(...).comboAlignIncludedInNecessary === false`（NET，现仅卢西娅 / 照），不写 id 名单（§8.0 #16）。
   test-only、不改行形状 ⇒ 无 zd / golden / ratchet 影响；回滚 = 删文件。CC-454 那类缺陷从「靠人读数发现」变成「新模块一写就红」，是 CC-453「出口统一打标」的下一步「标了就要兑现」。
 - 待 lead 拍板的只有「NET 声明 = 唯一豁免口」这个契约；按队列规则未认领 1 轮则 arena-F 下一轮按 CC-455 做动态锁。
+- **已落地（r535）**：CC-455 `accc23ae` = 动态锁 `src/core/__tests__/comboAlignLedgerInvariant.test.ts`；反证（删 `alice.ts:503` 注册）红并点名 1401；T19 关闭，A / B 不做。lead 要改形态时回滚 = 删锁文件。
