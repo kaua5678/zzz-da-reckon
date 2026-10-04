@@ -34,6 +34,15 @@ import type { SolveDiagnostics } from './solveDiagnostics'
  */
 const UNFOLD_MIN_SECONDS = 1
 
+/**
+ * 累加器出口（2026-10-04）：判定「rowTime 不再随 `acc` 下降」的容差（秒）与连续轮数。
+ * 与停滞判据同源（`1e-2` = 10 毫秒，量化噪声量级，见下方停滞判据注释）。
+ * 语义：某槽连续 `ROW_TIME_STAGNATION_PASSES` 轮 `rowTime` 无改善（且平A池已空）
+ * ⇒ 折叠残差对该槽已失去杠杆（挤不动行），继续累加只是记账噪声。
+ */
+const ROW_TIME_STAGNATION_SECONDS = 1e-2
+const ROW_TIME_STAGNATION_PASSES = 2
+
 /** 折叠环的只读上下文：把 `calcTeamResources` 里原先的闭包变量显式化（调用期间不变）。 */
 export interface FoldLoopContext {
   configs: CharacterOperationConfig[]
@@ -55,6 +64,13 @@ export function runFoldLoop(
   let st = from
   // 每次折叠管线运行（含规范重放）独立冻结 refund
   diag.refundFrozen = false
+  /**
+   * 累加器出口（2026-10-04）的逐槽停滞跟踪：**本函数局部**，不跨运行——重折环是新调用，重新观察。
+   * `prevRowTime` = 该槽历史最小物化行时间（只降不升，与停滞判据的 `bestExcess` 同手法）；
+   * `stagnantRowPasses` = 连续无改善轮数。判据见 `ROW_TIME_STAGNATION_SECONDS` 常量处。
+   */
+  const prevRowTime: number[] = ctx.configs.map(() => Infinity)
+  const stagnantRowPasses: number[] = ctx.configs.map(() => 0)
   for (let timePass = 0; timePass < ctx.maxTimeIter; timePass++) {
     diag.timeBudgetPasses = timePass + 1
     // 口径 `engine:收敛环停点规范化` 的 `@fact` 声明按既有惯例留在 re-export 壳处
@@ -142,13 +158,57 @@ export function runFoldLoop(
       // 顶过阈值误退化（叶瞬光满命队 auto 退短轴、白丢灭极段伤害 −11% 即此因）。用**当轮实测行**
       // 而不是累加的折叠残差，否则 pass0 的虚高会把「其实装得下」的队误判成超支（叶瞬光自动轴退化曾被此关掉过）。
       cfg.timePressureSeconds = rowTime - battleWindow
+      /**
+       * ★ 累加器出口（2026-10-04）：判定该槽「rowTime 是否还随 acc 下降」。
+       *
+       * 折叠残差 `acc` 的唯一杠杆 = 压缩平A池 → 模块少产行 → `rowTime` 下降。判据取**合取**：
+       *   ① `state.basicAttackTime <= 0`：该槽平A池已空（无处可压）；
+       *   ② `rowTime` 连续 `ROW_TIME_STAGNATION_PASSES` 轮无改善（≤ `ROW_TIME_STAGNATION_SECONDS`）。
+       * 两者同时成立 ⇒ 继续累加挤不动任何行，是纯记账噪声 ⇒ 该槽停止累加。
+       *
+       * **为什么必须带 ②（v1 的教训）**：只判 ①（团队 Σbasic==0）会在「池被挤空但行仍在缩」的
+       * 过渡轮就冻结，把本该由残差继续挤掉的秒数留在账本外 ⇒ 实测全库 **−32.5M / 失衡 −3 /
+       * `timeFillRatchet` 6 红**（`over 0→1.1`、`stun 2→1`、`stable→cycle`）。带 ② 后冻结只发生在
+       * 真正到不动点的槽上。
+       *
+       * **机制（修正 v1 的错误归因）**：封顶激活时 `pool = budget − scale·Σnet − Σcredits + relief + refund`
+       * 且 `scale·Σnet ≡ budget` ⇒ **平A池恒 0，与 acc 无关**（`take` 项在 `Σcapped` 与
+       * `reliefWithDynamic` 里精确抵消，实测两态均 +0.000）。acc 的真正作用面是**份额**：
+       * `capped_i = net_i × budget/Σnet`，只由比值决定 ⇒ 冻结 acc 会改份额（实测主C +3.10s）。
+       * ⇒ 本出口**不是中性记账**，它改落点；故判据要窄，且必须逐队归因。
+       */
+      const rowImproved = rowTime < prevRowTime[i] - ROW_TIME_STAGNATION_SECONDS
+      if (rowImproved) {
+        prevRowTime[i] = rowTime
+        stagnantRowPasses[i] = 0
+      } else {
+        stagnantRowPasses[i] = (stagnantRowPasses[i] ?? 0) + 1
+      }
+      // ★ 累加器出口（2026-10-04）的判据 = 目标口径的**三段合取**：
+      //   ① `basicAttackTime <= 0` —— 该槽平A池已空（无处可压）；
+      //   ② `excess >= 0`（即 `idle == 0`）—— 该槽**不是欠打**（账本 ≤ 物化行）。
+      //      漏掉本条会误伤「账本高估」的槽：实测 `auto-1431-1491-1341` 在无出口时
+      //      `resid=0.000 / idle=0.54`（完美收敛），带（缺②的）出口后 `resid=1.538 / idle=2.74`
+      //      ⇒ **把已收敛的队弄坏**（−0.60M）。idle>0 说明该槽的账本仍高于物化行，
+      //      此时残差不该被冻——它还得靠 refund 通道继续参与收敛。
+      //   ③ `rowTime` 连续 `ROW_TIME_STAGNATION_PASSES` 轮无改善 —— 杠杆确实已失效。
+      const accLeverLost = state.basicAttackTime <= 1e-9
+        && excess >= 0
+        && (stagnantRowPasses[i] ?? 0) >= ROW_TIME_STAGNATION_PASSES
       if (excess > 1e-6) {
         // 量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0。
         // `+=` 累加（2026-09-03 实测三语义对比）：`=` 对正反馈队（猫又/伊德海莉——模块行随
         // 平A池增长）欠补偿 → 溢出 186s；峰值 `max()` 同样溢出；累加虽使单调队（希格莉德
         // 敛枪式/凛冽枪尖）必要时间带历史残差，但这是全队模块行（雅/叶瞬光/柏妮思）的既有
         // 口径（必要 = 估计 + 折叠残差），且收敛健康（timeBudgetConverged、无溢出）。
-        cfg.timeBudgetExcess = (cfg.timeBudgetExcess ?? 0) + excess
+        // ★ 例外（2026-10-04）：该槽平A池已空且 rowTime 已停滞 ⇒ 杠杆失效，累加是纯记账噪声
+        // （判据与机制见上方 `accLeverLost`）。回退点：删掉三元、恢复无条件 `+=`。
+        // ⚠ 诊断量只在**真的抑制了累加**时置位（`accLeverLost` 为真但 `excess ≤ 0` 时无事发生），
+        // 否则它会在「条件成立但没压住任何东西」时也报 true —— 行为锁就锁不住实现（反证实测踩到）。
+        if (accLeverLost) diag.timeBudgetAccumulatorFrozen = true
+        cfg.timeBudgetExcess = accLeverLost
+          ? (cfg.timeBudgetExcess ?? 0)
+          : (cfg.timeBudgetExcess ?? 0) + excess
         if (excess > maxExcess) maxExcess = excess
       } else if (-excess > 1e-6) {
         // 负溢出（该角色账本 > 物化行，idle_i = estimate 高估量，与 basicAttackTime 无关）：
@@ -248,5 +308,11 @@ export function runFoldLoop(
       })
     }
   }
+  // 累加器出口（2026-10-04）：如实上报留在账本里的折叠残差量级（逐槽取最大）。
+  // 这是「账本自洽性」的直接读数，也是本出口**唯一可被行为锁区分**的观测量——
+  // 实测 `auto-1431-1481-1491` 有/无出口的**落点与伤害逐位相同**（`ledger=[135.01…]`、
+  // `dmg=104.68M`），差别只在本字段（有出口 `62.2` vs 无出口 `163.0`）。
+  diag.timeBudgetAccumulatedSeconds = ctx.configs.reduce(
+    (m, c) => Math.max(m, c.timeBudgetExcess ?? 0), 0)
   return st
 }

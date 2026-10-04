@@ -375,6 +375,8 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       timeBudgetResidualSeconds: diag.timeBudgetResidualSeconds,
       timeBudgetIdleSeconds: diag.timeBudgetIdleSeconds,
       timeBudgetRefundedSeconds: diag.timeBudgetRefundedSeconds,
+      timeBudgetAccumulatorFrozen: diag.timeBudgetAccumulatorFrozen || undefined,
+      timeBudgetAccumulatedSeconds: diag.timeBudgetAccumulatedSeconds,
       timeTruncatedSeconds,
       truncationBySlot: truncationBySlot.length > 0 ? truncationBySlot : undefined,
       truncationRefoldPasses: truncationRefoldPasses > 0 ? truncationRefoldPasses : undefined,
