@@ -100,3 +100,47 @@ npx vitest run --config .zc/perf/vitest.perf.config.ts t19census
 ```
 
 输出 = §2 的表格 + 汇总行。探针已 gitignore（`.zc/`），不随仓库分发。
+
+## 6. 交叉复核（arena-F r534，独立探针，22:20–22:40）
+
+> 与 §2 同题、不同仪器、同时段撞车（arena-F 22:20 在 `LANE-CLAIMS.md` 认领 T19 阶段 0，他 lane 22:25 提交 `87ce4428`）。
+> 本节只补 §2 没有的事实，不改 §1–§5 的结论。探针：临时 vitest 文件 `src/core/__tests__/zzT19{census,solo}.probe.test.ts`
+> （`setupHarness` + `useResourceCalc().resourceResult` 真实次数，104 预设 + 62 角色 c0/c6，各 ~9s，跑完即删；源码与数据在
+> `/home/kaua/calc-arch/arenaF/r534/`：`zzT19census.probe.test.ts`、`t19-census.json`、`t19-solo.json`）。
+
+### 6.1 数值交叉：credit 与行上声明**精确相等**（不只是「同源」）
+
+对照字段 `characters[i].timeAllocation.comboAlignCredit`（= `helpers.ts:612` `effectiveCredits[i]`）：
+
+| 角色 | 场景 | Σ count × actionTime × ratio | `comboAlignCredit` | 差 |
+|---|---|---|---|---|
+| 1401 爱丽丝 | 单人 c0 / c6 / 预设最大 | 32.813 / 44.745 / 41.762 | 32.813 / 44.745 / 41.762 | **0** |
+| 1131 苍角 | 单人 c0 = c6（不在任何预设） | 34.216 | 34.216 | **0** |
+| 1091 雅 | 单人 c6 / 预设最大 | 31.642 / 17.038 | 31.642 / 17.038 | **0**（c0 36.51 vs 34.076 的 +2.43 来自其他通用项） |
+| 1451 卢西娅 | 单人 c0 / c6 | 2.334 / 3.501 | 0 / 0 | NET 设计（§3.1） |
+
+⇒ 三家「同源」在数值上成立，且 credit = 1× 声明秒（不是 2×），**无双计**。
+
+### 6.2 §2 漏掉的第 6 个命中：蕾米埃尔 1581 Radiant Turn（后台行）
+
+`remielle.ts:680–692` `backstageAutoRows` 推的 `1581010 Special Attack: Ode to Dawn - Radiant Turn（后台）`：`comboAlignRatio: 1, totalTime: 0`，
+只在**队伍**里出现（单人无后台时间 ⇒ §2 的 62 角色单飞口径看不到；104 预设里 potential 最大 31.675s/队）。
+**不是缺陷**：后台行不进必要时间，不需要 credit；蕾米实测 credit 9.97 来自垂虹 `extraNecessaryAction`（CC-26），与本行无关。
+但它和仪玄 4 行（§3.2）一起说明 **`comboAlignRatio` 在前台行与后台 / 0 时长行上是两种语义**（「可折扣比例」vs 展示「不占前台」）——
+任何自动化护栏（§4 替代建议 / §6.4）**必须以 `totalTime > 0` 过滤**，否则蕾米会被误判为 31.7s 死数据。仅 2 角色 3 处，不值得开新字段（zd 行哈希 §8.0 #18）。
+
+### 6.3 其他核对
+
+- **莱卡恩 1141 pushEx 跟随行**（CC-453 边界，立卡要求单列）：104 预设 + 单人均无 `fixed && ratio>0` 行 ⇒ 不构成死数据，无需单列。
+- 其余 56 角色无命中（预设 41 + 单人补齐）。
+- 坑：`comboAlignCredit` 挂在 `timeAllocation` 上，探针第一版读角色结果顶层得 0，差点把爱丽丝再判成死数据——写普查前先 grep 字段挂载点。
+
+### 6.4 对 §4 替代建议的具体化（arena-F 建议，lead 可改）
+
+§4 建议把判据做成护栏，有两种形态：
+- **静态（check-guards 判据）**：模块源码里出现非零 `comboAlignRatio` ⇒ 模块必须注册 `extraNecessaryAction` / `estimateExSpecialTime`。便宜，但**蕾米埃尔会因垂虹的产出口而碰巧通过**、从 cfg 透传的赋值要特判，且查不出「有口但数不对」。
+- **动态（vitest 不变量锁，arena-F 推荐）**：`src/core/__tests__/comboAlignLedgerInvariant.test.ts`，遍历 catalog 全角色单人 c0/c6（~9s），断言
+  `Σ_{fixed, ratio>0, totalTime>0} count × actionTime × ratio ≤ timeAllocation.comboAlignCredit + ε`，
+  **唯一豁免 = 模块自己声明** `estimateExSpecialTime(...).comboAlignIncludedInNecessary === false`（NET，现仅卢西娅 / 照），不写 id 名单（§8.0 #16）。
+  test-only、不改行形状 ⇒ 无 zd / golden / ratchet 影响；回滚 = 删文件。CC-454 那类缺陷从「靠人读数发现」变成「新模块一写就红」，是 CC-453「出口统一打标」的下一步「标了就要兑现」。
+- 待 lead 拍板的只有「NET 声明 = 唯一豁免口」这个契约；按队列规则未认领 1 轮则 arena-F 下一轮按 CC-455 做动态锁。
