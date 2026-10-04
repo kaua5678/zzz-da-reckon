@@ -219,7 +219,7 @@ async function runPass() {
 const selectedAgentId = ref(CHAR_INCREMENT_DEFAULT_AGENT_ID) // 默认值见 data/viewAgentDefaults（CC-431）
 const agentOptions = computed(() =>
   Object.keys(RELEASE_NODE)
-    .map(id => ({ value: id, label: catalogStore.getAgent(id)?.name?.zhCN ?? id }))
+    .map(id => ({ value: id, label: catalogStore.agentName(id) }))
     .filter(o => o.label !== o.value),
 )
 
@@ -244,7 +244,7 @@ const barData = computed(() => {
   }))
 })
 function agentName(id: string): string {
-  return catalogStore.getAgent(id)?.name?.zhCN ?? id
+  return catalogStore.agentName(id)
 }
 function teamLabel(t: BaseTeam): string {
   return t.members.map(m => `${agentName(m.agentId)}${m.mindscape ? ' M' + m.mindscape : ''}`).join('+')

@@ -221,7 +221,7 @@ const props = defineProps<{
 
 const catalogStore = useCatalogStore()
 function agentName(id: string): string {
-  return catalogStore.getAgent(id)?.name.zhCN ?? id
+  return catalogStore.agentName(id)
 }
 
 // ========== Chart 6：抽卡规划器（beam search 最优策略 + VCG 价值归因） ==========

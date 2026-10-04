@@ -9,6 +9,7 @@ import { isLimitedAgent, isLimitedWEngine, applyGoldSteps, applyGoldAllocationTo
 import type { Agent } from '@/types/catalog'
 import type { TeamGoldState } from './teamTimeline'
 
+import { localized } from '@/utils/format'
 // ========== 配装工具（基础金 / 预算感知加金 / 装配到 store） ==========
 
 /** 基础音擎（0 金档）：
@@ -78,7 +79,7 @@ export function buildBudgetAwareGoldSteps(
   for (let s = 0; s < 3; s++) {
     const agent = catalog.getAgent(team[s])
     if (!agent) continue
-    const name = agent.name.zhCN ?? agent.name.en ?? `槽位${s + 1}`
+    const name = localized(agent.name, `槽位${s + 1}`)
     if (isLimitedAgent(team[s])) {
       for (let c = 1; c <= 6; c++) steps.push({ label: `${name} ${c}命`, slot: s, kind: 'cinema' as const, value: c })
     }

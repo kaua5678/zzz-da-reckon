@@ -199,7 +199,7 @@ const mainCQuickOptions = computed(() => {
   const seen = new Map<string, string>()
   for (const t of teamPresets) {
     const main = t.team[0]
-    if (!seen.has(main)) seen.set(main, catalogStore.getAgent(main)?.name.zhCN ?? main)
+    if (!seen.has(main)) seen.set(main, catalogStore.agentName(main))
   }
   return [...seen.entries()].map(([value, label]) => ({ value, label }))
 })

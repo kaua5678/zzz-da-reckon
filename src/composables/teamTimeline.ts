@@ -45,6 +45,7 @@ import type { AnalysisContext } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import { bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
+import { localized } from '@/utils/format'
 type Calc = ResourceCalc
 
 /** 一个队伍的最终配装态（命座/精炼/音擎） */
@@ -251,7 +252,7 @@ interface GoldStepCandidate {
 
 function wengineName(wId: string, catalog: ReturnType<typeof useCatalogStore>): string {
   const w = catalog.getWEngine(wId)
-  return w?.name?.zhCN ?? w?.name?.en ?? wId
+  return localized(w?.name, wId)
 }
 
 /** 下一批可用的加金候选（测试导出；每槽位最多一条：影画/音擎本体/精炼） */
@@ -263,7 +264,7 @@ export function nextGoldCandidates(
   for (let s = 0; s < 3; s++) {
     const agent = catalog.getAgent(team[s])
     if (!agent) continue
-    const name = agent.name.zhCN ?? agent.name.en ?? `槽位${s + 1}`
+    const name = localized(agent.name, `槽位${s + 1}`)
     // 影画（限定 S 角色才占金）
     if (isLimitedAgent(team[s]) && state.cinemas[s] < 6) {
       out.push({ slot: s, kind: 'cinema', value: state.cinemas[s] + 1, label: `${name} ${state.cinemas[s] + 1}命` })
@@ -475,7 +476,7 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
     teamsEvaluated++
     evalCount++
     if (evalCount % 2 === 0) {
-      report((evalCount / totalEval) * 0.75, `队伍搜索 ${evalCount}/${totalEval}（${catalog.getAgent(a)?.name.zhCN ?? a}+${catalog.getAgent(b)?.name.zhCN ?? b}）…`)
+      report((evalCount / totalEval) * 0.75, `队伍搜索 ${evalCount}/${totalEval}（${catalog.agentName(a)}+${catalog.agentName(b)}）…`)
       await yieldNow()
     }
   }
@@ -557,7 +558,7 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
       const alloc = computeOptimalTeamAllocation(calc, configStore, [m, a, b], opts.budget, opts.autoBuild === true)
       goldCache.set(key, alloc)
       goldEvaluations += alloc.stepsEvaluated
-      report(0.75 + (i / distinctList.length) * 0.22, `加金优化 ${i + 1}/${distinctList.length}（${catalog.getAgent(a)?.name.zhCN ?? a}+${catalog.getAgent(b)?.name.zhCN ?? b}）…`)
+      report(0.75 + (i / distinctList.length) * 0.22, `加金优化 ${i + 1}/${distinctList.length}（${catalog.agentName(a)}+${catalog.agentName(b)}）…`)
       if (i % 2 === 0) await yieldNow()
     }
   }
@@ -651,7 +652,7 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
   report(1, `完成：${nodesResult.length} 个节点，${swapEvents.length} 次换人`)
   return {
     mainAgentId: opts.mainAgentId,
-    mainName: mainAgent?.name.zhCN ?? opts.mainAgentId,
+    mainName: localized(mainAgent?.name, opts.mainAgentId),
     budget: opts.budget,
     bossName: opts.boss.name,
     phaseLabel: opts.phase.label,
@@ -759,7 +760,7 @@ export async function computeNewCharacterPoints(scenario: AnalysisContext, opts:
     const char = catalog.getAgent(row.charId)
     points.push({
       charId: row.charId,
-      charName: char?.name.zhCN ?? row.charId,
+      charName: localized(char?.name, row.charId),
       nodeId: row.nodeId,
       nodeLabel: row.nodeLabel,
       ...(row.nodeNote ? { nodeNote: row.nodeNote } : {}),
@@ -771,7 +772,7 @@ export async function computeNewCharacterPoints(scenario: AnalysisContext, opts:
       damage: res.damage,
       hpRatio: opts.phase.hp > 0 ? Math.round((res.damage / opts.phase.hp) * 10000) / 100 : 0,
     })
-    report((i + 1) / tasks.length, `强队强度 ${i + 1}/${tasks.length}（${char?.name.zhCN ?? row.charId}）…`)
+    report((i + 1) / tasks.length, `强队强度 ${i + 1}/${tasks.length}（${localized(char?.name, row.charId)}）…`)
     if (i % 2 === 0) await yieldNow()
   }
   report(1, `完成：${points.length} 个点`)
@@ -956,7 +957,7 @@ export async function computeSlotComparePoints(scenario: AnalysisContext, opts: 
     const nodeId = releaseNodeOf(pair.main)!
     points.push({
       mainId: pair.main,
-      mainName: main?.name.zhCN ?? pair.main,
+      mainName: localized(main?.name, pair.main),
       supportId: pair.support,
       nodeId,
       nodeLabel: VERSION_NODES[nodeIndexOf(nodeId)]?.label ?? nodeId,
@@ -971,7 +972,7 @@ export async function computeSlotComparePoints(scenario: AnalysisContext, opts: 
       goldLabelA: resA.goldLabel,
       goldLabelB: resB.goldLabel,
     })
-    report((i + 1) / pairs.length, `同槽位对比 ${i + 1}/${pairs.length}（${main?.name.zhCN ?? pair.main}）…`)
+    report((i + 1) / pairs.length, `同槽位对比 ${i + 1}/${pairs.length}（${localized(main?.name, pair.main)}）…`)
     if (i % 2 === 0) await yieldNow()
   }
   points.sort((a, b) => nodeIndexOf(a.nodeId) - nodeIndexOf(b.nodeId) || a.supportId.localeCompare(b.supportId))
@@ -1077,14 +1078,14 @@ export async function computeSlotSweepPoints(scenario: AnalysisContext, opts: Sl
     if (!res) { skipped++; continue }
     points.push({
       candidateId: agent.id,
-      candidateName: agent.name.zhCN ?? agent.name.en ?? agent.id,
+      candidateName: localized(agent.name, agent.id),
       team,
       damage: res.damage,
       hpRatio: opts.phase.hp > 0 ? Math.round((res.damage / opts.phase.hp) * 10000) / 100 : 0,
       totalGold: res.totalGold,
       goldLabel: res.goldLabel,
     })
-    report((i + 1) / candidateIds.length, `第三人对比 ${i + 1}/${candidateIds.length}（${agent.name.zhCN ?? agent.id}）…`)
+    report((i + 1) / candidateIds.length, `第三人对比 ${i + 1}/${candidateIds.length}（${localized(agent.name, agent.id)}）…`)
     if (i % 2 === 0) await yieldNow()
   }
   points.sort((a, b) => b.damage - a.damage || a.candidateName.localeCompare(b.candidateName))

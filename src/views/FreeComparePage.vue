@@ -276,6 +276,7 @@ import { bestSeriesIndexByLevel, formatMetric, metricDef, metricOptions } from '
 import { scGridStartOf, scYGridOf, scYOf, scYRangeOf, scYStepOf } from '@/composables/versionChartGeometry'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
 
+import { localized } from '@/utils/format'
 const catalog = useCatalogStore()
 
 // ---------- 数据 ----------
@@ -355,7 +356,7 @@ function addCondition() {
 }
 
 const agentOptions = computed(() =>
-  catalog.displayAgents.map(a => ({ value: a.id, label: `${a.name.zhCN ?? a.id}（${a.rarity}）` })))
+  catalog.displayAgents.map(a => ({ value: a.id, label: `${localized(a.name, a.id)}（${a.rarity}）` })))
 const bossOptions = computed(() => bossPresets.value.map(b => ({ value: b.id, label: b.name })))
 /** period 维度的档位：所选 Boss 的各期危局，按时间从旧到新（数据里是新→旧） */
 const periodOptions = computed(() => [...(bossPresets.value.find(b => b.id === bossId.value)?.phases ?? [])]
@@ -366,7 +367,7 @@ const axisOptions = buildAxisOptions()
 const axisHint = computed(() => AXIS_BY_ID.get(axisId.value)?.hint ?? '')
 
 function agentName(id: string): string {
-  return catalog.getAgent(id)?.name.zhCN ?? id
+  return catalog.agentName(id)
 }
 function codeReadable(code: string): string {
   const c = parseSetupCode(code)

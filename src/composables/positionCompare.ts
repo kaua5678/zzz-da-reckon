@@ -154,7 +154,7 @@ export function computePositionCompare(
     const posSlot = findPositionSlot(team, catalogStore, position)
     if (posSlot < 0) continue
     const agentId = configStore.team[posSlot]?.agentId ?? ''
-    const agentName = catalogStore.getAgent(agentId)?.name?.zhCN ?? agentId
+    const agentName = catalogStore.agentName(agentId)
 
     // CC-339：第一次计算（真实队友增益下）一次性读取总伤、伤害明细、失衡池、异常积蓄池，
     // 避免拐力差分关/开 buff 后触发第 3 次全量引擎求值，也防止盲目全开 group.buffs 绕过命座/额外能力门控污染失衡与积蓄

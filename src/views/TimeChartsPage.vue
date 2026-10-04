@@ -433,7 +433,7 @@ const mainAgentOptions = computed(() =>
     .sort((a, b) => nodeIndexOf(AGENT_RELEASE_NODE[a]) - nodeIndexOf(AGENT_RELEASE_NODE[b]))
     .map(id => ({
       value: id,
-      label: `${catalogStore.getAgent(id)?.name.zhCN ?? id}（${AGENT_RELEASE_NODE[id]}）`,
+      label: `${catalogStore.agentName(id)}（${AGENT_RELEASE_NODE[id]}）`,
     })),
 )
 
@@ -523,7 +523,7 @@ const autoBuild = ref(false)
 const optimalGold = ref(false)
 const candidateOptions = Object.keys(AGENT_RELEASE_NODE)
   .sort((x, y) => nodeIndexOf(AGENT_RELEASE_NODE[x]) - nodeIndexOf(AGENT_RELEASE_NODE[y]))
-  .map(id => ({ value: id, label: `${catalogStore.getAgent(id)?.name.zhCN ?? id}（${AGENT_RELEASE_NODE[id]}）` }))
+  .map(id => ({ value: id, label: `${catalogStore.agentName(id)}（${AGENT_RELEASE_NODE[id]}）` }))
 
 // ========== 计算 ==========
 const computing = ref(false)
@@ -552,7 +552,7 @@ async function runCompute() {
 // ========== 颜色 ==========
 // PALETTE / colorOf 已出函 composables/charts/agentPresentation.ts（第一片拆分，原样搬迁）
 function agentName(id: string): string {
-  return catalogStore.getAgent(id)?.name.zhCN ?? id
+  return catalogStore.agentName(id)
 }
 
 // ========== SVG 布局 ==========

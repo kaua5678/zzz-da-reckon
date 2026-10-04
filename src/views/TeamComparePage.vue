@@ -678,7 +678,7 @@ import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverl
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
-import { fmt, compact } from '@/utils/format'
+import { fmt, compact, localized } from '@/utils/format'
 import { useScatterGeometry } from '@/composables/teamCompareScatter'
 import { useSlotSweep } from '@/composables/teamCompareSweep'
 import { encodePointTimes, timeLegendRows } from '@/composables/pointTimeAxis'
@@ -819,7 +819,7 @@ const mainCQuickOptions = computed(() => {
   const seen = new Map<string, string>()
   for (const t of teamPresets) {
     const main = t.team[0]
-    if (!seen.has(main)) seen.set(main, catalogStore.getAgent(main)?.name.zhCN ?? main)
+    if (!seen.has(main)) seen.set(main, catalogStore.agentName(main))
   }
   return [...seen.entries()].map(([value, label]) => ({ value, label }))
 })
@@ -945,7 +945,7 @@ const enginePoolOptions = computed(() =>
   (catalogStore.displayWEngines ?? [])
     .map(w => ({
       value: w.id,
-      label: `${w.name.zhCN ?? w.name.en ?? w.id}（${w.rarity}${isLimitedWEngine(w.id) ? '·限定' : ''}）`,
+      label: `${localized(w.name, w.id)}（${w.rarity}${isLimitedWEngine(w.id) ? '·限定' : ''}）`,
     })),
 )
 
@@ -1175,7 +1175,7 @@ const {
 } = useSlotSweep({ catalogStore, selectedBoss, selectedPhase, progress, computing })
 
 function agentNameOf(id: string | null | undefined): string {
-  return id ? (catalogStore.getAgent(id)?.name.zhCN ?? id) : '—'
+  return id ? catalogStore.agentName(id) : '—'
 }
 function teamNames(team: [string, string, string]): string {
   return team.map(agentNameOf).join(' + ')

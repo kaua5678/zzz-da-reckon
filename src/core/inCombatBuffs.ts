@@ -19,6 +19,7 @@ import { applyWEngineModLevel, discRequirementMet, resolveDiscStatTemplate } fro
 import type { SourcePanelsByOwner } from './buff'
 import { wEngineConditionMet, wEngineEffectRequirementMet } from './wengineConditions'
 
+import { localized } from '@/utils/format'
 export type InCombatTeamBuff = TeammateBuff
 
 export interface InCombatBuffSourceDeps {
@@ -137,7 +138,7 @@ export function collectInCombatTeamBuffs(
           sourceType: 'teammate',
           sourceCategory: 'wEngine',
           sourceKind: 'team',
-          sourceLabel: { zhCN: `音擎团队效果（${wEngine.name?.zhCN ?? wEngine.id}）` },
+          sourceLabel: { zhCN: `音擎团队效果（${localized(wEngine.name, wEngine.id)}）` },
           ownerId: agent.id,
           ownerName: agent.name,
           teammateId: agent.id,
@@ -172,7 +173,7 @@ export function collectInCombatTeamBuffs(
             sourceType: 'teammate',
             sourceCategory: 'driveDisc',
             sourceKind: 'team',
-            sourceLabel: { zhCN: `驱动盘团队效果（${set.name?.zhCN ?? set.id}）` },
+            sourceLabel: { zhCN: `驱动盘团队效果（${localized(set.name, set.id)}）` },
             ownerId: agent.id,
             ownerName: agent.name,
             teammateId: agent.id,

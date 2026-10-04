@@ -14,6 +14,7 @@
 import type { Agent, BuffEffect, TeammateBuff } from '@/types/catalog'
 import type { TeamBuffEffectSpec, TeamBuffSpec } from './types'
 
+import { localized } from '@/utils/format'
 /** 单条 spec effect → catalog `BuffEffect`（缺省：`fixed` / `flat` / `value 0` / 覆盖率取条级 `coverage`，默认 1） */
 export function specEffectToBuffEffect(tb: TeamBuffSpec, e: TeamBuffEffectSpec, i: number): BuffEffect {
   return {
@@ -40,7 +41,7 @@ export function specEffectToBuffEffect(tb: TeamBuffSpec, e: TeamBuffEffectSpec, 
  * 现在加载时合并（`stores/catalog.ts#mergeSpecTeamBuffs`）：spec 条目按 id 去重并优先（人工确认覆盖原始采集），组不存在则新建。
  */
 export function specTeamBuffToTeammateBuff(agentId: string, agent: Agent | null, tb: TeamBuffSpec): TeammateBuff {
-  const nameZh = tb.name || `${agent?.name?.zhCN ?? agentId}｜${tb.source}`
+  const nameZh = tb.name || `${localized(agent?.name, agentId)}｜${tb.source}`
   return {
     id: tb.id,
     source: { zhCN: tb.source },
@@ -53,9 +54,9 @@ export function specTeamBuffToTeammateBuff(agentId: string, agent: Agent | null,
     sourceKind: 'teammate',
     sourceLabel: { zhCN: tb.source },
     ownerId: agentId,
-    ownerName: { zhCN: agent?.name?.zhCN ?? agentId },
+    ownerName: { zhCN: localized(agent?.name, agentId) },
     teammateId: agentId,
-    teammateName: { zhCN: agent?.name?.zhCN ?? agentId },
+    teammateName: { zhCN: localized(agent?.name, agentId) },
     conditionLabel: { zhCN: tb.description },
     name: { zhCN: nameZh },
     // SOP §6.4：`singleSourced`（原 `hidden`，R65 改名）条不进 collectInCombatTeamBuffs

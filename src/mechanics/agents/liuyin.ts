@@ -8,7 +8,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
-import { fmt } from '@/utils/format'
+import { fmt, localized } from '@/utils/format'
 import { calcPenetrationPower } from '@/core/damage'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
@@ -569,7 +569,7 @@ export const liuyinMechanic: AgentMechanicModule = {
           agentId: charResult.agentId,
           name: '琉音额外能力·重击附加伤害',
           element: 'physical',
-          source: `上一位队友（${prevAgent?.name?.zhCN ?? `槽${prevSlot + 1}`}）${isRupture ? '贯穿力' : '攻击力'} × ${ratio}%`,
+          source: `上一位队友（${localized(prevAgent?.name, `槽${prevSlot + 1}`)}）${isRupture ? '贯穿力' : '攻击力'} × ${ratio}%`,
           count: liuyinSrc.exHeavyCount,
           multiplier: ratio,
           note: `额外能力专属直伤：${isRupture ? '命破队友 400% 贯穿力' : '强攻队友 320% 攻击力'}`,

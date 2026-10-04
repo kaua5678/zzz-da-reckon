@@ -28,6 +28,7 @@ import {
 import { LEVEL1_TO_LEVEL12 } from '@/core/skillLevel'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 
+import { localized } from '@/utils/format'
 /** actionTime 低于此值视为录入噪声（0 / 0.001 的子段行），不参与期望值计算 */
 const MIN_ACTION_TIME = 0.01
 
@@ -149,11 +150,11 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
       if (zeroEnergyRow) flags.push('回能录入为0(待补)')
       units.push({
         agentId: String(agent.id),
-        agentName: agent.name.zhCN ?? agent.id,
+        agentName: localized(agent.name, agent.id),
         rarity: agent.rarity,
         specialty: agent.specialty,
         moveId: move.id,
-        moveName: move.name?.zhCN ?? move.id,
+        moveName: localized(move.name, move.id),
         moveType,
         t: typeof move.actionTime === 'number'
           ? move.actionTime + (MOVE_TIME_ADJUSTMENTS[move.id] ?? 0)
@@ -185,7 +186,7 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     }
     fixedUnits.push({
       agentId: String(agent.id),
-      agentName: agent.name.zhCN ?? String(agent.id),
+      agentName: localized(agent.name, String(agent.id)),
       rarity: agent.rarity,
       specialty: agent.specialty,
       moveId: rec.moveId,

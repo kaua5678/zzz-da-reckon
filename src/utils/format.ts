@@ -4,8 +4,8 @@
  * LocalizedString 显示值的**单一事实源**（catalog 里 `name`/`label` 等字段类型声明为
  * `{ zhCN?, en? }`，真实数据常直接给字符串——两种形态都要吃）。
  *
- * 仓库中另有 ~25 处同约定手抄（含 5 个页面局部助手）——本函数是收口落点，新代码禁止再造
- * 第 N 个副本；迁移清单见 .claude 账本 Open。对象分支是 **nullish 链**（空串 zhCN 算有效值、
+ * CC-456（r574）已把仓库内 ~50 处同约定手抄（含 6 个页面局部助手）全部迁到本函数 / `catalogStore.agentName`，
+ * 源码锁 `utils/__tests__/localizedSingleSource.test.ts`（仅放行 4 处 en+zh 拼接匹配器）；新代码禁止再造副本。对象分支是 **nullish 链**（空串 zhCN 算有效值、
  * 不回退 en，防"en 未录时闪英文"的误回退），其余形态一律 fallback。
  *
  * @fact utils/format/localized 口径: LocalizedString 解析=字符串原样；对象按 zhCN→en→fallback 的 nullish 链（空串 zhCN 有效不回退）；其余形态给 fallback | 据 终态核对@2026-09-12·复核@2026-09-25 | 验 src/utils/__tests__/format.test.ts | 锚 src/utils/format.ts#localized | 信 高

@@ -841,7 +841,7 @@ function moveAction(ai: number, aii: number, dir: -1 | 1) {
 }
 function agentName(s: number) {
   const c = configStore.team[s]; if (!c?.agentId) return `槽${s+1}`
-  return catalogStore.getAgent(c.agentId)?.name?.zhCN?.slice(0, 5) || `槽${s+1}`
+  return catalogStore.agentName(c.agentId, '').slice(0, 5) || `槽${s+1}`
 }
 </script>
 

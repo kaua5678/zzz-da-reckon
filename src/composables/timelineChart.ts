@@ -115,7 +115,7 @@ export interface TimelineChart {
 
 /**
  * 组装时间线图的全部几何/标度读数。纯函数：给定 (nodes, svgW, 显示名解析) 输出确定结果。
- * `nameOf` 注入是为了不把 catalog 依赖带进本模块（页面传 `id => catalog.getAgent(id)?.name.zhCN ?? id`）。
+ * `nameOf` 注入是为了不把 catalog 依赖带进本模块（页面传 `catalog.agentName`，CC-456）。
  */
 export function buildTimelineChart(input: {
   nodes: ReadonlyArray<TimelineNodeResult>

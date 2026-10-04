@@ -155,7 +155,7 @@
 import { computed, ref, watch } from 'vue'
 import { SLOT_COMPARE_DEFAULT_AGENT_A, SLOT_COMPARE_DEFAULT_AGENT_B } from '@/data/viewAgentDefaults'
 import { NButton, NCard, NProgress, NSelect } from 'naive-ui'
-import { fmt, compact } from '@/utils/format'
+import { fmt, compact, localized } from '@/utils/format'
 import { useCatalogStore } from '@/stores/catalog'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
@@ -201,7 +201,7 @@ const props = defineProps<{
 
 const catalogStore = useCatalogStore()
 function agentName(id: string): string {
-  return catalogStore.getAgent(id)?.name.zhCN ?? id
+  return catalogStore.agentName(id)
 }
 
 const SC_COLOR_A = 'var(--c-info)'
@@ -222,7 +222,7 @@ const scOwner = useBatchOwner()
 const scSlotLabel = computed(() => scSlotOptions.find(o => o.value === scSlot.value)?.label ?? '')
 /** 强队成员可选全部角色（S+A；A 级支援如苍角/妮可可作队友） */
 const allAgentOptions = computed(() =>
-  catalogStore.displayAgents.map(a => ({ value: a.id, label: `${a.name.zhCN ?? a.id}（${a.rarity}）` })),
+  catalogStore.displayAgents.map(a => ({ value: a.id, label: `${localized(a.name, a.id)}（${a.rarity}）` })),
 )
 
 // ---- 卡片内 Boss 选择（默认跟随顶部；手动改过后不再跟随） ----

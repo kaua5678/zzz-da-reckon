@@ -42,6 +42,7 @@ import {
   metricDef,
 } from './metrics'
 
+import { localized } from '@/utils/format'
 export type Calc = ResourceCalc
 
 // ========== 结果 ==========
@@ -186,7 +187,7 @@ export function downgradeCandidates(
     .map(w => ({
       id: w.id,
       mod: w.rarity === 'A' ? aMod : stdMod,
-      label: `${w.name.zhCN ?? w.id} R${w.rarity === 'A' ? aMod : stdMod}`,
+      label: `${localized(w.name, w.id)} R${w.rarity === 'A' ? aMod : stdMod}`,
     }))
 }
 
@@ -339,7 +340,7 @@ export async function computeFreeCompare(
   /** 择优自身的试算次数（池大小 × 首个未命中），单独计，避免它被误读成"档位求值" */
   let pickEvaluations = 0
 
-  const nameOf = (id: string) => catalog.getAgent(id)?.name.zhCN ?? id
+  const nameOf = catalog.agentName
   for (let si = 0; si < runRows.length; si++) {
     const { spec, buff } = runRows[si]
     const baseLabel = seriesLabelOf(spec, nameOf)

@@ -8,6 +8,7 @@ import type { BossPreset } from '@/types/bossPreset'
 import type { Specialty } from '@/types/catalog'
 import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 
+import { localized } from '@/utils/format'
 /**
  * 「选第三人」区块：候选圈定 + 试算调度 + 结果条形比例。
  * 从 `views/TeamComparePage.vue` 原样搬出（CC-92，2026-09-27 结构熵切面：页面 1552 行 > 1500 线）。
@@ -51,7 +52,7 @@ export function useSlotSweep(opts: {
   /** 固定队友所在的两个槽位（按槽位序） */
   const sweepFixedSlots = computed(() => [0, 1, 2].filter(s => s !== sweepSlot.value))
   const agentOptions = computed(() =>
-    catalogStore.displayAgents.map(a => ({ value: a.id, label: a.name.zhCN ?? a.name.en ?? a.id })),
+    catalogStore.displayAgents.map(a => ({ value: a.id, label: localized(a.name, a.id) })),
   )
   const sweepSpecOptions = (Object.entries(SWEEP_SPEC_LABELS) as Array<[Specialty, string]>)
     .map(([value, label]) => ({ value, label }))
@@ -66,7 +67,7 @@ export function useSlotSweep(opts: {
       .filter(a => !fixed.includes(a.id))
   })
   const sweepCandidateOptions = computed(() =>
-    sweepCandidates.value.map(a => ({ value: a.id, label: a.name.zhCN ?? a.name.en ?? a.id })),
+    sweepCandidates.value.map(a => ({ value: a.id, label: localized(a.name, a.id) })),
   )
 
   async function runSweep() {

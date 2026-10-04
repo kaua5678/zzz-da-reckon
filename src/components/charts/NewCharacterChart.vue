@@ -166,7 +166,7 @@
  */
 import { computed, ref } from 'vue'
 import { NButton, NCard, NSelect } from 'naive-ui'
-import { fmt } from '@/utils/format'
+import { fmt, localized } from '@/utils/format'
 import { useCatalogStore } from '@/stores/catalog'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { readSvgPointer } from '@/composables/svgPointer'
@@ -214,7 +214,7 @@ const props = defineProps<{
 
 const catalogStore = useCatalogStore()
 function agentName(id: string): string {
-  return catalogStore.getAgent(id)?.name.zhCN ?? id
+  return catalogStore.agentName(id)
 }
 
 const chart3Rows = computed<NewCharacterRow[]>(() => buildNewCharacterRows())
@@ -234,7 +234,7 @@ function removeChart3Team(charId: string, index: number) {
 }
 /** 强队成员可选全部角色（S+A；A 级支援如苍角/妮可可作队友） */
 const allAgentOptions = computed(() =>
-  catalogStore.displayAgents.map(a => ({ value: a.id, label: `${a.name.zhCN ?? a.id}（${a.rarity}）` })),
+  catalogStore.displayAgents.map(a => ({ value: a.id, label: `${localized(a.name, a.id)}（${a.rarity}）` })),
 )
 
 const chart3Computing = ref(false)

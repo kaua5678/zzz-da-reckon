@@ -236,7 +236,7 @@ const props = defineProps<{
 
 const catalogStore = useCatalogStore()
 function agentName(id: string): string {
-  return catalogStore.getAgent(id)?.name.zhCN ?? id
+  return catalogStore.agentName(id)
 }
 
 const PV_MIN_PAIRS = MIN_PAIRS_FOR_GRADE

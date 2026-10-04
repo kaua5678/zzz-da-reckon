@@ -118,7 +118,7 @@ export function collectMechanicGaps(
     for (const m of ch.mechanics ?? []) {
       const pending = m.pending ?? []
       if (!isRealGapStatus(m.implementation) && pending.length === 0) continue
-      const name = typeof m.name === 'string' ? m.name : m.name?.zhCN ?? ''
+      const name = localized(m.name, '')
       hints.push({
         kind: 'mechanic',
         agentName,

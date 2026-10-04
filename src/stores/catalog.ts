@@ -9,6 +9,7 @@ import type { RunArchiveFile } from '@/composables/runArchiveImport'
 import { getAgentSpecsByAgentId } from '@/specs/registry'
 import { specTeamBuffToTeammateBuff } from '@/specs/teamBuffConvert'
 
+import { localized } from '@/utils/format'
 export type CatalogLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 export const useCatalogStore = defineStore('catalog', () => {
@@ -297,6 +298,10 @@ export const useCatalogStore = defineStore('catalog', () => {
     return driveDiscSetsMap.value.get(id)
   }
 
+  /** 角色 id → 显示名的单一出口（CC-456）：`localized(name, fallback)`，缺角色 / 缺名时回退 `fallback`（默认 id）。页面 `nameOf` 直接传本函数。 */
+  function agentName(id: string, fallback: string = id): string {
+    return localized(getAgent(id)?.name, fallback)
+  }
   function getAgentSkills(agentId: string): AgentSkills | undefined {
     return agentSkillsByAgentMap.value.get(agentId)
   }
@@ -337,6 +342,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     runArchiveFile,
     loadRunArchive,
     getAgent,
+    agentName,
     getWEngine,
     getDriveDiscSet,
     getAgentSkills,
