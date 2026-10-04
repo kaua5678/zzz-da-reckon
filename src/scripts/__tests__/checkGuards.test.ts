@@ -577,8 +577,8 @@ describe('仓库级自洽（真实扫描）', () => {
     expect(ok).toBe(true)
     expect(results).toHaveLength(26)
     expect(results.some(r => r.name.startsWith('role-module value-dep gate'))).toBe(true)
-    // 判据 26：展示层角色 / 招式 id 字面量硬门（2026-10-04 CC-449）——判据 2/24 只看编排层与 core，页面里写死 id 此前只有逐病灶的单文件锁
-    expect(results.some(r => r.name.startsWith('exhibition id-literal gate'))).toBe(true)
+    // 判据 26：角色 / 招式 id 字面量只许在 data / mechanics/agents / specs（2026-10-04 CC-449 展示层 → CC-450 全 src）——判据 2/24 盯的是身份判定与值导入，裸字面量此前只有逐病灶的单文件锁
+    expect(results.some(r => r.name.startsWith('id-literal gate'))).toBe(true)
     // 判据 22：core 角色前缀字段计数棘轮（2026-09-26，docs/mcp-r22d1-batch12-field-census.md §5）——agentId 棘轮看不见 `cfg.billyC1Energy` 这类以角色命名的字段
     expect(results.some(r => r.name.startsWith('core role-field ratchet'))).toBe(true)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')

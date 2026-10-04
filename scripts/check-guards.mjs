@@ -64,8 +64,8 @@ import { scanJsonDupKeys, formatJsonDupKeys } from './lib/json-dup-keys.mjs'
 import { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST } from './lib/guard-registries.mjs'
 // 判据 25：无类型记录字符串键死读（CC-91，2026-09-27，见 scripts/lib/record-key-dead-reads.mjs 头注释）
 import { scanRecordKeyDeadReads, formatRecordKeyDeadReads } from './lib/record-key-dead-reads.mjs'
-// 判据 26：展示层角色 / 招式 id 字面量硬门（CC-449，2026-10-04，见 scripts/lib/exhibition-id-literals.mjs 头注释）
-import { scanExhibitionIdLiterals, formatExhibitionIdLiterals, EXHIBITION_ID_LITERAL_BASELINE } from './lib/exhibition-id-literals.mjs'
+// 判据 26：角色 / 招式 id 字面量只许在 id 的家（data / mechanics/agents / specs）（CC-449 展示层 → CC-450 全 src，2026-10-04，见 scripts/lib/id-literal-gate.mjs 头注释）
+import { scanIdLiterals, formatIdLiterals, ID_LITERAL_BASELINE, ID_HOME_DIRS } from './lib/id-literal-gate.mjs'
 export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST }
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -1242,14 +1242,14 @@ export function runAllChecks(root = ROOT) {
       detail: report.ok ? [] : formatRecordKeyDeadReads(report),
     })
   }
-  // ---- 判据 26：展示层角色 / 招式 id 字面量硬门（CC-449；事故 = r487 文档断言「views 无 moveId 字面量」而 StunAxisPage 实有 3 处，八轮逐处下沉各配一把单文件锁） ----
+  // ---- 判据 26：角色 / 招式 id 字面量只许在 id 的家（CC-449 立于展示层：事故 = r487 文档断言「views 无 moveId 字面量」而 StunAxisPage 实有 3 处，八轮逐处下沉各配一把单文件锁；CC-450 实测全 src 其余 228 文件 0 处 ⇒ 扩成层不变量） ----
   {
-    const report = scanExhibitionIdLiterals(root)
+    const report = scanIdLiterals(root)
     results.push({
-      name: `exhibition id-literal gate (判据 26: 展示层不写角色/招式 id 字面量；特判归模块声明+agentMechanicView 门面，默认项归 data/viewAgentDefaults.ts) `
-        + `= ${report.count}/${EXHIBITION_ID_LITERAL_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+      name: `id-literal gate (判据 26: 角色/招式 id 字面量只住 ${ID_HOME_DIRS.join(' | ')}；别处按能力/声明/数据表查，不认 id) `
+        + `= ${report.count}/${ID_LITERAL_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
-      detail: report.ok ? [] : formatExhibitionIdLiterals(report),
+      detail: report.ok ? [] : formatIdLiterals(report),
     })
   }
 
