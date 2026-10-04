@@ -426,6 +426,8 @@ function iterateBody(
       + giftComboAlign
     comboAlignTimes.push(exSpecialComboAlignTime(cfg, exForTime, ultForTime, prevStates[i]) + comboAlignGeneric)
     // 预算抵扣部分：通用项全额可抵扣（necessary 按全额计），强特项按 GROSS/NET 约定
+    // ⚠ 账本不读 exec.comboAlignRatio：模块在行上写的比例只有经 extraNecessaryAction / estimateExSpecialTime / cfg setting 招式 / 赠行
+    //   进到这里才算数，否则是死数据（CC-454）。锁 core/__tests__/comboAlignLedgerInvariant.test.ts（CC-455）会把这类行当场标红。
     comboAlignCredits.push(exSpecialComboAlignCredit(cfg, exForTime, ultForTime, prevStates[i]) + comboAlignGeneric)
   }
 
