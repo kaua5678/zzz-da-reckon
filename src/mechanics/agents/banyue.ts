@@ -849,6 +849,8 @@ export interface BanyueOverlay {
 }
 export const banyueOverlay = axisOverlayChannel<BanyueOverlay>()
 
+// CC-59：怒相连段块 comboId（轴编辑器候选块 / 明王窗口触发判定共用）
+const BANYUE_AXIS_RAGE_COMBOS = { primary: 'banyue-combo', didong: 'banyue-combo-didong' } as const
 export const banyueMechanic: AgentMechanicModule = {
   // CC-48：轴编辑器展示层标注 / 招式元数据（经 composables/agentMechanicView 门面；StunAxisPage 不再值导入本模块）
   axisEditorBlockMarks: ({ axes, slot, cinemaLevel }) => {
@@ -859,9 +861,27 @@ export const banyueMechanic: AgentMechanicModule = {
     return out
   },
   axisMoveMeta: BANYUE_AXIS_MOVE_META,
-  axisRageCombos: { primary: 'banyue-combo', didong: 'banyue-combo-didong' },
-  // CC-62：轴编辑器明王窗口 lane 拥有者（展示层）
-  axisWindowLane: 'mingwang',
+  axisRageCombos: BANYUE_AXIS_RAGE_COMBOS,
+  // CC-62/CC-448：轴编辑器明王窗口 lane（展示层）：怒相连段块触发 8s 窗（首次 2 层、窗内再触发 3 层）；6 命满覆盖铺满
+  axisWindowLane: {
+    kind: 'mingwang',
+    name: '明王',
+    windowSeconds: 8,
+    banner: ({ cinemaLevel }) => cinemaLevel >= 6
+      ? '般岳影画6：明王满覆盖（30s 任意强特常态刷新）→ 全队火伤 +39%，无需轴内标注。'
+      : '般岳明王（非6命）：只有怒相技能「[怒]怒相连段·论道」（山威免费，4山威/怒相=2组）触发 8s 窗口（首次 2 层、窗口内再触发 3 层并刷新）；单招强特（[普]，20/40 闪能，回复嗔火）不触发但可享受窗口。触发块标「触发·明王8s」，底部明王道显示窗口时间条。',
+    fullCoverage: ({ cinemaLevel }) => (cinemaLevel >= 6 ? '满覆盖 +39%' : null),
+    isTriggerBlock: act => act.moveId === BANYUE_AXIS_RAGE_COMBOS.primary || act.moveId === BANYUE_AXIS_RAGE_COMBOS.didong,
+    window: mark => {
+      const layers = mark?.layers ?? 2
+      return { label: `明王×${layers}层`, cls: layers >= 3 ? 'mw-l3' : 'mw-l2' }
+    },
+    blockTag: mark => {
+      if (mark.trigger) return { text: '触发8s', cls: 'mw-trigger' }
+      if (mark.layers > 0) return { text: `×${mark.layers}层`, cls: 'mw-live' }
+      return null
+    },
+  },
   id: 'agent:banyue',
   agentIds: [AGENT_ID],
   name: '般岳',

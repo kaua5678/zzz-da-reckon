@@ -60,13 +60,8 @@
 
       <!-- 轴列表 -->
 
-      <div v-if="banyueSlot >= 0" class="sap-mw-banner">
-        <template v-if="banyueCinema >= 6">般岳影画6：明王满覆盖（30s 任意强特常态刷新）→ 全队火伤 +39%，无需轴内标注。</template>
-        <template v-else>般岳明王（非6命）：只有怒相技能「[怒]怒相连段·论道」（山威免费，4山威/怒相=2组）触发 8s 窗口（首次 2 层、窗口内再触发 3 层并刷新）；单招强特（[普]，20/40 闪能，回复嗔火）不触发但可享受窗口。触发块标「触发·明王8s」，底部明王道显示窗口时间条。</template>
-      </div>
-      <div v-if="yixuanSlot >= 0" class="sap-mw-banner">
-        仪玄凝神（额外能力）：发动终结技（青溟云影/符法千重）后进入[凝神] 15s，窗口内动作暴伤+40%（般岳明王式 buff 轴扫描）；触发块标「凝神15s」，落窗动作标「凝神+40%」，底部凝神道显示窗口时间条。轴内凝云术/墨烬影消块自动标「+30%失衡」（额外能力·命中失衡敌人增伤）。
-      </div>
+      <!-- CC-448：专属窗口 lane 说明条（模块声明 axisWindowLane.banner；原般岳 / 仪玄各一段写死文案） -->
+      <div v-for="lane in windowLanes" :key="'banner-' + lane.decl.kind" class="sap-mw-banner">{{ lane.decl.banner(lane.ctx) }}</div>
       <div class="sap-axes" v-if="useAxes">
         <div v-for="(axis, ai) in axes" :key="ai" class="sap-axis">
           <div class="sap-axis-head">
@@ -111,25 +106,16 @@
             <div v-for="s in [0,1,2]" :key="s" class="sap-lane" :style="{ top: laneTop(s) }">
               <span class="sap-lane-name">{{ agentName(s) }}</span>
             </div>
-            <!-- 明王平行道（限时 buff 可视化）：非6命触发块处画 8s 窗口条；6命满覆盖铺满 -->
-            <div v-if="banyueSlot >= 0" class="sap-lane sap-mw-lane" :style="{ top: '84px' }">
-              <span class="sap-lane-name">明王</span>
-              <div v-if="banyueCinema >= 6" class="sap-mw-window mw-full" style="left:0;width:100%">满覆盖 +39%</div>
+            <!-- CC-448：专属窗口平行道（限时 buff 可视化）：模块声明 axisWindowLane 驱动的泛型渲染；触发块处画 windowSeconds 窗口条，满覆盖铺满 -->
+            <div v-for="lane in windowLanes" :key="'lane-' + lane.decl.kind" class="sap-lane sap-mw-lane" :style="{ top: lane.top }">
+              <span class="sap-lane-name">{{ lane.decl.name }}</span>
+              <div v-if="lane.full" class="sap-mw-window mw-full" style="left:0;width:100%">{{ lane.full }}</div>
               <template v-else>
-                <div v-for="w in mingwangWindowsFor(ai)" :key="w.key" class="sap-mw-window"
-                  :class="w.layers >= 3 ? 'mw-l3' : 'mw-l2'"
+                <div v-for="w in laneWindowsFor(lane, ai)" :key="w.key" class="sap-mw-window" :class="w.cls"
                   :style="{ left: w.leftPct + '%', width: w.widthPct + '%' }">
-                  <span v-if="w.widthPct > 7">明王×{{ w.layers }}层</span>
+                  <span v-if="w.widthPct > 7">{{ w.label }}</span>
                 </div>
               </template>
-            </div>
-            <!-- 凝神平行道（仪玄额外能力）：大招块触发处画 15s 窗口条 -->
-            <div v-if="yixuanSlot >= 0" class="sap-lane sap-mw-lane" :style="{ top: '104px' }">
-              <span class="sap-lane-name">凝神</span>
-              <div v-for="w in ningshenWindowsFor(ai)" :key="w.key" class="sap-mw-window mw-l2"
-                :style="{ left: w.leftPct + '%', width: w.widthPct + '%' }">
-                <span v-if="w.widthPct > 7">凝神+40%</span>
-              </div>
             </div>
             <div v-for="(act, aii) in axis.actions" :key="aii"
               class="sap-block"
@@ -138,8 +124,9 @@
               :style="blockStyle(act, aii === dragging?.aii)"
               @pointerdown.prevent="startDrag($event, ai, aii)">
               <span class="sap-block-text">{{ act.label || moveLabel(act.moveId) }}×{{ act.count }}{{ act.promoteVariant ? '·' + act.promoteVariant : '' }}{{ act.sourceTag === 'gift' ? '·赠' : '' }}<span v-if="actDuration(act) > 0" style="opacity:0.7"> {{ actDuration(act).toFixed(1) }}s</span></span>
-              <span v-if="mingwangTag(ai, aii)" class="sap-mw" :class="mingwangTag(ai, aii)!.cls">{{ mingwangTag(ai, aii)!.text }}</span>
-              <span v-if="ningshenTag(ai, aii)" class="sap-mw" :class="ningshenTag(ai, aii)!.cls">{{ ningshenTag(ai, aii)!.text }}</span>
+              <template v-for="lane in windowLanes" :key="'tag-' + lane.decl.kind">
+                <span v-if="laneBlockTag(lane, ai, aii)" class="sap-mw" :class="laneBlockTag(lane, ai, aii)!.cls">{{ laneBlockTag(lane, ai, aii)!.text }}</span>
+              </template>
               <span v-if="moveBadgeFor(act)" class="sap-mw mw-trigger">{{ moveBadgeFor(act) }}</span>
               <span v-for="(tg, ti) in anomalyTagsFor(ai, aii)" :key="'at'+ti" class="sap-mw" :class="tg.cls">{{ tg.text }}</span>
             </div>
@@ -154,7 +141,7 @@
               <n-select :value="act.moveId" :options="moveOptions(act.slot)" size="tiny" style="width:168px" @update:value="v => editAction(ai, aii, a => { a.moveId = v; a.sourceTag = undefined })" />
               <span>×</span>
               <n-input-number :value="act.count" @update:value="v => editAction(ai, aii, a => { a.count = v ?? 1 })" size="tiny" :min="1" :max="99" style="width:52px" />
-              <n-select v-if="isPromotable(act.moveId)" :value="act.promoteVariant ?? ''" @update:value="v => editAction(ai, aii, a => { a.promoteVariant = v || undefined })" size="tiny" style="width:82px"
+              <n-select v-if="isPromotable(act)" :value="act.promoteVariant ?? ''" @update:value="v => editAction(ai, aii, a => { a.promoteVariant = v || undefined })" size="tiny" style="width:82px"
                 :options="[{label:'常规',value:''},{label:'60转大',value:'60'},{label:'90转大',value:'90'}]" />
               <template v-if="durationInputFor(act)">
                 <span class="sap-t" :title="durationInputFor(act)!.title">
@@ -254,7 +241,9 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentAxisMoveBadge, agentAxisDurationInput, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentAxisMoveBadge, agentAxisDurationInput, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLanes, agentAxisNonDecibelUltimates, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
+import type { AxisEditorBlockMark } from '@/mechanics/types'
+import type { TeamAxisWindowLane } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import { isStaleAxisActionFor } from '@/composables/resourceCalc/roundInputs'
@@ -318,85 +307,57 @@ const matchedPresets = computed(() => matchStunAxisPresets(configStore.team.map(
 const maxDur = computed(() => windowDuration.value)
 const ticks = computed(() => { const t: number[] = []; for (let i = 0; i <= maxDur.value; i += 2) t.push(i); return t })
 const slotOptions = computed(() => [0, 1, 2].map(s => ({ label: agentName(s), value: s })))
-// 般岳明王时间轴可视化：怒相二连块触发 8s 窗口（2层→3层刷新），块级标注触发/落窗层数；6命满覆盖单独提示
-// CC-62：lane 拥有者经模块声明 axisWindowLane（原写死 findIndex agentId === 1471）
-const banyueSlot = computed(() => teamAxisWindowLaneSlot(configStore.team, 'mingwang'))
-const banyueCinema = computed(() => (banyueSlot.value >= 0 ? configStore.team[banyueSlot.value]?.cinemaLevel ?? 0 : 0))
-// CC-48：标注经模块能力 axisEditorBlockMarks（门面 agentAxisBlockMarks；槽位空 ⇒ 空 Map，同原实现）
-// CC-59：怒相连段块 comboId 经模块声明 axisRageCombos（原写死两个连段 id 字面量）
-const banyueRageCombos = computed(() => agentAxisRageCombos(configStore.team[banyueSlot.value]?.agentId))
-const banyueMingwangBlocks = computed(() => agentAxisBlockMarks(configStore.team[banyueSlot.value]?.agentId,
-  { axes: axes.value, slot: banyueSlot.value, cinemaLevel: banyueCinema.value }))
-function mingwangTag(ai: number, aii: number): { text: string; cls: string } | null {
-  if (banyueSlot.value < 0 || banyueCinema.value >= 6) return null
-  const info = banyueMingwangBlocks.value.get(`${ai}:${aii}`)
-  if (!info) return null
-  if (info.trigger) return { text: '触发8s', cls: 'mw-trigger' }
-  if (info.layers > 0) return { text: `×${info.layers}层`, cls: 'mw-live' }
-  return null
+// 专属窗口平行道（般岳明王 8s / 仪玄凝神 15s 等限时 buff 可视化）
+// CC-62：lane 拥有者经模块声明 axisWindowLane（原写死 findIndex agentId === 1471 / 1371）
+// CC-48：块级标注经模块能力 axisEditorBlockMarks（门面 agentAxisBlockMarks）
+// CC-448：banner / 窗长 / 触发判定 / 文案 / 满覆盖全部来自声明对象，页面只跑一份泛型渲染（原般岳 / 仪玄各一份 slot/blocks/tag/windowsFor）
+interface WindowLaneView extends TeamAxisWindowLane {
+  ctx: { cinemaLevel: number }
+  top: string
+  full: string | null
+  marks: Map<string, AxisEditorBlockMark>
 }
-// 仪玄凝神时间轴可视化：大招块触发 15s 窗口（般岳明王式）；触发块标「凝神15s」、落窗动作标「凝神+40%」
-// CC-62：lane 拥有者经模块声明 axisWindowLane（原写死 findIndex agentId === 1371）
-const yixuanSlot = computed(() => teamAxisWindowLaneSlot(configStore.team, 'ningshen'))
+const windowLanes = computed<WindowLaneView[]>(() => teamAxisWindowLanes(configStore.team).map((lane, idx) => {
+  const ctx = { cinemaLevel: configStore.team[lane.slot]?.cinemaLevel ?? 0 }
+  return {
+    ...lane,
+    ctx,
+    top: laneTop(3 + idx),
+    full: lane.decl.fullCoverage?.(ctx) ?? null,
+    marks: agentAxisBlockMarks(lane.agentId, { axes: axes.value, slot: lane.slot, cinemaLevel: ctx.cinemaLevel }),
+  }
+}))
+function laneBlockTag(lane: WindowLaneView, ai: number, aii: number): { text: string; cls: string } | null {
+  if (lane.full) return null
+  const mark = lane.marks.get(`${ai}:${aii}`)
+  return mark ? lane.decl.blockTag(mark) : null
+}
+// 窗口条：该轴内拥有者槽位的触发块处画 windowSeconds 窗口（文字 / 样式由声明按块级扫描结果给）
+function laneWindowsFor(lane: WindowLaneView, ai: number): { key: string; label: string; cls: string; leftPct: number; widthPct: number }[] {
+  const axis = axes.value[ai]
+  if (!axis || lane.full) return []
+  const win: { key: string; label: string; cls: string; leftPct: number; widthPct: number }[] = []
+  for (const [aii, act] of axis.actions.entries()) {
+    if (act.slot !== lane.slot || !lane.decl.isTriggerBlock(act, lane.ctx)) continue
+    const key = `${ai}:${aii}`
+    win.push({
+      key,
+      ...lane.decl.window(lane.marks.get(key)),
+      leftPct: ((act.startTime ?? 0) / maxDur.value * 100),
+      widthPct: Math.max(2, (lane.decl.windowSeconds / maxDur.value * 100)),
+    })
+  }
+  return win
+}
 // 60/90 转大（好评把队友连携升级为终结技）：只有「转大块拥有者」（现唯一 = 琉音）在队时才给其他队友发转大块。
 // CC-58：经模块声明 ownsPromoteVariantAxisBlocks（与编排层 roundInputs#buildStackAxes 同源；原写死 findIndex agentId === 1481）
 const promoteOwnerSlot = computed(() => teamPromoteVariantOwnerSlot(configStore.team))
-const yixuanNingshenBlocks = computed(() => agentAxisBlockMarks(configStore.team[yixuanSlot.value]?.agentId,
-  { axes: axes.value, slot: yixuanSlot.value, cinemaLevel: configStore.team[yixuanSlot.value]?.cinemaLevel ?? 0 }))
-function ningshenTag(ai: number, aii: number): { text: string; cls: string } | null {
-  if (yixuanSlot.value < 0) return null
-  const info = yixuanNingshenBlocks.value.get(`${ai}:${aii}`)
-  if (!info) return null
-  if (info.trigger) return { text: '凝神15s', cls: 'mw-trigger' }
-  if (info.active) return { text: '凝神+40%', cls: 'mw-live' }
-  return null
-}
 // CC-446：已放置块的徽标 / 时长输入框均按「块所属槽位的角色模块」声明取（原按仪玄槽位 + 1371022/1371026 字面量写死）
 function moveBadgeFor(act: Pick<StunAxisAction, 'slot' | 'moveId'>): string {
   return agentAxisMoveBadge(configStore.team[act.slot]?.agentId, act.moveId)
 }
 function durationInputFor(act: Pick<StunAxisAction, 'slot' | 'moveId'>) {
   return agentAxisDurationInput(configStore.team[act.slot]?.agentId, act.moveId)
-}
-// 凝神平行道窗口条：大招块处画 15s 窗口
-function ningshenWindowsFor(ai: number): { key: string; leftPct: number; widthPct: number }[] {
-  if (yixuanSlot.value < 0) return []
-  const axis = axes.value[ai]
-  if (!axis) return []
-  const win: { key: string; leftPct: number; widthPct: number }[] = []
-  for (const [aii, act] of axis.actions.entries()) {
-    if (act.slot !== yixuanSlot.value) continue
-    if (act.moveId !== '1371014' && act.moveId !== '1371020') continue
-    const start = act.startTime ?? 0
-    win.push({
-      key: `${ai}:${aii}`,
-      leftPct: (start / maxDur.value * 100),
-      widthPct: Math.max(2, (15 / maxDur.value * 100)),
-    })
-  }
-  return win
-}
-// 明王平行道窗口条：该轴内触发块处画 8s 窗口（层数用块级扫描结果：窗口内再触发 → 3 层）
-function mingwangWindowsFor(ai: number): { key: string; layers: number; leftPct: number; widthPct: number }[] {
-  if (banyueSlot.value < 0 || banyueCinema.value >= 6) return []
-  const axis = axes.value[ai]
-  if (!axis) return []
-  const rc = banyueRageCombos.value
-  if (!rc) return []
-  const win: { key: string; layers: number; leftPct: number; widthPct: number }[] = []
-  for (const [aii, act] of axis.actions.entries()) {
-    if (act.slot !== banyueSlot.value) continue
-    if (act.moveId !== rc.primary && act.moveId !== rc.didong) continue
-    const start = act.startTime ?? 0
-    const info = banyueMingwangBlocks.value.get(`${ai}:${aii}`)
-    win.push({
-      key: `${ai}:${aii}`,
-      layers: info?.layers ?? 2,
-      leftPct: (start / maxDur.value * 100),
-      widthPct: Math.max(2, (8 / maxDur.value * 100)),
-    })
-  }
-  return win
 }
 const fillerOptions = computed(() => [{ label: '不填充', value: -1 }, ...slotOptions.value])
 function fillerValue(ai: number): number { return axes.value[ai]?.basicFillerSlot ?? -1 }
@@ -807,10 +768,11 @@ function actDurationText(act: StunAxisAction): string {
   const d = actDuration(act)
   return d > 0 ? d.toFixed(1) + 's' : '—'
 }
-function isPromotable(moveId: string): boolean {
-  // 只有常规终结技（大招）块可选 60/90 转大变体；
-  // 仪玄的符法千重（1371020）是术法值触发的额外终结技，不能被琉音转大
-  if (moveId === '1371020') return false
+function isPromotable(act: Pick<StunAxisAction, 'slot' | 'moveId'>): boolean {
+  // 只有常规（喧响）终结技块可选 60/90 转大变体；
+  // CC-448：非喧响终结技（仪玄符法千重，术法值触发）经块所属槽位模块声明 axisNonDecibelUltimates 排除（原写死 1371020）
+  if (agentAxisNonDecibelUltimates(configStore.team[act.slot]?.agentId).includes(act.moveId)) return false
+  const moveId = act.moveId
   for (const s of [0, 1, 2]) {
     const skills = catalogStore.getAgentSkills(configStore.team[s]?.agentId ?? '')
     if (chainMoveKind(skills, moveId) === 'ultimate') return true // CC-319

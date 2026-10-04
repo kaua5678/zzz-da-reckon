@@ -651,6 +651,32 @@ export interface AxisDurationInputDecl {
   /** 清空 / 未设置时的取值；须与引擎侧 `duration` 缺省同源 */
   default: number
 }
+/** 轴编辑器窗口 lane 声明函数的上下文（lane 拥有者槽位的影画等级） */
+export interface AxisWindowLaneCtx { cinemaLevel: number }
+/**
+ * CC-448：轴编辑器「专属窗口 lane」完整声明（展示层专用，不参与计算；见 `AgentMechanicModule.axisWindowLane`）。
+ * CC-62 只声明了种类，banner / 窗长 / 触发判定 / 文案留在 StunAxisPage 按种类分支；两条 lane 后页面成了两份平行副本
+ * （般岳明王 / 仪玄凝神各一套 slot/blocks/tag/windowsFor），且仪玄触发判定写死 1371014/1371020 字面量。
+ * 现改为页面只跑一份泛型 lane 渲染，所有按角色不同的东西都从本声明取。
+ */
+export interface AxisWindowLaneDecl {
+  /** 种类 id（`teamAxisWindowLaneSlot(team, kind)` 仍按它找槽位） */
+  kind: string
+  /** lane 左侧名字（「明王」「凝神」） */
+  name: string
+  /** 轴列表上方说明条 */
+  banner(ctx: AxisWindowLaneCtx): string
+  /** 一次触发的窗口长度（秒），窗口条宽度 = windowSeconds / 失衡窗口 */
+  windowSeconds: number
+  /** 该块是否触发块（窗口条起点；只在拥有者槽位的块上调用） */
+  isTriggerBlock(act: { readonly moveId: string }, ctx: AxisWindowLaneCtx): boolean
+  /** 返回文案 ⇒ 整条 lane 铺满、不画窗口条、不打块标（般岳 6 命「满覆盖 +39%」）；缺省 / null ⇒ 正常窗口 */
+  fullCoverage?(ctx: AxisWindowLaneCtx): string | null
+  /** 窗口条文字 / 样式（mark = 触发块的 `axisEditorBlockMarks` 扫描结果，可能缺省） */
+  window(mark: AxisEditorBlockMark | undefined): { label: string; cls: string }
+  /** 块上徽标（mark 为该块的扫描结果；null ⇒ 不打） */
+  blockTag(mark: AxisEditorBlockMark): { text: string; cls: string } | null
+}
 export interface AgentResourceSectionsInput {
   result: DeepReadonly<CharacterResourceResult>
   anomalyPoolResult?: AnomalyPoolResult | null
@@ -866,6 +892,11 @@ export interface AgentMechanicModule {
   /** 轴编辑器候选池隐藏的招式（CC-57；展示层专用）。现唯一：伊德海莉 1051012 裸极寒重碾（用连段表达能量消耗更准，避免误导闪能计算） */
   axisHiddenMoves?: readonly string[]
   /**
+   * 非喧响终结技（CC-448；展示层专用）：由术法值 / 赠送等触发、不走喧响条的终结技 moveId，轴编辑器不给 60/90 转大变体选项。
+   * 现唯一：仪玄 1371020 符法千重（原 StunAxisPage#isPromotable 写死）。
+   */
+  axisNonDecibelUltimates?: readonly string[]
+  /**
    * CC-402：同一动作的**互斥分支组**（模块按 cfg 二选一发射的两个分支，如本强特的未招架/招架两段）。
    * 组内任一成员**有执行行**（∈ executedMoveIds）⇒ 组内其余成员不可作为 [表] 直读（否则同一动作双计）。
    * 两段都列（不是只列「非当前分支」）：执行集合随 cfg / 失衡态 / 长按 / 风眼数变化，静态名单只能钉死一侧；
@@ -895,11 +926,11 @@ export interface AgentMechanicModule {
    */
   axisExtraBlocks?(input: { cinemaLevel: number; actionTimeOf: (moveId: string) => number }): ReadonlyArray<{ readonly moveId: string; readonly label: string; readonly actionTime: number; readonly quota: number }>
   /**
-   * 轴编辑器「专属窗口 lane」种类（CC-62；展示层专用，不参与计算）：本角色拥有哪一条窗口可视化 lane。
-   * 页面按种类找槽位（`teamAxisWindowLaneSlot`），banner 文案 / 窗口长度 / lane 位置仍由页面按种类渲染（属 UI）。
+   * 轴编辑器「专属窗口 lane」声明（CC-62 种类 → CC-448 完整声明对象；展示层专用，不参与计算）。
+   * 页面经 `teamAxisWindowLanes(team)` 取队内所有 lane，一份泛型渲染（banner / lane 条 / 窗口条 / 块标）；lane 位置按出现顺序排。
    * 现实现：般岳 'mingwang'（明王 8s 窗，6 命满覆盖）、仪玄 'ningshen'（凝神 15s 窗）。
    */
-  axisWindowLane?: 'mingwang' | 'ningshen'
+  axisWindowLane?: AxisWindowLaneDecl
   /**
    * CC-63（2026-09-27）：兜底平A填充秒数 → 本角色的具体招式次数（**计算路径**，非展示层）。
    * 编排层 `roundInputs.ts#expandExecutedToCounts` 按填充槽的 agentId 派发；未声明 ⇒ 通用 `basic` 秒数。

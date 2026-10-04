@@ -62,6 +62,7 @@ const MOVE = {
   ink4: '1371025', // 强化特殊技：墨痕化形 #4 853.2% / 20闪能（跟随#3） / 0.966s
   cloud: '1371022', // 强化特殊技：凝云术 1343.9%（满蓄）/ 40闪能（满蓄）/ 2s 满蓄，倍率随时间
   ashen: '1371026', // 强化特殊技：墨烬影消 468.6% / 20闪能（凝云术前置） / 0.3s
+  ult: '1371014', // 终结技：青溟云影
   extraUlt: '1371020', // 终结技：符法千重（术法值/调息赠送）
 } as const
 
@@ -1052,8 +1053,22 @@ export const yixuanMechanic: AgentMechanicModule = {
     },
   },
   // CC-48：轴编辑器凝神标注（经 composables/agentMechanicView 门面；StunAxisPage 不再值导入本模块）
-  // CC-62：轴编辑器凝神窗口 lane 拥有者（展示层）
-  axisWindowLane: 'ningshen',
+  // CC-62/CC-448：轴编辑器凝神窗口 lane（展示层）：终结技块触发 15s 窗，窗内动作暴伤 +40%
+  axisWindowLane: {
+    kind: 'ningshen',
+    name: '凝神',
+    windowSeconds: 15,
+    banner: () => '仪玄凝神（额外能力）：发动终结技（青溟云影/符法千重）后进入[凝神] 15s，窗口内动作暴伤+40%（般岳明王式 buff 轴扫描）；触发块标「凝神15s」，落窗动作标「凝神+40%」，底部凝神道显示窗口时间条。轴内凝云术/墨烬影消块自动标「+30%失衡」（额外能力·命中失衡敌人增伤）。',
+    isTriggerBlock: act => act.moveId === MOVE.ult || act.moveId === MOVE.extraUlt,
+    window: () => ({ label: '凝神+40%', cls: 'mw-l2' }),
+    blockTag: mark => {
+      if (mark.trigger) return { text: '凝神15s', cls: 'mw-trigger' }
+      if (mark.active) return { text: '凝神+40%', cls: 'mw-live' }
+      return null
+    },
+  },
+  // CC-448：符法千重是术法值 / 调息赠送触发的额外终结技，不走喧响条 ⇒ 不能被琉音 60/90 转大
+  axisNonDecibelUltimates: [MOVE.extraUlt],
   axisEditorBlockMarks: ({ axes, slot }) => {
     const out = new Map<string, AxisEditorBlockMark>()
     for (const [k, v] of computeYixuanNingshenBlocks(axes, slot)) {

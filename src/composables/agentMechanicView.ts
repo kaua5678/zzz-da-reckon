@@ -6,7 +6,7 @@
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
 import { AUTO_AXIS_PRESET_HINTS, axisHiddenMovesOf, getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
-import type { AgentMechanicModule, AgentPoolSummaryInput, AxisDurationInputDecl, AxisEditorBlockMark, CharacterCountInputDecl, CrossAgentEnergyLabel, PoolSummarySection } from '@/mechanics/types'
+import type { AgentMechanicModule, AgentPoolSummaryInput, AxisDurationInputDecl, AxisEditorBlockMark, AxisWindowLaneDecl, CharacterCountInputDecl, CrossAgentEnergyLabel, PoolSummarySection } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
 
 /**
@@ -206,11 +206,25 @@ export function agentAxisExtraBlocks(
   return (agentId ? getAgentMechanic(agentId)?.axisExtraBlocks?.(input) : undefined) ?? []
 }
 
-export type AxisWindowLaneKind = NonNullable<AgentMechanicModule['axisWindowLane']>
+export type AxisWindowLaneKind = AxisWindowLaneDecl['kind']
 
 /** 队伍里第一个声明了该种窗口 lane 的槽位；无 ⇒ -1（CC-62；原 StunAxisPage `findIndex(c => c.agentId === 1471 / 1371)`） */
 export function teamAxisWindowLaneSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>, kind: AxisWindowLaneKind): number {
-  return team.findIndex(c => !!c?.agentId && getAgentMechanic(c.agentId)?.axisWindowLane === kind)
+  return team.findIndex(c => !!c?.agentId && getAgentMechanic(c.agentId)?.axisWindowLane?.kind === kind)
+}
+/** 非喧响终结技列表（CC-448）：模块声明 `axisNonDecibelUltimates`；原 StunAxisPage#isPromotable 写死 1371020 */
+export function agentAxisNonDecibelUltimates(agentId: string | null | undefined): readonly string[] {
+  return (agentId ? getAgentMechanic(agentId)?.axisNonDecibelUltimates : undefined) ?? []
+}
+export interface TeamAxisWindowLane { slot: number; agentId: string; decl: AxisWindowLaneDecl }
+/** 队内所有声明了窗口 lane 的槽位（按槽位序；CC-448；原 StunAxisPage 分别对 'mingwang' / 'ningshen' 各写一份 slot/blocks/tag/windowsFor） */
+export function teamAxisWindowLanes(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): TeamAxisWindowLane[] {
+  const out: TeamAxisWindowLane[] = []
+  team.forEach((c, slot) => {
+    const decl = c?.agentId ? getAgentMechanic(c.agentId)?.axisWindowLane : undefined
+    if (decl && c?.agentId) out.push({ slot, agentId: c.agentId, decl })
+  })
+  return out
 }
 
 export type { CharacterCountInputDecl }
