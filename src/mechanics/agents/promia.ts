@@ -40,7 +40,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { specEffectToBuffEffect } from '@/specs/teamBuffConvert'
 import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const PROMIA_ID = '1541'
 // 掌控转精通的常数只在 spec 1541.json `promia_mastery_to_proficiency`（R6 C7，第 143 轮）；
@@ -314,10 +314,7 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
       count: niying,
       actionTime: 2.35,
       totalTime: 2.35 * niying,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       skillTableNote: `处刑式·重霜 ×${niying}（匿影后解锁；#2 子段 24.2% 未单列）`,
     }))
   }

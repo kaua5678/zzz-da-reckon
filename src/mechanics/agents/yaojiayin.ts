@@ -17,7 +17,7 @@
  *
  * 未建模：庇护之音无敌、终曲退出华彩逐帧、无和弦快支窗口的精确时间轴、震音视为强特的技能乘区细分（按强特伤害目标近似）。
  */
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -148,10 +148,7 @@ function pushExec(
     moveName,
     category: opts?.category ?? 'special',
     count,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: dmg,
     damageMultiplierOverride: opts?.damageMultiplierOverride ?? true,
     element: 'ether',

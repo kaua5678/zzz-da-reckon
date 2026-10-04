@@ -18,7 +18,7 @@ import type {
   AgentMechanicModule,
   AgentResourceInput,
 } from '../types'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const PAN_YINHU_ID = '1421'
 export const PAN_YINHU_C2_ENERGY_PER_6_POJIN = 4
@@ -40,8 +40,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
         moveName: `特殊技：断脉破穴手 #${i + 1}（贴山震脉靠后自动释放）`,
         category: 'special',
         count: exCount,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
+        ...ENERGY_RECOVERY_OFF,
         timeBucket: 'backstage',
       }))
     })

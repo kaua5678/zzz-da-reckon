@@ -13,7 +13,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 真斗（1441，命破/火 DPS）—— 整局近似口径
@@ -156,8 +156,7 @@ function pushSpecial(executions: SkillExecution[], moveId: string, moveName: str
     count,
     actionTime,
     totalTime: count * actionTime,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...ENERGY_RECOVERY_OFF,
     skillTableNote: `归烬·舍身 ×${count}（蓄力 ${count} 秒攒炽心，占前台时间）`,
   }))
 }

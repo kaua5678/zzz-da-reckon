@@ -2,7 +2,7 @@ import type { AgentCharConfigInput, AgentEventInput, AgentMechanicModule, AgentP
 import type { AnomalyEventExecution, MechanicSetting } from '@/types/resource'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowValue } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 月城柳（1221，电·异常，对空洞特别行动部第六课）—— 核心被动/额外能力/影画面板区（薄模块）。
@@ -77,10 +77,7 @@ function buildYanagiExecutions({ cfg, state, executions }: AgentResourceInput): 
     moveName: `强化特殊技：月华流转·追加突刺×${extraThrusts}（影画2）`,
     category: 'special',
     count,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: Number(cfg.yanagiThrustDamage ?? 0),
     damageMultiplierOverride: true,
     dazeMultiplier: Number(cfg.yanagiThrustDaze ?? 0),

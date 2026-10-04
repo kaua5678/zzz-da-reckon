@@ -16,7 +16,7 @@ import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { finiteOr0 } from '@/utils/finiteClamp'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 const YIDHARI_AGENT_ID = '1051'
 
@@ -288,8 +288,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
       totalTime: surgeCount * 0.95,
       decibelRecovery: 6.4075,
       totalDecibelRecovery: surgeCount * 6.4075,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       damageMultiplier: 168.4,
       damageMultiplierOverride: true,
       anomalyBuildUp: 95.03,
@@ -310,10 +309,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
       moveName: '寒冰触手（额外能力）',
       category: 'special',
       count: tentacleCount,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       damageMultiplier: 158.4 * dmgCoef,
       damageMultiplierOverride: true,
       skillTableNote: `寒冰触手 ${tentacleCount} 次：158.4%${dmgCoef !== 1 ? `×技能等级${dmgCoef.toFixed(4)}` : ''} 只有伤害，每 ${tentacleInterval}s 触发一次（需额外能力）`,

@@ -18,7 +18,7 @@ import type { AttributeConversionSpec } from '@/specs/types'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -334,8 +334,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       count,
       actionTime: at,
       totalTime: count * at,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       damageMultiplier: useDmgMult ? baseDmg * c6DmgMult : undefined,
       damageMultiplierOverride: useDmgMult,
       dazeMultiplier: useDazeMult ? baseDaze * c6DazeMult : undefined,
@@ -371,10 +370,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       moveName: '特殊技：打靶练习（炮塔自动射击）',
       category: 'special',
       count: source.towerAutoShotCount,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       skillDamageTarget: 'special',
       skillTableNote: '嗯呢弹幕期间炮塔自动射击，3 秒间隔',
     }))
@@ -392,10 +388,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       moveName: '强化特殊技：火力实验·破甲弹头',
       category: 'special',
       count: source.armorPierceCount,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       dazeMultiplier: useDazeMult ? baseDaze * c6DazeMult : undefined,
       dazeMultiplierOverride: useDazeMult,
       skillDamageTarget: 'exSpecial',
@@ -410,10 +403,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       moveName: '强化特殊技：火力实验·高爆弹头',
       category: 'special',
       count: source.highExplosiveCount,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       damageMultiplier: useDmgMult ? baseDmg * c6DmgMult : undefined,
       damageMultiplierOverride: useDmgMult,
       skillDamageTarget: 'exSpecial',
@@ -428,10 +418,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       moveName: '影画6·天才第一因（导弹轰击）',
       category: 'chain',
       count: source.c6MissileCount,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       damageMultiplier: C6_MISSILE_RATIO,
       damageMultiplierOverride: true,
       element: 'fire',

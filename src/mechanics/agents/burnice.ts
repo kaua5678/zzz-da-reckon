@@ -20,7 +20,7 @@ import { getSkillLevelCoef } from '@/core/skillLevel'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue, rawRowValue } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -341,8 +341,7 @@ function pushEx(
     totalTime: count * actionTime,
     energyConsume,
     totalEnergyConsume: count * energyConsume,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...ENERGY_RECOVERY_OFF,
     damageMultiplier: multiplier,
     damageMultiplierOverride: override,
   }))

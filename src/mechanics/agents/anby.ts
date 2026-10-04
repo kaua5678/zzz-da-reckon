@@ -12,7 +12,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 安比（1011，电·强攻）—— 整局近似口径
@@ -268,10 +268,7 @@ function pushAnbyBasicSegment(
     count,
     actionTime: seg.actionTime,
     totalTime: count * seg.actionTime,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     ...(dmgBonus > 0 ? { dmgBonus, skillTableNote: note } : {}),
   }))
 }

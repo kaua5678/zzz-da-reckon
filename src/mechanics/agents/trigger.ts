@@ -44,7 +44,7 @@ import type {
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const TRIGGER_AGENT_ID = '1361'
 export const TRIGGER_ADDITIONAL_MOVE_IDS = new Set(['1361008', '1361020', '1361022'])
@@ -274,10 +274,7 @@ function pushSyntheticExecution(executions: AgentResourceInput['executions'], in
     moveName: input.moveName,
     category: 'special',
     count: input.count,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: input.damageMultiplier,
     damageMultiplierOverride: true,
     ...(input.dmgBonus != null ? { dmgBonus: input.dmgBonus } : {}),
@@ -303,10 +300,7 @@ function pushTableExecution(executions: AgentResourceInput['executions'], input:
     moveName: input.moveName,
     category: 'basic',
     count: input.count,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     timeBucket: 'backstage',
     // 2026-09-03（用户口径：自动后台攻击有 CD，好算总量与失衡内易伤量）：CD 驱动后台自动行，
     // 不按捏轴认领/无放置语义——轴模式按失衡时间占比拆「占比内吃满易伤 / 其余无易伤」

@@ -39,7 +39,7 @@ import { inferSkillDamageTarget } from '@/core/damage'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import type { CharacterResourceResult } from '@/types/resource'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
@@ -190,8 +190,7 @@ function pushAnbyZeroExecution(executions: AgentResourceInput['executions'], inp
     count: input.count,
     actionTime,
     totalTime: actionTime * input.count,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...ENERGY_RECOVERY_OFF,
     skillDamageTarget: 'additionalAttack',
     ...(input.damageMultiplier == null
       ? {}

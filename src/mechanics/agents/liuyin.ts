@@ -17,7 +17,7 @@ import { applyAgentAttributeConversions } from '@/specs/runtime'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 const LIUYIN_AGENT_ID = '1481'
 
@@ -295,8 +295,7 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalTime: counts[k] * mv.actionTime,
       energyConsume: EX_SPECIAL_ENERGY,
       totalEnergyConsume: counts[k] * EX_SPECIAL_ENERGY,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       skillDamageTarget: 'exSpecial',
     }))
   }
@@ -342,10 +341,7 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
           count: rounds,
           actionTime: at,
           totalTime: rounds * at,
-          decibelRecovery: 0,
-          totalDecibelRecovery: 0,
-          energyRecovery: 0,
-          totalEnergyRecovery: 0,
+          ...RECOVERY_OFF,
           skillTableNote: `强化A：布×${paperCount}，平A时间 ${basicTimeTotal.toFixed(2)}s 够打 ${rounds} 轮（整轮截断）`,
         }))
       }

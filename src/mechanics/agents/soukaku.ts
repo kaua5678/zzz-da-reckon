@@ -32,7 +32,7 @@ import type {
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const SOUKAKU_ID = '1131'
 
@@ -145,10 +145,7 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
       count: exCount,
       actionTime: fanAt,
       totalTime: exCount * fanAt,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       timeBucket: 'necessary',
     }))
   }
@@ -163,10 +160,7 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
       count,
       actionTime: ballAt / hits,
       totalTime: exCount * swings * ballAt,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       timeBucket: 'necessary',
     }))
   }
@@ -183,8 +177,7 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
     totalTime: exCount * slamActionTime,
     decibelRecovery: RECOVERY_BACKFILL_PLACEHOLDER,
     totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...ENERGY_RECOVERY_OFF,
     timeBucket: 'necessary',
   }))
   // 冲刺攻击（霜染刃旗）：下砸后直接跟一次（回能/喧响按倍率表回填 → 喂回自我能量循环）

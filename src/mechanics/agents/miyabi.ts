@@ -24,7 +24,7 @@ import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { findMoveById } from '@/data/moveTableQueries'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 const MIYABI_AGENT_ID = '1091'
 /** 烈霜元素（独立元素，可在紊乱中与冰互紊） */
@@ -231,10 +231,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
         count: frostMoonCount,
         actionTime: gift.at,
         totalTime: frostMoonCount * gift.at,
-        decibelRecovery: 0,
-        totalDecibelRecovery: 0,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
+        ...RECOVERY_OFF,
         ...(m1DefShred ? { defIgnore: gift.moveId === FROST_MOON_1_MOVE_ID ? 12 : 24 } : {}),
       }))
     }
@@ -259,8 +256,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
       count: frostbreakCount,
       decibelRecovery: perDecibel,
       totalDecibelRecovery: perDecibel * frostbreakCount,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       damageMultiplier: FROSTBURN_BREAK_MULTIPLIER,
     }))
   }

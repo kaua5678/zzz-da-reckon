@@ -11,7 +11,7 @@ import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds } from '@/types/resource'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
@@ -171,10 +171,7 @@ function pushQianxiaExecution(executions: AgentResourceInput['executions'], inpu
     category: 'special',
     element: 'physical',
     count: input.count,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     timeBucket: 'backstage',
     autoSplitByStun: true, // CC-391 D1：凝视由队友持续命中触发、泡泡在后场消耗磨爪器自动攻击 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
     ...(input.damageMultiplier == null ? {} : { damageMultiplier: input.damageMultiplier, damageMultiplierOverride: true }),

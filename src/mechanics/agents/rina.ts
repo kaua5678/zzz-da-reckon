@@ -13,7 +13,7 @@
  *
  * 未建模：邦布逐秒离场状态、感电敌人的逐秒状态；对应效果采用整局覆盖率近似。
  */
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import type {
   AgentCharConfigInput,
   AgentDamageResolutionInput,
@@ -111,10 +111,7 @@ function pushExec(
     moveName,
     category: 'basic',
     count,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: dmg,
     damageMultiplierOverride: true,
     element,

@@ -3,7 +3,7 @@ import type { MechanicSetting } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 朱鸢（1241，以太·强攻，新艾利都治安局）—— 自身机制模块。
@@ -217,10 +217,7 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
     moveName: '以太余温·追加鹿弹',
     category: 'special',
     count: afterglowCount * ZHUYUAN_C6_EXTRA_BULLETS,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: ZHUYUAN_C6_BULLET_RATIO,
     damageMultiplierOverride: true,
     element: 'ether',

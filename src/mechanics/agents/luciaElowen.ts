@@ -6,7 +6,7 @@ import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBl
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 卢西娅·艾洛温（1451）战斗逻辑（用户确认口径）：
@@ -240,10 +240,7 @@ function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): v
       moveName: '追加攻击（合唱）',
       category: 'special',
       count: plan.additionalAttackCount,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       skillTableNote: '追加攻击 1100%/200异常（默认20次，CD 8s 队友命中触发，不受失衡轴窗口限制；次数按有效战斗时间/8 封顶，无敌期间不结算）',
     }))
   }

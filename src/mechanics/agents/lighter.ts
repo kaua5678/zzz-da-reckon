@@ -25,7 +25,7 @@
  *
  * 未建模：士气喷发逐帧进出、垫步/组合拳段数、逐敌火焰冲击独立 CD（按整场单目标 8s CD 近似）。
  */
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -206,10 +206,7 @@ function pushExec(
     moveName,
     category: opts?.category ?? 'basic',
     count,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: dmg,
     damageMultiplierOverride: true,
     element: 'fire',

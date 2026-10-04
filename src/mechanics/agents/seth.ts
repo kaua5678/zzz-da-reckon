@@ -27,7 +27,7 @@ import type {
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const SETH_ID = '1271'
 export const SETH_SHIELD_PROFICIENCY = 100
@@ -100,10 +100,7 @@ function buildSethExecutions({ cfg, state, executions }: AgentResourceInput): vo
     category: 'basic',
     element: 'electric',
     count: cycle.c6FinishCount,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: SETH_C6_FINISH_MULT,
     damageMultiplierOverride: true,
     critRateBonus: 100,

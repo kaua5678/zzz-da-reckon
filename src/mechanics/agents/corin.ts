@@ -34,7 +34,7 @@ import type {
 import { axisOverlayChannel, type AxisLike } from '../types'
 import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const CORIN_ID = '1061'
 export const CORIN_CORE_SAW_DMG = 37.5
@@ -190,10 +190,7 @@ function buildCorinExecutions({ cfg, state, executions }: AgentResourceInput): v
     category: 'special',
     element: 'physical',
     count: cycle.c6DetonationCount,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: cycle.c6DamagePerDetonation,
     damageMultiplierOverride: true,
     skillDamageTarget: 'additionalAttack',

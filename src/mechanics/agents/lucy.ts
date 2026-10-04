@@ -8,7 +8,7 @@
  * 影画1：回旋挥击命中全队 +2 能量。
  * 影画6：加油下队友强特命中 → 小猪落地 300% 攻火伤 + 一次回旋挥击。
  */
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -98,10 +98,7 @@ function pushExec(
     category,
     count,
     actionTime,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: dmg,
     damageMultiplierOverride: true,
     element: 'fire',

@@ -25,7 +25,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById as findMove, getRowValue } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
@@ -220,10 +220,7 @@ function pushExecution(executions: AgentResourceInput['executions'], input: {
     count: input.count,
     actionTime: input.actionTime,
     totalTime: input.count * input.actionTime,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: input.damageMultiplier,
     damageMultiplierOverride: true,
     ...(verdictDmg > 0 ? { dmgBonus: verdictDmg } : {}),

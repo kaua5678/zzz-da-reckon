@@ -9,7 +9,7 @@ import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 莱卡恩（1141）战斗逻辑（用户确认口径，2026-08）：
@@ -322,8 +322,7 @@ export const lycaonMechanic: AgentMechanicModule = {
       count: huntCount * 2,
       decibelRecovery: cfg.lycaonIceDanceDecibel ?? 0,
       totalDecibelRecovery: (cfg.lycaonIceDanceDecibel ?? 0) * huntCount * 2,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       anomalyBuildUp: cfg.lycaonIceDanceAnomaly ?? 0,
       skillTableNote: `围猎开场（弹刀后必定合轴）+ 收尾（自动）各 1 次/失衡 × ${huntCount} 次；完整数值（含异常积蓄/喧响）`,
     }))
@@ -337,8 +336,7 @@ export const lycaonMechanic: AgentMechanicModule = {
         count: backstageDodgeCount,
         decibelRecovery: 0, // 显式 0：后台招式仅伤害+失衡值（enrich 尊重显式 0）
         totalDecibelRecovery: 0,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
+        ...ENERGY_RECOVERY_OFF,
         anomalyBuildUp: 0,
         // CC-392 D1：次数 = 队友闪反次数之和。理想口径是跟随队友闪反的轴内占比，但队友不固定、attachedEvents 是静态表
         // 登记不了 ⇒ 近似按失衡时间占比（autoSplitByStun）。若日后 attachedEvents 支持按类别 / 跨槽父动作，改登记并删此标记。
@@ -358,10 +356,7 @@ export const lycaonMechanic: AgentMechanicModule = {
         category: 'basic',
         count: 0,
         totalTime: huntBasicTotal,
-        decibelRecovery: 0,
-        totalDecibelRecovery: 0,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
+        ...RECOVERY_OFF,
         damageMultiplier: perSec,
         damageMultiplierOverride: true,
         dazeMultiplier: dazePerSec,

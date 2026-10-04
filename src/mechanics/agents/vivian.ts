@@ -36,7 +36,7 @@ import type { ModuleFeedback } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as setting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
@@ -216,10 +216,7 @@ function buildVivianExecutions({ cfg, state, executions }: AgentResourceInput): 
       category: 'basic',
       element: 'ether',
       count: cycle.followUpCount,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
     }))
   }
   // 悬落：后台自动衔接 E/Q/支援突击/连携 后，不占前台时间（timeBucket=backstage + 0s）

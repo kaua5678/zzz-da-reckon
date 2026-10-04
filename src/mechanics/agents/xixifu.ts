@@ -4,7 +4,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 希希芙（1521，电·强攻，新艾利都治安局）—— 额外能力自身暴伤 + 毒素循环模块。
@@ -158,10 +158,7 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
       moveName: '蚀骨（毒素消耗）',
       category: 'basic',
       count: baseShigu,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       damageMultiplier: shiguBase,
       damageMultiplierOverride: true,
       flatDamageBonus: flatAddition,
@@ -180,10 +177,7 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
       moveName: '特殊蚀骨（觉悟/印记）',
       category: 'basic',
       count: specialShigu,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       damageMultiplier: shiguBase,
       damageMultiplierOverride: true,
       flatDamageBonus: flatAddition,

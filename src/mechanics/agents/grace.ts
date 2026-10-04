@@ -13,7 +13,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 格莉丝（1181）战斗逻辑（用户口供 2026-08-23）：
@@ -340,8 +340,7 @@ function graceRow(moveId: string, name: string, count: number, actionTime: numbe
     count,
     actionTime,
     totalTime: actionTime * count,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...ENERGY_RECOVERY_OFF,
     skillTableNote: `消耗全部电能（8层）→ 电属性异常积蓄 +130%（积蓄效率区加算）`,
   })
 }

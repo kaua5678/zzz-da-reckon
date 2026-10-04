@@ -29,7 +29,7 @@ import type {
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const KOLEDA_ID = '1101'
 export const KOLEDA_CORE_STUN = 60
@@ -120,10 +120,7 @@ function buildKoledaExecutions({ cfg, state, executions }: AgentResourceInput): 
     category: 'special',
     element: 'fire',
     count: cycle.c6ExplosionCount,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: KOLEDA_C6_EXPLOSION_MULT,
     damageMultiplierOverride: true,
     skillDamageTarget: 'additionalAttack',

@@ -15,7 +15,7 @@ import { computeSpecResources, type SpecResourceResult } from '@/specs/resources
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { cfgMechanicSetting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
 export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
@@ -226,10 +226,7 @@ peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }) => {
       comboAlignRatio: ultCar,
       totalTime: ultActionTime * count,
       totalComboAlignTime: ultActionTime * ultCar * count,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       skillTableNote: note,
     }))
   }
@@ -377,10 +374,7 @@ peiluoProminenceMechanic.buildExecutions = ({ cfg, executions }) => {
     moveName: '特殊技：强袭训令',
     category: 'special',
     count,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     skillTableNote: `特殊技：强袭训令 ×${count}（主页交互栏填写）`,
   }))
 }
@@ -602,8 +596,7 @@ function pushJufufuExec(
     moveName,
     category,
     count,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...ENERGY_RECOVERY_OFF,
     damageMultiplier: multiplier,
     damageMultiplierOverride: opts.override ?? true,
     element: opts.element ?? 'fire',

@@ -16,7 +16,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 星徽·比利（1531）战斗逻辑（用户确认口径，2026-08）：
@@ -489,8 +489,7 @@ function pushChainExec(
     totalEnergyConsume: energyConsume * count,
     decibelRecovery: decibel[moveId] ?? 0,
     totalDecibelRecovery: (decibel[moveId] ?? 0) * count,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...ENERGY_RECOVERY_OFF,
     damageMultiplier: dmg[moveId] ?? 0,
     damageMultiplierOverride: true,
     skillTableNote: note,
@@ -646,10 +645,7 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
         totalComboAlignTime: 0,
         energyConsume: 0,
         totalEnergyConsume: 0,
-        decibelRecovery: 0,
-        totalDecibelRecovery: 0,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
+        ...RECOVERY_OFF,
         damageMultiplier: consumable * RADIANT_DMG_PER_STACK,
         damageMultiplierOverride: true,
         element: 'physical',

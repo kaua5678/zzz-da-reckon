@@ -18,7 +18,7 @@ import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { clampCritRatePct } from '@/data/critMultiplier'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 const JANE_AGENT_ID = '1261'
 /** 普通攻击：萨霍夫跳（融合主段，见 src/data/moveFusions.ts JANE_SOMERSAULT） */
@@ -243,10 +243,7 @@ function buildJaneExecutions({ cfg, executions }: AgentResourceInput): void {
     category: 'basic',
     count,
     // totalTime=0：萨霍夫跳时间已含在平A前台预算内，只补伤害（数值同平A、回复狂热）
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     timeBucket: 'basic',
   }))
 }

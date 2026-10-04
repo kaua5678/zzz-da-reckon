@@ -31,7 +31,7 @@ import type {
   AgentResourceInput,
 } from '../types'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const BEN_ID = '1121'
 
@@ -116,8 +116,7 @@ function pushExPart(
     totalTime: count * actionTime,
     energyConsume: BEN_EX_PART_ENERGY,
     totalEnergyConsume: count * BEN_EX_PART_ENERGY,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...ENERGY_RECOVERY_OFF,
     skillTableNote: `${label} ×${count}；每段耗能 ${BEN_EX_PART_ENERGY}`,
   }))
 }
@@ -147,10 +146,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     moveName: '影画2·格挡反击附加',
     category: 'special',
     count: successCount,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     damageMultiplier: BEN_C2_DEF_MULT,
     damageMultiplierOverride: true,
     basisValueOverride: def,

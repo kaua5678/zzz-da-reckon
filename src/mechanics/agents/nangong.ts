@@ -15,7 +15,7 @@ import { emptyPanel } from '@/core/panel'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 南宫羽（1511）战斗逻辑（nanoka 原文满级被动 1511055 自主分析，2026-08）：
@@ -248,10 +248,7 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
     count: pairs,
     actionTime: halfSeconds,
     totalTime: halfSeconds * pairs,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     stunBuildUpBonus: PRECISE_DAZE_BONUS,
     skillTableNote: `地雷撞 #2 ×${pairs}（重拍 ${totalBeat.toFixed(0)} 点 → ${pairs} 套双击；跳段必精准蓄力 失衡值+${PRECISE_DAZE_BONUS}%）`,
   }))
@@ -262,10 +259,7 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
     count: pairs,
     actionTime: halfSeconds,
     totalTime: halfSeconds * pairs,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     stunBuildUpBonus: PRECISE_DAZE_BONUS,
     skillTableNote: `地雷撞 #3 ×${pairs}（踉跄载体：失衡易伤倍率+30%/持续+3s 走 teamBuffs）`,
   }))

@@ -10,7 +10,7 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 波可娜（1351，物理·击破/支援）—— 整局近似口径
@@ -92,10 +92,7 @@ function pushBackstage(executions: SkillExecution[], moveId: string, moveName: s
     moveName,
     category: 'special',
     count,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     anomalyBuildUp: 0,
     skillTableNote: note,
     timeBucket: 'backstage',

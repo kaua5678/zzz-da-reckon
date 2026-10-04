@@ -11,7 +11,7 @@ import { effectiveBattleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
@@ -645,8 +645,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalTime: (times[moveId] ?? 0) * count,
       energyConsume,
       totalEnergyConsume: energyConsume * count,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       ...(dmgBonus ? { dmgBonus } : {}),
       skillTableNote: note,
       // 不设 damageMultiplierOverride：enrichExecutionPlan 按 moveId 从倍率表回填（自动含 3/5 命等级）
@@ -677,8 +676,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalTime: axisSec * axisCloud,
       energyConsume: Math.round(axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS)),
       totalEnergyConsume: Math.round(axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS)) * axisCloud,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       dmgBonus: axisAshenBonus,
       ...(full
         ? {}
@@ -703,8 +701,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalTime: CLOUD_MAX_SECONDS * cloudOut,
       energyConsume: CLOUD_MAX_COST,
       totalEnergyConsume: CLOUD_MAX_COST * cloudOut,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       dmgBonus: outAshenBonus,
       skillTableNote: `凝云术（轴外）×${cloudOut}：满蓄（倍率表回填）${axisActive ? '' : '（+30%×覆盖率）'}${c4Bonus ? `（静心+${c4Bonus}%）` : ''}`,
     }))
@@ -738,8 +735,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
         count: cnt,
         comboAlignRatio: 1,
         /*@KEEP0@*/
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
+        ...ENERGY_RECOVERY_OFF,
         skillTableNote: `合轴 ×${cnt}${xuanmoStrike > 0 && mid === '1371021' ? `（玄墨值替换，总 ${totalFuFaUlts}）` : ''}`,
       }))
     }
@@ -754,8 +750,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       moveName: '落雷（影画1·清灵道心）',
       category: 'assist',
       count: c1Lightnings,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       damageMultiplier: C1_LIGHTNING_RATIO,
       damageMultiplierOverride: true,
       skillTableNote: `落雷 ×${c1Lightnings}：50% 贯穿力（6s 最多一次，战斗时间驱动）`,
@@ -773,8 +768,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       category: 'assist',
       count: extremeAssists,
       // 落雷假 id 无倍率表行，喧响显式 0（不回填）
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       damageMultiplier: EXTREME_ASSIST_LIGHTNING_RATIO,
       damageMultiplierOverride: true,
       skillTableNote: `落雷 ×${extremeAssists}：225% 贯穿力（极限支援换场，+5闪能/次）`,
@@ -791,8 +785,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       count: giftUlts,
       actionTime: giftAt,
       totalTime: giftAt * giftUlts,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       skillTableNote: `符法千重 ×${giftUlts}（调息赠送：30s CD，默认=大招次数）`,
     }))
   }
@@ -810,8 +803,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalTime: poAt * totalFuFaUlts,
       decibelRecovery: C2_PO_DECIBEL,
       totalDecibelRecovery: C2_PO_DECIBEL * totalFuFaUlts,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       damageMultiplier: C2_PO_DMG,
       damageMultiplierOverride: true,
       dazeMultiplier: C2_PO_DAZE,
@@ -833,8 +825,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       count: shufaUlts,
       actionTime: shufaAt,
       totalTime: shufaAt * shufaUlts,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       skillTableNote: `符法千重 ×${shufaUlts}（术法值 120/次）`,
     }))
   }

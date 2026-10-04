@@ -29,7 +29,7 @@ import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 const ALICE_AGENT_ID = '1401'
 const SWORD_WILL_COST = 300
@@ -293,8 +293,7 @@ function buildAliceExecutions({ cfg, state, executions }: AgentResourceInput): v
     totalComboAlignTime: smSrc.sparkCount * actionTime * comboAlignRatio,
     decibelRecovery,
     totalDecibelRecovery: smSrc.sparkCount * decibelRecovery,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...ENERGY_RECOVERY_OFF,
   }))
 
   // 四命：每次强特伴随一次强化后的普通攻击：星仪序曲（用于异常积蓄与伤害结算）
@@ -305,10 +304,7 @@ function buildAliceExecutions({ cfg, state, executions }: AgentResourceInput): v
       moveName: '普通攻击：星仪序曲（强特伴随）',
       category: 'basic',
       count: exSpecialCount,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
     }))
   }
 }

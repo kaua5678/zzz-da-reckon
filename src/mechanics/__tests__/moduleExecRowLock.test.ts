@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 const AGENTS_DIR = join(__dirname, '..', 'agents')
 
@@ -34,6 +34,24 @@ describe('CC-463 moduleExecRow 单一来源', () => {
     expect(row.actionTime).toBe(1.5)
     expect(row.comboAlignRatio).toBe(0)
     expect(row.totalTime).toBe(4.5)
+  })
+  it('CC-465：禁用回填用具名常量，spread 原位不改键序', () => {
+    expect(RECOVERY_OFF).toEqual({ decibelRecovery: 0, totalDecibelRecovery: 0, energyRecovery: 0, totalEnergyRecovery: 0 })
+    expect(ENERGY_RECOVERY_OFF).toEqual({ energyRecovery: 0, totalEnergyRecovery: 0 })
+    const row = moduleExecRow({ moveId: 'm', moveName: 'n', category: 'basic', count: 1, ...RECOVERY_OFF, damageMultiplier: 2 } as never)
+    expect(Object.keys(row).slice(-5)).toEqual(['decibelRecovery', 'totalDecibelRecovery', 'energyRecovery', 'totalEnergyRecovery', 'damageMultiplier'])
+    expect(row.decibelRecovery).toBe(0)
+  })
+  it('CC-465：agents/ 不再手写连续的回能零行块（要禁用回填就 spread 常量）', () => {
+    const four = /^[ \t]+decibelRecovery: 0,\n[ \t]+totalDecibelRecovery: 0,\n[ \t]+energyRecovery: 0,\n[ \t]+totalEnergyRecovery: 0,\n/m
+    const two = /^[ \t]+energyRecovery: 0,\n[ \t]+totalEnergyRecovery: 0,\n/m
+    const hits: string[] = []
+    for (const f of readdirSync(AGENTS_DIR).filter(f => f.endsWith('.ts'))) {
+      const src = readFileSync(join(AGENTS_DIR, f), 'utf-8')
+      if (four.test(src)) hits.push(f + ':four')
+      if (two.test(src)) hits.push(f + ':two')
+    }
+    expect(hits).toEqual([])
   })
   it('agents/ 手写账本零行残留清单（新增手写行 ⇒ 用 moduleExecRow）', () => {
     const RESIDUAL: Record<string, number> = { 'orphie.ts': 1, 'roxy.ts': 3, 'sigrid.ts': 1, 'soldier11.ts': 3, 'starlightBilly.ts': 1 }

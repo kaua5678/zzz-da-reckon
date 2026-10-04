@@ -30,7 +30,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { simulateCounterStateMachine } from '@/specs/stateMachine'
 import { findMoveById } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 const VELINA_AGENT_ID = '1561'
 /**
@@ -225,8 +225,7 @@ function buildVelinaExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalTime: velinaBroadCount * (cfg.velinaEyeActionTime ?? 0),
       decibelRecovery: cfg.velinaEyeDecibelRecovery ?? 0,
       totalDecibelRecovery: velinaBroadCount * (cfg.velinaEyeDecibelRecovery ?? 0),
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
     }))
   }
   if (cfg.velinaSweepingCyclone1MoveId) {
@@ -235,10 +234,7 @@ function buildVelinaExecutions({ cfg, state, executions }: AgentResourceInput): 
       moveName: 'Sweeping Cyclone #1（广域气旋10段）',
       category: 'special',
       count: velinaBroadCount * 10,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
     }))
   }
   if (cfg.velinaSweepingCyclone2MoveId) {
@@ -247,10 +243,7 @@ function buildVelinaExecutions({ cfg, state, executions }: AgentResourceInput): 
       moveName: 'Sweeping Cyclone #2（赋彩属性广域气旋×2）',
       category: 'special',
       count: velinaBroadCount * 2,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
     }))
   }
 }

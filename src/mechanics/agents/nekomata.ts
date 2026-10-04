@@ -12,7 +12,7 @@ import { buildSpecEventExecutions, specToMechanicModule } from '@/specs/mechanic
 import { computeSpecResources } from '@/specs/resources'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 猫又（1021）战斗逻辑（用户口供 2026-08-23 两批）：
@@ -247,10 +247,7 @@ function buildNekoExecutions({ cfg, state, executions }: AgentResourceInput): vo
       moveName: '[超凶爪印] 每秒自动（物理）',
       category: 'special',
       count: clawHits,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       damageMultiplier: 30,
       damageMultiplierOverride: true,
       autoSplitByStun: true,

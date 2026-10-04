@@ -22,6 +22,18 @@ import type { SkillExecution } from '@/types/resource'
  * 调用方给的值覆盖默认 0）。这样 `{ moveId, moveName, category, element, count, …rest }` 这种在 `count` 前多写
  * 语义键的行也能迁进来而键序不变——CC-440 第一版固定「四头键 + 六账本 + rest」，`element` 会被挤到账本后面。
  */
+/**
+ * 四个可选回能键的三态之「**禁用回填**」（CC-465，r584）：`decibelRecovery === 0` / `energyRecovery === 0` 让
+ * `rowAccounting.ts#rowDecibelRecoveryPerCount / rowEnergyRecoveryPerCount`（及 `helpers.ts` 回填）跳过倍率表值、按 0 结算；
+ * 写 `undefined` 则 moveId 在表里时会回填表值——**两者不等价**（r478 第一版把这四个 0 当冗余删掉 ⇒ 1431 终结技 2→1、timeGolden 18 红）。
+ * 原先 37 个模块 / 85 行各自手写这些 0，看起来像可删的噪声；现在用名字说清意图。
+ * 用法：`moduleExecRow({ moveId, moveName, category, count, ...RECOVERY_OFF, damageMultiplier, … })`——放在原来那几个 0 的位置
+ * （零差基准按 JSON 键序哈希，spread 在同一位置键序不变）。要「回填表值」就什么都别写；要「模块换算值」走 `decibelRecoveryOverride`。
+ */
+export const RECOVERY_OFF = { decibelRecovery: 0, totalDecibelRecovery: 0, energyRecovery: 0, totalEnergyRecovery: 0 } as const
+/** 只禁用能量回填（喧响另给或回填表值）。 */
+export const ENERGY_RECOVERY_OFF = { energyRecovery: 0, totalEnergyRecovery: 0 } as const
+
 export type ModuleExecRowInit = Partial<SkillExecution> & Pick<SkillExecution, 'moveId' | 'moveName' | 'category' | 'count'>
 
 const LEDGER_KEYS = ['actionTime', 'comboAlignRatio', 'totalTime', 'totalComboAlignTime', 'energyConsume', 'totalEnergyConsume'] as const

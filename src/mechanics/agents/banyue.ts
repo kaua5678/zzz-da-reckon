@@ -6,7 +6,7 @@ import { calcPenetrationPower } from '@/core/damage'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
@@ -518,10 +518,7 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
       count: r.count,
       actionTime: r.time,
       totalTime: r.time * r.count,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       damageMultiplier: 0,
       damageMultiplierOverride: true,
       skillTableNote: r.note,
@@ -568,10 +565,7 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
       count: chongXiao,
       actionTime: time,
       totalTime: time * chongXiao,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       // 不设 dazeMultiplierOverride：enrichExecutionPlan 按 moveId 1471011 回填 daze 143.7
     }))
   }
@@ -585,8 +579,7 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
       count: chongXiao,
       actionTime: time,
       totalTime: time * chongXiao,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...ENERGY_RECOVERY_OFF,
       // 不设 damageMultiplierOverride：enrichExecutionPlan 按 moveId 1471029 从倍率表回填
     }))
   }

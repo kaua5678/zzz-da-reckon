@@ -5,7 +5,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, effectiveCombatTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
  * 奥菲丝&「鬼火」（1301，火·强攻，新艾利都防卫军）—— 自身机制补录模块。
@@ -111,10 +111,7 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
         element: 'fire',
         skillDamageTarget: 'additionalAttack',
         count: exec.count,
-        decibelRecovery: 0,
-        totalDecibelRecovery: 0,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
+        ...RECOVERY_OFF,
         timeBucket: 'backstage',
         skillTableNote: '强化特殊技：燥焰迸射（蓄热充能自动衔接，追攻）',
       }))
@@ -127,10 +124,7 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
         element: 'fire',
         skillDamageTarget: 'additionalAttack',
         count: exec.count,
-        decibelRecovery: 0,
-        totalDecibelRecovery: 0,
-        energyRecovery: 0,
-        totalEnergyRecovery: 0,
+        ...RECOVERY_OFF,
         timeBucket: 'backstage',
         skillTableNote: '终结技：与火共舞 #2（#1+#2 合一计一次，追攻）',
       }))
@@ -216,10 +210,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
       totalComboAlignTime: 0,
       energyConsume: 0,
       totalEnergyConsume: 0,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       timeBucket: 'backstage',
       autoSplitByStun: true, // CC-391 D1：后台自动施放，次数 = 有效后台时间 / 等效 CD ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
       skillTableNote: name,
@@ -234,10 +225,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
       element: 'fire',
       skillDamageTarget: 'additionalAttack',
       count: frontCast,
-      decibelRecovery: 0,
-      totalDecibelRecovery: 0,
-      energyRecovery: 0,
-      totalEnergyRecovery: 0,
+      ...RECOVERY_OFF,
       timeBucket: 'backstage',
       skillTableNote: '强化特殊技：小心脚下（前台能量，追攻）',
     }))

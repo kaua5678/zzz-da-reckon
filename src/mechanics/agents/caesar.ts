@@ -23,7 +23,7 @@ import type {
   AgentResourceInput,
 } from '../types'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 export const CAESAR_ID = '1071'
 
@@ -75,10 +75,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     moveName: '强化特殊技：超强力盾击（影画4 支援点数代替）',
     category: 'special',
     count: extraEx,
-    decibelRecovery: 0,
-    totalDecibelRecovery: 0,
-    energyRecovery: 0,
-    totalEnergyRecovery: 0,
+    ...RECOVERY_OFF,
     skillTableNote: '影画4 阿瑞斯攻城锤：能量<20 时消耗1点支援点数代替发动超强力盾击（5s ICD，支援点数=3×连携+终结）',
   }))
 }
