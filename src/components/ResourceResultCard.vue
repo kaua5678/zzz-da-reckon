@@ -307,6 +307,7 @@ import { computed, h } from 'vue'
 import { NCard, NTag, NDataTable, type TagProps, type DataTableColumns } from 'naive-ui'
 import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult, SkillExecution, AnomalyEventExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
+import { buildActionOperationRows, buildTimeChartRows } from '@/composables/resourceCard/actionOperationRows'
 import { damageElementLabel as elementLabel, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import { agentResourceSections, agentResultCardCorrosion, crossAgentEnergyLabels } from '@/composables/agentMechanicView'
 
@@ -381,115 +382,8 @@ function countText(count: number): string {
 }
 
 
-type ActionOperationRow = {
-  key: string
-  name: string
-  color: string
-  match: (moveName: string, category: string) => boolean
-  frontlineTime: number
-  comboAlignTime: number
-  operationTime: number
-  /** 该动作计划释放次数（执行计划行 count；用户口径 2026-09-19「资源池时间分配显示每个动作释放次数」） */
-  count: number
-}
-
-const ACTION_ROW_DEFS: Array<Pick<ActionOperationRow, 'key' | 'name' | 'color' | 'match'>> = [
-  { key: 'basic', name: '普通攻击', color: '#61afef', match: (_moveName, category) => category === 'basic' },
-  { key: 'exSpecial', name: '强化特殊技', color: '#e06c75', match: (moveName, category) => category === 'special' || moveName.includes('强化特殊技') || moveName.toLowerCase().includes('ex special') },
-  { key: 'ultimate', name: '终结技', color: '#c678dd', match: (moveName, category) => category === 'chain' && (moveName.includes('终结技') || moveName.toLowerCase().includes('ultimate')) },
-  { key: 'chain', name: '连携技', color: '#d19a66', match: (moveName, category) => category === 'chain' && (moveName.includes('连携技') || moveName.toLowerCase().includes('chain attack') || moveName.toLowerCase().includes('chain') || moveName.toLowerCase().includes('连携')) && !moveName.toLowerCase().includes('ultimate') },
-  { key: 'dodgeCounter', name: '闪避反击', color: '#7fdbca', match: (moveName, category) => category === 'dodge' || moveName.includes('闪避反击') || moveName.toLowerCase().includes('dodge counter') },
-  { key: 'defensiveAssist', name: '轻弹刀', color: '#56b6c2', match: (moveName, category) => (category === 'assist' && moveName.toLowerCase().includes('defensive assist')) || moveName.includes('轻弹刀') || moveName.toLowerCase().includes('defensive assist') },
-  { key: 'assistFollowUp', name: '支援突击', color: '#98c379', match: (moveName, category) => (category === 'assist' && moveName.toLowerCase().includes('assist follow-up')) || moveName.includes('支援突击') || moveName.toLowerCase().includes('assist follow-up') },
-]
-
-const actionOperationRows = computed<ActionOperationRow[]>(() => {
-  const rows: ActionOperationRow[] = []
-  let colorIdx = 0
-  for (const exec of props.result.executions) {
-    const frontlineTime = exec.totalTime ?? 0
-    if (frontlineTime <= 0) continue
-    const comboAlignTime = exec.totalComboAlignTime ?? 0
-    const matched = ACTION_ROW_DEFS.find(def => def.match(exec.moveName, exec.category))
-    const color = matched?.color ?? ACTION_ROW_DEFS[colorIdx % ACTION_ROW_DEFS.length].color
-    colorIdx++
-    // 名字：basic_attack 行优先用机制改写的 moveName（如伊德海莉「蓄力（烧血）」），
-    // 未被改写时显示通用名「普通攻击」
-    const name = exec.moveId === 'basic_attack'
-      ? (exec.moveName && exec.moveName !== 'basic_attack' ? exec.moveName : '普通攻击')
-      : `${exec.moveName} (${exec.moveId})`
-    rows.push({
-      key: exec.moveId || name,
-      name,
-      color,
-      match: () => true,
-      frontlineTime,
-      comboAlignTime,
-      operationTime: Math.max(0, frontlineTime - comboAlignTime),
-      count: Number(exec.count) || 0,
-    })
-  }
-
-  // 柏妮思的搅拌式/流火招式按倍率表动作展示动作时长（不依赖通用分类）
-  const burniceSource = props.result.burniceMechanicSource
-  if (burniceSource) {
-    const stirringTime = (burniceSource.stirringCount ?? 0) * (burniceSource.stirringActionTimeSeconds ?? 0)
-    if (stirringTime > 0) {
-      rows.push({
-        key: 'burniceStirring',
-        name: '搅拌式·炽焰搅拌式 (1171007 融合)',
-        color: '#ff7b72',
-        match: () => true,
-        frontlineTime: stirringTime,
-        comboAlignTime: 0,
-        operationTime: stirringTime,
-        count: Number(burniceSource.stirringCount ?? 0) || 0,
-      })
-    }
-    const tossingTime = (burniceSource.tossingCount ?? 0) * (burniceSource.tossingActionTimeSeconds ?? 0)
-    if (tossingTime > 0) {
-      rows.push({
-        key: 'burniceTossing',
-        name: '流火·灼热抛接法 (1171026)',
-        color: '#f47067',
-        match: () => true,
-        frontlineTime: tossingTime,
-        comboAlignTime: 0,
-        operationTime: tossingTime,
-        count: Number(burniceSource.tossingCount ?? 0) || 0,
-      })
-    }
-  }
-  return rows
-})
-
-const timeChartRows = computed(() => {
-  const rows = actionOperationRows.value.map(row => ({
-    key: row.key,
-    name: row.name,
-    time: row.operationTime,
-    color: row.color,
-  }))
-
-  rows.push({
-    key: 'comboAlign',
-    name: '合轴',
-    time: resultComboAlignTime.value,
-    color: 'var(--wa-280)',
-  })
-  rows.push({
-    key: 'backstage',
-    name: '后台',
-    time: props.result.timeAllocation.backstageTime,
-    color: 'var(--wa-120)',
-  })
-
-  return rows
-})
-
-const resultComboAlignTime = computed(() => {
-  return actionOperationRows.value.reduce((sum, row) => sum + row.comboAlignTime, 0)
-})
+const actionOperationRows = computed(() => buildActionOperationRows(props.result))
+const timeChartRows = computed(() => buildTimeChartRows(props.result))
 
 const chartTotalTime = computed(() => {
   return timeChartRows.value.reduce((sum, row) => sum + row.time, 0)

@@ -13,7 +13,7 @@ import type { PanelValues } from '@/types/catalog'
 import { calcEnergyRegenTotal } from '@/core/buff'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
-import type { BurniceMechanicSource, CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
+import type { CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
@@ -758,4 +758,90 @@ declare module '@/types/resource/config' {
     /** 柏妮思命座等级（1命强化余烬伤害与积蓄） */
     burniceCinemaLevel?: number
   }
+}
+
+/**
+ * D2（CC-359/360）：本模块私有的结果字段——只有本文件读写，声明随模块走，不堆在 `types/resource/agentResources.ts`。
+ * 仍是 `CharacterResourceResult` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /** 柏妮思机制资源明细 */
+    burniceMechanicSource?: BurniceMechanicSource
+  }
+}
+
+// ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 柏妮思燃点/余烬资源明细 */
+export interface BurniceMechanicSource {
+  initialIgnition: number
+  ignitionFromEnergy: number
+  ultimateIgnitionGain: number
+  totalIgnition: number
+  ignitionCap: number
+  specialStateActive: boolean
+  emberTriggerCount: number
+  emberCost: number
+  emberDamageRatio: number
+  emberDamageRatioWithMastery: number
+  emberDamagePerHit: number
+  emberTotalDamage: number
+  /** 单次基础积蓄，固定 60；1命效率加成单独存在 emberBuildUpEfficiencyBonusPct */
+  emberBuildUpPerHit: number
+  emberBuildUpEfficiencyBonusPct: number
+  /** 基础积蓄总和 = 60 × 触发次数，不含1命效率加成 */
+  emberTotalBuildUp: number
+  emberTotalTriggerCount: number
+  stirringMaxCount: number
+  stirringCount: number
+  stirringDamageRatio: number
+  /** 搅拌式（炽焰搅拌式 1171007 融合）单次动作时长（秒） */
+  stirringActionTimeSeconds: number
+  stirringIgnitionCost: number
+  stirringIgnitionSpent: number
+  stirringFreeEmberCount: number
+  flowCountRaw: number
+  flowCountUtilization: number
+  flowCountEffective: number
+  flowFireCount: number
+  tossingCount: number
+  tossingMoveId: string
+  tossingDamageRatio: number
+  /** 流火·灼热抛接法（1171026）单次动作时长（秒） */
+  tossingActionTimeSeconds: number
+  releaseMultiplier: number
+  releaseCount: number
+  cinemaLevel: number
+  cinema2TeamPenRatio: number
+  cinema4CritRateBonus: number
+  cinema4DoubleSprayMaxSeconds: number
+  cinema6FireResIgnore: number
+  cinema6SpecialEmberCount: number
+  cinema6SpecialEmberPerCast: number
+  cinema6SpecialEmberBaseRatio: number
+  cinema6SpecialEmberDamageRatio: number
+  cinema6SpecialEmberDamagePerHit: number
+  cinema6SpecialEmberTotalDamage: number
+  cinema6BurnBurstCount: number
+  cinema6BurnBurstMultiplier: number
+  cinema6BurnBurstDamageRatio: number
+  potentialAnomalyMasteryBonus: number
+  potentialDmgBonus: number
+  emberCooldownSeconds: number
+  singleCastCount: number
+  doubleCastCount: number
+  singleSpraySeconds: number
+  doubleSpraySeconds: number
+  singleCastEnergy: number
+  doubleCastEnergy: number
+  singleCastTime: number
+  doubleCastTime: number
+  totalExEnergy: number
+  totalExTime: number
+  singleSustainedMultiplier: number
+  singleExplosionMultiplier: number
+  doubleSustainedMultiplier: number
+  doubleExplosionMultiplier: number
+  note: string
 }

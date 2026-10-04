@@ -31,80 +31,6 @@ export interface CorrosionSource {
   note: string
 }
 
-// ============ 爱丽丝专属资源 ============
-
-/** 柏妮思燃点/余烬资源明细 */
-export interface BurniceMechanicSource {
-  initialIgnition: number
-  ignitionFromEnergy: number
-  ultimateIgnitionGain: number
-  totalIgnition: number
-  ignitionCap: number
-  specialStateActive: boolean
-  emberTriggerCount: number
-  emberCost: number
-  emberDamageRatio: number
-  emberDamageRatioWithMastery: number
-  emberDamagePerHit: number
-  emberTotalDamage: number
-  /** 单次基础积蓄，固定 60；1命效率加成单独存在 emberBuildUpEfficiencyBonusPct */
-  emberBuildUpPerHit: number
-  emberBuildUpEfficiencyBonusPct: number
-  /** 基础积蓄总和 = 60 × 触发次数，不含1命效率加成 */
-  emberTotalBuildUp: number
-  emberTotalTriggerCount: number
-  stirringMaxCount: number
-  stirringCount: number
-  stirringDamageRatio: number
-  /** 搅拌式（炽焰搅拌式 1171007 融合）单次动作时长（秒） */
-  stirringActionTimeSeconds: number
-  stirringIgnitionCost: number
-  stirringIgnitionSpent: number
-  stirringFreeEmberCount: number
-  flowCountRaw: number
-  flowCountUtilization: number
-  flowCountEffective: number
-  flowFireCount: number
-  tossingCount: number
-  tossingMoveId: string
-  tossingDamageRatio: number
-  /** 流火·灼热抛接法（1171026）单次动作时长（秒） */
-  tossingActionTimeSeconds: number
-  releaseMultiplier: number
-  releaseCount: number
-  cinemaLevel: number
-  cinema2TeamPenRatio: number
-  cinema4CritRateBonus: number
-  cinema4DoubleSprayMaxSeconds: number
-  cinema6FireResIgnore: number
-  cinema6SpecialEmberCount: number
-  cinema6SpecialEmberPerCast: number
-  cinema6SpecialEmberBaseRatio: number
-  cinema6SpecialEmberDamageRatio: number
-  cinema6SpecialEmberDamagePerHit: number
-  cinema6SpecialEmberTotalDamage: number
-  cinema6BurnBurstCount: number
-  cinema6BurnBurstMultiplier: number
-  cinema6BurnBurstDamageRatio: number
-  potentialAnomalyMasteryBonus: number
-  potentialDmgBonus: number
-  emberCooldownSeconds: number
-  singleCastCount: number
-  doubleCastCount: number
-  singleSpraySeconds: number
-  doubleSpraySeconds: number
-  singleCastEnergy: number
-  doubleCastEnergy: number
-  singleCastTime: number
-  doubleCastTime: number
-  totalExEnergy: number
-  totalExTime: number
-  singleSustainedMultiplier: number
-  singleExplosionMultiplier: number
-  doubleSustainedMultiplier: number
-  doubleExplosionMultiplier: number
-  note: string
-}
 
 // ============ 角色资源汇总 ============
 
@@ -204,8 +130,6 @@ export interface CharacterResourceResult {
   ultimateCount: number
 
   // --- 专属资源 ---
-  /** 柏妮思机制资源明细 */
-  burniceMechanicSource?: BurniceMechanicSource
   /** 般岳嗔火/怒相循环明细 */
   banyueRageCycle?: BanyueRageCycle
   /** 通用 spec 资源计算结果：key = spec resource.id。r407 前为 `Record<string, any>`，读者各自 `as SpecResourceResult` */
