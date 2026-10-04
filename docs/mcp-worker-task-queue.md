@@ -92,6 +92,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 20:43 arena-F 第 514 轮**（开工：主仓 = origin = `fe261ce9` 干净；REQUIREMENTS / §3 / §8.0 仍空；r510 另一 lane 的 `helpers.ts` 实验已撤、其 aligncensus 普查发现的「50 行显示缺口」连续 3 轮无人认领）。
+- **立卡 §3 T18**（见该卡）：合轴率弹窗只读 override（缺省 0），引擎有效值却有 override / catalog / 模块行三来源 ⇒ 弹窗对模块行（luciaElowen `1451011`、miyabi `1091029`、yixuan `13710xx`）显示 0、总合轴时间页面侧重算。定位全在卡里（文件:行号）。只写卡，**未改代码**。
+- **拍板**：① 归类为展示层缺口（引擎四口径零差），修法是「改读 `exec.comboAlignRatio` / `exec.totalComboAlignTime`」而不是让 override 覆盖模块行；② 阶段 2 的来源标记放 `typesRows.ts`，不动 `types.ts` 预算；③ 另一 lane 的 `overlapBySlot` 实验与此卡无关，不并入。
+- **下一轮（arena-F 或任何 lane）**：无人认领 T18 ⇒ arena-F 自己做阶段 1（文件只有 `src/views/ResultPage.vue` + 新锁测试，先在 LANE-CLAIMS 认领）；有人认领则回到 REQUIREMENTS → §3 → §8.0 的巡检。主 lane 仍欠 `ebb5cbc6` 的 docs（r497 块）。
 **2026-10-04 18:20 arena-F 第 493 轮**（开工：主仓 = origin = `d8ed925c`；REQUIREMENTS 无新条目；§3 只剩 T10 条件卡；§8.0 全未触发；无 worktree）。
 - **本轮无题**，docs-only。连续两轮无题 ⇒ 三张找题清单（REQUIREMENTS / §3 / §8.0）当前确实为空，这是正常态，不是故障；下一轮仍按同一顺序查，皆空就一行收工。
 - **现场**：`src/core/resource/helpers.ts` 他人未提交探针**在活动中**（mtime 17:52 → 17:55，+35 行缩成 +14 行，只剩 `accFreeNet` / `capReal` / `capNoAcc` 的反事实量计算），属坑33 阶段4 累加器对照实验的 lane。未动。它没在 LANE-CLAIMS 认领——若它把结论落盘，应在 `docs/mcp-calc-core-architecture.md` 坑33 条目或 r6 §8.0 #14 处出现；下一轮 `grep -n "capNoAcc\|accFreeNet" docs/*.md` 看一眼即可。
@@ -909,3 +913,17 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 
 
 
+
+### T18（r514 arena-F 立卡；可交执行模型）· 合轴率弹窗改读引擎有效值（展示层去「页面侧重算」）
+**现象（证据 `/home/kaua/calc-arch/census_dbl-20251004-2035.out`，由 `.zc/perf/aligncensus.perf.ts` 普查 104 预设得出，r510 另一 lane 跑的）**：50 行 / 7 个 moveId 的 execution 引擎 `comboAlignRatio=1.0`，而结果页「合轴率调节」弹窗与资源页「合轴率」列都显示 0；最大 `1451011`（luciaElowen 强化特殊技·合轴）×25 行 Σ312.3s，其次 `1091029`（miyabi 霜月）×5 行 Σ82.6s，再次 yixuan `1371021/1371007/1371005/1371006`。队级四口径全 0 差（Σcredit=Σsaved=748.9s）⇒ **引擎没错，是展示层**。
+**根因（代码直读，r514）**：合轴率有三个来源，弹窗只读一个：
+1. `src/composables/resourceCalc/helpers.ts:508` `ov(moveId, defaultRatio) = configStore.getComboAlignOverride(slot, moveId, catalog 默认)`——普通招式的引擎有效值 = override ?? catalog；
+2. **模块行**：`extraNecessaryAction`（`rowBuild.ts:233` 直接取 `extraAction.comboAlignRatio`）与模块自推 execution（`luciaElowen.ts:236` `=1`、`yixuan.ts:745` `=1`、`remielle.ts:686` `=1`、`miyabi.ts:182` 按 `(actionTime − 锁定秒)/actionTime` 算、`specPanelBuffs.ts:225`）——**绕过 override**，弹窗改了也不生效；
+3. 弹窗 `src/views/ResultPage.vue:1025-1039`：`getComboAlignRatio = getComboAlignOverride(slot, moveId, **0**)`，`getTotalComboAlignTime = Σ exec.totalTime × 该值`——页面侧重算引擎已有的 `exec.comboAlignRatio` / `exec.totalComboAlignTime`（r6 模式课：页面侧复制引擎数据 → 改读数据层）。模板 `:728/:736/:746/:754` 全走这两个函数。
+**疑似第二个缺口（未验证，接手先验）**：弹窗缺省 0 而引擎缺省 catalog ⇒ 任何**没被用户改过**且 catalog 有默认合轴率的招式，弹窗也会显示 0（普查没统计它，因为资源页那列读 catalog 能看见）。验法：挑一个 catalog `comboAlignRatio>0` 的招式开弹窗看读数。
+**做法（两阶段，阶段 1 可独立收口）**：
+- **阶段 1（只改展示，零引擎改动，zd 必零差）**：`ResultPage.vue` ① 显示值改读 `exec.comboAlignRatio`（`:728/:736` 的 `:value`、`:746` 的秒数改 `exec.totalComboAlignTime`）；② `getTotalComboAlignTime` 改 `Σ exec.totalComboAlignTime`（引擎已算）；③ `setComboAlignRatio` 照旧写 override（编辑层不动）。改完 `:755` 那行 `× 0` 的「合轴回能加成」顺手看一眼是否早已死码（乘 0 恒 0）——是则删，不是则留并注明。
+- **阶段 2（让架构更通用，建议做）**：模块行的比例不可被 override 改，弹窗却允许编辑 ⇒ 给 execution 行加来源标记 `comboAlignSource: 'override' | 'catalog' | 'module'`（类型放 `src/mechanics/typesRows.ts`，CC-451 口径：行类型归 typesRows），`rowBuild.ts` / `moveLookup.ts` / 模块 push 处各赋一次；弹窗对 `'module'` 行只读 + 标「模块定」。**不要**用「`exec.comboAlignRatio !== ov(...)` 就当模块定」这种页面侧猜测——那又是重算。阶段 2 要碰 types ⇒ 看 `wc -l src/mechanics/types.ts`（1344，预算 1400）；加字段在 typesRows 不占 types.ts。
+**锁**：新建 `src/views/__tests__/comboAlignModalReadsEngine.test.ts`（或放 composables 层：把 ①② 抽成 `comboAlignDisplayOf(exec)` / `totalComboAlignTimeOf(charResult)` 纯函数再锁，更稳）：构造一个 `comboAlignRatio=1` 的 module 行 + 一个 override=0.3 的普通行，断言显示值分别 1 / 0.3、总秒数 = Σ totalComboAlignTime。阶段 2 另锁「`'module'` 行 set 无效」。
+**验证（照 r6 §8.0 #17）**：`timeout 250 npx vue-tsc -b --force`（先看结果再 commit）→ guards 组 → `npm run -s build` → 全量 vitest 单独一调 `timeout 275 npx vitest run > /home/kaua/calc-arch/arenaF/rNNN-vitest-full.log 2>&1`（基线 486 files / 4371 passed，r498）→ `bash .zc/perf/zd.sh t18`（阶段 1 必零差；阶段 2 也应零差，因为只加标记不改数值）。
+**不做 / 边界**：不碰 `src/core/resource/helpers.ts` 的 `overlapBySlot` 实验（r510 另一 lane 的，已撤回）；不改引擎口径；不改 `.zc/perf`（不入 git）。**回退点**：阶段 1 单提交 revert 即可；阶段 2 revert 后 typesRows 字段消失、页面编译红 ⇒ 两阶段分开提交。
