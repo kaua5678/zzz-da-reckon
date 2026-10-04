@@ -12,6 +12,7 @@ import { buildSpecEventExecutions, specToMechanicModule } from '@/specs/mechanic
 import { computeSpecResources } from '@/specs/resources'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 猫又（1021）战斗逻辑（用户口供 2026-08-23 两批）：
@@ -241,17 +242,11 @@ function buildNekoExecutions({ cfg, state, executions }: AgentResourceInput): vo
   const battleTime = effectiveBattleTime(cfg)
   const clawHits = Math.floor(battleTime)
   if (clawHits > 0) {
-    const claw: SkillExecution = {
+    const claw: SkillExecution = moduleExecRow({
       moveId: CLAW_MARK_MOVE_ID,
       moveName: '[超凶爪印] 每秒自动（物理）',
       category: 'special',
       count: clawHits,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
@@ -260,7 +255,7 @@ function buildNekoExecutions({ cfg, state, executions }: AgentResourceInput): vo
       damageMultiplierOverride: true,
       autoSplitByStun: true,
       skillTableNote: '肉球突袭永续：每 1 秒触发一次 30% 攻击力物理伤害；CD 自动行——非轴按失衡覆盖率吃易伤，轴模式自动按失衡时间占比拆失衡内（满易伤）/轴外',
-    }
+    })
     executions.push(claw)
   }
 

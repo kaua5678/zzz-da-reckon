@@ -3,6 +3,7 @@ import type { MechanicSetting } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 朱鸢（1241，以太·强攻，新艾利都治安局）—— 自身机制模块。
@@ -179,20 +180,16 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
   for (let i = 0; i < len; i++) {
     const count = Math.floor((bullets + len - 1 - i) / len)
     if (count <= 0) continue
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS[i],
       moveName: `普通攻击：请勿抵抗 #${i + 1}（以太强化霰弹）`,
       category: 'basic',
       element: 'ether',
       count,
       actionTime: ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[i],
-      comboAlignRatio: 0,
       totalTime: count * ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[i],
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       ...(stunBonus > 0 ? { dmgBonus: stunBonus } : {}),
-    })
+    }))
     etherTime += count * ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[i]
   }
   // 挤出被以太弹占用的平A时间（琉音转大 carve 同款：从目标平A池扣，总前台占用守恒）
@@ -215,17 +212,11 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
   if (cinema < 6) return
   const afterglowCount = Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST)
   if (afterglowCount <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: 'zhuyuan_c6_afterglow_bullets',
     moveName: '以太余温·追加鹿弹',
     category: 'special',
     count: afterglowCount * ZHUYUAN_C6_EXTRA_BULLETS,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -234,7 +225,7 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
     damageMultiplierOverride: true,
     element: 'ether',
     skillTableNote: `以太余温 ×${afterglowCount} 次 ×${ZHUYUAN_C6_EXTRA_BULLETS} 枚鹿弹（累计消耗${ZHUYUAN_C6_AFTERGLOW_COST}枚霰弹得1次；每枚 ${ZHUYUAN_C6_BULLET_RATIO}% 攻击力）`,
-  })
+  }))
 }
 
 function buildZhuYuanResourceResult({ cfg, state }: AgentResourceResultInput) {

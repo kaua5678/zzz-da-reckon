@@ -20,6 +20,7 @@ import { getSkillLevelCoef } from '@/core/skillLevel'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue, rawRowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -331,22 +332,20 @@ function pushEx(
   energyConsume: number,
 ): void {
   if (count <= 0 || !moveId) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName: moveId,
     category: 'special',
     count,
     actionTime,
-    comboAlignRatio: 0,
     totalTime: count * actionTime,
-    totalComboAlignTime: 0,
     energyConsume,
     totalEnergyConsume: count * energyConsume,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     damageMultiplier: multiplier,
     damageMultiplierOverride: override,
-  })
+  }))
 }
 
 /** `computeBurniceMechanic` 的**模块内唯一入口**：把 cfg/state 解包集中在一处

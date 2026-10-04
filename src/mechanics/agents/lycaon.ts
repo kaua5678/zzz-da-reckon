@@ -9,6 +9,7 @@ import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 莱卡恩（1141）战斗逻辑（用户确认口径，2026-08）：
@@ -314,38 +315,26 @@ export const lycaonMechanic: AgentMechanicModule = {
 
     // ① + ④ 开场冰舞（弹刀后触发，必定合轴）+ 收尾冰舞（围猎结束自动）：
     // 1141027 完整数值（damage/daze/异常积蓄/喧响），不占前台时间
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: '1141027',
       moveName: '支援突击：复仇反扑·冰舞（围猎·开场+收尾）',
       category: 'assist',
       count: huntCount * 2,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: cfg.lycaonIceDanceDecibel ?? 0,
       totalDecibelRecovery: (cfg.lycaonIceDanceDecibel ?? 0) * huntCount * 2,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       anomalyBuildUp: cfg.lycaonIceDanceAnomaly ?? 0,
       skillTableNote: `围猎开场（弹刀后必定合轴）+ 收尾（自动）各 1 次/失衡 × ${huntCount} 次；完整数值（含异常积蓄/喧响）`,
-    })
+    }))
 
     // ② 后台闪避反击（跟随前台角色闪反，仅伤害+失衡值；失衡提升由面板 dodgeCounter 区承担）
     if (backstageDodgeCount > 0 && (cfg.lycaonDodgeDaze ?? 0) > 0) {
-      executions.push({
+      executions.push(moduleExecRow({
         moveId: '1141019',
         moveName: '闪避反击（围猎·后台跟随）',
         category: 'dodge',
         count: backstageDodgeCount,
-        actionTime: 0,
-        comboAlignRatio: 0,
-        totalTime: 0,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         decibelRecovery: 0, // 显式 0：后台招式仅伤害+失衡值（enrich 尊重显式 0）
         totalDecibelRecovery: 0,
         energyRecovery: 0,
@@ -356,24 +345,19 @@ export const lycaonMechanic: AgentMechanicModule = {
         autoSplitByStun: true,
         skillTableNote: `围猎后台跟随闪反 × ${backstageDodgeCount} 次（队伍其他角色闪反次数之和）；仅伤害+失衡值（吃核心被动闪反失衡+80%）`,
         timeBucket: 'backstage',
-      })
+      }))
     }
 
     // ③ 围猎后台蓄力平A：#2→#4→#6 短循环秒均 × 平A时间（仅伤害+失衡值；失衡提升由面板 basic 区承担）
     const perSec = cfg.lycaonChargePerSec ?? 0
     const dazePerSec = cfg.lycaonChargeDazePerSec ?? 0
     if (huntBasicTotal > 0 && (perSec > 0 || dazePerSec > 0)) {
-      executions.push({
+      executions.push(moduleExecRow({
         moveId: 'basic_attack',
         moveName: '普通攻击（围猎·后台蓄力 #2→#4→#6）',
         category: 'basic',
         count: 0,
-        actionTime: 0,
-        comboAlignRatio: 0,
         totalTime: huntBasicTotal,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         decibelRecovery: 0,
         totalDecibelRecovery: 0,
         energyRecovery: 0,
@@ -385,7 +369,7 @@ export const lycaonMechanic: AgentMechanicModule = {
         anomalyBuildUp: 0,
         skillTableNote: `围猎·后台蓄力平A：${huntBasicTotal.toFixed(1)}s（后台 ${backstageTotal.toFixed(1)}s − 闪反 ${dodgeTime.toFixed(1)}s，每次≤8s × ${huntCount}）；仅伤害+失衡值（吃核心被动蓄力失衡+80%）`,
         timeBucket: 'backstage',
-      })
+      }))
     }
   },
 
@@ -450,7 +434,7 @@ function pushEx(
   if (count <= 0) return
   const actionTime = EX_MOVE_TIMES[moveId] ?? 1
   const decibel = cfg.lycaonExDecibels?.[moveId] ?? 0
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName: `强化特殊技：${label}`,
     category: 'special',
@@ -465,7 +449,7 @@ function pushEx(
     totalDecibelRecovery: decibel * count,
     ...(stunBuildUpBonus > 0 ? { stunBuildUpBonus } : {}),
     ...(stunBuildUpBonus > 0 ? { skillTableNote: `影画1强化：失衡值提升 +${stunBuildUpBonus}%（乘区加算）` } : {}),
-  })
+  }))
 }
 
 function clamp01(v: number): number {

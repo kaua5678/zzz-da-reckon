@@ -12,6 +12,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 安比（1011，电·强攻）—— 整局近似口径
@@ -259,24 +260,20 @@ function pushAnbyBasicSegment(
   const note = dmgBonus > 0
     ? `影画6 充能电场：消耗充能命中 ${count} 次，当前招式 +${dmgBonus}%（执行级）`
     : ''
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: seg.moveId,
     moveName: seg.moveName,
     category: 'basic',
     element: seg.element,
     count,
     actionTime: seg.actionTime,
-    comboAlignRatio: 0,
     totalTime: count * seg.actionTime,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     ...(dmgBonus > 0 ? { dmgBonus, skillTableNote: note } : {}),
-  })
+  }))
 }
 
 /** 波动电压（招式限定失衡+64%）+ 影画2（落雷增伤/强特失衡，同招式限定） */

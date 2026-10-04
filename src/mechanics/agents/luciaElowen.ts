@@ -6,6 +6,7 @@ import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBl
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 卢西娅·艾洛温（1451）战斗逻辑（用户确认口径）：
@@ -193,41 +194,33 @@ function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): v
 
   // A5：开局场地外 1 次（随想），其余为战斗中 E 后衔接；这里统一用随想 1451005（合唱升级未单独拆分，用户确认）
   if (plan.a5Count > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: A5_MOVE_ID,
       moveName: '普通攻击：星轨连击 #5（随想·A5）',
       category: 'basic',
       count: plan.a5Count,
       actionTime: a5Time,
-      comboAlignRatio: 0,
       totalTime: plan.a5Count * a5Time,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       skillTableNote: '卢西娅必要时间：A5（随想）×' + plan.a5Count,
-    })
+    }))
   }
 
   // 计划内强特：接 A5，占用前台时间
   if (plan.dreamExSpecialCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: cfg.exSpecialMoveId,
       moveName: '强化特殊技：死神协奏曲·破晓（接A5）',
       category: 'special',
       count: plan.dreamExSpecialCount,
       actionTime: exTime,
-      comboAlignRatio: 0,
       totalTime: plan.dreamExSpecialCount * exTime,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       skillTableNote: '卢西娅必要时间：强特（接A5）×' + plan.dreamExSpecialCount,
-    })
+    }))
   }
 
   // 计划外强特：直接合轴，耗时 0 秒
   if (plan.excessExSpecialCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: cfg.exSpecialMoveId,
       moveName: '强化特殊技：死神协奏曲·破晓（合轴）',
       category: 'special',
@@ -236,31 +229,23 @@ function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): v
       comboAlignRatio: 1,
       totalTime: plan.excessExSpecialCount * exTime,
       totalComboAlignTime: plan.excessExSpecialCount * exTime,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       skillTableNote: '卢西娅计划外强特：合轴 0 秒',
-    })
+    }))
   }
 
   // 追加攻击（合唱）：默认 20 次（180s / 9s），由队友命中触发，不占卢西娅前台时间
   if (plan.additionalAttackCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: ADDITIONAL_ATTACK_MOVE_ID,
       moveName: '追加攻击（合唱）',
       category: 'special',
       count: plan.additionalAttackCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillTableNote: '追加攻击 1100%/200异常（默认20次，CD 8s 队友命中触发，不受失衡轴窗口限制；次数按有效战斗时间/8 封顶，无敌期间不结算）',
-    })
+    }))
   }
 }
 

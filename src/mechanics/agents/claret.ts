@@ -18,6 +18,7 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
 // 判据 = claretSmoke.test.ts「R37-J1」组（行为面：基准行 ×2 ⇒ 平A秒均 ×2；形状面：本文件不得再有同形私有函数）。
 import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 克拉蕾（1611）v12 重录（2026-09-03，raw = nanoka 3.2.12+18601660）：
@@ -720,23 +721,19 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
   const exCount = Math.max(0, Math.floor(source.affordableExCount))
   if (exCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: EX_MOVE_ID,
       moveName: '强化特殊技（EX Special）：秘血铸锋（锐能 60/发）',
       category: 'special',
       count: exCount,
       actionTime: Number(cfg.claretExActionTime ?? 0),
-      comboAlignRatio: 0,
       totalTime: exCount * Number(cfg.claretExActionTime ?? 0),
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: Number(cfg.claretExDecibelRecovery ?? 0),
       totalDecibelRecovery: exCount * Number(cfg.claretExDecibelRecovery ?? 0),
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       timeBucket: 'necessary',
-    })
+    }))
   }
   const spec = getAgentSpec(CLARET_AGENT_ID)
   if (!spec) return

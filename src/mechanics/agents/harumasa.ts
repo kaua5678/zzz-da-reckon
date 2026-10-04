@@ -31,6 +31,7 @@ import type {
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const HARUMASA_ID = '1201'
 export const HARUMASA_ARROW_MOVE_ID = '1201008'
@@ -255,22 +256,18 @@ function pushHarumasaExecution(executions: AgentResourceInput['executions'], inp
   damageMultiplier?: number
 }): void {
   if (input.count <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: input.moveId,
     moveName: input.moveName,
     category: input.category,
     element: 'electric',
     count: input.count,
     actionTime: input.actionTime ?? 0,
-    comboAlignRatio: 0,
     totalTime: input.count * (input.actionTime ?? 0),
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     ...(input.damageMultiplier == null
       ? {}
       : { damageMultiplier: input.damageMultiplier, damageMultiplierOverride: true }),
-  })
+  }))
 }
 
 function buildHarumasaExecutions({ cfg, state, executions }: AgentResourceInput): void {

@@ -33,6 +33,7 @@ import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting
 import { execMatchesMove } from '@/types/resource'
 import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const SEVERIAN_ID = '1631'
 /** 核心被动：暴击伤害 +60% */
@@ -278,40 +279,32 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
 
   const shadowCount = severianShadowHuntCount(cfg, state)
   if (shadowMeta && shadowCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: shadowMeta.moveId,
       moveName: '普通攻击：苍风影猎',
       category: 'basic',
       element: 'wind',
       count: shadowCount,
       actionTime: shadowMeta.actionTime,
-      comboAlignRatio: 0,
       totalTime: shadowCount * shadowMeta.actionTime,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       ...(cinema >= 6
         ? { damageMultiplier: shadowMeta.damage + SEVERIAN_C6_SHADOW_MULT, damageMultiplierOverride: true }
         : {}),
       skillTableNote: `流息驱动 ×${shadowCount}（100 点/次${cinema >= 6 ? '，影画6 最后一击+900% 同区加算' : ''}）`,
-    })
+    }))
   }
   const liexuanCount = severianLiexuanCount(cfg)
   if (liexuanMeta && liexuanCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: liexuanMeta.moveId,
       moveName: '普通攻击：烈旋',
       category: 'basic',
       element: 'wind',
       count: liexuanCount,
       actionTime: liexuanMeta.actionTime,
-      comboAlignRatio: 0,
       totalTime: liexuanCount * liexuanMeta.actionTime,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       skillTableNote: `烁影/受击自动发动 ×${liexuanCount}（按极限闪避次数近似，滑块可覆盖）`,
-    })
+    }))
   }
   // 长按风刃段（1631009，收益高：满倍率 818.4%）：每次强特长按持续消耗能量（满充 40 点）发动；
   // 满充比例滑块 severian.windBladeChargeRatio——倍率/耗能/时间均按比例缩放（总量口径）。
@@ -320,22 +313,20 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
   const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio', 1))
   if (windBladeMeta && exCount > 0 && bladeRatio > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: windBladeMeta.moveId,
       moveName: '强化特殊技：瞬风裂毁（长按风刃段）',
       category: 'special',
       element: 'wind',
       count: exCount,
       actionTime: windBladeMeta.actionTime,
-      comboAlignRatio: 0,
       totalTime: exCount * bladeRatio * windBladeMeta.actionTime,
-      totalComboAlignTime: 0,
       energyConsume: SEVERIAN_WIND_BLADE_ENERGY * bladeRatio,
       totalEnergyConsume: exCount * SEVERIAN_WIND_BLADE_ENERGY * bladeRatio,
       damageMultiplier: windBladeMeta.damage * bladeRatio,
       damageMultiplierOverride: true,
       skillTableNote: `长按持续风刃 ×${exCount}（满充比例 ${(bladeRatio * 100).toFixed(0)}%，倍率/耗能 40/时间按比例；满充额外+1烁影未建模）`,
-    })
+    }))
   }
 }
 

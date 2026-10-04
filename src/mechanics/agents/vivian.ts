@@ -36,6 +36,7 @@ import type { ModuleFeedback } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as setting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
@@ -209,40 +210,28 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
 function buildVivianExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
   if (cycle.followUpCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: VIVIAN_LUOYU_MOVE_ID,
       moveName: '普通攻击：落羽生花（强特命中/队友施加异常触发）',
       category: 'basic',
       element: 'ether',
       count: cycle.followUpCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
-    })
+    }))
   }
   // 悬落：后台自动衔接 E/Q/支援突击/连携 后，不占前台时间（timeBucket=backstage + 0s）
   if (cycle.xuanluoCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: VIVIAN_XUANLUO_MOVE_ID,
       moveName: '普通攻击：裙裾浮游·悬落（E/Q/支援/连携后自动衔接）',
       category: 'basic',
       element: 'ether',
       count: cycle.xuanluoCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       timeBucket: 'backstage',
-    })
+    }))
   }
 }
 

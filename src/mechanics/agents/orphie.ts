@@ -5,6 +5,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, effectiveCombatTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 奥菲丝&「鬼火」（1301，火·强攻，新艾利都防卫军）—— 自身机制补录模块。
@@ -103,48 +104,36 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   const fusionPush: SkillExecution[] = []
   for (const exec of executions) {
     if (exec.moveId === ORPHIE_EX_STORAGE) {
-      fusionPush.push({
+      fusionPush.push(moduleExecRow({
         moveId: ORPHIE_EX_BURST,
         moveName: '强化特殊技：燥焰迸射（蓄热充能自动接）',
         category: 'special',
         element: 'fire',
         skillDamageTarget: 'additionalAttack',
         count: exec.count,
-        actionTime: 0,
-        comboAlignRatio: 0,
-        totalTime: 0,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         decibelRecovery: 0,
         totalDecibelRecovery: 0,
         energyRecovery: 0,
         totalEnergyRecovery: 0,
         timeBucket: 'backstage',
         skillTableNote: '强化特殊技：燥焰迸射（蓄热充能自动衔接，追攻）',
-      })
+      }))
     }
     if (exec.moveId === ORPHIE_ULT_1) {
-      fusionPush.push({
+      fusionPush.push(moduleExecRow({
         moveId: ORPHIE_ULT_2,
         moveName: '终结技：与火共舞 #2（#1+#2 合一）',
         category: 'chain',
         element: 'fire',
         skillDamageTarget: 'additionalAttack',
         count: exec.count,
-        actionTime: 0,
-        comboAlignRatio: 0,
-        totalTime: 0,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         decibelRecovery: 0,
         totalDecibelRecovery: 0,
         energyRecovery: 0,
         totalEnergyRecovery: 0,
         timeBucket: 'backstage',
         skillTableNote: '终结技：与火共舞 #2（#1+#2 合一计一次，追攻）',
-      })
+      }))
     }
   }
   executions.push(...fusionPush)
@@ -238,26 +227,20 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
   // 席德队：前台小心脚下（前台耗能给席德回钢能）
   if (frontCast > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: ORPHIE_EX_FOOT,
       moveName: '强化特殊技：小心脚下（前台能量）',
       category: 'special',
       element: 'fire',
       skillDamageTarget: 'additionalAttack',
       count: frontCast,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       timeBucket: 'backstage',
       skillTableNote: '强化特殊技：小心脚下（前台能量，追攻）',
-    })
+    }))
   }
   push(ORPHIE_SP_SHIGUANG, '特殊技：蚀光一闪（后台自动）', shiguangCount)
   push(ORPHIE_EX_VORTEX, '强化特殊技：灼红旋涡（后台自动·能量替换）', vortexCount)

@@ -16,6 +16,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgSetting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
@@ -332,23 +333,19 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
       const n = segCounts[seg.moveId] ?? 0
       if (n <= 0) continue
       segTime += n * seg.actionTime
-      executions.push({
+      executions.push(moduleExecRow({
         moveId: seg.moveId,
         moveName: `普通攻击：凛冽枪尖 #${seg.moveId.slice(-1)}`,
         category: 'basic',
         element: 'ice',
         count: n,
         actionTime: seg.actionTime,
-        comboAlignRatio: 0,
         totalTime: n * seg.actionTime,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         decibelRecovery: 0,
         totalDecibelRecovery: 0,
         energyRecovery: 0,
         totalEnergyRecovery: 0,
-      })
+      }))
     }
     // ===== 出枪式段不再重复占用平A池（2026-09-05，朱鸢同款修复）=====
     // 分段行由 `countBasicSegments(basicAttackTime, …)` 推出 ⇒ 它们占的**就是平A池那份时间**。

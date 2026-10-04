@@ -6,6 +6,7 @@ import { calcPenetrationPower } from '@/core/damage'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
@@ -461,15 +462,13 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
   // energyRecover = 行级回能/次（山威免费强特回闪能；缺省 0 = 不产闪能）
   const push = (moveId: string, name: string, count: number, category: string, note: string, energyConsume = 0, force = false, energyRecover = 0) => {
     if (count <= 0 && !force) return
-    executions.push({
+    executions.push(moduleExecRow({
       moveId,
       moveName: name,
       category,
       count,
       actionTime: times[moveId] ?? 0,
-      comboAlignRatio: 0,
       totalTime: (times[moveId] ?? 0) * count,
-      totalComboAlignTime: 0,
       energyConsume,
       totalEnergyConsume: energyConsume * count,
       energyRecovery: energyRecover,
@@ -477,7 +476,7 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
       damageMultiplier: dmg[moveId] ?? 0,
       damageMultiplierOverride: true,
       skillTableNote: note,
-    })
+    }))
   }
 
   // 每次怒相：焚身 → 山威连段（论道+狮吼怒 / 地动+山摇·怒，按轴内捏的 didong 块拆分）→ 倾山 → 摧岳
@@ -512,17 +511,13 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
     recoveryRows.push({ moveId: 'banyue-recovery-didong', name: '后摇（山摇·怒）', count: cycle.diDongRecoveryCount, time: t, note: `失衡外地动山摇连段末尾后摇 ×${cycle.diDongRecoveryCount}：${t.toFixed(3)}s/次（期间不能平A，嘲讽可取消）` })
   }
   for (const r of recoveryRows) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: r.moveId,
       moveName: r.name,
       category: 'special',
       count: r.count,
       actionTime: r.time,
-      comboAlignRatio: 0,
       totalTime: r.time * r.count,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
@@ -530,7 +525,7 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
       damageMultiplier: 0,
       damageMultiplierOverride: true,
       skillTableNote: r.note,
-    })
+    }))
   }
   // 轴内捏的强特（地动/山摇·怒/山摇/狮子吼/单段论道/单段狮吼怒）：次数=轴内块×窗口数（useResourceCalc 注入）。
   // 没捏的也强制占位（count 0 → 轴编辑器里显示为 ×0 灰块，可点选放置）——默认能量全打连段在轴外，捏轴可自由改捏。
@@ -566,42 +561,34 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
   // 不动如山（招架/金身动作）：金身弹刀 + 双反 次数 → 动作行（0.666s 耗时 + daze 143.7，失衡贡献）
   if (chongXiao > 0 && !executions.some(e => e.moveId === MOVE.buDongRuShan)) {
     const time = times[MOVE.buDongRuShan] ?? 0.666
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: MOVE.buDongRuShan,
       moveName: '闪避：不动如山',
       category: 'dodge',
       count: chongXiao,
       actionTime: time,
-      comboAlignRatio: 0,
       totalTime: time * chongXiao,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       // 不设 dazeMultiplierOverride：enrichExecutionPlan 按 moveId 1471011 回填 daze 143.7
-    })
+    }))
   }
   // 支援突击：冲霄（金身弹刀 + 双反 次数）——与不动如山配套的攻击动作
   if (chongXiao > 0 && !executions.some(e => e.moveId === MOVE.chongXiao)) {
     const time = times[MOVE.chongXiao] ?? 0
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: MOVE.chongXiao,
       moveName: '支援突击：冲霄',
       category: 'assist',
       count: chongXiao,
       actionTime: time,
-      comboAlignRatio: 0,
       totalTime: time * chongXiao,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       // 不设 damageMultiplierOverride：enrichExecutionPlan 按 moveId 1471029 从倍率表回填
-    })
+    }))
   }
 
   if (cinemaLevel < 4) return

@@ -10,6 +10,7 @@ import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { effectiveBattleTime, minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const YUZUHA_AGENT_ID = '1411'
 const SWEETNESS_INITIAL = 3
@@ -179,17 +180,11 @@ function pushBackstageRow(
   count: number,
   element?: string,
 ): void {
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName,
     category: 'basic',
     count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -197,7 +192,7 @@ function pushBackstageRow(
     ...(element ? { element } : {}),
     timeBucket: 'backstage',
     autoSplitByStun: true, // CC-391 D1：硬糖射击 8 秒 CD 由队友命中触发、彩糖花火每秒一次、·极由硬糖重击触发 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
-  })
+  }))
 }
 
 function buildYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {

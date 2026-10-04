@@ -34,6 +34,7 @@ import type {
 import { axisOverlayChannel, type AxisLike } from '../types'
 import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const CORIN_ID = '1061'
 export const CORIN_CORE_SAW_DMG = 37.5
@@ -183,18 +184,12 @@ function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' |
 function buildCorinExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
   if (cycle.c6DetonationCount <= 0 || cycle.c6DamagePerDetonation <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: '1061_c6_chainsaw_detonation',
     moveName: '电锯引爆（影画6）',
     category: 'special',
     element: 'physical',
     count: cycle.c6DetonationCount,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -202,7 +197,7 @@ function buildCorinExecutions({ cfg, state, executions }: AgentResourceInput): v
     damageMultiplier: cycle.c6DamagePerDetonation,
     damageMultiplierOverride: true,
     skillDamageTarget: 'additionalAttack',
-  })
+  }))
 }
 
 /**

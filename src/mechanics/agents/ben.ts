@@ -31,6 +31,7 @@ import type {
   AgentResourceInput,
 } from '../types'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const BEN_ID = '1121'
 
@@ -106,21 +107,19 @@ function pushExPart(
   label: string,
 ): void {
   if (count <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName: label,
     category: 'special',
     count,
     actionTime,
-    comboAlignRatio: 0,
     totalTime: count * actionTime,
-    totalComboAlignTime: 0,
     energyConsume: BEN_EX_PART_ENERGY,
     totalEnergyConsume: count * BEN_EX_PART_ENERGY,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     skillTableNote: `${label} ×${count}；每段耗能 ${BEN_EX_PART_ENERGY}`,
-  })
+  }))
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
@@ -143,17 +142,11 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   // C2 只由成功触发格挡反击的强特组触发；成功率允许期望值小数。
   if (cinema < 2 || successCount <= 0) return
   const def = Math.max(0, Number(cfg.benDef ?? 0))
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: MOVE_C2_COUNTER,
     moveName: '影画2·格挡反击附加',
     category: 'special',
     count: successCount,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -164,7 +157,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     basisLabelOverride: '本的防御力',
     element: 'fire',
     skillTableNote: `C2 格挡反击附加 ×${successCount}（仅成功招架；300% 防御力）`,
-  })
+  }))
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {

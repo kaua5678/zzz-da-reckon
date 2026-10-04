@@ -13,6 +13,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 格莉丝（1181）战斗逻辑（用户口供 2026-08-23）：
@@ -332,21 +333,17 @@ function buildGraceAnomalyEvents({ cfg, events }: { cfg: AgentResourceInput['cfg
 
 /** 特殊技/手雷行（真实 id）：enrich 回填伤害/积蓄；动作时间不覆盖；积蓄缩放走 transform 钩子 */
 function graceRow(moveId: string, name: string, count: number, actionTime: number): SkillExecution {
-  return {
+  return moduleExecRow({
     moveId,
     moveName: name,
     category: 'special',
     count,
     actionTime,
-    comboAlignRatio: 0,
     totalTime: actionTime * count,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     skillTableNote: `消耗全部电能（8层）→ 电属性异常积蓄 +130%（积蓄效率区加算）`,
-  }
+  })
 }
 
 

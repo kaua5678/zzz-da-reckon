@@ -44,6 +44,7 @@ import type {
 import { minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const TRIGGER_AGENT_ID = '1361'
 export const TRIGGER_ADDITIONAL_MOVE_IDS = new Set(['1361008', '1361020', '1361022'])
@@ -268,17 +269,11 @@ function pushSyntheticExecution(executions: AgentResourceInput['executions'], in
   dazeMultiplier?: number
 }): void {
   if (input.count <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: input.moveId,
     moveName: input.moveName,
     category: 'special',
     count: input.count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -293,7 +288,7 @@ function pushSyntheticExecution(executions: AgentResourceInput['executions'], in
     // 断离/破甲凶弹由协奏/狙击命中触发（CD 驱动后台自动行）：轴模式按失衡时间占比拆
     // （autoSplitByStun，与协奏/冥狱载体行同口径——2026-09-03 用户口径：CD 好算总量与失衡内易伤量）。
     autoSplitByStun: true,
-  })
+  }))
 }
 
 /** 协奏狙杀/冥狱为真实 moveId 的后台追击行：数值全部由倍率表 enrich 回填 */
@@ -303,17 +298,11 @@ function pushTableExecution(executions: AgentResourceInput['executions'], input:
   count: number
 }): void {
   if (input.count <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: input.moveId,
     moveName: input.moveName,
     category: 'basic',
     count: input.count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -323,7 +312,7 @@ function pushTableExecution(executions: AgentResourceInput['executions'], input:
     // 不按捏轴认领/无放置语义——轴模式按失衡时间占比拆「占比内吃满易伤 / 其余无易伤」
     // （猫又超凶爪印同款 autoSplitByStun 通用机制），非轴按全局覆盖率。
     autoSplitByStun: true,
-  })
+  }))
 }
 
 function buildTriggerExecutions({ cfg, state, executions }: AgentResourceInput): void {

@@ -24,6 +24,7 @@ import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { findMoveById } from '@/data/moveTableQueries'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const MIYABI_AGENT_ID = '1091'
 /** 烈霜元素（独立元素，可在紊乱中与冰互紊） */
@@ -200,7 +201,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 霜月架势三段
   // 合轴：蓄力1秒后即可合轴，totalComboAlignTime = count × 1.0
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: FROST_MOON_MOVE_ID,
     moveName: '普通攻击：霜月 #3（蓄力三段，烈霜）',
     category: 'basic',
@@ -210,10 +211,8 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
     comboAlignRatio: (actionTime - FROST_MOON_3_LOCK_SECONDS) / actionTime,
     totalTime: frostMoonCount * actionTime,
     totalComboAlignTime: frostMoonCount * (actionTime - FROST_MOON_3_LOCK_SECONDS),
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     ...(m1DefShred ? { defIgnore: 36 } : {}),
-  })
+  }))
 
   // C6：消耗落霜释放霜月#3时，额外赠送一次霜月#1 与 #2
   // 非C6只有霜月#3；C6固定额外赠送#1（910.1%）和#2（1717.2%），各随次数翻倍
@@ -225,23 +224,19 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
       { moveId: FROST_MOON_1_MOVE_ID, moveName: '普通攻击：霜月 #1（C6赠送）', at: cfgMoveActionTime(cfg, FROST_MOON_1_MOVE_ID) },
       { moveId: FROST_MOON_2_MOVE_ID, moveName: '普通攻击：霜月 #2（C6赠送）', at: cfgMoveActionTime(cfg, FROST_MOON_2_MOVE_ID) },
     ]) {
-      executions.push({
+      executions.push(moduleExecRow({
         moveId: gift.moveId,
         moveName: gift.moveName,
         category: 'basic',
         count: frostMoonCount,
         actionTime: gift.at,
-        comboAlignRatio: 0,
         totalTime: frostMoonCount * gift.at,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         decibelRecovery: 0,
         totalDecibelRecovery: 0,
         energyRecovery: 0,
         totalEnergyRecovery: 0,
         ...(m1DefShred ? { defIgnore: gift.moveId === FROST_MOON_1_MOVE_ID ? 12 : 24 } : {}),
-      })
+      }))
     }
   }
 
@@ -257,23 +252,17 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
   if (frostbreakCount > 0) {
     const hasC4 = cinemaLevel >= 4
     const perDecibel = hasC4 ? C4_FROSTBURN_DECIBEL : 0
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: 'miyabi_frostburn_break',
       moveName: '霜灼·破',
       category: 'basic',
       count: frostbreakCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: perDecibel,
       totalDecibelRecovery: perDecibel * frostbreakCount,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       damageMultiplier: FROSTBURN_BREAK_MULTIPLIER,
-    })
+    }))
   }
 }
 

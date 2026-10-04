@@ -25,6 +25,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById as findMove, getRowValue } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
@@ -211,18 +212,14 @@ function pushExecution(executions: AgentResourceInput['executions'], input: {
   const verdictDmg = input.verdict
     ? (input.additionalActive ? HUGO_ADDITIONAL_VERDICT_DMG : 0) + (input.cinemaLevel >= 6 ? HUGO_C6_DMG_BONUS : 0)
     : 0
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: input.moveId,
     moveName: input.moveName,
     category: input.category,
     element: 'ice',
     count: input.count,
     actionTime: input.actionTime,
-    comboAlignRatio: 0,
     totalTime: input.count * input.actionTime,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -234,7 +231,7 @@ function pushExecution(executions: AgentResourceInput['executions'], input: {
       ? { critRateBonus: HUGO_C1_CRIT_RATE, critDmgBonus: HUGO_C1_CRIT_DMG }
       : {}),
     ...(input.verdict && input.cinemaLevel >= 2 ? { defIgnore: HUGO_C2_DEF_IGNORE } : {}),
-  })
+  }))
 }
 
 function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): void {

@@ -11,6 +11,7 @@ import { effectiveBattleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
@@ -635,15 +636,13 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   const dazeRows = cfg.yixuanMoveDaze ?? {}
   const push = (moveId: string, name: string, count: number, category: string, note: string, energyConsume = 0, dmgBonus = 0) => {
     if (count <= 0) return
-    executions.push({
+    executions.push(moduleExecRow({
       moveId,
       moveName: name,
       category,
       count,
       actionTime: times[moveId] ?? 0,
-      comboAlignRatio: 0,
       totalTime: (times[moveId] ?? 0) * count,
-      totalComboAlignTime: 0,
       energyConsume,
       totalEnergyConsume: energyConsume * count,
       energyRecovery: 0,
@@ -651,7 +650,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       ...(dmgBonus ? { dmgBonus } : {}),
       skillTableNote: note,
       // 不设 damageMultiplierOverride：enrichExecutionPlan 按 moveId 从倍率表回填（自动含 3/5 命等级）
-    })
+    }))
   }
 
   // 墨痕化形链：2连（#1+#3，40）/ 3连（#1+#3+#4，60）；#2 完美格挡赠送（免费，回 10 闪能/次）
@@ -669,15 +668,13 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   const axisSec = chain.axisCloudSeconds ?? CLOUD_MAX_SECONDS
   if (axisCloud > 0) {
     const full = axisSec >= CLOUD_MAX_SECONDS - 1e-9
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: MOVE.cloud,
       moveName: '强化特殊技：凝云术（轴内）',
       category: 'special',
       count: axisCloud,
       actionTime: axisSec,
-      comboAlignRatio: 0,
       totalTime: axisSec * axisCloud,
-      totalComboAlignTime: 0,
       energyConsume: Math.round(axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS)),
       totalEnergyConsume: Math.round(axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS)) * axisCloud,
       energyRecovery: 0,
@@ -694,25 +691,23 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       skillTableNote: full
         ? `凝云术（轴内）×${axisCloud}：满蓄 ${axisSec}s（倍率表回填，命中失衡+30%）`
         : `凝云术（轴内）×${axisCloud}：蓄力 ${axisSec}s（轴内时长，秒均折算；命中失衡+30%）`,
-    })
+    }))
   }
   if (cloudOut > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: MOVE.cloud,
       moveName: '强化特殊技：凝云术（轴外）',
       category: 'special',
       count: cloudOut,
       actionTime: CLOUD_MAX_SECONDS,
-      comboAlignRatio: 0,
       totalTime: CLOUD_MAX_SECONDS * cloudOut,
-      totalComboAlignTime: 0,
       energyConsume: CLOUD_MAX_COST,
       totalEnergyConsume: CLOUD_MAX_COST * cloudOut,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       dmgBonus: outAshenBonus,
       skillTableNote: `凝云术（轴外）×${cloudOut}：满蓄（倍率表回填）${axisActive ? '' : '（+30%×覆盖率）'}${c4Bonus ? `（静心+${c4Bonus}%）` : ''}`,
-    })
+    }))
   }
 
   // 墨影凝云合轴（用户口径）：合轴次数 N；玄墨值 M 把合轴招式替换为玄墨极阵+青溟震击
@@ -736,22 +731,17 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       [BACKSTAGE_STRIKE_MOVE, '普通攻击：霄云劲 #5（合轴）', inkCombo],
     ] as const) {
       if (cnt <= 0) continue
-      executions.push({
+      executions.push(moduleExecRow({
         moveId: mid,
         moveName: mname,
         category: 'basic',
         count: cnt,
-        actionTime: 0,
         comboAlignRatio: 1,
-        totalTime: 0,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         /*@KEEP0@*/
         energyRecovery: 0,
         totalEnergyRecovery: 0,
         skillTableNote: `合轴 ×${cnt}${xuanmoStrike > 0 && mid === '1371021' ? `（玄墨值替换，总 ${totalFuFaUlts}）` : ''}`,
-      })
+      }))
     }
   }
 
@@ -759,23 +749,17 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 假 id 不进失衡/异常池（坑5 约定），伤害池按 damageMultiplierOverride 消费
   const c1Lightnings = Math.max(0, Math.floor(Number(cfg.yixuanC1LightningCount ?? 0)))
   if (c1Lightnings > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: C1_LIGHTNING_MOVE_ID,
       moveName: '落雷（影画1·清灵道心）',
       category: 'assist',
       count: c1Lightnings,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       damageMultiplier: C1_LIGHTNING_RATIO,
       damageMultiplierOverride: true,
       skillTableNote: `落雷 ×${c1Lightnings}：50% 贯穿力（6s 最多一次，战斗时间驱动）`,
-    })
+    }))
   }
 
   // 额外能力·极限支援换场落雷：225% 贯穿力 + 5 闪能/次（默认队友弹刀和上限，主页可录入；假 id 不进失衡/异常池）
@@ -783,61 +767,47 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   const extremeAssists = resolveYixuanExtremeAssists(cfg, assistCap, cfg.yixuanExtremeAssistCountInput ?? -1)
   cfg.yixuanExtremeAssistCount = extremeAssists
   if (extremeAssists > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: EXTREME_ASSIST_MOVE_ID,
       moveName: '落雷（极限支援换场）',
       category: 'assist',
       count: extremeAssists,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       // 落雷假 id 无倍率表行，喧响显式 0（不回填）
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       damageMultiplier: EXTREME_ASSIST_LIGHTNING_RATIO,
       damageMultiplierOverride: true,
       skillTableNote: `落雷 ×${extremeAssists}：225% 贯穿力（极限支援换场，+5闪能/次）`,
-    })
+    }))
   }
 
   // 影画6：赠送的符法千重执行（真实 moveId 回填，不耗术法值/喧响；施放时间同本体 2.267s）
   if (giftUlts > 0) {
     const giftAt = times[MOVE.extraUlt] ?? 0
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: MOVE.extraUlt,
       moveName: '终结技：符法千重（影画6·调息赠送）',
       category: 'chain',
       count: giftUlts,
       actionTime: giftAt,
-      comboAlignRatio: 0,
       totalTime: giftAt * giftUlts,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillTableNote: `符法千重 ×${giftUlts}（调息赠送：30s CD，默认=大招次数）`,
-    })
+    }))
   }
 
   // 影画2·聚墨：每发动一次符法千重获得一层（最多 1 层）→ 消耗发动符法千重-破（1200% 贯穿力，倍率行被隐藏，
   // 数值为用户提供：伤害 1200 / 失衡 374.055 / 喧响 62.3425 / 异常 226.7；假 id 不进失衡/异常池，daze/异常走执行字段）
   if (cinemaLevel >= 2 && totalFuFaUlts > 0) {
     const poAt = times[MOVE.extraUlt] ?? 0 // 符法千重-破 = 符法千重的破版，施放时长同本体（2.267s，用户口径 2026-08）
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: C2_PO_MOVE_ID,
       moveName: '强化特殊技：符法千重-破',
       category: 'special',
       count: totalFuFaUlts,
       actionTime: poAt,
-      comboAlignRatio: 0,
       totalTime: poAt * totalFuFaUlts,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: C2_PO_DECIBEL,
       totalDecibelRecovery: C2_PO_DECIBEL * totalFuFaUlts,
       energyRecovery: 0,
@@ -848,7 +818,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       dazeMultiplierOverride: true,
       anomalyBuildUp: C2_PO_ANOMALY,
       skillTableNote: `符法千重-破 ×${totalFuFaUlts}：1200% 贯穿力（聚墨，影画2；吃核心被动60%/影画2减抗）`,
-    })
+    }))
   }
 
   // 术法值驱动的符法千重（真实 moveId 回填，不设 override）：次数 = min(术法值可打次数, 文本框/自动默认)；
@@ -856,21 +826,17 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 玄墨值/合轴/聚墨/静心等下游已在上面按 totalFuFaUlts（实际次数）结算。
   if (shufaUlts > 0) {
     const shufaAt = times[MOVE.extraUlt] ?? 0
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: MOVE.extraUlt,
       moveName: '终结技：符法千重（术法值）',
       category: 'special',
       count: shufaUlts,
       actionTime: shufaAt,
-      comboAlignRatio: 0,
       totalTime: shufaAt * shufaUlts,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillTableNote: `符法千重 ×${shufaUlts}（术法值 120/次）`,
-    })
+    }))
   }
 }
 

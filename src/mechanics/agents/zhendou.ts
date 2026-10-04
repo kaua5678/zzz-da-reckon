@@ -13,6 +13,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 真斗（1441，命破/火 DPS）—— 整局近似口径
@@ -148,21 +149,17 @@ function buildZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 function pushSpecial(executions: SkillExecution[], moveId: string, moveName: string, count: number, actionTime: number): void {
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName,
     category: 'special',
     count,
     actionTime,
-    comboAlignRatio: 0,
     totalTime: count * actionTime,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     skillTableNote: `归烬·舍身 ×${count}（蓄力 ${count} 秒攒炽心，占前台时间）`,
-  })
+  }))
 }
 
 function buildZhendouResourceResult({ cfg, state }: AgentResourceResultInput) {

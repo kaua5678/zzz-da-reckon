@@ -23,6 +23,7 @@ import type {
   AgentResourceInput,
 } from '../types'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const CAESAR_ID = '1071'
 
@@ -69,23 +70,17 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const slider = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'caesar.c4SubstitutionCount') ?? 0)))
   const extraEx = Math.min(maxExtra, slider)
   if (extraEx <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: MOVE_SUPER_SHIELD,
     moveName: '强化特殊技：超强力盾击（影画4 支援点数代替）',
     category: 'special',
     count: extraEx,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     skillTableNote: '影画4 阿瑞斯攻城锤：能量<20 时消耗1点支援点数代替发动超强力盾击（5s ICD，支援点数=3×连携+终结）',
-  })
+  }))
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {

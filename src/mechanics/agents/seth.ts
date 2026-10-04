@@ -27,6 +27,7 @@ import type {
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const SETH_ID = '1271'
 export const SETH_SHIELD_PROFICIENCY = 100
@@ -93,18 +94,12 @@ function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' |
 function buildSethExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
   if (cycle.c6FinishCount <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: '1271_c6_finish_strike',
     moveName: '雷霆击感电·终结一击（影画6）',
     category: 'basic',
     element: 'electric',
     count: cycle.c6FinishCount,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -113,7 +108,7 @@ function buildSethExecutions({ cfg, state, executions }: AgentResourceInput): vo
     damageMultiplierOverride: true,
     critRateBonus: 100,
     critDmgBonus: SETH_C6_CRIT_DMG,
-  })
+  }))
 }
 
 function patchSethExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {

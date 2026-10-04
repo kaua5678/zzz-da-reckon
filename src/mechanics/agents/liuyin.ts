@@ -17,6 +17,7 @@ import { applyAgentAttributeConversions } from '@/specs/runtime'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const LIUYIN_AGENT_ID = '1481'
 
@@ -285,45 +286,39 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
   for (let k = 0; k < EX_MOVES.length; k++) {
     if (counts[k] <= 0) continue
     const mv = EX_MOVES[k]
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: mv.id,
       moveName: mv.name,
       category: 'special',
       count: counts[k],
       actionTime: mv.actionTime,
-      comboAlignRatio: 0,
       totalTime: counts[k] * mv.actionTime,
-      totalComboAlignTime: 0,
       energyConsume: EX_SPECIAL_ENERGY,
       totalEnergyConsume: counts[k] * EX_SPECIAL_ENERGY,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillDamageTarget: 'exSpecial',
-    })
+    }))
   }
 
   // 客诉抱拳（送客长按 1481009）：次数 = 转大次数 + 琉音终结技次数（等效规则）。
   // 完整倍率行由 buildCharConfig 从倍率表读取，直接覆盖，不依赖回填。
   const farewellCount = Math.max(0, Math.floor(source.farewellCount))
   if (farewellCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: cfg.liuyinFarewellMoveId ?? FAREWELL_MOVE_ID,
       moveName: '强化特殊技：送客！（客诉抱拳）',
       category: 'special',
       count: farewellCount,
       actionTime: cfg.liuyinFarewellActionTime ?? 0,
-      comboAlignRatio: 0,
       totalTime: farewellCount * (cfg.liuyinFarewellActionTime ?? 0),
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: cfg.liuyinFarewellDecibel ?? 0,
       totalDecibelRecovery: farewellCount * (cfg.liuyinFarewellDecibel ?? 0),
       damageMultiplier: cfg.liuyinFarewellDamage ?? 0,
       damageMultiplierOverride: (cfg.liuyinFarewellDamage ?? 0) > 0,
       skillDamageTarget: 'exSpecial',
       skillTableNote: '客诉抱拳：消耗 1 客诉发动送客长按，倍率行 1481009',
-    })
+    }))
   }
 
   // 强化A（普通攻击：猜拳把戏 #1-#4）：布（1481013）次数 × 一轮 4 段，占用平A时间。
@@ -340,23 +335,19 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
       const usedTime = rounds * roundSeconds
       for (let s = 0; s < JANKEN_MOVE_IDS.length; s++) {
         const at = jankenTimes[s] ?? JANKEN_DEFAULT_TIMES[s] ?? 0
-        executions.push({
+        executions.push(moduleExecRow({
           moveId: JANKEN_MOVE_IDS[s],
           moveName: `普通攻击：猜拳把戏 #${s + 1}（强化A）`,
           category: 'basic',
           count: rounds,
           actionTime: at,
-          comboAlignRatio: 0,
           totalTime: rounds * at,
-          totalComboAlignTime: 0,
-          energyConsume: 0,
-          totalEnergyConsume: 0,
           decibelRecovery: 0,
           totalDecibelRecovery: 0,
           energyRecovery: 0,
           totalEnergyRecovery: 0,
           skillTableNote: `强化A：布×${paperCount}，平A时间 ${basicTimeTotal.toFixed(2)}s 够打 ${rounds} 轮（整轮截断）`,
-        })
+        }))
       }
       // 扣减普通平A时间（强化A占用平A时间，优先打）
       if (basicExec) basicExec.totalTime = Math.max(0, basicExec.totalTime - usedTime)

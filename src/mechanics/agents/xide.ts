@@ -7,6 +7,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 「席德」（1461，电·强攻，新艾利都防卫军）—— 正兵拐 + 自身机制 + 钢能消耗出口模块。
@@ -245,20 +246,16 @@ function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): vo
   cfg.xideAttackSteel = attackSteel
   const { cycle } = resolveXideSteelResources(cfg, state, attackSteel)
 
-  const mkRow = (moveId: string, moveName: string, count: number, actionTime: number, extra: Partial<SkillExecution> = {}): SkillExecution => ({
+  const mkRow = (moveId: string, moveName: string, count: number, actionTime: number, extra: Partial<SkillExecution> = {}): SkillExecution => (moduleExecRow({
     moveId,
     moveName,
     category: 'basic',
     count,
     actionTime,
-    comboAlignRatio: 0,
     totalTime: count * actionTime,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     timeBucket: 'necessary',
     ...extra,
-  })
+  }))
 
   if (cycle > 0) {
     executions.push(mkRow(XIDE_ZHONGLU_MOVE_ID, '落华·重戮（钢能快速释放）', cycle, cfgMoveActionTime(cfg, XIDE_ZHONGLU_MOVE_ID)))

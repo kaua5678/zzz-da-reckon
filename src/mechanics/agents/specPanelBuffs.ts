@@ -15,6 +15,7 @@ import { computeSpecResources, type SpecResourceResult } from '@/specs/resources
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { cfgMechanicSetting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
 export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
@@ -216,7 +217,7 @@ peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }) => {
   }
   const pushUlt = (moveId: string, count: number, note: string) => {
     if (count <= 0) return
-    executions.push({
+    executions.push(moduleExecRow({
       moveId,
       moveName: note,
       category: 'chain',
@@ -225,14 +226,12 @@ peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }) => {
       comboAlignRatio: ultCar,
       totalTime: ultActionTime * count,
       totalComboAlignTime: ultActionTime * ultCar * count,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillTableNote: note,
-    })
+    }))
   }
   pushUlt(PEILUO_ULT_LOWER, lower, '下分支·凯旋坦途（开局固定一次）')
   pushUlt(PEILUO_ULT_VERDICT, verdict, `右分支·永陷幽囚（决算）×${verdict}`)
@@ -373,23 +372,17 @@ peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) 
 peiluoProminenceMechanic.buildExecutions = ({ cfg, executions }) => {
   const count = Math.max(0, Math.floor(cfg.assaultOrderCount ?? 0))
   if (count <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: '1551022',
     moveName: '特殊技：强袭训令',
     category: 'special',
     count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     skillTableNote: `特殊技：强袭训令 ×${count}（主页交互栏填写）`,
-  })
+  }))
 }
 
 export const PEILUO_KAGEROU_SECONDS = 21
@@ -604,17 +597,11 @@ function pushJufufuExec(
   opts: { override?: boolean; dmgBonus?: number; skillDamageTarget?: SkillExecution['skillDamageTarget']; note?: string; element?: string } = {},
 ) {
   if (count <= 0 || multiplier <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName,
     category,
     count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     damageMultiplier: multiplier,
@@ -623,7 +610,7 @@ function pushJufufuExec(
     dmgBonus: opts.dmgBonus ?? 0,
     skillDamageTarget: opts.skillDamageTarget,
     skillTableNote: opts.note ?? '',
-  })
+  }))
 }
 
 function jufufuCinemaOf(cfg: AgentResourceResultInput['cfg']): number {

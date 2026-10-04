@@ -18,6 +18,7 @@ import type {
   AgentMechanicModule,
   AgentResourceInput,
 } from '../types'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const PAN_YINHU_ID = '1421'
 export const PAN_YINHU_C2_ENERGY_PER_6_POJIN = 4
@@ -34,21 +35,15 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const exCount = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
   if (exCount > 0) {
     PAN_YINHU_TOUCH_OF_DEATH_MOVE_IDS.forEach((moveId, i) => {
-      executions.push({
+      executions.push(moduleExecRow({
         moveId,
         moveName: `特殊技：断脉破穴手 #${i + 1}（贴山震脉靠后自动释放）`,
         category: 'special',
         count: exCount,
-        actionTime: 0,
-        comboAlignRatio: 0,
-        totalTime: 0,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         energyRecovery: 0,
         totalEnergyRecovery: 0,
         timeBucket: 'backstage',
-      })
+      }))
     })
   }
 

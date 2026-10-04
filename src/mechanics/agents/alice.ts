@@ -29,6 +29,7 @@ import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const ALICE_AGENT_ID = '1401'
 const SWORD_WILL_COST = 300
@@ -281,7 +282,7 @@ function buildAliceExecutions({ cfg, state, executions }: AgentResourceInput): v
   const comboAlignRatio = cfg.aliceSwordWillComboAlignRatio ?? 0
   const decibelRecovery = cfg.aliceSwordWillDecibelRecovery ?? 0
 
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: cfg.aliceSwordWillMoveId ?? SWORD_WILL_MOVE_ID,
     moveName: '普通攻击：星芒圆舞曲 #3（剑意触发）',
     category: 'basic',
@@ -290,33 +291,25 @@ function buildAliceExecutions({ cfg, state, executions }: AgentResourceInput): v
     comboAlignRatio,
     totalTime: smSrc.sparkCount * actionTime,
     totalComboAlignTime: smSrc.sparkCount * actionTime * comboAlignRatio,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery,
     totalDecibelRecovery: smSrc.sparkCount * decibelRecovery,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
-  })
+  }))
 
   // 四命：每次强特伴随一次强化后的普通攻击：星仪序曲（用于异常积蓄与伤害结算）
   const exSpecialCount = state.exSpecialCount ?? 0
   if (exSpecialCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: ALICE_ENHANCED_BASIC_MOVE,
       moveName: '普通攻击：星仪序曲（强特伴随）',
       category: 'basic',
       count: exSpecialCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
-    })
+    }))
   }
 }
 

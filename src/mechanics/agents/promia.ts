@@ -40,6 +40,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { specEffectToBuffEffect } from '@/specs/teamBuffConvert'
 import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const PROMIA_ID = '1541'
 // 掌控转精通的常数只在 spec 1541.json `promia_mastery_to_proficiency`（R6 C7，第 143 轮）；
@@ -293,57 +294,45 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 坠霜 = 强特次数 − 匿影次数（匿影的强特终结是重霜，不是坠霜）
   const zhuishuangCount = Math.max(0, exCasts - niying)
   if (zhuishuangCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: PROMIA_ZHUISHUANG_MOVE_ID,
       moveName: '特殊技：处刑式·坠霜（强特终结）',
       category: 'special',
       element: 'ice',
       count: zhuishuangCount,
       actionTime: 1.116,
-      comboAlignRatio: 0,
       totalTime: 1.116 * zhuishuangCount,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-    })
+    }))
   }
   // 匿影后解锁特殊技「处刑式·重霜」：每次匿影可接一次（真实 moveId，前台时间由引擎时间预算外层折算）
   if (niying > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: '1541011',
       moveName: '特殊技：处刑式·重霜（匿影后接）',
       category: 'special',
       element: 'ice',
       count: niying,
       actionTime: 2.35,
-      comboAlignRatio: 0,
       totalTime: 2.35 * niying,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillTableNote: `处刑式·重霜 ×${niying}（匿影后解锁；#2 子段 24.2% 未单列）`,
-    })
+    }))
   }
   // 绝裁本体直伤（异放载体）：普通招式，失衡吃易伤；次数 = 霜刑（绝裁异放）次数
   const verdict = computePromiaVerdict({ cfg, state, battleTime: Number(cfg.battleTime ?? 180) })
   if (verdict.count > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: PROMIA_VERDICT_MOVE_ID,
       moveName: '强化特殊技：处刑式·绝裁（异放载体）',
       category: 'special',
       element: 'ice',
       count: verdict.count,
       actionTime: 0.85,
-      comboAlignRatio: 0,
       totalTime: 0.85 * verdict.count,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
-    })
+    }))
   }
 }
 

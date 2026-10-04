@@ -16,6 +16,7 @@ import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { finiteOr0 } from '@/utils/finiteClamp'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const YIDHARI_AGENT_ID = '1051'
 
@@ -229,17 +230,13 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   }
 
   if (cycles > 0 && slam && slam.actionTime > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: slam.id,
       moveName: '普通攻击：霜寒拥覆 #3（蓄力下砸）',
       category: 'basic',
       count: cycles,
       actionTime: slam.actionTime,
-      comboAlignRatio: 0,
       totalTime: cycles * slam.actionTime,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: slam.decibel,
       totalDecibelRecovery: cycles * slam.decibel,
       energyRecovery: slam.flash,
@@ -251,20 +248,16 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
       anomalyBuildUp: slam.anomaly,
       totalAnomalyBuildUp: slam.anomaly * cycles,
       skillTableNote: `蓄力循环 ${cycles} 次：蓄力1s烧血 → 霜寒拥覆#3 下砸（秽盾200t）`,
-    })
+    }))
   }
   if (cycles > 0 && follow && follow.actionTime > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: follow.id,
       moveName: '普通攻击：碎惘沉击 #4（满蓄+30%）',
       category: 'basic',
       count: cycles,
       actionTime: follow.actionTime,
-      comboAlignRatio: 0,
       totalTime: cycles * follow.actionTime,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: follow.decibel,
       totalDecibelRecovery: cycles * follow.decibel,
       energyRecovery: follow.flash,
@@ -277,7 +270,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
       anomalyBuildUp: follow.anomaly,
       totalAnomalyBuildUp: follow.anomaly * cycles,
       skillTableNote: `蓄力循环 ${cycles} 次：碎惘沉击#4 满蓄增伤区+30%，命中回10%生命值`,
-    })
+    }))
   }
 
   // 溯寒追碾 + 极寒重碾#2（追击段）：每个强特序列先打溯寒追碾（0耗能触发），再打极寒重碾
@@ -286,17 +279,13 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   // 0命：1 溯寒追碾配 1 重碾；1命：1 溯寒追碾配 2 重碾（C1 连续释放）
   const surgeCount = Math.ceil(exCount / (cinemaLevel >= 1 ? 2 : 1))
   if (surgeCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: SURGE_PURSUIT,
       moveName: '特殊技：溯寒追碾（重碾触发）',
       category: 'special',
       count: surgeCount,
       actionTime: 0.95,
-      comboAlignRatio: 0,
       totalTime: surgeCount * 0.95,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 6.4075,
       totalDecibelRecovery: surgeCount * 6.4075,
       energyRecovery: 0,
@@ -306,7 +295,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
       anomalyBuildUp: 95.03,
       totalAnomalyBuildUp: surgeCount * 95.03,
       skillTableNote: `溯寒追碾 ${surgeCount} 次（0耗能触发重碾；非失衡触发溯寒回15闪能）`,
-    })
+    }))
   }
   // 寒冰触手（额外能力·完形叙事）：需击破/支援触发，每 13.5s 一次，只有伤害（倍率随强特技能等级，吃3/5命）；
   // 按有效战斗时间折算，无敌期间不结算（core/effectiveTime.ts）
@@ -316,17 +305,11 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   if (tentacleCount > 0 && additionalAbilityActive) {
     const skillBonus = cfg.panel?.skillLevelBonus ?? 0
     const dmgCoef = skillBonus > 0 ? getSkillLevelCoef(skillBonus).damageCoef : 1
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: TENTACLE,
       moveName: '寒冰触手（额外能力）',
       category: 'special',
       count: tentacleCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
@@ -334,7 +317,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
       damageMultiplier: 158.4 * dmgCoef,
       damageMultiplierOverride: true,
       skillTableNote: `寒冰触手 ${tentacleCount} 次：158.4%${dmgCoef !== 1 ? `×技能等级${dmgCoef.toFixed(4)}` : ''} 只有伤害，每 ${tentacleInterval}s 触发一次（需额外能力）`,
-    })
+    }))
   }
 }
 

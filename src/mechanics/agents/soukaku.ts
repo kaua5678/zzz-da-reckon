@@ -32,6 +32,7 @@ import type {
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const SOUKAKU_ID = '1131'
 
@@ -136,88 +137,72 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
   // 扇风·扇子：首击由通用强特行（1131011 × 强特次数，60→30×击能量）发行，这里补第 2 击。
   // 扇/团段喧响不另计（衍生段口径，decibel 置 0 = 显式禁用回填）。
   if (swings >= 2) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: SOUKAKU_FAN_MOVE_ID,
       moveName: '强化特殊技：扇走蚊虫（第2击·扇子）',
       category: 'special',
       element: 'ice',
       count: exCount,
       actionTime: fanAt,
-      comboAlignRatio: 0,
       totalTime: exCount * fanAt,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       timeBucket: 'necessary',
-    })
+    }))
   }
   // 风团：每击一个，每击命中数按敌人体型（小0/中3/大6）；体型段数不额外耗时（0.271s 摊到段上）
   if (hits > 0) {
     const count = exCount * swings * hits
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: SOUKAKU_WIND_BALL_MOVE_ID,
       moveName: '强化特殊技：扇走蚊虫（风团）',
       category: 'special',
       element: 'ice',
       count,
       actionTime: ballAt / hits,
-      comboAlignRatio: 0,
       totalTime: exCount * swings * ballAt,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       timeBucket: 'necessary',
-    })
+    }))
   }
   // 下砸（展旗）：劈斩关 = 集合啦#1（500.9%/1.25s）；开 = 快速展旗·集合啦#2（280.9%/0.7s 更快）。
   // 集合啦#3 被玩家冲刺打断，不录。扇/团之后的正式招式，回能/喧响按倍率表回填（非 0 占位）。
   const slamActionTime = slamAt
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: chop ? SOUKAKU_CHOP_SLAM_MOVE_ID : SOUKAKU_SLAM_MOVE_ID,
     moveName: chop ? '强化特殊技：下砸（劈斩·快速展旗）' : '强化特殊技：下砸（展旗）',
     category: 'special',
     element: 'ice',
     count: exCount,
     actionTime: slamActionTime,
-    comboAlignRatio: 0,
     totalTime: exCount * slamActionTime,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: RECOVERY_BACKFILL_PLACEHOLDER,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     timeBucket: 'necessary',
-  })
+  }))
   // 冲刺攻击（霜染刃旗）：下砸后直接跟一次（回能/喧响按倍率表回填 → 喂回自我能量循环）
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: SOUKAKU_FROST_DASH_MOVE_ID,
     moveName: '冲刺攻击：对半分（霜染刃旗）',
     category: 'dodge',
     element: 'ice',
     count: exCount,
     actionTime: dashAt,
-    comboAlignRatio: 0,
     totalTime: exCount * dashAt,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: RECOVERY_BACKFILL_PLACEHOLDER,
     totalDecibelRecovery: 0,
     totalEnergyRecovery: 0,
     timeBucket: 'necessary',
-  })
+  }))
   // 打年糕（霜染刃旗）#3：全合轴（100% 抵扣前台，不占专属时间），次数 = 展旗次数 = 强特次数
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: SOUKAKU_FROST_BASIC3_MOVE_ID,
     moveName: '普通攻击：打年糕（霜染刃旗）#3（合轴）',
     category: 'basic',
@@ -227,13 +212,11 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
     comboAlignRatio: SOUKAKU_FROST_BASIC3_COMBO_ALIGN,
     totalTime: exCount * basic3At,
     totalComboAlignTime: exCount * basic3At * SOUKAKU_FROST_BASIC3_COMBO_ALIGN,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: RECOVERY_BACKFILL_PLACEHOLDER,
     totalDecibelRecovery: 0,
     totalEnergyRecovery: 0,
     timeBucket: 'necessary',
-  })
+  }))
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {

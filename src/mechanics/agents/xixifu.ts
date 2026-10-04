@@ -4,6 +4,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 希希芙（1521，电·强攻，新艾利都治安局）—— 额外能力自身暴伤 + 毒素循环模块。
@@ -152,17 +153,11 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 蚀骨（毒素消耗，有失衡值）：真实 moveId 1521019；基础倍率随技能等级（读表）+ 附加 335%（flat 不随等级）
   if (baseShigu > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: XIXIFU_SHIGU_MOVE_ID,
       moveName: '蚀骨（毒素消耗）',
       category: 'basic',
       count: baseShigu,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
@@ -174,23 +169,17 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
       stunBuildUpBonus: stunBonus,
       resIgnore: c1ResIgnore,
       skillTableNote: `蚀骨 ×${baseShigu}：基础 ${shiguBase}%（随技能等级）+ 核心附加 ${Math.round(XIXIFU_SHIGU_ADDITION_RATIO * 100)}%（flat）；队伍 ${electric} 名电属性 → 失衡值 +${stunBonus}%${cinema >= 1 ? '；影画1 无视 10% 电抗' : ''}`,
-    })
+    }))
   }
 
   // 特殊蚀骨（影画4 觉悟 + 影画6 印记）：无法造成失衡值 → 假 moveId 不进倍率表失衡提取
   const specialShigu = shiguTotal - baseShigu
   if (specialShigu > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: 'xixifu_shigu_special',
       moveName: '特殊蚀骨（觉悟/印记）',
       category: 'basic',
       count: specialShigu,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
@@ -201,28 +190,22 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
       element: 'electric',
       resIgnore: c1ResIgnore,
       skillTableNote: `特殊蚀骨 ×${specialShigu}：影画4 觉悟 / 影画6 印记（无法造成失衡值）${cinema >= 1 ? '；影画1 无视 10% 电抗' : ''}`,
-    })
+    }))
   }
 
   // 蛇吻（普通攻击：蛇吻）：真实 moveId 1521006，倍率随技能等级（读表）；影画2 +35%
   if (shekissCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: XIXIFU_SHEKISS_MOVE_ID,
       moveName: '普通攻击：蛇吻',
       category: 'basic',
       count: shekissCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       damageMultiplier: shekissRatio,
       damageMultiplierOverride: true,
       element: 'electric',
       dmgBonus: cinema >= 2 ? XIXIFU_SHEKISS_C2_DMG : 0,
       skillTableNote: `蛇吻 ×${shekissCount}（每 ${XIXIFU_SHEKISS_TOXIN_COST} 点毒素得1层蛇影）${cinema >= 2 ? `；影画2 +${XIXIFU_SHEKISS_C2_DMG}%` : ''}`,
-    })
+    }))
   }
 }
 

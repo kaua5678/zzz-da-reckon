@@ -13,6 +13,7 @@ import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
 import { finiteOr0 } from '@/utils/finiteClamp'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const QINGYI_AGENT_ID = '1251'
 
@@ -286,17 +287,13 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
     const critDmgBonus = cinemaLevel >= 6 ? 100 : 0
     for (const z of [cfg.qingyiZuiHuaMove1, cfg.qingyiZuiHuaMove2]) {
       if (!z || z.actionTime <= 0) continue
-      executions.push({
+      executions.push(moduleExecRow({
         moveId: z.id,
         moveName: z.id === ZUIHUA_MOVE_1 ? '普通攻击：醉花月云转 #1（突进）' : '普通攻击：醉花月云转 #2（终结一击）',
         category: 'basic',
         count: totalRounds,
         actionTime: z.actionTime,
-        comboAlignRatio: 0,
         totalTime: totalRounds * z.actionTime,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         decibelRecovery: z.decibel,
         totalDecibelRecovery: totalRounds * z.decibel,
         energyRecovery: z.energy,
@@ -310,24 +307,20 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
         critRateBonus,
         critDmgBonus,
         skillTableNote: `醉花月云转：100% 电压释放（伤害+25%/失衡+12.5%）${cinemaLevel >= 1 ? '·1命暴击率+20%' : ''}${cinemaLevel >= 6 ? '·6命暴伤+100%' : ''}`,
-      })
+      }))
     }
   }
 
   // 一煞#4 连打：补电压 + 可分配循环的一煞部分（1251004，3.3334 电压/击 × 0.133s ≈ 25 电压/秒）
   if (totalYisha4Hits > 0 && cfg.qingyiYisha4) {
     const y = cfg.qingyiYisha4 as { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: y.id,
       moveName: '普通攻击：一煞 #4（补电压）',
       category: 'basic',
       count: totalYisha4Hits,
       actionTime: y.actionTime,
-      comboAlignRatio: 0,
       totalTime: totalYisha4Hits * y.actionTime,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: y.decibel,
       totalDecibelRecovery: totalYisha4Hits * y.decibel,
       energyRecovery: y.energy,
@@ -339,7 +332,7 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
       anomalyBuildUp: y.anomaly,
       totalAnomalyBuildUp: y.anomaly * totalYisha4Hits,
       skillTableNote: `一煞#4 共 ${totalYisha4Hits} 击（补电压 ${source.yisha4Hits} + 可分配循环 ${allocYisha4Hits}）；3.33 电压/击 × 0.133s ≈ 25 电压/秒`,
-    })
+    }))
   }
 }
 

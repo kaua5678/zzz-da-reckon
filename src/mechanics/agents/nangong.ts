@@ -15,6 +15,7 @@ import { emptyPanel } from '@/core/panel'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 南宫羽（1511）战斗逻辑（nanoka 原文满级被动 1511055 自主分析，2026-08）：
@@ -217,21 +218,17 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
   // 捏轴放置后引擎注入 nangongQuickAssistPlaced → 按块数生成真实行（吃失衡易伤+时间门控，
   // 倍率/失衡值由 enrich 按技能表回填）。快支重击是极性紊乱载体之一。
   const quickAssistPlaced = Math.max(0, Math.floor(Number(cfg.nangongQuickAssistPlaced ?? 0)))
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: NANGONG_QUICK_ASSIST_MOVE_ID,
     moveName: '快速支援：救场技巧',
     category: 'assist',
     count: quickAssistPlaced,
     actionTime: 0.575,
-    comboAlignRatio: 0,
     totalTime: quickAssistPlaced > 0 ? 0.575 * quickAssistPlaced : 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     skillTableNote: quickAssistPlaced > 0
       ? `快速支援重击 ×${quickAssistPlaced}（捏轴放置：极性紊乱载体，命中异常+失衡敌消耗舞力全开；窗内伤害吃易伤）`
       : '快速支援重击（极性紊乱载体）；捏轴放置后按块数结算（×0 灰块）',
-  })
+  }))
   // 地雷撞套数每次装配先归零再按本次重算（CC-288）：原实现在 pairs≤0 / 无普攻行时提前 return，
   // 上一次装配（甚至上一个场景）的套数残留在 cfg 上，被 C6 颤音:改叠层计数读到。
   cfg.nangongMinePairs = 0
@@ -244,42 +241,34 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
   cfg.nangongMinePairs = pairs
   basicExec.totalTime = Math.max(0, Number(basicExec.totalTime ?? 0) - pairs * pairSeconds)
   const halfSeconds = pairSeconds / 2
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: MINE2_MOVE_ID,
     moveName: '普通攻击：可爱地雷飞天撞 #2',
     category: 'basic',
     count: pairs,
     actionTime: halfSeconds,
-    comboAlignRatio: 0,
     totalTime: halfSeconds * pairs,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     stunBuildUpBonus: PRECISE_DAZE_BONUS,
     skillTableNote: `地雷撞 #2 ×${pairs}（重拍 ${totalBeat.toFixed(0)} 点 → ${pairs} 套双击；跳段必精准蓄力 失衡值+${PRECISE_DAZE_BONUS}%）`,
-  })
-  executions.push({
+  }))
+  executions.push(moduleExecRow({
     moveId: MINE3_MOVE_ID,
     moveName: '普通攻击：可爱地雷飞天撞 #3',
     category: 'basic',
     count: pairs,
     actionTime: halfSeconds,
-    comboAlignRatio: 0,
     totalTime: halfSeconds * pairs,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     stunBuildUpBonus: PRECISE_DAZE_BONUS,
     skillTableNote: `地雷撞 #3 ×${pairs}（踉跄载体：失衡易伤倍率+30%/持续+3s 走 teamBuffs）`,
-  })
+  }))
 }
 
 /**

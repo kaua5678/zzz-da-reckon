@@ -29,6 +29,7 @@ import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { channelMetricsOf, type ChannelMoveInfo, type MoveTableLike } from '@/core/resource/moveLookup'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const REMIELLE_AGENT_ID = '1581'
 const VOIDFLARE_MAX = 3
@@ -677,22 +678,18 @@ export function remielleRadiantTurnRows({ cfg, state, executions }: AgentResourc
     const radiantInterval = phaseDelayedCooldown(5, state.frontlineTime, effectiveBattleTime(cfg), block)
     const radiantTurnCount = Math.floor(effectiveBackstageTime(state.backstageTime, cfg) / radiantInterval)
     if (radiantTurnCount > 0) {
-      rows.push({
+      rows.push(moduleExecRow({
         moveId: cfg.remielleRadiantTurnMoveId,
         moveName: 'Special Attack: Ode to Dawn - Radiant Turn（后台）',
         category: 'special',
         count: radiantTurnCount,
         actionTime: cfg.remielleRadiantTurnActionTime ?? 0,
         comboAlignRatio: 1,
-        totalTime: 0,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
       decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
       totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
       timeBucket: 'backstage',
       autoSplitByStun: true, // CC-391 D1：后台飞行每 5 秒自动释放一次 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
-    })
+    }))
     }
   }
   return rows

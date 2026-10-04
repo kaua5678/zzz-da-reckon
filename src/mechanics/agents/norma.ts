@@ -18,6 +18,7 @@ import type { AttributeConversionSpec } from '@/specs/types'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -326,17 +327,13 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
     const baseDaze = barrageRows.daze[idx] ?? 0
     const useDmgMult = isHE && baseDmg > 0
     const useDazeMult = isAP && baseDaze > 0
-    executions.push({
+    executions.push(moduleExecRow({
       moveId,
       moveName: name,
       category: 'special',
       count,
       actionTime: at,
-      comboAlignRatio: 0,
       totalTime: count * at,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       damageMultiplier: useDmgMult ? baseDmg * c6DmgMult : undefined,
@@ -345,7 +342,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       dazeMultiplierOverride: useDazeMult,
       skillDamageTarget: 'exSpecial',
       skillTableNote: `${note}${useDmgMult ? ' · 影画6：高爆弹头伤害+30%' : ''}${useDazeMult ? ' · 影画6：破甲弹头失衡值+30%' : ''}`,
-    })
+    }))
   }
   if (exCount > 0) {
     // 基础：点射 + 破甲/高爆弹头（按用户失衡占比拆）
@@ -369,24 +366,18 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
 
   // 炮塔普通自动射击：弹幕覆盖秒数 / 3s 间隔（打靶练习 1571013）
   if (source.towerAutoShotCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: TARGET_PRACTICE_MOVE,
       moveName: '特殊技：打靶练习（炮塔自动射击）',
       category: 'special',
       count: source.towerAutoShotCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
       skillDamageTarget: 'special',
       skillTableNote: '嗯呢弹幕期间炮塔自动射击，3 秒间隔',
-    })
+    }))
   }
 
   // 火力实验导弹舱：强化期超出失衡总时长的部分打破甲弹（1571014，未失衡），失衡内打高爆弹（1571015，失衡）。
@@ -396,17 +387,11 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
   if (source.armorPierceCount > 0) {
     const baseDaze = missileRows.daze[0] ?? 0
     const useDazeMult = cinema >= 6 && baseDaze > 0
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: ARMOR_PIERCE_MOVE,
       moveName: '强化特殊技：火力实验·破甲弹头',
       category: 'special',
       count: source.armorPierceCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
@@ -415,22 +400,16 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       dazeMultiplierOverride: useDazeMult,
       skillDamageTarget: 'exSpecial',
       skillTableNote: `火力实验强化期超出失衡总时长部分（${fmt(source.armorPierceSeconds ?? 0)}s）：未失衡目标发射破甲弹头，累积较多失衡值${useDazeMult ? ' · 影画6：破甲弹头失衡值+30%' : ''}`,
-    })
+    }))
   }
   if (source.highExplosiveCount > 0) {
     const baseDmg = missileRows.damage[1] ?? 0
     const useDmgMult = cinema >= 6 && baseDmg > 0
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: HIGH_EXPLOSIVE_MOVE,
       moveName: '强化特殊技：火力实验·高爆弹头',
       category: 'special',
       count: source.highExplosiveCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
@@ -439,22 +418,16 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       damageMultiplierOverride: useDmgMult,
       skillDamageTarget: 'exSpecial',
       skillTableNote: `火力实验失衡期内（${fmt(source.highExplosiveSeconds ?? 0)}s）：失衡目标发射高爆弹头，更高伤害${useDmgMult ? ' · 影画6：高爆弹头伤害+30%' : ''}`,
-    })
+    }))
   }
 
   // C6：任意角色失衡后导弹轰击 6 秒（0.75s/发 ≈ 8 发）× 200% 攻击火伤（视为终结技），30 秒 CD
   if (source.c6MissileCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: 'norma_c6_missile',
       moveName: '影画6·天才第一因（导弹轰击）',
       category: 'chain',
       count: source.c6MissileCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
@@ -464,7 +437,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       element: 'fire',
       skillDamageTarget: 'ultimate',
       skillTableNote: `C6 导弹轰击：失衡后 6s/0.75s≈8 发 × 200% 攻击火伤（视为终结技），触发 ${source.c6BurstCount} 次`,
-    })
+    }))
   }
 }
 

@@ -17,23 +17,31 @@ import type { SkillExecution } from '@/types/resource'
  * r478 实测把 yeshuguang 原本不写的 `decibelRecovery` 默认成 0 ⇒ 1431 各队终结技 2→1、timeGolden 18 条红。
  * 所以要「禁用」的调用方必须**显式写 0**，骨架不替你决定。
  *
- * 键序与原字面量一致（moveId, moveName, category, count, 六个账本字段, 调用方其余字段）——零差基准按 JSON 键序哈希。
+ * **键序规则（CC-463 r582 泛化；零差基准按 JSON 键序哈希，所以这是契约不是细节）**：调用方的键按书写顺序原样输出；
+ * 六个账本键作为一组落在调用方 **`count` 之后**（调用方若自己写了其中任一键，则整组落在它第一次出现的位置、
+ * 调用方给的值覆盖默认 0）。这样 `{ moveId, moveName, category, element, count, …rest }` 这种在 `count` 前多写
+ * 语义键的行也能迁进来而键序不变——CC-440 第一版固定「四头键 + 六账本 + rest」，`element` 会被挤到账本后面。
  */
 export type ModuleExecRowInit = Partial<SkillExecution> & Pick<SkillExecution, 'moveId' | 'moveName' | 'category' | 'count'>
 
+const LEDGER_KEYS = ['actionTime', 'comboAlignRatio', 'totalTime', 'totalComboAlignTime', 'energyConsume', 'totalEnergyConsume'] as const
 export function moduleExecRow(init: ModuleExecRowInit): SkillExecution {
-  const { moveId, moveName, category, count, ...rest } = init
-  return {
-    moveId,
-    moveName,
-    category,
-    count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
-    ...rest,
+  const src = init as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  let placed = false
+  const placeLedger = () => {
+    if (placed) return
+    placed = true
+    for (const k of LEDGER_KEYS) out[k] = k in src ? src[k] : 0
   }
+  for (const k of Object.keys(src)) {
+    if ((LEDGER_KEYS as readonly string[]).includes(k)) {
+      placeLedger()
+      continue
+    }
+    out[k] = src[k]
+    if (k === 'count') placeLedger()
+  }
+  placeLedger()
+  return out as unknown as SkillExecution
 }

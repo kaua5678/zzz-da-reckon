@@ -39,6 +39,7 @@ import { inferSkillDamageTarget } from '@/core/damage'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
@@ -181,25 +182,21 @@ function pushAnbyZeroExecution(executions: AgentResourceInput['executions'], inp
 }): void {
   if (input.count <= 0) return
   const actionTime = input.actionTime ?? 0
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: input.moveId,
     moveName: input.moveName,
     category: 'special',
     element: 'electric',
     count: input.count,
     actionTime,
-    comboAlignRatio: 0,
     totalTime: actionTime * input.count,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     energyRecovery: 0,
     totalEnergyRecovery: 0,
     skillDamageTarget: 'additionalAttack',
     ...(input.damageMultiplier == null
       ? {}
       : { damageMultiplier: input.damageMultiplier, damageMultiplierOverride: true }),
-  })
+  }))
 }
 
 function buildAnbyZeroExecutions({ cfg, state, executions }: AgentResourceInput): void {

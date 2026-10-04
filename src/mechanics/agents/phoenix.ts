@@ -31,6 +31,7 @@ import type {
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const PHOENIX_ID = '1641'
 /** 核心被动：异常精通 +40 */
@@ -261,21 +262,17 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
 
   const chargedMeta = cfg.phoenixChargedMeta as { moveId: string; actionTime: number } | undefined
   if (chargedMeta && chargedCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: chargedMeta.moveId,
       moveName: '普通攻击：普通攻击长按（消耗90余火）',
       category: 'basic',
       element: 'fire',
       count: chargedCount,
       actionTime: chargedMeta.actionTime,
-      comboAlignRatio: 0,
       totalTime: chargedCount * chargedMeta.actionTime,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       // 影画4 喧响走 initialDecibelGift（行级 decibel 会被 enrich 按倍率表回填）
       skillTableNote: `余火驱动 ×${chargedCount}${cinema >= 4 ? `；影画4 +${PHOENIX_C4_CHARGED_DECIBEL} 喧响/次（initialDecibelGift）` : ''}`,
-    })
+    }))
   }
   // 强化特殊技第二段（1641009）= 通用强特通道行（exSpecialMoveId，长按优选，单段耗能 40），
   // 不再单独 push（2026-09-12 组队对账修正：第一/二段是点按/长按二选一变体，非连段）。
@@ -283,20 +280,15 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
   const energizeCount = exCount + chargedCount + ultCount
   const energizeMeta = cfg.phoenixEnergizeMeta as { moveId: string; actionTime: number } | undefined
   if (energizeMeta && energizeCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: energizeMeta.moveId,
       moveName: '蓄能附加攻击（视为强化特殊技）',
       category: 'special',
       element: 'fire',
       count: energizeCount,
       actionTime: energizeMeta.actionTime,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       skillTableNote: `重击命中送 ×${energizeCount}（强特+长按普攻+终结；附加攻击不占前台时间）`,
-    })
+    }))
   }
   // 终结技：入场（1641019，1545.8%）——终结「招式发动后，可点按发动」→ 每次终结后点按触发一次
   //（用户口径 2026-09-12「喧响大后按攻击可以触发一次」，仪玄影画6「赠送次数=大招次数」同款计数）。
@@ -304,20 +296,15 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
   // 计 2.4s×N 会把队内平A池挤光→余火断供→长按普攻打到 1 次，时间账失真放大近似误差）。
   const entryMeta = cfg.phoenixEntryMeta as { moveId: string; actionTime: number } | undefined
   if (entryMeta && ultCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: entryMeta.moveId,
       moveName: '终结技：入场（终结后点按）',
       category: 'chain',
       element: 'fire',
       count: ultCount,
       actionTime: entryMeta.actionTime,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       skillTableNote: `每次终结后点按发动 ×${ultCount}（计数=终结次数；收尾追加攻击不占前台时间）`,
-    })
+    }))
   }
 }
 

@@ -297,17 +297,11 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
           + (c1Bonus ? `（C1 伤害+${c1Bonus}%）` : '')
     } else {
       // 倍率交 enrich 回填；先占位 0 并关 override，若 enrich 后仍 0 则无伤
-      executions.push({
+      executions.push(moduleExecRow({
         moveId: MOVE_POWER_FINISHER,
         moveName: '普通攻击：强力终结一击（士气喷发）',
         category: 'basic',
         count: morale.powerFinisherCount,
-        actionTime: 0,
-        comboAlignRatio: 0,
-        totalTime: 0,
-        totalComboAlignTime: 0,
-        energyConsume: 0,
-        totalEnergyConsume: 0,
         damageMultiplier: 0,
         damageMultiplierOverride: false,
         element: 'fire',
@@ -315,7 +309,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
           `士气喷发强力终结 ×${morale.powerFinisherCount}`
           + (c1Bonus ? `（C1 伤害+${c1Bonus}%）` : ''),
         ...(c1Bonus ? { dmgBonus: c1Bonus } : {}),
-      } as SkillExecution)
+      }) as SkillExecution)
     }
   }
 

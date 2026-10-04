@@ -30,6 +30,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
@@ -164,23 +165,19 @@ function pushEvelynExecution(executions: AgentResourceInput['executions'], input
   skillDamageTarget?: SkillExecution['skillDamageTarget']
 }): void {
   if (input.count <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: input.moveId,
     moveName: input.moveName,
     category: input.category,
     element: 'fire',
     count: input.count,
     actionTime: input.actionTime,
-    comboAlignRatio: 0,
     totalTime: input.count * input.actionTime,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     ...(input.damageMultiplier == null
       ? {}
       : { damageMultiplier: input.damageMultiplier, damageMultiplierOverride: true }),
     ...(input.skillDamageTarget ? { skillDamageTarget: input.skillDamageTarget } : {}),
-  })
+  }))
 }
 
 function buildEvelynExecutions({ cfg, state, executions }: AgentResourceInput): void {

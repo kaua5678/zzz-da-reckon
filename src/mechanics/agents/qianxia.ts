@@ -11,6 +11,7 @@ import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds } from '@/types/resource'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
@@ -164,18 +165,12 @@ function pushQianxiaExecution(executions: AgentResourceInput['executions'], inpu
   dmgBonus?: number
 }): void {
   if (input.count <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: input.moveId,
     moveName: input.moveName,
     category: 'special',
     element: 'physical',
     count: input.count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -186,7 +181,7 @@ function pushQianxiaExecution(executions: AgentResourceInput['executions'], inpu
     ...(input.critRateBonus ? { critRateBonus: input.critRateBonus } : {}),
     ...(input.critDmgBonus ? { critDmgBonus: input.critDmgBonus } : {}),
     ...(input.dmgBonus ? { dmgBonus: input.dmgBonus } : {}),
-  })
+  }))
 }
 
 /**

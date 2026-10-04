@@ -10,6 +10,7 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 波可娜（1351，物理·击破/支援）—— 整局近似口径
@@ -86,17 +87,11 @@ function buildPulchraCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
 /** 后台追加攻击行（真实 moveId，enrich 回填倍率/元素） */
 function pushBackstage(executions: SkillExecution[], moveId: string, moveName: string, count: number, note: string): void {
   if (count <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName,
     category: 'special',
     count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -104,7 +99,7 @@ function pushBackstage(executions: SkillExecution[], moveId: string, moveName: s
     anomalyBuildUp: 0,
     skillTableNote: note,
     timeBucket: 'backstage',
-  })
+  }))
 }
 
 /** 核心循环：猎步进入次数 → 后台追加攻击特殊技（噬爪·噩梦袭影） */

@@ -29,6 +29,7 @@ import type {
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const KOLEDA_ID = '1101'
 export const KOLEDA_CORE_STUN = 60
@@ -103,34 +104,22 @@ function buildKoledaExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 强化普攻（消耗熔炉升温）：熔炉升温来源=强化特殊技/终结技，各一次；强化普攻=一段+二段（融合组）。
   const enhancedBasicCount = whole(state.exSpecialCount) + whole(state.ultimateCount)
   if (enhancedBasicCount > 0) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: '1101005',
       moveName: '普通攻击：强化普攻（熔炉升温）',
       category: 'basic',
       element: 'fire',
       count: enhancedBasicCount,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       timeBucket: 'basic',
-    })
+    }))
   }
   if (cycle.c6ExplosionCount <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: '1101_c6_saturation_explosion',
     moveName: '饱和爆破（影画6）',
     category: 'special',
     element: 'fire',
     count: cycle.c6ExplosionCount,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -138,7 +127,7 @@ function buildKoledaExecutions({ cfg, state, executions }: AgentResourceInput): 
     damageMultiplier: KOLEDA_C6_EXPLOSION_MULT,
     damageMultiplierOverride: true,
     skillDamageTarget: 'additionalAttack',
-  })
+  }))
 }
 
 function patchKoledaExecutions({ cfg, state, executions }: AgentResourceInput): void {

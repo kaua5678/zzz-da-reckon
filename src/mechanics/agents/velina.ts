@@ -30,6 +30,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { simulateCounterStateMachine } from '@/specs/stateMachine'
 import { findMoveById } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 const VELINA_AGENT_ID = '1561'
 /**
@@ -215,58 +216,42 @@ function buildVelinaExecutions({ cfg, state, executions }: AgentResourceInput): 
   if (velinaBroadCount <= 0) return
 
   if (cfg.velinaEyeMoveId) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: cfg.velinaEyeMoveId,
       moveName: 'EX Special Attack: Wind Shear - Eye of the Storm（风华）',
       category: 'special',
       count: velinaBroadCount,
       actionTime: cfg.velinaEyeActionTime ?? 0,
-      comboAlignRatio: 0,
       totalTime: velinaBroadCount * (cfg.velinaEyeActionTime ?? 0),
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: cfg.velinaEyeDecibelRecovery ?? 0,
       totalDecibelRecovery: velinaBroadCount * (cfg.velinaEyeDecibelRecovery ?? 0),
       energyRecovery: 0,
       totalEnergyRecovery: 0,
-    })
+    }))
   }
   if (cfg.velinaSweepingCyclone1MoveId) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: cfg.velinaSweepingCyclone1MoveId,
       moveName: 'Sweeping Cyclone #1（广域气旋10段）',
       category: 'special',
       count: velinaBroadCount * 10,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
-    })
+    }))
   }
   if (cfg.velinaSweepingCyclone2MoveId) {
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: cfg.velinaSweepingCyclone2MoveId,
       moveName: 'Sweeping Cyclone #2（赋彩属性广域气旋×2）',
       category: 'special',
       count: velinaBroadCount * 2,
-      actionTime: 0,
-      comboAlignRatio: 0,
-      totalTime: 0,
-      totalComboAlignTime: 0,
-      energyConsume: 0,
-      totalEnergyConsume: 0,
       decibelRecovery: 0,
       totalDecibelRecovery: 0,
       energyRecovery: 0,
       totalEnergyRecovery: 0,
-    })
+    }))
   }
 }
 

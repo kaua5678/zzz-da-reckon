@@ -2,6 +2,7 @@ import type { AgentCharConfigInput, AgentEventInput, AgentMechanicModule, AgentP
 import type { AnomalyEventExecution, MechanicSetting } from '@/types/resource'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 月城柳（1221，电·异常，对空洞特别行动部第六课）—— 核心被动/额外能力/影画面板区（薄模块）。
@@ -71,17 +72,11 @@ function buildYanagiExecutions({ cfg, state, executions }: AgentResourceInput): 
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount <= 0) return
   const count = exCount * extraThrusts
-  executions.push({
+  executions.push(moduleExecRow({
     moveId: YANAGI_THRUST_MOVE_ID,
     moveName: `强化特殊技：月华流转·追加突刺×${extraThrusts}（影画2）`,
     category: 'special',
     count,
-    actionTime: 0,
-    comboAlignRatio: 0,
-    totalTime: 0,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     decibelRecovery: 0,
     totalDecibelRecovery: 0,
     energyRecovery: 0,
@@ -93,7 +88,7 @@ function buildYanagiExecutions({ cfg, state, executions }: AgentResourceInput): 
     anomalyBuildUp: Number(cfg.yanagiThrustAnomaly ?? 0),
     anomalyBuildUpOverride: true,
     timeBucket: 'necessary',
-  })
+  }))
 }
 
 function applyYanagiPanel({ panel, cinemaLevel }: AgentPanelInput): void {

@@ -24,6 +24,7 @@ import type {
 } from '../types'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 export const ZHAO_ID = '1341'
 export const ZHAO_CORE_CRIT_PER_1000_HP = 1.4
@@ -151,22 +152,18 @@ function buildZhaoExecutions(input: AgentResourceInput): void {
   const cycle = cycleFromInput(input)
   if (cycle.verdictCount <= 0) return
   const verdictActionTime = cfgMoveActionTime(input.cfg, ZHAO_VERDICT_MOVE_ID)
-  input.executions.push({
+  input.executions.push(moduleExecRow({
     moveId: ZHAO_VERDICT_MOVE_ID,
     moveName: '普通攻击：最终裁决（蓄力生命附伤）',
     category: 'basic',
     element: 'ice',
     count: cycle.verdictCount,
     actionTime: verdictActionTime,
-    comboAlignRatio: 0,
     totalTime: cycle.verdictCount * verdictActionTime,
-    totalComboAlignTime: 0,
-    energyConsume: 0,
-    totalEnergyConsume: 0,
     flatDamageBonus: cycle.chargeLifePerHit,
     timeBucket: 'backstage',
     autoSplitByStun: true, // CC-391 D1：霜寒值满自动开帷幕并后台蓄力，霜寒随时间 / 队友命中累积，不对应可放置动作 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
-  })
+  }))
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {

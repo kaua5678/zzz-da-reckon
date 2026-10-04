@@ -16,6 +16,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 星徽·比利（1531）战斗逻辑（用户确认口径，2026-08）：
@@ -477,15 +478,13 @@ function pushChainExec(
   note: string,
 ): void {
   if (count <= 0) return
-  executions.push({
+  executions.push(moduleExecRow({
     moveId,
     moveName,
     category: moveId === MOVE.fullThrottle ? 'basic' : 'special',
     count,
     actionTime: times[moveId] ?? 0,
-    comboAlignRatio: 0,
     totalTime: (times[moveId] ?? 0) * count,
-    totalComboAlignTime: 0,
     energyConsume,
     totalEnergyConsume: energyConsume * count,
     decibelRecovery: decibel[moveId] ?? 0,
@@ -495,7 +494,7 @@ function pushChainExec(
     damageMultiplier: dmg[moveId] ?? 0,
     damageMultiplierOverride: true,
     skillTableNote: note,
-  })
+  }))
 }
 
 /** 招式命中决意合计 = Σ(执行次数 × attack_data_0)，平A按秒均折算（用户确认口径） */
