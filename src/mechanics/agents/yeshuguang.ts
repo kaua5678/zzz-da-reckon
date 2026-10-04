@@ -542,13 +542,23 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: Ag
     : cfg.yeshuguangCycle ?? resolveCycle(cfg, { ultimateCount })
   if (cycle.totalForms <= 0) return null
 
+  // 收尾（归尘/斩妄）按**实际归属**计，不按 `max(两者)` 一律套用：
+  // `buildExecutions` 物化的是 `finisherZhanwang × t_斩妄 + finisherGuichen × t_归尘`
+  // （`:485-493`，C6 明灯愿的「归尘→斩妄」强化已在该 cycle 里换过），而这里此前记
+  // `totalForms × max(t_归尘, t_斩妄)` —— 每轮一律按**较长的那个**算，于是恒**高估**
+  // `totalForms × (max − 实际归属加权)`。实测 `auto-1431-1481-1491` 被接受态：
+  // 11 轮 = 2 斩妄(2.75) + 9 归尘(2.533)，estimate 记 11×2.75 = 30.25、行记 28.297 ⇒ **+1.953s**。
+  // 这正是本函数上方「估计与物化单源（R37-J5 ④）」承诺未兑现的最后一处（`docs` 坑 19 族）。
+  const finisherTime =
+    cycle.finisherZhanwang * (times[MOVE.zhanwang] ?? 0)
+    + cycle.finisherGuichen * (times[MOVE.guichen] ?? 0)
   const melee =
     cycle.totalForms * (
       cycle.miePerForm * (times[MOVE.mie1] ?? 0)
       + cycle.jiPerForm * (times[MOVE.ji] ?? 0)
       + cycle.fuyaoPerForm * (times[MOVE.fuyao] ?? 0)
-      + Math.max(times[MOVE.guichen] ?? 0, times[MOVE.zhanwang] ?? 0)
     )
+    + finisherTime
   const feiguangTime = cycle.feiguangFullCasts * (times[MOVE.feiguang] ?? 0)
   const zhao = cycle.zhaoyingForms * (times[MOVE.entryAssist] ?? 0)
   // 定风波（通用强化特殊技）前台时间：estimateExSpecialTime 覆盖了 exSpecialNecessaryTime 的通用公式，

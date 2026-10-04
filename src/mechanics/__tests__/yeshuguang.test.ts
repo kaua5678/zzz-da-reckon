@@ -239,10 +239,57 @@ describe('叶瞬光 buildExecutions', () => {
       'setting:yeshuguang.formAxis': 0,
     }
     const est = yeshuguangMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 1 } as any)!
-    // 形态内必要时间（灭/极/扶摇/收尾 + 飞光 + 照影）
-    const formOnly = 1 * (2 * 1.5 + 2 * 1.4 + 1 * 0.325 + 2.533) + (2 / 6) * 1.967 + 0
+    // 形态内必要时间（灭/极/扶摇 + 收尾 + 飞光 + 照影）。收尾按**实际归属**计：
+    // 1 次喧响进轮 ⇒ 1 次斩妄（1431027，本样板表值 0.001），不是 max(归尘, 斩妄)=2.533。
+    const formOnly = 1 * (2 * 1.5 + 2 * 1.4 + 1 * 0.325) + 1 * 0.001 + (2 / 6) * 1.967 + 0
     // 必须再计入 8 次定风波 × 2.833s，否则定风波时间丢失、经 timeBudgetExcess 折叠造成必要时间虚高
     expect(est.necessaryTime).toBeCloseTo(formOnly + 8 * 2.833, 6)
+  })
+
+  /**
+   * ★ 锁：估计与物化**单源**（`estimateExSpecialTime` 上方注释自述的 R37-J5 ④ 承诺）。
+   *
+   * 收尾（归尘/斩妄）在物化侧按**实际归属**拆行（`finisherZhanwang × t_斩妄 +
+   * finisherGuichen × t_归尘`，C6 明灯愿的「归尘→斩妄」强化已在 cycle 里换过），
+   * 估时侧**必须**用同一算式。曾经的 `totalForms × max(t_归尘, t_斩妄)` 每轮一律按较长者算 ⇒
+   * 恒高估 `totalForms × (max − 实际加权)`；实测 `auto-1431-1481-1491` 被接受态差 **1.953s**
+   * （11 轮 = 2 斩妄 2.75 + 9 归尘 2.533）。
+   *
+   * 反证：把收尾改回 `totalForms * Math.max(t_归尘, t_斩妄)`，本用例即红（13.75 vs 13.099）。
+   */
+  it('★ 单源锁：estimate == 本模块物化行 Σ（收尾按实际归属，不按 max 一律套用）', () => {
+    const times = { ...baseTimes, '1431027': 2.75, '1431019': 2.533 }
+    const cfg: any = {
+      yeshuguangCinemaLevel: 0, yeshuguangSwordInitial: 0, yeshuguangGiftUltCount: 3,
+      yeshuguangMoveDmg: baseDmg, yeshuguangMoveTimes: times,
+      yeshuguangAtk0PerSec: 0, battleTime: 180, dodgeCounterCount: 0,
+      exSpecialActionTime: 2.833,
+      'setting:yeshuguang.formAxis': 0,
+      // 照影轮手动钉 0：轮数实数化下自动照影 = floor? 实数 5/6，会把收尾配比搅成小数，
+      // 本用例要断言的是「斩妄/归尘各自按自己的时长计」，故把第三个来源显式清零。
+      'setting:yeshuguang.zhaoyingCount': 0,
+    }
+    const state = { ultimateCount: 2, exSpecialCount: 5, basicAttackTime: 0, chainCountTotal: 0 }
+    const executions: any[] = []
+    yeshuguangMechanic.buildExecutions!({ cfg, state, executions } as any)
+    // 模块自产行（1431016 定风波由**引擎**产，对应 estimate 的 genericEx 项，单独加回）
+    const moduleIds = new Set([
+      '1431028', '1431013', '1431009', '1431017', '1431018', '1431027', '1431019', '1431_c6_finisher_attach',
+    ])
+    const rowSum = executions
+      .filter(e => moduleIds.has(e.moveId))
+      .reduce((s, e) => s + (e.totalTime ?? 0), 0)
+    const est = yeshuguangMechanic.estimateExSpecialTime!({
+      cfg, exSpecialCount: 5, ultimateCount: 2, state,
+    } as any)!
+    expect(est.necessaryTime).toBeCloseTo(rowSum + 5 * 2.833, 6)
+    // 收尾归属：2 轮喧响进 → 斩妄、3 轮转大赠 → 归尘（各自按**自己的** actionTime 计）
+    expect(executions.find(e => e.moveId === '1431027')?.count).toBe(2)
+    expect(executions.find(e => e.moveId === '1431019')?.count).toBe(3)
+    expect(executions.find(e => e.moveId === '1431027')!.totalTime)
+      .toBeCloseTo(2 * 2.75, 6)
+    expect(executions.find(e => e.moveId === '1431019')!.totalTime)
+      .toBeCloseTo(3 * 2.533, 6)
   })
 
   /** 自动选轴的输入样板（默认 auto，起始打满） */
