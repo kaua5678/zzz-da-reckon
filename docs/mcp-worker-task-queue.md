@@ -92,6 +92,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 18:20 arena-F 第 493 轮**（开工：主仓 = origin = `d8ed925c`；REQUIREMENTS 无新条目；§3 只剩 T10 条件卡；§8.0 全未触发；无 worktree）。
+- **本轮无题**，docs-only。连续两轮无题 ⇒ 三张找题清单（REQUIREMENTS / §3 / §8.0）当前确实为空，这是正常态，不是故障；下一轮仍按同一顺序查，皆空就一行收工。
+- **现场**：`src/core/resource/helpers.ts` 他人未提交探针**在活动中**（mtime 17:52 → 17:55，+35 行缩成 +14 行，只剩 `accFreeNet` / `capReal` / `capNoAcc` 的反事实量计算），属坑33 阶段4 累加器对照实验的 lane。未动。它没在 LANE-CLAIMS 认领——若它把结论落盘，应在 `docs/mcp-calc-core-architecture.md` 坑33 条目或 r6 §8.0 #14 处出现；下一轮 `grep -n "capNoAcc\|accFreeNet" docs/*.md` 看一眼即可。
+
 **2026-10-04 18:15 arena-F 第 492 轮**（开工：主仓 = origin = `761e682d`；REQUIREMENTS.md 无新条目；§3 只剩 T10 条件卡（锁未红）；§8.0 全未触发，#17 types.ts 1344 行；无 worktree）。
 - **本轮无题**：按 r490/r491 规则三者皆空 ⇒ docs-only 收工。没有再找活。
 - **现场**：主仓 `src/core/resource/helpers.ts` 有他人未提交的 +35 行（`if (process.env.PROBE_CAP) { … console.log('[CAP2] …') }`，把累加器 `timeBudgetExcess` 从账本拿掉后同轮封顶分摊的反事实对照），mtime 17:52，是坑33 阶段4 的探针，**不是孤儿**（< 1h），未动、未提交。若下一轮它还在且 > 1h 无人认领：它是纯探针（环境变量门控、只 console.log、不改数值），可直接 `git checkout -- src/core/resource/helpers.ts` 丢弃并在此记一行；别把它合进任何提交。
