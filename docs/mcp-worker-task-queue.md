@@ -92,6 +92,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 18:15 arena-F 第 492 轮**（开工：主仓 = origin = `761e682d`；REQUIREMENTS.md 无新条目；§3 只剩 T10 条件卡（锁未红）；§8.0 全未触发，#17 types.ts 1344 行；无 worktree）。
+- **本轮无题**：按 r490/r491 规则三者皆空 ⇒ docs-only 收工。没有再找活。
+- **现场**：主仓 `src/core/resource/helpers.ts` 有他人未提交的 +35 行（`if (process.env.PROBE_CAP) { … console.log('[CAP2] …') }`，把累加器 `timeBudgetExcess` 从账本拿掉后同轮封顶分摊的反事实对照），mtime 17:52，是坑33 阶段4 的探针，**不是孤儿**（< 1h），未动、未提交。若下一轮它还在且 > 1h 无人认领：它是纯探针（环境变量门控、只 console.log、不改数值），可直接 `git checkout -- src/core/resource/helpers.ts` 丢弃并在此记一行；别把它合进任何提交。
+- **全量 vitest**：本轮无代码改动，沿用 r491 在 `8ad5c60d` 上的全绿（485 files / 4370 passed，`arenaF/r491-vitest-full2.log`）。规则口径已在 r6 §8.0 #17 补明：有代码改动才必跑。
+- **下一轮**：REQUIREMENTS → §3（T10 看锁）→ §8.0（#17 看 `wc -l src/mechanics/types.ts`）；皆空 ⇒「本轮无题」一行收工，不要为了「有产出」去找护栏层或命名层的活。
+
 **2026-10-04 18:05 arena-F 第 491 轮**（开工：主仓 = origin = `0adb81ef` 干净；REQUIREMENTS.md 无新条目；§3 无 pending 卡；§8.0 全未触发；worktree `wt-T57`，收工已删）。
 - **找题**：三者皆空，按 r490 规则该「无题」收工。收工前先跑**全量 vitest**（r484 以来 7 轮只跑切片）⇒ `1 failed | 484 passed | 16 skipped`：`src/mechanics/__tests__/typesSplitCc83.test.ts` 锁 `types.ts < 1400 行`，实际 **1483**。`git show <sha>:src/mechanics/types.ts | wc -l` 回看：`0764f726`(r480) 1388 → CC-444 `40c9cc3f`(r484 02:11) **1418 越线** → CC-445 1432 → CC-446 1452 → CC-448 1483。四轮加的全是展示层声明接口，全是 arena-F 自己的手笔；每轮只跑了切片，红了 15 小时。
 - **落地 CC-451** `8ad5c60d`（arch 表有行）：新卫星 `src/mechanics/typesView.ts` = 展示层专用声明 9 型（PoolSummary* ×4 / CrossAgentEnergyLabel / AxisDurationInputDecl / AxisWindowLaneCtx+Decl / AgentResourceSectionsInput）逐字迁出；`AgentInteractionSnapshot` / `AgentInteractionContext`（含头注释，无 `| null`）迁 `typesHooks.ts` 尾；types.ts 只保留自身引用的 import + `export type … from` 转出 ⇒ 导入方零改动（`agentMechanicView.ts` / 各模块 / 测试均从 `@/mechanics/types` 读，未碰）。types.ts **1345 行**。`typesSplitCc83.test.ts` 加 `from './typesView'` 断言并写明三卫星分界。
