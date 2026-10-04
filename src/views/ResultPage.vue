@@ -725,7 +725,7 @@
                 </div>
                 <div class="combo-align-exec-control">
                   <n-slider
-                    :value="getComboAlignRatio(charResult.slot, exec.moveId) * 100"
+                    :value="exec.comboAlignRatio * 100"
                     :min="0"
                     :max="100"
                     :step="5"
@@ -733,7 +733,7 @@
                     @update:value="v => setComboAlignRatio(charResult.slot, exec.moveId, v / 100)"
                   />
                   <n-input-number
-                    :value="Math.round(getComboAlignRatio(charResult.slot, exec.moveId) * 100)"
+                    :value="Math.round(exec.comboAlignRatio * 100)"
                     :min="0"
                     :max="100"
                     size="small"
@@ -743,7 +743,7 @@
                     <template #suffix>%</template>
                   </n-input-number>
                   <span class="combo-align-time-display">
-                    合轴{{ (exec.totalTime * getComboAlignRatio(charResult.slot, exec.moveId)).toFixed(1) }}s
+                    合轴{{ exec.totalComboAlignTime.toFixed(1) }}s
                   </span>
                 </div>
               </div>
@@ -751,8 +751,7 @@
 
             <div class="combo-align-summary">
               <n-text depth="2" style="font-size: 12px">
-                总合轴时间: {{ getTotalComboAlignTime(charResult).toFixed(1) }}s
-                · 合轴回能加成: {{ (getTotalComboAlignTime(charResult) * 0).toFixed(0) }} 点/秒
+                总合轴时间: {{ totalComboAlignTimeOf(charResult).toFixed(1) }}s
               </n-text>
             </div>
           </n-tab-pane>
@@ -784,7 +783,8 @@ import TeamDamage3DChart from '@/components/charts/TeamDamage3DChart.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
-import type { CharacterResourceResult, AnomalyEventRecord } from '@/types/resource'
+import { totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
+import type { AnomalyEventRecord } from '@/types/resource'
 
 /** 特殊动作喧响卡说明文字「单价/次 · 伴随 单价×50%」（CC-232：单价与伴随比例读 data 单一来源，不再手写） */
 function unitPriceText(unit: number): string {
@@ -1021,22 +1021,10 @@ const activeResultTab = ref('pool')
 
 const showComboAlignModal = ref(false)
 
-/** 获取某角色某招式的合轴率（百分比形式 0-1） */
-function getComboAlignRatio(slot: number, moveId: string): number {
-  return configStore.getComboAlignOverride(slot, moveId, 0)
-}
-
-/** 设置某角色某招式的合轴率 */
+// 读数来自引擎行 `exec.comboAlignRatio` / `exec.totalComboAlignTime`（CC-452：三来源的有效值，不在页面重算）
+/** 设置某角色某招式的合轴率（写侧：用户覆盖；模块行直写的比例不受覆盖影响，阶段 2 加来源标记后只读） */
 function setComboAlignRatio(slot: number, moveId: string, ratio: number) {
   configStore.setComboAlignOverride(slot, moveId, ratio)
-}
-
-/** 计算某角色的总合轴时间 */
-function getTotalComboAlignTime(charResult: CharacterResourceResult): number {
-  return charResult.executions.reduce((sum, exec) => {
-    const ratio = getComboAlignRatio(charResult.slot, exec.moveId)
-    return sum + exec.totalTime * ratio
-  }, 0)
 }
 </script>
 
