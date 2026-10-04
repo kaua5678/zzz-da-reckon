@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="824" viewBox="0 0 1760 824" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif">
+<rect width="1760" height="824" fill="#0f172a"/><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker>
+<marker id="ahB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker>
+<linearGradient id="title" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4493f8"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+</defs>
+<text x="24" y="34" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="21" font-weight="700" fill="#e2e8f5" text-anchor="start">ZZZ 伤害计算器 · 运行时拓扑（为什么不是线性并列）</text>
+<text x="24" y="56" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">实测 @1a1ff91c（2026-10-04）：静态分层见 docs/architecture-layers.svg；本图回答「结构上非线性在哪」——嵌套环 / 多对多派发 / 分析器扇出 / 验证网。生成器 scripts/gen-architecture-runtime.mjs</text>
+<line x1="24" y1="66" x2="1736" y2="66" stroke="url(#title)" stroke-width="2"/>
+<rect x="24" y="78" width="760" height="445" rx="10" fill="#131c31" stroke="#26324a"/>
+<rect x="24" y="78" width="3.5" height="445" rx="1.75" fill="#22d3ee"/>
+<text x="40" y="102" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="14" font-weight="700" fill="#22d3ee" text-anchor="start">① 一次计算的运行时：七层嵌套环（谁在谁里面）</text>
+<text x="40" y="100" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11" font-weight="400" fill="#94a3b8" text-anchor="start">同心框 = 真嵌套调用；虚线回边 = 反馈量写回下一轮（不是顺序流水线）</text>
+<rect x="40" y="118" width="728" height="48" rx="7" fill="#0f1a30" stroke="#f472b666"/>
+<text x="52" y="136" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="12" font-weight="700" fill="#f472b6" text-anchor="start">S3 可行化搜索</text>
+<text x="144.8" y="136" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#94a3b8" text-anchor="start">solveTeam.ts:429</text>
+<text x="756" y="136" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#fbbf24" text-anchor="end">环外重跑整环</text>
+<text x="52" y="151" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">枚举 DOWNSCALE_SCALES 8 档 × 每档重跑整环（最多 5 个 runOuterLoop 调用点）</text>
+<rect x="49" y="173" width="710" height="48" rx="7" fill="#0f1a30" stroke="#a78bfa66"/>
+<text x="61" y="191" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="12" font-weight="700" fill="#a78bfa" text-anchor="start">L1 外层失衡不动点</text>
+<text x="178.27999999999997" y="191" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#94a3b8" text-anchor="start">solveTeam.ts:200  k &lt; MAX_OUTER_ITER(20)</text>
+<text x="61" y="206" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">变量 = 失衡次数 · 容差 OUTER_STUN_TOLERANCE=0.05 · 退出 stable / cycle / maxIter（实测 3~4 轮）</text>
+<rect x="58" y="228" width="692" height="48" rx="7" fill="#0f1a30" stroke="#a78bfa66"/>
+<text x="70" y="246" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="12" font-weight="700" fill="#a78bfa" text-anchor="start">L2 内层资源不动点</text>
+<text x="187.27999999999997" y="246" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#94a3b8" text-anchor="start">innerLoop.ts:108  k &lt; maxIter(100)</text>
+<text x="70" y="261" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">变量 = 强特/终结次数 + 平A时间 · 判稳 = 严格相等 · 环停点 integerCycleStop（浮点噪声环视为收敛）</text>
+<rect x="67" y="283" width="674" height="48" rx="7" fill="#0f1a30" stroke="#a78bfa66"/>
+<text x="79" y="301" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="12" font-weight="700" fill="#a78bfa" text-anchor="start">L3 时间预算折叠环</text>
+<text x="196.27999999999997" y="301" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#94a3b8" text-anchor="start">foldLoop.ts:74  timePass &lt; TIME_FOLD_MAX_PASSES(32)</text>
+<text x="79" y="316" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">变量 = cfg.timeBudgetExcess / timeBudgetRefund · 判据 maxExcess ≤ 1e-3（实测 2~12 轮）</text>
+<rect x="76" y="338" width="656" height="48" rx="7" fill="#0f1a30" stroke="#60a5fa66"/>
+<text x="88" y="356" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="start">L4 终局重折</text>
+<text x="168.56" y="356" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#94a3b8" text-anchor="start">finalizePasses.ts:78  pass &lt; 12</text>
+<text x="720" y="356" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#fbbf24" text-anchor="end">按模块声明</text>
+<text x="88" y="371" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">仅声明 finalizePass 的模块（伊德海莉 tail）· 判稳 allBitEqual</text>
+<rect x="85" y="393" width="638" height="48" rx="7" fill="#0f1a30" stroke="#60a5fa66"/>
+<text x="97" y="411" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="start">L5 截断重折</text>
+<text x="177.56" y="411" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#94a3b8" text-anchor="start">truncationRefold.ts:73  refoldPass &lt; 3</text>
+<text x="97" y="426" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">变量 = cfg.rowTimeLimit · 不动点 = 本轮 kept 与上轮逐槽一致</text>
+<rect x="94" y="448" width="620" height="48" rx="7" fill="#0f1a30" stroke="#94a3b866"/>
+<text x="106" y="466" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="12" font-weight="700" fill="#94a3b8" text-anchor="start">S1/S4 单趟</text>
+<text x="183.68" y="466" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#94a3b8" text-anchor="start">iterate → assembleSlot</text>
+<text x="106" y="481" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">S1 资源账本预解 → S4 装配（截断）——环的叶子里才发生真正的「算一次」</text>
+<path d="M 758 491 C 780 491, 780 140, 758 132" fill="none" stroke="#f472b6" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+<text x="750" y="463" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10.5" font-weight="400" fill="#f472b6" text-anchor="end">17 条跨轮回边</text>
+<text x="750" y="477" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#94a3b8" text-anchor="end">CalcRoundThreads</text>
+<rect x="804" y="78" width="932" height="330" rx="10" fill="#131c31" stroke="#26324a"/>
+<rect x="804" y="78" width="3.5" height="330" rx="1.75" fill="#f472b6"/>
+<text x="820" y="102" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="14" font-weight="700" fill="#f472b6" text-anchor="start">② 引擎 ↔ 角色模块：多对多（不是调用一个函数）</text>
+<text x="820" y="102" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11.5" font-weight="400" fill="#e2e8f5" text-anchor="start">62 个模块对象（61 个文件，specPanelBuffs 一个文件导出 2 个）· 57 个方法钩子 · 509 处实现 · 112 个按能力查询的派发点 · 66 个被查能力</text>
+<text x="820" y="122" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">引擎不认 id：getAgentMechanic(id)?.&lt;能力&gt; —— 模块声明能力，引擎按能力查（判据 24 硬门：值依赖 0）</text>
+<text x="820" y="142" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#34d399" text-anchor="start">通用钩子（几乎所有模块都实现）</text>
+<rect x="820" y="146" width="150" height="19" rx="4" fill="#0f1a30" stroke="#34d39955"/>
+<text x="828" y="160" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10.5" font-weight="400" fill="#34d399" text-anchor="start">buildCharConfig  ×61</text>
+<rect x="978" y="146" width="150" height="19" rx="4" fill="#0f1a30" stroke="#34d39955"/>
+<text x="986" y="160" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10.5" font-weight="400" fill="#34d399" text-anchor="start">applyPanel  ×54</text>
+<rect x="1136" y="146" width="150" height="19" rx="4" fill="#0f1a30" stroke="#34d39955"/>
+<text x="1144" y="160" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10.5" font-weight="400" fill="#34d399" text-anchor="start">buildExecutions  ×54</text>
+<rect x="820" y="170" width="150" height="19" rx="4" fill="#0f1a30" stroke="#34d39955"/>
+<text x="828" y="184" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10.5" font-weight="400" fill="#34d399" text-anchor="start">resourceSections  ×53</text>
+<rect x="978" y="170" width="150" height="19" rx="4" fill="#0f1a30" stroke="#34d39955"/>
+<text x="986" y="184" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10.5" font-weight="400" fill="#34d399" text-anchor="start">buildResourceResult  ×52</text>
+<text x="820" y="212" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#fbbf24" text-anchor="start">单模块专属钩子（= 该角色私有机制的出口，共 23 个）</text>
+<text x="820" y="228" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">poolSummary · giftedPolarAssaultCount · anomalyPoolSetup · computeInteractionTopUp · stunRefundRatio · endsStunWindow · axisMoveActionTime ·</text>
+<text x="820" y="242" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">skipsGenericDirectRow · ultimateGiftSource · promoteHugCounts · curtainTriggers · chainGift · skillDazeMultiplier · backstageAutoRows ·</text>
+<text x="820" y="256" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">globalAnomalyMultiplierFactor · anomalyRefringePct · expandAxisAction · windAnomalyBonus · anomalyCorrosion · anomalyCorrosionEvents ·</text>
+<text x="820" y="270" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">teammateBuffRecipientFilter · directRowAxisSplit · selfBurnDecibel</text>
+<rect x="804" y="424" width="932" height="360" rx="10" fill="#131c31" stroke="#26324a"/>
+<rect x="804" y="424" width="3.5" height="360" rx="1.75" fill="#60a5fa"/>
+<text x="820" y="448" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="14" font-weight="700" fill="#60a5fa" text-anchor="start">③ 上层分析器：扇出后扇入（一次出结果 = 跑 N 次整条管线）</text>
+<text x="820" y="448" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">全部经 AnalysisContext（config + calc）拿管线：12 个分析器 · 6 个页面用 withAnalysisScenario 隔离</text>
+<rect x="820" y="455" width="900" height="30" rx="5" fill="#0f1a30" stroke="#60a5fa44"/>
+<text x="830" y="470" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11" font-weight="700" fill="#60a5fa" text-anchor="start">组队对比 teamCompare</text>
+<text x="966.0799999999999" y="470" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">金币/命座/合轴率多维枚举</text>
+<text x="1710" y="470" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#fbbf24" text-anchor="end">贪心 + 缓存</text>
+<rect x="820" y="489" width="900" height="30" rx="5" fill="#0f1a30" stroke="#60a5fa44"/>
+<text x="830" y="504" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11" font-weight="700" fill="#60a5fa" text-anchor="start">时间图表 teamTimeline</text>
+<text x="972.68" y="504" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">精确增量搜索 + 逐金贪婪</text>
+<text x="1710" y="504" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#fbbf24" text-anchor="end">SWAP_UPGRADE_UPLIFT_PCT=10</text>
+<rect x="820" y="523" width="900" height="30" rx="5" fill="#0f1a30" stroke="#60a5fa44"/>
+<text x="830" y="538" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11" font-weight="700" fill="#60a5fa" text-anchor="start">难度爬梯 difficultyLadder</text>
+<text x="999.0799999999999" y="538" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">G1–G5 五目标逐目标贪心爬梯</text>
+<text x="1710" y="538" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#fbbf24" text-anchor="end">纯策略，可换 costOf</text>
+<rect x="820" y="557" width="900" height="30" rx="5" fill="#0f1a30" stroke="#60a5fa44"/>
+<text x="830" y="572" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11" font-weight="700" fill="#60a5fa" text-anchor="start">自由对比 freeCompare/</text>
+<text x="972.68" y="572" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">四层：指标/轴/约束/求值器</text>
+<text x="1710" y="572" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#fbbf24" text-anchor="end">加指标 = METRICS 加一行</text>
+<rect x="820" y="591" width="900" height="30" rx="5" fill="#0f1a30" stroke="#60a5fa44"/>
+<text x="830" y="606" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11" font-weight="700" fill="#60a5fa" text-anchor="start">抽卡规划 pullPlannerEngine</text>
+<text x="1005.68" y="606" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">期/房间/队友组合枚举</text>
+<text x="1710" y="606" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#fbbf24" text-anchor="end">oracle 注入，纯逻辑</text>
+<rect x="820" y="625" width="900" height="30" rx="5" fill="#0f1a30" stroke="#60a5fa44"/>
+<text x="830" y="640" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11" font-weight="700" fill="#60a5fa" text-anchor="start">命座提升 cinemaUplift</text>
+<text x="972.68" y="640" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">C0→C6 逐级对比</text>
+<text x="1710" y="640" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="10" font-weight="400" fill="#fbbf24" text-anchor="end">页面与测试同源</text>
+<text x="820" y="678" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">扇入：结果汇到 6 个页面（TeamComparePage / TimeChartsPage / FreeComparePage / ResourceUtilizationPage / PositionComparePage / RunArchivePage）</text>
+<text x="820" y="696" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">为什么不能直接用 active store：分析器要反复改写配置再求值 ⇒ createAnalysisScenario 出生态（effectScope 隔离，判据 analysisScenario.test）</text>
+<rect x="24" y="539" width="760" height="200" rx="10" fill="#131c31" stroke="#26324a"/>
+<rect x="24" y="539" width="3.5" height="200" rx="1.75" fill="#34d399"/>
+<text x="40" y="563" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="14" font-weight="700" fill="#34d399" text-anchor="start">④ 验证网：每层都被机器钉住（这才是「敢重构」的原因）</text>
+<text x="44" y="567" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11.5" font-weight="700" fill="#34d399" text-anchor="start">分层锁 7 条</text>
+<text x="174" y="567" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">coreMechanicsRegistryOnly / coreRuntimeDeps / resourceCalcStoreDeps / specsRuntimeDeps /</text>
+<text x="174" y="580" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">dataRuntimeDeps / 展示层不值导入 / layer-inversion</text>
+<text x="44" y="601" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11.5" font-weight="700" fill="#34d399" text-anchor="start">棘轮与硬门</text>
+<text x="174" y="601" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">判据 7 · 19 · 22 · 23 · 24 · 25 · 26（id 字面量 0、值依赖 0、死读 0）</text>
+<text x="44" y="622" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11.5" font-weight="700" fill="#34d399" text-anchor="start">全局回归网</text>
+<text x="174" y="622" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">allAgentsSweep（全角色 × 命座 0/6 不变量）· timeGolden（105 预设时间账）·</text>
+<text x="174" y="635" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">timeFillRatchet（留白棘轮）</text>
+<text x="44" y="656" font-family="&quot;JetBrains Mono&quot;, Consolas, monospace" font-size="11.5" font-weight="700" fill="#34d399" text-anchor="start">证据链</text>
+<text x="174" y="656" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">recordings 原文契约 · validate:specs 逐条认定消费 · verify:recording 交付闸门 · 506 测试文件 /</text>
+<text x="174" y="669" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#94a3b8" text-anchor="start">77,070 行</text>
+</svg>

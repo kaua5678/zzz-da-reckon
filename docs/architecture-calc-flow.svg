@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="935" viewBox="0 0 1500 935" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif">
+<rect width="1500" height="935" fill="#0f172a"/><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker>
+<linearGradient id="title" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4493f8"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+</defs>
+<text x="40" y="34" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="21" font-weight="700" fill="#e2e8f5" text-anchor="start">一次计算的生命周期：点「计算」→ 出图</text>
+<text x="40" y="56" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">与 docs/ARCHITECTURE.md §1 同源；阶段顺序不可交换（每阶段语义以 core/resource.ts 阶段表为准）</text>
+<line x1="40" y1="66" x2="1460" y2="66" stroke="url(#title)" stroke-width="2"/>
+<rect x="40" y="80" width="640" height="68" rx="8" fill="#101a2e" stroke="#4493f866"/>
+<rect x="40" y="80" width="3.5" height="68" rx="1.75" fill="#4493f8"/>
+<text x="56" y="102" font-family="&quot;JetBrains Mono&quot;, &quot;Cascadia Code&quot;, Consolas, monospace" font-size="12.5" font-weight="700" fill="#4493f8" text-anchor="start">页面点「计算」 → useResourceCalc()</text>
+<text x="56" y="120" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">编排层入口（composables/useResourceCalc.ts）：把 configStore 的现场装配成</text>
+<text x="56" y="135" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">ResourceCalcConfig，下面全部由它串起来</text>
+<line x1="360" y1="154" x2="360" y2="174" stroke="#475569" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="40" y="170" width="640" height="68" rx="8" fill="#101a2e" stroke="#22d3ee66"/>
+<rect x="40" y="170" width="3.5" height="68" rx="1.75" fill="#22d3ee"/>
+<text x="56" y="192" font-family="&quot;JetBrains Mono&quot;, &quot;Cascadia Code&quot;, Consolas, monospace" font-size="12.5" font-weight="700" fill="#22d3ee" text-anchor="start">buildCharConfig ×3 → applyTeamMechanics(&quot;build&quot;)</text>
+<text x="56" y="210" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">每角色一个 CharacterOperationConfig（面板 + 招式数据 + 机制模块注入）；跨角色 /</text>
+<text x="56" y="225" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">队伍级钩子第一阶段（composables/resourceCalc/helpers.ts、panelPhases.ts）</text>
+<line x1="360" y1="244" x2="360" y2="264" stroke="#475569" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="40" y="260" width="640" height="68" rx="8" fill="#101a2e" stroke="#a78bfa66"/>
+<rect x="40" y="260" width="3.5" height="68" rx="1.75" fill="#a78bfa"/>
+<text x="56" y="282" font-family="&quot;JetBrains Mono&quot;, &quot;Cascadia Code&quot;, Consolas, monospace" font-size="12.5" font-weight="700" fill="#a78bfa" text-anchor="start">computePanelPhases → core/panel.ts calcPanel</text>
+<text x="56" y="300" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">局外面板 → 局内 buff 加权（core/buff.ts）→ 队友 buff（core/inCombatBuffs.ts、</text>
+<text x="56" y="315" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">teammateBuffSource.ts）→ cfg.panel</text>
+<line x1="360" y1="334" x2="360" y2="354" stroke="#475569" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="40" y="350" width="640" height="68" rx="8" fill="#101a2e" stroke="#22d3ee66"/>
+<rect x="40" y="350" width="3.5" height="68" rx="1.75" fill="#22d3ee"/>
+<text x="56" y="372" font-family="&quot;JetBrains Mono&quot;, &quot;Cascadia Code&quot;, Consolas, monospace" font-size="12.5" font-weight="700" fill="#22d3ee" text-anchor="start">solveTeam：外层不动点</text>
+<text x="56" y="390" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励 的外层循环；S3 可行化决策 stageResolveFeasibility</text>
+<text x="56" y="405" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">在这里，不在 useResourceCalc（resourceCalc/solveTeam.ts）</text>
+<line x1="360" y1="424" x2="360" y2="444" stroke="#475569" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="40" y="440" width="640" height="68" rx="8" fill="#101a2e" stroke="#22d3ee66"/>
+<rect x="40" y="440" width="3.5" height="68" rx="1.75" fill="#22d3ee"/>
+<text x="56" y="462" font-family="&quot;JetBrains Mono&quot;, &quot;Cascadia Code&quot;, Consolas, monospace" font-size="12.5" font-weight="700" fill="#22d3ee" text-anchor="start">runCalcRound（单轮）+ applyTeamMechanics(&quot;converge&quot;)</text>
+<text x="56" y="480" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">convergence.ts#createRunCalcRound：跨轮反馈量集合 CalcRoundThreads（新增反馈 = 加字段 + 初值</text>
+<text x="56" y="495" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">+ 轮内读写，不动签名）；enemy.stunCountLock ≥ 0 时失衡次数锁定不回填</text>
+<line x1="360" y1="514" x2="360" y2="534" stroke="#475569" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="40" y="530" width="640" height="83" rx="8" fill="#101a2e" stroke="#a78bfa66"/>
+<rect x="40" y="530" width="3.5" height="83" rx="1.75" fill="#a78bfa"/>
+<text x="56" y="552" font-family="&quot;JetBrains Mono&quot;, &quot;Cascadia Code&quot;, Consolas, monospace" font-size="12.5" font-weight="700" fill="#a78bfa" text-anchor="start">core/resource.ts calcTeamResources —— 阶段表 S0–S5（唯一事实源在该函数头注释）</text>
+<text x="56" y="570" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">S0 输入装配 → S1 runInnerLoop（iterate：能量 → 强特 → 喧响 → 终结 → 时间，多轮收敛 +</text>
+<text x="56" y="585" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">时间预算外层循环）→ S2 runFoldLoop → S3a 尾段管线 → S4 assembleSlot（buildExecutions +</text>
+<text x="56" y="600" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">模块钩子 buildResourceResult）</text>
+<text x="700" y="538" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11" font-weight="400" fill="#94a3b8" text-anchor="start">S5 截断：truncateExecutionsToFrontline 整数装包，超战斗时间的部分折入 necessaryTime 压缩平A池（坑 22）；跨角色回能唯一事实源</text>
+<text x="700" y="552" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11" font-weight="400" fill="#94a3b8" text-anchor="start">calcCrossAgentEnergy</text>
+<line x1="360" y1="619" x2="360" y2="639" stroke="#475569" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="40" y="635" width="640" height="68" rx="8" fill="#101a2e" stroke="#a78bfa66"/>
+<rect x="40" y="635" width="3.5" height="68" rx="1.75" fill="#a78bfa"/>
+<text x="56" y="657" font-family="&quot;JetBrains Mono&quot;, &quot;Cascadia Code&quot;, Consolas, monospace" font-size="12.5" font-weight="700" fill="#a78bfa" text-anchor="start">enrichExecutionPlan → 提取失衡 / 异常执行</text>
+<text x="56" y="675" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">从倍率表回填 damage/daze/decibel/anomaly（覆盖 name/note，匹配一律用 moveId）；失衡池</text>
+<text x="56" y="690" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">core/stunPool ← 异常积蓄池 core/anomalyPool</text>
+<line x1="360" y1="709" x2="360" y2="729" stroke="#475569" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="40" y="725" width="640" height="68" rx="8" fill="#101a2e" stroke="#f472b666"/>
+<rect x="40" y="725" width="3.5" height="68" rx="1.75" fill="#f472b6"/>
+<text x="56" y="747" font-family="&quot;JetBrains Mono&quot;, &quot;Cascadia Code&quot;, Consolas, monospace" font-size="12.5" font-weight="700" fill="#f472b6" text-anchor="start">damagePool*.ts buildDamagePoolRows</text>
+<text x="56" y="765" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">编排层算最终伤害：直接伤害 / 异常 / 紊乱 / 失衡 / 赠礼行 + 覆盖率；结果 = useResourceCalc 的</text>
+<text x="56" y="780" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">damagePoolRows</text>
+<line x1="360" y1="799" x2="360" y2="819" stroke="#475569" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="40" y="815" width="640" height="68" rx="8" fill="#101a2e" stroke="#4493f866"/>
+<rect x="40" y="815" width="3.5" height="68" rx="1.75" fill="#4493f8"/>
+<text x="56" y="837" font-family="&quot;JetBrains Mono&quot;, &quot;Cascadia Code&quot;, Consolas, monospace" font-size="12.5" font-weight="700" fill="#4493f8" text-anchor="start">页面渲染</text>
+<text x="56" y="855" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">ResultPage / StatPanel / FinalPanel /</text>
+<text x="56" y="870" font-family="&quot;Inter&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#94a3b8" text-anchor="start">charts/*；「时间分配汇总」composables/teamTimeSummary.ts（纯函数，页面只渲染）</text>
+</svg>

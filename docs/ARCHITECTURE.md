@@ -5,21 +5,116 @@
 > 配套阅读：`ENGINE_PIPELINE_GUIDE.md`（一轮计算的数据流/钩子/坑）、`AGENT_RECORDING_SOP.md`（角色录入）。
 > 阅读顺序建议：本文（地图）→ ENGINE_PIPELINE_GUIDE（管线）→ 按任务进对应层。
 
-## 0. 心智模型：五层 + 单向依赖
+## 0. 心智模型：八层 + 单向依赖
 
+```mermaid
+flowchart TD
+    subgraph L1["① 展示层"]
+        V["src/views/ 全部页面"]
+        C["src/components/ AppHeader · CharacterCard · FinalPanel · charts/*"]
+    end
+    subgraph L2["② 编排层（四块，目录不拆）"]
+        E["E 伤害管线后半段<br>resourceCalc/ + useResourceCalc.ts<br>solveTeam → convergence → damagePool* → panelPhases"]
+        A["A 分析器 / 优化器<br>teamCompare · teamTimeline · difficultyCurve · pullPlanner · freeCompare"]
+        P["P 图表几何<br>charts/ 与 *Chart.ts（坐标 / 命中 / 悬浮卡）"]
+        G["G 胶水<br>store ↔ 页面 · 导入导出 · 启动"]
+    end
+    subgraph L3["③ 引擎层（纯函数，只查询不注册）"]
+        R["core/resource/<br>calcTeamResources 阶段表 S0–S5"]
+        DT3["core 顶层<br>damage 乘区 · buff 局外/局内 · panel 面板 · stunPool 失衡池"]
+        NT["core/anomalyPool/ · core/stunAxis/<br>异常积蓄池 / 紊乱 / 失衡轴"]
+    end
+    subgraph L4["④ 状态层"]
+        S["src/stores/<br>config（队伍/敌人/设置/滑块）· catalog（只读快照）· logicEditor · selectionReads"]
+    end
+    subgraph L5["⑤ 逻辑编辑"]
+        LE["src/logicEditor/<br>用户自定义规则 → 转 spec；fusion 行融合规则全局快照"]
+    end
+    subgraph L6["⑥ 录入层（最大的一层）"]
+        SP["src/specs/<br>agents/*.json 声明式 spec"]
+        ME["src/mechanics/<br>registry + 全部角色 TS 模块（applyPanel / applyTeamConfig 钩子）"]
+    end
+    subgraph L7["⑦ 数据层"]
+        J["public/static/*.json<br>catalog.json 唯一事实源 · boss-presets · teammate-buffs"]
+        SC["scripts/ 导入器（禁手改 JSON 本体）"]
+    end
+    subgraph L8["⑧ 公共底"]
+        D8["src/data/ 纯函数·常量·预设"]
+        T8["src/types/ resource/ 按域拆"]
+        U8["src/utils/ statMeta · format"]
+    end
+
+    V --> E
+    V --> S
+    V --> C
+    C --> E
+    C --> S
+    E --> R
+    E --> DT3
+    E --> NT
+    E --> SP
+    E --> D8
+    A --> E
+    S --> R
+    S --> LE
+    LE --> D8
+    R --> ME
+    SP --> ME
+    ME --> R
+    ME --> D8
+    ME --> U8
+    SC --> J
+    J --> S
+
+    X0["0 值边 = 机器护栏（新代码违反即 verify 变红）<br>展示层→core/mechanics/specs = 0（判据 7）· 录入层→编排层 = 0（判据 19，只许 import type）<br>core→角色模块只经 mechanics/registry · specs→core/mechanics/composables = 0 · data→任何上层 = 0<br>src/** 的角色 id / 招式 id 字面量 = 0（判据 26，id 的家只在 data/ mechanics/agents/ specs/）"]
+    classDef guard stroke-dasharray:5 4,stroke-width:1px
+    class X0 guard
 ```
-数据层   public/static/*.json        唯一事实源（倍率/属性/buff/boss/音擎/驱动盘），只经 scripts/ 导入，不手改（中间产物 data/raw/ 的目录约定见 data/raw/README.md）
-状态层   src/stores/                  configStore（队伍/敌人/设置/滑块，可变）· catalogStore（只读数据快照）；可调 core/ 纯函数（calcPanel / substatOptimizer 等只读计算），禁调编排层、禁写引擎状态（R6 C2）
-编排层   src/composables/             实际是四块（R6 C6，全景 docs/ARCHITECTURE-OVERVIEW.md §6.2）：
-         ├ 管线后半段  useResourceCalc.ts + resourceCalc/（solveTeam → convergence 外层不动点 → panelPhases → damagePool*）——**最终伤害在 resourceCalc/damagePool*.ts 算**，core/ 只算到执行行
-         ├ 应用层      多次调用整条管线的分析器 / 优化器（teamCompare、teamTimeline、difficultyCurve、pullPlannerEngine、freeCompare/*）
-         ├ 展示几何    图表 / 坐标 / 悬浮卡纯函数（*Chart.ts、charts/hover*.ts）
-         └ 胶水        store ↔ 页面 / 引擎适配、导入导出（teamTimelineStore、runArchive*）
-逻辑编辑 src/logicEditor/             用户自定义规则：类型 / 校验 / 本地存储 / 转 spec；fusion.ts 持有行融合规则的全局快照（唯一写入方 stores/logicEditor.ts，计算入口 useResourceCalc 取快照进缓存键）
-引擎层   src/core/                    纯函数引擎：resource（资源池）/ damage（伤害乘区）/ panel / stunPool / anomalyPool / buff
-录入层   src/specs/ + src/mechanics/  角色机制：声明式 spec（agents/*.json）+ TS 机制模块（agents/*.ts）
-展示层   src/views/ + src/components/ 页面与卡片（读编排层产物）
+
+**层与层之间不是「上一层调用下一层」这么简单**：引擎与 61 个角色模块之间是**多对多**——
+模块声明能力，引擎按能力查询（`getAgentMechanic(id)?.<能力>`），不认 id：
+
+```mermaid
+flowchart LR
+    subgraph ENGINE["引擎 / 编排层（不认 id）"]
+        H1["core/resource/rowAccounting<br>estimateExSpecialTime"]
+        H2["core/resource/crossAgentSupply<br>crossAgentSupply（热循环每 pass 都查）"]
+        H3["resourceCalc/panelPhases<br>applyTeamMechanics build / converge / postRound"]
+        H4["core/resource/assembleSlot<br>buildResourceResult"]
+        H5["resourceCalc/convergence<br>nextRoundFeedback · backstageAutoFill"]
+    end
+    subgraph REG["mechanics/registry.ts"]
+        R["getAgentMechanic(agentId)"]
+    end
+    subgraph MODS["61 个角色模块（各自实现不同子集）"]
+        M1["banyue 41 处"]
+        M2["yixuan 34 处"]
+        M3["liuyin 32 处"]
+        M4["… 中位 8 处"]
+        M5["nicole 7 处"]
+    end
+    H1 --> R
+    H2 --> R
+    H3 --> R
+    H4 --> R
+    H5 --> R
+    R --> M1
+    R --> M2
+    R --> M3
+    R --> M4
+    R --> M5
+    M1 -.->|"实现能力，不改引擎"| R
+    M2 -.-> R
+    M3 -.-> R
+    M4 -.-> R
+    M5 -.-> R
+    classDef guard stroke-dasharray:5 4,stroke-width:1px
+    X1["57 个方法钩子 · 509 处实现 · 118 个派发点 · 69 个被查能力<br>5 个通用钩子（≥50 模块实现）· 23 个单模块专属钩子（= 该角色私有机制出口）<br>机器护栏：core/composables 对角色模块的值依赖 = 0（判据 24）；core 只 import registry"]
+    class X1 guard
 ```
+
+**带实测文件数 / 行数 / 值边条数的图版**：`docs/architecture-layers.svg`（浏览器直接开）。
+数字由 `node scripts/gen-architecture-diagrams.mjs` 现场测量生成并随 HEAD 自动对时——**别手抄数字进本文**（抄了就静默过期）。
 
 依赖方向：展示 → 编排 → 引擎；录入层被编排/引擎经 registry 消费；数据层被状态层加载。
 （编排层目录**不按四块拆分**：挪约 60 个文件的 import、行为零变化；「管线后半段并入 core」的前提：① **store 依赖已清零**（CC-245：resourceCalc/ 从不调用 useXStore，store 实例由 useResourceCalc 注入；运行时闭包进入 stores/ 只剩纯函数 selectionReads，锁 `resourceCalcStoreDeps.test`）；② 仍未满足：运行时闭包依赖 mechanics 注册表与全部角色模块、`logicEditor/fusion`（经 data/moveTableQueries 的全局快照）——core 禁止依赖这两者（原第三项 `composables/agentMechanicView` 已由 CC-246 消除：AUTO_AXIS_PRESET_HINTS 迁入 mechanics/registry，锁同上），并入须改注入。不在 R6 内开（清点见 docs/mcp-r6-refactor-list.md §8 第 266 行）。决定见 docs/mcp-r6-refactor-list.md §5。）
@@ -41,28 +136,143 @@
 | data 是公共底：不进入任何上层（只白名单 logicEditor/fusion，N2 裁决） | 传递闭包 | `src/data/__tests__/dataRuntimeDeps.test.ts` |
 | 展示层（views / components）不值导入 core / mechanics / specs | 直接 import | check-guards 判据 7 `detectExhibitionLayerImport` |
 | 录入层（mechanics / specs）对编排层只许 import type | 直接 import | check-guards 判据 19 `scripts/lib/layer-inversion.mjs` |
+| 录入层 mechanics 闭包不进入编排/状态/展示层（specs 与 logicEditor/fusion 为已登记例外） | 传递闭包 | `src/mechanics/__tests__/mechanicsRuntimeDeps.test.ts` |
 
 新增分层约束时优先加闭包锁（照抄上面任一 `*RuntimeDeps.test.ts`），并做反例：临时加一条违规 import，确认变红。
 
 
 ## 1. 一次计算的生命周期（点「计算」→ 出图）
 
+```mermaid
+flowchart TD
+    P0["页面点「计算」→ useResourceCalc()<br>编排层入口：把 configStore 现场装配成 ResourceCalcConfig"]
+    P1["buildCharConfig ×3 → applyTeamMechanics('build')<br>每角色一个 cfg（面板 + 招式数据 + 机制模块注入）"]
+    P2["computePanelPhases → core/panel.ts calcPanel<br>局外 → 局内 buff 加权（core/buff.ts）→ 队友 buff（inCombatBuffs / teammateBuffSource）→ cfg.panel"]
+    P3["solveTeam：外层不动点<br>失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励；S3 可行化 stageResolveFeasibility 在这里"]
+    P4["runCalcRound（单轮）+ applyTeamMechanics('converge')<br>跨轮反馈量集合 CalcRoundThreads（新增反馈 = 加字段 + 初值 + 轮内读写，不动签名）"]
+    P5["core/resource.ts calcTeamResources（阶段表 S0–S5，唯一事实源在函数头注释）<br>S0 装配 → S1 runInnerLoop / iterate → S2 runFoldLoop → S3a 尾段 → S4 assembleSlot"]
+    P6["enrichExecutionPlan<br>从倍率表回填 damage/daze/decibel/anomaly（覆盖 name/note，匹配一律用 moveId）"]
+    P7["失衡池 core/stunPool/ ← 异常积蓄池 core/anomalyPool/（extractSkillExecutions）"]
+    P8["damagePool*.ts buildDamagePoolRows<br>最终伤害在编排层算——core 只到执行行为止"]
+    P9["页面渲染 damagePoolRows（ResultPage / StatPanel / FinalPanel / charts/*）"]
+    P0 --> P1 --> P2 --> P3 --> P4 --> P5 --> P6 --> P7 --> P8 --> P9
 ```
-useResourceCalc()                      编排层入口（composables/useResourceCalc.ts）
-  resourceConfig: buildCharConfig ×3   每角色 cfg（面板 + 招式数据 + 机制模块注入）
-  calcOutput → solveTeam               外层循环 + S3 可行化决策（composables/resourceCalc/solveTeam.ts；`stageResolveFeasibility` 在此，不在 useResourceCalc）
-   runCalcRound                        单轮（composables/resourceCalc/convergence.ts#createRunCalcRound，由 useResourceCalc 注入）：外层固定点：失衡次数 ↔ 资源池 ↔ 转大 ↔ 异常喧响奖励（收敛；跨轮反馈量集合在 resourceCalc/roundThreads.ts 的 CalcRoundThreads——新增反馈=加字段+初值+轮内读写，不动 runCalcRound 签名；`enemy.stunCountLock>=0` 时失衡次数固定不回填，其余反馈仍收敛，命座对比固定场景用）
-    calcTeamResources                  core/resource.ts：iterate 多轮收敛（能量→强特→喧响→终结→时间）+ 时间预算收敛外层循环（测执行行前台时间，超出战斗时间的部分折入 necessaryTime 压缩平A池）；喧响含特殊动作/异常奖励注入（specialAction/anomalyDecibelBonusPerSlot，参与终结技次数推导）
-      → buildExecutions                从收敛态生成执行计划（通用动作 + 模块专属 + patchExecutions 修正）
-      → buildResourceResult（模块钩子，core/resource/assembleSlot.ts 派发）            角色资源结果（specResources / 专属 cycle）
-    enrichExecutionPlan                从倍率表回填 damage/daze/decibel/anomaly（覆盖 name/note！）
-    extractSkillExecutions             失衡池 / 异常积蓄池输入
-  → 失衡池 / 异常池 / 伤害池            最终伤害与覆盖率（damagePoolRows）；伤害行 = useResourceCalc 的 `damagePoolRows` → resourceCalc/damagePool.ts#buildDamagePoolRows（2026-09-27 R6 第 1 步 v2 实测校正，见 ARCHITECTURE-OVERVIEW §6.1）
+
+**上面这条只是主干**（页面 → 出图的数据流）。P3–P5 那三步**不是顺序执行的三步，而是七个嵌套的收敛环**——
+真正决定数值的是环的嵌套与回边，不是这条链：
+
+```mermaid
+flowchart TD
+    subgraph S3["S3 可行化搜索 —— 环外重跑整环：枚举 8 档降配 × 每档重跑 L1（最多 5 个 runOuterLoop 调用点）"]
+        direction TB
+        subgraph L1["L1 外层失衡不动点 · k &lt; MAX_OUTER_ITER(20) · 容差 OUTER_STUN_TOLERANCE=0.05 · 退出 stable / cycle / maxIter"]
+            direction TB
+            subgraph L2["L2 内层资源不动点 · k &lt; maxIter(100) · 判稳 = 强特/终结次数 + 平A时间严格相等 · 环停点 integerCycleStop"]
+                direction TB
+                subgraph L3["L3 时间预算折叠环 · timePass &lt; TIME_FOLD_MAX_PASSES(32) · 判据 maxExcess ≤ 1e-3"]
+                    direction TB
+                    subgraph L4["L4 终局重折 · pass &lt; 12 · 仅声明 finalizePass 的模块 · 判稳 allBitEqual"]
+                        direction TB
+                        subgraph L5["L5 截断重折 · refoldPass &lt; 3 · 不动点 = 本轮 kept 与上轮逐槽一致"]
+                            direction TB
+                            S1["S1 iterate：能量 → 强特 → 喧响 → 终结 → 时间"]
+                            S4["S4 assembleSlot：装配执行行 + 截断（truncateExecutionsToFrontline）"]
+                        end
+                    end
+                end
+            end
+        end
+    end
+    T["CalcRoundThreads：17 条跨轮回边（goodReview / energyBySlot / anomalyDecibelBonus / parrySplit / prevPoolStunCount …）"]
+    T -.->|"上一轮写、下一轮读"| L1
+    S3 -.->|"采纳 / 拒绝试算"| OUT["最终 TeamResourceResult"]
+    S4 --> OUT
 ```
+
+**这不是流水线**：外层三环（L1–L3）是**嵌套不动点**，内层两环（L4–L5）由模块声明按需触发，
+S3 在**所有环之外**重跑整环。实测全库 104 队：`outerExit` stable=99 / cycle=5，
+折叠环 2~12 轮，`timeBudgetConverged=false` 0 队（`PROBE_CONV_SCAN=1` 探针，命令见 `convergenceProbe.test.ts` 头注释）。
+
+图版（含 S1–S4 各阶段在 `core/resource/` 下的落点与时间截断口径）：`docs/architecture-calc-flow.svg`；
+非线性结构总览（嵌套环 + 多对多派发 + 分析器扇出 + 验证网）：`docs/architecture-runtime.svg`；
+逐步函数级对账（哪个函数在哪一行）见 `docs/ARCHITECTURE-OVERVIEW.md` §6.1。
 
 关键对象流转：`configStore.team` → `CharacterOperationConfig`（cfg，可被模块改写）→ `TeamResourceResult`（characters[].executions/energySource/...）→ `damagePoolRows`（展示行）。
 
-## 2. 核心类型地图（一句话定位，全部在 src/types/）
+## 2. 运行时拓扑：三处非线性（图版 `docs/architecture-runtime.svg`）
+
+层图（§0）回答「谁在哪层」；这一节回答「**为什么结构上不是线性并列**」。三处非线性各自有机器护栏兜着，改的时候知道自己在动哪一处：
+
+### 2.1 嵌套收敛环（七个环，不是一个循环）
+
+主干链上的 P3–P5 实际是**同心嵌套**：外层环里跑内层环，最内的叶子上才真正「算一次」。
+`S3 可行化搜索` 在**所有环之外**重跑整环（枚举 8 档降配 × 每档一次 `runOuterLoop`）。
+
+| 环 | 位置 | 循环变量 | 退出判据 | 实测 |
+|---|---|---|---|---|
+| S3 可行化搜索 | `solveTeam.ts:429` | 降配档 `DOWNSCALE_SCALES`（8 档） | 三臂不更差 + 枚举取最大可行；锁窗一律不动 | 最多 5 个 `runOuterLoop` 调用点 |
+| L1 外层失衡不动点 | `solveTeam.ts:200` | 失衡次数 | `MAX_OUTER_ITER=20` · 容差 `OUTER_STUN_TOLERANCE=0.05` · 退出 `stable/cycle/maxIter` | 104 队：stable 99 / cycle 5 |
+| L2 内层资源不动点 | `innerLoop.ts:108` | 强特/终结次数 + 平A时间 | `INNER_LOOP_MAX_ITERATIONS=100` · 判稳严格相等 · 环停点 `integerCycleStop` | 正常队 ≤15 轮退出 |
+| L3 时间预算折叠环 | `foldLoop.ts:74` | `cfg.timeBudgetExcess / timeBudgetRefund` | `TIME_FOLD_MAX_PASSES=32` · `maxExcess ≤ 1e-3` | 2~12 轮 |
+| L4 终局重折 | `finalizePasses.ts:78` | 声明 `finalizePass` 的模块 | `FINALIZE_MAX_PASSES=12` · 判稳 `allBitEqual` | 按模块声明触发 |
+| L5 截断重折 | `truncationRefold.ts:73` | `cfg.rowTimeLimit` | `ROW_REFOLD_MAX_PASSES=3` · 不动点 = kept 逐槽一致 | 仅超预算队 |
+| L6 转大/连携窗口不动点 | `ultimatePromote.ts:318`（`promoteFixpoint`） | 好评 → 60/90 转大次数 ↔ 连携窗口 ↔ 失衡池次数 | `MAX_PROMOTE_ITER=8` · 有界单调必收敛 | 有转大提供者的队才走 |
+
+**回边（跨轮反馈）**：`CalcRoundThreads` 17 个字段上一轮写、下一轮读（`goodReview` / `energyBySlot` /
+`anomalyDecibelBonus` / `parrySplit` / `prevPoolStunCount` …）。**新增反馈 = 加字段 + 初值 + 轮内读写**，
+不动 `runCalcRound` 签名。
+
+**别把三本时间账当一本**（同一队可差 90s，UI 只报其中一本）：预算 / 账本 / 物化行——
+口径母表在 `ENGINE_PIPELINE_GUIDE.md` §4 开头。
+
+### 2.2 多对多钩子派发（引擎不认 id）
+
+**62 个模块对象**（61 个文件，`specPanelBuffs.ts` 一个文件导出 2 个）× **57 个方法钩子** = **509 处实现**，
+引擎侧 **112 个按能力查询的派发点**、**66 个被查能力**：
+
+- **5 个通用钩子**（几乎所有模块都实现）：`buildCharConfig`(61) · `applyPanel`(54) · `buildExecutions`(54) · `resourceSections`(53) · `buildResourceResult`(52)
+- **23 个单模块专属钩子** = 该角色私有机制的出口（如 `giftedPolarAssaultCount` / `endsStunWindow` / `promoteHugCounts` / `curtainTriggers`）
+- **模块规模差异极大**：最重 `banyue` 41 处、最轻 `nicole` 7 处（中位 8 处）——所以「加个钩子」的代价在模块侧是分摊的
+
+**三种派发顺序并存，都是有意的**（改派发器前先确认你在哪一种里）：
+`applyTeamConfig` / `nextRoundFeedback` = **槽位升序**（写入式，顺序影响结果）；
+`axisWindowOverlays` = **注册表顺序**（取值式，顺序无关）；`teamMechanicSlots` = **注册顺序**（明文不是槽位序）。
+
+**同一钩子会在一个 pass 里被调多次**（别假设幂等）：`estimateExSpecialTime` 每槽 3 次/轮、
+`selfBurnDecibel` 2 处、`curtainTriggers` 在 `iterate` 每 pass 与装配各一次。
+
+**`applyTeamConfig` 的三个相位不是同一批 cfg 对象**：build / converge 在本轮克隆的 cfg 上；
+**postRound 派发的是下一轮新克隆的 cfg**（旧写法在轮末对本轮克隆派发，下一轮重新克隆即丢失）。
+
+纪律：`core/**` 与 `composables/**` 对角色模块的**值依赖 = 0**（判据 24 硬门）；
+core 只许 `import { getAgentMechanic } from '@/mechanics/registry'`（不许 import `@/mechanics` index，会成环）。
+
+### 2.3 分析器扇出（一次出结果 = 跑 N 次整条管线）
+
+上层分析器站在整条管线**之上**反复调用，这是第四层（规划里叫「应用层」）：
+
+- 全部经 `AnalysisContext`（`config` + `calc`）拿管线——**12 个 composables** 声明该契约、**6 个页面**经 `withAnalysisScenario` 隔离
+- 为什么不能直接用 active Pinia store：分析器要**反复改写配置再求值** ⇒ 场景出生态（`effectScope` 隔离，判据 `analysisScenario.test`）
+- 代价量级（代码注释实测）：时间权重 ≈ 15~20 次求值/队（≈1.5s/队）；难度爬梯探针每队约 3~4s
+- **真正的成本不在单次求值，而在「求值次数 × 环内轮数」**：一次 `calcTeamResources` 内部是 §2.1 的七层环
+  （实测折叠环 2~12 轮），所以一个分析器扫 20 个候选 ≈ 几百次内层迭代——改分析器时先看它的候选集大小
+
+**扇出后扇入**：结果汇到 6 个页面（`TeamComparePage` / `TimeChartsPage` / `FreeComparePage` /
+`ResourceUtilizationPage` / `PositionComparePage` / `RunArchivePage`）。
+
+### 2.4 验证网（为什么敢动这些环）
+
+| 层 | 锁 |
+|---|---|
+| 分层 | 8 条闭包/直接依赖锁（`coreMechanicsRegistryOnly` / `coreRuntimeDeps` / `resourceCalcStoreDeps` / `specsRuntimeDeps` / `dataRuntimeDeps` / **`mechanicsRuntimeDeps`** / 展示层不值导入 / `layer-inversion`）——四层（core / specs / data / mechanics）现在都有传递闭包锁 |
+| 棘轮与硬门 | 判据 7 · 19 · 22 · 23 · 24 · 25 · 26（id 字面量 0 / 值依赖 0 / 死读 0） |
+| 全局回归网 | `allAgentsSweep`（全角色 × 命座 0/6 不变量）· `timeGolden`（105 预设时间账）· `timeFillRatchet`（留白棘轮） |
+| 证据链 | 原文契约 `data/recordings/` · `validate:specs` 逐条认定消费 · `verify:recording` 交付闸门 |
+
+**收敛体检怎么自己跑**：`PROBE_CONV_SCAN=1 npx vitest run src/composables/__tests__/convergenceProbe.test.ts`
+（全预设分布）；单队 `PROBE_CONV_TEAM=<预设id> …`（冷/热/换队回来三读数）。
+
+## 3. 核心类型地图
 
 > 2026-09-11 起 `types/resource.ts`（原 2567 行单文件）已按域拆为 `types/resource/` 目录
 > （`time` / `energy` / `agentResources` / `execution` / `team` / `config` / `pools` + `index.ts` barrel）。
@@ -81,7 +291,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 | `StunAxis` / `StunAxisAction` | 失衡轴定义（槽位/动作/转大变体）——`types/resource/pools.ts` | 用户/预设产生 → 轴引擎消费 |
 | `ResourceCalcConfig` | 全局计算配置（totalTime/stunCount/盾数）——`types/resource/config.ts` | useResourceCalc 产生 |
 
-## 3. 任务 → 文件决策树（本文件的核心）
+## 4. 任务 → 文件决策树
 
 | 任务 | 先读 | 再改 |
 |---|---|---|
@@ -134,7 +344,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 | 录/改「控制技（紫光技）× 反制支援」交互替换 | `public/static/boss-presets.json` 的 `defaults.counterAssistGroups`（逐组记招架段数，导入侧 `BOSS_DEFAULTS`）；角色招式配对 `src/data/counterAssists.ts`（@fact data:反制支援/招式配对） | 折算在 store 侧 `stores/config.ts#syncBossInteractionPlan`（不改编排层）+ 产行 `core/resource/helpers#buildExecutions`（一次动作 = 本体+专属支援突击，融合见 `data/moveFusions.ts`）；判据 `counterAssist.test.ts`，口径见 `ENGINE_PIPELINE_GUIDE.md` §4 坑 18 末段 |
 | **把页面里一块 UI/svg 图抽成组件**（时间图表页系列）| 先数该块引用的页面级符号与**共享 class**；`styles/chart-blocks.css` 文件头（为什么共享类不能进全局表）+ 判据 16 头注释 | `src/components/charts/*.vue` + `src/views/timeCharts/*.css`。**零 delta 判据**：CDP 整页 DOM 指纹探针**必须禁 HTTP 缓存并打印加载的 chunk 名**（`python http.server` 不发 Cache-Control ⇒ 会静默量到上一版构建，「零 delta」就成了假结论，实测踩过） |
 
-## 4. 数据流速查（谁写谁读，防"录了没消费"）
+## 5. 数据流速查
 
 - **cfg**：composables 构建 → 模块 `buildCharConfig` 改写 → **模块 `applyTeamConfig` 改写全队**（跨槽位联动，三阶段 build/converge/postRound）→ 引擎 iterate / buildExecutions 读。模块想在下一轮读自己的值 → 写 cfg 字段（`record.<key>`）。
 - **跨角色回能**：唯一事实源 = `core/resource/helpers.ts#calcCrossAgentEnergy`（被 iterate 参与次数推导 + calcTeamResources 最终装配写 `energySource.crossAgent` 并计入 total 共用；两处消费与历史事故见其函数头注释）。新增跨角色回能只改这一处 + `CrossAgentEnergy` 加字段。
@@ -146,7 +356,7 @@ useResourceCalc()                      编排层入口（composables/useResource
 - **数值唯一事实源**：`public/static/catalog.json`。改数值 = 改爬取/导入脚本重跑，不是改 JSON 本身。
 - **生成产物不变量（2026-08-27，机器强制）**：`public/static/*.json` 必须紧凑写（无缩进），且 `catalog.json` 顶层键必须 == `src/types/catalog.ts` 的 `Catalog` 字段白名单（白名单单一事实源在 `scripts/lib/catalog-fields.mjs`，改字段两侧同步）。护栏 = `scripts/validate-data.mjs`（不变量清单见其「产物不变量」段注释），被 `check`/`verify` 覆盖；再膨胀/再引入 legacy 死键即红，修复入口 `npm run minify:static`（幂等，剔死键 + 紧凑写）。
 
-## 5. 导航技巧（减少迷宫感的操作习惯）
+## 6. 导航技巧
 
 1. **用 grep 找符号，不翻目录**：`grep -rn "computePanelPhases" src/` 一条命令定位生产/消费端，比逐层读文件快一个数量级。
 2. **测试是最好的行为文档**：`banyue-preset-int.test.ts`（轴+机制集成）、`teamCompare.test.ts`（全管线）、`billySmoke.test.ts`（新角色冒烟模板，已用 `src/test/harness.ts` 装配）、`allAgentsSweep.test.ts`（60 角色 × 命座 0/6 全局不变量回归网）、`specialMechanics.test.ts`（机制模块单元）。看"怎么调"比看"怎么实现"快。
