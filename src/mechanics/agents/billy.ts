@@ -16,7 +16,7 @@
  *
  * @author kaua5678
  */
-import { clampRatio, whole } from '@/utils/finiteClamp'
+import { clampRatio, finiteOr0, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -179,11 +179,10 @@ export const billyMechanic: AgentMechanicModule = {
    * 由 `buildCharConfig` 预计算写入 `cfg.billyC1Energy`。
    */
   bonusEnergy({ cfg }) {
-    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
     return [{
       key: 'billyC1Energy',
       label: '闪亮登场',
-      value: n(cfg.billyC1Energy),
+      value: finiteOr0(cfg.billyC1Energy),
       detail: '比利影画1：冲刺/闪反命中按 5s ICD 封顶',
     }]
   },

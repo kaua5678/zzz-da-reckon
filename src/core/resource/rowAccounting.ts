@@ -18,6 +18,7 @@ import type {
 } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics/registry'
 import type { ExtraNecessaryAction } from '@/mechanics/types'
+import { finiteOr0 } from '@/utils/finiteClamp'
 
 // ============ 单角色喧响计算 ============
 
@@ -134,7 +135,6 @@ export function timeSliceTriggerCounts(
  * - 非有限值防线：畸形/不完整配置（测试合成 cfg 缺字段等）可让行值成 NaN——账本绝不带 NaN
  *   （NaN 会毒化次数迭代并被环检测的 JSON 签名物化成 null，实测合成队 ex/ult 全 null）。
  */
-const finiteOr0 = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
 export function rowDecibelTotal(cfg: CharacterOperationConfig, row: SkillExecution): number {
   if (row.moveId === 'basic_attack') return finiteOr0(row.totalDecibelRecovery)

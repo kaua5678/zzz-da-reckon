@@ -8,6 +8,7 @@ import type {
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
+import { finiteOr0 } from '@/utils/finiteClamp'
 
 /**
  * 莱卡恩（1141）战斗逻辑（用户确认口径，2026-08）：
@@ -393,11 +394,10 @@ export const lycaonMechanic: AgentMechanicModule = {
    * 次数 = 失衡次数 + 队伍连携总次数，由 `applyTeamConfig` 预计算写入 `cfg.lycaonC2Energy`。
    */
   bonusEnergy({ cfg }) {
-    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
     return [{
       key: 'lycaonC2Energy',
       label: '能量回馈',
-      value: n(cfg.lycaonC2Energy),
+      value: finiteOr0(cfg.lycaonC2Energy),
       detail: '莱卡恩影画2：(失衡次数 + 队伍连携总次数) × 5',
     }]
   },

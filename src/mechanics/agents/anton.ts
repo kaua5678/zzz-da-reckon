@@ -4,7 +4,7 @@
  *   触发次数 = 爆发状态内暴击次数/4 × 触发率滑块（anton.additionalShockRatio，默认100% 用户口径）；
  *   结算为 release 事件（element=electric 固定 45% 感电倍率，倍率基准=感电施加者的感电伤害）。
  */
-import { clampRatio } from '@/utils/finiteClamp'
+import { clampRatio, finiteOr0 } from '@/utils/finiteClamp'
 import type { AgentEventInput, AgentMechanicModule, AgentResourceInput } from '../types'
 import type { AnomalyEventExecution } from '../../types/resource'
 import { execMatchesMove } from '../../types/resource'
@@ -120,11 +120,10 @@ export const antonMechanic: AgentMechanicModule = {
    * 预计算写入 `cfg.antonC1EnergyGift`（本模块扩充块声明，CC-365）。
    */
   bonusEnergy({ cfg }) {
-    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
     return [{
       key: 'antonC1EnergyGift',
       label: '影画1回能',
-      value: n(cfg.antonC1EnergyGift),
+      value: finiteOr0(cfg.antonC1EnergyGift),
       detail: '安东影画1：钻击招式回能（每招上限）',
     }]
   },

@@ -11,6 +11,11 @@
  * - ben 的 `clamp01(value, fallback = 1)`：非有限值回落到 fallback（默认 1，不是 0）。
  */
 
+/** 非 number / 非有限值 → 0，其余原值（CC-461：此前 qingyi/yixuan/lycaon/billy/anton/norma/yidhari/resourceIncome/rowAccounting 各私抄一份
+ *  同一行 `typeof/Number.isFinite` 三元，锁见 finiteClampSingleSource.test.ts）。⚠ 与 `Number(v)` 强转版（crossAgentEnergy `num` / xide `xideNum`：字符串可转、null→0）语义不同，不收。 */
+export function finiteOr0(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
 /** 比例钳到 [0, 1]；非有限值 → 0。 */
 export function clampRatio(value: number): number {
   return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))

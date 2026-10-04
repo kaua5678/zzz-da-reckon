@@ -20,6 +20,7 @@ import {
   decibelEfficiencyMultiplier, timeSliceTriggerCounts, rowEnergyTotal, rowDecibelTotal,
 } from './rowAccounting'
 import { feasibleRows } from './rowBuild'
+import { finiteOr0 } from '@/utils/finiteClamp'
 
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 export function calcEnergySource(
@@ -34,21 +35,20 @@ export function calcEnergySource(
   teamFrontlineSeconds = 0,
 ): EnergySource {
   const p = cfg.panel
-  const n = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0
 
   // 普通能量/闪能共用同一套公式：
   // (基础 × (1 + 百分比加成) + 固定加成) × (1 + 获得效率)。
   // 命破（闪能）：基础自动回复 = flashEnergyRegen（如 2/s）；固定/百分比回能加成只作用于能量，
   // 闪能自己的固定/百分比走 flashEnergyRegenBonusFlat/flashEnergyRegenBonusPct（目前只有影画2 的 0.5/s 闪能回复）。
   const isFlash = cfg.isFlashUser
-  const baseRegen = isFlash ? n(p.flashEnergyRegen) : n(p.energyRegen)
-  const pctBonus = (isFlash ? n(p.flashEnergyRegenBonusPct) : n(p.energyRegenBonusPct)) / 100
-  const flatBonusRate = isFlash ? n(p.flashEnergyRegenBonusFlat) : n(p.energyRegenBonusFlat)
-  const normalGainEfficiency = (isFlash ? n(p.flashEnergyGainEfficiency) : n(p.energyGainEfficiency)) / 100
+  const baseRegen = isFlash ? finiteOr0(p.flashEnergyRegen) : finiteOr0(p.energyRegen)
+  const pctBonus = (isFlash ? finiteOr0(p.flashEnergyRegenBonusPct) : finiteOr0(p.energyRegenBonusPct)) / 100
+  const flatBonusRate = isFlash ? finiteOr0(p.flashEnergyRegenBonusFlat) : finiteOr0(p.energyRegenBonusFlat)
+  const normalGainEfficiency = (isFlash ? finiteOr0(p.flashEnergyGainEfficiency) : finiteOr0(p.energyGainEfficiency)) / 100
 
   // 条件固定回能：灼心摇壶按后台时间，思络成歌按非操作/合轴时间。这些是能量回能，命破（闪能）不吃。
-  const backstageFlatRate = isFlash ? 0 : n(cfg.backstageRegenBonus) + n(p.backstageEnergyRegenFlat) + n(p.roaringRideBackstageEnergyRegen)
-  const nonOperatingFlatRate = isFlash ? 0 : n(cfg.comboAlignRegenBonus) + n(p.nonOperatingEnergyRegenFlat)
+  const backstageFlatRate = isFlash ? 0 : finiteOr0(cfg.backstageRegenBonus) + finiteOr0(p.backstageEnergyRegenFlat) + finiteOr0(p.roaringRideBackstageEnergyRegen)
+  const nonOperatingFlatRate = isFlash ? 0 : finiteOr0(cfg.comboAlignRegenBonus) + finiteOr0(p.nonOperatingEnergyRegenFlat)
 
   const autoRegen = baseRegen * totalTime
   const pctRegenBonus = baseRegen * pctBonus * totalTime
@@ -60,7 +60,7 @@ export function calcEnergySource(
   const demaraTriggerCount = cfg.dodgeCounterCount + cfg.quickAssistCount + cfg.parryCount
   const demaraCoverageSeconds = Math.min(totalTime, Math.max(0, demaraTriggerCount * 8))
   const demaraCoverageRate = totalTime > 0 ? demaraCoverageSeconds / totalTime : 0
-  const demaraEfficiency = n(p.demaraEnergyGainEfficiency) / 100
+  const demaraEfficiency = finiteOr0(p.demaraEnergyGainEfficiency) / 100
   const averageAutoRate = totalTime > 0 ? preEfficiencyAuto / totalTime : 0
   const gainEfficiencyBonus = preEfficiencyAuto * normalGainEfficiency
     + averageAutoRate * demaraCoverageSeconds * demaraEfficiency
@@ -86,8 +86,8 @@ export function calcEnergySource(
   }
 
   const timeSliceTriggers = timeSliceTriggerCounts(cfg, state, chainCountTotal, totalTime)
-  const timeSliceEnergy = n(cfg.panel.timeSliceEnergyPerTrigger) * timeSliceTriggers.total
-  const zhenyuanEnergy = n(cfg.panel.zhenyuanEnergyPerTrigger) * n(cfg.zhenyuanTriggerCount)
+  const timeSliceEnergy = finiteOr0(cfg.panel.timeSliceEnergyPerTrigger) * timeSliceTriggers.total
+  const zhenyuanEnergy = finiteOr0(cfg.panel.zhenyuanEnergyPerTrigger) * finiteOr0(cfg.zhenyuanTriggerCount)
 
   // 般岳山威回闪能不再走这里：那是**招式级回能**（每发山威强特回 10，C2 +5），已由模块
   // `mechanics/agents/banyue#patchExecutions` 落在执行行 `energyRecovery` 上 ⇒ 经 `skillRegen`
@@ -117,26 +117,26 @@ export function calcEnergySource(
   // （floor 在迭代中途截断反馈 → 同一输入多个不动点，种子相关）。对 50·O = E0 − inStunCost + 15·O
   // 解析求解 O* = (E0 − inStunCost)/35；迭代期用实数 O*（强特次数同实数化 → 唯一不动点），
   // 终局整数重推（exFinalize）才 floor——floor 只发生一次，不在收敛中途截断资源循环。
-  const refundPer = cfg.exRefundPerPaid !== undefined ? n(cfg.exRefundPerPaid) : 0
+  const refundPer = cfg.exRefundPerPaid !== undefined ? finiteOr0(cfg.exRefundPerPaid) : 0
   const exRefundEnergy = (() => {
     // 原判据 `cfg.agentId !== '1051' || refundPer <= 0`：左侧 agentId 判断**冗余**——
     // `refundPer` 派生自 `exRefundPerPaid`，其唯一写入方 = 该角色模块
     // （模块只写自己那份 cfg）⇒ 该值为 0 即蕴含「不是该角色或未启用」，短路语义由右操作数完全覆盖。
     // 2026-09-15 core 棘轮批次2（T6 冗余判据），timeGolden 0 delta。
     if (refundPer <= 0) return 0
-    const consume = n(cfg.exSpecialEnergyConsume)
+    const consume = finiteOr0(cfg.exSpecialEnergyConsume)
     if (consume <= refundPer) return 0
     const finalize = cfg.exFinalize === true
     const quant = (o: number) => (finalize ? Math.floor(o) : o)
     if (cfg.exReservedCount !== undefined) {
       // 轴模式：失衡内次数固定（轴连段反推），refund 只作用于失衡外强特
-      const inStun = n(cfg.exReservedCount)
-      const inStunCost = n(cfg.exReservedEnergyCost ?? inStun * consume)
+      const inStun = finiteOr0(cfg.exReservedCount)
+      const inStunCost = finiteOr0(cfg.exReservedEnergyCost ?? inStun * consume)
       const outStar = Math.max(0, (e0 - inStunCost) / (consume - refundPer))
       return quant(outStar) * refundPer
     }
     // 非轴：失衡内 = min(ex, cap)；ex ≤ cap 无 refund，ex > cap 的溢出部分每发回 refundPer
-    const cap = n(cfg.exRefundFreeCap)
+    const cap = finiteOr0(cfg.exRefundFreeCap)
     if (e0 / consume <= cap) return 0
     const outStar = Math.max(0, (e0 - cap * consume) / (consume - refundPer))
     return quant(outStar) * refundPer

@@ -15,6 +15,7 @@ import { effectiveBattleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { finiteOr0 } from '@/utils/finiteClamp'
 
 const YIDHARI_AGENT_ID = '1051'
 
@@ -391,8 +392,7 @@ function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, team, axis
   // 连续强特通道：非保留模式（非轴）下不返还的强特次数上限。
   // 原式 = `n(cfg.yidhariExPerStun ?? 2) * n(cfg.yidhariStunCount ?? 0)`（消费端 resourceIncome 非轴分支），
   // 而 `yidhariStunCount` 的唯一写入方就是上面那行 ⇒ 此处用同一 stunCount 逐位复刻。
-  const fin = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0
-  cfg.exRefundFreeCap = fin(cfg.yidhariExPerStun ?? 2) * fin(stunCount)
+  cfg.exRefundFreeCap = finiteOr0(cfg.yidhariExPerStun ?? 2) * finiteOr0(stunCount)
   if (!axis) return
   let inStunEx = 0
   let inStunEnergy = 0

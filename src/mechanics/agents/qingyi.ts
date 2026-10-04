@@ -12,6 +12,7 @@ import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
+import { finiteOr0 } from '@/utils/finiteClamp'
 
 const QINGYI_AGENT_ID = '1251'
 
@@ -387,9 +388,8 @@ export const qingyiMechanic: AgentMechanicModule = {
    * （默认 180s → floor(180/10)=18 次）。算式逐字来自 `core/resource/resourceIncome.ts#calcEnergySource`。
    */
   bonusEnergy({ cfg, totalTime }) {
-    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
-    const per = n(cfg.qingyiC4EnergyPerTrigger)
-    const interval = n(cfg.qingyiC4TriggerInterval)
+    const per = finiteOr0(cfg.qingyiC4EnergyPerTrigger)
+    const interval = finiteOr0(cfg.qingyiC4TriggerInterval)
     return [{
       key: 'qingyiC4Energy',
       label: '稳态电弧屏障',

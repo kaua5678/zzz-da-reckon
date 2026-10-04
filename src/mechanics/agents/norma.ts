@@ -17,6 +17,7 @@ import { specConversionAmount } from '@/specs/runtime'
 import type { AttributeConversionSpec } from '@/specs/types'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
+import { finiteOr0 } from '@/utils/finiteClamp'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -629,9 +630,8 @@ export const normaMechanic: AgentMechanicModule = {
    * （默认 180s → floor(180/20)=9 次）。算式逐字来自 `core/resource/resourceIncome.ts#calcEnergySource`。
    */
   bonusEnergy({ cfg, totalTime }) {
-    const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : 0
-    const per = n(cfg.normaC2EnergyPerTrigger)
-    const interval = n(cfg.normaC2TriggerInterval)
+    const per = finiteOr0(cfg.normaC2EnergyPerTrigger)
+    const interval = finiteOr0(cfg.normaC2TriggerInterval)
     return [{
       key: 'hatTrickEnergy',
       label: '帽子把戏',
