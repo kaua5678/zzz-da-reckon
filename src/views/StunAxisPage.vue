@@ -140,7 +140,7 @@
               <span class="sap-block-text">{{ act.label || moveLabel(act.moveId) }}×{{ act.count }}{{ act.promoteVariant ? '·' + act.promoteVariant : '' }}{{ act.sourceTag === 'gift' ? '·赠' : '' }}<span v-if="actDuration(act) > 0" style="opacity:0.7"> {{ actDuration(act).toFixed(1) }}s</span></span>
               <span v-if="mingwangTag(ai, aii)" class="sap-mw" :class="mingwangTag(ai, aii)!.cls">{{ mingwangTag(ai, aii)!.text }}</span>
               <span v-if="ningshenTag(ai, aii)" class="sap-mw" :class="ningshenTag(ai, aii)!.cls">{{ ningshenTag(ai, aii)!.text }}</span>
-              <span v-if="stunExTag(ai, aii)" class="sap-mw mw-trigger">{{ stunExTag(ai, aii)!.text }}</span>
+              <span v-if="moveBadgeFor(act)" class="sap-mw mw-trigger">{{ moveBadgeFor(act) }}</span>
               <span v-for="(tg, ti) in anomalyTagsFor(ai, aii)" :key="'at'+ti" class="sap-mw" :class="tg.cls">{{ tg.text }}</span>
             </div>
           </div>
@@ -156,10 +156,12 @@
               <n-input-number :value="act.count" @update:value="v => editAction(ai, aii, a => { a.count = v ?? 1 })" size="tiny" :min="1" :max="99" style="width:52px" />
               <n-select v-if="isPromotable(act.moveId)" :value="act.promoteVariant ?? ''" @update:value="v => editAction(ai, aii, a => { a.promoteVariant = v || undefined })" size="tiny" style="width:82px"
                 :options="[{label:'常规',value:''},{label:'60转大',value:'60'},{label:'90转大',value:'90'}]" />
-              <span v-if="act.moveId === '1371022'" class="sap-t" title="轴内凝云术蓄力时长（0-2s，可延长/缩短；倍率/耗能/daze 按秒均折算）">
-                蓄力<n-input-number :value="act.duration ?? 2" :min="0" :max="2" :step="0.1" size="tiny" style="width:62px"
-                  @update:value="v => editAction(ai, aii, a => { a.duration = v ?? 2 })" />s
-              </span>
+              <template v-if="durationInputFor(act)">
+                <span class="sap-t" :title="durationInputFor(act)!.title">
+                  {{ durationInputFor(act)!.label }}<n-input-number :value="act.duration ?? durationInputFor(act)!.default" :min="durationInputFor(act)!.min" :max="durationInputFor(act)!.max" :step="durationInputFor(act)!.step" size="tiny" style="width:62px"
+                    @update:value="v => editAction(ai, aii, a => { a.duration = v ?? durationInputFor(a)!.default })" />s
+                </span>
+              </template>
               <span class="sap-t">
                 <span class="sap-t-time">{{ actDurationText(act) }}</span>s · 起点 <span class="sap-t-time">{{ (act.startTime ?? 0).toFixed(1) }}</span>s
               </span>
@@ -252,7 +254,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentAxisMoveBadge, agentAxisDurationInput, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLaneSlot, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
 import { isStaleAxisActionFor } from '@/composables/resourceCalc/roundInputs'
@@ -348,13 +350,12 @@ function ningshenTag(ai: number, aii: number): { text: string; cls: string } | n
   if (info.active) return { text: '凝神+40%', cls: 'mw-live' }
   return null
 }
-// 失衡强特标注（额外能力）：轴内凝云术/墨烬影消块命中失衡敌人伤害+30%
-function stunExTag(ai: number, aii: number): { text: string } | null {
-  if (yixuanSlot.value < 0) return null
-  const act = axes.value[ai]?.actions[aii]
-  if (!act || act.slot !== yixuanSlot.value) return null
-  if (act.moveId === '1371022' || act.moveId === '1371026') return { text: '+30%失衡' }
-  return null
+// CC-446：已放置块的徽标 / 时长输入框均按「块所属槽位的角色模块」声明取（原按仪玄槽位 + 1371022/1371026 字面量写死）
+function moveBadgeFor(act: Pick<StunAxisAction, 'slot' | 'moveId'>): string {
+  return agentAxisMoveBadge(configStore.team[act.slot]?.agentId, act.moveId)
+}
+function durationInputFor(act: Pick<StunAxisAction, 'slot' | 'moveId'>) {
+  return agentAxisDurationInput(configStore.team[act.slot]?.agentId, act.moveId)
 }
 // 凝神平行道窗口条：大招块处画 15s 窗口
 function ningshenWindowsFor(ai: number): { key: string; leftPct: number; widthPct: number }[] {

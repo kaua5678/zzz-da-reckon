@@ -639,6 +639,18 @@ export interface CrossAgentEnergyLabel {
   label: string
   detail?: string
 }
+/** CC-446：轴编辑器已放置块的时长输入声明（见 `AgentMechanicModule.axisDurationInputs`） */
+export interface AxisDurationInputDecl {
+  /** 输入框前缀文字（如「蓄力」） */
+  label: string
+  /** 悬浮说明 */
+  title: string
+  min: number
+  max: number
+  step: number
+  /** 清空 / 未设置时的取值；须与引擎侧 `duration` 缺省同源 */
+  default: number
+}
 export interface AgentResourceSectionsInput {
   result: DeepReadonly<CharacterResourceResult>
   anomalyPoolResult?: AnomalyPoolResult | null
@@ -861,8 +873,16 @@ export interface AgentMechanicModule {
    * 消费方：`registry#axisHiddenMovesOf`（[表] 直读判定与编辑器候选池同源）。
    */
   moveBranchGroups?: readonly (readonly string[])[]
-  /** 轴编辑器候选块名后缀（CC-57；展示层专用）：moveId → 后缀。现唯一：仪玄 1371022/1371026「·+30%失衡」（额外能力：命中失衡敌人 +30%） */
+  /** 轴编辑器候选块名后缀（CC-57；展示层专用）：moveId → 后缀。现唯一：仪玄 1371022/1371026「·+30%失衡」（额外能力：命中失衡敌人 +30%）。
+   *  CC-446：同一声明也驱动**已放置块**上的徽标（门面 `agentAxisMoveBadge` = 后缀去掉前导「·」）；原 StunAxisPage `stunExTag` 按仪玄槽位 + 两个 moveId 字面量再写了一遍。 */
   axisMoveSuffix?: Readonly<Record<string, string>>
+  /**
+   * 轴编辑器「已放置块」上的时长输入框（CC-446；展示层专用）：moveId → 输入声明。
+   * 写入 `StunAxisAction.duration`（引擎侧消费：本模块 / `roundInputs` / `convergence` 按 `duration` 覆盖 actionTime）。
+   * 现唯一：仪玄 1371022 凝云术蓄力 0～`CLOUD_MAX_SECONDS`s（原 StunAxisPage 模板 `v-if="act.moveId === '1371022'"` + 写死 0/2/0.1/默认 2）。
+   * `default` 必须与模块引擎侧「`duration` 缺省时的取值」同源（仪玄 = 满蓄 `CLOUD_MAX_SECONDS`）。
+   */
+  axisDurationInputs?: Readonly<Record<string, AxisDurationInputDecl>>
   /**
    * 轴编辑器「怒相连段块」comboId 声明（CC-59；展示层专用）：primary = 主连段，didong = 与主连段共享配额、优先占用的变体连段。
    * 两者都是本模块 `combos` 的 key。StunAxisPage 用它画明王窗口条、按山威配额（怒相次数 × 2）算可放次数。现唯一：般岳。

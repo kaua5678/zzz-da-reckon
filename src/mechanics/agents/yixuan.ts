@@ -1040,6 +1040,17 @@ export const yixuanOverlay = axisOverlayChannel<YixuanOverlay>()
 export const yixuanMechanic: AgentMechanicModule = {
   // CC-57：凝云术/墨烬影消命中失衡敌人 +30%（额外能力）——轴编辑器块名后缀（原 StunAxisPage 写死 1371 + 两个 moveId）
   axisMoveSuffix: { '1371022': '·+30%失衡', '1371026': '·+30%失衡' },
+  // CC-446：轴内凝云术蓄力时长输入（原 StunAxisPage 模板写死 moveId 1371022 + 0/2/0.1/默认 2）；默认 = 满蓄，与下方 `act.duration` 缺省取 CLOUD_MAX_SECONDS 同源
+  axisDurationInputs: {
+    [MOVE.cloud]: {
+      label: '蓄力',
+      title: `轴内凝云术蓄力时长（0-${CLOUD_MAX_SECONDS}s，可延长/缩短；倍率/耗能/daze 按秒均折算）`,
+      min: 0,
+      max: CLOUD_MAX_SECONDS,
+      step: 0.1,
+      default: CLOUD_MAX_SECONDS,
+    },
+  },
   // CC-48：轴编辑器凝神标注（经 composables/agentMechanicView 门面；StunAxisPage 不再值导入本模块）
   // CC-62：轴编辑器凝神窗口 lane 拥有者（展示层）
   axisWindowLane: 'ningshen',

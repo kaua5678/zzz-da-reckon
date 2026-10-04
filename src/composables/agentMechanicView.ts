@@ -6,7 +6,7 @@
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
 import { AUTO_AXIS_PRESET_HINTS, axisHiddenMovesOf, getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
-import type { AgentMechanicModule, AgentPoolSummaryInput, AxisEditorBlockMark, CharacterCountInputDecl, CrossAgentEnergyLabel, PoolSummarySection } from '@/mechanics/types'
+import type { AgentMechanicModule, AgentPoolSummaryInput, AxisDurationInputDecl, AxisEditorBlockMark, CharacterCountInputDecl, CrossAgentEnergyLabel, PoolSummarySection } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
 
 /**
@@ -114,6 +114,14 @@ export function agentAxisHiddenMoves(agentId: string | null | undefined): readon
 /** 轴编辑器候选块名后缀（CC-57）：模块声明 `axisMoveSuffix`；未声明 ⇒ ''。原位置 StunAxisPage.vue 写死 1371 + 1371022/1371026 */
 export function agentAxisMoveSuffix(agentId: string | null | undefined, moveId: string): string {
   return (agentId ? getAgentMechanic(agentId)?.axisMoveSuffix?.[moveId] : undefined) ?? ''
+}
+/** 已放置块上的徽标（CC-446）= `axisMoveSuffix` 去掉前导「·」；无声明 ⇒ ''。原位置 StunAxisPage.vue `stunExTag`（按仪玄槽位 + 1371022/1371026 字面量） */
+export function agentAxisMoveBadge(agentId: string | null | undefined, moveId: string): string {
+  return agentAxisMoveSuffix(agentId, moveId).replace(/^·/, '')
+}
+/** 已放置块上的时长输入声明（CC-446）：模块 `axisDurationInputs[moveId]`；无声明 ⇒ undefined。原位置 StunAxisPage.vue 模板 `v-if="act.moveId === '1371022'"` */
+export function agentAxisDurationInput(agentId: string | null | undefined, moveId: string): AxisDurationInputDecl | undefined {
+  return agentId ? getAgentMechanic(agentId)?.axisDurationInputs?.[moveId] : undefined
 }
 
 export type ReleaseShareDecl = NonNullable<AgentMechanicModule['releaseShare']>
