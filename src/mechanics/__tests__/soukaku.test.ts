@@ -6,7 +6,6 @@ import { computePanelPhases } from '@/composables/resourceCalc/helpers'
 import { neighborUltEnergyByProvider } from '@/core/resource/crossAgentSupply'
 import { moveActionTimesOf } from '@/data/moveTableQueries'
 import {
-  assignSoukakuUltNeighborEnergy,
   SOUKAKU_C6_DMG_BONUS,
   SOUKAKU_SWING_ENERGY,
   soukakuMechanic,
@@ -44,10 +43,6 @@ async function setup(cinemaLevel = 0, mateId = '1091') {
 }
 
 describe('苍角纯函数', () => {
-  it('终结邻位回能 30/10', () => {
-    expect(assignSoukakuUltNeighborEnergy([0, 1, 2], 1)).toEqual({ 0: 10, 2: 30 })
-    expect(assignSoukakuUltNeighborEnergy([0, 1], 1)).toEqual({ 0: 30 })
-  })
 
   it('邻位回能按终结次数结算（走通用类别查询：模块 crossAgentSupply 声明）', () => {
     // 2026-09-15 core 棘轮批次3：原 `calcSoukakuUltEnergy` 已删，改走 `neighborUltEnergyByProvider`。

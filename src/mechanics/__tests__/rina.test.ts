@@ -5,7 +5,6 @@ import { useConfigStore } from '@/stores/config'
 import { computePanelPhases, getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/helpers'
 import { neighborUltEnergyByProvider } from '@/core/resource/crossAgentSupply'
 import {
-  assignRinaUltNeighborEnergy,
   computeRinaBangboo,
   RINA_POTENTIAL_PEN_RATIO,
   RINA_SPOTLESS_DURATION,
@@ -45,10 +44,6 @@ describe('丽娜纯函数', () => {
     expect(resolveTeammateBuffsOnEmptyPanel(c1, 72).penRatio).toBeCloseTo(39, 9)
   })
 
-  it('终结技邻位回能按30/10分配', () => {
-    expect(assignRinaUltNeighborEnergy([0, 1, 2], 1)).toEqual({ 0: 10, 2: 30 })
-    expect(assignRinaUltNeighborEnergy([0, 1], 1)).toEqual({ 0: 30 })
-  })
 
   it('一尘不染：强特/连携/终结各触发13s，战斗时长钳制', () => {
     expect(RINA_SPOTLESS_DURATION).toBe(13)

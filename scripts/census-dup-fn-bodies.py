@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """只读普查（r573 立、r580 修）：src/**/*.ts|*.vue 中「签名+函数体」完全相同（剥注释、规范化空白、忽略函数名）的函数，按出现文件数分组。
 用法: python3 scripts/census-dup-fn-bodies.py [最少文件数=3] [子目录逗号表，如 mechanics,core,composables]
+      SHAPE=1 前缀 ⇒ 同形模式（r581）：字符串→S、数字→0、非关键字标识符→_ 后再比，找「改了变量名的同一 helper」（min 长度 100）
 产出: 组列表（文件:行 函数名）。命中 ⇒ 候选「≥N 模块手写同一 helper → 共享 util」（先例 CC-280 finiteClamp、CC-461 finiteOr0）。
 已知盲区：只认精确重复；近似重复（改了变量名/多一个分支）不报，需另用 jscpd。r573 版箭头函数会被误解析成下一个函数体，r580 已修。"""
 import os, re, sys, hashlib, collections
@@ -9,6 +10,18 @@ MINF = int(sys.argv[1]) if len(sys.argv) > 1 else 3
 SUB = sys.argv[2].split(',') if len(sys.argv) > 2 else None
 pat_fn = re.compile(r'(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*(<[^>]*>)?\s*\(')
 pat_arrow = re.compile(r'(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*(?::[^=]{0,80})?=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::[^=]{0,80})?=>\s*\{')
+
+SHAPE = os.environ.get('SHAPE') == '1'
+KEEP = set('''break case catch class const continue default delete do else export extends finally for function if import in instanceof let new return super switch this throw try typeof var void while with yield async await of as from type interface enum readonly keyof infer never unknown any number string boolean object symbol bigint undefined null true false NaN Infinity
+Math Number Object Array String Boolean Map Set JSON Date Promise console Error RegExp Symbol
+max min floor ceil round abs sign sqrt pow log exp trunc hypot isFinite isNaN isInteger parseFloat parseInt EPSILON MAX_SAFE_INTEGER
+length push pop shift unshift map filter reduce find findIndex some every forEach keys values entries from has get set add delete size slice splice concat join split includes indexOf startsWith endsWith trim toFixed toLowerCase toUpperCase replace match test sort reverse flat flatMap fill at assign freeze fromEntries isArray stringify parse then catch now value'''.split())
+def shape_of(norm):
+    # r581：同形归一——字符串→S、数字→0、非关键字/非内置标识符→_（保留成员访问链的形状），用来找「改了变量名的同一 helper」
+    t = re.sub(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"|`(?:[^`\\]|\\.)*`", 'S', norm)
+    t = re.sub(r'\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b', '0', t)
+    t = re.sub(r'\b[A-Za-z_$][\w$]*\b', lambda m: m.group(0) if m.group(0) in KEEP else '_', t)
+    return t
 
 def strip_comments_keep_lines(src):
     # r580：先把注释替换成等长空白（换行保留），避免注释内的花括号/引号干扰体解析
@@ -96,7 +109,8 @@ for dp, dn, fn in os.walk(ROOT):
             raw = re.sub(r'/\*.*?\*/', '', sig + body, flags=re.S)
             raw = re.sub(r'//[^\n]*', '', raw)
             norm = re.sub(r'\s+', ' ', raw).strip()
-            if len(norm) < 60: continue  # 太短的一行体不算
+            if SHAPE: norm = shape_of(norm)
+            if len(norm) < (100 if SHAPE else 60): continue  # 太短的一行体不算
             h = hashlib.md5(norm.encode()).hexdigest()[:10]
             rel = os.path.relpath(p, ROOT)
             line = src.count('\n', 0, m.start()) + 1

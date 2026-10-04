@@ -3,7 +3,6 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import {
-  assignLucyUltNeighborEnergy,
   computeLucyBoarCount,
   computeLucyCheer,
   LUCY_BOAR_CD_DEFAULT,
@@ -19,16 +18,6 @@ const baseConfig = {
 }
 
 describe('露西纯函数', () => {
-  it('邻位回能：3人 下一位30 前一位10', () => {
-    const m = assignLucyUltNeighborEnergy([0, 1, 2], 1)
-    expect(m[2]).toBe(30)
-    expect(m[0]).toBe(10)
-    expect(m[1]).toBeUndefined()
-  })
-  it('邻位回能：2人 另一人30', () => {
-    const m = assignLucyUltNeighborEnergy([0, 1], 0)
-    expect(m[1]).toBe(30)
-  })
   it('加油：0命仅强特；2命+连携终结；6命 C6=队友强特', () => {
     const c0 = computeLucyCheer({ cinemaLevel: 0, exSpecialCount: 3, chainCountTotal: 2, ultimateCount: 1, teammateExSpecialTotal: 5 })
     expect(c0.cheerTriggers).toBe(3)

@@ -28,6 +28,7 @@ import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
+import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
 
 export const RINA_ID = '1211'
 const C2_COVERAGE = 12 / 18
@@ -94,30 +95,6 @@ export function computeRinaBangboo(input: RinaBangbooInput): RinaBangbooResult {
   }
 }
 
-/**
- * 丽娜终结技回能分配：
- * - 三人：下一位30，上一位10
- * - 两人：另一位30
- */
-export function assignRinaUltNeighborEnergy(
-  slots: number[],
-  rinaSlot: number,
-): Record<number, number> {
-  const out: Record<number, number> = {}
-  const others = slots.filter(slot => slot !== rinaSlot)
-  if (others.length === 0) return out
-  if (others.length === 1) {
-    out[others[0]] = 30
-    return out
-  }
-  const ordered = [...slots].sort((a, b) => a - b)
-  const index = ordered.indexOf(rinaSlot)
-  const next = ordered[(index + 1) % ordered.length]
-  const previous = ordered[(index - 1 + ordered.length) % ordered.length]
-  out[next] = 30
-  out[previous] = 10
-  return out
-}
 
 function pushExec(
   executions: SkillExecution[],
@@ -278,11 +255,7 @@ export const rinaMechanic: AgentMechanicModule = {
     // 本类别的量由 perTargetAmounts 全权给出；supply() 留 0（引擎不消费它）
     supply: () => 0,
     perTargetAmounts: ({ ownSlot, teamSize, cfg, state }) => {
-      const slots = Array.from({ length: teamSize }, (_, i) => i)
-      const ults = Math.max(0, Math.floor(state.ultimateCount ?? 0))
-      const per = assignRinaUltNeighborEnergy(slots, ownSlot)
-      const out: Record<number, number> = {}
-      for (const [slot, amount] of Object.entries(per)) out[Number(slot)] = amount * ults
+      const out = ultNeighborPerTargetAmounts(ownSlot, teamSize, state.ultimateCount)
       void cfg
       return out
     },

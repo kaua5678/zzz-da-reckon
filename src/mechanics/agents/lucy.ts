@@ -21,6 +21,7 @@ import type { ModuleFeedback } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
+import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
 
 export const LUCY_ID = '1151'
 const MOVE_SPIN = '1151026' // 亲卫队小猪：回旋挥击！
@@ -79,31 +80,6 @@ export function computeLucyCheer(input: LucyCheerInput): LucyCheerResult {
   }
 }
 
-/**
- * 邻位回能分配（用户口径）：
- * - 3 人：下一位 +30/大，前一位 +10/大
- * - 2 人：另一人 +30/大（其他10 + 换入额外20）
- */
-export function assignLucyUltNeighborEnergy(
-  slots: number[],
-  lucySlot: number,
-): Record<number, number> {
-  const out: Record<number, number> = {}
-  const others = slots.filter(s => s !== lucySlot)
-  if (others.length === 0) return out
-  if (others.length === 1) {
-    out[others[0]] = 30
-    return out
-  }
-  // 环绕：按槽位排序找邻位
-  const ordered = [...slots].sort((a, b) => a - b)
-  const idx = ordered.indexOf(lucySlot)
-  const next = ordered[(idx + 1) % ordered.length]
-  const prev = ordered[(idx - 1 + ordered.length) % ordered.length]
-  out[next] = 30
-  out[prev] = 10
-  return out
-}
 
 function pushExec(
   executions: SkillExecution[],
@@ -316,9 +292,7 @@ export const lucyMechanic: AgentMechanicModule = {
     perTargetAmounts: ({ ownSlot, teamSize, cfg, state }) => {
       const slots = Array.from({ length: teamSize }, (_, i) => i)
       const ults = Math.max(0, Math.floor(state.ultimateCount ?? 0))
-      const per = assignLucyUltNeighborEnergy(slots, ownSlot)
-      const out: Record<number, number> = {}
-      for (const [slot, amount] of Object.entries(per)) out[Number(slot)] = amount * ults
+      const out = ultNeighborPerTargetAmounts(ownSlot, teamSize, state.ultimateCount)
       // 影画1 回旋全队回能：每个非自己槽位都得同一份
       if (Number(cfg.lucyC1Enabled ?? 0) > 0) {
         const cinema = Math.max(0, Math.floor(Number(cfg.lucyCinemaLevel ?? 0)))
