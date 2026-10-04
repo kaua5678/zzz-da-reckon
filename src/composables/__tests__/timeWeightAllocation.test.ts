@@ -11,6 +11,7 @@
  *  ⑥~⑧ 测的是 **C 的杠杆**（可行性优先/弹刀阶梯/相对门/能量驱动/角点解/弹刀下限）→ 必须显式点名
  *     `DEEP_TIME_WEIGHT_STRATEGY_ID`（默认已不是 C）。
  */
+import { readFileSync } from 'node:fs'
 import { describe, it, expect, vi } from 'vitest'
 import { effectScope, nextTick } from 'vue'
 import { setupHarness } from '@/test/harness'
@@ -199,6 +200,34 @@ describe('平A池权重·分配策略', () => {
       expect(r.note ?? '').toContain('拉不回来')
     }
   }, 120_000)   // 重负载用例：满套件并发下实测 ~36s（降配枚举给结构性溢出队加了整轮试算），显式给足超时
+
+  /**
+   * ⑥c′ **吸收量门（第二臂）的源码锁**（§19.4-2 裁决，2026-09-25）。
+   *
+   * 口径：`jointLeverStrategy` 的 `feasible()` 除「截断 ≤ 地板」外还有第二臂「本轮吸收量 ≤ 上轮」——
+   * 动态合轴 v2 下溢出由队友前台背走，只看截断的可行门几乎恒真，搜索能把操作角色的计划推过预算
+   * 再让队友无限背吸收（§19.4-2 实测：`comboAlignRelief` 诚实面那队即靠这条路换到 +15% 总伤）。
+   *
+   * ⚠ **为什么是源码锁而不是行为锁**（实测记录，别改成行为断言）：2026-10-04 在 12 支吸收活跃队
+   * × ratio ∈ {0.4, 0.8, 1} 上逐队测「策略入口吸收量 → 策略出口吸收量」，**全部 Δ ≤ 0**
+   * （无一支队出现吸收增长）⇒ 第二臂在**当前数据面上不咬合**，任何行为断言都恒真、反证也拉不红
+   * （实测：删掉该臂后行为锁仍绿）。故本锁只钉**结构**（臂存在 + 语义未被改写），
+   * 并留「何时升级为行为锁」的触发条件。
+   *
+   * 升级触发条件（任一满足即改成行为断言 + 反证）：
+   *   ① 出现某支队的 joint 出口吸收量 > 入口（= 搜索真的开始靠加深吸收换越界）；
+   *   ② `comboAlignAbsorbRatio` 缺省上调或改为逐角色/逐招式（容量变大 ⇒ 搜索有空间加深吸收）；
+   *   ③ `pendingTopUpSeconds` / 环内选点口径改动导致 feasibleFloor 收紧（截断臂变严 ⇒ 搜索转向吸收臂）。
+   */
+  it('⑥c′ 吸收量门（§19.4-2）：feasible() 含「吸收量不增」第二臂（源码锁；当前数据面不咬合，见注释触发条件）', () => {
+    const src = readFileSync(new URL('../timeWeightAllocation.ts', import.meta.url), 'utf8')
+    // 臂存在：吸收量读取器 + 门槛比较（两者都要，缺一即「声明了却没接」）
+    expect(src, '吸收量读取器缺失').toMatch(/const absorbed = \(\) =>/)
+    expect(src, '第二臂缺失（feasible 只剩截断臂）').toMatch(/const feasible = \(\) =>[\s\S]{0,200}absorbed\(\) <= absorbedFloor \+ 1e-6/)
+    // 地板来源：策略入口初值 + 可行性优先阶段后同步（少了后者，阶段 -1 合法减少的吸收会把地板留高）
+    expect(src, 'absorbedFloor 初值缺失').toMatch(/let absorbedFloor = absorbed\(\)/)
+    expect(src, '阶段 -1 后未同步 absorbedFloor').toMatch(/feasibleFloor = bestTrunc\n\s+absorbedFloor = absorbed\(\)/)
+  }, 120_000)
 
   it('⑥d 能量驱动（A2）：主C 强特次数不降 + 总伤不降（多A 喂能或整体还原基线）', async () => {
     const { catalog } = await setupHarness(['', '', ''])

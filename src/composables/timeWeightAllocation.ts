@@ -138,7 +138,22 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     let floorBlocked = false
     /** 可行性门槛（相对门参考值）：可行性优先阶段找到的最小截断；未超时基线 = 0 */
     let feasibleFloor = baselineTruncation
-    const feasible = () => truncation() <= feasibleFloor + 1e-6
+    /**
+     * **吸收量门（第二臂）**（§19.4-2 裁决，2026-09-25）：Σ`dynamicComboAlignSeconds` = 本轮被合轴吸收的队友前台秒数。
+     *
+     * 为什么与截断并列成门：动态合轴（R37-J5 v2）下溢出会被队友背走，`截断 ≤ 地板` 于是几乎恒真——
+     * 搜索可以把操作角色的计划一路推过预算、再让队友无限背吸收，算出一套**物理不可能**的轴
+     * （§19.4-2 实测：`comboAlignRelief` 诚实面那队即靠这条路换到 +15% 总伤）。
+     * 用户口径（2026-09-25 裁决）⇒ 加第二臂：本轮吸收量不得高于上轮（**吸收量不增**）。
+     *
+     * 语义 = **吸收也是稀缺资源**：能兜住的溢出有上限，搜索不该靠加深吸收换越界。
+     * 基线（`absorbedFloor` 初值 = 策略入口那次的吸收量）本身允许，收窄只发生在搜索加深吸收时；
+     * 不吸收的队恒 0 ≤ 0 ⇒ 逐位零影响。默认 `'balanced'` 档不跑本策略，golden/棘轮零外溢。
+     */
+    const absorbed = () => (calc.resourceResult.value?.characters ?? [])
+      .reduce((sum, c) => sum + (c.timeAllocation?.dynamicComboAlignSeconds ?? 0), 0)
+    let absorbedFloor = absorbed()
+    const feasible = () => truncation() <= feasibleFloor + 1e-6 && absorbed() <= absorbedFloor + 1e-6
     if (baselineTruncation > 1e-6) {
       notes.push(`基线本身已超时（装配截断 ${baselineTruncation.toFixed(2)}s）→ 先试拉回可行，保底走相对门（不更差）`)
     }
@@ -181,6 +196,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
         if (!improved) break
       }
       feasibleFloor = bestTrunc
+      absorbedFloor = absorbed()
       if (bestTrunc < baselineTruncation - 1e-6) {
         notes.push(`可行性优先：截断 ${baselineTruncation.toFixed(2)}→${bestTrunc.toFixed(2)}s（总伤 ${(bestDmg / 1e6).toFixed(2)}M ≥ 基线 ${(baselineDamage / 1e6).toFixed(2)}M）`)
         if (bestTrunc <= 1e-6) notes.push('已拉回可行：装配不再截断')
