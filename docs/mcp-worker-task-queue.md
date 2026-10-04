@@ -96,6 +96,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - **本轮无题**，docs-only。连续两轮无题 ⇒ 三张找题清单（REQUIREMENTS / §3 / §8.0）当前确实为空，这是正常态，不是故障；下一轮仍按同一顺序查，皆空就一行收工。
 - **现场**：`src/core/resource/helpers.ts` 他人未提交探针**在活动中**（mtime 17:52 → 17:55，+35 行缩成 +14 行，只剩 `accFreeNet` / `capReal` / `capNoAcc` 的反事实量计算），属坑33 阶段4 累加器对照实验的 lane。未动。它没在 LANE-CLAIMS 认领——若它把结论落盘，应在 `docs/mcp-calc-core-architecture.md` 坑33 条目或 r6 §8.0 #14 处出现；下一轮 `grep -n "capNoAcc\|accFreeNet" docs/*.md` 看一眼即可。
 
+**2026-10-04 20:10 arena-F 第 497 轮**（开工：主仓 HEAD `ebb5cbc6`（kaua5678 19:44）**未推**、干净；REQUIREMENTS / §3 / §8.0 仍空；无 worktree）。
+- **代推**：`ebb5cbc6` 是主 lane 的引擎提交（折叠残差累加器出口，详见其 commit message），本地躺了 19 分钟没推。按开工规则先验再推：主仓 `vue-tsc -b --force` 0 错、check-guards 26、`src/core/__tests__/foldAccumulatorExit.test.ts` 1 passed ⇒ `git push origin HEAD:master`，unpushed=0。**没跑全量 vitest**（commit message 自述 timeGolden / timeFillRatchet 基线已重生成且归因；代推不是代验收，主 lane 自己的收工项）。
+- **它缺 docs**：7 个文件全是代码 / 基线，`docs/` 零改动，队列 §2 也没换。arena-F 只在 r6 §8.0 #14 尾挂指针，不代写架构表行——引擎语义的记录归主 lane。**主 lane 下轮待办**：① `mcp-calc-core-architecture.md` 坑33 阶段4 加「累加器出口」条目（判据三段合取、为什么不是中性记账、2/104 队 delta 归因）；② `ENGINE_PIPELINE_GUIDE.md` 坑33 否决记录旁注明本出口与被否决的 (a)/(c) 的区别；③ 队列 §2 换成自己的交接。
+- **下一轮（arena-F）**：REQUIREMENTS → §3 → §8.0；皆空 ⇒ 折叠行 `python3 /home/kaua/calc-arch/arenaF/r49x-idle.py <轮> <HH:MM> <HEAD>`。若主仓再出现未推提交：同样先 tsc + guards + 该提交新增的锁，再推。
+
 **2026-10-04 18:15 arena-F 第 492 轮**（开工：主仓 = origin = `761e682d`；REQUIREMENTS.md 无新条目；§3 只剩 T10 条件卡（锁未红）；§8.0 全未触发，#17 types.ts 1344 行；无 worktree）。
 - **本轮无题**：按 r490/r491 规则三者皆空 ⇒ docs-only 收工。没有再找活。
 - **现场**：主仓 `src/core/resource/helpers.ts` 有他人未提交的 +35 行（`if (process.env.PROBE_CAP) { … console.log('[CAP2] …') }`，把累加器 `timeBudgetExcess` 从账本拿掉后同轮封顶分摊的反事实对照），mtime 17:52，是坑33 阶段4 的探针，**不是孤儿**（< 1h），未动、未提交。若下一轮它还在且 > 1h 无人认领：它是纯探针（环境变量门控、只 console.log、不改数值），可直接 `git checkout -- src/core/resource/helpers.ts` 丢弃并在此记一行；别把它合进任何提交。
