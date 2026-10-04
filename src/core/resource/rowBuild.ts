@@ -262,6 +262,7 @@ export function buildExecutions(
       count: state.exSpecialCount,
       actionTime: cfg.exSpecialActionTime,
       comboAlignRatio: car,
+      comboAlignSource: 'setting',
       totalTime: state.exSpecialCount * cfg.exSpecialActionTime,
       totalComboAlignTime: state.exSpecialCount * cfg.exSpecialActionTime * car,
       energyConsume: cfg.exSpecialEnergyConsume,
@@ -283,6 +284,7 @@ export function buildExecutions(
       count: state.ultimateCount,
       actionTime: cfg.ultimateActionTime,
       comboAlignRatio: car,
+      comboAlignSource: 'setting',
       totalTime: state.ultimateCount * cfg.ultimateActionTime,
       totalComboAlignTime: state.ultimateCount * cfg.ultimateActionTime * car,
       energyConsume: 0,
@@ -303,6 +305,7 @@ export function buildExecutions(
       count: chainCountTotal,
       actionTime: cfg.chainActionTime,
       comboAlignRatio: car,
+      comboAlignSource: 'setting',
       totalTime: chainCountTotal * cfg.chainActionTime,
       totalComboAlignTime: chainCountTotal * cfg.chainActionTime * car,
       energyConsume: 0,
@@ -418,6 +421,7 @@ export function buildExecutions(
       count: cfg.dodgeCounterCount,
       actionTime: cfg.dodgeCounterActionTime,
       comboAlignRatio: car,
+      comboAlignSource: 'setting',
       totalTime: cfg.dodgeCounterCount * cfg.dodgeCounterActionTime,
       totalComboAlignTime: cfg.dodgeCounterCount * cfg.dodgeCounterActionTime * car,
       energyConsume: 0,
@@ -442,6 +446,7 @@ export function buildExecutions(
       count: totalDefensiveAssist,
       actionTime: cfg.defensiveAssistActionTime,
       comboAlignRatio: car,
+      comboAlignSource: 'setting',
       totalTime: charged * cfg.defensiveAssistActionTime,
       totalComboAlignTime: charged * cfg.defensiveAssistActionTime * car,
       energyConsume: 0,
@@ -499,6 +504,7 @@ export function buildExecutions(
       count: cfg.parryCount,
       actionTime: cfg.assistFollowUpActionTime,
       comboAlignRatio: car,
+      comboAlignSource: 'setting',
       totalTime: charged * cfg.assistFollowUpActionTime,
       totalComboAlignTime: charged * cfg.assistFollowUpActionTime * car,
       energyConsume: 0,
@@ -525,6 +531,7 @@ export function buildExecutions(
       count: counterAssistCount,
       actionTime: counterAssistActionTime,
       comboAlignRatio: car,
+      comboAlignSource: 'setting',
       totalTime: counterAssistCount * counterAssistActionTime,
       totalComboAlignTime: counterAssistCount * counterAssistActionTime * car,
       energyConsume: 0,
@@ -542,7 +549,9 @@ export function buildExecutions(
   }
   getAgentMechanic(cfg.agentId)?.patchExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
 
-  return executions.map(exec => applyExecutionUtilization(cfg, exec))
+  // 合轴率来源（CC-453）：上面 7 处读 cfg.*ComboAlignRatio（= 用户覆盖 ?? 倍率表默认）的行已标 'setting'；
+  // 其余（引擎常量行、模块 buildExecutions/patchExecutions 推的行、跟随别的招式比例的衍生行）在此统一标 'fixed'，模块字面量不用改。
+  return executions.map(exec => applyExecutionUtilization(cfg, exec.comboAlignSource ? exec : { ...exec, comboAlignSource: 'fixed' }))
 }
 
 export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state: IterationState, totalTime = 180): AnomalyEventExecution[] {

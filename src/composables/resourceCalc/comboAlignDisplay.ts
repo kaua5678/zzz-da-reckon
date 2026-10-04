@@ -8,11 +8,17 @@
  * 引擎行上 `comboAlignRatio` / `totalComboAlignTime` 就是有效值，页面只负责渲染，不再重算。
  * 写侧不变：编辑仍走 `setComboAlignOverride`，引擎重算后读数自然跟上。
  */
-import type { CharacterResourceResult } from '@/types/resource'
+import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 
 type ExecLike = Pick<CharacterResourceResult['executions'][number], 'totalComboAlignTime'>
 
 /** 某角色全部执行行的合轴秒数合计（= Σ 引擎 `totalComboAlignTime`）。 */
 export function totalComboAlignTimeOf(charResult: { executions: readonly ExecLike[] }): number {
   return charResult.executions.reduce((sum, exec) => sum + exec.totalComboAlignTime, 0)
+}
+
+/** 该行合轴率能否在弹窗里改：只有来源 'setting'（用户覆盖 ?? 倍率表默认）的行，按本行 moveId 写覆盖才生效；
+ *  'fixed'（模块 / 引擎 / 赠行直写）与缺省一律只读（CC-453）。 */
+export function comboAlignEditable(exec: Pick<SkillExecution, 'comboAlignSource'>): boolean {
+  return exec.comboAlignSource === 'setting'
 }

@@ -701,7 +701,7 @@
         <n-text depth="3" style="font-size: 12px; display: block; margin-bottom: 12px">
           合轴率表示该招式动作时间中可与其他操作并行的比例。合轴时间内角色处于"非操作中"状态，触发非操作回能加成；
           合轴段不占三人共享时间轴 → 该部分时间回流平A池（全队必做动作因此可超出战斗总时长）。
-          查看各招式的总时间和执行次数后，输入合适的合轴率（0-100%）。
+          查看各招式的总时间和执行次数后，输入合适的合轴率（0-100%）。标「固定」的行由角色模块 / 引擎直写比例，这里不可改。
         </n-text>
 
         <n-tabs type="line" animated>
@@ -726,6 +726,7 @@
                 <div class="combo-align-exec-control">
                   <n-slider
                     :value="exec.comboAlignRatio * 100"
+                    :disabled="!comboAlignEditable(exec)"
                     :min="0"
                     :max="100"
                     :step="5"
@@ -734,6 +735,7 @@
                   />
                   <n-input-number
                     :value="Math.round(exec.comboAlignRatio * 100)"
+                    :disabled="!comboAlignEditable(exec)"
                     :min="0"
                     :max="100"
                     size="small"
@@ -745,6 +747,7 @@
                   <span class="combo-align-time-display">
                     合轴{{ exec.totalComboAlignTime.toFixed(1) }}s
                   </span>
+                  <n-text v-if="!comboAlignEditable(exec)" depth="3" style="font-size: 11px" title="该行合轴率由角色模块 / 引擎直写，结果页覆盖不生效">固定</n-text>
                 </div>
               </div>
             </div>
@@ -783,7 +786,7 @@ import TeamDamage3DChart from '@/components/charts/TeamDamage3DChart.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
-import { totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
+import { comboAlignEditable, totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
 import type { AnomalyEventRecord } from '@/types/resource'
 
 /** 特殊动作喧响卡说明文字「单价/次 · 伴随 单价×50%」（CC-232：单价与伴随比例读 data 单一来源，不再手写） */

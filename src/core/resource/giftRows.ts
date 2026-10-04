@@ -53,6 +53,7 @@ export function buildGiftRow(input: GiftRowInput): SkillExecution {
     count,
     actionTime,
     source: 'gift',
+    comboAlignSource: 'fixed',
     comboAlignRatio,
     totalTime,
     totalComboAlignTime: totalTime * comboAlignRatio,

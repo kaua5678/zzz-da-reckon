@@ -10,6 +10,12 @@ import type { SkillDamageTarget } from '@/types/catalog'
 // ============ 招式执行计划 ============
 
 /** 单个招式的执行记录 */
+/** 合轴率的来源（CC-453，T18 阶段 2）：
+ *  'setting' = 用户覆盖 ?? 倍率表默认（`configStore.getComboAlignOverride`，键 = 本行 moveId；结果页「合轴率调节」可改）；
+ *  'fixed'   = 行作者直写（引擎常量行 / 角色模块行 / 赠行 / 跟随别的招式比例的衍生行），按本行 moveId 写覆盖不生效 ⇒ 弹窗只读。
+ *  类型上可选只为不扫 ~90 处模块字面量；`buildExecutions` 出口统一补 'fixed'，赠行在 `buildGiftRow` 打，
+ *  所以引擎产出的行恒有值（锁 core/__tests__/comboAlignSourceCc453.test.ts）；展示层按「≠ 'setting' 即只读」读，缺省安全。 */
+export type ComboAlignSource = 'setting' | 'fixed'
 export interface SkillExecution {
   /** 招式 move id */
   moveId: string
@@ -32,6 +38,8 @@ export interface SkillExecution {
   totalTime: number
   /** 总合轴时间 = count × actionTime × comboAlignRatio */
   totalComboAlignTime: number
+  /** 合轴率来源，见 `ComboAlignSource`；引擎产出行恒有值 */
+  comboAlignSource?: ComboAlignSource
   /** 能量消耗（每次，正数表示消耗） */
   energyConsume: number
   /** 总能量消耗 */
