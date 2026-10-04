@@ -18,11 +18,10 @@
  * ## 反证（删掉被锁行为后本测试确实变红）—— **已实测**
  *
  * 在隔离 worktree 把 `:371` 的 `runOuterLoop(true)` 改成 `runOuterLoop(false)`（处方字面实现），
- * 本文件 **2 例全红**（`EXIT=1`），失败原文：
+ * 本文件**当场红**（`EXIT=1`），失败原文：
  *
  * ```
- * ① AssertionError: 弃轴队不应为空（轴退化机制必须仍然活着）: expected 0 to be greater than or equal to 5
- * ② AssertionError: ratio=0 时弃轴集合仍应非空 ⇒ 吸收不是弃轴判定的决定因素: expected 0 to be greater than or equal to 5
+ * AssertionError: 弃轴队不应为空（轴退化机制必须仍然活着）: expected 0 to be greater than or equal to 5
  * ```
  *
  * 即弃轴计数 **13 → 0**（机制整体哑掉）。**非空守卫是必要的**：处方让三档**同时**塌成空集，
@@ -69,13 +68,24 @@ async function fallbackSet(ratio: number): Promise<{ ids: string[]; scanned: num
 }
 
 describe('§20.5-3 轴退化上报：对照可行性与吸收比无关（防「改在轴态跑」处方回归）', () => {
-  it('① 弃轴集合在吸收比 0 / 0.4 / 1 下逐位相同（前提「对照被吸收救活」不成立）', async () => {
+  /**
+   * 一遍扫三档（0 / 0.4 / 1）——**三次 `fallbackSet` 全跑**是有意的：
+   * 「集合相同」必须由**独立三次求值**得出，不能同一次内复用（那会掩盖
+   * 「只有某一档才激活弃轴」的形态）。104 预设 × 3 ≈ 65s（实测）。
+   *
+   * ⚠ **两个断言缺一不可**（反证实测：处方落地时两者同时红）：
+   *  - 非空守卫：处方把弃轴打到 **0** ⇒ 红（`expected 0 to be >= 5`）；
+   *  - 逐位相同：若**只**写这条，处方下三档**同时**塌成空集 ⇒ `0 == 0 == 0` **假绿**。
+   */
+  it('① 弃轴集合在吸收比 0 / 0.4 / 1 下逐位相同，且非空（前提「对照被吸收救活」不成立）', async () => {
     const none = await fallbackSet(0)
     const mid = await fallbackSet(0.4)
     const full = await fallbackSet(1)
 
     // 反空洞：确实扫到了预设库（防「预设数组空 / 引擎早退 ⇒ 三档都空 ⇒ 假绿」）
     expect(none.scanned, '预设库应被扫到').toBeGreaterThan(50)
+    expect(mid.scanned, '预设库应被扫到（0.4 档）').toBeGreaterThan(50)
+    expect(full.scanned, '预设库应被扫到（1 档）').toBeGreaterThan(50)
 
     // ★ 非空守卫：处方把弃轴打到 0 ⇒ 这里红（空集「逐位相同」没有意义）
     //   下限取 5（实测 13，留足余量：数据演进到 5 以下才需要复核本条）
@@ -83,12 +93,5 @@ describe('§20.5-3 轴退化上报：对照可行性与吸收比无关（防「�
 
     expect(mid.ids, '吸收比 0 vs 0.4：弃轴集合必须逐位相同').toEqual(none.ids)
     expect(full.ids, '吸收比 0.4 vs 1：弃轴集合必须逐位相同').toEqual(none.ids)
-  }, 600_000)
-
-  it('② 反证对照：把吸收全关（ratio=0）仍不足以让弃轴集合变空 —— 对照本就不靠吸收救', async () => {
-    // 本条与 ① 同源，但**单独可读**：处方若落地，① 与 ② 一起红（0 队）
-    const none = await fallbackSet(0)
-    expect(none.ids.length, 'ratio=0 时弃轴集合仍应非空 ⇒ 吸收不是弃轴判定的决定因素')
-      .toBeGreaterThanOrEqual(5)
-  }, 600_000)
+  }, 900_000)
 })
