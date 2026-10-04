@@ -1,6 +1,6 @@
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionTopUp, InteractionTopUpInput } from '../types'
 import { axisOverlayChannel, type AxisLike } from '../types'
-import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
+import type { BanyueRageCycle, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { calcPenetrationPower } from '@/core/damage'
 import { fmt } from '@/utils/format'
@@ -108,59 +108,6 @@ const DEFAULT_BLOCK = 20
 const DEFAULT_DUAL = 5
 const DEFAULT_DIDONG_COMBO = 0 // 怒相外连段里分配给「地动→山摇·怒」的组数（默认 0 = 全打论道连段）
 
-export interface BanyueRageCycle {
-  /** 怒相次数 */
-  rageCount: number
-  /** 嗔火总量 */
-  furyTotal: number
-  /** 双反次数（完美闪避+金身弹刀，+10嗔火/次） */
-  dualCounterCount: number
-  /** 怒相外连段总数（论道连段 + 地动山摇连段，闪能支付 60/组，自动 = floor(剩余闪能/60)） */
-  comboOutCount: number
-  /** 怒相外「地动→山摇·怒」连段组数（滑块分配，默认 0 = 全打论道连段） */
-  diDongComboCount: number
-  /** 失衡轴内捏的普通强特消耗的总闪能（默认 0，轴模式由捏轴反馈；连段块免费不计） */
-  axisExSpend: number
-  /** 失衡轴内捏的连段块总数（免费·山威 = 怒相内连段的轴内表达，不影响怒相外自动连段） */
-  axisComboCount: number
-  /** 怒相内论道次数（山威） */
-  lunDaoRageCount: number
-  /** 怒相内狮子吼·怒次数（山威） */
-  shiZiHouNuCount: number
-  /** 怒相内「地动→山摇·怒」连段组数（轴内捏的 banyue-combo-didong 块决定，默认 0 = 全打论道连段） */
-  rageDiDongComboCount: number
-  /** 怒相内地动次数（山威免费，地动山摇连段 = rageDiDongComboCount） */
-  diDongRageCount: number
-  /** 怒相内山摇·怒次数（山威免费，地动派生连段 = rageDiDongComboCount） */
-  shanYaoNuRageCount: number
-  /** 怒相外论道连段论道次数（= comboOutCount − diDongComboCount） */
-  lunDaoOutCount: number
-  /** 怒相外论道连段狮子吼·怒次数（= comboOutCount − diDongComboCount） */
-  shiZiHouNuOutCount: number
-  /** 怒相外地动山摇连段地动次数（= diDongComboCount） */
-  diDongOutCount: number
-  /** 怒相外地动山摇连段山摇·怒次数（= diDongComboCount） */
-  shanYaoNuOutCount: number
-  /** 怒相内山摇次数（剩余山威） */
-  shanYaoRageCount: number
-  /** 闪能收支：总收入 / 总支出 */
-  flashIncome: number
-  flashSpent: number
-  /** 山威免费强特总数 */
-  swayExCount: number
-  /** 嘲讽取消次数（钳制到失衡外连段总数） */
-  tauntCancelCount: number
-  /** 失衡外连段组数（轴模式 = 闪能连段 + 轴内未覆盖怒相组≤2；非轴模式 = 怒相外自动连段，怒相内默认失衡内全取消） */
-  outStunComboCount: number
-  /** 失衡轴内捏的连段块总数（banyue-combo + banyue-combo-didong，×窗口数；非轴模式 0） */
-  axisInComboCount: number
-  /** 失衡外连段末尾强特后摇次数（= outStunComboCount − 嘲讽取消；失衡内连段被连携/大招/瞬拳取消后摇，不计） */
-  comboOutRecoveryCount: number
-  /** 后摇按两类连段占比拆分：论道连段剩余后摇次数（末尾 = 狮子吼·怒） */
-  lunDaoRecoveryCount: number
-  /** 后摇按两类连段占比拆分：地动山摇连段剩余后摇次数（末尾 = 山摇·怒） */
-  diDongRecoveryCount: number
-}
 
 /**
  * 自动补齐交互的时间上限（用户口径 2026-09-01）。
@@ -296,6 +243,7 @@ export function computeBanyueRageCycle(
 
   return {
     rageCount: rage,
+    rageComboQuota: rageComboGroups,
     furyTotal: furyTotal,
     dualCounterCount: dual,
     comboOutCount: comboOut,

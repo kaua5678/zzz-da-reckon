@@ -34,7 +34,7 @@ export interface CorrosionSource {
 
 // ============ 角色资源汇总 ============
 
-/** 般岳·艾洛温嗔火/怒相循环明细（用户确认口径） */
+/** 般岳·艾洛温嗔火/怒相循环明细（用户确认口径）。唯一定义（CC-460 前 `banyue.ts` 还有一份同名同字段副本，doc 已漂移） */
 export interface BanyueRageCycle {
   /** 怒相次数 = floor(嗔火总量 / 120) */
   rageCount: number
@@ -76,9 +76,11 @@ export interface BanyueRageCycle {
   flashSpent: number
   /** 山威免费强特总数 = 怒相次数 × 4 */
   swayExCount: number
+  /** 怒相内免费连段配额（组）= 怒相次数 × 2（4 山威/怒相 = 2 组）。失衡轴页 [怒] 块 / 连段可用数读这里，页面不重算（CC-460） */
+  rageComboQuota: number
   /** 嘲讽取消次数（钳制到失衡外连段总数） */
   tauntCancelCount: number
-  /** 失衡外连段组数（轴模式 = 全部连段 − 轴内捏块；非轴模式 = 怒相外自动连段，怒相内默认失衡内全取消） */
+  /** 失衡外连段组数（轴模式 = 闪能连段 + 轴内未覆盖怒相组≤2；非轴模式 = 怒相外自动连段，怒相内默认失衡内全取消） */
   outStunComboCount: number
   /** 失衡轴内捏的连段块总数（banyue-combo + banyue-combo-didong，×窗口数；非轴模式 0） */
   axisInComboCount: number

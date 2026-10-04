@@ -662,8 +662,8 @@ const allMoves = computed(() => {
       const banyueMeta = axisMoveMeta
       if (cycle && banyueMeta) {
         if (banyueMeta.tag === '怒') {
-          // 连段块：山威配额 = 怒相次数 × 2 组（4 山威/怒相；官方预设自觉遵守，不硬限制）
-          remaining = Math.max(0, cycle.rageCount * 2 - consumed)
+          // 连段块：山威配额由模块给出（rageComboQuota = 怒相次数 × 2 组；官方预设自觉遵守，不硬限制）
+          remaining = Math.max(0, cycle.rageComboQuota - consumed)
         } else {
           // 普通强特：剩余闪能预算（flashSpent 已含已捏的 axisExSpend 与自动连段）
           const budget = Math.max(0, cycle.flashIncome - cycle.flashSpent)
@@ -721,7 +721,7 @@ const allMoves = computed(() => {
         const didongConsumed = rageCombos && comboId === rageCombos.primary
           ? consumedOnAxes(c.slot, a => a.moveId === rageCombos.didong)
           : 0
-        const rageQuota = c.banyueRageCycle ? c.banyueRageCycle.rageCount * 2 : 0
+        const rageQuota = c.banyueRageCycle?.rageComboQuota ?? 0
         const available = isRageCombo && c.banyueRageCycle
           ? comboId === rageCombos?.primary
             ? Math.max(0, rageQuota - didongConsumed - consumed)
