@@ -92,6 +92,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 17:25 arena-F 第 488 轮**（开工：主仓 = origin = `f163735d` 干净；收工前主 lane 在主仓有未提交 `core/resource.ts` + `core/resource/foldLoop.ts`（+25 行，未认领，R37 工作），本轮文件不相交未碰；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T54`，收工已删）。
+- **纠正 r487 结论**：r487 §2b / §8 写「`src/views` + `src/components` 无 moveId 字面量」**是错的**。`StunAxisPage.vue` 当时 L369 `'1371014'`/`'1371020'`（凝神窗口触发）、L813 `'1371020'`（`isPromotable` 排除符法千重）。原因：r486 只记录了 `grep -rnP` 查法，没有真跑。规则：以后任何「无 X」结论都贴命令 + 结果行数。
+- **落地 CC-448** `06011534`（arch 表有行）：`AxisWindowLaneDecl` 声明对象（kind / name / banner / windowSeconds / isTriggerBlock / fullCoverage? / window / blockTag）替代 CC-62 的种类字串；般岳 / 仪玄各声明；门面 `teamAxisWindowLanes(team)`；`StunAxisPage.vue` 删 10 个 per-kind 符号 + 三处成对模板，只剩 `windowLanes` computed + `laneWindowsFor` / `laneBlockTag`；`isPromotable` 字面量 → `axisNonDecibelUltimates` 声明。锁 `composables/__tests__/axisWindowLaneDecl.test.ts`。
+- **行为差异（有意）**：只有仪玄在队时凝神道 top 从 104px 上移到 84px（lane 位置按出现顺序 `laneTop(3 + idx)`，不再按种类写死）；两人都在时与原一致（84 / 104）。`.sap-timeline` 高度仍固定 106px，第二条 lane 原本就溢出 2px，未改。
+- **不做**：`axisEditorBlockMarks` 并入 lane 声明（CC-48 块级扫描能力，另有门面与锁；lane 声明只消费其 mark）；`teamAxisWindowLaneSlot` 保留（CC-62 锁 `agentMechanicViewCc62.test.ts` 直接用它）。
+- 验证：vue-tsc 0 错（`arenaF/r488-tsc.log`）；vitest 定向 4 文件 12 通过 + banyue/yixuan/stunAxis/agentMechanicView 切片 25 文件 177 通过（`r488-vitest*.log`）；guards/tokens/validate:data/validate:specs/verify:recording 通过；build 通过。UI-only，zd 不适用。回滚点：`git revert 06011534`。
+- **下一轮**：页面镜头收官（r483 四大页 + StunAxisPage computed 语义全部读完）。先 REQUIREMENTS → §3 → §8.0（新增 #16）；三者皆空 ⇒ 「本轮无题」，不要按行数挑页再扫。若要找题，只认 §8.0 #16 的 grep 触发。
+
 **2026-10-04 17:00 arena-F 第 487 轮**（开工：主仓 = origin = `30dfd0cc`；主 lane 当时有未提交 `core/resource/foldLoop.ts` WIP（未认领、后自行撤掉），本轮文件不相交；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T53`，收工已删）。
 - **落地 CC-447** `0acf5cd1`（arch 表有行）：`AttributeConfigPage.vue` 抗性元素列表 → `STANDARD_ENEMY_DEBUFF_ELEMENTS × damageElementLabel`；`StunAxisPage.vue` `ENTRY_ANOMALY_LABELS` 删除；`elementLabelSingleSource.test.ts` 正则补洞（数组写法）、StunAxisPage 例外撤销。UI 层，zd 不适用。回滚 `git revert 0acf5cd1`。
 - **结论落盘**：r483 列的四大页页面镜头全部扫完（r6 §8 第 487 行）；`src/views`+`src/components` 已无 agentId/moveId 字面量、手写 localStorage、元素中文名副本。`StatPanel`/`enemyDebuffStats` 的「火属性」后缀对仍按 CC-214 不合并。
