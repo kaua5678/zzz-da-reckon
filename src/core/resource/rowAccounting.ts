@@ -126,7 +126,20 @@ export function timeSliceTriggerCounts(
 }
 
 /**
- * 行级喧响收入——与 enrichExecutionPlan 的 decibel 分支逐分支同语义（记账层 == 展示层）：
+ * 可选回能键（decibel/energy）的三态解析——记账层与展示层共用的唯一实现（CC-466，r585）：
+ * - `override`（模块口径换算后的行值，如洛克茜自旋每秒×秒数）⇒ 行值；
+ * - 行值显式 0（`RECOVERY_OFF` / `ENERGY_RECOVERY_OFF`，CC-465）⇒ 0，禁用表值回填；
+ * - 否则 ⇒ 表值 || 行值 || 0（表中有值回填、表值 0 落模块预计算行值）。
+ * 「显式 0」用原始行值判定（undefined / NaN 不算显式 0）；是否对表值 / 结果做 finiteOr0 由调用方决定
+ * （记账层做：账本绝不带 NaN；展示层 enrichExecutionPlan 保持原值透传）。
+ */
+export function resolveRecoveryPerCount(raw: number | undefined, override: boolean | undefined, tableValue: number | undefined): number {
+  if (override) return raw ?? 0
+  if (raw === 0) return 0
+  return tableValue || (raw ?? 0)
+}
+/**
+ * 行级喧响收入——与 enrichExecutionPlan 的 decibel 分支同源（三态解析走 resolveRecoveryPerCount，记账层 == 展示层）：
  * - basic_attack 行：时间通道原值（enrich 不回填其 decibel，模块可改写 total，如伊德海莉蓄力置 0）；
  * - moveId 在 cfg.decibelRecoveryByMoveId（倍率表预存，键存在 = 表中找到）：
  *   decibelRecoveryOverride = 模块口径换算行值（洛克茜自旋每秒×秒数）；显式 0 = 模块禁用；
@@ -140,11 +153,7 @@ export function rowDecibelTotal(cfg: CharacterOperationConfig, row: SkillExecuti
   if (row.moveId === 'basic_attack') return finiteOr0(row.totalDecibelRecovery)
   const table = cfg.decibelRecoveryByMoveId
   if (!table || !Object.prototype.hasOwnProperty.call(table, row.moveId)) return finiteOr0(row.totalDecibelRecovery)
-  const perCount = row.decibelRecoveryOverride
-    ? finiteOr0(row.decibelRecovery)
-    : row.decibelRecovery === 0
-      ? 0
-      : (finiteOr0(table[row.moveId]) || finiteOr0(row.decibelRecovery) || 0)
+  const perCount = finiteOr0(resolveRecoveryPerCount(row.decibelRecovery, row.decibelRecoveryOverride, finiteOr0(table[row.moveId])))
   return finiteOr0(perCount * Math.max(0, finiteOr0(row.count)))
 }
 
@@ -165,8 +174,6 @@ export function rowEnergyTotal(cfg: CharacterOperationConfig, row: SkillExecutio
   if (row.moveId === 'basic_attack') return finiteOr0(row.totalEnergyRecovery)
   const table = cfg.energyRecoveryByMoveId
   if (!table || !Object.prototype.hasOwnProperty.call(table, row.moveId)) return finiteOr0(row.totalEnergyRecovery)
-  const perCount = row.energyRecovery === 0
-    ? 0
-    : (finiteOr0(table[row.moveId]) || finiteOr0(row.energyRecovery) || 0)
+  const perCount = finiteOr0(resolveRecoveryPerCount(row.energyRecovery, undefined, finiteOr0(table[row.moveId])))
   return finiteOr0(perCount * Math.max(0, finiteOr0(row.count)))
 }

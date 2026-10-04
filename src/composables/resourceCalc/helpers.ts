@@ -19,6 +19,7 @@ import { writeMechanicSettingCfg } from '@/specs/cfgField'
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { inferSkillDamageTarget } from '@/core/damage'
+import { resolveRecoveryPerCount } from '@/core/resource/rowAccounting'
 import type { StunSkillExecution } from '@/core/stunPool'
 import {
   findExSpecial,
@@ -376,12 +377,9 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
             // 行值 = 每秒 × spinSeconds），跳过表值覆盖——与 damage/anomaly override 同构。
             // 登记融合组的主段行：喧响/能量取「一次动作」的整段和（与 damage/daze/anomaly 同一函数
             // 同一口径）；只回头段会把雅一次连携的 230.15 记成 69.05（坑 31）。
-            const tableDecibel = fusedOf('decibel_recovery')
-            const decibelValue = exec.decibelRecoveryOverride
-              ? (exec.decibelRecovery ?? 0)
-              : exec.decibelRecovery === 0 ? 0 : (tableDecibel || (exec.decibelRecovery ?? 0))
-            const tableEnergy = fusedOf('energy_recovery')
-            const energyValue = exec.energyRecovery === 0 ? 0 : (tableEnergy || (exec.energyRecovery ?? 0))
+            // 三态解析与记账层 rowDecibelTotal / rowEnergyTotal 同一函数（CC-466）——记账层 == 展示层由结构保证。
+            const decibelValue = resolveRecoveryPerCount(exec.decibelRecovery, exec.decibelRecoveryOverride, fusedOf('decibel_recovery'))
+            const energyValue = resolveRecoveryPerCount(exec.energyRecovery, undefined, fusedOf('energy_recovery'))
             patch = {
               actionCode: move.id,
               moveName: move.name?.zhCN || move.name?.en || exec.moveName,
