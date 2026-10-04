@@ -92,6 +92,12 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 21:29 arena-F 第 520 轮**（无题折叠轮，但有现场观察需要留底）
+- 21:29 开工核查主仓干净；21:29:46（我 `git add docs/… && commit` 的同一秒级窗口）`src/core/resource/helpers.ts:515` 冒出 **另一条 lane 的 4 行临时测量桩**：`// [TEMP INSTRUMENT — 一次性测量，测完立即回退]` + `globalThis.__capLog.push({ s: rawScale, n: sumAbsorbedNet, b: budget })`（`iterateBody` 封顶处）。LANE-CLAIMS 无对应认领；无 vitest 进程在跑。做法与 r510 那条 lane 的 `helpers.ts` 一行实验同款（那次后来自己撤了）。
+- **arena-F 未碰它**：本轮提交 `b0fb9bf2` 只 `git add` 了 `docs/mcp-r6-refactor-list.md`（显式路径），折叠行 `517–520` 的「主仓干净」指 21:29 核查时刻，属实。
+- **下一轮接手者**：开工 `git diff --stat` 看该桩是否已回退。① 已回退 ⇒ 无事；② 仍在且 mtime > 1 小时、仍无认领 ⇒ 按提示词 §9「孤儿」流程：它只是测量桩不是功能，**直接 `git checkout -- src/core/resource/helpers.ts` 丢弃**（在 §2b 记一行「何时丢、依据 = 作者自注一次性」），不要带着它跑 zd / 全量（`globalThis` 侧写不影响数值，但会污染 `.zc/perf` 的 purity 类探针）。③ 若那条 lane 把测量结论写进了 docs（grep `__capLog` / `capLog`），把指针补到 §8.0 #14（折叠环封顶）下。
+- 现场其余与 r516 收口一致：REQUIREMENTS 7 done + R4 撤销；§3 仅 T10 备选 / T16 不做；§8.0 无触发。
+
 **2026-10-04 21:05 arena-F 第 516 轮**（开工：主仓 = origin = `58873efd` 干净；md5 三者未变；REQUIREMENTS / §8.0 空；§3 仅 T18 阶段 2 开放且无人认领 ⇒ 自做）
 - **落地 CC-453** `a0df7cae`（arch 表有行；T18 卡关闭）：`SkillExecution.comboAlignSource?: 'setting' | 'fixed'`；`rowBuild.ts` 7 处 `cfg.*ComboAlignRatio` 行标 setting、出口统一补 fixed、`buildGiftRow` 打 fixed；`comboAlignDisplay.ts#comboAlignEditable`；`ResultPage.vue` 滑块 / 数字框 `:disabled` + 「固定」提示 + 弹窗说明一句。模块字面量零改动。
 - **设计拍板**：① 来源在管线合流点打而不是让 ~90 处模块字面量各写一遍（r479 不扫字面量 + 唯一出口 `return executions.map(applyExecutionUtilization)` 恰好存在）；② 值域取 `setting | fixed` 而非卡上草拟的 `override | catalog | module`——弹窗只需要「按本行 moveId 写覆盖是否生效」这一个问题，override/catalog 之分引擎自己也不知道（`ov()` 只返回合并值），`module` 又漏掉引擎常量行 / 赠行 / 衍生行；③ 类型可选 + 引擎出口保证 + 锁测试 = 不变量成立，不是幻影可选（arch 行写了理由）。
