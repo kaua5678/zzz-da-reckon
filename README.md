@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（78 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（79 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -147,6 +147,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/LONG-TERM-DIRECTIONS.md` | **R3 长期方向提案（只提案不实施，待用户挑选）**：A 事件时间轴内核替代整局总量+不动点 / B 受控实测校准集（真值锚）/ C 机制即数据 + 版本流水线 / D 统一决策层 / E 口径与数据版本绑定；各方向的根本问题、时机、收益、不可逆点、切刀与是否与当前重构冲突，结尾给推荐顺序 |
 | `docs/mcp-dev-process-speed.md` | **R2 开发流程提速（先量再改）**：一张卡的时间花在哪（实测表）、验证为何必要、已落地的零强度损失优化（tsc 增量 17→1.5s、零差四路并行 176→51s `.zc/perf/zd.sh`、文档与 verify 重叠）、**会削弱保证的选项清单（待用户裁决）** |
 | `docs/mcp-worker-task-queue.md` | **交接与执行纪律（活文档，原「低级模型任务队列」，2026-09-27 W3 压缩）**：置顶顺序、§0 子代理派发纪律与 R2 收尾流程、§1 长期规则（从历史交接提炼）、§2 最近一轮交接与已知坑（每轮替换，不追加）；压缩前全文见 `git show 8a8db00:docs/mcp-worker-task-queue.md` |
+| `docs/mcp-combo-align-ledger-census.md` | **合轴率账本归属普查（T19 阶段 0，纯读）**：实测 166 队后把立卡的「53 模块写行上比例」收敛为 **5 模块 / 8 组合**（绝大多数模块写的是 `0`）；5 家**全部**有 credit 产出口（同源或有意的 NET 约定）⇒ 活跃缺陷 0；阶段 1 两候选收益 ≈ 0 建议不立项，替代方案 = 加一条 check-guards 判据防未来 |
 | `docs/mcp-drift-triage.md` | **drift 待复核队列分诊**：CC 批次触发 102 条 ⟳ 的成因、四态复核判据（still-holds / drifted / broken-anchor / needs-user）、W13–W15 工人分批与主代理落盘纪律（按批 commit、同文件同批清、禁止无归因刷日期） |
 | `docs/mcp-liuyin-promote-source.md` | **琉音转大次数唯一来源（W21 阻塞项 lead 设计）**：同轮四读数（floor / 计划值结转 / 池不动点 / 轴声明）的证据表、planned≠pool 的口径根因、单源 = 答案层 `promote` 滞后注入的通道设计、轴模式闸门（待用户）、否决记录与证伪闸门；拆卡 W25/W26 |
 | `docs/mcp-r22d1-batch12-field-census.md` | **R22-D1 批 1-2 裁决不做 + 核心角色字段普查计划（handoff）**：批 1-2（billy/yeshuguang 终局旗标并入通用骨架）判不做理由、核心 `CharacterOperationConfig` 角色字段 census 方案（字段→写入方/读取方） |
@@ -160,4 +161,4 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/REQUIREMENTS.md` | **用户需求唯一入口**：用户经助手写入的 `R<编号>` 需求；每轮开工先读、优先于自选待办，做完标 `[done <commit>]` 不删条目 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（78 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（79 份，与节标题一致），新增文档需同步本表。
