@@ -952,7 +952,8 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 
 
 <!-- card:T20 -->
-### T20（r573 arena-F 立卡；**CC-456**；未认领 1 轮则 arena-F 自做）· LocalizedString 显示名收口：把 ~50 处 `name.zhCN ?? …` 手抄迁到既有单一解析器 `utils/format#localized`，并上源码锁
+### T20（r573 arena-F 立卡；**r574 关闭**：CC-456 `7b6f141e`，arena-F 自做）· LocalizedString 显示名收口：把 ~50 处 `name.zhCN ?? …` 手抄迁到既有单一解析器 `utils/format#localized`，并上源码锁
+**状态（r574 01:22 arena-F）：T20 关闭。** 一次提交 `7b6f141e` 完成 ①②③④ + A–E 全部站点（47 处迁移、24 文件 + 1 锁），zd DIFF 0、全量 492/4389 通过（含他 lane 未入库 2 条）。与卡面差异：6 个局部 `agentName` 没删函数而是改成纯委托 `return catalogStore.agentName(id)`（函数声明有提升、`const` 别名在 setup 期有 TDZ 风险；锁不匹配委托写法，无口径副本）；`freeCompare/engine.ts:342` 直接 `const nameOf = catalog.agentName`；`modelingGaps.ts` 原已导入 `localized`。锁的 ALLOWED 是「文件 → 允许命中数」：`damage.ts` 1 / `resourceCalc/helpers.ts` 1 / `multiplierCoefficients.ts` 1 / `remielle.ts` 2。后续若有人想把 4 处匹配器也收口（`moveNameHaystack(move)` 之类），收益小，不立卡。
 **一句话**：解析器早就有（`src/utils/format.ts:13 localized(value, fallback)`，口径 `zhCN → en → fallback` nullish 链，带 `@fact`），它自己的文档注释写着「仓库中另有 ~25 处同约定手抄（含 5 个页面局部助手）——本函数是收口落点，新代码禁止再造第 N 个副本；迁移清单见 .claude 账本」——**迁移从未做完**，清单也不在仓库里（`.claude/` 下 grep 不到 `localized`）。r573 实测手抄已涨到 **52 处**（`grep -rn "name\.zhCN ?? \|name?\.zhCN ?? \|name?\.zhCN?\.slice" src --include=*.ts --include=*.vue | grep -v __tests__ | wc -l`），回退口径四种并存：`?? id` / `?? en ?? id` / `?? en ?? 槽位N` / `?.slice(0,5) || 槽N`，可选链写法 `name.zhCN` 与 `name?.zhCN` 混用。只有 `views/RunArchivePage.vue:323` 迁过（`localized(a?.name, id)`）。
 **为什么值得做（判据：更通用/更简单，不是降计数）**：显示名回退口径是一条产品规则（"zhCN 缺时显示什么"），现在分散在 20 个文件各持一份，改一次要改 20 处；`localized` 已是声明过的单一事实源，读者绕开它就是 §8.0「≥2 个不一致读者 ⇒ 单一解析器」的反模式。收口后：① 口径一处；② 6 份字节相同的页面局部 `agentName` 助手消失；③ 新增一把 CC-214 式源码锁，手抄不会再长回来。
 **行为中性证明（r573 实测）**：`public/static/catalog.json` 62 角色 / 83 音擎 **全部有 zhCN 且有 en**，`localized` 与手抄 `zhCN ?? id` 只在「zhCN 缺、en 在」时结果不同 ⇒ 当前数据下逐字相同；显示名不进引擎数值 ⇒ 预期 zd DIFF 0、timeGolden/ratchet 不动。唯一要保留差异的是 `||`（空串回退）站点，见 E 类。
