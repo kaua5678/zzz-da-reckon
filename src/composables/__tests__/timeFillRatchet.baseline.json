@@ -320,7 +320,7 @@
   "outerExit": "stable"
  },
  "auto-1401-1411-1031": {
-  "slack": 0,
+  "slack": 1.4,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"

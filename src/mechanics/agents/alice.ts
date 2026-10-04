@@ -10,6 +10,7 @@ import type {
   AgentResourceSectionsInput,
   ExtraAnomalyRowGroup,
   ExtraAnomalyRowsInput,
+  ExtraNecessaryAction,
   PoolSummarySection,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
@@ -244,6 +245,34 @@ export function cfgExternalCountsProbe(cfg: {
   }
 }
 
+/**
+ * 星芒圆舞曲 #3 的**账本预留**（CC-454，2026-10-04 合轴归属审计 §2.2）：
+ * 走通用 `extraNecessaryAction`，**不带 `moveId`** ⇒ 引擎只预留时间（含合轴抵扣）、不补行，
+ * 行仍由 `buildAliceExecutions` 产出（与雅 CC-202 `miyabiFrostMoonReserve` 同构先例）。
+ *
+ * **修的是什么**：原先「合轴率使前台时间 = 1s」这个意图**只写在执行行上**
+ * （`buildAliceExecutions` 的 `comboAlignRatio`），而引擎**不读行上的 `comboAlignRatio`**
+ * 去抵扣预算——`comboAlignCredit` 只由 `helpers.ts` 的
+ * `exSpecialComboAlignCredit`（模块 `estimateExSpecialTime`）或 `extraNecessaryAction` 产出。
+ * ⇒ 该比例是**死数据**：账本按全额 `次数 × 3.983s` 计必要时间，实测每队多占 18~21s 前台
+ * （6 次队：模块 footer 自述 6.00s，引擎账本 92.65s，差 86.65s 里 17.90s 是本项）。
+ *
+ * 比例与产行**同源**（同一个 `cfg.aliceSwordWillComboAlignRatio`），不各算一份（规则 11）。
+ * 回退：删 `aliceMechanic` 里的 `extraNecessaryAction` 一行（回到 `timeBudgetExcess` 折叠口径）。
+ */
+export function aliceSwordWillReserve(cfg: CharacterOperationConfig, state?: Readonly<IterationState>): ExtraNecessaryAction | null {
+  if (!state) return null
+  const smSrc = buildAliceSwordWillSource(cfg, state as IterationState, cfgExternalCountsProbe(cfg))
+  if (!smSrc || smSrc.sparkCount <= 0) return null
+  return {
+    count: smSrc.sparkCount,
+    moveName: '星芒圆舞曲 #3（账本预留）',
+    actionTime: cfg.aliceSwordWillActionTime ?? 0,
+    comboAlignRatio: cfg.aliceSwordWillComboAlignRatio ?? 0,
+    decibelRecovery: 0,
+  }
+}
+
 function buildAliceExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const smSrc = buildAliceSwordWillSource(cfg, state, cfgExternalCountsProbe(cfg))
   if (!smSrc || smSrc.sparkCount <= 0) return
@@ -470,6 +499,8 @@ export const aliceMechanic: AgentMechanicModule = {
   },
   buildCharConfig: buildAliceCharConfig,
   buildExecutions: buildAliceExecutions,
+  // CC-454：星芒圆舞曲 #3 的合轴时间进账本（只预留、不补行，合轴抵扣随之生效；原为行上死数据）
+  extraNecessaryAction: aliceSwordWillReserve,
   transformAnomalyPool: transformAliceAnomalyPool,
   buildAnomalyEvents: buildAliceAnomalyEvents,
   buildResourceResult: buildAliceResourceResult,
