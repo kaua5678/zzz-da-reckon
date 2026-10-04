@@ -92,6 +92,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 21:32 arena-F 第 521 轮**（无题折叠轮 `01d4ffcf`；并行 lane 观察留底）
+- 21:32:28 `src/mechanics/agents/alice.ts` 出现他 lane 的 WIP（+30 行，未认领）：新函数 `aliceSwordWillReserve` 走通用 `extraNecessaryAction`（不带 moveId ⇒ 只预留时间含合轴抵扣、不补行），`aliceMechanic.extraNecessaryAction: aliceSwordWillReserve`；注释自标 **CC-454**，引用「合轴归属审计 §2.2」。arena-F **未碰**；本轮只提交了 `docs/mcp-r6-refactor-list.md`。
+- 对 T18 / CC-452 / CC-453 的影响判断：该行由模块 `buildAliceExecutions` 产出 ⇒ `comboAlignSource` 出口补 `fixed`，弹窗只读，口径一致；`extraNecessaryAction` 无 moveId 不走 `rowBuild.ts:233` 补行分支，不新增 setting 行。CC-454 编号与 CC-453 不冲突。
+- 下一轮：若该 lane 已提交，看 arch 表是否有 CC-454 行及其审计文档名（grep `合轴归属审计`），把指针补进 T18 卡尾「相关」；若 > 1h 仍是 WIP 且无认领，按提示词 §9 孤儿流程（这次是功能改动，**不要直接丢**：隔离 worktree 跑 tsc + 相关锁 + zd 再决定）。
+
 **2026-10-04 21:29 arena-F 第 520 轮**（无题折叠轮，但有现场观察需要留底）
 - 21:29 开工核查主仓干净；21:29:46（我 `git add docs/… && commit` 的同一秒级窗口）`src/core/resource/helpers.ts:515` 冒出 **另一条 lane 的 4 行临时测量桩**：`// [TEMP INSTRUMENT — 一次性测量，测完立即回退]` + `globalThis.__capLog.push({ s: rawScale, n: sumAbsorbedNet, b: budget })`（`iterateBody` 封顶处）。LANE-CLAIMS 无对应认领；无 vitest 进程在跑。做法与 r510 那条 lane 的 `helpers.ts` 一行实验同款（那次后来自己撤了）。
 - **arena-F 未碰它**：本轮提交 `b0fb9bf2` 只 `git add` 了 `docs/mcp-r6-refactor-list.md`（显式路径），折叠行 `517–520` 的「主仓干净」指 21:29 核查时刻，属实。
