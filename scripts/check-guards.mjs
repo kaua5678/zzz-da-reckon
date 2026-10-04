@@ -64,6 +64,8 @@ import { scanJsonDupKeys, formatJsonDupKeys } from './lib/json-dup-keys.mjs'
 import { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST } from './lib/guard-registries.mjs'
 // 判据 25：无类型记录字符串键死读（CC-91，2026-09-27，见 scripts/lib/record-key-dead-reads.mjs 头注释）
 import { scanRecordKeyDeadReads, formatRecordKeyDeadReads } from './lib/record-key-dead-reads.mjs'
+// 判据 26：展示层角色 / 招式 id 字面量硬门（CC-449，2026-10-04，见 scripts/lib/exhibition-id-literals.mjs 头注释）
+import { scanExhibitionIdLiterals, formatExhibitionIdLiterals, EXHIBITION_ID_LITERAL_BASELINE } from './lib/exhibition-id-literals.mjs'
 export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST }
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -1238,6 +1240,16 @@ export function runAllChecks(root = ROOT) {
         + ` / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatRecordKeyDeadReads(report),
+    })
+  }
+  // ---- 判据 26：展示层角色 / 招式 id 字面量硬门（CC-449；事故 = r487 文档断言「views 无 moveId 字面量」而 StunAxisPage 实有 3 处，八轮逐处下沉各配一把单文件锁） ----
+  {
+    const report = scanExhibitionIdLiterals(root)
+    results.push({
+      name: `exhibition id-literal gate (判据 26: 展示层不写角色/招式 id 字面量；特判归模块声明+agentMechanicView 门面，默认项归 data/viewAgentDefaults.ts) `
+        + `= ${report.count}/${EXHIBITION_ID_LITERAL_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+      ok: report.ok,
+      detail: report.ok ? [] : formatExhibitionIdLiterals(report),
     })
   }
 
