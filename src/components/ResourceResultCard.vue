@@ -255,8 +255,8 @@
       <div class="breakdown-list">
         <div v-for="contrib in stunContributions" :key="contrib.moveId + contrib.slot" class="breakdown-row">
           <span class="bd-label">{{ contrib.moveName }}</span>
-          <span class="bd-value">{{ fmt(contrib.totalStun, 1) }}</span>
-          <span class="bd-detail">{{ contrib.count }}次 × {{ fmt(contrib.perHitStun, 1) }}/次</span>
+          <span class="bd-value">{{ fmt(contrib.effectiveStun, 1) }}</span>
+          <span class="bd-detail">{{ contrib.count }}次 × {{ fmt(contrib.perHitStun, 1) }}/次<template v-if="contrib.inAxisStun > 0">（轴内无效 −{{ fmt(contrib.inAxisStun, 1) }}）</template></span>
         </div>
       </div>
       <div class="usage-bar">
@@ -503,10 +503,9 @@ const stunContributions = computed(() => {
   return props.stunPoolResult.contributions.filter(c => c.slot === props.result.slot)
 })
 
-/** 本角色总失衡值 */
-const stunTotal = computed(() => {
-  return stunContributions.value.reduce((sum, c) => sum + c.totalStun, 0)
-})
+/** 本角色有效总失衡值——直接读引擎 `perSlotStun[slot]`（CC-458）。此前卡内 Σ `totalStun`（毛值，含轴内无效部分）
+ *  再除以 `totalStunBuildUp`（有效）算占比：轴模式下分子分母口径不一致，全队占比可超 100%。 */
+const stunTotal = computed(() => props.stunPoolResult?.perSlotStun[props.result.slot] ?? 0)
 
 /** 团队失衡次数 */
 const stunCount = computed(() => props.stunPoolResult?.stunCount ?? 0)
