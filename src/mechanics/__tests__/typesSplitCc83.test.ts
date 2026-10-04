@@ -13,11 +13,14 @@ describe('CC-83 mechanics/types.ts 拆分', () => {
     expect(Object.keys(viaTypes).length).toBeGreaterThan(0)
   })
 
-  it('types.ts < 1400 行且保留两条转出（新卫星类型进 typesRows / typesHooks）', () => {
+  it('types.ts < 1400 行且保留三条转出（新卫星类型进 typesRows / typesHooks / typesView）', () => {
+    // CC-451（2026-10-04）：CC-444/445/446/448 的展示层声明把本预算顶到 1483，红了 15 小时才被全量 vitest 抓到——
+    // 展示层声明一律进 typesView.ts（允许 `| null`）；引擎钩子契约进 typesHooks.ts（禁 `| null`，CC-435）；行类型进 typesRows.ts。
     const src = readFileSync(resolve(__dirname, '../types.ts'), 'utf-8')
     expect(src.split('\n').length).toBeLessThan(1400)
     expect(src).toContain("from './typesRows'")
     expect(src).toContain("from './typesHooks'")
+    expect(src).toContain("from './typesView'")
     expect(src).toContain('export interface AgentMechanicModule')
   })
 })

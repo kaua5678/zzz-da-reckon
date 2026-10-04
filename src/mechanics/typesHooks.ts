@@ -423,3 +423,68 @@ export interface CharacterCountInputDecl {
   title?: string
   mode?: 'autoIfNonPositive' | 'autoNegOne'
 }
+// ---- CC-451（2026-10-04）：交互次数 store 原值快照契约，自 mechanics/types.ts 逐字迁入（钩子入参 AgentTeamConfigInput.interactions 的形状）----
+/**
+ * 单个槽位的**未缩放**交互次数快照（= `configStore.team[slot]` 的 **store 原值**）。
+ *
+ * 字段全部**必填**（不是可选）：这份快照是「store 那一刻长什么样」的完整拷贝，
+ * 缺字段会让消费端分不清「没有这个量」和「这个量是 0」。
+ *
+ * ⚠ 存的是 `agentId` 的**当时值**（空槽 = `''`，不清零）：清空槽位时 `setAgent` 只改
+ * `agentId`、**不重置** `parryCount` 等计数（`stores/config.ts#setAgent` 的基线预填在
+ * `if (agent)` 里面）⇒「按 agentId 过滤」与「不过滤」在**空槽残留计数**时结果不同。
+ * 故本快照把 `agentId` 一并递过去，让各模块保留自己原来的过滤口径（见下方两条消费注）。
+ */
+export interface AgentInteractionSnapshot {
+  /** 该槽位当时绑定的角色 id（空槽 = `''`） */
+  agentId: string
+  /** 弹刀次数（store 原值，**未经** `interactionScale` 缩放、**未经** `parrySplit` 反推改写） */
+  parryCount: number
+  /** 金身格挡/不动如山招架次数（同上：store 原值） */
+  blockCount: number
+  /** 闪避反击次数（同上：store 原值） */
+  dodgeCounterCount: number
+  /** 双反次数（同上：store 原值） */
+  dualCounterCount: number
+  /** 快速支援次数（同上：store 原值） */
+  quickAssistCount: number
+  /**
+   * 每次失衡的连携次数（store 原值，`?? 0`；与 `ACTION_COUNT_BOUNDS` 同族，`0..3`）。
+   *
+   * 为什么也放进本快照（2026-09-17 round 20 C-γ，莱卡恩 1141 的 `lycaonC2Energy` 非轴臂）：
+   * 原式读的正是 `configStore.team[ci].chainCountPerStun`，而 **`characters` 上那份被
+   * `buildCharConfig` 写过 `?? (isSupport ? 0 : 1)` 兜底**（`helpers.ts`）——store 侧字段**缺失**
+   * （`undefined`）时两份**不同值**（store 侧按 `?? 0` = 0、cfg 侧 = 1）⇒ 读 `characters` 是静默改语义。
+   * ⚠ **实测边界**（本批探针实测，纠正 R18 分诊的「store=0 → cfg=1」说法）：`0 ?? 1 === 0`，
+   * 故 store 显式 `0` 时两份**同值**，分裂只发生在缺失态（判据直接构造缺失态钉住）。
+   * 与第 ①② 道改写（`interactionScale`/`parrySplit`）同族：**本通道的存在理由就是「必须读 store 原值」**。
+   *
+   * ⚠ 保留消费端原本的过滤口径：1141 那条带 `agentId` 存在判据（空槽残留计数被排除），
+   * 与仪玄那条只看槽位号的不同——本快照递 `agentId` 正是为此，不要顺手统一。
+   */
+  chainCountPerStun: number
+}
+
+/**
+ * 全队**未缩放**交互次数快照（按 slot 键控）。
+ *
+ * 存在的理由（2026-09-16 round 14 实测，别重新论证）：契约里 `characters` 那份 cfg 的交互次数
+ * **已经被改过两道**——`convergence.ts` 的 `characters.map` 里
+ *   ① `interactionScale`（非轴降配）：`Math.round(x × scale)`，实测 scale=0.125 时 store 10 → cfg 0；
+ *   ② `parrySplit`（保底4失衡反推）：**改写**击破位/主C 的 `parryCount`（实测带叶释渊
+ *      `parryTotal=13` 时 5/6 队 mergedΣ 变 13/9，而 storeΣ 恒 6）+ x 弹刀叠加。
+ * 而两个既有实现在迁移前读的是 **`configStore.team` 原值**：
+ *   · 仪玄 1371 的 `yixuanExtremeAssistCap`（极限支援换场落雷次数上限 = Σ**队友**弹刀）——
+ *     迁移时若读 `characters` 会静默改语义（round 13 受控两臂实验：臂 A 用合并值 ⇒
+ *     `yixuanSmoke` **9 failed**；臂 B 把 store 口径和递入 ⇒ **13 passed 全绿**）；
+ *   · 莱卡恩 1141 的 `lycaonBackstageDodgeCount`（后台跟随闪反 = Σ**队友**闪反次数）。
+ * ③ 第三道改写（2026-09-17 round 20 C-γ 补）：`chainCountPerStun` 在 `buildCharConfig` 被写过
+ *    `?? (isSupport ? 0 : 1)` 兜底，而原式读 **store 原值** ⇒ 必须走本快照（见字段注释）。
+ *    ⚠ **实测边界**（本批探针实测，纠正 R18 分诊的「store=0 → cfg=1」说法）：`0 ?? 1 === 0`，
+ *    故分裂**只在 store 侧字段缺失（`undefined`）时**发生——那时 store 侧 `?? 0` 得 0、cfg 侧得 1。
+ * ⇒ 本契约是**加法**（新增只读通道）：不读它的模块数值零变化。
+ */
+export interface AgentInteractionContext {
+  /** 逐槽位的 store 原值快照（键 = 槽位号；含空槽，`agentId === ''`） */
+  bySlot: Readonly<Record<number, Readonly<AgentInteractionSnapshot>>>
+}

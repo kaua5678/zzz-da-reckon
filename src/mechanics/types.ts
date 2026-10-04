@@ -4,7 +4,6 @@ import type { Agent, AgentSkills, PanelValues, SkillDamageTarget, SkillMove } fr
 import type {
   AnomalyEventRecord,
   AnomalyEventExecution,
-  AnomalyPoolResult,
   BonusEnergyEntry,
   CharacterOperationConfig,
   CharacterResourceResult,
@@ -26,7 +25,9 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext } from './typesHooks'
+// CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
+import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
 /** 队伍中某个槽位的最小上下文快照 */
 export interface MechanicTeamMember {
@@ -445,70 +446,6 @@ export interface ModuleFeedback {
   consumedTeamEnergy?: number
 }
 
-/**
- * 单个槽位的**未缩放**交互次数快照（= `configStore.team[slot]` 的 **store 原值**）。
- *
- * 字段全部**必填**（不是可选）：这份快照是「store 那一刻长什么样」的完整拷贝，
- * 缺字段会让消费端分不清「没有这个量」和「这个量是 0」。
- *
- * ⚠ 存的是 `agentId` 的**当时值**（空槽 = `''`，不清零）：清空槽位时 `setAgent` 只改
- * `agentId`、**不重置** `parryCount` 等计数（`stores/config.ts#setAgent` 的基线预填在
- * `if (agent)` 里面）⇒「按 agentId 过滤」与「不过滤」在**空槽残留计数**时结果不同。
- * 故本快照把 `agentId` 一并递过去，让各模块保留自己原来的过滤口径（见下方两条消费注）。
- */
-export interface AgentInteractionSnapshot {
-  /** 该槽位当时绑定的角色 id（空槽 = `''`） */
-  agentId: string
-  /** 弹刀次数（store 原值，**未经** `interactionScale` 缩放、**未经** `parrySplit` 反推改写） */
-  parryCount: number
-  /** 金身格挡/不动如山招架次数（同上：store 原值） */
-  blockCount: number
-  /** 闪避反击次数（同上：store 原值） */
-  dodgeCounterCount: number
-  /** 双反次数（同上：store 原值） */
-  dualCounterCount: number
-  /** 快速支援次数（同上：store 原值） */
-  quickAssistCount: number
-  /**
-   * 每次失衡的连携次数（store 原值，`?? 0`；与 `ACTION_COUNT_BOUNDS` 同族，`0..3`）。
-   *
-   * 为什么也放进本快照（2026-09-17 round 20 C-γ，莱卡恩 1141 的 `lycaonC2Energy` 非轴臂）：
-   * 原式读的正是 `configStore.team[ci].chainCountPerStun`，而 **`characters` 上那份被
-   * `buildCharConfig` 写过 `?? (isSupport ? 0 : 1)` 兜底**（`helpers.ts`）——store 侧字段**缺失**
-   * （`undefined`）时两份**不同值**（store 侧按 `?? 0` = 0、cfg 侧 = 1）⇒ 读 `characters` 是静默改语义。
-   * ⚠ **实测边界**（本批探针实测，纠正 R18 分诊的「store=0 → cfg=1」说法）：`0 ?? 1 === 0`，
-   * 故 store 显式 `0` 时两份**同值**，分裂只发生在缺失态（判据直接构造缺失态钉住）。
-   * 与第 ①② 道改写（`interactionScale`/`parrySplit`）同族：**本通道的存在理由就是「必须读 store 原值」**。
-   *
-   * ⚠ 保留消费端原本的过滤口径：1141 那条带 `agentId` 存在判据（空槽残留计数被排除），
-   * 与仪玄那条只看槽位号的不同——本快照递 `agentId` 正是为此，不要顺手统一。
-   */
-  chainCountPerStun: number
-}
-
-/**
- * 全队**未缩放**交互次数快照（按 slot 键控）。
- *
- * 存在的理由（2026-09-16 round 14 实测，别重新论证）：契约里 `characters` 那份 cfg 的交互次数
- * **已经被改过两道**——`convergence.ts` 的 `characters.map` 里
- *   ① `interactionScale`（非轴降配）：`Math.round(x × scale)`，实测 scale=0.125 时 store 10 → cfg 0；
- *   ② `parrySplit`（保底4失衡反推）：**改写**击破位/主C 的 `parryCount`（实测带叶释渊
- *      `parryTotal=13` 时 5/6 队 mergedΣ 变 13/9，而 storeΣ 恒 6）+ x 弹刀叠加。
- * 而两个既有实现在迁移前读的是 **`configStore.team` 原值**：
- *   · 仪玄 1371 的 `yixuanExtremeAssistCap`（极限支援换场落雷次数上限 = Σ**队友**弹刀）——
- *     迁移时若读 `characters` 会静默改语义（round 13 受控两臂实验：臂 A 用合并值 ⇒
- *     `yixuanSmoke` **9 failed**；臂 B 把 store 口径和递入 ⇒ **13 passed 全绿**）；
- *   · 莱卡恩 1141 的 `lycaonBackstageDodgeCount`（后台跟随闪反 = Σ**队友**闪反次数）。
- * ③ 第三道改写（2026-09-17 round 20 C-γ 补）：`chainCountPerStun` 在 `buildCharConfig` 被写过
- *    `?? (isSupport ? 0 : 1)` 兜底，而原式读 **store 原值** ⇒ 必须走本快照（见字段注释）。
- *    ⚠ **实测边界**（本批探针实测，纠正 R18 分诊的「store=0 → cfg=1」说法）：`0 ?? 1 === 0`，
- *    故分裂**只在 store 侧字段缺失（`undefined`）时**发生——那时 store 侧 `?? 0` 得 0、cfg 侧得 1。
- * ⇒ 本契约是**加法**（新增只读通道）：不读它的模块数值零变化。
- */
-export interface AgentInteractionContext {
-  /** 逐槽位的 store 原值快照（键 = 槽位号；含空槽，`agentId === ''`） */
-  bySlot: Readonly<Record<number, Readonly<AgentInteractionSnapshot>>>
-}
 
 export interface AgentExSpecialTimeInput {
   cfg: CharacterOperationConfig
@@ -609,83 +546,6 @@ export interface ReleaseModifierInput {
   self: { slot: number; cinemaLevel: number; panel: DeepReadonly<PanelValues> | undefined }
 }
 
-/** CC-444：`poolSummary` 钩子的伤害池行子集（展示层 `DamagePoolRow` 的命名结构子集，mechanics 不 import composables） */
-export interface PoolSummaryRowLike {
-  agentId: string
-  type: string
-  count: number
-  totalDamage: number
-}
-export interface AgentPoolSummaryInput {
-  /** 全队伤害池行（含其他角色；模块按 agentId / type 自取） */
-  damagePoolRows: ReadonlyArray<PoolSummaryRowLike>
-  anomalyPoolResult: AnomalyPoolResult | null
-  getMechanicSetting: (id: string, fallback: number) => number
-}
-export interface PoolSummaryStat {
-  label: string
-  value: string
-  detail?: string
-  /** 样式语义：highlight=主行 / bonus=加成行；缺省普通行 */
-  tone?: 'highlight' | 'bonus'
-}
-export interface PoolSummarySection {
-  title: string
-  stats: PoolSummaryStat[]
-}
-/** CC-445：跨角色回能来源展示标签（键 = `CrossAgentEnergy.bySource` 的展示键） */
-export interface CrossAgentEnergyLabel {
-  key: string
-  label: string
-  detail?: string
-}
-/** CC-446：轴编辑器已放置块的时长输入声明（见 `AgentMechanicModule.axisDurationInputs`） */
-export interface AxisDurationInputDecl {
-  /** 输入框前缀文字（如「蓄力」） */
-  label: string
-  /** 悬浮说明 */
-  title: string
-  min: number
-  max: number
-  step: number
-  /** 清空 / 未设置时的取值；须与引擎侧 `duration` 缺省同源 */
-  default: number
-}
-/** 轴编辑器窗口 lane 声明函数的上下文（lane 拥有者槽位的影画等级） */
-export interface AxisWindowLaneCtx { cinemaLevel: number }
-/**
- * CC-448：轴编辑器「专属窗口 lane」完整声明（展示层专用，不参与计算；见 `AgentMechanicModule.axisWindowLane`）。
- * CC-62 只声明了种类，banner / 窗长 / 触发判定 / 文案留在 StunAxisPage 按种类分支；两条 lane 后页面成了两份平行副本
- * （般岳明王 / 仪玄凝神各一套 slot/blocks/tag/windowsFor），且仪玄触发判定写死 1371014/1371020 字面量。
- * 现改为页面只跑一份泛型 lane 渲染，所有按角色不同的东西都从本声明取。
- */
-export interface AxisWindowLaneDecl {
-  /** 种类 id（`teamAxisWindowLaneSlot(team, kind)` 仍按它找槽位） */
-  kind: string
-  /** lane 左侧名字（「明王」「凝神」） */
-  name: string
-  /** 轴列表上方说明条 */
-  banner(ctx: AxisWindowLaneCtx): string
-  /** 一次触发的窗口长度（秒），窗口条宽度 = windowSeconds / 失衡窗口 */
-  windowSeconds: number
-  /** 该块是否触发块（窗口条起点；只在拥有者槽位的块上调用） */
-  isTriggerBlock(act: { readonly moveId: string }, ctx: AxisWindowLaneCtx): boolean
-  /** 返回文案 ⇒ 整条 lane 铺满、不画窗口条、不打块标（般岳 6 命「满覆盖 +39%」）；缺省 / null ⇒ 正常窗口 */
-  fullCoverage?(ctx: AxisWindowLaneCtx): string | null
-  /** 窗口条文字 / 样式（mark = 触发块的 `axisEditorBlockMarks` 扫描结果，可能缺省） */
-  window(mark: AxisEditorBlockMark | undefined): { label: string; cls: string }
-  /** 块上徽标（mark 为该块的扫描结果；null ⇒ 不打） */
-  blockTag(mark: AxisEditorBlockMark): { text: string; cls: string } | null
-}
-export interface AgentResourceSectionsInput {
-  result: DeepReadonly<CharacterResourceResult>
-  anomalyPoolResult?: AnomalyPoolResult | null
-  /** 琉音好评转大收敛拆分（60=吃连携窗口 / 90=白送终结技，来自 promoteFixpoint 终值）；
-   *  仅结果页注入——归档/难度曲线拿不到不动点终值，缺省时 60/90 拆分行不显示。纯展示载荷。 */
-  liuyinHug?: { hug60: number; hug90: number } | null
-  /** 全队 agentId→展示名，多角色归因行用（如卢西娅帷幕队友来源）；缺省回退显示 agentId */
-  agentNames?: Readonly<Record<string, string>>
-}
 
 /**
  * 在队模块 + 其槽位（r399 CC-373）—— `mechanics/registry.ts#teamMechanicSlots` 产出；
@@ -1480,4 +1340,5 @@ export interface AgentMechanicModule {
 export type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
 export { axisOverlayChannel } from './typesHooks'
-export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionSnapshot, AgentInteractionContext } from './typesHooks'
+export type { PoolSummaryRowLike, AgentPoolSummaryInput, PoolSummaryStat, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneCtx, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
