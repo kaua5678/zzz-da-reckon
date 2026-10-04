@@ -92,6 +92,14 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 21:05 arena-F 第 516 轮**（开工：主仓 = origin = `58873efd` 干净；md5 三者未变；REQUIREMENTS / §8.0 空；§3 仅 T18 阶段 2 开放且无人认领 ⇒ 自做）
+- **落地 CC-453** `a0df7cae`（arch 表有行；T18 卡关闭）：`SkillExecution.comboAlignSource?: 'setting' | 'fixed'`；`rowBuild.ts` 7 处 `cfg.*ComboAlignRatio` 行标 setting、出口统一补 fixed、`buildGiftRow` 打 fixed；`comboAlignDisplay.ts#comboAlignEditable`；`ResultPage.vue` 滑块 / 数字框 `:disabled` + 「固定」提示 + 弹窗说明一句。模块字面量零改动。
+- **设计拍板**：① 来源在管线合流点打而不是让 ~90 处模块字面量各写一遍（r479 不扫字面量 + 唯一出口 `return executions.map(applyExecutionUtilization)` 恰好存在）；② 值域取 `setting | fixed` 而非卡上草拟的 `override | catalog | module`——弹窗只需要「按本行 moveId 写覆盖是否生效」这一个问题，override/catalog 之分引擎自己也不知道（`ov()` 只返回合并值），`module` 又漏掉引擎常量行 / 赠行 / 衍生行；③ 类型可选 + 引擎出口保证 + 锁测试 = 不变量成立，不是幻影可选（arch 行写了理由）。
+- **验证**：vue-tsc 0 错（第一次红在我测试里漏赠行必填 `skillTableNote`，补后 0）→ 26 判据 + tokens/data/specs/recording 过 → build 10.4s → 全量 vitest 一次 280s 超时（load 4.8）⇒ 按提示词 ② 分片：`--shard=1/2` 243 文件 / 2108 用例 164s + `--shard=2/2` 245 / 2268 124s = **488 / 4376**（= r515 487/4373 + 新锁 1/3），跳过 16/29 一致（`arenaF/r516-vitest-s1.log` / `-s2.log`）→ `ZD_DROP=comboAlignSource bash .zc/perf/zd.sh t18b` DUMP/ROWS DIFF 0。
+- **坑**：`mcp.js sh` 里 `sed -i "s|…\x27…|…|"` 的 `\x27` 不被当引号 ⇒ 替换静默不命中、后续 `&&` 链全跳过（grep -c 0 退出 1）。规则：WSL 侧文件改动一律本地改 → `put`，不在一条 sh 里用 sed 改含引号的源码。
+- **下一步**：REQUIREMENTS / §3 / §8.0 全空 ⇒ 下一轮无题则折叠段 `517 516`；主 lane 仍欠 `ebb5cbc6` 文档（r497 块）。T18 不再有后续；若将来要在弹窗解释「这行跟随哪个招式」，见 arch CC-453 行末（加 `follows` 值，不在页面猜）。
+- **回退点**：`a0df7cae` 单提交 revert（类型字段可选，无数据迁移；revert 后 CC-453 锁随之删除即可）。
+
 **2026-10-04 20:55 arena-F 第 515 轮**（开工：主仓 = origin = `38a6c97d` 干净；md5 三者未变；REQUIREMENTS / §3 其它卡 / §8.0 空；T18 连续 1 轮无人认领 ⇒ 按 r514 §2b 约定 arena-F 自做阶段 1）
 - **落地 CC-452** `11b3f807`（arch 表有行；T18 卡顶已标阶段 1 ✅）：`src/views/ResultPage.vue` 合轴率弹窗三处读数（滑块 / 数字框 / 行秒数）改读 `exec.comboAlignRatio` / `exec.totalComboAlignTime`，总合轴时间走新纯函数 `src/composables/resourceCalc/comboAlignDisplay.ts#totalComboAlignTimeOf`，删 `getComboAlignRatio` / `getTotalComboAlignTime` 与恒 0 的「合轴回能加成 ×0」；写侧 `setComboAlignRatio → setComboAlignOverride` 不动。
 - **先验证再改**：T18 卡「疑似第二个缺口」成立——`grep -rn setComboAlignOverride src` 只有弹窗与 `timeWeightAllocation.ts`，没人按 catalog 默认预填 override ⇒ 未改过的 catalog 默认行弹窗也显示 0；改读引擎字段后两个缺口一起消失，不需要第二个修法。
@@ -922,8 +930,8 @@ harness 平A权重默认仍每槽 1；`setupHarness(team, { productionBasicWeigh
 
 
 
-### T18（r514 arena-F 立卡；可交执行模型）· 合轴率弹窗改读引擎有效值（展示层去「页面侧重算」）
-**状态（r515）**：**阶段 1 ✅ `11b3f807`（CC-452，arch 表有行）**——弹窗读 `exec.comboAlignRatio` / `exec.totalComboAlignTime`，Σ 走 `composables/resourceCalc/comboAlignDisplay.ts#totalComboAlignTimeOf`，锁 `composables/__tests__/comboAlignModalReadsEngineCc452.test.ts`（没放 `views/__tests__`，该目录不存在且仓内源码锁惯例在 composables 层）；「疑似第二个缺口」已证实（`setComboAlignOverride` 仅弹窗 + `timeWeightAllocation.ts:371/377` 调用，无 catalog 预填），阶段 1 一并修掉；`:755` `× 0` 恒 0 已删。zd t18 DUMP/ROWS DIFF 0；全量 vitest `arenaF/r515-vitest-full.log` 487 文件 / 4373 用例绿（基线 486/4371 + 本锁 1/2）。**阶段 2 仍开放**（下方做法），接手者起点：`typesRows.ts` 加 `comboAlignSource`，三处写入点见根因 1/2，弹窗 `source==='module'` 时滑块 / 数字框 `disabled` + 提示「模块固定」。阶段 2 回退点 = `11b3f807` 之后单提交。
+### T18（r514 arena-F 立卡；**r516 关闭**：阶段 1 `11b3f807` + 阶段 2 `a0df7cae`）· 合轴率弹窗改读引擎有效值（展示层去「页面侧重算」）
+**状态（r516）**：**T18 关闭——阶段 1 ✅ `11b3f807`（CC-452）、阶段 2 ✅ `a0df7cae`（CC-453，arch 表有行；来源标记 `comboAlignSource` 由 `buildExecutions` 出口统一打，弹窗 `comboAlignEditable` 只读，锁 `core/__tests__/comboAlignSourceCc453.test.ts`；`ZD_DROP=comboAlignSource` zd 零差；分片 vitest 488/4376）。** 阶段 1 原状态保留如下：阶段 1 ✅ `11b3f807`（CC-452，arch 表有行）**——弹窗读 `exec.comboAlignRatio` / `exec.totalComboAlignTime`，Σ 走 `composables/resourceCalc/comboAlignDisplay.ts#totalComboAlignTimeOf`，锁 `composables/__tests__/comboAlignModalReadsEngineCc452.test.ts`（没放 `views/__tests__`，该目录不存在且仓内源码锁惯例在 composables 层）；「疑似第二个缺口」已证实（`setComboAlignOverride` 仅弹窗 + `timeWeightAllocation.ts:371/377` 调用，无 catalog 预填），阶段 1 一并修掉；`:755` `× 0` 恒 0 已删。zd t18 DUMP/ROWS DIFF 0；全量 vitest `arenaF/r515-vitest-full.log` 487 文件 / 4373 用例绿（基线 486/4371 + 本锁 1/2）。**阶段 2 仍开放**（下方做法），接手者起点：`typesRows.ts` 加 `comboAlignSource`，三处写入点见根因 1/2，弹窗 `source==='module'` 时滑块 / 数字框 `disabled` + 提示「模块固定」。阶段 2 回退点 = `11b3f807` 之后单提交。
 **现象（证据 `/home/kaua/calc-arch/census_dbl-20251004-2035.out`，由 `.zc/perf/aligncensus.perf.ts` 普查 104 预设得出，r510 另一 lane 跑的）**：50 行 / 7 个 moveId 的 execution 引擎 `comboAlignRatio=1.0`，而结果页「合轴率调节」弹窗与资源页「合轴率」列都显示 0；最大 `1451011`（luciaElowen 强化特殊技·合轴）×25 行 Σ312.3s，其次 `1091029`（miyabi 霜月）×5 行 Σ82.6s，再次 yixuan `1371021/1371007/1371005/1371006`。队级四口径全 0 差（Σcredit=Σsaved=748.9s）⇒ **引擎没错，是展示层**。
 **根因（代码直读，r514）**：合轴率有三个来源，弹窗只读一个：
 1. `src/composables/resourceCalc/helpers.ts:508` `ov(moveId, defaultRatio) = configStore.getComboAlignOverride(slot, moveId, catalog 默认)`——普通招式的引擎有效值 = override ?? catalog；
