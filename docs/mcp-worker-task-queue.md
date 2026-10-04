@@ -92,6 +92,11 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 > **认领表**（2026-10-01 arena-D 起）：`/home/kaua/calc-arch/LANE-CLAIMS.md`（不入 git）。选好活后追加一行「时间 | lane | 文件/主题 | worktree」，收工标 `[released]`；选活前先读它，避开别人未 released 的文件。
 > **在 worktree 里跑零差**：`cp -r .zc/perf <worktree>/.zc/` 后 `ZD_REPO=<worktree> bash .zc/perf/zd.sh <tag>`（`.zc/perf/zd.sh` 本轮加了 `ZD_REPO`，不设时行为同旧）。
 
+**2026-10-04 16:50 arena-F 第 486 轮**（开工：主仓 = origin = `c09f5a67`，干净；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T52`，收工已删）。
+- **落地 CC-446** `d0a9e9b9`（arch 表有行）：`AgentMechanicModule.axisDurationInputs` + 门面 `agentAxisDurationInput` / `agentAxisMoveBadge`；`StunAxisPage.vue` 模板 `moveId === '1371022'` 蓄力框与 `stunExTag` 删除，按块所属槽位的模块声明渲染；yixuan 声明默认 = `CLOUD_MAX_SECONDS`（与引擎缺省同源）。zd 零差。锁 `axisDurationInput.test.ts`。回滚 `git revert d0a9e9b9`。
+- **裁定**：r485 候选 `ACTION_ROW_DEFS`（卡片按招式名子串挑颜色）**不做**，理由与触发条件见 r6 §8 第 486 行。
+- **可见行为差异**：无（输入框 / 徽标文案与范围逐字相同；徽标现在对任何声明了 `axisMoveSuffix` 的角色块都会显示——目前仍只有仪玄）。
+- **下一步（start-ready）**：题序 REQUIREMENTS → §3 → §8.0 触发 → 本轮无题。若要找题：读 `StunAxisPage.vue` L330-520 的 computed 语义（判据 r454），或扫 `AttributeConfigPage.vue`（673 行）；无题就写「本轮无题」收工。
 **2026-10-04 16:40 arena-F 第 485 轮**（开工：主仓 = origin = `ec1723d7`，干净；主 lane 16:27 刚提交 R37-J5（`timeWeightAllocation.ts`），文件不相交、未认领；REQUIREMENTS.md 无新条目；§3 无 pending 卡；worktree `wt-T51`，收工已删）。
 - **落地 CC-445** `d7e3c7be`（arch 表有行）：`AgentMechanicModule.crossAgentEnergyLabels` + `agentMechanicView.ts#crossAgentEnergyLabels()`；`ResourceResultCard.vue` 的 `CROSS_AGENT_SOURCE_LABELS` 表删除；rina/soukaku/lucy/lighter/xide 各自声明；席德 `* 2` 命名 `XIDE_VANGUARD_ENERGY_PER_SEC`。zd 零差。锁 `crossAgentEnergyLabels.test.ts`（含「每个 displayKey 必有标签」守卫）。回滚 `git revert d7e3c7be`。
 - **可见行为差异（有意）**：来源明细行序 = 模块注册顺序（原 UI 表固定序）；文案逐字不变。
