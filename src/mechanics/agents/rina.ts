@@ -260,6 +260,7 @@ function resolveExecutionDamage({ exec }: AgentDamageResolutionInput): { element
 }
 
 export const rinaMechanic: AgentMechanicModule = {
+  crossAgentEnergyLabels: [{ key: 'rinaUltEnergy', label: '丽娜终结邻位' }],  // CC-445
   // CC-35c：额外能力激活时全队电属性异常持续 +3s（原 anomalyPanels#getTeamAnomalyDurationBonus 按 '1211' 写死，逐字迁入）
   teamAnomalyDurationBonus: ({ element, slot, agent, team }) =>
     (element === 'electric' && evalAdditionalAbility(team, slot, agent, getAgentSpec('1211')?.additionalAbility) ? 3 : 0),

@@ -633,6 +633,12 @@ export interface PoolSummarySection {
   title: string
   stats: PoolSummaryStat[]
 }
+/** CC-445：跨角色回能来源展示标签（键 = `CrossAgentEnergy.bySource` 的展示键） */
+export interface CrossAgentEnergyLabel {
+  key: string
+  label: string
+  detail?: string
+}
 export interface AgentResourceSectionsInput {
   result: DeepReadonly<CharacterResourceResult>
   anomalyPoolResult?: AnomalyPoolResult | null
@@ -820,6 +826,14 @@ export interface AgentMechanicModule {
   poolSummary?(input: AgentPoolSummaryInput): PoolSummarySection | null
   /** 声明可在资源利用率页调整的机制参数 */
   settings?: MechanicSetting[]
+  /**
+   * CC-445：本模块往队友 `energySource.crossAgent.bySource` 写入的展示键的显示名/说明
+   * （键来源：`crossAgentSupply.displayKey` 或 `applyTeamConfig` 直写 `crossAgentFlatEnergyBySource`）。
+   * 原 `ResourceResultCard.vue` 维护一张 UI 侧 `CROSS_AGENT_SOURCE_LABELS` 表：新提供者要在模块外再登记一行，
+   * 且说明文案抄了引擎常数（「+4/次 × 18s」）。现键与文案同住模块，文案可直接引用模块常量。
+   * 展示层经 `crossAgentEnergyLabels()` 门面按注册顺序汇总；表外的键仍兜底显示键名。
+   */
+  crossAgentEnergyLabels?: ReadonlyArray<CrossAgentEnergyLabel>
   /**
    * 伴随事件：父动作 moveId → 子事件 moveId 列表。
    * 失衡轴内子事件易伤跟随父动作的「轴内占比」（0-1 分数，栈执行轴内单位 / 全局总单位，

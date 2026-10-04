@@ -55,6 +55,8 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
  */
 
 const XIDE_AGENT_ID = '1461'
+/** 正兵回能：席德操作时间（前台 − 合轴）每秒给正兵的能量（CC-445 命名，原 perTargetAmounts 内联 `* 2`） */
+const XIDE_VANGUARD_ENERGY_PER_SEC = 2
 const XIDE_AA_SKILL_DMG = 30
 const XIDE_AA_ELECTRIC_RES_IGNORE = 25
 const XIDE_C4_ULTIMATE_DMG = 20
@@ -334,7 +336,7 @@ export const xideVanguardSupply: CrossAgentSupplySpec = {
     if (raw === undefined) return {}
     const vanguardSlot = Math.floor(xideNum(raw))
     if (vanguardSlot < 0 || vanguardSlot === ownSlot) return {}
-    return { [vanguardSlot]: Math.max(0, xideNum(state.frontlineTime) - xideNum(state.comboAlignTime)) * 2 }
+    return { [vanguardSlot]: Math.max(0, xideNum(state.frontlineTime) - xideNum(state.comboAlignTime)) * XIDE_VANGUARD_ENERGY_PER_SEC }
   },
   onOwnSlotCrossAgentEnergy({ ownSlot, cfg, configs, states }) {
     const raw = cfg.xideVanguardSlot
@@ -348,6 +350,7 @@ export const xideVanguardSupply: CrossAgentSupplySpec = {
 }
 
 export const xideMechanic: AgentMechanicModule = {
+  crossAgentEnergyLabels: [{ key: 'xideVanguardEnergy', label: '席德正兵回能', detail: `额外能力：席德操作时间（前台 − 合轴）× ${XIDE_VANGUARD_ENERGY_PER_SEC}/秒` }],  // CC-445
   id: 'agent:seed',
   agentIds: [XIDE_AGENT_ID],
   name: '「席德」',

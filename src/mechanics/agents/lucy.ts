@@ -283,6 +283,7 @@ function lucyNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): Mod
 }
 
 export const lucyMechanic: AgentMechanicModule = {
+  crossAgentEnergyLabels: [{ key: 'lucyEnergy', label: '露西回能', detail: '终结邻位 + 影画1 回旋全队' }],  // CC-445
   // 队伍级机制（原先由 useResourceCalc 手工 import + 调用 applyLucyTeamEnergyFlags）：
   // 露西终结邻位回能 + 影画1 回旋全队回能标记。只在 build 阶段动手，与迁移前的调用时机一致。
   applyTeamConfig: ({ cfg, characters, phase, threads }) => {

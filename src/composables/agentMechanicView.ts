@@ -6,7 +6,7 @@
  * 纯转发：不计算、不缓存；语义与原展示层内联写法逐位一致（见各函数注释）。
  */
 import { AUTO_AXIS_PRESET_HINTS, axisHiddenMovesOf, getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
-import type { AgentMechanicModule, AgentPoolSummaryInput, AxisEditorBlockMark, CharacterCountInputDecl, PoolSummarySection } from '@/mechanics/types'
+import type { AgentMechanicModule, AgentPoolSummaryInput, AxisEditorBlockMark, CharacterCountInputDecl, CrossAgentEnergyLabel, PoolSummarySection } from '@/mechanics/types'
 import type { MechanicSetting } from '@/types/resource'
 
 /**
@@ -66,6 +66,18 @@ export function teamPoolSummaries(
     seen.add(id)
     const sec = getAgentMechanic(id)?.poolSummary?.(input)
     if (sec) out.push(sec)
+  }
+  return out
+}
+
+/**
+ * 全部已注册模块声明的跨角色回能展示标签，键 = `CrossAgentEnergy.bySource` 的展示键（CC-445，
+ * 原位置：ResourceResultCard.vue `CROSS_AGENT_SOURCE_LABELS`）。顺序 = 模块注册顺序 × 模块内声明顺序；同键先到者胜。
+ */
+export function crossAgentEnergyLabels(): ReadonlyMap<string, CrossAgentEnergyLabel> {
+  const out = new Map<string, CrossAgentEnergyLabel>()
+  for (const mod of getRegisteredAgentMechanics()) {
+    for (const e of mod.crossAgentEnergyLabels ?? []) if (!out.has(e.key)) out.set(e.key, e)
   }
   return out
 }

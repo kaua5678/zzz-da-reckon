@@ -497,6 +497,7 @@ function lighterNextRoundFeedback({ characters, teamResult }: AgentNextRoundFeed
 }
 
 export const lighterMechanic: AgentMechanicModule = {
+  crossAgentEnergyLabels: [{ key: 'lighterC4Energy', label: '莱特影画4 喷发', detail: `后场 +${LIGHTER_C4_BURST_ENERGY}/次 × ${LIGHTER_C4_BURST_CD}s 冷却` }],  // CC-445
   // CC-35c-B：昂扬公式读局内冲击力；喷发耗士气冲击 +20% 需并入来源面板，否则公式少算一层（原 panelPhases 按 '1161' 写死，逐字迁入）
   adjustTeammateBuffSource: ({ source }) => {
     if (source.inCombat) {

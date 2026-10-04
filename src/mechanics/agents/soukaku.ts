@@ -269,6 +269,7 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 export const soukakuMechanic: AgentMechanicModule = {
+  crossAgentEnergyLabels: [{ key: 'soukakuUltEnergy', label: '苍角终结邻位' }],  // CC-445
   /**
    * 跨槽位供给：终结技**邻位回能**（下一位 30 / 上一位 10，两人队另一位 30）。
    * 2026-09-15 core 棘轮批次3 自 `core/resource/helpers.ts#calcCrossAgentEnergy` 的
