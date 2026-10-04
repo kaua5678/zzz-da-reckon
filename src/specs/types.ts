@@ -1,4 +1,5 @@
 import type { SkillDamageTarget, StatId } from '@/types/catalog'
+import type { MechanicSetting } from '@/types/resource/execution'
 
 export type SpecStatus =
   | 'implemented'
@@ -50,17 +51,12 @@ export interface ResourceRuleSpec {
   deduct?: boolean
   bonusEnabledField?: string
   bonusCountSource?: 'ultimateCount'
-  /** 近似量可调：资源利用率页显示滑块，值以 0-1 比例存（1=100%） */
-  adjustable?: {
-    id: string
-    label: string
-    description: string
-    default: number
-    min?: number
-    max?: number
-    step?: number
-    suffix?: string
-  }
+  /**
+   * 近似量可调：资源利用率页显示滑块，值以 0-1 比例存（1=100%）。
+   * 类型就是模块设置项 `MechanicSetting`——`specs/mechanics.ts#specToMechanicModule` 原样摊进模块 `settings`，
+   * 此前这里手抄了一份同形内联类型（CC-464 收口，r583）。
+   */
+  adjustable?: MechanicSetting
   status: SpecStatus
   note?: string
 }

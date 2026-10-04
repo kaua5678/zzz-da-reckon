@@ -1,5 +1,6 @@
 import { localized } from '@/utils/format'
 import { penetrationPowerFormulaLabel } from '@/data/penetrationPower'
+import { SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import { DAMAGE_ELEMENTS, ELEMENT_LABEL, ENEMY_DEBUFF_KIND_CONFIG, LEGACY_ENEMY_DEBUFF_STAT_IDS, enemyDebuffStatId, type EnemyDebuffKind } from '@/utils/enemyDebuffStats'
 
 export type FormulaZone =
@@ -165,16 +166,6 @@ STAT_META.push(...GENERATED_ENEMY_DEBUFF_META)
 
 const STAT_META_MAP = new Map(STAT_META.map(item => [item.value, item]))
 
-const TARGET_LABEL_MAP: Record<string, string> = {
-  basic: '普通攻击',
-  special: '特殊技',
-  exSpecial: '强化特殊技',
-  ultimate: '终结技',
-  chain: '连携技',
-  assist: '支援技',
-  dodgeCounter: '闪避反击',
-  dashAttack: '冲刺攻击',
-}
 
 function baseStatId(stat: string): string {
   return stat.split('__')[0]
@@ -182,7 +173,8 @@ function baseStatId(stat: string): string {
 
 function targetSuffixLabel(stat: string): string {
   const target = stat.split('__')[1]
-  return target ? `（${TARGET_LABEL_MAP[target] ?? target}限定）` : ''
+  // 定向后缀 `__<SkillDamageTarget>`（core/buff.ts#targetedStatKey 生成；`all` 不带后缀）：标签单一来源 data/skillDamageTargets（CC-464）
+  return target ? `（${(SKILL_DMG_TARGET_LABELS as Record<string, string>)[target] ?? target}限定）` : ''
 }
 
 export function isPctStat(stat: string): boolean {
