@@ -21,6 +21,24 @@ export function isBatchAborted(control: BatchControl = {}): boolean {
   return control.signal?.aborted === true
 }
 
+/** 进度回调载荷：pct 0–1，text 给页面状态栏 */
+export interface BatchProgress { pct: number; text: string }
+
+/**
+ * 批任务公共选项（CC-490）：取消句柄 + 进度回调。各 compute* / run* 的 Options `extends BatchTaskOptions`，
+ * 不再各自内联这两行（CC-490 前 `onProgress?: (p: { pct; text }) => void` 10 处、`control?: BatchControl` 13 处各写一遍）。
+ * 取消语义统一：被新运行顶掉 / 页面取消时及早停算；已算部分发布还是丢弃由调用方决定（各任务头注释写明粒度）。
+ */
+export interface BatchTaskOptions {
+  onProgress?: (p: BatchProgress) => void
+  control?: BatchControl
+}
+
+/** 各任务开头那行 `report` 闭包的唯一实现：`(pct, text) => onProgress?.({ pct, text })` */
+export function batchReporter(opts: Pick<BatchTaskOptions, 'onProgress'>): (pct: number, text: string) => void {
+  return (pct, text) => opts.onProgress?.({ pct, text })
+}
+
 
 export interface BatchRun {
   readonly signal: AbortSignal

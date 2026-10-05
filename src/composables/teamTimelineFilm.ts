@@ -10,7 +10,7 @@ import type { BossPreset } from '@/types/bossPreset'
 import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION, allocateTopUpFilm } from '@/data/filmEconomy'
 import type { TimelineAxisNode } from './teamTimeline'
 import type { AnalysisContext } from '@/composables/analysisScenario'
-import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
+import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
 import { baseGoldOfTeam, buildBudgetAwareGoldSteps, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
 
@@ -54,7 +54,7 @@ export interface FilmSimPoint {
   hpRatio: number
 }
 
-export interface FilmSimulationOptions {
+export interface FilmSimulationOptions extends BatchTaskOptions {
   boss: BossPreset
   /** 危局期数轴（id = phaseId；label/date 由页面从 bossSchedule 构造） */
   axisNodes: TimelineAxisNode[]
@@ -74,9 +74,6 @@ export interface FilmSimulationOptions {
   targetPeriodId?: string
   /** 自动配装（推荐驱动盘 + 词条优化器）；缺省 false = 轻量速算 */
   autoBuild?: boolean
-  onProgress?: (p: { pct: number; text: string }) => void
-  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
-  control?: BatchControl
 }
 
 export interface FilmSimulationResult {
@@ -106,7 +103,7 @@ export async function computeFilmSimulation(scenario: AnalysisContext, opts: Fil
   const { config: configStore, calc } = scenario // CC-343：在调用方给的独立场景上改写 / 求值，不碰 UI store、不做快照恢复
   const catalog = useCatalogStore()
   const t0 = Date.now()
-  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  const report = batchReporter(opts)
   // 起点 = 主C 首次 UP 之后的 Boss 登场期（用户口径；主C 实装前的期不算）
   const mainRelease = releaseNodeOf(opts.mainAgentId)
   const mainDate = mainRelease ? VERSION_NODES[nodeIndexOf(mainRelease)]?.date : undefined

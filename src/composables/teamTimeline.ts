@@ -43,7 +43,7 @@ import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
-import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
+import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
 import { bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
 import { localized } from '@/utils/format'
@@ -151,15 +151,12 @@ export interface TimelineAxisNode {
   testServer?: boolean
 }
 
-export interface TeamTimelineOptions {
+export interface TeamTimelineOptions extends BatchTaskOptions {
   mainAgentId: string
   boss: BossPreset
   phase: BossPresetPhase
   /** 目标总限定金（低于队伍基础金自动钳制） */
   budget: number
-  onProgress?: (p: { pct: number; text: string }) => void
-  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
-  control?: BatchControl
   /**
    * 演变轴（危局期数轴由页面经 buildPeriodAxis 构造后传入）。缺省 = VERSION_NODES 合成。
    * 角色在期数中途实装也算该期可用：实装日落在某节点 [date, 下一节点 date) 窗口内即算该节点；
@@ -387,7 +384,7 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
   const t0 = Date.now()
   let teamsEvaluated = 0
   let goldEvaluations = 0
-  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  const report = batchReporter(opts)
 
   const mainRelease = releaseNodeOf(opts.mainAgentId)
   if (!mainRelease) throw new Error(`角色 ${opts.mainAgentId} 未收录实装版本（时间线只做 S 级）`)
@@ -706,7 +703,7 @@ export interface NewCharacterPoint {
   hpRatio: number
 }
 
-export interface NewCharacterChartOptions {
+export interface NewCharacterChartOptions extends BatchTaskOptions {
   rows: NewCharacterRow[]
   /** charId → 用户手填的强队列表（每支含主C，3 名不同角色；空/缺省/重复成员 = 不出点） */
   teams: Record<string, [string, string, string][]>
@@ -717,9 +714,6 @@ export interface NewCharacterChartOptions {
   autoBuild?: boolean
   /** 最优加金（逐金贪婪）；缺省 false = 主C优先确定性分配（与排名同源） */
   optimalGold?: boolean
-  onProgress?: (p: { pct: number; text: string }) => void
-  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
-  control?: BatchControl
 }
 
 /**
@@ -730,7 +724,7 @@ export interface NewCharacterChartOptions {
 export async function computeNewCharacterPoints(scenario: AnalysisContext, opts: NewCharacterChartOptions): Promise<NewCharacterPoint[]> {
   const { config: configStore, calc } = scenario // CC-343：在调用方给的独立场景上改写 / 求值，不碰 UI store、不做快照恢复
   const catalog = useCatalogStore()
-  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  const report = batchReporter(opts)
   applyBossRoom(configStore, opts.boss, opts.phase)
   // 展开成 (行, 队) 平铺：同角色多队各一任务
   const tasks: { row: NewCharacterRow; team: [string, string, string] }[] = []
@@ -869,7 +863,7 @@ export interface SlotComparePoint {
   goldLabelB: string
 }
 
-export interface SlotCompareOptions {
+export interface SlotCompareOptions extends BatchTaskOptions {
   slot: SlotCompareSlot
   agentA: string
   agentB: string
@@ -880,9 +874,6 @@ export interface SlotCompareOptions {
   autoBuild?: boolean
   /** 最优加金（逐金贪婪）；缺省 false = 主C优先确定性分配（与 Chart 3 同口径） */
   optimalGold?: boolean
-  onProgress?: (p: { pct: number; text: string }) => void
-  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
-  control?: BatchControl
 }
 
 /**
@@ -930,7 +921,7 @@ function evalTeamByBudget(
 export async function computeSlotComparePoints(scenario: AnalysisContext, opts: SlotCompareOptions): Promise<SlotComparePoint[]> {
   const { config: configStore, calc } = scenario // CC-343：在调用方给的独立场景上改写 / 求值，不碰 UI store、不做快照恢复
   const catalog = useCatalogStore()
-  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  const report = batchReporter(opts)
   applyBossRoom(configStore, opts.boss, opts.phase)
   const pairs = findSlotComparePairs(teamPresets, opts.slot, opts.agentA, opts.agentB)
     .filter(p => releaseNodeOf(p.main) != null && catalog.getAgent(p.main))
@@ -1016,7 +1007,7 @@ export interface SlotSweepResult {
   skipped: number
 }
 
-export interface SlotSweepOptions {
+export interface SlotSweepOptions extends BatchTaskOptions {
   /** 海选的槽位：0=主C、1=击破、2=支援 */
   slot: SlotCompareSlot
   /** 固定的两个队友，按「除海选槽外其余两槽」的槽位序 */
@@ -1030,9 +1021,7 @@ export interface SlotSweepOptions {
   optimalGold?: boolean
   /** 候选池覆盖（缺省 = 目录全部可见角色 − 固定 2 人；测试/定向复算用） */
   candidateIds?: string[]
-  /** 取消（粒度 = 一个候选；已算部分照常返回） */
-  control?: BatchControl
-  onProgress?: (p: { pct: number; text: string }) => void
+  // 取消粒度 = 一个候选；已算部分照常返回（control / onProgress 见 BatchTaskOptions）
 }
 
 /** 候选池（纯函数）：candidateIds 覆盖或目录全部可见角色，统一剔除固定成员与目录查不到的 id */
@@ -1054,7 +1043,7 @@ export function slotSweepCandidates(
 export async function computeSlotSweepPoints(scenario: AnalysisContext, opts: SlotSweepOptions): Promise<SlotSweepResult> {
   const { config: configStore, calc } = scenario // CC-343：在调用方给的独立场景上改写 / 求值，不碰 UI store、不做快照恢复
   const catalog = useCatalogStore()
-  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  const report = batchReporter(opts)
   applyBossRoom(configStore, opts.boss, opts.phase)
   const candidateIds = slotSweepCandidates(catalog, opts.fixed, opts.candidateIds)
   const points: SlotSweepPoint[] = []

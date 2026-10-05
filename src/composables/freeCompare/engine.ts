@@ -23,7 +23,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { isLimitedWEngine } from '@/composables/teamCompare'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
-import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
+import { isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
 import {
   type AxisId,
   type AxisLevel,
@@ -92,16 +92,13 @@ export interface FreeCompareResult {
   environmentSummary: string
 }
 
-export interface FreeCompareOptions {
+export interface FreeCompareOptions extends BatchTaskOptions {
+  // 取消：页面「取消」经 BatchOwner 的 AbortSignal 传入 control；中止时保留已算档位
   series: SeriesSpec[]
   axisId: AxisId
   axisOptions?: AxisOptions
   metricId: string
   constraints?: ConstraintSpec
-  /** 单人系列挑哪个角色的分量（缺省 = 该系列自己的成员） */
-  onProgress?: (p: { pct: number; text: string }) => void
-  /** 取消（页面「取消」经 BatchOwner 的 AbortSignal 传入；中止时保留已算档位） */
-  control?: BatchControl
 }
 
 // ========== 装配 ==========

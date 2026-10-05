@@ -19,7 +19,7 @@ import { isLimitedSWengineId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import type { BossPreset } from '@/types/bossPreset'
 import type { AnalysisContext } from '@/composables/analysisScenario'
-import type { BatchControl } from '@/composables/batchTask'
+import { batchReporter, type BatchProgress, type BatchTaskOptions } from '@/composables/batchTask'
 import { ladderRung, type PlannerBossRoom, type PlannerPeriod, type TeamOracle } from '@/composables/pullPlanner'
 
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
@@ -38,7 +38,7 @@ export interface EngineOracleOptions {
   bosses: BossPreset[]
   /** 候选池（agentId 列表；含常驻 S 与 A 级——成型号起点的免费人；限定 S 的持有态由 holdings 决定） */
   candidatePool: string[]
-  onProgress?: (p: { pct: number; text: string }) => void
+  onProgress?: (p: BatchProgress) => void
 }
 
 interface OracleState {
@@ -400,7 +400,7 @@ export function freePoolRepresentatives(
   return [...out, ...specials]
 }
 
-export interface PlannerRunOptions {
+export interface PlannerRunOptions extends BatchTaskOptions {
   /** 求值场景（r372 独立场景）：整次规划（beam 逐期 + VCG 重规划）只在 `scenario.config` 上改写 */
   scenario: AnalysisContext
   /** 期轴数据源：全部 Boss 预设（期轴聚合需要；oracle 求值用 boss 单预设） */
@@ -420,9 +420,6 @@ export interface PlannerRunOptions {
   withVcg?: boolean
   /** 免费池每职业代表数（性能剪枝；0 = 全量免费池。默认 1——池越大 beam 每个持有集的 C(池,3) 求值越贵，实测 2 已分钟级） */
   freePoolPerSpecialty?: number
-  onProgress?: (p: { pct: number; text: string }) => void
-  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
-  control?: BatchControl
 }
 
 export interface PlannerRunResult {
@@ -443,7 +440,7 @@ export async function runPullPlanner(opts: PlannerRunOptions): Promise<PlannerRu
   // （旧路径下页面会为每个中间态重算）。
   const catalog = useCatalogStore()
   const t0 = Date.now()
-  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  const report = batchReporter(opts)
   const allCards = buildPlannerCards(opts.preset, opts.startDate, opts.customHoldings ?? {})
   const periods = buildPlannerPeriods(opts.allBosses, { testServerVersions: plannerTestServerVersions() })
     .filter(p => p.date >= opts.startDate)

@@ -27,7 +27,7 @@
  * 会给同一张卡不同估值（持有集条件化，即用户「比利 vs 维琳娜」例子的形式化）。
  */
 import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM } from '@/data/filmEconomy'
-import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
+import { isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
 
 // ========== 类型 ==========
 
@@ -126,7 +126,7 @@ export interface PlannerCard {
   initialTier?: PurchaseTier
 }
 
-export interface PlannerOptions {
+export interface PlannerOptions extends BatchTaskOptions {
   /** 可购卡全集（含窗口日期；复刻不建模） */
   cards: PlannerCard[]
   /** 危局期数轴（时间升序；只含有 Boss 预设的期） */
@@ -148,11 +148,8 @@ export interface PlannerOptions {
   beamWidth: number
   /** 组队 oracle（引擎注入；测试可注入假 oracle） */
   oracle: TeamOracle
-  onProgress?: (p: { pct: number; text: string }) => void
   /** 每期结算前回调（引擎 oracle 在此切换 Boss/期相位上下文；纯逻辑测试无需传） */
   onPeriod?: (period: PlannerPeriod) => void
-  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
-  control?: BatchControl
 }
 
 // ========== 版本边界（菲林发放粒度） ==========

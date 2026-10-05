@@ -220,13 +220,13 @@ import { buildPlannerPeriods, plannerTestServerVersions } from '@/composables/pu
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 import type { BossPreset } from '@/types/bossPreset'
 import type { AnalysisContext } from '@/composables/analysisScenario'
-import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
+import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
 import type { ArchiveRoom } from '@/composables/runArchiveImport'
 
 /** 归档房间表（run-archive.json rooms：ArchiveRoom + seasonStart） */
 export type ArchiveRoomMap = Record<string, ArchiveRoom & { seasonStart?: string }>
 
-export interface IncrementPassOptions {
+export interface IncrementPassOptions extends BatchTaskOptions {
   /**
    * 求值场景（r369 独立场景试点）：本函数在 `scenario.config` 上随意改写（应用 Boss 房间 / 装配基底队），
    * 读 `scenario.calc` 的伤害。页面传 `withAnalysisScenario` 给的场景，UI store 全程不被改写。
@@ -237,9 +237,6 @@ export interface IncrementPassOptions {
   /** 归档（runs + rooms） */
   runs: IncRun[]
   rooms: ArchiveRoomMap
-  onProgress?: (p: { pct: number; text: string }) => void
-  /** 取消（被新运行顶掉时及早停算；已算部分不会发布） */
-  control?: BatchControl
 }
 
 export interface IncrementPassResult {
@@ -271,7 +268,7 @@ export async function computeIncrementPass(opts: IncrementPassOptions): Promise<
   // 已删）；yield 期间 UI 也看不到中间态（旧路径下页面会为每个中间态重算）。
   const { config: configStore, calc } = opts.scenario
   const t0 = Date.now()
-  const report = (pct: number, text: string) => opts.onProgress?.({ pct, text })
+  const report = batchReporter(opts)
   // 1. 期轴（boss-presets defense 聚合；测试服剔除）
   const periods = buildPlannerPeriods(opts.bosses, { testServerVersions: plannerTestServerVersions() })
   // 2. 房间 →（bossId, periodId）
