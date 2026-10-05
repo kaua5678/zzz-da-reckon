@@ -997,7 +997,7 @@ export function createRunCalcRound(deps: {
         const supplyCap = Math.max(0, Math.floor(Math.max(0, (base.totalTime ?? 180) - ownFieldTime) / decl.minPeriodSeconds))
         // 原 ×1.2 冗余（注释「实测 18 对只涨 3.85×」）就是 u 随 N 增大的效应，已由 poolAt(4) 显式算进 ⇒ 删（CC-475）。
         // CC-477（r659）：线性估计只对当前分支成立，回削会跨到 N−1 分支再估回来 ⇒ 外层 2-环 + CC-150 钳 ⇒ 同输入两个 N。
-        // 到保底后不回削（迟滞，est=0 除外），上行阻尼；见 core/stunPool.ts#relaxAutoFillStep。
+        // 到保底即持住（r660：向上也不动——上限随对数翻转时 +1 再夹回会 24↔25 环），未到保底才阻尼上行；见 core/stunPool.ts#relaxAutoFillStep。
         backstageNext[cfg.agentId] = relaxAutoFillStep(threads.backstageAuto?.[cfg.agentId], Math.ceil(deficit / Math.max(1, perPair)), supplyCap, sp1.pool.stunCount >= BACKSTAGE_FLOOR_STUNS)
       }
       backstageAutoNext = backstageNext

@@ -617,7 +617,7 @@
   "slack": 0.6,
   "over": 0,
   "stun": 4,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "yixuan-trigger-lucia": {
   "slack": 0,
