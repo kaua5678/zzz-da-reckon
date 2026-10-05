@@ -472,16 +472,24 @@ function iterateBody(
   // （与操作角色并行，团队预算不再重复计它们），吸收多少由溢出决定、按各自容量（净必要）比例分摊，不多不少；
   // 只有吸收不完的剩余才走下面的 feasibleScale 封顶 / 装配截断。单人 ≤ 战斗时间的上限不变（iterate 单角色前线上限）。
   // 实测（预设口径）只有 5/104 队会进这里（Σ必要 ≈ 预算、Σcredit = 0 的 1431 簇等），其余 99 队 excess ≤ 0 ⇒ 零分支。
-  // 验：src/core/__tests__/dynamicComboAlign.test.ts；轴模式不做（轴预设自带 axisOverlap 口径）。
+  // 验：src/core/__tests__/dynamicComboAlign.test.ts。
+  // **轴态也吃吸收**（用户口径 2026-10-05，本条为 §20.5-3 的方向修正）：
+  // 「捏轴只代表**失衡内**并行合轴了多少，**还有失衡外没有捏**，所以还是要吃 40% 合轴率的总合轴时间。」
+  // ⇒ 吸收闸门**不带 `!axisMode`**：轴预设自带的 `axisOverlap` 只覆盖失衡内（轴块区间），
+  // 失衡外的自由循环部分仍应按 40% 参与合轴。两者**不叠加**——`timeOccupation.ts:88` 的
+  // `extraCredit = max(0, comboAlignCredit − axisOverlapBySlot)` 已实现「取大」口径，
+  // 故轴内已并行掉的份额不会被重复扣（引擎既有架构与用户口径天然相容）。
+  // ⚠ **「轴态不封顶」仍保留**（见 :513 的 `!axisMode`）：超预算的处置仍是「轴退化/降配」
+  // 显式上报，吸收只减少溢出、不静默截断。（旧注释称「轴模式不做」= 已废止的口径，勿再引用。）
   // **吸收上限**（v3，用户口径 2026-09-19「全部吸收比较难，默认队友的 40% 可以被吸收（合轴率），超过了就无力合轴了」）：
   // 每名非操作角色的容量 = `comboAlignAbsorbRatio` × 其净必要（缺省 0.4，全局变量、可调、0 = 不吸收）；
   // 吸收不完的溢出**不再**被队友兜住 ⇒ 回到封顶 / 装配截断——结构性溢出队（1431 簇）在自由口径下重新可见。
-  // @fact engine:动态合轴吸收上限 口径: 非操作角色可被合轴吸收的前台 ≤ comboAlignAbsorbRatio × 其净必要前台（全局变量，缺省 0.4，0 = 不吸收）；吸收总量 = min(溢出, Σ容量)，超出部分照旧封顶/截断 | 据 用户@2026-09-19「全部吸收比较难…默认队友的40%可以被吸收（合轴率），超过了就无力合轴了」·复核@2026-09-30 | 验 src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/timeOccupation.ts#calcTimeAllocation | 信 确认
+  // @fact engine:动态合轴吸收上限 口径: 非操作角色可被合轴吸收的前台 ≤ comboAlignAbsorbRatio × 其净必要前台（全局变量，缺省 0.4，0 = 不吸收）；吸收总量 = min(溢出, Σ容量)，超出部分照旧封顶/截断。**轴态与非轴态同吃本吸收**（轴内 axisOverlap 只覆盖失衡内，失衡外仍按本比例参与），两者按 max 取大不叠加 | 据 用户@2026-09-19「全部吸收比较难…默认队友的40%可以被吸收（合轴率），超过了就无力合轴了」·用户@2026-10-05「捏轴只代表失衡内…失衡外没有捏，所以还是要吃 40% 合轴率的总合轴时间」 | 验 src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/timeOccupation.ts#calcTimeAllocation | 信 确认
   // ⟳复核: 用户再调缺省比例或改为按角色/按招式的上限时，复核「吸收总量 == min(溢出, Σ 0.4×净必要)」恒等式（dynamicComboAlign.test ①）+ 1431 簇预设口径截断量（timeGolden over 字段）| 到期 2026-12-31
   const absorbRatioRaw = globalCfg.comboAlignAbsorbRatio ?? DEFAULT_COMBO_ALIGN_ABSORB_RATIO
   const absorbRatio = Number.isFinite(absorbRatioRaw) ? Math.min(1, Math.max(0, absorbRatioRaw)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO
   const dynamicComboAlign: number[] = configs.map(() => 0)
-  if (!axisMode && absorbRatio > 0 && sumNetNecessary > budget + 1e-9 && configs.length > 1) {
+  if (absorbRatio > 0 && sumNetNecessary > budget + 1e-9 && configs.length > 1) {
     let operator = 0
     for (let i = 1; i < netNecessary.length; i++) if (netNecessary[i] > netNecessary[operator]) operator = i
     // 上限按**封顶后的最终前台**算，不是按吸收前的净必要：吸收不完的溢出会让下方 feasibleScale 把「未被吸收的部分」等比压缩，
