@@ -269,13 +269,13 @@
   "slack": 0,
   "over": 0,
   "stun": 4,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "auto-1371-1571-1451": {
   "slack": 0,
   "over": 0,
-  "stun": 3,
-  "outerExit": "cycle"
+  "stun": 4,
+  "outerExit": "stable"
  },
  "auto-1381-1211-1311": {
   "slack": 0,
@@ -616,7 +616,7 @@
  "yixuan-roxy-lucia": {
   "slack": 0.6,
   "over": 0,
-  "stun": 3,
+  "stun": 4,
   "outerExit": "cycle"
  },
  "yixuan-trigger-lucia": {

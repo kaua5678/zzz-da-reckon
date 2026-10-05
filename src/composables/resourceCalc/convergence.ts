@@ -7,7 +7,7 @@ import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
-import { stunBuildUpForCount } from '@/core/stunPool'
+import { relaxAutoFillStep, stunBuildUpForCount } from '@/core/stunPool'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
@@ -996,7 +996,9 @@ export function createRunCalcRound(deps: {
         const ownFieldTime = (ownField?.timeAllocation?.necessaryTime ?? 0) + (ownField?.timeAllocation?.basicAttackTime ?? 0)
         const supplyCap = Math.max(0, Math.floor(Math.max(0, (base.totalTime ?? 180) - ownFieldTime) / decl.minPeriodSeconds))
         // 原 ×1.2 冗余（注释「实测 18 对只涨 3.85×」）就是 u 随 N 增大的效应，已由 poolAt(4) 显式算进 ⇒ 删（CC-475）。
-        backstageNext[cfg.agentId] = Math.min(supplyCap, Math.ceil(deficit / Math.max(1, perPair)))
+        // CC-477（r659）：线性估计只对当前分支成立，回削会跨到 N−1 分支再估回来 ⇒ 外层 2-环 + CC-150 钳 ⇒ 同输入两个 N。
+        // 到保底后不回削（迟滞，est=0 除外），上行阻尼；见 core/stunPool.ts#relaxAutoFillStep。
+        backstageNext[cfg.agentId] = relaxAutoFillStep(threads.backstageAuto?.[cfg.agentId], Math.ceil(deficit / Math.max(1, perPair)), supplyCap, sp1.pool.stunCount >= BACKSTAGE_FLOOR_STUNS)
       }
       backstageAutoNext = backstageNext
     }

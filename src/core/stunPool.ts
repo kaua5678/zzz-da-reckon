@@ -252,3 +252,26 @@ export function withStunCount(pool: StunPoolResult, stunCount: number): StunPool
     chainCountTotal,
   }
 }
+/**
+ * 后台合轴自动填充反推的**迟滞步**（CC-477，r659）。
+ *
+ * 病灶（r659 探针，auto-1371-1481-1451 弹刀/闪反各 +25）：反推 `est = ceil(缺口 / 每对净失衡)` 是对**当前执行行**的线性
+ * 估计——13 对时 N=4，其他行在 4 窗口径下 59434、估「11 对够」；可一旦削到 12 对，本轮落到 N=3 分支，其他行只剩 58529
+ * （随 N 生成的按窗行少了一窗 ≈ 3.7 对），估又变「要 14」。同一对数区间 [11,13] 里 N=3 / N=4 **两个分支都自洽**，
+ * 线性回削必跨分支 ⇒ 外层 2-环（旧 ×1.2 下 15↔10、CC-475 后 13↔12）⇒ `cycle` 退出 + CC-150 钳 ⇒ 同一输入报 N=3 或 4
+ * 取决于迭代路径。单纯阻尼压不住（分支阈值就在削幅之内）。
+ *
+ * 规则：
+ * - 本轮已到保底（`reached`，池次数 ≥ 保底）且估计低于上一轮 ⇒ **不回削**（保持上一轮量）——保底是地板，站稳了就不往回试探；
+ *   唯一例外 `est = 0`（其他行单独已够、自动对数本就不该有）⇒ 直接归零（CC-475 锁 ②）。
+ * - 估计高于上一轮（还没到保底）⇒ 上行 `prev + ceil(Δ/2)`（至少 +1，压过冲）。
+ * - 未到保底而估计更低（供给缩水等）⇒ 下调到估计。无上一轮量（本 pass 首轮）⇒ 直接取估计。结果再被供给上限夹住。
+ * 代价：热启动带来的偏多对数不再削回（合轴不占前台不计难度，多几对只是余量）。回退：调用处改回 `est`。
+ */
+export function relaxAutoFillStep(prev: number | undefined | null, est: number, cap: number, reached: boolean): number {
+  const e = Math.max(0, est)
+  if (prev === undefined || prev === null) return Math.min(cap, e)
+  if (e >= prev) return Math.max(0, Math.min(cap, e === prev ? prev : prev + Math.ceil((e - prev) / 2)))
+  if (e === 0) return 0
+  return Math.min(cap, reached ? prev : e)
+}
