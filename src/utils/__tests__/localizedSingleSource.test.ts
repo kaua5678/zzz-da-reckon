@@ -17,8 +17,7 @@ const SRC = join(__dirname, '..', '..')
 const HAND_COPY = /\.name\??\.zhCN\s*\?\?|\.name\??\.zhCN\?\.slice\(/g
 /** 匹配器：取 en+zh 做 includes/lowercase 关键字判断，不是显示值 */
 const ALLOWED: Record<string, number> = {
-  'core/damage.ts': 1,                        // moveName 关键字匹配
-  'composables/resourceCalc/helpers.ts': 1,   // 同上（资源侧）
+  'core/damage.ts': 2,                        // moveName 关键字匹配（moveSignalDamageTarget + inferSkillDamageTarget 分类兜底；CC-500 起资源侧转调前者，不再手抄）
   'composables/multiplierCoefficients.ts': 1, // :46 招式名关键字
   'mechanics/agents/remielle.ts': 2,          // 「垂虹」招式识别
 }

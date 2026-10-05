@@ -13,16 +13,31 @@ import { fmt } from '@/utils/format'
 import { calcPenetrationPower, penetrationPowerFormulaLabel, penetrationPowerFormulaText } from '@/data/penetrationPower'
 
 
-export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove): SkillDamageTarget {
-  if (move.timeType === 'dodgeCounter') return 'dodgeCounter'
-  if (move.skillTags?.includes('dashAttack')) return 'dashAttack'
+/**
+ * 招式**自身信号**优先的分类（CC-500）：timeType → skillTags → 名称。伤害路径 `inferSkillDamageTarget`
+ * 与资源路径 `resourceCalc/helpers#normalizeResourceSkillType` 先走这一段，再各自按分类 id / skillType 兜底。
+ * 顺序即优先级，别调换：实测冲刺招式 catalog skillType 可能误标 'dodge'（苍角 1131016），名称 / tags 先判可纠正。
+ * null = 招式没有自身信号。
+ */
+export function moveSignalDamageTarget(
+  move: Pick<SkillMove, 'timeType' | 'skillTags' | 'name'> | null | undefined,
+): 'dodgeCounter' | 'dashAttack' | 'additionalAttack' | null {
+  if (move?.timeType === 'dodgeCounter') return 'dodgeCounter'
+  if (move?.skillTags?.includes('dashAttack')) return 'dashAttack'
   // 「视为追加攻击」的招式（如奥菲丝高压火枪/各强化特殊技/连携/终结技，见各角色核心被动原文）
-  if (move.skillTags?.includes('additionalAttack')) return 'additionalAttack'
+  if (move?.skillTags?.includes('additionalAttack')) return 'additionalAttack'
+  const name = `${move?.name?.en ?? ''} ${move?.name?.zhCN ?? ''}`.toLowerCase()
+  if (name.includes('dash attack') || name.includes('冲刺攻击')) return 'dashAttack'
+  return null
+}
+
+export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove): SkillDamageTarget {
+  const bySignal = moveSignalDamageTarget(move)
+  if (bySignal) return bySignal
 
   const categoryId = (category.id ?? '').toLowerCase()
   const moveName = `${move.name?.en ?? ''} ${move.name?.zhCN ?? ''}`.toLowerCase()
 
-  if (moveName.includes('dash attack') || moveName.includes('冲刺攻击')) return 'dashAttack'
   if (categoryId === 'basic') return 'basic'
   if (categoryId === 'assist') return 'assist'
   if (categoryId === 'dodge' || categoryId === 'dodgecounter' || moveName.includes('dodge counter') || moveName.includes('闪避反击')) return 'dodgeCounter'

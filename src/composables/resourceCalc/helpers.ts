@@ -18,7 +18,7 @@ import { writeMechanicSettingCfg } from '@/specs/cfgField'
 // （锁：resourceCalcStoreDeps.test；ARCHITECTURE.md §0「管线后半段并入 core」前提）
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import { inferSkillDamageTarget } from '@/core/damage'
+import { inferSkillDamageTarget, moveSignalDamageTarget } from '@/core/damage'
 import { resolveRecoveryPerCount } from '@/core/resource/rowAccounting'
 import type { StunSkillExecution } from '@/core/stunPool'
 import {
@@ -425,14 +425,10 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
 
 export function normalizeResourceSkillType(move: SkillMove | null, execMoveId: string): string {
   if (execMoveId === 'basic_attack') return 'basic'
-  // 优先按招式自身信号分类（与伤害路径 inferSkillDamageTarget 同口径——@fact 招式类型/两路径同源 |
+  // 优先按招式自身信号分类（与伤害路径 inferSkillDamageTarget 同一段代码 `moveSignalDamageTarget`，CC-500——@fact 招式类型/两路径同源 |
   // 据 用户 2026-09-05「字段对应，招式限定要注意」 | 验 discSetEffects.test.ts | 锚 helpers.ts#normalizeResourceSkillType | 信 高）：
-  // 实测冲刺招式 catalog skillType 可能误标 'dodge'（如苍角 1131016），名称/tags 先判可纠正。
-  if (move?.timeType === 'dodgeCounter') return 'dodgeCounter'
-  if (move?.skillTags?.includes('dashAttack')) return 'dashAttack'
-  if (move?.skillTags?.includes('additionalAttack')) return 'additionalAttack'
-  const name = `${move?.name?.en ?? ''} ${move?.name?.zhCN ?? ''}`.toLowerCase()
-  if (name.includes('dash attack') || name.includes('冲刺攻击')) return 'dashAttack'
+  const bySignal = moveSignalDamageTarget(move)
+  if (bySignal) return bySignal
   const raw = move?.skillType ?? ''
   if (raw === 'dodge') return 'dodgeCounter'
   if (raw === 'special') return move?.energyCost ? 'exSpecial' : 'special'
