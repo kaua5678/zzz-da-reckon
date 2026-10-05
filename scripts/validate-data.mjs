@@ -214,6 +214,34 @@ for (const f of dataJsonFiles) {
   }
 }
 
+/**
+ * 轴预设 id **跨文件唯一**（2026-10-05，§20.5-3 旁路发现）。
+ *
+ * 为什么必须拦：`stunAxisPresets.ts` 用 `Object.values(import.meta.glob(...))` 装载（文件序），
+ * 而 `selectAutoStunAxisPreset` 的消歧链是「章过滤 → 有琉优先 → 有 plans 优先 → candidates[0]」
+ * ——**没有 tie-break** ⇒ 同 id 两条同时命中时，**选中谁取决于文件名序**，不确定。
+ * 实测历史缺陷（2026-10-05 已修）：`般其他.json`(team 通配 `1471` + 两个星号槽) 与
+ * `般诺通用.json`(team `1471` + `1571` + 星号) 同 id `preset-1471-1571-1451`。
+ *
+ * ⚠ **当前影响面 = 0**（实测，勿夸大）：全库唯一真正同时命中两条同 id 轴的队是
+ * `auto-1471-1571-1451`，而它**会弃轴** ⇒ 两条候选殊途同归。
+ * 故本判据是**防未来踩坑的数据完整性护栏**，不是「正在算错的 bug」的修复。
+ * 完整可达性枚举：`.claude/axis-absorb-predictions.md` §26。
+ */
+const axisPresetIdOwners = new Map()
+const axisPresetIdDupes = []
+for (const f of dataJsonFiles) {
+  const rel = f.replace(join(root, 'src', 'data') + '/', '')
+  if (!rel.startsWith('stunAxisPresets/')) continue
+  const data = JSON.parse(readFileSync(f, 'utf8'))
+  if (typeof data.id !== 'string') continue
+  const prev = axisPresetIdOwners.get(data.id)
+  if (prev === undefined) { axisPresetIdOwners.set(data.id, rel); continue }
+  axisPresetIdDupes.push(`${data.id}（${prev} 与 ${rel}）`)
+}
+check(`stunAxisPresets ids are unique across files${axisPresetIdDupes.length ? '：重复 ' + axisPresetIdDupes.join('、') : ''}`,
+  axisPresetIdDupes.length === 0)
+
 // ===== 状态表同步护栏（README §3.7）：新增角色必须同步两张状态表 =====
 // 历史欠账白名单：数据补齐后逐条删除（删除后即强制）。护栏只约束「新增缺口」，不自动补数据。
 const KNOWN_MISSING_MECHANICS_CHARACTERS = new Set([
