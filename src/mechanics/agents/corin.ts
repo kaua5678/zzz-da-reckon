@@ -32,7 +32,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { axisOverlayChannel, type AxisLike } from '../types'
-import { mechanicSettingOf as settingOf, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
@@ -40,6 +40,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => corinMechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => corinMechanic.settings)
 export const CORIN_ID = '1061'
 export const CORIN_CORE_SAW_DMG = 37.5
 export const CORIN_ADDITIONAL_DMG = 35
@@ -219,10 +220,10 @@ function applyCorinPanel({ cinemaLevel, panel, settings }: AgentPanelInput): voi
   const cycle = computeCorinCycle({
     cinemaLevel,
     additionalActive: false, // 额外能力走伤害行分支（emitExecDirect），不进面板
-    coreSawCoverage: settingOf(settings, 'corin.coreSawCoverage', 1),
+    coreSawCoverage: settingOf(settings, 'corin.coreSawCoverage'),
     additionalStunCoverage: 0,
-    c1Coverage: settingOf(settings, 'corin.c1Coverage', 1),
-    c2ResCoverage: settingOf(settings, 'corin.c2ResCoverage', 1),
+    c1Coverage: settingOf(settings, 'corin.c1Coverage'),
+    c2ResCoverage: settingOf(settings, 'corin.c2ResCoverage'),
     c4EnergyTotal: 0, // 非面板通道（buildCharConfig → initialEnergyGift）
     c6DetonationCount: 0, // 非面板通道（buildExecutions 合成行）
     c6ChargeStacks: 0,

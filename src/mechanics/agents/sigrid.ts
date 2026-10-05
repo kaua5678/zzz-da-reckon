@@ -14,7 +14,7 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { mechanicSettingOf as settingOf, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
@@ -23,6 +23,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const cfgSetting = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 /**
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
  * 机制文本来源：nanoka 3.2.3+18244196 zh character/1591.json + noun.json 术语解析（出枪式=Term:1000029、巡空枪势=Term:1000030、破阵=Term:1000028）。
@@ -135,7 +136,7 @@ function clamp01(value: number): number {
  */
 function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
   if (!panel) return
-  const coreCov = clamp01(settingOf(settings, 'sigrid.corePassiveCoverage', 1))
+  const coreCov = clamp01(settingOf(settings, 'sigrid.corePassiveCoverage'))
   if (cinemaLevel >= 1) {
     panel.atk = Math.round((panel.atk ?? 0) * (1 + SIGRID_C1_ATK_PCT / 100))
   }
@@ -149,7 +150,7 @@ function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
     panel.decibelGainEfficiency = (panel.decibelGainEfficiency ?? 0) + SIGRID_C2_DECIBEL_EFFICIENCY
   }
   if (cinemaLevel >= 4) {
-    const c4Cov = clamp01(settingOf(settings, 'sigrid.cinema4Coverage', 1))
+    const c4Cov = clamp01(settingOf(settings, 'sigrid.cinema4Coverage'))
     panel.dmgBonus = (panel.dmgBonus ?? 0) + SIGRID_C4_DMG * c4Cov
   }
 }

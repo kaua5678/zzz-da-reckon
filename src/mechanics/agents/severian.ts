@@ -31,13 +31,14 @@ import type {
 } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { execMatchesMove } from '@/types/resource'
-import { mechanicSettingOf as settingOf, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 export const SEVERIAN_ID = '1631'
 /** 核心被动：暴击伤害 +60% */
 export const SEVERIAN_CORE_CRIT_DMG = 60
@@ -265,8 +266,8 @@ function applySeverianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): 
   const cycle = computeSeverianCycle({
     cinemaLevel,
     additionalActive: additionalAbilityActiveOf(panel),
-    fengfengStacks: Math.max(0, Math.min(2, whole(settingOf(settings, 'severian.fengfengStacks', 1)))),
-    c4Coverage: clamp01(settingOf(settings, 'severian.c4Coverage', 1)),
+    fengfengStacks: Math.max(0, Math.min(2, whole(settingOf(settings, 'severian.fengfengStacks')))),
+    c4Coverage: clamp01(settingOf(settings, 'severian.c4Coverage')),
   })
   panel.critDmg = (panel.critDmg ?? 0) + cycle.coreCritDmg
   if (cycle.atkFlat > 0) panel.atk = (panel.atk ?? 0) + cycle.atkFlat

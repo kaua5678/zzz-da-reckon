@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { cfgMechanicSetting, cfgMechanicSettingRaw, mechanicSettingCfgKey, mechanicSettingReader } from '../mechanicSettingCfg'
+import { cfgMechanicSetting, cfgMechanicSettingRaw, mechanicSettingCfgKey, mechanicSettingPanelReader, mechanicSettingReader } from '../mechanicSettingCfg'
 
 const SRC = resolve(__dirname, '../..')
 const OWNER = 'utils/mechanicSettingCfg.ts'
@@ -80,9 +80,18 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
     expect(lazy({}, 'a.b')).toBe(2)
   })
 
+  it('CC-508b panel reader：记录读口同样以声明 default 为准；显式 fallback 覆盖；未声明抛错', () => {
+    const read = mechanicSettingPanelReader(() => [{ id: 'x.y', default: 0.5 }])
+    expect(read({}, 'x.y')).toBe(0.5)
+    expect(read({ 'x.y': 0 }, 'x.y')).toBe(0)
+    expect(read({ 'x.y': NaN }, 'x.y')).toBe(0.5)
+    expect(read(undefined, 'x.y', 2)).toBe(2)
+    expect(() => read({}, 'x.z')).toThrow(/x\.z/)
+  })
+
   it('CC-508 源码锁：mechanics/agents 内不再手抄「带点 id + 数字字面量 fallback」的机制设置读法（默认值只在 settings 声明）', () => {
     const AGENTS = resolve(SRC, 'mechanics/agents')
-    const re = /\b(?:setting|cfgNum|cfgSetting|readSetting|cfgMechanicSetting)\(\s*cfg\w*,\s*'\w+\.\w+',\s*-?[0-9.]+\s*\)/
+    const re = /\b(?:setting|cfgNum|cfgSetting|readSetting|cfgMechanicSetting|settingOf|mechanicSettingOf)\(\s*\w+,\s*'\w+\.\w+',\s*-?[0-9.]+\s*\)/
     const hits: string[] = []
     for (const p of walk(AGENTS)) {
       if (!p.endsWith('.ts') || p.includes('__tests__')) continue

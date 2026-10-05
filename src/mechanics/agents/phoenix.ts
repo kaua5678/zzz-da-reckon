@@ -29,13 +29,14 @@ import type {
   ReleaseModifierInput,
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
-import { mechanicSettingOf as settingOf, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 export const PHOENIX_ID = '1641'
 /** 核心被动：异常精通 +40 */
 export const PHOENIX_CORE_PROFICIENCY = 40
@@ -243,7 +244,7 @@ function applyPhoenixPanel({ cinemaLevel, panel, settings }: AgentPanelInput): v
   if (!panel) return
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + PHOENIX_CORE_PROFICIENCY
   if (cinemaLevel >= 2) {
-    const cov = clamp01(settingOf(settings, 'phoenix.c2IncinerationCoverage', 1))
+    const cov = clamp01(settingOf(settings, 'phoenix.c2IncinerationCoverage'))
     panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + PHOENIX_C2_BUILDUP_EFF * cov
   }
 }
