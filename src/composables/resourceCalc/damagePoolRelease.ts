@@ -14,8 +14,7 @@
  * （`./helpers`）与引擎子模块（`@/core/*` 等）。
  */
 import { panelAt } from '@/core/panel'
-import { attributeCountByStateChain } from '@/core/stunAxis/inStunAnomaly'
-import { allocateAxisWindows } from '@/core/stunAxisStack'
+import { bossAxisStateShares, hasBossAxisSegments } from '@/core/stunAxis/inStunAnomaly'
 import { getBaseElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { safeElement } from './helpers'
 import type { CharRowsEnv, CharLocals } from './damagePoolDirect'
@@ -89,37 +88,18 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
           }
         }
         const bossRel = isAxis ? bossAnomalyState : null
-        const relWindows = bossRel?.stateChainsPerWindow.length ?? 0
-        const relAnySegment = !!bossRel && (bossRel.stateChainsPerWindow.some(c => c.length > 0) || bossRel.windOverlayPerWindow.some(c => c.length > 0))
-        if (bossRel && relWindows > 0 && relAnySegment) {
+        if (hasBossAxisSegments(bossRel)) {
           const relNs = event.eventId.split('_')[0] ?? 'release'
           const chainEls = [...new Set(
             bossRel.stateChainsPerWindow.flat().concat(bossRel.windOverlayPerWindow.flat()).map(s => s.element),
           )]
           const hasManualShare = chainEls.some(el => configStore.getMechanicSetting(`${relNs}.releaseShare:${el}`, -1) >= 0)
           if (!hasManualShare) {
-            const D = bossRel.windowDuration && bossRel.windowDuration > 0 ? bossRel.windowDuration : computeWindowDuration()
-            // 与极性紊乱同口径：总次数均分到各真实失衡窗，逐窗按该窗状态链取样
-            const alloc = allocateAxisWindows(effectiveStunAxes, Math.round(stunPoolResult?.stunCount ?? 0))
-            const rIdx = bossRel.windowEntryIdx ?? bossRel.stateChainsPerWindow.map((_, i) => i)
-            const rWeights = rIdx.map(ei => alloc[ei] ?? 0)
-            const winShares = rWeights.some(w => w > 0)
-              ? distributeIntegerByWeight(totalRelease, rWeights)
-              : distributeIntegerByWeight(totalRelease, Array(relWindows).fill(1))
-            const merged = new Map<string, number>()
-            for (let w = 0; w < relWindows; w++) {
-              const chain = [...(bossRel.stateChainsPerWindow[w] ?? []), ...(bossRel.windOverlayPerWindow[w] ?? [])]
-              for (const p of attributeCountByStateChain(winShares[w] ?? 0, chain, D, agent?.damageElement ?? 'physical')) {
-                merged.set(p.element, (merged.get(p.element) ?? 0) + p.count)
-              }
-            }
-            const parts = [...merged.entries()].map(([element, count]) => ({ element, count })).sort((a, b) => b.count - a.count)
-            const shares = distributeIntegerByWeight(totalRelease, parts.map(p => p.count))
-            for (let i = 0; i < parts.length; i++) {
-              const count = shares[i] ?? 0
-              if (count <= 0) continue
-              pushDominantShare(parts[i].element, count, 'Boss异常状态轴·按触发时刻状态归因')
-            }
+            // 与极性紊乱同一规则（CC-494 `bossAxisStateShares`）：总次数按条目失衡数加权分到各真实失衡窗，逐窗按该窗状态链取样
+            const shares = bossAxisStateShares(
+              bossRel, totalRelease, effectiveStunAxes, stunPoolResult?.stunCount ?? 0, computeWindowDuration, agent?.damageElement ?? 'physical',
+            )
+            for (const p of shares) pushDominantShare(p.element, p.count, 'Boss异常状态轴·按触发时刻状态归因')
             continue
           }
         }
@@ -182,34 +162,16 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
       const polarRatio = event.polarDisorderRatio ?? 0.25
       const perEvent = (dd?.avgDamage ?? 0) * polarRatio
       const boss = isAxis ? bossAnomalyState : null
-      const bossWindows = boss?.stateChainsPerWindow.length ?? 0
-      const anySegment = !!boss && (boss.stateChainsPerWindow.some(c => c.length > 0) || boss.windOverlayPerWindow.some(c => c.length > 0))
-      let parts: Array<{ element: string; count: number }> = []
-      if (perEvent > 0 && event.count > 0 && event.element === 'dominant' && boss && bossWindows > 0 && anySegment) {
-        const D = boss.windowDuration && boss.windowDuration > 0 ? boss.windowDuration : computeWindowDuration()
-        // 事件总次数均分到各真实失衡窗，逐窗按该窗状态链取样归因（展开后每窗链可能不同）
-        // 事件总次数按各条目的失衡数加权分配到代表窗，逐窗按状态链取样归因
-        const alloc = allocateAxisWindows(effectiveStunAxes, Math.round(stunPoolResult?.stunCount ?? 0))
-        const wIdx = boss.windowEntryIdx ?? boss.stateChainsPerWindow.map((_, i) => i)
-        const weights = wIdx.map(ei => alloc[ei] ?? 0)
-        const winShares = weights.some(w => w > 0)
-          ? distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), weights)
-          : distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), Array(bossWindows).fill(1))
-        const merged = new Map<string, number>()
-        for (let w = 0; w < bossWindows; w++) {
-          const chain = [...(boss.stateChainsPerWindow[w] ?? []), ...(boss.windOverlayPerWindow[w] ?? [])]
-          for (const p of attributeCountByStateChain(winShares[w] ?? 0, chain, D, agent?.damageElement ?? 'ether')) {
-            merged.set(p.element, (merged.get(p.element) ?? 0) + p.count)
-          }
-        }
-        parts = [...merged.entries()].map(([element, count]) => ({ element, count })).sort((a, b) => b.count - a.count)
-        const shares = distributeIntegerByWeight(Math.max(0, Math.floor(event.count)), parts.map(p => p.count))
-        for (let i = 0; i < parts.length; i++) {
-          const shareCount = shares[i] ?? 0
-          if (shareCount <= 0) continue
+      if (perEvent > 0 && event.count > 0 && event.element === 'dominant' && hasBossAxisSegments(boss)) {
+        // 事件总次数按各条目的失衡数加权分配到代表窗，逐窗按状态链取样归因（CC-494 `bossAxisStateShares`，与异放 dominant 同一份）
+        const shares = bossAxisStateShares(
+          boss, event.count, effectiveStunAxes, stunPoolResult?.stunCount ?? 0, computeWindowDuration, agent?.damageElement ?? 'ether',
+        )
+        for (const p of shares) {
+          const shareCount = p.count
           // 极性基数用「现在的基础值」（用户口径）：当前状态元素的紊乱明细均摊；
           // 池无该元素明细时回落全池均摊
-          const el = parts[i].element
+          const el = p.element
           const elDetails = (dd?.details ?? []).filter(d => getBaseElement(d.element) === getBaseElement(el))
           const elEvents = elDetails.reduce((s, d) => s + (d.events ?? 0), 0)
           const elDamage = elDetails.reduce((s, d) => s + (d.damage ?? 0), 0)

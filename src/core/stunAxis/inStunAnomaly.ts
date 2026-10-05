@@ -8,7 +8,8 @@
  * 口径：同一元素同一窗口只触发一次异常事件（用户口径「触发一次对应异常」）；异常激活后持续
  * ANOMALY_DURATION 秒（通常覆盖至窗尾）。积蓄速率均匀摊到动作时长内（瞬发招式记在起点）。
  */
-import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, getBaseElement } from '@/core/anomalyPool/helpers'
+import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, getBaseElement, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { allocateAxisWindows } from '@/core/stunAxisStack'
 // 下沉（2026-09-13 展示层越层棘轮）：选项表**定义**在 src/data/bossEntryAnomalyOptions.ts，
 // 此处 re-export 保持引擎侧 `bossEntryAnomalyElement()` 与既有 `@/core/stunAxis/inStunAnomaly`
 // 引用零改动；展示层（失衡轴页）改 import `@/data/…`。
@@ -369,4 +370,49 @@ export function attributeCountByStateChain(
   return [...hits.entries()]
     .map(([element, c]) => ({ element, count: c }))
     .sort((a, b) => b.count - a.count)
+}
+
+/** Boss 异常状态轴可用于归因：至少一个代表窗，且标准链或风化覆盖层至少有一段（否则回落覆盖率路径）。 */
+export function hasBossAxisSegments(boss: BossAnomalyStateResult | null | undefined): boss is BossAnomalyStateResult {
+  return !!boss
+    && boss.stateChainsPerWindow.length > 0
+    && (boss.stateChainsPerWindow.some(c => c.length > 0) || boss.windOverlayPerWindow.some(c => c.length > 0))
+}
+
+/**
+ * Boss 异常状态轴·按触发时刻状态归因（CC-494）：一个 dominant 事件的 `total` 次
+ * ① 按各代表窗所属轴条目的失衡数（`allocateAxisWindows(axes, round(stunCount))` × `windowEntryIdx`）加权整分到各窗
+ *    （全 0 权重 → 均分）；② 逐窗把该窗份额按「标准链 + 风化覆盖层」均匀取样时刻查状态
+ *    （`attributeCountByStateChain`，无状态计入 `fallbackElement`）；③ 按元素合计、降序，再把 `total` 按合计权重整分一次。
+ * 异放 dominant（damagePoolRelease 段 R）与极性紊乱 dominant 同一规则——此前两边各抄一份、靠注释「同口径」维持。
+ * 窗口时长用状态链构建时注入的 `boss.windowDuration`；未注入才回落 `fallbackWindowDuration()`（禁止重算，见字段注释）。
+ * 返回只含 count > 0 的元素份额（顺序 = 合计降序）。
+ */
+export function bossAxisStateShares(
+  boss: BossAnomalyStateResult,
+  total: number,
+  axes: ReadonlyArray<{ readonly count?: number }>,
+  stunCount: number,
+  fallbackWindowDuration: () => number,
+  fallbackElement: string,
+): Array<{ element: string; count: number }> {
+  const n = Math.max(0, Math.floor(total))
+  const windows = boss.stateChainsPerWindow.length
+  const D = boss.windowDuration && boss.windowDuration > 0 ? boss.windowDuration : fallbackWindowDuration()
+  const alloc = allocateAxisWindows(axes, Math.round(stunCount))
+  const idx = boss.windowEntryIdx ?? boss.stateChainsPerWindow.map((_, i) => i)
+  const weights = idx.map(ei => alloc[ei] ?? 0)
+  const winShares = weights.some(w => w > 0)
+    ? distributeIntegerByWeight(n, weights)
+    : distributeIntegerByWeight(n, Array(windows).fill(1))
+  const merged = new Map<string, number>()
+  for (let w = 0; w < windows; w++) {
+    const chain = [...(boss.stateChainsPerWindow[w] ?? []), ...(boss.windOverlayPerWindow[w] ?? [])]
+    for (const p of attributeCountByStateChain(winShares[w] ?? 0, chain, D, fallbackElement)) {
+      merged.set(p.element, (merged.get(p.element) ?? 0) + p.count)
+    }
+  }
+  const parts = [...merged.entries()].map(([element, count]) => ({ element, count })).sort((a, b) => b.count - a.count)
+  const shares = distributeIntegerByWeight(n, parts.map(p => p.count))
+  return parts.map((p, i) => ({ element: p.element, count: shares[i] ?? 0 })).filter(p => p.count > 0)
 }
