@@ -11,6 +11,11 @@ import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocatio
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { useCatalogStore } from './catalog'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic } from '@/mechanics'
+import { interactionBaselineFor } from '@/mechanics/interactionBaseline'
+// CC-478（r658）：交互基准纯函数簇（getInteractionDefaults / roleInteractionBaseline / interactionBaselineFor / hasCustomInteractionDefaults）
+// 下沉到 mechanics/interactionBaseline.ts——它们只读角色模块声明，不碰 pinia；原先住在 store 里让引擎（composables/resourceCalc）
+// 一引用就打破 CC-245/246 分层锁（aa0fe35c 实测）。此处 re-export 保持所有既有导入路径与 CC-255「单一来源」不变。
+export { getInteractionDefaults, roleInteractionBaseline, hasCustomInteractionDefaults, interactionBaselineFor } from '@/mechanics/interactionBaseline'
 import { autoStunAxisPresetOf, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
 import type { MechanicTeamMember } from '@/mechanics/types'
@@ -172,29 +177,6 @@ function defaultCharacter(slot: number, agentId: string, element: string): Chara
   }
 }
 
-/**
- * 按角色的交互次数默认值（主页「战斗动作次数」预填展示，相当于帮用户填好；用户可改）。
- * CC-65b：数据下沉为角色模块声明 `interactionDefaults`（星徽·比利 starlightBilly.ts、般岳 banyue.ts）；无声明 = 全 0。
- * 返回副本（原实现返回共享表对象，调用方均只读；副本更安全）。
- */
-export function getInteractionDefaults(agentId: string): { parry: number; dodge: number; block: number; dual: number } {
-  const d = agentId ? getAgentMechanic(agentId)?.interactionDefaults : undefined
-  return d ? { ...d } : { parry: 0, dodge: 0, block: 0, dual: 0 }
-}
-
-/**
- * 通用交互基准（无角色专属默认时按职业；用户口径 2026-09-04 回调）：
- * - 支援/防护：0 交互——支援上战场 1 秒 = 浪费主C 1 秒输出，其后台时间不是发呆（主C 在打）。
- * - 其余（强攻/异常/击破）：弹刀 6 + 闪反 10（闪反在动作时间内给 2× 伤害+失衡；弹刀靠后续
- *   支援突击 + 喧响/失衡纯赚）。基准是「默认大家会打」，不是硬凑——时间紧的队（如叶瞬光
- *   白毛优先）由非轴降配 interactionScale 按必要时间挤占缩放（useResourceCalc 738-742）。
- * 之前一度全默认 0 导致「谁都不打、留时间发呆」，是过度矫正（叶瞬光个案不该推广到全队池）。
- */
-// @fact engine:交互基准 口径: 非支援/防护默认弹刀6/闪反10（闪反动作时间内2×伤害失衡、弹刀喧响失衡纯赚），支援/防护0；基准可被必要时间挤占（超预算时 interactionScale 缩放），不硬凑 | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/stores/__tests__/roleInteractionBaseline.test.ts | 锚 src/stores/config.ts#roleInteractionBaseline | 信 确认
-export function roleInteractionBaseline(specialty: string | undefined): { parry: number; dodge: number; block: number; dual: number } {
-  if (specialty === 'support' || specialty === 'defense') return { parry: 0, dodge: 0, block: 0, dual: 0 }
-  return { parry: 6, dodge: 10, block: 0, dual: 0 }
-}
 
 /**
  * 角色「动作次数」类字段的上下界表（单一事实源，2026-09-11）。
@@ -243,14 +225,6 @@ export function clampActionCount(field: ActionCountField, count: number): number
  * CC-65b：名单下沉为角色模块声明 `noGenericInteraction`（yidhari.ts），见 interactionBaselineFor。
  */
 
-/**
- * 手动队默认交互（单一事实源，setAgent 预填用）：
- * 角色专属默认（getInteractionDefaults）> 正反馈排除（0）> 职业基准（roleInteractionBaseline）。
- */
-export function interactionBaselineFor(agentId: string, specialty?: string): { parry: number; dodge: number; block: number; dual: number } {
-  if (agentId && getAgentMechanic(agentId)?.noGenericInteraction) return { parry: 0, dodge: 0, block: 0, dual: 0 }
-  return hasCustomInteractionDefaults(agentId) ? getInteractionDefaults(agentId) : roleInteractionBaseline(specialty)
-}
 
 /**
  * **快支 / 连携基准**（CC-264 单一来源；setAgent 预填、轻量装配 teamTimelineStore、部署 runArchiveDeploy 共用）。
@@ -262,15 +236,6 @@ export function interactionBaselineFor(agentId: string, specialty?: string): { p
  */
 export const ASSIST_ACTION_BASELINE = { quickAssist: 3, chainPerStun: 1 } as const
 
-/**
- * 角色是否有专属交互默认值（任一项 > 0）。CC-255：此前 pullPlannerEngine / teamTimelineStore / charIncrement /
- * runArchiveDeploy 各内联一份「hasCustom ? defs : 职业基准」，都漏了 noGenericInteraction（1051 伊德海莉被发通用弹刀/闪反）；
- * 现一律调 interactionBaselineFor，只有「不预设弹刀」的部署口径（runArchiveDeploy）另需本判定。
- */
-export function hasCustomInteractionDefaults(agentId: string): boolean {
-  const defs = getInteractionDefaults(agentId)
-  return defs.parry > 0 || defs.dodge > 0 || defs.block > 0 || defs.dual > 0
-}
 
 /** 推荐主词条 prop name → catalog statId 映射（含中文别名）。
  *  探针（panelProbe.test.ts）与配装推荐应用共用，导出防两处漂移。 */

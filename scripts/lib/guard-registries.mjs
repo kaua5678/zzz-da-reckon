@@ -396,7 +396,7 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/mechanics/agents/zhuYuan.ts agent:1241朱鸢特化",
   "src/mechanics/agents/zhuYuan.ts agent:1241/压制以太弹时间",
   "src/stores/config.ts engine:平A权重阶梯",
-  "src/stores/config.ts engine:交互基准",
+  "src/mechanics/interactionBaseline.ts engine:交互基准", // CC-478（r658）：口径随函数搬家，条目数不变
   "src/types/resource/team.ts engine:收敛读数归属",
   "src/composables/teamCompareSweep.ts sweepPage:第三人候选圈定",
   "scripts/import-nanoka-bosses.mjs data:bossBodySize",

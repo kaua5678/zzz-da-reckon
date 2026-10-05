@@ -162,4 +162,5 @@ for (const spec of agentSpecs) {
 }
 
 export * from './registry'
+export * from './interactionBaseline'
 export * from './types'

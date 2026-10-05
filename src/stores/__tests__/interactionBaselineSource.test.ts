@@ -22,7 +22,7 @@ describe('CC-255 交互基准单一来源', () => {
     expect(ellen.dodgeCounterCount).toBeGreaterThan(0)
   })
 
-  it('源码：composables / views / components 不许内联「专属交互默认」判定（owner = stores/config.ts）', () => {
+  it('源码：composables / views / components 不许内联「专属交互默认」判定（owner = mechanics/interactionBaseline.ts，CC-478 前为 stores/config.ts）', () => {
     const root = resolve(__dirname, '../..')
     const hits: string[] = []
     const walk = (dir: string) => {
@@ -31,7 +31,7 @@ describe('CC-255 交互基准单一来源', () => {
         if (statSync(p).isDirectory()) { if (name !== '__tests__') walk(p); continue }
         if (!/\.(ts|vue)$/.test(name) || name.endsWith('.test.ts')) continue
         const rel = relative(root, p).replace(/\\/g, '/')
-        if (rel === 'stores/config.ts') continue
+        if (rel === 'mechanics/interactionBaseline.ts') continue // CC-478：owner 从 stores/config.ts 搬到 mechanics（config.ts 只剩 re-export）
         readFileSync(p, 'utf-8').split('\n').forEach((l, i) => {
           if (/defs\.parry\s*>\s*0\s*\|\|\s*defs\.dodge\s*>\s*0/.test(l)) hits.push(`${rel}:${i + 1}`)
         })
