@@ -178,6 +178,7 @@ import {
 import { type SlotComparePoint, type SlotCompareSlot } from '@/composables/teamTimeline'
 import { VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
+import { latestPhaseOf } from '@/composables/bossSchedule'
 
 const props = defineProps<{
   /** 布局宽度（页面 svgW） */
@@ -232,13 +233,8 @@ watch(() => props.selectedBossId, v => {
   if (!scBossTouched.value && v) scBossId.value = v
 }, { immediate: true })
 const scBoss = computed(() => props.bosses.find(b => b.id === scBossId.value) ?? null)
-/** 与顶部 selectedPhase 同口径：取该 Boss 最新危局期，否则最新期 */
-const scPhase = computed<BossPresetPhase | null>(() => {
-  const b = scBoss.value
-  if (!b) return null
-  const sorted = [...b.phases].filter(p => p.begin).sort((x, y) => y.begin.localeCompare(x.begin))
-  return sorted.find(p => p.modeType === 'critical_assault') ?? sorted[0] ?? b.phases[0] ?? null
-})
+/** 与顶部 selectedPhase 同一份规则：bossSchedule#latestPhaseOf（最新危局·困难期，否则最新期） */
+const scPhase = computed<BossPresetPhase | null>(() => (scBoss.value ? latestPhaseOf(scBoss.value) : null))
 const scBossName = computed(() => scBoss.value?.name ?? '—')
 
 async function runSlotCompare() {

@@ -9,7 +9,7 @@
  *   （`indexForDate` 窗口匹配；早于首期 → -1，由调用方钳制为「从轴起点可用」）。
  */
 import type { VersionNode } from '@/data/versionTimeline'
-import type { BossPreset } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
 type ScheduleNode = Pick<VersionNode, 'id' | 'date'>
 
@@ -97,4 +97,14 @@ export function buildPeriodAxis(
     .sort((x, y) => x.begin.localeCompare(y.begin) || x.id.localeCompare(y.id))
     .filter(node => opts.includeTestServer || !opts.testServerVersions?.has(node.version))
     .map(({ seen, ...node }, i) => ({ ...node, seq: i + 1 }))
+}
+
+/**
+ * 「数值期」：某 Boss 取数值用的那一期 = 最新一期危局·困难（critical_assault），否则最新一期
+ * （按 begin 降序；无 begin 的期不参与排序），都没有时退回 phases[0]；无期返回 null。
+ * 时间图表页顶部 selectedPhase 与槽位对比图 scPhase 共用（r673 前两处各写一份、靠注释保持同口径）。
+ */
+export function latestPhaseOf(boss: Pick<BossPreset, 'phases'>): BossPresetPhase | null {
+  const sorted = boss.phases.filter(p => p.begin).sort((x, y) => y.begin.localeCompare(x.begin))
+  return sorted.find(p => p.modeType === 'critical_assault') ?? sorted[0] ?? boss.phases[0] ?? null
 }

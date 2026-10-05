@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { VERSION_NODES } from '@/data/versionTimeline'
-import { buildPeriodAxis, indexForDate, nodeIdForDate } from '@/composables/bossSchedule'
+import { buildPeriodAxis, indexForDate, latestPhaseOf, nodeIdForDate } from '@/composables/bossSchedule'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
 const bossText = readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')
@@ -127,5 +127,44 @@ describe('真实数据冒烟', () => {
     const axis = buildPeriodAxis(bossData.bosses, { testServerVersions: ts })
     const priest = axis.filter(p => [...p.normalBosses, ...p.criticalBosses].some(b => b.bossName.includes('司祭')))
     expect(priest.length).toBeGreaterThan(0)
+  })
+})
+
+describe('latestPhaseOf 数值期（CC-488：时间图表页顶部与槽位对比图同一份规则）', () => {
+  it('有危局·困难期时取最新的那一期，即使普通期更新', () => {
+    const boss = mkBoss('b', 'B', [
+      mkPhase({ phaseId: 'd3', begin: '2025-03-01 04:00:00' }),
+      mkPhase({ phaseId: 'c1', begin: '2025-01-01 04:00:00', modeType: 'critical_assault' }),
+      mkPhase({ phaseId: 'c2', begin: '2025-02-01 04:00:00', modeType: 'critical_assault' }),
+    ])
+    expect(latestPhaseOf(boss)?.phaseId).toBe('c2')
+  })
+  it('没有危局·困难期时取 begin 最新的一期（与 phases 原顺序无关，且不改原数组）', () => {
+    const phases = [
+      mkPhase({ phaseId: 'd1', begin: '2025-01-01 04:00:00' }),
+      mkPhase({ phaseId: 'd3', begin: '2025-03-01 04:00:00' }),
+      mkPhase({ phaseId: 'd2', begin: '2025-02-01 04:00:00' }),
+    ]
+    const boss = mkBoss('b', 'B', phases)
+    expect(latestPhaseOf(boss)?.phaseId).toBe('d3')
+    expect(phases.map(p => p.phaseId)).toEqual(['d1', 'd3', 'd2'])
+  })
+  it('全部期都没有 begin 时退回 phases[0]；无期返回 null', () => {
+    const boss = mkBoss('b', 'B', [
+      mkPhase({ phaseId: 'x1', begin: '' }),
+      mkPhase({ phaseId: 'x2', begin: '', modeType: 'critical_assault' }),
+    ])
+    expect(latestPhaseOf(boss)?.phaseId).toBe('x1')
+    expect(latestPhaseOf(mkBoss('e', 'E', []))).toBeNull()
+  })
+  it('源码锁：排序 + 危局优先的规则只在 bossSchedule.ts 写一次，两个消费方不再各写一份', () => {
+    const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), 'utf8')
+    const rule = "y.begin.localeCompare(x.begin)"
+    expect(read('../bossSchedule.ts').split(rule).length - 1).toBe(1)
+    for (const rel of ['../../views/TimeChartsPage.vue', '../../components/charts/SlotCompareChart.vue']) {
+      const src = read(rel)
+      expect(src.includes(rule), rel).toBe(false)
+      expect(src.includes('latestPhaseOf('), rel).toBe(true)
+    }
   })
 })

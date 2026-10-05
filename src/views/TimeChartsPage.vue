@@ -410,7 +410,7 @@ import SlotCompareChart from '@/components/charts/SlotCompareChart.vue'
 import PullPlannerChart from '@/components/charts/PullPlannerChart.vue'
 import TimeChartsControls from '@/components/charts/TimeChartsControls.vue'
 import { buildTimelineHoverInfo } from '@/composables/charts/hoverInfoBuilders'
-import { buildPeriodAxis, type PeriodAxisNode } from '@/composables/bossSchedule'
+import { buildPeriodAxis, latestPhaseOf, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 import { TIMELINE_DEFAULT_MAIN_AGENT_ID, TIMELINE_DEFAULT_CANDIDATE_POOL } from '@/data/viewAgentDefaults'
 import { buildDirectDamageTimeline } from '@/composables/multiplierCoefficients'
@@ -469,13 +469,8 @@ onMounted(async () => {
 })
 
 const selectedBoss = computed(() => bossPresets.value.find(b => b.id === selectedBossId.value) ?? null)
-/** 数值取该 Boss 最新一期：优先危局，否则最新期（结果标题会显示所用期数） */
-const selectedPhase = computed(() => {
-  const b = selectedBoss.value
-  if (!b) return null
-  const sorted = [...b.phases].filter(p => p.begin).sort((x, y) => y.begin.localeCompare(x.begin))
-  return sorted.find(p => p.modeType === 'critical_assault') ?? sorted[0] ?? b.phases[0] ?? null
-})
+/** 数值取该 Boss 的「数值期」（bossSchedule#latestPhaseOf：优先危局·困难，否则最新期；结果标题会显示所用期数） */
+const selectedPhase = computed(() => (selectedBoss.value ? latestPhaseOf(selectedBoss.value) : null))
 
 // ========== 危局期数轴（横轴：一版约 3 期、每期 ~14 天）+ 每期 Boss 排期 ==========
 // 演变只看危局·普通（defense）；危局·困难（critical_assault）仅记录不作为轴依据。测试服占位期默认剔除。
