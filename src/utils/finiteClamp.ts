@@ -5,11 +5,11 @@
  * 非有限值（NaN / ±Infinity / undefined）一律按 0 处理。
  *
  * ⚠ 故意**没有**收进来的同名 / 近名 helper（语义不同，合并会改行为）：
- * - `clamp01(v) = max(0, min(1, v))`（data/deadlyAssaultScore）与 hugo 的
- *   `clampRatio`：不挡 NaN（NaN 进 NaN 出），+Infinity → 1。severian / phoenix / lycaon / sigrid 原来也各有一份，
- *   CC-509（r692）并入 `clampRatio`：CC-508 后它们的实参全是机制设置 reader 的输出（协议保证有限数）或其派生值，NaN 分支不可达；
- * - anby 的 `clampRatio`：`Number(v) || 0`，+Infinity → 1；
- * - ben 的 `clamp01(value, fallback = 1)`：非有限值回落到 fallback（默认 1，不是 0）。
+ * - `data/deadlyAssaultScore.ts#clamp01(v) = min(1, max(0, v))`：不挡 NaN，实参是伤害比值（非机制设置 reader 输出）。
+ * 已并入的（原先也在此名单）：severian / phoenix / lycaon / sigrid 的 `clamp01`（CC-509，r692）、anby 的
+ * `clampRatio(Number(v) || 0)`、hugo 的 `clampRatio`、jane / ben 的 `clamp01(value, fallback = 1)`（CC-510，r693）——
+ * CC-508 之后这些调用点的实参全是机制设置 reader 的输出（协议保证有限数、缺省取声明 default）或其派生值，
+ * NaN / fallback 分支不可达，语义差已消失。
  */
 
 /** 非 number / 非有限值 → 0，其余原值（CC-461：此前 qingyi/yixuan/lycaon/billy/anton/norma/yidhari/resourceIncome/rowAccounting 各私抄一份
