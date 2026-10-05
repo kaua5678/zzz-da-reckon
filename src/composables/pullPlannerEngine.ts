@@ -16,6 +16,7 @@ import { applyBossRoom } from '@/composables/bossRoom'
 import { useCatalogStore } from '@/stores/catalog'
 import { teamStunOk } from '@/composables/teamStructure'
 import { isLimitedSWengineId } from '@/composables/limitedGold'
+import { signatureWEngineOf } from '@/composables/signatureWEngine'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import type { BossPreset } from '@/types/bossPreset'
 import type { AnalysisContext } from '@/composables/analysisScenario'
@@ -101,7 +102,7 @@ export function holdingStateFor(
     const agent = catalog.getAgent(id)
     const limited = !!agent && !isFreePlannerMember(id, catalog)
     const rung = limited ? ladderRung(holdings[id] ?? 0) : null
-    const sig = catalog.displayWEngines.find(w => w.ownerAgentId === id)?.id ?? ''
+    const sig = signatureWEngineOf(catalog, id)?.id ?? ''
     cinemas[s] = rung?.cinema ?? 0
     if (rung && rung.refine > 0 && isLimitedSWengineId(sig)) {
       wEngines[s] = sig

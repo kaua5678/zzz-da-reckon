@@ -10,6 +10,7 @@ import type { Agent } from '@/types/catalog'
 import type { TeamGoldState } from './teamTimeline'
 
 import { localized } from '@/utils/format'
+import { signatureWEngineOf } from '@/composables/signatureWEngine'
 // ========== 配装工具（基础金 / 预算感知加金 / 装配到 store） ==========
 
 /** 基础音擎（0 金档）：
@@ -18,7 +19,7 @@ import { localized } from '@/utils/format'
 function baseWEngineFor(agent: Agent | null | undefined, catalog: ReturnType<typeof useCatalogStore>): string {
   if (!agent) return ''
   const ws = catalog.displayWEngines
-  const sig = ws.find(w => w.ownerAgentId === agent.id)
+  const sig = signatureWEngineOf(catalog, agent.id)
   if (isLimitedAgent(agent.id)) {
     if (sig) return sig.id
     return bestLimitedWEngineFor(agent, catalog) ?? ''
@@ -35,7 +36,7 @@ function baseWEngineFor(agent: Agent | null | undefined, catalog: ReturnType<typ
 export function bestLimitedWEngineFor(agent: Agent | null | undefined, catalog: ReturnType<typeof useCatalogStore>): string | null {
   if (!agent) return null
   const ws = catalog.displayWEngines
-  const sig = ws.find(w => w.ownerAgentId === agent.id)
+  const sig = signatureWEngineOf(catalog, agent.id)
   if (sig && isLimitedWEngine(sig.id)) return sig.id
   const sameSpec = ws.find(w => w.specialty === agent.specialty && isLimitedWEngine(w.id))
   return sameSpec?.id ?? null

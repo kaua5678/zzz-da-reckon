@@ -10,6 +10,7 @@ import type {
 import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget, SUBSTAT_BUDGET_SETTINGS } from '@/core/substatOptimizer'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { useCatalogStore } from './catalog'
+import { signatureWEngineOf } from '@/composables/signatureWEngine'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic } from '@/mechanics'
 import { interactionBaselineFor } from '@/mechanics/interactionBaseline'
 // CC-478（r658）：交互基准纯函数簇（getInteractionDefaults / roleInteractionBaseline / interactionBaselineFor / hasCustomInteractionDefaults）
@@ -607,7 +608,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
       // 自动推荐音擎：优先该角色的专属音擎（ownerAgentId），其次同职业第一个 S 级，最后任意 S 级
       const wEngines = catalogStore.displayWEngines
-      const exclusive = wEngines.find(w => w.ownerAgentId === agentId)
+      const exclusive = signatureWEngineOf(catalogStore, agentId)
       const sameSpecialty = wEngines.filter(
         w => w.rarity === 'S' && w.specialty === agent.specialty
       )

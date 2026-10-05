@@ -43,6 +43,7 @@ import {
 } from './metrics'
 
 import { localized } from '@/utils/format'
+import { signatureWEngineOf } from '@/composables/signatureWEngine'
 export type Calc = ResourceCalc
 
 // ========== 结果 ==========
@@ -103,10 +104,9 @@ export interface FreeCompareOptions extends BatchTaskOptions {
 
 // ========== 装配 ==========
 
-/** 专武 id：音擎的 `ownerAgentId === agentId`（与 `teamCompare.ts:359` 同口径） */
+/** 专武 id（判定走 `signatureWEngineOf`，CC-498）；无专武 null。 */
 export function signatureWEngineId(catalog: ReturnType<typeof useCatalogStore>, agentId: string): string | null {
-  const w = (catalog.displayWEngines ?? []).find(x => x.ownerAgentId === agentId)
-  return w ? w.id : null
+  return signatureWEngineOf(catalog, agentId)?.id ?? null
 }
 
 /**
