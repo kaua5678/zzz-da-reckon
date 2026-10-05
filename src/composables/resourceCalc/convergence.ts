@@ -7,7 +7,8 @@ import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
-import { relaxAutoFillStep, stunBuildUpForCount } from '@/core/stunPool'
+import { continuousStunCount, relaxAutoFillStep, stunBuildUpForCount } from '@/core/stunPool'
+import { probeKey, probePush } from '@/core/probeTrace'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
@@ -998,7 +999,16 @@ export function createRunCalcRound(deps: {
         // 原 ×1.2 冗余（注释「实测 18 对只涨 3.85×」）就是 u 随 N 增大的效应，已由 poolAt(4) 显式算进 ⇒ 删（CC-475）。
         // CC-477（r659）：线性估计只对当前分支成立，回削会跨到 N−1 分支再估回来 ⇒ 外层 2-环 + CC-150 钳 ⇒ 同输入两个 N。
         // 到保底即持住（r660：向上也不动——上限随对数翻转时 +1 再夹回会 24↔25 环），未到保底才阻尼上行；见 core/stunPool.ts#relaxAutoFillStep。
-        backstageNext[cfg.agentId] = relaxAutoFillStep(threads.backstageAuto?.[cfg.agentId], Math.ceil(deficit / Math.max(1, perPair)), supplyCap, sp1.pool.stunCount >= BACKSTAGE_FLOOR_STUNS)
+        const prevAuto = threads.backstageAuto?.[cfg.agentId]
+        const estPairs = Math.ceil(deficit / Math.max(1, perPair))
+        const reached = sp1.pool.stunCount >= BACKSTAGE_FLOOR_STUNS
+        const nextPairs = relaxAutoFillStep(prevAuto, estPairs, supplyCap, reached)
+        // CC-479：反推块逐轮打表（`PROBE_TRACE_BACKSTAGE=1`）。cont4 = poolAt(保底) 口径、curCont = 本轮实际池；二者差见 arch CC-477 行 r661 量化。
+        probePush('PROBE_TRACE_BACKSTAGE', '__backstageSteps', () => ({
+          key: probeKey(), agentId: cfg.agentId, prev: prevAuto ?? null, est: estPairs, next: nextPairs, cap: supplyCap, reached,
+          perPair, pairCount, ownDaze, deficit, cont4: continuousStunCount(pool), curN: sp1.pool.stunCount, curCont: continuousStunCount(sp1.pool),
+        }))
+        backstageNext[cfg.agentId] = nextPairs
       }
       backstageAutoNext = backstageNext
     }

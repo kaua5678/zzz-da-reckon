@@ -4,6 +4,7 @@ import type {
   IterationState,
 } from '@/types/resource'
 import { stunCountForCountChannel } from '@/core/stunPlanProjection'
+import { probePush } from '@/core/probeTrace'
 
 import {
   crossAgentSupplyAt,
@@ -343,18 +344,15 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // **被接受那次**的读数。逐 pass 打表若不按调用分组，就会把别的管线（例如第 2 轮就收敛的可行试探）
   // 的读数当成被接受管线的——尾巴专项里正是这样误判过一轮（见 docs 坑33「尾巴专项收口」）。
   // 消费方：`src/composables/__tests__/convergenceProbe.test.ts` 的 `PROBE_CONV_TEAM` 分支。
-  if (typeof process !== 'undefined' && process.env?.PROBE_TRACE_FOLD === '1') {
-    const g = globalThis as unknown as { __foldTrace?: unknown[] }
-    ;(g.__foldTrace ??= []).push({
-      passes: diag.timeBudgetPasses,
-      conv: diag.timeBudgetConverged,
-      residual: diag.timeBudgetResidualSeconds,
-      idle: diag.timeBudgetIdleSeconds,
-      refund: diag.timeBudgetRefundedSeconds,
-      truncated: timeTruncatedSeconds,
-      team: configs.map(c => c.agentId).join('/'),
-    })
-  }
+  probePush('PROBE_TRACE_FOLD', '__foldTrace', () => ({
+    passes: diag.timeBudgetPasses,
+    conv: diag.timeBudgetConverged,
+    residual: diag.timeBudgetResidualSeconds,
+    idle: diag.timeBudgetIdleSeconds,
+    refund: diag.timeBudgetRefundedSeconds,
+    truncated: timeTruncatedSeconds,
+    team: configs.map(c => c.agentId).join('/'),
+  }))
 
   return {
     totalTime,

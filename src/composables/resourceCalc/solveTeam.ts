@@ -24,6 +24,7 @@ import { stunWindowFraction } from '@/core/effectiveTime'
 import type { ResourceCalcConfig } from '@/types/resource'
 import { initialCalcRoundThreads } from './roundThreads'
 import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
+import { probeKey, probePush } from '@/core/probeTrace'
 import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './feasibilitySearch'
 // 仅类型：`ReturnType<typeof createRunCalcRound>` 与 `CalcRoundResult` 都用不到运行时值，
 // 故 type-only import（不引入 convergence.ts 的运行时依赖）。
@@ -231,6 +232,11 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       }
       // 本轮测量先成快照，再判 stable/cycle；严禁把上轮签名当成当前签名。
       const curSig = outerFeedbackSignature(out)
+      // CC-479：外层不动点逐轮打表（`PROBE_TRACE_OUTER=1` 开，关着零成本）。签名各段含义见 outerCycle.ts#outerFeedbackSignature。
+      probePush('PROBE_TRACE_OUTER', '__outerRounds', () => ({
+        key: probeKey(), round: outerStunHistory.length + 1, stunIn: stunCount, stunNext: next, sig: curSig,
+        poolStun: out.stunPool.stunCount, forceNoAxis, interactionScale: interactionScale ?? null,
+      }))
       const feedbackStable = curSig === prevFeedbackSignature
       if (lockedStunCount >= 0) {
         if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }

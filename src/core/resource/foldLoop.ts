@@ -18,6 +18,7 @@
  * `./helpers`、`./crossAgentSupply`、`./phaseExecutions`。
  */
 import { stunCountForCountChannel } from '@/core/stunPlanProjection'
+import { probePush } from '@/core/probeTrace'
 import type {
   ResourceCalcConfig, CharacterOperationConfig, IterationState,
 } from '@/types/resource'
@@ -298,15 +299,12 @@ export function runFoldLoop(
     // 逐轮残差轨迹（同一调用的折叠环内部序列；与上面的调用级记录同属收敛读数归属设施）
     // 注意：`maxExcess ≤ 1e-3` 那条 break 在本记录之前 → **收敛即停的轮次不留记录**，
     // 故「记录条数 = passes − 1 − 早停轮数」，别把记录条数当轮数读。
-    if (typeof process !== 'undefined' && process.env?.PROBE_TRACE_FOLD === '1') {
-      const g = globalThis as unknown as { __foldPasses?: unknown[] }
-      ;(g.__foldPasses ??= []).push({
-        call: (globalThis as unknown as { __foldTrace?: unknown[] }).__foldTrace?.length ?? 0,
-        pass: timePass, maxExcess, best: diag.bestExcess, stagnant: diag.stagnantPasses,
-        idle: maxIdle, refund: ctx.config.timeBudgetRefund ?? 0, conv: diag.timeBudgetConverged,
-        innerClean: inner.clean, innerIters: inner.iterations,
-      })
-    }
+    probePush('PROBE_TRACE_FOLD', '__foldPasses', () => ({
+      call: (globalThis as unknown as { __foldTrace?: unknown[] }).__foldTrace?.length ?? 0,
+      pass: timePass, maxExcess, best: diag.bestExcess, stagnant: diag.stagnantPasses,
+      idle: maxIdle, refund: ctx.config.timeBudgetRefund ?? 0, conv: diag.timeBudgetConverged,
+      innerClean: inner.clean, innerIters: inner.iterations,
+    }))
   }
   // 累加器出口（2026-10-04）：如实上报留在账本里的折叠残差量级（逐槽取最大）。
   // 这是「账本自洽性」的直接读数，也是本出口**唯一可被行为锁区分**的观测量——
