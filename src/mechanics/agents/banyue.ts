@@ -8,6 +8,8 @@ import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { positiveWholeCounts } from '@/utils/finiteClamp'
+import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
+import { PARRY_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
@@ -100,8 +102,9 @@ export const MINGWANG_BASE_PER_STACK = 5 // 明王基础每层火伤 +5%
 export const MINGWANG_MAX_STACKS = 3 // 明王满层（简化：全覆盖，不再按窗口数层）
 const C1_SHEER_DMG_BONUS = 10 // 影画1：对战栗敌人贯穿伤害+10%
 const C1_STUN_DURATION = 2 // 影画1：摧岳命中失衡敌人失衡时长+2s
-const PARRY_DECIBEL = 215 // 普通弹刀（parry）单次喧响奖励（calcSpecialActionBonus 口径）
-const ULTIMATE_COST = 3000 // 终结技喧响消耗默认值（与资源池 ULTIMATE_COST_DEFAULT 一致）
+// 普通弹刀单次喧响奖励 / 终结技喧响消耗缺省：直接 import 数据层单一来源（CC-501；此前手抄 215 / 3000 各一份）
+const PARRY_DECIBEL = PARRY_DECIBEL_BONUS
+const ULTIMATE_COST = ULTIMATE_COST_DEFAULT
 
 // 默认触发次数（用户确认）：闪反 10 / 招架 6 / 金身弹刀 20 / 双反 5
 const DEFAULT_DODGE = 10

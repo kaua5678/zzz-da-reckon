@@ -5,7 +5,7 @@ import { axisOverlayChannel, type AxisLike } from '../types'
 import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { computeSpecResources } from '@/specs/resources'
+import { computeSpecResources, specSpendCost } from '@/specs/resources'
 import { fmt } from '@/utils/format'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
@@ -163,7 +163,8 @@ const DEFAULT_C6_GIFT_ULT_COUNT = -1 // 调息赠送符法千重次数：-1 = �
 // 术法值驱动的符法千重实际次数（用户口径，文本框可填）：
 // -1 = 自动 = 全部（术法值理论可打次数 floor(术法值/120)）；手动填则封顶于理论可打次数。
 const DEFAULT_SHUFA_ULT_COUNT = -1
-const SHUFA_ULT_COST = 120 // 术法值单次符法千重消耗（与 spec spendRules 一致）
+/** 术法值单次符法千重消耗——直接读 spec spendRules（单一来源，CC-501；此前手抄 120） */
+const SHUFA_ULT_COST = specSpendCost(getAgentSpec(AGENT_ID)!, 'yixuan_shufa_value', 'yixuan_extra_ult_spend')
 
 /** 强特链分解（用户确认口径；纯函数便于测试）
  *  `ink2Seconds` / `ashenSeconds` = 墨痕化形 #2（1371024）/ 墨烬影消（1371026）动作时间，

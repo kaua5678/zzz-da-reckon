@@ -214,6 +214,15 @@ function resolveBonusCount(
   return readCfgField(cfg, rule.bonusEnabledField) ? Math.max(0, Math.floor(state.ultimateCount)) : 0
 }
 
+/**
+ * 某资源某条 spendRule 的单次消耗（CC-501）：机制模块要在 spec 之外复算「次数 × 单价」时从这里读，
+ * 不要把 spec 里的数字手抄成模块常量（yixuan 术法值 120 曾是一份手抄副本）。规则不存在 ⇒ 0。
+ */
+export function specSpendCost(spec: AgentMechanicSpec, resourceId: string, ruleId: string): number {
+  const rule = spec.resources?.find(r => r.id === resourceId)?.spendRules?.find(r => r.id === ruleId)
+  return parseCost(rule?.cost)
+}
+
 function parseCost(cost: string | number | undefined): number {
   if (typeof cost === 'number') return Math.max(0, cost)
   const parsed = Number.parseFloat(String(cost ?? ''))
