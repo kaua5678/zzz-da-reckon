@@ -35,9 +35,8 @@ import type { ModuleFeedback } from '@/mechanics/types'
 import {
   getAgentMechanic,
   getRegisteredMechanicSettings,
-  type AgentAxisContext,
-  type AgentInteractionContext,
   type AgentTeamPhase,
+  type AgentTeamRoundInput,
   type AgentAxisOverlay,
   type MechanicTeamMember,
   type ReadonlyTeam,
@@ -140,46 +139,7 @@ export function applyTeamMechanics(params: {
   configStore: ConfigModel
   catalogStore: ReturnType<typeof useCatalogStore>
   phase: AgentTeamPhase
-  combatTime?: number
-  exCounts?: number[]
-  ultimateCounts?: number[]
-  stunCount?: number
-  /**
-   * **计数投影版**失衡次数（只读）。**只有 converge 相位该传**——语义/理由/门控见
-   * `AgentTeamConfigInput.countStun` 头注释（`stunCount` 是实数计划值、本字段是计数通道的整数投影，
-   * 难度阶梯 G4 投影打开时二者**不等价**）。
-   * 消费先例：莱卡恩 1141 的影画2 回能非轴臂（round 20 C-γ，原为 convergence.ts 的 agentId 分支；
-   * CC-14a 后经模块能力 `bonusEnergy` 计入 core）。
-   */
-  countStun?: number
-  teamEnergyConsumed?: number
-  /** 上一轮收敛线程快照（跨轮反馈通用通道；模块按需读并写进自己那份 cfg，规则 6） */
-  threads?: Readonly<CalcRoundThreads>
-  /**
-   * 本轮失衡轴上下文（只读快照）。**只有 converge 相位该传**——build 相位轴还没解析、
-   * postRound 相位语义是「为下一轮」；传了就等于给模块一个错的相位信号。
-   * 消费先例：朱鸢 1241 / 悠真 1201 的轴内块计数（round 11 批次 1，原为 convergence.ts 的 agentId 分支）。
-   */
-  axis?: Readonly<AgentAxisContext>
-  /**
-   * 全队**未缩放**交互次数快照（只读）。**只有 converge 相位该传**——语义与理由见
-   * `AgentInteractionContext` 头注释（`characters` 上那份已被 interactionScale/parrySplit 改过）。
-   * 消费先例：仪玄 1371 的 `yixuanExtremeAssistCap` + 莱卡恩 1141 的 `lycaonBackstageDodgeCount`
-   * （round 14，原为 convergence.ts 的 agentId 分支）。
-   */
-  interactions?: Readonly<AgentInteractionContext>
-  /**
-   * 配装页「保底目标」三开关（只读快照）。**只有 converge 相位该传**——语义/理由/门控见
-   * `AgentTeamConfigInput.guarantee` 头注释（`guarantee.*` 刻意**不**注册 `MechanicSetting`）。
-   * 消费先例：般岳 1471 的 `autoTopUp`（round 21 夜D，原为 convergence.ts 的 agentId 分支）。
-   */
-  guarantee?: Readonly<{ stun: boolean; fury: boolean; ultimate: boolean }>
-  /**
-   * 本局 Boss 预设参与弹刀反推的三项（只读快照）。**只有 converge 相位该传**——语义/理由见
-   * `AgentTeamConfigInput.boss` 头注释。消费先例：般岳 1471 的 `autoTopUp`（round 21 夜D）。
-   */
-  boss?: Readonly<{ parryTotal: number; parryNoFollowUpTotal: number; parryDecibelOnlyTotal: number }>
-}): void {
+} & AgentTeamRoundInput): void {
   const { characters, configStore, catalogStore, phase } = params
   if (characters.length === 0) return
   const team = buildMechanicTeamMembers(configStore, catalogStore)
