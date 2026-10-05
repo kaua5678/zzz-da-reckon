@@ -78,9 +78,13 @@ export function createConvergenceRoundInputs(deps: {
 }) {
   const { configStore, catalogStore, panels, resourceConfig, globalAnomalyMultiplier } = deps
 
-/** 从某个资源池结果提取异常 execs（参数化）；`skipGift` = 只取「装配前」口径（赠行单独结算） */
-  function extractAnomalyExecsFrom(res: TeamResourceResult, skipGift = false): AnomalySkillExecution[] {
-    const execs: AnomalySkillExecution[] = []
+  /**
+   * 从某个资源池结果按槽位提取 execs（异常 + 失衡一次拿齐）；`skipGift` = 只取「装配前」口径（赠行单独结算）。
+   * CC-491 前异常/失衡各写一遍同一个循环（含判据 17 注释）。
+   */
+  function extractExecsFrom(res: TeamResourceResult, skipGift = false): { anomalyExecs: AnomalySkillExecution[]; stunExecs: StunSkillExecution[] } {
+    const anomalyExecs: AnomalySkillExecution[] = []
+    const stunExecs: StunSkillExecution[] = []
     for (let i = 0; i < 3; i++) {
       const char = configStore.team[i]
       if (!char?.agentId) continue
@@ -89,27 +93,21 @@ export function createConvergenceRoundInputs(deps: {
       // （空槽不 push）⇒ `panels.value[i]` 在前导/中间空槽时取到**别人那份**面板
       // （实测 `[空,1581,1031]`：i=1 时 team[1]=1581，而 panels.value[1] 盖章 slot 2）。
       // 故必须 `panelAt` 按盖章身份取。2026-09-18 round 21 夜发现并修复。
-      const { anomalyExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panelAt(panels.value, i) ?? null, configStore, { skipGift })
-      execs.push(...anomalyExecs)
+      const one = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panelAt(panels.value, i) ?? null, configStore, { skipGift })
+      anomalyExecs.push(...one.anomalyExecs)
+      stunExecs.push(...one.stunExecs)
     }
-    return execs
+    return { anomalyExecs, stunExecs }
   }
 
-  /** 从某个资源池结果提取失衡 execs（参数化）；`skipGift` 同上 */
+  /** 异常 execs（见 extractExecsFrom） */
+  function extractAnomalyExecsFrom(res: TeamResourceResult, skipGift = false): AnomalySkillExecution[] {
+    return extractExecsFrom(res, skipGift).anomalyExecs
+  }
+
+  /** 失衡 execs（见 extractExecsFrom） */
   function extractStunExecsFrom(res: TeamResourceResult, skipGift = false): StunSkillExecution[] {
-    const execs: StunSkillExecution[] = []
-    for (let i = 0; i < 3; i++) {
-      const char = configStore.team[i]
-      if (!char?.agentId) continue
-      const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
-      // ⚠ 判据 17：`i` 是 **team** 下标（该数组稠密、按槽位排列），而 `panels.value` **按位置压缩**
-      // （空槽不 push）⇒ `panels.value[i]` 在前导/中间空槽时取到**别人那份**面板
-      // （实测 `[空,1581,1031]`：i=1 时 team[1]=1581，而 panels.value[1] 盖章 slot 2）。
-      // 故必须 `panelAt` 按盖章身份取。2026-09-18 round 21 夜发现并修复。
-      const { stunExecs } = extractSkillExecutions(i, char.agentId, skills ?? undefined, res, catalogStore, panelAt(panels.value, i) ?? null, configStore, { skipGift })
-      execs.push(...stunExecs)
-    }
-    return execs
+    return extractExecsFrom(res, skipGift).stunExecs
   }
 
   /** 风属性检测（复用） */

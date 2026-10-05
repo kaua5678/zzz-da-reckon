@@ -258,7 +258,8 @@ export function nextGoldCandidates(
   team: [string, string, string],
   state: TeamGoldState,
   catalog: ReturnType<typeof useCatalogStore>,
-): GoldStepCandidate[] {  const out: GoldStepCandidate[] = []
+): GoldStepCandidate[] {
+  const out: GoldStepCandidate[] = []
   for (let s = 0; s < 3; s++) {
     const agent = catalog.getAgent(team[s])
     if (!agent) continue
