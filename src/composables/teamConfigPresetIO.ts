@@ -34,17 +34,21 @@ export function useTeamConfigPresetIO({
     return p.team.some((agentId, i) => agentId !== configStore.team[i]?.agentId)
   })
 
+  /**
+   * 草稿（当前队伍 + 命座/精炼草稿）对应的加金步/标准步——预览计数与写回 JSON 共用同一份（CC-492 前各算一遍）。
+   * 把目标预设的基础音擎作为 baseWEngineIds 传入：换到与基础音擎不同的「限定音擎」时才写「本体（1金）」加金步，
+   * 避免像伊德海莉队（基础音擎=限定专武 14105）被误判成升级步而抬高基础金。
+   */
+  const draftGoldSteps = computed(() => buildGoldStepsFromConfig(
+    configStore.team.map(c => ({ agentId: c.agentId, wEngineId: c.wEngineId })),
+    goldDraft.value.cinemas,
+    goldDraft.value.mods,
+    saveTargetPreset.value?.wEngines ?? [],
+  ))
+
   /** 将写入的步骤数预览（随草稿实时更新） */
   const saveStepsPreview = computed(() => {
-    const { goldSteps, standardSteps } = buildGoldStepsFromConfig(
-      configStore.team.map(c => ({ agentId: c.agentId, wEngineId: c.wEngineId })),
-      goldDraft.value.cinemas,
-      goldDraft.value.mods,
-      // 把目标预设的基础音擎作为 baseWEngineIds 传入：
-      // 换到与基础音擎不同的「限定音擎」时才写「本体（1金）」加金步，
-      // 避免像伊德海莉队（基础音擎=限定专武 14105）被误判成升级步而抬高基础金。
-      saveTargetPreset.value?.wEngines ?? [],
-    )
+    const { goldSteps, standardSteps } = draftGoldSteps.value
     return { gold: goldSteps.length, standard: standardSteps.length }
   })
 
@@ -55,15 +59,7 @@ export function useTeamConfigPresetIO({
     const preset = saveTargetPreset.value
     if (!preset) return null
     const source = (preset.variantOf ? teamPresets.find(p => p.id === preset.variantOf) : undefined) ?? preset
-    const { goldSteps, standardSteps } = buildGoldStepsFromConfig(
-      configStore.team.map(c => ({ agentId: c.agentId, wEngineId: c.wEngineId })),
-      goldDraft.value.cinemas,
-      goldDraft.value.mods,
-      // 把目标预设的基础音擎作为 baseWEngineIds 传入：
-      // 换到与基础音擎不同的「限定音擎」时才写「本体（1金）」加金步，
-      // 避免像伊德海莉队（基础音擎=限定专武 14105）被误判成升级步而抬高基础金。
-      saveTargetPreset.value?.wEngines ?? [],
-    )
+    const { goldSteps, standardSteps } = draftGoldSteps.value
     const updated = { ...source, goldSteps, standardSteps }
     return { json: JSON.stringify(updated, null, 2), presetId: source.id }
   }
