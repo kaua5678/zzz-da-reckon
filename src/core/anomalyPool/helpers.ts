@@ -372,17 +372,23 @@ export function calcPerSlotAnomalyTriggers(perElement: AnomalyProgress[], slotCo
   return perSlot
 }
 
-export function calcPerSlotDisorderTriggers(
-  elements: { element: string; triggerCount: number; applierSlot: number }[],
-  disorderCount: number,
-  slotCount: number,
-): number[] {
-  const perSlot = Array(slotCount).fill(0)
-  if (disorderCount <= 0 || elements.length < 2) return perSlot
+/** 紊乱事件分配的输入：参与交替的元素、各自触发次数与施加者槽位 */
+export interface DisorderElementInput { element: string; triggerCount: number; applierSlot: number }
+/** 一个元素在整局里被覆盖（触发紊乱）的计划：被覆盖 `events` 次，每次由 `triggerSlot` 触发 */
+export interface DisorderEventPlan { element: string; applierSlot: number; triggerSlot: number; events: number }
 
+/**
+ * 紊乱事件分配规则（CC-487，唯一出处；此前 calcPerSlotDisorderTriggers / calcDisorderDamage 各写一份）：
+ * ① 总次数按元素**均分**，余数从前往后每元素 +1（简化：2 种元素各被覆盖 disorderCount/2 次）；
+ * ② 触发者 = 覆盖当前元素的那个元素的施加者——2 种元素取另一个，3+ 种取**触发次数最多**的其他元素
+ *    （严格大于才换，并列取先出现者；无其他元素时回落为自己的施加者）。
+ * 少于 2 种元素或次数 ≤ 0 ⇒ 空计划。
+ */
+export function planDisorderEvents(elements: DisorderElementInput[], disorderCount: number): DisorderEventPlan[] {
+  if (disorderCount <= 0 || elements.length < 2) return []
   const eventsPerElement = Math.floor(disorderCount / elements.length)
   let remainingEvents = disorderCount - eventsPerElement * elements.length
-
+  const plan: DisorderEventPlan[] = []
   for (let i = 0; i < elements.length; i++) {
     let triggerSlot = elements[i].applierSlot
     let bestTriggerCount = -1
@@ -393,12 +399,22 @@ export function calcPerSlotDisorderTriggers(
         triggerSlot = elements[j].applierSlot
       }
     }
-
     const events = eventsPerElement + (remainingEvents > 0 ? 1 : 0)
     if (remainingEvents > 0) remainingEvents--
+    plan.push({ element: elements[i].element, applierSlot: elements[i].applierSlot, triggerSlot, events })
+  }
+  return plan
+}
+
+export function calcPerSlotDisorderTriggers(
+  elements: DisorderElementInput[],
+  disorderCount: number,
+  slotCount: number,
+): number[] {
+  const perSlot = Array(slotCount).fill(0)
+  for (const { triggerSlot, events } of planDisorderEvents(elements, disorderCount)) {
     perSlot[triggerSlot] = (perSlot[triggerSlot] ?? 0) + events
   }
-
   return perSlot
 }
 
@@ -1017,37 +1033,20 @@ export interface DamageCalcConfig {
  * @param config 伤害计算全局配置
  */
 export function calcDisorderDamage(
-  elements: { element: string; triggerCount: number; applierSlot: number }[],
+  elements: DisorderElementInput[],
   disorderCount: number,
   panels: PanelValues[],
   config: DamageCalcConfig,
 ): DisorderDamageResult | undefined {
-  if (disorderCount <= 0 || elements.length < 2) return undefined
+  const plan = planDisorderEvents(elements, disorderCount)
+  if (plan.length === 0) return undefined
 
   const details: DisorderDamageDetail[] = []
   let totalDamage = 0
 
-  // 每个元素被覆盖的次数（简化：均分）
-  // 对于2种元素，每种各被覆盖 disorderCount/2 次
-  const numElements = elements.length
-  const eventsPerElement = Math.floor(disorderCount / numElements)
-  let remainingEvents = disorderCount - eventsPerElement * numElements
-
-  for (let i = 0; i < elements.length; i++) {
-    const { element, applierSlot } = elements[i]
+  // 被覆盖次数与触发者由 planDisorderEvents 统一分配（与 calcPerSlotDisorderTriggers 同一份规则，CC-487）
+  for (const { element, applierSlot, triggerSlot, events } of plan) {
     const applierPanel = panelAt(panels, applierSlot) ?? emptyPanel()
-
-    // 触发者 = 另一个元素的施加者（覆盖当前元素的元素）
-    // 对于2种元素，取另一个；对于3+种，取触发次数最多的其他元素
-    let triggerSlot = applierSlot
-    let bestTriggerCount = -1
-    for (let j = 0; j < elements.length; j++) {
-      if (j === i) continue
-      if (elements[j].triggerCount > bestTriggerCount) {
-        bestTriggerCount = elements[j].triggerCount
-        triggerSlot = elements[j].applierSlot
-      }
-    }
     const triggerPanel = panelAt(panels, triggerSlot) ?? emptyPanel()
 
     // T = 该元素异常在施加者身上的剩余时间；异常持续时间加成只影响这里，不影响积蓄
@@ -1092,9 +1091,6 @@ export function calcDisorderDamage(
     // 单次紊乱伤害 = 异常质量 × 结算区
     const perEventDamage = anomalyMass * settlementMultiplier
 
-    // 该元素被覆盖的次数（剩余次数分配给前几个元素）
-    const events = eventsPerElement + (remainingEvents > 0 ? 1 : 0)
-    if (remainingEvents > 0) remainingEvents--
 
     const damage = perEventDamage * events * config.globalAnomalyMultiplier
 
