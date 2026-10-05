@@ -677,7 +677,8 @@ import { isBatchAborted, useBatchOwner } from '@/composables/batchTask'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
-import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
+import { teamPresets } from '@/data/teamPresets'
+import { usePresetTeamPicker } from '@/composables/usePresetTeamPicker'
 import { fmt, compact, localized } from '@/utils/format'
 import { useScatterGeometry } from '@/composables/teamCompareScatter'
 import { useSlotSweep } from '@/composables/teamCompareSweep'
@@ -790,43 +791,10 @@ watch([currentPhaseView], () => {
 })
 
 // ========== 预设队伍 ==========
-const selectedPresetIds = ref<string[]>([])
-/** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
-// 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多——先选职业、再选属性、后出队伍）
-// 默认选中第一个职业+属性（用户 2026-09-03：打开即有队伍可选——此前全空像「没下拉框」）
-const firstFilter = firstNonEmptyFilter()
-const presetGroupSel = ref<string | null>(firstFilter.group)
-const presetSubSel = ref<string | null>(firstFilter.subgroup)
-const presetGroupOptionsC = presetGroupLabels.map(l => ({ label: l, value: l }))
-const presetSubOptions = computed(() =>
-  (presetGroupSel.value ? presetSubgroupLabelsFor(presetGroupSel.value) : []).map(l => ({ label: l, value: l })),
-)
-const presetFilteredOptions = computed(() =>
-  presetGroupSel.value && presetSubSel.value
-    ? presetsForFilter(presetGroupSel.value, presetSubSel.value).map(t => ({ value: t.id, label: t.name }))
-    : [],
-)
-watch([presetGroupSel, presetSubSel], () => {
-  // 换筛选即清空已选（避免选中的队伍不在当前筛选内）
-  if (presetGroupSel.value && presetSubSel.value) selectedPresetIds.value = []
-})
+const { selectedPresetIds, presetGroupSel, presetSubSel, presetGroupOptionsC, presetSubOptions, presetFilteredOptions, quickPickMainC, mainCQuickOptions } = usePresetTeamPicker()  // CC-482：两级筛选 + 主C快选的状态簇，与另一比较页共用
 const selectedPresets = computed<TeamPreset[]>(() =>
   teamPresets.filter(t => selectedPresetIds.value.includes(t.id)),
 )
-/** 按主C快选：选一个主C → 勾选替换为「仅含该主C的队伍」（其他主C的队伍移除）；清空不影响已选 */
-const quickPickMainC = ref<string | null>(null)
-const mainCQuickOptions = computed(() => {
-  const seen = new Map<string, string>()
-  for (const t of teamPresets) {
-    const main = t.team[0]
-    if (!seen.has(main)) seen.set(main, catalogStore.agentName(main))
-  }
-  return [...seen.entries()].map(([value, label]) => ({ value, label }))
-})
-watch(quickPickMainC, main => {
-  if (!main) return
-  selectedPresetIds.value = teamPresets.filter(t => t.team[0] === main).map(t => t.id)
-})
 
 // ========== 金数 ==========
 const goldMin = ref(0)

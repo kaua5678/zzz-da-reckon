@@ -129,9 +129,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
-import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
+import { teamPresets } from '@/data/teamPresets'
+import { usePresetTeamPicker } from '@/composables/usePresetTeamPicker'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
@@ -139,10 +140,9 @@ import { computePositionCompare, type ComparePosition, type PositionCompareRow }
 import type { BossPreset } from '@/types/bossPreset'
 
 const bossPresets = ref<BossPreset[]>([])
-const catalogStore = useCatalogStore()
 const selectedBossId = ref('')
 const selectedPhaseId = ref('')
-const selectedPresetIds = ref<string[]>([])
+const { selectedPresetIds, presetGroupSel, presetSubSel, presetGroupOptionsC, presetSubOptions, presetFilteredOptions, quickPickMainC, mainCQuickOptions } = usePresetTeamPicker()  // CC-482：两级筛选 + 主C快选的状态簇，与另一比较页共用
 const results = ref<PositionCompareRow[]>([])
 const computing = ref(false)
 /** 对比位置：主C / 击破手 / 辅助 */
@@ -175,38 +175,7 @@ const selectedPhase = computed(() =>
   selectedBoss.value?.phases.find(p => p.phaseId === selectedPhaseId.value)
   ?? selectedBoss.value?.phases[0] ?? null,
 )
-/** 两级下拉：一级分类（如 命破队）→ 二级队伍 */
-// 默认选中第一个职业+属性（用户 2026-09-03：打开即有队伍可选——此前全空像「没下拉框」）
-const firstFilter = firstNonEmptyFilter()
-const presetGroupSel = ref<string | null>(firstFilter.group)
-const presetSubSel = ref<string | null>(firstFilter.subgroup)
-const presetGroupOptionsC = presetGroupLabels.map(l => ({ label: l, value: l }))
-const presetSubOptions = computed(() =>
-  (presetGroupSel.value ? presetSubgroupLabelsFor(presetGroupSel.value) : []).map(l => ({ label: l, value: l })),
-)
-const presetFilteredOptions = computed(() =>
-  presetGroupSel.value && presetSubSel.value
-    ? presetsForFilter(presetGroupSel.value, presetSubSel.value).map(t => ({ value: t.id, label: t.name }))
-    : [],
-)
-watch([presetGroupSel, presetSubSel], () => {
-  if (presetGroupSel.value && presetSubSel.value) selectedPresetIds.value = []
-})
 const canRun = computed(() => selectedPresetIds.value.length >= 1 && selectedBoss.value && selectedPhase.value)
-/** 按主C快选 */
-const quickPickMainC = ref<string | null>(null)
-const mainCQuickOptions = computed(() => {
-  const seen = new Map<string, string>()
-  for (const t of teamPresets) {
-    const main = t.team[0]
-    if (!seen.has(main)) seen.set(main, catalogStore.agentName(main))
-  }
-  return [...seen.entries()].map(([value, label]) => ({ value, label }))
-})
-watch(quickPickMainC, main => {
-  if (!main) return
-  selectedPresetIds.value = teamPresets.filter(t => t.team[0] === main).map(t => t.id)
-})
 
 /** 批任务归属（S4，CC-343）：重算吊销上一次，离开页面也吊销 */
 const owner = useBatchOwner()

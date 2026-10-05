@@ -807,7 +807,8 @@ const catalogStore = useCatalogStore()
 const { statLabel, formatStatValue } = useStatLabel()
 
 // ========== 预设队伍（下拉，与「队伍对比」页共用 src/data/teamPresets/） ==========
-import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
+import { teamPresets } from '@/data/teamPresets'
+import { usePresetFilter } from '@/composables/usePresetTeamPicker'
 import { teamGoldOf, applyTeamPresetConfig } from '@/composables/teamCompare'
 import { useTeamConfigPresetIO } from '@/composables/teamConfigPresetIO'
 const presetSelectValue = ref<string | null>(null)
@@ -820,33 +821,13 @@ const timeWeightModeOptions = [
 ]
 /** 三级筛选（2026-09-03 用户：一级下拉装 99+ 条太多；cascader 弹层选项被裁剪 → 改三联动，
  *  与队伍/击破对比页同款交互；选项一律显示正式队伍名）。 */
-const firstFilter = firstNonEmptyFilter()
-const cfgPresetGroupSel = ref<string | null>(firstFilter.group)
-const cfgPresetSubSel = ref<string | null>(firstFilter.subgroup)
-const cfgPresetGroupOptions = presetGroupLabels.map(l => ({ label: l, value: l }))
-const cfgPresetSubOptions = computed(() =>
-  (cfgPresetGroupSel.value ? presetSubgroupLabelsFor(cfgPresetGroupSel.value) : []).map(l => ({ label: l, value: l })),
-)
-const cfgPresetTeamOptions = computed(() =>
-  cfgPresetGroupSel.value && cfgPresetSubSel.value
-    ? presetsForFilter(cfgPresetGroupSel.value, cfgPresetSubSel.value).map(t => ({ value: t.id, label: t.name }))
-    : [],
-)
+const { groupSel: cfgPresetGroupSel, subSel: cfgPresetSubSel, groupOptions: cfgPresetGroupOptions, subOptions: cfgPresetSubOptions, teamOptions: cfgPresetTeamOptions } = usePresetFilter()  // CC-482
 watch([cfgPresetGroupSel, cfgPresetSubSel], () => {
   if (cfgPresetGroupSel.value && cfgPresetSubSel.value) presetSelectValue.value = null
 })
 /** 金数弹窗保存目标：三联动（职业/属性/队伍），选中即写 saveTargetPresetId */
-const saveTargetGroupSel = ref<string | null>(cfgPresetGroupSel.value)
-const saveTargetSubSel = ref<string | null>(cfgPresetSubSel.value)
+const { groupSel: saveTargetGroupSel, subSel: saveTargetSubSel, subOptions: saveTargetSubOptions, teamOptions: saveTargetOptions } = usePresetFilter({ group: cfgPresetGroupSel.value, subgroup: cfgPresetSubSel.value })  // CC-482
 const saveTargetId = ref<string | null>(null)
-const saveTargetSubOptions = computed(() =>
-  (saveTargetGroupSel.value ? presetSubgroupLabelsFor(saveTargetGroupSel.value) : []).map(l => ({ label: l, value: l })),
-)
-const saveTargetOptions = computed(() =>
-  saveTargetGroupSel.value && saveTargetSubSel.value
-    ? presetsForFilter(saveTargetGroupSel.value, saveTargetSubSel.value).map(t => ({ value: t.id, label: t.name }))
-    : [],
-)
 watch([saveTargetGroupSel, saveTargetSubSel], () => { saveTargetId.value = null })
 watch(saveTargetId, id => { saveTargetPresetId.value = id })
 /** 最近一次应用的预设 id（「预设金数」弹窗保存到预设文件时默认目标） */
