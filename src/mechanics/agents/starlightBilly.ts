@@ -17,6 +17,7 @@ import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { positiveWholeCounts } from '@/utils/finiteClamp'
 
 /**
  * 星徽·比利（1531）战斗逻辑（用户确认口径，2026-08）：
@@ -283,13 +284,7 @@ function applyBillyTeamConfig({ cfg, phase, axis }: AgentTeamConfigInput): void 
 }
 
 function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
-  const raw: Record<string, number> = cfg.billyAxisEx ?? {}
-  const out: Record<string, number> = {}
-  for (const [k, v] of Object.entries(raw)) {
-    const n = Math.max(0, Math.floor(Number(v) || 0))
-    if (n > 0) out[k] = n
-  }
-  return out
+  return positiveWholeCounts(cfg.billyAxisEx)  // CC-481：三模块同体 helper 归到 utils/finiteClamp
 }
 
 function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {

@@ -26,3 +26,16 @@ export function whole(value: number | undefined): number {
   const n = value ?? 0
   return Math.max(0, Math.floor(Number.isFinite(n) ? n : 0))
 }
+/**
+ * 用户填的「按键计数表」归一（CC-481）：每项 `Number(v) || 0` 强转后向下取整，非正项丢弃，返回新对象。
+ * 此前 banyue / yixuan / starlightBilly 三个模块各私抄一份同体 `readAxisEx*`（jscpd 10 行 ×3，r666 普查）。
+ * ⚠ 故意用 `Number(v) || 0` 而不是 `finiteOr0`：历史语义（字符串 '3' 可转、null → 0）逐字保持；锁见 finiteClampSingleSource.test.ts。
+ */
+export function positiveWholeCounts(raw: Readonly<Record<string, unknown>> | undefined): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const [k, v] of Object.entries(raw ?? {})) {
+    const n = Math.max(0, Math.floor(Number(v) || 0))
+    if (n > 0) out[k] = n
+  }
+  return out
+}

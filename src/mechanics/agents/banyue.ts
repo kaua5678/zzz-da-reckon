@@ -7,6 +7,7 @@ import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { positiveWholeCounts } from '@/utils/finiteClamp'
 
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
@@ -682,13 +683,7 @@ export const AXIS_EX_COST: Record<string, number> = {
 }
 
 export function readAxisExCounts(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
-  const raw: Record<string, number> = cfg.banyueAxisEx ?? {}
-  const out: Record<string, number> = {}
-  for (const [k, v] of Object.entries(raw)) {
-    const n = Math.max(0, Math.floor(Number(v) || 0))
-    if (n > 0) out[k] = n
-  }
-  return out
+  return positiveWholeCounts(cfg.banyueAxisEx)  // CC-481：三模块同体 helper 归到 utils/finiteClamp
 }
 
 function axisExSpendOf(counts: Record<string, number>): number {

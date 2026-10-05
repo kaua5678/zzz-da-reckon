@@ -1,4 +1,4 @@
-import { clampRatio, finiteOr0 } from '@/utils/finiteClamp'
+import { clampRatio, finiteOr0, positiveWholeCounts } from '@/utils/finiteClamp'
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { ModuleFeedback } from '../types'
 import { axisOverlayChannel, type AxisLike } from '../types'
@@ -300,13 +300,7 @@ export function computeYixuanNingshenBlocks(
 }
 
 function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
-  const raw = cfg.yixuanAxisEx ?? {}
-  const out: Record<string, number> = {}
-  for (const [k, v] of Object.entries(raw)) {
-    const n = Math.max(0, Math.floor(Number(v) || 0))
-    if (n > 0) out[k] = n
-  }
-  return out
+  return positiveWholeCounts(cfg.yixuanAxisEx)  // CC-481：三模块同体 helper 归到 utils/finiteClamp
 }
 
 function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCharConfigInput): void {
