@@ -41,6 +41,14 @@ export interface UltimatePromoteParams {
 export interface PromoteFixpointResult {
   /** CC-421：恒非 null——`calcStunPool` 无 null 出口且不动点循环至少跑一轮。 */
   pool: StunPoolResult
+  /**
+   * CC-475（r656）：用**最终** execs 在任意失衡次数 n 的扣除口径下重算池（轴模式含 n 窗口的栈遍历）。
+   * 后台合轴自动填充的反推用 `poolAt(目标 N)` 算缺口——N 变大时窗口份额 u 变大、全队所有行净失衡同时下降，
+   * 在当前 N 的 `pool` 上算缺口看不到这部分（r655 探针：弱队自动 11~30 对仍 N=3 / 欠冲 16 对）。
+   */
+  poolAt: (n: number) => StunPoolResult
+  /** CC-475：n 次窗口下池用的「未覆盖窗口秒 / 非轴块时间」占比（自由模式 covered=0）。首轮无合轴行时反推按 perPairBase×(1−u) 回落。 */
+  windowFractionAt: (n: number) => number
   hug60: number
   promote: number
   targetSlot: number
@@ -317,6 +325,8 @@ export function promoteFixpoint(
   /** CC-421：`MAX_PROMOTE_ITER ≥ 1` ⇒ 首轮必执行 `pool = runPool(...)` 后才可能 break ⇒ 定赋值断言成立。 */
   let pool!: StunPoolResult
   const seenStunCounts = new Set<number>()
+  /** CC-475：循环里最后一次用于求池的 execs（转大改写后），供 poolAt / windowFractionAt 复用同一组行。 */
+  let finalExecs: StunSkillExecution[] = baseExecs
   const bossStunValue = configStore.enemy.stunValue
   const locked = lockedStunCount != null && lockedStunCount >= 0
   if (locked) stunCount = lockedStunCount
@@ -336,6 +346,7 @@ export function promoteFixpoint(
     }
     promote = hug60 + hug90
     const execs = p && promote > 0 ? adjustStunExecs(baseExecs, p, hug60, promote, !axisMode) : baseExecs
+    finalExecs = execs
     if (axisMode && inAxisFractionProvider && !locked) {
       // CC-469′b（r652）：轴模式**不用**下面的自由闭式（它按 x=N·W/eff 扣全部 gross，而池在轴模式按逐招份额 +
       // 未覆盖窗口份额复合扣除，二者不是同一函数 ⇒ r648 实测闭式 4.46 / 池 3 互相矛盾、按「闭式重复」退出时返回
@@ -391,6 +402,11 @@ export function promoteFixpoint(
   }
   return {
     pool,
+    poolAt: n => runPool(finalExecs, inAxisFractionProvider?.(n, finalExecs), n),
+    windowFractionAt: n => {
+      const covered = inAxisFractionProvider?.(n, finalExecs).coveredWindowSeconds ?? 0
+      return stunWindowFraction(n, windowDur, effTime - covered, covered)
+    },
     hug60,
     promote,
     targetSlot: p?.targetSlot ?? -1,

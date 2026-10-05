@@ -930,7 +930,7 @@ export function createRunCalcRound(deps: {
 
     // 后台合轴自动填充反推（模块 backstageAutoFill 声明驱动，通用执行零 agentId 分支；
     // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底4失衡）：
-    // 缺口 = stunBuildUpForCount(池, 保底次数) −（总失衡 − 本轮已注入合轴行）；每对有效失衡优先实测
+    // 缺口 = stunBuildUpForCount(池@保底次数, 保底次数) −（该池总失衡 − 其中合轴行）（CC-475：池在目标次数的扣除口径下重算）；每对有效失衡优先实测
     //（声明 moveIds 的池行），首轮回落 perPairBase；供给上限 = floor(非该角色战斗时间 / minPeriodSeconds)。
     {
       /** 用户口径 2026-09-07「反推至保底4失衡」的那个 4 */
@@ -941,21 +941,23 @@ export function createRunCalcRound(deps: {
         if (!decl) continue
         const manual = Math.max(0, Math.floor(Number(cfg[decl.manualField] ?? 0)))
         if (manual > 0) { backstageNext[cfg.agentId] = manual; continue }
-        const ownRows = sp1.pool.contributions.filter(r => decl.moveIds.includes(String(r.moveId)) && r.slot === cfg.slot)
+        // CC-475（r656）：缺口在**目标次数**的扣除口径下算。N 3→4 时窗口份额 u 变大、全队所有行的净失衡同时下降，
+        // 在当前 N 的池上算缺口看不到这部分（r655 探针 `arenaF/zzbs.test.ts`：8 支裸装合成队自动注入 11~30 对后 7 队仍 N=3
+        //（外层 2-环被钳到 3），第 8 队欠冲 16 对）。poolAt(4) = 同一组 execs 在 4 次窗口下的池（轴模式含栈遍历）。
+        const pool = sp1.poolAt(BACKSTAGE_FLOOR_STUNS)
+        const ownRows = pool.contributions.filter(r => decl.moveIds.includes(String(r.moveId)) && r.slot === cfg.slot)
         const ownDaze = ownRows.reduce((sum, r) => sum + r.effectiveStun, 0)
         const pairRows = ownRows.filter(r => decl.moveIds.slice(0, 2).includes(String(r.moveId)))
         const pairCount = pairRows.reduce((sum, r) => sum + (r.count ?? 0), 0)
-        const perPair = pairCount > 0 ? ownDaze / pairCount : decl.perPairBase
-        const pool = sp1.pool
-        // CC-472（r653）：缺口按池自身计数律的反函数算（首次 b、之后每次 b(1−r)、赠送已抵扣），
-        // 不再写死 4×bossStunValue（与 continuousStunCount 不同源：r>0 时多算 3rb，再 ×1.2 ⇒ 过冲）。
+        // 首轮无合轴行：perPairBase 是毛失衡，按同一 u 折成净值
+        const perPair = pairCount > 0 ? ownDaze / pairCount : decl.perPairBase * (1 - sp1.windowFractionAt(BACKSTAGE_FLOOR_STUNS))
+        // CC-472（r653）：缺口按池自身计数律的反函数算（首次 b、之后每次 b(1−r)、赠送已抵扣），不再写死 4×bossStunValue。
         const deficit = Math.max(0, stunBuildUpForCount(pool, BACKSTAGE_FLOOR_STUNS) - (pool.totalStunBuildUp - ownDaze))
         const ownField = rr.characters.find(c => c.slot === cfg.slot)
         const ownFieldTime = (ownField?.timeAllocation?.necessaryTime ?? 0) + (ownField?.timeAllocation?.basicAttackTime ?? 0)
         const supplyCap = Math.max(0, Math.floor(Math.max(0, (base.totalTime ?? 180) - ownFieldTime) / decl.minPeriodSeconds))
-        // ×1.2 冗余：池的净失衡缩放 + 一轮滞后会吃掉部分注入（实测 18 对只涨 3.85×），
-        // 保底语义 = 至少打满，允许轻微过冲
-        backstageNext[cfg.agentId] = Math.min(supplyCap, Math.ceil((deficit / Math.max(1, perPair)) * 1.2))
+        // 原 ×1.2 冗余（注释「实测 18 对只涨 3.85×」）就是 u 随 N 增大的效应，已由 poolAt(4) 显式算进 ⇒ 删（CC-475）。
+        backstageNext[cfg.agentId] = Math.min(supplyCap, Math.ceil(deficit / Math.max(1, perPair)))
       }
       backstageAutoNext = backstageNext
     }
