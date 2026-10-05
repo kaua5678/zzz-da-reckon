@@ -51,6 +51,7 @@ import {
 } from '@/composables/teamCompare'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 export { stunWindowRatioOf }
 import { getAgentMechanic } from '@/mechanics'
@@ -124,6 +125,22 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
   applyBossRoom(configStore, options.boss, options.phase)
   // 「全关」= 不跑自动权重分配；阶梯里的 G1/G2 自己显式跑均衡/联合
   configStore.timeWeightStrategy = 'static'
+  /**
+   * **用户的合轴吸收上限**：必须在**队循环之前**取一次快照并显式传进每个阶梯。
+   *
+   * 为什么（2026-10-05 实测修）：`climbDifficultyLadder` 的 `ctx.absorbCap` 契约是
+   * 「用户在『全关』**之前**的值」，但本函数每队新建 `{ config, calc }` 字面量 ⇒ 该字段恒
+   * `undefined` ⇒ `clearDifficultyLevers` 退化成**读当前 setting**，而上一队爬完阶梯后
+   * setting 停在它自己的档位（G5 只爬到「刚好包容」就停的队会留一个中间值）⇒ **下一队把
+   * 那个残留值当成「用户上限」**，封顶档被压低。
+   *
+   * 实测（`ysgdecisive.perf.ts`，一次调用传两队）：`auto-1431-1481-1491` 的 `final`
+   * 125.22M → **119.33M**（差 5.89M），`opened` 从 `[G4,G5,G5,G1]` 变 `[G4,G5,G5,G2]`。
+   * ⚠ 页面**当前**不受影响（逐队一次 `withAnalysisScenario`，写入落在场景克隆里不回 UI store，
+   * 实测单独/排后均 125.22M）；但这是**潜在**缺陷，且 G5 改为「封顶档承载主要增益」后
+   * 上限被压低会直接改变曲线天花板 ⇒ 本轮一并修掉。
+   */
+  const userAbsorbCap = configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
   for (const preset of options.presets) {
     applyAxisBinding(configStore, baseAxis, preset)
     // 切轴档（preset.altAxes，2026-09-13）：快照阶梯起点轴态 → 备选轴做成「切轴」目标；
@@ -139,7 +156,7 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
     const applied = applyGoldSteps(
       preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
     )
-    const ladder = climbDifficultyLadder({ config: configStore, calc }, preset.team as [string, string, string], {
+    const ladder = climbDifficultyLadder({ config: configStore, calc, absorbCap: userAbsorbCap }, preset.team as [string, string, string], {
       goals,
       minGainRatio: options.minGainRatio,
       capture: ctx => captureLadderSnapshot(ctx.calc),

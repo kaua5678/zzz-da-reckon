@@ -258,13 +258,74 @@ describe('时间压力 = 硬溢出 + 合轴抵扣（用户 2026-09-11：合轴�
   }, 300_000)
 })
 
-describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动；v3 2026-09-19：动态吸收 + 上限分档）', () => {
-  it('套用 G5 ⇒ 吸收上限 0 → cap/2 → cap 分档推进、saved 变大、伤害不降（自动吸收真的省出前台时间）', async () => {
+describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动；v3 2026-09-19：动态吸收 + 上限；v4 2026-10-05：包容→封顶两档）', () => {
+  /**
+   * ★ v4 档位结构锁（用户 2026-10-05）：
+   * > 「合轴率分两档推上去其实没有意义。如果招式溢出了需要合轴包容，就来一次包容，而不是 20%。
+   * >  然后再来一次封顶的 40% 或者玩家设置的更高…如果该队伍算出来本来就没招式溢出，
+   * >  那么我们直接不算中间档位，只算最高合轴率表示一下合轴这一板块对伤害的影响就行」
+   *
+   * 反证：把 `apply` 改回 v3 的 `cur + cap/2` 机械分档 ⇒ 本用例第一档断言
+   * （`contain` ≠ cap/2）即红（实测 `auto-1431-1481-1491` 的 r*=0.70，v3 给 0.2）。
+   */
+  it('★ v4：有溢出的队第一档 = 「刚好包容」（不是 cap/2），第二档 = 封顶', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // v3 下合轴只在**溢出队**发生（没有溢出就没有可吸收的东西，静态合轴率那种「白送 credit」已停用）
-    // ⇒ 样例换成时间压力队 auto-1371-1481-1451（实测 缺省 0.4：溢出 25.4s ≤ 容量，全额吸收；0 → 0.2 → 0.4 时 dmg 70.9M → 72.9M → 76.9M；CC-261 去占位后为 74.29M → 73.33M → 77.38M）
+    // 实测（`ysgrungcensus.perf.ts`）r=0 溢出 34.25s、包容所需 r* = 0.70 的队
+    const preset = teamPresets.find(p => p.id === 'auto-1431-1481-1491')!
+    const ctx = { config, calc }
+    clearDifficultyLevers(ctx)
+    applyTeamToStore(config, preset)
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
+    expect(calc.resourceResult.value!.overflowSeconds).toBeGreaterThan(1) // 确有溢出（前置条件）
+
+    const g5 = DIFFICULTY_GOALS.find(g => g.id === 'G5')!
+    g5.apply(ctx)
+    const r1 = config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)
+    // 第一档 ≠ 机械的 cap/2（0.2）——这是本用例的核心判据
+    expect(r1).not.toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO / 2, 3)
+    expect(r1).toBeGreaterThan(0)
+    expect(r1).toBeLessThanOrEqual(DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
+    // 「刚好包容」的语义：这一档必须把溢出**压到 0**（不是压小一点）
+    expect(calc.resourceResult.value!.overflowSeconds).toBeLessThanOrEqual(1e-3)
+    const d1 = calc.teamTotalDamage.value
+
+    // 第二档 = 封顶（用户上限），且伤害不低于第一档
+    g5.apply(ctx)
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
+    expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(d1)
+    // 第三档 = 空操作（已到封顶，repeatable 的自然停点）
+    const atCap = config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)
+    g5.apply(ctx)
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(atCap, 9)
+    expect(Object.keys(config.comboAlignOverrides ?? {}).length).toBe(0) // 不再写静态合轴率覆盖
+  }, 300_000)
+
+  it('★ v4：无溢出的队跳过中间档，第一档直接 = 封顶（只表示合轴板块的影响）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    // 实测 r=0 无溢出、但提高合轴率仍涨伤害（66.108M → 78.229M，+18%：吸收释放平A池给主C）
+    const preset = teamPresets.find(p => p.id === 'auto-1461-1521-1031')!
+    const ctx = { config, calc }
+    clearDifficultyLevers(ctx)
+    applyTeamToStore(config, preset)
+    expect(calc.resourceResult.value!.overflowSeconds).toBeLessThanOrEqual(1e-3) // 前置：本来就没溢出
+    const d0 = calc.teamTotalDamage.value
+
+    DIFFICULTY_GOALS.find(g => g.id === 'G5')!.apply(ctx)
+    // 一次 apply 就到封顶（不存在 20% 这种中间档）
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
+    // 封顶档对该队仍有增益 ⇒ 不能因为「没溢出」就整条丢弃
+    expect(calc.teamTotalDamage.value).toBeGreaterThan(d0)
+  }, 300_000)
+
+  it('v3 遗留保证：吸收单调不减、到上限伤害不低于全关（自动吸收真的省出前台时间）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    // 时间压力队 auto-1371-1481-1451（实测 缺省 0.4：溢出 25.4s ≤ 容量，全额吸收）
     const preset = teamPresets.find(p => p.id === 'auto-1371-1481-1451')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)                 // 全关基线（会清掉合轴率覆盖、吸收上限置 0 并记下用户上限）
@@ -278,12 +339,11 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     g5.apply(ctx)
     const d1 = calc.teamTotalDamage.value
     const saved1 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
-    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO / 2, 6) // 第一档 = 上限一半
     expect(Object.keys(config.comboAlignOverrides ?? {}).length).toBe(0) // 不再写静态合轴率覆盖
     expect(saved1).toBeGreaterThan(0.5)        // 解放出前台时间（队友前台被吸收）
-    // CC-261 后（主 C 交互 8/4 → 职业基准 6/10）本队第一档伤害 74.29M → 73.33M：吸收比例→伤害**逐档不单调**
-    // （扫描 0/0.05/0.2/0.3：74.29/71.61/73.33/77.38M）。CC-262 定性（§24.103）：吸收只在溢出时起作用 ⇒ 让降配搜索
-    // 选更大交互档 s（0.5→0.625→…→1），多出的交互挤掉平 A、终结次数要到 s=1 才跨 7→8 ⇒ 整数台阶，非缺陷、不修。
+    // CC-261 后（主 C 交互 8/4 → 职业基准 6/10）吸收比例→伤害**逐档不单调**（扫描 0/0.05/0.2/0.3：
+    // 74.29/71.61/73.33/77.38M）。CC-262 定性（§24.103）：吸收只在溢出时起作用 ⇒ 让降配搜索
+    // 选更大交互档 s，多出的交互挤掉平 A、终结次数要到 s=1 才跨 7→8 ⇒ 整数台阶，非缺陷、不修。
     // 这里只锁设计保证：saved 单调不减、到上限伤害不低于全关（§24.102）。
     void d1
     // 可重复：再套一次 ⇒ 到用户上限（缺省 0.4）；第三次 = 空操作（已到上限）

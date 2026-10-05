@@ -45,10 +45,61 @@ export interface LadderCtx {
 
 const GUARANTEE_KEYS = ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'] as const
 
-/** G5 每档推进量 = 用户上限的一半（0 → cap/2 → cap，两档；与旧「50% → 100%」的两档节奏同构） */
+/** G5 第二档（封顶）用的吸收上限 = 用户设置值（缺省 0.4）；0 = 不吸收 ⇒ 整条 G5 不适用 */
 function absorbCapOf(ctx: LadderCtx): number {
   const cap = ctx.absorbCap ?? ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
   return Number.isFinite(cap) ? Math.min(1, Math.max(0, cap)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO
+}
+
+/**
+ * G5 **第一档**（「刚好包容」）用的吸收比例：让该队当前溢出**恰好归零**的最小比例；无需包容时返回 `null`。
+ *
+ * ## 为什么要它（用户口径 2026-10-05）
+ *
+ * > 「合轴率分两档推上去其实没有意义。如果招式溢出了需要合轴包容，就来一次包容，而不是 20%。
+ * >  然后再来一次封顶的 40% 或者玩家设置的更高，来表示更高难度下合轴做到最好能多出多少伤害。
+ * >  如果该队伍算出来本来就没招式溢出，那么我们直接不算中间档位，只算最高合轴率
+ * >  表示一下合轴这一板块对伤害的影响就行」
+ *
+ * 旧实现按「上限的一半」机械分档（0 → cap/2 → cap）。实测全库 104 队（`ysgrungcensus.perf.ts`）：
+ * **89 队**的 0.2 档与 0.4 档伤害**逐位相同**（中间档是空操作）；而**只有 7 队** r=0 时真有溢出，
+ * 且它们的「包容所需比例 r*」分布极散（0.10 / 0.35 / 0.70 / 吸不动）—— 与固定的 20% 毫无关系：
+ * 对 r*=0.10 的队 20% 是浪费，对 r*=0.70 的队 20% **根本包不住**。
+ *
+ * ## 扫描必须**线性**，不能二分
+ *
+ * 实测 `overflow(r)` **非单调**：`auto-1431-1481-1491` 为
+ * `r=0 → 34.25、0.1 → 86.39（变差！）、0.2 → 36.35、0.3 → 22.52、0.4 → 19.80 …`
+ * （吸收改变并行判定 ⇒ 折叠环落点整体重排）。二分的前提不成立，只能按网格从小到大取首个归零点。
+ *
+ * ## 成本
+ *
+ * 每次试算 = 一次全队重算（与阶梯其余目标同价）。**只有 r=0 确有溢出的队才付**（全库 7/104）；
+ * 其余 97 队读一次 r=0 的溢出量即返回 `null`（阶梯本就要为 `base` 算一次，增量可忽略）。
+ *
+ * @param zeroOverflow 可选注入：r=0 时的溢出量（调用方已量过就传进来，省一次重算）
+ * @returns 包容所需比例（(0, cap] 内）或 `null`（无溢出 / 需超过 cap 才包得住 ⇒ 该档不成立）
+ */
+export function containRatioOf(ctx: LadderCtx, cap: number, zeroOverflow?: number): number | null {
+  const readOverflow = (): number => ctx.calc.resourceResult.value?.overflowSeconds ?? 0
+  if (cap <= 0) return null
+  // 容差：与 `TIME_FOLD_CONVERGENCE_SECONDS`（1e-3）同量级的量化地板，取 1e-6 太严会追浮点噪声
+  const TOL = 1e-3
+  const base = zeroOverflow ?? readOverflow()
+  if (base <= TOL) return null // 本来就装得下 ⇒ 无需「包容」档（用户：只算最高合轴率）
+  const saved = ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
+  const STEPS = 20 // 5% 网格：够细（r* 实测落在 0.10/0.35/0.70），且把重算次数钉在常数
+  try {
+    for (let i = 1; i <= STEPS; i++) {
+      const r = Math.round((cap * i / STEPS) * 1e4) / 1e4
+      ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, r)
+      if (readOverflow() <= TOL) return r
+    }
+  } finally {
+    // 无论命中与否都还原——调用方（试开/录取）自己会按档位写值，本函数只负责**探测**
+    ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, saved)
+  }
+  return null // cap 吸满仍装不下（结构性溢出）⇒ 该档不成立，交给封顶档如实上报截断
 }
 
 export interface DifficultyGoal {
@@ -95,19 +146,37 @@ export const DIFFICULTY_GOALS: DifficultyGoal[] = [
      *
      * **v2/v3 口径（用户 2026-09-19）**：合轴不是录死的招式合轴率，而是引擎在溢出时按溢出量动态吸收队友前台
      * （`calcTimeAllocation` 动态合轴），且**队友前台最多被吸收上限比例**（全局变量，缺省 40%；「超过了就无力合轴了」）。
-     * 于是杠杆 = 机制参数 `time.comboAlignAbsorbRatio`：全关 = 0（不吸收），每档 +上限/2，到上限为止
-     * （0 → 20% → 40%）——曲线上因此有「不吸收 / 吸收」两种强度（用户：「设置上限后，强度在难度曲线上就有不吸收和吸收的区分了」）。
-     * 没有溢出的队吸收量恒 0 ⇒ 增益 0 ⇒ 阶梯自然丢弃（不像旧的静态合轴率会给任何队白送 credit）。
+     *
+     * **v4 档位结构（用户 2026-10-05，取代 v3 的「上限一半」机械分档）**：
+     * - **第一档 = 「刚好包容」**：仅当 r=0 时确有溢出才存在，比例 = `containRatioOf`（实测求最小归零点）。
+     * - **第二档 = 封顶**（`absorbCapOf` = 玩家设置，缺省 0.4）——表示「更高难度下合轴做到最好能多出多少伤害」。
+     * - **无溢出的队**：跳过第一档，直接封顶（用户：「本来就没招式溢出…直接不算中间档位，
+     *   只算最高合轴率表示一下合轴这一板块对伤害的影响」）。
+     *
+     * 为什么改（实测 `ysgrungcensus.perf.ts`，全库 104 队）：旧 0.2 档与 0.4 档在 **89 队**上伤害**逐位相同**
+     * （空操作）；真需要包容的只有 **7 队**，且 r* 分布极散（0.10/0.35/0.70/吸不动），与固定 20% 无关。
+     * ⚠ 另实测：**r=0 就没溢出的队，提高合轴率仍涨伤害**（吸收释放平A池给主C，如 `auto-1461-1521-1031`
+     * 66.108M → 78.229M，+18%）⇒ 封顶档对全库都有意义，不能因为「没溢出」就整条丢弃。
+     *
      * 手填的招式合轴率覆盖（结果页「合轴率调节」弹窗）仍是独立的手动通道，全关照旧清掉。
-     * `repeatable`：两档，边际收益掉到门槛以下就自动停。
+     * `repeatable`：两档（包容 → 封顶）；到封顶后再套是空操作，边际收益掉门槛即停。
      */
-    id: 'G5', label: '合轴吸收（自动：队友前台按上限分档压成并行）', cost: 1, mutates: true, repeatable: true,
+    id: 'G5', label: '合轴吸收（自动：先刚好包容溢出，再压到上限）', cost: 1, mutates: true, repeatable: true,
     apply: ctx => {
       const cap = absorbCapOf(ctx)
       if (cap <= 0) return
       const cur = ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
-      if (cur >= cap - 1e-9) return
-      ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, Math.min(cap, Math.round((cur + cap / 2) * 1e4) / 1e4))
+      if (cur >= cap - 1e-9) return // 已到封顶 ⇒ 空操作（repeatable 的自然停点）
+      // 第一档：当前还是「全关/低档」且确有溢出 ⇒ 先求「刚好包容」的比例；否则直接封顶
+      if (cur <= 1e-9) {
+        const contain = containRatioOf(ctx, cap)
+        if (contain !== null && contain < cap - 1e-9) {
+          ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, contain)
+          return
+        }
+        // 无溢出 / 包容即封顶 / 吸满也包不住 ⇒ 落到封顶档
+      }
+      ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, cap)
     },
   },
 ]
