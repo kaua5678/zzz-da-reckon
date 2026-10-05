@@ -263,7 +263,7 @@
   "slack": 0,
   "over": 0,
   "stun": 3,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1371-1481-1451": {
   "slack": 0,

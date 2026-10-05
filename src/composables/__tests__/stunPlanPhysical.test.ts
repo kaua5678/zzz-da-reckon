@@ -42,7 +42,14 @@ async function stunChainSeconds(presetId: string, projectionCode: number) {
   for (const c of rr!.characters) for (const e of c.executions ?? []) {
     if (e.category === 'chain' && e.source === 'stun' && e.timeBucket !== 'backstage') chain += e.totalTime ?? 0
   }
-  return { chain, stun: calc.stunPoolResult.value?.stunCount ?? 0 }
+  // 轴态信号（用于区分两条连携口径，§20.5-3 用户裁决 2026-10-05）：
+  // `stackTraversalResult` 非空 = 本轮真的走了轴栈（轴态）；`useResourceCalc` 未导出 `axisMode`，
+  // 故用这个等价的可观测信号（见 `.zc/perf/axis205c.perf.ts` 同一读法）。
+  return {
+    chain,
+    stun: calc.stunPoolResult.value?.stunCount ?? 0,
+    axisActive: calc.stackTraversalResult.value != null,
+  }
 }
 
 describe('失衡连携账本：auto-1461-1521-1361（物理 5 次、规划 0）', () => {
@@ -51,9 +58,24 @@ describe('失衡连携账本：auto-1461-1521-1361（物理 5 次、规划 0）'
     expect(r.stun).toBeGreaterThanOrEqual(1)
     expect(r.chain).toBeLessThan(0.5)
   }, 60000)
-  it('physical 模式：失衡连携按物理次数进账', async () => {
+  /**
+   * ⛔ **2026-10-05 用户裁决：原期望的前提已失效**（§20.5-3 轴态吃吸收后本队进入轴态）。
+   *
+   * 用户原话：「**开了轴模式，那么每失衡连携就不用看了，直接用轴内计数就行。
+   * 每失衡连携是给非轴模式用的。**当然这里的实现你自己看着办，是个历史遗留问题」
+   *
+   * ⇒ 「每失衡连携 × 失衡次数」是**非轴模式专用**口径；轴态下 `chainCountTotalOverride`
+   * （轴内计数）取代它 ⇒ **轴态算出 0 秒连携是正确的**，不是缺陷。
+   * 本队含琉音（`axisPresetPreferred`）⇒ §20.5-3 修正后自动进轴态 ⇒ 连携按轴内计数 ⇒ 0s。
+   *
+   * ⚠ **原「physical 模式 ⇒ 连携 > 5」已无法在本队复现**：`autoActive` 由**队伍构成**派生
+   * （`roundInputs#autoPreset`，非 store 轴状态）⇒ **无法在本队关掉轴**。
+   * 故本用例改为断言**轴态下的真实契约**（连携按轴内计数），并在注释里保留原口径的适用条件。
+   */
+  it('轴态（本队缺省，§20.5-3 后）：每失衡连携不适用 ⇒ 连携按轴内计数（本轴未排连携块 ⇒ 0）', async () => {
     const r = await stunChainSeconds('auto-1461-1521-1361', 4)
+    expect(r.axisActive, '本队含琉音 ⇒ 应自动进轴态（本用例前提）').toBe(true)
     expect(r.stun).toBeGreaterThanOrEqual(1)
-    expect(r.chain).toBeGreaterThan(5)
+    expect(r.chain, '轴态走轴内计数 ⇒ 本轴无连携块 ⇒ 0s（用户口径：每失衡连携只给非轴用）').toBeLessThan(0.5)
   }, 60000)
 })

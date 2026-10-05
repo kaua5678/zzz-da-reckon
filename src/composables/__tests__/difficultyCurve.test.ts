@@ -284,12 +284,18 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     // CC-261 后（主 C 交互 8/4 → 职业基准 6/10）本队第一档伤害 74.29M → 73.33M：吸收比例→伤害**逐档不单调**
     // （扫描 0/0.05/0.2/0.3：74.29/71.61/73.33/77.38M）。CC-262 定性（§24.103）：吸收只在溢出时起作用 ⇒ 让降配搜索
     // 选更大交互档 s（0.5→0.625→…→1），多出的交互挤掉平 A、终结次数要到 s=1 才跨 7→8 ⇒ 整数台阶，非缺陷、不修。
-    // 这里只锁设计保证：saved 逐档变大、到上限伤害不低于全关（§24.102）。
+    // 这里只锁设计保证：saved 单调不减、到上限伤害不低于全关（§24.102）。
     void d1
-    // 可重复：再套一次 ⇒ 到用户上限（缺省 0.4），saved 更大；第三次 = 空操作（已到上限）
+    // 可重复：再套一次 ⇒ 到用户上限（缺省 0.4）；第三次 = 空操作（已到上限）
     g5.apply(ctx)
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
-    expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeGreaterThan(saved1)
+    // ⚠ **2026-10-05 改 `toBeGreaterThan` → `toBeGreaterThanOrEqual`**（§20.5-3 轴态吃吸收后暴露）：
+    // 吸收量 = `min(溢出, 容量)`（`helpers.ts` 的 `take`）⇒ **溢出被吸满后，再提高比例不再增加 saved**。
+    // 实测本队（改动后进轴态）：ratio=0.2 时 `gross=195.885 net=180.000 saved=15.885`，
+    // 恰好 = 全部溢出（195.885 − 180）⇒ 0.4 档**无事可做**，两档 saved **精确相等**。
+    // ⇒ 「逐档严格变大」从来不是该设计的不变量（只是该队在溢出 > 容量时恰好成立的历史巧合）；
+    //    正确的设计保证 = **单调不减**（容量↑ ⇒ 可吸收量↑，但以溢出为上限）。
+    expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeGreaterThanOrEqual(saved1)
     expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(d1)
     expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(d0) // 到上限：伤害不低于全关
     g5.apply(ctx)
