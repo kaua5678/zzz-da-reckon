@@ -896,6 +896,13 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 **不许**：删文件（只 mv）；动 `_attic/` 之外的非 `.out`；改保留规则去「多清一点」。做完在 §2b 自己 lane 的行里加一句「T21 跑过：移 N 留 M」即可，**不删本卡**（常设）。
 **r664 首跑**：keep 41 / move 44 / 剩 41 个 `.out`。
 <!-- /card:T21 -->
+<!-- card:T22 -->
+### T22（r666 arena-F 立卡；机械活，可交低阶模型/dsh）· `src/views/resultPage/result-page.css` 删 `@media (max-width: 1200px)` 块里与基础规则逐字相同的无效覆盖
+**现状（r666 实测）**：文件 606 行。基础规则 `.damage-pool-card … .damage-source-table` 在 211–281 行；`@media (max-width: 1200px) {` 从 340 行起，到 `.card-row { grid-template-columns: 1fr; }` 后的 `}` 结束（≈403 行），里面把 211–281 的规则**原样再写了一遍**（jscpd：342–382 与 211–251 相同 41 行；381–401 与 261–281 相同 21 行），只有 `.card-row` 那条是真正的窄屏覆盖。媒体查询里与外层逐字相同的规则没有任何效果。
+**怎么做**：① 在 worktree（`/home/kaua/calc-arch/wtA-base`，先 `git checkout -q --detach origin/master`）里打开该文件，找到 `@media (max-width: 1200px) {` 块；② 对块内每条规则，在块外（文件前半）找同选择器的规则，**选择器与声明逐字相同**的整条删掉（含其前面的空行/注释）；声明有任何不同的保留；③ 块内最后应只剩真正不同的规则（预期只剩 `.card-row { grid-template-columns: 1fr; }`，若还有别的差异规则也保留）；④ 验收命令：`npm run -s build 2>&1 | tail -1` 出 `✓ built`；`git diff --stat` 只有这一个文件且只有删除行（`git diff --numstat` 第一列 ≤ 1）；`npm run -s check-guards` 26 过；⑤ 提交 `git -c user.name=<lane> -c user.email=<lane>@local commit -m "T22 result-page.css 删媒体查询内与基础规则逐字相同的无效覆盖（零视觉变化）"`，`git push origin HEAD:master`。
+**不许**：改任何声明的值；动 `@media` 块以外的行；合并选择器；顺手「整理」其他 CSS。做完在 §2b 自己 lane 的行里写「T22 完成 `<commit>`，删 N 行」，并把本卡标 ✅。
+**为什么值得**：同一份视觉规则两份副本，改一处漏一处（这是 jscpd 全仓最大的单处克隆，257 token）；删除后窄屏行为逐字不变（媒体查询内相同声明 = 无效覆盖）。
+<!-- /card:T22 -->
 
 <!-- card:T8 -->
 ### T8 · ✅ 全部完成（r435–r439：CC-409 `67f6672b` ellen/evelyn/xide/zhendou/harumasa/zhao → CC-410 `015b6a61` miyabi/yixuan/anbyZero/hugo → CC-411 `db9e0655` soukaku/grace → CC-412 `64e8d13f` burnice）
