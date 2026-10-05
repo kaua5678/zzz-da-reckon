@@ -50,6 +50,7 @@ export type { CrossAgentSupplyInfo }
 // CC-5a 后 `runInnerLoop` 的最后消费者（欠打回填 `convergeCounts`）已迁 `./resource/underfillProbe.ts`，
 // 本文件不再直接调用实现，只经 `foldCtx` / `probeCtx` 注入 `innerCtx`。
 import { type InnerLoopContext } from './resource/innerLoop'
+import { chainCountTotalOf } from '@/core/chainCount'
 
 /**
  * 时间预算容差（秒）：量化（floor 次数）导致的残差属合轴可覆盖，不追求精确 0（坑12/19 既有口径）。
@@ -178,7 +179,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
       : 0,
     exSpecialCount: 0,
     ultimateCount: 0,
-    chainCountTotal: (cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * countStunPlan) + (cfg.chainCountTotalExtra ?? 0),
+    chainCountTotal: chainCountTotalOf(cfg, countStunPlan) + (cfg.chainCountTotalExtra ?? 0),
     totalEnergy: 0,
     // 种子 ultimateCount = 0，但终结技等价次数（CC-312）是上一轮的已知量，与 extraSelfDecibelReward 同样计入起点
     totalDecibel: cfg.initialDecibelGift + (cfg.extraSelfDecibelReward ?? 0)

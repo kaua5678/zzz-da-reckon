@@ -35,6 +35,7 @@ import { axisOverlayChannel, type AxisLike } from '../types'
 import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { chainCountTotalOf } from '@/core/chainCount'
 
 export const CORIN_ID = '1061'
 export const CORIN_CORE_SAW_DMG = 37.5
@@ -154,7 +155,7 @@ function buildCorinCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput)
 function applyCorinTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
   if (cinemaLevel < 4) return
-  const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
+  const chainTotal = chainCountTotalOf(cfg, stunCount)
   const triggers = computeCorinC4Triggers({
     battleTime: combatTime,
     quickAssistCount: cfg.quickAssistCount ?? 0,

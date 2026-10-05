@@ -18,6 +18,7 @@ import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { chainCountTotalOf } from '@/core/chainCount'
 
 const LIUYIN_AGENT_ID = '1481'
 
@@ -497,7 +498,7 @@ export const liuyinMechanic: AgentMechanicModule = {
       // 目标槽的连携总数（60 转大吃掉的是**目标槽的连携窗口**）
       const targetChainTotal = Math.min(
         (targetCfg.chainCountPerStun ?? 0) * stunCount,
-        targetCfg.chainCountTotalOverride ?? (targetCfg.chainCountPerStun ?? 0) * stunCount,
+        chainCountTotalOf(targetCfg, stunCount),
       )
       const hug = computeLiuyinHugCounts(
         src.goodReviewTotal,

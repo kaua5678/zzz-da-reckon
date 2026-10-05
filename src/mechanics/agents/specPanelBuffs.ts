@@ -16,6 +16,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { cfgMechanicSetting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { chainCountTotalOf } from '@/core/chainCount'
 
 /** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
 export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
@@ -145,7 +146,7 @@ peiluoProminenceMechanic.applyTeamConfig = ({ cfg, phase, cinemaLevel, stunCount
   const cinema = cinemaLevel ?? 0
   // 连携总次数：轴模式用轴内加权后的覆盖值（由编排层通用注入 cfg），否则 chainCountPerStun × 失衡次数
   // CC-335：额外能力·辉煌军势「连携技回复300喧响」与 applyPanel 暴伤+40% 同门控（未传 panel 的单测桩默认视为激活）
-  const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
+  const chainTotal = chainCountTotalOf(cfg, stunCount)
   const aaActive = (cfg.panel?.additionalAbilityActive ?? 1) > 0
   const chainDecibels = aaActive ? chainTotal * 300 : 0
   cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0) + chainDecibels + (cinema >= 2 ? 1500 : 0)

@@ -68,6 +68,7 @@ import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 
 export { createConvergenceRoundInputs, resolveAxisUltimateDecibelCost } from './roundInputs'
 import type { CalcRoundResult } from './roundResult'
+import { chainCountTotalOf } from '@/core/chainCount'
 export type { CalcRoundResult } from './roundResult'
 
 /**
@@ -696,7 +697,7 @@ export function createRunCalcRound(deps: {
     // 输入只有用户配置的次数与连携数（= chainCountTotalOverride ?? chainCountPerStun × stunCount），无 ultimateCount 反馈环
     const perSlotChainForBonus = [0, 0, 0]
     for (const cfg of characters) {
-      perSlotChainForBonus[cfg.slot] = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * countStun
+      perSlotChainForBonus[cfg.slot] = chainCountTotalOf(cfg, countStun)
     }
     // 弹刀喧响（215/次）用注入后的有效次数（含反推拆分 + 不带支援突击 + 只给喧响 + 般岳补齐；不写回 store）
     const parryForBonus = [0, 0, 0]

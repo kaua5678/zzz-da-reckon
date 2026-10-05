@@ -13,6 +13,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { chainCountTotalOf } from '@/core/chainCount'
 
 /**
  * 安比（1011，电·强攻）—— 整局近似口径
@@ -175,7 +176,7 @@ function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, 
 
   if (phase === 'postRound' && cinemaLevel >= 4) {
     // 影画4 电荷传导：连携/终结为后场电角色回 3+min(6,floor(能量效率/12)×2) 能量
-    const chainTotal = cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * stunCount
+    const chainTotal = chainCountTotalOf(cfg, stunCount)
     const ult = Math.max(0, Math.floor(Number(ultimateCounts?.[slot] ?? 0)))
     const triggers = Math.max(0, Math.floor(chainTotal)) + ult
     const perTrigger = computeAnbyC4ChargeEnergy(Number(cfg.anbyEnergyGainEfficiency ?? 0))

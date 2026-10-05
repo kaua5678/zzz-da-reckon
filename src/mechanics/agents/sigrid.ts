@@ -18,6 +18,7 @@ import { cfgMechanicSetting as cfgSetting, mechanicSettingOf as settingOf } from
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
+import { chainCountTotalOf } from '@/core/chainCount'
 
 /**
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
@@ -291,7 +292,7 @@ function sigridPozhenSets(
   if (cfg.sigridAxisActive === true) return Math.max(0, Math.floor(Number(cfg.sigridAxisPozhenSets ?? 0)))
   const cinema = Math.max(0, Math.floor(Number(cfg.sigridCinemaLevel ?? 0)))
   const raw = cinema >= 6
-    ? (cfg.chainCountTotalOverride ?? (cfg.chainCountPerStun ?? 0) * Number(cfg.sigridStunCount ?? 0))
+    ? chainCountTotalOf(cfg, Number(cfg.sigridStunCount ?? 0))
     : Number(cfg.sigridStunCount ?? 0)
   return Math.max(0, Math.floor(raw))
 }

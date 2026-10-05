@@ -136,6 +136,7 @@ export { TIME_FOLD_CONVERGENCE_SECONDS, truncateExecutionsToFrontline }
 // ⚠ 改行构建口径请改 `./rowBuild.ts`，**不要在本文件重建同形函数**。
 // ============================================================================
 import { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecutions, withFeasibleRowsMemo } from './rowBuild'
+import { chainCountTotalOf } from '@/core/chainCount'
 export { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecutions }
 
 // ============ 单次迭代 ============
@@ -230,7 +231,7 @@ function iterateBody(
     // 时光切片（音擎 13002）连携触发的回能随此进循环、驱动强特次数。曾传 0 造成
     // 「展示明细含连携回能、次数推导不含」的口径分裂（derivedEnergy < energySource.total），
     // 见 CharacterResourceResult.derivedEnergy 注释。
-    const chainCountInput = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * countStunOf(globalCfg)
+    const chainCountInput = chainCountTotalOf(cfg, countStunOf(globalCfg))
     // 行级能量/喧响 Σ 需要队友前台秒（与装配层 teammateFrontlineSeconds 同语义：Σ 其他人，迭代期取上一轮值，
     // 收敛后与终局装配一致）
     const teamFrontline = prevStates.reduce((sum, st, k) => (k === i ? sum : sum + (st.frontlineTime ?? 0)), 0)
@@ -386,7 +387,7 @@ function iterateBody(
 
     // 连携次数 = 每次失衡连携次数 × 失衡次数（失衡次数由外部失衡池不动点收敛后传入 globalCfg.stunCount）
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
-    const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * countStunOf(globalCfg)
+    const chainCount = chainCountTotalOf(cfg, countStunOf(globalCfg))
 
     // 模块专属必做动作（CC-26；原内联蕾米埃尔垂虹）：与 rowBuild 补行同源，时间照旧按 count × actionTime 预留
     const extraActions = extraNecessaryActionOf(cfg, prevStates[i])
@@ -588,9 +589,9 @@ function iterateBody(
     // 上面的轮次按剩余权重回流给还有余量的队友（不蒸发）。
     const basicAttackTime = basicAlloc[i]
 
-    // 连携次数（与第一个循环保持一致）：每次失衡连携次数 × 失衡次数
+    // 连携次数（与第一个循环同一读取口 CC-505）：每次失衡连携次数 × 失衡次数
     // 失衡轴模式用 chainCountTotalOverride（各轴按窗口数加权后的最终连携次数）
-    const chainCount = cfg.chainCountTotalOverride ?? cfg.chainCountPerStun * countStunOf(globalCfg)
+    const chainCount = chainCountTotalOf(cfg, countStunOf(globalCfg))
 
     const frontlineTime = necessary + basicAttackTime
     const backstageTime = Math.max(0, totalTime - frontlineTime)
