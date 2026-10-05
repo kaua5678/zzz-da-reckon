@@ -4,7 +4,7 @@ import type {
   SpecResourceResult,
 } from '@/types/resource'
 import type { AgentMechanicSpec, ResourceRuleSpec, ResourceSpec } from './types'
-import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 import { readCfgField } from './cfgField'
 
 export interface SpecResourceContext {
@@ -135,10 +135,9 @@ function applyAdjustable(
 ): number {
   const adjustable = rule.adjustable
   if (!adjustable) return amount
-  const raw = Number(readCfgField(cfg, mechanicSettingCfgKey(adjustable.id)) ?? adjustable.default)
-  const rate = Number.isFinite(raw)
-    ? Math.max(adjustable.min ?? 0, Math.min(adjustable.max ?? Infinity, raw))
-    : adjustable.default
+  // 读口走协议单一来源（CC-511）：缺省 / 非有限取声明 default，再钳到声明区间——与此前私写的 Number(raw ?? default) 三元同值（null 不可达：写入侧恒为数字）
+  const raw = cfgMechanicSetting(cfg, adjustable.id, adjustable.default)
+  const rate = Math.max(adjustable.min ?? 0, Math.min(adjustable.max ?? Infinity, raw))
   return amount * rate
 }
 
