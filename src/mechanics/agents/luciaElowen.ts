@@ -7,6 +7,7 @@ import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 卢西娅·艾洛温（1451）战斗逻辑（用户确认口径）：
@@ -156,7 +157,7 @@ function applyChorusBonuses(exec: SkillExecution, cinemaLevel: number, panel: { 
 
 /** 执行计划完全构建后：给全部[合唱]行（强特/追加攻击/连携/终结技/支援突击）补专属字段；随想行（A5/闪反/快支）不补 */
 function patchLuciaExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.luciaCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.luciaCinemaLevel)
   const panel = cfg.panel
   if (!panel) return
   const chorusMoveIds = new Set([

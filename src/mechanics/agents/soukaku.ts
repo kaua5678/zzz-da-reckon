@@ -33,6 +33,7 @@ import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const SOUKAKU_ID = '1131'
 
@@ -213,7 +214,7 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.soukakuCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.soukakuCinemaLevel)
   if (cinema < 6) return
   for (const exec of executions) {
     if (!exec.moveId || !SOUKAKU_FROST_MOVE_IDS.has(exec.moveId)) continue

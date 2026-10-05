@@ -13,6 +13,7 @@ import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
@@ -450,7 +451,7 @@ function applyYixuanTeamConfig(
   // （战斗时间扣 boss 无敌，落雷不在无敌期间结算）。
   // ⚠ 二分点是算出来的 `axisInSeconds > 0`（= 轴生效且至少一个窗口），**不是** `axis.active`。
   // ⚠ 原实现**无条件**写该字段（分支内无门控）⇒ 此处也不挂任何通道门控。
-  const yixuanCinema = Math.max(0, Math.floor(Number(cfg.yixuanCinemaLevel ?? 0)))
+  const yixuanCinema = cinemaLevelOf(cfg.yixuanCinemaLevel)
   const battleTime = effectiveBattleTime(cfg)
   const c1Lightnings = yixuanCinema >= 1
     ? Math.max(0, Math.floor((axisInSeconds > 0 ? axisInSeconds : battleTime) / C1_LIGHTNING_CD))
@@ -556,7 +557,7 @@ function resolveYixuanAutoInputs(
   const perfectBlocks = resolveYixuanPerfectBlocks(cfg)
   // 影画4 静心（增伤载体=凝云/墨烬影消）：自动口径下留 1 轮凝云（60 闪能）当载体，
   // 否则轴外凝云全被 3 连吃掉 → C4 0 增幅 —— 用户口径 2026-08
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.yixuanCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.yixuanCinemaLevel)
   if (cinemaLevel >= 4 && ink3 > 0) {
     const reserved = Math.min(ink3, 1) // 留 1 轮凝云 = 少打 1 次 3 连
     return { ink3: ink3 - reserved, perfectBlocks }
@@ -600,7 +601,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   const stunExCov = axisActive ? 0 : cfgNum(cfg, 'yixuan.stunExCoverage', DEFAULT_STUN_EX_COVERAGE)
   const axisCloud = chain.axisCloud ?? 0
   const cloudOut = chain.cloudOut ?? 0
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.yixuanCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.yixuanCinemaLevel)
   const ultCount = Math.max(0, Math.floor(state.ultimateCount ?? 0))
   // 玄墨值 M = 符法千重总次数（术法值消耗 + 影画6 调息赠送）——合轴替换/聚墨破/C4 静心共用
   const shufaResources = computeSpecResources(getAgentSpec(AGENT_ID)!, cfg, state)
@@ -824,7 +825,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
 }
 
 function patchYixuanExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.yixuanCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.yixuanCinemaLevel)
   for (const exec of executions) {
     if (!exec.moveId) continue
     // 玄墨异常独立积蓄槽：异常分桶到 ether_ink（直伤元素仍走倍率表 ether，不受影响）

@@ -20,7 +20,7 @@
  * 影画4 异放回能/喧响已建模：floor(t/10)（10s CD 上限，异放次数≥floor(t/6)>floor(t/10)）× (4能量+70喧响) 并入 initialEnergyGift/initialDecibelGift。
  * 影画6 强化绝对音准/终结技以太伤害+40%已建模：patchExecutions 按 moveId 加 dmgBonus（妄想时刻不退出 → 强化绝对音准全覆盖）。
  */
-import { clampRatio, whole } from '@/utils/finiteClamp'
+import { clampRatio } from '@/utils/finiteClamp'
 import { initialStat } from '@/mechanics/initialStat'
 import type {
   AgentCharConfigInput,
@@ -35,6 +35,7 @@ import type {
 import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const AIRE_ID = '1501'
 export const AIRE_CORE_PROFICIENCY = 90
@@ -99,7 +100,7 @@ export function computeAireCycle(input: {
   additionalActive: boolean
   c2DelusionCoverage: number
 }): AireCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const c2DelusionCoverage = clampRatio(input.c2DelusionCoverage)
   return {
     cinemaLevel,

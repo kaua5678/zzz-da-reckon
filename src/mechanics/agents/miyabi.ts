@@ -25,6 +25,7 @@ import { findMoveById } from '@/data/moveTableQueries'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const MIYABI_AGENT_ID = '1091'
 /** 烈霜元素（独立元素，可在紊乱中与冰互紊） */
@@ -168,7 +169,7 @@ function buildMiyabiCharConfig({ cfg, panel, cinemaLevel }: AgentCharConfigInput
  * 与产行逐项对齐：`miyabiFrostMoonReserveCc202.test.ts`。回退：删模块登记里的 extraNecessaryAction。
  */
 function hasMiyabiCinema6(cfg: CharacterOperationConfig, cinemaLevel?: number): boolean {
-  const c = cinemaLevel ?? Math.max(0, Math.floor(Number(cfg.miyabiCinemaLevel ?? 0)))
+  const c = cinemaLevel ?? cinemaLevelOf(cfg.miyabiCinemaLevel)
   return c >= 6
 }
 
@@ -196,7 +197,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
   const frostMoonCount = res.frostMoonCount
   const actionTime = cfgMoveActionTime(cfg, FROST_MOON_MOVE_ID)
   // 影画1（招式限定）：三段蓄力的每一段按已消耗落霜无视防御——#1(2豆)=12%、#2(4豆)=24%、#3(6豆)=36%
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.miyabiCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.miyabiCinemaLevel)
   const m1DefShred = cinemaLevel >= 1
 
   // 霜月架势三段

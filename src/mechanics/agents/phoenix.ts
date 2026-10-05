@@ -32,6 +32,7 @@ import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const PHOENIX_ID = '1641'
 /** 核心被动：异常精通 +40 */
@@ -95,7 +96,7 @@ export const PHOENIX_BASIC_SEGMENT_IDS: readonly string[] = ['1641001', '1641002
 export const PHOENIX_RELEASE_BASE = { charged: 225, chargedPerLevel: 20, ult: 300, ultPerLevel: 27, c6Ex: 200 } as const
 /** 通用技能等级口径：影画3 +2、影画5 累计 +4 */
 export function phoenixSkillLevel(cinemaLevel: number): number {
-  const cinema = Math.max(0, Math.floor(cinemaLevel))
+  const cinema = cinemaLevelOf(cinemaLevel)
   return 12 + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
 }
 
@@ -171,7 +172,7 @@ function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResour
 export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
   const override = setting(cfg, 'phoenix.chargedAttackCount', 0)
   if (override > 0) return whole(override)
-  const cinema = whole(Number(cfg.phoenixCinemaLevel ?? 0))
+  const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const eff = cinema >= 1 ? 1 + PHOENIX_C1_EMBER_EFFICIENCY / 100 : 1
   return Math.floor(phoenixEmberIncome(cfg, state, executions) * eff / PHOENIX_CHARGED_EMBER_COST)
 }
@@ -254,7 +255,7 @@ function phoenixReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduc
 
 /** 长按普攻/强化特殊技第二段/蓄能附加攻击执行行 */
 function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = whole(Number(cfg.phoenixCinemaLevel ?? 0))
+  const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const chargedCount = phoenixChargedCount(cfg, state, executions)
   cfg.phoenixChargedCount = chargedCount
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
@@ -349,7 +350,7 @@ function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput):
 
 /** 异放事件：长按普攻终结一击 + 终结技终结一击（+ 影画6 强特） */
 function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
-  const cinema = whole(Number(cfg.phoenixCinemaLevel ?? 0))
+  const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const s = phoenixSkillLevel(cinema)
   const coverage = clamp01(setting(cfg, 'phoenix.releaseCoverage', 1))
   if (coverage <= 0) return
@@ -412,7 +413,7 @@ function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEvent
 }
 
 function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const cinema = whole(Number(cfg.phoenixCinemaLevel ?? 0))
+  const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const additionalActive = cfg.phoenixAdditionalActive === true
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
   const teamAnomalyCount = Math.max(1, whole(Number(cfg.phoenixTeamAnomalyCount ?? 2)))

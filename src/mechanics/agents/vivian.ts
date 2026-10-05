@@ -38,6 +38,7 @@ import { cfgMechanicSetting as setting, cfgMechanicSettingRaw } from '@/utils/me
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
@@ -109,7 +110,7 @@ export function computeVivianCycle(input: {
   additionalActive: boolean
   c4AtkCoverage: number
 }): VivianCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const c4AtkCoverage = clampRatio(input.c4AtkCoverage)
   const battleTime = Math.max(0, input.battleTime)
 

@@ -41,6 +41,7 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
@@ -98,7 +99,7 @@ export function computeAnbyZeroCycle(input: {
   /** 苍光·临界（1381023）动作时间（秒）：CC-409 起由调用方从 cfg.moveActionTimes 取；面板阶段不消费时间 */
   criticalActionTime: number
 }): AnbyZeroCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const potentialLevel = potentialLevelOf(input.potentialLevel)
   const cangguangCount = whole(input.cangguangCount)
   const ultimateCount = whole(input.ultimateCount)

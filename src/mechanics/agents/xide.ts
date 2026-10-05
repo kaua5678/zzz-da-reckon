@@ -8,6 +8,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 「席德」（1461，电·强攻，新艾利都防卫军）—— 正兵拐 + 自身机制 + 钢能消耗出口模块。
@@ -214,7 +215,7 @@ function resolveXideSteelResources(
   state: AgentResourceInput['state'],
   attackSteel: number,
 ) {
-  const cinema = Math.max(0, Math.floor(Number(cfg.xideCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.xideCinemaLevel)
   cfg.xideInitialSteel = XIDE_STEEL_INITIAL + (cinema >= 1 ? XIDE_STEEL_C1_ENTRY_BONUS : 0)
   cfg.xideC1UltSteel = cinema >= 1 ? XIDE_STEEL_C1_ULTIMATE_BONUS : 0
   const spec = getAgentSpec(XIDE_AGENT_ID)
@@ -240,7 +241,7 @@ function resolveXideSteelResources(
 
 /** 钢能消耗出口：三招落华（重戮快速释放 + 崩坠一式 + 崩坠二式）+ 铁萼雨幕衔接重戮 */
 function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.xideCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.xideCinemaLevel)
   // 统一对当前执行行求和（通用行 + 后续追加的落华/崩坠行 attack_data 均为 0，不影响）
   const attackSteel = computeXideAttackSteelFromExecutions(cfg, executions)
   cfg.xideAttackSteel = attackSteel
@@ -273,7 +274,7 @@ function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): vo
 }
 
 function patchXideExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.xideCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.xideCinemaLevel)
   const atk = Math.max(0, Number(cfg.xideAtk ?? 0))
   const aaActive = Number(cfg.xideAAActive ?? 0) > 0
   for (const exec of executions) {

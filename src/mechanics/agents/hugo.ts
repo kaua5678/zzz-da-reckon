@@ -26,6 +26,7 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById as findMove, getRowValue } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
@@ -123,7 +124,7 @@ export function computeHugoCycle(input: {
   /** 轴模式覆盖：终结技决算次数 = 轴内 1291018 块 × 窗口数 */
   ultimateVerdictCountOverride?: number
 }): HugoCycle {
-  const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel))
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const exSpecialCount = Math.max(0, Math.floor(input.exSpecialCount))
   const ultimateCount = Math.max(0, Math.floor(input.ultimateCount))
   const exVerdictCount = input.exVerdictCountOverride !== undefined

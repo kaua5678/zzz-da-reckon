@@ -15,6 +15,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 真斗（1441，命破/火 DPS）—— 整局近似口径
@@ -86,7 +87,7 @@ function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: A
 }
 
 function buildZhendouCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
-  cfg.zhendouCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
+  cfg.zhendouCinemaLevel = cinemaLevelOf(cinemaLevel)
 }
 
 /** 归烬·舍身（特殊技）两段：点按 #1 + 长按蓄力释放 #2（actionTime 来自 catalog） */
@@ -118,7 +119,7 @@ export function computeZhendouChargeCount(i: ZhendouChargeInput): number {
 
 /** 耗血暴伤 +50%（炽风·胧切/支援突击）；影画6 支援突击火伤 +15% */
 function patchZhendouExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.zhendouCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.zhendouCinemaLevel)
   for (const exec of executions) {
     if (!exec.moveId) continue
     if (execMatchesMove(exec, ZHENDOU_HP_DRAIN_MOVE_IDS)) {

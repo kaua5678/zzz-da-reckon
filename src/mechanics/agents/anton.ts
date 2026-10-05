@@ -9,6 +9,7 @@ import type { AgentEventInput, AgentMechanicModule, AgentResourceInput } from '.
 import type { AnomalyEventExecution } from '../../types/resource'
 import { execMatchesMove } from '../../types/resource'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const ANTON_ID = '1111'
 
@@ -56,7 +57,7 @@ export const ANTON_ADDITIONAL_SHOCK_CRIT_DIVISOR = 4
 // ⟳复核: 跑 `npx vitest run cinemaAxisBatchR62` —— 若 c3/c5 的 skillLevelBonus 又变回 4/8（或 `agentHasCinemaSkillLevelBuff` 被改成认「描述文本」而安东 catalog 补了 effects），说明双计回来了 | 到期 2027-03-31
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.antonCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.antonCinemaLevel)
   let c1Energy = 0
   let c1Moves = 0
   for (const exec of executions) {

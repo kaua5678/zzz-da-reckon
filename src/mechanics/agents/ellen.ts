@@ -44,6 +44,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const ELLEN_ID = '1191'
 export const ELLEN_FROST_TRIM_MOVE_IDS = ['1191006'] as const
@@ -145,7 +146,7 @@ export function computeEllenCycle(input: {
   c6PenCoverage: number
   c6FeastCoverage: number
 }): EllenCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const potentialLevel = clamp(whole(input.potentialLevel), 1, 6)
   const basicAttackTime = Math.max(0, Number.isFinite(input.basicAttackTime) ? input.basicAttackTime : 0)
   const chargedPer = cinemaLevel >= 1 ? 6 : 3

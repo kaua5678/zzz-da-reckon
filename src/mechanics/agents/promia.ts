@@ -18,7 +18,6 @@
  * - 额外能力·饮冰：[有罪推定]全队异放无视40%防御 + 影画1 对[有罪推定]敌人额外无视20%防御（均由额外能力门控，经 releaseModifier 异放限定生效）。
  * 明确未建模：额外能力霜寒持续+3秒（全队/敌方状态）与寒蚀逐时序状态机。
  */
-import { whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -42,6 +41,7 @@ import { applyAgentAttributeConversions, requireAgentAttributeConversion } from 
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const PROMIA_ID = '1541'
 // 掌控转精通的常数只在 spec 1541.json `promia_mastery_to_proficiency`（R6 C7，第 143 轮）；
@@ -91,7 +91,7 @@ export function computePromiaCycle(input: {
   anomalyMastery: number
   additionalActive: boolean
 }): PromiaCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const anomalyMastery = Math.max(0, Number.isFinite(input.anomalyMastery) ? input.anomalyMastery : 0)
   const masteryExcess = Math.max(0, anomalyMastery - PROMIA_MASTERY_THRESHOLD)
   const probe = emptyPanel()
@@ -209,7 +209,7 @@ export const PROMIA_ZHUISHUANG_MOVE_ID = '1541010'
 function computePromiaVerdict({ cfg, state, battleTime }: { cfg: AgentCharConfigInput['cfg']; state: { exSpecialCount?: number }; battleTime: number }): {
   count: number; specialCount: number; baseFrostGain: number; initial: number
 } {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.promiaCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.promiaCinemaLevel)
   const override = Math.max(0, Math.floor(setting(cfg, 'promia.releaseCountOverride', 0)))
   const triggerHits = Math.max(0, Math.floor(Number(cfg.promiaTriggerHitCount ?? 0)))
   const teammateReleases = Math.max(0, Math.floor(Number(cfg.promiaTeammateReleaseCount ?? 0)))
@@ -244,7 +244,7 @@ function computePromiaVerdict({ cfg, state, battleTime }: { cfg: AgentCharConfig
  * 绝裁本体直伤（1541014）在 buildExecutions 单独生成（普通招式，失衡吃易伤）。
  */
 function buildPromiaAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.promiaCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.promiaCinemaLevel)
   const niying = Math.max(0, Math.min(99, Math.floor(Number(cfg.promiaNiyingCount ?? 0))))
   const attackFrost = Math.max(0, Math.floor(Number(cfg.promiaAttackFrostGain ?? 0)))
   const { count, specialCount, baseFrostGain, initial } = computePromiaVerdict({ cfg, state, battleTime: totalTime })

@@ -3,6 +3,7 @@ import type { AnomalyEventExecution, MechanicSetting } from '@/types/resource'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 月城柳（1221，电·异常，对空洞特别行动部第六课）—— 核心被动/额外能力/影画面板区（薄模块）。
@@ -114,7 +115,7 @@ function applyYanagiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
 
 /** 极性紊乱：每次月华流转下落攻击命中异常状态敌人触发 1 次（≈强特次数）；倍率随命座/突刺数变化。 */
 function buildYanagiAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.yanagiCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.yanagiCinemaLevel)
   const count = Math.max(0, Math.floor(state.exSpecialCount))
   if (count <= 0) return
   // C0 = 15%；C2 = 20% + 每额外突刺 15%（额外突刺次数读滑块，上限 2 次）

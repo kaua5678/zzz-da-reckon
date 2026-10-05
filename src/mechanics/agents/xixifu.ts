@@ -6,6 +6,7 @@ import { whole } from '@/utils/finiteClamp'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 希希芙（1521，电·强攻，新艾利都治安局）—— 额外能力自身暴伤 + 毒素循环模块。
@@ -94,7 +95,7 @@ function applyXixifuTeamConfig({ characters, phase, stunCount }: AgentTeamConfig
 function resolveXixifuResources(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']) {
   const spec = getAgentSpec(XIXIFU_AGENT_ID)
   if (!spec) return null
-  const cinema = Math.max(0, Math.floor(Number(cfg.xixifuCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.xixifuCinemaLevel)
   // 影画1：进场毒素 3→6（initialValueSource=cfgField，buildExecutions 先于
   // buildResourceResult 调用，此处写入保证两条路径一致）
   cfg.xixifuInitialToxin = cinema >= 1 ? XIXIFU_TOXIN_INITIAL_C1 : XIXIFU_TOXIN_INITIAL
@@ -122,7 +123,7 @@ function computeXixifuToxinTotal(cfg: AgentResourceInput['cfg'], state: AgentRes
 function computeXixifuCounts(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']) {
   const toxinTotal = computeXixifuToxinTotal(cfg, state)
   const shekissCount = Math.floor(toxinTotal / XIXIFU_SHEKISS_TOXIN_COST)
-  const cinema = Math.max(0, Math.floor(Number(cfg.xixifuCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.xixifuCinemaLevel)
   // 蚀骨基础：每消耗1点毒素触发1次（接战每5秒/蛇吻快速消耗/溢出，总量口径）
   const baseShigu = toxinTotal
   // 影画4 [觉悟]：强特/连携/终结各+1层，默认全消耗 → 特殊蚀骨 = 三者次数之和，无失衡值

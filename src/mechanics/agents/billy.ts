@@ -16,7 +16,7 @@
  *
  * @author kaua5678
  */
-import { clampRatio, finiteOr0, whole } from '@/utils/finiteClamp'
+import { clampRatio, finiteOr0 } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -27,6 +27,7 @@ import type {
 } from '../types'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const BILLY_ID = '1081'
 export const BILLY_CORE_CROUCH_DMG = 50
@@ -74,7 +75,7 @@ export function computeBillyCycle(input: {
   c4ExCrit: number
   battleTime?: number
 }): BillyCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const battleTime = Math.max(0, Number.isFinite(input.battleTime) ? Number(input.battleTime) : 180)
   const chainCountTotal = Math.max(0, Number(input.chainCountTotal) || 0)
   const ultimateCount = Math.max(0, Number(input.ultimateCount) || 0)

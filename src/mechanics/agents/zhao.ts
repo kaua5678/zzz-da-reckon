@@ -26,6 +26,7 @@ import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const ZHAO_ID = '1341'
 export const ZHAO_CORE_CRIT_PER_1000_HP = 1.4
@@ -110,7 +111,7 @@ function computeZhaoFrostCycle(input: {
   teamFrontlineSeconds: number
   panelHp: number
 }): ZhaoFrostCycle {
-  const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel))
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const exSpecialCount = Math.max(0, Math.floor(input.exSpecialCount))
   const ultimateCount = Math.max(0, Math.floor(input.ultimateCount))
   const teammateAttackCount = Math.max(0, Math.floor(input.teamFrontlineSeconds / ZHAO_TEAMMATE_FROST_INTERVAL))
@@ -168,7 +169,7 @@ function buildZhaoExecutions(input: AgentResourceInput): void {
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.zhaoCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.zhaoCinemaLevel)
   if (cinemaLevel < 4) return
   for (const exec of executions) {
     if (!exec.moveId || !ZHAO_C4_MOVE_IDS.has(exec.moveId)) continue

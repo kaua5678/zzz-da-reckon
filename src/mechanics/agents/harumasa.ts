@@ -35,6 +35,7 @@ import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
 import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
 import { potentialLevelOf } from '@/data/potentialLevel'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const HARUMASA_ID = '1201'
 export const HARUMASA_ARROW_MOVE_ID = '1201008'
@@ -118,7 +119,7 @@ export function computeHarumasaCycle(input: {
   axisSlash?: number
   axisArrow?: number
 }): HarumasaCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const potentialLevel = potentialLevelOf(input.potentialLevel)
   const a5Count = whole(input.a5Count)
   const chainCount = whole(input.chainCount)

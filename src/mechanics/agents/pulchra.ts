@@ -11,6 +11,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 波可娜（1351，物理·击破/支援）—— 整局近似口径
@@ -75,7 +76,7 @@ function applyPulchraPanel({ panel, cinemaLevel }: AgentPanelInput): void {
 }
 
 function buildPulchraCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
-  cfg.pulchraCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
+  cfg.pulchraCinemaLevel = cinemaLevelOf(cinemaLevel)
   // 影画4：强化特殊技·噬爪瞬步能量消耗 -5
   if (cinemaLevel >= 4) {
     const prev = Number(cfg.pulchraC4EnergyCut ?? 0)
@@ -101,7 +102,7 @@ function pushBackstage(executions: SkillExecution[], moveId: string, moveName: s
 
 /** 核心循环：猎步进入次数 → 后台追加攻击特殊技（噬爪·噩梦袭影） */
 function buildPulchraExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.pulchraCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.pulchraCinemaLevel)
   const n = computePulchraHuntStepCount({
     exSpecialCount: state.exSpecialCount ?? 0,
     parryCount: cfg.parryCount ?? 0,
@@ -118,7 +119,7 @@ function buildPulchraExecutions({ cfg, state, executions }: AgentResourceInput):
 
 /** 影画6：噬爪·噩梦袭影伤害 +15% */
 function patchPulchraExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.pulchraCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.pulchraCinemaLevel)
   if (cinema < 6) return
   for (const exec of executions) {
     if (exec.moveId && PULCHRA_C6_NIGHTMARE_MOVE_IDS.has(exec.moveId)) {

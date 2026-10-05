@@ -31,6 +31,7 @@ import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
@@ -81,7 +82,7 @@ export function computeEvelynCycle(input: {
   c6FollowUpCount: number
   battleTime?: number
 }): EvelynCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const garroteCount = whole(input.garroteCount)
   const ultimateCount = whole(input.ultimateCount)
   const battleTime = Math.max(0, Number.isFinite(input.battleTime) ? Number(input.battleTime) : 180)

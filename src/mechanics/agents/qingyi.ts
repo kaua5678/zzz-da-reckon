@@ -14,6 +14,7 @@ import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { chainMovesOf, isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const QINGYI_AGENT_ID = '1251'
 
@@ -189,7 +190,7 @@ function qingyiGenericRowsTimeOf(executions: readonly SkillExecution[]): number 
  */
 export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number }, genericRowsTime = 0): QingyiMechanicSource {
   const stunCount = Math.max(0, Math.floor(Number(cfg.qingyiStunCount ?? 0)))
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.qingyiCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.qingyiCinemaLevel)
   const loop = cfg.qingyiLoopRates
   const yisha4Voltage = loop?.yisha4Voltage ?? 0
   const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
@@ -258,7 +259,7 @@ export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exS
 function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const source = computeQingyiSource(cfg, state, qingyiGenericRowsTimeOf(executions))
   const loop = cfg.qingyiLoopRates
-  const cinemaLevel = Math.max(0, Math.floor(cfg.qingyiCinemaLevel ?? 0))
+  const cinemaLevel = cinemaLevelOf(cfg.qingyiCinemaLevel)
 
   // 可分配时间：剩余平A时间按「一煞#4→醉花」循环拆成整轮数 + 余量
   const basicExec = executions.find(e => e.moveId === 'basic_attack')

@@ -20,6 +20,7 @@ import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -98,7 +99,7 @@ interface NormaSourceInput {
 }
 
 function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
-  const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel))
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const exCount = Math.max(0, Math.floor(input.exSpecialCount))
   const ultCount = Math.max(0, Math.floor(input.ultimateCount))
   const battleTime = Math.max(0, input.battleTime || 180)

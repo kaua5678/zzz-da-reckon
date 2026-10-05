@@ -19,6 +19,7 @@ import type {
   AgentResourceInput,
 } from '../types'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const PAN_YINHU_ID = '1421'
 export const PAN_YINHU_C2_ENERGY_PER_6_POJIN = 4
@@ -47,7 +48,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   }
 
   // 2) 影画2 破劲换能（仅 C2+；幂等：先扣上一轮本模块写入量再写新值）
-  const cinema = Math.max(0, Math.floor(Number(cfg.panYinhuCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.panYinhuCinemaLevel)
   if (cinema < 2) return
   const groups = Math.floor(PAN_YINHU_POJIN_PER_EX * exCount / 6)
   const gift = PAN_YINHU_C2_ENERGY_PER_6_POJIN * groups

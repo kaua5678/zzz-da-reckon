@@ -20,6 +20,7 @@ import { applyAgentAttributeConversions, requireAgentAttributeConversion } from 
 import { clampCritRatePct } from '@/data/critMultiplier'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const JANE_AGENT_ID = '1261'
 /** 普通攻击：萨霍夫跳（融合主段，见 src/data/moveFusions.ts JANE_SOMERSAULT） */
@@ -230,7 +231,7 @@ function buildJaneCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
 
 /** 萨霍夫跳：狂热进场 1 次 + 影画1 额外 1 次；数值同平A、仅额外回复狂热（融合组见 moveFusions）。 */
 function buildJaneExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.janeCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.janeCinemaLevel)
   const count = 1 + (cinema >= 1 ? 1 : 0)
   if (count <= 0) return
   executions.push(moduleExecRow({

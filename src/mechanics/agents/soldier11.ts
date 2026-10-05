@@ -42,6 +42,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { potentialLevelOf } from '@/data/potentialLevel'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const AGENT_ID = '1041'
 
@@ -100,7 +101,7 @@ function buildSoldier11CharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): v
 }
 
 export function patchSoldier11Executions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.soldier11CinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.soldier11CinemaLevel)
   const coreCov = cfgNum(cfg, 'soldier11.fireSuppressCoverage', 1)
   const c2Cov = cfgNum(cfg, 'soldier11.c2StackCoverage', 1)
 

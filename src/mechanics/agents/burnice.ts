@@ -22,6 +22,7 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue, rawRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -126,7 +127,7 @@ export function computeBurniceMechanic(input: {
 }): BurniceMechanicSource {
   // 强特已按单双喷平均成虚拟强特，允许小数计数（期望值模型）。
   const exCount = Math.max(0, input.exSpecialCount)
-  const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel ?? 0))
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const doubleSprayMaxSeconds = DOUBLE_SPRAY_MAX_SECONDS + (cinemaLevel >= 4 ? CINEMA4_DOUBLE_SPRAY_EXTRA_SECONDS : 0)
   const s1 = clamp(input.singleSpraySeconds, 0, SINGLE_SPRAY_MAX_SECONDS)
   const s2 = clamp(input.doubleSpraySeconds, 0, doubleSprayMaxSeconds)

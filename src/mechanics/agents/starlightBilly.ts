@@ -19,6 +19,7 @@ import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { positiveWholeCounts } from '@/utils/finiteClamp'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 星徽·比利（1531）战斗逻辑（用户确认口径，2026-08）：
@@ -523,7 +524,7 @@ function computeBasicHealPct(
 }
 
 function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.billyCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.billyCinemaLevel)
   const times: Record<string, number> = cfg.billyMoveTimes ?? {}
   const dmg: Record<string, number> = cfg.billyMoveDmg ?? {}
   const decibel: Record<string, number> = cfg.billyMoveDecibel ?? {}
@@ -648,7 +649,7 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
 }
 
 function patchBillyExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.billyCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.billyCinemaLevel)
   const spec = getAgentSpec(AGENT_ID)!
   const resources = computeSpecResources(spec, cfg, state)
 

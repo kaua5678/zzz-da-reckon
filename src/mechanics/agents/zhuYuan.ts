@@ -6,6 +6,7 @@ import { whole } from '@/utils/finiteClamp'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 朱鸢（1241，以太·强攻，新艾利都治安局）—— 自身机制模块。
@@ -127,7 +128,7 @@ function resolveZhuYuanResources(cfg: AgentResourceInput['cfg'], state: AgentRes
   if (!spec) return null
   // 影画1 快速装填：连携+6/终结+9（initialValue/gain 的 cfgField 门控；
   // buildExecutions 先于 buildResourceResult 调用，此处写入保证两条路径一致）
-  const cinema = Math.max(0, Math.floor(Number(cfg.zhuyuanCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.zhuyuanCinemaLevel)
   cfg.zhuyuanC1ChainReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_CHAIN : 0
   cfg.zhuyuanC1UltReload = cinema >= 1 ? ZHUYUAN_C1_RELOAD_ULTIMATE : 0
   return computeSpecResources(spec, cfg, state)
@@ -141,7 +142,7 @@ function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentR
 
 // @fact agent:1241/压制以太弹时间 口径: 1 枚霰弹 = 1 段平A（用户 2026-08-26 口径），所以以太弹行占的**就是平A池那份时间**，必须从通用 basic_attack 聚合行里挤出（琉音转大 carve 同款），不能在它之外另占一份；挤出后剩余时间仍归通用平A（总前台占用守恒） | 据 用户@2026-08-26·2026-09-05 复核（此前未挤出→同一段时间计两次）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/zhuYuan.test.ts#压制以太弹的时间占用 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanExecutions | 信 确认
 function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.zhuyuanCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.zhuyuanCinemaLevel)
   const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
   // 影画6 余温强特耗能-30 → 回能口径：余温次数 × 30 并入开局能量总账（用户口径 2026-08）。
   // CC-289：原先写在 buildResourceResult（装配末尾，能量账 resourceIncome 早已算完）⇒ 这笔能量从未进账

@@ -34,6 +34,7 @@ import { execMatchesMove } from '@/types/resource'
 import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const SEVERIAN_ID = '1631'
 /** 核心被动：暴击伤害 +60% */
@@ -110,7 +111,7 @@ export function computeSeverianCycle(input: {
   fengfengStacks: number
   c4Coverage: number
 }): SeverianCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const stacks = Math.max(0, Math.min(2, whole(input.fengfengStacks)))
   return {
     cinemaLevel,
@@ -140,7 +141,7 @@ export function computeSeverianCycle(input: {
  * （2026-09-20 round 48 那次「两路读数不一致」的教训）。
  */
 export function resolveSeverianFengfengStacks(input: { cinemaLevel: number; shadowHuntCount: number; sliderStacks: number }): number {
-  if (whole(input.cinemaLevel) >= 2 && input.shadowHuntCount >= 1) return 2
+  if (cinemaLevelOf(input.cinemaLevel) >= 2 && input.shadowHuntCount >= 1) return 2
   return Math.max(0, Math.min(2, whole(input.sliderStacks)))
 }
 
@@ -160,7 +161,7 @@ export function severianBasicFinisherHits(basicTime: number, cycle: { moveId: st
 
 /** 流息基础收入（不含影画6[风起]反馈项，反馈在 severianFlowState 定点迭代里加） */
 function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
-  const cinema = whole(Number(cfg.severianCinemaLevel ?? 0))
+  const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
   const basicCycle = (cfg.severianBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
   const basicTime = Math.max(0, Number((state as { basicAttackTime?: number } | undefined)?.basicAttackTime ?? 0))
   const finisher = severianBasicFinisherHits(basicTime, basicCycle)
@@ -181,7 +182,7 @@ function severianFlowState(
   cfg: AgentCharConfigInput['cfg'],
   state: AgentResourceInput['state'] | undefined,
 ): { flowIncome: number; shadowHuntCount: number } {
-  const cinema = whole(Number(cfg.severianCinemaLevel ?? 0))
+  const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
   const base = severianFlowIncome(cfg, state)
   const override = setting(cfg, 'severian.shadowHuntCount', 0)
   if (override > 0) {
@@ -273,7 +274,7 @@ function applySeverianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): 
 
 /** 苍风影猎/烈旋执行行（真实 moveId → enrich 从倍率表回填；倍率含影画6 +900 用 override 同区加算） */
 function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = whole(Number(cfg.severianCinemaLevel ?? 0))
+  const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
   const shadowMeta = cfg.severianShadowMeta as { moveId: string; actionTime: number; damage: number } | undefined
   const liexuanMeta = cfg.severianLiexuanMeta as { moveId: string; actionTime: number; damage: number } | undefined
 

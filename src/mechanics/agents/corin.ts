@@ -36,6 +36,7 @@ import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const CORIN_ID = '1061'
 export const CORIN_CORE_SAW_DMG = 37.5
@@ -72,7 +73,7 @@ export function computeCorinCycle(input: {
   c6DetonationCount: number
   c6ChargeStacks: number
 }): CorinCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const c6ChargeStacks = Math.max(0, Math.min(CORIN_C6_MAX_CHARGES, input.c6ChargeStacks))
   return {
     cinemaLevel,

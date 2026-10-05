@@ -6,6 +6,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, effectiveCombatTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 奥菲丝&「鬼火」（1301，火·强攻，新艾利都防卫军）—— 自身机制补录模块。
@@ -81,7 +82,7 @@ function buildOrphieCharConfig({ cfg, cinemaLevel, panel }: AgentCharConfigInput
 }
 
 function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.orphieCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.orphieCinemaLevel)
   const atk = Math.max(0, Number(cfg.orphieAtk ?? 0))
   // 影画2：追加攻击回 65 喧响（4s 至多一次）——按 additionalAttack tag 计次数（融合前原行），4s CD 上限近似
   if (cinema >= 2) {
@@ -171,7 +172,7 @@ function applyOrphieTeamConfig(input: AgentTeamConfigInput): void {
 
 /** 后台自动招式：蚀光一闪（基础） + 灼红旋涡（能量替换）；席德队额外前台小心脚下；影画6 火刀衔接灼红旋涡 */
 function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.orphieCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.orphieCinemaLevel)
   const n = Number(cfgMechanicSettingRaw(cfg, 'orphie.backstageCastCount') ?? -1)
   // 次数 = 有效后台时间 / 相位延后等效 CD（2026-08-30 通用口径，core/effectiveTime.ts）：
   // 原主C 21/副C 30 静态分档删除——本人前台时间占比由等效 CD 接管（主C 前台长 → 后台自动自然少）；
@@ -244,7 +245,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
 
 /** 蓄炎资源：影画6 火刀次数写入 cfg（cinema>=6 才计），spec 解释器按 cfgField 读取 */
 function buildOrphieResourceResult({ cfg, state }: AgentResourceResultInput) {
-  const cinema = Math.max(0, Math.floor(Number(cfg.orphieCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.orphieCinemaLevel)
   ;cfg.orphieBladeHits = cinema >= 6 ? Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2)) : 0
   const spec = getAgentSpec(ORPHIE_AGENT_ID)
   return {

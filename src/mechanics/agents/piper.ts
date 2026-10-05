@@ -28,6 +28,7 @@ import type {
 } from '../types'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const PIPER_ID = '1281'
 export const PIPER_C2_BASE_DMG = 10
@@ -70,7 +71,7 @@ export const PIPER_C2_MOVE_WEIGHTS: Record<string, number> = { '1281014': 0.3 }
  * coverage < 1 时按 round(cap × coverage) 折算 —— 这是做「爬坡/掉层」对照实验的唯一入口。
  */
 export function computePiperMomentum(input: { cinemaLevel: number; buildupCoverage?: number }): PiperMomentumCycle {
-  const cinema = Math.max(0, Math.floor(input.cinemaLevel))
+  const cinema = cinemaLevelOf(input.cinemaLevel)
   const cap = cinema >= 1 ? 30 : 20
   const coverage = Math.max(0, Math.min(1,
     Number.isFinite(input.buildupCoverage) ? (input.buildupCoverage as number) : PIPER_BUILDUP_COVERAGE_DEFAULT))

@@ -24,6 +24,7 @@ import type {
 } from '../types'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const CAESAR_ID = '1071'
 
@@ -57,7 +58,7 @@ function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.caesarCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.caesarCinemaLevel)
   if (cinema < 4) return
   // 影画4 阿瑞斯攻城锤：连携/终结各 +3 支援点数；能量<20 时消耗1点支援点代替发动超强力盾击（5s ICD）。
   // 能量不足才触发（条件向），总量模型无法判「能量是否吃紧」→ 用可调次数滑杆表达实际代替次数，
@@ -81,7 +82,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.caesarCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.caesarCinemaLevel)
   if (cinema < 6) return
   for (const exec of executions) {
     if (!exec.moveId || !CAESAR_C6_MOVE_IDS.has(exec.moveId)) continue

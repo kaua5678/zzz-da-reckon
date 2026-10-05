@@ -13,6 +13,7 @@ import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
@@ -108,7 +109,7 @@ function computeQianxiaGazeCycle(input: {
   ultimateCount: number
   battleTime: number
 }): QianxiaGazeCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const markSupply = whole(input.markSupply)
   const attackAgents = whole(input.attackAgents)
   const anomalyAgents = whole(input.anomalyAgents)
@@ -201,7 +202,7 @@ function markSupplyOf(cfg: AgentResourceInput['cfg'], executions: readonly Agent
 }
 
 function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state'], markSupply: number): QianxiaGazeCycle {
-  const cinemaLevel = whole(Number(cfg.qianxiaCinemaLevel ?? 0))
+  const cinemaLevel = cinemaLevelOf(cfg.qianxiaCinemaLevel)
   return computeQianxiaGazeCycle({
     cinemaLevel,
     markSupply,
@@ -225,7 +226,7 @@ function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput[
  * 本函数推的行都是 backstage、totalTime 0、倍率自带（damageMultiplierOverride），放在末尾不影响任何时间/计数通道。
  */
 function buildQianxiaExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinemaLevel = whole(Number(cfg.qianxiaCinemaLevel ?? 0))
+  const cinemaLevel = cinemaLevelOf(cfg.qianxiaCinemaLevel)
   // 标记供给 = 千夏标记招式命中数（真实执行行直数，含连携/终结由倍率表物化）+ 普攻 #4 折算
   const cycle = cycleFromCfg(cfg, state, markSupplyOf(cfg, executions))
   const c6Bonus = cinemaLevel >= 6 ? QIANXIA_C6_GAZE_DMG_BONUS : 0

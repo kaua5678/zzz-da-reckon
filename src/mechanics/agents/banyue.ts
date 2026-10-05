@@ -10,6 +10,7 @@ import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/mo
 import { positiveWholeCounts } from '@/utils/finiteClamp'
 import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import { PARRY_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
@@ -454,7 +455,7 @@ function applyBanyuePanel({ panel, cinemaLevel, settings }: AgentPanelInput): vo
 }
 
 function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.banyueCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.banyueCinemaLevel)
   const axisEx = readAxisExCounts(cfg)
   const cycle = computeBanyueCycleFromCfg(cfg)
 
@@ -551,7 +552,7 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
 }
 
 function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.banyueCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.banyueCinemaLevel)
 
   // 闪反/普通弹刀走通用路径（dodgeCounterCount→扬砾、parryCount→铁壁+昂霄，与所有角色一致）；
   // 般岳专属：金身弹刀 + 双反（双反 = 完美闪避不打出扬砾 + 金身弹刀）→ 不动如山 + 冲霄 行
@@ -709,7 +710,7 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): Ban
     cfgNum(cfg, 'banyue.diDongComboCount', DEFAULT_DIDONG_COMBO),
     axisExSpendOf(axisEx),
     axisEx['banyue-combo'] ?? 0,
-    Math.max(0, Math.floor(Number(cfg.banyueCinemaLevel ?? 0))),
+    cinemaLevelOf(cfg.banyueCinemaLevel),
     // 怒相内「地动→山摇·怒」连段组数 = 轴内捏的 banyue-combo-didong 块（非轴模式 banyueAxisEx 为空 → 0）
     axisEx['banyue-combo-didong'] ?? 0,
     // 失衡外连段末尾后摇的嘲讽取消次数（主页交互栏录入，每次取消一次后摇）

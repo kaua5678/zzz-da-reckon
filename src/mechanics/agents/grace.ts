@@ -15,6 +15,7 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 格莉丝（1181）战斗逻辑（用户口供 2026-08-23）：
@@ -162,7 +163,7 @@ function graceTimesOf(cfg: AgentResourceInput['cfg']): GraceRotationTimes & Grac
 function buildGraceCharConfig(input: AgentCharConfigInput): void {
   base.buildCharConfig?.(input)
   input.cfg.skipGenericExSpecial = true // 特殊技由本模块按轮换生成（普通档免费填充/强特按能量）
-  input.cfg.graceCinemaLevel = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
+  input.cfg.graceCinemaLevel = cinemaLevelOf(input.cinemaLevel)
   // CC-415：A1-A4 每段能量回复由引擎读 catalog 进 cfg.mechanicRowValues（原模块常量 0.615/1.189/2.454/4.081 与表相等）。
   input.cfg.mechanicRowValues = {
     ...(input.cfg.mechanicRowValues ?? {}),
@@ -223,7 +224,7 @@ function gracePhaseValues(cfg: AgentResourceInput['cfg'], state: AgentResourceIn
   basicPool: number; cycles: number; c4Energy: number; c4Applies: boolean; pulseGrenades: number
 } {
   const basicPool = state.basicAttackTime ?? 0
-  const cinema = Math.max(0, Math.floor(Number(cfg.graceCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.graceCinemaLevel)
   const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0, graceTimesOf(cfg))
   const slots = plan.cycles * 2
   // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
@@ -250,7 +251,7 @@ function gracePhaseValues(cfg: AgentResourceInput['cfg'], state: AgentResourceIn
 
 function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const basicPool = state.basicAttackTime ?? 0
-  const cinema = Math.max(0, Math.floor(Number(cfg.graceCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.graceCinemaLevel)
   // 全部 cfg 写入（平A池/C1 轮数/C4 回能/脉冲手雷/initialEnergyGift）已拆到 materializePhaseState
   // ——本钩子对 cfg 只读（阶段1 第二刀 2026-09-09：写在产行钩子里会让 materializeRows 必须靠
   // 快照/恢复兜底，且试探测量与装配的相位会互相污染）。
@@ -368,7 +369,7 @@ export const graceMechanic: AgentMechanicModule = {
   /** 相位写入（引擎在物化调用点补写）：平A池/C1 轮数/C4 回能/脉冲手雷/初始回能礼包 */
   materializePhaseState: ({ cfg, state }) => {
     const v = gracePhaseValues(cfg, state)
-    const cinema = Math.max(0, Math.floor(Number(cfg.graceCinemaLevel ?? 0)))
+    const cinema = cinemaLevelOf(cfg.graceCinemaLevel)
     cfg.graceBasicPoolPrev = v.basicPool
     // 影画1 再充能弹膛：一次 A4（每轮换一格）给全队每人回 2 能量——存 cycles，由 applyGraceTeamConfig 分发
     cfg.graceC1Cycles = cinema >= 1 ? v.cycles : 0

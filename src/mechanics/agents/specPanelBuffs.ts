@@ -17,6 +17,7 @@ import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBl
 import { cfgMechanicSetting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
 export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
@@ -496,7 +497,7 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
   const ex = Math.max(0, Math.floor(Number(input.exSpecialCount) || 0))
   const ult = Math.max(0, Math.floor(Number(input.ultimateCount) || 0))
   const parry = Math.max(0, Math.floor(Number(input.parryCount) || 0))
-  const cinema = Math.max(0, Math.floor(Number(input.cinemaLevel) || 0))
+  const cinema = cinemaLevelOf(input.cinemaLevel)
   const aweInitial = Math.max(0, Number(input.aweInitial) || 0)
   const c2Per = Math.max(0, Number(input.c2WeishiPerUlt) || 0)
   const teamUlt = Math.max(0, Math.floor(Number(input.teamUltimateCount ?? ult) || 0))
@@ -608,7 +609,7 @@ function pushJufufuExec(
 }
 
 function jufufuCinemaOf(cfg: AgentResourceResultInput['cfg']): number {
-  return Math.max(0, Math.floor(Number(cfg.jufufuCinemaLevel ?? 0)))
+  return cinemaLevelOf(cfg.jufufuCinemaLevel)
 }
 
 /**

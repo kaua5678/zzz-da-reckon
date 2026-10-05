@@ -21,6 +21,7 @@ import type {
   AgentResourceInput,
 } from '../types'
 import { findMoveById as findMove, getRowValue as rowValue } from '@/data/moveTableQueries'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const NICOLE_ID = '1031'
 
@@ -67,7 +68,7 @@ function buildCharConfig({ cinemaLevel, cfg, skills }: AgentCharConfigInput): vo
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.nicoleCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.nicoleCinemaLevel)
   const fieldScale = Number(cfg.nicoleC1EnergyFieldScale ?? 1)
   if (cinema < 1) return
   for (const exec of executions) {

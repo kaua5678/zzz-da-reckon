@@ -22,6 +22,7 @@ import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution 
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const LUCY_ID = '1151'
 const MOVE_SPIN = '1151026' // 亲卫队小猪：回旋挥击！
@@ -55,7 +56,7 @@ export interface LucyCheerResult {
 
 /** 加油/回旋/C6 次数纯函数（可单测） */
 export function computeLucyCheer(input: LucyCheerInput): LucyCheerResult {
-  const cinema = Math.max(0, Math.floor(input.cinemaLevel || 0))
+  const cinema = cinemaLevelOf(input.cinemaLevel)
   const ex = Math.max(0, Math.floor(input.exSpecialCount || 0))
   const chain = Math.max(0, Math.floor(input.chainCountTotal || 0))
   const ult = Math.max(0, Math.floor(input.ultimateCount || 0))
@@ -137,7 +138,7 @@ function buildCharConfig({ skills, cinemaLevel, team: _team, cfg }: AgentCharCon
 /** 「cfg + state → 加油循环」的唯一装配（CC-283：buildExecutions 与 buildResourceResult 共用）。 */
 function lucyCheerOf(cfg: AgentResourceResultInput['cfg'], state: AgentResourceResultInput['state']) {
   return computeLucyCheer({
-    cinemaLevel: Math.max(0, Math.floor(Number(cfg.lucyCinemaLevel ?? 0))),
+    cinemaLevel: cinemaLevelOf(cfg.lucyCinemaLevel),
     exSpecialCount: state.exSpecialCount ?? 0,
     chainCountTotal: state.chainCountTotal ?? 0,
     ultimateCount: state.ultimateCount ?? 0,
@@ -292,7 +293,7 @@ export const lucyMechanic: AgentMechanicModule = {
       const out = ultNeighborPerTargetAmounts(ownSlot, teamSize, state.ultimateCount)
       // 影画1 回旋全队回能：每个非自己槽位都得同一份
       if (Number(cfg.lucyC1Enabled ?? 0) > 0) {
-        const cinema = Math.max(0, Math.floor(Number(cfg.lucyCinemaLevel ?? 0)))
+        const cinema = cinemaLevelOf(cfg.lucyCinemaLevel)
         const spinEst = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
           + (cinema >= 2 ? Math.max(0, Math.floor(state.chainCountTotal ?? 0)) + ults : 0)
           + (cinema >= 6 ? Math.max(0, Number(cfg.lucyTeammateExTotal ?? 0)) : 0)
@@ -328,7 +329,7 @@ export const lucyMechanic: AgentMechanicModule = {
 /** 组队后写入各槽位：C1 标记与命座（邻位回能走 crossAgentSupply；原 lucyEnergyPerLucyUlt 写入从无读取方，CC-191 删） */
 function applyLucyTeamEnergyFlags(lucy: CharacterOperationConfig, characters: CharacterOperationConfig[]): void {
   // （CC-383：本人 = 派发器给的 `cfg`；派发器只对在队模块、按 cfg.agentId 取模块调用，不再在 characters 里自找）
-  const cinema = Math.max(0, Math.floor(Number(lucy.lucyCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(lucy.lucyCinemaLevel)
   for (const c of characters) {
     c.lucyC1Enabled = cinema >= 1 ? 1 : 0
     c.lucyCinemaLevel = cinema

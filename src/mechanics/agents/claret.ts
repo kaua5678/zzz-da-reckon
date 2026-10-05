@@ -19,6 +19,7 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
 import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 克拉蕾（1611）v12 重录（2026-09-03，raw = nanoka 3.2.12+18601660）：
@@ -268,7 +269,7 @@ export function computeClaretSharpResource(input: {
   /** 反制支援（整组化解控制技）次数 → 琢形「重击命中**直接**为目标添加1层[残痕]」 */
   counterAssistCount?: number
 }): ClaretSharpResourceSource {
-  const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel ?? 0))
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   // 平A = 秒均×时间（两态加权）；**其余全部招式** = Σ 实打次数 × 表列 `gash_buildup`
   // （2026-09-12 用户更正：每招都在实打实积累，旧实现只算平A+EX 且 EX 那项错读了 `anomaly_buildup` 列）
   const moveGashTotal = Math.max(0, Number(input.moveGashTotal ?? 0))
@@ -699,7 +700,7 @@ function buildClaretResourceResult({ cfg, state }: AgentResourceResultInput): Pa
 }
 
 function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.claretCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.claretCinemaLevel)
   // 残痕值来源：平A（两态秒均×时间）+ 其余全部招式（实打次数 × gash_buildup 表值）
   const source = buildClaretResourceSource(cfg, state)
   // 平A双基准覆盖：引擎只认一个基准段（默认血锻#3），但克拉蕾常态/铭刻两态招式不同
@@ -756,7 +757,7 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
 }
 
 function patchClaretExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.claretCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.claretCinemaLevel)
   if (cinema < 4) return
   for (const exec of executions) {
     if (exec.moveId && M4_MOVE_IDS.has(exec.moveId)) {

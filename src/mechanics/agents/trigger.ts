@@ -45,6 +45,7 @@ import { minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const TRIGGER_AGENT_ID = '1361'
 export const TRIGGER_ADDITIONAL_MOVE_IDS = new Set(['1361008', '1361020', '1361022'])
@@ -122,7 +123,7 @@ export function computeTriggerCycle(input: {
   ownExSpecialCount: number
   ownUltimateCount: number
 }): TriggerCycle {
-  const cinema = whole(input.cinemaLevel)
+  const cinema = cinemaLevelOf(input.cinemaLevel)
   const battleTime = Math.max(0, Number(input.battleTime) || 0)
   const resolveGainPerSniperHit = cinema >= 1 ? 31.25 : 25
   const resolveCap = cinema >= 1 ? 125 : 100

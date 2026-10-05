@@ -19,6 +19,7 @@ import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { chainCountTotalOf } from '@/core/chainCount'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
@@ -290,7 +291,7 @@ function sigridPozhenSets(
   cfg: AgentCharConfigInput['cfg'],
 ): number {
   if (cfg.sigridAxisActive === true) return Math.max(0, Math.floor(Number(cfg.sigridAxisPozhenSets ?? 0)))
-  const cinema = Math.max(0, Math.floor(Number(cfg.sigridCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.sigridCinemaLevel)
   const raw = cinema >= 6
     ? chainCountTotalOf(cfg, Number(cfg.sigridStunCount ?? 0))
     : Number(cfg.sigridStunCount ?? 0)
@@ -455,7 +456,7 @@ function sigridLanceCounts(
   cfg: AgentCharConfigInput['cfg'],
   state: AgentResourceInput['state'] | undefined,
 ): { rotation: [number, number, number]; pozhenSets: number; cinema: number; axisActive: boolean } {
-  const cinema = Math.max(0, Math.floor(Number(cfg.sigridCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.sigridCinemaLevel)
   const axisActive = cfg.sigridAxisActive === true
   const pozhenSets = sigridPozhenSets(cfg)
   /** 用给定机会收入解一次 spec 账本 → 轮转总次数 */
@@ -519,7 +520,7 @@ function sigridExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeI
 }
 
 function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.sigridCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.sigridCinemaLevel)
   // 机会来源（原文：任意[出枪式]命中获得1次机会）：统计出枪式招式次数 + 凛冽枪尖#4 近似，
   // 写 cfg 供下一轮 spec 资源账本读取（cfgField sigridChuqiangHits，轮间收敛）
   const segmentRowIds = new Set<string>(SIGRID_BASIC_SEGMENT_MOVE_IDS)

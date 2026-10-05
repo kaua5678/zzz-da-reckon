@@ -31,6 +31,7 @@ import type {
 import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const YAOJIAYIN_ID = '1311'
 
@@ -274,7 +275,7 @@ function yaojiayinTremolosOf(
   cfg: AgentResourceInput['cfg'],
   state: AgentResourceInput['state'],
 ): YaojiayinTremoloResult {
-  const cinema = Math.max(0, Math.floor(Number(cfg.yaojiayinCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.yaojiayinCinemaLevel)
   const additionalActive = Number(cfg.yaojiayinAdditionalActive ?? 0) > 0
   return computeYaojiayinTremolos({
     totalEnergy: Math.max(0, Number(state.totalEnergy ?? 0)),
@@ -286,7 +287,7 @@ function yaojiayinTremolosOf(
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.yaojiayinCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.yaojiayinCinemaLevel)
   const combatTime = effectiveCombatTime(state, cfg)
   const result = yaojiayinTremolosOf(cfg, state)
 

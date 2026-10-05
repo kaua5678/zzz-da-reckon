@@ -40,6 +40,7 @@ import type { ModuleFeedback } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const LIGHTER_ID = '1161'
 
@@ -266,7 +267,7 @@ function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): voi
 }
 
 function lighterMoraleOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): LighterMoraleResult {
-  const cinema = Math.max(0, Math.floor(Number(cfg.lighterCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.lighterCinemaLevel)
   return computeLighterMorale({
     combatTime: effectiveCombatTime(state, cfg),
     teamEnergyConsumed: Math.max(0, Number(cfg.lighterTeamEnergyConsumed ?? 0)),
@@ -275,7 +276,7 @@ function lighterMoraleOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInp
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.lighterCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.lighterCinemaLevel)
   const combatTime = effectiveCombatTime(state, cfg)
   const morale = lighterMoraleOf(cfg, state)
 
@@ -329,7 +330,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(cfgNum(cfg, 'lighterCinemaLevel', 0)))
+  const cinema = cinemaLevelOf(cfgNum(cfg, 'lighterCinemaLevel', 0))
   if (cinema < 1) return
   const bonus = LIGHTER_C1_FINISHER_DMG
   for (const exec of executions) {
@@ -342,7 +343,7 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const cinema = Math.max(0, Math.floor(Number(cfg.lighterCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.lighterCinemaLevel)
   const combatTime = effectiveCombatTime(state, cfg)
   const morale = lighterMoraleOf(cfg, state)
   const flameCount = cinema >= 6
@@ -418,7 +419,7 @@ function applyLighterTeamEnergyFlags(
   characters: CharacterOperationConfig[],
   opts?: { exCounts?: number[]; combatTime?: number; teamEnergyConsumed?: number },
 ): void {
-  const cinema = Math.max(0, Math.floor(cfgNum(lighter, 'lighterCinemaLevel', 0)))
+  const cinema = cinemaLevelOf(cfgNum(lighter, 'lighterCinemaLevel', 0))
   const combatTime = Math.max(0, Number(opts?.combatTime ?? 180))
   const exCounts = opts?.exCounts ?? characters.map(() => 0)
   const estimated = estimateTeamNormalEnergyConsumed(characters, exCounts)

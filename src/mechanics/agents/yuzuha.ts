@@ -12,6 +12,7 @@ import { effectiveBattleTime, minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const YUZUHA_AGENT_ID = '1411'
 const SWEETNESS_INITIAL = 3
@@ -63,7 +64,7 @@ export function computeYuzuhaMechanic(input: {
   /** 十人十色转积蓄目标元素（队伍有异常队友时为其属性，否则缺省物理不转） */
   transferElement?: string
 }): YuzuhaMechanicSource {
-  const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel ?? 0))
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const parryCount = Math.max(0, Math.floor(input.parryCount ?? 0))
   const effectiveSeconds = Math.max(0, input.effectiveSeconds ?? 0)
   const sweetnessFromChain = Math.max(0, input.chainEntryCount)
@@ -220,7 +221,7 @@ function buildYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
  * 并同步 `totalAnomalyBuildUp`（先例 `phoenix.ts:358`、`nicole.ts:104`）。
  */
 function patchYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.yuzuhaCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.yuzuhaCinemaLevel)
   if (cinema < 4) return
   const assistId = cfg.assistFollowUpMoveId
   if (!assistId) return

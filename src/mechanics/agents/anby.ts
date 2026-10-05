@@ -14,6 +14,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 安比（1011，电·强攻）—— 整局近似口径
@@ -139,7 +140,7 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
  * 修法按 `evelyn.ts`/`koleda.ts`/`soldier11.ts` 同款：走 `setting:` 前缀读**已注册**的滑块 id。
  */
 function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
-  cfg.anbyCinemaLevel = Math.max(0, Math.floor(Number(cinemaLevel ?? 0)))
+  cfg.anbyCinemaLevel = cinemaLevelOf(cinemaLevel)
   cfg.anbyAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   cfg.anbyEnergyGainEfficiency = panel.energyGainEfficiency ?? 0
   // 影画2 失衡覆盖率：滑块 → cfg 的**唯一**通道（读法见 cfgNum 头注释）
@@ -214,7 +215,7 @@ function buildAnbyExecutions({ cfg, state, executions }: AgentResourceInput): vo
   const fullCycles = Math.floor(basicTime / cycleTime)
   if (fullCycles <= 0) return
 
-  const cinema = Math.max(0, Math.floor(Number(cfg.anbyCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.anbyCinemaLevel)
   const totalHits = fullCycles * cycle.length
   let chargesLeft = cinema >= 6
     ? computeAnbyChargeConsumed(Number(state.exSpecialCount ?? 0), totalHits)
@@ -276,7 +277,7 @@ function pushAnbyBasicSegment(
 
 /** 波动电压（招式限定失衡+64%）+ 影画2（落雷增伤/强特失衡，同招式限定） */
 function patchAnbyExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.anbyCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.anbyCinemaLevel)
   const stunCov = clampRatio(Number(cfg.anbyC2StunCoverage ?? 0.5))
   for (const exec of executions) {
     if (!exec.moveId) continue

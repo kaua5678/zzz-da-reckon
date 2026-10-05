@@ -28,6 +28,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const SETH_ID = '1271'
 export const SETH_SHIELD_PROFICIENCY = 100
@@ -54,7 +55,7 @@ export function computeSethCycle(input: {
   additionalResCoverage: number
   c6FinishCount: number
 }): SethCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   return {
     cinemaLevel,
     additionalActive: input.additionalActive,

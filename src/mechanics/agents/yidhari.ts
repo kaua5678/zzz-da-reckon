@@ -18,6 +18,7 @@ import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const YIDHARI_AGENT_ID = '1051'
 
@@ -276,7 +277,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
 
   // 溯寒追碾 + 极寒重碾#2（追击段）：每个强特序列先打溯寒追碾（0耗能触发），再打极寒重碾
   const exCount = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.yidhariCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.yidhariCinemaLevel)
   // 0命：1 溯寒追碾配 1 重碾；1命：1 溯寒追碾配 2 重碾（C1 连续释放）
   const surgeCount = Math.ceil(exCount / (cinemaLevel >= 1 ? 2 : 1))
   if (surgeCount > 0) {

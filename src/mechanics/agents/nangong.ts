@@ -17,6 +17,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 南宫羽（1511）战斗逻辑（nanoka 原文满级被动 1511055 自主分析，2026-08）：
@@ -109,7 +110,7 @@ export function computeNangongMechanic(input: {
   const impactFromMastery = impactFromMasteryOf(input.anomalyMastery)
   // 重拍收入累进（持有上限只延迟消耗不吞收入）：初始 + 接战 3.8/s + 队友异常 12/次（CD 上限近似）
   const beatRegen = nangongBeatRegen(input.frontlineSeconds, input.battleTime)
-  const vibratoStackPct = nangongVibratoStackPct(Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0))))
+  const vibratoStackPct = nangongVibratoStackPct(cinemaLevelOf(input.cinemaLevel))
   return {
     anomalyProficiencyBonus: MASTERY_BONUS,
     impactFromMastery,
@@ -213,7 +214,7 @@ export function nangongBeatIncome(cinemaLevel: number, frontlineSeconds: number,
 }
 
 function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.nangongCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.nangongCinemaLevel)
   const pairSeconds = Number(cfg.nangongMinePairSeconds ?? 0)
   // 快速支援（1511013）动作块：非轴/未放置 = count 0（动作池 ×0 灰块，不进伤害/时间预算）；
   // 捏轴放置后引擎注入 nangongQuickAssistPlaced → 按块数生成真实行（吃失衡易伤+时间门控，
@@ -283,7 +284,7 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
  * ⚠ 不用 `+=`（`buildCharConfig` 预存值已含 ×1.35，`+=` 会双计）。
  */
 function patchNangongExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.nangongCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.nangongCinemaLevel)
   if (cinemaLevel < 4) return
   const preBuilt: Record<string, number> = {
     [MINE2_MOVE_ID]: Number(cfg.nangongC4Mine2BuildUp ?? 0),
@@ -299,7 +300,7 @@ function patchNangongExecutions({ cfg, executions }: AgentResourceInput): void {
 }
 
 function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): void {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.nangongCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.nangongCinemaLevel)
   const stunCount = Math.max(0, Math.floor(Number(cfg.nangongStunCount ?? 0)))
   // 颤音层数与每层加成（CC-333：事件侧与资源结果共用 nangongVibratoStacks / nangongVibratoStackPct）
   const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
@@ -367,7 +368,7 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
 }
 
 function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const cinemaLevel = Math.max(0, Math.floor(Number(cfg.nangongCinemaLevel ?? 0)))
+  const cinemaLevel = cinemaLevelOf(cfg.nangongCinemaLevel)
   const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
   const frontline = Math.max(0, Number(state.frontlineTime ?? 0))
   const beatInitial = cinemaLevel >= 1 ? BEAT_CAP : BEAT_INITIAL

@@ -30,6 +30,7 @@ import type {
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const KOLEDA_ID = '1101'
 export const KOLEDA_CORE_STUN = 60
@@ -60,7 +61,7 @@ export function computeKoledaCycle(input: {
   chainCount: number
   ultimateCount: number
 }): KoledaCycle {
-  const cinemaLevel = whole(input.cinemaLevel)
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   return {
     cinemaLevel,
     additionalActive: input.additionalActive,

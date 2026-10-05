@@ -19,6 +19,7 @@ import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const LIUYIN_AGENT_ID = '1481'
 
@@ -128,7 +129,7 @@ interface LiuyinSourceInput {
 }
 
 export function computeLiuyinSource(input: LiuyinSourceInput): LiuyinMechanicSource {
-  const cinemaLevel = Math.max(0, Math.floor(input.cinemaLevel))
+  const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const c1Mult = cinemaLevel >= 1 ? GOOD_REVIEW_C1_MULT : 1
   const perSec = GOOD_REVIEW_PER_SEC * c1Mult
   const perEx = GOOD_REVIEW_PER_EX * c1Mult

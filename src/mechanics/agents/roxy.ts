@@ -14,6 +14,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgSetting, cfgMechanicSetting as cfgRate } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -123,7 +124,7 @@ export function computeRoxyWindEnergy(input: {
 }): RoxyWindEnergySource {
   const exCount = Math.max(0, Math.floor(input.exSpecialCount))
   const spinSeconds = Math.max(0, Number(input.spinSeconds ?? 2.5))
-  const cinema = Math.max(0, Math.floor(Number(input.cinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(input.cinemaLevel)
   const energyRate = clampRate(input.energyRate)
   const eyeRate = clampRate(input.eyeRate)
   // 每轮自旋耗能 = 自旋秒 × 30/s（+ 10 启动）；风能 = 每 25 能量 +1，手法按 3 点/轮攒满
@@ -372,7 +373,7 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
 }
 
 function patchRoxyExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.roxyCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.roxyCinemaLevel)
   for (const exec of executions) {
     // 影画2：小心风寒（1621007）失衡值 +5%
     if (cinema >= 2 && exec.moveId === EX_CHILL_MOVE_ID) {

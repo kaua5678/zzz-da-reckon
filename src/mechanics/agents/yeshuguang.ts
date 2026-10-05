@@ -39,6 +39,7 @@ import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting
 import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const YESHUGUANG_ID = '1431'
 
@@ -191,7 +192,7 @@ export interface YeshuguangCycleResult {
 // @fact agent:1431/终局整数化 口径: 引擎收敛后置 `finalizeForms=true` 重推一次——照影轮、喧响进轮、转大赠轮各 floor 一次（离散触发只兑现装得下的部分，余数剑势留着不打），多出的那一轮时间由合轴率与短轴分担；迭代期实数语义不变（见 `agent:1431/轮数实数化`）；手动滑块 zhaoyingCount 本就取整 | 据 用户@2026-09-20「余数剑势本来就该留着不打…离散轮数被换成短轴分担了」·复核@2026-09-25（此前 3 处引用、0 处声明，W14 补登）·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/mechanicSettingsEffect.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeYeshuguangCycle | 信 确认
 // ⟳复核: 叶瞬光原文改版（明心境进轮/赠轮/照影条件或剑势消耗变动）或「连携/破阵按实际失衡次数」改造开工时，复核终局取整的范围与分担方式 | 到期 2026-12-31
 export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangCycleResult {
-  const cinema = Math.max(0, Math.floor(input.cinemaLevel || 0))
+  const cinema = cinemaLevelOf(input.cinemaLevel)
   const axis = input.formAxis ?? 'full'
   // ===== 轮数实数化（2026-09-05 用户裁决「做吧」）=====
   // 引擎本来就有连续松弛骨架（坑17：迭代期次数以实数参与 + 终局 floor + 预算内加回；1051 的
@@ -362,7 +363,7 @@ function resolveCycle(cfg: CharacterOperationConfig, state: {
   basicAttackTime?: number
   chainCountTotal?: number
 }): YeshuguangCycleResult {
-  const cinema = Math.max(0, Math.floor(Number(cfg.yeshuguangCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.yeshuguangCinemaLevel)
   const outside = computeOutsideSwordGain(cfg, state)
   const gift = Math.max(0, Math.floor(Number(cfg.yeshuguangGiftUltCount ?? 0) || 0))
   return computeYeshuguangCycle({
@@ -570,7 +571,7 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: Ag
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const cinema = Math.max(0, Math.floor(Number(cfg.yeshuguangCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.yeshuguangCinemaLevel)
   const cycle = resolveCycle(cfg, state)
   cfg.yeshuguangCycle = cycle
   const formSwordTotal = cycle.totalForms * cycle.swordSpentPerForm
@@ -716,7 +717,7 @@ export const yeshuguangSettings: MechanicSetting[] = [
 const C2_DEF_IGNORE_MOVES = new Set<string>([MOVE.feiguang, MOVE.zhanwang])
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.yeshuguangCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.yeshuguangCinemaLevel)
   if (cinema < 2) return
   // 影画2：飞光、斩妄开天 无视目标 40% 防御（moveId 限定）
   for (const exec of executions) {

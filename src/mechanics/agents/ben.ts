@@ -33,6 +33,7 @@ import type {
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 export const BEN_ID = '1121'
 
@@ -123,7 +124,7 @@ function pushExPart(
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.benCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.benCinemaLevel)
   const comboCount = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
   if (comboCount <= 0) return
 
@@ -158,7 +159,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Math.max(0, Math.floor(Number(cfg.benCinemaLevel ?? 0)))
+  const cinema = cinemaLevelOf(cfg.benCinemaLevel)
   if (cinema < 4) return
   for (const exec of executions) {
     if (!exec.moveId || !BEN_C4_MOVE_IDS.has(exec.moveId)) continue
