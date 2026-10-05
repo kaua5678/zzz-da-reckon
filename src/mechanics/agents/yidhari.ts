@@ -17,6 +17,7 @@ import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 
 const YIDHARI_AGENT_ID = '1051'
 
@@ -379,18 +380,14 @@ function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, team, axis
     const slot = Number(cfg.slot)
     const ownCinema = cinemaLevel ?? team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel ?? 0
     const singleCost = Number(ownCinema) >= 1 ? HEAVY_SINGLE_COST_1 : HEAVY_SINGLE_COST_0
-    axis.axes.forEach((ax, ai) => {
-      const wins = axis.windows[ai] ?? 0
-      for (const act of ax.actions) {
-        if (act.slot !== slot) continue
-        const times = act.count * wins
-        if (act.moveId === HEAVY_SINGLE) {
-          inStunEx += times
-          inStunEnergy += singleCost * times
-        } else if (act.moveId === HEAVY_DOUBLE) {
-          inStunEx += 2 * times
-          inStunEnergy += HEAVY_DOUBLE_COST * times
-        }
+    forEachSlotAxisAction(axis, slot, (act, wins) => {
+      const times = act.count * wins
+      if (act.moveId === HEAVY_SINGLE) {
+        inStunEx += times
+        inStunEnergy += singleCost * times
+      } else if (act.moveId === HEAVY_DOUBLE) {
+        inStunEx += 2 * times
+        inStunEnergy += HEAVY_DOUBLE_COST * times
       }
     })
   }

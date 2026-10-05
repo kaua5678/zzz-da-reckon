@@ -5,6 +5,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { whole } from '@/utils/finiteClamp'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
 
 /**
  * 朱鸢（1241，以太·强攻，新艾利都治安局）—— 自身机制模块。
@@ -110,19 +111,12 @@ function buildZhuYuanCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
  */
 function applyZhuYuanTeamConfig({ cfg, phase, stunCount, combatTime, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
-  const battle = Math.max(1, Number(combatTime) || 180)
-  cfg.zhuYuanStunCoverage = Math.min(1, resolvedStun * ZHUYUAN_STUN_WINDOW_SECONDS / battle)
+  cfg.zhuYuanStunCoverage = stunWindowCoverage(stunCount, ZHUYUAN_STUN_WINDOW_SECONDS, combatTime)
   if (!axis) return
   const slot = Number(cfg.slot)
   let axisEther = 0
-  axis.axes.forEach((ax, ai) => {
-    const wins = axis.windows[ai] ?? 0
-    if (wins <= 0) return
-    for (const act of ax.actions) {
-      if (act.slot !== slot) continue
-      if ((ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS as readonly string[]).includes(act.moveId)) axisEther += act.count * wins
-    }
+  forEachSlotAxisAction(axis, slot, (act, wins) => {
+    if ((ZHUYUAN_SUPPRESS_ETHER_MOVE_IDS as readonly string[]).includes(act.moveId)) axisEther += act.count * wins
   })
   cfg.zhuYuanAxisActive = axis.active
   cfg.zhuYuanAxisEther = axisEther

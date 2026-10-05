@@ -17,6 +17,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgSetting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 
 /**
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
@@ -256,15 +257,11 @@ function applySigridTeamConfig({ cfg, phase, stunCount, axis, cinemaLevel }: Age
   const cinema = Number(cinemaLevel) || 0
   let sigridAxisPozhenSets = 0
   if (axis.active) {
-    axis.axes.forEach((ax, ai) => {
-      const wins = axis.windows[ai] ?? 0
-      for (const act of ax.actions) {
-        if (act.slot !== slot) continue
-        if (act.moveId === SIGRID_POZHEN_MOVE_ID) sigridAxisPozhenSets += act.count * wins
-        // 诺姆赠送的希格连携（gift 块）命中失衡敌人也触发一次破阵（C6 解锁限制后）
-        else if (cinema >= 6 && act.sourceTag === 'gift' && act.moveId === SIGRID_CHAIN_MOVE_ID) {
-          sigridAxisPozhenSets += act.count * wins
-        }
+    forEachSlotAxisAction(axis, slot, (act, wins) => {
+      if (act.moveId === SIGRID_POZHEN_MOVE_ID) sigridAxisPozhenSets += act.count * wins
+      // 诺姆赠送的希格连携（gift 块）命中失衡敌人也触发一次破阵（C6 解锁限制后）
+      else if (cinema >= 6 && act.sourceTag === 'gift' && act.moveId === SIGRID_CHAIN_MOVE_ID) {
+        sigridAxisPozhenSets += act.count * wins
       }
     })
     if (cinema < 6) {

@@ -17,6 +17,7 @@ import { fmt } from '@/utils/format'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { positiveWholeCounts } from '@/utils/finiteClamp'
 
 /**
@@ -260,21 +261,17 @@ function applyBillyTeamConfig({ cfg, phase, axis }: AgentTeamConfigInput): void 
   const billyAxisEx: Record<string, number> = {}
   if (axis.active) {
     const billyCombos = BILLY_COMBOS
-    axis.axes.forEach((ax, ai) => {
-      const wins = axis.windows[ai] ?? 0
-      // ⚠ 原实现**没有** `wins <= 0` 提前返回：0 窗时仍会写 `键 = 0`（键集不空）。
-      // 本函数产出的是 **Record**，键集经 `sanitizeWarmKeyCfg` 进热启动 key ⇒ 加个「跳过 0 窗」
-      // 优化会改键集（虽 `readAxisEx` 过滤 >0 后数值相同）⇒ 逐位等价要求保留该形态，不优化。
-      for (const act of ax.actions) {
-        if (act.slot !== slot) continue
-        const combo = billyCombos[act.moveId]
-        if (combo) {
-          for (const mv of combo.moves) {
-            billyAxisEx[mv.moveId] = (billyAxisEx[mv.moveId] ?? 0) + act.count * mv.count * wins
-          }
-        } else {
-          billyAxisEx[act.moveId] = (billyAxisEx[act.moveId] ?? 0) + act.count * wins
+    // ⚠ 原实现**没有** `wins <= 0` 提前返回：0 窗时仍会写 `键 = 0`（键集不空）。
+    // 本函数产出的是 **Record**，键集经 `sanitizeWarmKeyCfg` 进热启动 key ⇒ 加个「跳过 0 窗」
+    // 优化会改键集（虽 `readAxisEx` 过滤 >0 后数值相同）⇒ 逐位等价要求保留该形态（forEachSlotAxisAction 不跳 0 窗）。
+    forEachSlotAxisAction(axis, slot, (act, wins) => {
+      const combo = billyCombos[act.moveId]
+      if (combo) {
+        for (const mv of combo.moves) {
+          billyAxisEx[mv.moveId] = (billyAxisEx[mv.moveId] ?? 0) + act.count * mv.count * wins
         }
+      } else {
+        billyAxisEx[act.moveId] = (billyAxisEx[act.moveId] ?? 0) + act.count * wins
       }
     })
   }

@@ -12,6 +12,7 @@ import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
@@ -427,17 +428,13 @@ function applyYixuanTeamConfig(
     let cloudSecWeight = 0
     if (axis.active) {
       axisInSeconds = axis.windows.reduce((a, b) => a + b, 0) * axis.windowSeconds
-      axis.axes.forEach((ax, ai) => {
-        const wins = axis.windows[ai] ?? 0
-        for (const act of ax.actions) {
-          if (act.slot !== ownSlot) continue
-          axisEx[act.moveId] = (axisEx[act.moveId] ?? 0) + act.count * wins
-          // 凝云术块：duration 字段覆盖倍率表 actionTime（轴内凝云可延长缩短）
-          if (act.moveId === MOVE.cloud) {
-            const dur = typeof act.duration === 'number' ? act.duration : CLOUD_MAX_SECONDS
-            cloudSecTotal += dur * act.count * wins
-            cloudSecWeight += act.count * wins
-          }
+      forEachSlotAxisAction(axis, ownSlot, (act, wins) => {
+        axisEx[act.moveId] = (axisEx[act.moveId] ?? 0) + act.count * wins
+        // 凝云术块：duration 字段覆盖倍率表 actionTime（轴内凝云可延长缩短）
+        if (act.moveId === MOVE.cloud) {
+          const dur = typeof act.duration === 'number' ? act.duration : CLOUD_MAX_SECONDS
+          cloudSecTotal += dur * act.count * wins
+          cloudSecWeight += act.count * wins
         }
       })
     }

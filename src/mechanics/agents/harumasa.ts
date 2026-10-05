@@ -32,6 +32,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
 
 export const HARUMASA_ID = '1201'
 export const HARUMASA_ARROW_MOVE_ID = '1201008'
@@ -209,21 +210,14 @@ function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentChar
  */
 function applyHarumasaTeamConfig({ cfg, phase, stunCount, combatTime, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
-  const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
-  const battle = Math.max(1, Number(combatTime) || 180)
-  cfg.harumasaStunCoverage = Math.min(1, resolvedStun * HARUMASA_STUN_WINDOW_SECONDS / battle)
+  cfg.harumasaStunCoverage = stunWindowCoverage(stunCount, HARUMASA_STUN_WINDOW_SECONDS, combatTime)
   if (!axis) return
   const slot = Number(cfg.slot)
   let axisSlash = 0
   let axisArrow = 0
-  axis.axes.forEach((ax, ai) => {
-    const wins = axis.windows[ai] ?? 0
-    if (wins <= 0) return
-    for (const act of ax.actions) {
-      if (act.slot !== slot) continue
-      if (SLASH_SET.has(act.moveId)) axisSlash += act.count * wins
-      else if (act.moveId === HARUMASA_ARROW_MOVE_ID) axisArrow += act.count * wins
-    }
+  forEachSlotAxisAction(axis, slot, (act, wins) => {
+    if (SLASH_SET.has(act.moveId)) axisSlash += act.count * wins
+    else if (act.moveId === HARUMASA_ARROW_MOVE_ID) axisArrow += act.count * wins
   })
   cfg.harumasaAxisActive = axis.active
   cfg.harumasaAxisSlash = axisSlash
