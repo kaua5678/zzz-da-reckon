@@ -3,7 +3,7 @@
  * 本体 RoundCtx 拆分见 CC-11b。
  */
 import type { ComputedRef } from 'vue'
-import type { ConfigModel } from '@/stores/config'
+import { interactionBaselineFor, type ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
@@ -210,7 +210,46 @@ export function createRunCalcRound(deps: {
     // 有效次数 = max(输入, 反推 T) 封顶 parryTotal（同位语义，2026-09-07）。
     const noBreakerFallback = breakerSlot < 0
     const effectiveBreakerSlot = breakerSlot >= 0 ? breakerSlot : 0
-    const parrySplitActive = (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal) > 0 && guaranteeStun && (breakerSlot >= 0 || configStore.team.length > 0)
+    /**
+     * 用户**主动调高**弹刀（相对职业基准）的总量——「保底4失衡反推链」的独立启动依据。
+     *
+     * 用户口径 2026-10-05：
+     * > 「`parryTotal` 只是说他**默认没有强制弹刀**，但**你想弹还是有普通弹刀的**。
+     * >  所以四舍五入应该能做到，**做不到就是 bug**，这又不是**禁用**了弹刀。
+     * >  我设置的弹刀数值是**机制所必要的最低值，在这之上可以任意增加**。」
+     *
+     * ⇒ `parryTotal` = 「Boss 预设**强制反推的下限**」，**不是**「是否允许反推」的开关。
+     * 旧实现把它当开关：无 Boss（或 Boss 未声明 `parryTotal`——全库 23 个里 **17 个**如此）
+     * ⇒ `parryTotal = 0` ⇒ `parrySplitActive = false` ⇒ **即使用户手填弹刀 12/20 次也不启动反推**。
+     * 实测（般岳队，`guarantee.stun=1`，无 Boss，手填 `parryCount`）：
+     * ```
+     * 手填   旧实现          新实现
+     *   0   3次/42.51M      3次/42.51M
+     *   6   3次/43.63M      3次/44.59M
+     *  12   3次/41.66M      4次/48.45M   ← ★（旧实现 12 次比 0 次还低：弹刀占前台却不进反推链）
+     *  20   3次/43.34M      4次/51.18M
+     * ```
+     *
+     * ⚠ **判据必须扣掉职业基准**：`stores/config.ts:634` 在换人时把
+     * `interactionBaselineFor(...)` 的 `parry`（非支援/防护 = 6）**预填**进 `parryCount`
+     * ⇒ 直接判 `parryCount > 0` 会对**几乎所有队**成立。实测过宽版本：
+     * **29/104 队变动、失衡 3→5**（`auto-1591-1481-1311` +29.5%）⇒ 已废弃。
+     * 扣基准后实测：三支未改队（`banyue-trigger`/`banyue-liuyin`/`auto-1591-1481-1311`）
+     * 偏离量**精确为 0**；手动改 12 ⇒ 偏离 12 ⇒ 正确启动。
+     *
+     * ⚠ **不要**改成「`parryTotal` 无 Boss 时回落为手填总量」：实测**非单调**
+     * （20 次 44.02M < 12 次 47.07M——`parryTotal` 变大会让反推把更多弹刀塞给击破位、占前台时间）。
+     */
+    const parryBaseline = configStore.team.reduce((a, c) => {
+      if (!c?.agentId) return a
+      const specialty = catalogStore.agentsMap.get(c.agentId)?.specialty
+      return a + interactionBaselineFor(c.agentId, specialty).parry
+    }, 0)
+    const manualParryAboveBaseline = Math.max(0,
+      configStore.team.reduce((a, c) => a + Math.max(0, c?.parryCount ?? 0), 0) - parryBaseline)
+    const parrySplitActive = (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal > 0
+        || manualParryAboveBaseline > 0)
+      && guaranteeStun && (breakerSlot >= 0 || configStore.team.length > 0)
     const mainDpsSlot = breakerSlot === 0 ? -1 : 0
     // 保底开关（配装页「保底目标」勾选）：保底4嗔火 → 抬双反补嗔火；保底4喧响 → 抬弹刀补喧响。
     // 是否补齐由产出者模块按 gate 判定（CC-295：轴模式 / 保底开关 / 模块设置，公式只在模块里一份）。
