@@ -37,6 +37,7 @@ import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const CORIN_ID = '1061'
 export const CORIN_CORE_SAW_DMG = 37.5
@@ -141,7 +142,7 @@ function buildCorinCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput)
   cfg.corinC2ResCoverage = clampRatio(setting(cfg, 'corin.c2ResCoverage', 1))
   cfg.corinC6DetonationCount = whole(setting(cfg, 'corin.c6DetonationCount', 8))
   cfg.corinC6ChargeStacks = Math.max(0, Math.min(CORIN_C6_MAX_CHARGES, setting(cfg, 'corin.c6ChargeStacks', 40)))
-  cfg.corinAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.corinAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 /**
@@ -291,7 +292,7 @@ export const corinMechanic: AgentMechanicModule = {
    * 自己查 catalog 取 basic 段 moveId 后直调。迁入后槽位/轴/倍率表访问都由派发器给。
    *
    * 两臂与门控**逐位保留**（原伤害池分支：`charResult.agentId === '1061' &&
-   * (execPanel?.additionalAbilityActive ?? 0) > 0`，内层 `if (isAxis) … else …`）：
+   * additionalAbilityActiveOf(execPanel)`，内层 `if (isAxis) … else …`）：
    * - 门控 = 额外能力触发（`additionalAbilityActive`，与伤害池 `execPanel` 同源同值）。
    * - `isAxis` 真 → 扫描桶（值**恒** `CORIN_ADDITIONAL_DMG`，由 `computeCorinStunBonusMoves` 写死）。
    * - `isAxis` 假 → 覆盖率折算（**标量百分比** = `CORIN_ADDITIONAL_DMG × 覆盖率`）。
@@ -350,7 +351,7 @@ export default corinMechanic
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    /** 写入：additionalAbilityActiveOf(panel) */
     corinAdditionalActive?: boolean
     /** 写入：clampRatio(setting(cfg, 'corin.additionalStunCoverage', 0.5)) */
     corinAdditionalStunCoverage?: number

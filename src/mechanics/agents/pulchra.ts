@@ -12,6 +12,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 波可娜（1351，物理·击破/支援）—— 整局近似口径
@@ -67,7 +68,7 @@ function applyPulchraPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 猎步：恒常（强特/连携/终结不断触发，6s 刷新 → 失衡值 +30% 常驻）
   panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + PULCHRA_HUNT_STEP_STUN
   // 影画1 原文「对被施加[困迹]效果的敌人造成伤害时」——困迹来自额外能力，未触发则无困迹（CC-199）
-  if (cinemaLevel >= 1 && (panel.additionalAbilityActive ?? 0) > 0) {
+  if (cinemaLevel >= 1 && additionalAbilityActiveOf(panel)) {
     panel.critRate = (panel.critRate ?? 0) + PULCHRA_C1_CRIT_RATE
   }
   if (cinemaLevel >= 2) {

@@ -61,6 +61,7 @@ import { resolvePhaseBuffValue, teamSpecialtiesOf } from '@/utils/phaseBuff'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { getTeamAnomalyDurationBonus } from './anomalyPanels'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export function buildMechanicTeamMembers(
   configStore: ConfigModel,
@@ -330,7 +331,7 @@ export function collectAxisWindowOverlays(
       cinemaLevel: member.cinemaLevel,
       getAgentSkills,
       isAxis,
-      additionalAbilityActive: (memberPanel?.additionalAbilityActive ?? 0) > 0,
+      additionalAbilityActive: additionalAbilityActiveOf(memberPanel),
       windInfectionRate: Number(memberPanel?.windInfectionRate ?? 0),
       settings,
     })

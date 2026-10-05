@@ -32,6 +32,7 @@ import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
@@ -124,7 +125,7 @@ function buildEvelynCharConfig({ cinemaLevel, skills, cfg, panel, getRowValue }:
   cfg.evelynC1DefIgnoreCoverage = clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage', 1))
   cfg.evelynC4ShieldCoverage = clampRatio(setting(cfg, 'evelyn.c4ShieldCoverage', 1))
   cfg.evelynC6FollowUpCount = whole(setting(cfg, 'evelyn.c6FollowUpCount', 16))
-  cfg.evelynAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.evelynAdditionalActive = additionalAbilityActiveOf(panel)
   if (cinemaLevel >= 1) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + EVELYN_C1_DECIBEL_GIFT
   }
@@ -326,7 +327,7 @@ export default evelynMechanic
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    /** 写入：additionalAbilityActiveOf(panel) */
     evelynAdditionalActive?: boolean
     /** 写入：clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage', 1)) */
     evelynC1DefIgnoreCoverage?: number

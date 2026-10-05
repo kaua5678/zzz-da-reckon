@@ -36,6 +36,7 @@ import { outOfCombatStat } from '@/mechanics/initialStat'
 import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const HARUMASA_ID = '1201'
 export const HARUMASA_ARROW_MOVE_ID = '1201008'
@@ -315,7 +316,7 @@ function buildHarumasaExecutions({ cfg, state, executions }: AgentResourceInput)
 
 function patchHarumasaExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
-  const additionalActive = (cfg.panel.additionalAbilityActive ?? 0) > 0
+  const additionalActive = additionalAbilityActiveOf(cfg.panel)
   const potentialRes = HARUMASA_POTENTIAL_RES_IGNORE[cycle.potentialLevel]
   for (const exec of executions) {
     if (CORE_TARGETS.has(exec.moveId)) {

@@ -32,6 +32,7 @@ import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution 
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const YAOJIAYIN_ID = '1311'
 
@@ -251,7 +252,7 @@ function applyYaojiayinTeamPanelEffects({
 function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharConfigInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   cfg.yaojiayinCinemaLevel = cinema
-  cfg.yaojiayinAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0 ? 1 : 0
+  cfg.yaojiayinAdditionalActive = additionalAbilityActiveOf(panel) ? 1 : 0
   cfg.yaojiayinTremoloDmg = rowVal(findMove(skills, MOVE_TREMOLO), 'damage')
   cfg.yaojiayinClusterDmg = rowVal(findMove(skills, MOVE_CLUSTER), 'damage')
   cfg.yaojiayinCapriccioDmg = rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage')
@@ -453,7 +454,7 @@ declare module '@/types/resource/agentResources' {
 
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 ? 1 : 0 */
+    /** 写入：additionalAbilityActiveOf(panel) ? 1 : 0 */
     yaojiayinAdditionalActive?: number
     /** 写入：rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage') */
     yaojiayinCapriccioDmg?: number

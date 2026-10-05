@@ -10,6 +10,7 @@ import type { AnomalyEventExecution } from '../../types/resource'
 import { execMatchesMove } from '../../types/resource'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const ANTON_ID = '1111'
 
@@ -87,7 +88,7 @@ function buildAntonAnomalyEvents({ cfg, events }: AgentEventInput): void {
   const rawRatio = cfgMechanicSettingRaw(cfg, 'anton.additionalShockRatio')
   const ratio = clampRatio(typeof rawRatio === 'number' ? rawRatio : 1)
   if (ratio <= 0) return
-  const additionalActive = (cfg.panel.additionalAbilityActive ?? 0) > 0
+  const additionalActive = additionalAbilityActiveOf(cfg.panel)
   if (!additionalActive) return
   // 爆发状态内的攻击次数近似：安东整局的电钻+打桩执行行（爆发状态是安东输出主形态）
   const burstHits = Number(cfg.antonC1DrillMoveCount ?? 0)

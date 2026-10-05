@@ -16,6 +16,7 @@ import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 格莉丝（1181）战斗逻辑（用户口供 2026-08-23）：
@@ -187,7 +188,7 @@ function applyGracePanel(input: AgentPanelInput): void {
   }
   // 额外能力·技术支持班组：感电伤害 +18%/层 ×≤2（AA 门控见 spec additionalAbility；
   // 异常伤害提升乘区——格莉丝唯一异常为感电，走施加者面板 anomalyDmgBonus）
-  if ((panel.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     const stacks = Math.max(0, Math.min(2, Number(settings?.['grace.shockStacks'] ?? 2)))
     panel.anomalyDmgBonus = (panel.anomalyDmgBonus ?? 0) + 18 * stacks
   }

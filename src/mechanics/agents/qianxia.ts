@@ -14,6 +14,7 @@ import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
@@ -152,7 +153,7 @@ function buildQianxiaCharConfig({ cfg, cinemaLevel, team, panel, skills }: Agent
   // 触发者命中数近似：滑块 0 = 按标记供给同量级（postRound 后标记供给写入）
   const manualHits = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'qianxia.gazeTriggerHits') ?? 0) || 0))
   cfg.qianxiaTriggerHits = manualHits
-  if ((panel?.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + QIANXIA_FIELD_ENTRY_ENERGY
   }
 }

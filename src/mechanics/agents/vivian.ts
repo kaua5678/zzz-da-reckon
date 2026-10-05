@@ -39,6 +39,7 @@ import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
@@ -179,7 +180,7 @@ export const VIVIAN_ANOMALY_TRIGGER_CD = 0.5
 function buildVivianCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.vivianCinemaLevel = cinemaLevel
   cfg.vivianC4AtkCoverage = clampRatio(setting(cfg, 'vivian.c4AtkCoverage', 1))
-  cfg.vivianAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.vivianAdditionalActive = additionalAbilityActiveOf(panel)
   // 落羽生花双源由 useResourceCalc 收敛注入（vivianTeamExTotal / vivianAnomalyTriggerTotal），
   // 首轮缺省时 buildExecutions 内回退到 state.exSpecialCount。
 }

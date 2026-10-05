@@ -28,6 +28,7 @@ import type {
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const BILLY_ID = '1081'
 export const BILLY_CORE_CROUCH_DMG = 50
@@ -104,7 +105,7 @@ function buildBillyCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput)
   cfg.billyC1Energy = cinemaLevel >= 1
     ? resolveBillyC1TriggerCount(battleTime) * BILLY_C1_ENERGY
     : 0
-  cfg.billyAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.billyAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): BillyCycle {
@@ -197,7 +198,7 @@ export default billyMechanic
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    /** 写入：additionalAbilityActiveOf(panel) */
     billyAdditionalActive?: boolean
     /** 写入：battleTime */
     billyBattleTime?: number

@@ -20,6 +20,7 @@ import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
@@ -137,7 +138,7 @@ function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
   if (cinemaLevel >= 1) {
     panel.atk = Math.round((panel.atk ?? 0) * (1 + SIGRID_C1_ATK_PCT / 100))
   }
-  if ((panel.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     panel.atk = (panel.atk ?? 0) + SIGRID_ADDITIONAL_ATK_FLAT
     // 浸染增伤不在这里：读风化侵染覆盖率（异常池结果），emitExecDirect 分支按覆盖率逐行折算
   }
@@ -633,7 +634,7 @@ export const sigridMechanic: AgentMechanicModule = {
   patchExecutions: patchSigridExecutions,
   /**
    * 浸染增伤（**与轴模式无关的标量臂**，2026-09-16 round 16 自 `damagePool.ts` 迁入）：
-   * 原伤害池分支 `charResult.agentId === '1591' && (execPanel?.additionalAbilityActive ?? 0) > 0`
+   * 原伤害池分支 `charResult.agentId === '1591' && additionalAbilityActiveOf(execPanel)`
    * → `SIGRID_INFECTION_DMG × clamp(windInfectionRate)`。
    *
    * ⚠ **迁移前提实测纠正（R15 分诊标「静态可达，未实测」⇒ round 16 实测为不可达）**：

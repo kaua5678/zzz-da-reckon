@@ -36,6 +36,7 @@ import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const AIRE_ID = '1501'
 export const AIRE_CORE_PROFICIENCY = 90
@@ -120,7 +121,7 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
   // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 初始 = 局外面板（CC-125；读取口 `initialStat`，CC-497）
   cfg.aireInitialMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
   cfg.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage', 1))
-  cfg.aireAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.aireAdditionalActive = additionalAbilityActiveOf(panel)
   if (cinemaLevel >= 4) {
     // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
     // 异放次数 = 应援能量/2 + 全场应援；典型整局 ≫ floor(t/10)，故触发次数取 10s CD 上限
@@ -218,7 +219,7 @@ function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
   // CC-333：面板字段直接复用 computeAireCycle（coreProficiency / c1EtherAnomalyResIgnore / c2DefIgnore 单源）。
   const cycle = computeAireCycle({
     cinemaLevel,
-    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
+    additionalActive: additionalAbilityActiveOf(panel),
     c2DelusionCoverage: settings['aire.c2DelusionCoverage'] ?? 1,
   })
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + cycle.coreProficiency

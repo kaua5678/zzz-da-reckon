@@ -15,6 +15,7 @@ import { chainMovesOf, isUltimateMoveName, isChainAttackMoveName } from '@/data/
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const QINGYI_AGENT_ID = '1251'
 
@@ -109,7 +110,7 @@ function applyQingyiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 核心被动·千秋岁 + 连携技·太平令：目标每层羁服使连携技伤害 +3%（羁服满层 20 层 = +60%）
   panel.skillDmgBonus__chain = (panel.skillDmgBonus__chain ?? 0) + 60
   // 额外能力·阳关三叠（声明式 spec.additionalAbility 判定写入 panel.additionalAbilityActive）
-  if ((panel.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     // 普通攻击失衡值 +20%（只作用于 basic，含一煞与醉花月云转，两者 skillType 均为 basic）
     panel.stunBuildUpBonus__basic = (panel.stunBuildUpBonus__basic ?? 0) + 20
     // 冲击力 >120 每超 1 点攻击 +6，最多 +600

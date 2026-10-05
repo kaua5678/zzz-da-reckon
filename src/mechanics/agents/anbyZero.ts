@@ -42,6 +42,7 @@ import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
@@ -157,7 +158,7 @@ function buildAnbyZeroCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: Ag
   cfg.anbyZeroPotentialLevel = potentialLevel
   cfg.anbyZeroCangguangCount = whole(setting(cfg, 'anbyZero.cangguangCount', 6))
   cfg.anbyZeroSilverStarCoverage = clampRatio(setting(cfg, 'anbyZero.silverStarCoverage', 1))
-  cfg.anbyZeroAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.anbyZeroAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): AnbyZeroCycle {
@@ -238,7 +239,7 @@ function applyAnbyZeroPanel({ cinemaLevel, potentialLevel, panel, settings }: Ag
     exSpecialCount: 0,
     ultimateCount: 0,
     teammateWhiteLightning: 0,
-    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
+    additionalActive: additionalAbilityActiveOf(panel),
     silverStarCoverage: settings['anbyZero.silverStarCoverage'] ?? 1,
     criticalActionTime: 0, // 面板阶段不消费苍光·临界动作时间（仅 buildExecutions 用）
   })
@@ -363,7 +364,7 @@ declare module '@/mechanics/types' {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    /** 写入：additionalAbilityActiveOf(panel) */
     anbyZeroAdditionalActive?: boolean
     /** 写入：whole(setting(cfg, 'anbyZero.cangguangCount', 6)) */
     anbyZeroCangguangCount?: number

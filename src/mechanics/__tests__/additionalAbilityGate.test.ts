@@ -9,7 +9,8 @@ import { describe, expect, it } from 'vitest'
 import { getAgentSpec } from '@/specs/registry'
 
 const DIR = new URL('../agents/', import.meta.url)
-const PANEL_GATE = /panel\??\.additionalAbilityActive/
+// CC-507（r689）：读法统一为 `additionalAbilityActiveOf(panel)`（core/additionalAbilityActive.ts），两种写法都算「读面板门控」
+const PANEL_GATE = /panel\??\.additionalAbilityActive|additionalAbilityActiveOf\(/
 
 function agentIdsOf(src: string): string[] {
   const m = src.match(/agentIds:\s*\[([^\]]*)\]/)

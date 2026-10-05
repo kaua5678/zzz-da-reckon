@@ -14,6 +14,7 @@ import { effectiveBattleTime } from '@/core/effectiveTime'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 猫又（1021）战斗逻辑（用户口供 2026-08-23 两批）：
@@ -269,7 +270,7 @@ function resolveNekoExecutionDamage({ exec }: { exec: SkillExecution }): { eleme
 
 /** 猫步秀（额外能力门控）：[强化特殊技]/[闪避反击]命中 +35%×2 层 = +70%，限定招式 */
 function patchNekoExecutions({ cfg, executions }: AgentResourceInput): void {
-  const aaOn = (cfg.panel?.additionalAbilityActive ?? 0) > 0
+  const aaOn = additionalAbilityActiveOf(cfg.panel)
   if (!aaOn) return
   for (const exec of executions) {
     if (exec.moveId && NEKOMATA_CATSHOW_MOVE_IDS.includes(exec.moveId)) {

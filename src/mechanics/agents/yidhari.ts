@@ -19,6 +19,7 @@ import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const YIDHARI_AGENT_ID = '1051'
 
@@ -77,7 +78,7 @@ function applyYidhariPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 核心被动·拾梦空想：生命值 <50% 时伤害提升达到最大值 +100%（频繁烧血，覆盖率按 100%）
   panel.dmgBonus = (panel.dmgBonus ?? 0) + 100
   // 额外能力·完形叙事：击破/支援触发，生命值<50% 时暴击伤害 +30%（覆盖率 100%）
-  if ((panel.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     panel.critDmg = (panel.critDmg ?? 0) + 30
   }
   // 以太帷幕·涌泉：全队局内最大生命值 +5%（0命）/ +10%（4命）——由 teammate-buffs.json 1051 条目
@@ -302,7 +303,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   // 按有效战斗时间折算，无敌期间不结算（core/effectiveTime.ts）
   const tentacleInterval = Math.max(1, Number(cfg.yidhariTentacleInterval ?? 13.5))
   const tentacleCount = Math.max(0, Math.floor(effectiveBattleTime(cfg) / tentacleInterval))
-  const additionalAbilityActive = (cfg.panel?.additionalAbilityActive ?? 0) > 0
+  const additionalAbilityActive = additionalAbilityActiveOf(cfg.panel)
   if (tentacleCount > 0 && additionalAbilityActive) {
     const skillBonus = cfg.panel?.skillLevelBonus ?? 0
     const dmgCoef = skillBonus > 0 ? getSkillLevelCoef(skillBonus).damageCoef : 1

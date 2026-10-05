@@ -7,6 +7,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 希希芙（1521，电·强攻，新艾利都治安局）—— 额外能力自身暴伤 + 毒素循环模块。
@@ -64,7 +65,7 @@ const XIXIFU_C6_MARK_ICD_SECONDS = 3
 function applyXixifuPanel({ panel }: AgentPanelInput): void {
   // 蚀骨自拐暴击率：每次触发 +6%（15秒，至多3层）→ 常驻 +18%
   panel.critRate = (panel.critRate ?? 0) + XIXIFU_SHIGU_CRIT_RATE
-  if ((panel.additionalAbilityActive ?? 0) <= 0) return
+  if (!additionalAbilityActiveOf(panel)) return
   panel.critDmg = (panel.critDmg ?? 0) + XIXIFU_SELF_CRIT_DMG
 }
 

@@ -7,6 +7,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 朱鸢（1241，以太·强攻，新艾利都治安局）—— 自身机制模块。
@@ -73,7 +74,7 @@ const ZHUYUAN_CORE_STUN_DMG = 40
 const ZHUYUAN_STUN_WINDOW_SECONDS = 16
 
 function applyZhuYuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
-  if ((panel.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     panel.critRate = (panel.critRate ?? 0) + ZHUYUAN_AA_CRIT_RATE
   }
   panel['skillDmgBonus__basic'] = (panel['skillDmgBonus__basic'] ?? 0) + ZHUYUAN_CORE_SHELL_DMG

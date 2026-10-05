@@ -46,6 +46,7 @@ import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const TRIGGER_AGENT_ID = '1361'
 export const TRIGGER_ADDITIONAL_MOVE_IDS = new Set(['1361008', '1361020', '1361022'])
@@ -208,7 +209,7 @@ export function computeTriggerCycle(input: {
 }
 
 function applyTriggerPanel({ panel }: AgentPanelInput): void {
-  if ((panel.additionalAbilityActive ?? 0) <= 0) return
+  if (!additionalAbilityActiveOf(panel)) return
   // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18（原连续）
   const overCrit = Math.floor(Math.max(0, (panel.critRate ?? 0) - TRIGGER_CRIT_THRESHOLD) + 1e-9)
   panel.triggerAdditionalStunBuildUp = Math.min(

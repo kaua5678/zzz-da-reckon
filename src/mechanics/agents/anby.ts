@@ -15,6 +15,7 @@ import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 安比（1011，电·强攻）—— 整局近似口径
@@ -141,7 +142,7 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
  */
 function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   cfg.anbyCinemaLevel = cinemaLevelOf(cinemaLevel)
-  cfg.anbyAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.anbyAdditionalActive = additionalAbilityActiveOf(panel)
   cfg.anbyEnergyGainEfficiency = panel.energyGainEfficiency ?? 0
   // 影画2 失衡覆盖率：滑块 → cfg 的**唯一**通道（读法见 cfgNum 头注释）
   cfg.anbyC2StunCoverage = cfgNum(cfg, 'anby.c2StunCoverage', 0.5)

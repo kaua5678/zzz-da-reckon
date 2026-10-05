@@ -18,6 +18,7 @@ import { cfgMechanicSetting, cfgMechanicSettingRaw } from '@/utils/mechanicSetti
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
 export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
@@ -181,7 +182,7 @@ peiluoProminenceMechanic.applyPanel = ({ panel, cinemaLevel }: AgentPanelInput) 
     panel.critRate = (panel.critRate ?? 0) + 8
   }
   // 额外能力：队伍存在[击破]/[支援]角色时暴伤 +40%（连携回 300 喧响未建模，见 status pending）。
-  if ((panel.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     panel.critDmg = (panel.critDmg ?? 0) + 40
   }
   // 影画4 焚昼孽火：持盾期间失衡值 +10%（护盾不建模，用户口径默认全覆盖）。
@@ -672,7 +673,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
     }
     if (phase !== 'build') return
     const self = cfg
-    if (!self || (self.panel?.additionalAbilityActive ?? 0) <= 0) return
+    if (!self || !additionalAbilityActiveOf(self.panel)) return
     for (const cfg of characters) {
       const specialty = team.find(m => m.slot === cfg.slot)?.agent?.specialty
       if (specialty === 'attack' || specialty === 'rupture') cfg.extraSelfDecibelPerUltimate = 300

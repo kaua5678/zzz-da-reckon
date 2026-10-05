@@ -45,6 +45,7 @@ import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const ELLEN_ID = '1191'
 export const ELLEN_FROST_TRIM_MOVE_IDS = ['1191006'] as const
@@ -231,7 +232,7 @@ function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: Agent
   cfg.ellenC6FeastCoverage = clamp(setting(cfg, 'ellen.c6FeastCoverage', 1), 0, 1)
   cfg.ellenFreezeCount = 0 // 由 useResourceCalc 从异常池 ice 触发数注入；失衡次数由 applyTeamConfig converge 写入
   cfg.ellenStunCount = 0
-  cfg.ellenAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.ellenAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 /**
@@ -436,7 +437,7 @@ function applyEllenPanel({ cinemaLevel, potentialLevel, panel, settings }: Agent
     freezeCount: 0,
     stunCount: 0,
     c4CdRate: 1,
-    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
+    additionalActive: additionalAbilityActiveOf(panel),
     c1CritStacks: settings['ellen.c1CritStacks'] ?? 6,
     c2AvgCharge: settings['ellen.c2AvgCharge'] ?? 3,
     stormSurgeStacks: settings['ellen.stormSurgeStacks'] ?? 10,

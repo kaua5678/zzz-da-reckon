@@ -35,6 +35,7 @@ import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const SEVERIAN_ID = '1631'
 /** 核心被动：暴击伤害 +60% */
@@ -213,7 +214,7 @@ function severianLiexuanCount(cfg: AgentCharConfigInput['cfg']): number {
 
 function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   cfg.severianCinemaLevel = cinemaLevel
-  cfg.severianAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.severianAdditionalActive = additionalAbilityActiveOf(panel)
   // 强化特殊技（组合技 1631008）走通用强特通道
   const special = skills?.categories?.find(c => c.id === 'special')?.moves?.find(m => m.id === '1631008')
   if (special) {
@@ -262,7 +263,7 @@ function applySeverianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): 
   if (!panel) return
   const cycle = computeSeverianCycle({
     cinemaLevel,
-    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
+    additionalActive: additionalAbilityActiveOf(panel),
     fengfengStacks: Math.max(0, Math.min(2, whole(settingOf(settings, 'severian.fengfengStacks', 1)))),
     c4Coverage: clamp01(settingOf(settings, 'severian.c4Coverage', 1)),
   })

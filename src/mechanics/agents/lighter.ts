@@ -41,6 +41,7 @@ import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution 
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const LIGHTER_ID = '1161'
 
@@ -232,7 +233,7 @@ function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput):
     (panel.stunDurationBonusSeconds ?? 0) + computeLighterRoutStunBonus(cinema)
 
   // 昂扬：额外能力门控 + 冲击力实时（面板已含自身冲击加成）
-  const additionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  const additionalActive = additionalAbilityActiveOf(panel)
     || (() => {
       // applyPanel 时 additionalAbilityActive 通常已写入；兜底再判一次
       const hasAttack = team.some(m => m.slot !== slot && m.agent?.specialty === 'attack')

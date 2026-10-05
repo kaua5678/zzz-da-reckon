@@ -20,6 +20,7 @@ import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/mo
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { positiveWholeCounts } from '@/utils/finiteClamp'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 星徽·比利（1531）战斗逻辑（用户确认口径，2026-08）：
@@ -655,7 +656,7 @@ function patchBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
 
   // 星辉：额外能力触发（队伍有击破/防护/支援，panel.additionalAbilityActive）才生效；
   // 2 层封顶，仅作用于 连携/终结/强化特殊技/最高马力星光 六个目标招式
-  if ((cfg.panel?.additionalAbilityActive ?? 0) === 1) {
+  if (additionalAbilityActiveOf(cfg.panel)) {
     const starTotal = Math.floor(resources.get('billy_star_glow')?.total ?? 0)
     const stacks = Math.min(STAR_GLOW_MAX_STACKS, starTotal)
     if (stacks > 0) {

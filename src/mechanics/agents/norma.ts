@@ -21,6 +21,7 @@ import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -203,7 +204,7 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
   // 放 applyPanel（而非 buildCharConfig）：computeWindowDuration 读展示面板（computePanelPhases），
   // buildCharConfig 的修改不进入该面板 → 原来 +2s 从未生效。
   // 技术鸿沟失衡易伤/攻击提升由 teammate-buffs.json 与 buildCharConfig 承载（覆盖率滑块在队友 buff 侧）。
-  if ((panel.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + 2
   }
 
@@ -216,7 +217,7 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
   // CC-276：原 `|| agent.teammateBuffId === '1571'` 数据面守卫臂已删（别名字段退役，
   // 「别名 ≠ id」由 `agentIdentitySingleField.test` 在数据入口一处拦）。
   if (agent.id === '1571') {
-    if ((panel.additionalAbilityActive ?? 0) > 0) {
+    if (additionalAbilityActiveOf(panel)) {
       // 满覆盖（用户确认去弹幕覆盖率滑块，嗯呢弹幕易全程覆盖）
       panel.atk = (panel.atk ?? 0) + TECH_GAP_ATK_CAP
     }

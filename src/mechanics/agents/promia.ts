@@ -42,6 +42,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const PROMIA_ID = '1541'
 // 掌控转精通的常数只在 spec 1541.json `promia_mastery_to_proficiency`（R6 C7，第 143 轮）；
@@ -125,7 +126,7 @@ function buildPromiaCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, char
   cfg.promiaCinemaLevel = cinemaLevel
   // 展示值与面板 / teamBuff 同一读取口：初始（局外）掌控（CC-123 订正 CC-116 遗留的局内口径；CC-497 统一 `initialStat`）
   cfg.promiaAnomalyMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
-  cfg.promiaAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.promiaAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'promiaCinemaLevel' | 'promiaAnomalyMastery' | 'promiaAdditionalActive'>): PromiaCycle {
@@ -151,7 +152,7 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
   const cycle = computePromiaCycle({
     cinemaLevel,
     anomalyMastery: initialStat(outOfCombatPanel, panel, 'anomalyMastery'),
-    additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
+    additionalActive: additionalAbilityActiveOf(panel),
   })
   if (cycle.additionalBuildUpEff > 0) {
     panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + cycle.additionalBuildUpEff
@@ -162,7 +163,7 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
 function promiaReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
   if (self.slot < 0) return { enemyResReduction: 0, note: '' }
   const cinema = self.cinemaLevel
-  const additionalActive = Number(self.panel?.additionalAbilityActive ?? 0) > 0
+  const additionalActive = additionalAbilityActiveOf(self.panel)
   const defIgnore = computePromiaCycle({ cinemaLevel: cinema, anomalyMastery: 0, additionalActive }).guiltyDefIgnore
   return defIgnore > 0
     ? { enemyResReduction: 0, enemyDefReduction: defIgnore, note: `；有罪推定/C1：异放无视 ${defIgnore}% 防御（releaseModifier 异放限定）` }

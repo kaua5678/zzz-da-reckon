@@ -4,6 +4,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 月城柳（1221，电·异常，对空洞特别行动部第六课）—— 核心被动/额外能力/影画面板区（薄模块）。
@@ -94,7 +95,7 @@ function applyYanagiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 核心被动·月蚀：强特命中后自身电伤+20%（15s 刷新，整局高频强特近似常驻）
   panel.electricDmg = (panel.electricDmg ?? 0) + YANAGI_CORE_ELECTRIC_DMG
   // 额外能力·月相：其他异常/同属性队友门控，电异常积蓄+45%
-  if ((panel.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0)
       + YANAGI_ELECTRIC_BUILDUP_BONUS
   }

@@ -9,6 +9,7 @@ import { findMoveById as findMove } from '@/data/moveTableQueries'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 「席德」（1461，电·强攻，新艾利都防卫军）—— 正兵拐 + 自身机制 + 钢能消耗出口模块。
@@ -102,7 +103,7 @@ function getAttackData0(move: SkillMove | null | undefined): number {
 }
 
 function applyXidePanel({ panel, cinemaLevel }: AgentPanelInput): void {
-  if ((panel.additionalAbilityActive ?? 0) > 0) {
+  if (additionalAbilityActiveOf(panel)) {
     // 影画4：围杀条件门控，终结技+20%（已招式限定）、喧响效率+10%
     if (cinemaLevel >= 4) {
       panel['skillDmgBonus__ultimate'] = (panel['skillDmgBonus__ultimate'] ?? 0) + XIDE_C4_ULTIMATE_DMG
@@ -119,7 +120,7 @@ function buildXideCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfi
   // 影画6 激光附加伤害按「局内最终攻击力 × 百分比」进基础区（flatDamageBonus，奥菲丝先例）
   cfg.xideAtk = Math.max(0, panel?.atk ?? 0)
   // 额外能力门控（patchExecutions 招式限定增伤/电抗无视用）
-  cfg.xideAAActive = (panel?.additionalAbilityActive ?? 0) > 0 ? 1 : 0
+  cfg.xideAAActive = additionalAbilityActiveOf(panel) ? 1 : 0
   // 铁萼雨幕耗能：固定 60（每 60 能量释放一次铁萼雨幕 1461009，用户口径 2026-08）
   cfg.exSpecialEnergyConsume = XIDE_EX_ENERGY
 

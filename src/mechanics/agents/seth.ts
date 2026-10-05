@@ -29,6 +29,7 @@ import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const SETH_ID = '1271'
 export const SETH_SHIELD_PROFICIENCY = 100
@@ -74,7 +75,7 @@ function buildSethCharConfig({ cinemaLevel, cfg, panel, skills, getRowValue }: A
   cfg.sethShieldCoverage = clampRatio(setting(cfg, 'seth.shieldCoverage', 1))
   cfg.sethAdditionalResCoverage = clampRatio(setting(cfg, 'seth.additionalResCoverage', 1))
   cfg.sethC6FinishCount = whole(setting(cfg, 'seth.c6FinishCount', 6))
-  cfg.sethAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.sethAdditionalActive = additionalAbilityActiveOf(panel)
   // 影画4 招架支援迅雷盾失衡值 +25%：预缩倍率表 daze 值，patchExecutions 经 dazeMultiplierOverride 精确结算。
   if (cinemaLevel >= 4) {
     const baseDaze = getRowValue(findMove(skills, cfg.defensiveAssistMoveId ?? ''), 'daze')
@@ -126,7 +127,7 @@ function applySethPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
   // 面板字段与 computeSethCycle 同源（shieldProficiency / additionalResReduction / c2ElectricBuildup）。
   const shieldCoverage = clampRatio(settings['seth.shieldCoverage'] ?? 1)
   const additionalResCoverage = clampRatio(settings['seth.additionalResCoverage'] ?? 1)
-  const additionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  const additionalActive = additionalAbilityActiveOf(panel)
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + SETH_SHIELD_PROFICIENCY * shieldCoverage
   if (additionalActive) {
     panel.enemyAnomalyResReduction = (panel.enemyAnomalyResReduction ?? 0)
@@ -184,7 +185,7 @@ export default sethMechanic
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    /** 写入：additionalAbilityActiveOf(panel) */
     sethAdditionalActive?: boolean
     /** 写入：clampRatio(setting(cfg, 'seth.additionalResCoverage', 1)) */
     sethAdditionalResCoverage?: number

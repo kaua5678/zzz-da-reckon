@@ -11,6 +11,7 @@ import { positiveWholeCounts } from '@/utils/finiteClamp'
 import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import { PARRY_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
@@ -442,7 +443,7 @@ function applyBanyuePanel({ panel, cinemaLevel, settings }: AgentPanelInput): vo
 
   // 明王 6命（满覆盖）：30s + 任意强特常态刷新 → 全局 buff 火伤 +39%（3层×13%），轴/非轴一致；
   // 非6命走时间轴扫描（轴模式）或覆盖率滑块（非轴模式），不在此施加
-  if (cinemaLevel >= 6 && (panel.additionalAbilityActive ?? 0) > 0) {
+  if (cinemaLevel >= 6 && additionalAbilityActiveOf(panel)) {
     const perStack = MINGWANG_BASE_PER_STACK + C6_MINGWANG_EXTRA
     panel.fireDmg = (panel.fireDmg ?? 0) + MINGWANG_MAX_STACKS * perStack
   }
@@ -888,7 +889,7 @@ export const banyueMechanic: AgentMechanicModule = {
    * **非轴折算臂** 2026-09-16 round 16 自 `damagePool.ts` 迁入）：
    * 原本由 `useResourceCalc` 的 `banyueMingwangStacks` computed 按 agentId '1471' 找槽位后直调
    * `computeBanyueMingwangStacks`；非轴折算臂原在伤害池的
-   * `charResult.agentId === '1471' && (execPanel?.additionalAbilityActive ?? 0) > 0 && banyueCinema < 6`
+   * `charResult.agentId === '1471' && additionalAbilityActiveOf(execPanel) && banyueCinema < 6`
    * 分支里（`if (isAxis) 扫描 / else 覆盖率折算` 两臂）。
    *
    * 两臂与门控**逐位保留**：

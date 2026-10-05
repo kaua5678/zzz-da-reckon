@@ -31,6 +31,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const KOLEDA_ID = '1101'
 export const KOLEDA_CORE_STUN = 60
@@ -84,7 +85,7 @@ function buildKoledaCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput
   cfg.koledaChainStunCoverage = clampRatio(setting(cfg, 'koleda.chainStunCoverage', 1))
   cfg.koledaC1Coverage = clampRatio(setting(cfg, 'koleda.c1Coverage', 1))
   cfg.koledaC4ChargeStacks = Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks', 2)))
-  cfg.koledaAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.koledaAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): KoledaCycle {
@@ -201,7 +202,7 @@ export default koledaMechanic
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：(panel.additionalAbilityActive ?? 0) > 0 */
+    /** 写入：additionalAbilityActiveOf(panel) */
     koledaAdditionalActive?: boolean
     /** 写入：clampRatio(setting(cfg, 'koleda.c1Coverage', 1)) */
     koledaC1Coverage?: number

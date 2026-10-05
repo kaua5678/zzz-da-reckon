@@ -33,6 +33,7 @@ import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export const PHOENIX_ID = '1641'
 /** 核心被动：异常精通 +40 */
@@ -179,7 +180,7 @@ export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: Age
 
 function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: AgentCharConfigInput): void {
   cfg.phoenixCinemaLevel = cinemaLevel
-  cfg.phoenixAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
+  cfg.phoenixAdditionalActive = additionalAbilityActiveOf(panel)
   cfg.phoenixAnomalyMastery = panel.anomalyMastery ?? 0
   const teamAnomalyCount = team ? team.filter(m => m.agent?.specialty === 'anomaly').length : 0
   cfg.phoenixTeamAnomalyCount = teamAnomalyCount > 0 ? teamAnomalyCount : 1
