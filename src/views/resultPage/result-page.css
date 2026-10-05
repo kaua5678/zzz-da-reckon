@@ -338,67 +338,6 @@
 }
 
 @media (max-width: 1200px) {
-  
-.damage-pool-card {
-  margin-bottom: 16px;
-  background: var(--wa-30);
-}
-
-.damage-pool-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.damage-pool-total {
-  color: var(--c-warning);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.damage-pool-table {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.damage-pool-row {
-  display: grid;
-  grid-template-columns: 88px 58px minmax(140px, 1fr) minmax(180px, 1.2fr) 64px 92px 72px 104px minmax(180px, 1.2fr);
-  gap: 8px;
-  align-items: center;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--wa-35);
-  color: var(--wa-760);
-  font-size: 12px;
-}
-
-.damage-pool-head {
-  background: var(--wa-70);
-  color: var(--fg-2);
-  font-weight: 600;
-}
-
-.damage-type {
-  color: var(--c-info);
-  font-weight: 600;
-}
-
-.damage-name {
-  color: var(--wa-900);
-}
-
-.damage-total {
-  color: var(--c-warning);
-  font-weight: 700;
-}
-
-.damage-note {
-  color: var(--wa-520);
-  line-height: 1.45;
-}
 
 .card-row {
     grid-template-columns: 1fr;
