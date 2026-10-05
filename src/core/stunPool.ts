@@ -214,12 +214,6 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
 }
 
 /**
- * 以给定失衡次数重建池的**次数派生字段**（返还值 / 总连携），其余字段（贡献明细、失衡值合计）原样保留。
- * 用途（CC-150，第 174 轮）：physical 缺省下外层以 2-环退出、环内整数次数无不动点（f(K)=K+1、f(K+1)=K）时，
- * 规范成员的引擎按读入的 K 分配时间，池却报 K+1 ⇒ 池 / 轴栈 / 伤害侧与资源行不同源（坑36 破）。
- * 取「最大自洽可行整数」K（按 K 分配时池撑得住 ≥K），报告池同步钳到 K。
- */
-/**
  * 失衡次数的**连续**版（CC-469′b，r652）：`stunCount === Math.floor(continuousStunCount(pool))` 按构造成立
  *（`1 + floor((t−b)/c) ≡ floor(1 + (t−b)/c)`；t<b 段取 t/b ∈ [0,1) ⇒ floor 0）。轴态不动点对连续 N 二分时用它作
  * 「N 窗口下池还能攒出几次」的读数，让 floor 口径与池自身同源（锁 `stunPoolContinuous.test.ts`）。
@@ -231,6 +225,24 @@ export function continuousStunCount(pool: Pick<StunPoolResult, 'totalStunBuildUp
   if (t < b) return t / b
   return 1 + (t - b) / (b * (1 - pool.stunRefundRatio))
 }
+/**
+ * `continuousStunCount` 的反函数（CC-472，r653）：要让池报出连续次数 n，`totalStunBuildUp` 至少要多少
+ *（赠送 `stunGift` 已抵扣）。首次失衡成本 b，之后每次 b(1−r)。用途：后台合轴自动填充的「保底 N 次」缺口
+ * 原来写成 `N×bossStunValue`，与池的计数律不同源（r>0 时多算 (N−1)·r·b，再 ×1.2 冗余 ⇒ 过冲）。
+ * 锁：`stunPoolContinuous.test.ts`（`continuousStunCount({…, totalStunBuildUp: stunBuildUpForCount(sp, n)}) ≈ n`）。
+ */
+export function stunBuildUpForCount(pool: Pick<StunPoolResult, 'stunGift' | 'bossStunValue' | 'stunRefundRatio'>, n: number): number {
+  const b = pool.bossStunValue
+  if (!(b > 0) || !(n > 0)) return 0
+  const gross = n < 1 ? n * b : b + (n - 1) * b * (1 - pool.stunRefundRatio)
+  return Math.max(0, gross - Math.max(0, pool.stunGift ?? 0))
+}
+/**
+ * 以给定失衡次数重建池的**次数派生字段**（返还值 / 总连携），其余字段（贡献明细、失衡值合计）原样保留。
+ * 用途（CC-150，第 174 轮）：physical 缺省下外层以 2-环退出、环内整数次数无不动点（f(K)=K+1、f(K+1)=K）时，
+ * 规范成员的引擎按读入的 K 分配时间，池却报 K+1 ⇒ 池 / 轴栈 / 伤害侧与资源行不同源（坑36 破）。
+ * 取「最大自洽可行整数」K（按 K 分配时池撑得住 ≥K），报告池同步钳到 K。
+ */
 export function withStunCount(pool: StunPoolResult, stunCount: number): StunPoolResult {
   const chainCountTotal = stunCount * pool.chainCountPerStun
   return {

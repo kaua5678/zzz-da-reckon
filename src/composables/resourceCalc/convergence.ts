@@ -7,6 +7,7 @@ import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool'
 import type { StunSkillExecution } from '@/core/stunPool'
+import { stunBuildUpForCount } from '@/core/stunPool'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic } from '@/mechanics'
@@ -929,9 +930,11 @@ export function createRunCalcRound(deps: {
 
     // 后台合轴自动填充反推（模块 backstageAutoFill 声明驱动，通用执行零 agentId 分支；
     // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底4失衡）：
-    // 缺口 = targetStunCount×bossStunValue −（总失衡 − 本轮已注入合轴行）；每对有效失衡优先实测
+    // 缺口 = stunBuildUpForCount(池, 保底次数) −（总失衡 − 本轮已注入合轴行）；每对有效失衡优先实测
     //（声明 moveIds 的池行），首轮回落 perPairBase；供给上限 = floor(非该角色战斗时间 / minPeriodSeconds)。
     {
+      /** 用户口径 2026-09-07「反推至保底4失衡」的那个 4 */
+      const BACKSTAGE_FLOOR_STUNS = 4
       const backstageNext: Record<string, number> = {}
       for (const cfg of base.characters) {
         const decl = getAgentMechanic(cfg.agentId)?.backstageAutoFill
@@ -944,7 +947,9 @@ export function createRunCalcRound(deps: {
         const pairCount = pairRows.reduce((sum, r) => sum + (r.count ?? 0), 0)
         const perPair = pairCount > 0 ? ownDaze / pairCount : decl.perPairBase
         const pool = sp1.pool
-        const deficit = Math.max(0, 4 * pool.bossStunValue - (pool.totalStunBuildUp - ownDaze))
+        // CC-472（r653）：缺口按池自身计数律的反函数算（首次 b、之后每次 b(1−r)、赠送已抵扣），
+        // 不再写死 4×bossStunValue（与 continuousStunCount 不同源：r>0 时多算 3rb，再 ×1.2 ⇒ 过冲）。
+        const deficit = Math.max(0, stunBuildUpForCount(pool, BACKSTAGE_FLOOR_STUNS) - (pool.totalStunBuildUp - ownDaze))
         const ownField = rr.characters.find(c => c.slot === cfg.slot)
         const ownFieldTime = (ownField?.timeAllocation?.necessaryTime ?? 0) + (ownField?.timeAllocation?.basicAttackTime ?? 0)
         const supplyCap = Math.max(0, Math.floor(Math.max(0, (base.totalTime ?? 180) - ownFieldTime) / decl.minPeriodSeconds))
