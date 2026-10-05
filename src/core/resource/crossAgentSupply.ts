@@ -19,6 +19,7 @@
  *   · `axisSuppressed`   —— 该类别在轴模式下不出数（琉音赠大：轴内次数由轴预设决定，见 docs 坑19①）
  */
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
+import type { CrossAgentSupplySpec } from '@/mechanics/typesHooks'
 import { resolveTeammateTargetSlot } from './targetSlot'
 import { getAgentMechanic } from '@/mechanics/registry'
 
@@ -43,6 +44,22 @@ export interface CrossAgentSupplyQuery {
 }
 
 const NO_SUPPLY: CrossAgentSupplyInfo = { providerSlot: -1, targetIdx: -1, count: 0, time: 0 }
+
+/**
+ * 每个供给单位占落点槽的秒数（CC-496，一份）：提供者模块声明了 `secondsPerUnit` 就用它（琉音 = 落点终结技时长、
+ * 诺姆 = 落点连携时长），否则缺省 = 落点 `ultimateActionTime`。模块供给路径（`crossAgentSupplyAt`）与琉音赠大的
+ * 轴覆盖路径（`ultimateGiftOf`，次数来自轴预设、不经模块 `supply()`）此前各写一份——覆盖路径硬编码
+ * `ultimateActionTime`，模块若改 `secondsPerUnit` 轴路径不会跟。`ownCfg` 缺省（无提供者 cfg）时只能走缺省值。
+ */
+export function supplySecondsPerUnit(
+  spec: CrossAgentSupplySpec | undefined,
+  targetCfg: CharacterOperationConfig,
+  ownCfg: CharacterOperationConfig | undefined,
+): number {
+  return spec?.secondsPerUnit && ownCfg
+    ? spec.secondsPerUnit({ targetCfg, ownCfg })
+    : (targetCfg.ultimateActionTime ?? 0)
+}
 
 /**
  * 某类别的**全部**供给者槽位（按槽位序）。
@@ -103,10 +120,7 @@ export function crossAgentSupplyAt(
     totalTime: query.totalTime,
   }) || 0))
   if (count <= 0) return { ...empty, targetIdx }
-  const perUnit = spec.secondsPerUnit
-    ? spec.secondsPerUnit({ targetCfg, ownCfg: cfg })
-    : (targetCfg.ultimateActionTime ?? 0)
-  return { providerSlot, targetIdx, count, time: count * perUnit }
+  return { providerSlot, targetIdx, count, time: count * supplySecondsPerUnit(spec, targetCfg, cfg) }
 }
 
 /**
@@ -144,8 +158,11 @@ export function ultimateGiftOf(
       providerSlot,
       targetIdx: ovIdx,
       count: ov.count,
-      // 单位耗时 = 落点槽的终结技时长（与模块 `secondsPerUnit` 同口径）
-      time: ov.count * (configs[ovIdx].ultimateActionTime ?? 0),
+      // 单位耗时与模块供给路径同一函数（CC-496）：提供者声明的 `secondsPerUnit`，否则落点终结技时长
+      time: ov.count * supplySecondsPerUnit(
+        configs[providerSlot] ? getAgentMechanic(configs[providerSlot].agentId)?.crossAgentSupply : undefined,
+        configs[ovIdx], configs[providerSlot],
+      ),
     }
   }
   return crossAgentSupplyAt(configs, states, providerSlot, query)
