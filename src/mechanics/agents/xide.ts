@@ -222,7 +222,7 @@ function resolveXideSteelResources(
   if (!spec) return { resources: null, totalSteel: 0, cycle: 0 }
   const resources = new Map(computeSpecResources(spec, cfg, state))
   const steel = resources.get(XIDE_STEEL_RESOURCE_ID)
-  const base = steel ? steel.initialValue + steel.totalGain : 0
+  const base = steel ? steel.total : 0 // = initialValue + totalGain（CC-486）
   const totalSteel = base + attackSteel
   const cycle = Math.floor(totalSteel / cost)
   if (steel) {

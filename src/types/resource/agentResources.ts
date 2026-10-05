@@ -185,6 +185,8 @@ export interface SpecResourceResult {
   totalGain: number
   gains: Record<string, number>
   bonusCount: number
+  /** = initialValue + totalGain（含反馈回复）。整局总量口径、不按 maxValue 截断。读者要整数计数用 `whole(r.total)`，
+   *  别再自己写 `Math.max(0, Math.floor(r.initialValue + r.totalGain))`（CC-486：xixifu / zhuYuan / xide 曾各重算一份）。 */
   total: number
   remaining: number
   spendCounts: Record<string, number>

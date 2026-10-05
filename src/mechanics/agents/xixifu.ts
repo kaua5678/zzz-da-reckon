@@ -2,6 +2,7 @@ import type { DirectRowAxisSplit, DirectRowAxisSplitInput } from '@/mechanics/ty
 import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
+import { whole } from '@/utils/finiteClamp'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
@@ -114,7 +115,7 @@ function resolveXixifuResources(cfg: AgentResourceInput['cfg'], state: AgentReso
 function computeXixifuToxinTotal(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): number {
   const toxin = resolveXixifuResources(cfg, state)?.get(XIXIFU_TOXIN_RESOURCE_ID)
   if (!toxin) return 0
-  return Math.max(0, Math.floor(toxin.initialValue + toxin.totalGain))
+  return whole(toxin.total)
 }
 
 /** 汇总毒素→蚀骨/蛇吻次数：毒素总量、蛇吻次数、蚀骨基础次数、蚀骨总次数（含影画4/6） */
@@ -212,10 +213,9 @@ function buildXixifuResourceResult({ cfg, state }: AgentResourceResultInput) {
 function buildXixifuResourceSections(input: AgentResourceSectionsInput) {
   const spec = getAgentSpec(XIXIFU_AGENT_ID)
   const sections = spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
-  const toxin = (input.result?.specResources ?? {})[XIXIFU_TOXIN_RESOURCE_ID] as
-    { initialValue: number; totalGain: number } | undefined
+  const toxin = input.result?.specResources?.[XIXIFU_TOXIN_RESOURCE_ID]
   if (toxin) {
-    const toxinTotal = Math.max(0, Math.floor(toxin.initialValue + toxin.totalGain))
+    const toxinTotal = whole(toxin.total)
     const shekissCount = Math.floor(toxinTotal / XIXIFU_SHEKISS_TOXIN_COST)
     sections.push({
       id: 'xixifu-shekiss',
