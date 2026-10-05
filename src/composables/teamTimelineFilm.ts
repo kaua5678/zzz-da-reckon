@@ -4,6 +4,7 @@
  */
 import { applyBossRoom } from '@/composables/bossRoom'
 import { useCatalogStore } from '@/stores/catalog'
+import { teammatePairsFor } from '@/composables/teamStructure'
 import { VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
 import type { BossPreset } from '@/types/bossPreset'
 import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION, allocateTopUpFilm } from '@/data/filmEconomy'
@@ -116,18 +117,8 @@ export async function computeFilmSimulation(scenario: AnalysisContext, opts: Fil
   }
 
   // 候选双队友（主C 排除；至多 1 击破；预算感知配装）
-  const isStun = (id: string) => (catalog.getAgent(id)?.specialty ?? '') === 'stun'
-  const stunBudget = isStun(opts.mainAgentId) ? 0 : 1
   const candidates = opts.candidatePool.filter(id => id !== opts.mainAgentId && catalog.getAgent(id))
-  const pairs: [string, string][] = []
-  for (let i = 0; i < candidates.length; i++) {
-    for (let j = i + 1; j < candidates.length; j++) {
-      const a = candidates[i]
-      const b = candidates[j]
-      if ((isStun(a) ? 1 : 0) + (isStun(b) ? 1 : 0) > stunBudget) continue
-      pairs.push([a, b])
-    }
-  }
+  const pairs = teammatePairsFor(opts.mainAgentId, candidates, catalog) // 至多 1 击破：teamStructure.ts（CC-483）
   if (pairs.length === 0) {
     report(1, '候选池不足（至少 2 名非主C队友）')
     return { points: [], stats: { nonConverged: 0, durationMs: Date.now() - t0 } }

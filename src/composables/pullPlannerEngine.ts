@@ -14,6 +14,7 @@ import type { ConfigModel } from '@/stores/config'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { useCatalogStore } from '@/stores/catalog'
+import { teamStunOk } from '@/composables/teamStructure'
 import { isLimitedSWengineId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import type { BossPreset } from '@/types/bossPreset'
@@ -217,20 +218,19 @@ export function createEngineOracle(opts: EngineOracleOptions): {
       //    （探针 12 期 × 3 房，第 3 房全部空）。3 房不重叠至少要 2 × 3 = 6 名不同队友。
       // ② 队友序原为候选池序（免费代表在前、限定卡在末尾）⇒ 买到的限定 S **只能当 slot0、永远进不了队友位**
       //    （探针里买到的卡 100% 在 s0）。改为持有档高者在前（稳定排序，免费成员档位 0 保持原序）。
-      const isStun = (id: string) => (catalog.getAgent(id)?.specialty ?? '') === 'stun'
       const MATE_TOP = 2 * PLANNER_ROOMS_PER_PERIOD
       const mateOrder = [...members].sort((a, b) => (holdings[b] ?? 0) - (holdings[a] ?? 0))
       const results: Array<{ team: [string, string, string]; score: number }> = []
       for (let i = 0; i < members.length; i++) {
         const lead = members[i]
-        // 队友候选 = 非本人、且与主C合计 ≤1 击破
+        // 队友候选 = 非本人、且与主C合计不超击破上限（teamStructure.ts，CC-483）
         const mates = mateOrder
-          .filter(m => m !== lead && ((isStun(lead) ? 1 : 0) + (isStun(m) ? 1 : 0)) <= 1)
+          .filter(m => m !== lead && teamStunOk([lead, m], catalog))
           .slice(0, MATE_TOP)
         for (let a = 0; a < mates.length; a++) {
           for (let b = a + 1; b < mates.length; b++) {
             const team = [lead, mates[a], mates[b]] as [string, string, string]
-            if ((isStun(team[1]) ? 1 : 0) + (isStun(team[2]) ? 1 : 0) > 1) continue // 双队友击破互斥
+            if (!teamStunOk(team, catalog)) continue // 双队友击破互斥（主C 已与各队友单独过滤，这里兜整队）
             const score = evalTeamOnce(bossRoom, team, holdings, configStore)
             if (score == null) continue // 收敛过滤：未收敛伤害虚高，排除
             results.push({ team, score })

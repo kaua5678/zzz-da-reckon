@@ -32,6 +32,7 @@ import { applyBossRoom } from '@/composables/bossRoom'
 import type { ConfigModel } from '@/stores/config'
 import { equalizeTimeWeights } from '@/composables/timeWeightBalancer'
 import { useCatalogStore } from '@/stores/catalog'
+import { teammatePairsFor } from '@/composables/teamStructure'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
 import { indexForDate } from '@/composables/bossSchedule'
 import { isLimitedAgent, isLimitedWEngine } from '@/composables/teamCompare'
@@ -435,23 +436,12 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
   const candidates = (opts.candidatePool ?? Object.keys(AGENT_RELEASE_NODE))
     .filter(id => id !== opts.mainAgentId)
     .filter(id => opts.candidatePool?.length || opts.includeTestServer || !testNodes.has(AGENT_RELEASE_NODE[id]))
-  // 队伍结构约束：至多 1 名击破（stun）。真实 meta 无双击破阵容（失衡窗口重叠浪费），
-  // 且引擎失衡循环对双击破组合严重高估（实测 仪玄+莱卡恩+青衣 8金 ≈ 437% 血量，远高于
-  // 单击破 meta 队 105-127%）；用户确认的演变路径（橘福福/卢西娅/琉音/诺姆）均为 ≤1 击破。
-  const isStun = (id: string) => (catalog.getAgent(id)?.specialty ?? '') === 'stun'
-  const stunBudget = isStun(opts.mainAgentId) ? 0 : 1
+  // 队伍结构约束：至多 1 名击破（规则与依据见 composables/teamStructure.ts，CC-483）
 
   // ---- 阶段 1：全对参考伤害（精确增量，每对只算一次）----
   // 按「较晚实装成员」的轴位置排序求值，让早期节点先完成（进度单调）
-  const pairs: { a: string; b: string; at: number }[] = []
-  for (let i = 0; i < candidates.length; i++) {
-    for (let j = i + 1; j < candidates.length; j++) {
-      const a = candidates[i]
-      const b = candidates[j]
-      if ((isStun(a) ? 1 : 0) + (isStun(b) ? 1 : 0) > stunBudget) continue
-      pairs.push({ a, b, at: Math.max(axisIndexFor(a), axisIndexFor(b)) })
-    }
-  }
+  const pairs = teammatePairsFor(opts.mainAgentId, candidates, catalog)
+    .map(([a, b]) => ({ a, b, at: Math.max(axisIndexFor(a), axisIndexFor(b)) }))
   pairs.sort((x, y) => x.at - y.at)
 
   const refDamage = new Map<string, number>()
