@@ -109,7 +109,7 @@ function buildBillyCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput)
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): BillyCycle {
   return computeBillyCycle({
-    cinemaLevel: Number(cfg.billyCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.billyCinemaLevel),
     additionalActive: cfg.billyAdditionalActive === true,
     coreCrouchCoverage: Number(cfg.billyCoreCrouchCoverage ?? 1),
     chainCountTotal: Number(state.chainCountTotal ?? 0),

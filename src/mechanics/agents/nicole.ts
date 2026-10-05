@@ -43,7 +43,7 @@ export const NICOLE_C1_FIELD_SECONDS_PER_CHARGE_SECOND = 1.5
 // @fact agent:1031/影画1能量场 口径: 影画1「每多蓄力0.1秒→能量场持续+0.15秒」=能量场(1031106)倍率行等比延长，scale=1+1.5×蓄力秒/能量场基准秒(actionTime) | 据 nanoka full/1031.json + 用户@2026-09 | 验 src/mechanics/__tests__/nicole.test.ts | 锚 src/mechanics/agents/nicole.ts#NICOLE_C1_FIELD_SECONDS_PER_CHARGE_SECOND | 信 确认
 
 function buildCharConfig({ cinemaLevel, cfg, skills }: AgentCharConfigInput): void {
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   cfg.nicoleCinemaLevel = cinema
 
   // 影画1：能量场倍率行等比延长（蓄力秒/能量场基准秒）。蓄力秒取持续段 1 段 = 1031103.actionTime。

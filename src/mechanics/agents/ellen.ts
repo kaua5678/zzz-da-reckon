@@ -261,7 +261,7 @@ function applyEllenTeamConfig({ cfg, cinemaLevel, phase, stunCount, threads }: A
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): EllenCycle {
   return computeEllenCycle({
-    cinemaLevel: Number(cfg.ellenCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.ellenCinemaLevel),
     potentialLevel: Number(cfg.ellenPotentialLevel ?? 6),
     basicAttackTime: Number(state.basicAttackTime ?? 0),
     exSpecialCount: state.exSpecialCount,

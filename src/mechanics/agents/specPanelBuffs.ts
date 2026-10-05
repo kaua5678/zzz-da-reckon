@@ -144,7 +144,7 @@ peiluoProminenceMechanic.directRowBonus = ({ exec, isAxis, overlay }) => {
  */
 peiluoProminenceMechanic.applyTeamConfig = ({ cfg, phase, cinemaLevel, stunCount }: AgentTeamConfigInput) => {
   if (phase !== 'converge') return
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   // 连携总次数：轴模式用轴内加权后的覆盖值（由编排层通用注入 cfg），否则 chainCountPerStun × 失衡次数
   // CC-335：额外能力·辉煌军势「连携技回复300喧响」与 applyPanel 暴伤+40% 同门控（未传 panel 的单测桩默认视为激活）
   const chainTotal = chainCountTotalOf(cfg, stunCount)
@@ -161,7 +161,7 @@ peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel, skills }) => {
   // CC-195：日珥账本折算普攻用——余晖 #1–#3 一整套时长（引擎普攻基准段 = 余晖 #3）
   cfg.peiluoBasicCycleSeconds = basicComboCycleSeconds(skills, '1551003')
   // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
-  if ((cinemaLevel ?? 0) >= 1) {
+  if (cinemaLevelOf(cinemaLevel) >= 1) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + 1000
   }
   // 大招口径：2000 喧响/次；通用大招行走上分支 moveId（patchExecutions 拆分三分支）
@@ -706,7 +706,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   },
   buildCharConfig: (input) => {
     jufufuSpecModule?.buildCharConfig?.(input)
-    const cinema = input.cinemaLevel ?? 0
+    const cinema = cinemaLevelOf(input.cinemaLevel)
     const cfg = input.cfg
     cfg.jufufuCinemaLevel = cinema
     // 影画1：进场 100 威风

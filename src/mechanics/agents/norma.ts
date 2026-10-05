@@ -293,7 +293,7 @@ function normaSourceOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     frontlineTime: state.frontlineTime,
-    cinemaLevel: cfg.normaCinemaLevel ?? 0,
+    cinemaLevel: cinemaLevelOf(cfg.normaCinemaLevel),
     additionalAbilityActive: cfg.normaAdditionalAbilityActive ?? false,
     stunCount: cfg.normaStunCount ?? 0,
     stunCoverage: cfg.normaStunCoverage ?? 0,
@@ -316,7 +316,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
   const holdSeconds = resolveNormaHoldSeconds(cfg)
   // 影画6：破甲弹头失衡值+30%（1571008/1571011/1571014）、高爆弹头伤害+30%（1571009/1571012/1571015），
   // 技能专属效果：只作用于对应倍率行，按表值缩放（damageMultiplierOverride/dazeMultiplierOverride）。
-  const cinema = cfg.normaCinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cfg.normaCinemaLevel)
   const c6DazeMult = cinema >= 6 ? 1 + C6_ARMOR_PIERCE_DAZE_BONUS / 100 : 1
   const c6DmgMult = cinema >= 6 ? 1 + C6_HIGH_EXPLOSIVE_DMG_BONUS / 100 : 1
   const barrageRows = cfg.normaBarrageRowValues ?? { damage: [], daze: [] }
@@ -585,7 +585,7 @@ export const normaMechanic: AgentMechanicModule = {
     //   ⇒ 实际只在诺姆槽结算（迁移前的 `* 200 * 2` 即此语义：在诺姆槽一次算入两侧的量）。
     //   故这里返回 **400 = 两侧合计**，不是单侧 200——改口径前先看这条。
     //   门控（影画4）在模块内判，引擎不读 normaCinemaLevel。
-    decibelPerUnit: ({ cfg }) => ((cfg.normaCinemaLevel ?? 0) >= 4 ? 400 : 0),
+    decibelPerUnit: ({ cfg }) => (cinemaLevelOf(cfg.normaCinemaLevel) >= 4 ? 400 : 0),
   },
   /**
    * 影画2·帽子把戏回能（2026-09-26 CC-14a）：战斗中触发回 25 能量，20 秒冷却；按战斗时间驱动

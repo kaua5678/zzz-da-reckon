@@ -28,7 +28,7 @@ export const PAN_YINHU_POJIN_PER_EX = 3
 export const PAN_YINHU_TOUCH_OF_DEATH_MOVE_IDS = ['1421007', '1421008', '1421009'] as const
 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  cfg.panYinhuCinemaLevel = cinemaLevel ?? 0
+  cfg.panYinhuCinemaLevel = cinemaLevelOf(cinemaLevel)
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {

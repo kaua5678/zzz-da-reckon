@@ -115,7 +115,7 @@ function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, o
   cfg.yuzuhaCinemaLevel = cinemaLevel
   // 影画4：支援突击行的**表值积蓄**在此预存（积蓄会被 enrich 从倍率表回填 ⇒ patchExecutions
   // 阶段读不到；先例：seth.ts:98 预存 daze）。仅在 C4 且该角色确有支援突击行时预存。
-  if ((cinemaLevel ?? 0) >= 4 && cfg.assistFollowUpMoveId) {
+  if (cinemaLevelOf(cinemaLevel) >= 4 && cfg.assistFollowUpMoveId) {
     const move = findAssistFollowUpMove(skills, cfg.assistFollowUpMoveId)
     const base = getRowValue(move, 'anomaly_buildup')
     if (base > 0) cfg.yuzuhaC4AssistBuildUp = base * (1 + YUZUHA_C4_ASSIST_BUILDUP_PCT / 100)
@@ -123,11 +123,11 @@ function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, o
   // 终结技队友回能（calcCrossAgentEnergy 泛型通道，类型注释预留的「如柚叶25」）：满级12级 7+1.5×12
   cfg.supportUltimateEnergyRegen = YUZUHA_ULT_TEAM_ENERGY
   // 影画1 进场回 30 能量（勘域模式 180s 一次 → 每局一次，克拉蕾锐能/佩洛伊斯喧响同款口径）
-  if ((cinemaLevel ?? 0) >= 1) {
+  if (cinemaLevelOf(cinemaLevel) >= 1) {
     cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + YUZUHA_C1_ENTER_ENERGY
   }
   // 影画2 强制连携：每次强制连携也有角色入场 → 甜度点 +1/次（与全队 chainCountTotalExtra 同源近似）
-  if ((cinemaLevel ?? 0) >= 2) {
+  if (cinemaLevelOf(cinemaLevel) >= 2) {
     const effective = effectiveBattleTime(cfg)
     cfg.yuzuhaChainEntryCount += Math.floor(effective / YUZUHA_C2_CHAIN_CD)
   }
@@ -148,7 +148,7 @@ function buildYuzuhaTeamConfig({ slot, characters, team, anomalyBuildupElementBy
   mine.yuzuhaTransferElement = anomalyBuildupElementBySlot?.[targetSlot]
     ?? target?.agent?.damageElement
   // 影画2 强制连携：全队生效（强制连携=正常连携技，阵营全员入场）
-  if ((cinemaLevel ?? 0) >= 2) {
+  if (cinemaLevelOf(cinemaLevel) >= 2) {
     const effective = minusInvincibleTime(combatTime, mine)
     const forced = Math.floor(effective / YUZUHA_C2_CHAIN_CD)
     if (forced > 0) {
@@ -164,7 +164,7 @@ function yuzuhaSourceFromCfg(cfg: AgentResourceInput['cfg']): YuzuhaMechanicSour
   return computeYuzuhaMechanic({
     initialAtk: cfg.yuzuhaInitialAtk ?? cfg.panel.atk ?? 0,
     chainEntryCount: cfg.yuzuhaChainEntryCount ?? 0,
-    cinemaLevel: cfg.yuzuhaCinemaLevel ?? 0,
+    cinemaLevel: cinemaLevelOf(cfg.yuzuhaCinemaLevel),
     parryCount: cfg.parryCount ?? 0,
     effectiveSeconds,
     transferElement: cfg.yuzuhaTransferElement,

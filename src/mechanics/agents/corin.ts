@@ -171,7 +171,7 @@ function applyCorinTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount }
 
 function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' | 'state'>): CorinCycle {
   return computeCorinCycle({
-    cinemaLevel: Number(cfg.corinCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.corinCinemaLevel),
     additionalActive: cfg.corinAdditionalActive === true,
     coreSawCoverage: Number(cfg.corinCoreSawCoverage ?? 1),
     additionalStunCoverage: Number(cfg.corinAdditionalStunCoverage ?? 0.5),

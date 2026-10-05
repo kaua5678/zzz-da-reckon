@@ -369,7 +369,7 @@ function burniceMechanicSourceOf(cfg: CharacterOperationConfig, state: Iteration
     totalTime: effectiveCombatTime(state, cfg),
     atk: cfg.panel.atk ?? 0,
     anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
-    cinemaLevel: cfg.burniceCinemaLevel ?? 0,
+    cinemaLevel: cinemaLevelOf(cfg.burniceCinemaLevel),
     potentialLevel: cfg.panel.potentialLevel ?? 6,
     energyRegen: resolveEnergyRegenTotal(cfg.panel),
     ultimateCount: state.ultimateCount,
@@ -564,7 +564,7 @@ const settings: MechanicSetting[] = [
  * 不再回编排层 `configStore.team[slot]` 取——这正是本批要消灭的「编排层替角色认人」。
  */
 function patchBurniceExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinemaLevel = cfg.burniceCinemaLevel ?? 0
+  const cinemaLevel = cinemaLevelOf(cfg.burniceCinemaLevel)
   if (cinemaLevel < 4) return
   for (const exec of executions) {
     if (cinemaLevel >= 4 && (exec.category === 'special' || exec.category === 'assist')) {

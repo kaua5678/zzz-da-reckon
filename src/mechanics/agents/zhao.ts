@@ -84,8 +84,8 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
 }
 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  cfg.zhaoCinemaLevel = cinemaLevel ?? 0
-  if ((cinemaLevel ?? 0) >= 4) {
+  cfg.zhaoCinemaLevel = cinemaLevelOf(cinemaLevel)
+  if (cinemaLevelOf(cinemaLevel) >= 4) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + ZHAO_C4_DECIBEL
   }
   // 照不战场（用户口径）：Q（终结技·兔兔连斩）打一半可快速支援取消，另一半进合轴，
@@ -142,7 +142,7 @@ function cycleFromInput({
   teamFrontlineSeconds,
 }: Pick<AgentResourceInput, 'cfg' | 'state' | 'teamFrontlineSeconds'>): ZhaoFrostCycle {
   return computeZhaoFrostCycle({
-    cinemaLevel: Number(cfg.zhaoCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.zhaoCinemaLevel),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     teamFrontlineSeconds: teamFrontlineSeconds ?? 0,

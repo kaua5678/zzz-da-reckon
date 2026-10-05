@@ -251,7 +251,7 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
 /** `fengfengStacks` 由调用方经 `resolveSeverianFengfengStacks` 给定（需要影猎次数，cfg 上没有） */
 function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'severianCinemaLevel' | 'severianAdditionalActive' | 'severianC4Coverage'>, fengfengStacks: number): SeverianCycle {
   return computeSeverianCycle({
-    cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
     additionalActive: cfg.severianAdditionalActive === true,
     fengfengStacks,
     c4Coverage: Number(cfg.severianC4Coverage ?? 1),
@@ -350,10 +350,10 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
 function patchSeverianExecutions({ cfg, state, executions }: AgentResourceInput): void {
   // CC-333：执行行与资源区块共用 computeSeverianCycle（优先读 buildCharConfig 写入的字段，单测直调未跑 buildCharConfig 时回落 setting）
   const cycle = computeSeverianCycle({
-    cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
     additionalActive: cfg.severianAdditionalActive === true,
     fengfengStacks: resolveSeverianFengfengStacks({
-      cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
+      cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
       shadowHuntCount: severianShadowHuntCount(cfg, state),
       sliderStacks: cfg.severianFengfengStacks !== undefined
         ? Number(cfg.severianFengfengStacks)
@@ -389,7 +389,7 @@ export interface SeverianFlowResult extends SeverianCycle {
 function buildSeverianResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const { flowIncome, shadowHuntCount } = severianFlowState(cfg as AgentCharConfigInput['cfg'], state as AgentResourceInput['state'])
   const fengfengStacks = resolveSeverianFengfengStacks({
-    cinemaLevel: Number(cfg.severianCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
     shadowHuntCount,
     sliderStacks: Number(cfg.severianFengfengStacks ?? 1),
   })

@@ -25,7 +25,7 @@ describe('cinemaLevelOf（CC-506）', () => {
     expect(cinemaLevelOf('abc')).toBe(0)
     expect(cinemaLevelOf('4')).toBe(4)
   })
-  it('源码锁：mechanics 下不再手写 floor(…CinemaLevel ?? 0) / whole(…CinemaLevel…)', () => {
+  it('源码锁：mechanics 下不再手写 floor(…CinemaLevel…) / whole(…CinemaLevel…) / …cinemaLevel ?? 0（r689 收尾：所有影画读法走 cinemaLevelOf）', () => {
     const dir = join(SRC, 'mechanics')
     const walk = (d: string, out: string[] = []): string[] => {
       for (const f of readdirSync(d, { withFileTypes: true })) {
@@ -38,7 +38,7 @@ describe('cinemaLevelOf（CC-506）', () => {
     }
     for (const f of walk(dir)) {
       const code = stripComments(readFileSync(f, 'utf8'))
-      const bad = code.split('\n').filter(l => /(Math\.floor\(|whole\()\s*(Number\()?\s*[\w.?]*[cC]inemaLevel/.test(l))
+      const bad = code.split('\n').filter(l => /(Math\.floor\(|whole\()\s*(Number\()?\s*[\w.?]*[cC]inemaLevel|[cC]inemaLevel\s*\?\?\s*0\b/.test(l))
       expect(bad, f).toEqual([])
     }
   })

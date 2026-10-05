@@ -43,7 +43,7 @@ export const CAESAR_C4_SUPPORT_POINTS_PER_CHAIN_ULT = 3
 export const CAESAR_C4_SUBSTITUTE_ICD_SECONDS = 5
 
 function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   if (cinema >= 2) {
     panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + CAESAR_C2_ENERGY_EFF
   }
@@ -54,7 +54,7 @@ function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
 }
 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  cfg.caesarCinemaLevel = cinemaLevel ?? 0
+  cfg.caesarCinemaLevel = cinemaLevelOf(cinemaLevel)
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {

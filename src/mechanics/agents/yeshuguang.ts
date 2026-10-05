@@ -381,7 +381,7 @@ function resolveCycle(cfg: CharacterOperationConfig, state: {
 }
 
 function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInput): void {
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   cfg.yeshuguangCinemaLevel = cinema
   // 自动选轴：初始打满（full），estimateExSpecialTime 按超支信号逐级退化。
   if (cfg.yeshuguangAutoAxis !== 'short_pair' && cfg.yeshuguangAutoAxis !== 'short_mie') {

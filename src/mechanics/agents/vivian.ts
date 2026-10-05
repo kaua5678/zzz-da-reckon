@@ -186,7 +186,7 @@ function buildVivianCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): VivianCycle {
   return computeVivianCycle({
-    cinemaLevel: Number(cfg.vivianCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.vivianCinemaLevel),
     // 源1：全队强特命中次数（useResourceCalc 收敛注入 vivianTeamExTotal，含薇薇安自己）
     teamExSpecialCount: Number(cfg.vivianTeamExTotal ?? state.exSpecialCount ?? 0),
     // 自身强特次数（飞羽强特源 + 悬落衔接源）

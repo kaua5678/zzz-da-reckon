@@ -118,7 +118,7 @@ export function computeLighterMoraleDmgBonus(input: LighterMoraleBuffInput): num
   const overSteps = Math.floor(Math.max(0, impact - LIGHTER_IMPACT_SOFT_CAP) / 10)
   const perStack = LIGHTER_MORALE_STACK_BASE + overSteps * LIGHTER_MORALE_STACK_EXTRA_PER_10
   const base = Math.min(LIGHTER_MORALE_DMG_CAP, perStack * LIGHTER_MORALE_MAX_STACKS)
-  const mult = (input.cinemaLevel ?? 0) >= 2 ? 1.2 : 1
+  const mult = cinemaLevelOf(input.cinemaLevel) >= 2 ? 1.2 : 1
   return base * mult
 }
 
@@ -138,7 +138,7 @@ export function computeLighterRoutStunBonus(cinemaLevel = 0): number {
 export function computeLighterMorale(input: LighterMoraleInput): LighterMoraleResult {
   const t = Math.max(0, Number(input.combatTime) || 0)
   const energy = Math.max(0, Number(input.teamEnergyConsumed) || 0)
-  const mult = (input.cinemaLevel ?? 0) >= 6 ? 2 : 1
+  const mult = cinemaLevelOf(input.cinemaLevel) >= 6 ? 2 : 1
   const moraleGainTime = LIGHTER_MORALE_PER_SEC * t * mult
   const moraleGainEnergy = energy * LIGHTER_MORALE_PER_ENERGY * mult
   const moraleGain = moraleGainTime + moraleGainEnergy
@@ -222,7 +222,7 @@ function cfgNum(cfg: CharacterOperationConfig, key: keyof CharacterOperationConf
 }
 
 function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput): void {
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   // 喷发耗士气冲击力 +20%（默认吃满）
   const impactPct = computeLighterImpactBonusPct(cinema)
   panel.impact = (panel.impact ?? 0) * (1 + impactPct / 100)
@@ -257,7 +257,7 @@ function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput):
 }
 
 function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   cfg.lighterCinemaLevel = cinema
   cfg.lighterImpact = panel.impact ?? 0
   cfg.lighterMoraleDmgBonus = Number(panel.lighterMoraleDmgBonus ?? 0) || 0
@@ -558,7 +558,7 @@ export const lighterMechanic: AgentMechanicModule = {
    */
   teamPanelEffects: ({ cinemaLevel, targetAgent, panel, settings }: AgentTeamPanelEffectInput) => {
     if (targetAgent.id === LIGHTER_ID) return // 莱特本人不吃
-    if ((cinemaLevel ?? 0) < 4) return
+    if (cinemaLevelOf(cinemaLevel) < 4) return
     const ratio = Math.max(0, Math.min(1, settings['lighter.backstageRatio'] ?? 2 / 3))
     panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + LIGHTER_C4_FRONT_EFFICIENCY * ratio
   },

@@ -208,7 +208,7 @@ function applyGraceTeamConfig({ cfg, phase, characters, cinemaLevel, threads }: 
     cfg.graceC1Cycles =
       Math.max(0, Math.floor(Number((threads.moduleFeedback?.graceC1Cycles ?? 0))))
   }
-  if ((cinemaLevel ?? 0) < 1) return
+  if (cinemaLevelOf(cinemaLevel) < 1) return
   const cycles = Math.max(0, Math.floor(Number(cfg.graceC1Cycles ?? 0)))
   const gift = GRACE_C1_TEAM_ENERGY_PER_CYCLE * cycles
   const prev = Math.max(0, Number(cfg.graceC1TeamEnergyTotal ?? 0))

@@ -121,7 +121,7 @@ export function computeLucyBoarCount(frontlineTime: number, cd: number): number 
 }
 
 function buildCharConfig({ skills, cinemaLevel, team: _team, cfg }: AgentCharConfigInput): void {
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   cfg.lucyCinemaLevel = cinema
 
   const spin = findMove(skills, MOVE_SPIN)

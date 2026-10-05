@@ -246,7 +246,7 @@ function applyTriggerTeamConfig(input: AgentTeamConfigInput): void {
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): TriggerCycle {
   return computeTriggerCycle({
-    cinemaLevel: Number(cfg.triggerCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.triggerCinemaLevel),
     // 协奏狙杀/冥狱 CD 折算按有效战斗时间（扣 boss 无敌，core/effectiveTime.ts）
     battleTime: minusInvincibleTime(Number(cfg.battleTime ?? 180), cfg),
     normalCountOverride: Number(cfg.triggerNormalCountOverride ?? 0),

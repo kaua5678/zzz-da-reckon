@@ -198,7 +198,7 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
   panel.sharpCritDmg = (panel.sharpCritDmg ?? 0) + RESIDUAL_EDGE_SHARP_CRIT_DMG
   // 影画2（薪火荣冠）：猩红铭刻/连携/终结/反制支援/支援突击期间攻击命中无视 18% 电抗
   //   （状态高频维持，满覆盖近似）——★ R55 订正：旧实现是 `>=1` + 16%，门控与数值双错
-  if ((cinemaLevel ?? 0) >= 2) {
+  if (cinemaLevelOf(cinemaLevel) >= 2) {
     panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + C2_RES_IGNORE
   }
 }
@@ -642,7 +642,7 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     inscriptionTimeShareSetting: Number(cfg.claretInscriptionShareSetting ?? 0),
     // 影画2「猩红铭刻最大持续时间延长2秒」⇒ 单窗 16s → 18s（★ R55 建模，旧实现整条漏掉）
     windowSeconds: DEFAULT_INSCRIPTION_WINDOW_SECONDS
-      + (Number(cfg.claretCinemaLevel ?? 0) >= 2 ? C2_INSCRIPTION_WINDOW_BONUS_SECONDS : 0),
+      + (cinemaLevelOf(cfg.claretCinemaLevel) >= 2 ? C2_INSCRIPTION_WINDOW_BONUS_SECONDS : 0),
   })
   // EX 发数 = 循环轮数（每轮 = 一次 EX 进场；窗口内也在回锐能，故轮数由上面的双约束解出）
   const affordableExCount = Math.max(0, Math.floor(twoState.entries))
@@ -669,7 +669,7 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     cleaveSpecialCount: Number(cfg.claretCleaveCount ?? 0),
     bloodBurialCount: Number(cfg.claretBloodBurialCount ?? 0),
     gashCoverage: Number(cfg.claretGashCoverage ?? 1),
-    cinemaLevel: Number(cfg.claretCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.claretCinemaLevel),
     chainCountTotal: state.chainCountTotal ?? 0,
     ultimateCount,
     basicDamagePerSec: blended.damage,
@@ -803,7 +803,7 @@ function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
         { label: '铭刻平A时间', value: `${fmt(source.inscriptionBasicTime)}s`, detail: `= 轮数 × 单窗 ${fmt(source.inscriptionWindowSecondsPerEntry)}s + 总延长 ${fmt(source.inscriptionWindowSeconds)}s` },
         { label: '平A秒均', value: `${fmt(source.basicDamagePerSec)}%/s`, detail: `常态 345.21（血锻#3）×${fmt((1 - source.inscriptionBasicTimeShare) * 100)}% + 铭刻 531.88（锻星#3）×${fmt(source.inscriptionBasicTimeShare * 100)}%` },
       ],
-      footer: `常态只能打血锻四式、锻星是猩红铭刻专属（用户口径 2026-09-11）；两态平A秒均与残痕积累都不同，按时间占比加权。锐能自动回复按公告列 sharpness_gain（血锻 3.0/s、锻星 0）计入总账。单窗基础 ${fmt(DEFAULT_INSCRIPTION_WINDOW_SECONDS)}s（raw）${Number(source.cinemaLevel ?? 0) >= 2 ? ` + 影画2 ${fmt(C2_INSCRIPTION_WINDOW_BONUS_SECONDS)}s` : ''}，另有连携 +2s/次；击杀延长 3s/ICD 未逐秒建模。状态符（核心 +30% 暴击/+50% 积蓄/影画2 18% 电抗）仍按满覆盖计。`,
+      footer: `常态只能打血锻四式、锻星是猩红铭刻专属（用户口径 2026-09-11）；两态平A秒均与残痕积累都不同，按时间占比加权。锐能自动回复按公告列 sharpness_gain（血锻 3.0/s、锻星 0）计入总账。单窗基础 ${fmt(DEFAULT_INSCRIPTION_WINDOW_SECONDS)}s（raw）${cinemaLevelOf(source.cinemaLevel) >= 2 ? ` + 影画2 ${fmt(C2_INSCRIPTION_WINDOW_BONUS_SECONDS)}s` : ''}，另有连携 +2s/次；击杀延长 3s/ICD 未逐秒建模。状态符（核心 +30% 暴击/+50% 积蓄/影画2 18% 电抗）仍按满覆盖计。`,
     },
     {
       id: 'claret-sharpness',

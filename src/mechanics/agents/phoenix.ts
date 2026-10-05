@@ -496,7 +496,7 @@ export const phoenixMechanic: AgentMechanicModule = {
   // 同阵营非异常队友（如坎卜斯黑枝 1451/1471/1481/1591）触发额外能力但仅 1 名异常角色时，tier2 须要求有效异常数 ≥2；
   // 本槽命座按 m.slot === slot 查找（兼容压缩 team 数组）。
   adjustAdditionalAbilityGates: ({ team, slot, gates }) => {
-    const cinemaLevel = team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel ?? 0
+    const cinemaLevel = cinemaLevelOf(team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel)
     const anomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (cinemaLevel >= 6 ? 1 : 0)
     const tier2 = 'phoenix.weakness_anomaly_crit_dmg_tier2'
     const tier3 = 'phoenix.weakness_anomaly_crit_dmg_tier3'

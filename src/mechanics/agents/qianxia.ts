@@ -281,7 +281,7 @@ function buildQianxiaResourceSections({ result }: AgentResourceSectionsInput) {
 }
 
 function applyQianxiaPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
-  if ((cinemaLevel ?? 0) < 6) return
+  if (cinemaLevelOf(cinemaLevel) < 6) return
   // 潜心创作（8s，强特后）按整局覆盖率近似；必定暴击 + 初始攻击×0.03% 暴伤（封顶105）。
   // 原文「根据自身初始攻击力的0.03%」⇒ 初始 = 局外面板（CC-124；读取口 `initialStat`，CC-497）
   const coverage = Math.max(0, Math.min(1, Number(settings['qianxia.c6FocusCoverage'] ?? 1)))

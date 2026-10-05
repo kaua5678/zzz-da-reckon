@@ -109,13 +109,13 @@ export function soukakuPerExExtraTime(cfg: unknown): { necessaryTime: number; co
 }
 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
-  cfg.soukakuCinemaLevel = cinemaLevel ?? 0
+  cfg.soukakuCinemaLevel = cinemaLevelOf(cinemaLevel)
   // 强特能量成本 = 30 能量×击数（60 能量 = 2 击 + 2 风团，2026-09-05 用户口径）：
   // 强特次数按总能量/此成本收敛，击数滑块联动自我能量循环的供给侧。
   cfg.exSpecialEnergyConsume = SOUKAKU_SWING_ENERGY * clampSwings(cfg)
   // 影画2 满层转回能：涡流满层后再获得涡流 → 回复 1.2 能量。逐帧概率/涡流状态机未建模，
   // 按可调触发次数注入能量池（默认 5 次，用户按实际对局调整）。
-  if ((cinemaLevel ?? 0) >= 2) {
+  if (cinemaLevelOf(cinemaLevel) >= 2) {
     const count = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'soukaku.c2RefundCount') ?? 5)))
     cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + SOUKAKU_C2_ENERGY_PER_TRIGGER * count
   }

@@ -153,13 +153,13 @@ function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, poten
   }
 
   // 1命：物理积蓄+15%；每点精通增伤0.1%，最多30%，按狂热覆盖率折算（吃总闸，见函数头注释）。
-  if ((cinemaLevel ?? 0) >= 1) {
+  if (cinemaLevelOf(cinemaLevel) >= 1) {
     panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + 15 * frenzyFactor
     panel.dmgBonus = (panel.dmgBonus ?? 0) + Math.min(30, anomalyProficiency * 0.1) * frenzyFactor
   }
 
   // 6命：触发强击即狂热，狂热覆盖率按100%；双暴+20/40。不吃总闸（6命是狂热的来源）。
-  if ((cinemaLevel ?? 0) >= 6) {
+  if (cinemaLevelOf(cinemaLevel) >= 6) {
     panel.critRate = (panel.critRate ?? 0) + 20
     panel.critDmg = (panel.critDmg ?? 0) + 40
   }
@@ -226,7 +226,7 @@ const settings: MechanicSetting[] = [
 
 /** 记录命座等级（萨霍夫跳次数用） */
 function buildJaneCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): void {
-  cfg.janeCinemaLevel = cinemaLevel ?? 0
+  cfg.janeCinemaLevel = cinemaLevelOf(cinemaLevel)
 }
 
 /** 萨霍夫跳：狂热进场 1 次 + 影画1 额外 1 次；数值同平A、仅额外回复狂热（融合组见 moveFusions）。 */

@@ -79,7 +79,7 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
   if (bonus > 0) panel.atk = (panel.atk ?? 0) + bonus
   panel.benDefToAtk = bonus
 
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   if (cinema >= 6) {
     panel.stunBuildUpBonus__basic = (panel.stunBuildUpBonus__basic ?? 0) + BEN_C6_STUN_BONUS
     panel.stunBuildUpBonus__dashAttack = (panel.stunBuildUpBonus__dashAttack ?? 0) + BEN_C6_STUN_BONUS
@@ -88,7 +88,7 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
 }
 
 function buildCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
-  cfg.benCinemaLevel = cinemaLevel ?? 0
+  cfg.benCinemaLevel = cinemaLevelOf(cinemaLevel)
   cfg.benDef = panel.def ?? 0
   cfg.benExParrySuccessRate = clamp01(cfgMechanicSettingRaw(cfg, BEN_EX_PARRY_RATE_SETTING), 1)
   cfg.benExActionTimes = Object.fromEntries(

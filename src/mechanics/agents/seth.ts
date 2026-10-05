@@ -84,7 +84,7 @@ function buildSethCharConfig({ cinemaLevel, cfg, panel, skills, getRowValue }: A
 
 function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' | 'state'>): SethCycle {
   return computeSethCycle({
-    cinemaLevel: Number(cfg.sethCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.sethCinemaLevel),
     additionalActive: cfg.sethAdditionalActive === true,
     shieldCoverage: Number(cfg.sethShieldCoverage ?? 1),
     additionalResCoverage: Number(cfg.sethAdditionalResCoverage ?? 1),
@@ -110,7 +110,7 @@ function buildSethExecutions({ cfg, state, executions }: AgentResourceInput): vo
 }
 
 function patchSethExecutions({ cfg, state: _state, executions }: AgentResourceInput): void {
-  if ((Number(cfg.sethCinemaLevel ?? 0)) < 4) return
+  if ((cinemaLevelOf(cfg.sethCinemaLevel)) < 4) return
   const scaled = Number(cfg.sethC4DefensiveDaze ?? 0)
   if (scaled <= 0) return
   const defMoveId = cfg.defensiveAssistMoveId

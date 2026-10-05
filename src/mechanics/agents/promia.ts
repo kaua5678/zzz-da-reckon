@@ -130,7 +130,7 @@ function buildPromiaCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, char
 
 function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'promiaCinemaLevel' | 'promiaAnomalyMastery' | 'promiaAdditionalActive'>): PromiaCycle {
   return computePromiaCycle({
-    cinemaLevel: Number(cfg.promiaCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.promiaCinemaLevel),
     anomalyMastery: Number(cfg.promiaAnomalyMastery ?? 0),
     additionalActive: cfg.promiaAdditionalActive === true,
   })

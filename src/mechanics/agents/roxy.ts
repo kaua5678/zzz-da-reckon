@@ -228,7 +228,7 @@ export function computeRoxyWindEnergy(input: {
 
 function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true
-  cfg.roxyCinemaLevel = cinemaLevel ?? 0
+  cfg.roxyCinemaLevel = cinemaLevelOf(cinemaLevel)
   // v12 moveIds
   cfg.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2.5))
   // CC-109（R5 D28）：一次强特 = 小心风寒启动 + 自旋 spinSeconds 秒，耗能按 catalog 两项合计。
@@ -250,20 +250,20 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
     [SEND_OFF_MOVE_ID]: getRowValue(findMoveById(skills, SEND_OFF_MOVE_ID), 'damage'),
   }
   // 影画4：招架支援回1能量/次 + 闪避反击回2能量/次（招式内至多1次）
-  if ((cinemaLevel ?? 0) >= 4) {
+  if (cinemaLevelOf(cinemaLevel) >= 4) {
     const energy = (cfg.parryCount ?? 0) * ROXY_C4_PARRY_ENERGY + (cfg.dodgeCounterCount ?? 0) * ROXY_C4_DODGE_ENERGY
     if (energy > 0) cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + energy
   }
   // 额外能力·辉金心脏：进场回 40 能量（勘域 180s 一次 → 每局一次；门控未接，note）
   cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + ROXY_AA_ENTER_ENERGY
   // 影画失衡值（v12 原文「失衡值提升」）：预缩倍率表 daze 值，patchRoxyExecutions 经 dazeMultiplierOverride 精确结算
-  if ((cinemaLevel ?? 0) >= 2) {
+  if (cinemaLevelOf(cinemaLevel) >= 2) {
     cfg.roxyExChillDaze = getRowValue(findMoveById(skills, EX_CHILL_MOVE_ID), 'daze') * (1 + ROXY_C2_EX_CHILL_DAZE_BONUS / 100)
   }
-  if ((cinemaLevel ?? 0) >= 4) {
+  if (cinemaLevelOf(cinemaLevel) >= 4) {
     cfg.roxyUltDaze = getRowValue(findMoveById(skills, ROXY_ULT_MOVE_ID), 'daze') * (1 + ROXY_C4_ULT_DAZE_BONUS / 100)
   }
-  if ((cinemaLevel ?? 0) >= 6) {
+  if (cinemaLevelOf(cinemaLevel) >= 6) {
     cfg.roxyMegaDaze = getRowValue(findMoveById(skills, MEGA_TORNADO_MOVE_ID), 'daze') * (1 + ROXY_C6_MEGA_DAZE_BONUS / 100)
   }
 }
@@ -281,7 +281,7 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if (impactBonus > 0) panel.impact = (panel.impact ?? 0) + impactBonus
   // 额外能力：自身伤害 +80%（Lv60 上限；门控由团队条件，面板统一施加——无强攻/命破/锋御队略高估，note）
   panel.dmgBonus = (panel.dmgBonus ?? 0) + ROXY_AA_DMG_BONUS_LV60
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   if (cinema >= 1) {
     panel.critDmg = (panel.critDmg ?? 0) + ROXY_C1_CRIT_DMG
     panel.enemyResReduction = (panel.enemyResReduction ?? 0) + ROXY_C1_RES_REDUCTION
@@ -303,7 +303,7 @@ function roxyWindEnergySourceOf(
     exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
     ultimateCount: state.ultimateCount,
     spinSeconds: Number(cfg.roxySpinSeconds ?? 2.5),
-    cinemaLevel: Number(cfg.roxyCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.roxyCinemaLevel),
     energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
     eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID, 1),
   })

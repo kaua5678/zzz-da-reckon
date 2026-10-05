@@ -143,7 +143,7 @@ function buildEvelynCharConfig({ cinemaLevel, skills, cfg, panel, getRowValue }:
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): EvelynCycle {
   return computeEvelynCycle({
-    cinemaLevel: Number(cfg.evelynCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.evelynCinemaLevel),
     garroteCount: Number(cfg.evelynGarroteCount ?? 4),
     ultimateCount: state.ultimateCount,
     baseCritRate: Number((cfg.panel?.critRate as number | undefined) ?? 0),

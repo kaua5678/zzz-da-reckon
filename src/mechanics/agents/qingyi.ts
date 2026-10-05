@@ -120,7 +120,7 @@ function applyQingyiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
     if (atkGain > 0) panel.atk = (panel.atk ?? 0) + atkGain
   }
   // 影画2·四两拨千斤：羁服叠满时自身对目标失衡值 +15%（需叠满才生效，默认覆盖率 50%）
-  if ((cinemaLevel ?? 0) >= 2) {
+  if (cinemaLevelOf(cinemaLevel) >= 2) {
     panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + C2_STUN_BONUS * C2_STUN_COVERAGE
   }
 }

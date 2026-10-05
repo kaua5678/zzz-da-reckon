@@ -264,7 +264,7 @@ function liuyinExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSpec
     exSpecialCount: exTotal,
     ultimateCount: Math.max(0, Math.floor(ultimateCount)),
     combatTime: cfg.battleTime ?? 180,
-    cinemaLevel: cfg.liuyinCinemaLevel ?? 0,
+    cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
     extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
     previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
   })
@@ -277,7 +277,7 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     combatTime: cfg.battleTime ?? 180,
-    cinemaLevel: cfg.liuyinCinemaLevel ?? 0,
+    cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
     extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
     previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
   })
@@ -359,7 +359,7 @@ function buildLiuyinResourceResult({ cfg, state }: AgentResourceResultInput): Pa
       exSpecialCount: state.exSpecialCount,
       ultimateCount: state.ultimateCount,
       combatTime: cfg.battleTime ?? 180,
-      cinemaLevel: cfg.liuyinCinemaLevel ?? 0,
+      cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
       extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
       previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
     }),
@@ -492,7 +492,7 @@ export const liuyinMechanic: AgentMechanicModule = {
         exSpecialCount: state.exSpecialCount,
         ultimateCount: state.ultimateCount,
         combatTime: cfg.battleTime ?? totalTime,
-        cinemaLevel: cfg.liuyinCinemaLevel ?? 0,
+        cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
         extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
         previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
       })

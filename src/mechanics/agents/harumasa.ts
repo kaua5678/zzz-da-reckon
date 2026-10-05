@@ -229,7 +229,7 @@ function applyHarumasaTeamConfig({ cfg, phase, stunCount, combatTime, axis }: Ag
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): HarumasaCycle {
   return computeHarumasaCycle({
-    cinemaLevel: Number(cfg.harumasaCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.harumasaCinemaLevel),
     potentialLevel: Number(cfg.harumasaPotentialLevel ?? 6),
     a5Count: Number(cfg.harumasaA5Count ?? 2),
     chainCount: state.chainCountTotal,

@@ -182,7 +182,7 @@ function buildHugoCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfi
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): HugoCycle {
   return computeHugoCycle({
-    cinemaLevel: Number(cfg.hugoCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.hugoCinemaLevel),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     exVerdictRatio: Number(cfg.hugoExVerdictRatio ?? 1),
@@ -285,7 +285,7 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
 
 function patchHugoExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
-  const cinemaLevel = Number(cfg.hugoCinemaLevel ?? 0)
+  const cinemaLevel = cinemaLevelOf(cfg.hugoCinemaLevel)
   const additionalActive = cfg.hugoAdditionalActive === true
   const c4Coverage = Number(cfg.hugoC4Coverage ?? 0)
   const exOutOfStunRatio = cycle.exSpecialCount > 0
@@ -380,7 +380,7 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
     const wins = winAlloc[ai] ?? 0
     if (wins <= 0) return
     for (const act of ax.actions) {
-      const cinema = memberAt(act.slot)?.cinemaLevel ?? 0
+      const cinema = cinemaLevelOf(memberAt(act.slot)?.cinemaLevel)
       if (act.moveId === HUGO_EX_VERDICT_MOVE_ID) exVerdictBlocks += (act.count ?? 1) * wins
       if (act.moveId === HUGO_ULT_MOVE_ID) ultVerdictBlocks += (act.count ?? 1) * wins
       if (!isHugoEndsWindowMove(act.moveId, cinema)) continue

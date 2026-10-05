@@ -49,7 +49,7 @@ const YANAGI_EXTRA_THRUST_MAX_C2 = 2
 const YANAGI_EXTRA_THRUST_MAX_C6 = 4
 
 function buildYanagiCharConfig({ cfg, cinemaLevel, skills }: AgentCharConfigInput): void {
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   cfg.yanagiCinemaLevel = cinema
   const thrust = findMove(skills, YANAGI_THRUST_MOVE_ID)
   cfg.yanagiThrustDamage = rowValue(thrust, 'damage')

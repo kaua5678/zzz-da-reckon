@@ -94,7 +94,7 @@ export interface YaojiayinTremoloResult {
 export function computeYaojiayinTremolos(input: YaojiayinTremoloInput): YaojiayinTremoloResult {
   const energy = Math.max(0, Number(input.totalEnergy) || 0)
   const entries = Math.max(0, Math.floor(input.entryCount || 0))
-  const cinema = input.cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(input.cinemaLevel)
   const t = Math.max(0, Number(input.combatTime) || 0)
   const maxPaid = Math.floor(energy / YAOJIAYIN_ENERGY_PER_TREMOLO)
   const paidTremolos = Math.min(maxPaid, entries)
@@ -228,7 +228,7 @@ function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
 function applyYaojiayinTeamPanelEffects({
   cinemaLevel, targetAgent, panel, settings,
 }: AgentTeamPanelEffectInput): void {
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   const cov = Math.max(0, Math.min(1, settings['yaojiayin.ariaCoverage'] ?? 1))
   if (cov > 0) {
     // ⚠ 复用本模块既有的单一事实源（`yaojiayinSkillLevel` + `computeAriaBonuses`），
@@ -249,7 +249,7 @@ function applyYaojiayinTeamPanelEffects({
 }
 
 function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharConfigInput): void {
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   cfg.yaojiayinCinemaLevel = cinema
   cfg.yaojiayinAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0 ? 1 : 0
   cfg.yaojiayinTremoloDmg = rowVal(findMove(skills, MOVE_TREMOLO), 'damage')

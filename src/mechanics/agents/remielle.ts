@@ -30,6 +30,7 @@ import { channelMetricsOf, type ChannelMoveInfo, type MoveTableLike } from '@/co
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const REMIELLE_AGENT_ID = '1581'
 const VOIDFLARE_MAX = 3
@@ -283,7 +284,7 @@ function applyRemielleTeamPanelEffects({ slot, cinemaLevel, team, panel }: Agent
   if (!firstRemielle || firstRemielle.slot !== slot) return
 
   // 原式：`remielleCinema >= 5 ? 4 : remielleCinema >= 3 ? 2 : 0` ⇒ 技能等级 12/14/16
-  const cinema = cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(cinemaLevel)
   const skillLevelBonus = cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0
   panel.dmgBonus = (panel.dmgBonus ?? 0) + (12 + skillLevelBonus) * 1.5
 }

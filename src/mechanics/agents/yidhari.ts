@@ -379,7 +379,7 @@ function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, team, axis
   let inStunEnergy = 0
   if (axis.active) {
     const slot = Number(cfg.slot)
-    const ownCinema = cinemaLevel ?? team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel ?? 0
+    const ownCinema = cinemaLevel ?? cinemaLevelOf(team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel)
     const singleCost = Number(ownCinema) >= 1 ? HEAVY_SINGLE_COST_1 : HEAVY_SINGLE_COST_0
     forEachSlotAxisAction(axis, slot, (act, wins) => {
       const times = act.count * wins

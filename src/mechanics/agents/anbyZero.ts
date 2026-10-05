@@ -162,7 +162,7 @@ function buildAnbyZeroCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: Ag
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): AnbyZeroCycle {
   return computeAnbyZeroCycle({
-    cinemaLevel: Number(cfg.anbyZeroCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.anbyZeroCinemaLevel),
     potentialLevel: Number(cfg.anbyZeroPotentialLevel ?? 6),
     cangguangCount: Number(cfg.anbyZeroCangguangCount ?? 6),
     exSpecialCount: state.exSpecialCount,

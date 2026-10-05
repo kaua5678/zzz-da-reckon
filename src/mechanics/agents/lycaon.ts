@@ -11,6 +11,7 @@ import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 莱卡恩（1141）战斗逻辑（用户确认口径，2026-08）：
@@ -264,7 +265,7 @@ export const lycaonMechanic: AgentMechanicModule = {
 
     const exCount = state.exSpecialCount
     if (exCount <= 0) return
-    const cinema = cfg.lycaonCinemaLevel ?? 0
+    const cinema = cinemaLevelOf(cfg.lycaonCinemaLevel)
     const holdRatio = clamp01(cfgNum(cfg, 'lycaon.exHoldRatio', 1))
     const tap = Math.round(exCount * (1 - holdRatio))
     const hold = Math.max(0, exCount - tap)

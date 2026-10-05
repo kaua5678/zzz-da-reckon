@@ -89,7 +89,7 @@ function buildKoledaCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): KoledaCycle {
   return computeKoledaCycle({
-    cinemaLevel: Number(cfg.koledaCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.koledaCinemaLevel),
     additionalActive: cfg.koledaAdditionalActive === true,
     chainStunCoverage: Number(cfg.koledaChainStunCoverage ?? 1),
     c1Coverage: Number(cfg.koledaC1Coverage ?? 1),

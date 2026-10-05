@@ -167,7 +167,7 @@ export function aireAbsolutePitchCount(
   // - 「妄想时刻内异常触发 +1 层 / 6s」是影画6 专属（talent.6 原文），旧实现对全命座无门控计 floor(t/6)。
   // C6 妄想不退出 ⇒ 仅首次进入给 3 层（后续终结是否算「进入」原文未明，保守不计；回退点=本段）。
   const ultCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0) || 0))
-  const cheerGain = Number(cfg.aireCinemaLevel ?? 0) >= 6
+  const cheerGain = cinemaLevelOf(cfg.aireCinemaLevel) >= 6
     ? Math.floor(totalTime / AIRE_CHEER_CD_SECONDS) + (ultCount > 0 ? 3 : 0)
     : 3 * ultCount
   return Math.floor(cheerEnergy / 2) + cheerGain
@@ -192,7 +192,7 @@ export function aireExtraNecessaryActions(cfg: AgentResourceInput['cfg'], state?
   const totalTime = Number(cfg.battleTime ?? 180)
   const pitch = aireAbsolutePitchCount(cfg, state, totalTime)
   if (pitch <= 0) return null
-  const share = aireEnhancedPitchShare(Number(cfg.aireCinemaLevel ?? 0), Number(state.ultimateCount ?? 0), totalTime)
+  const share = aireEnhancedPitchShare(cinemaLevelOf(cfg.aireCinemaLevel), Number(state.ultimateCount ?? 0), totalTime)
   const enhanced = Math.round(pitch * share)
   const rows: ExtraNecessaryAction[] = []
   if (pitch - enhanced > 0) {
@@ -208,7 +208,7 @@ export function aireExtraNecessaryActions(cfg: AgentResourceInput['cfg'], state?
 
 function cycleFromCfg(cfg: AgentResourceResultInput['cfg']): AireCycle {
   return computeAireCycle({
-    cinemaLevel: Number(cfg.aireCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.aireCinemaLevel),
     additionalActive: cfg.aireAdditionalActive === true,
     c2DelusionCoverage: Number(cfg.aireC2DelusionCoverage ?? 1),
   })
@@ -236,7 +236,7 @@ function buildAireResourceResult({ cfg }: AgentResourceResultInput): Partial<Cha
 }
 
 function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
-  const cinemaLevel = Number(cfg.aireCinemaLevel ?? 0)
+  const cinemaLevel = cinemaLevelOf(cfg.aireCinemaLevel)
   // 初始（局外）掌控；buildCharConfig 未跑（单测直调）时 undefined ⇒ 引擎回落局内面板
   const initialMastery = cfg.aireInitialMastery === undefined ? undefined : Number(cfg.aireInitialMastery)
   // 绝对音准#3 次数（CC-196 纯函数 aireAbsolutePitchCount）
@@ -276,7 +276,7 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
 }
 
 function patchAireExecutions({ cfg, executions }: AgentResourceInput): void {
-  const cinema = Number(cfg.aireCinemaLevel ?? 0)
+  const cinema = cinemaLevelOf(cfg.aireCinemaLevel)
   if (cinema < 6) return
   // 6命：妄想时刻不退出 → 强化版绝对音准全覆盖，强化直伤 +40% 全占比
   for (const exec of executions) {

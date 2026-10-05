@@ -99,7 +99,7 @@ function buildPiperCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void 
 
 function cycleFromInput({ cfg }: Pick<AgentResourceInput, 'cfg' | 'state'>): PiperMomentumCycle {
   return computePiperMomentum({
-    cinemaLevel: Number(cfg.piperCinemaLevel ?? 0),
+    cinemaLevel: cinemaLevelOf(cfg.piperCinemaLevel),
     buildupCoverage: Number(cfg.piperMomentumCoverage ?? PIPER_BUILDUP_COVERAGE_DEFAULT),
   })
 }
