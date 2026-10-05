@@ -22,6 +22,8 @@
  */
 import { type StunAxisState, type ConfigModel, type ComboAlignState } from '@/stores/config'
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE } from '@/core/stunPlanProjection'
+// 量化地板与引擎同源（规则 11：跨文件常量只从单一来源引用）——见 `containRatioOf` 的容差说明
+import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
@@ -83,10 +85,19 @@ function absorbCapOf(ctx: LadderCtx): number {
 export function containRatioOf(ctx: LadderCtx, cap: number, zeroOverflow?: number): number | null {
   const readOverflow = (): number => ctx.calc.resourceResult.value?.overflowSeconds ?? 0
   if (cap <= 0) return null
-  // 容差：与 `TIME_FOLD_CONVERGENCE_SECONDS`（1e-3）同量级的量化地板，取 1e-6 太严会追浮点噪声
-  const TOL = 1e-3
+  /**
+   * 容差 = 引擎自己的**量化地板** `TIME_BUDGET_TOLERANCE_SECONDS`（1 秒），不是浮点噪声级。
+   *
+   * 为什么必须同源（2026-10-05 实测纠正）：整数取整（次数必整数，floor 后剩零头）会产生
+   * **亚秒级** overflow —— 引擎口径明写「量化（floor 次数）导致残差 ~1s 属合轴可覆盖，不追求精确 0」
+   * （坑 12/19），`solveTeam` 也按 `> 1s` 才判真超时。我最初用 `1e-3` 时，把
+   * `auto-1591-1161-1211`（0.784s）与 `auto-1191-1481-1311`（0.234s）这类**量化噪声**误标成
+   * 「吸满也包不住的结构性溢出」（普查输出里那条 `r* > 1.0`）——归因错误。
+   * 同源后它们自动落进「无溢出 ⇒ 直接封顶」分支，与引擎判定一致。
+   */
+  const TOL = TIME_BUDGET_TOLERANCE_SECONDS
   const base = zeroOverflow ?? readOverflow()
-  if (base <= TOL) return null // 本来就装得下 ⇒ 无需「包容」档（用户：只算最高合轴率）
+  if (base <= TOL) return null // 本来就装得下（或只是量化噪声）⇒ 无需「包容」档
   const saved = ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
   const STEPS = 20 // 5% 网格：够细（r* 实测落在 0.10/0.35/0.70），且把重算次数钉在常数
   try {

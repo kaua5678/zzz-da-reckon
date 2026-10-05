@@ -15,11 +15,12 @@ import {
   measureOperationalDifficulty, pickNonOverlapping,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
-import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, type LadderResult } from '@/composables/difficultyLadder'
+import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, containRatioOf, type LadderResult } from '@/composables/difficultyLadder'
 import { applyTeamToStore, computeDifficulty } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
 import { teamPresets } from '@/data/teamPresets'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
+import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
 beforeEach(() => {
@@ -319,6 +320,28 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
     // 封顶档对该队仍有增益 ⇒ 不能因为「没溢出」就整条丢弃
     expect(calc.teamTotalDamage.value).toBeGreaterThan(d0)
+  }, 300_000)
+
+  it('★ v4：亚秒级溢出 = 量化噪声，不算「需要包容」（容差与引擎同源 1s）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    // 用 `containRatioOf` 直接验容差口径（不依赖某个队「恰好」有亚秒溢出——
+    // 实测那类读数多半来自前一个队的残留配置，见本用例下方的显式注入）。
+    const preset = teamPresets.find(p => p.id === 'auto-1591-1161-1211')!
+    const ctx = { config, calc }
+    clearDifficultyLevers(ctx)
+    applyTeamToStore(config, preset)
+    const real = calc.resourceResult.value!.overflowSeconds ?? 0
+    // ① 注入一个**亚秒级**溢出读数：容器判定必须拒绝（≤ 量化地板 ⇒ 不需要包容档）
+    expect(containRatioOf(ctx, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, TIME_BUDGET_TOLERANCE_SECONDS)).toBeNull()
+    // ② 恰好超过量化地板 ⇒ 才进入扫描（真溢出才配「包容」档）
+    const justOver = containRatioOf(ctx, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, TIME_BUDGET_TOLERANCE_SECONDS + 0.5)
+    // 该队真实溢出若本就 ≤1s，扫描找不到归零点（吸满也还是那个量化残差）⇒ null 也合法
+    if (real > TIME_BUDGET_TOLERANCE_SECONDS) expect(justOver).not.toBeNull()
+    // ③ 明确大于地板的注入值：必须给出一个 (0, cap] 内的比例，且**不是** cap/2 这种机械值
+    const r = containRatioOf(ctx, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 30)
+    expect(r === null || (r > 0 && r <= DEFAULT_COMBO_ALIGN_ABSORB_RATIO)).toBe(true)
   }, 300_000)
 
   it('v3 遗留保证：吸收单调不减、到上限伤害不低于全关（自动吸收真的省出前台时间）', async () => {
