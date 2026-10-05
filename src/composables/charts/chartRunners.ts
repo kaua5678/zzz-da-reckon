@@ -12,8 +12,9 @@
  * 依赖注入：批任务归属 `owner`（页面 `useBatchOwner()`）与各 ref/getter 由页面传入，本文件不读 store、
  * 不碰组件生命周期，可单测。每次运行经 `owner.start()` 发车：重算吊销上一次，离开页面也吊销；
  * 进度 / 结果 / finally 一律经 `run.commit` 提交，被顶掉的运行一个字都写不进去。
+ * CC-485（r670）：这段生命周期四份逐字相同 ⇒ 收成 `runBatch`，各 runner 只剩「校验 + 参数装配 + 结果落在哪个 ref」。
  */
-import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { withAnalysisScenario, type AnalysisScenario } from '@/composables/analysisScenario'
 import type { BatchOwner } from '@/composables/batchTask'
 import { nextTick, type Ref } from 'vue'
 import { releaseNodeOf } from '@/data/versionTimeline'
@@ -26,6 +27,37 @@ type Progress = { pct: number; text: string } | null
 function flash(io: { progress: Ref<Progress> }, text: string, ms = 2500): void {
   io.progress.value = { pct: 1, text }
   setTimeout(() => { io.progress.value = null }, ms)
+}
+
+/** 引擎跑批共用的取消 / 进度接线：`control.signal` 取自本次运行，进度只经 `run.commit` 回写 */
+type BatchWiring = { control: { signal: AbortSignal }; onProgress: (p: { pct: number; text: string }) => void }
+
+/**
+ * 四张图共用的跑批生命周期（CC-485）：`owner.start()` 发车 → `computing=true` / 进度「准备…」→
+ * （可选）让出一帧让提示先画出来 → 在独立分析场景里算 → 结果经 `run.commit` 发布 → finally 经 `run.commit` 收尾。
+ * 被新运行顶掉的旧运行，其 publish / finally 一个字都写不进去（BatchRun 契约）。
+ * `yieldFirst`：Chart 1 / 7 自 TimeChartsPage 搬迁时就有 `await nextTick()`，Chart 3 / 4 没有——历史差异原样保留，不在此轮统一。
+ */
+export async function runBatch<T>(
+  io: { owner: BatchOwner; computing: Ref<boolean>; progress: Ref<Progress> },
+  opts: { yieldFirst?: boolean },
+  compute: (scenario: AnalysisScenario, batch: BatchWiring) => Promise<T>,
+  publish: (res: T) => void,
+): Promise<void> {
+  const run = io.owner.start()
+  io.computing.value = true
+  io.progress.value = { pct: 0, text: '准备…' }
+  if (opts.yieldFirst) await nextTick()
+  const batch: BatchWiring = {
+    control: { signal: run.signal },
+    onProgress: p => run.commit(() => { io.progress.value = p }),
+  }
+  try {
+    const res = await withAnalysisScenario(scenario => compute(scenario, batch))
+    run.commit(() => publish(res))
+  } finally {
+    run.commit(() => { io.computing.value = false; io.progress.value = null })
+  }
 }
 
 /** Chart 1：队伍强度随版本演变 */
@@ -49,12 +81,7 @@ export async function runTeamTimelineCompute(io: {
   const pool = io.candidatePool.filter(id => id !== io.mainAgentId)
   if (pool.length < 2) { flash(io, '候选队友至少需要 2 名（不含主C）'); return }
   if (io.axisNodes.length === 0) { flash(io, '所选 Boss 在危局期数数据中无登场记录'); return }
-  const run = io.owner.start()
-  io.computing.value = true
-  io.progress.value = { pct: 0, text: '准备…' }
-  await nextTick()
-  try {
-    const res = await withAnalysisScenario(scenario => computeTeamTimeline(scenario, {
+  return runBatch(io, { yieldFirst: true }, (scenario, batch) => computeTeamTimeline(scenario, {
       mainAgentId: io.mainAgentId,
       boss,
       phase,
@@ -64,13 +91,8 @@ export async function runTeamTimelineCompute(io: {
       candidatePool: io.candidatePool,
       autoBuild: io.autoBuild,
       optimalGold: io.optimalGold,
-      control: { signal: run.signal },
-      onProgress: p => run.commit(() => { io.progress.value = p }),
-    }))
-    run.commit(() => { io.result.value = res })
-  } finally {
-    run.commit(() => { io.computing.value = false; io.progress.value = null })
-  }
+      ...batch,
+    }), res => { io.result.value = res })
 }
 
 /** Chart 3：每期新角色 · 强队强度 */
@@ -89,11 +111,7 @@ export async function runChart3Compute(io: {
 }): Promise<void> {
   const { boss, phase } = io
   if (!boss || !phase) return
-  const run = io.owner.start()
-  io.computing.value = true
-  io.progress.value = { pct: 0, text: '准备…' }
-  try {
-    const res = await withAnalysisScenario(scenario => computeNewCharacterPoints(scenario, {
+  return runBatch(io, {}, (scenario, batch) => computeNewCharacterPoints(scenario, {
       rows: io.rows,
       teams: io.teams,
       boss,
@@ -101,13 +119,8 @@ export async function runChart3Compute(io: {
       budget: io.budget ?? 6,
       autoBuild: io.autoBuild,
       optimalGold: io.optimalGold,
-      control: { signal: run.signal },
-      onProgress: p => run.commit(() => { io.progress.value = p }),
-    }))
-    run.commit(() => { io.points.value = res })
-  } finally {
-    run.commit(() => { io.computing.value = false; io.progress.value = null })
-  }
+      ...batch,
+    }), res => { io.points.value = res })
 }
 
 /** Chart 7：同槽位角色对比 */
@@ -128,12 +141,7 @@ export async function runSlotCompareCompute(io: {
   const { boss, phase } = io
   if (!boss || !phase) { flash(io, '先选 Boss（卡片右上角，默认跟随顶部）'); return }
   if (io.agentA === io.agentB) { flash(io, '两名对比角色不能相同'); return }
-  const run = io.owner.start()
-  io.computing.value = true
-  io.progress.value = { pct: 0, text: '准备…' }
-  await nextTick()
-  try {
-    const res = await withAnalysisScenario(scenario => computeSlotComparePoints(scenario, {
+  return runBatch(io, { yieldFirst: true }, (scenario, batch) => computeSlotComparePoints(scenario, {
       slot: io.slot,
       agentA: io.agentA,
       agentB: io.agentB,
@@ -142,13 +150,8 @@ export async function runSlotCompareCompute(io: {
       budget: io.budget ?? 6,
       autoBuild: io.autoBuild,
       optimalGold: io.optimalGold,
-      control: { signal: run.signal },
-      onProgress: p => run.commit(() => { io.progress.value = p }),
-    }))
-    run.commit(() => { io.points.value = res })
-  } finally {
-    run.commit(() => { io.computing.value = false; io.progress.value = null })
-  }
+      ...batch,
+    }), res => { io.points.value = res })
 }
 
 /** Chart 4：菲林经济模拟 */
@@ -173,11 +176,7 @@ export async function runFilmSimCompute(io: {
   const axis = io.axisNodes
   if (axis.length === 0) { flash(io, '所选 Boss 在危局期数数据中无登场记录'); return }
   if (io.candidatePool.filter(id => id !== io.mainAgentId).length < 2) { flash(io, '候选队友至少 2 名（不含主C）'); return }
-  const run = io.owner.start()
-  io.computing.value = true
-  io.progress.value = { pct: 0, text: '准备…' }
-  try {
-    const res = await withAnalysisScenario(scenario => computeFilmSimulation(scenario, {
+  return runBatch(io, {}, (scenario, batch) => computeFilmSimulation(scenario, {
       boss,
       axisNodes: axis,
       mainAgentId: io.mainAgentId,
@@ -188,11 +187,6 @@ export async function runFilmSimCompute(io: {
       budgetYuanPerVersion: io.budgetYuan ?? 0,
       targetPeriodId: io.targetPeriod || undefined,
       autoBuild: io.autoBuild,
-      control: { signal: run.signal },
-      onProgress: p => run.commit(() => { io.progress.value = p }),
-    }))
-    run.commit(() => { io.points.value = res.points })
-  } finally {
-    run.commit(() => { io.computing.value = false; io.progress.value = null })
-  }
+      ...batch,
+    }), res => { io.points.value = res.points })
 }
