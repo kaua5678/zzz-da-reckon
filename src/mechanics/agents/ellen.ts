@@ -40,13 +40,14 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => ellenMechanic.settings)
 export const ELLEN_ID = '1191'
 export const ELLEN_FROST_TRIM_MOVE_IDS = ['1191006'] as const
 export const ELLEN_FROST_TRIM_ACTION_TIMES = [2.232] as const
@@ -224,12 +225,12 @@ function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: Agent
   // 强化特殊技主招 = 鲨卷风（影画2 全鲨卷风；0命由 buildExecutions 补横扫实现「横扫+鲨卷风」）
   cfg.exSpecialMoveId = ELLEN_EX_MOVE_IDS[1]
   cfg.exSpecialActionTime = cfgMoveActionTime(cfg, ELLEN_EX_MOVE_IDS[1])
-  cfg.ellenC1CritStacks = clamp(setting(cfg, 'ellen.c1CritStacks', 6), 0, ELLEN_C1_MAX_STACKS)
-  cfg.ellenC2AvgCharge = clamp(setting(cfg, 'ellen.c2AvgCharge', 3), 0, 3)
-  cfg.ellenStormSurgeStacks = clamp(setting(cfg, 'ellen.stormSurgeStacks', 10), 0, ELLEN_STORM_SURGE_MAX_STACKS)
-  cfg.ellenC6PenCoverage = clamp(setting(cfg, 'ellen.c6PenCoverage', 1), 0, 1)
-  cfg.ellenC4CdRate = clamp(setting(cfg, 'ellen.c4CdRate', 1), 0, 1)
-  cfg.ellenC6FeastCoverage = clamp(setting(cfg, 'ellen.c6FeastCoverage', 1), 0, 1)
+  cfg.ellenC1CritStacks = clamp(setting(cfg, 'ellen.c1CritStacks'), 0, ELLEN_C1_MAX_STACKS)
+  cfg.ellenC2AvgCharge = clamp(setting(cfg, 'ellen.c2AvgCharge'), 0, 3)
+  cfg.ellenStormSurgeStacks = clamp(setting(cfg, 'ellen.stormSurgeStacks'), 0, ELLEN_STORM_SURGE_MAX_STACKS)
+  cfg.ellenC6PenCoverage = clamp(setting(cfg, 'ellen.c6PenCoverage'), 0, 1)
+  cfg.ellenC4CdRate = clamp(setting(cfg, 'ellen.c4CdRate'), 0, 1)
+  cfg.ellenC6FeastCoverage = clamp(setting(cfg, 'ellen.c6FeastCoverage'), 0, 1)
   cfg.ellenFreezeCount = 0 // 由 useResourceCalc 从异常池 ice 触发数注入；失衡次数由 applyTeamConfig converge 写入
   cfg.ellenStunCount = 0
   cfg.ellenAdditionalActive = additionalAbilityActiveOf(panel)

@@ -28,7 +28,7 @@ import type {
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
 } from '../types'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
@@ -38,6 +38,7 @@ import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => harumasaMechanic.settings)
 export const HARUMASA_ID = '1201'
 export const HARUMASA_ARROW_MOVE_ID = '1201008'
 export const HARUMASA_ULT_MOVE_ID = '1201014'
@@ -193,11 +194,11 @@ function applyPanel({ potentialLevel, outOfCombatPanel, panel }: AgentPanelInput
 function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentCharConfigInput): void {
   cfg.harumasaCinemaLevel = cinemaLevel
   cfg.harumasaPotentialLevel = potentialLevelOf(potentialLevel)
-  cfg.harumasaA5Count = whole(setting(cfg, 'harumasa.a5Count', 2))
+  cfg.harumasaA5Count = whole(setting(cfg, 'harumasa.a5Count'))
   cfg.harumasaStunCoverage = 0.5 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
-  cfg.harumasaAbnormalCoverage = clampRatio(setting(cfg, 'harumasa.abnormalCoverage', 1))
+  cfg.harumasaAbnormalCoverage = clampRatio(setting(cfg, 'harumasa.abnormalCoverage'))
   cfg.harumasaEdgeAverageStacks = Math.min(HARUMASA_EDGE_MAX,
-    Math.max(0, setting(cfg, 'harumasa.edgeAverageStacks', 6)))
+    Math.max(0, setting(cfg, 'harumasa.edgeAverageStacks')))
 }
 
 /**
@@ -415,9 +416,9 @@ declare module '@/types/catalog' {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：whole(setting(cfg, 'harumasa.a5Count', 2)) */
+    /** 写入：whole(setting(cfg, 'harumasa.a5Count')) */
     harumasaA5Count?: number
-    /** 写入：clampRatio(setting(cfg, 'harumasa.abnormalCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'harumasa.abnormalCoverage')) */
     harumasaAbnormalCoverage?: number
     /** 写入：axis.active */
     harumasaAxisActive?: boolean

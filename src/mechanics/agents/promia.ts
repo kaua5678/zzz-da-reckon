@@ -38,12 +38,13 @@ import type { BuffEffect } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { specEffectToBuffEffect } from '@/specs/teamBuffConvert'
 import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => promiaMechanic.settings)
 export const PROMIA_ID = '1541'
 // 掌控转精通的常数只在 spec 1541.json `promia_mastery_to_proficiency`（R6 C7，第 143 轮）；
 // 面板经 spec runtime 执行（传 sources.outOfCombat 真读局外面板），展示值走同一执行器，导出常量从 spec 读。
@@ -211,7 +212,7 @@ function computePromiaVerdict({ cfg, state, battleTime }: { cfg: AgentCharConfig
   count: number; specialCount: number; baseFrostGain: number; initial: number
 } {
   const cinemaLevel = cinemaLevelOf(cfg.promiaCinemaLevel)
-  const override = Math.max(0, Math.floor(setting(cfg, 'promia.releaseCountOverride', 0)))
+  const override = Math.max(0, Math.floor(setting(cfg, 'promia.releaseCountOverride')))
   const triggerHits = Math.max(0, Math.floor(Number(cfg.promiaTriggerHitCount ?? 0)))
   const teammateReleases = Math.max(0, Math.floor(Number(cfg.promiaTeammateReleaseCount ?? 0)))
   const exCasts = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))

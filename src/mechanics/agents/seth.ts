@@ -24,13 +24,14 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => sethMechanic.settings)
 export const SETH_ID = '1271'
 export const SETH_SHIELD_PROFICIENCY = 100
 export const SETH_ADDITIONAL_RES_REDUCTION = 20
@@ -72,9 +73,9 @@ export function computeSethCycle(input: {
 
 function buildSethCharConfig({ cinemaLevel, cfg, panel, skills, getRowValue }: AgentCharConfigInput): void {
   cfg.sethCinemaLevel = cinemaLevel
-  cfg.sethShieldCoverage = clampRatio(setting(cfg, 'seth.shieldCoverage', 1))
-  cfg.sethAdditionalResCoverage = clampRatio(setting(cfg, 'seth.additionalResCoverage', 1))
-  cfg.sethC6FinishCount = whole(setting(cfg, 'seth.c6FinishCount', 6))
+  cfg.sethShieldCoverage = clampRatio(setting(cfg, 'seth.shieldCoverage'))
+  cfg.sethAdditionalResCoverage = clampRatio(setting(cfg, 'seth.additionalResCoverage'))
+  cfg.sethC6FinishCount = whole(setting(cfg, 'seth.c6FinishCount'))
   cfg.sethAdditionalActive = additionalAbilityActiveOf(panel)
   // 影画4 招架支援迅雷盾失衡值 +25%：预缩倍率表 daze 值，patchExecutions 经 dazeMultiplierOverride 精确结算。
   if (cinemaLevel >= 4) {
@@ -187,15 +188,15 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     sethAdditionalActive?: boolean
-    /** 写入：clampRatio(setting(cfg, 'seth.additionalResCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'seth.additionalResCoverage')) */
     sethAdditionalResCoverage?: number
     /** 写入：baseDaze * (1 + SETH_C4_DEFENSIVE_DAZE_BONUS / 100) */
     sethC4DefensiveDaze?: number
-    /** 写入：whole(setting(cfg, 'seth.c6FinishCount', 6)) */
+    /** 写入：whole(setting(cfg, 'seth.c6FinishCount')) */
     sethC6FinishCount?: number
     /** 写入：cinemaLevel */
     sethCinemaLevel?: number
-    /** 写入：clampRatio(setting(cfg, 'seth.shieldCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'seth.shieldCoverage')) */
     sethShieldCoverage?: number
   }
 }

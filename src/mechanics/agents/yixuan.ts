@@ -8,13 +8,14 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources, specSpendCost } from '@/specs/resources'
 import { fmt } from '@/utils/format'
 import { effectiveBattleTime } from '@/core/effectiveTime'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgNum = mechanicSettingReader(() => settings)
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
  * - 命破/以太：全部伤害走引擎命破基底（贯穿力 atk×0.3+hp×0.1+sheerForceFlat、无视防御），
@@ -588,7 +589,7 @@ function resolveYixuanChain(cfg: AgentCharConfigInput['cfg'], exSpecialCount: nu
  */
 function shufaUltCountOf(cfg: AgentResourceResultInput['cfg'], resources: ReadonlyMap<string, { spendCounts: Record<string, number> }>): number {
   const theoretical = Math.max(0, Math.floor(resources.get('yixuan_shufa_value')?.spendCounts['yixuan_extra_ult_spend'] ?? 0))
-  const slider = Math.floor(cfgNum(cfg, 'yixuan.shufaUltCount', DEFAULT_SHUFA_ULT_COUNT))
+  const slider = Math.floor(cfgNum(cfg, 'yixuan.shufaUltCount'))
   return Math.max(0, Math.min(slider >= 0 ? slider : theoretical, theoretical))
 }
 
@@ -598,7 +599,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   cfg.yixuanFlashEnergySpent = chain.flashSpent
 
   const axisActive = Boolean(cfg.yixuanAxisActive)
-  const stunExCov = axisActive ? 0 : cfgNum(cfg, 'yixuan.stunExCoverage', DEFAULT_STUN_EX_COVERAGE)
+  const stunExCov = axisActive ? 0 : cfgNum(cfg, 'yixuan.stunExCoverage')
   const axisCloud = chain.axisCloud ?? 0
   const cloudOut = chain.cloudOut ?? 0
   const cinemaLevel = cinemaLevelOf(cfg.yixuanCinemaLevel)
@@ -608,7 +609,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   const shufaUlts = shufaUltCountOf(cfg, shufaResources)
   // 影画6·调息：青溟云影后获得一层，可无视术法值发动一次符法千重；30s CD 封顶；
   // 赠送次数默认 = 大招次数（喧响大的次数，用户口径），滑块可调
-  const giftSlider = Math.floor(cfgNum(cfg, 'yixuan.c6GiftUltCount', DEFAULT_C6_GIFT_ULT_COUNT))
+  const giftSlider = Math.floor(cfgNum(cfg, 'yixuan.c6GiftUltCount'))
   const giftCap = Math.max(0, Math.floor((cfg.battleTime ?? 180) / C6_GIFT_INTERVAL))
   const giftUlts = cinemaLevel >= 6
     ? Math.max(0, Math.min(giftSlider >= 0 ? giftSlider : ultCount, giftCap))

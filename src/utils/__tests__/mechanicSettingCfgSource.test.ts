@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { cfgMechanicSetting, cfgMechanicSettingRaw, mechanicSettingCfgKey } from '../mechanicSettingCfg'
+import { cfgMechanicSetting, cfgMechanicSettingRaw, mechanicSettingCfgKey, mechanicSettingReader } from '../mechanicSettingCfg'
 
 const SRC = resolve(__dirname, '../..')
 const OWNER = 'utils/mechanicSettingCfg.ts'
@@ -62,5 +62,37 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
     expect(cfgMechanicSettingRaw({ [key]: 'full' }, 'x.y')).toBe('full')
     expect(cfgMechanicSettingRaw({}, 'x.y')).toBeUndefined()
     expect(cfgMechanicSettingRaw(undefined, 'x.y')).toBeUndefined()
+  })
+
+  it('CC-508 reader：未给 fallback 时取模块 settings 声明的 default；显式 fallback 覆盖；未声明且无 fallback 抛错', () => {
+    const key = mechanicSettingCfgKey('x.y')
+    const read = mechanicSettingReader(() => [{ id: 'x.y', default: 7 }])
+    expect(read({}, 'x.y')).toBe(7)
+    expect(read({ [key]: 0 }, 'x.y')).toBe(0)
+    expect(read({ [key]: null }, 'x.y')).toBe(7)
+    expect(read({}, 'x.y', 3)).toBe(3)
+    expect(read({}, 'x.z', 3)).toBe(3)
+    expect(() => read({}, 'x.z')).toThrow(/x\.z/)
+    // 惰性：声明在 reader 构造之后才可用也行（模块常量在文件底部）
+    let late: Array<{ id: string; default: number }> | undefined
+    const lazy = mechanicSettingReader(() => late)
+    late = [{ id: 'a.b', default: 2 }]
+    expect(lazy({}, 'a.b')).toBe(2)
+  })
+
+  it('CC-508 源码锁：mechanics/agents 内不再手抄「带点 id + 数字字面量 fallback」的机制设置读法（默认值只在 settings 声明）', () => {
+    const AGENTS = resolve(SRC, 'mechanics/agents')
+    const re = /\b(?:setting|cfgNum|cfgSetting|readSetting|cfgMechanicSetting)\(\s*cfg\w*,\s*'\w+\.\w+',\s*-?[0-9.]+\s*\)/
+    const hits: string[] = []
+    for (const p of walk(AGENTS)) {
+      if (!p.endsWith('.ts') || p.includes('__tests__')) continue
+      const rel = relative(SRC, p).split('\\').join('/')
+      readFileSync(p, 'utf-8').split('\n').forEach((line, i) => {
+        const code = line.replace(/\/\/.*$/, '').replace(/\/\*.*?\*\//g, '')
+        if (/^\s*(\*|\/\*)/.test(code)) return
+        if (re.test(code)) hits.push(`${rel}:${i + 1}: ${line.trim()}`)
+      })
+    }
+    expect(hits).toEqual([])
   })
 })

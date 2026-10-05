@@ -4,7 +4,7 @@ import type { BanyueRageCycle, CharacterResourceResult, MechanicSetting } from '
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { calcPenetrationPower } from '@/core/damage'
 import { fmt } from '@/utils/format'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { positiveWholeCounts } from '@/utils/finiteClamp'
@@ -13,6 +13,7 @@ import { PARRY_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const cfgNum = mechanicSettingReader(() => settings)
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
  * - 命破/火属性：火伤均为贯穿伤害（引擎按贯穿力基底 atk×0.3+hp×0.1+sheerForceFlat 无视防御结算）。
@@ -708,7 +709,7 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): Ban
     cfg.parryCount ?? DEFAULT_PARRY,
     cfg.blockCount ?? DEFAULT_BLOCK,
     cfg.dualCounterCount ?? DEFAULT_DUAL,
-    cfgNum(cfg, 'banyue.diDongComboCount', DEFAULT_DIDONG_COMBO),
+    cfgNum(cfg, 'banyue.diDongComboCount'),
     axisExSpendOf(axisEx),
     axisEx['banyue-combo'] ?? 0,
     cinemaLevelOf(cfg.banyueCinemaLevel),

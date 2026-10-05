@@ -33,11 +33,12 @@ import type {
   ExtraNecessaryAction,
 } from '../types'
 import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => aireMechanic.settings)
 export const AIRE_ID = '1501'
 export const AIRE_CORE_PROFICIENCY = 90
 export const AIRE_C1_ETHER_ANOMALY_RES_IGNORE = 10
@@ -120,7 +121,7 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
   cfg.aireCinemaLevel = cinemaLevel
   // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 初始 = 局外面板（CC-125；读取口 `initialStat`，CC-497）
   cfg.aireInitialMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
-  cfg.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage', 1))
+  cfg.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage'))
   cfg.aireAdditionalActive = additionalAbilityActiveOf(panel)
   if (cinemaLevel >= 4) {
     // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
@@ -152,7 +153,7 @@ export function aireAbsolutePitchCount(
   state: { exSpecialCount: number; chainCountTotal: number; basicAttackTime?: number; ultimateCount?: number },
   totalTime: number,
 ): number {
-  const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount', 0)))
+  const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount')))
   if (manualCount > 0) return manualCount
   const additionalActive = cfg.aireAdditionalActive === true
   const teamVeilCount = Math.max(0, Math.floor(Number(cfg.teamVeilCountTotal ?? 0) || 0))
@@ -162,7 +163,7 @@ export function aireAbsolutePitchCount(
     + state.chainCountTotal * AIRE_CHEER_CHAIN
     + basic4Hits * AIRE_CHEER_BASIC4
     + (additionalActive ? AIRE_CHEER_PER_VEIL * teamVeilCount : 0)
-    + Math.max(0, setting(cfg, 'aire.cheerEnergyBonus', 0))
+    + Math.max(0, setting(cfg, 'aire.cheerEnergyBonus'))
   // 全场应援层数（每层 = 蓄力+2段 或 转化 2 应援能量，均 ≈ 1 次第三段）。CC-196 按原文订正：
   // - 终结技进入[妄想时刻]获得 3 层（skill.chain 原文）；
   // - 「妄想时刻内异常触发 +1 层 / 6s」是影画6 专属（talent.6 原文），旧实现对全命座无门控计 floor(t/6)。

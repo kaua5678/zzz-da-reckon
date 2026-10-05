@@ -25,11 +25,12 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => billyMechanic.settings)
 export const BILLY_ID = '1081'
 export const BILLY_CORE_CROUCH_DMG = 50
 export const BILLY_ADDITIONAL_ULT_PER_STACK = 50
@@ -98,8 +99,8 @@ export function computeBillyCycle(input: {
 
 function buildBillyCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.billyCinemaLevel = cinemaLevel
-  cfg.billyCoreCrouchCoverage = clampRatio(setting(cfg, 'billy.coreCrouchCoverage', 1))
-  cfg.billyC4ExCrit = Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit', 32)))
+  cfg.billyCoreCrouchCoverage = clampRatio(setting(cfg, 'billy.coreCrouchCoverage'))
+  cfg.billyC4ExCrit = Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit')))
   const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
   cfg.billyBattleTime = battleTime
   cfg.billyC1Energy = cinemaLevel >= 1
@@ -202,9 +203,9 @@ declare module '@/types/resource/config' {
     billyAdditionalActive?: boolean
     /** 写入：battleTime */
     billyBattleTime?: number
-    /** 写入：Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit', 32))) */
+    /** 写入：Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit'))) */
     billyC4ExCrit?: number
-    /** 写入：clampRatio(setting(cfg, 'billy.coreCrouchCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'billy.coreCrouchCoverage')) */
     billyCoreCrouchCoverage?: number
     /** 比利影画1：冲刺/闪反额外回能总额（模块按原始次数与5秒冷却计算） */
     billyC1Energy?: number

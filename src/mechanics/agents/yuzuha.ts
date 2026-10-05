@@ -9,11 +9,12 @@ import type {
 import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { effectiveBattleTime, minusInvincibleTime } from '@/core/effectiveTime'
-import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgSetting = mechanicSettingReader(() => settings)
 const YUZUHA_AGENT_ID = '1411'
 const SWEETNESS_INITIAL = 3
 const SWEETNESS_CAP = 6
@@ -111,7 +112,7 @@ function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, o
   // 原文「40%初始攻击力」⇒ 展示值读局外面板（CC-126，与计算侧 outOfCombatAtk 同源；读取口 `initialStat`，CC-497）
   cfg.yuzuhaInitialAtk = initialStat(outOfCombatPanel, panel, 'atk')
   // 滑块必须经 buildCharConfig 落到 cfg，buildResourceResult 阶段才读得到（applyPanel 早于 cfg 构建拿不到 settings）
-  cfg.yuzuhaChainEntryCount = Math.max(0, Math.floor(cfgSetting(cfg, 'yuzuha.chainEntryCount', 0)))
+  cfg.yuzuhaChainEntryCount = Math.max(0, Math.floor(cfgSetting(cfg, 'yuzuha.chainEntryCount')))
   cfg.yuzuhaCinemaLevel = cinemaLevel
   // 影画4：支援突击行的**表值积蓄**在此预存（积蓄会被 enrich 从倍率表回填 ⇒ patchExecutions
   // 阶段读不到；先例：seth.ts:98 预存 daze）。仅在 C4 且该角色确有支援突击行时预存。

@@ -40,11 +40,12 @@ import type {
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const cfgNum = mechanicSettingReader(() => soldier11Mechanic.settings)
 const AGENT_ID = '1041'
 
 // 火力镇压全部 moveId（普通攻击 #1-#7 + 冲刺攻击）
@@ -103,8 +104,8 @@ function buildSoldier11CharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): v
 
 export function patchSoldier11Executions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.soldier11CinemaLevel)
-  const coreCov = cfgNum(cfg, 'soldier11.fireSuppressCoverage', 1)
-  const c2Cov = cfgNum(cfg, 'soldier11.c2StackCoverage', 1)
+  const coreCov = cfgNum(cfg, 'soldier11.fireSuppressCoverage')
+  const c2Cov = cfgNum(cfg, 'soldier11.c2StackCoverage')
 
   // 影画6 充能可用比例：充能来源（强特/连携/终结）×8 层 vs 火力镇压总消耗
   let fireSuppressCount = 0

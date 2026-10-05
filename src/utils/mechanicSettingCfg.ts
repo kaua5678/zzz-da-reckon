@@ -37,3 +37,24 @@ export function mechanicSettingOf(settings: Readonly<Record<string, number>> | n
   const value = Number(settings?.[id])
   return Number.isFinite(value) ? value : fallback
 }
+
+/**
+ * 以**模块自身的 `settings` 声明**为唯一默认值来源的读口（CC-508）。
+ * 此前每个模块在 `settings: [{ id, default: N }]` 声明一次 N，又在 `cfgMechanicSetting(cfg, id, N)` 手抄一次
+ * （28 个模块 / 74 处逐字相同；引擎 `buildCharConfig` 已按声明 default 预填 cfg，读侧 fallback 只对手搭 cfg 的单测生效）。
+ * `declared` 用惰性 getter：模块常量通常在文件底部，调用期才解引用。未声明且未给 fallback ⇒ 抛错（拼错 id 立刻暴露）。
+ * 显式 `fallback` 仍可覆盖（动态 id 或策略性不同于声明的场合）。
+ */
+export function mechanicSettingReader(
+  declared: () => ReadonlyArray<{ id: string; default: number }> | undefined,
+): (cfg: unknown, id: string, fallback?: number) => number {
+  let defaults: Map<string, number> | undefined
+  return (cfg, id, fallback) => {
+    if (fallback === undefined) {
+      defaults ??= new Map((declared() ?? []).map(s => [s.id, s.default]))
+      fallback = defaults.get(id)
+      if (fallback === undefined) throw new Error(`[mechanicSetting] ${id} 未在模块 settings 声明且未给 fallback`)
+    }
+    return cfgMechanicSetting(cfg, id, fallback)
+  }
+}

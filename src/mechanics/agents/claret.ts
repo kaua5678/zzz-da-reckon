@@ -17,10 +17,11 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
 // 其中 `getRowValue` 漏乘逻辑编辑器行融合乘数（getRowFusionMultiplier），与引擎其余路径分裂；
 // 判据 = claretSmoke.test.ts「R37-J1」组（行为面：基准行 ×2 ⇒ 平A秒均 ×2；形状面：本文件不得再有同形私有函数）。
 import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } from '@/data/moveTableQueries'
-import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgSetting = mechanicSettingReader(() => settings)
 /**
  * 克拉蕾（1611）v12 重录（2026-09-03，raw = nanoka 3.2.12+18601660）：
  *
@@ -462,11 +463,11 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
   // 面板滑块：0 = 账本推导（默认），1–100 = 手动覆盖（见 deriveClaretTwoStateTime）
   cfg.claretInscriptionShareSetting = Math.max(
     0,
-    Math.min(100, cfgSetting(cfg, 'claret.inscriptionBasicTimeShare', DEFAULT_INSCRIPTION_BASIC_TIME_SHARE)),
+    Math.min(100, cfgSetting(cfg, 'claret.inscriptionBasicTimeShare')),
   )
   cfg.claretChainInWindowCoverage = Math.max(
     0,
-    Math.min(1, cfgSetting(cfg, 'claret.chainInWindowCoverage', DEFAULT_CHAIN_IN_WINDOW_COVERAGE * 100) / 100),
+    Math.min(1, cfgSetting(cfg, 'claret.chainInWindowCoverage') / 100),
   )
   // 静态初值（账本推导时常态时间 = 0 → 整段铭刻）；真实占比在 buildClaretResourceSource 里按账本重算
   const bench = computeClaretBasicPerSecFromCfg(cfg, 1)
@@ -474,9 +475,9 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
   cfg.claretNormalDamagePerSec = bench.normalDamage
   cfg.claretInscriptionDamagePerSec = bench.inscriptionDamage
   cfg.claretCinemaLevel = cinemaLevel
-  cfg.claretCleaveCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount', 1)))
-  cfg.claretBloodBurialCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount', 1)))
-  cfg.claretGashCoverage = Math.max(0, Math.min(1, Math.min(100, cfgSetting(cfg, 'claret.gashCoverage', 100)) / 100))
+  cfg.claretCleaveCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount')))
+  cfg.claretBloodBurialCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount')))
+  cfg.claretGashCoverage = Math.max(0, Math.min(1, Math.min(100, cfgSetting(cfg, 'claret.gashCoverage')) / 100))
   // 秘血铸锋是锐能强特（costType=resource）：通用引擎不扣能量，强特行由本模块按锐能账本发行
   const exMove = findMoveById(skills, EX_MOVE_ID)
   cfg.claretExActionTime = exMove?.actionTime ?? 0

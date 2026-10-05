@@ -29,12 +29,13 @@ import type {
   ReleaseModifierInput,
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
-import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingOf as settingOf, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => settings)
 export const PHOENIX_ID = '1641'
 /** 核心被动：异常精通 +40 */
 export const PHOENIX_CORE_PROFICIENCY = 40
@@ -171,7 +172,7 @@ function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResour
 
 /** 长按普攻次数（估时与物化唯一共用入口）：floor(余火收入×效率/90)，滑块覆盖优先 */
 export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
-  const override = setting(cfg, 'phoenix.chargedAttackCount', 0)
+  const override = setting(cfg, 'phoenix.chargedAttackCount')
   if (override > 0) return whole(override)
   const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const eff = cinema >= 1 ? 1 + PHOENIX_C1_EMBER_EFFICIENCY / 100 : 1
@@ -187,7 +188,7 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: Agent
   // 影画4：长按普攻 +200 喧响/次——行级 decibel 会被 enrich 按倍率表回填，改走 initialDecibelGift。
   // 次数：滑块覆盖优先；自动按 战斗时长/15s 一次长按普攻估算 [猜测·低]（余火循环收敛值在 buildExecutions 才有）。
   if (cinemaLevel >= 4) {
-    const override = setting(cfg, 'phoenix.chargedAttackCount', 0)
+    const override = setting(cfg, 'phoenix.chargedAttackCount')
     const count = override > 0 ? whole(override) : Math.max(0, Math.floor((cfg.battleTime ?? 180) / 15))
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + PHOENIX_C4_CHARGED_DECIBEL * count
   }
@@ -353,7 +354,7 @@ function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput):
 function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
   const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const s = phoenixSkillLevel(cinema)
-  const coverage = clamp01(setting(cfg, 'phoenix.releaseCoverage', 1))
+  const coverage = clamp01(setting(cfg, 'phoenix.releaseCoverage'))
   if (coverage <= 0) return
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))

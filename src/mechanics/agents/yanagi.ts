@@ -1,11 +1,12 @@
 import type { AgentCharConfigInput, AgentEventInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
 import type { AnomalyEventExecution, MechanicSetting } from '@/types/resource'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => settings)
 /**
  * 月城柳（1221，电·异常，对空洞特别行动部第六课）—— 核心被动/额外能力/影画面板区（薄模块）。
  * 机制文本来源：nanoka 3.2.3+18244196 zh character/1221.json。
@@ -61,7 +62,7 @@ function buildYanagiCharConfig({ cfg, cinemaLevel, skills }: AgentCharConfigInpu
   const maxThrusts = cinema >= 6 ? YANAGI_EXTRA_THRUST_MAX_C6 : YANAGI_EXTRA_THRUST_MAX_C2
   const energyPerThrust = cinema >= 6 ? YANAGI_EXTRA_THRUST_ENERGY_C6 : YANAGI_EXTRA_THRUST_ENERGY
   const extraThrusts = cinema >= 2
-    ? Math.max(0, Math.min(maxThrusts, Math.floor(setting(cfg, 'yanagi.extraThrustCount', 1))))
+    ? Math.max(0, Math.min(maxThrusts, Math.floor(setting(cfg, 'yanagi.extraThrustCount'))))
     : 0
   cfg.yanagiExtraThrustCount = extraThrusts
   cfg.exSpecialEnergyConsume = YANAGI_EX_BASE_ENERGY + energyPerThrust * extraThrusts

@@ -37,10 +37,11 @@ import type {
 } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { cfgMechanicSetting as cfgNum, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSettingRaw, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgNum = mechanicSettingReader(() => yeshuguangMechanic.settings)
 export const YESHUGUANG_ID = '1431'
 
 const MOVE = {
@@ -321,7 +322,7 @@ export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   const fromChain = (state.chainCountTotal ?? 0) * perChain
   // 额外能力·溯影惊鸿：队友开帷幕 +3 局外剑势/次。手动滑块 >0 优先；否则自动用全队帷幕次数
   //（useResourceCalc 收敛注入 teamVeilCountTotal：照 veilCount + 爱芮/叶瞬光大招 + 千夏强特，2026-08-31）。
-  const manualCurtains = Math.max(0, Math.floor(cfgNum(cfg, 'yeshuguang.teamCurtainCount', 0) || 0))
+  const manualCurtains = Math.max(0, Math.floor(cfgNum(cfg, 'yeshuguang.teamCurtainCount') || 0))
   const autoCurtains = Math.max(0, Math.floor(Number(cfg.teamVeilCountTotal ?? 0) || 0))
   const curtains = manualCurtains > 0 ? manualCurtains : autoCurtains
   const aa = Number(cfg.yeshuguangAdditionalAbilityActive ?? 0) > 0
@@ -369,7 +370,7 @@ function resolveCycle(cfg: CharacterOperationConfig, state: {
   return computeYeshuguangCycle({
     ultimateCount: state.ultimateCount ?? 0,
     giftUltCount: gift,
-    zhaoyingCountSetting: cfgNum(cfg, 'yeshuguang.zhaoyingCount', -1),
+    zhaoyingCountSetting: cfgNum(cfg, 'yeshuguang.zhaoyingCount'),
     outsideSwordGain: outside,
     cinemaLevel: cinema,
     battleTime: cfg.battleTime ?? 180,

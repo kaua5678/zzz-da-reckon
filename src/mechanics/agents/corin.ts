@@ -32,13 +32,14 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { axisOverlayChannel, type AxisLike } from '../types'
-import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingOf as settingOf, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => corinMechanic.settings)
 export const CORIN_ID = '1061'
 export const CORIN_CORE_SAW_DMG = 37.5
 export const CORIN_ADDITIONAL_DMG = 35
@@ -136,12 +137,12 @@ export function computeCorinStunBonusMoves(
 
 function buildCorinCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.corinCinemaLevel = cinemaLevel
-  cfg.corinCoreSawCoverage = clampRatio(setting(cfg, 'corin.coreSawCoverage', 1))
-  cfg.corinAdditionalStunCoverage = clampRatio(setting(cfg, 'corin.additionalStunCoverage', 0.5))
-  cfg.corinC1Coverage = clampRatio(setting(cfg, 'corin.c1Coverage', 1))
-  cfg.corinC2ResCoverage = clampRatio(setting(cfg, 'corin.c2ResCoverage', 1))
-  cfg.corinC6DetonationCount = whole(setting(cfg, 'corin.c6DetonationCount', 8))
-  cfg.corinC6ChargeStacks = Math.max(0, Math.min(CORIN_C6_MAX_CHARGES, setting(cfg, 'corin.c6ChargeStacks', 40)))
+  cfg.corinCoreSawCoverage = clampRatio(setting(cfg, 'corin.coreSawCoverage'))
+  cfg.corinAdditionalStunCoverage = clampRatio(setting(cfg, 'corin.additionalStunCoverage'))
+  cfg.corinC1Coverage = clampRatio(setting(cfg, 'corin.c1Coverage'))
+  cfg.corinC2ResCoverage = clampRatio(setting(cfg, 'corin.c2ResCoverage'))
+  cfg.corinC6DetonationCount = whole(setting(cfg, 'corin.c6DetonationCount'))
+  cfg.corinC6ChargeStacks = Math.max(0, Math.min(CORIN_C6_MAX_CHARGES, setting(cfg, 'corin.c6ChargeStacks')))
   cfg.corinAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
@@ -353,21 +354,21 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     corinAdditionalActive?: boolean
-    /** 写入：clampRatio(setting(cfg, 'corin.additionalStunCoverage', 0.5)) */
+    /** 写入：clampRatio(setting(cfg, 'corin.additionalStunCoverage')) */
     corinAdditionalStunCoverage?: number
-    /** 写入：clampRatio(setting(cfg, 'corin.c1Coverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'corin.c1Coverage')) */
     corinC1Coverage?: number
-    /** 写入：clampRatio(setting(cfg, 'corin.c2ResCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'corin.c2ResCoverage')) */
     corinC2ResCoverage?: number
     /** 写入：gift */
     corinC4EnergyTotal?: number
-    /** 写入：Math.max(0, Math.min(CORIN_C6_MAX_CHARGES, setting(cfg, 'corin.c6ChargeStacks', 40))) */
+    /** 写入：Math.max(0, Math.min(CORIN_C6_MAX_CHARGES, setting(cfg, 'corin.c6ChargeStacks'))) */
     corinC6ChargeStacks?: number
-    /** 写入：whole(setting(cfg, 'corin.c6DetonationCount', 8)) */
+    /** 写入：whole(setting(cfg, 'corin.c6DetonationCount')) */
     corinC6DetonationCount?: number
     /** 写入：cinemaLevel */
     corinCinemaLevel?: number
-    /** 写入：clampRatio(setting(cfg, 'corin.coreSawCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'corin.coreSawCoverage')) */
     corinCoreSawCoverage?: number
   }
 }

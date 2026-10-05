@@ -11,12 +11,13 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const cfgNum = mechanicSettingReader(() => anbyMechanic.settings)
 /**
  * 安比（1011，电·强攻）—— 整局近似口径
  *
@@ -145,7 +146,7 @@ function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfi
   cfg.anbyAdditionalActive = additionalAbilityActiveOf(panel)
   cfg.anbyEnergyGainEfficiency = panel.energyGainEfficiency ?? 0
   // 影画2 失衡覆盖率：滑块 → cfg 的**唯一**通道（读法见 cfgNum 头注释）
-  cfg.anbyC2StunCoverage = cfgNum(cfg, 'anby.c2StunCoverage', 0.5)
+  cfg.anbyC2StunCoverage = cfgNum(cfg, 'anby.c2StunCoverage')
   // 平A循环分段元数据预存（buildExecutions 输入无 skills；单一事实源仍是倍率表）。
   // 元素取 catalog 的 move.damageElement——#1~#3 物理 / #4、落雷 电（原文口径，见文件头②）。
   const basicMoves = skills?.categories?.find(c => c.id === 'basic')?.moves ?? []

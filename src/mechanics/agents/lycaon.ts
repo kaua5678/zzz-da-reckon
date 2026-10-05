@@ -6,13 +6,14 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { CharacterResourceResult } from '@/types/resource'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgNum = mechanicSettingReader(() => lycaonMechanic.settings)
 /**
  * 莱卡恩（1141）战斗逻辑（用户确认口径，2026-08）：
  * - 角色定位：击破（stun）/冰属性。拐力（核心被动冰抗-25% + 其他属性伤害+30%、
@@ -132,12 +133,12 @@ export const lycaonMechanic: AgentMechanicModule = {
     cfg.lycaonCinemaLevel = cinemaLevel
 
     // 强特双模式（用户口径）：点按 40 能量 → #1+#2（1.717s）；长按 60 能量 → #1+#3（2.501s）
-    const holdRatio = clamp01(cfgNum(cfg, 'lycaon.exHoldRatio', 1))
+    const holdRatio = clamp01(cfgNum(cfg, 'lycaon.exHoldRatio'))
     cfg.exSpecialEnergyConsume = EX_TAP_ENERGY * (1 - holdRatio) + EX_HOLD_ENERGY * holdRatio
     cfg.exSpecialActionTime = EX_TAP_TIME * (1 - holdRatio) + EX_HOLD_TIME * holdRatio
     cfg.skipGenericExSpecial = true
     // C1 覆盖率（8s CD → 覆盖率滑块，只给有限次强特强化）
-    cfg.lycaonC1Coverage = clamp01(cfgNum(cfg, 'lycaon.c1Coverage', 1))
+    cfg.lycaonC1Coverage = clamp01(cfgNum(cfg, 'lycaon.c1Coverage'))
     // C2 回能（5 能量/次；次数 = 失衡次数 + 队伍连携总次数，由 useResourceCalc 注入 lycaonC2Energy）
     cfg.lycaonC2EnergyPerTrigger = cinemaLevel >= 2 ? 5 : 0
   },
@@ -266,7 +267,7 @@ export const lycaonMechanic: AgentMechanicModule = {
     const exCount = state.exSpecialCount
     if (exCount <= 0) return
     const cinema = cinemaLevelOf(cfg.lycaonCinemaLevel)
-    const holdRatio = clamp01(cfgNum(cfg, 'lycaon.exHoldRatio', 1))
+    const holdRatio = clamp01(cfgNum(cfg, 'lycaon.exHoldRatio'))
     const tap = Math.round(exCount * (1 - holdRatio))
     const hold = Math.max(0, exCount - tap)
     // C1 强化次数：8s CD → floor(战斗时间/8) × 覆盖率，封顶强特总数

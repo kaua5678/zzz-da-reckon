@@ -15,7 +15,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { specConversionAmount } from '@/specs/runtime'
 import type { AttributeConversionSpec } from '@/specs/types'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
@@ -23,6 +23,7 @@ import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const cfgNum = mechanicSettingReader(() => settings)
 const NORMA_AGENT_ID = '1571'
 
 // —— 预热膛温 ——
@@ -282,7 +283,7 @@ function buildNormaCharConfig({ slot, agent, cinemaLevel, team, skills, cfg }: A
  * 原因见该处注释（量过：改成按次会扰动外层折叠环，不单改）。
  */
 export function resolveNormaHoldSeconds(cfg: unknown): number {
-  return Math.max(0, Math.min(2, cfgNum(cfg, 'norma.holdSeconds', 2)))
+  return Math.max(0, Math.min(2, cfgNum(cfg, 'norma.holdSeconds')))
 }
 
 /**
@@ -313,7 +314,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
   // 弹头破甲/高爆按用户"打进失衡期的占比"拆（默认 0 = 全部非失衡破甲，失衡期留给主C）。
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   const times = cfg.normaBarrageActionTimes ?? BARRAGE_MOVES.map(() => 0.5)
-  const stunShare = Math.max(0, Math.min(1, cfgNum(cfg, 'norma.barrageStunShare', 0)))
+  const stunShare = Math.max(0, Math.min(1, cfgNum(cfg, 'norma.barrageStunShare')))
   const holdSeconds = resolveNormaHoldSeconds(cfg)
   // 影画6：破甲弹头失衡值+30%（1571008/1571011/1571014）、高爆弹头伤害+30%（1571009/1571012/1571015），
   // 技能专属效果：只作用于对应倍率行，按表值缩放（damageMultiplierOverride/dazeMultiplierOverride）。

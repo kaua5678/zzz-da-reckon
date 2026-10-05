@@ -21,7 +21,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById as findMove, getRowValue } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
@@ -29,6 +29,7 @@ import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => hugoMechanic.settings)
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
 export const HUGO_CHAIN_MOVE_ID = '1291015'
@@ -168,11 +169,11 @@ function applyHugoPanel({ slot, team, cinemaLevel, panel, settings }: AgentPanel
 
 function buildHugoCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
   cfg.hugoCinemaLevel = cinemaLevel
-  cfg.hugoExVerdictRatio = clampRatio(setting(cfg, 'hugo.exVerdictRatio', 1))
-  cfg.hugoUltimateVerdictRatio = clampRatio(setting(cfg, 'hugo.ultimateVerdictRatio', 1))
-  cfg.hugoRemainingStunSeconds = Math.max(0, Math.min(15, setting(cfg, 'hugo.remainingStunSeconds', 5)))
-  cfg.hugoEchoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(setting(cfg, 'hugo.echoCoverage', 1))
-  cfg.hugoC4Coverage = cinemaLevel >= 4 ? clampRatio(setting(cfg, 'hugo.c4Coverage', 1)) : 0
+  cfg.hugoExVerdictRatio = clampRatio(setting(cfg, 'hugo.exVerdictRatio'))
+  cfg.hugoUltimateVerdictRatio = clampRatio(setting(cfg, 'hugo.ultimateVerdictRatio'))
+  cfg.hugoRemainingStunSeconds = Math.max(0, Math.min(15, setting(cfg, 'hugo.remainingStunSeconds')))
+  cfg.hugoEchoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(setting(cfg, 'hugo.echoCoverage'))
+  cfg.hugoC4Coverage = cinemaLevel >= 4 ? clampRatio(setting(cfg, 'hugo.c4Coverage')) : 0
   cfg.hugoAdditionalActive = additionalAbilityActiveOf(panel)
   // CC-408：强特终结 1291010 的 damage 行值由引擎读 catalog 进 cfg.mechanicRowValues（原模块常量
   // HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8 是同一数据的第二份）。缺表为 0，**不回退常量**——缺表要在结果里看得见。

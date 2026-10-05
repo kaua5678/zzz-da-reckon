@@ -36,7 +36,7 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import { inferSkillDamageTarget } from '@/core/damage'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
@@ -44,6 +44,7 @@ import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => anbyZeroMechanic.settings)
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
 export const ANBY_ZERO_RAIJITU_MOVE_ID = '1381008'
@@ -156,8 +157,8 @@ export function computeAnbyZeroCycle(input: {
 function buildAnbyZeroCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.anbyZeroCinemaLevel = cinemaLevel
   cfg.anbyZeroPotentialLevel = potentialLevel
-  cfg.anbyZeroCangguangCount = whole(setting(cfg, 'anbyZero.cangguangCount', 6))
-  cfg.anbyZeroSilverStarCoverage = clampRatio(setting(cfg, 'anbyZero.silverStarCoverage', 1))
+  cfg.anbyZeroCangguangCount = whole(setting(cfg, 'anbyZero.cangguangCount'))
+  cfg.anbyZeroSilverStarCoverage = clampRatio(setting(cfg, 'anbyZero.silverStarCoverage'))
   cfg.anbyZeroAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
@@ -366,13 +367,13 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     anbyZeroAdditionalActive?: boolean
-    /** 写入：whole(setting(cfg, 'anbyZero.cangguangCount', 6)) */
+    /** 写入：whole(setting(cfg, 'anbyZero.cangguangCount')) */
     anbyZeroCangguangCount?: number
     /** 写入：cinemaLevel */
     anbyZeroCinemaLevel?: number
     /** 写入：potentialLevel */
     anbyZeroPotentialLevel?: number
-    /** 写入：clampRatio(setting(cfg, 'anbyZero.silverStarCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'anbyZero.silverStarCoverage')) */
     anbyZeroSilverStarCoverage?: number
     /** 写入：(threads.moduleFeedback?.anbyZeroTeammateWl ?? 0) */
     anbyZeroTeammateWhiteLightning?: number

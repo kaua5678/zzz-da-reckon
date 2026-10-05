@@ -34,13 +34,14 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
-import { cfgMechanicSetting as setting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSettingRaw, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => vivianMechanic.settings)
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
 export const VIVIAN_LUOYU_MOVE_ID = '1331008'
@@ -179,7 +180,7 @@ export const VIVIAN_ANOMALY_TRIGGER_CD = 0.5
 
 function buildVivianCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.vivianCinemaLevel = cinemaLevel
-  cfg.vivianC4AtkCoverage = clampRatio(setting(cfg, 'vivian.c4AtkCoverage', 1))
+  cfg.vivianC4AtkCoverage = clampRatio(setting(cfg, 'vivian.c4AtkCoverage'))
   cfg.vivianAdditionalActive = additionalAbilityActiveOf(panel)
   // 落羽生花双源由 useResourceCalc 收敛注入（vivianTeamExTotal / vivianAnomalyTriggerTotal），
   // 首轮缺省时 buildExecutions 内回退到 state.exSpecialCount。

@@ -31,12 +31,13 @@ import type {
 } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { execMatchesMove } from '@/types/resource'
-import { cfgMechanicSetting as setting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingOf as settingOf, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => settings)
 export const SEVERIAN_ID = '1631'
 /** 核心被动：暴击伤害 +60% */
 export const SEVERIAN_CORE_CRIT_DMG = 60
@@ -185,7 +186,7 @@ function severianFlowState(
 ): { flowIncome: number; shadowHuntCount: number } {
   const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
   const base = severianFlowIncome(cfg, state)
-  const override = setting(cfg, 'severian.shadowHuntCount', 0)
+  const override = setting(cfg, 'severian.shadowHuntCount')
   if (override > 0) {
     const shadowHuntCount = whole(override)
     const flowIncome = base + (cinema >= 6 ? shadowHuntCount * SEVERIAN_C6_WINDRISE_FLOW : 0)
@@ -207,7 +208,7 @@ function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentR
 }
 
 function severianLiexuanCount(cfg: AgentCharConfigInput['cfg']): number {
-  const override = setting(cfg, 'severian.blazingSpinCount', 0)
+  const override = setting(cfg, 'severian.blazingSpinCount')
   if (override > 0) return whole(override)
   return Math.max(0, Number(cfg.dodgeCounterCount ?? 0))
 }
@@ -245,8 +246,8 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
   // 资源区块仍报 `c4DefIgnore: 16`）。
   // 注意执行行路径（`patchSeverianExecutions` :333）走的是 `setting(cfg, 'severian.fengfengStacks')`
   // **正确读法** ⇒ 同一滑块在"执行行"生效、在"资源区块"失效（两路读数不一致，用户看到的区块骗人）。
-  cfg.severianFengfengStacks = whole(setting(cfg, 'severian.fengfengStacks', 1))
-  cfg.severianC4Coverage = clamp01(setting(cfg, 'severian.c4Coverage', 1))
+  cfg.severianFengfengStacks = whole(setting(cfg, 'severian.fengfengStacks'))
+  cfg.severianC4Coverage = clamp01(setting(cfg, 'severian.c4Coverage'))
 }
 
 /** `fengfengStacks` 由调用方经 `resolveSeverianFengfengStacks` 给定（需要影猎次数，cfg 上没有） */
@@ -313,7 +314,7 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
   // 「能量消耗达最大时额外获得一层烁影」未建模（烁影为操作向量）。
   const windBladeMeta = cfg.severianWindBladeMeta as { moveId: string; actionTime: number; damage: number } | undefined
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
-  const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio', 1))
+  const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio'))
   if (windBladeMeta && exCount > 0 && bladeRatio > 0) {
     executions.push(moduleExecRow({
       moveId: windBladeMeta.moveId,
@@ -340,7 +341,7 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
   const windBladeMeta = cfg.severianWindBladeMeta as { actionTime: number } | undefined
   const shadowTime = shadowMeta ? severianShadowHuntCount(cfg, state) * shadowMeta.actionTime : 0
   const liexuanTime = liexuanMeta ? severianLiexuanCount(cfg) * liexuanMeta.actionTime : 0
-  const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio', 1))
+  const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio'))
   const bladeTime = windBladeMeta ? Math.max(0, exSpecialCount) * bladeRatio * windBladeMeta.actionTime : 0
   return {
     necessaryTime: exTime + shadowTime + liexuanTime + bladeTime,
@@ -358,11 +359,11 @@ function patchSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
       shadowHuntCount: severianShadowHuntCount(cfg, state),
       sliderStacks: cfg.severianFengfengStacks !== undefined
         ? Number(cfg.severianFengfengStacks)
-        : setting(cfg, 'severian.fengfengStacks', 1),
+        : setting(cfg, 'severian.fengfengStacks'),
     }),
     c4Coverage: cfg.severianC4Coverage !== undefined
       ? Number(cfg.severianC4Coverage)
-      : setting(cfg, 'severian.c4Coverage', 1),
+      : setting(cfg, 'severian.c4Coverage'),
   })
   const carrierMeta = (cfg.severianCarrierMeta as { moveId: string; damage: number }[] | undefined) ?? []
   for (const exec of executions) {

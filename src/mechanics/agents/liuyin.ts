@@ -15,12 +15,13 @@ import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgNum = mechanicSettingReader(() => settings)
 const LIUYIN_AGENT_ID = '1481'
 
 // —— 好评（Good Review）——
@@ -209,7 +210,7 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPa
 }
 
 function buildLiuyinCharConfig({ slot, agent, cinemaLevel, team, skills, cfg, getRowValue }: AgentCharConfigInput): void {
-  const prevSetting = cfgNum(cfg, 'liuyin.previousTeammateSlot', -1)
+  const prevSetting = cfgNum(cfg, 'liuyin.previousTeammateSlot')
   cfg.liuyinCinemaLevel = cinemaLevel
   // CC-306 / CC-333：额外能力条件唯一来源 = spec 1481 `additionalAbility`（优先取入参 agent，兼容非定长/稀疏 team）
   cfg.liuyinExtraAbilityActive = specAdditionalAbilityActive(team, slot, agent ?? team.find(m => m.slot === slot)?.agent ?? team[slot]?.agent)
@@ -504,13 +505,13 @@ export const liuyinMechanic: AgentMechanicModule = {
       const hug = computeLiuyinHugCounts(
         src.goodReviewTotal,
         stunCount,
-        Math.floor(cfgNum(cfg, 'liuyin.hug60Count', -1)),
+        Math.floor(cfgNum(cfg, 'liuyin.hug60Count')),
         targetChainTotal,
       )
       return hug.hug60 + hug.hug90
     },
     targetSlot: ({ ownSlot, occupiedSlots, cfg }) =>
-      resolveTeammateTargetSlot(ownSlot, occupiedSlots, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot', -1))),
+      resolveTeammateTargetSlot(ownSlot, occupiedSlots, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot'))),
     secondsPerUnit: ({ targetCfg }) => targetCfg.ultimateActionTime ?? 0,
   },
   /** 赠终结技来源（CC-35d-B3：编排层按能力找提供者，原 findSlotByIdentity(['1481']) + 直读 liuyinMechanicSource） */

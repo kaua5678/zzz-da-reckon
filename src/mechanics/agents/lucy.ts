@@ -19,11 +19,12 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution } from '@/types/resource'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgNum = mechanicSettingReader(() => lucyMechanic.settings)
 export const LUCY_ID = '1151'
 const MOVE_SPIN = '1151026' // 亲卫队小猪：回旋挥击！
 const MOVE_C6_BOMB = '1151_c6_pig_bomb'
@@ -109,7 +110,7 @@ function pushExec(
 
 /** 抄家伙调用冷却（秒），钳制到 4–6；缺省 4 */
 export function lucyBoarCd(cfg: CharacterOperationConfig): number {
-  const raw = cfgNum(cfg, 'lucy.boarCd', LUCY_BOAR_CD_DEFAULT)
+  const raw = cfgNum(cfg, 'lucy.boarCd')
   return Math.max(LUCY_BOAR_CD_MIN, Math.min(LUCY_BOAR_CD_MAX, raw))
 }
 

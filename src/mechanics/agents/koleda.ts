@@ -27,12 +27,13 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => koledaMechanic.settings)
 export const KOLEDA_ID = '1101'
 export const KOLEDA_CORE_STUN = 60
 export const KOLEDA_ADDITIONAL_CHAIN_PER_STACK = 35
@@ -82,9 +83,9 @@ export function computeKoledaCycle(input: {
 
 function buildKoledaCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.koledaCinemaLevel = cinemaLevel
-  cfg.koledaChainStunCoverage = clampRatio(setting(cfg, 'koleda.chainStunCoverage', 1))
-  cfg.koledaC1Coverage = clampRatio(setting(cfg, 'koleda.c1Coverage', 1))
-  cfg.koledaC4ChargeStacks = Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks', 2)))
+  cfg.koledaChainStunCoverage = clampRatio(setting(cfg, 'koleda.chainStunCoverage'))
+  cfg.koledaC1Coverage = clampRatio(setting(cfg, 'koleda.c1Coverage'))
+  cfg.koledaC4ChargeStacks = Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks')))
   cfg.koledaAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
@@ -204,11 +205,11 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     koledaAdditionalActive?: boolean
-    /** 写入：clampRatio(setting(cfg, 'koleda.c1Coverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'koleda.c1Coverage')) */
     koledaC1Coverage?: number
-    /** 写入：Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks', 2))) */
+    /** 写入：Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks'))) */
     koledaC4ChargeStacks?: number
-    /** 写入：clampRatio(setting(cfg, 'koleda.chainStunCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'koleda.chainStunCoverage')) */
     koledaChainStunCoverage?: number
     /** 写入：cinemaLevel */
     koledaCinemaLevel?: number

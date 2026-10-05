@@ -26,7 +26,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
@@ -34,6 +34,7 @@ import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => evelynMechanic.settings)
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
 export const EVELYN_ULT_MOVE_ID = '1321016'
@@ -120,11 +121,11 @@ export function computeEvelynCycle(input: {
 
 function buildEvelynCharConfig({ cinemaLevel, skills, cfg, panel, getRowValue }: AgentCharConfigInput): void {
   cfg.evelynCinemaLevel = cinemaLevel
-  cfg.evelynGarroteCount = whole(setting(cfg, 'evelyn.garroteCount', 4))
-  cfg.evelynRestraintCoverage = clampRatio(setting(cfg, 'evelyn.restraintCoverage', 1))
-  cfg.evelynC1DefIgnoreCoverage = clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage', 1))
-  cfg.evelynC4ShieldCoverage = clampRatio(setting(cfg, 'evelyn.c4ShieldCoverage', 1))
-  cfg.evelynC6FollowUpCount = whole(setting(cfg, 'evelyn.c6FollowUpCount', 16))
+  cfg.evelynGarroteCount = whole(setting(cfg, 'evelyn.garroteCount'))
+  cfg.evelynRestraintCoverage = clampRatio(setting(cfg, 'evelyn.restraintCoverage'))
+  cfg.evelynC1DefIgnoreCoverage = clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage'))
+  cfg.evelynC4ShieldCoverage = clampRatio(setting(cfg, 'evelyn.c4ShieldCoverage'))
+  cfg.evelynC6FollowUpCount = whole(setting(cfg, 'evelyn.c6FollowUpCount'))
   cfg.evelynAdditionalActive = additionalAbilityActiveOf(panel)
   if (cinemaLevel >= 1) {
     cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + EVELYN_C1_DECIBEL_GIFT
@@ -329,21 +330,21 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     evelynAdditionalActive?: boolean
-    /** 写入：clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage')) */
     evelynC1DefIgnoreCoverage?: number
-    /** 写入：clampRatio(setting(cfg, 'evelyn.c4ShieldCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'evelyn.c4ShieldCoverage')) */
     evelynC4ShieldCoverage?: number
-    /** 写入：whole(setting(cfg, 'evelyn.c6FollowUpCount', 16)) */
+    /** 写入：whole(setting(cfg, 'evelyn.c6FollowUpCount')) */
     evelynC6FollowUpCount?: number
     /** 写入：getRowValue(findMove(skills, EVELYN_CHAIN_MOVE_ID), 'damage') * EVELYN_MULTIPLIER */
     evelynChainMultScaled?: number
     /** 写入：cinemaLevel */
     evelynCinemaLevel?: number
-    /** 写入：whole(setting(cfg, 'evelyn.garroteCount', 4)) */
+    /** 写入：whole(setting(cfg, 'evelyn.garroteCount')) */
     evelynGarroteCount?: number
     /** 写入：multiplierActive */
     evelynMultiplierActive?: boolean
-    /** 写入：clampRatio(setting(cfg, 'evelyn.restraintCoverage', 1)) */
+    /** 写入：clampRatio(setting(cfg, 'evelyn.restraintCoverage')) */
     evelynRestraintCoverage?: number
     /** 写入：getRowValue(findMove(skills, EVELYN_ULT_MOVE_ID), 'damage') * EVELYN_MULTIPLIER */
     evelynUltMultScaled?: number

@@ -12,9 +12,10 @@ import type { CharacterResourceResult} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
-import { cfgMechanicSetting as cfgSetting, cfgMechanicSetting as cfgRate } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+const cfgSetting = mechanicSettingReader(() => settings)
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -230,7 +231,7 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   cfg.skipGenericExSpecial = true
   cfg.roxyCinemaLevel = cinemaLevelOf(cinemaLevel)
   // v12 moveIds
-  cfg.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds', 2.5))
+  cfg.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds'))
   // CC-109（R5 D28）：一次强特 = 小心风寒启动 + 自旋 spinSeconds 秒，耗能按 catalog 两项合计。
   // 修前沿用通用 findExSpecial 的「Energy Cost」10（只算启动），自旋 30/s 零扣费 ⇒ 强特次数按 能量/10 推，
   // 而风能账本 computeRoxyWindEnergy 按 10 + 30×秒 记耗能，两本账不一致。
@@ -304,8 +305,8 @@ function roxyWindEnergySourceOf(
     ultimateCount: state.ultimateCount,
     spinSeconds: Number(cfg.roxySpinSeconds ?? 2.5),
     cinemaLevel: cinemaLevelOf(cfg.roxyCinemaLevel),
-    energyRate: cfgRate(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
-    eyeRate: cfgRate(cfg, ROXY_WIND_EYE_RATE_ID, 1),
+    energyRate: cfgSetting(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
+    eyeRate: cfgSetting(cfg, ROXY_WIND_EYE_RATE_ID, 1),
   })
 }
 

@@ -14,7 +14,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { fmt } from '@/utils/format'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
@@ -22,6 +22,7 @@ import { positiveWholeCounts } from '@/utils/finiteClamp'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const cfgNum = mechanicSettingReader(() => settings)
 /**
  * 星徽·比利（1531）战斗逻辑（用户确认口径，2026-08）：
  * - 命破/物理：物理伤害均为贯穿伤害（引擎按贯穿力基底 atk×0.3+hp×0.1+sheerForceFlat 无视防御结算）；
@@ -350,7 +351,7 @@ function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput
   cfg.billyBasicHealPerSec = basicHealPerSec
 
   // 喧响折算：付费强特 E 次 × 加权单次喧响（摇曳链 = 动力压制+孤轮+摇曳；抓地轮毂独立）
-  const rockingRatio = cfgNum(cfg, '1531.rockingRatio', DEFAULT_ROCKING_RATIO)
+  const rockingRatio = cfgNum(cfg, '1531.rockingRatio')
   const avgDecibel = rockingRatio
     * (decibel[MOVE.driveSuppression] + decibel[MOVE.coolWheelie] + decibel[MOVE.rockingFootwork])
     + (1 - rockingRatio) * decibel[MOVE.tractionWheels]
@@ -363,7 +364,7 @@ function billyExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeIn
   const quantize = axisActive || cfg.billyFinalizeChain === true || cfg.billyContinuousChain !== true
   const chain = computeBillyChain(
     exSpecialCount,
-    cfgNum(cfg, '1531.rockingRatio', DEFAULT_ROCKING_RATIO),
+    cfgNum(cfg, '1531.rockingRatio'),
     0, // fullThrottle 由决意求解器按当前状态推导（见下），终局前不读上一轮写入值
     readAxisEx(cfg),
     axisActive,
@@ -386,7 +387,7 @@ function billyExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeIn
       chain.rocking,
       chain.traction,
       0,
-      cfgNum(cfg, '1531.driveSuppressionHpDiscountRatio', DEFAULT_HP_DISCOUNT_RATIO),
+      cfgNum(cfg, '1531.driveSuppressionHpDiscountRatio'),
       basicHealPct,
       quantize,
     )
@@ -538,13 +539,13 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
   // EX 链结构（摇曳/抓地由闪能池定；动力压制链由 HP 池收敛）
   let chain = computeBillyChain(
     state.exSpecialCount,
-    cfgNum(cfg, '1531.rockingRatio', DEFAULT_ROCKING_RATIO),
+    cfgNum(cfg, '1531.rockingRatio'),
     Number(cfg.billyFullThrottleCount ?? 0),
     axisEx,
     axisActive,
     cfg.dodgeCounterCount ?? 0,
   )
-  const hpDiscountRatio = cfgNum(cfg, '1531.driveSuppressionHpDiscountRatio', DEFAULT_HP_DISCOUNT_RATIO)
+  const hpDiscountRatio = cfgNum(cfg, '1531.driveSuppressionHpDiscountRatio')
   const hp = computeBillyHpModel(
     state.exSpecialCount,
     chain.rocking,
@@ -693,7 +694,7 @@ function buildBillyResourceResult({ cfg, state }: AgentResourceResultInput): Par
   const axisActive = Number(cfg.billyAxisActive ?? 0) === 1
   const chain = computeBillyChain(
     state.exSpecialCount,
-    cfgNum(cfg, '1531.rockingRatio', DEFAULT_ROCKING_RATIO),
+    cfgNum(cfg, '1531.rockingRatio'),
     Math.max(0, Math.floor(resources.get('billy_determination')?.spendCounts['billy_max_power_spend'] ?? 0)),
     readAxisEx(cfg),
     axisActive,

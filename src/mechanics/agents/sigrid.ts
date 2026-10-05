@@ -14,7 +14,7 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { cfgMechanicSetting as cfgSetting, mechanicSettingOf as settingOf } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingOf as settingOf, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
@@ -22,6 +22,7 @@ import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const cfgSetting = mechanicSettingReader(() => settings)
 /**
  * 希格莉德（1591，冰属性·强攻，罗斯凯利法）。
  * 机制文本来源：nanoka 3.2.3+18244196 zh character/1591.json + noun.json 术语解析（出枪式=Term:1000029、巡空枪势=Term:1000030、破阵=Term:1000028）。
@@ -319,7 +320,7 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 溢出覆盖率缺省 0：引擎按「机会 100% 立刻打光」建模（实测 spend 42 / 收入 42.7，储存位常年为空），
   // 而原文的触发条件是「机会**溢出时**」——储存上限 1 且从不积压 ⇒ 永不溢出 ⇒ 不计算。
   // 代码没有逐事件溢出判定（段数状态机未建模），要模拟「攒着不打导致溢出」才调高此滑块。
-  const overflowCov = clamp01(cfgSetting(cfg, 'sigrid.c1OverflowCoverage', 0))
+  const overflowCov = clamp01(cfgSetting(cfg, 'sigrid.c1OverflowCoverage'))
 
   // 出枪式（凛冽枪尖 #1-4）行级物化（用户口径 2026-09-03）：真实分段行 + 真实时间——
   // 平A汇总行只保留时间载体（patchSigridExecutions 归零伤害/失衡/积蓄），伤害由分段行承载；
@@ -327,7 +328,7 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   const basicCycle = cfg.sigridBasicCycle ?? []
   let segTime = 0
   if (basicCycle.length > 0) {
-    const pressCancel = cfgSetting(cfg, 'sigrid.pressCancel', 0) >= 0.5
+    const pressCancel = cfgSetting(cfg, 'sigrid.pressCancel') >= 0.5
     const segCounts = countBasicSegments(Math.max(0, Number(state.basicAttackTime ?? 0)), basicCycle, pressCancel)
     for (const seg of basicCycle) {
       const n = segCounts[seg.moveId] ?? 0
@@ -423,7 +424,7 @@ export function sigridChuqiangFromState(
   cfg: AgentCharConfigInput['cfg'],
 ): number {
   const basicCycle = cfg.sigridBasicCycle ?? []
-  const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel', 0)) > 0
+  const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel')) > 0
   const finisherHits = countBasicFinisherHits(Math.max(0, state.basicAttackTime ?? 0), basicCycle, pressCancel)
   return Math.max(0, state.exSpecialCount ?? 0) // 碎玉（出枪式）
     + Math.max(0, state.ultimateCount ?? 0) // 霜天
@@ -536,7 +537,7 @@ function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
   // #4 命中：按段循环计数（用户口径 2026-02），压枪开关取消 a1/a2 → 循环 1.765s
   const basicCycle = cfg.sigridBasicCycle ?? []
-  const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel', 0)) > 0
+  const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel')) > 0
   chuqiangHits += countBasicFinisherHits(Math.max(0, state?.basicAttackTime ?? 0), basicCycle, pressCancel)
   cfg.sigridChuqiangHits = chuqiangHits
 

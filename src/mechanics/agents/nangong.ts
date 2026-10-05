@@ -13,12 +13,13 @@ import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
-import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const setting = mechanicSettingReader(() => settings)
 /**
  * 南宫羽（1511）战斗逻辑（nanoka 原文满级被动 1511055 自主分析，2026-08）：
  * - 核心被动：异常精通 +120；初始异常掌控 >110 每超 1 点冲击力 +1；
@@ -90,7 +91,7 @@ function nangongVibratoStackPct(cinemaLevel: number): number {
 }
 
 function nangongVibratoStacks(cfg: AgentResourceInput['cfg']): number {
-  const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
+  const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease'))
   const systemTriggers = Math.max(0, Number(cfg.inStunWindowTriggers ?? 0))
   return sliderStacks > 0
     ? Math.min(VIBRATO_MAX, sliderStacks)
@@ -303,10 +304,10 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
   const cinemaLevel = cinemaLevelOf(cfg.nangongCinemaLevel)
   const stunCount = Math.max(0, Math.floor(Number(cfg.nangongStunCount ?? 0)))
   // 颤音层数与每层加成（CC-333：事件侧与资源结果共用 nangongVibratoStacks / nangongVibratoStackPct）
-  const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease', 0))
+  const sliderStacks = Math.floor(setting(cfg, 'nangong.vibratoStacksPerRelease'))
   const stacks = nangongVibratoStacks(cfg)
   const stackPct = nangongVibratoStackPct(cinemaLevel)
-  const coverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
+  const coverage = clampRatio(setting(cfg, 'nangong.releaseCoverage'))
   const releaseCount = Math.round(stunCount * coverage)
   if (releaseCount > 0 && stacks > 0) {
     // 固定倍率表达：450% × 层数系数（满层4 = 900%；C2 满层 = 1080%）
@@ -374,7 +375,7 @@ function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): P
   const beatInitial = cinemaLevel >= 1 ? BEAT_CAP : BEAT_INITIAL
   const totalBeat = nangongBeatIncome(cinemaLevel, frontline, battleTime)
   const stacks = nangongVibratoStacks(cfg)
-  const releaseCoverage = clampRatio(setting(cfg, 'nangong.releaseCoverage', 1))
+  const releaseCoverage = clampRatio(setting(cfg, 'nangong.releaseCoverage'))
   const stunCount = Math.max(0, Math.floor(Number(cfg.nangongStunCount ?? 0)))
   const minePairs = cfg.nangongMinePairs !== undefined
     ? Math.max(0, Math.floor(Number(cfg.nangongMinePairs)))

@@ -17,13 +17,14 @@ import type { CharacterOperationConfig, CharacterResourceResult, IterationState,
 import { fmt } from '@/utils/format'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { getSkillLevelCoef } from '@/core/skillLevel'
-import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue, rawRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgSetting = mechanicSettingReader(() => settings)
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
 const IGNITION_C1_EXTRA = 40
@@ -288,11 +289,11 @@ function resolveEnergyRegenTotal(panel: PanelValues): number {
 
 function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.burniceCinemaLevel = cinemaLevel
-  cfg.burniceSingleSpraySeconds = clamp(cfgSetting(cfg, 'burnice.singleSpraySeconds', SINGLE_SPRAY_MAX_SECONDS), 0, SINGLE_SPRAY_MAX_SECONDS)
+  cfg.burniceSingleSpraySeconds = clamp(cfgSetting(cfg, 'burnice.singleSpraySeconds'), 0, SINGLE_SPRAY_MAX_SECONDS)
   const doubleSprayMax = DOUBLE_SPRAY_MAX_SECONDS + (cinemaLevel >= 4 ? CINEMA4_DOUBLE_SPRAY_EXTRA_SECONDS : 0)
-  cfg.burniceDoubleSpraySeconds = clamp(cfgSetting(cfg, 'burnice.doubleSpraySeconds', DOUBLE_SPRAY_MAX_SECONDS), 0, doubleSprayMax)
-  cfg.burniceStirringCount = Math.max(0, Math.floor(cfgSetting(cfg, 'burnice.stirringCount', 0)))
-  cfg.burniceFlowCountUtilization = clamp(cfgSetting(cfg, 'burnice.flowCountUtilization', 1), 0, 1)
+  cfg.burniceDoubleSpraySeconds = clamp(cfgSetting(cfg, 'burnice.doubleSpraySeconds'), 0, doubleSprayMax)
+  cfg.burniceStirringCount = Math.max(0, Math.floor(cfgSetting(cfg, 'burnice.stirringCount')))
+  cfg.burniceFlowCountUtilization = clamp(cfgSetting(cfg, 'burnice.flowCountUtilization'), 0, 1)
   // 原始分段倍率（rawRowValue）：默认启用的 spec 行规则 burnice_stirring_fusion（1171007/damage ×1.2689）已在编辑器里
   // 表达同一融合，这里若读带规则值会重复计入（CC-238；CC-237 误并入 getRowValue 的回归）。
   const blend1Damage = rawRowValue(findMoveById(skills, MIXED_FLAME_BLEND_1_MOVE), 'damage') || 250.8
@@ -507,9 +508,9 @@ const settings: MechanicSetting[] = [
     id: 'burnice.singleSpraySeconds',
     label: '柏妮思单喷持续秒数',
     description: '0 表示不放单喷（爆炸也不放）；默认拉满 1.89 秒。',
-    default: 1.89,
+    default: SINGLE_SPRAY_MAX_SECONDS,
     min: 0,
-    max: 1.89,
+    max: SINGLE_SPRAY_MAX_SECONDS,
     step: 0.01,
     suffix: '秒',
   },
@@ -517,7 +518,7 @@ const settings: MechanicSetting[] = [
     id: 'burnice.doubleSpraySeconds',
     label: '柏妮思双喷持续秒数',
     description: '0 表示不放双喷（爆炸也不放）；默认拉满 2.274 秒，4命后上限提升到 3.274 秒。',
-    default: 2.274,
+    default: DOUBLE_SPRAY_MAX_SECONDS,
     min: 0,
     max: 3.274,
     step: 0.01,

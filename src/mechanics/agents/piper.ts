@@ -26,10 +26,11 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgSetting = mechanicSettingReader(() => piperMechanic.settings)
 export const PIPER_ID = '1281'
 export const PIPER_C2_BASE_DMG = 10
 export const PIPER_C4_ENERGY = 20
@@ -89,10 +90,10 @@ export function computePiperMomentum(input: { cinemaLevel: number; buildupCovera
 
 function buildPiperCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.piperCinemaLevel = cinemaLevel
-  cfg.piperMomentumCoverage = cfgSetting(cfg, 'piper.momentumCoverage', PIPER_BUILDUP_COVERAGE_DEFAULT)
+  cfg.piperMomentumCoverage = cfgSetting(cfg, 'piper.momentumCoverage')
   if (cinemaLevel >= 4) {
     const maxTriggers = Math.max(1, Math.ceil((cfg.battleTime ?? 180) / PIPER_C4_CD))
-    const triggers = Math.min(maxTriggers, Math.max(0, Math.floor(cfgSetting(cfg, 'piper.c4AnomalyTriggers', 1))))
+    const triggers = Math.min(maxTriggers, Math.max(0, Math.floor(cfgSetting(cfg, 'piper.c4AnomalyTriggers'))))
     cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * PIPER_C4_ENERGY
   }
 }

@@ -15,13 +15,14 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
-import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { clampCritRatePct } from '@/data/critMultiplier'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const setting = mechanicSettingReader(() => settings)
 const JANE_AGENT_ID = '1261'
 /** 普通攻击：萨霍夫跳（融合主段，见 src/data/moveFusions.ts JANE_SOMERSAULT） */
 const JANE_SOMERSAULT_MOVE_ID = '1261007'
@@ -169,7 +170,7 @@ function buildJaneResourceResult({ cfg, state }: AgentResourceResultInput): Part
   return {
     janeMechanicSource: computeJaneMechanic({
       anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
-      frenzyActive: clamp01(cfgMechanicSetting(cfg, 'jane.frenzyActive', 1), 1) > 0,
+      frenzyActive: clamp01(setting(cfg, 'jane.frenzyActive'), 1) > 0,
       frontlineSeconds: state.frontlineTime,
       // cfg.panel 是**局内盖章面板**，potentialLevel 由 core/panel.ts 写入（`:353`），
       // 与 applyPanel 的 `input.potentialLevel` 同源同值（CC-171 第 196 轮前 computePanelPhases 漏传，恒为 6）。

@@ -4,11 +4,12 @@ import type { CharacterOperationConfig, CharacterResourceResult, IterationState,
 import { fmt } from '@/utils/format'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
-import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const cfgNum = mechanicSettingReader(() => settings)
 /**
  * 卢西娅·艾洛温（1451）战斗逻辑（用户确认口径）：
  * - 帷幕延长按全覆盖，不单独建模。
@@ -312,7 +313,7 @@ function buildLuciaResourceResult({ cfg, state, preModuleExecutions }: AgentReso
       cfg,
       state,
       cap,
-      cfgNum(cfg, 'lucia.healingCoverage', DEFAULT_HEALING_COVERAGE),
+      cfgNum(cfg, 'lucia.healingCoverage'),
     ),
   }
 }
@@ -370,7 +371,7 @@ function additionalAttackCapOf(
   state?: { backstageTime?: number; frontlineTime?: number },
   frontActionCount?: number,
 ): number {
-  const slider = cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT)
+  const slider = cfgNum(cfg, 'lucia.additionalAttackCount')
   const w = effectiveBattleTime(cfg)
   if (!state || typeof state.backstageTime !== 'number') {
     return Math.min(slider, Math.floor(w / ADDITIONAL_ATTACK_CD_SECONDS))
@@ -380,7 +381,7 @@ function additionalAttackCapOf(
   const block = frontBlockSeconds(
     f,
     frontActionCount,
-    cfgNum(cfg, 'lucia.frontSwitchRatio', DEFAULT_FRONT_SWITCH_RATIO),
+    cfgNum(cfg, 'lucia.frontSwitchRatio'),
     ADDITIONAL_ATTACK_CD_SECONDS,
   )
   const cd = phaseDelayedCooldown(ADDITIONAL_ATTACK_CD_SECONDS, f, w, block)
@@ -532,7 +533,7 @@ export const luciaElowenMechanic: AgentMechanicModule = {
   // 装配期写回（2026-09-26 CC-14e）：卢西娅 C4 帷幕三写回，见上方 luciaOnFinalAssemble 注释。
   onFinalAssemble: luciaOnFinalAssemble,
   estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {
-    const plan = computeLuciaDreamPlan(exSpecialCount, ultimateCount, cfgNum(cfg, 'lucia.additionalAttackCount', DEFAULT_ADDITIONAL_ATTACK_COUNT))
+    const plan = computeLuciaDreamPlan(exSpecialCount, ultimateCount, cfgNum(cfg, 'lucia.additionalAttackCount'))
     const exTime = cfg.exSpecialActionTime
     const a5Time = cfg.luciaA5ActionTime ?? 1.887
     return {
