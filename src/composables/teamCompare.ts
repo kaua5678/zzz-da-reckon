@@ -42,6 +42,7 @@ import type { ResourceCalc } from '@/composables/useResourceCalc'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
+import { evalSandboxedFormula } from '@/utils/formulaSandbox'
 
 type Calc = ResourceCalc
 
@@ -271,8 +272,8 @@ function completeInteractionList(interactions: InteractionItem[], team: (string 
  */
 
 /**
- * 难度公式求值器（逐交互类型，用户可自编）——与 `core/buff.ts#evalFormulaExpression` 同款沙箱：
- * **字符白名单**（数字/`c r k w`/运算符/括号/逗号/下划线/字母）+ 仅注入
+ * 难度公式求值器（逐交互类型，用户可自编）——沙箱与 `core/buff.ts#evalFormulaExpression` **同一份代码**
+ * `utils/formulaSandbox.ts#evalSandboxedFormula`（CC-504）：字符白名单 + 仅注入
  * `clamp/floor/max/min/pow/abs/sqrt`（`pow` 必须有：JS 无幂运算符 `^`，见默认公式注释）。
  *
  * 为什么用白名单 + `Function` 而不是引第三方表达式库（规则 12 阶梯 ③）：
@@ -296,23 +297,14 @@ function evalDifficultyFormula(
   expression: string,
   c: number,
   w: number,
-  r: number,
+  rr: number,
   k: number,
 ): number {
   const fallback = c * w
   const expr = (expression ?? '').trim()
   if (expr === '' || expr === 'c*w') return fallback
-  if (!/^[0-9crkwCRKW+\-*/().,\s_a-zA-Z]+$/.test(expr)) return fallback
-  try {
-    const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
-    const out = Function(
-      'c', 'r', 'k', 'w', 'clamp', 'floor', 'max', 'min', 'pow', 'abs', 'sqrt',
-      `return (${expr})`,
-    )(c, r, k, w, clamp, Math.floor, Math.max, Math.min, Math.pow, Math.abs, Math.sqrt) as unknown
-    return typeof out === 'number' && Number.isFinite(out) ? out : fallback
-  } catch {
-    return fallback
-  }
+  const r = evalSandboxedFormula(expr, { c, r: rr, k, w })
+  return r.ok && typeof r.value === 'number' && Number.isFinite(r.value) ? r.value : fallback
 }
 
 export function computeDifficulty(

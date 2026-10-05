@@ -20,6 +20,7 @@ export { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget 
 import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 export { calcEnergyRegenTotal, calcFlashEnergyRegenTotal } from '@/data/agentPanelStats'
 import { calcEnergyRegenTotal, calcFlashEnergyRegenTotal } from '@/data/agentPanelStats'
+import { evalSandboxedFormula } from '@/utils/formulaSandbox'
 
 function targetedStatKey(stat: string, target?: string): string {
   const normalized = normalizeSkillDamageTarget(target)
@@ -585,17 +586,10 @@ export function collectAllBuffs(
  *   ⚠ 与 `sourceStat: 'potentialLevel'`（把档位当 `x`，1381 零号·安比先例）不冲突：那条只用一轴。
  */
 function evalFormulaExpression(expression: string, x: number, s: number, p: number): number {
-  const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
-  const floor = Math.floor
-  const max = Math.max
-  const min = Math.min
-  const safeExpression = expression.trim()
-  if (!/^[0-9xXsSpP+\-*/().,\s_a-zA-Z]+$/.test(safeExpression)) return 0
-  try {
-    return Function('x', 's', 'p', 'clamp', 'floor', 'max', 'min', `return (${safeExpression})`)(x, s, p, clamp, floor, max, min)
-  } catch {
-    return 0
-  }
+  // 沙箱（白名单 + helper 名单）走 `utils/formulaSandbox`（CC-504，与难度公式同一份）；不合法 / 抛错 ⇒ 0，
+  // 合法结果原样返回（历史行为：不对非有限做兜底，由下游 `Number()` / 乘区处理）。
+  const r = evalSandboxedFormula(expression, { x, s, p })
+  return r.ok ? r.value : 0
 }
 
 function getEffectSourceValue(effect: BuffEffect, panel?: PanelValues): number {
