@@ -40,12 +40,13 @@ import type {
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const cfgNum = mechanicSettingReader(() => soldier11Mechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => soldier11Mechanic.settings)
 const AGENT_ID = '1041'
 
 // 火力镇压全部 moveId（普通攻击 #1-#7 + 冲刺攻击）
@@ -149,7 +150,7 @@ function applySoldier11Panel({ panel, settings, potentialLevel }: AgentPanelInpu
     // 「11号」额外能力·燎原（队伍存在同属性或同阵营角色）：
     // 火属性伤害 +10%；攻击失衡敌人额外 +22.5% × 覆盖率滑块（非轴模式默认满覆盖）。
     panel.fireDmg = (panel.fireDmg ?? 0) + 10
-    const stunCov = settings['soldier11.prairieFireStunCoverage'] ?? 1
+    const stunCov = settingOf(settings, 'soldier11.prairieFireStunCoverage')
     panel.fireDmg = (panel.fireDmg ?? 0) + 22.5 * stunCov
   }
 }

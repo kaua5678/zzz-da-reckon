@@ -9,13 +9,14 @@ import type {
 } from '../types'
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds } from '@/types/resource'
-import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSettingRaw, mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const settingOf = mechanicSettingPanelReader(() => qianxiaMechanic.settings)
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
  * 机制文本来源：nanoka 3.2.3+18244196 zh character/1491.json。
@@ -285,7 +286,7 @@ function applyQianxiaPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: A
   if (cinemaLevelOf(cinemaLevel) < 6) return
   // 潜心创作（8s，强特后）按整局覆盖率近似；必定暴击 + 初始攻击×0.03% 暴伤（封顶105）。
   // 原文「根据自身初始攻击力的0.03%」⇒ 初始 = 局外面板（CC-124；读取口 `initialStat`，CC-497）
-  const coverage = Math.max(0, Math.min(1, Number(settings['qianxia.c6FocusCoverage'] ?? 1)))
+  const coverage = Math.max(0, Math.min(1, settingOf(settings, 'qianxia.c6FocusCoverage')))
   const atk = initialStat(outOfCombatPanel, panel, 'atk')
   panel.critRate = (panel.critRate ?? 0) + QIANXIA_C6_CRIT_RATE * coverage
   panel.critDmg = (panel.critDmg ?? 0) + Math.min(QIANXIA_C6_CRIT_DMG_CAP, atk * 0.03) * coverage

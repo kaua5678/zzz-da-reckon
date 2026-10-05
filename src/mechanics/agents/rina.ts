@@ -30,7 +30,9 @@ import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
 import { potentialLevelOf } from '@/data/potentialLevel'
+import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 
+const settingOf = mechanicSettingPanelReader(() => rinaMechanic.settings)
 export const RINA_ID = '1211'
 const C2_COVERAGE = 12 / 18
 
@@ -288,7 +290,7 @@ export const rinaMechanic: AgentMechanicModule = {
     // 原先是 computePanelPhases 里 `agent.id === '1211'` 的硬编码块（applyPanel 拿不到滑块的历史绕法），
     // AgentPanelInput.settings 就位后归位到模块自身。
     if (cinemaLevel >= 4) {
-      const coverage = Math.max(0, Math.min(1, settings['rina.c4DoubleBangbooCoverage'] ?? 1))
+      const coverage = Math.max(0, Math.min(1, settingOf(settings, 'rina.c4DoubleBangbooCoverage')))
       panel.energyRegenBonusFlat = (panel.energyRegenBonusFlat ?? 0) + 0.5 * coverage
       panel.rinaCinema4EnergyRegen = 0.5 * coverage
     }

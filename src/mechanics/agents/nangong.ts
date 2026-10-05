@@ -13,13 +13,14 @@ import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const setting = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 /**
  * 南宫羽（1511）战斗逻辑（nanoka 原文满级被动 1511055 自主分析，2026-08）：
  * - 核心被动：异常精通 +120；初始异常掌控 >110 每超 1 点冲击力 +1；
@@ -130,7 +131,7 @@ export function computeNangongMechanic(input: {
 }
 
 function applyNangongPanel({ panel, outOfCombatPanel, cinemaLevel, settings }: AgentPanelInput): void {
-  const coverage = clampRatio(settings['nangong.coreBuffCoverage'] ?? 1)
+  const coverage = clampRatio(settingOf(settings, 'nangong.coreBuffCoverage'))
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + MASTERY_BONUS + (cinemaLevel >= 4 ? C4_MASTERY_BONUS : 0)
   // 原文「初始异常掌控」⇒ 读局外面板（spec sourcePanelPhase=outOfCombat，CC-123）
   applyAgentAttributeConversions(panel, NANGONG_AGENT_ID, 1, { outOfCombat: outOfCombatPanel })

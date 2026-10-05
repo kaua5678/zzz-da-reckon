@@ -26,7 +26,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
@@ -35,6 +35,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => evelynMechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => evelynMechanic.settings)
 export const EVELYN_ID = '1321'
 export const EVELYN_CHAIN_MOVE_ID = '1321015'
 export const EVELYN_ULT_MOVE_ID = '1321016'
@@ -248,9 +249,9 @@ function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
     ultimateCount: 0,
     baseCritRate: 0,
     additionalActive: false,
-    restraintCoverage: settings['evelyn.restraintCoverage'] ?? 1,
-    c1DefIgnoreCoverage: settings['evelyn.c1DefIgnoreCoverage'] ?? 1,
-    c4ShieldCoverage: settings['evelyn.c4ShieldCoverage'] ?? 1,
+    restraintCoverage: settingOf(settings, 'evelyn.restraintCoverage'),
+    c1DefIgnoreCoverage: settingOf(settings, 'evelyn.c1DefIgnoreCoverage'),
+    c4ShieldCoverage: settingOf(settings, 'evelyn.c4ShieldCoverage'),
     c6FollowUpCount: 0,
   })
   panel.critRate = (panel.critRate ?? 0) + cycle.coreCritRate

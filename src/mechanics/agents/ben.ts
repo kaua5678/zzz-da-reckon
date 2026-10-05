@@ -30,11 +30,13 @@ import type {
   AgentPanelInput,
   AgentResourceInput,
 } from '../types'
-import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { clampRatio } from '@/utils/finiteClamp'
 
+const setting = mechanicSettingReader(() => benMechanic.settings)
 export const BEN_ID = '1121'
 
 /** 满级：初始防 → 攻击 80% */
@@ -56,10 +58,6 @@ export const MOVE_C2_COUNTER = '1121c2_guard_counter'
 /** 影画4：只有成功格挡后的后继反击招式 1121011 获得增伤 */
 export const BEN_C4_MOVE_IDS = new Set(['1121011'])
 
-function clamp01(value: unknown, fallback = 1): number {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? Math.max(0, Math.min(1, parsed)) : fallback
-}
 
 function findMoveActionTime(
   skills: AgentCharConfigInput['skills'],
@@ -90,7 +88,7 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
 function buildCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
   cfg.benCinemaLevel = cinemaLevelOf(cinemaLevel)
   cfg.benDef = panel.def ?? 0
-  cfg.benExParrySuccessRate = clamp01(cfgMechanicSettingRaw(cfg, BEN_EX_PARRY_RATE_SETTING), 1)
+  cfg.benExParrySuccessRate = clampRatio(setting(cfg, BEN_EX_PARRY_RATE_SETTING))
   cfg.benExActionTimes = Object.fromEntries(
     [...BEN_EX_NORMAL_MOVE_IDS, ...BEN_EX_PARRY_MOVE_IDS]
       .map(moveId => [moveId, findMoveActionTime(skills, moveId)]),
@@ -128,7 +126,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const comboCount = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
   if (comboCount <= 0) return
 
-  const successRate = clamp01(cfg.benExParrySuccessRate, 1)
+  const successRate = clampRatio(cfg.benExParrySuccessRate ?? 1)
   const successCount = comboCount * successRate
   const normalCount = comboCount - successCount
   const actionTimes: Record<string, number> = cfg.benExActionTimes ?? {}

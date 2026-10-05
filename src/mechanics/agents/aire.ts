@@ -33,12 +33,13 @@ import type {
   ExtraNecessaryAction,
 } from '../types'
 import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => aireMechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => aireMechanic.settings)
 export const AIRE_ID = '1501'
 export const AIRE_CORE_PROFICIENCY = 90
 export const AIRE_C1_ETHER_ANOMALY_RES_IGNORE = 10
@@ -221,7 +222,7 @@ function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
   const cycle = computeAireCycle({
     cinemaLevel,
     additionalActive: additionalAbilityActiveOf(panel),
-    c2DelusionCoverage: settings['aire.c2DelusionCoverage'] ?? 1,
+    c2DelusionCoverage: settingOf(settings, 'aire.c2DelusionCoverage'),
   })
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + cycle.coreProficiency
   if (cycle.c1EtherAnomalyResIgnore > 0) {

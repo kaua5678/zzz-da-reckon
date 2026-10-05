@@ -31,7 +31,9 @@ import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { simulateCounterStateMachine } from '@/specs/stateMachine'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 
+const settingOf = mechanicSettingPanelReader(() => velinaMechanic.settings)
 const VELINA_AGENT_ID = '1561'
 /**
  * CC-273：招式按 catalog moveId 认（主键），不再按英文名。修前 3 处 `findMoveByEnglishName` + 2 处 `name.en ===`，
@@ -164,7 +166,7 @@ function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
   // CC-27（2026-09-28）：2 命风蚀利用率由本模块在面板阶段读自己的滑块盖章，风蚀状态机（本模块
   // `resolveVelinaCorrosion`）读回——写读同属本模块。此前该字段零写入、恒回落到编排层穿线传入的
   // `cinema2CorrosionRate`（roundInputs → AnomalyPoolInput → core/corrosion → 能力入参），那条穿线已删。
-  panel.velinaCinema2CorrosionRate = settings?.['velina.cinema2CorrosionRate'] ?? VELINA_C2_CORROSION_RATE_DEFAULT
+  panel.velinaCinema2CorrosionRate = settingOf(settings, 'velina.cinema2CorrosionRate')
   panel.velinaAdditionalAbilityActive = additionalAbilityActive ? 1 : 0
 
   // 一命：风属性异常伤害无视20%风抗；异放继承风底性质，一并吃到

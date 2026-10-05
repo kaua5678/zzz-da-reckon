@@ -40,7 +40,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
@@ -48,6 +48,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => ellenMechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => ellenMechanic.settings)
 export const ELLEN_ID = '1191'
 export const ELLEN_FROST_TRIM_MOVE_IDS = ['1191006'] as const
 export const ELLEN_FROST_TRIM_ACTION_TIMES = [2.232] as const
@@ -439,11 +440,11 @@ function applyEllenPanel({ cinemaLevel, potentialLevel, panel, settings }: Agent
     stunCount: 0,
     c4CdRate: 1,
     additionalActive: additionalAbilityActiveOf(panel),
-    c1CritStacks: settings['ellen.c1CritStacks'] ?? 6,
-    c2AvgCharge: settings['ellen.c2AvgCharge'] ?? 3,
-    stormSurgeStacks: settings['ellen.stormSurgeStacks'] ?? 10,
-    c6PenCoverage: settings['ellen.c6PenCoverage'] ?? 1,
-    c6FeastCoverage: settings['ellen.c6FeastCoverage'] ?? 1,
+    c1CritStacks: settingOf(settings, 'ellen.c1CritStacks'),
+    c2AvgCharge: settingOf(settings, 'ellen.c2AvgCharge'),
+    stormSurgeStacks: settingOf(settings, 'ellen.stormSurgeStacks'),
+    c6PenCoverage: settingOf(settings, 'ellen.c6PenCoverage'),
+    c6FeastCoverage: settingOf(settings, 'ellen.c6FeastCoverage'),
   })
   if (cycle.c1CritRate > 0) panel.critRate = (panel.critRate ?? 0) + cycle.c1CritRate
   if (cycle.stormSurgeIceDmg > 0) panel.iceDmg = (panel.iceDmg ?? 0) + cycle.stormSurgeIceDmg

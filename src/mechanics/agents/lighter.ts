@@ -43,6 +43,8 @@ import { fmt } from '@/utils/format'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
+const settingOf = mechanicSettingPanelReader(() => lighterMechanic.settings)
 export const LIGHTER_ID = '1161'
 
 /** 士气时间回复（点/秒） */
@@ -560,7 +562,7 @@ export const lighterMechanic: AgentMechanicModule = {
   teamPanelEffects: ({ cinemaLevel, targetAgent, panel, settings }: AgentTeamPanelEffectInput) => {
     if (targetAgent.id === LIGHTER_ID) return // 莱特本人不吃
     if (cinemaLevelOf(cinemaLevel) < 4) return
-    const ratio = Math.max(0, Math.min(1, settings['lighter.backstageRatio'] ?? 2 / 3))
+    const ratio = Math.max(0, Math.min(1, settingOf(settings, 'lighter.backstageRatio')))
     panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + LIGHTER_C4_FRONT_EFFICIENCY * ratio
   },
   buildCharConfig,

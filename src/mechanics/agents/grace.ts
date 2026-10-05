@@ -17,7 +17,9 @@ import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 
+const settingOf = mechanicSettingPanelReader(() => graceMechanic.settings)
 /**
  * 格莉丝（1181）战斗逻辑（用户口供 2026-08-23）：
  * - 常规循环 = [A1+A2+A3 连段] → 特殊技 → [A4] → 特殊技，循环往复。
@@ -189,7 +191,7 @@ function applyGracePanel(input: AgentPanelInput): void {
   // 额外能力·技术支持班组：感电伤害 +18%/层 ×≤2（AA 门控见 spec additionalAbility；
   // 异常伤害提升乘区——格莉丝唯一异常为感电，走施加者面板 anomalyDmgBonus）
   if (additionalAbilityActiveOf(panel)) {
-    const stacks = Math.max(0, Math.min(2, Number(settings?.['grace.shockStacks'] ?? 2)))
+    const stacks = Math.max(0, Math.min(2, settingOf(settings, 'grace.shockStacks')))
     panel.anomalyDmgBonus = (panel.anomalyDmgBonus ?? 0) + 18 * stacks
   }
   // 影画2 电致击穿（电伤抗+电积蓄抗 −8.5%）已由 spec teamBuffs `grace_c2_enemy_electric_debuff` 承载（满覆盖）

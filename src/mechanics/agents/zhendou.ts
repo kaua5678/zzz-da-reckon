@@ -16,7 +16,9 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 
+const settingOf = mechanicSettingPanelReader(() => zhendouMechanic.settings)
 /**
  * 真斗（1441，命破/火 DPS）—— 整局近似口径
  *
@@ -65,7 +67,7 @@ function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: A
   panel.critRate = (panel.critRate ?? 0) + ZHENDOU_FURY_CRIT_RATE
   panel.fireDmg = (panel.fireDmg ?? 0) + ZHENDOU_FURY_FIRE_DMG
   if (cinemaLevel >= 1) {
-    const cov = Math.max(0, Math.min(1, Number(settings['zhendou.c1LossCoverage'] ?? 0.5)))
+    const cov = Math.max(0, Math.min(1, settingOf(settings, 'zhendou.c1LossCoverage')))
     panel.fireDmg = (panel.fireDmg ?? 0) + ZHENDOU_C1_FIRE_DMG_CAP * cov
   }
   if (cinemaLevel >= 2) {

@@ -21,15 +21,17 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById as findMove, getRowValue } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { clampRatio } from '@/utils/finiteClamp'
 
 const setting = mechanicSettingReader(() => hugoMechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => hugoMechanic.settings)
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
 export const HUGO_CHAIN_MOVE_ID = '1291015'
@@ -94,9 +96,6 @@ export interface HugoCycle {
   note: string
 }
 
-function clampRatio(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
 
 export function computeHugoVerdictMultiplier(remainingStunSeconds: number): number {
   const seconds = Math.max(0, Math.min(15, Number.isFinite(remainingStunSeconds) ? remainingStunSeconds : 0))
@@ -161,7 +160,7 @@ function applyHugoPanel({ slot, team, cinemaLevel, panel, settings }: AgentPanel
   // 暗渊回响（核心被动）：决算后 6s 暴击+12%、暴伤+25% × 覆盖率（影画6 固定满覆盖）。
   // 曾由 transformSkillExecutions 写面板（布尔守卫防累积，但有滑块冻结风险）——改静态
   // applyPanel 从 settings 推导（2026-09-01 架构修复：面板静态，循环只算招式/资源）。
-  const echoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(Number(settings?.['hugo.echoCoverage'] ?? 1))
+  const echoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(settingOf(settings, 'hugo.echoCoverage'))
   panel.critRate = (panel.critRate ?? 0) + HUGO_ECHO_CRIT_RATE * echoCoverage
   panel.critDmg = (panel.critDmg ?? 0) + HUGO_ECHO_CRIT_DMG * echoCoverage
   panel.hugoEchoCoverage = echoCoverage

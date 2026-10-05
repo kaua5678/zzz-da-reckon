@@ -89,9 +89,10 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
     expect(() => read({}, 'x.z')).toThrow(/x\.z/)
   })
 
-  it('CC-508 源码锁：mechanics/agents 内不再手抄「带点 id + 数字字面量 fallback」的机制设置读法（默认值只在 settings 声明）', () => {
+  it('CC-508/510 源码锁：mechanics/agents 内不再手抄「带点 id + 字面量/常量 fallback」的机制设置读法（调用形与裸索引形；默认值只在 settings 声明）', () => {
     const AGENTS = resolve(SRC, 'mechanics/agents')
-    const re = /\b(?:setting|cfgNum|cfgSetting|readSetting|cfgMechanicSetting|settingOf|mechanicSettingOf)\(\s*\w+,\s*'\w+\.\w+',\s*-?[0-9.]+\s*\)/
+    // 调用形（CC-508/508b）：reader(x, 'a.b', <数字>)；裸索引形（CC-510）：settings['a.b'] ?? <数字|常量>
+    const re = /\b(?:setting|cfgNum|cfgSetting|readSetting|cfgMechanicSetting|settingOf|mechanicSettingOf)\(\s*\w+,\s*'\w+\.\w+',\s*-?[0-9.]+\s*\)|\b(?:settings|settingsMap|values)\??\.?\['\w+\.\w+'\]\s*\?\?\s*(?:-?[0-9.]+|[A-Z_][A-Z0-9_]*)\b/
     const hits: string[] = []
     for (const p of walk(AGENTS)) {
       if (!p.endsWith('.ts') || p.includes('__tests__')) continue

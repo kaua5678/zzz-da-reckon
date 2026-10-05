@@ -4,7 +4,7 @@ import type { BanyueRageCycle, CharacterResourceResult, MechanicSetting } from '
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { calcPenetrationPower } from '@/core/damage'
 import { fmt } from '@/utils/format'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { positiveWholeCounts } from '@/utils/finiteClamp'
@@ -14,6 +14,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const cfgNum = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 /**
  * 般岳·艾洛温（1471）战斗逻辑（用户确认口径）：
  * - 命破/火属性：火伤均为贯穿伤害（引擎按贯穿力基底 atk×0.3+hp×0.1+sheerForceFlat 无视防御结算）。
@@ -394,7 +395,7 @@ function banyueAutoTopUpEnabled(
   settings: Readonly<Record<string, number>> | undefined,
 ): boolean {
   return (axisActive || guarantee.fury || guarantee.ultimate)
-    && Number(settings?.['banyue.autoTopUpInteractions'] ?? 1) !== 0
+    && settingOf(settings, 'banyue.autoTopUpInteractions') !== 0
 }
 
 function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, threads }: AgentTeamConfigInput): void {
@@ -432,7 +433,7 @@ function buildBanyueCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInpu
 function applyBanyuePanel({ panel, cinemaLevel, settings }: AgentPanelInput): void {
   // 怒相增益覆盖率：直接读已解析的滑块（历史上读 `panel.banyueRageCoverage`，而该字段从未被
   // 写入 → 滑块恒等于 1、静默失效，见 AGENT_RECORDING_SOP §3.5「面板 buff 施加点错误」）
-  const rageCov = Math.max(0, Math.min(1, settings['banyue.rageGainCoverage'] ?? 1))
+  const rageCov = Math.max(0, Math.min(1, settingOf(settings, 'banyue.rageGainCoverage')))
 
   // 怒相增益（强特/支援突击后，30s；覆盖率滑块近似）
   if (rageCov > 0) {
@@ -909,7 +910,7 @@ export const banyueMechanic: AgentMechanicModule = {
       const map = computeBanyueMingwangStacks(slot, axes, cinemaLevel)
       return map.size > 0 ? banyueOverlay.wrap({ stacksByMove: map }) : null
     }
-    const cov = Math.max(0, Math.min(1, Number(settings['banyue.mingwangCoverage'] ?? 0.5)))
+    const cov = Math.max(0, Math.min(1, settingOf(settings, 'banyue.mingwangCoverage')))
     return banyueOverlay.wrap({ flatPct: MINGWANG_BASE_PER_STACK * MINGWANG_MAX_STACKS * cov })
   },
   /**

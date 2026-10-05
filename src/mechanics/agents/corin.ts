@@ -313,7 +313,7 @@ export const corinMechanic: AgentMechanicModule = {
       const map = computeCorinStunBonusMoves(slot, axes, basicMoveIds)
       return map.size > 0 ? corinOverlay.wrap({ byMove: map }) : null
     }
-    const cov = clampRatio(Number(settings['corin.additionalStunCoverage'] ?? 0.5))
+    const cov = clampRatio(settingOf(settings, 'corin.additionalStunCoverage'))
     return corinOverlay.wrap({ flatPct: CORIN_ADDITIONAL_DMG * cov })
   },
   buildExecutions: buildCorinExecutions,

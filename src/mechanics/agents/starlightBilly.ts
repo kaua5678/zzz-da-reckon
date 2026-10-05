@@ -14,7 +14,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { fmt } from '@/utils/format'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
@@ -23,6 +23,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const cfgNum = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 /**
  * 星徽·比利（1531）战斗逻辑（用户确认口径，2026-08）：
  * - 命破/物理：物理伤害均为贯穿伤害（引擎按贯穿力基底 atk×0.3+hp×0.1+sheerForceFlat 无视防御结算）；
@@ -811,9 +812,9 @@ const settings: MechanicSetting[] = [
 function applyStarlightBillyPanel(input: AgentPanelInput): void {
   specBase.applyPanel?.(input)
   const { panel, cinemaLevel, settings } = input
-  const coreCoverage = settings['1531.driveSuppressionCritDmgCoverage'] ?? 1
-  const c4Coverage = settings['1531.c4CritDmgCoverage'] ?? 1
-  const c1Coverage = settings['1531.c1ResIgnoreCoverage'] ?? 1
+  const coreCoverage = settingOf(settings, '1531.driveSuppressionCritDmgCoverage')
+  const c4Coverage = settingOf(settings, '1531.c4CritDmgCoverage')
+  const c1Coverage = settingOf(settings, '1531.c1ResIgnoreCoverage')
   panel.critDmg = (panel.critDmg ?? 0) + 90 * coreCoverage
   if (cinemaLevel >= 4) {
     panel.critDmg = (panel.critDmg ?? 0) + 8 * 2 * c4Coverage

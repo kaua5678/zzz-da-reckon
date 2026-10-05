@@ -24,7 +24,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
 } from '../types'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
@@ -32,6 +32,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => sethMechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => sethMechanic.settings)
 export const SETH_ID = '1271'
 export const SETH_SHIELD_PROFICIENCY = 100
 export const SETH_ADDITIONAL_RES_REDUCTION = 20
@@ -126,8 +127,8 @@ function patchSethExecutions({ cfg, state: _state, executions }: AgentResourceIn
 
 function applySethPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
   // 面板字段与 computeSethCycle 同源（shieldProficiency / additionalResReduction / c2ElectricBuildup）。
-  const shieldCoverage = clampRatio(settings['seth.shieldCoverage'] ?? 1)
-  const additionalResCoverage = clampRatio(settings['seth.additionalResCoverage'] ?? 1)
+  const shieldCoverage = clampRatio(settingOf(settings, 'seth.shieldCoverage'))
+  const additionalResCoverage = clampRatio(settingOf(settings, 'seth.additionalResCoverage'))
   const additionalActive = additionalAbilityActiveOf(panel)
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + SETH_SHIELD_PROFICIENCY * shieldCoverage
   if (additionalActive) {

@@ -8,7 +8,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources, specSpendCost } from '@/specs/resources'
 import { fmt } from '@/utils/format'
 import { effectiveBattleTime } from '@/core/effectiveTime'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
@@ -16,6 +16,7 @@ import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const cfgNum = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 /**
  * 仪玄·云岿山（1371）战斗逻辑（用户确认口径）：
  * - 命破/以太：全部伤害走引擎命破基底（贯穿力 atk×0.3+hp×0.1+sheerForceFlat、无视防御），
@@ -1095,14 +1096,14 @@ export const yixuanMechanic: AgentMechanicModule = {
   axisWindowOverlays: ({ slot, axes, cinemaLevel, isAxis, additionalAbilityActive, settings }) => {
     if (!additionalAbilityActive) return null
     if (cinemaLevel >= 6) {
-      const cov = clampRatio(Number(settings['yixuan.c6NingshenCoverage'] ?? 1))
+      const cov = clampRatio(settingOf(settings, 'yixuan.c6NingshenCoverage'))
       return yixuanOverlay.wrap({ flat: { critDmg: Math.round(40 * cov), sheerDmg: Math.round(20 * cov) } })
     }
     if (isAxis) {
       const map = computeYixuanNingshenBonus(slot, axes, 0)
       return map.size > 0 ? yixuanOverlay.wrap({ byMove: map }) : null
     }
-    const cov = clampRatio(Number(settings['yixuan.ningshenCoverage'] ?? DEFAULT_NINGSHEN_COVERAGE))
+    const cov = clampRatio(settingOf(settings, 'yixuan.ningshenCoverage'))
     return yixuanOverlay.wrap({ flat: { critDmg: Math.round(40 * cov), sheerDmg: 0 } })
   },
   /**

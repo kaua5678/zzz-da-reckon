@@ -4,12 +4,13 @@ import type { CharacterOperationConfig, CharacterResourceResult, IterationState,
 import { fmt } from '@/utils/format'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const cfgNum = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 /**
  * 卢西娅·艾洛温（1451）战斗逻辑（用户确认口径）：
  * - 帷幕延长按全覆盖，不单独建模。
@@ -505,13 +506,13 @@ export const luciaElowenMechanic: AgentMechanicModule = {
     if (cinemaLevel >= 4) {
       for (const cfg of characters) {
         cfg.decibelPerCurtainTrigger = 100
-        cfg.luciaC4CurtainCoverage = clampRatio(settings['lucia.c4CurtainCoverage'] ?? 1)
+        cfg.luciaC4CurtainCoverage = clampRatio(settingOf(settings, 'lucia.c4CurtainCoverage'))
       }
     }
     // ② 回血：星光汇聚之地给「当前操作中的角色」回卢西娅生命% ⇒ 换算成**各槽自身**生命%写给全队
     //    （CC-313：不再按身份找伊德海莉；谁消费、怎么用由消费者模块决定，现唯一消费者 = 伊德海莉烧血→喧响）
     const healPctPerUlt = computeLuciaHealPctPerUlt(self.panel?.skillLevelBonus ?? 0)
-    const healingCoverage = clampRatio(settings['lucia.healingCoverage'] ?? DEFAULT_HEALING_COVERAGE)
+    const healingCoverage = clampRatio(settingOf(settings, 'lucia.healingCoverage'))
     const luciaHp = Math.max(1, self.panel?.hp ?? 0)
     for (const cfg of characters) {
       cfg.healPctPerCurtainProviderUlt = healPctPerUlt * healingCoverage * (luciaHp / Math.max(1, cfg.panel?.hp ?? 0))

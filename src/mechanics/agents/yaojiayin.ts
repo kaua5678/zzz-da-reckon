@@ -33,7 +33,9 @@ import { effectiveCombatTime } from '@/core/effectiveTime'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 
+const settingOf = mechanicSettingPanelReader(() => yaojiayinMechanic.settings)
 export const YAOJIAYIN_ID = '1311'
 
 /** 震音（和弦 #1） */
@@ -230,7 +232,7 @@ function applyYaojiayinTeamPanelEffects({
   cinemaLevel, targetAgent, panel, settings,
 }: AgentTeamPanelEffectInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
-  const cov = Math.max(0, Math.min(1, settings['yaojiayin.ariaCoverage'] ?? 1))
+  const cov = Math.max(0, Math.min(1, settingOf(settings, 'yaojiayin.ariaCoverage')))
   if (cov > 0) {
     // ⚠ 复用本模块既有的单一事实源（`yaojiayinSkillLevel` + `computeAriaBonuses`），
     // 不在此重写公式——否则与该模块别处的同类折算会漂移（规则 11）。

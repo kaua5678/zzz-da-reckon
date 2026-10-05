@@ -14,7 +14,7 @@ import { basicSummarySeconds } from '@/types/resource'
 import { computeSpecResources, type SpecResourceResult } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
-import { cfgMechanicSetting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting, cfgMechanicSettingRaw, mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -28,6 +28,7 @@ export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
 // 三个产物从未注册（真模块 pulchra.ts / nekomata.ts / zhendou.ts 已在 `applyPanel` 里挂同样的面板项），
 // 唯一注册的产物佩洛伊斯早已覆写全部钩子并删掉 transform。面板加成一律走 `applyPanel`——
 // transform 的输入面板是 `DeepReadonly`（契约见 `types.ts#AgentSkillTransformInput`）。
+const peiluoSettingOf = mechanicSettingPanelReader(() => peiluoProminenceMechanic.settings)
 export const peiluoProminenceMechanic: AgentMechanicModule = {
   id: 'agent:peiluo_prominence',
   agentIds: ['1551'],
@@ -112,7 +113,7 @@ peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes, isAxis, settings })
     const map = computePeiluoKagerouBonus(slot, axes)
     return map.size > 0 ? peiluoOverlay.wrap({ byMove: map }) : null
   }
-  const cov = Math.max(0, Math.min(1, Number(settings['peiluo.kagerouCoverage'] ?? 1)))
+  const cov = Math.max(0, Math.min(1, peiluoSettingOf(settings, 'peiluo.kagerouCoverage')))
   return peiluoOverlay.wrap({ flatPct: PEILUO_KAGEROU_CRIT * cov })
 }
 /**

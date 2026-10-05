@@ -34,7 +34,7 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
-import { cfgMechanicSettingRaw, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSettingRaw, mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
@@ -42,6 +42,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => vivianMechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => vivianMechanic.settings)
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
 export const VIVIAN_LUOYU_MOVE_ID = '1331008'
@@ -257,7 +258,7 @@ function patchVivianExecutions({ cfg, state, executions }: AgentResourceInput): 
 
 function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
   // 面板字段与 computeVivianCycle 同源（c6EtherDmg / c4AtkBonus）。
-  const c4AtkCoverage = clampRatio(settings['vivian.c4AtkCoverage'] ?? 1)
+  const c4AtkCoverage = clampRatio(settingOf(settings, 'vivian.c4AtkCoverage'))
   if (cinemaLevel >= 6) panel.etherDmg = (panel.etherDmg ?? 0) + VIVIAN_C6_ETHER_DMG
   // 影画4：攻击力 +12% → 局内百分比攻击乘区（atkPct），非独立乘算。
   // ⚠ R60 修复：原写 `panel.atkPct = (panel.atkPct ?? 0) + …` —— `applyPanel` 跑在 `calcPanel`

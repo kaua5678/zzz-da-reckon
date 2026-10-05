@@ -11,13 +11,15 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { clampRatio } from '@/utils/finiteClamp'
 
 const cfgNum = mechanicSettingReader(() => anbyMechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => anbyMechanic.settings)
 /**
  * 安比（1011，电·强攻）—— 整局近似口径
  *
@@ -124,7 +126,7 @@ export function computeAnbyChargeConsumed(exSpecialCount: number, basicHits: num
 function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void {
   // 影画1 快充模式
   if (cinemaLevel >= 1) {
-    const cov = clampRatio(settings['anby.fastChargeCoverage'] ?? 1)
+    const cov = clampRatio(settingOf(settings, 'anby.fastChargeCoverage'))
     panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + ANBY_C1_ENERGY_EFF * cov
   }
   // 影画6 充能电场**不再走面板级**（2026-09-17 录入修正③）：原文限定「消耗充能的**当前招式** +45%」，
@@ -312,9 +314,6 @@ function buildAnbyResourceSections(input: AgentResourceSectionsInput) {
   return spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
 }
 
-function clampRatio(v: number): number {
-  return Math.max(0, Math.min(1, Number(v) || 0))
-}
 
 export const anbyMechanic: AgentMechanicModule = {
   id: 'agent:1011',

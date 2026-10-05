@@ -15,13 +15,14 @@ import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const cfgNum = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 const LIUYIN_AGENT_ID = '1481'
 
 // —— 好评（Good Review）——
@@ -203,7 +204,7 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPa
   if (agent.id === '1481') {
     const atkBonus = panel.liuyinGoodReviewAtkBonus ?? 0
     if (atkBonus > 0) {
-      const coverage = settings['liuyin.goodReviewAtkCoverage'] ?? 1
+      const coverage = settingOf(settings, 'liuyin.goodReviewAtkCoverage')
       panel.atk = (panel.atk ?? 0) + atkBonus * coverage
     }
   }

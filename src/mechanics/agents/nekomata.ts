@@ -11,11 +11,12 @@ import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions, specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { effectiveBattleTime } from '@/core/effectiveTime'
-import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSettingRaw, mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const settingOf = mechanicSettingPanelReader(() => nekomataMechanic.settings)
 /**
  * 猫又（1021）战斗逻辑（用户口供 2026-08-23 两批）：
  * - 呼噜能量全部用于释放[闪避反击：绒爪穿刺](1021019)，两档同一伤害载体：
@@ -219,7 +220,7 @@ function applyNekoPanel(input: AgentPanelInput): void {
   }
   if (cinemaLevel >= 4) {
     // 影画4·磨爪：强特暴击率 7%×2 层 → 默认永续，给覆盖率滑块
-    const coverage = Math.max(0, Math.min(1, Number(settings?.['nekomata.c4CritRateCoverage'] ?? 1)))
+    const coverage = Math.max(0, Math.min(1, settingOf(settings, 'nekomata.c4CritRateCoverage')))
     panel.critRate = (panel.critRate ?? 0) + NEKOMATA_C4_CRIT_RATE * coverage
   }
   if (cinemaLevel >= 6) {

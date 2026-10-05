@@ -36,7 +36,7 @@ import type {
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import { inferSkillDamageTarget } from '@/core/damage'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
@@ -45,6 +45,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => anbyZeroMechanic.settings)
+const settingOf = mechanicSettingPanelReader(() => anbyZeroMechanic.settings)
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
 export const ANBY_ZERO_RAIJITU_MOVE_ID = '1381008'
@@ -241,7 +242,7 @@ function applyAnbyZeroPanel({ cinemaLevel, potentialLevel, panel, settings }: Ag
     ultimateCount: 0,
     teammateWhiteLightning: 0,
     additionalActive: additionalAbilityActiveOf(panel),
-    silverStarCoverage: settings['anbyZero.silverStarCoverage'] ?? 1,
+    silverStarCoverage: settingOf(settings, 'anbyZero.silverStarCoverage'),
     criticalActionTime: 0, // 面板阶段不消费苍光·临界动作时间（仅 buildExecutions 用）
   })
   if (cycle.critRateGain > 0) panel.critRate = (panel.critRate ?? 0) + cycle.critRateGain

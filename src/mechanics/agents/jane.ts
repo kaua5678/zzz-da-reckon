@@ -15,14 +15,16 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { clampCritRatePct } from '@/data/critMultiplier'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { clampRatio } from '@/utils/finiteClamp'
 
 const setting = mechanicSettingReader(() => settings)
+const settingOf = mechanicSettingPanelReader(() => settings)
 const JANE_AGENT_ID = '1261'
 /** 普通攻击：萨霍夫跳（融合主段，见 src/data/moveFusions.ts JANE_SOMERSAULT） */
 const JANE_SOMERSAULT_MOVE_ID = '1261007'
@@ -56,10 +58,6 @@ function janeProficiencyToAtkDetail(): string {
 export const JANE_POTENTIAL_ASSAULT_CRIT_DMG = [0, 0, 10, 15, 20, 25, 30] as const
 
 /** 覆盖率/开关类滑块统一收敛到 [0,1]；非有限值回退 `fallback`（勿回退 0：会把「未注入」变成「归零」）。 */
-function clamp01(value: unknown, fallback = 1): number {
-  const num = Number(value)
-  return Number.isFinite(num) ? Math.max(0, Math.min(1, num)) : fallback
-}
 
 
 export function computeJaneMechanic(input: {
@@ -134,8 +132,8 @@ function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, poten
   const teamMembers = team ?? []
 
   // ── 狂热面板块（原 panelPhases.ts:650-684，逐位迁移 + 新增总闸）──────────────────
-  const frenzy = clamp01(settingsMap['jane.frenzyActive'] ?? 1)
-  const passionCoverage = clamp01(settingsMap['jane.passionCoverage'] ?? 0.9)
+  const frenzy = clampRatio(settingOf(settingsMap, 'jane.frenzyActive'))
+  const passionCoverage = clampRatio(settingOf(settingsMap, 'jane.passionCoverage'))
   // 狂热关闭 ⇒ 狂热块与 1 命块归零；痛点/6 命不受影响（口径见函数头注释）。
   const frenzyFactor = frenzy * passionCoverage
   const anomalyProficiency = panel.anomalyProficiency ?? 0
@@ -170,7 +168,7 @@ function buildJaneResourceResult({ cfg, state }: AgentResourceResultInput): Part
   return {
     janeMechanicSource: computeJaneMechanic({
       anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
-      frenzyActive: clamp01(setting(cfg, 'jane.frenzyActive'), 1) > 0,
+      frenzyActive: clampRatio(setting(cfg, 'jane.frenzyActive')) > 0,
       frontlineSeconds: state.frontlineTime,
       // cfg.panel 是**局内盖章面板**，potentialLevel 由 core/panel.ts 写入（`:353`），
       // 与 applyPanel 的 `input.potentialLevel` 同源同值（CC-171 第 196 轮前 computePanelPhases 漏传，恒为 6）。
