@@ -24,22 +24,28 @@ export function isChainAttackMoveName(en: unknown): boolean {
 export type ChainMoveKind = 'ultimate' | 'chainAttack' | null
 
 type NamedMove = { readonly id: string; readonly name?: { readonly en?: string } }
-type SkillsWithCategories = { readonly categories?: readonly { readonly id?: string; readonly moves?: readonly NamedMove[] }[] } | null | undefined
+type SkillsLike<M extends NamedMove> = { readonly categories?: readonly { readonly id?: string; readonly moves?: readonly M[] }[] } | null | undefined
+
+/** `chain` 分类下的招式（无技能表 / 无该分类 ⇒ 空数组）——终结技 / 连携技查找的唯一入口（CC-499）。 */
+export function chainMovesOf<M extends NamedMove>(skills: SkillsLike<M>): readonly M[] {
+  return (skills?.categories ?? []).find(c => c.id === 'chain')?.moves ?? []
+}
 
 /** 按 moveId 判定是否终结技 / 连携技：只在 `chain` 分类里找（找不到 = null，含合成块 / 连段块） */
-export function chainMoveKind(skills: SkillsWithCategories, moveId: string): ChainMoveKind {
-  const chain = (skills?.categories ?? []).find(c => c.id === 'chain')
-  const move = (chain?.moves ?? []).find(m => m.id === moveId)
+export function chainMoveKind(skills: SkillsLike<NamedMove>, moveId: string): ChainMoveKind {
+  const move = chainMovesOf(skills).find(m => m.id === moveId)
   if (!move) return null
   if (isUltimateMoveName(move.name?.en)) return 'ultimate'
   if (isChainAttackMoveName(move.name?.en)) return 'chainAttack'
   return null
 }
 
-/** 本角色（首个）终结技招式；与 `core/resource/moveLookup#findUltimate` 同口径，但只返回招式本身（不算指标） */
-export function findUltimateMove<M extends NamedMove>(
-  skills: { readonly categories?: readonly { readonly id?: string; readonly moves?: readonly M[] }[] } | null | undefined,
-): M | null {
-  const chain = (skills?.categories ?? []).find(c => c.id === 'chain')
-  return (chain?.moves ?? []).find(m => isUltimateMoveName(m.name?.en)) ?? null
+/** 本角色（首个）终结技招式；`core/resource/moveLookup#findUltimate` 在此之上算指标（CC-499 起转调，不再各找一遍） */
+export function findUltimateMove<M extends NamedMove>(skills: SkillsLike<M>): M | null {
+  return chainMovesOf(skills).find(m => isUltimateMoveName(m.name?.en)) ?? null
+}
+
+/** 本角色（首个）连携技招式；`core/resource/moveLookup#findChainAttack` 在此之上算指标 */
+export function findChainAttackMove<M extends NamedMove>(skills: SkillsLike<M>): M | null {
+  return chainMovesOf(skills).find(m => isChainAttackMoveName(m.name?.en)) ?? null
 }

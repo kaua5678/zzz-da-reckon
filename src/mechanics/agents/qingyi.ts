@@ -11,7 +11,7 @@ import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
-import { isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
+import { chainMovesOf, isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
@@ -166,9 +166,9 @@ function buildQingyiCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInpu
   const special = skills?.categories.find(c => c.id === 'special')
   const exMoves = (special?.moves ?? []).filter(m => (m.name?.en ?? '').toLowerCase().includes('ex special'))
   cfg.qingyiExSpecialVoltage = sumVoltage(exMoves)
-  const chain = skills?.categories.find(c => c.id === 'chain')
-  cfg.qingyiUltimateVoltage = sumVoltage((chain?.moves ?? []).filter(m => isUltimateMoveName(m.name?.en)))
-  cfg.qingyiChainVoltage = sumVoltage((chain?.moves ?? []).filter(m => isChainAttackMoveName(m.name?.en)))
+  const chainMoves = chainMovesOf(skills)
+  cfg.qingyiUltimateVoltage = sumVoltage(chainMoves.filter(m => isUltimateMoveName(m.name?.en)))
+  cfg.qingyiChainVoltage = sumVoltage(chainMoves.filter(m => isChainAttackMoveName(m.name?.en)))
   const dodge = skills?.categories.find(c => c.id === 'dodge')
   cfg.qingyiDodgeCounterVoltage = sumVoltage((dodge?.moves ?? []).filter(m => (m.name?.en ?? '').toLowerCase().includes('dodge counter')))
   const assist = skills?.categories.find(c => c.id === 'assist')

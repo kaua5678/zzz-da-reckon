@@ -9,7 +9,7 @@
  * 依赖方向：本文件**不得** import `core/resource.ts`（防循环依赖）；只依赖类型与 `data/moveFusions`。
  */
 import type { ExSpecialCostType } from '@/types/resource'
-import { isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
+import { findUltimateMove, findChainAttackMove } from '@/data/chainMoveKind'
 import { isNumberedBasicSegment } from '@/data/basicSegment'
 import { moveFusionByMoveId } from '@/data/moveFusions'
 
@@ -148,10 +148,7 @@ export function findExSpecial(agentSkills: MoveTableLike, rowValue: RowValueRead
  *  注意：终结技消耗3000喧响释放，数据行本身无 decibel_recovery，故 decibelRecovery 恒为0
  */
 export function findUltimate(agentSkills: MoveTableLike, rowValue: RowValueReader = rawRowReader): ChannelMoveInfo | null {
-  const chain = agentSkills.categories.find(c => c.id === 'chain')
-  if (!chain) return null
-
-  const ultMove = chain.moves.find(m => isUltimateMoveName(m.name?.en)) // CC-319：单一事实源
+  const ultMove = findUltimateMove(agentSkills) // CC-319 / CC-499：单一事实源
   if (!ultMove) return null
 
   // 多段终结技（登记组，如妮可 特制以太榴弹 = 炮击 + 能量场）：倍率/喧响取整段，
@@ -238,10 +235,7 @@ export function channelMetricsOf(
  */
 // 口径声明 `engine:findChainAttack/多段连携` 随 re-export 壳留在 `core/resource.ts`，锚改指本函数。
 export function findChainAttack(agentSkills: MoveTableLike, rowValue: RowValueReader = rawRowReader): ChannelMoveInfo | null {
-  const chain = agentSkills.categories.find(c => c.id === 'chain')
-  if (!chain) return null
-
-  const chainMove = chain.moves.find(m => isChainAttackMoveName(m.name?.en)) // CC-319：单一事实源
+  const chainMove = findChainAttackMove(agentSkills) // CC-319 / CC-499：单一事实源
   if (!chainMove) return null
 
   const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, chainMove, rowValue)

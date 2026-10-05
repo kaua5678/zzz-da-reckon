@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { chainMoveKind, findUltimateMove, isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
+import { chainMoveKind, chainMovesOf, findUltimateMove, findChainAttackMove, isUltimateMoveName, isChainAttackMoveName } from '@/data/chainMoveKind'
 import { findUltimate, findChainAttack } from '@/core/resource/moveLookup'
 
 type Move = { id: string; name: { en?: string }; rows: { id: string; values: number[] }[] }
@@ -39,6 +39,21 @@ describe('CC-319 chainMoveKind / findUltimateMove', () => {
     }
   })
 
+  it('CC-499：chainMovesOf 无表 / 无 chain 分类 ⇒ []；findChainAttackMove 只认 chain 分类里的连携技', () => {
+    expect(chainMovesOf(null)).toEqual([])
+    expect(chainMovesOf({ categories: [{ id: 'basic', moves: [{ id: 'b', name: { en: 'Chain Attack: fake' } }] }] })).toEqual([])
+    const skills = { categories: [{ id: 'chain', moves: [{ id: 'u', name: { en: 'Ultimate: U' } }, { id: 'c', name: { en: 'Chain Attack: C' } }] }] }
+    expect(findChainAttackMove(skills)?.id).toBe('c')
+    expect(findUltimateMove(skills)?.id).toBe('u')
+  })
+  it('CC-499 源码锁：`chain` 分类查找只写在 data/chainMoveKind.ts', () => {
+    const files = ['src/core/resource/moveLookup.ts', 'src/mechanics/agents/qingyi.ts', 'src/data/chainMoveKind.ts']
+    for (const f of files) {
+      const code = readFileSync(f, 'utf8').split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
+      const hits = (code.match(/id === 'chain'/g) ?? []).length
+      expect(hits, f).toBe(f.endsWith('chainMoveKind.ts') ? 1 : 0)
+    }
+  })
   it('名字谓词互斥', () => {
     expect(isUltimateMoveName('Ultimate: X')).toBe(true)
     expect(isChainAttackMoveName('Ultimate: X')).toBe(false)
