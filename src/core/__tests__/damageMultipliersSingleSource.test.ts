@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
+import { calcEnemySideMultiplier, calcPanelStunMultiplier, calcResistanceMultiplier, calcStunMultiplier } from '@/core/anomalyPool/helpers'
 
 const SRC = join(__dirname, '..', '..')
 const OWNER = 'core/damageMultipliers.ts'
@@ -81,5 +82,32 @@ describe('暴击期望单一来源（CC-222）', () => {
     }
     expect(clampCritRatePct(130)).toBe(100)
     expect(clampCritRatePct(-3)).toBe(0)
+  })
+})
+
+describe('面板→失衡易伤区 / 敌方侧三乘区单一入口（CC-489）', () => {
+  // 来源：core/anomalyPool/helpers.ts#calcPanelStunMultiplier / #calcEnemySideMultiplier。
+  // CC-489 前 core/damage.ts ×2、anomalyPool 紊乱/乱流 ×2、remielle ×1 各自把面板三字段展开成 calcStunMultiplier 五参。
+  // composables/stunVulnSummary（展示层，入参是行级/汇总结构不是面板）仍直接调 calcStunMultiplier，不在锁内。
+  const OWNER = 'core/anomalyPool/helpers.ts'
+  it('core / mechanics 下除 owner 外不再直接调 calcStunMultiplier（面板一律走 calcPanelStunMultiplier）', () => {
+    const hits = walk(SRC)
+      .map(p => relative(SRC, p).replace(/\\/g, '/'))
+      .filter(rel => rel !== OWNER && /^(core|mechanics)\//.test(rel))
+      .filter(rel => /(?<![A-Za-z])calcStunMultiplier\(/.test(code(readFileSync(join(SRC, rel), 'utf8'))))
+    expect(hits).toEqual([])
+  })
+  it('紊乱与乱流结算都消费 calcEnemySideMultiplier（定义 1 + 调用 2）', () => {
+    const src = code(readFileSync(join(SRC, OWNER), 'utf8'))
+    expect(src.split('calcEnemySideMultiplier(').length - 1).toBe(3)
+    expect(src.split('= calcEnemySideMultiplier(p, baseRes, totalResReduction, stunned, stunMultiplier)').length - 1).toBe(2)
+  })
+  it('数值口径：面板入口 = 三字段展开；三乘区合一 = 抗性 × 易伤 × 失衡（同序）', () => {
+    const p = { stunDmgMultiplierBonus: 60, stunDmgMultiplierBonusAlways: 35, stunDmgMultiplierBonusCapAlways: 0, enemyDamageTakenBonus: 25 }
+    for (const stunned of [true, false, 0, 0.4, 1] as const) {
+      expect(calcPanelStunMultiplier(p, 1.5, stunned)).toBe(calcStunMultiplier(1.5, 60, 35, 0, stunned))
+    }
+    const expected = calcResistanceMultiplier(20, 15) * (1 + 25 / 100) * calcStunMultiplier(1.5, 60, 35, 0, 0.4)
+    expect(calcEnemySideMultiplier(p as never, 20, 15, 0.4, 1.5)).toBe(expected)
   })
 })

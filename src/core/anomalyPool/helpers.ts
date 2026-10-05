@@ -668,6 +668,42 @@ export function calcStunMultiplier(
   return alwaysMult + (fullStunMult - alwaysMult) * cov
 }
 
+/** 面板上参与失衡易伤区的三个字段（CC-489） */
+export type StunVulnPanelFields = Pick<PanelValues, 'stunDmgMultiplierBonus' | 'stunDmgMultiplierBonusAlways' | 'stunDmgMultiplierBonusCapAlways'>
+
+/**
+ * 失衡易伤乘区——面板入口：从面板读「失衡易伤 / Always 通道 / Always 上限」三字段再转 `calcStunMultiplier`。
+ * 引擎侧（core / mechanics）按面板算失衡易伤一律走这里；CC-489 前 core/damage.ts ×2、本文件紊乱/乱流结算 ×2、
+ * remielle 耀变 ×1 各自展开三参（5 份）——新增一条面板通道时 5 处都得改。
+ */
+export function calcPanelStunMultiplier(p: StunVulnPanelFields, baseStunMultiplier: number, stunned: boolean | number): number {
+  return calcStunMultiplier(
+    baseStunMultiplier,
+    p.stunDmgMultiplierBonus ?? 0,
+    p.stunDmgMultiplierBonusAlways ?? 0,
+    p.stunDmgMultiplierBonusCapAlways ?? 0,
+    stunned,
+  )
+}
+
+/**
+ * 敌方侧三乘区合一：抗性区 × 易伤区 × 失衡易伤区（紊乱 / 乱流结算共用；CC-489 前两处各写一份）。
+ * 抗性基数与减抗合计由调用方按各自口径算好传入（紊乱查基础元素抗性；乱流查非风元素抗性并加乱流无视抗性）。
+ * 乘法顺序 res × dmgTaken × stun 与原两处一致（zd 逐位）。直伤/异常结算（core/damage.ts）要逐区出分解行，不走这里。
+ */
+export function calcEnemySideMultiplier(
+  p: PanelValues,
+  baseResistance: number,
+  totalResReduction: number,
+  stunned: boolean | number,
+  stunMultiplier: number,
+): number {
+  const resMult = calcResistanceMultiplier(baseResistance, totalResReduction)
+  const dmgTakenMult = 1 + (p.enemyDamageTakenBonus ?? 0) / 100
+  const stunMult = calcPanelStunMultiplier(p, stunMultiplier, stunned)
+  return resMult * dmgTakenMult * stunMult
+}
+
 /**
  * 异常暴击率/暴伤提取（单一来源，CC-338）：
  * 同时服务 `core/damage.ts#calcAnomalyDamage`（直伤/异放/异常结算）与 `calcAnomalyCritExpect`（乱流结算）。
@@ -800,27 +836,14 @@ function calcDisorderSettlement(
 ): number {
   const p = triggerPanel
 
-  // 1. 抗性乘区（使用按元素伤害抗性，boss有偏好如火抗冰弱）
+  // 1–3. 抗性区（按基础元素查伤害抗性，boss有偏好如火抗冰弱）× 易伤区 × 失衡易伤区
   const baseRes = enemyResistances[getBaseElement(element)] ?? 0
   const totalResReduction = enemyResReduction + (p.enemyResReduction ?? 0) + getElementEnemyResReduction(p, element)
-  const resMult = calcResistanceMultiplier(baseRes, totalResReduction)
-
-  // 2. 易伤乘区
-  const dmgTaken = p.enemyDamageTakenBonus ?? 0
-  const dmgTakenMult = 1 + dmgTaken / 100
-
-  // 3. 失衡易伤区
-  const stunMult = calcStunMultiplier(
-    stunMultiplier,
-    p.stunDmgMultiplierBonus ?? 0,
-    p.stunDmgMultiplierBonusAlways ?? 0,
-    p.stunDmgMultiplierBonusCapAlways ?? 0,
-    stunned,
-  )
+  const enemyMult = calcEnemySideMultiplier(p, baseRes, totalResReduction, stunned, stunMultiplier)
 
   // 紊乱只吃紊乱增伤区，不继承普通异常增伤和异常暴击
   const disorderDmgMult = 1 + (p.disorderDamageBonus ?? 0) / 100
-  return resMult * dmgTakenMult * stunMult * disorderDmgMult
+  return enemyMult * disorderDmgMult
 }
 
 /**
@@ -854,20 +877,8 @@ function calcTurbulenceSettlement(
   // 乱流抗性无视（%）：通用面板字段，由角色模块 applyPanel 写入（现为维琳娜 1 命 20；CC-36b 2026-09-27，原读 velinaCinema1）
   const turbulenceResIgnore = p.turbulenceResIgnore ?? 0
   const totalResReduction = enemyResReduction + (p.enemyResReduction ?? 0) + getElementEnemyResReduction(p, element) + turbulenceResIgnore
-  const resMult = calcResistanceMultiplier(baseRes, totalResReduction)
-
-  // 2. 易伤乘区
-  const dmgTaken = p.enemyDamageTakenBonus ?? 0
-  const dmgTakenMult = 1 + dmgTaken / 100
-
-  // 3. 失衡易伤区
-  const stunMult = calcStunMultiplier(
-    stunMultiplier,
-    p.stunDmgMultiplierBonus ?? 0,
-    p.stunDmgMultiplierBonusAlways ?? 0,
-    p.stunDmgMultiplierBonusCapAlways ?? 0,
-    stunned,
-  )
+  // 1–3. 抗性区 × 易伤区 × 失衡易伤区
+  const enemyMult = calcEnemySideMultiplier(p, baseRes, totalResReduction, stunned, stunMultiplier)
 
   // 4. 异常增伤区（乱流继承异常增伤）
   const anomalyDmgBonus = (p.anomalyDmgBonus ?? 0) + (element === 'wind' ? p.windAnomalyDmgBonus ?? 0 : 0) + (p.turbulenceDamageBonus ?? 0)
@@ -877,7 +888,7 @@ function calcTurbulenceSettlement(
   // 乱流不吃简的潜能强击爆伤：简潜能只给简自身触发的强击。
   const critMult = calcAnomalyCritExpect(p, element, sourcePanel, { includeSelfAssaultBonus: false })
 
-  return resMult * dmgTakenMult * stunMult * anomalyDmgMult * critMult
+  return enemyMult * anomalyDmgMult * critMult
 }
 
 /**

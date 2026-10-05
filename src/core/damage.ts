@@ -6,7 +6,7 @@ import type {
   Agent, PanelValues, DamageBreakdownItem,
   SkillMove, SkillCategory, DamageElement, SkillDamageTarget,
 } from '@/types/catalog'
-import { calcStunMultiplier, getAnomalyCritStats } from './anomalyPool/helpers'
+import { calcPanelStunMultiplier, getAnomalyCritStats } from './anomalyPool/helpers'
 import { defenseMultiplierDetail, resistanceMultiplierDetail } from './damageMultipliers'
 import { getSkillDmgBonus, getTargetedElementStat, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
 import { fmt } from '@/utils/format'
@@ -331,13 +331,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
   })
 
   // 7. 失衡乘区
-  const stunMult = calcStunMultiplier(
-    input.stunMultiplier,
-    p.stunDmgMultiplierBonus,
-    p.stunDmgMultiplierBonusAlways,
-    p.stunDmgMultiplierBonusCapAlways,
-    input.stunned,
-  )
+  const stunMult = calcPanelStunMultiplier(p, input.stunMultiplier, input.stunned)
   const afterStun = afterDmgTaken * stunMult
   breakdown.push({
     label: '失衡乘区',
@@ -492,13 +486,7 @@ export function calcAnomalyDamage(
   }
 
   // 7. 失衡易伤区
-  const stunMult = calcStunMultiplier(
-    stunMultiplier,
-    settle.stunDmgMultiplierBonus,
-    settle.stunDmgMultiplierBonusAlways,
-    settle.stunDmgMultiplierBonusCapAlways,
-    stunned,
-  )
+  const stunMult = calcPanelStunMultiplier(settle, stunMultiplier, stunned)
   const afterStun = afterDmgTaken * stunMult
   // CC-221：乘数 ≠ 1 也要出行（未失衡时 Always 通道仍生效），否则分解累积值在此处无说明地跳变
   if (stunned || stunMult !== 1) {
