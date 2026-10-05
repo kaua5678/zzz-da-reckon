@@ -11,6 +11,7 @@ import { fmt } from '@/utils/format'
 import { effectiveBattleTime, minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { initialStat } from '@/mechanics/initialStat'
 
 const YUZUHA_AGENT_ID = '1411'
 const SWEETNESS_INITIAL = 3
@@ -106,8 +107,8 @@ function findAssistFollowUpMove(skills: AgentCharConfigInput['skills'], moveId: 
 }
 
 function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, outOfCombatPanel }: AgentCharConfigInput): void {
-  // 原文「40%初始攻击力」⇒ 展示值读局外面板（CC-126，与计算侧 outOfCombatAtk 同口径）
-  cfg.yuzuhaInitialAtk = (outOfCombatPanel ?? panel)?.atk ?? 0
+  // 原文「40%初始攻击力」⇒ 展示值读局外面板（CC-126，与计算侧 outOfCombatAtk 同源；读取口 `initialStat`，CC-497）
+  cfg.yuzuhaInitialAtk = initialStat(outOfCombatPanel, panel, 'atk')
   // 滑块必须经 buildCharConfig 落到 cfg，buildResourceResult 阶段才读得到（applyPanel 早于 cfg 构建拿不到 settings）
   cfg.yuzuhaChainEntryCount = Math.max(0, Math.floor(cfgSetting(cfg, 'yuzuha.chainEntryCount', 0)))
   cfg.yuzuhaCinemaLevel = cinemaLevel

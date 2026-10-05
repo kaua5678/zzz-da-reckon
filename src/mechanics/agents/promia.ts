@@ -41,6 +41,7 @@ import { specEffectToBuffEffect } from '@/specs/teamBuffConvert'
 import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { initialStat } from '@/mechanics/initialStat'
 
 export const PROMIA_ID = '1541'
 // 掌控转精通的常数只在 spec 1541.json `promia_mastery_to_proficiency`（R6 C7，第 143 轮）；
@@ -122,8 +123,8 @@ function buildPromiaCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, char
   // 处刑式·匿影次数（交互栏用户输入；CC-35b 2026-09-27 由 helpers.ts cfg 字面量迁入）
   cfg.promiaNiyingCount = char?.promiaNiyingCount ?? 0
   cfg.promiaCinemaLevel = cinemaLevel
-  // 展示值与面板 / teamBuff 同口径：初始（局外）掌控（CC-123 订正 CC-116 遗留的局内口径）
-  cfg.promiaAnomalyMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
+  // 展示值与面板 / teamBuff 同一读取口：初始（局外）掌控（CC-123 订正 CC-116 遗留的局内口径；CC-497 统一 `initialStat`）
+  cfg.promiaAnomalyMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
   cfg.promiaAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
 }
 
@@ -149,7 +150,7 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
   // （cinema/掌控/AA），改在 applyPanel 算；曾由 transformSkillExecutions 写面板（布尔守卫防累积）。
   const cycle = computePromiaCycle({
     cinemaLevel,
-    anomalyMastery: outOfCombatPanel?.anomalyMastery ?? 0,
+    anomalyMastery: initialStat(outOfCombatPanel, panel, 'anomalyMastery'),
     additionalActive: (panel.additionalAbilityActive ?? 0) > 0,
   })
   if (cycle.additionalBuildUpEff > 0) {

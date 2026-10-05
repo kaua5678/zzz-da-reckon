@@ -19,6 +19,7 @@ import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { initialStat } from '@/mechanics/initialStat'
 
 const NORMA_AGENT_ID = '1571'
 
@@ -179,8 +180,8 @@ function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
 
 function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPanel }: AgentPanelInput): void {
   // 核心被动：初始暴击>50% → 暴伤（每1% +1.7，cap 85）
-  // 原文「初始暴击率超过50%」⇒ 读局外面板（CC-128，与 CC-118/123 同口径）；未传局外面板时回落局内
-  const critRate = (outOfCombatPanel ?? panel).critRate ?? 0
+  // 原文「初始暴击率超过50%」⇒ 初始 = 局外面板（CC-128；读取口 `initialStat`，CC-497）
+  const critRate = initialStat(outOfCombatPanel, panel, 'critRate')
   const critDmgBonus = specConversionAmount(normaConversion('norma_crit_to_critdmg'), critRate)
   if (critDmgBonus > 0) {
     panel.critDmg = (panel.critDmg ?? 0) + critDmgBonus

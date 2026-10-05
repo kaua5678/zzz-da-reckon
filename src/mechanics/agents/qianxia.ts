@@ -12,6 +12,7 @@ import { basicSummarySeconds } from '@/types/resource'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { initialStat } from '@/mechanics/initialStat'
 
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
@@ -281,9 +282,9 @@ function buildQianxiaResourceSections({ result }: AgentResourceSectionsInput) {
 function applyQianxiaPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
   if ((cinemaLevel ?? 0) < 6) return
   // 潜心创作（8s，强特后）按整局覆盖率近似；必定暴击 + 初始攻击×0.03% 暴伤（封顶105）。
-  // 原文「根据自身初始攻击力的0.03%」⇒ 读局外面板（CC-124，与 CC-118/123 同口径）；未传局外面板时回落局内。
+  // 原文「根据自身初始攻击力的0.03%」⇒ 初始 = 局外面板（CC-124；读取口 `initialStat`，CC-497）
   const coverage = Math.max(0, Math.min(1, Number(settings['qianxia.c6FocusCoverage'] ?? 1)))
-  const atk = Number((outOfCombatPanel ?? panel).atk ?? 0)
+  const atk = initialStat(outOfCombatPanel, panel, 'atk')
   panel.critRate = (panel.critRate ?? 0) + QIANXIA_C6_CRIT_RATE * coverage
   panel.critDmg = (panel.critDmg ?? 0) + Math.min(QIANXIA_C6_CRIT_DMG_CAP, atk * 0.03) * coverage
 }

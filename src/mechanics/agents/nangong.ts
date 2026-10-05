@@ -16,6 +16,7 @@ import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { initialStat } from '@/mechanics/initialStat'
 
 /**
  * 南宫羽（1511）战斗逻辑（nanoka 原文满级被动 1511055 自主分析，2026-08）：
@@ -142,8 +143,8 @@ function buildNangongCharConfig({ skills, cinemaLevel, cfg, getRowValue, panel, 
   const t2 = findMoveById(skills, MINE2_MOVE_ID)?.actionTime ?? 0
   const t3 = findMoveById(skills, MINE3_MOVE_ID)?.actionTime ?? 0
   cfg.nangongCinemaLevel = cinemaLevel
-  // 展示值「掌控转冲击」与面板同口径：初始（局外）掌控（CC-123）
-  cfg.nangongInitialMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
+  // 展示值「掌控转冲击」与面板同一读取口：初始（局外）掌控（CC-123；`initialStat`，CC-497）
+  cfg.nangongInitialMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
   cfg.nangongMinePairSeconds = t2 + t3
   // 影画4：地雷撞 #2/#3 行的**表值积蓄**在此预存（`enrichExecutionPlan` 会从倍率表回填
   // `anomalyBuildUp` ⇒ `patchExecutions` 阶段读不到表值；先例 `yuzuha.ts:117` / `seth.ts:98`）。

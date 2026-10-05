@@ -21,6 +21,7 @@
  * 影画6 强化绝对音准/终结技以太伤害+40%已建模：patchExecutions 按 moveId 加 dmgBonus（妄想时刻不退出 → 强化绝对音准全覆盖）。
  */
 import { clampRatio, whole } from '@/utils/finiteClamp'
+import { initialStat } from '@/mechanics/initialStat'
 import type {
   AgentCharConfigInput,
   AgentEventInput,
@@ -115,8 +116,8 @@ export function computeAireCycle(input: {
 
 function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills }: AgentCharConfigInput): void {
   cfg.aireCinemaLevel = cinemaLevel
-  // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 局外面板（CC-125，与 CC-118/123/124 同口径）
-  cfg.aireInitialMastery = (outOfCombatPanel ?? panel).anomalyMastery ?? 0
+  // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 初始 = 局外面板（CC-125；读取口 `initialStat`，CC-497）
+  cfg.aireInitialMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
   cfg.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage', 1))
   cfg.aireAdditionalActive = (panel.additionalAbilityActive ?? 0) > 0
   if (cinemaLevel >= 4) {
