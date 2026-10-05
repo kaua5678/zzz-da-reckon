@@ -19,7 +19,7 @@
  * 未建模（spec notes 在册）：烁影状态机、疾锋四段闪避强化（1631020 无计数来源）、
  * 影画2「登场技替换为连携技」、流息上限截断（总量口径）。
  */
-import { whole } from '@/utils/finiteClamp'
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentExSpecialTimeInput,
@@ -92,7 +92,6 @@ export const SEVERIAN_BASIC_MOVE_IDS: ReadonlySet<string> = new Set([
   SEVERIAN_SHADOW_MOVE_ID,
 ])
 
-function clamp01(value: number): number { return Math.max(0, Math.min(1, value)) }
 
 export interface SeverianCycle {
   cinemaLevel: number
@@ -123,7 +122,7 @@ export function computeSeverianCycle(input: {
     atkFlat: input.additionalActive ? SEVERIAN_ADDITIONAL_ATK_FLAT : 0,
     c2AtkPct: input.additionalActive && cinemaLevel >= 2 ? SEVERIAN_C2_ATK_PCT : 0,
     c1BasicCritDmg: cinemaLevel >= 1 ? SEVERIAN_C1_BASIC_CRIT_DMG : 0,
-    c4DefIgnore: cinemaLevel >= 4 ? SEVERIAN_C4_DEF_IGNORE * clamp01(input.c4Coverage) : 0,
+    c4DefIgnore: cinemaLevel >= 4 ? SEVERIAN_C4_DEF_IGNORE * clampRatio(input.c4Coverage) : 0,
     fengfengStacks: stacks,
     fengfengMultBonus: SEVERIAN_FENGFENG_MULT[stacks],
     c6ShadowMultBonus: cinemaLevel >= 6 ? SEVERIAN_C6_SHADOW_MULT : 0,
@@ -248,7 +247,7 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
   // 注意执行行路径（`patchSeverianExecutions` :333）走的是 `setting(cfg, 'severian.fengfengStacks')`
   // **正确读法** ⇒ 同一滑块在"执行行"生效、在"资源区块"失效（两路读数不一致，用户看到的区块骗人）。
   cfg.severianFengfengStacks = whole(setting(cfg, 'severian.fengfengStacks'))
-  cfg.severianC4Coverage = clamp01(setting(cfg, 'severian.c4Coverage'))
+  cfg.severianC4Coverage = clampRatio(setting(cfg, 'severian.c4Coverage'))
 }
 
 /** `fengfengStacks` 由调用方经 `resolveSeverianFengfengStacks` 给定（需要影猎次数，cfg 上没有） */
@@ -267,7 +266,7 @@ function applySeverianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): 
     cinemaLevel,
     additionalActive: additionalAbilityActiveOf(panel),
     fengfengStacks: Math.max(0, Math.min(2, whole(settingOf(settings, 'severian.fengfengStacks')))),
-    c4Coverage: clamp01(settingOf(settings, 'severian.c4Coverage')),
+    c4Coverage: clampRatio(settingOf(settings, 'severian.c4Coverage')),
   })
   panel.critDmg = (panel.critDmg ?? 0) + cycle.coreCritDmg
   if (cycle.atkFlat > 0) panel.atk = (panel.atk ?? 0) + cycle.atkFlat
@@ -315,7 +314,7 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
   // 「能量消耗达最大时额外获得一层烁影」未建模（烁影为操作向量）。
   const windBladeMeta = cfg.severianWindBladeMeta as { moveId: string; actionTime: number; damage: number } | undefined
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
-  const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio'))
+  const bladeRatio = clampRatio(setting(cfg, 'severian.windBladeChargeRatio'))
   if (windBladeMeta && exCount > 0 && bladeRatio > 0) {
     executions.push(moduleExecRow({
       moveId: windBladeMeta.moveId,
@@ -342,7 +341,7 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
   const windBladeMeta = cfg.severianWindBladeMeta as { actionTime: number } | undefined
   const shadowTime = shadowMeta ? severianShadowHuntCount(cfg, state) * shadowMeta.actionTime : 0
   const liexuanTime = liexuanMeta ? severianLiexuanCount(cfg) * liexuanMeta.actionTime : 0
-  const bladeRatio = clamp01(setting(cfg, 'severian.windBladeChargeRatio'))
+  const bladeRatio = clampRatio(setting(cfg, 'severian.windBladeChargeRatio'))
   const bladeTime = windBladeMeta ? Math.max(0, exSpecialCount) * bladeRatio * windBladeMeta.actionTime : 0
   return {
     necessaryTime: exTime + shadowTime + liexuanTime + bladeTime,

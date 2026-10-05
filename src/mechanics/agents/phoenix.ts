@@ -16,7 +16,7 @@
  *
  * 未建模（spec notes 在册）：[重生]/[消亡]状态机、影画2 保留段数、队友向脆弱异常暴击。
  */
-import { whole } from '@/utils/finiteClamp'
+import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
   AgentCharConfigInput,
   AgentExSpecialTimeInput,
@@ -103,7 +103,6 @@ export function phoenixSkillLevel(cinemaLevel: number): number {
   return 12 + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
 }
 
-function clamp01(value: number): number { return Math.max(0, Math.min(1, value)) }
 
 export interface PhoenixCycle {
   cinemaLevel: number
@@ -244,7 +243,7 @@ function applyPhoenixPanel({ cinemaLevel, panel, settings }: AgentPanelInput): v
   if (!panel) return
   panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + PHOENIX_CORE_PROFICIENCY
   if (cinemaLevel >= 2) {
-    const cov = clamp01(settingOf(settings, 'phoenix.c2IncinerationCoverage'))
+    const cov = clampRatio(settingOf(settings, 'phoenix.c2IncinerationCoverage'))
     panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + PHOENIX_C2_BUILDUP_EFF * cov
   }
 }
@@ -355,7 +354,7 @@ function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput):
 function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
   const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const s = phoenixSkillLevel(cinema)
-  const coverage = clamp01(setting(cfg, 'phoenix.releaseCoverage'))
+  const coverage = clampRatio(setting(cfg, 'phoenix.releaseCoverage'))
   if (coverage <= 0) return
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
   const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))

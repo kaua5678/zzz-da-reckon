@@ -8,7 +8,7 @@ import type {
 import type { CharacterResourceResult } from '@/types/resource'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
-import { finiteOr0 } from '@/utils/finiteClamp'
+import { clampRatio, finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -133,12 +133,12 @@ export const lycaonMechanic: AgentMechanicModule = {
     cfg.lycaonCinemaLevel = cinemaLevel
 
     // 强特双模式（用户口径）：点按 40 能量 → #1+#2（1.717s）；长按 60 能量 → #1+#3（2.501s）
-    const holdRatio = clamp01(cfgNum(cfg, 'lycaon.exHoldRatio'))
+    const holdRatio = clampRatio(cfgNum(cfg, 'lycaon.exHoldRatio'))
     cfg.exSpecialEnergyConsume = EX_TAP_ENERGY * (1 - holdRatio) + EX_HOLD_ENERGY * holdRatio
     cfg.exSpecialActionTime = EX_TAP_TIME * (1 - holdRatio) + EX_HOLD_TIME * holdRatio
     cfg.skipGenericExSpecial = true
     // C1 覆盖率（8s CD → 覆盖率滑块，只给有限次强特强化）
-    cfg.lycaonC1Coverage = clamp01(cfgNum(cfg, 'lycaon.c1Coverage'))
+    cfg.lycaonC1Coverage = clampRatio(cfgNum(cfg, 'lycaon.c1Coverage'))
     // C2 回能（5 能量/次；次数 = 失衡次数 + 队伍连携总次数，由 useResourceCalc 注入 lycaonC2Energy）
     cfg.lycaonC2EnergyPerTrigger = cinemaLevel >= 2 ? 5 : 0
   },
@@ -267,12 +267,12 @@ export const lycaonMechanic: AgentMechanicModule = {
     const exCount = state.exSpecialCount
     if (exCount <= 0) return
     const cinema = cinemaLevelOf(cfg.lycaonCinemaLevel)
-    const holdRatio = clamp01(cfgNum(cfg, 'lycaon.exHoldRatio'))
+    const holdRatio = clampRatio(cfgNum(cfg, 'lycaon.exHoldRatio'))
     const tap = Math.round(exCount * (1 - holdRatio))
     const hold = Math.max(0, exCount - tap)
     // C1 强化次数：8s CD → floor(战斗时间/8) × 覆盖率，封顶强特总数
     const totalTime = cfg.lycaonTotalTime ?? 180
-    const c1Coverage = clamp01(cfg.lycaonC1Coverage ?? 1)
+    const c1Coverage = clampRatio(cfg.lycaonC1Coverage ?? 1)
     const strongCount = cinema >= 1
       ? Math.min(exCount, Math.max(0, Math.floor(totalTime / 8)) * c1Coverage)
       : 0
@@ -450,9 +450,6 @@ function pushEx(
   }))
 }
 
-function clamp01(v: number): number {
-  return Math.max(0, Math.min(1, v))
-}
 
 /**
  * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。

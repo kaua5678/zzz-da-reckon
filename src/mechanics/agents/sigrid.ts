@@ -21,6 +21,7 @@ import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { clampRatio } from '@/utils/finiteClamp'
 
 const cfgSetting = mechanicSettingReader(() => settings)
 const settingOf = mechanicSettingPanelReader(() => settings)
@@ -125,9 +126,6 @@ const CINEMA1_OVERFLOW_RATIO = 100
 /** 影画6 最后一击附加：一/二/三段 = 80/90/100%（catalog 有真实分段 id，精确建模不再取中值） */
 export const SIGRID_C6_LAST_HIT_RATIOS: readonly number[] = [80, 90, 100]
 
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
 
 /**
  * 面板级机制（核心被动 / 额外能力 / 影画1·2·4）——applyPanel 读 input.settings（已解析滑块，0-1 分数）。
@@ -136,7 +134,7 @@ function clamp01(value: number): number {
  */
 function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
   if (!panel) return
-  const coreCov = clamp01(settingOf(settings, 'sigrid.corePassiveCoverage'))
+  const coreCov = clampRatio(settingOf(settings, 'sigrid.corePassiveCoverage'))
   if (cinemaLevel >= 1) {
     panel.atk = Math.round((panel.atk ?? 0) * (1 + SIGRID_C1_ATK_PCT / 100))
   }
@@ -150,7 +148,7 @@ function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
     panel.decibelGainEfficiency = (panel.decibelGainEfficiency ?? 0) + SIGRID_C2_DECIBEL_EFFICIENCY
   }
   if (cinemaLevel >= 4) {
-    const c4Cov = clamp01(settingOf(settings, 'sigrid.cinema4Coverage'))
+    const c4Cov = clampRatio(settingOf(settings, 'sigrid.cinema4Coverage'))
     panel.dmgBonus = (panel.dmgBonus ?? 0) + SIGRID_C4_DMG * c4Cov
   }
 }
@@ -321,7 +319,7 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 溢出覆盖率缺省 0：引擎按「机会 100% 立刻打光」建模（实测 spend 42 / 收入 42.7，储存位常年为空），
   // 而原文的触发条件是「机会**溢出时**」——储存上限 1 且从不积压 ⇒ 永不溢出 ⇒ 不计算。
   // 代码没有逐事件溢出判定（段数状态机未建模），要模拟「攒着不打导致溢出」才调高此滑块。
-  const overflowCov = clamp01(cfgSetting(cfg, 'sigrid.c1OverflowCoverage'))
+  const overflowCov = clampRatio(cfgSetting(cfg, 'sigrid.c1OverflowCoverage'))
 
   // 出枪式（凛冽枪尖 #1-4）行级物化（用户口径 2026-09-03）：真实分段行 + 真实时间——
   // 平A汇总行只保留时间载体（patchSigridExecutions 归零伤害/失衡/积蓄），伤害由分段行承载；
@@ -425,7 +423,7 @@ export function sigridChuqiangFromState(
   cfg: AgentCharConfigInput['cfg'],
 ): number {
   const basicCycle = cfg.sigridBasicCycle ?? []
-  const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel')) > 0
+  const pressCancel = clampRatio(cfgSetting(cfg, 'sigrid.pressCancel')) > 0
   const finisherHits = countBasicFinisherHits(Math.max(0, state.basicAttackTime ?? 0), basicCycle, pressCancel)
   return Math.max(0, state.exSpecialCount ?? 0) // 碎玉（出枪式）
     + Math.max(0, state.ultimateCount ?? 0) // 霜天
@@ -538,7 +536,7 @@ function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
   // #4 命中：按段循环计数（用户口径 2026-02），压枪开关取消 a1/a2 → 循环 1.765s
   const basicCycle = cfg.sigridBasicCycle ?? []
-  const pressCancel = clamp01(cfgSetting(cfg, 'sigrid.pressCancel')) > 0
+  const pressCancel = clampRatio(cfgSetting(cfg, 'sigrid.pressCancel')) > 0
   chuqiangHits += countBasicFinisherHits(Math.max(0, state?.basicAttackTime ?? 0), basicCycle, pressCancel)
   cfg.sigridChuqiangHits = chuqiangHits
 
@@ -647,12 +645,12 @@ export const sigridMechanic: AgentMechanicModule = {
    * ⇒ 浸染增伤恒 0，数值静默消失、无测试会红）。故契约递的是**盖章后的** `windInfectionRate`
    * （见 `AgentAxisOverlayInput.windInfectionRate`）。
    *
-   * 值与门控**逐位保留**：额外能力触发才写；`clamp01(rate)` 与消费端原式同口径；
+   * 值与门控**逐位保留**：额外能力触发才写；`clampRatio(rate)` 与消费端原式同口径；
    * 队伍无风角色时编排层已盖章 0 ⇒ 不产出（与原式 `15 × 0 = 0` 后 note 段不出现等价）。
    */
   axisWindowOverlays: ({ additionalAbilityActive, windInfectionRate }) => {
     if (!additionalAbilityActive) return null
-    const pct = SIGRID_INFECTION_DMG * clamp01(Number(windInfectionRate))
+    const pct = SIGRID_INFECTION_DMG * clampRatio(Number(windInfectionRate))
     if (pct <= 0) return null
     return sigridOverlay.wrap({ infectionPct: pct })
   },

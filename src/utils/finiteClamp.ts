@@ -5,8 +5,9 @@
  * 非有限值（NaN / ±Infinity / undefined）一律按 0 处理。
  *
  * ⚠ 故意**没有**收进来的同名 / 近名 helper（语义不同，合并会改行为）：
- * - `clamp01(v) = max(0, min(1, v))`（severian / phoenix / lycaon / sigrid / data/deadlyAssaultScore）与 hugo 的
- *   `clampRatio`：不挡 NaN（NaN 进 NaN 出），+Infinity → 1；
+ * - `clamp01(v) = max(0, min(1, v))`（data/deadlyAssaultScore）与 hugo 的
+ *   `clampRatio`：不挡 NaN（NaN 进 NaN 出），+Infinity → 1。severian / phoenix / lycaon / sigrid 原来也各有一份，
+ *   CC-509（r692）并入 `clampRatio`：CC-508 后它们的实参全是机制设置 reader 的输出（协议保证有限数）或其派生值，NaN 分支不可达；
  * - anby 的 `clampRatio`：`Number(v) || 0`，+Infinity → 1；
  * - ben 的 `clamp01(value, fallback = 1)`：非有限值回落到 fallback（默认 1，不是 0）。
  */
