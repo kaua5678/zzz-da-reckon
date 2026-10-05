@@ -801,6 +801,27 @@ export function createRunCalcRound(deps: {
         })
         const inAxisCounts = expandExecutedToCounts(stack.executed, stack.basicFillBySlot)
         const fraction: Record<string, number> = {}
+        /**
+         * ⚠ **分母必须按 key 求和，不能逐行取 `e.count`**（2026-10-05 §20.5-3 旁路修复）。
+         *
+         * `execs` 里**同一 `${slot}:${moveId}` 可以有多行**（实测般岳论道 `1471015` 在轴态有
+         * `count=8` 与 `count=5` 两行），而 `calcStunPool` 对**每行**都取同一个 `fraction[key]`：
+         *     Σ inAxisStun = perHit × (Σ count) × frac
+         * 要让该合计 = `perHit × 轴内次数`，必须 `frac = 轴内次数 / Σcount`。
+         * 旧实现逐行用**自己的** `count` 当分母 ⇒ 分母偏小 ⇒ 商被下方 `min(1,·)` **钳到 1.0**
+         * （实测 `9/8=1.125→1.0`、`9/5=1.8→1.0`，两行都是 1.0）⇒ **该招整段被判为窗口内**、
+         * 有效失衡值归零。用户口径 2026-10-05：「论道/狮吼这类强特**轴内轴外都有**」
+         * ⇒ 轴外那部分应当攒条，故 `frac=1.0` 是假值。
+         * 实测修正后：`frac` 1.0 → **0.6923**（= 9/13，与手算逐位吻合），轴态 eff +2285（+4.2%）。
+         *
+         * ⚠ **两行各自是否「窗口内/窗口外」对合计无影响**：`frac` 施加于两行的合计等价于
+         * 分摊到任一行（`8k·f + 5k·f ≡ 13k·f`）⇒ 只修分母即可，不需要拆行。
+         */
+        const countByKey = new Map<string, number>()
+        for (const e of execs) {
+          const k = `${e.slot}:${e.moveId}`
+          countByKey.set(k, (countByKey.get(k) ?? 0) + e.count)
+        }
         for (const e of execs) {
           const lookKey = e.moveId === 'basic_attack' ? `${e.slot}:basic` : `${e.slot}:${e.moveId}`
           const inUnits = inAxisCounts[lookKey]?.count ?? 0
@@ -809,7 +830,8 @@ export function createRunCalcRound(deps: {
             const totalSec = basicTimeBySlot[e.slot] ?? 0
             fraction[key] = totalSec > 0 ? Math.max(0, Math.min(1, inUnits / totalSec)) : 0
           } else {
-            fraction[key] = e.count > 0 ? Math.max(0, Math.min(1, inUnits / e.count)) : 0
+            const denom = countByKey.get(key) ?? 0
+            fraction[key] = denom > 0 ? Math.max(0, Math.min(1, inUnits / denom)) : 0
           }
         }
         return fraction
