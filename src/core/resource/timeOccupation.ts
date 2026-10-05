@@ -69,30 +69,17 @@ export interface FrontlineOccupationBreakdown {
  */
 export function frontlineOccupationBreakdown(rr: TeamResourceResult): FrontlineOccupationBreakdown {
   const overlap = rr.axisOverlapByAction ?? {}
-  const overlapBySlot: Record<number, number> = {}
-  for (const [key, sec] of Object.entries(overlap)) {
-    const slot = Number(key.slice(0, key.indexOf(':')))
-    if (Number.isFinite(slot)) overlapBySlot[slot] = (overlapBySlot[slot] ?? 0) + sec
-  }
+  const overlapBySlot = axisOverlapBySlot(overlap)
   let total = 0
   let totalRowNet = 0
-  let gross = 0
-  let axisOverlap = 0
+  const tally = { gross: 0, axisOverlap: 0 }
   for (const ch of rr.characters) {
-    let rowNet = 0
-    for (const exec of ch.executions) {
-      if (!isFrontlineExecution(exec)) continue
-      const t = exec.totalTime ?? 0
-      gross += t
-      const cut = overlap[`${ch.slot}:${exec.moveId}`] ?? 0
-      axisOverlap += cut
-      rowNet += Math.max(0, t - cut)
-    }
-    // 合轴抵扣只再扣超出轴内节省的增量（max 口径，防双重扣减）
-    const extraCredit = Math.max(0, (ch.timeAllocation.comboAlignCredit ?? 0) - (overlapBySlot[ch.slot] ?? 0))
-    total += Math.max(0, rowNet - extraCredit)
-    totalRowNet += rowNet
+    const r = slotNetFrontline(ch.executions, ch.slot, overlap, overlapBySlot[ch.slot] ?? 0, ch.timeAllocation.comboAlignCredit, [], tally)
+    total += r.net
+    totalRowNet += r.rowNet
   }
+  const gross = tally.gross
+  const axisOverlap = tally.axisOverlap
   // CC-178（第 201 轮）：删掉「只有团队级 axisOverlapSeconds、无按块分摊」兜底分支——栈引擎
   // （core/stunAxisStack.ts）逐块同时累加团队总量与按块分摊（Σ 分摊 = 总量），生产中不存在
   // 「总量 > 0 而分摊为空」的状态，该分支只有测试在走；团队总量字段随之删除（按块分摊是唯一表示）。
@@ -109,4 +96,60 @@ export function frontlineOccupationBreakdown(rr: TeamResourceResult): FrontlineO
 /** 队伍前台净占用（秒，单一事实源）：见 `frontlineOccupationBreakdown`，本函数只取 `net`（逐位等价）。 */
 export function netFrontlineOccupation(rr: TeamResourceResult): number {
   return frontlineOccupationBreakdown(rr).net
+}
+
+/**
+ * 轴内合轴分摊按槽位合计（CC-495）：`axisOverlapByAction` 键 `slot:moveId` → Σ 秒 / 槽（键或值非有限跳过）。
+ * 预算 relief（`helpers.ts` 平A池）/ 占用拆解（本文件）/ 欠打试探（`underfillProbe.ts`）三处同一份——
+ * 此前各写一遍，两处按 configs 下标、一处按槽号，读法不同但量相同。
+ */
+export function axisOverlapBySlot(overlap: Readonly<Record<string, number>> | undefined): Record<number, number> {
+  const bySlot: Record<number, number> = {}
+  for (const [key, sec] of Object.entries(overlap ?? {})) {
+    const slot = Number(key.slice(0, key.indexOf(':')))
+    if (Number.isFinite(slot) && Number.isFinite(sec)) bySlot[slot] = (bySlot[slot] ?? 0) + sec
+  }
+  return bySlot
+}
+
+/** `slotNetFrontline` 只读这三个字段（`SkillExecution` 结构兼容）。 */
+export interface FrontlineRowLike {
+  moveId: string
+  totalTime?: number
+  timeBucket?: 'necessary' | 'basic' | 'backstage'
+}
+
+/**
+ * 单槽前台净占用（CC-495，超时判定的几何口径，一份）：
+ *   rowNet = Σ_{前台行} max(0, 行时长 − 该行轴内合轴分摊 overlap[`slot:moveId`]) (+ extraSeconds 逐项追加)
+ *   net    = max(0, rowNet − max(0, 招式合轴抵扣 comboAlignCredit − 该槽轴内分摊合计 slotOverlap))
+ * 合轴抵扣只再扣超出轴内节省的增量（max 口径，防双重扣减）。
+ * 装配后的占用拆解（`frontlineOccupationBreakdown`）与欠打试探的门控测量（`underfillProbe#frontlineRowsOf`，
+ * 行 = 试探物化行 + 赠送连携/赠大时间作 extraSeconds）都走它——试探注释原文「与 netFrontlineOccupation 完全同口径，
+ * 否则试探门控放行、装配后仍超预算（实测差出 164s）」，现在是同一个函数而不是两份手抄。
+ * `tally` 可选：按行顺序累加 gross / axisOverlap（拆解用，保持原累加顺序逐位不变）。
+ */
+export function slotNetFrontline(
+  rows: ReadonlyArray<FrontlineRowLike>,
+  slot: number,
+  overlap: Readonly<Record<string, number>>,
+  slotOverlap: number,
+  comboAlignCredit: number | undefined,
+  extraSeconds: readonly number[] = [],
+  tally?: { gross: number; axisOverlap: number },
+): { rowNet: number; net: number } {
+  let rowNet = 0
+  for (const e of rows) {
+    if (!isFrontlineExecution(e)) continue
+    const t = e.totalTime ?? 0
+    const cut = overlap[`${slot}:${e.moveId}`] ?? 0
+    if (tally) {
+      tally.gross += t
+      tally.axisOverlap += cut
+    }
+    rowNet += Math.max(0, t - cut)
+  }
+  for (const sec of extraSeconds) rowNet += sec
+  const extraCredit = Math.max(0, (comboAlignCredit ?? 0) - slotOverlap)
+  return { rowNet, net: Math.max(0, rowNet - extraCredit) }
 }

@@ -102,6 +102,7 @@ import {
   calcTimeAllocation,
   frontlineOccupationBreakdown,
   netFrontlineOccupation,
+  axisOverlapBySlot,
 } from './timeOccupation'
 import type { FrontlineOccupationBreakdown } from './timeOccupation'
 export {
@@ -439,14 +440,9 @@ function iterateBody(
   // 按槽位取 max 不叠加（防同时设置时超扣；缺省合轴率全 0，退化为原口径）。
   // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/timeOccupation.ts#netFrontlineOccupation | 信 确认
   // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；贴顶截断的份额按剩余权重水填回流给还有余量的队友，不留池蒸发 | 据 用户@2026-09-05（改 09-04「留池不重分配」）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
-  const overlapBySlot: number[] = configs.map(() => 0)
-  for (const [key, sec] of Object.entries(globalCfg.axisOverlapByAction ?? {})) {
-    const slot = Number(key.slice(0, key.indexOf(':')))
-    const idx = configs.findIndex(c => c.slot === slot)
-    if (idx >= 0 && Number.isFinite(sec)) overlapBySlot[idx] += sec
-  }
+  const overlapBySlot = axisOverlapBySlot(globalCfg.axisOverlapByAction)
   // CC-178：原「无按块分摊 → max(Σ抵扣, 团队总量)」兜底已删——无分摊时团队总量恒为 0，两式都退化为 Σ抵扣（逐位等价）
-  const reliefSeconds = comboAlignCredits.reduce((sum, credit, i) => sum + Math.max(credit, overlapBySlot[i]), 0)
+  const reliefSeconds = comboAlignCredits.reduce((sum, credit, i) => sum + Math.max(credit, overlapBySlot[configs[i].slot] ?? 0), 0)
   // 可分配平A时间 = 总时间 − 无敌时间 − 必做净占用（合轴抵扣后）+ 欠打回填（timeBudgetRefund，团队级）。
   // 无敌时间不扣能量/喧响回能，但扣平A池。
   const invTime = globalCfg.invincibleTime ?? 0

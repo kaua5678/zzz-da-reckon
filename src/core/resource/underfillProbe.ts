@@ -18,11 +18,11 @@ import { stunCountForCountChannel } from '@/core/stunPlanProjection'
 import type {
   ResourceCalcConfig, CharacterOperationConfig, IterationState,
 } from '@/types/resource'
-import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { runInnerLoop, type InnerLoopContext } from './innerLoop'
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, ultimateGiftOf } from './crossAgentSupply'
 import { materializeRows } from './helpers'
+import { axisOverlapBySlot, slotNetFrontline } from './timeOccupation'
 import type { SolveDiagnostics } from './solveDiagnostics'
 
 /** 欠打回填试探的只读上下文：把 `calcTeamResources` 里原先的闭包变量显式化（调用期间不变）。 */
@@ -63,17 +63,12 @@ export function runUnderfillProbe(
   const chainGiftProvider = findCrossAgentSupplySlots(ctx.configs, 'gift-chain:chain')[0] ?? -1
   /**
    * Σ物化前台**净**占用：扣轴内合轴分摊 + 每槽超出该分摊的招式合轴抵扣（max 不叠加）——
-   * 与超时判定单一事实源 `netFrontlineOccupation` **完全同口径**，否则试探门控放行、
-   * 装配后仍超预算（实测差出 164s）。
+   * 与超时判定单一事实源 `netFrontlineOccupation` **同一个函数**（CC-495 `slotNetFrontline`；此前是手抄一份，
+   * 一旦走样就是试探门控放行、装配后仍超预算——实测差出 164s）。
    */
   const frontlineRowsOf = (st: IterationState[]): number => {
     const overlap = ctx.config.axisOverlapByAction ?? {}
-    const overlapBySlot: number[] = ctx.configs.map(() => 0)
-    for (const [key, sec] of Object.entries(overlap)) {
-      const slot = Number(key.slice(0, key.indexOf(':')))
-      const idx = ctx.configs.findIndex(c => c.slot === slot)
-      if (idx >= 0 && Number.isFinite(sec)) overlapBySlot[idx] += sec
-    }
+    const overlapBySlot = axisOverlapBySlot(overlap)
     let total = 0
     const chainGiftInfo = crossAgentSupplyAt(ctx.configs, st, chainGiftProvider, {
       totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config),
@@ -102,14 +97,10 @@ export function runUnderfillProbe(
       // 不补写 = 下一轮 estimate 读到上一次物化的陈旧值（实测 golden 10 条 delta：1431 c0 留白
       // 57.9→65.4s、1181:c6 ex −1.29）。
       getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: probeRows, teamFrontlineSeconds: teammateFrontline })
-      const rowNet = probeRows.reduce(
-        (sum, e) => sum + Math.max(0, (e.totalTime ?? 0)
-          - (overlap[`${cfg.slot}:${e.moveId}`] ?? 0))
-          * (isFrontlineExecution(e) ? 1 : 0),
-        0) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
-          + (i === giftLiuTarget ? giftLiuTime : 0)
-      const extraCredit = Math.max(0, (state.comboAlignCredit ?? 0) - overlapBySlot[i])
-      total += Math.max(0, rowNet - extraCredit)
+      total += slotNetFrontline(
+        probeRows, cfg.slot, overlap, overlapBySlot[cfg.slot] ?? 0, state.comboAlignCredit,
+        [i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0, i === giftLiuTarget ? giftLiuTime : 0],
+      ).net
     }
     return total
   }
