@@ -14,6 +14,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { outOfCombatStat } from '@/mechanics/initialStat'
 
 /**
  * 真斗（1441，命破/火 DPS）—— 整局近似口径
@@ -77,8 +78,8 @@ function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: A
     // ⇒ 该字段是**伤害通道**（不是生存向），静默失效会低估 C4。
     // ⚠ **不能**改用 `applyStat(panel, 'hpPct', …)`：那会以**当前局内 hp**为基数整体乘 —— 与
     // `panelPhases.ts:522` 记录过的「局内固定加成被错误放大」同坑。
-    // 正解 = 与 `harumasa.ts:190` / `zhao.ts:75` 同款：以**局外总生命**为基数算增量加进 `panel.hp`。
-    const hpBonus = Math.max(0, Number(outOfCombatPanel.hp ?? 0)) * ZHENDOU_C4_HP_PCT / 100
+    // 正解 = 以**局外总生命**为基数算增量加进 `panel.hp`（读取口 `outOfCombatStat`，CC-502；harumasa / zhao 同一口）。
+    const hpBonus = outOfCombatStat(outOfCombatPanel, 'hp') * ZHENDOU_C4_HP_PCT / 100
     panel.hp = (panel.hp ?? 0) + hpBonus
     panel.zhendouC4HpBonus = hpBonus
   }

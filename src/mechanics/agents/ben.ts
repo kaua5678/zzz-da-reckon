@@ -32,6 +32,7 @@ import type {
 } from '../types'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { outOfCombatStat } from '@/mechanics/initialStat'
 
 export const BEN_ID = '1121'
 
@@ -72,7 +73,7 @@ function findMoveActionTime(
 
 function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
   // 「初始」严格取局外面板：局外防御×80% 作为局外小攻击加成计入最终面板。
-  const outOfCombatDef = Math.max(0, outOfCombatPanel.def ?? 0)
+  const outOfCombatDef = outOfCombatStat(outOfCombatPanel, 'def')
   const bonus = outOfCombatDef * BEN_DEF_TO_ATK
   if (bonus > 0) panel.atk = (panel.atk ?? 0) + bonus
   panel.benDefToAtk = bonus

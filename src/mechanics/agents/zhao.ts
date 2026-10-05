@@ -25,6 +25,7 @@ import type {
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { outOfCombatStat } from '@/mechanics/initialStat'
 
 export const ZHAO_ID = '1341'
 export const ZHAO_CORE_CRIT_PER_1000_HP = 1.4
@@ -68,14 +69,14 @@ export interface ZhaoFrostCycle {
 }
 
 function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
-  const hp = Math.max(0, Number(outOfCombatPanel.hp ?? 0))
+  const hp = outOfCombatStat(outOfCombatPanel, 'hp')
   const coreMultiplier = cinemaLevel >= 6 ? ZHAO_C6_CORE_MULTIPLIER : 1
   const coreCritRate = hp / 1000 * ZHAO_CORE_CRIT_PER_1000_HP * coreMultiplier
   panel.critRate = (panel.critRate ?? 0) + coreCritRate
   panel.zhaoCoreCritRate = coreCritRate
 
   if (cinemaLevel >= 2) {
-    const selfAtkBonus = Math.max(0, Number(outOfCombatPanel.atk ?? 0)) * ZHAO_C2_SELF_ATK_PCT / 100
+    const selfAtkBonus = outOfCombatStat(outOfCombatPanel, 'atk') * ZHAO_C2_SELF_ATK_PCT / 100
     panel.atk = (panel.atk ?? 0) + selfAtkBonus
     panel.zhaoCinema2SelfAtk = selfAtkBonus
   }

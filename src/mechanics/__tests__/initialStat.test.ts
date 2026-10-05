@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { initialStat } from '@/mechanics/initialStat'
+import { initialStat, outOfCombatStat } from '@/mechanics/initialStat'
 
 const AGENTS = join(__dirname, '..', 'agents')
 
@@ -27,5 +27,21 @@ describe('initialStat（CC-497）', () => {
       uses += src.split('initialStat(').length - 1
     }
     expect(uses).toBeGreaterThanOrEqual(7)
+  })
+
+  it('CC-502 outOfCombatStat：严格局外、负值截 0、缺省 0、不回落', () => {
+    expect(outOfCombatStat({ atk: 1200 }, 'atk')).toBe(1200)
+    expect(outOfCombatStat({ hp: -5 }, 'hp')).toBe(0)
+    expect(outOfCombatStat({}, 'def')).toBe(0)
+    expect(outOfCombatStat(undefined, 'atk')).toBe(0)
+  })
+  it('CC-502 源码锁：agents 下不再手写 Math.max(0, …outOfCombatPanel.X…)；outOfCombatStat( ≥ 6', () => {
+    let uses = 0
+    for (const f of readdirSync(AGENTS).filter(f => f.endsWith('.ts'))) {
+      const code = readFileSync(join(AGENTS, f), 'utf8')
+      expect(code.match(/Math\.max\(0, (Number\()?outOfCombatPanel\./g) ?? [], f).toEqual([])
+      uses += (code.match(/outOfCombatStat\(/g) ?? []).length
+    }
+    expect(uses).toBeGreaterThanOrEqual(6)
   })
 })

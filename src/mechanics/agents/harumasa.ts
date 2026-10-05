@@ -32,6 +32,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { outOfCombatStat } from '@/mechanics/initialStat'
 import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
 
 export const HARUMASA_ID = '1201'
@@ -180,7 +181,7 @@ function applyPanel({ potentialLevel, outOfCombatPanel, panel }: AgentPanelInput
   const lv = Math.max(1, Math.min(6, whole(potentialLevel ?? 6)))
   const atkPct = HARUMASA_POTENTIAL_ATK_PCT[lv]
   if (atkPct > 0) {
-    const atkBonus = Math.max(0, Number(outOfCombatPanel.atk ?? 0)) * atkPct / 100
+    const atkBonus = outOfCombatStat(outOfCombatPanel, 'atk') * atkPct / 100
     panel.atk = (panel.atk ?? 0) + atkBonus
     panel.harumasaPotentialAtk = atkBonus
   }

@@ -37,6 +37,7 @@ import { minusInvincibleTime } from '@/core/effectiveTime'
 import { cfgMechanicSetting as setting, cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { outOfCombatStat } from '@/mechanics/initialStat'
 
 export const VIVIAN_ID = '1331'
 export const VIVIAN_XUANLUO_MOVE_ID = '1331006'
@@ -268,7 +269,7 @@ function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: Ag
   // 也与 `calcPanel` 内 `applyCoreStatBonus` 的批次基数（`outOfCombat` 副本）等价。
   if (cinemaLevel >= 4) {
     const atkPct = VIVIAN_C4_ATK_PCT * c4AtkCoverage
-    const atkBonus = Math.max(0, Number(outOfCombatPanel.atk ?? 0)) * atkPct / 100
+    const atkBonus = outOfCombatStat(outOfCombatPanel, 'atk') * atkPct / 100
     panel.atk = (panel.atk ?? 0) + atkBonus
     panel.vivianC4AtkBonus = atkBonus
   }

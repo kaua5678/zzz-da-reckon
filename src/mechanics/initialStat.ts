@@ -22,3 +22,17 @@ export function initialStat<K extends keyof PanelValues>(
 ): number {
   return Number((outOfCombatPanel ?? panel)?.[key] ?? 0)
 }
+
+/**
+ * 「以局外面板 X 为基数」的严格读取口（CC-502，r684）：**不回落局内**、负值截 0。
+ * 用于「局外攻击/生命/防御 × N%」这类**固定加成**——加进局内 `panel.X` 的是绝对量，不能走 `applyStat(panel,'xPct')`
+ * （那会以当前局内值为基数整体乘，`panelPhases.ts:522` 记录过的「局内固定加成被错误放大」坑）。
+ * 与 {@link initialStat} 的区别：那是「初始 X」口径（局外缺省回落局内，不截负）；这是「局外基数」口径（缺局外按 0）。
+ * 此前 harumasa / vivian / zhao ×2 / zhendou / ben 六处各写 `Math.max(0, Number(outOfCombatPanel.X ?? 0))`，注释互指「同款」。
+ */
+export function outOfCombatStat<K extends keyof PanelValues>(
+  outOfCombatPanel: { readonly [P in K]?: PanelValues[P] } | null | undefined,
+  key: K,
+): number {
+  return Math.max(0, Number(outOfCombatPanel?.[key] ?? 0))
+}
