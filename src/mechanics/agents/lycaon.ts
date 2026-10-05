@@ -10,6 +10,7 @@ import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 /**
  * 莱卡恩（1141）战斗逻辑（用户确认口径，2026-08）：
@@ -74,7 +75,7 @@ export const lycaonMechanic: AgentMechanicModule = {
     // 潜能觉醒·掠冰：围猎后台普攻/冲刺/闪反期间**局内冲击力**按 potentialLevel 取档
     // （II~VI = 5/7.5/10/12.5/15%）。用户口径：这是局内冲击力，加成到面板看实际。
     // ⚠ R59 修复：原实现写死 `* 1.15`（= VI 满档）⇒ `potentialLevel` 滑块完全不进计算。
-    const potLv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    const potLv = potentialLevelOf(potentialLevel)
     panel.impact = (panel.impact ?? 0) * (1 + LYCAON_POTENTIAL_IMPACT_PCT[potLv] / 100)
     // 影画6·冷酷猎手：莱卡恩自己对目标伤害 +50%（用户口径：全覆盖）
     if (cinemaLevel >= 6) {

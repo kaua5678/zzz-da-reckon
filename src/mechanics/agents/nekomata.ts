@@ -13,6 +13,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 /**
  * 猫又（1021）战斗逻辑（用户口供 2026-08-23 两批）：
@@ -211,7 +212,7 @@ function applyNekoPanel(input: AgentPanelInput): void {
   {
     // 潜能觉醒·猫的报恩（潜能 II~VI）：肉球突袭中暴伤 20/30/40/50/60% 永续。
     // ⚠ R58 订正：档位**按潜能等级取**（旧实现用 cinemaLevel 索引 + 门控 ⇒ 潜能轴完全失效）。
-    const lv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    const lv = potentialLevelOf(potentialLevel)
     const nightProwl = NEKOMATA_POTENTIAL_CRIT_DMG[lv] ?? 0
     if (nightProwl > 0) panel.critDmg = (panel.critDmg ?? 0) + nightProwl
   }

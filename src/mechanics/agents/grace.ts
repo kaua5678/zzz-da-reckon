@@ -14,6 +14,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 /**
  * 格莉丝（1181）战斗逻辑（用户口供 2026-08-23）：
@@ -179,7 +180,7 @@ function applyGracePanel(input: AgentPanelInput): void {
   {
     // 潜能觉醒·超频工程引擎：消耗电能获得电伤提升——循环持续消耗 → 永续。
     // ⚠ R58 订正：档位**按潜能等级取**（旧实现用 cinemaLevel 索引 + 门控 ⇒ 潜能轴完全失效）。
-    const lv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    const lv = potentialLevelOf(potentialLevel)
     const bonus = GRACE_POTENTIAL_ELECTRIC_DMG[lv] ?? 0
     if (bonus > 0) panel.electricDmg = (panel.electricDmg ?? 0) + bonus
   }

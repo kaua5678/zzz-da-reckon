@@ -29,6 +29,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 export const RINA_ID = '1211'
 const C2_COVERAGE = 12 / 18
@@ -275,7 +276,7 @@ export const rinaMechanic: AgentMechanicModule = {
     // R60 接入：本模块此前**零 `potential` 引用** ⇒ 大扫除整条未实现（四臂实测 potential 轴 IGNORED）。
     // ②（全队攻击/防御按自身穿透率转模）走 spec teamBuffs `rina_potential_team_atk_def`——
     // 它是**队伍级**效果（给队友），写在这里只会加到丽娜本人面板上（P2 陷阱）。
-    const potLv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    const potLv = potentialLevelOf(potentialLevel)
     if (potLv >= 2) {
       panel.penRatio = (panel.penRatio ?? 0) + RINA_POTENTIAL_PEN_RATIO
       panel.rinaPotentialPenRatio = RINA_POTENTIAL_PEN_RATIO

@@ -21,6 +21,7 @@ import { cfgMechanicSetting as cfgSetting } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById, getRowValue, rawRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 const BURNICE_AGENT_ID = '1171'
 const IGNITION_INITIAL = 100
@@ -153,7 +154,7 @@ export function computeBurniceMechanic(input: {
   const potentialActive = energyRegen >= POTENTIAL_ENERGY_REGEN_THRESHOLD
   const overCount = potentialActive ? Math.floor((energyRegen - POTENTIAL_ENERGY_REGEN_THRESHOLD + 1e-9) / 0.1) : 0
   // 潜能档位决定 per-0.1 系数（上限不随档位变，原文两处上限都是 25 / 20%）。
-  const potLv = Math.max(1, Math.min(6, Math.floor(Number(input.potentialLevel ?? 6))))
+  const potLv = potentialLevelOf(input.potentialLevel)
   const potentialAnomalyMasteryBonus = Math.min(POTENTIAL_MASTERY_CAP, overCount * BURNICE_POTENTIAL_MASTERY_PER_0_1[potLv])
   const potentialDmgBonus = Math.min(POTENTIAL_DMG_CAP, overCount * BURNICE_POTENTIAL_DMG_PER_0_1[potLv])
   const emberCooldownSeconds = potentialActive ? EMBER_COOLDOWN_POTENTIAL_SECONDS : EMBER_COOLDOWN_SECONDS
@@ -271,7 +272,7 @@ function applyBurnicePanel({ panel, potentialLevel }: AgentPanelInput): void {
   const over = Math.max(0, totalRegen - POTENTIAL_ENERGY_REGEN_THRESHOLD)
   if (over <= 0) return
   const overCount = Math.floor((over + 1e-9) / 0.1)
-  const potLv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+  const potLv = potentialLevelOf(potentialLevel)
   panel.anomalyMastery = (panel.anomalyMastery ?? 0) + Math.min(POTENTIAL_MASTERY_CAP, overCount * BURNICE_POTENTIAL_MASTERY_PER_0_1[potLv])
   panel.dmgBonus = (panel.dmgBonus ?? 0) + Math.min(POTENTIAL_DMG_CAP, overCount * BURNICE_POTENTIAL_DMG_PER_0_1[potLv])
 }

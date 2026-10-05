@@ -19,6 +19,7 @@ import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { clampCritRatePct } from '@/data/critMultiplier'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 const JANE_AGENT_ID = '1261'
 /** 普通攻击：萨霍夫跳（融合主段，见 src/data/moveFusions.ts JANE_SOMERSAULT） */
@@ -58,11 +59,6 @@ function clamp01(value: unknown, fallback = 1): number {
   return Number.isFinite(num) ? Math.max(0, Math.min(1, num)) : fallback
 }
 
-/** 潜能等级收敛到 1..6（缺省 = 6 满档，与 UI 滑块默认一致）。 */
-function clampPotential(value: unknown): number {
-  const num = Number(value)
-  return Number.isFinite(num) ? Math.max(1, Math.min(6, Math.floor(num))) : 6
-}
 
 export function computeJaneMechanic(input: {
   anomalyProficiency: number
@@ -73,7 +69,7 @@ export function computeJaneMechanic(input: {
 }): JaneMechanicSource {
   const mastery = Math.max(0, input.anomalyProficiency)
   const assaultCritRate = ASSAULT_CRIT_BASE + mastery * ASSAULT_CRIT_PER_MASTERY
-  const potentialLevel = clampPotential(input.potentialLevel)
+  const potentialLevel = potentialLevelOf(input.potentialLevel)
   return {
     assaultCritBaseRate: ASSAULT_CRIT_BASE,
     assaultCritRatePerMastery: ASSAULT_CRIT_PER_MASTERY,

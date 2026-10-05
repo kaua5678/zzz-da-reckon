@@ -40,6 +40,7 @@ import { cfgMechanicSetting as setting } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 export const ANBY_ZERO_ID = '1381'
 export const ANBY_ZERO_WHITE_LIGHTNING_MOVE_ID = '1381007'
@@ -98,7 +99,7 @@ export function computeAnbyZeroCycle(input: {
   criticalActionTime: number
 }): AnbyZeroCycle {
   const cinemaLevel = whole(input.cinemaLevel)
-  const potentialLevel = Math.max(1, Math.min(6, whole(input.potentialLevel)))
+  const potentialLevel = potentialLevelOf(input.potentialLevel)
   const cangguangCount = whole(input.cangguangCount)
   const ultimateCount = whole(input.ultimateCount)
   const silverStarCoverage = clampRatio(input.silverStarCoverage)

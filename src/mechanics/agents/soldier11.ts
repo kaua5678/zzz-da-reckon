@@ -41,6 +41,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMechanicSetting as cfgNum } from '@/utils/mechanicSettingCfg'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 const AGENT_ID = '1041'
 
@@ -140,7 +141,7 @@ export function patchSoldier11Executions({ cfg, state, executions }: AgentResour
 function applySoldier11Panel({ panel, settings, potentialLevel }: AgentPanelInput): void {
   // 潜能觉醒·绝焰：额外能力·燎原触发时自身暴伤按 potentialLevel 取档（II~VI = 16/24/32/40/48%）
   if ((panel.additionalAbilityActive ?? 0) > 0) {
-    const potLv = Math.max(1, Math.min(6, Math.floor(Number(potentialLevel ?? 6))))
+    const potLv = potentialLevelOf(potentialLevel)
     panel.critDmg = (panel.critDmg ?? 0) + SOLDIER11_POTENTIAL_CRIT_DMG[potLv]
     // 「11号」额外能力·燎原（队伍存在同属性或同阵营角色）：
     // 火属性伤害 +10%；攻击失衡敌人额外 +22.5% × 覆盖率滑块（非轴模式默认满覆盖）。

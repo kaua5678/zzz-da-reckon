@@ -8,6 +8,7 @@ import { applyBuffs, applyEffect, applyStat, calcEnergyRegenTotal, collectAllBuf
 import { agentPanelStatInitials } from '@/data/agentPanelStats'
 import type { StatRules } from '@/types/catalog'
 import { driveDiscStatMode } from './discStatMode'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 /** 创建空面板 */
 export function emptyPanel(): PanelValues {
@@ -328,7 +329,7 @@ export function calcPanel(
   const inCombat = applyBuffs(outOfCombat, buffs.inCombat, config.effectCoverageMap)
 
   // 潜能等级写入源面板（供 teamBuff formula/derived 通道读 potentialLevel）
-  const potentialLevel = Math.max(1, Math.min(6, config.potentialLevel ?? 6))
+  const potentialLevel = potentialLevelOf(config.potentialLevel) // CC-503：与各机制模块同一归一口
   outOfCombat.potentialLevel = potentialLevel
   inCombat.potentialLevel = potentialLevel
 

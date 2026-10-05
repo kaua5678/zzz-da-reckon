@@ -34,6 +34,7 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
 import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
+import { potentialLevelOf } from '@/data/potentialLevel'
 
 export const HARUMASA_ID = '1201'
 export const HARUMASA_ARROW_MOVE_ID = '1201008'
@@ -118,7 +119,7 @@ export function computeHarumasaCycle(input: {
   axisArrow?: number
 }): HarumasaCycle {
   const cinemaLevel = whole(input.cinemaLevel)
-  const potentialLevel = Math.max(1, Math.min(6, whole(input.potentialLevel || 6)))
+  const potentialLevel = potentialLevelOf(input.potentialLevel)
   const a5Count = whole(input.a5Count)
   const chainCount = whole(input.chainCount)
   const ultimateCount = whole(input.ultimateCount)
@@ -178,7 +179,7 @@ export function computeHarumasaCycle(input: {
 }
 
 function applyPanel({ potentialLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
-  const lv = Math.max(1, Math.min(6, whole(potentialLevel ?? 6)))
+  const lv = potentialLevelOf(potentialLevel)
   const atkPct = HARUMASA_POTENTIAL_ATK_PCT[lv]
   if (atkPct > 0) {
     const atkBonus = outOfCombatStat(outOfCombatPanel, 'atk') * atkPct / 100
@@ -189,7 +190,7 @@ function applyPanel({ potentialLevel, outOfCombatPanel, panel }: AgentPanelInput
 
 function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentCharConfigInput): void {
   cfg.harumasaCinemaLevel = cinemaLevel
-  cfg.harumasaPotentialLevel = Math.max(1, Math.min(6, whole(potentialLevel ?? 6)))
+  cfg.harumasaPotentialLevel = potentialLevelOf(potentialLevel)
   cfg.harumasaA5Count = whole(setting(cfg, 'harumasa.a5Count', 2))
   cfg.harumasaStunCoverage = 0.5 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
   cfg.harumasaAbnormalCoverage = clampRatio(setting(cfg, 'harumasa.abnormalCoverage', 1))
@@ -426,7 +427,7 @@ declare module '@/types/resource/config' {
     harumasaCinemaLevel?: number
     /** 写入：Math.min(HARUMASA_EDGE_MAX, */
     harumasaEdgeAverageStacks?: number
-    /** 写入：Math.max(1, Math.min(6, whole(potentialLevel ?? 6))) */
+    /** 写入：potentialLevelOf(potentialLevel)（CC-503） */
     harumasaPotentialLevel?: number
     /** 写入：0.5；Math.min(1, resolvedStun * HARUMASA_STUN_WINDOW_SECONDS / battle) */
     harumasaStunCoverage?: number
