@@ -34,6 +34,7 @@ import {
   ultimateGiftProviderSlot,
   promoteHugCountsOf,
   ultimateGiftSourceOf,
+  type InAxisFractionProvider,
 } from './ultimatePromote'
 import { applyChainGift } from './chainGift'
 import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from './feasibilitySearch'
@@ -779,7 +780,7 @@ export function createRunCalcRound(deps: {
 
     // 失衡窗口内的失衡值不累积下一次失衡条：构建「轴内失效比例」提供者，供转大不动点内层计算有效失衡值。
     // 固定轴口径：资源不足只提示不跳过，因此 executed 只取决于窗口数 + 时间门控，与能量/喧响总量无关。
-    let inAxisFractionProvider: ((stunCountN: number, execs: StunSkillExecution[]) => Record<string, number>) | undefined
+    let inAxisFractionProvider: InAxisFractionProvider | undefined
     if (axisActive) {
       const stackAxes = buildStackAxes(resolvedAxes)
       const stackEnergyBySlot: Record<number, number> = {}
@@ -834,7 +835,12 @@ export function createRunCalcRound(deps: {
             fraction[key] = denom > 0 ? Math.max(0, Math.min(1, inUnits / denom)) : 0
           }
         }
-        return fraction
+        // CC-469′（r651）：窗口里被轴块（含兜底平A填充）占掉的**前台**秒数。池对非轴块行的时间份额兜底只按
+        // 「未被覆盖的窗口时间」折算（`stunWindowFraction(N, W, eff, covered)`），不再对已被轴块填满的窗口时间
+        // 再按 N·W/eff 扣一次：实测 jufufu N=4.46 时逐招行只扣 11.5k、兜底却再扣 39k（0.396×窗外行）⇒ 双重扣除。
+        // 2026-09-10 裁决（栈填不满 N 窗时必须按时间约束负反馈）仍成立：未覆盖部分照扣。
+        const coveredWindowSeconds = Math.max(0, stack.timeUsed - stack.overlapSeconds + stack.basicFillSeconds)
+        return { fraction, coveredWindowSeconds }
       }
     }
 

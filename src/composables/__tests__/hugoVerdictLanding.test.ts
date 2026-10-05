@@ -79,6 +79,7 @@ describe('雨果决算轴内块数落地（坑36 回归）', () => {
     const stack = (calc.stackTraversalResult.value as { executed?: Record<string, { count: number }> } | null)?.executed?.[`0:${HUGO_EX_VERDICT_MOVE_ID}`]?.count ?? -1
     const row = calc.resourceResult.value?.characters?.[0]?.executions?.find(e => e.moveId === HUGO_EX_VERDICT_MOVE_ID)?.count ?? -1
     expect({ pool, stack, row }, '池 / 轴栈 / 资源行必须同源').toEqual({ pool: row, stack: row, row })
-    expect(row, 'physical 现值').toBe(4)
+    // r652 CC-469′：轴态逐招份额与未覆盖窗口份额复合扣除（不再双重扣除）+ N 二分自洽后本队失衡 4→5（同源断言不变，只是现值变）
+    expect(row, 'physical 现值').toBe(5)
   })
 })

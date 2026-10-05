@@ -216,9 +216,13 @@ export const soldier11Mechanic: AgentMechanicModule = {
       Math.floor(state.exSpecialCount ?? 0)
       + Math.floor(state.chainCountTotal ?? 0)
       + Math.floor(state.ultimateCount ?? 0))
-    const basicPool = state.basicAttackTime ?? 0
-    // 层数结算封顶：每发强特的 8 层恰好支持 1 套（1+1+6），无层数预算的窗口不跑快速火刀
-    const cycles = Math.min(windows, exTotal, CYCLE_TIME > 0 ? Math.floor(basicPool / CYCLE_TIME) : 0)
+    // 层数结算封顶：每发强特的 8 层恰好支持 1 套（1+1+6），无层数预算的窗口不跑快速火刀。
+    // CC-474（r652）：删掉原第三项 `⌊basicAttackTime / CYCLE_TIME⌋`。§19.6-2 口径（上方 @fact）A45 行的时间由
+    // estimateExSpecialTime 计入 necessaryTime、**不占**平A池，行数再被平A池封顶就是两套口径混用：estimate 侧
+    // 按 min(windows, ex) 记了 cycles×CYCLE_TIME，行侧却少物化几行 ⇒ necessary+pool ≠ frontline（CC-469′ 把 1041 队
+    // 失衡 3→5、平A池 24→15s 后该 cap 真的绑上，soldier11.test 守恒恒等式实测破）。两侧同一公式，守恒按构造成立；
+    // 平A池不够时由时间预算折叠循环收敛（estimate 注释所述），不在这里二次裁剪。
+    const cycles = Math.min(windows, exTotal)
     if (cycles <= 0) return
     executions.push({
       moveId: A4_MOVE_ID, moveName: '火力镇压A4（快速取消）', category: 'basic',

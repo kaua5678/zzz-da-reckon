@@ -35,10 +35,12 @@ describe('CC-39c 集成快照：佩洛伊斯右分支决算截断失衡窗口', 
     const verdict = await coverageWith('1551016')
     const upper = await coverageWith('1551015')
     expect(verdict.win).toBe(25)
-    expect(upper.cov).toBeCloseTo(2 * 25 / 180, 3)
+    // 重冻 2026-10-05 r652（CC-469′ 轴态失衡扣除复合式 + N 二分自洽）：上分支 2 次 → 3 次 ⇒ 3×25/180 = 0.4167；下方相对断言不变。
+    expect(upper.cov).toBeCloseTo(3 * 25 / 180, 3)
     expect(verdict.cov).toBeLessThan(upper.cov * 0.5)
     expect(verdict.cov).toBeGreaterThan(0)
     // 重冻 2026-09-28（CC-158 第 181 轮，折叠残差可退回改变动作时长分配）：0.0834 → 0.0788；上方相对断言均不变。
-    expect(verdict.cov).toBeCloseTo(0.0788, 3)
+    // 重冻 2026-10-05 r652（CC-469′）：0.0788 → 0.1999（右分支失衡次数随上分支一起变；相对断言 <½ 上分支 仍成立：0.1999 < 0.2083）。
+    expect(verdict.cov).toBeCloseTo(0.1999, 3)
   })
 })

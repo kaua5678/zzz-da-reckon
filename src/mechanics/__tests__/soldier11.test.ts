@@ -282,13 +282,15 @@ describe('「11号」A45 循环行不重复占用平A池（§19.6-2 收口判据
     ].join('\n')).toEqual([])
   })
 
-  it('cap 不绑：真实配置里绑定项恒为 exTotal（层数预算），cap 余量 ≥ 1 轮', async () => {
-    const weak: string[] = []
+  it('行数同源（CC-474）：A4 物化行 count == min(windows, ⌊ex⌋)，与平A池大小无关', async () => {
+    // r652：CC-469′ 后 1041 队失衡 3→5、平A池 24→15s，原「⌊pool/CYCLE_TIME⌋ cap 在真实配置里从不绑」的前提实测被打破
+    //（auto-1041-1571-1151 cap=4 < ex=6）⇒ 按 §19.6-2 口径（A45 行不占平A池）删掉 cap，行侧与 estimate 侧同一公式。
+    // 本条替代原「cap 不绑」与「保守阈值」两条前提测试：前提不再需要成立，锁的是同源本身。
+    const bad: string[] = []
     for (const [tag, team] of [
       ...teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3 && p.team.includes('1041'))
         .map(p => [p.id, p.team as string[]] as const),
       ['single-c0', ['1041']] as const,
-      ['single-c6', ['1041']] as const,
     ] as ReadonlyArray<readonly [string, string[]]>) {
       const { catalog, config } = await setupHarness(['', '', ''])
       await catalog.loadBuildRecommendations()
@@ -296,33 +298,13 @@ describe('「11号」A45 循环行不重复占用平A池（§19.6-2 收口判据
       const rr = useResourceCalc().resourceResult.value
       const ch = rr?.characters.find(c => c.agentId === '1041')
       expect(ch, `${tag} 无 1041 资源结果`).toBeTruthy()
-      const pool = ch!.timeAllocation.basicAttackTime
       const ex = Math.floor(ch!.exSpecialCount ?? 0)
       const windows = ex + Math.floor(ch!.chainCountTotal ?? 0) + Math.floor(ch!.ultimateCount ?? 0)
+      const a4 = ch!.executions.find(e => e.moveId === '1041008')?.count ?? 0
+      const pool = ch!.timeAllocation.basicAttackTime
       const cap = Math.floor(pool / CYCLE_TIME)
-      // 绑定项 = min 的胜出者。真实配置里必须是 exTotal 或 windows（计数/资源驱动），
-      // 绝不能是 pool cap —— 后者意味着 A45 行数由平A池解出（艾莲式判据的前提）。
-      if (cap <= Math.min(windows, ex)) {
-        weak.push(`${tag} pool=${pool.toFixed(3)} ex=${ex} windows=${windows} cap=${cap} ⇒ cap 绑（§19.6-2 前提成立，须改判）`)
-      }
+      if (a4 !== Math.min(windows, ex)) bad.push(`${tag} a4=${a4} ≠ min(windows ${windows}, ex ${ex})（pool=${pool.toFixed(3)} cap=${cap}）`)
     }
-    expect(weak, [
-      'A45 的 ⌊pool/CYCLE_TIME⌋ cap 在真实配置里绑上了 —— §19.6-2 的前提假设成立，',
-      '判定须从「合法」改判为「艾莲式双计」，并按 f70a402 形态挤出 + 补齐归因：',
-      ...weak.map(w => '  · ' + w),
-    ].join('\n')).toEqual([])
-  })
-
-  it('保守阈值：cap 绑定需要回能 > exConsume/CYCLE ≫ 实测回能（结构性差距，非采样巧合）', async () => {
-    await setupHarness([{ agentId: '1041', cinemaLevel: 0 }])
-    const ch = useResourceCalc().resourceResult.value?.characters.find(c => c.agentId === '1041')
-    expect(ch).toBeTruthy()
-    const consume = ch!.exSpecialEnergyConsume ?? 80
-    const rateNeeded = consume / CYCLE_TIME  // 能量/秒：把 ex 推到 pool/CYCLE 所需
-    const rateActual = (ch!.derivedEnergy ?? 0) / 180
-    // 实测 c0：49.83 vs 4.82 ⇒ 10.35×。留 3× 余量作为「结构性差距」的保守断言
-    //（若将来真有 +400% 回能手段把它推近，这条会红 ⇒ 正是该复核 §19.6-2 的时候）。
-    expect(rateNeeded / rateActual, `cap 绑定所需回能 ${rateNeeded.toFixed(2)} /s vs 实测 ${rateActual.toFixed(2)} /s`)
-      .toBeGreaterThan(3)
+    expect(bad, 'A4 行数必须只由 windows/ex 决定：\n' + bad.map(b => '  · ' + b).join('\n')).toEqual([])
   })
 })

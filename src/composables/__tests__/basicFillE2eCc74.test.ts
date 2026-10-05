@@ -64,7 +64,8 @@ describe('CC-74 11号平A兜底端到端', () => {
     expect(full.total).toBeGreaterThan(none.total)
     // ② 钩子产出 0 ⇒ 与无填充逐位相同（钩子是该行轴内次数的唯一来源）
     expect(zero.count).toBe(none.count)
-    expect(zero.total).toBe(none.total)
+    // r652 CC-469′：填充**秒数**（栈算出的窗口剩余时间）与钩子缩放无关，现在计入「已覆盖窗口秒」进失衡池 ⇒ 有填充槽但钩子×0
+    // 的合成态与「无填充槽」在覆盖率/失衡上不再逐位同；钩子是该行**次数**的唯一来源这一口径仍由上一行钉住，total 不再锁。
     // ③ 线性区：行次数 == 钩子产出，每次伤害不随次数变
     expect(tenth.count).toBeCloseTo(hookCount * 0.1, 6)
     expect(twentieth.count).toBeCloseTo(hookCount * 0.05, 6)

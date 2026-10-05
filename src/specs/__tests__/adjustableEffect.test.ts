@@ -43,8 +43,9 @@ import { SIGRID_CHUQIANG_MOVE_IDS } from '@/mechanics/agents/sigrid'
 /** 表：[settingId, 资源 id, gain 键, rate=1 时的基准获取量] */
 const CASES: Array<[string, string, string, number]> = [
   ['1011.anby_charge.anby_ex_charge_gain.rate', 'anby_charge', 'anby_ex_charge_gain', 72],
-  ['1041.soldier11_charge.soldier11_ex_charge_gain.rate', 'soldier11_charge', 'soldier11_ex_charge_gain', 48],
-  ['1041.soldier11_charge.soldier11_ult_charge_gain.rate', 'soldier11_charge', 'soldier11_ult_charge_gain', 24],
+  // r652 CC-474：A45 轮数不再被 ⌊平A时间/周期⌋ 卡住（与 estimateExSpecialTime 同源）⇒ 本夹具强特 6→7：48→56 / 24→32。
+  ['1041.soldier11_charge.soldier11_ex_charge_gain.rate', 'soldier11_charge', 'soldier11_ex_charge_gain', 56],
+  ['1041.soldier11_charge.soldier11_ult_charge_gain.rate', 'soldier11_charge', 'soldier11_ult_charge_gain', 32],
   ['1351.pulchra_hunt_step.pulchra_assist_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_assist_hunt_gain', 5],
   ['1351.pulchra_hunt_step.pulchra_ex_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_ex_hunt_gain', 9],
   ['1441.zhendou_heartfire.zhendou_parry_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_parry_heartfire_gain', 600],
@@ -52,10 +53,10 @@ const CASES: Array<[string, string, string, number]> = [
   ['1441.zhendou_remnant_flame.zhendou_ult_remnant_gain.rate', 'zhendou_remnant_flame', 'zhendou_ult_remnant_gain', 24],
   // CC-194：默认队友含安比 C6 ⇒ 影画4 电荷传导回能首次真正注入（旧 postRound 写入被下一轮重克隆丢弃），20 → 18；线性不变
   ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 18],
-  ['1531.billy_radiant_star.billy_radiant_basic4_gain.rate', 'billy_radiant_star', 'billy_radiant_basic4_gain', 1],
-  ['1531.billy_radiant_star.billy_radiant_ex_gain.rate', 'billy_radiant_star', 'billy_radiant_ex_gain', 21],
-  ['1531.billy_star_glow.billy_star_basic4_gain.rate', 'billy_star_glow', 'billy_star_basic4_gain', 1],
-  ['1531.billy_star_glow.billy_star_ex_gain.rate', 'billy_star_glow', 'billy_star_ex_gain', 21],
+  ['1531.billy_radiant_star.billy_radiant_basic4_gain.rate', 'billy_radiant_star', 'billy_radiant_basic4_gain', 21],
+  ['1531.billy_radiant_star.billy_radiant_ex_gain.rate', 'billy_radiant_star', 'billy_radiant_ex_gain', 22],
+  ['1531.billy_star_glow.billy_star_basic4_gain.rate', 'billy_star_glow', 'billy_star_basic4_gain', 21],
+  ['1531.billy_star_glow.billy_star_ex_gain.rate', 'billy_star_glow', 'billy_star_ex_gain', 22],
   ['1531.billy_star_glow.billy_star_ultimate_gain.rate', 'billy_star_glow', 'billy_star_ultimate_gain', 3],
   ['1551.peiluo_prominence.peiluo_frontline_gain.rate', 'peiluo_prominence', 'peiluo_frontline_gain', 60],
   ['1551.peiluo_prominence.peiluo_upper_ult_gain.rate', 'peiluo_prominence', 'peiluo_upper_ult_gain', 180],
@@ -66,10 +67,13 @@ const CASES: Array<[string, string, string, number]> = [
 ]
 
 /** 队伍夹具：主角 + 两个固定队友（同属性以触发出战条件；数值只依赖本槽 cfg 与 state） */
-const ALLY: Record<string, [string, string]> = {
+const ALLY: Record<string, string[]> = {
   '1011': ['1381', '1211'],
   '1091': ['1251', '1171'],
-  '1531': ['1041', '1281'],
+  // r652（CC-474 后）：1531 带任意两名队友时 basic4 周期数 = ⌊自身平A时间/4连周期⌋ 全为 0（旧基准 1 是热启动路径上的
+  // 边界值：r0→r1 读 1、fresh 读 0；1041/1281/1121/1301 各组合实扫皆 0），单人夹具给 21，远离地板 ⇒ 1531 用单人夹具，
+  // 基准重录：basic4 1→21、ex 21→22、ult 3 不变。
+  '1531': [],
   '1041': ['1531', '1281'],
 }
 
@@ -370,11 +374,10 @@ describe('spec adjustable（Form-E）经真管线生效：rate 0 / 1 / 2 三点�
     const failures: string[] = []
     for (const [id, resKey, gainKey, base] of CASES) {
       const agentId = id.slice(0, 4)
-      const [a1, a2] = ALLY[agentId] ?? ['1011', '1211']
+      const allies = ALLY[agentId] ?? ['1011', '1211']
       const { config } = await setupHarness([
         { agentId, ...RICH },
-        { agentId: a1, cinemaLevel: 6 },
-        { agentId: a2, cinemaLevel: 6 },
+        ...allies.map(a => ({ agentId: a, cinemaLevel: 6 })),
       ] as never)
       for (const buff of config.globalBuffs) buff.enabled = false
       // CC-148（第 175 轮）：基准值表在 off 口径下录制（1351 援护狩猎增益随失衡计数变：off 5 / physical 8）；

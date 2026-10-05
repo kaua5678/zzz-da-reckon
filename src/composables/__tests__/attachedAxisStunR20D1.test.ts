@@ -59,6 +59,8 @@ async function popcornRows(opts: { axis: boolean; cinema?: number }) {
     rows: (calc.damagePoolRows.value as any[]).filter(r => r.moveId === '1391_c6_popcorn'),
     allRows: calc.damagePoolRows.value as any[],
     stunCount: calc.stunPoolResult.value?.stunCount ?? 0,
+    // r650：爆米花总单位数的引擎来源（父行旋转次数 × 3），供「不丢单位」断言用，替代硬编码 252
+    spinCount: calc.resourceResult.value?.characters?.[0]?.executions?.find(e => e.moveId === '1391010')?.count ?? -1,
   }
 }
 
@@ -72,7 +74,7 @@ describe('D1 伴随事件绑定轴内动作块（爆米花 = 旋转驱动）', (
   })
 
   it('★ 轴模式：爆米花被拆成「轴内吃满易伤(1.5) / 轴外零易伤(1)」两段', async () => {
-    const { rows, total } = await popcornRows({ axis: true })
+    const { rows, total, spinCount } = await popcornRows({ axis: true })
     expect(rows.length, '轴模式下应拆成两段（in / out）').toBe(2)
     const inSeg = rows.find(r => !String(r.id ?? '').endsWith('-out'))
     const outSeg = rows.find(r => String(r.id ?? '').endsWith('-out'))
@@ -83,7 +85,9 @@ describe('D1 伴随事件绑定轴内动作块（爆米花 = 旋转驱动）', (
     expect(outSeg!.stunMultiplier ?? outSeg!.stunMult).toBe(1)
     // 两段次数之和 = 该轮总次数（**不硬编码常数**：实测轴/非轴收敛出的旋转次数不同
     // ——轴模式 252 / 非轴 261，硬编码会假红。此处只钉「不丢单位」不变量。）
-    expect((inSeg!.count ?? 0) + (outSeg!.count ?? 0)).toBe(252)
+    // r652 CC-469′：失衡次数变后本队旋转收敛值变（252→261），原硬编码与上一行注释自相矛盾 ⇒ 改钉引擎来源 3×旋转次数
+    expect(spinCount, '父行旋转次数必须存在').toBeGreaterThan(0)
+    expect((inSeg!.count ?? 0) + (outSeg!.count ?? 0)).toBe(spinCount * 3)
     expect(total, '总伤必须为正').toBeGreaterThan(0)
     // 轴内段必须 > 0（若 0 说明占比算成 0 = 修复没生效）
     expect(inSeg!.count, '轴内段次数必须 > 0').toBeGreaterThan(0)

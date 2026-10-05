@@ -4,7 +4,7 @@
  *
  * 为什么需要它：`outerCycle.test.ts` 钉的是纯函数判据本身；纯函数正确但调用方传了
  * 错位的成员切片（如长环分支的 `from` 下标算错）时，纯函数单测全绿而真管线落点已错。
- * 本文件用 `yixuan-jufufu-lucia` 真预设队跑完整管线，断言长环分支收到的成员是
+ * 本文件用 `auto-1591-1161-1311` 真预设队跑完整管线（r652 CC-469′ 前为 `yixuan-jufufu-lucia`，见下），断言长环分支收到的成员是
  * **首尾对齐的闭环切片**、且规范停点不是末轮（与 `timeGolden` 的落点读数同源但独立）。
  *
  * ⑤ 落点同一性（lead 复核 2026-09-24 补）：只看纯函数的返回值不够——把适配层的
@@ -63,12 +63,16 @@ vi.mock('@/composables/resourceCalc/outerCycle', async (importOriginal) => {
   }
 })
 
-/** 建 yixuan-jufufu-lucia 预设队（与 timeGolden.test.ts 同一路径：先建空队再套预设）。 */
-async function setupYixuanPreset() {
+/** 建 auto-1591-1161-1311 预设队（与 timeGolden.test.ts 同一路径：先建空队再套预设）。 */
+async function setupLongCyclePreset() {
   const { catalog, config } = await setupHarness(['', '', ''])
   await catalog.loadBuildRecommendations()
   const calc = useResourceCalc()
-  const team: [string, string, string] = ['1371', '1391', '1451']
+  // r652 CC-469′（轴态逐招份额与未覆盖窗口份额复合扣除 + N 二分自洽）后 yixuan-jufufu-lucia 在 projection=0 下不再出长环
+  // ⇒ 换夹具。选法：新口径下扫 104 预设（`calc-arch/arenaF/r651-long-p0.log`），projection=0 时仅 5 队出长环，
+  // 取 4 成员且 pickedEarlier=true 的 auto-1591-1161-1311（规范成员不在末相位 ⇒ ⑤ 恢复对「适配层改取末轮」的判别力）。
+  // 再变 2-环时照此重扫换队，不要改判据。
+  const team: [string, string, string] = ['1591', '1161', '1311']
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
   config.applyTeamPreset(team)
   // CC-154（第 177 轮）：本文件测「长环分支的接线」，需要一个真出长环的场景。physical 下模块计数改读计数通道后本队外层
@@ -78,14 +82,14 @@ async function setupYixuanPreset() {
 }
 
 describe('环内选点的接线：长环成员切片首尾对齐且取规范停点', () => {
-  it('yixuan-jufufu-lucia：长环分支只调用一次且成员闭环、选点与相位无关', async () => {
+  it('auto-1591-1161-1311：长环分支只调用一次且成员闭环、选点与相位无关', async () => {
     // 观察窗口从建队**之前**就打开：2026-10-03 `31fdfe8f`（音擎叠层覆盖率回填）在 useResourceCalc 里加了
     // `watch(..., { immediate: true, flush: 'post' })`，建队后的首个 await 就把整条管线算完并缓存，
     // 若此时才清空 observed，再读 resourceResult 命中缓存 ⇒ 长环分支「0 次」。建队期间（空队）不出长环，
     // 下面 `members.length >= 3` 的过滤天然把它们排除，不影响「恰好一次」的断言。
     observed.rounds = []
     observed.calls = []
-    const { calc } = await setupYixuanPreset()
+    const { calc } = await setupLongCyclePreset()
     const rr = calc.resourceResult.value
     expect(rr, '预设队无资源结果').toBeTruthy()
 

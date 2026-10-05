@@ -152,11 +152,13 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
     const baseStunRes = enemyStunResistances[element] ?? 0
     const perHit = calcPerHitStun(exec.baseDaze, panel, baseStunRes, physicalFlinchCoverageRate, element, exec.skillType, exec.stunBuildUpBonus)
     const total = perHit * exec.count
-    // 取较大者：轴模式逐招 fraction 已精确扣除，非轴模式退回全局窗口占比（不叠加，防双重折算）
-    const inAxisFraction = Math.max(
-      Math.max(0, Math.min(1, inAxisFractions[`${exec.slot}:${exec.moveId}`] ?? 0)),
-      windowFraction,
-    )
+    // CC-469′（r651）：复合而非取大。逐招 fraction = 该招被轴块排进窗口的份额（轴模式才有，非轴恒 0）；
+    // 其余 (1 − fraction) 份额均匀落在「非轴块时间」里，其中 `windowFraction` 比例处于**未被轴块填满的窗口**
+    // （调用方在轴模式传 未覆盖窗口秒/(有效时间 − 覆盖秒)，非轴模式传 N·W/有效时间）⇒ 两段都不攒条。
+    // 旧 `max(fraction, N·W/eff)`：栈填满时对窗外招式再按全窗时间扣一次（双重扣除，jufufu 多扣 39k/50k）；
+    // 栈填不满时对轴块招式的窗外次数又一点不扣（1521 队 4→7 过冲）。复合式两头都对，非轴模式逐位同旧。
+    const keyFraction = Math.max(0, Math.min(1, inAxisFractions[`${exec.slot}:${exec.moveId}`] ?? 0))
+    const inAxisFraction = keyFraction + (1 - keyFraction) * windowFraction
     const inAxisStun = total * inAxisFraction
     const effectiveStun = total - inAxisStun
 
@@ -217,6 +219,18 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
  * 规范成员的引擎按读入的 K 分配时间，池却报 K+1 ⇒ 池 / 轴栈 / 伤害侧与资源行不同源（坑36 破）。
  * 取「最大自洽可行整数」K（按 K 分配时池撑得住 ≥K），报告池同步钳到 K。
  */
+/**
+ * 失衡次数的**连续**版（CC-469′b，r652）：`stunCount === Math.floor(continuousStunCount(pool))` 按构造成立
+ *（`1 + floor((t−b)/c) ≡ floor(1 + (t−b)/c)`；t<b 段取 t/b ∈ [0,1) ⇒ floor 0）。轴态不动点对连续 N 二分时用它作
+ * 「N 窗口下池还能攒出几次」的读数，让 floor 口径与池自身同源（锁 `stunPoolContinuous.test.ts`）。
+ */
+export function continuousStunCount(pool: Pick<StunPoolResult, 'totalStunBuildUp' | 'stunGift' | 'bossStunValue' | 'stunRefundRatio'>): number {
+  const b = pool.bossStunValue
+  if (!(b > 0)) return 0
+  const t = pool.totalStunBuildUp + Math.max(0, pool.stunGift ?? 0)
+  if (t < b) return t / b
+  return 1 + (t - b) / (b * (1 - pool.stunRefundRatio))
+}
 export function withStunCount(pool: StunPoolResult, stunCount: number): StunPoolResult {
   const chainCountTotal = stunCount * pool.chainCountPerStun
   return {

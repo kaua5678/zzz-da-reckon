@@ -101,15 +101,17 @@ describe('时间守恒：窗口时间不攒条（用户口径 2026-09-01，负�
     expect(run(5).totalStunBuildUp).toBe(0)
   })
 
-  it('与逐招 inAxisFraction 取较大者，不叠加（轴模式不被双重折算）', () => {
+  it('与逐招 inAxisFraction 复合：剩余份额再按未覆盖窗口比例扣（CC-469′，r652）', () => {
     const both = calcStunPool({
       executions: execs as never, panels: [panel], bossStunValue: 100, chainCountPerStun: 0,
       enemyStunResistances: { physical: 0 },
       inAxisStunFractionByKey: { '0:m': 0.8 },
       windowTimeFraction: 0.5,
     })
-    // 取 max(0.8, 0.5) = 0.8 → 剩 20%，而不是 (1-0.8)×(1-0.5) = 10%
-    expect(both.totalStunBuildUp).toBeCloseTo(run(0).totalStunBuildUp * 0.2, 6)
+    // r652 前是 max(0.8, 0.5) = 0.8 → 剩 20%：栈填满窗口时对窗外招式再按全窗时间扣（双重扣除），栈填不满时
+    // 轴块招式的窗外次数一点不扣（过冲）。CC-469′：0.8 是被排进轴块的份额，剩下 20% 均匀落在非轴块时间里，
+    // 其中 windowTimeFraction=0.5（调用方在轴模式传 未覆盖窗口秒/非轴块时间）处于未填满的窗口 ⇒ 剩 (1−0.8)×(1−0.5) = 10%。
+    expect(both.totalStunBuildUp).toBeCloseTo(run(0).totalStunBuildUp * 0.1, 6)
   })
 })
 

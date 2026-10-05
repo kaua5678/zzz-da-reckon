@@ -6,7 +6,7 @@
  * 失衡次数 → 转大次数变（正反馈）；开窗次数（阈值结转，见 computeLiuyinHugCounts）有界，正反馈单调
  * 有界必收敛（MAX_PROMOTE_ITER 轮兜底）。倍率表全走目标队友执行计划自然调用。
  */
-import { calcStunPool, withStunCount } from '@/core/stunPool'
+import { calcStunPool, continuousStunCount, withStunCount } from '@/core/stunPool'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource'
@@ -266,6 +266,9 @@ function adjustStunExecs(
 
 /** 转大不动点：给定基础失衡 execs 与畏缩覆盖率，迭代（失衡次数 ↔ 好评转大次数）至收敛 */
 // @fact engine:失衡次数不动点 口径: **轴/非轴统一**走连续闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还、x=N×窗长/有效时间），floor(N*) 即次数——时间域语义：窗口占用 N×窗长，剩余时间才攒条，故「打满 N 次后剩余时间不够一次」自然收敛于 N。**两种模式都必须传时间占比**（旧实现轴模式传 0，只信逐招 fraction：实测 auto-1521-1481-1311 窗口占时间 90% 只扣 4.8% 攒条 → 9 次，而轴栈只填满 3 窗）| 据 用户@2026-09-10「顺序不对：应先攒够再开窗，剩余时间不足则收敛于此」·前身口径 用户@2026-09-08 + 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽（合并原重复「据」槽）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#promoteFixpoint | 信 确认
+/** 轴内失效比例提供者的返回：逐招 `${slot}:${moveId}` → 窗内份额，加上窗口里被轴块占掉的前台秒数（CC-469′）。 */
+export interface InAxisFractionResult { fraction: Record<string, number>; coveredWindowSeconds: number }
+export type InAxisFractionProvider = (stunCount: number, execs: StunSkillExecution[]) => InAxisFractionResult
 export function promoteFixpoint(
   baseExecs: StunSkillExecution[],
   flinchRate: number,
@@ -273,7 +276,7 @@ export function promoteFixpoint(
   axisHug: { hug60: number; hug90: number } | null,
   axisMode: boolean,
   deps: PromoteFixpointDeps,
-  inAxisFractionProvider?: (stunCount: number, execs: StunSkillExecution[]) => Record<string, number>,
+  inAxisFractionProvider?: InAxisFractionProvider,
   refundStunRatio = 0,
   /**
    * CC-305：锁定失衡次数（`enemy.stunCountLock ≥ 0` 时由 convergence 传计数通道值 countStun；缺省 / 负数 = 正常求不动点）。
@@ -293,17 +296,19 @@ export function promoteFixpoint(
     configStore.enemy.stunTime,
     panels.reduce((sum, p) => sum + (p.stunDurationBonusSeconds ?? 0), 0),
   )
-  const runPool = (execs: StunSkillExecution[], inAxisFraction?: Record<string, number>, prevStunCount = 0) => calcStunPool({
+  const runPool = (execs: StunSkillExecution[], inAxis?: InAxisFractionResult, prevStunCount = 0) => calcStunPool({
     executions: execs, panels, bossStunValue: configStore.enemy.stunValue,
     chainCountPerStun, enemyStunResistances: configStore.enemy.stunResistances ?? configStore.enemy.resistances ?? {},
     physicalFlinchCoverageRate: flinchRate,
-    inAxisStunFractionByKey: inAxisFraction,
+    inAxisStunFractionByKey: inAxis?.fraction,
     refundStunRatio,
     stunGift: configStore.enemy.bossStunGift ?? 0,
     // **两种模式都传时间占比**（用户 2026-09-10 裁决：失衡次数必须满足时间约束）——
     // 旧实现轴模式传 0（「逐招 fraction 已精确扣除」），实测 auto-1521-1481-1311 窗口占时间 90%
     // 却只扣掉 4.8% 攒条 → 次数 9，而轴栈实际只填满 3 窗（时序不自洽）。
-    windowTimeFraction: stunWindowFraction(prevStunCount, windowDur, effTime),
+    // CC-469′（r651）：轴模式传「未被轴块覆盖的窗口秒 / 非轴块时间」= stunWindowFraction(N, W, eff − covered, covered)
+    //（`lostSeconds` 通道，CC-217 单一实现）；池内与逐招 fraction 复合（stunPool.ts）。非轴模式 covered=0，逐位同旧。
+    windowTimeFraction: stunWindowFraction(prevStunCount, windowDur, effTime - (inAxis?.coveredWindowSeconds ?? 0), inAxis?.coveredWindowSeconds ?? 0),
   })
 
   let stunCount = 0
@@ -331,9 +336,31 @@ export function promoteFixpoint(
     }
     promote = hug60 + hug90
     const execs = p && promote > 0 ? adjustStunExecs(baseExecs, p, hug60, promote, !axisMode) : baseExecs
-    const inAxisFraction = inAxisFractionProvider ? inAxisFractionProvider(stunCount, execs) : undefined
+    if (axisMode && inAxisFractionProvider && !locked) {
+      // CC-469′b（r652）：轴模式**不用**下面的自由闭式（它按 x=N·W/eff 扣全部 gross，而池在轴模式按逐招份额 +
+      // 未覆盖窗口份额复合扣除，二者不是同一函数 ⇒ r648 实测闭式 4.46 / 池 3 互相矛盾、按「闭式重复」退出时返回
+      // 的池是在别的 N 处求的值）。改为对连续 N 二分池**自身**的不动点 h(N) = continuousStunCount(pool(N)) − N：
+      // N↑ ⇒ 栈多排块 + 未覆盖份额↑ ⇒ 有效失衡↓ ⇒ h 单调递减，二分必收敛；返回的池就是在 N* 处求的值，
+      // `pool.stunCount = floor(N*)`（差 1 以内的 floor 边界由同源公式保证一致）。每步 = 一次栈遍历 + 一次池。
+      const evalAt = (n: number) => runPool(execs, inAxisFractionProvider(n, execs), n)
+      let lo = 0
+      let hi = Math.max(1, effTime / Math.max(1e-9, windowDur))
+      let poolLo = evalAt(lo)
+      if (continuousStunCount(poolLo) <= lo) { pool = poolLo; stunCount = lo; break }
+      const poolHi = evalAt(hi)
+      if (continuousStunCount(poolHi) >= hi) { pool = poolHi; stunCount = hi; break }
+      for (let i = 0; i < 40 && hi - lo > 1e-3; i++) {
+        const mid = (lo + hi) / 2
+        const pm = evalAt(mid)
+        if (continuousStunCount(pm) >= mid) { lo = mid; poolLo = pm } else hi = mid
+      }
+      pool = poolLo
+      stunCount = lo
+      break
+    }
+    const inAxis = inAxisFractionProvider ? inAxisFractionProvider(stunCount, execs) : undefined
     // 传上一轮的 stunCount 折算窗口占比（首轮 0 = 与旧行为一致，之后逐轮收敛）
-    pool = runPool(execs, inAxisFraction, stunCount)
+    pool = runPool(execs, inAxis, stunCount)
     if (locked) {
       if (pool.stunCount !== stunCount) pool = withStunCount(pool, stunCount)
       break
