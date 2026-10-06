@@ -68,13 +68,12 @@ export interface FrontlineOccupationBreakdown {
  * 否则合轴抵扣放宽后的平A池会被误判超时（2026-09-04 合轴口径）。
  */
 export function frontlineOccupationBreakdown(rr: TeamResourceResult): FrontlineOccupationBreakdown {
-  const overlap = rr.axisOverlapByAction ?? {}
-  const overlapBySlot = axisOverlapBySlot(overlap)
+  const overlapBySlot = axisOverlapBySlot(rr.axisOverlapByAction)
   let total = 0
   let totalRowNet = 0
   const tally = { gross: 0, axisOverlap: 0 }
   for (const ch of rr.characters) {
-    const r = slotNetFrontline(ch.executions, ch.slot, overlap, overlapBySlot[ch.slot] ?? 0, ch.timeAllocation.comboAlignCredit, [], tally)
+    const r = slotNetFrontline(ch.executions, overlapBySlot[ch.slot] ?? 0, ch.timeAllocation.comboAlignCredit, [], tally)
     total += r.net
     totalRowNet += r.rowNet
   }
@@ -112,18 +111,20 @@ export function axisOverlapBySlot(overlap: Readonly<Record<string, number>> | un
   return bySlot
 }
 
-/** `slotNetFrontline` 只读这三个字段（`SkillExecution` 结构兼容）。 */
+/** `slotNetFrontline` 只读这两个字段（`SkillExecution` 结构兼容）。 */
 export interface FrontlineRowLike {
-  moveId: string
   totalTime?: number
   timeBucket?: 'necessary' | 'basic' | 'backstage'
 }
 
 /**
  * 单槽前台净占用（CC-495，超时判定的几何口径，一份）：
- *   rowNet = Σ_{前台行} max(0, 行时长 − 该行轴内合轴分摊 overlap[`slot:moveId`]) (+ extraSeconds 逐项追加)
- *   net    = max(0, rowNet − max(0, 招式合轴抵扣 comboAlignCredit − 该槽轴内分摊合计 slotOverlap))
- * 合轴抵扣只再扣超出轴内节省的增量（max 口径，防双重扣减）。
+ *   rowNet = Σ_{前台行} max(0, 行时长) − min(该和, 该槽轴内合轴分摊合计 slotOverlap) (+ extraSeconds 逐项追加)
+ *   net    = max(0, rowNet − max(0, 招式合轴抵扣 comboAlignCredit − slotOverlap))
+ * 即每槽抵扣 = max(comboAlignCredit, slotOverlap)，与 iterate 平A池 relief（`helpers.ts`）同一份按槽量。
+ * r709：轴内分摊原按 `slot:moveId` 逐行匹配——栈键是**轴块** id（连段块 / 赠块 `:gift`），行是展开后的招式 id，
+ * 连段块的分摊匹配不到行 ⇒ 整段漏扣、还反向压低招式合轴增量 ⇒ 净占用高于 relief 口径，轴被误判超时退化
+ *（实测 `auto-1461-1521-1361`：席德崩坠连段块）。
  * 装配后的占用拆解（`frontlineOccupationBreakdown`）与欠打试探的门控测量（`underfillProbe#frontlineRowsOf`，
  * 行 = 试探物化行 + 赠送连携/赠大时间作 extraSeconds）都走它——试探注释原文「与 netFrontlineOccupation 完全同口径，
  * 否则试探门控放行、装配后仍超预算（实测差出 164s）」，现在是同一个函数而不是两份手抄。
@@ -131,24 +132,21 @@ export interface FrontlineRowLike {
  */
 export function slotNetFrontline(
   rows: ReadonlyArray<FrontlineRowLike>,
-  slot: number,
-  overlap: Readonly<Record<string, number>>,
   slotOverlap: number,
   comboAlignCredit: number | undefined,
   extraSeconds: readonly number[] = [],
   tally?: { gross: number; axisOverlap: number },
 ): { rowNet: number; net: number } {
-  let rowNet = 0
+  let rowSum = 0
   for (const e of rows) {
     if (!isFrontlineExecution(e)) continue
     const t = e.totalTime ?? 0
-    const cut = overlap[`${slot}:${e.moveId}`] ?? 0
-    if (tally) {
-      tally.gross += t
-      tally.axisOverlap += cut
-    }
-    rowNet += Math.max(0, t - cut)
+    if (tally) tally.gross += t
+    rowSum += Math.max(0, t)
   }
+  const axisCut = Math.min(rowSum, slotOverlap)
+  if (tally) tally.axisOverlap += axisCut
+  let rowNet = rowSum - axisCut
   for (const sec of extraSeconds) rowNet += sec
   const extraCredit = Math.max(0, (comboAlignCredit ?? 0) - slotOverlap)
   return { rowNet, net: Math.max(0, rowNet - extraCredit) }

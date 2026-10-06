@@ -514,7 +514,13 @@ function iterateBody(
   const effectiveCredits = comboAlignCredits.map((c, i) => c + dynamicComboAlign[i])
   const absorbedNetNecessary = netNecessary.map((n, i) => Math.max(0, n - dynamicComboAlign[i]))
   const sumAbsorbedNet = absorbedNetNecessary.reduce((a, b) => a + b, 0)
-  const reliefWithDynamic = reliefSeconds + dynamicTotal
+  // 动态吸收与轴内合轴节省同槽**取大**不叠加（本段头注释口径；`timeOccupation.ts#slotNetFrontline` 同式）：
+  // max(c + d, o) = max(c, o) + d − min(d, max(0, o − c))（c 静态抵扣、d 动态吸收、o 该槽轴内节省，均 ≥ 0）。
+  // r709 前直接相加（o = 0 时无差）；节省复活后同槽多给一份 relief ⇒ 平A池超发、占用拆解按取大判超时 ⇒ 轴被误退化
+  //（实测 auto-1461-1521-1361 超 4.38s = 槽1 轴内节省）。o = 0 时减项恰为 0，逐位同旧。
+  const overlapDynamicDup = dynamicComboAlign.reduce(
+    (sum, d, i) => sum + Math.min(d, Math.max(0, (overlapBySlot[configs[i].slot] ?? 0) - comboAlignCredits[i])), 0)
+  const reliefWithDynamic = reliefSeconds + dynamicTotal - overlapDynamicDup
   const rawScale = !axisMode && sumAbsorbedNet > budget && sumAbsorbedNet > 0
     ? budget / sumAbsorbedNet
     : 1

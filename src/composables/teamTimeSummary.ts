@@ -11,6 +11,7 @@
  * - 合轴抵扣只算 `comboAlignCredit`（含在 necessary 内的部分；NET 约定模块已剔除，不重复抵）。
  */
 import { netFrontlineOccupation } from '@/core/resource/helpers'
+import { axisOverlapBySlot } from '@/core/resource/timeOccupation'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { isFrontlineExecution } from '@/types/resource'
 import type { SkillExecution, TeamResourceResult, TruncationCut } from '@/types/resource'
@@ -41,7 +42,7 @@ export interface TeamTimeSummary {
   budget: number
   /** 账本：Σ 必要前台毛值（含折叠残差，未扣合轴） */
   actionFrontline: number
-  /** 账本：Σ 合轴抵扣 */
+  /** 账本：Σ 合轴抵扣（每槽 max(招式合轴 comboAlignCredit, 轴内合轴节省)，与 iterate relief 同一份按槽量） */
   comboAlignDeduction: number
   /** 账本：必要前台净占用 = actionFrontline − comboAlignDeduction */
   requiredFrontline: number
@@ -98,9 +99,15 @@ export function buildTeamTimeSummary(args: {
 }): TeamTimeSummary {
   const { rr, battleTime, invincibleTime } = args
   const chars = rr?.characters ?? []
-  const overlap = rr?.axisOverlapByAction ?? {}
+  const overlapBySlot = axisOverlapBySlot(rr?.axisOverlapByAction)
   /**
-   * 该槽物化前台行（扣轴内合轴分摊），拆**三段**：`basic_attack` 聚合行 / 模块自己的
+   * 每槽合轴抵扣 = max(招式合轴, 轴内合轴节省)——iterate 平A池 relief 与 `slotNetFrontline` 的同一份按槽量（r709）。
+   * 原只计招式合轴、行侧逐行扣轴内分摊：节省 > 0 且该槽招式合轴 > 0 时留白四项分解不闭合（r709 前未出现过这种组合）。
+   */
+  const reliefOf = (c: (typeof chars)[number]) =>
+    Math.max(c.timeAllocation.comboAlignCredit ?? 0, overlapBySlot[c.slot] ?? 0)
+  /**
+   * 该槽物化前台行（毛时长；轴内合轴节省按槽并进 `comboAlignDeduction`），拆**三段**：`basic_attack` 聚合行 / 模块自己的
    * `category:'basic'` 行（池物化过去的）/ 其余必要行。
    *
    * 为什么必须拆出中间那段（R42 闸门实测，见 `basicShrink` 注释）：不拆时模块 basic 行被并进
@@ -108,35 +115,35 @@ export function buildTeamTimeSummary(args: {
    * （实测 `auto-1191-1481-1311` 虚高 −23.06s、`auto-1241-1031-1311` −117.57s，
    * 即「账本虚高」这项读数本身是假的）。
    */
-  const slotRows = (slot: number, executions: SkillExecution[]) => {
+  const slotRows = (executions: SkillExecution[]) => {
     let nec = 0
     let basic = 0
     let basicModule = 0
     for (const e of executions) {
       if (!isFrontlineExecution(e)) continue
-      const net = Math.max(0, (e.totalTime ?? 0) - (overlap[`${slot}:${e.moveId}`] ?? 0))
-      if (e.moveId === 'basic_attack') basic += net
-      else if (e.category === 'basic') basicModule += net
-      else nec += net
+      const t = Math.max(0, e.totalTime ?? 0)
+      if (e.moveId === 'basic_attack') basic += t
+      else if (e.category === 'basic') basicModule += t
+      else nec += t
     }
     return { nec, basic, basicModule }
   }
 
   const budget = effectiveBattleTime({ battleTime, invincibleTime })
   const actionFrontline = chars.reduce((sum, c) => sum + c.timeAllocation.necessaryTime, 0)
-  const comboAlignDeduction = chars.reduce((sum, c) => sum + (c.timeAllocation.comboAlignCredit ?? 0), 0)
+  const comboAlignDeduction = chars.reduce((sum, c) => sum + reliefOf(c), 0)
   const requiredFrontline = Math.max(0, actionFrontline - comboAlignDeduction)
   const basicTotal = chars.reduce((sum, c) => sum + c.timeAllocation.basicAttackTime, 0)
   const rowsNet = rr ? netFrontlineOccupation(rr) : 0
-  const rowsNecNet = chars.reduce((sum, c) => sum + slotRows(c.slot, c.executions).nec, 0)
-  const rowsBasicModuleNet = chars.reduce((sum, c) => sum + slotRows(c.slot, c.executions).basicModule, 0)
-  const rowsBasicNet = chars.reduce((sum, c) => sum + slotRows(c.slot, c.executions).basic, 0)
-  const basicShrink = basicTotal - rowsBasicNet
+  const rowsNec = chars.reduce((sum, c) => sum + slotRows(c.executions).nec, 0)
+  const rowsBasicModule = chars.reduce((sum, c) => sum + slotRows(c.executions).basicModule, 0)
+  const rowsBasic = chars.reduce((sum, c) => sum + slotRows(c.executions).basic, 0)
+  const basicShrink = basicTotal - rowsBasic
   // 池搬进模块行（时间真花掉，上限 = 缩水量与模块行时长的较小者）vs 池真没打出来。
-  const basicRematerialized = Math.max(0, Math.min(basicShrink, rowsBasicModuleNet))
+  const basicRematerialized = Math.max(0, Math.min(basicShrink, rowsBasicModule))
   const basicUnspent = basicShrink - basicRematerialized
   // 模块行里**超出**池缩水量的部分：资源驱动的额外必要行（合法，不 carve）⇒ 归账本侧。
-  const basicModuleSurplus = Math.max(0, rowsBasicModuleNet - basicRematerialized)
+  const basicModuleSurplus = Math.max(0, rowsBasicModule - basicRematerialized)
   // 可分配池没分出去的量（负 = 平A分配超过可分配池，欠打回填放宽时出现）
   const poolResidual = budget - requiredFrontline - basicTotal
 
@@ -154,7 +161,7 @@ export function buildTeamTimeSummary(args: {
     // 账本虚高 = 账本必要前台 − 真打出去的必要行（含模块行的**超出**部分）。
     // ⚠ 必须排除「池物化过去的模块行」（`basicRematerialized`）——那是平A池的花法，
     // 若并进 nec 会把虚高读数直接污染成假值（R42 闸门实测：1191 系 −23.06s、1241 系 −117.57s）。
-    ledgerInflation: requiredFrontline - rowsNecNet - basicModuleSurplus,
+    ledgerInflation: requiredFrontline - rowsNec - basicModuleSurplus,
     basicRematerialized,
     basicUnspent,
     basicShrink,
@@ -168,11 +175,11 @@ export function buildTeamTimeSummary(args: {
     timeBudgetConverged: rr?.convergence?.timeBudgetConverged ?? true,
     timeBudgetPasses: rr?.convergence?.timeBudgetPasses ?? 0,
     perSlot: chars.map(c => {
-      const rows = slotRows(c.slot, c.executions)
+      const rows = slotRows(c.executions)
       return {
         slot: c.slot,
         name: args.nameOf(c.agentId, c.slot),
-        requiredFrontline: Math.max(0, c.timeAllocation.necessaryTime - (c.timeAllocation.comboAlignCredit ?? 0)),
+        requiredFrontline: Math.max(0, c.timeAllocation.necessaryTime - reliefOf(c)),
         necRows: rows.nec,
         basicModuleRows: rows.basicModule,
         basic: c.timeAllocation.basicAttackTime,

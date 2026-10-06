@@ -140,12 +140,11 @@ export function runFoldLoop(
         0,
       )
       const executions = buildExecutionsWithPhase(cfg, state, state.chainCountTotal, teammateFrontlineSeconds)
-      // 净占用口径：物化行全额 − 轴内合轴分摊（跨角色并行块只计一次前台；iterate 平A池吃进同一值）。
-      // 分摊按 `${slot}:${moveId}`（栈引擎比例分摊），行 count = 块次数、totalTime 全额。
-      const overlapByAction = ctx.config.axisOverlapByAction
+      // 行时长按**毛**时长（r709）：轴内合轴节省只经 iterate 的按槽 max relief 进预算（`@fact engine:合轴预算抵扣`，
+      // 与招式合轴率对称）。原先此处再逐行扣一次分摊 ⇒ 账本收敛到净值、relief 又扣一次 = 同一段并行计两次：
+      // 平A池凭空多出节省秒数，装配截断按毛行核账本时砍掉等量高价值行（r709 实测 auto-1531-1481-1451 主C −4.1%）。
       const rowTime = executions.reduce(
-        (sum, e) => sum + Math.max(0, (e.totalTime ?? 0) - (overlapByAction?.[`${cfg.slot}:${e.moveId}`] ?? 0))
-          * (isFrontlineExecution(e) ? 1 : 0),
+        (sum, e) => sum + Math.max(0, e.totalTime ?? 0) * (isFrontlineExecution(e) ? 1 : 0),
         0,
       ) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
         + (i === ultimateGift.targetIdx ? ultimateGift.time : 0)

@@ -396,21 +396,10 @@ export function createRunCalcRound(deps: {
     const axisInSeconds = axisActive
       ? allocateAxisWindows(resolvedAxes, stunCount).reduce((a, b) => a + b, 0) * computeWindowDuration()
       : 0
-    // 轴内合轴检测（2026-08-30，用户口径）：窗口内跨角色块并行（如般岳强特时琉音抱拳）只计一次前台。
-    // 栈引擎按执行块区间并集算 overlap；前台净占用 = Σ物化前台行 − overlap，iterate 平A池吃进节省。
-    // 固定轴的执行只取决于窗口数 + 时间门控（资源不足照样执行只记警告）→ 无需能量/喧响输入。
-    let axisOverlapByAction: Record<string, number> = {}
-    if (axisActive) {
-      const overlapStack = calcStunAxisStack({
-        axes: buildStackAxes(resolvedAxes),
-        stunCount,
-        windowDuration: computeWindowDuration(),
-      })
-      axisOverlapByAction = overlapStack.overlapByAction
-    }
-    // 轴内**实际执行**集合（资源门控后）= `axisActionCounts` / `axisUltimateTotal` 的**唯一来源**
-    // （用户 2026-09-10 裁决「同一物理量只能有一份实现」）。资源用**上一轮**收敛值（与其它线程
-    // 同款滞后注入）；首轮为空 = 门控放行全部，等价旧的「块数 × 窗口数」口径。
+    // 轴内**实际执行**集合（资源门控后）= `axisActionCounts` / `axisUltimateTotal` / 合轴节省
+    // `axisOverlapByAction` 的**唯一来源**（用户 2026-09-10 裁决「同一物理量只能有一份实现」）。
+    // 资源用**上一轮**收敛值（与其它线程同款滞后注入）；首轮无上一轮值 ⇒ 空表 ⇒ 耗资源块被门控掉
+    //（只影响首轮：外层迭代下一轮起读上一轮值）。
     let axisExecutedStack: ReturnType<typeof calcStunAxisStack> | null = null
     /**
      * 轴内终结技块实际执行总次数：通用注入 cfg.axisUltimateTotal 供模块消费（希希芙影画2 等）。
@@ -440,6 +429,11 @@ export function createRunCalcRound(deps: {
         }
       }
     }
+    // 轴内合轴节省（2026-08-30 用户口径）：窗口内跨角色块并行（如般岳强特时琉音抱拳）只计一次前台；
+    // 前台净占用 = Σ物化前台行 − overlap，iterate 平A池吃进节省。取执行集合自身的 overlapByAction——
+    // 与它扣减的物化行同一次栈遍历（同资源门控、同窗口数）。r709 前另跑一遍不传闪能/喧响的栈：09-08 栈改
+    //「超出槽位总量就去掉」（c56bd57d）后耗资源块在那遍里全被跳过 ⇒ 含强特/终结技的合轴节省恒 0。
+    const axisOverlapByAction: Record<string, number> = axisExecutedStack?.overlapByAction ?? {}
     // 把当前失衡次数/覆盖率/战斗时间传给角色配置（诺姆火力实验导弹舱、炮塔全程射击依赖）
     // 各槽位轴内捏块总次数：优先取栈的实际执行集合（般岳分支与下方 merged 均取同一来源）
     const axisActionCountsBySlot: Record<number, Record<string, number>> = {}
@@ -819,7 +813,7 @@ export function createRunCalcRound(deps: {
     const axisMode = axisActive
 
     // 失衡窗口内的失衡值不累积下一次失衡条：构建「轴内失效比例」提供者，供转大不动点内层计算有效失衡值。
-    // 固定轴口径：资源不足只提示不跳过，因此 executed 只取决于窗口数 + 时间门控，与能量/喧响总量无关。
+    // 栈的资源门控（09-08 起超出槽位总量即去掉）⇒ 传本轮 rr 的闪能/喧响总量（不传 = 空表 = 耗资源块全被跳过）。
     let inAxisFractionProvider: InAxisFractionProvider | undefined
     if (axisActive) {
       const stackAxes = buildStackAxes(resolvedAxes)

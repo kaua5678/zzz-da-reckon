@@ -61,6 +61,7 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     // r652 CC-469′（轴态逐招份额与未覆盖窗口份额复合扣除 + 轴态 N 二分自洽）后本队 0 弹刀也有 4 次（eff 71.8k ≥ 4×16647），
     // 弹刀预算已压不出「保底不可达」⇒ 改抬 boss 失衡阈值制造场景（实测 r652，parryTotal=5：17800–18400 ⇒ 反推 2 次给击破位仍 4 次；
     // ≥19000 ⇒ 5 次全给击破位仍 3 次）。锁的仍是诊断链两态：反推在工作 / 预算用满；门槛变了照此重探，不改判据。
+    // r709 轴内合轴节省复活（本队轴内 3.3s 转平A）后重探：24000 ⇒ 反推 3 次给击破位仍 4 次；≥25000 ⇒ 5 次全给仍 3 次 ⇒ 用 26000。
     configStore.appliedBoss!.presetParryTotal = 5
     configStore.enemy.stunValue = 18000
     const spA = calc.stunPoolResult.value!
@@ -68,7 +69,7 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     expect(splitA?.breakerParry, '阈值抬高后反推应把部分弹刀给击破位').toBeGreaterThanOrEqual(1)
     expect(spA.stunCount, '反推生效 ⇒ 仍 4 次').toBeGreaterThanOrEqual(4)
     expect(guaranteeStunShortfall(spA.stunCount, splitA)).toBeNull()
-    configStore.enemy.stunValue = 24000
+    configStore.enemy.stunValue = 26000
     const sp6 = calc.stunPoolResult.value!
     const split6 = calc.parrySplitResult.value
     expect(split6?.breakerParry).toBe(5)

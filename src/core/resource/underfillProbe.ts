@@ -67,8 +67,7 @@ export function runUnderfillProbe(
    * 一旦走样就是试探门控放行、装配后仍超预算——实测差出 164s）。
    */
   const frontlineRowsOf = (st: IterationState[]): number => {
-    const overlap = ctx.config.axisOverlapByAction ?? {}
-    const overlapBySlot = axisOverlapBySlot(overlap)
+    const overlapBySlot = axisOverlapBySlot(ctx.config.axisOverlapByAction)
     let total = 0
     const chainGiftInfo = crossAgentSupplyAt(ctx.configs, st, chainGiftProvider, {
       totalTime: ctx.totalTime, stunCount: stunCountForCountChannel(ctx.config),
@@ -98,7 +97,7 @@ export function runUnderfillProbe(
       // 57.9→65.4s、1181:c6 ex −1.29）。
       getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: probeRows, teamFrontlineSeconds: teammateFrontline })
       total += slotNetFrontline(
-        probeRows, cfg.slot, overlap, overlapBySlot[cfg.slot] ?? 0, state.comboAlignCredit,
+        probeRows, overlapBySlot[cfg.slot] ?? 0, state.comboAlignCredit,
         [i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0, i === giftLiuTarget ? giftLiuTime : 0],
       ).net
     }
