@@ -522,6 +522,18 @@
                 text-anchor="middle" class="curve-jump-label" font-size="9"
               >{{ j.text }}</text>
             </g>
+            <!-- 截断提醒（用户 2026-10-06）：这一档交互被砍 ⇒ 空心方框 + 「还差 N 次」小字。
+                 与跃迁标注（圆环 + 文字）用**不同形状**区分，且文字走同一套分道/碰撞剔除防重叠。 -->
+            <g v-for="(t, ti) in s.truncPts" :key="'ct' + si + '-' + ti">
+              <rect
+                :x="t.cx - 4" :y="t.cy - 4" width="8" height="8" rx="1"
+                fill="none" :stroke="s.color" stroke-width="1.3" stroke-dasharray="2,1.5" opacity="0.95"
+              />
+              <text
+                v-if="t.labeled" :x="t.cx" :y="t.cy - 11 - t.lane * 15"
+                text-anchor="middle" class="curve-trunc-label" font-size="9"
+              >{{ t.text }}</text>
+            </g>
           </g>
 
           <g v-if="curveHoverPt">
@@ -588,6 +600,46 @@
               <td colspan="6" class="td-detail">
                 本次曲线没有「多一次」量级的跃迁：要么该队已饱和，要么爬升只带来小数级微调
                 （鼠标停在曲线点上可看每档明细）。
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </n-card>
+
+    <!-- 截断提醒板块：交互被砍的档，「要达到手填的交互要求至少需要多少难度」（用户 2026-10-06 口径） -->
+    <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
+      <template #header>截断提醒（{{ curveTruncRows.length }} 档交互被砍）</template>
+      <div class="compare-note">
+        只列**交互被砍**的档（手填 N 次 → 实打少于 N，<b>或</b>时间线截断 &gt; 1s）：引擎在装不下时会
+        <b>降配缩交互</b>（`interactionScale`）或<b>砍招式行</b>（时间截断），两种都让这一档打不出你填的次数。
+        「达标所需难度」= <b>沿这条曲线继续往上爬，第一个能把这 N 次真打出来的档的操作难度</b>；
+        <b>曲线内无法达到</b> = 整条曲线都兑现不了这个要求（面板同时给出曲线最多能打到几次，不编造数字）。
+        ⚠ 这是<b>提示不是保证</b>：它说的是「这条曲线自己的档位里有没有达标档」，不代表那个难度一定打得出来
+        （x 不单调，详见上方口径说明）。
+      </div>
+      <div class="detail-table-wrap">
+        <table class="detail-table">
+          <thead>
+            <tr><th>队伍</th><th>操作难度</th><th>本档新开</th><th>手填 → 实打</th><th>被砍</th><th>达标所需难度</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in curveTruncRows" :key="r.key">
+              <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
+              <td>{{ fmt(r.cost, 0) }} 点</td>
+              <td class="td-detail">{{ r.opened === null ? '全关起点' : goalLabel(r.opened) }}</td>
+              <td>{{ cntNum(r.hint.filled) }} → {{ cntNum(r.hint.played) }}</td>
+              <td class="curve-neg">
+                少 {{ cntNum(r.hint.cut) }} 次<template v-if="r.hint.overflow > 1"><br>截断 {{ fmt(r.hint.overflow, 1) }}s</template>
+              </td>
+              <td>
+                <template v-if="r.hint.neededX !== null">≈ {{ fmt(r.hint.neededX, 0) }} 点</template>
+                <template v-else><span class="curve-neg">曲线内无法达到</span><div class="td-standard">最多 {{ cntNum(r.hint.maxPlayed ?? 0) }} 次</div></template>
+              </td>
+            </tr>
+            <tr v-if="curveTruncRows.length === 0">
+              <td colspan="6" class="td-detail">
+                本次曲线每一档的交互都足量交付（没有降配缩交互、也没有时间截断）——你填的次数在这条曲线里都打出来了。
               </td>
             </tr>
           </tbody>
@@ -1287,6 +1339,16 @@ const curveSeriesPx = computed(() => {
       // 图上只显示前 2 项（长标签会互压；完整清单在「关键变化」面板与 tooltip 里）
       text: j.changes.map(cntDelta).slice(0, 2).join('·') + (j.changes.length > 2 ? '…' : ''),
     })),
+    // 截断档（用户 2026-10-06）：图上只标「被砍得最狠的前 2 档」（同跃迁标注的取舍口径——
+    // 一条曲线能有 5 档被砍，全标必叠；完整清单在「截断提醒」面板与 tooltip 里）。
+    truncPts: s.truncated.map(t => ({
+      ...t,
+      cx: curveXOf(t.cost),
+      cy: curveYOf(t.ratio),
+      text: t.hint!.neededX !== null
+        ? `还差${fmt(t.hint!.cut, 0)}次→需${fmt(t.hint!.neededX, 0)}点`
+        : `还差${fmt(t.hint!.cut, 0)}次→曲线内达不到`,
+    })),
   }))
   // 图上标注只保留**每队伤害增量最大的前 2 处**（G5 之后一条曲线能有 7+ 处跃迁，全标必叠；
   // 完整清单在「关键变化」面板与 tooltip 里），再跨队分道 + 碰撞剔除（宁可少标，不糊成一团）。
@@ -1294,18 +1356,39 @@ const curveSeriesPx = computed(() => {
     const rank = [...s.jumpPts].sort((a, b) => (b.dmg - s.base) - (a.dmg - s.base))
     return new Set(rank.slice(0, 2))
   })
+  // 截断标注：按「砍得最狠」排序取前 2 档（与跃迁同一取舍逻辑：宁可少标，不糊成一团）
+  const truncTop = series.map(s => new Set([...s.truncPts].sort((a, b) => b.hint!.cut - a.hint!.cut).slice(0, 2)))
   const flat: { j: (typeof series)[number]['jumpPts'][number]; base: number }[] = []
   const offsets: number[] = []
   series.forEach((s, si) => {
     offsets.push(flat.length)
     for (const j of s.jumpPts) if (seriesTop[si]!.has(j)) flat.push({ j, base: s.base })
   })
-  const lanes = assignLabelLanes(flat.map(f => ({ x: f.j.cx, width: estimateLabelWidth(f.j.text) })), 6)
-  const boxes = flat.map((f, i) => ({
-    x: f.j.cx, y: f.j.cy - 11 - (lanes[i] ?? 0) * 15, width: estimateLabelWidth(f.j.text), height: 13,
-  }))
-  const keepMask = pickNonOverlapping(boxes, flat.map(f => f.j.dmg - f.base))
+  /**
+   * **跃迁标注与截断标注一起分道 + 一起做碰撞剔除**（关键）：两套标注画在同一张图上，
+   * 各算各的道必然互压——实测 `ui-check` 的标注重叠体检就是这么抓的。
+   * 优先级 = 伤害增量（跃迁）/ 砍掉的次数（截断）——同一把「这一档多重要」的尺。
+   */
+  const truncFlat: { t: (typeof series)[number]['truncPts'][number]; base: number }[] = []
+  series.forEach((s, si) => {
+    for (const t of s.truncPts) if (truncTop[si]!.has(t)) truncFlat.push({ t, base: s.base })
+  })
+  const allBoxes = [
+    ...flat.map(f => ({ x: f.j.cx, width: estimateLabelWidth(f.j.text) })),
+    ...truncFlat.map(f => ({ x: f.t.cx, width: estimateLabelWidth(f.t.text) })),
+  ]
+  const lanes = assignLabelLanes(allBoxes, 6)
+  const boxes = [
+    ...flat.map((f, i) => ({ x: f.j.cx, y: f.j.cy - 11 - (lanes[i] ?? 0) * 15, width: estimateLabelWidth(f.j.text), height: 13 })),
+    ...truncFlat.map((f, i) => ({ x: f.t.cx, y: f.t.cy - 11 - (lanes[flat.length + i] ?? 0) * 15, width: estimateLabelWidth(f.t.text), height: 13 })),
+  ]
+  const priorities = [
+    ...flat.map(f => f.j.dmg - f.base),
+    ...truncFlat.map(f => f.t.hint!.cut),
+  ]
+  const keepMask = pickNonOverlapping(boxes, priorities)
   const slotOf = new Map(flat.map((f, gi) => [f.j, gi]))
+  const truncSlotOf = new Map(truncFlat.map((f, gi) => [f.t, flat.length + gi]))
   return series.map(s => ({
     ...s,
     jumpPts: s.jumpPts.map(j => {
@@ -1313,6 +1396,12 @@ const curveSeriesPx = computed(() => {
       return gi === undefined
         ? { ...j, lane: 0, labeled: false }
         : { ...j, lane: lanes[gi] ?? 0, labeled: keepMask[gi] ?? false }
+    }),
+    truncPts: s.truncPts.map(t => {
+      const gi = truncSlotOf.get(t)
+      return gi === undefined
+        ? { ...t, lane: 0, labeled: false }
+        : { ...t, lane: lanes[gi] ?? 0, labeled: keepMask[gi] ?? false }
     }),
   }))
 })
@@ -1337,6 +1426,24 @@ function goalLabel(id: string | null): string {
   if (id === null) return '全关起点'
   return DIFFICULTY_GOALS.find(g => g.id === id)?.label ?? id
 }
+/**
+ * 截断提醒面板的行（跨队铺平；数据源 = 各队 `truncated`）。
+ * 队内按操作难度升序（沿曲线读），队间保持可见顺序——与图上「曲线的右边部分」读法一致。
+ */
+const curveTruncRows = computed(() =>
+  curveSeriesPx.value.flatMap((s, si) =>
+    [...s.truncPts]
+      .sort((a, b) => a.cost - b.cost)
+      .map((t, ti) => ({
+        key: `${s.presetId}-${si}-t${ti}`,
+        team: s.name,
+        color: s.color,
+        cost: t.cost,
+        opened: t.opened,
+        hint: t.hint!,
+      })),
+  ),
+)
 const curveHover = ref<{ si: number; pi: number } | null>(null)
 const curveHoverPt = computed(() => {
   const h = curveHover.value
@@ -1346,13 +1453,28 @@ const curveHoverPt = computed(() => {
   return s && point ? { series: s, point } : null
 })
 const curveTtW = 260
-const curveTtH = 97
+/**
+ * tooltip 高度：最多 7 行（队名 / 难度+伤害 / 本档Δ / 本档新开 / 跃迁 / **截断提醒** / 录取累计），
+ * 13px 行距 + 8px 内边距 ⇒ 99；取 110 留余量（截断提醒那一行只有被砍的档才有，故是上界不是常态）。
+ */
+const curveTtH = 110
 const curveTtX = computed(() =>
   curveHoverPt.value ? Math.min(curveHoverPt.value.point.cx + 10, svgW.value - curveTtW - 20) : 0,
 )
 const curveTtY = computed(() =>
   curveHoverPt.value ? Math.max(0, Math.min(curveHoverPt.value.point.cy - 20, padT + plotH - curveTtH - 10)) : 0,
 )
+/**
+ * 截断提醒的一行文案（tooltip 与面板共用，**同一份口径**）：
+ * 「此档交互被砍到 X 次（手填 N）· 达标需难度 ≈ Z」/ 曲线内达不到时如实写「曲线内无法达到（最多 M 次）」。
+ */
+function truncHintText(h: { filled: number; played: number; cut: number; overflow: number; neededX: number | null; maxPlayed: number | null }): string {
+  const cut = `此档交互被砍到 ${cntNum(h.played)} 次（手填 ${cntNum(h.filled)}${h.cut > 1e-6 ? `，少 ${cntNum(h.cut)} 次` : ''}${h.overflow > 1 ? `，截断 ${fmt(h.overflow, 1)}s` : ''}）`
+  const reach = h.neededX !== null
+    ? `达标需难度 ≈ ${fmt(h.neededX, 0)} 点`
+    : `曲线内无法达到（最多 ${cntNum(h.maxPlayed ?? 0)} 次）`
+  return `${cut} · ${reach}`
+}
 const curveHoverTips = computed(() => {
   const p = curveHoverPt.value
   if (!p) return []
@@ -1371,6 +1493,8 @@ const curveHoverTips = computed(() => {
     major.length > 0
       ? `跃迁：${major.map(c => cntRangeWithDmg(c, point.dmgChanges)).join('、')}${minor > 0 ? `（另有 ${minor} 项小数级微调）` : ''}`
       : (minor > 0 ? `仅小数级微调 ${point.changes.map(cntRange).join('、')}` : '本档无次数变化'),
+    // 截断提醒（用户 2026-10-06）：只有被砍的档才有这一行
+    ...(point.hint ? [`⚠ ${truncHintText(point.hint)}`] : []),
     s.flat ? '四目标均无增益 ⇒ 无优化空间' : `累计录取 ${s.opened.map(goalLabel).join(' → ')}`,
   ]
 })

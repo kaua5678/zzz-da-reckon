@@ -172,6 +172,14 @@
   font-weight: 600;
 }
 
+/* 截断提醒的图上标注（用户 2026-10-06）：与跃迁标注同字号但**常规字重 + 语义警告色**——
+   两类标注画在同一张图上，形状（圆环 vs 虚线方框）与字重都要能一眼分开。
+   用语义令牌而非字面色值：`--c-warning` 双主题都有定义（明亮档压深保对比）。 */
+.curve-trunc-label {
+  fill: var(--c-warning);
+  font-weight: 400;
+}
+
 .chart-legend {
   display: flex;
   gap: 10px;

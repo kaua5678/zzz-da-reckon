@@ -284,12 +284,36 @@ export interface LadderPoint {
    * `x` 就是它（**绝对值**，不是相对全关的增量）。
    */
   difficulty?: number
+  /**
+   * 这一档的**时间线截断秒数**（引擎 `overflowSeconds`；与 `counts` 同一份快照采）。
+   * >0 = 资源允许的动作装不进战斗时间、被装配期砍掉。缺省（没给 `opts.capture`）= 不采。
+   */
+  overflow?: number
+  /**
+   * 这一档**手填（预设声明）的交互总次数**——即难度 x 轴「缩之前」的交互量（`liveInteractions` 传 rr=null）。
+   * 与 `interactionsPlayed` 配对才能看出「这一档交互被砍了多少」：截断/降配**两个通道**都体现在这里
+   * （实测：全库 104 队里 `overflowSeconds > 1` 只有 5 队，真正普遍的通道是降配 `interactionScale`）。
+   */
+  interactionsFilled?: number
+  /** 这一档**实打（缩后）的交互总次数** = x 轴交互项真正用的那个量（`liveInteractions` 传本档 rr） */
+  interactionsPlayed?: number
 }
 
-/** 一档的快照：展示层要什么就采什么（`climbDifficultyLadder#opts.capture` 的返回） */
+/**
+ * 一档的快照：展示层要什么就采什么（`climbDifficultyLadder#opts.capture` 的返回）。
+ *
+ * ⚠️ 全部字段必须在**同一时刻**读同一份 `calc.resourceResult.value`（`counts` / `dmgBySource` /
+ * `overflow` / 两个交互量都是）——分两次采会与档位错配（试开/回滚之间配置已变）。
+ */
 export interface LadderSnapshot {
   counts: Record<string, number>
   dmgBySource: Record<string, number>
+  /** 本档时间线截断秒数（引擎 `overflowSeconds`） */
+  overflow?: number
+  /** 本档手填（声明）交互总次数（缩前） */
+  interactionsFilled?: number
+  /** 本档实打交互总次数（缩后） */
+  interactionsPlayed?: number
 }
 export interface LadderResult {
   base: number
@@ -357,9 +381,18 @@ export function climbDifficultyLadder(
   const opened: string[] = []
   const dropped: { id: string; gain: number }[] = []
   const capture = opts.capture
-  const snap = (): Pick<LadderPoint, 'counts' | 'dmgBySource'> => {
+  /**
+   * 采一档快照。**一次 `capture` 调用 = 一档的全部字段**（`counts`/`dmgBySource`/`overflow`/两个交互量）
+   * ——展示层的截断提醒要求这几个量同源，分两次采会与档位错配（试开/回滚之间配置已变）。
+   */
+  const snap = (): Pick<LadderPoint, 'counts' | 'dmgBySource' | 'overflow' | 'interactionsFilled' | 'interactionsPlayed'> => {
     const s = capture?.(ctx)
-    return s ? { counts: s.counts, dmgBySource: s.dmgBySource } : {}
+    return s
+      ? {
+          counts: s.counts, dmgBySource: s.dmgBySource,
+          overflow: s.overflow, interactionsFilled: s.interactionsFilled, interactionsPlayed: s.interactionsPlayed,
+        }
+      : {}
   }
   const costOf = opts.costOf
   const maxSteps = opts.maxSteps ?? 24

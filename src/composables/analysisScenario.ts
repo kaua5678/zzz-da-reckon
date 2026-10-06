@@ -13,7 +13,7 @@
  * 用法：页面 `await withAnalysisScenario(s => computeX({ scenario: s, ... }))`；分析器只认 `AnalysisContext`
  * （在 `config` 上随意改写、读 `calc` 的结果），不调 useConfigStore()、不做快照恢复。
  */
-import { effectScope, reactive, toRaw } from 'vue'
+import { effectScope, isRef, reactive, toRaw } from 'vue'
 import { createConfigModel, useConfigStore, type EvalConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { createResourceCalc, type ResourceCalc } from '@/composables/useResourceCalc'
@@ -34,15 +34,31 @@ export interface AnalysisScenario extends AnalysisContext {
 /**
  * state 值的深拷贝：逐层 toRaw（state 里是响应式代理，structuredClone 不收代理），
  * 保留 undefined / Infinity / NaN（JSON 往返会把后两者变成 null）；非普通对象交给 structuredClone。
+ *
+ * ⚠ **必须先按「响应式读」取值，再考虑 toRaw**（2026-10-06 修，`TeamComparePage#runCurves` 实机抓到）：
+ * `configStore.$state` 是 `reactive({ team: ref(...), enemy: ref(...), … })` —— 经它读属性会
+ * **自动解包 ref**（拿到的是值）；而 `toRaw($state)` 会把底层 target 原样暴露出来，
+ * 于是拿到的是 `RefImpl` 实例 ⇒ 走到非普通对象分支 ⇒ `structuredClone(RefImpl)` 抛
+ * `DataCloneError: () => call(source, 2) could not be cloned`。
+ *
+ * 实测后果（本函数是**唯一**深拷贝入口）：`runCurves` 的会话缓存键 `cloneConfigState(configStore.$state)`
+ * 直接抛异常 ⇒ 「计算曲线」按钮点了不出图（实机点通 300s 超时、`polyline=0`）。
+ * 该缺陷自 `851f232f`（CC-343，2026-10-01 用本函数替换 `snapshotStore`）起就在，
+ * 而单测全绿——因为测试与生产**另一处**调用点（第 62 行 `cloneConfigState(sourceState[key])`）
+ * 都是**逐键**传值，恰好绕开了整表传参这条路径。
+ *
+ * 判据：`analysisScenario.test.ts::cloneConfigState 整表传参不抛 DataCloneError`。
  */
 export function cloneConfigState<T>(value: T): T {
   if (value === null || typeof value !== 'object') return value
-  const raw = toRaw(value) as unknown
-  if (Array.isArray(raw)) return raw.map(item => cloneConfigState(item)) as T
-  const proto = Object.getPrototypeOf(raw)
-  if (proto !== Object.prototype && proto !== null) return structuredClone(raw) as T
+  // ref 先解包（整表传参时命中的就是这一支：`$state` 的每个值都是 ref）
+  if (isRef(value)) return cloneConfigState(value.value) as T
+  // 数组/普通对象**按响应式读**遍历（`value[key]` 经代理自动解包嵌套 ref），只有非普通对象才 toRaw
+  if (Array.isArray(value)) return value.map(item => cloneConfigState(item)) as T
+  const proto = Object.getPrototypeOf(toRaw(value))
+  if (proto !== Object.prototype && proto !== null) return structuredClone(toRaw(value)) as T
   const out: Record<string, unknown> = {}
-  for (const key of Object.keys(raw as object)) out[key] = cloneConfigState((raw as Record<string, unknown>)[key])
+  for (const key of Object.keys(value as object)) out[key] = cloneConfigState((value as Record<string, unknown>)[key])
   return out as T
 }
 

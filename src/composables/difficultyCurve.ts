@@ -44,20 +44,22 @@ import { type StunAxisState, type ConfigModel } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import {
   clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
-  DIFFICULTY_GOALS, type DifficultyGoal, type LadderResult, type LadderSnapshot,
+  DIFFICULTY_GOALS, type DifficultyGoal, type LadderPoint, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
 import {
   applyAxisBinding, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, type DifficultyWeights,
 } from '@/composables/teamCompare'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
+// 量化地板与引擎同源（规则 11）：截断提醒的「整整 1 次交互」阈值 = 引擎自己的量化容差，见 truncationHintAt
+import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 export { stunWindowRatioOf }
 import { getAgentMechanic } from '@/mechanics'
 import { liveInteractions } from '@/composables/liveInteractions'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
-import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
+import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
 import type { TeamPreset } from '@/types/teamPreset'
 
 type Calc = ResourceCalc
@@ -159,7 +161,7 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
     const ladder = climbDifficultyLadder({ config: configStore, calc, absorbCap: userAbsorbCap }, preset.team as [string, string, string], {
       goals,
       minGainRatio: options.minGainRatio,
-      capture: ctx => captureLadderSnapshot(ctx.calc),
+      capture: ctx => captureLadderSnapshot(ctx.config, ctx.calc),
       // x 轴 = 自动算的操作难度（不是手填代价）：每个目标实测 Δ难度
       costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
       base: (ctx, team) => {
@@ -299,9 +301,26 @@ export function attributeDmgChanges(changes: DmgSourceChange[], topN = 3, squeez
   return { top, squeezed, restDelta, totalDelta }
 }
 
-/** 一档快照（构成 = 关键次数 + 伤害来源），交给 `climbDifficultyLadder#opts.capture` */
-function captureLadderSnapshot(calc: Calc): LadderSnapshot {
-  return { counts: captureKeyCounts(calc), dmgBySource: captureDmgBySource(calc) }
+/** 一档快照（构成 = 关键次数 + 伤害来源 + 截断/交互量），交给 `climbDifficultyLadder#opts.capture` */
+function captureLadderSnapshot(config: ConfigModel, calc: Calc): LadderSnapshot {
+  // ⚠️ 全部字段读**同一份** `resourceResult.value`（同一次求值的结果）——分两次读会与档位错配
+  const rr = calc.resourceResult.value
+  return {
+    counts: captureKeyCounts(calc),
+    dmgBySource: captureDmgBySource(calc),
+    overflow: rr?.overflowSeconds ?? 0,
+    // 交互量两读口：`preset` 传 undefined ⇒ 只用**当前配置**（与 x 轴同源；预设声明只补引擎没有的类型，
+    // 而 `liveInteractions` 内部已按 `preset.interactions` 补过，见该函数）。rr 缺省 = 不缩 = 手填量。
+    interactionsFilled: sumInteractions(config, undefined),
+    interactionsPlayed: sumInteractions(config, rr),
+  }
+}
+
+/** 交互总量（Σ 各类型次数）；`rr` 缺省 = 不缩（手填/声明量），给了 = 实打量 */
+function sumInteractions(config: ConfigModel, rr: TeamResourceResult | null | undefined): number {
+  let s = 0
+  for (const it of liveInteractions(config, undefined, rr)) s += it.count || 0
+  return s
 }
 
 // ========== 关键次数：采集 + 差分（用户 2026-09-10 口径：难度上升到关键变化要标注） ==========
@@ -485,6 +504,11 @@ export interface CurveDatum {
    * Σ `delta` ≡ 本档伤害 − 上一档伤害（伤害池按来源分组求和 == 总伤害，故精确）。
    */
   dmgChanges: DmgSourceChange[]
+  /**
+   * **截断提醒**（用户 2026-10-06 口径）：本档交互被砍时，给出「要达到手填的交互要求至少需要多少难度」。
+   * null = 本档没被砍（交互足量交付、时间线也没截断）。口径见 `truncationHintAt`。
+   */
+  hint: TruncationHint | null
 }
 
 export interface CurveSeries {
@@ -508,6 +532,101 @@ export interface CurveSeries {
    * 空数组 = 这条曲线爬升过程中没有出现「多放一次大招 / 多一次紊乱」这类台阶。
    */
   jumps: CurveDatum[]
+  /**
+   * **有截断的档**（`points` 里 `hint !== null` 的那些）：图上截断提醒与「截断提醒」面板的数据源。
+   * 空数组 = 这条曲线每一档的交互都足量交付（曲线里没有「被砍」这回事）。
+   */
+  truncated: CurveDatum[]
+  /**
+   * 全曲线**最大实打交互次数**（`interactionsPlayed` 的最大值；没有采到交互量时 null）。
+   * 「曲线内无法达到」时用它说明「这条曲线最多只能打到 N 次」——不给一个编出来的 x。
+   */
+  maxPlayed: number | null
+}
+
+// ========== 截断提醒：要达到手填的交互要求至少需要多少难度（用户 2026-10-06 口径） ==========
+
+/**
+ * 一档的**截断提醒**（用户 2026-10-06 口径：「把难度曲线上截断的做个提醒就行，表示要达到手动交互
+ * 要求至少需要多少难度，也就是曲线的右边部分」）。
+ *
+ * ## 口径（实测确定，不是拍脑袋）
+ *
+ * **「手填的交互要求」= 本档快照里的 `interactionsFilled`**（`liveInteractions` 不缩 = 缩前量），
+ * **「实际打到」= `interactionsPlayed`**（同一次求值、同一份 `rr` 缩后量）。两者都是**Σ 各类型交互次数**，
+ * 与 x 轴的交互项同一个量纲（只是没乘权重）⇒ 单位可比。
+ *
+ * 为什么用「本档自己」的手填量、而不是「全关档」的：实测（全库 104 队，2026-10-06 普查）**77 队**
+ * 的逐档手填量不同（G2 联合策略会改弹刀、般岳补交互、切轴档会换轴需求）⇒ 拿全关档当目标会在
+ * 那些队上张冠李戴。目标随档走，问题「这一档被砍到不够用」才有意义。
+ *
+ * ## 「达标所需 x」= 曲线右边第一个实打 ≥ 该目标的档的 x
+ *
+ * 即：**沿这条曲线继续往上爬，第一个能把这 N 次真打出来的档**。取 `min(x)` 是因为
+ * 实测 x **不保证单调**（有杠杆减交互 ⇒ 难度降伤害升，见 `@fact engine:难度曲线/x轴`），
+ * 「至少需要多少难度」按最省的那个达标的档算。
+ *
+ * **整条曲线都达不到 ⇒ `neededX = null`**，展示层如实写「曲线内无法达到（最多 N 次）」，
+ * **不硬编一个数**（实测 20 个有截断的队里 15 个如此——这恰恰是本提醒最有价值的信息：
+ * 该队在当前曲线里根本没有能兑现手填交互的档）。
+ *
+ * ## 什么算「有截断」（提醒的触发条件）
+ *
+ * `interactionsFilled − interactionsPlayed ≥ INTERACTION_CUT_MIN`（**整整 1 次**）**或**
+ * `overflow > TIME_BUDGET_TOLERANCE_SECONDS`（时间线真砍了秒）。
+ * 1 次的阈值与引擎的量化地板同源（`TIME_BUDGET_TOLERANCE_SECONDS`，见 `containRatioOf` 的容差说明）：
+ * 交互次数是整数、缩后取 2 位小数，亚次差异是量化残差不是「被砍」。
+ * 实测（2026-10-06 全库 104 队 × 326 档）：按「差 ≥ 1 次」筛出 **20 队 / 49 档**；
+ * 若改按「差 > 0」会多筛出 `auto-1531-1481-1451` 那类 0.43~0.64 次的量化残差档（21 队 / 55 档）。
+ */
+export const INTERACTION_CUT_MIN = 1
+
+export interface TruncationHint {
+  /** 这一档**手填（缩前）**的交互总次数 = 用户填的那个要求 */
+  filled: number
+  /** 这一档**实打（缩后）**的交互总次数 = 引擎真交付的 */
+  played: number
+  /** 被砍掉的次数（`filled − played`，恒 ≥ 0） */
+  cut: number
+  /** 这一档的时间线截断秒数（引擎 `overflowSeconds`；0 = 时间装得下，只是降配缩了交互） */
+  overflow: number
+  /**
+   * **达标所需 x**：曲线右边第一个「实打 ≥ filled」的档的操作难度；
+   * `null` = **整条曲线都达不到**手填要求（展示层写「曲线内无法达到」，不编数）。
+   */
+  neededX: number | null
+  /** `neededX === null` 时：全曲线能达到的**最大实打次数**（说清「最多只能打到 N 次」） */
+  maxPlayed: number | null
+}
+
+/**
+ * 算一档的截断提醒（纯函数）。`points` = 该队**全部**档位（要往后找达标的档），`index` = 当前档下标。
+ *
+ * 返回 null = 这一档没被砍（提醒不出现）——没采到交互量的档（`capture` 未给）也返回 null，
+ * 因为「砍没砍」无从判断，宁可不提示也不误报。
+ */
+export function truncationHintAt(
+  points: Pick<LadderPoint, 'x' | 'overflow' | 'interactionsFilled' | 'interactionsPlayed'>[],
+  index: number,
+): TruncationHint | null {
+  const here = points[index]
+  if (!here) return null
+  const filled = here.interactionsFilled
+  const played = here.interactionsPlayed
+  if (filled === undefined || played === undefined) return null // 没采到交互量 ⇒ 不判断
+  const overflow = here.overflow ?? 0
+  const cut = filled - played
+  // 触发条件：整整 1 次交互被砍，或时间线真砍了秒（与引擎量化地板同源）
+  if (cut < INTERACTION_CUT_MIN - 1e-9 && overflow <= TIME_BUDGET_TOLERANCE_SECONDS) return null
+  // 达标所需 x = 曲线右边第一个实打 ≥ 本档手填要求的档（取 min x：x 不保证单调，按最省的算）
+  const reached = points.filter(p => (p.interactionsPlayed ?? -Infinity) >= filled - 1e-9)
+  const neededX = reached.length > 0 ? Math.min(...reached.map(p => p.x)) : null
+  const playedAll = points.map(p => p.interactionsPlayed).filter((v): v is number => v !== undefined)
+  return {
+    filled, played, cut: Math.max(0, cut), overflow,
+    neededX,
+    maxPlayed: neededX === null && playedAll.length > 0 ? Math.max(...playedAll) : null,
+  }
 }
 
 export interface CurveChartData {
@@ -529,6 +648,7 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       opened: p.opened,
       changes: diffKeyCounts(r.ladder.points[i - 1]?.counts, p.counts),
       dmgChanges: diffDmgBySource(r.ladder.points[i - 1]?.dmgBySource, p.dmgBySource),
+      hint: truncationHintAt(r.ladder.points, i),
     }))
     return {
       presetId: r.presetId,
@@ -537,6 +657,13 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       jumps: points
         .filter(p => p.changes.some(c => c.major))
         .map(p => ({ ...p, changes: majorChanges(p.changes) })),
+      // 有截断的档（`hint !== null`）：截断提醒面板与图上标记的数据源
+      truncated: points.filter(p => p.hint !== null),
+      // 全曲线最大实打次数（「曲线内无法达到」时说明「最多只能打到 N 次」；没采到交互量 = null）
+      maxPlayed: (() => {
+        const v = r.ladder.points.map(p => p.interactionsPlayed).filter((n): n is number => n !== undefined)
+        return v.length > 0 ? Math.max(...v) : null
+      })(),
       base: s.base,
       final: s.final,
       gainX: r.ladder.base > 0 ? r.ladder.final / r.ladder.base : 1,

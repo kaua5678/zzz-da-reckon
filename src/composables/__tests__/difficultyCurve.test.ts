@@ -12,7 +12,7 @@ import { withAnalysisScenario } from '@/composables/analysisScenario'
 import {
   assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
   captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
-  measureOperationalDifficulty, pickNonOverlapping,
+  measureOperationalDifficulty, pickNonOverlapping, truncationHintAt, INTERACTION_CUT_MIN,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, containRatioOf, type LadderResult } from '@/composables/difficultyLadder'
@@ -36,12 +36,20 @@ function mkLadder(
   opened: string[] = [],
   dropped: LadderResult['dropped'] = [],
   counts: Record<string, number>[] = [],
+  /**
+   * 逐档截断量（截断提醒判据用）：`[手填交互, 实打交互, 截断秒]`。
+   * 缺省 = 不采（`undefined`）⇒ `truncationHintAt` 一律返回 null（与 `capture` 未给时同口径）。
+   */
+  trunc: [number, number, number?][] = [],
 ): LadderResult {
   return {
     base: points[0]![1],
     final: points[points.length - 1]![1],
     points: points.map(([x, dmg], i) => ({
       x, dmg, opened: i === 0 ? null : (opened[i - 1] ?? null), counts: counts[i],
+      ...(trunc[i]
+        ? { interactionsFilled: trunc[i]![0], interactionsPlayed: trunc[i]![1], overflow: trunc[i]![2] ?? 0 }
+        : {}),
     })),
     opened,
     dropped,
@@ -543,6 +551,88 @@ describe('伤害归因（这一档 +N 伤害是谁贡献的）', () => {
   })
 })
 
+describe('截断提醒：要达到手填的交互要求至少需要多少难度（用户 2026-10-06 口径）', () => {
+  it('纯函数：达标所需 x = 曲线右边第一个实打 ≥ 本档手填量的档（x 不单调时取最小）', () => {
+    // 逐档 [手填, 实打]：档0 填41→打13（被砍）、档1 填41→打13（仍被砍）、档2 填41→打41（达标）
+    const pts = [
+      { x: 10, interactionsFilled: 41, interactionsPlayed: 13 },
+      { x: 22, interactionsFilled: 41, interactionsPlayed: 13 },
+      { x: 61, interactionsFilled: 41, interactionsPlayed: 41 },
+    ]
+    expect(truncationHintAt(pts, 0)).toMatchObject({ filled: 41, played: 13, cut: 28, neededX: 61 })
+    expect(truncationHintAt(pts, 1)!.neededX).toBe(61)
+    // 档2 自己没被砍 ⇒ 不提示
+    expect(truncationHintAt(pts, 2)).toBeNull()
+  })
+
+  it('★ x 不单调时取**最小**的达标 x（「至少需要多少难度」按最省的那个档算）', () => {
+    // 实测 x 会回落（杠杆减少交互 ⇒ 难度降伤害升）；达标档出现在更小的 x 上
+    const pts = [
+      { x: 50, interactionsFilled: 41, interactionsPlayed: 29 },
+      { x: 30, interactionsFilled: 41, interactionsPlayed: 41 },  // 达标但 x 更小
+      { x: 80, interactionsFilled: 41, interactionsPlayed: 41 },
+    ]
+    expect(truncationHintAt(pts, 0)!.neededX).toBe(30)
+  })
+
+  it('★ 整条曲线都达不到 ⇒ neededX = null + maxPlayed（不硬编一个数）', () => {
+    // 实测 20 个有截断的队里 15 个是这一形态（如般岳簇：填 66 次、曲线最多打 45 次）
+    const pts = [
+      { x: 63.7, interactionsFilled: 66, interactionsPlayed: 45 },
+      { x: 45.8, interactionsFilled: 66, interactionsPlayed: 31 },
+    ]
+    const h = truncationHintAt(pts, 0)!
+    expect(h.neededX).toBeNull()
+    expect(h.maxPlayed).toBe(45)          // 「最多只能打到 45 次」
+    expect(h.cut).toBe(21)
+  })
+
+  it('触发条件：整整 1 次交互被砍，或时间线真砍了秒（亚次量化残差不算）', () => {
+    expect(INTERACTION_CUT_MIN).toBe(1)
+    // 差 0.43 次 = 量化残差（实测 auto-1531-1481-1451）⇒ 不提示
+    expect(truncationHintAt([{ x: 36, interactionsFilled: 26, interactionsPlayed: 25.57 }], 0)).toBeNull()
+    // 恰好 1 次 ⇒ 提示（阈值含等号）
+    expect(truncationHintAt([{ x: 36, interactionsFilled: 26, interactionsPlayed: 25 }], 0)).not.toBeNull()
+    // 交互一次没少，但时间线砍了 5s（> 引擎量化地板 1s）⇒ 也要提示
+    const ovf = truncationHintAt([{ x: 47.6, interactionsFilled: 34, interactionsPlayed: 33.36, overflow: 5.49 }], 0)!
+    expect(ovf.overflow).toBe(5.49)
+    expect(ovf.cut).toBeCloseTo(0.64, 6)
+    // 亚秒级溢出 = 量化噪声，且交互没少 ⇒ 不提示
+    expect(truncationHintAt([{ x: 32, interactionsFilled: 25, interactionsPlayed: 24.93, overflow: 0.5 }], 0)).toBeNull()
+  })
+
+  it('没采到交互量的档不判断（capture 未给 ⇒ 宁可不提示也不误报）', () => {
+    expect(truncationHintAt([{ x: 10, overflow: 9 }], 0)).toBeNull()
+    expect(truncationHintAt([], 0)).toBeNull()
+  })
+
+  it('★ buildCurveChart 接线：truncated 只收有截断的档，maxPlayed 取全曲线最大实打', () => {
+    // 般岳簇形态：全程填 66、实打 45→31→25 ⇒ 每一档都被砍、且曲线内无法达标
+    const rows: DifficultyCurveRow[] = [mkRow('b', '般岳', mkLadder(
+      [[63.7, 100], [45.8, 200], [33.6, 300]],
+      ['G1', 'G2'],
+      [],
+      [],
+      [[66, 45], [66, 31], [66, 25]],
+    ))]
+    const s = buildCurveChart(rows, 100).series[0]!
+    expect(s.truncated.map(p => p.cost)).toEqual([63.7, 45.8, 33.6])
+    expect(s.maxPlayed).toBe(45)
+    for (const p of s.truncated) {
+      expect(p.hint!.neededX).toBeNull()
+      expect(p.hint!.maxPlayed).toBe(45)
+    }
+    // 无截断的曲线：truncated 空、hint 全 null（提醒不出现 = 零视觉变化）
+    const clean = buildCurveChart([mkRow('a', 'A', mkLadder([[0, 10], [5, 20]], ['G1'], [], [], [[41, 41], [41, 41]]))], 100).series[0]!
+    expect(clean.truncated).toEqual([])
+    expect(clean.points.every(p => p.hint === null)).toBe(true)
+    // 完全不采交互量（capture 未给）⇒ 也不提示
+    const noCap = buildCurveChart([mkRow('n', 'N', mkLadder([[0, 10], [5, 20]], ['G1']))], 100).series[0]!
+    expect(noCap.truncated).toEqual([])
+    expect(noCap.maxPlayed).toBeNull()
+  })
+})
+
 // ========== 集成：真跑一队（含现场恢复） ==========
 
 const res20 = { physical: 20, fire: 20, ice: 20, electric: 20, ether: 20, wind: 20 }
@@ -630,6 +720,21 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
       expect(p.dmgBySource, '每档都要有伤害来源分组').toBeTruthy()
       expect(sumBySource).toBeCloseTo(p.dmg, 6)
     }
+    // 截断提醒的两个采集字段（与 counts 同一份快照）：手填量 ≥ 实打量恒成立，且都 > 0
+    for (const p of ladder.points) {
+      expect(typeof p.interactionsFilled, '每档都要采到手填交互量').toBe('number')
+      expect(typeof p.interactionsPlayed, '每档都要采到实打交互量').toBe('number')
+      expect(typeof p.overflow, '每档都要采到截断秒数').toBe('number')
+      expect(p.interactionsFilled!).toBeGreaterThan(0)
+      expect(p.interactionsPlayed!).toBeGreaterThan(0)
+      expect(p.interactionsFilled!).toBeGreaterThanOrEqual(p.interactionsPlayed! - 1e-9)
+    }
+    // 这条队实测**无截断**（全库 104 队里只有 20 队有截断档）⇒ truncated 为空、每档 hint = null：
+    // 提醒对它是**零视觉变化**（这是「只做提示、不改任何计算」的直接体现）
+    const chartSeries = buildCurveChart(rows, FAKE_PHASE.hp).series[0]!
+    expect(chartSeries.truncated).toEqual([])
+    expect(chartSeries.points.every(p => p.hint === null)).toBe(true)
+    expect(chartSeries.maxPlayed).toBeGreaterThan(0)
     // 每档的归因 Δ 之和 ≡ 该档伤害增量
     for (let i = 1; i < chartPts.length; i++) {
       const attr = attributeDmgChanges(chartPts[i]!.dmgChanges)

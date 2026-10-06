@@ -67,6 +67,31 @@ describe('分析器独立场景', () => {
     }
   })
 
+  /**
+   * ★ 2026-10-06：`cloneConfigState` **整表传参**（`configStore.$state`）必须不抛。
+   *
+   * 缺陷与判据（实机点通抓到，`TeamComparePage#runCurves` 的会话缓存键）：`$state` 是
+   * `reactive({ team: ref(…), enemy: ref(…), … })`——经它读属性会**自动解包 ref**，
+   * 而旧实现一进来就 `toRaw(value)`，把底层 target 原样暴露 ⇒ 拿到 `RefImpl` ⇒
+   * 非普通对象分支 ⇒ `structuredClone(RefImpl)` 抛 `DataCloneError`。
+   * 后果 = 「计算曲线」按钮点了不出图（实机 300s 超时 / `polyline=0`）。
+   *
+   * ⚠ 为什么此前全绿：本文件与 `createAnalysisScenario` 都是**逐键**传值
+   * （`cloneConfigState(sourceState[key])`）——那条路径拿到的已经是解包后的值，
+   * 恰好绕开整表传参这一支。**反证**：把 `isRef` 分支去掉 ⇒ 本用例即红。
+   */
+  it('cloneConfigState 整表传参不抛（$state 是 reactive({ref})，逐键传值绕开了这条路径）', async () => {
+    const { config } = await customizedSource()
+    let cloned: Record<string, unknown> | null = null
+    expect(() => { cloned = cloneConfigState(config.$state) as unknown as Record<string, unknown> }).not.toThrow()
+    // 拷出来的是**值**不是 ref：与源逐字节等值，且改它不影响源
+    expect(Object.keys(cloned!)).toEqual(Object.keys(config.$state))
+    expect(plain(cloned)).toBe(plain(config.$state))
+    expect(plain(cloned!.team)).toBe(plain(config.team))
+    ;(cloned!.team as { agentId: string }[])[0]!.agentId = 'sentinel-changed'
+    expect(config.team[0]!.agentId).not.toBe('sentinel-changed')
+  })
+
   it('① 反例：出生之后逐键注水，副词条 watcher 下一拍把配装刷回推荐值', async () => {
     const { catalog, config } = await customizedSource()
     const scope = effectScope(true)
