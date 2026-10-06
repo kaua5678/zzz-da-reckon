@@ -146,9 +146,28 @@ export const CORE_ROLE_IMPORT_BASELINE = 0
 // 不是把计算挪进 `buildCharConfig`，故不触发上方「banyueAxisEx 注入时机」的否决理由）。
 // 同批 core agentId 基线 6 → 5；`RATCHET_BURNDOWN.frozen` 同步。
 
+/**
+ * 反空洞下限（2026-10-06 加，用户质询「count < frozen 凭什么是进步」后补）：
+ *
+ * **为什么必须存在**：棘轮只比对 `count === frozen`。若扫描面自己塌了（目录改名/搬家、
+ * `existsSync` 静默 return、git ls-files 换 scope），`count` 会掉到 0 而判据**照样绿**
+ * ——更糟的是，若 `frozen > 0`，判据会红着说「是进步，把基线下调到 0」，照做 = **永久关闭护栏**。
+ * 实测（2026-10-06）：`src/views` 改名后 exhibition-layer 报 `count 1 → 0`，提示原文就是
+ * 「是进步，把 EXHIBITION_LAYER_IMPORT_BASELINE 下调到 0」——什么都没修，护栏却没了。
+ *
+ * 口径：下限取实测值的 ~75%（留改名/重构余量，但拦得住「扫到 0」这种量级的塌陷）。
+ * 实测 2026-10-06：exhibition 40 个 .vue / core role-import 48 个 .ts / role-module 142 个 .ts。
+ *
+ * @fact engine:guards/棘轮反空洞 口径: 棘轮判定 = `count === frozen` **且** `scanned >= MIN_FILES`；扫描面塌陷（目录改名/搬家、git scope 变化）必须报「仪器坏了」而非「是进步」——旧写法会把塌陷读成进步并诱导把基线下调到 0（永久关闭护栏） | 据 用户质询@2026-10-06（「count < frozen 凭什么是进步，万一判据是错的」）·实测@2026-10-06（src/views 改名 ⇒ count 1→0 且提示原文为「是进步，下调到 0」） | 验 src/scripts/__tests__/checkGuards.test.ts（棘轮反空洞 3 条） | 锚 scripts/lib/layer-import-ratchet.mjs#EXHIBITION_LAYER_MIN_FILES | 信 确认
+ */
+export const EXHIBITION_LAYER_MIN_FILES = 30
+export const CORE_ROLE_IMPORT_MIN_FILES = 35
+export const ROLE_MODULE_DEP_MIN_FILES = 100
+
 /** 扫 `src/core/**` 里对具体角色模块的值导入 → [{ file, line, text }]（**不含测试**：测试自由引用模块） */
 export function scanCoreRoleImports(root = ROOT) {
   const sites = []
+  let scanned = 0
   const rec = (dir) => {
     if (!existsSync(dir)) return
     for (const n of readdirSync(dir)) {
@@ -157,13 +176,14 @@ export function scanCoreRoleImports(root = ROOT) {
       if (!n.endsWith('.ts') || n.endsWith('.d.ts')) continue
       const rel = relative(root, p).split(sep).join('/')
       if (rel.includes('__tests__') || rel.endsWith('.test.ts')) continue
+      scanned++
       readFileSync(p, 'utf8').split('\n').forEach((l, i) => {
         if (CORE_ROLE_IMPORT_RE.test(l)) sites.push({ file: rel, line: i + 1, text: l.trim().slice(0, 110) })
       })
     }
   }
   rec(join(root, CORE_LAYER_DIR))
-  return { count: sites.length, sites }
+  return { count: sites.length, sites, scanned }
 }
 
 /**
@@ -184,15 +204,17 @@ export function countExhibitionLayerImports(content) {
   return content.split('\n').filter(detectExhibitionLayerImport).length
 }
 
-/** 扫展示层全部 .vue，返回 { count, sites: [{ file, line, text }] }（sites 供归因输出） */
+/** 扫展示层全部 .vue，返回 { count, sites: [{ file, line, text }], scanned }（sites 供归因输出） */
 export function scanExhibitionLayerImports(root = ROOT) {
   const sites = []
+  let scanned = 0
   const rec = (dir) => {
     if (!existsSync(dir)) return
     for (const n of readdirSync(dir)) {
       const p = join(dir, n)
       if (statSync(p).isDirectory()) rec(p)
       else if (n.endsWith('.vue')) {
+        scanned++
         const rel = relative(root, p).split(sep).join('/')
         readFileSync(p, 'utf8').split('\n').forEach((l, i) => {
           if (detectExhibitionLayerImport(l)) sites.push({ file: rel, line: i + 1, text: l.trim().slice(0, 100) })
@@ -201,7 +223,7 @@ export function scanExhibitionLayerImports(root = ROOT) {
     }
   }
   for (const d of EXHIBITION_LAYER_DIRS) rec(join(root, d))
-  return { count: sites.length, sites }
+  return { count: sites.length, sites, scanned }
 }
 
 // ---- 判据 24：编排层 + core → 角色模块的值依赖（CC-45，2026-09-27；硬门 0） ----
@@ -240,9 +262,10 @@ export function findRoleModuleValueDeps(text) {
   return out.sort((a, b) => a.line - b.line)
 }
 
-/** 扫 ROLE_MODULE_DEP_DIRS 下 .ts（不含 .d.ts 与测试）→ { count, sites: [{ file, line, kind, spec }] } */
+/** 扫 ROLE_MODULE_DEP_DIRS 下 .ts（不含 .d.ts 与测试）→ { count, sites: [{ file, line, kind, spec }], scanned } */
 export function scanRoleModuleValueDeps(root = ROOT) {
   const sites = []
+  let scanned = 0
   const rec = (dir) => {
     if (!existsSync(dir)) return
     for (const n of readdirSync(dir)) {
@@ -251,9 +274,10 @@ export function scanRoleModuleValueDeps(root = ROOT) {
       if (!n.endsWith('.ts') || n.endsWith('.d.ts')) continue
       const rel = relative(root, p).split(sep).join('/')
       if (rel.includes('__tests__') || rel.endsWith('.test.ts')) continue
+      scanned++
       for (const d of findRoleModuleValueDeps(readFileSync(p, 'utf8'))) sites.push({ file: rel, ...d })
     }
   }
   for (const d of ROLE_MODULE_DEP_DIRS) rec(join(root, d))
-  return { count: sites.length, sites }
+  return { count: sites.length, sites, scanned }
 }

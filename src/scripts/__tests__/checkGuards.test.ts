@@ -11,18 +11,21 @@ import { readFileSync, readdirSync, mkdirSync, mkdtempSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, findRoleFieldRefs, rolePrefixesFrom, scanCoreRoleFields,
+  CORE_ROLE_FIELD_BASELINE, CORE_ROLE_SCAN_MIN_FILES, ROLE_FIELD_EXEMPT, findRoleFieldRefs, rolePrefixesFrom, scanCoreRoleFields,
   CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, camelSegments, findRoleInfixRefs, scanCoreRoleInfix,
-  ROLE_MODULE_DEP_BASELINE, ROLE_MODULE_DEP_DIRS, findRoleModuleValueDeps, scanRoleModuleValueDeps,
+  ROLE_MODULE_DEP_BASELINE, ROLE_MODULE_DEP_DIRS, ROLE_MODULE_DEP_MIN_FILES, findRoleModuleValueDeps, scanRoleModuleValueDeps,
   DEBT_REGISTRY,
   ROOT,
   AGENT_BRANCH_BASELINE,
   AGENT_BRANCH_DIR,
   AGENT_BRANCH_FILE,
+  AGENT_BRANCH_MIN_FILES,
   CORE_AGENT_BRANCH_BASELINE,
   CORE_AGENT_BRANCH_FILES,
   CORE_ROLE_IMPORT_BASELINE,
+  CORE_ROLE_IMPORT_MIN_FILES,
   EXHIBITION_LAYER_IMPORT_BASELINE,
+  EXHIBITION_LAYER_MIN_FILES,
   MANUAL_DENSITY_CEILINGS,
   RATCHET_BURNDOWN,
   auditDocTable,
@@ -36,6 +39,8 @@ import {
   detectFetchStub,
   detectExhibitionLayerImport,
   countExhibitionLayerImports,
+  scanExhibitionLayerImports,
+  scanCoreRoleImports,
   fetchStubViolations,
   findForbiddenTracked,
   countAgentIdBranchLines,
@@ -1826,6 +1831,51 @@ describe('反空洞下限 + git 工作区 raw 缺失判红（判据 6 / 10 / 18 
     const authored = auditAuthoredFacts()
     expect(authored.scanned.length).toBeGreaterThanOrEqual(AUTHORED_FACTS_MIN_SCANNED)
     expect(authoredFactsVerdict(authored).ok).toBe(true)
+  })
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 2026-10-06 补：**棘轮**的反空洞面（用户质询「count < frozen 凭什么是进步」后加）
+  //
+  // 棘轮只比对 `count === frozen`，于是扫描面塌陷（目录改名/搬家、git scope 变了）会让 count
+  // 掉到 0 而判据照样绿；若 frozen > 0，判据还会红着说「是进步，把基线下调到 0」——照做 =
+  // 永久关闭护栏。下面锁「扫不到 ≠ 干净」：空 root 下 scanned 必须触发下限。
+  it('棘轮反空洞：空 root 扫不到任何文件 ⇒ scanned 为 0（会被下限拦）', () => {
+    const empty = mkdtempSync(join(tmpdir(), 'ratchet-void-'))
+    try {
+      expect(scanExhibitionLayerImports(empty).scanned).toBe(0)
+      expect(scanCoreRoleImports(empty).scanned).toBe(0)
+      expect(scanRoleModuleValueDeps(empty).scanned).toBe(0)
+    } finally {
+      rmSync(empty, { recursive: true, force: true })
+    }
+  })
+
+  it('棘轮反空洞：下限 > 0 且 ≤ 仓库实测（既不放过塌陷、也不误报正常树）', () => {
+    // 下限必须 > 0，否则「扫到 0 个文件」仍会绿——那正是要拦的形态
+    for (const floor of [AGENT_BRANCH_MIN_FILES, EXHIBITION_LAYER_MIN_FILES, CORE_ROLE_IMPORT_MIN_FILES,
+      ROLE_MODULE_DEP_MIN_FILES, CORE_ROLE_SCAN_MIN_FILES]) {
+      expect(floor).toBeGreaterThan(0)
+    }
+    // 下限不得高于实测，否则正常树也会假红
+    expect(listAgentBranchFiles().length).toBeGreaterThanOrEqual(AGENT_BRANCH_MIN_FILES)
+    expect(scanExhibitionLayerImports().scanned).toBeGreaterThanOrEqual(EXHIBITION_LAYER_MIN_FILES)
+    expect(scanCoreRoleImports().scanned).toBeGreaterThanOrEqual(CORE_ROLE_IMPORT_MIN_FILES)
+    expect(scanRoleModuleValueDeps().scanned).toBeGreaterThanOrEqual(ROLE_MODULE_DEP_MIN_FILES)
+    expect(scanCoreRoleFields(ROOT)!.scanned).toBeGreaterThanOrEqual(CORE_ROLE_SCAN_MIN_FILES)
+  })
+
+  it('棘轮反空洞：仓库现状 6 条身份棘轮的 scanned 都过下限（下限没定错）', () => {
+    const layer = scanExhibitionLayerImports()
+    expect(layer.count).toBe(EXHIBITION_LAYER_IMPORT_BASELINE)
+    expect(layer.scanned).toBeGreaterThanOrEqual(EXHIBITION_LAYER_MIN_FILES)
+    const coreRole = scanCoreRoleImports()
+    expect(coreRole.count).toBe(CORE_ROLE_IMPORT_BASELINE)
+    expect(coreRole.scanned).toBeGreaterThanOrEqual(CORE_ROLE_IMPORT_MIN_FILES)
+    const roleDeps = scanRoleModuleValueDeps()
+    expect(roleDeps.count).toBe(ROLE_MODULE_DEP_BASELINE)
+    expect(roleDeps.scanned).toBeGreaterThanOrEqual(ROLE_MODULE_DEP_MIN_FILES)
+    expect(scanCoreRoleFields(ROOT)!.scanned).toBeGreaterThanOrEqual(CORE_ROLE_SCAN_MIN_FILES)
+    expect(scanCoreRoleInfix(ROOT)!.scanned).toBeGreaterThanOrEqual(CORE_ROLE_SCAN_MIN_FILES)
   })
 })
 

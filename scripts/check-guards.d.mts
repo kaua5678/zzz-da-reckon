@@ -15,6 +15,8 @@ export declare function scanFetchStubs(root?: string): { violations: string[]; s
 export declare const AGENT_BRANCH_DIR: string
 export declare const AGENT_BRANCH_FILE: string
 export declare const AGENT_BRANCH_BASELINE: number
+/** 反空洞下限（2026-10-06）：度量面文件数低于此值 = 扫描面塌陷，判据红（不是「进步」）。 */
+export declare const AGENT_BRANCH_MIN_FILES: number
 /** 可注入版本化的仓库相对路径清单；缺省扫描工作树，度量范围不变。 */
 export declare function listAgentBranchFiles(root?: string, candidateFiles?: readonly string[]): string[]
 export declare function countAgentBranchLines(root?: string): number
@@ -27,8 +29,12 @@ export declare const CORE_AGENT_BRANCH_BASELINE: number
 export declare function countAgentIdBranchLinesInFiles(files: string[], root?: string): number
 // 引擎层「按角色名的值导入」棘轮（判据 12，T8 证伪后改口径：baseline=5，全活引用不许增）
 export declare const CORE_ROLE_IMPORT_BASELINE: number
+/** 反空洞下限（2026-10-06）：src/core 扫到的 .ts 数低于此值 = 扫描面塌陷，判据红（不是「进步」）。 */
+export declare const CORE_ROLE_IMPORT_MIN_FILES: number
 // 判据 22：core 角色前缀字段计数棘轮（scripts/lib/core-role-field-ratchet.mjs）
 export declare const CORE_ROLE_FIELD_BASELINE: number
+/** 反空洞下限（2026-10-06）：判据 22/23 共用的扫描面文件数下限（git ls-files src/core）。 */
+export declare const CORE_ROLE_SCAN_MIN_FILES: number
 export declare const ROLE_FIELD_EXEMPT: string[]
 export declare function rolePrefixesFrom(fileNames: string[]): string[]
 export declare function findRoleFieldRefs(text: string, prefixes: string[], exempt?: string[]): { field: string; line: number }[]
@@ -171,6 +177,8 @@ export declare function daysBetween(a: string, b: string): number
 export declare const EXHIBITION_LAYER_DIRS: string[]
 export declare const EXHIBITION_LAYER_FORBIDDEN: RegExp
 export declare const EXHIBITION_LAYER_IMPORT_BASELINE: number
+/** 反空洞下限（2026-10-06）：扫到的 .vue 数低于此值 = 扫描面塌陷，判据红（不是「进步」）。 */
+export declare const EXHIBITION_LAYER_MIN_FILES: number
 export declare function detectExhibitionLayerImport(line: string): boolean
 export declare function countExhibitionLayerImports(content: string): number
 export declare function scanExhibitionLayerImports(root?: string): {
@@ -211,6 +219,8 @@ export declare function scanCoreRoleImports(root?: string): {
 export type RoleModuleDepKind = 'import' | 'export' | 'side-effect' | 'dynamic'
 export declare const ROLE_MODULE_DEP_DIRS: string[]
 export declare const ROLE_MODULE_DEP_BASELINE: number
+/** 反空洞下限（2026-10-06）：core + composables 扫到的 .ts 数低于此值 = 扫描面塌陷，判据红。 */
+export declare const ROLE_MODULE_DEP_MIN_FILES: number
 export declare function findRoleModuleValueDeps(text: string): { line: number; kind: RoleModuleDepKind; spec: string }[]
 export declare function scanRoleModuleValueDeps(root?: string): {
   count: number

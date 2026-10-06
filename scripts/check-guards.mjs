@@ -538,8 +538,8 @@ export function scanCaliberTriggerDue(root = ROOT, today = new Date().toISOStrin
 // ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**
 // （R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
 // ⚠ 改判据口径请改 `./lib/agent-branch-ratchet.mjs`，**不要在本文件重建同形函数**。
-import { AGENT_BRANCH_DIR, AGENT_BRANCH_FILE, listAgentBranchFiles, countAgentBranchLines, countAgentBranchLinesLegacy, AGENT_BRANCH_BASELINE, CORE_AGENT_BRANCH_FILES, CORE_AGENT_BRANCH_BASELINE, countAgentIdBranchLinesInFiles, countAgentIdBranchLines } from './lib/agent-branch-ratchet.mjs'
-export { AGENT_BRANCH_DIR, AGENT_BRANCH_FILE, listAgentBranchFiles, countAgentBranchLines, countAgentBranchLinesLegacy, AGENT_BRANCH_BASELINE, CORE_AGENT_BRANCH_FILES, CORE_AGENT_BRANCH_BASELINE, countAgentIdBranchLinesInFiles, countAgentIdBranchLines } from './lib/agent-branch-ratchet.mjs'
+import { AGENT_BRANCH_DIR, AGENT_BRANCH_FILE, listAgentBranchFiles, countAgentBranchLines, countAgentBranchLinesLegacy, AGENT_BRANCH_BASELINE, AGENT_BRANCH_MIN_FILES, CORE_AGENT_BRANCH_FILES, CORE_AGENT_BRANCH_BASELINE, countAgentIdBranchLinesInFiles, countAgentIdBranchLines } from './lib/agent-branch-ratchet.mjs'
+export { AGENT_BRANCH_DIR, AGENT_BRANCH_FILE, listAgentBranchFiles, countAgentBranchLines, countAgentBranchLinesLegacy, AGENT_BRANCH_BASELINE, AGENT_BRANCH_MIN_FILES, CORE_AGENT_BRANCH_FILES, CORE_AGENT_BRANCH_BASELINE, countAgentIdBranchLinesInFiles, countAgentIdBranchLines } from './lib/agent-branch-ratchet.mjs'
 
 // ---- 判据 3：工作区状态文件防误提交 ----
 
@@ -561,10 +561,10 @@ export function findForbiddenTracked(trackedPaths) {
 // ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**
 // （R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
 // ⚠ 改判据口径请改 `./lib/layer-import-ratchet.mjs`，**不要在本文件重建同形函数**。
-import { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, scanRoleModuleValueDeps, findRoleModuleValueDeps, ROLE_MODULE_DEP_DIRS, ROLE_MODULE_DEP_BASELINE, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
-export { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, scanCoreRoleImports, scanRoleModuleValueDeps, findRoleModuleValueDeps, ROLE_MODULE_DEP_DIRS, ROLE_MODULE_DEP_BASELINE, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
-import { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom, CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, INFIX_PREFIX_EXCLUDE, camelSegments, findRoleInfixRefs, scanCoreRoleInfix } from './lib/core-role-field-ratchet.mjs'
-export { CORE_ROLE_FIELD_BASELINE, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom, CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, INFIX_PREFIX_EXCLUDE, camelSegments, findRoleInfixRefs, scanCoreRoleInfix } from './lib/core-role-field-ratchet.mjs'
+import { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, EXHIBITION_LAYER_MIN_FILES, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, CORE_ROLE_IMPORT_MIN_FILES, scanCoreRoleImports, scanRoleModuleValueDeps, findRoleModuleValueDeps, ROLE_MODULE_DEP_DIRS, ROLE_MODULE_DEP_BASELINE, ROLE_MODULE_DEP_MIN_FILES, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
+export { EXHIBITION_LAYER_DIRS, EXHIBITION_LAYER_FORBIDDEN, EXHIBITION_LAYER_IMPORT_BASELINE, EXHIBITION_LAYER_MIN_FILES, CORE_LAYER_DIR, CORE_ROLE_IMPORT_BASELINE, CORE_ROLE_IMPORT_MIN_FILES, scanCoreRoleImports, scanRoleModuleValueDeps, findRoleModuleValueDeps, ROLE_MODULE_DEP_DIRS, ROLE_MODULE_DEP_BASELINE, ROLE_MODULE_DEP_MIN_FILES, detectExhibitionLayerImport, countExhibitionLayerImports, scanExhibitionLayerImports } from './lib/layer-import-ratchet.mjs'
+import { CORE_ROLE_FIELD_BASELINE, CORE_ROLE_SCAN_MIN_FILES, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom, CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, INFIX_PREFIX_EXCLUDE, camelSegments, findRoleInfixRefs, scanCoreRoleInfix } from './lib/core-role-field-ratchet.mjs'
+export { CORE_ROLE_FIELD_BASELINE, CORE_ROLE_SCAN_MIN_FILES, ROLE_FIELD_EXEMPT, scanCoreRoleFields, findRoleFieldRefs, rolePrefixesFrom, CORE_ROLE_INFIX_BASELINE, ROLE_INFIX_EXEMPT, INFIX_PREFIX_EXCLUDE, camelSegments, findRoleInfixRefs, scanCoreRoleInfix } from './lib/core-role-field-ratchet.mjs'
 
 
 // ---- 判据 4：实现已整段迁至 `./lib/settings-coverage.mjs`（R46 结构熵切面，纯搬运）----
@@ -873,31 +873,42 @@ export function runAllChecks(root = ROOT) {
 
   const branchFiles = listAgentBranchFiles(root)
   const branches = countAgentBranchLines(root)
+  const branchVoid = branchFiles.length < AGENT_BRANCH_MIN_FILES
   results.push({
     name: `agentId ratchet (规则 6: 队伍级机制走 applyTeamConfig) ${AGENT_BRANCH_FILE} + resourceCalc/ = ${branches}/${AGENT_BRANCH_BASELINE}`
       + ` [AST 身份判定: agentId/.id(四位数字)/teammateBuffId/局部 const 别名]`,
-    ok: branches === AGENT_BRANCH_BASELINE,
-    detail: branches > AGENT_BRANCH_BASELINE
-      ? [`  ✗ 角色判定 ${AGENT_BRANCH_BASELINE}→${branches}：角色特例逻辑写进编排层了（度量面 ${branchFiles.length} 个文件）。移到 src/mechanics/agents/<id>.ts 的 applyTeamConfig（三阶段钩子）或声明式钩子（axisWindowOverlays / backstageAutoFill 等），派发器在 composables/resourceCalc/panelPhases.ts`,
-        '  → 度量口径 = AST 身份判定形态（`agentId` / `.id` 四位数字 / `teammateBuffId` / 局部 const 别名），按行去重；',
-        '     查当前清单：node scripts/report-agent-identity.mjs --md（分类 + 证据 + 观察项）']
-      : branches < AGENT_BRANCH_BASELINE
-        ? [`  ✗ 角色判定 ${AGENT_BRANCH_BASELINE}→${branches}：是进步，把 scripts/lib/agent-branch-ratchet.mjs 的 AGENT_BRANCH_BASELINE 下调到 ${branches}（棘轮只减不增）`]
-        : [],
+    ok: branches === AGENT_BRANCH_BASELINE && !branchVoid,
+    detail: branchVoid
+      ? [`  ✗ 反空洞下限：度量面只有 ${branchFiles.length} 个文件 < ${AGENT_BRANCH_MIN_FILES} → ${AGENT_BRANCH_DIR}/ 改名/搬家了？`,
+        '    → 修扫描器（listAgentBranchFiles），**不要**下调基线：',
+        '      扫描面塌陷会让 count 变小甚至归零，照着「是进步」改基线 = 永久关闭这条护栏。']
+      : branches > AGENT_BRANCH_BASELINE
+        ? [`  ✗ 角色判定 ${AGENT_BRANCH_BASELINE}→${branches}：角色特例逻辑写进编排层了（度量面 ${branchFiles.length} 个文件）。移到 src/mechanics/agents/<id>.ts 的 applyTeamConfig（三阶段钩子）或声明式钩子（axisWindowOverlays / backstageAutoFill 等），派发器在 composables/resourceCalc/panelPhases.ts`,
+          '  → 度量口径 = AST 身份判定形态（`agentId` / `.id` 四位数字 / `teammateBuffId` / 局部 const 别名），按行去重；',
+          '     查当前清单：node scripts/report-agent-identity.mjs --md（分类 + 证据 + 观察项）']
+        : branches < AGENT_BRANCH_BASELINE
+          ? [`  ✗ 角色判定 ${AGENT_BRANCH_BASELINE}→${branches}：度量面正常（${branchFiles.length} 个文件）⇒ 是进步，把 scripts/lib/agent-branch-ratchet.mjs 的 AGENT_BRANCH_BASELINE 下调到 ${branches}（棘轮只减不增）`]
+          : [],
   })
 
   // 引擎层同款棘轮（规则 6 在 core 的延伸；此前 core 是豁免区，评审实测 36 处无护栏）
-  const coreBranches = countAgentIdBranchLinesInFiles(CORE_AGENT_BRANCH_FILES, root)
+  // ⚠ 度量面 = 硬编码文件清单：文件被改名/搬家时 readFileSync 会 ENOENT 抛错（不静默）——但抛错
+  //   会把整条 check-guards 打断，故这里先探测存在性，给出可读的失败信息（反空洞，2026-10-06）。
+  const coreMissing = CORE_AGENT_BRANCH_FILES.filter(f => !existsSync(join(root, f)))
+  const coreBranches = coreMissing.length > 0 ? 0 : countAgentIdBranchLinesInFiles(CORE_AGENT_BRANCH_FILES, root)
   results.push({
     name: `core agentId ratchet (规则 6 延伸: 引擎层角色无关) ${CORE_AGENT_BRANCH_FILES.join(' + ')} = ${coreBranches}/${CORE_AGENT_BRANCH_BASELINE}`,
-    ok: coreBranches === CORE_AGENT_BRANCH_BASELINE,
-    detail: coreBranches > CORE_AGENT_BRANCH_BASELINE
-      ? [`  ✗ core 内 agentId 特判 ${CORE_AGENT_BRANCH_BASELINE}→${coreBranches}：引擎层应当角色无关。`,
-        '    → 角色机制回 src/mechanics/agents/<id>.ts；跨角色联动走 applyTeamConfig 三阶段钩子；',
-        '      确实需要引擎侧通用通道的，抽成 cfg 字段由模块写入（engine 读字段、不读 agentId）']
-      : coreBranches < CORE_AGENT_BRANCH_BASELINE
-        ? [`  ✗ core 内 agentId 特判 ${CORE_AGENT_BRANCH_BASELINE}→${coreBranches}：是进步，把 CORE_AGENT_BRANCH_BASELINE 下调到 ${coreBranches}（棘轮只减不增）`]
-        : [],
+    ok: coreBranches === CORE_AGENT_BRANCH_BASELINE && coreMissing.length === 0,
+    detail: coreMissing.length > 0
+      ? [`  ✗ 反空洞：度量面文件不存在 → ${coreMissing.join(', ')}（改名/搬家？）`,
+        '    → 修 CORE_AGENT_BRANCH_FILES，**不要**下调基线（扫不到 ≠ 没问题）']
+      : coreBranches > CORE_AGENT_BRANCH_BASELINE
+        ? [`  ✗ core 内 agentId 特判 ${CORE_AGENT_BRANCH_BASELINE}→${coreBranches}：引擎层应当角色无关。`,
+          '    → 角色机制回 src/mechanics/agents/<id>.ts；跨角色联动走 applyTeamConfig 三阶段钩子；',
+          '      确实需要引擎侧通用通道的，抽成 cfg 字段由模块写入（engine 读字段、不读 agentId）']
+        : coreBranches < CORE_AGENT_BRANCH_BASELINE
+          ? [`  ✗ core 内 agentId 特判 ${CORE_AGENT_BRANCH_BASELINE}→${coreBranches}：度量面正常（${CORE_AGENT_BRANCH_FILES.length} 个文件）⇒ 是进步，把 CORE_AGENT_BRANCH_BASELINE 下调到 ${coreBranches}（棘轮只减不增）`]
+          : [],
   })
 
   const tracked = listTrackedFiles(root)
@@ -914,38 +925,48 @@ export function runAllChecks(root = ROOT) {
 
   // ---- 判据 7：展示层越层 import 棘轮（ARCHITECTURE §0 依赖方向） ----
   const layer = scanExhibitionLayerImports(root)
+  const layerVoid = layer.scanned < EXHIBITION_LAYER_MIN_FILES
   results.push({
     name: `exhibition-layer ratchet (ARCHITECTURE §0: 展示 → 编排 → 引擎，views/components 禁 import 引擎/录入层) = ${layer.count}/${EXHIBITION_LAYER_IMPORT_BASELINE}`,
-    ok: layer.count === EXHIBITION_LAYER_IMPORT_BASELINE,
-    detail: layer.count > EXHIBITION_LAYER_IMPORT_BASELINE
-      ? [
-        `  ✗ 越层 import ${EXHIBITION_LAYER_IMPORT_BASELINE}→${layer.count}：展示层直接 import 了 @/core|@/mechanics|@/specs`,
-        '    → 常量/纯函数下沉 src/data/，或经编排层（composables）透出；import type 不算越层',
-        ...layer.sites.slice(0, 12).map(s => `      ${s.file}:${s.line}  ${s.text}`),
-      ]
-      : layer.count < EXHIBITION_LAYER_IMPORT_BASELINE
-        ? [`  ✗ 越层 import ${EXHIBITION_LAYER_IMPORT_BASELINE}→${layer.count}：是进步，把 scripts/lib/layer-import-ratchet.mjs 的 EXHIBITION_LAYER_IMPORT_BASELINE 下调到 ${layer.count}（棘轮只减不增）`]
-        : [],
+    ok: layer.count === EXHIBITION_LAYER_IMPORT_BASELINE && !layerVoid,
+    detail: layerVoid
+      // ⚠ 先判空洞：扫描面塌了时 count 变小**不是进步**，是判据瞎了（见 MIN_FILES 头注释）
+      ? [`  ✗ 反空洞下限：只扫到 ${layer.scanned} 个 .vue < ${EXHIBITION_LAYER_MIN_FILES} → 展示层目录改名/搬家了？`,
+        `    → 修扫描器（EXHIBITION_LAYER_DIRS = ${EXHIBITION_LAYER_DIRS.join(' / ')}），**不要**下调基线：`,
+        '      扫描面塌陷会让 count 变小，照着「是进步」改基线 = 永久关闭这条护栏。']
+      : layer.count > EXHIBITION_LAYER_IMPORT_BASELINE
+        ? [
+          `  ✗ 越层 import ${EXHIBITION_LAYER_IMPORT_BASELINE}→${layer.count}：展示层直接 import 了 @/core|@/mechanics|@/specs`,
+          '    → 常量/纯函数下沉 src/data/，或经编排层（composables）透出；import type 不算越层',
+          ...layer.sites.slice(0, 12).map(s => `      ${s.file}:${s.line}  ${s.text}`),
+        ]
+        : layer.count < EXHIBITION_LAYER_IMPORT_BASELINE
+          ? [`  ✗ 越层 import ${EXHIBITION_LAYER_IMPORT_BASELINE}→${layer.count}：扫描面正常（${layer.scanned} 个 .vue）⇒ 是进步，把 scripts/lib/layer-import-ratchet.mjs 的 EXHIBITION_LAYER_IMPORT_BASELINE 下调到 ${layer.count}（棘轮只减不增）`]
+          : [],
   })
 
   // ---- 判据 12：引擎层静态依赖具体角色模块棘轮（agentId 棘轮的语义补强面） ----
   const coreRole = scanCoreRoleImports(root)
+  const coreRoleVoid = coreRole.scanned < CORE_ROLE_IMPORT_MIN_FILES
   results.push({
     name: `core role-import ratchet (规则 6 语义面: 引擎按能力查询, 不按角色查询) src/core/** → @/mechanics/agents/* = ${coreRole.count}/${CORE_ROLE_IMPORT_BASELINE}`,
-    ok: coreRole.count === CORE_ROLE_IMPORT_BASELINE,
-    detail: coreRole.count > CORE_ROLE_IMPORT_BASELINE
-      ? [
-        `  ✗ 引擎层新增对具体角色模块的值导入 ${CORE_ROLE_IMPORT_BASELINE}→${coreRole.count}：`,
-        '    → 角色数学回 src/mechanics/agents/<id>.ts，经 `AgentMechanicModule` 声明式字段暴露能力',
-        '      （crossAgentSupply / axisWindowOverlays / backstageAutoFill / transformAnomalyPool …），',
-        '      引擎按**能力**查询（`getAgentMechanic(id)?.<能力>`），不 import 具体模块、不写 id 字面量。',
-        '    → 为什么另立判据：agentId 棘轮是词法判据，看不见这种耦合（它不写 id）——实测病灶是',
-        '      core/resource.ts 曾住 135 行诺姆/琉音赠链数学，新角色接赠链必须改引擎。',
-        ...coreRole.sites.slice(0, 12).map(s => `      ${s.file}:${s.line}  ${s.text}`),
-      ]
-      : coreRole.count < CORE_ROLE_IMPORT_BASELINE
-        ? [`  ✗ core role-import ${CORE_ROLE_IMPORT_BASELINE}→${coreRole.count}：是进步，把 CORE_ROLE_IMPORT_BASELINE 下调到 ${coreRole.count}（棘轮只减不增）`]
-        : [],
+    ok: coreRole.count === CORE_ROLE_IMPORT_BASELINE && !coreRoleVoid,
+    detail: coreRoleVoid
+      ? [`  ✗ 反空洞下限：只扫到 ${coreRole.scanned} 个 .ts < ${CORE_ROLE_IMPORT_MIN_FILES} → src/core 改名/搬家了？`,
+        '    → 修扫描器，**不要**下调基线（扫描面塌陷 = 判据瞎了，不是进步）']
+      : coreRole.count > CORE_ROLE_IMPORT_BASELINE
+        ? [
+          `  ✗ 引擎层新增对具体角色模块的值导入 ${CORE_ROLE_IMPORT_BASELINE}→${coreRole.count}：`,
+          '    → 角色数学回 src/mechanics/agents/<id>.ts，经 `AgentMechanicModule` 声明式字段暴露能力',
+          '      （crossAgentSupply / axisWindowOverlays / backstageAutoFill / transformAnomalyPool …），',
+          '      引擎按**能力**查询（`getAgentMechanic(id)?.<能力>`），不 import 具体模块、不写 id 字面量。',
+          '    → 为什么另立判据：agentId 棘轮是词法判据，看不见这种耦合（它不写 id）——实测病灶是',
+          '      core/resource.ts 曾住 135 行诺姆/琉音赠链数学，新角色接赠链必须改引擎。',
+          ...coreRole.sites.slice(0, 12).map(s => `      ${s.file}:${s.line}  ${s.text}`),
+        ]
+        : coreRole.count < CORE_ROLE_IMPORT_BASELINE
+          ? [`  ✗ core role-import ${CORE_ROLE_IMPORT_BASELINE}→${coreRole.count}：扫描面正常（${coreRole.scanned} 个 .ts）⇒ 是进步，把 CORE_ROLE_IMPORT_BASELINE 下调到 ${coreRole.count}（棘轮只减不增）`]
+          : [],
   })
 
   // ---- 判据 22：core/编排层读角色前缀字段计数棘轮（口径 scripts/lib/core-role-field-ratchet.mjs） ----
@@ -955,17 +976,20 @@ export function runAllChecks(root = ROOT) {
   } else {
     results.push({
       name: `core role-field ratchet (判据 22: 角色知识回模块, 引擎不读 <角色>Xxx 字段) = ${roleField.count}/${CORE_ROLE_FIELD_BASELINE}`,
-      ok: roleField.count === CORE_ROLE_FIELD_BASELINE,
-      detail: roleField.count > CORE_ROLE_FIELD_BASELINE
-        ? [
-          `  ✗ 角色前缀字段引用 ${CORE_ROLE_FIELD_BASELINE}→${roleField.count}（新增）：`,
-          '    → 数学通用的改通用字段（范式 CC-13 / CC-14a）；逻辑专属的迁模块能力 getAgentMechanic(id)?.<能力>',
-          `    → 通用词撞角色前缀的误报加进 ROLE_FIELD_EXEMPT（现：${ROLE_FIELD_EXEMPT.join(', ')}）并写明理由`,
-          ...[...roleField.byFile].slice(0, 8).map(([f, r]) => `      ${f}: ${r.length}`),
-        ]
-        : roleField.count < CORE_ROLE_FIELD_BASELINE
-          ? [`  ✗ core role-field ${CORE_ROLE_FIELD_BASELINE}→${roleField.count}：是进步，把 CORE_ROLE_FIELD_BASELINE 与 RATCHET_BURNDOWN「core 角色前缀字段」.frozen 同步下调到 ${roleField.count}（棘轮只减不增）`]
-          : [],
+      ok: roleField.count === CORE_ROLE_FIELD_BASELINE && roleField.scanned >= CORE_ROLE_SCAN_MIN_FILES,
+      detail: roleField.scanned < CORE_ROLE_SCAN_MIN_FILES
+        ? [`  ✗ 反空洞下限：只扫到 ${roleField.scanned} 个文件 < ${CORE_ROLE_SCAN_MIN_FILES} → git ls-files scope 变了 / src/mechanics/agents 改名？`,
+          '    → 修扫描器，**不要**下调基线（扫描面塌陷 = 判据瞎了，不是进步）']
+        : roleField.count > CORE_ROLE_FIELD_BASELINE
+          ? [
+            `  ✗ 角色前缀字段引用 ${CORE_ROLE_FIELD_BASELINE}→${roleField.count}（新增）：`,
+            '    → 数学通用的改通用字段（范式 CC-13 / CC-14a）；逻辑专属的迁模块能力 getAgentMechanic(id)?.<能力>',
+            `    → 通用词撞角色前缀的误报加进 ROLE_FIELD_EXEMPT（现：${ROLE_FIELD_EXEMPT.join(', ')}）并写明理由`,
+            ...[...roleField.byFile].slice(0, 8).map(([f, r]) => `      ${f}: ${r.length}`),
+          ]
+          : roleField.count < CORE_ROLE_FIELD_BASELINE
+            ? [`  ✗ core role-field ${CORE_ROLE_FIELD_BASELINE}→${roleField.count}：扫描面正常（${roleField.scanned} 个文件）⇒ 是进步，把 CORE_ROLE_FIELD_BASELINE 与 RATCHET_BURNDOWN「core 角色前缀字段」.frozen 同步下调到 ${roleField.count}（棘轮只减不增）`]
+            : [],
     })
   }
 
@@ -976,31 +1000,38 @@ export function runAllChecks(root = ROOT) {
   } else {
     results.push({
       name: `core role-infix ratchet (判据 23: 标识符中缀/子目录也不带角色名) = ${roleInfix.count}/${CORE_ROLE_INFIX_BASELINE}`,
-      ok: roleInfix.count === CORE_ROLE_INFIX_BASELINE,
-      detail: roleInfix.count > CORE_ROLE_INFIX_BASELINE
-        ? [
-          `  ✗ 含角色名段的标识符 ${CORE_ROLE_INFIX_BASELINE}→${roleInfix.count}（新增）：`,
-          '    → 纯命名的改通用名（范式 CC-43a）；逻辑专属的迁模块能力 getAgentMechanic(id)?.<能力>',
-          `    → 英文通用词撞角色名的误报加进 ROLE_INFIX_EXEMPT（现：${ROLE_INFIX_EXEMPT.join(', ')}）并写明理由`,
-          ...[...roleInfix.byFile].slice(0, 8).map(([f, r]) => `      ${f}: ${r.map(x => x.field).join(', ')}`),
-        ]
-        : roleInfix.count < CORE_ROLE_INFIX_BASELINE
-          ? [`  ✗ core role-infix ${CORE_ROLE_INFIX_BASELINE}→${roleInfix.count}：是进步，把 CORE_ROLE_INFIX_BASELINE 与 RATCHET_BURNDOWN「core 角色名中缀/子目录」.frozen 同步下调到 ${roleInfix.count}（棘轮只减不增）`]
-          : [],
+      ok: roleInfix.count === CORE_ROLE_INFIX_BASELINE && roleInfix.scanned >= CORE_ROLE_SCAN_MIN_FILES,
+      detail: roleInfix.scanned < CORE_ROLE_SCAN_MIN_FILES
+        ? [`  ✗ 反空洞下限：只扫到 ${roleInfix.scanned} 个文件 < ${CORE_ROLE_SCAN_MIN_FILES} → git ls-files scope 变了 / 目录改名？`,
+          '    → 修扫描器，**不要**下调基线（扫描面塌陷 = 判据瞎了，不是进步）']
+        : roleInfix.count > CORE_ROLE_INFIX_BASELINE
+          ? [
+            `  ✗ 含角色名段的标识符 ${CORE_ROLE_INFIX_BASELINE}→${roleInfix.count}（新增）：`,
+            '    → 纯命名的改通用名（范式 CC-43a）；逻辑专属的迁模块能力 getAgentMechanic(id)?.<能力>',
+            `    → 英文通用词撞角色名的误报加进 ROLE_INFIX_EXEMPT（现：${ROLE_INFIX_EXEMPT.join(', ')}）并写明理由`,
+            ...[...roleInfix.byFile].slice(0, 8).map(([f, r]) => `      ${f}: ${r.map(x => x.field).join(', ')}`),
+          ]
+          : roleInfix.count < CORE_ROLE_INFIX_BASELINE
+            ? [`  ✗ core role-infix ${CORE_ROLE_INFIX_BASELINE}→${roleInfix.count}：扫描面正常（${roleInfix.scanned} 个文件）⇒ 是进步，把 CORE_ROLE_INFIX_BASELINE 与 RATCHET_BURNDOWN「core 角色名中缀/子目录」.frozen 同步下调到 ${roleInfix.count}（棘轮只减不增）`]
+            : [],
     })
   }
 
   // ---- 判据 24：编排层 + core → 角色模块值依赖（CC-45；多行 import/export、裸 import、动态 import 均计；type-only 豁免；硬门 0） ----
   const roleDeps = scanRoleModuleValueDeps(root)
+  const roleDepsVoid = roleDeps.scanned < ROLE_MODULE_DEP_MIN_FILES
   results.push({
     name: `role-module value-dep gate (判据 24: ${ROLE_MODULE_DEP_DIRS.join(' + ')} → @/mechanics/agents/* 值依赖) = ${roleDeps.count}/${ROLE_MODULE_DEP_BASELINE}`,
-    ok: roleDeps.count === ROLE_MODULE_DEP_BASELINE,
-    detail: roleDeps.count === ROLE_MODULE_DEP_BASELINE ? [] : [
-      `  ✗ 编排层/core 对具体角色模块的值依赖 ${ROLE_MODULE_DEP_BASELINE}→${roleDeps.count}：`,
-      '    → 逻辑专属：types.ts 加可选能力、角色模块实现、编排层 getAgentMechanic(agentId)?.<能力> 派发（范式 CC-43c promoteHugCounts）',
-      '    → 无角色语义的纯函数：迁 src/core（范式 CC-44 core/resource/targetSlot.ts）；纯类型改 import type / export type',
-      ...roleDeps.sites.slice(0, 8).map(s => `      ${s.file}:${s.line} [${s.kind}] ${s.spec}`),
-    ],
+    ok: roleDeps.count === ROLE_MODULE_DEP_BASELINE && !roleDepsVoid,
+    detail: roleDepsVoid
+      ? [`  ✗ 反空洞下限：只扫到 ${roleDeps.scanned} 个 .ts < ${ROLE_MODULE_DEP_MIN_FILES} → 扫描目录改名/搬家了？`,
+        '    → 修扫描器，**不要**下调基线（扫描面塌陷 = 判据瞎了，不是进步）']
+      : roleDeps.count === ROLE_MODULE_DEP_BASELINE ? [] : [
+        `  ✗ 编排层/core 对具体角色模块的值依赖 ${ROLE_MODULE_DEP_BASELINE}→${roleDeps.count}：`,
+        '    → 逻辑专属：types.ts 加可选能力、角色模块实现、编排层 getAgentMechanic(agentId)?.<能力> 派发（范式 CC-43c promoteHugCounts）',
+        '    → 无角色语义的纯函数：迁 src/core（范式 CC-44 core/resource/targetSlot.ts）；纯类型改 import type / export type',
+        ...roleDeps.sites.slice(0, 8).map(s => `      ${s.file}:${s.line} [${s.kind}] ${s.spec}`),
+      ],
   })
 
   const settings = scanSettingsCoverage(root)

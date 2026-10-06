@@ -89,6 +89,17 @@ export function countAgentBranchLinesLegacy(root = ROOT) {
 // CC-276（第 291 轮）1→**0**：剩下那 1 行（`anomalyPanels.ts#findSlotByIdentity` 的 `a.teammateBuffId === id`
 // 动态比较）随别名字段 teammateBuffId 退役消失。副产品，不是目标——目标是身份只剩 agent.id 一个字段。
 export const AGENT_BRANCH_BASELINE = 0
+/**
+ * 反空洞下限（2026-10-06 加，用户质询「count < frozen 凭什么是进步」后补）：
+ *
+ * **为什么必须存在**：本棘轮只比对 `count === frozen`。扫描面自己塌了时 count 会掉到 0
+ * 而判据**照样绿**——若 `frozen > 0` 还会红着说「是进步，把基线下调到 0」，照做 = 永久关闭护栏。
+ * 实测（2026-10-06）：把度量面收窄到只剩单文件入口（`resourceCalc/` 改名/搬家的等价形态），
+ * 文件数 24 → 1、count 仍为 0、判据仍绿——**没有任何信号**。
+ *
+ * 口径：下限取实测值的 ~60%（度量面 24 个文件；留重构余量，但拦得住「扫到 1 个」这种量级的塌陷）。
+ */
+export const AGENT_BRANCH_MIN_FILES = 15
 // ⚠ **2026-09-27 CC-63（3 → 1，−2，真清偿）**：`roundInputs.ts#expandExecutedToCounts` 的 `fillerAgentId === '1051'` / `'1041'`
 //   平A兜底迁成模块钩子 `expandBasicFill`（伊德海莉 / 11号声明）。剩 1 = `anomalyPanels.ts` 的动态比较（未变）。
 // ⚠ **2026-09-24 CC-12 换尺（口径纠正，不是退步）**：1 → **3**。

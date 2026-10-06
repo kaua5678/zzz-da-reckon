@@ -10,6 +10,19 @@
 // - 前缀：src/mechanics/agents/*.ts 文件名开头的小写词（排除 spec/starlight/index/shared/types）
 // - 匹配：\b<前缀>[A-Z]\w*\b，只数代码部分（整行注释 / 块注释 / 行尾 // 之后不计）
 // - 豁免：ROLE_FIELD_EXEMPT（通用词撞了角色前缀的误报，例：triggerCount = 异常触发次数，不是扳机）
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// 反空洞下限（2026-10-06 加，用户质询「count < frozen 凭什么是进步」后补）
+//
+// **为什么必须存在**：本判据只比对 `count === frozen`。扫描面自己塌了（`git ls-files` 换 scope、
+// `src/mechanics/agents` 改名、目录搬家）时 count 会掉到 0 而判据照样绿——更糟的是若 `frozen > 0`，
+// 判据会红着说「是进步，把基线下调到 N」，照做 = **永久关闭护栏**。
+// 实测（2026-10-06）：`src/views` 改名后 exhibition-layer 报 count 1→0，提示原文正是
+// 「是进步，把 EXHIBITION_LAYER_IMPORT_BASELINE 下调到 0」——什么都没修，护栏却没了。
+//
+// 口径：下限取实测值的 ~75%（留重构余量，但拦得住「扫到 0」这种量级的塌陷）。
+// 实测 2026-10-06：core role-field 48 个文件（git ls-files src/core）。
+export const CORE_ROLE_SCAN_MIN_FILES = 35
 //   2026-09-26 CC-20 口径纠正（换尺，规则 17②，不与代码改动混批）：追加 triggerPanel / triggerSlot /
 //   triggerAgentId / triggerCountValues / triggerSources —— 实读全部用处均为「触发者（覆盖异常的角色）」
 //   或「触发源」通用义（例 core/anomalyPool/helpers.ts `@param triggerPanel 触发者面板`），与扳机（trigger.ts）
@@ -61,13 +74,15 @@ export function scanCoreRoleFields(root) {
   const prefixes = rolePrefixesFrom(readdirSync(agentsDir))
   const byFile = new Map()
   let count = 0
+  let scanned = 0
   for (const f of files) {
     const p = join(root, f)
     if (!existsSync(p)) continue
+    scanned++
     const refs = findRoleFieldRefs(readFileSync(p, 'utf8'), prefixes)
     if (refs.length) { byFile.set(f, refs); count += refs.length }
   }
-  return { count, byFile, prefixes }
+  return { count, byFile, prefixes, scanned }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,11 +145,13 @@ export function scanCoreRoleInfix(root) {
   const prefixes = rolePrefixesFrom(readdirSync(agentsDir))
   const byFile = new Map()
   let count = 0
+  let scanned = 0
   for (const f of files) {
     const p = join(root, f)
     if (!existsSync(p)) continue
+    scanned++
     const refs = findRoleInfixRefs(readFileSync(p, 'utf8'), prefixes)
     if (refs.length) { byFile.set(f, refs); count += refs.length }
   }
-  return { count, byFile, prefixes }
+  return { count, byFile, prefixes, scanned }
 }
