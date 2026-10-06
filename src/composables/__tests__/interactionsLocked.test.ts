@@ -180,7 +180,6 @@ describe('手动锁定交互（用户口径 2026-10-06）', () => {
     expect(src, '降配搜索主体不得被删（不勾选时仍服务难度曲线）')
       .toMatch(/selectDownscaleScale\(candidates/)
     expect(src, '降配候选枚举不得被删').toMatch(/DOWNSCALE_SCALES/)
-    expect(src, '单调闸门兜底臂不得被删').toMatch(/interactionScaleMonotone && candidates\.length > 0/)
     // 类型面：ResourceCalcConfig 必须声明该字段（缺声明 ⇒ cfg 字段是死数据，规则 16①）
     const types = readFileSync(new URL('../../types/resource/config.ts', import.meta.url), 'utf8')
     expect(types).toMatch(/interactionsLocked\?: boolean/)

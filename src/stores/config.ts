@@ -521,22 +521,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   // 章鱼自动轴（队伍含伊德海莉 1051 时按 章×有琉 自动开失衡轴并选预设；手动配置过轴时让路）
   const autoYidhariAxis = ref(true)
   /**
-   * **降配档单向闸门**（用户口径 2026-09-20）：
-   * 「合轴率、交互档等正向因子可以单调，不要一个上升一个下降，这样对伤害的计算不确定，
-   *  交互的计算也不确定。合轴降低是难度降低伤害降低，交互升高就是难度升高」。
-   *
-   * 治的形态（实测 叶瞬光+琉音+照 C0）：`stageResolveFeasibility` 每轮重求「最大可行 scale」——
-   * 合轴率 0.20 → 0.10 时时间账变宽，交互档从 0.25 **回升**到 0.375（闪反 3→4、伤害 24.21M→24.36M）
-   * ⇒ 正因子下降却把伤害推上去，难度轴与伤害都不再单调。
-   *
-   * 语义 = 本轮自动降配允许到达的**最大 scale**（1 = 不设限，历史行为）。难度曲线在跑某一档前
-   * 把它钉成该档的交互系数 ⇒ 「合轴率↓ ⇒ 交互档不回升 ⇒ 伤害同向」。
-   * ⚠ 缺省 1 + monotone=false：普通计算路径逐位不变（降配逻辑与历史完全一致）。
-   */
-  const interactionScaleCeiling = ref(1)
-  /** 降配档单调闸门开关（见上；难度曲线跑一般化档位时置 true，缺省 false = 历史行为） */
-  const interactionScaleMonotone = ref(false)
-  /**
    * **手动锁定交互**开关（用户口径 2026-10-06）：
    * 「用户选择交互次数已经确定了交互这一块的难度设置，就可以尽量满足，自动调整合轴率和其他内容来做到。
    *  实在做不到就说哪里做不到。用户没选择交互，就自动计算低交互与高交互，也就是难度曲线的计算了」。
@@ -546,8 +530,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
    *
    * 同款先例 = 锁失衡次数（`enemy.stunCountLock ≥ 0`，`resourceCalc/solveTeam.ts#stageResolveFeasibility`
    * 的 `lockedStunCount < 0` 闸门）：「用户明确意图 ⇒ 引擎不改结构」。
-   * ⚠ 与 `interactionScaleMonotone` / `interactionScaleCeiling` 正交：那两个管**降配档单调性**，
-   * 本开关管**要不要降配**；同时打开时本开关优先（不降配 ⇒ 档位闸门无从作用）。
+   * ⚠ 本开关只管**要不要降配**（整块跳过），不改降配内部的选档策略（`resourceCalc/feasibilitySearch.ts`）。
    */
   const interactionsLocked = ref(false)
   /**
@@ -1141,7 +1124,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
       team, globalBuffs, teammateBuffSelections, wEngineEffectCoverages, discEffectCoverages,
       resourceUtilization, mechanicSettings, teamMechanicSettings, anomalyUtilizationRates, anomalySettlementShares,
       enemy, comboAlignOverrides, stunAxes, stunAxisPlans, useStunAxis, autoYidhariAxis,
-      interactionScaleCeiling, interactionScaleMonotone, interactionsLocked, timeWeightStrategy, appliedBoss,
+      interactionsLocked, timeWeightStrategy, appliedBoss,
     }
     for (const [key, value] of Object.entries(initialState)) {
       const target = stateRefs[key]
@@ -1401,8 +1384,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     setAxisState,
     applyStunAxisPreset,
     autoYidhariAxis,
-    interactionScaleCeiling,
-    interactionScaleMonotone,
     interactionsLocked,
     timeWeightStrategy,
     setTimeWeightStrategy,

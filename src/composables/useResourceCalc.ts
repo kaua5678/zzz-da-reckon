@@ -55,9 +55,8 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
  *  - 目录数据按**对象身份**进键（`catalog` / `teammateBuffGroups` / `buildRecommendations` 整体替换才会变；
  *    全库无原地改目录的生产代码，已核）。
  *  - **读 `$state` 的每个字段本身就建立了响应式依赖**——键计算让 calcOutput 依赖全部 state，比原来更宽，不会漏失效。
- *  - 求值有副作用的路径**不记忆**：降配单调闸门（`interactionScaleMonotone`）经 `solveTeam` 返回
- *    `ceilingWriteBack` 后在 `computeCalcOutput` 内写回 `interactionScaleCeiling`（CC-10 起写回点外移，
- *    见 `resourceCalc/solveTeam.ts` 头注释），命中会跳过这次写回 ⇒ 闸门开启时直接走原路径。
+ *  - 求值**无副作用**（`solveTeam` 只读输入、不写 store）⇒ 命中跳过求值是安全的，记忆化没有例外路径；
+ *    将来若引入求值内写 store，该路径必须绕过记忆化（命中会跳过那次写）。
  *  - 结果对象被视为只读（全库无对 resourceResult/stunPool/anomalyPool 的原地写，已 grep 核）。
  */
 /** 容量 16：难度爬梯单队 G2 实测 12 个不同配置（8 装不下、命中率掉一半）；每个 useResourceCalc 实例各一份 */
@@ -144,9 +143,6 @@ export function createResourceCalc(
       })(),
       // 动态合轴吸收上限（全局变量，用户口径 2026-09-19 v3；见 data/resourceDefaults#DEFAULT_COMBO_ALIGN_ABSORB_RATIO）
       comboAlignAbsorbRatio: configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
-      // 降配档单向闸门（用户口径 2026-09-20；缺省 ceiling=1 / monotone=false ⇒ 普通计算路径逐位不变）
-      interactionScaleCeiling: configStore.interactionScaleCeiling,
-      interactionScaleMonotone: configStore.interactionScaleMonotone,
       // 手动锁定交互（用户口径 2026-10-06；缺省 false ⇒ 普通计算路径逐位不变）：勾选后非轴降配整块不执行，
       // 用户填的交互次数不被砍，装不下时由 overflowSeconds / truncationBySlot 如实上报截断
       interactionsLocked: configStore.interactionsLocked,
@@ -245,7 +241,7 @@ export function createResourceCalc(
     // CC-419：守卫后的 `base` 显式下传（computeCalcOutput → solveTeam），下游不再接受 `ResourceCalcConfig | null`。
     const base = resourceConfig.value
     if (!base || !catalogStore.ready) return null
-    if (!calcOutputMemoEnabled || configStore.interactionScaleMonotone) {
+    if (!calcOutputMemoEnabled) {
       calcOutputMemoStats.bypass++
       return freezeCached(computeCalcOutput(base))
     }
@@ -280,17 +276,10 @@ export function createResourceCalc(
     const lockedStunCount = configStore.enemy.stunCountLock ?? -1
     const stunWindowDur = computeWindowDuration()
     const stunEffTime = effectiveBattleTime(configStore.enemy)
-    // CC-10（2026-09-25）：外层不动点 + S3 可行化决策整段原样外提 `resourceCalc/solveTeam.ts#solveTeam`。
-    // 唯一 store 副作用（降配闸门 ceiling 下调）改由本函数在 solveTeam 返回后执行 —— 原写回是
-    // stageResolveFeasibility 的最后一条语句，之后到原 :653 再无 resourceConfig/configStore 读，
-    // 故读写时序逐位不变（详见 solveTeam.ts 头注释）。
-    const { out, ceilingWriteBack } = solveTeam({
+    // CC-10（2026-09-25）：外层不动点 + S3 可行化决策整段外提 `resourceCalc/solveTeam.ts#solveTeam`（只读输入、不写 store）。
+    return solveTeam({
       runCalcRound, lockedStunCount, stunWindowDur, stunEffTime, resourceConfig: base,
-    })
-    if (ceilingWriteBack !== null) {
-      configStore.interactionScaleCeiling = Math.min(configStore.interactionScaleCeiling, ceilingWriteBack)
-    }
-    return out
+    }).out
   }
 
   // 下游统一从 calcOutput 取（名称保持，伤害池/结果页等无需改动）

@@ -3,7 +3,7 @@
  *
  * ① 搜索型调用（难度爬梯：大量「改 → 读 → 改回」）在记忆化开/关下**逐位相同**，且确有命中；
  * ② 命中后改任何进键的输入都会失效（改 store 字段 / 机制参数 / 行融合规则），不返回陈旧结果；
- * ③ 降配单调闸门开启时绕过记忆化（该路径在求值内写回 store）。
+ * ③ （已删：原「降配单调闸门开启时绕过记忆化」随闸门删除，T23；编号保留，历史文档按 ④⑤ 引用。）
  * ④ 审查补测（ENG-R1）：冷热启动缓存下 on/off 对照、命中结果被深冻结后下游仍逐位相同（下游不原地改）、
  *    目录整体替换失效、纯 UI 态（切 tab/切槽）不失效也不改值。
  * ⑤ CC-354/355 源码锁：记忆化键深读 config.$state ⇒ 写入即失效，不存在「手动失效」这个概念。
@@ -89,20 +89,6 @@ describe('calcOutput 记忆化', () => {
     expect(d2).toBeGreaterThan(d0)
     setActiveRowFusionRules([])
     expect(calc.teamTotalDamage.value).toBe(d0)
-  }, 300_000)
-
-  it('降配单调闸门开启时绕过记忆化', async () => {
-    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    await catalog.loadBuildRecommendations()
-    const calc = useResourceCalc()
-    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1521-1361-1311')!)
-    config.interactionScaleMonotone = true
-    const s0 = getCalcOutputMemoStats()
-    void calc.teamTotalDamage.value
-    const s1 = getCalcOutputMemoStats()
-    expect(s1.bypass).toBeGreaterThan(s0.bypass)
-    expect(s1.hits).toBe(s0.hits)
-    expect(s1.misses).toBe(s0.misses)
   }, 300_000)
 
   it('清空热启动缓存后，同配置记忆化开/关逐位相同（命中不依赖热启动种子）', async () => {

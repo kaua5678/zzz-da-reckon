@@ -21,7 +21,7 @@
  *
  * ⚠ **不是**「跨降配档累积」（原假设，已证伪）：`core/resource.ts:211` 每次调用都清零
  * `timeBudgetExcess`，`resourceConfig` computed 每次产出**新 cfg 数组** ⇒ 档与档之间无残留。
- * 实测把候选集压成单档 `{0.125}`（`interactionScaleCeiling=0.125 + monotone`）与全表 8 档
+ * 实测把候选集压成单档 `{0.125}`（r695 当时借降配档单调闸门实现，该闸门已于 T23 删除）与全表 8 档
  * 的 `acc` **逐位相同**（62.569 vs 62.569）。
  *
  * ## 修法

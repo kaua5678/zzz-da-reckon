@@ -8,9 +8,8 @@
  *
  * 与 composable 的通信面 = `SolveTeamInput`：把原先闭包读取的 4 个量显式化
  * （`lockedStunCount` / `stunWindowDur` / `stunEffTime` / `resourceConfig`）+ 注入单轮工厂
- * `runCalcRound`。**唯一 store 副作用**（降配闸门 `interactionScaleCeiling` 下调）改为返回值
- * `ceilingWriteBack`，由调用方在 `solveTeam` 返回后执行——写回之后到原 :653 再无
- * `resourceConfig` / `configStore` 读，故读写时序逐位不变（设计卡 §CC-10 已核）。
+ * `runCalcRound`。**无 store 副作用**：只读输入、只返回结果（原唯一写回 = 降配档单调闸门下调
+ * ceiling，已随闸门删除，T23）。
  *
  * 依赖方向：本文件**不得** import `vue` / `pinia` / `@/stores/*` / `./useResourceCalc`——
  * 抽离的意义就是求解器可脱 Vue 调用，判据 `__tests__/solveTeamPurity.test.ts` 锁死。
@@ -60,23 +59,15 @@ export interface SolveTeamInput {
   resourceConfig: ResourceCalcConfig
 }
 
-/** 外层求解产物：`out` = 组装好的整轮结果；`ceilingWriteBack` 非 null ⇒ 调用方执行降配闸门写回。 */
+/** 外层求解产物：`out` = 组装好的整轮结果。 */
 export interface SolveTeamResult {
   /** CC-418：恒非 null —— `runCalcRound` 已无 null 出口（null 轮概念退役），外层至少跑一轮。 */
   out: CalcRoundResult
-  /** 降配档单调闸门写回：非 null ⇒ 调用方执行 `configStore.interactionScaleCeiling = Math.min(当前值, 该值)` */
-  ceilingWriteBack: number | null
 }
 
-/**
- * 外层不动点 + S3 可行化决策（函数体 = 原 `useResourceCalc.ts:254–652` 原样，仅做三处机械替换：
- * `resourceConfig.value?.` → `resourceConfig?.` ×3；store 写回改 `ceilingWriteBack`；末尾
- * `return out` → `return { out, ceilingWriteBack }`）。
- */
+/** 外层不动点 + S3 可行化决策（函数体 = 原 `useResourceCalc.ts:254–652` 外提，CC-10；只读输入、不写 store）。 */
 export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   const { runCalcRound, lockedStunCount, stunWindowDur, stunEffTime, resourceConfig } = input
-  /** 降配闸门写回值（原 :624–626 在函数内直接写 configStore；此处改为返回值由调用方执行） */
-  let ceilingWriteBack: number | null = null
   /** 轴退化判据容差（秒）：收敛后仍留 ~2s 合轴可覆盖的量化残差（与 timeLedger 测试口径一致） */
   const AXIS_FALLBACK_TOLERANCE_SEC = 2
   /** Σ前台行净占用（扣轴内合轴节省 + 招式合轴抵扣，max 不叠加；与 iterate 平A池、
@@ -448,23 +439,9 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           stunEffTime,
           toleranceSeconds: TIME_BUDGET_TOLERANCE_SECONDS,
         })
-        // @fact engine:降配档单调闸门 口径: 闸门开启（`interactionScaleMonotone`）时，自动降配档**只降不升**——① 候选 scale 不得高于 `interactionScaleCeiling`（每次采纳后下调到该档，单调不进位）；② 候选集内无可行解时**继续往下降**（取最小档如实上报截断），**不得退回基线全量交互**（旧行为 = 回升，实测 C0 合轴率 0.10 档：退回 scale=1 ⇒ 闪反 3→10、伤害 24.36→20.99M，单调性换向破坏）。目的 = 「合轴降 ⇒ 难度降 + 伤害降；交互升 ⇒ 难度升」各因子同向（用户口径 2026-09-20）| 据 用户@2026-09-20·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/interactionScaleMonotone.test.ts | 锚 src/composables/resourceCalc/solveTeam.ts#stageResolveFeasibility | 信 确认
-        // ⟳复核: 闸门默认关闭态（monotone=false）再动、或 `selectDownscaleScale` 的 null 兜底语义再动时，复核「普通计算路径逐位不变」+「闸门开启后合轴率↓ ⇒ 交互档不增」（timeGolden/timeLedgerInvariants + interactionScaleMonotone.test.ts） | 到期 2026-12-31
-        /**
-         * **降配档单向闸门**（用户口径 2026-09-20）：候选 scale 不得高于 `interactionScaleCeiling`。
-         * 治「合轴率↓ 但降配档回升 ⇒ 伤害反而涨」的反转（实测 C0：合轴率 0.20→0.10 时
-         * 交互档 0.25→0.375、闪反 3→4、伤害 24.21M→24.36M）。缺省 ceiling=1 ⇒ 候选集不变。
-         */
-        const monotoneGate = resourceConfig.interactionScaleMonotone === true
-        const scaleCeiling = resourceConfig.interactionScaleCeiling ?? 1
-        const candidates = scaleCeiling >= 1
-          ? DOWNSCALE_SCALES
-          : DOWNSCALE_SCALES.filter(s => s <= scaleCeiling + 1e-9)
-        /** 最近一次候选试算（闸门兜底复用，见下） */
-        let lastCandidateTrial: { scale: number; trial: RoundOut } | null = null
+        const candidates = DOWNSCALE_SCALES
         const best = selectDownscaleScale(candidates, scale => {
           const trial = runOuterLoop(true, scale)
-          lastCandidateTrial = { scale, trial }
           const trialTruncation = trial.out.resourceResult?.overflowSeconds ?? 0
           // CC-149（第 179 轮）：绝对可行**独立判定**，且绝对可行即接受。
           // 旧写法 `feasible = accepted && …` 让兜底的相对三臂否决了首选的绝对可行——违背两层字典序
@@ -489,32 +466,6 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           r = best.value
           axisFallback = hadAxis
           interactionScale = best.scale
-        } else if (resourceConfig.interactionScaleMonotone && candidates.length > 0) {
-          /**
-           * **闸门下的退化兜底**（用户口径 2026-09-20：正因子单调）：
-           *
-           * `selectDownscaleScale` 返回 null 时，旧行为是**保基线态**（= 全量交互）。
-           * 但闸门开启后这不是「不变」而是**回升**——实测 C0 合轴率 0.10 档：ceiling 已压到 0.25，
-           * 候选集 {0.25,...,0.0625} 无可行解 ⇒ 退回基线 scale=1 ⇒ 闪反 3→10、伤害 24.36→20.99M，
-           * 难度轴的单调性又被破坏（只是换了个方向）。
-           *
-           * 语义修正 = **继续往下降**：取候选集里最小档（交互最少、最省时间），宁可如实上报截断也不回升。
-           * 这样「合轴率↓ ⇒ 交互档不增 ⇒ 伤害同向」在全区间成立。
-           */
-          const floorScale = candidates[candidates.length - 1]!
-          // 复用扫描里同档那次试算（2026-09-23 mcp-engine-r2）：走到这里 ⇒ `best == null` ⇒ 全部候选都被试过、
-          // 最后一次就是 floorScale；同档试算与次序无关（判据⑤受控复现：0.25 单独 vs 跟在 0.0625 后逐位相同），
-          // 省一次完整外层不动点。防御：档不匹配（将来搜索策略改成惰性跳档）就照旧重跑。
-          const reuse = lastCandidateTrial as { scale: number; trial: RoundOut } | null
-          const trial = reuse && reuse.scale === floorScale ? reuse.trial : runOuterLoop(true, floorScale)
-          r = trial
-          axisFallback = hadAxis
-          interactionScale = floorScale
-        }
-        // 采纳后把闸门下调到本次落点（单调不进位）：下一次求值只允许 ≤ 本次。
-        // 写回经 SolveTeamResult.ceilingWriteBack 交给 composable 执行（唯一 store 副作用外移；读写时序不变）。
-        if (monotoneGate && interactionScale !== undefined) {
-          ceilingWriteBack = interactionScale
         }
       }
     }
@@ -541,5 +492,5 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         },
       }
     : baseOut
-  return { out, ceilingWriteBack }
+  return { out }
 }
