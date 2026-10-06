@@ -463,6 +463,32 @@ export interface ResourceCalcConfig {
    * 用数值推断会把「起步」误判成「未开启」。显式开关让语义无歧义，且缺省 false ⇒ 普通路径零影响。
    */
   interactionScaleMonotone?: boolean
+  /**
+   * **手动锁定交互**（编排层注入；配装页「手动锁定交互」勾选框，用户口径 2026-10-06）：
+   * 「用户选择交互次数已经确定了交互这一块的难度设置，就可以尽量满足，自动调整合轴率和其他内容来做到。
+   *  实在做不到就说哪里做不到。用户没选择交互，就自动计算低交互与高交互，也就是难度曲线的计算了」。
+   *
+   * **语义**：`true` ⇒ 用户在交互栏填的次数（弹刀/闪避反击/格挡/双反）是**用户明确意图**，
+   * `stageResolveFeasibility` 的**非轴降配整块不执行**——不缩交互、不改结构，装不下时保留基线态、
+   * 由 `resourceResult.overflowSeconds` / `convergence.truncationBySlot` **如实上报截断**
+   * （`convergence.interactionScale` 保持 `undefined`）。
+   * `false`/缺省 ⇒ 普通路径**逐位不变**：超预算照旧自动降配缩交互，服务难度曲线。
+   *
+   * **为什么是独立开关而不是用数值推断**（同 `interactionScaleMonotone` 的理由）：降配触发是
+   * 「超预算」这一运行期事实的函数，`scale = 1` 既可能是「用户锁定」也可能是「恰好装得下」
+   * ——从结果反推会把「没触发降配」误判成「已锁定」。显式开关让「用户意图」与「引擎判定」可区分，
+   * 且缺省 `false` ⇒ 既有路径零影响。
+   *
+   * **同款先例**：锁失衡次数（`enemy.stunCountLock ≥ 0`）在 `resourceCalc/solveTeam.ts` 里
+   * 一律不触发退化/降配、超时如实上报——本字段是同一原则补到交互次数上。
+   *
+   * ⚠ **锁定 ≠ 不做自动调整**：合轴吸收（G5 / `comboAlignAbsorbRatio`）在 `core/resource/helpers.ts#iterate`
+   * 内部，**本来就在降配之前**生效 ⇒ 锁定后它自然先跑（把队友前台按溢出量并行吸收），
+   * 只有吸收不完的剩余才成为截断。故本字段不新增任何「先提高合轴率」的调用。
+   * ⚠ 与 `interactionScaleCeiling` / `interactionScaleMonotone` 正交：那两个管**降配档单调性**，
+   * 本字段管**要不要降配**；同时开启时本字段优先（不降配 ⇒ 档位闸门无从作用）。
+   */
+  interactionsLocked?: boolean
   /** 异常/紊乱/乱流喧响奖励（含伴随50%）按槽位注入，由上一轮异常池结果回填；参与终结技次数推导 */
   anomalyDecibelBonusPerSlot?: number[]
   /** 3个角色的操作配置 */

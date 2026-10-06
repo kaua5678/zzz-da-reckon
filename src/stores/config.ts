@@ -534,6 +534,20 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   /** 降配档单调闸门开关（见上；难度曲线跑一般化档位时置 true，缺省 false = 历史行为） */
   const interactionScaleMonotone = ref(false)
   /**
+   * **手动锁定交互**开关（用户口径 2026-10-06）：
+   * 「用户选择交互次数已经确定了交互这一块的难度设置，就可以尽量满足，自动调整合轴率和其他内容来做到。
+   *  实在做不到就说哪里做不到。用户没选择交互，就自动计算低交互与高交互，也就是难度曲线的计算了」。
+   *
+   * 勾选 ⇒ 用户在交互栏填的次数 = **用户明确意图**，引擎不改结构（不缩交互），装不下时如实上报截断；
+   * 不勾选（缺省）⇒ 现状逐位不变：超预算时自动降配缩交互，服务难度曲线。
+   *
+   * 同款先例 = 锁失衡次数（`enemy.stunCountLock ≥ 0`，`resourceCalc/solveTeam.ts#stageResolveFeasibility`
+   * 的 `lockedStunCount < 0` 闸门）：「用户明确意图 ⇒ 引擎不改结构」。
+   * ⚠ 与 `interactionScaleMonotone` / `interactionScaleCeiling` 正交：那两个管**降配档单调性**，
+   * 本开关管**要不要降配**；同时打开时本开关优先（不降配 ⇒ 档位闸门无从作用）。
+   */
+  const interactionsLocked = ref(false)
+  /**
    * 平A池权重·**分配策略三态**（默认 `'balanced'`；用户 2026-09-10 裁决）。
    *
    * · `'static'`   = **不跑策略**：用静态默认权重（强攻/异常/击破=1、支援/防护=0）或用户手填值。
@@ -1110,7 +1124,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
       team, globalBuffs, teammateBuffSelections, wEngineEffectCoverages, discEffectCoverages,
       resourceUtilization, mechanicSettings, teamMechanicSettings, anomalyUtilizationRates, anomalySettlementShares,
       enemy, comboAlignOverrides, stunAxes, stunAxisPlans, useStunAxis, autoYidhariAxis,
-      interactionScaleCeiling, interactionScaleMonotone, timeWeightStrategy, appliedBoss,
+      interactionScaleCeiling, interactionScaleMonotone, interactionsLocked, timeWeightStrategy, appliedBoss,
     }
     for (const [key, value] of Object.entries(initialState)) {
       const target = stateRefs[key]
@@ -1370,6 +1384,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     autoYidhariAxis,
     interactionScaleCeiling,
     interactionScaleMonotone,
+    interactionsLocked,
     timeWeightStrategy,
     setTimeWeightStrategy,
     getTeamMechanicSetting,

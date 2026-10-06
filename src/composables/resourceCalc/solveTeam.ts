@@ -403,7 +403,26 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       //   ③ `slack(trial) ≤ slack(base) + 1s` —— 不许把省下的时间变成留白/发呆（用户：「不搞表面工程」）。
       // 这三条一起 = 「**不比改动前更差**，且尽量消掉截断」⇒ 相对棘轮（只拦变差）**构造上不可能变红**，
       // 变红的只可能是 timeGolden 的硬字段（那是有意的改进，按规则 10 归因后重生）。
-      if ((overBudget(r) || truncatedToo(r.out)) && !r.out.resolvedAxes?.length) {
+      /**
+       * **手动锁定交互闸门**（用户口径 2026-10-06）：配装页勾「手动锁定交互」后，用户在交互栏填的
+       * 次数 = **用户明确意图**（「用户选择交互次数已经确定了交互这一块的难度设置，就可以尽量满足，
+       * 自动调整合轴率和其他内容来做到。实在做不到就说哪里做不到」）⇒ 非轴降配**整块不执行**：
+       * 不缩交互、不改结构，`interactionScale` 保持 `undefined`，装不下时由
+       * `overflowSeconds` / `convergence.truncationBySlot` **如实上报截断**。
+       *
+       * 同款先例 = 上方 `lockedStunCount < 0` 的「用户明确意图 ⇒ 引擎不改结构」（锁失衡次数时
+       * 退化/降配一律不触发，超时如实上报）——本闸门是同一原则补到交互次数上。
+       * ⚠ **不删降配代码**：不勾选（缺省 `false`）时下方整块仍服务难度曲线，逐位不变。
+       * ⚠ **不需要新增「先提高合轴率」的调用**：合轴吸收（G5 / `comboAlignAbsorbRatio`）在
+       * `core/resource/helpers.ts#iterate` 内部，**本来就在降配之前**生效 ⇒ 锁定后它自然先跑
+       * （队友前台按溢出量并行吸收），只有吸收不完的剩余才成为截断。
+       * ⚠ 只闸**非轴降配**（本块）：上方轴退化换的是「用不用轴」，不缩交互次数（其 `runOuterLoop`
+       * 不带 scale），故不在本闸门语义内。
+       */
+      // @fact engine:降配搜索/手动锁定交互 口径: `ResourceCalcConfig.interactionsLocked === true`（配装页「手动锁定交互」勾选）= 用户在交互栏填的次数是**用户明确意图** ⇒ 非轴降配整块不执行（`downscaleAllowed` 闸门），`interactionScale` 保持 `undefined`，装不下时由 `overflowSeconds`/`truncationCuts` 如实上报截断；缺省 false ⇒ 本条路径逐位不变（全库预设 ×6 场景 zd DIFF 0）。同款先例 = 锁失衡次数（`lockedStunCount < 0`）。**不新增「先提高合轴率」的调用**——合轴吸收（G5）本就在 `core/resource/helpers.ts#iterate` 内、降配之前生效，锁定后自然先跑（实测 ratio 0→缺省→1 截断 93.69→93.61→31.23s）| 据 用户@2026-10-06 | 验 src/composables/__tests__/interactionsLocked.test.ts | 锚 src/composables/resourceCalc/solveTeam.ts#stageResolveFeasibility | 信 确认
+      // ⟳复核: 若降配触发臂（`overBudget`/`truncatedToo`）或合轴吸收在 `iterate` 内的**先后顺序**再动，须重对「锁定态下合轴先跑」与「缺省路径逐位不变」（interactionsLocked.test.ts ①②③ + zd.sh）| 到期 2027-01-31
+      const downscaleAllowed = resourceConfig.interactionsLocked !== true
+      if (downscaleAllowed && (overBudget(r) || truncatedToo(r.out)) && !r.out.resolvedAxes?.length) {
         // 搜索策略（2026-09-11 第三版，用户裁决）：**枚举候选 scale + 硬约束「真撑得下」取最大可行**。
         // 前两版教训：① 二分假定"可行域是 scale 的下闭区间"，把「截断 ≤1s」并进验收后会在
         // `yixuan-roxy-lucia` 上把好试算全拒（基线 3.78s 超预算）；② "最小截断优先"会把结构性溢出队压到

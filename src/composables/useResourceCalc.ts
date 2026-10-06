@@ -146,6 +146,9 @@ export function createResourceCalc(
       // 降配档单向闸门（用户口径 2026-09-20；缺省 ceiling=1 / monotone=false ⇒ 普通计算路径逐位不变）
       interactionScaleCeiling: configStore.interactionScaleCeiling,
       interactionScaleMonotone: configStore.interactionScaleMonotone,
+      // 手动锁定交互（用户口径 2026-10-06；缺省 false ⇒ 普通计算路径逐位不变）：勾选后非轴降配整块不执行，
+      // 用户填的交互次数不被砍，装不下时由 overflowSeconds / truncationBySlot 如实上报截断
+      interactionsLocked: configStore.interactionsLocked,
       characters,
     }
   })

@@ -194,6 +194,11 @@
                         />
                         <span class="muted" style="font-size: 12px; margin-left: 8px">% 队友前台可被吸收（0 = 不吸收；缺省 40）</span>
                       </div>
+                      <!-- 手动锁定交互（用户口径 2026-10-06）：勾选 = 下方交互次数是用户明确意图，引擎不缩量、装不下如实报截断 -->
+                      <div class="guarantee-row" title="勾选：下方「战斗动作次数」按你填的算——次数是明确的难度设定，引擎不再自动缩减交互，而是尽量用合轴（队友前台并行吸收）装下；实在装不下就在结果页如实报「时间截断 X 秒」。不勾选：引擎按难度曲线自动计算低/高交互档（超时会自动缩小交互次数）。">
+                        <n-checkbox :checked="configStore.interactionsLocked" @update:checked="v => (configStore.interactionsLocked = v)">手动锁定交互</n-checkbox>
+                        <span class="muted" style="font-size: 12px; margin-left: 8px">{{ interactionsLockedHint }}</span>
+                      </div>
                       <div class="section-title">战斗动作次数</div>
                       <n-grid cols="6" :x-gap="8">
                       <n-gi>
@@ -958,7 +963,20 @@ function setComboAlignAbsorbPct(v: number) {
 }
 // 自动补齐（保底语义，轴模式或保底开关驱动，现唯一产出者般岳；CC-296 起非轴也显示）：弹刀/双反在交互栏输入之上补的量（懒计算，仅产出者槽位选中时非空；
 // 槽位 = 挂出 computeInteractionTopUp 能力的角色（CC-293），故弹刀提示不必再判角色 id —— CC-65b）
-const { interactionTopUp, parrySplitResult, guaranteeStunShortfallResult, decibelGuaranteeResult } = useResourceCalc()
+const { interactionTopUp, parrySplitResult, guaranteeStunShortfallResult, decibelGuaranteeResult, resourceResult } = useResourceCalc()
+/**
+ * 手动锁定交互·诚实显示（用户口径 2026-10-06「实在做不到就说哪里做不到」）：
+ * 勾选后引擎不缩交互 ⇒ 装不下的部分不再被降配吸收，只会表现为**装配期截断**。
+ * 这里把 `overflowSeconds` 直接露出来（引擎读数，非页面自算），避免「勾了却没反应」的错觉。
+ * 未勾选时不显示（自动降配会把截断压到容差内，读数没有解释价值）。
+ */
+const interactionsLockedHint = computed(() => {
+  if (!configStore.interactionsLocked) return '（未勾选：引擎按难度曲线自动调交互次数）'
+  const cut = resourceResult.value?.overflowSeconds ?? 0
+  return cut > 1
+    ? `（已锁定：装不下，时间截断 ${cut.toFixed(1)}s —— 结果页「时间截断」有被砍招式明细）`
+    : '（已锁定：当前配置装得下，按你填的次数计算）'
+})
 /** 保底4失衡·未达成如实显示（CC-156）：弹刀预算内补不满时引擎按实际池计数算，这里把降级露出来 */
 const guaranteeStunHint = computed(() => {
   const s = guaranteeStunShortfallResult.value
