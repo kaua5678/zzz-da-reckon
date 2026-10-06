@@ -4859,3 +4859,10 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **验证**：vue-tsc 0；guards 26 / tokens 12 / data 367 / specs 1120 / recording 189；vitest 528 文件 / 4528 例（263+265、2179+2349）；build OK。
 - **回退**：`git revert b1885564`。
 - **附带发现**：(a) 失衡轴页「覆盖率」读 `calcStunAxis` 自算值，不扣决算截断（违反规则 11；预设库 0 队触发）；(b) 栈的 `stunSecondsLost` / `truncatedWindows` 是死输出，而 `specs/agents/1551.json` 备注称其回传覆盖率 → (a)(b) 立 queue §3 T24。(c) CC-150 外层 2-环把 `stunPool` 钳到读入 K，但不重算 `stunCoverage`：`auto-1051-1141-1451` 池 5 次、覆盖率按 7 窗算出 62.22%，伤害池按 62% 折易伤，轮内异常池也用了未钳值 ⇒ 事后单钳覆盖率修不干净，要先定「2-环成员按读入 K 重算哪些量」，记未决，不立卡。
+
+### 24.190 r710：T24 关闭——失衡轴页覆盖率单一来源（`5b08c0c4`，lane arena-G）
+
+- **做了**：§24.189 附带发现 (a)(b) 按 queue §3 T24 落地。失衡轴页汇总行改读引擎 `stunCoverage`（含 `verdictSecondsLost`）；`calcStunAxis` 删自算覆盖率与死输入 `battleTime` / `invincibleTime` / `bossStunValue`；栈删零读者字段 `truncatedWindows` / `stunSecondsLost`；`specs/agents/1551.json` 备注订正为实际链路。引擎数值逐位不变（zd 0）。
+- **结论**：覆盖率只剩一个实现（`computeStunCoverage`，convergence 决算截断段按实数窗口扣损失秒）；栈的整数窗计数通道不再有「看似回传覆盖率」的输出。
+- **UI 默认态观察**：auto-1051-1141-1451 失衡次数 5、引擎覆盖率 44.4%，与旧自算同值。CC-150 记的 62.22% 只见于 r709 预设库探针口径，差在哪未查。
+- **回退**：`git revert 5b08c0c4`。
