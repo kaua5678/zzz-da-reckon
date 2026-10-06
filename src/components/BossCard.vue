@@ -153,7 +153,8 @@ const foldReadout = computed(() => {
     const segs = (applied.counterAssistGroups ?? []).reduce((a, b) => a + Math.max(1, Math.floor(b)), 0)
     return `本局反制支援 ×${(applied.counterAssistGroups ?? []).length}（化解 ${segs} 段，不产弹刀）`
   }
-  return `按弹刀计：正常 ${applied.parryTotal ?? 0} / 无突击 ${applied.parryNoFollowUpTotal ?? 0}`
+  const { parryTotal, parryNoFollowUpTotal } = configStore.bossParryTotals
+  return `按弹刀计：正常 ${parryTotal} / 无突击 ${parryNoFollowUpTotal}`
 })
 /** 队内是否有带反制支援招式的角色（判据 = 数据层登记表，与引擎同源） */
 const teamHasCounterAssist = computed(() => configStore.team.some(c => !!counterAssistOf(c?.agentId)))

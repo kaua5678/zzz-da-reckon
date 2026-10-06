@@ -347,7 +347,7 @@ describe('平A池权重·分配策略', () => {
       { stunVuln: 1, stunTime: 16 },
       { battleTime: 180, shieldCount: 0, energyShield: 0, parryTotal: 13 },
     )
-    expect(config.appliedBoss?.parryTotal).toBe(13)
+    expect(config.bossParryTotals.parryTotal).toBe(13)
     // 输入刻意**高于**强制次数（主C 8 + 击破 8 = 16 > 13）→ 搜索可以下调，但不得低于 13。
     // 注：低于下限的部分由 `core/parrySplit.ts` 负责补齐（单一事实源），本策略只承诺「不下调越过它」。
     config.setActionCount(0, 'parryCount', 8)

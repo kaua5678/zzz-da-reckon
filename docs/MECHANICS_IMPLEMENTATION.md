@@ -62,7 +62,7 @@
 | 2000002 | **[秽盾]** | **已建模** | 按用户 2026-09-18 裁决，秽盾建模为破盾回能/闪能，通道已落地（`src/core/resource/helpers.ts#calcEnergySource`：`shieldBreakGift` / `energyShieldBreakGift`）；削盾量/防御减伤等三通道按口径明确不做。⚠ **2026-09-13 用户已纠正旧口径**：秽盾 ≠ 无敌时间（见 `src/core/effectiveTime.ts` 头注释的 `@fact engine:time/无敌≠秽盾`）。 |
 | 2000001 | [侵蚀壁垒] | **已挂账** | 暴击伤害抗性/攻击力/抗打断提升 + 全队随时间损失生命值；被打破后部分生命值转化 + 回能。零消费零登记（挂账前）。 |
 | 2000004 | [连携招架] | **已挂账** | X 型金光提示连点两次 → 两代理人共同招架、累积大量失衡值，成功后可接连携突击。零消费零登记。与已建模的 [控制技]/反制支援（`data/counterAssists.ts`）是**不同机制**，勿混。 |
-| 2000003 | [控制技] | 已建模 | 无闪光提示、无视无敌的连续数段攻击 → `defaults.counterAssistGroups` + `stores/config.ts#syncBossInteractionPlan`（详见 `GAME_TERM_TO_CODE_FIELD.md` §11）。 |
+| 2000003 | [控制技] | 已建模 | 无闪光提示、无视无敌的连续数段攻击 → `defaults.counterAssistGroups` + `stores/config.ts#bossParryTotals`（详见 `GAME_TERM_TO_CODE_FIELD.md` §11）。 |
 
 ### 角色名词真缺口（3 条，按「简化等价已接入 / 本体未建」区分）
 

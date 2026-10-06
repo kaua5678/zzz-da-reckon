@@ -282,9 +282,9 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
       加 `stunGift` 直接计入 stunCount 推导（不计抗性/返还），反推的非弹刀基数也加它（减少缺口）。
     - **控制技（紫光技）组 × 反制支援（2026-09-12 建通道，暂无 Boss 录数据）**：预设
       `defaults.counterAssistGroups: number[]` **逐组记招架段数**（数组长度 = 组数；一组控制技 = 连续数段无闪光提示
-      的攻击 + 一次完美反制，术语 2000003）。折算在 **store 侧**（`stores/config.ts#syncBossInteractionPlan`，
-      `flush:'sync'` 的 watch 驱动，**不改 convergence**）：队内有反制支援角色且开关 `boss.counterAssistReplace`
-      （缺省开）为真 ⇒ **整组不并入** `appliedBoss.parryTotal/parryNoFollowUpTotal`（用户裁决，见「否决记录」）；
+      的攻击 + 一次完美反制，术语 2000003）。折算在 **store 侧**（`stores/config.ts#bossParryTotals`，
+      computed getter，派生值不写回 store——r708 前是 `flush:'sync'` watch 写回 `appliedBoss`；**不改 convergence**）：队内有反制支援角色且开关 `boss.counterAssistReplace`
+      （缺省开）为真 ⇒ **整组不并入**生效弹刀总数 `bossParryTotals.parryTotal/parryNoFollowUpTotal`（用户裁决，见「否决记录」）；
       否则每组并入「1 次正常弹刀 + 段数−1 次无突击弹刀」（= 旧手工抄录口径的自动化，折算式与其等价由此背书）。承接槽位 `configStore.counterAssistSlot`（可设
       `boss.counterAssistSlot` 指定，指定槽位没这招则回退自动，防静默失效）。执行行 =
       `core/resource/helpers#buildExecutions` 反制支援一行、**一次动作**（本体 1611028 + 专属支援突击 1611030 琢形
@@ -698,7 +698,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
       托底（`appliedBoss.parryTotal=13`，叶释渊量级）：8103M→8413M（+3.83%）、87 提升/40 无变化/39 拒绝/55 弹刀改动/失衡仅 2 队变化；top `auto-1521-1361-1311` +23.9%（弹刀未动⇒纯权重收益）、`auto-1181-1561-1581` +15.7%（弹刀再分配）、
       `auto-1311-1521-1361` +19.7%。
     - **判据·弹刀下限=boss 预设强制次数（用户裁决 2026-09-10）**：允许减少交互（「有时候主c的平a比队友弹刀好用」）但不得低于 boss 预设最低次数（「boss 预设的次数是强制完成的」）⇒ 阶梯在 `dir < 0` 时加下限判据
-      `Σparry + dir ≥ appliedBoss.parryTotal`（与 `core/parrySplit.ts` 同源；低于下限的补齐由 `parrySplit` 负责，本策略只承诺不下调越过它、不造第二份）。实测下限起作用：`auto-1181-1561-1581` 弹刀 6/6/6→12/2/0（18→14 ≥ 13，从主C
+      `Σparry + dir ≥ bossParryTotals.parryTotal`（与 `core/parrySplit.ts` 同源；低于下限的补齐由 `parrySplit` 负责，本策略只承诺不下调越过它、不造第二份）。实测下限起作用：`auto-1181-1561-1581` 弹刀 6/6/6→12/2/0（18→14 ≥ 13，从主C
       转移到击破/支援位），总伤 +15.7%。
     - **判据·弹刀口径三件事（用户裁决 2026-09-10）**：· 不带支援突击的弹刀对半分：`core/parrySplit.ts` `mainDpsNoFollowUp = floor(total/2)`、`breakerNoFollowUp = 余`（奇数归击破位），缺口抵扣只用击破位那一半；消费端 `useResourceCalc`
       两槽分别写 `parryNoFollowUpCount`（无击破位队仍全归主C），`parrySplitResult` 投影补 `mainDpsNoFollowUp`，并修 `perSlotParry` 主C 那半的 215 喧响奖励漏计；测试 `parrySplit.test.ts`/`parrySplitInt.test.ts` 21 tests 全绿（含「15 → 8/7」

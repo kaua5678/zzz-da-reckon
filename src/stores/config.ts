@@ -20,7 +20,7 @@ export { getInteractionDefaults, roleInteractionBaseline, hasCustomInteractionDe
 import { autoStunAxisPresetOf, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
 import type { MechanicTeamMember } from '@/mechanics/types'
-import type { AppliedBossPreset, PhaseBuffEffect } from '@/types/bossPreset'
+import type { AppliedBossPreset, BossParryTotals, PhaseBuffEffect } from '@/types/bossPreset'
 import { counterAssistOf } from '@/data/counterAssists'
 import { localized } from '@/utils/format'
 import { elementStatKey } from '@/utils/elementStatKeys'
@@ -1033,8 +1033,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   /**
    * 当前应用的 Boss 预设（仅内存态，用于 UI 高亮 + 计算器弹刀反推/喧响赠礼；不随 enemy 持久化）。
-   * `parryTotal`/`parryNoFollowUpTotal` 存**生效值**（含控制技组在无替换时的并入量），
-   * 由 `syncBossInteractionPlan` 按队伍/开关折算；预设原值另存 `presetParry*` 快照（见 types/bossPreset）。
+   * 只存输入（预设原值）；生效弹刀数是派生值，见下方 `bossParryTotals`。
    */
   const appliedBoss = ref<AppliedBossPreset | null>(null)
 
@@ -1059,31 +1058,27 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   })
 
   /**
-   * Boss 交互计划折算：控制技组（`counterAssistGroups`，逐组记招架段数）在无替换时
-   * 按「每组 1 次正常弹刀（头段招架 + 完美反制的支援突击）+ 段数−1 次无突击弹刀」**并入**
-   * 强制弹刀总数；被反制支援整组化解时不并入（= 当初就没录这些弹刀，无需反扣）。
-   * 幂等：只从 `presetParry*` 原值重算，反复调用不累积。
+   * Boss 弹刀反推的三项**生效**总数（引擎 `boss` 输入契约；引擎、弹刀反推读数、联合策略弹刀下限、Boss 卡同源）。
+   * 控制技组（`counterAssistGroups`，逐组记招架段数）在无替换时按「每组 1 次正常弹刀（头段招架 + 完美反制的
+   * 支援突击）+ 段数−1 次无突击弹刀」**并入**强制弹刀总数；被反制支援整组化解时不并入（= 当初就没录这些弹刀，无需反扣）。
+   * 派生值只算不存（r708）：此前由 sync watcher 写回 `appliedBoss.parryTotal`，同一字段在折算前后含义不同。
    */
-  function syncBossInteractionPlan() {
+  const bossParryTotals = computed<BossParryTotals>(() => {
     const applied = appliedBoss.value
-    if (!applied) return
-    if (applied.presetParryTotal === undefined) applied.presetParryTotal = applied.parryTotal ?? 0
-    if (applied.presetParryNoFollowUpTotal === undefined) {
-      applied.presetParryNoFollowUpTotal = applied.parryNoFollowUpTotal ?? 0
+    if (!applied) return { parryTotal: 0, parryNoFollowUpTotal: 0, parryDecibelOnlyTotal: 0 }
+    const folded = counterAssistSlot.value >= 0 ? [] : (applied.counterAssistGroups ?? [])
+    return {
+      parryTotal: applied.presetParryTotal + folded.length,
+      parryNoFollowUpTotal: applied.presetParryNoFollowUpTotal
+        + folded.reduce((sum, segs) => sum + Math.max(0, Math.floor(segs) - 1), 0),
+      parryDecibelOnlyTotal: applied.parryDecibelOnlyTotal ?? 0,
     }
-    const groups = applied.counterAssistGroups ?? []
-    const folded = counterAssistSlot.value >= 0 ? 0 : groups.length
-    const foldedNoFollowUp = counterAssistSlot.value >= 0
-      ? 0
-      : groups.reduce((sum, segs) => sum + Math.max(0, Math.floor(segs) - 1), 0)
-    applied.parryTotal = applied.presetParryTotal + folded
-    applied.parryNoFollowUpTotal = applied.presetParryNoFollowUpTotal + foldedNoFollowUp
-  }
+  })
 
   /**
    * 用户编辑控制技组（Boss 卡）：对导入默认值不满意可改逐组段数/组数（引擎与折算全读
    * `appliedBoss.counterAssistGroups` 活引用，改这里 = 全链生效）。约束：组 ≤8、每组段数 1~12；
-   * 空数组 = 清除（该 Boss 按无控制技处理）。折算幂等（只从 presetParry* 快照重算）。
+   * 空数组 = 清除（该 Boss 按无控制技处理）。
    * 重新应用 Boss 即回落预设默认值（编辑只活在 appliedBoss，不落预设静态数据）。
    */
   function setCounterAssistGroups(groups: number[]) {
@@ -1091,7 +1086,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     if (!applied) return
     const clean = groups.slice(0, 8).map(g => Math.min(12, Math.max(1, Math.floor(g) || 1)))
     applied.counterAssistGroups = clean.length > 0 ? clean : undefined
-    syncBossInteractionPlan()
   }
 
   // ========== 独立场景出生态（initialState，2026-10-01 arena-C r369）==========
@@ -1112,19 +1106,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
       target.value = value
     }
   }
-
-  // 队伍换人 / 两个开关翻转 → 立刻重算（**flush: 'sync'**：引擎与弹刀下限在同一 tick 内直读
-  // appliedBoss.parryTotal，pre-flush 会晚一帧导致「刚关掉替换但仍按弹刀计」的错值；
-  // 源只有 counterAssistSlot 与预设 id 快照，改的又是 parry* 本身 → 无回环）
-  watch(
-    [
-      counterAssistSlot,
-      () => appliedBoss.value?.presetId,
-      () => appliedBoss.value?.phaseId,
-    ],
-    syncBossInteractionPlan,
-    { flush: 'sync' },
-  )
 
   /**
    * 一键应用 Boss 预设：填充血量/失衡值/防御/等级/危局异常系数/失衡易伤/失衡时间 + 三张抗性表
@@ -1189,17 +1170,13 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
       presetId: preset.id,
       phaseId: phase.phaseId,
       at: Date.now(),
-      parryTotal: defaults.parryTotal,
-      parryNoFollowUpTotal: defaults.parryNoFollowUpTotal,
+      presetParryTotal: defaults.parryTotal ?? 0,
+      presetParryNoFollowUpTotal: defaults.parryNoFollowUpTotal ?? 0,
       parryDecibelOnlyTotal: defaults.parryDecibelOnlyTotal,
       xParryTotal: defaults.xParryTotal,
       decibelGift: defaults.decibelGift,
       counterAssistGroups: groups.length > 0 ? [...groups] : undefined,
-      presetParryTotal: defaults.parryTotal ?? 0,
-      presetParryNoFollowUpTotal: defaults.parryNoFollowUpTotal ?? 0,
     }
-    // 控制技组按当前队伍折算（有反制支援角色 + 开关开 → 整组不并入弹刀；否则并入）
-    syncBossInteractionPlan()
   }
 
   function clearBossPreset() {
@@ -1380,6 +1357,8 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     clearBossPreset,
     /** 反制支援整组替换控制技：承接槽位（-1 = 不替换）。UI 与引擎同源判据。 */
     counterAssistSlot,
+    /** Boss 弹刀反推的三项生效总数（控制技组折算后 = 引擎 `boss` 输入契约） */
+    bossParryTotals,
     /** Boss 控制技组用户可编辑（默认来自预设；改后即时重折算，重新应用 Boss 回落默认） */
     setCounterAssistGroups,
     initDefaultTeam,

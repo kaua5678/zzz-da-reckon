@@ -1,6 +1,7 @@
 import type { DeepReadonly } from 'vue'
 import type { CharacterConfig } from '@/stores/config'
 import type { Agent, AgentSkills, PanelValues, SkillDamageTarget, SkillMove } from '@/types/catalog'
+import type { BossParryTotals } from '@/types/bossPreset'
 import type {
   AnomalyEventRecord,
   AnomalyEventExecution,
@@ -409,7 +410,7 @@ export interface AgentTeamConfigInput {
    * 递整份等于给模块一个能改用户 Boss 配置的手柄；而本契约的用途只是「读三个数」
    * （与 `interactions` 递扁平快照而非 store 引用同款最小暴露）。
    */
-  boss?: Readonly<{ parryTotal: number; parryNoFollowUpTotal: number; parryDecibelOnlyTotal: number }>
+  boss?: Readonly<BossParryTotals>
 
   /**
    * 倍率表访问（`catalogStore.getAgentSkills` 的直通）。

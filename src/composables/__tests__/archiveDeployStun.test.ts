@@ -35,7 +35,7 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     applyDeployConfig(configStore, deploy, bossFile.bosses)
 
     // 30021 defaults 补录 parryTotal 8 + 自动勾选「保底4失衡」
-    expect(configStore.appliedBoss?.parryTotal).toBe(8)
+    expect(configStore.bossParryTotals.parryTotal).toBe(8)
     expect(configStore.getMechanicSetting('guarantee.stun', 0)).toBe(1)
 
     // CC-156（第 190 轮）：原 off 钉已去掉。第 177 轮 physical 下 N*=3.84 ⇒ 池 3（保底 4 不可达）；
@@ -61,7 +61,7 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     // r652 CC-469′（轴态逐招份额与未覆盖窗口份额复合扣除 + 轴态 N 二分自洽）后本队 0 弹刀也有 4 次（eff 71.8k ≥ 4×16647），
     // 弹刀预算已压不出「保底不可达」⇒ 改抬 boss 失衡阈值制造场景（实测 r652，parryTotal=5：17800–18400 ⇒ 反推 2 次给击破位仍 4 次；
     // ≥19000 ⇒ 5 次全给击破位仍 3 次）。锁的仍是诊断链两态：反推在工作 / 预算用满；门槛变了照此重探，不改判据。
-    ;(configStore.appliedBoss as { parryTotal?: number }).parryTotal = 5
+    configStore.appliedBoss!.presetParryTotal = 5
     configStore.enemy.stunValue = 18000
     const spA = calc.stunPoolResult.value!
     const splitA = calc.parrySplitResult.value

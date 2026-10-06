@@ -740,7 +740,7 @@ describe.runIf(process.env.PROBE_CONV_JOINT === '1')('探针：联合杠杆策�
       // 只置 appliedBoss（不动敌人面板），以隔离「弹刀下限」对收益的影响。
       const bossParry = Number(process.env.PROBE_CONV_BOSS_PARRY ?? 0)
       if (bossParry > 0) {
-        config.appliedBoss = { presetId: 'probe', phaseId: 'p', at: Date.now(), parryTotal: bossParry }
+        config.appliedBoss = { presetId: 'probe', phaseId: 'p', at: Date.now(), presetParryTotal: bossParry, presetParryNoFollowUpTotal: 0 }
       } else {
         config.appliedBoss = null
       }

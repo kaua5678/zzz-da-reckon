@@ -92,28 +92,29 @@ export interface BossPresetDefaults {
 }
 
 /**
- * 「已应用 Boss 预设」的运行时态（`configStore.appliedBoss`，仅内存）：
- * 由 `applyBossPreset` 从 `BossPresetDefaults` 复制而来，再按当前队伍/开关做一次交互计划折算
- * （见 config.ts#syncBossInteractionPlan）。
- *
- * `parryTotal` / `parryNoFollowUpTotal` 存的是**生效值**（含控制技组在无替换时的并入量），
- * 引擎与弹刀下限直读它们；`presetParryTotal` / `presetParryNoFollowUpTotal` 存**预设原值**，
- * 开关翻转时按原值重算，不累积（幂等）。
+ * 「已应用 Boss 预设」的运行时态（`configStore.appliedBoss`，仅内存）：由 `applyBossPreset` 从 `BossPresetDefaults`
+ * 复制而来，**只存输入**。生效弹刀数随队伍/开关变（控制技组在无替换时并入），是派生值 ⇒ 读
+ * `configStore.bossParryTotals`（config.ts），不存进这里（r708 前由 sync watcher 写回本对象的 `parryTotal`）。
  */
 export interface AppliedBossPreset {
   presetId: string
   phaseId: string
   at: number
-  parryTotal?: number
-  parryNoFollowUpTotal?: number
+  /** 预设原值（不含控制技组折算） */
+  presetParryTotal: number
+  presetParryNoFollowUpTotal: number
   parryDecibelOnlyTotal?: number
   xParryTotal?: number
   decibelGift?: { slot: number; amount: number }
-  /** 控制技（紫光技）组的招架段数清单（预设原样，不随开关变） */
+  /** 控制技（紫光技）组的招架段数清单（预设默认，Boss 卡可编辑；不随开关变） */
   counterAssistGroups?: number[]
-  /** 预设原值快照（`applyBossPreset` 写入，折算 never 改它） */
-  presetParryTotal?: number
-  presetParryNoFollowUpTotal?: number
+}
+
+/** Boss 弹刀反推的三项生效总数 = 引擎 `boss` 输入契约（`mechanics/types.ts`）；无 Boss 时全 0 */
+export interface BossParryTotals {
+  parryTotal: number
+  parryNoFollowUpTotal: number
+  parryDecibelOnlyTotal: number
 }
 
 export interface BossPreset {

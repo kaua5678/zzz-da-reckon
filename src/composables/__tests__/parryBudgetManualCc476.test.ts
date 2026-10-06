@@ -8,7 +8,7 @@
  * >  所以四舍五入应该能做到，**做不到就是 bug**，这又不是**禁用**了弹刀。
  * >  我设置的弹刀数值是**机制所必要的最低值，在这之上可以任意增加**。」
  *
- * ⇒ `parryTotal`（`configStore.appliedBoss?.parryTotal`）= 「Boss 预设**强制反推的下限**」，
+ * ⇒ `parryTotal`（`configStore.bossParryTotals.parryTotal`）= 「Boss 预设**强制反推的下限**」，
  * **不是**「是否允许反推」的开关。旧实现把它当开关：
  * 无 Boss（或 Boss 未声明 `parryTotal`——全库 23 个里 **17 个**如此）⇒ `parryTotal = 0`
  * ⇒ `parrySplitActive = false` ⇒ 即使用户手填弹刀 12/20 次，反推链也不启动。

@@ -133,7 +133,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     // 搜索常量（阶段 -1 与 ② 共用；必须声明在 -1 之前，防 TDZ）
     const STEP = 2
     const MAX_ROUNDS = 3
-    const minParryTotal = Math.max(0, Number(configStore.appliedBoss?.parryTotal ?? 0))
+    const minParryTotal = configStore.bossParryTotals.parryTotal
     const totalParries = () => [0, 1, 2].reduce((acc, i) => acc + Math.max(0, Number(configStore.team[i]?.parryCount ?? 0)), 0)
     let floorBlocked = false
     /** 可行性门槛（相对门参考值）：可行性优先阶段找到的最小截断；未超时基线 = 0 */

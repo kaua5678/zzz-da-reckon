@@ -253,8 +253,8 @@
       "title": "控制技",
       "skill": "敌人情报",
       "state": "modeled",
-      "anchor": "src/stores/config.ts#syncBossInteractionPlan",
-      "evidence": "控制技（紫光技）组 × 反制支援：按 counterAssistGroups 逐组折算「每组 1 次正常弹刀 + 段数−1 次无突击弹刀」并入 appliedBoss.parryTotal，术语映射见 GAME_TERM_TO_CODE_FIELD.md:214"
+      "anchor": "src/stores/config.ts#bossParryTotals",
+      "evidence": "控制技（紫光技）组 × 反制支援：按 counterAssistGroups 逐组折算「每组 1 次正常弹刀 + 段数−1 次无突击弹刀」并入生效弹刀总数（config getter bossParryTotals），术语映射见 GAME_TERM_TO_CODE_FIELD.md:253"
     },
     "2000004": {
       "name": "[连携招架]",

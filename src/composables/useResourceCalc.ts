@@ -565,9 +565,7 @@ export function createResourceCalc(
     // CC-297：读本轮已装入的分配（与资源卡 / 本轮 stunCount 同源），不读下一轮反推量。null = 首轮缺省对半分，无反推可显示。
     const split = calcOutput.value?.threadsApplied.parrySplit
     if (!split) return null
-    const parryTotal = configStore.appliedBoss?.parryTotal ?? 0
-    const parryNoFollowUpTotal = configStore.appliedBoss?.parryNoFollowUpTotal ?? 0
-    const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
+    const { parryTotal, parryNoFollowUpTotal, parryDecibelOnlyTotal } = configStore.bossParryTotals
     return { breakerSlot: gate.breakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, mainDpsNoFollowUp: split.mainDpsNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
   })
 

@@ -197,14 +197,12 @@ export function createRunCalcRound(deps: {
     // CC-23 / CC-293：槽位 = 挂出模块能力 `computeInteractionTopUp` 者（与 useResourceCalc.ts 交互栏的
     // `interactionTopUp` computed 共用 findInteractionTopUpSlot），原为按身份 `findSlotByIdentity(…, ['1471'])`。
     const interactionTopUpSlot = findInteractionTopUpSlot(configStore.team)
-    // Boss 预设弹刀反推（用户口径 2026-08）：appliedBoss 声明 parryTotal/parryNoFollowUpTotal（如 叶释渊 13 / 司祭 15）且
+    // Boss 预设弹刀反推（用户口径 2026-08）：Boss 声明 parryTotal/parryNoFollowUpTotal（如 叶释渊 13 / 司祭 15；生效值含控制技组折算）且
     // 「保底4失衡」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按保底失衡反推补齐、主C 拿剩余
     // （纯函数 core/parrySplit.ts；本轮注入上一轮拆分，收敛判据含 parrySplitSeq）。
     // 不带支援突击弹刀（parryNoFollowUpTotal）**对半分**（用户口径 2026-09-10：「必须对半分；强制归击破位是错的，
     // 那是把补失衡误解成只有击破弹刀，删掉」）；只给喧响弹刀（parryDecibelOnlyTotal）走保底4喧响通道。
-    const parryTotal = configStore.appliedBoss?.parryTotal ?? 0
-    const parryNoFollowUpTotal = configStore.appliedBoss?.parryNoFollowUpTotal ?? 0
-    const parryDecibelOnlyTotal = configStore.appliedBoss?.parryDecibelOnlyTotal ?? 0
+    const { parryTotal, parryNoFollowUpTotal, parryDecibelOnlyTotal } = configStore.bossParryTotals
     const guaranteeStun = configStore.getMechanicSetting('guarantee.stun', 0) !== 0
     const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.agentsMap.get(c.agentId)?.specialty === 'stun')
     // 无击破位队伍（如 仪玄/琉音/卢西娅：强攻/强攻/支援）：实战弹刀全由主C（槽位 0）承担
