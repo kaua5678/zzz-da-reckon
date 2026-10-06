@@ -40,12 +40,8 @@ export interface SolveDiagnostics {
    */
   timeBudgetAccumulatorFrozen: boolean
   /**
-   * 累加器出口（2026-10-04）：折叠环结束时**留在账本里的折叠残差**（逐槽取最大，秒）。
-   *
-   * 这是「账本自洽性」的直接读数：`necessary = estimate + acc`，而 `acc` 是历轮残差的累加。
-   * 出口生效时它被限制在「杠杆失效前」的量级；出口失效时它会随轮数线性增长
-   * （实测 `auto-1431-1481-1491`：有出口 `62.2`、无出口 `163.0`，而两者**落点相同**
-   * ⇒ 只看伤害/账本无法区分，必须靠本字段如实上报）。
+   * 累加器出口（2026-10-04）：折叠环结束时留在 `cfg.timeBudgetExcess` 的折叠残差（逐槽取最大，**封顶前 raw 秒**，
+   * 不是账本虚高量）。口径单一来源 = `TeamResourceResult.convergence.timeBudgetAccumulatedSeconds`（`types/resource/team.ts`）。
    */
   timeBudgetAccumulatedSeconds: number
 }

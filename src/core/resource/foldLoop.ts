@@ -306,8 +306,8 @@ export function runFoldLoop(
       innerClean: inner.clean, innerIters: inner.iterations,
     }))
   }
-  // 累加器出口（2026-10-04）：如实上报留在账本里的折叠残差量级（逐槽取最大）。
-  // 这是「账本自洽性」的直接读数，也是本出口**唯一可被行为锁区分**的观测量——
+  // 累加器出口（2026-10-04）：如实上报留在 `cfg.timeBudgetExcess` 的折叠残差（逐槽取最大，封顶前 raw 秒，
+  // 不是账本虚高量——口径见 `types/resource/team.ts` 同名字段）。这是本出口**唯一可被行为锁区分**的观测量——
   // 实测 `auto-1431-1481-1491` 有/无出口的**落点与伤害逐位相同**（`ledger=[135.01…]`、
   // `dmg=104.68M`），差别只在本字段（有出口 `62.2` vs 无出口 `163.0`）。
   diag.timeBudgetAccumulatedSeconds = ctx.configs.reduce(
