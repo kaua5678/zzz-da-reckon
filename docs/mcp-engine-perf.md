@@ -26,7 +26,7 @@
 
 | 手段 | 位置 | 前提 |
 |---|---|---|
-| calcOutput 记忆化（LRU 16） | `useResourceCalc.ts` | 输入 = 键：新增**非 store** 的全局响应式输入必须进键；闸门开启时绕过 |
+| calcOutput 记忆化（LRU 16） | `useResourceCalc.ts` | 输入 = 键：新增**非 store** 的全局响应式输入必须进键；闸门开启时绕过；r707 起模块级、全部实例共享 ⇒ 影响结果的**实例参数**也必须进键 |
 | 目录数据 shallowRef | `stores/catalog.ts` | 目录只整体替换，不原地改 |
 | `materializeRows` 快照/恢复只补改动值；模块新增键恢复为 undefined 而非 delete（防 cfg 变字典模式，dump −5%） | `core/resource/rowBuild.ts` | 无人以 `in`/`hasOwnProperty` 判 cfg 键（全角色护栏 ②） |
 | `feasibleRows` 作用域单槽记忆 | `rowBuild.ts#withFeasibleRowsMemo` | 单次 `iterate` 内 cfg/state 与行不被改写（`@fact engine:物化行作用域记忆`，带复核） |
