@@ -2,6 +2,7 @@
 
 > lane arena-G（第 700 轮），2026-10-06。产物：`/mnt/c/Users/kaua/Desktop/bridge-prompt-arena.slim.md`（Windows：`C:\Users\kaua\Desktop\bridge-prompt-arena.slim.md`）。原文件 `bridge-prompt-arena.md` 未动（md5 5126b942），替换由用户 / 助手 review 后决定（§4）。
 > 需求原文在主仓 `docs/REQUIREMENTS.md` R9（23:44 写入，本轮结束时尚未提交）。
+> **状态（r701 核实，2026-10-07）**：用户已于 00:40 批准转正（「助手代改」）。生效提示词迁到 `F:\proj\arena-proxy\bridge-prompt-arena.md`（WSL：`/mnt/f/proj/arena-proxy/bridge-prompt-arena.md`，md5 bbff25b6），`autopilot.js` 的 `BRIDGE_MD` 改为 `path.join(__dirname, "bridge-prompt-arena.md")`；精简前版本存档为 `_prompt-history/bridge-prompt-arena.md.pre-slim-20261007`，桌面那份与全部 `.bak-*` 移进 `_prompt-history/`。生效版的第一节与本文的精简正文相比只改了两处路径（桌面 → `F:\proj\arena-proxy`），引导客户端逐字节相同。下文提到的桌面路径都已过时。
 
 ## 0. 结论
 
@@ -100,6 +101,8 @@
 机械核对（r700）：把原正文里反引号包住的 137 个命令、路径、标识符逐个查找。94 个原样出现在 slim 正文里，13 个在第二节（存档的完整客户端或修改记录），其余 30 个逐个判定，分三类：事故叙事；改写后的等价写法（占位符改名、协议头写进代码、`VITEST_MAX_WORKERS=8` → 「要更多就设 `VITEST_MAX_WORKERS`」）；已修正的旧写法。
 
 ## 4. 引导客户端实测与替换方法
+
+（r701：替换已由用户完成，见文件头状态；以后改提示词改 `F:\proj\arena-proxy\bridge-prompt-arena.md`，备份放 `_prompt-history/`。）
 
 - 实测（沙箱 node，对真实端点）：`sh` 正常；非零退出码透传（rc 3）；删掉 `/tmp/mcp.session` 后自动重新握手；`cat` 拉回 `/home/kaua/calc-arch/arena-mcp-client.js`，md5 5605337c994f，与现行客户端一致；读 29.5 KB 的多块文件，md5 一致；读不存在的路径时报 `cannot stat`，rc 1。
 - 替换（用户决定后）：`cp bridge-prompt-arena.md bridge-prompt-arena.md.bak-pre-slim-<时间戳>`，再 `cp bridge-prompt-arena.slim.md bridge-prompt-arena.md`。autopilot 读的是固定路径 `BRIDGE_MD`，不用改代码。回退：把备份拷回去。
