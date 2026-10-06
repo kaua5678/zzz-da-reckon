@@ -1,11 +1,11 @@
 # 音擎叠层自动覆盖率的读取时序缺陷（嵌合编译器）
 
-> lane arena-G（第 700 轮创建），2026-10-06。本轮只有实测与设计，无代码提交；半截补丁不入库（§5）。· lane arena-G（第 701 轮，2026-10-07）：第③④步已实施，`c93319f8` / `221611eb`（§7）。
-> 代码：`src/composables/useResourceCalc.ts`（`wEngineStackAutoCoverages` + 回填 watch）、`src/data/wEngineStackCoverage.ts`、`src/core/anomalyPool.ts`。关联：队列 §3 T10 卡（开工条件已触发）。
+> lane arena-G（第 700 轮创建），2026-10-06。本轮只有实测与设计，无代码提交；半截补丁不入库（§5）。· lane arena-G（第 701 轮，2026-10-07）：第③④步已实施，`c93319f8` / `221611eb`（§7）。· lane arena-G（第 702 轮）：第⑥步已实施，`f3771bd1`（§8），T10 关闭。
+> 代码：`src/composables/useResourceCalc.ts`（`wEngineStackAutoCoverages`、`effectiveWEngineCoverages` + 展示缓存 watch）、`src/stores/config.ts`（`mergeWEngineEffectCoverageAuto`）、`src/data/wEngineStackCoverage.ts`、`src/core/anomalyPool.ts`。关联：队列 §3 T10 卡（r702 关闭）。
 
 ## 0. 结论
 
-- **状态（r701）**：第③④步已合入，同步读与回填后读的伤害现在逐位一致，队伍对比、难度曲线与主页口径相同；只剩第⑥步（去掉 store 回填，属于简化，不再影响正确性），见 §6、§7。
+- **状态（r702）**：全部完成。第③④步（r701）让同步读与回填后读的伤害逐位一致，队伍对比、难度曲线与主页口径相同；第⑥步（r702，`f3771bd1`）把自动值移出用户 state：store 表只存手调值，自动值进非 state 展示缓存，创建即一遍管线。见 §7、§8。
 - 同一份配置，算出的伤害取决于读之前有没有让出过一次执行权。自动覆盖率只经 `flush:'post'` 的 watch 回填进 store；同步读（中间不让出执行权）拿到的是回填前的表，表里没有条目时按满层 100 算。
 - 队伍对比（`teamCompare.ts` 全文件没有 await）和难度曲线（`difficultyCurve.ts:161-173` 在 `applyTeamToStore` 后同步读）都是同步读 ⇒ 105 支预设里带嵌合编译器（14118）的 7 支被高估 1.8–5.8%。这正是 `wEngineStackCoverage.ts` 要消除的「满层高估」。主页（回填之后）是对的。
 - T10 卡原先只把它当性能问题（创建即两遍管线），开工条件「锁变红或成为性能瓶颈」都没触发。现在有了正确性理由 ⇒ **T10 开工条件视为已触发**，按 §6 做。
@@ -62,7 +62,7 @@
 
 ## 6. 下一步（可直接开工）
 
-（r701 状态：第 1–5 步已完成，见 §7；只剩第 6 步，其细化方案在本节末尾。）
+（r702 状态：第 1–6 步全部完成，见 §7、§8。第 6 步的细化方案留在本节末尾作历史记录，其中「界面改读 calc」「本地存档迁移」两处前提已被 r702 推翻，以 §8 为准。）
 
 1. **认领**以下文件：`useResourceCalc.ts`、`panelPhases.ts`、`stores/config.ts`、`core/anomalyPool.ts`、`types/resource/pools.ts`、`composables/resourceCalc/damagePoolAnomaly.ts`、`mechanics/agents/{yanagi,nangong}.ts`、`composables/freeCompare/metrics.ts`。开工前看一眼 LANE-CLAIMS 和 `.claude/PROMPT-*.md`，确认没人在动异常伤害路径。
 2. **先上锁**：把附录里的用例加进 `src/composables/__tests__/wEngineCoverageFixpointT10.test.ts`，在未改的代码上确认它是红的（92,598,094 vs 87,558,702）。
@@ -103,6 +103,47 @@
 - zd 逐键归因：DUMP 42 键、ROWS 44 键，全部是 7 支带 14118 的预设 × 变体，只有总伤害和伤害行变化，资源结果、失衡池、交互上限的哈希逐位不变；降幅 1.43–7.74%。
 - timeGolden 3 条（时间账零变化），按规则 10 归因后重新生成：auto-1181-1511-1411 87,002,090 → 82,671,236；auto-1181-1561-1411 54,688,846 → 52,762,372；auto-1181-1561-1581 84,554,215 → 81,818,205。timeGolden 按推荐配装配队，推荐音擎为 14118 的只有格莉丝（1181），所以恰好是含格莉丝的这 3 支变化；另外 4 支的 14118 来自预设自身的配装，推荐配装里没有。
 - 新基线：vitest 529 文件 / 4535 例（+1 为新锁）。
+
+## 8. r702 实施记录（`f3771bd1` 第⑥步）
+
+**做法（与 §6 第 6 步细化的偏差见下）**
+- store 表 `wEngineEffectCoverages` 只存手调值；删掉手调标记表 `wEngineEffectCoverageManual`、`applyWEngineEffectCoverageAuto`、`wEngineEffectCoverageAutoDelta`。
+- 新 `mergeWEngineEffectCoverageAuto(auto)`：手调表 ⊕ 自动值，表里已有的键优先，自动值夹到 0–100，没有可补的返回 null。结算侧与界面共用这一条口径。
+- 自动值另存一份**非 state** 的展示缓存（`shallowRef`，不进 memo 键，不随分析场景克隆），由 `useResourceCalc` 的 watch 写入，内容没变就不写。`displayWEngineEffectCoverages` = 手调 ⊕ 缓存；`getWEngineEffectCoverage` 改读它，滑块显示不变。
+- `useResourceCalc`：`autoMergedWEngineCoverages`（可空，null 时结算侧复用资源侧面板）和 `effectiveWEngineCoverages`（非空，对外暴露）。
+- 消费点按三条口径：
+
+| 谁 | 读哪张表 | 调用点 |
+|---|---|---|
+| 资源侧 | 面板函数缺省参数 = 手调表 | `resourcePanels`、`buildCharConfig`、局外面板（不改） |
+| 手里有 calc 的分析代码 | `calc.effectiveWEngineCoverages`（同步，与伤害同口径） | `cinemaUplift`（命座前后面板）；`impactSampling` → `substatOptimizer`（新增可选参数） |
+| calc 之外的界面 | `configStore.displayWEngineEffectCoverages` | `FinalPanel`、`hpSourceBreakdown`、`TeamConfigPage` 面板与滑块、`DebugPage` |
+
+- 缺省参数故意保持为手调表：漏改的调用点读到的是计算口径（数值正确，界面最多显示满层），不会让计算链依赖异步缓存。
+
+**与 §6 第 6 步细化的偏差（依据）**
+- 细化写的是「calc 暴露有效覆盖率，界面改读 calc」。实测 `useResourceCalc()` 每次调用都新建实例（没有共享，memo 也各算各的），而 FinalPanel、DebugPage、hpSourceBreakdown、substatOptimizer 手里都没有 calc。改读 calc 要么每个组件多跑一遍整条管线，要么引入 provide/inject 共享实例，都不比现状简单。所以界面读非 state 的展示缓存，watch 保留，但只写缓存。
+- 细化担心的「本地存档迁移」不存在：config store 根本不持久化（localStorage 里只有主题、逻辑编辑器和 `persistedRef` 的界面设置）。旧注释「不在 persist 白名单」已过时，随标记表一起删除。刷新后手调值消失、回到自动值，这一行为不变。
+- 队列 §3 T10 卡原「修法 ①」是：资源侧用手调表、展示侧用手调 + 自动、删掉 watch。本次做到前两项；watch 改为只写非 state 缓存，不参与计算，所以无环、无双算。将来若引入共享 calc 实例，界面可直接读 `calc.effectiveWEngineCoverages`，届时可以删掉缓存和 watch。非必要，不设卡。
+
+**语义变化（唯一一处，有意为之）**
+- 会话内手调过的可自动效果，现在会随场景克隆进入分析（队伍对比等）。这与所有其他覆盖率设置（队友 buff、驱动盘效果）一致，也与主页换队时保留手调值的行为一致。以前手调标记不是 state，场景里会被各队自己的自动值悄悄替换。只有用户拖过嵌合编译器滑块时才有差别。回退点：revert `f3771bd1`。
+
+**验证**
+- vue-tsc 0；zd DUMP / ROWS DIFF 0；guards 26、recording 189、check-tokens、validate:data、validate:specs 全过；build 通过。
+- vitest 529 文件 / 4533 例（新基线）。T10 由 4 例并为 2 例：原来三支队的「2 次 miss + 重折算 == store」，改为一支队的结构锁「创建 + 首读只 1 次 miss、自动值不进 state 表、界面值 == calc 同步表」；r701 那例保留，并加断言：同步读时展示缓存仍是旧值 100。
+- 反例：新结构锁在旧代码上为红（expected 2 to be 1）。
+- get_diagnostics 只能看 VS Code 打开的主仓（停在 `4cedb50b`），看不到 worktree，本轮以 worktree 内的 `vue-tsc -b --force` 代替。
+
+**同类排查：其他「watch 写 store」（r702 只读，无新命中）**
+- 起因：T10 的根源是「watch 异步回写 store，计算又读这张表」。这次把 `src/composables` 和 `src/stores` 里的全部 watch 过了一遍（r381 只查过 composables）：
+  - 与计算相关、已是 `flush:'sync'`：`config.ts` 的 Boss 交互方案同步（parryTotal），以及队友 buff 随队伍同步（2026-09-23 修过同类 bug：批量路径在同一 tick 读到旧的 buff 选择）；
+  - 只在启动或数据加载时触发：`teammateBuffsLoaded`、`teammateBuffGroups.length`；
+  - 只由界面输入触发：副词条预算设置（`optimizer.substatCap` / `totalSteps2–4` 只有资源利用率页会写）；
+  - 幂等兼容：`ensureResistanceTables`（场景克隆前已补齐，读取处有回退）；
+  - 有意只在 UI 生效：保底目标预填（CC-358 / CC-349：批量求值只换轴，保底是难度爬梯的独立档 G3）、时间权重自动分配（用户裁决 2026-09-10：引擎与基线保持静态权重，策略只在 UI 触发点跑；难度爬梯把 B、C 当作档位显式调用）；
+  - 与计算无关：`persistedRef`、`logicEditor`、`theme`、`usePresetTeamPicker`。
+- 结论：除本卡外没有同类缺陷，不必再查。
 
 ## 附录：锁（r700 已验证在未改的代码上是红的；r701 已加入 `wEngineCoverageFixpointT10.test.ts`）
 
