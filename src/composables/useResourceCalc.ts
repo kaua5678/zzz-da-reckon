@@ -19,6 +19,7 @@ import { createConvergenceRoundInputs, createRunCalcRound } from './resourceCalc
 // 本文件不再 import `roundThreads` / `outerCycle` / `feasibilitySearch` / `netFrontlineOccupation`
 // （全部随搬移成为新文件的依赖）。
 import { solveTeam } from './resourceCalc/solveTeam'
+import type { CalcRoundResult } from './resourceCalc/roundResult'
 import type {
   CharacterOperationConfig,
   ResourceCalcConfig,
@@ -59,8 +60,18 @@ import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } f
  *    将来若引入求值内写 store，该路径必须绕过记忆化（命中会跳过那次写）。
  *  - 结果对象被视为只读（全库无对 resourceResult/stunPool/anomalyPool 的原地写，已 grep 核）。
  */
-/** 容量 16：难度爬梯单队 G2 实测 12 个不同配置（8 装不下、命中率掉一半）；每个 useResourceCalc 实例各一份 */
+/** 容量 16：难度爬梯单队 G2 实测 12 个不同配置（8 装不下、命中率掉一半）；r707 起全部实例共享这一份 */
 const CALC_OUTPUT_MEMO_MAX = 16
+/**
+ * calcOutput 记忆化 LRU：**模块级，全部实例共享**（r707；此前每个实例各一份）。
+ * 键已含全部输入（见上），calcOutput 是键的确定性纯函数（热启动逐位透明，`@fact engine:热启动逐位透明`）
+ * ⇒ 同一输入由哪个实例算都逐位相同，共享不改变任何结果，只省掉重复求值。
+ * 实测（r707 探针）：每次改队伍配置，页面实例先算一遍，应用级时间权重分配（`useTimeWeightAutoAllocation`）
+ * 的基线读的是同一状态——共享后这一遍命中：普通队 2 → 1 遍，重队 4 → 3 遍。
+ * ⚠ 共享的前提：实例参数（`createResourceCalc` 的 configStore / catalogStore）只经键里的 `$state` 与目录身份影响结果；
+ *   将来新增影响 calcOutput 的实例参数必须一并进键，否则别的实例会命中按另一组参数算出的结果。
+ */
+const calcOutputMemo = new Map<string, CalcRoundResult>()
 /** 对象身份 → 序号（目录数据进键用；WeakMap 不阻止回收） */
 const memoIdentity = new WeakMap<object, number>()
 let memoIdentitySeq = 0
@@ -71,7 +82,7 @@ function identityOf(o: unknown): number {
   if (id === undefined) { id = ++memoIdentitySeq; memoIdentity.set(raw, id) }
   return id
 }
-/** 测试/诊断：记忆化命中统计（每个 useResourceCalc 实例各自计数，这里汇总） */
+/** 测试/诊断：记忆化命中统计（全局，与 LRU 一样跨实例） */
 const calcOutputMemoStats = { hits: 0, misses: 0, bypass: 0 }
 export function getCalcOutputMemoStats(): { hits: number; misses: number; bypass: number } {
   return { ...calcOutputMemoStats }
@@ -88,8 +99,8 @@ export type ResourceCalc = ReturnType<typeof createResourceCalc>
 
 /**
  * UI 入口：绑定全局 Pinia 的 config / catalog store。
- * ⚠ 每次调用都新建一整套计算图（记忆化也是实例私有）⇒ 同一屏只在页面里调一次，子组件的读数由页面经 props 传入。
- *   子组件自己再调一次 = 每次状态变化整条管线多算一遍（r705 实测：ImpactChart 曾这样挂在资源利用率页，重队每遍 ~450ms）。
+ * ⚠ 每次调用都新建一整套 computed 图 ⇒ 同一屏只在页面里调一次，子组件的读数由页面经 props 传入（r705）。
+ *   最贵的 calcOutput（外层不动点）自 r707 起跨实例共享记忆化，同一状态只算一遍；其下游 computed（伤害池、结算面板等）仍按实例各算一份。
  */
 export function useResourceCalc(): ResourceCalc {
   return createResourceCalc(useConfigStore(), useCatalogStore())
@@ -271,8 +282,6 @@ export function createResourceCalc(
     if (calcOutputMemo.size > CALC_OUTPUT_MEMO_MAX) calcOutputMemo.delete(calcOutputMemo.keys().next().value!)
     return out
   })
-  /** calcOutput 记忆化 LRU（本实例私有；见文件头 CALC_OUTPUT_MEMO_MAX 注释） */
-  const calcOutputMemo = new Map<string, ReturnType<typeof computeCalcOutput>>()
 
   function computeCalcOutput(base: ResourceCalcConfig) {
     // 锁定失衡次数（命座对比固定场景）：stunCount 固定输入不回填（"操作够就能打 N 次失衡"口径），

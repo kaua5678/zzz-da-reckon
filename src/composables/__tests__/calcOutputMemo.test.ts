@@ -8,6 +8,7 @@
  *    目录整体替换失效、纯 UI 态（切 tab/切槽）不失效也不改值。
  * ⑤ CC-354/355 源码锁：记忆化键深读 config.$state ⇒ 写入即失效，不存在「手动失效」这个概念。
  *    src 代码行（注释除外）不得出现 `refreshTrigger` / `triggerRefresh`；store 外的新输入必须做成响应式。
+ * ⑥ r707：LRU 跨实例共享（模块级）——第二个实例读同一状态只命中，不再算一遍外层不动点。
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
@@ -164,6 +165,19 @@ describe('calcOutput 记忆化', () => {
     catalog.catalog = { ...catalog.catalog! }
     expect(calc.teamTotalDamage.value).toBe(d0)
     expect(getCalcOutputMemoStats().misses).toBeGreaterThan(s1.misses)
+  }, 300_000)
+
+  it('r707：记忆化跨实例共享——第二个实例读同一状态只命中、不重算', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1521-1361-1311')!)
+    config.timeWeightStrategy = 'static'
+    const d0 = useResourceCalc().teamTotalDamage.value
+    const s0 = getCalcOutputMemoStats()
+    // = 应用级时间权重分配读页面实例刚算过的状态（r707 探针）；实例私有 LRU 会再算一遍外层不动点
+    expect(useResourceCalc().teamTotalDamage.value).toBe(d0)
+    const s1 = getCalcOutputMemoStats()
+    expect({ hits: s1.hits - s0.hits, misses: s1.misses - s0.misses }).toEqual({ hits: 1, misses: 0 })
   }, 300_000)
 
   it('CC-354/355：不存在手动失效（无 refreshTrigger / triggerRefresh，写入即失效）', () => {
