@@ -511,6 +511,9 @@ export interface CurveDatum {
   hint: TruncationHint | null
 }
 
+/** 被砍的爬梯档：`hint` 必有、`opened` 必非 null（`CurveSeries.truncated` 的元素） */
+export type TruncatedDatum = CurveDatum & { opened: string; hint: TruncationHint }
+
 export interface CurveSeries {
   presetId: string
   name: string
@@ -533,10 +536,12 @@ export interface CurveSeries {
    */
   jumps: CurveDatum[]
   /**
-   * **有截断的档**（`points` 里 `hint !== null` 的那些）：图上截断提醒与「截断提醒」面板的数据源。
-   * 空数组 = 这条曲线每一档的交互都足量交付（曲线里没有「被砍」这回事）。
+   * **有截断的爬梯档**（`points` 里 `hint !== null` 且 `opened !== null` 的那些）：图上截断提醒与「截断提醒」面板的数据源。
+   * **全关起点不进**（用户实测 2026-10-06）：起点是曲线的基准（杠杆全关 + 预设声明的交互），不是沿曲线
+   * 往上爬的某一档；混进来会制造「起点难度更高却砍得更狠」的荒谬对照。起点自己的截断仍在它的 `hint`，
+   * 展示层只在本数组为空时用它说明「只有起点被砍」。空数组 = 没有被砍的爬梯档。
    */
-  truncated: CurveDatum[]
+  truncated: TruncatedDatum[]
   /**
    * 全曲线**最大实打交互次数**（`interactionsPlayed` 的最大值；没有采到交互量时 null）。
    * 「曲线内无法达到」时用它说明「这条曲线最多只能打到 N 次」——不给一个编出来的 x。
@@ -582,7 +587,7 @@ export interface CurveSeries {
 export const INTERACTION_CUT_MIN = 1
 
 export interface TruncationHint {
-  /** 这一档**手填（缩前）**的交互总次数 = 用户填的那个要求 */
+  /** 这一档**配置的（缩前）**交互总次数（逐档随杠杆变化，不是用户手填的要求） */
   filled: number
   /** 这一档**实打（缩后）**的交互总次数 = 引擎真交付的 */
   played: number
@@ -657,8 +662,8 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       jumps: points
         .filter(p => p.changes.some(c => c.major))
         .map(p => ({ ...p, changes: majorChanges(p.changes) })),
-      // 有截断的档（`hint !== null`）：截断提醒面板与图上标记的数据源
-      truncated: points.filter(p => p.hint !== null),
+      // 有截断的爬梯档：截断提醒面板与图上标记的数据源（全关起点不进，见 `CurveSeries.truncated`）
+      truncated: points.filter((p): p is TruncatedDatum => p.hint !== null && p.opened !== null),
       // 全曲线最大实打次数（「曲线内无法达到」时说明「最多只能打到 N 次」；没采到交互量 = null）
       maxPlayed: (() => {
         const v = r.ladder.points.map(p => p.interactionsPlayed).filter((n): n is number => n !== undefined)

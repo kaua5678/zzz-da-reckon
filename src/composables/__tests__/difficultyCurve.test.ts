@@ -606,7 +606,7 @@ describe('截断提醒：要达到手填的交互要求至少需要多少难度�
     expect(truncationHintAt([], 0)).toBeNull()
   })
 
-  it('★ buildCurveChart 接线：truncated 只收有截断的档，maxPlayed 取全曲线最大实打', () => {
+  it('★ buildCurveChart 接线：truncated 只收有截断的爬梯档（全关起点不进），maxPlayed 取全曲线最大实打', () => {
     // 般岳簇形态：全程填 66、实打 45→31→25 ⇒ 每一档都被砍、且曲线内无法达标
     const rows: DifficultyCurveRow[] = [mkRow('b', '般岳', mkLadder(
       [[63.7, 100], [45.8, 200], [33.6, 300]],
@@ -616,12 +616,19 @@ describe('截断提醒：要达到手填的交互要求至少需要多少难度�
       [[66, 45], [66, 31], [66, 25]],
     ))]
     const s = buildCurveChart(rows, 100).series[0]!
-    expect(s.truncated.map(p => p.cost)).toEqual([63.7, 45.8, 33.6])
+    // 全关起点（63.7，同样被砍）不进：它是曲线基准不是爬梯档，混进来 = 「起点难度更高却砍得更狠」（用户实测 2026-10-06）
+    expect(s.truncated.map(p => p.cost)).toEqual([45.8, 33.6])
+    expect(s.points[0]!.hint, '起点自己的截断仍在它的 hint').not.toBeNull()
+    // 上限信息不靠起点进表：45 次恰是起点自己的实打量，series 与爬梯档的 hint 照样带出
     expect(s.maxPlayed).toBe(45)
     for (const p of s.truncated) {
-      expect(p.hint!.neededX).toBeNull()
-      expect(p.hint!.maxPlayed).toBe(45)
+      expect(p.hint.neededX).toBeNull()
+      expect(p.hint.maxPlayed).toBe(45)
     }
+    // 只有起点被砍（爬梯档都足量交付）⇒ truncated 空，但起点 hint 在——面板据此给该队一行说明，不静默消失
+    const baseOnly = buildCurveChart([mkRow('o', 'O', mkLadder([[98, 10], [21, 20]], ['G1'], [], [], [[41, 30.5], [15, 15]]))], 100).series[0]!
+    expect(baseOnly.truncated).toEqual([])
+    expect(baseOnly.points[0]!.hint).toMatchObject({ filled: 41, played: 30.5 })
     // 无截断的曲线：truncated 空、hint 全 null（提醒不出现 = 零视觉变化）
     const clean = buildCurveChart([mkRow('a', 'A', mkLadder([[0, 10], [5, 20]], ['G1'], [], [], [[41, 41], [41, 41]]))], 100).series[0]!
     expect(clean.truncated).toEqual([])

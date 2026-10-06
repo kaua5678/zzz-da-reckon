@@ -1,8 +1,8 @@
 /**
  * CC-259：**引擎实打交互次数**的唯一模块（难度 x 轴的输入）。
  *
- * 散点页（`teamCompare` 生成点）、难度曲线（`difficultyCurve#measureOperationalDifficulty`）、难度下降
- * （`difficultyDescent`）三处共用：两图注释与 @fact 都声称「同一函数同一单位、可直接对齐比较」，
+ * 散点页（`teamCompare` 生成点）与难度曲线（`difficultyCurve#measureOperationalDifficulty`）两处共用：
+ * 两图注释与 @fact 都声称「同一函数同一单位、可直接对齐比较」，
  * 修前散点读**预设声明**、曲线读**引擎实打** ⇒ 97/104 个预设两图 x 不同（§24.100）。
  *
  * 为什么独立成模块：`difficultyCurve` → `teamCompare` 是单向依赖（曲线要用 computeDifficulty 等），
@@ -62,7 +62,7 @@ const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ConfigModel['team'
 const OVERRIDE_ONLY_INTERACTION_FIELDS = ['dualCounterCount'] as const
 
 /**
- * CC-258：**引擎侧实打交互次数**的唯一读取（难度曲线 `liveInteractions` 与难度下降 `difficultyDescent` 共用）。
+ * CC-258：**引擎侧实打交互次数**的唯一读取（`liveInteractions` 经此读取，散点与难度曲线共用）。
  * 逐字段 × 逐槽：类型名 = 该槽模块 `interactionFieldTypes[field]` ?? 全局类型名；同名求和。
  * 全局类型即使 0 次也保留（明细要能照抄字段）；`shrink(slot, raw)` 负责截断存活率缩与取位。
  * CC-263：`interactionScale`（= `rr.convergence.interactionScale`）先按引擎口径降配取整，再交给 `shrink`

@@ -569,12 +569,13 @@
         以及角色专属次数（如克拉蕾·毁伤触发、希希芙·蛇影层数来源）。引擎次数常带小数（覆盖率折算、外层不动点），
         +0.1 这类微调不列——鼠标放到曲线点上，tooltip 里能看到该档的<b>全部</b>增量。
         括号里的「终结技系 Δ」是<b>同档同类伤害行一起变了多少，不是因果</b>（伤害同时受权重/易伤/覆盖率影响）；
-        「伤害归因」列才是这一档总 Δ 的精确拆分（Σ 分组 ≡ 该档伤害）。
+        「伤害归因（相对上一档）」列 = <b>本档伤害 − 上一档伤害</b>的精确拆分：先列涨得最多的来源，「挤掉」= 跌得最多的，
+        「其余」= 剩下全部，三段合计 ≡「伤害」列下方的 Δ。
       </div>
       <div class="detail-table-wrap">
         <table class="detail-table">
           <thead>
-            <tr><th>队伍</th><th>操作难度</th><th>本档新开</th><th>关键变化</th><th>伤害</th><th>伤害归因（本档 Δ）</th></tr>
+            <tr><th>队伍</th><th>操作难度</th><th>本档新开</th><th>关键变化</th><th>伤害</th><th>伤害归因（相对上一档）</th></tr>
           </thead>
           <tbody>
             <tr v-for="r in curveJumpRows" :key="r.key">
@@ -609,10 +610,11 @@
 
     <!-- 截断提醒板块：交互被砍的档，「要达到手填的交互要求至少需要多少难度」（用户 2026-10-06 口径） -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
-      <template #header>截断提醒（{{ curveTruncRows.length }} 档交互被砍）</template>
+      <template #header>截断提醒（{{ curveTruncRows.length }} 档交互被砍，不含全关起点）</template>
       <div class="compare-note">
-        只列**交互被砍**的档（手填 N 次 → 实打少于 N，<b>或</b>时间线截断 &gt; 1s）：引擎在装不下时会
-        <b>降配缩交互</b>（`interactionScale`）或<b>砍招式行</b>（时间截断），两种都让这一档打不出你填的次数。
+        只列<b>交互被砍</b>的爬梯档（本档配置的 N 次 → 实打少于 N，<b>或</b>时间线截断 &gt; 1s）：引擎在装不下时会
+        <b>降配缩交互</b>或<b>砍招式行</b>（时间截断），两种都让这一档打不出它配置的次数。
+        <b>全关起点不进表</b>：它是曲线的基准（杠杆全关 + 预设声明的交互），不是往上爬的某一档，与爬梯档没有可比性。
         「达标所需难度」= <b>沿这条曲线继续往上爬，第一个能把这 N 次真打出来的档的操作难度</b>；
         <b>曲线内无法达到</b> = 整条曲线都兑现不了这个要求（面板同时给出曲线最多能打到几次，不编造数字）。
         ⚠ 这是<b>提示不是保证</b>：它说的是「这条曲线自己的档位里有没有达标档」，不代表那个难度一定打得出来
@@ -621,13 +623,13 @@
       <div class="detail-table-wrap">
         <table class="detail-table">
           <thead>
-            <tr><th>队伍</th><th>操作难度</th><th>本档新开</th><th>手填 → 实打</th><th>被砍</th><th>达标所需难度</th></tr>
+            <tr><th>队伍</th><th>操作难度</th><th>本档新开</th><th>本档交互 → 实打</th><th>被砍</th><th>达标所需难度</th></tr>
           </thead>
           <tbody>
             <tr v-for="r in curveTruncRows" :key="r.key">
               <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
               <td>{{ fmt(r.cost, 0) }} 点</td>
-              <td class="td-detail">{{ r.opened === null ? '全关起点' : goalLabel(r.opened) }}</td>
+              <td class="td-detail">{{ goalLabel(r.opened) }}</td>
               <td>{{ cntNum(r.hint.filled) }} → {{ cntNum(r.hint.played) }}</td>
               <td class="curve-neg">
                 少 {{ cntNum(r.hint.cut) }} 次<template v-if="r.hint.overflow > 1"><br>截断 {{ fmt(r.hint.overflow, 1) }}s</template>
@@ -637,9 +639,16 @@
                 <template v-else><span class="curve-neg">曲线内无法达到</span><div class="td-standard">最多 {{ cntNum(r.hint.maxPlayed ?? 0) }} 次</div></template>
               </td>
             </tr>
-            <tr v-if="curveTruncRows.length === 0">
+            <tr v-for="b in curveTruncBaseOnly" :key="b.key">
+              <td class="td-team" :style="{ color: b.color }">{{ b.team }}</td>
+              <td colspan="5" class="td-detail">
+                只有全关起点被砍（本档交互 {{ cntNum(b.hint.filled) }} → 实打 {{ cntNum(b.hint.played) }} 次<template v-if="b.hint.overflow > 1">，截断 {{ fmt(b.hint.overflow, 1) }}s</template>）：
+                起点是曲线基准、不进表；往上爬的各档都足量交付本档配置的交互，没有可对照的被砍档。
+              </td>
+            </tr>
+            <tr v-if="curveTruncRows.length === 0 && curveTruncBaseOnly.length === 0">
               <td colspan="6" class="td-detail">
-                本次曲线每一档的交互都足量交付（没有降配缩交互、也没有时间截断）——你填的次数在这条曲线里都打出来了。
+                本次曲线每一档的交互都足量交付（没有降配缩交互、也没有时间截断）——每一档配置的交互次数都打出来了。
               </td>
             </tr>
           </tbody>
@@ -1345,9 +1354,9 @@ const curveSeriesPx = computed(() => {
       ...t,
       cx: curveXOf(t.cost),
       cy: curveYOf(t.ratio),
-      text: t.hint!.neededX !== null
-        ? `还差${fmt(t.hint!.cut, 0)}次→需${fmt(t.hint!.neededX, 0)}点`
-        : `还差${fmt(t.hint!.cut, 0)}次→曲线内达不到`,
+      text: t.hint.neededX !== null
+        ? `还差${fmt(t.hint.cut, 0)}次→需${fmt(t.hint.neededX, 0)}点`
+        : `还差${fmt(t.hint.cut, 0)}次→曲线内达不到`,
     })),
   }))
   // 图上标注只保留**每队伤害增量最大的前 2 处**（G5 之后一条曲线能有 7+ 处跃迁，全标必叠；
@@ -1357,7 +1366,7 @@ const curveSeriesPx = computed(() => {
     return new Set(rank.slice(0, 2))
   })
   // 截断标注：按「砍得最狠」排序取前 2 档（与跃迁同一取舍逻辑：宁可少标，不糊成一团）
-  const truncTop = series.map(s => new Set([...s.truncPts].sort((a, b) => b.hint!.cut - a.hint!.cut).slice(0, 2)))
+  const truncTop = series.map(s => new Set([...s.truncPts].sort((a, b) => b.hint.cut - a.hint.cut).slice(0, 2)))
   const flat: { j: (typeof series)[number]['jumpPts'][number]; base: number }[] = []
   const offsets: number[] = []
   series.forEach((s, si) => {
@@ -1440,9 +1449,19 @@ const curveTruncRows = computed(() =>
         color: s.color,
         cost: t.cost,
         opened: t.opened,
-        hint: t.hint!,
+        hint: t.hint,
       })),
   ),
+)
+/**
+ * 只有全关起点被砍的队（`truncated` 为空、起点 `hint` 非空）：起点不进表，但不让该队静默消失——
+ * 截断表给它一行说明（本档交互 → 实打，如实给数）。
+ */
+const curveTruncBaseOnly = computed(() =>
+  curveSeriesPx.value.flatMap((s, si) => {
+    const hint = s.truncated.length === 0 ? s.points.find(p => p.opened === null)?.hint : null
+    return hint ? [{ key: `${s.presetId}-${si}-base`, team: s.name, color: s.color, hint }] : []
+  }),
 )
 const curveHover = ref<{ si: number; pi: number } | null>(null)
 const curveHoverPt = computed(() => {
@@ -1466,10 +1485,10 @@ const curveTtY = computed(() =>
 )
 /**
  * 截断提醒的一行文案（tooltip 与面板共用，**同一份口径**）：
- * 「此档交互被砍到 X 次（手填 N）· 达标需难度 ≈ Z」/ 曲线内达不到时如实写「曲线内无法达到（最多 M 次）」。
+ * 「此档交互被砍到 X 次（本档交互 N）· 达标需难度 ≈ Z」/ 曲线内达不到时如实写「曲线内无法达到（最多 M 次）」。
  */
 function truncHintText(h: { filled: number; played: number; cut: number; overflow: number; neededX: number | null; maxPlayed: number | null }): string {
-  const cut = `此档交互被砍到 ${cntNum(h.played)} 次（手填 ${cntNum(h.filled)}${h.cut > 1e-6 ? `，少 ${cntNum(h.cut)} 次` : ''}${h.overflow > 1 ? `，截断 ${fmt(h.overflow, 1)}s` : ''}）`
+  const cut = `此档交互被砍到 ${cntNum(h.played)} 次（本档交互 ${cntNum(h.filled)}${h.cut > 1e-6 ? `，少 ${cntNum(h.cut)} 次` : ''}${h.overflow > 1 ? `，截断 ${fmt(h.overflow, 1)}s` : ''}）`
   const reach = h.neededX !== null
     ? `达标需难度 ≈ ${fmt(h.neededX, 0)} 点`
     : `曲线内无法达到（最多 ${cntNum(h.maxPlayed ?? 0)} 次）`
@@ -1487,7 +1506,7 @@ const curveHoverTips = computed(() => {
     s.name,
     `操作难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）`,
     attr
-      ? `本档 Δ ${signedDmg(attr.totalDelta)} ← ${attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）'}${attr.squeezed.length > 0 ? `｜挤掉 ${attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、')}` : ''}`
+      ? `较上一档 Δ ${signedDmg(attr.totalDelta)} ← ${attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）'}${attr.squeezed.length > 0 ? `｜挤掉 ${attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、')}` : ''}`
       : '本档无伤害变化（全关起点）',
     band,
     major.length > 0

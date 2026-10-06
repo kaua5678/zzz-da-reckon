@@ -36,13 +36,6 @@ export interface LadderCtx {
    * `clearDifficultyLevers` 把上限置 0（全关 = 不吸收）前记在这里，G5 分档推进到它为止；缺省 = 引擎缺省 0.4。
    */
   absorbCap?: number
-  /**
-   * 降序一般化曲线（`difficultyDescent.ts`）的弹刀基准（逐槽用户原值）。
-   * 曲线按比例缩 `parryCount` 时以它为基数——**不用 `team[s].parryCount` 现读**，因为曲线每降一级
-   * 都会写回该字段，现读会把上一级的结果当基准（连续缩三次 = 缩到 0.75³ 而不是 0.75）。
-   * 生命周期 = 单次 `descendDifficultyCurve` 调用（函数自己置位与清空）。
-   */
-  descentParryBase?: number[]
 }
 
 const GUARANTEE_KEYS = ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'] as const
@@ -121,7 +114,7 @@ export interface DifficultyGoal {
   /** 是否改写权重/交互次数/合轴率（试开后需要快照还原） */
   mutates: boolean
   /**
-   * **可重复录取**：录取后不退出候选池，下一轮继续试开，直到「增益低于门槛被丢弃」或 `LadderOpts.maxSteps` 用完。
+   * **可重复录取**：录取后不退出候选池，下一轮继续试开，直到「增益低于门槛被丢弃」或防呆上限（24 档）用完。
    * 用于「分档推进」的杠杆（如合轴率：先 +50%、再 +100%），使曲线能出现多个台阶而不是一步到顶。
    */
   repeatable?: boolean
@@ -356,8 +349,6 @@ export interface LadderOpts {
    * 缺省不给 = 沿用目标自带的静态 `cost`（纯策略模块的占位口径，供不接引擎的调用方用）。
    */
   costOf?: (ctx: LadderCtx) => number
-  /** 最多录取多少档（防 repeatable 目标不收敛；缺省 24） */
-  maxSteps?: number
 }
 
 /**
@@ -395,7 +386,7 @@ export function climbDifficultyLadder(
       : {}
   }
   const costOf = opts.costOf
-  const maxSteps = opts.maxSteps ?? 24
+  const maxSteps = 24 // 最多录取多少档（防 repeatable 目标不收敛）
   const cost0 = costOf ? costOf(ctx) : 0
   const points: LadderPoint[] = [{
     x: cost0, dmg: base, opened: null, ...snap(), ...(costOf ? { difficulty: cost0 } : {}),
