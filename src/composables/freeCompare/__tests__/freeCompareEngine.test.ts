@@ -63,9 +63,9 @@ describe('自由对比求值器（真引擎）', () => {
   })
 
   it('★ 调用方 store 全程不被改写（r372：求值只在独立场景里发生，不再依赖「跑完还原」）', async () => {
-    const config = useConfigStore()
-    // 先给一个「用户自己的配置」当现场
-    await setupHarness([{ agentId: BURNICE }, { agentId: VELINA }, ''], { recommendedBuild: true })
+    // 先给一个「用户自己的配置」当现场。必须盯 setupHarness 返回的 store：它新建 pinia，调用前取的
+    // useConfigStore() 指向上一个现场、没人会碰 ⇒ 本条曾因此恒绿，求值写回调用方也查不出（r698）
+    const { config } = await setupHarness([{ agentId: BURNICE }, { agentId: VELINA }, ''], { recommendedBuild: true })
     const snap = (c: typeof config) => JSON.stringify({
       team: c.team.map(x => ({ id: x.agentId, cine: x.cinemaLevel, mod: x.wEngineModLevel, w: x.wEngineId })),
       hp: c.enemy.hp,

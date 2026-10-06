@@ -138,6 +138,8 @@ export function setTeam(
 /**
  * 一站式装配：新建 pinia → stub fetch → 加载 catalog/teammate-buffs → 填充队伍。
  * 返回 { catalog, config } 供测试直接使用。
+ * ⚠️ 新建 pinia ⇒ **调用之前**取的 store / `useResourceCalc()` 引用全部作废（指向上一个 pinia）：用返回值，或在调用之后再取。
+ * 拿旧引用断言「没变」的用例会恒绿（r698：freeCompareEngine「调用方 store 全程不被改写」就这样落空过）。
  *
  * ⚠️ **默认不应用配装推荐**（`recommendedBuild: false`）——有意为之：应用推荐会跑副词条优化器
  * （慢）且改变既有测试的数值基线。但代价必须知道：**默认队伍穿的是 `setAgent` 兜底盘
