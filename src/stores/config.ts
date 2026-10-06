@@ -876,16 +876,28 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   }
 
   /**
-   * 音擎叠层覆盖率的自动回填（数据源 = src/data/wEngineStackCoverage.ts，按执行行次数×持续/战斗时长折算）。
-   * 仅回填**未手调**的效果；手调过的（`wEngineEffectCoverageManual`）跳过。回填值写进同一
-   * `wEngineEffectCoverages` 表（两个消费端 panelPhases 面板/进场快照无需改），但自动值不进
-   * manual 标记 ⇒ 下次资源结果变化会重算覆盖，手调值则sticky。
+   * 音擎叠层覆盖率自动折算值（数据源 = src/data/wEngineStackCoverage.ts，按执行行次数×持续/战斗时长折算）
+   * 相对本表的增量：只含**未手调**（`wEngineEffectCoverageManual`）且与表中现值不同的效果，值夹到 0–100；
+   * 空对象 = 表已反映全部自动值。两处共用这一条口径：`useResourceCalc` 结算侧面板同步并入（伤害不等回填，r700），
+   * 以及下面的回填。
    */
-  function applyWEngineEffectCoverageAuto(auto: Record<string, number>) {
+  function wEngineEffectCoverageAutoDelta(auto: Record<string, number>): Record<string, number> {
+    const delta: Record<string, number> = {}
     for (const [effectId, coverage] of Object.entries(auto)) {
       if (wEngineEffectCoverageManual.value[effectId]) continue
-      wEngineEffectCoverages.value[effectId] = Math.max(0, Math.min(100, coverage))
+      const value = Math.max(0, Math.min(100, coverage))
+      if (wEngineEffectCoverages.value[effectId] !== value) delta[effectId] = value
     }
+    return delta
+  }
+
+  /**
+   * 把自动折算值回填进本表。读表的有两类：calc 之外的界面（配装页滑块、FinalPanel 等）靠它显示自动值；
+   * 资源侧 `resourcePanels` 也读它（T10 环，执行次数不依赖这些面板量，锁在 wEngineCoverageFixpointT10）。
+   * 自动值不进 manual 标记 ⇒ 下次资源结果变化会重算覆盖，手调值则 sticky。
+   */
+  function applyWEngineEffectCoverageAuto(auto: Record<string, number>) {
+    Object.assign(wEngineEffectCoverages.value, wEngineEffectCoverageAutoDelta(auto))
   }
 
   function getWEngineEffectCoverage(effectId: string): number {
@@ -1365,6 +1377,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     toggleTeammateBuff,
     setTeammateBuffCoverage,
     setWEngineEffectCoverage,
+    wEngineEffectCoverageAutoDelta,
     applyWEngineEffectCoverageAuto,
     getWEngineEffectCoverage,
     setDiscEffectCoverage,

@@ -17,6 +17,11 @@
  *   ① 创建 + 首读恰好 2 次 calcOutput miss（多了 = 出现第三遍 / 震荡；少了 = 有人改了数据流，T10 卡要同步改）；
  *   ② 之后 nextTick 不再产生 miss（不动点一步到达）；
  *   ③ 用 pass 2 的资源结果重新折算的回填值 == store 里的值（一步不动点的直接表达）。
+ *
+ * r701 起结算侧不再经 store 读回填值：`panels`（伤害 / 异常 / 进场快照）用「store 表 ⊕ 本次资源结果的自动折算」
+ * 同步求值，只有资源侧 `resourcePanels` 仍读 store 表 ⇒ 上面的环与两遍管线还在（①–③ 不变），但伤害不再取决于
+ * flush:'post' 回填是否已跑。第二个 describe 钉的就是这件事：修前同步读（队伍对比 / 难度曲线的读法）按满层 100 算，
+ * 7 支带嵌合编译器的预设比回填后高 1.8–5.8%。
  */
 import { describe, it, expect } from 'vitest'
 import { nextTick } from 'vue'
@@ -25,6 +30,8 @@ import { useResourceCalc, getCalcOutputMemoStats } from '@/composables/useResour
 import { useCatalogStore } from '@/stores/catalog'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { stackEnergyEvents, stackDurationSeconds, stacksToCoverage } from '@/data/wEngineStackCoverage'
+import { teamPresets } from '@/data/teamPresets'
+import { applyTeamToStore } from '@/composables/teamCompare'
 
 const EFFECT_ID = 'effect_wiki_214_self_ap' // 嵌合编译器 14118：唯一已登记折算器的叠层效果
 
@@ -65,4 +72,20 @@ describe('T10 事实锁：叠层覆盖率回填是一步到达的隐藏不动点
       expect(cov).toBeCloseTo(stored, 9)
     })
   }
+})
+
+describe('结算侧同步读不依赖回填时序（r701）', () => {
+  it('auto-1221-1511-1211：套预设后同步读的伤害 == 回填落 store 后再读', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1221-1511-1211')!)
+    const syncRead = calc.teamTotalDamage.value
+    // 回填尚未落 store = 分析循环（同步换队、同步读）的处境
+    expect(config.wEngineEffectCoverages[EFFECT_ID]).toBeUndefined()
+    await nextTick(); await nextTick(); await nextTick()
+    // 自动折算确实生效（否则本例比的是两个满层值，空转）
+    expect(config.getWEngineEffectCoverage(EFFECT_ID)).toBeLessThan(100)
+    expect(calc.teamTotalDamage.value).toBe(syncRead)
+  })
 })

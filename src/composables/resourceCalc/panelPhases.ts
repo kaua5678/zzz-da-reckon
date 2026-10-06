@@ -105,8 +105,9 @@ function agentHasCinemaSkillLevelBuff(agent: Agent | undefined): boolean {
   slot: number,
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  wEngineCoverages?: Record<string, number>,
 ): PanelValues | null {
-  return computePanelPhases(slot, configStore, catalogStore)?.inCombat ?? null
+  return computePanelPhases(slot, configStore, catalogStore, wEngineCoverages)?.inCombat ?? null
 }
 
 /**
@@ -401,16 +402,19 @@ export function applyTeammateBuffRecipientFilters(
  * 队伍驱动盘）。此前副词条优化器（`composables/substatOptimizer.ts`）只取原始 `enabledTeammateBuffs`，五步全缺 ⇒
  * 优化目标面板与伤害管线不是同一个面板（例：席德队给正兵以外的强攻也算明攻、覆盖率 50% 的拐按 100% 算）。
  * ⚠ store 层整队贪心（`stores/config.ts` ~800）不能反向依赖 composables，仍走原始上下文（缺省 useDefault 路径不读队友 buff，不受影响）。
+ * `wEngineCoverages` = 音擎效果覆盖率表，缺省读 store；`useResourceCalc` 结算侧传「store 表 ⊕ 自动折算增量」，
+ * 使伤害不取决于 flush:'post' 回填是否已跑（r700）。本槽与队友来源面板用同一张。
  */
 export function resolveSlotPanelBuffInputs(
   slot: number,
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  wEngineCoverages: Record<string, number> = configStore.wEngineEffectCoverages,
 ): { teammateBuffs: TeammateBuff[]; sourcePanelsByOwner: ReturnType<typeof buildTeammateBuffSourceContext>['sourcePanelsByOwner']; effectCoverageMap: Map<string, number>; team: ReadonlyTeam } {
   const buffSelections = configStore.teammateBuffSelections
   const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(configStore.team, {
     // CC-172（第 197 轮）：来源面板 = 角色自身配置（不带队友 buff），覆盖率口径与进场快照面板相同
-    effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore),
+    effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore, wEngineCoverages),
     teammateBuffGroups: catalogStore.teammateBuffGroups,
     driveDiscSetsMap: catalogStore.driveDiscSetsMap,
     statRules: catalogStore.statRules,
@@ -480,7 +484,7 @@ export function resolveSlotPanelBuffInputs(
       .filter(buff => additionalAbilityBuffGates.get(buff.id) !== false && !gateBlockedBuffs.has(buff.id)),
     team, slot, s => outOfCombatPanelProbe(s, configStore, catalogStore))
 
-  const effectCoverageMap = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)
+  const effectCoverageMap = wEngineEffectCoverageMapOf(wEngineCoverages)
   for (const buff of allTeammateBuffs) {
     const coverage = teammateBuffCoverageOf(buffSelections, buff.id) / 100
     for (const effect of buff.effects ?? []) effectCoverageMap.set(effect.id, coverage)
@@ -493,6 +497,7 @@ export function computePanelPhases(
   slot: number,
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  wEngineCoverages?: Record<string, number>,
 ): { outOfCombat: PanelValues; inCombat: PanelValues } | null {
   const char = configStore.team[slot]
   if (!char?.agentId) return null
@@ -502,7 +507,7 @@ export function computePanelPhases(
 
   const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : undefined
 
-  const { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore)
+  const { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, wEngineCoverages)
 
   // 计算面板
   const result = calcPanel(
@@ -637,6 +642,7 @@ export function computeEntrySnapshotPanel(
   slot: number,
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  wEngineCoverages?: Record<string, number>,
 ): PanelValues | null {
   const char = configStore.team[slot]
   if (!char?.agentId) return null
@@ -658,7 +664,7 @@ export function computeEntrySnapshotPanel(
       wEngineModLevel: char.wEngineModLevel ?? 1,
       potentialLevel: char.potentialLevel, // CC-171：与 computePanelPhases 同口径
       enemyWeakness: configStore.enemy.weakness,
-      effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore),
+      effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore, wEngineCoverages),
     },
   )
   const panel = { ...result.inCombat }
@@ -673,8 +679,9 @@ export function computeEntrySnapshotPanel(
 function selfEffectCoverageMap(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  wEngineCoverages: Record<string, number> = configStore.wEngineEffectCoverages,
 ): Map<string, number> {
-  const map = wEngineEffectCoverageMapOf(configStore.wEngineEffectCoverages)
+  const map = wEngineEffectCoverageMapOf(wEngineCoverages)
   mergeTeamDiscEffectCoverages(map, configStore, catalogStore, teamDiscs(configStore))
   return map
 }
