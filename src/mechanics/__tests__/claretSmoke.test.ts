@@ -39,7 +39,7 @@ afterEach(() => {
  * R37-J1（2026-09-19，OPEN-ITEMS）：克拉蕾模块曾有**私有** `findMoveById` / `getRowValue`，后者 = `values[0] ?? 0`，
  * **缺** `× getRowFusionMultiplier(move.id, rowId)`（逻辑编辑器 `RowFusionRule`）。引擎其余路径（`getBasicComboMoves` /
  * `averageBasicRows` / `fusedRowValue`）全走带乘数的 `data/moveTableQueries` 版 ⇒ 用户在逻辑编辑器给克拉蕾招式行配
- * 融合规则时，其余角色吃、克拉蕾的平A两态秒均 / 斩金断铁 / 葬血强袭倍率**不吃**。测试态 `activeRowFusions` 默认空，
+ * 融合规则时，其余角色吃、克拉蕾的平A两态秒均 / 斩金断铁 / 葬血强袭倍率**不吃**。当时测试态 `activeRowFusions` 默认空（r697 起 = spec 默认规则，仍不含克拉蕾），
  * 3000+ 条既有测试全看不见这条分裂——本组用例就是分裂的机器判据（修前必红）。
  *
  * 行为面：给两套平A基准（血锻#3 1611003 / 锻星#3 1611007）的 damage 行都配 ×2 ⇒ 无论铭刻份额多少，

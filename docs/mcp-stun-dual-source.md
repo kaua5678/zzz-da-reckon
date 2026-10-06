@@ -2655,7 +2655,7 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 
 **① 订正 §24.84 的错误前提**：§24.84 写的「无规则时乘数恒为 1 ⇒ **默认零差**」**是错的**。
 - 逻辑编辑器行规则**不只是用户覆盖**：`logicEditor/defaults.ts#createDefaultLogicEditorState` 会把 `specs/agents/*.json#rowFusions` 灌成默认规则，`stores/logicEditor.ts:39` 在 store 初始化时就 `setActiveRowFusionRules` ⇒ **生产开箱即生效**。
-- 测试 harness 不实例化逻辑编辑器 store ⇒ **测试态规则为空**。因此 verify 全绿不能证明生产零差。
+- 测试 harness 不实例化逻辑编辑器 store ⇒ **测试态规则为空**。因此 verify 全绿不能证明生产零差。（r697 起不成立：`setupHarness` 与 `useCalculatorStartup` 都建立该 store，见 §24.93 ② 末条。）
 - 现存默认规则共 4 条，**启用的只有 1 条**：`burnice_stirring_fusion`（1171007 / damage ×1.268884，status `implemented_approximation`）。1561 有 3 条，都是 enabled=false。
 - 这条规则的 note 原文：「最终融合倍率591.4%（250.8×0.5+466）；**模块内直接按两段原始倍率计算，此规则用于倍率编辑器展示**」。
   - ⇒ 焰烈模块的 `rawRowValue` 是**有意**的原始读取，不是同体重复。CC-237 把它并进 `getRowValue` 是误判。
@@ -2917,6 +2917,7 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - 值不值得：零生产变化，把一条人工纪律变成机器检查，架构上消除了「测试态绿 ≠ 生产态对」这个盲区里最常见的一类。
 - 验证：新锁 3 passed；vue-tsc 干净；v269 verify EXIT=0（3989 passed | 29 skipped）。
 - 回退点：revert 9c037acf（只新增一个测试文件）。
+- **r697 推翻本裁决**：发现生产里 store 也只在 LogicEditorPage 建立（没打开过那一页时规则全空、用户持久化规则被忽略），于是启动入口 `useCalculatorStartup` 与 `setupHarness` 都建立 store，测试态 = 生产启动态。上面顾虑的代价实测为零：`afterEach(set([]))` 一个不用改（每次 setupHarness 新建 store 即重新激活默认规则），rowValueSource 等单元锁不走 harness；全量 527 文件 / 4508 例绿。本锁保留，职责收窄为「默认规则只用于展示、不改整队读数」，且规则改在 setupHarness **之后**设——原写法先设后建，r697 后会被 harness 重置为默认规则，两侧比较落空（同样的 CC-237 反例下照样绿，已实测）。详见 r6 第 697 行。
 
 ### 24.94 第 270 轮：CC-250 spec 事件 multiplierRowId 端到端生效（60d35e7f）——§24.87 ④ 未决项结项
 

@@ -19,6 +19,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { vi } from 'vitest'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore, interactionBaselineFor } from '@/stores/config'
+import { useLogicEditorStore } from '@/stores/logicEditor'
 import { collectInCombatTeamBuffs } from '@/core/inCombatBuffs'
 import { applyEffect } from '@/core/buff'
 import { emptyPanel } from '@/core/panel'
@@ -151,6 +152,9 @@ export async function setupHarness(
 ) {
   setActivePinia(createPinia())
   mockStaticFetch()
+  // 与 useCalculatorStartup 同一路径激活行融合规则：测试态 = 生产启动态（r697，原先测试态规则恒空）。
+  // 每次调用都新建 store ⇒ 规则重置为默认；用例要自定规则须在 setupHarness 之后 setActiveRowFusionRules。
+  useLogicEditorStore()
   const catalog = await loadCatalogStore(opts.loadTeammateBuffs ?? true)
   const config = useConfigStore()
   setTeam(config, team, { productionBasicWeights: opts.productionBasicWeights })

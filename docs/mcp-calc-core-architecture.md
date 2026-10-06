@@ -419,7 +419,7 @@ npm run build                            # vue-tsc + vite，EXIT 0
 | CC-246 | done | d9d5e4ed | AUTO_AXIS_PRESET_HINTS 迁入 mechanics/registry，roundInputs 不再反向依赖展示门面 agentMechanicView；resourceCalc 闭包锁扩展到上层 composables（§24.91） |
 | CC-247 | done | 1f2ee896 | spec settings 合并移至 mechanics/index#registerWithSpecSettings，registry 成纯叶子；core 运行时闭包不再进入 specs / logicEditor/fusion；锁 coreRuntimeDeps.test；共用工具 src/test/importClosure（§24.91） |
 | CC-248 | done | 7c8567c9 | specs / data 运行时闭包锁（specsRuntimeDeps、dataRuntimeDeps，白名单仅 logicEditor/fusion）；specs/verify.ts 迁至 src/test/specVerify.ts，specs 不再依赖 core；ARCHITECTURE 分层规则表（§24.92） |
-| CC-249 | done | 9c037acf | 测试态 / 生产态行规则一致性锁 productionRuleParity.test（拥有 spec 默认规则的角色整队读数：空规则 ≡ 默认规则，角色集合动态推导）；§24.85 裁决：harness 不全局加载默认规则（§24.93） |
+| CC-249 | done | 9c037acf | 测试态 / 生产态行规则一致性锁 productionRuleParity.test（拥有 spec 默认规则的角色整队读数：空规则 ≡ 默认规则，角色集合动态推导）；§24.85 裁决：harness 不全局加载默认规则（§24.93）——**r697 推翻**：harness 与启动入口都建立逻辑编辑器 store（测试态 = 生产启动态），本锁改为 harness 之后设规则、职责收窄为「默认规则只用于展示」 |
 | CC-250 | done | 60d35e7f | spec 事件 multiplierRowId 端到端生效：buildSpecEventExecutions 缺省读 cfg.mechanicRowValues（删 roxy / claret / nekomata / specs 4 份只放行 damage 的 lambda），非 damage 行强制倍率覆盖；锁 specEventRowId.test（§24.94） |
 | CC-251 | done | 7ed14dfc | 分析器现场快照 / 恢复单一来源 composables/configSnapshot.ts（teamCompare / teamTimelineStore / positionCompare 3 份归一）；修复恢复后用户手动队友 buff 开关被 sync 改回；锁 configSnapshot.test（§24.95） |
 | CC-252 | done | ca29c623 | 全战斗有效时间单一来源 core/effectiveTime#effectiveCombatTime（lighter / rina / yaojiayin 私有 combatTimeOf + burnice 2 处内联）；源码锁（§24.96） |

@@ -1,14 +1,16 @@
 /**
- * CC-249：测试态 / 生产态行规则一致性（§24.85 未决项裁决）。
+ * CC-249：spec 默认行规则只用于展示、不改整队读数（原名「测试态 / 生产态行规则一致性」，§24.85 未决项裁决）。
  *
  * 背景：`logicEditor/defaults.ts` 把 `specs/agents/*.json#rowFusions` 灌成默认规则，`stores/logicEditor.ts`
- * 初始化即 `setActiveRowFusionRules` ⇒ 生产开箱即生效；而 harness 不实例化逻辑编辑器 store ⇒ 测试态规则为空。
- * 过去靠人工纪律「涉及 getRowValue 的改动须在默认规则下补验」（CC-237 误并即因此漏网）。
+ * 建立即 `setActiveRowFusionRules`。CC-249 当时 harness 不建立该 store ⇒ 测试态规则为空、生产态不为空，
+ * 靠人工纪律「涉及 getRowValue 的改动须在默认规则下补验」（CC-237 误并即因此漏网）。
  *
- * 裁决：**不让 harness 全局加载默认规则**（要改十余个 `afterEach(set([]))` 复位口径，且 rowValueSource 等
- * 单元锁本就断言原始值），改为本文件在 verify 里自动做那次「补验」：对每个**拥有默认规则**的角色
- * （moveId 前 4 位 = agentId，动态推导 ⇒ 新增默认规则自动纳入）组一队，断言空规则与生产默认规则下
- * teamTotalDamage 逐位相同。
+ * CC-249 的裁决「不让 harness 全局加载默认规则」已于 r697 推翻：`setupHarness` 与生产启动入口 `useCalculatorStartup`
+ * 一样建立该 store ⇒ harness 用例全部在生产默认规则下跑。当时顾虑的代价实测为零：十余个 `afterEach(set([]))`
+ * 不用改（每次 setupHarness 新建 store 即重新激活默认规则），rowValueSource 等单元锁不走 harness。
+ * 本锁保留：对每个**拥有默认规则**的角色（moveId 前 4 位 = agentId，动态推导 ⇒ 新增默认规则自动纳入）组一队，
+ * 断言空规则与默认规则下 teamTotalDamage 逐位相同。规则必须在 setupHarness **之后**设——它会重置为默认规则
+ * （r697 前本文件先设后建；r697 后那样写两侧都是默认规则，比较落空）。
  * 若日后某条默认规则**有意**改变整队读数：把该队的期望改为显式记录差值并注明规则 id，不要删本锁。
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -29,12 +31,12 @@ function teamFor(agentId: string): string[] {
 }
 
 async function totalDamage(team: string[], rules: typeof DEFAULT_RULES): Promise<number> {
-  setActiveRowFusionRules(rules)
   await setupHarness(team.map(agentId => ({ agentId })), { recommendedBuild: false })
+  setActiveRowFusionRules(rules)
   return useResourceCalc().teamTotalDamage.value
 }
 
-describe('CC-249 测试态（空规则）与生产态（spec 默认行规则）整队读数一致', () => {
+describe('CC-249 空规则与 spec 默认行规则下整队读数一致（默认规则只用于展示）', () => {
   it('默认规则覆盖的角色集合非空（反空洞）', () => {
     expect(DEFAULT_RULES.length).toBeGreaterThan(0)
     expect(RULE_AGENTS.length).toBeGreaterThan(0)

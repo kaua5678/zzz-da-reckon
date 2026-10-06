@@ -1,6 +1,7 @@
 import { readonly, ref } from 'vue'
 import { useCatalogStore, type CatalogLoadStatus } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
+import { useLogicEditorStore } from '@/stores/logicEditor'
 
 /**
  * 计算器启动入口：完整加载后才开放编辑；错误可见，start() 同时也是显式重试。
@@ -10,6 +11,9 @@ import { useConfigStore } from '@/stores/config'
 export function useCalculatorStartup() {
   const catalog = useCatalogStore()
   const config = useConfigStore()
+  // 行融合规则（逻辑编辑器的持久化状态，缺省 = spec 默认规则）是计算输入：store 一建立就 setActiveRowFusionRules。
+  // 原先只有 LogicEditorPage 会建立它 ⇒ 没打开过那一页时规则全空，同一配置的结果取决于用户点没点过那一页（r697）。
+  useLogicEditorStore()
   const status = ref<CatalogLoadStatus>('idle')
   const error = ref<string | null>(null)
   let inFlight: Promise<boolean> | null = null
