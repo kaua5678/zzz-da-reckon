@@ -36,7 +36,7 @@ describe('diag: stun axis', () => {
       })),
       basicTimeBySlot: rr?.characters.map(c => ({ agent: c.agentId, basicAttackTime: c.timeAllocation?.basicAttackTime, necessaryTime: c.timeAllocation?.necessaryTime })),
       windowDuration: calc.windowDuration.value,
-      stunCoverage: calc.stunAxisResult.value?.stunCoverage,
+      stunCoverage: calc.stunCoverage.value,
     }, null, 2))
     expect(sp).not.toBeNull()
   })

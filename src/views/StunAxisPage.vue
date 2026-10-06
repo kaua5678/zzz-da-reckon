@@ -217,7 +217,7 @@
           <span>轴内失衡 {{ fmt(axisResult.totalInAxisStun,1) }}</span>
           <span>失衡次数 {{ axisResult.stunCount }} 次</span>
           <span>轴轮数 {{ axisResult.totalAxisRounds }} 轮</span>
-          <span>覆盖率 {{ (axisResult.stunCoverage*100).toFixed(1) }}%</span>
+          <span>覆盖率 {{ (stunCoverage*100).toFixed(1) }}%</span>
         </div>
         <div v-if="axisResult.globalWarnings.length" style="margin-top:6px">
           <div v-for="(w,i) in axisResult.globalWarnings" :key="i" class="sap-warn">{{ w }}</div>
@@ -267,7 +267,7 @@ function isStaleAct(act: DeepReadonly<StunAxisAction>): boolean {
 }
 const STALE_TITLE = '该块属于已不在此槽的角色，不参与计算（换回原角色后恢复生效）'
 const message = useMessage()
-const { resourceResult, stunAxisResult: axisResult, stunPoolResult, stackTraversalResult: stack, matchedPlanName, effectiveStunAxes, autoPreset, autoActive, windowDuration, inStunAnomalyState, bossAnomalyState, damagePoolRows } = useResourceCalc()
+const { resourceResult, stunAxisResult: axisResult, stunPoolResult, stackTraversalResult: stack, matchedPlanName, effectiveStunAxes, autoPreset, autoActive, windowDuration, stunCoverage, inStunAnomalyState, bossAnomalyState, damagePoolRows } = useResourceCalc()
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 // 通用自动轴：队伍匹配到预设失衡轴即自动选用（手动配置过轴时让路）

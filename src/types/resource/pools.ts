@@ -474,8 +474,6 @@ export interface StunAxisResult {
   stunCount: number
   /** 轴总轮数 = Σ axisDetails.times（解析自 axis.count，末条缺省兜底） */
   totalAxisRounds: number
-  /** 易伤覆盖率 = 失衡次数 × 窗口时长 / 有效时间（与捏轴无关，固定） */
-  stunCoverage: number
   /** 每个 (slot, moveId) 的轴内/轴外取用分配，供伤害池拆分直伤 */
   allocation: Record<string, StunAxisAllocation>
   /** 每轴明细 */

@@ -23,9 +23,6 @@ describe('calcStunAxis', () => {
       perActionDuration: { '0:exSpecial': 2 },
       stunCount: 2,
       windowDuration: 16,
-      bossStunValue: 15486,
-      battleTime: 180,
-      invincibleTime: 0,
     })
 
     // 固定轴：需 4 次、池里只有 3 次 → 仍按 4 次计入，overuse=1 仅警告
@@ -45,8 +42,6 @@ describe('calcStunAxis', () => {
       perActionDuration: { '0:exSpecial': 2 },
       stunCount: 4,
       windowDuration: 16,
-      bossStunValue: 1000,
-      battleTime: 180,
     })
 
     expect(axis.totalAxisRounds).toBe(4)
@@ -61,8 +56,6 @@ describe('calcStunAxis', () => {
       perActionDuration: { '1:basic': 1 },
       stunCount: 3,
       windowDuration: 16,
-      bossStunValue: 1000,
-      battleTime: 180,
     })
 
     // basic 10s 从 11s 起手：11..16 在窗口内 = 5s，比例 0.5
@@ -78,8 +71,6 @@ describe('calcStunAxis', () => {
       perActionDuration: { '0:ultimate': 3 },
       stunCount: 2,
       windowDuration: 16,
-      bossStunValue: 1000,
-      battleTime: 180,
     })
 
     expect(axis.totalAxisRounds).toBe(2)
@@ -101,8 +92,6 @@ describe('calcStunAxis', () => {
       perActionDuration: { '0:a': 6, '1:b': 6 },
       stunCount: 1,
       windowDuration: 10,
-      bossStunValue: 1000,
-      battleTime: 180,
     })
 
     expect(axis.axisDetails[0].axisDuration).toBe(6)

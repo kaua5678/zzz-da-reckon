@@ -144,7 +144,7 @@ describe('窗口终结动作（佩洛伊斯决算）截断', () => {
     expect(r.skipped.some(k => k.moveId === '1551016')).toBe(false)
   })
 
-  it('决算做完清空剩余失衡时间：平A填充为 0，损失秒数 = 窗口 − 决算结束时刻', () => {
+  it('决算做完清空剩余失衡时间：平A填充为 0', () => {
     const r = calcStunAxisStack({
       ...base,
       axes: [{
@@ -156,8 +156,6 @@ describe('窗口终结动作（佩洛伊斯决算）截断', () => {
       }],
     })
     expect(r.executed['0:1551016'].count).toBe(1)
-    expect(r.truncatedWindows).toBe(1)
-    expect(r.stunSecondsLost).toBe(12 - 7) // 决算 4+3=7s 结束，损失 5s
     expect(r.basicFillSeconds).toBe(0) // 剩余时间被清空，可填充平A为 0
   })
 
@@ -172,12 +170,10 @@ describe('窗口终结动作（佩洛伊斯决算）截断', () => {
         basicFillerSlot: 0,
       }],
     })
-    expect(r.truncatedWindows).toBe(0)
-    expect(r.stunSecondsLost).toBe(0)
     expect(r.basicFillSeconds).toBe(12 - 7)
   })
 
-  it('多窗口：含决算的窗口逐个计损失', () => {
+  it('多窗口：每个含决算的窗口都不填平A', () => {
     const r = calcStunAxisStack({
       ...base,
       stunCount: 3,
@@ -188,8 +184,6 @@ describe('窗口终结动作（佩洛伊斯决算）截断', () => {
         basicFillerSlot: 0,
       }],
     })
-    expect(r.truncatedWindows).toBe(3)
-    expect(r.stunSecondsLost).toBe(3 * (12 - 9))
     expect(r.basicFillSeconds).toBe(0)
   })
 })

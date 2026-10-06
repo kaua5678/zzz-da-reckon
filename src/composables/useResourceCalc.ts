@@ -473,9 +473,6 @@ export function createResourceCalc(
       perActionDuration,
       stunCount: stunRes.stunCount,
       windowDuration: computeWindowDuration(),
-      bossStunValue: configStore.enemy.stunValue,
-      battleTime: configStore.enemy.battleTime ?? 180,
-      invincibleTime: configStore.enemy.invincibleTime ?? 0,
     })
   })
 
