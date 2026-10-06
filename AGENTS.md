@@ -174,6 +174,17 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
 3. 判据红/做不到/前提被证伪时：如实写 `blocked` + 阻塞点，**不要**为了让数字好看而放宽判据
    （尤其不许改 `timeGolden`/`timeFillRatchet` 基线、不许删断言、不许改 `frozen` 常量以求绿——
    这些正是护栏要拦的）。
+   **⚠ 但「棘轮红」有两种，别混为一谈**（2026-10-06 澄清：本条曾被读成「永远不许碰 frozen」，
+   于是工人做完**正确**改动后停在原地问用户怎么改——那是本条的误读，不是它的本意）：
+
+   | 判据读数 | 含义 | 正确动作 |
+   |---|---|---|
+   | `count > frozen` | **退步**（代码变差了） | 改代码。**禁止**动 frozen——这才是本条拦的「以求绿」 |
+   | `count < frozen` | **进步**（你真把它修好了） | **下调 frozen 到实测值**，这是**规定动作**不是违规。判据原文就会这么提示（`是进步，把 … 下调到 N`），照做即可，**不要回来问用户** |
+
+   同理，`timeGolden` / `timeFillRatchet` 在**有意**改动后按规则 10 的④步重生成（带 delta 归因）
+   也是规定动作，不算「放宽判据」。**只有「为了掩盖退步而动基线」才是违规。**
+   棘轮降到 0 = 硬门（不可能再进步，也就不会再有这一类摩擦）。
 4. 报告文件写在派活指定的路径（第一行 `STATUS: done|blocked`），**最后一条回复也带一行 STATUS**
    （双通道，报告丢了管理员还能从对话里回收）。
 
@@ -203,13 +214,22 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
 
 ---
 
-## 开发环境与工具链（Windows ↔ WSL / ShunCode）
+## 开发环境与工具链（Windows ↔ WSL）
+
+> **⚠ 先认 harness，再读本节**（2026-10-06 加）：本节历史上按 ShunCode 写成，其中「工具怎么调」
+> 的部分**对 DSH harness 不适用**（DSH 无 `wsl_exec` / `apply_patch` 这两个工具）。事实部分
+> （真身在 WSL、禁止 `wsl --terminate`、并行 lead 钉 HEAD、长命令后台跑）**两个 harness 都成立**。
+>
+> | 你手上是什么 | 本节怎么读 |
+> |---|---|
+> | **DSH**（bash 直接落在 WSL、有 `read`/`edit`/`write` 工具） | §1 的 `wsl_exec` 换成直接 `bash`（本就在 WSL 内）；§2 的 `apply_patch` 分块换成 `write`/`edit`（无 8191 字符限制、无 `*** Add File:` 的 ENOTSUP 坑）⇒ **§2 整节可跳过**；§3 ShunCode 设置、§4 提示词长度**与你无关** |
+> | **ShunCode**（`run_command` 是 Windows Git Bash + UNC） | 全节照读，§1–§4 都是为你写的 |
 
 本仓库**真身在 WSL**：`/home/kaua/projects/zzz-calculator`。
 Windows 侧存在若干副本（`/f/trae_output/`、`/f/claude code/`、`/f/testfreedawnload/` 等），
 **一律不要用**——它们是历史遗留，改错副本不生效。
 
-### 1. 命令必须走 wsl_exec，不要 run_command
+### 1. 命令必须走 wsl_exec，不要 run_command（⚠ 仅 ShunCode harness）
 
 经 UNC（`\\wsl$\...`）访问 Linux 文件系统极慢，实测 `git status` **85s vs 2s**。
 因此 `git / node / npm / 测试 / 构建` 一律用 **`wsl_exec`** 工具
@@ -233,7 +253,7 @@ Windows 侧存在若干副本（`/f/trae_output/`、`/f/claude code/`、`/f/test
   看到红时的第一步：`git log -1 --format='%h %ad %s' --date=format:'%H:%M' -- <失败文件>`，看时间戳是否落在自己检查窗口内——是则先怀疑并行提交，再怀疑自己。
 - 详细经过：`docs/mcp-r22d1-batch12-field-census.md` 附录 A。
 
-### 2. 写长文件用 apply_patch 分块
+### 2. 写长文件用 apply_patch 分块（⚠ 仅 ShunCode harness；DSH 用 write/edit，整节跳过）
 
 Windows 命令行有 **8191 字符上限**，用 `echo` / `base64` 拼长内容会被**静默截断**
 （不报错，文件就是短一截）。长文件一律 `apply_patch` 分块写入。

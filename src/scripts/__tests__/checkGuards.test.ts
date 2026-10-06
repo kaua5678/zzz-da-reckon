@@ -7,7 +7,7 @@
  * ③ 仓库级 runAllChecks 全绿（在 vitest 里给出定位到行的失败信息，不用等 CI）
  */
 import { describe, expect, it } from 'vitest'
-import { readFileSync, readdirSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { readFileSync, readdirSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -28,6 +28,7 @@ import {
   auditDocTable,
   computeBurndown,
   parseDocTable,
+  listDocs,
   countAgentIdBranchLinesInFiles,
   countAgentBranchLines,
   listAgentBranchFiles,
@@ -556,8 +557,70 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
     expect(r.files).not.toContain('SHOULD_NOT_APPEAR.md')
   })
 
+  // 2026-10-06：子目录文档（docs/proposals/*.md）曾因 glob 只扫顶层而完全不在判据视野内，
+  // 于是"表里没有的文档 = agent 找不到"这条防线在深一层处失效。
+  it('parseDocTable：登记路径支持子目录（docs/<相对路径>.md）', () => {
+    const fake = [
+      '## 6. 文档（2 份）',
+      '',
+      '| `docs/proposals/deep.md` | 子目录文档 |',
+      '| `docs/top.md` | 顶层文档 |',
+    ].join('\n')
+    const r = parseDocTable(fake)
+    expect(r.files).toEqual(['proposals/deep.md', 'top.md'])
+  })
+
+  it('listDocs：递归子目录，返回相对 docs/ 的路径', () => {
+    const root = mkdtempSync(join(tmpdir(), 'zc-docs-'))
+    try {
+      mkdirSync(join(root, 'docs', 'proposals'), { recursive: true })
+      writeFileSync(join(root, 'docs', 'top.md'), '# top\n')
+      writeFileSync(join(root, 'docs', 'proposals', 'deep.md'), '# deep\n')
+      writeFileSync(join(root, 'docs', 'notes.txt'), 'not markdown\n')
+      expect(listDocs(root)).toEqual(['proposals/deep.md', 'top.md'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('parseDocTable：无 §6 时返回空（不崩）', () => {
-    expect(parseDocTable('# 只有标题')).toEqual({ files: [], declaredCount: null })
+    expect(parseDocTable('# 只有标题')).toEqual({ files: [], declaredCount: null, declaredCounts: [] })
+  })
+
+  // 2026-09-11 事故的精确形态：标题说 11 份、表尾说 10 份。原实现只取第一个匹配（= 标题），
+  // 于是「标题碰巧等于实际值、表尾写错」永远看不见。§6 内每一处份数自述都要对账。
+  it('parseDocTable：收集 §6 内全部份数自述（不只标题那一个）', () => {
+    const fake = [
+      '## 6. 文档（11 份，其余在代码里）',
+      '',
+      '| `docs/A.md` | x |',
+      '',
+      '> 文档数量以本表为准（10 份，与节标题一致）。',
+    ].join('\n')
+    const r = parseDocTable(fake)
+    expect(r.declaredCounts).toEqual([11, 10])
+    expect(r.declaredCount).toBe(11)   // 向后兼容：仍是标题那个
+  })
+
+  it('auditDocTable：标题对、表尾错也要红（staleCounts）', () => {
+    const root = mkdtempSync(join(tmpdir(), 'zc-doccount-'))
+    try {
+      mkdirSync(join(root, 'docs'), { recursive: true })
+      writeFileSync(join(root, 'docs', 'A.md'), '# a\n')
+      writeFileSync(join(root, 'README.md'), [
+        '## 6. 文档（1 份，其余在代码里）',
+        '',
+        '| `docs/A.md` | x |',
+        '',
+        '> 文档数量以本表为准（2 份，与节标题一致）。',
+      ].join('\n'))
+      const r = auditDocTable(root)!
+      expect(r.actualCount).toBe(1)
+      expect(r.countMismatch).toBe(false)     // 标题恰好对 ⇒ 旧口径看不见
+      expect(r.staleCounts).toEqual([2])      // 新口径抓表尾那处
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 
   it('仓库现状：表与实际双向一致且份数自述正确（判据 9 的同源断言）', () => {

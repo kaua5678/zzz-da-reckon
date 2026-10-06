@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（79 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（80 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -159,6 +159,9 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-boss-room-context.md` | **Boss 房间上下文与危局 buff 牌条件（第 360 轮，CC-341）**：buff 牌 `cond`（特性限定 / 人数分档）原被关卡固有 buff 与实战部署页当期牌两个写入方丢弃（40003 两期强攻限定对任何队满额生效），改为随行写入、管线按当前队伍唯一解析（`utils/phaseBuff.ts`）；`applyBossPreset` 13 处调用只有 3 处写关卡固有 buff、抽卡规划 / 角色兑现曲线 `periodViews` 死参的调用点表与 CC-342 候选（房间上下文写入单源化）；testOnly 关卡牌与解析器两处近似（待裁决 / 数据侧） |
 | `docs/mcp-analyzer-scenario-isolation.md` | **分析器独立场景（数据隔离，第 369 轮起，CC-343）**：分析器改写 UI store + 手列快照恢复的三类缺陷（漏字段泄漏 / yield 暴露中间态 / calc 与 store 隐式耦合）；出生态 `createConfigModel(catalog, initialState)` 为什么必须在 watcher 注册前写入（朴素注水反例）、`createResourceCalc` 工厂与 `createAnalysisScenario` / `withAnalysisScenario`；第 1 阶段验证（试点角色兑现曲线 A/B 逐字节相同）；7 个待迁分析器的迁移表与配方、删 `configSnapshot` / 接 `batchTask` 的后续阶段、决定与回退点 |
 | `docs/REQUIREMENTS.md` | **用户需求唯一入口**：用户经助手写入的 `R<编号>` 需求；每轮开工先读、优先于自选待办，做完标 `[done <commit>]` 不删条目 |
+| `docs/proposals/pull-value-optimization.md` | **抽卡规划价值：思想与口径**（部分落地）：价值如何定义与量纲、期望值口径（用户裁决 2026-09-01，模拟抽卡已删）；本文只谈"怎么想"，实施事实以 `pullValue.ts` / `pullPlannerEngine.ts` / `data/filmEconomy.ts` 为准 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（79 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（80 份，与节标题一致），新增文档需同步本表。
+> **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
+> （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。
