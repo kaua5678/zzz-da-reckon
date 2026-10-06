@@ -148,3 +148,10 @@
 - **本轮改动只有注释**：`types/resource/team.ts` 的 `timeBudgetAccumulatedSeconds` 说明改为 raw 秒口径；原文写的是「本字段 = 账本相对纯估时的虚高量级」，正是这次误读的来源。`core/resource/solveDiagnostics.ts` 与 `foldLoop.ts` 的同名说明改为指向它。
 - **不做**：任务书的三个修法候选（换档清零、残差改为调用局部、换档重建 cfg）都没有作用面，现状已经满足。
 - **回退点**：注释提交可直接 `git revert`；运行时字节不变（build 产物逐字节比对）。
+- **后续（8cca48c1，用户会话 2026-10-06 19:36；r699 补记）**：本节漏了一个真缺陷：**62.57 这个量级本身是正反馈虚高出来的**。
+  - 机理：折叠环的 excess = 物化行 − 账本；封顶时 necessary = (行 + acc) × s，s = 预算 / Σ(行 + acc) ⇒ acc ↑ ⇒ s ↓ ⇒ 账本 ↓ ⇒ excess ↑ ⇒ acc ↑。主 C 那 14.38 秒 excess（物化行 149.40 − 账本 135.02）是被封顶砍掉的秒数，不是欠账。本节只核了 acc 的单位（封顶前 raw 秒、只当份额权重），没把 excess 拆成「被封顶压掉的」和「真没付的」两部分，所以没看出来。
+  - 修法：折叠环改为对**封顶前**账本收敛（`IterationState.necessaryUncappedTime`，只在 feasibleScale < 1 时写），acc 回落到量化地板 9.27。依据是 `core/resource/helpers.ts` 封顶处原有的口径「被压掉的部分不再折进账本挤平 A 池」。
+  - 本节仍然成立的部分：跨档累积已证伪（8cca48c1 把候选集压成单档 {0.125}，与全表 8 档对照，acc 都是 62.5693）；产品缺省吸收率 0.4 下，全库 104 队修前修后逐位零差 ⇒ 上表两队的截断读数和「真缺约 14 秒」的结论不变。
+  - 影响面（取自提交说明，104 队 × 6 场景 = 624 条）：default / c0 / w 零差；c6 有 6 条、heavy 3 条、heavyGate 3 条变化。改善最大的是 auto-1431-1481-1341 / heavy：截断 188.68 → 22.75 秒，伤害 +8.79M。
+  - **遗留（无人认领）**：auto-1431-1481-1341 在吸收率 0 时变差 −9.76M（档位 / 截断 / 伤害从 0.0625 / 26.03 秒 / 106.770M 变为 0.5 / 63.86 秒 / 97.013M）。读数本身没错（0.0625 档修后是 27.43 秒），错在降配搜索第三层的候选集：`composables/resourceCalc/solveTeam.ts:484` 的 `relief` 要求 `acceptsTrial(trial)` 成立，而它三臂所比的基线（baseNet / baseTruncation）会随折叠残差移动，修后只剩 0.5 这一个缓解档；`feasibilitySearch.ts:69` 的 `selectDownscaleScale` 再在缓解档里取截断最小的。现状由 `core/__tests__/foldResidualCapFeedback.test.ts` 的「⚠ 已知变差」用例钉住（所在 describe 的头注释有逐档表）。候选方向：让第三层的入选条件不再依赖会移动的基线，例如在全部 stable 试算里按绝对截断取最小。动它要重跑 zd 六场景，并按新档位更新该用例。
+  - 教训：残差如果是对着一个被封顶的量来量的，先查封顶本身会不会反过来影响残差。
