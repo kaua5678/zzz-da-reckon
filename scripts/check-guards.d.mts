@@ -38,14 +38,14 @@ export declare const CORE_ROLE_SCAN_MIN_FILES: number
 export declare const ROLE_FIELD_EXEMPT: string[]
 export declare function rolePrefixesFrom(fileNames: string[]): string[]
 export declare function findRoleFieldRefs(text: string, prefixes: string[], exempt?: string[]): { field: string; line: number }[]
-export declare function scanCoreRoleFields(root: string): { count: number; byFile: Map<string, { field: string; line: number }[]>; prefixes: string[] } | null
+export declare function scanCoreRoleFields(root: string): { count: number; byFile: Map<string, { field: string; line: number }[]>; prefixes: string[]; scanned: number } | null
 // 判据 23：角色名中缀 / core 子目录棘轮（CC-43b）
 export declare const CORE_ROLE_INFIX_BASELINE: number
 export declare const ROLE_INFIX_EXEMPT: string[]
 export declare const INFIX_PREFIX_EXCLUDE: string[]
 export declare function camelSegments(id: string): string[]
 export declare function findRoleInfixRefs(text: string, prefixes: string[], exempt?: string[]): { field: string; line: number }[]
-export declare function scanCoreRoleInfix(root: string): { count: number; byFile: Map<string, { field: string; line: number }[]>; prefixes: string[] } | null
+export declare function scanCoreRoleInfix(root: string): { count: number; byFile: Map<string, { field: string; line: number }[]>; prefixes: string[]; scanned: number } | null
 
 // 判据 3：工作区状态防误提交
 export declare const CLAUDE_TRACKED_ALLOWLIST: string[]
@@ -81,14 +81,17 @@ export declare function scanDebtMarkers(root?: string): DebtMarker[]
 export declare function matchDebtRegistry(markers: DebtMarker[]): { unregistered: DebtMarker[]; cleared: string[] }
 
 // 判据 9：README §6 文档表 == docs/ 实际文件
-export declare function parseDocTable(readmeText: string): { files: string[]; declaredCount: number | null }
+export declare function parseDocTable(readmeText: string): { files: string[]; declaredCount: number | null; declaredCounts: number[] }
 export declare function listDocs(root?: string): string[]
 export declare function auditDocTable(root?: string): {
   missing: string[]
   extra: string[]
   declaredCount: number | null
+  declaredCounts: number[]
   actualCount: number
   countMismatch: boolean
+  /** declaredCounts 里与实测份数不符的那些（标题对、表尾错也算） */
+  staleCounts: number[]
 } | null
 
 // 判据 10：catalog level60 ↔ raw 源对账（防漏加满级突破加成，坑 40）
@@ -184,6 +187,7 @@ export declare function countExhibitionLayerImports(content: string): number
 export declare function scanExhibitionLayerImports(root?: string): {
   count: number
   sites: { file: string; line: number; text: string }[]
+  scanned: number
 }
 
 // 判据 11：手册数字 id 密度棘轮（任务卡 2026-09-12「经验手册防历史记录化」，防手册编年史化）
@@ -213,6 +217,7 @@ export declare const CORE_LAYER_DIR: string
 export declare function scanCoreRoleImports(root?: string): {
   count: number
   sites: { file: string; line: number; text: string }[]
+  scanned: number
 }
 
 // 判据 24：编排层 + core → 角色模块值依赖（CC-45 硬门；多行语句感知，type-only 豁免）
@@ -225,6 +230,7 @@ export declare function findRoleModuleValueDeps(text: string): { line: number; k
 export declare function scanRoleModuleValueDeps(root?: string): {
   count: number
   sites: { file: string; line: number; kind: RoleModuleDepKind; spec: string }[]
+  scanned: number
 }
 
 // 判据 13：名词表三态对账（防「数据在源里但没人消费」）
