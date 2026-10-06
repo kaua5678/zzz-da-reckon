@@ -93,7 +93,7 @@ z63 / z78 / z80 / z81 / z82 这五张卡，每路 42–48 秒、四路顺序执�
    - 用轮询 `grep -q '^EXIT' log` 等结果，不要用固定的 `sleep 165`。
 4. verify EXIT 0 后，提交代码，再落盘文档、提交文档，**然后重跑 `node scripts/check-guards.mjs`（12 秒，必须）**。
 
-## 5. 后续可做的不降强度优化（未做，已立卡 CC-97）
+## 5. 后续可做的不降强度优化（未做；原写「已立卡 CC-97」是过期指针，见 §8.3 第 4 条）
 
 - **重测试文件的 CPU 开销**：`deadChannelLs.test`（96 秒）与 `zcDeadChannels.test`（46 秒）每条用例都要起 TypeScript LanguageService。可以考虑在同一文件内共享 program，或者对只读夹具做模块级 memo，这样断言不变、总 CPU 下降。
   - 由于 vitest 已经吃满 16 核，墙钟约等于 CPU 总和 ÷ 16。削掉约 100 秒 CPU，墙钟大约只少 6 秒，**性价比低**，所以排在后面。
@@ -119,3 +119,66 @@ z63 / z78 / z80 / z81 / z82 这五张卡，每路 42–48 秒、四路顺序执�
   - 脚本不存在时，按 §4 第 2 步的描述重建即可；原顺序模板见 lead 的 `z82.sh`。
 - 队列文档 §0 增加「收尾流程（R2）」。
 - 已知坑：在 bg.sh 的命令里写 `exit $rc` 会提前结束外层 shell，导致日志缺少 EXIT 行（verify116 就是这样）。需要计时时，把 `WALL` 行放在 verify 之后，不要 `exit`。
+
+## 8. r696 复测（2026-10-06，arena-G）：vitest 逐文件耗时普查
+
+> **结论**：测试 CPU 集中在约 40 个重文件：前 10 个占 40%，前 20 个占 61%，前 40 个占 80%。它们都是「每个探针点新建 `setupHarness` 跑真管线」或「全预设 / 全角色 × 命座 0/6 扫描」，**没有能零风险删掉的整块重复**。能做的都是单项约 1% 的顺手项（§8.3），**不单独立卡**；什么时候再做见 §8.4。
+>
+> **和 §1 的差别（判断值不值得时要用）**：§1 测量时 vitest 用满 16 核；CC-424（r450）之后 worker 上限是 4。现在每省 4 秒 CPU，墙钟就少 1 秒（§5 当时要省 16 秒 CPU 才少 1 秒）。
+
+### 8.1 测法与数据
+
+- 基线提交 `9c21390c`，在独立 worktree 里跑：`npx vitest run --shard=k/2 --reporter=default --reporter=json --outputFile.json=<文件>`。两片 2171 + 2336 = 4507 passed，等于基线（527 个文件）。
+- **有干扰**：两片运行时用户会话也在跑 vitest（片 2 开跑时 `pgrep -fc "[w]orkers/forks.js"` = 4，load 约 9）。片 1 墙钟 216 秒、片 2 162 秒；r694 干净时是 170 秒、111 秒。所以下表的绝对秒数大约偏大 1.3–1.5 倍，**只用排名**。
+- 干净时的 CPU 构成（r694 两片 vitest 汇总行相加）：
+  - tests 848 秒（78%）；
+  - setup 161 秒（15%）：setupFiles `src/mechanics/index.ts` 在每个测试文件里重新导入全部机制模块；
+  - import 52 秒（5%），transform 21 秒（2%）；
+  - 合计 1082 秒，÷ 4 个 worker ≈ 270 秒，与两片墙钟之和 281 秒吻合。
+- 原始数据与脚本在 `/home/kaua/calc-arch/`（不入库）：`g696-s{1,2}.json`；`g696-vt.py`（逐文件排名）、`g696-vt2.py`（文件内逐用例）、`g696-vt3.py`（下表）。
+
+### 8.2 前 20 个文件（有干扰时的秒数）
+
+| 文件墙钟 s | 用例数 | 文件（`src/` 下） | 文件内最重的用例 |
+|---|---|---|---|
+| 77.4 | 23 | `mechanics/__tests__/mechanicSettingsEffect.test.ts` | 18.7s「sigrid.cinema4Coverage：Δpane…」 |
+| 56.8 | 28 | `composables/__tests__/difficultyCurve.test.ts` | 32.8s「切轴档（altAxes，2026-09-13）：作为 A…」 |
+| 54.3 | 1 | `composables/__tests__/axisFallbackReportCc457.test.ts` | 54.3s「① 吸收比 0 → 0.4 → 1：弃轴集合单调不增（子…」 |
+| 46.7 | 6 | `mechanics/__tests__/roxyWindEyeTiming.test.ts` | 14.6s「① 结构性不变量：`spinSeconds` ≥ 65/…」 |
+| 46.0 | 15 | `scripts/__tests__/deadChannelLs.test.ts` | 35.7s「⑫ 仓库级棘轮：实测死导出 ⊆ 冻结基线（新增即红；改善…」 |
+| 44.7 | 8 | `composables/__tests__/pullPlannerEngine.test.ts` | 31.2s「成型号起点 3 期规划：总分 > 0、金数守恒、调用方 …」 |
+| 42.2 | 9 | `mechanics/__tests__/adminRulingEffect.test.ts` | 12.0s「乙-1/乙-2 两条 rate **互相独立**（风能率…」 |
+| 38.3 | 9 | `composables/__tests__/timeGolden.test.ts` | 20.8s「105 预设：伤害 / 失衡 / 留白 / 逐槽时间账…」 |
+| 38.1 | 2 | `composables/__tests__/charIncrementInt.test.ts` | 22.4s「全量 pass：秒级完成、期规模合理、账号分不超上限、调…」 |
+| 33.0 | 2 | `core/__tests__/allAgentsGuards.test.ts` | 20.7s「历史无关：B → A 与全新直达 A 逐位相同（面板 /…」 |
+| 29.4 | 1 | `mechanics/__tests__/hookReplay.test.ts` | 29.4s「全角色 × 命座 0/6 + 全部三人预设：① 重放一致…」 |
+| 28.4 | 143 | `scripts/__tests__/checkGuards.test.ts` | 10.5s「★ 新增棘轮的 current 必须是「剩余工作量」而不…」 |
+| 27.3 | 1 | `mechanics/__tests__/r65j1DeadBuffProbe.test.ts` | 27.3s「interactive 条逐条拨动 ⇒ 读数必须变化；d…」 |
+| 27.3 | 5 | `core/__tests__/dynamicComboAlign.test.ts` | 15.6s「③ 吸收只发生在溢出队：全库预设口径（缺省上限）终态里带…」 |
+| 26.0 | 5 | `composables/__tests__/difficultyDescent.test.ts` | 7.5s「C0 默认 6 档：首档最优、至少一档真降伤害、档数与回…」 |
+| 23.8 | 15 | `composables/__tests__/timeWeightAllocation.test.ts` | 5.2s「⑦ 用户约束「弹刀多了也不能超过总时间」：越界配置被硬门…」 |
+| 22.5 | 1 | `mechanics/__tests__/lateCfgWrite.test.ts` | 22.5s「全角色 × 命座 0/6 + 全部三人预设：除允许名单外…」 |
+| 20.5 | 3 | `core/__tests__/feasibleRowsMemo.test.ts` | 20.3s「端到端 A/B：多预设 × 命座 0/6 × 降配扫描，…」 |
+| 19.3 | 8 | `specs/__tests__/adjustableEffect.test.ts` | 4.7s「1 条收敛反馈型（1591）：rate×截断前出枪式行计…」 |
+| 19.3 | 11 | `composables/__tests__/cinemaUplift.test.ts` | 11.1s「防死数据：状态表声明已实现的命座级别不得被判为 unim…」 |
+
+### 8.3 判读
+
+1. **重是设计决定的，不是写法浪费**。`mechanicSettingsEffect` 与 `roxyWindEyeTiming` 的文件头口径②写明：同一个 harness 跨取值复用，会因收敛态污染产出假的 no-delta，所以每个探针点必须新建。一次真管线求值约 0.5–1.5 秒，这类文件的耗时 ≈ 探针点数 × 单次求值。
+2. **跨文件的「全预设、默认设置」扫描至少有 4 份**：`timeGolden`「105 预设」20.8 秒、`timeLedgerInvariants` 14.5 秒、`timeFillRatchet` 9.6 秒、`axisFallbackReportCc457` 的 0.4 档。但它们的装配路径各不相同（`applyTeamPreset` / `applyTeamToStore` / 逐槽 `setAgent`），合并会改变各自测的东西 ⇒ **不合并**。`hookReplay` 与 `lateCfgWrite` 扫的是同一个场景集（全角色 × 命座 0/6 + 全部三人预设），但用的仪器不同（钩子重放 / cfg 写入陷阱），合在一起只会把两个判据耦合 ⇒ 不合并。
+3. **顺手项**：有人改到这些文件时再做。省时按干净数据估，÷ 4 折成墙钟。
+
+| 项 | 估计省 | 改法与前提 |
+|---|---|---|
+| `charIncrementInt`：两个用例各跑一遍同一个全量 `computeIncrementPass`（同一队、同一输入，独立场景求值） | 干净约 14 秒 CPU，约 3.5 秒墙钟 | 文件内只跑一次全量，中途 store 检查的记录交给用例 1 断言，用例 2 只读结果 |
+| `axisFallbackReportCc457`：每个预设等 `setTimeout(40)`，3 档 × 104 个 = 312 次，约 12.5 秒纯等待（占着一个 worker） | 约 3 秒墙钟 | 先证明 `resourceResult` 能同步读（`timeLedgerInvariants` 同类读法不等待），再改成不等待或 `nextTick` |
+| `zcDeadChannels`「真实 CLI」用例：起两次 CLI，各扫一遍全仓；连同 `deadChannelLs` ⑦，同一个全仓扫描每次跑 3 遍 | 约 7 秒 CPU | 文件头已写明「扫描口径由 deadChannelLs 守护，这里只验入口」⇒ 只起一次 `--json`，文本一致性用进程内的 `formatDeadChannelReport` 验 |
+| setupFiles 让每个文件都导入全部机制模块（setup 占 15%） | 只能省掉不需要引擎的那些文件，估计不超过 30 秒 CPU | 要按需注册就得改 `mechanics/index.ts` 的副作用注册架构；收益不够，不做 |
+
+4. **§5 标题里的「已立卡 CC-97」是过期指针**：CC-97 这个编号后来用在了「校准原子测量清单 v1」（`docs/mcp-calibration-atoms.md`），测试 CPU 优化从来没有立过卡。§5 点名的 `deadChannelLs`：r696 实测文件内 46 秒里，35.7 秒在 ⑫（src/core 死导出，逐个导出跑 `findReferences`），7.3 秒在 ⑦，夹具用例都不到 0.5 秒。所以大头是 ⑫ 本身的符号级查询；「共享 program」能省多少，要先核 ⑦ 与 ⑫ 是否各建了一次 program（本轮未核）。
+
+### 8.4 什么时候再做（触发条件）
+
+- 任一片在**干净**机器上的墙钟超过 220 秒（离单次调用上限 285 秒不到 65 秒），或全量 CPU 超过 1400 秒：按 §8.3 的表从上往下做，并按 §8.1 的测法重排名次。
+- 有人要新写「全预设 / 全角色」扫描：先看 §8.3 第 2 条那 4 份能不能复用，再决定要不要另起一份。
+- 除此之外，只在改到这些文件时顺手做。
