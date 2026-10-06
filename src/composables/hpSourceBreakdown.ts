@@ -66,18 +66,20 @@ function hpEffectValue(raw: BuffEffect, cov: number, modLevel?: number): { text:
 
 /**
  * 收集指定槽位的全部生命类 buff 来源（局内大/小生命、局外生命）。
+ * `wEngineCoverages` 必须与算面板时同一张表（FinalPanel 传页面 calc 的 `effectiveWEngineCoverages`），差额才归零。
  */
 export function collectHpSources(
   slot: number,
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
+  wEngineCoverages: Record<string, number>,
 ): HpSourceRow[] {
   const rows: HpSourceRow[] = []
   const char = configStore.team[slot]
   if (!char?.agentId) return rows
   const agent = catalogStore.getAgent(char.agentId)
   if (!agent) return rows
-  const { teammateBuffs, effectCoverageMap } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, configStore.displayWEngineEffectCoverages)
+  const { teammateBuffs, effectCoverageMap } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, wEngineCoverages)
 
   const add = (source: string, item: string, group: BuffGroup | null | undefined, modLevel?: number, keep: (effect: BuffEffect) => boolean = () => true) => {
     for (const effect of group?.effects ?? []) {

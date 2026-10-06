@@ -104,6 +104,7 @@ import { useConfigStore } from '@/stores/config'
 import { useUiStore } from '@/stores/ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { computePanel, resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
+import { useResourceCalc } from '@/composables/useResourceCalc'
 import { effectAtModLevel, wEngineEffectBlockReason } from '@/composables/wEngineEffectDisplay'
 import { SKILL_DMG_TARGET_LABELS, normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt, pct, localized } from '@/utils/format'
@@ -128,6 +129,8 @@ interface DebugRow {
 const configStore = useConfigStore()
 const uiStore = useUiStore()
 const catalogStore = useCatalogStore()
+/** 音擎效果覆盖率有效表（手调 ⊕ 自动折算，与伤害同口径）：本页自己的 calc 实例（r706 起 store 无展示缓存） */
+const { effectiveWEngineCoverages } = useResourceCalc()
 
 onMounted(async () => {
   await catalogStore.loadTeammateBuffs()
@@ -150,7 +153,7 @@ const slotOptions = computed(() => configStore.team.map((char, index) => {
 // 不再按勾选状态自己重筛（旧写法会列出引擎丢弃的条目）。全局 Buff 由 addGlobalRows 单列，这里排除。
 const slotPanelBuffs = computed<TeammateBuff[]>(() => {
   if (!configStore.team[uiStore.selectedSlot]?.agentId) return []
-  return resolveSlotPanelBuffInputs(uiStore.selectedSlot, configStore, catalogStore, configStore.displayWEngineEffectCoverages).teammateBuffs
+  return resolveSlotPanelBuffInputs(uiStore.selectedSlot, configStore, catalogStore, effectiveWEngineCoverages.value).teammateBuffs
 })
 const enabledTeammateBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value.filter(buff => buff.sourceKind !== 'global'))
 // CC-341：全局 Buff 同样取引擎实际收下的条目（危局 buff 牌的特性限定 / 人数分档已按当前队伍解析，值为生效档），
@@ -158,7 +161,7 @@ const enabledTeammateBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value
 const engineGlobalBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value.filter(buff => buff.sourceKind === 'global'))
 
 const currentPanel = computed<PanelValues | null>(() => {
-  return computePanel(uiStore.selectedSlot, configStore, catalogStore, configStore.displayWEngineEffectCoverages)
+  return computePanel(uiStore.selectedSlot, configStore, catalogStore, effectiveWEngineCoverages.value)
 })
 
 const panelSummary = computed(() => {

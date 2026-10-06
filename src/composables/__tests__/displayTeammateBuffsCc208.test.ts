@@ -29,6 +29,6 @@ describe('CC-208 展示层队友 buff 列表与引擎同源', () => {
   it('源码锁：FinalPanel 本体不再遍历 teammateBuffGroups 自筛（CC-209 后经 hpSourceBreakdown 取）', () => {
     const src = readFileSync(new URL('../../components/FinalPanel.vue', import.meta.url), 'utf8')
     expect(/teammateBuffGroups/.test(src)).toBe(false)
-    expect(/collectHpSources\(slot, configStore, catalogStore\)/.test(src)).toBe(true)
+    expect(/collectHpSources\(slot, configStore, catalogStore, props\.effectCoverages\)/.test(src)).toBe(true)
   })
 })

@@ -12,8 +12,9 @@ const BUFF = 'lucia_elowen.core_dream_song'
 async function load() {
   const { config, catalog } = await setupHarness([{ agentId: '1451' }, { agentId: '1041' }, ''])
   const breakdown = (slot: number) => {
-    const ph = computePanelPhases(slot, config, catalog)!
-    const rows = collectHpSources(slot, config, catalog)
+    const cov = config.wEngineEffectCoverages // 两边同一张覆盖率表（生产里 FinalPanel 传页面 calc 的有效表）
+    const ph = computePanelPhases(slot, config, catalog, cov)!
+    const rows = collectHpSources(slot, config, catalog, cov)
     return { rows, ph, ...hpBreakdownTotals(rows, ph.outOfCombat.hp ?? 0, ph.inCombat.hp ?? 0) }
   }
   return { config, breakdown }

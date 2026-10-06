@@ -383,7 +383,7 @@
                         >
                           <span class="coverage-label">覆盖率</span>
                           <n-slider
-                            :value="configStore.getWEngineEffectCoverage(effect.id)"
+                            :value="effectiveWEngineCoverages[effect.id] ?? 100"
                             :min="0"
                             :max="100"
                             :step="5"
@@ -391,7 +391,7 @@
                             style="flex: 1"
                             @update:value="v => setWEngineCoverageLinked(effect.id, v)"
                           />
-                          <span class="coverage-value">{{ configStore.getWEngineEffectCoverage(effect.id) }}%</span>
+                          <span class="coverage-value">{{ effectiveWEngineCoverages[effect.id] ?? 100 }}%</span>
                         </div>
                       </div>
                     </div>
@@ -963,7 +963,7 @@ function setComboAlignAbsorbPct(v: number) {
 }
 // 自动补齐（保底语义，轴模式或保底开关驱动，现唯一产出者般岳；CC-296 起非轴也显示）：弹刀/双反在交互栏输入之上补的量（懒计算，仅产出者槽位选中时非空；
 // 槽位 = 挂出 computeInteractionTopUp 能力的角色（CC-293），故弹刀提示不必再判角色 id —— CC-65b）
-const { interactionTopUp, parrySplitResult, guaranteeStunShortfallResult, decibelGuaranteeResult, resourceResult } = useResourceCalc()
+const { interactionTopUp, parrySplitResult, guaranteeStunShortfallResult, decibelGuaranteeResult, resourceResult, effectiveWEngineCoverages } = useResourceCalc()
 /**
  * 手动锁定交互·诚实显示（用户口径 2026-10-06「实在做不到就说哪里做不到」）：
  * 勾选后引擎不缩交互 ⇒ 装不下的部分不再被降配吸收，只会表现为**装配期截断**。
@@ -1071,7 +1071,7 @@ const currentPanel = computed<PanelValues | null>(() => {
   const char = selectedChar.value
   if (!char?.agentId) return null
   if (panelMode.value === 'inCombat') {
-    return computePanel(uiStore.selectedSlot, configStore, catalogStore, configStore.displayWEngineEffectCoverages)
+    return computePanel(uiStore.selectedSlot, configStore, catalogStore, effectiveWEngineCoverages.value)
   }
   // CC-51：局外面板（基础面板 + 全局 Buff）搬到编排层，与局内 computePanel 对称（判据 7）
   return computeOutOfCombatPanel(uiStore.selectedSlot, configStore, catalogStore)

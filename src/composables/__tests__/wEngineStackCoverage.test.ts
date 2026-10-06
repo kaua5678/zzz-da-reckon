@@ -64,7 +64,7 @@ describe('音擎叠层覆盖率自动回填（嵌合编译器 14118，能耗事�
     config.team[0].wEngineId = '14118'
     const calc = useResourceCalc()
     void calc.panels.value // 触发回填链
-    const stored = config.getWEngineEffectCoverage(EFFECT_ID)
+    const stored = calc.effectiveWEngineCoverages.value[EFFECT_ID] ?? 100
     // 与异常队友分平A池 ⇒ 普E受限 ⇒ 覆盖显著低于旧行为恒 100
     expect(stored).toBeLessThan(60)
     expect(stored).toBeGreaterThan(0)
@@ -79,7 +79,7 @@ describe('音擎叠层覆盖率自动回填（嵌合编译器 14118，能耗事�
     config.team[0].wEngineId = '14118'
     const calc = useResourceCalc()
     void calc.panels.value
-    const stored = config.getWEngineEffectCoverage(EFFECT_ID)
+    const stored = calc.effectiveWEngineCoverages.value[EFFECT_ID] ?? 100
     // C6 追加戳 ⇒ 事件数 = exCount×(1+追加)，显著高于 exCount ⇒ 覆盖应明显高于「4×8/180/3=5.9%」
     expect(stored).toBeGreaterThan(5.93)
   })
@@ -91,13 +91,13 @@ describe('音擎叠层覆盖率自动回填（嵌合编译器 14118，能耗事�
     configStore.setWEngineEffectCoverage(EFFECT_ID, 80)
     const calc = useResourceCalc()
     void calc.panels.value
-    expect(configStore.getWEngineEffectCoverage(EFFECT_ID)).toBe(80)
+    expect(calc.effectiveWEngineCoverages.value[EFFECT_ID]).toBe(80)
   })
 
   it('未带该音擎的队伍不受影响（无回填对象）', async () => {
-    const { config } = await setupHarness([{ agentId: '1181' }, { agentId: '1411' }, { agentId: '1211' }])
+    await setupHarness([{ agentId: '1181' }, { agentId: '1411' }, { agentId: '1211' }])
     const calc = useResourceCalc()
     void calc.panels.value
-    expect(config.getWEngineEffectCoverage(EFFECT_ID)).toBe(100)
+    expect(calc.effectiveWEngineCoverages.value[EFFECT_ID] ?? 100).toBe(100)
   })
 })

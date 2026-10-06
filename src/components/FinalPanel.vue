@@ -113,6 +113,8 @@ import type { PanelValues } from '@/types/catalog'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
+/** 音擎效果覆盖率有效表（手调 ⊕ 自动折算，与伤害同口径）：由所在页面的 calc 实例传入（r706 起 store 无展示缓存） */
+const props = defineProps<{ effectCoverages: Record<string, number> }>()
 const activeSlot = ref<string>('0')
 
 onMounted(async () => {
@@ -153,7 +155,7 @@ const panels = computed(() => {
   return [0, 1, 2].map(slot => {
     const char = configStore.team[slot]
     if (!char?.agentId) return null
-    const phases = computePanelPhases(slot, configStore, catalogStore, configStore.displayWEngineEffectCoverages)
+    const phases = computePanelPhases(slot, configStore, catalogStore, props.effectCoverages)
     if (!phases) return null
     const pOut = phases.outOfCombat
     const pIn = phases.inCombat
@@ -174,7 +176,7 @@ const panels = computed(() => {
 
     // ---- 生命构成（局内大生命来源） ----
     // CC-209：拆解逻辑迁至 composables/hpSourceBreakdown.ts（覆盖率与引擎同表 + 差额行）
-    const hpSources = collectHpSources(slot, configStore, catalogStore)
+    const hpSources = collectHpSources(slot, configStore, catalogStore, props.effectCoverages)
     const { inHpPctTotal, inHpFlatTotal, residualHp } = hpBreakdownTotals(hpSources, pOut.hp ?? 0, pIn.hp ?? 0)
 
     // ---- 属性表分组 ----
