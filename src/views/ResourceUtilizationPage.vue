@@ -306,7 +306,7 @@
         </div>
       </n-card>
 
-      <ImpactChart />
+      <ImpactChart :team-total-damage="teamTotalDamage" :coverage-rate="anomalyPoolResult?.coverage?.perElementCoverageRate" />
       <MarginalUtilityCard />
     </template>
   </div>
@@ -342,7 +342,7 @@ import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, stunPoolResult, autoActive, effectiveStunAxes } = useResourceCalc()
+const { resourceResult, anomalyVirtualPanels, anomalyPoolResult, panels, agentNames, stunPoolResult, autoActive, effectiveStunAxes, teamTotalDamage } = useResourceCalc()
 /** 命座提升率可信度：轴模式（用户开轴或自动命中预设轴）才可信；非轴是退化兜底，仅提示用途 */
 const axisActiveForUplift = computed(() =>
   (configStore.useStunAxis || autoActive.value) && (effectiveStunAxes.value?.length ?? 0) > 0,

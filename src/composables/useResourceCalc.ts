@@ -86,7 +86,11 @@ const { computePanel, computeEntrySnapshotPanel, getTeamAnomalyDurationBonus, ge
 /** 资源计算实例（UI 入口与独立场景同一类型；各分析器的局部 `Calc` 别名都等于它） */
 export type ResourceCalc = ReturnType<typeof createResourceCalc>
 
-/** UI 入口：绑定全局 Pinia 的 config / catalog store（页面与组件用它）。 */
+/**
+ * UI 入口：绑定全局 Pinia 的 config / catalog store。
+ * ⚠ 每次调用都新建一整套计算图（记忆化也是实例私有）⇒ 同一屏只在页面里调一次，子组件的读数由页面经 props 传入。
+ *   子组件自己再调一次 = 每次状态变化整条管线多算一遍（r705 实测：ImpactChart 曾这样挂在资源利用率页，重队每遍 ~450ms）。
+ */
 export function useResourceCalc(): ResourceCalc {
   return createResourceCalc(useConfigStore(), useCatalogStore())
 }

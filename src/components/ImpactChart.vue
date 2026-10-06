@@ -118,20 +118,20 @@
 import { h, ref, computed, watch } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NRadioGroup, NRadioButton } from 'naive-ui'
 import ResponseSurface3D from '@/components/charts/ResponseSurface3D.vue'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { sampleImpactCurve, type ImpactPoint } from '@/composables/impactSampling'
 import { useConfigStore, type CharacterConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
-import { buildImpactVariables, readImpactVariable } from '@/composables/impactVariables'
+import { buildImpactVariables, readImpactVariable, type ElementCoverageRate } from '@/composables/impactVariables'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
-const { teamTotalDamage, anomalyPoolResult } = useResourceCalc()
+/** 当前配置的读数由所在页面传入：页面已持有 calc 实例，组件再建一个会让整条管线每次状态变化多跑一遍（见 useResourceCalc 文档注释） */
+const props = defineProps<{ teamTotalDamage: number; coverageRate?: ElementCoverageRate }>()
 
 const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 const optimizePerPoint = ref(false)
@@ -159,7 +159,7 @@ const settingMap = computed<Map<string, MechanicSetting>>(() => {
 })
 
 // CC-53：变量表（静态 + 机制设置 + 柏妮思占比）与读写口径收拢到编排层（判据 7）；组件只留 settingMap / 采样 / 渲染
-const coverageRate = computed(() => anomalyPoolResult.value?.coverage?.perElementCoverageRate)
+const coverageRate = computed(() => props.coverageRate)
 const releaseShares = computed(() => teamReleaseShares(configStore.team, id => catalogStore.getAgent(id)))  // CC-55：模块声明（原写死 1171）
 const allVars = computed(() => buildImpactVariables(settingMap.value, releaseShares.value, coverageRate.value))
 const varOptions = computed(() => allVars.value.map(v => ({ label: v.label, value: v.id })))
