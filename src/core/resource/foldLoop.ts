@@ -149,8 +149,33 @@ export function runFoldLoop(
         0,
       ) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
         + (i === ultimateGift.targetIdx ? ultimateGift.time : 0)
-      // 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）
-      let excess = rowTime - (state.necessaryTime + state.basicAttackTime)
+      /**
+       * 账本份额 = 必要时间 + 分到的平A池（iterate 保证 Σ账本 ≤ budget + refund）。
+       *
+       * ★ 团队封顶激活时（`feasibleScale < 1`）对**封顶前**的账本收敛（2026-10-06，1431 折叠残差专项）：
+       * `iterate` 令 `necessary = (rowTime + acc) × scale`、`scale = budget / Σ(rowTime + acc)`
+       * ⇒ `acc ↑ ⇒ scale ↓ ⇒ 账本 ↓ ⇒ excess ↑ ⇒ acc ↑` 是**正反馈**；`accLeverLost` 出口
+       * （:209）只冻结当轮增量、**不撤销已累进的历史量**，拦不住它（且它每次 `runFoldLoop`
+       * 都重置 `prevRowTime` ⇒ 每次新运行都能再涨一轮）。
+       * 实测 `auto-1431-1481-1491`（口径 harness 缺省 + ratio 0.4）：`acc` 62.57s（战斗总时长才 180s），
+       * 账本被压到 135.02 而物化行 149.40 ⇒ 那 14.38s「excess」是**封顶砍掉的秒数**，不是欠账。
+       * 对封顶前的账本收敛后 `excess = rowTime − rowTime×scale` 一轮即到不动点，`acc` 塌回量化地板
+       * （62.57 → 9.27）。
+       *
+       * ⚠ **本修法不是中性记账**：`acc` 经 `necessary` 参与**封顶比值** ⇒ 改它会改变**逐档试算的
+       * 可行性读数**，从而在「逼出降配搜索」的场景上改变**被采纳档位**。全场景实测
+       * （104 队 × 6 场景 = 624 条）：`default` / `c0` / `w` **逐位零差**；
+       * `c6` 6 条 / `heavy` 3 条 / `heavyGate` 3 条变化（其中 12 条伤害变化，
+       * 最大改善 `auto-1431-1481-1341/heavy` 截断 188.68→22.75s、伤害 +8.79M）。
+       * 这些变化已由 `src/core/__tests__/foldResidualCapFeedback.test.ts` 显式认领。
+       * 方向依据：`helpers.ts` 封顶处原文已声明「被压掉的部分**不再折进账本挤平A池**」，
+       * 而修前实现恰恰把它折进了账本（并形成正反馈）⇒ 本修法是让实现回到该既有口径。
+       *
+       * 封顶未激活（`necessaryUncappedTime` 缺省）⇒ 回落 `necessaryTime`，逐位不变。
+       * 回退点：把 `ledgerTarget` 换回 `state.necessaryTime`（删本三元）。
+       */
+      const ledgerTarget = state.necessaryUncappedTime ?? state.necessaryTime
+      let excess = rowTime - (ledgerTarget + state.basicAttackTime)
       // （CC-191 删：原此处按「战斗窗口 − 队友账本净占用」算 availableFrontline 写 cfg.timeAvailableFrontlineSeconds，字段注释自承无消费者）
       const battleWindow = ctx.totalTime - (ctx.config.invincibleTime ?? 0)
       // 真实时间压力（模块退化判据的权威信号，见 CharacterOperationConfig.timePressureSeconds）：

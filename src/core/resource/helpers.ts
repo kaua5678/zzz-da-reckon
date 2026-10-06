@@ -584,6 +584,16 @@ function iterateBody(
     const ultimateCount = Math.floor(decibels[i] / cfg.ultimateCost)
 
     const necessary = cappedNecessary[i]
+    /**
+     * 封顶**之前**的账本份额（只在 `feasibleScale < 1` 时写）——折叠环对**它**收敛，
+     * 不对封顶后的 `necessary`。理由见 `IterationState.necessaryUncappedTime` 头注释：
+     * 对封顶后的账本收敛会与封顶构成正反馈（`acc ↑ ⇒ scale ↓ ⇒ 账本 ↓ ⇒ excess ↑ ⇒ acc ↑`），
+     * 把「封顶砍掉的秒数」误记成欠账。缺省 `undefined` ⇒ 折叠环回落 `necessaryTime`，
+     * 封顶未激活（全库 104 队里 94 队）时本字段不出现，路径逐位不变。
+     */
+    const necessaryUncapped = feasibleScale < 1
+      ? absorbedNetNecessary[i] + (effectiveCredits[i] ?? 0)
+      : undefined
     // 单角色前台硬顶：合轴抵扣放宽的是团队预算，单个角色自身时间轴仍受战斗总时长约束
     // （前台 = 必要 + 平A ≤ totalTime）。水填结果即该槽平A时间——贴顶截断的份额已在
     // 上面的轮次按剩余权重回流给还有余量的队友（不蒸发）。
@@ -613,6 +623,7 @@ function iterateBody(
       energySource: energySnapshots[i],
       totalDecibel: decibels[i],
       necessaryTime: necessary,
+      ...(necessaryUncapped !== undefined ? { necessaryUncappedTime: necessaryUncapped } : {}),
       frontlineTime,
       backstageTime,
       comboAlignTime: comboAlignTimes[i],

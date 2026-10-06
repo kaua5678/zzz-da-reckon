@@ -69,6 +69,19 @@ export interface IterationState {
   totalDecibel: number
   /** 必做动作前台时间（未扣除合轴） */
   necessaryTime: number
+  /**
+   * 团队封顶（`feasibleScale < 1`）**之前**的账本份额 = 吸收后净必要 + 合轴抵扣（秒）。
+   *
+   * **为什么存在**（2026-10-06，1431 折叠残差专项）：折叠环的 `excess = rowTime − 账本` 必须对
+   * **封顶前**的账本收敛，否则与封顶构成正反馈——`iterate` 令 `necessary = (rowTime + acc) × scale`
+   * 且 `scale = budget / Σ(rowTime + acc)` ⇒ `acc ↑ ⇒ scale ↓ ⇒ necessary ↓ ⇒ excess ↑ ⇒ acc ↑`。
+   * 实测 `auto-1431-1481-1491`：`acc` 62.57s（战斗总时长才 180s），账本被压到 135.02、
+   * 物化行 149.40 ⇒ 那 14.38s「excess」其实是**封顶砍掉的秒数**，不是欠账。
+   * `accLeverLost` 出口只冻结当轮增量、不撤销已累进的历史量，拦不住这条环。
+   *
+   * 只在封顶激活时写入；缺省 `undefined` ⇒ 折叠环回落 `necessaryTime`，默认路径逐位不变。
+   */
+  necessaryUncappedTime?: number
   /** 前台时间 */
   frontlineTime: number
   /** 后台时间 */
