@@ -150,7 +150,7 @@ const slotOptions = computed(() => configStore.team.map((char, index) => {
 // 不再按勾选状态自己重筛（旧写法会列出引擎丢弃的条目）。全局 Buff 由 addGlobalRows 单列，这里排除。
 const slotPanelBuffs = computed<TeammateBuff[]>(() => {
   if (!configStore.team[uiStore.selectedSlot]?.agentId) return []
-  return resolveSlotPanelBuffInputs(uiStore.selectedSlot, configStore, catalogStore).teammateBuffs
+  return resolveSlotPanelBuffInputs(uiStore.selectedSlot, configStore, catalogStore, configStore.displayWEngineEffectCoverages).teammateBuffs
 })
 const enabledTeammateBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value.filter(buff => buff.sourceKind !== 'global'))
 // CC-341：全局 Buff 同样取引擎实际收下的条目（危局 buff 牌的特性限定 / 人数分档已按当前队伍解析，值为生效档），
@@ -158,7 +158,7 @@ const enabledTeammateBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value
 const engineGlobalBuffs = computed<TeammateBuff[]>(() => slotPanelBuffs.value.filter(buff => buff.sourceKind === 'global'))
 
 const currentPanel = computed<PanelValues | null>(() => {
-  return computePanel(uiStore.selectedSlot, configStore, catalogStore)
+  return computePanel(uiStore.selectedSlot, configStore, catalogStore, configStore.displayWEngineEffectCoverages)
 })
 
 const panelSummary = computed(() => {

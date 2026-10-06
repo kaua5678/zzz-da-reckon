@@ -1071,7 +1071,7 @@ const currentPanel = computed<PanelValues | null>(() => {
   const char = selectedChar.value
   if (!char?.agentId) return null
   if (panelMode.value === 'inCombat') {
-    return computePanel(uiStore.selectedSlot, configStore, catalogStore)
+    return computePanel(uiStore.selectedSlot, configStore, catalogStore, configStore.displayWEngineEffectCoverages)
   }
   // CC-51：局外面板（基础面板 + 全局 Buff）搬到编排层，与局内 computePanel 对称（判据 7）
   return computeOutOfCombatPanel(uiStore.selectedSlot, configStore, catalogStore)

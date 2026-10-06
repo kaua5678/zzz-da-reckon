@@ -94,6 +94,8 @@ export function computeSubstatAllocationForSlot(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   refine: SubstatRefineOptions,
+  /** 音擎覆盖率表：缺省 store 手调表；手里有 calc 的调用方传 `calc.effectiveWEngineCoverages`（与伤害同口径） */
+  wEngineCoverages?: Record<string, number>,
 ): DriveDiscConfig['subStatAllocation'] | null {
   const char = configStore.team[slot]
   if (!char?.agentId) return null
@@ -101,7 +103,7 @@ export function computeSubstatAllocationForSlot(
   if (!agent) return null
   const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
   // 第 194 轮：与伤害管线同一份队友 buff 输入（门控 / 接收槽过滤 / 全局 Buff / 覆盖率 / 来源修正），见 resolveSlotPanelBuffInputs
-  const setInfo = resolveSlotPanelBuffInputs(slot, configStore, catalogStore)
+  const setInfo = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, wEngineCoverages)
   const tmpl = getTemplate(agent)
   const budget = resolveSubstatBudget(tmpl, configStore.getMechanicSetting)
   let seed: Record<string, number>

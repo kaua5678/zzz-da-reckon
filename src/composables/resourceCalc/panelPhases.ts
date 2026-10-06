@@ -402,8 +402,9 @@ export function applyTeammateBuffRecipientFilters(
  * 队伍驱动盘）。此前副词条优化器（`composables/substatOptimizer.ts`）只取原始 `enabledTeammateBuffs`，五步全缺 ⇒
  * 优化目标面板与伤害管线不是同一个面板（例：席德队给正兵以外的强攻也算明攻、覆盖率 50% 的拐按 100% 算）。
  * ⚠ store 层整队贪心（`stores/config.ts` ~800）不能反向依赖 composables，仍走原始上下文（缺省 useDefault 路径不读队友 buff，不受影响）。
- * `wEngineCoverages` = 音擎效果覆盖率表，缺省读 store；`useResourceCalc` 结算侧传「store 表 ⊕ 自动折算增量」，
- * 使伤害不取决于 flush:'post' 回填是否已跑（r700）。本槽与队友来源面板用同一张。
+ * `wEngineCoverages` = 音擎效果覆盖率表，缺省读 store 手调表（资源侧口径，不含自动折算）；结算侧与手里有 calc 的
+ * 分析代码传 `calc.effectiveWEngineCoverages`（手调 ⊕ 自动折算，同步），calc 之外的界面传
+ * `configStore.displayWEngineEffectCoverages`（手调 ⊕ 展示缓存，r702）。本槽与队友来源面板用同一张。
  */
 export function resolveSlotPanelBuffInputs(
   slot: number,

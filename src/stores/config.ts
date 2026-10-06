@@ -3,7 +3,7 @@
  */
 import { clampRatio } from '@/utils/finiteClamp'
 import { defineStore } from 'pinia'
-import { ref, computed, watch, type UnwrapRef } from 'vue'
+import { ref, shallowRef, computed, watch, type UnwrapRef } from 'vue'
 import type {
   Agent, WEngine, DriveDiscConfig, SkillDamageTarget, CharacterBuildRecommendation, TeammateBuffGroup,
 } from '@/types/catalog'
@@ -452,10 +452,13 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   // 队友 Buff 选择（buffId -> { enabled, coverage }）
   const teammateBuffSelections = ref<Record<string, { enabled: boolean; coverage: number }>>({})
 
-  // 音擎效果覆盖率（effectId -> 0-100）；默认未设置时按100%覆盖
+  // 音擎效果覆盖率（effectId -> 0-100）：**只存用户手调值**；表里没有的键按自动折算值，再没有按 100%
   const wEngineEffectCoverages = ref<Record<string, number>>({})
-  /** 手调标记：effectId → 用户显式拖过滑块（自动回填跳过这些；不在 persist 白名单 ⇒ 刷新后重回自动） */
-  const wEngineEffectCoverageManual = ref<Record<string, boolean>>({})
+  /**
+   * 自动折算值的展示缓存（`useResourceCalc` 的 watch 写入）：**不是 state**（不进 memo 键、不随分析场景克隆），
+   * 计算链不读它——资源侧读手调表，结算侧用 calc 同步合成的表。只供 calc 之外的界面显示（`displayWEngineEffectCoverages`）。
+   */
+  const wEngineEffectCoverageAuto = shallowRef<Record<string, number>>({})
 
   // 驱动盘套装效果覆盖率（effectId -> 0-100）：条件类 4pc/2pc 效果的 uptime 折算，与音擎覆盖率同模式
   const discEffectCoverages = ref<Record<string, number>>({})
@@ -871,37 +874,39 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
 
   function setWEngineEffectCoverage(effectId: string, coverage: number) {
     wEngineEffectCoverages.value[effectId] = Math.max(0, Math.min(100, coverage))
-    // 手调标记：用户拖过滑块后，自动折算（useResourceCalc 的叠层覆盖率回填）不再覆盖本效果
-    wEngineEffectCoverageManual.value[effectId] = true
   }
 
   /**
-   * 音擎叠层覆盖率自动折算值（数据源 = src/data/wEngineStackCoverage.ts，按执行行次数×持续/战斗时长折算）
-   * 相对本表的增量：只含**未手调**（`wEngineEffectCoverageManual`）且与表中现值不同的效果，值夹到 0–100；
-   * 空对象 = 表已反映全部自动值。两处共用这一条口径：`useResourceCalc` 结算侧面板同步并入（伤害不等回填，r700），
-   * 以及下面的回填。
+   * 手调表 ⊕ 自动折算值（数据源 = src/data/wEngineStackCoverage.ts，按执行行次数×持续/战斗时长折算）：
+   * 表里已有的键（= 手调过）优先，自动值夹到 0–100；没有可补的自动值时返回 null（调用方直接用手调表）。
+   * 两处共用这一条口径：`useResourceCalc` 用本次资源结果同步合成结算侧的表（伤害不取决于任何写回时序，r700/r701），
+   * 以及下面 `displayWEngineEffectCoverages` 用展示缓存合成界面读的表。
    */
-  function wEngineEffectCoverageAutoDelta(auto: Record<string, number>): Record<string, number> {
-    const delta: Record<string, number> = {}
+  function mergeWEngineEffectCoverageAuto(auto: Record<string, number>): Record<string, number> | null {
+    const manual = wEngineEffectCoverages.value
+    let merged: Record<string, number> | null = null
     for (const [effectId, coverage] of Object.entries(auto)) {
-      if (wEngineEffectCoverageManual.value[effectId]) continue
-      const value = Math.max(0, Math.min(100, coverage))
-      if (wEngineEffectCoverages.value[effectId] !== value) delta[effectId] = value
+      if (effectId in manual) continue
+      if (!merged) merged = { ...manual }
+      merged[effectId] = Math.max(0, Math.min(100, coverage))
     }
-    return delta
+    return merged
   }
 
-  /**
-   * 把自动折算值回填进本表。读表的有两类：calc 之外的界面（配装页滑块、FinalPanel 等）靠它显示自动值；
-   * 资源侧 `resourcePanels` 也读它（T10 环，执行次数不依赖这些面板量，锁在 wEngineCoverageFixpointT10）。
-   * 自动值不进 manual 标记 ⇒ 下次资源结果变化会重算覆盖，手调值则 sticky。
-   */
-  function applyWEngineEffectCoverageAuto(auto: Record<string, number>) {
-    Object.assign(wEngineEffectCoverages.value, wEngineEffectCoverageAutoDelta(auto))
+  /** `useResourceCalc` 写展示缓存（整表替换；内容没变就不写——每个 calc 实例都会写，免得界面空转重算）。 */
+  function setWEngineEffectCoverageAuto(auto: Record<string, number>) {
+    const prev = wEngineEffectCoverageAuto.value
+    const keys = Object.keys(auto)
+    if (keys.length === Object.keys(prev).length && keys.every(k => prev[k] === auto[k])) return
+    wEngineEffectCoverageAuto.value = { ...auto }
   }
+
+  /** 界面读的覆盖率表 = 手调表 ⊕ 展示缓存（配装页面板与滑块、FinalPanel、DebugPage 等 calc 之外的显示）。 */
+  const displayWEngineEffectCoverages = computed(() =>
+    mergeWEngineEffectCoverageAuto(wEngineEffectCoverageAuto.value) ?? wEngineEffectCoverages.value)
 
   function getWEngineEffectCoverage(effectId: string): number {
-    return wEngineEffectCoverages.value[effectId] ?? 100
+    return displayWEngineEffectCoverages.value[effectId] ?? 100
   }
 
   // CC-386：随角色的用户覆盖（资源利用率 / 异常积蓄利用率 / 异常结算份额）的**唯一键构造点**。
@@ -1377,8 +1382,9 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     toggleTeammateBuff,
     setTeammateBuffCoverage,
     setWEngineEffectCoverage,
-    wEngineEffectCoverageAutoDelta,
-    applyWEngineEffectCoverageAuto,
+    mergeWEngineEffectCoverageAuto,
+    setWEngineEffectCoverageAuto,
+    displayWEngineEffectCoverages,
     getWEngineEffectCoverage,
     setDiscEffectCoverage,
     getDiscEffectCoverage,

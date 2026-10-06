@@ -154,7 +154,7 @@ export function createResourceCalc(
     }
   })
 
-  /** 各角色面板（音擎覆盖率表缺省 = store 表） */
+  /** 各角色面板（音擎覆盖率表缺省 = store 手调表） */
   function slotPanels(wEngineCoverages?: Record<string, number>): PanelValues[] {
     const result: PanelValues[] = []
     for (let i = 0; i < 3; i++) {
@@ -168,17 +168,17 @@ export function createResourceCalc(
   }
 
   /**
-   * 资源侧面板：只喂 calcOutput 上游（轮次输入 / runCalcRound / 失衡窗口时长），读 store 表——读自动折算会成环。
+   * 资源侧面板：只喂 calcOutput 上游（轮次输入 / runCalcRound / 失衡窗口时长），读 store 手调表——读自动折算会成环。
    * 资源侧只用面板算次数类量（积蓄、时长、能量），面板相关伤害全在结算侧（r701 第③步）。
    */
   const resourcePanels = computed<PanelValues[]>(() => slotPanels())
 
   /**
-   * 结算侧面板（伤害 / 异常池三项伤害 / 全队异常乘区 / 对外暴露）：音擎覆盖率用 `effectiveWEngineCoverages`（下方，
-   * store 表 ⊕ 本次资源结果的自动折算增量），同步求值；增量为空（无自动效果，或回填已落 store）时就是资源侧那份。
+   * 结算侧面板（伤害 / 异常池三项伤害 / 全队异常乘区 / 对外暴露）：音擎覆盖率用 `autoMergedWEngineCoverages`（下方，
+   * 手调表 ⊕ 本次资源结果的自动折算），同步求值；没有可补的自动值时就是资源侧那份。
    */
   const panels = computed<PanelValues[]>(() => {
-    const coverages = effectiveWEngineCoverages.value
+    const coverages = autoMergedWEngineCoverages.value
     return coverages ? slotPanels(coverages) : resourcePanels.value
   })
 
@@ -186,7 +186,7 @@ export function createResourceCalc(
   const entrySnapshotPanels = computed<PanelValues[]>(() => {
     const result: PanelValues[] = []
     for (let i = 0; i < 3; i++) {
-      const p = computeEntrySnapshotPanel(i, configStore, catalogStore, effectiveWEngineCoverages.value ?? undefined)
+      const p = computeEntrySnapshotPanel(i, configStore, catalogStore, effectiveWEngineCoverages.value)
       if (p) result.push({ ...p, slot: i })
     }
     return result
@@ -501,21 +501,16 @@ export function createResourceCalc(
   })
 
   /**
-   * 音擎叠层覆盖率的自动回填（数据源 `src/data/wEngineStackCoverage.ts`，口径见其头注释 @fact）。
+   * 音擎叠层覆盖率的自动折算（数据源 `src/data/wEngineStackCoverage.ts`，口径见其头注释 @fact）。
    *
    * ⚠ **声明位置硬约束**：必须在 `runCalcRound`（上方）创建**之后**——computed 首次求值会级联到
    * `calcOutput` → `solveTeam(runCalcRound)`，若声明在 509 行前则回调内 `runCalcRound` 仍处 TDZ。
    * 时序：依赖 `adjustedResourceResult`（资源已收敛）⇒ 资源迭代之后求值。两路消费：结算侧 `panels` 经
-   * `effectiveWEngineCoverages` 同步并入（r701 第④步）；下方 watch 回填 store，供 calc 之外读表的界面显示。
-   * ⚠ CC-420（r447 实测纠正）：资源迭代**直接**不读 wEngineEffectCoverages，但**经 `resourcePanels` 间接读**——
-   * `runCalcRound(deps.panels)` ← `resourcePanels` ← `computePanel` → `resolveSlotPanelBuffInputs` 读的就是这张表。
-   * 所以这是一个绕 store 的环：calcOutput → 回填 → store → resourcePanels → calcOutput。`useResourceCalc()` 一创建
-   * 就跑**两遍**整条管线（pass 1 用默认覆盖算回填；store 变后首读再算 pass 2），不跑第三遍只因为回填值
-   * 只改面板量（精通/攻击）而执行行次数不依赖它们 ⇒ pass 2 的回填 == pass 1 ⇒ 写同值不触发。
-   * 这是「当前没有角色让面板量影响次数」撑着的一步不动点，不是结构保证；锁在
-   * `__tests__/wEngineCoverageFixpointT10.test.ts`（创建+首读恰 2 次 miss、之后稳定、重折算 == store）。
-   * 结构性修法见 docs/mcp-worker-task-queue.md §3 T10 卡。
-   * 只回填已登记触发源的效果；未登记 = 回退手调滑块（旧行为）。手调优先在 store 侧拦。
+   * `autoMergedWEngineCoverages` 同步并入（r701 第④步）；下方 watch 写 store 的展示缓存，供 calc 之外的界面显示。
+   * 资源侧（`resourcePanels`，以及 `buildCharConfig` 等走面板函数缺省参数的地方）只读 store 手调表，不读自动值、
+   * 也不读展示缓存 ⇒ 无环。r702 前回填写进 state 表本身，资源侧经 `resourcePanels` 间接读到 ⇒ 创建即两遍管线、
+   * 靠「执行次数不依赖面板量」才一步收敛（CC-420 / T10）；现锁在 `__tests__/wEngineCoverageFixpointT10.test.ts`
+   * （创建 + 首读只 1 次 miss）。只折算已登记触发源的效果；未登记 = 回退手调滑块 / 满层（旧行为）。
    */
   const wEngineStackAutoCoverages = computed<Record<string, number>>(() => {
     const res = adjustedResourceResult.value
@@ -547,22 +542,22 @@ export function createResourceCalc(
   })
 
   /**
-   * 结算侧音擎覆盖率表 = store 表 ⊕ 自动折算增量（口径 `configStore.wEngineEffectCoverageAutoDelta`：手调优先、
-   * 夹 0–100）；null = 增量为空。同步求值 ⇒ 同一份配置读几遍伤害都一样，不取决于下方回填是否已跑。修前分析循环
+   * 手调表 ⊕ 本次资源结果的自动折算（口径 `configStore.mergeWEngineEffectCoverageAuto`：手调优先、夹 0–100）；
+   * null = 没有可补的自动值（结算侧直接复用资源侧面板）。同步求值 ⇒ 同一份配置读几遍伤害都一样。修前分析循环
    * （队伍对比 / 难度曲线：同步换队、同步读）对 7 支带嵌合编译器的预设按满层 100 算，比主页高 1.8–5.8%（r700 实测）。
    */
-  const effectiveWEngineCoverages = computed<Record<string, number> | null>(() => {
-    const delta = configStore.wEngineEffectCoverageAutoDelta(wEngineStackAutoCoverages.value)
-    return Object.keys(delta).length > 0 ? { ...configStore.wEngineEffectCoverages, ...delta } : null
-  })
+  const autoMergedWEngineCoverages = computed(() =>
+    configStore.mergeWEngineEffectCoverageAuto(wEngineStackAutoCoverages.value))
+  /** 同上的非 null 版：结算侧进场快照面板用，并对外暴露给手里有 calc 的分析代码（与伤害同口径算面板）。 */
+  const effectiveWEngineCoverages = computed(() =>
+    autoMergedWEngineCoverages.value ?? configStore.wEngineEffectCoverages)
 
-  // 回填进 store：calc 之外读表的界面（配装页滑块、FinalPanel 等）靠它显示自动值；结算侧不等它（见上）。
-  // 手调效果由 store 侧 manual 标记跳过。immediate:true 安全（本 watch 声明在 runCalcRound 之后，首次同步回调已出 TDZ 区）；
-  // flush:'post' 让回填在组件渲染/面板首算之后落 store，面板再随 store 变化重算（幂等）。
-  // ⚠ 代价（CC-420 实测）：immediate 回调同步跑完整条管线 = 创建即算 pass 1；store 写回使 resourcePanels 失效 ⇒
-  // 首读再算 pass 2。测试里「创建后任何 await 之前管线已算过并缓存」就是这里来的（r438 outerCyclePick 教训）。
+  // 自动折算值写进 store 的展示缓存（不是 state ⇒ 不进 memo 键；资源侧、结算侧都不读它），只供 calc 之外的界面
+  // （配装页面板与滑块、FinalPanel 等）显示。immediate:true 安全（本 watch 声明在 runCalcRound 之后，首次同步回调已出
+  // TDZ 区）。代价：immediate 回调同步跑完整条管线 = 创建即算一遍并进 memo，之后首读命中；测试里「创建后任何 await
+  // 之前管线已算过并缓存」就是这里来的（r438 outerCyclePick 教训）。
   watch(wEngineStackAutoCoverages,
-    auto => configStore.applyWEngineEffectCoverageAuto(auto),
+    auto => configStore.setWEngineEffectCoverageAuto(auto),
     { immediate: true, flush: 'post' })
 
 
@@ -803,6 +798,8 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
     anomalyVirtualPanels,
     agentNames,
     panels,
+    /** 结算侧音擎覆盖率表（手调 ⊕ 自动折算，同步）：手里有 calc 的分析代码按它算面板，与伤害同口径（r702） */
+    effectiveWEngineCoverages,
     teamTotalDamage,
     stunAxisResult,
     stackTraversalResult,

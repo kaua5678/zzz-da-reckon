@@ -80,7 +80,7 @@ export async function sampleImpactCurve(scenario: AnalysisContext, opts: ImpactC
     writeImpactVariable(v.id, x, config, settingMap)
     await yieldToMacrotask()
     if (opts.optimizePerPoint) {
-      const alloc = computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => calc.teamTotalDamage.value ?? 0 })
+      const alloc = computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => calc.teamTotalDamage.value ?? 0 }, calc.effectiveWEngineCoverages.value)
       const char = config.team[0]
       if (char && alloc) char.driveDisc.subStatAllocation = alloc
     }

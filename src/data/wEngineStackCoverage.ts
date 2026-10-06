@@ -17,7 +17,7 @@
  * - 折算器按**穿戴角色**分支（同一音擎不同角色的耗能段结构不同）；未登记的角色 ⇒
  *   回退「通用 1 次发动 = 1 事件」（≈ exSpecialCount）；连这也拿不到 ⇒ 回退满层（旧行为）。
  *   这是近似修正不是正确性门槛，漏登记只是回到旧的手调滑块。
- * - 用户手调滑块优先：仅当 `wEngineEffectCoverages[effect.id]` 未被显式设置时才回填。
+ * - 用户手调滑块优先：`wEngineEffectCoverages` 只存手调值，表里已有的键不用自动值（`mergeWEngineEffectCoverageAuto`）。
  */
 
 import type { SkillExecution } from '@/types/resource'

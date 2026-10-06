@@ -245,14 +245,14 @@ export async function analyzeCinemaUplift(
     config.setCinemaLevel(slot, 0)
     config.syncTeammateBuffsFromTeam()
     let before = await readScene()
-    let panelBefore = computePanelPhases(slot, config, catalogStore)?.inCombat ?? null
+    let panelBefore = computePanelPhases(slot, config, catalogStore, calc.effectiveWEngineCoverages.value)?.inCombat ?? null
 
     for (let to = 1; to <= maxLevel; to++) {
       if (isBatchAborted(control)) return rows
       config.setCinemaLevel(slot, to)
       config.syncTeammateBuffsFromTeam()
       const after = await readScene()
-      const panelAfter = computePanelPhases(slot, config, catalogStore)?.inCombat ?? null
+      const panelAfter = computePanelPhases(slot, config, catalogStore, calc.effectiveWEngineCoverages.value)?.inCombat ?? null
       const pb = panelBefore
 
       const changedFields = pb && panelAfter

@@ -153,7 +153,7 @@ const panels = computed(() => {
   return [0, 1, 2].map(slot => {
     const char = configStore.team[slot]
     if (!char?.agentId) return null
-    const phases = computePanelPhases(slot, configStore, catalogStore)
+    const phases = computePanelPhases(slot, configStore, catalogStore, configStore.displayWEngineEffectCoverages)
     if (!phases) return null
     const pOut = phases.outOfCombat
     const pIn = phases.inCombat

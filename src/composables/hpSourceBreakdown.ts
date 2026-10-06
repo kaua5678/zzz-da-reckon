@@ -77,7 +77,7 @@ export function collectHpSources(
   if (!char?.agentId) return rows
   const agent = catalogStore.getAgent(char.agentId)
   if (!agent) return rows
-  const { teammateBuffs, effectCoverageMap } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore)
+  const { teammateBuffs, effectCoverageMap } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, configStore.displayWEngineEffectCoverages)
 
   const add = (source: string, item: string, group: BuffGroup | null | undefined, modLevel?: number, keep: (effect: BuffEffect) => boolean = () => true) => {
     for (const effect of group?.effects ?? []) {
