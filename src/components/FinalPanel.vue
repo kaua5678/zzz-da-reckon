@@ -115,7 +115,7 @@ const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
 /** 音擎效果覆盖率有效表（手调 ⊕ 自动折算，与伤害同口径）：由所在页面的 calc 实例传入（r706 起 store 无展示缓存） */
 const props = defineProps<{ effectCoverages: Record<string, number> }>()
-const activeSlot = ref<string>('0')
+const activeSlot = ref(0)
 
 onMounted(async () => {
   await catalogStore.loadTeammateBuffs()
