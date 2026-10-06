@@ -165,3 +165,49 @@ describe('结算侧同步读不依赖回填时序', () => {
   })
 })
 ```
+
+## 9. r706 实施记录（`31b173ef`）：删展示缓存与 immediate watch
+
+**推翻 §8「偏差依据」的理由**
+- §8 认为界面改读 calc「要么每个组件多跑一遍整条管线，要么 provide/inject 共享实例」。r705 定下「页面持有 calc、子组件经 props 拿读数」后，这个二选一不成立：
+  - FinalPanel：由 ResultPage 传表（新必填 prop `effectCoverages`）；`collectHpSources` 是纯函数，表作必填第 4 参由 FinalPanel 传入；
+  - TeamConfigPage 本来就有页面实例；DebugPage 由 lazyPage 挂载，自建一个页面级实例，只在该页存活；
+  - substatOptimizer 自 r702 起经 impactSampling 收参数，本来就不读缓存。
+- §8 没有量过 watch 的代价：`watch(wEngineStackAutoCoverages, …, { immediate: true, flush: 'post' })` 让每个活着的实例创建即算、此后每次状态变化都算，不论有没有人读。CalculatorView 的应用级 `useTimeWeightAutoAllocation` 实例（`timeWeightAllocation.ts:533`）因此在任何页面、每次输入都多跑一遍整条管线。r705 写的「该实例只在触发点读、平时惰性不算」（`94fcc71f` 提交说明、r6 §8 r705 行）后半句是错的。
+
+**实测**（临时探针，不入库；每次状态变化后读一次页面实例。测试里建的实例不销毁，「页面 + 闲置」时同一 pinia 下共 3 个活实例）
+
+| 场景 | 队伍 | origin `7016974c` | r706 |
+|---|---|---|---|
+| 只有页面实例 | 普通队 auto-1521-1361-1311 | miss +1，30–35ms | miss +1，28–31ms |
+| | 重队 auto-1431-1481-1491 | miss +1，481–538ms | miss +1，452–498ms |
+| 页面 + 闲置实例 | 普通队 | miss +3，52–67ms | miss +1，20–24ms |
+| | 重队 | miss +3，1305–1378ms | miss +1，444–465ms |
+
+**做法**
+- store：删 `wEngineEffectCoverageAuto`（shallowRef）、`setWEngineEffectCoverageAuto`、`displayWEngineEffectCoverages`、`getWEngineEffectCoverage`；保留纯函数 `mergeWEngineEffectCoverageAuto`。store 只存输入。config store 不持久化（§8 已查），无存档迁移。
+- calc：删 watch、watch import 和 wStackAuto 上方的 TDZ 声明顺序注释；导出 `effectiveWEngineCoverages`。calc 不再写 store，实例纯惰性。
+- §8 的口径表第三行改为「界面读所在页面的 calc」：
+
+| 谁 | 读哪张表 | 调用点 |
+|---|---|---|
+| 资源侧 | 面板函数缺省参数 = 手调表（不变） | `resourcePanels`、`buildCharConfig`、局外面板 |
+| 手里有 calc 的分析代码 | `calc.effectiveWEngineCoverages`（不变） | `cinemaUplift`；`impactSampling` → `substatOptimizer` |
+| 界面 | 所在页面 calc 的 `effectiveWEngineCoverages` | TeamConfigPage 滑块与面板；ResultPage → FinalPanel（prop）→ `collectHpSources`（第 4 参）；DebugPage（自建页面实例） |
+
+- 缺省参数仍是手调表（§8 的理由不变）。FinalPanel 的 prop 与 `collectHpSources` 的第 4 参都是必填：漏传在 vue-tsc 就报错，不会悄悄退回手调表。
+
+**效果**（CalculatorView 用 `<component :is>` 单挂页面，无 KeepAlive）
+- 每次输入：有 calc 的页面 2 遍（页面实例 + 应用级实例）→ 1 遍；没有 calc 的页面 1 遍（无人读）→ 0 遍；调试页 1 遍不变（原由应用级实例算，现由页面实例算）。
+- 没有 post-flush 写入，不再多渲染一次；calc 内的声明顺序不再受 watch 约束。
+- 附带：vitest 测试 CPU 时间 412.6+278.3s → 367.8+270.3s（约 −53s），因为测试里建的实例不再创建即算。
+
+**锁与验证**
+- T10 改写：创建 0 miss、首读 1 miss、flush 后不再增加、state 表里没有自动值；第二组保留 r701「同步读 == flush 后读」，且同步读时有效值已 < 100。反例：临时加回 immediate watch ⇒ 红（expected 1 to be +0）。
+- vue-tsc 0；vitest 528 / 4527（= 基线）；guards / tokens / data / specs / recording 全过；build 通过；zd（基线 `7016974c`）DUMP 0 / ROWS 0。
+- ui-check 与 origin 构建逐项对比（1 号位格莉丝，推荐配装自带嵌合编译器）：配装页覆盖率 47.40740740740741%、资源池 FinalPanel 数值区、公式/字段页（精通 489）三处逐字相同。
+- 附录锁片段里的 `config.getWEngineEffectCoverage` 已删除，现行写法以 `wEngineCoverageFixpointT10.test.ts` 为准。
+
+**顺带修复**（`631e28d4`）：ui-check 读 FinalPanel 时发现默认页签不激活——`activeSlot = ref<string>('0')`，页签名却是数组下标（数字），naive-ui 按严格相等匹配 ⇒ 卡片自初始提交 `1a1f8c65` 起默认空白，要手点页签。改为 `ref(0)`。
+
+**回退点**：只撤修复 `git revert 631e28d4`（干净）；撤主体要连修复按序撤 `git revert 631e28d4 31b173ef`（单撤 `31b173ef` 会在 FinalPanel.vue 相邻行冲突）。
