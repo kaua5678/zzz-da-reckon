@@ -7,7 +7,6 @@
  * forceNoAxis 退回非轴态、resolvedAxes 清空，整管线断言测不到本判定（第 66 轮实测）。
  * 对照：同轴放一个同 moveId 的**普通**终结技块，两队都必须保留 ⇒ 证明跳过只针对 promoteVariant。
  */
-import { computed } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -20,7 +19,7 @@ async function stackActionsFor(team: string[]) {
   const { config, catalog } = await setupHarness(team.map(agentId => ({ agentId })))
   const calc = useResourceCalc()
   const inputs = createConvergenceRoundInputs({ configStore: config, catalogStore: catalog,
-    panels: calc.panels, resourceConfig: calc.resourceConfig, globalAnomalyMultiplier: computed(() => 1) })
+    panels: calc.panels, resourceConfig: calc.resourceConfig })
   const axes: StunAxis[] = [{
     name: '转大块探针',
     actions: [

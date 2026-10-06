@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calcAnomalyPool, type AnomalyPoolInput } from '@/core/anomalyPool'
+import { calcAnomalyPool, calcAnomalyPoolDamage, type AnomalyPoolInput } from '@/core/anomalyPool'
 import { velinaMechanic } from '@/mechanics/agents/velina'
 import { calcCoverage, getAnomalyDuration } from '@/core/anomalyPool/helpers'
 
@@ -42,8 +42,14 @@ describe('calcCoverage', () => {
 })
 
 describe('calcAnomalyPool', () => {
+  /** r701 起 calcAnomalyPool 只出次数与 damageInputs；三项伤害由结算侧补齐，这里用池自己的面板（= 原池内口径） */
+  const poolWithDamage = (input: AnomalyPoolInput) => {
+    const pool = calcAnomalyPool(input)
+    return { ...pool, ...calcAnomalyPoolDamage(pool.damageInputs, input.panels, { globalAnomalyMultiplier: 1, teamMechanics: input.teamMechanics }) }
+  }
+
   it('splits non-wind anomalies into disorder window and turbulence window', () => {
-    const res = calcAnomalyPool({
+    const res = poolWithDamage({
       executions: [
         { moveId: 'wind_basic', moveName: 'wind', slot: 0, count: 1, baseBuildUp: 2000, element: 'wind' },
         { moveId: 'fire_basic', moveName: 'fire', slot: 1, count: 10, baseBuildUp: 3000, element: 'fire' },
@@ -69,7 +75,6 @@ describe('calcAnomalyPool', () => {
       stunMultiplier: 1.5,
       hasWindChar: true,
       windCharSlot: 0,
-      globalAnomalyMultiplier: 1,
       teamMechanics: [],
     } as unknown as AnomalyPoolInput)
 
@@ -106,7 +111,6 @@ describe('calcAnomalyPool', () => {
       stunMultiplier: 1.5,
       hasWindChar: true,
       windCharSlot: 0,
-      globalAnomalyMultiplier: 1,
       teamMechanics: [{ module: velinaMechanic, slot: 0 }],
     } as unknown as AnomalyPoolInput)
 
@@ -150,10 +154,9 @@ describe('calcAnomalyPool', () => {
       stunMultiplier: 1.5,
       hasWindChar: true,          // 队伍**有**风角色（1621 洛克茜这类），但**不是**维琳娜
       windCharSlot: 0,
-      globalAnomalyMultiplier: 1,
     }
     // ① 有维琳娜（对照）：正常产出
-    const withVelina = calcAnomalyPool({
+    const withVelina = poolWithDamage({
       ...base,
       teamMechanics: [{ module: velinaMechanic, slot: 0 }],
       panels: [
@@ -167,7 +170,7 @@ describe('calcAnomalyPool', () => {
     expect((withVelina.anomalyEvents ?? []).some(e => e.id === 'velina-corrosion-broad-cyclone' && e.count > 0)).toBe(true)
 
     // ② 无维琳娜：整套消失（乱流本身仍在——它是风化状态的通用机制，不是维琳娜专属）
-    const withoutVelina = calcAnomalyPool({
+    const withoutVelina = poolWithDamage({
       ...base,
       teamMechanics: [],           // 维琳娜不在队（r399：不在队的模块不派发）
       panels: [

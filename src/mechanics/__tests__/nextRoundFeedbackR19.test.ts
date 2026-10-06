@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest'
-import { computed } from 'vue'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { createConvergenceRoundInputs, createRunCalcRound } from '@/composables/resourceCalc/convergence'
 import { getAgentMechanic } from '@/mechanics'
@@ -39,7 +38,7 @@ describe('C-α next-round feedback', () => {
     config.useStunAxis = false
     const calc = useResourceCalc()
     const inputs = createConvergenceRoundInputs({ configStore: config, catalogStore: catalog,
-      panels: calc.panels, resourceConfig: calc.resourceConfig, globalAnomalyMultiplier: computed(() => 1) })
+      panels: calc.panels, resourceConfig: calc.resourceConfig })
     const run = createRunCalcRound({
       configStore: config, catalogStore: catalog, panels: calc.panels, resourceConfig: calc.resourceConfig,
       computeWindowDuration: () => 10, computeStunCoverage: () => 0,

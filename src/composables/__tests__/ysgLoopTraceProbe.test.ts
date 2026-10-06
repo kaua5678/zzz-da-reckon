@@ -6,7 +6,6 @@
  * 输入失衡次数 / 1431 cycle（decibel/gift/zhaoying/total）/ 净占用 / 池失衡次数。
  */
 import { describe, expect, it } from 'vitest'
-import { computed } from 'vue'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -36,7 +35,6 @@ describe('探针：叶瞬光+琉音+照 外层不动点轨迹', () => {
     const inputs = createConvergenceRoundInputs({
       configStore: config, catalogStore: catalog,
       panels: calc.panels, resourceConfig: calc.resourceConfig,
-      globalAnomalyMultiplier: computed(() => 1),
     })
     const run = createRunCalcRound({
       configStore: config, catalogStore: catalog, panels: calc.panels, resourceConfig: calc.resourceConfig,

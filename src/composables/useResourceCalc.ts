@@ -10,7 +10,8 @@ import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
 import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
-import { findInteractionTopUpSlot, getAgentMechanic } from '@/mechanics'
+import { findInteractionTopUpSlot, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
+import { calcAnomalyPoolDamage } from '@/core/anomalyPool'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createConvergenceRoundInputs, createRunCalcRound } from './resourceCalc/convergence'
@@ -202,7 +203,7 @@ export function createResourceCalc(
   const {
     extractAnomalyExecsFrom, extractStunExecsFrom, autoPreset, autoActive,
     resolveAxes, buildStackAxes, expandExecutedToCounts, calcAnomalyPoolInput,
-  } = createConvergenceRoundInputs({ configStore, catalogStore, panels, resourceConfig, globalAnomalyMultiplier })
+  } = createConvergenceRoundInputs({ configStore, catalogStore, panels, resourceConfig })
 
 
   /**
@@ -284,7 +285,21 @@ export function createResourceCalc(
   const inStunAnomalyState = computed<InStunAnomalySummary | null>(() => calcOutput.value?.inStunAnomalyState ?? null)
   /** Boss 异常状态轴（轴模式）：逐窗状态链 + 风化覆盖层，极性紊乱点时归因数据源 */
   const bossAnomalyState = computed<BossAnomalyStateResult | null>(() => calcOutput.value?.bossAnomalyState ?? null)
-  const anomalyPoolResult = computed<AnomalyPoolResult | null>(() => calcOutput.value?.anomalyPool ?? null)
+  /**
+   * 异常池结果（结算口径）：资源侧的池只出次数与 `damageInputs`，紊乱 / 乱流 / 畏缩 DoT 三项伤害在这里用结算面板与
+   * 结算侧的全队异常乘区补齐（r701，T10 第③步：资源侧只出次数，面板相关伤害全在结算侧；docs/mcp-wengine-coverage-timing.md §6）。
+   */
+  const anomalyPoolResult = computed<AnomalyPoolResult | null>(() => {
+    const pool = calcOutput.value?.anomalyPool
+    if (!pool) return null
+    return {
+      ...pool,
+      ...calcAnomalyPoolDamage(pool.damageInputs, panels.value, {
+        globalAnomalyMultiplier: globalAnomalyMultiplier.value,
+        teamMechanics: teamMechanicSlots(configStore.team),
+      }),
+    }
+  })
   const adjustedResourceResult = computed<TeamResourceResult | null>(() => calcOutput.value?.adjustedResourceResult ?? null)
   /** 琉音好评转大收敛后的转大次数（60+90 抱拳之和），供伤害池/影画6/倍率表消费 */
   const ultPromoteCount = computed(() => calcOutput.value?.promote ?? 0)

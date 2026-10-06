@@ -120,15 +120,21 @@ export interface AnomalyPoolResult {
   perSlotBonus: number[]
   /** 异常状态覆盖率分析 */
   coverage: AnomalyCoverageResult
-  /** 紊乱伤害详情（无风属性时计算） */
+  /**
+   * 紊乱伤害详情（无风属性时）。r701 起它和 `turbulenceDamage` / `coweringDot` 都由**结算侧**补齐：`calcAnomalyPool`
+   * 只出次数与 `damageInputs`，`useResourceCalc#anomalyPoolResult` 用结算面板调 `calcAnomalyPoolDamage` 填这三项
+   * （资源侧只出次数，面板相关伤害全在结算侧；T10，见 docs/mcp-wengine-coverage-timing.md）。
+   */
   disorderDamage?: DisorderDamageResult
-  /** 乱流伤害详情（有风属性时计算） */
+  /** 乱流伤害详情（有风属性时；结算侧补齐，同上） */
   turbulenceDamage?: TurbulenceDamageResult
   /** 维琳娜风蚀资源明细（有风属性且触发乱流时计算） */
   corrosionSource?: CorrosionSource
-  /** 畏缩 DOT 伤害明细（通用异常池输出；畏缩由 coweringConfig 开启，目前唯一开启方是爱丽丝）。
+  /** 畏缩 DOT 伤害明细（畏缩由 coweringConfig 开启，目前唯一开启方是爱丽丝；结算侧补齐，同上）。
    *  CC-38c 2026-09-27 自 aliceCoweringDot 改名（dump/rowsnap 基线不含此键，零差）。 */
   coweringDot?: CoweringDotResult
+  /** 上面三项伤害的非面板输入（池内算好的次数、元素序列、敌方与失衡参数），结算侧配结算面板使用 */
+  damageInputs: AnomalyPoolDamageInputs
   /** 异常事件明细：把”异常条触发/覆盖触发/动作跟随触发”等事件化展示给开发调试 */
   anomalyEvents: AnomalyEventRecord[]
 }
@@ -213,6 +219,58 @@ export interface DisorderDamageDetail {
   perEventDamage: number
   /** 最终紊乱伤害（该元素所有紊乱事件合计） */
   damage: number
+}
+
+/** 紊乱 / 乱流 / 畏缩 DoT 伤害的环境参数（r701 自 core/anomalyPool/helpers.ts 移入：types 层不依赖 core） */
+export interface DamageCalcConfig {
+  enemyDefense: number
+  enemyDefReduction: number
+  /** 各元素伤害抗性（百分比，负值=弱点） */
+  enemyResistances: Record<string, number>
+  enemyResReduction: number
+  stunned: boolean | number
+  stunMultiplier: number
+  /** 蕾米异化系数倍率，乘到所有异常相关伤害；无蕾米时为1 */
+  globalAnomalyMultiplier: number
+  /** 爱丽丝畏缩配置（启用时计算 DOT 和紊乱倍率加成） */
+  coweringConfig?: CoweringConfig
+}
+
+/**
+ * 畏缩机制配置（CC-24 自 `AliceCoweringConfig` 通用化）。畏缩是物理异常「强击」附带的通用状态；
+ * 引擎只按物理元素消费（紊乱倍率加成 + 畏缩 DOT），不看角色身份。目前唯一开启方是爱丽丝
+ * （`roundInputs.ts#anomalyPoolSetupInfo` 取第一个声明 `anomalyPoolSetup` 能力的模块下发，CC-25 已完成）。
+ */
+export interface CoweringConfig {
+  /** 畏缩 DOT：每 tick 造成强击伤害的比例（%），默认 2.5 */
+  dotRatio: number
+  /** 畏缩 DOT：tick 间隔（秒），默认 0.95 */
+  dotInterval: number
+  /** 紊乱倍率加成：每剩余 1 秒物理异常时长 +%（默认 18） */
+  disorderBonusPerSec: number
+  /** 紊乱倍率加成上限（%，默认 180） */
+  disorderBonusMax: number
+  /** 物理异常强击基础倍率（%，60级默认 853） */
+  assaultBaseMultiplier: number
+}
+
+/** 按主施加槽归属的某元素触发次数（紊乱 / 乱流结算输入） */
+export interface AnomalyElementTriggers { element: string; triggerCount: number; applierSlot: number }
+
+/**
+ * 异常池三项伤害（紊乱 / 乱流 / 畏缩 DoT）的非面板输入（r701）。全队异常乘区由面板决定（蕾米埃尔异化度），
+ * 不在此列，由结算侧传入。
+ */
+export interface AnomalyPoolDamageInputs {
+  dmgConfig: Omit<DamageCalcConfig, 'globalAnomalyMultiplier'>
+  /** 霜寒覆盖折算的敌人受暴伤加成（%），只进伤害面板 */
+  frostCritBonus: number
+  /** 非风时间窗内的元素触发与紊乱次数（无紊乱时缺省） */
+  disorder?: { elements: AnomalyElementTriggers[]; count: number }
+  /** 风化窗口内改走乱流的非风触发、风属性槽位、风触发次数、乱流次数上限（队伍无风属性时缺省） */
+  turbulence?: { elements: AnomalyElementTriggers[]; windSlot: number; windTriggerCount: number; cap: number }
+  /** 物理异常贡献与 DoT 覆盖时长（未开启畏缩或无物理触发时缺省） */
+  cowering?: { contribs: AnomalyContribution[]; dotCoverageTime: number }
 }
 
 /** 紊乱伤害汇总 */

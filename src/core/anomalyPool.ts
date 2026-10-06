@@ -1,11 +1,11 @@
 import type {
   AnomalyPoolResult, AnomalyProgress, AnomalyContribution,
   AnomalyEventRecord,
-  DisorderDamageResult,
-  TurbulenceDamageResult,
+  AnomalyPoolDamageInputs,
   CorrosionSource,
-  CoweringDotResult,
 } from '@/types/resource'
+import type { PanelValues } from '@/types/catalog'
+import type { TeamMechanic } from '@/mechanics/types'
 import { resolveAnomalyCorrosion, resolveAnomalyCorrosionEvents } from './anomalyPool/corrosion'
 
 // ============ 喧响奖励常量 ============
@@ -43,7 +43,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     stunMultiplier = 1.5,
     hasWindChar = false,
     windCharSlot = 0,
-    globalAnomalyMultiplier = 1,
   } = input
 
   // ---- 1. 按元素分组累积 ----
@@ -293,26 +292,10 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   }
   const coverage = calcCoverage(coverageTriggerCounts, totalTime, invincibleTime, elementDurations, hasWindChar)
 
-  // 霜寒状态使敌人受到暴击伤害+10%，按霜寒覆盖率折算；只影响伤害结算面板，不影响积蓄。
+  // 霜寒状态使敌人受到暴击伤害+10%，按霜寒覆盖率折算；只影响伤害结算面板（`calcAnomalyPoolDamage` 叠加），不影响积蓄。
   const frostCritBonus = 10 * (coverage.frostCoverageRate ?? 0)
-  const damagePanels = frostCritBonus > 0
-    ? panels.map(p => ({ ...p, enemyCritDmgTakenBonus: (p.enemyCritDmgTakenBonus ?? 0) + frostCritBonus }))
-    : panels
 
-  // ---- 5. 计算紊乱伤害或乱流伤害 ----
-  const dmgConfig: DamageCalcConfig = {
-    enemyDefense,
-    enemyDefReduction,
-    enemyResistances,
-    enemyResReduction,
-    stunned,
-    stunMultiplier,
-    globalAnomalyMultiplier,
-    coweringConfig: input.coweringConfig,
-  }
-
-  let disorderDamage: DisorderDamageResult | undefined
-  let turbulenceDamage: TurbulenceDamageResult | undefined
+  // ---- 5. 乱流次数与风蚀（紊乱 / 乱流伤害在结算侧由 `calcAnomalyPoolDamage` 按 damageInputs 算，r701） ----
   let turbulenceCount = 0
   let corrosionSource: CorrosionSource | undefined
 
@@ -321,15 +304,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     turbulenceCount = Math.min(
       turbulenceNonWindElements.reduce((sum, e) => sum + e.triggerCount, 0),
       turbulenceCap,
-    )
-    turbulenceDamage = calcTurbulenceDamage(
-      turbulenceNonWindElements,
-      windCharSlot,
-      damagePanels,
-      dmgConfig,
-      elementTriggerCounts.wind ?? 0,
-      turbulenceCap,
-      input.teamMechanics,
     )
     // 风蚀状态机按最终乱流次数重新结算（注入积蓄仍基于预构建的 preTurbulenceCount）
     // ⚠ 风蚀是**维琳娜专属资源** ⇒ 归属按在队模块的 `self` 认人（r399 CC-373：只对在队模块派发），
@@ -374,16 +348,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     if (corrosionSource) anomalyEvents.push(...resolveAnomalyCorrosionEvents(input.teamMechanics, corrosionSource))
   }
 
-  // 非风时间窗内的紊乱：紊乱需要2种以上元素交替触发（新异常覆盖老异常），wind不参与
-  if (normalNonWindElements.length >= 2 && disorderCount > 0) {
-    disorderDamage = calcDisorderDamage(
-      normalNonWindElements,
-      disorderCount,
-      damagePanels,
-      dmgConfig,
-    )
-  }
-
   // ---- 5.5 标准元素 DOT 伤害：CC-D2（2026-09-25）已删 core 侧 `calcStandardDotDamage` ----
   // 生产 DoT 行唯一实现 = `composables/resourceCalc/damagePoolAnomaly.ts`（虚拟面板 + 按积蓄占比分摊、
   // 含持续时间延长、按风化覆盖折算）。core 版只用施加者单人面板、跳数同为「触发×每次满额」无截断，
@@ -410,24 +374,13 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   )
   const perSlotBonus = withCompanionShare(perSlotOwnBonus)
 
-  // ---- 7. 畏缩 DOT 伤害 ----
+  // ---- 7. 畏缩 DOT 的物理贡献（伤害同样在结算侧算） ----
   // 触发条件：任何异常触发（爱丽丝 DOT 不限物理，风化吞掉畏缩也打 DOT）
   // 覆盖时间 = 总异常有效时间（扣无敌后）
-  let coweringDot: CoweringDotResult | undefined
-  if (input.coweringConfig && totalTriggerCount > 0 && coverage.effectiveDoTTime > 0) {
-    const physicalContribs = [
-      ...(elementMap.get('physical') ?? []),
-      ...(elementMap.get('physical_polar_assault') ?? []),
-    ]
-    if (physicalContribs.length > 0) {
-      coweringDot = calcCoweringDot(
-        physicalContribs,
-        damagePanels,
-        coverage.effectiveDoTTime,
-        dmgConfig,
-      )
-    }
-  }
+  const physicalContribs = [
+    ...(elementMap.get('physical') ?? []),
+    ...(elementMap.get('physical_polar_assault') ?? []),
+  ]
 
   // ---- 8. 返回结果 ----
   return {
@@ -441,11 +394,43 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     perSlotOwnBonus,
     perSlotBonus,
     coverage,
-    disorderDamage,
-    turbulenceDamage,
     corrosionSource,
-    coweringDot,
+    damageInputs: {
+      dmgConfig: { enemyDefense, enemyDefReduction, enemyResistances, enemyResReduction, stunned, stunMultiplier, coweringConfig: input.coweringConfig },
+      frostCritBonus,
+      // 非风时间窗内的紊乱：紊乱需要2种以上元素交替触发（新异常覆盖老异常），wind不参与
+      disorder: normalNonWindElements.length >= 2 && disorderCount > 0
+        ? { elements: normalNonWindElements, count: disorderCount } : undefined,
+      turbulence: hasWindChar
+        ? { elements: turbulenceNonWindElements, windSlot: windCharSlot, windTriggerCount: elementTriggerCounts.wind ?? 0, cap: turbulenceCap }
+        : undefined,
+      cowering: input.coweringConfig && totalTriggerCount > 0 && coverage.effectiveDoTTime > 0 && physicalContribs.length > 0
+        ? { contribs: physicalContribs, dotCoverageTime: coverage.effectiveDoTTime } : undefined,
+    },
     anomalyEvents: anomalyEvents.filter(event => event.count > 0),
+  }
+}
+
+/**
+ * 异常池三项伤害（紊乱 / 乱流 / 畏缩 DoT）的结算（r701，T10 第③步）。资源侧 `calcAnomalyPool` 只出次数与
+ * `damageInputs`；结算侧（`useResourceCalc#anomalyPoolResult`）用结算面板调本函数补齐，口径与原池内计算一致。
+ * `panels` = 不带霜寒的角色面板（霜寒加成按 `frostCritBonus` 在此叠加）；全队异常乘区由面板决定，结算侧传入。
+ */
+export function calcAnomalyPoolDamage(
+  inputs: AnomalyPoolDamageInputs,
+  panels: PanelValues[],
+  env: { globalAnomalyMultiplier: number; teamMechanics: readonly TeamMechanic[] },
+): Pick<AnomalyPoolResult, 'disorderDamage' | 'turbulenceDamage' | 'coweringDot'> {
+  const { frostCritBonus, disorder, turbulence, cowering } = inputs
+  const damagePanels = frostCritBonus > 0
+    ? panels.map(p => ({ ...p, enemyCritDmgTakenBonus: (p.enemyCritDmgTakenBonus ?? 0) + frostCritBonus }))
+    : panels
+  const config: DamageCalcConfig = { ...inputs.dmgConfig, globalAnomalyMultiplier: env.globalAnomalyMultiplier }
+  return {
+    disorderDamage: disorder && calcDisorderDamage(disorder.elements, disorder.count, damagePanels, config),
+    turbulenceDamage: turbulence && calcTurbulenceDamage(
+      turbulence.elements, turbulence.windSlot, damagePanels, config, turbulence.windTriggerCount, turbulence.cap, env.teamMechanics),
+    coweringDot: cowering && calcCoweringDot(cowering.contribs, damagePanels, cowering.dotCoverageTime, config),
   }
 }
 

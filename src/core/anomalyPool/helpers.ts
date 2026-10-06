@@ -48,7 +48,10 @@ import type {
   TurbulenceDamageResult, TurbulenceDamageDetail,
   DisorderFormula, TurbulenceFormula,
   CoweringDotResult, CorrosionSource,
+  AnomalyElementTriggers, CoweringConfig, DamageCalcConfig,
 } from '@/types/resource'
+// r701：两者移入 types 层（异常池结果携带结算输入，types 不依赖 core），此处转导出保持原导入路径可用
+export type { CoweringConfig, DamageCalcConfig } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
 import { VARIANT_ELEMENT_TO_BASE, getBaseElement, resolveStatElement, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
@@ -289,8 +292,6 @@ export interface AnomalyPoolInput {
   hasWindChar?: boolean
   /** 风属性角色slot（用于乱流结算区计算），默认0 */
   windCharSlot?: number
-  /** 蕾米异化系数倍率，乘到紊乱/乱流/异常相关伤害；默认1 */
-  globalAnomalyMultiplier?: number
   /** 畏缩配置（启用时计算畏缩固定 DOT 伤害和紊乱倍率加成；目前由爱丽丝开启） */
   coweringConfig?: CoweringConfig
   /** 赠送异常触发次数（不消耗异常条、不产生积蓄，但参与紊乱序列和伤害计算）。
@@ -307,23 +308,6 @@ export interface AnomalyPoolInput {
   teamMechanics: readonly import('@/mechanics/types').TeamMechanic[]
 }
 
-/**
- * 畏缩机制配置（CC-24 自 `AliceCoweringConfig` 通用化）。畏缩是物理异常「强击」附带的通用状态；
- * 引擎只按物理元素消费（紊乱倍率加成 + 畏缩 DOT），不看角色身份。目前唯一开启方是爱丽丝
- * （`roundInputs.ts#anomalyPoolSetupInfo` 取第一个声明 `anomalyPoolSetup` 能力的模块下发，CC-25 已完成）。
- */
-export interface CoweringConfig {
-  /** 畏缩 DOT：每 tick 造成强击伤害的比例（%），默认 2.5 */
-  dotRatio: number
-  /** 畏缩 DOT：tick 间隔（秒），默认 0.95 */
-  dotInterval: number
-  /** 紊乱倍率加成：每剩余 1 秒物理异常时长 +%（默认 18） */
-  disorderBonusPerSec: number
-  /** 紊乱倍率加成上限（%，默认 180） */
-  disorderBonusMax: number
-  /** 物理异常强击基础倍率（%，60级默认 853） */
-  assaultBaseMultiplier: number
-}
 
 // ============ 异常喧响归属辅助 ============
 
@@ -373,7 +357,7 @@ export function calcPerSlotAnomalyTriggers(perElement: AnomalyProgress[], slotCo
 }
 
 /** 紊乱事件分配的输入：参与交替的元素、各自触发次数与施加者槽位 */
-export interface DisorderElementInput { element: string; triggerCount: number; applierSlot: number }
+export type DisorderElementInput = AnomalyElementTriggers
 /** 一个元素在整局里被覆盖（触发紊乱）的计划：被覆盖 `events` 次，每次由 `triggerSlot` 触发 */
 export interface DisorderEventPlan { element: string; applierSlot: number; triggerSlot: number; events: number }
 
@@ -1007,23 +991,6 @@ export function calcCoverage(
     frostCoverageRate,
     windCoverageRate,
   }
-}
-
-// ============ 伤害计算全局配置 ============
-
-/** 紊乱/乱流伤害计算所需的共用配置 */
-export interface DamageCalcConfig {
-  enemyDefense: number
-  enemyDefReduction: number
-  /** 各元素伤害抗性（百分比，负值=弱点） */
-  enemyResistances: Record<string, number>
-  enemyResReduction: number
-  stunned: boolean | number
-  stunMultiplier: number
-  /** 蕾米异化系数倍率，乘到所有异常相关伤害；无蕾米时为1 */
-  globalAnomalyMultiplier: number
-  /** 爱丽丝畏缩配置（启用时计算 DOT 和紊乱倍率加成） */
-  coweringConfig?: CoweringConfig
 }
 
 // ============ 紊乱伤害计算（新增，无风属性时） ============

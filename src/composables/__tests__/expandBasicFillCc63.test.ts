@@ -2,7 +2,6 @@
  * CC-63：roundInputs#expandExecutedToCounts 的平A兜底改走模块钩子 expandBasicFill，
  * 与原编排层写死（伊德海莉 1051 / 「11号」1041 / 其余 basic）逐值相等（Object.is 精确比较）。
  */
-import { computed } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -50,7 +49,7 @@ describe('CC-63 平A兜底 → 模块钩子 expandBasicFill', () => {
     const { config, catalog } = await setupHarness([{ agentId: '1051' }, { agentId: '1041' }, { agentId: '1211' }])
     const calc = useResourceCalc()
     const inputs = createConvergenceRoundInputs({ configStore: config, catalogStore: catalog,
-      panels: calc.panels, resourceConfig: calc.resourceConfig, globalAnomalyMultiplier: computed(() => 1) })
+      panels: calc.panels, resourceConfig: calc.resourceConfig })
     const skillsOf = (id: string) => catalog.agentSkillsByAgentMap.get(id)
     const agentIdOf = (slot: number) => config.team[slot]?.agentId ?? ''
     const fill = { 0: 7.37, 1: 5.1, 2: 4.2 }
