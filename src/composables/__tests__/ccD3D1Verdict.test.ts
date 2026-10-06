@@ -58,6 +58,26 @@ describe('CC-D3：风蚀是维琳娜专属资源（不按「队里第一个风�
     expect(rows.filter(r => String(r.id ?? '').includes('velina-corrosion')).length)
       .toBeGreaterThan(0)
   })
+
+  /**
+   * r711：双风队里维琳娜排在另一风角色之后。修前气旋异放行按「第一个风属性槽」挂到洛克茜名下、用洛克茜面板结算
+   * （1621-1561-1411 实测「维琳娜微域气旋风异放」119 156，维琳娜在首槽时 344 307），6 命风化加成按同一槽派发 ⇒ 整个丢失。
+   */
+  it('双风队维琳娜排在另一风角色之后 ⇒ 气旋行仍归维琳娜、6 命风化加成仍生效', async () => {
+    const { config, calc, rows } = await rowsFor([
+      { agentId: '1621' },
+      { agentId: '1561' },
+      { agentId: '1411' },
+    ])
+    const cyclone = rows.filter(r => String(r.id ?? '').includes('velina-corrosion'))
+    expect(cyclone.length).toBeGreaterThan(0)
+    for (const r of cyclone) expect([r.slot, r.agentId], r.name).toEqual([1, '1561'])
+
+    config.setCinemaLevel(1, 6)
+    const wind = (calc.damagePoolRows.value as any[]).filter(r => r.type === '风化')
+    expect(wind.length).toBeGreaterThan(0)
+    for (const r of wind) expect(r.note, r.name).toContain('6命风化期望')
+  })
 })
 
 describe('CC-D1：琉音额外能力「命破队友 400% 贯穿力」含 sheerForceFlat', () => {

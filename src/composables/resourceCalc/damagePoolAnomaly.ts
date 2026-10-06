@@ -22,6 +22,7 @@
 import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from './poolDamage'
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, isCorrosionCycloneRelease } from '@/core/anomalyPool/helpers'
+import { corrosionOwner } from '@/core/anomalyPool/corrosion'
 import type { PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution } from '@/types/resource'
 import { elementLabel, parseReleaseMultiplier, type DamagePoolRow } from './helpers'
@@ -31,7 +32,7 @@ import {
   buildAnomalySettlementEntries,
   getTeamAnomalyDurationBonus,
 } from './anomalyPanels'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import type { ExtraAnomalyRowGroup } from '@/mechanics'
 // 纯类型：运行时被擦除，与 damagePool.ts 的 `emitAnomalyRows` 值导入不构成运行时环。
 import type { DamagePoolContext } from './damagePool'
@@ -86,9 +87,14 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
   const windChar = windSlot >= 0 ? configStore.team[windSlot] : null
   const windAgentId = windChar?.agentId ?? ''
   const windRate = anomalyPoolResult?.coverage?.windCoverageRate ?? 0
+  const teamMechanics = teamMechanicSlots(configStore.team)
+  // r711：气旋异放是风蚀持有者（维琳娜）的专属产出 ⇒ 归属取事件产出者的槽位（与事件生产同一判定 `corrosionOwner`），
+  // 面板随槽位走。原取「第一个风属性槽」：双风队维琳娜排在洛克茜 / 赛维里安之后时，行挂到对方名下、用对方面板结算。
+  const cycloneSlot = corrosionOwner(teamMechanics)?.slot ?? -1
+  const cycloneAgentId = configStore.team[cycloneSlot]?.agentId ?? ''
 
   for (const event of anomalyPoolResult?.anomalyEvents ?? []) {
-    if (event.count <= 0 || windSlot < 0 || !windAgentId) continue
+    if (event.count <= 0 || !cycloneAgentId) continue
     if (isCorrosionCycloneRelease(event)) { // CC-69：原写死事件 id 子串
       // 风异放（微域145%/广域255%）随乱流触发：失衡轴内按「轴内非风异常触发占比」拆
       // in/out 两段（轴内异常触发→轴内乱流→轴内风异放，用户口径 2026-08）；非轴保持全局覆盖率
@@ -96,8 +102,8 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
       if (!isAxis) {
         pushRelease({
           id: `pool-release-${event.id}`,
-          slot: windSlot,
-          agentId: windAgentId,
+          slot: cycloneSlot,
+          agentId: cycloneAgentId,
           name: event.label,
           count: total,
           multiplier: parseReleaseMultiplier(event),
@@ -112,8 +118,8 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
       if (inCount > 0) {
         pushRelease({
           id: `pool-release-${event.id}-in`,
-          slot: windSlot,
-          agentId: windAgentId,
+          slot: cycloneSlot,
+          agentId: cycloneAgentId,
           name: event.label,
           count: inCount,
           multiplier: parseReleaseMultiplier(event),
@@ -125,8 +131,8 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
       if (outCount > 0) {
         pushRelease({
           id: `pool-release-${event.id}-out`,
-          slot: windSlot,
-          agentId: windAgentId,
+          slot: cycloneSlot,
+          agentId: cycloneAgentId,
           name: event.label,
           count: outCount,
           multiplier: parseReleaseMultiplier(event),
@@ -236,13 +242,11 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
       formula = `${spec.perTick}% × ${ticks} tick${durationBonus > 0 ? `（含${durationBonus}秒延长）` : ''}`
     }
 
-    // 风化事件倍率加成：按风槽角色模块能力 `windAnomalyBonus` 派发（CC-36b 2026-09-27；现为维琳娜 6 命，
-    // 原内联读 windPanel.velinaCinema6。风槽非维琳娜时原本就无加成，派发与之等价）
-    if (prog.element === 'wind' && windSlot >= 0) {
-      const windAgentId = configStore.team[windSlot]?.agentId
-      const bonus = windAgentId
-        ? getAgentMechanic(windAgentId)?.windAnomalyBonus?.({ panel: panelAt(damagePanels, windSlot), triggerCount: prog.triggerCount }) ?? null
-        : null
+    // 风化事件倍率加成：派发给挂出 `windAnomalyBonus` 能力的在队模块（CC-36b 2026-09-27；现为维琳娜 6 命），面板取该模块
+    // 自己的槽。r711：原按「第一个风属性槽」派发（当时队里至多一个风角色）⇒ 双风队维琳娜排后时加成整个丢失。
+    if (prog.element === 'wind') {
+      const owner = teamMechanics.find(m => m.module.windAnomalyBonus)
+      const bonus = owner?.module.windAnomalyBonus?.({ panel: panelAt(damagePanels, owner.slot), triggerCount: prog.triggerCount }) ?? null
       if (bonus) {
         multiplier *= (1 + bonus.pct / 100)
         formula += bonus.note

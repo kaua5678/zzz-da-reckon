@@ -43,15 +43,20 @@ export function resolveAnomalyCorrosion(
 }
 
 /**
- * CC-71：风蚀气旋异放事件记录——取第一个声明 `anomalyCorrosionEvents` 的在队模块（现唯一 = 维琳娜）；无 ⇒ []。
+ * 风蚀气旋事件的产出者（r711）：首个声明 `anomalyCorrosionEvents` 的在队模块（现唯一 = 维琳娜）；无 ⇒ undefined。
+ * 事件生产（下方）与伤害池气旋异放行的归属槽位（`composables/resourceCalc/damagePoolAnomaly.ts`）共用此判定。
+ */
+export function corrosionOwner(teamMechanics: readonly TeamMechanic[]): TeamMechanic | undefined {
+  return teamMechanics.find(m => m.module.anomalyCorrosionEvents)
+}
+
+/**
+ * CC-71：风蚀气旋异放事件记录——由 `corrosionOwner` 产出；无 ⇒ []。
  * 调用方只在 `resolveAnomalyCorrosion` 有结果时调用。
  */
 export function resolveAnomalyCorrosionEvents(
   teamMechanics: readonly TeamMechanic[],
   source: CorrosionSource,
 ): AnomalyEventRecord[] {
-  for (const { module } of teamMechanics) {
-    if (module.anomalyCorrosionEvents) return module.anomalyCorrosionEvents(source)
-  }
-  return []
+  return corrosionOwner(teamMechanics)?.module.anomalyCorrosionEvents?.(source) ?? []
 }
