@@ -264,8 +264,6 @@ export interface AgentAnomalyTransformInput {
   enemyAnomalyResistances: Record<string, number>
   /** 队伍是否有风属性角色（乱流模式） */
   hasWindChar: boolean
-  /** 风属性角色槽位 */
-  windCharSlot: number
   /** 引擎预算的非风元素触发总次数（turbulenceCount 上限前，供风蚀状态机等使用） */
   preTurbulenceCount: number
   /** 引擎预算的风元素触发次数（供风蚀状态机 windTriggerCount 参数） */

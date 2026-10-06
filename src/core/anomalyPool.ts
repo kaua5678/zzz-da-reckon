@@ -111,7 +111,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
       anomalyCoeff,
       enemyAnomalyResistances,
       hasWindChar,
-      windCharSlot,
       preTurbulenceCount,
       preWindTriggerCount,
       calcPerHitBuildUp,
