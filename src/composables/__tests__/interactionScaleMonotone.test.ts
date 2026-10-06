@@ -6,7 +6,7 @@
  * （`.claude/PROMPT-merge-difficulty-curves.md` 任务 A），这条**只依赖引擎**的用例原样迁来——
  * 它锁的是 solveTeam 的闸门行为，不是面板。
  * ⚠ 下降引擎是生产代码里唯一置位该闸门的调用方；删除后闸门只剩测试在开，存废见
- * `docs/mcp-worker-task-queue.md` §3 T11。
+ * `docs/mcp-worker-task-queue.md` §3 T23。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
