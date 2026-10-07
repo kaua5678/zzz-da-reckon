@@ -16,6 +16,7 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { effectiveCombatTime } from '@/core/effectiveTime'
+import { windEffectiveTriggerCount } from '@/core/anomalyPool/helpers'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
@@ -691,11 +692,12 @@ export const burniceMechanic: AgentMechanicModule = {
     // ---- 柏妮思6命：双份火焰冲击命中灼烧敌人时，额外结算一次1800%灼烧伤害 ----
     const burniceSrc = charResult?.burniceMechanicSource
     const fireProg = anomalyProgress('fire')
-    if (windRate < 1 && burniceSrc && burniceSrc.cinema6BurnBurstCount > 0 && fireProg && fireProg.triggerCount > 0) {
+    // 灼烧迸发要命中灼烧中的敌人 ⇒ 次数与灼烧伤害同口径（风化窗口内不结算，规则单源 windEffectiveTriggerCount）
+    const fireEffectiveCount = fireProg ? windEffectiveTriggerCount('fire', fireProg.triggerCount, windRate) : 0
+    if (burniceSrc && burniceSrc.cinema6BurnBurstCount > 0 && fireProg && fireEffectiveCount > 0) {
       const fireBuild = buildVirtualPanel(fireProg)
       if (fireBuild) {
         const rows: DamagePoolRow[] = []
-        const fireEffectiveCount = fireProg.triggerCount * (1 - windRate)
         const settlementEntries = buildSettlementEntries(fireBuild, fireEffectiveCount)
         const burnBurstStun = axisStunFor('burnice-c6-burn-burst')
         for (const entry of settlementEntries) {

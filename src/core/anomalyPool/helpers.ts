@@ -27,9 +27,9 @@
  *    验证：6火10电 → sum=16, max=10 → min(15, 12)=12 ✓
  *         4火4电 → sum=8, max=4 → min(7, 8)=7 ✓（旧公式多算1次）
  *
- * 6. 乱流（风属性）：风属性角色将其他元素的DoT转化为乱流伤害
- *    DoT伤害归零（火/电/以太的DoT被乱流吞了）
- *    乱流视为维琳娜触发，结算区用风角色面板
+ * 6. 乱流（风属性）：风化窗口内其他元素的触发改走乱流（按风化覆盖率 windCoverageRate 拆窗，非风窗口照常）
+ *    风化窗口内 DoT / 冻结不结算（被乱流吸收）——伤害侧规则单源 windEffectiveTriggerCount（r713 订正旧注「DoT伤害归零」）
+ *    乱流由风底属性提供者结算，结算区用风属性角色面板；风蚀 +150% 只认维琳娜（CC-D3）
  *    异常质量来自非风角色，T = 非风异常默认持续时间（风化不被覆盖）
  *    乱流继承异常增伤和异常暴击
  *    乱流3秒CD；单次30秒风化可容纳10次，计算器按多次风化窗口合并，不封顶
@@ -836,7 +836,7 @@ function calcDisorderSettlement(
  * 结算区 = 抗性区 × 易伤区 × 失衡易伤区 × 异常增伤区 × 异常暴击区
  *
  * 注意：乱流继承异常增伤和异常暴击（与紊乱不同）
- * 乱流视为维琳娜触发，结算区使用风角色面板
+ * 乱流由风底属性提供者结算，结算区使用风属性角色面板（不限维琳娜；风蚀强化另按维琳娜认人，CC-D3）
  *
  * @param windPanel 风属性角色面板（乱流触发者）
  * @param element 非风异常元素（用于查找boss抗性）
@@ -897,6 +897,17 @@ export function getMainApplierSlot(contribs: AnomalyContribution[]): number {
 }
 
 // ============ 异常覆盖率计算（新增） ============
+
+/**
+ * 风化窗口内不结算的异常伤害（r713 单一来源）：DoT（灼烧 / 感电 / 侵蚀）与冻结（→ 碎冰）靠异常状态持续出伤，
+ * 风化状态期间被乱流吸收 ⇒ 只按非风窗口 `(1 − windCoverageRate)` 折算；强击 / 极性强击是即时事件、风化是自身，照常全额。
+ * 消费者：伤害池标准异常行（`damagePoolAnomaly`）、柏妮思 6 命灼烧迸发（命中灼烧中的敌人才触发）。
+ * 状态时长账（下方 `calcCoverage`）口径不同：所有非风**状态**都按非风窗口折算（含畏缩 / 霜寒），不走这里。
+ */
+const WIND_BLOCKED_DAMAGE_ELEMENTS: ReadonlySet<string> = new Set(['fire', 'electric', 'ether', 'ice'])
+export function windEffectiveTriggerCount(element: string, triggerCount: number, windCoverageRate: number): number {
+  return WIND_BLOCKED_DAMAGE_ELEMENTS.has(element) ? triggerCount * (1 - windCoverageRate) : triggerCount
+}
 
 /**
  * 计算异常状态覆盖率
@@ -1102,9 +1113,9 @@ export function calcDisorderDamage(
  * 计算乱流伤害详情（有风属性时）
  *
  * 实现逻辑：
- * - DoT伤害归零（火/电/以太的DoT被乱流吞了）
- * - 不触发紊乱，触发乱流
- * - 乱流视为维琳娜触发，结算区用风角色面板（继承异常增伤和异常暴击）
+ * - 风化窗口内 DoT / 冻结不结算（被乱流吸收；伤害侧折算见 windEffectiveTriggerCount）
+ * - 风化窗口内不触发紊乱，触发乱流
+ * - 结算区用 windSlot（风底属性提供者）的面板，继承异常增伤和异常暴击；风蚀强化只认维琳娜（CC-D3）
  * - 异常质量来自非风角色
  * - T = 非风异常默认持续时间（风化不被覆盖，T可吃满）
  * - 乱流次数 = 非风元素触发次数之和，按风化时长 / 3秒CD 的槽位封顶（多次风化窗口合并，不封顶）
@@ -1191,7 +1202,7 @@ export function calcTurbulenceDamage(
       false,
     ) : anomalyMass
 
-    // 结算区（乱流视为维琳娜触发，用风角色面板，继承异常增伤和异常暴击）
+    // 结算区（风底属性提供者的面板，继承异常增伤和异常暴击）
     const settlementMultiplier = calcTurbulenceSettlement(
       windPanel,
       applierPanel,

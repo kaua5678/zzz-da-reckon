@@ -21,7 +21,7 @@
  */
 import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from './poolDamage'
 import { panelAt } from '@/core/panel'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, isCorrosionCycloneRelease } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, isCorrosionCycloneRelease, windEffectiveTriggerCount } from '@/core/anomalyPool/helpers'
 import { corrosionOwner } from '@/core/anomalyPool/corrosion'
 import type { PanelValues } from '@/types/catalog'
 import type { AnomalyEventExecution } from '@/types/resource'
@@ -221,15 +221,11 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     ice: { label: '碎冰', single: ANOMALY_SINGLE_HIT_MULTIPLIER.ice, baseFormula: `碎冰 ${ANOMALY_SINGLE_HIT_MULTIPLIER.ice}% 单次（冻结次数=碎冰次数）` },
     wind: { label: '风化', single: ANOMALY_SINGLE_HIT_MULTIPLIER.wind, baseFormula: `风化 ${ANOMALY_SINGLE_HIT_MULTIPLIER.wind}% 单次` },
   }
-  // 风化窗口内的火/电/以太 DoT 与冰冻结类不生效，按 (1 - windRate) 折算；
-  // 强击、极性强击这类事件伤害仍可触发，因此保留 physical/physical_polar_assault/wind 全额次数。
-  const windBlockedAnomalyElements = new Set(['fire', 'electric', 'ether', 'ice'])
+  // 风化窗口内 DoT 与冻结不结算、强击照常：规则单源 `windEffectiveTriggerCount`（core/anomalyPool/helpers）
   for (const prog of anomalyPoolResult?.perElement ?? []) {
     const spec = anomalyDamageSpecs[prog.element]
     if (!spec || prog.triggerCount <= 0) continue
-    const effectiveTriggerCount = windBlockedAnomalyElements.has(prog.element)
-      ? prog.triggerCount * (1 - windRate)
-      : prog.triggerCount
+    const effectiveTriggerCount = windEffectiveTriggerCount(prog.element, prog.triggerCount, windRate)
     if (effectiveTriggerCount <= 0) continue
     const build = buildAnomalyVirtualPanel(prog, damagePanels, configStore, catalogStore)
     if (!build) continue
