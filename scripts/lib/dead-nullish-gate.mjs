@@ -14,9 +14,12 @@
  *     索引访问 / 条件类型 ⇒ 违规。
  *   · 不管：元素访问 `a[k] ?? b`（未开 noUncheckedIndexedAccess，`Record<string, T>` 的取值类型不含 undefined 但运行时可缺）；
  *     走索引签名的点访问（同理）；调用结果 `f() ?? b`；`||`（0 / '' 也会取右侧，是另一种语义）。
- *   · 信任边界豁免（`DEAD_NULLISH_TRUST_BOUNDARY`）：值来自 TS 管不到的数据（store 用户态、目录 JSON、Boss 预设、
- *     跑分存档导入、用户轴）的类型——声明写必填，但读入时没人校验或补齐，兜底可能是承重的。按 owner 类型名豁免；
+ *   · 信任边界豁免（`DEAD_NULLISH_TRUST_BOUNDARY`）：值来自 TS 管不到的数据（目录 JSON、Boss 预设、
+ *     跑分存档导入、spec JSON）的类型——声明写必填，但读入时没人校验或补齐，兜底可能是承重的。按 owner 类型名豁免；
  *     匿名类型（`{ … }` 字面量类型）按声明文件豁免。豁免数在判据行里公示，不是黑箱。
+ *   · store 用户态（`CharacterConfig` / `EnemyConfig`）与轴（`StunAxis` / `StunAxisAction` / `AxisLike` / `AxisActionLike`）
+ *     r724 起**不在**豁免表：store 从未持久化，写入方只有默认工厂、类型化的 setter / 编辑器与同类克隆；外部来源只有
+ *     Boss 预设 JSON 与轴预设 JSON，两者由 validate:data 校验必填键（census §4.1）。
  *   · 扫 `src/**` 的 .ts（不含 .d.ts、*.test.ts、*.perf.ts、任何 `__tests__/`、测试基建 `src/test/`）。
  *     `.vue` 不扫（要 vue-tsc 的类型信息）。反空洞：扫描文件数 < `DEAD_NULLISH_MIN_FILES` 视为目录没扫到，判据失败。
  *
@@ -42,10 +45,6 @@ export const DEAD_NULLISH_MIN_FILES = 250
  * `owners` = 类型名；`files` = 匿名类型（`{ … }` 字面量类型）的声明文件。移出条件见 docs/mcp-dead-nullish-census.md §4。
  */
 export const DEAD_NULLISH_TRUST_BOUNDARY = [
-  { owners: ['CharacterConfig', 'EnemyConfig'], files: ['src/stores/config.ts'],
-    why: 'store 用户态：队伍预设 JSON / 分析场景 initialState 克隆 / 旧存档迁移写入，读入时不补齐缺省' },
-  { owners: ['StunAxis', 'StunAxisAction', 'AxisLike', 'AxisActionLike'], files: [],
-    why: '用户轴：轴编辑器与预设轴写入 store，读入不规整（count / actions 可缺）' },
   { owners: ['AgentSkills', 'SkillCategory', 'SkillMove', 'SkillRow', 'BuffGroup', 'BuffEffect', 'TeammateBuffGroup', 'TeammateBuff', 'AgentCombatBuffs'],
     files: ['src/types/catalog.ts', 'src/stores/catalog.ts', 'src/data/moveTableQueries.ts'],
     why: '目录 JSON（public/static/*.json 运行时 fetch）：validate:data 不校验这些键' },

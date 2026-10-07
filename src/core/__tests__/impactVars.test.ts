@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { IMPACT_VARIABLES, readImpactVar, writeImpactVar } from '@/core/impactVars'
 
-/** 最小 configStore 桩：只实现 team + setActionCount（平A时间权重） */
+/** 最小 configStore 桩：team + setActionCount（平A时间权重）；enemy 按 ImpactVarConfig 给全必填字段（值同 store defaultEnemy） */
 function makeStore() {
   const team = [
     { slot: 0, agentId: '1471', basicAttackTimeWeight: 3 },
@@ -10,7 +10,7 @@ function makeStore() {
   ]
   return {
     team,
-    enemy: { stunValue: 0 },
+    enemy: { stunValue: 0, invincibleTime: 0, battleTime: 180, stunVuln: 1.5, anomalyCoeff: 1, damageResistances: {} },
     setEnemy(patch: any) { Object.assign(this.enemy, patch) },
     setActionCount(slot: number, field: string, count: number) {
       if (field === 'basicAttackTimeWeight' && team[slot]) team[slot].basicAttackTimeWeight = Math.max(0, Math.min(99, count))

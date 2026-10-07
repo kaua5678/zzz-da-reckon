@@ -382,8 +382,8 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
     if (wins <= 0) return
     for (const act of ax.actions) {
       const cinema = cinemaLevelOf(memberAt(act.slot)?.cinemaLevel)
-      if (act.moveId === HUGO_EX_VERDICT_MOVE_ID) exVerdictBlocks += (act.count ?? 1) * wins
-      if (act.moveId === HUGO_ULT_MOVE_ID) ultVerdictBlocks += (act.count ?? 1) * wins
+      if (act.moveId === HUGO_EX_VERDICT_MOVE_ID) exVerdictBlocks += act.count * wins
+      if (act.moveId === HUGO_ULT_MOVE_ID) ultVerdictBlocks += act.count * wins
       if (!isHugoEndsWindowMove(act.moveId, cinema)) continue
       const skills = getAgentSkills?.(memberAt(act.slot)?.agentId ?? '')
       const move = findMove(skills, act.moveId)

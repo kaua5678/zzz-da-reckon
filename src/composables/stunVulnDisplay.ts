@@ -25,7 +25,7 @@ export function useStunVulnDisplay(opts: {
   const stunVulnPanelOf = () => {
     const p0 = panels.value[0]
     return {
-      vuln: configStore.enemy.stunVuln ?? 0,
+      vuln: configStore.enemy.stunVuln,
       bonus: p0?.stunDmgMultiplierBonus ?? 0,
       always: p0?.stunDmgMultiplierBonusAlways ?? 0,
       cap: p0?.stunDmgMultiplierBonusCapAlways ?? 0,
@@ -48,7 +48,7 @@ export function useStunVulnDisplay(opts: {
   }
   function stunVulnTitleOf(row: DamagePoolRow): string {
     if (row.stunMult === undefined) return '异常行：易伤已在结算内部，不逐行暴露'
-    const frac = rowStunCoverage(row, configStore.enemy.stunVuln ?? 0) ?? 0
+    const frac = rowStunCoverage(row, configStore.enemy.stunVuln) ?? 0
     return `轴内覆盖 ${(frac * 100).toFixed(0)}% → 生效易伤 ×${appliedVulnOf(row)}`
   }
   // 行级生效易伤映射（全队汇总与逐人共用，避免两处各算一遍漂移）

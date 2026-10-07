@@ -8,16 +8,16 @@
 /**
  * r407：读写影响变量所需的最小配置面（**结构类型**；Pinia configStore 天然满足，测试可传最小桩）。
  * core 不 import `@/stores/*`，所以此前用 `configStore: any`——键拼错不报。现只声明这里真正读写的成员。
- * 旧版单表 `enemy.resistances` 回退已删：store 的 `damageResistances` 必填且加载时迁移（stores/config.ts），回退永不触发（死通道守卫 B 类）。
+ * enemy 各字段与 store 的 `EnemyConfig` 一样必填：默认值只在 store 的 defaultEnemy，这里不再各写一份（r724；桩要给全）。
  */
 export interface ImpactVarConfig {
   enemy: {
     stunValue: number
-    invincibleTime?: number
-    battleTime?: number
-    stunVuln?: number
-    anomalyCoeff?: number
-    damageResistances?: Record<string, number>
+    invincibleTime: number
+    battleTime: number
+    stunVuln: number
+    anomalyCoeff: number
+    damageResistances: Record<string, number>
   }
   team?: ReadonlyArray<{ basicAttackTimeWeight?: number } | undefined>
   setEnemy(patch: { stunValue?: number; invincibleTime?: number; battleTime?: number; stunVuln?: number; anomalyCoeff?: number; damageResistances?: Record<string, number> }): void
@@ -128,19 +128,19 @@ const RESISTANCE_VAR_ELEMENTS: Readonly<Record<string, string>> = {
 export function readImpactVar(configStore: ImpactVarConfig, varId: string): number {
   const resEl = RESISTANCE_VAR_ELEMENTS[varId]
   if (resEl) {
-    return configStore.enemy.damageResistances?.[resEl] ?? 20
+    return configStore.enemy.damageResistances[resEl] ?? 20
   }
   switch (varId) {
     case 'bossStunValue':
       return configStore.enemy.stunValue
     case 'bossInvincible':
-      return configStore.enemy.invincibleTime ?? 0
+      return configStore.enemy.invincibleTime
     case 'totalTime':
-      return configStore.enemy.battleTime ?? 180
+      return configStore.enemy.battleTime
     case 'stunVulnerability':
-      return configStore.enemy.stunVuln ?? 1.5
+      return configStore.enemy.stunVuln
     case 'anomalyCoeff':
-      return configStore.enemy.anomalyCoeff ?? 1
+      return configStore.enemy.anomalyCoeff
     case 'slot1TimeWeight':
       return configStore.team?.[1]?.basicAttackTimeWeight ?? 1
     default:
@@ -154,7 +154,7 @@ export function readImpactVar(configStore: ImpactVarConfig, varId: string): numb
 export function writeImpactVar(configStore: ImpactVarConfig, varId: string, value: number): void {
   const resEl = RESISTANCE_VAR_ELEMENTS[varId]
   if (resEl) {
-    const current = { ...(configStore.enemy.damageResistances ?? {}) }
+    const current = { ...configStore.enemy.damageResistances }
     current[resEl] = value
     configStore.setEnemy({ damageResistances: current })
     return

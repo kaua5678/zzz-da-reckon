@@ -126,7 +126,7 @@ export function resolveWindInfectionPick(
     const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
     return {
       slot,
-      agentId: char.agentId ?? '',
+      agentId: char.agentId,
       element: agent?.damageElement ?? '',
       specialty: agent?.specialty ?? '',
       excludedFromPick: !!(char.agentId && getAgentMechanic(char.agentId)?.excludeFromWindInfectionPick),

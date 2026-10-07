@@ -416,7 +416,7 @@ const columns = computed(() => [
 ])
 
 const totalDamage = computed(() => teamTotalDamage.value ?? 0)
-const enemyHp = computed(() => configStore.enemy.hp ?? 0)
+const enemyHp = computed(() => configStore.enemy.hp)
 const hpRatio = computed(() => (enemyHp.value > 0 ? (totalDamage.value / enemyHp.value) * 100 : 0))
 const predictedKill = computed(() => totalDamage.value >= enemyHp.value)
 const ratioClass = computed(() => (hpRatio.value >= 100 ? 'green' : hpRatio.value >= 90 ? 'amber' : 'red'))

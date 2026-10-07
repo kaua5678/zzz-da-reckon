@@ -97,7 +97,7 @@ export function collectHpSources(
   add(self, '核心被动', agent.combatBuffs?.corePassive)
   add(self, '额外能力', agent.combatBuffs?.additionalAbility)
   for (const cinema of agent.combatBuffs?.cinemaBuffs ?? []) {
-    if (cinema.cinemaLevel <= (char.cinemaLevel ?? 0)) add(self, `影画${cinema.cinemaLevel}`, cinema.buff)
+    if (cinema.cinemaLevel <= char.cinemaLevel) add(self, `影画${cinema.cinemaLevel}`, cinema.buff)
   }
 
   // 2. 队友 buff：引擎同一份输入（CC-208；拥有者在队 / 门控 / 钩子否决 / 接收槽 / 修饰器改写均已生效）。
@@ -110,7 +110,7 @@ export function collectHpSources(
   // 3. 音擎：逐条按引擎发放口径（职业 / 组条件 / 效果限定，CC-211）；数值按精炼等级取（CC-210）
   const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
   if (wEngine) {
-    const modLevel = Math.max(1, Math.min(5, char.wEngineModLevel ?? 1))
+    const modLevel = Math.max(1, Math.min(5, char.wEngineModLevel))
     const weakness = configStore.enemy.weakness
     for (const [item, group] of [['自身效果', wEngine.effect?.selfBuff], ['团队效果', wEngine.effect?.teamBuff]] as const) {
       add(localized(wEngine.name) || wEngine.id, item, group, modLevel, e => wEngineEffectBlockReason(wEngine, group, e, agent, weakness) === null)

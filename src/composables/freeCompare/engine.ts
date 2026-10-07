@@ -401,7 +401,7 @@ export async function computeFreeCompare(
 
       // ---- 求值 ----
       // env 必须在装配之后读：Boss / 期数由装配段写入，提前读会拿到用户页面原来那个 Boss 的血量（CC-189 修）
-      const env: MetricEnv = { hp: configStore.enemy.hp ?? 0 }
+      const env: MetricEnv = { hp: configStore.enemy.hp }
       const value = readMetric(calc, m, env, spec)
       evaluations++
       if (value === null) { skipped++; out[si].skipped++; out[si].values[li] = null }

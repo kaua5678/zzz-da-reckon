@@ -208,9 +208,14 @@ for (const f of dataJsonFiles) {
       }
     }
   } else if (rel.startsWith('stunAxisPresets/')) {
-    check(`${rel}: has id + team + axes/plans`,
+    // r724：轴类型（StunAxis / StunAxisAction 及结构子集 AxisLike）是必填契约、读点不兜底（docs/mcp-dead-nullish-census.md §4.1）。
+    // 预设 JSON 经 import.meta.glob 打进包里、TS 不查 ⇒ 这里保证每条轴有 actions、每个动作有 slot / moveId / count。
+    const axes = [...(data.axes ?? []), ...(data.plans ?? []).flatMap(p => p.axes ?? [])]
+    const badAxes = axes.flatMap(ax => !Array.isArray(ax.actions) ? [`${ax.name}: actions`]
+      : ax.actions.filter(a => !Number.isInteger(a.slot) || typeof a.moveId !== 'string' || !Number.isFinite(a.count)).map(a => `${ax.name}/${a.moveId}`))
+    check(`${rel}: has id + team + axes/plans; every axis action has slot / moveId / count`,
       typeof data.id === 'string' && Array.isArray(data.team) && data.team.length > 0 &&
-      (Array.isArray(data.axes) || Array.isArray(data.plans)))
+      (Array.isArray(data.axes) || Array.isArray(data.plans)) && badAxes.length === 0, badAxes.slice(0, 5).join('; '))
   }
 }
 
@@ -291,6 +296,28 @@ const cinemaMirrors = Object.entries(mechData)
 check('character-mechanics has no cinemaImplementation(s) mirror (single source = constellations.cinemas)',
   cinemaMirrors.length === 0,
   `命座镜像字段（应删，单源 = character-constellations.json#characters.<id>.cinemas）: ${cinemaMirrors.join(', ')}`)
+
+// Boss 预设 → store 敌人配置（r724）：applyBossPreset 把下列字段原样写进 EnemyConfig，EnemyConfig 是必填契约、
+// 读点不兜底（docs/mcp-dead-nullish-census.md §4.1）。boss-presets.json 运行时 fetch、TS 管不到 ⇒ 在这里保证每个预设都给全。
+{
+  const presets = load('public/static/boss-presets.json').bosses ?? []
+  const num = v => typeof v === 'number' && Number.isFinite(v)
+  const ELEMENTS = ['physical', 'fire', 'ice', 'electric', 'ether', 'wind']
+  const bad = []
+  for (const b of presets) {
+    const miss = ['stunVuln', 'stunTime'].filter(k => !num(b.monster?.[k])).map(k => `monster.${k}`)
+      .concat(['battleTime', 'shieldCount', 'energyShield'].filter(k => !num(b.defaults?.[k])).map(k => `defaults.${k}`))
+    if (!(b.phases?.length > 0)) miss.push('phases')
+    if (miss.length) bad.push(`${b.id}: ${miss.join(',')}`)
+    for (const p of b.phases ?? []) {
+      const pm = ['hp', 'stunValue', 'defense', 'level', 'bossAnomalyCoeff'].filter(k => !num(p[k]))
+        .concat(['damageResistances', 'stunResistances', 'anomalyResistances'].filter(k => !ELEMENTS.every(e => num(p[k]?.[e]))))
+      if (pm.length) bad.push(`${b.id}/${p.phaseId}: ${pm.join(',')}`)
+    }
+  }
+  check(`boss-presets give every EnemyConfig field applyBossPreset writes (${presets.length} presets)`,
+    presets.length > 0 && bad.length === 0, bad.slice(0, 8).join('; '))
+}
 
 console.log(failed === 0 ? `\n${checks} data checks passed` : `\n${failed} data check(s) failed`)
 process.exit(failed === 0 ? 0 : 1)

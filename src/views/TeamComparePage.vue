@@ -1542,7 +1542,7 @@ const hoverTips = computed(() => {
 /** 击杀时间（秒）：伤害/血量 > 100% 时 = 战斗时长 × 100/hpRatio（2 倍伤害 → 90s，按 180s 基准） */
 function killSeconds(hpRatio: number): number {
   if (hpRatio <= 100) return 0
-  const battle = configStore.enemy.battleTime ?? 180
+  const battle = configStore.enemy.battleTime
   return Math.round(battle * 100 / hpRatio)
 }
 

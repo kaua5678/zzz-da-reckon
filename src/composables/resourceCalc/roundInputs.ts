@@ -150,10 +150,10 @@ export function createConvergenceRoundInputs(deps: {
     return calcAnomalyPool({
       executions: execs, panels: panels.value,
       bossCoeff: configStore.enemy.anomalyCoeff, anomalyCoeff: configStore.enemy.bossAnomalyCoeff,
-      enemyAnomalyResistances: configStore.enemy.anomalyResistances ?? configStore.enemy.resistances ?? {},
-      totalTime: configStore.enemy.battleTime ?? 180, invincibleTime: configStore.enemy.invincibleTime,
+      enemyAnomalyResistances: configStore.enemy.anomalyResistances,
+      totalTime: configStore.enemy.battleTime, invincibleTime: configStore.enemy.invincibleTime,
       enemyDefense: configStore.enemy.defense, enemyDefReduction: 0,
-      enemyResistances: configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}, enemyResReduction: 0,
+      enemyResistances: configStore.enemy.damageResistances, enemyResReduction: 0,
       stunned: stunCov, stunMultiplier: configStore.enemy.stunVuln,
       hasWindChar: wind.hasWindChar, windCharSlot: wind.windCharSlot,
       coweringConfig: setup?.coweringConfig,
@@ -196,7 +196,7 @@ export function createConvergenceRoundInputs(deps: {
   /** 按来源解析当前轮生效的轴：手动条件轴方案 → 手动 stunAxes → 通用自动预设（按资源量自选） */
   function resolveAxesBySource(stunCount: number, goodReview: number, energyBySlot: Record<number, number>): { axes: StunAxis[]; planName: string | null } {
     const cinemaBySlot: Record<number, number> = {}
-    configStore.team.forEach((c, i) => { cinemaBySlot[i] = c.cinemaLevel ?? 0 })
+    configStore.team.forEach((c, i) => { cinemaBySlot[i] = c.cinemaLevel })
     if (configStore.stunAxisPlans.length > 0) {
       const r = resolveStunAxisPlan(configStore.stunAxisPlans, { stunCount, goodReview, energyBySlot, cinemaBySlot })
       if (r) return { axes: r.axes, planName: r.plan.name }

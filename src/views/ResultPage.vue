@@ -853,7 +853,7 @@ const totalQuickAssistCount = computed(() =>
 const teamTimeSummary = computed(() => buildTeamTimeSummary({
   rr: resourceResult.value,
   battleTime: resourceResult.value?.totalTime ?? configStore.enemy.battleTime,
-  invincibleTime: configStore.enemy.invincibleTime ?? 0,
+  invincibleTime: configStore.enemy.invincibleTime,
   nameOf: (agentId, slot) => agentNames.value[agentId] || `槽${slot}`,
 }))
 

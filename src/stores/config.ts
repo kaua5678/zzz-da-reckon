@@ -108,15 +108,13 @@ export interface EnemyConfig {
   battleTime: number       // 总战斗时间（秒，默认180）
   stunCountLock: number    // 锁定失衡次数（-1 = 正常收敛；命座对比固定场景用）
   /** 敌方体型：影响体型相关招式倍率（如艾莲霜锋剑气 0/3/6 段） */
-  bodySize?: 'small' | 'medium' | 'large'
+  bodySize: 'small' | 'medium' | 'large'
   /** 伤害抗性：用于直伤、异常伤害、紊乱/乱流结算 */
   damageResistances: Record<string, number>
   /** 失衡抗性：用于失衡值计算 */
   stunResistances: Record<string, number>
   /** 积蓄抗性：用于异常积蓄值计算 */
   anomalyResistances: Record<string, number>
-  /** 兼容旧配置：旧版单表抗性 */
-  resistances?: Record<string, number>
   /**
    * 当前敌人弱点（中文，与 Boss 预设 phase.weakness 同口径）。
    * 缺省或空 = 未声明，音擎 attributeCounter 不拦截。
@@ -385,12 +383,12 @@ export function deriveTeammateBuffEnabled(
   // 构建 MechanicTeamMember[] 用于额外能力条件统一判定
   const mechanicTeam: MechanicTeamMember[] = teamAgents.map(({ char, agent }) => ({
     slot: char.slot,
-    agentId: char.agentId ?? '',
+    agentId: char.agentId,
     agent: agent ?? null,
-    cinemaLevel: char.cinemaLevel ?? 0,
+    cinemaLevel: char.cinemaLevel,
     potentialLevel: char.potentialLevel ?? 6,
-    wEngineId: char.wEngineId ?? '',
-    wEngineModLevel: char.wEngineModLevel ?? 1,
+    wEngineId: char.wEngineId,
+    wEngineModLevel: char.wEngineModLevel,
   }))
   // CC-206：额外能力门控直接调引擎同一个求值函数（含凯撒「有任意队友」、菲欧妮 tier3「异常数≥3」等模块修正）。
   // 此前这里另算一份 aaActiveMap（只看 spec 声明、不经模块修正）⇒ 凯撒有异阵营队友时引擎放行、这里默认不勾；
@@ -1018,15 +1016,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     Object.assign(enemy.value, patch)
   }
 
-  function ensureResistanceTables() {
-    const legacy = enemy.value.resistances
-    if (!enemy.value.damageResistances) enemy.value.damageResistances = { ...(legacy ?? defaultResistanceTable(0)) }
-    if (!enemy.value.stunResistances) enemy.value.stunResistances = { ...(legacy ?? defaultResistanceTable(0)) }
-    if (!enemy.value.anomalyResistances) enemy.value.anomalyResistances = { ...(legacy ?? defaultResistanceTable(0)) }
-  }
-
   function setResistance(kind: 'damage' | 'stun' | 'anomaly', element: string, value: number) {
-    ensureResistanceTables()
     const key = kind === 'damage' ? 'damageResistances' : kind === 'stun' ? 'stunResistances' : 'anomalyResistances'
     enemy.value[key][element] = value
   }
@@ -1256,9 +1246,6 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     },
     { deep: true, flush: 'sync' }
   )
-
-  // 兼容旧版本保存的 enemy.resistances 单表配置
-  watch(enemy, () => ensureResistanceTables(), { deep: true, immediate: true })
 
   // 监听队友 buff 数据加载完成，同步一次
   watch(

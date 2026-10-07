@@ -388,48 +388,6 @@ describe('applyTeamMechanics 透传 countStun / chainCountPerStun（跳②）', 
     // 队友 0 × 2 = 0 ⇒ (2 + 0) × 5 = 10
     expect(characters[0].lycaonC2Energy).toBe(10)
   })
-
-  /**
-   * ★ 默认值分裂的**真实边界**（实测钉死，别照抄 R18 分诊的例子）。
-   *
-   * R18 分诊写的是「`store = 0` → `cfg = 1`」，**实测是错的**：`0 ?? 1 === 0`（`??` 只接
-   * `null`/`undefined`）⇒ store 显式 0 时 cfg 也是 0。**分裂只发生在 store 侧字段
-   * 真的缺失（`undefined`）时**——那种形态在 harness/`setAgent` 路径下拿不到（`createDefaultChar`
-   * 铺了 0、harness 的 `TEST_BASE_CHAR` 铺了 1），故本判据**直接构造缺失态**：
-   * `delete` 掉 store 上的键 ⇒ 模拟「老预设/外部写入的对象没有这个字段」。
-   * 实测：`delete` 后 store 读 `?? 0` = 0，而 cfg 那份 = 1 ⇒ 两口径**精确可分辨**。
-   */
-  // CC-264：`buildCharConfig` 的「支援 0 / 其余 1」兜底已删（字段恒为 number、setAgent 预填基准）⇒ 缺字段时两侧同为 0，
-  // 默认值分裂消失。本用例改锁「分裂不再存在 + 莱卡恩仍读 store」；若有人恢复旧兜底，前提断言变红。
-  it('★ 默认值分裂（已消除，CC-264）：store 侧字段**缺失** ⇒ 快照 0 且 cfg 兜底也是 0', async () => {
-    const { catalog, config } = await setupHarness([{ agentId: '1141', cinemaLevel: 2 }, { agentId: '1011' }])
-    delete (config.team[1] as unknown as Record<string, unknown>).chainCountPerStun
-    expect(config.team[1].chainCountPerStun, 'store 侧缺字段 ⇒ 原式 `?? 0` 得 0').toBeUndefined()
-    const characters = [
-      buildCharConfig(0, config, catalog) as unknown as Cfg,
-      buildCharConfig(1, config, catalog) as unknown as Cfg,
-    ]
-    // CC-264 前 cfg 这份被兜底成 1（强攻非辅助）；现与 store 语义一致 = 0
-    expect(characters[1].chainCountPerStun, 'cfg 侧兜底 = 0（与 store 同值，无分裂）').toBe(0)
-    applyTeamMechanics({
-      characters: characters as never,
-      configStore: config,
-      catalogStore: catalog,
-      phase: 'converge',
-      combatTime: 180,
-      stunCount: 2,
-      countStun: 2,
-      axis: axisOf({ active: false }),
-      interactions: interactionsOf([
-        { agentId: '1141' },
-        // 派发点对缺失字段的 `?? 0` = 原式 `c.chainCountPerStun ?? 0` 的同一语义
-        { agentId: '1011', chain: config.team[1].chainCountPerStun ?? 0 },
-      ]),
-    })
-    // store 原值缺失 ⇒ 0 ⇒ (2 + 0) × 5 = 10。若读 cfg 那份 = 1 ⇒ (2 + 1×2) × 5 = 20（精确可分辨）
-    expect(characters[0].lycaonC2Energy).toBe(10)
-    expect(characters[0].lycaonC2Energy).not.toBe(20)
-  })
 })
 
 // ── 层③ 真管线：G4 打开时的端到端数值 ──────────────────────────────────────────

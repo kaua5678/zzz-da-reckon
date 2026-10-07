@@ -227,7 +227,7 @@ interface LadderMutSnap {
 function snapshot(ctx: LadderCtx): LadderMutSnap {
   return {
     w: [0, 1, 2].map(s => ctx.config.team[s]!.basicAttackTimeWeight),
-    p: [0, 1, 2].map(s => ctx.config.team[s]!.parryCount ?? 0),
+    p: [0, 1, 2].map(s => ctx.config.team[s]!.parryCount),
     align: ctx.config.getComboAlignState(),
     absorb: ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
     axis: ctx.config.getAxisState(),

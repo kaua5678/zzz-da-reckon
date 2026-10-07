@@ -63,10 +63,10 @@ export function buildMechanicTeamMembers(
     slot,
     agentId: char.agentId,
     agent: char.agentId ? catalogStore.agentsMap.get(char.agentId) ?? null : null,
-    cinemaLevel: char.cinemaLevel ?? 0,
+    cinemaLevel: char.cinemaLevel,
     potentialLevel: char.potentialLevel ?? 6,
-    wEngineId: char.wEngineId ?? '',
-    wEngineModLevel: char.wEngineModLevel ?? 1,
+    wEngineId: char.wEngineId,
+    wEngineModLevel: char.wEngineModLevel,
   }))
 }
 
@@ -421,7 +421,7 @@ export function resolveSlotPanelBuffInputs(
   for (const member of configStore.team) {
     const mod = member?.agentId ? getAgentMechanic(member.agentId) : undefined
     const source = mod?.adjustTeammateBuffSource ? sourcePanelsByOwner[member.agentId] : undefined
-    if (source) mod!.adjustTeammateBuffSource!({ source, cinemaLevel: member.cinemaLevel ?? 0 })
+    if (source) mod!.adjustTeammateBuffSource!({ source, cinemaLevel: member.cinemaLevel })
   }
 
   // 全局 Buff（属性配置页手动添加）转 TeammateBuff 并入 calcPanel 同批 apply：
@@ -532,7 +532,7 @@ export function computePanelPhases(
   getAgentMechanic(agent.id)?.applyPanel?.({
     slot,
     agent,
-    cinemaLevel: char.cinemaLevel ?? 0,
+    cinemaLevel: char.cinemaLevel,
     potentialLevel: char.potentialLevel ?? 6,
     team,
     outOfCombatPanel: result.outOfCombat,
@@ -588,7 +588,7 @@ export function computePanelPhases(
   // （走**队伍级面板效果**钩子，派发点在 `:740` 的 `teamPanelEffects` 循环——该加成**随目标槽
   // 不同而不同**，写进蕾米自己的 `applyPanel` 只会加到蕾米本人面板，即分诊 §2.1 的 P2 陷阱）。
   // 3命技能等级+2、5命+4，统一进入伤害/失衡倍率系数；角色buff已带此条的跳过通用规则
-  applyDefaultCinemaSkillLevelBonus(panel, agent, char.cinemaLevel ?? 0)
+  applyDefaultCinemaSkillLevelBonus(panel, agent, char.cinemaLevel)
 
   // 入队时长加成按元素写入面板，异常池覆盖率/紊乱/乱流统一读取。
   // ★★ **必须是加法，不能是赋值**（R63，2026-09-20 round 63）：这四个字段**不止一个写者** ——
@@ -648,15 +648,15 @@ export function computeEntrySnapshotPanel(
     [],
     catalogStore.statRules,
     {
-      cinemaLevel: char.cinemaLevel ?? 0,
-      wEngineModLevel: char.wEngineModLevel ?? 1,
+      cinemaLevel: char.cinemaLevel,
+      wEngineModLevel: char.wEngineModLevel,
       potentialLevel: char.potentialLevel, // CC-171：与 computePanelPhases 同口径
       enemyWeakness: configStore.enemy.weakness,
       effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore, wEngineCoverages),
     },
   )
   const panel = { ...result.inCombat }
-  applyDefaultCinemaSkillLevelBonus(panel, agent, char.cinemaLevel ?? 0)
+  applyDefaultCinemaSkillLevelBonus(panel, agent, char.cinemaLevel)
   return panel
 }
 /**
@@ -676,7 +676,7 @@ function selfEffectCoverageMap(
 
 /** 全队各槽位的驱动盘配置（覆盖率并入用；空槽为 undefined 由 merge 侧跳过）。 */
 function teamDiscs(configStore: ConfigModel): Array<DriveDiscConfig | undefined> {
-  return (configStore.team ?? []).map(c => (c as { driveDisc?: DriveDiscConfig } | undefined)?.driveDisc)
+  return configStore.team.map(c => (c as { driveDisc?: DriveDiscConfig } | undefined)?.driveDisc)
 }
 
 /**

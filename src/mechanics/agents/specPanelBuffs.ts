@@ -388,7 +388,7 @@ export function computePeiluoKagerouBonus(
   const TRIGGER = '1551015'
   const BENEFICIARIES = new Set<string>(['1551015', '1551016'])
   const actions = axes
-    .flatMap(axis => axis.actions ?? [])
+    .flatMap(axis => axis.actions)
     .filter(a => a.slot === slot)
     .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0))
   let windowEnd = Number.NEGATIVE_INFINITY

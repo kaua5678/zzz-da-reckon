@@ -652,12 +652,12 @@ export function createRunCalcRound(deps: {
       interactions: {
         bySlot: Object.fromEntries(configStore.team.map((c, i) => [i, {
           agentId: c.agentId,
-          parryCount: c.parryCount ?? 0,
-          blockCount: c.blockCount ?? 0,
-          dodgeCounterCount: c.dodgeCounterCount ?? 0,
+          parryCount: c.parryCount,
+          blockCount: c.blockCount,
+          dodgeCounterCount: c.dodgeCounterCount,
           dualCounterCount: c.dualCounterCount ?? 0,
-          quickAssistCount: c.quickAssistCount ?? 0,
-          chainCountPerStun: c.chainCountPerStun ?? 0,
+          quickAssistCount: c.quickAssistCount,
+          chainCountPerStun: c.chainCountPerStun,
         }])),
       },
       // **计数投影版**失衡次数（round 20 C-γ 补的 C7 契约）：本函数 `:472` 已算好的
@@ -694,8 +694,8 @@ export function createRunCalcRound(deps: {
     const specialActionBonusRound = calcSpecialActionBonus(
       parryForBonus,
       perSlotChainForBonus,
-      configStore.team.map(c => c.dodgeCounterCount ?? 0),
-      configStore.team.map(c => c.quickAssistCount ?? 0),
+      configStore.team.map(c => c.dodgeCounterCount),
+      configStore.team.map(c => c.quickAssistCount),
     )
     const specialBonusPerSlot = specialActionBonusRound.perSlotBonus
     // 异常/紊乱/乱流喧响奖励：上一轮异常池结果回填（首轮 0），在外层不动点内收敛
@@ -887,7 +887,7 @@ export function createRunCalcRound(deps: {
     // CC-300 / CC-305：锁定失衡（`enemy.stunCountLock ≥ 0`，命座对比「操作够就能打 N 次」）⇒ 两次不动点都按计数通道值
     // countStun（CC-151：锁定时 ≡ 锁定值 / 其投影）单趟求值、池次数钉到它。原 CC-300 只在 sp1 之后钳池，
     // 不动点内部的转大次数仍按自算次数推（命座抬失衡值的假提升从 promote 漏出）⇒ 锁定下沉进 promoteFixpoint。
-    const stunLockN = configStore.enemy.stunCountLock ?? -1
+    const stunLockN = configStore.enemy.stunCountLock
     const lockForPool = stunLockN >= 0 ? countStun : undefined
     // Round 0：无易伤 → 畏缩覆盖率初算
     const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio, lockForPool)
@@ -1071,13 +1071,13 @@ export function createRunCalcRound(deps: {
         // 单次失衡表达（v3.2 用户裁决）：每条生效轴条目模拟一个代表窗；该段打几次由
         // 「失衡次数」统计表达，不再逐窗展开、也无跨窗继承（窗口外未建模）。
         const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(countStun)) // CC-155：代表窗分配属计数通道（原为计划值）
-        const thresholdCoeff = (configStore.enemy.anomalyCoeff ?? 1) * (configStore.enemy.bossAnomalyCoeff ?? 1)
+        const thresholdCoeff = configStore.enemy.anomalyCoeff * configStore.enemy.bossAnomalyCoeff
         const windows: InStunWindowInput[] = []
         const windowEntryIdx: number[] = []
         resolvedAxes.forEach((axis, ai) => {
           const wins = Math.floor(winAlloc[ai] ?? 0)
           if (wins <= 0) return
-          const actions = (axis.actions ?? [])
+          const actions = axis.actions
             .map((a, srcIndex) => ({ a, srcIndex }))
             .filter(({ a }) => contribMap.has(a.moveId))
             .map(({ a, srcIndex }) => {

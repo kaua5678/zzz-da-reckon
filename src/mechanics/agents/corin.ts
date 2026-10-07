@@ -126,9 +126,9 @@ export function computeCorinStunBonusMoves(
 ): Map<string, number> {
   const out = new Map<string, number>()
   for (const axis of axes) {
-    for (const act of axis.actions ?? []) {
+    for (const act of axis.actions) {
       if (act.slot !== slot) continue
-      if ((act.count ?? 1) <= 0) continue
+      if (act.count <= 0) continue
       const key = act.moveId === 'basic' || basicMoveIds.has(act.moveId) ? 'basic_attack' : act.moveId
       out.set(key, CORIN_ADDITIONAL_DMG)
     }

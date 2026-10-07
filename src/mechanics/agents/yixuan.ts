@@ -244,7 +244,7 @@ export function computeYixuanNingshenBonus(
 ): Map<string, { critDmg: number; sheerDmg: number }> {
   const triggerIds = new Set<string>(['1371014', '1371020'])
   const actions = axes
-    .flatMap(axis => axis.actions ?? [])
+    .flatMap(axis => axis.actions)
     .filter(a => a.slot === slot)
     .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0))
   const windowSeconds = NINGSHEN_SECONDS

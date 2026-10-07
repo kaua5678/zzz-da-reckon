@@ -292,7 +292,7 @@ export function promoteFixpoint(
   lockedStunCount?: number,
 ): PromoteFixpointResult {
   const { configStore, panels } = deps
-  const chainCountPerStun = configStore.team.reduce((sum, c) => sum + (c.chainCountPerStun ?? 0), 0)
+  const chainCountPerStun = configStore.team.reduce((sum, c) => sum + c.chainCountPerStun, 0)
   // 时间守恒（用户口径 2026-09-01）：窗口内的招式吃易伤但不攒条。
   // 轴模式已有逐招 inAxisFraction 精确扣除；**非轴模式**这里按「上一轮次数推出的窗口占比」折算，
   // 于是本不动点自带负反馈：次数↑ → 占比↑ → 有效攒条↓ → 次数↓，自己收敛到实战档位。
@@ -303,11 +303,11 @@ export function promoteFixpoint(
   )
   const runPool = (execs: StunSkillExecution[], inAxis?: InAxisFractionResult, prevStunCount = 0) => calcStunPool({
     executions: execs, panels, bossStunValue: configStore.enemy.stunValue,
-    chainCountPerStun, enemyStunResistances: configStore.enemy.stunResistances ?? configStore.enemy.resistances ?? {},
+    chainCountPerStun, enemyStunResistances: configStore.enemy.stunResistances,
     physicalFlinchCoverageRate: flinchRate,
     inAxisStunFractionByKey: inAxis?.fraction,
     refundStunRatio,
-    stunGift: configStore.enemy.bossStunGift ?? 0,
+    stunGift: configStore.enemy.bossStunGift,
     // **两种模式都传时间占比**（用户 2026-09-10 裁决：失衡次数必须满足时间约束）——
     // 旧实现轴模式传 0（「逐招 fraction 已精确扣除」），实测 auto-1521-1481-1311 窗口占时间 90%
     // 却只扣掉 4.8% 攒条 → 次数 9，而轴栈实际只填满 3 窗（时序不自洽）。

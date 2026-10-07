@@ -94,7 +94,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
   } = ctx
   if (!adjustedResourceResult || damagePanels.length === 0) return []
     const rows: DamagePoolRow[] = []
-    const enemyDamageRes = configStore.enemy.damageResistances ?? configStore.enemy.resistances ?? {}
+    const enemyDamageRes = configStore.enemy.damageResistances
     // 轴内涉及的槽位（有轴内动作的槽位）；其余槽位（如换了辅助、没进轴）走全局覆盖率「单独算」
     const axisSlots = new Set<number>()
     for (const a of Object.values(allocMap)) axisSlots.add(a.slot)

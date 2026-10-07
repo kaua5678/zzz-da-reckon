@@ -291,7 +291,7 @@ export function computeBanyueMingwangStacks(
   if (cinemaLevel >= 6) return new Map<string, number>()
   const triggerIds = new Set<string>(['banyue-combo', 'banyue-combo-didong'])
   const actions = axes
-    .flatMap(axis => axis.actions ?? [])
+    .flatMap(axis => axis.actions)
     .filter(a => a.slot === slot)
     .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0))
   const duration = 8

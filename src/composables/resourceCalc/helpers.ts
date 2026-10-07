@@ -396,10 +396,7 @@ export function buildCharConfig(
   const wEngineMatchesSpecialty = !!wEngine && wEngine.specialty === agent.specialty
   const periodicDirect = findWEnginePeriodicDirect(wEngine)
   const hasCannonRotorEvent = !!periodicDirect && (!periodicDirect.requiresSpecialtyMatch || wEngineMatchesSpecialty)
-  const cannonRotorModIndex = Math.max(0, Math.min(4, (char.wEngineModLevel ?? 1) - 1))
-
-  // 平A时间分配权重：优先读取用户配置；旧配置缺字段时按当前默认规则兜底
-  const timeWeight = char.basicAttackTimeWeight ?? configStore.getDefaultBasicAttackTimeWeight(agent)
+  const cannonRotorModIndex = Math.max(0, Math.min(4, char.wEngineModLevel - 1))
 
   // 开局赠送能量：普通角色40点
   const initialEnergyGift = 40
@@ -437,17 +434,17 @@ export function buildCharConfig(
     chainDecibelRecovery: chainAttack?.decibelRecovery ?? 0,
     chainComboAlignRatio: ov(chainAttack?.moveId ?? '', chainAttack?.comboAlignRatio ?? 0),
     // CC-264：字段恒为 number（setAgent 预填 ASSIST_ACTION_BASELINE）；旧兜底「支援 0 / 其余 1」从未生效且与部署口径冲突，删去
-    chainCountPerStun: char.chainCountPerStun ?? 0,
-    parryCount: char.parryCount ?? 0,
+    chainCountPerStun: char.chainCountPerStun,
+    parryCount: char.parryCount,
     parryNoFollowUpCount: (char as { parryNoFollowUpCount?: number }).parryNoFollowUpCount ?? 0,
     parryDecibelOnlyCount: (char as { parryDecibelOnlyCount?: number }).parryDecibelOnlyCount ?? 0,
     perfectBlockCount: (char as { perfectBlockCount?: number }).perfectBlockCount ?? 0,
     assaultOrderCount: (char as { assaultOrderCount?: number }).assaultOrderCount ?? 0,
-    dodgeCounterCount: char.dodgeCounterCount ?? 0,
-    blockCount: char.blockCount ?? 0,
+    dodgeCounterCount: char.dodgeCounterCount,
+    blockCount: char.blockCount,
     dualCounterCount: char.dualCounterCount ?? 0,
     tauntCancelCount: char.tauntCancelCount ?? 0,
-    quickAssistCount: char.quickAssistCount ?? 0,
+    quickAssistCount: char.quickAssistCount,
     // 仪玄 5 项 / 普罗米娅 1 项交互栏次数：CC-35b（2026-09-27）改由各自模块 buildCharConfig 从 `char` 读入
     dodgeCounterMoveId: dodgeCounter?.moveId ?? '',
     dodgeCounterActionTime: dodgeCounter?.actionTime ?? 0,
@@ -476,14 +473,14 @@ export function buildCharConfig(
     moveActionTimes: moveActionTimesOf(skills as AgentSkills), // CC-409
     initialEnergyGift,
     initialDecibelGift: 1000 + (configStore.appliedBoss?.decibelGift?.slot === slot ? (configStore.appliedBoss?.decibelGift?.amount ?? 0) : 0),
-    battleTime: configStore.enemy.battleTime ?? 180,
-    invincibleTime: configStore.enemy.invincibleTime ?? 0,
-    bodySize: configStore.enemy.bodySize ?? 'large',
+    battleTime: configStore.enemy.battleTime,
+    invincibleTime: configStore.enemy.invincibleTime,
+    bodySize: configStore.enemy.bodySize,
     // 跨角色 `+=` 累加通道：蕾米埃尔花羽轮舞项由 remielle.ts#buildRemielleCharConfig 累加（CC-34c 2026-09-27）
     extraSelfDecibelReward: 0,
     decibelShareRatio: 0.5,
     supportUltimateEnergyRegen: 0,
-    timeWeight,
+    timeWeight: char.basicAttackTimeWeight, // 平A时间分配权重（store 必填；setAgent 按 defaultBasicAttackTimeWeight 预填）
     resourceUtilization,
   }
 
@@ -497,10 +494,10 @@ export function buildCharConfig(
     slot,
     agent,
     skills: skills as AgentSkills,
-    cinemaLevel: char.cinemaLevel ?? 0,
+    cinemaLevel: char.cinemaLevel,
     potentialLevel: char.potentialLevel ?? 6,
-    wEngineId: char.wEngineId ?? '',
-    wEngineModLevel: char.wEngineModLevel ?? 1,
+    wEngineId: char.wEngineId,
+    wEngineModLevel: char.wEngineModLevel,
     team: buildMechanicTeamMembers(configStore, catalogStore),
     panel,
     outOfCombatPanel: panelPhases?.outOfCombat,

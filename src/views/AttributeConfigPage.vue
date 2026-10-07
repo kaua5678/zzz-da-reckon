@@ -26,7 +26,7 @@
                   <div class="field">
                     <span class="field-label">敌方体型</span>
                     <n-select
-                      :value="configStore.enemy.bodySize ?? 'large'"
+                      :value="configStore.enemy.bodySize"
                       :options="[
                         { label: '大型（剑气6段）', value: 'large' },
                         { label: '中型（剑气3段）', value: 'medium' },
@@ -368,9 +368,9 @@ const resistanceGroups = [
 
 function getResistance(kind: 'damage' | 'stun' | 'anomaly', element: string): number {
   const enemy = configStore.enemy
-  if (kind === 'damage') return enemy.damageResistances?.[element] ?? enemy.resistances?.[element] ?? 0
-  if (kind === 'stun') return enemy.stunResistances?.[element] ?? enemy.resistances?.[element] ?? 0
-  return enemy.anomalyResistances?.[element] ?? enemy.resistances?.[element] ?? 0
+  if (kind === 'damage') return enemy.damageResistances[element] ?? 0
+  if (kind === 'stun') return enemy.stunResistances[element] ?? 0
+  return enemy.anomalyResistances[element] ?? 0
 }
 
 const statOptions = computed(() => getGlobalBuffStatOptions(catalogStore.statRules?.statDisplay))

@@ -144,8 +144,8 @@ export function createResourceCalc(
     if (characters.length === 0) return null
 
     return {
-      totalTime: configStore.enemy.battleTime ?? 180,
-      invincibleTime: configStore.enemy.invincibleTime ?? 0,
+      totalTime: configStore.enemy.battleTime,
+      invincibleTime: configStore.enemy.invincibleTime,
       bossStunValue: configStore.enemy.stunValue,
       shieldCount: configStore.enemy.shieldCount,
       energyShieldCount: configStore.enemy.energyShield,
@@ -157,7 +157,7 @@ export function createResourceCalc(
       // 回退点：删去本 IIFE 的锁定判断，恢复直接读机制参数。
       stunPlanProjection: (() => {
         const proj = stunPlanProjectionFromCode(configStore.getMechanicSetting('time.stunPlanProjection', DEFAULT_STUN_PLAN_PROJECTION_CODE))
-        return proj === 'physical' && (configStore.enemy.stunCountLock ?? -1) >= 0 ? 'off' : proj
+        return proj === 'physical' && configStore.enemy.stunCountLock >= 0 ? 'off' : proj
       })(),
       // 动态合轴吸收上限（全局变量，用户口径 2026-09-19 v3；见 data/resourceDefaults#DEFAULT_COMBO_ALIGN_ABSORB_RATIO）
       comboAlignAbsorbRatio: configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
@@ -289,7 +289,7 @@ export function createResourceCalc(
   function computeCalcOutput(base: ResourceCalcConfig) {
     // 锁定失衡次数（命座对比固定场景）：stunCount 固定输入不回填（"操作够就能打 N 次失衡"口径），
     // 但异常喧响/终结技次数反馈仍收敛，避免与资源利用率页口径分裂
-    const lockedStunCount = configStore.enemy.stunCountLock ?? -1
+    const lockedStunCount = configStore.enemy.stunCountLock
     const stunWindowDur = computeWindowDuration()
     const stunEffTime = effectiveBattleTime(configStore.enemy)
     // CC-10（2026-09-25）：外层不动点 + S3 可行化决策整段外提 `resourceCalc/solveTeam.ts#solveTeam`（只读输入、不写 store）。

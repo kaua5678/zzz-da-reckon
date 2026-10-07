@@ -1165,8 +1165,8 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
       }
       const damage = opt ? opt.damage : calc.teamTotalDamage.value
       // 时间可行性校验：从引擎资源结果取精确动作总时间
-      const invTime = configStore.enemy.invincibleTime ?? 0
-      const battleTime = configStore.enemy.battleTime ?? 180
+      const invTime = configStore.enemy.invincibleTime
+      const battleTime = configStore.enemy.battleTime
       const { timeExceeded, timeDetail } = actionTimeTotal(calc, invTime, battleTime)
       // 时间压力（硬溢出 + 合轴抵扣，同一笔秒数）并入操作难度：默认 1 秒 = 1 难度点，权重可被用户覆盖（难度权重弹层）
       const rrHere = calc.resourceResult.value
