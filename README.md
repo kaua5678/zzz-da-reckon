@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（84 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（85 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -153,6 +153,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-combo-align-ledger-census.md` | **合轴率账本归属普查（T19 阶段 0，纯读）**：实测 166 队后把立卡的「53 模块写行上比例」收敛为 **5 模块 / 8 组合**（绝大多数模块写的是 `0`）；5 家**全部**有 credit 产出口（同源或有意的 NET 约定）⇒ 活跃缺陷 0；阶段 1 两候选收益 ≈ 0 建议不立项，替代方案 = 加一条 check-guards 判据防未来 |
 | `docs/mcp-drift-triage.md` | **drift 待复核队列分诊**：CC 批次触发 102 条 ⟳ 的成因、四态复核判据（still-holds / drifted / broken-anchor / needs-user）、W13–W15 工人分批与主代理落盘纪律（按批 commit、同文件同批清、禁止无归因刷日期） |
 | `docs/mcp-dead-export-census.md` | **死导出普查与判据推广（r721）· 兼容门面收口（r722）**：死导出判据的三个盲区（测试引用算活 / 只扫 core / 转出与默认导出没人管）、全 src 128 条无生产消费导出的逐条裁决（删 / 搬测试侧 / 登记测试接口）、`scanDeadExports` 的口径与不做的事；r722 拆分 / 下沉留下的 14 个兼容门面 60 条转出迁导入方后删除、转出口径与入口白名单、属性级存活普查结论（不做） |
+| `docs/mcp-dead-nullish-census.md` | **死兜底普查与判据 28（r723）**：TS 类型检查器判定的「左侧类型不含 null/undefined 的 `a ?? b`」871 处按类普查；cfg 袋子 19 个恒写字段改必填、引擎内部契约上 800 处删除、战斗时间单一通道（r6 §8.0 #13）；外部数据类型 126 处的信任边界豁免表与移出条件；判据 28 的规则 / 自证 / 成本；测试夹具改法与不做的事 |
 | `docs/mcp-liuyin-promote-source.md` | **琉音转大次数唯一来源（W21 阻塞项 lead 设计）**：同轮四读数（floor / 计划值结转 / 池不动点 / 轴声明）的证据表、planned≠pool 的口径根因、单源 = 答案层 `promote` 滞后注入的通道设计、轴模式闸门（待用户）、否决记录与证伪闸门；拆卡 W25/W26 |
 | `docs/mcp-r22d1-batch12-field-census.md` | **R22-D1 批 1-2 裁决不做 + 核心角色字段普查计划（handoff）**：批 1-2（billy/yeshuguang 终局旗标并入通用骨架）判不做理由、核心 `CharacterOperationConfig` 角色字段 census 方案（字段→写入方/读取方） |
 | `docs/mcp-cinema-uplift-multi-metric.md` | **命座提升率多指标栏（R1）口径决策与交接**：失衡栏为什么用 `totalStunBuildUp` 而非被 `stunCountLock` 锁死的 `stunCount`（3 队 × 6 级引擎探针实测表）、方案 A 否决理由、显示口径与「显示位四舍五入为 0 即 `—`」的共同判据、七道闸门 + 两次负控 + 实机 DOM 读回证据、令牌棘轮与守卫 hint 漂移发现、三个回退点 |
@@ -166,6 +167,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/proposals/pull-value-optimization.md` | **抽卡规划价值：思想与口径**（部分落地）：价值如何定义与量纲、期望值口径（用户裁决 2026-09-01，模拟抽卡已删）；本文只谈"怎么想"，实施事实以 `pullValue.ts` / `pullPlannerEngine.ts` / `data/filmEconomy.ts` 为准 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（84 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（85 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。
