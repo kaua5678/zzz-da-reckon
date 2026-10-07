@@ -19,7 +19,6 @@ import {
   computeOptimalGoldAllocations,
   type GoldAllocationAlternative,
   computeTeamComparePoints,
-  isLimitedAgent,
   isLimitedWEngine,
   resolveGoldLevel,
   teamGoldOf,
@@ -139,13 +138,6 @@ describe('teamCompare 金数/难度口径', () => {
     const catalog = useCatalogStore()
     await catalog.load() // 稀有度断言须走真实 catalog（历史导入曾把 A 级错标 S）
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
-    expect(isLimitedAgent('1141')).toBe(false) // 莱卡恩 = 常驻 S
-    expect(isLimitedAgent('1051')).toBe(true) // 伊德海莉 = 限定
-    // A 级角色不计限定金（妮可/苍角/露西/潘引壶曾被导入脚本错标 S，已修复——防回归）
-    expect(isLimitedAgent('1031')).toBe(false) // 妮可
-    expect(isLimitedAgent('1131')).toBe(false) // 苍角
-    expect(isLimitedAgent('1151')).toBe(false) // 露西
-    expect(isLimitedAgent('1421')).toBe(false) // 潘引壶
     expect(isLimitedWEngine('14114')).toBe(false) // 拘缚者（莱卡恩专武）
     expect(isLimitedWEngine('14110')).toBe(false) // 燃狱齿轮（珂蕾妲专武，常驻）
     expect(isLimitedWEngine('14121')).toBe(false) // 啜泣摇篮（丽娜专武，常驻）
@@ -161,7 +153,7 @@ describe('teamCompare 金数/难度口径', () => {
     expect(baseGoldOf({ ...TEST_PRESET, wEngines: ['14105', '', '14145'] })).toBe(5)
   })
 
-  it('teamGoldOf：当前队伍配置 → 总限定金（本体+影画/精炼每级，常驻不计）', () => {
+  it('teamGoldOf：当前队伍配置 → 总限定金（本体+影画/精炼每级，常驻不计）', async () => {
     // 伊德海莉+莱卡恩+卢西娅 全带专武：伊(1+1) + 莱(0+0) + 卢(1+1) = 4 基础
     const ids = ['1051', '1141', '1451']
     const wids = ['14105', '14114', '14145']
@@ -173,6 +165,9 @@ describe('teamCompare 金数/难度口径', () => {
     expect(teamGoldOf(ids, wids, [6, 6, 2], [1, 5, 1])).toBe(12)
     // 空槽位/无常驻音擎不额外计
     expect(teamGoldOf(['1051', '', ''], ['14105', '', ''], [0, 0, 0], [1, 1, 1])).toBe(2)
+    // store 里的旧别名音擎 id 先解析成主 id 再交给 memberLimitedGold（zzz_wiki_1664 = 14105；漏解析会少记 2 金）
+    await useCatalogStore().load()
+    expect(teamGoldOf(ids, ['zzz_wiki_1664', '14114', '14145'], [0, 0, 0], [2, 1, 1])).toBe(5)
   })
 
   it('buildGoldStepsFromConfig：限定进 goldSteps、常驻/A级进 standardSteps，按槽位展开且口径自洽', async () => {

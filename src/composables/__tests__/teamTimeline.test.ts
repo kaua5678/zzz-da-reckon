@@ -59,7 +59,7 @@ describe('版本时间线数据不变量', () => {
     await boot()
     const catalog = useCatalogStore()
     // 历史 catalog 导入错标：妮可/苍角/露西 曾被标 S（已由 scripts/fix-agent-rarity.mjs 修为 A）。
-    // 保留排除清单作为防御：即使 rarity 回归错标，时间线也不收录四星（限定金口径依赖 isLimitedAgent 的 rarity 判断）。
+    // 保留排除清单作为防御：即使 rarity 回归错标，时间线也不收录四星（限定金口径 isLimitedSAgentId 认的就是这张收录表，收进四星就会给她们计金）。
     // 唯一特例：潘引壶（1421，A 级）——贯穿拐演变路径必需，随仪玄 2.0-1 实装（用户口径）。
     const knownMislabeledA = new Set(['1031', '1131', '1151'])
     const ids = Object.keys(AGENT_RELEASE_NODE)

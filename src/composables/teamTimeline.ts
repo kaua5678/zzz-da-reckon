@@ -35,7 +35,8 @@ import { useCatalogStore } from '@/stores/catalog'
 import { teammatePairsFor } from '@/composables/teamStructure'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
 import { indexForDate } from '@/composables/bossSchedule'
-import { isLimitedAgent, isLimitedWEngine } from '@/composables/teamCompare'
+import { isLimitedWEngine } from '@/composables/teamCompare'
+import { isLimitedSAgentId } from '@/composables/limitedGold'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
@@ -258,7 +259,7 @@ export function nextGoldCandidates(
     if (!agent) continue
     const name = localized(agent.name, `槽位${s + 1}`)
     // 影画（限定 S 角色才占金）
-    if (isLimitedAgent(team[s]) && state.cinemas[s] < 6) {
+    if (isLimitedSAgentId(team[s]) && state.cinemas[s] < 6) {
       out.push({ slot: s, kind: 'cinema', value: state.cinemas[s] + 1, label: `${name} ${state.cinemas[s] + 1}命` })
     }
     const curW = state.wEngines[s]

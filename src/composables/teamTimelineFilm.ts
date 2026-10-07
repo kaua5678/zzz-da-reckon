@@ -1,6 +1,6 @@
 /**
  * Chart 4 菲林经济模拟（选定 Boss + 主C，逐期菲林投放 → 加金 → 强度曲线）。
- * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；teamTimeline.ts 原样转出公开名，导入方不用改。
+ * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；导入方直接从本文件导入（teamTimeline.ts 已不再转出）。
  */
 import { applyBossRoom } from '@/composables/bossRoom'
 import { useCatalogStore } from '@/stores/catalog'

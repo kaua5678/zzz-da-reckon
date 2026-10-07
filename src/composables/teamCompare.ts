@@ -20,7 +20,7 @@
  * 纵轴：伤害 / Boss 血量 × 100%（100 = 击杀，200 = 两倍血量）。
  */
 import { applyBossRoom, LAYER_BUFF_PREFIX } from '@/composables/bossRoom'
-import { isLimitedSAgentId, isLimitedSWengineId } from '@/composables/limitedGold'
+import { isLimitedSAgentId, isLimitedSWengineId, runLimitedGold } from '@/composables/limitedGold'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { interactionFieldForType, teamCompareInteractionTypes } from '@/composables/agentMechanicView'
@@ -59,22 +59,19 @@ type Calc = ResourceCalc
 export const DEFAULT_AUTO_ENGINE_POOL = ['13005', '14110', '13115', '14002', '14121']
 
 /**
- * 角色是否算限定金。CC-270：委托 limitedGold 的单一定义（时间线收录 ∧ 非常驻 ∧ 非 A 级特例），
- * 不再另按 catalog 稀有度判定（两套定义曾在潘引壶上分叉；catalog 全员与收录表的一致性由 limitedAgentSingleSource.test 锁）。
- */
-export function isLimitedAgent(agentId: string): boolean {
-  return isLimitedSAgentId(agentId)
-}
-
-/**
  * 音擎是否算限定金。CC-271：store 里可能是旧 localStorage 的别名 id（legacyIds，如 zzz_wiki_218 = 14121 啜泣摇篮），
- * 先经 catalog 解析成主 id，再交给 limitedGold 的单一定义 `isLimitedSWengineId`（141 前缀 ∧ 非常驻）。
+ * 先经 catalog 解析成主 id（`mainWEngineId`），再交给 limitedGold 的单一定义 `isLimitedSWengineId`（141 前缀 ∧ 非常驻）。
  * 修前按 catalog 稀有度判定、却拿**原始**别名 id 查常驻名单 ⇒ 常驻 S 的别名被当成限定（多记金）；
  * catalog 未加载时把任何非常驻 id（含 A 级）都当限定。前缀判定与 catalog 稀有度的一致性由 limitedAgentSingleSource.test 锁。
+ * 角色侧没有这层包装：角色 id 无别名，直接用 limitedGold.isLimitedSAgentId（CC-270；只转发的 isLimitedAgent 已在 r734 删除）。
  */
 export function isLimitedWEngine(wEngineId: string): boolean {
-  if (!wEngineId) return false
-  return isLimitedSWengineId(useCatalogStore().getWEngine(wEngineId)?.id ?? wEngineId)
+  return isLimitedSWengineId(mainWEngineId(wEngineId))
+}
+
+/** store 音擎 id → catalog 主 id（旧别名经 `getWEngine` 的 legacyIds 解析；未收录原样返回；空串不碰 store） */
+function mainWEngineId(id: string): string {
+  return id ? (useCatalogStore().getWEngine(id)?.id ?? id) : ''
 }
 
 /** 同金分配候选 + 所属预设（`TeamCompareOptions.goldAlternatives` 的元素，对比页「同金分配」表的行） */
@@ -383,24 +380,19 @@ export function computeDifficulty(
 }
 
 /**
- * 队伍基础限定金 = 限定 S 角色本体 + 限定音擎本体（每项 1 金）。
+ * 队伍基础限定金 = 预设声明的 0命1精 配装（`preset.wEngines`）的总限定金（teamGoldOf）：限定 S 角色本体 + 限定音擎本体（每项 1 金）。
  * 常驻 S 角色（莱卡恩等）本体/专武、A/B 级角色、常驻音擎都不计。
  * 例：伊德海莉+莱卡恩+卢西娅（全带专武）= 2 + 2 = 4 金（莱卡恩与拘缚者不计）。
  */
 export function baseGoldOf(preset: TeamPreset): number {
-  let gold = 0
-  for (let slot = 0; slot < 3; slot++) {
-    if (isLimitedAgent(preset.team[slot] ?? '')) gold += 1
-    const wId = preset.wEngines?.[slot] ?? ''
-    if (isLimitedWEngine(wId)) gold += 1
-  }
-  return gold
+  return teamGoldOf(preset.team, preset.wEngines ?? [], [0, 0, 0], [1, 1, 1])
 }
 
 /**
- * 当前队伍配置 → 总限定金（「预设金数」弹窗实时显示用）。
- * 口径与 baseGoldOf/applyGoldSteps 一致：限定 S 角色本体 1 金 + 限定音擎本体 1 金 +
- * 影画每级 1 金 + 精炼每级 1 金（精炼1 = 本体，不计步）；常驻角色/音擎、A/B 级不计。
+ * 队伍配置 → 总限定金（「预设金数」弹窗实时显示；基础金 baseGoldOf / teamTimelineStore.baseGoldOfTeam 也走这里）。
+ * 公式只在 limitedGold#memberLimitedGold 一处，与归档统计同一口径（限定 S 角色本体 1 + 影画每级 1；
+ * 限定音擎本体 1 + 精炼每级 1，精炼1 = 本体；常驻角色/音擎、A/B 级不计）。本函数只管两件事：
+ * 空槽不计（含残留音擎）；音擎 id 先解析成 catalog 主 id（mainWEngineId，CC-271）。
  * cinemas 0-6、wengineMods 1-5。例：全队 0命1精带专武 = 6 金；212121 = 12 金。
  */
 export function teamGoldOf(
@@ -409,14 +401,9 @@ export function teamGoldOf(
   cinemas: number[],
   wengineMods: number[],
 ): number {
-  let gold = 0
-  for (let slot = 0; slot < 3; slot++) {
-    const agentId = agentIds[slot] ?? ''
-    if (!agentId) continue
-    if (isLimitedAgent(agentId)) gold += 1 + Math.max(0, cinemas[slot] ?? 0)
-    if (isLimitedWEngine(wEngineIds[slot] ?? '')) gold += 1 + Math.max(0, (wengineMods[slot] ?? 1) - 1)
-  }
-  return gold
+  return runLimitedGold(agentIds.flatMap((agentId, slot) => agentId
+    ? [{ agentId, mindscape: cinemas[slot], phase: wengineMods[slot], weaponId: mainWEngineId(wEngineIds[slot] ?? '') }]
+    : []))
 }
 
 /** 「预设金数」弹窗「保存到预设文件」用的队伍槽位信息 */
@@ -449,7 +436,7 @@ export function buildGoldStepsFromConfig(
     const name = localized(agent?.name, `槽位${slot + 1}`)
     // 影画步进（限定 → goldSteps，常驻/A级 → standardSteps）
     const cinema = Math.max(0, Math.min(6, cinemas[slot] ?? 0))
-    const cTarget = isLimitedAgent(agentId) ? goldSteps : standardSteps
+    const cTarget = isLimitedSAgentId(agentId) ? goldSteps : standardSteps
     for (let c = 1; c <= cinema; c++) cTarget.push({ label: `${name} ${c}命`, slot, kind: 'cinema', value: c })
     // 精炼步进（精炼1 = 本体不计步；wEngineId 为空不写）
     if (wEngineId) {

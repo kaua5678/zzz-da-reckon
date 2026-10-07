@@ -1,11 +1,12 @@
 /**
  * 队伍时间线共享工具（基础金与预算感知加金、装配队伍到 store、让出事件循环）。CC-343 起调用方在独立场景上
  * 求值，现场快照 / 恢复（configSnapshot.ts，CC-251）已删。
- * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；teamTimeline.ts 原样转出公开名，导入方不用改。
+ * CC-86（2026-09-27，census §5.92）自 `composables/teamTimeline.ts` 逐字拆出；导入方直接从本文件导入（teamTimeline.ts 已不再转出）。
  */
 import type { ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { isLimitedAgent, isLimitedWEngine, applyGoldSteps, applyGoldAllocationToStore } from '@/composables/teamCompare'
+import { isLimitedWEngine, teamGoldOf, applyGoldSteps, applyGoldAllocationToStore } from '@/composables/teamCompare'
+import { isLimitedSAgentId } from '@/composables/limitedGold'
 import type { Agent } from '@/types/catalog'
 import type { TeamGoldState } from './teamTimeline'
 
@@ -20,7 +21,7 @@ function baseWEngineFor(agent: Agent | null | undefined, catalog: ReturnType<typ
   if (!agent) return ''
   const ws = catalog.displayWEngines
   const sig = signatureWEngineOf(catalog, agent.id)
-  if (isLimitedAgent(agent.id)) {
+  if (isLimitedSAgentId(agent.id)) {
     if (sig) return sig.id
     return bestLimitedWEngineFor(agent, catalog) ?? ''
   }
@@ -54,15 +55,10 @@ export function baseStateFor(team: [string, string, string], catalog: ReturnType
   }
 }
 
-/** 队伍基础总限定金 = 限定 S 角色本体 + 基础档限定音擎（各 1 金） */
+/** 队伍基础总限定金 = 基础档（baseStateFor）的总限定金（teamGoldOf）：限定 S 角色本体 + 基础档限定音擎（各 1 金） */
 export function baseGoldOfTeam(team: [string, string, string], catalog: ReturnType<typeof useCatalogStore>): number {
-  let gold = 0
-  for (let s = 0; s < 3; s++) {
-    if (isLimitedAgent(team[s])) gold += 1
-    const w = baseWEngineFor(catalog.getAgent(team[s]), catalog)
-    if (w && isLimitedWEngine(w)) gold += 1
-  }
-  return gold
+  const base = baseStateFor(team, catalog)
+  return teamGoldOf(team, base.wEngines, base.cinemas, base.wengineMods)
 }
 
 /**
@@ -81,7 +77,7 @@ export function buildBudgetAwareGoldSteps(
     const agent = catalog.getAgent(team[s])
     if (!agent) continue
     const name = localized(agent.name, `槽位${s + 1}`)
-    if (isLimitedAgent(team[s])) {
+    if (isLimitedSAgentId(team[s])) {
       for (let c = 1; c <= 6; c++) steps.push({ label: `${name} ${c}命`, slot: s, kind: 'cinema' as const, value: c })
     }
     const baseW = baseWEngines[s]
