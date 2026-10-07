@@ -77,6 +77,7 @@ export declare function auditAuthoredFacts(root?: string): {
   violations: (AuthoredFact & { problem: string })[]
 }
 export declare function diffOnlyTouchesFacts(diffText: string): boolean
+export declare function anchorCode(src: string, file: string, symbol: string): string | null
 export declare function anchorTouchedAt(path: string, root?: string, cache?: Map<string, number>): number
 export declare function driftQueue(root?: string): {
   subject: string
@@ -84,6 +85,7 @@ export declare function driftQueue(root?: string): {
   since: string
   touchedAt: string
   at: string
+  basis: 'symbol' | 'file'
 }[]
 
 // ---- L3 动作层（租约 / 信封 / CLI） ----

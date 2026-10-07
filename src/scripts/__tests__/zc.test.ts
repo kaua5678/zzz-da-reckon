@@ -43,6 +43,7 @@ import {
   auditAuthoredFacts,
   driftQueue,
   diffOnlyTouchesFacts,
+  anchorCode,
   scanDeadClaims,
   scanStructureEntropy,
   scanOpenItemsHygiene,
@@ -565,9 +566,10 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
 
   // driftQueue 逐锚跑 git log：全量并行负载下实测超 5s 默认超时（2026-09-10 verify 偶发
   // "Test timed out in 5000ms"，改动前基线亦偶发）——隔离跑 2.8s，负载下余量取 60s。
-  it('复核队列条目结构完整（锚文件在「据」之后动过才进队，同日改动不进）', () => {
+  it('复核队列条目结构完整（锚代码在「据」之后变过才进队，同日改动不进）', () => {
     for (const row of driftQueue()) {
       expect(row).toMatchObject({ subject: expect.any(String), anchor: expect.any(String), since: expect.any(String) })
+      expect(['symbol', 'file']).toContain(row.basis)
       expect(Date.parse(row.touchedAt)).toBeGreaterThan(Date.parse(row.since))
     }
   }, 60000)
@@ -577,11 +579,7 @@ describe('漂移队列：复核时间戳可让口径出队，但不改写原始�
   it('「据」里有多个日期时按最后一个（复核时间）算漂移', () => {
     const f = parseFactLine('@fact a:1 口径: x | 据 用户@2026-08-26·复核@2026-09-01 | 锚 scripts/zc.mjs#grammar')
     expect(f?.provenance).toBe('用户@2026-08-26·复核@2026-09-01')
-    // 仓库现状：所有手写事实要么没漂移，要么已带复核戳
-    for (const row of driftQueue()) {
-      expect(Date.parse(row.touchedAt)).toBeGreaterThan(Date.parse(row.since))
-    }
-  }, 60000)
+  })
 })
 
 describe('漂移判定：只改 @fact 声明行不算锚改动（CC-87）', () => {
@@ -594,5 +592,22 @@ describe('漂移判定：只改 @fact 声明行不算锚改动（CC-87）', () =
     expect(diffOnlyTouchesFacts(hdr + '+// @fact a:1 口径: x | 据 u@2026-09-01\n-  return 1\n+  return 2')).toBe(false)
     expect(diffOnlyTouchesFacts(hdr + '+const s = "@factory"')).toBe(false)
     expect(diffOnlyTouchesFacts('')).toBe(false)
+  })
+})
+
+describe('漂移判定：按锚符号去注释比较（r715）', () => {
+  const v1 = 'export const K = 2\n/** 说明 */\nexport function f(a: number) {\n  return a\n    * K // 续行以 * 开头\n}\nexport function g() { return 1 }\n'
+  it('改注释 / 改同文件别的符号 ⇒ 锚代码不变；改锚内代码（含以 * 开头的续行）⇒ 变', () => {
+    const base = anchorCode(v1, 'x.ts', 'f')
+    expect(base).toContain('return a')
+    expect(anchorCode(v1.replace('说明', '改过的说明').replace(' // 续行以 * 开头', ''), 'x.ts', 'f')).toBe(base)
+    expect(anchorCode(v1.replace('return 1', 'return 2'), 'x.ts', 'f')).toBe(base)
+    expect(anchorCode(v1.replace('* K', '* K * 2'), 'x.ts', 'f')).not.toBe(base)
+  })
+  it('方法 / 字符串对象键也认；定位不到符号或非 TS·JS 文件 ⇒ null（调用方退回文件级）', () => {
+    expect(anchorCode('export const m = { run(x: number) { return x } }', 'm.ts', 'run')).toContain('return x')
+    expect(anchorCode("export const m = { 'a.b': 7 }", 'm.ts', 'a.b')).toContain('7')
+    expect(anchorCode(v1, 'x.ts', 'nope')).toBeNull()
+    expect(anchorCode('# f', 'x.md', 'f')).toBeNull()
   })
 })

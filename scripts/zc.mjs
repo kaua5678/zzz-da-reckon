@@ -36,6 +36,7 @@ import { execSync, execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, appendFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { createRequire } from 'node:module'
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 export const STATE_DIR = join(ROOT, '.zc')
@@ -107,7 +108,7 @@ export function grammar() {
     '验     哪条测试/命令证明它活着：yuzuha.test.ts::硬糖射击次数 / npm run probe:panel',
     '       —— 测试文件 / :: 后的用例名 / npm 脚本找不到 = 判据 6 直接红（只查引用存在，不查它测没测这条口径）',
     '锚     这条口径实现在哪：<路径>[#<符号>]，如 src/core/damage.ts#calcDirectDamage',
-    '       —— 锚断了（文件/符号没了）= check-guards 判据 6 直接红；锚文件在「据」之后被改过 = 进 zc drift 复核队列',
+    '       —— 锚断了（文件/符号没了）= check-guards 判据 6 直接红；锚符号的代码（去注释）在「据」之后变过 = 进 zc drift 复核队列（定位不到符号时按锚文件算）',
     '信     ' + CONFIDENCE.join(' / ') + '（对应既有标注 [已确认] / [猜测·高中低]）',
     '',
     '例：@fact agent:1411/c6 未建模: 蓄能炮弹整条不实现，甜度预算全给硬糖射击 | 据 用户@2026-08-30 | 信 确认',
@@ -314,8 +315,8 @@ export function testsForSubject(subject, root = ROOT) {
 // 形态不是缺失，是**悄悄过期**——实现改了、口径没改，两边都看起来很自信。锚把一条口径
 // 钉在具体符号上，于是有两种可机检的坏味道：
 //   ① 断锚：文件/符号没了 → 口径必然已过期（check-guards 判据 6 直接红）
-//   ② 漂移：锚文件在「据」的日期之后被改过 → 口径**可能**过期（进复核队列，不红——
-//      红了会逼人乱改日期，反而毁掉出处的可信度）
+//   ② 漂移：锚符号的代码（去注释）在「据」的日期之后变过 → 口径**可能**过期（进复核队列，不红——
+//      红了会逼人乱改日期，反而毁掉出处的可信度）；定位不到符号时退回「锚文件被改过」
 
 /** 注释前缀剥离后以 @fact 开头的行 = 作者手写的事实（与抽取的事实分开算） */
 export function stripCommentPrefix(line) {
@@ -483,7 +484,7 @@ export function diffOnlyTouchesFacts(diffText) {
 }
 
 function gitBig(cmd, root) {
-  try { return execSync('git ' + cmd, { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }).trim() } catch { return '' }
+  try { return execSync('git ' + cmd, { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] }).trim() } catch { return '' }
 }
 
 /**
@@ -513,14 +514,61 @@ export function anchorTouchedAt(path, root = ROOT, cache) {
   return out
 }
 
+let tsModule
 /**
- * 复核队列：锚文件在「据」日期之后被改动过的手写事实。
- * 只报不红——日期比较天然粗糙（同日改动、格式化提交都会命中），红了会逼人改日期作弊。
+ * 锚符号去注释后的代码（TS 编译器解析 + 去注释打印）；同名声明有多处时全部拼接（任一处变都算变）。
+ * 认函数 / 变量 / 类 / 接口 / 类型 / 枚举 / 方法 / 对象键 / 类成员 / 签名成员的声明。
+ * 非 TS/JS 文件或定位不到符号（如测试标题锚）⇒ null，调用方退回文件级判断（保守：宁可多报）。
+ *
+ * 为什么按符号比（r715 实测，docs/mcp-drift-triage.md §6）：按文件比时 112 条待复核里 63 条的锚符号
+ * 去注释后一字未变——改的是同文件别的函数或注释，复核者只能手工盖「锚未变」戳；查出的 3 条真漂移
+ * 锚符号都变了。注释不参与比较，顺带覆盖 CC-87（只改 @fact 行不算）在 TS/JS 文件上的全部情形，
+ * 且不会把以 `*` 开头的乘法续行误当注释（逐行判注释做不到）。
+ */
+export function anchorCode(src, file, symbol) {
+  if (!/\.[cm]?[jt]sx?$/.test(file)) return null
+  const ts = (tsModule ??= createRequire(import.meta.url)('typescript'))
+  const kind = /\.[cm]?jsx?$/.test(file) ? ts.ScriptKind.JS : file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, kind)
+  const printer = ts.createPrinter({ removeComments: true })
+  const hits = []
+  const visit = n => {
+    const name = n.name && (ts.isIdentifier(n.name) || ts.isStringLiteral(n.name)) ? n.name.text : null
+    if (name === symbol && (ts.isFunctionDeclaration(n) || ts.isVariableDeclaration(n) || ts.isClassDeclaration(n)
+      || ts.isInterfaceDeclaration(n) || ts.isTypeAliasDeclaration(n) || ts.isEnumDeclaration(n) || ts.isMethodDeclaration(n)
+      || ts.isPropertyAssignment(n) || ts.isPropertyDeclaration(n) || ts.isPropertySignature(n))) {
+      hits.push(printer.printNode(ts.EmitHint.Unspecified, n, sf))
+    }
+    ts.forEachChild(n, visit)
+  }
+  visit(sf)
+  return hits.length ? hits.join('\n') : null
+}
+
+/**
+ * 复核队列：锚代码在「据」日期之后变过的手写事实。两级判断：
+ * ① 文件级初筛：锚文件最后一次代码改动晚于「据」（anchorTouchedAt，只改 @fact 行的不算）；
+ * ② 符号级确认：锚带 #符号且两侧都定位得到时，比较「据」截止时刻 HEAD 线上的版本与工作区的 anchorCode——
+ *    一致即出队（改的是同文件别处或注释）；定位不到符号 / 「据」日文件还不存在 ⇒ 按 ① 留队。
+ * 每行带 basis：'symbol' = 锚符号代码确实变了；'file' = 只能按文件判。
+ * 只报不红——红了会逼人改日期作弊。
  */
 export function driftQueue(root = ROOT) {
   const { scanned } = auditAuthoredFacts(root)
   const rows = []
   const touchCache = new Map()
+  // 截止时刻 → 当时 HEAD 线上最后一个提交。不按路径过滤：按路径走历史实测每次 ~57ms（112 条 6.4s），
+  // 按日期走只看提交时间，且截止日只有十来个；那一刻的文件内容与「最后改过该文件的提交」逐字相同。
+  const baseCache = new Map()
+  const srcCache = new Map()
+  const srcAt = (rev, path) => {
+    const key = rev + '\0' + path
+    if (!srcCache.has(key)) {
+      const full = join(root, path)
+      srcCache.set(key, rev ? gitBig('show ' + rev + ':"' + path + '"', root) : existsSync(full) ? readFileSync(full, 'utf8') : '')
+    }
+    return srcCache.get(key)
+  }
   for (const s of scanned) {
     const fact = s.fact
     if (!fact?.anchor || !fact.provenance) continue
@@ -529,11 +577,22 @@ export function driftQueue(root = ROOT) {
     const dates = fact.provenance.match(/20\d\d-\d\d-\d\d/g)
     const date = dates?.[dates.length - 1]
     if (!date) continue
-    const anchorPath = fact.anchor.split('#')[0]
+    const [anchorPath, symbol] = fact.anchor.split('#')
+    const cutoff = date + 'T23:59:59Z'
     const touched = anchorTouchedAt(anchorPath, root, touchCache)
-    if (touched > Date.parse(date + 'T23:59:59Z')) {
-      rows.push({ subject: fact.subject, anchor: fact.anchor, since: date, touchedAt: new Date(touched).toISOString().slice(0, 10), at: s.file + ':' + s.line })
+    if (touched <= Date.parse(cutoff)) continue
+    let basis = 'file'
+    if (symbol) {
+      if (!baseCache.has(cutoff)) baseCache.set(cutoff, git('rev-list -1 --before="' + cutoff + '" HEAD', root))
+      const base = baseCache.get(cutoff)
+      const then = base ? anchorCode(srcAt(base, anchorPath), anchorPath, symbol) : null
+      const now = then === null ? null : anchorCode(srcAt('', anchorPath), anchorPath, symbol)
+      if (then !== null && now !== null) {
+        if (then === now) continue
+        basis = 'symbol'
+      }
     }
+    rows.push({ subject: fact.subject, anchor: fact.anchor, since: date, touchedAt: new Date(touched).toISOString().slice(0, 10), at: s.file + ':' + s.line, basis })
   }
   return rows
 }
