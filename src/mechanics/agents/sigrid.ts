@@ -416,8 +416,8 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
  * 命中随之变多，把砍掉的双计补回了一部分。队友丽娜前台恒定 35.3s 不受影响（敛枪式吃的是她
  * 自己的平A池，不抢队友）。buildExecutions/estimateExSpecialTime 共用本函数，估时与物化才不分裂。
  */
-// @fact agent:1591/敛枪式估时 口径: 敛枪式三段行时间（机会 spend + 破阵套数 × 真实 actionTime）由 estimateExSpecialTime 计入必要时间——机会命中从 state 直算（与 patch 行计数同口径），估时与 buildExecutions 共用同一 spec 资源账本，不再经 cfgField 轮间滞后（滞后让估时与行差一轮演化 ≈40s lance，折叠积分器风卷成账本虚高）；出枪式段占平A池时间不进必要时间 | 据 实测@2026-09-06 + 用户@2026-09-07 + 青衣 1571 前例·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/sigrid.test.ts#估时钩子 | 锚 src/mechanics/agents/sigrid.ts#sigridExSpecialTime | 信 高
-// @fact agent:1591/出枪式机会计数 口径: 一次[出枪式]命中只记 1 次机会——#4 双计（段行 + countBasicFinisherHits 各数一次）已删；行循环跳过 SIGRID_BASIC_SEGMENT_MOVE_IDS，#4 只由 countBasicFinisherHits 按段循环计数 | 据 用户@2026-09-07（「他说了只回复一次，为什么要打两次」）·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30| 验 src/mechanics/__tests__/sigrid.test.ts#一次出枪式命中只记一次机会 | 锚 src/mechanics/agents/sigrid.ts#sigridChuqiangFromState | 信 确认
+// @fact agent:1591/敛枪式估时 口径: 敛枪式三段行时间（机会 spend + 破阵套数 × 真实 actionTime）由 estimateExSpecialTime 计入必要时间——机会命中从 state 直算（与 patch 行计数同口径），估时与 buildExecutions 共用同一 spec 资源账本，不再经 cfgField 轮间滞后（滞后让估时与行差一轮演化 ≈40s lance，折叠积分器风卷成账本虚高）；出枪式段占平A池时间不进必要时间 | 据 实测@2026-09-06 + 用户@2026-09-07 + 青衣 1571 前例·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/sigrid.test.ts#估时钩子 | 锚 src/mechanics/agents/sigrid.ts#sigridExSpecialTime | 信 高
+// @fact agent:1591/出枪式机会计数 口径: 一次[出枪式]命中只记 1 次机会——#4 双计（段行 + countBasicFinisherHits 各数一次）已删；行循环跳过 SIGRID_BASIC_SEGMENT_MOVE_IDS，#4 只由 countBasicFinisherHits 按段循环计数 | 据 用户@2026-09-07（「他说了只回复一次，为什么要打两次」）·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07| 验 src/mechanics/__tests__/sigrid.test.ts#一次出枪式命中只记一次机会 | 锚 src/mechanics/agents/sigrid.ts#sigridChuqiangFromState | 信 确认
 export function sigridChuqiangFromState(
   state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number; basicAttackTime: number },
   cfg: AgentCharConfigInput['cfg'],
@@ -452,7 +452,7 @@ export const SIGRID_C6_POZHEN_TIME_FACTOR = 0.75
  * 用定点迭代解（增益比 = 1/3，每轮只多打 1/3 轮的第三段 ⇒ 收敛到 O ≈ 1.5×(基础命中 + 破阵套数)，
  * **不是** 2026-02 那次「1次/秒×前台时间」的发散路径）。
  */
-// @fact agent:1591/影画1第三段送机会 口径: 影画1「**发动[敛枪式]第三段时**，获得[巡空枪势]和一次发动[敛枪式]的机会」= 每发第三段（含破阵那部分）再送 1 次机会；第三段次数 ← 机会 ← 第三段次数 是自指方程，用**定点迭代**解（≤8 轮，增益比 1/3 ⇒ 收敛到 O ≈ 1.5×(基础命中+破阵套数)），不是 2026-02 那次「1次/秒×前台时间」的发散路径 | 据 用户@2026-09-07「1命第三段敛枪式的机会获取需要实现」·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30| 验 src/mechanics/__tests__/sigrid.test.ts#影画1「发动第三段时获得巡空枪势和一次机会」| 锚 src/mechanics/agents/sigrid.ts#sigridLanceCounts | 信 确认
+// @fact agent:1591/影画1第三段送机会 口径: 影画1「**发动[敛枪式]第三段时**，获得[巡空枪势]和一次发动[敛枪式]的机会」= 每发第三段（含破阵那部分）再送 1 次机会；第三段次数 ← 机会 ← 第三段次数 是自指方程，用**定点迭代**解（≤8 轮，增益比 1/3 ⇒ 收敛到 O ≈ 1.5×(基础命中+破阵套数)），不是 2026-02 那次「1次/秒×前台时间」的发散路径 | 据 用户@2026-09-07「1命第三段敛枪式的机会获取需要实现」·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07| 验 src/mechanics/__tests__/sigrid.test.ts#影画1「发动第三段时获得巡空枪势和一次机会」| 锚 src/mechanics/agents/sigrid.ts#sigridLanceCounts | 信 确认
 function sigridLanceCounts(
   cfg: AgentCharConfigInput['cfg'],
   state: AgentResourceInput['state'] | undefined,

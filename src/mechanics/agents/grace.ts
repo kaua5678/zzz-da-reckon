@@ -109,7 +109,7 @@ const base = specToMechanicModule(spec) // 垫层：catalog 派生 cfg 字段由
  * ⚠ 旧实现（2026-08 口供版）用 cycleBound = aSum + 2·ex 把两特殊技槽**都按强特时长**保守估 ⇒
  * 循环数被压小、普特系统性低估（30.1s 池实测只得 8 普特，精确解 14）。
  *
- * @fact agent:1181/轮换精确解 口径: 格莉丝特殊技槽按精确闭式解 T(n,c)=c·aSum+n·ex+(2c−n)·sp≤平A池求(n,c)，强特优先占位、剩余槽放普特；不再用 aSum+2·ex 的循环打包上界 | 据 用户@2026-10-01「精确强特和普特次数,时间也确定,a1-a4也确定」裁决 | 验 src/mechanics/__tests__/graceRotation.test.ts | 锚 src/mechanics/agents/grace.ts#planGraceRotation | 信 确认
+ * @fact agent:1181/轮换精确解 口径: 格莉丝特殊技槽按精确闭式解 T(n,c)=c·aSum+n·ex+(2c−n)·sp≤平A池求(n,c)，强特优先占位、剩余槽放普特；不再用 aSum+2·ex 的循环打包上界 | 据 用户@2026-10-01「精确强特和普特次数,时间也确定,a1-a4也确定」裁决·复核@2026-10-07 | 验 src/mechanics/__tests__/graceRotation.test.ts | 锚 src/mechanics/agents/grace.ts#planGraceRotation | 信 确认
  * ⟳复核: 若格莉丝特殊技时长 catalog 改动或循环结构变(非2槽),重核闭式解与实测循环数 | 到期 2027-03-31
  */
 export interface GraceRotationPlan {

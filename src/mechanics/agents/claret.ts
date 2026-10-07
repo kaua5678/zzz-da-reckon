@@ -105,7 +105,7 @@ export const GASH_PER_LAYER = 600
  *   ⚠ 本条**纠正**原债务记的「极端配装（积累远快于消耗节奏）下偏乐观」：误差**不随积累速率 `L` 单调放大**，
  *     而是被 `Ds` 与 `cap` 夹住（`L` 再大，幅度也 ≤ `Ds − cap`）——原表述把两个因子说成了一个。
  *
- * @fact agent:1611/残痕时序 近似: 「同时存量≤3层」是时序约束，总量口径下 `consumed = min(L, Ds)` 是**所有自洽读法的共同上界且紧**（10 400 599 个交错穷举零越界；细粒度交错可达该界，而平A项按定义即「秒均×时间」= 连续）；天花板 = 病态「先攒满再消耗」读法取 `min(L,Ds,cap)`，幅度 `max(0, min(L,Ds)−cap)`，cap 咬合充要条件 `L>3 且 Ds>3`（实测默认夹具 ≤1 层、滑块推满 ≤53 层） | 据 nanoka 3.2 raw passive.level.1611501.desc[0]@2026-09-20·外部 6 语言×4 版本复核零差异@2026-09-20·R54 穷举 10400599 交错@2026-09-20·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretGashTiming.test.ts | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 高
+ * @fact agent:1611/残痕时序 近似: 「同时存量≤3层」是时序约束，总量口径下 `consumed = min(L, Ds)` 是**所有自洽读法的共同上界且紧**（10 400 599 个交错穷举零越界；细粒度交错可达该界，而平A项按定义即「秒均×时间」= 连续）；天花板 = 病态「先攒满再消耗」读法取 `min(L,Ds,cap)`，幅度 `max(0, min(L,Ds)−cap)`，cap 咬合充要条件 `L>3 且 Ds>3`（实测默认夹具 ≤1 层、滑块推满 ≤53 层） | 据 nanoka 3.2 raw passive.level.1611501.desc[0]@2026-09-20·外部 6 语言×4 版本复核零差异@2026-09-20·R54 穷举 10400599 交错@2026-09-20·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/claretGashTiming.test.ts | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 高
  * ⟳复核: 官方若给出 [残痕] 的时长/衰减子句，或引擎获得逐事件顺序通道（可落真队列）时，替换本上界并复核 cap 咬合域 | 到期 2027-03-31
  */
 export const GASH_MAX_STACKS = 3
@@ -279,7 +279,7 @@ export function computeClaretSharpResource(input: {
   // 直接送的层**不进**积蓄效率倍率（原文是「添加1层」，不是「积累残痕值」；
   // 表列 gash_buildup（本体 446 + 琢形 134）按全角色同口径仍不计——只认这一条明写的赠送）。
   //
-  // @fact agent:1611/琢形送残痕 口径: 反制支援整组化解一组控制技 = 琢形「重击命中直接为目标添加1层[残痕]」→ 每组 +600 点**且不吃积蓄效率倍率**（送层不是积累），仍受 3 层上限；表列 gash_buildup（1611028=446 / 1611030=134）按「非平A非E 不计」的全局同口径仍不计入 | 据 用户@2026-09-12（「残痕建模一下，他的确是送了」）+ nanoka full/1611.json 琢形条目·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts::反制支援送残痕 | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 确认
+  // @fact agent:1611/琢形送残痕 口径: 反制支援整组化解一组控制技 = 琢形「重击命中直接为目标添加1层[残痕]」→ 每组 +600 点**且不吃积蓄效率倍率**（送层不是积累），仍受 3 层上限；表列 gash_buildup（1611028=446 / 1611030=134）按「非平A非E 不计」的全局同口径仍不计入 | 据 用户@2026-09-12（「残痕建模一下，他的确是送了」）+ nanoka full/1611.json 琢形条目·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/claretSmoke.test.ts::反制支援送残痕 | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 确认
   const counterAssistGashStacks = Math.max(0, Math.floor(input.counterAssistCount ?? 0))
   const gashValuePct = baseGash * buildupMultiplier + counterAssistGashStacks * GASH_PER_LAYER
   // 整局可用层数**不设 3 钳制**：3 层是敌人身上的同时存量上限（见 GASH_MAX_STACKS 注释），

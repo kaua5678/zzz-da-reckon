@@ -291,7 +291,7 @@ function completeInteractionList(interactions: InteractionItem[], team: (string 
  * 非法表达式/求值异常/结果非有限 ⇒ 返回 `c*w`（**退化为不修正**，不是 0——
  * 返回 0 会让用户一个笔误就把该项难度抹掉，静默且危险）。
  */
-// @fact engine:操作难度/逐类型公式 口径: 难度公式**按交互类型逐项配置**（`DifficultyWeights.interactionFormula[type]`，缺省按类型默认）——**需要怪物一次攻击**的八类（`BOSS_ATTACK_INTERACTIONS`：通用四类 弹刀 / 闪避 / 格挡 / 角力 + 角色专属四类 仪玄 e 弹 / 佩洛伊斯完美格挡 / 般岳金身弹刀 / 般岳双反；通用四类为 2026-09-20 二次修正补入）默认 `c*w/pow(max(r,0.05),k)`（吃非失衡占比），其余默认 `c*w`（不吃）；变量 c=次数 w=权重 r=非失衡占比 k=指数；用户可逐项开关（写 `c*w` 即关闭）与自编公式；非法公式退化为 `c*w`（不修正，不是 0）| 据 用户@2026-09-20「仪玄的 e 弹、佩洛伊斯的完美格挡、般岳的金身弹刀和双反都需要怪物的一次攻击……这个我想让用户抉择，哪些是要吃非失衡占比的，让他自己编公式」·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/teamCompare.test.ts::逐类型公式 | 锚 src/composables/teamCompare.ts#evalDifficultyFormula | 信 确认
+// @fact engine:操作难度/逐类型公式 口径: 难度公式**按交互类型逐项配置**（`DifficultyWeights.interactionFormula[type]`，缺省按类型默认）——**需要怪物一次攻击**的八类（`BOSS_ATTACK_INTERACTIONS`：通用四类 弹刀 / 闪避 / 格挡 / 角力 + 角色专属四类 仪玄 e 弹 / 佩洛伊斯完美格挡 / 般岳金身弹刀 / 般岳双反；通用四类为 2026-09-20 二次修正补入）默认 `c*w/pow(max(r,0.05),k)`（吃非失衡占比），其余默认 `c*w`（不吃）；变量 c=次数 w=权重 r=非失衡占比 k=指数；用户可逐项开关（写 `c*w` 即关闭）与自编公式；非法公式退化为 `c*w`（不修正，不是 0）| 据 用户@2026-09-20「仪玄的 e 弹、佩洛伊斯的完美格挡、般岳的金身弹刀和双反都需要怪物的一次攻击……这个我想让用户抉择，哪些是要吃非失衡占比的，让他自己编公式」·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/teamCompare.test.ts::逐类型公式 | 锚 src/composables/teamCompare.ts#evalDifficultyFormula | 信 确认
 // ⟳复核: `BOSS_ATTACK_INTERACTIONS` 名单（新增需怪攻击的角色机制时）、默认公式、或 `NON_STUN_RATIO_FLOOR` 再动时，复核「只对名单内类型修正（其余旧基线逐位不变）」+「非法公式退化不修正」两条 | 到期 2026-12-31
 function evalDifficultyFormula(
   expression: string,

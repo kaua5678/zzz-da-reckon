@@ -64,7 +64,7 @@ export const PIPER_BUILDUP_COVERAGE_DEFAULT = 1
  */
 export const PIPER_C2_MOVE_WEIGHTS: Record<string, number> = { '1281014': 0.3 }
 
-// @fact agent:1281/动力 口径: 积蓄与影画2 拆成两条通道，均默认满层——只有开局启动那段逐层，整局平均≈满覆盖；滑块 piper.momentumCoverage 可显式建模爬坡 | 据 用户@2026-09-01·复核@2026-09-02·复核@2026-09-30 | 验 src/mechanics/__tests__/piper.test.ts | 锚 src/mechanics/agents/piper.ts#computePiperMomentum | 信 确认
+// @fact agent:1281/动力 口径: 积蓄与影画2 拆成两条通道，均默认满层——只有开局启动那段逐层，整局平均≈满覆盖；滑块 piper.momentumCoverage 可显式建模爬坡 | 据 用户@2026-09-01·复核@2026-09-02·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/piper.test.ts | 锚 src/mechanics/agents/piper.ts#computePiperMomentum | 信 确认
 // @fact agent:1281/影画2 口径: 终结技(1281014)只有30%倍率是下砸，按占比折算增伤；增伤区加算 ⇒ 占比折算是精确换算而非近似 | 据 用户@2026-09-01·复核@2026-09-02·复核@2026-09-30 | 验 src/mechanics/__tests__/piper.test.ts | 锚 src/mechanics/agents/piper.ts#PIPER_C2_MOVE_WEIGHTS | 信 确认
 
 /**

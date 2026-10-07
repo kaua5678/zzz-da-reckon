@@ -93,7 +93,7 @@ function buildZhuYuanCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
   cfg.zhuyuanCinemaLevel = cinemaLevel
   cfg.zhuYuanStunCoverage = 0 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
   // 自卫还击（支援突击 1241025）「招式发动时，获得3枚强化霰弹」的次数源。
-  // @fact agent:1241/自卫还击霰弹次数源 口径: defAssistCount = cfg.parryCount —— core 的支援突击行本身按 `cfg.parryCount` 产（core/resource/rowBuild.ts 支援突击块 count = parryCount），霰弹 +3/次 与该伤害行**同源同次数**、不是双计；不带支援突击的弹刀（parryNoFollowUpCount）不产支援突击行 ⇒ 不计入 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…给有回避的分配一个回避支援」+ 原文 data/raw/nanoka_missing/full/1241.json「发动[回避支援]后，点按[普通攻击]发动…获得3枚[强化霰弹]」·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/zhuYuan.test.ts#自卫还击霰弹接黄光交互次数 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanCharConfig | 信 确认
+  // @fact agent:1241/自卫还击霰弹次数源 口径: defAssistCount = cfg.parryCount —— core 的支援突击行本身按 `cfg.parryCount` 产（core/resource/rowBuild.ts 支援突击块 count = parryCount），霰弹 +3/次 与该伤害行**同源同次数**、不是双计；不带支援突击的弹刀（parryNoFollowUpCount）不产支援突击行 ⇒ 不计入 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…给有回避的分配一个回避支援」+ 原文 data/raw/nanoka_missing/full/1241.json「发动[回避支援]后，点按[普通攻击]发动…获得3枚[强化霰弹]」·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/zhuYuan.test.ts#自卫还击霰弹接黄光交互次数 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanCharConfig | 信 确认
   // ⟳复核: 若「回避支援行」按用户裁决补进 core（黄光交互另计 1.166s 时停）或 core 支援突击行的次数源改动，本字段必须同步改读同一个源，否则伤害行与霰弹收益会脱钩 | 到期 2026-12-15
   cfg.defAssistCount = Math.max(0, Math.floor(Number(cfg.parryCount ?? 0)))
 }
@@ -141,7 +141,7 @@ function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentR
   return whole(shells.total)
 }
 
-// @fact agent:1241/压制以太弹时间 口径: 1 枚霰弹 = 1 段平A（用户 2026-08-26 口径），所以以太弹行占的**就是平A池那份时间**，必须从通用 basic_attack 聚合行里挤出（琉音转大 carve 同款），不能在它之外另占一份；挤出后剩余时间仍归通用平A（总前台占用守恒） | 据 用户@2026-08-26·2026-09-05 复核（此前未挤出→同一段时间计两次）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/zhuYuan.test.ts#压制以太弹的时间占用 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanExecutions | 信 确认
+// @fact agent:1241/压制以太弹时间 口径: 1 枚霰弹 = 1 段平A（用户 2026-08-26 口径），所以以太弹行占的**就是平A池那份时间**，必须从通用 basic_attack 聚合行里挤出（琉音转大 carve 同款），不能在它之外另占一份；挤出后剩余时间仍归通用平A（总前台占用守恒） | 据 用户@2026-08-26·2026-09-05 复核（此前未挤出→同一段时间计两次）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/zhuYuan.test.ts#压制以太弹的时间占用 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanExecutions | 信 确认
 function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.zhuyuanCinemaLevel)
   const shellsTotal = computeZhuYuanShellsTotal(cfg, state)

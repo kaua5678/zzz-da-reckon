@@ -67,7 +67,7 @@ export interface PromoteFixpointDeps {
  * 倍率表 damage/daze/anomaly_buildup 由目标队友执行计划自然调用。
  * adj 来自 promoteFixpoint 的收敛结果（runCalcRound 的 R0/R1 内层不动点）。
  */
-// @fact engine:实战档位喧响计数 口径: 「实战 N 喧响大」这类档位说法（含「叶释渊 3 例外」）的**口径主体 = 主C 自攒喧响 floor(总/消耗)，不计琉音好评赠大**——赠大只加进展示 `ultimateCount` 并独立成 `source='gift'` 行，是队友产出、不是自己攒的条。实测 Boss 30042（无敌24s/弹刀13）下：叶瞬光自攒 11227 → 3 ✓ 正落该档；仪玄自攒 12087 → 4，超 3 档线仅 87 喧响（边界敏感，**不据此改账**） | 据 用户@2026-09-08（裁决「不计琉音赠大，看自攒 floor」）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/giftConsumption.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#applyUltimatePromote | 信 确认
+// @fact engine:实战档位喧响计数 口径: 「实战 N 喧响大」这类档位说法（含「叶释渊 3 例外」）的**口径主体 = 主C 自攒喧响 floor(总/消耗)，不计琉音好评赠大**——赠大只加进展示 `ultimateCount` 并独立成 `source='gift'` 行，是队友产出、不是自己攒的条。实测 Boss 30042（无敌24s/弹刀13）下：叶瞬光自攒 11227 → 3 ✓ 正落该档；仪玄自攒 12087 → 4，超 3 档线仅 87 喧响（边界敏感，**不据此改账**） | 据 用户@2026-09-08（裁决「不计琉音赠大，看自攒 floor」）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/giftConsumption.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#applyUltimatePromote | 信 确认
 export function applyUltimatePromote(
   base: TeamResourceResult,
   adj: { promote: number; hug60: number; targetSlot: number; chainMoveId: string; ultimateMoveId: string } | null,
