@@ -92,6 +92,7 @@
 3. **命座提升率联动放大**：技能等级 → daze → 失衡次数 → 伤害暴涨假象。用 `enemy.stunCountLock` 锁定失衡次数（阈值调节会被失衡自激破坏：阈值变小 → 失衡次数变多 → 连携/喧响变多 → 无稳定点）；手工对比命座同样锁定。
 4. **失衡窗口时长**：`computeWindowDuration` = stunTime + 4 + 全队 `stunDurationBonusSeconds`；轴编辑器 `maxDur` 用导出的 `windowDuration`，不要硬编码。
 5. **新角色配装推荐缺专武块**：`build-recommendations.json` 是初始爬取快照，专武归属唯一事实源 = `wEngines[].ownerAgentId`；录完新角色跑 `npm run sync:wengine-recs` 补齐（幂等），护栏测试 `src/data/__tests__/buildRecWengine.test.ts`（无专武归属角色快照要更新）。
+6. **模块产出的对象不加类型断言**（判据 27 硬门，r719）：`events.push({ … } as AnomalyEventExecution)` / `} as never` 会关掉必填字段检查——r718 月城柳极性紊乱行因此漏了 `fields`，资源池页 → 异常池渲染崩溃。直接写对象字面量，或类型标注 `const x: T = { … }`；编译报错 = 契约不符，补字段或改类型。往 cfg 塞新键先在本模块的 `CharacterOperationConfig` 扩充里声明（如 `starlightBilly.ts` 的两个决意字段）；调 `specBase` 钩子时原样转交 `input`，别把入参重新打包。
 
 > 已去重（同一条在别处已有权威来源，不在此重复）：`moveId` 匹配 → §0 铁律 3 + `ENGINE_PIPELINE_GUIDE.md` §4 坑4；模块角色 spec 死字段 → §0 铁律 4 + `AGENTS.md` §1 规则4；fetch stub → 下方 §7 测试卫生。
 
