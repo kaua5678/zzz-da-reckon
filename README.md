@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（82 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（83 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -91,6 +91,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/FEATURES_GUIDE.md` | **Boss 选择 + 队伍对比功能手册**：操作方式、数据管道命令、修改入口表、口径与验证命令（新功能必更新） |
 | `docs/UI_THEME_GUIDE.md` | **UI 主题系统指南**：明暗双主题三层颜色体系（--app-*/--wa-* 色阶）、切换机制、SVG 填坑、ZZZ 品牌色板、改 UI 前必读 |
 | `docs/mcp-ui-shell-polish.md` | **UI 外壳美术打磨记录**：顶栏纹理/霓虹导轨/品牌高光、分段导航胶囊化、全局焦点环与卡片层次；新增 `--shell-*`/`--brand-*`/`--dev-*` 令牌与三条基线的棘轮归因 |
+| `docs/mcp-ui-number-format-sweep.md` | **界面长浮点普查 + ui-check「未格式化数值」闸门**（r716–r718）：页头页签 + 页内子页签普查方法、源头表与 fmt 口径、闸门阈值（≥7 位小数，依据 src/data 字面量实测）与防线测试、月城柳 `as` 断言漏 fields 的根因、zd 逐叶归因 |
 | `docs/implementation-status.md` | **自动生成**，全角色覆盖矩阵（唯一权威进度，勿手改） |
 | `docs/mechanism-reference.md` | 游戏底层机制理论（啵啵獭 10 期）：**只留尚未建模的理论存量**（秽盾/接战状态/精英怪档/待实测系数）；已进引擎的公式与倍率表以 `src/core/**` 为唯一事实源，本文只给指针 |
 | `docs/DATA_FETCHING.md` | 数据抓取/导入约定（nanoka 等数据源的管道与字段口径） |
@@ -164,6 +165,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/proposals/pull-value-optimization.md` | **抽卡规划价值：思想与口径**（部分落地）：价值如何定义与量纲、期望值口径（用户裁决 2026-09-01，模拟抽卡已删）；本文只谈"怎么想"，实施事实以 `pullValue.ts` / `pullPlannerEngine.ts` / `data/filmEconomy.ts` 为准 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（82 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（83 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。

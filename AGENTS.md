@@ -116,7 +116,7 @@ npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检�
 npm run minify:static # 生成产物瘦身/剔 catalog 死键（幂等；validate:data 报产物膨胀时用它修）
 ```
 
-**UI 改动必须实机点通一次**：`npm run build` 后用 `scripts/ui-check.mjs`（起静态服务 + headless Chromium 经 CDP 点页签/控件/按钮，读回 DOM 体检：polyline/标注重叠/表格溢出/JS 错误），**零 JS 错误 + 无重叠 + 无溢出 = PASS（退出码 0）**：
+**UI 改动必须实机点通一次**：`npm run build` 后用 `scripts/ui-check.mjs`（起静态服务 + headless Chromium 经 CDP 点页签/控件/按钮，读回 DOM 体检：polyline/标注重叠/表格溢出/JS 错误/未格式化数值），**零 JS 错误 + 无重叠 + 无溢出 + 无未格式化数值 = PASS（退出码 0）**（未格式化数值 = 页面出现 ≥7 位小数的浮点噪声或 NaN / Infinity，即展示处漏了 `fmt`；见 `docs/mcp-ui-number-format-sweep.md`）：
 
 ```bash
 node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --click 计算曲线 --wait-for .curve-seg
