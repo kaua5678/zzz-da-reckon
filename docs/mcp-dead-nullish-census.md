@@ -1,4 +1,4 @@
-# 死兜底普查与判据 28（r723；r724 收窄信任边界；r725 信任边界清零；r726 战斗时间单一来源；r727 形状校验单一来源；r728 类型字面量断言）
+# 死兜底普查与判据 28（r723；r724 收窄信任边界；r725 信任边界清零；r726 战斗时间单一来源；r727 形状校验单一来源；r728 类型字面量断言；r731 扩到可选链）
 
 > 范围：src 非测试 `.ts` 里「左侧类型不含 null / undefined 的 `a ?? b`」。工具：TS 类型检查器（不是正则）。
 > 提交：`7cb3f8c8`（清理 + cfg 契约）、`6e534cae`（战斗时间单一通道）、`587e767e`（判据 28）。
@@ -7,7 +7,8 @@
 > r726：战斗时间单一来源（`866b5ef8`）——生产代码里当战斗时间用的 180 只留在 store 的 defaultEnemy，函数入参的缺省改必填；战斗时间 ≠ 180 的差异逐队归因，见 §4.3。
 > r727：形状校验单一来源（`1b6e4aa3`）——JSON 契约之外不再手写形状检查：预设加载器的运行时类型守卫删除、validate-specs 去掉已被契约覆盖的 658 条形状检查，见 §4.4。
 > r728：对象形状只由声明类型表达（`d807aca4`）——src 非测试 43 处类型字面量断言 `x as { … }` 去掉（含 2 处幽灵读、2 处数组隐藏属性），判据 27 加「类型字面量」形态，见 §4.5。
-> 普查 / codemod 脚本：`calc-arch/g723/deadnullish.mjs`、`calc-arch/g723/fixnullish.mjs`（不进仓；判据实现在 `scripts/lib/dead-nullish-gate.mjs`）。
+> r731：死可选链（`e20d824c`）——判据 28 从 `??` 扩到 `?.`，首扫 244 处（链头 168 / 链内 76）全部收口，连带死 `??` 39 处；初值是元素访问或可选链的变量与元素访问同样不判；可选链替判据 17 躲过的两处槽位下标一并修掉，见 §4.6。
+> 普查 / codemod 脚本：`calc-arch/g723/deadnullish.mjs`、`calc-arch/g723/fixnullish.mjs`（不进仓；判据实现在 `scripts/lib/dead-nullish-gate.mjs`）；r731 的在 `calc-arch/g731/`（`census731.mjs` 链头分类、`census731b.mjs` 链内、`fix731.mjs` codemod）。
 
 ## 1. 结论速览
 
@@ -25,6 +26,7 @@
 - r726：战斗时间单一来源。函数入参上的 180 缺省与兜底改必填（生产调用方本来就都传了真实值），build 相位改传真实战斗时间，般岳闪能与仪玄异常回闪上限改按战斗时间算。战斗时间 ≠ 180 的探针只见 6 个般岳队变化，归因到般岳闪能（§4.3）。
 - r727：形状校验单一来源。契约之外的两份类型抄本删掉：队伍预设 / 轴预设加载器的运行时类型守卫（坏文件会被悄悄滤掉；现有数据零过滤），以及 validate-specs 里的 658 条形状检查（1120 → 462）。契约补「定长元组超长」，轴预设语义行接住守卫原有的 team 约束（§4.4）。
 - r728：类型字面量断言收口。在用处另写形状的 `x as { … }` 共 43 处：34 处冗余、2 处幽灵读（buildCharConfig 从 store 读两个不存在的字段，恒为 0）、2 处数组挂隐藏属性回传、1 处形参写宽、4 处 unknown 入参。全部去掉，判据 27 加「类型字面量」形态防回归（§4.5）。
+- r731：可选链收口。判据 28 只查 `??`，而 `?.` 是同一句话的另一种写法，还会把后面的死 `??` 洗白（`threads.moduleFeedback?.x ?? 0`：moduleFeedback 必填，`?.` 却让左侧类型带上 undefined）。扩到 `?.` 后首扫 244 处（链头 168 / 链内 76）全部收口，连带死 `??` 39 处；初值是下标取值的变量与下标取值同样不判；可选链替判据 17 躲过的两处「槽位号当压缩数组下标」一并修掉（§4.6）。
 
 ## 2. 判定口径
 
@@ -41,10 +43,13 @@
 |---|---|
 | 元素访问 `a[k] ?? b` | 仓库没开 `noUncheckedIndexedAccess`。`Record<string, T>` 取值的类型不含 undefined，但运行时可能缺键 |
 | 走索引签名的点访问 | 同上 |
-| 调用结果 `f() ?? b` | 不在本口径内 |
+| 初值是元素访问或可选链的变量（`const c = a[k]`，r731 起） | 同上：类型不带 undefined，运行时会缺；抽成变量不改变判定 |
+| 调用结果 `f() ?? b` / `f()?.x` | 不在本口径内 |
 | `\|\|` | 0 和 '' 也会取右侧，是另一种语义 |
 
 控制流收窄也算数。例如伊德海莉在 `if (cfg.yidhariDecibelPerHpPct === undefined) return 0` 之后又写 `cfg.yidhariDecibelPerHpPct ?? 10`，第二处属于死兜底。
+
+**r731 起 `?.` 同判**（§4.6）：`e?.x` / `e?.[k]` / `e?.()` 的 e 按同一口径判，上表的「不算」同样适用。可选链内部（`a?.p?.x` 的 `a?.p`）取 p 的声明类型：整条链已在 a 处短路，p 不含空，第二个 `?.` 就永不生效，应写 `a?.p.x`。
 
 ## 3. 普查数字（按 owner 类型）
 
@@ -385,6 +390,54 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 
 **回退**：`git revert d807aca4`（文档另提交）。只删了编译期断言、两个读取函数和两个布尔选项；数值零差，回退后数值不变。
 
+### 4.6 r731：死可选链（判据 28 扩到 `?.`）
+
+> 代码提交 `e20d824c`。普查 / codemod 脚本不进仓，放在 `calc-arch/g731/`：`census731.mjs`（链头按声明来源分类）、`census731b.mjs`（链内）、`fix731.mjs`（反复跑判据 28 的 detector，机械改到 0）。
+
+**为什么要扩**：`?.` 和 `??` 说的是同一句话：「这个值可能缺」。判据 28 只查 `??`，`?.` 就成了换个写法的同一个谎。它还会把后面的死 `??` 洗白：`threads.moduleFeedback?.vivianTeamEx ?? 0` 里 moduleFeedback 必填，`?.` 让左侧类型带上 undefined，`??` 看起来就有用了。r729 普查时已列为候选（`docs/mcp-type-restatement.md` §6）。
+
+**普查**（origin `feb879fe`，接收者类型不含空的 `?.`）：
+
+| 位置 | 处数 | 说明 |
+|---|---|---|
+| 链头：声明过的属性 | 104 | 49 处后面紧跟 `??` |
+| 链头：标识符 | 94 | 形参 / 解构形参 50、for-of 7、下标取值的别名 30、其他 7；40 处后面紧跟 `??` |
+| 链头：元素访问 | 122 | 不判，同 `a[k] ?? b` |
+| 链内（`a?.p?.x`，p 必填） | 76 | 整条链已在 a 处短路，第二个 `?.` 永不生效 |
+
+**口径**（以判据 28 的头注释为准）：
+
+- `??` 的左侧与 `?.` 的接收者共用一套判法：声明过的属性访问、标识符，按该位置的类型判（含收窄）。
+- 可选链内部只对 `?.` 判，取属性的声明类型。`??` 的左侧是可选链时不判：链头是元素访问时（`a[k]?.p ?? 0`），链的类型不带 undefined，运行时却会短路；链头本身是死 `?.` 时由那一节报，改掉后 `??` 自然进判。
+- 新增一类不判：初值是元素访问或可选链的变量（`const c = team[slot]`、`const y = a[k]?.p`）。它们和初值一样，类型不带 undefined，运行时会缺。两种写法都适用，所以把 `a[k] ?? 0` 抽成变量不再改变判定。普查里 30 处下标取值的别名因此保留。
+- 外部库类型说谎时写诚实类型，不加豁免。本轮只有一处：lib.dom 把 `navigator.clipboard` 声明成必有，非安全上下文（http 访问局域网地址）里它是 undefined。teamConfigPresetIO 收成 `clipboardIfAvailable(): Clipboard | undefined`。
+- noUncheckedIndexedAccess 仍不开：实测打开后 vue-tsc 报 2423 处（生产 826 / 测试 1597）。
+
+**收口**：判据 28 首扫 244 处（链头 168 / 链内 76）。codemod 跑三遍到 0：`?.` → `.` 243 处，连带死 `??` 39 处，共 82 个文件。另外手工改了：
+
+- 调用结果后的死 `?? []` 2 处（severian / phoenix 的 `skills.categories.flatMap(…) ?? []`）。本门不判调用结果，去掉可选链后一眼可见。
+- 死默认值删掉后只剩空转换的 2 处：claret 的 `Number(outOfCombatPanel.critDmg)`、卢西娅的 `String(m.agentId)`（同 r723 口径）。
+- `Number(x ?? 0) || 0` 里 x 是可选字段的，保留。
+
+**可选链替判据 17 躲门**：判据 17（压缩数组按槽位号索引）是行级正则，不认 `?.[`。
+
+- timeWeightAllocation.ts 的 `characters?.[s]`（s 是主C 槽位号）收成 `characters[s]` 后，判据 17 当场报红。
+- freeCompare/metrics.ts 的 `characters?.[i]` 同类：i 实为槽位号，但名字走了循环下标豁免。
+- 两处都是「槽位号当压缩数组下标」，前导或中间有空槽时会取到别人的数据，都改成按 slot 查。满队时下标等于槽位号，所以数值零差。
+- 判据 17 的正则补上 `?.[`。对照：把 HEAD 版两个文件放进临时根，旧正则 0 处，新正则 1 处（`[i]` 仍走循环豁免，是判据 17 头注释写明的局限）。
+
+**测试夹具**：12 个测试文件、17 个用例失败，原因都是夹具缺必填字段，原来靠被删的 `?.` 兜着。按 §7 的口径补齐，值等于原兜底值，例如 `resourceUtilization: {}`、`panel: { additionalAbilityActive: 1 }`、`interactionTopUp: {}`、`state: { basicAttackTime: 0 }`、`skills: { categories: [] }`。另有三处：
+
+- statModeParity 的源码锁正则跟随新写法。
+- specs/mechanics 的两个用例原来传 `result: undefined / null`（类型是必填），改传 `{}`，仍测「结果里没有 specResources 时按 spec 静态列出」。
+- teammateBuffRows 的「字段 undefined」用例收窄到真可选字段（effects 必填，由 JSON 契约校验）。
+
+用例数不变（524 / 4507）。
+
+**数值**：zd DUMP 0 / ROWS 0；build index 1600.86 → 1600.50 kB。
+
+**回退**：`git revert e20d824c`（文档另提交）。只删了必填值上的空值处理，数值零差。
+
 ## 5. 判据 28（`scripts/lib/dead-nullish-gate.mjs`）
 
 - **规则**：同 §2。
@@ -392,13 +445,14 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
   - 2026-10-07 共扫 296 个文件。反空洞下限是 250。
   - 硬门为 0。
 - **program**：取 `tsconfig.app.json` 里的 .ts 文件，与 vue-tsc 同一份编译选项。`.vue` 不扫，因为要 vue-tsc 的类型信息。
-- **detector 自证**：在内存里建一个 noLib 小程序，约 30 ms。必填、可选、含 undefined、可选链、索引签名、元素访问、标识符、收窄、调用结果、注释各覆盖一例。命中行必须恰好是 8、14、17、18（r725 删豁免表，豁免例随删）。
-- **反空洞实测**：把 `aire.ts` 换回本轮之前的版本，门报 9 处（`cfg.battleTime ?? 180` ×2、`initialEnergyGift ?? 0`、`initialDecibelGift ?? 0` ×2 等）；换回后为 0。
-- **成本**：check-guards 从 14.4 s 增至 16.3 s；`checkGuards.test` 从 31 s 增至 34 s，因为它会跑全部判据。
+- **detector 自证**：在内存里建一个 noLib 小程序，约 30 ms。必填、可选、含 undefined、可选链、索引签名、元素访问、标识符、收窄、调用结果、注释各覆盖一例。命中行必须恰好是 8、14、17、18（r725 删豁免表，豁免例随删）。r731 加 `?.` 正反例后为 8、14、17、18、22、24、30、30、32；去掉别名豁免、别名不认可选链初值、链内改按位置类型、去掉断链判断，四个变体各自让自证变红。
+- **反空洞实测**：把 `aire.ts` 换回本轮之前的版本，门报 9 处（`cfg.battleTime ?? 180` ×2、`initialEnergyGift ?? 0`、`initialDecibelGift ?? 0` ×2 等）；换回后为 0。r731：把 `sigrid.ts` 换回 `feb879fe` 版，门报 7 处 `?.`（`skills?.categories` 一系 5 处、`panel?.atk`、`state?.basicAttackTime`）；换回后为 0。
+- **成本**：check-guards 从 14.4 s 增至 16.3 s；`checkGuards.test` 从 31 s 增至 34 s，因为它会跑全部判据。r731 扩到 `?.` 后实测 check-guards 约 14 s、`checkGuards.test` 约 28 s，与扩之前持平。
 - **报错时怎么改**：
   - 值确实总在：删掉 `?? 默认值`。默认值只留在源头，即 store 默认、`buildCharConfig` 或 `emptyPanel`。
   - 值真的可能缺：把字段改成可选（加 `?`），让每个读点都看见。
   - 不要换成 `||`、三元或 `=== undefined` 来绕门，那是同一个谎换了个写法。
+  - 报的是 `?.`（r731 起）：值确实总在就改成 `.`。外部库类型说谎（如 `navigator.clipboard`）就在读点写诚实类型 `Clipboard | undefined`，不加豁免。
   - 值来自 JSON：没有豁免（r725）。字段真会缺就改类型，validate:data 的契约校验会报数据实况；新的 JSON 入口登记进 `scripts/lib/json-contract.mjs` 的 `JSON_CONTRACTS`。浏览器存储与文件导入走解析函数。
 
 ## 6. cfg 契约与战斗时间单一通道
@@ -454,8 +508,10 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 | spec 的三个说明性 countSource 取值（holdSeconds / none / windEnergyConsumed） | 只出现在手写模块角色（1571 / 1611 / 1621），spec 资源通道不算它们；收进引擎词表等于为不走这条通道的数据写解析 | 这些角色改走 spec 资源通道时 |
 | `BuffGroup.scope` 缺省时读点口径不一（收集器按局内，hpSourceBreakdown 的 hpPhase 按局外） | 缺 scope 的 29 组里没有生命类效果，当前不影响数值 | 缺 scope 的组出现生命类效果时；或统一时顺手把 29 组补上 scope |
 | 般岳补齐时间上限 `AUTO_TOPUP_TIME_LIMIT_SEC = 200`（= 180 + 20 秒余量）不随战斗时间 | 用户 2026-09-01 定的数（@fact `engine:banyue/补齐时间上限`），推广成「战斗时间 + 20」要改用户口径；r726 已让般岳闪能随战斗时间，战斗时间上只剩这一处 | 用户确认推广；或战斗时间扫描里出现补齐被误判非法 |
-| 同类防御写法：`x != null`、`=== undefined`、`typeof x === 'number'`、`Number.isFinite(x)`，以及套在必填 number 上的 `Number(x)`、`\|\| 默认值` | 语义各有差异（`\|\|` 会吃掉 0），本门只管 `??` | 出现「为绕门改写法」的提交，或这类写法成批出现 |
-| `.vue` 里的 `??` | 需要 vue-tsc 的类型信息，普通 TS program 拿不到 | 展示层出现同类事故时，再考虑用 vue-tsc language service 扫 |
+| 同类防御写法：`x != null`、`=== undefined`、`typeof x === 'number'`、`Number.isFinite(x)`，以及套在必填 number 上的 `Number(x)`、`\|\| 默认值` | 语义各有差异（`\|\|` 会吃掉 0），本门只管 `??` 与 `?.`（r731） | 出现「为绕门改写法」的提交，或这类写法成批出现 |
+| `.vue` 里的 `??` / `?.` | 需要 vue-tsc 的类型信息，普通 TS program 拿不到 | 展示层出现同类事故时，再考虑用 vue-tsc language service 扫 |
 | codemod 留下的属性别名（`const dmgBonus = p.dmgBonus` 等 53 处） | 命名读起来有用；只内联了纯改名的别名（jane、千夏、stunAxis） | 无 |
+| 打开 `noUncheckedIndexedAccess`（元素访问的类型带上 undefined，判据就不必豁免元素访问和它的别名） | r731 实测 vue-tsc 报 2423 处（生产 826 / 测试 1597），改动面太大 | 元素访问上的缺值事故成批出现时 |
+| 调用结果后的死兜底（`f() ?? b` / `f()?.x`，f 的返回类型不含空） | 本门不判调用结果；r731 只手工删了去掉可选链后一眼可见的 2 处 | 成批出现时先普查 |
 
 另外，诺姆 / 莱卡恩剩下的私有字段（`normaStunCount`、`lycaonStunCount` 等）是「本轮失衡次数」，确实只在 converge 才有值，「字段为 undefined = 契约没接上」是有意的编码，不属于本类。
