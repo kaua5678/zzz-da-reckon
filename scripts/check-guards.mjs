@@ -68,6 +68,8 @@ import { scanRecordKeyDeadReads, formatRecordKeyDeadReads } from './lib/record-k
 import { scanIdLiterals, formatIdLiterals, ID_LITERAL_BASELINE, ID_HOME_DIRS } from './lib/id-literal-gate.mjs'
 // 判据 27：字面量类型断言硬门（r719，见 scripts/lib/literal-assertion-gate.mjs 头注释）
 import { scanLiteralAssertions, formatLiteralAssertions, LITERAL_ASSERTION_BASELINE } from './lib/literal-assertion-gate.mjs'
+// 判据 28：死兜底硬门（r723，见 scripts/lib/dead-nullish-gate.mjs 头注释）
+import { scanDeadNullish, formatDeadNullish, DEAD_NULLISH_BASELINE } from './lib/dead-nullish-gate.mjs'
 export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST }
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -1329,6 +1331,19 @@ export function runAllChecks(root = ROOT) {
         + `= ${report.count}/${LITERAL_ASSERTION_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatLiteralAssertions(report),
+    })
+  }
+
+  // ---- 判据 28：死兜底硬门（r723：src 非测试 .ts 有 871 处 `a ?? b` 的 a 类型不含 null/undefined——右侧永远取不到，
+  //      却把必填契约写成「可能缺」；r723 删了引擎内部契约上的 800 处，外部数据类型按信任边界豁免并公示数量）----
+  {
+    const report = scanDeadNullish(root)
+    const exemptedTotal = [...report.exempted.values()].reduce((a, n) => a + n, 0)
+    results.push({
+      name: `dead-nullish gate (判据 28: 类型不含 null/undefined 的值不写 \`?? 默认值\`；真可能缺就把字段改可选) `
+        + `= ${report.count}/${DEAD_NULLISH_BASELINE} / 扫 ${report.scanned} 文件 / 信任边界豁免 ${exemptedTotal} 处 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+      ok: report.ok,
+      detail: report.ok ? [] : formatDeadNullish(report),
     })
   }
 
