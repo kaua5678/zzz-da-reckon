@@ -33,7 +33,7 @@ import type {
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { panelAt } from '@/core/panel'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_ANOMALY_LABEL, standardDot } from '@/core/anomalyPool/helpers'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import { stackDurationSeconds, stackEnergyEvents, stacksToCoverage } from '@/data/wEngineStackCoverage'
 import { elementLabel, buildCharConfig, computeDamageSourceBreakdown } from './resourceCalc/helpers'
@@ -714,26 +714,17 @@ export function createResourceCalc(
   )
 
   const anomalyDamageEvents = computed<AnomalyEventRecord[]>(() => {
-    // CC-337：DoT 参数与单次倍率统一从 STANDARD_DOT_CONFIG / ANOMALY_SINGLE_HIT_MULTIPLIER 读取（与 damagePoolAnomaly 同源）
-    const labels: Record<string, string> = {
-      fire: '灼烧',
-      electric: '感电',
-      ether: '侵蚀',
-      physical: '强击',
-      ice: '碎冰',
-    }
+    // 名字、DoT 跳数与单次倍率都取 core/anomalyPool/helpers，与伤害池（damagePoolAnomaly）同源（r730 起风化也出事件）
     const events: AnomalyEventRecord[] = []
     for (const build of anomalyVirtualPanels.value) {
       const prog = anomalyPoolResult.value?.perElement.find(item => item.element === build.element)
       if (!prog) continue
-      const label = labels[prog.element]
+      const label = STANDARD_ANOMALY_LABEL[prog.element]
       if (!label) continue
-      const dot = STANDARD_DOT_CONFIG[prog.element]
-      const singleMult = ANOMALY_SINGLE_HIT_MULTIPLIER[prog.element] ?? 0
-      const durationBonus = getTeamAnomalyDurationBonus(configStore, catalogStore, prog.element)
+      const dot = standardDot(prog.element, getTeamAnomalyDurationBonus(configStore, catalogStore, prog.element))
       const formula = dot
-        ? `${label} ${dot.tickMultiplier}% × ${dot.totalTicks + Math.round(durationBonus / dot.tickInterval)} tick`
-        : `${label} ${singleMult}% 单次`
+        ? `${label} ${dot.tickMultiplier}% × ${dot.ticks} tick`
+        : `${label} ${ANOMALY_SINGLE_HIT_MULTIPLIER[prog.element]}% 单次`
       events.push({
         id: `anomaly-damage-event-${prog.element}`,
         type: 'anomaly_trigger',

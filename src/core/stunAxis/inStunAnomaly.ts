@@ -6,9 +6,9 @@
  * 跨窗结束余量。消费方：失衡内异放/极性紊乱的次数与元素归因、南宫羽颤音自动层数。
  *
  * 口径：同一元素同一窗口只触发一次异常事件（用户口径「触发一次对应异常」）；异常激活后持续
- * ANOMALY_DURATION 秒（通常覆盖至窗尾）。积蓄速率均匀摊到动作时长内（瞬发招式记在起点）。
+ * 该元素默认持续时间（defaultAnomalyDuration，通常覆盖至窗尾）。积蓄速率均匀摊到动作时长内（瞬发招式记在起点）。
  */
-import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { BUILDUP_THRESHOLD_TABLE, defaultAnomalyDuration, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { getBaseElement } from '@/data/anomalyElement'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 // 下沉（2026-09-13 展示层越层棘轮）：选项表**定义**在 src/data/bossEntryAnomalyOptions.ts，本文件只供引擎侧
@@ -178,7 +178,7 @@ export function computeInStunAnomalyTimeline(input: {
         const id = `${w}:${base}:${ordinal}`
         if (suppressed.has(id)) continue // 该候选被抑制：不清槽，积蓄保留到下一倍数
         triggers.push({ windowIndex: w, element: ev.element, offsetSeconds: ev.time, moveId: ev.moveId, id, srcIndex: ev.srcIndex })
-        activeUntil.set(base, ev.time + (ANOMALY_DURATION[base] ?? 10))
+        activeUntil.set(base, ev.time + defaultAnomalyDuration(base))
         gauges.set(base, 0) // 保留的触发块清空满槽，下一波重新积蓄尝试
         proposedLevel.set(base, 0)
         triggeredHere = true
@@ -265,7 +265,6 @@ export function computeBossAnomalyStateTimeline(input: {
   boundaryStates?: BoundaryStateInjection[]
 }): BossAnomalyStateResult {
   const D = Math.max(0, input.windowDuration)
-  const durOf = (el: string) => ANOMALY_DURATION[getBaseElement(el)] ?? 10
 
   const chainsPerWindow: BossStateSegment[][] = []
   const windPerWindow: BossStateSegment[][] = []
@@ -279,8 +278,8 @@ export function computeBossAnomalyStateTimeline(input: {
     let windEnd = -1
 
     const applyWind = (t: number, el: string) => {
-      if (windEnd >= t) windSegs[windSegs.length - 1].end = t + durOf(el)
-      else windSegs.push({ start: t, end: t + durOf(el), element: el })
+      if (windEnd >= t) windSegs[windSegs.length - 1].end = t + defaultAnomalyDuration(el)
+      else windSegs.push({ start: t, end: t + defaultAnomalyDuration(el), element: el })
       windEnd = windSegs[windSegs.length - 1].end
     }
 
@@ -291,7 +290,7 @@ export function computeBossAnomalyStateTimeline(input: {
       if (base === 'wind') {
         applyWind(0, b.element)
       } else {
-        std = { start: 0, end: durOf(b.element), element: b.element }
+        std = { start: 0, end: defaultAnomalyDuration(b.element), element: b.element }
         chain.push(std)
       }
     }
@@ -309,18 +308,18 @@ export function computeBossAnomalyStateTimeline(input: {
       }
       if (!std || std.end <= t) {
         // 无活跃状态（含过期后重激活）：不算紊乱
-        std = { start: t, end: t + durOf(trig.element), element: trig.element }
+        std = { start: t, end: t + defaultAnomalyDuration(trig.element), element: trig.element }
         chain.push(std)
         continue
       }
       if (getBaseElement(std.element) === base) {
-        std.end = t + durOf(trig.element) // 同元素刷新
+        std.end = t + defaultAnomalyDuration(trig.element) // 同元素刷新
         continue
       }
       // 替换型紊乱：归因取被替换的原状态（当前时点状态），随后状态切到新元素
       disorders.push({ windowIndex: w, time: t, element: std.element })
       std.end = t // 截断原状态时段，避免新旧重叠
-      std = { start: t, end: t + durOf(trig.element), element: trig.element }
+      std = { start: t, end: t + defaultAnomalyDuration(trig.element), element: trig.element }
       chain.push(std)
     }
     // 截断到窗口时长内展示（状态本身只在本窗有意义——跨窗继承已移除）

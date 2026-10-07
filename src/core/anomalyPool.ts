@@ -81,7 +81,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     return simulateTriggerCount(windBu, 'wind', bossCoeff, anomalyCoeff).triggerCount
   })()
   const effectiveTime = Math.max(0, totalTime - invincibleTime)
-  const preWindTime = Math.min(preWindTriggerCount * (ANOMALY_DURATION.wind ?? 30), effectiveTime)
+  const preWindTime = Math.min(preWindTriggerCount * ANOMALY_DURATION.wind, effectiveTime)
   const preWindRate = effectiveTime > 0 ? preWindTime / effectiveTime : 0
   const preTurbulenceCount = (() => {
     if (!hasWindChar || preWindRate <= 0) return 0
@@ -232,7 +232,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   //   (1 - windCoverageRate) 为非风窗口：正常异常/紊乱
   //   windCoverageRate 为风化窗口：非风触发改走乱流
   const windTriggerCount = elementTriggerCounts['wind'] ?? 0
-  const windTime = Math.min(windTriggerCount * (ANOMALY_DURATION.wind ?? 30), effectiveTime)
+  const windTime = Math.min(windTriggerCount * ANOMALY_DURATION.wind, effectiveTime)
   const windCoverageRate = effectiveTime > 0 ? windTime / effectiveTime : 0
   const turbulenceCap = Math.floor(windTime / TURBULENCE_CD_SECONDS)
 
@@ -263,7 +263,8 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
         'normalNonWindElements[].element',
         'windCoverageRate',
         'ANOMALY_DURATION',
-        'DISORDER_FORMULAS',
+        'DISORDER_BASE_MULTIPLIER',
+        'ANOMALY_TICK',
         'PanelValues.disorderBaseMultiplierBonus',
         'PanelValues.disorderDamageBonus',
       ],
@@ -321,7 +322,8 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
         'turbulenceNonWindElements[].triggerCount',
         'windCoverageRate',
         'turbulenceCap',
-        'TURBULENCE_FORMULAS',
+        'TURBULENCE_BASE_MULTIPLIER',
+        'ANOMALY_TICK',
         'VelinaCorrosionState.boostedTurbulenceCount',
         'TurbulenceDamageDetail.boostedCount',
         'windCharSlot',

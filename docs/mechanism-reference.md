@@ -84,7 +84,7 @@
 ## 5. 紊乱学（第六期）
 
 - **触发条件**：新异常覆盖老异常时触发紊乱；同属性异常可覆盖并触发；不同属性可连续触发多次；紊乱有独立 3 秒冷却。异常伤害本身**不产生**失衡，紊乱**可以**。
-- 各属性紊乱倍率（基础倍率 + 时间系数）、乱流倍率、异常默认持续时间（烈霜 20s / 风化 30s / 其余 10s）的**唯一事实源** = `src/core/anomalyPool/helpers.ts#DISORDER_FORMULAS`、`TURBULENCE_FORMULAS`、`ANOMALY_DURATION`。紊乱 T 用该元素自身默认持续时间（角色专属延时只计入自己的紊乱 T，不分给别人）；有风属性时不计算紊乱（触发乱流）。
+- 各属性紊乱倍率（基础倍率 + 时间系数）、乱流倍率、异常默认持续时间（烈霜 20s / 风化 30s / 其余 10s）的**唯一事实源** = `src/core/anomalyPool/helpers.ts`：`ANOMALY_TICK`（各异常的一跳 = 每跳倍率 / 跳间隔；紊乱 / 乱流的时间系数 floor(T / 跳间隔) × 每跳与灼烧 / 感电 / 侵蚀的 DoT 共用这一张，r730 前三张表各抄一遍）、`DISORDER_BASE_MULTIPLIER` / `TURBULENCE_BASE_MULTIPLIER`（基础倍率）、`ANOMALY_DURATION`（按元素查用 `defaultAnomalyDuration`，未知元素按 10 s 的兜底只写在那里）。改跳值 / 加元素只改这几张表，消费方不另写表。紊乱 T 用该元素自身默认持续时间（角色专属延时只计入自己的紊乱 T，不分给别人）；有风属性时不计算紊乱（触发乱流）。
 - **紊乱次数**：`min(sum - 1, 2 × (sum - max))`（sum = 各元素触发次数和，max = 最大元素次数；实现唯一事实源 = `src/core/anomalyPool.ts` 的紊乱次数公式与注释）。**否决记录**：旧公式 `2 × min(floor(sum/2), sum-max)` 在 3+ 元素且无单一元素过半时多算 1 次（4火4电算出 8、实际最多 7）→ 已否决，勿回退。
 - **异常状态覆盖率**：`覆盖率 = (总DoT时间 - boss无敌时间) / 总战斗时间`；物理畏缩覆盖率用于增幅失衡值（实际增幅 = 7.5% × 覆盖率）。实现唯一事实源 = `src/core/anomalyPool.ts` 覆盖率计算。
 - **月城柳极性紊乱（2026-09-14 按代码口径改写）**：倍率 = **原紊乱伤害的比例**——C0 = 15%；影画2 = 20% + 每额外突刺 15%（上限 2 次）；影画6 提升上限至 4 次；触发次数 ≈ 强特次数。唯一事实源 `src/mechanics/agents/yanagi.ts:35`（`YANAGI_POLAR_RATIO_C0` 等常量）。旧档「基础倍率固定 100%、与自身精通呈平方关系」的表述与实现不一致，已按实现改写（如需改口径先改 yanagi.ts）。
@@ -193,7 +193,7 @@
 - **风化**：打满风异常积蓄后触发；一次性风化伤害（基础倍率 1250%）；施加持续 30 秒的风化状态；期间风属性直接攻击伤害提升。
 - **浸染**：风化状态下首次受其他属性伤害时触发，染色效果（同系数直伤提升）；浸染属性随乱流属性转换。
 - **乱流**：风化与其他属性异常叠加时触发；范围伤害，继承非风属性的异常质量、属性、伤害性质；**风化状态下不触发常规紊乱，触发乱流**；可多次触发（3 秒 CD；单次 30 秒风化可容纳 10 次，计算器按多次风化窗口合并不封顶）。风化状态期间 DoT 与冻结不生效（被乱流吸收），风化结束后照常：计算器按风化覆盖率 `windCoverageRate` 拆窗，非风窗口 `(1 − windCoverageRate)` 内异常 / DoT / 紊乱照常，风化窗口内非风触发（含物理）改走乱流，强击 / 极性强击这类即时伤害照常结算（r713 订正：旧写「有风属性时 DoT 伤害归零」，与实现不符）。
-- **实现唯一事实源**：`src/core/anomalyPool/helpers.ts#TURBULENCE_FORMULAS`（各属性乱流倍率公式）+ `BUILDUP_CAP_TABLE.wind`（风特殊积蓄上限）；有风属性时按风化覆盖率拆窗（`src/core/anomalyPool.ts`：紊乱只取非风窗口、乱流取风化窗口）；状态时长账 `helpers.ts#calcCoverage`（所有非风状态按非风窗口折算）；伤害侧 DoT / 冻结折算 `helpers.ts#windEffectiveTriggerCount`。乱流喧响触发者归属风底属性提供者，队友按 50% 伴随获得。
+- **实现唯一事实源**：`src/core/anomalyPool/helpers.ts#TURBULENCE_BASE_MULTIPLIER` + `ANOMALY_TICK`（乱流倍率 = 基础 + 剩余时间按跳折算，折算与紊乱共用 `remainingTickMultiplier`）+ `BUILDUP_CAP_TABLE.wind`（风特殊积蓄上限）；有风属性时按风化覆盖率拆窗（`src/core/anomalyPool.ts`：紊乱只取非风窗口、乱流取风化窗口）；状态时长账 `helpers.ts#calcCoverage`（所有非风状态按非风窗口折算）；伤害侧 DoT / 冻结折算 `helpers.ts#windEffectiveTriggerCount`。乱流喧响触发者归属风底属性提供者，队友按 50% 伴随获得。
 
 ### 8.5 风化被极性紊乱
 

@@ -21,7 +21,7 @@
  */
 import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from './poolDamage'
 import { panelAt } from '@/core/panel'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, isCorrosionCycloneRelease, windEffectiveTriggerCount } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_ANOMALY_LABEL, isCorrosionCycloneRelease, standardDot, windEffectiveTriggerCount } from '@/core/anomalyPool/helpers'
 import { corrosionOwner } from '@/core/anomalyPool/corrosion'
 import { elementLabel, parseReleaseMultiplier, type DamagePoolRow } from './helpers'
 // 异常面板簇（D 簇）与招式行取值簇（C 簇）：同目录兄弟模块直接指真实现。
@@ -185,58 +185,22 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     })
   }
 
-  const anomalyDamageSpecs: Record<string, {
-    label: string
-    perTick?: number
-    tickInterval?: number
-    baseTicks?: number
-    single?: number
-    baseFormula: string
-  }> = {
-    // 数值来源统一引 core/anomalyPool/helpers（规则 11）：DoT 三项取 STANDARD_DOT_CONFIG，
-    // 单次倍率取 ANOMALY_SINGLE_HIT_MULTIPLIER；baseFormula 改插值，渲染结果与原字面量逐字相同。
-    fire: {
-      label: '灼烧',
-      perTick: STANDARD_DOT_CONFIG.fire.tickMultiplier,
-      tickInterval: STANDARD_DOT_CONFIG.fire.tickInterval,
-      baseTicks: STANDARD_DOT_CONFIG.fire.totalTicks,
-      baseFormula: `灼烧基础 ${STANDARD_DOT_CONFIG.fire.tickMultiplier}% × ${STANDARD_DOT_CONFIG.fire.totalTicks} tick（10秒/${STANDARD_DOT_CONFIG.fire.tickInterval}秒）`,
-    },
-    electric: {
-      label: '感电',
-      perTick: STANDARD_DOT_CONFIG.electric.tickMultiplier,
-      tickInterval: STANDARD_DOT_CONFIG.electric.tickInterval,
-      baseTicks: STANDARD_DOT_CONFIG.electric.totalTicks,
-      baseFormula: `感电基础 ${STANDARD_DOT_CONFIG.electric.tickMultiplier}% × ${STANDARD_DOT_CONFIG.electric.totalTicks} tick`,
-    },
-    ether: {
-      label: '侵蚀',
-      perTick: STANDARD_DOT_CONFIG.ether.tickMultiplier,
-      tickInterval: STANDARD_DOT_CONFIG.ether.tickInterval,
-      baseTicks: STANDARD_DOT_CONFIG.ether.totalTicks,
-      baseFormula: `侵蚀基础 ${STANDARD_DOT_CONFIG.ether.tickMultiplier}% × ${STANDARD_DOT_CONFIG.ether.totalTicks} tick（10秒/${STANDARD_DOT_CONFIG.ether.tickInterval}秒）`,
-    },
-    physical: { label: '强击', single: ANOMALY_SINGLE_HIT_MULTIPLIER.physical, baseFormula: `强击 ${ANOMALY_SINGLE_HIT_MULTIPLIER.physical}% 单次` },
-    ice: { label: '碎冰', single: ANOMALY_SINGLE_HIT_MULTIPLIER.ice, baseFormula: `碎冰 ${ANOMALY_SINGLE_HIT_MULTIPLIER.ice}% 单次（冻结次数=碎冰次数）` },
-    wind: { label: '风化', single: ANOMALY_SINGLE_HIT_MULTIPLIER.wind, baseFormula: `风化 ${ANOMALY_SINGLE_HIT_MULTIPLIER.wind}% 单次` },
-  }
+  // 标准异常：名字、DoT 跳数与单次倍率都取 core/anomalyPool/helpers（规则 11；与结果页事件同源）。
   // 风化窗口内 DoT 与冻结不结算、强击照常：规则单源 `windEffectiveTriggerCount`（core/anomalyPool/helpers）
   for (const prog of anomalyPoolResult?.perElement ?? []) {
-    const spec = anomalyDamageSpecs[prog.element]
-    if (!spec || prog.triggerCount <= 0) continue
+    const label = STANDARD_ANOMALY_LABEL[prog.element]
+    if (!label || prog.triggerCount <= 0) continue
     const effectiveTriggerCount = windEffectiveTriggerCount(prog.element, prog.triggerCount, windRate)
     if (effectiveTriggerCount <= 0) continue
     const build = buildAnomalyVirtualPanel(prog, damagePanels, configStore, catalogStore)
     if (!build) continue
 
     const durationBonus = getTeamAnomalyDurationBonus(configStore, catalogStore, prog.element)
-    let multiplier = spec.single ?? 0
-    let formula = spec.baseFormula
-    if (!spec.single && spec.perTick && spec.tickInterval && spec.baseTicks) {
-      const ticks = spec.baseTicks + (spec.tickInterval > 0 ? Math.round(durationBonus / spec.tickInterval) : 0)
-      multiplier = spec.perTick * ticks
-      formula = `${spec.perTick}% × ${ticks} tick${durationBonus > 0 ? `（含${durationBonus}秒延长）` : ''}`
-    }
+    const dot = standardDot(prog.element, durationBonus)
+    let multiplier = dot ? dot.tickMultiplier * dot.ticks : ANOMALY_SINGLE_HIT_MULTIPLIER[prog.element]
+    let formula = dot
+      ? `${dot.tickMultiplier}% × ${dot.ticks} tick${durationBonus > 0 ? `（含${durationBonus}秒延长）` : ''}`
+      : `${label} ${multiplier}% 单次${prog.element === 'ice' ? '（冻结次数=碎冰次数）' : ''}`
 
     // 风化事件倍率加成：派发给挂出 `windAnomalyBonus` 能力的在队模块（CC-36b 2026-09-27；现为维琳娜 6 命），面板取该模块
     // 自己的槽。r711：原按「第一个风属性槽」派发（当时队里至多一个风角色）⇒ 双风队维琳娜排后时加成整个丢失。
@@ -274,10 +238,10 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         slot: entry.slot,
         agentId: configStore.team[entry.slot]?.agentId ?? '',
         agentName: agentName(configStore.team[entry.slot]?.agentId ?? '', entry.slot),
-        type: spec.label as DamagePoolRow['type'],
+        type: label,
         name: settlementEntries.length > 1
-          ? `${spec.label}（${elementLabel(prog.element)}·${entry.name}结算）`
-          : `${spec.label}（${elementLabel(prog.element)}虚拟面板）`,
+          ? `${label}（${elementLabel(prog.element)}·${entry.name}结算）`
+          : `${label}（${elementLabel(prog.element)}虚拟面板）`,
         element: prog.element,
         source: `属性异常${settlementEntries.length > 1 ? '按积蓄占比分摊' : '虚拟面板'}结算`,
         count: entry.triggerCount,

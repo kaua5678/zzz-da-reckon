@@ -46,7 +46,6 @@ import type {
   AnomalyCoverageResult,
   DisorderDamageResult, DisorderDamageDetail,
   TurbulenceDamageResult, TurbulenceDamageDetail,
-  DisorderFormula, TurbulenceFormula,
   CoweringDotResult, CorrosionSource,
   AnomalyElementTriggers, CoweringConfig, DamageCalcConfig,
 } from '@/types/resource'
@@ -138,44 +137,51 @@ export const ANOMALY_DURATION: Record<string, number> = {
   frostfire: 20,  // 烈霜，冰属性特殊变体，20秒
 }
 
-// ============ 紊乱倍率公式表（新增） ============
-
-/**
- * 紊乱倍率公式表
- *
- * 紊乱倍率 = baseMultiplier + floor(T / tickInterval) × tickMultiplier
- * 其中 T = 被覆盖异常的剩余时间（秒）
- *
- * 数据来源：啵啵獭异常学 - 紊乱倍率公式
- * 注意：紊乱不继承异常增伤和异常暴击
- */
-export const DISORDER_FORMULAS: Record<string, DisorderFormula> = {
-  physical:  { baseMultiplier: 450, tickMultiplier: 7.5,  tickInterval: 1   },
-  ice:       { baseMultiplier: 450, tickMultiplier: 7.5,  tickInterval: 1   },
-  fire:      { baseMultiplier: 450, tickMultiplier: 50,   tickInterval: 0.5 },
-  electric:  { baseMultiplier: 450, tickMultiplier: 125,  tickInterval: 1   },
-  ether:     { baseMultiplier: 450, tickMultiplier: 62.5, tickInterval: 0.5 },
-  frostfire: { baseMultiplier: 600, tickMultiplier: 75,   tickInterval: 1   },  // 烈霜
+/** 元素的默认异常持续时间（秒）：变种按基础元素取，表里没有的元素按 10 秒（兜底只写在这里） */
+export function defaultAnomalyDuration(element: string): number {
+  return ANOMALY_DURATION[getBaseElement(element)] ?? 10
 }
 
-// ============ 乱流倍率公式表（新增） ============
+// ============ 异常按跳计价（紊乱 / 乱流 / DoT 共用） ============
 
 /**
- * 乱流倍率公式表
+ * 各异常的「一跳」：每跳倍率（%）与跳间隔（秒）。紊乱、乱流、DoT 都读这一张（r730 前三张表各抄一遍、逐行相同）：
+ * - 紊乱 / 乱流的 T 段：被覆盖异常剩余 T 秒按跳折算 = floor(T / tickInterval) × tickMultiplier（remainingTickMultiplier）；
+ * - 灼烧 / 感电 / 侵蚀的 DoT：默认持续时间内逐跳结算（standardDot），单跳倍率也是它们的单次基底（ANOMALY_SINGLE_HIT_MULTIPLIER）。
+ * 物理 / 冰 / 烈霜没有逐跳伤害，只在紊乱 / 乱流里按跳折算剩余时间。
  *
- * 乱流倍率 = baseMultiplier + floor(T / tickInterval) × tickMultiplier
- * 其中 T = 非风异常默认持续时间（风化不被覆盖，T可吃满）
- *
- * 数据来源：啵啵獭异常学 - 乱流倍率公式
- * 注意：乱流继承异常增伤和异常暴击
+ * 数据来源：啵啵獭异常学 - 紊乱 / 乱流倍率公式；NGA 公式帖（DoT）
  */
-export const TURBULENCE_FORMULAS: Record<string, TurbulenceFormula> = {
-  physical:  { baseMultiplier: 800,  tickMultiplier: 7.5,  tickInterval: 1   },
-  ice:       { baseMultiplier: 1300, tickMultiplier: 7.5,  tickInterval: 1   },
-  fire:      { baseMultiplier: 900,  tickMultiplier: 50,   tickInterval: 0.5 },
-  electric:  { baseMultiplier: 650,  tickMultiplier: 125,  tickInterval: 1   },
-  ether:     { baseMultiplier: 650,  tickMultiplier: 62.5, tickInterval: 0.5 },
-  frostfire: { baseMultiplier: 0,    tickMultiplier: 75,   tickInterval: 1   },
+const ANOMALY_TICK: Record<string, { tickMultiplier: number; tickInterval: number }> = {
+  physical:  { tickMultiplier: 7.5,  tickInterval: 1   },
+  ice:       { tickMultiplier: 7.5,  tickInterval: 1   },
+  fire:      { tickMultiplier: 50,   tickInterval: 0.5 },  // 灼烧 50%/0.5s
+  electric:  { tickMultiplier: 125,  tickInterval: 1   },  // 感电 125%/s
+  ether:     { tickMultiplier: 62.5, tickInterval: 0.5 },  // 侵蚀 62.5%/0.5s
+  frostfire: { tickMultiplier: 75,   tickInterval: 1   },  // 烈霜
+}
+
+/** 被覆盖异常剩余 T 秒按跳折算的倍率（%）= floor(T / tickInterval) × tickMultiplier；紊乱与乱流共用，表里没有的元素按冰 */
+function remainingTickMultiplier(baseElement: string, T: number): number {
+  const tick = ANOMALY_TICK[baseElement] ?? ANOMALY_TICK.ice
+  return Math.floor(T / tick.tickInterval) * tick.tickMultiplier
+}
+
+/**
+ * 紊乱基础倍率（%）：紊乱倍率 = 基础 + 基础倍率提升 + remainingTickMultiplier(元素, T)，T = 被覆盖异常的剩余时间（秒）。
+ * 数据来源：啵啵獭异常学 - 紊乱倍率公式。注意：紊乱不继承异常增伤和异常暴击
+ */
+const DISORDER_BASE_MULTIPLIER: Record<string, number> = {
+  physical: 450, ice: 450, fire: 450, electric: 450, ether: 450,
+  frostfire: 600,  // 烈霜
+}
+
+/**
+ * 乱流基础倍率（%）：乱流倍率 = 基础 + remainingTickMultiplier(元素, T)，T = 非风异常默认持续时间（风化不被覆盖，T 可吃满）。
+ * 数据来源：啵啵獭异常学 - 乱流倍率公式。注意：乱流继承异常增伤和异常暴击
+ */
+const TURBULENCE_BASE_MULTIPLIER: Record<string, number> = {
+  physical: 800, ice: 1300, fire: 900, electric: 650, ether: 650, frostfire: 0,
 }
 
 /** 无维琳娜时的空风蚀状态（队里有别的风角色时的逐位等价替身：boosted=0 ⇒ 乱流不加 +150%） */
@@ -532,7 +538,7 @@ export function getAnomalyDuration(panel: PanelValues, element: string): number 
         : baseElement === 'ether'
           ? panel.etherAnomalyDurationBonusSeconds
           : 0
-  return (ANOMALY_DURATION[baseElement] ?? 10)
+  return defaultAnomalyDuration(baseElement)
     + panel.anomalyDurationBonusSeconds
     + elementBonus
 }
@@ -886,7 +892,7 @@ export function calcCoverage(
   const effectiveTime = Math.max(0, totalTime - invincibleTime)
   // 风化实际覆盖率：风异常总时长 / 有效战斗时间，最高 1
   const windCount = elementTriggerCounts['wind'] ?? 0
-  const windDuration = elementDurations['wind'] ?? ANOMALY_DURATION.wind ?? 30
+  const windDuration = elementDurations['wind'] ?? ANOMALY_DURATION.wind
   const windTotalTime = Math.min(windCount * windDuration, effectiveTime)
   const windCoverageRate = effectiveTime > 0 ? windTotalTime / effectiveTime : 0
 
@@ -894,7 +900,7 @@ export function calcCoverage(
   let totalDoTTime = 0
 
   for (const [element, count] of Object.entries(elementTriggerCounts)) {
-    const duration = elementDurations[element] ?? ANOMALY_DURATION[getBaseElement(element)] ?? 10
+    const duration = elementDurations[element] ?? defaultAnomalyDuration(element)
     // 风化覆盖的时间窗内非风状态不生效；其余时间按正常异常处理。
     const dotTime = element === 'wind'
       ? count * duration
@@ -916,7 +922,7 @@ export function calcCoverage(
   // 畏缩真实覆盖率（供失衡加成）= 畏缩覆盖率 × (1 − 其他异常覆盖率)，模拟异常状态互斥吞没
   // 畏缩总时间 = (正常强击次数 + 极性强击次数) × 单次畏缩时长（极强与普通畏缩不分开）
   const physicalStunCount = (elementTriggerCounts['physical'] ?? 0) + (elementTriggerCounts['physical_polar_assault'] ?? 0)
-  const physicalDuration = elementDurations['physical'] ?? ANOMALY_DURATION[getBaseElement('physical')] ?? 10
+  const physicalDuration = elementDurations['physical'] ?? ANOMALY_DURATION.physical
   const physicalTotalTime = physicalStunCount * physicalDuration * (hasWindChar ? 1 - windCoverageRate : 1)
   const physCov = totalTime > 0 ? Math.min(1, Math.max(0, physicalTotalTime - invincibleTime) / totalTime) : 0
   // 其他异常覆盖率：非物理类（极强属于畏缩合并，不计数）
@@ -932,8 +938,8 @@ export function calcCoverage(
   const iceCount = elementTriggerCounts['ice'] ?? 0
   const frostfireCount = elementTriggerCounts['frostfire'] ?? 0
   const frostTotalTime = (
-    iceCount * (elementDurations['ice'] ?? ANOMALY_DURATION.ice ?? 10) +
-    frostfireCount * (elementDurations['frostfire'] ?? ANOMALY_DURATION.frostfire ?? 20)
+    iceCount * (elementDurations['ice'] ?? ANOMALY_DURATION.ice) +
+    frostfireCount * (elementDurations['frostfire'] ?? ANOMALY_DURATION.frostfire)
   ) * (hasWindChar ? 1 - windCoverageRate : 1)
   const frostCov = totalTime > 0 ? Math.min(1, Math.max(0, frostTotalTime - invincibleTime) / totalTime) : 0
   let frostOtherCoverage = 0
@@ -994,15 +1000,15 @@ export function calcDisorderDamage(
     // T = 该元素异常在施加者身上的剩余时间；异常持续时间加成只影响这里，不影响积蓄
     const T = getAnomalyDuration(applierPanel, element)
 
-    // 紊乱倍率 = (baseMultiplier + 基础倍率提升) + floor(T / tickInterval) × tickMultiplier
-    const formula = DISORDER_FORMULAS[getBaseElement(element)] ?? DISORDER_FORMULAS.ice
+    // 紊乱倍率 = (基础倍率 + 基础倍率提升) + 剩余 T 秒按跳折算
+    const baseElement = getBaseElement(element)
     let disorderMultiplier =
-      formula.baseMultiplier +
+      (DISORDER_BASE_MULTIPLIER[baseElement] ?? DISORDER_BASE_MULTIPLIER.ice) +
       applierPanel.disorderBaseMultiplierBonus +
-      Math.floor(T / formula.tickInterval) * formula.tickMultiplier
+      remainingTickMultiplier(baseElement, T)
 
     // 爱丽丝畏缩机制：紊乱覆盖物理异常时，每剩余1秒物理异常时长 +bonusPerSec%，上限 bonusMax%
-    if (getBaseElement(element) === 'physical' && config.coweringConfig) {
+    if (baseElement === 'physical' && config.coweringConfig) {
       const coweringBonus = Math.min(
         T * config.coweringConfig.disorderBonusPerSec,
         config.coweringConfig.disorderBonusMax,
@@ -1125,11 +1131,11 @@ export function calcTurbulenceDamage(
     // T = 非风异常剩余时间；异常持续时间加成只影响这里，不影响积蓄
     const T = getAnomalyDuration(applierPanel, element)
 
-    // 乱流倍率 = baseMultiplier + floor(T / tickInterval) × tickMultiplier；维琳娜2风蚀强化在倍率区加算+150%。
-    const formula = TURBULENCE_FORMULAS[getBaseElement(element)] ?? TURBULENCE_FORMULAS.ice
+    // 乱流倍率 = 基础倍率 + 剩余 T 秒按跳折算；维琳娜2风蚀强化在倍率区加算+150%。
+    const baseElement = getBaseElement(element)
     const turbulenceMultiplier =
-      formula.baseMultiplier +
-      Math.floor(T / formula.tickInterval) * formula.tickMultiplier
+      (TURBULENCE_BASE_MULTIPLIER[baseElement] ?? TURBULENCE_BASE_MULTIPLIER.ice) +
+      remainingTickMultiplier(baseElement, T)
 
     // 该元素的乱流次数（按CD上限缩放）
     const events = Math.floor(triggerCount * scale)
@@ -1197,6 +1203,48 @@ export function calcTurbulenceDamage(
   }
 }
 
+// ============ 标准异常伤害（灼烧/感电/侵蚀逐跳，强击/碎冰/风化单次） ============
+
+type StandardAnomalyLabel = '灼烧' | '感电' | '侵蚀' | '强击' | '碎冰' | '风化'
+
+/** 标准异常伤害的名字（按原样元素取，变种不算）；伤害池行与结果页事件共用 */
+export const STANDARD_ANOMALY_LABEL: Readonly<Record<string, StandardAnomalyLabel>> = {
+  fire: '灼烧', electric: '感电', ether: '侵蚀', physical: '强击', ice: '碎冰', wind: '风化',
+}
+
+/**
+ * 有逐跳伤害（DoT）的异常。物理（畏缩）、冰（霜寒）、风（风化）没有 DoT，只有状态效果：
+ *   - 畏缩：敌人受到失衡值+7.5%，持续10秒
+ *   - 霜寒：敌人受到暴击伤害+10%，持续10秒（冰）/ 20秒（烈霜）
+ *   - 风化：提升风属性直伤，持续30秒
+ */
+const DOT_ELEMENTS: ReadonlySet<string> = new Set(['fire', 'electric', 'ether'])
+
+/**
+ * DoT 的每跳倍率与跳数：跳数 = 默认持续时间 / 跳间隔 + 延长秒数按跳四舍五入（灼烧 10 s / 0.5 s = 20 跳）。
+ * 不是 DoT 的元素返回 undefined（取 ANOMALY_SINGLE_HIT_MULTIPLIER 单次倍率）；元素按原样匹配，变种不算。
+ */
+export function standardDot(element: string, durationBonusSeconds: number): { tickMultiplier: number; ticks: number } | undefined {
+  if (!DOT_ELEMENTS.has(element)) return undefined
+  const { tickMultiplier, tickInterval } = ANOMALY_TICK[element]
+  return { tickMultiplier, ticks: ANOMALY_DURATION[element] / tickInterval + Math.round(durationBonusSeconds / tickInterval) }
+}
+
+/**
+ * 异常「单次/单跳」倍率（%）：异放/单次结算类事件的基底倍率。
+ * DoT 类取单跳倍率，单次类（强击/碎冰/风化）取单次倍率。
+ * 与「原属性异常伤害 × 初始比例」口径对齐：例如风 1250%×1.4%=17.5%、火 50%×35.7%=17.85%，
+ * 各元素 × 初始比例 ≈ 17.5%，再乘掌控/10 转模（用户确认口径）。
+ */
+export const ANOMALY_SINGLE_HIT_MULTIPLIER: Record<string, number> = {
+  fire: ANOMALY_TICK.fire.tickMultiplier,               // 50
+  electric: ANOMALY_TICK.electric.tickMultiplier,       // 125
+  ether: ANOMALY_TICK.ether.tickMultiplier,             // 62.5
+  physical: 713,                                        // 强击 713% 单次
+  ice: 500,                                             // 碎冰 500% 单次
+  wind: 1250,                                           // 风化 1250% 单次
+}
+
 // ============ 爱丽丝畏缩 DOT 计算 ============
 
 /**
@@ -1207,41 +1255,9 @@ export function calcTurbulenceDamage(
  *
  * @param physicalContribs 物理元素积蓄贡献明细（用于找到施加者面板）
  * @param panels 各角色面板
- * @param physicalCoverageTime 物理异常覆盖时间（秒）
+ * @param dotCoverageTime 物理异常覆盖时间（秒）
  * @param config 伤害计算全局配置
  */
-// ============ 标准元素 DOT 配置（灼烧/感电/侵蚀） ============
-
-/**
- * 各元素 DOT 参数
- *
- * 数据来源：啵啵獭异常学 + NGA 公式帖
- * 注意：物理（畏缩）、冰（霜寒）、风（风化）没有 DOT 伤害，只有特殊效果
- *   - 畏缩：敌人受到失衡值+7.5%，持续10秒
- *   - 霜寒：敌人受到暴击伤害+10%，持续10秒（冰）/ 20秒（烈霜）
- *   - 风化：提升风属性直伤，持续30秒
- */
-export const STANDARD_DOT_CONFIG: Record<string, { tickMultiplier: number; tickInterval: number; totalTicks: number }> = {
-  fire:     { tickMultiplier: 50,   tickInterval: 0.5, totalTicks: 20 },  // 灼烧 50%/0.5s，10秒共20tick
-  electric: { tickMultiplier: 125,  tickInterval: 1,   totalTicks: 10 },  // 感电 125%/tick，10秒共10tick
-  ether:    { tickMultiplier: 62.5, tickInterval: 0.5, totalTicks: 20 },  // 侵蚀 62.5%/0.5s，10秒共20tick
-}
-
-/**
- * 异常「单次/单跳」倍率（%）：异放/单次结算类事件的基底倍率。
- * DoT 类取单跳倍率，单次类（强击/碎冰/风化）取单次倍率。
- * 与「原属性异常伤害 × 初始比例」口径对齐：例如风 1250%×1.4%=17.5%、火 50%×35.7%=17.85%，
- * 各元素 × 初始比例 ≈ 17.5%，再乘掌控/10 转模（用户确认口径）。
- */
-export const ANOMALY_SINGLE_HIT_MULTIPLIER: Record<string, number> = {
-  fire: STANDARD_DOT_CONFIG.fire.tickMultiplier,        // 50
-  electric: STANDARD_DOT_CONFIG.electric.tickMultiplier, // 125
-  ether: STANDARD_DOT_CONFIG.ether.tickMultiplier,      // 62.5
-  physical: 713,                                        // 强击 713% 单次
-  ice: 500,                                             // 碎冰 500% 单次
-  wind: 1250,                                           // 风化 1250% 单次
-}
-
 export function calcCoweringDot(
   physicalContribs: AnomalyContribution[],
   panels: PanelValues[],

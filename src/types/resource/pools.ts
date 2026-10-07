@@ -187,16 +187,6 @@ export interface AnomalyCoverageResult {
 
 // ============ 紊乱伤害 ============
 
-/** 紊乱倍率公式参数 */
-export interface DisorderFormula {
-  /** 基础倍率（百分比） */
-  baseMultiplier: number
-  /** 每tick时间系数（百分比） */
-  tickMultiplier: number
-  /** tick间隔（秒），用于 floor(T/interval) */
-  tickInterval: number
-}
-
 /** 单次紊乱伤害详情 */
 export interface DisorderDamageDetail {
   /** 被覆盖的异常元素 */
@@ -304,16 +294,6 @@ export interface CoweringDotResult {
 }
 
 // ============ 乱流伤害 ============
-
-/** 乱流倍率公式参数 */
-export interface TurbulenceFormula {
-  /** 基础倍率（百分比） */
-  baseMultiplier: number
-  /** 每tick时间系数（百分比） */
-  tickMultiplier: number
-  /** tick间隔（秒） */
-  tickInterval: number
-}
 
 /** 单次乱流伤害详情 */
 export interface TurbulenceDamageDetail {

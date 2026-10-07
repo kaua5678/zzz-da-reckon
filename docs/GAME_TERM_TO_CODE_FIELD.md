@@ -166,7 +166,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 异常伤害提升 X% | `anomalyDmgBonus` | 异常伤害增伤，影响 DOT/初始化伤害 |
 | 紊乱伤害提升 X% | `disorderDamageBonus` | 紊乱增伤，替代 `anomalyDmgBonus`，不影响 DOT |
 | 异放伤害提升 X% | `anomalyReleaseDmgBonus` | 异放专用独立增伤区，只在 settlementType=release 时进入公式 |
-| 灼烧/感电/侵蚀 DOT | `damagePoolAnomaly.ts` DoT 行（虚拟面板·按积蓄占比分摊） | `STANDARD_DOT_CONFIG` 注册参数；core `calcStandardDotDamage` 已于 CC-D2 删除 |
+| 灼烧/感电/侵蚀 DOT | `damagePoolAnomaly.ts` DoT 行（虚拟面板·按积蓄占比分摊） | 每跳倍率 / 跳间隔取 `ANOMALY_TICK`，跳数 = 默认持续时间 / 跳间隔 + 延长秒数按跳四舍五入（`core/anomalyPool/helpers.ts#standardDot`，伤害池行与结果页事件共用；r730 前的 `STANDARD_DOT_CONFIG` 已并入）；core `calcStandardDotDamage` 已于 CC-D2 删除 |
 | 风化/畏缩/霜寒 | 无逐跳 DOT | 只有持续状态（buff）：风化 = **一次性伤害 1250%** + 30s 状态（见 8.2），畏缩/霜寒纯状态；风化有浸染(infection)直伤+10%独立乘区 |
 | X 属性异常伤害提升 X% | `windAnomalyDmgBonus` 等 | 元素专属异常增伤 |
 | 紊乱基础倍率提升 X 点 | `disorderBaseMultiplierBonus` | 加到紊乱基础倍率（如 450→700） |
