@@ -94,6 +94,7 @@
 5. **新角色配装推荐缺专武块**：`build-recommendations.json` 是初始爬取快照，专武归属唯一事实源 = `wEngines[].ownerAgentId`；录完新角色跑 `npm run sync:wengine-recs` 补齐（幂等），护栏测试 `src/data/__tests__/buildRecWengine.test.ts`（无专武归属角色快照要更新）。
 6. **模块产出的对象不加类型断言**（判据 27 硬门，r719）：`events.push({ … } as AnomalyEventExecution)` / `} as never` 会关掉必填字段检查——r718 月城柳极性紊乱行因此漏了 `fields`，资源池页 → 异常池渲染崩溃。直接写对象字面量，或类型标注 `const x: T = { … }`；编译报错 = 契约不符，补字段或改类型。往 cfg 塞新键先在本模块的 `CharacterOperationConfig` 扩充里声明（如 `starlightBilly.ts` 的两个决意字段）；调 `specBase` 钩子时原样转交 `input`，别把入参重新打包。
 7. **不写死兜底**（判据 28 硬门，r723）：`cfg.parryCount ?? 0` / `panel.critRate ?? 0` / `state.exSpecialCount ?? 0` 的左边类型是必填 number，`??` 右侧永远取不到——直接读。累加通道（`cfg.initialEnergyGift` / `cfg.extraSelfDecibelReward` / 面板各属性）由 `buildCharConfig` / `emptyPanel()` 预置初值，直接 `+=`；战斗时间读 `cfg.battleTime`（或钩子入参 `combatTime`），不要抄私有副本。值真的可能缺 ⇒ 把字段声明成可选（`?`）。单测直调钩子时，夹具补齐钩子读到的必填字段（值与引擎默认一致），不要靠模块兜底。
+8. **不把已知类型再写一遍**（判据 29 硬门，r729）：`x as T` 里 x 已经是 T 就别断言——`state as IterationState`、`move?.energyCost as Record<string, string> | undefined` 这类是空操作，声明一改它们会把差异静默吞掉；也别写 `x as T | undefined` 把必填值说成可缺（后面的 `??` 会因此逃过判据 28）。钩子入参 / 返回值、cfg 增补字段用已有的具名类型（如 `LoopRates`、`TeamGoldState`），别手抄一份 `{ … }`；找不到名字就先在声明处起名再引用。
 
 > 已去重（同一条在别处已有权威来源，不在此重复）：`moveId` 匹配 → §0 铁律 3 + `ENGINE_PIPELINE_GUIDE.md` §4 坑4；模块角色 spec 死字段 → §0 铁律 4 + `AGENTS.md` §1 规则4；fetch stub → 下方 §7 测试卫生。
 

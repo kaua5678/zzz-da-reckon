@@ -378,7 +378,7 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 
 **不做**：
 
-- `as Record<…>`（如 `roundInputs.ts` 的 `move?.energyCost as Record<string, string>`）：动态键访问，属 r6 §8.0 #24 的有意边界。
+- `as Record<…>`：动态键访问，属 r6 §8.0 #24 的有意边界。（r729 更正：这里原先举的例子 `roundInputs.ts` 的 `move?.energyCost as Record<string, string> | undefined` 并不是动态键访问——energyCost 的声明本来就是这个类型，断言是空操作，已删，判据 29 锁住；见 `docs/mcp-type-restatement.md` §7。）
 - 映射类型 `{ [K in …]: … }` 作断言目标：src 非测试 grep 0 处，不扩。
 - 类型注解、泛型实参（`ref<{ … }>()`）、类型谓词：不是断言，TS 按声明检查。
 - r6 §8.0 #15（角色专属计数的四处声明）本轮复核，结论写回该条：原「持久化」理由不成立；仍不做，理由换成三条。
