@@ -1,7 +1,8 @@
-# 类型只声明一次：恒等断言与结构副本（r729，判据 29）
+# 类型只声明一次：恒等断言、结构副本与字面量副本（r729 / r732，判据 29）
 
 > 2026-10-08 arena-G r729，代码提交 `bc76f28e`。判据实现在 `scripts/lib/type-restatement-gate.mjs`，与判据 28 共用一个 program（`scripts/lib/app-program.mjs`）。
 > 普查脚本没进仓，放在 `calc-arch/g729/`：`census729.mjs` 给断言按类型分类，`dupshape729.mjs` 找与具名类型同形的类型字面量，`optchain729.mjs` 数死可选链（下一轮候选）。在 worktree 根目录用 node 跑，各约 3 s。
+> r732（代码提交 `a9f99d63`）加形态 ③ 字面量副本：同一形状没有名字、写了两处以上，28 组 76 处起名收口，见 §9。r732 的脚本在 `calc-arch/g732/`：`gate732.mjs` 只跑判据 28 / 29，`callcensus732.mjs` 数调用结果上的死空值处理，`neg732.py` 是自证反例。
 
 ## 1. 结论速览
 
@@ -18,6 +19,7 @@
   - `outerExit` 的联合起名 `OuterExit`；
   - 判据 29 锁住这两种形态。改前版本在新门下命中 55 处，分布在 26 个文件。
 - zd 零差，vitest 文件数和用例数不变。
+- r732：② 只比「字面量 ≡ 具名」，没名字的形状各写各的它看不见。判据 29 加形态 ③ 字面量副本，28 组 76 处起名，钩子形状的 6 个名字放 typesHooks.ts，见 §9。
 
 ## 2. 判定口径
 
@@ -80,7 +82,7 @@
   - `applyGoldAllocationToStore` 的入参放宽成只读数组，以便接受任意来源；
   - `discEffectRows.ts:47` 和 `modelingGaps.ts:23` 是有意写宽的「-Like」形状。
 - 具名类型之间成员名相同的有 7 对，逐字段相同的 2 对，见 §4.2。
-- 类型字面量之间逐字段相同、又不等于任何具名类型的有 28 组。本轮没处理，见 §6。
+- 类型字面量之间逐字段相同、又不等于任何具名类型的有 28 组。r729 没处理；r732 收口，见 §9。
 
 ## 4. 逐处改动（`bc76f28e`）
 
@@ -175,7 +177,7 @@
 |---|---|---|
 | 结构等价但不同一的 2 处断言（statMeta:177、agentMechanicView:300） | 为了动态取键换成 `Record`，有用 | 无 |
 | 拓宽 13 处、收窄 49 处 | 拓宽是安全的；收窄时 TS 会检查两边可比，多数是 Object.keys、split 成元组、先判空再去掉 undefined | 无 |
-| 类型字面量之间的副本 28 组（至少 3 个成员、逐字段相同、不等于任何具名类型） | 要给每组起名，本轮先收「已有名字却不用」的。最值得收的几类：①mechanics 钩子的入参 / 返回类型被角色模块抄写，`{enemyDefReduction, enemyResReduction, note}` ×4、`{element, note, source}` ×4，types.ts 的 1095 / 1253 / 1275 行各与一个模块同形；②`{slot, moveId, count}` ×7，分布在 stunAxisStack / convergence / roundInputs；③`{block, dodge, dual, parry}` ×4；④teamCompare 的候选步骤 `{slot, kind, value, label}` ×3 | 下一轮可选题：先在 types.ts 给钩子入参 / 返回类型起名，模块改为引用名字；再给判据 29 加「字面量 ≡ 字面量」形态，门槛建议「≥3 个成员且出现在 ≥2 个文件，或同一文件 ≥3 次」 |
+| 类型字面量之间的副本 28 组（至少 3 个成员、逐字段相同、不等于任何具名类型） | 要给每组起名，本轮先收「已有名字却不用」的。最值得收的几类：①mechanics 钩子的入参 / 返回类型被角色模块抄写，`{enemyDefReduction, enemyResReduction, note}` ×4、`{element, note, source}` ×4，types.ts 的 1095 / 1253 / 1275 行各与一个模块同形；②`{slot, moveId, count}` ×7，分布在 stunAxisStack / convergence / roundInputs；③`{block, dodge, dual, parry}` ×4；④teamCompare 的候选步骤 `{slot, kind, value, label}` ×3 | 下一轮可选题：先在 types.ts 给钩子入参 / 返回类型起名，模块改为引用名字；再给判据 29 加「字面量 ≡ 字面量」形态，门槛建议「≥3 个成员且出现在 ≥2 个文件，或同一文件 ≥3 次」。**r732 已收**（`a9f99d63`）：门槛取更简单的「≥3 个成员、逐字段相同、出现 ≥2 处」，见 §9 |
 | 具名同形的 DisorderFormula / TurbulenceFormula | 两张表用同一个公式。真正的重复在两处计算同一公式的代码，以及两张表里重合的 tick 列（还与 STANDARD_DOT_CONFIG 的 tick 数字重合）。只合并类型名是表面功夫 | 要收就连数据一起收：tick 参数按元素建一张表，两个基础倍率各一列，配一个计算函数。数值零差用 zd 验证。**r730 已收**（`6cd14032`）：一跳表 + 两张基础倍率表 + 两个计算函数，zd 零差，见 mcp-calc-core-architecture.md CC-512 |
 | 死可选链：`a?.b` 里 a 的类型不含 null / undefined。src 非测试 .ts 共 321 处（91 个文件），按链头分：声明过的属性 105、标识符 94、元素访问 122 | 道理与判据 28 相同（把必填说成可缺）。但元素访问那 122 处运行时真可能缺值；标识符里也有一部分来自 `arr[i]`，同样可能缺。需要像 r723 那样逐类判断 | 下一轮可选题：判据 28 扩展到 `?.`，先收「链头是声明过的必填属性」的 105 处。**r731 已做**（`e20d824c`）：判据 28 扩到 `?.`，链头与链内共 244 处收口；下标取值的别名同下标取值不判，见 mcp-dead-nullish-census.md §4.6 |
 | `.vue` | 需要 vue-tsc 的类型信息 | 与判据 28 相同 |
@@ -200,3 +202,84 @@
 | zc drift | 154 / 0 / 0 |
 
 回退：`git revert bc76f28e`。
+
+## 9. r732：字面量副本（形态 ③）
+
+> 代码提交 `a9f99d63`（判据 28 判调用结果在同一提交，见 `docs/mcp-dead-nullish-census.md` §4.7）。
+
+### 9.1 口径
+
+- 类型字面量的门槛同 ②：至少 3 个成员，全部是属性签名或方法签名；type 别名右边的 `{ … }` 是声明，不算。
+- 只比没命中 ② 的字面量：按成员名串分组，组内逐字段比（成员名、可选性、类型文本都相同，且互相可赋值）。同形的出现 ≥2 处，每处都报。
+- 两个具名类型彼此同形不报：两个名字说明作者认为是两个概念。
+- 门槛没有采用 r729 §6 建议的「≥2 个文件，或同一文件 ≥3 次」。同一文件里只重复两次的组逐个看过，都是同一个概念；按文件数分档多一个参数，却没有多抓到或少误报什么。
+
+### 9.2 普查（origin `8517ef07`）
+
+28 组 76 处，分三类：
+
+| 类 | 组 | 处 | 例 |
+|---|---|---|---|
+| 钩子形状：只在 AgentMechanicModule 里写成字面量，实现钩子的模块再抄一遍 | 6 | 18 | `resolveExecutionDamage` 的返回 ×4，`releaseModifier` 的返回 ×4，`interactionDefaults` 与交互基准 ×4，`expandAxisAction` / `selfBurnDecibel` / `onFinalAssemble` 的入参各 ×2 |
+| 其余跨文件 | 8 | 23 | `{slot, moveId, count}` ×7，截断账 ×3，异放失衡分段 ×3，面板配置 / 异常暴击 / 专属资源明细行 / catalog 图片 / 池伤害的敌方参数各 ×2 |
+| 只在一个文件里重复 | 14 | 35 | 塞维林 cfg 增补里 5 个字段同形，菲尼克斯 4 个，青衣 3 个；teamCompare 的候选步 3 处；stunAxisPresets 的 state 4 处（两组） |
+
+### 9.3 改法
+
+| 形状 | 名字 | 放在 | 引用处 |
+|---|---|---|---|
+| `resolveExecutionDamage` 的返回 | `AgentDamageResolution` | `mechanics/typesHooks.ts` | types.ts；维琳娜、雅、丽娜 |
+| `releaseModifier` 的返回 | `ReleaseModifier` | 同上 | types.ts；普罗米娅、菲尼克斯；damagePool 的 resolveReleaseModifier |
+| 四种交互的次数 | `InteractionCounts` | 同上 | types.ts 的 interactionDefaults；interactionBaseline 三个函数的返回 |
+| `expandAxisAction` 的入参 | `AgentAxisActionExpandInput` | 同上 | types.ts；希格莉德 |
+| `selfBurnDecibel` 的入参 | `AgentSelfBurnDecibelInput` | 同上 | types.ts；伊德海莉 |
+| `onFinalAssemble` 的入参 | `AgentFinalAssembleInput` | 同上 | types.ts；卢西娅 |
+| 轴内执行计数 | `ExecutedMoveCount` | `core/stunAxisStack.ts` | stunAxisStack ×2，convergence 的 deps（入参与返回），roundInputs ×3 |
+| 单槽截断账 | `SlotTruncation` | `types/resource/team.ts` | ConvergenceReport.truncationBySlot，tailPipeline ×2 |
+| 异放失衡分段 | `ReleaseStunSegment` | `resourceCalc/damagePoolDirect.ts` | CharRowsEnv.releaseStunSegments，damagePool ×2 |
+| calcPanel 的配置 | `PanelCalcConfig` | `core/panel.ts` | calcPanel，substatOptimizer 的 DefaultSubStatInput |
+| 异常暴击 | `AnomalyCritStats` | `core/anomalyPool/helpers.ts` | getAnomalyCritStats 的返回，damage.ts 的 anomalyCritOverride |
+| 专属资源明细行 | `SpecialResourceRow` | `types/resource/execution.ts` | SpecialResourceSection.rows，爱丽丝 |
+| catalog 图片 | `CatalogImages` | `types/catalog.ts` | Agent.images，getImageUrl |
+| 池伤害的敌方参数 | 不起新名 | — | typesRows 改写成 `PoolDamageEnv['enemy']`，声明只留 PoolDamageEnv 一处 |
+| 时间线轴节点 | 不起新名 | — | chartRunners ×2 改写成 `TimelineAxisNode[]`：已有类型只多一个可选的 testServer，teamTimeline / teamTimelineFilm 选项里的同名字段就是它 |
+| 只在一个文件里重复的其余 13 组 | AxisPlanState、AnbyBasicSegment、QingyiMoveRow、CurtainTeammateShare、SeverianMoveMeta、PhoenixMoveMeta、ProviderEnergySplit、NewAgentStats、GoldAllocationStep、PlannedPurchase、BossTeamPick、FilmBest | 各自文件，不导出 | stunAxisPresets 的 3 字段与 4 字段两组拿的是同一个 state 对象（resolveStunAxisPlan 原样往下传），合成一个 AxisPlanState |
+
+钩子形状为什么放 typesHooks.ts、不放 types.ts：`typesSplitCc83.test` 锁 types.ts < 1400 行，并写明新卫星类型进 typesRows / typesHooks / typesView。types.ts 引用这 6 个名字并原样转出，模块照旧从 `'../types'` 引用。三个钩子入参原来内联在 AgentMechanicModule 里，移出后 types.ts 从 1354 行降到 1329 行。
+
+### 9.4 判据
+
+- detector 自证从 26 行加到 32 行：
+  - 27、28 两行同形，应报；
+  - 29 行可选性不同，不报；
+  - 30 行两个字面量都与 Gold 同形，只按结构副本报两次，不再按字面量副本重复报；
+  - 31、32 两个同形的 type 别名不报。
+  - 命中必须恰好是 `9恒等断言,10只加空,12恒等断言,15结构副本,17结构副本,26只加空,30结构副本,30结构副本,27字面量副本,28字面量副本`（③ 排在最后）。
+- 反例：拿掉 ③ 的上报、拿掉组内逐字段比、让与具名同形的字面量也进 ③，三个变体各自让自证变红（脚本 `calc-arch/g732/neg732.py`）。
+- 改前的树（`8517ef07`）在新门下报 76 处，与普查脚本 dupshape729 一致；改后为 0。
+- dupshape729 复跑：至少 3 个成员的类型字面量 284 → 209，具名类型 537 → 562，字面量之间的副本 28 组 → 0。字面量与具名成员名相同的 5 处不变，就是 §3.2 判过的那 5 处形状不同的。
+- 成本：check-guards 约 14 s，与改前持平。
+
+### 9.5 不做
+
+| 事项 | 为什么不做 | 重开条件 |
+|---|---|---|
+| 两个具名类型彼此同形 | 名字表达了作者的区分。现有成员名相同的 5 对具名类型都有字段类型差异，没有逐字段相同的 | 出现逐字段相同、含义也相同的两个具名类型时，合成一个 |
+| 2 个成员的形状 | 碰巧同形的太多（如 `{ inUnits, outUnits }`、`{ agentId, rawCount }`） | 无 |
+| `.vue` 里的类型字面量 | 需要 vue-tsc 的类型信息，与判据 28 / 29 其余形态相同 | 同判据 28 |
+| 测试文件里的同形字面量（如 teamTimeline.test 的 axisNodes 夹具） | 扫描面不含测试 | 无 |
+
+### 9.6 验证
+
+| 项 | 结果 |
+|---|---|
+| vue-tsc | 0 错 |
+| check-guards | 29 条（判据 28 = 0/0、判据 29 = 0/0，扫 296 个文件） |
+| zc.test + checkGuards.test | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 |
+| vitest | 261/2165 + 263/2342 = 524 / 4507 |
+| zd | DUMP 0 / ROWS 0 |
+| build | index-BQ2xQmn4.js 1600.49 kB，与 `8517ef07` 的产物同名同大小：类型改动不进产物。r731 记作 1600.50，以本轮实测为准 |
+| zc drift | 154 / 0 / 0。engine:交互基准 的锚函数只改了返回类型的写法，据链追加复核 |
+
+回退：`git revert a9f99d63`。
