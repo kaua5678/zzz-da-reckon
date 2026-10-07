@@ -273,7 +273,7 @@ function adjustStunExecs(
 }
 
 /** 转大不动点：给定基础失衡 execs 与畏缩覆盖率，迭代（失衡次数 ↔ 好评转大次数）至收敛 */
-// @fact engine:失衡次数不动点 口径: **轴/非轴统一**走连续闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还、x=N×窗长/有效时间），floor(N*) 即次数——时间域语义：窗口占用 N×窗长，剩余时间才攒条，故「打满 N 次后剩余时间不够一次」自然收敛于 N。**两种模式都必须传时间占比**（旧实现轴模式传 0，只信逐招 fraction：实测 auto-1521-1481-1311 窗口占时间 90% 只扣 4.8% 攒条 → 9 次，而轴栈只填满 3 窗）| 据 用户@2026-09-10「顺序不对：应先攒够再开窗，剩余时间不足则收敛于此」·前身口径 用户@2026-09-08 + 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽（合并原重复「据」槽）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#promoteFixpoint | 信 确认
+// @fact engine:失衡次数不动点 口径: 失衡次数 = 时间守恒不动点 floor(N*)——窗口占用 N×窗长，剩余时间才攒条，故「打满 N 次后剩余时间不够一次」自然收敛于 N。**非轴**走连续闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还、x=N×窗长/有效时间），环检测兜底；**轴模式**（有轴内份额提供者且未锁定）**不用**该闭式——池按逐招轴内份额 + 未覆盖窗口份额复合扣除，与闭式不是同一函数（r648 实测闭式 4.46 / 池 3 矛盾），改为对连续 N 二分池自身的不动点 h(N)=continuousStunCount(pool(N))−N（h 单调递减，CC-469′b）；锁定次数（CC-305）时钉在 N 不迭代。**两种模式都必须传时间占比**（轴模式传未被轴块覆盖的窗口份额，CC-469′；旧实现轴模式传 0，只信逐招 fraction：实测 auto-1521-1481-1311 窗口占时间 90% 只扣 4.8% 攒条 → 9 次，而轴栈只填满 3 窗）| 据 用户@2026-09-10「顺序不对：应先攒够再开窗，剩余时间不足则收敛于此」·前身口径 用户@2026-09-08 + 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽（合并原重复「据」槽）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07（r715 订正：轴模式自 CC-469′b（bf308785）起二分池自身不动点，不再轴/非轴统一走闭式） | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#promoteFixpoint | 信 确认
 /** 轴内失效比例提供者的返回：逐招 `${slot}:${moveId}` → 窗内份额，加上窗口里被轴块占掉的前台秒数（CC-469′）。 */
 export interface InAxisFractionResult { fraction: Record<string, number>; coveredWindowSeconds: number }
 export type InAxisFractionProvider = (stunCount: number, execs: StunSkillExecution[]) => InAxisFractionResult
@@ -378,7 +378,7 @@ export function promoteFixpoint(
     }
     const next = pool.stunCount
     if (next === stunCount) break
-    // **两种模式统一走连续闭式求根**（用户 2026-09-10 裁决「顺序：边打边攒 → 攒够开窗 → 剩多久」）：
+    // **非轴模式走连续闭式求根**（用户 2026-09-10 裁决「顺序：边打边攒 → 攒够开窗 → 剩多久」；09-10 起轴模式也曾走此闭式，CC-469′b 改为上方二分并已 break）：
     // 轴模式原先走「整数迭代 + 2-循环环检测」，其窗口占比只来自轴内逐招 fraction，与「N 次窗口占用
     // N×窗长」的时间账不自洽（实测该队 9 次 vs 轴栈只填满 3 窗）。闭式解在**时间域**上成立：
     // 窗外可用时间 = 有效时间 − N×窗长，攒条量按此折算 → N 天然收敛于「打满 N 次后剩余时间不够一次」。

@@ -6,7 +6,7 @@
  * +75 精通 vs 实测远低）。引擎此前的口径注释见 core/wengineConditions.ts：散文条件（层数、
  * 后台、特定招式）由覆盖率滑块近似。本模块把「近似」从手调升级为**由资源侧数据自动折算**。
  *
- * @fact wengine:stackedCoverage/折算口径 口径: 有效层数=min(maxStacks,整局能量扣除事件数×每层持续秒/战斗总时长),回填覆盖率=有效层数/maxStacks×100;整局固定加成,舍弃密度/相位分布 | 据 用户@2026-10-01 时间加权裁决(纯次数封顶被否:4次×8s在180s局只覆盖18%时间) | 验 src/composables/__tests__/wEngineStackCoverage.test.ts | 锚 src/data/wEngineStackCoverage.ts#stacksToCoverage | 信 确认
+ * @fact wengine:stackedCoverage/折算口径 口径: 有效层数=min(maxStacks,整局能量扣除事件数×每层持续秒/战斗总时长),自动覆盖率=有效层数/maxStacks×100(不写回 state:表只存手调值、手调优先,见 mergeWEngineEffectCoverageAuto);整局固定加成,舍弃密度/相位分布 | 据 用户@2026-10-01 时间加权裁决(纯次数封顶被否:4次×8s在180s局只覆盖18%时间)·复核@2026-10-07(r715 订正:f3771bd1 起自动值不再回填 state) | 验 src/composables/__tests__/wEngineStackCoverage.test.ts | 锚 src/data/wEngineStackCoverage.ts#stacksToCoverage | 信 确认
  * ⟳复核: 新叠层音擎录入时其 effect.id 是否已登记折算器/未登记是否回退满层 | 到期 2026-12-01
  * @fact wengine:stackedCoverage/触发语义 口径: 「发动X时」类叠层的层数=**能量扣除事件次数**——一段持续耗能只算1次扣除事件(无论长按多久),每个固定能量段(爆炸/下砸/追加戳)各算1次;与行数/招式数无关(引擎把多段耗能聚合成整数招,行计数会丢) | 据 用户@2026-10-01 对话裁决 | 验 src/composables/__tests__/wEngineStackCoverage.test.ts | 锚 src/data/wEngineStackCoverage.ts#STACK_ENERGY_EVENT_EVALUATORS | 信 确认
  * ⟳复核: 新持续型/多段耗能强特角色录入时其扣除段结构是否已建进对应折算器 | 到期 2026-12-01

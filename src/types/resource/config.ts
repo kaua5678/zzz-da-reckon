@@ -387,7 +387,7 @@ export interface ResourceCalcConfig {
   /**
    * 轴模式琉音赠大计数（编排层注入，`useResourceCalc` 按轴预设 promoteVariant 块 × 窗口数加权）：
    * 轴内 60/90 转大次数**由轴预设决定**（不是通用公式推导）——这是跨层口径统一入口，
-   * 消费方 `core/resource.ts` 的 `frontlineRowsOf`（试探测量）与 `giftTimeOfSlot`（装配侧）。
+   * 消费方 `core/resource/underfillProbe.ts` 的 `frontlineRowsOf`（试探测量）与 `core/resource/tailPipeline.ts` 的 `giftTimeOfSlot`（装配侧）。
    *
    * ⚠ 原文提到的 `liuyinGiftChainInfo` **已不存在**（2026-09-13 迁为模块声明式
    * `crossAgentSupply`，见 `core/resource/crossAgentSupply.ts` 头注释）。

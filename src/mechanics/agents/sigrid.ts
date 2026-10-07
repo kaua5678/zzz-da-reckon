@@ -305,7 +305,7 @@ function sigridPozhenSets(
  * - 破阵：每次失衡送一套三段（免费不耗机会，用户口径），段数 = 失衡次数
  * 两部分合并进同一段行（count 相加）；真实 moveId → enrich 从倍率表回填倍率/失衡/积蓄。
  */
-// @fact agent:1591/影画1溢出 口径: 影画1「机会**溢出时**下一次敛枪式最后一击+100%攻击力」默认**不计算**（`sigrid.c1OverflowCoverage` 缺省 0，代码侧 fallback 同步为 0）——机会上限 1 次而引擎按「立刻打光」建模（实测 spend 42 / 收入 42.7，储存位常年为空）⇒ 溢出条件不成立；模块无逐事件溢出判定（敛枪式段数状态机未建模），要模拟「攒着不打导致溢出」才调高该滑块 | 据 用户@2026-09-07「不溢出那就不计算呗」·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30| 验 src/mechanics/__tests__/sigrid.test.ts#影画1溢出 | 锚 src/mechanics/agents/sigrid.ts#buildSigridExecutions | 信 确认
+// @fact agent:1591/影画1溢出 口径: 影画1「机会**溢出时**下一次敛枪式最后一击+100%攻击力」默认**不计算**（`sigrid.c1OverflowCoverage` 缺省 0，只在模块 settings 声明一处——CC-508 起声明即读侧 fallback）——机会上限 1 次而引擎按「立刻打光」建模（实测 spend 42 / 收入 42.7，储存位常年为空）⇒ 溢出条件不成立；模块无逐事件溢出判定（敛枪式段数状态机未建模），要模拟「攒着不打导致溢出」才调高该滑块 | 据 用户@2026-09-07「不溢出那就不计算呗」·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07（r715 订正：代码侧 fallback 已由 CC-508（cfff5020）并入模块 settings 声明）| 验 src/mechanics/__tests__/sigrid.test.ts#影画1溢出 | 锚 src/mechanics/agents/sigrid.ts#buildSigridExecutions | 信 确认
 function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const segments = cfg.sigridLanceSegments ?? []
   if (segments.length !== 3) return
