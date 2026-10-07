@@ -32,6 +32,7 @@ import {
   exitCodeFor,
   collectFailures,
   failureBlock,
+  rawNumberLeaks,
   roundId,
   artifactNames,
   staleNames,
@@ -482,5 +483,17 @@ describe('ui-check.mjs 接线（判定必须真的被消费）', () => {
   it('开跑即把上一轮产物改名成 *.stale.*（防旧绿冒充本轮）', () => {
     expect(uiCheckSource).toMatch(/staleNames/)
     expect(uiCheckSource).toMatch(/renameSync/)
+  })
+})
+
+describe('原始数值外露（r716：DOM 体检判失败）', () => {
+  it('浮点噪声 / NaN / Infinity 命中；数据原始系数与已格式化数值不命中', () => {
+    expect(rawNumberLeaks('轴轮数 2.7757914099116654 轮 · 剩余 80.34000000000003 · 伤害 NaN · 上限 Infinity')).toHaveLength(4)
+    expect(rawNumberLeaks('系数 5.55835 / 4.175 · 积蓄池 62,306.6 · 获取 1382.5712 · 覆盖率 23.7%')).toEqual([])
+    expect(rawNumberLeaks('轴轮数\n2.7757914099116654 轮')[0]).toBe('轴轮数 2.7757914099116654')
+  })
+  it('ui-check.mjs 在 DOM 体检里消费它（不接线 = 闸门不存在）', () => {
+    expect(uiCheckSource).toMatch(/rawNumberLeaks\(String\(await evaluate\('document\.body\.innerText'\)/)
+    expect(uiCheckSource).toMatch(/failures\.push\(`页面显示未格式化的数值/)
   })
 })

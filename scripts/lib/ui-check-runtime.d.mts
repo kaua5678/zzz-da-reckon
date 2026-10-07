@@ -51,6 +51,8 @@ export declare function exitCodeFor(failures: string[]): number
 export declare function collectFailures(verb: string, result: unknown): string[]
 /** FAIL 打印块（沿用既有格式） */
 export declare function failureBlock(failures: string[]): string
+/** 页面文本里的原始数值外露（≥7 位小数的浮点噪声 / NaN / Infinity）→ 带前文的命中片段，DOM 体检判失败用（r716） */
+export declare function rawNumberLeaks(text: string, limit?: number): string[]
 /** 本轮标识（文件名安全的 ISO 时间戳） */
 export declare function roundId(date?: Date): string
 /** 产物路径 */

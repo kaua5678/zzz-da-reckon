@@ -99,6 +99,19 @@ export function failureBlock(failures) {
   return ['', '实机点通 FAIL：', ...failures.map(f => '  ✗ ' + f)].join('\n')
 }
 
+/**
+ * 原始数值外露：计算结果未经格式化直接插值进页面（浮点噪声如 `2.7757914099116654`、`80.34000000000003`），
+ * 或 NaN / Infinity。DOM 体检据此判失败（r716 普查后补的闸门；方法与源头表见 docs/mcp-ui-number-format-sweep.md）。
+ * 阈值 ≥7 位小数：页面上原样显示的数据系数最多 5 位（倍率系数记录页 `5.55835`），浮点噪声通常 ≥10 位。
+ * 返回每处命中连同前文（定位用；空白压成单个空格，免得 innerText 的换行把失败清单拆碎），最多 limit 条。
+ */
+export function rawNumberLeaks(text, limit = 20) {
+  const out = []
+  const re = /\d\.\d{7,}|\bNaN\b|\bInfinity\b/g
+  for (let m; (m = re.exec(text)) && out.length < limit;) out.push(text.slice(Math.max(0, m.index - 24), m.index + m[0].length).replace(/\s+/g, ' '))
+  return out
+}
+
 // ---- 产物命名：失败轮也要留证据，且不许被旧产物冒充 ----
 
 /** 本轮标识（ISO 时间戳，文件名安全）：产物带本轮标识/时间。 */

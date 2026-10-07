@@ -15,6 +15,8 @@
  *   `eval:` 是诊断读回（`false`/`null` 是合法诊断值，不判失败）；`wait:` 允许回落到页面文本包含
  *   （等状态不是点目标），它的失败路径仍是超时抛异常。
  *   判定核心在 `scripts/lib/ui-check-runtime.mjs`（可单测，见 `src/scripts/__tests__/uiCheck.test.ts`）。
+ *   DOM 体检另判「原始数值外露」（r716）：终态页面文本出现 ≥7 位小数的浮点噪声或 NaN / Infinity ⇒ 失败
+ *   （`rawNumberLeaks`；展示处漏了 `fmt` 的典型症状，如 `轴轮数 2.7757914099116654 轮`）。
  *
  * 产物：报告/截图写在 **finally** 里 ⇒ 任何 throw（超时、未知动词、页内异常）也留下本轮证据；
  *   失败轮写 `ui-check-failure.json` / `ui-check-failure.png`（不与通过轮同名，旧绿不会冒充新绿），
@@ -63,6 +65,7 @@ import {
   performClick,
   probeFocusTarget,
   probeRealClickTarget,
+  rawNumberLeaks,
   realMouseClick,
   roundId,
   staleNames,
@@ -558,6 +561,8 @@ try {
   }
   if (report?.labelOverlaps?.length > 0) failures.push(`图上标注重叠 ${report.labelOverlaps.length} 对`)
   if ((report?.tableOverflowX ?? []).some(v => v > 0)) failures.push('表格横向溢出')
+  const leaks = rawNumberLeaks(String(await evaluate('document.body.innerText') ?? ''))
+  if (leaks.length > 0) failures.push(`页面显示未格式化的数值 ${leaks.length} 处（浮点噪声 / NaN / Infinity：展示处漏了 fmt）`, ...leaks)
 } catch (e) {
   failures.push(String(e?.message ?? e))
 } finally {
@@ -572,5 +577,5 @@ if (failures.length > 0) {
   console.error(failureBlock(failures))
   process.exit(exitCodeFor(failures))
 }
-console.log('\n实机点通 PASS（零 JS 错误、无标注重叠、无表格溢出、动作全部命中目标）')
+console.log('\n实机点通 PASS（零 JS 错误、无标注重叠、无表格溢出、无未格式化数值、动作全部命中目标）')
 process.exit(exitCodeFor(failures))
