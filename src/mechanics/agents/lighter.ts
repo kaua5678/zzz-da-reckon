@@ -381,9 +381,9 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<
 }
 
 function resourceSections({ result }: AgentResourceSectionsInput) {
-  const morale = result?.lighterMorale
+  const morale = result.lighterMorale
   if (!morale) return []
-  const flame = Number(result?.lighterFlameShockCount ?? 0) || 0
+  const flame = Number(result.lighterFlameShockCount ?? 0) || 0
   return [{
     id: 'lighter-morale',
     title: '莱特·士气喷发',
@@ -537,7 +537,7 @@ export const lighterMechanic: AgentMechanicModule = {
       // 2026-09-15 arch 棘轮第 2 批：本槽的「上一轮全队能量消耗」线程值写进 cfg（莱特 C4 消费）。
       // 自 `convergence.ts` 原 `merged.agentId === '1161'` 分支搬入（规则 6）；地板语义逐位保留。
       if (threads) {
-        lighter.lighterTeamEnergyConsumed = Math.max(0, (threads.moduleFeedback?.consumedTeamEnergy ?? 0) || 0)
+        lighter.lighterTeamEnergyConsumed = Math.max(0, (threads.moduleFeedback.consumedTeamEnergy ?? 0) || 0)
       }
       return
     }

@@ -84,7 +84,7 @@ export function applyChainGift(
       const giftIdx = char.executions.findIndex(e => Boolean(e.chainGift))
       const giftRow = buildGiftRow({
         moveId: chainInfo.moveId,
-        moveName: `${giftedMove?.name?.zhCN || '连携技'}（${gift.label}）`,
+        moveName: `${giftedMove?.name.zhCN || '连携技'}（${gift.label}）`,
         count: hatCount,
         actionTime: chainInfo.actionTime,
         comboAlignRatio: chainInfo.comboAlignRatio,

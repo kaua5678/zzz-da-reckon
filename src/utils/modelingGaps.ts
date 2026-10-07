@@ -29,9 +29,9 @@ interface SetLike {
 
 /** 套装缺口判定：effectText 有文本但 selfBuff/teamBuff 均无数值效果 = 4pc 未建模；twoPiece 空 = 2pc 未建模 */
 export function describeDriveDiscSetGaps(set: SetLike): SetGapInfo {
-  const four = set?.fourPiece
+  const four = set.fourPiece
   const fourPieceUnmodeled = !!four?.effectText && !(four.selfBuff?.effects?.length) && !(four.teamBuff?.effects?.length)
-  const twoPieceUnmodeled = !set?.twoPiece?.effects?.length
+  const twoPieceUnmodeled = !set.twoPiece?.effects?.length
   return { twoPieceUnmodeled, fourPieceUnmodeled }
 }
 

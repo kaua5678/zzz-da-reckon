@@ -104,8 +104,8 @@ export function computeYuzuhaMechanic(input: {
 /** 按 moveId 在 assist 分类里取支援突击行（本模块单独用；`core/resource.ts#findAssistFollowUp`
  *  是同义实现但返回派生的 actionTime/decibel，这里需要整行以读 `anomaly_buildup` 表值）。 */
 function findAssistFollowUpMove(skills: AgentCharConfigInput['skills'], moveId: string) {
-  const assist = skills?.categories?.find(c => c.id === 'assist')
-  return assist?.moves?.find(m => String(m.id) === String(moveId)) ?? null
+  const assist = skills.categories.find(c => c.id === 'assist')
+  return assist?.moves.find(m => String(m.id) === String(moveId)) ?? null
 }
 
 function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, outOfCombatPanel }: AgentCharConfigInput): void {

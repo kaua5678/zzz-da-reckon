@@ -200,7 +200,7 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: Agent
   // 强化特殊技（2026-09-12 组队对账修正）：原文「第一段=点按 / 第二段=长按」是**同一强特的两种释放变体**
   //（二选一），不是每轮连段——主循环取长按优选（第二段 1191.6% > 第一段 1046.2%），单段耗能 40。
   // 第一段（1641008）= 点按变体，不进自动循环。
-  const special = skills?.categories?.find(c => c.id === 'special')?.moves
+  const special = skills.categories.find(c => c.id === 'special')?.moves
   const exHold = special?.find(m => m.id === PHOENIX_EX2_MOVE_ID)
   if (exHold) {
     cfg.exSpecialMoveId = PHOENIX_EX2_MOVE_ID
@@ -208,7 +208,7 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: Agent
     const ec = parseFloat(exHold.energyCost?.['Energy Cost'] ?? '')
     if (Number.isFinite(ec) && ec > 0) cfg.exSpecialEnergyConsume = ec
   }
-  const all = skills?.categories?.flatMap(c => c.moves) ?? []
+  const all = skills.categories.flatMap(c => c.moves)
   const metaOf = (moveId: string) => {
     const m = all.find(mm => mm.id === moveId)
     return {

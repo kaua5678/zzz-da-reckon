@@ -234,7 +234,7 @@ function applyTriggerTeamConfig(input: AgentTeamConfigInput): void {
   let mateUltimateCount = 0
   let mateAssistCount = 0
   input.characters.forEach((mate, index) => {
-    if (!mate?.agentId || mate.slot === input.slot) return
+    if (!mate.agentId || mate.slot === input.slot) return
     mateExCount += Math.max(0, Math.floor(input.exCounts[index] ?? 0))
     mateUltimateCount += Math.max(0, Math.floor(input.ultimateCounts?.[index] ?? 0))
     // 支援突击跟随招架支援规划（引擎按 parryCount 生成 assist follow-up 行）

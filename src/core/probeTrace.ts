@@ -15,7 +15,7 @@
  * `PROBE_TRACE_BACKSTAGE`（后台合轴自动填充反推块，convergence.ts）。
  */
 export function probeOn(flag: string): boolean {
-  return typeof process !== 'undefined' && process.env?.[flag] === '1'
+  return typeof process !== 'undefined' && process.env[flag] === '1'
 }
 
 export function probePush(flag: string, bucket: string, rec: () => unknown): void {

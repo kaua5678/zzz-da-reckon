@@ -158,7 +158,7 @@ function buildSigridCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCon
   // 强化特殊技：默认满覆盖巡空枪势（核心被动覆盖滑块缺省 1，出枪式命中即刷新≈常驻）→
   // 用巡空枪势状态的「碎玉」(1591012, 2096.1%)，而非非巡空枪势的「乱琼」(1591011, 877.7%)。
   // 乱琼仅在前摇未进巡空枪势的首个 E 出现，口径忽略。二者同属[出枪式]，机会/影画2穿透自然成立。
-  const suiYu = skills?.categories?.find(c => c.id === 'special')?.moves?.find(m => m.id === '1591012')
+  const suiYu = skills.categories.find(c => c.id === 'special')?.moves.find(m => m.id === '1591012')
   if (suiYu) {
     cfg.exSpecialMoveId = '1591012'
     if (suiYu.actionTime) cfg.exSpecialActionTime = suiYu.actionTime
@@ -168,9 +168,9 @@ function buildSigridCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharCon
   }
   // 敛枪式最后一击的附加伤害按「局内最终攻击力 × 百分比」进基础区（flatDamageBonus），
   // 此 panel 为 computePanel 的局内权威面板（已含额外能力+840 与影画1 攻击25%）。
-  cfg.sigridAtk = Math.max(0, panel?.atk ?? 0)
+  cfg.sigridAtk = Math.max(0, panel.atk)
   // 敛枪式三段元数据从 catalog 预存（buildExecutions 输入无 skills；单一事实源仍是倍率表）
-  const basicMoves = skills?.categories?.find(c => c.id === 'basic')?.moves ?? []
+  const basicMoves = skills.categories.find(c => c.id === 'basic')?.moves ?? []
   const segments = SIGRID_LANCE_SEGMENT_IDS.map(moveId => {
     const move = basicMoves.find(m => m.id === moveId)
     // CC-242：取行值走 data getRowValue（吃逻辑编辑器行规则，作用面 §24.85 ④ / §24.88）
@@ -537,7 +537,7 @@ function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   // #4 命中：按段循环计数（用户口径 2026-02），压枪开关取消 a1/a2 → 循环 1.765s
   const basicCycle = cfg.sigridBasicCycle ?? []
   const pressCancel = clampRatio(cfgSetting(cfg, 'sigrid.pressCancel')) > 0
-  chuqiangHits += countBasicFinisherHits(Math.max(0, state?.basicAttackTime ?? 0), basicCycle, pressCancel)
+  chuqiangHits += countBasicFinisherHits(Math.max(0, state.basicAttackTime), basicCycle, pressCancel)
   cfg.sigridChuqiangHits = chuqiangHits
 
   for (const exec of executions) {

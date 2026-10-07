@@ -622,9 +622,9 @@ function buildBanyueResourceSections({ result }: AgentResourceSectionsInput) {
   if (!cycle) return []
   // 后摇损失：执行计划里 banyue-recovery-* 行的总时长 = 未被取消的后摇占用的战场时间（= 平A时间损失）
   const recoveryTime = result.executions
-    .filter(e => e.moveId?.startsWith('banyue-recovery'))
+    .filter(e => e.moveId.startsWith('banyue-recovery'))
     .reduce((s, e) => s + e.totalTime, 0)
-  const basicTime = result.timeAllocation?.basicAttackTime ?? 0
+  const basicTime = result.timeAllocation.basicAttackTime
   const lossPct = recoveryTime + basicTime > 0 ? (recoveryTime / (recoveryTime + basicTime)) * 100 : 0
   const recoveryDetail = `失衡外连段 ${cycle.outStunComboCount} 组（轴模式 = 闪能连段 ${cycle.comboOutCount} + 轴内未覆盖怒相组≤2，轴内捏块 ${cycle.axisInComboCount}；非轴 = 怒相外自动连段）− 嘲讽取消 ${cycle.tauntCancelCount} → 剩余后摇 ${cycle.comboOutRecoveryCount} 次（论道 ${cycle.lunDaoRecoveryCount} / 地动山摇 ${cycle.diDongRecoveryCount}），每次 = 末尾强特自身时长，期间不能平A`
   return [{

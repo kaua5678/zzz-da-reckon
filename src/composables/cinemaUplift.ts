@@ -131,11 +131,11 @@ export function collectCinemaMetrics(src: CinemaMetricSource): Record<string, nu
   return {
     stunBuildUp: src.stunPool?.totalStunBuildUp ?? 0,
     anomBuildUp: perElement.reduce((s, p) => s + p.totalBuildUp, 0),
-    decibelTotal: sum(c => c.decibelSource?.total),
-    energyTotal: sum(c => c.energySource?.total),
+    decibelTotal: sum(c => c.decibelSource.total),
+    energyTotal: sum(c => c.energySource.total),
     exSpecial: sum(c => c.exSpecialCount),
     anomTriggers: src.anomalyPool?.totalTriggerCount ?? 0,
-    coverage: src.anomalyPool?.coverage?.coverageRate ?? 0,
+    coverage: src.anomalyPool?.coverage.coverageRate ?? 0,
   }
 }
 
@@ -210,7 +210,7 @@ export async function analyzeCinemaUplift(
   const { config, calc } = scenario
   const { targetStunCount, slots = [0, 1, 2], maxLevel = 6, resolveName, control } = opts
   const catalogStore = useCatalogStore()
-  const originalCinemas = config.team.map(c => c?.cinemaLevel ?? 0)
+  const originalCinemas = config.team.map(c => c.cinemaLevel)
   const rows: CinemaUpliftRow[] = []
 
   /**
@@ -235,7 +235,7 @@ export async function analyzeCinemaUplift(
     const char = config.team[slot]
     if (!char?.agentId) continue
     const name = resolveName?.(char.agentId, slot)
-      || catalogStore.getAgent(char.agentId)?.name?.zhCN
+      || catalogStore.getAgent(char.agentId)?.name.zhCN
       || `槽${slot + 1}`
     const entries: CinemaUpliftEntry[] = []
 

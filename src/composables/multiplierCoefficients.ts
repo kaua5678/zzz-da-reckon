@@ -44,7 +44,7 @@ function isCleanVerticalType(moveType: MoveType | 'other'): boolean {
 export function classifyMove(move: SkillMove, categoryId: string, specialty: string): MoveType | 'other' {
   const override = MOVE_TYPE_OVERRIDES[move.id]
   if (override) return override
-  const name = move.name?.zhCN ?? ''
+  const name = move.name.zhCN ?? ''
   if (move.timeType === 'ultimate' || name.includes('终结')) {
     if (specialty === 'stun') return 'ultimateStun'
     if (specialty === 'anomaly') return 'ultimateAnomaly'

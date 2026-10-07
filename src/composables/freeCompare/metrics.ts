@@ -101,9 +101,9 @@ type CalcCharacter = NonNullable<Calc['resourceResult']['value']>['characters'][
 const perCharacter = (ctx: Calc, val: (c: CalcCharacter) => number | undefined | null): MetricVector =>
   sumRowsBy(ctx.resourceResult.value?.characters ?? [], c => c.agentId, val)
 
-/** 按槽位下标排列的数组（perSlotStun 等）→ 向量；槽位 i 的归属 = characters[i].agentId */
+/** 按槽位下标排列的数组（perSlotStun 等）→ 向量；槽位的归属按 slot 查（characters 跳过空槽，下标 ≠ 槽位号，判据 17） */
 const perSlotArray = (ctx: Calc, arr: ReadonlyArray<number>): MetricVector =>
-  sumRowsBy(arr.map((v, i) => ({ v, id: ctx.resourceResult.value?.characters?.[i]?.agentId })), r => r.id, r => r.v)
+  sumRowsBy(arr.map((v, slot) => ({ v, id: ctx.resourceResult.value?.characters.find(c => c.slot === slot)?.agentId })), r => r.id, r => r.v)
 
 // ---------- 指标注册表 ----------
 
@@ -218,7 +218,7 @@ export const METRICS: MetricDef[] = [
     label: '异常覆盖率',
     hint: 'coverage.coverageRate = 有效 DoT 时间 ÷ 战斗时间',
     scope: 'team', digits: 1, unit: '%', higherBetter: true,
-    read: ctx => solo(num(ctx.anomalyPoolResult.value?.coverage?.coverageRate)),
+    read: ctx => solo(num(ctx.anomalyPoolResult.value?.coverage.coverageRate)),
   },
   {
     id: 'disorderDamage',
@@ -257,14 +257,14 @@ export const METRICS: MetricDef[] = [
     label: '前台时间',
     hint: 'timeAllocation.frontlineTime（秒）—— 该角色占场时间，多了会挤主C',
     scope: 'perSlot', digits: 1, unit: '', higherBetter: false,
-    read: ctx => perCharacter(ctx, c => c.timeAllocation?.frontlineTime),
+    read: ctx => perCharacter(ctx, c => c.timeAllocation.frontlineTime),
   },
   {
     id: 'basicAttackTime',
     label: '平A时间',
     hint: 'timeAllocation.basicAttackTime（秒）—— 账本留给该角色自由输出的秒数',
     scope: 'perSlot', digits: 1, unit: '', higherBetter: true,
-    read: ctx => perCharacter(ctx, c => c.timeAllocation?.basicAttackTime),
+    read: ctx => perCharacter(ctx, c => c.timeAllocation.basicAttackTime),
   },
 
   // ===== 收敛健康度（越小越好 / 布尔） =====
@@ -273,7 +273,7 @@ export const METRICS: MetricDef[] = [
     label: '时间预算残差',
     hint: 'convergence.timeBudgetResidualSeconds —— 账本超预算又没消化掉的秒数，>0 = 结算不严格',
     scope: 'team', digits: 2, unit: '', higherBetter: false,
-    read: ctx => solo(num(ctx.resourceResult.value?.convergence?.timeBudgetResidualSeconds)),
+    read: ctx => solo(num(ctx.resourceResult.value?.convergence.timeBudgetResidualSeconds)),
   },
   {
     id: 'overflowSeconds',

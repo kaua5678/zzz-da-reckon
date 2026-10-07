@@ -74,7 +74,7 @@ export function cappedCooldownTriggers(rawCount: number, totalTime: number, cool
 
 export function getUtilizedCount(cfg: CharacterOperationConfig, actionId: string | undefined, rawCount: number): number {
   if (!actionId || rawCount <= 0) return rawCount
-  const rule = cfg.resourceUtilization?.[actionId]
+  const rule = cfg.resourceUtilization[actionId]
   if (!rule) return rawCount
   const rate = Math.max(0, Math.min(1, Number.isFinite(rule.rate) ? rule.rate : 1))
   let count = rawCount * rate
@@ -104,7 +104,7 @@ export function applyExecutionUtilization(cfg: CharacterOperationConfig, exec: S
 
 export function applyEventUtilization(cfg: CharacterOperationConfig, event: AnomalyEventExecution): AnomalyEventExecution {
   if (event.count <= 0) return event
-  const directRule = cfg.resourceUtilization?.[event.eventId]
+  const directRule = cfg.resourceUtilization[event.eventId]
   const actionId = directRule ? event.eventId : (event.carrierMoveId ?? event.eventId)
   const count = getUtilizedCount(cfg, actionId, event.count)
   return count === event.count ? event : { ...event, count }

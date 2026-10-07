@@ -137,7 +137,7 @@ describe('指标注册表（加指标 = 加一行）', () => {
     const fakeCtx = {
       teamTotalDamage: { value: 12345 },
       damagePoolRows: { value: [{ slot: 0, agentId: '1171', totalDamage: 100, type: '直伤' }] },
-      resourceResult: { value: { totalTime: 180, characters: [] } },
+      resourceResult: { value: { totalTime: 180, characters: [], convergence: {} } },
       stunPoolResult: { value: null },
       anomalyPoolResult: { value: null },
       windowDuration: { value: 16 },

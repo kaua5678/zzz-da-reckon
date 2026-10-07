@@ -50,8 +50,8 @@ describe('队友 Buff 可交互性谓词（teammateBuffRows）', () => {
     expect(isTeammateBuffInteractive(b)).toBe(true)
   })
 
-  it('缺省（字段 undefined）按「无载荷 / 进通道」处理，不抛异常', () => {
-    const empty = {} as Probe
+  it('可选字段缺省（buffModifiers / singleSourced 为 undefined）按「无载荷 / 进通道」处理', () => {
+    const empty = { effects: [] } as Probe
     expect(entersNumericChannel(empty)).toBe(true)
     expect(hasComputablePayload(empty)).toBe(false)
     expect(isTeammateBuffInteractive(empty)).toBe(false)

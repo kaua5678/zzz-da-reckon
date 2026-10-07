@@ -114,7 +114,7 @@ function applyPiperPanel({ cinemaLevel, panel, settings }: AgentPanelInput): voi
   // 面板级机制走 applyPanel（文档化通道，corin 历史缺陷同款：transformSkillExecutions 改写 panel
   // 会在收敛轮间对同一缓存面板对象 `+=` 累积——曾致物理积蓄效率 80%×20轮=1600%，物理积蓄 28.9 万、
   // 派派校准反向高估 +18652）。applyPanel 每次面板重算都是新对象，`+=` 不累积。
-  const coverage = Math.max(0, Math.min(1, Number(settings?.['piper.momentumCoverage']
+  const coverage = Math.max(0, Math.min(1, Number(settings['piper.momentumCoverage']
     ?? PIPER_BUILDUP_COVERAGE_DEFAULT)))
   const cap = cinemaLevel >= 1 ? 30 : 20
   // 积蓄侧吃「平均层数」，影画2 侧吃「满层」——两条通道口径不同，别合并（用户 2026-09-01）

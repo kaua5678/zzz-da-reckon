@@ -204,7 +204,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<
 }
 
 function resourceSections({ result }: AgentResourceSectionsInput) {
-  const bangboo = result?.rinaBangboo
+  const bangboo = result.rinaBangboo
   if (!bangboo || bangboo.triggers <= 0) return []
   return [{
     id: 'rina-bangboo',

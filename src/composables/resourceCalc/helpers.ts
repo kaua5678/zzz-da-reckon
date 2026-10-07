@@ -245,7 +245,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
           const move = findMoveById(skills, exec.moveId)
           if (move) {
             // 招式类型定向（伤害路径按此读 X__<target> 定向键，如驱动盘/音擎的普攻/冲刺限定增伤）
-            const foundCategory = skills?.categories?.find(cat => cat.moves.some(m => String(m.id) === String(exec.moveId)))
+            const foundCategory = skills?.categories.find(cat => cat.moves.some(m => String(m.id) === String(exec.moveId)))
             const skillDamageTarget = foundCategory ? inferSkillDamageTarget(foundCategory, move) : undefined
             const variantMove = segmentOf ? (findMoveById(skills, segmentOf(exec.moveId)) ?? move) : move
             const coopSwapped = !!segmentOf && segmentSwapped(exec.moveId, segmentOf)
@@ -270,7 +270,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
             const energyValue = resolveRecoveryPerCount(exec.energyRecovery, undefined, fusedOf('energy_recovery'))
             patch = {
               actionCode: move.id,
-              moveName: move.name?.zhCN || move.name?.en || exec.moveName,
+              moveName: move.name.zhCN || move.name.en || exec.moveName,
               damageMultiplier: exec.damageMultiplierOverride
                 ? exec.damageMultiplier
                 : fusedOf('damage'),
@@ -474,7 +474,7 @@ export function buildCharConfig(
     cannonRotorCooldownSeconds: hasCannonRotorEvent ? periodicDirect!.cooldownByModLevel[cannonRotorModIndex] : 0,
     moveActionTimes: moveActionTimesOf(skills), // CC-409
     initialEnergyGift,
-    initialDecibelGift: 1000 + (configStore.appliedBoss?.decibelGift?.slot === slot ? (configStore.appliedBoss?.decibelGift?.amount ?? 0) : 0),
+    initialDecibelGift: 1000 + (configStore.appliedBoss?.decibelGift?.slot === slot ? configStore.appliedBoss.decibelGift.amount : 0),
     battleTime: configStore.enemy.battleTime,
     invincibleTime: configStore.enemy.invincibleTime,
     bodySize: configStore.enemy.bodySize,

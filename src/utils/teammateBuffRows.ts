@@ -63,7 +63,7 @@ export function entersNumericChannel(buff: Pick<TeammateBuff, 'singleSourced'>):
 export function hasComputablePayload(
   buff: Pick<TeammateBuff, 'effects' | 'buffModifiers'>,
 ): boolean {
-  return (buff.effects?.length ?? 0) > 0 || (buff.buffModifiers?.length ?? 0) > 0
+  return buff.effects.length > 0 || (buff.buffModifiers?.length ?? 0) > 0
 }
 
 /**

@@ -300,7 +300,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
       pushDirect({
         id: `direct-${slot}-${mid}-table`,
         slot, agentId: charResult.agentId,
-        name: `${move.name?.zhCN || mid}（表）`,
+        name: `${move.name.zhCN || mid}（表）`,
         element: move.damageElement ?? catalogStore.agentsMap.get(charResult.agentId)?.damageElement ?? 'physical',
         source: '轴内·技能表直读',
         count, multiplier: mult,

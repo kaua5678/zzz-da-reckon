@@ -118,7 +118,7 @@ function applyXidePanel({ panel, cinemaLevel }: AgentPanelInput): void {
 function buildXideCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   cfg.xideCinemaLevel = cinemaLevel
   // 影画6 激光附加伤害按「局内最终攻击力 × 百分比」进基础区（flatDamageBonus，奥菲丝先例）
-  cfg.xideAtk = Math.max(0, panel?.atk ?? 0)
+  cfg.xideAtk = Math.max(0, panel.atk)
   // 额外能力门控（patchExecutions 招式限定增伤/电抗无视用）
   cfg.xideAAActive = additionalAbilityActiveOf(panel) ? 1 : 0
   // 铁萼雨幕耗能：固定 60（每 60 能量释放一次铁萼雨幕 1461009，用户口径 2026-08）
@@ -127,7 +127,7 @@ function buildXideCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfi
   // 钢能招式攻击数据：统一对「所有倍率页」取 attack_data_0（钢能）建映射，
   // 平A不细分段数、按秒均（四段 attack_data_0 总和 ÷ 四段 actionTime 总和 ≈ 11/s）折算。
   const attackDataMap: Record<string, number> = {}
-  for (const cat of skills?.categories ?? []) {
+  for (const cat of skills.categories) {
     for (const mv of cat.moves) {
       attackDataMap[mv.id] = getAttackData0(mv)
     }
@@ -171,7 +171,7 @@ export function pickXideVanguardSlot(team: ReadonlyTeam, oocAtkOf: (slot: number
   let vanguardSlot = -1
   let bestAtk = -1
   for (const m of candidates) {
-    const atk = oocAtkOf(m.slot) ?? m.agent?.level60?.atkBase ?? 0
+    const atk = oocAtkOf(m.slot) ?? m.agent?.level60.atkBase ?? 0
     if (atk > bestAtk) {
       bestAtk = atk
       vanguardSlot = m.slot

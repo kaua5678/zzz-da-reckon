@@ -232,7 +232,7 @@ function buildZhuYuanResourceResult({ cfg, state }: AgentResourceResultInput) {
 function buildZhuYuanResourceSections(input: AgentResourceSectionsInput) {
   const spec = getAgentSpec(ZHUYUAN_AGENT_ID)
   const sections = spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
-  const shells = input.result?.specResources?.[ZHUYUAN_SHELLS_RESOURCE_ID]
+  const shells = input.result.specResources?.[ZHUYUAN_SHELLS_RESOURCE_ID]
   if (shells) {
     const shellsTotal = whole(shells.total)
     const afterglow = Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST)

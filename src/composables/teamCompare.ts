@@ -1078,8 +1078,8 @@ function actionTimeTotal(
   // 降配提示（引擎 axisFallback / interactionScale）：轴需求或手填交互超出时间预算时
   // 引擎自动降配——弃轴退化一般轴 / 缩放交互次数（boss 强制弹刀不缩）。
   const notes: string[] = []
-  if (rr?.convergence?.axisFallback) notes.push('轴需求超出时间预算，已退化为一般轴')
-  const scale = rr?.convergence?.interactionScale
+  if (rr?.convergence.axisFallback) notes.push('轴需求超出时间预算，已退化为一般轴')
+  const scale = rr?.convergence.interactionScale
   if (scale !== undefined && scale < 1) notes.push(`交互次数已降配 ×${fmt(scale, 2)}`)
   const fallbackNote = notes.length > 0 ? `｜${notes.join('；')}` : ''
   return {

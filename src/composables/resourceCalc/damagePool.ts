@@ -102,7 +102,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     const claimedInAxis: Record<string, number> = {}
 
     function agentName(agentId: string, slot: number) {
-      return agentNames[agentId] || catalogStore.agentsMap.get(agentId)?.name?.zhCN || `槽${slot + 1}`
+      return agentNames[agentId] || catalogStore.agentsMap.get(agentId)?.name.zhCN || `槽${slot + 1}`
     }
     const infectionElement = getWindInfectionElement(configStore, catalogStore)
     // CC-176/177：直伤 / 异常入参拼装的环境量（正路 pushDirect / pushRelease / 标准异常与模块 extraAnomalyRows 共用）
@@ -211,7 +211,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     // 异放限定修正的来源：本角色模块（scope 缺省 self）+ 在场声明 `releaseModifierScope: 'team'` 的其他模块（CC-121）
-    const teamReleaseModules = [...new Set(configStore.team.map(c => (c?.agentId ? getAgentMechanic(c.agentId) : undefined)))]
+    const teamReleaseModules = [...new Set(configStore.team.map(c => (c.agentId ? getAgentMechanic(c.agentId) : undefined)))]
       .filter(m => m?.releaseModifier && m.releaseModifierScope === 'team')
     function resolveReleaseModifier(agentId: string): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
       const own = getAgentMechanic(agentId)
@@ -337,7 +337,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       if (!isAxis) return stunCoverage
       let inAxis = 0
       let total = 0
-      for (const ch of adjustedResourceResult?.characters ?? []) {
+      for (const ch of adjustedResourceResult.characters) {
         if (slot !== undefined && ch.slot !== slot) continue
         for (const e of ch.executions) {
           if (e.category !== 'chain' || !/终结技|ultimate/i.test(e.moveName)) continue

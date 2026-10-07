@@ -29,6 +29,7 @@ describe('CC-337: 单一事实源与跨模块对账守护', () => {
         penRatio: 0,
         energyRegen: 1.5,
       },
+      coreSkill: { levels: [] },
       combatBuffs: {
         corePassive: {
           scope: 'outOfCombat',

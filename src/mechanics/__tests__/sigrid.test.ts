@@ -122,7 +122,7 @@ describe('希格莉德 patchExecutions：影画2 穿透率（catalog 真实 id�
     const lance3 = exec('1591022')
     const chuqiang = exec('1591015') // 连携技：冰凌卷地 ∈ 出枪式
     const basic2 = exec('1591002') // 凛冽枪尖 #2 ∉ 出枪式（旧实现错挂）
-    sigridMechanic.patchExecutions!({ cfg, executions: [lance1, lance3, chuqiang, basic2] } as any)
+    sigridMechanic.patchExecutions!({ cfg, state: { basicAttackTime: 0 }, executions: [lance1, lance3, chuqiang, basic2] } as any)
     expect(lance1.penRatioBonus).toBe(24)
     expect(lance3.penRatioBonus).toBe(24)
     expect(chuqiang.penRatioBonus).toBe(24)
@@ -161,7 +161,7 @@ describe('希格莉德 patchExecutions：影画2 穿透率（catalog 真实 id�
     const cfg: any = { sigridCinemaLevel: 0, sigridAtk: 1000 }
     const lance = exec('1591007')
     const chuqiang = exec('1591015')
-    sigridMechanic.patchExecutions!({ cfg, executions: [lance, chuqiang] } as any)
+    sigridMechanic.patchExecutions!({ cfg, state: { basicAttackTime: 0 }, executions: [lance, chuqiang] } as any)
     expect(lance.penRatioBonus ?? 0).toBe(0)
     expect(chuqiang.penRatioBonus ?? 0).toBe(0)
   })
@@ -408,7 +408,7 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
 describe('希格莉德 buildCharConfig', () => {
   it('记录命座等级与局内攻击力（敛枪式附加伤害基数）', () => {
     const cfg: any = {}
-    sigridMechanic.buildCharConfig!({ cfg, cinemaLevel: 3, panel: { atk: 3210 } } as any)
+    sigridMechanic.buildCharConfig!({ cfg, cinemaLevel: 3, panel: { atk: 3210 }, skills: { categories: [] } } as any)
     expect(cfg.sigridCinemaLevel).toBe(3)
     expect(cfg.sigridAtk).toBe(3210)
   })

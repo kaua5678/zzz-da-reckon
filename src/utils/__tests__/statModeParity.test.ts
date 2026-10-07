@@ -119,8 +119,8 @@ describe('判据 19：stat 结算口径单一事实源（statSettlementMode）',
     // `statSettlementMode(stat)` / STAT_META（energyRegen：驱动盘 +60% vs 基础回能字段 1.2 点/秒）。
     expect(src).toMatch(/function inferStatMode\(stat: string, statRules: StatRules \| null\)[\s\S]{0,120}?driveDiscStatMode\(stat, statRules\)/)
     expect(disc).toMatch(/驱动盘数值的语义由 \*\*catalog 外部数据\*\*/)
-    expect(disc).toMatch(/statRules\?\.driveDisc\?\.statModes\?\.\[stat\]/)
-    expect(disc).toMatch(/statRules\?\.statDisplay\?\.\[stat\]\?\.display/)
+    expect(disc).toMatch(/statRules\?\.driveDisc\.statModes\?\.\[stat\]/)
+    expect(disc).toMatch(/statRules\?\.statDisplay\[stat\]\?\.display/)
     // 若有人把两个通路合并（无论哪个方向）都会命中下面这些
     expect(disc).not.toMatch(/statSettlementMode\(/)
     expect(disc).not.toMatch(/from '@\/utils\/statMeta'/)

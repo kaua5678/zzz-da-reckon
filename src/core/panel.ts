@@ -226,7 +226,7 @@ export function applyDriveDiscConfig(
 
   // 4、5、6号位主词条
   for (const slot of [4, 5, 6] as const) {
-    const stat = config.mainStats?.[slot]
+    const stat = config.mainStats[slot]
     if (stat && maxMain[stat] != null) {
       applyStat(result, stat, maxMain[stat], inferStatMode(stat, statRules))
     }

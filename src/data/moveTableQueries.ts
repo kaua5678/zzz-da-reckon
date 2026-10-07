@@ -150,7 +150,7 @@ export function basicComboCycleSeconds(skills: AgentSkills | undefined, moveId: 
   const basic = skills?.categories.find(c => c.id === 'basic')
   if (!basic) return 0
   const stem = (m: SkillMove): string | null => {
-    const name = m.name?.zhCN || m.name?.en || ''
+    const name = m.name.zhCN || m.name.en || ''
     const hit = name.match(/^(.*?)\s*#\d+\s*$/)
     return hit ? hit[1] : null
   }

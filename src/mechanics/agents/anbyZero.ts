@@ -338,7 +338,7 @@ export const anbyZeroMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    cfg.anbyZeroTeammateWhiteLightning = (threads.moduleFeedback?.anbyZeroTeammateWl ?? 0)
+    cfg.anbyZeroTeammateWhiteLightning = (threads.moduleFeedback.anbyZeroTeammateWl ?? 0)
   },
   buildExecutions: buildAnbyZeroExecutions,
   buildResourceResult: buildAnbyZeroResourceResult,

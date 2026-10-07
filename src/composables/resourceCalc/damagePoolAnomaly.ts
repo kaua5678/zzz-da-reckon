@@ -82,7 +82,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
     axisStunFor, pushRelease,
   } = env
-  const windRate = anomalyPoolResult?.coverage?.windCoverageRate ?? 0
+  const windRate = anomalyPoolResult?.coverage.windCoverageRate ?? 0
   const teamMechanics = teamMechanicSlots(configStore.team)
   // r711：气旋异放是风蚀持有者（维琳娜）的专属产出 ⇒ 归属取事件产出者的槽位（与事件生产同一判定 `corrosionOwner`），
   // 面板随槽位走。原取「第一个风属性槽」：双风队维琳娜排在洛克茜 / 赛维里安之后时，行挂到对方名下、用对方面板结算。
@@ -258,7 +258,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
   // 返回分组，跨全队按 order 稳定排序后展开（rowsnap 按行顺序求哈希，故禁止改块序）。
   const extraGroups: ExtraAnomalyRowGroup[] = []
   configStore.team.forEach((char, slot) => {
-    const groups = char?.agentId
+    const groups = char.agentId
       ? getAgentMechanic(char.agentId)?.extraAnomalyRows?.({
         slot,
         charResult: adjustedResourceResult?.characters.find(c => c.slot === slot),

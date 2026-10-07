@@ -465,8 +465,8 @@ export const vivianMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    cfg.vivianTeamExTotal = (threads.moduleFeedback?.vivianTeamEx ?? 0)
-    cfg.vivianAnomalyTriggerTotal = (threads.moduleFeedback?.vivianAnomalyTriggers ?? 0)
+    cfg.vivianTeamExTotal = (threads.moduleFeedback.vivianTeamEx ?? 0)
+    cfg.vivianAnomalyTriggerTotal = (threads.moduleFeedback.vivianAnomalyTriggers ?? 0)
   },
   buildExecutions: buildVivianExecutions,
   patchExecutions: patchVivianExecutions,

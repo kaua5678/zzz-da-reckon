@@ -393,10 +393,10 @@ export const promiaMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
-    cfg.promiaTriggerHitCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTriggerHits ?? 0)))
-    cfg.promiaTeammateReleaseCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTeammateReleases ?? 0)))
+    cfg.promiaTriggerHitCount = Math.max(0, Math.floor((threads.moduleFeedback.promiaTriggerHits ?? 0)))
+    cfg.promiaTeammateReleaseCount = Math.max(0, Math.floor((threads.moduleFeedback.promiaTeammateReleases ?? 0)))
     cfg.extraSelfDecibelReward =
-      Math.max(0, cfg.extraSelfDecibelReward) + Math.max(0, Math.floor((threads.moduleFeedback?.promiaReleaseDecibel ?? 0)))
+      Math.max(0, cfg.extraSelfDecibelReward) + Math.max(0, Math.floor((threads.moduleFeedback.promiaReleaseDecibel ?? 0)))
   },
   buildExecutions: buildPromiaExecutions,
   buildAnomalyEvents: buildPromiaAnomalyEvents,

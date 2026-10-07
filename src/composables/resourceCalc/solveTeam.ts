@@ -88,7 +88,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    *   见 docs/mcp-stun-dual-source.md §24.135；要根治应改割线步（用实测 Δ喧响/Δ弹刀）。
    */
   const pendingTopUpSeconds = (x: CalcRoundResult, prev: CalcRoundResult | null): number =>
-    Math.max(0, (x.interactionTopUp?.requiredSeconds ?? 0) - (prev?.interactionTopUp?.requiredSeconds ?? 0))
+    Math.max(0, x.interactionTopUp.requiredSeconds - (prev?.interactionTopUp.requiredSeconds ?? 0))
   /**
    * 跑完整外层不动点。forceNoAxis = 轴退化重算（用户口径 2026-08：轴的资源需求
    * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
@@ -133,7 +133,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     const timeInconsistencyOf = (m: OuterCycleMember): number => {
       const r = m.out
       if (!r.resourceResult) return Number.POSITIVE_INFINITY
-      return Math.abs(stunEffTime - (frontlineTotalOf(r) + pendingTopUpSeconds(r, m.prev))) + (r.resourceResult.convergence?.timeTruncatedSeconds ?? 0)
+      return Math.abs(stunEffTime - (frontlineTotalOf(r) + pendingTopUpSeconds(r, m.prev))) + (r.resourceResult.convergence.timeTruncatedSeconds ?? 0)
     }
     /**
      * 终局整数化后的环成员离散自洽度（2026-09-20，叶瞬光 integer-finalize 配套）。
@@ -152,7 +152,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     const discreteInconsistencyOf = (m: OuterCycleMember): number => {
       const r = m.out
       if (!r.resourceResult) return Number.POSITIVE_INFINITY
-      return r.resourceResult.convergence?.timeTruncatedSeconds ?? 0
+      return r.resourceResult.convergence.timeTruncatedSeconds ?? 0
     }
     /** 选中成员的前一轮结果（= 它的输入线程来源；轴退化判据用它算「还没装进计划的补齐量」） */
     let outPrev: CalcRoundResult | null = null
@@ -215,8 +215,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // 会被挤到没有足够非失衡时间去执行，打法循环本身就不成立。
       // 收敛到非失衡时间 ≥ 该轮实际必要时间（含链的保守上界，但安全）。
       if (!locked && stunEffTime > 0 && stunWindowDur > 0) {
-        const totalNecessary = (out.resourceResult?.characters ?? []).reduce(
-          (s, c) => s + (c.timeAllocation?.necessaryTime ?? 0), 0)
+        const totalNecessary = out.resourceResult.characters.reduce(
+          (s, c) => s + c.timeAllocation.necessaryTime, 0)
         const nonStunTime = stunEffTime - next * stunWindowDur
         if (nonStunTime < totalNecessary) {
           next = Math.max(0, (stunEffTime - totalNecessary) / stunWindowDur)
@@ -363,7 +363,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     const overBudgetNet = (x: RoundOut) =>
       stunEffTime > 0 && netOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
     const truncatedToo = (x: CalcRoundResult) =>
-      (x.resourceResult?.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS
+      (x.resourceResult.overflowSeconds ?? 0) > TIME_BUDGET_TOLERANCE_SECONDS
     const overBudget = overBudgetNet
     let axisFallback = false
     let interactionScale: number | undefined
@@ -373,9 +373,9 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     if (lockedStunCount < 0) {
       // 非法补齐（自动填充交互 > 200s，用户口径 2026-09-01）与超预算同等对待：
       // 轴要的资源根本填不出来 ⇒ 轴不可操作 ⇒ 走同一条退化路径（补齐次数已在源头清零）
-      const topUpIllegal = (x: CalcRoundResult) => x.interactionTopUp?.illegal === true
+      const topUpIllegal = (x: CalcRoundResult) => x.interactionTopUp.illegal === true
       // 轴太厚判据按「计划 + 待装补齐」算（见 pendingTopUpSeconds 注释）
-      if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes?.length) {
+      if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length) {
         hadAxis = true
         const noAxis = runOuterLoop(true)
         if (!overBudget(noAxis) && !topUpIllegal(noAxis.out)) axisFallback = true
@@ -411,10 +411,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * ⚠ 只闸**非轴降配**（本块）：上方轴退化换的是「用不用轴」，不缩交互次数（其 `runOuterLoop`
        * 不带 scale），故不在本闸门语义内。
        */
-      // @fact engine:降配搜索/手动锁定交互 口径: `ResourceCalcConfig.interactionsLocked === true`（配装页「手动锁定交互」勾选）= 用户在交互栏填的次数是**用户明确意图** ⇒ 非轴降配整块不执行（`downscaleAllowed` 闸门），`interactionScale` 保持 `undefined`，装不下时由 `overflowSeconds`/`truncationCuts` 如实上报截断；缺省 false ⇒ 本条路径逐位不变（全库预设 ×6 场景 zd DIFF 0）。同款先例 = 锁失衡次数（`lockedStunCount < 0`）。**不新增「先提高合轴率」的调用**——合轴吸收（G5）本就在 `core/resource/helpers.ts#iterate` 内、降配之前生效，锁定后自然先跑（实测 ratio 0→缺省→1 截断 93.69→93.61→31.23s）| 据 用户@2026-10-06 | 验 src/composables/__tests__/interactionsLocked.test.ts | 锚 src/composables/resourceCalc/solveTeam.ts#stageResolveFeasibility | 信 确认
+      // @fact engine:降配搜索/手动锁定交互 口径: `ResourceCalcConfig.interactionsLocked === true`（配装页「手动锁定交互」勾选）= 用户在交互栏填的次数是**用户明确意图** ⇒ 非轴降配整块不执行（`downscaleAllowed` 闸门），`interactionScale` 保持 `undefined`，装不下时由 `overflowSeconds`/`truncationCuts` 如实上报截断；缺省 false ⇒ 本条路径逐位不变（全库预设 ×6 场景 zd DIFF 0）。同款先例 = 锁失衡次数（`lockedStunCount < 0`）。**不新增「先提高合轴率」的调用**——合轴吸收（G5）本就在 `core/resource/helpers.ts#iterate` 内、降配之前生效，锁定后自然先跑（实测 ratio 0→缺省→1 截断 93.69→93.61→31.23s）| 据 用户@2026-10-06·复核@2026-10-08 | 验 src/composables/__tests__/interactionsLocked.test.ts | 锚 src/composables/resourceCalc/solveTeam.ts#stageResolveFeasibility | 信 确认
       // ⟳复核: 若降配触发臂（`overBudget`/`truncatedToo`）或合轴吸收在 `iterate` 内的**先后顺序**再动，须重对「锁定态下合轴先跑」与「缺省路径逐位不变」（interactionsLocked.test.ts ①②③ + zd.sh）| 到期 2027-01-31
       const downscaleAllowed = resourceConfig.interactionsLocked !== true
-      if (downscaleAllowed && (overBudget(r) || truncatedToo(r.out)) && !r.out.resolvedAxes?.length) {
+      if (downscaleAllowed && (overBudget(r) || truncatedToo(r.out)) && !r.out.resolvedAxes.length) {
         // 搜索策略（2026-09-11 第三版，用户裁决）：**枚举候选 scale + 硬约束「真撑得下」取最大可行**。
         // 前两版教训：① 二分假定"可行域是 scale 的下闭区间"，把「截断 ≤1s」并进验收后会在
         // `yixuan-roxy-lucia` 上把好试算全拒（基线 3.78s 超预算）；② "最小截断优先"会把结构性溢出队压到
@@ -431,10 +431,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         // （0.25 单独跑与跟在 0.0625 后跑，net 均 180.191）；真因是**可行集非下闭**（全库 21 队中 7 队
         // 「存在可行 x 且存在 y<x 不可行」，3 队最小档不可行但更大档可行）⇒「最小档不行 ⇒ 全体不行」的前提为假。
         const baseNet = netOf(r)
-        const baseTruncation = r.out.resourceResult?.overflowSeconds ?? 0
+        const baseTruncation = r.out.resourceResult.overflowSeconds ?? 0
         const acceptsTrial = (x: RoundOut): boolean => downscaleTrialAccepted({
           trialNet: netOf(x),
-          trialTruncation: x.out.resourceResult?.overflowSeconds ?? 0,
+          trialTruncation: x.out.resourceResult.overflowSeconds ?? 0,
           baseNet,
           baseTruncation,
           stunEffTime,
@@ -443,7 +443,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         const candidates = DOWNSCALE_SCALES
         const best = selectDownscaleScale(candidates, scale => {
           const trial = runOuterLoop(true, scale)
-          const trialTruncation = trial.out.resourceResult?.overflowSeconds ?? 0
+          const trialTruncation = trial.out.resourceResult.overflowSeconds ?? 0
           // CC-149（第 179 轮）：绝对可行**独立判定**，且绝对可行即接受。
           // 旧写法 `feasible = accepted && …` 让兜底的相对三臂否决了首选的绝对可行——违背两层字典序
           // （@fact engine:降配搜索/绝对可行优先）。绝对可行 ⇒ 臂①②必然满足，差别只在臂③「留白不增」：

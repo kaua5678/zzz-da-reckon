@@ -249,7 +249,7 @@ function applyEllenTeamConfig({ cfg, cinemaLevel, phase, stunCount, threads }: A
   // 语义 = `convergence.ts` 原 `merged.agentId === '1191'` 分支（规则 6），地板逐位保留。
   // ⚠ 必须写在 cinemaLevel 门之前：原分支对任意命座都写该字段，且 cycleFromInput 在 C0-C3 也读它。
   if (threads) {
-    cfg.ellenFreezeCount = Math.max(0, Math.floor(Number((threads.moduleFeedback?.ellenFreezeCount ?? 0))))
+    cfg.ellenFreezeCount = Math.max(0, Math.floor(Number((threads.moduleFeedback.ellenFreezeCount ?? 0))))
   }
   if (cinemaLevel < 4) return
   const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))

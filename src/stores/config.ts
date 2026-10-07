@@ -405,7 +405,7 @@ export function deriveTeammateBuffEnabled(
     const inTeam = cinemaLevel !== undefined
 
     for (const buff of group.buffs) {
-      const sourceLabel = buff.source?.zhCN ?? buff.sourceLabel?.zhCN ?? ''
+      const sourceLabel = buff.source?.zhCN ?? buff.sourceLabel.zhCN ?? ''
       const requiredCinema = parseCinemaRequirement(sourceLabel)
       const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema
       // CC-64c：波可娜 C6 base 条互斥也经 teammateBuffGate（pulchra.ts 声明；原为此处写死 1351 分支）
@@ -685,7 +685,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   function setSubStatCount(slot: number, statId: string, count: number) {
     const char = team.value[slot]
     if (!char?.driveDisc.subStatAllocation) return
-    const pool = catalogStore.statRules?.driveDisc?.subStatPool ?? []
+    const pool = catalogStore.statRules?.driveDisc.subStatPool ?? []
     if (pool.length > 0 && !pool.includes(statId)) {
       delete char.driveDisc.subStatAllocation[statId]
       return
@@ -736,20 +736,20 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
       char.wEngineId = rec.wengine.catalog_wengine_id
     }
 
-    const fourPieceSet = findDriveDiscSetForRecommendation(rec.drive_disc_sets?.four_piece)
+    const fourPieceSet = findDriveDiscSetForRecommendation(rec.drive_disc_sets.four_piece)
     if (fourPieceSet) char.driveDisc.fourPieceSetId = fourPieceSet.id
 
-    const twoPieceSet = findDriveDiscSetForRecommendation(rec.drive_disc_sets?.two_piece)
+    const twoPieceSet = findDriveDiscSetForRecommendation(rec.drive_disc_sets.two_piece)
     if (twoPieceSet) char.driveDisc.twoPieceSetId = twoPieceSet.id
 
     for (const slotNum of [4, 5, 6] as const) {
-      const recStat = rec.main_stats?.[String(slotNum) as '4' | '5' | '6']
+      const recStat = rec.main_stats[String(slotNum) as '4' | '5' | '6']
       const statId = recStat ? REC_MAIN_STAT_MAP[recStat.name] : undefined
       if (statId) char.driveDisc.mainStats[slotNum] = statId
     }
 
     char.driveDisc.subStatAllocation = {}
-    if (rec.substats?.length) {
+    if (rec.substats.length) {
       const agent = catalogStore.getAgent(char.agentId)
       const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
       if (agent) {

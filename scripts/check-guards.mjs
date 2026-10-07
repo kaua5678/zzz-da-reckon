@@ -68,7 +68,7 @@ import { scanRecordKeyDeadReads, formatRecordKeyDeadReads } from './lib/record-k
 import { scanIdLiterals, formatIdLiterals, ID_LITERAL_BASELINE, ID_HOME_DIRS } from './lib/id-literal-gate.mjs'
 // 判据 27：字面量类型断言硬门（r719；r728 加类型字面量形态，见 scripts/lib/literal-assertion-gate.mjs 头注释）
 import { scanLiteralAssertions, formatLiteralAssertions, LITERAL_ASSERTION_BASELINE } from './lib/literal-assertion-gate.mjs'
-// 判据 28：死兜底硬门（r723，见 scripts/lib/dead-nullish-gate.mjs 头注释）
+// 判据 28：死兜底硬门（r723；r731 扩到 `?.`；见 scripts/lib/dead-nullish-gate.mjs 头注释）
 import { scanDeadNullish, formatDeadNullish, DEAD_NULLISH_BASELINE } from './lib/dead-nullish-gate.mjs'
 // 判据 29：类型只声明一次（r729，见 scripts/lib/type-restatement-gate.mjs 头注释）
 import { scanTypeRestatements, formatTypeRestatements, TYPE_RESTATEMENT_BASELINE } from './lib/type-restatement-gate.mjs'
@@ -1337,11 +1337,12 @@ export function runAllChecks(root = ROOT) {
   }
 
   // ---- 判据 28：死兜底硬门（r723：src 非测试 .ts 有 871 处 `a ?? b` 的 a 类型不含 null/undefined——右侧永远取不到，
-  //      却把必填契约写成「可能缺」；r723 删了引擎内部契约上的 800 处；r725 起外部 JSON 由 validate:data 类型契约校验，不设豁免）----
+  //      却把必填契约写成「可能缺」；r723 删了引擎内部契约上的 800 处；r725 起外部 JSON 由 validate:data 类型契约校验，不设豁免；
+  //      r731 扩到 `?.`——同一句话的另一种写法，还会把后面的死 `??` 洗白；首扫 244 处，全部收口）----
   {
     const report = scanDeadNullish(root)
     results.push({
-      name: `dead-nullish gate (判据 28: 类型不含 null/undefined 的值不写 \`?? 默认值\`；真可能缺就把字段改可选) `
+      name: `dead-nullish gate (判据 28: 类型不含 null/undefined 的值不写 \`?? 默认值\` / \`?.\`；真可能缺就把字段改可选) `
         + `= ${report.count}/${DEAD_NULLISH_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatDeadNullish(report),

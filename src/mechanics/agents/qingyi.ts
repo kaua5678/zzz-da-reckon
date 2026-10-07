@@ -165,17 +165,17 @@ function buildQingyiCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInpu
   }
 
   // 通用招式电压回复量（attack_data）
-  const special = skills?.categories.find(c => c.id === 'special')
-  const exMoves = (special?.moves ?? []).filter(m => (m.name?.en ?? '').toLowerCase().includes('ex special'))
+  const special = skills.categories.find(c => c.id === 'special')
+  const exMoves = (special?.moves ?? []).filter(m => (m.name.en ?? '').toLowerCase().includes('ex special'))
   cfg.qingyiExSpecialVoltage = sumVoltage(exMoves)
   const chainMoves = chainMovesOf(skills)
-  cfg.qingyiUltimateVoltage = sumVoltage(chainMoves.filter(m => isUltimateMoveName(m.name?.en)))
-  cfg.qingyiChainVoltage = sumVoltage(chainMoves.filter(m => isChainAttackMoveName(m.name?.en)))
-  const dodge = skills?.categories.find(c => c.id === 'dodge')
-  cfg.qingyiDodgeCounterVoltage = sumVoltage((dodge?.moves ?? []).filter(m => (m.name?.en ?? '').toLowerCase().includes('dodge counter')))
-  const assist = skills?.categories.find(c => c.id === 'assist')
-  cfg.qingyiQuickAssistVoltage = sumVoltage((assist?.moves ?? []).filter(m => (m.name?.en ?? '').toLowerCase().includes('quick assist')))
-  cfg.qingyiAssistFollowUpVoltage = sumVoltage((assist?.moves ?? []).filter(m => (m.name?.en ?? '').toLowerCase().includes('assist follow-up')))
+  cfg.qingyiUltimateVoltage = sumVoltage(chainMoves.filter(m => isUltimateMoveName(m.name.en)))
+  cfg.qingyiChainVoltage = sumVoltage(chainMoves.filter(m => isChainAttackMoveName(m.name.en)))
+  const dodge = skills.categories.find(c => c.id === 'dodge')
+  cfg.qingyiDodgeCounterVoltage = sumVoltage((dodge?.moves ?? []).filter(m => (m.name.en ?? '').toLowerCase().includes('dodge counter')))
+  const assist = skills.categories.find(c => c.id === 'assist')
+  cfg.qingyiQuickAssistVoltage = sumVoltage((assist?.moves ?? []).filter(m => (m.name.en ?? '').toLowerCase().includes('quick assist')))
+  cfg.qingyiAssistFollowUpVoltage = sumVoltage((assist?.moves ?? []).filter(m => (m.name.en ?? '').toLowerCase().includes('assist follow-up')))
 }
 
 /** 实测通用行总时间（强特/大招/连携/闪反/弹刀/快支等已生成行，不含平A填充行），供电压计划预算扣减 */

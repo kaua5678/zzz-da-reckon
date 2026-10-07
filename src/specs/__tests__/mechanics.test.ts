@@ -11,9 +11,9 @@ import type { AgentMechanicSpec } from '@/specs/types'
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 
 describe('spec mechanics interpreter', () => {
-  it('builds resource sections from spec resources（无结果时的静态兜底，走生产 resourceSections，CC-188）', () => {
+  it('builds resource sections from spec resources（结果里还没有 specResources 时的静态兜底，走生产 resourceSections，CC-188）', () => {
     const spec = getAgentSpec('1561')!
-    const sections = specToMechanicModule(spec).resourceSections!({ result: undefined } as never)
+    const sections = specToMechanicModule(spec).resourceSections!({ result: {} } as never)
 
     expect(sections.some(section => section.id === 'velina_floria')).toBe(true)
     expect(sections.some(section => section.id === 'velina_corrosion')).toBe(true)
@@ -61,7 +61,7 @@ describe('spec mechanics interpreter', () => {
     module.applyPanel?.({ slot: 0, agent: null as any, cinemaLevel: 0, potentialLevel: 6, team: [], outOfCombatPanel: panel, panel, settings: {}, enemyStunVuln: 1.5 })
 
     expect(panel.anomalyProficiency).toBeCloseTo(16)
-    expect(module.resourceSections?.({ result: null as any })).toHaveLength(1)
+    expect(module.resourceSections?.({ result: {} } as never)).toHaveLength(1)
   })
 
   it('generates Nekomata resource spend executions from spec counts（2026-08-23 口供：单载体 1021019，30/40 档预算分配）', () => {

@@ -24,7 +24,7 @@ const DOWNSCALED = new Set<string>(DOWNSCALED_INTERACTION_FIELDS)
  */
 export function interactionSurvivalBySlot(rr?: TeamResourceResult | null): Map<number, number> {
   const out = new Map<number, number>()
-  for (const s of rr?.convergence?.truncationBySlot ?? []) {
+  for (const s of rr?.convergence.truncationBySlot ?? []) {
     out.set(s.slot, s.requested > 0 ? Math.max(0, Math.min(1, s.kept / s.requested)) : 1)
   }
   return out
@@ -114,7 +114,7 @@ export function liveInteractions(
   const survival = interactionSurvivalBySlot(rr)
   // 缩后保留 2 位小数（roundInteractionCount）：不取整会在难度明细里打出 15 位浮点尾巴（实测撑破散点明细表）
   const shrink = (slot: number, count: number) => roundInteractionCount(count * (survival.get(slot) ?? 1))
-  const out: InteractionItem[] = engineInteractionItems(config, shrink, rr?.convergence?.interactionScale)
+  const out: InteractionItem[] = engineInteractionItems(config, shrink, rr?.convergence.interactionScale)
   const engineTypes = new Set(out.map(i => i.type))
   // 反制支援（角力化解一组控制技）：次数不是 store 字段而是**运行时折算**（boss 控制技组 ×
   // 队内有反制支援招式的角色），按承接槽位的截断存活率缩。

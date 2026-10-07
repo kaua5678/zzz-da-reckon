@@ -6,7 +6,7 @@ import { moduleFeedbackSignature, outerFeedbackSignature, slotRecordSignature } 
  * 模块新增反馈键「编排层零改动」（CC-31）的承诺也覆盖收敛判据：只改字典也必须让签名变化。
  */
 const roundWith = (moduleFeedback: Record<string, number>) =>
-  ({ resourceResult: { characters: [] }, anomalyPool: { perSlotBonus: [] }, threadsNext: { moduleFeedback } }) as never
+  ({ resourceResult: { characters: [] }, interactionTopUp: {}, anomalyPool: { perSlotBonus: [] }, threadsNext: { moduleFeedback } }) as never
 
 describe('CC-314 moduleFeedback 入外层签名', () => {
   it('只有字典变化 ⇒ outerFeedbackSignature 变化', () => {
@@ -28,7 +28,7 @@ describe('CC-314 moduleFeedback 入外层签名', () => {
 /** CC-315：stable = 「本轮输入 = 下一轮输入」——轴栈预算与其余下一轮输入也入签名。 */
 describe('CC-315 轴栈预算等下一轮输入入外层签名', () => {
   const round = (threadsNext: Record<string, unknown>) =>
-    ({ resourceResult: { characters: [] }, anomalyPool: { perSlotBonus: [] }, threadsNext: { moduleFeedback: {}, ...threadsNext } }) as never
+    ({ resourceResult: { characters: [] }, interactionTopUp: {}, anomalyPool: { perSlotBonus: [] }, threadsNext: { moduleFeedback: {}, ...threadsNext } }) as never
   it('琉音好评 / 每窗异常触发 / 帷幕总次数 / 上一轮池次数变化 ⇒ 签名变', () => {
     const base = { goodReview: -1, inStunWindowTriggers: 0, teamVeilCountTotal: 0, prevPoolStunCount: 3 }
     const sig = (o: Record<string, unknown>) => outerFeedbackSignature(round({ ...base, ...o }))

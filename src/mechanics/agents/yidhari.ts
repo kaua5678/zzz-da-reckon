@@ -43,7 +43,7 @@ const HEAVY_SINGLE_COST_1 = 50
 const HEAVY_DOUBLE_COST = 85     // 50 + 35（C1 连续重碾）
 
 function yidhariProps() {
-  const resource = getAgentSpec(YIDHARI_AGENT_ID)?.resources?.find(item => item.id === 'yidhari_hp_burn')
+  const resource = getAgentSpec(YIDHARI_AGENT_ID)?.resources.find(item => item.id === 'yidhari_hp_burn')
   const props = resource?.properties ?? {}
   return {
     exSpecialEnergyCost: Number(props.exSpecialEnergyCost ?? 60) || 60,
@@ -305,7 +305,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   const tentacleCount = Math.max(0, Math.floor(effectiveBattleTime(cfg) / tentacleInterval))
   const additionalAbilityActive = additionalAbilityActiveOf(cfg.panel)
   if (tentacleCount > 0 && additionalAbilityActive) {
-    const skillBonus = cfg.panel?.skillLevelBonus ?? 0
+    const skillBonus = cfg.panel.skillLevelBonus
     const dmgCoef = skillBonus > 0 ? getSkillLevelCoef(skillBonus).damageCoef : 1
     executions.push(moduleExecRow({
       moveId: TENTACLE,

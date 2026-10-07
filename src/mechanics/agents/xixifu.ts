@@ -72,7 +72,7 @@ function applyXixifuPanel({ panel }: AgentPanelInput): void {
 function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentCharConfigInput): void {
   cfg.xixifuCinemaLevel = cinemaLevel
   // 蚀骨核心附加 335% 的基数（flatDamageBonus = 攻击力 × 3.35）
-  cfg.xixifuAtk = Math.max(0, panel?.atk ?? 0)
+  cfg.xixifuAtk = Math.max(0, panel.atk)
   // 蚀骨失衡值 +40%/60% 的门控：队伍电属性角色数（含自身，自身恒为电）
   const electric = team.filter(m => m.agent?.attribute === 'electric').length
   cfg.xixifuElectricCount = Math.max(1, electric)
@@ -215,7 +215,7 @@ function buildXixifuResourceResult({ cfg, state }: AgentResourceResultInput) {
 function buildXixifuResourceSections(input: AgentResourceSectionsInput) {
   const spec = getAgentSpec(XIXIFU_AGENT_ID)
   const sections = spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
-  const toxin = input.result?.specResources?.[XIXIFU_TOXIN_RESOURCE_ID]
+  const toxin = input.result.specResources?.[XIXIFU_TOXIN_RESOURCE_ID]
   if (toxin) {
     const toxinTotal = whole(toxin.total)
     const shekissCount = Math.floor(toxinTotal / XIXIFU_SHEKISS_TOXIN_COST)

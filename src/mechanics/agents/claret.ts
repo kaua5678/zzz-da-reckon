@@ -188,7 +188,7 @@ function perSeconds(move: SkillMove | null | undefined, rowId: string): number {
 function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelInput): void {
   // 核心被动·初始转化：每 1% 初始暴击伤害 → 初始暴击率 +0.35%。
   // 初始口径 → 只读局外面板（珂蕾妲潜能等局内暴伤拐不参与转化）；基础暴伤 50（锋御同模板，见 `@fact agent:1611/初始暴伤转暴击`），其余来自副/主词条与驱动盘。
-  const initialCritDmg = Number(outOfCombatPanel?.critDmg ?? 0)
+  const initialCritDmg = outOfCombatPanel.critDmg
   if (initialCritDmg > 0) {
     // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18：「每拥有 1% 初始暴伤」按整 1% 计（原连续）
     panel.critRate = panel.critRate + Math.floor(initialCritDmg + 1e-9) * INITIAL_CRIT_DMG_TO_CRIT_RATE
@@ -451,7 +451,7 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
   // 锐能收入两条腿（用户口径 2026-09-11）：
   //   ① 基础**自动累积** 1.5/s（不进招式表，来自 catalog `level60.sharpnessRegen` ← nanoka `stats.ep_recover`/100）
   //   ② 常态血锻四式的招式增益（`sharpness_gain` 列 3.0/s；锻星/E/连携全 0）
-  cfg.claretSharpnessAutoPerSec = Math.max(0, Number(agent?.level60?.sharpnessRegen ?? 0))
+  cfg.claretSharpnessAutoPerSec = Math.max(0, Number(agent.level60.sharpnessRegen ?? 0))
   cfg.claretNormalAttackSharpnessPerSec = perSeconds(resolveNormalBenchmark(skills), 'sharpness_gain')
   cfg.claretNormalSharpnessPerSec = Number(cfg.claretSharpnessAutoPerSec)
     + Number(cfg.claretNormalAttackSharpnessPerSec)

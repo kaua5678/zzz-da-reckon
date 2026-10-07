@@ -314,7 +314,7 @@ export function computeOptimalTeamAllocation(
   // 平A时间权重默认「均衡」：基础态先把等权重均衡到边际产出更高的槽位（后续贪婪在均衡权重上做）
   optimizeTeamTimeWeights(calc, configStore)
   // 防御：基础态外层未收敛 → 整队不可信（正常流程已由 refDamage 收敛过滤挡掉）
-  if (calc.resourceResult.value?.convergence?.outerExit === 'maxIter') {
+  if (calc.resourceResult.value?.convergence.outerExit === 'maxIter') {
     return {
       ...state,
       totalGold: base,
@@ -346,7 +346,7 @@ export function computeOptimalTeamAllocation(
       // 收敛过滤：试算态外层未收敛（maxIter）→ 该步伤害虚高不可信，视作 -Inf 拒绝
       // （断言绕开的是 TS 的收窄：函数开头 `outerExit === 'maxIter'` 已提前返回，TS 便认定这里不会是 maxIter；
       //   但中间改过 store、计算属性会重算，运行时确实会出现——TS 不会因为函数调用作废属性链上的收窄）
-      const conv = calc.resourceResult.value?.convergence?.outerExit as OuterExit | undefined
+      const conv = calc.resourceResult.value?.convergence.outerExit as OuterExit | undefined
       const d = conv === 'maxIter' ? Number.NEGATIVE_INFINITY : calc.teamTotalDamage.value
       configStore.setCinemaLevel(c.slot, prevC)
       configStore.setWEngine(c.slot, prevW)
@@ -457,7 +457,7 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
     applyTeamToStore(configStore, team, state, opts.autoBuild === true)
     // 收敛过滤：失衡外层不动点未收敛（outerExit='maxIter'）的队伍伤害虚高不可信
     // （实测 青衣 系阵容 8金 407% vs 收敛 meta 队 105-127%），排除出排名
-    const conv = calc.resourceResult.value?.convergence?.outerExit
+    const conv = calc.resourceResult.value?.convergence.outerExit
     if (conv === 'maxIter') {
       nonConverged++
     } else {
@@ -773,7 +773,7 @@ export function prefillStrongTeamsFromPresets(): Record<string, [string, string,
   for (const p of teamPresets) {
     const main = p.team[0]
     if (!main || out[main]) continue
-    const steps = p.goldSteps?.length ?? 0
+    const steps = p.goldSteps.length
     if (!(main in bestSteps) || steps >= bestSteps[main]) {
       bestSteps[main] = steps
       out[main] = [p.team[0], p.team[1], p.team[2]]
@@ -905,7 +905,7 @@ function evalTeamByBudget(
   }
   const budgetAware = budgetAwareStateFor(team, budget, catalog)
   applyTeamToStore(configStore, team, budgetAware.state, autoBuild)
-  const conv = calc.resourceResult.value?.convergence?.outerExit
+  const conv = calc.resourceResult.value?.convergence.outerExit
   if (conv === 'maxIter') return null
   return {
     damage: calc.teamTotalDamage.value,

@@ -215,7 +215,7 @@ function resolveBonusCount(
  * 不要把 spec 里的数字手抄成模块常量（yixuan 术法值 120 曾是一份手抄副本）。规则不存在 ⇒ 0。
  */
 export function specSpendCost(spec: AgentMechanicSpec, resourceId: string, ruleId: string): number {
-  const rule = spec.resources?.find(r => r.id === resourceId)?.spendRules?.find(r => r.id === ruleId)
+  const rule = spec.resources.find(r => r.id === resourceId)?.spendRules.find(r => r.id === ruleId)
   return parseCost(rule?.cost)
 }
 

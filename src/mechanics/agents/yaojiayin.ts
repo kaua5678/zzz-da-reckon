@@ -380,7 +380,7 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<
 }
 
 function resourceSections({ result }: AgentResourceSectionsInput) {
-  const tr = result?.yaojiayinTremolo
+  const tr = result.yaojiayinTremolo
   if (!tr || tr.totalTremolos <= 0 && tr.clusters <= 0) return []
   return [{
     id: 'yaojiayin-tremolo',

@@ -151,14 +151,14 @@ function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfi
   cfg.anbyC2StunCoverage = cfgNum(cfg, 'anby.c2StunCoverage')
   // 平A循环分段元数据预存（buildExecutions 输入无 skills；单一事实源仍是倍率表）。
   // 元素取 catalog 的 move.damageElement——#1~#3 物理 / #4、落雷 电（原文口径，见文件头②）。
-  const basicMoves = skills?.categories?.find(c => c.id === 'basic')?.moves ?? []
+  const basicMoves = skills.categories.find(c => c.id === 'basic')?.moves ?? []
   const cycle = ANBY_BASIC_CYCLE_IDS.map(moveId => {
     const move = basicMoves.find(m => String(m.id) === moveId)
     return {
       moveId,
       actionTime: move?.actionTime ?? 0,
       element: move?.damageElement ?? 'electric',
-      moveName: move?.name?.zhCN || moveId,
+      moveName: move?.name.zhCN || moveId,
     }
   })
   cfg.anbyBasicCycle = cycle

@@ -205,7 +205,7 @@ export const lycaonMechanic: AgentMechanicModule = {
     if (interactions) {
       let backstageDodgeCount = 0
       for (const [slotKey, snap] of Object.entries(interactions.bySlot)) {
-        if (Number(slotKey) === ownSlot || !snap?.agentId) continue
+        if (Number(slotKey) === ownSlot || !snap.agentId) continue
         backstageDodgeCount += snap.dodgeCounterCount
       }
       cfg.lycaonBackstageDodgeCount = backstageDodgeCount
@@ -232,7 +232,7 @@ export const lycaonMechanic: AgentMechanicModule = {
       } else if (axis && interactions) {
         let sum = 0
         for (const [slotKey, snap] of Object.entries(interactions.bySlot)) {
-          if (Number(slotKey) === ownSlot || !snap?.agentId) continue
+          if (Number(slotKey) === ownSlot || !snap.agentId) continue
           sum += snap.chainCountPerStun * countStun
         }
         teamChainTotal = sum

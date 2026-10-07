@@ -19,9 +19,9 @@ import type { StatRules } from '@/types/catalog'
  * 两者语义不同，不得合并（`energyRegen`：驱动盘 +60% vs 基础回能字段 1.2 点/秒）。
  */
 export function driveDiscStatMode(stat: string, statRules: StatRules | null | undefined): 'pct' | 'flat' {
-  const explicit = statRules?.driveDisc?.statModes?.[stat]
+  const explicit = statRules?.driveDisc.statModes?.[stat]
   if (explicit === 'pct' || explicit === 'flat') return explicit
-  const display = statRules?.statDisplay?.[stat]?.display
+  const display = statRules?.statDisplay[stat]?.display
   if (display === 'percent') return 'pct'
   if (display === 'number' || display === 'integer') return 'flat'
   return stat.endsWith('Pct') || stat.endsWith('Rate') || stat.endsWith('Dmg')

@@ -393,8 +393,8 @@ function remielleNextRoundFeedback({ slot, anomalyPool, combatTime }: AgentNextR
 /** CC-41：converge 相位把上一轮花羽轮舞次数 × 每次喧响（面板值，影画 < 1 时为 0）累加进 extraSelfDecibelReward。 */
 function applyRemielleTeamConfig({ cfg, phase, threads }: AgentTeamConfigInput): void {
   if (phase !== 'converge' || !threads) return
-  const casts = Math.max(0, Math.floor(threads.moduleFeedback?.remielleFlowerFeatherDanceCasts ?? 0))
-  const perUse = Math.max(0, cfg.panel?.remielleFlowerFeatherDanceDecibelPerUse ?? 0)
+  const casts = Math.max(0, Math.floor(threads.moduleFeedback.remielleFlowerFeatherDanceCasts ?? 0))
+  const perUse = Math.max(0, cfg.panel.remielleFlowerFeatherDanceDecibelPerUse)
   if (casts <= 0 || perUse <= 0) return
   cfg.extraSelfDecibelReward = cfg.extraSelfDecibelReward + perUse * casts
 }

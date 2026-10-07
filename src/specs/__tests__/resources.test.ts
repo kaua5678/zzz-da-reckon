@@ -181,6 +181,7 @@ describe('spec resource interpreter', () => {
       yidhariChargeSlam: { actionTime: 1.2917 },
       yidhariBasicFollow: { actionTime: 1.55 },
       panel: emptyPanel(),
+      resourceUtilization: {},
       basicAttackDecibelPerSec: 0,
       exSpecialDecibelRecovery: 0,
       ultimateDecibelRecovery: 0,

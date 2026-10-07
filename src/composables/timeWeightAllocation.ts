@@ -114,7 +114,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     // starved 恒 false，A4 一并修正）。
     const catalogStore = useCatalogStore()
     const carries = carrySlotsOf(configStore, catalogStore)
-    const exOf = (s: number) => calc.resourceResult.value?.characters?.[s]?.exSpecialCount ?? 0
+    const exOf = (s: number) => calc.resourceResult.value?.characters.find(c => c.slot === s)?.exSpecialCount ?? 0
     const exStart = carries.map(c => exOf(c))
     /**
      * 可行性门 = **相对门：不许把「装不下」变得更差**（用户口径 2026-09-10：「39队直接拒绝那就删除防护，
@@ -127,7 +127,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
      * （docs 坑33「尾巴专项」），读数会翻面（实测：门槛读 0 而终态 0.906s）。
      */
     const notes: string[] = []
-    const truncation = () => calc.resourceResult.value?.convergence?.timeTruncatedSeconds ?? 0
+    const truncation = () => calc.resourceResult.value?.convergence.timeTruncatedSeconds ?? 0
     const baselineTruncation = truncation()
     const baselineDamage = calc.teamTotalDamage.value
     // 搜索常量（阶段 -1 与 ② 共用；必须声明在 -1 之前，防 TDZ）
@@ -151,7 +151,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
      * 不吸收的队恒 0 ≤ 0 ⇒ 逐位零影响。默认 `'balanced'` 档不跑本策略，golden/棘轮零外溢。
      */
     const absorbed = () => (calc.resourceResult.value?.characters ?? [])
-      .reduce((sum, c) => sum + (c.timeAllocation?.dynamicComboAlignSeconds ?? 0), 0)
+      .reduce((sum, c) => sum + (c.timeAllocation.dynamicComboAlignSeconds ?? 0), 0)
     let absorbedFloor = absorbed()
     const feasible = () => truncation() <= feasibleFloor + 1e-6 && absorbed() <= absorbedFloor + 1e-6
     if (baselineTruncation > 1e-6) {
@@ -352,14 +352,14 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     // 无改善当场回滚。（CC-354：不再手动 triggerRefresh——计算经 memo 键深读整个 `$state`，嵌套覆盖写入本身即失效。）
     //只挂 'joint' 深搜档（非默认档 ⇒ golden/留白棘轮零外溢）；手动录入面 = 结果页合轴弹窗。
     const poolSecs = () => (calc.resourceResult.value?.characters ?? [])
-      .reduce((acc, c) => acc + Math.max(0, c.timeAllocation?.basicAttackTime ?? 0), 0)
+      .reduce((acc, c) => acc + Math.max(0, c.timeAllocation.basicAttackTime), 0)
     let reliefSteps = 0
     const reliefT0 = truncation()
     const reliefP0 = poolSecs()
     for (let round = 0; round < 4; round++) {
       let anyRelief = false
       for (const s of [0, 1, 2].filter(x => !carries.includes(x) && String(configStore.team[x]?.agentId ?? ''))) {
-        const ch = calc.resourceResult.value?.characters?.find(c => c.slot === s)
+        const ch = calc.resourceResult.value?.characters.find(c => c.slot === s)
         if (!ch) continue
         const targets = new Map<string, number>()
         for (const exec of ch.executions) {

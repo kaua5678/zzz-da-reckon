@@ -135,7 +135,7 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
   // 覆盖率自动默认：有风队友或≥影画1（霜寒后保留冰焰）→ 100%；0命无风队 → 0%
   // （蓄力斩打在霜寒上吃不到加成）；显式设为非 100% 的滑块值优先。
   // 原 buildCharConfig 算 coverage + transform 施加——静态化后都在 applyPanel（C2 暴击已加）。
-  const coverageRaw = Number(settings?.['miyabi.iceFlameCoverage'])
+  const coverageRaw = Number(settings['miyabi.iceFlameCoverage'])
   const autoDefault = hasWind || cinemaLevel >= 1 ? 1 : MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE
   const coverage = Number.isFinite(coverageRaw) && coverageRaw !== 1
     ? Math.max(0, Math.min(1, coverageRaw))

@@ -102,7 +102,7 @@ export function collectInCombatTeamBuffs(
   const grantedExclusiveGroups = new Set<string>()
 
   for (const char of team) {
-    if (!char?.agentId) continue
+    if (!char.agentId) continue
     const agent = deps.getAgent(char.agentId)
     if (!agent) continue
     const aliases = [agent.id]
@@ -110,9 +110,9 @@ export function collectInCombatTeamBuffs(
     // 音擎团队效果：装备者已通过自身 buff 收集，传播时排除装备者
     if (char.wEngineId) {
       const wEngine = deps.getWEngine(char.wEngineId)
-      const group = wEngine?.effect?.teamBuff
+      const group = wEngine?.effect.teamBuff
       if (
-        wEngine && group?.effects?.length
+        wEngine && group?.effects.length
         // CC-110（R5 身份类 specialty）：特化不符的装备者不发动音擎效果——与自身通路
         // `collectAllBuffs` 的 `matchSpecialty` 同口径（数据 `effect.requirement.specialty` / 游戏规则）。
         // 此前团队通路漏了这道门，特化不符时队友照吃团队效果。
@@ -125,7 +125,7 @@ export function collectInCombatTeamBuffs(
         buffs.push({
           id: `wengine-team-${wEngine.id}`,
           source: { zhCN: '音擎' },
-          description: group.description ?? wEngine.effect?.description,
+          description: group.description ?? wEngine.effect.description,
           scope: group.scope,
           effects: group.effects
             .filter(e => e && e.stat && wEngineEffectRequirementMet(e.requirement, { wearerAttribute: agent.attribute, wearerSpecialty: agent.specialty, wearerAgentId: agent.id }))
@@ -146,11 +146,11 @@ export function collectInCombatTeamBuffs(
 
     // 驱动盘 4 件套团队效果：装备者自身收集不含 teamBuff，需要包含装备者。
     // 装备者不满足门槛（特化/属性/局外面板）时整组不传播。
-    if (char.driveDisc?.fourPieceSetId) {
+    if (char.driveDisc.fourPieceSetId) {
       const set = deps.driveDiscSetsMap.get(char.driveDisc.fourPieceSetId)
-      const group = set?.fourPiece?.teamBuff
+      const group = set?.fourPiece.teamBuff
       const wearerPanel = aliases.map(a => deps.wearerPanels?.[a]?.outOfCombat).find(p => p != null)
-      if (set && group?.effects?.length && discRequirementMet(group.requirement, agent, wearerPanel)) {
+      if (set && group?.effects.length && discRequirementMet(group.requirement, agent, wearerPanel)) {
         const effects = group.effects
           .filter(e => e && e.stat && discRequirementMet(e.requirement, agent, wearerPanel))
           // {attribute} 模板按【装备者】属性落键（自由蓝调 4pc：挂在敌人身上 8s，
@@ -162,7 +162,7 @@ export function collectInCombatTeamBuffs(
           buffs.push({
             id: `drivedisc-team-${set.id}`,
             source: { zhCN: '驱动盘' },
-            description: group.description ?? set.fourPiece?.effectText,
+            description: group.description ?? set.fourPiece.effectText,
             scope: group.scope,
             effects,
             buffModifiers: group.buffModifiers ?? [],

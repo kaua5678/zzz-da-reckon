@@ -122,7 +122,7 @@ function findExSpecialSwordWill(skills: AgentSkills): number {
   if (!special) return 0
 
   for (const move of special.moves) {
-    const name = move.name?.en?.toLowerCase() || ''
+    const name = move.name.en?.toLowerCase() || ''
     if (name.includes('ex special') && move.energyCost && Object.keys(move.energyCost).length > 0) {
       return getRowValue(move, 'attack_data_0')
     }
@@ -523,8 +523,8 @@ export const aliceMechanic: AgentMechanicModule = {
     if (phase !== 'converge') return
     // CC-22：两条次数改从 `threads`（上一轮收敛快照）读，不再占 AgentTeamConfigInput 专用字段；
     // 产出方 = 本模块 `nextRoundFeedback`（下方）。threads 缺省 ⇒ 0（与原入参缺省逐位等价）。
-    cfg.aliceTeamAssaultCount = Math.max(0, (threads?.moduleFeedback?.aliceTeamAssaultCount ?? 0))
-    cfg.aliceDisorderCount = Math.max(0, (threads?.moduleFeedback?.aliceDisorderCount ?? 0))
+    cfg.aliceTeamAssaultCount = Math.max(0, (threads?.moduleFeedback.aliceTeamAssaultCount ?? 0))
+    cfg.aliceDisorderCount = Math.max(0, (threads?.moduleFeedback.aliceDisorderCount ?? 0))
   },
   // 伴随事件：三蓄 SW3(1401012) 末尾赠送极性强击（polar_assault），易伤跟随父动作
   attachedEvents: { '1401012': ['polar_assault'] },

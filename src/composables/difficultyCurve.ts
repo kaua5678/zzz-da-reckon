@@ -199,7 +199,7 @@ export function measureOperationalDifficulty(
   const overflow = rr?.overflowSeconds ?? 0
   // 合轴抵扣出去的秒数：与硬溢出同属「必做前台超出 180s」这一笔，故交给 computeDifficulty 合成一项
   const saved = rr ? frontlineOccupationBreakdown(rr).saved : 0
-  const team = preset?.team ?? ctx.config.team.map(c => c?.agentId ?? null)
+  const team = preset?.team ?? ctx.config.team.map(c => c.agentId)
   return computeDifficulty(
     liveInteractions(ctx.config, preset, rr), team, overflow, weights, saved,
     stunWindowRatioOf(ctx.calc, ctx.config.enemy),

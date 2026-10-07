@@ -7,7 +7,7 @@ const settingDefaults = new Map<string, MechanicSetting>()
 
 /** 注册角色机制模块。重复 agentId 或非法模块会在启动阶段直接抛错。 */
 export function registerAgentMechanic(module: AgentMechanicModule): void {
-  if (!module?.id) throw new Error('[mechanics] module id is required')
+  if (!module.id) throw new Error('[mechanics] module id is required')
   if (!Array.isArray(module.agentIds) || module.agentIds.length === 0) {
     throw new Error(`[mechanics] module ${module.id} must declare agentIds`)
   }
@@ -26,7 +26,7 @@ export function registerAgentMechanic(module: AgentMechanicModule): void {
   // logicEditor 全局快照带进 core 运行时闭包；锁 coreRuntimeDeps.test）。
 
   for (const setting of module.settings ?? []) {
-    if (!setting?.id) throw new Error(`[mechanics] module ${module.id} contains setting without id`)
+    if (!setting.id) throw new Error(`[mechanics] module ${module.id} contains setting without id`)
     if (settingDefaults.has(setting.id)) {
       throw new Error(`[mechanics] setting ${setting.id} already registered`)
     }

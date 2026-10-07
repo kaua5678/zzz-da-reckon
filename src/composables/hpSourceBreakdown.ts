@@ -89,10 +89,10 @@ export function collectHpSources(
   }
 
   // 1. 角色自身 combatBuffs（核心被动/额外能力/命座）
-  const self = agent.name?.zhCN || agent.id
-  add(self, '核心被动', agent.combatBuffs?.corePassive)
-  add(self, '额外能力', agent.combatBuffs?.additionalAbility)
-  for (const cinema of agent.combatBuffs?.cinemaBuffs ?? []) {
+  const self = agent.name.zhCN || agent.id
+  add(self, '核心被动', agent.combatBuffs.corePassive)
+  add(self, '额外能力', agent.combatBuffs.additionalAbility)
+  for (const cinema of agent.combatBuffs.cinemaBuffs) {
     if (cinema.cinemaLevel <= char.cinemaLevel) add(self, `影画${cinema.cinemaLevel}`, cinema.buff)
   }
 
@@ -108,19 +108,19 @@ export function collectHpSources(
   if (wEngine) {
     const modLevel = Math.max(1, Math.min(5, char.wEngineModLevel))
     const weakness = configStore.enemy.weakness
-    for (const [item, group] of [['自身效果', wEngine.effect?.selfBuff], ['团队效果', wEngine.effect?.teamBuff]] as const) {
+    for (const [item, group] of [['自身效果', wEngine.effect.selfBuff], ['团队效果', wEngine.effect.teamBuff]] as const) {
       add(localized(wEngine.name) || wEngine.id, item, group, modLevel, e => wEngineEffectBlockReason(wEngine, group, e, agent, weakness) === null)
     }
   }
 
   // 4. 驱动盘套装
-  const four = char.driveDisc?.fourPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.fourPieceSetId) : undefined
-  const two = char.driveDisc?.twoPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.twoPieceSetId) : undefined
+  const four = char.driveDisc.fourPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.fourPieceSetId) : undefined
+  const two = char.driveDisc.twoPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.twoPieceSetId) : undefined
   if (four) {
     // 驱动盘 2 件套只有 effects（无 scope）；局外效果显式写出，与 hpPhase 的判定一致
     if (four.twoPiece) add(localized(four.name) || four.id, '2件套', { scope: 'outOfCombat', effects: four.twoPiece.effects })
-    add(localized(four.name) || four.id, '4件套自身', four.fourPiece?.selfBuff)
-    add(localized(four.name) || four.id, '4件套团队', four.fourPiece?.teamBuff)
+    add(localized(four.name) || four.id, '4件套自身', four.fourPiece.selfBuff)
+    add(localized(four.name) || four.id, '4件套团队', four.fourPiece.teamBuff)
   }
   if (two?.twoPiece && two.id !== four?.id) add(localized(two.name) || two.id, '2件套', { scope: 'outOfCombat', effects: two.twoPiece.effects })
 

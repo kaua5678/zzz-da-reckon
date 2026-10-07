@@ -216,7 +216,7 @@ export function createResourceCalc(
   const globalAnomalyMultiplier = computed<number>(() => {
     let multiplier = 1
     configStore.team.forEach((char, slot) => {
-      const mod = char?.agentId ? getAgentMechanic(char.agentId) : undefined
+      const mod = char.agentId ? getAgentMechanic(char.agentId) : undefined
       if (!mod?.globalAnomalyMultiplierFactor) return
       // ⚠ 判据 17：`panels` 按位置压缩（下标 ≠ 槽位号）⇒ 必须 `panelAt` 按盖章身份取
       // （2026-09-18 round 21 夜实测：`panels.value[slot]` 在前导/中间空槽时取到别人那份面板）。
@@ -368,8 +368,8 @@ export function createResourceCalc(
 
   /** 霜寒暴击加成与风化侵染区按覆盖率折算到伤害结算面板 */
   const damagePanels = computed<PanelValues[]>(() => {
-    const frostBonus = 10 * (anomalyPoolResult.value?.coverage?.frostCoverageRate ?? 0)
-    const windAutoRate = anomalyPoolResult.value?.coverage?.windCoverageRate ?? 0
+    const frostBonus = 10 * (anomalyPoolResult.value?.coverage.frostCoverageRate ?? 0)
+    const windAutoRate = anomalyPoolResult.value?.coverage.windCoverageRate ?? 0
     const infectionCoverage = getWindInfectionCoverage(configStore, windAutoRate)
     const hasWindChar = findWindSlot(configStore, catalogStore) >= 0
     const infectionBonus = hasWindChar ? 10 * infectionCoverage : 0
@@ -522,7 +522,7 @@ export function createResourceCalc(
       const wEngineId = char?.wEngineId
       if (!wEngineId) continue
       const wEngine = catalogStore.wEnginesMap.get(wEngineId)
-      const selfEffects = wEngine?.effect?.selfBuff?.effects ?? []
+      const selfEffects = wEngine?.effect.selfBuff?.effects ?? []
       for (const e of selfEffects) {
         if (e.type !== 'stacked' || !e.id) continue
         const durationSeconds = stackDurationSeconds(e.id)
@@ -599,7 +599,7 @@ export function createResourceCalc(
   const axisAllocation = computed(() => {
     const exec = stackTraversalResult.value?.executed
     if (!exec) return {}
-    const counts = expandExecutedToCounts(exec, stackTraversalResult.value?.basicFillBySlot ?? {})
+    const counts = expandExecutedToCounts(exec, stackTraversalResult.value.basicFillBySlot)
     const out: Record<string, StunAxisAllocation> = {}
     for (const v of Object.values(counts)) {
       out[`${v.slot}:${v.moveId}`] = { slot: v.slot, moveId: v.moveId, inAxisUnits: v.count, outAxisUnits: 0 }

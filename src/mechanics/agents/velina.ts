@@ -133,7 +133,7 @@ export function simulateVelinaCorrosionState(
   const safeTurbulenceCount = Math.max(0, Math.floor(turbulenceCount))
   const safeCinema2Rate = Math.max(0, Math.min(1, Number.isFinite(cinema2CorrosionRate) ? cinema2CorrosionRate : 2 / 3))
   const c2WindGainExpected = hasCinema2 ? Math.max(0, windTriggerCount) * safeCinema2Rate : 0
-  const machine = getAgentSpec(VELINA_AGENT_ID)?.stateMachines?.find(item => item.id === 'velina_corrosion_state_machine')
+  const machine = getAgentSpec(VELINA_AGENT_ID)?.stateMachines.find(item => item.id === 'velina_corrosion_state_machine')
   const simulated = machine
     ? simulateCounterStateMachine(machine, {
         eventCount: safeTurbulenceCount,
@@ -401,7 +401,7 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
 
 function resolveVelinaExecutionDamage(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null {
   const { slot, move, exec, team } = input
-  if (move?.id !== VELINA_SWEEPING_CYCLONE_2_MOVE_ID && move?.name?.en !== 'Sweeping Cyclone #2') return null
+  if (move?.id !== VELINA_SWEEPING_CYCLONE_2_MOVE_ID && move?.name.en !== 'Sweeping Cyclone #2') return null
   const coloredElement = velinaColorElement(team, slot)
   return {
     element: coloredElement,

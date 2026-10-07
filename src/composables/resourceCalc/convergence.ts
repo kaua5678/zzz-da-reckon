@@ -198,7 +198,7 @@ export function createRunCalcRound(deps: {
     // 那是把补失衡误解成只有击破弹刀，删掉」）；只给喧响弹刀（parryDecibelOnlyTotal）走保底4喧响通道。
     const { parryTotal, parryNoFollowUpTotal, parryDecibelOnlyTotal } = configStore.bossParryTotals
     const guaranteeStun = configStore.getMechanicSetting('guarantee.stun', 0) !== 0
-    const breakerSlot = configStore.team.findIndex(c => c?.agentId && catalogStore.agentsMap.get(c.agentId)?.specialty === 'stun')
+    const breakerSlot = configStore.team.findIndex(c => c.agentId && catalogStore.agentsMap.get(c.agentId)?.specialty === 'stun')
     // 无击破位队伍（如 仪玄/琉音/卢西娅：强攻/强攻/支援）：实战弹刀全由主C（槽位 0）承担
     // （归档 72db6dc3 弹刀 8 即此口径）——保底4失衡反推照常，但「剩余给主C」没有第二个角色可分，
     // 有效次数 = max(输入, 反推 T) 封顶 parryTotal（同位语义，2026-09-07）。
@@ -235,12 +235,12 @@ export function createRunCalcRound(deps: {
      * （20 次 44.02M < 12 次 47.07M——`parryTotal` 变大会让反推把更多弹刀塞给击破位、占前台时间）。
      */
     const parryBaseline = configStore.team.reduce((a, c) => {
-      if (!c?.agentId) return a
+      if (!c.agentId) return a
       const specialty = catalogStore.agentsMap.get(c.agentId)?.specialty
       return a + interactionBaselineFor(c.agentId, specialty).parry
     }, 0)
     const manualParryAboveBaseline = Math.max(0,
-      configStore.team.reduce((a, c) => a + Math.max(0, c?.parryCount ?? 0), 0) - parryBaseline)
+      configStore.team.reduce((a, c) => a + Math.max(0, c.parryCount), 0) - parryBaseline)
     const parrySplitActive = (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal > 0
         || manualParryAboveBaseline > 0)
       && guaranteeStun && (breakerSlot >= 0 || configStore.team.length > 0)
@@ -740,7 +740,7 @@ export function createRunCalcRound(deps: {
       const ultNeed = axisUltimateNeed(resolvedAxes, countStun, interactionTopUpSlot) // CC-142：计数通道
       // 喧响供给取般岳个人（终结技次数 = 个人喧响 / 终结技消耗，非全队总和；曾用全队总和导致
       // 队友喧响把缺口抹平 → 保底4喧响不补齐、般岳卡在 9000 出头打不满 4 大）
-      const decibelHave = rr.characters.find(c => c.slot === interactionTopUpSlot)?.decibelSource?.total ?? 0
+      const decibelHave = rr.characters.find(c => c.slot === interactionTopUpSlot)?.decibelSource.total ?? 0
       // 槽位即按能力查找（CC-293）⇒ 该槽模块必有 computeInteractionTopUp；返回 null = 模块判定本轮不补齐 ⇒ 保持上一轮值（CC-295）
       const computeTopUp = storeChar?.agentId ? getAgentMechanic(storeChar.agentId)?.computeInteractionTopUp : undefined
       const topUpNext = computeTopUp?.({
@@ -779,7 +779,7 @@ export function createRunCalcRound(deps: {
     let decibelResidualShort = 0
     let decibelRoundable = true
     if (decibelParryActive) {
-      const mainDpsDecibel = rr.characters.find(c => c.slot === 0)?.decibelSource?.total ?? 0
+      const mainDpsDecibel = rr.characters.find(c => c.slot === 0)?.decibelSource.total ?? 0
       const decibelShort = Math.max(0, 4 * ULTIMATE_COST_DEFAULT - mainDpsDecibel)
       const roundable = decibelShort <= DECIBEL_ROUND_THRESHOLD
       decibelResidualShort = decibelShort
@@ -802,7 +802,7 @@ export function createRunCalcRound(deps: {
     // 空失衡池是合法状态：下游 promoteFixpoint / 失衡池按空数组算出 stunCount 0，伤害池照常给行（实测无 NaN / 抛错）。
     const goodReview = ultimateGiftSourceOf(configStore, rr)?.goodReviewTotal ?? -1  // CC-35d-B3
     const energyBySlot: Record<number, number> = {}
-    for (const c of rr.characters) energyBySlot[c.slot] = c.energySource?.total ?? 0
+    for (const c of rr.characters) energyBySlot[c.slot] = c.energySource.total
 
     // 轴模式：转大完全由轴里的 promoteVariant 块决定（无块=0），不按好评/连携窗口自动推导
     const axisMode = axisActive
@@ -816,8 +816,8 @@ export function createRunCalcRound(deps: {
       const stackDecibelBySlot: Record<number, number> = {}
       const basicTimeBySlot: Record<number, number> = {}
       for (const c of rr.characters) {
-        stackEnergyBySlot[c.slot] = c.energySource?.total ?? 0
-        stackDecibelBySlot[c.slot] = c.decibelSource?.total ?? 0
+        stackEnergyBySlot[c.slot] = c.energySource.total
+        stackDecibelBySlot[c.slot] = c.decibelSource.total
         basicTimeBySlot[c.slot] = c.timeAllocation.basicAttackTime
       }
       const windowDur = computeWindowDuration()
@@ -982,7 +982,7 @@ export function createRunCalcRound(deps: {
         // CC-472（r653）：缺口按池自身计数律的反函数算（首次 b、之后每次 b(1−r)、赠送已抵扣），不再写死 4×bossStunValue。
         const deficit = Math.max(0, stunBuildUpForCount(pool, BACKSTAGE_FLOOR_STUNS) - (pool.totalStunBuildUp - ownDaze))
         const ownField = rr.characters.find(c => c.slot === cfg.slot)
-        const ownFieldTime = (ownField?.timeAllocation?.necessaryTime ?? 0) + (ownField?.timeAllocation?.basicAttackTime ?? 0)
+        const ownFieldTime = (ownField?.timeAllocation.necessaryTime ?? 0) + (ownField?.timeAllocation.basicAttackTime ?? 0)
         const supplyCap = Math.max(0, Math.floor(Math.max(0, base.totalTime - ownFieldTime) / decl.minPeriodSeconds))
         // 原 ×1.2 冗余（注释「实测 18 对只涨 3.85×」）就是 u 随 N 增大的效应，已由 poolAt(4) 显式算进 ⇒ 删（CC-475）。
         // CC-477（r659）：线性估计只对当前分支成立，回削会跨到 N−1 分支再估回来 ⇒ 外层 2-环 + CC-150 钳 ⇒ 同输入两个 N。
@@ -1228,7 +1228,7 @@ export function createRunCalcRound(deps: {
         // 螺旋到 0」）：第 332 轮复测 495 例 golden + specs，棘轮在约 20% 的轮次生效，但只改变 7 次中间轮的喧响跳过，
         // 最终结果、退出类型、总轮数逐位不变；而棘轮让预算依赖迭代路径（历史最大值）。若日后复现螺旋，回退 CC-317。
         decibelRegenBySlot: Object.fromEntries(
-          rr.characters.map(c => [c.slot, c.decibelSource?.total ?? 0]),
+          rr.characters.map(c => [c.slot, c.decibelSource.total]),
         ),
         // 上一轮失衡池整数次数：轴内块数落地（雨果决算 坑36）与池同源的滞后注入
         prevPoolStunCount: sp1.pool.stunCount,

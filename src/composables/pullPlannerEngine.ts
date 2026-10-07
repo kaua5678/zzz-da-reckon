@@ -178,7 +178,7 @@ export function createEngineOracle(opts: EngineOracleOptions): {
     const goldState = holdingStateFor(team, holdings, catalog)
     applyTeamToStore(configStore, team, goldState) // CC-256：轻量装配唯一实现（原私有 applyTeamLite 逐行同义）
     state.evaluations++
-    const conv = calc.resourceResult.value?.convergence?.outerExit
+    const conv = calc.resourceResult.value?.convergence.outerExit
     if (conv === 'maxIter') {
       teamScoreCache.set(key, null) // 未收敛也缓存；命中时仍返回 null，不能泄漏为负分候选
       return null

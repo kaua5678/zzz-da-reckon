@@ -34,7 +34,7 @@ export function computeTeamVeilCountTotal(
   let veilTotal = 0
   characters.forEach((mate, index) => {
     const ex = Math.max(0, Math.floor(exCounts[index] ?? 0))
-    const ult = Math.max(0, Math.floor(ultimateCounts?.[index] ?? 0))
+    const ult = Math.max(0, Math.floor(ultimateCounts[index] ?? 0))
     veilTotal += (mate.agentId ? getAgentMechanic(mate.agentId)?.teamVeilCount?.({ exCount: ex, ultimateCount: ult, combatTime }) : 0) ?? 0
   })
   return veilTotal

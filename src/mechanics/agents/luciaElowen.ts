@@ -258,7 +258,7 @@ function computeLuciaSource(
   const plan = computeLuciaDreamPlan(state.exSpecialCount, state.ultimateCount, additionalAttackCap)
   const q = Math.max(0, Math.floor(state.ultimateCount))
   const panel = cfg.panel
-  const healPctPerUlt = computeLuciaHealPctPerUlt(panel?.skillLevelBonus ?? 0)
+  const healPctPerUlt = computeLuciaHealPctPerUlt(panel.skillLevelBonus)
   const curtainTriggerCount = Number.isFinite(Number(cfg.luciaCurtainTriggerCount))
     ? Math.max(0, Number(cfg.luciaCurtainTriggerCount))
     : computeLuciaCurtainTriggers(state.exSpecialCount, state.ultimateCount, 0, 1, cfg.battleTime)
@@ -272,9 +272,9 @@ function computeLuciaSource(
     : []
   const curtainTeammates = curtainTeammatesRaw
     .map(m => ({
-      agentId: String(m?.agentId ?? ''),
-      rawCount: Math.max(0, Math.floor(Number(m?.rawCount) || 0)),
-      triggers: Math.max(0, Number(m?.triggers) || 0),
+      agentId: m.agentId,
+      rawCount: Math.max(0, Math.floor(Number(m.rawCount) || 0)),
+      triggers: Math.max(0, Number(m.triggers) || 0),
     }))
     .filter(m => m.agentId && m.rawCount > 0)
   return {
@@ -511,11 +511,11 @@ export const luciaElowenMechanic: AgentMechanicModule = {
     }
     // ② 回血：星光汇聚之地给「当前操作中的角色」回卢西娅生命% ⇒ 换算成**各槽自身**生命%写给全队
     //    （CC-313：不再按身份找伊德海莉；谁消费、怎么用由消费者模块决定，现唯一消费者 = 伊德海莉烧血→喧响）
-    const healPctPerUlt = computeLuciaHealPctPerUlt(self.panel?.skillLevelBonus ?? 0)
+    const healPctPerUlt = computeLuciaHealPctPerUlt(self.panel.skillLevelBonus)
     const healingCoverage = clampRatio(settingOf(settings, 'lucia.healingCoverage'))
-    const luciaHp = Math.max(1, self.panel?.hp ?? 0)
+    const luciaHp = Math.max(1, self.panel.hp)
     for (const cfg of characters) {
-      cfg.healPctPerCurtainProviderUlt = healPctPerUlt * healingCoverage * (luciaHp / Math.max(1, cfg.panel?.hp ?? 0))
+      cfg.healPctPerCurtainProviderUlt = healPctPerUlt * healingCoverage * (luciaHp / Math.max(1, cfg.panel.hp))
     }
   },
   applyPanel: applyLuciaPanel,

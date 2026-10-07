@@ -220,10 +220,10 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<
 }
 
 function resourceSections({ result }: AgentResourceSectionsInput) {
-  const cheer = result?.lucyCheer
+  const cheer = result.lucyCheer
   if (!cheer) return []
-  const boarCount = Number(result?.lucyBoarCount ?? 0) || 0
-  const boarCd = Number(result?.lucyBoarCd ?? LUCY_BOAR_CD_DEFAULT) || LUCY_BOAR_CD_DEFAULT
+  const boarCount = Number(result.lucyBoarCount ?? 0) || 0
+  const boarCd = Number(result.lucyBoarCd ?? LUCY_BOAR_CD_DEFAULT) || LUCY_BOAR_CD_DEFAULT
   return [{
     id: 'lucy-cheer',
     title: '露西·加油/小猪',
@@ -266,7 +266,7 @@ export const lucyMechanic: AgentMechanicModule = {
       // 2026-09-15 arch 棘轮第 2 批：注入上一轮「队友强特合计（不含自己）」——影画1 回能预估用。
       // 自 `convergence.ts` 的 `merged.agentId === '1151'` 分支搬入（规则 6）。
       if (cfg && threads) {
-        cfg.lucyTeammateExTotal = (threads.moduleFeedback?.lucyTeammateEx ?? 0)
+        cfg.lucyTeammateExTotal = (threads.moduleFeedback.lucyTeammateEx ?? 0)
       }
       return
     }

@@ -78,7 +78,7 @@ function applyDefaultCinemaSkillLevelBonus(panel: PanelValues, agent: Agent | un
 }
 
 function agentHasCinemaSkillLevelBuff(agent: Agent | undefined): boolean {
-  return (agent?.combatBuffs?.cinemaBuffs ?? []).some((cinema) =>
+  return (agent?.combatBuffs.cinemaBuffs ?? []).some((cinema) =>
     (cinema.buff?.effects ?? []).some((e) => e.stat === 'skillLevelBonus'),
   )
 }
@@ -169,7 +169,7 @@ export function applyTeamMechanics(params: {
     const sums = new Map<string, number>()
     for (const cat of skills?.categories ?? []) {
       for (const mv of cat.moves) {
-        const bu = mv.rows?.find(r => r.id === 'anomaly_buildup')?.values[0]
+        const bu = mv.rows.find(r => r.id === 'anomaly_buildup')?.values[0]
         const el = mv.damageElement ?? ''
         if (bu && bu > 0 && el) sums.set(el, (sums.get(el) ?? 0) + bu)
       }
@@ -417,7 +417,7 @@ export function resolveSlotPanelBuffInputs(
   // CC-35c-B（2026-09-27）：队友 buff 来源面板修正改由在队模块能力 `adjustTeammateBuffSource` 提供
   // （原按 '1161' 莱特 / '1311' 耀嘉音写死）。按本槽 agentId 取条目；别名键（teammateBuffId）指向同一个对象，改动同步可见。
   for (const member of configStore.team) {
-    const mod = member?.agentId ? getAgentMechanic(member.agentId) : undefined
+    const mod = member.agentId ? getAgentMechanic(member.agentId) : undefined
     const source = mod?.adjustTeammateBuffSource ? sourcePanelsByOwner[member.agentId] : undefined
     if (source) mod!.adjustTeammateBuffSource!({ source, cinemaLevel: member.cinemaLevel })
   }
@@ -700,7 +700,7 @@ function mergeTeamDiscEffectCoverages(
     const discCoverages = configStore.discEffectCoverages
     const set = catalogStore.driveDiscSetsMap.get(setId)
     if (!set) continue
-    const groups = [set.fourPiece?.selfBuff, set.fourPiece?.teamBuff, set.twoPiece]
+    const groups = [set.fourPiece.selfBuff, set.fourPiece.teamBuff, set.twoPiece]
     for (const g of groups) {
       for (const e of g?.effects ?? []) {
         if (!e.id) continue

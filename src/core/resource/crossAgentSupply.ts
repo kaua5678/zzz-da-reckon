@@ -248,7 +248,7 @@ export function perTargetEnergyByProvider(
     const state = states[providerSlot]
     if (!cfg || !spec?.perTargetAmounts || !state) continue
     const amounts = spec.perTargetAmounts({ ownSlot: providerSlot, teamSize, cfg, state })
-    const v = amounts?.[targetSlot]
+    const v = amounts[targetSlot]
     if (typeof v === 'number' && v > 0) {
       byProvider[providerSlot] = v
       total += v

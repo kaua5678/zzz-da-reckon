@@ -109,7 +109,7 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
         let candidates = axisCandidates
         if (candidates.length === 0) {
           attributionLabel = '异常覆盖占比分配'
-          const coverageRates = anomalyPoolResult?.coverage?.perElementCoverageRate ?? {}
+          const coverageRates = anomalyPoolResult?.coverage.perElementCoverageRate ?? {}
           candidates = Object.entries(coverageRates)
             .filter(([, rate]) => rate > 0)
             .map(([element, rate]) => ({ element, autoRatio: rate }))
@@ -201,7 +201,7 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
           .sort((a, b) => b.autoRatio - a.autoRatio)[0]?.element
         if (axisBest) polarElement = axisBest
         else {
-          const rates = anomalyPoolResult?.coverage?.perElementCoverageRate ?? {}
+          const rates = anomalyPoolResult?.coverage.perElementCoverageRate ?? {}
           polarElement = Object.entries(rates).filter(([, r]) => r > 0).sort((a, b) => b[1] - a[1])[0]?.[0]
             ?? agent?.damageElement ?? 'ether'
         }

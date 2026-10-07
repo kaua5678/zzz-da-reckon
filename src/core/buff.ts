@@ -309,7 +309,7 @@ function collectAgentBuffs(agent: Agent, cinemaLevel: number): CollectedBuffs {
   }
 
   // 核心技等级加成
-  if (agent.coreSkill?.levels) {
+  if (agent.coreSkill.levels) {
     const maxLevel = agent.coreSkill.levels[agent.coreSkill.levels.length - 1]
     if (maxLevel?.stats) {
       for (const s of maxLevel.stats) {
@@ -349,8 +349,8 @@ function collectWEngineBuffs(
     }
   }
 
-  addEffects(wEngine.effect?.selfBuff)
-  addEffects(wEngine.effect?.teamBuff)
+  addEffects(wEngine.effect.selfBuff)
+  addEffects(wEngine.effect.teamBuff)
 
   return { outOfCombat: out, inCombat }
 }
@@ -447,7 +447,7 @@ function collectDriveDiscBuffs(
     }
 
     // 4件套效果
-    if (count >= 4 && set.fourPiece?.selfBuff) {
+    if (count >= 4 && set.fourPiece.selfBuff) {
       const group = set.fourPiece.selfBuff
       if (!discRequirementMet(group.requirement, ctx.agent, ctx.outOfCombatStats)) continue
       for (let e of group.effects) {
@@ -520,7 +520,7 @@ function collectTeammateBuffs(teammateBuffs: TeammateBuff[], sourcePanels?: Sour
  * `calcPanel` 据此决定是否做第二段收集；没有门槛时一段即可，结果与两段相同。
  */
 export function discSelfBuffNeedsOutOfCombatPanel(config: DriveDiscConfig, setsMap: Map<string, DriveDiscSet>): boolean {
-  const group = config.fourPieceSetId ? setsMap.get(config.fourPieceSetId)?.fourPiece?.selfBuff : undefined
+  const group = config.fourPieceSetId ? setsMap.get(config.fourPieceSetId)?.fourPiece.selfBuff : undefined
   if (!group) return false
   if (parseOutOfCombatStatRequirement(group.requirement?.outOfCombatStat)) return true
   return group.effects.some(e => parseOutOfCombatStatRequirement(e.requirement?.outOfCombatStat) != null)

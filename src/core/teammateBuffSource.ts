@@ -84,7 +84,7 @@ export function buildTeammateBuffSourceContext(
   }
 
   for (const char of team) {
-    if (!char?.agentId) continue
+    if (!char.agentId) continue
     const agent = deps.getAgent(char.agentId)
     if (!agent) continue
     const wEngine = char.wEngineId ? deps.getWEngine(char.wEngineId) : undefined

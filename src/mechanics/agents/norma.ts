@@ -43,7 +43,7 @@ const HOLD_ENERGY_PER_SEC = 20 // 嗯呢弹幕长按额外耗能/秒
 // 模块只负责来源（局外暴击、贯穿力）与落点（定向失衡）——这两样 spec runtime 表达不了（r6 §2.2）。
 // 此前模块另写一份常数且按连续计算，CC-134 的「每超过 N 一律 floor」裁决因 spec 条目不执行而从未落到 1571。
 function normaConversion(id: string): AttributeConversionSpec {
-  const conv = getAgentSpec(NORMA_AGENT_ID)?.attributeConversions?.find(c => c.id === id)
+  const conv = getAgentSpec(NORMA_AGENT_ID)?.attributeConversions.find(c => c.id === id)
   if (!conv) throw new Error(`[norma] spec 1571 缺少 attributeConversions.${id}`)
   return conv
 }

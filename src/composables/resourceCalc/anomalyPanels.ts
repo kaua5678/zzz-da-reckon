@@ -213,7 +213,7 @@ export function buildAnomalyVirtualPanel(
   // CC-35a（2026-09-27）：异化度展示列由在队模块能力 `anomalyRefringePct` 按行面板求和
   // （原内联读蕾米埃尔两个面板字段；这两个字段只由蕾米埃尔的 buff 写，她不在队时恒为 0，逐位等价）
   const refringeProviders = configStore.team
-    .map(char => (char?.agentId ? getAgentMechanic(char.agentId) : undefined))
+    .map(char => (char.agentId ? getAgentMechanic(char.agentId) : undefined))
     .filter(mod => !!mod?.anomalyRefringePct)
   const rows: AnomalyVirtualPanelRow[] = [...slotBuildUp.entries()]
     .map(([slot, buildup]) => {
@@ -226,7 +226,7 @@ export function buildAnomalyVirtualPanel(
       const settlementEligible = agent?.damageElement === prog.element
       return {
         slot,
-        name: agent?.name?.zhCN || agentId || `槽${slot + 1}`,
+        name: agent?.name.zhCN || agentId || `槽${slot + 1}`,
         buildup,
         weight: 0,   // 展示权重 = 同属性内积蓄占比，rows 构建后统一修正（赠送积蓄不参与权重）
         settlementEligible,
@@ -370,7 +370,7 @@ export function buildAnomalySettlementEntries(
       share: shares[i] / shareTotal,
       triggerCount: Math.max(0, rawCounts[i] ?? 0),
       panel: panelAt(panels, row.slot) ?? emptyPanel(),
-      name: agent?.name?.zhCN || `槽${row.slot + 1}`,
+      name: agent?.name.zhCN || `槽${row.slot + 1}`,
     }
   }).filter(e => opts?.keepZero || e.triggerCount > 0)
 }

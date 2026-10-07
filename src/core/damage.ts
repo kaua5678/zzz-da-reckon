@@ -27,7 +27,7 @@ export function moveSignalDamageTarget(
   if (move?.skillTags?.includes('dashAttack')) return 'dashAttack'
   // 「视为追加攻击」的招式（如奥菲丝高压火枪/各强化特殊技/连携/终结技，见各角色核心被动原文）
   if (move?.skillTags?.includes('additionalAttack')) return 'additionalAttack'
-  const name = `${move?.name?.en ?? ''} ${move?.name?.zhCN ?? ''}`.toLowerCase()
+  const name = `${move?.name.en ?? ''} ${move?.name.zhCN ?? ''}`.toLowerCase()
   if (name.includes('dash attack') || name.includes('冲刺攻击')) return 'dashAttack'
   return null
 }
@@ -37,7 +37,7 @@ export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove)
   if (bySignal) return bySignal
 
   const categoryId = category.id.toLowerCase()
-  const moveName = `${move.name?.en ?? ''} ${move.name?.zhCN ?? ''}`.toLowerCase()
+  const moveName = `${move.name.en ?? ''} ${move.name.zhCN ?? ''}`.toLowerCase()
 
   if (categoryId === 'basic') return 'basic'
   if (categoryId === 'assist') return 'assist'

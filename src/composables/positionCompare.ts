@@ -150,7 +150,7 @@ export function computePositionCompare(
     applyBossRoom(configStore, boss, phase)
 
     // 识别目标位置角色
-    const team = configStore.team.map(c => ({ agentId: c?.agentId ?? null }))
+    const team = configStore.team.map(c => ({ agentId: c.agentId }))
     const posSlot = findPositionSlot(team, catalogStore, position)
     if (posSlot < 0) continue
     const agentId = configStore.team[posSlot]?.agentId ?? ''
@@ -160,7 +160,7 @@ export function computePositionCompare(
     // 避免拐力差分关/开 buff 后触发第 3 次全量引擎求值，也防止盲目全开 group.buffs 绕过命座/额外能力门控污染失衡与积蓄
     const total = calc.teamTotalDamage.value
     const rows = calc.damagePoolRows.value
-    const pool = calc.stunPoolResult?.value
+    const pool = calc.stunPoolResult.value
     const anomalyPool = calc.anomalyPoolResult.value
     const selfDamage = rows
       .filter(r => r.slot === posSlot && r.sourceTag !== 'gift')
@@ -184,7 +184,7 @@ export function computePositionCompare(
     let buffContribution = 0
     if (position !== 'main') {
       const group = catalogStore.getTeammateBuffGroup(agentId)
-      if (group && (group.buffs?.length ?? 0) > 0) {
+      if (group && group.buffs.length > 0) {
         for (const buff of group.buffs) {
           configStore.toggleTeammateBuff(buff.id, false)
         }

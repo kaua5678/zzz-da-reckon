@@ -27,7 +27,7 @@
  *   · `panelAt(panels, slot)` —— 面板族专用（`src/core/panel.ts`，带未盖章密集数组兜底）；
  *   · `characters.map/some/filter(...)` —— 整体消费者，无下标语义。
  *
- * @fact engine:压缩数组/按槽位索引 口径: `characters`/`panels`/`damagePanels`/`entrySnapshotPanels` 按位置压缩（空槽跳过）⇒ 槽位号 ≠ 下标，四数组一律禁止 `arr[<槽位表达式>]` 下标访问；模块内取自己那份 cfg 用 `AgentTeamConfigInput.cfg` / `AgentNextRoundFeedbackInput.cfg`（派发器直给），取队友那份或面板一律 `.find(x => x.slot === slot)` / `panelAt(panels, slot)` | 据 用户@2026-09-16「你挖出结构性缺陷就直接动手做」+ 本会话实测三档后果（艾莲影画4 静默归零 / 格雷丝写进队友 cfg / 奥菲丝·薇薇安·蕾米埃尔硬崩）·复核@2026-09-25·锚未变@2026-09-27| 验 src/composables/__tests__/compactedSlotIndex.test.ts | 锚 scripts/lib/compacted-slot-index.mjs#scanCompactedSlotIndex | 信 确认
+ * @fact engine:压缩数组/按槽位索引 口径: `characters`/`panels`/`damagePanels`/`entrySnapshotPanels` 按位置压缩（空槽跳过）⇒ 槽位号 ≠ 下标，四数组一律禁止 `arr[<槽位表达式>]` 下标访问；模块内取自己那份 cfg 用 `AgentTeamConfigInput.cfg` / `AgentNextRoundFeedbackInput.cfg`（派发器直给），取队友那份或面板一律 `.find(x => x.slot === slot)` / `panelAt(panels, slot)` | 据 用户@2026-09-16「你挖出结构性缺陷就直接动手做」+ 本会话实测三档后果（艾莲影画4 静默归零 / 格雷丝写进队友 cfg / 奥菲丝·薇薇安·蕾米埃尔硬崩）·复核@2026-09-25·锚未变@2026-09-27·复核@2026-10-08| 验 src/composables/__tests__/compactedSlotIndex.test.ts | 锚 scripts/lib/compacted-slot-index.mjs#scanCompactedSlotIndex | 信 确认
  * ⟳复核: 若 `characters`/`panels` 的 producer 改成「槽位对齐」（不再压缩）或改由专门的 `.slot` 键控 Map 承载，本判据的前提消失 ⇒ 连同 IDX_SAFE_ALLOWLIST 一起重审或删除 | 到期 2027-03-31
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
@@ -97,8 +97,13 @@ export function scanCompactedSlotIndex(root) {
   // 该盲区正是判据要防的 bug 类：`[空槽, 1581, …]` 时 1581 在 team 下标 1、而
   // `panels.value` 盖章为 `[1, 2]` ⇒ `panels.value[1]` 拿到**槽位 2 的另一个角色**的面板（实测）。
   // 新正则同时认 `arr[key]` 与 `arr.value[key]`，捕获组 1 仍是数组名（`.value` 可选、不参与捕获）。
+  //
+  // ⚠ 2026-10-08 r731：**补 `?.[` 形态**。`characters?.[s]` 不吃原正则（`[` 前多了 `?.`）。r731 收死可选链
+  // （判据 28 扩到 `?.`）时把 `timeWeightAllocation.ts` 的 `characters?.[s]`（s = 主C 槽位号）改成
+  // `characters[s]`，本判据当场报红——可选链一直替它躲门。同批 `freeCompare/metrics.ts` 的 `characters?.[i]`
+  // （i 实为槽位号）因下标名走循环豁免，人工改成按 slot 查。
   const re = new RegExp(
-    `\\b(${arraysAlt})(?:\\.value)?\\s*\\[\\s*([A-Za-z_$][A-Za-z0-9_$.]*)\\s*\\]`,
+    `\\b(${arraysAlt})(?:\\.value)?\\s*(?:\\?\\.)?\\s*\\[\\s*([A-Za-z_$][A-Za-z0-9_$.]*)\\s*\\]`,
     'g',
   )
 

@@ -16,12 +16,12 @@ import type { CalcRoundResult } from './roundResult'
 import { giftedPolarAssaultOf } from './giftedPolarAssault'
 
 export function outerFeedbackSignature(out: CalcRoundResult): string {
-  const chars = out.resourceResult?.characters ?? []
+  const chars = out.resourceResult.characters
   return [
     // 连续终结次数允许量化收敛，避免小数尾数让 stable 永远不成立。
     chars.map(c => c.ultimateCount.toFixed(3)).join(','),
     out.anomalyPool.perSlotBonus.map(v => Math.round(v)).join(','),
-    `${out.interactionTopUp?.parry},${out.interactionTopUp?.dual}`,
+    `${out.interactionTopUp.parry},${out.interactionTopUp.dual}`,
     out.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : '',
     `${out.threadsNext.decibelParry}`,
     JSON.stringify(out.threadsNext.backstageAuto ?? {}),

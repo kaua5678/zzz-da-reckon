@@ -129,7 +129,7 @@ export async function computeFilmSimulation(scenario: AnalysisContext, opts: Fil
       if (baseGoldOfTeam(team, catalog) > totalGold) continue // 买不起
       const budgetAware = budgetAwareStateFor(team, totalGold, catalog)
       applyTeamToStore(configStore, team, budgetAware.state, opts.autoBuild === true)
-      const conv = calc.resourceResult.value?.convergence?.outerExit
+      const conv = calc.resourceResult.value?.convergence.outerExit
       if (conv === 'maxIter') continue
       const dmg = calc.teamTotalDamage.value
       if (!best || dmg > best.damage + 1e-9) best = { team, damage: dmg, budgetAware }

@@ -197,6 +197,7 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
         agentId: '1551', slot: 0, chainCountPerStun: opts.chainPerStun ?? 2,
         ...(opts.chainOverride !== undefined ? { chainCountTotalOverride: opts.chainOverride } : {}),
         extraSelfDecibelReward: opts.extra ?? 0,
+        panel: { additionalAbilityActive: 1 },
       } as any]
       getAgentMechanic('1551')!.applyTeamConfig!({
         slot: 0, cfg: characters[0], agent: null, cinemaLevel: opts.cinema, potentialLevel: 6, characters,
@@ -218,7 +219,7 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     expect(run({ cinema: 0, extra: 500 }).extraSelfDecibelReward, '必须累加共享通道').toBe(500 + 3000)
     // ⚠ 轴模式**也必须**写 verdict（原分支无门控）——加 `if (!cfg.axisMode)` 门控即红
     const axisCfg = {
-      agentId: '1551', slot: 0, chainCountPerStun: 2, axisMode: true,
+      agentId: '1551', slot: 0, chainCountPerStun: 2, axisMode: true, panel: { additionalAbilityActive: 1 },
     } as any
     getAgentMechanic('1551')!.applyTeamConfig!({
       slot: 0, cfg: axisCfg, agent: null, cinemaLevel: 0, potentialLevel: 6, characters: [axisCfg],

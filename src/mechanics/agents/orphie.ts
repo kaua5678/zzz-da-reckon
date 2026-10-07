@@ -78,7 +78,7 @@ function applyOrphiePanel({ panel, cinemaLevel }: AgentPanelInput): void {
 function buildOrphieCharConfig({ cfg, cinemaLevel, panel }: AgentCharConfigInput): void {
   cfg.orphieCinemaLevel = cinemaLevel
   // 影画6 激光附加伤害按「局内最终攻击力 × 百分比」进基础区（flatDamageBonus，希格莉德先例）
-  cfg.orphieAtk = Math.max(0, panel?.atk ?? 0)
+  cfg.orphieAtk = Math.max(0, panel.atk)
 }
 
 function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): void {

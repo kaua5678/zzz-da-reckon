@@ -169,10 +169,10 @@ export function buildTeamTimeSummary(args: {
     poolResidual,
     overflow: rr?.overflowSeconds ?? 0,
     truncatedRows: [...(rr?.truncationCuts ?? [])].sort((a, b) => b.cutSeconds - a.cutSeconds),
-    idle: rr?.convergence?.timeBudgetIdleSeconds ?? 0,
-    refund: rr?.convergence?.timeBudgetRefundedSeconds ?? 0,
-    timeBudgetConverged: rr?.convergence?.timeBudgetConverged ?? true,
-    timeBudgetPasses: rr?.convergence?.timeBudgetPasses ?? 0,
+    idle: rr?.convergence.timeBudgetIdleSeconds ?? 0,
+    refund: rr?.convergence.timeBudgetRefundedSeconds ?? 0,
+    timeBudgetConverged: rr?.convergence.timeBudgetConverged ?? true,
+    timeBudgetPasses: rr?.convergence.timeBudgetPasses ?? 0,
     perSlot: chars.map(c => {
       const rows = slotRows(c.executions)
       return {

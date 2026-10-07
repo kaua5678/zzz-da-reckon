@@ -34,7 +34,7 @@ export function impactVariableView(scenario: AnalysisContext): { settingMap: Map
   const catalog = useCatalogStore()
   const settingMap = new Map<string, MechanicSetting>()
   for (const setting of teamMechanicSettings(config.team)) settingMap.set(setting.id, setting)
-  const coverageRate = calc.anomalyPoolResult.value?.coverage?.perElementCoverageRate
+  const coverageRate = calc.anomalyPoolResult.value?.coverage.perElementCoverageRate
   const releaseShares = teamReleaseShares(config.team, id => catalog.getAgent(id))
   return { settingMap, vars: buildImpactVariables(settingMap, releaseShares, coverageRate) }
 }

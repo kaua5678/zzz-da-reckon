@@ -163,6 +163,7 @@ describe('喧响账本行级 Σ parity（记账层 == 展示层）', () => {
       extraSelfDecibelReward: 0,
       decibelShareRatio: 0.5,
       timeWeight: 1,
+      resourceUtilization: {},
       yidhariChargeSlam: { actionTime: 1.2917 },
       yidhariBasicFollow: { actionTime: 1.55 },
       yidhariDecibelPerHpPct: 10,

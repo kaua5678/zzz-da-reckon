@@ -4,6 +4,11 @@ import { teamPresets } from '@/data/teamPresets'
 import { buildGoldStepsFromConfig } from '@/composables/teamCompare'
 import type { ConfigModel } from '@/stores/config'
 
+/** lib.dom 把 `navigator.clipboard` 声明成必有；非安全上下文（http 访问局域网地址）里它是 undefined */
+function clipboardIfAvailable(): Clipboard | undefined {
+  return navigator.clipboard
+}
+
 /**
  * 队伍配置页「预设金数 → 保存到预设文件」族（纯搬运自 TeamConfigPage.vue）。
  * 职责：由当前命座/精炼草稿装配可下载的预设 JSON（重写 goldSteps/standardSteps），
@@ -81,8 +86,9 @@ export function useTeamConfigPresetIO({
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
     const tip = `已导出 ${presetId}.json（goldSteps/standardSteps 已按当前命座/精炼重写）：请替换 src/data/teamPresets/${presetId}.json 后刷新页面`
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(json).then(() => message.success(`${tip}（已复制到剪贴板）`)).catch(() => message.success(tip))
+    const clipboard = clipboardIfAvailable()
+    if (clipboard) {
+      clipboard.writeText(json).then(() => message.success(`${tip}（已复制到剪贴板）`)).catch(() => message.success(tip))
     } else {
       message.success(tip)
     }
@@ -94,8 +100,9 @@ export function useTeamConfigPresetIO({
       message.warning('请先选择目标预设')
       return
     }
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(r.json)
+    const clipboard = clipboardIfAvailable()
+    if (clipboard) {
+      clipboard.writeText(r.json)
         .then(() => message.success(`已复制 JSON，粘贴替换 src/data/teamPresets/${r.presetId}.json 后刷新页面`))
         .catch(() => message.warning('复制失败，请用「保存到预设文件」下载'))
     } else {

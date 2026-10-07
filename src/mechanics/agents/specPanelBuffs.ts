@@ -147,7 +147,7 @@ peiluoProminenceMechanic.applyTeamConfig = ({ cfg, phase, cinemaLevel, stunCount
   // 连携总次数：轴模式用轴内加权后的覆盖值（由编排层通用注入 cfg），否则 chainCountPerStun × 失衡次数
   // CC-335：额外能力·辉煌军势「连携技回复300喧响」与 applyPanel 暴伤+40% 同门控（未传 panel 的单测桩默认视为激活）
   const chainTotal = chainCountTotalOf(cfg, stunCount)
-  const aaActive = (cfg.panel?.additionalAbilityActive ?? 1) > 0
+  const aaActive = cfg.panel.additionalAbilityActive > 0
   const chainDecibels = aaActive ? chainTotal * 300 : 0
   cfg.extraSelfDecibelReward = cfg.extraSelfDecibelReward + chainDecibels + (cinema >= 2 ? 1500 : 0)
   // ⚠ 必须**无条件**写（含轴模式）——原编排层分支就是 `peiluoVerdictCount: stunCount`、无门控。
@@ -571,7 +571,7 @@ const JUFUFU_WEISHI_ASSIST_RATE = '1391.jufufu_weishi.jufufu_weishi_assist.rate'
 const JUFUFU_WEISHI_TEAM_ULT_RATE = '1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate'
 
 function jufufuRowValue(skills: AgentCharConfigInput['skills'], moveId: string, rowId: string): number {
-  for (const cat of skills?.categories ?? []) {
+  for (const cat of skills.categories) {
     const move = cat.moves.find(m => m.id === moveId)
     if (!move) continue
     const row = move.rows.find(r => r.id === rowId)
@@ -848,7 +848,7 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
     }
   },
   resourceSections: (input: AgentResourceSectionsInput) => {
-    const cycle = input.result?.jufufuCycle
+    const cycle = input.result.jufufuCycle
     const awe = input.result.specResources?.['jufufu_awe']
     const weishi = input.result.specResources?.['jufufu_weishi']
     const rows = [

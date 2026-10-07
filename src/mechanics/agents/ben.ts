@@ -64,7 +64,7 @@ function findMoveActionTime(
   moveId: string,
 ): number {
   for (const category of skills.categories) {
-    const move = category.moves?.find(item => item.id === moveId)
+    const move = category.moves.find(item => item.id === moveId)
     if (move) return Math.max(0, move.actionTime ?? 0)
   }
   return 0

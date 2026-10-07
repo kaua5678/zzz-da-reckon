@@ -459,7 +459,7 @@ function billyFullThrottleFromDetermination(
   // 100 = spec spendRules「billy_max_power_spend」cost（核心被动文本「≥100 点消耗 100 点发动」）。
   // spendCounts 即 floor(total/100)，终局直接用；迭代期实数 = total/100。
   return quantize
-    ? Math.max(0, Math.floor(det?.spendCounts?.['billy_max_power_spend'] ?? 0))
+    ? Math.max(0, Math.floor(det?.spendCounts['billy_max_power_spend'] ?? 0))
     : Math.max(0, (det?.total ?? 0) / FULL_THROTTLE_DETERMINATION_COST)
 }
 

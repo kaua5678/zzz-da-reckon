@@ -56,7 +56,7 @@ export function mainStatCandidates(config: ConfigModel): MainStatCandidate[] {
     const char = config.team[slot]
     if (!char?.agentId) continue
     const disc = char.driveDisc
-    if (!disc?.mainStats) continue
+    if (!disc.mainStats) continue
     const agentElement = catalog.getAgent(char.agentId)?.damageElement
     for (const slotNum of [4, 5, 6] as const) {
       const current = disc.mainStats[slotNum]

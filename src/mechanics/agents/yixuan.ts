@@ -336,9 +336,9 @@ function buildYixuanCharConfig(input: AgentCharConfigInput): void {
   cfg.chainDecibelRecovery = rowValue(findMoveById(skills, '1371013'), 'decibel_recovery')
 
   // 额外能力·玄墨暗涌：队伍存在[击破]/[支援]/[防护]角色时触发 → 队友终结技回 20 闪能/次
-  const hasStun = team?.some(m => m.agent?.specialty === 'stun')
-  const hasSupport = team?.some(m => m.agent?.specialty === 'support')
-  const hasDefense = team?.some(m => m.agent?.specialty === 'defense')
+  const hasStun = team.some(m => m.agent?.specialty === 'stun')
+  const hasSupport = team.some(m => m.agent?.specialty === 'support')
+  const hasDefense = team.some(m => m.agent?.specialty === 'defense')
   if (hasStun || hasSupport || hasDefense) {
     cfg.teamUltimateFlashBonus = TEAM_ULT_FLASH
   }
@@ -468,10 +468,10 @@ function applyYixuanTeamConfig(
   // 缺失的**单个字段**按 0 计（`?? 0` 与原式 `Math.floor(prevAuricInkFlash)` 的取值面一致）。
   if (threads) {
     cfg.yixuanAnomalyTriggerFlash =
-      Math.min(anomalyTriggerMax(cfg.battleTime), Math.max(0, Math.floor(Number(threads.moduleFeedback?.auricInkTriggers ?? 0))))
+      Math.min(anomalyTriggerMax(cfg.battleTime), Math.max(0, Math.floor(Number(threads.moduleFeedback.auricInkTriggers ?? 0))))
   }
   const auricInkTriggers = Math.min(
-    anomalyTriggerMax(cfg.battleTime), Math.max(0, Math.floor(Number(threads?.moduleFeedback?.auricInkTriggers ?? 0))),
+    anomalyTriggerMax(cfg.battleTime), Math.max(0, Math.floor(Number(threads?.moduleFeedback.auricInkTriggers ?? 0))),
   )
 
   // ── 通道④ 终结技等价次数（只依赖 threads，**不依赖 interactions**）──
@@ -480,7 +480,7 @@ function applyYixuanTeamConfig(
   // 见 specPanelBuffs.ts jufufuTigerRoarMechanic），core 按 `(ultimateCount + ultimateEquivalentCount) × perUltimate` 算。
   // 此前本通道按身份找橘福福（'1391'）并自抄 300 常量累加进 extraSelfDecibelReward（规则拥有者与消费者倒置）。
   // ⚠ 写在 `interactions` 门控**之前**：挂在后面会让「契约漏传」静默吞掉这部分喧响。
-  const prevFuFa = Number((threads?.moduleFeedback?.teamUltimateExtra ?? 0))
+  const prevFuFa = Number((threads?.moduleFeedback.teamUltimateExtra ?? 0))
   cfg.ultimateEquivalentCount = prevFuFa > 0 ? prevFuFa : 0
 
   // ── 通道⑤ 未缩放交互次数（`interactions` 契约；本轮的契约缺口）──────────────
@@ -495,7 +495,7 @@ function applyYixuanTeamConfig(
   let assistCap = 0
   for (const [slotKey, snap] of Object.entries(interactions.bySlot)) {
     if (Number(slotKey) === ownSlot) continue
-    assistCap += snap?.parryCount ?? 0
+    assistCap += snap.parryCount
   }
   cfg.yixuanExtremeAssistCap = assistCap
 

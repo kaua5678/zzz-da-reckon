@@ -12,12 +12,12 @@ export function useStatLabel() {
 
   /** 取属性显示名 */
   function statLabel(stat: string): string {
-    return localized(catalogStore.statRules?.statDisplay?.[stat]?.label, getStatMeta(stat).label)
+    return localized(catalogStore.statRules?.statDisplay[stat]?.label, getStatMeta(stat).label)
   }
 
   /** 取属性展示类型：integer / percent / number */
   function statDisplay(stat: string): string {
-    const entry = catalogStore.statRules?.statDisplay?.[stat]
+    const entry = catalogStore.statRules?.statDisplay[stat]
     return entry?.display ?? 'number'
   }
 
