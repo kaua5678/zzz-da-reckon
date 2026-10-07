@@ -179,7 +179,7 @@ export function downgradeCandidates(
   if (!agent) return []
   const aMod = mods.aRank ?? 5
   const stdMod = mods.standard ?? 3
-  return (catalog.displayWEngines ?? [])
+  return catalog.displayWEngines
     .filter(w => !w.ownerAgentId && w.specialty === agent.specialty && !isLimitedWEngine(w.id))
     .map(w => ({
       id: w.id,

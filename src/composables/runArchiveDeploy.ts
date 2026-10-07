@@ -68,7 +68,7 @@ export function pickBestPeriodBuff(
   phaseId: string,
   cards: readonly PhaseBuffCard[],
 ): PhaseBuffCard | null {
-  const candidates = cards.filter(b => !b.testOnly && (b.effects ?? []).some(e => e.stat))
+  const candidates = cards.filter(b => !b.testOnly && b.effects.some(e => e.stat))
   if (candidates.length === 0) return null
   const damageWith = (card: PhaseBuffCard | null): number => {
     applyPeriodBuff(ctx.config, phaseId, card)

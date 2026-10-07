@@ -76,7 +76,7 @@ export function constraintSummary(
   const parts: string[] = []
   if (cs.boss) {
     const phase = cs.boss.phases.find(p => p.phaseId === cs.phaseId) ?? cs.boss.phases[0]
-    parts.push(phase ? `${cs.boss.name}（${phase.label}）` : (cs.boss.name ?? ''))
+    parts.push(phase ? `${cs.boss.name}（${phase.label}）` : cs.boss.name)
   }
   for (const c of cs.conditions ?? []) parts.push(conditionLabel({ ...c, cinema: c.cinema }, nameOf))
   parts.push(cs.autoBuild ? '推荐配装' : '轻量速算')

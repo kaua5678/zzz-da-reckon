@@ -83,7 +83,7 @@ export function teammateBuffGateBlocks(team: ReadonlyTeam, groups: readonly Team
     // 本人判据与原 selfCinema 口径一致：agentId 匹配且 agent 可查
     const self = team.find(member => member.agentId === group.id && !!member.agent)
     if (!self) continue
-    for (const buff of group.buffs ?? []) {
+    for (const buff of group.buffs) {
       if (gate({ buffId: buff.id, team, self }) === false) blocked.add(buff.id)
     }
   }

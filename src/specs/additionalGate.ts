@@ -53,7 +53,7 @@ export function additionalGateBuffTable(groups: readonly TeammateBuffGroup[]): R
   const table: Record<string, string[]> = {}
   for (const group of groups) {
     if (!getAgentSpec(group.id)?.additionalAbility) continue
-    for (const buff of group.buffs ?? []) {
+    for (const buff of group.buffs) {
       if (isAdditionalAbilitySourceLabel(buff.source?.zhCN ?? buff.sourceLabel?.zhCN ?? '')) (table[group.id] ??= []).push(buff.id)
     }
   }

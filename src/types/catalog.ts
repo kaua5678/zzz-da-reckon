@@ -239,7 +239,8 @@ export interface PanelValues {
 // ============ Buff 效果系统 ============
 
 export interface EffectTarget {
-  kind: 'default' | 'skill' | 'teammate' | 'self'
+  /** 'anomaly' 见于 10 条音擎 / 队友效果（r725 契约实测）：其 stat 本身就是异常专属（windAnomalyDmgBonus / assaultCritDmg 等），引擎不按 kind 分派 */
+  kind: 'default' | 'skill' | 'teammate' | 'self' | 'anomaly'
   skillTargets?: SkillTarget[]
 }
 
@@ -276,12 +277,13 @@ export interface EffectRequirement {
   wearerAgentIds?: string[]
 }
 
-export interface BuffEffect {
+interface BuffEffectBase {
   id: string
   type: EffectType
   stat: StatId
   mode: StatMode
-  value: number
+  /** fixed 必有（见 `FixedBuffEffect`）；stacked / formula 个别条目也带，引擎不读 */
+  value?: number
   target?: EffectTarget
   coverage?: EffectCoverage
   requirement?: EffectRequirement
@@ -323,6 +325,28 @@ export interface BuffEffect {
   source?: { variable?: string; label?: LocalizedString; defaultValue?: number; min?: number; max?: number }
 }
 
+/**
+ * 效果按 `type` 判别（r725）：数据契约实测 fixed 恒带 `value`，stacked 恒带 `valuePerStack / maxStacks / defaultStacks`
+ * （catalog + teammate-buffs 共 398 条）。`validate:data` 按此类型校验，读点不再为这些字段写兜底。
+ */
+interface FixedBuffEffect extends BuffEffectBase {
+  type: 'fixed'
+  value: number
+}
+interface StackedBuffEffect extends BuffEffectBase {
+  type: 'stacked'
+  valuePerStack: number
+  maxStacks: number
+  defaultStacks: number
+}
+interface DerivedBuffEffect extends BuffEffectBase {
+  type: 'derived'
+}
+interface FormulaBuffEffect extends BuffEffectBase {
+  type: 'formula'
+}
+export type BuffEffect = FixedBuffEffect | StackedBuffEffect | DerivedBuffEffect | FormulaBuffEffect
+
 /** buff 修饰器（队友 buff / 选择拐数据带）：把目标 buff 某些效果的已解析值乘以 factor（丽娜 C1 / 莱特 C2 / 悠夜 C1 等） */
 export interface BuffModifier {
   id: string
@@ -335,7 +359,8 @@ export interface BuffModifier {
 }
 
 export interface BuffGroup {
-  scope: BuffScope
+  /** 驱动盘 4 件套的 self / teamBuff 有 29 组不带（r725 契约实测） */
+  scope?: BuffScope
   name?: LocalizedString
   description?: LocalizedString
   effects: BuffEffect[]
@@ -449,7 +474,8 @@ export interface Agent {
 
 export interface SkillRow {
   id: string
-  label: LocalizedString
+  /** 展示名；catalog 7455 行里 3462 行不带（r725 契约实测） */
+  label?: LocalizedString
   kind: string
   /** 按技能等级取值的等级档（与 values 等长，如耀变倍率行 [12,14,16]；remielle 读取，parity 测试锁定） */
   levelValues?: number[]
@@ -480,7 +506,8 @@ export interface SkillMove {
 export interface SkillCategory {
   id: string
   name: LocalizedString
-  levelRange: { min: number; max: number; default: number } | { levels: string[]; default: string }
+  /** 1611 / 1621 的 10 个分类不带（r725 契约实测） */
+  levelRange?: { min: number; max: number; default: number } | { levels: string[]; default: string }
   moves: SkillMove[]
 }
 
@@ -526,12 +553,13 @@ export interface WEngine {
   name: LocalizedString
   rarity: Rarity
   specialty: Specialty
-  attribute: string
-  images: { icon?: string; source?: string }
+  /** 83 把里 48 把不带 attribute、17 把不带 images、4 把不带 sources（r725 契约实测） */
+  attribute?: string
+  images?: { icon?: string; source?: string }
   level60: WEngineLevel60
   modification: WEngineModification
   effect: WEngineEffect
-  sources: string[]
+  sources?: string[]
   verification?: Record<string, string>
   legacyIds?: string[]
   /** 专属角色 id（来自 nanoka icon Weapon_[SA]_<角色id>；非专属音擎无此字段） */
@@ -554,7 +582,8 @@ export interface DriveDiscSet {
   id: string
   name: LocalizedString
   images: { icon?: string; source?: string }
-  twoPiece: DriveDiscSetPiece
+  /** 31900 原始朋克不带（r725 契约实测） */
+  twoPiece?: DriveDiscSetPiece
   fourPiece: DriveDiscSetFourPiece
   sources: string[]
   /** 旧 id（zzz_wiki_XXXX 等），id 统一为数字后的兼容映射 */
@@ -582,9 +611,6 @@ export interface DriveDiscConfig {
 export interface Boss {
   id: string
   name: LocalizedString
-  level: number
-  defense: number
-  resistance: Record<DamageElement, number>
   stunMultiplier?: number
 }
 
@@ -600,9 +626,9 @@ export interface StatRules {
    * 当前合法副词条池属于后者；步长/步数与 mode 灵敏度反控见 `discSubstats.test.ts`。
    * ⚠ 实测存在「名字后缀与语义相反」的字段：`anomalyMastery`（异常掌控）名字带 `Mastery` 却是
    * `number`（+30 加点）⇒ 名字启发式必错（2026-09-18 round 28 修，见 `inferStatMode` 头注释）。
-   * ⚠ 真实数据里 `label` 是 **string**（类型声明为 `LocalizedString` 是历史宽化，`useStatLabel` 兼容两形态）。
+   * `label` 是 **string**（r725 前声明为 `LocalizedString`，与 60 条真实数据全不符；契约校验接上后改真）。
    */
-  statDisplay: Record<string, { label: LocalizedString; display?: 'percent' | 'number' | 'integer'; format?: string }>
+  statDisplay: Record<string, { label: string; display?: 'percent' | 'number' | 'integer'; format?: string }>
   driveDisc: {
     rarityMaxLevel: Record<Rarity, number>
     mainStatPools: Record<string, StatId[]>
@@ -645,8 +671,8 @@ export interface BuildDriveDiscSet {
   id: string
   name_en: string
   name_zh: string
-  desc2_en: string
-  desc4_en: string
+  desc2_en?: string
+  desc4_en?: string
   desc2_zh: string
   desc4_zh: string
 }
@@ -661,7 +687,7 @@ export interface BuildMainStat {
 export interface BuildSubstat {
   prop: string
   name: string
-  priority: number
+  priority?: number
   icon?: string
 }
 

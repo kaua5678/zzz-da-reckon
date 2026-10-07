@@ -245,7 +245,7 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
           const move = findMoveById(skills, exec.moveId)
           if (move) {
             // 招式类型定向（伤害路径按此读 X__<target> 定向键，如驱动盘/音擎的普攻/冲刺限定增伤）
-            const foundCategory = skills?.categories?.find(cat => (cat.moves ?? []).some(m => String(m.id) === String(exec.moveId)))
+            const foundCategory = skills?.categories?.find(cat => cat.moves.some(m => String(m.id) === String(exec.moveId)))
             const skillDamageTarget = foundCategory ? inferSkillDamageTarget(foundCategory, move) : undefined
             const variantMove = segmentOf ? (findMoveById(skills, segmentOf(exec.moveId)) ?? move) : move
             const coopSwapped = !!segmentOf && segmentSwapped(exec.moveId, segmentOf)
@@ -377,7 +377,7 @@ export function buildCharConfig(
   const decibelRecoveryByMoveId: Record<string, number> = {}
   const energyRecoveryByMoveId: Record<string, number> = {}
   for (const cat of (skills as AgentSkills | undefined)?.categories ?? []) {
-    for (const m of cat.moves ?? []) {
+    for (const m of cat.moves) {
       // 登记融合组的主段：喧响取「一次动作」的整段和（一次连携把各段的 fever_recovery 全打了，
       // 只回头段会把雅 230.15 记成 69.05）。兄弟段不单独成行（moveFusions 入表前提），无六计风险。
       decibelRecoveryByMoveId[String(m.id)]

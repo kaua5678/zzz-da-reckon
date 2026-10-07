@@ -88,7 +88,7 @@ function buildRemielleResourceSections({ result }: AgentResourceSectionsInput) {
 // ============================================================================
 export function getRemielleLevelValue(row: SkillMove['rows'][number] | undefined, skillLevelBonus: number): number {
   if (!row) return 0
-  const values = row.values ?? []
+  const values = row.values
   if (!values.length) return 0
   const skillLevel = getSkillLevelCoef(skillLevelBonus).skillLevel
   const levelValues = row.levelValues

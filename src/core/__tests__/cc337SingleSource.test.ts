@@ -61,6 +61,7 @@ describe('CC-337: 单一事实源与跨模块对账守护', () => {
             },
           ],
         },
+        cinemaBuffs: [],
       },
     } as unknown as Agent
 

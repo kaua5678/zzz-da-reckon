@@ -107,7 +107,7 @@ export async function computeFilmSimulation(scenario: AnalysisContext, opts: Fil
   // 起点 = 主C 首次 UP 之后的 Boss 登场期（用户口径；主C 实装前的期不算）
   const mainRelease = releaseNodeOf(opts.mainAgentId)
   const mainDate = mainRelease ? VERSION_NODES[nodeIndexOf(mainRelease)]?.date : undefined
-  const axis = opts.axisNodes.filter(n => !mainDate || (n.date ?? '') >= mainDate)
+  const axis = opts.axisNodes.filter(n => !mainDate || n.date >= mainDate)
   if (axis.length === 0) {
     report(1, '主C 首次 UP 之后无该 Boss 登场期')
     return { points: [], stats: { nonConverged: 0, durationMs: Date.now() - t0 } }
@@ -152,7 +152,7 @@ export async function computeFilmSimulation(scenario: AnalysisContext, opts: Fil
     const node = axis[i]
     // 当前期数 Boss + 关卡固有 buff 一次应用（本期所有候选队共用）
     const phase = opts.boss.phases.find(p => p.phaseId === node.id)
-      ?? opts.boss.phases.find(p => p.begin.slice(0, 10) === (node.date ?? '').slice(0, 10))
+      ?? opts.boss.phases.find(p => p.begin.slice(0, 10) === node.date.slice(0, 10))
     if (!phase) continue
     // CC-342：房间上下文唯一写入口（brief 按 phase.phaseId 查；原按 node.id 查，只在上面的按日期兜底分支里两者可能不同）
     applyBossRoom(configStore, opts.boss, phase)

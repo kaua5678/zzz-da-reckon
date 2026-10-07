@@ -40,9 +40,8 @@ export interface ArchiveRun {
   team: ArchiveRunMember[]
 }
 
-/** 归档房间/关卡（bootstrap database.seasons[].rooms[]）。 */
+/** 归档房间/关卡（run-archive.json `rooms`：以房间 id 为键，条目内不带 id——r725 契约实测）。 */
 export interface ArchiveRoom {
-  id: string
   bossName?: string
   bossNameZh?: string
   primaryEnemy?: string
@@ -228,12 +227,12 @@ export function submissionToDeploy(
   seasonStartUtc?: string,
 ): DeployConfig {
   const warnings: string[] = []
-  const mode = run.mode ?? ''
+  const mode = run.mode
   const supported = mode.startsWith(SUPPORTED_MODE_PREFIX)
   if (!supported) warnings.push(`模式「${mode || '(未知)'}」暂不支持（仅危局强袭）`)
 
   const slots: DeployTeamSlot[] = [emptySlot(0), emptySlot(1), emptySlot(2)]
-  const members = [...(run.team ?? [])].sort((a, b) => (a.slot ?? 99) - (b.slot ?? 99))
+  const members = [...run.team].sort((a, b) => a.slot - b.slot)
   const seen: Record<number, boolean> = {}
 
   for (const m of members) {
@@ -266,7 +265,7 @@ export function submissionToDeploy(
 
   const boss = matchBossPreset(room, bossPresets, seasonStartUtc)
   if (supported && !boss) {
-    const bossLabel = room?.bossNameZh || room?.bossName || room?.id || run.targetId || '(未知)'
+    const bossLabel = room?.bossNameZh || room?.bossName || run.targetId || '(未知)'
     warnings.push(`无对应 Boss 预设（${bossLabel}），需手动选 Boss`)
   } else if (supported && boss && !boss.phaseId) {
     warnings.push(`Boss「${boss.name}」无覆盖该期的相位预设（血量/buff 随期数偏移），需手动选期数`)

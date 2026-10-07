@@ -119,7 +119,7 @@ describe('倍率表系数演算：角色纵向系数', () => {
 })
 
 describe('倍率表系数演算：招式分类', () => {
-  const mkMove = (overrides: Record<string, unknown>) => overrides as unknown as Parameters<typeof classifyMove>[0]
+  const mkMove = (overrides: Record<string, unknown>) => ({ rows: [], ...overrides }) as unknown as Parameters<typeof classifyMove>[0]
 
   it('连携/终结按类别与职业分流', () => {
     const chainMove = mkMove({ name: { zhCN: '连携技：春临 #1' }, timeType: 'normal' })

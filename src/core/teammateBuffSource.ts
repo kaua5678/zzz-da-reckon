@@ -73,7 +73,7 @@ export function buildTeammateBuffSourceContext(
   // （teammate-buffs.json 的 ownerId/teammateId 里混着英文 slug，见 addSourcePanelAliases 头注）
   const aliasByAgentId = new Map<string, string[]>()
   for (const group of deps.teammateBuffGroups) {
-    for (const buff of group.buffs ?? []) {
+    for (const buff of group.buffs) {
       for (const key of [buff.ownerId, buff.teammateId]) {
         if (!key || /^\d+$/.test(key)) continue // 纯数字 = agentId，不是别名
         const list = aliasByAgentId.get(group.id) ?? []

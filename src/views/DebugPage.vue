@@ -202,12 +202,8 @@ function effectValue(raw: BuffEffect, modLevel?: number): number | string {
     const source = localized(effect.sourceLabel) || effect.basis || '来源属性'
     return `${source} × ${effect.ratio ?? 0}%${effect.cap ? `，上限 ${effect.cap}` : ''}`
   }
-  if (effect.type === 'stacked') {
-    const perStack = effect.valuePerStack ?? effect.value
-    const stacks = effect.defaultStacks ?? effect.maxStacks ?? 1
-    return `${perStack} × ${stacks}层`
-  }
-  return effect.value
+  if (effect.type === 'stacked') return `${effect.valuePerStack} × ${effect.defaultStacks}层`
+  return effect.value ?? effect.formula?.expression ?? '公式'
 }
 
 function addEffectRows(rows: DebugRow[], source: string, item: string, group: BuffGroup | null | undefined, modLevel?: number, extraNoteOf: string | ((effect: BuffEffect) => string) = '') {
@@ -285,7 +281,7 @@ function addDriveRows(rows: DebugRow[]) {
   addEffectRows(rows, '驱动盘', `${localized(four?.name)} 2件套`, four?.twoPiece ? { scope: 'outOfCombat', effects: four.twoPiece.effects } : undefined)
   addEffectRows(rows, '驱动盘', `${localized(four?.name)} 4件套自身`, four?.fourPiece?.selfBuff)
   addEffectRows(rows, '驱动盘', `${localized(four?.name)} 4件套团队`, four?.fourPiece?.teamBuff)
-  if (two && two.id !== four?.id) addEffectRows(rows, '驱动盘', `${localized(two.name)} 2件套`, { scope: 'outOfCombat', effects: two.twoPiece.effects })
+  if (two?.twoPiece && two.id !== four?.id) addEffectRows(rows, '驱动盘', `${localized(two.name)} 2件套`, { scope: 'outOfCombat', effects: two.twoPiece.effects })
 }
 
 function addTeamBuffRows(rows: DebugRow[]) {
@@ -307,7 +303,7 @@ function addGlobalRows(rows: DebugRow[]) {
     const e = buff.effects?.[0]
     if (!e) continue
     const targetNote = e.stat === 'skillDmgBonus' ? `；目标招式：${SKILL_DMG_TARGET_LABELS[normalizeSkillDamageTarget(e.targetSkillType)]}` : ''
-    rows.push(row('全局 Buff', localized(buff.ownerName), e.stat, e.value, statSettlementMode(e.stat), `属性配置页手动添加或应用 Boss / 当期牌写入，直接应用到局内面板${targetNote}`, phaseStatLabel(e.stat, 'inCombat')))
+    rows.push(row('全局 Buff', localized(buff.ownerName), e.stat, effectValue(e), statSettlementMode(e.stat), `属性配置页手动添加或应用 Boss / 当期牌写入，直接应用到局内面板${targetNote}`, phaseStatLabel(e.stat, 'inCombat')))
   }
 }
 

@@ -50,8 +50,7 @@ describe('CC-236 findMoveById 单一来源', () => {
     expect(findMoveById(skills, 'zz')).toBeNull()
     expect(findMoveById(undefined, 'a')).toBeNull()
     expect(findMoveById({ categories: [] }, 'a')).toBeNull()
-    // 运行时容错：缺 categories / moves 返回 null（nangong 夹具即此形状）
+    // 缺 categories 返回 null（nangong 夹具即此形状）
     expect(findMoveById({} as never, 'a')).toBeNull()
-    expect(findMoveById({ categories: [{}] } as never, 'a')).toBeNull()
   })
 })

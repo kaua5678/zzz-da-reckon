@@ -61,7 +61,7 @@ export function classifyMove(move: SkillMove, categoryId: string, specialty: str
       if (name.startsWith('支援突击')) return 'assistFollowUp'
       if (name.startsWith('快速支援')) {
         // 两版口径：喧响速率 ≥40/s 判为翻倍版（喧响不受稀有度系数影响，可直接比）
-        const db = (move.rows ?? []).find((r) => r.id === 'decibel_recovery')?.values[0]
+        const db = move.rows.find((r) => r.id === 'decibel_recovery')?.values[0]
         return typeof db === 'number' && typeof move.actionTime === 'number' && move.actionTime > MIN_ACTION_TIME && db / move.actionTime >= 40
           ? 'quickAssistLegacy'
           : 'quickAssist'

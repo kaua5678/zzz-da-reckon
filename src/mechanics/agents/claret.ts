@@ -437,7 +437,7 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
   const gashByMoveId: Record<string, number> = {}
   for (const cat of skills.categories) {
     if (cat.id === 'basic') continue
-    for (const m of cat.moves ?? []) {
+    for (const m of cat.moves) {
       const v = fusedRowValue(skills, String(m.id), 'gash_buildup') ?? getRowValue(m, 'gash_buildup')
       if (v > 0) gashByMoveId[String(m.id)] = v
     }

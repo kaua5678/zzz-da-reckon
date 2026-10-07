@@ -1335,13 +1335,12 @@ export function runAllChecks(root = ROOT) {
   }
 
   // ---- 判据 28：死兜底硬门（r723：src 非测试 .ts 有 871 处 `a ?? b` 的 a 类型不含 null/undefined——右侧永远取不到，
-  //      却把必填契约写成「可能缺」；r723 删了引擎内部契约上的 800 处，外部数据类型按信任边界豁免并公示数量）----
+  //      却把必填契约写成「可能缺」；r723 删了引擎内部契约上的 800 处；r725 起外部 JSON 由 validate:data 类型契约校验，不设豁免）----
   {
     const report = scanDeadNullish(root)
-    const exemptedTotal = [...report.exempted.values()].reduce((a, n) => a + n, 0)
     results.push({
       name: `dead-nullish gate (判据 28: 类型不含 null/undefined 的值不写 \`?? 默认值\`；真可能缺就把字段改可选) `
-        + `= ${report.count}/${DEAD_NULLISH_BASELINE} / 扫 ${report.scanned} 文件 / 信任边界豁免 ${exemptedTotal} 处 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+        + `= ${report.count}/${DEAD_NULLISH_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatDeadNullish(report),
     })

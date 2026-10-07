@@ -379,10 +379,10 @@ export function applyTeammateBuffRecipientFilters(
   if (drops.size === 0) return buffs
   return buffs.map(buff => {
     if (buff.scope !== 'inCombat') return buff
-    const drop = drops.get(buff.ownerId ?? '') ?? drops.get(buff.teammateId ?? '')
+    const drop = drops.get(buff.ownerId) ?? drops.get(buff.teammateId)
     if (!drop) return buff
-    const effects = (buff.effects ?? []).filter(e => !drop.has(e.id))
-    return effects.length === (buff.effects ?? []).length ? buff : { ...buff, effects }
+    const effects = buff.effects.filter(e => !drop.has(e.id))
+    return effects.length === buff.effects.length ? buff : { ...buff, effects }
   })
 }
 
@@ -479,7 +479,7 @@ export function resolveSlotPanelBuffInputs(
   const effectCoverageMap = wEngineEffectCoverageMapOf(wEngineCoverages)
   for (const buff of allTeammateBuffs) {
     const coverage = teammateBuffCoverageOf(buffSelections, buff.id) / 100
-    for (const effect of buff.effects ?? []) effectCoverageMap.set(effect.id, coverage)
+    for (const effect of buff.effects) effectCoverageMap.set(effect.id, coverage)
   }
   mergeTeamDiscEffectCoverages(effectCoverageMap, configStore, catalogStore, teamDiscs(configStore))
   return { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team }

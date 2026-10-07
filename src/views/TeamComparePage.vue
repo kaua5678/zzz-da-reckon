@@ -971,7 +971,7 @@ function resetDiffWeights() {
   }
 }
 const enginePoolOptions = computed(() =>
-  (catalogStore.displayWEngines ?? [])
+  catalogStore.displayWEngines
     .map(w => ({
       value: w.id,
       label: `${localized(w.name, w.id)}（${w.rarity}${isLimitedWEngine(w.id) ? '·限定' : ''}）`,
@@ -1041,7 +1041,7 @@ const bossHpOverlay = computed(() => {
   const mode = selectedPhase.value?.modeType ?? 'defense'
   return buildBossHpOverlay(
     versionAxis.value.lanes,
-    boss.phases ?? [],
+    boss.phases,
     mode,
     idx => VERSION_NODES[idx]?.version ?? null,
   )

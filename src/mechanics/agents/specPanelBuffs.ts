@@ -572,9 +572,9 @@ const JUFUFU_WEISHI_TEAM_ULT_RATE = '1391.jufufu_weishi.jufufu_team_ult_weishi_g
 
 function jufufuRowValue(skills: AgentCharConfigInput['skills'], moveId: string, rowId: string): number {
   for (const cat of skills?.categories ?? []) {
-    const move = (cat.moves ?? []).find(m => m.id === moveId)
+    const move = cat.moves.find(m => m.id === moveId)
     if (!move) continue
-    const row = (move.rows ?? []).find(r => r.id === rowId)
+    const row = move.rows.find(r => r.id === rowId)
     const vals = row?.values ?? []
     if (!vals.length) return 0
     return Number(vals[11] ?? vals[vals.length - 1] ?? 0) || 0

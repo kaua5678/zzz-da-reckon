@@ -257,8 +257,8 @@ function teamBuffRows(spec: AgentMechanicSpec): DisplayTeamBuff[] {
 
   const group = catalogGroupForSpec(spec)
   for (const buff of group?.buffs ?? []) {
-    const effectsText = (buff.effects ?? []).map(formatEffect).join('；')
-    const coverageValues = (buff.effects ?? []).map(effect => effect.coverage?.default ?? 1)
+    const effectsText = buff.effects.map(formatEffect).join('；')
+    const coverageValues = buff.effects.map(effect => effect.coverage?.default ?? 1)
     const coverage = coverageValues.length > 0 ? Math.min(...coverageValues) : 1
     rows.push({
       id: buff.id,

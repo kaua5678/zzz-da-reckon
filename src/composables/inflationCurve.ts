@@ -139,7 +139,7 @@ export function buildInflationSeries(
   // 收集 (version → hp[])
   const buckets = new Map<string, { hp: number[]; begins: string[] }>()
   for (const b of presets) {
-    for (const p of b.phases ?? []) {
+    for (const p of b.phases) {
       if (p.modeType !== mode) continue
       const hp = p.hp
       if (!Number.isFinite(hp) || hp <= 0) continue

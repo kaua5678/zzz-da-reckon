@@ -12,33 +12,45 @@
   "events": [
     {
       "id": "billy-c1-energy",
+      "name": "C1 能量回复",
       "trigger": "C1冲刺攻击或闪避反击命中",
       "energy": 2.7,
       "cooldownSeconds": 5,
-      "input": "默认全覆盖，按战斗时间每5秒自动触发一次"
+      "input": "默认全覆盖，按战斗时间每5秒自动触发一次",
+      "status": "implemented_approximation"
     },
     {
       "id": "billy-c6-stack",
+      "name": "C6 叠层增伤",
       "trigger": "累计命中10次或极限闪避",
-      "effect": "默认满5层，全局伤害+30%"
+      "effect": "默认满5层，全局伤害+30%",
+      "status": "implemented_approximation"
     }
   ],
   "verifications": [
     {
       "id": "move-id-regression",
-      "assertion": "闪避反击1081017、强特1081013、连携1081018、终结1081019"
+      "name": "招式 id 回归",
+      "assertion": "闪避反击1081017、强特1081013、连携1081018、终结1081019",
+      "status": "implemented"
     },
     {
       "id": "cinema-levels",
-      "assertion": "C3/C5使用通用 skillLevelBonus +2/+4"
+      "name": "影画技能等级",
+      "assertion": "C3/C5使用通用 skillLevelBonus +2/+4",
+      "status": "implemented"
     },
     {
       "id": "c1-auto-cooldown",
-      "assertion": "C1默认按战斗时间每5秒回复2.7能量并进入资源总账"
+      "name": "C1 自动冷却回能",
+      "assertion": "C1默认按战斗时间每5秒回复2.7能量并进入资源总账",
+      "status": "implemented"
     },
     {
       "id": "additional-average",
-      "assertion": "额外能力总增伤=连携总次数×50%，平均分配给每次终结技"
+      "name": "额外能力均摊",
+      "assertion": "额外能力总增伤=连携总次数×50%，平均分配给每次终结技",
+      "status": "implemented"
     }
   ],
   "stateMachines": [],

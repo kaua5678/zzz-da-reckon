@@ -41,15 +41,14 @@ function hpEffectValue(raw: BuffEffect, cov: number, modLevel?: number): { text:
   // CC-210：精炼取值走引擎同一函数（此前只替换 value，stacked 的 valuePerStack 用原值）
   const effect = effectAtModLevel(raw, modLevel)
   const suffix = modLevel && raw.modificationValues ? `（精炼${modLevel}）` : ''
-  // 全局 buff 等无 type 的项按 fixed 处理
-  if (!effect.type || effect.type === 'fixed') {
-    const v = effect.value ?? 0
+  if (effect.type === 'fixed') {
+    const v = effect.value
     const text = `${suffix}${isPctStat(effect.stat) ? pct(v) : fmt(v, 0)}${cov < 1 ? ` × 覆盖率${pct(cov * 100)}` : ''}`
     return { text, num: v * cov }
   }
   if (effect.type === 'stacked') {
-    const per = effect.valuePerStack ?? effect.value ?? 0
-    const stacks = effect.defaultStacks ?? effect.maxStacks ?? 1
+    const per = effect.valuePerStack
+    const stacks = effect.defaultStacks
     return { text: `${suffix}${per} × ${stacks}层${cov < 1 ? ` × 覆盖率${pct(cov * 100)}` : ''}`, num: per * stacks * cov }
   }
   if (effect.type === 'derived') {
@@ -58,10 +57,7 @@ function hpEffectValue(raw: BuffEffect, cov: number, modLevel?: number): { text:
       num: 0,
     }
   }
-  if (effect.type === 'formula') {
-    return { text: `公式${effect.formula?.expression ? `：${effect.formula.expression.slice(0, 40)}` : ''}`, num: 0 }
-  }
-  return { text: String(effect.value ?? 0), num: Number(effect.value ?? 0) }
+  return { text: `公式${effect.formula?.expression ? `：${effect.formula.expression.slice(0, 40)}` : ''}`, num: 0 }
 }
 
 /**
@@ -122,11 +118,11 @@ export function collectHpSources(
   const two = char.driveDisc?.twoPieceSetId ? catalogStore.getDriveDiscSet(char.driveDisc.twoPieceSetId) : undefined
   if (four) {
     // 驱动盘 2 件套只有 effects（无 scope）；局外效果显式写出，与 hpPhase 的判定一致
-    add(localized(four.name) || four.id, '2件套', { scope: 'outOfCombat', effects: four.twoPiece.effects })
+    if (four.twoPiece) add(localized(four.name) || four.id, '2件套', { scope: 'outOfCombat', effects: four.twoPiece.effects })
     add(localized(four.name) || four.id, '4件套自身', four.fourPiece?.selfBuff)
     add(localized(four.name) || four.id, '4件套团队', four.fourPiece?.teamBuff)
   }
-  if (two && two.id !== four?.id) add(localized(two.name) || two.id, '2件套', { scope: 'outOfCombat', effects: two.twoPiece.effects })
+  if (two?.twoPiece && two.id !== four?.id) add(localized(two.name) || two.id, '2件套', { scope: 'outOfCombat', effects: two.twoPiece.effects })
 
   // 5. 全局 Buff（属性配置页手动添加）：取引擎并入后的条目——此前自己包成无 scope 的伪分组，
   //    hpPct 会被判成「局外」，而引擎按局内结算

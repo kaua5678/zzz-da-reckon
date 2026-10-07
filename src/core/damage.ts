@@ -36,7 +36,7 @@ export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove)
   const bySignal = moveSignalDamageTarget(move)
   if (bySignal) return bySignal
 
-  const categoryId = (category.id ?? '').toLowerCase()
+  const categoryId = category.id.toLowerCase()
   const moveName = `${move.name?.en ?? ''} ${move.name?.zhCN ?? ''}`.toLowerCase()
 
   if (categoryId === 'basic') return 'basic'

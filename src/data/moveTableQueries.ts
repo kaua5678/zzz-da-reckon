@@ -104,7 +104,7 @@ export function moveActionTimesOf(
 ): Record<string, number> {
   const out: Record<string, number> = {}
   for (const cat of skills?.categories ?? []) {
-    for (const m of cat.moves ?? []) {
+    for (const m of cat.moves) {
       const at = m.actionTime
       if (typeof at === 'number' && Number.isFinite(at) && at > 0) out[String(m.id)] = at
     }
@@ -116,9 +116,9 @@ export function findMoveById<M extends { id: string } = SkillMove>(
   skills: { readonly categories: readonly { readonly moves: readonly M[] }[] } | undefined,
   moveId: string,
 ): M | null {
-  // 运行时容错缺 categories / moves（原 nangong / StunAxisPage 副本的语义；夹具与不完整数据返回 null 而非抛错）
+  // skills 未加载 / 缺 categories 返回 null 而非抛错（nangong 夹具即此形状）；分类内 moves 必填（r725 起 validate:data 按类型校验 catalog）
   for (const cat of skills?.categories ?? []) {
-    const move = (cat.moves ?? []).find(m => m.id === moveId)
+    const move = cat.moves.find(m => m.id === moveId)
     if (move) return move
   }
   return null

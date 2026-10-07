@@ -63,7 +63,7 @@ function findMoveActionTime(
   skills: AgentCharConfigInput['skills'],
   moveId: string,
 ): number {
-  for (const category of skills.categories ?? []) {
+  for (const category of skills.categories) {
     const move = category.moves?.find(item => item.id === moveId)
     if (move) return Math.max(0, move.actionTime ?? 0)
   }

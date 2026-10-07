@@ -94,7 +94,7 @@ export function phaseBuffRows(
   idOf: (effect: PhaseBuffEffect, index: number) => string,
   name: string,
 ): PhaseBuffRow[] {
-  return (card.effects ?? [])
+  return card.effects
     .filter(e => !!e.stat)
     .map((e, i) => ({
       id: idOf(e, i),

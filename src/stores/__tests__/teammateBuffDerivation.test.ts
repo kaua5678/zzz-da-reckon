@@ -147,10 +147,4 @@ describe('deriveTeammateBuffEnabled（输出契约）', () => {
     const agents: Record<string, Agent> = { G: mkAgent('G') }
     expect(deriveTeammateBuffEnabled([slot('G', 0)], groups, id => agents[id])).toHaveLength(2)
   })
-
-  it('组内 buffs 缺失 → 跳过（与抽取前的 `group.buffs ?? []` 一致）', () => {
-    const groups = [{ id: 'G', name: { zhCN: 'G' }, attribute: 'atk', specialty: 'attack' } as unknown as TeammateBuffGroup]
-    const agents: Record<string, Agent> = { G: mkAgent('G') }
-    expect(deriveTeammateBuffEnabled([slot('G', 0)], groups, id => agents[id])).toEqual([])
-  })
 })

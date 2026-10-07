@@ -27,7 +27,7 @@ function engineGlobals(
   const out: Record<string, number> = {}
   for (const b of resolveSlotPanelBuffInputs(0, config, catalog).teammateBuffs) {
     if (b.sourceKind !== 'global') continue
-    for (const e of b.effects ?? []) out[e.stat] = (out[e.stat] ?? 0) + e.value
+    for (const e of b.effects) if (e.type === 'fixed') out[e.stat] = (out[e.stat] ?? 0) + e.value
   }
   return out
 }

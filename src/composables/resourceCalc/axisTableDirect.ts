@@ -52,10 +52,10 @@ export function axisTableDirectMove(
   if (!/^\d+$/.test(moveId) || backed.has(moveId) || FUSED_MEMBERS.has(moveId) || VARIANT_TARGETS.has(moveId)) return null
   if (axisHiddenMovesOf(agentId, backed).includes(moveId)) return null
   for (const cat of skills?.categories ?? []) {
-    const move = (cat.moves ?? []).find(m => m.id === moveId)
+    const move = cat.moves.find(m => m.id === moveId)
     if (!move) continue
-    if (!AXIS_TABLE_DIRECT_CATEGORIES.includes(cat.id ?? '')) return null
-    const dmg = (move.rows ?? []).find(r => r.kind === 'damageMultiplier')
+    if (!AXIS_TABLE_DIRECT_CATEGORIES.includes(cat.id)) return null
+    const dmg = move.rows.find(r => r.kind === 'damageMultiplier')
     if (!dmg) return null
     const multiplier = fusedRowValue(skills, moveId, dmg.id) ?? getRowValue(move, dmg.id)
     return multiplier > 0 ? { move, categoryId: cat.id, multiplier } : null
@@ -72,7 +72,7 @@ export function axisTableDirectCandidates(
   const out: AxisTableDirectMove[] = []
   const seen = new Set<string>()
   for (const cat of skills?.categories ?? []) {
-    for (const m of cat.moves ?? []) {
+    for (const m of cat.moves) {
       if (seen.has(m.id)) continue
       seen.add(m.id)
       const hit = axisTableDirectMove(agentId, skills, m.id, backed)

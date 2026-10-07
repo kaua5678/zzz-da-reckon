@@ -37,7 +37,6 @@ const BOSS_PRESETS: BossPresetEntry[] = [
 ]
 
 const ROOM_GIRTA: ArchiveRoom = {
-  id: '69043-1',
   bossName: 'Girtablullu - Stagnant Aberrant',
   bossNameZh: '基塔布鲁·滞变畸兽',
   primaryEnemy: 'Girtablullu - Stagnant Aberrant',
@@ -185,28 +184,28 @@ describe('matchBossPreset Boss 匹配', () => {
   })
 
   it('消歧义：「基塔布鲁」单独命中 40006 而非 40008', () => {
-    const room: ArchiveRoom = { id: 'x', bossNameZh: '基塔布鲁' }
+    const room: ArchiveRoom = { bossNameZh: '基塔布鲁' }
     expect(matchBossPreset(room, BOSS_PRESETS)?.presetId).toBe('40006')
   })
 
   it('英文名精确命中', () => {
-    const room: ArchiveRoom = { id: 'x', bossName: 'Miasma Priest' }
+    const room: ArchiveRoom = { bossName: 'Miasma Priest' }
     expect(matchBossPreset(room, BOSS_PRESETS)?.presetId).toBe('30033')
   })
 
   it('别名「滞变畸兽」兜底命中', () => {
-    const room: ArchiveRoom = { id: 'x', bossNameZh: '滞变畸兽' }
+    const room: ArchiveRoom = { bossNameZh: '滞变畸兽' }
     expect(matchBossPreset(room, BOSS_PRESETS)?.presetId).toBe('40008')
   })
 
   it('新补录 Boss 名匹配：亵渎者/薇斯珀/冥宁芙', () => {
-    expect(matchBossPreset({ id: 'x', bossNameZh: '「亵渎者」' }, BOSS_PRESETS)?.presetId).toBe('30038')
-    expect(matchBossPreset({ id: 'x', bossNameZh: '叛律孤歌·薇斯珀' }, BOSS_PRESETS)?.presetId).toBe('40001')
-    expect(matchBossPreset({ id: 'x', bossNameZh: '恶名·冥宁芙' }, BOSS_PRESETS)?.presetId).toBe('300121')
+    expect(matchBossPreset({ bossNameZh: '「亵渎者」' }, BOSS_PRESETS)?.presetId).toBe('30038')
+    expect(matchBossPreset({ bossNameZh: '叛律孤歌·薇斯珀' }, BOSS_PRESETS)?.presetId).toBe('40001')
+    expect(matchBossPreset({ bossNameZh: '恶名·冥宁芙' }, BOSS_PRESETS)?.presetId).toBe('300121')
   })
 
   it('未收录 Boss（尚未收录的）→ null + warning', () => {
-    const room: ArchiveRoom = { id: 'x', bossNameZh: '某未知 Boss', bossName: 'Unknown Boss' }
+    const room: ArchiveRoom = { bossNameZh: '某未知 Boss', bossName: 'Unknown Boss' }
     expect(matchBossPreset(room, BOSS_PRESETS)).toBeNull()
     const cfg = submissionToDeploy(REAL_RUN, room, BOSS_PRESETS, SEASON_69043)
     expect(cfg.boss).toBeNull()

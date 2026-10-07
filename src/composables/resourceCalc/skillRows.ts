@@ -29,8 +29,8 @@ import { isNumberedBasicSegment } from '@/data/basicSegment'
 // ---- 元素 → 面板字段名：CC-224 起单一来源 `@/utils/elementStatKeys`（原 3 张表与本壳已删，不要在此重建） ----
 
 export function isHealingRow(row: SkillRow): boolean {
-  const id = String(row.id ?? '').toLowerCase()
-  const kind = String(row.kind ?? '').toLowerCase()
+  const id = String(row.id).toLowerCase()
+  const kind = String(row.kind).toLowerCase()
   const label = `${row.label?.zhCN ?? ''}${row.label?.en ?? ''}`.toLowerCase()
   return id.includes('heal') || id.includes('hp_recover') || id.includes('hp_recovery')
     || kind.includes('heal') || label.includes('治疗') || label.includes('回血') || label.includes('生命回复')
@@ -50,14 +50,14 @@ export function getSpecialResourceRecovery(move: SkillMove): number {
   // 专属资源回复：attack_data_0（kind=special 第一行 = 席德钢能/比利决意/青衣电压/普罗米娅寒蚀）。
   // attack_data_1/2… 是其他通道（如回血），不混入本字段；观察：attack_data_0 秒均 ≈ 11（钢能）。
   for (const row of move.rows) {
-    if (String(row.kind ?? '') === 'special') {
+    if (String(row.kind) === 'special') {
       return getRowValue(move, row.id) // CC-240：吃逻辑编辑器行规则
     }
   }
   // 兜底：非标准 recovery 行（旧式专属回复）求和
   let total = 0
   for (const row of move.rows) {
-    const id = String(row.id ?? '')
+    const id = String(row.id)
     if (!id.includes('recovery')) continue
     if (id === 'energy_recovery' || id === 'decibel_recovery') continue
     if (isHealingRow(row)) continue

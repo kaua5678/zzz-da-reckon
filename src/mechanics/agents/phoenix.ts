@@ -208,7 +208,7 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: Agent
     const ec = parseFloat(exHold.energyCost?.['Energy Cost'] ?? '')
     if (Number.isFinite(ec) && ec > 0) cfg.exSpecialEnergyConsume = ec
   }
-  const all = skills?.categories?.flatMap(c => c.moves ?? []) ?? []
+  const all = skills?.categories?.flatMap(c => c.moves) ?? []
   const metaOf = (moveId: string) => {
     const m = all.find(mm => mm.id === moveId)
     return {

@@ -591,7 +591,7 @@ export function computeAutoEnginePicks(
 ): AutoEnginePick[] {
   const catalog = useCatalogStore()
   const requested = options.autoEnginePool ?? []
-  const byId = new Map((catalog.displayWEngines ?? []).map(w => [w.id, w]))
+  const byId = new Map(catalog.displayWEngines.map(w => [w.id, w]))
   const toWengines = (ids: string[]) =>
     [...new Set(ids)].flatMap(id => {
       const w = byId.get(id)

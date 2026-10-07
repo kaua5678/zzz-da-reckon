@@ -99,7 +99,7 @@ function requirementText(req: EffectRequirement | undefined, labels: DiscRowLabe
   if (req.attribute) parts.push(`限${(labels.attribute ?? String)(req.attribute)}属性`)
   // 旧字符串格式（"stat=def min=1000"）不在此展示——与 r407 前 `(string).stat === undefined` 行为一致
   const oos = typeof req.outOfCombatStat === 'object' ? req.outOfCombatStat : undefined
-  if (oos?.stat) parts.push(`${REQUIREMENT_STAT_ZH[oos.stat] ?? oos.stat}≥${oos.min ?? '?'}（自动判定）`)
+  if (oos?.stat) parts.push(`${REQUIREMENT_STAT_ZH[oos.stat] ?? oos.stat}≥${oos.min}（自动判定）`)
   return parts.join(' · ')
 }
 

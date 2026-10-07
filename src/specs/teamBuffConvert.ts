@@ -24,7 +24,7 @@ export function specEffectToBuffEffect(tb: TeamBuffSpec, e: TeamBuffEffectSpec, 
     stat: e.stat,
     mode: e.mode ?? 'flat',
     value: e.value ?? 0,
-    coverage: { default: tb.coverage ?? 1, min: 0, max: 1, step: 0.1 },
+    coverage: { default: tb.coverage, min: 0, max: 1, step: 0.1 },
     // 公式/转模字段：spec teamBuffs 人工录入时必须透传，否则加油/虎啸等公式增益变死数据
     ...(e.sourceStat ? { sourceStat: e.sourceStat } : {}),
     ...(e.sourcePanelPhase ? { sourcePanelPhase: e.sourcePanelPhase } : {}),

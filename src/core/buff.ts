@@ -299,7 +299,7 @@ function collectAgentBuffs(agent: Agent, cinemaLevel: number): CollectedBuffs {
       else inCombat.push(e)
     }
     // 影画
-    for (const cinema of cb.cinemaBuffs ?? []) {
+    for (const cinema of cb.cinemaBuffs) {
       if (cinema.cinemaLevel > cinemaLevel) continue
       for (const e of extractEffects(cinema.buff)) {
         if (cinema.buff?.scope === 'outOfCombat') out.push(e)
@@ -451,7 +451,7 @@ function collectDriveDiscBuffs(
     if (count >= 4 && set.fourPiece?.selfBuff) {
       const group = set.fourPiece.selfBuff
       if (!discRequirementMet(group.requirement, ctx.agent, ctx.outOfCombatStats)) continue
-      for (let e of group.effects ?? []) {
+      for (let e of group.effects) {
         if (!discRequirementMet(e.requirement, ctx.agent, ctx.outOfCombatStats)) continue
         e = resolveDiscStatTemplate(e, ctx.agent.attribute)
         if (group.scope === 'outOfCombat') out.push(e)
@@ -524,7 +524,7 @@ export function discSelfBuffNeedsOutOfCombatPanel(config: DriveDiscConfig, setsM
   const group = config.fourPieceSetId ? setsMap.get(config.fourPieceSetId)?.fourPiece?.selfBuff : undefined
   if (!group) return false
   if (parseOutOfCombatStatRequirement(group.requirement?.outOfCombatStat)) return true
-  return (group.effects ?? []).some(e => parseOutOfCombatStatRequirement(e.requirement?.outOfCombatStat) != null)
+  return group.effects.some(e => parseOutOfCombatStatRequirement(e.requirement?.outOfCombatStat) != null)
 }
 
 /** 合并两组 buff */
@@ -620,8 +620,8 @@ export function applyEffect(panel: PanelValues, effect: BuffEffect, coverage?: n
       break
     }
     case 'stacked': {
-      const stacks = effect.defaultStacks ?? effect.maxStacks ?? 1
-      const perStack = effect.valuePerStack ?? effect.value
+      const stacks = effect.defaultStacks
+      const perStack = effect.valuePerStack
       value = perStack * stacks * cov
       break
     }

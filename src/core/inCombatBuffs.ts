@@ -58,12 +58,12 @@ export function collectInCombatTeamBuffs(
   // 独立调用方）会直接进面板（探针：不在队拥有者 132 条全勾时 95 条漏进）。规则下沉到这个唯一收集入口。
   const owners = new Set(team.map(member => member.agentId).filter(Boolean))
   const enabledAgentBuffs = deps.teammateBuffGroups.filter(group => owners.has(group.id)).flatMap(group =>
-    (group.buffs ?? []).filter(buff => buff.singleSourced !== true && deps.isTeammateBuffEnabled(buff.id)),
+    group.buffs.filter(buff => buff.singleSourced !== true && deps.isTeammateBuffEnabled(buff.id)),
   )
   // 收集所有已启用 buff 上的 multiplyResolvedValue 修饰器（丽娜C1 / 莱特C2 等）
   const modifiers = enabledAgentBuffs.flatMap(buff => buff.buffModifiers ?? [])
   for (const buff of enabledAgentBuffs) {
-    const effects = (buff.effects ?? []).map(effect => {
+    const effects = buff.effects.map(effect => {
       let resolved = effect
       for (const modifier of modifiers) {
         if (modifier.operation !== 'multiplyResolvedValue') continue
@@ -87,13 +87,9 @@ export function collectInCombatTeamBuffs(
             cap: resolved.cap == null ? undefined : resolved.cap * factor,
           }
         } else if (resolved.type === 'stacked') {
-          resolved = {
-            ...resolved,
-            value: (resolved.value ?? 0) * factor,
-            valuePerStack: resolved.valuePerStack == null ? undefined : resolved.valuePerStack * factor,
-          }
+          resolved = { ...resolved, valuePerStack: resolved.valuePerStack * factor }
         } else {
-          resolved = { ...resolved, value: (resolved.value ?? 0) * factor }
+          resolved = { ...resolved, value: resolved.value * factor }
         }
       }
       return resolved

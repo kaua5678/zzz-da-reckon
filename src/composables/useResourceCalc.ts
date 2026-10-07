@@ -531,7 +531,7 @@ export function createResourceCalc(
           executions: ch.executions,
         })
         if (stacks == null) continue
-        const cov = stacksToCoverage(stacks, durationSeconds, battleSeconds, e.maxStacks ?? e.defaultStacks ?? 1)
+        const cov = stacksToCoverage(stacks, durationSeconds, battleSeconds, e.maxStacks)
         if (cov != null) out[e.id] = cov
       }
     }

@@ -301,7 +301,7 @@ function anbyNextRoundFeedback({ cfg, adjustedResult, combatTime, getAgentSkills
         if (e.skillDamageTarget === 'additionalAttack') return a + e.count
         // resourceResult 行上没有现成标记：按 catalog moveId 现场推断（同伤害池 infer 口径）
         for (const cat of skills?.categories ?? []) {
-          const mv = (cat.moves ?? []).find(m => String(m.id) === String(e.moveId))
+          const mv = cat.moves.find(m => String(m.id) === String(e.moveId))
           if (mv && inferSkillDamageTarget(cat, mv) === 'additionalAttack') return a + e.count
         }
         return a

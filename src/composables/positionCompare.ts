@@ -185,7 +185,7 @@ export function computePositionCompare(
     if (position !== 'main') {
       const group = catalogStore.getTeammateBuffGroup(agentId)
       if (group && (group.buffs?.length ?? 0) > 0) {
-        for (const buff of group.buffs ?? []) {
+        for (const buff of group.buffs) {
           configStore.toggleTeammateBuff(buff.id, false)
         }
         const withoutBuff = calc.teamTotalDamage.value

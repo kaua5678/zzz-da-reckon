@@ -225,7 +225,7 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
     if (Number.isFinite(ec) && ec > 0) cfg.exSpecialEnergyConsume = ec
   }
   // 凭风载体/苍风影猎/烈旋 基础倍率与时间（buildExecutions 输入无 skills，单一事实源=倍率表）
-  const all = skills?.categories?.flatMap(c => c.moves ?? []) ?? []
+  const all = skills?.categories?.flatMap(c => c.moves) ?? []
   // CC-242：取行值走 data getRowValue（吃逻辑编辑器行规则，作用面 §24.85 ④ / §24.88）
   const multOf = (moveId: string) => getRowValue(all.find(m => m.id === moveId), 'damage')
   const metaOf = (moveId: string) => {

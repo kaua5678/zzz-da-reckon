@@ -404,7 +404,7 @@ export function deriveTeammateBuffEnabled(
     const cinemaLevel = teamCinema[agentId]
     const inTeam = cinemaLevel !== undefined
 
-    for (const buff of group.buffs ?? []) {
+    for (const buff of group.buffs) {
       const sourceLabel = buff.source?.zhCN ?? buff.sourceLabel?.zhCN ?? ''
       const requiredCinema = parseCinemaRequirement(sourceLabel)
       const baseShouldEnable = inTeam && cinemaLevel >= requiredCinema

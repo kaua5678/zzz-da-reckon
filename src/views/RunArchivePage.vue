@@ -117,7 +117,7 @@
                   size="tiny"
                   :type="selectedBuffTitle === b.title ? 'primary' : 'default'"
                   :disabled="b.testOnly"
-                  :title="(b.effects ?? []).map(e => `${e.stat} +${e.value}`).join('；') || (b.unparsed ?? []).join('；')"
+                  :title="b.effects.map(e => `${e.stat} +${e.value}`).join('；') || (b.unparsed ?? []).join('；')"
                   @click="pickPeriodBuff(b)"
                 >
                   {{ b.title || '(未命名)' }}{{ b.testOnly ? '（测试）' : '' }}
@@ -377,7 +377,7 @@ async function autoPickPeriodBuff() {
   if (!view || buffPicking.value) return
   buffPicking.value = true
   try {
-    const best = await withAnalysisScenario(s => pickBestPeriodBuff(s, view.phaseId, view.buffs ?? []))
+    const best = await withAnalysisScenario(s => pickBestPeriodBuff(s, view.phaseId, view.buffs))
     pickPeriodBuff(best)
   } finally {
     buffPicking.value = false
