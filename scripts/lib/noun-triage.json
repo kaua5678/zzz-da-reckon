@@ -246,7 +246,7 @@
       "state": "modeled",
       "since": "2026-09-13",
       "evidence": "按用户 2026-09-18 裁决，秽盾建模为破盾回能/闪能（core/resource/helpers.ts:246-247 shieldBreakGift/energyShieldBreakGift 通道）；其余削盾/防御减伤乘区等按用户口径不做",
-      "anchor": "src/core/resource/helpers.ts#calcEnergySource"
+      "anchor": "src/core/resource/resourceIncome.ts#calcEnergySource"
     },
     "2000003": {
       "name": "[控制技]",

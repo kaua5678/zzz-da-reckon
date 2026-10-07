@@ -13,7 +13,7 @@
 // 用法：node scripts/zc.mjs ctx <文件路径> [--json]
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { scanAuthoredFacts, harvestRepo, formatFact, ROOT } from './zc.mjs'
+import { scanAuthoredFacts, harvestRepo, formatFact, anchorList, ROOT } from './zc.mjs'
 import { parseMarkdownTables, findHeadingLine } from './zc-brief.mjs'
 
 /** 归一化：去 ./ 与 src/ 前缀、统一斜杠，让决策树里的 core/damage.ts 与 src/core/damage.ts 相等 */
@@ -106,7 +106,7 @@ export function buildWhere(target, opts = {}) {
   const tree = reverseTree(t, root)
 
   const facts = scanAuthoredFacts(root)
-    .filter(s => s.fact?.anchor && anchorHits(s.fact.anchor.split('#')[0], t))
+    .filter(s => s.fact?.anchor && anchorList(s.fact.anchor).some(a => anchorHits(a.split('#')[0], t)))
     .map(s => ({ fact: formatFact(s.fact), at: s.file + ':' + s.line }))
 
   const isEntry = /^specs\/agents\/[^/]+\.json$/.test(norm) || /^mechanics\/agents\/[^/]+\.ts$/.test(norm)

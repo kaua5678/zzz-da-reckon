@@ -107,8 +107,10 @@ export function grammar() {
     '       实现改动后复核过，就追加一段：用户@2026-08-26·复核@2026-09-01（原始裁决日期永不改写，漂移按最后一个日期算）',
     '验     哪条测试/命令证明它活着：yuzuha.test.ts::硬糖射击次数 / npm run probe:panel',
     '       —— 测试文件 / :: 后的用例名 / npm 脚本找不到 = 判据 6 直接红（只查引用存在，不查它测没测这条口径）',
-    '锚     这条口径实现在哪：<路径>[#<符号>]，如 src/core/damage.ts#calcDirectDamage',
-    '       —— 锚断了（文件/符号没了）= check-guards 判据 6 直接红；锚符号的代码（去注释）在「据」之后变过 = 进 zc drift 复核队列（定位不到符号时按锚文件算）',
+    '锚     这条口径实现在哪：<路径>[#<符号>]，如 src/core/damage.ts#calcDirectDamage；依赖多处时用 + 连接',
+    '       如 src/x.ts#LIMIT + src/x.ts#applyLimit：口径同时讲「值」和「怎么用」就两处都锚——只锚常量，使用处改了不进复核队列',
+    '       —— 符号 = 声明（函数/变量/类/接口/类型/枚举/方法/对象键，含带引号的键）或测试标题；只出现在调用处 / re-export 的名字不算',
+    '       —— 任一锚断了（文件/符号没了）= check-guards 判据 6 直接红；任一锚符号的代码（去注释）在「据」之后变过 = 进 zc drift 复核队列（定位不到符号时按锚文件算）',
     '信     ' + CONFIDENCE.join(' / ') + '（对应既有标注 [已确认] / [猜测·高中低]）',
     '',
     '例：@fact agent:1411/c6 未建模: 蓄能炮弹整条不实现，甜度预算全给硬糖射击 | 据 用户@2026-08-30 | 信 确认',
@@ -323,7 +325,21 @@ export function stripCommentPrefix(line) {
   return String(line).replace(/^\s*(?:\/\/+|\/\*+|\*+|#|<!--)\s*/, '').trim()
 }
 
-/** 锚点写法 <路径>[#<符号>]；符号支持声明与测试标题两类命中 */
+/**
+ * 「锚」槽的多个锚点（r720）：用 ` + ` 连接，与「验」同一写法；单锚 = 长度 1 的数组。
+ * 为什么要多锚：口径常常同时讲「值」（常量）与「怎么用」（使用它的函数）。只能锚一处时，锚常量 ⇒ 使用处改了
+ * 不进复核队列（r715 §6.3 的已知盲区）；锚函数 ⇒ 常量值改了不进队。逐锚判、任一锚变即进队（driftQueue）。
+ */
+export function anchorList(anchor) {
+  return String(anchor ?? '').split(/\s+\+\s+/).map(a => a.trim())
+}
+
+/**
+ * 锚点写法 <路径>[#<符号>]；符号 = 声明或测试标题。
+ * TS/JS 的声明与 driftQueue 的符号级比较**同一个定义**（anchorDecls）：审计认下的锚，漂移一定定位得到。
+ * r720 之前这里是正则，连 `符号(` 调用处、re-export 里的名字都算命中——审计绿，而 drift 定位不到声明、
+ * 静默退回按文件判；带引号的对象键（anchorCode 认）正则反而不认。非 TS/JS 文件仍走正则。
+ */
 export function resolveAnchor(anchor, root = ROOT) {
   if (!anchor) return { ok: false, reason: 'anchor-missing' }
   const [path, symbol] = anchor.split('#')
@@ -331,10 +347,13 @@ export function resolveAnchor(anchor, root = ROOT) {
   if (!existsSync(full)) return { ok: false, reason: 'file-missing', path }
   if (!symbol) return { ok: true, reason: 'file', path }
   const src = readFileSync(full, 'utf8')
+  const asTitle = src.includes("it('" + symbol) || src.includes('it("' + symbol) || src.includes("describe('" + symbol) || src.includes('describe("' + symbol)
+  if (asTitle) return { ok: true, reason: 'symbol', path, symbol }
+  const decls = anchorDecls(src, path, symbol)
+  if (decls) return decls.nodes.length ? { ok: true, reason: 'symbol', path, symbol } : { ok: false, reason: 'symbol-missing', path, symbol }
   const decl = new RegExp('(?:export\\s+)?(?:async\\s+)?(?:function|const|let|var|class|interface|type|enum)\\s+' + symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b')
   const asKey = new RegExp('(^|[\\s{,])' + symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:(]')
-  const asTitle = src.includes("it('" + symbol) || src.includes('it("' + symbol) || src.includes("describe('" + symbol) || src.includes('describe("' + symbol)
-  if (decl.test(src) || asKey.test(src) || asTitle) return { ok: true, reason: 'symbol', path, symbol }
+  if (decl.test(src) || asKey.test(src)) return { ok: true, reason: 'symbol', path, symbol }
   return { ok: false, reason: 'symbol-missing', path, symbol }
 }
 
@@ -460,8 +479,8 @@ export function auditAuthoredFacts(root = ROOT) {
   for (const s of scanned) {
     if (!s.fact) { violations.push({ ...s, problem: 'parse-failed' }); continue }
     if (!s.fact.provenance) violations.push({ ...s, problem: 'no-provenance' })
-    const anchor = resolveAnchor(s.fact.anchor, root)
-    if (!anchor.ok) violations.push({ ...s, problem: anchor.reason })
+    const broken = anchorList(s.fact.anchor).map(a => resolveAnchor(a, root)).find(r => !r.ok)
+    if (broken) violations.push({ ...s, problem: broken.reason })
     if (s.fact.verifier) {
       const verifier = resolveVerifier(s.fact.verifier, root)
       if (!verifier.ok) violations.push({ ...s, problem: verifier.reason })
@@ -526,23 +545,30 @@ let tsModule
  * 且不会把以 `*` 开头的乘法续行误当注释（逐行判注释做不到）。
  */
 export function anchorCode(src, file, symbol) {
+  const decls = anchorDecls(src, file, symbol)
+  if (!decls?.nodes.length) return null
+  const printer = decls.ts.createPrinter({ removeComments: true })
+  return decls.nodes.map(n => printer.printNode(decls.ts.EmitHint.Unspecified, n, decls.sf)).join('\n')
+}
+
+/** 锚符号的声明节点（「锚 = 声明」的唯一定义，resolveAnchor 与 anchorCode 共用）；非 TS/JS 文件 ⇒ null */
+function anchorDecls(src, file, symbol) {
   if (!/\.[cm]?[jt]sx?$/.test(file)) return null
   const ts = (tsModule ??= createRequire(import.meta.url)('typescript'))
   const kind = /\.[cm]?jsx?$/.test(file) ? ts.ScriptKind.JS : file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
   const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, kind)
-  const printer = ts.createPrinter({ removeComments: true })
-  const hits = []
+  const nodes = []
   const visit = n => {
     const name = n.name && (ts.isIdentifier(n.name) || ts.isStringLiteral(n.name)) ? n.name.text : null
     if (name === symbol && (ts.isFunctionDeclaration(n) || ts.isVariableDeclaration(n) || ts.isClassDeclaration(n)
       || ts.isInterfaceDeclaration(n) || ts.isTypeAliasDeclaration(n) || ts.isEnumDeclaration(n) || ts.isMethodDeclaration(n)
       || ts.isPropertyAssignment(n) || ts.isPropertyDeclaration(n) || ts.isPropertySignature(n))) {
-      hits.push(printer.printNode(ts.EmitHint.Unspecified, n, sf))
+      nodes.push(n)
     }
     ts.forEachChild(n, visit)
   }
   visit(sf)
-  return hits.length ? hits.join('\n') : null
+  return { ts, sf, nodes }
 }
 
 /**
@@ -551,6 +577,7 @@ export function anchorCode(src, file, symbol) {
  * ② 符号级确认：锚带 #符号且两侧都定位得到时，比较「据」截止时刻 HEAD 线上的版本与工作区的 anchorCode——
  *    一致即出队（改的是同文件别处或注释）；定位不到符号 / 「据」日文件还不存在 ⇒ 按 ① 留队。
  * 每行带 basis：'symbol' = 锚符号代码确实变了；'file' = 只能按文件判。
+ * 多锚（r720，anchorList）逐锚判，任一锚变过即进队；行的 anchor 只列变过的锚，有一个按符号判定变了即 basis='symbol'。
  * 只报不红——红了会逼人改日期作弊。
  */
 export function driftQueue(root = ROOT) {
@@ -577,22 +604,34 @@ export function driftQueue(root = ROOT) {
     const dates = fact.provenance.match(/20\d\d-\d\d-\d\d/g)
     const date = dates?.[dates.length - 1]
     if (!date) continue
-    const [anchorPath, symbol] = fact.anchor.split('#')
     const cutoff = date + 'T23:59:59Z'
-    const touched = anchorTouchedAt(anchorPath, root, touchCache)
-    if (touched <= Date.parse(cutoff)) continue
-    let basis = 'file'
-    if (symbol) {
-      if (!baseCache.has(cutoff)) baseCache.set(cutoff, git('rev-list -1 --before="' + cutoff + '" HEAD', root))
-      const base = baseCache.get(cutoff)
-      const then = base ? anchorCode(srcAt(base, anchorPath), anchorPath, symbol) : null
-      const now = then === null ? null : anchorCode(srcAt('', anchorPath), anchorPath, symbol)
-      if (then !== null && now !== null) {
-        if (then === now) continue
-        basis = 'symbol'
+    const moved = []
+    for (const anchor of anchorList(fact.anchor)) {
+      const [anchorPath, symbol] = anchor.split('#')
+      const touched = anchorTouchedAt(anchorPath, root, touchCache)
+      if (touched <= Date.parse(cutoff)) continue
+      let basis = 'file'
+      if (symbol) {
+        if (!baseCache.has(cutoff)) baseCache.set(cutoff, git('rev-list -1 --before="' + cutoff + '" HEAD', root))
+        const base = baseCache.get(cutoff)
+        const then = base ? anchorCode(srcAt(base, anchorPath), anchorPath, symbol) : null
+        const now = then === null ? null : anchorCode(srcAt('', anchorPath), anchorPath, symbol)
+        if (then !== null && now !== null) {
+          if (then === now) continue
+          basis = 'symbol'
+        }
       }
+      moved.push({ anchor, touched, basis })
     }
-    rows.push({ subject: fact.subject, anchor: fact.anchor, since: date, touchedAt: new Date(touched).toISOString().slice(0, 10), at: s.file + ':' + s.line, basis })
+    if (!moved.length) continue
+    rows.push({
+      subject: fact.subject,
+      anchor: moved.map(m => m.anchor).join(' + '),
+      since: date,
+      touchedAt: new Date(Math.max(...moved.map(m => m.touched))).toISOString().slice(0, 10),
+      at: s.file + ':' + s.line,
+      basis: moved.some(m => m.basis === 'symbol') ? 'symbol' : 'file',
+    })
   }
   return rows
 }

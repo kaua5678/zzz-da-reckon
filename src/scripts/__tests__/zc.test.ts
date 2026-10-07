@@ -8,6 +8,7 @@
  *    agentIds: [AGENT_ID] 常量间接没解析 → 12 个模块被误报无覆盖）。
  */
 import { describe, expect, it } from 'vitest'
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -37,6 +38,7 @@ import {
   subjectFromPath,
   testsForSubject,
   stripCommentPrefix,
+  anchorList,
   resolveAnchor,
   resolveVerifier,
   scanAuthoredFacts,
@@ -444,6 +446,13 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
     expect(formatFact(f!)).toBe(line)
   })
 
+  it('多锚（r720）：锚槽用 + 连接、原样进出语法；anchorList 逐个拆出', () => {
+    const line = '@fact engine:x/上限 口径: 超 200s 判非法 | 据 用户@2026-10-07 | 锚 src/a.ts#LIMIT + src/a.ts#applyLimit'
+    const f = parseFactLine(line)
+    expect(formatFact(f!)).toBe(line)
+    expect(anchorList(f!.anchor)).toEqual(['src/a.ts#LIMIT', 'src/a.ts#applyLimit'])
+  })
+
   it('未知槽位关键字被忽略而非炸掉（语法可向后扩展）', () => {
     expect(parseFactLine('@fact a:1 口径: x | 未来槽位 y')?.claim).toBe('x')
   })
@@ -493,7 +502,8 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
       mkdirSync(join(root, 'docs'), { recursive: true })
       mkdirSync(join(root, 'scripts'), { recursive: true })
       // 锚文件真实存在（否则会先命中 file-missing，测不到 symbol-missing）
-      writeFileSync(join(root, 'scripts/target.mjs'), 'export function realSymbol() {}\n')
+      // r720：带引号的对象键算声明；只出现在 import / 调用处的名字不算（旧正则连 `other(` 都认）
+      writeFileSync(join(root, 'scripts/target.mjs'), "import { other } from './x.mjs'\nexport function realSymbol() { other() }\nexport const specs = { '1031': 1 }\n")
       writeFileSync(join(root, 'scripts/target.test.mjs'), "it('真用例', () => {})\n")
       writeFileSync(join(root, 'docs/x.md'), [
         '# x',
@@ -502,13 +512,15 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
         '- @fact agent:1411/c6 口径: 缺据 | 锚 scripts/target.mjs#realSymbol',
         '- @fact agent:1411/c6 口径: 验指得到 | 据 用户@2026-09-24 | 验 scripts/target.test.mjs::真用例 | 锚 scripts/target.mjs#realSymbol',
         '- @fact agent:1411/c6 口径: 验指空 | 据 用户@2026-09-24 | 验 scripts/没有.test.mjs | 锚 scripts/target.mjs#realSymbol',
+        '- @fact agent:1411/c6 口径: 多锚全在 | 据 用户@2026-09-24 | 锚 scripts/target.mjs#realSymbol + scripts/target.mjs#1031',
+        '- @fact agent:1411/c6 口径: 多锚断一个 | 据 用户@2026-09-24 | 锚 scripts/target.mjs#realSymbol + scripts/target.mjs#other',
         '',
       ].join('\n'))
       const { scanned, violations } = auditAuthoredFacts(root)
-      expect(scanned.length).toBe(5)                                    // scanned = 写入的 @fact 条数
-      expect(violations).toHaveLength(3)
+      expect(scanned.length).toBe(7)                                    // scanned = 写入的 @fact 条数
+      expect(violations).toHaveLength(4)
       expect(violations.filter(v => v.problem === 'verifier-file-missing')).toHaveLength(1)
-      expect(violations.filter(v => v.problem === 'symbol-missing')).toHaveLength(1)
+      expect(violations.filter(v => v.problem === 'symbol-missing').map(v => v.fact?.claim)).toEqual(['断锚', '多锚断一个'])
       expect(violations.filter(v => v.problem === 'no-provenance')).toHaveLength(1)
     } finally {
       rmSync(root, { recursive: true, force: true })
@@ -547,14 +559,13 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
     let miss = 0
     let hit = 0
     for (const s of withVerifier) {
-      const anchor = s.fact!.anchor
-      if (!anchor?.includes('#')) continue
-      const sym = anchor.split('#')[1].split(/[.(]/)[0]
-      if (!sym) continue
+      // 多锚（r720）：任一锚符号名出现即算命中
+      const syms = anchorList(s.fact!.anchor).map(a => a.split('#')[1]?.split(/[.(]/)[0]).filter((x): x is string => !!x)
+      if (!syms.length) continue
       const resolved = resolveVerifier(String(s.fact!.verifier))
       if (!resolved.ok || resolved.files.length === 0) continue
       const src = resolved.files.map(f => readFileSync(join(ROOT, f), 'utf8')).join('\n')
-      if (new RegExp('\\b' + sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(src)) hit++
+      if (syms.some(sym => new RegExp('\\b' + sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(src))) hit++
       else miss++
     }
     const total = hit + miss
@@ -592,6 +603,33 @@ describe('漂移判定：只改 @fact 声明行不算锚改动（CC-87）', () =
     expect(diffOnlyTouchesFacts(hdr + '+// @fact a:1 口径: x | 据 u@2026-09-01\n-  return 1\n+  return 2')).toBe(false)
     expect(diffOnlyTouchesFacts(hdr + '+const s = "@factory"')).toBe(false)
     expect(diffOnlyTouchesFacts('')).toBe(false)
+  })
+})
+
+describe('漂移判定：多锚逐锚判（r720）', () => {
+  it('★ 端到端（临时 git 仓）：只有行为锚变了 ⇒ 进队且只列它（basis symbol）；同文件只锚常量的事实不进队', () => {
+    const root = mkdtempSync(join(tmpdir(), 'drift-'))
+    const git = (args: string[], date?: string) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], {
+      cwd: root, stdio: 'pipe', env: { ...process.env, ...(date ? { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date } : {}) },
+    })
+    try {
+      mkdirSync(join(root, 'docs'))
+      mkdirSync(join(root, 'scripts'))
+      writeFileSync(join(root, 'scripts/a.mjs'), 'export const LIMIT = 200\nexport function apply(t) { return t > LIMIT }\n')
+      writeFileSync(join(root, 'docs/x.md'), [
+        '- @fact engine:x/值与用法 口径: 超 LIMIT 判非法 | 据 用户@2026-01-15 | 锚 scripts/a.mjs#LIMIT + scripts/a.mjs#apply',
+        '- @fact engine:x/只锚值 口径: LIMIT=200 | 据 用户@2026-01-15 | 锚 scripts/a.mjs#LIMIT',
+        '',
+      ].join('\n'))
+      git(['init', '-q'])
+      git(['add', '.'])
+      git(['commit', '-q', '-m', 'v1'], '2026-01-01T00:00:00Z')
+      writeFileSync(join(root, 'scripts/a.mjs'), 'export const LIMIT = 200\nexport function apply(t) { return t >= LIMIT }\n')
+      git(['commit', '-q', '-am', 'v2'], '2026-02-01T00:00:00Z')
+      expect(driftQueue(root).map(r => [r.subject, r.anchor, r.basis])).toEqual([['engine:x/值与用法', 'scripts/a.mjs#apply', 'symbol']])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })
 

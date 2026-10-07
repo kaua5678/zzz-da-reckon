@@ -15,7 +15,7 @@ export interface Fact {
   claim: string
   provenance: string | null
   verifier: string | null
-  /** 口径实现在哪：<路径>[#<符号>]；断锚 = check-guards 判据 6 红 */
+  /** 口径实现在哪：<路径>[#<符号>]，多处用 ` + ` 连接（anchorList 拆）；任一断锚 = check-guards 判据 6 红 */
   anchor: string | null
   confidence: string | null
   source?: string
@@ -65,6 +65,7 @@ export interface AnchorResolution {
   path?: string
   symbol?: string
 }
+export declare function anchorList(anchor: string | null | undefined): string[]
 export declare function resolveAnchor(anchor: string | null | undefined, root?: string): AnchorResolution
 export type VerifierResolution =
   | { ok: true; files: string[] }
