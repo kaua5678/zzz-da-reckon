@@ -1,4 +1,4 @@
-# 死兜底普查与判据 28（r723；r724 收窄信任边界；r725 信任边界清零；r726 战斗时间单一来源；r727 形状校验单一来源）
+# 死兜底普查与判据 28（r723；r724 收窄信任边界；r725 信任边界清零；r726 战斗时间单一来源；r727 形状校验单一来源；r728 类型字面量断言）
 
 > 范围：src 非测试 `.ts` 里「左侧类型不含 null / undefined 的 `a ?? b`」。工具：TS 类型检查器（不是正则）。
 > 提交：`7cb3f8c8`（清理 + cfg 契约）、`6e534cae`（战斗时间单一通道）、`587e767e`（判据 28）。
@@ -6,6 +6,7 @@
 > r725：外部 JSON 类型契约（`766a04a0`）——validate:data 按代码转型用的 TS 类型校验全部 JSON 入口，信任边界表删除（59 → 0），见 §4.2。
 > r726：战斗时间单一来源（`866b5ef8`）——生产代码里当战斗时间用的 180 只留在 store 的 defaultEnemy，函数入参的缺省改必填；战斗时间 ≠ 180 的差异逐队归因，见 §4.3。
 > r727：形状校验单一来源（`1b6e4aa3`）——JSON 契约之外不再手写形状检查：预设加载器的运行时类型守卫删除、validate-specs 去掉已被契约覆盖的 658 条形状检查，见 §4.4。
+> r728：对象形状只由声明类型表达（`d807aca4`）——src 非测试 43 处类型字面量断言 `x as { … }` 去掉（含 2 处幽灵读、2 处数组隐藏属性），判据 27 加「类型字面量」形态，见 §4.5。
 > 普查 / codemod 脚本：`calc-arch/g723/deadnullish.mjs`、`calc-arch/g723/fixnullish.mjs`（不进仓；判据实现在 `scripts/lib/dead-nullish-gate.mjs`）。
 
 ## 1. 结论速览
@@ -23,6 +24,7 @@
 - r725：信任边界清零。代码对 JSON 的转型（`res.json() as T`、`import.meta.glob` 后 `as T`）共 8 个入口，validate:data 改为按这些类型逐字段校验数据、漏登记的入口即红（`scripts/lib/json-contract.mjs`）。首跑查出 31 个键与声明不符，逐条改真（`BuffEffect` 改判别联合、`SkillRow.label` 等改可选、null 归一为缺省）；然后删除豁免表，读点死兜底删 59 处 + `.vue` 6 处。
 - r726：战斗时间单一来源。函数入参上的 180 缺省与兜底改必填（生产调用方本来就都传了真实值），build 相位改传真实战斗时间，般岳闪能与仪玄异常回闪上限改按战斗时间算。战斗时间 ≠ 180 的探针只见 6 个般岳队变化，归因到般岳闪能（§4.3）。
 - r727：形状校验单一来源。契约之外的两份类型抄本删掉：队伍预设 / 轴预设加载器的运行时类型守卫（坏文件会被悄悄滤掉；现有数据零过滤），以及 validate-specs 里的 658 条形状检查（1120 → 462）。契约补「定长元组超长」，轴预设语义行接住守卫原有的 team 约束（§4.4）。
+- r728：类型字面量断言收口。在用处另写形状的 `x as { … }` 共 43 处：34 处冗余、2 处幽灵读（buildCharConfig 从 store 读两个不存在的字段，恒为 0）、2 处数组挂隐藏属性回传、1 处形参写宽、4 处 unknown 入参。全部去掉，判据 27 加「类型字面量」形态防回归（§4.5）。
 
 ## 2. 判定口径
 
@@ -345,6 +347,44 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 
 **回退**：`git revert 1b6e4aa3`（文档另提交）。运行时守卫与 658 条检查会一起回来；它们不依赖任何数据改动，回退后数值不变。
 
+### 4.5 r728：对象形状只由声明类型表达（判据 27 加「类型字面量」形态）
+
+**问题**：r719 的判据 27 管「字面量 as 领域类型」和 `as never` / `as any`，另一种写法没人管：在用处另写一份形状，`x as { k?: T }`。编译器对断言只查两边「可比」，目标全是可选字段时几乎总能过。声明里有这个字段时它是冗余（形状写了两份，改声明时这里不跟着变）；声明里没有时就是幽灵读，编译通过，读出来恒为 undefined。r719 把这类算进「对标识符 / 调用结果的收窄」放过了（r6 §8.0 #24）。
+
+**普查**（`calc-arch/g728/census728.mjs`，TS AST，口径同判据 27：src 非测试的 `.ts` 与 `.vue` 的 `<script>`；断言目标任意位置出现类型字面量；不计 `x as unknown as { … }`）：origin `64774687` 共 43 处 / 19 个文件（扫 336 个文件）。
+
+| 类 | 处数 | 位置 | 改法 |
+|---|---|---|---|
+| 冗余（声明类型本来就有） | 34 | 模块 cfg 私有字段 14（phoenix 5、severian 8、qingyi 1；声明在各模块的 `CharacterOperationConfig` 扩充里，早已是具体类型）；轴动作 `duration` 8（convergence 4、roundInputs 2、hugo 2）；迭代状态 `basicAttackTime` 2（phoenix、severian）；其余 10（panelPhases 3、helpers 2、StunAxisPage 2、ultimatePromote、sigrid、charIncrement） | 删断言直接读；`typeof d === 'number' ? d : 兜底` 写成 `d ?? 兜底`；charIncrement 的 map + filter + 断言改 flatMap |
+| 幽灵读 | 2 | `helpers.ts` buildCharConfig 从 store 的 `char` 读 `parryNoFollowUpCount` / `parryDecibelOnlyCount` | `CharacterConfig` 没有这两个字段，也没人往 store 写；本轮值由 convergence 的弹刀拆分写进 merged cfg。读出来恒为 0 ⇒ 改字面量 0 并注明 |
+| 数组挂不可枚举属性 | 2 | `teamCompare.ts`：`computeOptimalGoldAllocations` / `computeTeamComparePoints` 用 `Object.defineProperty` 把同金档候选挂在返回数组上，读的一侧 `goldAlternativesOf` / `goldAlternativesOfPoints` 断言成 `T[] & { … }` | 改显式收集参数：`opts.alternatives`、`TeamCompareOptions.goldAlternatives`（传数组即追加）；两个读取函数和两个布尔开关删除；新增 `PresetGoldAlternative`（选项与对比页共用）；对比页先收进本地数组再并入 ref |
+| 形参写宽 | 1 | `effectiveTime.ts` countFrontActions：`timeBucket?: string`，调 `isFrontlineExecution` 时再断言回联合类型 | 形参改为 `SkillExecution['timeBucket']` |
+| unknown / any 入参 | 4 | `buff.ts` parseOutOfCombatStatRequirement、`format.ts` localized、`statMeta.ts` 全局 buff 选项、`RunArchivePage.vue` readLedger | 前三处改 `'k' in x` 收窄。localized 另加 `typeof picked === 'string'`：只在畸形数据上行为有变（原来会把非字符串值当 string 返回），符合 @fact「其余形态给 fallback」，据链追加复核。readLedger 的返回类型已写明，删断言 |
+
+冗余里有两处把「可能缺」写进了签名或读法：
+
+- `panelPhases.ts` 的 teamDiscs 把必填的 `driveDisc` 断言成可选，返回 `Array<DriveDiscConfig | undefined>`，`mergeTeamDiscEffectCoverages` 据此写了 `if (!disc) continue`。空槽也有 driveDisc，这个跳过从未发生 ⇒ 签名收成 `readonly DriveDiscConfig[]`，跳过删除（@fact 据链追加复核）。
+- `StunAxisPage.vue` 的状态判定行：`String(x ?? '')` / `Number(x ?? 0)` 全部删除，`DamagePoolRow` 的这些字段全是必填。`.vue` 不在判据 28 扫描面，这类只能随手清。
+
+**判据 27 扩展**（`scripts/lib/literal-assertion-gate.mjs`）：classify 在原有三种形态后加一条——断言目标任意位置出现类型字面量（联合 / 交叉 / 数组 / 泛型实参里的都算）⇒ 违规，形态名「类型字面量」。`x as unknown as { … }` 仍算显式逃逸、不计：要绕门只能走这条，它的数量由 r6 §8.0 #24 的重开条件看守（非注释行超过 17 行即复查）。基线仍为 0；自证加 7 行样例（5 正 2 反）；报错指引与守卫名同步。
+
+**证据**：
+
+- 改前版本的 19 个文件在新门下命中 43 处，全部为新形态，与普查一致（`calc-arch/g728/headcount.mjs`）。
+- 反例：在本轮没改的 `lighter.ts` 注入 2 处、`DebugPage.vue` 的 `<script setup>` 注入 1 处，另加 1 处 `as unknown as { … }` ⇒ 报 3 处（行号、形态都对），双重断言不计；`git checkout` 还原干净（`calc-arch/g728/neg728.sh`）。
+- 数值：zd DUMP 0 / ROWS 0；build index 1602.74 → 1602.26 kB（两个读取函数、`defineProperty` 与 String / Number 包装）。
+
+**规矩**：对象形状只由声明类型表达。声明里有的字段直接读；声明里没有 ⇒ 先补声明，或者它是没人写的幽灵读、删掉；附加结果走显式参数，不挂在返回值上；unknown 入参用 `in` / typeof 收窄。
+
+**不做**：
+
+- `as Record<…>`（如 `roundInputs.ts` 的 `move?.energyCost as Record<string, string>`）：动态键访问，属 r6 §8.0 #24 的有意边界。
+- 映射类型 `{ [K in …]: … }` 作断言目标：src 非测试 grep 0 处，不扩。
+- 类型注解、泛型实参（`ref<{ … }>()`）、类型谓词：不是断言，TS 按声明检查。
+- r6 §8.0 #15（角色专属计数的四处声明）本轮复核，结论写回该条：原「持久化」理由不成立；仍不做，理由换成三条。
+
+**回退**：`git revert d807aca4`（文档另提交）。只删了编译期断言、两个读取函数和两个布尔选项；数值零差，回退后数值不变。
+
 ## 5. 判据 28（`scripts/lib/dead-nullish-gate.mjs`）
 
 - **规则**：同 §2。
@@ -410,6 +450,7 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 |---|---|---|
 | 恢复信任边界豁免表 | r725 已删：JSON 入口全部由类型契约校验（§4.2），类型可信 | 出现 TS 管不到又登记不进契约表的新入口时，先让它走解析函数，不恢复豁免表 |
 | 加载器里的运行时类型守卫（r727 删，§4.4） | 契约在验收期逐字段报红；运行时守卫是类型的残缺抄本，只会把坏文件变成静默消失 | 不恢复；运行时才进来的外部 JSON（文件导入等）走解析函数，同上一行 |
+| 判据 27 纳入 `as Record<…>` 与 `as unknown as { … }`（r728 不纳入，§4.5） | 前者是动态键访问；后者是 r719 逐条判过的显式逃逸（r6 §8.0 #24） | `as unknown as` 非注释行超过 17 行（#24 的重开条件） |
 | spec 的三个说明性 countSource 取值（holdSeconds / none / windEnergyConsumed） | 只出现在手写模块角色（1571 / 1611 / 1621），spec 资源通道不算它们；收进引擎词表等于为不走这条通道的数据写解析 | 这些角色改走 spec 资源通道时 |
 | `BuffGroup.scope` 缺省时读点口径不一（收集器按局内，hpSourceBreakdown 的 hpPhase 按局外） | 缺 scope 的 29 组里没有生命类效果，当前不影响数值 | 缺 scope 的组出现生命类效果时；或统一时顺手把 29 组补上 scope |
 | 般岳补齐时间上限 `AUTO_TOPUP_TIME_LIMIT_SEC = 200`（= 180 + 20 秒余量）不随战斗时间 | 用户 2026-09-01 定的数（@fact `engine:banyue/补齐时间上限`），推广成「战斗时间 + 20」要改用户口径；r726 已让般岳闪能随战斗时间，战斗时间上只剩这一处 | 用户确认推广；或战斗时间扫描里出现补齐被误判非法 |
