@@ -223,7 +223,7 @@ const showAllGaps = ref(false)
 
 async function readLedger<T>(url: string): Promise<{ characters?: Record<string, T> }> {
   const r = await fetch(url)
-  return r.ok ? (await r.json() as { characters?: Record<string, T> }) : {}
+  return r.ok ? await r.json() : {}
 }
 
 async function ensureModelingLedgers(): Promise<void> {

@@ -387,9 +387,7 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
       if (!isHugoEndsWindowMove(act.moveId, cinema)) continue
       const skills = getAgentSkills?.(memberAt(act.slot)?.agentId ?? '')
       const move = findMove(skills, act.moveId)
-      let dur = typeof (act as { duration?: number }).duration === 'number'
-        ? (act as { duration: number }).duration
-        : (move?.actionTime ?? 0)
+      let dur = act.duration ?? move?.actionTime ?? 0
       dur = hugoMoveActionTime(act.moveId, dur)
       maxEnd = Math.max(maxEnd, Math.max(0, act.startTime ?? 0) + dur)
     }

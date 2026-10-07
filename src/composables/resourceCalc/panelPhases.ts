@@ -306,8 +306,7 @@ export function collectAxisWindowOverlays(
   damagePanels: readonly PanelValues[],
 ): Map<number, AgentAxisOverlay> {
   const out = new Map<number, AgentAxisOverlay>()
-  const getAgentSkills = (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId) as
-    { categories: { id: string; moves: { id: string }[] }[] } | undefined
+  const getAgentSkills = (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId)
   // 滑块：与 `AgentPanelInput.settings` 同源（模块的非轴折算臂读它，缺省由模块回落注册 default）
   const settings = resolveMechanicSettings(configStore)
   for (const member of buildMechanicTeamMembers(configStore, catalogStore)) {
@@ -673,9 +672,9 @@ function selfEffectCoverageMap(
   return map
 }
 
-/** 全队各槽位的驱动盘配置（覆盖率并入用；空槽为 undefined 由 merge 侧跳过）。 */
-function teamDiscs(configStore: ConfigModel): Array<DriveDiscConfig | undefined> {
-  return configStore.team.map(c => (c as { driveDisc?: DriveDiscConfig } | undefined)?.driveDisc)
+/** 全队各槽位的驱动盘配置（覆盖率并入用）。`driveDisc` 是 CharacterConfig 必填字段，空槽也有一份。 */
+function teamDiscs(configStore: ConfigModel): DriveDiscConfig[] {
+  return configStore.team.map(c => c.driveDisc)
 }
 
 /**
@@ -684,18 +683,17 @@ function teamDiscs(configStore: ConfigModel): Array<DriveDiscConfig | undefined>
  * 两处调用：buildCharConfig（资源/伤害管线）+ computePanelPhases（面板页）。
  * 无覆盖率记录的效果也写入（100%）→ 统一走 applyEffect 的 coverage 覆盖。
  *
- * @fact disc:覆盖率并入范围 口径: 必须并**全队三人**盘上的效果 id，不能只并本槽位的——4pc 全队段（teamBuff）由装备者供给、全队受益，覆盖率属于「效果」而非属于「受益者」；只并本槽位时装备者自己的山大王/月光骑士颂全队段滑块对队友面板是死控件（实测差值 +0） | 据 用户 2026-09-08「4件套没给属性滑块，是不是属性都没做」引发的可见性修复·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/core/__tests__/discSetEffects.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#mergeTeamDiscEffectCoverages | 信 确认
- * @param slotDiscs 全队各槽位的驱动盘配置（含空槽，自动跳过）
+ * @fact disc:覆盖率并入范围 口径: 必须并**全队三人**盘上的效果 id，不能只并本槽位的——4pc 全队段（teamBuff）由装备者供给、全队受益，覆盖率属于「效果」而非属于「受益者」；只并本槽位时装备者自己的山大王/月光骑士颂全队段滑块对队友面板是死控件（实测差值 +0） | 据 用户 2026-09-08「4件套没给属性滑块，是不是属性都没做」引发的可见性修复·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/core/__tests__/discSetEffects.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#mergeTeamDiscEffectCoverages | 信 确认
+ * @param slotDiscs 全队各槽位的驱动盘配置（含空槽：driveDisc 必填，空槽也有；r728 前签名写 `| undefined` 并跳过，实际从未跳过）
  */
 function mergeTeamDiscEffectCoverages(
   map: Map<string, number>,
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
-  slotDiscs: Array<DriveDiscConfig | undefined>,
+  slotDiscs: readonly DriveDiscConfig[],
 ): void {
   const setIds = new Set<string>()
   for (const disc of slotDiscs) {
-    if (!disc) continue
     for (const id of [disc.fourPieceSetId, disc.twoPieceSetId]) if (id) setIds.add(id)
   }
   for (const setId of setIds) {
@@ -704,8 +702,8 @@ function mergeTeamDiscEffectCoverages(
     if (!set) continue
     const groups = [set.fourPiece?.selfBuff, set.fourPiece?.teamBuff, set.twoPiece]
     for (const g of groups) {
-      for (const e of (g?.effects ?? []) as Array<{ id?: string }>) {
-        if (!e?.id) continue
+      for (const e of g?.effects ?? []) {
+        if (!e.id) continue
         map.set(e.id, discEffectCoverageOf(discCoverages, e.id) / 100)
       }
     }

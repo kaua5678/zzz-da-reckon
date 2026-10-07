@@ -17,7 +17,7 @@ import {
   defaultInteractionExponent,
   BOSS_ATTACK_INTERACTIONS,
   computeOptimalGoldAllocations,
-  goldAlternativesOf,
+  type GoldAllocationAlternative,
   computeTeamComparePoints,
   isLimitedAgent,
   isLimitedWEngine,
@@ -575,7 +575,7 @@ describe('teamCompare 最优加金（≤12金贪婪）', () => {
 
   // 2026-09-14 用户需求「同队同金不同分配对比」：贪婪搜索本来就**试算了每档的全部候选**
   // （每个槽位的下一级影画/精炼/音擎本体），但只留赢家、其余扔掉。用户要看「这笔金投给谁」，
-  // 正是那些被扔掉的候选 ⇒ 加 `recordAlternatives` 记录它们（伤害已算过，接近零成本）。
+  // 正是那些被扔掉的候选 ⇒ 传 `opts.alternatives` 收集它们（伤害已算过，接近零成本）。
   it('★ 同金档候选记录：赢家标记 + 相对最优的损失（同队同金不同分配的原料）', () => {
     // 本文件用 newPinia + mockStaticFetch（beforeEach），不引 setupHarness
     const config = useConfigStore()
@@ -603,12 +603,8 @@ describe('teamCompare 最优加金（≤12金贪婪）', () => {
       }),
     } as unknown as ReturnType<typeof useResourceCalc>
 
-    // 缺省不收集（零开销）：alternatives 为空
-    const plain = computeOptimalGoldAllocations(calc, config, preset, baseGoldOf(preset))
-    expect(goldAlternativesOf(plain)).toEqual([])
-
-    const allocs = computeOptimalGoldAllocations(calc, config, preset, baseGoldOf(preset), [], { recordAlternatives: true })
-    const alts = goldAlternativesOf(allocs)
+    const alts: GoldAllocationAlternative[] = []
+    computeOptimalGoldAllocations(calc, config, preset, baseGoldOf(preset), [], { alternatives: alts })
     expect(alts.length).toBeGreaterThan(0)
 
     // 每档**恰好** 1 个赢家；候选数随档位增长（首档只有「主C 1命」一个可用候选——

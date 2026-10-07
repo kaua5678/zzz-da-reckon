@@ -315,7 +315,7 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 一煞#4 连打：补电压 + 可分配循环的一煞部分（1251004，3.3334 电压/击 × 0.133s ≈ 25 电压/秒）
   if (totalYisha4Hits > 0 && cfg.qingyiYisha4) {
-    const y = cfg.qingyiYisha4 as { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
+    const y = cfg.qingyiYisha4
     executions.push(moduleExecRow({
       moveId: y.id,
       moveName: '普通攻击：一煞 #4（补电压）',

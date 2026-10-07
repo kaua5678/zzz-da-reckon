@@ -370,8 +370,7 @@ function collectWEngineBuffs(
  */
 function parseOutOfCombatStatRequirement(raw: unknown): { stat: string; min: number } | null {
   if (raw && typeof raw === 'object') {
-    const rec = raw as { stat?: unknown; min?: unknown }
-    if (typeof rec.stat === 'string' && typeof rec.min === 'number') return { stat: rec.stat, min: rec.min }
+    if ('stat' in raw && 'min' in raw && typeof raw.stat === 'string' && typeof raw.min === 'number') return { stat: raw.stat, min: raw.min }
     return null
   }
   if (typeof raw === 'string') {

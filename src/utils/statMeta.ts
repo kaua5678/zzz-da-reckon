@@ -293,7 +293,7 @@ export function getGlobalBuffStatOptions(display?: Readonly<Record<string, unkno
     children: items.map(item => {
       // LocalizedString 解析走单一事实源（@fact utils/format#localized）；空串 zhCN 不回退 en
       const entry = display?.[item.value]
-      const label = localized(entry && typeof entry === 'object' ? (entry as { label?: unknown }).label : undefined, item.label)
+      const label = localized(entry && typeof entry === 'object' && 'label' in entry ? entry.label : undefined, item.label)
       return {
         label: `${label} (${item.value})`,
         value: item.value,

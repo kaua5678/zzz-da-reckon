@@ -451,20 +451,20 @@ const stateJudgedRows = computed(() => {
   return damagePoolRows.value
     .filter(r => r.type === '异放' || r.type === '极性紊乱')
     .map(r => ({
-      key: String(r.id),
-      type: String(r.type),
-      agentName: String((r as { agentName?: string }).agentName ?? r.agentId ?? ''),
-      name: String(r.name ?? ''),
-      element: String(r.element ?? ''),
-      count: Number(r.count ?? 0),
-      totalDamage: Number(r.totalDamage ?? 0),
+      key: r.id,
+      type: r.type,
+      agentName: r.agentName,
+      name: r.name,
+      element: r.element,
+      count: r.count,
+      totalDamage: r.totalDamage,
     }))
 })
 
 /** 状态链行（仅展示与上一次不同的窗口；多轮重复段逐窗重演同一序列，不重复展示） */
 const chainRows = computed(() => {
   const boss = bossAnomalyState.value
-  if (!boss) return [] as Array<{ wi: number; text: string }>
+  if (!boss) return []
   const out: Array<{ wi: number; text: string }> = []
   let prev: string | null = null
   boss.stateChainsPerWindow.forEach((chain, wi) => {

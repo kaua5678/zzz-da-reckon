@@ -75,16 +75,19 @@ export function isLimitedWEngine(wEngineId: string): boolean {
   return isLimitedSWengineId(useCatalogStore().getWEngine(wEngineId)?.id ?? wEngineId)
 }
 
+/** 同金分配候选 + 所属预设（`TeamCompareOptions.goldAlternatives` 的元素，对比页「同金分配」表的行） */
+export type PresetGoldAlternative = GoldAllocationAlternative & { presetId: string; presetName: string }
+
 export interface TeamCompareOptions {
   /** 参与对比的预设队伍 */
   presets: TeamPreset[]
   /** 每个队伍跑的金数档位（如 [0, 2, 4, 6]） */
   goldLevels: number[]
   /**
-   * 收集「同队同金不同分配」候选（用户 2026-09-14）。缺省 false = 零额外开销；
-   * 开启后候选经返回数组的 `.goldAlternatives` 属性回传（见 goldAlternativesOfPoints）。
+   * 收集「同队同金不同分配」候选（用户 2026-09-14）：传入数组即逐队逐档追加；缺省不收集 = 零额外开销。
+   * r728 前是布尔开关 + 返回数组上的不可枚举属性 `.goldAlternatives`，读的一侧要断言成 `T[] & { … }`。
    */
-  recordGoldAlternatives?: boolean
+  goldAlternatives?: PresetGoldAlternative[]
   /** 目标 Boss */
   boss: BossPreset
   /** 目标期数 */
@@ -716,10 +719,10 @@ export function computeOptimalGoldAllocations(
   preset: TeamPreset,
   baseGold: number,
   autoPicks: AutoEnginePick[] = [],
-  /** 记录每档的全部候选（同队同金不同分配对比用）；缺省 false = 零额外开销 */
-  opts: { recordAlternatives?: boolean } = {},
+  /** 收集每档的全部候选（同队同金不同分配对比用）：传入数组即逐档追加；缺省不收集 = 零额外开销 */
+  opts: { alternatives?: GoldAllocationAlternative[] } = {},
 ): OptimalGoldAllocation[] {
-  const alternatives: GoldAllocationAlternative[] = []
+  const sink = opts.alternatives
   // 音擎获取候选：每个槽位第一条带 wEngineId 的 wengine 步（作者声明的升级音擎，通常 = 专武本体）
   const acquireBySlot = new Map<number, { id: string; label: string }>()
   // 影画/精炼候选：goldSteps 按 (slot, kind) 去重，级别升序（同 key 同值只留一份；获取步排除）
@@ -777,14 +780,14 @@ export function computeOptimalGoldAllocations(
       label: string
       damage: number
     } | null = null
-    // 本档的全部候选（含各自提交后的完整状态）——仅 recordAlternatives 时收集
+    // 本档的全部候选（含各自提交后的完整状态）——仅传入 opts.alternatives 时收集
     const trials: Array<{ step: { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string }; damage: number; state: { cinemas: [number, number, number]; wengineMods: [number, number, number]; wEngines: [string, string, string] } }> = []
     /** 记一次试算（伤害已算出；state 用「试算值 + 其余当前值」拼出该候选提交后的状态） */
     const recordTrial = (
       step: { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string },
       damage: number,
       state: { cinemas: [number, number, number]; wengineMods: [number, number, number]; wEngines: [string, string, string] },
-    ) => { if (opts.recordAlternatives) trials.push({ step, damage, state }) }
+    ) => { if (sink) trials.push({ step, damage, state }) }
     // 自动下位穿上的限定件不阻止购买步：购买同一/另一把都合法，金数经 acquiredSlots 去重
     const autoLimitedSlots = new Set(autoPicks.filter(p => p.limited).map(p => p.slot))
     // 候选1：音擎获取（槽位当前非限定音擎、或限定件只是自动下位穿的 → 装备作者声明的限定音擎本体，1 金）
@@ -855,12 +858,12 @@ export function computeOptimalGoldAllocations(
     }
     taken.push(best)
     // 归集本档候选（同队同金不同分配对比）：标记赢家 + 相对最优的损失
-    if (opts.recordAlternatives && trials.length > 0) {
+    if (sink && trials.length > 0) {
       const bestDamage = best.damage
       for (const t of trials) {
         const isBest = t.damage === bestDamage && t.step.slot === best.slot
           && t.step.kind === best.kind && t.step.value === best.value
-        alternatives.push({
+        sink.push({
           budgetGold: nextGold,
           step: t.step,
           damage: t.damage,
@@ -884,17 +887,7 @@ export function computeOptimalGoldAllocations(
       damage: best.damage,
     })
   }
-  // alternatives 经数组属性回传（保持返回类型 `OptimalGoldAllocation[]` 不变 ⇒ 既有调用方零改动；
-  // 需要对比的调用方读 `.alternatives`，缺省 undefined = 未收集）
-  if (opts.recordAlternatives) {
-    Object.defineProperty(allocations, 'alternatives', { value: alternatives, enumerable: false })
-  }
   return allocations
-}
-
-/** 读 `computeOptimalGoldAllocations` 回传的候选（未开启收集时返回空数组） */
-export function goldAlternativesOf(allocs: OptimalGoldAllocation[]): GoldAllocationAlternative[] {
-  return (allocs as OptimalGoldAllocation[] & { alternatives?: GoldAllocationAlternative[] }).alternatives ?? []
 }
 
 // ========== 应用到 store ==========
@@ -1106,8 +1099,6 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
   const { config: configStore, calc } = scenario
   const baseAxis = configStore.getAxisState()
   const points: TeamComparePoint[] = []
-  /** 同队同金不同分配候选（`options.recordGoldAlternatives` 时收集；经数组属性回传） */
-  const goldAlternatives: Array<GoldAllocationAlternative & { presetId: string; presetName: string }> = []
   for (const preset of options.presets) {
     applyTeamToStore(configStore, preset)
     // 难度变体轴绑定（未绑定 = 恢复快照轴状态，走自动匹配/用户轴）
@@ -1134,21 +1125,19 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
       ? []
       : computeAutoEnginePicks(calc, configStore, preset, options)
     // 最优加金：预计算 ≤12 金各档的最优分配（含伤害，避免点循环里重算）
-    // `recordAlternatives` 只在页面要「同队同金不同分配」表时才开（缺省零额外开销）
+    // 候选只在页面要「同队同金不同分配」表时才收集（调用方传 options.goldAlternatives；缺省零额外开销）
     const optimalMap = new Map<number, OptimalGoldAllocation>()
     if (options.optimalGold) {
+      const sink = options.goldAlternatives
+      const alternatives: GoldAllocationAlternative[] = []
       const allocs = computeOptimalGoldAllocations(
         calc, configStore, preset, baseGold, autoPicks,
-        { recordAlternatives: options.recordGoldAlternatives === true },
+        sink ? { alternatives } : {},
       )
       for (const a of allocs) {
         optimalMap.set(a.budgetGold, a) // 预算域键：resolveGoldLevel 的钳制口径不含限定下位附加
       }
-      if (options.recordGoldAlternatives) {
-        for (const alt of goldAlternativesOf(allocs)) {
-          goldAlternatives.push({ ...alt, presetId: preset.id, presetName: preset.name })
-        }
-      }
+      if (sink) for (const alt of alternatives) sink.push({ ...alt, presetId: preset.id, presetName: preset.name })
     }
     const seen = new Set<number>()
     for (const gold of options.goldLevels) {
@@ -1222,16 +1211,5 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
       })
     }
   }
-  // 候选经数组属性回传（保持返回类型不变 ⇒ 既有调用方零改动）
-  if (options.recordGoldAlternatives) {
-    Object.defineProperty(points, 'goldAlternatives', { value: goldAlternatives, enumerable: false })
-  }
   return points
-}
-
-/** 读 `computeTeamComparePoints` 回传的同金档候选（未开启收集时返回空数组） */
-export function goldAlternativesOfPoints(
-  points: TeamComparePoint[],
-): Array<GoldAllocationAlternative & { presetId: string; presetName: string }> {
-  return (points as TeamComparePoint[] & { goldAlternatives?: Array<GoldAllocationAlternative & { presetId: string; presetName: string }> }).goldAlternatives ?? []
 }

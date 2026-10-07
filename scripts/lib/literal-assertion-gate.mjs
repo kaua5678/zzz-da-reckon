@@ -15,14 +15,22 @@
  *   · 对象字面量 `{ … } as T` ⇒ 违规，除非：空 `{}`；T 是 `Record<…>`（拓宽成字典，没有必填字段可漏）；
  *     全部属性都是计算键 `{ [k]: v }`（TS 把联合类型的计算键拓宽成索引签名，只能断言）。
  *   · 数组字面量 `[ … ] as T` ⇒ 有元素直接是对象字面量就违规（`[{ … }] as X[]` 与上一条同理）；元组 / 展开 / 空数组不管。
+ *   · 类型字面量（r728 加）：断言目标里出现 `{ … }` ⇒ 违规——`x as { k?: T }`、`T[] & { extra?: U }`、`{ … }[] | undefined`、
+ *     泛型实参里的 `{ … }` 都算。这是在用处另写一份形状，绕开了声明类型。r728 普查 src 非测试 43 处：34 处冗余（声明类型本来就有，
+ *     如模块 cfg 私有字段 14 处、轴动作 duration 8 处）、2 处幽灵读（`buildCharConfig` 从 store 读两个只存在于 cfg 的弹刀拆分字段，
+ *     恒为 0）、2 处数组挂不可枚举属性回传附加结果（读的一侧断言成 `T[] & { … }`）、1 处形参写宽了在用处收窄、
+ *     4 处 unknown / any 入参（3 处改 `in` 收窄，fetch JSON 的 1 处由函数返回类型承接）。docs/mcp-dead-nullish-census.md §4.5。
  *   · 不管：`as const`（不是断言）；`x as unknown as T` 双重断言（动态键访问器 / 调试探针 / 框架与泛型边界，
- *     r719 逐条判过 17 处，见 docs/mcp-r6-refactor-list.md §8.0 #24）；标识符 / 调用结果的收窄（TS 会查两边可比）。
+ *     r719 逐条判过 17 处，见 docs/mcp-r6-refactor-list.md §8.0 #24）；标识符 / 调用结果收窄到命名类型（TS 会查两边可比；
+ *     目标是类型字面量的归上一条）。
  *   · 扫 `src/**` 的 `.ts` / `.vue`（不含 `.d.ts`、`*.test.ts`、任何 `__tests__/`、测试基建 `src/test/`）。
  *   · 反空洞下限：扫描文件数 < `LITERAL_ASSERTION_MIN_FILES` 视为目录没扫到，判据失败（与判据 25/26 同款）。
  *
  * 报错时怎么改：直接写字面量，或类型标注 `const x: T = { … }`；编译报错 = 契约不符 ⇒ 补字段或改类型
  *   （docs/AGENT_RECORDING_SOP.md §3 第 6 条）。往 cfg 塞新键 ⇒ 先在模块的 `CharacterOperationConfig` 扩充里声明；
  *   把钩子入参重新打包再断言 ⇒ 原样转交 `input`。不设豁免表：真要逃逸就写 `as unknown as T` 并在旁边写为什么（显眼、可 grep）。
+ *   类型字面量形态：声明里已有 ⇒ 删断言；声明里没有 ⇒ 补进声明，或者这是没人写的幽灵读、删掉；附加结果走显式参数，
+ *   不挂在返回值上；unknown 入参用 `'k' in x` / typeof 收窄，不断言。
  *
  * 明确**不**纳入：模板表达式里的断言（`<template>` 不解析）；测试代码（测试里造残缺对象是常态）。
  */
@@ -54,6 +62,8 @@ function scriptBlocks(text, isVue) {
 }
 
 const unparen = (e) => { while (ts.isParenthesizedExpression(e)) e = e.expression; return e }
+/** 类型节点里有没有类型字面量 `{ … }`（含联合 / 交叉 / 数组 / 泛型实参里的） */
+const hasTypeLiteral = (t) => ts.isTypeLiteralNode(t) || ts.forEachChild(t, hasTypeLiteral) === true
 
 /** 一个断言节点 → 违规形态（null = 不违规） */
 function classify(node, sf) {
@@ -62,14 +72,15 @@ function classify(node, sf) {
   if (t.kind === ts.SyntaxKind.AnyKeyword) return 'as any'
   if (t.getText(sf) === 'const') return null
   const e = unparen(node.expression)
-  if (ts.isObjectLiteralExpression(e)) {
-    if (e.properties.length === 0) return null
+  if (ts.isObjectLiteralExpression(e) && e.properties.length > 0) {
     if (ts.isTypeReferenceNode(t) && t.typeName.getText(sf) === 'Record') return null
     if (e.properties.every(p => p.name && ts.isComputedPropertyName(p.name))) return null
     return '对象字面量'
   }
   if (ts.isArrayLiteralExpression(e) && e.elements.some(x => ts.isObjectLiteralExpression(unparen(x)))) return '对象字面量数组'
-  return null
+  // `x as unknown as { … }`：显式逃逸，与上文「不管」同口径（内层 `x as unknown` 单独访问，目标不含类型字面量）
+  if (ts.isAsExpression(e) && e.type.kind === ts.SyntaxKind.UnknownKeyword) return null
+  return hasTypeLiteral(t) ? '类型字面量' : null
 }
 
 /** 单文件 → [{ line, kind, type, text }]；fileName 决定是否按 .vue 抽 <script> */
@@ -122,6 +133,18 @@ export function literalAssertionSelfTest() {
   const t3 = '<template>\n  <div>x</div>\n</template>\n<script setup lang="ts">\nconst p = { id: 1 } as Foo\n</script>\n'
   const h3 = findLiteralAssertions(t3, 'X.vue')
   if (!(h3.length === 1 && h3[0].line === 5)) failures.push('.vue <script> 行号错：' + JSON.stringify(h3))
+  // r728：类型字面量形态（第 6 行双重断言是显式逃逸、第 7 行是类型标注，都不计）
+  const t4 = [
+    'const a = (x as { k?: number }).k',
+    'const b = y as Foo[] & { extra?: number }',
+    'const c = z as { a: number }[] | undefined',
+    'const d = <{ k: string }>w',
+    'const e = {} as { a?: number }',
+    'const f = v as unknown as { k: number }',
+    'const g: { a: number } = u',
+  ].join('\n')
+  const h4 = findLiteralAssertions(t4).map(h => `${h.line}:${h.kind}`).join()
+  if (h4 !== '1:类型字面量,2:类型字面量,3:类型字面量,4:类型字面量,5:类型字面量') failures.push('类型字面量形态未命中或误计：' + h4)
   return { ok: failures.length === 0, failures }
 }
 
@@ -152,9 +175,10 @@ export function formatLiteralAssertions(report) {
   if (!report.selfTest.ok) lines.push('  ✗ detector 自证失败：', ...report.selfTest.failures.map(f => '    ' + f))
   if (report.belowFloor) lines.push(`  ✗ 只扫到 ${report.scanned} 个文件（下限 ${LITERAL_ASSERTION_MIN_FILES}）：目录改名 / 搬家了？改 LITERAL_ASSERTION_SCAN_DIR`)
   if (report.count > LITERAL_ASSERTION_BASELINE) {
-    lines.push(`  ✗ ${report.count} 处字面量类型断言 / as never / as any（硬门 0；会让缺必填字段的对象编译通过，r718 月城柳崩溃即此形）：`)
+    lines.push(`  ✗ ${report.count} 处字面量类型断言 / as never / as any / 类型字面量断言（硬门 0；会让缺必填字段的对象编译通过，r718 月城柳崩溃即此形）：`)
     lines.push('    → 直接写字面量或 `const x: T = { … }`；报错 = 契约不符 ⇒ 补字段或改类型（AGENT_RECORDING_SOP §3 第 6 条）')
     lines.push('    → cfg 新键先在模块的 CharacterOperationConfig 扩充里声明；钩子入参别重新打包再断言，原样转交 input')
+    lines.push("    → `x as { … }`：形状以声明类型为准——声明里有就删断言，没有就补声明或删掉这个幽灵读；unknown 入参用 'k' in x / typeof 收窄")
     for (const s of report.sites.slice(0, 20)) lines.push(`      ${s.file}:${s.line}  [${s.kind.startsWith('as ') ? s.kind : `${s.kind} as ${s.type}`}]  ${s.text}`)
   }
   return lines

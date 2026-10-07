@@ -157,9 +157,9 @@ export function phoenixBasicCombustionHits(basicTime: number, cycle: { moveId: s
  *（追斩后点按）是操作向量，不计自动收入。
  */
 function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
-  const meta = (cfg.phoenixCombustionMeta as Record<string, number> | undefined) ?? {}
-  const basicCycle = (cfg.phoenixBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
-  const basicTime = Math.max(0, Number((state as { basicAttackTime?: number } | undefined)?.basicAttackTime ?? 0))
+  const meta = cfg.phoenixCombustionMeta ?? {}
+  const basicCycle = cfg.phoenixBasicCycle ?? []
+  const basicTime = Math.max(0, state?.basicAttackTime ?? 0)
   const { third, fourth } = phoenixBasicCombustionHits(basicTime, basicCycle)
   let income = third * (meta['1641003'] ?? 0) + fourth * (meta['1641004'] ?? 0)
   for (const e of executions) {
@@ -263,7 +263,7 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
   const exCount = Math.max(0, state.exSpecialCount)
   const ultCount = Math.max(0, state.ultimateCount)
 
-  const chargedMeta = cfg.phoenixChargedMeta as { moveId: string; actionTime: number } | undefined
+  const chargedMeta = cfg.phoenixChargedMeta
   if (chargedMeta && chargedCount > 0) {
     executions.push(moduleExecRow({
       moveId: chargedMeta.moveId,
@@ -281,7 +281,7 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
   // 不再单独 push（2026-09-12 组队对账修正：第一/二段是点按/长按二选一变体，非连段）。
   // 蓄能附加攻击（视为强化特殊技）：重击命中来源 = 强特(第二段) + 长按普攻 + 终结
   const energizeCount = exCount + chargedCount + ultCount
-  const energizeMeta = cfg.phoenixEnergizeMeta as { moveId: string; actionTime: number } | undefined
+  const energizeMeta = cfg.phoenixEnergizeMeta
   if (energizeMeta && energizeCount > 0) {
     executions.push(moduleExecRow({
       moveId: energizeMeta.moveId,
@@ -297,7 +297,7 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
   //（用户口径 2026-09-12「喧响大后按攻击可以触发一次」，仪玄影画6「赠送次数=大招次数」同款计数）。
   // **不占前台时间**（2026-09-12 组队对账修正：终结收尾追加攻击，卢西娅追加攻击 1451007 同款 0 时间先例；
   // 计 2.4s×N 会把队内平A池挤光→余火断供→长按普攻打到 1 次，时间账失真放大近似误差）。
-  const entryMeta = cfg.phoenixEntryMeta as { moveId: string; actionTime: number } | undefined
+  const entryMeta = cfg.phoenixEntryMeta
   if (entryMeta && ultCount > 0) {
     executions.push(moduleExecRow({
       moveId: entryMeta.moveId,
@@ -341,7 +341,7 @@ function patchPhoenixExecutions({ state, executions }: AgentResourceInput): void
  *  终结入场 = 收尾追加攻击不计时（1451007 先例）；强特点按变体（第一段）不进自动循环。 */
 function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const exTime = Math.max(0, exSpecialCount) * cfg.exSpecialActionTime
-  const chargedMeta = cfg.phoenixChargedMeta as { actionTime: number } | undefined
+  const chargedMeta = cfg.phoenixChargedMeta
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
   const chargedTime = chargedMeta ? chargedCount * chargedMeta.actionTime : 0
   return {

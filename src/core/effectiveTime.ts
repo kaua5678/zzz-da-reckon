@@ -22,7 +22,7 @@
  * 该通道已在 `src/core/resource/helpers.ts`（`shieldBreakGift` / `energyShieldBreakGift`）实现；
  * 削盾量/防御减伤乘区/净除伤害等三通道按用户口径明确不做。**不许复用 `invincibleTime` 承载秽盾**（语义不同）。
  */
-import { isFrontlineExecution } from '@/types/resource'
+import { isFrontlineExecution, type SkillExecution } from '@/types/resource'
 
 /** 扣无敌时间只需这一项。cfg（`CharacterOperationConfig`）与 store 的 `enemy` 上它都是必填，直接传即可 */
 interface InvincibleBasis {
@@ -145,12 +145,12 @@ export function frontBlockSeconds(
  * 切上前台的理由是离散招式块；平A 是上台后的连续输出流，不计（category 'basic'）。
  */
 export function countFrontActions(
-  executions: Array<{ category?: string; count?: number; timeBucket?: string; moveId?: string }>,
+  executions: Array<{ category?: string; count?: number; timeBucket?: SkillExecution['timeBucket']; moveId?: string }>,
   opts: { fusedMoveIds?: Array<string | undefined | null> } = {},
 ): number {
   const fused = new Set(opts.fusedMoveIds?.filter((id): id is string => Boolean(id)) ?? [])
   return executions
-    .filter(e => isFrontlineExecution(e as { timeBucket?: 'necessary' | 'basic' | 'backstage' })
+    .filter(e => isFrontlineExecution(e)
       && e.category !== 'basic'
       && !fused.has(e.moveId ?? ''))
     .reduce((sum, e) => sum + Math.max(0, Math.floor(e.count ?? 0)), 0)

@@ -466,9 +466,9 @@ function sigridLanceCounts(
     if (!spec || !state) return 0
     const detCfg: AgentCharConfigInput['cfg'] = { ...cfg, sigridChuqiangHits: income }
     for (const [, entry] of computeSpecResources(spec, detCfg, state)) {
-      const spendCounts = (entry as { spendCounts?: Record<string, number> })?.spendCounts
-      if (spendCounts?.sigrid_lance_spend != null) {
-        return Math.max(0, Math.floor(Number(spendCounts.sigrid_lance_spend)))
+      const lance = entry.spendCounts.sigrid_lance_spend
+      if (lance != null) {
+        return Math.max(0, Math.floor(lance))
       }
     }
     return 0

@@ -731,7 +731,7 @@ import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.v
 import { deriveVersionAxis, buildBossHpOverlay } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { computeTeamComparePoints, goldAlternativesOfPoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type GoldAllocationAlternative } from '@/composables/teamCompare'
+import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type PresetGoldAlternative } from '@/composables/teamCompare'
 import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
 import { persistedRef } from '@/composables/persistedRef'
 import { isBatchAborted, useBatchOwner } from '@/composables/batchTask'
@@ -864,7 +864,7 @@ const goldMax = ref(6)
 const optimalGold = ref(true)
 /** 同金分配对比表（勾选后收集贪婪搜索的落选候选） */
 const showGoldAlternatives = ref(false)
-const goldAlternatives = ref<Array<GoldAllocationAlternative & { presetId: string; presetName: string }>>([])
+const goldAlternatives = ref<PresetGoldAlternative[]>([])
 
 /** 表行：按 (队伍, 金数) 分组、组内按代价升序（★ 优先），便于一眼看出「投给谁最划算」 */
 const goldAltRows = computed(() => {
@@ -1101,12 +1101,13 @@ async function runCompare() {
     const p = presets[i]
     run.commit(() => { progress.value = { pct: i / presets.length, text: `计算 ${p.name}（${i + 1}/${presets.length}）...` } })
     await new Promise(r => setTimeout(r, 0))
+    const alts: PresetGoldAlternative[] = []
     const batch = await withAnalysisScenario(scenario => computeTeamComparePoints(scenario, {
       presets: [p],
       goldLevels: levels,
       boss,
       optimalGold: optimalGold.value,
-      recordGoldAlternatives: showGoldAlternatives.value,
+      goldAlternatives: showGoldAlternatives.value ? alts : undefined,
       phase,
       autoEngine: autoEngine.value,
       autoEngineMods: { aRank: autoModA.value, standard: autoModStd.value },
@@ -1121,8 +1122,7 @@ async function runCompare() {
       },
     }))
     all.push(...batch)
-    // 同金分配候选经数组属性回传（未开启收集时为空数组）
-    if (showGoldAlternatives.value) goldAlternatives.value.push(...goldAlternativesOfPoints(batch))
+    goldAlternatives.value.push(...alts)
   }
   run.commit(() => {
     points.value = all

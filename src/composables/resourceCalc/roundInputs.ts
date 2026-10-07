@@ -280,9 +280,7 @@ export function createConvergenceRoundInputs(deps: {
           const move = findMoveById(skills, act.moveId)
           energyCost = parseMoveEnergyCost(move?.energyCost as Record<string, string> | undefined).energyConsume
           // 轴块 duration 覆盖倍率表 actionTime（新机制：仪玄轴内凝云术可延长/缩短蓄力 0-2s）
-          actionTime = typeof (act as { duration?: number }).duration === 'number'
-            ? (act as { duration: number }).duration
-            : (move?.actionTime ?? 0)
+          actionTime = act.duration ?? move?.actionTime ?? 0
           // 终结技喧响消耗：读**本槽 cfg 的 ultimateCost**（角色口径，模块在 buildCharConfig
           // 里写自己那份，如佩洛伊斯 1551 = 2000），缺省回落全局默认 3000。
           // 2026-09-15 arch 棘轮：原为 `agentId === '1551' ? 2000 : 3000` 硬编码特判——

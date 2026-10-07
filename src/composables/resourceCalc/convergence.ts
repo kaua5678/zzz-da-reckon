@@ -174,9 +174,7 @@ export function createRunCalcRound(deps: {
           if (!isEnds) continue
           const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[act.slot]?.agentId ?? '')
           const move = findMoveById(skills, act.moveId)
-          let dur = typeof (act as { duration?: number }).duration === 'number'
-            ? (act as { duration: number }).duration
-            : (move?.actionTime ?? 0)
+          let dur = act.duration ?? move?.actionTime ?? 0
           dur = axisMoveActionTimeOf(configStore.team[act.slot]?.agentId, act.moveId, dur)
           truncEnd = Math.max(truncEnd, Math.max(0, act.startTime ?? 0) + dur)
         }
@@ -1087,9 +1085,7 @@ export function createRunCalcRound(deps: {
               // 触发事件附着在动作结束点（用户口径），瞬发块才落在起点
               const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[a.slot]?.agentId ?? '')
               const move = findMoveById(skills, a.moveId)
-              const duration = typeof (a as { duration?: number }).duration === 'number'
-                ? (a as { duration: number }).duration
-                : (move?.actionTime ?? 0)
+              const duration = a.duration ?? move?.actionTime ?? 0
               return { moveId: a.moveId, srcIndex, element: cm.element, perHitBuildUp: cm.perHit, count: Math.max(0, Math.floor(a.count || 1)), startTime: a.startTime ?? 0, duration }
             })
           const entryStates = Object.entries(axis.entryBars ?? {})

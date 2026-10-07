@@ -164,8 +164,8 @@ export function severianBasicFinisherHits(basicTime: number, cycle: { moveId: st
 /** 流息基础收入（不含影画6[风起]反馈项，反馈在 severianFlowState 定点迭代里加） */
 function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
   const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
-  const basicCycle = (cfg.severianBasicCycle as { moveId: string; actionTime: number }[] | undefined) ?? []
-  const basicTime = Math.max(0, Number((state as { basicAttackTime?: number } | undefined)?.basicAttackTime ?? 0))
+  const basicCycle = cfg.severianBasicCycle ?? []
+  const basicTime = Math.max(0, state?.basicAttackTime ?? 0)
   const finisher = severianBasicFinisherHits(basicTime, basicCycle)
   const liexuan = severianLiexuanCount(cfg)
   return finisher * SEVERIAN_FLOW_BASIC4
@@ -277,8 +277,8 @@ function applySeverianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): 
 /** 苍风影猎/烈旋执行行（真实 moveId → enrich 从倍率表回填；倍率含影画6 +900 用 override 同区加算） */
 function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
-  const shadowMeta = cfg.severianShadowMeta as { moveId: string; actionTime: number; damage: number } | undefined
-  const liexuanMeta = cfg.severianLiexuanMeta as { moveId: string; actionTime: number; damage: number } | undefined
+  const shadowMeta = cfg.severianShadowMeta
+  const liexuanMeta = cfg.severianLiexuanMeta
 
   const shadowCount = severianShadowHuntCount(cfg, state)
   if (shadowMeta && shadowCount > 0) {
@@ -312,7 +312,7 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
   // 长按风刃段（1631009，收益高：满倍率 818.4%）：每次强特长按持续消耗能量（满充 40 点）发动；
   // 满充比例滑块 severian.windBladeChargeRatio——倍率/耗能/时间均按比例缩放（总量口径）。
   // 「能量消耗达最大时额外获得一层烁影」未建模（烁影为操作向量）。
-  const windBladeMeta = cfg.severianWindBladeMeta as { moveId: string; actionTime: number; damage: number } | undefined
+  const windBladeMeta = cfg.severianWindBladeMeta
   const exCount = Math.max(0, state.exSpecialCount)
   const bladeRatio = clampRatio(setting(cfg, 'severian.windBladeChargeRatio'))
   if (windBladeMeta && exCount > 0 && bladeRatio > 0) {
@@ -336,9 +336,9 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
 /** 必做前台时间：苍风影猎 + 烈旋 + 长按风刃段（估时与 buildExecutions 同源计数） */
 function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const exTime = Math.max(0, exSpecialCount) * cfg.exSpecialActionTime
-  const shadowMeta = cfg.severianShadowMeta as { actionTime: number } | undefined
-  const liexuanMeta = cfg.severianLiexuanMeta as { actionTime: number } | undefined
-  const windBladeMeta = cfg.severianWindBladeMeta as { actionTime: number } | undefined
+  const shadowMeta = cfg.severianShadowMeta
+  const liexuanMeta = cfg.severianLiexuanMeta
+  const windBladeMeta = cfg.severianWindBladeMeta
   const shadowTime = shadowMeta ? severianShadowHuntCount(cfg, state) * shadowMeta.actionTime : 0
   const liexuanTime = liexuanMeta ? severianLiexuanCount(cfg) * liexuanMeta.actionTime : 0
   const bladeRatio = clampRatio(setting(cfg, 'severian.windBladeChargeRatio'))
@@ -365,7 +365,7 @@ function patchSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
       ? Number(cfg.severianC4Coverage)
       : setting(cfg, 'severian.c4Coverage'),
   })
-  const carrierMeta = (cfg.severianCarrierMeta as { moveId: string; damage: number }[] | undefined) ?? []
+  const carrierMeta = cfg.severianCarrierMeta ?? []
   for (const exec of executions) {
     if (!exec.moveId) continue
     // 影画1：普通攻击暴击伤害 +60%（basic 组 moveId 限定，执行级）

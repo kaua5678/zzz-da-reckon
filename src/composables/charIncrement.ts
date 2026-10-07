@@ -329,9 +329,10 @@ export async function computeIncrementPass(opts: IncrementPassOptions): Promise<
           bossId: r.bossId,
           bossName: r.bossName,
           hp: r.hp,
-          scores: (base.get(`${p.id}|${r.bossId}`) ?? [])
-            .map(team => ({ team, score: scoreByKey.get(`${p.id}|${r.bossId}|${teamKeyOf(team)}`) }))
-            .filter(x => x.score != null) as Array<{ team: BaseTeam; score: number }>,
+          scores: (base.get(`${p.id}|${r.bossId}`) ?? []).flatMap(team => {
+            const score = scoreByKey.get(`${p.id}|${r.bossId}|${teamKeyOf(team)}`)
+            return score == null ? [] : [{ team, score }]
+          }),
         }))
         .filter(r => r.scores.length > 0),
     }))

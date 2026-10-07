@@ -113,7 +113,7 @@ export function applyUltimatePromote(
       // 旧 post-hoc carve 只抠 basic_attack 聚合行，目标平A时间住在分段行里时（希格莉德枪尖/
       // 般岳焚身/琉音猜拳）聚合行被抠剩 ~0 → 守恒破、净占用 +7.2s（实测 auto-1591-1481-1311）。
       // 轴模式无预留（轴内 60/90 转大次数由轴预设决定），保留旧 carve 路径。
-      const reserved = (base as { ultimateGiftTimeReserved?: number }).ultimateGiftTimeReserved ?? 0
+      const reserved = base.ultimateGiftTimeReserved ?? 0
       // CC-145（第 169 轮）**预留退还**：引擎账本按 `ultimateGiftOf`（目标连携数 = cps × 计数失衡，
       // 装配截断**之前**的量）预留赠行，本处 `promote` 按池口径（`promoteFixpoint` 的目标连携数取
       // 上一轮**装配后**的连携行数）。连携被截断时 60 转大窗口变少 ⇒ promote < 引擎次数，多留的秒数

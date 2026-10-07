@@ -436,10 +436,12 @@ export function buildCharConfig(
     // CC-264：字段恒为 number（setAgent 预填 ASSIST_ACTION_BASELINE）；旧兜底「支援 0 / 其余 1」从未生效且与部署口径冲突，删去
     chainCountPerStun: char.chainCountPerStun,
     parryCount: char.parryCount,
-    parryNoFollowUpCount: (char as { parryNoFollowUpCount?: number }).parryNoFollowUpCount ?? 0,
-    parryDecibelOnlyCount: (char as { parryDecibelOnlyCount?: number }).parryDecibelOnlyCount ?? 0,
-    perfectBlockCount: (char as { perfectBlockCount?: number }).perfectBlockCount ?? 0,
-    assaultOrderCount: (char as { assaultOrderCount?: number }).assaultOrderCount ?? 0,
+    // 这两项不是用户输入：store 的 CharacterConfig 没有这两个字段，本轮值由 convergence 的弹刀拆分写进 merged cfg。
+    // r728 前写成 `(char as { … }).x ?? 0`，读的是 store 上不存在的字段，恒为 0。
+    parryNoFollowUpCount: 0,
+    parryDecibelOnlyCount: 0,
+    perfectBlockCount: char.perfectBlockCount ?? 0,
+    assaultOrderCount: char.assaultOrderCount ?? 0,
     dodgeCounterCount: char.dodgeCounterCount,
     blockCount: char.blockCount,
     dualCounterCount: char.dualCounterCount ?? 0,
