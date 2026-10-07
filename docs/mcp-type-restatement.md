@@ -243,7 +243,7 @@
 | catalog 图片 | `CatalogImages` | `types/catalog.ts` | Agent.images，getImageUrl |
 | 池伤害的敌方参数 | 不起新名 | — | typesRows 改写成 `PoolDamageEnv['enemy']`，声明只留 PoolDamageEnv 一处 |
 | 时间线轴节点 | 不起新名 | — | chartRunners ×2 改写成 `TimelineAxisNode[]`：已有类型只多一个可选的 testServer，teamTimeline / teamTimelineFilm 选项里的同名字段就是它 |
-| 只在一个文件里重复的其余 13 组 | AxisPlanState、AnbyBasicSegment、QingyiMoveRow、CurtainTeammateShare、SeverianMoveMeta、PhoenixMoveMeta、ProviderEnergySplit、NewAgentStats、GoldAllocationStep、PlannedPurchase、BossTeamPick、FilmBest | 各自文件，不导出 | stunAxisPresets 的 3 字段与 4 字段两组拿的是同一个 state 对象（resolveStunAxisPlan 原样往下传），合成一个 AxisPlanState |
+| 只在一个文件里重复的其余 13 组 | AxisPlanState、AnbyBasicSegment、QingyiMoveRow、CurtainTeammateShare、SeverianMoveMeta、PhoenixMoveMeta、ProviderEnergySplit、NewAgentStats、GoldAllocationStep（r733 并入预设的 GoldStep，见 `docs/mcp-gold-greedy.md`）、PlannedPurchase、BossTeamPick、FilmBest | 各自文件，不导出 | stunAxisPresets 的 3 字段与 4 字段两组拿的是同一个 state 对象（resolveStunAxisPlan 原样往下传），合成一个 AxisPlanState |
 
 钩子形状为什么放 typesHooks.ts、不放 types.ts：`typesSplitCc83.test` 锁 types.ts < 1400 行，并写明新卫星类型进 typesRows / typesHooks / typesView。types.ts 引用这 6 个名字并原样转出，模块照旧从 `'../types'` 引用。三个钩子入参原来内联在 AgentMechanicModule 里，移出后 types.ts 从 1354 行降到 1329 行。
 
