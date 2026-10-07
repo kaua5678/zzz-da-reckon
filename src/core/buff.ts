@@ -409,9 +409,9 @@ export function discRequirementMet(
 /** {attribute} 模板按装备者属性落成具体 stat（自由蓝调 4pc：对应属性异常积蓄抗性降低；CC-337 selfBuff/teamBuff 单源复用）。
  * 属性 id 是小写（ether/fire/…），敌方减益 stat 名里属性段首字母大写（enemyEther…）。 */
 export function resolveDiscStatTemplate(effect: BuffEffect, attribute: string): BuffEffect {
-  const stat = effect.stat as string
+  const stat = effect.stat
   if (!stat.includes('{attribute}')) return effect
-  return { ...effect, stat: resolveAttributeTemplateStat(stat, attribute) as StatId }
+  return { ...effect, stat: resolveAttributeTemplateStat(stat, attribute) }
 }
 
 /** 属性模板解析（导出给 teamBuff 通道：自由蓝调挂在敌人 8s，全队同属性积蓄都吃，按装备者属性落键） */

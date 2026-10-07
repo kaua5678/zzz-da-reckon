@@ -5,7 +5,7 @@ import { clampRatio } from '@/utils/finiteClamp'
 import { defineStore } from 'pinia'
 import { ref, computed, watch, type UnwrapRef } from 'vue'
 import type {
-  Agent, WEngine, DriveDiscConfig, SkillDamageTarget, CharacterBuildRecommendation, TeammateBuffGroup,
+  Agent, WEngine, DriveDiscConfig, SkillDamageTarget, TeammateBuffGroup,
 } from '@/types/catalog'
 import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget, SUBSTAT_BUDGET_SETTINGS } from '@/core/substatOptimizer'
 import { effectiveBattleTime } from '@/core/effectiveTime'
@@ -20,7 +20,7 @@ export { getInteractionDefaults, hasCustomInteractionDefaults, interactionBaseli
 import { autoStunAxisPresetOf, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
 import type { MechanicTeamMember } from '@/mechanics/types'
-import type { AppliedBossPreset, BossParryTotals, PhaseBuffEffect } from '@/types/bossPreset'
+import type { AppliedBossPreset, BossParryTotals, BossPresetDefaults, PhaseBuffEffect } from '@/types/bossPreset'
 import { counterAssistOf } from '@/data/counterAssists'
 import { localized } from '@/utils/format'
 import { elementStatKey } from '@/utils/elementStatKeys'
@@ -729,7 +729,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   function applyBuildRecommendationForSlot(slot: number): boolean {
     const char = team.value[slot]
     if (!char?.agentId) return false
-    const rec = catalogStore.getBuildRecommendation(char.agentId) as CharacterBuildRecommendation | undefined
+    const rec = catalogStore.getBuildRecommendation(char.agentId)
     if (!rec) return false
 
     if (rec.wengine?.catalog_wengine_id) {
@@ -1119,19 +1119,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
   }, monster: {
     stunVuln: number
     stunTime: number
-  }, defaults: {
-    battleTime: number
-    shieldCount: number
-    energyShield: number
-    invincibleTime?: number
-    parryTotal?: number
-    parryNoFollowUpTotal?: number
-    parryDecibelOnlyTotal?: number
-    xParryTotal?: number
-    counterAssistGroups?: number[]
-    stunGiftRatio?: number
-    decibelGift?: { slot: number; amount: number }
-  }) {
+  }, defaults: BossPresetDefaults) {
     setEnemy({
       hp: Math.round(phase.hp),
       stunValue: Math.round(phase.stunValue * 100) / 100,

@@ -95,10 +95,9 @@ export function deriveVersionAxis(
   const distinctIdx = new Set(resolved)
   const gapped = lanes.length > 0 && allResolved && distinctIdx.size >= 2
   if (gapped) {
-    const idx = resolved as number[]
-    const lo = Math.min(...idx)
-    const hi = Math.max(...idx)
-    for (let i = 0; i < lanes.length; i++) lanes[i]!.frac = hi === lo ? 0.5 : (idx[i]! - lo) / (hi - lo)
+    const lo = Math.min(...resolved)
+    const hi = Math.max(...resolved)
+    for (let i = 0; i < lanes.length; i++) lanes[i]!.frac = hi === lo ? 0.5 : (resolved[i]! - lo) / (hi - lo)
   } else {
     const n = lanes.length
     for (let i = 0; i < lanes.length; i++) lanes[i]!.frac = n <= 1 ? 0.5 : i / (n - 1)

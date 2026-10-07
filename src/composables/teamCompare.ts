@@ -39,6 +39,7 @@ import {
   type TeamPreset,
 } from '@/types/teamPreset'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
+import type { TeamGoldState } from '@/composables/teamTimeline'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/timeOccupation'
@@ -697,7 +698,7 @@ export interface GoldAllocationAlternative {
    * 本候选的**完整状态**（提交这一步后的影画/精炼/音擎），供 UI 显示「这套分配长什么样」。
    * 注：音擎 id 需要 `wEngineNameOf` 才能显示名字，这里只给 id（保持纯数据）。
    */
-  state: { cinemas: [number, number, number]; wengineMods: [number, number, number]; wEngines: [string, string, string] }
+  state: TeamGoldState
 }
 
 /**
@@ -781,12 +782,12 @@ export function computeOptimalGoldAllocations(
       damage: number
     } | null = null
     // 本档的全部候选（含各自提交后的完整状态）——仅传入 opts.alternatives 时收集
-    const trials: Array<{ step: { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string }; damage: number; state: { cinemas: [number, number, number]; wengineMods: [number, number, number]; wEngines: [string, string, string] } }> = []
+    const trials: Array<{ step: { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string }; damage: number; state: TeamGoldState }> = []
     /** 记一次试算（伤害已算出；state 用「试算值 + 其余当前值」拼出该候选提交后的状态） */
     const recordTrial = (
       step: { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string },
       damage: number,
-      state: { cinemas: [number, number, number]; wengineMods: [number, number, number]; wEngines: [string, string, string] },
+      state: TeamGoldState,
     ) => { if (sink) trials.push({ step, damage, state }) }
     // 自动下位穿上的限定件不阻止购买步：购买同一/另一把都合法，金数经 acquiredSlots 去重
     const autoLimitedSlots = new Set(autoPicks.filter(p => p.limited).map(p => p.slot))

@@ -29,6 +29,7 @@ import type {
   AnomalyPoolResult,
   SpecialActionBonusResult,
   AnomalyEventRecord,
+  StunAxisAllocation,
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { panelAt } from '@/core/panel'
@@ -81,7 +82,7 @@ const memoIdentity = new WeakMap<object, number>()
 let memoIdentitySeq = 0
 function identityOf(o: unknown): number {
   if (o === null || typeof o !== 'object') return 0
-  const raw = toRaw(o as object)
+  const raw = toRaw(o)
   let id = memoIdentity.get(raw)
   if (id === undefined) { id = ++memoIdentitySeq; memoIdentity.set(raw, id) }
   return id
@@ -599,7 +600,7 @@ export function createResourceCalc(
     const exec = stackTraversalResult.value?.executed
     if (!exec) return {}
     const counts = expandExecutedToCounts(exec, stackTraversalResult.value?.basicFillBySlot ?? {})
-    const out: Record<string, { slot: number; moveId: string; inAxisUnits: number; outAxisUnits: number }> = {}
+    const out: Record<string, StunAxisAllocation> = {}
     for (const v of Object.values(counts)) {
       out[`${v.slot}:${v.moveId}`] = { slot: v.slot, moveId: v.moveId, inAxisUnits: v.count, outAxisUnits: 0 }
     }

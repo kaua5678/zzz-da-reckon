@@ -41,6 +41,7 @@ import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
+import type { OuterExit } from '@/types/resource'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
@@ -343,8 +344,9 @@ export function computeOptimalTeamAllocation(
       // store 的 team watch（syncTeammateBuffsFromTeam）在改动未还原时重入，扭曲后续试算。
       // 让出只发生在阶段边界（阶段1每2队、阶段3每2队）。
       // 收敛过滤：试算态外层未收敛（maxIter）→ 该步伤害虚高不可信，视作 -Inf 拒绝
-      // （calcOutput 里 convergence 被重建过，TS 推断丢了 maxIter 字面量，运行时确实会出现，故显式断言）
-      const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+      // （断言绕开的是 TS 的收窄：函数开头 `outerExit === 'maxIter'` 已提前返回，TS 便认定这里不会是 maxIter；
+      //   但中间改过 store、计算属性会重算，运行时确实会出现——TS 不会因为函数调用作废属性链上的收窄）
+      const conv = calc.resourceResult.value?.convergence?.outerExit as OuterExit | undefined
       const d = conv === 'maxIter' ? Number.NEGATIVE_INFINITY : calc.teamTotalDamage.value
       configStore.setCinemaLevel(c.slot, prevC)
       configStore.setWEngine(c.slot, prevW)
@@ -455,7 +457,7 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
     applyTeamToStore(configStore, team, state, opts.autoBuild === true)
     // 收敛过滤：失衡外层不动点未收敛（outerExit='maxIter'）的队伍伤害虚高不可信
     // （实测 青衣 系阵容 8金 407% vs 收敛 meta 队 105-127%），排除出排名
-    const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+    const conv = calc.resourceResult.value?.convergence?.outerExit
     if (conv === 'maxIter') {
       nonConverged++
     } else {
@@ -837,8 +839,8 @@ export function findSlotComparePairs(
     pairs.push({
       main: a.team[anchorSlot],
       support: a.team[supportSlot],
-      teamA: a.team as [string, string, string],
-      teamB: b.team as [string, string, string],
+      teamA: a.team,
+      teamB: b.team,
     })
   }
   return pairs
@@ -903,7 +905,7 @@ function evalTeamByBudget(
   }
   const budgetAware = budgetAwareStateFor(team, budget, catalog)
   applyTeamToStore(configStore, team, budgetAware.state, autoBuild)
-  const conv = calc.resourceResult.value?.convergence?.outerExit as 'stable' | 'cycle' | 'maxIter' | undefined
+  const conv = calc.resourceResult.value?.convergence?.outerExit
   if (conv === 'maxIter') return null
   return {
     damage: calc.teamTotalDamage.value,

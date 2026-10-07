@@ -405,16 +405,7 @@ declare module '@/types/resource/config' {
     /** 青衣失衡次数（外层不动点传入，供醉花月云转轮数） */
     qingyiStunCount?: number
     /** 青衣可分配循环秒均（一煞#4 连打→醉花月云转） */
-    qingyiLoopRates?: {
-      yisha4Voltage: number
-      yisha4ActionTime: number
-      hitsPerRound: number
-      yisha4TimePerRound: number
-      zuiHuaTimePerRound: number
-      dmgPerSec: number
-      dazePerSec: number
-      anomalyPerSec: number
-    }
+    qingyiLoopRates?: LoopRates
     /** 青衣醉花月云转 #1/#2 倍率行（含 +25% 伤害 / +12.5% 失衡） */
     qingyiZuiHuaMove1?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
     qingyiZuiHuaMove2?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }

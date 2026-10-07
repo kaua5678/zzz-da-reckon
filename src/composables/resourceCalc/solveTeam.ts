@@ -20,7 +20,7 @@ import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { withStunCount } from '@/core/stunPool'
 import { stunWindowFraction } from '@/core/effectiveTime'
-import type { ResourceCalcConfig } from '@/types/resource'
+import type { OuterExit, ResourceCalcConfig } from '@/types/resource'
 import { initialCalcRoundThreads } from './roundThreads'
 import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
 import { probeKey, probePush } from '@/core/probeTrace'
@@ -94,7 +94,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
    * （需 boss 秽盾等外界环境才打得成）→ 退化为一般轴（不注入轴块/连携覆盖/自动补齐）重算）。
    */
-  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: 'stable' | 'cycle' | 'maxIter'; outerCyclePickedEarlier: boolean } {
+  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: OuterExit; outerCyclePickedEarlier: boolean } {
     let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
     /** CC-418：`MAX_OUTER_ITER ≥ 1` ⇒ 循环体至少执行一次、首轮即赋值（runCalcRound 无 null 出口），故可定赋值断言。 */
     let out!: CalcRoundResult
@@ -187,7 +187,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     }
     let outerRounds = 0
     let outerConverged = false
-    let outerExit: 'stable' | 'cycle' | 'maxIter' = 'maxIter'
+    let outerExit: OuterExit = 'maxIter'
     // 净失衡迭代（用户 Excel 口径）：覆盖率由上一轮失衡次数得出，非失衡占比缩放全来源净失衡，
     // 时间预算把超出的残失衡折成小数——正反馈被全局负反馈对抗，收敛到静止
     for (let k = 0; k < MAX_OUTER_ITER; k++) {

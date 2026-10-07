@@ -310,12 +310,12 @@ export function runFoldLoop(
     // 判据：连续 3 轮无改善（改善 ≤ 1e-2 = 10 毫秒，量化噪声量级）即判收敛；
     // 取代「残差 ≤ 1e-3」这个对离散系统过严的门槛。阈值取 1e-2 的依据：比利系每轮只改善
     // ~0.002s（比利终局整数重推的量化残差），1e-3 会让停滞计数不断重置、差一两轮跑满上限。
-    if (maxExcess < (diag.bestExcess as number) - 1e-2) {
+    if (maxExcess < diag.bestExcess - 1e-2) {
       diag.bestExcess = maxExcess
       diag.stagnantPasses = 0
     } else {
-      diag.stagnantPasses = (diag.stagnantPasses as number) + 1
-      if ((diag.stagnantPasses as number) >= 3) {
+      diag.stagnantPasses += 1
+      if (diag.stagnantPasses >= 3) {
         diag.timeBudgetConverged = true
         break
       }

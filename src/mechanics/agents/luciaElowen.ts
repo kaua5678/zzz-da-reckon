@@ -168,7 +168,7 @@ function patchLuciaExecutions({ cfg, executions }: AgentResourceInput): void {
     cfg.ultimateMoveId,
     cfg.chainMoveId,
     cfg.assistFollowUpMoveId,
-  ].filter(Boolean) as string[])
+  ].filter(Boolean))
   for (const exec of executions) {
     if (exec.moveId && chorusMoveIds.has(exec.moveId)) {
       applyChorusBonuses(exec, cinemaLevel, panel)

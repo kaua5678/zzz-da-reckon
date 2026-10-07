@@ -70,6 +70,8 @@ import { scanIdLiterals, formatIdLiterals, ID_LITERAL_BASELINE, ID_HOME_DIRS } f
 import { scanLiteralAssertions, formatLiteralAssertions, LITERAL_ASSERTION_BASELINE } from './lib/literal-assertion-gate.mjs'
 // 判据 28：死兜底硬门（r723，见 scripts/lib/dead-nullish-gate.mjs 头注释）
 import { scanDeadNullish, formatDeadNullish, DEAD_NULLISH_BASELINE } from './lib/dead-nullish-gate.mjs'
+// 判据 29：类型只声明一次（r729，见 scripts/lib/type-restatement-gate.mjs 头注释）
+import { scanTypeRestatements, formatTypeRestatements, TYPE_RESTATEMENT_BASELINE } from './lib/type-restatement-gate.mjs'
 export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST }
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -1343,6 +1345,18 @@ export function runAllChecks(root = ROOT) {
         + `= ${report.count}/${DEAD_NULLISH_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatDeadNullish(report),
+    })
+  }
+
+  // ---- 判据 29：类型只声明一次（r729：恒等断言 41 处——`outerExit as '…' | '…' | '…' | undefined` 抄 4 遍联合、
+  //      一个函数里 16 遍 `skills as AgentSkills`；结构副本 14 处——ReleaseRowInput 注释写着单一来源，副本却还在）----
+  {
+    const report = scanTypeRestatements(root)
+    results.push({
+      name: `type-restatement gate (判据 29: 断言不重述已知类型——x 已是 T 或 T 只多 undefined 就删断言；类型字面量与具名类型逐字段相同就引用具名类型) `
+        + `= ${report.count}/${TYPE_RESTATEMENT_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+      ok: report.ok,
+      detail: report.ok ? [] : formatTypeRestatements(report),
     })
   }
 

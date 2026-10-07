@@ -263,7 +263,7 @@ export function cfgExternalCountsProbe(cfg: {
  */
 export function aliceSwordWillReserve(cfg: CharacterOperationConfig, state?: Readonly<IterationState>): ExtraNecessaryAction | null {
   if (!state) return null
-  const smSrc = buildAliceSwordWillSource(cfg, state as IterationState, cfgExternalCountsProbe(cfg))
+  const smSrc = buildAliceSwordWillSource(cfg, state, cfgExternalCountsProbe(cfg))
   if (!smSrc || smSrc.sparkCount <= 0) return null
   return {
     count: smSrc.sparkCount,

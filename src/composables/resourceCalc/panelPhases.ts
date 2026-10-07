@@ -446,7 +446,7 @@ export function resolveSlotPanelBuffInputs(
           id: `global-${b.id}-effect`,
           type: 'fixed' as const,
           target: { kind: 'default' as const },
-          stat: b.stat as TeammateBuff['effects'][number]['stat'],
+          stat: b.stat,
           mode: statSettlementMode(b.stat),
           value,
           ...(b.targetSkillType && b.targetSkillType !== 'all' ? { targetSkillType: b.targetSkillType } : {}),

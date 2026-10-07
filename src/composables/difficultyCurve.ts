@@ -157,7 +157,7 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
     const applied = applyGoldSteps(
       preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
     )
-    const ladder = climbDifficultyLadder({ config: configStore, calc, absorbCap: userAbsorbCap }, preset.team as [string, string, string], {
+    const ladder = climbDifficultyLadder({ config: configStore, calc, absorbCap: userAbsorbCap }, preset.team, {
       goals,
       minGainRatio: options.minGainRatio,
       capture: ctx => captureLadderSnapshot(ctx.config, ctx.calc),

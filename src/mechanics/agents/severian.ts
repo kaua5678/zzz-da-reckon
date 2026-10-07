@@ -389,7 +389,7 @@ export interface SeverianFlowResult extends SeverianCycle {
 }
 
 function buildSeverianResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const { flowIncome, shadowHuntCount } = severianFlowState(cfg as AgentCharConfigInput['cfg'], state as AgentResourceInput['state'])
+  const { flowIncome, shadowHuntCount } = severianFlowState(cfg, state)
   const fengfengStacks = resolveSeverianFengfengStacks({
     cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
     shadowHuntCount,

@@ -310,7 +310,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
           `士气喷发强力终结 ×${morale.powerFinisherCount}`
           + (c1Bonus ? `（C1 伤害+${c1Bonus}%）` : ''),
         ...(c1Bonus ? { dmgBonus: c1Bonus } : {}),
-      }) as SkillExecution)
+      }))
     }
   }
 

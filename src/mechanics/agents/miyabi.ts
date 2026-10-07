@@ -175,7 +175,7 @@ function hasMiyabiCinema6(cfg: CharacterOperationConfig, cinemaLevel?: number): 
 
 export function miyabiFrostMoonReserve(cfg: CharacterOperationConfig, state?: Readonly<IterationState>): ExtraNecessaryAction[] | null {
   if (!state) return null
-  const res = getFrostFallResource(cfg, state as IterationState)
+  const res = getFrostFallResource(cfg, state)
   if (!res || res.frostMoonCount <= 0) return null
   const count = res.frostMoonCount
   const actionTime = cfgMoveActionTime(cfg, FROST_MOON_MOVE_ID)

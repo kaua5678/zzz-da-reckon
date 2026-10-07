@@ -639,11 +639,11 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('二十八条判据全绿（判据 24 角色模块值依赖 ' + ROLE_MODULE_DEP_BASELINE + ' / fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖** / **无类型记录键死读****)', () => {
+  it('二十九条判据全绿（判据 24 角色模块值依赖 ' + ROLE_MODULE_DEP_BASELINE + ' / fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖** / **无类型记录键死读****)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(28)
+    expect(results).toHaveLength(29)
     expect(results.some(r => r.name.startsWith('role-module value-dep gate'))).toBe(true)
     // 判据 26：角色 / 招式 id 字面量只许在 data / mechanics/agents / specs（2026-10-04 CC-449 展示层 → CC-450 全 src）——判据 2/24 盯的是身份判定与值导入，裸字面量此前只有逐病灶的单文件锁
     expect(results.some(r => r.name.startsWith('id-literal gate'))).toBe(true)
@@ -651,6 +651,8 @@ describe('仓库级自洽（真实扫描）', () => {
     expect(results.some(r => r.name.startsWith('literal-assertion gate'))).toBe(true)
     // 判据 28：死兜底硬门（r723；类型不含 null/undefined 的 `a ?? b` 右侧永远取不到；r725 起外部 JSON 由 validate:data 类型契约校验，不设豁免）
     expect(results.some(r => r.name.startsWith('dead-nullish gate'))).toBe(true)
+    // 判据 29：类型只声明一次（r729；恒等断言与「类型字面量 ≡ 具名类型」的结构副本——同一类型写两遍，声明一改就静默分叉）
+    expect(results.some(r => r.name.startsWith('type-restatement gate'))).toBe(true)
     // 判据 22：core 角色前缀字段计数棘轮（2026-09-26，docs/mcp-r22d1-batch12-field-census.md §5）——agentId 棘轮看不见 `cfg.billyC1Energy` 这类以角色命名的字段
     expect(results.some(r => r.name.startsWith('core role-field ratchet'))).toBe(true)
     expect(results.map(r => r.name.split(' ')[0])).toContain('@fact')

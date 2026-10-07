@@ -249,12 +249,6 @@ export interface BoundaryStateInjection {
   element: string
 }
 
-interface ActiveInterval {
-  start: number
-  end: number
-  element: string
-}
-
 /**
  * Boss 异常状态轴：把 v2 触发序列（窗口/元素/相对时刻）按绝对时间序推进状态机。
  * 规则：无状态→激活；同元素→刷新时长；不同标准元素→紊乱（记原状态）+替换；
@@ -281,7 +275,7 @@ export function computeBossAnomalyStateTimeline(input: {
   for (let w = 0; w < Math.max(1, input.windowCount); w++) {
     const chain: BossStateSegment[] = []
     const windSegs: BossStateSegment[] = []
-    let std: ActiveInterval | null = null
+    let std: BossStateSegment | null = null
     let windEnd = -1
 
     const applyWind = (t: number, el: string) => {

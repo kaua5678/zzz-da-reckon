@@ -21,7 +21,7 @@ import type { AnomalyPoolResult } from '@/types/resource/pools'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
-import type { StackActionCost } from '@/core/stunAxisStack'
+import type { StackActionCost, StackAxisInput } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
@@ -218,7 +218,7 @@ export function createConvergenceRoundInputs(deps: {
   }
 
   /** 把用户轴定义转换成栈遍历引擎的动作成本（含连段打包、转大不扣喧响、伊德海莉1命 60→50） */
-  function buildStackAxes(axes: StunAxis[]): { actions: StackActionCost[]; count?: number; basicFillerSlot?: number }[] {
+  function buildStackAxes(axes: StunAxis[]): StackAxisInput[] {
     return axes.map(axis => {
       const axisActions: StackActionCost[] = []
       // 60/90 转大块是琉音（1481）好评赠送终结技的专属机制：队伍无琉音时跳过（不当作普通轴动作执行，
@@ -278,7 +278,7 @@ export function createConvergenceRoundInputs(deps: {
           }
         } else {
           const move = findMoveById(skills, act.moveId)
-          energyCost = parseMoveEnergyCost(move?.energyCost as Record<string, string> | undefined).energyConsume
+          energyCost = parseMoveEnergyCost(move?.energyCost).energyConsume
           // 轴块 duration 覆盖倍率表 actionTime（新机制：仪玄轴内凝云术可延长/缩短蓄力 0-2s）
           actionTime = act.duration ?? move?.actionTime ?? 0
           // 终结技喧响消耗：读**本槽 cfg 的 ultimateCost**（角色口径，模块在 buildCharConfig

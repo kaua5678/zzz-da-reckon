@@ -23,8 +23,6 @@ import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from 
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG, isCorrosionCycloneRelease, windEffectiveTriggerCount } from '@/core/anomalyPool/helpers'
 import { corrosionOwner } from '@/core/anomalyPool/corrosion'
-import type { PanelValues } from '@/types/catalog'
-import type { AnomalyEventExecution } from '@/types/resource'
 import { elementLabel, parseReleaseMultiplier, type DamagePoolRow } from './helpers'
 // 异常面板簇（D 簇）与招式行取值簇（C 簇）：同目录兄弟模块直接指真实现。
 import {
@@ -36,6 +34,7 @@ import { getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import type { ExtraAnomalyRowGroup } from '@/mechanics'
 // 纯类型：运行时被擦除，与 damagePool.ts 的 `emitAnomalyRows` 值导入不构成运行时环。
 import type { DamagePoolContext } from './damagePool'
+import type { ReleaseRowInput } from './damagePoolDirect'
 
 /**
  * 「排序 + 展开」纯函数（CC-19a，设计稿 §4）：按 order 稳定升序排序后拼接各分组的 rows。
@@ -63,7 +62,7 @@ export interface AnomalyRowsEnv {
   /** 原 `buildDamagePoolRows` 闭包：伴随事件易伤 0/1（非轴回落全局覆盖率） */
   axisStunFor: (moveId: string) => number
   /** 原 `buildDamagePoolRows` 闭包：异放行结算并 push 进共享 `rows` */
-  pushRelease: (row: { id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues; releaseCrit?: AnomalyEventExecution['releaseCrit']; stunnedOverride?: number }) => void
+  pushRelease: (row: ReleaseRowInput) => void
 }
 
 /**

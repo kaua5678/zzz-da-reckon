@@ -1080,7 +1080,7 @@ export function calcDisorderDamage(
  * @param teamMechanics 在队角色机制模块 + 槽位（风蚀状态经 `anomalyCorrosion` 能力查询；r399 CC-373）
  */
 export function calcTurbulenceDamage(
-  nonWindElements: { element: string; triggerCount: number; applierSlot: number }[],
+  nonWindElements: AnomalyElementTriggers[],
   windSlot: number,
   panels: PanelValues[],
   config: DamageCalcConfig,

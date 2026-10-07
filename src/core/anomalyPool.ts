@@ -6,6 +6,7 @@ import type {
   AnomalyPoolDamageInputs,
   CorrosionSource,
   DamageCalcConfig,
+  SpecialActionBonusResult,
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { TeamMechanic } from '@/mechanics/types'
@@ -440,7 +441,7 @@ export function calcSpecialActionBonus(
   perSlotChain: number[],
   perSlotDodgeCounter: number[],
   perSlotQuickAssist: number[],
-): { parry: number; chain: number; dodgeCounter: number; quickAssist: number; total: number; perSlotParry: number[]; perSlotChain: number[]; perSlotDodgeCounter: number[]; perSlotQuickAssist: number[]; perSlotBonus: number[] } {
+): SpecialActionBonusResult {
   const slotCount = Math.max(
     perSlotParry.length,
     perSlotChain.length,

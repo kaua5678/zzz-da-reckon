@@ -18,7 +18,7 @@
  *
  * 引擎部分（独立场景上装配/求值/赋值）在 computeIncrementPass（同文件尾部；集成测试 charIncrementInt.test.ts）。
  */
-import { runLimitedGold } from '@/composables/limitedGold'
+import { runLimitedGold, type LimitedGoldMember } from '@/composables/limitedGold'
 
 // ========== 队伍基底提取 ==========
 
@@ -28,7 +28,7 @@ export interface IncRun {
   targetId: string
   mode: string
   score: number
-  team: ReadonlyArray<{ agentId: string; mindscape?: number; phase?: number; weaponId?: string }>
+  team: ReadonlyArray<LimitedGoldMember>
 }
 
 /** 房间 →（Boss 预设 id, 期 id）的映射（调用方用 runArchiveImport.matchBossPreset + 日期窗构造） */

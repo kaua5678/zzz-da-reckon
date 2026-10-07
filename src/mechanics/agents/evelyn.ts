@@ -149,7 +149,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     cinemaLevel: cinemaLevelOf(cfg.evelynCinemaLevel),
     garroteCount: Number(cfg.evelynGarroteCount ?? 4),
     ultimateCount: state.ultimateCount,
-    baseCritRate: Number((cfg.panel?.critRate as number | undefined) ?? 0),
+    baseCritRate: cfg.panel.critRate,
     additionalActive: cfg.evelynAdditionalActive === true,
     restraintCoverage: Number(cfg.evelynRestraintCoverage ?? 1),
     c1DefIgnoreCoverage: Number(cfg.evelynC1DefIgnoreCoverage ?? 1),

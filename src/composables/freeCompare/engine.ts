@@ -321,7 +321,7 @@ export async function computeFreeCompare(
   const choice0 = cs.buffChoice ?? 'none'
   const buffModeLabel = choice0 === 'all'
     ? (usableBuffs.length > 0 ? `全状态对比（本体 + ${usableBuffs.length} 张牌）` : '全状态对比（当期无可用牌，仅本体）')
-    : choice0 === 'none' ? '' : (choice0 as PhaseBuffCard).title
+    : choice0 === 'none' ? '' : choice0.title
 
   const out: FreeCompareSeries[] = runRows.map(r => ({
     id: r.outKey,

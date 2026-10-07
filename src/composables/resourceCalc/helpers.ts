@@ -354,36 +354,36 @@ export function buildCharConfig(
   const isFlash = !!(agent.level60.flashEnergyRegen && agent.level60.flashEnergyRegen > 0)
 
   // 提取技能数据
-  const exSpecial = findExSpecial(skills as AgentSkills, fusedRowReader)
-  const ultimate = findUltimate(skills as AgentSkills, fusedRowReader)
-  const chainAttack = findChainAttack(skills as AgentSkills, fusedRowReader)
-  const defensiveAssist = findDefensiveAssist(skills as AgentSkills, fusedRowReader)
-  const assistFollowUp = findAssistFollowUp(skills as AgentSkills, fusedRowReader)
+  const exSpecial = findExSpecial(skills, fusedRowReader)
+  const ultimate = findUltimate(skills, fusedRowReader)
+  const chainAttack = findChainAttack(skills, fusedRowReader)
+  const defensiveAssist = findDefensiveAssist(skills, fusedRowReader)
+  const assistFollowUp = findAssistFollowUp(skills, fusedRowReader)
   // 反制支援（Counter Assist）：按登记表取行（克拉蕾 = 1611028 寸铁不让 + 1611030 琢形，
   // 融合成「一次动作」），有登记 ≠ 一定发动——次数由 boss 控制技组与替换开关决定。
   const counterAssistDecl = counterAssistOf(char.agentId)
-  const counterAssist = counterAssistDecl ? findCounterAssist(skills as AgentSkills, counterAssistDecl.moveId, fusedRowReader) : null
+  const counterAssist = counterAssistDecl ? findCounterAssist(skills, counterAssistDecl.moveId, fusedRowReader) : null
   const counterAssistCount = counterAssist && configStore.counterAssistSlot === slot
     ? (configStore.appliedBoss?.counterAssistGroups?.length ?? 0)
     : 0
-  const dodgeCounter = findDodgeCounter(skills as AgentSkills, fusedRowReader)
+  const dodgeCounter = findDodgeCounter(skills, fusedRowReader)
   // CC-320：基准段只解析一次，平A伤害基准与秒均回复兜底共用（无 #N 段的角色回复按基准段算）
-  const basicBenchmarkMoveId = getBasicComboMoves(skills as AgentSkills, char.agentId, catalogStore)?.id
-  const basicRegen = calcBasicAttackRegenPerSec(skills as AgentSkills, fusedRowReader, { fallbackMoveId: basicBenchmarkMoveId })
+  const basicBenchmarkMoveId = getBasicComboMoves(skills, char.agentId, catalogStore)?.id
+  const basicRegen = calcBasicAttackRegenPerSec(skills, fusedRowReader, { fallbackMoveId: basicBenchmarkMoveId })
 
   // 倍率表 decibel_recovery / energy_recovery 全量预存（喧响+能量收入行级化 Σ 切换的前置）：
   // 核心层 calcRawDecibelParts / calcEnergySource 无 catalog 访问权，按此表复刻 enrichExecutionPlan
   // 回填语义（getRowValue 含行级融合乘子，与展示层同一函数同一时刻取值，杜绝记账/展示两套表值）。
   const decibelRecoveryByMoveId: Record<string, number> = {}
   const energyRecoveryByMoveId: Record<string, number> = {}
-  for (const cat of (skills as AgentSkills | undefined)?.categories ?? []) {
+  for (const cat of skills.categories) {
     for (const m of cat.moves) {
       // 登记融合组的主段：喧响取「一次动作」的整段和（一次连携把各段的 fever_recovery 全打了，
       // 只回头段会把雅 230.15 记成 69.05）。兄弟段不单独成行（moveFusions 入表前提），无六计风险。
       decibelRecoveryByMoveId[String(m.id)]
-        = fusedRowValue(skills as AgentSkills, String(m.id), 'decibel_recovery') ?? getRowValue(m, 'decibel_recovery')
+        = fusedRowValue(skills, String(m.id), 'decibel_recovery') ?? getRowValue(m, 'decibel_recovery')
       energyRecoveryByMoveId[String(m.id)]
-        = fusedRowValue(skills as AgentSkills, String(m.id), 'energy_recovery') ?? getRowValue(m, 'energy_recovery')
+        = fusedRowValue(skills, String(m.id), 'energy_recovery') ?? getRowValue(m, 'energy_recovery')
     }
   }
 
@@ -472,7 +472,7 @@ export function buildCharConfig(
     zhenyuanTriggerCount: 0,
     cannonRotorDamageMultiplier: hasCannonRotorEvent ? periodicDirect!.damageMultiplier : 0,
     cannonRotorCooldownSeconds: hasCannonRotorEvent ? periodicDirect!.cooldownByModLevel[cannonRotorModIndex] : 0,
-    moveActionTimes: moveActionTimesOf(skills as AgentSkills), // CC-409
+    moveActionTimes: moveActionTimesOf(skills), // CC-409
     initialEnergyGift,
     initialDecibelGift: 1000 + (configStore.appliedBoss?.decibelGift?.slot === slot ? (configStore.appliedBoss?.decibelGift?.amount ?? 0) : 0),
     battleTime: configStore.enemy.battleTime,
@@ -495,7 +495,7 @@ export function buildCharConfig(
   charModule?.buildCharConfig?.({
     slot,
     agent,
-    skills: skills as AgentSkills,
+    skills,
     cinemaLevel: char.cinemaLevel,
     potentialLevel: char.potentialLevel ?? 6,
     wEngineId: char.wEngineId,
@@ -514,13 +514,13 @@ export function buildCharConfig(
   if (sustainedSpec && !cfg.skipGenericExSpecial) {
     cfg.skipGenericExSpecial = true
     cfg.exSpecialCountFractional = true // 持续段按满蓄秒数计耗能 ⇒ 次数取期望值（CC-324 前由 skip 隐式给出）
-    const susMove = findMoveById(skills as AgentSkills, sustainedSpec.sustain.moveId)
+    const susMove = findMoveById(skills, sustainedSpec.sustain.moveId)
     const scale = sustainedDamageScale(sustainedSpec, susMove)
     const secs = sustainedSpec.sustain.maxSeconds
     cfg.exSpecialEnergyConsume = sustainedSpec.fixedEnergy + sustainedSpec.sustain.energyPerSecond * secs
     // 自动攻击/能力场段（countsTime:false）行时长记 0：倍率照发、角色不站场。
     const segSeconds = (t: { moveId: string; countsTime?: boolean }) =>
-      t.countsTime === false ? 0 : findMoveById(skills as AgentSkills, t.moveId)?.actionTime ?? 0
+      t.countsTime === false ? 0 : findMoveById(skills, t.moveId)?.actionTime ?? 0
     const opener = sustainedSpec.opener.map((t) => ({ moveId: t.moveId, actionTime: segSeconds(t) }))
     const finisher = sustainedSpec.finisher.map((t) => ({ moveId: t.moveId, actionTime: segSeconds(t) }))
     // 动作总时间（供 estimateExSpecialTime 时间预算）：起手 + 持续满蓄 + 收尾
@@ -544,7 +544,7 @@ export function buildCharConfig(
   const extraPlans = EXTRA_EX_PLANS[agent.id]
   if (extraPlans && !cfg.skipGenericExSpecial) {
     cfg.extraExPlans = extraPlans.map((e) => {
-      const move = findMoveById(skills as AgentSkills, e.moveId)
+      const move = findMoveById(skills, e.moveId)
       return {
         moveId: e.moveId,
         label: e.label,

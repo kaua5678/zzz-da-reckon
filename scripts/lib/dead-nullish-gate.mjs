@@ -8,7 +8,7 @@
  *   评审拦不住。r723 删了引擎内部契约上的 800 处，并把 CharacterOperationConfig 里 buildCharConfig 恒写的 19 个字段改成必填。
  *   普查与逐类判断见 docs/mcp-dead-nullish-census.md。
  *
- * 规则（TS 类型检查器；program = tsconfig.app.json 里的 .ts 文件）：
+ * 规则（TS 类型检查器；program = tsconfig.app.json 里的 .ts 文件，与判据 29 共用，见 ./app-program.mjs）：
  *   · `a ?? b`，a 去括号后是「声明过的属性访问」（非可选链 `?.`；声明 = 属性签名 / 属性声明 / 对象字面量属性 / 参数属性）
  *     或标识符，且 a 在该位置的类型（含控制流收窄）不含 null / undefined / any / unknown / void / never / 类型参数 /
  *     索引访问 / 条件类型 ⇒ 违规。
@@ -24,10 +24,10 @@
  *   值真的可能缺 ⇒ 改类型（字段加 `?`），让每个读点都看见。别为了过门把 `??` 换成 `||` / 三元 / `=== undefined`——
  *   那是同一个谎换个写法。外部 JSON 的字段真会缺 ⇒ 同样改类型（validate:data 的契约校验会告诉你数据实况）。
  */
-import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { dirname, join, relative, sep } from 'node:path'
+import { dirname, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { appTsProgram, isAppTsScanned } from './app-program.mjs'
 
 const require = createRequire(import.meta.url)
 const ts = require('typescript')
@@ -95,12 +95,6 @@ export function findDeadNullish(program, { root = ROOT, isScanned } = {}) {
   return { sites, scanned }
 }
 
-export function isDeadNullishScanned(rel) {
-  if (!rel.startsWith('src/') || rel.startsWith('src/test/')) return false
-  if (!rel.endsWith('.ts') || rel.endsWith('.d.ts') || rel.endsWith('.test.ts') || rel.endsWith('.perf.ts')) return false
-  return !rel.split('/').includes('__tests__')
-}
-
 /** 自证：内存里的一份小程序（noLib，免加载 lib.d.ts），正例 / 反例各覆盖一次 */
 export function deadNullishSelfTest() {
   const failures = []
@@ -139,14 +133,12 @@ export function deadNullishSelfTest() {
   return { ok: failures.length === 0, failures }
 }
 
-/** 全 src 扫描（判据 28） */
+/** 全 src 扫描（判据 28；program 与扫描面和判据 29 共用） */
 export function scanDeadNullish(root = ROOT) {
-  const cfgPath = join(root, 'tsconfig.app.json')
   const selfTest = deadNullishSelfTest()
-  if (!existsSync(cfgPath)) return { count: 0, sites: [], scanned: 0, selfTest, belowFloor: true, ok: false }
-  const parsed = ts.getParsedCommandLineOfConfigFile(cfgPath, {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: (d) => { throw new Error(String(d.messageText)) } })
-  const program = ts.createProgram({ rootNames: parsed.fileNames.filter((f) => f.endsWith('.ts')), options: { ...parsed.options, noEmit: true } })
-  const { sites, scanned } = findDeadNullish(program, { root, isScanned: isDeadNullishScanned })
+  const program = appTsProgram(root)
+  if (!program) return { count: 0, sites: [], scanned: 0, selfTest, belowFloor: true, ok: false }
+  const { sites, scanned } = findDeadNullish(program, { root, isScanned: isAppTsScanned })
   const belowFloor = scanned < DEAD_NULLISH_MIN_FILES
   return { count: sites.length, sites, scanned, selfTest, belowFloor,
     ok: sites.length === DEAD_NULLISH_BASELINE && selfTest.ok && !belowFloor }

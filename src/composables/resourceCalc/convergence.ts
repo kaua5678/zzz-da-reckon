@@ -9,7 +9,7 @@ import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { continuousStunCount, relaxAutoFillStep, stunBuildUpForCount } from '@/core/stunPool'
 import { probeKey, probePush } from '@/core/probeTrace'
-import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, SpecialActionBonusResult, StunPoolResult } from '@/types/resource'
+import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
@@ -41,7 +41,7 @@ import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from './feas
 import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
 import { computeParrySplit, GUARANTEE_STUN_TARGET } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
-import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
+import { calcStunAxisStack, allocateAxisWindows, type StackAxisInput } from '@/core/stunAxisStack'
 import {
   computeBossAnomalyStateTimeline,
   computeInStunAnomalyTimeline,
@@ -89,7 +89,7 @@ export function createRunCalcRound(deps: {
   resourceConfig: ComputedRef<ResourceCalcConfig | null>
   computeWindowDuration: () => number
   computeStunCoverage: (sp: Pick<StunPoolResult, 'stunCount'> | null | undefined, lostSeconds?: number) => number
-  buildStackAxes: (axes: StunAxis[]) => { actions: import('@/core/stunAxisStack').StackActionCost[]; count?: number; basicFillerSlot?: number }[]
+  buildStackAxes: (axes: StunAxis[]) => StackAxisInput[]
   expandExecutedToCounts: (executed: Record<string, { slot: number; moveId: string; count: number }>, basicFillBySlot: Record<number, number>) => Record<string, { slot: number; moveId: string; count: number }>
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
   calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number) => AnomalyPoolResult
@@ -1186,7 +1186,7 @@ export function createRunCalcRound(deps: {
       matchedPlanName: opts?.forceNoAxis ? null : planName,
       interactionTopUp: interactionTopUpNext,
       parrySplit: parrySplitNext,
-      specialActionBonus: specialActionBonusRound as SpecialActionBonusResult,
+      specialActionBonus: specialActionBonusRound,
       decibelGuarantee: {
         active: decibelParryActive,
         parry: decibelParryActive ? prevDecibelParry : 0,

@@ -36,7 +36,7 @@
  */
 import { AGENT_RELEASE_NODE, A_RANK_RELEASE_SPECIAL_IDS, FREE_GIFT_S_AGENT_IDS, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
-import { runLimitedGold } from '@/composables/limitedGold'
+import { runLimitedGold, type LimitedGoldMember } from '@/composables/limitedGold'
 import { CINEMA_GOLD_FILM } from '@/data/filmEconomy'
 
 /** 危局单房间分数上限（删失点；归档实测 max = 65000） */
@@ -55,7 +55,7 @@ export interface PvRun {
   mode: string
   score: number
   authorName?: string
-  team: ReadonlyArray<{ agentId: string; mindscape?: number; phase?: number; weaponId?: string }>
+  team: ReadonlyArray<LimitedGoldMember>
 }
 
 export interface PvSeasonMeta {

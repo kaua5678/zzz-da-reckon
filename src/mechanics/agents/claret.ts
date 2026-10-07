@@ -573,7 +573,7 @@ function deriveClaretTwoStateTime(input: {
   const ledgerShare = basicAttackTime > 0 ? Math.min(1, inscriptionTime / basicAttackTime) : 0
   const setting = Number(input.inscriptionTimeShareSetting)
   const manual = Number.isFinite(setting) && setting > 0
-  const share = manual ? Math.max(0.01, Math.min(1, (setting as number) / 100)) : ledgerShare
+  const share = manual ? Math.max(0.01, Math.min(1, setting / 100)) : ledgerShare
   const normalTime = manual ? basicAttackTime * (1 - share) : ledgerNormalTime
   const sharpnessTotal = autoPerSec * combatTime + (normalPerSec - autoPerSec) * normalTime
   return {
