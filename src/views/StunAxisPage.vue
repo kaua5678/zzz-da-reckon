@@ -52,8 +52,8 @@
         <div v-for="s in [0,1,2]" :key="s" class="sap-slot-row">
           <span class="sap-slot-name">{{ agentName(s) }}</span>
           <span v-for="act in slotMoves(s)" :key="act.key" class="sap-chip" :class="{ dim: act.remaining<=0 }"
-            @click="addToCurrentAxis(s, act.moveId, act.promoteVariant, act.sourceTag)" :title="act.label+' 剩'+act.remaining">
-            {{ act.label }} {{ act.remaining>0?'×'+act.remaining:'×0' }}
+            @click="addToCurrentAxis(s, act.moveId, act.promoteVariant, act.sourceTag)" :title="act.label+' 剩'+fmt(act.remaining, 1)">
+            {{ act.label }} ×{{ fmt(Math.max(0, act.remaining), 1) }}
           </span>
         </div>
       </div>
@@ -89,7 +89,7 @@
               @update:value="v => v && addEntryBar(ai, String(v))"
             />
             <n-button size="tiny" quaternary type="warning" @click="removeAxis(ai)">删除</n-button>
-            <span class="sap-stat">实际 ×{{ axisResult?.axisDetails?.[ai]?.times ?? '?' }} 次 · 单轮 {{ (axisResult?.axisDetails?.[ai]?.axisDuration ?? 0).toFixed(1) }}s · 窗口 {{ maxDur }}s</span>
+            <span class="sap-stat">实际 ×{{ fmt(axisResult?.axisDetails?.[ai]?.times, 1) }} 次 · 单轮 {{ (axisResult?.axisDetails?.[ai]?.axisDuration ?? 0).toFixed(1) }}s · 窗口 {{ fmt(maxDur, 1) }}s</span>
           </div>
 
           <!-- 三槽平行时间轴（合轴：各角色独立道，可拖拽 startTime） -->
@@ -101,7 +101,7 @@
               </div>
             </div>
             <div class="sap-window-bar">
-              <span class="sap-win-label">失衡窗口 {{ maxDur }}s</span>
+              <span class="sap-win-label">失衡窗口 {{ fmt(maxDur, 1) }}s</span>
             </div>
             <div v-for="s in [0,1,2]" :key="s" class="sap-lane" :style="{ top: laneTop(s) }">
               <span class="sap-lane-name">{{ agentName(s) }}</span>
@@ -172,7 +172,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:4px">
           <span v-for="el in inStunAnomalyState.elements" :key="el.element"
             style="background:var(--wa-60);padding:2px 8px;border-radius:3px">
-            {{ entryBarLabel(el.element) }} · 每窗均 {{ (el.triggerCount / Math.max(1, inStunAnomalyState.windows)).toFixed(1) }} 次 · 共 {{ el.triggerCount }} 次 · 窗均覆盖 {{ (el.avgCoverage * 100).toFixed(1) }}%
+            {{ entryBarLabel(el.element) }} · 每窗均 {{ (el.triggerCount / Math.max(1, inStunAnomalyState.windows)).toFixed(1) }} 次 · 共 {{ fmt(el.triggerCount, 1) }} 次 · 窗均覆盖 {{ (el.avgCoverage * 100).toFixed(1) }}%
           </span>
           <span v-if="inStunAnomalyState.elements.length === 0" style="color:var(--wa-350)">轴内动作未产生积蓄触发。</span>
         </div>
@@ -197,7 +197,7 @@
         <div style="border-top:1px dashed var(--wa-100);margin-top:4px;padding-top:4px;max-height:180px;overflow:auto">
           <span style="font-size:12px;font-weight:600">状态判定事件（异放/极性紊乱：元素与失衡易伤按触发时刻当前状态结算）</span>
           <div v-for="row in stateJudgedRows" :key="row.key" style="font-size:12px;color:var(--wa-650)">
-            [{{ row.type }}] {{ row.agentName }} · {{ row.name }} → {{ entryBarLabel(row.element) }} ×{{ row.count }}（{{ fmt(row.totalDamage, 0) }} 伤害）
+            [{{ row.type }}] {{ row.agentName }} · {{ row.name }} → {{ entryBarLabel(row.element) }} ×{{ fmt(row.count, 1) }}（{{ fmt(row.totalDamage, 0) }} 伤害）
           </div>
           <div v-if="stateJudgedRows.length === 0" style="font-size:12px;color:var(--wa-350)">
             当前配置没有状态判定类事件产出（异放需要命中异常目标；极性紊乱需要跨元素替换）。
@@ -216,7 +216,7 @@
         <div class="sap-stat-row">
           <span>轴内失衡 {{ fmt(axisResult.totalInAxisStun,1) }}</span>
           <span>失衡次数 {{ axisResult.stunCount }} 次</span>
-          <span>轴轮数 {{ axisResult.totalAxisRounds }} 轮</span>
+          <span>轴轮数 {{ fmt(axisResult.totalAxisRounds, 1) }} 轮</span>
           <span>覆盖率 {{ (stunCoverage*100).toFixed(1) }}%</span>
         </div>
         <div v-if="axisResult.globalWarnings.length" style="margin-top:6px">
@@ -224,8 +224,8 @@
         </div>
         <div v-if="stack" style="margin-top:8px; border-top:1px dashed var(--wa-80); padding-top:6px">
           <div class="sap-stat-row">
-            <span>轴内闪能消耗 {{ stack.energyUsed }} / {{ stack.totalEnergy }}</span>
-            <span>喧响消耗 {{ stack.decibelUsed }} / {{ stack.totalDecibel }}</span>
+            <span>轴内闪能消耗 {{ fmt(stack.energyUsed, 1) }} / {{ fmt(stack.totalEnergy, 1) }}</span>
+            <span>喧响消耗 {{ fmt(stack.decibelUsed, 1) }} / {{ fmt(stack.totalDecibel, 1) }}</span>
             <span>实际窗口 {{ stack.windowsUsed }} / {{ stack.windowsUsed + stack.skipped.filter(s=>s.reason==='time').length }}</span>
           </div>
           <div v-for="(w,i) in stackWarnings" :key="i" class="sap-warn">{{ w }}</div>
@@ -566,8 +566,8 @@ const stackWarnings = computed(() => {
   const sk = stack.value?.skipped ?? []
   return sk.map(s => {
     const name = moveLabel(s.moveId) || s.moveId
-    if (s.reason === 'energy') return `闪能不足：${agentName(s.slot)}·${name} 超支，仍按固定轴计入（共消耗 ${stack.value!.energyUsed}/${stack.value!.totalEnergy}）`
-    if (s.reason === 'decibel') return `喧响不足：${agentName(s.slot)}·${name} 超支，仍按固定轴计入（共消耗 ${stack.value!.decibelUsed}/${stack.value!.totalDecibel}）`
+    if (s.reason === 'energy') return `闪能不足：${agentName(s.slot)}·${name} 超支，仍按固定轴计入（共消耗 ${fmt(stack.value!.energyUsed, 1)}/${fmt(stack.value!.totalEnergy, 1)}）`
+    if (s.reason === 'decibel') return `喧响不足：${agentName(s.slot)}·${name} 超支，仍按固定轴计入（共消耗 ${fmt(stack.value!.decibelUsed, 1)}/${fmt(stack.value!.totalDecibel, 1)}）`
     return `超时截断：${agentName(s.slot)}·${name} 超出失衡窗口，该动作被舍弃`
   })
 })

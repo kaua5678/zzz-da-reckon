@@ -471,7 +471,7 @@
                 <tr v-for="event in anomalyEventRows" :key="event.id">
                   <td class="event-name">{{ event.label }}</td>
                   <td>{{ event.source }}</td>
-                  <td class="event-count">{{ event.count }}</td>
+                  <td class="event-count">{{ fmt(event.count, 1) }}</td>
                   <td class="event-formula">
                     <div>{{ event.formula }}</div>
                     <div v-if="event.note" class="event-note">{{ event.note }}</div>
@@ -490,22 +490,22 @@
           </template>
           <div class="pool-summary-body">
             <div class="pool-stat">
-              <span class="pool-stat-label">弹刀 ({{ sumOf(specialActionBonus.perSlotParry) }}次)</span>
+              <span class="pool-stat-label">弹刀 ({{ fmt(sumOf(specialActionBonus.perSlotParry), 1) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.parry) }}</span>
               <span class="pool-stat-detail">{{ unitPriceText(PARRY_DECIBEL_BONUS) }}</span>
             </div>
             <div class="pool-stat">
-              <span class="pool-stat-label">连携 ({{ sumOf(specialActionBonus.perSlotChain) }}次)</span>
+              <span class="pool-stat-label">连携 ({{ fmt(sumOf(specialActionBonus.perSlotChain), 1) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.chain) }}</span>
               <span class="pool-stat-detail">{{ unitPriceText(CHAIN_DECIBEL_BONUS) }}</span>
             </div>
             <div class="pool-stat">
-              <span class="pool-stat-label">闪避反击 ({{ sumOf(specialActionBonus.perSlotDodgeCounter) }}次)</span>
+              <span class="pool-stat-label">闪避反击 ({{ fmt(sumOf(specialActionBonus.perSlotDodgeCounter), 1) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.dodgeCounter) }}</span>
               <span class="pool-stat-detail">{{ unitPriceText(DODGE_COUNTER_DECIBEL_BONUS) }}</span>
             </div>
             <div class="pool-stat">
-              <span class="pool-stat-label">快速支援 ({{ sumOf(specialActionBonus.perSlotQuickAssist) }}次)</span>
+              <span class="pool-stat-label">快速支援 ({{ fmt(sumOf(specialActionBonus.perSlotQuickAssist), 1) }}次)</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.quickAssist) }}</span>
               <span class="pool-stat-detail">{{ unitPriceText(QUICK_ASSIST_DECIBEL_BONUS) }}</span>
             </div>
@@ -546,7 +546,7 @@
             <span>{{ fmt(row.stun, 0) }} · {{ row.stunPct.toFixed(1) }}%</span>
             <span>{{ fmt(row.energy, 1) }}</span>
             <span>{{ fmt(row.decibel, 1) }}</span>
-            <span>{{ row.exSpecialCount }} / {{ row.ultimateCount }}</span>
+            <span>{{ fmt(row.exSpecialCount, 1) }} / {{ fmt(row.ultimateCount, 1) }}</span>
           </div>
         </div>
       </n-card>

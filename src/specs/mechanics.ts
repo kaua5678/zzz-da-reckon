@@ -15,6 +15,7 @@ import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { applySpecAttributeConversions } from './runtime'
 import { computeSpecResources, type SpecResourceResult } from './resources'
 import { readCfgField } from './cfgField'
+import { fmt } from '@/utils/format'
 import type { AgentMechanicSpec, EventSpec, ResourceRuleSpec } from './types'
 
 export interface SpecEventCounts {
@@ -188,17 +189,17 @@ export function specToMechanicModule(spec: AgentMechanicSpec): AgentMechanicModu
           id: resource.id,
           title: `${spec.name}·${resource.name}`,
           summary: r
-            ? `初始 ${r.initialValue} · 获取 ${r.totalGain} · 消耗 ${Object.values(r.spendCosts).reduce((a, b) => a + b, 0)} · 剩余 ${r.remaining}`
+            ? `初始 ${fmt(r.initialValue)} · 获取 ${fmt(r.totalGain)} · 消耗 ${fmt(Object.values(r.spendCosts).reduce((a, b) => a + b, 0))} · 剩余 ${fmt(r.remaining)}`
             : `初始 ${resource.initialValue ?? 0}`,
           rows: [
             ...resource.gainRules.map(rule => ({
               label: '获取',
-              value: r ? String(r.gains[rule.id ?? ''] ?? 0) : String(rule.amount ?? ''),
+              value: r ? fmt(r.gains[rule.id ?? ''] ?? 0) : String(rule.amount ?? ''),
               detail: rule.formula ?? rule.trigger,
             })),
             ...resource.spendRules.map(rule => ({
               label: '消耗',
-              value: r ? String(r.spendCounts[rule.id ?? ''] ?? 0) : String(rule.cost ?? ''),
+              value: r ? fmt(r.spendCounts[rule.id ?? ''] ?? 0, 1) : String(rule.cost ?? ''),
               detail: rule.result ?? rule.trigger,
             })),
           ],

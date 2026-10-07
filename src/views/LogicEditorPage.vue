@@ -164,7 +164,7 @@
                     <td><n-switch v-model:value="rule.enabled" size="small" /></td>
                     <td>
                       <span v-if="fusionPreview(rule)" class="preview-value">
-                        {{ fusionPreview(rule)?.base }} × {{ rule.multiplier }} = {{ fusionPreview(rule)?.result }}
+                        {{ fmt(fusionPreview(rule)?.base) }} × {{ fmt(rule.multiplier, 4) }} = {{ fmt(fusionPreview(rule)?.result) }}
                       </span>
                       <span v-else class="muted">-</span>
                     </td>
@@ -204,7 +204,7 @@ import { useLogicEditorStore } from '@/stores/logicEditor'
 import { logicEditorStateToSpecs } from '@/logicEditor/toSpec'
 import { parseLogicObjectProperties } from '@/logicEditor/validation'
 import { STAT_META } from '@/utils/statMeta'
-import { localized } from '@/utils/format'
+import { fmt, localized } from '@/utils/format'
 import type { LogicObject, ObjectNature, RowFusionRule } from '@/logicEditor/types'
 import type { SkillMove } from '@/types/catalog'
 

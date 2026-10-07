@@ -198,7 +198,7 @@ export function computeYidhariHpSource(
     exHealMissingHpPct: safeMissingHpPct,
     decibelPerHpPct,
     burnDecibel,
-    note: `总烧血 ${burnPct.toFixed(1)}%（开局场外 75% + 回血 ${hpHealPct.toFixed(1)}%）；蓄力循环 ${cycles} 次；极寒重碾 失衡内${inStunExCount} + 非失衡${outStunExCount}。`,
+    note: `总烧血 ${burnPct.toFixed(1)}%（开局场外 75% + 回血 ${hpHealPct.toFixed(1)}%）；蓄力循环 ${cycles} 次；极寒重碾 失衡内${fmt(inStunExCount, 1)} + 非失衡${fmt(outStunExCount, 1)}。`,
   }
 }
 
@@ -337,12 +337,12 @@ function buildYidhariResourceSections({ result }: AgentResourceSectionsInput) {
   return [{
     id: 'yidhari-hp-burn',
     title: '伊德海莉·生命值/极寒重碾',
-    summary: `烧血 ${fmt(source.hpBurnPct, 1)}% → 喧响 +${fmt(source.burnDecibel, 1)} · 极寒重碾 失衡内${source.inStunExCount}/非失衡${source.outStunExCount}`,
+    summary: `烧血 ${fmt(source.hpBurnPct, 1)}% → 喧响 +${fmt(source.burnDecibel, 1)} · 极寒重碾 失衡内${fmt(source.inStunExCount, 1)}/非失衡${fmt(source.outStunExCount, 1)}`,
     rows: [
       { label: '蓄力循环', value: `${source.chargeCycles} 次`, detail: `蓄力1s烧血 → 霜寒拥覆#3 → 碎惘沉击#4×1.3` },
       { label: '蓄力烧血', value: `${fmt(source.hpBurnPct, 1)}%`, detail: `${fmt(source.chargedAttackSeconds, 2)}s × ${source.hpBurnPctPerSecond}%/s` },
-      { label: '极寒重碾(失衡内)', value: `${source.inStunExCount} 次`, detail: `每次失衡 ${source.exPerStun} 次 × 失衡次数` },
-      { label: '极寒重碾(非失衡)', value: `${source.outStunExCount} 次`, detail: `每次回 15 闪能（溯寒后）` },
+      { label: '极寒重碾(失衡内)', value: `${fmt(source.inStunExCount, 1)} 次`, detail: `每次失衡 ${source.exPerStun} 次 × 失衡次数` },
+      { label: '极寒重碾(非失衡)', value: `${fmt(source.outStunExCount, 1)} 次`, detail: `每次回 15 闪能（溯寒后）` },
       { label: '强化特殊技回血', value: `+${fmt(source.hpHealPct, 1)}%`, detail: `强特 ${fmt(source.exHealMissingHpPct * 100, 0)}%已损×33%×次数 + 碎惘沉击 10%×循环` },
       { label: '烧血喧响', value: `+${fmt(source.burnDecibel, 1)}`, detail: `每1%生命值 ${source.decibelPerHpPct} 点喧响` },
     ],

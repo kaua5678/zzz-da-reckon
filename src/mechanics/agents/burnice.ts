@@ -421,7 +421,7 @@ function buildBurniceResourceSections({ result }: AgentResourceSectionsInput) {
     {
       id: 'burnice-ex',
       title: '柏妮思强特（固定次数 × 可调时长）',
-      summary: `单喷 × ${source.singleCastCount}（${fmt(source.singleSpraySeconds)}s）· 双喷 × ${source.doubleCastCount}（${fmt(source.doubleSpraySeconds)}s）`,
+      summary: `单喷 × ${fmt(source.singleCastCount, 1)}（${fmt(source.singleSpraySeconds)}s）· 双喷 × ${fmt(source.doubleCastCount, 1)}（${fmt(source.doubleSpraySeconds)}s）`,
       rows: [
         { label: '单喷单次', value: `${fmt(source.singleCastEnergy)}能 / ${fmt(source.singleCastTime)}s`, detail: `${fmt(source.singleSustainedMultiplier)}%持续 + ${fmt(source.singleExplosionMultiplier)}%爆炸` },
         { label: '双喷单次', value: `${fmt(source.doubleCastEnergy)}能 / ${fmt(source.doubleCastTime)}s`, detail: `${fmt(source.doubleSustainedMultiplier)}%持续 + ${fmt(source.doubleExplosionMultiplier)}%爆炸` },

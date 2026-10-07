@@ -18,6 +18,7 @@
 
 import type { StunAxis, StunAxisResult } from '@/types/resource'
 import { allocateAxisWindows } from './stunAxisStack'
+import { fmt } from '@/utils/format'
 
 /** 全局资源池：`${slot}:${moveId}` → 全局可用次数/秒（basic='basic'→秒，其他→次数） */
 export interface GlobalActionPool {
@@ -104,7 +105,7 @@ export function calcStunAxis(input: CalcStunAxisInput): StunAxisResult {
       const effective = totalNeeded
       const overuse = isAxisSpecial ? 0 : Math.max(0, totalNeeded - remaining)
       if (overuse > 0) {
-        warnings.push(`槽${action.slot + 1} ${action.moveId}: 超额 ${overuse}（需${totalNeeded}，剩${remaining}），固定轴仍按 ${totalNeeded} 计入`)
+        warnings.push(`槽${action.slot + 1} ${action.moveId}: 超额 ${fmt(overuse, 1)}（需${fmt(totalNeeded, 1)}，剩${fmt(remaining, 1)}），固定轴仍按 ${fmt(totalNeeded, 1)} 计入`)
       }
 
       consumed[key] = alreadyConsumed + effective

@@ -143,8 +143,8 @@
         </div>
       </div>
       <div class="usage-bar">
-        <span>强特 {{ result.exSpecialCount }} 次</span>
-        <span class="usage-detail">耗能 {{ result.exSpecialEnergyConsume }}/次 × {{ result.exSpecialCount }} = {{ result.exSpecialEnergyConsume * result.exSpecialCount }} 点</span>
+        <span>强特 {{ fmt(result.exSpecialCount, 1) }} 次</span>
+        <span class="usage-detail">耗能 {{ fmt(result.exSpecialEnergyConsume) }}/次 × {{ fmt(result.exSpecialCount, 1) }} = {{ fmt(result.exSpecialEnergyConsume * result.exSpecialCount) }} 点</span>
       </div>
     </div>
 
@@ -197,8 +197,8 @@
         </div>
       </div>
       <div class="usage-bar">
-        <span>终结技 {{ result.ultimateCount }} 次</span>
-        <span class="usage-detail">消耗 {{ result.ultimateCost }}/次 × {{ result.ultimateCount }} = {{ result.ultimateCost * result.ultimateCount }} 点</span>
+        <span>终结技 {{ fmt(result.ultimateCount, 1) }} 次</span>
+        <span class="usage-detail">消耗 {{ fmt(result.ultimateCost) }}/次 × {{ fmt(result.ultimateCount, 1) }} = {{ fmt(result.ultimateCost * result.ultimateCount) }} 点</span>
       </div>
     </div>
 
@@ -256,7 +256,7 @@
         <div v-for="contrib in stunContributions" :key="contrib.moveId + contrib.slot" class="breakdown-row">
           <span class="bd-label">{{ contrib.moveName }}</span>
           <span class="bd-value">{{ fmt(contrib.effectiveStun, 1) }}</span>
-          <span class="bd-detail">{{ contrib.count }}次 × {{ fmt(contrib.perHitStun, 1) }}/次<template v-if="contrib.inAxisStun > 0">（轴内无效 −{{ fmt(contrib.inAxisStun, 1) }}）</template></span>
+          <span class="bd-detail">{{ fmt(contrib.count, 1) }}次 × {{ fmt(contrib.perHitStun, 1) }}/次<template v-if="contrib.inAxisStun > 0">（轴内无效 −{{ fmt(contrib.inAxisStun, 1) }}）</template></span>
         </div>
       </div>
       <div class="usage-bar">
@@ -269,7 +269,7 @@
     <div v-if="anomalyProgress.length > 0" class="section">
       <div class="section-title">
         积蓄池
-        <span class="section-total">{{ anomalyMyTotal }} 积蓄值</span>
+        <span class="section-total">{{ fmt(anomalyMyTotal, 1) }} 积蓄值</span>
       </div>
       <div class="breakdown-list">
         <div v-for="prog in anomalyProgress" :key="prog.element" class="breakdown-row">
@@ -484,7 +484,7 @@ function executionValue(row: SkillExecution, key: ExecAmountKey, totalKey?: Exec
   const single = (row[key] as number | undefined) ?? 0
   const total = totalKey ? (row[totalKey] as number | undefined) ?? 0 : 0
   if (single <= 0 && total <= 0) return '-'
-  if (totalKey && row.count > 0) return `${fmt(single, 1)} × ${row.count} = ${fmt(total, 1)}`
+  if (totalKey && row.count > 0) return `${fmt(single, 1)} × ${fmt(row.count, 1)} = ${fmt(total, 1)}`
   return fmt(single, 1)
 }
 
@@ -495,9 +495,9 @@ function renderCount(row: SkillExecution) {
   const cc = agentResultCardCorrosion(props.result.agentId) // CC-66
   if (cc && row.moveId === cc.broadCycloneMoveId && corrosion?.broadCycloneCount) {
     const extra = corrosion.broadCycloneCount * 10
-    return h('span', { title: `${base}（风华触发） + ${extra}（风蚀替换广域）` }, `${base + extra}`)
+    return h('span', { title: `${fmt(base, 1)}（风华触发） + ${fmt(extra, 1)}（风蚀替换广域）` }, fmt(base + extra, 1))
   }
-  return String(base)
+  return fmt(base, 1)
 }
 
 // 执行计划表格数据

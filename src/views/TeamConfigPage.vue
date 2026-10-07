@@ -391,7 +391,7 @@
                             style="flex: 1"
                             @update:value="v => setWEngineCoverageLinked(effect.id, v)"
                           />
-                          <span class="coverage-value">{{ effectiveWEngineCoverages[effect.id] ?? 100 }}%</span>
+                          <span class="coverage-value">{{ fmt(effectiveWEngineCoverages[effect.id] ?? 100, 1) }}%</span>
                         </div>
                       </div>
                     </div>
@@ -797,7 +797,7 @@ import { getImageUrl } from '@/utils/image'
 // CC-51 起局外面板的全局 Buff 结算已搬到 composables/outOfCombatPanel.ts（那里用 statSettlementMode，
 // 用展示口径会让同一份 Buff 在预览与引擎算出两个面板，实测 anomalyMastery 178 vs 192.4）。
 import { isPctStat, phaseStatLabel } from '@/utils/statMeta'
-import { localized } from '@/utils/format'
+import { fmt, localized } from '@/utils/format'
 import { discSetGapLabel } from '@/utils/modelingGaps'
 import { SPECIALTY_LABEL, ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 import { buildDiscEffectRows } from '@/utils/discEffectRows'

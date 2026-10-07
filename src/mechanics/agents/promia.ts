@@ -43,6 +43,7 @@ import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { fmt } from '@/utils/format'
 
 const setting = mechanicSettingReader(() => promiaMechanic.settings)
 export const PROMIA_ID = '1541'
@@ -181,9 +182,9 @@ function buildPromiaResourceSections({ result }: AgentResourceSectionsInput) {
   return [{
     id: 'promia-cycle',
     title: '普罗米娅·掌控转精通',
-    summary: `异常精通 +${cycle.totalProficiency}（掌控${cycle.anomalyMastery}）`,
+    summary: `异常精通 +${cycle.totalProficiency}（掌控${fmt(cycle.anomalyMastery, 1)}）`,
     rows: [
-      { label: '掌控转精通', value: `+${cycle.proficiencyFromMastery}`, detail: `掌控${cycle.anomalyMastery}，超${PROMIA_MASTERY_THRESHOLD}部分×${PROMIA_PROF_PER_MASTERY}` },
+      { label: '掌控转精通', value: `+${cycle.proficiencyFromMastery}`, detail: `掌控${fmt(cycle.anomalyMastery, 1)}，超${PROMIA_MASTERY_THRESHOLD}部分×${PROMIA_PROF_PER_MASTERY}` },
       { label: '影画2精通', value: `+${cycle.c2Proficiency}`, detail: '信念飘摇' },
       { label: '全队异放增伤', value: `+${cycle.teamReleaseDmg}%`, detail: '全队向，经 spec teamBuff 写入每个队员的异放增伤' },
       { label: '冰异常积蓄效率', value: `+${cycle.additionalBuildUpEff}%`, detail: cycle.additionalActive ? '额外能力已激活' : '未激活' },
