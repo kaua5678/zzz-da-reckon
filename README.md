@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（87 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（88 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -156,6 +156,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-dead-nullish-census.md` | **死兜底普查与判据 28（r723）**：TS 类型检查器判定的「左侧类型不含 null/undefined 的 `a ?? b`」871 处按类普查；cfg 袋子 19 个恒写字段改必填、引擎内部契约上 800 处删除、战斗时间单一通道（r6 §8.0 #13）；外部数据类型的信任边界豁免表（r723 为 126 处，r724 剩 59 处，§4.1）；r725 起由 JSON 类型契约（`scripts/lib/json-contract.mjs`，validate:data 按代码转型用的 TS 类型校验全部 JSON 入口）取代、豁免清零，首跑 31 处类型与数据漂移的处理见 §4.2；r726 战斗时间单一来源（函数入参的 180 缺省清零，战斗时间 ≠ 180 的探针归因见 §4.3）；r727 形状校验单一来源（预设加载器的运行时类型守卫与 validate-specs 的形状检查删除，§4.4）；r728 对象形状只由声明类型表达（类型字面量断言 43 处去掉、判据 27 加形态，§4.5）；r731 判据 28 扩到可选链 `?.`（首扫 244 处全部收口，可选链替判据 17 躲过的两处槽位下标一并修掉，§4.6）；r732 起判调用结果（普查 0 处，§4.7）；判据 28 的规则 / 自证 / 成本；测试夹具改法与不做的事 |
 | `docs/mcp-type-restatement.md` | **类型只声明一次与判据 29（r729；r732 加字面量副本）**：TS 类型检查器普查的恒等断言（`x as T` 里 x 已是 T，或 T 只多 undefined）41 处与结构副本（类型字面量与具名类型逐字段相同）14 处全部去掉，outerExit 联合起名 `OuterExit`；判据 29 的口径（只比较类型不受断言影响的表达式、按类型对象判同一、元素访问加 undefined 不报、副本门槛 3 个成员）与自证，与判据 28 共用 program；r732 判据 29 加形态 ③ 字面量副本（≥3 个成员的同一形状写了两处以上），28 组 76 处起名收口，钩子形状的名字放 typesHooks.ts（§9）；§6 的三个候选（字面量副本、死可选链、紊乱 / 乱流公式表）已由 r730–r732 收完 |
 | `docs/mcp-gold-greedy.md` | **逐金贪婪只留一份实现（r733）**：队伍对比与时间线两份逐金贪婪的差异表；共用 `composables/goldGreedy.ts#takeBestGoldStep` 的改法与保留的语义（候选顺序、并列取先、收敛过滤留在调用方）；顺带修的「自动下位限定槽位重复买同一把」及其可达性；改前 / 改后探针；不做清单 |
+| `docs/mcp-limited-gold.md` | **限定金数只算一处（r734）**：归档 `memberLimitedGold` 与计算器侧 teamGoldOf / baseGoldOf / baseGoldOfTeam 四份公式的对照；收成 teamGoldOf 逐槽交给 memberLimitedGold 的改法（空槽不计、store 音擎别名解析留在 teamGoldOf）；删 isLimitedAgent 别名；不可能输入上的差异；改前 / 改后探针与 goldSteps 普查；不做清单；下一轮候选（下位音擎择优两份实现） |
 | `docs/mcp-liuyin-promote-source.md` | **琉音转大次数唯一来源（W21 阻塞项 lead 设计）**：同轮四读数（floor / 计划值结转 / 池不动点 / 轴声明）的证据表、planned≠pool 的口径根因、单源 = 答案层 `promote` 滞后注入的通道设计、轴模式闸门（待用户）、否决记录与证伪闸门；拆卡 W25/W26 |
 | `docs/mcp-r22d1-batch12-field-census.md` | **R22-D1 批 1-2 裁决不做 + 核心角色字段普查计划（handoff）**：批 1-2（billy/yeshuguang 终局旗标并入通用骨架）判不做理由、核心 `CharacterOperationConfig` 角色字段 census 方案（字段→写入方/读取方） |
 | `docs/mcp-cinema-uplift-multi-metric.md` | **命座提升率多指标栏（R1）口径决策与交接**：失衡栏为什么用 `totalStunBuildUp` 而非被 `stunCountLock` 锁死的 `stunCount`（3 队 × 6 级引擎探针实测表）、方案 A 否决理由、显示口径与「显示位四舍五入为 0 即 `—`」的共同判据、七道闸门 + 两次负控 + 实机 DOM 读回证据、令牌棘轮与守卫 hint 漂移发现、三个回退点 |
@@ -169,6 +170,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/proposals/pull-value-optimization.md` | **抽卡规划价值：思想与口径**（部分落地）：价值如何定义与量纲、期望值口径（用户裁决 2026-09-01，模拟抽卡已删）；本文只谈"怎么想"，实施事实以 `pullValue.ts` / `pullPlannerEngine.ts` / `data/filmEconomy.ts` 为准 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（87 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（88 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。
