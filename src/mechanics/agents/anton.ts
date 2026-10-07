@@ -28,7 +28,7 @@ export const ANTON_ADDITIONAL_SHOCK_CRIT_DIVISOR = 4
 
 // ⚠⚠ **R62 订正：本文件原有 `applyPanel` 钩子，只做「3/5 命技能等级 +2/+4」——那是第二写者 ⇒ 双计。**
 //
-// 通用规则 `panelPhases.ts#computePanelPhases:658`（及 `:711` 的第二站点）已**无条件**给所有角色写
+// 通用规则 `panelPhases.ts#applyDefaultCinemaSkillLevelBonus`（`computePanelPhases` 与 `computeEntrySnapshotPanel` 两处调用）已**无条件**给所有角色写
 // `panel.skillLevelBonus = cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0`；唯一豁免条件
 // `agentHasCinemaSkillLevelBuff(agent)` **只查 catalog `combatBuffs.cinemaBuffs[].buff.effects[]`
 // 里有没有 `stat === 'skillLevelBonus'`**。安东 catalog 的 C3/C5 两条 cinemaBuffs 的
@@ -54,7 +54,7 @@ export const ANTON_ADDITIONAL_SHOCK_CRIT_DIVISOR = 4
 // 模块不重复实现」）。**不是**给 catalog 补 `effects` —— 那会让 `collectAgentBuffs` 的 `applyStat`
 // 通道再写一遍，仍然是两个写者。
 //
-// @fact agent:1111/影画3-5 口径: 影画3「技能等级+2」与影画5「技能等级+2」**只由通用规则** `computePanelPhases` 写入 `panel.skillLevelBonus`（c3=2 / c5=4 ⇒ 技能等级 14/16，上界 16）；`anton.ts` **不得**再写该字段（曾双计致 c3=4 / c5=8、技能等级 20 超上界，R62 订正） | 据 raw talent.3/talent.5 desc 逐字「技能等级+2」@2026-09-20 + 用户确认口径@2026-08·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/cinemaAxisBatchR62.test.ts | 锚 src/mechanics/agents/anton.ts#ANTON_ID | 信 确认
+// @fact agent:1111/影画3-5 口径: 影画3「技能等级+2」与影画5「技能等级+2」**只由通用规则** `applyDefaultCinemaSkillLevelBonus`（`computePanelPhases` / `computeEntrySnapshotPanel` 共用）写入 `panel.skillLevelBonus`（c3=2 / c5=4 ⇒ 技能等级 14/16，上界 16）；`anton.ts` **不得**再写该字段（曾双计致 c3=4 / c5=8、技能等级 20 超上界，R62 订正） | 据 raw talent.3/talent.5 desc 逐字「技能等级+2」@2026-09-20 + 用户确认口径@2026-08·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/cinemaAxisBatchR62.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#applyDefaultCinemaSkillLevelBonus + src/composables/resourceCalc/panelPhases.ts#agentHasCinemaSkillLevelBuff + src/mechanics/agents/anton.ts#antonMechanic | 信 确认
 // ⟳复核: 跑 `npx vitest run cinemaAxisBatchR62` —— 若 c3/c5 的 skillLevelBonus 又变回 4/8（或 `agentHasCinemaSkillLevelBuff` 被改成认「描述文本」而安东 catalog 补了 effects），说明双计回来了 | 到期 2027-03-31
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {

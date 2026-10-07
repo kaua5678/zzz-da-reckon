@@ -70,7 +70,7 @@ const C1_INTERVAL_SECONDS = 50 // 影画1：50s 最多触发一次
  * 完全不进计算（四臂正交实测 A==B、C==D，见 potentialAxisBatchB.test.ts「R59 · 1041」）。
  * raw 子句：「潜能（炽焰行歌 II）潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升16%。」
  */
-// @fact agent:1041/潜能觉醒暴伤 口径: 潜能觉醒·绝焰按 `potentialLevel` 取档 II~VI = 16/24/32/40/48%（[额外能力：燎原] 门控），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1041.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/potentialAxisBatchB.test.ts | 锚 src/mechanics/agents/soldier11.ts#SOLDIER11_POTENTIAL_CRIT_DMG | 信 确认
+// @fact agent:1041/潜能觉醒暴伤 口径: 潜能觉醒·绝焰按 `potentialLevel` 取档 II~VI = 16/24/32/40/48%（[额外能力：燎原] 门控），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1041.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/potentialAxisBatchB.test.ts | 锚 src/mechanics/agents/soldier11.ts#SOLDIER11_POTENTIAL_CRIT_DMG + src/mechanics/agents/soldier11.ts#applySoldier11Panel | 信 确认
 // ⟳复核: nanoka 若刷新 1041 的 potential_detail，逐档对账 II~VI 是否仍为 16/24/32/40/48 | 到期 2027-03-31
 export const SOLDIER11_POTENTIAL_CRIT_DMG = [0, 0, 16, 24, 32, 40, 48] as const
 

@@ -71,7 +71,7 @@ export const TIME_BUDGET_TOLERANCE_SECONDS = 1
  * 复核：1s 门槛下 ratchet 绝对不变量（stun>0/outerExit≠maxIter）/runArchiveDeploy（116k 样本）/
  * allAgentsSweep（C6>C0 等不变量）/yidhariInteractionGrid 全绿，旧盆不复现（实测数字见
  * underfillRefund.test.ts 与 docs 坑19① 否决记录）。
- * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**无排除队**——1591 一族 2026-09-10 解除（该族试探现进入即被 fits 门拒，开关零差异），1051/1531 已随热启动规范种子修复放回）；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08·复核@2026-09-10（能量行级 Σ 后全链零差异）·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS | 信 确认
+ * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**无排除队**——1591 一族 2026-09-10 解除（该族试探现进入即被 fits 门拒，开关零差异），1051/1531 已随热启动规范种子修复放回）；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08·复核@2026-09-10（能量行级 Σ 后全链零差异）·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS + src/core/resource/underfillProbe.ts#runUnderfillProbe | 信 确认
  */
 export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
 
@@ -86,7 +86,7 @@ export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
  * 取 32 = 实测需求（≈25）留一倍余量；代价只落在本来就要跑满的队（127 预设里 8 轮顶格 6 队，
  * 其余 121 队 ≤5 轮），且停滞判据仍在，真发散队照旧 3 轮停。
  *
- * @fact engine:折叠环上限 口径: 折叠环轮数上限缺省 32（`TIME_FOLD_MAX_PASSES`，`maxTimeIterations` 可覆写）；判据 `maxExcess ≤ 1e-3` **不放宽**——8 轮上限曾是 tbConv=false 的唯一来源（3 队尾巴全部在几何收敛，21 轮内可达标）。实测 3→0 队、留白 189.3s/超预算 2.2s 不变、棘轮零变差、golden 15 条 delta/5 队（billy 逐槽 nec ±0.35s 守恒再分配 + 1591 系 ≤3ms） | 据 用户裁决@2026-09-10「重排就重排，以长期利益为主」·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/convergenceProbe.test.ts + src/composables/__tests__/timeGolden.test.ts | 锚 src/core/resource.ts#TIME_FOLD_MAX_PASSES | 信 确认
+ * @fact engine:折叠环上限 口径: 折叠环轮数上限缺省 32（`TIME_FOLD_MAX_PASSES`，`maxTimeIterations` 可覆写）；判据 `maxExcess ≤ 1e-3` **不放宽**——8 轮上限曾是 tbConv=false 的唯一来源（3 队尾巴全部在几何收敛，21 轮内可达标）。实测 3→0 队、留白 189.3s/超预算 2.2s 不变、棘轮零变差、golden 15 条 delta/5 队（billy 逐槽 nec ±0.35s 守恒再分配 + 1591 系 ≤3ms） | 据 用户裁决@2026-09-10「重排就重排，以长期利益为主」·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/convergenceProbe.test.ts + src/composables/__tests__/timeGolden.test.ts | 锚 src/core/resource.ts#TIME_FOLD_MAX_PASSES + src/core/resource/timeTruncation.ts#TIME_FOLD_CONVERGENCE_SECONDS | 信 确认
  */
 export const TIME_FOLD_MAX_PASSES = 32
 
@@ -111,7 +111,7 @@ export const TIME_FOLD_MAX_PASSES = 32
  * `integerCycleStop` 后终局结果逐字段零差、预算耗尽 0 次。当年反对「取环规范成员」的反例（单人 1431 c6：ex 6↔10 /
  * ult 1↔2 宽 2-循环 ⇒ 留白 0 → 29.0s）针对的是当时的规范成员 = JSON 字典序最小，不是可行性停点；改后 1431 c6 留白仍为 0。
  * 非收敛轨迹的真解仍是 DEBT「全局实数化收敛重构」。
- * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100）；判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环不论第几轮检出 ⇒ `integerCycleStop`；耗尽 ⇒ 末轮状态——20 轮上限曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」）·复核@2026-09-25·锚未变@2026-09-27·CC-327 删第 20 轮回落@2026-09-30（414 例探针：该路径 74 次停点换 `integerCycleStop` 终局逐字段零差，耗尽 0 次，单人 1431 c6 留白仍 0） | 验 src/core/__tests__/floatNoiseCycle.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS | 信 确认
+ * @fact engine:内层上限 口径: 内层不动点轮数预算缺省 100（`INNER_LOOP_MAX_ITERATIONS`，`maxIterations` 可覆写；1051 队原本就 100）；判稳严格相等**不放宽**，浮点噪声环视为收敛；真整数环不论第几轮检出 ⇒ `integerCycleStop`；耗尽 ⇒ 末轮状态——20 轮上限曾是分支上 1431 三队 `converged=false` 的唯一来源（连续收缩到 ulp 级要 ≈21 轮） | 据 实测@2026-09-19 R37-J5 内层收敛专项（先例：折叠环上限 8→32 用户裁决@2026-09-10「以长期利益为主」）·复核@2026-09-25·锚未变@2026-09-27·CC-327 删第 20 轮回落@2026-09-30（414 例探针：该路径 74 次停点换 `integerCycleStop` 终局逐字段零差，耗尽 0 次，单人 1431 c6 留白仍 0） | 验 src/core/__tests__/floatNoiseCycle.test.ts | 锚 src/core/resource.ts#INNER_LOOP_MAX_ITERATIONS + src/core/resource/innerLoop.ts#runInnerLoop | 信 确认
  * ⟳复核: 「全局实数化收敛重构」（DEBT_REGISTRY）落地或内层停点语义再动时，复核「104 预设 converged=false 队数（2026-09-30 = 0；非收敛只剩 18 例单人）」+「单人 1431 c6 留白仍为 0」（floatNoiseCycle.test + timeGolden） | 到期 2026-12-31
  */
 export const INNER_LOOP_MAX_ITERATIONS = 100
