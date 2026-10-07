@@ -176,7 +176,7 @@
 | 结构等价但不同一的 2 处断言（statMeta:177、agentMechanicView:300） | 为了动态取键换成 `Record`，有用 | 无 |
 | 拓宽 13 处、收窄 49 处 | 拓宽是安全的；收窄时 TS 会检查两边可比，多数是 Object.keys、split 成元组、先判空再去掉 undefined | 无 |
 | 类型字面量之间的副本 28 组（至少 3 个成员、逐字段相同、不等于任何具名类型） | 要给每组起名，本轮先收「已有名字却不用」的。最值得收的几类：①mechanics 钩子的入参 / 返回类型被角色模块抄写，`{enemyDefReduction, enemyResReduction, note}` ×4、`{element, note, source}` ×4，types.ts 的 1095 / 1253 / 1275 行各与一个模块同形；②`{slot, moveId, count}` ×7，分布在 stunAxisStack / convergence / roundInputs；③`{block, dodge, dual, parry}` ×4；④teamCompare 的候选步骤 `{slot, kind, value, label}` ×3 | 下一轮可选题：先在 types.ts 给钩子入参 / 返回类型起名，模块改为引用名字；再给判据 29 加「字面量 ≡ 字面量」形态，门槛建议「≥3 个成员且出现在 ≥2 个文件，或同一文件 ≥3 次」 |
-| 具名同形的 DisorderFormula / TurbulenceFormula | 两张表用同一个公式。真正的重复在两处计算同一公式的代码，以及两张表里重合的 tick 列（还与 STANDARD_DOT_CONFIG 的 tick 数字重合）。只合并类型名是表面功夫 | 要收就连数据一起收：tick 参数按元素建一张表，两个基础倍率各一列，配一个计算函数。数值零差用 zd 验证 |
+| 具名同形的 DisorderFormula / TurbulenceFormula | 两张表用同一个公式。真正的重复在两处计算同一公式的代码，以及两张表里重合的 tick 列（还与 STANDARD_DOT_CONFIG 的 tick 数字重合）。只合并类型名是表面功夫 | 要收就连数据一起收：tick 参数按元素建一张表，两个基础倍率各一列，配一个计算函数。数值零差用 zd 验证。**r730 已收**（`6cd14032`）：一跳表 + 两张基础倍率表 + 两个计算函数，zd 零差，见 mcp-calc-core-architecture.md CC-512 |
 | 死可选链：`a?.b` 里 a 的类型不含 null / undefined。src 非测试 .ts 共 321 处（91 个文件），按链头分：声明过的属性 105、标识符 94、元素访问 122 | 道理与判据 28 相同（把必填说成可缺）。但元素访问那 122 处运行时真可能缺值；标识符里也有一部分来自 `arr[i]`，同样可能缺。需要像 r723 那样逐类判断 | 下一轮可选题：判据 28 扩展到 `?.`，先收「链头是声明过的必填属性」的 105 处 |
 | `.vue` | 需要 vue-tsc 的类型信息 | 与判据 28 相同 |
 
