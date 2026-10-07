@@ -187,12 +187,12 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 术语 | 口径 |
 |---|---|
 | 风化 | 打满风异常积蓄触发：**一次性**风化伤害（基础倍率 1250%）+ 施加 30s 风化状态（期间风属性直接攻击伤害提升）；**无逐跳 DoT** |
-| 乱流 | 风化 + 其他属性异常叠加触发：范围伤害，继承非风属性异常质量；风化状态下**不触发常规紊乱**（3s CD）；**有风属性时 DoT 归零**（被乱流吸收） |
+| 乱流 | 风化 + 其他属性异常叠加触发：范围伤害，继承非风属性异常质量；风化状态下**不触发常规紊乱**（3s CD）；风化窗口内 **DoT / 冻结不生效**（被乱流吸收），按风化覆盖率拆窗、非风窗口照常 |
 | 浸染 | 风化状态下首次受其他属性伤害触发的染色直伤（+10% 独立乘区） |
 | 风蚀（维琳娜专属资源） | spec `velina_corrosion`（0–2 层状态机）；2 命「从风化获得」按近似比例滑块接入（默认 1.0） |
 
-- @fact 风化状态 口径: 风化 = 一次性伤害 1250% + 30s 状态（无逐跳 DoT）；有风属性时 DoT 归零、走乱流；持续时间唯一事实源 ANOMALY_DURATION（风化 30s） | 据 mechanism-reference 异常章@2026-09-15·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/core/__tests__/anomalyPool.test.ts::splits non-wind anomalies into disorder window and turbulence window | 锚 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION | 信 高
-  ⟳复核: 游戏内实测一次风化单次伤害（1250%）与 30s 状态时长，确认无逐跳 DoT 与「有风属性时 DoT 归零走乱流」 | 到期 2026-12-31
+- @fact 风化状态 口径: 风化 = 一次性伤害 1250% + 30s 状态（无逐跳 DoT）；风化窗口内 DoT / 冻结不生效、非风触发走乱流，按风化覆盖率 windCoverageRate 拆窗（非风窗口照常；r713 订正旧口径「有风属性时 DoT 归零」）；持续时间唯一事实源 ANOMALY_DURATION（风化 30s） | 据 mechanism-reference 异常章@2026-09-15·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/core/__tests__/anomalyPool.test.ts::splits non-wind anomalies into disorder window and turbulence window | 锚 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION | 信 高
+  ⟳复核: 游戏内实测一次风化单次伤害（1250%）与 30s 状态时长，确认无逐跳 DoT，且风化状态期间其他属性 DoT 被乱流吸收、风化结束后照常（计算器按覆盖率拆窗） | 到期 2026-12-31
 
 ### 8.3 余火（菲欧妮专属资源）的标度口径
 
