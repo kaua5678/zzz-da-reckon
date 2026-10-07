@@ -168,9 +168,9 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
   })
 
   // 2026-09-15 arch 棘轮第 4 小簇：诺姆(1571)/青衣(1251) 的失衡次数注入从 convergence.ts 的
-  // `merged.agentId === '…'` 分支迁进模块 applyTeamConfig（读 hook 入参 stunCount/combatTime）。
+  // `merged.agentId === '…'` 分支迁进模块 applyTeamConfig（读 hook 入参 stunCount；战斗时间 r723 起读 cfg.battleTime）。
   // 判据同 T6：三类字段的消费方只有本模块 ⇒ 不需要在编排层认人。
-  it('★ 诺姆/青衣的 converge 钩子把失衡次数（与覆盖率/战斗时间）写进本槽 cfg', () => {
+  it('★ 诺姆/青衣的 converge 钩子把失衡次数（与覆盖率）写进本槽 cfg', () => {
     const mkProbe = (agentId: string) => {
       const characters = [{ agentId, slot: 0, teamStunCoverage: 0.42 } as any]
       getAgentMechanic(agentId)!.applyTeamConfig!({
@@ -184,7 +184,6 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     const norma = mkProbe('1571')
     expect(norma.normaStunCount, '诺姆失衡次数未注入').toBe(7)
     expect(norma.normaStunCoverage, '诺姆失衡覆盖率未注入（应取通用 teamStunCoverage）').toBe(0.42)
-    expect(norma.normaBattleTime, '诺姆战斗时间未注入').toBe(210)
     const qingyi = mkProbe('1251')
     expect(qingyi.qingyiStunCount, '青衣失衡次数未注入').toBe(7)
   })

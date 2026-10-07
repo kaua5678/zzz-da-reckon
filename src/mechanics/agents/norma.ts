@@ -104,7 +104,7 @@ function computeNormaSource(input: NormaSourceInput): NormaMechanicSource {
   const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const exCount = Math.max(0, Math.floor(input.exSpecialCount))
   const ultCount = Math.max(0, Math.floor(input.ultimateCount))
-  const battleTime = Math.max(0, input.battleTime || 180)
+  const battleTime = input.battleTime
   const holdSeconds = Math.max(0, Math.min(2, input.holdSeconds || 0))
 
   // 预热膛温（完整回复链，用户确认）：帽子在原地积蓄、诺姆后场不停——
@@ -299,7 +299,7 @@ function normaSourceOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput
     additionalAbilityActive: cfg.normaAdditionalAbilityActive ?? false,
     stunCount: cfg.normaStunCount ?? 0,
     stunCoverage: cfg.normaStunCoverage ?? 0,
-    battleTime: cfg.normaBattleTime ?? 180,
+    battleTime: cfg.battleTime,
     holdSeconds: resolveNormaHoldSeconds(cfg),
     extraAbilityAtkBonus: cfg.normaExtraAbilityAtkBonus ?? 0,
     techGapStunBonus: cfg.normaTechGapStunBonus ?? 0,
@@ -506,8 +506,7 @@ const settings: MechanicSetting[] = [
  * hatCount = floor(膛温/80)。C4 喧响 = hatCount × 200 × 2 由调用方按命座折算。
  */
 export function computeNormaHatToChainCount(
-  _cfg: { normaCinemaLevel?: number; normaBattleTime?: number },
-  prev: { exSpecialCount: number; ultimateCount: number; frontlineTime: number; battleTime?: number },
+  prev: { exSpecialCount: number; ultimateCount: number; frontlineTime: number; battleTime: number },
   holdSeconds = 2,
 ): number {
   // CC-333：直接复用 computeNormaSource 的膛温→连携计算，避免两处手写膛温公式再次分叉
@@ -515,7 +514,7 @@ export function computeNormaHatToChainCount(
     exSpecialCount: prev.exSpecialCount,
     ultimateCount: prev.ultimateCount,
     frontlineTime: prev.frontlineTime,
-    battleTime: prev.battleTime ?? 180,
+    battleTime: prev.battleTime,
     cinemaLevel: 0,
     additionalAbilityActive: false,
     stunCount: 0,
@@ -544,18 +543,19 @@ export const normaMechanic: AgentMechanicModule = {
   applyPanel: applyNormaPanel,
   buildCharConfig: buildNormaCharConfig,
   /**
-   * converge 阶段：把本轮失衡次数 / 覆盖率 / 战斗时间写进本槽 cfg（诺姆火力实验导弹舱与
+   * converge 阶段：把本轮失衡次数 / 覆盖率写进本槽 cfg（诺姆火力实验导弹舱与
    * 失衡内资源循环消费）。2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1571'`
-   * 分支搬入（规则 6：编排层不写角色规则）。三个字段的消费方**只有本模块**
+   * 分支搬入（规则 6：编排层不写角色规则）。两个字段的消费方**只有本模块**
    * （`config.ts:466/468` 声明，`norma.ts:299-301/478-480` 读），故 agentId 判断冗余。
    * ⚠ `stunCoverage` 取 `teamStunCoverage`（编排层对**所有**角色通用注入的同一个量），
    * 与原分支的 `provStunCoverage` 同源同值。
+   * 战斗时间不再抄私有副本（r723，r6 §8.0 #13）：原 `normaBattleTime` 只在 converge 写入、此前取 180，
+   * 现直接读 `cfg.battleTime`（buildCharConfig 恒写，与入参 `combatTime` 同源于 `configStore.enemy.battleTime`）。
    */
-  applyTeamConfig: ({ cfg, phase, stunCount, combatTime }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, stunCount }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
     cfg.normaStunCount = stunCount
     cfg.normaStunCoverage = cfg.teamStunCoverage ?? 0
-    cfg.normaBattleTime = combatTime
   },
   /**
    * 跨槽位供给：膛温帽子把戏 → 送给「上一位队友」的连携行（规则 6 在引擎层的落点）。
@@ -566,13 +566,12 @@ export const normaMechanic: AgentMechanicModule = {
    */
   crossAgentSupply: {
     kind: 'gift-chain:chain',
-    supply: ({ cfg, state, totalTime }) => computeNormaHatToChainCount(
-      cfg,
+    supply: ({ cfg, state }) => computeNormaHatToChainCount(
       {
         exSpecialCount: state.exSpecialCount,
         ultimateCount: state.ultimateCount,
         frontlineTime: state.frontlineTime,
-        battleTime: cfg.normaBattleTime ?? totalTime,
+        battleTime: cfg.battleTime,
       },
       resolveNormaHoldSeconds(cfg),
     ),
@@ -644,8 +643,6 @@ declare module '@/types/resource/config' {
     normaStunCount?: number
     /** 诺姆失衡覆盖率（外层不动点传入，供火力实验高爆/破甲按失衡时长拆分） */
     normaStunCoverage?: number
-    /** 诺姆战斗时间（外层注入，供炮塔全程射击/导弹舱时长封顶） */
-    normaBattleTime?: number
     /** 诺姆嗯呢弹幕 6 段 actionTime（1571007-1571012，buildCharConfig 预存） */
     normaBarrageActionTimes?: number[]
     /** 诺姆嗯呢弹幕 6 段 damage/daze 表值（buildCharConfig 预存，供 C6 技能专属加成缩放） */

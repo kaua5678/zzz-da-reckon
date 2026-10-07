@@ -47,7 +47,7 @@ function cfgWith(cinema: number, extra: Record<string, unknown> = {}) {
     billyCoreCrouchCoverage: 1,
     billyC4ExCrit: 32,
     billyAdditionalActive: true,
-    billyBattleTime: 180,
+    battleTime: 180,
     ...extra,
   }
 }

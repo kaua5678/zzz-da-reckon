@@ -364,7 +364,6 @@ describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 
     )
     expect(cfg.lycaonWindowDuration).toBe(19.5)
     expect(cfg.lycaonStunCount).toBe(3)
-    expect(cfg.lycaonTotalTime).toBe(180)
     // ⚠ round 20 C-γ：C2 回能**已迁入本钩子**（见 `lycaonC2Contract.test.ts` 的四层判据）。
     // 本用例不再断言它「不得写」——那条反锁是迁移前的形态，留着会与新契约自相矛盾。
     // 缺 `countStun` 时仍不写（契约门控，由 C2 契约文件钉住）。

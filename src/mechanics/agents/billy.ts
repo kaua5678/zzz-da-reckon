@@ -102,7 +102,6 @@ function buildBillyCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput)
   cfg.billyCoreCrouchCoverage = clampRatio(setting(cfg, 'billy.coreCrouchCoverage'))
   cfg.billyC4ExCrit = Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit')))
   const battleTime = Math.max(0, cfg.battleTime)
-  cfg.billyBattleTime = battleTime
   cfg.billyC1Energy = cinemaLevel >= 1
     ? resolveBillyC1TriggerCount(battleTime) * BILLY_C1_ENERGY
     : 0
@@ -117,7 +116,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     chainCountTotal: state.chainCountTotal,
     ultimateCount: state.ultimateCount,
     c4ExCrit: Number(cfg.billyC4ExCrit ?? 32),
-    battleTime: Number(cfg.billyBattleTime ?? 180),
+    battleTime: cfg.battleTime,
   })
 }
 
@@ -200,8 +199,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     billyAdditionalActive?: boolean
-    /** 写入：battleTime */
-    billyBattleTime?: number
     /** 写入：Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit'))) */
     billyC4ExCrit?: number
     /** 写入：clampRatio(setting(cfg, 'billy.coreCrouchCoverage')) */

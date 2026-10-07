@@ -566,7 +566,7 @@ export function createRunCalcRound(deps: {
       // `?? (isSupport ? 0 : 1)` 兜底，store 默认 0 ⇒ 读 cfg 是静默改语义）。
       // 2026-09-26 CC-14a：该 cfg 字段已收进模块能力 `bonusEnergy`（core 不再读角色前缀字段）。
       // ⇒ 该分支整段删除、**棘轮 −1**（40 → 39），本文件 `characters.map` 里不再有 1141 判据。
-      // 沿革（逐字段迁出的批次）：`lycaonStunCount`/`lycaonTotalTime`/`lycaonInvincibleTime`
+      // 沿革（逐字段迁出的批次）：`lycaonStunCount`/`lycaonTotalTime`/`lycaonInvincibleTime`（后两者 r723 并回 cfg 公共通道）
       // （T26 批次 0c）→ `lycaonWindowDuration`（round 12 批次 2，走 `axis`）→
       // `lycaonBackstageDodgeCount`（round 14 批次 4，走 `interactions`）→ 影画2 回能（本批）。
       return merged

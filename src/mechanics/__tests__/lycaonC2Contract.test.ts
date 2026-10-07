@@ -108,7 +108,6 @@ describe('1141 C2 契约接线（反向锁）', () => {
       .toBeUndefined()
     // 同一调用里其余围猎字段照写（证明钩子确实被派发了，不是「什么都没跑」）
     expect(cfg.lycaonStunCount).toBe(3)
-    expect(cfg.lycaonTotalTime).toBe(180)
   })
 
   it('缺 interactions 时**不写**（非轴臂拿不到队友连携 ⇒ 不许写半个值）；轴臂不依赖它', () => {

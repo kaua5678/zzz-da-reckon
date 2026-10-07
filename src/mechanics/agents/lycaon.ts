@@ -147,12 +147,11 @@ export const lycaonMechanic: AgentMechanicModule = {
    * 围猎输入注入（规则 6 落点，2026-09-16 T26 批次 0c 自 `convergence.ts` 的
    * `merged.agentId === '1141'` 分支迁入；round 12 批次 2 追加第 4 个字段）。
    *
-   * **不需要轴上下文**的三个字段（原：`stunCount` / `base.totalTime` / `base.invincibleTime`）：
+   * **不需要轴上下文**的字段（原：`stunCount`）：
    * - `lycaonStunCount` ← `stunCount`（同一变量）
-   * - `lycaonTotalTime` ← `combatTime`（派发点传的正是 `base.totalTime ?? 180`，
-   *   而 `ResourceCalcConfig.totalTime` 是必填 number ⇒ `??` 不触发，逐位等价）
-   * - `lycaonInvincibleTime` ← `cfg.invincibleTime`（两者同源于 `configStore.enemy.invincibleTime`——
-   *   `base` 在 `convergence.ts` 未加 `?? 0`，`cfg` 在 `resourceCalc/helpers.ts` 加了 `?? 0`）
+   * - 战斗时间 / 无敌时间不再抄私有副本（r723，r6 §8.0 #13）：原 `lycaonTotalTime` ← `combatTime`、
+   *   `lycaonInvincibleTime` ← `cfg.invincibleTime` 只在 converge 写入、此前取 180 / 0；现直接读
+   *   `cfg.battleTime` / `cfg.invincibleTime`（buildCharConfig 恒写，与 `combatTime` 同源于 `configStore.enemy`）。
    *
    * **需要轴上下文**的一个字段（round 12 批次 2 迁入，用 `axis.windowSeconds`）：
    * - `lycaonWindowDuration` ← `axis.windowSeconds`。原实现写 `computeWindowDuration()`
@@ -190,11 +189,9 @@ export const lycaonMechanic: AgentMechanicModule = {
    * `interactions` 契约（store 口径**未缩放**交互次数）正是为它和仪玄 1371 的 `yixuanExtremeAssistCap`
    * 补的（两处需要同一个量：`characters` 上那份已被 `interactionScale` 缩放、被 `parrySplit` 改写）。
    */
-  applyTeamConfig: ({ cfg, phase, stunCount, countStun, combatTime, axis, interactions }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, stunCount, countStun, axis, interactions }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
     cfg.lycaonStunCount = stunCount
-    cfg.lycaonTotalTime = combatTime
-    cfg.lycaonInvincibleTime = cfg.invincibleTime
     if (axis) cfg.lycaonWindowDuration = axis.windowSeconds
     // `lycaonBackstageDodgeCount` = 队伍**其他**槽位的**未缩放**闪反次数之和（round 14 批次 4 迁入，
     // 用本轮新增的 `interactions` 契约）。⚠ 原实现读 `configStore.team` **store 原值**——
@@ -271,7 +268,7 @@ export const lycaonMechanic: AgentMechanicModule = {
     const tap = Math.round(exCount * (1 - holdRatio))
     const hold = Math.max(0, exCount - tap)
     // C1 强化次数：8s CD → floor(战斗时间/8) × 覆盖率，封顶强特总数
-    const totalTime = cfg.lycaonTotalTime ?? 180
+    const totalTime = cfg.battleTime
     const c1Coverage = clampRatio(cfg.lycaonC1Coverage ?? 1)
     const strongCount = cinema >= 1
       ? Math.min(exCount, Math.max(0, Math.floor(totalTime / 8)) * c1Coverage)
@@ -299,8 +296,8 @@ export const lycaonMechanic: AgentMechanicModule = {
     if (huntCount <= 0) return
 
     const windowDur = cfg.lycaonWindowDuration ?? 16
-    const totalTime = cfg.lycaonTotalTime ?? 180
-    const invincible = cfg.lycaonInvincibleTime ?? 0
+    const totalTime = cfg.battleTime
+    const invincible = cfg.invincibleTime
     const backstageDodgeCount = cfg.lycaonBackstageDodgeCount ?? 0
 
     // 莱卡恩前台时间 = 自身执行计划全部招式总时间（平A/强特/终结/连携/闪反/弹刀/支援突击）
@@ -483,10 +480,6 @@ declare module '@/types/resource/config' {
     lycaonStunCount?: number
     /** 莱卡恩单次失衡窗口时长（秒，外层注入 = stunTime + 4 + 全队失衡延长） */
     lycaonWindowDuration?: number
-    /** 莱卡恩总战斗时间（秒，外层注入） */
-    lycaonTotalTime?: number
-    /** 莱卡恩 boss 无敌时间（秒，外层注入，围猎后台时间扣减） */
-    lycaonInvincibleTime?: number
     /** 莱卡恩围猎后台跟随闪反次数 = 队伍其他角色闪避反击次数之和（useResourceCalc 注入） */
     lycaonBackstageDodgeCount?: number
     /** 莱卡恩影画2回能总额（useResourceCalc 注入 = (失衡次数 + 队伍连携总次数) × 5） */
