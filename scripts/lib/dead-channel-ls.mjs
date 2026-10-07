@@ -24,11 +24,11 @@
  * 由下任从基线删掉（棘轮只减不增，与 DEAD_CHANNEL_ALLOWLIST 同款纪律：不许为绿而登记）。
  *
  * @fact engine:guards/死通道LS 口径: 死通道=导出可选属性/内联opts可选属性 全仓零写入点（AST PropertyAssignment∪LS write-access∪vue `foo:` 三重交叉，namesake 同名写入保守压制不报）；reads=0 记 dead-both、reads>0 记 dead-input；基线棘轮新增即红；**基线键行号无关**（`文件 符号`，带行号的旧键经 normalizeBaseKey 兼容——2026-09-15 实测：无关改动给 types/resource/config.ts 插 9 行致 9 条冻结基线条目假红） | 据 实测@2026-09-15·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadChannelsLs | 信 高
- * @fact engine:guards/死导出LS 口径: 死导出=**导出函数/const/interface/type/class/enum** 在 LS 符号级 `findReferences` 下零引用（定义本身不计，program 含 __tests__）——与上一条候选面**正交**（上一条只认「可选属性」⇒ 对 calcDamage 这类死函数结构性全盲，因它签名里没有可选属性）；**只扫 src/core**（引擎层不被 .vue 直接消费；其它层 program 看不见 .vue 会有噪声）；棘轮 DEAD_EXPORT_BASELINE **R34 起为空对象**（新增即红；空基线必须配反空洞下限，否则「扫不到东西」与「真的零死导出」读数不可区分）；已知盲区=动态 import 变量化 / .vue 直引（判据 7 越层基线归零前未构造性排除）/ `ns[name]` 动态取用 | 据 实测@2026-09-18（R33：符号级实测 calcDamage 全仓仅 1 处=定义本身，无动态/字符串引用 ⇒ 删；同批删 3 死函数 + 1 死 helper，damage.ts −343 行。R34：首轮 3 条同法裁决为删并落地 ⇒ 基线归零）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadExportsLs | 信 高
+ * @fact engine:guards/死导出 口径: 死导出=src 非测试 .ts 的导出（含 `export {x} from` / `export {x as y}` 转出别名）没有任何**生产消费点**（本文件使用 / 其他 src 非测试 .ts / scripts 的 .ts / .vue 的 import）；**测试侧引用不算**（`__tests__`、`*.test.ts`、`src/test/`）——只被测试引用 = 生产死代码 + 它的测试（R33 真实病灶形态）；使用点沿别名链逐跳标记，命名空间按值用 / `import()` 未解构 ⇒ 整模块算被用（保守）；.vue 解析 `<script>` 的 import 经被导入模块导出表落到符号；例外只有 DEAD_EXPORT_TEST_SEAMS（必须与模块私有状态同处的测试接口，失效条目报红）；全仓棘轮 = 死导出为空；已知不覆盖=只被另一个死导出引用的导出（单层判定，前者删后下次扫描才红） | 据 实测@2026-10-07（r721：一次遍历反向索引取代逐导出 findReferences——⑫ 37.8s→约 5s；扫面 src/core→全 src；全仓 2402 导出中只被测试引用 21 + 零引用 5，逐条裁决：删 / 搬进测试侧 / 4 条登记测试接口） | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadExports + scripts/lib/dead-channel-ls.mjs#DEAD_EXPORT_TEST_SEAMS | 信 高
  */
 import { createRequire } from 'node:module'
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
@@ -53,35 +53,19 @@ export const DEAD_CHANNEL_LS_BASELINE = {
 }
 
 /**
- * 冻结基线：**`src/core` 的零引用导出函数**（棘轮，只许减少）。
+ * 死导出判据的**测试接口豁免**（r721 起取代 `DEAD_EXPORT_BASELINE`——那份基线自 R34 起就是空对象）。
  *
- * 为什么只扫 `src/core`（口径，别扩面）：
- * - `src/core` 是**引擎层**，按 ARCHITECTURE §0 依赖方向（展示 → 编排 → 引擎）**不被 .vue 直接消费**
- *   ⇒ 不需要 `.vue` 文本兜底，误报面最小。⚠ 判据 7 的越层棘轮基线仍是 **15**（非 0）
- *   ⇒ 「core 不被 .vue 引用」**不是**构造性保证，只是当前状态；若越层数变化需复核本判据。
- * - 其它层（`src/composables` / `src/data` / `src/mechanics`）**大量**被 .vue 消费，而 TS program
- *   **看不见 .vue** ⇒ 必须靠文本兜底，实测仍有噪声（见 R33 报告）⇒ 不纳入硬判据，只报不红。
- *
- * 每条 why 必须写「怎么证明它是死的」——不许为绿而登记（同 DEAD_CHANNEL_ALLOWLIST 纪律）。
- * R33（2026-09-18）首轮实测：**3 条**（`isVariantPair` + substatAlloc 两条）。
- * ⚠ 同批删掉的 4 个（`damage.ts` 的 calcDamage / calcStunBuildUp / calcDisorderDamage +
- *   旧 `pickRemielleLevelValue`）**一律不进基线**——它们当轮就没
- *   （棘轮语义 = 「现在是死的」；改进项应表现为 resolved，而不是留一条永不命中的键）。
- *
- * ★ R34（2026-09-18）**归零**：首轮那 3 条已全部裁决为删并落地（见各条原 why 的历史结论）——
- *   · `isVariantPair`：**陷阱**（不是无害死码）。它把「基础元素相同」当作「同一个异常」，
- *     而活口径恰好相反：变种元素是**独立积蓄槽**、**可互相紊乱**（`anomalyPool.ts` 覆盖率
- *     `coverageTriggerCounts` 按变体自身元素统计，`helpers.ts` 头注释原文「变种元素之间在紊乱
- *     系统中视为不同元素」）。⇒ 读它的人会得出**与活实现相反**的紊乱资格结论。
- *   · `substatAlloc.ts` 两条 + 整个文件：旧固定步数启发式（100% 暴击封顶），活实现是
- *     `substatOptimizer.ts#computeDefaultSubStatAllocation`（CC-186 前名 computeOptimalSubStats；`critRateCap` 200%，锋御锐暴）；
- *     其 `computeBaseCritRate` 与活 `computeNoSubstatPanel` **同形但分叉**（后者不读 globalBuffs、
- *     不吃 `critRate` 特判）⇒ 同 `roughStats.critRate` 型陷阱：值会算偏。
- *   ⇒ 基线现在是**空对象**（这是目标态，不是失败）：任何**新**死导出都会被判 fresh 而红。
- *   ⚠ 空基线必须配**反空洞下限**（见 deadChannelLs.test.ts ⑫ 的 `exports > 100`）——
- *     否则「扫描器静默扫不到东西」与「仓库真的零死导出」在读数上不可区分。
+ * 只收「必须与模块私有状态同处」的测试接口：缓存命中计数、快路径 / 记忆化开关。它们读写模块内的
+ * `let` 状态，搬不进 `src/test`。能搬的（测试夹具、断言用的常量集合）一律搬到测试侧，**不进这里**。
+ * key = `<相对文件> <导出名>`；why 写清「哪些测试靠它、为什么搬不走」。
+ * 条目失效（导出被删 / 长出了生产消费者）进 `staleSeams`，deadChannelLs.test ⑫ 变红——名单不许腐烂。
  */
-export const DEAD_EXPORT_BASELINE = {}
+export const DEAD_EXPORT_TEST_SEAMS = {
+  'src/core/resource/rowBuild.ts getFeasibleRowsMemoHits': { since: '2026-10-07', why: '可行行记忆化命中计数，读模块私有 feasibleRowsMemo；feasibleRowsMemo.test 断言命中次数' },
+  'src/core/resource/rowBuild.ts setRowFastPathsEnabled': { since: '2026-10-07', why: '行构造快路径开关，写模块私有 let；allAgentsGuards / feasibleRowsMemo 关快路径对拍慢路径' },
+  'src/composables/useResourceCalc.ts getCalcOutputMemoStats': { since: '2026-10-07', why: 'calcOutput 记忆化命中 / 未命中 / 旁路计数，读模块私有状态；calcOutputMemo / wEngineCoverageFixpointT10 断言' },
+  'src/composables/useResourceCalc.ts setCalcOutputMemoEnabled': { since: '2026-10-07', why: 'calcOutput 记忆化开关，写模块私有 let；calcOutputMemo / outerContinuity / allAgentsGuards 关记忆化对拍' },
+}
 
 /** 走目录收 .ts（跳过 __tests__ 与 .d.ts——测试写入也算写入，故测试文件进 program 但不进候选面） */
 function walkTs(dir, out = []) {
@@ -259,147 +243,6 @@ function buildNameOccurrenceIndex(root) {
 }
 
 /**
- * ★ R34：**非 core 层的审计入口**（不进硬判据，只出报告）。
- *
- * 为什么必须单列一个函数（R33 §3.2 的落地建议，R34 实测了它的必要性）：
- * `scanDeadExportsLs` 的 program **看不见 .vue** ⇒ 直接把它扩到 `src/composables` 等层
- * 会把「被 .vue import 的导出」大面积误报成死码。R33 实测全 `src` 面 57 条里 **20 条是假阳性
- * （35%）**——这正是它**不能**当硬判据的原因。
- *
- * 本函数在 `scanDeadExportsLs` 之上加**三道 .vue 兜底**，把「真死」与「只是 program 看不见」
- * 分开。⚠ **只用于人工审计，不要接进 check-guards**（口径未构造性闭合，见返回值各桶）。
- *
- * 兜底口径（逐条实测过，见 R34 报告）：
- * ① **本仓无 auto-import / 无 `import * as` 于候选模块**（已核：vite.config 无 unplugin；
- *    `src/**` 仅 core 内部与测试用 namespace import）⇒ 「.vue 里出现名字」不必当引用；
- * ② 但**同名 ≠ 同一符号** ⇒ 不能只看名字。判定 = `.vue` 的 `import { name }` 是否解析到
- *    **声明该符号的模块（或经 `export *` / `export {x} from` 传递可达它的模块）**；
- * ③ 再做一次**全仓 `\bname\b` 文本兜底**（含 docs/data/scripts）——零命中才是最硬的「真死」证据。
- *
- * @param {{root?: string, dirs?: string[]}} [opts]
- * @returns {{dead: Array, vueImported: Array, textMentioned: Array, exports: number, ms: number}}
- *   `dead` = 三道兜底后仍无任何引用（真死，可删）；`vueImported` = 被 .vue 真引用（假阳性）；
- *   `textMentioned` = 无 .vue import 但全仓有名字文本（需人工判「同名/文档提及/动态取用」）。
- */
-export function auditNonCoreDeadExports(opts = {}) {
-  const root = opts.root ?? REPO_ROOT
-  const t0 = Date.now()
-  const scan = scanDeadExportsLs({ root, dirs: opts.dirs ?? ['src/composables', 'src/data', 'src/mechanics', 'src/specs', 'src/stores', 'src/types', 'src/utils', 'src/logicEditor'] })
-  const rel = (p) => relative(root, p)
-
-  // ---- .vue import 索引（含路径 → 解析到 .ts 模块） ----
-  const resolveSpec = (fromFile, spec) => {
-    let base
-    if (spec.startsWith('@/')) base = join(root, 'src', spec.slice(2))
-    else if (spec.startsWith('.')) base = join(fromFile, '..', spec)
-    else return null
-    for (const c of [base + '.ts', join(base, 'index.ts'), base + '.vue', base]) {
-      if (existsSync(c) && statSync(c).isFile()) return c
-    }
-    return null
-  }
-  const tsFiles = walkTs(join(root, 'src'))
-  const vueImports = new Map() // vueFile -> Map(name -> Set(resolvedModule))
-  const walkVue = (dir) => {
-    if (!existsSync(dir)) return
-    for (const e of readdirSync(dir)) {
-      const p = join(dir, e)
-      const st = statSync(p)
-      if (st.isDirectory()) { if (e !== '__tests__' && e !== 'node_modules') walkVue(p) }
-      else if (e.endsWith('.vue')) {
-        const text = readFileSync(p, 'utf8')
-        const map = new Map()
-        for (const m of text.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
-          const target = resolveSpec(p, m[2])
-          if (!target) continue
-          for (const part of m[1].split(',')) {
-            const s = part.trim(); if (!s) continue
-            const orig = s.split(/\s+as\s+/)[0].trim()
-            if (!map.has(orig)) map.set(orig, new Set())
-            map.get(orig).add(target)
-          }
-        }
-        vueImports.set(p, map)
-      }
-    }
-  }
-  walkVue(join(root, 'src'))
-
-  // ---- 重导出图：哪些模块能「传递地」暴露某模块的符号 ----
-  const starEdges = new Map()
-  const namedEdges = new Map()
-  for (const f of tsFiles) {
-    let t
-    try { t = readFileSync(f, 'utf8') } catch { continue }
-    const stars = []
-    const named = []
-    for (const m of t.matchAll(/export\s+\*\s+from\s*['"]([^'"]+)['"]/g)) {
-      const target = resolveSpec(f, m[1]); if (target) stars.push(target)
-    }
-    for (const m of t.matchAll(/export\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
-      const target = resolveSpec(f, m[2]); if (!target) continue
-      for (const part of m[1].split(',')) {
-        const s = part.trim(); if (!s) continue
-        const [orig, alias] = s.split(/\s+as\s+/).map((x) => x.trim())
-        named.push({ name: alias ?? orig, target })
-      }
-    }
-    starEdges.set(f, stars)
-    namedEdges.set(f, named)
-  }
-  const modulesExporting = (declFile, name) => {
-    const out = new Set([declFile])
-    let changed = true
-    while (changed) {
-      changed = false
-      for (const [f, stars] of starEdges) for (const s of stars) if (out.has(s) && !out.has(f)) { out.add(f); changed = true }
-      for (const [f, named] of namedEdges) for (const n of named) if (out.has(n.target) && n.name === name && !out.has(f)) { out.add(f); changed = true }
-    }
-    return out
-  }
-
-  // ---- 全仓文本索引（三次兜底） ----
-  const textIdx = new Map()
-  const exts = new Set(['.ts', '.vue', '.mjs', '.js', '.json', '.md'])
-  const walkAll = (dir) => {
-    if (!existsSync(dir)) return
-    for (const e of readdirSync(dir)) {
-      if (e === 'node_modules' || e === '.git' || e === 'dist') continue
-      const p = join(dir, e)
-      const st = statSync(p)
-      if (st.isDirectory()) walkAll(p)
-      else if (exts.has(p.slice(p.lastIndexOf('.')))) {
-        try { textIdx.set(rel(p), readFileSync(p, 'utf8')) } catch { /* ignore */ }
-      }
-    }
-  }
-  walkAll(root)
-
-  const dead = []
-  const vueImported = []
-  const textMentioned = []
-  for (const d of scan.dead) {
-    const reachable = modulesExporting(join(root, d.file), d.name)
-    const refs = []
-    for (const [vf, map] of vueImports) {
-      const srcs = map.get(d.name)
-      if (!srcs) continue
-      for (const s of srcs) if (reachable.has(s)) refs.push(`${rel(vf)} → ${rel(s)}`)
-    }
-    if (refs.length > 0) { vueImported.push({ ...d, refs }); continue }
-    const re = new RegExp(`\\b${d.name.replace(/\$/g, '\\$')}\\b`)
-    const mentions = []
-    for (const [f, text] of textIdx) {
-      if (f === d.file) continue
-      text.split('\n').forEach((l, i) => { if (re.test(l)) mentions.push(`${f}:${i + 1}`) })
-    }
-    if (mentions.length > 0) textMentioned.push({ ...d, mentions })
-    else dead.push(d)
-  }
-  return { dead, vueImported, textMentioned, exports: scan.exports, ms: Date.now() - t0 }
-}
-
-/**
  * 扫描死通道。
  * @param {{root?: string, dirs?: string[], files?: string[]}} [opts] root=仓库根；files 供单测注入自建 program
  * @returns {{dead: Array<{key:string,file:string,line:number,prop:string,container:string,reads:number,confidence:'dead-both'|'dead-input',evidence:string}>, candidates:number, ms:number}}
@@ -505,76 +348,220 @@ export function diffAgainstBaseline(dead, baseline = DEAD_CHANNEL_LS_BASELINE) {
 
 // 基线生成记录（2026-09-14 首轮）：`node -e "import('./scripts/lib/dead-channel-ls.mjs').then(m=>console.log(JSON.stringify(m.scanDeadChannelsLs().dead,null,1)))"`
 // → 逐条人工复核后钉进 DEAD_CHANNEL_LS_BASELINE（每条 why 带证据行号）；复核过程与 T10 对账见夜班报告 T14-a1。
-//
-// 死导出基线生成记录（2026-09-18 R33 首轮，同样逐条人工复核）：
-// `node -e "import('./scripts/lib/dead-channel-ls.mjs').then(m=>console.log(JSON.stringify(m.scanDeadExportsLs().dead,null,1)))"`
+
+/** 测试侧文件：`__tests__/`、`*.test.ts`、`*.spec.ts` 与 `src/test/`（测试基础设施）——它们的引用不算消费 */
+function isTestSide(root, f) {
+  const p = f.replace(/\\/g, '/')
+  return /\/__tests__\/|\.(test|spec)\.ts$/.test(p) || p.startsWith(root.replace(/\\/g, '/') + '/src/test/')
+}
+
+/** `.vue` 的 import 说明符 → 仓内文件（`@/` = src；相对路径按 .vue 所在目录）；解析不到返回 null */
+function resolveVueSpecifier(root, fromFile, spec) {
+  let base
+  if (spec.startsWith('@/')) base = join(root, 'src', spec.slice(2))
+  else if (spec.startsWith('.')) base = join(dirname(fromFile), spec)
+  else return null
+  for (const c of [base, base + '.ts', join(base, 'index.ts')]) {
+    if (existsSync(c) && statSync(c).isFile()) return c
+  }
+  return null
+}
+
+function walkVue(dir, out = []) {
+  if (!existsSync(dir)) return out
+  for (const e of readdirSync(dir)) {
+    if (e === 'node_modules' || e === '__tests__') continue
+    const p = join(dir, e)
+    if (statSync(p).isDirectory()) walkVue(p, out)
+    else if (e.endsWith('.vue')) out.push(p)
+  }
+  return out
+}
+
+const exportKindOf = (d) => ts.isFunctionDeclaration(d) ? 'function'
+  : ts.isVariableDeclaration(d) ? 'const'
+    : ts.isInterfaceDeclaration(d) ? 'interface'
+      : ts.isTypeAliasDeclaration(d) ? 'type'
+        : ts.isClassDeclaration(d) ? 'class'
+          : ts.isEnumDeclaration(d) ? 'enum'
+            : ts.isExportSpecifier(d) ? 'reexport' : 'other'
 
 /**
- * **符号级死导出扫描**（R32-J2 的直接产物，补 DEAD_CHANNEL_LS_BASELINE 的**函数面**盲区）。
+ * **死导出扫描**（r721 起：全 `src` 层 · 只认生产消费）。
  *
- * 与 `scanDeadChannelsLs` 的区别（两者互补，都要）：
- * - 旧扫描：候选 = 导出 **interface 的可选属性** / 内联 opts 可选属性 ⇒ 找的是「**死旋钮**」；
- * - 本扫描：候选 = 导出 **函数/const/interface/type/class/enum** ⇒ 找的是「**死函数**」。
- *   ⇒ 旧扫描对 `calcDamage`（一个 200 行的死函数，**不是**可选属性）**结构性全盲**：
- *     它的签名里没有一个可选属性，扫描器连看都不会看它一眼。这才是 R32-J2 能藏那么久的机器面原因。
+ * 判定：`src` 下非测试 `.ts` 的每个导出（含 `export {x} from` / `export {x as y}` 转出别名），没有任何
+ * **生产消费点**即为死导出。生产消费点 = 本文件内使用 / 其他 `src` 非测试 `.ts` / `scripts` 的 `.ts` / `.vue` 的 import。
+ * **测试侧引用不算**（`__tests__`、`*.test.ts`、`src/test/`）：只被测试引用的导出 = 生产死代码 + 它的测试
+ * ——R33 的真实病灶（`damage.test.ts` 测的是 `damage.ts` 的死副本，活实现零测试）正是这一形态。
  *
- * 判定 = **LS 符号级零引用**（`findReferences` 在整个 program 上，含 __tests__；定义本身不计）。
- * 零引用 ⇒ 连测试都没碰过它 —— 比「字段名级 grep」强得多（grep 看不见 `import { a as b }`）。
+ * 实现：一次遍历生产文件的全部标识符，把使用点解析到符号并**沿别名链逐跳标记**（`import {a as b}`、
+ * `export {x} from` 的每一跳都算被用，原始声明也算）；import / export 语句本身不是使用。三类写法单独解析：
+ * 命名空间 `ns.x`、对象解构 `const {x} = ns`（含 `await import()` 解构）、简写属性 `{ x }`。
+ * 保守兜底（宁可漏报不误报）：命名空间被当值用（`ns[k]`、`Object.values(ns)`、传参）或 `import()` 结果未解构
+ * ⇒ 该模块全部导出算被用。`.vue` 不在 program 里：解析其 `<script>` 块的 import，按名字经被导入模块的导出表落到符号。
  *
- * ⚠ **只扫 `src/core`**（理由见 DEAD_EXPORT_BASELINE 头注释）：其它层被 .vue 消费而 program 看不见 .vue。
- * ⚠ 已知盲区（如实登记，不假装覆盖）：① 动态 `import()` 变量化 / 字符串拼接引用；② .vue 直接引用
- *   （仅当判据 7 越层棘轮归零后才构造性排除，当前基线 15 ⇒ 未排除）；③ `import * as ns` 后
- *   `ns[name]` 动态取用（LS 记为 write/read 但符号可能是 any）。
+ * 取代 `scanDeadExportsLs`（逐导出 `findReferences`，只扫 core，测试引用算活；⑫ 单例 37.8s）与 R34 的
+ * `auditNonCoreDeadExports`（非 core 三道兜底，只报不红）。
+ * 已知不覆盖：只被另一个死导出引用的导出，要等前者删掉后的下一次扫描才红（单层判定）。
  *
- * @param {{root?: string, dirs?: string[], files?: string[]}} [opts]
- * @returns {{dead: Array<{key:string,file:string,line:number,name:string,kind:string}>, exports:number, ms:number}}
+ * @param {{root?: string, seams?: Record<string, {since: string, why: string}>}} [opts]
+ * @returns {{dead: Array<{key:string,file:string,line:number,name:string,kind:string}>, staleSeams: string[], exports: number, ms: number}}
  */
-export function scanDeadExportsLs(opts = {}) {
+export function scanDeadExports(opts = {}) {
   const root = opts.root ?? REPO_ROOT
-  const dirs = opts.dirs ?? ['src/core']
+  const seams = opts.seams ?? DEAD_EXPORT_TEST_SEAMS
   const t0 = Date.now()
-  const files = opts.files ?? collectProgramFiles(root)
-  const ls = ts.createLanguageService(createLsHost(files, root))
-  const program = ls.getProgram()
+  const program = ts.createLanguageService(createLsHost(collectProgramFiles(root), root)).getProgram()
   const checker = program.getTypeChecker()
-  const inScan = (f) => dirs.some((d) => f.startsWith(join(root, d)))
-  const dead = []
-  let exportCount = 0
-  for (const sf of program.getSourceFiles()) {
-    if (sf.isDeclarationFile || !inScan(sf.fileName)) continue
-    const rel = relative(root, sf.fileName)
-    const modSym = checker.getSymbolAtLocation(sf)
-    if (!modSym) continue
-    let exports = []
-    try { exports = checker.getExportsOfModule(modSym) } catch { continue }
-    for (const sym of exports) {
-      const decls = sym.getDeclarations() ?? []
-      const d = decls[0]
-      // 只认「在本文件里声明」的导出（跳过 `export { x } from './y'` 的转出口，避免重复计数）
-      if (!d || !d.getSourceFile || d.getSourceFile() !== sf) continue
-      exportCount++
-      const name = sym.getName()
-      const pos = d.name && d.name.getStart ? d.name.getStart() : d.getStart()
-      let refs = []
-      try { refs = ls.findReferences(sf.fileName, pos) ?? [] } catch { refs = [] }
-      let n = 0
-      for (const g of refs) for (const r of g.references) if (!r.isDefinition) n++
-      if (n > 0) continue
-      const kind = ts.isFunctionDeclaration(d) ? 'function'
-        : ts.isVariableDeclaration(d) ? 'const'
-          : ts.isInterfaceDeclaration(d) ? 'interface'
-            : ts.isTypeAliasDeclaration(d) ? 'type'
-              : ts.isClassDeclaration(d) ? 'class'
-                : ts.isEnumDeclaration(d) ? 'enum' : 'other'
-      dead.push({
-        key: `${rel} ${name}`,
-        file: rel,
-        line: sf.getLineAndCharacterOfPosition(d.getStart()).line + 1,
-        name,
-        kind,
-      })
+  const srcDir = join(root, 'src')
+  const used = new Set()
+  const wholeModules = new Set()
+  const mark = (sym) => {
+    for (let s = sym, hop = 0; s && hop < 32; hop++) {
+      used.add(s)
+      const ex = checker.getExportSymbolOfSymbol(s)
+      if (ex) used.add(ex)
+      if (!(s.flags & ts.SymbolFlags.Alias)) return
+      s = checker.getImmediateAliasedSymbol(s)
     }
   }
+  const moduleFileOf = (specifier) => {
+    const m = checker.getSymbolAtLocation(specifier)
+    const d = m && (m.valueDeclaration ?? (m.declarations ?? [])[0])
+    return d && ts.isSourceFile(d) ? d.fileName : null
+  }
+  const namespaceDecl = (sym) => sym && (sym.declarations ?? []).find((d) => ts.isNamespaceImport(d))
+  const isDeclName = (id, p) => p.name === id && (ts.isFunctionDeclaration(p) || ts.isVariableDeclaration(p) || ts.isClassDeclaration(p)
+    || ts.isInterfaceDeclaration(p) || ts.isTypeAliasDeclaration(p) || ts.isEnumDeclaration(p) || ts.isModuleDeclaration(p)
+    || ts.isParameter(p) || ts.isPropertyDeclaration(p) || ts.isPropertySignature(p) || ts.isMethodDeclaration(p)
+    || ts.isMethodSignature(p) || ts.isPropertyAssignment(p) || ts.isEnumMember(p) || ts.isGetAccessor(p) || ts.isSetAccessor(p)
+    || ts.isTypeParameterDeclaration(p))
+  const isDynamicImport = (n) => ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword
+    && n.arguments.length > 0 && ts.isStringLiteralLike(n.arguments[0])
+  const destructuredAwait = (call) => {
+    const p = call.parent
+    const gp = p && p.parent
+    return !!(p && ts.isAwaitExpression(p) && gp && ts.isVariableDeclaration(gp) && ts.isObjectBindingPattern(gp.name)) && gp
+  }
+
+  // ---- 生产 .ts：标识符使用点 ----
+  for (const sf of program.getSourceFiles()) {
+    const f = sf.fileName
+    if (sf.isDeclarationFile || !f.startsWith(root) || f.includes('/node_modules/') || isTestSide(root, f)) continue
+    const visit = (node) => {
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return
+      if (ts.isExportAssignment(node) && ts.isIdentifier(node.expression)) return
+      if (isDynamicImport(node) && !destructuredAwait(node)) {
+        const mf = moduleFileOf(node.arguments[0])
+        if (mf) wholeModules.add(mf)
+      }
+      if (ts.isIdentifier(node)) {
+        const p = node.parent
+        if (!p || isDeclName(node, p)) return
+        if (ts.isPropertyAccessExpression(p) && p.name === node) {
+          if (ts.isIdentifier(p.expression) && namespaceDecl(checker.getSymbolAtLocation(p.expression))) mark(checker.getSymbolAtLocation(node))
+          return
+        }
+        if (ts.isQualifiedName(p) && p.right === node) {
+          if (ts.isIdentifier(p.left) && namespaceDecl(checker.getSymbolAtLocation(p.left))) mark(checker.getSymbolAtLocation(node))
+          return
+        }
+        if (ts.isBindingElement(p) && ts.isObjectBindingPattern(p.parent) && (p.propertyName === node || (!p.propertyName && p.name === node))) {
+          const host = p.parent.parent
+          if (ts.isVariableDeclaration(host) && host.initializer) {
+            const prop = checker.getTypeAtLocation(host.initializer).getProperty(node.text)
+            if (prop) mark(prop)
+          }
+          return
+        }
+        if (ts.isShorthandPropertyAssignment(p)) {
+          mark(checker.getShorthandAssignmentValueSymbol(p))
+          return
+        }
+        const sym = checker.getSymbolAtLocation(node)
+        const ns = namespaceDecl(sym)
+        if (ns) {
+          const asBase = (ts.isPropertyAccessExpression(p) && p.expression === node) || (ts.isQualifiedName(p) && p.left === node)
+          const destructured = ts.isVariableDeclaration(p) && p.initializer === node && ts.isObjectBindingPattern(p.name)
+          if (!asBase && !destructured) {
+            const mf = moduleFileOf(ns.parent.parent.moduleSpecifier)
+            if (mf) wholeModules.add(mf)
+          }
+          return
+        }
+        mark(sym)
+        return
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+
+  // ---- .vue：<script> 块的 import（program 看不见 .vue） ----
+  for (const vf of walkVue(srcDir)) {
+    for (const m of readFileSync(vf, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) {
+      const vsf = ts.createSourceFile(vf + '.ts', m[1], ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+      const moduleOf = (spec) => {
+        const target = resolveVueSpecifier(root, vf, spec)
+        const tsf = target && program.getSourceFile(target)
+        return tsf ? { file: target, mod: checker.getSymbolAtLocation(tsf) } : null
+      }
+      const byName = (mod, name) => {
+        const s = mod && checker.tryGetMemberInModuleExports(name, mod)
+        if (s) mark(s)
+      }
+      const visitVue = (node) => {
+        if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+          const t = moduleOf(node.moduleSpecifier.text)
+          const clause = node.importClause
+          if (t && clause) {
+            if (clause.name) byName(t.mod, 'default')
+            const nb = clause.namedBindings
+            if (nb && ts.isNamespaceImport(nb)) wholeModules.add(t.file)
+            else if (nb) for (const el of nb.elements) byName(t.mod, (el.propertyName ?? el.name).text)
+          }
+          return
+        }
+        if (isDynamicImport(node)) {
+          const t = moduleOf(node.arguments[0].text)
+          const gp = destructuredAwait(node)
+          if (t && gp) {
+            for (const el of gp.name.elements) {
+              const n = el.propertyName ?? el.name
+              if (ts.isIdentifier(n)) byName(t.mod, n.text)
+            }
+          } else if (t) wholeModules.add(t.file)
+        }
+        ts.forEachChild(node, visitVue)
+      }
+      visitVue(vsf)
+    }
+  }
+
+  // ---- 候选：src 非测试 .ts 的导出 ----
+  const dead = []
+  const seamAlive = new Map()
+  let exportCount = 0
+  for (const sf of program.getSourceFiles()) {
+    const f = sf.fileName
+    if (sf.isDeclarationFile || !f.startsWith(srcDir + '/') || isTestSide(root, f)) continue
+    const mod = checker.getSymbolAtLocation(sf)
+    if (!mod) continue
+    const rel = relative(root, f)
+    for (const sym of checker.getExportsOfModule(mod)) {
+      const d = (sym.declarations ?? [])[0]
+      // `export *` 透传的名字声明在别处，由声明处判
+      if (!d || d.getSourceFile() !== sf) continue
+      exportCount++
+      const key = `${rel} ${sym.getName()}`
+      const alive = wholeModules.has(f) || used.has(sym)
+      if (Object.prototype.hasOwnProperty.call(seams, key)) { seamAlive.set(key, alive); continue }
+      if (alive) continue
+      const node = ts.isVariableDeclaration(d) ? d.parent.parent : d
+      dead.push({ key, file: rel, line: sf.getLineAndCharacterOfPosition(node.getStart()).line + 1, name: sym.getName(), kind: exportKindOf(d) })
+    }
+  }
+  const staleSeams = Object.keys(seams).filter((k) => seamAlive.get(k) !== false).sort()
   dead.sort((a, b) => a.key.localeCompare(b.key))
-  return { dead, exports: exportCount, ms: Date.now() - t0 }
+  return { dead, staleSeams, exports: exportCount, ms: Date.now() - t0 }
 }

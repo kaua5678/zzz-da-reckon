@@ -469,8 +469,8 @@ export function scanAuthoredFacts(root = ROOT) {
  * 它既拦不住真问题、又会误伤 33% 的合法条目。**两个方向都不成立，故收口。**
  *
  * **若将来仍要推进**，唯一有希望的形态 = 「验文件引用锚符号 **且** 该符号**不是死的**」
- * ——需要符号级分析，地基已由 `scripts/lib/dead-channel-ls.mjs#scanDeadExportsLs` 铺好
- * （⚠ 但它只扫 `src/core`；扩到非 core 层实测假阳性 35%，见 `DEAD_EXPORT_BASELINE` 头注释）。
+ * ——需要符号级分析：`scripts/lib/dead-channel-ls.mjs#scanDeadExports`（r721 起全 src 层、**测试引用不算消费**）
+ * 已把「测试引用的符号是死的」这一病灶直接判红，本判据不必再兼管。
  * 届时**必须先过正向对照**（用人工已知非死的符号验证不误报），再谈上线。
  */
 export function auditAuthoredFacts(root = ROOT) {
