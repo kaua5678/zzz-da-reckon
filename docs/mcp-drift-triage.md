@@ -72,5 +72,40 @@
 - **不做**：把 CC-87 推广到「纯注释改动」——逐行判注释只让 1/112 出队，且全仓有 8 行以 `*` 开头的乘法续行会被误当注释（damagePool.ts:246、starlightBilly.ts:357、trigger.ts:141、velina.ts:345/346、zhao.ts:125、zhuYuan.ts:203/205）。
 - **做了**（`6f8fd957`）：文件级初筛不变，之后比较锚符号去注释后的代码（`zc.mjs#anchorCode`，基线取「据」截止时刻 HEAD 线上的提交），一致即出队；定位不到符号 / 「据」日文件不存在 ⇒ 按文件留队；每行带 `basis: 'symbol' | 'file'`。反例：新代码跑 `d8bf7003` 得 49 = 47 symbol + 2 file，与探针逐条一致；当前待复核 0。同状态成本 6.2s → 7.4s。
 - **量过、未采用**：「锚 + 同文件引用方」口径（仓外 refprobe.mjs）——剩下 63 条里 32 条的引用方变过；使用行本身被改的 9 条逐条核过全是等价改写（`record.`→`cfg.`、CC-506 `cinemaLevelOf`、CC-508 删与声明 default 相等的 fallback、外层包装后仅缩进变化）⇒ 加回来的基本是噪声。
-- **已知盲区**（与手工「锚未变」相同）：口径行为写在锚符号之外时，使用处改动不触发。对策：**锚写在实现该行为的函数上**；常量锚只适合「口径就是这个值」的事实（例：banyue `AUTO_TOPUP_TIME_LIMIT_SEC` 的「超 200s 次数清零走轴退化」写在使用处，宜改锚）。
+- **已知盲区**（与手工「锚未变」相同）：口径行为写在锚符号之外时，使用处改动不触发。对策：**锚写在实现该行为的函数上**；常量锚只适合「口径就是这个值」的事实（例：banyue `AUTO_TOPUP_TIME_LIMIT_SEC` 的「超 200s 次数清零走轴退化」写在使用处，宜改锚）。（**r720**：改为「值 + 行为」多锚，并对 47 条非函数锚逐条处理，见 §7）
 - 由此：TS/JS 锚不再需要「锚未变@」戳；§4 的「同一文件的条目尽量同批清掉」也不再必要。「不读代码不许批量补复核日」照旧（ENGINE_PIPELINE_GUIDE 坑 24 ②）。
+
+## 7. r720：多锚 + 锚解析统一到 AST（2026-10-07，arena-G）
+
+> 基线：origin `02be4fd5`，`zc drift` = 手写事实 154 · 断锚/缺据 0 · 待复核 0。
+> 提交：`f1cda9b2`（zc 多锚 + 锚解析统一 + 测试 + noun-triage `2000002` 锚修正）· `4f56d0fd`（25 条补行为锚 + 15 条复核）。
+
+### 7.1 普查：锚指向什么
+
+- 探针（仓外 `/home/kaua/calc-arch/g720/factanchor720.mjs`）：复用 `zc.mjs#scanAuthoredFacts`，用 TS AST 给每个锚符号的声明分类。154 条全是 `路径#符号` 锚，没有只锚文件的：函数 107（含 1 条函数与调用结果同名）· 字面量常量 17 · 对象 / 数组常量 23 · 调用结果常量 3 · 其他变量 2 · 类型 1 · 定位不到 1（测试标题，按文件判）。
+- 非函数锚 47 条逐条对照正文与使用处（仓外 `usage720.mjs` 列出锚符号在生产代码里的每处引用及所在的具名函数）：
+
+| 处理 | 条数 | 明细 |
+|---|---|---|
+| 补行为锚 | 25 | 值+行为混写。潜能族 6（burnice / grace / jane / lycaon / rina / soldier11：要点「按 potentialLevel 取档、与影画无关」写在消费函数里，表常量看不出来）；克拉蕾 5（初始暴伤 floor 取整、影画分档四个值 + 门控、两态基准加权、铭刻窗口进两态时间解、锐能总量不设单次上限）；banyue 200s 判非法清零；欠打回填接受三条件；内层上限的环检测与耗尽出口；截断入口容差；折叠环上限的收敛判据；风化拆窗（windEffectiveTriggerCount / calcCoverage）；余火消耗；自动能量场三段 countsTime（两个融合组 + sustainedEx `'1031'` + fusedGroupMetrics）；手册密度公式；尼可影画1 缩放；柚叶影画4；派派影画2。anton 的 `ANTON_ID`、roxy 的 `SPIN_SECOND_MOVE_ID` 是永不变的 ID 锚（行为怎么改都不进队），换成行为锚 |
+| 锚得对，不动 | 19 | 正文就是这个值 / 这张表 / 这份清单 15（融合表 7、克拉蕾反制支援配对、千夏拍照计划、MOVE_ETHER_BASE、蕾米埃尔 0.2、洛克茜等级轴、珂蕾妲×本 替换表、自指豁免清单、cinemaMirrorKeys）；锚变量本身包着判定逻辑 3（STACK_ENERGY_EVENT_EVALUATORS 求值函数表、dupTopLevel、sweepCandidates 的 computed）；测试标题锚 1（按文件判，属设计） |
+| 行为在 >150 行调度函数里，不挂 | 3 | 棘轮反空洞（判定在 runAllChecks；有 checkGuards「棘轮反空洞 3 条」守行为）· ConvergenceReport（字段归属由 calcTeamResources / useResourceCalc 决定）· BOSS_BODY_SIZES（消费链在 TeamCompare） |
+
+### 7.2 做法
+
+- **多锚**：锚槽可写多个锚点，用 ` + ` 连接，与「验」同一写法（`zc.mjs#anchorList`）。判据 6 逐锚解析，任一断锚即红；`driftQueue` 逐锚判，任一锚变即进队，行的 anchor 只列变过的锚；`zc where` 任一锚路径命中即列出。`parseFactLine` / `formatFact` 不变（anchor 仍是原样字符串），单锚事实的行为一字不变。
+- **锚解析统一到 AST**：`resolveAnchor` 对 TS/JS 改用与 drift 同一个声明定义（`anchorDecls`，`anchorCode` 也由它打印）。旧正则连 `符号(` 调用处、re-export 里的名字都认——审计绿，而 drift 定位不到声明、静默退回按文件判；带引号的对象键 anchorCode 认、正则反而不认（sustainedEx 的 `'1031'` 就是这种）。全仓 182 个锚（154 条事实 + 28 条 noun-triage modeled）实测（仓外 `anchorcmp720.mjs`）：180 个定位到声明、1 个测试标题、1 个 re-export 壳锚（noun-triage `2000002` → `core/resource/helpers.ts#calcEnergySource`），已改指声明处 `resourceIncome.ts`。非 TS/JS 文件仍走正则（现无此类锚）。
+- **写法规则**（`zc lang` 语法自述已同步）：口径同时讲「值」和「怎么用」就两处都锚；行为锚取包含该行为的**最小具名声明**；最小的也是 >150 行的调度函数时不挂——那等于按文件判，噪声盖过信号——靠「验」守行为。
+- **成本**：`auditAuthoredFacts` 单独计时 192 → 958ms（含首次加载 typescript）；check-guards 整体约 +0.25s（判据 27 本来就加载 typescript），两次实测 13.7 / 11.4s → 14.0 / 11.7s；`zc drift` 8.2s（r715 同状态 7.4s）。不加解析缓存。
+
+### 7.3 结果
+
+- 补行为锚后进复核队列 15 条，逐条看「据」日版本到现在的锚符号 diff（仓外 `review720.mjs`）：全是等价重构（potentialLevelOf / cinemaLevelOf / additionalAbilityActiveOf / settingOf 归一、去 cfg 强转、slotNetFrontline 单一来源、MoveTableLike 类型名）；anton 的 applyDefaultCinemaSkillLevelBonus、roxy 的 resolveRecoveryPerCount 是「据」日之后抽出的新函数，按现版本逐行核过 ⇒ 15/15 仍成立，「据」链追加 `复核@2026-10-07`。另 10 条的新锚在「据」日之后没变过。现状：154 条 · 断锚 0 · 待复核 0。
+- 顺手：anton 正文与头注释里过时的 `computePanelPhases:658 / :711` 改指 `applyDefaultCinemaSkillLevelBonus`（computePanelPhases 与 computeEntrySnapshotPanel 两处调用）。
+- 余火这条核出的不是漂移：catalog 的 `attack_data_0` 存的已是 14.7634（导入时 ÷10000），代码按行值直接计余火；标度本身的变化属数据变化，由该条的 ⟳复核 触发器管。
+- 验证：vue-tsc 0；check-guards 27；tokens 12 / data 367 / specs 1120 / recording 189；vitest 263/2180 + 265/2356 = 528/4536（+2 例：多锚语法、临时 git 仓 drift 端到端）；build 去哈希比对 65/65 逐字节相同（src 只改了注释）。
+
+### 7.4 剩余盲区与不做的事（重开条件见 r6 §8.0 #25）
+
+- 行为在 >150 行调度函数里的 3 条（见 7.1 表）；行为在锚函数调用的跨文件 helper 里时仍会漏（banyue「走轴退化」在 solveTeam 的 topUpIllegal、jane「乱流不继承」在引擎侧、自动能量场的强特路径在 235 行的 helpers#buildCharConfig）。
+- 不做：「锚 + 同文件引用方」自动扩展（r715 量过，加回来的基本是噪声）；函数锚自动带上同文件常量的值（会改 107 条函数锚的既有基线，收益未证）。
