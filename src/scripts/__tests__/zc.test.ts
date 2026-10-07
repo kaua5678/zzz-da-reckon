@@ -8,7 +8,7 @@
  *    agentIds: [AGENT_ID] 常量间接没解析 → 12 个模块被误报无覆盖）。
  */
 import { describe, expect, it } from 'vitest'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ROOT } from '../../../scripts/zc.mjs'
@@ -38,6 +38,7 @@ import {
   testsForSubject,
   stripCommentPrefix,
   resolveAnchor,
+  resolveVerifier,
   scanAuthoredFacts,
   auditAuthoredFacts,
   driftQueue,
@@ -454,6 +455,16 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
     expect(resolveAnchor(null)).toMatchObject({ ok: false, reason: 'anchor-missing' })
   })
 
+  it('验解析（r714）：路径 / 裸文件名 / 用例名 / npm 脚本；括号说明里的 + 不拆', () => {
+    expect(resolveVerifier('src/core/__tests__/anomalyPool.test.ts::splits non-wind anomalies')).toMatchObject({ ok: true })
+    expect(resolveVerifier('anomalyPool.test.ts + npm run validate:data')).toMatchObject({ ok: true })
+    const paren = resolveVerifier('potentialAxisBatchB.test.ts（常量层 + 行为层）+ burnice.test.ts')
+    expect(paren.ok && paren.files.length).toBe(2)
+    expect(resolveVerifier('src/mechanics/__tests__/janeCinemaTier.test.ts')).toMatchObject({ ok: false, reason: 'verifier-file-missing' })
+    expect(resolveVerifier('anomalyPool.test.ts::没有这个用例')).toMatchObject({ ok: false, reason: 'verifier-case-missing' })
+    expect(resolveVerifier('npm run 没有这个脚本')).toMatchObject({ ok: false, reason: 'verifier-script-missing' })
+  })
+
   it('符号命中三类写法：声明 / 对象键 / 测试标题', () => {
     // 声明与对象键在真实文件上验过；测试标题用本文件自证（describe 标题里有下面这个串）
     expect(resolveAnchor('scripts/check-guards.mjs#DEBT_SCAN_SELF_REFERENTIAL').ok).toBe(true)
@@ -475,23 +486,27 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
   // ★ 端到端注入（W8 反空洞）：此前 auditAuthoredFacts 只有 resolveAnchor 的单测，
   // 没有「整条 @fact 走 collect → parse → resolve → violations」的端到端注入 ⇒ 若 collector
   // 漏收 docs/ 或 problem 归类写错，单测仍全绿。本测试在临时根里真写 @fact 行再对账。
-  it('★ 端到端注入：断锚 ⇒ symbol-missing；缺「据」⇒ no-provenance；scanned = 写入条数', () => {
+  it('★ 端到端注入：断锚 ⇒ symbol-missing；缺「据」⇒ no-provenance；验指空 ⇒ verifier-file-missing；scanned = 写入条数', () => {
     const root = mkdtempSync(join(tmpdir(), 'authored-'))
     try {
       mkdirSync(join(root, 'docs'), { recursive: true })
       mkdirSync(join(root, 'scripts'), { recursive: true })
       // 锚文件真实存在（否则会先命中 file-missing，测不到 symbol-missing）
       writeFileSync(join(root, 'scripts/target.mjs'), 'export function realSymbol() {}\n')
+      writeFileSync(join(root, 'scripts/target.test.mjs'), "it('真用例', () => {})\n")
       writeFileSync(join(root, 'docs/x.md'), [
         '# x',
         '- @fact agent:1411/c6 口径: 合法锚 | 据 用户@2026-09-24 | 锚 scripts/target.mjs#realSymbol',
         '- @fact agent:1411/c6 口径: 断锚 | 据 用户@2026-09-24 | 锚 scripts/target.mjs#noSuchSymbol',
         '- @fact agent:1411/c6 口径: 缺据 | 锚 scripts/target.mjs#realSymbol',
+        '- @fact agent:1411/c6 口径: 验指得到 | 据 用户@2026-09-24 | 验 scripts/target.test.mjs::真用例 | 锚 scripts/target.mjs#realSymbol',
+        '- @fact agent:1411/c6 口径: 验指空 | 据 用户@2026-09-24 | 验 scripts/没有.test.mjs | 锚 scripts/target.mjs#realSymbol',
         '',
       ].join('\n'))
       const { scanned, violations } = auditAuthoredFacts(root)
-      expect(scanned.length).toBe(3)                                    // scanned = 写入的 @fact 条数
-      expect(violations).toHaveLength(2)
+      expect(scanned.length).toBe(5)                                    // scanned = 写入的 @fact 条数
+      expect(violations).toHaveLength(3)
+      expect(violations.filter(v => v.problem === 'verifier-file-missing')).toHaveLength(1)
       expect(violations.filter(v => v.problem === 'symbol-missing')).toHaveLength(1)
       expect(violations.filter(v => v.problem === 'no-provenance')).toHaveLength(1)
     } finally {
@@ -511,7 +526,8 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
     expect(authored.every(a => !a.raw.includes('`@fact'))).toBe(true)
   })
 
-  // ★ R34（R32-J3 收口）：把「验槽位不设防」这条**已知局限**钉成回归锁。
+  // ★ R34（R32-J3 收口）：把「验的语义覆盖不设防」这条**已知局限**钉成回归锁。r714 起「验」的链接
+  // （文件 / 用例名 / 脚本存在）已由判据 6 校验（resolveVerifier），这里锁的只是语义那一半。
   // 为什么要有这条测试（而不是只写在 auditAuthoredFacts 头注释里）：注释会被下一个 agent
   // 当成"待修的疏漏"重新立项，而 R34 已用全量语料量化证伪了唯一可机器化的形态——
   // 「验文件必须出现锚符号名」假阳性率 30/91 = 33.0%，且对真实病灶（测试测的是**死副本**、
@@ -519,31 +535,12 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
   // 本测试锁两件事：① 语料确实大到让该结论有统计意义（防"扫不到东西"的空洞绿）；
   // ② 弱启发式在**当前**语料上确实高假阳性（若将来仓库转用字面量断言的风格变了、这个前提
   // 被推翻，测试会红 ⇒ 提醒后人**重新评估**，而不是让注释里的旧数字骗人）。
-  it('★ 「验」槽位刻意不设防：弱启发式假阳性高，本判据不许加硬校验（R32-J3 收口）', () => {
+  it('★ 「验」语义覆盖刻意不设防：弱启发式假阳性高，不许做成硬判据（R32-J3 收口）', () => {
     const scanned = scanAuthoredFacts()
     const withVerifier = scanned.filter(s => s.fact?.verifier)
     expect(withVerifier.length).toBeGreaterThanOrEqual(50)   // 反空洞下限：语料足够大
 
-    // 「验」的写法有两种：全路径（`src/scripts/__tests__/zc.test.ts`）与**裸文件名**
-    // （`difficultyCurve.test.ts`，实际在 `src/composables/__tests__/` 下）。
-    // 不做 basename 兜底会把 16 条合法条目误判成"路径不存在"——R34 首版探针正是这么踩的。
-    const testFiles = new Map<string, string>()               // basename → 绝对路径
-    const walk = (dir: string): void => {
-      for (const e of readdirSync(dir)) {
-        const p = join(dir, e)
-        if (statSync(p).isDirectory()) { if (!['node_modules', '.git', 'dist'].includes(e)) walk(p) }
-        else if (/\.(test|spec)\.ts$/.test(e)) testFiles.set(e, p)
-      }
-    }
-    walk(join(ROOT, 'src'))
-    walk(join(ROOT, 'scripts'))
-    const resolveVerifier = (v: string): string | null => {
-      const spec = v.split('::')[0].trim()
-      for (const c of [join(ROOT, spec), join(ROOT, 'src', spec), join(ROOT, 'scripts', spec)]) {
-        if (existsSync(c)) return c
-      }
-      return testFiles.get(spec.replace(/^.*\//, '')) ?? null
-    }
+    // 「验」→ 测试文件：用 zc 的 resolveVerifier（与判据 6 同一个解析器；路径 / 裸文件名 / 多验证器都认）
 
     // 弱启发式 = 验文件里出现过锚符号名。逐条跑，统计落空率。
     let miss = 0
@@ -553,9 +550,9 @@ describe('L2.5 锚点：把口径钉在代码上（本层是「口径会不会�
       if (!anchor?.includes('#')) continue
       const sym = anchor.split('#')[1].split(/[.(]/)[0]
       if (!sym) continue
-      const file = resolveVerifier(String(s.fact!.verifier))
-      if (!file) continue
-      const src = readFileSync(file, 'utf8')
+      const resolved = resolveVerifier(String(s.fact!.verifier))
+      if (!resolved.ok || resolved.files.length === 0) continue
+      const src = resolved.files.map(f => readFileSync(join(ROOT, f), 'utf8')).join('\n')
       if (new RegExp('\\b' + sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(src)) hit++
       else miss++
     }

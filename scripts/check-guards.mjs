@@ -410,7 +410,7 @@ export function authoredFactsVerdict(audited) {
   const scanned = audited.scanned.length
   const belowFloor = scanned < AUTHORED_FACTS_MIN_SCANNED
   return {
-    name: `@fact anchors (语言层: 手写口径必须有据 + 锚得住) ${scanned - audited.violations.length}/${scanned}`,
+    name: `@fact anchors (语言层: 手写口径必须有据 + 锚得住 + 验指得到) ${scanned - audited.violations.length}/${scanned}`,
     ok: audited.violations.length === 0 && !belowFloor,
     detail: [
       ...(belowFloor ? [`  ✗ 反空洞下限：scanned ${scanned} < ${AUTHORED_FACTS_MIN_SCANNED} → 语料扫描面塌了（目录改名 / collector 写坏）`] : []),
@@ -421,6 +421,9 @@ export function authoredFactsVerdict(audited) {
           'anchor-missing': '缺「锚」→ 补 | 锚 <路径>#<符号>（口径实现在哪）',
           'file-missing': '锚文件不存在 → 口径已过期，改锚或删事实',
           'symbol-missing': '锚符号不存在 → 实现改名/删除了，复核口径后改锚',
+          'verifier-file-missing': '「验」指向的测试文件不存在 → 改成真正锁这条口径的测试（路径或文件名）',
+          'verifier-case-missing': '「验」里 :: / # 后的用例名在测试文件中找不到 → 用例改名了，同步改「验」',
+          'verifier-script-missing': '「验」里的 npm run 脚本不存在 → 改成现有脚本',
         }[v.problem] ?? v.problem
         return `  ✗ ${v.file}:${v.line} ${how}`
       }),

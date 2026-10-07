@@ -51,9 +51,9 @@ function janeProficiencyToAtkDetail(): string {
  *
  * ⚠ 这是**潜能觉醒**轴（raw `potential_detail`），与 `talent.1..6`（影画）是两条独立轴。
  * R59 修复：原实现写死 `= 30`（VI 满档）⇒ `potentialLevel` 滑块完全不进计算
- * （四臂正交实测 A==B、C==D，见 janeCinemaTier.test.ts）。
+ * （四臂正交实测 A==B、C==D，见 potentialAxisBatchB.test.ts「R59 · 1261」）。
  */
-// @fact agent:1261/潜能觉醒强击暴伤 口径: 潜能觉醒·致命舞步按 `potentialLevel` 取档 II~VI = 10/15/20/25/30%（仅简自身触发的强击，乱流不继承），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1261.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/janeCinemaTier.test.ts | 锚 src/mechanics/agents/jane.ts#JANE_POTENTIAL_ASSAULT_CRIT_DMG | 信 确认
+// @fact agent:1261/潜能觉醒强击暴伤 口径: 潜能觉醒·致命舞步按 `potentialLevel` 取档 II~VI = 10/15/20/25/30%（仅简自身触发的强击，乱流不继承），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1261.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/potentialAxisBatchB.test.ts::1261 简潜能觉醒 | 锚 src/mechanics/agents/jane.ts#JANE_POTENTIAL_ASSAULT_CRIT_DMG | 信 确认
 // ⟳复核: nanoka 若刷新 1261 的 potential_detail，逐档对账 II~VI 是否仍为 10/15/20/25/30 | 到期 2027-03-31
 export const JANE_POTENTIAL_ASSAULT_CRIT_DMG = [0, 0, 10, 15, 20, 25, 30] as const
 

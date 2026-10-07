@@ -55,9 +55,9 @@ const cfgNum = mechanicSettingReader(() => lycaonMechanic.settings)
  *
  * ⚠ 这是**潜能觉醒**轴（raw `potential_detail`），与 `talent.1..6`（影画）是两条独立轴。
  * R59 修复：原实现写死 `panel.impact *= 1.15`（VI 满档）⇒ `potentialLevel` 滑块完全不进计算
- * （四臂正交实测 A==B、C==D，见 lycaonCinemaTier.test.ts）。
+ * （四臂正交实测 A==B、C==D，见 potentialAxisBatchB.test.ts「R59 · 1141」）。
  */
-// @fact agent:1141/潜能觉醒冲击力 口径: 潜能觉醒·掠冰按 `potentialLevel` 取档 II~VI = 5/7.5/10/12.5/15%（围猎后台普攻/冲刺/闪反期间局内冲击力），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1141.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/lycaonCinemaTier.test.ts | 锚 src/mechanics/agents/lycaon.ts#LYCAON_POTENTIAL_IMPACT_PCT | 信 确认
+// @fact agent:1141/潜能觉醒冲击力 口径: 潜能觉醒·掠冰按 `potentialLevel` 取档 II~VI = 5/7.5/10/12.5/15%（围猎后台普攻/冲刺/闪反期间局内冲击力），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1141.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/potentialAxisBatchB.test.ts::1141 莱卡恩潜能觉醒 | 锚 src/mechanics/agents/lycaon.ts#LYCAON_POTENTIAL_IMPACT_PCT | 信 确认
 // ⟳复核: nanoka 若刷新 1141 的 potential_detail，逐档对账 II~VI 是否仍为 5/7.5/10/12.5/15 | 到期 2027-03-31
 export const LYCAON_POTENTIAL_IMPACT_PCT = [0, 0, 5, 7.5, 10, 12.5, 15] as const
 

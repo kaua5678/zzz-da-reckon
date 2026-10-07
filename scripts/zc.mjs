@@ -105,6 +105,7 @@ export function grammar() {
     '据     谁定的·哪天：用户@2026-08-31 / nanoka / 实测 / <commit>',
     '       实现改动后复核过，就追加一段：用户@2026-08-26·复核@2026-09-01（原始裁决日期永不改写，漂移按最后一个日期算）',
     '验     哪条测试/命令证明它活着：yuzuha.test.ts::硬糖射击次数 / npm run probe:panel',
+    '       —— 测试文件 / :: 后的用例名 / npm 脚本找不到 = 判据 6 直接红（只查引用存在，不查它测没测这条口径）',
     '锚     这条口径实现在哪：<路径>[#<符号>]，如 src/core/damage.ts#calcDirectDamage',
     '       —— 锚断了（文件/符号没了）= check-guards 判据 6 直接红；锚文件在「据」之后被改过 = 进 zc drift 复核队列',
     '信     ' + CONFIDENCE.join(' / ') + '（对应既有标注 [已确认] / [猜测·高中低]）',
@@ -337,6 +338,34 @@ export function resolveAnchor(anchor, root = ROOT) {
 }
 
 /**
+ * 「验」槽位的链接解析（r714）：只查引用**存在**——测试文件（路径或裸文件名）、`::` / `#` 后的用例名子串、
+ * `npm run <脚本>`；不查那个测试是否真的覆盖这条口径（语义覆盖仍刻意不设防，见 auditAuthoredFacts 头注释）。
+ * 写法：多个验证器用 ` + ` 连接；全角括号里的说明先剥掉（说明里可能含 ` + `）；认不出是测试 / 脚本的片段（如「人工」）不判。
+ * 文件清单含未跟踪的新文件（新写的测试未 `git add` 也解析得到）；返回的 `files` 供 R34 锁复用，不另写解析器。
+ */
+const verifierFileLists = new Map()
+export function resolveVerifier(verifier, root = ROOT) {
+  if (!verifierFileLists.has(root)) verifierFileLists.set(root, gitBig('ls-files --cached --others --exclude-standard', root).split('\n'))
+  const listed = verifierFileLists.get(root)
+  const files = []
+  for (const part of String(verifier).replace(/（[^）]*）/g, ' ').split(/\s+\+\s+/)) {
+    const p = part.trim()
+    const npm = p.match(/^npm run (\S+)/)
+    if (npm) {
+      if (!JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).scripts?.[npm[1]]) return { ok: false, reason: 'verifier-script-missing', part: p }
+      continue
+    }
+    const t = p.match(/^(\S+?\.(?:test|spec|perf)\.[cm]?[jt]s)(?:(?:::|#)(.+))?$/)
+    if (!t) continue
+    const hits = existsSync(join(root, t[1])) ? [t[1]] : listed.filter(f => f.endsWith('/' + t[1]))
+    if (!hits.length) return { ok: false, reason: 'verifier-file-missing', part: p }
+    if (t[2] && !hits.some(f => readFileSync(join(root, f), 'utf8').includes(t[2].trim()))) return { ok: false, reason: 'verifier-case-missing', part: p }
+    files.push(...hits)
+  }
+  return { ok: true, files }
+}
+
+/**
  * 全仓扫作者手写事实。
  *
  * 语料 = 代码注释行（`.ts/.mjs/.vue` 的 `// @fact` 等）+ **docs/ 的 `@fact` 声明行**。
@@ -389,16 +418,20 @@ export function scanAuthoredFacts(root = ROOT) {
 
 /**
  * 手写事实的完整性判据（判据 6 的判定核心）：语法必须能解析、必须有「据」、
- * 必须有能解析到的「锚」。抽取的散文事实不受此约束——它们是存量，不是新债。
+ * 必须有能解析到的「锚」；写了「验」则引用必须存在（r714，`resolveVerifier`）。抽取的散文事实不受此约束——它们是存量，不是新债。
  *
- * ══ ★ 已知局限：「验」槽位不设防（R32-J3，R34 收口 —— 刻意不做成判据）══
+ * ══ ★ 已知局限：「验」只查链接、不查语义覆盖（R32-J3，R34 收口；r714 补链接解析）══
  *
- * 本函数**只**校验 ① 语法 ② 有「据」 ③ **锚**可解析。`fact.verifier`（「验」）被解析
- * （parseFactLine）也被打印（formatFact），但**从不校验**——既不解析路径、也不检查那个文件
- * 是否真的测过这条口径；`facts --unverified` 是**另一条**判据（只对 `agent:` 主体按 agentId
+ * 本函数校验 ① 语法 ② 有「据」 ③ **锚**可解析 ④「验」的引用存在（r714：测试文件 / 用例名 / npm 脚本）。
+ * 但**不校验**那个文件是否真的测过这条口径；`facts --unverified` 是**另一条**判据（只对 `agent:` 主体按 agentId
  * 找测试文件），与「验」槽位无关。⇒ 口径可以挂一个**根本不测它**的「验」而永远绿。
  *
- * **为什么不补硬判据（R34 实测的量化证伪，不是"嫌麻烦"）**：
+ * **r714 的链接解析与下面的 R34 结论不冲突**：R34 证伪的是语义启发式「验文件里出现锚符号名」；
+ * 链接解析只查引用存在，在全量语料（150 条带「验」的手写事实）上零假阳性，当场抓到 2 条从写下起就指向
+ * **从未存在**的测试文件（jane.ts / lycaon.ts，R59 batchB 写入，活了 17 天——R34 锁里的局部解析器
+ * 对解析不到的「验」直接跳过，所以没人发现）。
+ *
+ * **为什么不补语义硬判据（R34 实测的量化证伪，不是"嫌麻烦"）**：
  * 唯一「看起来可机器化」的形态 = 弱启发式「验文件里必须出现过**锚符号名**」。
  * 在 R34 的**全量语料**（110 条手写事实，其中 107 条带「验」）上实测：
  *
@@ -428,6 +461,10 @@ export function auditAuthoredFacts(root = ROOT) {
     if (!s.fact.provenance) violations.push({ ...s, problem: 'no-provenance' })
     const anchor = resolveAnchor(s.fact.anchor, root)
     if (!anchor.ok) violations.push({ ...s, problem: anchor.reason })
+    if (s.fact.verifier) {
+      const verifier = resolveVerifier(s.fact.verifier, root)
+      if (!verifier.ok) violations.push({ ...s, problem: verifier.reason })
+    }
   }
   return { scanned, violations }
 }

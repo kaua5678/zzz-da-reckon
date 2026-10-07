@@ -67,7 +67,7 @@ const C1_INTERVAL_SECONDS = 50 // 影画1：50s 最多触发一次
  *
  * ⚠ 这是**潜能觉醒**轴（raw `potential_detail`），与 `talent.1..6`（影画）是两条独立轴。
  * R59 修复：原实现是 `const POTENTIAL_CRIT_DMG = 48` 硬编码满档 ⇒ `potentialLevel` 滑块
- * 完全不进计算（四臂正交实测 A==B、C==D，见 soldier11CinemaTier.test.ts）。
+ * 完全不进计算（四臂正交实测 A==B、C==D，见 potentialAxisBatchB.test.ts「R59 · 1041」）。
  * raw 子句：「潜能（炽焰行歌 II）潜能觉醒：绝焰：[额外能力：燎原]中，「11号」自身暴击伤害提升16%。」
  */
 // @fact agent:1041/潜能觉醒暴伤 口径: 潜能觉醒·绝焰按 `potentialLevel` 取档 II~VI = 16/24/32/40/48%（[额外能力：燎原] 门控），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1041.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/potentialAxisBatchB.test.ts | 锚 src/mechanics/agents/soldier11.ts#SOLDIER11_POTENTIAL_CRIT_DMG | 信 确认

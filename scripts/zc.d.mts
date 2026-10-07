@@ -66,6 +66,10 @@ export interface AnchorResolution {
   symbol?: string
 }
 export declare function resolveAnchor(anchor: string | null | undefined, root?: string): AnchorResolution
+export type VerifierResolution =
+  | { ok: true; files: string[] }
+  | { ok: false; reason: 'verifier-file-missing' | 'verifier-case-missing' | 'verifier-script-missing'; part: string }
+export declare function resolveVerifier(verifier: string, root?: string): VerifierResolution
 export interface AuthoredFact { file: string; line: number; raw: string; fact: Fact | null }
 export declare function scanAuthoredFacts(root?: string): AuthoredFact[]
 export declare function auditAuthoredFacts(root?: string): {
