@@ -452,6 +452,7 @@ describe('1051 伊德海莉：轴内连段反推 exReservedCount / EnergyCost（
     const cfg: Cfg = { slot: 0, agentId: '1051' }
     getAgentMechanic('1051')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes, windows: [2] }),
+      cinemaLevel: 1,
       team: [{ slot: 0, agentId: '1051', cinemaLevel: 1 } as never],
     }))
     expect(cfg.exReservedCount).toBe(14) // 次数与命座无关

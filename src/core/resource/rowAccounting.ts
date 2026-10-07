@@ -23,7 +23,7 @@ import { finiteOr0 } from '@/utils/finiteClamp'
 // ============ 单角色喧响计算 ============
 
 export function decibelEfficiencyMultiplier(cfg: CharacterOperationConfig): number {
-  return 1 + ((cfg.panel.decibelGainEfficiency ?? 0) / 100)
+  return 1 + (cfg.panel.decibelGainEfficiency / 100)
 }
 
 /**

@@ -143,11 +143,11 @@ function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'promiaCinemaLevel' | 
 function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
   applyAgentAttributeConversions(panel, PROMIA_ID, 1, { outOfCombat: outOfCombatPanel })
   if (cinemaLevel >= 2) {
-    panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + PROMIA_C2_PROFICIENCY
+    panel.anomalyProficiency = panel.anomalyProficiency + PROMIA_C2_PROFICIENCY
   }
   if (cinemaLevel >= 6) {
     // 影画6：普罗米娅自身属性异常/紊乱伤害无视 15% 全属性抗性（挂面板 enemyResReduction，异放走 releaseModifier）
-    panel.enemyResReduction = (panel.enemyResReduction ?? 0) + PROMIA_C6_ALL_RES_IGNORE
+    panel.enemyResReduction = panel.enemyResReduction + PROMIA_C6_ALL_RES_IGNORE
   }
   // 额外能力：冰异常积蓄效率 +30%（需 additionalAbilityActive 门控）——依赖全是静态
   // （cinema/掌控/AA），改在 applyPanel 算；曾由 transformSkillExecutions 写面板（布尔守卫防累积）。
@@ -157,7 +157,7 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
     additionalActive: additionalAbilityActiveOf(panel),
   })
   if (cycle.additionalBuildUpEff > 0) {
-    panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + cycle.additionalBuildUpEff
+    panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + cycle.additionalBuildUpEff
   }
 }
 
@@ -292,7 +292,7 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
   const attackFrost = executions.reduce((s, e) => s + (e.totalSpecialResourceRecovery ?? 0), 0)
   cfg.promiaAttackFrostGain = Math.max(0, Math.floor(attackFrost))
   const niying = Math.max(0, Math.min(99, Math.floor(Number(cfg.promiaNiyingCount ?? 0))))
-  const exCasts = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
+  const exCasts = Math.max(0, Math.floor(state.exSpecialCount))
 
   // 强特 = 封喉霜径(起手，资源池已生成) + 坠霜(普通终结) / 重霜(匿影终结)。
   // 坠霜 = 强特次数 − 匿影次数（匿影的强特终结是重霜，不是坠霜）
@@ -323,7 +323,7 @@ function buildPromiaExecutions({ cfg, state, executions }: AgentResourceInput): 
     }))
   }
   // 绝裁本体直伤（异放载体）：普通招式，失衡吃易伤；次数 = 霜刑（绝裁异放）次数
-  const verdict = computePromiaVerdict({ cfg, state, battleTime: Number(cfg.battleTime ?? 180) })
+  const verdict = computePromiaVerdict({ cfg, state, battleTime: cfg.battleTime })
   if (verdict.count > 0) {
     executions.push(moduleExecRow({
       moveId: PROMIA_VERDICT_MOVE_ID,
@@ -362,7 +362,7 @@ function promiaNextRoundFeedback({ displayResult, anomalyPool }: AgentNextRoundF
     // 队友异放 = 除普罗米娅自身外的全队 release 事件（原文「队友触发异放」，自身异放回喧响另走 promiaReleaseDecibel）
     promiaTeammateReleasesNext = shown.characters
       .filter(ch => ch.agentId !== PROMIA_ID)
-      .flatMap(ch => ch.anomalyEventExecutions ?? [])
+      .flatMap(ch => ch.anomalyEventExecutions)
       .filter(e => e.eventType === 'release' && e.count > 0)
       .reduce((sum, e) => sum + Math.floor(e.count), 0)
     // 普罗米娅自身异放回喧响（绝裁异放 + 影画6特殊异放）各 +100（0.5s CD 但异放次数远低于上限，不钳制）
@@ -396,7 +396,7 @@ export const promiaMechanic: AgentMechanicModule = {
     cfg.promiaTriggerHitCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTriggerHits ?? 0)))
     cfg.promiaTeammateReleaseCount = Math.max(0, Math.floor((threads.moduleFeedback?.promiaTeammateReleases ?? 0)))
     cfg.extraSelfDecibelReward =
-      Math.max(0, Number(cfg.extraSelfDecibelReward ?? 0)) + Math.max(0, Math.floor((threads.moduleFeedback?.promiaReleaseDecibel ?? 0)))
+      Math.max(0, cfg.extraSelfDecibelReward) + Math.max(0, Math.floor((threads.moduleFeedback?.promiaReleaseDecibel ?? 0)))
   },
   buildExecutions: buildPromiaExecutions,
   buildAnomalyEvents: buildPromiaAnomalyEvents,

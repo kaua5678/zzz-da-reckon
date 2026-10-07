@@ -110,14 +110,14 @@ export function computePerSlotBuildUp(
   for (const prog of anomalyPoolResult?.perElement ?? []) {
     // 接收人槽 = 该元素同属性（非赠送）贡献者中积蓄最大的槽
     let receiverSlot = -1
-    const receivers = (prog.contributions ?? []).filter(c => {
+    const receivers = prog.contributions.filter(c => {
       const el = catalogStore.getAgent(team[c.slot]?.agentId ?? '')?.damageElement
       return el === prog.element
     })
     if (receivers.length > 0) {
       receiverSlot = receivers.reduce((max, c) => (c.totalBuildUp > max.totalBuildUp ? c : max)).slot
     }
-    for (const contrib of prog.contributions ?? []) {
+    for (const contrib of prog.contributions) {
       const agentEl = catalogStore.getAgent(team[contrib.slot]?.agentId ?? '')?.damageElement
       const gifted = !!agentEl && contrib.element !== agentEl
       const targetSlot = gifted && receiverSlot >= 0 ? receiverSlot : contrib.slot

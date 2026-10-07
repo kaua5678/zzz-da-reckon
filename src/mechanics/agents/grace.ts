@@ -186,13 +186,13 @@ function applyGracePanel(input: AgentPanelInput): void {
     // ⚠ R58 订正：档位**按潜能等级取**（旧实现用 cinemaLevel 索引 + 门控 ⇒ 潜能轴完全失效）。
     const lv = potentialLevelOf(potentialLevel)
     const bonus = GRACE_POTENTIAL_ELECTRIC_DMG[lv] ?? 0
-    if (bonus > 0) panel.electricDmg = (panel.electricDmg ?? 0) + bonus
+    if (bonus > 0) panel.electricDmg = panel.electricDmg + bonus
   }
   // 额外能力·技术支持班组：感电伤害 +18%/层 ×≤2（AA 门控见 spec additionalAbility；
   // 异常伤害提升乘区——格莉丝唯一异常为感电，走施加者面板 anomalyDmgBonus）
   if (additionalAbilityActiveOf(panel)) {
     const stacks = Math.max(0, Math.min(2, settingOf(settings, 'grace.shockStacks')))
-    panel.anomalyDmgBonus = (panel.anomalyDmgBonus ?? 0) + 18 * stacks
+    panel.anomalyDmgBonus = panel.anomalyDmgBonus + 18 * stacks
   }
   // 影画2 电致击穿（电伤抗+电积蓄抗 −8.5%）已由 spec teamBuffs `grace_c2_enemy_electric_debuff` 承载（满覆盖）
   // 影画4 爆破电容：能量获得效率 +20% 是招式特定（A1-A4 平A），非面板满覆盖——
@@ -217,7 +217,7 @@ function applyGraceTeamConfig({ cfg, phase, characters, cinemaLevel, threads }: 
   const prev = Math.max(0, Number(cfg.graceC1TeamEnergyTotal ?? 0))
   for (const c of characters) {
     if (!c) continue
-    c.initialEnergyGift = Math.max(0, Number(c.initialEnergyGift ?? 0) - prev) + gift
+    c.initialEnergyGift = Math.max(0, c.initialEnergyGift - prev) + gift
   }
   cfg.graceC1TeamEnergyTotal = gift
 }
@@ -226,9 +226,9 @@ function applyGraceTeamConfig({ cfg, phase, characters, cinemaLevel, threads }: 
 function gracePhaseValues(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): {
   basicPool: number; cycles: number; c4Energy: number; c4Applies: boolean; pulseGrenades: number
 } {
-  const basicPool = state.basicAttackTime ?? 0
+  const basicPool = state.basicAttackTime
   const cinema = cinemaLevelOf(cfg.graceCinemaLevel)
-  const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0, graceTimesOf(cfg))
+  const plan = planGraceRotation(basicPool, state.exSpecialCount, graceTimesOf(cfg))
   const slots = plan.cycles * 2
   // 影画4 爆破电容：强特×6 充能 → 给 A1-A4 平A 回能 +20%（单独回能项，按段精确）
   const c4Applies = cinema >= 4 && plan.cycles > 0 && plan.exUsed > 0
@@ -247,18 +247,18 @@ function gracePhaseValues(cfg: AgentResourceInput['cfg'], state: AgentResourceIn
   }
   // [脉冲]：终结技 ×25 层、**上限 25**（用户口供：留 1 层，多大都卡在 25）→
   // 一次大招恒 3 次兑换（floor(25/8)=3），每 8 层兑换一枚[脉冲手雷]（1181019）
-  const pulseTotal = Math.max(0, Math.floor(state.ultimateCount ?? 0)) * PULSE_PER_ULT
+  const pulseTotal = Math.max(0, Math.floor(state.ultimateCount)) * PULSE_PER_ULT
   const pulseGrenades = Math.min(Math.floor(Math.min(pulseTotal, PULSE_CAP) / PULSE_PER_GRENADE), Math.max(0, slots))
   return { basicPool, cycles: plan.cycles, c4Energy, c4Applies, pulseGrenades }
 }
 
 function buildGraceExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const basicPool = state.basicAttackTime ?? 0
+  const basicPool = state.basicAttackTime
   const cinema = cinemaLevelOf(cfg.graceCinemaLevel)
   // 全部 cfg 写入（平A池/C1 轮数/C4 回能/脉冲手雷/initialEnergyGift）已拆到 materializePhaseState
   // ——本钩子对 cfg 只读（阶段1 第二刀 2026-09-09：写在产行钩子里会让 materializeRows 必须靠
   // 快照/恢复兜底，且试探测量与装配的相位会互相污染）。
-  const plan = planGraceRotation(basicPool, state.exSpecialCount ?? 0, graceTimesOf(cfg))
+  const plan = planGraceRotation(basicPool, state.exSpecialCount, graceTimesOf(cfg))
   const phase = gracePhaseValues(cfg, state)
 
   // A1-A4 走通用 basic 池行（平A秒均），这里发两发电能强化特殊技（真实 id，enrich 回填伤害/积蓄，
@@ -383,7 +383,7 @@ export const graceMechanic: AgentMechanicModule = {
     const prevC4 = Math.max(0, Number(cfg.graceC4EnergyGift ?? 0))
     const c4Gift = v.c4Applies ? v.c4Energy : 0
     if (c4Gift > 0 || prevC4 > 0) {
-      cfg.initialEnergyGift = Math.max(0, Number(cfg.initialEnergyGift ?? 0) - prevC4) + c4Gift
+      cfg.initialEnergyGift = Math.max(0, cfg.initialEnergyGift - prevC4) + c4Gift
       cfg.graceC4EnergyGift = c4Gift
     }
     cfg.gracePulseGrenadeCount = v.pulseGrenades

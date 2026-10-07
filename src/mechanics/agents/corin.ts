@@ -162,13 +162,13 @@ function applyCorinTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount }
   const chainTotal = chainCountTotalOf(cfg, stunCount)
   const triggers = computeCorinC4Triggers({
     battleTime: combatTime,
-    quickAssistCount: cfg.quickAssistCount ?? 0,
-    parryCount: cfg.parryCount ?? 0,
+    quickAssistCount: cfg.quickAssistCount,
+    parryCount: cfg.parryCount,
     chainTotal,
   })
   const gift = triggers * CORIN_C4_ENERGY
   const prev = Math.max(0, Number(cfg.corinC4EnergyTotal ?? 0))
-  cfg.initialEnergyGift = Math.max(0, (cfg.initialEnergyGift ?? 0) - prev) + gift
+  cfg.initialEnergyGift = Math.max(0, cfg.initialEnergyGift - prev) + gift
   cfg.corinC4EnergyTotal = gift
 }
 
@@ -229,10 +229,10 @@ function applyCorinPanel({ cinemaLevel, panel, settings }: AgentPanelInput): voi
     c6ChargeStacks: 0,
   })
   // 核心被动专注：用户口径——每个招式都写了长按持续斩击 → 全招式普通增伤，不限定行
-  if (cycle.coreSawDmg > 0) panel.dmgBonus = (panel.dmgBonus ?? 0) + cycle.coreSawDmg
-  if (cycle.c1Dmg > 0) panel.dmgBonus = (panel.dmgBonus ?? 0) + cycle.c1Dmg
+  if (cycle.coreSawDmg > 0) panel.dmgBonus = panel.dmgBonus + cycle.coreSawDmg
+  if (cycle.c1Dmg > 0) panel.dmgBonus = panel.dmgBonus + cycle.c1Dmg
   if (cycle.c2ResReduction > 0) {
-    panel.enemyPhysicalResReduction = (panel.enemyPhysicalResReduction ?? 0) + cycle.c2ResReduction
+    panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + cycle.c2ResReduction
   }
 }
 
@@ -330,7 +330,7 @@ export const corinMechanic: AgentMechanicModule = {
    */
   directRowBonus: ({ exec, isAxis, stunOverride, overlay }) => {
     const o = corinOverlay.read(overlay)
-    const moveId = exec.moveId ?? ''
+    const moveId = exec.moveId
     let v = 0
     if (isAxis) {
       v = stunOverride > 0 ? (o?.byMove?.get(moveId) ?? 0) : 0

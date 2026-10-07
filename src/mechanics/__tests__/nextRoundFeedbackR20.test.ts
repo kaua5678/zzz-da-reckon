@@ -59,18 +59,17 @@ describe('C-β next-round feedback', () => {
   })
 
   // ── 层① 精确值：仪玄符法千重 ────────────────────────────────────────────────
-  it('C6: OR match counts once, name-only and id-only both hit, fractional/negative/missing pass through', () => {
+  it('C6: OR match counts once, name-only and id-only both hit, fractional/negative pass through', () => {
     const yixuan = { agentId: '1371', executions: [
       { moveId: '1371020', moveName: '终结技：符法千重', count: 2 },        // 两条件都成立 ⇒ 只算一次
       { moveId: '1371999', moveName: '强化特殊技：符法千重-破', count: 1.5 }, // 只有 name 命中
       { moveId: '1371020', moveName: '别的名字', count: 3 },                // 只有 moveId 命中
       { moveId: '1371009', moveName: '强化特殊技：墨痕化形', count: 1000 },  // 都不命中
-      { moveId: '1371020', moveName: '符法千重' },                          // 缺 count ⇒ 0
       { moveId: '1371020', moveName: '符法千重', count: -0.25 },            // 负值原样（不 clamp）
     ] }
     const other = { agentId: '1481', executions: [{ moveId: '1371020', moveName: '符法千重', count: 999 }] }
     expect(feedback('1371', { teamResult: rows([other, yixuan]) }))
-      .toEqual({ teamUltimateExtra: 2 + 1.5 + 3 + 0 - 0.25 })
+      .toEqual({ teamUltimateExtra: 2 + 1.5 + 3 - 0.25 })
   })
 
   it('C6: no 1371 row ⇒ 0 (never其他角色的同名行)', () => {

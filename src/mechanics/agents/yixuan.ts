@@ -345,11 +345,11 @@ function buildYixuanCharConfig(input: AgentCharConfigInput): void {
   // 完美格挡 +10/次（yixuanPerfectBlockCount，≤0=自动=弹刀次数全完美）、极限闪避 +5/次（dodgeCounterCount）、
   // 影画1 落雷 +5/次（6s CD 战斗时间驱动）、玄墨异常触发 +10/次（外层收敛注入 cfg.yixuanAnomalyTriggerFlash）
   const perfectBlocks = resolveYixuanPerfectBlocks(cfg)
-  const dodges = Math.max(0, Math.floor(cfg.dodgeCounterCount ?? 0))
+  const dodges = Math.max(0, Math.floor(cfg.dodgeCounterCount))
   const anomalyFlash = Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(cfg.yixuanAnomalyTriggerFlash ?? 0))))
   // 极限支援换场落雷（额外能力，用户口径）：默认次数 = 队友正常弹刀次数求和（上限），主页可录入；
   // 次数由 useResourceCalc merged 注入 cap 后在本模块 buildExecutions 结算（闪能已在 merged 注入计入总账）
-  cfg.yixuanExtremeAssistCountInput = Number(cfg.yixuanExtremeAssistCount ?? -1)
+  cfg.yixuanExtremeAssistCountInput = cfg.yixuanExtremeAssistCount
   // 影画1·追加落雷：次数与闪能由 useResourceCalc merged 按 CD 注入（轴模式轴内时间/6，非轴战斗时间/6）
   const flashBonus = perfectBlocks * PERFECT_BLOCK_FLASH + dodges * DODGE_FLASH + anomalyFlash * ANOMALY_TRIGGER_FLASH
   cfg.yixuanFlashBonus = flashBonus
@@ -418,7 +418,7 @@ function applyYixuanTeamConfig(
   { cfg, phase, slot, threads, axis, interactions }: AgentTeamConfigInput,
 ): void {
   if (phase !== 'converge') return
-  const ownSlot = Number(slot ?? cfg.slot)
+  const ownSlot = slot
 
   // 轴内总时间：原局部量 `axisInSeconds`（`convergence.ts` 的
   // `axisActive ? ΣallocateAxisWindows(...) × computeWindowDuration() : 0`）。
@@ -514,12 +514,12 @@ function applyYixuanPanel(input: AgentPanelInput): void {
   const { panel, cinemaLevel } = input
   // 影画1·清灵道心：进入战场时暴击率提升 10% → 用户口径改为等效暴伤+20%（防暴击溢出）
   if (cinemaLevel >= 1) {
-    panel.critDmg = (panel.critDmg ?? 0) + C1_CRIT_DMG
+    panel.critDmg = panel.critDmg + C1_CRIT_DMG
   }
   // 影画2·青溟云影：终结技使失衡敌人失衡持续时间 +3 秒（原 spec teamBuffs 全队应用导致
   // computeWindowDuration 按角色求和多计；改 applyPanel 只加本角色一次，与琉音/般岳/诺姆口径一致）
   if (cinemaLevel >= 2) {
-    panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + 3
+    panel.stunDurationBonusSeconds = panel.stunDurationBonusSeconds + 3
   }
   // 影画6 凝神（暴伤+40%/贯穿+20%）不在面板层施加：满覆盖+滑块由 pushDirect 按执行折算（能读 configStore）
   specBase.applyPanel?.(input)
@@ -534,7 +534,7 @@ function resolveYixuanPerfectBlocks(cfg: AgentCharConfigInput['cfg']): number {
   const pbRaw = Number(cfg.yixuanPerfectBlockCount ?? 0)
   return pbRaw >= 1
     ? Math.floor(pbRaw)
-    : Math.max(0, Math.floor(Number(cfg.parryCount ?? 0)))
+    : Math.max(0, Math.floor(cfg.parryCount))
 }
 
 function resolveYixuanExtremeAssists(
@@ -597,7 +597,7 @@ function shufaUltCountOf(cfg: AgentResourceResultInput['cfg'], resources: Readon
 }
 
 function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const chain = resolveYixuanChain(cfg, state.exSpecialCount ?? 0)
+  const chain = resolveYixuanChain(cfg, state.exSpecialCount)
   // spec 术法值按 cfgField 读取实际总耗闪能
   cfg.yixuanFlashEnergySpent = chain.flashSpent
 
@@ -606,14 +606,14 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   const axisCloud = chain.axisCloud ?? 0
   const cloudOut = chain.cloudOut ?? 0
   const cinemaLevel = cinemaLevelOf(cfg.yixuanCinemaLevel)
-  const ultCount = Math.max(0, Math.floor(state.ultimateCount ?? 0))
+  const ultCount = Math.max(0, Math.floor(state.ultimateCount))
   // 玄墨值 M = 符法千重总次数（术法值消耗 + 影画6 调息赠送）——合轴替换/聚墨破/C4 静心共用
   const shufaResources = computeSpecResources(getAgentSpec(AGENT_ID)!, cfg, state)
   const shufaUlts = shufaUltCountOf(cfg, shufaResources)
   // 影画6·调息：青溟云影后获得一层，可无视术法值发动一次符法千重；30s CD 封顶；
   // 赠送次数默认 = 大招次数（喧响大的次数，用户口径），滑块可调
   const giftSlider = Math.floor(cfgNum(cfg, 'yixuan.c6GiftUltCount'))
-  const giftCap = Math.max(0, Math.floor((cfg.battleTime ?? 180) / C6_GIFT_INTERVAL))
+  const giftCap = Math.max(0, Math.floor(cfg.battleTime / C6_GIFT_INTERVAL))
   const giftUlts = cinemaLevel >= 6
     ? Math.max(0, Math.min(giftSlider >= 0 ? giftSlider : ultCount, giftCap))
     : 0
@@ -860,7 +860,7 @@ function buildYixuanResourceResult({ cfg, state }: AgentResourceResultInput): Pa
   return {
     specResources: Object.fromEntries(resources),
     // 与 buildExecutions 同一纯函数重算（CC-286：不再经 cfg.yixuanExChain 缓存）
-    yixuanExChain: resolveYixuanChain(cfg, state.exSpecialCount ?? 0),
+    yixuanExChain: resolveYixuanChain(cfg, state.exSpecialCount),
   }
 }
 
@@ -966,10 +966,10 @@ function yixuanNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeed
   let teamUltimateExtra = 0
   const self = teamResult.characters.find(c => c.agentId === AGENT_ID)
   for (const e of self?.executions ?? []) {
-    const mid = e.moveId ?? ''
-    const name = e.moveName ?? ''
+    const mid = e.moveId
+    const name = e.moveName
     if (mid === MOVE.extraUlt || name.includes('符法千重')) {
-      teamUltimateExtra += e.count ?? 0
+      teamUltimateExtra += e.count
     }
   }
   // CC-318：玄墨异常触发次数（下一轮通道③回闪能）。原由编排层无条件算进具名线程 `auricInkFlash`、
@@ -1047,7 +1047,7 @@ export const yixuanMechanic: AgentMechanicModule = {
   applyTeamConfig: applyYixuanTeamConfig,
   nextRoundFeedback: yixuanNextRoundFeedback,
   estimateExSpecialTime: ({ cfg, exSpecialCount }) => {
-    const chain = resolveYixuanChain(cfg, exSpecialCount ?? 0)
+    const chain = resolveYixuanChain(cfg, exSpecialCount)
     return { necessaryTime: chain.chainSeconds, comboAlignTime: 0 }
   },
   buildExecutions: buildYixuanExecutions,
@@ -1115,7 +1115,7 @@ export const yixuanMechanic: AgentMechanicModule = {
    */
   directRowBonus: ({ exec, isAxis, overlay }) => {
     const o = yixuanOverlay.read(overlay)
-    const moveId = exec.moveId ?? ''
+    const moveId = exec.moveId
     const ns = o?.flat
       ?? (isAxis ? o?.byMove?.get(moveId) : undefined)
       ?? { critDmg: 0, sheerDmg: 0 }

@@ -55,7 +55,7 @@ export function computeRemielleMechanic(input: {
 function buildRemielleResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   return {
     remielleMechanicSource: computeRemielleMechanic({
-      anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
+      anomalyProficiency: cfg.panel.anomalyProficiency,
     }),
   }
 }
@@ -112,9 +112,9 @@ export const REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND = 3
  * - 垂虹次数 = 1 命轮次 + 4 命补充轮次 = 1（C1~C3）/ 2（C4~C6）。
  */
 export function remielleSpecialVoidflareRainbowCount(panel: PanelValues): number {
-  const firstRound = panel.remielleCinema1SpecialVoidflareCount ?? 0
+  const firstRound = panel.remielleCinema1SpecialVoidflareCount
   if (firstRound <= 0) return 0
-  const refill = Math.max(0, panel.remielleCinema4SpecialVoidflareRefillCount ?? 0)
+  const refill = Math.max(0, panel.remielleCinema4SpecialVoidflareRefillCount)
   return firstRound + Math.floor(refill / REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND)
 }
 
@@ -136,7 +136,7 @@ export function remielleSpecialVoidflareCount(panel: PanelValues): number {
  * 读 FleetingGrace 字段；LuminizeTriggerMultiplier 为记录错误已删（CC-166）。
  */
 export function remielleFleetingGraceMultiplier(panel: PanelValues): number {
-  return 1 + Math.max(0, panel.remielleCinema6FleetingGraceVoidflareTriggerMultiplier ?? 0)
+  return 1 + Math.max(0, panel.remielleCinema6FleetingGraceVoidflareTriggerMultiplier)
 }
 
 export interface VoidflareDamageInput {
@@ -157,38 +157,38 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
 
   const baseDmg = source.atk * (multiplier / 100)
   const elementDmg = panelElementStat(source, 'dmg', element)
-  const dmgMult = 1 + ((source.dmgBonus ?? 0) + elementDmg) / 100
-  const profMult = (source.anomalyProficiency ?? 0) / 100
+  const dmgMult = 1 + (source.dmgBonus + elementDmg) / 100
+  const profMult = source.anomalyProficiency / 100
 
-  const remielleDefReduction = (remielle.enemyDefReduction ?? 0)
-    + (remielle.enemyAnomalyDefReduction ?? 0)
+  const remielleDefReduction = remielle.enemyDefReduction
+    + remielle.enemyAnomalyDefReduction
     + panelElementStat(remielle, 'enemyDef', element)
   // 防御 / 抗性乘区与等级系数：单一来源 core/damageMultipliers（CC-219，原手写同式）
   const { multiplier: defMult } = defenseMultiplierDetail(
-    enemyDefense, remielleDefReduction, remielle.enemyDefFlatReduction ?? 0, source.penRatio ?? 0, source.penFlat ?? 0,
+    enemyDefense, remielleDefReduction, remielle.enemyDefFlatReduction, source.penRatio, source.penFlat,
   )
   const levelMult = LEVEL_MULT_60
   const mass = baseDmg * dmgMult * profMult * defMult * levelMult
 
   const baseRes = enemyResistances[element] ?? 0
-  const sourceResReduction = (source.enemyResReduction ?? 0)
+  const sourceResReduction = source.enemyResReduction
     + panelElementStat(source, 'enemyRes', element)
     + cinema1ResIgnore
   const resMult = resistanceMultiplierDetail(baseRes, sourceResReduction).multiplier
 
-  const anomalyDmgMult = 1 + (remielle.anomalyDmgBonus ?? 0) / 100
-  const passiveLuminizeMult = 1 + (remielle.remielleLuminizeMultiplierBonus ?? 0) / 100
-  const cinema4LuminizeMult = 1 + (remielle.remielleCinema4LuminizeMultiplierBonus ?? 0) / 100
+  const anomalyDmgMult = 1 + remielle.anomalyDmgBonus / 100
+  const passiveLuminizeMult = 1 + remielle.remielleLuminizeMultiplierBonus / 100
+  const cinema4LuminizeMult = 1 + remielle.remielleCinema4LuminizeMultiplierBonus / 100
   const luminizeMult = passiveLuminizeMult * cinema4LuminizeMult
-  const refringeMult = 1 + ((remielle.remielleRefringeCoefficient ?? 0) + (remielle.remielleRefringeCoefficientBonusPct ?? 0)) / 100
+  const refringeMult = 1 + (remielle.remielleRefringeCoefficient + remielle.remielleRefringeCoefficientBonusPct) / 100
 
-  const dmgTakenMult = 1 + (remielle.enemyDamageTakenBonus ?? 0) / 100
+  const dmgTakenMult = 1 + remielle.enemyDamageTakenBonus / 100
   // 失衡易伤区：单一来源 core calcStunMultiplier（CC-220），面板入口 calcPanelStunMultiplier（CC-489）。
   // 此前手写 `stunned ? 满乘区 : 1`，把覆盖率（0-1 小数）当布尔用 ⇒ 覆盖率 > 0 即吃满额易伤；且非失衡时漏掉 Always 通道。
   const stunMult = calcPanelStunMultiplier(remielle, stunMultiplier, stunned)
 
   const damage = mass * resMult * anomalyDmgMult * luminizeMult * refringeMult * stunMult * dmgTakenMult
-  const formula = `基础 ${fmt(source.atk)}×${fmt(multiplier)}% × 增伤(1+${fmt((source.dmgBonus ?? 0) + elementDmg)}%) × 精通(${fmt(source.anomalyProficiency ?? 0)}/100) × 防御(${fmt(defMult, 4)}) × 等级(${levelMult}) × 抗性(${fmt(resMult, 4)}) × 异化(${fmt(refringeMult, 4)}) × 异常增伤(1+${fmt(remielle.anomalyDmgBonus ?? 0)}%) × 耀变被动(${fmt(passiveLuminizeMult, 4)}) × 4命(${fmt(cinema4LuminizeMult, 4)}) × 失衡(${fmt(stunMult, 4)}) × 易伤(${fmt(dmgTakenMult, 4)})`
+  const formula = `基础 ${fmt(source.atk)}×${fmt(multiplier)}% × 增伤(1+${fmt(source.dmgBonus + elementDmg)}%) × 精通(${fmt(source.anomalyProficiency)}/100) × 防御(${fmt(defMult, 4)}) × 等级(${levelMult}) × 抗性(${fmt(resMult, 4)}) × 异化(${fmt(refringeMult, 4)}) × 异常增伤(1+${fmt(remielle.anomalyDmgBonus)}%) × 耀变被动(${fmt(passiveLuminizeMult, 4)}) × 4命(${fmt(cinema4LuminizeMult, 4)}) × 失衡(${fmt(stunMult, 4)}) × 易伤(${fmt(dmgTakenMult, 4)})`
 
   return { damage, formula }
 }
@@ -286,7 +286,7 @@ function applyRemielleTeamPanelEffects({ slot, cinemaLevel, team, panel }: Agent
   // 原式：`remielleCinema >= 5 ? 4 : remielleCinema >= 3 ? 2 : 0` ⇒ 技能等级 12/14/16
   const cinema = cinemaLevelOf(cinemaLevel)
   const skillLevelBonus = cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + (12 + skillLevelBonus) * 1.5
+  panel.dmgBonus = panel.dmgBonus + (12 + skillLevelBonus) * 1.5
 }
 
 /** 从倍率表提取蕾米「普通攻击：垂虹」信息（CC-34b 2026-09-27 由 `core/resource/moveLookup.ts` 逐字迁入）（特殊虚耀跟随该动作触发） */
@@ -362,7 +362,7 @@ function buildRemielleCharConfig({ slot, agent, skills, team, cfg }: AgentCharCo
  * `globalAnomalyMultiplierFactor` 与 `anomalyPanels` 展示列 `refringe` 的唯一来源（原两处各写一遍）。
  */
 function remielleRefringePct(panel: Readonly<PanelValues>): number {
-  return (panel.remielleRefringeCoefficient ?? 0) + (panel.remielleRefringeCoefficientBonusPct ?? 0)
+  return panel.remielleRefringeCoefficient + panel.remielleRefringeCoefficientBonusPct
 }
 
 /**
@@ -397,7 +397,7 @@ function applyRemielleTeamConfig({ cfg, phase, threads }: AgentTeamConfigInput):
   const casts = Math.max(0, Math.floor(threads.moduleFeedback?.remielleFlowerFeatherDanceCasts ?? 0))
   const perUse = Math.max(0, cfg.panel?.remielleFlowerFeatherDanceDecibelPerUse ?? 0)
   if (casts <= 0 || perUse <= 0) return
-  cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0) + perUse * casts
+  cfg.extraSelfDecibelReward = cfg.extraSelfDecibelReward + perUse * casts
 }
 
 /** CC-56：Q 耀变分摊设置（键 `remielle.q:<蕾米槽位>`）——引擎（下方 firstPerBatch）与资源页卡片共用这一处声明 */
@@ -526,8 +526,8 @@ export const remielleMechanic: AgentMechanicModule = {
         .filter(item => item.count > 0 && item.panel)
       const voidflareTotal = voidflareBySlot.reduce((sum, item) => sum + item.count, 0)
 
-      const skillLevelBonus = remiellePanel.skillLevelBonus ?? 0
-      const c1ResIgnore = (remiellePanel.remielleCinema1SpecialVoidflareCount ?? 0) > 0 ? 50 : 0
+      const skillLevelBonus = remiellePanel.skillLevelBonus
+      const c1ResIgnore = remiellePanel.remielleCinema1SpecialVoidflareCount > 0 ? 50 : 0
       if (voidflareTotal > 0 && remielleSkills) {
         const fleetingGraceMultiplier = remielleFleetingGraceMultiplier(remiellePanel)
         const qBatches = Math.floor(voidflareTotal / 3)
@@ -665,7 +665,7 @@ export function remielleRadiantTurnRows({ cfg, state, executions }: AgentResourc
   // 可经 cfg['setting:remielle.frontSwitchRatio'] 覆盖）。
   if (cfg.remielleEnabled && cfg.remielleRadiantTurnMoveId) {
     const block = frontBlockSeconds(
-      state.frontlineTime ?? 0,
+      state.frontlineTime,
       countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
       Number(cfgMechanicSettingRaw(cfg, 'remielle.frontSwitchRatio') ?? 1),
       5,

@@ -228,11 +228,11 @@ function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput):
   const cinema = cinemaLevelOf(cinemaLevel)
   // 喷发耗士气冲击力 +20%（默认吃满）
   const impactPct = computeLighterImpactBonusPct(cinema)
-  panel.impact = (panel.impact ?? 0) * (1 + impactPct / 100)
+  panel.impact = panel.impact * (1 + impactPct / 100)
 
   // 溃败：失衡时长延长
   panel.stunDurationBonusSeconds =
-    (panel.stunDurationBonusSeconds ?? 0) + computeLighterRoutStunBonus(cinema)
+    panel.stunDurationBonusSeconds + computeLighterRoutStunBonus(cinema)
 
   // 昂扬：额外能力门控 + 冲击力实时（面板已含自身冲击加成）
   const additionalActive = additionalAbilityActiveOf(panel)
@@ -251,7 +251,7 @@ function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput):
     // 实际由 helpers 过滤 lighter.additional_* 后在此统一写入（含本人+通过 teammates 循环？）
     // applyPanel 只作用于本人面板。全队昂扬在 helpers 的 lighter 块给每个角色加。
     panel.lighterMoraleDmgBonus = computeLighterMoraleDmgBonus({
-      impact: panel.impact ?? 0,
+      impact: panel.impact,
       cinemaLevel: cinema,
       additionalActive: true,
     })
@@ -262,10 +262,10 @@ function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput):
 function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   cfg.lighterCinemaLevel = cinema
-  cfg.lighterImpact = panel.impact ?? 0
+  cfg.lighterImpact = panel.impact
   cfg.lighterMoraleDmgBonus = Number(panel.lighterMoraleDmgBonus ?? 0) || 0
   if (cinema >= 6) {
-    cfg.lighterFlameShockMult = computeLighterFlameShockMultiplier(panel.impact ?? 0)
+    cfg.lighterFlameShockMult = computeLighterFlameShockMultiplier(panel.impact)
   }
 }
 
@@ -289,7 +289,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     const existing = executions.find(e => e.moveId === MOVE_POWER_FINISHER)
     const c1Bonus = cinema >= 1 ? LIGHTER_C1_FINISHER_DMG : 0
     if (existing) {
-      existing.count = (existing.count ?? 0) + morale.powerFinisherCount
+      existing.count = existing.count + morale.powerFinisherCount
       if (c1Bonus > 0) {
         existing.dmgBonus = (existing.dmgBonus ?? 0) + c1Bonus
       }
@@ -486,7 +486,7 @@ function lighterNextRoundFeedback({ characters, teamResult }: AgentNextRoundFeed
   // 本槽 = 莱特自己那份结果行；`teamResult.characters` 与 `characters` 同序但**只许按身份查**
   // （按位置压缩，槽位号 ≠ 下标）。
   if (!teamResult.characters.some(c => c.agentId === LIGHTER_ID)) return { consumedTeamEnergy: 0 }
-  const exByAgent = new Map(teamResult.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
+  const exByAgent = new Map(teamResult.characters.map(ch => [ch.agentId, ch.exSpecialCount]))
   const exCounts = characters.map(c => Math.max(0, exByAgent.get(c.agentId) ?? 0))
   return { consumedTeamEnergy: estimateTeamNormalEnergyConsumed(characters, exCounts) }
 }
@@ -498,7 +498,7 @@ export const lighterMechanic: AgentMechanicModule = {
     if (source.inCombat) {
       source.inCombat = {
         ...source.inCombat,
-        impact: (source.inCombat.impact ?? 0) * 1.2,
+        impact: source.inCombat.impact * 1.2,
       }
     }
   },
@@ -563,7 +563,7 @@ export const lighterMechanic: AgentMechanicModule = {
     if (targetAgent.id === LIGHTER_ID) return // 莱特本人不吃
     if (cinemaLevelOf(cinemaLevel) < 4) return
     const ratio = Math.max(0, Math.min(1, settingOf(settings, 'lighter.backstageRatio')))
-    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + LIGHTER_C4_FRONT_EFFICIENCY * ratio
+    panel.energyGainEfficiency = panel.energyGainEfficiency + LIGHTER_C4_FRONT_EFFICIENCY * ratio
   },
   buildCharConfig,
   buildExecutions,

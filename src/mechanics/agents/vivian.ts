@@ -193,20 +193,20 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     // 源1：全队强特命中次数（useResourceCalc 收敛注入 vivianTeamExTotal，含薇薇安自己）
     teamExSpecialCount: Number(cfg.vivianTeamExTotal ?? state.exSpecialCount ?? 0),
     // 自身强特次数（飞羽强特源 + 悬落衔接源）
-    selfExSpecialCount: Number(state.exSpecialCount ?? 0),
+    selfExSpecialCount: state.exSpecialCount,
     // 源2：全队异常触发次数（useResourceCalc 收敛注入 vivianAnomalyTriggerTotal）
     teammateAnomalyCount: Number(cfg.vivianAnomalyTriggerTotal ?? 0),
     // 落羽生花源2 的 0.5s CD 封顶按有效战斗时间（扣 boss 无敌，core/effectiveTime.ts）
-    battleTime: minusInvincibleTime(Number(cfg.battleTime ?? 180), cfg),
+    battleTime: minusInvincibleTime(cfg.battleTime, cfg),
     // 淑女礼仪·舞步命中 +1 飞羽（原文）：迭代态无逐招式次数，无法派生 ⇒ 未建模，显式 0。
     // 旧实现读 `cfg.vivianDanceHit`，全仓零写入恒 0（死通道，CC-91 2026-09-27 移除）。
     danceHitCount: 0,
-    chainCount: state.chainCountTotal ?? 0,
-    ultimateCount: state.ultimateCount ?? 0,
+    chainCount: state.chainCountTotal,
+    ultimateCount: state.ultimateCount,
     // 支援突击次数 = 本槽弹刀次数（招架支援后接支援突击；`parryNoFollowUpCount` 不接，
     // 与 claret.ts assistFollowUpMoveId × parryCount 同口径）。原文「支援突击：裁决羽刃」回复2点飞羽、
     // 发动后进入裙裾浮游（→ 悬落）。旧实现读 `cfg.vivianAssistCount`，全仓零写入恒 0（CC-91 接通）。
-    assistCount: Math.max(0, Number(cfg.parryCount ?? 0)),
+    assistCount: Math.max(0, cfg.parryCount),
     additionalActive: cfg.vivianAdditionalActive === true,
     c4AtkCoverage: Number(cfg.vivianC4AtkCoverage ?? 1),
   })
@@ -259,7 +259,7 @@ function patchVivianExecutions({ cfg, state, executions }: AgentResourceInput): 
 function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
   // 面板字段与 computeVivianCycle 同源（c6EtherDmg / c4AtkBonus）。
   const c4AtkCoverage = clampRatio(settingOf(settings, 'vivian.c4AtkCoverage'))
-  if (cinemaLevel >= 6) panel.etherDmg = (panel.etherDmg ?? 0) + VIVIAN_C6_ETHER_DMG
+  if (cinemaLevel >= 6) panel.etherDmg = panel.etherDmg + VIVIAN_C6_ETHER_DMG
   // 影画4：攻击力 +12% → 局内百分比攻击乘区（atkPct），非独立乘算。
   // ⚠ R60 修复：原写 `panel.atkPct = (panel.atkPct ?? 0) + …` —— `applyPanel` 跑在 `calcPanel`
   // **之后**（`panelPhases.ts:570` vs `:597`），此时atk 的批次累加器（`buff.ts` batchAccum，r401 前是隐藏键 `__atkAccum`）已被 `finalizeCoreStatBonuses`
@@ -274,13 +274,13 @@ function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: Ag
   if (cinemaLevel >= 4) {
     const atkPct = VIVIAN_C4_ATK_PCT * c4AtkCoverage
     const atkBonus = outOfCombatStat(outOfCombatPanel, 'atk') * atkPct / 100
-    panel.atk = (panel.atk ?? 0) + atkBonus
+    panel.atk = panel.atk + atkBonus
     panel.vivianC4AtkBonus = atkBonus
   }
   // 影画2 异放精通收益 ×130%（buildAnomalyEvents perTen 放大）；无视15%全抗走 releaseModifier（仅异放结算）
   if (cinemaLevel >= 2) {
     // 影画2：以太异常积蓄效率 +25%（薇薇安含物理积蓄，用元素限定字段避免污染物理积蓄）
-    panel.etherAnomalyBuildUpEfficiency = (panel.etherAnomalyBuildUpEfficiency ?? 0) + VIVIAN_C2_BUILDUP_EFF
+    panel.etherAnomalyBuildUpEfficiency = panel.etherAnomalyBuildUpEfficiency + VIVIAN_C2_BUILDUP_EFF
   }
 }
 
@@ -433,9 +433,9 @@ function vivianNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeed
   let vivianAnomalyTriggersNext = 0
   // 迁移前判据 =「队里有 1331」；派发器只对在队模块调用本钩子 ⇒ 恒真（CC-383 删去死判据，块结构保留）。
   {
-    vivianTeamExNext = teamResult.characters.reduce((sum, ch) => sum + (ch.exSpecialCount ?? 0), 0)
+    vivianTeamExNext = teamResult.characters.reduce((sum, ch) => sum + ch.exSpecialCount, 0)
     vivianAnomalyTriggersNext = anomalyPool.perElement.reduce(
-      (sum, prog) => sum + (prog.triggerCount ?? 0),
+      (sum, prog) => sum + prog.triggerCount,
       0,
     )
   }

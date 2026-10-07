@@ -70,10 +70,10 @@ export function specConversionAmount(conversion: AttributeConversionSpec, source
 
 function resolveAttributeSource(panel: PanelValues, conversion: AttributeConversionSpec, sources?: SpecConversionSources): number {
   if (conversion.sourceValue === 'energyRegenTotal') {
-    return calcEnergyRegenTotal(panel, 1.2)
+    return calcEnergyRegenTotal(panel)
   }
   if (conversion.sourceValue === 'energyRegenOutOfCombat') {
-    return panel.energyRegenOutOfCombat ?? (panel.energyRegen ?? 1.2)
+    return panel.energyRegenOutOfCombat
   }
   const from: Readonly<PanelValues> = conversion.sourcePanelPhase === 'outOfCombat' && sources?.outOfCombat ? sources.outOfCombat : panel
   return getPanelStat(from, conversion.sourceStat) ?? 0

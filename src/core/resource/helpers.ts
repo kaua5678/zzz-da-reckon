@@ -136,7 +136,7 @@ function iterateBody(
     const chainCountInput = chainCountTotalOf(cfg, countStunOf(globalCfg))
     // 行级能量/喧响 Σ 需要队友前台秒（与装配层 teammateFrontlineSeconds 同语义：Σ 其他人，迭代期取上一轮值，
     // 收敛后与终局装配一致）
-    const teamFrontline = prevStates.reduce((sum, st, k) => (k === i ? sum : sum + (st.frontlineTime ?? 0)), 0)
+    const teamFrontline = prevStates.reduce((sum, st, k) => (k === i ? sum : sum + st.frontlineTime), 0)
     const energySrc = calcEnergySource(cfg, prev, configs, globalCfg.shieldCount, globalCfg.energyShieldCount, chainCountInput, globalCfg.totalTime, teamFrontline)
     // 队友联动回能（单一事实源，与最终装配同函数）
     const crossAgent = calcCrossAgentEnergy(i, configs, prevStates)
@@ -195,11 +195,11 @@ function iterateBody(
     // 外部回血「每次 × 提供者终结技次数」由调用方按帷幕提供者槽结算后传入。
     const selfBurn = getAgentMechanic(cfg.agentId)?.selfBurnDecibel?.({
       cfg,
-      basicAttackTime: prev.basicAttackTime ?? 0,
-      exSpecialCount: prev.exSpecialCount ?? 0,
+      basicAttackTime: prev.basicAttackTime,
+      exSpecialCount: prev.exSpecialCount,
       providerUltCount: curtain.providerSlot >= 0 ? (prevStates[curtain.providerSlot]?.ultimateCount ?? 0) : 0,
     }) ?? 0
-    const extraSelfDecibel = (cfg.extraSelfDecibelReward ?? 0)
+    const extraSelfDecibel = cfg.extraSelfDecibelReward
       + (cfg.extraSelfDecibelPerUltimate ?? 0) * (prev.ultimateCount + (cfg.ultimateEquivalentCount ?? 0))
       + (cfg.decibelPerCurtainTrigger ?? 0) * curtainTriggers
       // 诺姆影画4·膛温换连携：每次赠链「诺姆 + 上一位队友各 +200 不可分享喧响」，计入终结技次数。
@@ -299,10 +299,10 @@ function iterateBody(
       + ultForTime * cfg.ultimateActionTime
       + chainCount * cfg.chainActionTime
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime
-      + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime
-      + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime
+      + cfg.parryCount * cfg.assistFollowUpActionTime
+      + (cfg.parryCount + cfg.parryNoFollowUpCount) * cfg.defensiveAssistActionTime
       // 反制支援（控制技整组化解）与弹刀同类：必做前台时间，账本必须预留（否则物化行顶出预算被截断）
-      + Math.max(0, Math.floor(cfg.counterAssistCount ?? 0)) * (cfg.counterAssistActionTime ?? 0)
+      + Math.max(0, Math.floor(cfg.counterAssistCount)) * cfg.counterAssistActionTime
       + extraActionTime
       // 诺姆膛温换连携赠链时间（目标槽）：装配后 applyChainGift 追加的赠链行占前台，
       // 引擎必要时间必须预留（同连携 GROSS 全额口径），否则净占用顶出预算
@@ -323,9 +323,9 @@ function iterateBody(
       ultForTime * cfg.ultimateActionTime * cfg.ultimateComboAlignRatio
       + chainCount * cfg.chainActionTime * cfg.chainComboAlignRatio
       + cfg.dodgeCounterCount * cfg.dodgeCounterActionTime * cfg.dodgeCounterComboAlignRatio
-      + (cfg.parryCount ?? 0) * cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio
-      + ((cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)) * cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
-      + Math.max(0, Math.floor(cfg.counterAssistCount ?? 0)) * (cfg.counterAssistActionTime ?? 0) * (cfg.counterAssistComboAlignRatio ?? 0)
+      + cfg.parryCount * cfg.assistFollowUpActionTime * cfg.assistFollowUpComboAlignRatio
+      + (cfg.parryCount + cfg.parryNoFollowUpCount) * cfg.defensiveAssistActionTime * cfg.defensiveAssistComboAlignRatio
+      + Math.max(0, Math.floor(cfg.counterAssistCount)) * cfg.counterAssistActionTime * cfg.counterAssistComboAlignRatio
       + extraActionAlign
       + giftComboAlign
     comboAlignTimes.push(exSpecialComboAlignTime(cfg, exForTime, ultForTime, prevStates[i]) + comboAlignGeneric)

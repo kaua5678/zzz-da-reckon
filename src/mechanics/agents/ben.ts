@@ -74,7 +74,7 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
   // 「初始」严格取局外面板：局外防御×80% 作为局外小攻击加成计入最终面板。
   const outOfCombatDef = outOfCombatStat(outOfCombatPanel, 'def')
   const bonus = outOfCombatDef * BEN_DEF_TO_ATK
-  if (bonus > 0) panel.atk = (panel.atk ?? 0) + bonus
+  if (bonus > 0) panel.atk = panel.atk + bonus
   panel.benDefToAtk = bonus
 
   const cinema = cinemaLevelOf(cinemaLevel)
@@ -87,7 +87,7 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
 
 function buildCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
   cfg.benCinemaLevel = cinemaLevelOf(cinemaLevel)
-  cfg.benDef = panel.def ?? 0
+  cfg.benDef = panel.def
   cfg.benExParrySuccessRate = clampRatio(setting(cfg, BEN_EX_PARRY_RATE_SETTING))
   cfg.benExActionTimes = Object.fromEntries(
     [...BEN_EX_NORMAL_MOVE_IDS, ...BEN_EX_PARRY_MOVE_IDS]
@@ -123,7 +123,7 @@ function pushExPart(
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.benCinemaLevel)
-  const comboCount = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
+  const comboCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (comboCount <= 0) return
 
   const successRate = clampRatio(cfg.benExParrySuccessRate ?? 1)

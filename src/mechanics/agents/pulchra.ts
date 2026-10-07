@@ -66,13 +66,13 @@ export function computePulchraHuntStepCount(i: PulchraHuntStepInput): number {
 
 function applyPulchraPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 猎步：恒常（强特/连携/终结不断触发，6s 刷新 → 失衡值 +30% 常驻）
-  panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + PULCHRA_HUNT_STEP_STUN
+  panel.stunBuildUpBonus = panel.stunBuildUpBonus + PULCHRA_HUNT_STEP_STUN
   // 影画1 原文「对被施加[困迹]效果的敌人造成伤害时」——困迹来自额外能力，未触发则无困迹（CC-199）
   if (cinemaLevel >= 1 && additionalAbilityActiveOf(panel)) {
-    panel.critRate = (panel.critRate ?? 0) + PULCHRA_C1_CRIT_RATE
+    panel.critRate = panel.critRate + PULCHRA_C1_CRIT_RATE
   }
   if (cinemaLevel >= 2) {
-    panel.atk = Math.round((panel.atk ?? 0) * (1 + PULCHRA_C2_ATK_PCT / 100))
+    panel.atk = Math.round(panel.atk * (1 + PULCHRA_C2_ATK_PCT / 100))
   }
 }
 
@@ -81,7 +81,7 @@ function buildPulchraCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
   // 影画4：强化特殊技·噬爪瞬步能量消耗 -5
   if (cinemaLevel >= 4) {
     const prev = Number(cfg.pulchraC4EnergyCut ?? 0)
-    cfg.exSpecialEnergyConsume = Math.max(0, (cfg.exSpecialEnergyConsume ?? 0) + prev - PULCHRA_C4_EX_ENERGY_CUT)
+    cfg.exSpecialEnergyConsume = Math.max(0, cfg.exSpecialEnergyConsume + prev - PULCHRA_C4_EX_ENERGY_CUT)
     cfg.pulchraC4EnergyCut = PULCHRA_C4_EX_ENERGY_CUT
   }
 }
@@ -105,10 +105,10 @@ function pushBackstage(executions: SkillExecution[], moveId: string, moveName: s
 function buildPulchraExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.pulchraCinemaLevel)
   const n = computePulchraHuntStepCount({
-    exSpecialCount: state.exSpecialCount ?? 0,
-    parryCount: cfg.parryCount ?? 0,
-    chainCountTotal: state.chainCountTotal ?? 0,
-    ultimateCount: state.ultimateCount ?? 0,
+    exSpecialCount: state.exSpecialCount,
+    parryCount: cfg.parryCount,
+    chainCountTotal: state.chainCountTotal,
+    ultimateCount: state.ultimateCount,
   })
   if (n <= 0) return
   const firstHits = cinema >= 6 ? PULCHRA_NIGHTMARE_FIRST_HITS_C6 : PULCHRA_NIGHTMARE_FIRST_HITS

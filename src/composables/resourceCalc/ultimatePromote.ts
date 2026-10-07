@@ -74,12 +74,12 @@ export function applyUltimatePromote(
   // 引擎占位行（阶段1 ②）以**池口径**为准：转大次数为 0 时撤掉占位行（引擎推导在退化配置下会多算）
   const promote = adj && adj.targetSlot >= 0 ? adj.promote : 0
   if (promote <= 0 || !adj) {
-    if (!base.characters.some(c => (c.executions ?? []).some(e => e.source === 'gift' && !e.chainGift))) return base
+    if (!base.characters.some(c => c.executions.some(e => e.source === 'gift' && !e.chainGift))) return base
     return {
       ...base,
       characters: base.characters.map(c => ({
         ...c,
-        executions: (c.executions ?? []).filter(e => !(e.source === 'gift' && !e.chainGift)),
+        executions: c.executions.filter(e => !(e.source === 'gift' && !e.chainGift)),
       })),
     }
   }
@@ -126,7 +126,7 @@ export function applyUltimatePromote(
       const basicIdx = reserved > 0
         ? (refundWanted > 1e-9 ? char.executions.findIndex(e => e.moveId === 'basic_attack') : -1)
         : char.executions.findIndex(e => e.moveId === 'basic_attack')
-      const basicTime = basicIdx >= 0 ? (char.executions[basicIdx].totalTime ?? 0) : 0
+      const basicTime = basicIdx >= 0 ? char.executions[basicIdx].totalTime : 0
       const carve = reserved > 0 ? 0 : Math.max(0, Math.min(basicTime, promoteTime))
       const refund = reserved > 0 && basicIdx >= 0 ? refundWanted : 0
       if (refundWanted > 1e-9) reservedUsed = reserved - refundWanted
@@ -141,20 +141,20 @@ export function applyUltimatePromote(
         moveName: '好评转大·队友终结技',
         count: promote,
         actionTime: ultActionTime,
-        comboAlignRatio: giftIdx >= 0 ? (char.executions[giftIdx].comboAlignRatio ?? 0) : 0,
+        comboAlignRatio: giftIdx >= 0 ? char.executions[giftIdx].comboAlignRatio : 0,
         damageMultiplier: ultMult,
         anomalyBuildUp: ultBuildUp,
         skillDamageTarget: ultTarget,
         skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
       })
       const patched = char.executions.map((e, i) => {
-        if (i === basicIdx) return { ...e, totalTime: Math.max(0, (e.totalTime ?? 0) - carve + refund) }
+        if (i === basicIdx) return { ...e, totalTime: Math.max(0, e.totalTime - carve + refund) }
         if (i !== giftIdx) return e
         return { ...e, ...giftRow }
       })
       return {
         ...char,
-        ultimateCount: (char.ultimateCount ?? 0) + promote,
+        ultimateCount: char.ultimateCount + promote,
         executions: giftIdx >= 0 ? patched : [...patched, giftRow],
       }
     }),
@@ -299,7 +299,7 @@ export function promoteFixpoint(
   const effTime = effectiveBattleTime(configStore.enemy)
   const windowDur = stunWindowDuration(
     configStore.enemy.stunTime,
-    panels.reduce((sum, p) => sum + (p.stunDurationBonusSeconds ?? 0), 0),
+    panels.reduce((sum, p) => sum + p.stunDurationBonusSeconds, 0),
   )
   const runPool = (execs: StunSkillExecution[], inAxis?: InAxisFractionResult, prevStunCount = 0) => calcStunPool({
     executions: execs, panels, bossStunValue: configStore.enemy.stunValue,

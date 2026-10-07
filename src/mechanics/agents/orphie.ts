@@ -61,14 +61,14 @@ const ORPHIE_ULT_1 = '1301015'
 const ORPHIE_ULT_2 = '1301016'
 
 function applyOrphiePanel({ panel, cinemaLevel }: AgentPanelInput): void {
-  panel.critRate = (panel.critRate ?? 0) + ORPHIE_CORE_CRIT_RATE
+  panel.critRate = panel.critRate + ORPHIE_CORE_CRIT_RATE
   panel['skillDmgBonus__additionalAttack'] = (panel['skillDmgBonus__additionalAttack'] ?? 0)
     + ORPHIE_CORE_ADDITIONAL_ATTACK_DMG
   if (cinemaLevel >= 1) {
     // 影画1 自身 4 招无视 15% 火伤抗性 → 移出面板，改 patchExecutions moveId 级 resIgnore（精确）
   }
   if (cinemaLevel >= 2) {
-    panel.atk = Math.round((panel.atk ?? 0) * (1 + ORPHIE_C2_ATK_PCT / 100))
+    panel.atk = Math.round(panel.atk * (1 + ORPHIE_C2_ATK_PCT / 100))
   }
   if (cinemaLevel >= 4) {
     panel['skillDmgBonus__ultimate'] = (panel['skillDmgBonus__ultimate'] ?? 0) + ORPHIE_C4_ULTIMATE_DMG
@@ -96,7 +96,7 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
     // 原实现每次调用都 `+=`，patchExecutions 在同一份 cfg 上被重复调用 ⇒ 喧响账读到 2 倍（探针：2925 → 5850）。
     const gift = ORPHIE_C2_AA_DECIBEL * Math.min(aaCount, cdCap)
     const prev = Math.max(0, Number(cfg.orphieC2DecibelGift ?? 0))
-    cfg.extraSelfDecibelReward = Math.max(0, Number(cfg.extraSelfDecibelReward ?? 0) - prev) + gift
+    cfg.extraSelfDecibelReward = Math.max(0, cfg.extraSelfDecibelReward - prev) + gift
     cfg.orphieC2DecibelGift = gift
   }
   // 倍率融合（2026-08-27）：蓄热充能(1301011) 打完全自动接燥焰迸射(1301022)；
@@ -153,7 +153,7 @@ function patchOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
     if (!exec.moveId || !ORPHIE_C6_LASER_MOVE_IDS.has(exec.moveId)) continue
     // 影画6：激光命中追加 250% 攻击力火伤（0.5秒至多1次）——按招式动作时长折算段数（总秒数/0.5），
     // 挂在蓄热充能/与火共舞行上；该伤害视为强化特殊技与追加攻击
-    exec.flatDamageBonus = (exec.flatDamageBonus ?? 0) + atk * ORPHIE_C6_LASER_RATIO / 100 * ((exec.actionTime ?? 0) / 0.5)
+    exec.flatDamageBonus = (exec.flatDamageBonus ?? 0) + atk * ORPHIE_C6_LASER_RATIO / 100 * (exec.actionTime / 0.5)
     exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 激光附加 +${ORPHIE_C6_LASER_RATIO}% 攻击力火伤（视为追加攻击）`
   }
 }
@@ -179,7 +179,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 前台块长 = 前台时间 / 切上次数（切上前台频率滑块 × 非平A前台动作次数）；滑块为手动出手次数，仍受时间上限封顶。
   const backstageEff = effectiveBackstageTime(state.backstageTime, cfg)
   const block = frontBlockSeconds(
-    state.frontlineTime ?? 0,
+    state.frontlineTime,
     countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
     Number(cfgMechanicSettingRaw(cfg, 'orphie.frontSwitchRatio') ?? 1),
     ORPHIE_BACKSTAGE_CD_SECONDS,
@@ -190,7 +190,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   const frontRatio = Math.max(0, Math.min(1, rRaw >= 0 ? rRaw : Number(cfg.orphieAutoFrontRatio ?? 0)))
 
   // 回能副C：能量必须走迭代能量总账（state.totalEnergy），不再用种子近似
-  const energy = Math.max(0, Number(state.totalEnergy ?? 0))
+  const energy = Math.max(0, state.totalEnergy)
   const frontCast = Math.floor(backstageCast * frontRatio)
   const backCast = backstageCast - frontCast
   const vortexCount = Math.min(backCast, Math.floor(energy / ORPHIE_VORTEX_ENERGY))
@@ -237,7 +237,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   // 影画6 火刀衔接灼红旋涡（前台）：高压火枪火刀（basicAttackTime/2 口径）后点按衔接，默认全操作
   if (cinema >= 6) {
     const linkRatio = Math.max(0, Math.min(1, Number(cfgMechanicSettingRaw(cfg, 'orphie.bladeLinkRatio') ?? 1)))
-    const bladeHits = Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2))
+    const bladeHits = Math.max(0, Math.floor(state.basicAttackTime / 2))
     const linkCount = Math.floor(bladeHits * linkRatio)
     push(ORPHIE_EX_VORTEX, '强化特殊技：灼红旋涡（火刀衔接，前台）', linkCount)
   }
@@ -246,7 +246,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
 /** 蓄炎资源：影画6 火刀次数写入 cfg（cinema>=6 才计），spec 解释器按 cfgField 读取 */
 function buildOrphieResourceResult({ cfg, state }: AgentResourceResultInput) {
   const cinema = cinemaLevelOf(cfg.orphieCinemaLevel)
-  ;cfg.orphieBladeHits = cinema >= 6 ? Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2)) : 0
+  ;cfg.orphieBladeHits = cinema >= 6 ? Math.max(0, Math.floor(state.basicAttackTime / 2)) : 0
   const spec = getAgentSpec(ORPHIE_AGENT_ID)
   return {
     specResources: spec ? Object.fromEntries(computeSpecResources(spec, cfg, state)) : {},

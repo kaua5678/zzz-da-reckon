@@ -48,9 +48,8 @@ export interface CalcStunAxisInput {
  */
 export function computeInAxisRatio(startTime: number, duration: number, windowDuration: number): number {
   if (duration <= 0) return 0
-  const start = startTime ?? 0
-  const end = start + duration
-  const inStart = Math.max(0, start)
+  const end = startTime + duration
+  const inStart = Math.max(0, startTime)
   const inEnd = Math.min(windowDuration, end)
   const intersection = Math.max(0, inEnd - inStart)
   return Math.max(0, Math.min(1, intersection / duration))

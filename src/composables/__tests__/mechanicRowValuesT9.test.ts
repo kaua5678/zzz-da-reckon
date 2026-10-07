@@ -96,7 +96,7 @@ describe('T9 格莉丝 A1-A4 回能来自 catalog（cfg.mechanicRowValues）', (
     const table = SEG.map(id => getRowValue(findMoveById(skills, id), 'energy_recovery'))
     for (const [i, v] of table.entries()) expect(v, `catalog ${SEG[i]} energy_recovery`).toBeGreaterThan(0)
 
-    const cfg: any = { moveActionTimes: { '1181001': 0.171, '1181002': 0.33, '1181003': 0.682, '1181004': 1.134, '1181005': 0.2, '1181006': 0.342 } }
+    const cfg: any = { initialEnergyGift: 0, moveActionTimes: { '1181001': 0.171, '1181002': 0.33, '1181003': 0.682, '1181004': 1.134, '1181005': 0.2, '1181006': 0.342 } }
     graceMechanic.buildCharConfig!({ cinemaLevel: 4, cfg, panel: {} as any, skills, settings: {} } as any)
     for (const [i, id] of SEG.entries()) expect(cfg.mechanicRowValues?.[id], `cfg.mechanicRowValues[${id}]`).toBeCloseTo(table[i], 12)
 

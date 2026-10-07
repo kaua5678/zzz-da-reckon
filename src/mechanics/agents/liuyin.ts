@@ -173,7 +173,7 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPa
   const extraAbilityActive = specAdditionalAbilityActive(team, slot, agent)
 
   // 核心被动·恶意投诉：敌人进入失衡后的失衡持续时间 +2 秒（角色级失衡时长延长，引擎按全队求和计入失衡覆盖率）。
-  panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + 2
+  panel.stunDurationBonusSeconds = panel.stunDurationBonusSeconds + 2
 
   // 核心被动：初始暴击率超过 50% 时，每超过 1% 冲击力 +2，最多 +100（100% 暴击时封顶）。
   // 口径：缺省 floor 整步（CC-134 第 158 轮，「每超过 N」统一按整步计，docs/mcp-r6-refactor-list.md §2.18）；
@@ -205,7 +205,7 @@ function applyLiuyinPanel({ slot, team, agent, cinemaLevel, panel, outOfCombatPa
     const atkBonus = panel.liuyinGoodReviewAtkBonus ?? 0
     if (atkBonus > 0) {
       const coverage = settingOf(settings, 'liuyin.goodReviewAtkCoverage')
-      panel.atk = (panel.atk ?? 0) + atkBonus * coverage
+      panel.atk = panel.atk + atkBonus * coverage
     }
   }
 }
@@ -214,7 +214,7 @@ function buildLiuyinCharConfig({ slot, agent, cinemaLevel, team, skills, cfg, ge
   const prevSetting = cfgNum(cfg, 'liuyin.previousTeammateSlot')
   cfg.liuyinCinemaLevel = cinemaLevel
   // CC-306 / CC-333：额外能力条件唯一来源 = spec 1481 `additionalAbility`（优先取入参 agent，兼容非定长/稀疏 team）
-  cfg.liuyinExtraAbilityActive = specAdditionalAbilityActive(team, slot, agent ?? team.find(m => m.slot === slot)?.agent ?? team[slot]?.agent)
+  cfg.liuyinExtraAbilityActive = specAdditionalAbilityActive(team, slot, agent)
   // CC-180：与赠大 / 赠连携同一解析（已上场序列、跳过空槽；无队友 = -1）。`team` 定长 3 槽、空槽 agentId === ''，
   // 旧式按 team.length=3 环绕 ⇒ 琉音在槽 0、槽 2 空时「上一位」落到空槽，额外能力直伤行整行丢失（站位差 3.4%）。
   cfg.liuyinPreviousTeammateSlot = resolveTeammateTargetSlot(slot, team.filter(m => m.agentId && m.agent).map(m => m.slot), prevSetting)
@@ -235,7 +235,7 @@ function buildLiuyinCharConfig({ slot, agent, cinemaLevel, team, skills, cfg, ge
   cfg.liuyinJankenRoundSeconds = jankenTimes.reduce((a, b) => a + b, 0)
 
   // 影画4：进入战场回复 20 点能量。
-  if (cinemaLevel >= 4) cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + CINEMA4_ENERGY_GIFT
+  if (cinemaLevel >= 4) cfg.initialEnergyGift = cfg.initialEnergyGift + CINEMA4_ENERGY_GIFT
 }
 
 /**
@@ -254,7 +254,7 @@ function liuyinExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSpec
   // 轴态的既有口径（钩子只对非轴生效；轴模式诚实收费会把比利轴队的量化均衡推开 4.1s，实测
   // 2026-09-06）
   if (cfg.chainCountTotalOverride !== undefined) {
-    return { necessaryTime: Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0), comboAlignTime: 0 }
+    return { necessaryTime: Math.max(0, exSpecialCount) * cfg.exSpecialActionTime, comboAlignTime: 0 }
   }
   const exTotal = Math.max(0, Math.floor(exSpecialCount))
   // 与 buildLiuyinExecutions 同一轮转拆分（1→3 顺序连打，越靠后数值越高）
@@ -265,7 +265,7 @@ function liuyinExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSpec
   const source = computeLiuyinSource({
     exSpecialCount: exTotal,
     ultimateCount: Math.max(0, Math.floor(ultimateCount)),
-    combatTime: cfg.battleTime ?? 180,
+    combatTime: cfg.battleTime,
     cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
     extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
     previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
@@ -278,7 +278,7 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
   const source = computeLiuyinSource({
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
-    combatTime: cfg.battleTime ?? 180,
+    combatTime: cfg.battleTime,
     cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
     extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
     previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
@@ -360,7 +360,7 @@ function buildLiuyinResourceResult({ cfg, state }: AgentResourceResultInput): Pa
     liuyinMechanicSource: computeLiuyinSource({
       exSpecialCount: state.exSpecialCount,
       ultimateCount: state.ultimateCount,
-      combatTime: cfg.battleTime ?? 180,
+      combatTime: cfg.battleTime,
       cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
       extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
       previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
@@ -488,19 +488,19 @@ export const liuyinMechanic: AgentMechanicModule = {
   crossAgentSupply: {
     kind: 'gift-chain:ultimate',
     axisSuppressed: true,
-    supply: ({ cfg, state, targetCfg, stunCount, totalTime }) => {
+    supply: ({ cfg, state, targetCfg, stunCount }) => {
       if (!targetCfg) return 0
       const src = computeLiuyinSource({
         exSpecialCount: state.exSpecialCount,
         ultimateCount: state.ultimateCount,
-        combatTime: cfg.battleTime ?? totalTime,
+        combatTime: cfg.battleTime,
         cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
         extraAbilityActive: cfg.liuyinExtraAbilityActive ?? false,
         previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
       })
       // 目标槽的连携总数（60 转大吃掉的是**目标槽的连携窗口**）
       const targetChainTotal = Math.min(
-        (targetCfg.chainCountPerStun ?? 0) * stunCount,
+        targetCfg.chainCountPerStun * stunCount,
         chainCountTotalOf(targetCfg, stunCount),
       )
       const hug = computeLiuyinHugCounts(
@@ -513,7 +513,7 @@ export const liuyinMechanic: AgentMechanicModule = {
     },
     targetSlot: ({ ownSlot, occupiedSlots, cfg }) =>
       resolveTeammateTargetSlot(ownSlot, occupiedSlots, Math.floor(cfgNum(cfg, 'liuyin.ultimateTargetSlot'))),
-    secondsPerUnit: ({ targetCfg }) => targetCfg.ultimateActionTime ?? 0,
+    secondsPerUnit: ({ targetCfg }) => targetCfg.ultimateActionTime,
   },
   /** 赠终结技来源（CC-35d-B3：编排层按能力找提供者，原 findSlotByIdentity(['1481']) + 直读 liuyinMechanicSource） */
   ultimateGiftSource: result => result.liuyinMechanicSource

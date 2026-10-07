@@ -232,7 +232,7 @@ describe('希希芙毒素资源循环、蚀骨与蛇吻', () => {
 
   it('影画6：印记计数器 → 特殊蚀骨 = min(蚀骨56, 180/3=60) = 56（+影画4 4 = 60）', () => {
     const executions: any[] = []
-    xixifuMechanic.buildExecutions!({ cfg: { xixifuCinemaLevel: 6, xixifuElectricCount: 1, xixifuAtk: 3000, mechanicRowValues: { ...ROW_VALUES } }, state: mkState(), executions } as any)
+    xixifuMechanic.buildExecutions!({ cfg: { xixifuCinemaLevel: 6, xixifuElectricCount: 1, xixifuAtk: 3000, battleTime: 180, mechanicRowValues: { ...ROW_VALUES } }, state: mkState(), executions } as any)
     const special = executions.find((e: any) => e.moveId === 'xixifu_shigu_special')
     expect(special).toBeTruthy()
     // 影画6 含影画1/2/4：毒素总量 52（含 C2 连携 3）、蚀骨 52+4=56、印记 3 秒 ICD 上限 60 → 特殊蚀骨 = 4(觉悟)+56(印记)=60

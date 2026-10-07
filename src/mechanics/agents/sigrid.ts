@@ -136,20 +136,20 @@ function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
   if (!panel) return
   const coreCov = clampRatio(settingOf(settings, 'sigrid.corePassiveCoverage'))
   if (cinemaLevel >= 1) {
-    panel.atk = Math.round((panel.atk ?? 0) * (1 + SIGRID_C1_ATK_PCT / 100))
+    panel.atk = Math.round(panel.atk * (1 + SIGRID_C1_ATK_PCT / 100))
   }
   if (additionalAbilityActiveOf(panel)) {
-    panel.atk = (panel.atk ?? 0) + SIGRID_ADDITIONAL_ATK_FLAT
+    panel.atk = panel.atk + SIGRID_ADDITIONAL_ATK_FLAT
     // 浸染增伤不在这里：读风化侵染覆盖率（异常池结果），emitExecDirect 分支按覆盖率逐行折算
   }
-  panel.critRate = (panel.critRate ?? 0) + SIGRID_CORE_CRIT_RATE * coreCov
-  panel.stunDmgMultiplierBonus = (panel.stunDmgMultiplierBonus ?? 0) + SIGRID_CORE_STUN_VULN * coreCov
+  panel.critRate = panel.critRate + SIGRID_CORE_CRIT_RATE * coreCov
+  panel.stunDmgMultiplierBonus = panel.stunDmgMultiplierBonus + SIGRID_CORE_STUN_VULN * coreCov
   if (cinemaLevel >= 2) {
-    panel.decibelGainEfficiency = (panel.decibelGainEfficiency ?? 0) + SIGRID_C2_DECIBEL_EFFICIENCY
+    panel.decibelGainEfficiency = panel.decibelGainEfficiency + SIGRID_C2_DECIBEL_EFFICIENCY
   }
   if (cinemaLevel >= 4) {
     const c4Cov = clampRatio(settingOf(settings, 'sigrid.cinema4Coverage'))
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + SIGRID_C4_DMG * c4Cov
+    panel.dmgBonus = panel.dmgBonus + SIGRID_C4_DMG * c4Cov
   }
 }
 
@@ -328,7 +328,7 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
   let segTime = 0
   if (basicCycle.length > 0) {
     const pressCancel = cfgSetting(cfg, 'sigrid.pressCancel') >= 0.5
-    const segCounts = countBasicSegments(Math.max(0, Number(state.basicAttackTime ?? 0)), basicCycle, pressCancel)
+    const segCounts = countBasicSegments(Math.max(0, state.basicAttackTime), basicCycle, pressCancel)
     for (const seg of basicCycle) {
       const n = segCounts[seg.moveId] ?? 0
       if (n <= 0) continue
@@ -354,7 +354,7 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
     if (segTime > 0) {
       const basicIdx = executions.findIndex(e => e.moveId === 'basic_attack')
       if (basicIdx >= 0) {
-        const basicTime = executions[basicIdx].totalTime ?? 0
+        const basicTime = executions[basicIdx].totalTime
         executions[basicIdx] = {
           ...executions[basicIdx],
           totalTime: Math.max(0, basicTime - Math.min(basicTime, segTime)),
@@ -424,12 +424,12 @@ export function sigridChuqiangFromState(
 ): number {
   const basicCycle = cfg.sigridBasicCycle ?? []
   const pressCancel = clampRatio(cfgSetting(cfg, 'sigrid.pressCancel')) > 0
-  const finisherHits = countBasicFinisherHits(Math.max(0, state.basicAttackTime ?? 0), basicCycle, pressCancel)
-  return Math.max(0, state.exSpecialCount ?? 0) // 碎玉（出枪式）
-    + Math.max(0, state.ultimateCount ?? 0) // 霜天
-    + Math.max(0, state.chainCountTotal ?? 0) // 冰凌卷地
-    + Math.max(0, cfg.dodgeCounterCount ?? 0) // 回马枪
-    + Math.max(0, cfg.parryCount ?? 0) // 支援突击：冰饕
+  const finisherHits = countBasicFinisherHits(Math.max(0, state.basicAttackTime), basicCycle, pressCancel)
+  return Math.max(0, state.exSpecialCount) // 碎玉（出枪式）
+    + Math.max(0, state.ultimateCount) // 霜天
+    + Math.max(0, state.chainCountTotal) // 冰凌卷地
+    + Math.max(0, cfg.dodgeCounterCount) // 回马枪
+    + Math.max(0, cfg.parryCount) // 支援突击：冰饕
     + finisherHits // 凛冽枪尖#4：按段循环计数，一次命中记一次
 }
 
@@ -504,8 +504,8 @@ function sigridPozhenTimeFactor(cinema: number, axisActive: boolean): number {
  */
 function sigridExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const segments = cfg.sigridLanceSegments ?? []
-  const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
-  if (segments.length !== 3) return { necessaryTime: exTime, comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0) }
+  const exTime = Math.max(0, exSpecialCount) * cfg.exSpecialActionTime
+  if (segments.length !== 3) return { necessaryTime: exTime, comboAlignTime: exTime * cfg.exSpecialComboAlignRatio }
 
   const { rotation, pozhenSets, cinema, axisActive } = sigridLanceCounts(cfg, state)
   // 与 buildSigridExecutions 的 rowTime **同一加权式**（影画6 破阵段 ×0.75），否则估时与物化分裂
@@ -516,7 +516,7 @@ function sigridExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeI
   }
   return {
     necessaryTime: exTime + lanceTime,
-    comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0),
+    comboAlignTime: exTime * cfg.exSpecialComboAlignRatio,
   }
 }
 
@@ -531,7 +531,7 @@ function patchSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
     // 若这里数一次、下面 countBasicFinisherHits 再数一次 = 双计（用户改判 2026-09-07 删除）。
     if (exec.moveId && segmentRowIds.has(exec.moveId)) continue
     if (exec.moveId && SIGRID_CHUQIANG_MOVE_IDS.has(exec.moveId)) {
-      chuqiangHits += Math.max(0, exec.count ?? 0)
+      chuqiangHits += Math.max(0, exec.count)
     }
   }
   // #4 命中：按段循环计数（用户口径 2026-02），压枪开关取消 a1/a2 → 循环 1.765s

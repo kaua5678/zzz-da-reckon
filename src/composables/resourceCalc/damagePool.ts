@@ -135,7 +135,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       if (!basePanel) return
       // 行级穿透率（如希格莉德影画2 出枪式/敛枪式 +24%）：浅克隆面板叠加 penRatio，其余字段不变
       const panel = row.penRatioBonus
-        ? { ...basePanel, penRatio: (basePanel.penRatio ?? 0) + row.penRatioBonus }
+        ? { ...basePanel, penRatio: basePanel.penRatio + row.penRatioBonus }
         : basePanel
       const stunForThis = row.stunOverride !== undefined
         ? row.stunOverride
@@ -304,7 +304,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const base = getBaseElement(element)
       let total = 0
       for (const p of anomalyPoolResult?.perElement ?? []) {
-        if (getBaseElement(p.element) === base) total += p.triggerCount ?? 0
+        if (getBaseElement(p.element) === base) total += p.triggerCount
       }
       if (total <= 0) return 0
       const inside = inStunAnomalyState?.elements.find(e => e.element === base)?.triggerCount ?? 0
@@ -320,10 +320,10 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       if (!isAxis) return stunCoverage
       const inNonWind = (inStunAnomalyState?.elements ?? [])
         .filter(e => getBaseElement(e.element) !== 'wind')
-        .reduce((s, e) => s + (e.triggerCount ?? 0), 0)
+        .reduce((s, e) => s + e.triggerCount, 0)
       let globalNonWind = 0
       for (const p of anomalyPoolResult?.perElement ?? []) {
-        if (getBaseElement(p.element) !== 'wind') globalNonWind += p.triggerCount ?? 0
+        if (getBaseElement(p.element) !== 'wind') globalNonWind += p.triggerCount
       }
       if (globalNonWind <= 0) return 0
       return Math.max(0, Math.min(1, inNonWind / globalNonWind))
@@ -339,9 +339,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       let total = 0
       for (const ch of adjustedResourceResult?.characters ?? []) {
         if (slot !== undefined && ch.slot !== slot) continue
-        for (const e of ch.executions ?? []) {
-          if (e.category !== 'chain' || !/终结技|ultimate/i.test(e.moveName ?? '')) continue
-          total += e.count ?? 0
+        for (const e of ch.executions) {
+          if (e.category !== 'chain' || !/终结技|ultimate/i.test(e.moveName)) continue
+          total += e.count
           inAxis += allocMap[`${ch.slot}:${e.moveId}`]?.inAxisUnits ?? 0
         }
       }

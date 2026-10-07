@@ -136,7 +136,7 @@ describe('希格莉德 patchExecutions：影画2 穿透率（catalog 真实 id�
       { moveId: '1591004', actionTime: 0.507 },
       { moveId: '1591005', actionTime: 1.258 },
     ]
-    const cfg: any = { sigridCinemaLevel: 0, sigridAtk: 0, sigridBasicCycle: cycle }
+    const cfg: any = { sigridCinemaLevel: 0, sigridAtk: 0, sigridBasicCycle: cycle, dodgeCounterCount: 0, parryCount: 0 }
     const state: any = { exSpecialCount: 6, ultimateCount: 2, chainCountTotal: 3, basicAttackTime: 5 }
     // 5s 平A → 完整循环 2.983s ×1 + 尾 2.017 ≥ 前三段 1.725 → #4 命中 2 次
     expect(countBasicFinisherHits(5, cycle, false)).toBe(2)
@@ -177,8 +177,8 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
   function build(cfgExtra: Record<string, unknown>) {
     const executions: any[] = []
     sigridMechanic.buildExecutions!({
-      cfg: { sigridLanceSegments: SEGMENTS, ...cfgExtra } as any,
-      state: {},
+      cfg: { sigridLanceSegments: SEGMENTS, dodgeCounterCount: 0, parryCount: 0, ...cfgExtra } as any,
+      state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0, basicAttackTime: 0 },
       executions,
     } as any)
     return executions
@@ -274,7 +274,7 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
         { moveId: '1591001', actionTime: 0.507 }, { moveId: '1591002', actionTime: 0.507 },
         { moveId: '1591004', actionTime: 0.507 }, { moveId: '1591005', actionTime: 1.258 },
       ],
-      sigridStunCount: 0, sigridAtk: 0,
+      sigridStunCount: 0, sigridAtk: 0, dodgeCounterCount: 0, parryCount: 0, exSpecialActionTime: 0, exSpecialComboAlignRatio: 0,
     }
     const casts = (cinema: number) => {
       const executions: any[] = []

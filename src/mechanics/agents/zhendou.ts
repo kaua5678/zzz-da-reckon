@@ -64,14 +64,14 @@ export const ZHENDOU_C6_ASSIST_FIRE_DMG = 15
 
 function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: AgentPanelInput): void {
   // 熔锋 buff：恒常（炽心获取量足以一直熔锋，用户口径 2026-08-27）
-  panel.critRate = (panel.critRate ?? 0) + ZHENDOU_FURY_CRIT_RATE
-  panel.fireDmg = (panel.fireDmg ?? 0) + ZHENDOU_FURY_FIRE_DMG
+  panel.critRate = panel.critRate + ZHENDOU_FURY_CRIT_RATE
+  panel.fireDmg = panel.fireDmg + ZHENDOU_FURY_FIRE_DMG
   if (cinemaLevel >= 1) {
     const cov = Math.max(0, Math.min(1, settingOf(settings, 'zhendou.c1LossCoverage')))
-    panel.fireDmg = (panel.fireDmg ?? 0) + ZHENDOU_C1_FIRE_DMG_CAP * cov
+    panel.fireDmg = panel.fireDmg + ZHENDOU_C1_FIRE_DMG_CAP * cov
   }
   if (cinemaLevel >= 2) {
-    panel.enemyFireResReduction = (panel.enemyFireResReduction ?? 0) + ZHENDOU_C2_FIRE_RES_IGNORE
+    panel.enemyFireResReduction = panel.enemyFireResReduction + ZHENDOU_C2_FIRE_RES_IGNORE
   }
   if (cinemaLevel >= 4) {
     // ⚠ R60 修复：原写 `panel.hpPct = (panel.hpPct ?? 0) + 8` —— `applyPanel` 跑在 `calcPanel`
@@ -83,7 +83,7 @@ function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: A
     // `panelPhases.ts:522` 记录过的「局内固定加成被错误放大」同坑。
     // 正解 = 以**局外总生命**为基数算增量加进 `panel.hp`（读取口 `outOfCombatStat`，CC-502；harumasa / zhao 同一口）。
     const hpBonus = outOfCombatStat(outOfCombatPanel, 'hp') * ZHENDOU_C4_HP_PCT / 100
-    panel.hp = (panel.hp ?? 0) + hpBonus
+    panel.hp = panel.hp + hpBonus
     panel.zhendouC4HpBonus = hpBonus
   }
 }
@@ -138,7 +138,7 @@ function applyZhendouTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount
   if (phase !== 'converge') return
   cfg.zhendouChargeCount = computeZhendouChargeCount({
     combatTime,
-    parryCount: cfg.parryCount ?? 0,
+    parryCount: cfg.parryCount,
     c6StunCount: cinemaLevel >= 6 ? Math.max(0, Math.floor(Number(stunCount) || 0)) : 0,
   })
   cfg.zhendouC6StunFuryCount = cinemaLevel >= 6 ? Math.max(0, Math.floor(Number(stunCount) || 0)) : 0

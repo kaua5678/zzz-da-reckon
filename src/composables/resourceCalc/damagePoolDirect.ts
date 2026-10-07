@@ -98,7 +98,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     if ((exec.damageMultiplier ?? 0) <= 0) continue
     // 秒均行（普通平A basic_attack 等）：count=0、totalTime=秒数、damageMultiplier=秒均倍率%。
     // 伤害 = 秒均倍率 × 时间，按 1 次、总倍率结算（通用逻辑：所有角色平A都是秒均倍率算的）。
-    const isPerSecondRow = exec.count <= 0 && (exec.totalTime ?? 0) > 0
+    const isPerSecondRow = exec.count <= 0 && exec.totalTime > 0
     if (!isPerSecondRow && exec.count <= 0) continue
     // 琉音三个强特（石头/剪刀/布）在非失衡轴模式下由下方专用块按“失衡次数”拆分易伤，跳过通用直伤。
     // 2026-09-17 round 21 夜 A 编排层棘轮：原判据 `charResult.agentId === '1481' && !isAxis && LIUYIN_EX_MOVE_IDS.has(…)
@@ -150,7 +150,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     seenDirectIds.set(baseId, dup + 1)
     const rowId = dup > 0 ? `${baseId}-${dup}` : baseId
     const unitMultiplier = (exec.damageMultiplier ?? 0) * execDamageCoef
-    const totalUnits = isPerSecondRow ? (exec.totalTime ?? 0) : exec.count
+    const totalUnits = isPerSecondRow ? exec.totalTime : exec.count
     const baseNote = `${resolved?.note ?? exec.skillTableNote ?? ''}${isPerSecondRow ? '（平A：秒均倍率 × 时间）' : ''}${execSkillLevelBonus > 0 ? ` · 技能等级系数×${execDamageCoef.toFixed(4)}` : ''}`
     const emitExecDirect = (units: number, stunOverride: number, idSuffix: string, extraNote: string, sourceTag?: 'gift' | 'stun' | 'self') => {
       if (units <= 0 || unitMultiplier <= 0) return

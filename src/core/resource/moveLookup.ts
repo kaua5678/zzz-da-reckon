@@ -188,7 +188,7 @@ export function fusedGroupMetrics(
   if (!group) return null
   const segments = new Map<string, MoveRowLike>()
   for (const cat of agentSkills.categories) {
-    for (const m of cat.moves ?? []) segments.set(String(m.id), m)
+    for (const m of cat.moves) segments.set(String(m.id), m)
   }
   let actionTime = 0
   let decibelRecovery = 0

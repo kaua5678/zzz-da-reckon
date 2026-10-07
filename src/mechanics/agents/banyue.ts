@@ -110,11 +110,6 @@ const C1_STUN_DURATION = 2 // 影画1：摧岳命中失衡敌人失衡时长+2s
 const PARRY_DECIBEL = PARRY_DECIBEL_BONUS
 const ULTIMATE_COST = ULTIMATE_COST_DEFAULT
 
-// 默认触发次数（用户确认）：闪反 10 / 招架 6 / 金身弹刀 20 / 双反 5
-const DEFAULT_DODGE = 10
-const DEFAULT_PARRY = 6
-const DEFAULT_BLOCK = 20
-const DEFAULT_DUAL = 5
 const DEFAULT_DIDONG_COMBO = 0 // 怒相外连段里分配给「地动→山摇·怒」的组数（默认 0 = 全打论道连段）
 
 
@@ -374,9 +369,8 @@ export function computeBanyueMingwangBlocks(
  * - `topUp` 原读 `prevInteractionTopUp`（= `threads.interactionTopUp`）⇒ 现读 `threads.interactionTopUp`。
  *   ⚠ 非补齐态原式取**字面量** `{ parry: 0, dual: 0 }`（新对象，不是线程对象引用）
  *   ⇒ 逐位保留该形状，避免把线程对象泄漏进 cfg。
- * - `parryCount` / `dualCounterCount` 的**条件写**逐位保留（`topUp.parry > 0 || topUp.dual > 0`
- *   才写；`?? 0` 兜底逐字保留）：`createBanyueCycle` 读 `cfg.parryCount ?? DEFAULT_PARRY`
- *   ⇒ 恒写 0 会把「未注入」退化成「注入 0」，与 `!== undefined` 门控族同款语义差。
+ * - `parryCount` / `dualCounterCount` 只在 `topUp.parry > 0 || topUp.dual > 0` 时累加（两者由
+ *   `buildCharConfig` 恒写，加 0 与不写等价；r723 起类型为必填，不再有「未注入」态）。
  * - 门控三判据 `phase !== 'converge' || !axis || !guarantee`：非 converge 不写；
  *   converge 但契约缺项时**连非保底字段也不写**（与 `billyAxisEx` 同族——让「字段 undefined」
  *   唯一编码「契约没接上」，而不是静默按「保底全关 + 无轴」算出一组看似正常的零值）。
@@ -403,8 +397,8 @@ function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, th
   const autoTopUp = banyueAutoTopUpEnabled(axis.active, guarantee, settings)
   const topUp = autoTopUp ? (threads?.interactionTopUp ?? { parry: 0, dual: 0 }) : { parry: 0, dual: 0 }
   if (topUp.parry > 0 || topUp.dual > 0) {
-    cfg.parryCount = (cfg.parryCount ?? 0) + topUp.parry
-    cfg.dualCounterCount = (cfg.dualCounterCount ?? 0) + topUp.dual
+    cfg.parryCount = cfg.parryCount + topUp.parry
+    cfg.dualCounterCount = cfg.dualCounterCount + topUp.dual
   }
   cfg.banyueInteractionTopUp = topUp
 }
@@ -435,22 +429,22 @@ function applyBanyuePanel({ panel, cinemaLevel, settings }: AgentPanelInput): vo
   // 怒相增益（强特/支援突击后，30s；覆盖率滑块近似）
   if (rageCov > 0) {
     const c2 = cinemaLevel >= 2 ? C2_BUFF_BONUS : 0
-    panel.sheerForceFlat = (panel.sheerForceFlat ?? 0) + RAGE_BUFF_SHEER * rageCov
-    panel.fireDmg = (panel.fireDmg ?? 0) + (RAGE_BUFF_FIRE + c2) * rageCov
-    panel.critDmg = (panel.critDmg ?? 0) + (RAGE_BUFF_CRIT + c2) * rageCov
+    panel.sheerForceFlat = panel.sheerForceFlat + RAGE_BUFF_SHEER * rageCov
+    panel.fireDmg = panel.fireDmg + (RAGE_BUFF_FIRE + c2) * rageCov
+    panel.critDmg = panel.critDmg + (RAGE_BUFF_CRIT + c2) * rageCov
   }
 
   // 明王 6命（满覆盖）：30s + 任意强特常态刷新 → 全局 buff 火伤 +39%（3层×13%），轴/非轴一致；
   // 非6命走时间轴扫描（轴模式）或覆盖率滑块（非轴模式），不在此施加
   if (cinemaLevel >= 6 && additionalAbilityActiveOf(panel)) {
     const perStack = MINGWANG_BASE_PER_STACK + C6_MINGWANG_EXTRA
-    panel.fireDmg = (panel.fireDmg ?? 0) + MINGWANG_MAX_STACKS * perStack
+    panel.fireDmg = panel.fireDmg + MINGWANG_MAX_STACKS * perStack
   }
 
   // 影画1·战栗（全覆盖，用户确认）：对战栗敌人贯穿伤害+10%；摧岳命中失衡敌人失衡时长+2s
   if (cinemaLevel >= 1) {
-    panel.sheerDmgBonus = (panel.sheerDmgBonus ?? 0) + C1_SHEER_DMG_BONUS
-    panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + C1_STUN_DURATION
+    panel.sheerDmgBonus = panel.sheerDmgBonus + C1_SHEER_DMG_BONUS
+    panel.stunDurationBonusSeconds = panel.stunDurationBonusSeconds + C1_STUN_DURATION
   }
 }
 
@@ -538,7 +532,7 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
     { moveId: MOVE.shanYaoNu, name: '强化特殊技：山摇·怒（轴内·强特）' },
   ]
   const axisPushed = new Set<string>()
-  for (const exec of executions) axisPushed.add(exec.moveId ?? '')
+  for (const exec of executions) axisPushed.add(exec.moveId)
   for (const f of forcedPool) {
     const cnt = axisEx[f.moveId] ?? 0
     if (axisPushed.has(f.moveId) && cnt <= 0) continue // 已有行（如山威山摇、滑块地动）且没捏 → 不重复占位
@@ -556,8 +550,8 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
 
   // 闪反/普通弹刀走通用路径（dodgeCounterCount→扬砾、parryCount→铁壁+昂霄，与所有角色一致）；
   // 般岳专属：金身弹刀 + 双反（双反 = 完美闪避不打出扬砾 + 金身弹刀）→ 不动如山 + 冲霄 行
-  const dual = Math.max(0, Math.floor(Number(cfg.dualCounterCount ?? 0)))
-  const block = Math.max(0, Math.floor(Number(cfg.blockCount ?? 0)))
+  const dual = Math.max(0, Math.floor(cfg.dualCounterCount))
+  const block = Math.max(0, Math.floor(cfg.blockCount))
   const chongXiao = block + dual
   const times: Record<string, number> = cfg.banyueMoveTimes ?? {}
   // 不动如山（招架/金身动作）：金身弹刀 + 双反 次数 → 动作行（0.666s 耗时 + daze 143.7，失衡贡献）
@@ -622,9 +616,9 @@ function buildBanyueResourceSections({ result }: AgentResourceSectionsInput) {
   const cycle = result.banyueRageCycle
   if (!cycle) return []
   // 后摇损失：执行计划里 banyue-recovery-* 行的总时长 = 未被取消的后摇占用的战场时间（= 平A时间损失）
-  const recoveryTime = (result.executions ?? [])
+  const recoveryTime = result.executions
     .filter(e => e.moveId?.startsWith('banyue-recovery'))
-    .reduce((s, e) => s + (e.totalTime ?? 0), 0)
+    .reduce((s, e) => s + e.totalTime, 0)
   const basicTime = result.timeAllocation?.basicAttackTime ?? 0
   const lossPct = recoveryTime + basicTime > 0 ? (recoveryTime / (recoveryTime + basicTime)) * 100 : 0
   const recoveryDetail = `失衡外连段 ${cycle.outStunComboCount} 组（轴模式 = 闪能连段 ${cycle.comboOutCount} + 轴内未覆盖怒相组≤2，轴内捏块 ${cycle.axisInComboCount}；非轴 = 怒相外自动连段）− 嘲讽取消 ${cycle.tauntCancelCount} → 剩余后摇 ${cycle.comboOutRecoveryCount} 次（论道 ${cycle.lunDaoRecoveryCount} / 地动山摇 ${cycle.diDongRecoveryCount}），每次 = 末尾强特自身时长，期间不能平A`
@@ -703,10 +697,10 @@ function axisExSpendOf(counts: Record<string, number>): number {
 export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): BanyueRageCycle {
   const axisEx = readAxisExCounts(cfg)
   return computeBanyueRageCycle(
-    cfg.dodgeCounterCount ?? DEFAULT_DODGE,
-    cfg.parryCount ?? DEFAULT_PARRY,
-    cfg.blockCount ?? DEFAULT_BLOCK,
-    cfg.dualCounterCount ?? DEFAULT_DUAL,
+    cfg.dodgeCounterCount,
+    cfg.parryCount,
+    cfg.blockCount,
+    cfg.dualCounterCount,
     cfgNum(cfg, 'banyue.diDongComboCount'),
     axisExSpendOf(axisEx),
     axisEx['banyue-combo'] ?? 0,
@@ -714,7 +708,7 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): Ban
     // 怒相内「地动→山摇·怒」连段组数 = 轴内捏的 banyue-combo-didong 块（非轴模式 banyueAxisEx 为空 → 0）
     axisEx['banyue-combo-didong'] ?? 0,
     // 失衡外连段末尾后摇的嘲讽取消次数（主页交互栏录入，每次取消一次后摇）
-    Math.max(0, Math.floor(Number(cfg.tauntCancelCount ?? 0))),
+    Math.max(0, Math.floor(cfg.tauntCancelCount)),
     // 轴模式：失衡内 = 轴内实际捏的连段块，失衡外 = 全部连段 − 轴内捏块（后摇按轴外单位数计）
     !!cfg.banyueAxisActive,
   )
@@ -870,8 +864,8 @@ export const banyueMechanic: AgentMechanicModule = {
       + cycle.diDongRecoveryCount * (times.shanYaoNu ?? 0)
     // 金身弹刀 + 双反（不动如山 + 冲霄 行）：真实占用战场时间，计入必做前台 → 压缩平A池
     // （否则这两行时间只出现在执行计划里、不参与时间预算，总计会超战斗时间）
-    const chongXiao = Math.max(0, Math.floor(Number(cfg.blockCount ?? 0)))
-      + Math.max(0, Math.floor(Number(cfg.dualCounterCount ?? 0)))
+    const chongXiao = Math.max(0, Math.floor(cfg.blockCount))
+      + Math.max(0, Math.floor(cfg.dualCounterCount))
     const blockDualTime = chongXiao * ((times.buDongRuShan ?? 0.666) + (times.chongXiao ?? 0))
     return { necessaryTime: sequenceTime + exTime + recoveryTime + blockDualTime, comboAlignTime: 0 }
   },
@@ -917,7 +911,7 @@ export const banyueMechanic: AgentMechanicModule = {
    */
   directRowBonus: ({ exec, isAxis, overlay }) => {
     const o = banyueOverlay.read(overlay)
-    const moveId = exec.moveId ?? ''
+    const moveId = exec.moveId
     let dmg = 0
     if (isAxis) {
       const stacks = o?.stacksByMove?.get(moveId) ?? 0
@@ -968,7 +962,7 @@ export const banyueMechanic: AgentMechanicModule = {
     return [row]
   },
   // CC-65b：交互次数默认值（原 stores/config.ts 写死表；用户确认：闪反10/招架6/金身20/双反5，嗔火来源）
-  interactionDefaults: { parry: 6, dodge: 10, block: 20, dual: 5 },
+  interactionDefaults: { parry: 6, dodge: 10, block: 20, dual: 5 }, // 默认触发次数（用户确认）：闪反 10 / 招架 6 / 金身弹刀 20 / 双反 5
   // CC-65b：TeamConfigPage 交互栏专属输入框（原页面写死本角色 id）
   interactionInputs: { block: { label: '金身格挡' }, dualCounter: { label: '双反' } },
   // CC-65b：「保底4嗔火」开关归属（原页面 teamHasBanyue 写死本角色 id）

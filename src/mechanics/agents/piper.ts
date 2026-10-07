@@ -92,9 +92,9 @@ function buildPiperCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void 
   cfg.piperCinemaLevel = cinemaLevel
   cfg.piperMomentumCoverage = cfgSetting(cfg, 'piper.momentumCoverage')
   if (cinemaLevel >= 4) {
-    const maxTriggers = Math.max(1, Math.ceil((cfg.battleTime ?? 180) / PIPER_C4_CD))
+    const maxTriggers = Math.max(1, Math.ceil(cfg.battleTime / PIPER_C4_CD))
     const triggers = Math.min(maxTriggers, Math.max(0, Math.floor(cfgSetting(cfg, 'piper.c4AnomalyTriggers'))))
-    cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * PIPER_C4_ENERGY
+    cfg.initialEnergyGift = cfg.initialEnergyGift + triggers * PIPER_C4_ENERGY
   }
 }
 
@@ -119,7 +119,7 @@ function applyPiperPanel({ cinemaLevel, panel, settings }: AgentPanelInput): voi
   const cap = cinemaLevel >= 1 ? 30 : 20
   // 积蓄侧吃「平均层数」，影画2 侧吃「满层」——两条通道口径不同，别合并（用户 2026-09-01）
   const buildupStacks = Math.max(0, Math.min(cap, Math.round(cap * coverage)))
-  panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + buildupStacks * 4
+  panel.physicalAnomalyBuildUpEfficiency = panel.physicalAnomalyBuildUpEfficiency + buildupStacks * 4
   panel.piperMomentumStacks = cap
 }
 

@@ -80,7 +80,7 @@ function buildSethCharConfig({ cinemaLevel, cfg, panel, skills, getRowValue }: A
   cfg.sethAdditionalActive = additionalAbilityActiveOf(panel)
   // 影画4 招架支援迅雷盾失衡值 +25%：预缩倍率表 daze 值，patchExecutions 经 dazeMultiplierOverride 精确结算。
   if (cinemaLevel >= 4) {
-    const baseDaze = getRowValue(findMove(skills, cfg.defensiveAssistMoveId ?? ''), 'daze')
+    const baseDaze = getRowValue(findMove(skills, cfg.defensiveAssistMoveId), 'daze')
     cfg.sethC4DefensiveDaze = baseDaze * (1 + SETH_C4_DEFENSIVE_DAZE_BONUS / 100)
   }
 }
@@ -130,13 +130,13 @@ function applySethPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
   const shieldCoverage = clampRatio(settingOf(settings, 'seth.shieldCoverage'))
   const additionalResCoverage = clampRatio(settingOf(settings, 'seth.additionalResCoverage'))
   const additionalActive = additionalAbilityActiveOf(panel)
-  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + SETH_SHIELD_PROFICIENCY * shieldCoverage
+  panel.anomalyProficiency = panel.anomalyProficiency + SETH_SHIELD_PROFICIENCY * shieldCoverage
   if (additionalActive) {
-    panel.enemyAnomalyResReduction = (panel.enemyAnomalyResReduction ?? 0)
+    panel.enemyAnomalyResReduction = panel.enemyAnomalyResReduction
       + SETH_ADDITIONAL_RES_REDUCTION * additionalResCoverage
   }
   if (cinemaLevel >= 2) {
-    panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0) + SETH_C2_ELECTRIC_BUILDUP
+    panel.electricAnomalyBuildUpEfficiency = panel.electricAnomalyBuildUpEfficiency + SETH_C2_ELECTRIC_BUILDUP
   }
 }
 

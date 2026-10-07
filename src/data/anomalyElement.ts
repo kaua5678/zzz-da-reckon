@@ -41,9 +41,9 @@ export function resolveStatElement(element?: string): string | undefined {
 /** 元素限定的异常积蓄效率（百分点；按基础元素读 `<元素>AnomalyBuildUpEfficiency`，无该字段的元素为 0） */
 export function elementAnomalyBuildUpEfficiency(panel: PanelValues, element: string): number {
   const baseElement = getBaseElement(element)
-  if (baseElement === 'electric') return panel.electricAnomalyBuildUpEfficiency ?? 0
-  if (baseElement === 'physical') return panel.physicalAnomalyBuildUpEfficiency ?? 0
-  if (baseElement === 'ether') return panel.etherAnomalyBuildUpEfficiency ?? 0
+  if (baseElement === 'electric') return panel.electricAnomalyBuildUpEfficiency
+  if (baseElement === 'physical') return panel.physicalAnomalyBuildUpEfficiency
+  if (baseElement === 'ether') return panel.etherAnomalyBuildUpEfficiency
   return 0
 }
 
@@ -60,9 +60,9 @@ export function anomalyBuildUpAfterMasteryAndEfficiency(
   element: string,
   rowEfficiencyBonusPct = 0,
 ): number {
-  const mastery = Math.floor(panel.anomalyMastery ?? 0)
+  const mastery = Math.floor(panel.anomalyMastery)
   const afterMastery = baseBuildUp * (mastery / 100)
-  const buildUpEff = (panel.anomalyBuildUpEfficiency ?? 0)
+  const buildUpEff = panel.anomalyBuildUpEfficiency
     + elementAnomalyBuildUpEfficiency(panel, element)
     + rowEfficiencyBonusPct
   return afterMastery * (1 + buildUpEff / 100)

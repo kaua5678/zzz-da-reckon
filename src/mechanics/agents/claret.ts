@@ -164,7 +164,7 @@ export const DEFAULT_INSCRIPTION_WINDOW_SECONDS = 16
  *   （`DEFAULT_INSCRIPTION_WINDOW_SECONDS` 直接进两态时间解，见 `deriveClaretTwoStateTime`）。
  *   R55 实测 delta：建模后 1611 c3~c6 伤害 1.724% → 3.269~3.514%（窗口变长 ⇒ 铭刻态时间份额上升）。
  *
- * @fact agent:1611/铭刻窗口·影画2 口径: 影画2 使猩红铭刻单窗基础时长 16s → 18s（+2秒）；该窗口直接进两态时间解（铭刻总时间 = 轮数×窗口 + 连携/停表延长秒） | 据 nanoka raw talent.2.desc@2026-09-20（外部 6 语言 × 4 版本复核一致）·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#C2_INSCRIPTION_WINDOW_BONUS_SECONDS + src/mechanics/agents/claret.ts#deriveClaretTwoStateTime | 信 确认
+ * @fact agent:1611/铭刻窗口·影画2 口径: 影画2 使猩红铭刻单窗基础时长 16s → 18s（+2秒）；该窗口直接进两态时间解（铭刻总时间 = 轮数×窗口 + 连携/停表延长秒） | 据 nanoka raw talent.2.desc@2026-09-20（外部 6 语言 × 4 版本复核一致）·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#C2_INSCRIPTION_WINDOW_BONUS_SECONDS + src/mechanics/agents/claret.ts#deriveClaretTwoStateTime | 信 确认
  * ⟳复核: 官方若调整影画2 的窗口延长量（现 +2s），改本常量并重跑 timeGolden | 到期 2027-03-31
  */
 export const C2_INSCRIPTION_WINDOW_BONUS_SECONDS = 2
@@ -191,16 +191,16 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
   const initialCritDmg = Number(outOfCombatPanel?.critDmg ?? 0)
   if (initialCritDmg > 0) {
     // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18：「每拥有 1% 初始暴伤」按整 1% 计（原连续）
-    panel.critRate = (panel.critRate ?? 0) + Math.floor(initialCritDmg + 1e-9) * INITIAL_CRIT_DMG_TO_CRIT_RATE
+    panel.critRate = panel.critRate + Math.floor(initialCritDmg + 1e-9) * INITIAL_CRIT_DMG_TO_CRIT_RATE
   }
   // 核心被动 Lv.7：猩红铭刻/连携/终结/无垢熔锋期间 暴击率 +30%（状态高频维持，满覆盖近似）
-  panel.critRate = (panel.critRate ?? 0) + CORE_CRIT_RATE
+  panel.critRate = panel.critRate + CORE_CRIT_RATE
   // 残锋：队友/自身触发[毁伤]后全队锋御 锐暴伤害 +25%（40s 刷新；按自身面板近似）
-  panel.sharpCritDmg = (panel.sharpCritDmg ?? 0) + RESIDUAL_EDGE_SHARP_CRIT_DMG
+  panel.sharpCritDmg = panel.sharpCritDmg + RESIDUAL_EDGE_SHARP_CRIT_DMG
   // 影画2（薪火荣冠）：猩红铭刻/连携/终结/反制支援/支援突击期间攻击命中无视 18% 电抗
   //   （状态高频维持，满覆盖近似）——★ R55 订正：旧实现是 `>=1` + 16%，门控与数值双错
   if (cinemaLevelOf(cinemaLevel) >= 2) {
-    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + C2_RES_IGNORE
+    panel.enemyElectricResReduction = panel.enemyElectricResReduction + C2_RES_IGNORE
   }
 }
 
@@ -541,8 +541,8 @@ function deriveClaretTwoStateTime(input: {
   /** 该轮数下账本能支撑的进场次数（应 ≥ entries，即自洽） */
   affordableExCountAtSolve: number
 } {
-  const basicAttackTime = Math.max(0, Number(input.basicAttackTime ?? 0))
-  const normalPerSec = Math.max(0, Number(input.normalSharpnessPerSec ?? 0))
+  const basicAttackTime = Math.max(0, input.basicAttackTime)
+  const normalPerSec = Math.max(0, input.normalSharpnessPerSec)
   const autoPerSec = Math.max(0, Number(input.sharpnessAutoPerSec ?? 0))
   const extensionSeconds = Math.max(0, Number(input.totalExtensionSeconds ?? 0))
   // 单窗基础时长（秒）：影画2「最大持续时间延长2秒」由调用方在 windowSeconds 里传入（默认 16s）
@@ -616,22 +616,22 @@ function computeInscriptionExtension(params: {
 
 
 function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state']) {
-  const ultimateCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0)))
+  const ultimateCount = Math.max(0, Math.floor(state.ultimateCount))
   // 全局总延长秒（总额口径，不算每窗摊多少连携）：连携×2s + 停表白送时长
   const stopwatchCoverage = Math.max(0, Math.min(1, Number(cfg.claretChainInWindowCoverage ?? DEFAULT_CHAIN_IN_WINDOW_COVERAGE)))
   const totalExtensionSeconds = computeInscriptionExtension({
-    chainCount: Math.max(0, Number(state.chainCountTotal ?? 0)),
+    chainCount: Math.max(0, state.chainCountTotal),
     chainActionSeconds: Number(cfg.claretChainActionSeconds ?? 0),
     ultimateCount,
     ultimateActionSeconds: Number(cfg.claretUltimateActionSeconds ?? 0),
     stopwatchCoverage,
   })
   // 两态时间：账本推导（滑块 0 = auto）
-  const basicAttackTime = Math.max(0, Number(state.basicAttackTime ?? 0))
+  const basicAttackTime = Math.max(0, state.basicAttackTime)
   // 接战时间：优先读 state.frontlineTime；缺省 = 平A + 必要（同一口径）
   const combatTime = Math.max(
     basicAttackTime,
-    Number(state.frontlineTime ?? 0) || (basicAttackTime + Math.max(0, Number(state.necessaryTime ?? 0))),
+    state.frontlineTime || (basicAttackTime + Math.max(0, state.necessaryTime)),
   )
   const twoState = deriveClaretTwoStateTime({
     basicAttackTime,
@@ -657,21 +657,21 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
   const gashOf = (moveId: string | undefined) => (moveId ? gashByMoveId[moveId] ?? 0 : 0)
   const moveGashTotal
     = gashOf(cfg.exSpecialMoveId) * affordableExCount
-    + gashOf(cfg.dodgeCounterMoveId) * Math.max(0, cfg.dodgeCounterCount ?? 0)
-    + gashOf(cfg.defensiveAssistMoveId) * (Math.max(0, cfg.parryCount ?? 0) + Math.max(0, cfg.parryNoFollowUpCount ?? 0))
-    + gashOf(cfg.assistFollowUpMoveId) * Math.max(0, cfg.parryCount ?? 0)
-    + gashOf(cfg.counterAssistMoveId) * Math.max(0, Math.floor(cfg.counterAssistCount ?? 0))
-    + gashOf(cfg.ultimateMoveId) * Math.max(0, state.ultimateCount ?? 0)
+    + gashOf(cfg.dodgeCounterMoveId) * Math.max(0, cfg.dodgeCounterCount)
+    + gashOf(cfg.defensiveAssistMoveId) * (Math.max(0, cfg.parryCount) + Math.max(0, cfg.parryNoFollowUpCount))
+    + gashOf(cfg.assistFollowUpMoveId) * Math.max(0, cfg.parryCount)
+    + gashOf(cfg.counterAssistMoveId) * Math.max(0, Math.floor(cfg.counterAssistCount))
+    + gashOf(cfg.ultimateMoveId) * Math.max(0, state.ultimateCount)
     + gashOf(cfg.chainMoveId) * Math.max(0, cfg.chainCountTotalOverride ?? state.chainCountTotal ?? 0)
   return computeClaretSharpResource({
     basicGashPerSec: blended.gash,
-    basicAttackTime: Math.max(0, Number(state.basicAttackTime ?? 0)),
+    basicAttackTime: Math.max(0, state.basicAttackTime),
     moveGashTotal,
     cleaveSpecialCount: Number(cfg.claretCleaveCount ?? 0),
     bloodBurialCount: Number(cfg.claretBloodBurialCount ?? 0),
     gashCoverage: Number(cfg.claretGashCoverage ?? 1),
     cinemaLevel: cinemaLevelOf(cfg.claretCinemaLevel),
-    chainCountTotal: state.chainCountTotal ?? 0,
+    chainCountTotal: state.chainCountTotal,
     ultimateCount,
     basicDamagePerSec: blended.damage,
     basicDazePerSec: blended.daze,
@@ -690,7 +690,7 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     sharpnessPerEntry: SHARPNESS_PER_ENTRY,
     affordableExCountOverride: affordableExCount,
     // 反制支援（boss 控制技整组化解，store 折算注入 cfg）→ 琢形每次直接送 1 层残痕
-    counterAssistCount: Math.max(0, Math.floor(Number(cfg.counterAssistCount ?? 0))),
+    counterAssistCount: Math.max(0, Math.floor(cfg.counterAssistCount)),
   })
 }
 
@@ -715,7 +715,7 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
     basicRow.damageMultiplier = blendedDps
     basicRow.dazeMultiplier = Number(cfg.claretBasicDazePerSec ?? 0)
     basicRow.anomalyBuildUp = source.basicGashPerSec
-    basicRow.totalAnomalyBuildUp = source.basicGashPerSec * Math.max(0, basicRow.totalTime ?? 0)
+    basicRow.totalAnomalyBuildUp = source.basicGashPerSec * Math.max(0, basicRow.totalTime)
     basicRow.damageMultiplierOverride = true
     basicRow.dazeMultiplierOverride = true
     const sourceNote = `（${source.inscriptionBasicTimeShareSource === 'ledger' ? '账本推导' : '手动覆盖'}）`

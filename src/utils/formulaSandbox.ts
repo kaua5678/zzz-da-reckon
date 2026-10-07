@@ -28,7 +28,7 @@ const SAFE_EXPRESSION = /^[0-9+\-*/().,\s_a-zA-Z]+$/
 export type SandboxResult = { ok: true; value: number } | { ok: false }
 
 export function evalSandboxedFormula(expression: string, vars: Readonly<Record<string, number>>): SandboxResult {
-  const expr = (expression ?? '').trim()
+  const expr = expression.trim()
   if (expr === '' || !SAFE_EXPRESSION.test(expr)) return { ok: false }
   try {
     const value = Function(...Object.keys(vars), ...HELPER_NAMES, `return (${expr})`)(

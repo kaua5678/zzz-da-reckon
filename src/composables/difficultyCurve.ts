@@ -218,7 +218,7 @@ export function measureOperationalDifficulty(
  * （乱流/紊乱/异放/灼烧/…），不再按角色拆——难度曲线关心的是「这一档买了什么伤害」。
  */
 export function captureDmgBySource(calc: Calc): Record<string, number> {
-  const rows = calc.damagePoolRows.value ?? []
+  const rows = calc.damagePoolRows.value
   const out: Record<string, number> = {}
   for (const r of rows) {
     const key = r.type === '直伤' ? (r.name || r.source || '直伤') : r.type
@@ -379,7 +379,7 @@ export function captureKeyCounts(calc: Calc): Record<string, number> {
     const who = names[c.agentId] || c.agentName || c.agentId
     for (const s of sections) {
       for (const row of s.rows) {
-        const m = AGENT_COUNT_ROW.exec((row.value ?? '').trim())
+        const m = AGENT_COUNT_ROW.exec(row.value.trim())
         if (m) out[`${who}·${row.label}`] = Number(m[1])
       }
     }

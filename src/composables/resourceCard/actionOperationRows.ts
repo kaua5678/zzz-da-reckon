@@ -40,9 +40,9 @@ export function buildActionOperationRows(result: CharacterResourceResult): Actio
   let colorIdx = 0
   for (const exec of result.executions) {
     if (!isFrontlineExecution(exec)) continue // 后台桶行已含在 backstageTime，不进前台条
-    const frontlineTime = exec.totalTime ?? 0
+    const frontlineTime = exec.totalTime
     if (frontlineTime <= 0) continue
-    const comboAlignTime = exec.totalComboAlignTime ?? 0
+    const comboAlignTime = exec.totalComboAlignTime
     const matched = ACTION_ROW_DEFS.find(def => def.match(exec.moveName, exec.category))
     const color = matched?.color ?? ACTION_ROW_DEFS[colorIdx % ACTION_ROW_DEFS.length].color
     colorIdx++

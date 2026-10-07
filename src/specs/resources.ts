@@ -146,34 +146,34 @@ function resolveGainCount(
 ): number {
   switch (rule.countSource) {
     case 'exSpecialCount':
-      return Math.max(0, Math.floor(state.exSpecialCount ?? 0))
+      return Math.max(0, Math.floor(state.exSpecialCount))
     case 'energySpent':
-      return Math.max(0, Math.floor(state.exSpecialCount ?? 0)) * Math.max(0, cfg.exSpecialEnergyConsume || 45)
+      return Math.max(0, Math.floor(state.exSpecialCount)) * Math.max(0, cfg.exSpecialEnergyConsume || 45)
     case 'ultimateCount':
-      return Math.max(0, Math.floor(state.ultimateCount ?? 0))
+      return Math.max(0, Math.floor(state.ultimateCount))
     case 'basicTime':
-      return Math.max(0, state.basicAttackTime ?? 0)
+      return Math.max(0, state.basicAttackTime)
     case 'frontlineTime':
-      return Math.max(0, state.frontlineTime ?? 0)
+      return Math.max(0, state.frontlineTime)
     case 'backstageTime':
-      return Math.max(0, state.backstageTime ?? 0)
+      return Math.max(0, state.backstageTime)
     case 'battleTime':
       // 全战斗时间（接战状态 = 整场战斗，如星徽·比利决意缓慢回复 2 点/秒）
-      return Math.max(0, cfg.battleTime ?? 180)
+      return Math.max(0, cfg.battleTime)
     case 'chainCountTotal':
-      return Math.max(0, Math.floor(state.chainCountTotal ?? 0))
+      return Math.max(0, Math.floor(state.chainCountTotal))
     case 'dodgeCounterCount':
-      return Math.max(0, cfg.dodgeCounterCount ?? 0)
+      return Math.max(0, cfg.dodgeCounterCount)
     case 'parryCount':
-      return Math.max(0, cfg.parryCount ?? 0)
+      return Math.max(0, cfg.parryCount)
     case 'blockCount':
       // 金身格挡/动力压制格挡等次数（主页交互次数，用户填写）
-      return Math.max(0, cfg.blockCount ?? 0)
+      return Math.max(0, cfg.blockCount)
     case 'perfectBlockCount':
       // 强特完美格挡次数（主页交互栏填写；佩洛伊斯日珥回复来源）
-      return Math.max(0, cfg.perfectBlockCount ?? 0)
+      return Math.max(0, cfg.perfectBlockCount)
     case 'quickAssistCount':
-      return Math.max(0, cfg.quickAssistCount ?? 0)
+      return Math.max(0, cfg.quickAssistCount)
     case 'teamFrontlineSeconds':
       return Math.max(0, context.teamFrontlineSeconds ?? 0)
     case 'fixed':
@@ -183,9 +183,9 @@ function resolveGainCount(
     case 'disorderCount':
       return Math.max(0, context.disorderCount ?? 0)
     case 'frostburnBreakCount':
-      return Math.max(0, Math.floor(state.exSpecialCount ?? 0))
+      return Math.max(0, Math.floor(state.exSpecialCount))
     case 'basicAttackCount':
-      return Math.max(0, Math.floor((state.basicAttackTime ?? 0) / 2))
+      return Math.max(0, Math.floor(state.basicAttackTime / 2))
     case 'cfgField':
       // 次数由模块写入 cfg 字段（countField），如星徽·比利招式命中决意合计（attack_data_0）
       return Math.max(0, Number(readCfgField(cfg, rule.countField ?? '') ?? 0) || 0)

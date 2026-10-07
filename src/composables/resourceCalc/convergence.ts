@@ -413,12 +413,12 @@ export function createRunCalcRound(deps: {
         // 轴块是「块 × 窗」的整数执行，与雨果决算行（坑36，读池）及伤害侧栈（读池）同源。
         stunCount: threads.prevPoolStunCount ?? countStun,
         windowDuration: computeWindowDuration(),
-        energyBySlot: prevEnergyBySlot ?? {},
-        decibelBySlot: prevDecibelRegenBySlot ?? {},
+        energyBySlot: prevEnergyBySlot,
+        decibelBySlot: prevDecibelRegenBySlot,
       })
       // 终结技总次数（供希希芙影画2 等）：按实际执行集合计（含赠送块）
       const ultMoveOfSlot = new Map<number, string>()
-      for (const c of base.characters) ultMoveOfSlot.set(c.slot, c.ultimateMoveId ?? '')
+      for (const c of base.characters) ultMoveOfSlot.set(c.slot, c.ultimateMoveId)
       for (const v of Object.values(axisExecutedStack.executed)) {
         if (ultMoveOfSlot.get(v.slot) === v.moveId) {
           axisUltimateTotal[v.slot] = (axisUltimateTotal[v.slot] ?? 0) + v.count
@@ -509,9 +509,9 @@ export function createRunCalcRound(deps: {
       const xParryTotal = configStore.appliedBoss?.xParryTotal ?? 0
       if (xParryTotal > 0 && parrySplitActive && (breakerSlot >= 0 || noBreakerFallback)) {
         if (cfg.slot === effectiveBreakerSlot) {
-          merged.parryCount = (merged.parryCount ?? 0) + xParryTotal
+          merged.parryCount = merged.parryCount + xParryTotal
         } else if (!noBreakerFallback && cfg.slot === mainDpsSlot && mainDpsSlot >= 0 && mainDpsSlot !== breakerSlot) {
-          merged.parryCount = (merged.parryCount ?? 0) + xParryTotal
+          merged.parryCount = merged.parryCount + xParryTotal
           merged.parryTimeFreeCount = (merged.parryTimeFreeCount ?? 0) + xParryTotal
         }
       }
@@ -519,7 +519,7 @@ export function createRunCalcRound(deps: {
       // 走 parryDecibelOnlyCount 而非 parryCount：只计 215 喧响、不产轻弹刀/支援突击行、不贡献失衡值——
       // 保底4失衡的弹刀（含失衡值）由上方 parrySplit 独立反推，二者职责分离，避免弹刀↔失衡池的反馈环振荡。
       if (decibelParryActive && cfg.slot === 0) {
-        merged.parryDecibelOnlyCount = (merged.parryDecibelOnlyCount ?? 0) + prevDecibelParry
+        merged.parryDecibelOnlyCount = merged.parryDecibelOnlyCount + prevDecibelParry
       }
       // 2026-09-15 arch 棘轮：norva(1571)/qingyi(1251) 的失衡次数注入已迁进各自模块的
       // applyTeamConfig（converge 阶段读同一组 hook 入参 stunCount/combatTime，规则 6）。
@@ -591,7 +591,7 @@ export function createRunCalcRound(deps: {
         configStore,
         catalogStore,
         phase: 'postRound',
-        combatTime: base.totalTime ?? 180,
+        combatTime: base.totalTime,
         exCounts: threads.postRoundInput.exCounts,
         ultimateCounts: threads.postRoundInput.ultimateCounts,
         // CC-154：计数通道；CC-316：取**本轮** countStun（与 converge 派发同一口径）。原先随 postRoundInput 记录
@@ -606,7 +606,7 @@ export function createRunCalcRound(deps: {
       configStore,
       catalogStore,
       phase: 'converge',
-      combatTime: base.totalTime ?? 180,
+      combatTime: base.totalTime,
       // CC-154（第 177 轮）：模块拿到的 `stunCount` = **计数通道**失衡次数（= `countStun`；off 下 ≡ 计划值 ⇒ 零差）。
       // 审计（docs/mcp-stun-dual-source.md §18）：applyTeamConfig 的全部读点都是计数或「窗数 × 窗长」一类计数派生量，
       // 读计划值是违约（types.ts 契约：当次数用的必须走计数通道）；physical 下计划 0.71 / 物理 2 这类差会系统性少算。
@@ -689,7 +689,7 @@ export function createRunCalcRound(deps: {
     }
     // 弹刀喧响（215/次）用注入后的有效次数（含反推拆分 + 不带支援突击 + 只给喧响 + 般岳补齐；不写回 store）
     const parryForBonus = [0, 0, 0]
-    for (const cfg of characters) parryForBonus[cfg.slot] = (cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0) + (cfg.parryDecibelOnlyCount ?? 0)
+    for (const cfg of characters) parryForBonus[cfg.slot] = cfg.parryCount + cfg.parryNoFollowUpCount + cfg.parryDecibelOnlyCount
     // CC-227：整份保留并随本轮结果返回（展示层直读——此前 useResourceCalc 用 store 原值另拼一份，Boss 弹刀反推 / 连携口径会漂）
     const specialActionBonusRound = calcSpecialActionBonus(
       parryForBonus,
@@ -732,7 +732,7 @@ export function createRunCalcRound(deps: {
     //    1371 不在队 ⇒ 该键缺席 ⇒ `?? 0`，与原式 `fufa` 恒 0 等价。
     // ⚠ 两眼必须**同在 `rr` 上取**（同一次 `enrichExecutionPlan` 结果），且 ② 只能在派发器之后合并。
     let teamUltimateBaseNext = 0
-    for (const ch of rr.characters) teamUltimateBaseNext += ch.ultimateCount ?? 0
+    for (const ch of rr.characters) teamUltimateBaseNext += ch.ultimateCount
 
     // 轴模式自动补齐下一轮量（保底）：嗔火缺口 → 双反；喧响缺口 → 弹刀。用 store 原始输入 + 本轮实际资源供给计算，
     // 外不动点收敛时 prevInteractionTopUp 稳定（round 0 无补齐 → 本轮算出的下一轮量即最终缺口）。
@@ -819,7 +819,7 @@ export function createRunCalcRound(deps: {
       for (const c of rr.characters) {
         stackEnergyBySlot[c.slot] = c.energySource?.total ?? 0
         stackDecibelBySlot[c.slot] = c.decibelSource?.total ?? 0
-        basicTimeBySlot[c.slot] = c.timeAllocation.basicAttackTime ?? 0
+        basicTimeBySlot[c.slot] = c.timeAllocation.basicAttackTime
       }
       const windowDur = computeWindowDuration()
       inAxisFractionProvider = (stunCountN, execs) => {
@@ -935,7 +935,7 @@ export function createRunCalcRound(deps: {
         ? sp1.pool.contributions.find(c => c.slot === mainDpsSlot && c.moveId === (mainDpsCfg?.assistFollowUpMoveId ?? ''))
         : undefined
       const injectedMainDpsParryDaze = (mainDpsDefRow?.effectiveStun ?? 0) + (mainDpsFuRow?.effectiveStun ?? 0)
-      const nonParryStun = Math.max(0, sp1.pool.totalStunBuildUp - injectedParryDaze - injectedMainDpsParryDaze + (sp1.pool.stunGift ?? 0))
+      const nonParryStun = Math.max(0, sp1.pool.totalStunBuildUp - injectedParryDaze - injectedMainDpsParryDaze + sp1.pool.stunGift)
       parrySplitNext = {
         ...computeParrySplit({
           targetStunCount: GUARANTEE_STUN_TARGET,
@@ -977,14 +977,14 @@ export function createRunCalcRound(deps: {
         const ownRows = pool.contributions.filter(r => decl.moveIds.includes(String(r.moveId)) && r.slot === cfg.slot)
         const ownDaze = ownRows.reduce((sum, r) => sum + r.effectiveStun, 0)
         const pairRows = ownRows.filter(r => decl.moveIds.slice(0, 2).includes(String(r.moveId)))
-        const pairCount = pairRows.reduce((sum, r) => sum + (r.count ?? 0), 0)
+        const pairCount = pairRows.reduce((sum, r) => sum + r.count, 0)
         // 首轮无合轴行：perPairBase 是毛失衡，按同一 u 折成净值
         const perPair = pairCount > 0 ? ownDaze / pairCount : decl.perPairBase * (1 - sp1.windowFractionAt(BACKSTAGE_FLOOR_STUNS))
         // CC-472（r653）：缺口按池自身计数律的反函数算（首次 b、之后每次 b(1−r)、赠送已抵扣），不再写死 4×bossStunValue。
         const deficit = Math.max(0, stunBuildUpForCount(pool, BACKSTAGE_FLOOR_STUNS) - (pool.totalStunBuildUp - ownDaze))
         const ownField = rr.characters.find(c => c.slot === cfg.slot)
         const ownFieldTime = (ownField?.timeAllocation?.necessaryTime ?? 0) + (ownField?.timeAllocation?.basicAttackTime ?? 0)
-        const supplyCap = Math.max(0, Math.floor(Math.max(0, (base.totalTime ?? 180) - ownFieldTime) / decl.minPeriodSeconds))
+        const supplyCap = Math.max(0, Math.floor(Math.max(0, base.totalTime - ownFieldTime) / decl.minPeriodSeconds))
         // 原 ×1.2 冗余（注释「实测 18 对只涨 3.85×」）就是 u 随 N 增大的效应，已由 poolAt(4) 显式算进 ⇒ 删（CC-475）。
         // CC-477（r659）：线性估计只对当前分支成立，回削会跨到 N−1 分支再估回来 ⇒ 外层 2-环 + CC-150 钳 ⇒ 同输入两个 N。
         // 到保底即持住（r660：向上也不动——上限随对数翻转时 +1 再夹回会 24↔25 环），未到保底才阻尼上行；见 core/stunPool.ts#relaxAutoFillStep。
@@ -1031,7 +1031,7 @@ export function createRunCalcRound(deps: {
       anomalyPool: ap1,
       prevThreads: threads,
       catalogStore,
-      combatTime: base.totalTime ?? 180,
+      combatTime: base.totalTime,
     })
 
     // 队伍级机制·postRound 阶段：本轮次数已收敛 → 为下一轮注入派生量。
@@ -1040,15 +1040,15 @@ export function createRunCalcRound(deps: {
     let teamVeilCountTotalNext = 0
     let postRoundInputNext: PostRoundInput | null = null
     {
-      const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount ?? 0]))
-      const ultByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.ultimateCount ?? 0]))
+      const exByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.exSpecialCount]))
+      const ultByAgent = new Map(rr.characters.map(ch => [ch.agentId, ch.ultimateCount]))
       const exCounts = characters.map(c => Math.max(0, exByAgent.get(c.agentId) ?? 0))
       const ultimateCounts = characters.map(c => Math.max(0, ultByAgent.get(c.agentId) ?? 0))
       // 2026-09-17 round 20 C-β：莱特全队能量消耗的 `if (characters.some(c => c.agentId === '1161'))`
       // 守卫 + 估计式已迁进 `lighter.ts#lighterNextRoundFeedback`（派发器只对在队模块派发 ⇒ 守卫
       // 自然满足；估计式同一入参口径，见该钩子注释的逐位等价论证）。
       // 全队帷幕次数（下一轮注入）：照霜寒开帷幕 + 爱芮/叶瞬光终结技 + 千夏强特，按本轮收敛次数算。
-      teamVeilCountTotalNext = computeTeamVeilCountTotal(characters, exCounts, ultimateCounts, base.totalTime ?? 180)
+      teamVeilCountTotalNext = computeTeamVeilCountTotal(characters, exCounts, ultimateCounts, base.totalTime)
       // CC-194：只记录入参，派发挪到下一轮 converge 之前（见上方 `threads.postRoundInput`）
       postRoundInputNext = { exCounts, ultimateCounts }
     }
@@ -1065,7 +1065,7 @@ export function createRunCalcRound(deps: {
     if (axisActive) {
       const contribMap = new Map<string, { element: string; perHit: number }>()
       for (const prog of ap1.perElement) {
-        for (const c of prog.contributions ?? []) contribMap.set(c.moveId, { element: prog.element, perHit: c.perHitBuildUp })
+        for (const c of prog.contributions) contribMap.set(c.moveId, { element: prog.element, perHit: c.perHitBuildUp })
       }
       if (contribMap.size > 0) {
         // 单次失衡表达（v3.2 用户裁决）：每条生效轴条目模拟一个代表窗；该段打几次由

@@ -108,7 +108,7 @@ function calcPerHitStun(
   const baseStun = baseDaze
 
   // 冲击力区
-  const impact = panel.impact ?? 0
+  const impact = panel.impact
   const afterImpact = baseStun * (impact / 100)
 
   // 失衡值提升区（面板定向 + 行级提升同乘区加算）
@@ -117,7 +117,7 @@ function calcPerHitStun(
 
   // 受到失衡值提升区
   // = panel自带的受到失衡提升 + 物理异常[畏缩]覆盖率 × 7.5%
-  const enemyStunTaken = panel.enemyStunTakenBonus ?? 0
+  const enemyStunTaken = panel.enemyStunTakenBonus
   const flinchBonus = 7.5 * physicalFlinchCoverageRate
   const totalStunTaken = enemyStunTaken + flinchBonus
   const afterTaken = afterBuildUp * (1 + totalStunTaken / 100)
@@ -221,7 +221,7 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
 export function continuousStunCount(pool: Pick<StunPoolResult, 'totalStunBuildUp' | 'stunGift' | 'bossStunValue' | 'stunRefundRatio'>): number {
   const b = pool.bossStunValue
   if (!(b > 0)) return 0
-  const t = pool.totalStunBuildUp + Math.max(0, pool.stunGift ?? 0)
+  const t = pool.totalStunBuildUp + Math.max(0, pool.stunGift)
   if (t < b) return t / b
   return 1 + (t - b) / (b * (1 - pool.stunRefundRatio))
 }
@@ -235,7 +235,7 @@ export function stunBuildUpForCount(pool: Pick<StunPoolResult, 'stunGift' | 'bos
   const b = pool.bossStunValue
   if (!(b > 0) || !(n > 0)) return 0
   const gross = n < 1 ? n * b : b + (n - 1) * b * (1 - pool.stunRefundRatio)
-  return Math.max(0, gross - Math.max(0, pool.stunGift ?? 0))
+  return Math.max(0, gross - Math.max(0, pool.stunGift))
 }
 /**
  * 以给定失衡次数重建池的**次数派生字段**（返还值 / 总连携），其余字段（贡献明细、失衡值合计）原样保留。

@@ -127,21 +127,21 @@ describe('「11号」applyPanel / buildCharConfig', () => {
     // 2026-09-17 round 20 R20-h1：燎原火伤块自 computePanelPhases 迁进本模块 applyPanel 后，
     // 该钩子读派发器直给的 `settings`（覆盖率滑块）。直接调用钩子的测试须补齐该入参
     // （派发点 computePanelPhases 恒传；同款 fixture 见 piper/hugo 测试）。断言值不变。
-    const panelOn: any = { additionalAbilityActive: 1 }
+    const panelOn: any = { additionalAbilityActive: 1, critDmg: 0, fireDmg: 0 }
     soldier11Mechanic.applyPanel!({ panel: panelOn, settings: {} } as any)
     expect(panelOn.critDmg).toBe(48)
 
-    const panelOff: any = {}
+    const panelOff: any = { critDmg: 0, fireDmg: 0 }
     soldier11Mechanic.applyPanel!({ panel: panelOff, settings: {} } as any)
     expect(panelOff.critDmg ?? 0).toBe(0)
   })
 
   it('影画1 快速升温：1命注入整局回能 floor(180/50)×40 = 120，0命不注入', () => {
-    const cfg1: any = { battleTime: 180 }
+    const cfg1: any = { battleTime: 180, initialEnergyGift: 0 }
     soldier11Mechanic.buildCharConfig!({ cfg: cfg1, cinemaLevel: 1 } as any)
     expect(cfg1.initialEnergyGift).toBe(120)
 
-    const cfg0: any = { battleTime: 180 }
+    const cfg0: any = { battleTime: 180, initialEnergyGift: 0 }
     soldier11Mechanic.buildCharConfig!({ cfg: cfg0, cinemaLevel: 0 } as any)
     expect(cfg0.initialEnergyGift ?? 0).toBe(0)
   })

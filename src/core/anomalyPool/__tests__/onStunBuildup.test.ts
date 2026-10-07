@@ -2,9 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import { calcAnomalyPool } from '../../anomalyPool'
 import type { PanelValues } from '@/types/catalog'
+import { emptyPanel } from '@/core/panel'
 
 const panel = (over: Partial<PanelValues> = {}): PanelValues =>
-  ({ anomalyMastery: 100, anomalyBuildUpEfficiency: 0, enemyAnomalyResReduction: 0, ...over }) as PanelValues
+  ({ ...emptyPanel(), anomalyMastery: 100, anomalyBuildUpEfficiency: 0, enemyAnomalyResReduction: 0, ...over })
 
 describe('calcAnomalyPool 失衡内积蓄效率（OnStunBonus）', () => {
   const execs = [
@@ -28,7 +29,7 @@ describe('calcAnomalyPool 失衡内积蓄效率（OnStunBonus）', () => {
     expect(byMove.get('m2')).toBeCloseTo(130)  // 100×(1+60×0.5/100)
   })
 
-  it('零覆盖不加成；面板未设字段不产生 NaN', () => {
+  it('零覆盖不加成', () => {
     const r = calcAnomalyPool({ executions: execs, panels: [panel()], stunned: true, totalTime: 180, teamMechanics: [] })
     const byMove = new Map(r.perElement.flatMap(p => p.contributions).map(c => [c.moveId, c.perHitBuildUp]))
     expect(byMove.get('m1')).toBeCloseTo(100)

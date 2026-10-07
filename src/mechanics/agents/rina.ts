@@ -133,9 +133,9 @@ function buildCharConfig({ skills, cfg }: AgentCharConfigInput): void {
 
 function rinaBangbooOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['state']): RinaBangbooResult {
   return computeRinaBangboo({
-    exSpecialCount: state.exSpecialCount ?? 0,
-    chainCountTotal: state.chainCountTotal ?? 0,
-    ultimateCount: state.ultimateCount ?? 0,
+    exSpecialCount: state.exSpecialCount,
+    chainCountTotal: state.chainCountTotal,
+    ultimateCount: state.ultimateCount,
     combatTime: effectiveCombatTime(state, cfg),
   })
 }
@@ -179,9 +179,9 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 }
 
 function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  const ex = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
-  const chain = Math.max(0, Math.floor(state.chainCountTotal ?? 0))
-  const ult = Math.max(0, Math.floor(state.ultimateCount ?? 0))
+  const ex = Math.max(0, Math.floor(state.exSpecialCount))
+  const chain = Math.max(0, Math.floor(state.chainCountTotal))
+  const ult = Math.max(0, Math.floor(state.ultimateCount))
   const bangboo = rinaBangbooOf(cfg, state)
   return {
     rinaBangboo: bangboo,
@@ -280,18 +280,18 @@ export const rinaMechanic: AgentMechanicModule = {
     // 它是**队伍级**效果（给队友），写在这里只会加到丽娜本人面板上（P2 陷阱）。
     const potLv = potentialLevelOf(potentialLevel)
     if (potLv >= 2) {
-      panel.penRatio = (panel.penRatio ?? 0) + RINA_POTENTIAL_PEN_RATIO
+      panel.penRatio = panel.penRatio + RINA_POTENTIAL_PEN_RATIO
       panel.rinaPotentialPenRatio = RINA_POTENTIAL_PEN_RATIO
     }
     if (cinemaLevel >= 2) {
-      panel.dmgBonus = (panel.dmgBonus ?? 0) + 15 * C2_COVERAGE
+      panel.dmgBonus = panel.dmgBonus + 15 * C2_COVERAGE
     }
     // 影画4·双邦布在外：全队能量自动回复 +0.5/s × 覆盖率滑块。
     // 原先是 computePanelPhases 里 `agent.id === '1211'` 的硬编码块（applyPanel 拿不到滑块的历史绕法），
     // AgentPanelInput.settings 就位后归位到模块自身。
     if (cinemaLevel >= 4) {
       const coverage = Math.max(0, Math.min(1, settingOf(settings, 'rina.c4DoubleBangbooCoverage')))
-      panel.energyRegenBonusFlat = (panel.energyRegenBonusFlat ?? 0) + 0.5 * coverage
+      panel.energyRegenBonusFlat = panel.energyRegenBonusFlat + 0.5 * coverage
       panel.rinaCinema4EnergyRegen = 0.5 * coverage
     }
   },

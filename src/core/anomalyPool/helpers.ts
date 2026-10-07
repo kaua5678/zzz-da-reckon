@@ -439,7 +439,7 @@ export function calcPerHitBuildUp(
   const afterEff = anomalyBuildUpAfterMasteryAndEfficiency(baseBuildUp, panel, element, rowEfficiencyBonusPct)
 
   // 异常积蓄抗性区
-  const anomalyResRed = (panel.enemyAnomalyResReduction ?? 0) + getElementEnemyAnomalyResReduction(panel, element)
+  const anomalyResRed = panel.enemyAnomalyResReduction + getElementEnemyAnomalyResReduction(panel, element)
   const effectiveRes = enemyAnomalyResistance - anomalyResRed
   const afterRes = afterEff * (1 - effectiveRes / 100)
 
@@ -524,16 +524,16 @@ export function getElementEnemyAnomalyResReduction(panel: PanelValues, element: 
 export function getAnomalyDuration(panel: PanelValues, element: string): number {
   const baseElement = getBaseElement(element)
   const elementBonus = baseElement === 'physical'
-    ? (panel.physicalAnomalyDurationBonusSeconds ?? 0)
+    ? panel.physicalAnomalyDurationBonusSeconds
     : baseElement === 'fire'
-      ? (panel.fireAnomalyDurationBonusSeconds ?? 0)
+      ? panel.fireAnomalyDurationBonusSeconds
       : baseElement === 'electric'
-        ? (panel.electricAnomalyDurationBonusSeconds ?? 0)
+        ? panel.electricAnomalyDurationBonusSeconds
         : baseElement === 'ether'
-          ? (panel.etherAnomalyDurationBonusSeconds ?? 0)
+          ? panel.etherAnomalyDurationBonusSeconds
           : 0
   return (ANOMALY_DURATION[baseElement] ?? 10)
-    + (panel.anomalyDurationBonusSeconds ?? 0)
+    + panel.anomalyDurationBonusSeconds
     + elementBonus
 }
 
@@ -616,9 +616,9 @@ export type StunVulnPanelFields = Pick<PanelValues, 'stunDmgMultiplierBonus' | '
 export function calcPanelStunMultiplier(p: StunVulnPanelFields, baseStunMultiplier: number, stunned: boolean | number): number {
   return calcStunMultiplier(
     baseStunMultiplier,
-    p.stunDmgMultiplierBonus ?? 0,
-    p.stunDmgMultiplierBonusAlways ?? 0,
-    p.stunDmgMultiplierBonusCapAlways ?? 0,
+    p.stunDmgMultiplierBonus,
+    p.stunDmgMultiplierBonusAlways,
+    p.stunDmgMultiplierBonusCapAlways,
     stunned,
   )
 }
@@ -636,7 +636,7 @@ export function calcEnemySideMultiplier(
   stunMultiplier: number,
 ): number {
   const resMult = calcResistanceMultiplier(baseResistance, totalResReduction)
-  const dmgTakenMult = 1 + (p.enemyDamageTakenBonus ?? 0) / 100
+  const dmgTakenMult = 1 + p.enemyDamageTakenBonus / 100
   const stunMult = calcPanelStunMultiplier(p, stunMultiplier, stunned)
   return resMult * dmgTakenMult * stunMult
 }
@@ -656,12 +656,12 @@ export function getAnomalyCritStats(
   const assaultSource = sourcePanel ?? panel
   const baseElement = element ? getBaseElement(element) : undefined
   const isAssault = baseElement === 'physical'
-  const rate = (panel.anomalyCritRate ?? 0) + (isAssault ? assaultSource.assaultCritRate ?? 0 : 0)
+  const rate = panel.anomalyCritRate + (isAssault ? assaultSource.assaultCritRate : 0)
   const selfAssaultBonus = options?.includeSelfAssaultBonus === false
     ? 0
-    : (assaultSource.selfAssaultCritDmgBonus ?? 0)
-  const dmg = (panel.anomalyCritDmg ?? 0) + (isAssault ? (assaultSource.assaultCritDmg ?? 0) + selfAssaultBonus : 0)
-  const labelPrefix = isAssault && ((assaultSource.assaultCritRate ?? 0) !== 0 || (assaultSource.assaultCritDmg ?? 0) !== 0)
+    : assaultSource.selfAssaultCritDmgBonus
+  const dmg = panel.anomalyCritDmg + (isAssault ? assaultSource.assaultCritDmg + selfAssaultBonus : 0)
+  const labelPrefix = isAssault && (assaultSource.assaultCritRate !== 0 || assaultSource.assaultCritDmg !== 0)
     ? '强击/异常暴击'
     : '异常暴击'
   return { rate, dmg, labelPrefix }
@@ -715,11 +715,11 @@ export function calcAnomalyMass(
 
   // 2. 增伤区（通用 + 元素伤害）
   const elementDmg = getElementDmgBonus(p, element)
-  const dmgBonus = p.dmgBonus ?? 0
+  const dmgBonus = p.dmgBonus
   const afterDmgBonus = baseDmg * (1 + (elementDmg + dmgBonus) / 100)
 
   // 3. 异常精通区（无上限）
-  const anomalyProf = p.anomalyProficiency ?? 0
+  const anomalyProf = p.anomalyProficiency
   const afterProf = afterDmgBonus * (anomalyProf / 100)
 
   // 4. 异常增伤区（来自施加者面板）
@@ -727,18 +727,18 @@ export function calcAnomalyMass(
   //    乱流继承此区但已通过 calcTurbulenceSettlement 独立计算，因此乱流调用也传 false（避免重复）
   let afterAnomalyDmg = afterProf
   if (includeAnomalyDmg) {
-    const anomalyDmgBonus = p.anomalyDmgBonus ?? 0
+    const anomalyDmgBonus = p.anomalyDmgBonus
     afterAnomalyDmg = afterProf * (1 + anomalyDmgBonus / 100)
   }
 
   // 5. 防御乘区（使用施加者自己的通用/元素减防、穿透率/穿透值 + 兼容传入的全局减防）
-  const totalDefReduction = enemyDefReduction + (p.enemyDefReduction ?? 0) + (p.enemyAnomalyDefReduction ?? 0) + getElementEnemyDefReduction(p, element)
+  const totalDefReduction = enemyDefReduction + p.enemyDefReduction + p.enemyAnomalyDefReduction + getElementEnemyDefReduction(p, element)
   const defMult = calcDefenseMultiplier(
     enemyDefense,
     totalDefReduction,
-    p.enemyDefFlatReduction ?? 0,
-    p.penRatio ?? 0,
-    p.penFlat ?? 0,
+    p.enemyDefFlatReduction,
+    p.penRatio,
+    p.penFlat,
   )
   const afterDef = afterAnomalyDmg * defMult
 
@@ -775,11 +775,11 @@ function calcDisorderSettlement(
 
   // 1–3. 抗性区（按基础元素查伤害抗性，boss有偏好如火抗冰弱）× 易伤区 × 失衡易伤区
   const baseRes = enemyResistances[getBaseElement(element)] ?? 0
-  const totalResReduction = enemyResReduction + (p.enemyResReduction ?? 0) + getElementEnemyResReduction(p, element)
+  const totalResReduction = enemyResReduction + p.enemyResReduction + getElementEnemyResReduction(p, element)
   const enemyMult = calcEnemySideMultiplier(p, baseRes, totalResReduction, stunned, stunMultiplier)
 
   // 紊乱只吃紊乱增伤区，不继承普通异常增伤和异常暴击
-  const disorderDmgMult = 1 + (p.disorderDamageBonus ?? 0) / 100
+  const disorderDmgMult = 1 + p.disorderDamageBonus / 100
   return enemyMult * disorderDmgMult
 }
 
@@ -812,13 +812,13 @@ function calcTurbulenceSettlement(
   // 1. 抗性乘区（使用非风元素伤害抗性，boss有偏好如火抗冰弱）
   const baseRes = enemyResistances[element] ?? 0
   // 乱流抗性无视（%）：通用面板字段，由角色模块 applyPanel 写入（现为维琳娜 1 命 20；CC-36b 2026-09-27，原读 velinaCinema1）
-  const turbulenceResIgnore = p.turbulenceResIgnore ?? 0
-  const totalResReduction = enemyResReduction + (p.enemyResReduction ?? 0) + getElementEnemyResReduction(p, element) + turbulenceResIgnore
+  const turbulenceResIgnore = p.turbulenceResIgnore
+  const totalResReduction = enemyResReduction + p.enemyResReduction + getElementEnemyResReduction(p, element) + turbulenceResIgnore
   // 1–3. 抗性区 × 易伤区 × 失衡易伤区
   const enemyMult = calcEnemySideMultiplier(p, baseRes, totalResReduction, stunned, stunMultiplier)
 
   // 4. 异常增伤区（乱流继承异常增伤）
-  const anomalyDmgBonus = (p.anomalyDmgBonus ?? 0) + (element === 'wind' ? p.windAnomalyDmgBonus ?? 0 : 0) + (p.turbulenceDamageBonus ?? 0)
+  const anomalyDmgBonus = p.anomalyDmgBonus + (element === 'wind' ? p.windAnomalyDmgBonus : 0) + p.turbulenceDamageBonus
   const anomalyDmgMult = 1 + anomalyDmgBonus / 100
 
   // 5. 异常暴击区：乱流继承触发者的通用异常暴击；物理强击乱流额外继承强击暴击
@@ -998,7 +998,7 @@ export function calcDisorderDamage(
     const formula = DISORDER_FORMULAS[getBaseElement(element)] ?? DISORDER_FORMULAS.ice
     let disorderMultiplier =
       formula.baseMultiplier +
-      (applierPanel.disorderBaseMultiplierBonus ?? 0) +
+      applierPanel.disorderBaseMultiplierBonus +
       Math.floor(T / formula.tickInterval) * formula.tickMultiplier
 
     // 爱丽丝畏缩机制：紊乱覆盖物理异常时，每剩余1秒物理异常时长 +bonusPerSec%，上限 bonusMax%

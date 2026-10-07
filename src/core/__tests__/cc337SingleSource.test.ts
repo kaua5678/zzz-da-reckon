@@ -84,7 +84,7 @@ describe('CC-337: 单一事实源与跨模块对账守护', () => {
     // 局内面板继承同一个局外总回能（不受局内 +50% 回能影响）
     expect(res.inCombat.energyRegenOutOfCombat).toBeCloseTo(2.1, 9)
     // 局内实时总回能 = 1.5 * (1 + 0.70) + 0.3 = 2.85
-    expect(calcEnergyRegenTotal(res.inCombat, 1.2)).toBeCloseTo(2.85, 9)
+    expect(calcEnergyRegenTotal(res.inCombat)).toBeCloseTo(2.85, 9)
 
     const flashPanel = emptyPanel()
     flashPanel.flashEnergyRegen = 2

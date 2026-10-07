@@ -479,7 +479,7 @@ function cloneEffectWithSourceValue(effect: BuffEffect, buff: TeammateBuff, sour
     const panel = sourcePanels?.[ownerKey]?.[effect.sourcePanelPhase]
     const value = panel ? getPanelSourceStatValue(panel, effect.sourceStat) : undefined
     if (typeof value === 'number' && Number.isFinite(value)) {
-      const dynamicSkillLevel = panel ? 12 + Math.max(0, panel.skillLevelBonus ?? 0) : undefined
+      const dynamicSkillLevel = panel ? 12 + Math.max(0, panel.skillLevelBonus) : undefined
       // `p` 变量（公式第三变量）：来源角色的潜能觉醒档位。与 `dynamicSkillLevel` 同源同款
       // ——`core/panel.ts:353` 把 `potentialLevel` 盖章进源面板，故这里直接读它。
       const dynamicPotentialLevel = panel?.potentialLevel

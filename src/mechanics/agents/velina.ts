@@ -171,7 +171,7 @@ function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
 
   // 一命：风属性异常伤害无视20%风抗；异放继承风底性质，一并吃到
   if (cinemaLevel >= 1) {
-    panel.enemyWindResReduction = (panel.enemyWindResReduction ?? 0) + 20
+    panel.enemyWindResReduction = panel.enemyWindResReduction + 20
   }
 
   // 回能转模：原文「初始能量自动回复」⇒ spec sourceValue = energyRegenOutOfCombat（局外总回能 = 基础 × (1 + 局外%) + 局外固定，
@@ -468,7 +468,7 @@ function buildVelinaCorrosionEvents(source: CorrosionSource): AnomalyEventRecord
       type: 'release',
       label: '维琳娜微域气旋风异放',
       source: '0或1个风蚀时，触发乱流获得1点风蚀并触发 Condensed Cyclone',
-      count: source.microCycloneCount ?? 0,
+      count: source.microCycloneCount,
       formula: 'microCount = 风蚀状态机中“0或1风蚀触发乱流”的次数；每次微域气旋触发一次145%倍率风属性异放',
       fields: ['corrosion<2', 'turbulenceCount', 'Condensed Cyclone', 'releaseMultiplier=145%'],
       note: '0或1个风蚀时，再次触发乱流会获得1点风蚀，并伴随触发微域气旋；微域气旋触发一次145%倍率风属性异放。',
@@ -478,7 +478,7 @@ function buildVelinaCorrosionEvents(source: CorrosionSource): AnomalyEventRecord
       type: 'release',
       label: '维琳娜风蚀替换广域气旋',
       source: '2个风蚀时，再次触发乱流清空风蚀，微域气旋替换为广域气旋',
-      count: source.broadCycloneCount ?? 0,
+      count: source.broadCycloneCount,
       formula: 'broadCount = 风蚀状态机中“2风蚀触发乱流”的次数；本次微域气旋替换为广域气旋，触发255%风异放，并使本次乱流倍率区 += 150%',
       fields: ['corrosion=2', 'Sweeping Cyclone #1×10 + #2×2', 'releaseMultiplier=255', 'turbulenceMultiplier+150%'],
       note: '2个风蚀时，再次触发乱流会清空风蚀；本该触发的微域气旋替换为广域气旋，同时把这次触发的乱流倍率提高150%。强化次数会继续分配到各个非风属性乱流伤害事件。',

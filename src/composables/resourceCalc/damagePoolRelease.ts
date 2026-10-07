@@ -38,7 +38,7 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
   } = env
   const { charResult, slot, agent } = cl
 
-  for (const event of charResult.anomalyEventExecutions ?? []) {
+  for (const event of charResult.anomalyEventExecutions) {
     if (event.count <= 0) continue
     if (event.eventType === 'release') {
       // 不变量：**有 cfg 必有面板**（`buildCharConfig` 里 `computePanel` 是它 return 的前置，
@@ -174,8 +174,8 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
           // 池无该元素明细时回落全池均摊
           const el = p.element
           const elDetails = (dd?.details ?? []).filter(d => getBaseElement(d.element) === getBaseElement(el))
-          const elEvents = elDetails.reduce((s, d) => s + (d.events ?? 0), 0)
-          const elDamage = elDetails.reduce((s, d) => s + (d.damage ?? 0), 0)
+          const elEvents = elDetails.reduce((s, d) => s + d.events, 0)
+          const elDamage = elDetails.reduce((s, d) => s + d.damage, 0)
           const perEventEl = elEvents > 0 ? (elDamage / elEvents) * polarRatio : perEvent
           if (perEventEl <= 0) continue
           rows.push({

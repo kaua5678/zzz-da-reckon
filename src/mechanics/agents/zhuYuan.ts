@@ -75,15 +75,15 @@ const ZHUYUAN_STUN_WINDOW_SECONDS = 16
 
 function applyZhuYuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if (additionalAbilityActiveOf(panel)) {
-    panel.critRate = (panel.critRate ?? 0) + ZHUYUAN_AA_CRIT_RATE
+    panel.critRate = panel.critRate + ZHUYUAN_AA_CRIT_RATE
   }
   panel['skillDmgBonus__basic'] = (panel['skillDmgBonus__basic'] ?? 0) + ZHUYUAN_CORE_SHELL_DMG
   panel['skillDmgBonus__dashAttack'] = (panel['skillDmgBonus__dashAttack'] ?? 0) + ZHUYUAN_CORE_SHELL_DMG
   if (cinemaLevel >= 2) {
-    panel.etherDmg = (panel.etherDmg ?? 0) + ZHUYUAN_C2_ETHER_DMG
+    panel.etherDmg = panel.etherDmg + ZHUYUAN_C2_ETHER_DMG
   }
   if (cinemaLevel >= 4) {
-    panel.enemyEtherResReduction = (panel.enemyEtherResReduction ?? 0) + ZHUYUAN_C4_ETHER_RES_IGNORE
+    panel.enemyEtherResReduction = panel.enemyEtherResReduction + ZHUYUAN_C4_ETHER_RES_IGNORE
   }
 }
 
@@ -95,7 +95,7 @@ function buildZhuYuanCharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): voi
   // 自卫还击（支援突击 1241025）「招式发动时，获得3枚强化霰弹」的次数源。
   // @fact agent:1241/自卫还击霰弹次数源 口径: defAssistCount = cfg.parryCount —— core 的支援突击行本身按 `cfg.parryCount` 产（core/resource/rowBuild.ts 支援突击块 count = parryCount），霰弹 +3/次 与该伤害行**同源同次数**、不是双计；不带支援突击的弹刀（parryNoFollowUpCount）不产支援突击行 ⇒ 不计入 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…给有回避的分配一个回避支援」+ 原文 data/raw/nanoka_missing/full/1241.json「发动[回避支援]后，点按[普通攻击]发动…获得3枚[强化霰弹]」·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/zhuYuan.test.ts#自卫还击霰弹接黄光交互次数 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanCharConfig | 信 确认
   // ⟳复核: 若「回避支援行」按用户裁决补进 core（黄光交互另计 1.166s 时停）或 core 支援突击行的次数源改动，本字段必须同步改读同一个源，否则伤害行与霰弹收益会脱钩 | 到期 2026-12-15
-  cfg.defAssistCount = Math.max(0, Math.floor(Number(cfg.parryCount ?? 0)))
+  cfg.defAssistCount = Math.max(0, Math.floor(cfg.parryCount))
 }
 
 /**
@@ -152,13 +152,13 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
   const afterglowGift = cinema >= 6 ? Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST) * ZHUYUAN_C6_AFTERGLOW_ENERGY : 0
   const prevAfterglowGift = Math.max(0, Number(cfg.zhuYuanC6AfterglowEnergy ?? 0))
   if (afterglowGift > 0 || prevAfterglowGift > 0) {
-    cfg.initialEnergyGift = Math.max(0, Number(cfg.initialEnergyGift ?? 0) - prevAfterglowGift) + afterglowGift
+    cfg.initialEnergyGift = Math.max(0, cfg.initialEnergyGift - prevAfterglowGift) + afterglowGift
     cfg.zhuYuanC6AfterglowEnergy = afterglowGift
   }
   // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款），非轴按覆盖率近似（默认0），轴模式待接入
   // 压制模式·请勿抵抗：1 枚霰弹 = 1 段以太强化霰弹（1241010/1241011/1241012 三段轮转），
   // 时间有界（超出平A池的霰弹浪费，时间紧可浪费）。物理不打（用户口径）。
-  const maxByTime = Math.max(0, Math.floor((state.basicAttackTime ?? 0) / ZHUYUAN_SUPPRESS_ETHER_AVG_TIME))
+  const maxByTime = Math.max(0, Math.floor(state.basicAttackTime / ZHUYUAN_SUPPRESS_ETHER_AVG_TIME))
   const bullets = Math.min(shellsTotal, maxByTime)
   // 核心被动失衡增伤 +40%：per-row 挂在压制以太行（仪玄凝云术同款）；轴模式按轴内压制以太占比（捏轴），非轴按反推覆盖率
   const axisActive = cfg.zhuYuanAxisActive === true
@@ -193,7 +193,7 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
   if (etherTime > 0) {
     const basicIdx = executions.findIndex(e => e.moveId === 'basic_attack')
     if (basicIdx >= 0) {
-      const basicTime = executions[basicIdx].totalTime ?? 0
+      const basicTime = executions[basicIdx].totalTime
       const carve = Math.max(0, Math.min(basicTime, etherTime))
       executions[basicIdx] = {
         ...executions[basicIdx],

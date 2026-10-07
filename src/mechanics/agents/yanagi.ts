@@ -94,19 +94,19 @@ function buildYanagiExecutions({ cfg, state, executions }: AgentResourceInput): 
 function applyYanagiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if (!panel) return
   // 核心被动·月蚀：强特命中后自身电伤+20%（15s 刷新，整局高频强特近似常驻）
-  panel.electricDmg = (panel.electricDmg ?? 0) + YANAGI_CORE_ELECTRIC_DMG
+  panel.electricDmg = panel.electricDmg + YANAGI_CORE_ELECTRIC_DMG
   // 额外能力·月相：其他异常/同属性队友门控，电异常积蓄+45%
   if (additionalAbilityActiveOf(panel)) {
-    panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0)
+    panel.electricAnomalyBuildUpEfficiency = panel.electricAnomalyBuildUpEfficiency
       + YANAGI_ELECTRIC_BUILDUP_BONUS
   }
   // 影画1：持[洞悉]异常精通+80（异常施加叠层 15s 刷新，异常队近似常驻）
   if (cinemaLevel >= 1) {
-    panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + YANAGI_C1_PROFICIENCY
+    panel.anomalyProficiency = panel.anomalyProficiency + YANAGI_C1_PROFICIENCY
   }
   // 影画2：强特快速突刺电异常积蓄+20%（突刺期间近似常驻）
   if (cinemaLevel >= 2) {
-    panel.electricAnomalyBuildUpEfficiency = (panel.electricAnomalyBuildUpEfficiency ?? 0)
+    panel.electricAnomalyBuildUpEfficiency = panel.electricAnomalyBuildUpEfficiency
       + YANAGI_C2_BUILDUP_BONUS
   }
   // 影画6：森罗万象期间强特伤害+20%

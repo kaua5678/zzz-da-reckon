@@ -370,7 +370,7 @@ function billyExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeIn
     0, // fullThrottle 由决意求解器按当前状态推导（见下），终局前不读上一轮写入值
     readAxisEx(cfg),
     axisActive,
-    cfg.dodgeCounterCount ?? 0,
+    cfg.dodgeCounterCount,
   )
   // ===== 消滞后 + 实数化（2026-09-06，1051 targeted 骨架）=====
   // 旧实现读上一轮 buildExecutions 写入的 cfg.billyChainCount / billyFullThrottleCount——
@@ -435,12 +435,12 @@ function billyFullThrottleFromState(
     {
       chainCountTotal: st.chainCountTotal,
       ultimateCount: st.ultimateCount,
-      dodgeCounterCount: cfg.dodgeCounterCount ?? 0,
+      dodgeCounterCount: cfg.dodgeCounterCount,
       basicAttackTime: st.basicAttackTime,
     },
     cfg,
-    cfg.parryCount ?? 0,
-    cfg.quickAssistCount ?? 0,
+    cfg.parryCount,
+    cfg.quickAssistCount,
   )
   const detCfg: CharacterOperationConfig = {
     ...cfg,
@@ -545,7 +545,7 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
     Number(cfg.billyFullThrottleCount ?? 0),
     axisEx,
     axisActive,
-    cfg.dodgeCounterCount ?? 0,
+    cfg.dodgeCounterCount,
   )
   const hpDiscountRatio = cfgNum(cfg, '1531.driveSuppressionHpDiscountRatio')
   const hp = computeBillyHpModel(
@@ -570,10 +570,10 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
   // spec 解释器按 cfgField 计入；随后 spec 事件生成最高马力星光
   cfg.billyAttackDataDetermination = computeAttackDataDetermination(
     chain,
-    { chainCountTotal: state.chainCountTotal, ultimateCount: state.ultimateCount, dodgeCounterCount: cfg.dodgeCounterCount ?? 0, basicAttackTime: state.basicAttackTime },
+    { chainCountTotal: state.chainCountTotal, ultimateCount: state.ultimateCount, dodgeCounterCount: cfg.dodgeCounterCount, basicAttackTime: state.basicAttackTime },
     cfg,
-    cfg.parryCount ?? 0,
-    cfg.quickAssistCount ?? 0,
+    cfg.parryCount,
+    cfg.quickAssistCount,
   )
   cfg.billyExExtraDetermination = chain.chain * EX_EXTRA_DETERMINATION
   cfg.billyCoolWheelieCount = chain.chain // 星辉/煊赫星辉的孤轮来源（含免费衔接的孤轮）
@@ -700,7 +700,7 @@ function buildBillyResourceResult({ cfg, state }: AgentResourceResultInput): Par
     Math.max(0, Math.floor(resources.get('billy_determination')?.spendCounts['billy_max_power_spend'] ?? 0)),
     readAxisEx(cfg),
     axisActive,
-    cfg.dodgeCounterCount ?? 0,
+    cfg.dodgeCounterCount,
   )
   const hp: { hpCostPct?: number; healPct?: number; hpFloorPct?: number; discountRatio?: number } = cfg.billyChainHp ?? {}
   return {
@@ -816,12 +816,12 @@ function applyStarlightBillyPanel(input: AgentPanelInput): void {
   const coreCoverage = settingOf(settings, '1531.driveSuppressionCritDmgCoverage')
   const c4Coverage = settingOf(settings, '1531.c4CritDmgCoverage')
   const c1Coverage = settingOf(settings, '1531.c1ResIgnoreCoverage')
-  panel.critDmg = (panel.critDmg ?? 0) + 90 * coreCoverage
+  panel.critDmg = panel.critDmg + 90 * coreCoverage
   if (cinemaLevel >= 4) {
-    panel.critDmg = (panel.critDmg ?? 0) + 8 * 2 * c4Coverage
+    panel.critDmg = panel.critDmg + 8 * 2 * c4Coverage
   }
   if (cinemaLevel >= 1) {
-    panel.enemyPhysicalResReduction = (panel.enemyPhysicalResReduction ?? 0) + 18 * c1Coverage
+    panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + 18 * c1Coverage
   }
 }
 

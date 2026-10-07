@@ -127,7 +127,7 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
   // 影画1 快充模式
   if (cinemaLevel >= 1) {
     const cov = clampRatio(settingOf(settings, 'anby.fastChargeCoverage'))
-    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + ANBY_C1_ENERGY_EFF * cov
+    panel.energyGainEfficiency = panel.energyGainEfficiency + ANBY_C1_ENERGY_EFF * cov
   }
   // 影画6 充能电场**不再走面板级**（2026-09-17 录入修正③）：原文限定「消耗充能的**当前招式** +45%」，
   // 面板级全局 +45 会让强特/终结/连携/异常全部吃满（旧实现实测：C6 无充能输入也 +45）。
@@ -146,7 +146,7 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
 function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   cfg.anbyCinemaLevel = cinemaLevelOf(cinemaLevel)
   cfg.anbyAdditionalActive = additionalAbilityActiveOf(panel)
-  cfg.anbyEnergyGainEfficiency = panel.energyGainEfficiency ?? 0
+  cfg.anbyEnergyGainEfficiency = panel.energyGainEfficiency
   // 影画2 失衡覆盖率：滑块 → cfg 的**唯一**通道（读法见 cfgNum 头注释）
   cfg.anbyC2StunCoverage = cfgNum(cfg, 'anby.c2StunCoverage')
   // 平A循环分段元数据预存（buildExecutions 输入无 skills；单一事实源仍是倍率表）。
@@ -172,10 +172,10 @@ function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, 
     // 并联电路：闪反回 7.2 能量/5s（additionalAbility 门控）
     const active = cfg.anbyAdditionalActive === true
     const gift = active
-      ? computeAnbyParallelCircuitEnergy(cfg.dodgeCounterCount ?? 0, combatTime)
+      ? computeAnbyParallelCircuitEnergy(cfg.dodgeCounterCount, combatTime)
       : 0
     const prev = Math.max(0, Number(cfg.anbyParallelEnergyTotal ?? 0))
-    cfg.initialEnergyGift = Math.max(0, (cfg.initialEnergyGift ?? 0) - prev) + gift
+    cfg.initialEnergyGift = Math.max(0, cfg.initialEnergyGift - prev) + gift
     cfg.anbyParallelEnergyTotal = gift
   }
 
@@ -194,7 +194,7 @@ function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, 
       const mateCfg = characters.find(c => c.slot === mate.slot)
       if (!mateCfg) continue
       const prevC4 = Math.max(0, Number(mateCfg.anbyC4EnergyTotal ?? 0))
-      mateCfg.initialEnergyGift = Math.max(0, (mateCfg.initialEnergyGift ?? 0) - prevC4) + energy
+      mateCfg.initialEnergyGift = Math.max(0, mateCfg.initialEnergyGift - prevC4) + energy
       mateCfg.anbyC4EnergyTotal = energy
     }
   }
@@ -210,7 +210,7 @@ function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, 
 function buildAnbyExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cfg.anbyBasicCycle ?? []
   const poolIdx = executions.findIndex(e => e.moveId === MOVE_BASIC_POOL)
-  const basicTime = Math.max(0, Number(state.basicAttackTime ?? 0))
+  const basicTime = Math.max(0, state.basicAttackTime)
   if (poolIdx < 0 || cycle.length !== ANBY_BASIC_CYCLE_IDS.length || basicTime <= 0) return
   const cycleTime = cycle.reduce((sum, seg) => sum + Math.max(0, seg.actionTime), 0)
   if (cycleTime <= 0) return
@@ -222,7 +222,7 @@ function buildAnbyExecutions({ cfg, state, executions }: AgentResourceInput): vo
   const cinema = cinemaLevelOf(cfg.anbyCinemaLevel)
   const totalHits = fullCycles * cycle.length
   let chargesLeft = cinema >= 6
-    ? computeAnbyChargeConsumed(Number(state.exSpecialCount ?? 0), totalHits)
+    ? computeAnbyChargeConsumed(state.exSpecialCount, totalHits)
     : 0
 
   let segTime = 0
@@ -242,7 +242,7 @@ function buildAnbyExecutions({ cfg, state, executions }: AgentResourceInput): vo
   // 回能与喧响**不动**——它们由 core 按 `state.basicAttackTime × cfg.basicAttack*PerSec` 写在
   // 聚合行上（段行 energyRecovery/decibelRecovery 恒 0），缩时间不会丢能量。
   const pool = executions[poolIdx]
-  const poolTime = Math.max(0, (pool.totalTime ?? 0) - Math.min(pool.totalTime ?? 0, segTime))
+  const poolTime = Math.max(0, pool.totalTime - Math.min(pool.totalTime, segTime))
   executions[poolIdx] = {
     ...pool,
     totalTime: poolTime,

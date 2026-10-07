@@ -185,8 +185,8 @@ export function normalizeDisplayTime(rr: TeamResourceResult): TeamResourceResult
   return {
     ...rr,
     characters: rr.characters.map(c => {
-      const front = (c.executions ?? []).reduce(
-        (s, e) => s + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+      const front = c.executions.reduce(
+        (s, e) => s + (isFrontlineExecution(e) ? e.totalTime : 0), 0)
       return {
         ...c,
         timeAllocation: {

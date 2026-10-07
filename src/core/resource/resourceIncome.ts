@@ -195,10 +195,10 @@ export function calcRawDecibelParts(
   // 奖励回复：池内效果（时光切片）。弹刀/闪反/连携/快支的固定奖励与异常奖励由外部按槽位注入
   // （specialActionDecibelBonusPerSlot / anomalyDecibelBonusPerSlot），避免与展示层双算。
   const timeSliceTriggers = timeSliceTriggerCounts(cfg, state, chainCountTotal, totalTime, exSpecialCount)
-  const timeSliceDecibel = (cfg.panel.timeSliceDodgeCounterDecibel ?? 0) * timeSliceTriggers.dodgeCounter
-    + (cfg.panel.timeSliceExSpecialDecibel ?? 0) * timeSliceTriggers.exSpecial
-    + (cfg.panel.timeSliceAssistDecibel ?? 0) * timeSliceTriggers.assist
-    + (cfg.panel.timeSliceChainDecibel ?? 0) * timeSliceTriggers.chain
+  const timeSliceDecibel = cfg.panel.timeSliceDodgeCounterDecibel * timeSliceTriggers.dodgeCounter
+    + cfg.panel.timeSliceExSpecialDecibel * timeSliceTriggers.exSpecial
+    + cfg.panel.timeSliceAssistDecibel * timeSliceTriggers.assist
+    + cfg.panel.timeSliceChainDecibel * timeSliceTriggers.chain
   const bonusRegen = timeSliceDecibel
 
   return {
@@ -240,12 +240,12 @@ export function calcDecibelSource(
   // `cfg` 的外部治疗字段（见卡面 §5.4 第 4 条），此处再乘次数会重复计入。
   const selfBurnDecibel = getAgentMechanic(cfg.agentId)?.selfBurnDecibel?.({
     cfg,
-    basicAttackTime: state.basicAttackTime ?? 0,
-    exSpecialCount: state.exSpecialCount ?? 0,
+    basicAttackTime: state.basicAttackTime,
+    exSpecialCount: state.exSpecialCount,
     providerUltCount: 0,
   }) ?? 0
   const unshareableBonus = (
-    (cfg.extraSelfDecibelReward ?? 0)
+    cfg.extraSelfDecibelReward
     + (cfg.extraSelfDecibelPerUltimate ?? 0) * (state.ultimateCount + (cfg.ultimateEquivalentCount ?? 0))
     + selfBurnDecibel
     + extraUnshareableDecibel

@@ -171,7 +171,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     chainCountTotal: chainCountTotalOf(cfg, countStunPlan) + (cfg.chainCountTotalExtra ?? 0),
     totalEnergy: 0,
     // 种子 ultimateCount = 0，但终结技等价次数（CC-312）是上一轮的已知量，与 extraSelfDecibelReward 同样计入起点
-    totalDecibel: cfg.initialDecibelGift + (cfg.extraSelfDecibelReward ?? 0)
+    totalDecibel: cfg.initialDecibelGift + cfg.extraSelfDecibelReward
       + (cfg.extraSelfDecibelPerUltimate ?? 0) * (cfg.ultimateEquivalentCount ?? 0),
     necessaryTime: 0,
     frontlineTime: totalTime * (cfg.timeWeight / totalWeight) / Math.max(1, totalWeight) * totalWeight,

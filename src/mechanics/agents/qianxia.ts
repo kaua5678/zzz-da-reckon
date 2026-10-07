@@ -145,17 +145,16 @@ function buildQianxiaCharConfig({ cfg, cinemaLevel, team, panel, skills }: Agent
   cfg.qianxiaCinemaLevel = cinemaLevel
   // CC-195：普攻 #4 标记折算用——鬼马流星锤 #1–#4 一整套时长（每套出一次 #4）
   cfg.qianxiaBasicMarkCycleSeconds = basicComboCycleSeconds(skills, QIANXIA_BASIC_MARK_MOVE_ID)
-  // 凝视触发者：队内强攻/异常角色数（千夏自己是支援不计；team 缺省容错空数组）
-  const members = team ?? []
-  const attackAgents = members.filter(m => m.agent?.specialty === 'attack').length
-  const anomalyAgents = members.filter(m => m.agent?.specialty === 'anomaly').length
+  // 凝视触发者：队内强攻/异常角色数（千夏自己是支援不计）
+  const attackAgents = team.filter(m => m.agent?.specialty === 'attack').length
+  const anomalyAgents = team.filter(m => m.agent?.specialty === 'anomaly').length
   cfg.qianxiaAttackAgents = attackAgents
   cfg.qianxiaAnomalyAgents = anomalyAgents
   // 触发者命中数近似：滑块 0 = 按标记供给同量级（postRound 后标记供给写入）
   const manualHits = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'qianxia.gazeTriggerHits') ?? 0) || 0))
   cfg.qianxiaTriggerHits = manualHits
   if (additionalAbilityActiveOf(panel)) {
-    cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + QIANXIA_FIELD_ENTRY_ENERGY
+    cfg.initialEnergyGift = cfg.initialEnergyGift + QIANXIA_FIELD_ENTRY_ENERGY
   }
 }
 
@@ -214,10 +213,10 @@ function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput[
     teamVeilCount: whole(Number(cfg.teamVeilCountTotal ?? 0)),
     // 异常施加次数：队内有异常角色时按 10s CD 上限近似（异常队施加远超 CD；爱芮全场应援同款口径）
     anomalyTriggerCount: whole(Number(cfg.qianxiaAnomalyAgents ?? 0)) > 0
-      ? Math.floor(Math.max(1, Number(cfg.battleTime ?? 180)) / QIANXIA_SCRATCHER_CD_SECONDS)
+      ? Math.floor(Math.max(1, cfg.battleTime) / QIANXIA_SCRATCHER_CD_SECONDS)
       : 0,
-    ultimateCount: whole(Number(state.ultimateCount ?? 0)),
-    battleTime: Math.max(1, Number(cfg.battleTime ?? 180)),
+    ultimateCount: whole(state.ultimateCount),
+    battleTime: Math.max(1, cfg.battleTime),
   })
 }
 
@@ -288,8 +287,8 @@ function applyQianxiaPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: A
   // 原文「根据自身初始攻击力的0.03%」⇒ 初始 = 局外面板（CC-124；读取口 `initialStat`，CC-497）
   const coverage = Math.max(0, Math.min(1, settingOf(settings, 'qianxia.c6FocusCoverage')))
   const atk = initialStat(outOfCombatPanel, panel, 'atk')
-  panel.critRate = (panel.critRate ?? 0) + QIANXIA_C6_CRIT_RATE * coverage
-  panel.critDmg = (panel.critDmg ?? 0) + Math.min(QIANXIA_C6_CRIT_DMG_CAP, atk * 0.03) * coverage
+  panel.critRate = panel.critRate + QIANXIA_C6_CRIT_RATE * coverage
+  panel.critDmg = panel.critDmg + Math.min(QIANXIA_C6_CRIT_DMG_CAP, atk * 0.03) * coverage
 }
 
 export const qianxiaMechanic: AgentMechanicModule = {

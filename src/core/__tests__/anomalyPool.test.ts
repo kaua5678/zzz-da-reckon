@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { calcAnomalyPool, calcAnomalyPoolDamage } from '@/core/anomalyPool'
 import { velinaMechanic } from '@/mechanics/agents/velina'
 import { calcCoverage, getAnomalyDuration, type AnomalyPoolInput } from '@/core/anomalyPool/helpers'
+import { emptyPanel } from '@/core/panel'
 
 describe('calcCoverage', () => {
   it('adds per-element team duration bonuses into anomaly duration', () => {
     const panel = {
+      ...emptyPanel(),
       physicalAnomalyDurationBonusSeconds: 5,
       fireAnomalyDurationBonusSeconds: 3,
       electricAnomalyDurationBonusSeconds: 3,
@@ -56,9 +58,9 @@ describe('calcAnomalyPool', () => {
         { moveId: 'electric_basic', moveName: 'electric', slot: 1, count: 10, baseBuildUp: 3000, element: 'electric' },
       ],
       panels: [
-        { anomalyMastery: 100 },
-        { anomalyMastery: 100 },
-        { anomalyMastery: 100 },
+        { ...emptyPanel(), anomalyMastery: 100 },
+        { ...emptyPanel(), anomalyMastery: 100 },
+        { ...emptyPanel(), anomalyMastery: 100 },
       ],
       totalTime: 180,
       invincibleTime: 0,
@@ -92,9 +94,9 @@ describe('calcAnomalyPool', () => {
       ],
       panels: [
         // 风蚀归属 = 派发方给的 `self`（r399 CC-373）⇒ 维琳娜在 teamMechanics 里登记为槽 0
-        { anomalyMastery: 100, velinaCinema2: 1, velinaCinema6: 1 },
-        { anomalyMastery: 100 },
-        { anomalyMastery: 100 },
+        { ...emptyPanel(), anomalyMastery: 100, velinaCinema2: 1, velinaCinema6: 1 },
+        { ...emptyPanel(), anomalyMastery: 100 },
+        { ...emptyPanel(), anomalyMastery: 100 },
       ],
       totalTime: 180,
       invincibleTime: 0,
@@ -160,9 +162,9 @@ describe('calcAnomalyPool', () => {
       ...base,
       teamMechanics: [{ module: velinaMechanic, slot: 0 }],
       panels: [
-        { anomalyMastery: 100, velinaCinema2: 1, velinaCinema6: 1 },
-        { anomalyMastery: 100 },
-        { anomalyMastery: 100 },
+        { ...emptyPanel(), anomalyMastery: 100, velinaCinema2: 1, velinaCinema6: 1 },
+        { ...emptyPanel(), anomalyMastery: 100 },
+        { ...emptyPanel(), anomalyMastery: 100 },
       ],
     } as unknown as AnomalyPoolInput)
     expect(withVelina.corrosionSource).toBeTruthy()
@@ -174,9 +176,9 @@ describe('calcAnomalyPool', () => {
       ...base,
       teamMechanics: [],           // 维琳娜不在队（r399：不在队的模块不派发）
       panels: [
-        { anomalyMastery: 100 },   // 风槽是别的风角色
-        { anomalyMastery: 100 },
-        { anomalyMastery: 100 },
+        { ...emptyPanel(), anomalyMastery: 100 },   // 风槽是别的风角色
+        { ...emptyPanel(), anomalyMastery: 100 },
+        { ...emptyPanel(), anomalyMastery: 100 },
       ],
     } as unknown as AnomalyPoolInput)
     expect(withoutVelina.corrosionSource, '无维琳娜时风蚀状态机不得结算（CC-D3）').toBeUndefined()

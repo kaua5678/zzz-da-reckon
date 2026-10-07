@@ -72,7 +72,7 @@ export function pickBestPeriodBuff(
   if (candidates.length === 0) return null
   const damageWith = (card: PhaseBuffCard | null): number => {
     applyPeriodBuff(ctx.config, phaseId, card)
-    return ctx.calc.teamTotalDamage.value ?? 0
+    return ctx.calc.teamTotalDamage.value
   }
   let best: PhaseBuffCard | null = null
   let bestDamage = damageWith(null)

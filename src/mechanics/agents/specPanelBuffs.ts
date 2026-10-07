@@ -120,7 +120,7 @@ peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes, isAxis, settings })
  */
 peiluoProminenceMechanic.directRowBonus = ({ exec, isAxis, overlay }) => {
   const o = peiluoOverlay.read(overlay)
-  const moveId = exec.moveId ?? ''
+  const moveId = exec.moveId
   const pair = moveId === PEILUO_ULT_VERDICT ? (exec.peiluoKagerouPairRatio ?? 0) : 1
   const crit = isAxis
     ? (o?.byMove?.get(moveId) ?? 0)
@@ -149,7 +149,7 @@ peiluoProminenceMechanic.applyTeamConfig = ({ cfg, phase, cinemaLevel, stunCount
   const chainTotal = chainCountTotalOf(cfg, stunCount)
   const aaActive = (cfg.panel?.additionalAbilityActive ?? 1) > 0
   const chainDecibels = aaActive ? chainTotal * 300 : 0
-  cfg.extraSelfDecibelReward = Number(cfg.extraSelfDecibelReward ?? 0) + chainDecibels + (cinema >= 2 ? 1500 : 0)
+  cfg.extraSelfDecibelReward = cfg.extraSelfDecibelReward + chainDecibels + (cinema >= 2 ? 1500 : 0)
   // ⚠ 必须**无条件**写（含轴模式）——原编排层分支就是 `peiluoVerdictCount: stunCount`、无门控。
   // 轴模式下决算次数另由 `axisWindowOverlays` 的 1551016 块计数经 `patchExecutions` 消费，
   // 但该字段本身在轴上也要有值（首轮/无块时回落它）。第一版我擅自加了 `if (!cfg.axisMode)`
@@ -161,7 +161,7 @@ peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel, skills }) => {
   cfg.peiluoBasicCycleSeconds = basicComboCycleSeconds(skills, '1551003')
   // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
   if (cinemaLevelOf(cinemaLevel) >= 1) {
-    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + 1000
+    cfg.initialDecibelGift = cfg.initialDecibelGift + 1000
   }
   // 大招口径：2000 喧响/次；通用大招行走上分支 moveId（patchExecutions 拆分三分支）
   cfg.ultimateCost = PEILUO_ULT_COST
@@ -177,39 +177,39 @@ peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel, skills }) => {
 peiluoProminenceMechanic.applyPanel = ({ panel, cinemaLevel }: AgentPanelInput) => {
   // 影画1 黄昏旧章：暴击率 +8%（进场喧响 1000 在 buildCharConfig 注入）。
   if (cinemaLevel >= 1) {
-    panel.critRate = (panel.critRate ?? 0) + 8
+    panel.critRate = panel.critRate + 8
   }
   // 额外能力：队伍存在[击破]/[支援]角色时暴伤 +40%（连携回 300 喧响未建模，见 status pending）。
   if (additionalAbilityActiveOf(panel)) {
-    panel.critDmg = (panel.critDmg ?? 0) + 40
+    panel.critDmg = panel.critDmg + 40
   }
   // 影画4 焚昼孽火：持盾期间失衡值 +10%（护盾不建模，用户口径默认全覆盖）。
   if (cinemaLevel >= 4) {
-    panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 10
+    panel.stunBuildUpBonus = panel.stunBuildUpBonus + 10
   }
   // 耀斑（下分支开局必打，200s≈全程覆盖）：无条件挂面板。必须在面板阶段——伤害与回能读同一面板。
   // 2026-09-23 修：原挂在 transformSkillExecutions 里直接 += 缓存的 panels.value[i] 且无幂等守卫，
   // 单次计算被调 16 次 ⇒ 伤害加成 +640%（应 +40%）且每次重算继续累加；能量效率则从未进资源引擎。
-  panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + PEILUO_FLARE_ENERGY
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + PEILUO_FLARE_DMG
+  panel.energyGainEfficiency = panel.energyGainEfficiency + PEILUO_FLARE_ENERGY
+  panel.dmgBonus = panel.dmgBonus + PEILUO_FLARE_DMG
 }
 // 日珥≥30 暴伤的旧工厂 transform 已由额外能力（applyPanel）取代（d0ecf19）；不挂任何 transform。
 peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }) => {
-  const ultCount = Math.max(0, Math.floor(state.ultimateCount ?? 0))
+  const ultCount = Math.max(0, Math.floor(state.ultimateCount))
   if (ultCount <= 0) return
   const lower = 1
   const verdict = Math.min(Math.max(0, Math.floor(Number(cfg.peiluoVerdictCount ?? 0))), ultCount - lower)
   const upper = ultCount - lower - verdict
   // 通用大招行（moveId = 上分支）改写为剩余上分支次数；阳炎暴伤挂执行行
   const genericIdx = executions.findIndex((e) => e.moveId === PEILUO_ULT_UPPER && e.category === 'chain')
-  const ultActionTime = genericIdx >= 0 ? (executions[genericIdx].actionTime ?? 0) : (cfg.ultimateActionTime ?? 0)
-  const ultCar = genericIdx >= 0 ? (executions[genericIdx].comboAlignRatio ?? 0) : (cfg.ultimateComboAlignRatio ?? 0)
+  const ultActionTime = genericIdx >= 0 ? executions[genericIdx].actionTime : cfg.ultimateActionTime
+  const ultCar = genericIdx >= 0 ? executions[genericIdx].comboAlignRatio : cfg.ultimateComboAlignRatio
   if (genericIdx >= 0) {
     if (upper > 0) {
       const g = executions[genericIdx]
       g.count = upper
-      g.totalTime = (g.actionTime ?? 0) * upper
-      g.totalComboAlignTime = (g.actionTime ?? 0) * (g.comboAlignRatio ?? 0) * upper
+      g.totalTime = g.actionTime * upper
+      g.totalComboAlignTime = g.actionTime * g.comboAlignRatio * upper
       g.totalDecibelRecovery = (g.decibelRecovery ?? 0) * upper
       g.skillTableNote = `上分支·万军诛绝 ×${upper}（剩余喧响；阳炎暴伤+40% 走 buff 轴扫描，见 computePeiluoKagerouBonus）`
     } else {
@@ -286,7 +286,7 @@ peiluoProminenceMechanic.patchExecutions = (input) => {
   let a3 = 0
   let a4 = 0
   for (const e of executions) {
-    const n = e.count ?? 0
+    const n = e.count
     const g = PEILUO_PROMINENCE_GAIN[e.moveId]
     if (g) hitGain += g * n
     const s = PEILUO_PROMINENCE_SPEND[e.moveId]
@@ -368,7 +368,7 @@ peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) 
  * 返回 moveId → 实例加权平均暴伤（0-40），非轴模式由调用方按覆盖率滑块近似。 */
 // 特殊技：强袭训令（1551022，佩洛伊斯格挡招式）：主页交互栏填写次数 → 执行行（倍率表 166.4% 以太）
 peiluoProminenceMechanic.buildExecutions = ({ cfg, executions }) => {
-  const count = Math.max(0, Math.floor(cfg.assaultOrderCount ?? 0))
+  const count = Math.max(0, Math.floor(cfg.assaultOrderCount))
   if (count <= 0) return
   executions.push(moduleExecRow({
     moveId: '1551022',
@@ -627,15 +627,15 @@ function jufufuCycleOf(
   return computeJufufuCycle({
     // 后台时间含无敌秒（不属于任何人的前台）；虎威后台自动攻击按有效后台时间折算（core/effectiveTime.ts）
     backstageTime: effectiveBackstageTime(state.backstageTime, cfg),
-    frontlineTime: state.frontlineTime ?? 0,
+    frontlineTime: state.frontlineTime,
     effectiveTotalTime: effectiveBattleTime(cfg),
     frontActionCount: executions
       ? countFrontActions(executions as SkillExecution[], { fusedMoveIds: [cfg.assistFollowUpMoveId] })
       : undefined,
     frontSwitchRatio: Number(cfgMechanicSettingRaw(cfg, 'jufufu.frontSwitchRatio') ?? 0.7),
-      exSpecialCount: state.exSpecialCount ?? 0,
-    ultimateCount: state.ultimateCount ?? 0,
-    parryCount: cfg.parryCount ?? 0,
+      exSpecialCount: state.exSpecialCount,
+    ultimateCount: state.ultimateCount,
+    parryCount: cfg.parryCount,
     cinemaLevel: cinema,
     aweInitial: cfg.jufufuAweInitial ?? 0,
     c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
@@ -695,12 +695,12 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
    * （契约见 `types.ts#AgentSkillTransformInput`）。
    */
   applyPanel: ({ panel, cinemaLevel }: AgentPanelInput) => {
-    panel.impact = (panel.impact ?? 0) + 50
+    panel.impact = panel.impact + 50
     if (cinemaLevel >= 1) {
-      panel.critRate = (panel.critRate ?? 0) + 12
+      panel.critRate = panel.critRate + 12
     }
     if (cinemaLevel >= 4) {
-      panel.critDmg = (panel.critDmg ?? 0) + 35
+      panel.critDmg = panel.critDmg + 35
     }
   },
   buildCharConfig: (input) => {
@@ -793,12 +793,12 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       if (e.moveId === JUFUFU_MOVE.tigerChain || e.moveId === JUFUFU_MOVE.tigerChainManual || e.moveId === JUFUFU_MOVE.popcorn) {
         e.dmgBonus = (e.dmgBonus ?? 0) // already set on generated rows
         if (e.moveId === JUFUFU_MOVE.tigerChainManual) {
-          e.dmgBonus = (e.dmgBonus ?? 0) + JUFUFU_C6_CHAIN_DMG_BONUS
+          e.dmgBonus = e.dmgBonus + JUFUFU_C6_CHAIN_DMG_BONUS
           e.skillDamageTarget = e.skillDamageTarget ?? 'chain'
         }
-      } else if (e.category === 'chain' && (e.moveId ?? '').startsWith('1391')) {
+      } else if (e.category === 'chain' && e.moveId.startsWith('1391')) {
         // 通用连携行（若引擎生成）
-        const name = `${e.moveName ?? ''}`
+        const name = `${e.moveName}`
         if (name.includes('连携') || name.toLowerCase().includes('chain')) {
           e.dmgBonus = (e.dmgBonus ?? 0) + JUFUFU_C6_CHAIN_DMG_BONUS
           e.skillDamageTarget = e.skillDamageTarget ?? 'chain'

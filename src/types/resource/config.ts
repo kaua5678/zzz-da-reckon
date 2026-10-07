@@ -90,7 +90,7 @@ export interface CharacterOperationConfig {
    *  由 useResourceCalc 按 boss defaults.xParryTotal 注入（非主弹窗位）。 */
   parryTimeFreeCount?: number
   /** 强特成本类型（catalog energyCost 键语义分类；见 ExSpecialCostType 注释） */
-  exSpecialCostType?: ExSpecialCostType
+  exSpecialCostType: ExSpecialCostType
   /** 替代资源型强特的应付次数：模块资源账本本轮 assembly 写入、下一轮 resolveExSpecialCount 读（不动点收敛，同般岳套路） */
   exSpecialResourcePaidCount?: number
   /** 额外强特行（免费/窗口门控的次要强特），注册表 src/data/exSpecialPlans.ts 预存于 buildCharConfig */
@@ -108,14 +108,14 @@ export interface CharacterOperationConfig {
    * 喧响收入行级化（Σ 切换）后，calcRawDecibelParts 按此表复刻 enrichExecutionPlan 回填语义
    * （显式 0 = 模块禁用、缺省 = 表值、decibelRecoveryOverride = 模块覆盖），保证记账层 == 展示层。
    */
-  decibelRecoveryByMoveId?: Record<string, number>
+  decibelRecoveryByMoveId: Record<string, number>
   /**
    * 倍率表 energy_recovery 按 moveId 预存表（与 decibelRecoveryByMoveId 同源同循环，含行级融合乘子）。
    * 键存在 = 招式在倍率表中找到；值 = fusedRowValue ?? getRowValue(move,'energy_recovery')（无行为 0）。
    * 能量收入行级化（Σ 切换）后，calcEnergySource 按此表复刻 enrichExecutionPlan 能量分支回填语义
    * （显式 0 = 模块禁用、缺省 = 表值 || 行值），保证记账层 == 展示层。
    */
-  energyRecoveryByMoveId?: Record<string, number>
+  energyRecoveryByMoveId: Record<string, number>
   /** 终结技 move id */
   ultimateMoveId: string
   /** 终结技消耗喧响（全游戏统一3000，仅1个角色2000暂不纳入） */
@@ -182,26 +182,26 @@ export interface CharacterOperationConfig {
   assistFollowUpComboAlignRatio: number
   /** 反制支援（Counter Assist）move id —— 登记见 `src/data/counterAssists.ts`；无该招式 = 空串。
    *  时间/喧响是「一次动作」的融合值（本体 + 专属支援突击，见 data/moveFusions.ts#CLARET_COUNTER_ASSIST）。 */
-  counterAssistMoveId?: string
+  counterAssistMoveId: string
   /** 反制支援 单次 actionTime（融合后含专属支援突击段） */
-  counterAssistActionTime?: number
+  counterAssistActionTime: number
   /** 反制支援 单次喧响回复（融合后含专属支援突击段；**不拿弹刀 215 特殊动作奖励**，用户口径 2026-09-12） */
-  counterAssistDecibelRecovery?: number
+  counterAssistDecibelRecovery: number
   /** 反制支援 合轴率 0-1 */
-  counterAssistComboAlignRatio?: number
+  counterAssistComboAlignRatio: number
   /** 反制支援次数 = 本次计算由该角色整组化解的控制技组数（boss 预设 `counterAssistGroups` 注入，
    *  非用户手填；0 = 不替换（队内无反制支援角色 / 用户关掉 `boss.counterAssistReplace`））。 */
-  counterAssistCount?: number
+  counterAssistCount: number
   /** 后台回能加成（点/秒，来自音擎"位于后场时回能提升"等） */
   backstageRegenBonus: number
   /** 非操作回能加成（点/秒，来自音擎"非操作中角色回能提升"等） */
   comboAlignRegenBonus: number
   /** 真元奇枢受伤/回血触发次数；暂无UI时默认为0 */
-  zhenyuanTriggerCount?: number
+  zhenyuanTriggerCount: number
   /** 加农转子触发伤害倍率（攻击力百分比），未装备或不匹配时为0 */
-  cannonRotorDamageMultiplier?: number
+  cannonRotorDamageMultiplier: number
   /** 加农转子触发冷却，按精修等级 8/7.5/7/6.5/6 秒 */
-  cannonRotorCooldownSeconds?: number
+  cannonRotorCooldownSeconds: number
   /** 跳过通用强特执行，由机制模块自行生成强特执行（柏妮思等可变耗能强特） */
   skipGenericExSpecial?: boolean
   /**
@@ -224,7 +224,7 @@ export interface CharacterOperationConfig {
    * 读取方：角色模块经 `utils/moveActionTimeCfg#cfgMoveActionTime`（CC-409：替代模块内手抄的 `X_ACTION_TIME` 常量）。
    * 可选只为了测试手搭 cfg 不必全填；引擎路径恒有。
    */
-  moveActionTimes?: Record<string, number>
+  moveActionTimes: Record<string, number>
   /** 开局赠送能量（普通人40，仪玄120闪能等） */
   initialEnergyGift: number
   /** 开局赠送喧响（默认1000，部分命座额外） */
@@ -297,9 +297,9 @@ export interface CharacterOperationConfig {
    */
   rowTimeLimit?: number
   /** 嘲讽取消次数（般岳专属：失衡外强特连段末尾后摇的嘲讽取消，每次取消一次后摇；缺省 0） */
-  tauntCancelCount?: number
+  tauntCancelCount: number
   /** 资源利用率覆盖：actionId/eventId -> 释放率/上限 */
-  resourceUtilization?: Record<string, ResourceUtilizationRule>
+  resourceUtilization: Record<string, ResourceUtilizationRule>
   /** 仪玄额外能力：队友释放终结技时回复闪能（2/s×10s=20/次；队伍有击破/支援/防护时生效，iterate 补算） */
   teamUltimateFlashBonus?: number
   /**
@@ -329,15 +329,15 @@ export interface CharacterOperationConfig {
   /** 失衡轴内总时间（秒）= Σ窗口数 × 窗口时长（useResourceCalc 轴模式注入；CD 自动动作如仪玄C1落雷/卢西娅追击按此折算次数） */
   axisInSeconds?: number
   /** 总战斗时间（秒，默认 180；全战斗时间类来源使用，如星徽·比利决意缓慢回复 2 点/秒） */
-  battleTime?: number
+  battleTime: number
   /** boss 无敌时间（秒，缺省 0）。后台/CD 伤害通道按 core/effectiveTime.ts 扣减折算；能量/喧响通道不扣 */
-  invincibleTime?: number
+  invincibleTime: number
   /** 敌方体型（影响体型相关招式倍率，如艾莲霜锋剑气 0/3/6 段） */
-  bodySize?: 'small' | 'medium' | 'large'
+  bodySize: 'small' | 'medium' | 'large'
   /** 金身格挡/不动如山招架次数（队伍配置页 per-character，般岳嗔火来源） */
-  blockCount?: number
+  blockCount: number
   /** 双反次数（般岳专属：完美闪避+金身弹刀组合，+10嗔火/次，产冲霄） */
-  dualCounterCount?: number
+  dualCounterCount: number
 }
 
 // ============ 计算配置 ============

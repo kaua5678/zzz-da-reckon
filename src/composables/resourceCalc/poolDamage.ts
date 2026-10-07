@@ -54,10 +54,10 @@ export function calcPoolDirectDamage(env: PoolDamageEnv, row: PoolDirectRow): Re
     // 伊芙琳C1/爱芮C2/千夏C1/音擎 千面日陨·索魂影眸 等）+ 行级 moveId 限定值（叶瞬光C2/C6、雨果C2、
     // 雅1命、席德…），两者同字段加算。**2026-09-08 修**：此前只传行级 `row.defIgnore`，面板通用值被
     // 静默丢弃（直伤整条通道失效，实测 妮可队 -21%、席德+妮可队 -29%）。
-    enemyDefReduction: (panel.enemyDefReduction ?? 0) + (row.defIgnore ?? 0),
-    enemyDefFlatReduction: panel.enemyDefFlatReduction ?? 0,
+    enemyDefReduction: panel.enemyDefReduction + (row.defIgnore ?? 0),
+    enemyDefFlatReduction: panel.enemyDefFlatReduction,
     enemyResistance: env.enemyDamageRes[resolveStatElement(row.element) ?? ''] ?? 0,
-    enemyResReduction: (panel.enemyResReduction ?? 0) + (row.resIgnore ?? 0),
+    enemyResReduction: panel.enemyResReduction + (row.resIgnore ?? 0),
     stunMultiplier: row.stunMultiplier ?? env.enemy.stunVuln,
     stunned: row.stunned,
     critMode: row.critMode ?? 'expect',

@@ -258,7 +258,7 @@ function applyEllenTeamConfig({ cfg, cinemaLevel, phase, stunCount, threads }: A
   const cdRate = clamp(Number(cfg.ellenC4CdRate ?? 1), 0, 1)
   const gift = (freezeCount + resolvedStun) * ELLEN_C4_ENERGY_PER_TRIGGER * cdRate
   const prev = Math.max(0, Number(cfg.ellenC4EnergyTotal ?? 0))
-  cfg.initialEnergyGift = Math.max(0, (cfg.initialEnergyGift ?? 0) - prev) + gift
+  cfg.initialEnergyGift = Math.max(0, cfg.initialEnergyGift - prev) + gift
   cfg.ellenC4EnergyTotal = gift
 }
 
@@ -266,7 +266,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
   return computeEllenCycle({
     cinemaLevel: cinemaLevelOf(cfg.ellenCinemaLevel),
     potentialLevel: Number(cfg.ellenPotentialLevel ?? 6),
-    basicAttackTime: Number(state.basicAttackTime ?? 0),
+    basicAttackTime: state.basicAttackTime,
     exSpecialCount: state.exSpecialCount,
     freezeCount: Number(cfg.ellenFreezeCount ?? 0),
     stunCount: Number(cfg.ellenStunCount ?? 0),
@@ -349,7 +349,7 @@ function buildEllenExecutions({ cfg, state, executions }: AgentResourceInput): v
   })
 
   // 霜锋（免费自动，倍率表融合）：挥刀(1191027)×3 耗时 + 剑气(1191028)×N 不耗时（N 按敌方体型 0/3/6）
-  const bodySize = String(cfg.bodySize ?? 'large')
+  const bodySize = String(cfg.bodySize)
   const qiPerEdge = bodySize === 'small' ? 0 : bodySize === 'medium' ? 3 : 6
   pushEllenExecution(executions, {
     moveId: ELLEN_FROST_EDGE_MOVE_IDS[0],
@@ -400,7 +400,7 @@ function buildEllenExecutions({ cfg, state, executions }: AgentResourceInput): v
     const basicIdx = executions.findIndex(e => e.moveId === 'basic_attack')
     if (basicIdx >= 0) {
       const basic = executions[basicIdx]
-      const basicTime = basic.totalTime ?? 0
+      const basicTime = basic.totalTime
       const carve = Math.max(0, Math.min(basicTime, cycleTime))
       const keepRatio = basicTime > 0 ? (basicTime - carve) / basicTime : 0
       executions[basicIdx] = {
@@ -446,11 +446,11 @@ function applyEllenPanel({ cinemaLevel, potentialLevel, panel, settings }: Agent
     c6PenCoverage: settingOf(settings, 'ellen.c6PenCoverage'),
     c6FeastCoverage: settingOf(settings, 'ellen.c6FeastCoverage'),
   })
-  if (cycle.c1CritRate > 0) panel.critRate = (panel.critRate ?? 0) + cycle.c1CritRate
-  if (cycle.stormSurgeIceDmg > 0) panel.iceDmg = (panel.iceDmg ?? 0) + cycle.stormSurgeIceDmg
-  if (cycle.potentialCritDmg > 0) panel.critDmg = (panel.critDmg ?? 0) + cycle.potentialCritDmg
-  if (cycle.potentialIceResIgnore > 0) panel.enemyIceResReduction = (panel.enemyIceResReduction ?? 0) + cycle.potentialIceResIgnore
-  if (cinemaLevel >= 6) panel.penRatio = (panel.penRatio ?? 0) + cycle.c6PenRatio
+  if (cycle.c1CritRate > 0) panel.critRate = panel.critRate + cycle.c1CritRate
+  if (cycle.stormSurgeIceDmg > 0) panel.iceDmg = panel.iceDmg + cycle.stormSurgeIceDmg
+  if (cycle.potentialCritDmg > 0) panel.critDmg = panel.critDmg + cycle.potentialCritDmg
+  if (cycle.potentialIceResIgnore > 0) panel.enemyIceResReduction = panel.enemyIceResReduction + cycle.potentialIceResIgnore
+  if (cinemaLevel >= 6) panel.penRatio = panel.penRatio + cycle.c6PenRatio
 }
 
 function buildEllenResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {

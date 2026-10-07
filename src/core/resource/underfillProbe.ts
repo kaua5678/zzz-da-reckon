@@ -146,7 +146,7 @@ export function runUnderfillProbe(
       if (trial.stable && fitsBudget && trialRows > rowsFilled) {
         states = trial.states
         rowsFilled = trialRows
-        diag.timeBudgetRefundedSeconds = ctx.config.timeBudgetRefund ?? 0
+        diag.timeBudgetRefundedSeconds = ctx.config.timeBudgetRefund
         underfill = budgetSeconds - trialRows
         if (underfill <= ctx.toleranceSeconds) break
       } else {

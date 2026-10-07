@@ -252,11 +252,11 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   }
   // 影画4：招架支援回1能量/次 + 闪避反击回2能量/次（招式内至多1次）
   if (cinemaLevelOf(cinemaLevel) >= 4) {
-    const energy = (cfg.parryCount ?? 0) * ROXY_C4_PARRY_ENERGY + (cfg.dodgeCounterCount ?? 0) * ROXY_C4_DODGE_ENERGY
-    if (energy > 0) cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + energy
+    const energy = cfg.parryCount * ROXY_C4_PARRY_ENERGY + cfg.dodgeCounterCount * ROXY_C4_DODGE_ENERGY
+    if (energy > 0) cfg.initialEnergyGift = cfg.initialEnergyGift + energy
   }
   // 额外能力·辉金心脏：进场回 40 能量（勘域 180s 一次 → 每局一次；门控未接，note）
-  cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + ROXY_AA_ENTER_ENERGY
+  cfg.initialEnergyGift = cfg.initialEnergyGift + ROXY_AA_ENTER_ENERGY
   // 影画失衡值（v12 原文「失衡值提升」）：预缩倍率表 daze 值，patchRoxyExecutions 经 dazeMultiplierOverride 精确结算
   if (cinemaLevelOf(cinemaLevel) >= 2) {
     cfg.roxyExChillDaze = getRowValue(findMoveById(skills, EX_CHILL_MOVE_ID), 'daze') * (1 + ROXY_C2_EX_CHILL_DAZE_BONUS / 100)
@@ -273,25 +273,25 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 核心被动转模（v12）：初始能量回复 >1.2 → 每 0.01：攻击 +5（上限960）、冲击 +0.4（上限76.8）
   // 「初始能量自动回复」= 局外总回能（基础 × 局外加成 + 固定，panelPhases 写入 energyRegenOutOfCombat）。
   // CC-127：原读 `panel.energyRegen`——那是**基础**回能（恒 1.2，catalog.ts PanelValues 注释），转模从未触发。
-  const regen = Math.max(0, Number(panel.energyRegenOutOfCombat ?? panel.energyRegen ?? 1.2) - 1.2)
+  const regen = Math.max(0, panel.energyRegenOutOfCombat - 1.2)
   // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18（原：攻击 = 连续步数×5 再 Math.round，冲击连续）。+1e-9 防 1.23−1.2=0.0299… 少算一步
   const regenSteps = Math.floor(regen / 0.01 + 1e-9)
   const atkBonus = Math.min(ROXY_REGEN_ATK_CAP, regenSteps * ROXY_REGEN_ATK_PER_0_01)
   const impactBonus = Math.min(ROXY_REGEN_IMPACT_CAP, regenSteps * ROXY_REGEN_IMPACT_PER_0_01)
-  if (atkBonus > 0) panel.atk = (panel.atk ?? 0) + atkBonus
-  if (impactBonus > 0) panel.impact = (panel.impact ?? 0) + impactBonus
+  if (atkBonus > 0) panel.atk = panel.atk + atkBonus
+  if (impactBonus > 0) panel.impact = panel.impact + impactBonus
   // 额外能力：自身伤害 +80%（Lv60 上限；门控由团队条件，面板统一施加——无强攻/命破/锋御队略高估，note）
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + ROXY_AA_DMG_BONUS_LV60
+  panel.dmgBonus = panel.dmgBonus + ROXY_AA_DMG_BONUS_LV60
   const cinema = cinemaLevelOf(cinemaLevel)
   if (cinema >= 1) {
-    panel.critDmg = (panel.critDmg ?? 0) + ROXY_C1_CRIT_DMG
-    panel.enemyResReduction = (panel.enemyResReduction ?? 0) + ROXY_C1_RES_REDUCTION
+    panel.critDmg = panel.critDmg + ROXY_C1_CRIT_DMG
+    panel.enemyResReduction = panel.enemyResReduction + ROXY_C1_RES_REDUCTION
   }
   if (cinema >= 2) {
-    panel.stunDmgMultiplierBonus = (panel.stunDmgMultiplierBonus ?? 0) + ROXY_C2_STUN_VULN
+    panel.stunDmgMultiplierBonus = panel.stunDmgMultiplierBonus + ROXY_C2_STUN_VULN
   }
   if (cinema >= 6) {
-    panel.enemyWindResReduction = (panel.enemyWindResReduction ?? 0) + ROXY_C6_WIND_RES_REDUCTION
+    panel.enemyWindResReduction = panel.enemyWindResReduction + ROXY_C6_WIND_RES_REDUCTION
   }
 }
 

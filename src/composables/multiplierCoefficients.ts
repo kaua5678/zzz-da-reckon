@@ -181,7 +181,7 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     const values: Partial<Record<StandardRowId, number>> = {}
     for (const u of members) {
       for (const [rowId, v] of Object.entries(u.values)) {
-        values[rowId as StandardRowId] = (values[rowId as StandardRowId] ?? 0) + (v ?? 0)
+        values[rowId as StandardRowId] = (values[rowId as StandardRowId] ?? 0) + v
       }
     }
     fixedUnits.push({
@@ -211,7 +211,7 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     for (const extra of members.slice(1)) {
       head.t = (head.t ?? 0) + (extra.t ?? 0)
       for (const [rowId, v] of Object.entries(extra.values)) {
-        head.values[rowId as StandardRowId] = (head.values[rowId as StandardRowId] ?? 0) + (v ?? 0)
+        head.values[rowId as StandardRowId] = (head.values[rowId as StandardRowId] ?? 0) + v
       }
       fusedIds.add(extra.moveId)
     }
@@ -239,7 +239,7 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     }
     head.t = (head.t ?? 0) + (unit.t ?? 0)
     for (const [rowId, v] of Object.entries(unit.values)) {
-      head.values[rowId as StandardRowId] = (head.values[rowId as StandardRowId] ?? 0) + (v ?? 0)
+      head.values[rowId as StandardRowId] = (head.values[rowId as StandardRowId] ?? 0) + v
     }
     head.moveName = stripPartSuffix(head.moveName)
     head.flags.push('支援突击分段已合并')

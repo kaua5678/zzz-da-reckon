@@ -71,7 +71,7 @@ export function inferSkillDamageTarget(category: SkillCategory, move: SkillMove)
 
 /** 暴击乘区（元素暴伤经 getTargetedElementStat('critDmg') 单一来源，frostfire 按冰读 iceCritDmg） */
 function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget, element?: DamageElement): { multiplier: number; label: string } {
-  const enemyCritBonus = panel.enemyCritDmgTakenBonus ?? 0
+  const enemyCritBonus = panel.enemyCritDmgTakenBonus
   const critDmg = getTargetedStat(panel, 'critDmg', targetSkillType)
     + getTargetedElementStat(panel, 'critDmg', element, targetSkillType) + enemyCritBonus
   const critRateRaw = getTargetedStat(panel, 'critRate', targetSkillType)
@@ -94,7 +94,7 @@ import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 
 function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget): { multiplier: number; label: string } {
-  const sharpCritDmg = getTargetedStat(panel, 'sharpCritDmg', targetSkillType) + (panel.enemyCritDmgTakenBonus ?? 0)
+  const sharpCritDmg = getTargetedStat(panel, 'sharpCritDmg', targetSkillType) + panel.enemyCritDmgTakenBonus
   const critRateRaw = getTargetedStat(panel, 'critRate', targetSkillType)
   const d = sharpCritDmg / 100
   const overflowRate = Math.min(1, Math.max(0, critRateRaw - 100) / 100)
@@ -333,7 +333,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
   })
 
   // 6. 易伤乘区
-  const dmgTaken = p.enemyDamageTakenBonus ?? 0
+  const dmgTaken = p.enemyDamageTakenBonus
   const dmgTakenMult = 1 + dmgTaken / 100
   const afterDmgTaken = afterRes * dmgTakenMult
   breakdown.push({
@@ -353,7 +353,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
   })
 
   // 8. 侵染乘区（独立乘区）：仅风属性与其染色属性直伤生效
-  const infectionBonus = p.infectionZoneBonus ?? 0
+  const infectionBonus = p.infectionZoneBonus
   const infectionActive = infectionBonus > 0 && input.damageElement != null
     && (input.damageElement === 'wind' || input.damageElement === input.infectionElement)
   const afterInfection = afterStun * (infectionActive ? 1 + infectionBonus / 100 : 1)
@@ -367,7 +367,7 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
 
   // 9. 暴击/锐暴乘区
   const critPanel = (input.critRateBonus || input.critDmgBonus)
-    ? { ...p, critRate: (p.critRate ?? 0) + (input.critRateBonus ?? 0), critDmg: (p.critDmg ?? 0) + (input.critDmgBonus ?? 0) }
+    ? { ...p, critRate: p.critRate + (input.critRateBonus ?? 0), critDmg: p.critDmg + (input.critDmgBonus ?? 0) }
     : p
   const critResult = profile.critModel === 'sharp'
     ? calcSharpCritMultiplier(critPanel, input.critMode, input.skillDamageTarget)
@@ -438,7 +438,7 @@ export function calcAnomalyDamage(
 
   // 2. 增伤区（通用 + 元素伤害）
   const elementDmg = getTargetedElementStat(p, 'dmg', element)
-  const dmgBonus = p.dmgBonus ?? 0
+  const dmgBonus = p.dmgBonus
   const totalDmgBonus = elementDmg + dmgBonus
   const afterDmgBonus = baseDmg * (1 + totalDmgBonus / 100)
   breakdown.push({
@@ -447,7 +447,7 @@ export function calcAnomalyDamage(
   })
 
   // 3. 异常精通区（无上限）
-  const anomalyProf = p.anomalyProficiency ?? 0
+  const anomalyProf = p.anomalyProficiency
   const profMult = anomalyProf / 100
   const afterProf = afterDmgBonus * profMult
   breakdown.push({
@@ -459,11 +459,11 @@ export function calcAnomalyDamage(
   const defResult = defenseMultiplierDetail(
     input.enemyDefense,
     input.enemyDefReduction
-      + (settle.enemyDefReduction ?? 0) // CC-175：通用减防同样由结算面板读取（此前漏读，标准异常不吃妮可类减防）
-      + (settle.enemyAnomalyDefReduction ?? 0)
+      + settle.enemyDefReduction // CC-175：通用减防同样由结算面板读取（此前漏读，标准异常不吃妮可类减防）
+      + settle.enemyAnomalyDefReduction
       + getTargetedElementStat(settle, 'enemyDef', element)
-      + (element === 'physical' ? (settle.enemyAssaultDefReduction ?? 0) : 0),
-    input.enemyDefFlatReduction + (settle.enemyDefFlatReduction ?? 0),
+      + (element === 'physical' ? settle.enemyAssaultDefReduction : 0),
+    input.enemyDefFlatReduction + settle.enemyDefFlatReduction,
     p.penRatio,
     p.penFlat
   )
@@ -476,7 +476,7 @@ export function calcAnomalyDamage(
 
   // 5. 抗性乘区：异常伤害使用对应元素的伤害抗性表
   const resReduction = input.enemyResReduction
-    + (settle.enemyResReduction ?? 0)
+    + settle.enemyResReduction
     + getTargetedElementStat(settle, 'enemyRes', element)
   const resResult = resistanceMultiplierDetail(input.enemyResistance, resReduction, 0)
   const afterRes = afterDef * resResult.multiplier
@@ -487,7 +487,7 @@ export function calcAnomalyDamage(
   })
 
   // 6. 易伤乘区
-  const dmgTaken = settle.enemyDamageTakenBonus ?? 0
+  const dmgTaken = settle.enemyDamageTakenBonus
   const dmgTakenMult = 1 + dmgTaken / 100
   const afterDmgTaken = afterRes * dmgTakenMult
   if (dmgTaken !== 0) {
@@ -518,7 +518,7 @@ export function calcAnomalyDamage(
   })
 
   // 9. 异常/紊乱增伤区：紊乱使用紊乱增伤替代普通异常增伤
-  const anomalyDmgBonus = isDisorder ? (settle.disorderDamageBonus ?? 0) : ((settle.anomalyDmgBonus ?? 0) + (element === 'wind' ? settle.windAnomalyDmgBonus ?? 0 : 0))
+  const anomalyDmgBonus = isDisorder ? settle.disorderDamageBonus : (settle.anomalyDmgBonus + (element === 'wind' ? settle.windAnomalyDmgBonus : 0))
   const anomalyDmgMult = 1 + anomalyDmgBonus / 100
   const afterAnomalyDmg = afterLevel * anomalyDmgMult
   if (anomalyDmgBonus !== 0) {
@@ -528,7 +528,7 @@ export function calcAnomalyDamage(
     })
   }
 
-  const releaseBonus = isRelease ? (settle.anomalyReleaseDmgBonus ?? 0) : 0
+  const releaseBonus = isRelease ? settle.anomalyReleaseDmgBonus : 0
   const releaseMult = 1 + releaseBonus / 100
   const afterReleaseBonus = afterAnomalyDmg * releaseMult
   if (releaseBonus !== 0) {
@@ -543,7 +543,7 @@ export function calcAnomalyDamage(
     ? { rate: 0, dmg: 0, labelPrefix: '异常暴击' }
     : (input.anomalyCritOverride ?? getAnomalyCritStats(settle, element))
   const anomalyCritRate = anomalyCritStats.rate
-  const anomalyCritDmg = anomalyCritStats.dmg + (settle.enemyCritDmgTakenBonus ?? 0)
+  const anomalyCritDmg = anomalyCritStats.dmg + settle.enemyCritDmgTakenBonus
   let critMult = 1
   let critLabel = '无异常暴击'
   if (anomalyCritRate > 0 || anomalyCritDmg > 0) {

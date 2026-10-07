@@ -276,8 +276,8 @@ function applyBurnicePanel({ panel, potentialLevel }: AgentPanelInput): void {
   if (over <= 0) return
   const overCount = Math.floor((over + 1e-9) / 0.1)
   const potLv = potentialLevelOf(potentialLevel)
-  panel.anomalyMastery = (panel.anomalyMastery ?? 0) + Math.min(POTENTIAL_MASTERY_CAP, overCount * BURNICE_POTENTIAL_MASTERY_PER_0_1[potLv])
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + Math.min(POTENTIAL_DMG_CAP, overCount * BURNICE_POTENTIAL_DMG_PER_0_1[potLv])
+  panel.anomalyMastery = panel.anomalyMastery + Math.min(POTENTIAL_MASTERY_CAP, overCount * BURNICE_POTENTIAL_MASTERY_PER_0_1[potLv])
+  panel.dmgBonus = panel.dmgBonus + Math.min(POTENTIAL_DMG_CAP, overCount * BURNICE_POTENTIAL_DMG_PER_0_1[potLv])
 }
 
 function resolveEnergyRegenTotal(panel: PanelValues): number {
@@ -285,7 +285,7 @@ function resolveEnergyRegenTotal(panel: PanelValues): number {
   if (panel.energyRegenOutOfCombat != null && Number.isFinite(panel.energyRegenOutOfCombat)) {
     return panel.energyRegenOutOfCombat
   }
-  return calcEnergyRegenTotal(panel, 1.2)
+  return calcEnergyRegenTotal(panel)
 }
 
 function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
@@ -305,8 +305,8 @@ function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInp
   cfg.burniceTossingActionTimeSeconds = findMoveById(skills, TOSSING_MOVE_ID)?.actionTime ?? 0
   cfg.skipGenericExSpecial = true
   cfg.exSpecialCountFractional = true // 喷射秒数可变 ⇒ 次数取期望值（CC-324 前由 skip 隐式给出）
-  const s1 = cfg.burniceSingleSpraySeconds ?? 0
-  const s2 = cfg.burniceDoubleSpraySeconds ?? 0
+  const s1 = cfg.burniceSingleSpraySeconds
+  const s2 = cfg.burniceDoubleSpraySeconds
   const c1 = s1 > 0 ? s1 * SINGLE_SPRAY_PER_SECOND + SINGLE_EXPLOSION_COST : 0
   const c2 = s2 > 0 ? s2 * DOUBLE_SPRAY_PER_SECOND + DOUBLE_EXPLOSION_COST : 0
   cfg.exSpecialEnergyConsume = c1 + c2 > 0 ? (c1 + c2) / 2 : STANDARD_EX_COST
@@ -369,10 +369,10 @@ function burniceMechanicSourceOf(cfg: CharacterOperationConfig, state: Iteration
     },
     exSpecialCount: state.exSpecialCount,
     totalTime: effectiveCombatTime(state, cfg),
-    atk: cfg.panel.atk ?? 0,
-    anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
+    atk: cfg.panel.atk,
+    anomalyProficiency: cfg.panel.anomalyProficiency,
     cinemaLevel: cinemaLevelOf(cfg.burniceCinemaLevel),
-    potentialLevel: cfg.panel.potentialLevel ?? 6,
+    potentialLevel: cfg.panel.potentialLevel,
     energyRegen: resolveEnergyRegenTotal(cfg.panel),
     ultimateCount: state.ultimateCount,
     singleSpraySeconds: cfg.burniceSingleSpraySeconds ?? SINGLE_SPRAY_MAX_SECONDS,

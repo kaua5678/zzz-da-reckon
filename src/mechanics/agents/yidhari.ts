@@ -76,10 +76,10 @@ function chargeCycleTime(cfg: Partial<CharacterOperationConfig>): number {
 function applyYidhariPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if (!panel) return
   // 核心被动·拾梦空想：生命值 <50% 时伤害提升达到最大值 +100%（频繁烧血，覆盖率按 100%）
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + 100
+  panel.dmgBonus = panel.dmgBonus + 100
   // 额外能力·完形叙事：击破/支援触发，生命值<50% 时暴击伤害 +30%（覆盖率 100%）
   if (additionalAbilityActiveOf(panel)) {
-    panel.critDmg = (panel.critDmg ?? 0) + 30
+    panel.critDmg = panel.critDmg + 30
   }
   // 以太帷幕·涌泉：全队局内最大生命值 +5%（0命）/ +10%（4命）——由 teammate-buffs.json 1051 条目
   // （yidhari.core_curtain_hp + yidhari.cinema4_curtain_hp）经 buff 引擎真正重算 panel.hp（含贯穿力基底）。
@@ -90,12 +90,12 @@ function applyYidhariPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   }
   // 影画2：暴击伤害 +40%；溯寒/追碾后 0.5 闪能/秒（默认第5秒起永续，近似全局）
   if (cinemaLevel >= 2) {
-    panel.critDmg = (panel.critDmg ?? 0) + 40
-    panel.flashEnergyRegenBonusFlat = (panel.flashEnergyRegenBonusFlat ?? 0) + 0.5
+    panel.critDmg = panel.critDmg + 40
+    panel.flashEnergyRegenBonusFlat = panel.flashEnergyRegenBonusFlat + 0.5
   }
   // 影画6：启谛期间贯穿伤害 +25%（跟随涌泉帷幕，默认 100% 覆盖）
   if (cinemaLevel >= 6) {
-    panel.sheerDmgBonus = (panel.sheerDmgBonus ?? 0) + 25
+    panel.sheerDmgBonus = panel.sheerDmgBonus + 25
   }
 }
 
@@ -154,7 +154,7 @@ export function computeYidhariHpSource(
   hpBurnPctPerSecond = 15,
 ): YidhariHpSource {
   const props = yidhariProps()
-  const exSpecialCount = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
+  const exSpecialCount = Math.max(0, Math.floor(state.exSpecialCount))
   const stunCount = Math.max(0, Math.floor(Number(cfg.yidhariStunCount ?? 0)))
   const exPerStun = Math.max(1, Math.floor(Number(cfg.yidhariExPerStun ?? 2)))
 
@@ -164,7 +164,7 @@ export function computeYidhariHpSource(
 
   // 蓄力循环次数：平A时间 / 单轮时长
   const cycleTime = chargeCycleTime(cfg)
-  const cycles = cycleTime > 0 ? Math.max(0, Math.floor((state.basicAttackTime ?? 0) / cycleTime)) : 0
+  const cycles = cycleTime > 0 ? Math.max(0, Math.floor(state.basicAttackTime / cycleTime)) : 0
   const chargedAttackSeconds = cycles * CHARGE_SECONDS
 
   // 极寒重碾拆分：失衡内 = 轴连段反推（有轴 exReservedCount）或 每次失衡次数 × 失衡次数；非失衡 = 剩余（每次回 15 闪能）
@@ -277,7 +277,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   }
 
   // 溯寒追碾 + 极寒重碾#2（追击段）：每个强特序列先打溯寒追碾（0耗能触发），再打极寒重碾
-  const exCount = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
+  const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   const cinemaLevel = cinemaLevelOf(cfg.yidhariCinemaLevel)
   // 0命：1 溯寒追碾配 1 重碾；1命：1 溯寒追碾配 2 重碾（C1 连续释放）
   const surgeCount = Math.ceil(exCount / (cinemaLevel >= 1 ? 2 : 1))
@@ -368,7 +368,7 @@ function buildYidhariResourceSections({ result }: AgentResourceSectionsInput) {
  * 成本档按**本槽**命座判定（CC-330：修正 2026-09-16 迁移遗留的 `team[0]?.cinemaLevel` 槽位错位；
  * 与 `buildYidhariCharConfig` 的 `exSpecialEnergyConsume` 同读本槽 `cinemaLevel`）。
  */
-function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, team, axis }: AgentTeamConfigInput): void {
+function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, axis }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
   cfg.yidhariStunCount = stunCount
   // 连续强特通道：非保留模式（非轴）下不返还的强特次数上限。
@@ -380,8 +380,7 @@ function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, team, axis
   let inStunEnergy = 0
   if (axis.active) {
     const slot = Number(cfg.slot)
-    const ownCinema = cinemaLevel ?? cinemaLevelOf(team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel)
-    const singleCost = Number(ownCinema) >= 1 ? HEAVY_SINGLE_COST_1 : HEAVY_SINGLE_COST_0
+    const singleCost = cinemaLevel >= 1 ? HEAVY_SINGLE_COST_1 : HEAVY_SINGLE_COST_0
     forEachSlotAxisAction(axis, slot, (act, wins) => {
       const times = act.count * wins
       if (act.moveId === HEAVY_SINGLE) {
@@ -422,7 +421,7 @@ function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, provider
 }): number {
   if (cfg.yidhariDecibelPerHpPct === undefined) return 0
   const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
-  const decibelPerHp = cfg.yidhariDecibelPerHpPct ?? 10
+  const decibelPerHp = cfg.yidhariDecibelPerHpPct
   const external = Math.max(0, (cfg.yidhariExternalHealPct ?? 0)
     + (cfg.healPctPerCurtainProviderUlt ?? 0) * providerUltCount)
   const cycleTime = chargeCycleTime(cfg)

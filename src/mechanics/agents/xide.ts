@@ -107,11 +107,11 @@ function applyXidePanel({ panel, cinemaLevel }: AgentPanelInput): void {
     // 影画4：围杀条件门控，终结技+20%（已招式限定）、喧响效率+10%
     if (cinemaLevel >= 4) {
       panel['skillDmgBonus__ultimate'] = (panel['skillDmgBonus__ultimate'] ?? 0) + XIDE_C4_ULTIMATE_DMG
-      panel.decibelGainEfficiency = (panel.decibelGainEfficiency ?? 0) + XIDE_C4_DECIBEL_EFFICIENCY
+      panel.decibelGainEfficiency = panel.decibelGainEfficiency + XIDE_C4_DECIBEL_EFFICIENCY
     }
   }
   if (cinemaLevel >= 6) {
-    panel.critDmg = (panel.critDmg ?? 0) + XIDE_C6_CRIT_DMG
+    panel.critDmg = panel.critDmg + XIDE_C6_CRIT_DMG
   }
 }
 
@@ -266,7 +266,7 @@ function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): vo
   }
 
   // 铁萼雨幕每次消耗60能量自动发动一次落华·重戮（时间已含在 EX 2.7s 内，actionTime 0）
-  const ex = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
+  const ex = Math.max(0, Math.floor(state.exSpecialCount))
   if (ex > 0) {
     executions.push(mkRow(XIDE_ZHONGLU_MOVE_ID, '落华·重戮（铁萼雨幕衔接）', ex, 0, {
       dmgBonus: cinema >= 2 ? XIDE_C2_RAIN_PETALS_DMG : 0,
@@ -342,7 +342,7 @@ export const xideVanguardSupply: CrossAgentSupplySpec = {
     if (raw === undefined) return
     const vanguardSlot = Math.floor(xideNum(raw))
     const vanguardEnergySpent = vanguardSlot >= 0 && vanguardSlot < configs.length && vanguardSlot !== ownSlot
-      ? Math.max(0, Math.floor(states[vanguardSlot].exSpecialCount ?? 0)) * Math.max(0, configs[vanguardSlot].exSpecialEnergyConsume ?? 0)
+      ? Math.max(0, Math.floor(states[vanguardSlot].exSpecialCount)) * Math.max(0, configs[vanguardSlot].exSpecialEnergyConsume)
       : 0
     cfg.xideVanguardEnergySpent = vanguardEnergySpent
   },

@@ -113,66 +113,64 @@ export function computeJaneMechanic(input: {
  */
 function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, potentialLevel }: AgentPanelInput): void {
   const source = computeJaneMechanic({
-    anomalyProficiency: panel.anomalyProficiency ?? 0,
+    anomalyProficiency: panel.anomalyProficiency,
     // 传 true：本函数的产物只用于**非狂热门控**字段（强击暴击率/暴伤/精通转攻），
     // 狂热门控在下面 `frenzyFactor` 处统一施加，避免两处各判一次导致口径漂移。
     frenzyActive: true,
     frontlineSeconds: 0,
     potentialLevel,
   })
-  panel.assaultCritRate = (panel.assaultCritRate ?? 0) + source.assaultCritRate
-  panel.assaultCritDmg = (panel.assaultCritDmg ?? 0) + ASSAULT_CRIT_DMG
+  panel.assaultCritRate = panel.assaultCritRate + source.assaultCritRate
+  panel.assaultCritDmg = panel.assaultCritDmg + ASSAULT_CRIT_DMG
   // 潜能觉醒只给简自身触发的强击吃，乱流不继承；由异常池按 selfAssaultCritDmgBonus 单独结算。
   panel.selfAssaultCritDmgBonus = source.assaultCritDmgBonus
 
   // ⚠ 身份守卫必须**容忍直调**（`jane.test.ts` 曾只传 `{ panel }` 就调本钩子，见该文件）：
   // 缺失 `agent` 时按「是简」放行（本模块本来就只被简的槽位派发），而不是抛 TypeError。
   if (agent && agent.id !== JANE_AGENT_ID) return
-  const settingsMap = settings ?? {}
-  const teamMembers = team ?? []
 
   // ── 狂热面板块（原 panelPhases.ts:650-684，逐位迁移 + 新增总闸）──────────────────
-  const frenzy = clampRatio(settingOf(settingsMap, 'jane.frenzyActive'))
-  const passionCoverage = clampRatio(settingOf(settingsMap, 'jane.passionCoverage'))
+  const frenzy = clampRatio(settingOf(settings, 'jane.frenzyActive'))
+  const passionCoverage = clampRatio(settingOf(settings, 'jane.passionCoverage'))
   // 狂热关闭 ⇒ 狂热块与 1 命块归零；痛点/6 命不受影响（口径见函数头注释）。
   const frenzyFactor = frenzy * passionCoverage
-  const anomalyProficiency = panel.anomalyProficiency ?? 0
+  const anomalyProficiency = panel.anomalyProficiency
 
   // 狂热：物理积蓄+25%；精通>120时每点+2攻击，最多600。
-  panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + 25 * frenzyFactor
+  panel.physicalAnomalyBuildUpEfficiency = panel.physicalAnomalyBuildUpEfficiency + 25 * frenzyFactor
   applyAgentAttributeConversions(panel, JANE_AGENT_ID, frenzyFactor)
 
   // 额外能力：痛点。物理积蓄+20%；敌人处于异常状态时额外+15%（按100%覆盖）。
   // ⚠ 不吃 `frenzy` 总闸（额外能力与狂热状态无关，见函数头注释）。
   // CC-306：条件 = spec 1261 `additionalAbility`（异常特性或同阵营），不再手写
-  const additionalActive = specAdditionalAbilityActive(teamMembers, slot, agent)
+  const additionalActive = specAdditionalAbilityActive(team, slot, agent)
   if (additionalActive) {
-    panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + 20
-    panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + 15
+    panel.physicalAnomalyBuildUpEfficiency = panel.physicalAnomalyBuildUpEfficiency + 20
+    panel.physicalAnomalyBuildUpEfficiency = panel.physicalAnomalyBuildUpEfficiency + 15
   }
 
   // 1命：物理积蓄+15%；每点精通增伤0.1%，最多30%，按狂热覆盖率折算（吃总闸，见函数头注释）。
   if (cinemaLevelOf(cinemaLevel) >= 1) {
-    panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + 15 * frenzyFactor
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + Math.min(30, anomalyProficiency * 0.1) * frenzyFactor
+    panel.physicalAnomalyBuildUpEfficiency = panel.physicalAnomalyBuildUpEfficiency + 15 * frenzyFactor
+    panel.dmgBonus = panel.dmgBonus + Math.min(30, anomalyProficiency * 0.1) * frenzyFactor
   }
 
   // 6命：触发强击即狂热，狂热覆盖率按100%；双暴+20/40。不吃总闸（6命是狂热的来源）。
   if (cinemaLevelOf(cinemaLevel) >= 6) {
-    panel.critRate = (panel.critRate ?? 0) + 20
-    panel.critDmg = (panel.critDmg ?? 0) + 40
+    panel.critRate = panel.critRate + 20
+    panel.critDmg = panel.critDmg + 40
   }
 }
 
 function buildJaneResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   return {
     janeMechanicSource: computeJaneMechanic({
-      anomalyProficiency: cfg.panel.anomalyProficiency ?? 0,
+      anomalyProficiency: cfg.panel.anomalyProficiency,
       frenzyActive: clampRatio(setting(cfg, 'jane.frenzyActive')) > 0,
       frontlineSeconds: state.frontlineTime,
       // cfg.panel 是**局内盖章面板**，potentialLevel 由 core/panel.ts 写入（`:353`），
       // 与 applyPanel 的 `input.potentialLevel` 同源同值（CC-171 第 196 轮前 computePanelPhases 漏传，恒为 6）。
-      potentialLevel: cfg.panel.potentialLevel ?? 6,
+      potentialLevel: cfg.panel.potentialLevel,
     }),
   }
 }
@@ -252,7 +250,7 @@ function buildJaneExecutions({ cfg, executions }: AgentResourceInput): void {
 export function janeAnomalyEventRecords(input: AgentAnomalyEventRecordsInput): AnomalyEventRecord[] {
   const { panel: janePanel, cinemaLevel, perElementTriggerCounts } = input
   if (cinemaLevel < 6) return []
-  const assaultCritRate = clampCritRatePct(janePanel.assaultCritRate ?? 0)
+  const assaultCritRate = clampCritRatePct(janePanel.assaultCritRate)
   const critCount = (perElementTriggerCounts.physical ?? 0) * (assaultCritRate / 100)
   if (!(critCount > 0)) return []
   return [{
@@ -293,7 +291,7 @@ export const janeMechanic: AgentMechanicModule = {
     const janePanel = panel
     if (janeCinema >= 6 && janePanel) {
       const physicalProg = anomalyProgress('physical')
-      const assaultCritRate = clampCritRatePct(janePanel.assaultCritRate ?? 0)
+      const assaultCritRate = clampCritRatePct(janePanel.assaultCritRate)
       const critCount = (physicalProg?.triggerCount ?? 0) * (assaultCritRate / 100)
       if (critCount > 0) {
         // 附伤随强击暴击触发 → 轴内易伤跟随物理强击触发轴内占比（用户口径 2026-08：
@@ -307,7 +305,7 @@ export const janeMechanic: AgentMechanicModule = {
           skillMultiplier: 1600,
           stunned: janeStun,
           count: critCount,
-          basisValueOverride: janePanel.anomalyProficiency ?? 0,
+          basisValueOverride: janePanel.anomalyProficiency,
           basisLabelOverride: '异常精通',
         })
         const rows: DamagePoolRow[] = [{
@@ -322,7 +320,7 @@ export const janeMechanic: AgentMechanicModule = {
           count: critCount,
           perDamage: critCount > 0 ? result.damage / critCount : 0,
           totalDamage: result.damage,
-          note: `异常精通 ${fmt(janePanel.anomalyProficiency ?? 0)} × 1600% 标准直伤管线（增伤/防御/抗性/易伤/暴击全吃）；按强击期望暴击次数 ${fmt(critCount, 2)} 次${isAxis ? ` · 易伤跟随物理强击轴内占比 ${fmt(janeStun, 2)}` : ''}`,
+          note: `异常精通 ${fmt(janePanel.anomalyProficiency)} × 1600% 标准直伤管线（增伤/防御/抗性/易伤/暴击全吃）；按强击期望暴击次数 ${fmt(critCount, 2)} 次${isAxis ? ` · 易伤跟随物理强击轴内占比 ${fmt(janeStun, 2)}` : ''}`,
         }]
         groups.push({ order: EXTRA_ANOMALY_ROW_ORDER.assaultCritC6, rows })
       }

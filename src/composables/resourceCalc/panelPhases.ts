@@ -73,7 +73,7 @@ export function buildMechanicTeamMembers(
 /** 角色 combatBuffs 是否已自带 3/5 命技能等级提升（避免通用规则重复叠加） */
 function applyDefaultCinemaSkillLevelBonus(panel: PanelValues, agent: Agent | undefined, cinema: number): void {
   if (!agentHasCinemaSkillLevelBuff(agent)) {
-    panel.skillLevelBonus = (panel.skillLevelBonus ?? 0) + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
+    panel.skillLevelBonus = panel.skillLevelBonus + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
   }
 }
 
@@ -605,13 +605,13 @@ export function computePanelPhases(
   // 全库无任何 `agentId`/`teammateBuffId` 命中 ⇒ 死臂；其语义由 spec teamBuff 单源承载）。
   // @fact panelPhases:元素异常时长字段 口径: `physical/fire/electric/etherAnomalyDurationBonusSeconds` 由「通用规则 `getTeamAnomalyDurationBonus`」与「buff 通道（spec teamBuffs / applyStat）」**两路相加**写入面板，通用规则侧必须用 `+=`；任一元素的两路若描述同一效果即为双计 | 据 R63 实测 `calcPanel` 前 3 → `computePanelPhases` 后 0（`aire_extra_erosion_duration` 被覆写清零）@2026-09-20·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/cinemaAxisBatchR63.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
   // ⟳复核: 跑 `npx vitest run cinemaAxisBatchR63` —— 若 `etherAnomalyDurationBonusSeconds` 在 1501 在场时又变回 0（或通用规则侧被改回 `=`），说明覆写回来了 | 到期 2027-03-31
-  panel.physicalAnomalyDurationBonusSeconds = (panel.physicalAnomalyDurationBonusSeconds ?? 0)
+  panel.physicalAnomalyDurationBonusSeconds = panel.physicalAnomalyDurationBonusSeconds
     + getTeamAnomalyDurationBonus(configStore, catalogStore, 'physical')
-  panel.fireAnomalyDurationBonusSeconds = (panel.fireAnomalyDurationBonusSeconds ?? 0)
+  panel.fireAnomalyDurationBonusSeconds = panel.fireAnomalyDurationBonusSeconds
     + getTeamAnomalyDurationBonus(configStore, catalogStore, 'fire')
-  panel.electricAnomalyDurationBonusSeconds = (panel.electricAnomalyDurationBonusSeconds ?? 0)
+  panel.electricAnomalyDurationBonusSeconds = panel.electricAnomalyDurationBonusSeconds
     + getTeamAnomalyDurationBonus(configStore, catalogStore, 'electric')
-  panel.etherAnomalyDurationBonusSeconds = (panel.etherAnomalyDurationBonusSeconds ?? 0)
+  panel.etherAnomalyDurationBonusSeconds = panel.etherAnomalyDurationBonusSeconds
     + getTeamAnomalyDurationBonus(configStore, catalogStore, 'ether')
 
   // 风化侵染区：10% 独立乘区，仅风属性与染色属性直伤生效

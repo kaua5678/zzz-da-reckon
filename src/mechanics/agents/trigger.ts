@@ -211,7 +211,7 @@ export function computeTriggerCycle(input: {
 function applyTriggerPanel({ panel }: AgentPanelInput): void {
   if (!additionalAbilityActiveOf(panel)) return
   // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18（原连续）
-  const overCrit = Math.floor(Math.max(0, (panel.critRate ?? 0) - TRIGGER_CRIT_THRESHOLD) + 1e-9)
+  const overCrit = Math.floor(Math.max(0, panel.critRate - TRIGGER_CRIT_THRESHOLD) + 1e-9)
   panel.triggerAdditionalStunBuildUp = Math.min(
     TRIGGER_STUN_BUILD_CAP,
     overCrit * TRIGGER_STUN_BUILD_PER_CRIT,
@@ -238,7 +238,7 @@ function applyTriggerTeamConfig(input: AgentTeamConfigInput): void {
     mateExCount += Math.max(0, Math.floor(input.exCounts[index] ?? 0))
     mateUltimateCount += Math.max(0, Math.floor(input.ultimateCounts?.[index] ?? 0))
     // 支援突击跟随招架支援规划（引擎按 parryCount 生成 assist follow-up 行）
-    mateAssistCount += Math.max(0, Math.floor(mate.parryCount ?? 0))
+    mateAssistCount += Math.max(0, Math.floor(mate.parryCount))
   })
   own.triggerMateExCount = mateExCount
   own.triggerMateUltimateCount = mateUltimateCount
@@ -249,7 +249,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
   return computeTriggerCycle({
     cinemaLevel: cinemaLevelOf(cfg.triggerCinemaLevel),
     // 协奏狙杀/冥狱 CD 折算按有效战斗时间（扣 boss 无敌，core/effectiveTime.ts）
-    battleTime: minusInvincibleTime(Number(cfg.battleTime ?? 180), cfg),
+    battleTime: minusInvincibleTime(cfg.battleTime, cfg),
     normalCountOverride: Number(cfg.triggerNormalCountOverride ?? 0),
     hellCountOverride: Number(cfg.triggerHellCountOverride ?? 0),
     sniperHitCountOverride: Number(cfg.triggerSniperHitOverride ?? 0),

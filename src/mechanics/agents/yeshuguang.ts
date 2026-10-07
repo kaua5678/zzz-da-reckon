@@ -194,7 +194,7 @@ export interface YeshuguangCycleResult {
 // ⟳复核: 叶瞬光原文改版（明心境进轮/赠轮/照影条件或剑势消耗变动）或「连携/破阵按实际失衡次数」改造开工时，复核终局取整的范围与分担方式 | 到期 2026-12-31
 export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangCycleResult {
   const cinema = cinemaLevelOf(input.cinemaLevel)
-  const axis = input.formAxis ?? 'full'
+  const axis = input.formAxis
   // ===== 轮数实数化（2026-09-05 用户裁决「做吧」）=====
   // 引擎本来就有连续松弛骨架（坑17：迭代期次数以实数参与 + 终局 floor + 预算内加回；1051 的
   // `ultForTime` 是同款 targeted 前例），但这里三处 `Math.floor` 又把它离散化回去 —— 其中
@@ -316,7 +316,7 @@ export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   const perDodge = Math.max(0, Number(cfg.yeshuguangAtk0Dodge ?? 0) || 0)
   const perEx = Math.max(0, Number(cfg.yeshuguangAtk0Ex ?? 0) || 0)
   const perChain = Math.max(0, Number(cfg.yeshuguangAtk0Chain ?? 0) || 0)
-  const fromDodge = (cfg.dodgeCounterCount ?? 0) * perDodge
+  const fromDodge = cfg.dodgeCounterCount * perDodge
   // 定风波：文本明确发动后 +1 青溟剑势（局外）；attack_data_0 表值为 0，单独 +1/次
   const fromEx = (state.exSpecialCount ?? 0) * (perEx + 1)
   const fromChain = (state.chainCountTotal ?? 0) * perChain
@@ -373,7 +373,7 @@ function resolveCycle(cfg: CharacterOperationConfig, state: {
     zhaoyingCountSetting: cfgNum(cfg, 'yeshuguang.zhaoyingCount'),
     outsideSwordGain: outside,
     cinemaLevel: cinema,
-    battleTime: cfg.battleTime ?? 180,
+    battleTime: cfg.battleTime,
     // 终局整数化旗标（引擎在收敛后置位；见 cfg.yeshuguangFinalizeForms 的语义说明）
     finalizeForms: Number(cfg.yeshuguangFinalizeForms ?? 0) > 0,
     frozenZhaoying: typeof cfg.yeshuguangFrozenZhaoying === 'number' ? cfg.yeshuguangFrozenZhaoying : undefined,
@@ -397,7 +397,7 @@ function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInp
    */
   cfg.yeshuguangContinuousForms = true
   if (cinema >= 4) {
-    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + 1000
+    cfg.initialDecibelGift = cfg.initialDecibelGift + 1000
   }
 
   cfg.ultimateMoveId = MOVE.entryUlt
@@ -567,7 +567,7 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: Ag
   // 必要时间虚高（曾致叶瞬光 necessary≈151s > rowTime≈113s，平A池被挤到 0）。
   // 定风波时间同样实数化（同 1051 `ultForTime` 的理由：整数在阈值处翻转会把实数次数拽成
   // 2-循环，必要时间随之跳变 → 平A池/回能/喧响同步跳）
-  const genericExTime = Math.max(0, exSpecialCount ?? 0) * (cfg.exSpecialActionTime ?? 0)
+  const genericExTime = Math.max(0, exSpecialCount) * cfg.exSpecialActionTime
   return { necessaryTime: melee + feiguangTime + zhao + genericExTime, comboAlignTime: 0 }
 }
 
@@ -733,8 +733,8 @@ function yeshuguangNextRoundFeedback({ adjustedResult }: AgentNextRoundFeedbackI
   let yeshuguangGiftUlt = 0
   const ye = adjustedResult.characters.find(c => c.agentId === YESHUGUANG_ID)
   for (const e of ye?.executions ?? []) {
-    if (e.source === 'gift' || (e.moveName ?? '').includes('好评转大')) {
-      yeshuguangGiftUlt += e.count ?? 0
+    if (e.source === 'gift' || e.moveName.includes('好评转大')) {
+      yeshuguangGiftUlt += e.count
     }
   }
   return { yeshuguangGiftUlt }
@@ -769,11 +769,11 @@ export const yeshuguangMechanic: AgentMechanicModule = {
   applyPanel: ({ panel, cinemaLevel, enemyStunVuln }: AgentPanelInput) => {
     // 叶瞬光核心被动·合道：进场常驻暴击 +30%、伤害 +25%（Lv.7）。
     // 影画1：合道额外伤害 +10%、无视防御 20%；影画2：飞光/斩妄 40% 减防走 moveId defIgnore。
-    panel.critRate = (panel.critRate ?? 0) + 30
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + 25
+    panel.critRate = panel.critRate + 30
+    panel.dmgBonus = panel.dmgBonus + 25
     if (cinemaLevel >= 1) {
-      panel.dmgBonus = (panel.dmgBonus ?? 0) + 10
-      panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + 20
+      panel.dmgBonus = panel.dmgBonus + 10
+      panel.enemyDefReduction = panel.enemyDefReduction + 20
     }
     // 帷幕易伤 = min(boss基础易伤 + 全部失衡易伤加成, 2.1 或 3.0)。
     // 基数在**面板阶段**算好盖章（此时 bonus/capAlways 已由 buff 通道写入面板），
@@ -782,8 +782,8 @@ export const yeshuguangMechanic: AgentMechanicModule = {
     panel.veilStunCapMult = cap
     panel.veilStunVulnBase = veilStunBase(
       enemyStunVuln,
-      (panel.stunDmgMultiplierBonus ?? 0) + (panel.stunDmgMultiplierBonusAlways ?? 0),
-      panel.stunDmgMultiplierBonusCapAlways ?? 0,
+      panel.stunDmgMultiplierBonus + panel.stunDmgMultiplierBonusAlways,
+      panel.stunDmgMultiplierBonusCapAlways,
       cap,
     )
   },

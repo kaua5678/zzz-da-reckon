@@ -197,7 +197,7 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
       const characters = [{
         agentId: '1551', slot: 0, chainCountPerStun: opts.chainPerStun ?? 2,
         ...(opts.chainOverride !== undefined ? { chainCountTotalOverride: opts.chainOverride } : {}),
-        ...(opts.extra !== undefined ? { extraSelfDecibelReward: opts.extra } : {}),
+        extraSelfDecibelReward: opts.extra ?? 0,
       } as any]
       getAgentMechanic('1551')!.applyTeamConfig!({
         slot: 0, cfg: characters[0], agent: null, cinemaLevel: opts.cinema, potentialLevel: 6, characters,

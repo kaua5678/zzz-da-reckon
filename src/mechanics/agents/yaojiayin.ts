@@ -170,8 +170,8 @@ function pushExec(
 function estimateYaojiayinEntries(yj: CharacterOperationConfig, characters: CharacterOperationConfig[]): number {
   let entries = 0
   for (const ch of characters) {
-    entries += Math.max(0, Math.floor(ch.quickAssistCount ?? 0))
-    entries += Math.max(0, Math.floor(ch.parryCount ?? 0))
+    entries += Math.max(0, Math.floor(ch.quickAssistCount))
+    entries += Math.max(0, Math.floor(ch.parryCount))
   }
   // 连携入场：编排写入 yaojiayinTeamChainTotal（全队 chainCountPerStun × 失衡次数）
   const injectedChains = Math.max(0, Math.floor(Number(yj.yaojiayinTeamChainTotal ?? 0)))
@@ -198,8 +198,8 @@ function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
     let teamChains = 0
     let quickAssists = 0
     for (const c of characters) {
-      teamChains += Math.max(0, (c.chainCountPerStun ?? 0) * stunCount)
-      quickAssists += Math.max(0, c.quickAssistCount ?? 0)
+      teamChains += Math.max(0, c.chainCountPerStun * stunCount)
+      quickAssists += Math.max(0, c.quickAssistCount)
     }
     yj.yaojiayinTeamChainTotal = teamChains
     yj.yaojiayinQuickAssistEntries = quickAssists
@@ -237,16 +237,16 @@ function applyYaojiayinTeamPanelEffects({
     // ⚠ 复用本模块既有的单一事实源（`yaojiayinSkillLevel` + `computeAriaBonuses`），
     // 不在此重写公式——否则与该模块别处的同类折算会漂移（规则 11）。
     const { dmgBonus, critDmg } = computeAriaBonuses(yaojiayinSkillLevel(cinema))
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + dmgBonus * cov
-    panel.critDmg = (panel.critDmg ?? 0) + critDmg * cov
+    panel.dmgBonus = panel.dmgBonus + dmgBonus * cov
+    panel.critDmg = panel.critDmg + critDmg * cov
   }
   if (cinema >= 4 && targetAgent.id !== YAOJIAYIN_ID) {
     const branchCov = cov * 0.5
     if (targetAgent.specialty === 'anomaly') {
-      panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + 50 * branchCov
+      panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + 50 * branchCov
     }
     if (targetAgent.specialty === 'stun') {
-      panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + 50 * branchCov
+      panel.stunBuildUpBonus = panel.stunBuildUpBonus + 50 * branchCov
     }
   }
 }
@@ -264,7 +264,7 @@ function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharCon
 
   // 影画1：开场额外 1000 喧响（默认已有 1000 → 2000）
   if (cinema >= 1) {
-    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 1000) + YAOJIAYIN_C1_DECIBEL
+    cfg.initialDecibelGift = cfg.initialDecibelGift + YAOJIAYIN_C1_DECIBEL
   }
 
   // 影画4：标记队内职业（供 helpers / 执行）
@@ -281,7 +281,7 @@ function yaojiayinTremolosOf(
   const cinema = cinemaLevelOf(cfg.yaojiayinCinemaLevel)
   const additionalActive = Number(cfg.yaojiayinAdditionalActive ?? 0) > 0
   return computeYaojiayinTremolos({
-    totalEnergy: Math.max(0, Number(state.totalEnergy ?? 0)),
+    totalEnergy: Math.max(0, state.totalEnergy),
     entryCount: Math.max(0, Math.floor(Number(cfg.yaojiayinEntryCount ?? 0))),
     combatTime: effectiveCombatTime(state, cfg),
     cinemaLevel: cinema,
@@ -363,8 +363,8 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<
         name: '和弦/震音',
         initialValue: 0,
         maxValue: null,
-        totalGain: Math.floor(Math.max(0, Number(state.totalEnergy ?? 0)) / YAOJIAYIN_ENERGY_PER_TREMOLO),
-        gains: { energy: Math.max(0, Number(state.totalEnergy ?? 0)) },
+        totalGain: Math.floor(Math.max(0, state.totalEnergy) / YAOJIAYIN_ENERGY_PER_TREMOLO),
+        gains: { energy: Math.max(0, state.totalEnergy) },
         bonusCount: result.freeTremolos,
         total: result.totalTremolos,
         remaining: 0,
@@ -405,13 +405,13 @@ export const yaojiayinMechanic: AgentMechanicModule = {
     if (source.outOfCombat) {
       source.outOfCombat = {
         ...source.outOfCombat,
-        skillLevelBonus: Math.max(source.outOfCombat.skillLevelBonus ?? 0, skillBonus),
+        skillLevelBonus: Math.max(source.outOfCombat.skillLevelBonus, skillBonus),
       }
     }
     if (source.inCombat) {
       source.inCombat = {
         ...source.inCombat,
-        skillLevelBonus: Math.max(source.inCombat.skillLevelBonus ?? 0, skillBonus),
+        skillLevelBonus: Math.max(source.inCombat.skillLevelBonus, skillBonus),
       }
     }
   },

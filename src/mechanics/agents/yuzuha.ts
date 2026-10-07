@@ -125,7 +125,7 @@ function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, o
   cfg.supportUltimateEnergyRegen = YUZUHA_ULT_TEAM_ENERGY
   // 影画1 进场回 30 能量（勘域模式 180s 一次 → 每局一次，克拉蕾锐能/佩洛伊斯喧响同款口径）
   if (cinemaLevelOf(cinemaLevel) >= 1) {
-    cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + YUZUHA_C1_ENTER_ENERGY
+    cfg.initialEnergyGift = cfg.initialEnergyGift + YUZUHA_C1_ENTER_ENERGY
   }
   // 影画2 强制连携：每次强制连携也有角色入场 → 甜度点 +1/次（与全队 chainCountTotalExtra 同源近似）
   if (cinemaLevelOf(cinemaLevel) >= 2) {
@@ -166,7 +166,7 @@ function yuzuhaSourceFromCfg(cfg: AgentResourceInput['cfg']): YuzuhaMechanicSour
     initialAtk: cfg.yuzuhaInitialAtk ?? cfg.panel.atk ?? 0,
     chainEntryCount: cfg.yuzuhaChainEntryCount ?? 0,
     cinemaLevel: cinemaLevelOf(cfg.yuzuhaCinemaLevel),
-    parryCount: cfg.parryCount ?? 0,
+    parryCount: cfg.parryCount,
     effectiveSeconds,
     transferElement: cfg.yuzuhaTransferElement,
   })
@@ -234,7 +234,7 @@ function patchYuzuhaExecutions({ cfg, executions }: AgentResourceInput): void {
     if (preBuilt > 0) {
       exec.anomalyBuildUp = preBuilt
       exec.anomalyBuildUpOverride = true
-      exec.totalAnomalyBuildUp = preBuilt * Math.max(0, exec.count ?? 0)
+      exec.totalAnomalyBuildUp = preBuilt * Math.max(0, exec.count)
     }
     exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画4 支援突击伤害+${YUZUHA_C4_ASSIST_DMG_PCT}%/积蓄+${YUZUHA_C4_ASSIST_BUILDUP_PCT}%`
   }

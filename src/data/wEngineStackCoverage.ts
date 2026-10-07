@@ -41,7 +41,7 @@ export type StackEnergyEventEvaluator = (input: StackEvalInput) => number | null
 /** 从执行行累计某 moveId 的发动次数（模块自推行也走这里）。 */
 function execCount(executions: readonly SkillExecution[], moveIds: readonly string[]): number {
   let n = 0
-  for (const row of executions) if (moveIds.includes(row.moveId)) n += Math.max(0, row.count ?? 0)
+  for (const row of executions) if (moveIds.includes(row.moveId)) n += Math.max(0, row.count)
   return n
 }
 

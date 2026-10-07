@@ -33,7 +33,7 @@ function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   // 1) EX 自动连段：贴山震脉靠 → 3 点破劲 → 断脉破穴手 ×3（后台追攻行，不占前台）
-  const exCount = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
+  const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount > 0) {
     PAN_YINHU_TOUCH_OF_DEATH_MOVE_IDS.forEach((moveId, i) => {
       executions.push(moduleExecRow({
@@ -54,7 +54,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const gift = PAN_YINHU_C2_ENERGY_PER_6_POJIN * groups
   const prev = Math.max(0, Number(cfg.panYinhuC2EnergyTotal ?? 0))
   // 幂等（同可琳 C4 口径）：先扣上一轮本模块写入量再写新值，内层迭代收敛后不叠加。
-  cfg.initialEnergyGift = Math.max(0, Number(cfg.initialEnergyGift ?? 0) - prev) + gift
+  cfg.initialEnergyGift = Math.max(0, cfg.initialEnergyGift - prev) + gift
   cfg.panYinhuC2EnergyTotal = gift
 }
 

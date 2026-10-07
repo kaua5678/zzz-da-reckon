@@ -58,7 +58,7 @@ export function supplySecondsPerUnit(
 ): number {
   return spec?.secondsPerUnit && ownCfg
     ? spec.secondsPerUnit({ targetCfg, ownCfg })
-    : (targetCfg.ultimateActionTime ?? 0)
+    : targetCfg.ultimateActionTime
 }
 
 /**

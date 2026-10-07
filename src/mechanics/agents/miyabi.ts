@@ -107,7 +107,7 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
   // 额外能力：紊乱触发霜月无视 30% 冰抗（面板近似；原 transform 判 frostFall 资源存在——
   // 紊乱正常发生时落霜必存在，静态化以 AA 激活为准）
   if (aa) {
-    panel.enemyIceResReduction = (panel.enemyIceResReduction ?? 0) + FROST_MOON_ICE_RES_IGNORE
+    panel.enemyIceResReduction = panel.enemyIceResReduction + FROST_MOON_ICE_RES_IGNORE
   }
 
   // 额外能力：霜月伤害+60%（限定基本攻击，通过 targetSkillType 机制）
@@ -117,7 +117,7 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
 
   // C2：暴击率+15%；风花/闪避反击伤害+30%
   if (cinemaLevel >= 2) {
-    panel.critRate = (panel.critRate ?? 0) + C2_CRIT_RATE
+    panel.critRate = panel.critRate + C2_CRIT_RATE
     // 风花（普攻）与闪避反击：通过 targetSkillType 定向增伤
     panel['skillDmgBonus__basic'] = (panel['skillDmgBonus__basic'] ?? 0) + C2_NA_AND_DODGE_COUNTER_DMG
     panel['skillDmgBonus__dodgeCounter'] = (panel['skillDmgBonus__dodgeCounter'] ?? 0) + C2_NA_AND_DODGE_COUNTER_DMG
@@ -141,9 +141,9 @@ function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
     ? Math.max(0, Math.min(1, coverageRaw))
     : autoDefault
   panel.miyabiIceFlameCoverage = coverage
-  const iceFlameBonus = Math.min(ICE_FLAME_BUILDUP_MAX, panel.critRate ?? 0) * coverage
+  const iceFlameBonus = Math.min(ICE_FLAME_BUILDUP_MAX, panel.critRate) * coverage
   if (iceFlameBonus > 0) {
-    panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + iceFlameBonus
+    panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + iceFlameBonus
   }
   // 核心被动「霜灼状态：所有单位积蓄 +20%」已迁到 `teamPanelEffects`（F2 裁决 2026-09-25：
   // 原文「所有单位」= 全队，不是只写雅本人）。本槽的 `miyabiHasWindTeammate` 标记在此已写好，
@@ -245,7 +245,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
   const safeRate = Math.max(0, Math.min(2, Number.isFinite(frostburnRate) ? frostburnRate : 1))
   const baseCount = frostburnCountSetting > 0
     ? frostburnCountSetting
-    : Math.max(0, Math.floor((state.exSpecialCount ?? 0) * safeRate))
+    : Math.max(0, Math.floor(state.exSpecialCount * safeRate))
   const frostbreakCount = baseCount
   if (frostbreakCount > 0) {
     const hasC4 = cinemaLevel >= 4
@@ -400,7 +400,7 @@ export const miyabiMechanic: AgentMechanicModule = {
     // CC-335：panel 是 targetSlot 的面板，而 applyMiyabiPanel 只把 miyabiHasWindTeammate 写在雅自己的面板上
     // ⇒ 队友槽 panel.miyabiHasWindTeammate 恒为 undefined，有风队时队友误吃 +20%。直接与 applyMiyabiPanel 同源调 hasWindTeammate(team, slot)。
     if (hasWindTeammate(team, slot) || (panel.miyabiHasWindTeammate ?? 0) === 1) return
-    panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + FROSTBURN_TEAM_BUILDUP_BONUS
+    panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + FROSTBURN_TEAM_BUILDUP_BONUS
   },
   buildCharConfig: buildMiyabiCharConfig,
   buildExecutions: buildMiyabiExecutions,

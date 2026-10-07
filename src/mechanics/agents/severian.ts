@@ -170,7 +170,7 @@ function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResour
   const liexuan = severianLiexuanCount(cfg)
   return finisher * SEVERIAN_FLOW_BASIC4
     + liexuan * SEVERIAN_FLOW_LIEXUAN
-    + Math.max(0, Number(cfg.dodgeCounterCount ?? 0)) * SEVERIAN_FLOW_DODGE
+    + Math.max(0, cfg.dodgeCounterCount) * SEVERIAN_FLOW_DODGE
     + Math.max(0, Number(state?.chainCountTotal ?? 0)) * SEVERIAN_FLOW_CHAIN
     + Math.max(0, Number(state?.ultimateCount ?? 0)) * SEVERIAN_FLOW_ULT
     + (cinema >= 1 ? SEVERIAN_C1_ENTRY_FLOW : 0)
@@ -210,7 +210,7 @@ function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentR
 function severianLiexuanCount(cfg: AgentCharConfigInput['cfg']): number {
   const override = setting(cfg, 'severian.blazingSpinCount')
   if (override > 0) return whole(override)
-  return Math.max(0, Number(cfg.dodgeCounterCount ?? 0))
+  return Math.max(0, cfg.dodgeCounterCount)
 }
 
 function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
@@ -268,10 +268,10 @@ function applySeverianPanel({ cinemaLevel, panel, settings }: AgentPanelInput): 
     fengfengStacks: Math.max(0, Math.min(2, whole(settingOf(settings, 'severian.fengfengStacks')))),
     c4Coverage: clampRatio(settingOf(settings, 'severian.c4Coverage')),
   })
-  panel.critDmg = (panel.critDmg ?? 0) + cycle.coreCritDmg
-  if (cycle.atkFlat > 0) panel.atk = (panel.atk ?? 0) + cycle.atkFlat
-  if (cycle.c2AtkPct > 0) panel.atk = Math.round((panel.atk ?? 0) * (1 + cycle.c2AtkPct / 100))
-  if (cycle.c4DefIgnore > 0) panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + cycle.c4DefIgnore
+  panel.critDmg = panel.critDmg + cycle.coreCritDmg
+  if (cycle.atkFlat > 0) panel.atk = panel.atk + cycle.atkFlat
+  if (cycle.c2AtkPct > 0) panel.atk = Math.round(panel.atk * (1 + cycle.c2AtkPct / 100))
+  if (cycle.c4DefIgnore > 0) panel.enemyDefReduction = panel.enemyDefReduction + cycle.c4DefIgnore
 }
 
 /** 苍风影猎/烈旋执行行（真实 moveId → enrich 从倍率表回填；倍率含影画6 +900 用 override 同区加算） */
@@ -313,7 +313,7 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
   // 满充比例滑块 severian.windBladeChargeRatio——倍率/耗能/时间均按比例缩放（总量口径）。
   // 「能量消耗达最大时额外获得一层烁影」未建模（烁影为操作向量）。
   const windBladeMeta = cfg.severianWindBladeMeta as { moveId: string; actionTime: number; damage: number } | undefined
-  const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
+  const exCount = Math.max(0, state.exSpecialCount)
   const bladeRatio = clampRatio(setting(cfg, 'severian.windBladeChargeRatio'))
   if (windBladeMeta && exCount > 0 && bladeRatio > 0) {
     executions.push(moduleExecRow({
@@ -335,7 +335,7 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
 
 /** 必做前台时间：苍风影猎 + 烈旋 + 长按风刃段（估时与 buildExecutions 同源计数） */
 function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
-  const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
+  const exTime = Math.max(0, exSpecialCount) * cfg.exSpecialActionTime
   const shadowMeta = cfg.severianShadowMeta as { actionTime: number } | undefined
   const liexuanMeta = cfg.severianLiexuanMeta as { actionTime: number } | undefined
   const windBladeMeta = cfg.severianWindBladeMeta as { actionTime: number } | undefined
@@ -345,7 +345,7 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
   const bladeTime = windBladeMeta ? Math.max(0, exSpecialCount) * bladeRatio * windBladeMeta.actionTime : 0
   return {
     necessaryTime: exTime + shadowTime + liexuanTime + bladeTime,
-    comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0),
+    comboAlignTime: exTime * cfg.exSpecialComboAlignRatio,
   }
 }
 

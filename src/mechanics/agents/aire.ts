@@ -128,12 +128,12 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
     // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
     // 异放次数 = 应援能量/2 + 全场应援；典型整局 ≫ floor(t/10)，故触发次数取 10s CD 上限
     // （CC-196 后全场应援非C6=终结×3，不再恒 ≥ floor(t/6)；不设 min 截断，属近似）。
-    const triggers = Math.max(0, Math.floor((cfg.battleTime ?? 180) / AIRE_C4_CD_SECONDS))
-    cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * AIRE_C4_RELEASE_ENERGY
-    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + triggers * AIRE_C4_RELEASE_DECIBEL
+    const triggers = Math.max(0, Math.floor(cfg.battleTime / AIRE_C4_CD_SECONDS))
+    cfg.initialEnergyGift = cfg.initialEnergyGift + triggers * AIRE_C4_RELEASE_ENERGY
+    cfg.initialDecibelGift = cfg.initialDecibelGift + triggers * AIRE_C4_RELEASE_DECIBEL
   }
   if (cinemaLevel >= 6) {
-    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + AIRE_C6_DECIBEL_GIFT
+    cfg.initialDecibelGift = cfg.initialDecibelGift + AIRE_C6_DECIBEL_GIFT
   }
   // CC-196：甜心律动 #4 应援能量按普攻时长折算（CC-195 通用口径 basicComboCycleSeconds）
   cfg.aireBasicCheerCycleSeconds = basicComboCycleSeconds(skills, AIRE_SWEET_BASIC4_MOVE_ID)
@@ -192,10 +192,10 @@ export function aireEnhancedPitchShare(cinemaLevel: number, ultimateCount: numbe
  */
 export function aireExtraNecessaryActions(cfg: AgentResourceInput['cfg'], state?: Readonly<AgentResourceInput['state']>): ExtraNecessaryAction[] | null {
   if (!state) return null
-  const totalTime = Number(cfg.battleTime ?? 180)
+  const totalTime = cfg.battleTime
   const pitch = aireAbsolutePitchCount(cfg, state, totalTime)
   if (pitch <= 0) return null
-  const share = aireEnhancedPitchShare(cinemaLevelOf(cfg.aireCinemaLevel), Number(state.ultimateCount ?? 0), totalTime)
+  const share = aireEnhancedPitchShare(cinemaLevelOf(cfg.aireCinemaLevel), state.ultimateCount, totalTime)
   const enhanced = Math.round(pitch * share)
   const rows: ExtraNecessaryAction[] = []
   if (pitch - enhanced > 0) {
@@ -224,13 +224,13 @@ function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
     additionalActive: additionalAbilityActiveOf(panel),
     c2DelusionCoverage: settingOf(settings, 'aire.c2DelusionCoverage'),
   })
-  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + cycle.coreProficiency
+  panel.anomalyProficiency = panel.anomalyProficiency + cycle.coreProficiency
   if (cycle.c1EtherAnomalyResIgnore > 0) {
-    panel.enemyEtherAnomalyResReduction = (panel.enemyEtherAnomalyResReduction ?? 0)
+    panel.enemyEtherAnomalyResReduction = panel.enemyEtherAnomalyResReduction
       + cycle.c1EtherAnomalyResIgnore
   }
   if (cycle.c2DefIgnore > 0) {
-    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + cycle.c2DefIgnore
+    panel.enemyDefReduction = panel.enemyDefReduction + cycle.c2DefIgnore
   }
 }
 

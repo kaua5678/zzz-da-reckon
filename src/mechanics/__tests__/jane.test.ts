@@ -40,7 +40,7 @@ describe('简（1261）啮咬/狂热/强击暴击', () => {
   })
 
   it('applyPanel 写入强击暴击率/暴伤与潜能强击暴伤（仅自身强击）', () => {
-    const panel = { anomalyProficiency: 300 } as any
+    const panel = { ...emptyPanel(), anomalyProficiency: 300 }
     janeMechanic.applyPanel!({ panel } as any)
     expect(panel.assaultCritRate).toBeCloseTo(50, 5) // 20 + 300×0.1
     expect(panel.assaultCritDmg).toBe(50)

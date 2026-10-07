@@ -97,9 +97,9 @@ function buildSoldier11CharConfig({ cfg, cinemaLevel }: AgentCharConfigInput): v
   cfg.soldier11CinemaLevel = cinemaLevel
   // 影画1 快速升温：整局口径注入（不做 50s 时间轴，整局总量近似）
   if (cinemaLevel >= 1) {
-    const battleTime = cfg.battleTime ?? 180
+    const battleTime = cfg.battleTime
     const triggers = Math.max(0, Math.floor(battleTime / C1_INTERVAL_SECONDS))
-    cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * C1_REFILL_AMOUNT
+    cfg.initialEnergyGift = cfg.initialEnergyGift + triggers * C1_REFILL_AMOUNT
   }
 }
 
@@ -111,9 +111,9 @@ export function patchSoldier11Executions({ cfg, state, executions }: AgentResour
   // 影画6 充能可用比例：充能来源（强特/连携/终结）×8 层 vs 火力镇压总消耗
   let fireSuppressCount = 0
   for (const exec of executions) {
-    if (exec.moveId && FIRE_SUPPRESS_MOVE_IDS.has(exec.moveId)) fireSuppressCount += exec.count ?? 0
+    if (exec.moveId && FIRE_SUPPRESS_MOVE_IDS.has(exec.moveId)) fireSuppressCount += exec.count
   }
-  const chargeCasts = (state.exSpecialCount ?? 0) + (state.chainCountTotal ?? 0) + (state.ultimateCount ?? 0)
+  const chargeCasts = state.exSpecialCount + state.chainCountTotal + state.ultimateCount
   const c6Ratio = cinema >= 6 && fireSuppressCount > 0
     ? Math.min(1, (chargeCasts * C6_CHARGE_PER_CAST) / fireSuppressCount)
     : 0
@@ -146,12 +146,12 @@ function applySoldier11Panel({ panel, settings, potentialLevel }: AgentPanelInpu
   // 潜能觉醒·绝焰：额外能力·燎原触发时自身暴伤按 potentialLevel 取档（II~VI = 16/24/32/40/48%）
   if (additionalAbilityActiveOf(panel)) {
     const potLv = potentialLevelOf(potentialLevel)
-    panel.critDmg = (panel.critDmg ?? 0) + SOLDIER11_POTENTIAL_CRIT_DMG[potLv]
+    panel.critDmg = panel.critDmg + SOLDIER11_POTENTIAL_CRIT_DMG[potLv]
     // 「11号」额外能力·燎原（队伍存在同属性或同阵营角色）：
     // 火属性伤害 +10%；攻击失衡敌人额外 +22.5% × 覆盖率滑块（非轴模式默认满覆盖）。
-    panel.fireDmg = (panel.fireDmg ?? 0) + 10
+    panel.fireDmg = panel.fireDmg + 10
     const stunCov = settingOf(settings, 'soldier11.prairieFireStunCoverage')
-    panel.fireDmg = (panel.fireDmg ?? 0) + 22.5 * stunCov
+    panel.fireDmg = panel.fireDmg + 22.5 * stunCov
   }
 }
 
@@ -199,15 +199,15 @@ export const soldier11Mechanic: AgentMechanicModule = {
   estimateExSpecialTime: ({ cfg, exSpecialCount, ultimateCount }) => {
     // A45 循环计入必要时间（窗口数 = 强特+终结+连携；受平A池约束由折叠循环收敛；
     // 2026-09-03 层数结算：套数 ≤ 强特次数，每发强特 8 层 = 1 套快速火刀）
-    // @fact agent:1041/A45循环行时间归属 口径: A45 快速火刀行（1041008/1041025）的时间由本钩子计入 necessaryTime（账本侧），**不占**通用 basic_attack 聚合行的平A池 ⇒ 与艾莲 1191 的「等式解出平A池」形态不同，**不得 carve 聚合行**（carve 即二次减法：账本与池各减一次，守恒撑破实测 9.6~11.2s/队、单人 17.7s）；buildExecutions 里的 `⌊pool/CYCLE_TIME⌋` 只是自洽 cap，绑定项在真实配置里恒为 exTotal（层数预算），binding 需回能 > exConsume/CYCLE ≈ 49.8/s 而实测 4.8~5.5/s（差 9~10×） | 据 闸门实测@2026-09-20（6 预设队 + 单人 c0~c6 全 13 配置 cap 不绑；反向注入 carve ⇒ 守恒破）+ 分类判据改按「行时间记在哪一侧」而非「式子里有没有 basicAttackTime」·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/soldier11.test.ts#A45 循环行不重复占用平A池 | 锚 src/mechanics/agents/soldier11.ts#estimateExSpecialTime | 信 确认
+    // @fact agent:1041/A45循环行时间归属 口径: A45 快速火刀行（1041008/1041025）的时间由本钩子计入 necessaryTime（账本侧），**不占**通用 basic_attack 聚合行的平A池 ⇒ 与艾莲 1191 的「等式解出平A池」形态不同，**不得 carve 聚合行**（carve 即二次减法：账本与池各减一次，守恒撑破实测 9.6~11.2s/队、单人 17.7s）；buildExecutions 里的 `⌊pool/CYCLE_TIME⌋` 只是自洽 cap，绑定项在真实配置里恒为 exTotal（层数预算），binding 需回能 > exConsume/CYCLE ≈ 49.8/s 而实测 4.8~5.5/s（差 9~10×） | 据 闸门实测@2026-09-20（6 预设队 + 单人 c0~c6 全 13 配置 cap 不绑；反向注入 carve ⇒ 守恒破）+ 分类判据改按「行时间记在哪一侧」而非「式子里有没有 basicAttackTime」·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/soldier11.test.ts#A45 循环行不重复占用平A池 | 锚 src/mechanics/agents/soldier11.ts#estimateExSpecialTime | 信 确认
     // ⟳复核: A45 循环时间方程、estimate 侧 loopTime 口径、或回能/强特能耗量级改动时，复核「necessary+pool==frontline 守恒」（soldier11.test）+「cap 绑定项仍为 exTotal」+ 能量侧是否出现 ≥3× 回能手段 | 到期 2026-12-31
     const chainOverride = cfg.chainCountTotalOverride
     const chain = chainOverride ?? 0
     const windows = Math.max(0, Math.floor(exSpecialCount) + Math.floor(ultimateCount) + Math.floor(chain))
     const cycles = Math.min(windows, Math.max(0, Math.floor(exSpecialCount)))
     const loopTime = cycles * CYCLE_TIME
-    const base = exSpecialCount * (cfg.exSpecialActionTime ?? 0)
-    const comboBase = exSpecialCount * (cfg.exSpecialActionTime ?? 0) * (cfg.exSpecialComboAlignRatio ?? 0)
+    const base = exSpecialCount * cfg.exSpecialActionTime
+    const comboBase = exSpecialCount * cfg.exSpecialActionTime * cfg.exSpecialComboAlignRatio
     return { necessaryTime: base + loopTime, comboAlignTime: comboBase }
   },
   applyPanel: applySoldier11Panel,
@@ -216,11 +216,11 @@ export const soldier11Mechanic: AgentMechanicModule = {
   // 倍率走倍率表（#4=火力镇压、#5=结算6段），核心被动/C6 经 patchExecutions 咬合。
   // 2026-09-03 层数结算：每发强特 8 层火刀 = 1 套（A4 1层 + A5 1层 + 爆炸 6 层），套数 ≤ 强特次数。
   buildExecutions: ({ cfg: _cfg, state, executions }: AgentResourceInput): void => {
-    const exTotal = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
+    const exTotal = Math.max(0, Math.floor(state.exSpecialCount))
     const windows = Math.max(0,
-      Math.floor(state.exSpecialCount ?? 0)
-      + Math.floor(state.chainCountTotal ?? 0)
-      + Math.floor(state.ultimateCount ?? 0))
+      Math.floor(state.exSpecialCount)
+      + Math.floor(state.chainCountTotal)
+      + Math.floor(state.ultimateCount))
     // 层数结算封顶：每发强特的 8 层恰好支持 1 套（1+1+6），无层数预算的窗口不跑快速火刀。
     // CC-474（r652）：删掉原第三项 `⌊basicAttackTime / CYCLE_TIME⌋`。§19.6-2 口径（上方 @fact）A45 行的时间由
     // estimateExSpecialTime 计入 necessaryTime、**不占**平A池，行数再被平A池封顶就是两套口径混用：estimate 侧

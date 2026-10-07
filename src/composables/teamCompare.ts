@@ -301,7 +301,7 @@ function evalDifficultyFormula(
   k: number,
 ): number {
   const fallback = c * w
-  const expr = (expression ?? '').trim()
+  const expr = expression.trim()
   if (expr === '' || expr === 'c*w') return fallback
   const r = evalSandboxedFormula(expr, { c, r: rr, k, w })
   return r.ok && typeof r.value === 'number' && Number.isFinite(r.value) ? r.value : fallback

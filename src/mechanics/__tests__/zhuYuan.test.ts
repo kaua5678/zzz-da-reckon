@@ -88,7 +88,7 @@ describe('朱鸢核心被动与影画（自身面板）', () => {
   it('模块单元：applyPanel 门控与定向增伤', () => {
     const mk = (active: number, cinema: number) => ({
       slot: 0, agent: { id: '1241' } as any, cinemaLevel: cinema, team: [],
-      panel: { critRate: 5, additionalAbilityActive: active } as any,
+      panel: { critRate: 5, etherDmg: 0, enemyEtherResReduction: 0, additionalAbilityActive: active } as any,
     })
     const on = mk(1, 4); zhuYuanMechanic.applyPanel!(on as any)
     expect((on.panel as any).critRate).toBeCloseTo(35, 5)

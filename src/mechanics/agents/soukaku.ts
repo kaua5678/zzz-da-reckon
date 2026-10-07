@@ -117,15 +117,15 @@ function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   // 按可调触发次数注入能量池（默认 5 次，用户按实际对局调整）。
   if (cinemaLevelOf(cinemaLevel) >= 2) {
     const count = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'soukaku.c2RefundCount') ?? 5)))
-    cfg.initialEnergyGift = Number(cfg.initialEnergyGift ?? 0) + SOUKAKU_C2_ENERGY_PER_TRIGGER * count
+    cfg.initialEnergyGift = cfg.initialEnergyGift + SOUKAKU_C2_ENERGY_PER_TRIGGER * count
   }
 }
 
 function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const exCount = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
+  const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount <= 0) return
   const swings = clampSwings(cfg)
-  const bodySize = String(cfg.bodySize ?? 'large')
+  const bodySize = String(cfg.bodySize)
   const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[bodySize] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
   const chop = Math.round(Number(cfgMechanicSettingRaw(cfg, 'soukaku.chopSlam') ?? 0)) >= 1
   // 六段 actionTime 读 cfg.moveActionTimes（catalog，CC-409）

@@ -114,15 +114,15 @@ function applyQingyiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
     // 普通攻击失衡值 +20%（只作用于 basic，含一煞与醉花月云转，两者 skillType 均为 basic）
     panel.stunBuildUpBonus__basic = (panel.stunBuildUpBonus__basic ?? 0) + 20
     // 冲击力 >120 每超 1 点攻击 +6，最多 +600
-    const impact = panel.impact ?? 0
+    const impact = panel.impact
     // CC-135 第 159 轮：「每超过 N」统一 floor 整步，docs/mcp-r6-refactor-list.md §2.18（原连续 over×6）
     const over = Math.floor(Math.max(0, impact - 120) + 1e-9)
     const atkGain = Math.min(600, over * 6)
-    if (atkGain > 0) panel.atk = (panel.atk ?? 0) + atkGain
+    if (atkGain > 0) panel.atk = panel.atk + atkGain
   }
   // 影画2·四两拨千斤：羁服叠满时自身对目标失衡值 +15%（需叠满才生效，默认覆盖率 50%）
   if (cinemaLevelOf(cinemaLevel) >= 2) {
-    panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + C2_STUN_BONUS * C2_STUN_COVERAGE
+    panel.stunBuildUpBonus = panel.stunBuildUpBonus + C2_STUN_BONUS * C2_STUN_COVERAGE
   }
 }
 
@@ -182,7 +182,7 @@ function buildQingyiCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInpu
 function qingyiGenericRowsTimeOf(executions: readonly SkillExecution[]): number {
   return executions
     .filter(e => e.moveId !== 'basic_attack')
-    .reduce((s, e) => s + (e.totalTime ?? 0), 0)
+    .reduce((s, e) => s + e.totalTime, 0)
 }
 
 /**
@@ -194,7 +194,7 @@ export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exS
   const cinemaLevel = cinemaLevelOf(cfg.qingyiCinemaLevel)
   const loop = cfg.qingyiLoopRates
   const yisha4Voltage = loop?.yisha4Voltage ?? 0
-  const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
+  const battleTime = Math.max(0, cfg.battleTime)
 
   const roundsTarget = ROUNDS_PER_STUN * stunCount
   const totalNeeded = VOLTAGE_PER_STUN * stunCount
@@ -205,9 +205,9 @@ export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exS
     (Math.max(0, Math.floor(state.exSpecialCount)) * Number(cfg.qingyiExSpecialVoltage ?? 0)
     + Math.max(0, Math.floor(state.ultimateCount)) * Number(cfg.qingyiUltimateVoltage ?? 0)
     + Math.max(0, Math.floor(state.chainCountTotal)) * Number(cfg.qingyiChainVoltage ?? 0)
-    + Math.max(0, Number(cfg.dodgeCounterCount ?? 0)) * Number(cfg.qingyiDodgeCounterVoltage ?? 0)
-    + Math.max(0, Number(cfg.quickAssistCount ?? 0)) * Number(cfg.qingyiQuickAssistVoltage ?? 0)
-    + Math.max(0, Number(cfg.parryCount ?? 0)) * Number(cfg.qingyiAssistFollowUpVoltage ?? 0)) * efficiency
+    + Math.max(0, cfg.dodgeCounterCount) * Number(cfg.qingyiDodgeCounterVoltage ?? 0)
+    + Math.max(0, cfg.quickAssistCount) * Number(cfg.qingyiQuickAssistVoltage ?? 0)
+    + Math.max(0, cfg.parryCount) * Number(cfg.qingyiAssistFollowUpVoltage ?? 0)) * efficiency
 
   // 时间预算（用户口径 2026-08：4 失衡 8 轮醉花，一煞#4 补电压不能无限打）：
   // 通用电压覆盖的轮只花醉花时间；超出部分每轮 = 一煞#4 攒满 100 电压 + 醉花，按整轮时间计。
@@ -217,11 +217,11 @@ export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exS
   // 通用必要时间：优先用 buildExecutions 实测的通用行总时间（构造保证 通用+循环 ≤ 战斗时间）；
   // 公式估算仅作 resourceResult/sections 展示兜底（无 executions 上下文）。
   const genericNecessaryTime =
-    Math.max(0, Math.floor(state.exSpecialCount)) * Number(cfg.exSpecialActionTime ?? 0)
-    + Math.max(0, Math.floor(state.ultimateCount)) * Number(cfg.ultimateActionTime ?? 0)
-    + Math.max(0, Math.floor(state.chainCountTotal)) * Number(cfg.chainActionTime ?? 0)
-    + Math.max(0, Number(cfg.dodgeCounterCount ?? 0)) * Number(cfg.dodgeCounterActionTime ?? 0)
-    + Math.max(0, Number(cfg.parryCount ?? 0)) * Number(cfg.assistFollowUpActionTime ?? 0)
+    Math.max(0, Math.floor(state.exSpecialCount)) * cfg.exSpecialActionTime
+    + Math.max(0, Math.floor(state.ultimateCount)) * cfg.ultimateActionTime
+    + Math.max(0, Math.floor(state.chainCountTotal)) * cfg.chainActionTime
+    + Math.max(0, cfg.dodgeCounterCount) * cfg.dodgeCounterActionTime
+    + Math.max(0, cfg.parryCount) * cfg.assistFollowUpActionTime
   const effectiveGenericTime = Math.max(genericNecessaryTime, Math.max(0, Number(genericRowsTime) || 0))
   const roundsFromGeneric = Math.floor((c1Start + genericVoltage) / VOLTAGE_PER_ROUND)
   const zuiHuaAt = loop?.zuiHuaTimePerRound ?? 0

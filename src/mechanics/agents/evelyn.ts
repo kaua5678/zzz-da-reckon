@@ -129,14 +129,14 @@ function buildEvelynCharConfig({ cinemaLevel, skills, cfg, panel, getRowValue }:
   cfg.evelynC6FollowUpCount = whole(setting(cfg, 'evelyn.c6FollowUpCount'))
   cfg.evelynAdditionalActive = additionalAbilityActiveOf(panel)
   if (cinemaLevel >= 1) {
-    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + EVELYN_C1_DECIBEL_GIFT
+    cfg.initialDecibelGift = cfg.initialDecibelGift + EVELYN_C1_DECIBEL_GIFT
   }
   // 额外能力×1.25：预缩倍率表值，patchExecutions 经 damageMultiplierOverride 精确结算。
   // panel.critRate 已含 applyPanel 施加的核心被动暴击（EVELYN_CORE_CRIT_RATE × restraintCoverage），
   // 故直接按总暴击率判定，不再重复 + coreCritRate。
   const additionalActive = cfg.evelynAdditionalActive === true
   const multiplierActive = additionalActive
-    && (panel.critRate ?? 0) >= EVELYN_CRIT_THRESHOLD
+    && panel.critRate >= EVELYN_CRIT_THRESHOLD
   cfg.evelynMultiplierActive = multiplierActive
   if (multiplierActive) {
     cfg.evelynChainMultScaled = getRowValue(findMove(skills, EVELYN_CHAIN_MOVE_ID), 'damage') * EVELYN_MULTIPLIER
@@ -155,7 +155,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     c1DefIgnoreCoverage: Number(cfg.evelynC1DefIgnoreCoverage ?? 1),
     c4ShieldCoverage: Number(cfg.evelynC4ShieldCoverage ?? 1),
     c6FollowUpCount: Number(cfg.evelynC6FollowUpCount ?? 16),
-    battleTime: Number(cfg.battleTime ?? 180),
+    battleTime: cfg.battleTime,
   })
 }
 
@@ -254,12 +254,12 @@ function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
     c4ShieldCoverage: settingOf(settings, 'evelyn.c4ShieldCoverage'),
     c6FollowUpCount: 0,
   })
-  panel.critRate = (panel.critRate ?? 0) + cycle.coreCritRate
+  panel.critRate = panel.critRate + cycle.coreCritRate
   if (cinemaLevel >= 4) {
-    panel.critDmg = (panel.critDmg ?? 0) + cycle.c4CritDmg
+    panel.critDmg = panel.critDmg + cycle.c4CritDmg
   }
   if (cinemaLevel >= 1) {
-    panel.enemyDefReduction = (panel.enemyDefReduction ?? 0) + cycle.c1DefIgnore
+    panel.enemyDefReduction = panel.enemyDefReduction + cycle.c1DefIgnore
   }
   // 影画2 赴火之舞：攻击力提升 15%（燎火返还部分未建模，见 status pending）。
   //

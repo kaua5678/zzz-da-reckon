@@ -63,6 +63,12 @@ function teamCfg(agentId: string, extra: Record<string, unknown> = {}): Characte
     isSupport: false,
     timeWeight: 1,
     skipGenericExSpecial: false,
+    // r723：buildCharConfig 恒写的引擎上下文字段（类型已改必填）
+    battleTime: 180, invincibleTime: 0, bodySize: 'large', blockCount: 0, dualCounterCount: 0, tauntCancelCount: 0,
+    counterAssistMoveId: '', counterAssistActionTime: 0, counterAssistDecibelRecovery: 0, counterAssistComboAlignRatio: 0, counterAssistCount: 0,
+    zhenyuanTriggerCount: 0, cannonRotorDamageMultiplier: 0, cannonRotorCooldownSeconds: 0,
+    parryNoFollowUpCount: 0, parryDecibelOnlyCount: 0, perfectBlockCount: 0, assaultOrderCount: 0,
+    moveActionTimes: {}, resourceUtilization: {}, exSpecialCostType: 'energy', decibelRecoveryByMoveId: {}, energyRecoveryByMoveId: {},
     ...extra,
   } as unknown as CharacterOperationConfig
 }

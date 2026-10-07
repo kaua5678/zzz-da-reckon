@@ -144,7 +144,7 @@ export function runFoldLoop(
       // 与招式合轴率对称）。原先此处再逐行扣一次分摊 ⇒ 账本收敛到净值、relief 又扣一次 = 同一段并行计两次：
       // 平A池凭空多出节省秒数，装配截断按毛行核账本时砍掉等量高价值行（r709 实测 auto-1531-1481-1451 主C −4.1%）。
       const rowTime = executions.reduce(
-        (sum, e) => sum + Math.max(0, e.totalTime ?? 0) * (isFrontlineExecution(e) ? 1 : 0),
+        (sum, e) => sum + Math.max(0, e.totalTime) * (isFrontlineExecution(e) ? 1 : 0),
         0,
       ) + (i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0)
         + (i === ultimateGift.targetIdx ? ultimateGift.time : 0)

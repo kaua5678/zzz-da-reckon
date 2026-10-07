@@ -45,11 +45,11 @@ export const CAESAR_C4_SUBSTITUTE_ICD_SECONDS = 5
 function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   if (cinema >= 2) {
-    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + CAESAR_C2_ENERGY_EFF
+    panel.energyGainEfficiency = panel.energyGainEfficiency + CAESAR_C2_ENERGY_EFF
   }
   if (cinema >= 6) {
-    panel.critRate = (panel.critRate ?? 0) + CAESAR_C6_SELF_CRIT_RATE
-    panel.critDmg = (panel.critDmg ?? 0) + CAESAR_C6_SELF_CRIT_DMG
+    panel.critRate = panel.critRate + CAESAR_C6_SELF_CRIT_RATE
+    panel.critDmg = panel.critDmg + CAESAR_C6_SELF_CRIT_DMG
   }
 }
 
@@ -63,10 +63,10 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   // 影画4 阿瑞斯攻城锤：连携/终结各 +3 支援点数；能量<20 时消耗1点支援点代替发动超强力盾击（5s ICD）。
   // 能量不足才触发（条件向），总量模型无法判「能量是否吃紧」→ 用可调次数滑杆表达实际代替次数，
   // 上限 = min(支援点数, floor(战斗时长/5))，默认 0（凯撒为支援，默认不假定能量饥饿）。
-  const chainTotal = Math.max(0, Math.floor(Number(state.chainCountTotal ?? 0)))
-  const ultCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0)))
+  const chainTotal = Math.max(0, Math.floor(state.chainCountTotal))
+  const ultCount = Math.max(0, Math.floor(state.ultimateCount))
   const supportPoints = CAESAR_C4_SUPPORT_POINTS_PER_CHAIN_ULT * (chainTotal + ultCount)
-  const icdCap = Math.max(0, Math.floor(Number(cfg.battleTime ?? 180) / CAESAR_C4_SUBSTITUTE_ICD_SECONDS))
+  const icdCap = Math.max(0, Math.floor(cfg.battleTime / CAESAR_C4_SUBSTITUTE_ICD_SECONDS))
   const maxExtra = Math.min(supportPoints, icdCap)
   const slider = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'caesar.c4SubstitutionCount') ?? 0)))
   const extraEx = Math.min(maxExtra, slider)

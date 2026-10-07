@@ -78,10 +78,10 @@ export const lycaonMechanic: AgentMechanicModule = {
     // （II~VI = 5/7.5/10/12.5/15%）。用户口径：这是局内冲击力，加成到面板看实际。
     // ⚠ R59 修复：原实现写死 `* 1.15`（= VI 满档）⇒ `potentialLevel` 滑块完全不进计算。
     const potLv = potentialLevelOf(potentialLevel)
-    panel.impact = (panel.impact ?? 0) * (1 + LYCAON_POTENTIAL_IMPACT_PCT[potLv] / 100)
+    panel.impact = panel.impact * (1 + LYCAON_POTENTIAL_IMPACT_PCT[potLv] / 100)
     // 影画6·冷酷猎手：莱卡恩自己对目标伤害 +50%（用户口径：全覆盖）
     if (cinemaLevel >= 6) {
-      panel.dmgBonus = (panel.dmgBonus ?? 0) + 50
+      panel.dmgBonus = panel.dmgBonus + 50
     }
   },
 
@@ -194,7 +194,7 @@ export const lycaonMechanic: AgentMechanicModule = {
     if (phase !== 'converge') return
     cfg.lycaonStunCount = stunCount
     cfg.lycaonTotalTime = combatTime
-    cfg.lycaonInvincibleTime = cfg.invincibleTime ?? 0
+    cfg.lycaonInvincibleTime = cfg.invincibleTime
     if (axis) cfg.lycaonWindowDuration = axis.windowSeconds
     // `lycaonBackstageDodgeCount` = 队伍**其他**槽位的**未缩放**闪反次数之和（round 14 批次 4 迁入，
     // 用本轮新增的 `interactions` 契约）。⚠ 原实现读 `configStore.team` **store 原值**——
@@ -209,7 +209,7 @@ export const lycaonMechanic: AgentMechanicModule = {
       let backstageDodgeCount = 0
       for (const [slotKey, snap] of Object.entries(interactions.bySlot)) {
         if (Number(slotKey) === ownSlot || !snap?.agentId) continue
-        backstageDodgeCount += snap.dodgeCounterCount ?? 0
+        backstageDodgeCount += snap.dodgeCounterCount
       }
       cfg.lycaonBackstageDodgeCount = backstageDodgeCount
     }
@@ -236,7 +236,7 @@ export const lycaonMechanic: AgentMechanicModule = {
         let sum = 0
         for (const [slotKey, snap] of Object.entries(interactions.bySlot)) {
           if (Number(slotKey) === ownSlot || !snap?.agentId) continue
-          sum += (snap.chainCountPerStun ?? 0) * countStun
+          sum += snap.chainCountPerStun * countStun
         }
         teamChainTotal = sum
       }
@@ -304,7 +304,7 @@ export const lycaonMechanic: AgentMechanicModule = {
     const backstageDodgeCount = cfg.lycaonBackstageDodgeCount ?? 0
 
     // 莱卡恩前台时间 = 自身执行计划全部招式总时间（平A/强特/终结/连携/闪反/弹刀/支援突击）
-    const frontTime = executions.reduce((sum, e) => sum + (e.totalTime ?? 0), 0)
+    const frontTime = executions.reduce((sum, e) => sum + e.totalTime, 0)
 
     // 围猎可用后台时间（用户口径）：总时间 - 无敌时间 - 失衡总时长 - 莱卡恩前台时间
     const backstageTotal = Math.max(0, totalTime - invincible - huntCount * windowDur - frontTime)

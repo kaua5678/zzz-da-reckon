@@ -92,7 +92,6 @@ describe('C-α next-round feedback', () => {
           { source: 'self', moveName: '好评转大·测试', count: 3.25 },
           { source: 'gift', moveName: '好评转大·测试', count: 1.5 },
           { source: 'gift', count: -0.5 },
-          { source: 'gift' },
           { source: 'self', moveName: 'ordinary', count: 1000 },
         ] },
       ] } as never,

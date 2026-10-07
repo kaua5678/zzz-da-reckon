@@ -34,11 +34,11 @@ describe('佩洛伊斯（1551）影画1 黄昏旧章', () => {
   })
 
   it('进场喧响：1命 buildCharConfig 注入 initialDecibelGift +1000，0命不注入', () => {
-    const cfg1: any = {}
+    const cfg1: any = { initialDecibelGift: 0 }
     peiluoProminenceMechanic.buildCharConfig!({ cfg: cfg1, panel: {}, cinemaLevel: 1 } as any)
     expect(cfg1.initialDecibelGift).toBe(1000)
 
-    const cfg0: any = {}
+    const cfg0: any = { initialDecibelGift: 0 }
     peiluoProminenceMechanic.buildCharConfig!({ cfg: cfg0, panel: {}, cinemaLevel: 0 } as any)
     expect(cfg0.initialDecibelGift ?? 0).toBe(0)
   })
@@ -117,7 +117,7 @@ describe('佩洛伊斯大招三分支拆分（patchExecutions）', () => {
 
 describe('佩洛伊斯耀斑 buff（下分支开局必打，全程覆盖）', () => {
   it('applyPanel：能量获得效率 +15%、伤害 +40%，且重复计算不累加（面板阶段每次新建面板）', () => {
-    const panel: any = {}
+    const panel: any = { energyGainEfficiency: 0, dmgBonus: 0 }
     peiluoProminenceMechanic.applyPanel!({ panel, cinemaLevel: 0 } as any)
     expect(panel.energyGainEfficiency).toBe(15)
     expect(panel.dmgBonus).toBe(40)
@@ -171,8 +171,12 @@ describe('佩洛伊斯日珥账本（命中回复/天光消耗）', () => {
   })
 
   it('buildResourceResult：命中回复并入日珥总账、天光消耗计入剩余', () => {
-    const cfg: any = { peiluoProminenceLedger: { hitGain: 20, spend: 30, lowSpend: 5, a3: 1, a4: 1 } }
-    const out: any = peiluoProminenceMechanic.buildResourceResult!({ cfg, state: { frontlineTime: 0, exSpecialCount: 0, ultimateCount: 0 } } as any)
+    const cfg: any = {
+      peiluoProminenceLedger: { hitGain: 20, spend: 30, lowSpend: 5, a3: 1, a4: 1 },
+      battleTime: 180, exSpecialEnergyConsume: 0, dodgeCounterCount: 0, parryCount: 0, blockCount: 0, perfectBlockCount: 0, quickAssistCount: 0,
+    }
+    const state = { frontlineTime: 0, backstageTime: 0, basicAttackTime: 0, exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 }
+    const out: any = peiluoProminenceMechanic.buildResourceResult!({ cfg, state } as any)
     const prom = out.specResources['peiluo_prominence']
     expect(prom.gains['peiluo_hit_gain']).toBe(20)
     expect(prom.total).toBe(30 + 60 + 20) // 入场30 + 被动固定60 + 命中回复20
@@ -256,7 +260,7 @@ describe('佩洛伊斯特殊技：强袭训令（主页交互栏次数）', () =
     expect(execs3[0].count).toBe(3)
 
     const execs0: any[] = []
-    peiluoProminenceMechanic.buildExecutions!({ cfg: {}, state: {}, executions: execs0 } as any)
+    peiluoProminenceMechanic.buildExecutions!({ cfg: { assaultOrderCount: 0 }, state: {}, executions: execs0 } as any)
     expect(execs0.length).toBe(0)
   })
 })
@@ -357,13 +361,13 @@ describe('CC-17：佩洛伊斯 directRowBonus（阳炎，轴臂桶 / 非轴标�
   })
 
   it('CC-335 额外能力·辉煌军势门控：additionalAbilityActive=0 时不加连携×300喧响，仅保留 C2 开局 +1500', () => {
-    const cfgOff: any = { agentId: '1551', slot: 0, chainCountPerStun: 2, panel: { additionalAbilityActive: 0 } }
+    const cfgOff: any = { agentId: '1551', slot: 0, chainCountPerStun: 2, extraSelfDecibelReward: 0, panel: { additionalAbilityActive: 0 } }
     peiluoProminenceMechanic.applyTeamConfig!({
       slot: 0, cfg: cfgOff, cinemaLevel: 2, phase: 'converge', stunCount: 4,
     } as any)
     expect(cfgOff.extraSelfDecibelReward).toBe(1500)
 
-    const cfgOn: any = { agentId: '1551', slot: 0, chainCountPerStun: 2, panel: { additionalAbilityActive: 1 } }
+    const cfgOn: any = { agentId: '1551', slot: 0, chainCountPerStun: 2, extraSelfDecibelReward: 0, panel: { additionalAbilityActive: 1 } }
     peiluoProminenceMechanic.applyTeamConfig!({
       slot: 0, cfg: cfgOn, cinemaLevel: 2, phase: 'converge', stunCount: 4,
     } as any)

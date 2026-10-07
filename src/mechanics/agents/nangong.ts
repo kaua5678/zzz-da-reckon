@@ -132,14 +132,14 @@ export function computeNangongMechanic(input: {
 
 function applyNangongPanel({ panel, outOfCombatPanel, cinemaLevel, settings }: AgentPanelInput): void {
   const coverage = clampRatio(settingOf(settings, 'nangong.coreBuffCoverage'))
-  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + MASTERY_BONUS + (cinemaLevel >= 4 ? C4_MASTERY_BONUS : 0)
+  panel.anomalyProficiency = panel.anomalyProficiency + MASTERY_BONUS + (cinemaLevel >= 4 ? C4_MASTERY_BONUS : 0)
   // 原文「初始异常掌控」⇒ 读局外面板（spec sourcePanelPhase=outOfCombat，CC-123）
   applyAgentAttributeConversions(panel, NANGONG_AGENT_ID, 1, { outOfCombat: outOfCombatPanel })
   // 核心被动命中增益（30s 刷新）：自身积蓄效率 / 自身失衡值（C6 追加 +50）
-  panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + CORE_EFFICIENCY_BONUS * coverage
-  panel.stunBuildUpBonus = (panel.stunBuildUpBonus ?? 0) + (CORE_BUILD_UP_BONUS + (cinemaLevel >= 6 ? C6_BUILD_UP_BONUS : 0)) * coverage
+  panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + CORE_EFFICIENCY_BONUS * coverage
+  panel.stunBuildUpBonus = panel.stunBuildUpBonus + (CORE_BUILD_UP_BONUS + (cinemaLevel >= 6 ? C6_BUILD_UP_BONUS : 0)) * coverage
   // C1：强特/地雷撞命中 → 敌全属性伤害抗性 -18%（40s 刷新 ≈ 常驻）
-  if (cinemaLevel >= 1) panel.enemyResReduction = (panel.enemyResReduction ?? 0) + C1_ALL_RES_REDUCTION
+  if (cinemaLevel >= 1) panel.enemyResReduction = panel.enemyResReduction + C1_ALL_RES_REDUCTION
 }
 
 function buildNangongCharConfig({ skills, cinemaLevel, cfg, getRowValue, panel, outOfCombatPanel }: AgentCharConfigInput): void {
@@ -184,7 +184,7 @@ function buildNangongTeamConfig(input: AgentTeamConfigInput): void {
   // **同一对象同一字段**，逐位等价；`Math.max(0, …)` 保留（原式的钳制）。
   // ⚠ 该字段**不判 axis**：原实现在轴/非轴都写（非轴时线程值恒 0，模块侧回落满层 4）。
   if (input.threads) {
-    own.inStunWindowTriggers = Math.max(0, Number(input.threads.inStunWindowTriggers ?? 0))
+    own.inStunWindowTriggers = Math.max(0, input.threads.inStunWindowTriggers)
   }
 
   // ── 路径③：**轴内单 moveId 计数**（走 `axis` 契约）──────────────────────────
@@ -238,12 +238,12 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
   cfg.nangongMinePairs = 0
   const basicExec = executions.find(e => e.moveId === 'basic_attack')
   if (!basicExec || pairSeconds <= 0) return
-  const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
-  const totalBeat = nangongBeatIncome(cinemaLevel, Number(state.frontlineTime ?? 0), battleTime)
-  const pairs = computeNangongMinePairs(totalBeat, Number(basicExec.totalTime ?? 0), pairSeconds)
+  const battleTime = Math.max(0, cfg.battleTime)
+  const totalBeat = nangongBeatIncome(cinemaLevel, state.frontlineTime, battleTime)
+  const pairs = computeNangongMinePairs(totalBeat, basicExec.totalTime, pairSeconds)
   if (pairs <= 0) return
   cfg.nangongMinePairs = pairs
-  basicExec.totalTime = Math.max(0, Number(basicExec.totalTime ?? 0) - pairs * pairSeconds)
+  basicExec.totalTime = Math.max(0, basicExec.totalTime - pairs * pairSeconds)
   const halfSeconds = pairSeconds / 2
   executions.push(moduleExecRow({
     moveId: MINE2_MOVE_ID,
@@ -297,7 +297,7 @@ function patchNangongExecutions({ cfg, executions }: AgentResourceInput): void {
     if (!(value > 0)) continue
     exec.anomalyBuildUp = value
     exec.anomalyBuildUpOverride = true
-    exec.totalAnomalyBuildUp = value * Math.max(0, exec.count ?? 0)
+    exec.totalAnomalyBuildUp = value * Math.max(0, exec.count)
   }
 }
 
@@ -347,9 +347,9 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
   // C6 颤音:改：非失衡期叠层（强特/地雷撞重击 +1、终结技重击 +2，上限4），进入失衡清除结算
   // 异放（固定倍率 500%，每层+25%）——回复端按执行计数器近似（用户指令：需要计数器做回复端）
   if (cinemaLevel >= 6 && stunCount > 0) {
-    const gained = Math.max(0, Math.floor(Number(state.exSpecialCount ?? 0)))
+    const gained = Math.max(0, Math.floor(state.exSpecialCount))
       + Math.max(0, Math.floor(Number(cfg.nangongMinePairs ?? 0))) * 2
-      + Math.max(0, Math.floor(Number(state.ultimateCount ?? 0))) * 2
+      + Math.max(0, Math.floor(state.ultimateCount)) * 2
     const stacks6 = Math.min(VIBRATO_MAX, Math.floor(gained / Math.max(1, stunCount)))
     if (stacks6 > 0) {
       const flat6 = Math.round(PRIME_RELEASE_FLAT_MULTIPLIER * (1 + (VIBRATO_STACK_PCT / 100) * stacks6))
@@ -363,7 +363,7 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
         inStunBound: true,
         formula: `releaseMultiplier = ${flat6}（500%统一倍率 × 层数系数(1+25%×${stacks6})）`,
         fields: [`primeStacks=${stacks6}`, `gained=${gained}`, `releaseMultiplier=${flat6}`],
-        note: `非失衡期获取计数 强特${Math.floor(Number(state.exSpecialCount ?? 0))} + 地雷撞段${Math.floor(Number(cfg.nangongMinePairs ?? 0)) * 2} + 终结×2 ${Math.floor(Number(state.ultimateCount ?? 0)) * 2} = ${gained}，均摊每窗 ${stacks6} 层。`,
+        note: `非失衡期获取计数 强特${Math.floor(state.exSpecialCount)} + 地雷撞段${Math.floor(Number(cfg.nangongMinePairs ?? 0)) * 2} + 终结×2 ${Math.floor(state.ultimateCount) * 2} = ${gained}，均摊每窗 ${stacks6} 层。`,
       })
     }
   }
@@ -371,8 +371,8 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
 
 function buildNangongResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const cinemaLevel = cinemaLevelOf(cfg.nangongCinemaLevel)
-  const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
-  const frontline = Math.max(0, Number(state.frontlineTime ?? 0))
+  const battleTime = Math.max(0, cfg.battleTime)
+  const frontline = Math.max(0, state.frontlineTime)
   const beatInitial = cinemaLevel >= 1 ? BEAT_CAP : BEAT_INITIAL
   const totalBeat = nangongBeatIncome(cinemaLevel, frontline, battleTime)
   const stacks = nangongVibratoStacks(cfg)

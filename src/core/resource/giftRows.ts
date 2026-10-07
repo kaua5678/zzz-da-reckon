@@ -40,7 +40,7 @@ export interface GiftRowInput {
 /** 构造一条赠送招式行（`source: 'gift'`）：零值字段与总量换算统一在此，调用方不再各写一份 */
 export function buildGiftRow(input: GiftRowInput): SkillExecution {
   const count = Math.max(0, input.count)
-  const actionTime = input.actionTime ?? 0
+  const actionTime = input.actionTime
   const comboAlignRatio = input.comboAlignRatio ?? 0
   const totalTime = count * actionTime
   const damageMultiplier = input.damageMultiplier ?? 0

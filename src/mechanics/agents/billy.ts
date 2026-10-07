@@ -101,7 +101,7 @@ function buildBillyCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput)
   cfg.billyCinemaLevel = cinemaLevel
   cfg.billyCoreCrouchCoverage = clampRatio(setting(cfg, 'billy.coreCrouchCoverage'))
   cfg.billyC4ExCrit = Math.max(0, Math.min(BILLY_C4_EX_CRIT_MAX, setting(cfg, 'billy.c4ExCrit')))
-  const battleTime = Math.max(0, Number(cfg.battleTime ?? 180))
+  const battleTime = Math.max(0, cfg.battleTime)
   cfg.billyBattleTime = battleTime
   cfg.billyC1Energy = cinemaLevel >= 1
     ? resolveBillyC1TriggerCount(battleTime) * BILLY_C1_ENERGY
@@ -114,8 +114,8 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     cinemaLevel: cinemaLevelOf(cfg.billyCinemaLevel),
     additionalActive: cfg.billyAdditionalActive === true,
     coreCrouchCoverage: Number(cfg.billyCoreCrouchCoverage ?? 1),
-    chainCountTotal: Number(state.chainCountTotal ?? 0),
-    ultimateCount: Number(state.ultimateCount ?? 0),
+    chainCountTotal: state.chainCountTotal,
+    ultimateCount: state.ultimateCount,
     c4ExCrit: Number(cfg.billyC4ExCrit ?? 32),
     battleTime: Number(cfg.billyBattleTime ?? 180),
   })
@@ -136,7 +136,7 @@ function patchBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
 function applyBillyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
   // 影画6：蹲姿…稳定据枪每层伤害+6%（满5层=30%）→ 面板增伤区（与 computeBillyCycle.c6Dmg 同源）。
   if (cinemaLevel >= 6) {
-    panel.dmgBonus = (panel.dmgBonus ?? 0) + BILLY_C6_DMG_PER_STACK * BILLY_C6_MAX_STACKS
+    panel.dmgBonus = panel.dmgBonus + BILLY_C6_DMG_PER_STACK * BILLY_C6_MAX_STACKS
   }
 }
 

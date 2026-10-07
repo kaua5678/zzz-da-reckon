@@ -187,7 +187,7 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
   const critRate = initialStat(outOfCombatPanel, panel, 'critRate')
   const critDmgBonus = specConversionAmount(normaConversion('norma_crit_to_critdmg'), critRate)
   if (critDmgBonus > 0) {
-    panel.critDmg = (panel.critDmg ?? 0) + critDmgBonus
+    panel.critDmg = panel.critDmg + critDmgBonus
   }
   // 核心被动：暴击>50% → 强特/特/终结失衡（每1% +0.8，cap 40）—— 定向招式失衡值
   const stunBonus = specConversionAmount(normaConversion('norma_crit_to_stun'), critRate)
@@ -199,14 +199,14 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
   // 核心被动：贯穿力→攻击（1.25/点，cap 1200）
   const atkBonus = specConversionAmount(normaConversion('norma_pen_to_atk'), calcPenetrationPower(panel))
   if (atkBonus > 0) {
-    panel.atk = (panel.atk ?? 0) + atkBonus
+    panel.atk = panel.atk + atkBonus
   }
   // 额外能力·集群优势：持[技术鸿沟]敌人失衡持续时间 +2 秒（命中即叠全程生效，用户确认）。
   // 放 applyPanel（而非 buildCharConfig）：computeWindowDuration 读展示面板（computePanelPhases），
   // buildCharConfig 的修改不进入该面板 → 原来 +2s 从未生效。
   // 技术鸿沟失衡易伤/攻击提升由 teammate-buffs.json 与 buildCharConfig 承载（覆盖率滑块在队友 buff 侧）。
   if (additionalAbilityActiveOf(panel)) {
-    panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + 2
+    panel.stunDurationBonusSeconds = panel.stunDurationBonusSeconds + 2
   }
 
   // 额外能力·集群优势：嗯呢弹幕期间攻击 +44~870（Lv7 满级 870）。
@@ -220,7 +220,7 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
   if (agent.id === '1571') {
     if (additionalAbilityActiveOf(panel)) {
       // 满覆盖（用户确认去弹幕覆盖率滑块，嗯呢弹幕易全程覆盖）
-      panel.atk = (panel.atk ?? 0) + TECH_GAP_ATK_CAP
+      panel.atk = panel.atk + TECH_GAP_ATK_CAP
     }
   }
 }
@@ -228,7 +228,7 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
 function buildNormaCharConfig({ slot, agent, cinemaLevel, team, skills, cfg }: AgentCharConfigInput): void {
   cfg.normaCinemaLevel = cinemaLevel
   // CC-306 / CC-333：额外能力条件唯一来源 = spec 1571 `additionalAbility`（优先取入参 agent，兼容非定长/稀疏 team）
-  cfg.normaAdditionalAbilityActive = specAdditionalAbilityActive(team, slot, agent ?? team.find(m => m.slot === slot)?.agent ?? team[slot]?.agent)
+  cfg.normaAdditionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
   cfg.skipGenericExSpecial = true // 嗯呢弹幕由本模块生成 6 段
   // 嗯呢弹幕耗能（用户确认）：40 激活 + 长按 20/s（默认 2s）→ 每次 80 能量；
   // 资源池按此驱动强特次数（长按能量此前漏算 → 次数被高估，2026-08 修复）
@@ -396,7 +396,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       dazeMultiplier: useDazeMult ? baseDaze * c6DazeMult : undefined,
       dazeMultiplierOverride: useDazeMult,
       skillDamageTarget: 'exSpecial',
-      skillTableNote: `火力实验强化期超出失衡总时长部分（${fmt(source.armorPierceSeconds ?? 0)}s）：未失衡目标发射破甲弹头，累积较多失衡值${useDazeMult ? ' · 影画6：破甲弹头失衡值+30%' : ''}`,
+      skillTableNote: `火力实验强化期超出失衡总时长部分（${fmt(source.armorPierceSeconds)}s）：未失衡目标发射破甲弹头，累积较多失衡值${useDazeMult ? ' · 影画6：破甲弹头失衡值+30%' : ''}`,
     }))
   }
   if (source.highExplosiveCount > 0) {
@@ -411,7 +411,7 @@ function buildNormaExecutions({ cfg, state, executions }: AgentResourceInput): v
       damageMultiplier: useDmgMult ? baseDmg * c6DmgMult : undefined,
       damageMultiplierOverride: useDmgMult,
       skillDamageTarget: 'exSpecial',
-      skillTableNote: `火力实验失衡期内（${fmt(source.highExplosiveSeconds ?? 0)}s）：失衡目标发射高爆弹头，更高伤害${useDmgMult ? ' · 影画6：高爆弹头伤害+30%' : ''}`,
+      skillTableNote: `火力实验失衡期内（${fmt(source.highExplosiveSeconds)}s）：失衡目标发射高爆弹头，更高伤害${useDmgMult ? ' · 影画6：高爆弹头伤害+30%' : ''}`,
     }))
   }
 
@@ -581,7 +581,7 @@ export const normaMechanic: AgentMechanicModule = {
     // 只有编排层 chainGift 真读了琉音的设置 ⇒ 设置 ≠ 自动时两个队友各拿一份赠链。下拉标签也是「琉音…」，
     // 且只在琉音在队时显示。若要让诺姆落点可调，给本模块注册自己的设置并在这里声明 targetSlot。
     // 赠的是**连携**行 ⇒ 单位耗时 = 落点槽的 chainActionTime（与琉音赠大用 ultimateActionTime 不同）
-    secondsPerUnit: ({ targetCfg }) => targetCfg.chainActionTime ?? 0,
+    secondsPerUnit: ({ targetCfg }) => targetCfg.chainActionTime,
     // 影画4·膛温换连携：每次赠链「诺姆 + 上一位队友**各** +200 不可分享喧响」。
     // ⚠ 引擎在逐槽循环里对每个 cfg 调本函数，但 `normaCinemaLevel` **只写在诺姆自己的 cfg 上**
     //   ⇒ 实际只在诺姆槽结算（迁移前的 `* 200 * 2` 即此语义：在诺姆槽一次算入两侧的量）。

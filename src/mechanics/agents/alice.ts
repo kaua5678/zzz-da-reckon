@@ -74,7 +74,7 @@ function applyAlicePanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelIn
 
   // 畏缩：全局物理异常积蓄效率 +25%（默认覆盖 100%）
   if (aa) {
-    panel.physicalAnomalyBuildUpEfficiency = (panel.physicalAnomalyBuildUpEfficiency ?? 0) + COWERING_BUILD_UP_EFFICIENCY
+    panel.physicalAnomalyBuildUpEfficiency = panel.physicalAnomalyBuildUpEfficiency + COWERING_BUILD_UP_EFFICIENCY
   }
 
   // 一命目标减防 / 二命全队强击+紊乱增伤 已由 spec teamBuffs（alice_c1_enemy_def_reduction /
@@ -83,7 +83,7 @@ function applyAlicePanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelIn
 
   // 四命：攻击时无视目标 10% 物理伤害抗性
   if (cinemaLevel >= 4) {
-    panel.enemyPhysicalResReduction = (panel.enemyPhysicalResReduction ?? 0) + C4_PHYSICAL_RES_REDUCTION
+    panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + C4_PHYSICAL_RES_REDUCTION
   }
 
   applyAgentAttributeConversions(panel, ALICE_AGENT_ID)
@@ -165,7 +165,7 @@ function buildAliceCharConfig({
   cfg.aliceCinema2UltSpark = cinemaLevel >= 2
 
   // 爱丽丝特殊开局喧响：入场立即获得额外 1000 点（在通用 1000 之上）
-  cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 1000) + ALICE_INITIAL_DECIBEL_BONUS
+  cfg.initialDecibelGift = cfg.initialDecibelGift + ALICE_INITIAL_DECIBEL_BONUS
 
   // 畏缩机制配置
   cfg.aliceTeamAssaultSwordWill = TEAM_ASSAULT_SWORD_WILL
@@ -297,7 +297,7 @@ function buildAliceExecutions({ cfg, state, executions }: AgentResourceInput): v
   }))
 
   // 四命：每次强特伴随一次强化后的普通攻击：星仪序曲（用于异常积蓄与伤害结算）
-  const exSpecialCount = state.exSpecialCount ?? 0
+  const exSpecialCount = state.exSpecialCount
   if (exSpecialCount > 0) {
     executions.push(moduleExecRow({
       moveId: ALICE_ENHANCED_BASIC_MOVE,
@@ -613,7 +613,7 @@ export const aliceMechanic: AgentMechanicModule = {
           // 乘区口径（用户 2026-09-03）：附伤占攻击区(异常精通)×倍率区(3300%)两个基础区，
           // 其余增伤/防御/抗性/易伤/暴击乘区全吃（同简 6 命附伤）→ 走伤害池直伤同一入参拼装（input.directDamage，CC-176：含侵染区）；
           // 攻击本体必定暴击（原文：额外攻击必定暴击）→ critMode='crit'
-          const proficiency = alicePanel.anomalyProficiency ?? 0
+          const proficiency = alicePanel.anomalyProficiency
           const result = directDamage({
             panel: alicePanel,
             element: 'physical',

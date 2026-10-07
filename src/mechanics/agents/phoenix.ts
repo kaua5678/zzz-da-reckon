@@ -165,7 +165,7 @@ function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResour
   for (const e of executions) {
     if (!e.moveId || !PHOENIX_COMBUSTION_MOVE_IDS.has(e.moveId)) continue
     if (e.moveId === '1641003' || e.moveId === '1641004') continue // 平A段已按段循环计
-    income += Math.max(0, Number(e.count ?? 0)) * (meta[e.moveId] ?? 0)
+    income += Math.max(0, e.count) * (meta[e.moveId] ?? 0)
   }
   return income
 }
@@ -182,20 +182,20 @@ export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: Age
 function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: AgentCharConfigInput): void {
   cfg.phoenixCinemaLevel = cinemaLevel
   cfg.phoenixAdditionalActive = additionalAbilityActiveOf(panel)
-  cfg.phoenixAnomalyMastery = panel.anomalyMastery ?? 0
+  cfg.phoenixAnomalyMastery = panel.anomalyMastery
   const teamAnomalyCount = team ? team.filter(m => m.agent?.specialty === 'anomaly').length : 0
   cfg.phoenixTeamAnomalyCount = teamAnomalyCount > 0 ? teamAnomalyCount : 1
   // 影画4：长按普攻 +200 喧响/次——行级 decibel 会被 enrich 按倍率表回填，改走 initialDecibelGift。
   // 次数：滑块覆盖优先；自动按 战斗时长/15s 一次长按普攻估算 [猜测·低]（余火循环收敛值在 buildExecutions 才有）。
   if (cinemaLevel >= 4) {
     const override = setting(cfg, 'phoenix.chargedAttackCount')
-    const count = override > 0 ? whole(override) : Math.max(0, Math.floor((cfg.battleTime ?? 180) / 15))
-    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + PHOENIX_C4_CHARGED_DECIBEL * count
+    const count = override > 0 ? whole(override) : Math.max(0, Math.floor(cfg.battleTime / 15))
+    cfg.initialDecibelGift = cfg.initialDecibelGift + PHOENIX_C4_CHARGED_DECIBEL * count
   }
   // 影画2「发动[强化特殊技：第二段]时回复8点能量」：第二段=通用强特行（下述），行级 energyRecovery
   // 会被 enrich 回填 → 按估算强特次数并入 initialEnergyGift [猜测·低：战斗时长/15s 一次强特]。
   if (cinemaLevel >= 2) {
-    cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + PHOENIX_C2_EX2_ENERGY * Math.max(0, Math.floor((cfg.battleTime ?? 180) / 15))
+    cfg.initialEnergyGift = cfg.initialEnergyGift + PHOENIX_C2_EX2_ENERGY * Math.max(0, Math.floor(cfg.battleTime / 15))
   }
   // 强化特殊技（2026-09-12 组队对账修正）：原文「第一段=点按 / 第二段=长按」是**同一强特的两种释放变体**
   //（二选一），不是每轮连段——主循环取长按优选（第二段 1191.6% > 第一段 1046.2%），单段耗能 40。
@@ -241,10 +241,10 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: Agent
  */
 function applyPhoenixPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
   if (!panel) return
-  panel.anomalyProficiency = (panel.anomalyProficiency ?? 0) + PHOENIX_CORE_PROFICIENCY
+  panel.anomalyProficiency = panel.anomalyProficiency + PHOENIX_CORE_PROFICIENCY
   if (cinemaLevel >= 2) {
     const cov = clampRatio(settingOf(settings, 'phoenix.c2IncinerationCoverage'))
-    panel.anomalyBuildUpEfficiency = (panel.anomalyBuildUpEfficiency ?? 0) + PHOENIX_C2_BUILDUP_EFF * cov
+    panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + PHOENIX_C2_BUILDUP_EFF * cov
   }
 }
 
@@ -260,8 +260,8 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
   const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const chargedCount = phoenixChargedCount(cfg, state, executions)
   cfg.phoenixChargedCount = chargedCount
-  const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
-  const ultCount = Math.max(0, Number(state.ultimateCount ?? 0))
+  const exCount = Math.max(0, state.exSpecialCount)
+  const ultCount = Math.max(0, state.ultimateCount)
 
   const chargedMeta = cfg.phoenixChargedMeta as { moveId: string; actionTime: number } | undefined
   if (chargedMeta && chargedCount > 0) {
@@ -317,11 +317,11 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
  *（南宫羽 ×1.35 / 妮可C1 行级乘法同款先例；anomalyBuildUpOverride 同步防 enrich 回填）。
  */
 function patchPhoenixExecutions({ state, executions }: AgentResourceInput): void {
-  const ultCount = Math.max(0, Number(state.ultimateCount ?? 0))
+  const ultCount = Math.max(0, state.ultimateCount)
   if (ultCount <= 0) return
   const chainExec = executions.find(e => e.moveId === PHOENIX_CHAIN_MOVE_ID)
   if (!chainExec) return
-  const chainCount = Math.max(0, Number(chainExec.count ?? 0))
+  const chainCount = Math.max(0, chainExec.count)
   if (chainCount <= 0) return
   const consume = phoenixWangliangChainBonus(ultCount, chainCount)
   if (consume <= 0) return
@@ -340,13 +340,13 @@ function patchPhoenixExecutions({ state, executions }: AgentResourceInput): void
 /** 必做前台时间：通用强特（第二段/长按优选）+ 长按普攻（次数读上一轮 buildExecutions 的收敛值）。
  *  终结入场 = 收尾追加攻击不计时（1451007 先例）；强特点按变体（第一段）不进自动循环。 */
 function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
-  const exTime = Math.max(0, exSpecialCount) * (cfg.exSpecialActionTime ?? 0)
+  const exTime = Math.max(0, exSpecialCount) * cfg.exSpecialActionTime
   const chargedMeta = cfg.phoenixChargedMeta as { actionTime: number } | undefined
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
   const chargedTime = chargedMeta ? chargedCount * chargedMeta.actionTime : 0
   return {
     necessaryTime: exTime + chargedTime,
-    comboAlignTime: exTime * (cfg.exSpecialComboAlignRatio ?? 0),
+    comboAlignTime: exTime * cfg.exSpecialComboAlignRatio,
   }
 }
 
@@ -357,8 +357,8 @@ function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEvent
   const coverage = clampRatio(setting(cfg, 'phoenix.releaseCoverage'))
   if (coverage <= 0) return
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
-  const exCount = Math.max(0, Number(state.exSpecialCount ?? 0))
-  const ultCount = Math.max(0, Number(state.ultimateCount ?? 0))
+  const exCount = Math.max(0, state.exSpecialCount)
+  const ultCount = Math.max(0, state.ultimateCount)
 
   const chargedRelease = Math.round(chargedCount * coverage)
   if (chargedRelease > 0) {

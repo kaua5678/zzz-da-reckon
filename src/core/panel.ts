@@ -158,7 +158,7 @@ export function panelAt(panels: readonly PanelValues[], slot: number): PanelValu
   const found = panels.find(p => p.slot === slot)
   if (found) return found
   // 「已盖章」= slot >= 0（`emptyPanel()` 的 -1 与手工构造对象的 undefined 都算未盖章）。
-  if (panels.some(p => (p.slot ?? -1) >= 0)) return undefined // 压缩数组：该槽确实无角色
+  if (panels.some(p => p.slot >= 0)) return undefined // 压缩数组：该槽确实无角色
   return panels[slot] // 整体未盖章的密集数组（测试手工构造）：下标 == 槽位号
 }
 
@@ -311,7 +311,7 @@ export function calcPanel(
     )
     // CC-337：局外总回能在 calcPanel 唯一出口盖章，保证 computePanelPhases / computeEntrySnapshotPanel /
     // teammateBuffSource / substatOptimizer 等所有调用方的 outOfCombat 与 inCombat（applyBuffs 浅拷贝继承）同源一致。
-    p.energyRegenOutOfCombat = calcEnergyRegenTotal(p, 1.2)
+    p.energyRegenOutOfCombat = calcEnergyRegenTotal(p)
     return p
   }
   let buffs = collect()

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { calcStunPool } from '@/core/stunPool'
+import { emptyPanel } from '@/core/panel'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -250,7 +251,7 @@ describe('「扳机」执行计划与失衡池', () => {
 
     const pool = calcStunPool({
       executions: stunExecs as never,
-      panels: [{ impact: 100 } as never],
+      panels: [{ ...emptyPanel(), impact: 100 }],
       bossStunValue: 10000,
       chainCountPerStun: 3,
     })

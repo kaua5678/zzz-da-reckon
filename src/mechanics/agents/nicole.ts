@@ -61,9 +61,9 @@ function buildCharConfig({ cinemaLevel, cfg, skills }: AgentCharConfigInput): vo
 
   // 影画2：核心减益触发回 5 能量 / 15s → 整局 floor(t/15)×5
   if (cinema >= 2) {
-    const battleTime = cfg.battleTime ?? 180
+    const battleTime = cfg.battleTime
     const triggers = Math.max(0, Math.floor(battleTime / NICOLE_C2_CD))
-    cfg.initialEnergyGift = (cfg.initialEnergyGift ?? 0) + triggers * NICOLE_C2_ENERGY
+    cfg.initialEnergyGift = cfg.initialEnergyGift + triggers * NICOLE_C2_ENERGY
   }
 }
 
@@ -82,12 +82,12 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
       exec.dazeMultiplierOverride = true
       exec.anomalyBuildUp = Number(cfg.nicoleC1EnergyFieldAnomaly ?? 0)
       exec.anomalyBuildUpOverride = true
-      exec.totalAnomalyBuildUp = Number(cfg.nicoleC1EnergyFieldAnomaly ?? 0) * (exec.count ?? 0)
+      exec.totalAnomalyBuildUp = Number(cfg.nicoleC1EnergyFieldAnomaly ?? 0) * exec.count
     }
     if ((exec.anomalyBuildUp ?? 0) > 0) {
       exec.anomalyBuildUp = (exec.anomalyBuildUp ?? 0) * (1 + NICOLE_C1_EX_BONUS / 100)
       if (exec.totalAnomalyBuildUp != null) {
-        exec.totalAnomalyBuildUp = exec.anomalyBuildUp * (exec.count ?? 0)
+        exec.totalAnomalyBuildUp = exec.anomalyBuildUp * exec.count
       }
     }
     exec.skillTableNote =

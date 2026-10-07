@@ -64,9 +64,9 @@ const XIXIFU_C6_MARK_ICD_SECONDS = 3
 
 function applyXixifuPanel({ panel }: AgentPanelInput): void {
   // 蚀骨自拐暴击率：每次触发 +6%（15秒，至多3层）→ 常驻 +18%
-  panel.critRate = (panel.critRate ?? 0) + XIXIFU_SHIGU_CRIT_RATE
+  panel.critRate = panel.critRate + XIXIFU_SHIGU_CRIT_RATE
   if (!additionalAbilityActiveOf(panel)) return
-  panel.critDmg = (panel.critDmg ?? 0) + XIXIFU_SELF_CRIT_DMG
+  panel.critDmg = panel.critDmg + XIXIFU_SELF_CRIT_DMG
 }
 
 function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentCharConfigInput): void {
@@ -89,7 +89,7 @@ function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentC
 function applyXixifuTeamConfig({ characters, phase, stunCount }: AgentTeamConfigInput): void {
   if (phase !== 'converge') return
   for (const c of characters) {
-    if (c.agentId === XIXIFU_AGENT_ID) c.xixifuStunCount = Math.max(0, Math.floor(stunCount ?? 0))
+    if (c.agentId === XIXIFU_AGENT_ID) c.xixifuStunCount = Math.max(0, Math.floor(stunCount))
   }
 }
 
@@ -106,8 +106,8 @@ function resolveXixifuResources(cfg: AgentResourceInput['cfg'], state: AgentReso
   // state.chainCountTotal、终结读 cfg.axisUltimateTotal（编排层按窗口数加权注入），
   // 轴内块全在失衡窗口内，不吃 min(ult, stun) 折扣。
   const axisUlt = Math.max(0, Math.floor(Number(cfg.axisUltimateTotal ?? 0) || 0))
-  const chain = Math.max(0, Math.floor(state.chainCountTotal ?? 0))
-  const ult = axisUlt > 0 ? axisUlt : Math.max(0, Math.floor(state.ultimateCount ?? 0))
+  const chain = Math.max(0, Math.floor(state.chainCountTotal))
+  const ult = axisUlt > 0 ? axisUlt : Math.max(0, Math.floor(state.ultimateCount))
   const stun = Math.max(0, Math.floor(Number(cfg.xixifuStunCount ?? 0)))
   const stunnedUlt = axisUlt > 0 ? ult : Math.min(ult, stun)
   cfg.xixifuC2Toxin = cinema >= 2 ? (chain + stunnedUlt) * 3 : 0
@@ -130,13 +130,13 @@ function computeXixifuCounts(cfg: AgentResourceInput['cfg'], state: AgentResourc
   // 影画4 [觉悟]：强特/连携/终结各+1层，默认全消耗 → 特殊蚀骨 = 三者次数之和，无失衡值
   const c4Extra = cinema >= 4
     ? Math.min(
-        Math.floor(state.exSpecialCount ?? 0) + Math.floor(state.chainCountTotal ?? 0) + Math.floor(state.ultimateCount ?? 0),
+        Math.floor(state.exSpecialCount) + Math.floor(state.chainCountTotal) + Math.floor(state.ultimateCount),
         shekissCount * 3,
       )
     : 0
   // 影画6 [蚀骨印记]：每次蚀骨得1层印记，全队命中消耗，3秒至多1层 → min(印记数, 战斗时间/3)
   const c6Extra = cinema >= 6
-    ? Math.min(baseShigu + c4Extra, Math.floor((cfg.battleTime ?? 180) / XIXIFU_C6_MARK_ICD_SECONDS))
+    ? Math.min(baseShigu + c4Extra, Math.floor(cfg.battleTime / XIXIFU_C6_MARK_ICD_SECONDS))
     : 0
   return { toxinTotal, shekissCount, baseShigu, shiguTotal: baseShigu + c4Extra + c6Extra, cinema }
 }
@@ -243,9 +243,9 @@ function xixifuToxinInAxisFraction(input: DirectRowAxisSplitInput): number {
   const total = Math.max(0, (toxin?.initialValue ?? 0) + (toxin?.totalGain ?? 0))
   if (total <= 0) return 0
   const g = (toxin?.gains ?? {}) as Record<string, number>
-  const totalEx = Math.max(1, cr.exSpecialCount ?? 0)
-  const totalUlt = Math.max(1, cr.ultimateCount ?? 0)
-  const totalChain = Math.max(1, cr.chainCountTotal ?? 0)
+  const totalEx = Math.max(1, cr.exSpecialCount)
+  const totalUlt = Math.max(1, cr.ultimateCount)
+  const totalChain = Math.max(1, cr.chainCountTotal)
   const inEx = axisInUnits('1521008') + axisInUnits('1521009')
   const inUlt = axisInUnits('1521013')
   const inChain = axisInUnits('1521012')

@@ -156,12 +156,12 @@ function planFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput['
 export function estimateNekomataHitPurrGain(executions: SkillExecution[]): number {
   let hitGain = 0
   for (const exec of executions) {
-    if ((exec.count ?? 0) <= 0 && (exec.totalTime ?? 0) <= 0) continue
+    if (exec.count <= 0 && exec.totalTime <= 0) continue
     if (exec.moveId === 'basic_attack') {
-      hitGain += NEKOMATA_BASIC_HIT_PURR_PER_SEC * (exec.totalTime ?? 0)
+      hitGain += NEKOMATA_BASIC_HIT_PURR_PER_SEC * exec.totalTime
       continue
     }
-    if ((exec.count ?? 0) > 0) hitGain += (HIT_PURR_GAIN[exec.moveId ?? ''] ?? 0) * (exec.count ?? 0)
+    if (exec.count > 0) hitGain += (HIT_PURR_GAIN[exec.moveId] ?? 0) * exec.count
   }
   return hitGain
 }
@@ -202,30 +202,30 @@ export const NEKOMATA_C6_CRIT_DMG = 54
 function applyNekoPanel(input: AgentPanelInput): void {
   const { panel, cinemaLevel, potentialLevel, settings } = input
   // 核心被动·猫步诡影 Lv.7：[闪避反击]/[快速支援]命中 60% 增伤 → 直接永续
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + 60
+  panel.dmgBonus = panel.dmgBonus + 60
   if (cinemaLevel >= 1) {
     // 影画1·猎鸟技巧：肉球突袭永续 → 背后命中全覆盖 → 无视 16% 物理抗性
-    panel.enemyPhysicalResReduction = (panel.enemyPhysicalResReduction ?? 0) + 16
+    panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + 16
   }
   if (cinemaLevel >= 2) {
     // 影画2·猫鼠游戏：单敌前场能量获得效率 +25%
-    panel.energyGainEfficiency = (panel.energyGainEfficiency ?? 0) + 25
+    panel.energyGainEfficiency = panel.energyGainEfficiency + 25
   }
   {
     // 潜能觉醒·猫的报恩（潜能 II~VI）：肉球突袭中暴伤 20/30/40/50/60% 永续。
     // ⚠ R58 订正：档位**按潜能等级取**（旧实现用 cinemaLevel 索引 + 门控 ⇒ 潜能轴完全失效）。
     const lv = potentialLevelOf(potentialLevel)
     const nightProwl = NEKOMATA_POTENTIAL_CRIT_DMG[lv] ?? 0
-    if (nightProwl > 0) panel.critDmg = (panel.critDmg ?? 0) + nightProwl
+    if (nightProwl > 0) panel.critDmg = panel.critDmg + nightProwl
   }
   if (cinemaLevel >= 4) {
     // 影画4·磨爪：强特暴击率 7%×2 层 → 默认永续，给覆盖率滑块
     const coverage = Math.max(0, Math.min(1, settingOf(settings, 'nekomata.c4CritRateCoverage')))
-    panel.critRate = (panel.critRate ?? 0) + NEKOMATA_C4_CRIT_RATE * coverage
+    panel.critRate = panel.critRate + NEKOMATA_C4_CRIT_RATE * coverage
   }
   if (cinemaLevel >= 6) {
     // 影画6·捕食者血统：连携/终结暴伤 18%×3 层满层永续
-    panel.critDmg = (panel.critDmg ?? 0) + NEKOMATA_C6_CRIT_DMG
+    panel.critDmg = panel.critDmg + NEKOMATA_C6_CRIT_DMG
   }
 }
 

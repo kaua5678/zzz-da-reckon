@@ -49,8 +49,8 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     const panel = panelAt(panels, exec.slot) ?? emptyPanel()
     // 按属性口径元素取抗性（变种与基础共享抗性；frostfire 经 resolveStatElement 按冰）
     const elementRes = enemyAnomalyResistances[resolveStatElement(exec.element) ?? ''] ?? 0
-    const onStunEff = ((panel.anomalyBuildUpEfficiencyOnStunBonus ?? 0)
-      + (exec.skillType === 'chain' ? (panel.anomalyBuildUpEfficiencyOnStunChainBonus ?? 0) : 0)) * stunnedRatio
+    const onStunEff = (panel.anomalyBuildUpEfficiencyOnStunBonus
+      + (exec.skillType === 'chain' ? panel.anomalyBuildUpEfficiencyOnStunChainBonus : 0)) * stunnedRatio
     const perHit = calcPerHitBuildUp(exec.baseBuildUp, panel, elementRes, exec.element, (exec.buildUpEfficiencyBonusPct ?? 0) + onStunEff)
     const total = perHit * exec.count
 
@@ -284,7 +284,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const coverage = calcCoverage(coverageTriggerCounts, totalTime, invincibleTime, elementDurations, hasWindChar)
 
   // 霜寒状态使敌人受到暴击伤害+10%，按霜寒覆盖率折算；只影响伤害结算面板（`calcAnomalyPoolDamage` 叠加），不影响积蓄。
-  const frostCritBonus = 10 * (coverage.frostCoverageRate ?? 0)
+  const frostCritBonus = 10 * coverage.frostCoverageRate
 
   // ---- 5. 乱流次数与风蚀（紊乱 / 乱流伤害在结算侧由 `calcAnomalyPoolDamage` 按 damageInputs 算，r701） ----
   let turbulenceCount = 0
@@ -414,7 +414,7 @@ export function calcAnomalyPoolDamage(
 ): Pick<AnomalyPoolResult, 'disorderDamage' | 'turbulenceDamage' | 'coweringDot'> {
   const { frostCritBonus, disorder, turbulence, cowering } = inputs
   const damagePanels = frostCritBonus > 0
-    ? panels.map(p => ({ ...p, enemyCritDmgTakenBonus: (p.enemyCritDmgTakenBonus ?? 0) + frostCritBonus }))
+    ? panels.map(p => ({ ...p, enemyCritDmgTakenBonus: p.enemyCritDmgTakenBonus + frostCritBonus }))
     : panels
   const config: DamageCalcConfig = { ...inputs.dmgConfig, globalAnomalyMultiplier: env.globalAnomalyMultiplier }
   return {

@@ -47,12 +47,12 @@ describe('千夏（1491）额外能力·白日梦对位法门控', () => {
   })
 
   it('进场回能 15：额外能力激活时并入 initialEnergyGift，未激活不注入', () => {
-    const cfgOn: any = {}
-    qianxiaMechanic.buildCharConfig!({ cfg: cfgOn, panel: { additionalAbilityActive: 1 } } as any)
+    const cfgOn: any = { initialEnergyGift: 0 }
+    qianxiaMechanic.buildCharConfig!({ cfg: cfgOn, team: [], panel: { additionalAbilityActive: 1 } } as any)
     expect(cfgOn.initialEnergyGift).toBe(15)
 
-    const cfgOff: any = {}
-    qianxiaMechanic.buildCharConfig!({ cfg: cfgOff, panel: { additionalAbilityActive: 0 } } as any)
+    const cfgOff: any = { initialEnergyGift: 0 }
+    qianxiaMechanic.buildCharConfig!({ cfg: cfgOff, team: [], panel: { additionalAbilityActive: 0 } } as any)
     expect(cfgOff.initialEnergyGift ?? 0).toBe(0)
   })
 })

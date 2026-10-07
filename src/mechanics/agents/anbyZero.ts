@@ -245,10 +245,10 @@ function applyAnbyZeroPanel({ cinemaLevel, potentialLevel, panel, settings }: Ag
     silverStarCoverage: settingOf(settings, 'anbyZero.silverStarCoverage'),
     criticalActionTime: 0, // 面板阶段不消费苍光·临界动作时间（仅 buildExecutions 用）
   })
-  if (cycle.critRateGain > 0) panel.critRate = (panel.critRate ?? 0) + cycle.critRateGain
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + cycle.coreDmgBonus
+  if (cycle.critRateGain > 0) panel.critRate = panel.critRate + cycle.critRateGain
+  panel.dmgBonus = panel.dmgBonus + cycle.coreDmgBonus
   if (cinemaLevel >= 4) {
-    panel.enemyElectricResReduction = (panel.enemyElectricResReduction ?? 0) + cycle.c4ResIgnore
+    panel.enemyElectricResReduction = panel.enemyElectricResReduction + cycle.c4ResIgnore
   }
 }
 
@@ -285,8 +285,8 @@ function buildAnbyZeroResourceSections({ result }: AgentResourceSectionsInput) {
  * `convergence.ts#computeAnbyNextRoundFeedback` 逐字搬入，规则 6）：
  * 队友追加攻击命中 → 白雷层数（16.667/次、33.333 折 1 层、ICD=floor(战斗/5)、默认计 75%）。
  *
- * ⚠ 战斗时间口径逐位保留：迁移前传的是 `configStore.enemy.battleTime`（**可能 undefined**，
- * 由算式里的 `?? 180` 兜底），不是 `base.totalTime`；二者通常同源但缺省路径不同，不合并。
+ * 战斗时间读钩子入参 `combatTime`（= `base.totalTime`，与 `cfg.battleTime` 同源于 `configStore.enemy.battleTime`；
+ * 迁移前直读 store 并 `?? 180`，r723 起入参必填、不再兜底）。
  * 输入侧读调整后结果 `adjustedResult`（诺姆赠链/琉音转大落地后；无调整时流水线传入的就是本轮装配结果同形，CC-435 起必填非 null）。
  */
 function anbyNextRoundFeedback({ cfg, adjustedResult, combatTime, getAgentSkills }: AgentNextRoundFeedbackInput): ModuleFeedback {
@@ -297,18 +297,17 @@ function anbyNextRoundFeedback({ cfg, adjustedResult, combatTime, getAgentSkills
     .filter(c => c.agentId !== ANBY_ZERO_ID)
     .reduce((sum, c) => {
       const skills = getAgentSkills(c.agentId)
-      return sum + (c.executions ?? []).reduce((a, e) => {
-        if (e.skillDamageTarget === 'additionalAttack') return a + (e.count ?? 0)
+      return sum + c.executions.reduce((a, e) => {
+        if (e.skillDamageTarget === 'additionalAttack') return a + e.count
         // resourceResult 行上没有现成标记：按 catalog moveId 现场推断（同伤害池 infer 口径）
         for (const cat of skills?.categories ?? []) {
           const mv = (cat.moves ?? []).find(m => String(m.id) === String(e.moveId))
-          if (mv && inferSkillDamageTarget(cat, mv) === 'additionalAttack') return a + (e.count ?? 0)
+          if (mv && inferSkillDamageTarget(cat, mv) === 'additionalAttack') return a + e.count
         }
         return a
       }, 0)
     }, 0)
-  // ⚠ 原实现读 configStore.enemy.battleTime（可 undefined）⇒ `?? 180`；钩子入参已含同源值。
-  const icdCap = Math.floor(Number(combatTime ?? 180) / 5)
+  const icdCap = Math.floor(combatTime / 5)
   const triggers = Math.min(hits, icdCap)
   // 原判据 =「结果行集里有 1381」；迁进模块后仍按**结果行集**判（不是 cfg 存在），
   // 逐位保留「无 1381 结果行 ⇒ 不产层数」这一条（cfg 存在而结果缺失时原实现也返回 0）。

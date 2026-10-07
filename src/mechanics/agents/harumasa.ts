@@ -186,7 +186,7 @@ function applyPanel({ potentialLevel, outOfCombatPanel, panel }: AgentPanelInput
   const atkPct = HARUMASA_POTENTIAL_ATK_PCT[lv]
   if (atkPct > 0) {
     const atkBonus = outOfCombatStat(outOfCombatPanel, 'atk') * atkPct / 100
-    panel.atk = (panel.atk ?? 0) + atkBonus
+    panel.atk = panel.atk + atkBonus
     panel.harumasaPotentialAtk = atkBonus
   }
 }

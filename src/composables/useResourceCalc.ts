@@ -375,7 +375,7 @@ export function createResourceCalc(
     // 注：`panels` 已在自己那份 producer 里盖过槽位章，`.map` 保序展开 ⇒ 印章自然带到 damagePanels。
     return panels.value.map(p => ({
       ...p,
-      enemyCritDmgTakenBonus: (p.enemyCritDmgTakenBonus ?? 0) + frostBonus,
+      enemyCritDmgTakenBonus: p.enemyCritDmgTakenBonus + frostBonus,
       infectionZoneBonus: Math.max(0, infectionBonus),
       windInfectionRate: hasWindChar ? infectionCoverage : 0,
     }))
@@ -383,7 +383,7 @@ export function createResourceCalc(
 
   /** 单次失衡窗口时长（秒）= stunTime + 连携窗口(4) + 全队角色级失衡持续时间延长（琉音+2/般岳C1+2等） */
   function computeWindowDuration(): number {
-    const teamStunDurationBonus = resourcePanels.value.reduce((sum, p) => sum + (p.stunDurationBonusSeconds ?? 0), 0)
+    const teamStunDurationBonus = resourcePanels.value.reduce((sum, p) => sum + p.stunDurationBonusSeconds, 0)
     // 单一来源 core/effectiveTime#stunWindowDuration（CC-218；ultimatePromote 的攒条折算用的也是它）
     return stunWindowDuration(configStore.enemy.stunTime, teamStunDurationBonus)
   }
@@ -433,7 +433,7 @@ export function createResourceCalc(
     const perActionDuration: Record<string, number> = {}
     for (const char of resRes.characters) {
       const slot = char.slot
-      const basicTime = char.timeAllocation.basicAttackTime ?? 0
+      const basicTime = char.timeAllocation.basicAttackTime
       if (basicTime > 0) {
         globalPool[`${slot}:basic`] = basicTime
         perActionDuration[`${slot}:basic`] = 1
@@ -452,7 +452,7 @@ export function createResourceCalc(
 
     // 每单位失衡值：basic=每秒失衡值（总失衡/平A秒数），其他=单次失衡值（总失衡/次数）
     const perActionStun: Record<string, number> = {}
-    for (const c of stunRes.contributions ?? []) {
+    for (const c of stunRes.contributions) {
       const mid = c.moveId === 'basic_attack' ? 'basic' : c.moveId
       if (!mid) continue
       const key = `${c.slot}:${mid}`
@@ -514,7 +514,7 @@ export function createResourceCalc(
     if (!res) return {}
     const battleSeconds = effectiveBattleTime(configStore.enemy)
     const out: Record<string, number> = {}
-    for (const ch of res.characters ?? []) {
+    for (const ch of res.characters) {
       const slot = ch.slot
       const char = configStore.team[slot]
       const wEngineId = char?.wEngineId
@@ -526,9 +526,9 @@ export function createResourceCalc(
         const durationSeconds = stackDurationSeconds(e.id)
         if (durationSeconds == null) continue // 未登记折算器 ⇒ 不折算（保持手调/默认满层）
         const stacks = stackEnergyEvents(e.id, {
-          agentId: ch.agentId ?? char.agentId ?? '',
-          exSpecialCount: ch.exSpecialCount ?? 0,
-          executions: ch.executions ?? [],
+          agentId: ch.agentId,
+          exSpecialCount: ch.exSpecialCount,
+          executions: ch.executions,
         })
         if (stacks == null) continue
         const cov = stacksToCoverage(stacks, durationSeconds, battleSeconds, e.maxStacks ?? e.defaultStacks ?? 1)
@@ -622,8 +622,8 @@ export function createResourceCalc(
     if (!alloc || Object.keys(alloc).length === 0) return out
     const totalUnits: Record<string, number> = {}
     for (const ch of adjustedResourceResult.value?.characters ?? []) {
-      for (const e of ch.executions ?? []) {
-        if (!e.moveId || (e.count ?? 0) <= 0) continue
+      for (const e of ch.executions) {
+        if (!e.moveId || e.count <= 0) continue
         const key = `${ch.slot}:${e.moveId}`
         totalUnits[key] = (totalUnits[key] ?? 0) + e.count
       }
@@ -730,7 +730,7 @@ export function createResourceCalc(
       const singleMult = ANOMALY_SINGLE_HIT_MULTIPLIER[prog.element] ?? 0
       const durationBonus = getTeamAnomalyDurationBonus(configStore, catalogStore, prog.element)
       const formula = dot
-        ? `${label} ${dot.tickMultiplier}% × ${dot.totalTicks + Math.round((durationBonus ?? 0) / dot.tickInterval)} tick`
+        ? `${label} ${dot.tickMultiplier}% × ${dot.totalTicks + Math.round(durationBonus / dot.tickInterval)} tick`
         : `${label} ${singleMult}% 单次`
       events.push({
         id: `anomaly-damage-event-${prog.element}`,

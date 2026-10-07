@@ -143,7 +143,7 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
       moveId: cfg.ultimateMoveId,
       moveName: '好评转大·队友终结技',
       count: ultimateGiftRow.count,
-      actionTime: cfg.ultimateActionTime ?? 0,
+      actionTime: cfg.ultimateActionTime,
       skillDamageTarget: 'ultimate',
       skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
     }))
@@ -153,8 +153,8 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
       moveId: cfg.chainMoveId,
       moveName: '诺姆膛温替换·队友连携技',
       count: chainGiftRow.count,
-      actionTime: cfg.chainActionTime ?? 0,
-      comboAlignRatio: cfg.chainComboAlignRatio ?? 0,
+      actionTime: cfg.chainActionTime,
+      comboAlignRatio: cfg.chainComboAlignRatio,
       skillTableNote: '诺姆预热膛温≥80%帽子把戏：上一位队友的快速支援替换为其本人连携技（招式与倍率取该队友技能表）',
       chainGift: true,
     }))
@@ -165,7 +165,7 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
   // 装配后追加的赠送行（诺姆赠链/琉音赠大）不在 Σ行里——展示层由 `normalizeDisplayTime`
   // 在编排层按最终行统一重算（单一口径，新增赠送机制不必各自回扣）。
   // 赠行已在 `executions` 里（上方物化），故这里不再加 giftTimeThisSlot（否则双计）
-  const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? (e.totalTime ?? 0) : 0), 0)
+  const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? e.totalTime : 0), 0)
   const timeAlloc = {
     ...calcTimeAllocation(cfg, state, totalTime),
     frontlineTime: execFrontlineTime,

@@ -36,12 +36,12 @@ export function applyChainGift(
   const hatCount = Math.max(0, Math.floor(gift.count))
   // 引擎占位行（阶段1 ②）以**池口径**为准：hatCount = 0 时撤掉占位行（同 applyUltimatePromote）
   if (hatCount <= 0) {
-    if (!base.characters.some(c => (c.executions ?? []).some(e => e.chainGift))) return base
+    if (!base.characters.some(c => c.executions.some(e => e.chainGift))) return base
     return {
       ...base,
       characters: base.characters.map(c => ({
         ...c,
-        executions: (c.executions ?? []).filter(e => !e.chainGift),
+        executions: c.executions.filter(e => !e.chainGift),
       })),
     }
   }
@@ -81,7 +81,7 @@ export function applyChainGift(
       // 计数/时长**以池为准**写回；找不到行时兜底追加。
       // CC-336：按 `e.chainGift` 精确定位诺姆赠链占位行（避免同槽存在琉音 `source === 'gift'` 赠大行时误覆写），
       // 统一经 `buildGiftRow` 构造行字段，消除补丁与兜底追加两套 13 字段重复。
-      const giftIdx = (char.executions ?? []).findIndex(e => Boolean(e.chainGift))
+      const giftIdx = char.executions.findIndex(e => Boolean(e.chainGift))
       const giftRow = buildGiftRow({
         moveId: chainInfo.moveId,
         moveName: `${giftedMove?.name?.zhCN || '连携技'}（${gift.label}）`,
@@ -96,11 +96,11 @@ export function applyChainGift(
         chainGift: true,
       })
       const executions = giftIdx >= 0
-        ? (char.executions ?? []).map((e, i) => (i === giftIdx ? { ...e, ...giftRow } : e))
-        : [...(char.executions ?? []), giftRow]
+        ? char.executions.map((e, i) => (i === giftIdx ? { ...e, ...giftRow } : e))
+        : [...char.executions, giftRow]
       return {
         ...char,
-        chainCountTotal: (char.chainCountTotal ?? 0) + hatCount,
+        chainCountTotal: char.chainCountTotal + hatCount,
         executions,
       }
     }),

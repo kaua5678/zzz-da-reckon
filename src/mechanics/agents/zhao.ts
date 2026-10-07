@@ -73,12 +73,12 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
   const hp = outOfCombatStat(outOfCombatPanel, 'hp')
   const coreMultiplier = cinemaLevel >= 6 ? ZHAO_C6_CORE_MULTIPLIER : 1
   const coreCritRate = hp / 1000 * ZHAO_CORE_CRIT_PER_1000_HP * coreMultiplier
-  panel.critRate = (panel.critRate ?? 0) + coreCritRate
+  panel.critRate = panel.critRate + coreCritRate
   panel.zhaoCoreCritRate = coreCritRate
 
   if (cinemaLevel >= 2) {
     const selfAtkBonus = outOfCombatStat(outOfCombatPanel, 'atk') * ZHAO_C2_SELF_ATK_PCT / 100
-    panel.atk = (panel.atk ?? 0) + selfAtkBonus
+    panel.atk = panel.atk + selfAtkBonus
     panel.zhaoCinema2SelfAtk = selfAtkBonus
   }
 }
@@ -86,11 +86,11 @@ function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): 
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.zhaoCinemaLevel = cinemaLevelOf(cinemaLevel)
   if (cinemaLevelOf(cinemaLevel) >= 4) {
-    cfg.initialDecibelGift = (cfg.initialDecibelGift ?? 0) + ZHAO_C4_DECIBEL
+    cfg.initialDecibelGift = cfg.initialDecibelGift + ZHAO_C4_DECIBEL
   }
   // 照不战场（用户口径）：Q（终结技·兔兔连斩）打一半可快速支援取消，另一半进合轴，
   // 前台时间只按一半计；E（流霜冻土）前台时间见 estimateExSpecialTime（全合轴=0）。
-  cfg.ultimateActionTime = (cfg.ultimateActionTime ?? 0) / 2
+  cfg.ultimateActionTime = cfg.ultimateActionTime / 2
 }
 
 /** 照的 E（流霜冻土）完全合轴，不占前台时间；后台蓄力最终裁决走 timeBucket=backstage，也不算前台。 */
@@ -98,7 +98,7 @@ function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
 function estimateExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): AgentExSpecialTimeEstimate {
   return {
     necessaryTime: 0,
-    comboAlignTime: Math.max(0, Math.floor(exSpecialCount ?? 0)) * (cfg.exSpecialActionTime ?? 0),
+    comboAlignTime: Math.max(0, Math.floor(exSpecialCount)) * cfg.exSpecialActionTime,
     // NET 约定：E 已从 necessaryTime 剔除（不占前台），合轴不再抵扣团队预算（防双重记账）
     comboAlignIncludedInNecessary: false,
   }
@@ -146,7 +146,7 @@ function cycleFromInput({
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     teamFrontlineSeconds: teamFrontlineSeconds ?? 0,
-    panelHp: Number(cfg.panel.hp ?? 0),
+    panelHp: cfg.panel.hp,
   })
 }
 

@@ -184,7 +184,7 @@ function feasibleRowsUncached(
   if (rowTimeLimit == null || !Number.isFinite(rowTimeLimit) || rowTimeLimit < 0) return rows
   let basicTime = 0
   for (const e of rows) {
-    if (e.moveId === 'basic_attack' && isFrontlineExecution(e)) basicTime += e.totalTime ?? 0
+    if (e.moveId === 'basic_attack' && isFrontlineExecution(e)) basicTime += e.totalTime
   }
   return truncateExecutionsToFrontline(rows, basicTime + rowTimeLimit).executions
 }
@@ -383,8 +383,8 @@ export function buildExecutions(
   // （多段动作经 moveFusions 融合），能量成本 0（免费/替代资源由模块账本记）。
   for (const plan of cfg.extraExPlans ?? []) {
     const count = resolveExtraExCount(plan, {
-      battleSeconds: Math.max(0, cfg.battleTime ?? 0),
-      exCount: Math.max(0, Math.floor(state.exSpecialCount ?? 0)),
+      battleSeconds: Math.max(0, cfg.battleTime),
+      exCount: Math.max(0, Math.floor(state.exSpecialCount)),
     })
     if (count <= 0) continue
     executions.push({
@@ -433,7 +433,7 @@ export function buildExecutions(
   }
 
   // 轻弹刀（Defensive Assist #1）：count = 正常弹刀 + 不带支援突击弹刀
-  const totalDefensiveAssist = (cfg.parryCount ?? 0) + (cfg.parryNoFollowUpCount ?? 0)
+  const totalDefensiveAssist = cfg.parryCount + cfg.parryNoFollowUpCount
   if (totalDefensiveAssist > 0 && cfg.defensiveAssistActionTime > 0) {
     const car = cfg.defensiveAssistComboAlignRatio
     // x弹刀时间豁免（2026-09-02 用户口径）：非主弹窗位这 N 次弹刀行不占前台时间（喧响/失衡照计）
@@ -519,11 +519,11 @@ export function buildExecutions(
   // （本体 + 紧随的专属支援突击，两行由 data/moveFusions.ts#CLARET_COUNTER_ASSIST 融合）。
   // 刻意不并进 parryCount：不产轻弹刀/支援突击行、不拿弹刀 215 特殊动作奖励、不参与
   // 「保底4失衡」的每次弹刀失衡反推（用户口径 2026-09-12「完全不拿 215，只算行内喧响」）。
-  const counterAssistCount = Math.max(0, Math.floor(cfg.counterAssistCount ?? 0))
-  const counterAssistActionTime = cfg.counterAssistActionTime ?? 0
+  const counterAssistCount = Math.max(0, Math.floor(cfg.counterAssistCount))
+  const counterAssistActionTime = cfg.counterAssistActionTime
   if (counterAssistCount > 0 && cfg.counterAssistMoveId && counterAssistActionTime > 0) {
-    const car = cfg.counterAssistComboAlignRatio ?? 0
-    const decibel = cfg.counterAssistDecibelRecovery ?? 0
+    const car = cfg.counterAssistComboAlignRatio
+    const decibel = cfg.counterAssistDecibelRecovery
     executions.push({
       moveId: cfg.counterAssistMoveId,
       moveName: '反制支援（Counter Assist）',
@@ -558,8 +558,8 @@ export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state
   const events: AnomalyEventExecution[] = []
   getAgentMechanic(cfg.agentId)?.buildAnomalyEvents?.({ cfg, state, events, totalTime })
 
-  const cannonRotorMultiplier = cfg.cannonRotorDamageMultiplier ?? 0
-  const cannonRotorCooldown = cfg.cannonRotorCooldownSeconds ?? 0
+  const cannonRotorMultiplier = cfg.cannonRotorDamageMultiplier
+  const cannonRotorCooldown = cfg.cannonRotorCooldownSeconds
   if (cannonRotorMultiplier > 0 && cannonRotorCooldown > 0) {
     const count = Math.ceil(effectiveBattleTime({ battleTime: totalTime, invincibleTime: cfg.invincibleTime }) / cannonRotorCooldown)
     events.push({

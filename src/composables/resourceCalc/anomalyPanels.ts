@@ -204,7 +204,7 @@ export function buildAnomalyVirtualPanel(
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): AnomalyVirtualPanelBuild | null {
   const slotBuildUp = new Map<number, number>()
-  for (const contrib of prog.contributions ?? []) {
+  for (const contrib of prog.contributions) {
     slotBuildUp.set(contrib.slot, (slotBuildUp.get(contrib.slot) ?? 0) + contrib.totalBuildUp)
   }
   const totalBuildUp = [...slotBuildUp.values()].reduce((a, b) => a + b, 0)
@@ -221,7 +221,7 @@ export function buildAnomalyVirtualPanel(
       const agentId = configStore.team[slot]?.agentId ?? ''
       const agent = agentId ? catalogStore.agentsMap.get(agentId) : null
       // CC-224：经 resolveStatElement（旧表缺 ether_ink / frostfire ⇒ 玄墨、烈霜虚拟面板漏元素增伤 / 元素减抗）
-      const dmgBonus = (panel.dmgBonus ?? 0) + panelElementStat(panel, 'dmg', prog.element)
+      const dmgBonus = panel.dmgBonus + panelElementStat(panel, 'dmg', prog.element)
       // 同属性角色才可参与结算/面板加权
       const settlementEligible = agent?.damageElement === prog.element
       return {
@@ -230,21 +230,21 @@ export function buildAnomalyVirtualPanel(
         buildup,
         weight: 0,   // 展示权重 = 同属性内积蓄占比，rows 构建后统一修正（赠送积蓄不参与权重）
         settlementEligible,
-        atk: panel.atk ?? 0,
-        anomalyProficiency: panel.anomalyProficiency ?? 0,
+        atk: panel.atk,
+        anomalyProficiency: panel.anomalyProficiency,
         dmgBonus,
-        anomalyDmgBonus: panel.anomalyDmgBonus ?? 0,
-        anomalyCritRate: panel.anomalyCritRate ?? 0,
-        anomalyCritDmg: panel.anomalyCritDmg ?? 0,
-        assaultCritRate: panel.assaultCritRate ?? 0,
-        assaultCritDmg: panel.assaultCritDmg ?? 0,
-        enemyAssaultDefReduction: panel.enemyAssaultDefReduction ?? 0,
-        enemyAnomalyDefReduction: panel.enemyAnomalyDefReduction ?? 0,
-        enemyDefFlatReduction: panel.enemyDefFlatReduction ?? 0,
-        enemyResReduction: panel.enemyResReduction ?? 0,
+        anomalyDmgBonus: panel.anomalyDmgBonus,
+        anomalyCritRate: panel.anomalyCritRate,
+        anomalyCritDmg: panel.anomalyCritDmg,
+        assaultCritRate: panel.assaultCritRate,
+        assaultCritDmg: panel.assaultCritDmg,
+        enemyAssaultDefReduction: panel.enemyAssaultDefReduction,
+        enemyAnomalyDefReduction: panel.enemyAnomalyDefReduction,
+        enemyDefFlatReduction: panel.enemyDefFlatReduction,
+        enemyResReduction: panel.enemyResReduction,
         elementResReduction: panelElementStat(panel, 'enemyRes', prog.element),
-        penRatio: panel.penRatio ?? 0,
-        penFlat: panel.penFlat ?? 0,
+        penRatio: panel.penRatio,
+        penFlat: panel.penFlat,
         refringe: refringeProviders.reduce((sum, mod) => sum + mod!.anomalyRefringePct!(panel), 0),
       }
     })
@@ -273,12 +273,12 @@ export function buildAnomalyVirtualPanel(
   // 招式限定增伤按积蓄占比加权进基础区增伤（通用逻辑 2026-08-27）：
   // 一整条异常全由某 100% 增伤招式积攒 → 基础区含那 100%；否则按各招式积蓄占比加权吃一部分。
   let moveDmgBonusWeighted = 0
-  for (const contrib of prog.contributions ?? []) {
+  for (const contrib of prog.contributions) {
     const moveDmgBonus = contrib.dmgBonus ?? 0
     if (moveDmgBonus === 0 || contrib.totalBuildUp <= 0) continue
     moveDmgBonusWeighted += moveDmgBonus * (contrib.totalBuildUp / totalBuildUp)
   }
-  panel.dmgBonus = (panel.dmgBonus ?? 0) + moveDmgBonusWeighted
+  panel.dmgBonus = panel.dmgBonus + moveDmgBonusWeighted
 
   const virtual: AnomalyVirtualPanelRow = {
     slot: -1,
@@ -304,7 +304,7 @@ export function buildAnomalyVirtualPanel(
     refringe: weighted('refringe'),
   }
 
-  panel.refringe = virtual.refringe ?? 0
+  panel.refringe = virtual.refringe
 
   return { element: prog.element, totalBuildUp, rows, virtual, panel }
 }

@@ -140,9 +140,9 @@ function buildCharConfig({ skills, cinemaLevel, team: _team, cfg }: AgentCharCon
 function lucyCheerOf(cfg: AgentResourceResultInput['cfg'], state: AgentResourceResultInput['state']) {
   return computeLucyCheer({
     cinemaLevel: cinemaLevelOf(cfg.lucyCinemaLevel),
-    exSpecialCount: state.exSpecialCount ?? 0,
-    chainCountTotal: state.chainCountTotal ?? 0,
-    ultimateCount: state.ultimateCount ?? 0,
+    exSpecialCount: state.exSpecialCount,
+    chainCountTotal: state.chainCountTotal,
+    ultimateCount: state.ultimateCount,
     teammateExSpecialTotal: Math.max(0, Math.floor(Number(cfg.lucyTeammateExTotal ?? 0))),
   })
 }
@@ -165,7 +165,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 
   // 抄家伙：4–6 秒调用一次，每次打出三段倍率之和；后台自动，不占前台时间
   const boarCd = lucyBoarCd(cfg)
-  const boarCount = computeLucyBoarCount(state.frontlineTime ?? 0, boarCd)
+  const boarCount = computeLucyBoarCount(state.frontlineTime, boarCd)
   const boarDmg = Number(cfg.lucyBoarComboDmg ?? 0) || 0
   pushExec(
     executions,
@@ -193,7 +193,7 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const cheer = lucyCheerOf(cfg, state)
   const boarCd = lucyBoarCd(cfg)
-  const boarCount = computeLucyBoarCount(state.frontlineTime ?? 0, boarCd)
+  const boarCount = computeLucyBoarCount(state.frontlineTime, boarCd)
   return {
     lucyCheer: cheer,
     lucyBoarCount: boarCount,
@@ -206,8 +206,8 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<
         maxValue: null,
         totalGain: cheer.cheerTriggers,
         gains: {
-          ex: Math.max(0, Math.floor(state.exSpecialCount ?? 0)),
-          chain_ult: Math.max(0, cheer.cheerTriggers - Math.max(0, Math.floor(state.exSpecialCount ?? 0))),
+          ex: Math.max(0, Math.floor(state.exSpecialCount)),
+          chain_ult: Math.max(0, cheer.cheerTriggers - Math.max(0, Math.floor(state.exSpecialCount))),
         },
         bonusCount: 0,
         total: cheer.cheerTriggers,
@@ -252,7 +252,7 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
 function lucyNextRoundFeedback({ teamResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
   let mateEx = 0
   for (const ch of teamResult.characters) {
-    if (ch.agentId !== LUCY_ID) mateEx += ch.exSpecialCount ?? 0
+    if (ch.agentId !== LUCY_ID) mateEx += ch.exSpecialCount
   }
   return { lucyTeammateEx: mateEx }
 }
@@ -290,13 +290,13 @@ export const lucyMechanic: AgentMechanicModule = {
     supply: () => 0,
     perTargetAmounts: ({ ownSlot, teamSize, cfg, state }) => {
       const slots = Array.from({ length: teamSize }, (_, i) => i)
-      const ults = Math.max(0, Math.floor(state.ultimateCount ?? 0))
+      const ults = Math.max(0, Math.floor(state.ultimateCount))
       const out = ultNeighborPerTargetAmounts(ownSlot, teamSize, state.ultimateCount)
       // 影画1 回旋全队回能：每个非自己槽位都得同一份
       if (Number(cfg.lucyC1Enabled ?? 0) > 0) {
         const cinema = cinemaLevelOf(cfg.lucyCinemaLevel)
-        const spinEst = Math.max(0, Math.floor(state.exSpecialCount ?? 0))
-          + (cinema >= 2 ? Math.max(0, Math.floor(state.chainCountTotal ?? 0)) + ults : 0)
+        const spinEst = Math.max(0, Math.floor(state.exSpecialCount))
+          + (cinema >= 2 ? Math.max(0, Math.floor(state.chainCountTotal)) + ults : 0)
           + (cinema >= 6 ? Math.max(0, Number(cfg.lucyTeammateExTotal ?? 0)) : 0)
         // ⚠ C1 回旋回能是**全队每人**（含露西自己）——迁移前原式无条件 `lucyEnergy += spinEst*2`，
         // 与上面「邻位回能不给提供者自己」不同。第一版我照邻位习惯跳过自己 ⇒ timeGolden 红

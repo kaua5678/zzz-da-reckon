@@ -46,11 +46,11 @@ export function agentPanelStatInitials<G extends AgentPanelStatGroup>(group: G):
 }
 
 /** 面板能量自动回复总计 = 基础 × (1 + 百分比加成) + 固定加成（CC-337 单一事实源，放 data 层供 specs / core / mechanics 共用） */
-export function calcEnergyRegenTotal(panel: Readonly<PanelValues>, defaultBase = 0): number {
-  return (panel.energyRegen ?? defaultBase) * (1 + (panel.energyRegenBonusPct ?? 0) / 100) + (panel.energyRegenBonusFlat ?? 0)
+export function calcEnergyRegenTotal(panel: Readonly<PanelValues>): number {
+  return panel.energyRegen * (1 + panel.energyRegenBonusPct / 100) + panel.energyRegenBonusFlat
 }
 
 /** 面板闪能自动回复总计 = 基础 × (1 + 百分比加成) + 固定加成（CC-337 单一事实源） */
 export function calcFlashEnergyRegenTotal(panel: Readonly<PanelValues>): number {
-  return (panel.flashEnergyRegen ?? 0) * (1 + (panel.flashEnergyRegenBonusPct ?? 0) / 100) + (panel.flashEnergyRegenBonusFlat ?? 0)
+  return panel.flashEnergyRegen * (1 + panel.flashEnergyRegenBonusPct / 100) + panel.flashEnergyRegenBonusFlat
 }

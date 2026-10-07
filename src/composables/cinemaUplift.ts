@@ -130,7 +130,7 @@ export function collectCinemaMetrics(src: CinemaMetricSource): Record<string, nu
   const perElement = src.anomalyPool?.perElement ?? []
   return {
     stunBuildUp: src.stunPool?.totalStunBuildUp ?? 0,
-    anomBuildUp: perElement.reduce((s, p) => s + (p.totalBuildUp ?? 0), 0),
+    anomBuildUp: perElement.reduce((s, p) => s + p.totalBuildUp, 0),
     decibelTotal: sum(c => c.decibelSource?.total),
     energyTotal: sum(c => c.energySource?.total),
     exSpecial: sum(c => c.exSpecialCount),
@@ -189,7 +189,7 @@ export function readCinemaScene(calc: ResourceCalc): SceneReading {
   const characters = calc.resourceResult.value?.characters
   return {
     dmg: calc.teamTotalDamage.value,
-    ult: (characters ?? []).reduce((sum, c) => sum + (c.ultimateCount ?? 0), 0),
+    ult: (characters ?? []).reduce((sum, c) => sum + c.ultimateCount, 0),
     metrics: collectCinemaMetrics({
       characters,
       stunPool: calc.stunPoolResult.value,
