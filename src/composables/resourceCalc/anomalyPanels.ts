@@ -99,6 +99,22 @@ export interface WindInfectionPick {
 }
 
 /**
+ * 队里第一个风属性角色的槽位（无 ⇒ -1）：「风队通用机制」判据的**唯一实现**（r712）。消费者 = 引擎乱流结算槽
+ * （`roundInputs#windInfo` → `AnomalyPoolInput.windCharSlot`；伤害池乱流行归属读回传的 `damageInputs.turbulence.windSlot`）、
+ * 风化侵染区（`panelPhases` 满额 / `useResourceCalc#damagePanels` 按覆盖率折算）、浸染挑槽（`resolveWindInfectionPick`）。
+ * 维琳娜专属产出**不走**这里——按能力持有者认人（`teamMechanicSlots`，r711）。
+ */
+export function findWindSlot(
+  configStore: ConfigModel,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+): number {
+  return configStore.team.findIndex(char => {
+    const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
+    return agent?.damageElement === 'wind'
+  })
+}
+
+/**
  * 风化浸染挑槽的**唯一实现**（CC-304）：引擎（`getWindInfectionTargetSlot` / `getWindInfectionElement`）与
  * 机制页 `ResourceUtilizationPage.vue#windInfectionConfig` 的「自动 / 生效」显示共用。原页面逐字复制了一份挑槽规则，
  * 且排除名单按 `identityModules`（含 teammateBuffId 别名）判、引擎按 agentId 判——两份身份口径不同。
@@ -108,10 +124,7 @@ export function resolveWindInfectionPick(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
 ): WindInfectionPick | null {
-  const windSlot = configStore.team.findIndex(char => {
-    const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
-    return agent?.damageElement === 'wind'
-  })
+  const windSlot = findWindSlot(configStore, catalogStore)
   if (windSlot < 0) return null
 
   const candidates = configStore.team.map((char, slot) => {

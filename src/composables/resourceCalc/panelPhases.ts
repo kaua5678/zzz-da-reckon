@@ -60,7 +60,7 @@ import { statSettlementMode } from '@/utils/statMeta'
 import { resolvePhaseBuffValue, teamSpecialtiesOf } from '@/utils/phaseBuff'
 // 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { getTeamAnomalyDurationBonus } from './anomalyPanels'
+import { getTeamAnomalyDurationBonus, findWindSlot } from './anomalyPanels'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 export function buildMechanicTeamMembers(
@@ -625,11 +625,7 @@ export function computePanelPhases(
   // 风化侵染区：10% 独立乘区，仅风属性与染色属性直伤生效
   // @fact panelPhases:侵染区归属 口径: `infectionZoneBonus` 是**风队通用机制**（判据 = 队伍里有 `damageElement === 'wind'` 的角色，任何风角色都触发，**与是不是维琳娜无关**）；系数 10% 的唯一来源 = 本行赋值 + 编排层 `useResourceCalc` 的覆盖率折算，**禁止**再用 spec `teamBuffs` 声明该 stat —— spec 声明会被本行赋值覆写，属性配置页会出现拨不动的**死控件**（R64 实测三档恒 10） | 据 R64 实测：队内换成 1621/1631 同样给 10，故非维琳娜拐力；docs/mechanism-reference.md §8.6 按风属性定义@2026-09-20·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/specTeamBuffSingleSource.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
   // ⟳复核: 跑 `npx vitest run specTeamBuffSingleSource` —— 若全库又有 spec 用 `teamBuffs` 声明 `infectionZoneBonus`（不变量条红），说明有人把误归属的重复声明加回来了；同时确认 1621/1631 在队仍给 10（归属判据） | 到期 2027-03-31
-  const windCharInTeam = configStore.team.some(char => {
-    const member = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
-    return member?.damageElement === 'wind'
-  })
-  panel.infectionZoneBonus = windCharInTeam ? 10 : 0
+  panel.infectionZoneBonus = findWindSlot(configStore, catalogStore) >= 0 ? 10 : 0
 
   return { outOfCombat: { ...result.outOfCombat }, inCombat: panel }
 }

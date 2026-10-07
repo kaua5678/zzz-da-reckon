@@ -93,7 +93,7 @@ export function setCalcOutputMemoEnabled(on: boolean): void {
   calcOutputMemoEnabled = on
 }
 
-const { computePanel, computeEntrySnapshotPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, elementLabel, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays } = ResourceCalcHelpers
+const { computePanel, computeEntrySnapshotPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, findWindSlot, elementLabel, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays } = ResourceCalcHelpers
 /** 资源计算实例（UI 入口与独立场景同一类型；各分析器的局部 `Calc` 别名都等于它） */
 export type ResourceCalc = ReturnType<typeof createResourceCalc>
 
@@ -366,10 +366,7 @@ export function createResourceCalc(
     const frostBonus = 10 * (anomalyPoolResult.value?.coverage?.frostCoverageRate ?? 0)
     const windAutoRate = anomalyPoolResult.value?.coverage?.windCoverageRate ?? 0
     const infectionCoverage = getWindInfectionCoverage(configStore, windAutoRate)
-    const hasWindChar = configStore.team.some(char => {
-      const agent = char.agentId ? catalogStore.agentsMap.get(char.agentId) : null
-      return agent?.damageElement === 'wind'
-    })
+    const hasWindChar = findWindSlot(configStore, catalogStore) >= 0
     const infectionBonus = hasWindChar ? 10 * infectionCoverage : 0
     // windInfectionRate：风化侵染覆盖率原值盖章（队伍无风角色时 0）——角色模块按自身口径消费（如希格莉德浸染增伤 15%×覆盖率）
     // 注：`panels` 已在自己那份 producer 里盖过槽位章，`.map` 保序展开 ⇒ 印章自然带到 damagePanels。

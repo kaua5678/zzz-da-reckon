@@ -29,6 +29,7 @@ import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } 
 // 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
 // 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { findMoveById } from './skillRows'
+import { findWindSlot } from './anomalyPanels'
 import { chainMoveKind } from '@/data/chainMoveKind'
 import { ULTIMATE_COST_DEFAULT, parseMoveEnergyCost } from '@/core/resource'
 import { panelAt } from '@/core/panel'
@@ -109,14 +110,10 @@ export function createConvergenceRoundInputs(deps: {
     return extractExecsFrom(res, skipGift).stunExecs
   }
 
-  /** 风属性检测（复用） */
+  /** 风属性检测（复用；判据唯一实现 = `findWindSlot`） */
   const windInfo = computed(() => {
-    let hasWind = false; let slot = -1
-    for (let i = 0; i < 3; i++) {
-      const a = configStore.team[i]?.agentId ? catalogStore.agentsMap.get(configStore.team[i].agentId) : null
-      if (a?.damageElement === 'wind') { hasWind = true; slot = i; break }
-    }
-    return { hasWindChar: hasWind, windCharSlot: slot }
+    const slot = findWindSlot(configStore, catalogStore)
+    return { hasWindChar: slot >= 0, windCharSlot: slot }
   })
 
   /** 异常池入参设置（CC-25 自 aliceInfo 改名；目前唯一提供方 = 爱丽丝模块 `anomalyPoolSetup`）：仅承载与 resourceResult 无关的畏缩结算配置。

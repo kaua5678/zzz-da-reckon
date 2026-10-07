@@ -112,10 +112,6 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     const infectionElement = getWindInfectionElement(configStore, catalogStore)
     // CC-176/177：直伤 / 异常入参拼装的环境量（正路 pushDirect / pushRelease / 标准异常与模块 extraAnomalyRows 共用）
     const poolEnv: PoolDamageEnv = { enemy: configStore.enemy, enemyDamageRes, infectionElement, anomalyMultiplier: globalAnomalyMultiplier }
-    const windSlot = configStore.team.findIndex(c => {
-      const agent = c.agentId ? catalogStore.agentsMap.get(c.agentId) : null
-      return agent?.damageElement === 'wind'
-    })
 
     /** 把一个 (slot, moveId) 的总单位数切成轴内/轴外两段（轴外段无易伤） */
     function axisSplitFor(slot: number, moveId: string, totalUnits: number): { inUnits: number; outUnits: number } {
@@ -401,7 +397,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     emitAnomalyRows({
-      ctx, rows, agentName, enemyDamageRes, isAxis, windSlot, poolEnv,
+      ctx, rows, agentName, enemyDamageRes, isAxis, poolEnv,
       inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
       axisStunFor, pushRelease,
     })

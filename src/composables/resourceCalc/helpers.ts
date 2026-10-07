@@ -255,6 +255,7 @@ import {
   resolveWindInfectionPick,
   getWindInfectionElement,
   getWindInfectionCoverage,
+  findWindSlot,
   buildAnomalyVirtualPanel,
   buildAnomalySettlementEntries,
 } from './anomalyPanels'
@@ -271,6 +272,7 @@ export {
   resolveWindInfectionPick,
   getWindInfectionElement,
   getWindInfectionCoverage,
+  findWindSlot,
   buildAnomalyVirtualPanel,
   buildAnomalySettlementEntries,
 }

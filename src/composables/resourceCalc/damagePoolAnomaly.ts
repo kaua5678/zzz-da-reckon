@@ -12,7 +12,7 @@
  *
  * 与外层闭包的通信面 = `AnomalyRowsEnv`：共享输出数组 `rows`（**按原顺序 push，禁止换成
  * 返回值拼接**）+ `ctx` 快照 + 只读局部量/闭包（`agentName` / `enemyDamageRes` / `isAxis` /
- * `windSlot` / 三个轴内占比函数 / `axisStunFor` / `pushRelease`）。函数**不** import
+ * 三个轴内占比函数 / `axisStunFor` / `pushRelease`）。函数**不** import
  * `./damagePool`（只 `import type` `DamagePoolContext`，运行时无环），也不写任何外层可变量——
  * `pushRelease` 自带闭包写共享 `rows`，其余全是只读查询。
  *
@@ -55,7 +55,6 @@ export interface AnomalyRowsEnv {
   enemyDamageRes: Record<string, number>
   /** 调用处传 `Boolean(isAxis)`（尾段只作真值判断） */
   isAxis: boolean
-  windSlot: number
   /** CC-176/177：伤害入参拼装环境（= damagePool.ts 的 poolEnv），经 `ExtraAnomalyRowsInput.directDamage` / `.anomalyDamage` 交给模块 */
   poolEnv: PoolDamageEnv
   inWindowFraction: (element: string) => number
@@ -80,12 +79,10 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     entrySnapshotPanels, globalAnomalyMultiplier,
   } = env.ctx
   const {
-    rows, agentName, enemyDamageRes, isAxis, windSlot, poolEnv,
+    rows, agentName, enemyDamageRes, isAxis, poolEnv,
     inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
     axisStunFor, pushRelease,
   } = env
-  const windChar = windSlot >= 0 ? configStore.team[windSlot] : null
-  const windAgentId = windChar?.agentId ?? ''
   const windRate = anomalyPoolResult?.coverage?.windCoverageRate ?? 0
   const teamMechanics = teamMechanicSlots(configStore.team)
   // r711：气旋异放是风蚀持有者（维琳娜）的专属产出 ⇒ 归属取事件产出者的槽位（与事件生产同一判定 `corrosionOwner`），
@@ -144,13 +141,17 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
     }
   }
 
+  // 乱流行归属 = 引擎乱流结算槽 `damageInputs.turbulence.windSlot`（`calcTurbulenceDamage` 用它取结算面板）——
+  // 行归属与结算面板同源，本层不再另判风槽（r712）。有乱流明细 ⇒ 必有该入参，`?? 0` 只为类型收窄。
+  const turbulenceSlot = anomalyPoolResult?.damageInputs.turbulence?.windSlot ?? 0
+  const turbulenceAgentId = configStore.team[turbulenceSlot]?.agentId ?? ''
   for (const detail of anomalyPoolResult?.turbulenceDamage?.details ?? []) {
     const applierAgentId = configStore.team[detail.applierSlot]?.agentId ?? ''
     rows.push({
       id: `turbulence-${detail.element}-${detail.applierSlot}`,
-      slot: windSlot >= 0 ? windSlot : 0,
-      agentId: windAgentId,
-      agentName: windAgentId ? agentName(windAgentId, windSlot) : '风属性角色',
+      slot: turbulenceSlot,
+      agentId: turbulenceAgentId,
+      agentName: agentName(turbulenceAgentId, turbulenceSlot),
       type: '乱流',
       name: `${elementLabel(detail.element)}乱流`,
       element: detail.element,
