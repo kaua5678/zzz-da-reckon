@@ -40,6 +40,7 @@ import {
 } from '@/types/teamPreset'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { TeamGoldState } from '@/composables/teamTimeline'
+import { takeBestGoldStep } from '@/composables/goldGreedy'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/timeOccupation'
@@ -672,9 +673,6 @@ export interface OptimalGoldAllocation {
   damage: number
 }
 
-/** 贪婪搜索的一步金投入（候选步与选中的步同形） */
-interface GoldAllocationStep { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string }
-
 /**
  * 同一金档下的**一个候选分配**（「同队同金不同分配」对比的原料，用户 2026-09-14 需求）。
  *
@@ -687,8 +685,8 @@ interface GoldAllocationStep { slot: number; kind: 'cinema' | 'wengine' | 'acqui
  */
 export interface GoldAllocationAlternative {
   budgetGold: number
-  /** 本候选相对「上一档已提交状态」新增的那一步 */
-  step: GoldAllocationStep
+  /** 本候选相对「上一档已提交状态」新增的那一步（与预设加金步同形：获取步 = 带 wEngineId 的 wengine 步） */
+  step: GoldStep
   damage: number
   /** 该档最优伤害 */
   bestDamage: number
@@ -708,7 +706,7 @@ export interface GoldAllocationAlternative {
  * 最优加金分配：在预设 goldSteps 定义的可用步骤里，逐金做贪婪搜索。
  * 每金档试算所有「下一个可用级别」（每槽位影画/精炼各一 + 音擎本体获取各一，只列作者写过的级别），
  * 提交伤害提升最大的那个——忽略作者手排顺序，自动优先选优质金。
- * 音擎获取：槽位当前带非限定音擎（常驻/A/空）时，可花 1 金装备作者声明的限定音擎本体（通常 = 专武）；
+ * 音擎获取：槽位当前带非限定音擎（常驻/A/空）时，可花 1 金装备作者声明的限定音擎本体（通常 = 专武），每槽至多买一次；
  * 精炼候选只对已带限定音擎的槽位开放，且换装后该槽位精炼从 1 重算（旧音擎的常驻精炼不虚标到新专武）。
  * 这样低金档（如 4 限金 = 3 角色 + 1 专武）也能被正确表达。
  * 口径：候选只来自 preset.goldSteps（尊重作者设定的音擎/命座/精炼范围）；standardSteps 全量应用（不占金）；
@@ -716,6 +714,8 @@ export interface GoldAllocationAlternative {
  * 每步同场景对比（boss/buff 已由调用方应用，只变这一级）。
  * 计算量：每金档 × 候选数（≤ 9）次全量伤害，封顶 12 金内最多 ~100 次/队。
  * 调用方须已 applyTeamToStore 并应用 boss/buff；结果按 totalGold 升序（含 base 档）。
+ * 试算 / 还原 / 提交与时间线 computeOptimalTeamAllocation 共用 goldGreedy#takeBestGoldStep（r733）：
+ * 候选顺序 = 获取步在前，再按各条线在 goldSteps 里首次出现的顺序；伤害并列取先出现的。
  */
 export function computeOptimalGoldAllocations(
   calc: Calc,
@@ -728,24 +728,20 @@ export function computeOptimalGoldAllocations(
 ): OptimalGoldAllocation[] {
   const sink = opts.alternatives
   // 音擎获取候选：每个槽位第一条带 wEngineId 的 wengine 步（作者声明的升级音擎，通常 = 专武本体）
-  const acquireBySlot = new Map<number, { id: string; label: string }>()
-  // 影画/精炼候选：goldSteps 按 (slot, kind) 去重，级别升序（同 key 同值只留一份；获取步排除）
-  const stepsByKey = new Map<string, { values: number[]; labelOf: Map<number, string> }>()
+  const acquireBySlot = new Map<number, GoldStep>()
+  // 影画 / 精炼候选：goldSteps 按 (slot, kind) 分线，每条线按级别升序（获取步除外）
+  const ladders = new Map<string, GoldStep[]>()
   for (const s of preset.goldSteps) {
     if (s.kind === 'wengine' && s.wEngineId) {
-      if (!acquireBySlot.has(s.slot)) acquireBySlot.set(s.slot, { id: s.wEngineId, label: s.label })
+      if (!acquireBySlot.has(s.slot)) acquireBySlot.set(s.slot, s)
       continue
     }
     const key = `${s.slot}:${s.kind}`
-    let entry = stepsByKey.get(key)
-    if (!entry) {
-      entry = { values: [], labelOf: new Map() }
-      stepsByKey.set(key, entry)
-    }
-    entry.values.push(s.value)
-    entry.labelOf.set(s.value, s.label)
+    const ladder = ladders.get(key)
+    if (ladder) ladder.push(s)
+    else ladders.set(key, [s])
   }
-  for (const e of stepsByKey.values()) e.values.sort((a, b) => a - b)
+  for (const ladder of ladders.values()) ladder.sort((a, b) => a.value - b.value)
 
   // CC-339：基础档（0 步限定金 + 全量常驻配置 + 预设基础音擎）统一复用 applyGoldSteps，消除三处手写初始化重复
   const { cinemas, wengineMods, wEngines } = applyGoldSteps(
@@ -758,136 +754,67 @@ export function computeOptimalGoldAllocations(
   // 自动下位：非限定槽位换成装填池择优结果（覆盖 standardSteps 写入的常驻/A 音擎）；
   // 生效的限定下位按本体如实计入总限定金（有金就是金）
   const baseAutoLimited = substituteAutoEngines(wEngines, wengineMods, autoPicks)
-  const autoLimitedNow = () => countLimitedAutoApplied(wEngines, autoPicks, acquiredSlots)
-  applyGoldAllocationToStore(configStore, { cinemas, wengineMods, wEngines })
+  let state: TeamGoldState = { cinemas, wengineMods, wEngines }
+  applyGoldAllocationToStore(configStore, state)
 
   const allocations: OptimalGoldAllocation[] = [{
     totalGold: baseGold + baseAutoLimited,
     budgetGold: baseGold,
-    cinemas: [...cinemas] as [number, number, number],
-    wengineMods: [...wengineMods] as [number, number, number],
-    wEngines: [...wEngines] as [string, string, string],
+    ...state,
     label: `${baseGold + baseAutoLimited}金（基础${baseAutoLimited ? `，含下位限定 ${baseAutoLimited} 金` : ''}）`,
     damage: calc.teamTotalDamage.value,
   }]
 
-  const taken: { label: string }[] = []
+  const taken: GoldStep[] = []
+  /** 已用预算买过本体的槽位：不再出获取候选，槽上原先的限定下位也不再计金 */
   const acquiredSlots = new Set<number>()
-  while (true) {
-    const nextGold = baseGold + taken.length + 1
-    if (nextGold > GOLD_OPTIMIZE_CAP) break
-    let best: {
-      slot: number
-      kind: 'cinema' | 'wengine' | 'acquire'
-      value: number
-      id?: string
-      label: string
-      damage: number
-    } | null = null
-    // 本档的全部候选（含各自提交后的完整状态）——仅传入 opts.alternatives 时收集
-    const trials: Array<{ step: GoldAllocationStep; damage: number; state: TeamGoldState }> = []
-    /** 记一次试算（伤害已算出；state 用「试算值 + 其余当前值」拼出该候选提交后的状态） */
-    const recordTrial = (
-      step: GoldAllocationStep,
-      damage: number,
-      state: TeamGoldState,
-    ) => { if (sink) trials.push({ step, damage, state }) }
-    // 自动下位穿上的限定件不阻止购买步：购买同一/另一把都合法，金数经 acquiredSlots 去重
-    const autoLimitedSlots = new Set(autoPicks.filter(p => p.limited).map(p => p.slot))
+  // 自动下位穿上的限定件不阻止购买：买同一把 / 另一把都合法，金数经 acquiredSlots 去重
+  const autoLimitedSlots = new Set(autoPicks.filter(p => p.limited).map(p => p.slot))
+  while (baseGold + taken.length < GOLD_OPTIMIZE_CAP) {
+    const budgetGold = baseGold + taken.length + 1
+    const candidates: GoldStep[] = []
     // 候选1：音擎获取（槽位当前非限定音擎、或限定件只是自动下位穿的 → 装备作者声明的限定音擎本体，1 金）
     for (const [slot, acq] of acquireBySlot) {
-      if (isLimitedWEngine(wEngines[slot]) && !autoLimitedSlots.has(slot)) continue
-      const prevId = wEngines[slot]
-      const prevMod = wengineMods[slot]
-      configStore.setWEngine(slot, acq.id)
-      configStore.setWEngineModLevel(slot, 1)
-      const dmg = calc.teamTotalDamage.value
-      recordTrial(
-        { slot, kind: 'acquire', value: 1, label: acq.label },
-        dmg,
-        {
-          cinemas: [...cinemas] as [number, number, number],
-          wengineMods: wengineMods.map((m, i) => (i === slot ? 1 : m)) as [number, number, number],
-          wEngines: wEngines.map((w, i) => (i === slot ? acq.id : w)) as [string, string, string],
-        },
-      )
-      if (best == null || dmg > best.damage) {
-        best = { slot, kind: 'acquire', value: 1, id: acq.id, label: acq.label, damage: dmg }
-      }
-      configStore.setWEngine(slot, prevId)
-      configStore.setWEngineModLevel(slot, prevMod)
+      if (acquiredSlots.has(slot)) continue
+      if (isLimitedWEngine(state.wEngines[slot]) && !autoLimitedSlots.has(slot)) continue
+      candidates.push(acq)
     }
-    // 候选2：影画 / 精炼（精炼仅当槽位已带限定音擎）
-    for (const [key, entry] of stepsByKey) {
-      const [slotStr, kind] = key.split(':') as [string, 'cinema' | 'wengine']
-      const slot = Number(slotStr)
-      if (kind === 'wengine' && !isLimitedWEngine(wEngines[slot])) continue
-      const current = kind === 'cinema' ? cinemas[slot] : wengineMods[slot]
-      const next = entry.values.find(v => v > current)
-      if (next == null) continue
-      // 试算候选（同场景对比：只变这一级）
-      if (kind === 'cinema') configStore.setCinemaLevel(slot, next)
-      else configStore.setWEngineModLevel(slot, next)
-      const dmg = calc.teamTotalDamage.value
-      const stepLabel = entry.labelOf.get(next) ?? `${kind === 'cinema' ? '影画' : '精炼'}${next}`
-      recordTrial(
-        { slot, kind, value: next, label: stepLabel },
-        dmg,
-        {
-          cinemas: cinemas.map((c, i) => (i === slot && kind === 'cinema' ? next : c)) as [number, number, number],
-          wengineMods: wengineMods.map((m, i) => (i === slot && kind === 'wengine' ? next : m)) as [number, number, number],
-          wEngines: [...wEngines] as [string, string, string],
-        },
-      )
-      if (best == null || dmg > best.damage) {
-        best = { slot, kind, value: next, label: stepLabel, damage: dmg }
-      }
-      if (kind === 'cinema') configStore.setCinemaLevel(slot, current)
-      else configStore.setWEngineModLevel(slot, current)
+    // 候选2：各条线的下一级影画 / 精炼（精炼仅当槽位已带限定音擎）
+    for (const ladder of ladders.values()) {
+      const { slot, kind } = ladder[0]
+      if (kind === 'wengine' && !isLimitedWEngine(state.wEngines[slot])) continue
+      const current = kind === 'cinema' ? state.cinemas[slot] : state.wengineMods[slot]
+      const next = ladder.find(s => s.value > current)
+      if (next) candidates.push(next)
     }
-    if (!best) break // 无更多候选（或已到 12 金）
-    // 提交最佳候选
-    if (best.kind === 'acquire') {
-      acquiredSlots.add(best.slot)
-      wEngines[best.slot] = best.id!
-      wengineMods[best.slot] = 1 // 换装即回精炼1：旧基础音擎的常驻精炼不残留到新专武
-      configStore.setWEngine(best.slot, best.id!)
-      configStore.setWEngineModLevel(best.slot, 1)
-    } else if (best.kind === 'cinema') {
-      cinemas[best.slot] = best.value
-      configStore.setCinemaLevel(best.slot, best.value)
-    } else {
-      wengineMods[best.slot] = best.value
-      configStore.setWEngineModLevel(best.slot, best.value)
-    }
-    taken.push(best)
+    // 同场景对比：boss/buff 已由调用方应用，每个候选只变这一级
+    const { trials, best } = takeBestGoldStep(configStore, state, candidates, () => calc.teamTotalDamage.value)
+    if (!best) break // 无更多候选
+    state = best.state
+    if (best.step.wEngineId) acquiredSlots.add(best.step.slot)
+    taken.push(best.step)
     // 归集本档候选（同队同金不同分配对比）：标记赢家 + 相对最优的损失
-    if (sink && trials.length > 0) {
-      const bestDamage = best.damage
+    if (sink) {
       for (const t of trials) {
-        const isBest = t.damage === bestDamage && t.step.slot === best.slot
-          && t.step.kind === best.kind && t.step.value === best.value
         sink.push({
-          budgetGold: nextGold,
+          budgetGold,
           step: t.step,
           damage: t.damage,
-          bestDamage,
-          deltaVsBest: t.damage - bestDamage,
-          lossPct: bestDamage > 0 ? ((bestDamage - t.damage) / bestDamage) * 100 : 0,
-          isBest,
+          bestDamage: best.damage,
+          deltaVsBest: t.damage - best.damage,
+          lossPct: best.damage > 0 ? ((best.damage - t.damage) / best.damage) * 100 : 0,
+          isBest: t === best,
           state: t.state,
         })
       }
     }
     // 总金如实：预算金 + 仍穿在身上的限定下位（买专武可能顶掉下位限定 → 总金不变但结构更优）
-    const autoLimitedNowN = autoLimitedNow()
+    const autoLimited = countLimitedAutoApplied(state.wEngines, autoPicks, acquiredSlots)
     allocations.push({
-      totalGold: nextGold + autoLimitedNowN,
-      budgetGold: nextGold,
-      cinemas: [...cinemas] as [number, number, number],
-      wengineMods: [...wengineMods] as [number, number, number],
-      wEngines: [...wEngines] as [string, string, string],
-      label: `${nextGold + autoLimitedNowN}金（最优）${autoLimitedNowN ? `（含下位限定 ${autoLimitedNowN} 金）` : ''}：${taken.map(t => t.label).join(' + ')}`,
+      totalGold: budgetGold + autoLimited,
+      budgetGold,
+      ...state,
+      label: `${budgetGold + autoLimited}金（最优）${autoLimited ? `（含下位限定 ${autoLimited} 金）` : ''}：${taken.map(t => t.label).join(' + ')}`,
       damage: best.damage,
     })
   }

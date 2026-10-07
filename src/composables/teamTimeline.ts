@@ -40,11 +40,11 @@ import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
-import type { TeamPreset } from '@/types/teamPreset'
-import type { OuterExit } from '@/types/resource'
+import type { GoldStep, TeamPreset } from '@/types/teamPreset'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
+import { takeBestGoldStep } from '@/composables/goldGreedy'
 import { bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
 
 import { localized } from '@/utils/format'
@@ -241,26 +241,18 @@ export function optimizeTeamTimeWeights(
 
 // ========== 最优加金分配（逐金贪婪） ==========
 
-interface GoldStepCandidate {
-  slot: number
-  kind: 'cinema' | 'wengine' | 'refine'
-  value: number
-  wEngineId?: string
-  label: string
-}
-
 function wengineName(wId: string, catalog: ReturnType<typeof useCatalogStore>): string {
   const w = catalog.getWEngine(wId)
   return localized(w?.name, wId)
 }
 
-/** 下一批可用的加金候选（测试导出；每槽位最多一条：影画/音擎本体/精炼） */
+/** 下一批可用的加金候选（测试导出；每槽位至多两条：影画，加精炼或换装限定音擎本体；与预设加金步同形） */
 export function nextGoldCandidates(
   team: [string, string, string],
   state: TeamGoldState,
   catalog: ReturnType<typeof useCatalogStore>,
-): GoldStepCandidate[] {
-  const out: GoldStepCandidate[] = []
+): GoldStep[] {
+  const out: GoldStep[] = []
   for (let s = 0; s < 3; s++) {
     const agent = catalog.getAgent(team[s])
     if (!agent) continue
@@ -273,7 +265,7 @@ export function nextGoldCandidates(
     if (curW && isLimitedWEngine(curW)) {
       // 已带限定音擎 → 精炼步
       if (state.wengineMods[s] < 5) {
-        out.push({ slot: s, kind: 'refine', value: state.wengineMods[s] + 1, label: `${name} ${wengineName(curW, catalog)}精炼${state.wengineMods[s] + 1}` })
+        out.push({ slot: s, kind: 'wengine', value: state.wengineMods[s] + 1, label: `${name} ${wengineName(curW, catalog)}精炼${state.wengineMods[s] + 1}` })
       }
     } else {
       // 未带限定音擎 → 可花 1 金换装最佳限定音擎（含非限定槽位，用户口径「非限定也允许修改佩戴」）
@@ -298,7 +290,7 @@ export interface GoldAllocationResult extends TeamGoldState {
  * 最优加金分配：从基础档（0命1精+推荐音擎）出发，在目标总限定金内逐金贪婪——
  * 每金档试算所有「下一个可用级别」（每槽位影画/精炼/音擎本体各一），提交伤害提升最大的那个。
  * 预算低于基础金时钳制到基础金（0 步）。同 computeTeamComparePoints 的 computeOptimalGoldAllocations 口径，
- * 但候选从 catalog 生成（适用于任意生成队伍，而非 preset.goldSteps）。
+ * 但候选从 catalog 生成（适用于任意生成队伍，而非 preset.goldSteps）；试算 / 还原 / 提交与之共用 goldGreedy#takeBestGoldStep。
  */
 export function computeOptimalTeamAllocation(
   calc: Calc,
@@ -309,62 +301,28 @@ export function computeOptimalTeamAllocation(
 ): GoldAllocationResult {
   const catalog = useCatalogStore()
   const base = baseGoldOfTeam(team, catalog)
-  const state = baseStateFor(team, catalog)
+  let state = baseStateFor(team, catalog)
   applyTeamToStore(configStore, team, state, autoBuild)
   // 平A时间权重默认「均衡」：基础态先把等权重均衡到边际产出更高的槽位（后续贪婪在均衡权重上做）
   optimizeTeamTimeWeights(calc, configStore)
-  // 防御：基础态外层未收敛 → 整队不可信（正常流程已由 refDamage 收敛过滤挡掉）
-  if (calc.resourceResult.value?.convergence.outerExit === 'maxIter') {
-    return {
-      ...state,
-      totalGold: base,
-      label: `${base}金（基础，未收敛）`,
-      damage: Number.NEGATIVE_INFINITY,
-      stepsEvaluated: 0,
-    }
+  // 收敛过滤：外层未收敛（maxIter）的读数虚高不可信，记 -Infinity。基础态如此 → 整队不可信
+  // （正常流程已由 refDamage 收敛过滤挡掉）；试算态如此 → 该步不会被选中
+  const readDamage = () => (calc.resourceResult.value?.convergence.outerExit === 'maxIter' ? Number.NEGATIVE_INFINITY : calc.teamTotalDamage.value)
+  let damage = readDamage()
+  if (damage === Number.NEGATIVE_INFINITY) {
+    return { ...state, totalGold: base, label: `${base}金（基础，未收敛）`, damage, stepsEvaluated: 0 }
   }
-  let damage = calc.teamTotalDamage.value
   let totalGold = base
   const taken: string[] = []
   let stepsEvaluated = 0
   while (totalGold < budget) {
-    const cands = nextGoldCandidates(team, state, catalog)
-    if (cands.length === 0) break
-    let best: { cand: GoldStepCandidate; dmg: number } | null = null
-    for (const c of cands) {
-      // 试算（临时应用 → 读伤害 → 还原）
-      const prevC = state.cinemas[c.slot]
-      const prevW = state.wEngines[c.slot]
-      const prevM = state.wengineMods[c.slot]
-      if (c.kind === 'cinema') configStore.setCinemaLevel(c.slot, c.value)
-      else if (c.kind === 'wengine') configStore.setWEngine(c.slot, c.wEngineId!)
-      else configStore.setWEngineModLevel(c.slot, c.value)
-      stepsEvaluated++
-      // 注意：贪婪循环内不做 yield——试算是「临时改动→读伤害→还原」，中途让出会触发
-      // store 的 team watch（syncTeammateBuffsFromTeam）在改动未还原时重入，扭曲后续试算。
-      // 让出只发生在阶段边界（阶段1每2队、阶段3每2队）。
-      // 收敛过滤：试算态外层未收敛（maxIter）→ 该步伤害虚高不可信，视作 -Inf 拒绝
-      // （断言绕开的是 TS 的收窄：函数开头 `outerExit === 'maxIter'` 已提前返回，TS 便认定这里不会是 maxIter；
-      //   但中间改过 store、计算属性会重算，运行时确实会出现——TS 不会因为函数调用作废属性链上的收窄）
-      const conv = calc.resourceResult.value?.convergence.outerExit as OuterExit | undefined
-      const d = conv === 'maxIter' ? Number.NEGATIVE_INFINITY : calc.teamTotalDamage.value
-      configStore.setCinemaLevel(c.slot, prevC)
-      configStore.setWEngine(c.slot, prevW)
-      configStore.setWEngineModLevel(c.slot, prevM)
-      if (Number.isFinite(d) && (best == null || d > best.dmg + 1e-9)) best = { cand: c, dmg: d }
-    }
+    const { trials, best } = takeBestGoldStep(configStore, state, nextGoldCandidates(team, state, catalog), readDamage)
+    stepsEvaluated += trials.length
     if (!best) break
-    // 提交最佳步
-    const c = best.cand
-    if (c.kind === 'cinema') configStore.setCinemaLevel(c.slot, c.value)
-    else if (c.kind === 'wengine') configStore.setWEngine(c.slot, c.wEngineId!)
-    else configStore.setWEngineModLevel(c.slot, c.value)
-    if (c.kind === 'cinema') state.cinemas[c.slot] = c.value
-    else if (c.kind === 'wengine') state.wEngines[c.slot] = c.wEngineId!
-    else state.wengineMods[c.slot] = c.value
-    damage = best.dmg
+    state = best.state
+    damage = best.damage
     totalGold++
-    taken.push(c.label)
+    taken.push(best.step.label)
   }
   const clamped = budget < base
   const label = taken.length === 0

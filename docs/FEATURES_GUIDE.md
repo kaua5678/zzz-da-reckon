@@ -150,7 +150,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 金数应用 / 难度公式 | `src/composables/teamCompare.ts`：`applyGoldSteps`（目标限定金钳制 + standardSteps 常驻配置）/ `computeDifficulty` / `baseGoldOf`（只算限定 S 角色/音擎，常驻清单 `STANDARD_S_AGENT_IDS`/`STANDARD_S_WENGINE_IDS`） |
 | buff 应用/推荐 | 同上 `applyBuffToStore`（整表替换为所选牌，行经 `utils/phaseBuff#phaseBuffRows` 带 `cond`）/ `pickBestBuff`（每队三张牌取伤害最高）；条件（特性限定 / 异常人数分档）由管线按当前队伍解析（`resolvePhaseBuffValue`，CC-341） |
 | 批量计算管线（含现场快照/恢复） | 同上 `computeTeamComparePoints`（改 configStore → 读 `calc.teamTotalDamage` computed → 收集 → 恢复；快照含 team/enemy/globalBuffs/stunAxes） |
-| 最优加金（≤12金贪婪） | 同上 `computeOptimalGoldAllocations`（候选只来自 goldSteps、standardSteps 全量应用、封顶 `GOLD_OPTIMIZE_CAP`=12、同场景对比）；页面对勾 `TeamComparePage.vue` 的 `optimalGold` |
+| 最优加金（≤12金贪婪） | 同上 `computeOptimalGoldAllocations`（候选只来自 goldSteps、standardSteps 全量应用、封顶 `GOLD_OPTIMIZE_CAP`=12、同场景对比；试算 / 还原 / 提交走 `composables/goldGreedy.ts` 的 `takeBestGoldStep`，与时间线共用）；页面对勾 `TeamComparePage.vue` 的 `optimalGold` |
 | 自动下位音擎（装填池择优） | 同上 `computeAutoEnginePicks`（池解析/过滤/逐槽试算）+ `substituteAutoEngines`（非限定槽位覆盖）；默认池 `DEFAULT_AUTO_ENGINE_POOL`；页面开关/精炼档/装填框 = `TeamComparePage.vue` 的 `autoEngine`/`autoEngineMods`/`autoEnginePool` |
 | 交互 → 角色配置映射（含 tauntCancel） | `src/composables/teamCompare.ts` `applyTeamToStore`（parry/dodge/quickAssist/block/tauntCancel → `set*Count`） |
 | 般岳轴模式自动补齐交互次数 | `src/mechanics/agents/banyue.ts` `computeBanyueInteractionTopUp`（纯函数：嗔火缺口→双反、喧响缺口→弹刀）+ `src/composables/useResourceCalc.ts`（外不动点 `prevBanyueTopUp` 线程、弹刀计入 `calcSpecialActionBonus`、暴露 `banyueInteractionTopUp`）；交互栏显示在 `TeamConfigPage.vue` |
@@ -249,7 +249,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 要改什么 | 改哪里 |
 | --- | --- |
 | 版本节点 / S 级实装版本 | `src/data/versionTimeline.ts`（新增版本/角色时更新；3.2 测试服 note 标注） |
-| 搜索 / 加金 / 收敛过滤算法 | `src/composables/teamTimeline.ts`（`computeTeamTimeline` / `computeOptimalTeamAllocation` / `budgetAwareStateFor`） |
+| 搜索 / 加金 / 收敛过滤算法 | `src/composables/teamTimeline.ts`（`computeTeamTimeline` / `computeOptimalTeamAllocation`）+ `teamTimelineStore.ts`（`budgetAwareStateFor`）；逐金贪婪的试算 / 提交在 `goldGreedy.ts`（与队伍对比共用） |
 | 每期新角色·强队强度（Chart 3） | `teamTimeline.ts`：`buildNewCharacterRows`（版本×新角色行，**排除 1.0 常驻 S**）/ `computeNewCharacterPoints`（**同角色多队**逐队配装+收敛过滤）/ `prefillStrongTeamsFromPresets`（口述预设优先 + 仓库 preset 补剩余）；**口述强队单一事实源 = `data/strongTeamPresets.ts`** |
 | 同槽位角色对比（Chart 7） | `teamTimeline.ts`：`findSlotComparePairs`（纯函数：预设中其余两槽相同、所选槽位 A/B 两队的成对去重）/ `computeSlotComparePoints`（每组 A/B 双伤、按主C实装节点排序、快照/恢复）；配装口径同 Chart 3；横轴 = `data/versionTimeline.ts` 版本节点 |
 | 菲林经济模拟（Chart 4） | `teamTimeline.ts`：`computeFilmSimulation`（经济累积 + 主C优先买金 + 逐期 Boss/buff 求值）；**抽卡期望/汇率常量 = `data/filmEconomy.ts`**（角色金 93.75 抽 / 音擎金 62.5 抽 / 直充 10 菲林/元，萌百·游戏内调频详情） |

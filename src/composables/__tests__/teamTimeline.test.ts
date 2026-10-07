@@ -103,7 +103,7 @@ describe('基础金与加金候选', () => {
     const state = { cinemas: [0, 0, 0] as [number, number, number], wengineMods: [1, 1, 1] as [number, number, number], wEngines: ['', '', ''] as [string, string, string] }
     const cands = nextGoldCandidates(['1371', '1141', '1311'], state, catalog)
     expect(cands.some(c => c.kind === 'cinema')).toBe(true) // 限定槽位影画
-    expect(cands.some(c => c.kind === 'wengine')).toBe(true) // 莱卡恩（常驻）槽位可换限定音擎
+    expect(cands.some(c => c.kind === 'wengine' && c.wEngineId)).toBe(true) // 莱卡恩（常驻）槽位可换限定音擎（获取步 = 带 wEngineId）
   })
 })
 

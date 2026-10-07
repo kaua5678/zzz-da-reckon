@@ -1087,6 +1087,8 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
     expect(at4.wEngines[0]).toBe('14153')
     expect(at4.totalGold).toBe(6)
     expect(at4.label).toContain('含下位限定 2 金')
+    // 买过本体的槽位不再出获取候选：唯一的获取步用掉即止（r733 前自动下位限定槽位会一直重复买同一把到 12 金）
+    expect(allocs.map(a => a.budgetGold)).toEqual([3, 4])
   })
 
   it('最优路径集成：base 档穿下位择优，买到专武的槽位换回专武（精炼回 1），其余槽保持下位', async () => {
