@@ -36,7 +36,7 @@ import type { SkillExecution } from '@/types/resource'
 // ⚠ 改这 4 个函数请去 `data/moveTableQueries.ts`，不要在本文件重建同形函数。
 import { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment } from '@/data/moveTableQueries'
 import { isNumberedBasicSegment } from '@/data/basicSegment'
-export { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment }
+export { getRowValue, fusedRowValue, findMoveById }
 
 // ---- 元素 → 面板字段名：CC-224 起单一来源 `@/utils/elementStatKeys`（原 3 张表与本壳已删，不要在此重建） ----
 

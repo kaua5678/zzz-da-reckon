@@ -55,9 +55,6 @@ import type { DirectDamagePoint } from '@/composables/multiplierCoefficients'
 export const INFLATION_MODES = ['defense', 'critical_assault'] as const
 export type InflationMode = typeof INFLATION_MODES[number]
 
-/** 绝对下限：样本数低于此值判「数据不足」（连一个可用的平均值都撑不起） */
-export const MIN_SAMPLES_PER_VERSION = 6
-
 /**
  * lowSample 判定 = **样本数 < 该序列里的最大样本数**（自校准），而非固定阈值。
  *
@@ -81,7 +78,7 @@ export interface InflationPoint {
   avgHp: number
   /** 参与平均的期相数（满编 9；不足 = 有 Boss 尚未登场） */
   samples: number
-  /** samples < MIN_SAMPLES_PER_VERSION（置信度低于其他点，图上应区分显示） */
+  /** isLowSample(samples, 本序列最大样本数)：低于满编 ⇒ 置信度低于其他点，图上应区分显示 */
   lowSample: boolean
   /** 归一化指数（= avgHp / 首版本 avgHp × 100；首版本 = 100） */
   index: number
@@ -304,16 +301,3 @@ export function mapRoomsToInflation(
   })
 }
 
-/**
- * 「兑现的相对含金量」= 该房间兑现分 ÷ 当期环境指数 × 100。
- *
- * 读法：把分数换算回「首版本环境下等价的分数」。环境 300% 时拿 30000 分，
- * 含金量 ≈ 10000 分（首版本口径）——即**同样的绝对分，晚期更难拿、含金量更低**。
- * 这是把「膨胀」显式接进兑现读数的**展示层换算**：不改变 pullValue 的既有输出，
- * 只给一个可比标尺。
- */
-export function deflateScoreByInflation(score: number, inflationIndex: number): number {
-  // 非正 / 非有限指数一律原样返回：不除零、不把 NaN 传染给下游读数
-  if (!Number.isFinite(inflationIndex) || inflationIndex <= 0) return score
-  return (score / inflationIndex) * 100
-}

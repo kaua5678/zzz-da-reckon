@@ -133,9 +133,6 @@ const DEFAULT_DIDONG_COMBO = 0 // 怒相外连段里分配给「地动→山摇�
 // @fact engine:banyue/补齐时间上限 口径: 自动填充交互的原始动作时间（未扣合轴）>200s 判本次填充非法——次数清零并走轴退化，而不是截断成半套 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC + src/mechanics/agents/banyue.ts#computeBanyueInteractionTopUp | 信 确认
 export const AUTO_TOPUP_TIME_LIMIT_SEC = 200
 
-/** 轴模式自动补齐的交互次数（CC-23 起类型定义在 `mechanics/typesHooks.ts#InteractionTopUp`（CC-83 拆出，经 types.ts 转出）；本别名保留给测试与既有引用） */
-export type BanyueInteractionTopUp = InteractionTopUp
-
 /**
  * 轴模式自动补齐（用户口径 2026-08，方案 A 保底补齐）：
  * - 嗔火不足 → 抬双反：轴内怒相组数 ÷ 2 = 需要的怒相次数 × 120 − 当前嗔火产出 → 双反 = 缺口 ÷ 10；

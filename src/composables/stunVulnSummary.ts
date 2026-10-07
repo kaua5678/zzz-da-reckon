@@ -27,18 +27,6 @@ function coverageFromStunMult(stunMult: number, vuln: number): number {
     : (stunMult >= 1 ? 1 : 0)
 }
 
-/** 行级 stunMult（vuln 分量）→ 生效易伤（含面板失衡增伤；异常行 undefined → 1）。旧签名，按「基数 = vuln」反推 */
-export function rowAppliedStunMult(
-  stunMult: number | undefined,
-  vuln: number,
-  stunBonus: number,
-  stunBonusAlways: number,
-  stunCapAlways: number,
-): number {
-  if (stunMult === undefined) return 1
-  return calcStunMultiplier(vuln, stunBonus, stunBonusAlways, stunCapAlways, coverageFromStunMult(stunMult, vuln))
-}
-
 /** 按行计算所需的最小行形状（DamagePoolRow 的子集） */
 export interface StunRowLike {
   stunMult?: number

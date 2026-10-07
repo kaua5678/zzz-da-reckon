@@ -9,8 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { fusedRowValue, getRowValue, findMoveById } from '@/composables/resourceCalc/helpers'
-import { segmentSwapped } from '@/data/moveTableQueries'
+import { segmentSwapped, fusedRowValue, getRowValue, findMoveById } from '@/data/moveTableQueries'
 import { TEAMMATE_MOVE_VARIANTS, teammateSegmentResolver } from '@/data/moveVariants'
 
 import type { AgentSkills } from '@/types/catalog'

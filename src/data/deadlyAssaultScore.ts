@@ -67,20 +67,3 @@ export function scoreForDamageRatio(ratio: number, mode: DeadlyAssaultMode = 'de
   }
   return DEADLY_ASSAULT_SCORE_CAP
 }
-
-/**
- * 伤害分（0~60000）→ 伤害/血量（0~1）。分段线性插值（逆函数），越界钳制。
- */
-export function damageRatioForScore(score: number, mode: DeadlyAssaultMode = 'defense'): number {
-  const curve = SCORE_CURVES[mode]
-  const s = Math.min(DEADLY_ASSAULT_SCORE_CAP, Math.max(0, score))
-  for (let i = 0; i < curve.length - 1; i++) {
-    const [r0, s0] = curve[i]
-    const [r1, s1] = curve[i + 1]
-    if (s <= s1) {
-      const t = (s - s0) / (s1 - s0)
-      return r0 + t * (r1 - r0)
-    }
-  }
-  return 1
-}

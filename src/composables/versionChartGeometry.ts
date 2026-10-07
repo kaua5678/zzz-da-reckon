@@ -20,7 +20,6 @@ import {
   hpRatioYLabelOf,
   hpRatioYMaxOf,
   hpRatioYOf,
-  hpRatioYStepOf,
   type PlotBox,
 } from './hpRatioAxis'
 
@@ -72,7 +71,6 @@ export function versionXTicksOf(
 /** 纵轴上限：0 起，向上取整到 50/100 的整数倍（与 Chart 1 同款口径） */
 // 委托共享纵轴（Chart 1/3/4 同口径，单一事实源在 hpRatioAxis.ts）
 export const chart3YMaxOf = hpRatioYMaxOf
-export const chart3YStepOf = hpRatioYStepOf
 export const chart3YOf = hpRatioYOf
 export const chart3YGridOf = hpRatioYGridOf
 export const chart3YLabelOf = hpRatioYLabelOf

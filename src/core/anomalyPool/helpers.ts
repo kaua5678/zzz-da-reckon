@@ -54,10 +54,10 @@ import type {
 export type { CoweringConfig, DamageCalcConfig } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
-import { VARIANT_ELEMENT_TO_BASE, getBaseElement, resolveStatElement, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
-import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'
+import { getBaseElement, resolveStatElement, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
+import { panelElementStat } from '@/utils/elementStatKeys'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
-import { LEVEL_COEFF_60, LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
+import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
 import { resolveAnomalyCorrosion } from './corrosion'
 
 // ============ 喧响奖励常量 ============
@@ -68,9 +68,6 @@ import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS
 export { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS }
 
 // ============ 伤害计算常量 ============
-
-// 794 等级基数 / 60 级等级系数 2：单一来源 `../damageMultipliers`（CC-219），这里转出旧名
-export { LEVEL_COEFF_60, LEVEL_MULT_60 }
 
 /** 乱流CD（秒）：乱流槽位 = floor(风化时长 / CD) */
 export const TURBULENCE_CD_SECONDS = 3
@@ -97,8 +94,8 @@ export const TURBULENCE_CD_SECONDS = 3
  * 变种元素的积蓄上限、持续时间、紊乱/乱流倍率均继承基础元素的值。
  * 变种元素之间在紊乱系统中视为不同元素（如 physical 和 physical_polar_assault 可互紊）。
  */
-// 变种元素映射 / getBaseElement：单一来源 `@/data/anomalyElement`（CC-223，展示层也要用），此处原名转出
-export { VARIANT_ELEMENT_TO_BASE, getBaseElement }
+// getBaseElement：单一来源 `@/data/anomalyElement`（CC-223，展示层也要用），此处原名转出
+export { getBaseElement }
 
 // ============ 积蓄上限表（原有，保持不变） ============
 
@@ -541,14 +538,6 @@ export function round(value: number, decimals = 2): number {
 
 // resolveStatElement：单一来源 `@/data/anomalyElement`（CC-224，utils/elementStatKeys 与展示层也要用），此处原名转出
 export { resolveStatElement }
-
-/**
- * 获取元素伤害加成对应的 PanelValues 字段名
- */
-export function getElementDmgKey(element: string): string {
-  // CC-224：查表走 utils/elementStatKeys；未知元素保留旧回落 `${statElement}Dmg`（面板无此字段 ⇒ 读 0，逐位等价）
-  return elementStatKey('dmg', element) ?? ((resolveStatElement(element) ?? '') + 'Dmg')
-}
 
 /** 获取面板中指定元素的伤害加成（百分比，CC-338 转调 panelElementStat） */
 export function getElementDmgBonus(panel: PanelValues, element: string): number {

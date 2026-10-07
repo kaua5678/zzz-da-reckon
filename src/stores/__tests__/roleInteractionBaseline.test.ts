@@ -5,7 +5,8 @@
  * 正反馈 refund 模块（伊德海莉 1051）不吃通用基准（玩法口径：蓄力/极寒重碾 carry，弹刀闪反归击破位）。
  */
 import { describe, expect, it } from 'vitest'
-import { roleInteractionBaseline, interactionBaselineFor } from '@/stores/config'
+import { interactionBaselineFor } from '@/stores/config'
+import { roleInteractionBaseline } from '@/mechanics/interactionBaseline'
 
 describe('roleInteractionBaseline', () => {
   it('强攻/异常/击破：弹刀6 + 闪反10（默认会打，不留时间发呆）', () => {

@@ -59,7 +59,7 @@ describe('佩洛伊斯（1551）影画1 黄昏旧章', () => {
   //   ② 断言在「配置里有 2000」—— 那是**输入**，不是被改的那行 ⇒ 把读取改成 `characters[0]` 照样绿。
   //   本用例用**同一次调用里两个不同槽**的返回值差异钉死「按槽读」。
   it('★ 轴内终结技喧响消耗按槽解析 cfg.ultimateCost（不是按 agentId 认人）', async () => {
-    const { resolveAxisUltimateDecibelCost } = await import('@/composables/resourceCalc/convergence')
+    const { resolveAxisUltimateDecibelCost } = await import('@/composables/resourceCalc/roundInputs')
     const chars = [{ ultimateCost: 3000 }, { ultimateCost: 2000 }] // 槽0 普通、槽1 佩洛伊斯
     const ULT = true // CC-319：第一个参数改为「是否终结技」（由调用方经 chainMoveKind 判定）
     // 同一招式名、不同槽 ⇒ 消耗必须不同（这正是「按槽读」与「按 agentId/固定槽读」的分水岭）

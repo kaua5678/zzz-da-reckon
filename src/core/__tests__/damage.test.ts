@@ -2,12 +2,8 @@ import { setPanelStat } from '@/utils/panelStat'
 import { describe, expect, it } from 'vitest'
 import { emptyPanel } from '@/core/panel'
 import { calcPerHitBuildUp } from '@/core/anomalyPool/helpers'
-import {
-  calcAnomalyDamage,
-  calcDirectDamage,
-  sharpCritMultiplier,
-  type SpecialDamageProfile,
-} from '@/core/damage'
+import { calcAnomalyDamage, calcDirectDamage, type SpecialDamageProfile } from '@/core/damage'
+import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 
 /**
  * ★ R33（2026-09-18）：本条原先是 `describe('calcAnomalyBuildUp')`，测的是 `damage.ts` 里

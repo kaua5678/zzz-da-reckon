@@ -66,7 +66,7 @@ import { enrichExecutionPlan, axisMoveEndsStunWindow, axisMoveActionTimeOf } fro
 const DECIBEL_ROUND_THRESHOLD = 1500
 import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 
-export { createConvergenceRoundInputs, resolveAxisUltimateDecibelCost } from './roundInputs'
+export { createConvergenceRoundInputs } from './roundInputs'
 import type { CalcRoundResult } from './roundResult'
 import { chainCountTotalOf } from '@/core/chainCount'
 export type { CalcRoundResult } from './roundResult'

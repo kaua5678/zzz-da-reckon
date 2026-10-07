@@ -4,9 +4,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
+import { computePanelPhases, buildMechanicTeamMembers } from '@/composables/resourceCalc/panelPhases'
 import { teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
-import { buildMechanicTeamMembers } from '@/composables/resourceCalc/helpers'
 
 type Team = Parameters<typeof setupHarness>[0]
 

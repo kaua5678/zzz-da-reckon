@@ -293,7 +293,6 @@ export const soukakuMechanic: AgentMechanicModule = {
   patchExecutions,
 }
 
-export default soukakuMechanic
 
 /**
  * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。

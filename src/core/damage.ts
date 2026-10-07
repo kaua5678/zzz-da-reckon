@@ -87,12 +87,10 @@ function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCr
   }
 }
 
-// 下沉（2026-09-13 展示层越层棘轮）：**定义**在 src/data/sharpCritMultiplier.ts，此处 re-export
-// 保持引擎侧调用点（本文件 calcSharpCritMultiplier、substatOptimizer）与文档引用零改动；
-// 展示层（FinalPanel / StatPanel）改 import `@/data/…`。改公式只改 src/data 那一处。
+// 下沉（2026-09-13 展示层越层棘轮）：**定义**在 src/data/sharpCritMultiplier.ts；本文件 calcSharpCritMultiplier、
+// substatOptimizer 与展示层（FinalPanel / StatPanel）都直接 import `@/data/…`。改公式只改 src/data 那一处。
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
-export { sharpCritMultiplier }
 
 function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget): { multiplier: number; label: string } {
   const sharpCritDmg = getTargetedStat(panel, 'sharpCritDmg', targetSkillType) + (panel.enemyCritDmgTakenBonus ?? 0)

@@ -17,16 +17,7 @@
  */
 import { isProxy } from 'vue'
 
-let enabled = import.meta.env.MODE === 'test'
-
-/** 性能探针 / 需要可写缓存的特殊测试可临时关闭（用完恢复）。 */
-export function setCachedFreezeEnabled(on: boolean): void {
-  enabled = on
-}
-
-export function isCachedFreezeEnabled(): boolean {
-  return enabled
-}
+const enabled = import.meta.env.MODE === 'test'
 
 function deepFreeze(value: unknown): void {
   if (value === null || typeof value !== 'object') return

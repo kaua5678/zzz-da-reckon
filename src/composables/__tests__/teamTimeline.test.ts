@@ -14,21 +14,9 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { isLimitedWEngine } from '@/composables/teamCompare'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
 import { setupHarness } from '@/test/harness'
-import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, nodesFrom, releaseNodeOf } from '@/data/versionTimeline'
-import {
-  SWAP_UPGRADE_UPLIFT_PCT,
-  baseGoldOfTeam,
-  buildNewCharacterRows,
-  classifySwapUplift,
-  computeFilmSimulation,
-  computeNewCharacterPoints,
-  computeOptimalTeamAllocation,
-  computeSlotComparePoints,
-  computeTeamTimeline,
-  findSlotComparePairs,
-  nextGoldCandidates,
-  prefillStrongTeamsFromPresets,
-} from '@/composables/teamTimeline'
+import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
+import { SWAP_UPGRADE_UPLIFT_PCT, buildNewCharacterRows, classifySwapUplift, computeFilmSimulation, computeNewCharacterPoints, computeOptimalTeamAllocation, computeSlotComparePoints, computeTeamTimeline, findSlotComparePairs, nextGoldCandidates, prefillStrongTeamsFromPresets } from '@/composables/teamTimeline'
+import { baseGoldOfTeam } from '@/composables/teamTimelineStore'
 import { teamPresets } from '@/data/teamPresets'
 import { STRONG_TEAM_PRESETS } from '@/data/strongTeamPresets'
 import { allocateTopUpFilm } from '@/data/filmEconomy'
@@ -97,7 +85,6 @@ describe('版本时间线数据不变量', () => {
     expect(releaseNodeOf('1451')).toBe('2.3-1') // 卢西娅
     expect(releaseNodeOf('1481')).toBe('2.4-1') // 琉音
     expect(releaseNodeOf('1571')).toBe('3.0-2') // 诺姆
-    expect(nodesFrom('2.0-1').length).toBe(VERSION_NODES.length - nodeIndexOf('2.0-1'))
   })
 })
 
@@ -175,7 +162,7 @@ describe('computeTeamTimeline 集成冒烟（候选池裁剪）', () => {
       candidatePool: pool,
     })
     // 节点数 = 主C实装节点起（默认剔除测试服占位节点）
-    const expectedAxis = nodesFrom('2.0-1').filter(n => !(n.note ?? '').includes('测试服'))
+    const expectedAxis = VERSION_NODES.slice(nodeIndexOf('2.0-1')).filter(n => !(n.note ?? '').includes('测试服'))
     expect(res.nodes.length).toBe(expectedAxis.length)
     expect(res.nodes[0].nodeId).toBe('2.0-1')
     // 每节点成员实装 ≤ 该节点

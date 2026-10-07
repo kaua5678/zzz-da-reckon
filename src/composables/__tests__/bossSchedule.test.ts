@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { VERSION_NODES } from '@/data/versionTimeline'
-import { buildPeriodAxis, indexForDate, latestPhaseOf, nodeIdForDate } from '@/composables/bossSchedule'
+import { buildPeriodAxis, indexForDate, latestPhaseOf } from '@/composables/bossSchedule'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
 const bossText = readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')
@@ -57,15 +57,14 @@ function mkBoss(id: string, name: string, phases: BossPresetPhase[]): BossPreset
 }
 
 describe('indexForDate 日期窗口', () => {
-  it('早于首期 → -1/null；恰逢边界归新节点；末节点无上界', () => {
+  it('早于首期 → -1；恰逢边界归新节点；末节点无上界', () => {
     expect(indexForDate(NODES, '')).toBe(-1)
-    expect(nodeIdForDate(NODES, '')).toBeNull()
     expect(indexForDate(NODES, '2024-12-01')).toBe(-1)
     expect(indexForDate(NODES, '2024-12-20')).toBe(0) // 首期当天含
-    expect(nodeIdForDate(NODES, '2024-12-25 04:00:00')).toBe('P1') // 带时分秒取前 10 位
+    expect(indexForDate(NODES, '2024-12-25 04:00:00')).toBe(0) // 带时分秒取前 10 位
     expect(indexForDate(NODES, '2025-01-03')).toBe(1) // 边界日 = 下期开始
     expect(indexForDate(NODES, '2025-02-01')).toBe(2)
-    expect(nodeIdForDate(NODES, '2030-01-01')).toBe('P3') // 末期无上界
+    expect(indexForDate(NODES, '2030-01-01')).toBe(2) // 末期无上界
   })
 })
 

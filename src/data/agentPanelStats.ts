@@ -34,7 +34,6 @@ export const AGENT_PANEL_STATS = [
 ] as const satisfies ReadonlyArray<{ key: keyof PanelValues; group: AgentPanelStatGroup; initial: number }>
 
 type AgentPanelStat = (typeof AGENT_PANEL_STATS)[number]
-export type AgentPanelStatKey = AgentPanelStat['key']
 
 /** 某组角色专属面板属性的初值表：键集 = 该组的 key */
 type AgentPanelStatInitials<G extends AgentPanelStatGroup> = Record<Extract<AgentPanelStat, { group: G }>['key'], number>

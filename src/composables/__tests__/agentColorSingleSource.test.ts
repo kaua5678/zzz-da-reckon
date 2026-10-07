@@ -1,16 +1,15 @@
 /**
  * CC-484（r669）：角色配色（调色板 + id 散列）唯一出处 = composables/charts/agentPresentation.ts。
- * timelineChart.ts 的 AGENT_PALETTE / agentColorOf 只是旧名转出，不得再长出第二份调色板。
+ * timelineChart.ts 的 agentColorOf 只是旧名转出，不得再长出第二份调色板。
  */
 import { describe, expect, it } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { PALETTE, colorOf } from '@/composables/charts/agentPresentation'
-import { AGENT_PALETTE, agentColorOf } from '@/composables/timelineChart'
+import { agentColorOf } from '@/composables/timelineChart'
 
 describe('角色配色单一出处（CC-484）', () => {
   it('timelineChart 的旧名就是 agentPresentation 的同一对象', () => {
     expect(agentColorOf).toBe(colorOf)
-    expect(AGENT_PALETTE).toBe(PALETTE)
     expect(PALETTE).toHaveLength(16)
     expect(PALETTE).toContain(colorOf('1371'))
   })

@@ -18,7 +18,6 @@ import {
   chart3YLabelOf,
   chart3YMaxOf,
   chart3YOf,
-  chart3YStepOf,
 } from '@/composables/versionChartGeometry'
 import { buildTimelineChart } from '@/composables/timelineChart'
 
@@ -75,7 +74,6 @@ describe('步长与网格/标签同源', () => {
 describe('单一事实源（结构断言，防某张图改回本地实现）', () => {
   it('Chart 3 的纵轴函数**就是**共享实现（引用相等，不是"行为相同"）', () => {
     expect(chart3YMaxOf).toBe(hpRatioYMaxOf)
-    expect(chart3YStepOf).toBe(hpRatioYStepOf)
     expect(chart3YOf).toBe(hpRatioYOf)
     expect(chart3YGridOf).toBe(hpRatioYGridOf)
     expect(chart3YLabelOf).toBe(hpRatioYLabelOf)

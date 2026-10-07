@@ -11,27 +11,28 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { stunAxisPresets, cloneStunAxes } from '@/data/stunAxisPresets'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
-import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMult, rowAppliedStunMultOf, rowFullStunMultOf, rowStunCoverage } from '@/composables/stunVulnSummary'
+import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMultOf, rowFullStunMultOf, rowStunCoverage } from '@/composables/stunVulnSummary'
 import { readFileSync as readSrcFile, readdirSync as readSrcDir, statSync as statSrc } from 'node:fs'
 import { join as joinSrc, relative as relSrc } from 'node:path'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 
-describe('rowAppliedStunMult（行级分量 → 生效易伤）', () => {
+describe('rowAppliedStunMultOf 回落路径（行只带 stunMult 分量 → 生效易伤）', () => {
   const vuln = 1.5
   const bonus = 60 // 雨果队面板失衡增伤
+  const applied = (stunMult: number | undefined, v = vuln, b = bonus) => rowAppliedStunMultOf({ stunMult }, { vuln: v, bonus: b, always: 0, cap: 0 })
   it('异常行（无 stunMult）→ 1', () => {
-    expect(rowAppliedStunMult(undefined, vuln, bonus, 0, 0)).toBe(1)
+    expect(applied(undefined)).toBe(1)
   })
   it('满额行分量 1.5 → 2.100（含面板加成）；零行 1.0 → 1.000', () => {
-    expect(rowAppliedStunMult(1.5, vuln, bonus, 0, 0)).toBeCloseTo(2.1, 3)
-    expect(rowAppliedStunMult(1.0, vuln, bonus, 0, 0)).toBeCloseTo(1.0, 3)
+    expect(applied(1.5)).toBeCloseTo(2.1, 3)
+    expect(applied(1.0)).toBeCloseTo(1.0, 3)
   })
   it('部分行分量反推 frac 后按覆盖率插值（vuln=1.5 时 1.25 → frac 0.5 → 1.55）', () => {
-    expect(rowAppliedStunMult(1.25, vuln, bonus, 0, 0)).toBeCloseTo(1.55, 3)
+    expect(applied(1.25)).toBeCloseTo(1.55, 3)
   })
   it('vuln=1（无易伤配置）不除零，按分量是否为满额回落', () => {
-    expect(rowAppliedStunMult(1.5, 1.0, 0, 0, 0)).toBe(1)
-    expect(rowAppliedStunMult(1.0, 1.0, 0, 0, 0)).toBe(1)
+    expect(applied(1.5, 1.0, 0)).toBe(1)
+    expect(applied(1.0, 1.0, 0)).toBe(1)
   })
 })
 
@@ -107,16 +108,17 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     const bonus = p0?.stunDmgMultiplierBonus ?? 0
     const always = p0?.stunDmgMultiplierBonusAlways ?? 0
     const cap = p0?.stunDmgMultiplierBonusCapAlways ?? 0
+    const p = { vuln, bonus, always, cap }
     const full = calcStunMultiplier(vuln, bonus, always, cap, true)
     expect(full).toBeCloseTo(2.1, 3)
     const rows = (calc.damagePoolRows.value ?? []) as DamagePoolRow[]
     const verdict = rows.find(r => r.moveId === '1291_ex_verdict_final')
     const normal = rows.find(r => r.moveId === '1291_ex_normal_final')
     expect(verdict?.count).toBe(5) // 坑36 修复：轴栈同源
-    expect(rowAppliedStunMult(verdict?.stunMult, vuln, bonus, always, cap)).toBeCloseTo(2.1, 3)
-    expect(rowAppliedStunMult(normal?.stunMult, vuln, bonus, always, cap)).toBeCloseTo(1.0, 3)
+    expect(rowAppliedStunMultOf(verdict ?? {}, p)).toBeCloseTo(2.1, 3)
+    expect(rowAppliedStunMultOf(normal ?? {}, p)).toBeCloseTo(1.0, 3)
     const s = computeStunVulnSummary(
-      rows.map(r => ({ totalDamage: r.totalDamage, appliedStunMult: rowAppliedStunMult(r.stunMult, vuln, bonus, always, cap) })),
+      rows.map(r => ({ totalDamage: r.totalDamage, appliedStunMult: rowAppliedStunMultOf(r, p) })),
       full,
     )
     // 重冻 2026-09-28（CC-158 第 181 轮，折叠残差可退回 ⇒ 平A池重分、轴外行伤害占比微移）：旧 1.6900/0.6900/0.6273、
@@ -133,14 +135,15 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     const bonus = p0?.stunDmgMultiplierBonus ?? 0
     const always = p0?.stunDmgMultiplierBonusAlways ?? 0
     const cap = p0?.stunDmgMultiplierBonusCapAlways ?? 0
+    const p = { vuln, bonus, always, cap }
     const full = calcStunMultiplier(vuln, bonus, always, cap, true)
     const rows = (calc.damagePoolRows.value ?? []) as DamagePoolRow[]
     const dodgeRows = rows.filter(r => r.moveId === '1291012')
     expect(dodgeRows.length).toBe(2) // 轴内段(满额) + 轴外段(零)
-    expect(dodgeRows.some(r => rowAppliedStunMult(r.stunMult, vuln, bonus, always, cap) > 1.99)).toBe(true)
-    expect(dodgeRows.some(r => rowAppliedStunMult(r.stunMult, vuln, bonus, always, cap) < 1.01)).toBe(true)
+    expect(dodgeRows.some(r => rowAppliedStunMultOf(r, p) > 1.99)).toBe(true)
+    expect(dodgeRows.some(r => rowAppliedStunMultOf(r, p) < 1.01)).toBe(true)
     const s = computeStunVulnSummary(
-      rows.map(r => ({ totalDamage: r.totalDamage, appliedStunMult: rowAppliedStunMult(r.stunMult, vuln, bonus, always, cap) })),
+      rows.map(r => ({ totalDamage: r.totalDamage, appliedStunMult: rowAppliedStunMultOf(r, p) })),
       full,
     )
     expect(s.weightedVuln).toBeCloseTo(1.7198, 3)
@@ -196,7 +199,7 @@ describe('CC-226：行级覆盖率 / 基数取引擎实值（不再由 stunMult 
   it('普通行：新字段与旧反推逐位等价', () => {
     for (const cov of [0, 0.25, 0.5, 1]) {
       const row = { stunMult: 1 + (p.vuln - 1) * cov, stunCoverage: cov, stunVulnBase: p.vuln }
-      expect(rowAppliedStunMultOf(row, p)).toBeCloseTo(rowAppliedStunMult(row.stunMult, p.vuln, p.bonus, 0, 0), 12)
+      expect(rowAppliedStunMultOf(row, p)).toBeCloseTo(rowAppliedStunMultOf({ stunMult: row.stunMult }, p), 12)
     }
     expect(rowAppliedStunMultOf({}, p)).toBe(1)
     expect(rowStunCoverage({}, p.vuln)).toBeUndefined()

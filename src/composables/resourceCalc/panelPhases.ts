@@ -44,10 +44,8 @@ import {
 } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
-import { additionalGateBuffTable } from '@/specs/additionalGate'
-// CC-206：求值函数迁到 mechanics 层，store 默认门控与引擎共用同一个函数；本文件 re-export 保持壳契约（同一绑定）
+// CC-206：求值函数迁到 mechanics 层，store 默认门控与引擎共用同一个函数
 import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
-export { additionalGateBuffTable, evalAdditionalAbilityBuffGates }
 import type {
   CharacterOperationConfig,
   StunAxis,

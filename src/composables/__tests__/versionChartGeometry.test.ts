@@ -14,7 +14,6 @@ import {
   chart3YLabelOf,
   chart3YMaxOf,
   chart3YOf,
-  chart3YStepOf,
   linePointsOf,
   niceStep,
   scGridStartOf,
@@ -59,9 +58,7 @@ describe('Chart 3 纵轴（0 起、50/100 两档）', () => {
     expect(chart3YMaxOf([])).toBe(100)
   })
 
-  it('步长与刻度、标签一致', () => {
-    expect(chart3YStepOf(200)).toBe(50)
-    expect(chart3YStepOf(300)).toBe(100)
+  it('刻度与标签一致', () => {
     expect(chart3YGridOf(100, BOX)).toHaveLength(3)          // 0/50/100
     expect(chart3YLabelOf(2, 100)).toBe(100)
     expect(chart3YGridOf(400, BOX)).toHaveLength(5)          // 0/100/200/300/400

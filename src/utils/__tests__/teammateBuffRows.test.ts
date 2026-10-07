@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   isTeammateBuffInteractive, hasComputablePayload, entersNumericChannel,
-  interactiveTeammateBuffs, declaredOnlyTeammateBuffs, declaredOnlyReason,
+  declaredOnlyReason,
 } from '@/utils/teammateBuffRows'
 
 type Probe = Parameters<typeof isTeammateBuffInteractive>[0]
@@ -59,17 +59,5 @@ describe('队友 Buff 可交互性谓词（teammateBuffRows）', () => {
     // singleSourced: false 与 undefined 等价（显式 false 不是「单源化」）
     expect(entersNumericChannel({ singleSourced: false } as Probe)).toBe(true)
     expect(isTeammateBuffInteractive({ singleSourced: false, effects: withEffects(1) } as Probe)).toBe(true)
-  })
-
-  it('集合划分：interactive + declaredOnly 互斥且覆盖全部（顺序保持）', () => {
-    const a: Probe = { effects: withEffects(1) }
-    const b: Probe = { singleSourced: true, effects: withEffects(1) }
-    const c: Probe = { effects: [], buffModifiers: [] }
-    const d: Probe = { effects: [], buffModifiers: withModifiers(2) }
-    const list = [a, b, c, d]
-    expect(interactiveTeammateBuffs(list)).toEqual([a, d])
-    expect(declaredOnlyTeammateBuffs(list)).toEqual([b, c])
-    expect(interactiveTeammateBuffs(undefined)).toEqual([])
-    expect(declaredOnlyTeammateBuffs(undefined)).toEqual([])
   })
 })

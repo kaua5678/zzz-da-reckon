@@ -18,20 +18,15 @@ import { setupHarness } from '@/test/harness'
 import * as Helpers from '@/composables/resourceCalc/helpers'
 import * as AnomalyPanels from '@/composables/resourceCalc/anomalyPanels'
 import { buildCharConfig } from '@/composables/resourceCalc/helpers'
-// ⚠ 类型 re-export 的判据**只能在类型层**（运行时类型已擦除）：下面这 4 行 import type 若壳没导出，
+// ⚠ 类型 re-export 的判据**只能在类型层**（运行时类型已擦除）：下面经 `./helpers` 的 import type 若壳没导出，
 // `npm run build`（`vue-tsc -b`）会报 TS2305 —— 这就是类型面的判据，vitest 运行时看不到。
-import type {
-  AnomalyVirtualPanelRow,
-  AnomalyVirtualPanelBuild,
-  AnomalySettlementEntry,
-  VoidflareDamageInput,
-} from '@/composables/resourceCalc/helpers'
+import type { AnomalyVirtualPanelBuild } from '@/composables/resourceCalc/helpers'
+import type { AnomalyVirtualPanelRow, AnomalySettlementEntry } from '@/composables/resourceCalc/anomalyPanels'
+import type { VoidflareDamageInput } from '@/mechanics/agents/remielle'
 
-/** D 簇 6 个**运行时**符号（原 11 个，CC-34d 删去蕾米埃尔 3 个，CC-277 删 teamHasAgent / findSlotByIdentity）（迁移前 helpers.ts 的导出面，迁移后经壳原样可达） */
+/** D 簇仍经 `./helpers` 转出的**运行时**符号（CC-34d 删蕾米埃尔 3 个、CC-277 删 teamHasAgent / findSlotByIdentity、r721 删无人经由的 getWindInfectionTargetSlot / getWindInfectionElement） */
 const D_EXPORTS = [
   'getTeamAnomalyDurationBonus',
-  'getWindInfectionTargetSlot',
-  'getWindInfectionElement',
   'getWindInfectionCoverage',
   'buildAnomalyVirtualPanel',
   'buildAnomalySettlementEntries',
@@ -44,7 +39,7 @@ const REMOVED_REMIELLE = ['getRemielleLevelValue', 'remielleSpecialVoidflareCoun
 const STAYED = ['normalizeDisplayTime', 'enrichExecutionPlan', 'buildCharConfig', 'extractSkillExecutions'] as const
 
 describe('R22 刀 C：anomalyPanels 壳契约', () => {
-  it('① D 簇 8 个运行时符号经 ./helpers 壳可达，且与 ./anomalyPanels 是**同一个绑定**', () => {
+  it('① D 簇经 ./helpers 转出的运行时符号可达，且与 ./anomalyPanels 是**同一个绑定**', () => {
     for (const name of D_EXPORTS) {
       expect((Helpers as Record<string, unknown>)[name], `helpers.${name} 缺失`).toBeDefined()
       // 同一绑定 = 壳不是第二份实现（单一事实源，规则 11）
@@ -53,7 +48,7 @@ describe('R22 刀 C：anomalyPanels 壳契约', () => {
     }
   })
 
-  it('①bis 4 个**类型**符号经 ./helpers 壳可解析（类型层判据，由 `npm run build` 的 vue-tsc 强制）', () => {
+  it('①bis 经 ./helpers 转出的**类型**符号可解析（类型层判据，由 `npm run build` 的 vue-tsc 强制）', () => {
     // 本用例的「断言」在文件顶部那 4 行 `import type … from './helpers'`：壳若写成
     // `export { … } from`（不建本地绑定）或漏导类型，`vue-tsc -b` 直接 TS2305 红。
     // 运行时这里只做一个存在性自证（避免空用例被 vitest 判为「无断言」）。

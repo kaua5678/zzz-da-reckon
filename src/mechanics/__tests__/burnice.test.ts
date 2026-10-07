@@ -7,7 +7,7 @@ import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolAnomalyRow, type 
 const STUB_ENV = { enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {}, infectionElement: 'wind', anomalyMultiplier: 1 }
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
-import { emptyAnomalyPool } from '@/core/anomalyPool'
+import { emptyAnomalyPool } from '@/test/fixtures'
 import {
   computeBurniceMechanic,
   burniceMechanic,

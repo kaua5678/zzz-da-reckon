@@ -55,7 +55,6 @@ import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
-export { stunWindowRatioOf }
 import { getAgentMechanic } from '@/mechanics'
 import { liveInteractions } from '@/composables/liveInteractions'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'

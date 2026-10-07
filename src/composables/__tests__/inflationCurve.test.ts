@@ -16,10 +16,8 @@ import {
   buildInflationFromFile,
   buildInflationSeries,
   buildReleaseStrengths,
-  deflateScoreByInflation,
   mapRoomsToInflation,
   isLowSample,
-  MIN_SAMPLES_PER_VERSION,
 } from '@/composables/inflationCurve'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
 import { readFileSync } from 'node:fs'
@@ -85,7 +83,6 @@ describe('buildInflationSeries（环境侧：Boss 平均血量膨胀）', () => 
     expect(isLowSample(5, 9)).toBe(true)
     expect(isLowSample(9, 9)).toBe(false)
     expect(isLowSample(10, 9)).toBe(false)
-    expect(MIN_SAMPLES_PER_VERSION).toBeGreaterThan(0)   // 绝对下限仍导出（数据不足的兜底语义）
   })
 
   it('样本数全相等时无人被标记（没有相对短板 = 合理）', () => {
@@ -205,7 +202,7 @@ describe('buildReleaseStrengths（首池节点 ↔ 环境水位对照表）', ()
   })
 })
 
-describe('mapRoomsToInflation / deflateScoreByInflation（与抽取价值的连接）', () => {
+describe('mapRoomsToInflation（与抽取价值的连接）', () => {
   const series = (pts: Array<{ version: string; index: number; begin: string }>) => ({
     mode: 'defense' as const,
     baseVersion: pts[0]?.version ?? '',
@@ -255,18 +252,6 @@ describe('mapRoomsToInflation / deflateScoreByInflation（与抽取价值的连�
   it('全部版本点无日期 / 空序列 → 返回空（不猜）', () => {
     expect(mapRoomsToInflation([{ key: 'a', date: '2025-01-01' }], series([{ version: 'x', index: 100, begin: '' }]))).toEqual([])
     expect(mapRoomsToInflation([{ key: 'a', date: '2025-01-01' }], series([]))).toEqual([])
-  })
-
-  it('★ deflateScoreByInflation：环境 300% 时的 30000 分 ≈ 首版本口径 10000 分', () => {
-    expect(deflateScoreByInflation(30000, 300)).toBeCloseTo(10000, 6)
-    expect(deflateScoreByInflation(10000, 100)).toBeCloseTo(10000, 6)  // 首版本：不变
-  })
-
-  it('deflateScoreByInflation：非正/非有限指数一律原样返回（不除零、不把 NaN 传染下游）', () => {
-    expect(deflateScoreByInflation(500, 0)).toBe(500)
-    expect(deflateScoreByInflation(500, -1)).toBe(500)
-    expect(deflateScoreByInflation(500, Number.NaN)).toBe(500)          // 不产出 NaN
-    expect(deflateScoreByInflation(500, Number.POSITIVE_INFINITY)).toBe(500)
   })
 
   it('★ 真实仓库端到端：32 个危局房间全部映射成功且**无 clamped**', () => {

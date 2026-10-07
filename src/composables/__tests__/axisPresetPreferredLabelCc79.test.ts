@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import type { AgentMechanicModule } from '@/mechanics/types'
-import { axisPresetPreferredLabel, teamHasAxisPresetPreferred } from '@/composables/agentMechanicView'
+import { axisPresetPreferredLabel } from '@/composables/agentMechanicView'
 import { useCatalogStore } from '@/stores/catalog'
 import { setupHarness } from '@/test/harness'
 
@@ -20,7 +20,7 @@ describe('CC-79 横幅有X/无X 文案', () => {
     expect(getRegisteredAgentMechanics().filter(m => m.axisPresetPreferred).flatMap(m => m.agentIds)).toEqual(['1481'])
     for (const id of ids) {
       const team = [{ agentId: id }, { agentId: '' }, null]
-      expect(axisPresetPreferredLabel(team), id).toBe(teamHasAxisPresetPreferred(team) ? '有琉' : '无琉')
+      expect(axisPresetPreferredLabel(team), id).toBe(id === '1481' ? '有琉' : '无琉')
     }
     expect(axisPresetPreferredLabel([])).toBe('无琉')
     expect(axisPresetPreferredLabel([{ agentId: '1481' }, { agentId: '1481' }])).toBe('有琉')

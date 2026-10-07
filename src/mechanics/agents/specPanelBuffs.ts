@@ -20,9 +20,6 @@ import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
-/** 叶瞬光完整模块见 agents/yeshuguang.ts；此处保留别名供旧测试 import */
-export { yeshuguangMechanic as yeshuguangMingxinMechanic } from './yeshuguang'
-
 // 2026-09-24：删除 `makePanelBuffModule` 工厂及其三个产物（波可娜猎步 / 猫又呼噜 / 真斗熔锋）。
 // 工厂在 `transformSkillExecutions` 里**原地改缓存面板**、靠 `__specPanelBuffApplied` 标记防重入；
 // 三个产物从未注册（真模块 pulchra.ts / nekomata.ts / zhendou.ts 已在 `applyPanel` 里挂同样的面板项），

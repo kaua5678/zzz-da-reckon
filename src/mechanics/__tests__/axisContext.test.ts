@@ -28,7 +28,8 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { applyTeamMechanics, buildCharConfig } from '@/composables/resourceCalc/helpers'
 import { getAgentMechanic } from '@/mechanics'
-import type { AgentAxisContext, AgentInteractionContext, AgentTeamConfigInput } from '@/mechanics/types'
+import type { AgentAxisContext, AgentTeamConfigInput } from '@/mechanics/types'
+import type { AgentInteractionContext } from '@/mechanics/typesHooks'
 import type { StunAxis } from '@/types/resource'
 
 type Cfg = Record<string, unknown> & { slot: number }

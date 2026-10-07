@@ -186,9 +186,3 @@ export function releaseNodeOf(agentId: string): string | null {
 export function nodeIndexOf(nodeId: string): number {
   return VERSION_NODE_INDEX[nodeId] ?? -1
 }
-
-/** 从某节点（含）到最新节点的切片 */
-export function nodesFrom(nodeId: string): VersionNode[] {
-  const i = nodeIndexOf(nodeId)
-  return i < 0 ? [] : VERSION_NODES.slice(i)
-}

@@ -1075,8 +1075,7 @@ export async function computeSlotSweepPoints(scenario: AnalysisContext, opts: Sl
   return { slot: opts.slot, fixed: [...opts.fixed] as [string, string], points, skipped }
 }
 
-// CC-86（2026-09-27，census §5.92）：配装/现场工具拆到 ./teamTimelineStore，Chart 4 菲林经济模拟拆到
-// ./teamTimelineFilm；这里原样转出，导入方继续写 `from '@/composables/teamTimeline'`。
-export { baseGoldOfTeam, budgetAwareStateFor } from './teamTimelineStore'
+// CC-86（2026-09-27，census §5.92）：Chart 4 菲林经济模拟拆到 ./teamTimelineFilm，这里原样转出，导入方继续写
+// `from '@/composables/teamTimeline'`（同批拆到 ./teamTimelineStore 的配装/现场工具已无人经由本文件导入，转出 r721 删除）。
 export { computeFilmSimulation } from './teamTimelineFilm'
-export type { FilmSimPoint, FilmSimulationOptions, FilmSimulationResult } from './teamTimelineFilm'
+export type { FilmSimPoint } from './teamTimelineFilm'

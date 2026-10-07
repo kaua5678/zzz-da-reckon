@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { agentAxisNonDecibelUltimates, teamAxisWindowLanes, teamAxisWindowLaneSlot } from '@/composables/agentMechanicView'
+import { agentAxisNonDecibelUltimates, teamAxisWindowLanes } from '@/composables/agentMechanicView'
 import { getAgentMechanic } from '@/mechanics'
 
 describe('CC-448 axisWindowLane 声明对象', () => {
@@ -40,19 +40,18 @@ describe('CC-448 axisWindowLane 声明对象', () => {
     expect(agentAxisNonDecibelUltimates('1471')).toEqual([])
     expect(agentAxisNonDecibelUltimates('')).toEqual([])
   })
-  it('teamAxisWindowLanes：按槽位序列出所有 lane；与 teamAxisWindowLaneSlot 一致；全 catalog 只有两名拥有者', async () => {
+  it('teamAxisWindowLanes：按槽位序列出所有 lane；全 catalog 只有两名拥有者', async () => {
     const { catalog } = await setupHarness([{ agentId: '1371' }, { agentId: '1211' }, { agentId: '1471' }])
     const team = [{ agentId: '1371' }, { agentId: '1211' }, { agentId: '1471' }]
     const lanes = teamAxisWindowLanes(team)
     expect(lanes.map(l => [l.slot, l.decl.kind])).toEqual([[0, 'ningshen'], [2, 'mingwang']])
-    for (const l of lanes) expect(teamAxisWindowLaneSlot(team, l.decl.kind)).toBe(l.slot)
     expect(teamAxisWindowLanes([{ agentId: '1211' }, null, { agentId: '' }])).toEqual([])
     const owners = [...catalog.agentsMap.keys()].filter(id => getAgentMechanic(id)?.axisWindowLane)
     expect(owners.sort()).toEqual(['1371', '1471'])
   })
   it('StunAxisPage 只有一份泛型 lane 渲染：无 per-kind 符号、无终结技 moveId 字面量', () => {
     const src = readFileSync(resolve(__dirname, '../../views/StunAxisPage.vue'), 'utf8')
-    for (const bad of ['banyueSlot', 'yixuanSlot', 'mingwangTag', 'ningshenTag', 'mingwangWindowsFor', 'ningshenWindowsFor', 'teamAxisWindowLaneSlot']) {
+    for (const bad of ['banyueSlot', 'yixuanSlot', 'mingwangTag', 'ningshenTag', 'mingwangWindowsFor', 'ningshenWindowsFor']) {
       expect(src.includes(bad), bad).toBe(false)
     }
     expect(/['"]1[0-9]{2}1[0-9]{3}['"]/.test(src), 'moveId 字面量').toBe(false)

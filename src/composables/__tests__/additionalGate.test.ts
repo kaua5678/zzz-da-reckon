@@ -11,12 +11,9 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import {
-  additionalGateBuffTable,
-  buildMechanicTeamMembers,
-  evalAdditionalAbilityBuffGates,
-} from '@/composables/resourceCalc/helpers'
-import { isAdditionalAbilitySourceLabel } from '@/specs/additionalGate'
+import { buildMechanicTeamMembers } from '@/composables/resourceCalc/panelPhases'
+import { evalAdditionalAbilityBuffGates } from '@/mechanics/additionalAbilityGates'
+import { isAdditionalAbilitySourceLabel, additionalGateBuffTable } from '@/specs/additionalGate'
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { deriveTeammateBuffEnabled, parseCinemaRequirement } from '@/stores/config'

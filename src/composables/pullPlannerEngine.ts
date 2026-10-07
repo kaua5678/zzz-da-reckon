@@ -25,9 +25,6 @@ import { ladderRung, type PlannerBossRoom, type PlannerPeriod, type TeamOracle }
 
 import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
 
-/** 危局伤害分上限（分段线性曲线末点；操作分已剔除——附加分不影响强度） */
-export { DEADLY_ASSAULT_SCORE_CAP as DAMAGE_SCORE_CAP } from '@/core/deadlyAssaultScore'
-
 export interface EngineOracleOptions {
   /**
    * 求值场景（r372 独立场景）：oracle 在 `scenario.config` 上装配队伍 / Boss 房间，读 `scenario.calc`

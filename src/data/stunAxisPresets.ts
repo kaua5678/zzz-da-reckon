@@ -191,14 +191,6 @@ const jsonPresets: StunAxisPreset[] = Object.values(jsonModules)
 /** 预设轴库（手写 + JSON 文件夹） */
 export const stunAxisPresets: StunAxisPreset[] = [...handwrittenPresets, ...jsonPresets]
 
-/** 队伍 → 匹配键（槽位顺序敏感） */
-export function presetTeamKey(team: (string | undefined | null)[]): string | null {
-  if (!team || team.length < 3) return null
-  const ids = team.slice(0, 3)
-  if (ids.some(id => !id)) return null
-  return ids.join('|')
-}
-
 /** 按当前队伍（槽位顺序）匹配预设轴；预设 team 中 '*' 为通配（如伊琉体系第三槽任意辅助） */
 export function matchStunAxisPresets(
   team: (string | undefined | null)[],

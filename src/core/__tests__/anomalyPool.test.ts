@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { calcAnomalyPool, calcAnomalyPoolDamage, type AnomalyPoolInput } from '@/core/anomalyPool'
+import { calcAnomalyPool, calcAnomalyPoolDamage } from '@/core/anomalyPool'
 import { velinaMechanic } from '@/mechanics/agents/velina'
-import { calcCoverage, getAnomalyDuration } from '@/core/anomalyPool/helpers'
+import { calcCoverage, getAnomalyDuration, type AnomalyPoolInput } from '@/core/anomalyPool/helpers'
 
 describe('calcCoverage', () => {
   it('adds per-element team duration bonuses into anomaly duration', () => {

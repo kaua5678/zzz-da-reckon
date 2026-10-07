@@ -26,9 +26,9 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentMechanic, getRegisteredAgentMechanics } from '@/mechanics'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
-import { collectNextRoundFeedback } from '@/composables/resourceCalc/helpers'
+import { collectNextRoundFeedback } from '@/composables/resourceCalc/panelPhases'
 import type { AgentNextRoundFeedbackInput } from '@/mechanics/types'
-import { emptyAnomalyPool } from '@/core/anomalyPool'
+import { emptyAnomalyPool } from '@/test/fixtures'
 import { ELLEN_C4_ENERGY_PER_TRIGGER, type EllenCycle } from '@/mechanics/agents/ellen'
 
 // ── 构造器：只填钩子真正读到的字段，其余用最小代价补齐（真实对象形状见 types/resource） ──

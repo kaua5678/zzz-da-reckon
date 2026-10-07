@@ -10,12 +10,10 @@
  */
 import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, getBaseElement, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
-// 下沉（2026-09-13 展示层越层棘轮）：选项表**定义**在 src/data/bossEntryAnomalyOptions.ts，
-// 此处 re-export 保持引擎侧 `bossEntryAnomalyElement()` 与既有 `@/core/stunAxis/inStunAnomaly`
-// 引用零改动；展示层（失衡轴页）改 import `@/data/…`。
+// 下沉（2026-09-13 展示层越层棘轮）：选项表**定义**在 src/data/bossEntryAnomalyOptions.ts，本文件只供引擎侧
+// `bossEntryAnomalyElement()` 消费；展示层（失衡轴页）直接 import `@/data/…`。
 import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/data/bossEntryAnomalyOptions'
 import type { InStunGaugeSnapshot } from '@/types/resource'
-export { BOSS_ENTRY_ANOMALY_OPTIONS }
 
 export interface InStunAction {
   /** 来源招式 id（可选）：填了才会在触发事件上标注「哪个招式触发的」（轴编辑器块级可视化用） */
@@ -59,9 +57,6 @@ export interface InStunTrigger {
    */
   id?: string
 }
-
-/** 动作完成后的积蓄槽快照：类型搬到 `@/types/resource`（CC-398，编排层摘要与 core 结果共用同一声明），此处只转出 */
-export type { InStunGaugeSnapshot }
 
 export interface InStunAnomalyResult {
   triggers: InStunTrigger[]

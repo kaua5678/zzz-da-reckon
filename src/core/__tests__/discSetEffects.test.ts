@@ -12,7 +12,8 @@ import { describe, expect, it } from 'vitest'
 import { calcPanel, emptyPanel } from '@/core/panel'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { getStunBuildUpBonus, getTargetedStat } from '@/core/buff'
-import { getElementEnemyAnomalyResReduction, resolveStatElement, getElementDmgKey } from '@/core/anomalyPool/helpers'
+import { getElementEnemyAnomalyResReduction, resolveStatElement } from '@/core/anomalyPool/helpers'
+import { elementStatKey } from '@/utils/elementStatKeys'
 import { normalizeResourceSkillType } from '@/composables/resourceCalc/helpers'
 import { calcDirectDamage } from '@/core/damage'
 import { setupHarness } from '@/test/harness'
@@ -127,7 +128,7 @@ describe('驱动盘 4pc 补录', () => {
     // 积蓄减抗、敌方积蓄抗性、增伤键都读冰
     expect(getElementEnemyAnomalyResReduction(r.target.inCombat, 'frostfire')).toBe(20)
     expect(resolveStatElement('frostfire')).toBe('ice')
-    expect(getElementDmgKey('frostfire')).toBe('iceDmg')
+    expect(elementStatKey('dmg', 'frostfire')).toBe('iceDmg')
   })
 })
 

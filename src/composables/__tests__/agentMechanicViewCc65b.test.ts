@@ -7,7 +7,8 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { agentInteractionInputs, teamHasGuaranteeFuryOwner } from '@/composables/agentMechanicView'
-import { getInteractionDefaults, interactionBaselineFor, roleInteractionBaseline } from '@/stores/config'
+import { getInteractionDefaults, interactionBaselineFor } from '@/stores/config'
+import { roleInteractionBaseline } from '@/mechanics/interactionBaseline'
 
 const ZERO = { parry: 0, dodge: 0, block: 0, dual: 0 }
 const LEGACY_DEFAULTS: Record<string, typeof ZERO> = {

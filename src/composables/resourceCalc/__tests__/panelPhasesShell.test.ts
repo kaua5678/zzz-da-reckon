@@ -30,25 +30,20 @@ import * as Helpers from '@/composables/resourceCalc/helpers'
 import * as PanelPhases from '@/composables/resourceCalc/panelPhases'
 import { buildCharConfig } from '@/composables/resourceCalc/helpers'
 
-/** B 簇 10 个公开符号（迁移前 helpers.ts 的导出面，迁移后经壳原样可达） */
+/** B 簇仍经 `./helpers` 转出的符号（r721 删了无人经由的 buildMechanicTeamMembers / resolveMechanicSettings / collectNextRoundFeedback / additionalGateBuffTable / evalAdditionalAbilityBuffGates 转出） */
 const B_EXPORTS = [
-  'buildMechanicTeamMembers',
   'computePanel',
   'computePanelPhases',
   'computeEntrySnapshotPanel',
-  'resolveMechanicSettings',
   'applyTeamMechanics',
-  'collectNextRoundFeedback',
   'collectAxisWindowOverlays',
-  'additionalGateBuffTable',
-  'evalAdditionalAbilityBuffGates',
 ] as const
 
 /** 迁移前后都不是导出面的私有 helper（不许因搬迁而公开） */
 const PRIVATE = ['teamDiscs', 'mergeTeamDiscEffectCoverages', 'agentHasCinemaSkillLevelBuff'] as const
 
 describe('R22 刀 A：panelPhases 壳契约', () => {
-  it('① B 簇 10 个符号经 ./helpers 壳可达，且与 ./panelPhases 是**同一个绑定**', () => {
+  it('① B 簇经 ./helpers 转出的符号可达，且与 ./panelPhases 是**同一个绑定**', () => {
     for (const name of B_EXPORTS) {
       expect((Helpers as Record<string, unknown>)[name], `helpers.${name} 缺失`).toBeDefined()
       // 同一绑定 = 壳不是第二份实现（单一事实源，规则 11）

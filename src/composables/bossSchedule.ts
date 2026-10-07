@@ -14,15 +14,9 @@ import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 type ScheduleNode = Pick<VersionNode, 'id' | 'date'>
 
 /**
- * 日期字符串（YYYY-MM-DD 或带时分秒）→ 轴节点 id；早于首节点/空值返回 null。
+ * 日期字符串（YYYY-MM-DD 或带时分秒，取前 10 位）→ 轴节点下标；早于首节点 / 空值返回 -1。
  * 窗口 = [node.date, 下一 node.date)；末节点无上界。
  */
-export function nodeIdForDate(nodes: ScheduleNode[], date: string): string | null {
-  const idx = indexForDate(nodes, date)
-  return idx < 0 ? null : nodes[idx].id
-}
-
-/** 同 nodeIdForDate 的下标版；早于首节点返回 -1 */
 export function indexForDate(nodes: ScheduleNode[], date: string): number {
   if (!date) return -1
   const d = date.slice(0, 10)

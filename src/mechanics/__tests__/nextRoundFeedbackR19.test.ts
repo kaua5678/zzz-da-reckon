@@ -3,11 +3,11 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { createConvergenceRoundInputs, createRunCalcRound } from '@/composables/resourceCalc/convergence'
 import { getAgentMechanic } from '@/mechanics'
 import { setupHarness } from '@/test/harness'
-import { collectNextRoundFeedback } from '@/composables/resourceCalc/helpers'
+import { collectNextRoundFeedback } from '@/composables/resourceCalc/panelPhases'
 import type { AgentTeamConfigInput } from '@/mechanics/types'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { AgentNextRoundFeedbackInput } from '@/mechanics/types'
-import { emptyAnomalyPool } from '@/core/anomalyPool'
+import { emptyAnomalyPool } from '@/test/fixtures'
 
 function feedback(agentId: string, overrides: Partial<AgentNextRoundFeedbackInput> = {}) {
   const cfg = { agentId, slot: 2 } as AgentNextRoundFeedbackInput['cfg']

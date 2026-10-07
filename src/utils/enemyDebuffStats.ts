@@ -125,8 +125,3 @@ export const LEGACY_ENEMY_DEBUFF_STAT_IDS = [
     Object.values(ENEMY_DEBUFF_KIND_CONFIG).map(config => `${element}${config.legacyIgnoreSuffix}`),
   ),
 ]
-
-export function isEnemyDebuffStat(stat: string): boolean {
-  const normalized = normalizeEnemyDebuffStatAlias(stat)
-  return GENERATED_ENEMY_DEBUFF_STAT_IDS.includes(normalized)
-}

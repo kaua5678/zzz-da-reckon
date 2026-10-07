@@ -27,7 +27,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useCatalogStore } from '@/stores/catalog'
-import { isTeammateBuffInteractive, declaredOnlyTeammateBuffs } from '@/utils/teammateBuffRows'
+import { isTeammateBuffInteractive } from '@/utils/teammateBuffRows'
 import { getAgentSpec } from '@/specs/registry'
 import type { TeammateBuff, TeammateBuffGroup, Agent } from '@/types/catalog'
 
@@ -275,7 +275,7 @@ describe('R65-J1 · 声明了但没接进计算 · 行为层全库普查', () =>
     }
 
     // declared-only 反向抽查
-    const declared = declaredOnlyTeammateBuffs(rows.map(r => r.buff))
+    const declared = rows.map(r => r.buff).filter(b => !isTeammateBuffInteractive(b))
     const declaredGaps: Array<{ owner: string; id: string }> = []
     for (const b of declared) {
       const owner = rows.find(r => r.buff.id === b.id)?.group

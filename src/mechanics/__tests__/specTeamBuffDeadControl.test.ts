@@ -51,7 +51,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { collectInCombatTeamBuffs } from '@/core/inCombatBuffs'
 import {
   isTeammateBuffInteractive, hasComputablePayload, entersNumericChannel,
-  interactiveTeammateBuffs, declaredOnlyTeammateBuffs, declaredOnlyReason,
+  declaredOnlyReason,
 } from '@/utils/teammateBuffRows'
 import type { TeammateBuff, TeammateBuffGroup } from '@/types/catalog'
 
@@ -119,8 +119,8 @@ describe('R65 batchA · 队友 Buff 死控件缺口（UI 面语义拆分）', ()
    */
   it('不变量：可交互 ⟺ (进数值通道 ∧ 有可求值载荷)；declared-only 必须是其补集', async () => {
     const rows = await allRows()
-    const interactive = interactiveTeammateBuffs(rows.map(r => r.buff))
-    const declared = declaredOnlyTeammateBuffs(rows.map(r => r.buff))
+    const interactive = rows.map(r => r.buff).filter(isTeammateBuffInteractive)
+    const declared = rows.map(r => r.buff).filter(b => !isTeammateBuffInteractive(b))
 
     // 完备性：两集互斥且覆盖全库（谓词写坏成恒真/恒假都会在这里露）
     expect(interactive.length + declared.length, '两个集合必须恰好划分全库').toBe(rows.length)
@@ -197,7 +197,7 @@ describe('R65 batchA · 队友 Buff 死控件缺口（UI 面语义拆分）', ()
    */
   it('行为：declared-only 集逐条拨动 ⇒ damagePoolRows 读数恒定（不给控件的正当性）', async () => {
     const rows = await allRows()
-    const declared = declaredOnlyTeammateBuffs(rows.map(r => r.buff))
+    const declared = rows.map(r => r.buff).filter(b => !isTeammateBuffInteractive(b))
     expect(declared.length).toBeGreaterThanOrEqual(MIN_DECLARED_ONLY)
 
     let nonConstant = 0

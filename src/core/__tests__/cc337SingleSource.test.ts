@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { calcEnergyRegenTotal, calcFlashEnergyRegenTotal, discRequirementMet, resolveDiscStatTemplate } from '@/core/buff'
+import { calcEnergyRegenTotal, discRequirementMet, resolveDiscStatTemplate } from '@/core/buff'
+import { calcFlashEnergyRegenTotal } from '@/data/agentPanelStats'
 import { calcPanel, emptyPanel } from '@/core/panel'
 import { parseMoveEnergyCost } from '@/core/resource'
 import { readImpactVar, writeImpactVar } from '@/core/impactVars'

@@ -60,7 +60,7 @@ export interface AxisWindowLaneCtx { cinemaLevel: number }
  * 现改为页面只跑一份泛型 lane 渲染，所有按角色不同的东西都从本声明取。
  */
 export interface AxisWindowLaneDecl {
-  /** 种类 id（`teamAxisWindowLaneSlot(team, kind)` 仍按它找槽位） */
+  /** 种类 id（lane 种类键；`teamAxisWindowLanes` 的结果按 `decl.kind` 区分） */
   kind: string
   /** lane 左侧名字（「明王」「凝神」） */
   name: string

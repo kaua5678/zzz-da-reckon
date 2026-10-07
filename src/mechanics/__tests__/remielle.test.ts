@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
-import { buildAnomalyVirtualPanel, computePanelPhases, computeEntrySnapshotPanel, findMoveById } from '@/composables/resourceCalc/helpers'
+import { buildAnomalyVirtualPanel, computePanelPhases, computeEntrySnapshotPanel } from '@/composables/resourceCalc/helpers'
+import { findMoveById } from '@/data/moveTableQueries'
 import { emptyPanel } from '@/core/panel'
 import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts, remielleFleetingGraceMultiplier, remielleSpecialVoidflareCount, remielleSpecialVoidflareRainbowCount, remielleSpecialVoidflareUseCount } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
-import { emptyAnomalyPool } from '@/core/anomalyPool'
+import { emptyAnomalyPool } from '@/test/fixtures'
 
 /** 3异常队（蕾米+薇薇安+月城柳），额外能力 tier=3；globalBuffs 关掉防污染（SOP §7） */
 async function setup(cinemaLevel = 0) {

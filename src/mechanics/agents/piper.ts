@@ -166,7 +166,6 @@ export const piperMechanic: AgentMechanicModule = {
   resourceSections: buildPiperResourceSections,
 }
 
-export default piperMechanic
 
 /**
  * D2（r402 CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）：本模块私有的面板字段——只有本文件读写（测试读不算引用者），声明随模块走。

@@ -15,8 +15,8 @@ import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic } from '@/mechanics'
 import { interactionBaselineFor } from '@/mechanics/interactionBaseline'
 // CC-478（r658）：交互基准纯函数簇（getInteractionDefaults / roleInteractionBaseline / interactionBaselineFor / hasCustomInteractionDefaults）
 // 下沉到 mechanics/interactionBaseline.ts——它们只读角色模块声明，不碰 pinia；原先住在 store 里让引擎（composables/resourceCalc）
-// 一引用就打破 CC-245/246 分层锁（aa0fe35c 实测）。此处 re-export 保持所有既有导入路径与 CC-255「单一来源」不变。
-export { getInteractionDefaults, roleInteractionBaseline, hasCustomInteractionDefaults, interactionBaselineFor } from '@/mechanics/interactionBaseline'
+// 一引用就打破 CC-245/246 分层锁（aa0fe35c 实测）。此处 re-export 保持既有导入路径与 CC-255「单一来源」不变。
+export { getInteractionDefaults, hasCustomInteractionDefaults, interactionBaselineFor } from '@/mechanics/interactionBaseline'
 import { autoStunAxisPresetOf, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { evalAdditionalAbilityBuffGates, teammateBuffGateBlocks } from '@/mechanics/additionalAbilityGates'
 import type { MechanicTeamMember } from '@/mechanics/types'

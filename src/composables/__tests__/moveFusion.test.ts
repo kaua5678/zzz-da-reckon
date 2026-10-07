@@ -16,7 +16,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { teamPresets } from '@/data/teamPresets'
-import { fusedRowValue, getRowValue, findMoveById } from '@/composables/resourceCalc/helpers'
+import { fusedRowValue, getRowValue, findMoveById } from '@/data/moveTableQueries'
 import { findChainAttack, findUltimate } from '@/core/resource'
 import { moveFusionByMoveId, MOVE_FUSION_GROUPS } from '@/data/moveFusions'
 

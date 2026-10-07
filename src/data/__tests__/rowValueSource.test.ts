@@ -11,7 +11,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
 import type { RowFusionRule } from '@/logicEditor/types'
-import lucyMechanic, { LUCY_ID } from '@/mechanics/agents/lucy'
+import { LUCY_ID, lucyMechanic } from '@/mechanics/agents/lucy'
 
 const SRC = resolve(__dirname, '../..')
 const OWNER = 'data/moveTableQueries.ts'

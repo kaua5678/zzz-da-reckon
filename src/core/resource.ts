@@ -6,13 +6,6 @@ import type {
 import { stunCountForCountChannel } from '@/core/stunPlanProjection'
 import { probePush } from '@/core/probeTrace'
 
-import {
-  crossAgentSupplyAt,
-  crossAgentSuppliesOf,
-  findCrossAgentSupplySlots,
-  ultimateGiftOf,
-  type CrossAgentSupplyInfo,
-} from './resource/crossAgentSupply'
 // 终局整数重推执行器（规则 6 引擎落点，2026-09-25 CC-6c）：1531/1431（preTail）与 1051（tail）
 // 的角色专属「谁参与/置哪个旗标」已迁各模块的 `finalizePass` 能力，本文件只调通用执行器。
 import { runFinalizePasses, resetFinalizePasses } from './resource/finalizePasses'
@@ -38,10 +31,6 @@ import { runTailPipeline as runTailPipelinePure, type TailPipelineContext } from
 // `runTruncationRefold(ctx, init)` 逐字搬走原闭包；「从 S2 入口重跑到装配」三步经 `rerun` 回调注入
 // （回调内写回外层 `states` / `diag`，本文件只负责调用与结果写回）。
 import { runTruncationRefold } from './resource/truncationRefold'
-
-export { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf }
-export type { CrossAgentSupplyInfo }
-
 
 // ============ 单角色能量计算 ============
 
@@ -403,7 +392,6 @@ export {
   parseMoveEnergyCost,
   findExSpecial,
   findUltimate,
-  fusedGroupMetrics,
   fusedGroupActionTime,
   findChainAttack,
   findDodgeCounter,

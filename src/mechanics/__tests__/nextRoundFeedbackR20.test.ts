@@ -25,10 +25,10 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { createConvergenceRoundInputs, createRunCalcRound } from '@/composables/resourceCalc/convergence'
 import { getAgentMechanic } from '@/mechanics'
 import { setupHarness } from '@/test/harness'
-import { collectNextRoundFeedback } from '@/composables/resourceCalc/helpers'
+import { collectNextRoundFeedback } from '@/composables/resourceCalc/panelPhases'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 import type { AgentNextRoundFeedbackInput, AgentTeamConfigInput } from '@/mechanics/types'
-import { emptyAnomalyPool } from '@/core/anomalyPool'
+import { emptyAnomalyPool } from '@/test/fixtures'
 
 /** 直接调某个角色的钩子（层①②的最小复现；层③另走真派发器） */
 function feedback(agentId: string, overrides: Partial<AgentNextRoundFeedbackInput> = {}) {

@@ -380,24 +380,12 @@ export function buildAnomalySettlementEntries(
   }).filter(e => opts?.keepZero || e.triggerCount > 0)
 }
 
-// ============================================================================
-// 蕾米埃尔专属异常辅助函数（`getRemielleLevelValue` / `remielleSpecialVoidflareCount` /
-// `VoidflareDamageInput` / `calcVoidflareDamage`）已于 CC-19c-1（2026-09-26）逐字迁至
-// `@/mechanics/agents/remielle`（设计稿 `docs/mcp-cc19-extra-anomaly-rows.md` §7.2）——
-// 因为 `calcVoidflareDamage` 需要元素键表（当时在 `core/elementKeys`，CC-224 起为 `utils/elementStatKeys`），而判据 19 禁止 mechanics
-// 按值 import `@/composables`。本块是 **re-export 壳**：`helpers.ts` / `useResourceCalc.ts` /
-// `damagePoolAnomaly.ts` / 既有测试的 import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**。
-// ⚠ 改这几个函数请改 `mechanics/agents/remielle.ts`，不要回本文件重建同形函数。
-// ============================================================================
-// CC-34d（2026-09-27）：3 个运行时函数的 re-export 已删除（唯一经壳导入的调用方是 remielle.test，已改为直接导入）。
-// 类型 `VoidflareDamageInput` 不带角色前缀，保留在壳里，供 helpers.ts 的类型壳使用。
-export type { VoidflareDamageInput } from '@/mechanics/agents/remielle'
+// 蕾米埃尔专属异常辅助函数（`calcVoidflareDamage` / `VoidflareDamageInput` 等）已于 CC-19c-1（2026-09-26）迁至
+// `@/mechanics/agents/remielle`：改它们请改那里，不要回本文件重建同形函数（转出壳 CC-34d / r721 已删尽）。
 
 // ============================================================================
-// 本簇 12 个公开符号（10 函数 + 4 interface 里的 2 个类型在本簇内联）在 `./helpers.ts` 保留
-// **re-export 壳**（R22 熵批 2 / R22-S2 刀 C）：目录外既有消费者（`damagePool.ts` 取其中 7 个 /
-// `cinemaUplift.ts` / `difficultyLadder.ts` / `views` / 测试）import 路径零改动。
+// 本簇仍经 `./helpers.ts` 导入的符号在那里保留 **re-export 壳**（R22 熵批 2 / R22-S2 刀 C）；
+// 已无人经由的转出于 r721 删除（死导出判据：转出别名同样要有生产消费者）。
 // ⚠ 必须写成「import + export」两行——`export { … } from './anomalyPanels'` **不建本地绑定**。
 // ⚠ 改异常面板/结算口径请改本文件，**不要回 `helpers.ts` 重建同形函数**（那会分裂单一事实源）。
 // ============================================================================

@@ -309,7 +309,7 @@ export interface AgentNextRoundFeedbackInput {
    * 流水线自 CC-422 起恒传 `adj2`（无调整时与 `teamResult` 同形），模块侧不再需要 `?? teamResult` 兜底。
    */
   adjustedResult: DeepReadonly<TeamResourceResult>
-  /** 本轮异常池结果。无异常行队伍 = 合法空池（`core/anomalyPool#emptyAnomalyPool` 同形），**不是 null**（CC-423 流水线层 / CC-434 契约层）。 */
+  /** 本轮异常池结果。无异常行队伍 = 合法空池（= `calcAnomalyPool` 跑空输入的结果），**不是 null**（CC-423 流水线层 / CC-434 契约层）。 */
   anomalyPool: DeepReadonly<AnomalyPoolResult>
   /**
    * **上一轮**收敛线程快照（只读）。两个用途：① 首轮守卫（`prev* <= 0` 才写 cfg）；

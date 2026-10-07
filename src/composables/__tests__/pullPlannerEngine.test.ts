@@ -15,18 +15,8 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { setupHarness } from '@/test/harness'
-import {
-  DAMAGE_SCORE_CAP,
-  buildPlannerCards,
-  buildPlannerPeriods,
-  createEngineOracle,
-  freeMemberPool,
-  freePoolRepresentatives,
-  PLANNER_MIN_FREE_MEMBERS,
-  holdingStateFor,
-  plannerTestServerVersions,
-  runPullPlanner,
-} from '@/composables/pullPlannerEngine'
+import { buildPlannerCards, buildPlannerPeriods, createEngineOracle, freeMemberPool, freePoolRepresentatives, PLANNER_MIN_FREE_MEMBERS, holdingStateFor, plannerTestServerVersions, runPullPlanner } from '@/composables/pullPlannerEngine'
+import { DEADLY_ASSAULT_SCORE_CAP as DAMAGE_SCORE_CAP } from '@/data/deadlyAssaultScore'
 import { PURCHASE_LADDER } from '@/composables/pullPlanner'
 import { isLimitedSWengineId } from '@/composables/limitedGold'
 import type { BossPresetFile } from '@/types/bossPreset'

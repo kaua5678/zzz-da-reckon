@@ -8,13 +8,20 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import * as VIEW_DEFAULTS from '@/data/viewAgentDefaults'
 import {
-  ALL_VIEW_DEFAULT_AGENT_IDS, TIMELINE_DEFAULT_MAIN_AGENT_ID, TIMELINE_DEFAULT_CANDIDATE_POOL, LOGIC_EDITOR_DEFAULT_FUSION,
+  TIMELINE_DEFAULT_MAIN_AGENT_ID, TIMELINE_DEFAULT_CANDIDATE_POOL, LOGIC_EDITOR_DEFAULT_FUSION,
 } from '@/data/viewAgentDefaults'
 import { AGENT_RELEASE_NODE } from '@/data/versionTimeline'
 
 const catalog = JSON.parse(readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')) as { agents: { id: string }[] }
 const catalogIds = new Set(catalog.agents.map(a => a.id))
+/** 模块里全部角色 id 形态的字符串值（递归取常量 / 数组 / 对象值）——新加的默认值不用登记，自动进锁 ① */
+const idsIn = (v: unknown): string[] =>
+  typeof v === 'string' ? (/^1[0-9]{2}1$/.test(v) ? [v] : [])
+    : Array.isArray(v) ? v.flatMap(idsIn)
+      : v !== null && typeof v === 'object' ? Object.values(v).flatMap(idsIn) : []
+const ALL_VIEW_DEFAULT_AGENT_IDS = [...new Set(idsIn(Object.values(VIEW_DEFAULTS)))]
 
 describe('CC-431 展示层默认角色 id 单源', () => {
   it('① 全部默认 id 都在 catalog 里', () => {

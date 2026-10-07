@@ -347,7 +347,6 @@ export const anbyZeroMechanic: AgentMechanicModule = {
   nextRoundFeedback: anbyNextRoundFeedback,
 }
 
-export default anbyZeroMechanic
 
 /**
  * D2（CC-359/360）：本模块自产自读的跨轮反馈键（nextRoundFeedback 产出、下一轮本模块读回），声明随模块走，不堆在 `mechanics/types.ts`。

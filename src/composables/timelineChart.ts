@@ -20,7 +20,7 @@ import {
   hpRatioYMaxOf,
   hpRatioYOf,
 } from './hpRatioAxis'
-import { PALETTE, colorOf } from '@/composables/charts/agentPresentation'
+import { colorOf } from '@/composables/charts/agentPresentation'
 
 /** 画布留白与泳道尺寸（padT/plotH 与本页 Chart 2/3 共享；改动会同时影响它们） */
 export const TIMELINE_LAYOUT = {
@@ -62,9 +62,8 @@ export function timelineSvgWidth(innerWidth: number | undefined): number {
   return Math.max(480, Math.min(1180, w - 120))
 }
 
-/** 角色配色板 / agentId → 配色：唯一出处是 charts/agentPresentation.ts（CC-484：此前这里抄了一份逐字相同的调色板与散列，
+/** agentId → 配色：唯一出处是 charts/agentPresentation.ts（CC-484：此前这里抄了一份逐字相同的调色板与散列，
  *  改一处漏一处会让时间线图与其他 7 张图同一角色不同色）。旧名原样转出，导入方不用改。 */
-export const AGENT_PALETTE = PALETTE
 export const agentColorOf = colorOf
 
 export interface TimelineLaneCell {

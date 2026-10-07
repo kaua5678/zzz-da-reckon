@@ -14,17 +14,8 @@ import { panelAt, emptyPanel } from './panel'
 import * as AnomalyPoolHelpers from './anomalyPool/helpers'
 import type { AnomalyPoolInput, DamageCalcConfig } from './anomalyPool/helpers'
 import { withCompanionShare } from '@/data/decibelCompanion'
-export type { AnomalySkillExecution, AnomalyPoolInput, CoweringConfig } from './anomalyPool/helpers'
+export type { AnomalySkillExecution, CoweringConfig } from './anomalyPool/helpers'
 const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyOwnDecibel, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcCoweringDot } = AnomalyPoolHelpers
-/**
- * 合法空池（CC-434）：`calcAnomalyPool` 跑空输入的结果（perElement [] / 计数 0 / 覆盖率 0 / totalTime 缺省 180）。
- * 自 CC-423 起流水线对无异常行队伍也产出这种空池而不是 null；模块钩子契约（`AgentNextRoundFeedbackInput.anomalyPool`）
- * 随之不再接受 null，测试夹具用本函数表示「无异常信息」。不手写字面量：形状跟着 calcAnomalyPool 走，不会漂。
- */
-export function emptyAnomalyPool(totalTime?: number): AnomalyPoolResult {
-  return calcAnomalyPool({ executions: [], panels: [], teamMechanics: [], ...(totalTime !== undefined ? { totalTime } : {}) })
-}
-
 export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const {
     executions,

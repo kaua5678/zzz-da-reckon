@@ -17,7 +17,6 @@ import {
   STANDARD_ENEMY_DEBUFF_ELEMENTS,
   enemyDebuffElementStatId,
   enemyDebuffStatId,
-  isEnemyDebuffStat,
   normalizeEnemyDebuffStatAlias,
   type EnemyDebuffKind,
 } from '@/utils/enemyDebuffStats'
@@ -103,16 +102,5 @@ describe('两套 id 清单的结构性不变量', () => {
     expect(STANDARD_ENEMY_DEBUFF_ELEMENTS).toEqual(
       DAMAGE_ELEMENTS.filter(e => e !== 'lumiflux'),
     )
-  })
-})
-
-describe('isEnemyDebuffStat（别名感知归属判断）', () => {
-  it('现名 / legacy 别名都认；无关字段不认', () => {
-    expect(isEnemyDebuffStat('enemyFireDefReduction')).toBe(true)
-    expect(isEnemyDebuffStat('enemyDefIgnore')).toBe(true)
-    expect(isEnemyDebuffStat('fireResIgnore')).toBe(true)
-    expect(isEnemyDebuffStat('atk')).toBe(false)
-    expect(isEnemyDebuffStat('atkPct')).toBe(false)
-    expect(isEnemyDebuffStat('enemyDefReductionx')).toBe(false)
   })
 })

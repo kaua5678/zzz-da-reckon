@@ -11,10 +11,8 @@ import { computeRemielleMechanic } from '@/mechanics/agents/remielle'
 import { calcAnomalyCritExpect } from '@/core/anomalyPool/helpers'
 import { emptyPanel } from '@/core/panel'
 import { getAgentMechanic } from '@/mechanics'
-import {
-  yeshuguangMingxinMechanic,
-  peiluoProminenceMechanic,
-} from '@/mechanics/agents/specPanelBuffs'
+import { peiluoProminenceMechanic } from '@/mechanics/agents/specPanelBuffs'
+import { yeshuguangMechanic as yeshuguangMingxinMechanic } from '@/mechanics/agents/yeshuguang'
 import { computeBillyChain, computeBillyHpModel, starlightBillyMechanic } from '@/mechanics/agents/starlightBilly'
 
 describe('Roxy wind energy / wind eye（v12 + 手法）', () => {

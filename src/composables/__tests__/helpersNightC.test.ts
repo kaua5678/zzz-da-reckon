@@ -44,13 +44,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import {
-  computePanelPhases,
-  buildCharConfig,
-  getTeamAnomalyDurationBonus,
-  getWindInfectionTargetSlot,
-  getWindInfectionElement,
-} from '@/composables/resourceCalc/helpers'
+import { computePanelPhases, buildCharConfig, getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/helpers'
+import { getWindInfectionTargetSlot, getWindInfectionElement } from '@/composables/resourceCalc/anomalyPanels'
 import { emptyPanel } from '@/core/panel'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { getRegisteredMechanicSettings } from '@/mechanics'

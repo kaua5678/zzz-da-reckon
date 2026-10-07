@@ -39,16 +39,3 @@ export const FREE_COMPARE_AGENTS = {
 export const SWEEP_DEFAULT_FIXED_BY_SLOT: Readonly<Record<number, string | null>> = { 0: '1581', 1: null, 2: '1561' }
 /** 逻辑编辑器（stores/logicEditor）「新倍率融合」规则的示例角色 / 招式：维琳娜 1561 的 1561007 */
 export const LOGIC_EDITOR_DEFAULT_FUSION = { agentId: '1561', moveId: '1561007' } as const
-
-/** 供锁测试 / 巡检用：全部展示层默认角色 id（去重） */
-export const ALL_VIEW_DEFAULT_AGENT_IDS: readonly string[] = Array.from(new Set([
-  TIMELINE_DEFAULT_MAIN_AGENT_ID,
-  ...TIMELINE_DEFAULT_CANDIDATE_POOL,
-  MULTIPLIER_COEFF_DEFAULT_AGENT_ID,
-  CHAR_INCREMENT_DEFAULT_AGENT_ID,
-  SLOT_COMPARE_DEFAULT_AGENT_A,
-  SLOT_COMPARE_DEFAULT_AGENT_B,
-  ...Object.values(FREE_COMPARE_AGENTS),
-  ...Object.values(SWEEP_DEFAULT_FIXED_BY_SLOT).filter((id): id is string => !!id),
-  LOGIC_EDITOR_DEFAULT_FUSION.agentId,
-]))

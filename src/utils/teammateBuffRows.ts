@@ -82,23 +82,6 @@ export function isTeammateBuffInteractive(
   return entersNumericChannel(buff) && hasComputablePayload(buff)
 }
 
-/** 渲染面用：过滤出该组里应渲染为「可交互行」的条 */
-export function interactiveTeammateBuffs<T extends Pick<TeammateBuff, 'singleSourced' | 'effects' | 'buffModifiers'>>(
-  buffs: readonly T[] | undefined,
-): T[] {
-  return (buffs ?? []).filter(isTeammateBuffInteractive)
-}
-
-/**
- * 渲染面用：该组里应渲染为「**仅声明行**」的条 —— 数值已由模块/helpers 接入，
- * UI 仍把条目与说明列出来（用户要知道这个机制存在），但**不给**拨不动的 checkbox/滑块。
- */
-export function declaredOnlyTeammateBuffs<T extends Pick<TeammateBuff, 'singleSourced' | 'effects' | 'buffModifiers'>>(
-  buffs: readonly T[] | undefined,
-): T[] {
-  return (buffs ?? []).filter(b => !isTeammateBuffInteractive(b))
-}
-
 /**
  * 「仅声明行」的**理由**文案（渲染面与判据共用同一事实源）。
  * 区分两种成因，用户与后继 agent 都能一眼看出**数值去哪儿了**：

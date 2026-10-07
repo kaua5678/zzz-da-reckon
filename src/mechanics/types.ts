@@ -436,9 +436,6 @@ export interface AgentTeamConfigInput {
 export type AgentTeamRoundInput = Partial<Pick<AgentTeamConfigInput,
   | 'combatTime' | 'exCounts' | 'ultimateCounts' | 'stunCount' | 'countStun' | 'teamEnergyConsumed'
   | 'threads' | 'axis' | 'interactions' | 'guarantee' | 'boss'>>
-/** 上一轮收敛线程的快照类型（结构定义在 `composables/resourceCalc/roundThreads.ts`） */
-export type { CalcRoundThreads }
-
 /**
  * 模块「下一轮反馈」键值（CC-31，2026-09-27）：各模块 `nextRoundFeedback` 的返回值，编排层**整份**
  * 存进 `CalcRoundThreads.moduleFeedback`（不逐键拆字段），下一轮各模块从 `threads.moduleFeedback.<键>` 自取。
@@ -1348,8 +1345,8 @@ export interface AgentMechanicModule {
 
 // CC-83（2026-09-27，census §5.90）：卫星类型拆到同级 typesRows.ts / typesHooks.ts，这里原样转出，
 // 导入方继续写 `from '@/mechanics/types'`。AgentMechanicModule 本体与各 Agent*Input 留在本文件。
-export type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
+export type { DirectRowAxisSplitInput, DirectRowAxisSplit, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
 export { axisOverlayChannel } from './typesHooks'
-export type { CrossAgentSupplySpec, CrossAgentSupplyInput, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionSnapshot, AgentInteractionContext } from './typesHooks'
-export type { PoolSummaryRowLike, AgentPoolSummaryInput, PoolSummaryStat, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneCtx, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
+export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+export type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'

@@ -206,12 +206,6 @@ export function agentAxisExtraBlocks(
   return (agentId ? getAgentMechanic(agentId)?.axisExtraBlocks?.(input) : undefined) ?? []
 }
 
-export type AxisWindowLaneKind = AxisWindowLaneDecl['kind']
-
-/** 队伍里第一个声明了该种窗口 lane 的槽位；无 ⇒ -1（CC-62；原 StunAxisPage `findIndex(c => c.agentId === 1471 / 1371)`） */
-export function teamAxisWindowLaneSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>, kind: AxisWindowLaneKind): number {
-  return team.findIndex(c => !!c?.agentId && getAgentMechanic(c.agentId)?.axisWindowLane?.kind === kind)
-}
 /** 非喧响终结技列表（CC-448）：模块声明 `axisNonDecibelUltimates`；原 StunAxisPage#isPromotable 写死 1371020 */
 export function agentAxisNonDecibelUltimates(agentId: string | null | undefined): readonly string[] {
   return (agentId ? getAgentMechanic(agentId)?.axisNonDecibelUltimates : undefined) ?? []
@@ -226,8 +220,6 @@ export function teamAxisWindowLanes(team: ReadonlyArray<{ agentId?: string | nul
   })
   return out
 }
-
-export type { CharacterCountInputDecl }
 
 /** 角色专属计数输入框声明（CC-65；原 TeamConfigPage 写死 v-if 块）；无 ⇒ [] */
 export function agentCharacterCountInputs(agentId: string | null | undefined): ReadonlyArray<CharacterCountInputDecl> {
@@ -261,11 +253,6 @@ export function teamHasGuaranteeFuryOwner(team: ReadonlyArray<{ agentId?: string
 /** 队中第一个「章」档位归属角色的槽位；无 ⇒ -1（CC-60；原 StunAxisPage 写死 some/find agentId === 伊德海莉） */
 export function teamAxisPresetChapterOwnerSlot(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): number {
   return team.findIndex(c => !!c?.agentId && AUTO_AXIS_PRESET_HINTS.isChapterOwner(c.agentId))
-}
-
-/** 队里是否有「预设优先」角色（CC-60；原 StunAxisPage 写死 some agentId === 琉音） */
-export function teamHasAxisPresetPreferred(team: ReadonlyArray<{ agentId?: string | null } | null | undefined>): boolean {
-  return team.some(c => !!c?.agentId && AUTO_AXIS_PRESET_HINTS.isPreferred(c.agentId))
 }
 
 /**

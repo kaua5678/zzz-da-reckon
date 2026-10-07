@@ -73,27 +73,18 @@ import {
   computePanel,
   computePanelPhases,
   computeEntrySnapshotPanel,
-  resolveMechanicSettings,
   applyTeamMechanics,
-  collectNextRoundFeedback,
   collectAxisWindowOverlays,
-  additionalGateBuffTable,
-  evalAdditionalAbilityBuffGates,
   resolveSlotPanelBuffInputs,
 } from './panelPhases'
 export {
   // CC-208：展示层（FinalPanel 生命构成 / DebugPage 队友 Buff 行）列「本槽实际生效的队友 buff」一律取这里，不自己按勾选重筛
   resolveSlotPanelBuffInputs,
-  buildMechanicTeamMembers,
   computePanel,
   computePanelPhases,
   computeEntrySnapshotPanel,
-  resolveMechanicSettings,
   applyTeamMechanics,
-  collectNextRoundFeedback,
   collectAxisWindowOverlays,
-  additionalGateBuffTable,
-  evalAdditionalAbilityBuffGates,
 }
 
 /** 判断字符串是否为百分比型属性（决定 applyStat 用 pct 还是 flat） */
@@ -223,24 +214,11 @@ import {
   getRowValue,
   fusedRowValue,
   findMoveById,
-  isHealingRow,
   getHealingAmount,
   getSpecialResourceRecovery,
-  pickThirdNamedBasicSegment,
   getBasicComboMoves,
   averageBasicRows,
 } from './skillRows'
-export {
-  getRowValue,
-  fusedRowValue,
-  findMoveById,
-  isHealingRow,
-  getHealingAmount,
-  getSpecialResourceRecovery,
-  pickThirdNamedBasicSegment,
-  getBasicComboMoves,
-  averageBasicRows,
-}
 
 // ============================================================================
 // 异常面板簇（D 簇，15 个符号）已整段迁至 `./anomalyPanels.ts`（R22 熵批 2 / R22-S2 刀 C，纯搬迁）。
@@ -251,37 +229,25 @@ export {
 // ============================================================================
 import {
   getTeamAnomalyDurationBonus,
-  getWindInfectionTargetSlot,
   resolveWindInfectionPick,
-  getWindInfectionElement,
   getWindInfectionCoverage,
   findWindSlot,
   buildAnomalyVirtualPanel,
   buildAnomalySettlementEntries,
 } from './anomalyPanels'
 import type {
-  WindInfectionPick,
-  AnomalyVirtualPanelRow,
   AnomalyVirtualPanelBuild,
-  AnomalySettlementEntry,
-  VoidflareDamageInput,
 } from './anomalyPanels'
 export {
   getTeamAnomalyDurationBonus,
-  getWindInfectionTargetSlot,
   resolveWindInfectionPick,
-  getWindInfectionElement,
   getWindInfectionCoverage,
   findWindSlot,
   buildAnomalyVirtualPanel,
   buildAnomalySettlementEntries,
 }
 export type {
-  WindInfectionPick,
-  AnomalyVirtualPanelRow,
   AnomalyVirtualPanelBuild,
-  AnomalySettlementEntry,
-  VoidflareDamageInput,
 }
 
 /**

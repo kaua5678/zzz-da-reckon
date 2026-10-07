@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { teamAxisPresetChapterOwnerSlot, teamHasAxisPresetPreferred } from '@/composables/agentMechanicView'
+import { teamAxisPresetChapterOwnerSlot } from '@/composables/agentMechanicView'
 import { AUTO_AXIS_PRESET_HINTS } from '@/mechanics'
 import { matchStunAxisPresets, selectAutoStunAxisPreset, stunAxisPresets, type StunAxisPreset } from '@/data/stunAxisPresets'
 
@@ -31,11 +31,11 @@ function legacySelect(team: (string | undefined | null)[], cinemaBySlot: Record<
 }
 
 describe('CC-60 自动失衡轴选档提示 → 模块声明', () => {
-  it('全 catalog 角色：提示 / 槽位 / 有琉 == 原写死', async () => {
+  it('全 catalog 角色：提示 / 槽位 == 原写死', async () => {
     const { catalog } = await setupHarness([{ agentId: '1051' }, { agentId: '1481' }, ''])
     const ids = [...new Set(['', ...catalog.agentsMap.keys()])]
     expect(ids.length).toBeGreaterThan(30)
-    let hc = 0, hp = 0
+    let hc = 0
     for (const id of ids) {
       if (id) {
         expect(AUTO_AXIS_PRESET_HINTS.isChapterOwner(id), id).toBe(id === '1051')
@@ -46,14 +46,10 @@ describe('CC-60 自动失衡轴选档提示 → 模块声明', () => {
         team[pos] = { agentId: id }
         const slot = teamAxisPresetChapterOwnerSlot(team)
         expect(slot, `${id}@${pos}`).toBe(team.findIndex(c => c.agentId === '1051'))
-        const liu = teamHasAxisPresetPreferred(team)
-        expect(liu, `${id}@${pos}`).toBe(team.some(c => c.agentId === '1481'))
         if (slot === pos) hc++
-        if (liu) hp++
       }
     }
     expect(hc).toBeGreaterThan(0)
-    expect(hp).toBe(3)
   }, 60000)
 
   it('selectAutoStunAxisPreset(+模块提示) == 原实现：全部真实预设队伍 × 通配替换 × 命座', async () => {

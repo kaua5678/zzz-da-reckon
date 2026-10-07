@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchStunAxisPresets, cloneStunAxes, presetTeamKey, normalizeAxesForExport, resolveStunAxisPlan, selectAutoStunAxisPreset, stunAxisPresets } from '@/data/stunAxisPresets'
+import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, resolveStunAxisPlan, selectAutoStunAxisPreset, stunAxisPresets } from '@/data/stunAxisPresets'
 // CC-60：章/有琉 选档提示改由模块声明注入（生产同源 roundInputs#autoPreset）
 import { AUTO_AXIS_PRESET_HINTS } from '@/mechanics'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -28,12 +28,6 @@ describe('stunAxisPresets', () => {
     expect(matchStunAxisPresets(['1051', '1481', '1451'], wild)).toHaveLength(1)
     expect(matchStunAxisPresets(['1051', '1481', '1421'], wild)).toHaveLength(1)
     expect(matchStunAxisPresets(['1051', 'other', '1451'], wild)).toHaveLength(0)
-  })
-
-  it('presetTeamKey returns null for incomplete teams', () => {
-    expect(presetTeamKey(['1251', '1391', '1241'])).toBe('1251|1391|1241')
-    expect(presetTeamKey(['1251', '', '1241'])).toBeNull()
-    expect(presetTeamKey(['1251', '1391'])).toBeNull()
   })
 
   it('cloneStunAxes deep-clones so editing does not mutate the preset', () => {

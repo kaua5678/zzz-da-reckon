@@ -37,8 +37,8 @@ function countStunOf(globalCfg: ResourceCalcConfig): number {
 // **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
 // ⚠ 改跨角色回能口径请改 `./crossAgentEnergy.ts`，**不要在本文件重建同形函数**。
 // ============================================================================
-import { calcCrossAgentEnergy, emptyCrossAgentEnergy } from './crossAgentEnergy'
-export { calcCrossAgentEnergy, emptyCrossAgentEnergy }
+import { calcCrossAgentEnergy } from './crossAgentEnergy'
+export { calcCrossAgentEnergy }
 
 // ============================================================================
 // 单角色资源收入账本族（`calcEnergySource` / `calcRawDecibelParts` / `calcDecibelSource`）
@@ -66,11 +66,6 @@ export { calcEnergySource, calcRawDecibelParts, calcDecibelSource }
 import {
   decibelEfficiencyMultiplier,
   extraNecessaryActionOf,
-  cappedCooldownTriggers,
-  getUtilizedCount,
-  applyExecutionUtilization,
-  applyEventUtilization,
-  timeSliceTriggerCounts,
 } from './rowAccounting'
 import {
   // 私有符号：跨缝被 iterate 消费。本文件 **import 但不 re-export**（公开面零增零减）。
@@ -78,15 +73,6 @@ import {
   exSpecialComboAlignTime,
   exSpecialComboAlignCredit,
 } from './rowAccounting'
-export {
-  decibelEfficiencyMultiplier,
-  extraNecessaryActionOf,
-  cappedCooldownTriggers,
-  getUtilizedCount,
-  applyExecutionUtilization,
-  applyEventUtilization,
-  timeSliceTriggerCounts,
-}
 
 // ============================================================================
 // 时间分配 + 前台占用拆解族（`calcTimeAllocation` / `FrontlineOccupationBreakdown` /
@@ -104,13 +90,11 @@ import {
   netFrontlineOccupation,
   axisOverlapBySlot,
 } from './timeOccupation'
-import type { FrontlineOccupationBreakdown } from './timeOccupation'
 export {
   calcTimeAllocation,
   frontlineOccupationBreakdown,
   netFrontlineOccupation,
 }
-export type { FrontlineOccupationBreakdown }
 
 // ============================================================================
 // 时间线截断族（`TIME_FOLD_CONVERGENCE_SECONDS` / `truncateExecutionsToFrontline`）
@@ -135,9 +119,9 @@ export { TIME_FOLD_CONVERGENCE_SECONDS, truncateExecutionsToFrontline }
 // **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
 // ⚠ 改行构建口径请改 `./rowBuild.ts`，**不要在本文件重建同形函数**。
 // ============================================================================
-import { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecutions, withFeasibleRowsMemo } from './rowBuild'
+import { materializeRows, buildExecutions, buildAnomalyEventExecutions, withFeasibleRowsMemo } from './rowBuild'
 import { chainCountTotalOf } from '@/core/chainCount'
-export { materializeRows, feasibleRows, buildExecutions, buildAnomalyEventExecutions }
+export { materializeRows, buildExecutions, buildAnomalyEventExecutions }
 
 // ============ 单次迭代 ============
 

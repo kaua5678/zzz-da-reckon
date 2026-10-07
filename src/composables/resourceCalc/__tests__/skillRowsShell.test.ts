@@ -13,6 +13,9 @@
  *
  * 同时反锁「不借搬迁放宽 API」：搬迁前后 `helpers.ts` 的导出面必须**逐符号相同**
  * （刀 B 实测 53 → 53，零增零减；顺手上调公开面 = 无判据的静默扩张，规则 12）。
+ *
+ * r721：C 簇经 `./helpers` 的转出已无生产消费者（目录外都直接从 `./skillRows` / `@/data/moveTableQueries` 导入），
+ * 按死导出判据删除；原 ①（经壳可达）随之删除，② / ③ / ④ 照旧（helpers 内部仍以两行形态 import 这些函数）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -23,21 +26,6 @@ import { buildCharConfig, extractSkillExecutions } from '@/composables/resourceC
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-/** C 簇 14 个公开符号（迁移前 helpers.ts 的导出面，迁移后经壳原样可达） */
-const C_EXPORTS = [
-  'getRowValue',
-  'fusedRowValue',
-  // CC-224：3 张元素键表已删（单一来源 utils/elementStatKeys），不再经壳转出
-  'findMoveById',
-  'isHealingRow',
-  'getHealingAmount',
-  'getSpecialResourceRecovery',
-  // CC-321：BASIC_BENCHMARK_OVERRIDE（恒空的硬编码基准段表）已删，基准段只认 catalog basicBenchmarkMoveId
-  'pickThirdNamedBasicSegment',
-  'getBasicComboMoves',
-  'averageBasicRows',
-] as const
-
 /** 留在 `helpers.ts` 的真定义（本刀**不该**把它们搬走：D/E 簇与展示归一） */
 const STAYED = ['normalizeDisplayTime', 'buildCharConfig'] as const // CC-277 删 teamHasAgent / findSlotByIdentity（无生产调用）
 
@@ -47,17 +35,10 @@ const STAYED = ['normalizeDisplayTime', 'buildCharConfig'] as const // CC-277 �
  * 而录入层值导入编排层是全仓唯一反向边（判据 19 `layer-inversion`）。
  */
 const SUNK_TO_DATA = ['getRowValue', 'fusedRowValue', 'findMoveById', 'pickThirdNamedBasicSegment'] as const // CC-253 加 findMoveByEnglishName；CC-273 删（维琳娜改按 moveId）
+/** 其中仍经 `skillRows.ts` 转出的 3 个（pickThirdNamedBasicSegment 只在 skillRows 内部用，r721 删了无人经由的转出） */
+const SKILLROWS_SHELL = ['getRowValue', 'fusedRowValue', 'findMoveById'] as const
 
 describe('R22 刀 B：skillRows 壳契约', () => {
-  it('① C 簇 14 个符号经 ./helpers 壳可达，且与 ./skillRows 是**同一个绑定**', () => {
-    for (const name of C_EXPORTS) {
-      expect((Helpers as Record<string, unknown>)[name], `helpers.${name} 缺失`).toBeDefined()
-      // 同一绑定 = 壳不是第二份实现（单一事实源，规则 11）
-      expect((Helpers as Record<string, unknown>)[name], `${name} 壳与真实现不是同一绑定`)
-        .toBe((SkillRows as Record<string, unknown>)[name])
-    }
-  })
-
   it('② 壳的 import 形式**真能跑**：buildCharConfig / extractSkillExecutions 经壳调 C 簇', async () => {
     const { catalog, config } = await setupHarness([
       { agentId: '1291' }, { agentId: '1141' }, { agentId: '1041' },
@@ -84,19 +65,18 @@ describe('R22 刀 B：skillRows 壳契约', () => {
     }
   })
 
-  it('④ 下沉 data 层的 4 个纯查询：三层（data / skillRows 壳 / helpers 壳）是**同一个绑定**，且壳是两行形态', () => {
-    for (const name of SUNK_TO_DATA) {
+  it('④ 下沉 data 层的纯查询：skillRows 壳与 data 是**同一个绑定**，且壳是两行形态', () => {
+    for (const name of SKILLROWS_SHELL) {
       const real = (MoveTableQueries as Record<string, unknown>)[name]
       expect(real, `data/moveTableQueries.${name} 缺失`).toBeTypeOf('function')
       expect((SkillRows as Record<string, unknown>)[name], `skillRows.${name} 壳与 data 真实现不是同一绑定`).toBe(real)
-      expect((Helpers as Record<string, unknown>)[name], `helpers.${name} 壳与 data 真实现不是同一绑定`).toBe(real)
     }
     // 壳形态：`import { … } from '@/data/moveTableQueries'` + 另起 `export { … }`（建本地绑定，
     // 供本文件内 getBasicComboMoves / averageBasicRows 调用）；`export { … } from` 在 vitest 下不会红、
     // 只有 vue-tsc -b 红（R22 刀 B 教训）⇒ 这里读源码钉形态。
     const src = readFileSync(join(__dirname, '..', 'skillRows.ts'), 'utf8')
     expect(src).toMatch(/^import \{[^}]*\} from '@\/data\/moveTableQueries'$/m)
-    expect(src).toMatch(/^export \{ getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment \}$/m)
+    expect(src).toMatch(/^export \{ getRowValue, fusedRowValue, findMoveById \}$/m)
     expect(src).not.toMatch(/export \{[^}]*\} from '@\/data\/moveTableQueries'/)
     // 定义确实不在 skillRows.ts 里了（不许两处各一份）
     for (const name of SUNK_TO_DATA) expect(src).not.toMatch(new RegExp(`^export function ${name}\\b`, 'm'))

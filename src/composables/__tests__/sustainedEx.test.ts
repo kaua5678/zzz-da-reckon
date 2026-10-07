@@ -11,7 +11,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { SUSTAINED_EX_SPECS, sustainedDamageScale } from '@/data/sustainedEx'
-import { findMoveById } from '@/composables/resourceCalc/helpers'
+import { findMoveById } from '@/data/moveTableQueries'
 
 describe('sustainedEx：缩放基准 = actionTime（不是 1 秒）', () => {
   it('妮可蓄力 430.6% 对应 0.7418s；蓄 1 秒 = ×(1/0.7418)', async () => {

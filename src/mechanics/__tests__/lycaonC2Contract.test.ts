@@ -29,7 +29,8 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTeamMechanics, buildCharConfig } from '@/composables/resourceCalc/helpers'
 import { getAgentMechanic } from '@/mechanics'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
-import type { AgentAxisContext, AgentInteractionContext, AgentTeamConfigInput } from '@/mechanics/types'
+import type { AgentAxisContext, AgentTeamConfigInput } from '@/mechanics/types'
+import type { AgentInteractionContext } from '@/mechanics/typesHooks'
 
 type Cfg = Record<string, unknown> & { slot: number }
 
