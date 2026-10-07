@@ -1,8 +1,9 @@
-# 死兜底普查与判据 28（r723；r724 收窄信任边界）
+# 死兜底普查与判据 28（r723；r724 收窄信任边界；r725 信任边界清零）
 
 > 范围：src 非测试 `.ts` 里「左侧类型不含 null / undefined 的 `a ?? b`」。工具：TS 类型检查器（不是正则）。
 > 提交：`7cb3f8c8`（清理 + cfg 契约）、`6e534cae`（战斗时间单一通道）、`587e767e`（判据 28）。
 > r724：store 用户态与轴移出信任边界（`0d699bb8`），写入方清点见 §4.1。
+> r725：外部 JSON 类型契约（`766a04a0`）——validate:data 按代码转型用的 TS 类型校验全部 JSON 入口，信任边界表删除（59 → 0），见 §4.2。
 > 普查 / codemod 脚本：`calc-arch/g723/deadnullish.mjs`、`calc-arch/g723/fixnullish.mjs`（不进仓；判据实现在 `scripts/lib/dead-nullish-gate.mjs`）。
 
 ## 1. 结论速览
@@ -17,6 +18,7 @@
   - 外部数据类型上的 126 处不动，列入信任边界。
   - 最后加判据 28 硬门，防止长回来。
 - r724：逐个清点 store 用户态（`CharacterConfig` / `EnemyConfig`）与轴类型的写入方，没有找到 TS 管不到的缺字段来源（store 从未持久化；外部 JSON 只有 Boss 预设与轴预设，改由 validate:data 校验），于是把它们移出豁免表：豁免 126 → 59 处，删读点死兜底 72 处 + `.vue` 4 处，旧版单表抗性兼容层整层删除。
+- r725：信任边界清零。代码对 JSON 的转型（`res.json() as T`、`import.meta.glob` 后 `as T`）共 8 个入口，validate:data 改为按这些类型逐字段校验数据、漏登记的入口即红（`scripts/lib/json-contract.mjs`）。首跑查出 31 个键与声明不符，逐条改真（`BuffEffect` 改判别联合、`SkillRow.label` 等改可选、null 归一为缺省）；然后删除豁免表，读点死兜底删 59 处 + `.vue` 6 处。
 
 ## 2. 判定口径
 
@@ -49,7 +51,7 @@
 | `CharacterResourceResult` | 30（嵌套的第二轮再删 1） | 0 | 删除 |
 | 局部标识符（形参 / 局部量） | 21（嵌套的第二轮再删 2） | 0 | 删除 |
 | 其他引擎内部类型（AnomalyProgress、ResourceCalcConfig、StunPoolResult 等 22 种） | 54 | 0 | 删除 |
-| **外部数据类型**（见 §4） | 126 | 126（r724 后 59） | 信任边界豁免；r724 移出 store 用户态与轴（§4.1） |
+| **外部数据类型**（见 §4） | 126 | 126（r724 后 59，r725 后 0） | r723 豁免；r724 移出 store 用户态与轴（§4.1）；r725 JSON 入口全部由类型契约校验、豁免表删除（§4.2） |
 
 - 删除总数 800：其中 93 处 `Number(x ?? d)`（x 为 number）连同 `Number()` 一起删，括号也一并去掉。
 - 嵌套 `a ?? b ?? c` 分两轮删，第二轮 4 处。
@@ -59,7 +61,9 @@
   - 琉音 supply 的 `totalTime`。
   - 伊德海莉 applyTeamConfig 的 `team`。
 
-## 4. 信任边界（判据 28 的豁免表 `DEAD_NULLISH_TRUST_BOUNDARY`）
+## 4. 信任边界（r723–r724 判据 28 的豁免表；r725 删除）
+
+> r725 起本节只是历史记录：豁免表 `DEAD_NULLISH_TRUST_BOUNDARY` 已删除，下表四类数据源全部由 JSON 类型契约校验（§4.2）。
 
 这些类型的值来自 TS 管不到的数据。声明上写的是必填，但读入时没人校验或补齐，所以兜底可能是承重的。豁免规则：
 
@@ -134,7 +138,69 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 
 这些留给下一轮，见 r6 §8.0 #28 ④。本轮不做的原因：它们是函数入参契约，单测直调时靠可选参数省略不写，要逐个改调用方和测试；另外 build 相位改传真实战斗时间后，战斗时间不是 180 时 converge 之前的轮次会变（与 r723 诺姆 / 莱卡恩同类的修正），而 zd 的 5 个场景都是 180，量不出来，需要单独做探针归因。
 
-**下一个可移出的候选：目录 JSON 的技能表。** r724 核过 `catalog.json` 的 `agentSkills`：62 个角色 / 310 个分类 / 1352 个招式 / 7455 行，`categories`、`SkillCategory.id` / `moves`、`SkillMove.rows`、`SkillRow.id` / `kind` / `values` 一个不缺。validate:data 本来就读 catalog.json，补上这些键的校验，就能移出 `AgentSkills` / `SkillCategory` / `SkillMove` / `SkillRow`（约 20 处）。`BuffGroup` / `BuffEffect` / `TeammateBuff*` 来自 catalog 与 teammate-buffs.json，要另核。
+**下一个可移出的候选：目录 JSON 的技能表。** r724 核过 `catalog.json` 的 `agentSkills`：62 个角色 / 310 个分类 / 1352 个招式 / 7455 行，`categories`、`SkillCategory.id` / `moves`、`SkillMove.rows`、`SkillRow.id` / `kind` / `values` 一个不缺。validate:data 本来就读 catalog.json，补上这些键的校验，就能移出 `AgentSkills` / `SkillCategory` / `SkillMove` / `SkillRow`（约 20 处）。`BuffGroup` / `BuffEffect` / `TeammateBuff*` 来自 catalog 与 teammate-buffs.json，要另核。→ r725 已做，范围扩到全部 JSON 入口，并改成按类型自动校验、不再手抄键清单（§4.2）。
+
+### 4.2 r725：JSON 类型契约，信任边界清零
+
+**做法**（`766a04a0`）：
+
+- 代码对 JSON 的转型只有两种形态：catalog store 的 5 个 `res.json() as T`，以及 specs / 队伍预设 / 轴预设经 `import.meta.glob` 后 `as T`。`scripts/lib/json-contract.mjs` 的 `JSON_CONTRACTS` 把这 8 个入口和代码转型用的类型登记在一张表里。
+- validate:data 用 TS 类型检查器解析出的类型递归校验数据：
+  - 必填属性必须在；string / number / boolean / 字面量 / null 按值核；数组、元组逐元素；索引签名核未声明键的值。
+  - 联合按「值的种类相容 + 判别属性一致」选分支，任一分支全过即过，报错时报判别属性对上的那个分支。
+  - any / unknown 不核；多余键不报（与 TS 结构类型一致）；函数类型属性跳过。
+- 防绕过：`findUncoveredJsonEntries` 扫 src 非测试代码里的 `fetch('/static/*.json')` 与 `import.meta.glob('*.json')`，漏登记即红。静态 `import x from '….json'` 不算入口：开了 resolveJsonModule，TS 按文件内容推断类型（如 enginePools.json）。浏览器存储与文件导入（逻辑编辑器、persistedRef）都过解析函数。
+- 自证：内存小程序（noLib）里合法样例零报错，反例逐类命中（必填缺失、原始类型错、字面量越界、判别联合分支、null、元组、模板字面量索引签名）。
+- 成本：validate:data 约 1 s → 2 s（建 program 0.8 s，校验 193 个文件不到 0.3 s）。
+
+**首跑查出 31 个键与声明不符**（r724 的手写清单一个都没覆盖到），逐条改真：
+
+| 处理 | 键 | 实况 |
+|---|---|---|
+| 类型改可选 | `SkillRow.label` | 7455 行里 3462 行不带 |
+| 类型改真 | `statDisplay[*].label` | 声明 LocalizedString，60 条全是 string；`useStatLabel` 的兼容分支随删 |
+| 类型改可选 | `WEngine.attribute` / `images` / `sources` | 83 把里分别有 48 / 17 / 4 把不带 |
+| 类型改判别联合 | `BuffEffect` | derived / formula 的 78 条没有 value；fixed 恒有 value，stacked 恒有 valuePerStack / maxStacks / defaultStacks（398 条全核） |
+| 类型改可选 | `BuffGroup.scope` | 驱动盘 4 件套有 29 组不带 |
+| 类型改可选 | `SkillCategory.levelRange` | 1611 / 1621 的 10 个分类不带 |
+| 类型改可选 | `DriveDiscSet.twoPiece` | 31900 原始朋克不带；hpSourceBreakdown / DebugPage 两处读点原来会抛错，已判空 |
+| 类型放宽 | `EffectTarget.kind` | 10 条是 'anomaly'；这些效果的 stat 本身已是异常专属，引擎不按 kind 分派 |
+| 类型删字段 | `Boss.level` / `defense` / `resistance` | catalog.bosses 7 条全无，也无人读 |
+| 类型删字段 | `ArchiveRoom.id` | run-archive.json 的 rooms 以房间 id 为键、条目不带；标签兜底链里的 `room?.id` 永远为空，随删 |
+| 类型改可选 | `BuildSubstat.priority`、`BuildDriveDiscSet.desc2_en / desc4_en` | 1631 不带 |
+| 类型放宽 | spec `ResourceRuleSpec.countSource` | 1571 `holdSeconds`、1611 `none` ×3、1621 `windEnergyConsumed`：手写模块角色的说明性取值，spec 资源通道不解析（落 default 计 0），类型注释写明 |
+| 数据归一 | `SkillMove.actionTime: null` ×40、`BuffGroup.condition: null` ×12 | null 与缺省同义，删键；`statRules.calculation.outOfCombatEffectFilter.condition: null` 由 r5DataInvariants 钉住，不动 |
+| 数据补齐 | 14126 淬锋钳刺一条效果的 `coverage` | 只有 default；补 min 0 / max 1 / step 0.1，与其余 236 条一致 |
+| 数据改正 | build-recommendations 1551 / 1591 的 `strategy` | `{}` 改 `[]` |
+| 数据补齐 | spec 1081 的 2 个 events、4 个 verifications | 缺 name / status；补名，status 事件取 implemented_approximation（同 spec 总状态），核对记录取 implemented（文档型记录） |
+| 数据改正 | spec 1151 `additionalAbility: null` | 删键（类型本就可选） |
+| 数据改正 | spec 1481 countSource `combatTime` | 改 `battleTime`：同义、引擎认得的词；琉音走手写模块，数值不变 |
+
+**随后**：
+
+- 判据 28 删除 `DEAD_NULLISH_TRUST_BOUNDARY`（59 → 0），判据行不再报豁免数，detector 自证去掉豁免例。
+- 同口径 codemod（`calc-arch/g725/fixnullish.mjs --policy=all`）删读点死兜底 59 处 / 34 个生产文件（含嵌套第二轮 2 处），`.vue` 按同口径手删 6 处（可选链上的不动）。
+- 判别联合让几处分支不可达，一并删：hpSourceBreakdown 的「无 type 按 fixed」分支与末尾兜底；inCombatBuffs 对 stacked 的 value 缩放（stacked 只读 valuePerStack）；DebugPage 叠层的 `?? maxStacks ?? 1`。
+- validate:data 去重：r724 手写的 Boss 预设标量字段、轴预设逐动作字段，以及队伍预设逐文件的 id / team 形状检查，都由契约覆盖，删掉。检查数 368 → 161，其中 210 条是队伍预设逐文件的两条形状检查。类型表达不了的语义留下：每个预设至少一个相位；三张抗性表（声明为 `Record<string, number>`）六个元素齐；轴 axes / plans 至少其一；动作槽位是整数。
+- 测试：cc337 / multiplierCoefficients 的夹具补必填键（值 = 原兜底）；删 teammateBuffDerivation「组内 buffs 缺失」用例（不可能输入，4508 → 4507）与 findMoveById「分类缺 moves」断言；statModeParity 的 DebugPage 源码锚点随调用形态更新（数值列改走 `effectValue(e)`）。
+- 数值：zd DUMP 0 / ROWS 0。
+
+**反例实测**（改坏一处 → validate:data 报红并指到类型字段 → 从备份还原，md5 核对）：
+
+| 改坏 | 报 |
+|---|---|
+| catalog 删一个招式的 rows | `SkillMove.rows` 缺失 |
+| catalog 删一条 fixed 效果的 value | `FixedBuffEffect.value` 缺失 |
+| teammate-buffs 删一条 stacked 效果的 valuePerStack | `StackedBuffEffect.valuePerStack` 缺失 |
+| teammate-buffs 把效果 type 写成 bogus | `…BuffEffect.type` 不符 |
+| spec 1081 删 event 的 name | `EventSpec.name` 缺失 |
+| 轴预设把动作 count 改成字符串 | `StunAxisAction.count` 应为 number |
+| boss-presets 删 monster.stunVuln | `BossPresetMonster.stunVuln` 缺失 |
+| boss-presets 删一张抗性表的 fire | 语义检查报该相位 |
+| run-archive 删一条 run 的 team | `ArchiveRun.team` 缺失 |
+| src 新增 `fetch('/static/zz-new.json')` | 未登记的 JSON 入口 |
+
+**回退**：`git revert 766a04a0`（文档另提交）。豁免表与兜底会一起回来，彼此一致。
 
 ## 5. 判据 28（`scripts/lib/dead-nullish-gate.mjs`）
 
@@ -143,14 +209,14 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
   - 2026-10-07 共扫 296 个文件。反空洞下限是 250。
   - 硬门为 0。
 - **program**：取 `tsconfig.app.json` 里的 .ts 文件，与 vue-tsc 同一份编译选项。`.vue` 不扫，因为要 vue-tsc 的类型信息。
-- **detector 自证**：在内存里建一个 noLib 小程序，约 30 ms。必填、可选、含 undefined、可选链、索引签名、元素访问、标识符、收窄、调用结果、豁免、注释各覆盖一例。命中行必须恰好是 10、16、19、20，豁免计数必须是 1。
+- **detector 自证**：在内存里建一个 noLib 小程序，约 30 ms。必填、可选、含 undefined、可选链、索引签名、元素访问、标识符、收窄、调用结果、注释各覆盖一例。命中行必须恰好是 8、14、17、18（r725 删豁免表，豁免例随删）。
 - **反空洞实测**：把 `aire.ts` 换回本轮之前的版本，门报 9 处（`cfg.battleTime ?? 180` ×2、`initialEnergyGift ?? 0`、`initialDecibelGift ?? 0` ×2 等）；换回后为 0。
 - **成本**：check-guards 从 14.4 s 增至 16.3 s；`checkGuards.test` 从 31 s 增至 34 s，因为它会跑全部判据。
 - **报错时怎么改**：
   - 值确实总在：删掉 `?? 默认值`。默认值只留在源头，即 store 默认、`buildCharConfig` 或 `emptyPanel`。
   - 值真的可能缺：把字段改成可选（加 `?`），让每个读点都看见。
   - 不要换成 `||`、三元或 `=== undefined` 来绕门，那是同一个谎换了个写法。
-  - 外部数据的新类型：加进信任边界表，并写清数据从哪来。先确认它真是外部数据：清点写入方，只有 TS 管不到的 JSON、文件或浏览器存储才算（r724 的教训：store 状态曾被误列，见 §4.1）。
+  - 值来自 JSON：没有豁免（r725）。字段真会缺就改类型，validate:data 的契约校验会报数据实况；新的 JSON 入口登记进 `scripts/lib/json-contract.mjs` 的 `JSON_CONTRACTS`。浏览器存储与文件导入走解析函数。
 
 ## 6. cfg 契约与战斗时间单一通道
 
@@ -199,7 +265,9 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 
 | 事项 | 不做的原因 | 重开条件 |
 |---|---|---|
-| 外部数据类型上的 59 处（r723 为 126，r724 移出 store 用户态与轴） | 见 §4 | 某数据源加了读入规整或校验，就把对应 owner 移出豁免表；门会列出变成死代码的兜底，逐个删。下一个候选是目录 JSON 的技能表（§4.1 末段） |
+| 恢复信任边界豁免表 | r725 已删：JSON 入口全部由类型契约校验（§4.2），类型可信 | 出现 TS 管不到又登记不进契约表的新入口时，先让它走解析函数，不恢复豁免表 |
+| spec 的三个说明性 countSource 取值（holdSeconds / none / windEnergyConsumed） | 只出现在手写模块角色（1571 / 1611 / 1621），spec 资源通道不算它们；收进引擎词表等于为不走这条通道的数据写解析 | 这些角色改走 spec 资源通道时 |
+| `BuffGroup.scope` 缺省时读点口径不一（收集器按局内，hpSourceBreakdown 的 hpPhase 按局外） | 缺 scope 的 29 组里没有生命类效果，当前不影响数值 | 缺 scope 的组出现生命类效果时；或统一时顺手把 29 组补上 scope |
 | 函数入参上的战斗时间默认 180（6 处，§4.1 末表） | 不是数据类型上的死兜底，门管不到；build 相位改传真实战斗时间会改变非 180 场景的 converge 前轮次，要探针归因 | 自选时做（r6 §8.0 #28 ④） |
 | 同类防御写法：`x != null`、`=== undefined`、`typeof x === 'number'`、`Number.isFinite(x)`，以及套在必填 number 上的 `Number(x)`、`\|\| 默认值` | 语义各有差异（`\|\|` 会吃掉 0），本门只管 `??` | 出现「为绕门改写法」的提交，或这类写法成批出现 |
 | `.vue` 里的 `??` | 需要 vue-tsc 的类型信息，普通 TS program 拿不到 | 展示层出现同类事故时，再考虑用 vue-tsc language service 扫 |
