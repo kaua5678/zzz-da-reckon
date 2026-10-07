@@ -1,10 +1,11 @@
-# 死兜底普查与判据 28（r723；r724 收窄信任边界；r725 信任边界清零；r726 战斗时间单一来源）
+# 死兜底普查与判据 28（r723；r724 收窄信任边界；r725 信任边界清零；r726 战斗时间单一来源；r727 形状校验单一来源）
 
 > 范围：src 非测试 `.ts` 里「左侧类型不含 null / undefined 的 `a ?? b`」。工具：TS 类型检查器（不是正则）。
 > 提交：`7cb3f8c8`（清理 + cfg 契约）、`6e534cae`（战斗时间单一通道）、`587e767e`（判据 28）。
 > r724：store 用户态与轴移出信任边界（`0d699bb8`），写入方清点见 §4.1。
 > r725：外部 JSON 类型契约（`766a04a0`）——validate:data 按代码转型用的 TS 类型校验全部 JSON 入口，信任边界表删除（59 → 0），见 §4.2。
 > r726：战斗时间单一来源（`866b5ef8`）——生产代码里当战斗时间用的 180 只留在 store 的 defaultEnemy，函数入参的缺省改必填；战斗时间 ≠ 180 的差异逐队归因，见 §4.3。
+> r727：形状校验单一来源（`1b6e4aa3`）——JSON 契约之外不再手写形状检查：预设加载器的运行时类型守卫删除、validate-specs 去掉已被契约覆盖的 658 条形状检查，见 §4.4。
 > 普查 / codemod 脚本：`calc-arch/g723/deadnullish.mjs`、`calc-arch/g723/fixnullish.mjs`（不进仓；判据实现在 `scripts/lib/dead-nullish-gate.mjs`）。
 
 ## 1. 结论速览
@@ -21,6 +22,7 @@
 - r724：逐个清点 store 用户态（`CharacterConfig` / `EnemyConfig`）与轴类型的写入方，没有找到 TS 管不到的缺字段来源（store 从未持久化；外部 JSON 只有 Boss 预设与轴预设，改由 validate:data 校验），于是把它们移出豁免表：豁免 126 → 59 处，删读点死兜底 72 处 + `.vue` 4 处，旧版单表抗性兼容层整层删除。
 - r725：信任边界清零。代码对 JSON 的转型（`res.json() as T`、`import.meta.glob` 后 `as T`）共 8 个入口，validate:data 改为按这些类型逐字段校验数据、漏登记的入口即红（`scripts/lib/json-contract.mjs`）。首跑查出 31 个键与声明不符，逐条改真（`BuffEffect` 改判别联合、`SkillRow.label` 等改可选、null 归一为缺省）；然后删除豁免表，读点死兜底删 59 处 + `.vue` 6 处。
 - r726：战斗时间单一来源。函数入参上的 180 缺省与兜底改必填（生产调用方本来就都传了真实值），build 相位改传真实战斗时间，般岳闪能与仪玄异常回闪上限改按战斗时间算。战斗时间 ≠ 180 的探针只见 6 个般岳队变化，归因到般岳闪能（§4.3）。
+- r727：形状校验单一来源。契约之外的两份类型抄本删掉：队伍预设 / 轴预设加载器的运行时类型守卫（坏文件会被悄悄滤掉；现有数据零过滤），以及 validate-specs 里的 658 条形状检查（1120 → 462）。契约补「定长元组超长」，轴预设语义行接住守卫原有的 team 约束（§4.4）。
 
 ## 2. 判定口径
 
@@ -296,6 +298,53 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 
 **回退**：`git revert 866b5ef8`（文档另提交）。
 
+### 4.4 r727：形状校验单一来源
+
+**问题**：r725 起 JSON 契约（validate:data）按 TS 类型校验全部 8 个入口，但契约之外还留着两份类型的残缺抄本：
+
+- **运行时**：队伍预设 / 轴预设加载器的 `isValidPreset` 类型守卫（各抄 6–8 个字段），不合格的文件在运行时悄悄滤掉：预设从下拉里消失，不报错。这和 `teamPresets.ts` 头注里「般岳队曾因此只剩 1 条可见」是同一种失效。现有 126 个文件（队伍 105 + 轴 21）一个都没被它滤掉（探针 `calc-arch/g727/probe-guard.mjs`），在当前数据上是死代码。
+- **验收期**：validate-specs 对每个 spec 跑 10 条形状检查（schemaVersion、status 枚举、6 个数组必填、teamBuffs 是数组、additionalAbility.teamConditions），再对每条 teamBuff 查 target 枚举，共 658 条，全部被 `AgentMechanicSpec` 契约覆盖。类型一改，这些手写清单就会和类型脱节（r725 首跑查出的 31 处漂移就是这么来的）。
+
+**做法**（`1b6e4aa3`）：
+
+| 位置 | 改动 |
+|---|---|
+| `src/data/teamPresets.ts`、`src/data/stunAxisPresets.ts` | 删 `isValidPreset`，按契约登记的类型直接转型 |
+| 同上 + `src/specs/registry.ts` | 三处 glob 统一写成 `Object.values(import.meta.glob('./…/*.json', { eager: true, import: 'default' })) as T[]`，删 `default ?? module` 死兜底 |
+| `scripts/lib/json-contract.mjs` | 定长元组多出元素也报，与 TS 一致。原来只逐元素核，`team` 写 4 人能过契约，只靠运行时 `length === 3` 拦。自证加超长反例 |
+| `scripts/validate-data.mjs` | 轴预设语义行接住守卫原有的 team 约束，并升级为「每项是 `'*'` 或 catalog 角色」：守卫原来只要求非空串，而写错 id 的预设永远匹配不上，也不报错。守卫里的「id 非空」不搬：id 唯一已查，空 id 无人引用 |
+| `scripts/validate-specs.mjs` | 删 658 条形状检查（1120 → 462），改后的检查行是改前的子集。保留的语义：文件名 = agentId、名字与 catalog 同源、id 唯一、agentIds 非空、嵌套 id 唯一、verification 的 expected 非空、融合招式在 catalog、enemy* 字段 ⇒ target enemy/both、死数据 / 死口径。头注写明分工 |
+| `src/data/__tests__/teamPresets.test.ts` | 删 `wEngines` 长度为 3 的断言（元组长度归契约） |
+
+**顺带收益**：bundle index 1652.35 → 1602.74 kB（gzip 473.80 → 466.04）。原写法拿的是 JSON 模块的命名空间对象，Rollup 为 188 个 JSON 模块（105 + 21 + 62）各生成一个冻结的命名空间对象；`import: 'default'` 只取默认导出，命名空间对象 188 → 0。改前改后各 build 一次实测（`calc-arch/g727/bundle-cmp.sh`）。
+
+**反例实测**（改坏一处 → 报红 → `git checkout` 还原，全部还原干净；`calc-arch/g727/neg727.py`，输出 `neg727.out`）：
+
+| 改坏 | 报 |
+|---|---|
+| spec 1081 的 status 写成 bogus | `AgentMechanicSpec.status` 不在 SpecStatus |
+| spec 1081 删 events | `AgentMechanicSpec.events` 缺失 |
+| spec 1081 的 schemaVersion 改 2 | `AgentMechanicSpec.schemaVersion` 应为 1 |
+| spec 1061 的 teamBuff target 写成 x | `TeamBuffSpec.target` 不在 "team" \| "enemy" \| "both" |
+| spec 1011 的 additionalAbility 删 teamConditions | `AdditionalAbilitySpec.teamConditions` 缺失 |
+| 队伍预设 team 4 人 / wEngines 4 项 | `TeamPresetFile.team` / `.wEngines` 元组只有 3 项 |
+| 队伍预设 team 2 人 / 删 goldSteps | `TeamPresetFile.team[2]` / `.goldSteps` 缺失 |
+| 轴预设 team 4 项 | `StunAxisPreset.team` 元组只有 3 项 |
+| 轴预设删 axes（也无 plans）/ team 空串 / team 写成 9999 | 轴预设语义行报红 |
+| spec 1401 把带 enemy 字段的 teamBuff 标成 team | validate:specs 语义检查仍报 |
+
+**数值**：zd DUMP 0 / ROWS 0；守卫在现有数据上零过滤，加载的预设集合不变。
+
+**规矩**：JSON 数据的形状只由契约校验。加载器直接转型，不写运行时类型守卫；validate-data / validate-specs 手写的只剩类型表达不了的语义。新约束先问「TS 类型能不能表达」：能 ⇒ 改类型，契约自动校验；不能 ⇒ 写进对应脚本的语义段。
+
+**不做**：
+
+- 两份脚本读点上的 `?? []` / `?.`：脚本不在判据 28 扫描面。validate-data 要在契约报红后继续跑完其余检查、把问题一次报全，这些读点让它不会因坏形状中途抛错。
+- 让 validate:specs 自己再跑一遍 spec 契约：要多建一次 TS program（约 0.8 s）。verify / check 链里 validate:data 在前、失败即停；单独跑 validate:specs 遇到坏形状可能抛 TypeError，头注已写明先跑 validate:data。
+- 轴预设的 `handwrittenPresets` 空数组（头注写的第二种录入方式，恒为空）：与本题无关，用 TS 写的预设本来就过 tsc。
+
+**回退**：`git revert 1b6e4aa3`（文档另提交）。运行时守卫与 658 条检查会一起回来；它们不依赖任何数据改动，回退后数值不变。
+
 ## 5. 判据 28（`scripts/lib/dead-nullish-gate.mjs`）
 
 - **规则**：同 §2。
@@ -360,6 +409,7 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 | 事项 | 不做的原因 | 重开条件 |
 |---|---|---|
 | 恢复信任边界豁免表 | r725 已删：JSON 入口全部由类型契约校验（§4.2），类型可信 | 出现 TS 管不到又登记不进契约表的新入口时，先让它走解析函数，不恢复豁免表 |
+| 加载器里的运行时类型守卫（r727 删，§4.4） | 契约在验收期逐字段报红；运行时守卫是类型的残缺抄本，只会把坏文件变成静默消失 | 不恢复；运行时才进来的外部 JSON（文件导入等）走解析函数，同上一行 |
 | spec 的三个说明性 countSource 取值（holdSeconds / none / windEnergyConsumed） | 只出现在手写模块角色（1571 / 1611 / 1621），spec 资源通道不算它们；收进引擎词表等于为不走这条通道的数据写解析 | 这些角色改走 spec 资源通道时 |
 | `BuffGroup.scope` 缺省时读点口径不一（收集器按局内，hpSourceBreakdown 的 hpPhase 按局外） | 缺 scope 的 29 组里没有生命类效果，当前不影响数值 | 缺 scope 的组出现生命类效果时；或统一时顺手把 29 组补上 scope |
 | 般岳补齐时间上限 `AUTO_TOPUP_TIME_LIMIT_SEC = 200`（= 180 + 20 秒余量）不随战斗时间 | 用户 2026-09-01 定的数（@fact `engine:banyue/补齐时间上限`），推广成「战斗时间 + 20」要改用户口径；r726 已让般岳闪能随战斗时间，战斗时间上只剩这一处 | 用户确认推广；或战斗时间扫描里出现补齐被误判非法 |
