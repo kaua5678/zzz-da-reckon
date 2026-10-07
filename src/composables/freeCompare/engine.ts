@@ -20,7 +20,7 @@ import { applyBuffToStore } from '@/composables/teamCompare'
 import type { PhaseBuffCard } from '@/types/bossPreset'
 import type { ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { isLimitedWEngine } from '@/composables/teamCompare'
+import { downgradeCandidateOf, wearBestWEngine, type DowngradeCandidate } from '@/composables/downgradeWEngine'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
@@ -42,7 +42,6 @@ import {
   metricDef,
 } from './metrics'
 
-import { localized } from '@/utils/format'
 import { signatureWEngineOf } from '@/composables/signatureWEngine'
 export type Calc = ResourceCalc
 
@@ -113,10 +112,10 @@ export function signatureWEngineId(catalog: ReturnType<typeof useCatalogStore>, 
  * 把「角色 + 配置码」装配到 store 的某个槽位。
  *
  * ⚠ **无专武（wengine=0）必须显式写常驻/A 音擎**：`configStore.setAgent` 会自动给角色
- * 推荐专属音擎（`config.ts:594-599` `char.wEngineId = exclusive.id`），不显式覆盖就会
+ * 推荐专属音擎（`config.ts` 的 `setAgent`：`char.wEngineId = exclusive.id`），不显式覆盖就会
  * 得到「嘴上无专武、身上穿专武」的假结果（数值偏高、零报错）。
- * 这条坑 `computeAutoEnginePicks`（`teamCompare.ts:530-533`）与 `computeOptimalGoldAllocations`
- * （`:651-653`）的注释都是防它 —— 它们只认 `preset.wEngines` 不回读 store，同一个道理。
+ * 队伍对比防的是同一个坑：`computeAutoEnginePicks` 与 `computeOptimalGoldAllocations` 的基础音擎
+ * 只认 `preset.wEngines`、不回读 store。
  *
  * ⚠ **也不能裸奔**：空音擎实测比专武本体低 **34–41%**（探针 `freeCompareDowngradeProbe.test.ts`
  * 三角色实测：柏妮思 −39.4% / 菲欧妮 −34.4% / 维琳娜 −41.2%）—— 那不是「没抽专武」，
@@ -126,7 +125,7 @@ export function signatureWEngineId(catalog: ReturnType<typeof useCatalogStore>, 
  * ⚠ **下位挑哪把不能按 id 顺序**（本函数第一版就是 `find()` 取第一件 = 武断）：
  * 实测同职业三把 A 级音擎差 **3–8 个百分点**（柏妮思：双生泣星 −8.9% / 触电唇彩 −8.6% /
  * 咚哒回声 −16.9%），挑错一把会让「无专武」档凭空多亏 8pp。
- * ⇒ 默认走 **按伤害择优**（`pickDowngradeByDamage`），与 `computeAutoEnginePicks` 同思路。
+ * ⇒ 默认走 **按伤害择优**（`wearBestWEngine`，与队伍对比自动下位 `computeAutoEnginePicks` 同一实现）。
  */
 function applyCodeToSlot(
   configStore: ConfigModel,
@@ -153,13 +152,6 @@ function applyCodeToSlot(
   }
 }
 
-/** 下位候选：同职业的**非常驻 S / A 级**音擎（`ownerAgentId` 为空 = 不是谁的专武） */
-export interface DowngradeCandidate {
-  id: string
-  mod: number
-  label: string
-}
-
 /**
  * 枚举某角色的「下位音擎」候选池：同职业、非专属（`ownerAgentId` 空）、非限定。
  *
@@ -168,79 +160,30 @@ export interface DowngradeCandidate {
  *    跨职业穿等于白板 —— 与 `computeAutoEnginePicks` 的「试算天然只让匹配角色吃满」同源。
  *  - **非专属**：`ownerAgentId` 有值 = 别人的专武，那不是「下位」是「另一把专武」（要花金）。
  *  - **非限定**：常驻 S 与 A 级都不占限定金 ⇒ 整个「无专武」档 0 金，与配置码金数口径自洽。
- * 精炼档：A 级默认 5、常驻 S 默认 3（`teamCompare.ts:523-524` 同口径，可经 `mods` 覆盖）。
+ * 精炼档与展示名走 `downgradeCandidateOf`（A 级 5、常驻 S 3，与队伍对比自动下位同一口径）。
  */
-export function downgradeCandidates(
-  catalog: ReturnType<typeof useCatalogStore>,
-  agentId: string,
-  mods: { aRank?: number; standard?: number } = {},
-): DowngradeCandidate[] {
+export function downgradeCandidates(catalog: ReturnType<typeof useCatalogStore>, agentId: string): DowngradeCandidate[] {
   const agent = catalog.getAgent(agentId)
   if (!agent) return []
-  const aMod = mods.aRank ?? 5
-  const stdMod = mods.standard ?? 3
   return catalog.displayWEngines
-    .filter(w => !w.ownerAgentId && w.specialty === agent.specialty && !isLimitedWEngine(w.id))
-    .map(w => ({
-      id: w.id,
-      mod: w.rarity === 'A' ? aMod : stdMod,
-      label: `${localized(w.name, w.id)} R${w.rarity === 'A' ? aMod : stdMod}`,
-    }))
+    .filter(w => !w.ownerAgentId && w.specialty === agent.specialty)
+    .map(w => downgradeCandidateOf(w))
+    .filter(c => !c.limited)
 }
 
 /**
- * 按伤害择优挑下位音擎（**与 `computeAutoEnginePicks` 同思路**：逐个试算全队伤害取最高）。
- *
- * 为什么必须择优而不是取第一件：实测同职业 A 级之间差 3–8pp（见 `applyCodeToSlot` 注释），
- * 而「无专武」是用户明确要比的一个档位 —— 用一个随机偏低的基准去比，结论就是错的。
- *
- * 代价：池大小（异常职业 3 件）× 1 次全量求值。**调用方负责缓存**（`engine.ts` 用
- * `${teamKey}|${agentId}|${cinema}` 做键），否则档位 × 系列会被放大成 N×池 次求值。
- * 池为空（A 级角色等）返回 null，调用方回落空音擎。
- */
-function pickDowngradeByDamage(
-  calc: Calc,
-  configStore: ConfigModel,
-  catalog: ReturnType<typeof useCatalogStore>,
-  slot: number,
-  agentId: string,
-  mods: { aRank?: number; standard?: number } = {},
-): DowngradeCandidate | null {
-  const pool = downgradeCandidates(catalog, agentId, mods)
-  if (pool.length === 0) return null
-  // 单件池不用试算（省一次全量求值）：没有可比的第二件，择优退化成恒等
-  if (pool.length === 1) {
-    configStore.setWEngine(slot, pool[0].id)
-    configStore.setWEngineModLevel(slot, pool[0].mod)
-    return pool[0]
-  }
-  let best: DowngradeCandidate | null = null
-  let bestDmg = -Infinity
-  for (const c of pool) {
-    configStore.setWEngine(slot, c.id)
-    configStore.setWEngineModLevel(slot, c.mod)
-    const dmg = calc.teamTotalDamage.value
-    if (Number.isFinite(dmg) && dmg > bestDmg) { bestDmg = dmg; best = c }
-  }
-  // 提交赢家：下一槽的试算/最终读数都基于它
-  if (best) {
-    configStore.setWEngine(slot, best.id)
-    configStore.setWEngineModLevel(slot, best.mod)
-  }
-  return best
-}
-
-/**
- * 下位音擎解析器（带缓存）——「无专武」档每次都择优会 ×池大小 次求值，
- * 而同一个 (队友组合, 角色, 命座) 的择优结果在一轮对比里是常量 ⇒ 缓存是必需的，不是优化。
+ * 下位音擎解析器（带缓存）——按伤害择优（`wearBestWEngine`）而不是取第一件：实测同职业 A 级之间差 3–8pp
+ * （见 `applyCodeToSlot` 注释），而「无专武」是用户明确要比的一个档位，用一个随机偏低的基准去比，结论就是错的。
+ * 每次都择优会 ×池大小 次求值，而同一个 (队友组合, 角色, 命座) 的择优结果在一轮对比里是常量 ⇒ 缓存是必需的，不是优化。
  *
  * 缓存键含 `cinema`：命座会改角色机制（如某命座改强特占比），可能翻转最优下位（实测三把差 3–8pp，
- * 不是不可能翻转）；键含队友组合是因为择优读的是**全队伤害**，换队友就换了判据。
+ * 不是不可能翻转；r735 探针里菲欧妮 0–2 命之间就换过件）；键含队友组合是因为择优读的是**全队伤害**，换队友就换了判据。
+ * 池为空（A 级角色等）回落空音擎。
  */
 function makeDowngradeResolver(calc: Calc, configStore: ConfigModel, catalog: ReturnType<typeof useCatalogStore>) {
   const cache = new Map<string, DowngradeCandidate | null>()
   return {
-    /** 解析并**把结果写进 store**（调用方随后求值即为该下位配置） */
+    /** 解析并**把结果写进 store**（调用方随后求值即为该下位配置）；返回选中的件（调用方收集起来展示「20 档底下穿的是哪把」） */
     resolve(slot: number, agentId: string, cinema: number, teamKey: string): DowngradeCandidate | null {
       const key = `${teamKey}|${agentId}|${cinema}`
       const hit = cache.get(key)
@@ -251,19 +194,16 @@ function makeDowngradeResolver(calc: Calc, configStore: ConfigModel, catalog: Re
         } else {
           configStore.setWEngine(slot, '')
         }
-        this.lastPicked = hit
         return hit
       }
-      const best = pickDowngradeByDamage(calc, configStore, catalog, slot, agentId)
-      cache.set(key, best)
-      this.lastPicked = best
-      if (!best) configStore.setWEngine(slot, '')
-      return best
+      const { pick, evaluations } = wearBestWEngine(calc, configStore, slot, downgradeCandidates(catalog, agentId))
+      this.evaluations += evaluations
+      cache.set(key, pick)
+      if (!pick) configStore.setWEngine(slot, '')
+      return pick
     },
-    /** 缓存统计（供 UI 显示真实求值次数；也便于测试断言缓存真的生效） */
-    get size() { return cache.size },
-    /** 最近一次 resolve 选中的件（调用方收集起来展示「20 档底下穿的是哪把」） */
-    lastPicked: null as DowngradeCandidate | null,
+    /** 择优实际试算次数（缓存命中不再试算；单件池直接穿上不试算）→ `FreeCompareResult.pickEvaluations` */
+    evaluations: 0,
   }
 }
 
@@ -331,11 +271,10 @@ export async function computeFreeCompare(
     values: new Array(levels.length).fill(null),
     skipped: 0,
   }))
+  // 择优自身的试算次数由解析器累计（`downgrade.evaluations`），单独计，避免它被误读成"档位求值"
   const downgrade = makeDowngradeResolver(calc, configStore, catalog)
   let evaluations = 0
   let skipped = 0
-  /** 择优自身的试算次数（池大小 × 首个未命中），单独计，避免它被误读成"档位求值" */
-  let pickEvaluations = 0
 
   const nameOf = catalog.agentName
   for (let si = 0; si < runRows.length; si++) {
@@ -384,14 +323,7 @@ export async function computeFreeCompare(
       }
       // 第二遍：无专武的槽位按伤害择优挑下位（池>1 时内部会试算；缓存跨档位复用）
       for (const p of needPick) {
-        const before = downgrade.size
-        downgrade.resolve(p.slot, p.agentId, p.cinema, `${team.join(',')}|${code.cinema}${code.wengine}`)
-        if (downgrade.size > before) {
-          // 新键 = 真的试算了；单件池（n <= 1）直接采用不试算，多件池逐件试算 n 次
-          const n = downgradeCandidates(catalog, p.agentId).length
-          pickEvaluations += n > 1 ? n : 0
-        }
-        const picked = downgrade.lastPicked
+        const picked = downgrade.resolve(p.slot, p.agentId, p.cinema, `${team.join(',')}|${code.cinema}${code.wengine}`)
         if (picked) {
           const list = (out[si].downgrades ??= [])
           const tag = `${nameOf(p.agentId)}：${picked.label}`
@@ -427,7 +359,7 @@ export async function computeFreeCompare(
       durationMs: Date.now() - started,
       evaluations,
       skipped,
-      pickEvaluations,
+      pickEvaluations: downgrade.evaluations,
       environmentSummary: constraintSummary(cs, nameOf, buffModeLabel || undefined),
     }
   }

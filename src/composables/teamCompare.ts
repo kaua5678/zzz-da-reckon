@@ -41,6 +41,7 @@ import {
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { TeamGoldState } from '@/composables/teamTimeline'
 import { takeBestGoldStep } from '@/composables/goldGreedy'
+import { DOWNGRADE_MODS, downgradeCandidateOf, wearBestWEngine, type DowngradeCandidate } from '@/composables/downgradeWEngine'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/timeOccupation'
@@ -513,17 +514,9 @@ export function applyGoldSteps(
 
 // ========== 自动下位音擎（A ∪ 常驻池择优） ==========
 
-/** 一个槽位的自动下位择优结果 */
-export interface AutoEnginePick {
+/** 一个槽位的自动下位择优结果（音擎 / 精炼 / 展示名 / 是否限定见 `DowngradeCandidate`） */
+export interface AutoEnginePick extends DowngradeCandidate {
   slot: number
-  /** 选中的音擎 id */
-  id: string
-  /** 穿戴精炼档（限定候选按本体精炼1） */
-  mod: number
-  /** 如 "燃狱齿轮 R3"（悬停/明细表展示用；限定为 "焰心桂冠 R1（限定）"） */
-  label: string
-  /** 是否限定音擎（选中即按本体如实计入总限定金） */
-  limited: boolean
 }
 
 function clampMod(v: number | undefined | null, fallback: number): number {
@@ -566,13 +559,14 @@ function countLimitedAutoApplied(
 
 /**
  * 自动下位音擎择优：对每个「基础音擎非限定」的槽位（限定基础音擎 = 占金的真实持有物，保留），
- * 在候选装填池内逐个试算全队伤害取最高者，按默认精炼穿戴（A 级默认 5、常驻默认 3，
- * 经 options.autoEngineMods 调整）。逐槽贪心、顺序提交：后一槽的试算在前一槽已定的基础上进行。
+ * 在候选装填池内试穿择优（`wearBestWEngine`：读全队伤害取最高，读数非有限不选、并列取先、单件不试算，
+ * 与自由对比「无专武」档同一实现），按 `downgradeCandidateOf` 的精炼穿戴（A 级默认 5、常驻默认 3，
+ * 经 preset.autoEngine.mods / options.autoEngineMods 调整；限定按本体 1）。逐槽贪心、顺序提交：后一槽的试算在前一槽已定的基础上进行。
  * 候选池缺省 = DEFAULT_AUTO_ENGINE_POOL（用户准信五件），页面装填框可增删；
  * 池内未知 id 过滤；**限定音擎可选**——按本体（精炼1）参与择优，选中由调用方如实计金。
  * **不做全目录遍历。**
  * 音擎被动带专精要求 → 试算天然只让匹配角色吃满；击破系等低收益音擎可能落选（按伤害择优的预期行为）。
- * 调用方须已应用 boss/buff（择优从真实场景出发）；池为空返回 []。
+ * 调用方须已应用 boss/buff（择优从真实场景出发）；池为空的槽位不出结果。
  * 计算量：池大小 × 有角色槽位数（≤3）次全量伤害，每队一次。
  */
 export function computeAutoEnginePicks(
@@ -605,36 +599,20 @@ export function computeAutoEnginePicks(
     if (top.length > 0) return top
     return requested.length > 0 ? requested : DEFAULT_AUTO_ENGINE_POOL
   }
-  // 精炼档：preset.mods 覆盖页面输入；A 级默认 5 不变，常驻 S 可调（缺省 3）
-  const aMod = clampMod(cfg?.mods?.aRank ?? options.autoEngineMods?.aRank, 5)
-  const stdMod = clampMod(cfg?.mods?.standard ?? options.autoEngineMods?.standard, 3)
+  // 精炼档：preset.mods 覆盖页面输入；缺省 DOWNGRADE_MODS（A 级 5、常驻 S 3）
+  const mods = {
+    aRank: clampMod(cfg?.mods?.aRank ?? options.autoEngineMods?.aRank, DOWNGRADE_MODS.aRank),
+    standard: clampMod(cfg?.mods?.standard ?? options.autoEngineMods?.standard, DOWNGRADE_MODS.standard),
+  }
   const picks: AutoEnginePick[] = []
   for (let slot = 0; slot < 3; slot++) {
     if (!preset.team[slot]) continue
-    const pool = toWengines(resolveSlotPool(slot))
-    if (pool.length === 0) continue
     // 基础音擎只认预设声明（与 baseGoldOf 同源）：setAgent 会给角色自动推荐专属音擎，
     // 回读 store 会把「预设没声明的限定专武」误当成已持有物而跳过替换
-    const baseId = preset.wEngines?.[slot] ?? ''
-    if (isLimitedWEngine(baseId)) continue
-    let best: { id: string; mod: number; label: string; damage: number } | null = null
-    for (const w of pool) {
-      // 限定候选按本体（精炼1）试算：下位拿限定 = 只买本体 1 金，不预设精炼投入
-      const mod = isLimitedWEngine(w.id) ? 1 : w.rarity === 'A' ? aMod : stdMod
-      configStore.setWEngine(slot, w.id)
-      configStore.setWEngineModLevel(slot, mod)
-      const damage = calc.teamTotalDamage.value
-      if (!best || damage > best.damage) {
-        const limited = isLimitedWEngine(w.id)
-        best = { id: w.id, mod, label: `${localized(w.name, w.id)} R${mod}${limited ? '（限定）' : ''}`, damage }
-      }
-    }
-    if (best) {
-      // 提交最优并留在 store：下一槽的试算场景包含本槽结果
-      configStore.setWEngine(slot, best.id)
-      configStore.setWEngineModLevel(slot, best.mod)
-      picks.push({ slot, id: best.id, mod: best.mod, label: best.label, limited: isLimitedWEngine(best.id) })
-    }
+    if (isLimitedWEngine(preset.wEngines?.[slot] ?? '')) continue
+    // 赢家留在 store：下一槽的试算场景包含本槽结果
+    const { pick } = wearBestWEngine(calc, configStore, slot, toWengines(resolveSlotPool(slot)).map(w => downgradeCandidateOf(w, mods)))
+    if (pick) picks.push({ slot, ...pick })
   }
   return picks
 }

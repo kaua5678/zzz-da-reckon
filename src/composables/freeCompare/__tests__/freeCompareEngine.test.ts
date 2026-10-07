@@ -3,7 +3,7 @@
  *
  * 为什么需要这一层：纯函数测试（`freeCompare.test.ts`）证明不了「装配到 store 上的状态是对的」。
  * 而本工作台最危险的失败模式恰恰是**静默装错**——
- *   ① 无专武（wengine=0）没显式覆盖 ⇒ `setAgent` 自动给角色穿上专武（`config.ts:594-599`），
+ *   ① 无专武（wengine=0）没显式覆盖 ⇒ `setAgent` 自动给角色穿上专武（`config.ts` 的 `setAgent`），
  *      得到「嘴上无专武、身上穿专武」的偏高数值，零报错；
  *   ② 忘了隔离 ⇒ 污染用户当前的队伍/Boss 配置（跑完对比发现自己队被换了；r372 起求值跑在独立
  *      场景上，这条失败模式从结构上不再可能，用例相应改成「调用方 store 全程逐字不变」）。
@@ -106,7 +106,7 @@ describe('自由对比求值器（真引擎）', () => {
     expect(worn, `穿上的 ${noSig.wEngineId} 应当能在 catalog 里查到`).toBeTruthy()
     expect(worn!.ownerAgentId, '下位不能是别人的专武').toBeFalsy()
     expect(worn!.specialty).toBe(catalog.getAgent(BURNICE)!.specialty)
-    // A 级默认精炼 5（与 computeAutoEnginePicks 的 mods 口径一致）
+    // A 级默认精炼 5（DOWNGRADE_MODS，与队伍对比自动下位同一口径）
     expect(noSig.modLevel).toBe(5)
 
     // 对照：装配 21（有专武本体）应当穿上专武且精炼 1

@@ -733,6 +733,7 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type PresetGoldAlternative } from '@/composables/teamCompare'
 import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
+import { DOWNGRADE_MODS } from '@/composables/downgradeWEngine'
 import { persistedRef } from '@/composables/persistedRef'
 import { isBatchAborted, useBatchOwner } from '@/composables/batchTask'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
@@ -877,9 +878,9 @@ const goldAltRows = computed(() => {
 })
 /** 自动下位音擎（缺省开）：非限定槽位从装填池按伤害择优穿戴；选中限定音擎按本体如实计金 */
 const autoEngine = ref(true)
-/** 自动下位默认精炼档：A 级 / 常驻 S */
-const autoModA = ref(5)
-const autoModStd = ref(3)
+/** 自动下位默认精炼档：A 级 / 常驻 S（缺省 DOWNGRADE_MODS，与自由对比「无专武」档同一口径） */
+const autoModA = ref(DOWNGRADE_MODS.aRank)
+const autoModStd = ref(DOWNGRADE_MODS.standard)
 // 装填池：玩家可增删，localStorage 持久化；种子 = 用户准信五件（击破：人为刀俎/燃狱齿轮，辅助：阿炮/逍遥游球/啜泣摇篮）
 const AUTO_ENGINE_POOL_KEY = 'zzz-compare-auto-engine-pool'
 const autoEnginePool = persistedRef<string[]>(AUTO_ENGINE_POOL_KEY, arr => {

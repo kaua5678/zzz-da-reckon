@@ -1003,9 +1003,9 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
     expect(run(5, ['14110'])[0].damage).toBe(100)
     // 默认装填池 = 用户准信五件（击破：人为刀俎/燃狱齿轮，辅助：好斗的阿炮/逍遥游球/啜泣摇篮）
     expect(DEFAULT_AUTO_ENGINE_POOL).toEqual(['13005', '14110', '13115', '14002', '14121'])
+    // 默认池五件对本打分全是 0 分并列 → 取池内第一件（wearBestWEngine：并列取先出现的）
     const defPick = computeAutoEnginePicks(calc, config, preset, {})[0]
-    expect(defPick).toBeDefined()
-    expect(DEFAULT_AUTO_ENGINE_POOL).toContain(defPick!.id)
+    expect(defPick!.id).toBe(DEFAULT_AUTO_ENGINE_POOL[0])
   })
 
   it('限定候选可选：按本体 R1 参与择优并标 limited；未知 id 忽略；限定基础音擎的槽位不参与替换', async () => {
