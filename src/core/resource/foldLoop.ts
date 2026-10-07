@@ -26,7 +26,7 @@ import { isFrontlineExecution } from '@/types/resource'
 import { runInnerLoop, type InnerLoopContext } from './innerLoop'
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, ultimateGiftOf } from './crossAgentSupply'
 import { buildExecutionsWithPhase } from './phaseExecutions'
-import { TIME_FOLD_CONVERGENCE_SECONDS } from './helpers'
+import { TIME_FOLD_CONVERGENCE_SECONDS } from './timeTruncation'
 import type { SolveDiagnostics } from './solveDiagnostics'
 
 /**

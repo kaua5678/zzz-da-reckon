@@ -2,23 +2,17 @@
  * 招式行取值簇（自 `resourceCalc/helpers.ts` 整段迁出 —— R22 熵批 2 / R22-S2 刀 B，**纯搬迁**）。
  *
  * 职责（一个域：**从 `AgentSkills` 的倍率表里取值**）：
- *   ① 行值提取 `getRowValue` + 倍率融合 `fusedRowValue`（`data/moveFusions.ts` 单一事实源）
- *      —— ⚠ 2026-09-19 round 37 起**定义已下沉 `data/moveTableQueries.ts`**（连同 `findMoveById` /
- *      `pickThirdNamedBasicSegment`，共 4 个纯查询），本文件只留 import + export 两行壳，见下。
- *   ② 招式查找 `findMoveById`（壳）+ 平A基准段挑选（按英文名查招式的 findMoveByEnglishName 已于 CC-273 删除：招式一律按 moveId 认）
- *      `pickThirdNamedBasicSegment`（壳）/ `getBasicComboMoves` / `averageBasicRows`
+ *   ① 行值提取 `getRowValue` / 倍率融合 `fusedRowValue` / 招式查找 `findMoveById` / 平A第 3 段挑选
+ *      `pickThirdNamedBasicSegment` 这 4 个纯查询的**定义在 `data/moveTableQueries.ts`**（2026-09-19 round 37
+ *      下沉，理由见下），调用方直接从那里导入；本文件只 import 自用的 `getRowValue` / `pickThirdNamedBasicSegment`。
+ *   ② 平A基准段 `getBasicComboMoves` / `averageBasicRows`（按英文名查招式的 findMoveByEnglishName 已于 CC-273 删除：招式一律按 moveId 认）
  *   ③ 行分类与派生量 `isHealingRow` / `getHealingAmount` / `getSpecialResourceRecovery`
  *   ④（已删，CC-224）元素 → 面板键映射表：现为 `@/utils/elementStatKeys`
  *
- * 迁移纪律：逐字节剪切，算式/常量值/条件/求值顺序零改动（搬迁的两段在源文件里不连续，
- * 中间隔着 D 簇「异常虚拟面板」——本刀**只**取 C 簇，不碰 D 簇）。
- * 上游单一入口仍是 `./helpers`（该文件保留 re-export 壳）⇒ 目录外既有消费者与 66 个测试的 import 零改动。
- *
  * ⚠ 落点必须是 `resourceCalc/` **目录直属**的 `.ts`：子目录会整类逃出
  * `listAgentBranchFiles()` 的 agentId 棘轮度量面（`scripts/check-guards.mjs`；R22 分诊 §3 闸门 4 实测）。
- * ⚠ 与 `./helpers` 的关系：`./helpers` 经本文件的 re-export 壳把 `getRowValue` / `fusedRowValue` /
- * `findMoveById` 等 14 个符号给它的下游（`buildCharConfig` 的平A基准段、`extractSkillExecutions`
- * 的招式查表）用。**本文件对 `./helpers` 零出边** ⇒ 无环、无 TDZ 风险。
+ * ⚠ 与 `./helpers` 的关系：`./helpers` 从本文件 import `getHealingAmount` / `getSpecialResourceRecovery` /
+ * `getBasicComboMoves` / `averageBasicRows`；**本文件对 `./helpers` 零出边** ⇒ 无环、无 TDZ 风险。
  *
  * ⚠ 为什么 4 个纯查询要再下沉一层到 `src/data/`（round 37，OPEN-ITEMS R35-J2）：录入层
  * `mechanics/agents/claret.ts` 需要 `pickThirdNamedBasicSegment` / `fusedRowValue`，而录入层
@@ -29,14 +23,8 @@ import type { useCatalogStore } from '@/stores/catalog'
 import type { AgentSkills, SkillMove, SkillRow } from '@/types/catalog'
 import type { SkillExecution } from '@/types/resource'
 
-// ---- 4 个纯查询的定义在 `data/moveTableQueries.ts`（2026-09-19 round 37 下沉 4 个；CC-253 加、CC-273 删 findMoveByEnglishName），这里是壳 ----
-// ⚠ 必须写成「import + export」两行——`export { … } from` **不建本地绑定**，而下方
-//   `getBasicComboMoves`（调 `pickThirdNamedBasicSegment`）/ `averageBasicRows`（调 `getRowValue`）
-//   需要本地绑定（与 `./helpers` 壳同一教训：刀 A 实测 `ReferenceError` / `vue-tsc` TS2304）。
-// ⚠ 改这 4 个函数请去 `data/moveTableQueries.ts`，不要在本文件重建同形函数。
-import { getRowValue, fusedRowValue, findMoveById, pickThirdNamedBasicSegment } from '@/data/moveTableQueries'
+import { getRowValue, pickThirdNamedBasicSegment } from '@/data/moveTableQueries'
 import { isNumberedBasicSegment } from '@/data/basicSegment'
-export { getRowValue, fusedRowValue, findMoveById }
 
 // ---- 元素 → 面板字段名：CC-224 起单一来源 `@/utils/elementStatKeys`（原 3 张表与本壳已删，不要在此重建） ----
 
@@ -131,14 +119,3 @@ export function averageBasicRows(
     skillTableNote: '平A按基准段（默认#3）秒均 × 平A时间计算（只打该段）。',
   }
 }
-
-// ============================================================================
-// 本簇 14 个公开符号在 `./helpers.ts` 保留 **re-export 壳**（R22 熵批 2 / R22-S2 刀 B）：
-// 目录外的既有消费者（`components` / `views` / 测试）import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from './skillRows'` **不建本地绑定**，
-//   而 `helpers.ts` 下游（`buildCharConfig` / `extractSkillExecutions`）需要本地绑定
-//   （刀 A 实测 `ReferenceError: findForbiddenTracked is not defined` / `vue-tsc` TS2304）。
-// ⚠ 改招式行取值请改本文件（4 个纯查询改 `data/moveTableQueries.ts`），**不要回 `helpers.ts`
-//   重建同形函数**（那会分裂单一事实源）。录入层（`mechanics/agents/*`）**不得**值导入本目录
-//   （判据 19 `layer-inversion`），要纯查询去 `@/data/moveTableQueries`。
-// ============================================================================

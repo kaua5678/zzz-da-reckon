@@ -14,7 +14,7 @@ import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
-import { ULTIMATE_COST_DEFAULT } from '@/core/resource'
+import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 
 async function loadTeam(id: string) {
   const { catalog } = await setupHarness(['', '', ''])

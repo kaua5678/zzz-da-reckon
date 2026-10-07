@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
-import { calcCrossAgentEnergy } from '@/core/resource/helpers'
+import { calcCrossAgentEnergy } from '@/core/resource/crossAgentEnergy'
 import {
   YUZUHA_FIREWORK_EXTREME_MOVE_ID,
   YUZUHA_FIREWORK_MOVE_ID,

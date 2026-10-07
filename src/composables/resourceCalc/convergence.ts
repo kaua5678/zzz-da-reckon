@@ -5,7 +5,7 @@
 import type { ComputedRef } from 'vue'
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import type { AnomalySkillExecution } from '@/core/anomalyPool'
+import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { continuousStunCount, relaxAutoFillStep, stunBuildUpForCount } from '@/core/stunPool'
 import { probeKey, probePush } from '@/core/probeTrace'
@@ -13,9 +13,7 @@ import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResul
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
-// 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findMoveById } from './skillRows'
+import { findMoveById } from '@/data/moveTableQueries'
 
 /**
  * 5 个 `compute*NextRoundFeedback` 纯函数已整体迁出（2026-09-16 arch 棘轮第 6 批）。
@@ -41,7 +39,6 @@ import {
 import { applyChainGift } from './chainGift'
 import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from './feasibilitySearch'
 import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
-import * as ResourceCalcHelpers from './helpers'
 import { computeParrySplit, GUARANTEE_STUN_TARGET } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 import { calcStunAxisStack, allocateAxisWindows } from '@/core/stunAxisStack'
@@ -52,24 +49,23 @@ import {
   type BossAnomalyStateResult,
   type InStunWindowInput,
 } from '@/core/stunAxis/inStunAnomaly'
-import { getBaseElement, BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
-import { calcSpecialActionBonus, PARRY_DECIBEL_BONUS } from '@/core/anomalyPool'
-import { ULTIMATE_COST_DEFAULT, calcTeamResources } from '@/core/resource'
+import { BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
+import { getBaseElement } from '@/data/anomalyElement'
+import { calcSpecialActionBonus } from '@/core/anomalyPool'
+import { PARRY_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+import { calcTeamResources } from '@/core/resource'
+import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 import { chainMoveKind } from '@/data/chainMoveKind'
-// 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 / T67-a1 刀 A）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { applyTeamMechanics, collectNextRoundFeedback, resolveMechanicSettings } from './panelPhases'
-import { enrichExecutionPlan, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
+import { enrichExecutionPlan, axisMoveEndsStunWindow, axisMoveActionTimeOf, normalizeDisplayTime } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
 const DECIBEL_ROUND_THRESHOLD = 1500
 import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 
-export { createConvergenceRoundInputs } from './roundInputs'
 import type { CalcRoundResult } from './roundResult'
 import { chainCountTotalOf } from '@/core/chainCount'
-export type { CalcRoundResult } from './roundResult'
 
 /**
  * 单轮计算本体（#10 收线刀，2026-09-12 自 `useResourceCalc.ts` 整体搬入 1180 行）。
@@ -1013,7 +1009,7 @@ export function createRunCalcRound(deps: {
     // 不动点/失衡池仍用原始 rr（baseStun），避免赠送连携失衡反作用于转大收敛。
     // 展示口径归一：赠送行（诺姆赠链 / 琉音赠大，含轴模式 post-hoc carve 路径）在装配后追加，
     // 引擎 timeAllocation 看不到 → 按**最终行**重算前台/后台（单一展示口径，见 normalizeDisplayTime）
-    const rrShown = ResourceCalcHelpers.normalizeDisplayTime(adj2)
+    const rrShown = normalizeDisplayTime(adj2)
 
     const cov1 = computeStunCoverage(sp1.pool, verdictSecondsLost)
     const ap1 = calcAnomalyPoolInput(cov1, extractAnomalyExecsFrom(adj2), giftedPolarAssaultThisRound, giftedPolarAssaultSlot)

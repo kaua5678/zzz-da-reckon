@@ -14,7 +14,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import type { CalcRoundResult } from '@/composables/resourceCalc/convergence'
+import type { CalcRoundResult } from '@/composables/resourceCalc/roundResult'
 
 const observed = vi.hoisted(() => ({
   /** 真管线每轮的非空输出（按计算顺序）。 */

@@ -28,100 +28,18 @@ function countStunOf(globalCfg: ResourceCalcConfig): number {
   return stunCountForCountChannel(globalCfg)
 }
 
-// ============================================================================
-// 跨角色联动回能族（`calcCrossAgentEnergy` / `emptyCrossAgentEnergy`）已整段迁至
-// `./crossAgentEnergy.ts`（R43 结构熵切面，纯搬运）。
-// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` / `iterate` /
-// `mechanics/__tests__` / `composables/__tests__`）的 import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from './crossAgentEnergy'`
-// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
-// ⚠ 改跨角色回能口径请改 `./crossAgentEnergy.ts`，**不要在本文件重建同形函数**。
-// ============================================================================
 import { calcCrossAgentEnergy } from './crossAgentEnergy'
-export { calcCrossAgentEnergy }
-
-// ============================================================================
-// 单角色资源收入账本族（`calcEnergySource` / `calcRawDecibelParts` / `calcDecibelSource`）
-// 已整段迁至 `./resourceIncome.ts`（R43 结构熵切面，纯搬运）。
-// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` 装配 / `iterate` /
-// `core/__tests__` / `mechanics/__tests__`）的 import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from './resourceIncome'`
-// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
-// ⚠ 改收入账本口径请改 `./resourceIncome.ts`，**不要在本文件重建同形函数**。
-// ============================================================================
-import { calcEnergySource, calcRawDecibelParts, calcDecibelSource } from './resourceIncome'
-export { calcEnergySource, calcRawDecibelParts, calcDecibelSource }
-
-// ============================================================================
-// 行级收入账本 + 利用率/冷却切片族（`decibelEfficiencyMultiplier` /
-// `extraNecessaryActionOf` / `cappedCooldownTriggers` / `getUtilizedCount` /
-// `applyExecutionUtilization` / `applyEventUtilization` / `timeSliceTriggerCounts`）
-// 已整段迁至 `./rowAccounting.ts`（R43 结构熵切面，纯搬运）。
-// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` / `iterate` /
-// `./rowBuild.ts` / 各测试）的 import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from './rowAccounting'`
-// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
-// ⚠ 改行级收入/利用率口径请改 `./rowAccounting.ts`，**不要在本文件重建同形函数**。
-// ============================================================================
+import { calcEnergySource, calcRawDecibelParts } from './resourceIncome'
 import {
   decibelEfficiencyMultiplier,
   extraNecessaryActionOf,
-} from './rowAccounting'
-import {
-  // 私有符号：跨缝被 iterate 消费。本文件 **import 但不 re-export**（公开面零增零减）。
   exSpecialNecessaryTime,
   exSpecialComboAlignTime,
   exSpecialComboAlignCredit,
 } from './rowAccounting'
-
-// ============================================================================
-// 时间分配 + 前台占用拆解族（`calcTimeAllocation` / `FrontlineOccupationBreakdown` /
-// `frontlineOccupationBreakdown` / `netFrontlineOccupation`）已整段迁至
-// `./timeOccupation.ts`（R43 结构熵切面，纯搬运）。
-// 本块是 **re-export 壳**：既有消费者（`useResourceCalc` / `teamCompare` /
-// `difficultyCurve` / `teamTimeSummary` / `iterate` 与各测试）的 import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from './timeOccupation'`
-// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
-// ⚠ 改前台占用/时间分配口径请改 `./timeOccupation.ts`，**不要在本文件重建同形函数**。
-// ============================================================================
-import {
-  calcTimeAllocation,
-  frontlineOccupationBreakdown,
-  netFrontlineOccupation,
-  axisOverlapBySlot,
-} from './timeOccupation'
-export {
-  calcTimeAllocation,
-  frontlineOccupationBreakdown,
-  netFrontlineOccupation,
-}
-
-// ============================================================================
-// 时间线截断族（`TIME_FOLD_CONVERGENCE_SECONDS` / `truncateExecutionsToFrontline`）
-// 已整段迁至 `./timeTruncation.ts`（R43 结构熵切面，纯搬运）。
-// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` 装配截断 / `./rowBuild.ts` /
-// `composables/__tests__/timeTruncation.test.ts`）的 import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from './timeTruncation'`
-// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
-// ⚠ 改截断口径请改 `./timeTruncation.ts`，**不要在本文件重建同形函数**。
-// ============================================================================
-import { TIME_FOLD_CONVERGENCE_SECONDS, truncateExecutionsToFrontline } from './timeTruncation'
-export { TIME_FOLD_CONVERGENCE_SECONDS, truncateExecutionsToFrontline }
-
-
-// ============================================================================
-// 招式执行行构建族（`materializeRows` / `feasibleRows` / `buildExecutions` /
-// `buildAnomalyEventExecutions`）已整段迁至 `./rowBuild.ts`
-// （R43 结构熵切面，纯搬运）。
-// 本块是 **re-export 壳**：既有消费者（`core/resource.ts` 装配 / `./resourceIncome.ts` /
-// `core/__tests__`）的 import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from './rowBuild'`
-// **不建本地绑定**（R22 刀 A/B/C 已实证：那样写运行时 ReferenceError + vue-tsc TS2304）。
-// ⚠ 改行构建口径请改 `./rowBuild.ts`，**不要在本文件重建同形函数**。
-// ============================================================================
-import { materializeRows, buildExecutions, buildAnomalyEventExecutions, withFeasibleRowsMemo } from './rowBuild'
+import { axisOverlapBySlot } from './timeOccupation'
+import { withFeasibleRowsMemo } from './rowBuild'
 import { chainCountTotalOf } from '@/core/chainCount'
-export { materializeRows, buildExecutions, buildAnomalyEventExecutions }
 
 // ============ 单次迭代 ============
 

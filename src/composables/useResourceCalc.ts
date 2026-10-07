@@ -14,7 +14,8 @@ import { findInteractionTopUpSlot, getAgentMechanic, teamMechanicSlots } from '@
 import { calcAnomalyPoolDamage } from '@/core/anomalyPool'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { freezeCached } from './resourceCalc/freezeCached'
-import { createConvergenceRoundInputs, createRunCalcRound } from './resourceCalc/convergence'
+import { createRunCalcRound } from './resourceCalc/convergence'
+import { createConvergenceRoundInputs } from './resourceCalc/roundInputs'
 // CC-10（2026-09-25）：外层不动点 + S3 可行化决策已原样外提 `./resourceCalc/solveTeam`，
 // 本文件不再 import `roundThreads` / `outerCycle` / `feasibilitySearch` / `netFrontlineOccupation`
 // （全部随搬移成为新文件的依赖）。
@@ -34,8 +35,11 @@ import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_DOT_CONFIG } from '@/core/anomalyPool/helpers'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import { stackDurationSeconds, stackEnergyEvents, stacksToCoverage } from '@/data/wEngineStackCoverage'
-import * as ResourceCalcHelpers from './resourceCalc/helpers'
-import type { DamagePoolRow, DamageSourceBreakdown, AnomalyVirtualPanelBuild } from './resourceCalc/helpers'
+import { elementLabel, buildCharConfig, computeDamageSourceBreakdown } from './resourceCalc/helpers'
+import { computePanel, computeEntrySnapshotPanel, applyTeamMechanics, collectAxisWindowOverlays } from './resourceCalc/panelPhases'
+import { getTeamAnomalyDurationBonus, getWindInfectionCoverage, findWindSlot, buildAnomalyVirtualPanel } from './resourceCalc/anomalyPanels'
+import type { DamagePoolRow, DamageSourceBreakdown } from './resourceCalc/helpers'
+import type { AnomalyVirtualPanelBuild } from './resourceCalc/anomalyPanels'
 
 /**
  * **calcOutput 记忆化**（2026-09-23 mcp-engine，用户批准高风险引擎优化）。
@@ -93,7 +97,6 @@ export function setCalcOutputMemoEnabled(on: boolean): void {
   calcOutputMemoEnabled = on
 }
 
-const { computePanel, computeEntrySnapshotPanel, getTeamAnomalyDurationBonus, getWindInfectionCoverage, findWindSlot, elementLabel, buildCharConfig, applyTeamMechanics, buildAnomalyVirtualPanel, collectAxisWindowOverlays } = ResourceCalcHelpers
 /** 资源计算实例（UI 入口与独立场景同一类型；各分析器的局部 `Calc` 别名都等于它） */
 export type ResourceCalc = ReturnType<typeof createResourceCalc>
 
@@ -767,7 +770,7 @@ const teamTotalDamage = computed(() =>
 
 /** 伤害来源分解（诊断）：每角色 直伤/异常 × 总倍率/属性区——检查总伤害异常时定位是倍率错还是属性区错 */
 const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
-  ResourceCalcHelpers.computeDamageSourceBreakdown(damagePoolRows.value),
+  computeDamageSourceBreakdown(damagePoolRows.value),
 )
 
   return {

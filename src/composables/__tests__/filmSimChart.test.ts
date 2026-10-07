@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildFilmSimChart, simGoldMaxOf } from '@/composables/filmSimChart'
 import { hpRatioYGridOf, hpRatioYMaxOf, hpRatioYOf } from '@/composables/hpRatioAxis'
-import type { FilmSimPoint } from '@/composables/teamTimeline'
+import type { FilmSimPoint } from '@/composables/teamTimelineFilm'
 
 const BOX = { padT: 26, plotH: 300 }
 const pt = (label: string, hpRatio: number, totalGold: number, team: string[] = ['A', 'B', 'C']): FilmSimPoint =>

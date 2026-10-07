@@ -18,7 +18,8 @@ import {
   buildSlotCompareHoverInfo,
   buildTimelineHoverInfo,
 } from '@/composables/charts/hoverInfoBuilders'
-import type { FilmSimPoint, SlotComparePoint, TimelineNodeResult } from '@/composables/teamTimeline'
+import type { SlotComparePoint, TimelineNodeResult } from '@/composables/teamTimeline'
+import type { FilmSimPoint } from '@/composables/teamTimelineFilm'
 
 /** 名字注入：与页面 `agentName` 同签名，测试里用可预测的假名 */
 const nameOf = (id: string) => `名${id}`

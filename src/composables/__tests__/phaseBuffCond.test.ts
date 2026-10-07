@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setupHarness, setTeam } from '@/test/harness'
-import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
+import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
 import { applyPeriodBuff } from '@/composables/runArchiveDeploy'
 import { applyBossLayerBuffs } from '@/composables/bossRoom'
 import type { GlobalBuffRow, useConfigStore } from '@/stores/config'

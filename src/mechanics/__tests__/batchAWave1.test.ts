@@ -25,7 +25,7 @@ async function setup(team: Array<{ agentId: string; cinemaLevel: number }>) {
 describe('伊芙琳（1321）影画2 赴火之舞：攻击力 +15%', () => {
   it('命座差分：1命 → 2命，攻击力 ×1.15', async () => {
     const { catalog, config } = await setup([{ agentId: '1321', cinemaLevel: 1 }])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 2
     const p2 = computePanelPhases(0, config, catalog)!.inCombat as any
@@ -34,7 +34,7 @@ describe('伊芙琳（1321）影画2 赴火之舞：攻击力 +15%', () => {
 
   it('防死数据：0/1命时无攻击力加成', async () => {
     const { catalog, config } = await setup([{ agentId: '1321', cinemaLevel: 0 }])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 1
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
@@ -45,7 +45,7 @@ describe('伊芙琳（1321）影画2 赴火之舞：攻击力 +15%', () => {
 describe('薇薇安（1331）影画2《暴风雨夜，暴风雨夜》：以太异常积蓄效率 +25%', () => {
   it('命座差分：1命 → 2命，etherAnomalyBuildUpEfficiency +25', async () => {
     const { catalog, config } = await setup([{ agentId: '1331', cinemaLevel: 1 }])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 2
     const p2 = computePanelPhases(0, config, catalog)!.inCombat as any
@@ -54,7 +54,7 @@ describe('薇薇安（1331）影画2《暴风雨夜，暴风雨夜》：以太�
 
   it('防死数据：0命时无积蓄效率加成', async () => {
     const { catalog, config } = await setup([{ agentId: '1331', cinemaLevel: 0 }])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p0.etherAnomalyBuildUpEfficiency ?? 0).toBe(0)
   })
@@ -66,7 +66,7 @@ describe('安东（1111）影画4 一起燃烧！：全队暴击率 +10%（影�
       { agentId: '1111', cinemaLevel: 4 },
       { agentId: '1011', cinemaLevel: 0 },
     ])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const withBuff = computePanelPhases(1, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 0
     config.syncTeammateBuffsFromTeam()
@@ -79,7 +79,7 @@ describe('安东（1111）影画4 一起燃烧！：全队暴击率 +10%（影�
       { agentId: '1111', cinemaLevel: 3 },
       { agentId: '1011', cinemaLevel: 0 },
     ])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p = computePanelPhases(1, config, catalog)!.inCombat as any
     config.team[0].agentId = ''
     config.syncTeammateBuffsFromTeam()

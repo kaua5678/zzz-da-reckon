@@ -15,7 +15,8 @@
  */
 import { fmt } from '@/utils/format'
 import { benchText, swapKindLabel } from './agentPresentation'
-import type { FilmSimPoint, SlotComparePoint, TimelineNodeResult } from '@/composables/teamTimeline'
+import type { SlotComparePoint, TimelineNodeResult } from '@/composables/teamTimeline'
+import type { FilmSimPoint } from '@/composables/teamTimelineFilm'
 import type { TimelineHoverInfo, SlotCompareHoverInfo, FilmSimHoverInfo } from './hoverCardRows'
 
 /** Chart 1 节点 = 真实的 `TimelineNodeResult`（不复制结构，规则 11 单一事实源） */

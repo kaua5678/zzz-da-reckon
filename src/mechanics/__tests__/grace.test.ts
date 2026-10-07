@@ -16,7 +16,7 @@ import {
   planGraceRotation,
 } from '@/mechanics/agents/grace'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { moveActionTimesOf } from '@/data/moveTableQueries'

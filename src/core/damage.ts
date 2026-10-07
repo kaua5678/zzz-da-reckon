@@ -8,7 +8,8 @@ import type {
 } from '@/types/catalog'
 import { calcPanelStunMultiplier, getAnomalyCritStats } from './anomalyPool/helpers'
 import { defenseMultiplierDetail, resistanceMultiplierDetail } from './damageMultipliers'
-import { getSkillDmgBonus, getTargetedElementStat, getTargetedStat, getTargetedStatExtra, normalizeSkillDamageTarget } from './buff'
+import { getSkillDmgBonus, getTargetedElementStat, getTargetedStat, getTargetedStatExtra } from './buff'
+import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower, penetrationPowerFormulaLabel, penetrationPowerFormulaText } from '@/data/penetrationPower'
 
@@ -116,8 +117,6 @@ function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | '
 }
 
 // 异常暴击统计：单一来源 `./anomalyPool/helpers#getAnomalyCritStats`（CC-338）
-// 贯穿力：单一来源 `@/data/penetrationPower`（CC-228，展示层也要用），此处原名转出（mechanics 的 import 路径不变）
-export { calcPenetrationPower }
 
 export type SpecialDamageProfileKind = 'normal' | 'rupture' | 'sharpen'
 

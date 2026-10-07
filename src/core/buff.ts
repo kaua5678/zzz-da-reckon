@@ -11,14 +11,7 @@ import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normaliz
 import { elementStatKey, type ElementStatKind } from '@/utils/elementStatKeys'
 import { wEngineConditionMet, wEngineEffectRequirementMet, type WEngineConditionContext } from '@/core/wengineConditions'
 
-/** 收集的 buff 列表 */
-
-
-// 下沉（2026-09-13 展示层越层棘轮）：normalizeSkillDamageTarget（与 SKILL_DMG_TARGETS / 标签表同处）的**定义**在
-// src/data/skillDamageTargets.ts，此处 re-export 保持引擎侧既有调用点与 `@/core/buff` 引用零改动；展示层改 import `@/data/…`。
-export { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
-export { calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import { calcEnergyRegenTotal, calcFlashEnergyRegenTotal } from '@/data/agentPanelStats'
 import { evalSandboxedFormula } from '@/utils/formulaSandbox'
 

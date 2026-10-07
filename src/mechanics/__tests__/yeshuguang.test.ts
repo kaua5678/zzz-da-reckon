@@ -138,7 +138,7 @@ describe('叶瞬光面板', () => {
 
   it('0→1：伤害+10、减防+20', async () => {
     const { catalog, config } = await setup([{ agentId: '1431', cinemaLevel: 0 }])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 1
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
@@ -148,7 +148,7 @@ describe('叶瞬光面板', () => {
 
   it('帷幕易伤上限 0命2.1 / 4命3.0', async () => {
     const { catalog, config } = await setup([{ agentId: '1431', cinemaLevel: 0 }])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     expect(computePanelPhases(0, config, catalog)!.inCombat.veilStunCapMult).toBe(2.1)
     config.team[0].cinemaLevel = 4
     expect(computePanelPhases(0, config, catalog)!.inCombat.veilStunCapMult).toBe(3.0)

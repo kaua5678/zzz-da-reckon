@@ -21,7 +21,7 @@ import { getSkillLevelCoef } from '@/core/skillLevel'
 import type { Agent, AgentSkills, PanelValues, SkillDamageTarget } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
 import type { DirectRowAxisSplit } from '@/mechanics/types'
-import { findMoveById } from './skillRows'
+import { findMoveById } from '@/data/moveTableQueries'
 import { buildMechanicTeamMembers } from './panelPhases'
 import type { DamagePoolRow } from './helpers'
 // 纯类型：运行时被擦除，与 damagePool.ts 的 `emitCharDirectRows` 值导入不构成运行时环。

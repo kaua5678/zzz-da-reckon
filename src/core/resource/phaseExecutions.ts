@@ -11,7 +11,7 @@
  */
 import type { CharacterOperationConfig, IterationState, SkillExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics/registry'
-import { buildExecutions } from './helpers'
+import { buildExecutions } from './rowBuild'
 
 export function buildExecutionsWithPhase(
   cfg: CharacterOperationConfig,

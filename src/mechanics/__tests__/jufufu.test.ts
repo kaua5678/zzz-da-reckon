@@ -95,7 +95,7 @@ describe('橘福福影画1/2/4 面板', () => {
 
   it('0→1 命暴击 +12', async () => {
     const { catalog, config } = await setup([{ agentId: '1391', cinemaLevel: 0 }])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 1
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
@@ -104,7 +104,7 @@ describe('橘福福影画1/2/4 面板', () => {
 
   it('3→4 命自身暴伤 +35', async () => {
     const { catalog, config } = await setup([{ agentId: '1391', cinemaLevel: 3 }])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p3 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 4
     const p4 = computePanelPhases(0, config, catalog)!.inCombat as any
@@ -116,7 +116,7 @@ describe('橘福福影画1/2/4 面板', () => {
       { agentId: '1391', cinemaLevel: 1 },
       { agentId: '1041', cinemaLevel: 0 },
     ])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     config.syncTeammateBuffsFromTeam()
     const p1 = computePanelPhases(1, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 2
@@ -211,7 +211,7 @@ describe('橘福福额外能力门控（面板 additionalAbilityActive）', () =
       { agentId: '1391', cinemaLevel: 0 },
       { agentId: '1041', cinemaLevel: 0 }, // 11号 强攻
     ])
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p.additionalAbilityActive).toBe(1)
   })

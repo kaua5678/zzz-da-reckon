@@ -41,7 +41,7 @@ import {
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
-import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
+import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { evalSandboxedFormula } from '@/utils/formulaSandbox'
 
 type Calc = ResourceCalc

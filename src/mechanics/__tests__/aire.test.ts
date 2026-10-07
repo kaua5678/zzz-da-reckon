@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   AIRE_C1_ETHER_ANOMALY_RES_IGNORE,

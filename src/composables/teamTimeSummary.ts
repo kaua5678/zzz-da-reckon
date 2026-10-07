@@ -10,8 +10,7 @@
  * - 物化净占用走 `netFrontlineOccupation`（超时判定单一事实源，与轴退化/降配、队伍对比同源）；
  * - 合轴抵扣只算 `comboAlignCredit`（含在 necessary 内的部分；NET 约定模块已剔除，不重复抵）。
  */
-import { netFrontlineOccupation } from '@/core/resource/helpers'
-import { axisOverlapBySlot } from '@/core/resource/timeOccupation'
+import { axisOverlapBySlot, netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { isFrontlineExecution } from '@/types/resource'
 import type { SkillExecution, TeamResourceResult, TruncationCut } from '@/types/resource'

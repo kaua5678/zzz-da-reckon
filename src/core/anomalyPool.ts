@@ -1,21 +1,22 @@
 import type {
-  AnomalyPoolResult, AnomalyProgress, AnomalyContribution,
+  AnomalyPoolResult,
+  AnomalyProgress,
+  AnomalyContribution,
   AnomalyEventRecord,
   AnomalyPoolDamageInputs,
   CorrosionSource,
+  DamageCalcConfig,
 } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { TeamMechanic } from '@/mechanics/types'
 import { resolveAnomalyCorrosion, resolveAnomalyCorrosionEvents } from './anomalyPool/corrosion'
 
-// ============ 喧响奖励常量 ============
-
 import { panelAt, emptyPanel } from './panel'
-import * as AnomalyPoolHelpers from './anomalyPool/helpers'
-import type { AnomalyPoolInput, DamageCalcConfig } from './anomalyPool/helpers'
+import { TURBULENCE_CD_SECONDS, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyOwnDecibel, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcCoweringDot } from './anomalyPool/helpers'
+import { resolveStatElement } from '@/data/anomalyElement'
+import type { AnomalyPoolInput } from './anomalyPool/helpers'
 import { withCompanionShare } from '@/data/decibelCompanion'
-export type { AnomalySkillExecution, CoweringConfig } from './anomalyPool/helpers'
-const { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, TURBULENCE_CD_SECONDS, resolveStatElement, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyOwnDecibel, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcCoweringDot } = AnomalyPoolHelpers
+import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS, QUICK_ASSIST_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const {
     executions,
@@ -426,9 +427,6 @@ export function calcAnomalyPoolDamage(
 
 // ============ 特殊动作喧响奖励计算（原有，保持不变） ============
 
-// 特殊动作喧响单价定义落点在 data/anomalyDecibelBonuses（CC-232）；PARRY_DECIBEL_BONUS 原名转出（convergence 引用）
-import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS, QUICK_ASSIST_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
-export { PARRY_DECIBEL_BONUS }
 
 /** 特殊动作喧响奖励计算
  *

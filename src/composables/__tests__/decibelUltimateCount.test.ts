@@ -3,7 +3,7 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { ULTIMATE_COST_DEFAULT } from '@/core/resource'
+import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 
 beforeEach(() => {
   newPinia()

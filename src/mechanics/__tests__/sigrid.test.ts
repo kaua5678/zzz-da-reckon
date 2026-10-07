@@ -37,7 +37,7 @@ describe('希格莉德（1591）面板：核心被动 / 额外能力 / 影画', 
       config.team[slot] = { slot, agentId, cinemaLevel: slot === 0 ? cinemaLevel : 0, ...baseConfig } as any
     })
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     return { catalog, config, computePanelPhases }
   }
 

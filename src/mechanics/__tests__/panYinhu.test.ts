@@ -3,7 +3,7 @@ import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { panYinhuMechanic } from '@/mechanics/agents/panYinhu'
 
 const baseConfig = {

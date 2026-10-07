@@ -7,8 +7,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { setupHarness } from '@/test/harness'
-import { buildAnomalySettlementEntries, type AnomalyVirtualPanelBuild } from '@/composables/resourceCalc/helpers'
-import { type AnomalyVirtualPanelRow } from '@/composables/resourceCalc/anomalyPanels'
+import { type AnomalyVirtualPanelRow, buildAnomalySettlementEntries, type AnomalyVirtualPanelBuild } from '@/composables/resourceCalc/anomalyPanels'
 
 function row(slot: number, weight: number, eligible = true): AnomalyVirtualPanelRow {
   return {

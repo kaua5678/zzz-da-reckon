@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useCatalogStore } from '@/stores/catalog'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { ANTON_C6_MOVE_IDS, ANTON_DRILL_MOVE_IDS, ANTON_PILE_MOVE_IDS } from '@/mechanics/agents/anton'
 
 const rawTalent = (id: string, level: number): string => {

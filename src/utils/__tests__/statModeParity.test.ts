@@ -35,7 +35,7 @@ import type { PanelValues } from '@/types/catalog'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 
 const BASE_CHAR = {
   wEngineId: '', wEngineModLevel: 1,

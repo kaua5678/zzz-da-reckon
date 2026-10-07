@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { NICOLE_C1_EX_BONUS, NICOLE_C2_ENERGY, nicoleMechanic } from '@/mechanics/agents/nicole'
 
 const baseConfig = {

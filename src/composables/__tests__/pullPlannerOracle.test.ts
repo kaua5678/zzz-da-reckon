@@ -6,7 +6,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { createEngineOracle, freePoolRepresentatives } from '@/composables/pullPlannerEngine'
-import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
+import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 import type { BossPresetFile } from '@/types/bossPreset'
 
 const bosses = (JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as BossPresetFile).bosses

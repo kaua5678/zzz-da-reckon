@@ -5,16 +5,13 @@
  * 上一位角色的快速支援→替换为该队友本人的连携技）。本文件不认角色：次数 / 招式名后缀 / 说明文案都由能力返回。
  * 引擎侧时间预留走 crossAgentSupply 的 `gift-chain:chain` 通道（core/resource/helpers.ts 的 chainGift*），两者须同源。
  */
-import { findChainAttack } from '@/core/resource'
-import { fusedRowReader } from '@/data/moveTableQueries'
+import { findChainAttack } from '@/core/resource/moveLookup'
+import { fusedRowReader, findMoveById, fusedRowValue, getRowValue } from '@/data/moveTableQueries'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 import type { CharacterOperationConfig, TeamResourceResult } from '@/types/resource'
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { getAgentMechanic } from '@/mechanics'
-// 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findMoveById, fusedRowValue, getRowValue } from './skillRows'
 import { buildGiftRow } from '@/core/resource/giftRows'
 
 /**

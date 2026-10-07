@@ -10,7 +10,7 @@ import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { isFrontlineExecution } from '@/types/resource'
-import { netFrontlineOccupation, frontlineOccupationBreakdown } from '@/core/resource/helpers'
+import { netFrontlineOccupation, frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
 
 describe('探针：叶瞬光+琉音+照 白毛变身次数', () => {
   it.runIf(process.env.PROBE_YSG_FORMS)('打印 cycle 与时间账', async () => {

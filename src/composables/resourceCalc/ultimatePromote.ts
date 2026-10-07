@@ -9,17 +9,14 @@
 import { calcStunPool, continuousStunCount, withStunCount } from '@/core/stunPool'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import type { StunSkillExecution } from '@/core/stunPool'
-import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource'
-import { fusedRowReader } from '@/data/moveTableQueries'
+import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource/moveLookup'
+import { fusedRowReader, findMoveById, fusedRowValue, getRowValue } from '@/data/moveTableQueries'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 import type { AgentMechanicModule } from '@/mechanics/types'
 import type { CharacterOperationConfig, TeamResourceResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-// 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findMoveById, fusedRowValue, getRowValue } from './skillRows'
 import { buildGiftRow } from '@/core/resource/giftRows'
 import { getAgentMechanic } from '@/mechanics'
 

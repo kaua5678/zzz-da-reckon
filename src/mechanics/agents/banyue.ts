@@ -2,7 +2,7 @@ import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, Ag
 import { axisOverlayChannel, type AxisLike } from '../types'
 import type { BanyueRageCycle, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
-import { calcPenetrationPower } from '@/core/damage'
+import { calcPenetrationPower } from '@/data/penetrationPower'
 import { fmt } from '@/utils/format'
 import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'

@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, resolveTeammateBuffsOnEmptyPanel } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
-import { computePanelPhases, getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
+import { getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/anomalyPanels'
 import { neighborUltEnergyByProvider } from '@/core/resource/crossAgentSupply'
 import {
   computeRinaBangboo,

@@ -4,7 +4,7 @@ import type { PanelValues } from '@/types/catalog'
  * 异常元素的纯规则（单一来源，CC-223）：变种元素 → 基础元素、元素限定的异常积蓄效率。
  *
  * 放在 `src/data/`（先例 `sharpCritMultiplier.ts` / `critMultiplier.ts`）：展示层（StatPanel）不得 import `@/core`，
- * 引擎侧 `core/anomalyPool/helpers.ts` 从这里取并原名 re-export（`VARIANT_ELEMENT_TO_BASE` / `getBaseElement`），既有 import 零改动。
+ * 引擎与展示层都从这里取。
  * CC-223 前 StatPanel 的「异常积蓄乘区」只认 electric，物理（简 / 派派 / 爱丽丝）和以太（薇薇安）的元素积蓄效率被漏显示。
  */
 
@@ -31,7 +31,6 @@ export function getBaseElement(element: string): string {
  * 可与冰互相紊乱（而非同种覆盖）——身份判断（覆盖/紊乱/持续时间/阈值）继续用 getBaseElement /
  * 精确元素 key，不经过本映射。与 VARIANT_ELEMENT_TO_BASE 的区别：后者是"继承基础元素公式"的
  * 变种登记表（会把身份语义一并带过去），frostfire 有独立的持续时间/紊乱公式，不进那张表。
- * （CC-224 自 core/anomalyPool/helpers.ts 逐字迁入，helpers 原名转出。）
  */
 export function resolveStatElement(element?: string): string | undefined {
   if (!element) return element

@@ -10,7 +10,7 @@ import type {
 import type { SkillMove } from '@/types/catalog'
 import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { calcPenetrationPower } from '@/core/damage'
+import { calcPenetrationPower } from '@/data/penetrationPower'
 import { getAgentSpec } from '@/specs/registry'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { specConversionAmount } from '@/specs/runtime'

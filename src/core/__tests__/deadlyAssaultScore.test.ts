@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
-import { DEADLY_ASSAULT_SCORE_CAP } from '@/data/deadlyAssaultScore'
+import { DEADLY_ASSAULT_SCORE_CAP, scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 
 describe('deadlyAssaultScore · 普通（defense）伤害血量% → 伤害分', () => {
   it('段边界精确命中：伤害血量比例 → 分数', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { computeZhendouChargeCount, ZHENDOU_C4_HP_PCT } from '../agents/zhendou'
 
 describe('真斗（1441）炽心守恒反推蓄力次数', () => {

@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
+import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
 
 describe('CC-208 展示层队友 buff 列表与引擎同源', () => {
   it('勾选 ≠ 生效：被钩子否决的条目 store 显示已勾，引擎输入里没有（旧展示口径会误列）', async () => {

@@ -3,7 +3,7 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanel } from '@/composables/resourceCalc/helpers'
+import { computePanel } from '@/composables/resourceCalc/panelPhases'
 
 const baseConfig = {
   wEngineId: '',

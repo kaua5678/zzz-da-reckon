@@ -9,7 +9,7 @@ import {
 } from '../agents/promia'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 
 describe('普罗米娅（1541）绝裁异放', () => {
   it('C0：事件存在、倍率 635；次数由回复端驱动（>0 且不受持有上限钳制）', async () => {

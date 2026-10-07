@@ -17,7 +17,7 @@ import {
 } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, containRatioOf, type LadderResult } from '@/composables/difficultyLadder'
 import { applyTeamToStore, computeDifficulty } from '@/composables/teamCompare'
-import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/helpers'
+import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { teamPresets } from '@/data/teamPresets'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'

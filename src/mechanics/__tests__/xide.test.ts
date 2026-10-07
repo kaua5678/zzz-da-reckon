@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { getTargetedStat } from '@/core/buff'
-import { calcCrossAgentEnergy } from '@/core/resource/helpers'
+import { calcCrossAgentEnergy } from '@/core/resource/crossAgentEnergy'
 import { xideMechanic } from '@/mechanics/agents/xide'
 
 const baseConfig = {

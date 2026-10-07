@@ -10,10 +10,11 @@ import type {
   CharacterOperationConfig,
   IterationState,
   SkillExecution,
+  SpecResourceResult,
 } from '@/types/resource'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { applySpecAttributeConversions } from './runtime'
-import { computeSpecResources, type SpecResourceResult } from './resources'
+import { computeSpecResources } from './resources'
 import { readCfgField } from './cfgField'
 import { fmt } from '@/utils/format'
 import type { AgentMechanicSpec, EventSpec, ResourceRuleSpec } from './types'

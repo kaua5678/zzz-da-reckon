@@ -30,7 +30,7 @@ describe('安比（1011）影画1 快充模式：能量获得效率 +12% × 覆�
 
   it('命座差分：0命 → 1命，能量获得效率 +12（覆盖率默认 100%）', async () => {
     const { catalog, config } = await setup(0)
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 1
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
@@ -40,7 +40,7 @@ describe('安比（1011）影画1 快充模式：能量获得效率 +12% × 覆�
   it('覆盖率滑块 50%：1命增益折算为 +6', async () => {
     const { catalog, config } = await setup(1)
     config.setMechanicSetting('anby.fastChargeCoverage', 0.5)
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 0
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
@@ -49,7 +49,7 @@ describe('安比（1011）影画1 快充模式：能量获得效率 +12% × 覆�
 
   it('防死数据：0命时覆盖率滑块不产生任何面板变化', async () => {
     const { catalog, config } = await setup(0)
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const before = computePanelPhases(0, config, catalog)!.inCombat as any
     config.setMechanicSetting('anby.fastChargeCoverage', 1)
     const after = computePanelPhases(0, config, catalog)!.inCombat as any

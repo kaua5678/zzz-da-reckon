@@ -12,7 +12,7 @@
  *  派发直接读本轮 countStun，该字段已删，例外随之消失。）
  * 新增 CalcRoundThreads 字段 ⇒ 在这里补一项，或在上面这份从属清单里写明理由（逐字段表见 docs/mcp-stun-dual-source.md §24.154）。
  */
-import type { CalcRoundResult } from './convergence'
+import type { CalcRoundResult } from './roundResult'
 import { giftedPolarAssaultOf } from './giftedPolarAssault'
 
 export function outerFeedbackSignature(out: CalcRoundResult): string {

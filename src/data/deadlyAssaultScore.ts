@@ -2,8 +2,7 @@
  * 危局强袭 · 伤害分 ↔ 伤害血量% 分段线性换算（单一事实源，普通 + 困难两套曲线）。
  *
  * ⚠ 本文件是**定义落点**（2026-09-13 展示层越层棘轮下沉：`src/views/RunArchivePage.vue` 不得 import
- * `@/core`，见 ARCHITECTURE §0 依赖方向）。`src/core/deadlyAssaultScore.ts` re-export 全部符号，
- * 引擎侧与既有 `@fact` 锚（`core/deadlyAssaultScore#…`）零改动——**改数值只改这里**。
+ * `@/core`，见 ARCHITECTURE §0 依赖方向），引擎与展示层都从这里导入——**改数值只改这里**。
  *
  * 用户口径（2026-08，隔壁对话「观察这个表，给出分数与血量」梳理，困难曲线从
  * data/raw/bosses/zh/*.json 的 boss_adjust 抽出）：

@@ -14,7 +14,8 @@
  * - 角色标记只画有 `environmentIndex` 的（无环境数据的**不画**，不猜位置）。
  */
 import { VERSION_NODES } from '@/data/versionTimeline'
-import { versionXOf, niceStep as niceStepOf, type PlotBox } from './versionChartGeometry'
+import { versionXOf, niceStep as niceStepOf } from './versionChartGeometry'
+import type { PlotBox } from './hpRatioAxis'
 import type { InflationPoint, InflationSeries, ReleaseStrengthPoint } from './inflationCurve'
 
 export interface InflationChartLayout extends PlotBox {

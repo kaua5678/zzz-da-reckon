@@ -6,9 +6,8 @@
  * `pickThirdNamedBasicSegment` / `fusedRowValue`——全仓**唯一**一条录入层 → 编排层值边
  * （R35 穷尽扫描 9 站点 = 8 `import type` + 1 值），Tarjan SCC 实测造成 8 模块强连通分量，
  * 破坏 ARCHITECTURE §0 单向依赖。修法沿用判据 7 头注释自述的已验先例（`sharpCritMultiplier`：
- * `core/damage.ts` → `data/sharpCritMultiplier.ts`）：纯函数下沉 `src/data/`，原位置
- * `composables/resourceCalc/skillRows.ts` 改 import + export **两行壳** ⇒ 编排层/引擎侧调用点、
- * 既有测试与 `@fact` 锚零改动；录入层改从这里取。机器面 = 判据 19 `layer-inversion`
+ * `core/damage.ts` → `data/sharpCritMultiplier.ts`）：纯函数下沉 `src/data/`，三层调用方都从这里取。
+ * 机器面 = 判据 19 `layer-inversion`
  * （`scripts/lib/layer-inversion.mjs`：录入层对编排层值导入必须为 0 + 反空洞下限 + claret 形状锁）。
  *
  * 四个符号的传递依赖不进入编排层：`getRowFusionMultiplier`（`logicEditor/fusion`）

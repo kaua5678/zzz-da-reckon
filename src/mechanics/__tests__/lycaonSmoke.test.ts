@@ -34,7 +34,7 @@ describe('莱卡恩（1141）拐力生效（teammate-buffs.json 承载，spec �
 
   it('莱卡恩在队：队友（安比）面板获得 冰抗-25 + 非冰六元素增伤30 + 失衡易伤35（2.6 潜能激发后口径）', async () => {
     const { catalog, config } = await setup(true)
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const ally = computePanelPhases(1, config, catalog)!.inCombat as any
     expect(ally.enemyIceResReduction).toBe(25)
     // 用户确认：boss 受非冰属性伤害提升 → 普通直伤增伤区（非贯穿/异常增伤）→ 元素增伤六项各 30（不含冰）
@@ -46,7 +46,7 @@ describe('莱卡恩（1141）拐力生效（teammate-buffs.json 承载，spec �
 
   it('CC-199 额外能力未触发（只有安比：异属性、异阵营、非异常）：核心被动照常，失衡易伤 +35 不给', async () => {
     const { catalog, config } = await setup(true, '')
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const ally = computePanelPhases(1, config, catalog)!.inCombat as any
     expect(ally.enemyIceResReduction).toBe(25)
     expect(ally.physicalDmg).toBe(30)
@@ -55,7 +55,7 @@ describe('莱卡恩（1141）拐力生效（teammate-buffs.json 承载，spec �
 
   it('防死数据：莱卡恩不在队时上述字段全为 0（效果确由莱卡恩提供）', async () => {
     const { catalog, config } = await setup(false)
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const ally = computePanelPhases(1, config, catalog)!.inCombat as any
     expect(ally.enemyIceResReduction ?? 0).toBe(0)
     for (const stat of ['physicalDmg', 'fireDmg', 'electricDmg', 'etherDmg', 'windDmg', 'lumifluxDmg']) {
@@ -66,7 +66,7 @@ describe('莱卡恩（1141）拐力生效（teammate-buffs.json 承载，spec �
 
   it('includeOwner：莱卡恩自身也吃核心被动拐力（冰抗 debuff 对自己冰伤有效）', async () => {
     const { catalog, config } = await setup(true)
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const self = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(self.enemyIceResReduction).toBe(25)
     expect(self.stunDmgMultiplierBonus).toBe(35)
@@ -181,7 +181,7 @@ describe('莱卡恩命座与乘区（用户口径）', () => {
 
   it('核心被动/潜能影像进面板乘区：basic/dodgeCounter/dashAttack 失衡+80，局内冲击 ×1.15', async () => {
     const { catalog, config } = await setup(0)
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p.stunBuildUpBonus__basic).toBe(80)
     expect(p.stunBuildUpBonus__dodgeCounter).toBe(80)
@@ -191,7 +191,7 @@ describe('莱卡恩命座与乘区（用户口径）', () => {
 
   it('影画6：莱卡恩自己 dmgBonus +50（全覆盖，用户口径）', async () => {
     const { catalog, config } = await setup(6)
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p6 = computePanelPhases(0, config, catalog)!.inCombat as any
     const { config: cfg0 } = await setup(0)
     const p0 = computePanelPhases(0, cfg0, catalog)!.inCombat as any

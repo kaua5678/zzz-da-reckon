@@ -21,24 +21,15 @@ import type { useCatalogStore } from '@/stores/catalog'
 import { inferSkillDamageTarget, moveSignalDamageTarget } from '@/core/damage'
 import { resolveRecoveryPerCount } from '@/core/resource/rowAccounting'
 import type { StunSkillExecution } from '@/core/stunPool'
-import {
-  findExSpecial,
-  findUltimate,
-  findChainAttack,
-  findDefensiveAssist,
-  findAssistFollowUp,
-  findCounterAssist,
-  findDodgeCounter,
-  calcBasicAttackRegenPerSec,
-  ULTIMATE_COST_DEFAULT,
-} from '@/core/resource'
+import { findExSpecial, findUltimate, findChainAttack, findDefensiveAssist, findAssistFollowUp, findCounterAssist, findDodgeCounter, calcBasicAttackRegenPerSec } from '@/core/resource/moveLookup'
+import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 // CC-243：find* 族 / 平A回能的行取值注入（吃逻辑编辑器行规则；core 默认原始读取）
-import { fusedRowReader, segmentSwapped, moveActionTimesOf } from '@/data/moveTableQueries'
+import { fusedRowReader, segmentSwapped, moveActionTimesOf, getRowValue, fusedRowValue, findMoveById } from '@/data/moveTableQueries'
 import { teammateSegmentResolver } from '@/data/moveVariants'
 import { counterAssistOf } from '@/data/counterAssists'
 import { findWEnginePeriodicDirect } from '@/data/wEnginePeriodicDirect'
 
-import type { AnomalySkillExecution } from '@/core/anomalyPool'
+import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
 import { getAgentMechanic } from '@/mechanics'
 // 蕾米埃尔身份谓词 `isRemielleAgent` 的 import 已随 D 簇（异常面板）迁去 `./anomalyPanels.ts`
 // （R22 熵批 2 刀 C）——本文件不再用它；D 簇那边仍只 import 谓词、不 import 整个模块的其它数学
@@ -51,44 +42,13 @@ import type {
 import { isFrontlineExecution } from '@/types/resource'
 import type { DamageElement, PanelValues, AgentSkills, SkillMove } from '@/types/catalog'
 import { getSkillLevelCoef } from '@/core/skillLevel'
-// `getAgentSpec`（@/specs/registry）/ `evalAdditionalAbility`（@/specs/teamCondition）/ `fmt`
-// （@/utils/format）的 import 已随 D 簇（异常面板）迁去 `./anomalyPanels.ts`——本文件不再用它们。
-// `getRowFusionMultiplier`（@/logicEditor/fusion）与 `moveFusionByMoveId`（@/data/moveFusions）
-// 的 import 已随 C 簇（招式行取值）迁去 `./skillRows.ts`（R22 熵批 2 刀 B）——本文件不再用它们。
 import { SUSTAINED_EX_SPECS, sustainedDamageScale } from '@/data/sustainedEx'
 import { EXTRA_EX_PLANS } from '@/data/exSpecialPlans'
 
-// ============================================================================
-// 面板 + 机制编排簇（B 簇）已整段迁至 `./panelPhases.ts`（R22 熵批 1 / T67-a1 刀 A，纯搬迁）。
-// 本块是 **re-export 壳**：51 个 `computePanelPhases` 消费者与既有测试的 import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from './panelPhases'` **不建本地绑定**，
-//   而本文件下游（`buildCharConfig` → `computePanel`；异常/执行计划簇 → `buildMechanicTeamMembers`）
-//   需要本地绑定，实测会 `ReferenceError`。
-// ⚠ 私有 helper（`teamDiscs` / `mergeTeamDiscEffectCoverages` / `agentHasCinemaSkillLevelBuff`）
-//   **不 re-export**——它们迁移前就不是本文件的导出面，不借搬迁顺手放宽 API。
-// ⚠ 改面板/机制编排请改 `./panelPhases.ts`，**不要在本文件重建同形函数**（那会分裂单一事实源）。
-// ============================================================================
 import {
   buildMechanicTeamMembers,
-  computePanel,
   computePanelPhases,
-  computeEntrySnapshotPanel,
-  applyTeamMechanics,
-  collectAxisWindowOverlays,
-  resolveSlotPanelBuffInputs,
 } from './panelPhases'
-export {
-  // CC-208：展示层（FinalPanel 生命构成 / DebugPage 队友 Buff 行）列「本槽实际生效的队友 buff」一律取这里，不自己按勾选重筛
-  resolveSlotPanelBuffInputs,
-  computePanel,
-  computePanelPhases,
-  computeEntrySnapshotPanel,
-  applyTeamMechanics,
-  collectAxisWindowOverlays,
-}
-
-/** 判断字符串是否为百分比型属性（决定 applyStat 用 pct 还是 flat） */
-
 
 export type DamagePoolRow = {
   id: string
@@ -203,52 +163,12 @@ export const elementLabel = damageElementLabel
 // 已改读 `statSettlementMode`）。留着它就是下一颗「改一处忘一处」的地雷。
 // 展示口径用 `@/utils/statMeta#isPctStat`；结算口径用 `@/utils/statMeta#statSettlementMode`。
 
-// ============================================================================
-// 招式行取值簇（C 簇，14 个符号）已整段迁至 `./skillRows.ts`（R22 熵批 2 / R22-S2 刀 B，纯搬迁）。
-// 本块是 **re-export 壳**：目录外既有消费者（`mechanics/agents/*` / `components` / `views` / 测试）
-// 的 import 路径零改动。⚠ 必须写成「import + export」两行——`export { … } from './skillRows'`
-// **不建本地绑定**，而本文件下游（`buildCharConfig` / `extractSkillExecutions`）需要本地绑定。
-// ⚠ 改招式行取值请改 `./skillRows.ts`，**不要在本文件重建同形函数**。
-// ============================================================================
 import {
-  getRowValue,
-  fusedRowValue,
-  findMoveById,
   getHealingAmount,
   getSpecialResourceRecovery,
   getBasicComboMoves,
   averageBasicRows,
 } from './skillRows'
-
-// ============================================================================
-// 异常面板簇（D 簇，15 个符号）已整段迁至 `./anomalyPanels.ts`（R22 熵批 2 / R22-S2 刀 C，纯搬迁）。
-// 本块是 **re-export 壳**：目录外既有消费者（`damagePool.ts` 取其中 7 个 / `cinemaUplift.ts` /
-// `difficultyLadder.ts` / `views` / 既有测试）的 import 路径零改动。
-// ⚠ 必须写成「import + export」两行——`export { … } from './anomalyPanels'` **不建本地绑定**。
-// ⚠ 改异常面板/结算口径请改 `./anomalyPanels.ts`，**不要在本文件重建同形函数**。
-// ============================================================================
-import {
-  getTeamAnomalyDurationBonus,
-  resolveWindInfectionPick,
-  getWindInfectionCoverage,
-  findWindSlot,
-  buildAnomalyVirtualPanel,
-  buildAnomalySettlementEntries,
-} from './anomalyPanels'
-import type {
-  AnomalyVirtualPanelBuild,
-} from './anomalyPanels'
-export {
-  getTeamAnomalyDurationBonus,
-  resolveWindInfectionPick,
-  getWindInfectionCoverage,
-  findWindSlot,
-  buildAnomalyVirtualPanel,
-  buildAnomalySettlementEntries,
-}
-export type {
-  AnomalyVirtualPanelBuild,
-}
 
 /**
  * 展示口径归一（2026-09-08 用户实测「诺姆入队后主C时间 = 180s + 诺姆连携秒数」后收口）：

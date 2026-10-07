@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { collectHpSources, hpBreakdownTotals } from '@/composables/hpSourceBreakdown'
 
 const BUFF = 'lucia_elowen.core_dream_song'

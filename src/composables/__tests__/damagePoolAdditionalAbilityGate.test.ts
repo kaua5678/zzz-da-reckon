@@ -25,7 +25,7 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 
 /** 被门控的四个角色（damagePool.ts:441/455/466/484） */
 const GATED = ['1471', '1061', '1591', '1371']

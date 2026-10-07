@@ -50,7 +50,7 @@ import {
   applyAxisBinding, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, type DifficultyWeights,
 } from '@/composables/teamCompare'
 import type { AnalysisContext } from '@/composables/analysisScenario'
-import { frontlineOccupationBreakdown } from '@/core/resource/helpers'
+import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
 // 量化地板与引擎同源（规则 11）：截断提醒的「整整 1 次交互」阈值 = 引擎自己的量化容差，见 truncationHintAt
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { createConvergenceRoundInputs } from '@/composables/resourceCalc/roundInputs'
-import { findMoveById } from '@/composables/resourceCalc/skillRows'
+import { findMoveById } from '@/data/moveTableQueries'
 import type { AgentSkills } from '@/types/catalog'
 
 type Out = Record<string, { slot: number; moveId: string; count: number }>

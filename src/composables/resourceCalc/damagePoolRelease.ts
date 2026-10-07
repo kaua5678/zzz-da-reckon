@@ -15,7 +15,8 @@
  */
 import { panelAt } from '@/core/panel'
 import { bossAxisStateShares, hasBossAxisSegments } from '@/core/stunAxis/inStunAnomaly'
-import { getBaseElement, getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { getMainApplierSlot, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { getBaseElement } from '@/data/anomalyElement'
 import { safeElement } from './helpers'
 import type { CharRowsEnv, CharLocals } from './damagePoolDirect'
 

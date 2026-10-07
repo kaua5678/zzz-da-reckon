@@ -9,7 +9,7 @@ import type {
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { fmt, localized } from '@/utils/format'
-import { calcPenetrationPower } from '@/core/damage'
+import { calcPenetrationPower } from '@/data/penetrationPower'
 import { resolveTeammateTargetSlot } from '@/core/resource/targetSlot'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { applyAgentAttributeConversions } from '@/specs/runtime'

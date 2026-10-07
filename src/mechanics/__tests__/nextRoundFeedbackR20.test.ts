@@ -22,7 +22,8 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { createConvergenceRoundInputs, createRunCalcRound } from '@/composables/resourceCalc/convergence'
+import { createRunCalcRound } from '@/composables/resourceCalc/convergence'
+import { createConvergenceRoundInputs } from '@/composables/resourceCalc/roundInputs'
 import { getAgentMechanic } from '@/mechanics'
 import { setupHarness } from '@/test/harness'
 import { collectNextRoundFeedback } from '@/composables/resourceCalc/panelPhases'

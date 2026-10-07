@@ -17,7 +17,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import { teamPresets } from '@/data/teamPresets'
 import { fusedRowValue, getRowValue, findMoveById } from '@/data/moveTableQueries'
-import { findChainAttack, findUltimate } from '@/core/resource'
+import { findChainAttack, findUltimate } from '@/core/resource/moveLookup'
 import { moveFusionByMoveId, MOVE_FUSION_GROUPS } from '@/data/moveFusions'
 
 describe('倍率融合：fusedRowValue（单一事实源 moveFusions）', () => {

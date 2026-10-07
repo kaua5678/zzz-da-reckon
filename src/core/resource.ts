@@ -48,7 +48,7 @@ import { chainCountTotalOf } from '@/core/chainCount'
 export const TIME_BUDGET_TOLERANCE_SECONDS = 1
 
 // `cycleProbeKey`（内层环检测预键）已随 `runInnerLoop` 迁 src/core/resource/innerLoop.ts（CC-3）。
-// 下列 `@fact` 的**实现已迁** `src/core/resource/innerLoop.ts`，声明按既有惯例留在 re-export 壳处
+// 下列 `@fact` 的**实现已迁** `src/core/resource/innerLoop.ts`，声明按既有惯例留在本文件
 // （同 CC-1 `moveLookup.ts` 的处理）；**锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:判稳含平A时间`）不变。
 // @fact engine:判稳含平A时间 口径: 内环次数收敛判稳 = 强特/终结次数 + basicAttackTime 严格相等（bat 是预算与次数的确定性函数；折叠边界 bat 跳变而次数暂不动时旧判稳提前 clean，停点带「驱动快照 ≠ 终局态行重放」伪不动点——实测雅 C2 快照 585.8 vs 重放 307.5、命座伤害 C4<C2 非单调） | 据 实测@2026-09-09 能量行级Σ专项·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/miyabiCinema.test.ts | 锚 src/core/resource/innerLoop.ts#runInnerLoop | 信 确认
 
@@ -212,7 +212,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
    */
   const innerCtx: InnerLoopContext = { configs, config, maxIter }
   // `runFoldLoop`（S2 时间预算折叠环）已迁 `src/core/resource/foldLoop.ts`（CC-4，2026-09-25，纯函数）。
-  // 下列 `@fact` 的**实现已迁**该文件，声明按既有惯例留在 re-export 壳处（同 CC-3 `innerLoop.ts` 的处理）；
+  // 下列 `@fact` 的**实现已迁**该文件，声明按既有惯例留在本文件（同 CC-3 `innerLoop.ts` 的处理）；
   // **锚已随实现改指新文件**，豁免清单键（`src/core/resource.ts engine:收敛环停点规范化`）不变。
   // @fact engine:收敛环停点规范化 口径: calcTeamResources 恒从默认零种子起跑（CC-146 先令 pass0 弃用注入种子——实测注入种子可 clean 收敛到冷种子到不了的共存不动点；CC-147 随即删除注入通道本身：显式 initialStates 与热启动缓存）；入环则取环停点 = 不透支成员中次数最多者（`innerLoop.ts#integerCycleStop`，平局取 JSON 字典序最小；CC-326 前 = JSON 字典序最小）；浮点噪声环自 CC-328 同走本规则（成员次数只差 ulp ⇒ 退化为 JSON 字典序最小），它只决定收敛标志；只依赖环本身（成员集合 + 后继关系，相位无关）。结果 = f(默认种子, 迭代映射) | 据 喧响行级化专项实测@2026-09-08·复核@2026-09-25·复核@2026-09-27·CC-146 反例@2026-09-28·CC-147 删注入通道@2026-09-28·CC-326 真整数环停点改不透支@2026-09-30（docs/mcp-integer-cycle-stop.md）·CC-328 浮点噪声环并入@2026-09-30（414 例 60 次停点同一成员，终局逐位零差）·复核@2026-10-07 | 验 src/composables/__tests__/yidhariInteractionGrid.test.ts + src/core/__tests__/decibelRowParity.test.ts | 锚 src/core/resource/foldLoop.ts#runFoldLoop | 信 确认
   /**
@@ -374,29 +374,9 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   }
 }
 
-// ============ 辅助函数（招式表查询已迁 src/core/resource/moveLookup.ts）============
-
-// 下沉（2026-09-13 展示层越层棘轮）：定义在 src/data/resourceDefaults.ts，此处 re-export 保持
-// 引擎侧调用点与既有 `@/core/resource` 引用零改动；展示层改 import `@/data/…`。
-export { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
+// ============ 招式表查询事实（实现在 src/core/resource/moveLookup.ts）============
 
 // 下列两条 `@fact` 的**实现已迁** `src/core/resource/moveLookup.ts`，声明按既有惯例留在
-// re-export 壳处（同 `data/exSpecialPlans.ts` 声明 → 锚 `findExSpecial`）；**锚已随实现改指新文件**。
+// 本文件（同 `data/exSpecialPlans.ts` 声明 → 锚 `findExSpecial`）；**锚已随实现改指新文件**。
 // @fact engine:fusedGroupMetrics/一次动作整段量 口径: 登记融合组的「一次动作」在倍率·失衡·积蓄·喧响上 Σ 全部段、在前台时间上只 Σ countsTime≠false 的段（能力场/自动攻击段不站场）；未登记段仍取本段值 | 据 用户@2026-09-11「倍率表必须融合，因为连携本身就是打3段」+「时间通道只回头段那也不行，必须改」+「只有炮击算时间，能力场是自动攻击，不算时间」·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#fusedGroupMetrics | 信 确认
 // @fact engine:findChainAttack/多段连携 口径: 登记融合组的连携「一次动作」时长 = Σ 站场段 actionTime（星见雅春临 0.515+0.515+0.687=1.717s；妮可 0.25+0.25=0.5s，能量场段不计时），喧响 = Σ 全部段（雅 230.15、妮可 217.25，全体基线 168~278）；未登记连携仍取头段 | 据 nanoka full/1091.json + full/1031.json param.desc + 用户@2026-09-11·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/moveFusion.test.ts | 锚 src/core/resource/moveLookup.ts#findChainAttack | 信 确认
-
-// 招式表查询（`find*` 族 + 融合组「一次动作」整段量）——CC-1（2026-09-24）迁
-// `src/core/resource/moveLookup.ts`；此处 re-export 壳保持全仓调用方（`@/core/resource`）
-// 零改动。实现、职责注释与 @fact 锚随实现落在新文件。
-export {
-  parseMoveEnergyCost,
-  findExSpecial,
-  findUltimate,
-  fusedGroupActionTime,
-  findChainAttack,
-  findDodgeCounter,
-  findDefensiveAssist,
-  findAssistFollowUp,
-  findCounterAssist,
-  calcBasicAttackRegenPerSec,
-} from './resource/moveLookup'

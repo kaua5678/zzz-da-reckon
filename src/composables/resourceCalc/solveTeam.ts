@@ -17,7 +17,7 @@
  * 单轮工厂 `./convergence`（仅类型 + `ReturnType`）与 `@/core/*` 纯函数。
  */
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
-import { netFrontlineOccupation } from '@/core/resource/helpers'
+import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { withStunCount } from '@/core/stunPool'
 import { stunWindowFraction } from '@/core/effectiveTime'
 import type { ResourceCalcConfig } from '@/types/resource'
@@ -27,7 +27,8 @@ import { probeKey, probePush } from '@/core/probeTrace'
 import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './feasibilitySearch'
 // 仅类型：`ReturnType<typeof createRunCalcRound>` 与 `CalcRoundResult` 都用不到运行时值，
 // 故 type-only import（不引入 convergence.ts 的运行时依赖）。
-import type { createRunCalcRound, CalcRoundResult } from './convergence'
+import type { createRunCalcRound } from './convergence'
+import type { CalcRoundResult } from './roundResult'
 
 /**
  * 失衡次数 ↔ 资源池（连携=每失衡连携×失衡次数）↔ 失衡池 外不动点迭代上限。

@@ -9,12 +9,7 @@
  *   ④ 异常虚拟面板 `buildAnomalyVirtualPanel`（属性加权 + 招式限定增伤按积蓄占比）与
  *      结算触发者分摊 `buildAnomalySettlementEntries`
  *   ⑤ 蕾米埃尔专属：`getRemielleLevelValue` / `remielleSpecialVoidflareCount` / `calcVoidflareDamage`
- *      已于 CC-19c-1（2026-09-26）迁 `@/mechanics/agents/remielle`；运行时 re-export 壳已于 CC-34d
- *      （2026-09-27）删除，调用方直接从模块导入。本文件只留类型 `VoidflareDamageInput` 的壳（见下）
- *
- * 迁移纪律：逐字节剪切，算式/常量值/条件/求值顺序零改动。
- * 上游单一入口仍是 `./helpers`（该文件保留 re-export 壳）⇒ 目录外既有消费者（`damagePool.ts` 等）
- * 与既有测试的 import 零改动。
+ *      已于 CC-19c-1（2026-09-26）迁 `@/mechanics/agents/remielle`，调用方直接从模块导入
  *
  * ⚠ 落点必须是 `resourceCalc/` **目录直属**的 `.ts`：子目录会整类逃出
  * `listAgentBranchFiles()` 的 agentId 棘轮度量面（`scripts/check-guards.mjs`；R22 分诊 §3 闸门 4 实测）。
@@ -382,10 +377,3 @@ export function buildAnomalySettlementEntries(
 
 // 蕾米埃尔专属异常辅助函数（`calcVoidflareDamage` / `VoidflareDamageInput` 等）已于 CC-19c-1（2026-09-26）迁至
 // `@/mechanics/agents/remielle`：改它们请改那里，不要回本文件重建同形函数（转出壳 CC-34d / r721 已删尽）。
-
-// ============================================================================
-// 本簇仍经 `./helpers.ts` 导入的符号在那里保留 **re-export 壳**（R22 熵批 2 / R22-S2 刀 C）；
-// 已无人经由的转出于 r721 删除（死导出判据：转出别名同样要有生产消费者）。
-// ⚠ 必须写成「import + export」两行——`export { … } from './anomalyPanels'` **不建本地绑定**。
-// ⚠ 改异常面板/结算口径请改本文件，**不要回 `helpers.ts` 重建同形函数**（那会分裂单一事实源）。
-// ============================================================================

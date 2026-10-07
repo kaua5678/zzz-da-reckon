@@ -6,7 +6,6 @@
 import { describe, it, expect } from 'vitest'
 import { emptyPanel } from '@/core/panel'
 import { elementAnomalyBuildUpEfficiency, getBaseElement } from '@/data/anomalyElement'
-import * as helpers from '@/core/anomalyPool/helpers'
 
 describe('元素限定异常积蓄效率（CC-223）', () => {
   const fields = Object.keys(emptyPanel()).filter(k => /^[a-z]+AnomalyBuildUpEfficiency$/.test(k))
@@ -27,8 +26,5 @@ describe('元素限定异常积蓄效率（CC-223）', () => {
     expect(elementAnomalyBuildUpEfficiency(p, 'ether_ink')).toBe(9)
     expect(elementAnomalyBuildUpEfficiency(p, 'fire')).toBe(0)
     expect(getBaseElement('ether_ink')).toBe('ether')
-  })
-  it('core helpers 转出的是同一对象（不是副本）', () => {
-    expect(helpers.getBaseElement).toBe(getBaseElement)
   })
 })

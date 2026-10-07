@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/helpers'
+import { getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/anomalyPanels'
 
 const ELEMENTS = ['physical', 'fire', 'ice', 'electric', 'ether'] as const
 

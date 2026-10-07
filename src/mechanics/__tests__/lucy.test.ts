@@ -100,7 +100,7 @@ describe('露西面板/执行', () => {
     config.team[1] = { slot: 1, agentId: '1151', cinemaLevel: 3, ...baseConfig } as any
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p3 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[1].cinemaLevel = 4
     config.syncTeammateBuffsFromTeam()

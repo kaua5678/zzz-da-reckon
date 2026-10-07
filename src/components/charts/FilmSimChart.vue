@@ -152,7 +152,7 @@ import { filmSimHoverRows as buildFilmSimHoverRows } from '@/composables/charts/
 import { buildFilmSimHoverInfo } from '@/composables/charts/hoverInfoBuilders'
 import { buildFilmSimChart } from '@/composables/filmSimChart'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
-import type { FilmSimPoint } from '@/composables/teamTimeline'
+import type { FilmSimPoint } from '@/composables/teamTimelineFilm'
 import type { PeriodAxisNode } from '@/composables/bossSchedule'
 import type { BossPreset } from '@/types/bossPreset'
 

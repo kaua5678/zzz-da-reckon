@@ -12,7 +12,7 @@
  * **不要**在调用方另拼 core 伤害函数的入参。
  */
 import { calcAnomalyDamage, calcDirectDamage, type AnomalyDamageInput, type DirectDamageInput } from '@/core/damage'
-import { resolveStatElement } from '@/core/anomalyPool/helpers'
+import { resolveStatElement } from '@/data/anomalyElement'
 import type { PanelValues } from '@/types/catalog'
 import { safeElement } from './helpers'
 

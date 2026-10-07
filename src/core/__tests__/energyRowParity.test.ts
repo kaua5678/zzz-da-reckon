@@ -16,7 +16,8 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { buildExecutions, calcEnergySource } from '@/core/resource/helpers'
+import { buildExecutions } from '@/core/resource/rowBuild'
+import { calcEnergySource } from '@/core/resource/resourceIncome'
 import { emptyPanel } from '@/core/panel'
 import type { CharacterOperationConfig, IterationState, ResourceCalcConfig, SkillExecution } from '@/types/resource'
 

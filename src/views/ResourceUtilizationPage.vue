@@ -336,7 +336,7 @@ import { fmt } from '@/utils/format'
 import { panelElementStat } from '@/utils/elementStatKeys'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
 import { teamMechanicSettings, teamReleaseShares, teamTeammateSplit } from '@/composables/agentMechanicView'
-import { resolveWindInfectionPick, getWindInfectionCoverage, buildAnomalySettlementEntries } from '@/composables/resourceCalc/helpers'
+import { resolveWindInfectionPick, getWindInfectionCoverage, buildAnomalySettlementEntries } from '@/composables/resourceCalc/anomalyPanels'
 import type { TeammateSplitDecl } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 

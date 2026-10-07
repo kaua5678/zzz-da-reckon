@@ -7,7 +7,7 @@
  * ② 平A是填充行、不参与截断，后台行不占前台。
  */
 import { describe, it, expect } from 'vitest'
-import { truncateExecutionsToFrontline, TIME_FOLD_CONVERGENCE_SECONDS } from '@/core/resource/helpers'
+import { truncateExecutionsToFrontline, TIME_FOLD_CONVERGENCE_SECONDS } from '@/core/resource/timeTruncation'
 import type { SkillExecution } from '@/types/resource'
 
 const row = (over: Partial<SkillExecution>): SkillExecution => ({

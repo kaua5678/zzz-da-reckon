@@ -15,7 +15,8 @@
 import { computed, type ComputedRef } from 'vue'
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import { calcAnomalyPool, type AnomalySkillExecution } from '@/core/anomalyPool'
+import { calcAnomalyPool } from '@/core/anomalyPool'
+import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
 import type { AnomalyPoolResult } from '@/types/resource/pools'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
@@ -24,14 +25,11 @@ import type { StackActionCost } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
-// 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-// 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-import { findMoveById } from './skillRows'
+import { findMoveById } from '@/data/moveTableQueries'
 import { findWindSlot } from './anomalyPanels'
 import { chainMoveKind } from '@/data/chainMoveKind'
-import { ULTIMATE_COST_DEFAULT, parseMoveEnergyCost } from '@/core/resource'
+import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
+import { parseMoveEnergyCost } from '@/core/resource/moveLookup'
 import { panelAt } from '@/core/panel'
 
 type StunAxisAction = StunAxis['actions'][number]

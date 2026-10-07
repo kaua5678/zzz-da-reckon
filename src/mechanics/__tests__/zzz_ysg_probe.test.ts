@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { YESHUGUANG_FULL_STUN_MOVES } from '@/mechanics/agents/yeshuguang'
 

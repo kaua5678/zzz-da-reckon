@@ -5,14 +5,13 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import * as D from '@/data/anomalyDecibelBonuses'
-import { PARRY_DECIBEL_BONUS as CORE_PARRY, calcSpecialActionBonus } from '@/core/anomalyPool'
+import { calcSpecialActionBonus } from '@/core/anomalyPool'
 
 const code = (rel: string) => readFileSync(resolve(__dirname, '../..', rel), 'utf-8')
   .split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
 
 describe('CC-232 喧响单价', () => {
-  it('core 原名转出与 data 同值；calcSpecialActionBonus 用 data 单价', () => {
-    expect(CORE_PARRY).toBe(D.PARRY_DECIBEL_BONUS)
+  it('calcSpecialActionBonus 用 data 单价', () => {
     const r = calcSpecialActionBonus([1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0])
     expect(r.parry).toBe(D.PARRY_DECIBEL_BONUS)
     expect(r.chain).toBe(D.CHAIN_DECIBEL_BONUS)

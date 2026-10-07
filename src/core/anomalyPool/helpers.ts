@@ -50,52 +50,19 @@ import type {
   CoweringDotResult, CorrosionSource,
   AnomalyElementTriggers, CoweringConfig, DamageCalcConfig,
 } from '@/types/resource'
-// r701：两者移入 types 层（异常池结果携带结算输入，types 不依赖 core），此处转导出保持原导入路径可用
-export type { CoweringConfig, DamageCalcConfig } from '@/types/resource'
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
-import { getBaseElement, resolveStatElement, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
+import { getBaseElement, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
 import { panelElementStat } from '@/utils/elementStatKeys'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
 import { resolveAnomalyCorrosion } from './corrosion'
-
-// ============ 喧响奖励常量 ============
-// 下沉（2026-09-13 展示层越层棘轮）：定义在 src/data/anomalyDecibelBonuses.ts（单一事实源，
-// 规则 11：core 与 data 不各存一份）；此处 import + re-export 保持 anomalyPool.ts 的解构与
-// 既有 `@/core/anomalyPool/helpers` 引用零改动；展示层改 import `@/data/…`。
 import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
-export { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS }
 
 // ============ 伤害计算常量 ============
 
 /** 乱流CD（秒）：乱流槽位 = floor(风化时长 / CD) */
 export const TURBULENCE_CD_SECONDS = 3
-
-// ============ 变种异常元素映射（新增） ============
-
-/**
- * 变种异常（Variant Anomaly）机制
- *
- * 某些角色的特殊异常虽然底层属性与标准异常相同，但在紊乱系统中应视为不同的异常类型，
- * 使它们之间可以互相紊乱。
- *
- * 变种元素 → 基础元素映射：
- *   - physical_polar_assault（极性强击）→ physical（强击）：极性强击与普通强击是同一类“一次强击事件”，
- *     只是极性强击可与强击附带的畏缩状态互相紊乱
- *
- * 待实现（仅留注释）：
- *   - ether_ink → ether：仪玄的玄墨，可与以太互相紊乱
- *   - physical_accumulation → physical：叶瞬光的积蓄，可与物理互相紊乱
- *
- * 冻结（ice）与烈霜（frostfire）不加入基础元素映射：两者都有独立的持续时间/紊乱公式，
- * 紊乱系统按不同元素 key 天然允许互紊；双方都携带霜寒状态，霜寒使敌人受到暴击伤害+10%。
- *
- * 变种元素的积蓄上限、持续时间、紊乱/乱流倍率均继承基础元素的值。
- * 变种元素之间在紊乱系统中视为不同元素（如 physical 和 physical_polar_assault 可互紊）。
- */
-// getBaseElement：单一来源 `@/data/anomalyElement`（CC-223，展示层也要用），此处原名转出
-export { getBaseElement }
 
 // ============ 积蓄上限表（原有，保持不变） ============
 
@@ -535,9 +502,6 @@ export function round(value: number, decimals = 2): number {
   // fmt 返回带千分位的字符串，去除逗号后转回数字
   return Number(fmt(value, decimals).replace(/,/g, ''))
 }
-
-// resolveStatElement：单一来源 `@/data/anomalyElement`（CC-224，utils/elementStatKeys 与展示层也要用），此处原名转出
-export { resolveStatElement }
 
 /** 获取面板中指定元素的伤害加成（百分比，CC-338 转调 panelElementStat） */
 export function getElementDmgBonus(panel: PanelValues, element: string): number {

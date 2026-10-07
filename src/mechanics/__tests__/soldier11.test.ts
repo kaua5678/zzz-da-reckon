@@ -4,7 +4,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { soldier11Mechanic, patchSoldier11Executions } from '@/mechanics/agents/soldier11'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 
@@ -162,7 +162,7 @@ describe('「11号」额外能力·燎原全管线：同属性队友门控', () 
     config.team[1] = { slot: 1, agentId: '1121', cinemaLevel: 0, ...baseConfig } as any
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const withMate = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(withMate.additionalAbilityActive).toBe(1)
     // 换掉同属性队友后的基线差分：火伤 32.5（10 + 22.5×默认满覆盖），暴伤 48（潜能最高档）
@@ -182,7 +182,7 @@ describe('「11号」额外能力·燎原全管线：同属性队友门控', () 
     config.team[1] = { slot: 1, agentId: '1011', cinemaLevel: 0, ...baseConfig } as any // 安比：电属性/狡兔屋，均不满足
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p.additionalAbilityActive ?? 0).toBe(0)
     // 空队友槽位基线：与安比同队时火伤应完全一致（燎原未贡献）

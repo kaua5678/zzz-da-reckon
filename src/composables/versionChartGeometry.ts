@@ -23,9 +23,6 @@ import {
   type PlotBox,
 } from './hpRatioAxis'
 
-// 纵轴口径与 Chart 1/Chart 4 共享（见 hpRatioAxis.ts）；此处保留同名导出以免调用方改动
-export type { PlotBox }
-
 // ---------------- 共享：版本轴 ----------------
 
 /** 版本轴 x：按节点索引等距；total ≤ 1 时居中 */

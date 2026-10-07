@@ -8,7 +8,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import type { AnomalyEventExecution, SkillExecution } from '@/types/resource'
-import type { AnomalySkillExecution } from '@/core/anomalyPool'
+import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
 import { getAgentSpec } from '@/specs/registry'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'

@@ -10,7 +10,7 @@ import type {
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { PanelValues } from '@/types/catalog'
-import { calcEnergyRegenTotal } from '@/core/buff'
+import { calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting } from '@/types/resource'

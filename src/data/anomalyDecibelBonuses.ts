@@ -13,7 +13,7 @@ export const DISORDER_DECIBEL_BONUS = 85
 export const TURBULENCE_DECIBEL_BONUS = 85
 
 // ---- 特殊动作喧响单价（CC-232 从 core/anomalyPool.ts 下沉：ResultPage「特殊动作喧响」卡说明文字原为手写 215/10/10/20，
-//      视图层不能值导入 core；core/anomalyPool.ts 以原名转出 PARRY_DECIBEL_BONUS，convergence 的 import 不变） ----
+//      视图层不能值导入 core） ----
 /** 弹刀（招架支援）单次个人喧响；通用保底4喧响反推同引 */
 export const PARRY_DECIBEL_BONUS = 215
 /** 连携单次个人喧响 */

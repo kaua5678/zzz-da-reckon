@@ -7,7 +7,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import {
   estimateNekomataHitPurrGain,
   NEKOMATA_BASIC_HIT_PURR_PER_SEC,

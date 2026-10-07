@@ -9,9 +9,10 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { createConvergenceRoundInputs, createRunCalcRound } from '@/composables/resourceCalc/convergence'
+import { createRunCalcRound } from '@/composables/resourceCalc/convergence'
+import { createConvergenceRoundInputs } from '@/composables/resourceCalc/roundInputs'
 import { initialCalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
-import { netFrontlineOccupation } from '@/core/resource/helpers'
+import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 
 describe('探针：叶瞬光+琉音+照 外层不动点轨迹', () => {
   it.runIf(process.env.PROBE_YSG_LOOP)('逐轮打印', async () => {

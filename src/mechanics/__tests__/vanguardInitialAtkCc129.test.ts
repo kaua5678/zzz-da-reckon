@@ -5,7 +5,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { buildCharConfig, computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { buildCharConfig } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { xideMechanic } from '@/mechanics/agents/xide'
 
 const mkMember = (slot: number, agentId: string, specialty: string, atkBase: number) => ({

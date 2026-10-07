@@ -8,7 +8,7 @@
  * - 横轴按点序等距（`i/(n-1)`；n ≤ 1 时居中）；
  * - **x 轴标签抽稀与 Chart 1/3 不同**：这里额外保证「末点必被标注」（步长不整除点数时补一个末点）。
  */
-import type { FilmSimPoint } from '@/composables/teamTimeline'
+import type { FilmSimPoint } from '@/composables/teamTimelineFilm'
 import { hpRatioYGridOf, hpRatioYLabelOf, hpRatioYMaxOf, hpRatioYOf, type PlotBox } from './hpRatioAxis'
 
 export interface SimChartPoint {

@@ -8,7 +8,8 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases, extractSkillExecutions } from '@/composables/resourceCalc/helpers'
+import { extractSkillExecutions } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { computeNangongMinePairs, nangongBeatIncome, nangongMechanic } from '../agents/nangong'
 
 async function setupNangong(cinemaLevel: number) {

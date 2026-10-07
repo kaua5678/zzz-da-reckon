@@ -18,7 +18,8 @@ import { withAnalysisScenario, type AnalysisScenario } from '@/composables/analy
 import type { BatchOwner } from '@/composables/batchTask'
 import { nextTick, type Ref } from 'vue'
 import { releaseNodeOf } from '@/data/versionTimeline'
-import { computeTeamTimeline, computeNewCharacterPoints, computeSlotComparePoints, computeFilmSimulation, type FilmSimPoint, type NewCharacterPoint, type NewCharacterRow, type SlotComparePoint, type SlotCompareSlot, type TeamTimelineResult } from '@/composables/teamTimeline'
+import { computeTeamTimeline, computeNewCharacterPoints, computeSlotComparePoints, type NewCharacterPoint, type NewCharacterRow, type SlotComparePoint, type SlotCompareSlot, type TeamTimelineResult } from '@/composables/teamTimeline'
+import { computeFilmSimulation, type FilmSimPoint } from '@/composables/teamTimelineFilm'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
 type Progress = { pct: number; text: string } | null

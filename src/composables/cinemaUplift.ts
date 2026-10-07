@@ -35,7 +35,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
 
 export interface CinemaUpliftEntry {

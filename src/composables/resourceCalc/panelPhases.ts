@@ -5,11 +5,8 @@
  *   ① 面板两阶段 `computePanelPhases`（局外 → 局内；applyPanel 与队伍级面板效果的派发点）
  *   ② 队伍级机制钩子的三个派发器：`applyTeamMechanics`（相位写入）· `collectNextRoundFeedback`
  *      （本轮结果取回下一轮线程）· `collectAxisWindowOverlays`（轴窗口取值）
- *   ③ 额外能力硬门控求值 `evalAdditionalAbilityBuffGates`（表 `additionalGateBuffTable` 在 `@/specs/additionalGate`，
- *      CC-203 起与 store 默认门控共用；本文件 re-export 以保持壳契约）
- *
- * 迁移纪律：逐字节剪切，算式/常量值/条件/求值顺序零改动。
- * 上游单一入口仍是 `./helpers`（该文件保留 re-export 壳）⇒ 51 个消费者与 66 个测试的 import 零改动。
+ *   ③ 额外能力硬门控求值（`evalAdditionalAbilityBuffGates` 在 `@/mechanics/additionalAbilityGates`；表
+ *      `additionalGateBuffTable` 在 `@/specs/additionalGate`，CC-203 起与 store 默认门控共用）
  *
  * ⚠ 落点必须是 `resourceCalc/` **目录直属**的 `.ts`：子目录会整类逃出
  * `listAgentBranchFiles()` 的 agentId 棘轮度量面（`scripts/check-guards.mjs`；R22 分诊 §3 闸门 4 实测）。
@@ -17,7 +14,6 @@
  * 曾是 `isPctStat`（刀 A 头注释点名的三个符号里的最后一个）；该副本已删（规则 11），本文件改读
  * `@/utils/statMeta#statSettlementMode`（结算口径的单一事实源）。现本文件**不再 import `./helpers`**，
  * 反向依赖只剩 `./anomalyPanels`（异常面板簇，非 `./helpers`）。
- * ⚠ 注意 `./helpers` 仍 re-export 本文件的符号（服务目录外既有消费者），那条边不受影响。
  */
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
@@ -56,8 +52,6 @@ import type { Agent, PanelValues, TeammateBuff, DriveDiscConfig } from '@/types/
 import { statSettlementMode } from '@/utils/statMeta'
 // CC-341：危局 buff 牌条件（特性限定 / 人数分档）的唯一解析（全局 Buff 行带 cond，在这里按当前队伍解析）
 import { resolvePhaseBuffValue, teamSpecialtiesOf } from '@/utils/phaseBuff'
-// 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 import { getTeamAnomalyDurationBonus, findWindSlot } from './anomalyPanels'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 

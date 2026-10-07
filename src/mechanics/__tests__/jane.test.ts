@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { emptyPanel } from '@/core/panel'
 import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolAnomalyRow, type PoolDirectRow } from '@/composables/resourceCalc/poolDamage'
 

@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { emptyPanel } from '@/core/panel'
 import { lighterMechanic } from '@/mechanics/agents/lighter'
 import { yaojiayinMechanic } from '@/mechanics/agents/yaojiayin'

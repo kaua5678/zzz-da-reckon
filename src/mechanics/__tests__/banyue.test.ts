@@ -350,7 +350,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     const catalog = useCatalogStore()
     await catalog.load()
     const config = useConfigStore()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
 
     // 非6命 + 支援：AA 触发，非轴模式 → 面板不加（走伤害池覆盖率近似），面板差异 = 0
     config.team[0] = { slot: 0, agentId: '1471', cinemaLevel: 0, ...baseConfig } as any
@@ -551,7 +551,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
   it('怒相增益覆盖率滑块生效：0% → 不加怒相面板；100% → 贯穿/火伤/暴伤按 Lv.7 全量加', async () => {
     const config = await setupTeam(null)
     const catalog = useCatalogStore()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
 
     config.setMechanicSetting('banyue.rageGainCoverage', 0)
     const panel0 = computePanelPhases(0, config, catalog)!.inCombat
@@ -828,7 +828,7 @@ describe('核心被动·群山如我（hp→贯穿力 0.1/点 = 命破通用公�
     config.team[0] = { slot: 0, agentId: '1471', cinemaLevel: 0, ...baseConfig } as any
     config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p = computePanelPhases(0, config, catalog)!
     // sheerForceFlat = 怒相增益 300（覆盖率1），不含额外 hp×0.1（避免重复计入）
     expect(p.inCombat.sheerForceFlat ?? 0).toBeCloseTo(300, 1)
@@ -848,7 +848,7 @@ describe('般岳命座逐项验收（用户口径）', () => {
     config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     return computePanelPhases(0, config, catalog)!.inCombat as any
   }
 
@@ -902,7 +902,7 @@ describe('C1 战栗减抗生效（teammate-buffs 1471 组）', () => {
     config.team[1] = { slot: 1, agentId: '1481', cinemaLevel: 0, ...baseConfig } as any
     config.team[2] = { slot: 2, agentId: '1451', cinemaLevel: 0, ...baseConfig } as any
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     expect(computePanelPhases(0, config, catalog)!.inCombat.enemyFireResReduction ?? 0).toBe(0)
     config.setCinemaLevel(0, 1)
     config.syncTeammateBuffsFromTeam()

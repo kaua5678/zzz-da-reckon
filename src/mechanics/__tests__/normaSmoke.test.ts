@@ -78,7 +78,8 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
 
   it('额外能力（艾莲强攻触发）：失衡易伤 30（teammate-buff 承载，无双计）+ 失衡+2s + 攻击提升', async () => {
     const { catalog, config } = await setup(0)
-    const { computePanelPhases, buildCharConfig } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
+    const { buildCharConfig } = await import('@/composables/resourceCalc/helpers')
     const display = computePanelPhases(0, config, catalog)!.inCombat as any
     const cfg = buildCharConfig(0, config, catalog)!
     // 无双计：展示面板（teammate-buff 30）与计算面板（cfg.panel）一致
@@ -93,7 +94,8 @@ describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/�
 
   it('影画2：技术鸿沟 6%/层 = 60（teammate-buff 30 + cinema_2 30），无重复', async () => {
     const { catalog, config } = await setup(2)
-    const { computePanelPhases, buildCharConfig } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
+    const { buildCharConfig } = await import('@/composables/resourceCalc/helpers')
     const display = computePanelPhases(0, config, catalog)!.inCombat as any
     const cfg = buildCharConfig(0, config, catalog)!
     expect(display.stunDmgMultiplierBonus).toBe(60)

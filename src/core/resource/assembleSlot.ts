@@ -20,10 +20,11 @@ import type {
 } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics/registry'
-import {
-  calcEnergySource, calcRawDecibelParts, calcDecibelSource, calcTimeAllocation,
-  buildAnomalyEventExecutions, calcCrossAgentEnergy, truncateExecutionsToFrontline,
-} from './helpers'
+import { calcEnergySource, calcRawDecibelParts, calcDecibelSource } from './resourceIncome'
+import { calcTimeAllocation } from './timeOccupation'
+import { buildAnomalyEventExecutions } from './rowBuild'
+import { calcCrossAgentEnergy } from './crossAgentEnergy'
+import { truncateExecutionsToFrontline } from './timeTruncation'
 import { buildGiftRow } from './giftRows'
 import { buildExecutionsWithPhase } from './phaseExecutions'
 import { giftDecibelForCfg, findCrossAgentSupplySlots } from './crossAgentSupply'

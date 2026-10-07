@@ -23,7 +23,7 @@ import type { AnalysisContext } from '@/composables/analysisScenario'
 import { batchReporter, type BatchProgress, type BatchTaskOptions } from '@/composables/batchTask'
 import { ladderRung, type PlannerBossRoom, type PlannerPeriod, type TeamOracle } from '@/composables/pullPlanner'
 
-import { scoreForDamageRatio } from '@/core/deadlyAssaultScore'
+import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 
 export interface EngineOracleOptions {
   /**

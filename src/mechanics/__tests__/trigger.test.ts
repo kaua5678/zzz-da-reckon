@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { calcStunPool } from '@/core/stunPool'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setupHarness } from '@/test/harness'
 import {

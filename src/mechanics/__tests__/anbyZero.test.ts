@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   ANBY_ZERO_C2_CRIT_RATE,

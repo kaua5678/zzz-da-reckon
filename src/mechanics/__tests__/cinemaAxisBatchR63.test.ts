@@ -28,7 +28,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { getTeamAnomalyDurationBonus } from '@/composables/resourceCalc/anomalyPanels'
 import { getAnomalyDuration } from '@/core/anomalyPool/helpers'
 

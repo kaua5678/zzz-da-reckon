@@ -26,7 +26,7 @@ describe('佩洛伊斯（1551）影画1 黄昏旧章', () => {
     config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 1
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
@@ -141,7 +141,7 @@ describe('佩洛伊斯额外能力：击破/支援队友门控暴伤 +40', () =>
     config.team[1] = { slot: 1, agentId: '1011', cinemaLevel: 0, ...baseConfig } as any // 安比：击破
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const withMate = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(withMate.additionalAbilityActive).toBe(1)
     config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
@@ -276,7 +276,7 @@ describe('佩洛伊斯影画4 焚昼孽火：失衡值 +10%（默认全覆盖）
     config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p3 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 4
     const p4 = computePanelPhases(0, config, catalog)!.inCombat as any

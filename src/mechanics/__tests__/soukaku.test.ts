@@ -2,7 +2,7 @@ import { beforeEach, beforeAll, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { neighborUltEnergyByProvider } from '@/core/resource/crossAgentSupply'
 import { moveActionTimesOf } from '@/data/moveTableQueries'
 import {

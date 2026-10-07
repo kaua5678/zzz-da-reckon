@@ -21,7 +21,7 @@ import type {
 import { getAgentMechanic } from '@/mechanics/registry'
 import { runInnerLoop, type InnerLoopContext } from './innerLoop'
 import { crossAgentSupplyAt, findCrossAgentSupplySlots, ultimateGiftOf } from './crossAgentSupply'
-import { materializeRows } from './helpers'
+import { materializeRows } from './rowBuild'
 import { axisOverlapBySlot, slotNetFrontline } from './timeOccupation'
 import type { SolveDiagnostics } from './solveDiagnostics'
 

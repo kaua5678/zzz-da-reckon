@@ -4,8 +4,8 @@
 import type {
   Agent, WEngine, DriveDiscSet, PanelValues, DriveDiscConfig, TeammateBuff, BuffEffect, StatId,
 } from '@/types/catalog'
-import { applyBuffs, applyEffect, applyStat, calcEnergyRegenTotal, collectAllBuffs, discSelfBuffNeedsOutOfCombatPanel, finalizeCoreStatBonuses, type CollectedBuffs } from './buff'
-import { agentPanelStatInitials } from '@/data/agentPanelStats'
+import { applyBuffs, applyEffect, applyStat, collectAllBuffs, discSelfBuffNeedsOutOfCombatPanel, finalizeCoreStatBonuses, type CollectedBuffs } from './buff'
+import { agentPanelStatInitials, calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import type { StatRules } from '@/types/catalog'
 import { driveDiscStatMode } from './discStatMode'
 import { potentialLevelOf } from '@/data/potentialLevel'

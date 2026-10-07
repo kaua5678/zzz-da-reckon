@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import {
   ROXY_C1_CRIT_DMG,
   ROXY_C1_RES_REDUCTION,

@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { pickXideVanguardSlot } from '@/mechanics/agents/xide'
 
 const BUFFS = ['seed.core_vanguard_bright_attack', 'seed.cinema_2_encirclement_def_ignore']

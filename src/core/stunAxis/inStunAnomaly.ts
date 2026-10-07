@@ -8,7 +8,8 @@
  * 口径：同一元素同一窗口只触发一次异常事件（用户口径「触发一次对应异常」）；异常激活后持续
  * ANOMALY_DURATION 秒（通常覆盖至窗尾）。积蓄速率均匀摊到动作时长内（瞬发招式记在起点）。
  */
-import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, getBaseElement, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { ANOMALY_DURATION, BUILDUP_THRESHOLD_TABLE, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { getBaseElement } from '@/data/anomalyElement'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 // 下沉（2026-09-13 展示层越层棘轮）：选项表**定义**在 src/data/bossEntryAnomalyOptions.ts，本文件只供引擎侧
 // `bossEntryAnomalyElement()` 消费；展示层（失衡轴页）直接 import `@/data/…`。

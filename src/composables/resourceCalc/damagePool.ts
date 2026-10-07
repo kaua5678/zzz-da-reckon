@@ -15,7 +15,8 @@ import { resolveSpecialDamageProfile } from '@/core/damage'
 import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from './poolDamage'
 // 面板数组按位置压缩（下标 ≠ 槽位号）⇒ 一律 panelAt 按身份取，不用 damagePanels[slot]（见 core/panel.ts）。
 import { panelAt } from '@/core/panel'
-import { ANOMALY_SINGLE_HIT_MULTIPLIER, getBaseElement } from '@/core/anomalyPool/helpers'
+import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
+import { getBaseElement } from '@/data/anomalyElement'
 import { findModuleSlot, getAgentMechanic } from '@/mechanics'
 import type { AgentMechanicModule, ReleaseModifierInput } from '@/mechanics'
 import type { AgentAxisOverlay } from '@/mechanics'
@@ -32,14 +33,8 @@ import {
   parseReleaseMultiplier,
   type DamagePoolRow,
 } from './helpers'
-// 异常面板簇（D 簇）已迁 `./anomalyPanels`（R22 熵批 2 / R22-S2 刀 C）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 // CC-9a：尾段已外提 `./damagePoolAnomaly`，本文件只剩 `getWindInfectionElement` 一个消费者。
 import { getWindInfectionElement } from './anomalyPanels'
-// 招式行取值簇（C 簇）已迁 `./skillRows`（R22 熵批 2 / R22-S2 刀 B）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
-// 面板/机制编排簇（B 簇）已迁 `./panelPhases`（R22 熵批 1 / T67-a1 刀 A）——同目录兄弟模块
-// 直接指真实现，不走 `./helpers` 的 re-export 壳（壳只服务目录外的既有消费者面）。
 // CC-9a（2026-09-25）：异常/附加伤害尾段（原 :1142–1725）已原样外提 `./damagePoolAnomaly.ts`。
 import { emitAnomalyRows } from './damagePoolAnomaly'
 // CC-9b（2026-09-25）：逐角色主循环三段（原 :423–671 / :672–927 / :928–1131）已原样外提。

@@ -15,12 +15,13 @@ import type {
   SpecialResourceSection,
   StunAxis,
   CorrosionSource,
+  CoweringConfig,
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { SourcePanelsByOwner } from '@/core/buff'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import type { SubstatTemplate } from '@/core/substatOptimizer'
-import type { AnomalySkillExecution, CoweringConfig } from '@/core/anomalyPool'
+import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
 import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type，见设计稿
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。

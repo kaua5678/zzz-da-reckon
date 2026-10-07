@@ -34,7 +34,7 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
       config.team[slot] = { slot, agentId, cinemaLevel: slot === 0 ? cinemaLevel : 0, ...baseConfig } as any
     })
     config.syncTeammateBuffsFromTeam()
-    const { computePanelPhases } = await import('@/composables/resourceCalc/helpers')
+    const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     return { catalog, config, computePanelPhases }
   }
 

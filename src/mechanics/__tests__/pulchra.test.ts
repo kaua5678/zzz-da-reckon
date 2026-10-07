@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { computePulchraHuntStepCount } from '../agents/pulchra'
 
 describe('波可娜（1351）猎步次数纯函数', () => {

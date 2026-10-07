@@ -14,7 +14,7 @@
 import type { BuffEffect, BuffGroup } from '@/types/catalog'
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/helpers'
+import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
 import { isPctStat } from '@/utils/statMeta'
 import { effectAtModLevel, wEngineEffectBlockReason } from '@/composables/wEngineEffectDisplay'
 import { fmt, pct, localized } from '@/utils/format'

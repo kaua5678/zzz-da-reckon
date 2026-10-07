@@ -18,9 +18,6 @@ export interface SpecResourceContext {
   teamFrontlineSeconds?: number
 }
 
-/** r407：契约类型下沉到 `@/types/resource`（`CharacterResourceResult.specResources` 要用它），此处原名再导出、调用方零改动 */
-export type { SpecResourceResult } from '@/types/resource'
-
 export function computeSpecResources(
   spec: AgentMechanicSpec,
   cfg: CharacterOperationConfig,

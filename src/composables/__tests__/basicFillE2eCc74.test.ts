@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentMechanic } from '@/mechanics'
 import type { AgentMechanicModule } from '@/mechanics/types'
-import { findMoveById } from '@/composables/resourceCalc/skillRows'
+import { findMoveById } from '@/data/moveTableQueries'
 import { setupHarness } from '@/test/harness'
 
 const ROW_ID = 'direct-0-1041008'

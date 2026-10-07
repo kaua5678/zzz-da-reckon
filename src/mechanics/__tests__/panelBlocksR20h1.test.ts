@@ -37,7 +37,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { computePanelPhases } from '@/composables/resourceCalc/helpers'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { starlightBillyMechanic } from '@/mechanics/agents/starlightBilly'
 import { soldier11Mechanic } from '@/mechanics/agents/soldier11'
 import { evelynMechanic } from '@/mechanics/agents/evelyn'

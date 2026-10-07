@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
-import { calcDecibelSource } from '@/core/resource/helpers'
+import { calcDecibelSource } from '@/core/resource/resourceIncome'
 import { emptyPanel } from '@/core/panel'
 import { computeYidhariHpSource } from '@/mechanics/agents/yidhari'
 import { nekomataMechanic } from '@/mechanics/agents/nekomata'
