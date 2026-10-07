@@ -151,7 +151,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | buff 应用/推荐 | 同上 `applyBuffToStore`（整表替换为所选牌，行经 `utils/phaseBuff#phaseBuffRows` 带 `cond`）/ `pickBestBuff`（每队三张牌取伤害最高）；条件（特性限定 / 异常人数分档）由管线按当前队伍解析（`resolvePhaseBuffValue`，CC-341） |
 | 批量计算管线（含现场快照/恢复） | 同上 `computeTeamComparePoints`（改 configStore → 读 `calc.teamTotalDamage` computed → 收集 → 恢复；快照含 team/enemy/globalBuffs/stunAxes） |
 | 最优加金（≤12金贪婪） | 同上 `computeOptimalGoldAllocations`（候选只来自 goldSteps、standardSteps 全量应用、封顶 `GOLD_OPTIMIZE_CAP`=12、同场景对比；试算 / 还原 / 提交走 `composables/goldGreedy.ts` 的 `takeBestGoldStep`，与时间线共用）；页面对勾 `TeamComparePage.vue` 的 `optimalGold` |
-| 自动下位音擎（装填池择优） | 同上 `computeAutoEnginePicks`（池解析/过滤/逐槽试算）+ `substituteAutoEngines`（非限定槽位覆盖）；默认池 `DEFAULT_AUTO_ENGINE_POOL`；页面开关/精炼档/装填框 = `TeamComparePage.vue` 的 `autoEngine`/`autoEngineMods`/`autoEnginePool` |
+| 自动下位音擎（装填池择优） | 同上 `computeAutoEnginePicks`（池解析/过滤；逐槽试穿择优与精炼口径在 `downgradeWEngine.ts`，与自由对比「无专武」档共用）+ `substituteAutoEngines`（非限定槽位覆盖）；默认池 `DEFAULT_AUTO_ENGINE_POOL`；页面开关/精炼档（缺省 `DOWNGRADE_MODS`）/装填框 = `TeamComparePage.vue` 的 `autoEngine`/`autoEngineMods`/`autoEnginePool` |
 | 交互 → 角色配置映射（含 tauntCancel） | `src/composables/teamCompare.ts` `applyTeamToStore`（parry/dodge/quickAssist/block/tauntCancel → `set*Count`） |
 | 般岳轴模式自动补齐交互次数 | `src/mechanics/agents/banyue.ts` `computeBanyueInteractionTopUp`（纯函数：嗔火缺口→双反、喧响缺口→弹刀）+ `src/composables/useResourceCalc.ts`（外不动点 `prevBanyueTopUp` 线程、弹刀计入 `calcSpecialActionBonus`、暴露 `banyueInteractionTopUp`）；交互栏显示在 `TeamConfigPage.vue` |
 | 散点图/控制面板/明细表 | `src/views/TeamComparePage.vue`（自绘 SVG，无图表库；buff 选择器 = 自动推荐/手动指定） |

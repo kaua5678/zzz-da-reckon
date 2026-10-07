@@ -69,7 +69,7 @@
 - **`teamGoldOf` 不搬进 `limitedGold.ts`**：`limitedGold.ts` 刻意不依赖 catalog store，归档统计直接用它；别名解析要用 catalog，所以留在 teamCompare。
 - **不加「金数公式只许写在 limitedGold.ts」的源码锁**：用正则锁 `gold += 1` 之类的写法太脆。靠头注释和本文档。
 
-## 6. 下一轮候选（未做）
+## 6. 下一轮候选（r735 已做）
 
 **下位音擎择优有两份实现**。`teamCompare.computeAutoEnginePicks` 和 `freeCompare/engine.ts#pickDowngradeByDamage` 做的是同一件事：逐件试穿，读全队伤害，留下最高的。两份的差别：
 
@@ -79,6 +79,8 @@
 - `engine.ts` 注释里引用 teamCompare 的行号（`:530-533`、`:651-653`、`:523-524`）已经过期。
 
 可以收成一份「试穿择优」，候选来源两边各留各的。是否值得做，要先用探针确认队伍对比的自动下位与自由对比的无专武档都零差。
+
+> r735（`6163ff4c`）已做：收成 `downgradeWEngine.ts`，四组探针改前 / 改后逐字段相同。见 `docs/mcp-downgrade-wengine.md`、arch CC-517。
 
 ## 7. 回退
 
