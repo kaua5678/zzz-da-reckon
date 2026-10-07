@@ -189,6 +189,7 @@ describe('「扳机」执行计划与失衡池', () => {
       triggerMateUltimateCount: 2,
       triggerMateAssistCount: 4,
       battleTime: 180,
+      invincibleTime: 0,
     }
     const executions: any[] = []
     triggerMechanic.buildExecutions!({

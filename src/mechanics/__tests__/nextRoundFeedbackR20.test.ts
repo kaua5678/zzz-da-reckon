@@ -153,11 +153,11 @@ describe('C-β next-round feedback', () => {
     ])
     expect(collectNextRoundFeedback({
       characters, teamResult, displayResult: teamResult, adjustedResult: teamResult, anomalyPool: emptyAnomalyPool(),
-      prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
+      prevThreads: initialCalcRoundThreads(), catalogStore: catalog, combatTime: 180,
     })).toEqual({ teamUltimateExtra: 2.5, consumedTeamEnergy: 60 * 4 + 30 * 3 })
     expect(collectNextRoundFeedback({
       characters: [], teamResult, displayResult: teamResult, adjustedResult: teamResult, anomalyPool: emptyAnomalyPool(),
-      prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
+      prevThreads: initialCalcRoundThreads(), catalogStore: catalog, combatTime: 180,
     })).toEqual({})
   })
 

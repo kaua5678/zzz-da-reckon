@@ -665,14 +665,14 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
   })
 
   it('threads：yixuanAnomalyTriggerFlash = min(18, max(0, floor(moduleFeedback.auricInkTriggers)))', () => {
-    const cfg: Cfg = { slot: 0, agentId: '1371' }
+    const cfg: Cfg = { slot: 0, agentId: '1371', battleTime: 180 } // 上限 = floor(战斗时间 / 10s) = 18
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes: [], windows: [] }),
       threads: { moduleFeedback: { auricInkTriggers: 25.7 } } as never,
       interactions: interactionsOf([{ agentId: '1371' }]),
     }))
     expect(cfg.yixuanAnomalyTriggerFlash).toBe(18) // floor(25.7)=25 → 封顶 18（不是 25）
-    const cfg2: Cfg = { slot: 0, agentId: '1371' }
+    const cfg2: Cfg = { slot: 0, agentId: '1371', battleTime: 180 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg2, {
       axis: axisOf({ axes: [], windows: [] }),
       threads: { moduleFeedback: { auricInkTriggers: -3 } } as never,
@@ -794,7 +794,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
   })
 
   it('★ 缺 interactions ⇒ 依赖它的两字段不写（缺就是缺，不伪造 0）；但不依赖它的字段照写', () => {
-    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60 }
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60, invincibleTime: 0 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes, windows: [2] }),
       threads: { moduleFeedback: { auricInkTriggers: 4 } } as never,
@@ -816,7 +816,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
   })
 
   it('★ 缺 axis ⇒ 轴字段不写；缺 threads ⇒ 线程字段与非轴 C1 照算（三通道各自独立门控）', () => {
-    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60 }
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60, invincibleTime: 0 }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       // **不传 threads**（也不传 axis）
       interactions: interactionsOf([{ agentId: '1371' }, { agentId: '1481', parry: 3 }]),

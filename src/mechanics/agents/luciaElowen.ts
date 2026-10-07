@@ -107,9 +107,9 @@ export function computeLuciaDreamPlan(totalExSpecialCount: number, ultimateCount
 export function computeLuciaCurtainTriggers(
   exSpecialCount: number,
   ultimateCount: number,
-  teammateCurtainCount = 0,
-  coverage = 1,
-  totalTime = 180,
+  teammateCurtainCount: number,
+  coverage: number,
+  totalTime: number,
 ): number {
   const { curtainOpens, curtainExtends } = computeLuciaCurtainBreakdown(exSpecialCount, ultimateCount)
   const raw = curtainOpens + curtainExtends + Math.max(0, Math.floor(teammateCurtainCount))
@@ -261,7 +261,7 @@ function computeLuciaSource(
   const healPctPerUlt = computeLuciaHealPctPerUlt(panel?.skillLevelBonus ?? 0)
   const curtainTriggerCount = Number.isFinite(Number(cfg.luciaCurtainTriggerCount))
     ? Math.max(0, Number(cfg.luciaCurtainTriggerCount))
-    : computeLuciaCurtainTriggers(state.exSpecialCount, state.ultimateCount, 0)
+    : computeLuciaCurtainTriggers(state.exSpecialCount, state.ultimateCount, 0, 1, cfg.battleTime)
   const c4PerTrigger = Math.max(0, Number(cfg.decibelPerCurtainTrigger ?? 0))
   // 帷幕来源拆分（展示用）：引擎同点写入自开/队友归因；外部直调（缺写入）时自开回退 = 总次数。
   const curtainSelfRaw = Number(cfg.luciaCurtainSelfCount)

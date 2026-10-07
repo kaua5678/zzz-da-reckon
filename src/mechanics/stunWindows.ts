@@ -10,7 +10,7 @@
  *    6 份同一段 `axes.forEach((ax, ai) => { const wins = windows[ai] ?? 0; for (act) … if (slot) … })` 收成一份。
  *    **不跳过 0 窗**（比利依赖 0 窗也写键，见 starlightBilly.ts 注释）；春正/朱鸢原有的 `wins <= 0` 提前返回只是
  *    省一次 `+= count × 0`，去掉后数值逐位相同（zd 零差）。
- * 2. `stunWindowCoverage`：失衡窗口覆盖率 = min(1, floor(失衡次数) × 单次窗口秒 / max(1, 战斗秒 || 180))。
+ * 2. `stunWindowCoverage`：失衡窗口覆盖率 = min(1, floor(失衡次数) × 单次窗口秒 / max(1, 战斗秒))。
  *    春正（16 s）/ 朱鸢（16 s）同式各写一份 ⇒ 一份。
  */
 
@@ -34,9 +34,9 @@ export function forEachSlotAxisAction<A extends { readonly slot: number }>(
   })
 }
 
-/** 失衡窗口覆盖率：min(1, floor(次数) × 窗口秒 / max(1, 战斗秒 || 180))；非有限输入按 0 次 / 180 s。 */
-export function stunWindowCoverage(stunCount: unknown, windowSeconds: number, combatTime: unknown): number {
-  const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
-  const battle = Math.max(1, Number(combatTime) || 180)
+/** 失衡窗口覆盖率：min(1, floor(次数) × 窗口秒 / max(1, 战斗秒))。次数与战斗时间都由派发器给（number；r726 前按 unknown 收、兜 0 次 / 180 s）。 */
+export function stunWindowCoverage(stunCount: number, windowSeconds: number, combatTime: number): number {
+  const resolvedStun = Math.max(0, Math.floor(stunCount))
+  const battle = Math.max(1, combatTime)
   return Math.min(1, resolvedStun * windowSeconds / battle)
 }

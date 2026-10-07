@@ -91,6 +91,7 @@ describe('薇薇安执行行与定向结算', () => {
     vivianC4AtkCoverage: 1,
     vivianAdditionalActive: true,
     battleTime: 180,
+    invincibleTime: 0,
     chainCountTotal: 2,
     ultimateCount: 1,
     ...extra,
@@ -251,7 +252,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
 
   it('异放触发条件：命中异常目标占比（vivian.releaseCoverage）折算次数', () => {
     // 原文：落羽生花命中「处于异常状态」的目标才触发异放
-    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 10, vivianAnomalyTriggerTotal: 0, 'setting:vivian.releaseCoverage': 0.6 }
+    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 10, vivianAnomalyTriggerTotal: 0, 'setting:vivian.releaseCoverage': 0.6, invincibleTime: 0 }
     const events: any[] = []
     vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 10 } as any, events, totalTime: 180 })
     const release = events.find(e => e.eventId === 'vivian_luoyu_release')!
@@ -281,7 +282,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
   })
 
   it('预言 DoT：次数 = floor(战斗时长 × 覆盖率 / 0.55)，覆盖率可调', () => {
-    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0 }
+    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, invincibleTime: 0 }
     const events: any[] = []
     vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 4 } as any, events, totalTime: 180 })
     const dot = events.find(e => e.eventId === 'vivian_prediction_dot')
@@ -291,7 +292,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
     expect(dot.count).toBe(Math.floor(180 / 0.55))
 
     // 覆盖率 50% → 次数减半
-    const cfgHalf: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, 'setting:vivian.dotCoverage': 0.5 }
+    const cfgHalf: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, 'setting:vivian.dotCoverage': 0.5, invincibleTime: 0 }
     const eventsHalf: any[] = []
     vivianMechanic.buildAnomalyEvents!({ cfg: cfgHalf, state: {} as any, events: eventsHalf, totalTime: 180 })
     expect(eventsHalf.find(e => e.eventId === 'vivian_prediction_dot')!.count).toBe(Math.floor(180 * 0.5 / 0.55))

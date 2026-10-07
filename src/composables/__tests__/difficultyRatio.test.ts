@@ -11,6 +11,8 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
 describe('失衡窗口占比（难度修正数据源）', () => {
+  const E = { battleTime: 180, invincibleTime: 0 }
+
   it('优先取引擎 stunCoverage（含决算损失秒）——雨果决算场景', () => {
     // 实测 雨果+琉音+卢西娅：权威 9.33% vs 近似 20.00%
     const calc = {
@@ -35,14 +37,14 @@ describe('失衡窗口占比（难度修正数据源）', () => {
   })
 
   it('取不到（无失衡/部分 mock 的 calc）⇒ 0 = 不修正（与历史行为一致）', () => {
-    expect(stunWindowRatioOf({}, {})).toBe(0)
-    expect(stunWindowRatioOf({ stunPoolResult: { value: { stunCount: 0 } } }, {})).toBe(0)
-    expect(stunWindowRatioOf({ resourceResult: { value: null }, stunPoolResult: { value: { stunCount: 2 } } }, {})).toBe(0)
+    expect(stunWindowRatioOf({}, E)).toBe(0)
+    expect(stunWindowRatioOf({ stunPoolResult: { value: { stunCount: 0 } } }, E)).toBe(0)
+    expect(stunWindowRatioOf({ resourceResult: { value: null }, stunPoolResult: { value: { stunCount: 2 } } }, E)).toBe(0)
   })
 
   it('钳到 0..1（引擎给越界值时不放大成异常难度）', () => {
-    expect(stunWindowRatioOf({ stunCoverage: { value: 1.5 } }, {})).toBe(1)
-    expect(stunWindowRatioOf({ stunCoverage: { value: -0.2 }, stunPoolResult: { value: { stunCount: 0 } } }, {})).toBe(0)
+    expect(stunWindowRatioOf({ stunCoverage: { value: 1.5 } }, E)).toBe(1)
+    expect(stunWindowRatioOf({ stunCoverage: { value: -0.2 }, stunPoolResult: { value: { stunCount: 0 } } }, E)).toBe(0)
   })
 
   /**

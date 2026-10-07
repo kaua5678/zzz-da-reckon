@@ -93,7 +93,7 @@ describe('普罗米娅 1541：触发命中 / 队友异放 / 自身异放回喧�
     const fb = collectNextRoundFeedback({
       characters: chars as never, teamResult: teamResult([]), displayResult: teamResult([]), adjustedResult: teamResult([]),
       anomalyPool: { totalTriggerCount: 7 } as never,
-      prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
+      prevThreads: initialCalcRoundThreads(), catalogStore: catalog, combatTime: 180,
     }) as Record<string, unknown>
     expect(Object.keys(fb).filter(k => k.startsWith('promia'))).toEqual([])
     expect(chars.every(c => !('promiaTriggerHitCount' in c))).toBe(true)
@@ -218,7 +218,7 @@ describe('薇薇安 1331 / 艾莲 1191（同款首轮守卫）', () => {
       displayResult: teamResult([row({ agentId: '1041', exSpecialCount: 9 })]),
       adjustedResult: teamResult([row({ agentId: '1041', exSpecialCount: 9 })]),
       anomalyPool: anomalyPool({ perElement: [{ triggerCount: 4 }] }),
-      prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
+      prevThreads: initialCalcRoundThreads(), catalogStore: catalog, combatTime: 180,
     }) as Record<string, unknown>
     expect(Object.keys(fb).filter(k => k.startsWith('vivian'))).toEqual([])
   })

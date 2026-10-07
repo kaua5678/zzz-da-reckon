@@ -143,7 +143,7 @@ describe('spec resource interpreter', () => {
     } as unknown as CharacterOperationConfig
     const state = { ultimateCount: 2, basicAttackTime: 0, exSpecialCount: 0 } as unknown as IterationState
 
-    const source = calcDecibelSource(cfg, state, 0)
+    const source = calcDecibelSource(cfg, state, 0, 0, 180)
     expect(source.unshareableBonus).toBe(600)
     expect(source.total).toBe(600)
   })
@@ -193,7 +193,7 @@ describe('spec resource interpreter', () => {
       dodgeCounterCount: 0,
       parryCount: 0,
     } as unknown as CharacterOperationConfig
-    const decibel = calcDecibelSource(cfg, decibelState, 0)
+    const decibel = calcDecibelSource(cfg, decibelState, 0, 0, 180)
     expect(decibel.selfBurnDecibel).toBeCloseTo(1840, 0)
     expect(decibel.unshareableBonus).toBeCloseTo(1840, 0)
   })
@@ -227,7 +227,7 @@ describe('spec resource interpreter', () => {
     const decibelState = { basicAttackTime: 0, exSpecialCount: 0, ultimateCount: 0 } as unknown as IterationState
     // 收敛后 cfg.yidhariExternalHealPct 已按卢西娅最终大招次数（2）折算：2 × 6.4 = 12.8%
     cfg.yidhariExternalHealPct = 12.8
-    const decibel = calcDecibelSource(cfg, decibelState, 0)
+    const decibel = calcDecibelSource(cfg, decibelState, 0, 0, 180)
     expect(decibel.selfBurnDecibel).toBeCloseTo((75 + 12.8) * 10, 1)
     // 卢西娅4命：8 次帷幕触发 × 100 → 全队每人 +800 喧响（不可分享）
     const c4Decibel = calcDecibelSource(cfg, decibelState, 0, 0, 180, 800)

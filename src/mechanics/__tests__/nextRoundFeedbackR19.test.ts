@@ -65,7 +65,7 @@ describe('C-α next-round feedback', () => {
     const next = collectNextRoundFeedback({
       characters, teamResult: result(100), adjustedResult: result(2.25),
       displayResult: result(200), anomalyPool: emptyAnomalyPool(),
-      prevThreads: initialCalcRoundThreads(), catalogStore: catalog,
+      prevThreads: initialCalcRoundThreads(), catalogStore: catalog, combatTime: 180,
     })
     expect(next).toEqual({ graceC1Cycles: 3, yeshuguangGiftUlt: 2.25 })
     const threads = { ...initialCalcRoundThreads(), moduleFeedback: next }
@@ -78,7 +78,7 @@ describe('C-α next-round feedback', () => {
     expect((ye as Record<string, unknown>).yeshuguangGiftUltCount).toBe(2.25)
     expect(collectNextRoundFeedback({
       characters: [], teamResult: result(100), displayResult: result(100), adjustedResult: result(100), anomalyPool: emptyAnomalyPool(),
-      prevThreads: threads, catalogStore: catalog,
+      prevThreads: threads, catalogStore: catalog, combatTime: 180,
     })).toEqual({})
   })
 

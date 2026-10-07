@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import { orphieMechanic } from '@/mechanics/agents/orphie'
 
-function giftFor(state: { frontlineTime: number; backstageTime: number }, aaCount: number, invincibleTime?: number): number {
+function giftFor(state: { frontlineTime: number; backstageTime: number }, aaCount: number, invincibleTime = 0): number {
   const cfg: Record<string, unknown> = { orphieCinemaLevel: 2, invincibleTime }
   const executions = [{ moveId: '1301999', skillDamageTarget: 'additionalAttack', count: aaCount }]
   orphieMechanic.patchExecutions!({ cfg, state, executions } as never)

@@ -75,10 +75,10 @@ export function computeBillyCycle(input: {
   chainCountTotal: number
   ultimateCount: number
   c4ExCrit: number
-  battleTime?: number
+  battleTime: number
 }): BillyCycle {
   const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
-  const battleTime = Math.max(0, Number.isFinite(input.battleTime) ? Number(input.battleTime) : 180)
+  const battleTime = Math.max(0, input.battleTime)
   const chainCountTotal = Math.max(0, Number(input.chainCountTotal) || 0)
   const ultimateCount = Math.max(0, Number(input.ultimateCount) || 0)
   const totalUltimateBonus = input.additionalActive

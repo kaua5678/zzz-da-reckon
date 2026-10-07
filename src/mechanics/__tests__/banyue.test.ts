@@ -4,7 +4,7 @@ import { isFrontlineExecution } from '@/types/resource'
 
 describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', () => {
   it('默认（闪反10/招架6/金身20，地动山摇连段0）：怒相 4 次，怒相外 9 组全打论道连段', () => {
-    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0)
+    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180)
     expect(c.rageCount).toBe(4)
     expect(c.comboOutCount).toBe(9) // floor(闪能收入/60) 自动打满
     expect(c.furyTotal).toBeCloseTo(115 + 184 + 9 * 60 * 0.5, 1) // 569
@@ -20,7 +20,7 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
   })
 
   it('地动山摇连段 2 组：怒相外 9 组里 2 组打地动→山摇·怒，其余 7 组打论道连段', () => {
-    const c = computeBanyueRageCycle(10, 6, 20, 0, 2, 0, 0, 0)
+    const c = computeBanyueRageCycle(10, 6, 20, 0, 2, 0, 0, 0, 180)
     expect(c.comboOutCount).toBe(9)
     expect(c.diDongComboCount).toBe(2)
     expect(c.diDongOutCount).toBe(2)
@@ -30,20 +30,20 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
   })
 
   it('地动山摇连段超过自动连段总数：封顶于总数', () => {
-    const c = computeBanyueRageCycle(10, 6, 20, 0, 99, 0, 0, 0)
+    const c = computeBanyueRageCycle(10, 6, 20, 0, 99, 0, 0, 0, 180)
     expect(c.diDongComboCount).toBe(c.comboOutCount)
     expect(c.lunDaoOutCount).toBe(0)
     expect(c.shiZiHouNuOutCount).toBe(0)
   })
 
   it('影画2：山威强特额外回 5 闪能 → 闪能收入更高', () => {
-    const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0)
-    const c2 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 2)
+    const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180)
+    const c2 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 2, 180)
     expect(c2.flashIncome).toBeGreaterThan(c0.flashIncome)
   })
 
   it('无闪反/招架/金身时：自动连段收敛（rage=2、连段 8 组、嗔火 355）', () => {
-    const c = computeBanyueRageCycle(0, 0, 0, 0, 0, 0, 0, 0)
+    const c = computeBanyueRageCycle(0, 0, 0, 0, 0, 0, 0, 0, 180)
     expect(c.rageCount).toBe(2)
     expect(c.comboOutCount).toBe(8)
     expect(c.furyTotal).toBeCloseTo(115 + 8 * 60 * 0.5, 1) // 355
@@ -52,7 +52,7 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
 
   it('怒相内地动山摇连段（轴内捏 banyue-combo-didong）：论道组数让位、山威总额守恒', () => {
     // 4 怒相 × 2 组 = 8 组配额；1 组换地动→山摇·怒 → 论道组 7、地动组 1
-    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 1)
+    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 1)
     expect(c.rageDiDongComboCount).toBe(1)
     expect(c.diDongRageCount).toBe(1)
     expect(c.shanYaoNuRageCount).toBe(1)
@@ -67,7 +67,7 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
   })
 
   it('怒相内地动山摇组数超过配额：封顶于 2×怒相次数，论道组归 0', () => {
-    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 99)
+    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 99)
     expect(c.rageDiDongComboCount).toBe(8) // 4怒相 × 2组
     expect(c.diDongRageCount).toBe(8)
     expect(c.shanYaoNuRageCount).toBe(8)
@@ -78,24 +78,24 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
 
   it('失衡外连段末尾后摇：默认 = 怒相外连段组数，嘲讽逐次取消、按两类连段占比拆分', () => {
     // 默认（闪反10/招架6/金身20）：怒相外 9 组全打论道连段 → 后摇 9 次
-    const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0)
+    const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180)
     expect(c0.comboOutRecoveryCount).toBe(9)
     expect(c0.lunDaoRecoveryCount).toBe(9)
     expect(c0.diDongRecoveryCount).toBe(0)
     expect(c0.tauntCancelCount).toBe(0)
     // 嘲讽取消 3 次 → 剩 6 次（全论道连段 → 全算论道）
-    const c3 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 0, 3)
+    const c3 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 0, 3)
     expect(c3.comboOutRecoveryCount).toBe(6)
     expect(c3.lunDaoRecoveryCount).toBe(6)
     expect(c3.diDongRecoveryCount).toBe(0)
     expect(c3.tauntCancelCount).toBe(3)
     // 嘲讽超过连段总数 → 后摇 0
-    const c99 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 0, 99)
+    const c99 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 0, 99)
     expect(c99.comboOutRecoveryCount).toBe(0)
     expect(c99.lunDaoRecoveryCount).toBe(0)
     expect(c99.diDongRecoveryCount).toBe(0)
     // 地动山摇连段 2 组（怒相外 9 = 论道7 + 地动2）：嘲讽 2 次按占比取消 → 剩 7 = 论道 5 + 地动 2
-    const cd = computeBanyueRageCycle(10, 6, 20, 0, 2, 0, 0, 0, 0, 2)
+    const cd = computeBanyueRageCycle(10, 6, 20, 0, 2, 0, 0, 0, 180, 0, 2)
     expect(cd.comboOutCount).toBe(9)
     expect(cd.comboOutRecoveryCount).toBe(7)
     expect(cd.lunDaoRecoveryCount).toBe(5)
@@ -105,37 +105,37 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
 
   it('轴模式（axisActive）：失衡外后摇 = 闪能连段为主（怒相基本在失衡内打完），轴内耗闪能越多失衡外连段越少', () => {
     // 非轴模式：怒相内连段视为失衡内全取消，只计怒相外自动连段（9 组 → 后摇 9）
-    const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 0, 0, false)
+    const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 0, 0, false)
     expect(c0.axisInComboCount).toBe(0)
     expect(c0.outStunComboCount).toBe(9)
     expect(c0.comboOutRecoveryCount).toBe(9)
     // 轴模式：轴内普通强特耗 200 闪能 → 怒相外自动连段降到 6 组；怒相内 8 组（4 怒相×2）全被
     // 轴内捏块覆盖（banyue-combo×6 + banyue-combo-didong×2 = 8）→ 失衡外 = 6 + 未覆盖 0 = 6 组后摇
-    const cA = computeBanyueRageCycle(10, 6, 20, 0, 0, 200, 6, 0, 2, 0, true)
+    const cA = computeBanyueRageCycle(10, 6, 20, 0, 0, 200, 6, 0, 180, 2, 0, true)
     expect(cA.rageCount).toBe(4)
     expect(cA.comboOutCount).toBe(6)
     expect(cA.axisInComboCount).toBe(8)
     expect(cA.outStunComboCount).toBe(6)
     expect(cA.comboOutRecoveryCount).toBe(6)
     // 轴内耗闪能更多（400）→ 失衡外闪能连段降到 3 组（怒相组数不参与失衡外池）
-    const cHigh = computeBanyueRageCycle(10, 6, 20, 0, 0, 400, 6, 0, 2, 0, true)
+    const cHigh = computeBanyueRageCycle(10, 6, 20, 0, 0, 400, 6, 0, 180, 2, 0, true)
     expect(cHigh.comboOutCount).toBe(3)
     expect(cHigh.outStunComboCount).toBe(3)
     // 轴内未覆盖怒相组：只捏 6 组（4+2）→ 怒相内 8 组剩 2 组未覆盖（最多一组怒相）→ 失衡外 = 6 + 2 = 8
-    const cUncov = computeBanyueRageCycle(10, 6, 20, 0, 0, 200, 4, 0, 2, 0, true)
+    const cUncov = computeBanyueRageCycle(10, 6, 20, 0, 0, 200, 4, 0, 180, 2, 0, true)
     expect(cUncov.axisInComboCount).toBe(6)
     expect(cUncov.outStunComboCount).toBe(8)
     expect(cUncov.comboOutRecoveryCount).toBe(8)
     // 失衡外 6 组后摇用嘲讽取消 4 次 → 剩 2
-    const cT = computeBanyueRageCycle(10, 6, 20, 0, 0, 200, 6, 0, 2, 4, true)
+    const cT = computeBanyueRageCycle(10, 6, 20, 0, 0, 200, 6, 0, 180, 2, 4, true)
     expect(cT.outStunComboCount).toBe(6)
     expect(cT.comboOutRecoveryCount).toBe(2)
     expect(cT.tauntCancelCount).toBe(4)
   })
 
   it('怒相内地动山摇连段不耗闪能、不影响嗔火固定点', () => {
-    const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0)
-    const c1 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 2)
+    const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180)
+    const c1 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 2)
     expect(c1.rageCount).toBe(c0.rageCount)
     expect(c1.flashIncome).toBe(c0.flashIncome)
     expect(c1.flashSpent).toBe(c0.flashSpent)
@@ -145,7 +145,7 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
 
 describe('computeBanyueRageCycle（轴内普通强特扣闪能 → 自动连段缩水，用户口径）', () => {
   it('轴内强特消耗 300 闪能：怒相 4 次，自动连段缩到 4 组', () => {
-    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0)
+    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0, 180)
     expect(c.axisExSpend).toBe(300)
     expect(c.comboOutCount).toBe(4)
     // 最后一怒相窗口的付费强特闪能(300/4=75)不产有效嗔火，569 - 75×0.5 = 531.5
@@ -155,14 +155,14 @@ describe('computeBanyueRageCycle（轴内普通强特扣闪能 → 自动连段�
   })
 
   it('轴内强特耗尽闪能（500）：自动连段缩到 1 组', () => {
-    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 500, 0, 0)
+    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 500, 0, 0, 180)
     expect(c.comboOutCount).toBe(1)
     expect(c.rageCount).toBe(4)
     expect(c.flashSpent).toBe(500 + 1 * 60)
   })
 
   it('轴内连段块（免费·山威）不耗闪能、不影响怒相外自动连段', () => {
-    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 2, 0)
+    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 2, 0, 180)
     expect(c.axisComboCount).toBe(2)
     expect(c.axisExSpend).toBe(0) // 连段块不计闪能
     expect(c.comboOutCount).toBe(9) // 怒相外自动连段不受轴内免费连段块影响
@@ -171,12 +171,12 @@ describe('computeBanyueRageCycle（轴内普通强特扣闪能 → 自动连段�
 
   it('轴内普通强特耗闪能并回复嗔火，免费连段块不回复', () => {
     // 300 闪能普通强特：嗔火 = 115 + 184 + (300 + 4组连段×60 - 300/4)×0.5 = 531.5
-    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0)
+    const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0, 180)
     expect(c.axisExSpend).toBe(300)
     expect(c.flashSpent).toBe(300 + 4 * 60)
     expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 300 / 4) * 0.5, 1)
     // 同 300 但加 2 个免费连段块：连段块不产嗔火、不耗闪能，怒相外自动连段仍 4 组
-    const c2 = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 2, 0)
+    const c2 = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 2, 0, 180)
     expect(c2.axisComboCount).toBe(2)
     expect(c2.comboOutCount).toBe(4)
     expect(c2.flashSpent).toBe(300 + 4 * 60)
@@ -189,7 +189,7 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
 
   it('资源充足（默认交互次数）：不补齐', () => {
     const t = computeBanyueInteractionTopUp({
-      dodgeCount: 10, parryCount: 6, blockCount: 20, dualCounterCount: 5, cinemaLevel: 0,
+      battleTime: 180, dodgeCount: 10, parryCount: 6, blockCount: 20, dualCounterCount: 5, cinemaLevel: 0,
       axisEx: axis8, ultimateCountNeeded: 4, ultimateCost: 3000, decibelHave: 20000,
     })
     expect(t).toMatchObject({ parry: 0, dual: 0, illegal: false })
@@ -197,7 +197,7 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
 
   it('嗔火不足 → 抬双反；喧响不足 → 抬弹刀（分别按缺口 ÷ 10 / ÷ 215 向上取整）', () => {
     const t = computeBanyueInteractionTopUp({
-      dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
+      battleTime: 180, dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
       axisEx: axis8, ultimateCountNeeded: 4, ultimateCost: 3000, decibelHave: 8000,
     })
     // 低交互下嗔火只够 2 次怒相 → 差 2 次 × 120 = 240 嗔火 → 双反 ceil(240/10) = 24
@@ -208,7 +208,7 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
 
   it('轴内连段块不是 2 的倍数：怒相次数向上取整；无终结技需求 → 不补弹刀', () => {
     const t = computeBanyueInteractionTopUp({
-      dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
+      battleTime: 180, dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
       axisEx: { 'banyue-combo': 6 }, ultimateCountNeeded: 0, ultimateCost: 3000, decibelHave: 0,
     })
     // 6 组块 = 3 次怒相 → 差 1 次 × 120 → 双反 12
@@ -914,7 +914,7 @@ describe('C1 战栗减抗生效（teammate-buffs 1471 组）', () => {
 describe('自动补齐的时间合法性（用户口径 2026-09-01：>200s 即非法填充）', () => {
   const axis8 = { 'banyue-combo': 8 }
   const base = {
-    dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
+    battleTime: 180, dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
     axisEx: axis8, ultimateCost: 3000, decibelHave: 0,
   }
 

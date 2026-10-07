@@ -149,6 +149,8 @@ describe('橘福福虎啸冲击满覆盖', () => {
 describe('橘福福 buildExecutions / 影画6', () => {
   it('生成虎威/震煞/旋转行；6命爆米花与连携+30', () => {
     const cfg: any = {
+      battleTime: 180,
+      invincibleTime: 0,
       jufufuCinemaLevel: 6,
       jufufuAweInitial: 100,
       jufufuC2WeishiPerUlt: 3,

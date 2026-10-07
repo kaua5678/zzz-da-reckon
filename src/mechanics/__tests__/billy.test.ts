@@ -139,7 +139,7 @@ describe('比利完整计算链', () => {
 })
 
 describe('比利滑块生效差分（防守卫冻结，SOP §3.5）', () => {
-  const base = { cinemaLevel: 4, additionalActive: true, chainCountTotal: 2, ultimateCount: 1 }
+  const base = { cinemaLevel: 4, additionalActive: true, chainCountTotal: 2, ultimateCount: 1, battleTime: 180 }
 
   it('billy.coreCrouchCoverage → 蹲姿核心增伤差分（按覆盖率缩放）', () => {
     const on = computeBillyCycle({ ...base, coreCrouchCoverage: 1, c4ExCrit: 32 })

@@ -420,15 +420,15 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
 function applyLighterTeamEnergyFlags(
   lighter: CharacterOperationConfig,
   characters: CharacterOperationConfig[],
-  opts?: { exCounts?: number[]; combatTime?: number; teamEnergyConsumed?: number },
+  opts: { exCounts?: number[]; combatTime: number; teamEnergyConsumed?: number },
 ): void {
   const cinema = cinemaLevelOf(cfgNum(lighter, 'lighterCinemaLevel', 0))
-  const combatTime = Math.max(0, Number(opts?.combatTime ?? 180))
-  const exCounts = opts?.exCounts ?? characters.map(() => 0)
+  const combatTime = Math.max(0, opts.combatTime)
+  const exCounts = opts.exCounts ?? characters.map(() => 0)
   const estimated = estimateTeamNormalEnergyConsumed(characters, exCounts)
   const teamEnergy = Math.max(
     0,
-    Number(opts?.teamEnergyConsumed ?? lighter.lighterTeamEnergyConsumed ?? estimated) || 0,
+    Number(opts.teamEnergyConsumed ?? lighter.lighterTeamEnergyConsumed ?? estimated) || 0,
   )
   lighter.lighterTeamEnergyConsumed = teamEnergy
 
@@ -526,7 +526,7 @@ export const lighterMechanic: AgentMechanicModule = {
   applyTeamConfig: ({ cfg: lighter, characters, phase, combatTime, exCounts, teamEnergyConsumed, threads }) => {
     // （CC-383：本人 = 派发器给的 `cfg`；派发器只对在队模块、按 cfg.agentId 取模块调用，不再在 characters 里自找）
     if (phase === 'build') {
-      applyLighterTeamEnergyFlags(lighter, characters, { exCounts: characters.map(() => 0), combatTime: 180 })
+      applyLighterTeamEnergyFlags(lighter, characters, { exCounts: characters.map(() => 0), combatTime })
       return
     }
     if (phase === 'converge') {

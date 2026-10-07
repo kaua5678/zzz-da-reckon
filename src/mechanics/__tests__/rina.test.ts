@@ -100,7 +100,7 @@ describe('丽娜·一尘不染执行行', () => {
   })
 
   it('buildExecutions：生成晨间（物/电各半）/午夜清扫执行行，后台不占前台时间', () => {
-    const cfg: any = { rinaSweepComboDmg: 105.3 * 3, rinaMidnightDmg: 420.1 }
+    const cfg: any = { rinaSweepComboDmg: 105.3 * 3, rinaMidnightDmg: 420.1, invincibleTime: 0 }
     const executions: any[] = []
     rinaMechanic.buildExecutions!({
       cfg,

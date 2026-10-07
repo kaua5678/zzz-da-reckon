@@ -139,7 +139,8 @@ export function createResourceCalc(
     // 内联 cfg 写入）；现在新角色的队伍级机制只改自己的模块，不必再动本文件。
     // build 阶段的内联特判也已清零（2026-09-12 #10 真清偿）：橘福福八面威风 → specPanelBuffs，
     // 卢西娅 4命帷幕 + 回血→伊德海莉 → luciaElowen，均在同一钩子的 build 相位完成。
-    applyTeamMechanics({ characters, configStore, catalogStore, phase: 'build' })
+    // build 相位同样带真实战斗时间（r726 前不传、派发器补 180，战斗时间 ≠ 180 时与 converge / postRound 口径不一）。
+    applyTeamMechanics({ characters, configStore, catalogStore, phase: 'build', combatTime: configStore.enemy.battleTime })
 
     if (characters.length === 0) return null
 

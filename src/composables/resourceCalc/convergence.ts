@@ -757,6 +757,7 @@ export function createRunCalcRound(deps: {
         minRageCount: guaranteeFury ? 4 : 0,
         ultimateCost: base.characters.find(c => c.slot === interactionTopUpSlot)?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
+        battleTime: base.totalTime,
         // 单次补齐弹刀的原始动作时间 = 招架支援 + 支援突击（未扣合轴）：
         // 用来判「这次补齐是不是根本打不出来」（>200s = 非法，见 banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC）
         // ⚠ 按身份查（同 :1119；压缩数组下 `base.characters[interactionTopUpSlot]` 在空槽时会取错对象）

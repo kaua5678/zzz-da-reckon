@@ -24,12 +24,11 @@ describe('stunWindows（CC-493）', () => {
     forEachSlotAxisAction(axis, 0, (act, wins) => seen.push([act.moveId, wins]))
     expect(seen).toEqual([['a', 3], ['c', 0], ['d', 0]])
   })
-  it('stunWindowCoverage：floor 次数 × 窗口 / 战斗秒，封顶 1，非有限输入回落 0 次 / 180 s', () => {
+  it('stunWindowCoverage：floor 次数 × 窗口 / 战斗秒，封顶 1', () => {
     expect(stunWindowCoverage(3, 16, 180)).toBeCloseTo(48 / 180, 12)
     expect(stunWindowCoverage(2.9, 16, 180)).toBeCloseTo(32 / 180, 12)
     expect(stunWindowCoverage(20, 16, 180)).toBe(1)
-    expect(stunWindowCoverage(NaN, 16, undefined)).toBe(0)
-    expect(stunWindowCoverage(2, 16, 0)).toBeCloseTo(32 / 180, 12)
+    expect(stunWindowCoverage(2, 16, 150)).toBeCloseTo(32 / 150, 12)
   })
   it('源码锁：agents 下无手写轴扫描 / 覆盖率算式', () => {
     const files = readdirSync(AGENTS).filter(f => f.endsWith('.ts'))

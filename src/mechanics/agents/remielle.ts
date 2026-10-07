@@ -384,10 +384,9 @@ export function remielleFlowerFeatherDanceCasts(
   return Math.max(0, Math.min(voidflare, cap))
 }
 
-function remielleNextRoundFeedback({ slot, teamResult, anomalyPool }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function remielleNextRoundFeedback({ slot, anomalyPool, combatTime }: AgentNextRoundFeedbackInput): ModuleFeedback {
   return {
-    remielleFlowerFeatherDanceCasts: remielleFlowerFeatherDanceCasts(
-      slot, anomalyPool.perSlotAnomalyTriggers, teamResult?.totalTime ?? 180),
+    remielleFlowerFeatherDanceCasts: remielleFlowerFeatherDanceCasts(slot, anomalyPool.perSlotAnomalyTriggers, combatTime),
   }
 }
 

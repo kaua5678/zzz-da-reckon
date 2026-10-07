@@ -430,12 +430,13 @@ export interface AgentTeamConfigInput {
  * `applyTeamMechanics` 每轮从编排层收的「轮次输入」= `AgentTeamConfigInput` 里**由收敛轮产出**的那一组字段（CC-480）。
  * 单一声明：字段语义、相位门控（只有 converge 该传）、不兜底纪律全在 `AgentTeamConfigInput` 各字段头注释，这里不重复；
  * 派发器（`composables/resourceCalc/panelPhases.ts#applyTeamMechanics`）只补逐槽字段（slot / cfg / agent / settings / team …）后原样透传。
- * 全部可选：build 相位没有计数、postRound 相位只有 threads；缺省即 undefined，模块侧双判据门控。
+ * 除 `combatTime` 外全部可选：build 相位没有计数、postRound 相位只有 threads；缺省即 undefined，模块侧双判据门控。
+ * `combatTime` 三个相位都必传（= `enemy.battleTime`）；r726 前 build 相位不传、派发器补 180，战斗时间 ≠ 180 时与另两个相位口径不一。
  * 新增一个 converge 相位字段 = `AgentTeamConfigInput` 加字段 + 加进本 Pick + 派发器透传一行——此前派发器参数里还有第二份
  * 逐字段镜像声明（11 个字段、各自一段「语义见 X 头注释」），两处必须同步改，jscpd 把它报成 27 行克隆（r666）。
  */
-export type AgentTeamRoundInput = Partial<Pick<AgentTeamConfigInput,
-  | 'combatTime' | 'exCounts' | 'ultimateCounts' | 'stunCount' | 'countStun' | 'teamEnergyConsumed'
+export type AgentTeamRoundInput = Pick<AgentTeamConfigInput, 'combatTime'> & Partial<Pick<AgentTeamConfigInput,
+  | 'exCounts' | 'ultimateCounts' | 'stunCount' | 'countStun' | 'teamEnergyConsumed'
   | 'threads' | 'axis' | 'interactions' | 'guarantee' | 'boss'>>
 /**
  * 模块「下一轮反馈」键值（CC-31，2026-09-27）：各模块 `nextRoundFeedback` 的返回值，编排层**整份**

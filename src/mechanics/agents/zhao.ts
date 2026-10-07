@@ -183,7 +183,7 @@ function buildResourceResult({ cfg, state, teamFrontlineSeconds }: AgentResource
 
 /** 照：霜寒值满开帷幕次数（总量口径；队友命中按战斗时间近似——postRound 无队友前台秒数）。
  * 供队伍级帷幕通道（teamVeil.ts 汇总全队帷幕次数，喂叶瞬光溯影惊鸿/爱芮合作舞台/千夏磨爪器）复用。 */
-export function computeZhaoVeilCount(exSpecialCount: number, ultimateCount: number, combatTime = 180): number {
+export function computeZhaoVeilCount(exSpecialCount: number, ultimateCount: number, combatTime: number): number {
   const teammateAttackCount = Math.max(0, Math.floor(Math.max(0, combatTime) / ZHAO_TEAMMATE_FROST_INTERVAL))
   const frostTotal = ZHAO_FROST_INITIAL
     + Math.max(0, Math.floor(exSpecialCount)) * ZHAO_EX_FROST_GAIN

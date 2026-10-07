@@ -83,12 +83,12 @@ export function computeEvelynCycle(input: {
   c1DefIgnoreCoverage: number
   c4ShieldCoverage: number
   c6FollowUpCount: number
-  battleTime?: number
+  battleTime: number
 }): EvelynCycle {
   const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const garroteCount = whole(input.garroteCount)
   const ultimateCount = whole(input.ultimateCount)
-  const battleTime = Math.max(0, Number.isFinite(input.battleTime) ? Number(input.battleTime) : 180)
+  const battleTime = Math.max(0, input.battleTime)
   // 影画2 燎火返还：发动绞勒式时返还所消耗的 50% 燎火（25s 一次）≈ 白嫖一次绞勒式。
   // 额外绞勒式同样 +1 燎索点（计入 anchorPoints），进而多换月辉丝·绊。
   const c2BonusGarrote = cinemaLevel >= 2 ? Math.floor(battleTime / EVELYN_C2_EMBER_REFUND_INTERVAL) : 0
@@ -243,6 +243,7 @@ function patchEvelynExecutions({ cfg, state, executions }: AgentResourceInput): 
 
 function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
   // 面板字段直接委托 computeEvelynCycle 求值（coreCritRate / c4CritDmg / c1DefIgnore）。
+  // 这三项只看覆盖率滑块；次数与战斗时间不进面板（面板阶段也拿不到 cfg），一律按 0 占位。
   const cycle = computeEvelynCycle({
     cinemaLevel,
     garroteCount: 0,
@@ -253,6 +254,7 @@ function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
     c1DefIgnoreCoverage: settingOf(settings, 'evelyn.c1DefIgnoreCoverage'),
     c4ShieldCoverage: settingOf(settings, 'evelyn.c4ShieldCoverage'),
     c6FollowUpCount: 0,
+    battleTime: 0,
   })
   panel.critRate = panel.critRate + cycle.coreCritRate
   if (cinemaLevel >= 4) {

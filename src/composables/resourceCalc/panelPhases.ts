@@ -134,11 +134,10 @@ export function applyTeamMechanics(params: {
   catalogStore: ReturnType<typeof useCatalogStore>
   phase: AgentTeamPhase
 } & AgentTeamRoundInput): void {
-  const { characters, configStore, catalogStore, phase } = params
+  const { characters, configStore, catalogStore, phase, combatTime } = params
   if (characters.length === 0) return
   const team = buildMechanicTeamMembers(configStore, catalogStore)
   const settings = resolveMechanicSettings(configStore)
-  const combatTime = params.combatTime ?? 180
   const exCounts = params.exCounts ?? characters.map(() => 0)
   const ultimateCounts = params.ultimateCounts ?? characters.map(() => 0)
   const stunCount = params.stunCount ?? 0
@@ -244,12 +243,12 @@ export function collectNextRoundFeedback(params: {
   /** 上一轮收敛线程快照（首轮守卫与自身反馈输入） */
   prevThreads: Readonly<CalcRoundThreads>
   catalogStore: ReturnType<typeof useCatalogStore>
-  combatTime?: number
+  /** 战斗时间（秒）= 编排层 `base.totalTime`（= `enemy.battleTime`） */
+  combatTime: number
 }): ModuleFeedback {
-  const { characters, teamResult, displayResult, adjustedResult, anomalyPool, prevThreads, catalogStore } = params
+  const { characters, teamResult, displayResult, adjustedResult, anomalyPool, prevThreads, catalogStore, combatTime } = params
   const out: ModuleFeedback = {}
   if (characters.length === 0) return out
-  const combatTime = params.combatTime ?? 180
   const getAgentSkills = (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId)
   for (const cfg of [...characters].sort((a, b) => a.slot - b.slot)) {
     const hook = getAgentMechanic(cfg.agentId)?.nextRoundFeedback

@@ -236,8 +236,8 @@ export interface AnomalyPoolInput {
   /** 各元素异常积蓄抗性（百分比，如 { fire: 10, ice: 10 }） */
   enemyAnomalyResistances?: Record<string, number>
   // ---- 以下为新增字段 ----
-  /** 总战斗时间（秒），默认180 */
-  totalTime?: number
+  /** 总战斗时间（秒）= `enemy.battleTime`（r726 起必填；缺省 180 只写在 store 的 defaultEnemy） */
+  totalTime: number
   /** boss无敌时间（秒），默认0，用于覆盖率计算 */
   invincibleTime?: number
   /** 怪物防御值，默认953 */

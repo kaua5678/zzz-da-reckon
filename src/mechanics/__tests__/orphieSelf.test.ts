@@ -193,6 +193,8 @@ describe('奥菲丝后台自动招式（2026-08-27 口径补录）', () => {
     const cfg: any = {
       slot: 0,
       agentId: '1301',
+      battleTime: 180,
+      invincibleTime: 0,
       initialEnergyGift: 0,
       basicAttackRegenPerSec: 0,
       'setting:orphie.backstageCastCount': -1,

@@ -91,6 +91,7 @@ describe('耀嘉音纯函数', () => {
 describe('耀嘉音执行行', () => {
   it('buildExecutions 生成震音/音簇，C6 倍率×2', () => {
     const cfg: any = {
+      invincibleTime: 0,
       yaojiayinCinemaLevel: 6,
       yaojiayinAdditionalActive: 1,
       yaojiayinEntryCount: 12,

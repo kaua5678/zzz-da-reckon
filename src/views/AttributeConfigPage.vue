@@ -14,7 +14,7 @@
                     <n-input-number
                       :value="configStore.enemy[f.key]"
                       :min="0"
-                      :max="f.max"
+                      :max="f.maxKey ? configStore.enemy[f.maxKey] : undefined"
                       :step="f.step ?? 1"
                       size="small"
                       style="width: 100%"
@@ -56,7 +56,7 @@
                     <n-input-number
                       :value="configStore.enemy[f.key]"
                       :min="0"
-                      :max="f.max"
+                      :max="f.maxKey ? configStore.enemy[f.maxKey] : undefined"
                       :step="f.step ?? 1"
                       size="small"
                       style="width: 100%"
@@ -332,11 +332,11 @@ onMounted(() => {
 
 /**
  * 敌人配置的数值输入框：按显示顺序列出（体型下拉 / 快速支援只读框夹在 HEAD 与 TAIL 之间）。
- * fallback = 清空输入框时写回的值（系数类为 1，其余为 0）；step 缺省 1，max 缺省不限。
+ * fallback = 清空输入框时写回的值（系数类为 1，其余为 0）；step 缺省 1；maxKey = 上限取另一个敌人字段的当前值，缺省不限。
  * 新增一个敌人数值字段 = 在这里加一行（CC-282 前每个字段是一段 11 行的手写模板）。
  */
 type EnemyNumberKey = { [K in keyof EnemyConfig]-?: EnemyConfig[K] extends number ? K : never }[keyof EnemyConfig]
-interface EnemyNumberField { key: EnemyNumberKey; label: string; step?: number; max?: number; fallback: number }
+interface EnemyNumberField { key: EnemyNumberKey; label: string; step?: number; maxKey?: EnemyNumberKey; fallback: number }
 const ENEMY_FIELDS_HEAD: EnemyNumberField[] = [
   { key: 'hp', label: 'Boss 血量', fallback: 0 },
   { key: 'stunValue', label: '失衡值', fallback: 0 },
@@ -350,7 +350,7 @@ const ENEMY_FIELDS_TAIL: EnemyNumberField[] = [
   { key: 'bossStunGift', label: 'Boss 赠送失衡', fallback: 0 },
   { key: 'shieldCount', label: '秽盾数量', fallback: 0 },
   { key: 'energyShield', label: '能量盾数量', fallback: 0 },
-  { key: 'invincibleTime', label: 'Boss 无敌时间 (秒)', max: 180, fallback: 0 },
+  { key: 'invincibleTime', label: 'Boss 无敌时间 (秒)', maxKey: 'battleTime', fallback: 0 }, // 不超过战斗时间（与结果页同口径）
 ]
 function setEnemyNumber(f: EnemyNumberField, v: number | null) {
   configStore.setEnemy({ [f.key]: v ?? f.fallback } as Partial<EnemyConfig>)

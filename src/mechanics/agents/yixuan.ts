@@ -90,7 +90,9 @@ const STUN_EX_BONUS = 30 // 额外能力：凝云术/墨烬影消命中失衡敌
 const NINGSHEN_CRIT_DMG = 40 // 额外能力：终结技后凝神 15s 暴伤+40%
 const NINGSHEN_SECONDS = 15 // 凝神持续
 const ANOMALY_TRIGGER_FLASH = 10 // 玄墨异常触发回闪能（10s 最多一次）
-const ANOMALY_TRIGGER_MAX = Math.floor(180 / 10) // 10s CD 封顶次数（180s 战斗）
+const ANOMALY_TRIGGER_CD = 10 // 玄墨异常触发回闪能 10s 内最多一次
+/** 整场战斗内玄墨异常触发回闪能的次数上限 = floor(战斗时间 / 10s)（r726 前写死 180 s → 18 次） */
+const anomalyTriggerMax = (battleTime: number) => Math.floor(battleTime / ANOMALY_TRIGGER_CD)
 const C1_LIGHTNING_CD = 6 // 影画1 落雷 CD（秒）
 const C1_LIGHTNING_FLASH = 5 // 落雷回闪能（/次）
 const EXTREME_ASSIST_FLASH = 5 // 极限支援换场落雷回闪能（/次）
@@ -346,7 +348,7 @@ function buildYixuanCharConfig(input: AgentCharConfigInput): void {
   // 影画1 落雷 +5/次（6s CD 战斗时间驱动）、玄墨异常触发 +10/次（外层收敛注入 cfg.yixuanAnomalyTriggerFlash）
   const perfectBlocks = resolveYixuanPerfectBlocks(cfg)
   const dodges = Math.max(0, Math.floor(cfg.dodgeCounterCount))
-  const anomalyFlash = Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(cfg.yixuanAnomalyTriggerFlash ?? 0))))
+  const anomalyFlash = Math.min(anomalyTriggerMax(cfg.battleTime), Math.max(0, Math.floor(Number(cfg.yixuanAnomalyTriggerFlash ?? 0))))
   // 极限支援换场落雷（额外能力，用户口径）：默认次数 = 队友正常弹刀次数求和（上限），主页可录入；
   // 次数由 useResourceCalc merged 注入 cap 后在本模块 buildExecutions 结算（闪能已在 merged 注入计入总账）
   cfg.yixuanExtremeAssistCountInput = cfg.yixuanExtremeAssistCount
@@ -466,10 +468,10 @@ function applyYixuanTeamConfig(
   // 缺失的**单个字段**按 0 计（`?? 0` 与原式 `Math.floor(prevAuricInkFlash)` 的取值面一致）。
   if (threads) {
     cfg.yixuanAnomalyTriggerFlash =
-      Math.min(ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads.moduleFeedback?.auricInkTriggers ?? 0))))
+      Math.min(anomalyTriggerMax(cfg.battleTime), Math.max(0, Math.floor(Number(threads.moduleFeedback?.auricInkTriggers ?? 0))))
   }
   const auricInkTriggers = Math.min(
-    ANOMALY_TRIGGER_MAX, Math.max(0, Math.floor(Number(threads?.moduleFeedback?.auricInkTriggers ?? 0))),
+    anomalyTriggerMax(cfg.battleTime), Math.max(0, Math.floor(Number(threads?.moduleFeedback?.auricInkTriggers ?? 0))),
   )
 
   // ── 通道④ 终结技等价次数（只依赖 threads，**不依赖 interactions**）──

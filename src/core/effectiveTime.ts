@@ -1,4 +1,4 @@
-// @fact engine:time/无敌≠秽盾 口径: `invincibleTime` 只表示 boss **真无敌**（转阶段动画等完全不可攻击的秒数），**不含秽盾**——秽盾期间 boss 照常可被攻击（代理人能攻击削减[秽盾]），只是获得高额防御/减伤/抗打断且不失衡，故它是**伤害乘区与失衡通道**问题、不是**时间扣除**问题 | 据 用户@2026-09-13（纠正 2026-08-30 旧口径「boss 无敌（秽盾/转阶段动画）」）+ nanoka noun_3.2.3.json #2000002 原文·复核@2026-09-25·复核@2026-09-30 | 验 src/core/__tests__/effectiveTime.test.ts | 锚 src/core/effectiveTime.ts#effectiveBattleTime | 信 确认
+// @fact engine:time/无敌≠秽盾 口径: `invincibleTime` 只表示 boss **真无敌**（转阶段动画等完全不可攻击的秒数），**不含秽盾**——秽盾期间 boss 照常可被攻击（代理人能攻击削减[秽盾]），只是获得高额防御/减伤/抗打断且不失衡，故它是**伤害乘区与失衡通道**问题、不是**时间扣除**问题 | 据 用户@2026-09-13（纠正 2026-08-30 旧口径「boss 无敌（秽盾/转阶段动画）」）+ nanoka noun_3.2.3.json #2000002 原文·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/core/__tests__/effectiveTime.test.ts | 锚 src/core/effectiveTime.ts#effectiveBattleTime | 信 确认
 // ⟳复核: 秽盾若被正式纳入建模（破盾回能/削盾量/防御减伤乘区落地）时，确认本口径与「无敌时间」字段语义仍只需表示真无敌，并把秽盾相关通道指向新实现而非 invincibleTime | 到期 2026-12-31
 /**
  * 无敌时间口径：boss **真无敌**（转阶段动画等）期间不可被攻击——dot 与后台/CD 自动伤害
@@ -24,14 +24,19 @@
  */
 import { isFrontlineExecution } from '@/types/resource'
 
-interface TimeBasisCfg {
-  battleTime?: number
-  invincibleTime?: number
+/** 扣无敌时间只需这一项。cfg（`CharacterOperationConfig`）与 store 的 `enemy` 上它都是必填，直接传即可 */
+interface InvincibleBasis {
+  invincibleTime: number
+}
+
+/** 有效战斗时间的两项输入。战斗时间的缺省 180 只写在 store 的 defaultEnemy，这里不再兜底（r726，r6 §8.0 #28 ④） */
+interface TimeBasisCfg extends InvincibleBasis {
+  battleTime: number
 }
 
 /** 有效战斗时间（秒）= 战斗时间 − boss 无敌时间（下限 0）。按 CD/每秒折算次数的伤害通道用这个。 */
 export function effectiveBattleTime(cfg: TimeBasisCfg): number {
-  return Math.max(0, (cfg.battleTime ?? 180) - (cfg.invincibleTime ?? 0))
+  return Math.max(0, cfg.battleTime - cfg.invincibleTime)
 }
 
 // @fact engine:stun/时间守恒 口径: 失衡窗口内的招式吃易伤但不攒条 ⇒ 非轴模式按窗口时间占比折算攒条量，形成「次数↑→占比↑→攒条↓」的负反馈，由不动点自行收敛，不设硬上限 | 据 用户@2026-09-01·复核@2026-09-25·复核@2026-09-30 | 验 src/core/__tests__/stunPool.test.ts | 锚 src/core/effectiveTime.ts#stunWindowFraction | 信 确认
@@ -56,13 +61,13 @@ export function stunWindowFraction(stunCount: number, windowDuration: number, ef
 }
 
 /** 有效后台时间（秒）= 后台时间 − boss 无敌时间（下限 0）。后台自动招式按 CD 折算用这个。 */
-export function effectiveBackstageTime(backstageTime: number | undefined, cfg: TimeBasisCfg): number {
+export function effectiveBackstageTime(backstageTime: number | undefined, cfg: InvincibleBasis): number {
   return minusInvincibleTime(backstageTime, cfg)
 }
 
 /** 从任意秒数扣掉 boss 无敌时间（下限 0）。前台+后台求和等自定义时间基准的通道用这个。 */
-export function minusInvincibleTime(seconds: number | undefined, cfg: TimeBasisCfg): number {
-  return Math.max(0, (seconds ?? 0) - (cfg.invincibleTime ?? 0))
+export function minusInvincibleTime(seconds: number | undefined, cfg: InvincibleBasis): number {
+  return Math.max(0, (seconds ?? 0) - cfg.invincibleTime)
 }
 
 /**
@@ -71,7 +76,7 @@ export function minusInvincibleTime(seconds: number | undefined, cfg: TimeBasisC
  * CC-252 起唯一实现：原 lighter / rina / yaojiayin 各一份私有 `combatTimeOf`、burnice 两处内联（源码锁见
  * `__tests__/effectiveTimeSingleSource.test.ts`）。
  */
-export function effectiveCombatTime(state: { frontlineTime?: number; backstageTime?: number }, cfg: TimeBasisCfg): number {
+export function effectiveCombatTime(state: { frontlineTime?: number; backstageTime?: number }, cfg: InvincibleBasis): number {
   return minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)
 }
 

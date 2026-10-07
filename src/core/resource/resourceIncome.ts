@@ -29,8 +29,8 @@ export function calcEnergySource(
   teamCfg: CharacterOperationConfig[],
   shieldCount: number,
   energyShieldCount: number,
-  chainCountTotal = 0,
-  totalTime = 180,
+  chainCountTotal: number,
+  totalTime: number,
   /** Σ 队友前台秒（行级能量 buildExecutions 需要，与装配层同语义：不含自己） */
   teamFrontlineSeconds = 0,
 ): EnergySource {
@@ -172,10 +172,10 @@ export function calcEnergySource(
 export function calcRawDecibelParts(
   cfg: CharacterOperationConfig,
   state: IterationState,
-  chainCountTotal = 0,
-  exSpecialCount = state.exSpecialCount,
-  ultimateCount = state.ultimateCount,
-  totalTime = 180,
+  chainCountTotal: number,
+  exSpecialCount: number,
+  ultimateCount: number,
+  totalTime: number,
   teamFrontlineSeconds = 0,
 ): { skillRegen: number; bonusRegen: number; timeSliceDecibel: number; shareableTotal: number } {
   // @fact engine:喧响收入行级Σ 口径: skillRegen = Σ 可行行的行级喧响收入（rowDecibelTotal，与伤害/失衡/异常「倍率列逐行进账」同构）。旧「次数×常量」聚合通道删除：聚合行与 buildExecutions 常量同源故恒等，差异全部来自模块行（债务清偿——专属链角色曾系统性低估，仪玄行级 5628 vs 聚合 1702；yixuanBackstageDecibel 聚合项曾把 4 招全加而合轴语义是二选一替换对，行级即修复）。迭代期用本次调用的 exSpecialCount/ultimateCount 覆盖进 rowState（伊德海莉 decibel 通道 floor 口径、实数松弛口径均不变）；teamFrontlineSeconds 语义 == 装配层（Σ 队友前台秒）。cfg.rowTimeLimit 缺省 = 未截断行（默认路径零 delta）；重折环写入时按 feasibleRows 计，与能量行级Σ 同一分支 | 据 债务审计 5761e02 + 引擎探针@2026-09-08 · 债2批2-1@2026-09-19 R37·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/core/__tests__/decibelRowParity.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource/rowBuild.ts#feasibleRows | 信 确认
@@ -214,8 +214,8 @@ export function calcDecibelSource(
   cfg: CharacterOperationConfig,
   state: IterationState,
   teammateShare: number,
-  chainCountTotal = 0,
-  totalTime = 180,
+  chainCountTotal: number,
+  totalTime: number,
   /** 额外的不可分享喧响（如卢西娅4命帷幕触发全队每人 +100/次），由调用方按收敛后次数注入 */
   extraUnshareableDecibel = 0,
   /** 特殊动作奖励（弹刀215/闪反10/连携10/快支20，含伴随50%），由全局配置按槽位注入 */

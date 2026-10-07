@@ -19,24 +19,25 @@
  * 回退链：引擎值不可用（未收敛 / 无失衡 / 部分 mock 的 calc）→ 同源近似
  * `stunWindowFraction(次数, 窗长, 有效时间)`（**不含**决算损失，已知偏高）→ 0（= 不修正）。
  *
- * @fact engine:操作难度/非失衡占比数据源 口径: 失衡窗口占比取 `calc.stunCoverage`（含**决算截断损失秒**，`stunSeconds = 次数×窗长 − verdictSecondsLost`）；回退 `stunWindowFraction` 近似（不含决算损失，偏高）；取不到 = 0（不修正）。单源抽成叶子模块供 `teamCompare`（散点页）与 `difficultyCurve`（曲线页）共用——两处复制会漂移成「同队两图不同尺」 | 据 用户@2026-09-20「雨果多次结算让非失衡时间上升……但不代表难度高，所以你要做决算损失秒，算出真正的非失衡占比」·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/teamCompare.test.ts::逐类型公式 + src/composables/__tests__/difficultyCurve.test.ts | 锚 src/composables/difficultyRatio.ts#stunWindowRatioOf | 信 确认
+ * @fact engine:操作难度/非失衡占比数据源 口径: 失衡窗口占比取 `calc.stunCoverage`（含**决算截断损失秒**，`stunSeconds = 次数×窗长 − verdictSecondsLost`）；回退 `stunWindowFraction` 近似（不含决算损失，偏高）；取不到 = 0（不修正）。单源抽成叶子模块供 `teamCompare`（散点页）与 `difficultyCurve`（曲线页）共用——两处复制会漂移成「同队两图不同尺」 | 据 用户@2026-09-20「雨果多次结算让非失衡时间上升……但不代表难度高，所以你要做决算损失秒，算出真正的非失衡占比」·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/teamCompare.test.ts::逐类型公式 + src/composables/__tests__/difficultyCurve.test.ts | 锚 src/composables/difficultyRatio.ts#stunWindowRatioOf | 信 确认
  * ⟳复核: `calc.stunCoverage` 的口径（决算损失秒算法）或回退近似再动时，复核「雨果队权威 vs 近似差值」与「两页同值」两条 | 到期 2026-12-31
  */
 import { effectiveBattleTime, stunWindowFraction } from '@/core/effectiveTime'
 
 /** 最小可用的 calc 形状（只取本模块需要的两个字段，便于部分 mock 的测试传入） */
 export interface RatioCalcLike {
-  resourceResult?: { value?: { totalTime?: number } | null }
+  /** 只判有无：引擎结果在才走回退近似（战斗时间读 `enemy`，r726 起不再拿 `totalTime` 兜底） */
+  resourceResult?: { value?: unknown }
   stunPoolResult?: { value?: { stunCount?: number } | null }
   /** 引擎算的失衡窗口占比（含决算损失秒）；部分 mock 可能没有 */
   stunCoverage?: { value?: number }
   windowDuration?: { value?: number }
 }
 
-/** 有效时间所需的敌人配置（只取两个字段） */
+/** 有效时间所需的敌人配置（只取两个字段；与 store 的 `EnemyConfig` 一样必填，r726） */
 export interface RatioEnemyLike {
-  battleTime?: number
-  invincibleTime?: number
+  battleTime: number
+  invincibleTime: number
 }
 
 
@@ -47,7 +48,7 @@ export interface RatioEnemyLike {
  * @param enemy 敌人配置（`battleTime` / `invincibleTime`，仅回退路径需要）
  * @returns 0..1；返回 0 = 「取不到 ⇒ 不做非失衡占比修正」（与历史行为一致）
  */
-export function stunWindowRatioOf(calc: RatioCalcLike, enemy: RatioEnemyLike = {}): number {
+export function stunWindowRatioOf(calc: RatioCalcLike, enemy: RatioEnemyLike): number {
   const coverage = calc.stunCoverage?.value
   if (typeof coverage === 'number' && Number.isFinite(coverage) && coverage > 0) {
     return Math.max(0, Math.min(1, coverage))
@@ -58,6 +59,6 @@ export function stunWindowRatioOf(calc: RatioCalcLike, enemy: RatioEnemyLike = {
   const rr = calc.resourceResult?.value
   if (!rr || stunCount <= 0) return 0
   // CC-217：回退近似直接调 core/effectiveTime（它本身也是只依赖类型的叶子模块，本文件仍是叶子）
-  const effectiveTime = effectiveBattleTime({ battleTime: enemy.battleTime ?? rr.totalTime, invincibleTime: enemy.invincibleTime })
+  const effectiveTime = effectiveBattleTime(enemy)
   return stunWindowFraction(stunCount, windowDuration, effectiveTime)
 }

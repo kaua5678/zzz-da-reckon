@@ -25,7 +25,7 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     anomalyCoeff = 1.1,
     enemyAnomalyResistances = {},
     // 新增参数
-    totalTime = 180,
+    totalTime,
     invincibleTime = 0,
     enemyDefense = 953,
     enemyDefReduction = 0,

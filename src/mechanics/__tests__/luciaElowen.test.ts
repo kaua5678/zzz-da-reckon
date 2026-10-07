@@ -121,7 +121,7 @@ describe('computeLuciaDreamPlan', () => {
   it('追加攻击口径：CD 8s 全球性（队友命中触发），axisInSeconds 不再折算（用户口径 2026-08）', () => {
     // 轴模式 72s 窗口：旧口径 floor(72/8)=9 次已废除；E=7/Q=3 → 梦境 500 → 20 次
     const out = luciaElowenMechanic.buildResourceResult!({
-      cfg: { axisInSeconds: 72 } as never,
+      cfg: { axisInSeconds: 72, battleTime: 180, invincibleTime: 0 } as never,
       state: { exSpecialCount: 7, ultimateCount: 3 } as never,
     } as never)
     expect(out.luciaMechanicSource!.additionalAttackCount).toBe(20)
@@ -130,21 +130,21 @@ describe('computeLuciaDreamPlan', () => {
 
 describe('computeLuciaCurtainTriggers（4命帷幕开启/延长）', () => {
   it('默认轴 Q=2/E=2：开启4 + 延长4 = 8 次', () => {
-    expect(computeLuciaCurtainTriggers(2, 2, 0)).toBe(8)
+    expect(computeLuciaCurtainTriggers(2, 2, 0, 1, 180)).toBe(8)
   })
 
   it('伊德海莉大招开帷幕每次 +1', () => {
-    expect(computeLuciaCurtainTriggers(2, 2, 2)).toBe(10)
+    expect(computeLuciaCurtainTriggers(2, 2, 2, 1, 180)).toBe(10)
   })
 
   it('15s CD 封顶 ceil(180/15)=12，利用率滑块折算', () => {
     // Q=10/E=10 → 开启1+0+10 + 延长0+10 = 21 → 封顶 12
-    expect(computeLuciaCurtainTriggers(10, 10, 0)).toBe(12)
-    expect(computeLuciaCurtainTriggers(10, 10, 0, 0.5)).toBe(6)
+    expect(computeLuciaCurtainTriggers(10, 10, 0, 1, 180)).toBe(12)
+    expect(computeLuciaCurtainTriggers(10, 10, 0, 0.5, 180)).toBe(6)
   })
 
   it('Q=0 时只打 E+A5 组：开启2 + 延长4 = 6', () => {
-    expect(computeLuciaCurtainTriggers(4, 0, 0)).toBe(6)
+    expect(computeLuciaCurtainTriggers(4, 0, 0, 1, 180)).toBe(6)
   })
 })
 

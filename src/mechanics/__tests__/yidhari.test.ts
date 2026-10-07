@@ -74,6 +74,8 @@ describe('伊德海莉执行行', () => {
       damageMultiplier: 0, dazeMultiplier: 0,
     }]
     const cfg: any = {
+      battleTime: 180,
+      invincibleTime: 0,
       panel: { additionalAbilityActive: 1, skillLevelBonus: 0 },
       yidhariChargeSlam: { id: '1051007', damage: 100, daze: 10, anomaly: 10, actionTime: 2, decibel: 5, flash: 0 },
       yidhariBasicFollow: { id: '1051003', damage: 50, daze: 5, anomaly: 5, actionTime: 1, decibel: 3, flash: 0 },
@@ -92,6 +94,8 @@ describe('伊德海莉执行行', () => {
   it('寒冰触手需额外能力（击破/支援队友）才生成', () => {
     const executions: any[] = []
     const cfg: any = {
+      battleTime: 180,
+      invincibleTime: 0,
       panel: { additionalAbilityActive: 0, skillLevelBonus: 0 },
       yidhariChargeSlam: null,
       yidhariBasicFollow: null,

@@ -17,12 +17,12 @@ const read = (p: string) => readFileSync(resolve(SRC, p), 'utf-8')
 describe('CC-460 BanyueRageCycle 单源 + rageComboQuota', () => {
   it('rageComboQuota = 怒相次数 × 2，且 = 怒相内论道组 + 地动组', () => {
     for (const didong of [0, 1, 99]) {
-      const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, didong)
+      const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, didong, 180)
       expect(c.rageCount).toBeGreaterThan(0)
       expect(c.rageComboQuota).toBe(c.rageCount * 2)
       expect(c.lunDaoRageCount + c.rageDiDongComboCount).toBe(c.rageComboQuota)
     }
-    const z = computeBanyueRageCycle(0, 0, 0, 0, 0, 0, 0, 0) // 零交互：开局嗔火仍可进怒相
+    const z = computeBanyueRageCycle(0, 0, 0, 0, 0, 0, 0, 0, 180) // 零交互：开局嗔火仍可进怒相
     expect(z.rageComboQuota).toBe(z.rageCount * 2)
   })
 

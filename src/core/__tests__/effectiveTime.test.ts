@@ -9,11 +9,10 @@ import {
 
 /** 无敌时间口径（2026-08-30）：dot/后台 CD 伤害通道的统一时间基准（core/effectiveTime.ts） */
 describe('effectiveTime', () => {
-  it('effectiveBattleTime = battleTime − invincibleTime，下限 0；缺省 battleTime=180、invincibleTime=0', () => {
+  it('effectiveBattleTime = battleTime − invincibleTime，下限 0', () => {
     expect(effectiveBattleTime({ battleTime: 180, invincibleTime: 0 })).toBe(180)
     expect(effectiveBattleTime({ battleTime: 180, invincibleTime: 24 })).toBe(156)
     expect(effectiveBattleTime({ battleTime: 120, invincibleTime: 180 })).toBe(0)
-    expect(effectiveBattleTime({})).toBe(180)
   })
 
   it('effectiveBackstageTime = 后台时间 − invincibleTime，下限 0', () => {

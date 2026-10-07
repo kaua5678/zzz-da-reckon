@@ -316,7 +316,7 @@ export interface AgentNextRoundFeedbackInput {
    * ② 自身反馈输入（如上一轮队友强特合计）。
    */
   prevThreads: Readonly<CalcRoundThreads>
-  /** 战斗时间（秒；已含 `?? 180` 兜底，与 `applyTeamConfig` 的 combatTime 同源） */
+  /** 战斗时间（秒）= 编排层 `base.totalTime`（= `enemy.battleTime`），与 `applyTeamConfig` 的 combatTime 同源 */
   combatTime: number
   /** 倍率表访问（零号·安比按 moveId 现场推断 `additionalAttack`，与伤害池 infer 同口径） */
   getAgentSkills: (agentId: string) => AgentSkills | undefined
@@ -355,6 +355,8 @@ export interface InteractionTopUpInput {
   perParrySeconds?: number
   /** 单次补齐双反的原始动作时间（秒）；cfg 暂未暴露该字段时留 0 */
   perDualSeconds?: number
+  /** 战斗时间（秒，= `enemy.battleTime`）：闪能秒回按整场战斗折算（r726 前模块内写死 180） */
+  battleTime: number
 }
 
 /**

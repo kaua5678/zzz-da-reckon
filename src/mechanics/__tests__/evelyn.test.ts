@@ -37,6 +37,7 @@ function cycle(overrides: Partial<Parameters<typeof computeEvelynCycle>[0]> = {}
     c1DefIgnoreCoverage: 1,
     c4ShieldCoverage: 1,
     c6FollowUpCount: 16,
+    battleTime: 180,
     ...overrides,
   })
 }

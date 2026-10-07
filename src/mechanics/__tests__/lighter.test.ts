@@ -85,6 +85,7 @@ describe('莱特纯函数', () => {
 describe('莱特执行行', () => {
   it('buildExecutions：C6 生成火焰冲击；强力终结按士气轮次', () => {
     const cfg: any = {
+      invincibleTime: 0,
       lighterCinemaLevel: 6,
       lighterImpact: 200,
       lighterTeamEnergyConsumed: 0,

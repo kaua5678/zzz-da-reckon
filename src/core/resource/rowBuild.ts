@@ -554,7 +554,7 @@ export function buildExecutions(
   return executions.map(exec => applyExecutionUtilization(cfg, exec.comboAlignSource ? exec : { ...exec, comboAlignSource: 'fixed' }))
 }
 
-export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state: IterationState, totalTime = 180): AnomalyEventExecution[] {
+export function buildAnomalyEventExecutions(cfg: CharacterOperationConfig, state: IterationState, totalTime: number): AnomalyEventExecution[] {
   const events: AnomalyEventExecution[] = []
   getAgentMechanic(cfg.agentId)?.buildAnomalyEvents?.({ cfg, state, events, totalTime })
 

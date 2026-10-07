@@ -91,7 +91,8 @@ const FURY_DUAL = 10 // 双反（完美闪避+金身）4+6=10
 const FURY_PER_FLASH = 0.5 // 每消耗 1 点闪能 +0.5
 const RAGE_SWAY = 4 // 怒相进入 +4 山威
 const SWAY_REFUND = 10 // 山威强特回 10 闪能
-const FLASH_INCOME = 2 * 180 + 60 // 秒回 2/s×180 + 进场 60
+const FLASH_REGEN_PER_SEC = 2 // 闪能秒回 2/s（整场战斗）
+const FLASH_ENTRY = 60 // 进场 60 闪能
 const EX_COST = 20 // 论道/地动 20 闪能
 const COMBO_COST = 60 // 连段（论道20 + 狮子吼·怒40）
 const RAGE_BUFF_SHEER = 300 // Lv.7 贯穿力
@@ -125,7 +126,7 @@ const DEFAULT_DIDONG_COMBO = 0 // 怒相外连段里分配给「地动→山摇�
  * 截断会得到一个既打不出轴、又比不打轴更差的幻觉解。非法 → 由调用方按「轴不可操作」处理，
  * 走既有的轴退化（ENGINE_PIPELINE_GUIDE §4 坑 19②）。
  */
-// @fact engine:banyue/补齐时间上限 口径: 自动填充交互的原始动作时间（未扣合轴）>200s 判本次填充非法——次数清零并走轴退化，而不是截断成半套 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC + src/mechanics/agents/banyue.ts#computeBanyueInteractionTopUp | 信 确认
+// @fact engine:banyue/补齐时间上限 口径: 自动填充交互的原始动作时间（未扣合轴）>200s 判本次填充非法——次数清零并走轴退化，而不是截断成半套 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC + src/mechanics/agents/banyue.ts#computeBanyueInteractionTopUp | 信 确认
 export const AUTO_TOPUP_TIME_LIMIT_SEC = 200
 
 /**
@@ -146,6 +147,7 @@ export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): Inte
     axisExSpendOf(opts.axisEx),
     opts.axisEx['banyue-combo'] ?? 0,
     opts.cinemaLevel,
+    opts.battleTime,
     opts.axisEx['banyue-combo-didong'] ?? 0,
     0,
     true,
@@ -172,6 +174,8 @@ export function computeBanyueRageCycle(
   axisExSpend: number,
   axisComboCount: number,
   cinemaLevel: number,
+  /** 战斗时间（秒）：闪能收入 = 秒回 × 战斗时间 + 进场（r726 前写死 180 秒） */
+  battleTime: number,
   rageDiDongCombo = 0,
   tauntCancelCount = 0,
   axisActive = false,
@@ -185,6 +189,7 @@ export function computeBanyueRageCycle(
   const axisCombo = Math.max(0, Math.floor(axisComboCount))
   const c2 = cinemaLevel >= 2
   const swayRefundPerRage = RAGE_SWAY * (SWAY_REFUND + (c2 ? C2_SWAY_REFUND_BONUS : 0))
+  const flashBase = FLASH_REGEN_PER_SEC * battleTime + FLASH_ENTRY
   // 怒相内连段固定 2 组（山威免费，4 山威/怒相 = 2 组，明王触发源）；组数可按轴内捏的
   // banyue-combo-didong 块拆成「地动→山摇·怒」，其余打「论道→狮子吼·怒」；
   // 怒相外连段自动打满 = floor(剩余闪能/60)，由 diDongCombo 滑块拆分「地动→山摇·怒」vs「论道→狮子吼·怒」。
@@ -194,7 +199,7 @@ export function computeBanyueRageCycle(
   let comboOut = 0
   let furyTotal = 0
   for (let iter = 0; iter < 12; iter++) {
-    const flashIncome = FLASH_INCOME + rage * swayRefundPerRage
+    const flashIncome = flashBase + rage * swayRefundPerRage
     // 闪能扣掉轴内捏的普通强特后，剩余全部自动打成连段（不打单论道/单地动等零散招式，不足 60 的尾数忽略）
     const comboOutTotal = Math.max(0, Math.floor((flashIncome - axisSpend) / COMBO_COST))
     const flashSpent = axisSpend + comboOutTotal * COMBO_COST
@@ -261,7 +266,7 @@ export function computeBanyueRageCycle(
     diDongOutCount: diDongComboOut,
     shanYaoNuOutCount: diDongComboOut,
     shanYaoRageCount: shanYaoRage,
-    flashIncome: FLASH_INCOME + rage * swayRefundPerRage,
+    flashIncome: flashBase + rage * swayRefundPerRage,
     flashSpent,
     swayExCount,
     tauntCancelCount: taunt,
@@ -705,6 +710,7 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): Ban
     axisExSpendOf(axisEx),
     axisEx['banyue-combo'] ?? 0,
     cinemaLevelOf(cfg.banyueCinemaLevel),
+    cfg.battleTime,
     // 怒相内「地动→山摇·怒」连段组数 = 轴内捏的 banyue-combo-didong 块（非轴模式 banyueAxisEx 为空 → 0）
     axisEx['banyue-combo-didong'] ?? 0,
     // 失衡外连段末尾后摇的嘲讽取消次数（主页交互栏录入，每次取消一次后摇）

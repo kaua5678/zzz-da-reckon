@@ -152,7 +152,7 @@ describe('convergence 夜间批 B · 组 3 保留项：cfg-merge 分支仍在（
     // CC-295：门控归模块——关闭（无轴、保底全关，或设置关）⇒ null（编排层保持上一轮值）；打开 ⇒ 与纯函数同值
     const { computeBanyueInteractionTopUp } = await import('@/mechanics/agents/banyue')
     const opts = {
-      dodgeCount: 10, parryCount: 6, blockCount: 20, dualCounterCount: 5, cinemaLevel: 0,
+      battleTime: 180, dodgeCount: 10, parryCount: 6, blockCount: 20, dualCounterCount: 5, cinemaLevel: 0,
       axisEx: {}, ultimateCountNeeded: 4, minRageCount: 4, ultimateCost: 3000, decibelHave: 3000,
     }
     const on = { fury: true, ultimate: false }
