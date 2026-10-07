@@ -1,7 +1,8 @@
-# 死兜底普查与判据 28（r723）
+# 死兜底普查与判据 28（r723；r724 收窄信任边界）
 
 > 范围：src 非测试 `.ts` 里「左侧类型不含 null / undefined 的 `a ?? b`」。工具：TS 类型检查器（不是正则）。
 > 提交：`7cb3f8c8`（清理 + cfg 契约）、`6e534cae`（战斗时间单一通道）、`587e767e`（判据 28）。
+> r724：store 用户态与轴移出信任边界（`0d699bb8`），写入方清点见 §4.1。
 > 普查 / codemod 脚本：`calc-arch/g723/deadnullish.mjs`、`calc-arch/g723/fixnullish.mjs`（不进仓；判据实现在 `scripts/lib/dead-nullish-gate.mjs`）。
 
 ## 1. 结论速览
@@ -15,6 +16,7 @@
   - 再删引擎内部契约上的死兜底，共 800 处 / 106 个生产文件。
   - 外部数据类型上的 126 处不动，列入信任边界。
   - 最后加判据 28 硬门，防止长回来。
+- r724：逐个清点 store 用户态（`CharacterConfig` / `EnemyConfig`）与轴类型的写入方，没有找到 TS 管不到的缺字段来源（store 从未持久化；外部 JSON 只有 Boss 预设与轴预设，改由 validate:data 校验），于是把它们移出豁免表：豁免 126 → 59 处，删读点死兜底 72 处 + `.vue` 4 处，旧版单表抗性兼容层整层删除。
 
 ## 2. 判定口径
 
@@ -47,7 +49,7 @@
 | `CharacterResourceResult` | 30（嵌套的第二轮再删 1） | 0 | 删除 |
 | 局部标识符（形参 / 局部量） | 21（嵌套的第二轮再删 2） | 0 | 删除 |
 | 其他引擎内部类型（AnomalyProgress、ResourceCalcConfig、StunPoolResult 等 22 种） | 54 | 0 | 删除 |
-| **外部数据类型**（见 §4） | 126 | 126 | 信任边界豁免 |
+| **外部数据类型**（见 §4） | 126 | 126（r724 后 59） | 信任边界豁免；r724 移出 store 用户态与轴（§4.1） |
 
 - 删除总数 800：其中 93 处 `Number(x ?? d)`（x 为 number）连同 `Number()` 一起删，括号也一并去掉。
 - 嵌套 `a ?? b ?? c` 分两轮删，第二轮 4 处。
@@ -63,25 +65,76 @@
 
 - 具名类型按类型名豁免。
 - 匿名的 `{ … }` 字面量类型按声明文件豁免。
-- 判据行公示豁免数（当前 126）。
+- 判据行公示豁免数（r723 为 126，r724 后为 59）。
+
+r724 起 store 用户态与用户轴已移出（§4.1），下表只剩真正来自外部数据的类型。
 
 | 类别 | owner | 处数 | 数据从哪来 | 移出条件 |
 |---|---|---|---|---|
-| store 用户态 | `CharacterConfig`、`EnemyConfig`，以及 `stores/config.ts` 的匿名类型 | 38 + 20 + 1 | 队伍预设 JSON、分析场景 `initialState` 克隆、旧存档迁移 | 读入处（setAgent / applyTeamPreset / initialState）补齐全部缺省，并有测试锁住 |
-| 用户轴 | `StunAxis`、`StunAxisAction`、`AxisLike`、`AxisActionLike` | 8 | 轴编辑器和预设轴写入 store，`count` / `actions` 可能缺 | 轴读入时规整（缺 count 补 1、缺 actions 补 []） |
 | 目录 JSON | `AgentSkills`、`SkillCategory`、`SkillMove`、`SkillRow`、`BuffGroup`、`BuffEffect`、`TeammateBuffGroup`、`TeammateBuff`、`AgentCombatBuffs`，以及 `types/catalog.ts`、`stores/catalog.ts`、`data/moveTableQueries.ts` 的匿名类型 | 42 + 6 | `public/static/*.json`，运行时 fetch | validate:data 校验对应键必有；或 catalog store 加载时规整 |
 | Boss 预设 / 期数 | `BossPreset`、`PhaseBuffCard`、`TimelineAxisNode` | 6 | boss-presets.json；`TimelineAxisNode.date` 取自 `PeriodAxisNode.begin` | 同上（validate:data 或加载时规整） |
 | 存档导入 | `ArchiveRun`、`ArchiveRunMember` | 4 | 用户提供的文件 | 导入时规整（这一类大概率应该一直豁免） |
 | spec JSON | `TeamBuffSpec` | 1 | `src/specs/agents/*.json` | validate:specs 校验 `coverage` 必有，或类型改为可选 |
 
-**`EnemyConfig` 最接近可以移出。** 它的写入方：
+### 4.1 r724：store 用户态与轴移出豁免表
 
-- `defaultEnemy`；
-- `applyBossPreset`：23 个预设的 `defaults.battleTime` 全是 180；
-- `setEnemy`：调用方是 impactVars 扫描和属性页，属性页已带 fallback；
-- `initialState` 克隆。
+**结论**：这两类不是外部数据。r723 写的三个来源，r724 逐个核对：
 
-但 `ensureResistanceTables` 仍在兼容旧版单表抗性（`enemy.resistances`），要先确认旧存档路径已不存在。移出后，门会列出 store 边界上 5 处 `.ts` 里的 `configStore.enemy.battleTime ?? 180`（外加 difficultyRatio 的 `?? rr.totalTime`）；`.vue` 里还有 1 处（TeamComparePage），门扫不到，要手删。删完之后，180 只留在 `defaultEnemy`。
+| r723 写的来源 | 核对结果 |
+|---|---|
+| 旧存档迁移 | 不存在。store 从未持久化：`package.json` 自初始提交 `1a1f8c65` 起没有持久化插件，`git log -S localStorage -- src/stores/config.ts` 为空。`ensureResistanceTables`（把旧版单表 `enemy.resistances` 拆成三张表）和它的 deep watcher 从初始提交起就没有数据源 |
+| 分析场景 `initialState` 克隆 | 克隆源是另一个 store 的 `$state`（`createAnalysisScenario`），字段与源一致 |
+| 队伍预设 JSON | 只经 `setAgent` / `setWEngine` / `setActionCount` 等 setter 写入。setter 只改已有字段，不会让字段消失 |
+
+全部写入方：
+
+| 类型 | 写入方 | TS 管不到的来源 |
+|---|---|---|
+| `CharacterConfig` | `defaultCharacter` 全量构造；`setAgent` 和各 setter 只改已有字段；`initialState` 克隆；测试 harness 的 `setTeam`（12 个必填字段齐全） | 无 |
+| `EnemyConfig` | `defaultEnemy` 全量构造；`setEnemy` 合并写入（调用方 impactVars、属性页、结果页、bossRoom，传的都是数）；`applyBossPreset`；`initialState` 克隆 | `applyBossPreset` 的入参来自 Boss 预设 JSON |
+| 轴：`StunAxis` / `StunAxisAction`，及结构子集 `AxisLike` / `AxisActionLike` | 轴编辑器（新动作 `count: 1`）；`setAxisState` / `applyStunAxisPreset` 深拷贝；条件轴的 `split` 由代码生成；轴预设 | 轴预设的 JSON 文件 |
+
+TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
+
+- `public/static/boss-presets.json`（运行时 fetch）：每个预设的 `monster.stunVuln` / `stunTime`、`defaults.battleTime` / `shieldCount` / `energyShield`，每个相位的 `hp` / `stunValue` / `defense` / `level` / `bossAnomalyCoeff`，以及三张抗性表的 6 个元素，都必须是有限数。当前 23 个预设 / 159 个相位全部通过。反例：删一个 `battleTime`、删一个抗性元素、把一个 `hp` 置空，报 3 处。
+- `src/data/stunAxisPresets/*.json`（`import.meta.glob` 打进包）：原有的单文件检查加上「每条轴有 `actions`，每个动作有整数 `slot`、字符串 `moveId`、有限数 `count`」。当前 21 个文件 / 26 条轴 / 233 个动作全部通过。反例：删一个动作的 `count`，该文件报错。
+
+**读点上的兜底不只是死的，还互相矛盾**，可见它们从来不是「默认值」：
+
+| 读点 | 写的兜底 | store 的真实默认值 |
+|---|---|---|
+| `stunVulnDisplay` ×2 | `stunVuln ?? 0` | 1.5 |
+| convergence 的异常阈值系数 | `bossAnomalyCoeff ?? 1` | 1.1 |
+| freeCompare、RunArchivePage | `hp ?? 0` | 205970837 |
+| panelPhases 等 11 处 | `cinemaLevel ?? 0` | 6 |
+| panelPhases 等 7 处 | `wEngineModLevel ?? 1` | 5 |
+| impactVars | `stunVuln ?? 1.5`、`battleTime ?? 180` 等 4 处 | 与 `defaultEnemy` 重复一份 |
+
+**改动**（`0d699bb8`）：
+
+- 豁免表移出 `CharacterConfig`、`EnemyConfig`、`stores/config.ts` 的匿名类型，以及 4 个轴类型：126 → 59 处。
+- 门列出的死兜底用同口径 codemod 删除（`calc-arch/g724/fixnullish.mjs --policy=store`）：store 59 处、嵌套第二轮 4 处、`bodySize` 1 处、轴 8 处，共 72 处 / 20 个生产文件。
+- `.vue` 不在门内，手删 4 处：RunArchivePage 的 `hp`、TeamComparePage 的 `battleTime ?? 180`、ResultPage 的 `invincibleTime`、AttributeConfigPage 的 `bodySize`。
+- 旧版单表抗性兼容层整层删除：`EnemyConfig.resistances?` 字段、`ensureResistanceTables`、`watch(enemy, …, { deep: true, immediate: true })`、`setResistance` 里的调用。读点上的 `?? enemy.resistances ?? {}` 链（.ts 4 处、属性页 3 处）随之收短。
+- `EnemyConfig.bodySize` 改必填：`defaultEnemy` 恒写 `'large'`，应用 Boss 时按预设覆盖，读点不再重写 `'large'`。
+- `core/impactVars` 的 `ImpactVarConfig.enemy` 五个字段改必填（与 `EnemyConfig` 一致），删掉 4 处重写的默认值和 1 处 `?? {}`。
+- 测试：impactVars 的桩补齐 enemy 字段（值取 `defaultEnemy`）；删除 lycaonC2Contract 里「`delete` store 字段，模拟老预设或外部写入」的用例，上面的清点表明不存在这种来源。用例 4509 → 4508。
+- 数值：zd DUMP 0 / ROWS 0。
+
+**还没做到「180 只留在 `defaultEnemy`」。** 剩下的不是数据类型上的死兜底，而是函数入参写成可选、默认 180，门管不到：
+
+| 位置 | 写法 |
+|---|---|
+| `core/effectiveTime.ts` 的 `TimeBasisCfg` | `battleTime?` / `invincibleTime?`，读点 `?? 180` / `?? 0`。生产调用方传的都是 cfg 或 `configStore.enemy`，字段都必填 |
+| `composables/difficultyRatio.ts` 的 `RatioEnemyLike` | 字段可选，形参默认 `{}`，`enemy.battleTime ?? rr.totalTime`。两个生产调用方都传 `configStore.enemy` |
+| `resourceCalc/panelPhases.ts` 派发器 ×2 | `params.combatTime ?? 180`：build 相位不传 combatTime |
+| `mechanics/agents/lighter.ts` | `opts?.combatTime ?? 180`；build 相位直接写 `combatTime: 180` |
+| `mechanics/teamVeil.ts` | 形参默认 `combatTime = 180` |
+| `billy.ts` / `evelyn.ts` 的 `compute*Cycle` | `battleTime?`，`Number.isFinite(…) ? … : 180` |
+
+这些留给下一轮，见 r6 §8.0 #28 ④。本轮不做的原因：它们是函数入参契约，单测直调时靠可选参数省略不写，要逐个改调用方和测试；另外 build 相位改传真实战斗时间后，战斗时间不是 180 时 converge 之前的轮次会变（与 r723 诺姆 / 莱卡恩同类的修正），而 zd 的 5 个场景都是 180，量不出来，需要单独做探针归因。
+
+**下一个可移出的候选：目录 JSON 的技能表。** r724 核过 `catalog.json` 的 `agentSkills`：62 个角色 / 310 个分类 / 1352 个招式 / 7455 行，`categories`、`SkillCategory.id` / `moves`、`SkillMove.rows`、`SkillRow.id` / `kind` / `values` 一个不缺。validate:data 本来就读 catalog.json，补上这些键的校验，就能移出 `AgentSkills` / `SkillCategory` / `SkillMove` / `SkillRow`（约 20 处）。`BuffGroup` / `BuffEffect` / `TeammateBuff*` 来自 catalog 与 teammate-buffs.json，要另核。
 
 ## 5. 判据 28（`scripts/lib/dead-nullish-gate.mjs`）
 
@@ -97,7 +150,7 @@
   - 值确实总在：删掉 `?? 默认值`。默认值只留在源头，即 store 默认、`buildCharConfig` 或 `emptyPanel`。
   - 值真的可能缺：把字段改成可选（加 `?`），让每个读点都看见。
   - 不要换成 `||`、三元或 `=== undefined` 来绕门，那是同一个谎换了个写法。
-  - 外部数据的新类型：加进信任边界表，并写清数据从哪来。
+  - 外部数据的新类型：加进信任边界表，并写清数据从哪来。先确认它真是外部数据：清点写入方，只有 TS 管不到的 JSON、文件或浏览器存储才算（r724 的教训：store 状态曾被误列，见 §4.1）。
 
 ## 6. cfg 契约与战斗时间单一通道
 
@@ -146,7 +199,8 @@
 
 | 事项 | 不做的原因 | 重开条件 |
 |---|---|---|
-| 外部数据类型上的 126 处 | 见 §4 | 某数据源加了读入规整或校验，就把对应 owner 移出豁免表；门会列出变成死代码的兜底，逐个删 |
+| 外部数据类型上的 59 处（r723 为 126，r724 移出 store 用户态与轴） | 见 §4 | 某数据源加了读入规整或校验，就把对应 owner 移出豁免表；门会列出变成死代码的兜底，逐个删。下一个候选是目录 JSON 的技能表（§4.1 末段） |
+| 函数入参上的战斗时间默认 180（6 处，§4.1 末表） | 不是数据类型上的死兜底，门管不到；build 相位改传真实战斗时间会改变非 180 场景的 converge 前轮次，要探针归因 | 自选时做（r6 §8.0 #28 ④） |
 | 同类防御写法：`x != null`、`=== undefined`、`typeof x === 'number'`、`Number.isFinite(x)`，以及套在必填 number 上的 `Number(x)`、`\|\| 默认值` | 语义各有差异（`\|\|` 会吃掉 0），本门只管 `??` | 出现「为绕门改写法」的提交，或这类写法成批出现 |
 | `.vue` 里的 `??` | 需要 vue-tsc 的类型信息，普通 TS program 拿不到 | 展示层出现同类事故时，再考虑用 vue-tsc language service 扫 |
 | codemod 留下的属性别名（`const dmgBonus = p.dmgBonus` 等 53 处） | 命名读起来有用；只内联了纯改名的别名（jane、千夏、stunAxis） | 无 |
