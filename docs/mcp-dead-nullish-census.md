@@ -1,9 +1,10 @@
-# 死兜底普查与判据 28（r723；r724 收窄信任边界；r725 信任边界清零）
+# 死兜底普查与判据 28（r723；r724 收窄信任边界；r725 信任边界清零；r726 战斗时间单一来源）
 
 > 范围：src 非测试 `.ts` 里「左侧类型不含 null / undefined 的 `a ?? b`」。工具：TS 类型检查器（不是正则）。
 > 提交：`7cb3f8c8`（清理 + cfg 契约）、`6e534cae`（战斗时间单一通道）、`587e767e`（判据 28）。
 > r724：store 用户态与轴移出信任边界（`0d699bb8`），写入方清点见 §4.1。
 > r725：外部 JSON 类型契约（`766a04a0`）——validate:data 按代码转型用的 TS 类型校验全部 JSON 入口，信任边界表删除（59 → 0），见 §4.2。
+> r726：战斗时间单一来源（`866b5ef8`）——生产代码里当战斗时间用的 180 只留在 store 的 defaultEnemy，函数入参的缺省改必填；战斗时间 ≠ 180 的差异逐队归因，见 §4.3。
 > 普查 / codemod 脚本：`calc-arch/g723/deadnullish.mjs`、`calc-arch/g723/fixnullish.mjs`（不进仓；判据实现在 `scripts/lib/dead-nullish-gate.mjs`）。
 
 ## 1. 结论速览
@@ -19,6 +20,7 @@
   - 最后加判据 28 硬门，防止长回来。
 - r724：逐个清点 store 用户态（`CharacterConfig` / `EnemyConfig`）与轴类型的写入方，没有找到 TS 管不到的缺字段来源（store 从未持久化；外部 JSON 只有 Boss 预设与轴预设，改由 validate:data 校验），于是把它们移出豁免表：豁免 126 → 59 处，删读点死兜底 72 处 + `.vue` 4 处，旧版单表抗性兼容层整层删除。
 - r725：信任边界清零。代码对 JSON 的转型（`res.json() as T`、`import.meta.glob` 后 `as T`）共 8 个入口，validate:data 改为按这些类型逐字段校验数据、漏登记的入口即红（`scripts/lib/json-contract.mjs`）。首跑查出 31 个键与声明不符，逐条改真（`BuffEffect` 改判别联合、`SkillRow.label` 等改可选、null 归一为缺省）；然后删除豁免表，读点死兜底删 59 处 + `.vue` 6 处。
+- r726：战斗时间单一来源。函数入参上的 180 缺省与兜底改必填（生产调用方本来就都传了真实值），build 相位改传真实战斗时间，般岳闪能与仪玄异常回闪上限改按战斗时间算。战斗时间 ≠ 180 的探针只见 6 个般岳队变化，归因到般岳闪能（§4.3）。
 
 ## 2. 判定口径
 
@@ -136,7 +138,7 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 | `mechanics/teamVeil.ts` | 形参默认 `combatTime = 180` |
 | `billy.ts` / `evelyn.ts` 的 `compute*Cycle` | `battleTime?`，`Number.isFinite(…) ? … : 180` |
 
-这些留给下一轮，见 r6 §8.0 #28 ④。本轮不做的原因：它们是函数入参契约，单测直调时靠可选参数省略不写，要逐个改调用方和测试；另外 build 相位改传真实战斗时间后，战斗时间不是 180 时 converge 之前的轮次会变（与 r723 诺姆 / 莱卡恩同类的修正），而 zd 的 5 个场景都是 180，量不出来，需要单独做探针归因。
+这些留给下一轮，见 r6 §8.0 #28 ④。本轮不做的原因：它们是函数入参契约，单测直调时靠可选参数省略不写，要逐个改调用方和测试；另外 build 相位改传真实战斗时间后，战斗时间不是 180 时 converge 之前的轮次会变（与 r723 诺姆 / 莱卡恩同类的修正），而 zd 的 5 个场景都是 180，量不出来，需要单独做探针归因。→ r726 已做，范围扩到全部 20 处，探针归因见 §4.3。
 
 **下一个可移出的候选：目录 JSON 的技能表。** r724 核过 `catalog.json` 的 `agentSkills`：62 个角色 / 310 个分类 / 1352 个招式 / 7455 行，`categories`、`SkillCategory.id` / `moves`、`SkillMove.rows`、`SkillRow.id` / `kind` / `values` 一个不缺。validate:data 本来就读 catalog.json，补上这些键的校验，就能移出 `AgentSkills` / `SkillCategory` / `SkillMove` / `SkillRow`（约 20 处）。`BuffGroup` / `BuffEffect` / `TeammateBuff*` 来自 catalog 与 teammate-buffs.json，要另核。→ r725 已做，范围扩到全部 JSON 入口，并改成按类型自动校验、不再手抄键清单（§4.2）。
 
@@ -202,6 +204,98 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 
 **回退**：`git revert 766a04a0`（文档另提交）。豁免表与兜底会一起回来，彼此一致。
 
+### 4.3 r726：战斗时间单一来源（r6 §8.0 #28 ④）
+
+**结论**：生产代码（src 非测试）里，当战斗时间用的 180 只剩 `stores/config.ts` 的 `defaultEnemy.battleTime` 一处。
+
+- 函数入参上的 180 缺省与兜底全部改成必填。
+- build 相位改传真实战斗时间。
+- 般岳闪能、仪玄异常回闪上限改按战斗时间算。
+
+提交 `866b5ef8`。
+
+**范围**：§4.1 末表列了 6 处。全量 grep 后，作为战斗时间的字面量 180 共 20 处，另有 difficultyRatio 的 `?? rr.totalTime` 一处，分四类：
+
+- 入参缺省
+- 兜底
+- 模块常量
+- 输入框上限
+
+**做法**：
+
+- 先把入参改必填，用 vue-tsc 找调用方。
+  - 生产代码零报错，说明生产调用方本来就都传了真实值；缺省只被单测和 build 相位用到。
+- 测试按位置补参。
+  - 般岳的 `computeBanyueRageCycle` 在命座之后插入 `battleTime`。原第 9 个参数起都是数字，插参后类型照样对得上，漏插会静默错位。
+  - 所以不靠 tsc 报错，按位置用 codemod 插了 26 处。
+
+**清单**（22 个生产文件）：
+
+| 位置 | 原写法 | 现在 | 生产行为 |
+|---|---|---|---|
+| `core/effectiveTime.ts` | `TimeBasisCfg` 两字段可选，`?? 180` / `?? 0` | 拆成 `InvincibleBasis`（只要无敌时间）与 `TimeBasisCfg`（两项），字段都必填 | 不变：调用方传的是 cfg 或 store 的 enemy |
+| `composables/difficultyRatio.ts` | `RatioEnemyLike` 可选；形参默认 `{}`；`?? rr.totalTime` | 必填，无默认 | 不变：两处调用方都传 store 的 enemy |
+| `resourceCalc/panelPhases.ts` 派发器 ×2 | `params.combatTime ?? 180` | `AgentTeamRoundInput` 里的 `combatTime` 必填；`collectNextRoundFeedback` 同样必填 | build 相位改用真实战斗时间（见下文数值） |
+| `useResourceCalc.ts` 的 build 相位 | 不传 combatTime | 传 `enemy.battleTime` | 同上 |
+| `mechanics/agents/lighter.ts` | `opts?.combatTime ?? 180`；build 相位写死 `combatTime: 180` | opts 必填；build 相位用钩子给的 combatTime | 同上 |
+| `teamVeil.ts` / `zhao.ts` | 形参默认 `combatTime = 180` | 必填 | 不变：convergence 传 `base.totalTime` |
+| `billy.ts` / `evelyn.ts` 的 `compute*Cycle` | `battleTime?` + `Number.isFinite(…) ? … : 180` | 必填 | 不变：读 `cfg.battleTime`。伊芙琳的面板调用只读三项覆盖率，战斗时间按 0 占位 |
+| `stunWindows.ts` 的 `stunWindowCoverage` | 入参 `unknown`；`\|\| 0` / `\|\| 180` | 入参 `number` | 不变：派发器给的是 number |
+| `rowBuild.ts`、`resourceIncome.ts` ×3、`AnomalyPoolInput.totalTime` | 形参默认 `totalTime = 180`（resourceIncome 连带前面的 `chainCountTotal = 0` 等） | 必填 | 不变：生产调用方都传了 |
+| `luciaElowen.ts` 的 `computeLuciaCurtainTriggers` | 后三个形参有缺省，含 `totalTime = 180` | 必填；外部直调的回退路径传 `cfg.battleTime` | 不变：探针证实回退路径在流水线里走不到 |
+| `remielle.ts` 的反馈钩子 | `teamResult?.totalTime ?? 180` | 读钩子入参 `combatTime` | 不变：两者都等于 `enemy.battleTime` |
+| `banyue.ts` | `FLASH_INCOME = 2 * 180 + 60` | 闪能 = 2/s × 战斗时间 + 60。`computeBanyueRageCycle` 增加 `battleTime` 入参；补齐入参增加 `InteractionTopUpInput.battleTime`，由 convergence 传 `base.totalTime` | 战斗时间 ≠ 180 时会变（见下文数值） |
+| `yixuan.ts` | `ANOMALY_TRIGGER_MAX = floor(180 / 10)` | `floor(战斗时间 / 10)` | 预设库里没碰到上限，未见变化 |
+| `AttributeConfigPage.vue` | 无敌时间输入框 `max: 180` | 上限取 `enemy.battleTime`，与结果页同口径 | 只影响输入上限 |
+
+**数值归因**：
+
+- 战斗时间 180：用 zd 的 5 个场景比对，DUMP 0 / ROWS 0。
+- 战斗时间 ≠ 180：用临时探针比对，探针不入库，脚本在 `calc-arch/g726/dumpbt.perf.ts`。
+  - 跑 zd 同一套 104 个预设 × 5 种变体；每个预设落定后把 `enemy.battleTime` 设成目标值，逐角色哈希。
+  - 基线 = `ba8416c0`。先用基线对基线跑一次，0 / 520，确认探针本身可复现。
+
+| 战斗时间 | 变化 | 范围 |
+|---|---|---|
+| 150 | 30 / 520 键 | 6 个般岳队 × 5 种变体，总伤 −18.7% ～ +8.3% |
+| 150，般岳闪能临时钉回 180 | 0 / 520 | 说明上一行的变化全部来自般岳闪能 |
+| 90 | 30 / 520，同 6 队 | −25.1% ～ −5.5% |
+| 240 | 30 / 520，同 6 队 | −6.1% ～ +10.1% |
+
+- **其余改动在三种战斗时间下都没有让任何队伍变化**：
+  - build 相位写入的值会在 converge / postRound 相位被重算覆盖，例如莱特的 5 队，以及照、爱芮、叶瞬光、千夏所在的队。
+  - 卢西娅帷幕的回退路径在流水线里走不到：不含般岳的 19 个卢西娅队都没变。
+  - 仪玄 6 队的异常回闪次数没有到上限。
+- **般岳的变化是修正**：
+  - 原来扫描战斗时间（impactVars 的 totalTime 轴）时，闪能恒按 180 秒算。现在战斗短则闪能少、连段少，伤害下降；战斗长则相反。
+  - 个别变体方向相反，例如 240 秒时扳机队的「交互加码」变体为 −6.1%。原因是闪能多了连段就多，要占的前台时间也多，在固定的时间账里会挤掉别的动作。
+
+**测试**：
+
+- 签名随改 14 个测试文件。
+- 12 个测试文件的桩原来靠 `?? 180` / `?? 0` 取值，补上 `battleTime: 180` / `invincibleTime: 0`，取原兜底值。
+  - 伊德海莉「寒冰触手需额外能力」这条反向用例也一并补上，否则它会因 NaN 而碰巧通过。
+- 删 3 条专测兜底的断言：
+  - `effectiveBattleTime({})` = 180；
+  - `stunWindowCoverage` 的非有限输入回落；
+  - `stunWindowCoverage` 的 0 秒回落 180。
+- 补 1 条战斗时间 150 的分母断言。
+- 用例数不变：524 / 4507。
+- 改到锚定函数的 @fact 有 4 条，逐条复核后仍成立，据链各追加 `·复核@2026-10-07`：
+  - `engine:操作难度/非失衡占比数据源`
+  - `engine:time/无敌≠秽盾`
+  - `engine:banyue/补齐时间上限`
+  - `agent:1491/帷幕计数`
+
+**没做**：
+
+- 般岳补齐的时间上限 `AUTO_TOPUP_TIME_LIMIT_SEC = 200`。
+  - 注释写的是「战斗只有 180 秒，少量合轴吸收不了 20 秒以上的净超出」，按理也随战斗时间变。
+  - 但这是用户 2026-09-01 定的数（@fact 锚定）。推广成「战斗时间 + 20」等于改用户口径，记入 §8。
+- 其他同类防御写法，例如 trigger / rina / zhendou 里套在必填 number 上的 `Number(x) || 0`。它们不是 180，判据 28 也不管，归入 §8 已有条目。
+
+**回退**：`git revert 866b5ef8`（文档另提交）。
+
 ## 5. 判据 28（`scripts/lib/dead-nullish-gate.mjs`）
 
 - **规则**：同 §2。
@@ -242,7 +336,7 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 - **现状**：
   - 三个模块直接读 `cfg.battleTime` / `cfg.invincibleTime`。
   - 诺姆的 `|| 180` 和 `prev.battleTime ?? 180` 一并去掉。
-  - 钩子入参 `combatTime` 保留：anby、corin、harumasa 等模块仍在读。它与 `cfg.battleTime` 同源于 `configStore.enemy.battleTime`，两者都是必填，都没有兜底。
+  - 钩子入参 `combatTime` 保留：anby、corin、harumasa 等模块仍在读。它与 `cfg.battleTime` 同源于 `configStore.enemy.battleTime`，两者都是必填，都没有兜底。r726 起 build 相位也传真实值，派发器不再补 180（§4.3）。
 - **数值**：
   - 主页没有战斗时间输入，23 个预设都是 180，所以正常计算逐位不变（zd 0/0）。
   - 只有 impactVars 扫描 battleTime 轴、把它改成非 180 时，诺姆 / 莱卡恩在 converge 之前的轮次会改用真实战斗时间。这是修正，不是回归。
@@ -268,7 +362,7 @@ TS 管不到的只有这两处 JSON，r724 都加进了 validate:data：
 | 恢复信任边界豁免表 | r725 已删：JSON 入口全部由类型契约校验（§4.2），类型可信 | 出现 TS 管不到又登记不进契约表的新入口时，先让它走解析函数，不恢复豁免表 |
 | spec 的三个说明性 countSource 取值（holdSeconds / none / windEnergyConsumed） | 只出现在手写模块角色（1571 / 1611 / 1621），spec 资源通道不算它们；收进引擎词表等于为不走这条通道的数据写解析 | 这些角色改走 spec 资源通道时 |
 | `BuffGroup.scope` 缺省时读点口径不一（收集器按局内，hpSourceBreakdown 的 hpPhase 按局外） | 缺 scope 的 29 组里没有生命类效果，当前不影响数值 | 缺 scope 的组出现生命类效果时；或统一时顺手把 29 组补上 scope |
-| 函数入参上的战斗时间默认 180（6 处，§4.1 末表） | 不是数据类型上的死兜底，门管不到；build 相位改传真实战斗时间会改变非 180 场景的 converge 前轮次，要探针归因 | 自选时做（r6 §8.0 #28 ④） |
+| 般岳补齐时间上限 `AUTO_TOPUP_TIME_LIMIT_SEC = 200`（= 180 + 20 秒余量）不随战斗时间 | 用户 2026-09-01 定的数（@fact `engine:banyue/补齐时间上限`），推广成「战斗时间 + 20」要改用户口径；r726 已让般岳闪能随战斗时间，战斗时间上只剩这一处 | 用户确认推广；或战斗时间扫描里出现补齐被误判非法 |
 | 同类防御写法：`x != null`、`=== undefined`、`typeof x === 'number'`、`Number.isFinite(x)`，以及套在必填 number 上的 `Number(x)`、`\|\| 默认值` | 语义各有差异（`\|\|` 会吃掉 0），本门只管 `??` | 出现「为绕门改写法」的提交，或这类写法成批出现 |
 | `.vue` 里的 `??` | 需要 vue-tsc 的类型信息，普通 TS program 拿不到 | 展示层出现同类事故时，再考虑用 vue-tsc language service 扫 |
 | codemod 留下的属性别名（`const dmgBonus = p.dmgBonus` 等 53 处） | 命名读起来有用；只内联了纯改名的别名（jane、千夏、stunAxis） | 无 |
