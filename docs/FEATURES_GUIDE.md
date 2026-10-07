@@ -227,7 +227,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 - 起点预设全做：新号（全限定待抽）/ 成型号（常驻 S + A + 赠送免费可用，0 限定）/ 自选持有。
 - **贬值内生**：不设折现参数——老卡分数下降由每期 Boss 血量/抗性数据自然涌现（引擎逐期求值；每房带该期该 Boss 的关卡固有 buff，CC-342）。
 - **复刻不建模**：首 UP 窗口 = 唯一购买窗口（最优规划下复刻补抽要求「当时资源受限且复刻期无更强新卡」，两者都罕见）。窗口 = [首 UP 卡池节点日期, 下一个卡池节点日期)（`PlannerCard.windowStart` / `windowEnd`，后者必填、`null` = 其后无已知节点），关窗后本体、专武、满配都不能再买（2026-09-29 前实现无上界，等于永久可买）。
-- **只算伤害分**：分数 = `scoreForDamageRatio(伤害/当期Boss血量)`，单房 60000（`core/deadlyAssaultScore.ts`，分段线性 7 段——前段血「值分」多、末段（接近击杀）效率最低，非 `60000×伤害比` 线性；操作分是附加分、与强度无关，已剔除）。
+- **只算伤害分**：分数 = `scoreForDamageRatio(伤害/当期Boss血量)`，单房 60000（`data/deadlyAssaultScore.ts`，分段线性 7 段——前段血「值分」多、末段（接近击杀）效率最低，非 `60000×伤害比` 线性；操作分是附加分、与强度无关，已剔除）。
 - **音擎 = 1 金但期望更便宜**（10000 vs 15000 菲林）；**每版本免费 25000 菲林**（`PLANNER_FILM_PER_VERSION`），按版本日历发放（`versionFilmGrants`：每跨过一个版本开始日发一份，收入日历 = `plannerVersionStartDates()`；2026-09-29 前误按「期日期变化」每期发一份，每版本约 3 期 ⇒ 收入约 ×3）。没买专武不带专武：持有档逐人映射（不并池灌给主C）；本体档穿固定下位（辅助=高精炼啜泣摇篮，击破=高精炼燃狱齿轮），不逐队搜索。
 - 困难（Adversity）不做；音擎金步纳入购买阶梯（本体 15000 → 专武 10000 → 满配 6影画+4精炼）。阶梯是数据表 `pullPlanner.ts` `PURCHASE_LADDER`（每档 = 累计影画 / 精炼 + 文案）：增量成本 `tierCost`、引擎配装 `holdingStateFor`、页面文案 `ppTierLabelOf` 都从它派生，改阶梯只改这张表（但改内容 = 改口径）。
 
@@ -340,7 +340,7 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 - 交互基准 = 不预设弹刀——弹刀由「保底4失衡（Boss 预设反推）+ 保底4喧响（喧响缺口÷215）」运行时反推；闪反按职业基准（roleInteractionBaseline：支援/防护 0 交互，其余 10）、快支固定 3 作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
 - Boss = 期相位血量（**危局总血量 = nanoka 单管血量 `mo.stats.hp` × 管数：普通 8.74 / 困难 15.8**；`mo.stats.hp` 已含 4 号血量成长曲线 70 级 × 版本系数）+ 关卡固有 layer_buff 自动应用；当期可选牌（3 选 1）**不自动应用**（归档未记录玩家选择）。
 - 仅危局强袭（Deadly Assault*，含 Adversity），防卫战/歼灭排除。
-- 比对口径：伤害/血量%（击杀线 100%）+ **伤害分**（`core/deadlyAssaultScore.ts` 分段线性，普通/困难两套曲线，按 run.mode 自动选；操作分已剔除）vs 实战 score/bossKilled/time；归档 65000 = 60000 伤害分 + 5000 操作分，击杀即伤害分 60000。差异 = 配装差 + 建模误差，靠理想配装上界夹逼隔离。
+- 比对口径：伤害/血量%（击杀线 100%）+ **伤害分**（`data/deadlyAssaultScore.ts` 分段线性，普通/困难两套曲线，按 run.mode 自动选；操作分已剔除）vs 实战 score/bossKilled/time；归档 65000 = 60000 伤害分 + 5000 操作分，击杀即伤害分 60000。差异 = 配装差 + 建模误差，靠理想配装上界夹逼隔离。
 
 ### 7.5 血量膨胀图（「血量膨胀」Tab）
 
