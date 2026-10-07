@@ -24,7 +24,7 @@
  * 由下任从基线删掉（棘轮只减不增，与 DEAD_CHANNEL_ALLOWLIST 同款纪律：不许为绿而登记）。
  *
  * @fact engine:guards/死通道LS 口径: 死通道=导出可选属性/内联opts可选属性 全仓零写入点（AST PropertyAssignment∪LS write-access∪vue `foo:` 三重交叉，namesake 同名写入保守压制不报）；reads=0 记 dead-both、reads>0 记 dead-input；基线棘轮新增即红；**基线键行号无关**（`文件 符号`，带行号的旧键经 normalizeBaseKey 兼容——2026-09-15 实测：无关改动给 types/resource/config.ts 插 9 行致 9 条冻结基线条目假红） | 据 实测@2026-09-15·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadChannelsLs | 信 高
- * @fact engine:guards/死导出 口径: 死导出=src 非测试 .ts 的导出（含 `export {x} from` / `export {x as y}` 转出别名）没有任何**生产消费点**（本文件使用 / 其他 src 非测试 .ts / scripts 的 .ts / .vue 的 import）；**测试侧引用不算**（`__tests__`、`*.test.ts`、`src/test/`）——只被测试引用 = 生产死代码 + 它的测试（R33 真实病灶形态）；使用点沿别名链逐跳标记，命名空间按值用 / `import()` 未解构 ⇒ 整模块算被用（保守）；.vue 解析 `<script>` 的 import 经被导入模块导出表落到符号；例外只有 DEAD_EXPORT_TEST_SEAMS（必须与模块私有状态同处的测试接口，失效条目报红）；全仓棘轮 = 死导出为空；已知不覆盖=只被另一个死导出引用的导出（单层判定，前者删后下次扫描才红） | 据 实测@2026-10-07（r721：一次遍历反向索引取代逐导出 findReferences——⑫ 37.8s→约 5s；扫面 src/core→全 src；全仓 2402 导出中只被测试引用 21 + 零引用 5，逐条裁决：删 / 搬进测试侧 / 4 条登记测试接口） | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadExports + scripts/lib/dead-channel-ls.mjs#DEAD_EXPORT_TEST_SEAMS | 信 高
+ * @fact engine:guards/死导出 口径: 死导出=src 非测试 .ts 的导出（含 `export {x} from` / `export {x as y}` 转出别名）没有任何**生产消费点**（本文件使用 / 其他 src 非测试 .ts / scripts 的 .ts / .vue 的 import）；**测试侧引用不算**（`__tests__`、`*.test.ts`、`src/test/`）——只被测试引用 = 生产死代码 + 它的测试（R33 真实病灶形态）；使用点沿别名链逐跳标记，命名空间按值用 / `import()` 未解构 ⇒ 整模块算被用（保守）；.vue 解析 `<script>` 的 import 经被导入模块导出表落到符号；例外只有 DEAD_EXPORT_TEST_SEAMS（必须与模块私有状态同处的测试接口，失效条目报红）；转出口径（r722）：转出别处声明的符号（`export {x} from` / `export *` / `import {x}` 再 `export {x}`）只许在 REEXPORT_ENTRY_FILES 登记的入口，其余文件的转出 = 兼容壳，有生产消费也报红（拆分 / 下沉时同批改导入方，不留第二条导入路径），入口条目不再转出任何符号也报红；全仓棘轮 = 死导出与兼容壳都为空；已知不覆盖=只被另一个死导出引用的导出（单层判定，前者删后下次扫描才红） | 据 实测@2026-10-07（r721：一次遍历反向索引取代逐导出 findReferences——⑫ 37.8s→约 5s；扫面 src/core→全 src；全仓 2402 导出中只被测试引用 21 + 零引用 5，逐条裁决：删 / 搬进测试侧 / 4 条登记测试接口）·实测@2026-10-07（r722：近一个月约 10 次拆分 / 下沉各留一个兼容壳，14 个门面 60 条转出的导入方全部迁到声明处后删除；保留入口 4 个） | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadExports + scripts/lib/dead-channel-ls.mjs#DEAD_EXPORT_TEST_SEAMS + scripts/lib/dead-channel-ls.mjs#REEXPORT_ENTRY_FILES | 信 高
  */
 import { createRequire } from 'node:module'
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
@@ -65,6 +65,22 @@ export const DEAD_EXPORT_TEST_SEAMS = {
   'src/core/resource/rowBuild.ts setRowFastPathsEnabled': { since: '2026-10-07', why: '行构造快路径开关，写模块私有 let；allAgentsGuards / feasibleRowsMemo 关快路径对拍慢路径' },
   'src/composables/useResourceCalc.ts getCalcOutputMemoStats': { since: '2026-10-07', why: 'calcOutput 记忆化命中 / 未命中 / 旁路计数，读模块私有状态；calcOutputMemo / wEngineCoverageFixpointT10 断言' },
   'src/composables/useResourceCalc.ts setCalcOutputMemoEnabled': { since: '2026-10-07', why: 'calcOutput 记忆化开关，写模块私有 let；calcOutputMemo / outerContinuity / allAgentsGuards 关记忆化对拍' },
+}
+
+/**
+ * 转出入口白名单（r722）：只有这些文件可以转出**别处声明**的符号（`export {x} from` / `export *` /
+ * `import {x}` 再 `export {x}`）。其余文件的转出 = **兼容壳**：拆分 / 下沉时为「导入方零改动」留下的第二条
+ * 导入路径——同一符号两个导入点，改名 / 删除要追两处，读者分不清哪个是真身。r722 前一个月约 10 次拆分 / 下沉
+ * 各留一个壳（14 个门面 60 条），导入方全部迁到声明处后删除。
+ * ⇒ 拆分 / 下沉时**同批改导入方**，不留壳。入口只收「一个域的公共面」：导入方不该知道符号落在哪个分片；
+ *   拆出来的是有自己名字和职责的新模块（panelPhases / moveLookup / data 层下沉）就让导入方直连它。
+ * 值 = 为什么它是入口。条目不再转出任何符号进 `staleEntries`，deadChannelLs.test ⑫ 变红——名单不许腐烂。
+ */
+export const REEXPORT_ENTRY_FILES = {
+  'src/mechanics/index.ts': '`@/mechanics` 公共入口：`export *` 汇总 registry / interactionBaseline / types，编排层与录入层只认这一个入口',
+  'src/mechanics/types.ts': '机制契约类型的单一入口：CC-83 / CC-451 按体积预算拆出 typesRows / typesHooks / typesView，分片不是新的域，导入方不该知道某个类型落在哪片（typesSplitCc83.test 锁形状）',
+  'src/types/resource/index.ts': '资源域类型桶：类型按域拆在 types/resource/*，导入方统一走 `@/types/resource`（目录 index）',
+  'src/stores/config.ts': '展示层合规通道：views / components 不得 import `@/mechanics`（判据 7），interactionBaseline 三个纯函数经 store 转给 .vue',
 }
 
 /** 走目录收 .ts（跳过 __tests__ 与 .d.ts——测试写入也算写入，故测试文件进 program 但不进候选面） */
@@ -404,12 +420,17 @@ const exportKindOf = (d) => ts.isFunctionDeclaration(d) ? 'function'
  * `auditNonCoreDeadExports`（非 core 三道兜底，只报不红）。
  * 已知不覆盖：只被另一个死导出引用的导出，要等前者删掉后的下一次扫描才红（单层判定）。
  *
- * @param {{root?: string, seams?: Record<string, {since: string, why: string}>}} [opts]
- * @returns {{dead: Array<{key:string,file:string,line:number,name:string,kind:string}>, staleSeams: string[], exports: number, ms: number}}
+ * 转出口径（r722）：非入口文件转出别处声明的符号 = 兼容壳，进 `shells`（有生产消费也算——壳的问题是第二条
+ * 导入路径，不是死）；本地声明的改名导出（`export { own as renamed }`）不算转出。入口见 `REEXPORT_ENTRY_FILES`，
+ * 条目不再转出任何符号进 `staleEntries`。
+ *
+ * @param {{root?: string, seams?: Record<string, {since: string, why: string}>, entries?: Record<string, string>}} [opts]
+ * @returns {{dead: Array<{key:string,file:string,line:number,name:string,kind:string}>, staleSeams: string[], shells: Array<{key:string,file:string,line:number,name:string,from:string}>, staleEntries: string[], exports: number, ms: number}}
  */
 export function scanDeadExports(opts = {}) {
   const root = opts.root ?? REPO_ROOT
   const seams = opts.seams ?? DEAD_EXPORT_TEST_SEAMS
+  const entries = opts.entries ?? REEXPORT_ENTRY_FILES
   const t0 = Date.now()
   const program = ts.createLanguageService(createLsHost(collectProgramFiles(root), root)).getProgram()
   const checker = program.getTypeChecker()
@@ -541,6 +562,8 @@ export function scanDeadExports(opts = {}) {
   // ---- 候选：src 非测试 .ts 的导出 ----
   const dead = []
   const seamAlive = new Map()
+  const shells = []
+  const entryUsed = new Set()
   let exportCount = 0
   for (const sf of program.getSourceFiles()) {
     const f = sf.fileName
@@ -560,8 +583,34 @@ export function scanDeadExports(opts = {}) {
       const node = ts.isVariableDeclaration(d) ? d.parent.parent : d
       dead.push({ key, file: rel, line: sf.getLineAndCharacterOfPosition(node.getStart()).line + 1, name: sym.getName(), kind: exportKindOf(d) })
     }
+    // 转出口径：`export … from`（含 `export *`）与「import 进来再 export」
+    const isEntry = Object.prototype.hasOwnProperty.call(entries, rel)
+    for (const st of sf.statements) {
+      if (!ts.isExportDeclaration(st)) continue
+      const hits = []
+      if (st.moduleSpecifier) {
+        const mf = moduleFileOf(st.moduleSpecifier)
+        const from = mf ? relative(root, mf) : st.moduleSpecifier.getText(sf)
+        if (!st.exportClause) hits.push(['*', from])
+        else if (ts.isNamespaceExport(st.exportClause)) hits.push([st.exportClause.name.text, from])
+        else for (const el of st.exportClause.elements) hits.push([el.name.text, from])
+      } else if (st.exportClause && ts.isNamedExports(st.exportClause)) {
+        for (const el of st.exportClause.elements) {
+          const local = checker.getExportSpecifierLocalTargetSymbol(el)
+          if (!local || !(local.flags & ts.SymbolFlags.Alias)) continue
+          const od = (checker.getAliasedSymbol(local).declarations ?? [])[0]
+          const odf = od && od.getSourceFile()
+          if (odf && odf !== sf) hits.push([el.name.text, relative(root, odf.fileName)])
+        }
+      }
+      if (isEntry) { if (hits.length) entryUsed.add(rel); continue }
+      const line = sf.getLineAndCharacterOfPosition(st.getStart()).line + 1
+      for (const [name, from] of hits) shells.push({ key: `${rel} ${name}`, file: rel, line, name, from })
+    }
   }
   const staleSeams = Object.keys(seams).filter((k) => seamAlive.get(k) !== false).sort()
+  const staleEntries = Object.keys(entries).filter((k) => !entryUsed.has(k)).sort()
   dead.sort((a, b) => a.key.localeCompare(b.key))
-  return { dead, staleSeams, exports: exportCount, ms: Date.now() - t0 }
+  shells.sort((a, b) => a.key.localeCompare(b.key))
+  return { dead, staleSeams, shells, staleEntries, exports: exportCount, ms: Date.now() - t0 }
 }

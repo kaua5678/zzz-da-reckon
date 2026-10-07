@@ -27,11 +27,12 @@ interface ScanResult { dead: DeadHit[]; candidates: number; ms: number }
 interface BaselineEntry { since: string; why: string }
 
 interface ExportHit { key: string; file: string; line: number; name: string; kind: string }
-interface ExportScanResult { dead: ExportHit[]; staleSeams: string[]; exports: number; ms: number }
+interface ShellHit { key: string; file: string; line: number; name: string; from: string }
+interface ExportScanResult { dead: ExportHit[]; staleSeams: string[]; shells: ShellHit[]; staleEntries: string[]; exports: number; ms: number }
 
 const impl = deadChannelLsNs as {
   scanDeadChannelsLs: (opts?: { root?: string; dirs?: string[] }) => ScanResult
-  scanDeadExports: (opts?: { root?: string; seams?: Record<string, BaselineEntry> }) => ExportScanResult
+  scanDeadExports: (opts?: { root?: string; seams?: Record<string, BaselineEntry>; entries?: Record<string, string> }) => ExportScanResult
   /** 泛型：两类 hit（DeadHit / ExportHit）都只要求有 `key`，别为第二类复制一份函数签名 */
   diffAgainstBaseline: <T extends { key: string }>(dead: T[], baseline?: Record<string, BaselineEntry>) => { fresh: T[]; resolved: string[] }
   DEAD_CHANNEL_LS_BASELINE: Record<string, BaselineEntry>
@@ -187,6 +188,8 @@ describe('dead-channel-ls 棘轮（仓库级现状断言）', () => {
  * 活实现零测试）——测试引用算活的口径对它恒绿。r721 普查全 src：只被测试引用 21 + 零引用 5（R34 审计只报不红，
  * 自 09-18 起无人跑）。⇒ 测试侧引用不再算消费；扫面扩到全 src（.vue 解析 `<script>` 的 import）；
  * 例外只有必须与模块私有状态同处的测试接口（`DEAD_EXPORT_TEST_SEAMS`）。
+ * r722：拆分 / 下沉留下的兼容壳（14 个门面 60 条转出）有生产消费、死导出口径抓不到 ⇒ 加转出口径：
+ * 非入口文件的转出一律报红，入口白名单 `REEXPORT_ENTRY_FILES`。
  */
 describe('dead-channel-ls 死导出（全 src · 只认生产消费）', () => {
   it('⑩ 零引用 / 只被测试引用 / 无人经由的转出别名 → 报；改名 import、命名空间解构与按值使用、同文件使用 → 不报；src/test 不进候选', () => {
@@ -240,8 +243,8 @@ describe('dead-channel-ls 死导出（全 src · 只认生产消费）', () => {
     expect(r.staleSeams).toEqual(['src/core/memo.ts gone', 'src/core/memo.ts isOn'])
   })
 
-  it('⑫ 仓库级：全 src 死导出为空、测试接口豁免无失效条目', () => {
-    const { dead, staleSeams, exports, ms } = scanDeadExports()
+  it('⑫ 仓库级：全 src 死导出为空、测试接口豁免无失效条目、非入口文件无转出', () => {
+    const { dead, staleSeams, shells, staleEntries, exports, ms } = scanDeadExports()
     // 反空洞下限：全 src 导出面约 2400（2026-10-07）——扫描器静默失效时这里先红
     expect(exports, 'src 导出面异常小 ⇒ 扫描器可能失效（恒绿风险）').toBeGreaterThan(1500)
     expect(ms).toBeLessThan(60_000)
@@ -249,6 +252,11 @@ describe('dead-channel-ls 死导出（全 src · 只认生产消费）', () => {
     expect(
       dead.map(d => `${d.key} (${d.kind})`),
       '死导出：接上生产消费者，或删掉（只被测试用的连同测试一起删；夹具搬进 src/test）；只有必须与模块私有状态同处的测试接口才登记 DEAD_EXPORT_TEST_SEAMS',
+    ).toEqual([])
+    expect(staleEntries, '转出入口白名单失效：该文件已不再转出任何符号，从 REEXPORT_ENTRY_FILES 删掉').toEqual([])
+    expect(
+      shells.map(s => `${s.key} ← ${s.from}`),
+      '兼容壳：导入方改到声明处（← 所指文件）后删掉这条转出；只有一个域的公共入口才登记 REEXPORT_ENTRY_FILES 并写清理由',
     ).toEqual([])
   })
 
@@ -263,5 +271,29 @@ describe('dead-channel-ls 死导出（全 src · 只认生产消费）', () => {
     expect(keys).not.toContain('src/composables/lib.ts barrelReached')
     expect(keys).not.toContain('src/composables/other.ts sameName')
     expect(keys, '★ .vue 用的是 other 的 sameName，lib 的同名导出仍是死的').toContain('src/composables/lib.ts sameName')
+  })
+
+  it('⑭ 转出口径：非入口文件的 `export {x} from` / `export *` / import 再 export 有生产消费也报壳；入口放行；本地改名导出不算转出；入口不再转出进 staleEntries', () => {
+    const root = fixture({
+      'src/core/impl.ts': `export function a(): number { return 1 }\nexport function b(): number { return 2 }\nexport function c(): number { return 3 }\n`,
+      'src/core/facade.ts': [
+        `import { b } from './impl'`,
+        `export { a } from './impl'`,
+        `export { b }`,
+        `export * from './impl'`,
+        `function own(): number { return 4 }`,
+        `export { own as renamed }`,
+        '',
+      ].join('\n'),
+      'src/core/entry.ts': `export { c } from './impl'\n`,
+      'src/core/user.ts': `import { a, b, renamed } from './facade'\nimport { c } from './entry'\nexport const v = a() + b() + c() + renamed()\n`,
+    })
+    const r = scanDeadExports({ root, seams: {}, entries: { 'src/core/entry.ts': '测试入口', 'src/core/gone.ts': '已不存在 ⇒ 失效' } })
+    expect(new Set(r.shells.map(s => `${s.key} ← ${s.from}`))).toEqual(new Set([
+      'src/core/facade.ts a ← src/core/impl.ts',
+      'src/core/facade.ts b ← src/core/impl.ts',
+      'src/core/facade.ts * ← src/core/impl.ts',
+    ]))
+    expect(r.staleEntries).toEqual(['src/core/gone.ts'])
   })
 })
