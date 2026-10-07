@@ -1,5 +1,6 @@
 import type {
   AgentCharConfigInput,
+  AgentDamageResolution,
   AgentDamageResolutionInput,
   AgentMechanicModule,
   AgentPanelInput,
@@ -331,7 +332,7 @@ if (anomaly > 0 && count > 0) {
 
 // ============ resolveExecutionDamage ============
 
-function resolveMiyabiExecutionDamage(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null {
+function resolveMiyabiExecutionDamage(input: AgentDamageResolutionInput): AgentDamageResolution | null {
   const { move, exec, cinemaLevel } = input
   if (!move) return null
 

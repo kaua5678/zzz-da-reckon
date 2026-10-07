@@ -10,6 +10,14 @@ import type { TruncationCut } from './execution'
 
 // ============ 队伍资源汇总 ============
 
+/** 单槽截断秒数账：存活率 = kept / requested（难度轴按它缩交互次数） */
+export interface SlotTruncation {
+  slot: number
+  requested: number
+  kept: number
+  cutSeconds: number
+}
+
 /**
  * 收敛诊断（一次计算里三层不动点各自的落地情况）。
  *
@@ -77,7 +85,7 @@ export interface ConvergenceReport {
    * 用它把交互次数缩到「180s 里真打的次数」——用户 2026-09-11 口径：「不上升合轴率导致招式截断，
    * 那么对应的资源回复也应该降低，或者交互次数应该降低」。
    */
-  truncationBySlot?: { slot: number; requested: number; kept: number; cutSeconds: number }[]
+  truncationBySlot?: SlotTruncation[]
   /**
    * 截断外环回灌（债 2 批 2-1，2026-09-19）：被接受的重折轮数。0/undefined = 初装截断 ≤ 容差，重折环没进；
    * ≥1 = 账本收入已按「上一轮装配 kept」的可行行重算过。`truncationRefoldRejected` = 最后一次尝试因 Σcut 变大被整体回滚

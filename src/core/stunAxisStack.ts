@@ -54,9 +54,12 @@ export interface StackTraversalInput {
   decibelBySlot?: Record<number, number>
 }
 
+/** 某槽某招式在轴内的执行次数（`StackTraversalResult.executed` 的值，key = `${slot}:${moveId}`） */
+export interface ExecutedMoveCount { slot: number; moveId: string; count: number }
+
 export interface StackTraversalResult {
   /** 轴内实际执行的每个动作（跨所有窗口合计，key = `${slot}:${moveId}` → 次数） */
-  executed: Record<string, { slot: number; moveId: string; count: number }>
+  executed: Record<string, ExecutedMoveCount>
   /** 轴内执行总耗时（秒） */
   timeUsed: number
   /**
@@ -109,7 +112,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   const energyBySlot = input.energyBySlot ?? {}
   const decibelBySlot = input.decibelBySlot ?? {}
 
-  const executed: Record<string, { slot: number; moveId: string; count: number }> = {}
+  const executed: Record<string, ExecutedMoveCount> = {}
   const skipped: StackTraversalResult['skipped'] = []
   let timeUsed = 0
   let overlapSeconds = 0

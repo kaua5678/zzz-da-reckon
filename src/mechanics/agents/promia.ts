@@ -27,6 +27,7 @@ import type {
   AgentEventInput,
   AgentResourceInput,
   AgentResourceSectionsInput,
+  ReleaseModifier,
   ReleaseModifierInput,
   AgentTeamConfigInput,
 } from '../types'
@@ -162,7 +163,7 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
 }
 
 /** 异放限定减防（有罪推定 40% + 影画1 20%，原文均为「全队角色对[有罪推定]状态的敌人」）：只作用于异放结算；作用域 team（全队异放行，CC-121 / CC-333 与 computePromiaCycle.guiltyDefIgnore 同源）。 */
-function promiaReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
+function promiaReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier {
   if (self.slot < 0) return { enemyResReduction: 0, note: '' }
   const cinema = self.cinemaLevel
   const additionalActive = additionalAbilityActiveOf(self.panel)

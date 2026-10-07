@@ -649,9 +649,9 @@ describe('仓库级自洽（真实扫描）', () => {
     expect(results.some(r => r.name.startsWith('id-literal gate'))).toBe(true)
     // 判据 27：对象/数组字面量不许 as 成领域类型、不许 as never/any（r719；r718 月城柳 as 断言漏必填 fields ⇒ vue-tsc 绿、页面崩）
     expect(results.some(r => r.name.startsWith('literal-assertion gate'))).toBe(true)
-    // 判据 28：死兜底硬门（r723；类型不含 null/undefined 的 `a ?? b` 右侧永远取不到，r731 起 `a?.b` 同判；r725 起外部 JSON 由 validate:data 类型契约校验，不设豁免）
+    // 判据 28：死兜底硬门（r723；类型不含 null/undefined 的 `a ?? b` 右侧永远取不到，r731 起 `a?.b` 同判、r732 起调用结果同判；r725 起外部 JSON 由 validate:data 类型契约校验，不设豁免）
     expect(results.some(r => r.name.startsWith('dead-nullish gate'))).toBe(true)
-    // 判据 29：类型只声明一次（r729；恒等断言与「类型字面量 ≡ 具名类型」的结构副本——同一类型写两遍，声明一改就静默分叉）
+    // 判据 29：类型只声明一次（r729；恒等断言与「类型字面量 ≡ 具名类型」的结构副本——同一类型写两遍，声明一改就静默分叉；r732 起「字面量 ≡ 字面量」同判）
     expect(results.some(r => r.name.startsWith('type-restatement gate'))).toBe(true)
     // 判据 22：core 角色前缀字段计数棘轮（2026-09-26，docs/mcp-r22d1-batch12-field-census.md §5）——agentId 棘轮看不见 `cfg.billyC1Energy` 这类以角色命名的字段
     expect(results.some(r => r.name.startsWith('core role-field ratchet'))).toBe(true)

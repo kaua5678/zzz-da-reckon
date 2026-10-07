@@ -6,6 +6,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
+  AgentSelfBurnDecibelInput,
 } from '../types'
 import type { SkillMove } from '@/types/catalog'
 import type { CharacterOperationConfig, CharacterResourceResult, IterationState} from '@/types/resource'
@@ -413,12 +414,7 @@ function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, axis }: Ag
  * `buildYidhariCharConfig`，非该角色 cfg 恒 undefined）；带 `?? 默认` 的两个字段对任意 cfg 都有值，
  * 不能做判据（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
  */
-function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, providerUltCount }: {
-  cfg: CharacterOperationConfig
-  basicAttackTime: number
-  exSpecialCount: number
-  providerUltCount: number
-}): number {
+function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, providerUltCount }: AgentSelfBurnDecibelInput): number {
   if (cfg.yidhariDecibelPerHpPct === undefined) return 0
   const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
   const decibelPerHp = cfg.yidhariDecibelPerHpPct

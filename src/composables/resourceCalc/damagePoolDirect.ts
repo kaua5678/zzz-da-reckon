@@ -46,6 +46,9 @@ export interface ReleaseRowInput {
   id: string; slot: number; agentId: string; name: string; count: number; multiplier: number; source: string; note?: string; element?: string; panel?: PanelValues; settlementPanel?: PanelValues; releaseCrit?: AnomalyEventExecution['releaseCrit']; stunnedOverride?: number
 }
 
+/** 异放行按失衡窗口拆出的一段（stunned：1 = 失衡内全额易伤 / 0 = 轴外无易伤 / -1 = 不拆） */
+export interface ReleaseStunSegment { count: number; stunned: number; suffix: string; tag: string }
+
 /** 三段共用的显式环境：把原 `buildDamagePoolRows` 里被主循环三段读取的闭包量显式化（调用期间不变）。 */
 export interface CharRowsEnv {
   ctx: DamagePoolContext
@@ -68,7 +71,7 @@ export interface CharRowsEnv {
   /** 失衡内 dominant 归因候选（时间线实际活跃元素） */
   inStunAttributionCandidates: () => Array<{ element: string; autoRatio: number }>
   /** 异放失衡易伤拆分（失衡内全额 / 轴外无易伤） */
-  releaseStunSegments: (event: AnomalyEventExecution, element: string, count: number, carrierInAxisFraction?: number) => Array<{ count: number; stunned: number; suffix: string; tag: string }>
+  releaseStunSegments: (event: AnomalyEventExecution, element: string, count: number, carrierInAxisFraction?: number) => ReleaseStunSegment[]
   /** 同 slot 同 moveId 多行 id 去重计数（原地变更） */
   seenDirectIds: Map<string, number>
   /** 槽位显示名 */

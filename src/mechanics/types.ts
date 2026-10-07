@@ -27,7 +27,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
@@ -697,7 +697,7 @@ export interface AgentMechanicModule {
    */
   transformSkillExecutions?(input: AgentSkillTransformInput): void
   /** 直伤行元素/来源解析，返回 null 时走通用规则 */
-  resolveExecutionDamage?(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null
+  resolveExecutionDamage?(input: AgentDamageResolutionInput): AgentDamageResolution | null
   /**
    * **行级失衡易伤自报**（规则 6 落点，2026-09-16 round 17 / R15-c）。
    *
@@ -716,7 +716,7 @@ export interface AgentMechanicModule {
    *  之和最大的 move.damageElement 兜底；agent.damageElement 可能与二者不一致（雅 agent=ice）。 */
   anomalyBuildupElement?: string
   /** 异放/乱流释放类伤害的减抗/减防修正（异放限定，不作用于普通直伤） */
-  releaseModifier?(input: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string }
+  releaseModifier?(input: ReleaseModifierInput): ReleaseModifier
   /**
    * `releaseModifier` 的作用域（CC-121，2026-09-27）：
    * - `'self'`（缺省）：只作用于**本角色**的异放行（派发键 = 异放行的 agentId）；
@@ -835,7 +835,7 @@ export interface AgentMechanicModule {
    */
   characterCountInputs?: ReadonlyArray<CharacterCountInputDecl>
   /** CC-65b：按角色的交互次数默认值（主页「战斗动作次数」预填 + 手动队 setAgent 预填；原 stores/config.ts 写死表）。读取入口 `getInteractionDefaults`；无声明 = 全 0。 */
-  interactionDefaults?: Readonly<{ parry: number; dodge: number; block: number; dual: number }>
+  interactionDefaults?: Readonly<InteractionCounts>
   /** CC-65b：不吃通用交互基准（`interactionBaselineFor` 返回全 0；原 stores/config.ts 写死名单）。 */
   noGenericInteraction?: boolean
   /** CC-65b：TeamConfigPage 交互栏专属输入框（格挡 blockCount / 双反 dualCounterCount）是否显示及标签（展示层）。 */
@@ -1092,14 +1092,7 @@ export interface AgentMechanicModule {
    * `actionTimeOf(moveId)` 由编排层提供（查本槽技能表的 actionTime；mechanics 不能按值导入 composables）。
    * 现实现：希格莉德（破阵连段 `sigrid-pozhen` → 敛枪式三段，C6 时长 ×0.75，免费）。
    */
-  expandAxisAction?(input: {
-    slot: number
-    moveId: string
-    count: number
-    startTime: number
-    cinemaLevel: number
-    actionTimeOf: (moveId: string) => number
-  }): StackActionCost[] | undefined
+  expandAxisAction?(input: AgentAxisActionExpandInput): StackActionCost[] | undefined
   /**
    * 交互补齐量求解（CC-23）：编排层（`convergence.ts`）在 autoTopUp 门控成立时，对「挂出本能力的那个槽位」
    * 的模块调用本能力，求下一轮的弹刀/双反补齐量（轮间经 `threads.interactionTopUp` 收敛）。编排层不含角色 id、不 import 角色模块。
@@ -1250,12 +1243,7 @@ export interface AgentMechanicModule {
    * `providerUltCount` = 帷幕提供者的终结技次数（供外部治疗按次结算部分消费）；已经由
    * `assembleSlot` 把「每次 × 次数」写回 cfg 的调用方传 0（避免重复计入）。
    */
-  selfBurnDecibel?(input: {
-    cfg: CharacterOperationConfig
-    basicAttackTime: number
-    exSpecialCount: number
-    providerUltCount: number
-  }): number
+  selfBurnDecibel?(input: AgentSelfBurnDecibelInput): number
   /**
    * **装配期写回**（规则 6 引擎落点，2026-09-26 CC-14c；伊德海莉先例）。
    *
@@ -1272,20 +1260,7 @@ export interface AgentMechanicModule {
    * 供模块自调能力、`curtainOpeners` = 引擎按 `curtain-open` 收集的队友开帷幕原始次数
    * （`agentId` + `rawCount`，已滤掉 0）。**唯一调用方 = core，五个字段每次全传 ⇒ 必填**。
    */
-  onFinalAssemble?(input: {
-    cfg: CharacterOperationConfig
-    providerUltCount: number
-    /** 本槽是否帷幕提供者槽（`i === curtain.providerSlot`） */
-    isCurtainProvider: boolean
-    /** 本态帷幕触发总次数（含队友开帷幕；15s CD 封顶 × 利用率滑块已折算） */
-    curtainTriggers: number
-    /** 本槽装配期终态 */
-    state: IterationState
-    /** 战斗总时长（秒） */
-    totalTime: number
-    /** 队友开帷幕原始次数（引擎按 `crossAgentSupply.kind='curtain-open'` 收集；`rawCount > 0` 才入列） */
-    curtainOpeners: Array<{ agentId: string; rawCount: number }>
-  }): void
+  onFinalAssemble?(input: AgentFinalAssembleInput): void
   /**
    * **角色专属能量项**（规则 6 引擎落点，2026-09-26 CC-14a；诺姆/青衣/莱卡恩/比利/仪玄/安东先例）。
    *
@@ -1350,5 +1325,5 @@ export interface AgentMechanicModule {
 export type { DirectRowAxisSplitInput, DirectRowAxisSplit, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
 export { axisOverlayChannel } from './typesHooks'
-export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl } from './typesHooks'
+export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput } from './typesHooks'
 export type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'

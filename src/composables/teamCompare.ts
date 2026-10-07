@@ -672,6 +672,9 @@ export interface OptimalGoldAllocation {
   damage: number
 }
 
+/** 贪婪搜索的一步金投入（候选步与选中的步同形） */
+interface GoldAllocationStep { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string }
+
 /**
  * 同一金档下的**一个候选分配**（「同队同金不同分配」对比的原料，用户 2026-09-14 需求）。
  *
@@ -685,7 +688,7 @@ export interface OptimalGoldAllocation {
 export interface GoldAllocationAlternative {
   budgetGold: number
   /** 本候选相对「上一档已提交状态」新增的那一步 */
-  step: { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string }
+  step: GoldAllocationStep
   damage: number
   /** 该档最优伤害 */
   bestDamage: number
@@ -782,10 +785,10 @@ export function computeOptimalGoldAllocations(
       damage: number
     } | null = null
     // 本档的全部候选（含各自提交后的完整状态）——仅传入 opts.alternatives 时收集
-    const trials: Array<{ step: { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string }; damage: number; state: TeamGoldState }> = []
+    const trials: Array<{ step: GoldAllocationStep; damage: number; state: TeamGoldState }> = []
     /** 记一次试算（伤害已算出；state 用「试算值 + 其余当前值」拼出该候选提交后的状态） */
     const recordTrial = (
-      step: { slot: number; kind: 'cinema' | 'wengine' | 'acquire'; value: number; label: string },
+      step: GoldAllocationStep,
       damage: number,
       state: TeamGoldState,
     ) => { if (sink) trials.push({ step, damage, state }) }

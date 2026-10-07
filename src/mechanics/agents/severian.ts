@@ -493,6 +493,9 @@ export const severianMechanic: AgentMechanicModule = {
 }
 
 
+/** 招式元数据（buildSeverianCharConfig 写入 cfg） */
+interface SeverianMoveMeta { moveId: string; actionTime: number; damage: number }
+
 /**
  * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
@@ -504,15 +507,15 @@ declare module '@/types/resource/config' {
     /** 塞维林额外能力是否生效（buildCharConfig 由 panel 写） */
     severianAdditionalActive?: boolean
     /** 塞维林连携/终结/入场载体招式元数据 */
-    severianCarrierMeta?: { moveId: string; actionTime: number; damage: number }[]
+    severianCarrierMeta?: SeverianMoveMeta[]
     /** 塞维林影招式元数据 */
-    severianShadowMeta?: { moveId: string; actionTime: number; damage: number }
+    severianShadowMeta?: SeverianMoveMeta
     /** 塞维林裂旋招式元数据 */
-    severianLiexuanMeta?: { moveId: string; actionTime: number; damage: number }
+    severianLiexuanMeta?: SeverianMoveMeta
     /** 塞维林风刃招式元数据 */
-    severianWindBladeMeta?: { moveId: string; actionTime: number; damage: number }
+    severianWindBladeMeta?: SeverianMoveMeta
     /** 塞维林平A各段元数据 */
-    severianBasicCycle?: { moveId: string; actionTime: number; damage: number }[]
+    severianBasicCycle?: SeverianMoveMeta[]
     /** 塞维林锋锋层数（机制设置取整） */
     severianFengfengStacks?: number
     /** 塞维林影画4 覆盖率（机制设置 clamp 到 [0,1]） */

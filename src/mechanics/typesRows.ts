@@ -7,7 +7,7 @@ import type { Agent, AgentSkills, PanelValues } from '@/types/catalog'
 import type { AnomalyProgress, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
-import type { calcPoolAnomalyDamage as calcPoolAnomalyDamageFn, calcPoolDirectDamage as calcPoolDirectDamageFn, PoolAnomalyRow, PoolDirectRow } from '@/composables/resourceCalc/poolDamage'
+import type { calcPoolAnomalyDamage as calcPoolAnomalyDamageFn, calcPoolDirectDamage as calcPoolDirectDamageFn, PoolAnomalyRow, PoolDamageEnv, PoolDirectRow } from '@/composables/resourceCalc/poolDamage'
 import type { buildAnomalyVirtualPanel as buildAnomalyVirtualPanelFn, buildAnomalySettlementEntries as buildAnomalySettlementEntriesFn } from '@/composables/resourceCalc/anomalyPanels'
 import type { AgentAxisOverlay } from './typesHooks'
 
@@ -153,7 +153,7 @@ export interface ExtraAnomalyRowsInput {
   ) => ReturnType<typeof buildAnomalySettlementEntriesFn>
   axisStunFor: (moveId: string) => number
   /** = configStore.enemy（只读，块内用 defense / level / stunVuln） */
-  enemy: { defense: number; level: number; stunVuln: number }
+  enemy: PoolDamageEnv['enemy']
   enemyDamageRes: Record<string, number>
   /** = ctx.globalAnomalyMultiplier（全队异常伤害乘区） */
   anomalyMultiplier: number

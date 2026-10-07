@@ -18,7 +18,7 @@ import { withAnalysisScenario, type AnalysisScenario } from '@/composables/analy
 import type { BatchOwner } from '@/composables/batchTask'
 import { nextTick, type Ref } from 'vue'
 import { releaseNodeOf } from '@/data/versionTimeline'
-import { computeTeamTimeline, computeNewCharacterPoints, computeSlotComparePoints, type NewCharacterPoint, type NewCharacterRow, type SlotComparePoint, type SlotCompareSlot, type TeamTimelineResult } from '@/composables/teamTimeline'
+import { computeTeamTimeline, computeNewCharacterPoints, computeSlotComparePoints, type NewCharacterPoint, type NewCharacterRow, type SlotComparePoint, type SlotCompareSlot, type TeamTimelineResult, type TimelineAxisNode } from '@/composables/teamTimeline'
 import { computeFilmSimulation, type FilmSimPoint } from '@/composables/teamTimelineFilm'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
@@ -70,7 +70,7 @@ export async function runTeamTimelineCompute(io: {
   boss: BossPreset | null
   phase: BossPresetPhase | null
   mainAgentId: string
-  axisNodes: Array<{ id: string; label: string; date: string }>
+  axisNodes: TimelineAxisNode[]
   candidatePool: string[]
   budget: number | null
   autoBuild: boolean
@@ -162,7 +162,7 @@ export async function runFilmSimCompute(io: {
   progress: Ref<Progress>
   points: Ref<FilmSimPoint[]>
   boss: BossPreset | null
-  axisNodes: Array<{ id: string; label: string; date: string }>
+  axisNodes: TimelineAxisNode[]
   mainAgentId: string
   candidatePool: string[]
   initialGold: number | null

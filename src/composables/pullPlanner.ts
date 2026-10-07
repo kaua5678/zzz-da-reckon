@@ -262,12 +262,15 @@ export function nextPurchase(card: PlannerCard, tier: number, date: string): { t
 
 // ========== Beam Search 主流程 ==========
 
+/** 一笔购买：agentId 升到 tier 档，花费 cost */
+interface PlannedPurchase { agentId: string; tier: PurchaseTier; cost: number }
+
 export interface PlannerStep {
   periodId: string
   periodLabel: string
   date: string
   /** 本期入手的购买（agentId → 新档位） */
-  purchases: Array<{ agentId: string; tier: PurchaseTier; cost: number }>
+  purchases: PlannedPurchase[]
   /** 期初银行（发薪后、购买前） */
   bankBefore: number
   bankAfter: number
@@ -341,7 +344,7 @@ export function planPullStrategy(opts: PlannerOptions): PlannerResult {
     for (const st of beam) {
       // 发薪 → 购买分支（含不买）→ 期结算。
       // 购买分支用受控展开：单张购买 + 同节点连买（递归受限：每张卡至多一档/节点）
-      const purchasesRoot: Array<{ agentId: string; tier: PurchaseTier; cost: number }> = []
+      const purchasesRoot: PlannedPurchase[] = []
       type Branch = { holdings: Record<string, number>; bank: number; spent: number; purchases: typeof purchasesRoot }
       const branches: Branch[] = []
       const expand = (state: Branch, depth: number) => {

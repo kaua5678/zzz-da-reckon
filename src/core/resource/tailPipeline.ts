@@ -19,7 +19,7 @@
 import { stunCountForCountChannel } from '@/core/stunPlanProjection'
 import type {
   ResourceCalcConfig, CharacterOperationConfig, CharacterResourceResult,
-  IterationState, TruncationCut,
+  IterationState, SlotTruncation, TruncationCut,
 } from '@/types/resource'
 import { crossAgentSupplyAt, crossAgentSuppliesOf, findCrossAgentSupplySlots, ultimateGiftOf } from './crossAgentSupply'
 import { curtainInfoOf } from './curtain'
@@ -42,7 +42,7 @@ export interface TailResult {
   characters: CharacterResourceResult[]
   timeTruncatedSeconds: number
   truncationCuts: TruncationCut[]
-  truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[]
+  truncationBySlot: SlotTruncation[]
   inputStunCount: number
   chainGiftTime: number
   ultimateGiftTime: number
@@ -186,7 +186,7 @@ export function runTailPipeline(
   /** 逐行截断明细（团队级汇总，Σ cutSeconds == timeTruncatedSeconds）：资源池清单 + 难度轴交互缩放 */
   const truncationCuts: TruncationCut[] = []
   /** 各槽截断秒数账（requested/kept/cutSeconds）：存活率 = kept/requested，难度轴按它缩交互次数 */
-  const truncationBySlot: { slot: number; requested: number; kept: number; cutSeconds: number }[] = []
+  const truncationBySlot: SlotTruncation[] = []
   // ===== S4 装配段（#8 分刀 2026-09-12；CC-5b 2026-09-25 外提 `./resource/assembleSlot.ts#assembleSlot`）=====
   // 逐槽装配闭包已搬为纯函数；本处只保留累加器与 `configs.map` wrapper：累加（timeTruncatedSeconds /
   // truncationCuts / truncationBySlot）与 cfg 写回的**每槽执行顺序**、`cuts 非空才 push` 的条件守卫

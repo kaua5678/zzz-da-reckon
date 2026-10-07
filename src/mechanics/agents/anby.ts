@@ -255,10 +255,13 @@ function buildAnbyExecutions({ cfg, state, executions }: AgentResourceInput): vo
   }
 }
 
+/** 平A分段（cfg.anbyBasicCycle 的一项；buildCharConfig 从 catalog 取动作时长 / 元素缓存） */
+interface AnbyBasicSegment { moveId: string; actionTime: number; element: string; moveName: string }
+
 /** 单条平A分段执行行：真实 moveId ⇒ enrich 从倍率表回填伤害/失衡/积蓄（元素随 catalog 每招口径）。 */
 function pushAnbyBasicSegment(
   executions: SkillExecution[],
-  seg: { moveId: string; actionTime: number; element: string; moveName: string },
+  seg: AnbyBasicSegment,
   count: number,
   dmgBonus: number,
 ): void {
@@ -364,7 +367,7 @@ declare module '@/types/resource/config' {
     /** 影画2 失衡覆盖率：机制设置 anby.c2StunCoverage，默认 0.5 */
     anbyC2StunCoverage?: number
     /** 普攻分段循环（#1~#4 + 落雷；buildCharConfig 从 catalog 取动作时长 / 元素缓存，buildAnbyExecutions 按它拆平A池） */
-    anbyBasicCycle?: { moveId: string; actionTime: number; element: string; moveName: string }[]
+    anbyBasicCycle?: AnbyBasicSegment[]
     /** 额外能力给队友的能量总额（本人 cfg，资源钩子写） */
     anbyParallelEnergyTotal?: number
     /** 影画4 给该队友的能量总额：写在**队友** cfg 上（落点），重复写取增量 */

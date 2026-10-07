@@ -16,6 +16,7 @@
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import type {
   AgentCharConfigInput,
+  AgentDamageResolution,
   AgentDamageResolutionInput,
   AgentMechanicModule,
   AgentResourceInput,
@@ -223,7 +224,7 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
  * 直伤行元素覆盖（用户口径：晨间一半物理一半电，午夜全电）。
  * 晨间用 SWEEP_1=物理半、SWEEP_2=电半 两行承载；午夜固定电。
  */
-function resolveExecutionDamage({ exec }: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null {
+function resolveExecutionDamage({ exec }: AgentDamageResolutionInput): AgentDamageResolution | null {
   if (exec.moveId === MOVE_SWEEP_1) {
     return { element: 'physical', note: `${exec.skillTableNote ?? ''}；晨间清扫一半按物理计（用户口径）。` }
   }

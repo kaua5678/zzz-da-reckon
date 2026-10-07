@@ -41,7 +41,7 @@ import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from './feas
 import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
 import { computeParrySplit, GUARANTEE_STUN_TARGET } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
-import { calcStunAxisStack, allocateAxisWindows, type StackAxisInput } from '@/core/stunAxisStack'
+import { calcStunAxisStack, allocateAxisWindows, type ExecutedMoveCount, type StackAxisInput } from '@/core/stunAxisStack'
 import {
   computeBossAnomalyStateTimeline,
   computeInStunAnomalyTimeline,
@@ -90,7 +90,7 @@ export function createRunCalcRound(deps: {
   computeWindowDuration: () => number
   computeStunCoverage: (sp: Pick<StunPoolResult, 'stunCount'> | null | undefined, lostSeconds?: number) => number
   buildStackAxes: (axes: StunAxis[]) => StackAxisInput[]
-  expandExecutedToCounts: (executed: Record<string, { slot: number; moveId: string; count: number }>, basicFillBySlot: Record<number, number>) => Record<string, { slot: number; moveId: string; count: number }>
+  expandExecutedToCounts: (executed: Record<string, ExecutedMoveCount>, basicFillBySlot: Record<number, number>) => Record<string, ExecutedMoveCount>
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
   calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number) => AnomalyPoolResult
   extractAnomalyExecsFrom: (res: TeamResourceResult, skipGift?: boolean) => AnomalySkillExecution[]

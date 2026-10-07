@@ -26,6 +26,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  ReleaseModifier,
   ReleaseModifierInput,
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
@@ -249,7 +250,7 @@ function applyPhoenixPanel({ cinemaLevel, panel, settings }: AgentPanelInput): v
 }
 
 /** 影画6：异放限定无视 15% 防御（普罗米娅同款通道） */
-function phoenixReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
+function phoenixReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier {
   return self.cinemaLevel >= 6
     ? { enemyResReduction: 0, enemyDefReduction: PHOENIX_C6_RELEASE_DEF_IGNORE, note: `；影画6：异放无视 ${PHOENIX_C6_RELEASE_DEF_IGNORE}% 防御（releaseModifier 异放限定）` }
     : { enemyResReduction: 0, note: '' }
@@ -520,6 +521,9 @@ export const phoenixMechanic: AgentMechanicModule = {
 }
 
 
+/** 招式元数据（buildCharConfig 从 catalog 预存） */
+interface PhoenixMoveMeta { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }
+
 /**
  * D2（CC-359/362）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
@@ -537,13 +541,13 @@ declare module '@/types/resource/config' {
     /** 菲尼克斯燃烧攻击余火获取（moveId → 每次命中余火，attack_data_0 列） */
     phoenixCombustionMeta?: Record<string, number>
     /** 菲尼克斯平A各段元数据（buildCharConfig 从 catalog 预存） */
-    phoenixBasicCycle?: { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }[]
+    phoenixBasicCycle?: PhoenixMoveMeta[]
     /** 菲尼克斯蓄力招式元数据 */
-    phoenixChargedMeta?: { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }
+    phoenixChargedMeta?: PhoenixMoveMeta
     /** 菲尼克斯充能招式元数据 */
-    phoenixEnergizeMeta?: { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }
+    phoenixEnergizeMeta?: PhoenixMoveMeta
     /** 菲尼克斯入场招式元数据 */
-    phoenixEntryMeta?: { moveId: string; actionTime: number; damage: number; decibelRecovery: number; energyCost: number }
+    phoenixEntryMeta?: PhoenixMoveMeta
     /** 菲尼克斯蓄力次数（资源阶段写） */
     phoenixChargedCount?: number
   }

@@ -394,6 +394,9 @@ export const qingyiMechanic: AgentMechanicModule = {
   },
 }
 
+/** 招式倍率行（buildQingyiCharConfig 写入 cfg） */
+interface QingyiMoveRow { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
+
 /**
  * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
@@ -407,10 +410,10 @@ declare module '@/types/resource/config' {
     /** 青衣可分配循环秒均（一煞#4 连打→醉花月云转） */
     qingyiLoopRates?: LoopRates
     /** 青衣醉花月云转 #1/#2 倍率行（含 +25% 伤害 / +12.5% 失衡） */
-    qingyiZuiHuaMove1?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
-    qingyiZuiHuaMove2?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
+    qingyiZuiHuaMove1?: QingyiMoveRow
+    qingyiZuiHuaMove2?: QingyiMoveRow
     /** 青衣一煞#4（1251004）倍率行——补电压专用快段（≈25 电压/秒） */
-    qingyiYisha4?: { id: string; damage: number; daze: number; anomaly: number; actionTime: number; decibel: number; energy: number }
+    qingyiYisha4?: QingyiMoveRow
     /** 青衣通用招式电压回复量（attack_data） */
     qingyiExSpecialVoltage?: number
     qingyiUltimateVoltage?: number

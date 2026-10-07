@@ -15,6 +15,7 @@
  * 「本地是否真的存在」由构建期常量 `__LOCAL_ASSET_URLS__`（`vite.config.ts` 现扫 `public/assets`）
  * 回答，**零运行时请求、无清单文件、不会漂移**。判据测试：`src/utils/__tests__/image.test.ts`。
  */
+import type { CatalogImages } from '@/types/catalog'
 
 /** 构建期注入的本地图清单（`vite.config.ts#define`）。缺失该常量时按「本地全无」处理（安全降级）。 */
 declare const __LOCAL_ASSET_URLS__: string[] | undefined
@@ -41,7 +42,7 @@ export function isDirectImageUrl(url: string): boolean {
  * @param images catalog中的 images 对象，如 { icon: "/assets/...", source: "https://..." }
  * @returns 可用的图片URL，或 null（调用方渲染占位；**绝不返回不存在的本地路径**）
  */
-export function getImageUrl(images?: { icon?: string; source?: string; portrait?: string }): string | null {
+export function getImageUrl(images?: CatalogImages): string | null {
   if (!images) return null
   const local = images.icon || images.portrait || ''
   // ① 本地有文件 → 0 网络，直接用

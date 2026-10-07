@@ -121,9 +121,10 @@ export async function computeFilmSimulation(scenario: AnalysisContext, opts: Fil
     return { points: [], stats: { nonConverged: 0, durationMs: Date.now() - t0 } }
   }
 
+  type FilmBest = { team: [string, string, string]; damage: number; budgetAware: ReturnType<typeof budgetAwareStateFor> }
   /** 在当期 Boss/buff（已应用）下搜「当前总限定金」的最优双队友组合（预算感知 + 收敛过滤） */
-  const searchBest = (totalGold: number): { team: [string, string, string]; damage: number; budgetAware: ReturnType<typeof budgetAwareStateFor> } | null => {
-    let best: { team: [string, string, string]; damage: number; budgetAware: ReturnType<typeof budgetAwareStateFor> } | null = null
+  const searchBest = (totalGold: number): FilmBest | null => {
+    let best: FilmBest | null = null
     for (const [a, b] of pairs) {
       const team: [string, string, string] = [opts.mainAgentId, a, b]
       if (baseGoldOfTeam(team, catalog) > totalGold) continue // 买不起

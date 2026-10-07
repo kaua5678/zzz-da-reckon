@@ -1,9 +1,11 @@
 /**
- * 判据 29：类型只声明一次（r729，2026-10-08）——src 非测试 `.ts` 里不许把已知类型再写一遍。两种形态：
+ * 判据 29：类型只声明一次（r729，2026-10-08；r732 加 ③）——src 非测试 `.ts` 里不许把已知类型再写一遍。三种形态：
  *
  *   ① 恒等断言：`x as T` / `<T>x`，x 在该位置的类型（含控制流收窄）已经就是 T，或者 T 只比它多 null / undefined。
  *   ② 结构副本：类型字面量 `{ … }`（≥3 个成员，全是属性 / 方法签名）与 src 里某个具名 interface / type 别名逐字段相同
  *      （成员名、可选性、类型文本都一样，并且互相可赋值）。
+ *   ③ 字面量副本（r732）：两处以上的类型字面量（同样 ≥3 个成员）彼此逐字段相同，又不等于任何具名类型——
+ *      同一个形状没有名字，各处各写一遍。
  *
  * 为什么需要：
  *   r729 用 TS 类型检查器普查 origin/master `f808afdb`：恒等断言 41 处（同一类型 39、只加空 2），结构副本 14 处。
@@ -15,6 +17,11 @@
  *   · 结构副本让同一个概念有两份声明。`ReleaseRowInput` 的注释写着「单一来源，r408 删除其重复内联类型」，
  *     damagePoolAnomaly 里却还留着一份逐字相同的副本；`TeamGoldState` 在 teamCompare / pullPlannerEngine 抄了 4 遍。
  *     改一份不会报错，两份就此分叉。
+ *   r732：② 只比「字面量 ≡ 具名」，没有名字的形状各写各的，它看不见。普查 origin/master `8517ef07`：28 组 76 处——
+ *     钩子的入参 / 返回形状只在 AgentMechanicModule 里写成字面量（`expandAxisAction?(input: { … })`、
+ *     `releaseModifier?(…): { enemyResReduction; … }`），实现钩子的角色模块再抄一遍；`{ slot, moveId, count }` 在
+ *     stunAxisStack / convergence / roundInputs 抄了 7 遍；菲尼克斯一个接口里 4 个字段各写一遍同一形状。
+ *     起名之后由 ② 接管：再有人照抄，就是「字面量 ≡ 具名」。
  *   普查与逐处判断见 docs/mcp-type-restatement.md。
  *
  * 规则（TS 类型检查器；program = tsconfig.app.json 里的 .ts 文件，与判据 28 共用，见 ./app-program.mjs）：
@@ -25,6 +32,7 @@
      元素访问 / 走索引签名的点访问加 `| undefined` 不报：未开 noUncheckedIndexedAccess，TS 不给 undefined 而运行时可缺，加上是如实（同判据 28 的口径）。
  *   · ② 只看声明在扫描面里、不带 extends、不在 `declare module` 里的具名类型；泛型具名类型的字段类型文本带类型参数，
  *     自然比不中。type 别名本身的 `{ … }` 是声明，不算副本。
+ *   · ③ 只比没命中 ② 的字面量，按成员名串分组后逐字段比；两个具名类型彼此同形不报——名字本身说明作者认为是两个概念。
  *   · 扫描面与判据 28 相同（src 非测试 .ts；`.vue` 不扫）。反空洞：扫描文件数 < `TYPE_RESTATEMENT_MIN_FILES` 视为目录没扫到，判据失败。
  *
  * 报错时怎么改：
@@ -32,6 +40,9 @@
  *     那是「拓宽」，不会命中本门；要是断言目标是一串手写联合，给联合起名，断言写名字。
  *   ② 改成引用那个具名类型（要只读就 `Readonly<具名>`）。具名类型在不能引用的层（如 types/ 引用 composables/）⇒
  *     把具名类型下沉到 types/。两者碰巧同形、含义不同 ⇒ 改一个字段名让含义体现在形状上，别为过门加豁免。
+ *   ③ 给这个形状起名，放在各处都能引用的最低一层（钩子的入参 / 返回形状放 mechanics/typesHooks.ts，由 types.ts 转出；
+ *     只在一个文件里重复的就地起名、不导出），各处改成引用名字。已有具名类型只差可选字段的（如 TimelineAxisNode）
+ *     直接引用它。碰巧同形同 ②。
  */
 import { createRequire } from 'node:module'
 import { dirname, relative, sep } from 'node:path'
@@ -96,7 +107,7 @@ function sameShape(checker, a, b) {
 
 /**
  * 一个 program 里的类型重述。`isScanned(rel)` 决定哪些源文件参与；返回 { sites, scanned }。
- * sites: [{ file, line, kind: '恒等断言' | '只加空' | '结构副本', type, text }]
+ * sites: [{ file, line, kind: '恒等断言' | '只加空' | '结构副本' | '字面量副本', type, text }]（③ 排在最后）
  */
 export function findTypeRestatements(program, { root = ROOT, isScanned } = {}) {
   const checker = program.getTypeChecker()
@@ -118,6 +129,8 @@ export function findTypeRestatements(program, { root = ROOT, isScanned } = {}) {
     collect(sf)
   }
   const sites = []
+  // ③ 没命中 ② 的字面量：成员名串 → [{ file, line, lit, text }]
+  const unnamed = new Map()
   for (const sf of sources) {
     const rel = relative(root, sf.fileName).split(sep).join('/')
     const at = (n) => sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1
@@ -132,21 +145,34 @@ export function findTypeRestatements(program, { root = ROOT, isScanned } = {}) {
         if (kind) sites.push({ file: rel, line: at(n), kind, type: checker.typeToString(src).slice(0, 40), text: text(n) })
       }
       if (ts.isTypeLiteralNode(n) && !ts.isTypeAliasDeclaration(n.parent)) {
-        const cands = named.get(memberKey(n.members))
-        if (cands) {
+        const key = memberKey(n.members)
+        if (key) {
           const lit = checker.getTypeAtLocation(n)
-          const hit = cands.find((c) => sameShape(checker, lit, c.type))
+          const hit = (named.get(key) ?? []).find((c) => sameShape(checker, lit, c.type))
           if (hit) sites.push({ file: rel, line: at(n), kind: '结构副本', type: hit.name, text: text(n) })
+          else {
+            if (!unnamed.has(key)) unnamed.set(key, [])
+            unnamed.get(key).push({ file: rel, line: at(n), lit, text: text(n) })
+          }
         }
       }
       ts.forEachChild(n, visit)
     }
     visit(sf)
   }
+  // ③ 同一成员名串下逐字段相同的归为一类；一类 ≥2 处，每处都报
+  for (let rest of unnamed.values()) {
+    while (rest.length > 1) {
+      const [head, ...others] = rest
+      const same = [head, ...others.filter((o) => sameShape(checker, head.lit, o.lit))]
+      rest = others.filter((o) => !same.includes(o))
+      if (same.length > 1) for (const s of same) sites.push({ file: s.file, line: s.line, kind: '字面量副本', type: `×${same.length}`, text: s.text })
+    }
+  }
   return { sites, scanned: sources.length }
 }
 
-/** 自证：内存里的一份小程序（noLib，免加载 lib.d.ts），两种形态的正例 / 反例各覆盖 */
+/** 自证：内存里的一份小程序（noLib，免加载 lib.d.ts），三种形态的正例 / 反例各覆盖 */
 export function typeRestatementSelfTest() {
   const failures = []
   const file = '/__type_restatement_selftest__/a.ts'
@@ -177,6 +203,12 @@ export function typeRestatementSelfTest() {
     "export const r9 = rec['k'] as number | undefined", // 24 元素访问加 undefined 是如实
     'export const r10 = rec.k as number | undefined', // 25 索引签名点访问同上
     'export const r11 = g.a as number | undefined', // 26 违规：声明过的必填属性只加空
+    'export function h7(p: { u: number; v: string; w?: boolean }) { return p }', // 27 违规：字面量副本（≡ 28）
+    'export const k1: { u: number; v: string; w?: boolean } | null = null', // 28 违规：字面量副本（≡ 27）
+    'export function h8(p: { u: number; v: string; w: boolean }) { return p }', // 29 可选性不同，不同形
+    'export function h9(p: { a: number; b: string; c: boolean }, q: { a: number; b: string; c: boolean }) { return p }', // 30 违规 ×2：≡ Gold 按结构副本报，不再按字面量副本重复报
+    'type N1 = { p1: number; p2: number; p3: number }', // 31
+    'type N2 = { p1: number; p2: number; p3: number }', // 32 具名 ≡ 具名不管（名字本身说明是两个概念）
   ].join('\n')
   const options = { strict: true, noEmit: true, noLib: true, types: [] }
   const host = ts.createCompilerHost(options)
@@ -187,7 +219,7 @@ export function typeRestatementSelfTest() {
   const program = ts.createProgram({ rootNames: [file], options, host })
   const r = findTypeRestatements(program, { root: '/__type_restatement_selftest__', isScanned: () => true })
   const got = r.sites.map((s) => `${s.line}${s.kind}`).join(',')
-  const want = '9恒等断言,10只加空,12恒等断言,15结构副本,17结构副本,26只加空'
+  const want = '9恒等断言,10只加空,12恒等断言,15结构副本,17结构副本,26只加空,30结构副本,30结构副本,27字面量副本,28字面量副本'
   if (got !== want) failures.push(`命中应为 ${want}，实为 ${got}：${JSON.stringify(r.sites.map((s) => s.text))}`)
   return { ok: failures.length === 0, failures }
 }
@@ -211,6 +243,7 @@ export function formatTypeRestatements(report) {
     lines.push(`  ✗ ${report.count} 处把已知类型又写了一遍：`)
     lines.push('    → 恒等断言 / 只加空：删掉断言（x 已经是这个类型；只加 undefined 的断言是把必填值说成可缺）')
     lines.push('    → 结构副本：改成引用那个具名类型（要只读就 Readonly<具名>）；具名类型在引用不到的层 ⇒ 下沉到 types/')
+    lines.push('    → 字面量副本：给这个形状起名（钩子的入参 / 返回形状放 mechanics/typesHooks.ts；只在一个文件里重复就地起名、不导出），各处引用名字')
     lines.push('    → 碰巧同形、含义不同 ⇒ 改字段名让含义体现在形状上；别为过门加豁免')
     for (const s of report.sites.slice(0, 20)) lines.push(`      ${s.file}:${s.line}  [${s.kind}: ${s.type}]  ${s.text}`)
   }

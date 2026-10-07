@@ -301,6 +301,13 @@ export interface InStunAnomalySummary {
   note: string
 }
 
+/** 专属资源展示段的一行明细 */
+export interface SpecialResourceRow {
+  label: string
+  value: string
+  detail?: string
+}
+
 /** 通用专属资源展示段，由角色机制模块生成 */
 export interface SpecialResourceSection {
   /** 展示段 id */
@@ -310,11 +317,7 @@ export interface SpecialResourceSection {
   /** 总览文本，如“剩余 12 / 风蚀 1” */
   summary: string
   /** 明细行 */
-  rows: {
-    label: string
-    value: string
-    detail?: string
-  }[]
+  rows: SpecialResourceRow[]
   /** 底部说明 */
   footer?: string
 }

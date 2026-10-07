@@ -445,6 +445,9 @@ export interface AgentCombatBuffs {
   cinemaBuffs: CinemaBuff[]
 }
 
+/** catalog 条目的图片来源（`getImageUrl` 的入参；icon / portrait 为本地路径，source 为远程地址） */
+export interface CatalogImages { icon?: string; source?: string; portrait?: string }
+
 export interface Agent {
   id: string
   name: LocalizedString
@@ -453,7 +456,7 @@ export interface Agent {
   specialty: Specialty
   attackTypes: string[]
   faction: string
-  images: { portrait?: string; icon?: string; source?: string }
+  images: CatalogImages
   level60: Level60Stats
   combatBuffs: AgentCombatBuffs
   coreSkill: CoreSkill

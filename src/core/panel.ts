@@ -4,7 +4,7 @@
 import type {
   Agent, WEngine, DriveDiscSet, PanelValues, DriveDiscConfig, TeammateBuff, BuffEffect, StatId,
 } from '@/types/catalog'
-import { applyBuffs, applyEffect, applyStat, collectAllBuffs, discSelfBuffNeedsOutOfCombatPanel, finalizeCoreStatBonuses, type CollectedBuffs } from './buff'
+import { applyBuffs, applyEffect, applyStat, collectAllBuffs, discSelfBuffNeedsOutOfCombatPanel, finalizeCoreStatBonuses, type CollectedBuffs, type SourcePanelsByOwner } from './buff'
 import { agentPanelStatInitials, calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import type { StatRules } from '@/types/catalog'
 import { driveDiscStatMode } from './discStatMode'
@@ -268,6 +268,18 @@ export interface PanelResult {
   buffs: CollectedBuffs    // 收集的 buff
 }
 
+/** calcPanel 的配置（substatOptimizer 的默认分配输入原样透传） */
+export interface PanelCalcConfig {
+  cinemaLevel: number
+  wEngineModLevel: number
+  /** 角色潜能档（1..6），透传给起点面板盖章（CC-174：calcPanel 生产调用点须显式给出）。缺省 = 6。 */
+  potentialLevel?: number
+  sourcePanelsByOwner?: SourcePanelsByOwner
+  /** 效果覆盖率表（effect id → 0~1），与伤害管线同口径；缺省 = 全部按 100%（第 194 轮） */
+  effectCoverageMap?: Map<string, number>
+  enemyWeakness?: readonly string[]
+}
+
 export function calcPanel(
   agent: Agent,
   wEngine: WEngine | undefined,
@@ -275,7 +287,7 @@ export function calcPanel(
   setsMap: Map<string, DriveDiscSet>,
   teammateBuffs: TeammateBuff[],
   statRules: StatRules | null,
-  config: { cinemaLevel: number; wEngineModLevel: number; potentialLevel?: number; sourcePanelsByOwner?: import('./buff').SourcePanelsByOwner; effectCoverageMap?: Map<string, number>; enemyWeakness?: readonly string[] }
+  config: PanelCalcConfig
 ): PanelResult {
   // 1. 基础面板
   const base = calcBasePanel(agent, wEngine)

@@ -21,7 +21,7 @@ import type { AnomalyPoolResult } from '@/types/resource/pools'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
-import type { StackActionCost, StackAxisInput } from '@/core/stunAxisStack'
+import type { ExecutedMoveCount, StackActionCost, StackAxisInput } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
@@ -320,10 +320,10 @@ export function createConvergenceRoundInputs(deps: {
    * - 兜底平A填充按槽位映射（模块钩子 expandBasicFill，如伊德海莉映射到蓄力循环的下砸+平A；未声明映射到 basic 秒数）。
    */
   function expandExecutedToCounts(
-    executed: Record<string, { slot: number; moveId: string; count: number }>,
+    executed: Record<string, ExecutedMoveCount>,
     basicFillBySlot: Record<number, number>,
-  ): Record<string, { slot: number; moveId: string; count: number }> {
-    const out: Record<string, { slot: number; moveId: string; count: number }> = {}
+  ): Record<string, ExecutedMoveCount> {
+    const out: Record<string, ExecutedMoveCount> = {}
     const add = (slot: number, moveId: string, count: number) => {
       if (count <= 0) return
       const key = `${slot}:${moveId}`

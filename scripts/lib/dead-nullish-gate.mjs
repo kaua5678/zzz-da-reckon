@@ -1,5 +1,5 @@
 /**
- * 判据 28：死兜底硬门（r723，2026-10-07；r731 扩到可选链）——src 非测试 `.ts` 里，对类型不含 null / undefined 的值
+ * 判据 28：死兜底硬门（r723，2026-10-07；r731 扩到可选链；r732 起判调用结果）——src 非测试 `.ts` 里，对类型不含 null / undefined 的值
  * 不许写空值处理：`a ?? b`（右侧永远取不到）与 `a?.b` / `a?.[k]` / `f?.()`（短路永远不发生）。
  *
  * 为什么需要：
@@ -15,6 +15,8 @@
  *   · 判的对象：`e ?? b` 的 e，`e?.x` / `e?.[k]` / `e?.()` 的 e（去括号）。两种写法共用一套口径（`subjectOf`）：
  *     - 声明过的属性访问 `o.p`（声明 = 属性签名 / 属性声明 / 对象字面量属性 / 参数属性）：取 e 在该位置的类型（含控制流收窄）；
  *     - 标识符：同上；
+ *     - 调用结果 `f()`（不在可选链里）：取调用的类型（r732 起。此前豁免；r732 普查 src 非测试 .ts，调用结果上的死处理 0 处——
+ *       豁免已经不买任何东西，留着只会让 `f() ?? 默认值` 从这里溜进来）；
  *     - 可选链内部（只对 `?.`）：`a?.p?.x` 的 `a?.p` 取 p 的声明类型——整条链已在 a 处短路，p 不含空则第二个 `?.` 永不生效，
  *       应写 `a?.p.x`。`??` 的左侧是可选链、`?.` 的接收者是加了括号（已断链）的 `(a?.p)`：不判——链头是元素访问时
  *       （`a[k]?.p ?? 0`）链的类型不带 undefined，但运行时会短路；链头本身是死 `?.` 时由那一节报，改掉后这里自然进判。
@@ -22,7 +24,7 @@
  *   · 不管：元素访问 `a[k]`（未开 noUncheckedIndexedAccess，`Record<string, T>` / `T[]` 的取值类型不含 undefined 但运行时可缺；
  *     r731 实测打开该选项 vue-tsc 报 2423 处，不开）；初值是元素访问或可选链的变量 `const x = a[k]` / `const y = a[k]?.p`
  *     （类型同样不带 undefined；r731 起两种写法都不判）；
- *     走索引签名的点访问（同理）；调用结果 `f() ?? b` / `f()?.x`；`||`（0 / '' 也会取右侧，是另一种语义）。
+ *     走索引签名的点访问（同理）；`||`（0 / '' 也会取右侧，是另一种语义）。
  *   · 不设豁免（r725 删除信任边界表）：TS 管不到的入口只有 JSON（`res.json() as T`、`import.meta.glob` 转型），
  *     validate:data 按代码转型用的类型逐字段校验全部 JSON 入口、漏登记的入口即红（scripts/lib/json-contract.mjs）；
  *     浏览器存储与文件导入都过解析函数。所以类型说必填就是必填。r723–r724 的豁免表（126 → 59 处）见 census §4。
@@ -87,7 +89,9 @@ function subjectOf(checker, e, link) {
     const type = inChain ? checker.getTypeOfSymbolAtLocation(sym, e) : checker.getTypeAtLocation(e)
     return { owner: ownerOf(decl) ?? '(匿名)', prop: e.name.text, type }
   }
-  if (inChain || !ts.isIdentifier(e) || isUncheckedAlias(checker, e)) return null
+  if (inChain) return null
+  if (ts.isCallExpression(e)) return { owner: '(调用)', prop: e.expression.getText().replace(/\s+/g, ' ').slice(-40), type: checker.getTypeAtLocation(e) }
+  if (!ts.isIdentifier(e) || isUncheckedAlias(checker, e)) return null
   return { owner: '(局部)', prop: e.text, type: checker.getTypeAtLocation(e) }
 }
 
@@ -145,7 +149,7 @@ export function deadNullishSelfTest() {
     "export const x6 = rec['k'] ?? 0", // 13 元素访问
     'export const x7 = n ?? 1', // 14 违规：标识符 number
     'export const x8 = m ?? 1', // 15 含 null
-    'export const x9 = f() ?? 1', // 16 调用结果不管
+    'export const x9 = f() ?? 1', // 16 违规：调用结果 number（r732 起判）
     'export function g(p: Cfg) { if (p.b === undefined) return 0; return p.b ?? 2 }', // 17 违规：收窄后 number
     "export const x10 = (cfg.s ?? '')", // 18 违规：string
     '// export const x11 = cfg.a ?? 0', // 19 注释
@@ -165,6 +169,9 @@ export function deadNullishSelfTest() {
     'export const y10 = list[0]?.a ?? 0', // 33 链头是元素访问：链的类型不带 undefined，但运行时会短路
     'const ac = list[0]?.o', // 34
     'export const y11 = ac?.v', // 35 初值是可选链的变量，同上
+    'declare function fc(): Cfg', // 36
+    'declare function fo(): Cfg | undefined', // 37
+    'export const y12 = [fc()?.a, fo()?.a]', // 38 违规 ×1：fc() 不含空；fo() 可缺
   ].join('\n')
   const options = { strict: true, noEmit: true, noLib: true, types: [] }
   const host = ts.createCompilerHost(options)
@@ -175,7 +182,7 @@ export function deadNullishSelfTest() {
   const program = ts.createProgram({ rootNames: [file], options, host })
   const r = findDeadNullish(program, { root: '/__dead_nullish_selftest__', isScanned: () => true })
   const got = r.sites.map((s) => s.line).join(',')
-  const want = '8,14,17,18,22,24,30,30,32'
+  const want = '8,14,16,17,18,22,24,30,30,32,38'
   if (got !== want) failures.push(`命中行应为 ${want}，实为 ${got}：${JSON.stringify(r.sites.map((s) => s.text))}`)
   return { ok: failures.length === 0, failures }
 }

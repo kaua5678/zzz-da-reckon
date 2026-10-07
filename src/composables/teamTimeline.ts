@@ -504,7 +504,8 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
   }
   const top3ByNode: { key: string; dmg: number }[][] = []
   // 每节点「含 / 不含当期新实装角色」的最强参考伤害（同一 refDamage 空间，零额外求值）
-  const newAgentStatsByNode: { agents: string[]; withNew: number; withoutNew: number }[] = []
+  type NewAgentStats = { agents: string[]; withNew: number; withoutNew: number }
+  const newAgentStatsByNode: NewAgentStats[] = []
   let running: { key: string; dmg: number }[] = []
   let pairPtr = 0
   for (let n = 0; n < nodes.length; n++) {
@@ -518,7 +519,7 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
     const ranked = [...running].sort((x, y) => y.dmg - x.dmg)
     top3ByNode.push(ranked.slice(0, 3))
     const newHere = releasedAtByAxis.get(n) ?? []
-    let stats: { agents: string[]; withNew: number; withoutNew: number } | null = null
+    let stats: NewAgentStats | null = null
     if (newHere.length > 0 && running.length > 0) {
       const newSet = new Set(newHere)
       let withNew = Number.NEGATIVE_INFINITY

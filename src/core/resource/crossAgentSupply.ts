@@ -210,6 +210,9 @@ export function crossAgentSupplyCountOf(
   }) || 0))
 }
 
+/** 落点从提供者获得的能量：合计 / 按提供者槽位 / 按模块自报的 displayKey */
+interface ProviderEnergySplit { total: number; byProvider: Record<number, number>; byDisplayKey: Record<string, number> }
+
 /**
  * 「邻位回能」类别：返回 `targetSlot` 槽从**每个**提供者分别获得的能量（按提供者槽位索引）。
  *
@@ -233,7 +236,7 @@ export function perTargetEnergyByProvider(
   states: IterationState[],
   targetSlot: number,
   kind: string,
-): { total: number; byProvider: Record<number, number>; byDisplayKey: Record<string, number> } {
+): ProviderEnergySplit {
   // 邻位回能在已上场序列（`configs` 下标）上分配：两人队 = 另一位 30（模块内语义）
   const teamSize = configs.length
   const byProvider: Record<number, number> = {}
@@ -265,7 +268,7 @@ export function neighborUltEnergyByProvider(
   configs: CharacterOperationConfig[],
   states: IterationState[],
   targetSlot: number,
-): { total: number; byProvider: Record<number, number>; byDisplayKey: Record<string, number> } {
+): ProviderEnergySplit {
   return perTargetEnergyByProvider(configs, states, targetSlot, 'neighbor-ult-energy')
 }
 

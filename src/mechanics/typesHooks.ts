@@ -1,5 +1,6 @@
 /**
- * mechanics 卫星类型：跨槽供给、失衡覆盖、轴 overlay、异常池变换、下一轮反馈、交互补齐、必做动作、异常事件记录、轴编辑标记、次数输入声明。
+ * mechanics 卫星类型：跨槽供给、失衡覆盖、轴 overlay、异常池变换、下一轮反馈、交互补齐、必做动作、异常事件记录、轴编辑标记、次数输入声明；
+ * 以及原先只在 `AgentMechanicModule` 里写成字面量的六个钩子形状（r732，见文件末尾）。
  * CC-83（2026-09-27，census §5.90）自 `mechanics/types.ts` 逐字拆出；types.ts 原样转出，导入方不用改。
  */
 import type { DeepReadonly } from 'vue'
@@ -487,4 +488,50 @@ export interface AgentInteractionSnapshot {
 export interface AgentInteractionContext {
   /** 逐槽位的 store 原值快照（键 = 槽位号；含空槽，`agentId === ''`） */
   bySlot: Readonly<Record<number, Readonly<AgentInteractionSnapshot>>>
+}
+
+// ---- 钩子的入参 / 返回形状（r732）：原先只在 AgentMechanicModule 里写成字面量，实现钩子的模块各抄一遍（判据 29 ③）。
+//      语义见 types.ts 里对应钩子的注释；types.ts 原样转出，模块照旧从 '../types' 引用。
+
+/** `resolveExecutionDamage` 的产出：本行改按的元素，及来源 / 说明（返回 null = 走通用规则） */
+export interface AgentDamageResolution { element: string; source?: string; note?: string }
+
+/** `releaseModifier` 的产出：异放限定的减抗 / 减防与说明 */
+export interface ReleaseModifier { enemyResReduction: number; enemyDefReduction?: number; note: string }
+
+/** 四种交互的次数（弹刀 / 闪反 / 格挡 / 双反）：角色声明的默认（`interactionDefaults`）与职业基准同一形状 */
+export interface InteractionCounts { parry: number; dodge: number; block: number; dual: number }
+
+/** `expandAxisAction` 的入参（`actionTimeOf` 由编排层提供） */
+export interface AgentAxisActionExpandInput {
+  slot: number
+  moveId: string
+  count: number
+  startTime: number
+  cinemaLevel: number
+  actionTimeOf: (moveId: string) => number
+}
+
+/** `selfBurnDecibel` 的入参（`providerUltCount` 的口径见钩子注释） */
+export interface AgentSelfBurnDecibelInput {
+  cfg: CharacterOperationConfig
+  basicAttackTime: number
+  exSpecialCount: number
+  providerUltCount: number
+}
+
+/** `onFinalAssemble` 的入参（唯一调用方 = core，五个字段每次全传 ⇒ 必填） */
+export interface AgentFinalAssembleInput {
+  cfg: CharacterOperationConfig
+  providerUltCount: number
+  /** 本槽是否帷幕提供者槽（`i === curtain.providerSlot`） */
+  isCurtainProvider: boolean
+  /** 本态帷幕触发总次数（含队友开帷幕；15s CD 封顶 × 利用率滑块已折算） */
+  curtainTriggers: number
+  /** 本槽装配期终态 */
+  state: IterationState
+  /** 战斗总时长（秒） */
+  totalTime: number
+  /** 队友开帷幕原始次数（引擎按 `crossAgentSupply.kind='curtain-open'` 收集；`rawCount > 0` 才入列） */
+  curtainOpeners: Array<{ agentId: string; rawCount: number }>
 }

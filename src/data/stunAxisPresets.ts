@@ -80,10 +80,18 @@ export interface StunAxisPreset {
 /** 手写预设（可选；也可全用 JSON 文件） */
 const handwrittenPresets: StunAxisPreset[] = []
 
+/** 解析轴方案时读的队伍状态（失衡次数 / 好评 / 各槽能量 / 各槽命座） */
+interface AxisPlanState {
+  stunCount: number
+  goodReview: number
+  energyBySlot?: Record<number, number>
+  cinemaBySlot?: Record<number, number>
+}
+
 /** 条件是否命中（when 全部满足才命中） */
 function conditionMatches(
   w: StunAxisCondition | undefined,
-  state: { stunCount: number; goodReview: number; energyBySlot?: Record<number, number>; cinemaBySlot?: Record<number, number> },
+  state: AxisPlanState,
 ): boolean {
   if (!w) return true
   if (w.stunMin !== undefined && state.stunCount < w.stunMin) return false
@@ -116,7 +124,7 @@ function goodReviewCostOf(axis: StunAxis): number {
 /** 按算法名解析资源与每窗消耗 */
 function resolveSplitResource(
   split: StunAxisWindowSplit,
-  state: { stunCount: number; goodReview: number; energyBySlot?: Record<number, number> },
+  state: AxisPlanState,
 ): { resource: number; baseCost: number; upgradeCost: number } {
   if (split.algorithm === 'energyOverflow') {
     return {
@@ -136,7 +144,7 @@ function resolveSplitResource(
 /** 窗口自动分配（按 split.algorithm 分发）：先全给 base 轴，资源溢出再逐窗升级成 upgrade 轴 */
 function resolveWindowSplit(
   split: StunAxisWindowSplit,
-  state: { stunCount: number; goodReview: number; energyBySlot?: Record<number, number> },
+  state: AxisPlanState,
 ): StunAxis[] {
   const n = Math.max(0, state.stunCount)
   const { resource, baseCost, upgradeCost } = resolveSplitResource(split, state)
@@ -154,7 +162,7 @@ function resolveWindowSplit(
 /** 解析条件轴方案：按顺序取第一个 when 全满足的方案，无命中时取最后一条（无条件兜底）。返回命中方案及其轴 */
 export function resolveStunAxisPlan(
   plans: StunAxisPlan[],
-  state: { stunCount: number; goodReview: number; energyBySlot?: Record<number, number>; cinemaBySlot?: Record<number, number> },
+  state: AxisPlanState,
 ): { plan: StunAxisPlan; axes: StunAxis[] } | null {
   if (!plans || plans.length === 0) return null
   for (const plan of plans) {

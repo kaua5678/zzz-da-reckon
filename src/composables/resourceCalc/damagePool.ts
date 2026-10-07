@@ -18,7 +18,7 @@ import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
 import { getBaseElement } from '@/data/anomalyElement'
 import { findModuleSlot, getAgentMechanic } from '@/mechanics'
-import type { AgentMechanicModule, ReleaseModifierInput } from '@/mechanics'
+import type { AgentMechanicModule, ReleaseModifier, ReleaseModifierInput } from '@/mechanics'
 import type { AgentAxisOverlay } from '@/mechanics'
 // 2026-09-16 round 17（R15-c）：`YESHUGUANG_FULL_STUN_MOVES` 与 `HUGO_FULL_STUN_MOVES` 的 import
 // 已删——两处白名单判据迁进各自模块的 `stunOverrideForMove` 钩子。
@@ -41,7 +41,7 @@ import { emitAnomalyRows } from './damagePoolAnomaly'
 import { emitCharDirectRows } from './damagePoolDirect'
 import { emitCharReleaseRows } from './damagePoolRelease'
 import { emitCharExtraRows } from './damagePoolCharExtras'
-import type { CharRowsEnv, CharLocals, DirectRowInput, ReleaseRowInput } from './damagePoolDirect'
+import type { CharRowsEnv, CharLocals, DirectRowInput, ReleaseRowInput, ReleaseStunSegment } from './damagePoolDirect'
 
 /** 伤害池构建入参：useResourceCalc 侧各 computed 的解包快照 */
 export interface DamagePoolContext {
@@ -213,7 +213,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     // 异放限定修正的来源：本角色模块（scope 缺省 self）+ 在场声明 `releaseModifierScope: 'team'` 的其他模块（CC-121）
     const teamReleaseModules = [...new Set(configStore.team.map(c => (c.agentId ? getAgentMechanic(c.agentId) : undefined)))]
       .filter(m => m?.releaseModifier && m.releaseModifierScope === 'team')
-    function resolveReleaseModifier(agentId: string): { enemyResReduction: number; enemyDefReduction?: number; note: string } {
+    function resolveReleaseModifier(agentId: string): ReleaseModifier {
       const own = getAgentMechanic(agentId)
       const sources = own?.releaseModifier ? [own, ...teamReleaseModules.filter(m => m !== own)] : teamReleaseModules
       const acc = { enemyResReduction: 0, enemyDefReduction: 0, note: '' }
@@ -357,7 +357,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       element: string,
       count: number,
       carrierInAxisFraction?: number,
-    ): Array<{ count: number; stunned: number; suffix: string; tag: string }> => {
+    ): ReleaseStunSegment[] => {
       if (!isAxis || count <= 0) return [{ count, stunned: -1, suffix: '', tag: '' }]
       if (event.inStunBound) return [{ count, stunned: 1, suffix: '-in', tag: '失衡内·全额失衡易伤' }]
       // 跟随载体招式（前台招式绑定，玩家捏轴可精确控制）：失衡内占比 = 载体块轴内单位 / 载体总数
@@ -365,7 +365,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         ? Math.max(0, Math.min(1, carrierInAxisFraction))
         : inWindowFraction(element)
       const countIn = Math.min(count, Math.round(count * frac))
-      const segs: Array<{ count: number; stunned: number; suffix: string; tag: string }> = []
+      const segs: ReleaseStunSegment[] = []
       if (countIn > 0) segs.push({ count: countIn, stunned: 1, suffix: '-in', tag: '失衡内·全额失衡易伤' })
       if (count - countIn > 0) segs.push({ count: count - countIn, stunned: 0, suffix: '-out', tag: '轴外·无易伤' })
       return segs

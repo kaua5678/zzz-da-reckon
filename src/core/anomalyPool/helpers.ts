@@ -647,6 +647,9 @@ export function calcEnemySideMultiplier(
   return resMult * dmgTakenMult * stunMult
 }
 
+/** 异常暴击口径：暴击率 / 暴击伤害 / 标签前缀（`getAnomalyCritStats` 的产出；异放等事件可整体覆盖） */
+export interface AnomalyCritStats { rate: number; dmg: number; labelPrefix: string }
+
 /**
  * 异常暴击率/暴伤提取（单一来源，CC-338）：
  * 同时服务 `core/damage.ts#calcAnomalyDamage`（直伤/异放/异常结算）与 `calcAnomalyCritExpect`（乱流结算）。
@@ -658,7 +661,7 @@ export function getAnomalyCritStats(
   element?: string,
   sourcePanel?: PanelValues,
   options?: { includeSelfAssaultBonus?: boolean },
-): { rate: number; dmg: number; labelPrefix: string } {
+): AnomalyCritStats {
   const assaultSource = sourcePanel ?? panel
   const baseElement = element ? getBaseElement(element) : undefined
   const isAssault = baseElement === 'physical'

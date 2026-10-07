@@ -174,6 +174,9 @@ export function assignRooms(rooms: IncPeriodRoom[]): { total: number; picks: Arr
   }
 }
 
+/** 某 Boss 下的最优队与得分（展示用） */
+interface BossTeamPick { bossName: string; team: BaseTeam | null; score: number }
+
 export interface CardPeriodIncrement {
   periodId: string
   date: string
@@ -183,9 +186,9 @@ export interface CardPeriodIncrement {
   accountScore: number
   bannedScore: number
   /** 全基底最优 3 队（展示） */
-  picks: Array<{ bossName: string; team: BaseTeam | null; score: number }>
+  picks: BossTeamPick[]
   /** 禁卡后最优 3 队（展示替代差——卢西娅→潘引壶 一眼可见） */
-  bannedPicks: Array<{ bossName: string; team: BaseTeam | null; score: number }>
+  bannedPicks: BossTeamPick[]
 }
 
 /**

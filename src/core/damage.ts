@@ -6,7 +6,7 @@ import type {
   Agent, PanelValues, DamageBreakdownItem,
   SkillMove, SkillCategory, DamageElement, SkillDamageTarget,
 } from '@/types/catalog'
-import { calcPanelStunMultiplier, getAnomalyCritStats } from './anomalyPool/helpers'
+import { calcPanelStunMultiplier, getAnomalyCritStats, type AnomalyCritStats } from './anomalyPool/helpers'
 import { defenseMultiplierDetail, resistanceMultiplierDetail } from './damageMultipliers'
 import { getSkillDmgBonus, getTargetedElementStat, getTargetedStat, getTargetedStatExtra } from './buff'
 import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
@@ -417,7 +417,7 @@ export interface AnomalyDamageInput {
   /** 额外全局异常乘区，例如蕾米异化系数 */
   anomalyMultiplier?: number
   /** 异放/异常暴击覆盖（release 等事件专属暴击；传入后替代 getAnomalyCritStats） */
-  anomalyCritOverride?: { rate: number; dmg: number; labelPrefix: string }
+  anomalyCritOverride?: AnomalyCritStats
 }
 
 export function calcAnomalyDamage(

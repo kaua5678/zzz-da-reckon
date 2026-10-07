@@ -18,6 +18,7 @@ import type { AgentSkills } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
+  SpecialResourceRow,
   SpecialResourceSection,
 } from '@/types/resource'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
@@ -347,7 +348,7 @@ function buildAliceResourceSections({ result }: AgentResourceSectionsInput): Spe
   const sm = result.aliceSwordWillSource
   if (!sm) return []
 
-  const rows: { label: string; value: string; detail?: string }[] = [
+  const rows: SpecialResourceRow[] = [
     { label: '入场剑意', value: `+${fmt(sm.initial)}`, detail: sm.initial > 0 ? '额外能力：队伍中有异常/支援角色' : '额外能力未触发' },
     { label: '普攻剑意', value: `+${fmt(sm.basicAttackGain)}`, detail: '秒均剑意 × 普攻时间' },
     { label: '强特剑意', value: `+${fmt(sm.exSpecialGain)}`, detail: '单次强特剑意 × 强特次数' },

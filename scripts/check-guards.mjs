@@ -1350,11 +1350,12 @@ export function runAllChecks(root = ROOT) {
   }
 
   // ---- 判据 29：类型只声明一次（r729：恒等断言 41 处——`outerExit as '…' | '…' | '…' | undefined` 抄 4 遍联合、
-  //      一个函数里 16 遍 `skills as AgentSkills`；结构副本 14 处——ReleaseRowInput 注释写着单一来源，副本却还在）----
+  //      一个函数里 16 遍 `skills as AgentSkills`；结构副本 14 处——ReleaseRowInput 注释写着单一来源，副本却还在；
+  //      r732 加字面量副本：同一形状没有名字、各写一遍，28 组 76 处——钩子的入参在实现它的模块里重抄）----
   {
     const report = scanTypeRestatements(root)
     results.push({
-      name: `type-restatement gate (判据 29: 断言不重述已知类型——x 已是 T 或 T 只多 undefined 就删断言；类型字面量与具名类型逐字段相同就引用具名类型) `
+      name: `type-restatement gate (判据 29: 断言不重述已知类型——x 已是 T 或 T 只多 undefined 就删断言；类型字面量与具名类型逐字段相同就引用具名类型；同一形状的字面量写了两处以上就起名) `
         + `= ${report.count}/${TYPE_RESTATEMENT_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatTypeRestatements(report),

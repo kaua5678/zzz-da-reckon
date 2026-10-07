@@ -16,8 +16,7 @@ import type {
   Agent, WEngine, DriveDiscSet, PanelValues,
   DriveDiscConfig, TeammateBuff, StatRules,
 } from '@/types/catalog'
-import { calcPanel } from './panel'
-import type { SourcePanelsByOwner } from './buff'
+import { calcPanel, type PanelCalcConfig } from './panel'
 import { getAgentMechanic } from '@/mechanics/registry'
 
 /** 暴击率副词条步长（S 级 +2.4%/步；原 SUBSTAT_POOL.critRate，只剩「百暴」缺口在用） */
@@ -169,16 +168,7 @@ export interface DefaultSubStatInput {
   setsMap: Map<string, DriveDiscSet>
   teammateBuffs: TeammateBuff[]
   statRules: StatRules | null
-  config: {
-    cinemaLevel: number
-    wEngineModLevel: number
-    sourcePanelsByOwner?: SourcePanelsByOwner
-    /** 角色潜能档（1..6），透传给起点面板盖章（CC-174：calcPanel 生产调用点须显式给出）。缺省 = 6。 */
-    potentialLevel?: number
-    /** 效果覆盖率表（effect id → 0~1），与伤害管线 calcPanel 同口径；缺省 = 全部按 100%（第 194 轮） */
-    effectCoverageMap?: Map<string, number>
-    enemyWeakness?: readonly string[]
-  }
+  config: PanelCalcConfig
   /** 单词条分配上限（步数）。缺省 20。生产调用方用 `resolveSubstatBudget` 求出后传入。 */
   statCap?: number
   /** 总步数。缺省或 0 = 按模板词条数分档（2→32 / 3→39 / ≥4→43，见 TOTAL_STEP_TIERS）。 */

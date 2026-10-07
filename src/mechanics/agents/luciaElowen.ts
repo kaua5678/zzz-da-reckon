@@ -1,6 +1,6 @@
 import { clampRatio } from '@/utils/finiteClamp'
-import type { AgentMechanicModule, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
-import type { CharacterOperationConfig, CharacterResourceResult, IterationState, MechanicSetting, SkillExecution } from '@/types/resource'
+import type { AgentMechanicModule, AgentCharConfigInput, AgentFinalAssembleInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput } from '../types'
+import type { CharacterResourceResult, MechanicSetting, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
@@ -447,15 +447,7 @@ const settings: MechanicSetting[] = [
  * mateTotal > 0 ⇒ 比例 = 1 ⇒ triggers 与原式 `max(0, 总 − 自开)` 逐位相同；出现第二个
  * 提供者时行为与迁移前不同（旧实现只取按角色字段找到的那一个槽作来源），故此处**不是**逐位等价承诺。
  */
-function luciaOnFinalAssemble({ cfg, isCurtainProvider, curtainTriggers, state, totalTime, curtainOpeners }: {
-  cfg: CharacterOperationConfig
-  providerUltCount: number
-  isCurtainProvider: boolean
-  curtainTriggers: number
-  state: IterationState
-  totalTime: number
-  curtainOpeners: Array<{ agentId: string; rawCount: number }>
-}): void {
+function luciaOnFinalAssemble({ cfg, isCurtainProvider, curtainTriggers, state, totalTime, curtainOpeners }: AgentFinalAssembleInput): void {
   if (!isCurtainProvider) return
   cfg.luciaCurtainTriggerCount = curtainTriggers
   cfg.luciaCurtainSelfCount = luciaElowenMechanic.curtainTriggers!({
@@ -563,7 +555,7 @@ declare module '@/types/resource/config' {
     /** 卢西娅4命帷幕触发中**自开/自延**部分（同点写入，供卡片按来源拆分；零求值影响） */
     luciaCurtainSelfCount?: number
     /** 卢西娅4命帷幕的队友来源分摊（展示用）：rawCount=队友原始触发次数，triggers=边际法计入总次数的份额（总 − 自开） */
-    luciaCurtainTeammates?: { agentId: string; rawCount: number; triggers: number }[]
+    luciaCurtainTeammates?: CurtainTeammateShare[]
     /** 卢西娅 A5（随想 1451005）actionTime，buildCharConfig 从倍率表读取 */
     luciaA5ActionTime?: number
     /** 卢西娅4命本局帷幕触发总次数（收敛后由资源池按最终终结技次数写入，供模块展示） */
@@ -585,6 +577,9 @@ declare module '@/types/resource/agentResources' {
 }
 
 // ===== 本模块私有的结果类型（D2 / CC-360：原在 types/resource/agentResources.ts，只有本文件引用）=====
+
+/** 4命帷幕的一个队友来源（展示用）：rawCount = 队友原始触发次数，triggers = 边际法计入总次数的份额（总 − 自开） */
+interface CurtainTeammateShare { agentId: string; rawCount: number; triggers: number }
 
 /** 卢西娅·艾洛温梦境值/追加攻击/回血资源明细（用户确认口径） */
 export interface LuciaMechanicSource {
@@ -617,7 +612,7 @@ export interface LuciaMechanicSource {
   /** 4命帷幕延长次数（原始）：梦境内强特 + 梦境内终结技 */
   curtainExtends: number
   /** 4命帷幕队友来源分摊（展示用；triggers=边际法计入总次数的份额） */
-  curtainTeammates: { agentId: string; rawCount: number; triggers: number }[]
+  curtainTeammates: CurtainTeammateShare[]
   /** 4命每次触发给全队每人的喧响（100；未开4命为 0） */
   c4DecibelPerTrigger: number
   /** 4命全队每人喧响合计 = curtainTriggerCount × c4DecibelPerTrigger */

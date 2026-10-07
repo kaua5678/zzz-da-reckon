@@ -1,6 +1,7 @@
 import type {
   AgentAnomalyTransformInput,
   AgentCharConfigInput,
+  AgentDamageResolution,
   AgentDamageResolutionInput,
   AgentEventInput,
   AgentMechanicModule,
@@ -399,7 +400,7 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
   }
 }
 
-function resolveVelinaExecutionDamage(input: AgentDamageResolutionInput): { element: string; source?: string; note?: string } | null {
+function resolveVelinaExecutionDamage(input: AgentDamageResolutionInput): AgentDamageResolution | null {
   const { slot, move, exec, team } = input
   if (move?.id !== VELINA_SWEEPING_CYCLONE_2_MOVE_ID && move?.name.en !== 'Sweeping Cyclone #2') return null
   const coloredElement = velinaColorElement(team, slot)
