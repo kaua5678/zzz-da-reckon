@@ -1,5 +1,5 @@
 import type { AgentCharConfigInput, AgentEventInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput } from '../types'
-import type { AnomalyEventExecution, MechanicSetting } from '@/types/resource'
+import type { MechanicSetting } from '@/types/resource'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
@@ -135,8 +135,9 @@ function buildYanagiAnomalyEvents({ cfg, state, events }: AgentEventInput): void
     count,
     polarDisorderRatio: ratio,
     formula: `极性紊乱 = 原紊乱 × ${(ratio * 100).toFixed(0)}%（C2 每额外突刺 +15%，上限 2 次）`,
+    fields: ['exSpecialCount', 'yanagi.extraThrustCount', 'yanagiCinemaLevel'],
     note: `下落攻击命中异常状态敌人触发（次数≈强特次数）；C0 ${(YANAGI_POLAR_RATIO_C0 * 100).toFixed(0)}%、C2 ${(YANAGI_POLAR_RATIO_C2_BASE * 100).toFixed(0)}%+${(YANAGI_POLAR_RATIO_PER_THRUST * 100).toFixed(0)}%×额外突刺${extraThrusts}（上限 ${maxThrusts} 次：2命 2、6命 4）。`,
-  } as AnomalyEventExecution)
+  })
 }
 
 const settings: MechanicSetting[] = [
