@@ -219,11 +219,14 @@ for (const f of dataJsonFiles) {
       }
     }
   } else if (rel.startsWith('stunAxisPresets/')) {
-    // 字段与类型由上面的 JSON 契约校验（StunAxisPreset）；这里只查类型表达不了的：axes / plans 至少其一、动作槽位是整数
+    // 字段与类型由上面的 JSON 契约校验（StunAxisPreset；加载器 r727 起不做运行时过滤、直接转型）；这里只查类型表达不了的：
+    // axes / plans 至少其一、动作槽位是整数、team 每项是 '*' 或 catalog 里的角色（写错的 id 让预设永远匹配不上，且不报错）
     const axes = [...(data.axes ?? []), ...(data.plans ?? []).flatMap(p => p.axes ?? [])]
     const badSlots = axes.flatMap(ax => (ax.actions ?? []).filter(a => !Number.isInteger(a.slot)).map(a => `${ax.name}/${a.moveId}`))
-    check(`${rel}: has axes or plans; every action slot is an integer`,
-      (Array.isArray(data.axes) || Array.isArray(data.plans)) && badSlots.length === 0, badSlots.slice(0, 5).join('; '))
+    const badTeam = (data.team ?? []).filter(t => t !== '*' && !agentOf(t)).map(t => `team ${t}`)
+    check(`${rel}: has axes or plans; every action slot is an integer; team ids are '*' or catalog agents`,
+      (Array.isArray(data.axes) || Array.isArray(data.plans)) && badSlots.length === 0 && badTeam.length === 0,
+      [...badSlots.slice(0, 5), ...badTeam].join('; '))
   }
 }
 

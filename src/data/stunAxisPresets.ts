@@ -80,16 +80,6 @@ export interface StunAxisPreset {
 /** 手写预设（可选；也可全用 JSON 文件） */
 const handwrittenPresets: StunAxisPreset[] = []
 
-/** 校验 JSON 预设形状，非法文件直接跳过（axes 或 plans 至少其一） */
-function isValidPreset(p: unknown): p is StunAxisPreset {
-  if (!p || typeof p !== 'object') return false
-  const o = p as Partial<StunAxisPreset>
-  return typeof o.id === 'string' && o.id.length > 0
-    && typeof o.name === 'string'
-    && Array.isArray(o.team) && o.team.length === 3 && o.team.every(t => typeof t === 'string' && t.length > 0)
-    && (Array.isArray(o.axes) || Array.isArray(o.plans))
-}
-
 /** 条件是否命中（when 全部满足才命中） */
 function conditionMatches(
   w: StunAxisCondition | undefined,
@@ -182,11 +172,11 @@ export function resolveStunAxisPlan(
   return { plan: last, axes: cloneStunAxes(last.axes ?? []) }
 }
 
-/** 从 src/data/stunAxisPresets/*.json 自动加载预设 */
-const jsonModules = import.meta.glob('./stunAxisPresets/*.json', { eager: true })
-const jsonPresets: StunAxisPreset[] = Object.values(jsonModules)
-  .map(m => ((m as { default?: unknown }).default ?? m) as unknown)
-  .filter(isValidPreset)
+/**
+ * 从 src/data/stunAxisPresets/*.json 自动加载预设，直接转型：字段形状由 validate:data 的 JSON 契约按 StunAxisPreset 校验，
+ * axes / plans 至少其一、team 每项是 '*' 或 catalog 角色等语义也在 validate:data 里查（坏文件在验收时报红，不在运行时悄悄滤掉）。
+ */
+const jsonPresets = Object.values(import.meta.glob('./stunAxisPresets/*.json', { eager: true, import: 'default' })) as StunAxisPreset[]
 
 /** 预设轴库（手写 + JSON 文件夹） */
 export const stunAxisPresets: StunAxisPreset[] = [...handwrittenPresets, ...jsonPresets]

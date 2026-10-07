@@ -52,7 +52,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
  * 载入运行时注册表快照。
  *
  * 用 **vite 自己的 `ssrLoadModule`**（而不是自己搭 esbuild + `import.meta.glob` 垫片）：
- * 本仓 `src/specs/registry.ts:3` 用了 `import.meta.glob('./agents/*.json', { eager: true })`，
+ * 本仓 `src/specs/registry.ts` 用 `import.meta.glob('./agents/*.json', …)` 装载 spec，
  * vite 原生认得；垫片是重复实现（规则 11 的反面）且会随 vite 语义漂移。
  */
 export async function loadRegistrySnapshot(root) {

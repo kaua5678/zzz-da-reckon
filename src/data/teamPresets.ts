@@ -67,23 +67,9 @@
  */
 import type { TeamPreset } from '@/types/teamPreset'
 
+/** 文件形态 = JSON 契约登记的类型：validate:data 按它逐字段校验 `teamPresets/*.json`（scripts/lib/json-contract.mjs），加载时直接转型 */
 export interface TeamPresetFile extends TeamPreset {
   disabled?: boolean
-}
-
-function isValidPreset(p: unknown): p is TeamPreset {
-  if (!p || typeof p !== 'object') return false
-  const o = p as Record<string, unknown>
-  return (
-    typeof o.id === 'string' &&
-    typeof o.name === 'string' &&
-    Array.isArray(o.team) &&
-    o.team.length === 3 &&
-    o.team.every(t => typeof t === 'string') &&
-    Array.isArray(o.goldSteps) &&
-    (o.standardSteps === undefined || Array.isArray(o.standardSteps)) &&
-    Array.isArray(o.interactions)
-  )
 }
 
 /** 难度变体展开：带 variants 的预设 → 每变体一个独立条目（id/name 加后缀，变体字段覆盖本体） */
@@ -102,11 +88,9 @@ function expandVariants(preset: TeamPreset): TeamPreset[] {
   }))
 }
 
-const jsonModules = import.meta.glob('./teamPresets/*.json', { eager: true })
+const presetFiles = Object.values(import.meta.glob('./teamPresets/*.json', { eager: true, import: 'default' })) as TeamPresetFile[]
 
-export const teamPresets: TeamPreset[] = Object.values(jsonModules)
-  .map(m => (m as { default?: unknown }).default ?? m)
-  .filter((p): p is TeamPresetFile => isValidPreset(p))
+export const teamPresets: TeamPreset[] = presetFiles
   .filter(p => !p.disabled)
   .map(({ disabled: _disabled, ...preset }) => preset)
   .flatMap(expandVariants)

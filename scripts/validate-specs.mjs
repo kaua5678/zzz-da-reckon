@@ -1,5 +1,11 @@
 /**
- * spec 结构校验（60 角色）
+ * spec 语义校验（60 角色）
+ *
+ * 分工（r727）：字段形状——必填、类型、schemaVersion、status / teamBuff.target 枚举、additionalAbility.teamConditions——
+ * 由 validate:data 的 JSON 契约按 `AgentMechanicSpec` 校验（scripts/lib/json-contract.mjs；verify 链里 validate:data 在前）。
+ * 本文件只查类型表达不了的：文件名 = agentId、名字与 catalog 同源、id 唯一、agentIds 非空、嵌套 id 唯一、
+ * verification 的 expected 非空、融合招式在 catalog、enemy* 字段 ⇒ target enemy/both、死数据 / 死口径。
+ * 单独跑本脚本遇到形状错的 spec 可能直接抛 TypeError——那就是形状错，先跑 validate:data。
  *
  * 标注约定（写 spec note 时必须遵守，新 AI 录入前必读）：
  * - 每条机制要么 [已确认]（用户拍板 → 同时写入 verifications 变成 golden test），
@@ -22,19 +28,11 @@ import { stripComments } from './check-guards.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const specDir = join(root, 'src', 'specs', 'agents')
-const allowedStatuses = new Set([
-  'implemented',
-  'implemented_approximation',
-  'partially_implemented',
-  'not_described_not_implemented',
-])
-
 let failed = 0
 let checks = 0
 // CC-93（2026-09-27）：TeamBuffSpec.target 的校验消费者——敌方侧字段（stat 以 enemy+大写开头）只允许出现在
 // target=enemy/both 的条目里。运行时不按 target 分流（敌方 debuff 对全体攻击者等效，collectInCombatTeamBuffs
 // 一律 includeOwner:true 收集），本字段是**受校验的元数据**。反空洞计数见文件末尾。
-const TEAM_BUFF_TARGETS = new Set(['team', 'enemy', 'both'])
 let enemyStatChecked = 0
 
 function check(name, condition, detail = '') {
@@ -169,21 +167,11 @@ for (const file of files) {
   const spec = JSON.parse(readFileSync(join(specDir, file), 'utf8'))
   const label = spec.id || file
 
-  check(`${label}: schemaVersion is 1`, spec.schemaVersion === 1)
   check(`${label}: id is unique`, !allIds.has(spec.id))
   if (spec.id) allIds.add(spec.id)
-  check(`${label}: agentIds is non-empty`, Array.isArray(spec.agentIds) && spec.agentIds.length > 0)
-  check(`${label}: status is allowed`, allowedStatuses.has(spec.status))
-  check(`${label}: attributeConversions is array`, Array.isArray(spec.attributeConversions))
-  check(`${label}: resources is array`, Array.isArray(spec.resources))
-  check(`${label}: rowFusions is array`, Array.isArray(spec.rowFusions))
-  check(`${label}: events is array`, Array.isArray(spec.events))
-  check(`${label}: verifications is array`, Array.isArray(spec.verifications))
-  check(`${label}: stateMachines is array`, Array.isArray(spec.stateMachines))
-  check(`${label}: teamBuffs is array when present`, spec.teamBuffs == null || Array.isArray(spec.teamBuffs))
-  for (const buff of Array.isArray(spec.teamBuffs) ? spec.teamBuffs : []) {
-    check(`${label}: teamBuff ${buff?.id} target ∈ team/enemy/both`, TEAM_BUFF_TARGETS.has(buff?.target), String(buff?.target))
-    const enemyStats = (buff?.effects ?? []).map(e => e?.stat).filter(s => typeof s === 'string' && /^enemy[A-Z]/.test(s))
+  check(`${label}: agentIds is non-empty`, spec.agentIds.length > 0)
+  for (const buff of spec.teamBuffs ?? []) {
+    const enemyStats = buff.effects.map(e => e.stat).filter(s => /^enemy[A-Z]/.test(s))
     if (enemyStats.length > 0) {
       enemyStatChecked++
       check(
@@ -193,7 +181,6 @@ for (const file of files) {
       )
     }
   }
-  check(`${label}: additionalAbility has teamConditions when present`, spec.additionalAbility == null || Array.isArray(spec.additionalAbility.teamConditions))
 
   const localIds = new Set()
   for (const item of [

@@ -13,9 +13,10 @@
  *     类型；`findUncoveredJsonEntries` 扫 src 非测试代码，漏登记的入口即红——新入口不能绕过契约。静态 `import x from
  *     '….json'` 不算入口：开了 resolveJsonModule，TS 按文件内容推断类型，`as` 也要与内容相容（如 enginePools.json）。
  *   · 校验按 TS 类型检查器解析出的类型递归走：必填属性必须在（可选 / 含 undefined 的可缺）；string / number /
- *     boolean / 字面量 / null 按值核；数组、元组逐元素；联合取「值的种类相容」的分支，任一分支全过即过；
+ *     boolean / 字面量 / null 按值核；数组、元组逐元素（定长元组多出元素也报，与 TS 一致）；联合取「值的种类相容」的分支，任一分支全过即过；
  *     索引签名核未声明键的值。any / unknown 不核；多余键不报（与 TS 结构类型一致）；函数类型属性跳过。
- *   · 类型表达不了的语义约束（id 唯一、引用存在、非空数组、整数……）仍在 validate-data.mjs 里手写。
+ *   · 类型表达不了的语义约束（id 唯一、引用存在、非空数组、整数……）仍在 validate-data.mjs / validate-specs.mjs 里手写；
+ *     形状不在别处重复：加载器按这里登记的类型直接转型，不写运行时类型守卫（r727）。
  *
  * 报错时怎么改：数据真缺 / 形态不同 ⇒ 改类型（可选、加 null、放宽字面量联合），让读点看见；数据写错 ⇒ 改数据和生成脚本。
  */
@@ -139,6 +140,8 @@ export function makeValidator(checker) {
     if (f & F.Boolean) return typeof v === 'boolean' ? undefined : sink(key, path, `应为 boolean，实为 ${kindOf(v)}`)
     if (checker.isTupleType(t)) {
       if (!Array.isArray(v)) return sink(key, path, `应为元组，实为 ${kindOf(v)}`)
+      const { fixedLength, hasRestElement } = t.target
+      if (!hasRestElement && v.length > fixedLength) sink(key, path, `元组只有 ${fixedLength} 项，实有 ${v.length} 项`)
       checker.getTypeArguments(t).forEach((et, i) => check(v[i], et, `${path}[${i}]`, `${key}[${i}]`, sink, depth + 1))
       return
     }
@@ -235,7 +238,7 @@ export function findUncoveredJsonEntries(root = ROOT, contracts = JSON_CONTRACTS
   return out
 }
 
-/** 自证：内存小程序（noLib），必填缺失 / 原始类型 / 字面量联合 / 判别联合 / null / 索引签名 / 元组 / 多余键各一次 */
+/** 自证：内存小程序（noLib），必填缺失 / 原始类型 / 字面量联合 / 判别联合 / null / 索引签名 / 元组（元素错、超长）/ 多余键各一次 */
 export function jsonContractSelfTest() {
   const file = '/__json_contract_selftest__/a.ts'
   const code = [
@@ -261,12 +264,12 @@ export function jsonContractSelfTest() {
   const root = checker.getDeclaredTypeOfSymbol(checker.getSymbolAtLocation(decl.name))
   const check = makeValidator(checker)
   const good = { id: 'x', n: 1, kind: 'a', maybe: null, effects: [{ type: 'fixed', value: 1 }, { type: 'stacked', perStack: 2 }], rec: { a: 1 }, pair: ['p', 1], tpl: { a__b: 1, other: 'ignored' }, extra: true }
-  const bad = { id: 1, kind: 'c', effects: [{ type: 'fixed' }, { type: 'stacked', perStack: 'x' }], rec: { a: 'x' }, pair: ['p', 'q'], tpl: { a__b: 'x' }, opt: null }
+  const bad = { id: 1, kind: 'c', effects: [{ type: 'fixed' }, { type: 'stacked', perStack: 'x' }], rec: { a: 'x' }, pair: ['p', 'q', 'r'], tpl: { a__b: 'x' }, opt: null }
   const run = (v) => { const keys = []; check(v, root, '$', 'Root', (k) => keys.push(k)); return keys.sort().join(',') }
   const failures = []
   const g = run(good)
   if (g) failures.push(`合法样例不应报错，实报 ${g}`)
-  const want = 'E1.value,E2.perStack,Root.id,Root.kind,Root.maybe,Root.n,Root.opt,Root.pair[1],Root.rec[*],Root.tpl[*]'
+  const want = 'E1.value,E2.perStack,Root.id,Root.kind,Root.maybe,Root.n,Root.opt,Root.pair,Root.pair[1],Root.rec[*],Root.tpl[*]'
   const b = run(bad)
   if (b !== want.split(',').sort().join(',')) failures.push(`反例应报 ${want}，实报 ${b}`)
   return { ok: failures.length === 0, failures }

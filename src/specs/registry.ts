@@ -1,10 +1,7 @@
 import type { AgentMechanicSpec } from './types'
 
-const specModules = import.meta.glob('./agents/*.json', { eager: true })
-
-export const agentSpecs: AgentMechanicSpec[] = Object.values(specModules)
-  .map(module => (module as { default?: unknown }).default ?? module)
-  .map(spec => spec as AgentMechanicSpec)
+/** 直接转型：字段形状由 validate:data 的 JSON 契约按 AgentMechanicSpec 校验（scripts/lib/json-contract.mjs），语义由 validate:specs 查 */
+export const agentSpecs = Object.values(import.meta.glob('./agents/*.json', { eager: true, import: 'default' })) as AgentMechanicSpec[]
 
 export function getAgentSpec(agentId: string): AgentMechanicSpec | undefined {
   return agentSpecs.find(spec => spec.agentIds.includes(agentId))

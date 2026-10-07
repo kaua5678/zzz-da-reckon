@@ -22,7 +22,6 @@ describe('teamPresets 预设队伍库', () => {
         expect(agentIds.has(agentId), `${preset.id} 角色 ${agentId} 不在 catalog`).toBe(true)
       }
       if (preset.wEngines) {
-        expect(preset.wEngines).toHaveLength(3)
         for (const wEngineId of preset.wEngines) {
           if (wEngineId === '') continue // '' = 自动推荐
           expect(wEngineIds.has(wEngineId), `${preset.id} 音擎 ${wEngineId} 不在 catalog`).toBe(true)
