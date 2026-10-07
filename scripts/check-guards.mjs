@@ -66,6 +66,8 @@ import { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_
 import { scanRecordKeyDeadReads, formatRecordKeyDeadReads } from './lib/record-key-dead-reads.mjs'
 // 判据 26：角色 / 招式 id 字面量只许在 id 的家（data / mechanics/agents / specs）（CC-449 展示层 → CC-450 全 src，2026-10-04，见 scripts/lib/id-literal-gate.mjs 头注释）
 import { scanIdLiterals, formatIdLiterals, ID_LITERAL_BASELINE, ID_HOME_DIRS } from './lib/id-literal-gate.mjs'
+// 判据 27：字面量类型断言硬门（r719，见 scripts/lib/literal-assertion-gate.mjs 头注释）
+import { scanLiteralAssertions, formatLiteralAssertions, LITERAL_ASSERTION_BASELINE } from './lib/literal-assertion-gate.mjs'
 export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST }
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -1315,6 +1317,18 @@ export function runAllChecks(root = ROOT) {
         + `= ${report.count}/${ID_LITERAL_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatIdLiterals(report),
+    })
+  }
+
+  // ---- 判据 27：字面量类型断言硬门（r719：r718 月城柳 `{ … } as AnomalyEventExecution` 漏必填 fields ⇒ vue-tsc 绿、页面崩；
+  //      普查 15 处同形断言分散 10 个文件，靠评审拦不住）----
+  {
+    const report = scanLiteralAssertions(root)
+    results.push({
+      name: `literal-assertion gate (判据 27: 对象/数组字面量不 as 成领域类型、不 as never/any；直接写字面量或类型标注) `
+        + `= ${report.count}/${LITERAL_ASSERTION_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+      ok: report.ok,
+      detail: report.ok ? [] : formatLiteralAssertions(report),
     })
   }
 
