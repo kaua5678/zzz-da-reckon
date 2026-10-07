@@ -142,7 +142,7 @@ export function applyTeamToStore(
       const char = configStore.team[s]
       if (!char) continue
       const m5 = char.driveDisc.mainStats[5]
-      char.driveDisc.mainStats = { 5: m5 } as typeof char.driveDisc.mainStats
+      char.driveDisc.mainStats = { 5: m5 }
       char.driveDisc.subStatAllocation = {}
     }
   }

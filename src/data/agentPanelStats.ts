@@ -36,11 +36,14 @@ export const AGENT_PANEL_STATS = [
 type AgentPanelStat = (typeof AGENT_PANEL_STATS)[number]
 export type AgentPanelStatKey = AgentPanelStat['key']
 
+/** 某组角色专属面板属性的初值表：键集 = 该组的 key */
+type AgentPanelStatInitials<G extends AgentPanelStatGroup> = Record<Extract<AgentPanelStat, { group: G }>['key'], number>
+
 /** 某组角色专属面板属性的初值（键序 = 表序），供 `emptyPanel()` 原位铺开 */
-export function agentPanelStatInitials<G extends AgentPanelStatGroup>(group: G): Record<Extract<AgentPanelStat, { group: G }>['key'], number> {
+export function agentPanelStatInitials<G extends AgentPanelStatGroup>(group: G): AgentPanelStatInitials<G> {
   const out: Record<string, number> = {}
   for (const s of AGENT_PANEL_STATS) if (s.group === group) out[s.key] = s.initial
-  return out as never // 精确键集由签名保证；运行时按 group 过滤
+  return out as AgentPanelStatInitials<G> // 精确键集由签名保证；运行时按 group 过滤
 }
 
 /** 面板能量自动回复总计 = 基础 × (1 + 百分比加成) + 固定加成（CC-337 单一事实源，放 data 层供 specs / core / mechanics 共用） */

@@ -12,7 +12,7 @@
  *   - gateText：属性/职业/局外属性门槛 → 引擎自动判定，不折算 uptime
  *   - unmodeled：有官方文本但无数值效果（生存向/机制向）→ 明说未建模，不留空白
  */
-import type { EffectRequirement } from '@/types/catalog'
+import type { EffectRequirement, LocalizedString } from '@/types/catalog'
 import { getStatMeta, isPctStat } from './statMeta'
 import { localized } from './format'
 
@@ -42,10 +42,10 @@ interface PieceLike {
 
 export interface DiscSetLike {
   id?: string
-  name?: { zhCN?: string; en?: string } | null
+  name?: LocalizedString | null
   twoPiece?: PieceLike | null
   fourPiece?: {
-    effectText?: Record<string, string> | null
+    effectText?: LocalizedString | null
     selfBuff?: PieceLike | null
     teamBuff?: PieceLike | null
   } | null

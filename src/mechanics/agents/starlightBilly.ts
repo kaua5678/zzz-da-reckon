@@ -288,8 +288,9 @@ function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
   return positiveWholeCounts(cfg.billyAxisEx)  // CC-481：三模块同体 helper 归到 utils/finiteClamp
 }
 
-function buildBillyCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
-  specBase.buildCharConfig?.({ skills, cinemaLevel, cfg } as AgentCharConfigInput)
+function buildBillyCharConfig(input: AgentCharConfigInput): void {
+  specBase.buildCharConfig?.(input)
+  const { skills, cinemaLevel, cfg } = input
 
   // 进场闪能：核心被动 60（勘域模式 180s 一次，整局口径一次）+ 影画1 额外 60
   cfg.initialEnergyGift = ENTRY_FLASH + (cinemaLevel >= 1 ? ENTRY_FLASH : 0)
@@ -441,11 +442,11 @@ function billyFullThrottleFromState(
     cfg.parryCount ?? 0,
     cfg.quickAssistCount ?? 0,
   )
-  const detCfg = {
+  const detCfg: CharacterOperationConfig = {
     ...cfg,
     billyAttackDataDetermination: atkDet,
     billyExExtraDetermination: chainFinal * EX_EXTRA_DETERMINATION,
-  } as CharacterOperationConfig
+  }
   const resources = computeSpecResources(getAgentSpec(AGENT_ID)!, detCfg, st)
   return billyFullThrottleFromDetermination(resources, quantize)
 }

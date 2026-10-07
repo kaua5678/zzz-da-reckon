@@ -308,7 +308,8 @@ function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
   return positiveWholeCounts(cfg.yixuanAxisEx)  // CC-481：三模块同体 helper 归到 utils/finiteClamp
 }
 
-function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCharConfigInput): void {
+function buildYixuanCharConfig(input: AgentCharConfigInput): void {
+  const { skills, cinemaLevel, team, cfg, char } = input
   // 进场恢复全部闪能（用户确认 120）
   cfg.initialEnergyGift = ENTRY_FLASH
   // 强特全部由模块生成（墨痕化形链/凝云术链）；exSpecialCount 仅作喧响估算（60 闪能/循环当量）
@@ -375,7 +376,7 @@ function buildYixuanCharConfig({ skills, cinemaLevel, team, cfg, char }: AgentCh
   cfg.yixuanMoveDaze = daze
 
   // spec 侧：mechanicRowValues 预存（术法值事件倍率行；符法千重实际执行由本模块按次数生成）
-  specBase.buildCharConfig?.({ skills, cinemaLevel, cfg } as AgentCharConfigInput)
+  specBase.buildCharConfig?.(input)
 }
 
 /**
@@ -509,7 +510,8 @@ function applyYixuanTeamConfig(
     + c1Lightnings * C1_LIGHTNING_FLASH
 }
 
-function applyYixuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
+function applyYixuanPanel(input: AgentPanelInput): void {
+  const { panel, cinemaLevel } = input
   // 影画1·清灵道心：进入战场时暴击率提升 10% → 用户口径改为等效暴伤+20%（防暴击溢出）
   if (cinemaLevel >= 1) {
     panel.critDmg = (panel.critDmg ?? 0) + C1_CRIT_DMG
@@ -520,7 +522,7 @@ function applyYixuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
     panel.stunDurationBonusSeconds = (panel.stunDurationBonusSeconds ?? 0) + 3
   }
   // 影画6 凝神（暴伤+40%/贯穿+20%）不在面板层施加：满覆盖+滑块由 pushDirect 按执行折算（能读 configStore）
-  specBase.applyPanel?.({ panel, cinemaLevel } as AgentPanelInput)
+  specBase.applyPanel?.(input)
 }
 
 /**

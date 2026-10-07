@@ -144,7 +144,7 @@ export function collectInCombatTeamBuffs(
           teammateId: agent.id,
           teammateName: agent.name,
           excludeTargetAgentIds: aliases,
-        } as InCombatTeamBuff)
+        })
       }
     }
 
@@ -178,7 +178,7 @@ export function collectInCombatTeamBuffs(
             ownerName: agent.name,
             teammateId: agent.id,
             teammateName: agent.name,
-          } as InCombatTeamBuff)
+          })
         }
       }
     }

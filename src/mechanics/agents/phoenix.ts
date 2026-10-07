@@ -436,7 +436,7 @@ function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput): Partial<
       c2BuildUpEff: cinema >= 2 ? PHOENIX_C2_BUILDUP_EFF : 0,
       chargedCount,
       note: '脆弱暴击承载 = spec teamBuffs（含队友受益）；重生/消亡状态机未建模；余火按总量口径。',
-    } as PhoenixCycle,
+    },
   }
 }
 

@@ -59,7 +59,7 @@ export function mainStatCandidates(config: ConfigModel): MainStatCandidate[] {
     if (!disc?.mainStats) continue
     const agentElement = catalog.getAgent(char.agentId)?.damageElement
     for (const slotNum of [4, 5, 6] as const) {
-      const current = disc.mainStats[slotNum] as string | undefined
+      const current = disc.mainStats[slotNum]
       for (const statId of MAIN_STAT_CANDIDATES[slotNum]) {
         if (statId === current) continue
         if (slotNum === 5 && ELEMENT_DMG_TO_AGENT[statId] && agentElement && ELEMENT_DMG_TO_AGENT[statId] !== agentElement) continue
@@ -82,7 +82,7 @@ export async function computeMainStatMarginals(
   const rows: MainStatMarginalRow[] = []
   for (const c of candidates) {
     if (isBatchAborted(opts.control)) return { baseDamage, rows, complete: false }
-    const mainStats = config.team[c.slot]!.driveDisc.mainStats as Record<number, string | undefined>
+    const mainStats = config.team[c.slot]!.driveDisc.mainStats
     const original = mainStats[c.slotNum]
     mainStats[c.slotNum] = c.statId
     await yieldToMacrotask()

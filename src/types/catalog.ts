@@ -566,11 +566,12 @@ export interface DriveDiscSet {
 export interface DriveDiscConfig {
   fourPieceSetId: string       // 4件套套装
   twoPieceSetId: string        // 2件套套装（可选，空表示纯4件套）
-  // 4、5、6号位主词条选择
+  // 4、5、6号位主词条选择。缺键 = 未选：时间线轻量速算（composables/teamTimelineStore.ts#applyTeamToStore）
+  // 会清掉上一队残留的 4/6 号位只留 5 号位；读端（core/panel.ts 等）缺键即跳过。
   mainStats: {
-    4: StatId  // 4号位：百分比主词条
-    5: StatId  // 5号位：伤害杯
-    6: StatId  // 6号位：功能性（异握/冲击/能量回复）
+    4?: StatId  // 4号位：百分比主词条
+    5?: StatId  // 5号位：伤害杯
+    6?: StatId  // 6号位：功能性（异握/冲击/能量回复）
   }
   // 副词条数量（按角色定位分配，0-54，6盘子总副词条步数）
   subStatAllocation: Record<StatId, number>  // stat -> 词条数（0~54）

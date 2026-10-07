@@ -464,7 +464,7 @@ function sigridLanceCounts(
   const solveSpend = (income: number): number => {
     const spec = getAgentSpec(SIGRID_AGENT_ID)
     if (!spec || !state) return 0
-    const detCfg = { ...cfg, sigridChuqiangHits: income } as AgentCharConfigInput['cfg']
+    const detCfg: AgentCharConfigInput['cfg'] = { ...cfg, sigridChuqiangHits: income }
     for (const [, entry] of computeSpecResources(spec, detCfg, state)) {
       const spendCounts = (entry as { spendCounts?: Record<string, number> })?.spendCounts
       if (spendCounts?.sigrid_lance_spend != null) {

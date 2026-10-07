@@ -710,7 +710,7 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
     .map(slot => `${teamAgentIds[slot] ?? slot}:${perSlotAnomaly[slot] ?? 0}`)
     .join(' / ')
 
-  return ([
+  const records: AnomalyEventRecord[] = [
     {
       id: 'remielle-voidflare-pool',
       type: 'luminize',
@@ -757,7 +757,8 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
       formula: 'count = 垂虹次数 × 3 豆 × (1 + 6命耀变翻倍)；倍率 = 垂虹耀变倍率 × 2.5',
       fields: ['remielleCinema1SpecialVoidflareCount', 'remielleCinema4SpecialVoidflareRefillCount', 'remielleCinema6FleetingGraceVoidflareTriggerMultiplier'],
     },
-  ] as AnomalyEventRecord[]).filter(event => event.count > 0)
+  ]
+  return records.filter(event => event.count > 0)
 }
 
 /**

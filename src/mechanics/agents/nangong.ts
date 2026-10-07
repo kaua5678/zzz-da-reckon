@@ -342,7 +342,7 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
       formula: 'polarDisorderDamage = 原紊乱伤害 × 25%（不清除异常状态）',
       fields: ['danceFullStacks=2/window', 'cinema2Chain=1/window', 'disorder.avgDamage×0.25'],
       note: `每次失衡 2 层舞力全开必消耗完${cinemaLevel >= 2 ? ' + C2 连携 1 次' : ''} = 每窗 ${polarPerWindow} 次 × ${stunCount} 窗。`,
-    } as never)
+    })
   }
   // C6 颤音:改：非失衡期叠层（强特/地雷撞重击 +1、终结技重击 +2，上限4），进入失衡清除结算
   // 异放（固定倍率 500%，每层+25%）——回复端按执行计数器近似（用户指令：需要计数器做回复端）
@@ -364,7 +364,7 @@ function buildNangongAnomalyEvents({ cfg, state, events }: AgentEventInput): voi
         formula: `releaseMultiplier = ${flat6}（500%统一倍率 × 层数系数(1+25%×${stacks6})）`,
         fields: [`primeStacks=${stacks6}`, `gained=${gained}`, `releaseMultiplier=${flat6}`],
         note: `非失衡期获取计数 强特${Math.floor(Number(state.exSpecialCount ?? 0))} + 地雷撞段${Math.floor(Number(cfg.nangongMinePairs ?? 0)) * 2} + 终结×2 ${Math.floor(Number(state.ultimateCount ?? 0)) * 2} = ${gained}，均摊每窗 ${stacks6} 层。`,
-      } as never)
+      })
     }
   }
 }

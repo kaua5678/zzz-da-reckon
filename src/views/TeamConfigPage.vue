@@ -1117,7 +1117,7 @@ const discEffectRows = computed(() => {
   if (!dd) return []
   const four = dd.fourPieceSetId ? catalogStore.driveDiscSetsMap.get(dd.fourPieceSetId) : undefined
   const two = dd.twoPieceSetId ? catalogStore.driveDiscSetsMap.get(dd.twoPieceSetId) : undefined
-  return buildDiscEffectRows(four as never, two as never, {
+  return buildDiscEffectRows(four, two, {
     specialty: code => SPECIALTY_LABEL[code] ?? code,
     attribute: code => ATTRIBUTE_LABEL[code] ?? code,
     stat: code => statLabel(code),
