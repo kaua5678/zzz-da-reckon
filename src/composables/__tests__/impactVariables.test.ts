@@ -2,20 +2,21 @@
  * CC-53：impactVariables 三个函数与原 ImpactChart（789a27e :161–236）内联算法逐值一致。
  * CC-55：柏妮思判断改为模块声明（teamReleaseShares）；下面的 inline* 仍保留原写死 '1171' 的写法当对照基准。
  * CC-537：读写改收变量对象（动态变量自带声明 / 异放键与元素）；对照基准仍按 id 走原内联写法，变量表只比对展示字段（toMatchObject）。
+ * CC-538：读写随变量对象（v.read / v.write）。对照基准里静态变量照原组件交给 core——现在就是表项自带的读写，等于自比；静态读写由 core 测试覆盖。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { IMPACT_VARIABLES, readImpactVar, writeImpactVar } from '@/core/impactVars'
+import { IMPACT_VARIABLES, type ImpactVariable } from '@/core/impactVars'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
-import { buildImpactVariables, readImpactVariable, writeImpactVariable } from '@/composables/impactVariables'
+import { buildImpactVariables } from '@/composables/impactVariables'
 
 type H = Awaited<ReturnType<typeof setupHarness>>
 
 // ── 照抄原组件（只把闭包变量换成参数）──
 function inlineAllVars(h: H, settingMap: Map<string, MechanicSetting>, coverage: Record<string, number> | undefined) {
   const { config: configStore, catalog: catalogStore } = h
-  const vars: typeof IMPACT_VARIABLES = []
+  const vars: Omit<ImpactVariable, 'read' | 'write'>[] = []
   for (const [id, setting] of settingMap) {
     const range = setting.suffix === '%'
       ? [(setting.min ?? 0) * 100, (setting.max ?? 100) * 100]
@@ -53,7 +54,7 @@ function inlineRead(h: H, settingMap: Map<string, MechanicSetting>, coverage: Re
     const raw = configStore.getMechanicSetting(dyn.settingId, meta?.default ?? 1)
     return meta?.suffix === '%' ? raw * 100 : raw
   }
-  return readImpactVar(configStore, id)
+  return IMPACT_VARIABLES.find(v => v.id === id)!.read(configStore)
 }
 function inlineWrite(h: H, settingMap: Map<string, MechanicSetting>, id: string, value: number): void {
   const configStore = h.config
@@ -64,7 +65,7 @@ function inlineWrite(h: H, settingMap: Map<string, MechanicSetting>, id: string,
     configStore.setMechanicSetting(dyn.settingId, meta?.suffix === '%' ? value / 100 : value)
     return
   }
-  writeImpactVar(configStore, id, value)
+  IMPACT_VARIABLES.find(v => v.id === id)!.write(configStore, value)
 }
 
 const mapOf = (h: H) => {
@@ -92,20 +93,20 @@ describe('impactVariables（CC-53）', () => {
     expect(pctSetting, '至少一个 % 机制设置变量').toBeTruthy()
 
     h.config.setMechanicSetting('burnice.releaseShare:electric', 0.3) // 一个已存、一个走自动值
-    for (const v of vars) expect(readImpactVariable(v, h.config, coverage), v.id).toBe(inlineRead(h, settingMap, coverage, v.id))
+    for (const v of vars) expect(v.read(h.config), v.id).toBe(inlineRead(h, settingMap, coverage, v.id))
     const byId = (id: string) => vars.find(v => v.id === id)!
-    expect(readImpactVariable(byId('setting.burnice.releaseShare:electric'), h.config, coverage)).toBeCloseTo(30)
-    expect(readImpactVariable(byId('setting.burnice.releaseShare:fire'), h.config, coverage)).toBeCloseTo(60)
+    expect(byId('setting.burnice.releaseShare:electric').read(h.config)).toBeCloseTo(30)
+    expect(byId('setting.burnice.releaseShare:fire').read(h.config)).toBeCloseTo(60)
 
     for (const v of vars) {
       const target = v.defaultRange[0] + (v.defaultRange[1] - v.defaultRange[0]) * 0.37
       inlineWrite(h, settingMap, v.id, target)
       const a = snap(h)
-      writeImpactVariable(v, v.defaultRange[0] + (v.defaultRange[1] - v.defaultRange[0]) * 0.11, h.config)
-      writeImpactVariable(v, target, h.config)
+      v.write(h.config, v.defaultRange[0] + (v.defaultRange[1] - v.defaultRange[0]) * 0.11)
+      v.write(h.config, target)
       expect(snap(h), v.id).toEqual(a)
     }
-    writeImpactVariable(pctSetting!, 50, h.config)
+    pctSetting!.write(h.config, 50)
     expect(h.config.getMechanicSetting(pctSetting!.id.slice('setting.'.length), -1)).toBeCloseTo(0.5)
   }, 60000)
 

@@ -16,7 +16,7 @@ import type { AnalysisContext } from '@/composables/analysisScenario'
 import { cloneConfigState } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
-import { buildImpactVariables, writeImpactVariable, type TeamImpactVariable } from '@/composables/impactVariables'
+import { buildImpactVariables, type TeamImpactVariable } from '@/composables/impactVariables'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { useCatalogStore } from '@/stores/catalog'
 import type { CharacterConfig } from '@/stores/config'
@@ -76,7 +76,7 @@ export async function sampleImpactCurve(scenario: AnalysisContext, opts: ImpactC
   for (let i = 0; i < opts.points; i++) {
     if (isBatchAborted(opts.control)) break
     const x = xMin + ((xMax - xMin) / (opts.points - 1)) * i
-    writeImpactVariable(v, x, config)
+    v.write(config, x)
     await yieldToMacrotask()
     if (opts.optimizePerPoint) {
       const alloc = computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => calc.teamTotalDamage.value }, calc.effectiveWEngineCoverages.value)
@@ -137,8 +137,8 @@ export async function sampleImpactSurface(scenario: AnalysisContext, opts: Impac
     grid[i] = []
     for (let j = 0; j < N; j++) {
       if (isBatchAborted(opts.control)) return { xs, ys, grid, minZ, maxZ, peak, complete: false }
-      writeImpactVariable(vx, xs[i]!, scenario.config)
-      writeImpactVariable(vy, ys[j]!, scenario.config)
+      vx.write(scenario.config, xs[i]!)
+      vy.write(scenario.config, ys[j]!)
       // 让出主线程的节奏同原组件：每 8 点一次（含第 0 点），其余点同步读数
       if (completed % BATCH_SIZE === 0) await yieldToMacrotask()
       const z = scenario.calc.teamTotalDamage.value

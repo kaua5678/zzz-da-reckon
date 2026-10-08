@@ -3,7 +3,7 @@ import { discRequirementMet, resolveDiscStatTemplate } from '@/core/buff'
 import { calcFlashEnergyRegenTotal, calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import { calcPanel, emptyPanel } from '@/core/panel'
 import { parseMoveEnergyCost } from '@/core/resource/moveLookup'
-import { readImpactVar, writeImpactVar } from '@/core/impactVars'
+import { IMPACT_VARIABLES } from '@/core/impactVars'
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import type { Agent, BuffEffect } from '@/types/catalog'
 import type { AnomalyPoolResult } from '@/types/resource'
@@ -187,9 +187,9 @@ describe('CC-337: 单一事实源与跨模块对账守护', () => {
     expect(computePerSlotBuildUp(anomalyPool, team, catalog)).toEqual([1500, 0, 0])
   })
 
-  it('readImpactVar / writeImpactVar 统一处理六种属性抗性读写', () => {
+  it('六种属性抗性变量由 resistanceVar 统一生成读写（CC-538：表项自带 read / write）', () => {
     const state: Record<string, any> = {
-      enemy: { damageResistances: { physical: 10, fire: -20 } },
+      enemy: { damageResistances: { physical: 10, fire: -20, ice: 0, electric: 0, ether: 0, wind: 0 } },
     }
     const store = {
       get enemy() {
@@ -199,13 +199,14 @@ describe('CC-337: 单一事实源与跨模块对账守护', () => {
         state.enemy = { ...state.enemy, ...patch }
       },
       setActionCount() {},
+      team: [],
     }
-    expect(readImpactVar(store, 'physicalResistance')).toBe(10)
-    expect(readImpactVar(store, 'fireResistance')).toBe(-20)
-    expect(readImpactVar(store, 'windResistance')).toBe(20)
+    const res = (element: string) => IMPACT_VARIABLES.find(v => v.id === `${element}Resistance`)!
+    expect(res('physical').read(store)).toBe(10)
+    expect(res('fire').read(store)).toBe(-20)
 
-    writeImpactVar(store, 'windResistance', -15)
-    expect(readImpactVar(store, 'windResistance')).toBe(-15)
-    expect(readImpactVar(store, 'physicalResistance')).toBe(10)
+    res('wind').write(store, -15)
+    expect(state.enemy.damageResistances).toEqual({ physical: 10, fire: -20, ice: 0, electric: 0, ether: 0, wind: -15 })
+    expect(res('wind').read(store)).toBe(-15)
   })
 })

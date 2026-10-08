@@ -12,7 +12,6 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { impactVariableView, sampleImpactCurve, sampleImpactSurface } from '@/composables/impactSampling'
-import { readImpactVariable, writeImpactVariable } from '@/composables/impactVariables'
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0))
 const TEAM = [{ agentId: '1171' }, { agentId: '1021' }, { agentId: '1131' }]
@@ -54,11 +53,10 @@ describe('伤害影响分析采样（独立场景）', () => {
     const { config } = await source()
     const calc = useResourceCalc()
     const share = impactVariableView({ config, calc }).find(v => v.id === SHARE_VAR)!
-    const coverage = calc.anomalyPoolResult.value?.coverage?.perElementCoverageRate
     const before = JSON.stringify(config.$state)
-    const orig = readImpactVariable(share, config, coverage)
-    writeImpactVariable(share, 0, config)
-    writeImpactVariable(share, orig, config)
+    const orig = share.read(config)
+    share.write(config, 0)
+    share.write(config, orig)
     await tick()
     expect(config.mechanicSettings[SHARE_VAR.slice('setting.'.length)]).toBeDefined()
     expect(JSON.stringify(config.$state)).not.toBe(before)
@@ -71,7 +69,7 @@ describe('伤害影响分析采样（独立场景）', () => {
     const calc = useResourceCalc()
     const stun = impactVariableView({ config, calc }).find(v => v.id === 'bossStunValue')!
     for (const p of pts) {
-      writeImpactVariable(stun, p.x, config)
+      stun.write(config, p.x)
       await tick()
       expect(calc.teamTotalDamage.value).toBe(p.y)
     }

@@ -3,12 +3,18 @@
  *
  * 每个变量定义：从 configStore 读取当前值，设置新值后触发响应式重算。
  * 用于 ImpactChart.vue 的 x 轴采样。
+ *
+ * CC-538（2026-10-09 arena-G r755）：表项自带读写（`read` / `write`）。原先表、`readImpactVar` / `writeImpactVar` 的两张 switch、
+ * 抗性 id → 元素表是按同一组 id 手工对齐的四份清单，id 拼错不报（读 0、写入静默不做）；抗性缺键读 20、2 号位缺席读 1 又各写了
+ * 一份默认值——store 默认抗性表与 159 个 Boss 预设阶段都六键齐全（引擎缺键按 0）、store 队伍恒为 3 格，这两处只有测试桩走得到。
+ * 现在每个变量只在表里定义一次，默认值只在 store（defaultEnemy / defaultCharacter）。
  */
 
 /**
  * r407：读写影响变量所需的最小配置面（**结构类型**；Pinia configStore 天然满足，测试可传最小桩）。
  * core 不 import `@/stores/*`，所以此前用 `configStore: any`——键拼错不报。现只声明这里真正读写的成员。
  * enemy 各字段与 store 的 `EnemyConfig` 一样必填：默认值只在 store 的 defaultEnemy，这里不再各写一份（r724；桩要给全）。
+ * team 同理：store 队伍恒为 3 格、每格的平A时间权重必填（CC-538）。
  */
 export interface ImpactVarConfig {
   enemy: {
@@ -19,20 +25,37 @@ export interface ImpactVarConfig {
     anomalyCoeff: number
     damageResistances: Record<string, number>
   }
-  team?: ReadonlyArray<{ basicAttackTimeWeight?: number } | undefined>
+  team: ReadonlyArray<{ basicAttackTimeWeight: number }>
   setEnemy(patch: { stunValue?: number; invincibleTime?: number; battleTime?: number; stunVuln?: number; anomalyCoeff?: number; damageResistances?: Record<string, number> }): void
   setActionCount(slot: number, field: 'basicAttackTimeWeight', count: number): void
 }
 
-export interface ImpactVariable {
+/** 影响变量。`C` 是读写要用的配置面：静态表项只要 ImpactVarConfig，编排层的机制设置变量要整个 store（CC-538） */
+export interface ImpactVariable<C = ImpactVarConfig> {
   /** 显示名称（下拉选单） */
   label: string
-  /** 只读/可写标记 */
+  /** 变量 id（下拉选项值） */
   id: string
   /** 默认采样区间 [min, max] */
   defaultRange: [number, number]
   /** 单位后缀 */
   suffix?: string
+  /** 读当前值（展示单位） */
+  read(config: C): number
+  /** 写入新值（展示单位）；写进 store 后由响应式重算 */
+  write(config: C, value: number): void
+}
+
+/** 伤害抗性变量：读写 enemy.damageResistances 的一个元素（写入经 setEnemy 换整张表，同原 writeImpactVar） */
+function resistanceVar(element: string, name: string): ImpactVariable {
+  return {
+    id: `${element}Resistance`,
+    label: `${name}伤害抗性`,
+    defaultRange: [-100, 100],
+    suffix: '%',
+    read: config => config.enemy.damageResistances[element],
+    write: (config, value) => config.setEnemy({ damageResistances: { ...config.enemy.damageResistances, [element]: value } }),
+  }
 }
 
 /** 所有可用的影响变量 */
@@ -42,141 +65,55 @@ export const IMPACT_VARIABLES: ImpactVariable[] = [
     label: 'Boss 失衡值阈值',
     defaultRange: [500, 8000],
     suffix: '',
+    read: config => config.enemy.stunValue,
+    write: (config, value) => config.setEnemy({ stunValue: value }),
   },
   {
     id: 'bossInvincible',
     label: 'Boss 无敌时间（秒）',
     defaultRange: [0, 120],
     suffix: 's',
+    read: config => config.enemy.invincibleTime,
+    write: (config, value) => config.setEnemy({ invincibleTime: value }),
   },
   {
     id: 'totalTime',
     label: '总战斗时间（秒）',
     defaultRange: [60, 300],
     suffix: 's',
+    read: config => config.enemy.battleTime,
+    write: (config, value) => config.setEnemy({ battleTime: value }),
   },
   {
     id: 'stunVulnerability',
     label: '失衡易伤倍率',
     defaultRange: [1.0, 2.0],
     suffix: '×',
+    read: config => config.enemy.stunVuln,
+    write: (config, value) => config.setEnemy({ stunVuln: value }),
   },
   {
     id: 'anomalyCoeff',
     label: '异常条系数',
     defaultRange: [0.5, 2.0],
     suffix: '×',
+    read: config => config.enemy.anomalyCoeff,
+    write: (config, value) => config.setEnemy({ anomalyCoeff: value }),
   },
-  {
-    id: 'physicalResistance',
-    label: '物理伤害抗性',
-    defaultRange: [-100, 100],
-    suffix: '%',
-  },
-  {
-    id: 'fireResistance',
-    label: '火伤害抗性',
-    defaultRange: [-100, 100],
-    suffix: '%',
-  },
-  {
-    id: 'iceResistance',
-    label: '冰伤害抗性',
-    defaultRange: [-100, 100],
-    suffix: '%',
-  },
-  {
-    id: 'electricResistance',
-    label: '电伤害抗性',
-    defaultRange: [-100, 100],
-    suffix: '%',
-  },
-  {
-    id: 'etherResistance',
-    label: '以太伤害抗性',
-    defaultRange: [-100, 100],
-    suffix: '%',
-  },
-  {
-    id: 'windResistance',
-    label: '风伤害抗性',
-    defaultRange: [-100, 100],
-    suffix: '%',
-  },
+  resistanceVar('physical', '物理'),
+  resistanceVar('fire', '火'),
+  resistanceVar('ice', '冰'),
+  resistanceVar('electric', '电'),
+  resistanceVar('ether', '以太'),
+  resistanceVar('wind', '风'),
   {
     id: 'slot1TimeWeight',
     label: '2号队友 平A时间权重（战场时间占比）',
     defaultRange: [0, 99],
     suffix: '',
+    read: config => config.team[1].basicAttackTimeWeight,
+    write: (config, value) => config.setActionCount(1, 'basicAttackTimeWeight', value),
   },
   // TODO: 队伍角色攻击（需从 panel 读取），目前注释待扩展
   // { id: 'slot1Atk', label: '角色1攻击力', defaultRange: [1000, 5000], suffix: '' },
 ]
-
-const RESISTANCE_VAR_ELEMENTS: Readonly<Record<string, string>> = {
-  physicalResistance: 'physical',
-  fireResistance: 'fire',
-  iceResistance: 'ice',
-  electricResistance: 'electric',
-  etherResistance: 'ether',
-  windResistance: 'wind',
-}
-
-/**
- * 从 configStore 读取变量当前值。
- */
-export function readImpactVar(configStore: ImpactVarConfig, varId: string): number {
-  const resEl = RESISTANCE_VAR_ELEMENTS[varId]
-  if (resEl) {
-    return configStore.enemy.damageResistances[resEl] ?? 20
-  }
-  switch (varId) {
-    case 'bossStunValue':
-      return configStore.enemy.stunValue
-    case 'bossInvincible':
-      return configStore.enemy.invincibleTime
-    case 'totalTime':
-      return configStore.enemy.battleTime
-    case 'stunVulnerability':
-      return configStore.enemy.stunVuln
-    case 'anomalyCoeff':
-      return configStore.enemy.anomalyCoeff
-    case 'slot1TimeWeight':
-      return configStore.team?.[1]?.basicAttackTimeWeight ?? 1
-    default:
-      return 0
-  }
-}
-
-/**
- * 向 configStore 写入变量值。
- */
-export function writeImpactVar(configStore: ImpactVarConfig, varId: string, value: number): void {
-  const resEl = RESISTANCE_VAR_ELEMENTS[varId]
-  if (resEl) {
-    const current = { ...configStore.enemy.damageResistances }
-    current[resEl] = value
-    configStore.setEnemy({ damageResistances: current })
-    return
-  }
-  switch (varId) {
-    case 'bossStunValue':
-      configStore.setEnemy({ stunValue: value })
-      break
-    case 'bossInvincible':
-      configStore.setEnemy({ invincibleTime: value })
-      break
-    case 'totalTime':
-      configStore.setEnemy({ battleTime: value })
-      break
-    case 'stunVulnerability':
-      configStore.setEnemy({ stunVuln: value })
-      break
-    case 'anomalyCoeff':
-      configStore.setEnemy({ anomalyCoeff: value })
-      break
-    case 'slot1TimeWeight':
-      configStore.setActionCount(1, 'basicAttackTimeWeight', value)
-      break
-  }
-}

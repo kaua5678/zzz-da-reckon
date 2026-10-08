@@ -124,7 +124,7 @@ import { sampleImpactCurve, type ImpactPoint } from '@/composables/impactSamplin
 import { useConfigStore, type CharacterConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
-import { buildImpactVariables, readImpactVariable, type ElementCoverageRate, type TeamImpactVariable } from '@/composables/impactVariables'
+import { buildImpactVariables, type ElementCoverageRate, type TeamImpactVariable } from '@/composables/impactVariables'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
@@ -175,7 +175,7 @@ const curVal = ref<number | undefined>(undefined)
 const selVar = computed(() => allVars.value.find(v => v.id === selectedVarId.value))
 
 function readVar(v: TeamImpactVariable): number {
-  return readImpactVariable(v, configStore, coverageRate.value)
+  return v.read(configStore)
 }
 
 
