@@ -38,12 +38,15 @@ export function resolveStatElement(element?: string): string | undefined {
   return base === 'frostfire' ? 'ice' : base
 }
 
-/** 元素限定的异常积蓄效率（百分点；按基础元素读 `<元素>AnomalyBuildUpEfficiency`，无该字段的元素为 0） */
+/**
+ * 元素限定的异常积蓄效率（百分点；读 `<元素>AnomalyBuildUpEfficiency`，无该字段的元素为 0）。
+ * 属于「元素→数值」查找，元素经 resolveStatElement 解析（变种读基础元素，烈霜读冰）；面板目前只有电 / 物理 / 以太三个字段。
+ */
 export function elementAnomalyBuildUpEfficiency(panel: PanelValues, element: string): number {
-  const baseElement = getBaseElement(element)
-  if (baseElement === 'electric') return panel.electricAnomalyBuildUpEfficiency
-  if (baseElement === 'physical') return panel.physicalAnomalyBuildUpEfficiency
-  if (baseElement === 'ether') return panel.etherAnomalyBuildUpEfficiency
+  const statElement = resolveStatElement(element)
+  if (statElement === 'electric') return panel.electricAnomalyBuildUpEfficiency
+  if (statElement === 'physical') return panel.physicalAnomalyBuildUpEfficiency
+  if (statElement === 'ether') return panel.etherAnomalyBuildUpEfficiency
   return 0
 }
 
