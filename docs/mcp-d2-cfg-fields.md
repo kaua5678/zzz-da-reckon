@@ -85,6 +85,7 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 - **读机制设置键**（`record['setting:<id>']`）：用新增的 `cfgMechanicSettingRaw(cfg, id)`（`utils/mechanicSettingCfg.ts`，返回原始值、不做数字转换；外层 `Number(… ?? x)` 原样保留 ⇒ 零差）。纯数字场景本来就该用 `cfgMechanicSetting(cfg, id, fallback)`，但它对非有限数取 fallback，与原 `Number(raw ?? x)` 在脏值上行为不同 ⇒ 机械迁移一律用 Raw，语义收敛另开卡。
   ~~同形态待迁~~ → **r393 CC-363 `bb697b35` 已全仓收口**（12 模块 24 处，见下）。
   → **r749 CC-532 `1c8b10d3`**：这 24 处已改用模块 reader（默认值只在 settings 声明），`cfgMechanicSettingRaw` 已删除；读机制设置一律用 `mechanicSettingReader` / `mechanicSettingPanelReader`（`utils/mechanicSettingCfg.ts`）。
+  → **r750 CC-533 `0487d921`**：读到的设置也不再换算后写回 cfg 私有字段——删了 21 个模块的 56 个镜像字段及其增广声明，读取处直接调 reader（`docs/mcp-basic-pool-carve.md` §15）。
 - **模块私有的执行标记**（`(exec as Record<…>).<键>`）：在本模块加 `declare module '@/types/resource/execution' { interface SkillExecution { … } }` 扩充，和 cfg 扩充同一规则。
 - **`(cfg.x ?? {}) as T`**：改成受检注解 `const n: T = cfg.x ?? {}`——强转会掩盖不匹配，注解会报错（本轮补的类型全靠 tsc 一次过证明）。另删 17 处变冗余的 `as`。
 - **坑**：原代码有「`record.k = v` 后又 `cfg.k = v`」的双写（banyue `banyueMoveTimes/Dmg`），改写后变成同一行写两遍 ⇒ 删掉一份（同一对象，零差）。改完 `git diff` 扫一眼相邻重复行。

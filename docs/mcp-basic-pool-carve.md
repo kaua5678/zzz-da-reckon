@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。
 
 ## 1. 问题
 
@@ -776,7 +776,7 @@ zd 两套快照都是 0/0。yidhari 描述文案不在 zd 输出里，不加 ZD_
 - jufufuAdjustableRate 的 `cfgMechanicSetting(cfg, id, 1)` 保留：这两条比例在 spec 的 adjustable 里声明，只有经过 `mechanics/index.ts` 的 registerWithSpecSettings 注册后才会并进 `jufufuTigerRoarMechanic.settings`。直接 import 模块的单测没有注册，换成 reader 会抛「未声明」。
 - 回退：`git revert 0532dc80`、`git revert 1c8b10d3` 可以各自单独回退，生产结果不变。
 
-### 14.8 下一轮候选（未做）
+### 14.8 下一轮候选（r750 做了第 1 条，见 §15）
 
 1. **设置的镜像字段把默认值又写了第三份。**
    - 有些模块在 buildCharConfig 里把设置值写进 cfg 字段，别的钩子再用 `cfg.字段 ?? D` 读。例：
@@ -788,3 +788,84 @@ zd 两套快照都是 0/0。yidhari 描述文案不在 zd 输出里，不加 ZD_
      - 在 HEAD 版打探针，确认生产里读取时字段总是已写入；
      - 再决定是改成必填字段，还是读取处直接用 reader。
 2. （小）jufufuAdjustableRate 的 1 与 spec adjustable 的 `"default": 1` 重复（§14.7）。要去掉，得先有一个不依赖注册顺序、也能拿到 spec 声明的读法。只有一处，单独不立题，可以并进第 1 条一起看。
+
+## 15. r750：删机制设置的 cfg 镜像字段
+
+> 代码提交 `0487d921`，zd 0/0（arena-G r750）；arch CC-533；r6 §8 第 750 行。题目是 §14.8 的第 1 条候选。
+
+### 15.1 问题
+
+- 有些角色模块在 buildCharConfig 里把设置值换算后写进 cfg 私有字段，别的钩子再读这个字段。例：evelyn 写 `cfg.evelynGarroteCount = whole(setting(cfg, 'evelyn.garroteCount'))`，`cycleFromInput` 读 `Number(cfg.evelynGarroteCount ?? 4)`。
+- 这类字段在 CharacterOperationConfig 上只能声明成可选（别的角色的 cfg 上没有它），所以读取处必须写 `?? D`。于是默认值写了三份：settings 声明一份，reader 回落（同一份），读取处的 D 又一份。
+- 这层镜像出过事。2026-09-20 round 48 分诊发现：安比 `c2StunCoverage`、塞维林 `fengfengStacks` / `c4Coverage` 的读取处读的是没人写的镜像字段，滑块能拖，结果恒等于 D。当时的修法是补写镜像字段（anby.ts / severian.ts 原注释）。
+- 普查（`look-c.py`，75e8bfaf）：agents 里由 reader 结果（直接或经局部变量）写入的 cfg 字段共 66 个。其中 56 个是纯镜像，分布在 21 个模块：写入是无条件的「换算(设置)」，没有第二个写入方，只在本模块读。另外 10 个不是镜像，见 §15.3 末尾。
+- 读取处的 D 换算后和声明对比：只有克拉蕾 `claretCleaveCount` / `claretBloodBurialCount` 两个读 `?? 0`，声明是 1；其余都相同（雨果影画4 覆盖率读 `?? 0`，与命座门对 4 命以下给 0 一致）。增广声明的注释里也抄着默认值，如「默认 0.5」「默认0.75」，伊德海莉 exPerStun 的注释还写着「0命2 / 1命3」，和 CC-532 改过的描述不一致（实际一律默认 2）。
+
+### 15.2 运行时探针（打在 HEAD 版 21 个模块上，已还原）
+
+- 每处 `cfg.字段` 读取（按源码匹配共 70 处，含注释里的写法）外面包一层记录：字段名；cfg 上有没有引擎预填的 `setting:<id>` 键（有 = 引擎建的 cfg）；字段是否已写；前三帧调用栈。按进程去重。跑 vitest 两片和 zd。
+- 结果：
+  - 56 个字段在带键的 cfg 上读到的都是已写的值；
+  - 「带键、未写」只有 3 条，都来自 harumasa.test.ts:132 / 142 / 154 手搭的 cfg（写了 `'setting:harumasa.a5Count': 2`，没写镜像字段），不是生产路径；
+  - 不带键（手搭）又未写的读取涉及 9 个字段，它们的 D 都等于声明换算值，改后结果不变。
+- zd 两套快照 0/0（探针只记录，不改值）。vitest 第 2 片有 2 例失败，都和探针有关：一例是 `src/__p750.ts` 里的 `'setting:' + id` 触发 CC-235 字面量锁；另一例是 zc 工作区测试，推测是探针新增的未跟踪文件所致。还原后的全量里这两例都通过。
+
+### 15.3 改法（`0487d921` 41 个文件 +133 / −353）
+
+- 读取处直接写「换算(reader(cfg, id))」，换算就是原来写入时那一段；删写入行，删 CharacterOperationConfig 增广里的声明（连同注释里抄的默认值）。
+- 37 个字段只有一处读、换算只用模块级常量，原样搬过去（脚本处理）。另 19 个逐个处理：
+  - 柏妮思：单 / 双喷秒数在 buildCharConfig（算耗能）和资源结果两处用，双喷上限随影画4 变，收成 `singleSpraySecondsOf` / `doubleSpraySecondsOf`；
+  - 伊德海莉：`exPerStunOf`（生命值账本、收敛期返还上限两处用）和 `exHealMissingHpPctOf`（资源结果、自身烧血喧响两处用）；触手间隔、烧血速率各只有一处读，直接写；
+  - 克拉蕾：两个次数在资源账本和 spec 事件 counts 两处读，读侧 `?? 0` 与声明 1 不一致的问题随之消失（spec 的 countField 查的是 counts 记录，不是 cfg）；
+  - 雨果：回响覆盖率（6 命固定 1）和影画4 覆盖率（4 命以下 0）的命座门搬到读取处；
+  - 塞维林：执行行原来是「字段有值用字段，没有就读设置」的三元，收成直接读设置；`cycleFromCfg` 的 Pick 去掉这个字段；
+  - 安比：删「滑块 → cfg 的唯一通道」注释，头注释的历史缺陷改写成现状（原第一句说 cfgNum 是 cfgMechanicSetting 的别名，现在它已是模块 reader）；
+  - 莱卡恩的 C1 覆盖率改在读取处读（同模块的 exHoldRatio 本来就这样读）；千夏的注释随读取点搬走；洛希在 buildCharConfig 内改用局部常量；艾莲 c4CdRate 两处读各写一次夹取。
+- 协议单一来源 `utils/mechanicSettingCfg.ts` 的头注释加一段：模块在用到设置的地方直接调 reader，不要换算后写进 cfg 私有字段给别的钩子读。
+- 不动的 10 个（值来自设置，但不是镜像）：
+  - 引擎基础字段：`exSpecialEnergyConsume` / `exSpecialActionTime`（莱卡恩长按比例）、`initialEnergyGift`（派派、苍角）；
+  - 派生量：`billyChainHp`、`healPctPerCurtainProviderUlt`、`liuyinPreviousTeammateSlot`；
+  - `hugoRemainingStunSeconds`：轴内反推（hugo.ts:396）是第二个写入方；
+  - `yuzuhaChainEntryCount`：影画2 在设置底数上 `+=`；
+  - `luciaC4CurtainCoverage`：applyTeamConfig 写给全队的通道。
+- 单测（19 个文件）：手搭 cfg 里的镜像字段，等于声明换算值的删掉（70 处），否则改写成真实输入 `'setting:<id>'`（33 处）。其中 ellen.test 的 `patchCfg` 底座把几项设成 0，有两个用例靠 extra 把它们覆盖回默认值；这两处删掉后就变成 0，所以又改写成设置键（净删 68、改写 35）。另外：
+  - burnice / roxy 删掉断言镜像字段的行，耗能断言还在，仍覆盖默认秒数；
+  - decibelRowParity 改读引擎 cfg 上的 `setting:roxy.spinSeconds`；
+  - ellen 一个用例名里的字段名改成设置 id。
+
+### 15.4 反证
+
+在改后的代码上临时改两处，已还原并逐字节比对：
+
+- evelyn 循环改回读 `Number(cfg.evelynGarroteCount ?? 4)` → vue-tsc 报 TS2339。增广声明已删，「读了没人写的字段」在类型检查这一步就过不去，2026-09-20 那类缺陷不会再出现。
+- ellen 循环把 c6FeastCoverage 写死成 1 → ellen.test「ellen.c6FeastCoverage → 蓄力剪击行增伤差分」报错。改前这类滑块差分用例直接填镜像字段，测不到「设置 → 字段」这一段；现在填设置键，测的是整条链。
+
+### 15.5 零差
+
+zd 两套快照都是 0/0。理由：写入是无条件的「换算(设置)」，没有第二写入方；生产里读取都发生在写入之后（§15.2）。所以读取处现算的值和原来字段里的值相同。
+
+### 15.6 验证
+
+| 项 | 结果 |
+|---|---|
+| vue-tsc | 0 |
+| guards | 29 条全过，扫 298 个文件 |
+| zc.test + checkGuards.test | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 |
+| zd | 0/0 |
+| vitest | 258 / 2155 + 262 / 2347 = 520 文件 / 4502 例（与基线相同；跳过 13 / 26 不变） |
+| build | 1597.69 → 1594.31 kB（index-BIEAqNe9.js，gzip 463.92） |
+| drift | 154 / 0 / 0；触发器逾期 0、未到期 10 |
+
+### 15.7 不做与回退
+
+- 不加新锁。删掉的字段已不在类型里，读回去 vue-tsc 就报（§15.4）。剩下 10 个从设置写 cfg 的字段都是正当通道，要写精确的源码锁就得带白名单，维护成本高于收益。规则写进了协议单一来源的头注释。
+- 回退：`git revert 0487d921`。单提交，无数据迁移，生产结果不变。
+
+### 15.8 下一轮候选（未做）
+
+1. 两个带第二写入方的设置字段，读取处还各有一份默认值：
+   - 雨果 `hugoRemainingStunSeconds`：buildCharConfig 从设置写（hugo.ts:171），轴内反推再覆盖（:396），读取处 `?? 5`（:187）。可以照 `hugoAxisExVerdictCount` 的做法，让轴路径写自己的覆盖字段，读取处写「覆盖值 ?? 设置换算」。
+   - 柚叶 `yuzuhaChainEntryCount`：设置作底数（yuzuha.ts:115），影画2 再 `+=`（:133），读取处 `?? 0`（:167）。可以改成读取处「设置 + 影画2 增量」。
+   - 两处都小，可以并成一轮；先确认 convergence.ts:524 注释里提到的轴内反推读法。
+2. （沿用 §14.8 第 2 条）jufufuAdjustableRate 的 1 与 spec adjustable 的 `"default": 1` 重复，难点仍是注册顺序。
