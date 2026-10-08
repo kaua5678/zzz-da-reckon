@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。
 
 ## 1. 问题
 
@@ -1400,9 +1400,104 @@ zd 两套快照都是 0/0，理由：
 - 机制设置变量的读写键仍用 `setting.id`（与 CC-537 相同），变量 id 用 settingMap 的键。
 - 回退：`git revert 6bcd6cc3`（单提交，无数据迁移）。
 
-### 20.8 下一轮候选（未做）
+### 20.8 下一轮候选（r756 做了第 2 条，见 §21；第 1 条普查后判不做，见 §21.7）
 
 1. 沿用 §19.8 第 2 条：`registerWithSpecSettings` 在注册时改写 `module.settings`（依赖方见 §19.8）。
 2. 抗性表的键集合只靠约定。`AttributeConfigPage.vue#getResistance` 三类抗性读取都写 `?? 0`，但页面只遍历 `STANDARD_ENEMY_DEBUFF_ELEMENTS`（六元素），三张表在 `defaultEnemy` 和 159 个 Boss 预设阶段里都六键齐全，三处 `?? 0` 走不到。
    - 可评估：`defaultResistanceTable` 由 `STANDARD_ENEMY_DEBUFF_ELEMENTS` 生成，表类型收窄为按六元素索引，缺键变成类型错误；
    - 先查引擎按 `getBaseElement(element)` 取抗性时，元素会不会超出六元素（`helpers.ts:786` 的 `?? 0` 可能是真兜底）。
+
+## 21. 抗性表六键入类型（r756，CC-539）
+
+> 代码提交 `200b30ca`（类型与校验收口，zd 0/0；运行时只删了属性页三处走不到的 `?? 0`）（arena-G r756）；arch CC-539；r6 §8 第 756 行。题目来自 §20.8 第 2 条；第 1 条先普查，判不做（§21.7）。
+
+### 21.1 普查
+
+- §20.8 第 1 条（`registerWithSpecSettings` 在注册时改写 `module.settings`）：
+  - HEAD 探针（注册入口打桩，只记录，已还原）：共 62 次注册，每个模块都匹配到 spec。13 个模块被并入 spec adjustable，共 37 条，这些模块自带的 settings 里一条都没有。其余 49 个合并后不多一条，但只要自带 settings 非空，数组照样被换成新数组。
+  - 合并结果的读者都经注册表：`teamMechanicSettings`（UI 列滑块、影响变量）、`buildCharConfig` 预填 cfg（`helpers.ts:490`）、`settingDefaults` → `resolveMechanicSettings`（面板记录）。
+  - 模块文件里的 reader（`mechanicSettingReader(() => xMechanic.settings)` 等 30 多处）只读本模块声明的 id。spec adjustable 的 id 只在洛克茜、橘福福两处出现，都走 `specAdjustableRate`。
+  - 两种不改模块对象的做法都会带来新问题，判不做（§21.7）。
+- §20.8 第 2 条（抗性表的键集合）：
+  - 三张表的类型在 4 个文件里写了 12 处 `Record<string, number>`：`EnemyConfig` 三张表、`defaultResistanceTable` 返回值、`applyBossPreset` 入参、`BossPresetPhase`、core `ImpactVarConfig`（含 `setEnemy` 补丁）。
+  - 写入来源（全量 grep）：
+    - store 默认表 `defaultResistanceTable`，手写六键；
+    - `applyBossPreset` 整表复制预设相位；
+    - `setResistance` 改单键（属性页只遍历六元素）；影响变量写入是展开旧表、改一键；
+    - store 不持久化 enemy。
+  - 「六键齐全」靠两份手抄维持：`defaultResistanceTable` 的字面量；`validate-data.mjs` 的 `ELEMENTS` 清单逐期校验 boss-presets（注释写明了原因：类型是 `Record<string, number>`，JSON 契约查不出六键）。
+  - 属性页 `getResistance` 有三处 `?? 0`（`.vue` 不在判据 28 的扫描范围）。
+  - 引擎探针（HEAD，只记录，已还原）：
+    - 在 5 个读点记「读点 / 元素 / 表里有无该键」的去重行：失衡 `stunPool.ts:152`、积蓄 `anomalyPool.ts:52`、紊乱 `helpers.ts:786`、乱流 `helpers.ts:822`、蕾米埃尔 `remielle.ts:172`。跑了 114 个相关测试文件（1022 例通过）和 zd，共记 53 行。
+    - 六元素以外的键：lumiflux（积蓄、失衡、乱流、蕾米埃尔四个读点）。
+    - 变种元素：
+      - 紊乱读点 frostfire 查不到（`getBaseElement` 不归并 frostfire）；
+      - 乱流读点 ether_ink、physical_polar_assault 查不到（按原始元素取）；
+      - 失衡读点 ether_ink、frostfire 查不到（按原始元素取）；
+      - 积蓄读点经 `resolveStatElement`，观察到的变种（ether_ink、frostfire）都查得到。
+    - 标准元素查不到的行只可能来自测试里的空表或半表（生产的三张表六键齐全）。
+  - ⇒ 引擎读点的 `?? 0` 是真兜底，入参类型不收窄；属性页只按六元素读，`?? 0` 走不到。
+
+### 21.2 问题
+
+- 「标准 6 元素齐全」是三张表的事实，但类型表达不出来：每个写入点和读者各自记着；新加的写入方写半张表也不报错。
+- 元素清单抄了三份：常量 `STANDARD_ENEMY_DEBUFF_ELEMENTS`、`defaultResistanceTable` 字面量、`validate-data.mjs` 的 `ELEMENTS`。最后一份之所以存在，只是因为类型说不出六键。
+- 属性页三处 `?? 0` 把「一定有」写成了「可能缺」。
+
+### 21.3 改法
+
+- `utils/enemyDebuffStats.ts`：新增 `StandardEnemyDebuffElement = typeof STANDARD_ENEMY_DEBUFF_ELEMENTS[number]` 和 `ResistanceTable = Record<StandardEnemyDebuffElement, number>`。注释写明表的来源，以及引擎为什么不用它。
+- 12 处 `Record<string, number>` 改成 `ResistanceTable`。`types/bossPreset.ts` 从 utils 引这个类型（type-only），类型由常量推出，只有一个来源。
+- 元素参数收窄到六元素：`setResistance(kind, element, value)`、`resistanceVar(element, name)`、属性页 `getResistance`。
+- 属性页 `getResistance` 删掉三处 `?? 0`。
+- `validate-data.mjs`：删掉六键校验和 `ELEMENTS` 清单，只留「每个预设至少一个相位」，检查数仍为 161。
+  - 理由：JSON 契约（`scripts/lib/json-contract.mjs`）按 `BossPresetFile` 解析出的类型逐字段校验；`ResistanceTable` 的 6 个键都是必填属性，契约会逐期去查。
+- 测试桩：
+  - `impactVars.test`、`bossSchedule.test`、`timeWeightAllocation.test` 的空表补成六键 0；
+  - `damagePoolDefDown.test` 原先按 `Object.keys` 逐键置 0（键是 string，索引不了 `ResistanceTable`），改成 `setEnemy` 整表置 0。
+- 引擎读表的入参保持 `Record<string, number>`（`stunPool`、`anomalyPool`、`helpers`、`remielle`，以及钩子输入），`ResistanceTable` 可以直接赋给它。
+
+### 21.4 行为
+
+- 运行时：只删了属性页三处走不到的 `?? 0`，其余都是类型和校验的改动。zd DUMP 0 / ROWS 0。
+- 测试桩的空表换成六键 0 后结果不变（引擎缺键本来就按 0）。相关 37 个测试文件和全量两片都通过。
+- validate:data 检查数 161 不变。boss-presets 的六键改由契约查，报错形如 `ResistanceTable.wind  $.bosses[0].phases[0].damageResistances.wind: 缺失`。
+
+### 21.5 反证（均已还原，cmp 核对）
+
+- 段 A（一次 vue-tsc，报 3 个错误）：
+  - 默认表删 `wind` → TS2741；
+  - `resistanceVar('lumiflux', '辉光')` → TS2345；
+  - `bossSchedule.test` 的桩写空表 → TS2740。
+- 段 B1：预设第一个相位的伤害抗性删掉 `wind` → validate:data 失败，契约报 `ResistanceTable.wind` 缺失。
+- 段 B2：同一份缺键数据，把 `BossPresetPhase.damageResistances` 退回 `Record<string, number>` → 161 项全过。可见原先六键只能靠手写校验拦，现在由类型加契约兜住。
+
+### 21.6 验证
+
+- vue-tsc -b --force 0；check-guards 29（扫 298 个文件）；zc+checkGuards 207；tokens / data / specs / recording 12 / 161 / 462 / 189。
+- vitest 258/2155 + 262/2348 = 520 文件 / 4503 例，与基线相同；跳过 13 / 26 不变。
+- zd DUMP 0 / ROWS 0；build index 1594.54 kB（gzip 464.02）；drift 154 / 0 / 0，触发器逾期 0、未到期 10。
+
+### 21.7 不做与回退
+
+- §20.8 第 1 条（`registerWithSpecSettings` 在注册时改写）判不做：
+  - **注册浅拷贝** `{ ...module, settings: merged }`（模块对象不动）：注册表里的对象和模块文件导出的不再是同一个。
+    - `miyabiFrostMoonReserveCc202.test` 用 `vi.spyOn(miyabiMechanic, 'buildExecutions')` 断言引擎的调用，而雅正是被并入 spec adjustable 的 13 个模块之一。浅拷贝后引擎调的是拷贝上的函数，spy 落空。
+    - 以后凡是「改模块对象、注册表跟着变」的用法都会踩这个坑。
+  - **注册表另存合并结果**（`registerAgentMechanic(module, specSettings)`，再加一个按 agentId 取 settings 的读口）：模块对象和身份都不变，但「这个角色有哪些设置」分成了两个读口。新代码如果走 `getAgentMechanic(id)?.settings`，会静默漏掉 37 条 spec adjustable，不报错，还得再加一把锁。
+  - 现状：改写只发生在启动注册时，读者都经注册表，模块 reader 只读本模块声明的 id，没有观察到出错。维持现状。
+- 引擎读点的元素归并本轮不改（见 §21.8 第 1 条）：会改数值，需要先做 zd 归因。
+- `defaultResistanceTable` 保留字面量，不改用 `Object.fromEntries(STANDARD_ENEMY_DEBUFF_ELEMENTS…)` 生成：后者需要转型；字面量直接受 `ResistanceTable` 检查，缺键报 TS2741，多键报超额属性。
+- 回退：`git revert 200b30ca`（单提交，无数据迁移）。
+
+### 21.8 下一轮候选（未做）
+
+1. 引擎按元素查敌人抗性，5 个读点用了 3 种归并口径（见 §21.1 的探针）：
+   - 积蓄用 `resolveStatElement`（变种归到基础元素，frostfire 归到冰）；
+   - 紊乱用 `getBaseElement`（frostfire 不归并）；
+   - 失衡、乱流、蕾米埃尔按原始元素取。
+   - 用户口径（2026-09-05，见 `data/anomalyElement.ts#resolveStatElement` 注释）：烈霜在一切「元素→数值」查找里按冰读，包括敌方冰抗。`VARIANT_ELEMENT_TO_BASE` 的注释也写明变种继承基础元素的值。
+   - 可评估：抽出 `enemyResistanceOf(table, element)`（按 `resolveStatElement` 取键，缺键按 0），5 个读点共用。
+   - 这会改数值：Boss 预设对应基础元素的抗性非 0 时，紊乱（烈霜）、乱流（玄墨、极性强击）、失衡（玄墨、烈霜）三处结果会变。先在 HEAD 上量 zd 与金样的差异，逐条归因（规则 10）。
+   - 钩子入参 `enemyAnomalyResistances`（`mechanics/typesHooks.ts:265`）如果确认只来自 store 表，可以一并收窄为 `ResistanceTable`；收窄后维琳娜的 `['wind'] ?? 0` 就走不到了。
+2. 佩洛伊斯模块（`mechanics/agents/specPanelBuffs.ts`）靠 12 处事后赋值（`peiluoProminenceMechanic.xxx = …`）拼出钩子，其中 `patchExecutions` 先赋值、后被包一层覆盖。可评估改回对象字面量。
