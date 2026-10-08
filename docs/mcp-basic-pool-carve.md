@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。
 
 ## 1. 问题
 
@@ -961,10 +961,141 @@ zd 两套快照都是 0/0，理由：
 - 柚叶不单独保留「设置 → cfg」的用例：完整计算链用例覆盖滑块，影画2 用例覆盖「设置 + 强制连携」。
 - 回退：`git revert 5d737c73`。单提交，无数据迁移，生产结果不变。
 
-### 16.8 下一轮候选（未做）
+### 16.8 下一轮候选（r752 做了第 1 条，见 §17）
 
 1. 编排层 / 视图层按 id 读模块设置时自带的默认值（`ultimatePromote.ts:205` 的 `liuyin.hug60Count` -1 等）。
    - 做法候选：store 的 `getMechanicSetting(id)` 省略 fallback 时，按注册表回落声明。
    - 先普查 composables / views / stores 里读**模块注册设置**的调用点，以及默认值是否等于声明。
    - 再看 store → mechanics 注册表的依赖方向能不能接受。现在 helpers.ts / ResourceUtilizationPage 的做法是遍历声明后传 `setting.default`。
 2. （沿用 §14.8 第 2 条）jufufuAdjustableRate 的 1 与 spec adjustable 的 `"default": 1` 重复，难点仍是注册顺序。
+
+## 17. 编排层不再按 id 读模块设置（r752，CC-535）
+
+> 代码提交 `d9c98594`（纯重构，zd 0/0）+ `c8fa1610`（zcWorkspace 偶发失败，只改测试）（arena-G r752）；arch CC-535；r6 §8 第 752 行。题目来自 §16.8 第 1 条。
+
+### 17.1 普查
+
+§16.8 原先的设想是：store 的 `getMechanicSetting(id)` 省略 fallback 时按注册表回落到声明值。动手前先普查谁在模块外按 id 读模块设置。
+
+- 取 `src/mechanics` 里声明的 141 个设置 id（`id: '<ns>.<name>'`），在 `src/mechanics` 以外的非测试 `.ts` / `.vue` 里找它们的字符串字面量。
+- 不在注释里的命中只有一处：`composables/resourceCalc/ultimatePromote.ts#buildPromoteParams` 的 `configStore.getMechanicSetting('liuyin.hug60Count', -1)`。
+  - 其余命中都在注释里：crossAgentSupply、ResourceUtilizationPage、panelPhases、wEngineStackCoverage、types/resource/config、mechanics/types。
+- 编排层 / 视图里其他带字面默认值的 `getMechanicSetting`，读的都不是模块设置：
+  - `guarantee.*`：刻意不注册；
+  - `boss.*`、`optimizer.*`、`time.stunPlanProjection`；
+  - `wind.*`：只在页面和 anomalyPanels 出现，没有模块声明；
+  - `<ns>.releaseShare:<元素>`：动态 id，默认值是自动占比；
+  - 合轴吸收比：具名常量。
+- 以下几处本来就以声明为准：`helpers.ts#buildCharConfig` 和 `ResourceUtilizationPage#settingDisplayValue` 遍历声明传 `setting.default`；`impactVariables.ts` 用 settingMap 的 `meta.default`。
+
+结论：按注册表回落只服务一个调用点。把这一处挪进模块后，它就没有消费者了，还会让 store 依赖 mechanics 注册表。所以不做。
+
+### 17.2 这一处的问题
+
+- 赠大编排簇已在 CC-35d-B3 / CC-43c 改成按能力找提供者（`ultimateGiftSource` / `promoteHugCounts`），却仍写死琉音的设置 id 和默认值 -1，这是声明之外的第二份默认值。
+- 读到的值存进 `UltimatePromoteParams.hug60Setting`，再作为 `promoteHugCounts` 的第三个位置参数传回琉音。
+  - convergence 轴模式在同一个位置传「轴声明的 60 次数 floor(h60)」。
+  - 同一个参数平时是设置值、轴模式是轴声明值，和 r751 雨果 hugoRemainingStunSeconds 是同一类问题。
+- 引擎侧 `liuyin.crossAgentSupply.supply` 早就用模块 reader 从自己的 cfg 读这个设置。
+
+### 17.3 改法
+
+- 钩子入参：新增 `PromoteHugInput { goodReviewTotal; stunCount; targetChainCountTotal?; hug60Cap? }`。
+  - 类型放在 `mechanics/typesHooks.ts`，由 `types.ts` 转出，和 r732 挪过去的钩子入参放在一起。types.ts 行数 1336 → 1335。
+  - `promoteHugCounts(input: PromoteHugInput & { getMechanicSetting })`。
+- `liuyin.ts`：钩子 = `computeLiuyinHugCounts(G, n, hug60Cap ?? settingVia(getMechanicSetting, 'liuyin.hug60Count'), targetChainCountTotal)`。
+  - 这就是「覆盖 ?? 设置」，默认值只剩声明里的 -1。
+  - `computeLiuyinHugCounts` 本体不动。
+- `ultimatePromote.ts`：
+  - `promoteHugCountsOf` 绑定 store 读取器 `(id, fallback) => configStore.getMechanicSetting(id, fallback)`，返回只收 `PromoteHugInput` 的函数；
+  - `promoteFixpoint` 不传覆盖；
+  - `UltimatePromoteParams` 删 `hug60Setting`，`buildPromoteParams` 删那次读取；
+  - 错位的 `ultimateGiftSourceOf` 注释挪回原处。
+- `convergence.ts`：轴模式传 `hug60Cap: Math.floor(h60)`。
+- 源码锁：在 `mechanicSettingCfgSource.test.ts` 新增一条。
+  - 用 `getRegisteredMechanicSettings()` 取全部模块设置 id（含 spec adjustable）。
+  - `mechanics/agents/` 以外的非测试源码去掉注释后，不得出现这些 id 的字符串字面量。
+  - 编排层 / 视图要用模块设置，就遍历声明取 default，或者把读取器递给模块钩子、由模块自己读。
+  - `utils/mechanicSettingCfg.ts` 头注释同步写明这条边界。
+
+### 17.4 运行时探针
+
+在 HEAD 版 `promoteFixpoint` 调钩子的地方打桩，只记录，已还原。比较两个值：
+
+- 旧值 `p.hug60Setting`：在 buildPromoteParams 时读；
+- 新读法 `configStore.getMechanicSetting('liuyin.hug60Count', -1)`：在钩子调用时读，也就是 settingVia 用声明的 -1。
+
+结果：
+
+- vitest 两片（2155 + 2347 全过）加 zd：58 个进程、至少 77450 次读取，DIFF 0。
+- 见过的值有 -1 / 0 / 2 / 4，后三个来自 mechanicSettingsEffect 的三个探测点。
+- 轴模式只是参数换了形式（floor(h60) 原样传进去），值的来源不变，不需要探针。
+
+### 17.5 单测与反证
+
+单测改动：
+
+- promoteHugCapability：
+  - 删「钩子就是 computeLiuyinHugCounts 本体」用例，它已不成立；
+  - 能力用例改为断言：不传覆盖 = 读设置（未设时为 -1），传 `hug60Cap: 2` = 覆盖优先；两者都与直接调用逐位相同；
+  - 用例取 390 好评、6 次失衡，两种情况分别得 {6, 0} 和 {2, 3}，能区分优先级。
+- mechanicSettingsEffect：一处注释更新读取位置。它的 `liuyin.hug60Count` 用例走 `ultPromoteHug60`，正好覆盖钩子读设置这条路。
+
+反证（都已还原）：
+
+| 临时改动 | 结果 |
+|---|---|
+| convergence 改回位置参数 | vue-tsc TS2554 |
+| 读回 `p.hug60Setting` | vue-tsc TS2339 |
+| promoteFixpoint 用新 API 重新手抄：`hug60Cap: configStore.getMechanicSetting('liuyin.hug60Count', -1)`（行为零差） | 只有新源码锁报：`composables/resourceCalc/ultimatePromote.ts:337: liuyin.hug60Count` |
+| 琉音钩子把优先级写反（设置 ?? 覆盖） | promoteHugCapability 报；liuyinAxisGiftSameSource / promoteVariantSkip / giftAxisProbe / stunPlanGiftChannel 都不报，所以这条覆盖断言要留 |
+| 钩子不读设置（覆盖 ?? -1） | mechanicSettingsEffect 的 `liuyin.hug60Count` 用例报（v=0 时实到 3） |
+
+### 17.6 验证
+
+| 项 | 结果 |
+|---|---|
+| vue-tsc | 0 |
+| guards | 29 条全过，扫 298 个文件 |
+| zc.test + checkGuards.test | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 |
+| zd | DUMP 0 / ROWS 0 |
+| vitest | 258 / 2155 + 262 / 2347 = 520 文件 / 4502 例（删 1 例、加 1 例，与基线相同；跳过 13 / 26 不变） |
+| build | 1594.29 → 1594.50 kB（index-BTCUI7Dw.js，gzip 464.00） |
+| drift | 154 / 0 / 0；触发器逾期 0、未到期 10 |
+
+- drift：@fact `engine:失衡次数不动点` 的锚函数动过，口径未变，已加「复核@2026-10-08」。
+- 第 2 片第一次跑时有 1 例失败，见 §17.7。
+- `PromoteHugInput` 挪到 typesHooks.ts 发生在全量验证之后。这一步只动类型（编译后 JS 不变），补跑了 vue-tsc 0、guards 29、zc+guards 207、定向 14 个测试文件 170 例。
+
+### 17.7 顺手修：zcWorkspace 偶发失败（`c8fa1610`）
+
+- 失败的用例是「真 CLI 收工/释放后，仅自己活跃租约覆盖的变化属于自己」。
+- 原因：
+  - 用例给 `expired.ts` 的租约是 `at = time - 2000, ttlMs = 1000`，只比过期线多 1 秒墙钟。
+  - CLI 在子进程里重新取 `Date.now()`，判过期用 `now - at > ttlMs`。
+  - 只有墙钟回拨超过 1 秒，这条租约才会被当成活跃，`expired.ts` 才会被算进 ownedPaths。WSL 高负载下的时间同步会这样回拨。
+- 以前两次记作「偶发、单跑通过」（`docs/mcp-stun-dual-source.md` :899 / :1187），都没查原因。本轮单跑 3 次都通过。
+- 改为 `at = time - 3_600_000`（过期一小时），语义不变。改后第 2 片重跑，2347 例全过。
+
+### 17.8 不做与回退
+
+- store 的 `getMechanicSetting` 不按注册表回落到声明值。理由见 §17.1：唯一的调用点已挪走，没有消费者，还会让 store 依赖 mechanics。
+- 模块之间互读设置不另加锁：
+  - 普查 `mechanics/agents` 里读别的模块设置 id 的地方：0 处。
+  - 现有机制已经挡住了这条路：
+    - 模块 reader 绑定本模块的声明，读未声明的 id 又不给 fallback 会抛错；
+    - 给字面 fallback 会被 CC-508/510 锁抓；
+    - 钩子形会被 CC-534 锁抓；
+    - `'setting:'` 字面量会被 CC-235 锁抓。
+- `computeLiuyinHugCounts` 的形参名 `hug60Setting` 不改。它收的就是「已决定的 60 档上限（-1 = 自动）」，改名会动 @fact 锚函数，没有收益。
+- `impactVariables.ts` 的 `meta?.default ?? 1` 本轮不动。meta 来自声明，`?? 1` 只在变量 id 不在当前 settingMap 时生效，见 §17.9。
+- 回退：`git revert c8fa1610 d9c98594`。两个提交互不依赖，可以单独回退。无数据迁移，生产结果不变。
+
+### 17.9 下一轮候选（未做）
+
+1. 沿用 §14.8 / §16.8 第 2 条：jufufuAdjustableRate 的 1 与 spec adjustable 的 `"default": 1` 重复，难点仍是注册顺序。
+2. `impactVariables.ts#readImpactVariable` 的 `meta?.default ?? 1`：
+   - 先查伤害影响页换队后，已选的 `setting.<id>` 变量会不会残留（这时 meta 才会缺）；
+   - 不会残留，就删 `?? 1`，让 meta 必有；
+   - 会残留，就保留，并在注释里写明这个场景。
