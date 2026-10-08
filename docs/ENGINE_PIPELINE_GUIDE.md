@@ -46,8 +46,8 @@ estimate 使用（收敛即可，见般岳/星徽·比利模式）。
 平均延后 D = p·t/2（p = 前台占比 F/W）⇒ **等效 CD c' = c + p·t/2**，次数 = 有效后台时间 / c'；块长 t = 前台时间 /
 切上前台次数。切上次数 = **「切上前台频率」滑块**（`<agent>.frontSwitchRatio`，clamp 0~1 无下限——后台有大量纯跑
 CD 的时间，拉到 0 = 一次切上做完全部前台，不会「一次都出不来」；缺省 1，已实测角色按实测反带）× **前台动作次数**
-（`countFrontActions`：非平A前台行 count 之和，**接续动作融合**——支援突击必须接在弹刀后连着 → 传
-`fusedMoveIds=[cfg.assistFollowUpMoveId]` 融合进弹刀块不单独计数；backstage 行天然不计；平A是连续输出流不计）。
+（`countFrontActions`：非平A前台行 count 之和，**接续动作融合**——支援突击必须接在弹刀后连着 → 第 2 参传
+`cfg.assistFollowUpMoveId`，融合进弹刀块不单独计数；backstage 行天然不计；平A是连续输出流不计）。
 已接入：橘福福虎威、奥菲丝后台、卢西娅追加攻击（CD 封顶收紧为 有效后台时间/等效CD，滑块 `lucia.frontSwitchRatio`
 默认 1）、蕾米 Radiant Turn（暂无滑块声明，频率缺省 1，可经 cfg 覆盖）。
 约束：**合轴时间计入前台时间**（合轴时仍在做动作，做完才轮到自动攻击）；合轴率同时**抵扣团队时间预算**（坑 21）
@@ -58,7 +58,7 @@ CD 上限（耀嘉音 C2/C6、柏妮思 C6 等，主源是事件/资源，封顶
 
 **新角色接入配方**（三步，全部现成工具，无需新口径）：
 1. `settings` 声明 `<agent>.frontSwitchRatio` 滑块（min 0 / max 1 / step 0.05，default 按实测反带）；
-2. 模块 buildExecutions 里：`const block = frontBlockSeconds(state.frontlineTime, countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }), 滑块值, CD秒数)`，
+2. 模块 buildExecutions 里：`const block = frontBlockSeconds(state.frontlineTime, countFrontActions(executions, cfg.assistFollowUpMoveId), 滑块值, CD秒数)`，
    再 `const cd = phaseDelayedCooldown(CD秒数, state.frontlineTime, effectiveBattleTime(cfg), block)`；
 3. 次数 = `Math.floor(effectiveBackstageTime(state.backstageTime, cfg) / cd)`，与其他上限取 min。
    需要账本/行一致的（资源 result 也引用次数）→ 把 cap 写 cfg 字段给 buildResourceResult 复用（卢西娅模式）。
@@ -289,7 +289,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
       `boss.counterAssistSlot` 指定，指定槽位没这招则回退自动，防静默失效）。执行行 =
       `core/resource/helpers#buildExecutions` 反制支援一行、**一次动作**（本体 1611028 + 专属支援突击 1611030 琢形
       由 `data/moveFusions.ts#CLARET_COUNTER_ASSIST` 融合，前台动作计数 +1 而非 +2 ⇒ `countFrontActions` 的
-      fusedMoveIds 四处调用点无需改），时间/喧响走融合口径；**不并入 parryCount** ⇒ 自动不产轻弹刀/支援突击行、
+      调用点无需改），时间/喧响走融合口径；**不并入 parryCount** ⇒ 自动不产轻弹刀/支援突击行、
       **不拿弹刀 215 特殊动作奖励**、不参与 `perParryDaze` 反推（用户口径「完全不拿 215，只算行内喧响」）。判据表：
       角色侧招式配对在 `src/data/counterAssists.ts`、**不能按名字扫**（克拉蕾 assist 段两条 `Assist Follow-Up`，
       无垢熔锋随招架、琢形随反制，名字匹配必挑错行）。时间口径：这俩 `ether_purify = 300 + 100t` 按

@@ -138,20 +138,18 @@ export function frontBlockSeconds(
 /**
  * 前台动作次数口径（动作融合，2026-08-31）：非平A 的前台执行行 count 之和，**接续动作**
  * 融合进前一个动作块、不单独计数：
- * - 支援突击必须接在弹刀（招架支援）后面连着 → 融合进弹刀块：调用方传 `fusedMoveIds =
- *   [cfg.assistFollowUpMoveId]` 排除该行（弹刀本体行照常计数，它是块的头部）；
+ * - 支援突击必须接在弹刀（招架支援）后面连着 → 融合进弹刀块：调用方传 `cfg.assistFollowUpMoveId`
+ *   排除该行（弹刀本体行照常计数，它是块的头部）。没有支援突击的角色这里是空串；行的 moveId
+ *   不为空，所以不会误排除；
  * - 奥菲丝长按强特自动接的燥焰迸射、与火共舞 #2 合一行，引擎里已标 timeBucket='backstage'
  *   （追攻行），天然不在前台计数内，无需特判。
  * 切上前台的理由是离散招式块；平A 是上台后的连续输出流，不计（category 'basic'）。
  */
 export function countFrontActions(
-  executions: readonly { category?: string; count?: number; timeBucket?: SkillExecution['timeBucket']; moveId?: string }[],
-  opts: { fusedMoveIds?: Array<string | undefined | null> } = {},
+  executions: readonly Pick<SkillExecution, 'category' | 'count' | 'timeBucket' | 'moveId'>[],
+  assistFollowUpMoveId: string,
 ): number {
-  const fused = new Set(opts.fusedMoveIds?.filter((id): id is string => Boolean(id)) ?? [])
   return executions
-    .filter(e => isFrontlineExecution(e)
-      && e.category !== 'basic'
-      && !fused.has(e.moveId ?? ''))
-    .reduce((sum, e) => sum + Math.max(0, Math.floor(e.count ?? 0)), 0)
+    .filter(e => isFrontlineExecution(e) && e.category !== 'basic' && e.moveId !== assistFollowUpMoveId)
+    .reduce((sum, e) => sum + Math.max(0, Math.floor(e.count)), 0)
 }

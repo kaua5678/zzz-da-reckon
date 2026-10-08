@@ -184,7 +184,7 @@ function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): v
   const cap = additionalAttackCapOf(
     cfg,
     state,
-    countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
+    countFrontActions(executions, cfg.assistFollowUpMoveId),
   )
   const plan = computeLuciaDreamPlan(
     state.exSpecialCount,
@@ -304,7 +304,7 @@ function buildLuciaResourceResult({ cfg, state, preModuleExecutions }: AgentReso
   const cap = additionalAttackCapOf(
     cfg,
     state,
-    countFrontActions(preModuleExecutions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
+    countFrontActions(preModuleExecutions, cfg.assistFollowUpMoveId),
   )
   return {
     luciaMechanicSource: computeLuciaSource(

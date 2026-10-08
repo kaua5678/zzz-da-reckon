@@ -180,7 +180,7 @@ function buildOrphieExecutions({ cfg, state, executions }: AgentResourceInput): 
   const backstageEff = effectiveBackstageTime(state.backstageTime, cfg)
   const block = frontBlockSeconds(
     state.frontlineTime,
-    countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
+    countFrontActions(executions, cfg.assistFollowUpMoveId),
     Number(cfgMechanicSettingRaw(cfg, 'orphie.frontSwitchRatio') ?? 1),
     ORPHIE_BACKSTAGE_CD_SECONDS,
   )

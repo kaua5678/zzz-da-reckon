@@ -665,7 +665,7 @@ export function remielleRadiantTurnRows({ cfg, state, executions }: AgentBacksta
   if (cfg.remielleEnabled && cfg.remielleRadiantTurnMoveId) {
     const block = frontBlockSeconds(
       state.frontlineTime,
-      countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
+      countFrontActions(executions, cfg.assistFollowUpMoveId),
       Number(cfgMechanicSettingRaw(cfg, 'remielle.frontSwitchRatio') ?? 1),
       5,
     )
