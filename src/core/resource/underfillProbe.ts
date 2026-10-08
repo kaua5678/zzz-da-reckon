@@ -95,7 +95,7 @@ export function runUnderfillProbe(
       // 相位写入照旧补写（与折叠/装配同口径）：产行钩子已只读，写入由引擎显式声明。
       // 不补写 = 下一轮 estimate 读到上一次物化的陈旧值（实测 golden 10 条 delta：1431 c0 留白
       // 57.9→65.4s、1181:c6 ex −1.29）。
-      getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state, executions: probeRows, teamFrontlineSeconds: teammateFrontline })
+      getAgentMechanic(cfg.agentId)?.materializePhaseState?.({ cfg, state })
       total += slotNetFrontline(
         probeRows, overlapBySlot[cfg.slot] ?? 0, state.comboAlignCredit,
         [i === chainGiftInfo.targetIdx ? chainGiftInfo.time : 0, i === giftLiuTarget ? giftLiuTime : 0],

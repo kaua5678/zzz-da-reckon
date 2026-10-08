@@ -145,7 +145,7 @@ export function frontBlockSeconds(
  * 切上前台的理由是离散招式块；平A 是上台后的连续输出流，不计（category 'basic'）。
  */
 export function countFrontActions(
-  executions: Array<{ category?: string; count?: number; timeBucket?: SkillExecution['timeBucket']; moveId?: string }>,
+  executions: readonly { category?: string; count?: number; timeBucket?: SkillExecution['timeBucket']; moveId?: string }[],
   opts: { fusedMoveIds?: Array<string | undefined | null> } = {},
 ): number {
   const fused = new Set(opts.fusedMoveIds?.filter((id): id is string => Boolean(id)) ?? [])

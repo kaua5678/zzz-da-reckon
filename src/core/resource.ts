@@ -60,7 +60,7 @@ export const TIME_BUDGET_TOLERANCE_SECONDS = 1
  * 复核：1s 门槛下 ratchet 绝对不变量（stun>0/outerExit≠maxIter）/runArchiveDeploy（116k 样本）/
  * allAgentsSweep（C6>C0 等不变量）/yidhariInteractionGrid 全绿，旧盆不复现（实测数字见
  * underfillRefund.test.ts 与 docs 坑19① 否决记录）。
- * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**无排除队**——1591 一族 2026-09-10 解除（该族试探现进入即被 fits 门拒，开关零差异），1051/1531 已随热启动规范种子修复放回）；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08·复核@2026-09-10（能量行级 Σ 后全链零差异）·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS + src/core/resource/underfillProbe.ts#runUnderfillProbe | 信 确认
+ * @fact engine:欠打回填 口径: 折叠循环退出后按「预算−物化净占用」重测欠打量，折半试探注入 refund；接受三条件=内层判稳+trialRows≤预算−容差+行数变多，任一不满足连 cfg 一起回滚；门槛=1s 量化容差（平A权重队自由时间按权重全分配，留白只剩 ≤2s 量化/试探粒度地板；欠打 ≤1s 不试探；09-05「≤5s 推近均衡队入 stunCount=0 盆」在 09-08 引擎复核不复现；**无排除队**——1591 一族 2026-09-10 解除（该族试探现进入即被 fits 门拒，开关零差异），1051/1531 已随热启动规范种子修复放回）；宁可留白不制造超预算 | 据 用户@2026-09-08「平A权重与留白不应并存，剩余自由时间按权重全部分配」+09-05「全部动手」·复核@2026-09-08·复核@2026-09-10（能量行级 Σ 后全链零差异）·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/composables/__tests__/underfillRefund.test.ts | 锚 src/core/resource.ts#UNDERFILL_PROBE_THRESHOLD_SECONDS + src/core/resource/underfillProbe.ts#runUnderfillProbe | 信 确认
  */
 export const UNDERFILL_PROBE_THRESHOLD_SECONDS = TIME_BUDGET_TOLERANCE_SECONDS
 

@@ -630,7 +630,7 @@ function jufufuCycleOf(
     frontlineTime: state.frontlineTime,
     effectiveTotalTime: effectiveBattleTime(cfg),
     frontActionCount: executions
-      ? countFrontActions(executions as SkillExecution[], { fusedMoveIds: [cfg.assistFollowUpMoveId] })
+      ? countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] })
       : undefined,
     frontSwitchRatio: Number(cfgMechanicSettingRaw(cfg, 'jufufu.frontSwitchRatio') ?? 0.7),
       exSpecialCount: state.exSpecialCount,

@@ -185,6 +185,11 @@ export interface AgentResourceInput {
   teamFrontlineSeconds?: number
 }
 
+/** `backstageAutoRows` 的入参：executions 只读——钩子只数行，新行经返回值交给构建器 push。 */
+export interface AgentBackstageRowsInput extends Omit<AgentResourceInput, 'executions'> {
+  executions: readonly Readonly<SkillExecution>[]
+}
+
 /**
  * 队伍级钩子的调用阶段（编排层按固定顺序派发，语义必须稳定）：
  * - `build`：全队 cfg 刚构建完（次数全未知，exCounts/stunCount 均为 0）；
@@ -645,9 +650,9 @@ export interface AgentMechanicModule {
    * 只能靠快照/恢复兜底，且「同一 (cfg, state) 在不同调用点得到不同行」。拆出来之后产行函数对
    * cfg 只读，引擎在每个物化调用点按同一 state 补写，数值逐位不变（golden 0 delta）。
    * 引擎只在**非试探隔离**的物化路径调用它（`materializeRows` 内部不调，因为那条路径本来就
-   * 快照/恢复、写入会被丢弃）。
+   * 快照/恢复、写入会被丢弃）。入参只有 cfg / state：写入记的是本次物化用的 state，与行无关。
    */
-  materializePhaseState?(input: AgentResourceInput): void
+  materializePhaseState?(input: Pick<AgentResourceInput, 'cfg' | 'state'>): void
   /**
    * 招式执行计划完全构建后（通用+模块追加均就绪）的修正钩子：
    * 模块可对最终执行列表按 moveId/招式标签补专属字段（增伤/暴击/固定附加伤害等）。
@@ -663,11 +668,11 @@ export interface AgentMechanicModule {
   skillDazeMultiplier?(input: { moveId: string; panel: DeepReadonly<PanelValues> | null }): number
   /**
    * 后台自动释放行（CC-26b）：`rowBuild.ts#buildExecutions` 在闪避反击行**之前**的固定位置派发，
-   * 返回的行由构建器 push 进 executions。`input.executions` 是「构建到这一步为止」的只读快照语义
-   * （模块用它数前台动作，**不要**改它）。原为 core 内联的蕾米埃尔「光辉回转」后台行。
+   * 返回的行由构建器 push 进 executions。`input.executions` 是构建到这一步为止的行（模块用它数前台动作），
+   * 类型上只读。原为 core 内联的蕾米埃尔「光辉回转」后台行。
    * ⚠ 与声明式字段 `backstageAutoFill`（后台自动补位）名字相近但语义无关。
    */
-  backstageAutoRows?(input: AgentResourceInput): SkillExecution[]
+  backstageAutoRows?(input: AgentBackstageRowsInput): SkillExecution[]
   /**
    * 异常事件记录（CC-28，展示层）：`useResourceCalc.ts#moduleAnomalyEventRecords` 按槽位 0→2 派发并拼接，
    * 进结果页异常事件表（`ResultPage.vue`）。原为编排层按身份 `['1581']` 的蕾米虚耀池分支。

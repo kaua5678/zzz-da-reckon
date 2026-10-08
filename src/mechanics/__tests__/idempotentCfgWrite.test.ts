@@ -89,10 +89,10 @@ describe('CC-291 重复调用钩子的 cfg 累加写入幂等', () => {
       moveActionTimes: { '1181001': 0.171, '1181002': 0.33, '1181003': 0.682, '1181004': 1.134, '1181005': 0.2, '1181006': 0.342 },
     }
     const state: any = { exSpecialCount: 30, basicAttackTime: 120, totalEnergy: 1000, combatTime: 180 }
-    graceMechanic.materializePhaseState!({ cfg, state, executions: [] } as any)
+    graceMechanic.materializePhaseState!({ cfg, state })
     const once = cfg.initialEnergyGift
     expect(once).toBeGreaterThan(40) // C4 回能真的写入了（反空洞）
-    for (let i = 0; i < 5; i++) graceMechanic.materializePhaseState!({ cfg, state, executions: [] } as any)
+    for (let i = 0; i < 5; i++) graceMechanic.materializePhaseState!({ cfg, state })
     expect(cfg.initialEnergyGift).toBe(once)
   })
 

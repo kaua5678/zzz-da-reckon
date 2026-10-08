@@ -102,12 +102,12 @@ describe('T9 格莉丝 A1-A4 回能来自 catalog（cfg.mechanicRowValues）', (
 
     // 平A池 60s ⇒ cycles ≥ 2；exUsed = 1 ⇒ 受益 6 段 = 整轮(4 段) + A1 + A2
     const state: any = { exSpecialCount: 1, basicAttackTime: 60, ultimateCount: 0 }
-    graceMechanic.materializePhaseState!({ cfg, state, executions: [] } as any)
+    graceMechanic.materializePhaseState!({ cfg, state })
     const expected = (GRACE_C4_ENERGY_EFFICIENCY / 100) * (table[0] + table[1] + table[2] + table[3] + table[0] + table[1])
     expect(cfg.initialEnergyGift, 'C4 回能 = 20% × 受益段表值之和').toBeCloseTo(expected, 9)
 
     const bare: any = { ...cfg, mechanicRowValues: {}, initialEnergyGift: 0, graceC4EnergyGift: 0 }
-    graceMechanic.materializePhaseState!({ cfg: bare, state, executions: [] } as any)
+    graceMechanic.materializePhaseState!({ cfg: bare, state })
     expect(bare.initialEnergyGift ?? 0, '缺表 ⇒ 回能 0（无常量兜底）').toBe(0)
   })
 })

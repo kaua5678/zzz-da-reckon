@@ -2,7 +2,7 @@ import type {
   AgentCharConfigInput,
   AgentMechanicModule,
   AgentPanelInput,
-  AgentResourceInput,
+  AgentBackstageRowsInput,
   AgentAnomalyEventRecordsInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
@@ -654,9 +654,9 @@ export function remielleSpecialVoidflareUseCount(cfg: CharacterOperationConfig):
 
 /**
  * 光辉回转后台自动行（CC-26b 自 core/resource/rowBuild.ts#buildExecutions 迁入，计算逐字保留）。
- * `executions` = 构建到派发点为止的执行行（只读，用于数前台动作）；返回新行由构建器 push。
+ * `executions` = 构建到派发点为止的执行行（用于数前台动作）；返回新行由构建器 push。
  */
-export function remielleRadiantTurnRows({ cfg, state, executions }: AgentResourceInput): SkillExecution[] {
+export function remielleRadiantTurnRows({ cfg, state, executions }: AgentBackstageRowsInput): SkillExecution[] {
   const rows: SkillExecution[] = []
   // 蕾米后台飞行状态：每5秒自动释放一次 Radiant Turn；合轴100%，不占前台时间。
   // 后台时间含无敌秒（先扣）；CD 被蕾米本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
@@ -679,11 +679,11 @@ export function remielleRadiantTurnRows({ cfg, state, executions }: AgentResourc
         count: radiantTurnCount,
         actionTime: cfg.remielleRadiantTurnActionTime ?? 0,
         comboAlignRatio: 1,
-      decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
-      totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
-      timeBucket: 'backstage',
-      autoSplitByStun: true, // CC-391 D1：后台飞行每 5 秒自动释放一次 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
-    }))
+        decibelRecovery: cfg.remielleRadiantTurnDecibelRecovery ?? 0,
+        totalDecibelRecovery: radiantTurnCount * (cfg.remielleRadiantTurnDecibelRecovery ?? 0),
+        timeBucket: 'backstage',
+        autoSplitByStun: true, // CC-391 D1：后台飞行每 5 秒自动释放一次 ⇒ 轴模式按失衡时间占比吃易伤（不靠放置）
+      }))
     }
   }
   return rows
