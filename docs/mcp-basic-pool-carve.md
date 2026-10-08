@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。
 
 ## 1. 问题
 
@@ -287,7 +287,7 @@ zd DUMP 0 / ROWS 0（对 `63947eeb`）。
 
 - `git revert 421b5b88`（9 个文件）。文档另有提交。
 
-### 9.7 下一轮候选（未做）
+### 9.7 下一轮候选（r745 已做，见 §10）
 
 **`AgentResourceResultInput` 的两份快照是可选字段，读方各写一份缺省分支。** 唯一的生产调用方 `assembleSlot` 总是传 `preModuleExecutions` / `prePatchExecutions`（r743 起是逐行拷贝）。4 个读方各自兜底：
 
@@ -303,3 +303,85 @@ zd DUMP 0 / ROWS 0（对 `63947eeb`）。
 1. 两个字段改必填，删掉 4 个缺省分支。判据 28（dead-nullish）会把漏删的 `??` 报出来。
 2. 先核对传 `[]` 和传 undefined 是否等价：`countFrontActions([])` = 0，`frontBlockSeconds` 对 0 和 undefined 都取回退值；但 `additionalAttackCapOf`、`computeJufufuCycle` 里 frontActionCount 还有没有别的用法，要读代码确认。不等价就让测试传真实行，不留退化口径。
 3. 测试直调处补 `preModuleExecutions: []`（或真实行）。生产路径不变，zd 应为 0/0。
+
+## 10. r745：结果钩子的两份快照改必填
+
+> 代码提交 `dc9748c0`（zd 0/0）（arena-G r745）；arch CC-527；r6 §8 第 745 行。题目是 §9.7 的候选。
+
+### 10.1 问题
+
+`AgentResourceResultInput` 的 `preModuleExecutions` / `prePatchExecutions` 原是可选字段。唯一的生产调用方 `assembleSlot`（`src/core/resource/assembleSlot.ts:180–181`）每次都传（r743 起是逐行拷贝），可选只服务测试直调。4 个读方为此各写了一份缺省分支：
+
+| 读方 | 缺省分支 | 缺快照时 |
+|---|---|---|
+| 卢西娅 `buildLuciaResourceResult` | `preModuleExecutions ? countFrontActions(…) : undefined`，另有一行「外部直调时退化」的注释 | frontActionCount 为 undefined |
+| 橘福福 `jufufuCycleOf` | `executions ? countFrontActions(…) : undefined`，形参允许 undefined，文档里一句「缺行基准（外部直调）时…」 | 同上 |
+| 青衣 `buildQingyiResourceResult` | `preModuleExecutions ?? []` | 按空行算 |
+| 千夏 `buildQianxiaResourceResult` | `prePatchExecutions ?? []` | 按空行算 |
+
+判据 28（dead-nullish）查不出这几处：字段声明成可选，`??` 在类型上就不算死兜底。
+
+### 10.2 等价性（先核对再删）
+
+- 卢西娅、橘福福的 frontActionCount 各只有一处用法，都是传给 `frontBlockSeconds`（卢西娅经 `additionalAttackCapOf`，橘福福经 `computeJufufuCycle`）。`frontBlockSeconds` 对 0 和 undefined 都取回退值（块长 ≈ CD），而 `countFrontActions([])` = 0。测试直调改传 `[]`，走的是同一个回退。
+- 青衣、千夏的 `x ?? []` 在 x 恒为数组时与 x 同义。
+- 生产路径本来就传真实行，不受影响。
+
+### 10.3 改法（8 个文件 +13 / −17）
+
+- types.ts：两份快照去掉 `?`。文档加一句：两份都必填，唯一调用方 assembleSlot 每次都传，测试直调没有引擎行就传 `[]`。
+- 卢西娅、橘福福：三元改为直接调 `countFrontActions`，删掉两段「外部直调退化」的说明。`jufufuCycleOf` 的形参去掉 `| undefined`，顺手把 `exSpecialCount` 一行的缩进对齐（纯空白）。
+- 青衣、千夏：删掉 `?? []`。
+- 测试 3 处：
+  - `luciaElowen.test.ts:121` 与 `jufufu.test.ts:200` 的直调补 `preModuleExecutions: []`。jufufu 那个用例先调 buildExecutions，往 `executions` 里 push 了模块行；派发前没有引擎行，所以传 `[]`，不传 `executions`。
+  - `nangongSmoke.test.ts:303` 的 `as any` 从 state 挪到整个入参。南宫不读快照，不补字段。
+
+### 10.4 反证
+
+| 临时改动（均已还原） | 结果 |
+|---|---|
+| 青衣那处加回 `?? []` | check-guards 判据 28 报 1 处：`qingyi.ts:342  ?? [(局部).preModuleExecutions: SkillExecution[]]` |
+| `nangongSmoke.test.ts` 恢复旧写法 `{ cfg, state: {…} as any }` | vue-tsc 报 TS2345：`{ cfg: any; state: any; }` 不能赋给 `AgentResourceResultInput` |
+
+以后再有人给这两个字段写缺省分支，判据 28 会拦下；漏传快照的直调，vue-tsc 会拦下。
+
+### 10.5 验证
+
+| 项 | `a68edc45` | `dc9748c0` |
+|---|---|---|
+| vue-tsc | 0 | 0 |
+| guards | 29 | 29 |
+| zc.test + checkGuards.test | 207 | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 | 12 / 161 / 462 / 189 |
+| vitest | 258/2155 + 262/2348 = 520/4503 | 258/2155 + 262/2348 = 520/4503 |
+| zd | — | DUMP 0 / ROWS 0 |
+| build | 1598.55 kB | 1598.53 kB |
+| zc drift | 154 / 0 / 0 | 154 / 0 / 0 |
+
+### 10.6 不做
+
+- **`AgentResourceResultInput.teamFrontlineSeconds` 保持可选。** 唯一读方是 zhao 的 `teamFrontlineSeconds ?? 0`（zhao.ts:148）。那个 helper 的形参是 `Pick<AgentResourceInput, …>`，`AgentResourceInput` 这边已定不改必填（§9.5），只改结果入参这一边，删不掉这个 `?? 0`。
+- **卢西娅 `additionalAttackCapOf` 本轮不动。** TS 不允许必填参数排在可选参数后面，frontActionCount 改必填就得连 state 一起改，而 state 那条路径被一个测试的期望值占着。单独立题，见 §10.8。
+- **`computeQingyiSource(cfg, state, genericRowsTime = 0)` 的默认参数不删。** 纯函数的默认参数，只有测试在用，不涉及钩子契约。
+
+### 10.7 回退
+
+- `git revert dc9748c0`（8 个文件）。文档另有提交。
+
+### 10.8 下一轮候选（未做）
+
+**卢西娅 `additionalAttackCapOf` 的形参比两个调用方宽，早返回分支在生产上走不到。**
+
+- 形参是 `state?: { backstageTime?: number; frontlineTime?: number }` 和 `frontActionCount?: number`。两个调用方（`buildLuciaExecutions` :184、`buildLuciaResourceResult` :304）传的都是 `Readonly<IterationState>`（frontlineTime / backstageTime 都是必填 number）和 `countFrontActions(…)` 的结果。
+- 所以 `if (!state || typeof state.backstageTime !== 'number')` 的早返回（旧口径 min(滑块, floor(有效战斗时间 / 8))）和 `state.frontlineTime ?? 0` 只服务测试直调。形参把字段声明成了可选，判据 28 看不出来。文档注释（:365）说「state 缺失（estimate/无收敛信息）时回退」，但 estimate 钩子并不调它。
+- 走这条路的是 `luciaElowen.test.ts:121`「追加攻击口径：CD 8s 全球性」：state 只给 exSpecialCount / ultimateCount（`as never`），期望 20 = min(20, floor(180 / 8) = 22)。换成真实 state 后，cap 按「有效后台时间 / 相位延后等效 CD」算，后台时间不够长就会小于 20。
+- 展示文案也还是旧口径：`note`（:298）写「按有效战斗时间/8 封顶」，`skillTableNote`（:247）写「次数按有效战斗时间/8 封顶」。设置项 `lucia.additionalAttackCount` 的 description（:393）写的才是相位延后口径。
+
+下一步：
+
+1. 形参收成 `Pick<IterationState, 'frontlineTime' | 'backstageTime'>` 和 `number`，删早返回和 `?? 0`。`Math.max(0, …)` 要不要留，看 frontlineTime 会不会为负。
+2. 那个用例补真实 state（backstageTime / frontlineTime），按相位延后口径重算期望。用例要测的是「axisInSeconds 不再折算」，这个意图保留。
+3. 两段文案改成生产口径。这是展示层改动，zd 看不到，要单独核对面板。
+4. 生产路径不变，zd 应为 0/0。
+
+另记（小，未立题）：橘福福 `patchExecutions`（specPanelBuffs.ts:791）对 tigerChain / tigerChainManual / popcorn 三种行都写 `e.dmgBonus = (e.dmgBonus ?? 0)`，注释说「生成行已设」，实际只给下一行 tigerChainManual 的加法兜底。可以并进 tigerChainManual 分支，但要先看 rowsnap 会不会把 undefined → 0 算成差异。
