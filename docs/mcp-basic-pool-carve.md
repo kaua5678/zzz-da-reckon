@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。r758 做了 §22.8 的两条候选（佩洛伊斯模块 12 处事后赋值改回对象字面量，额外能力判定收口；getBaseElement 普查后只剩积蓄效率一处数值查找，改走 resolveStatElement；行为不变），见第 23 节（`e1400062` + `dd6c7835`，CC-541）。r759 做了 §23.8 的第 1 条候选，普查后扩为同一条规则（删 16 个角色模块的额外能力 cfg 镜像字段，钩子一律读 additionalAbilityActiveOf(cfg.panel)；行为不变），见第 24 节（`6967a035`，CC-542）。r760 做了 §24.8 的第 1 条候选，普查后扩为同一条规则（拿得到面板的钩子不再按 spec 重算额外能力，删 3 个 cfg 镜像与 2 个面板镜像；行为不变），见第 25 节（`5c73ad60`，CC-543）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。r758 做了 §22.8 的两条候选（佩洛伊斯模块 12 处事后赋值改回对象字面量，额外能力判定收口；getBaseElement 普查后只剩积蓄效率一处数值查找，改走 resolveStatElement；行为不变），见第 23 节（`e1400062` + `dd6c7835`，CC-541）。r759 做了 §23.8 的第 1 条候选，普查后扩为同一条规则（删 16 个角色模块的额外能力 cfg 镜像字段，钩子一律读 additionalAbilityActiveOf(cfg.panel)；行为不变），见第 24 节（`6967a035`，CC-542）。r760 做了 §24.8 的第 1 条候选，普查后扩为同一条规则（拿得到面板的钩子不再按 spec 重算额外能力，删 3 个 cfg 镜像与 2 个面板镜像；行为不变），见第 25 节（`5c73ad60`，CC-543）。r761 做了 §25.8 的第 1 条候选；普查改为按语义找，连带收掉 r759、r760 漏网的三处（席德 cfg 镜像、莱特手写兜底与死块、仪玄手写判定；行为不变），见第 26 节（`d5ac9180`，CC-544）。
 
 ## 1. 问题
 
@@ -1942,7 +1942,7 @@ zd 两套快照都是 0/0，理由：
 - 历史记录（本文 §24、r6 §8 第 759 行等）里出现的字段名保留原样。
 - 回退：`git revert 5c73ad60`。
 
-### 25.8 下一轮候选（未做）
+### 25.8 下一轮候选（r761 做了第 1 条，并连带收掉三处漏网，见 §26；第 2 条未做，转入 §26.8）
 
 1. **琉音 `computeLiuyinSource` 的 `extraAbilityActive` 透传**
    - 现状：4 个调用点都得传这个值，但只有资源结果那份会被 `extraDirectRows`（读 `liuyinSrc.extraAbilityActive`）用到；另外三处传了没人读（§25.5，取反后 0 变化）。
@@ -1950,4 +1950,134 @@ zd 两套快照都是 0/0，理由：
 2. **失衡内时间线的变种积蓄槽口径**（§24.8 第 2 条，内容不变）
    - 现状：主池把变种当作独立的积蓄管（`core/anomalyPool.ts:276`）。`core/stunAxis/inStunAnomaly.ts` 却按基础元素归并积蓄槽和同元素刷新，触发 id 也按基础元素生成，存档里的 `suppressedTriggers` 引用的就是这个 id。
    - 先做：普查哪些队伍会在同一个失衡窗口里同时积蓄基础元素和它的变种（如仪玄 + 以太队友、爱丽丝 + 物理队友），量出差异，再决定要不要统一。
+   - 注意：改 id 格式要带存档迁移。
+
+## 26. 额外能力判定的最后四处副本（r761，CC-544）
+
+> 代码提交 `d5ac9180`（纯重构，行为不变）（arena-G r761）；arch CC-544；r6 §8 第 761 行。题目来自 §25.8 第 1 条（琉音透传字段）。这次普查改为按语义找，连带找出 r759、r760 漏网的三处：席德的 cfg 镜像（名字是缩写，r759 按名字普查没扫到），以及莱特、仪玄的手写判定（它们不调 spec 求值函数，r760 按调用点普查没扫到）。§25.8 第 2 条未做，转入 §26.8。
+
+### 26.1 普查
+
+- **方法**：不按名字找，按语义找两类。
+  1. 把 `additionalAbilityActiveOf(…)` 的结果写进 cfg 或面板的地方，不管字段叫什么。只剩席德的 `cfg.xideAAActive`：buildCharConfig 写 0/1，`patchXideExecutions` 再用 `Number(cfg.xideAAActive ?? 0) > 0` 判一次。
+  2. 模块里按 specialty / faction / attribute 数人头的 `team.some / filter / find`，逐条对照 spec 的 `teamConditions`：
+
+| 模块 | 位置 | 用途 | 结论 |
+|---|---|---|---|
+| lighter | applyPanel | 额外能力：面板标记 OR 手写兜底（队友有强攻 OR 与自己同阵营，都排除自己） | 副本，删 |
+| yixuan | buildCharConfig | 额外能力·玄墨暗涌：队伍里有击破 / 支援 / 防护（不排除自己） | 副本，改读标记 |
+| hugo | applyPanel | 击破队友人数分档加攻击（1 人 +300、2 人 +900） | 计数分档，spec 的布尔条件表达不了，保留 |
+| phoenix | buildCharConfig、adjustAdditionalAbilityGates | 异常队友人数（分档门控） | 计数分档，保留 |
+| qianxia | buildCharConfig | 凝视触发者：强攻 / 异常人数 | 不是额外能力，保留 |
+| xixifu | buildCharConfig | 电属性人数（蚀骨失衡值门控） | 不是额外能力，保留 |
+| remielle | computeRemielleAdditionalState | 异常人数（三档状态） | r760 已决定保留（§25.1） |
+| specPanelBuffs | applyTeamConfig | 额外能力门控（已读标记）之后按各人职业分发效果 | 已读标记，保留 |
+| yaojiayin | 影画4 | 标记队内职业 | 不是额外能力，保留 |
+| yuzuha | applyTeamConfig | 选一名异常队友作目标 | 目标选择，保留 |
+
+- **两处手写判定与 spec 恒等**
+  - 求值规则（`specs/teamCondition.ts`）：候选集排除本槽；多条条件取或；specialty 条件要求候选里有人职业在列表中；sameFactionAsSelf 要求自己阵营非空、且候选里有人阵营与自己相同。
+  - 莱特：spec 1161 = `[specialty attack, sameFactionAsSelf]`。手写兜底是 `team.some(m => m.slot !== slot && 职业 === 'attack')` 或 `team.some(m => m.slot !== slot && 队友阵营非空 && 阵营相同)`，与 spec 逐条同式。阵营那条一边判自己非空、一边判队友非空，在「相等」的前提下等价。面板阶段又是先写标记再派发 applyPanel，所以「标记 OR 兜底」恒等于标记。
+  - 仪玄：spec 1371 = `[specialty stun / support / defense]`，排除本槽。手写不排除自己，但仪玄的职业是命破（catalog），自己永远不满足条件，所以等价。
+- **莱特这个块的产出没人读**
+  - `panel.lighterMoraleDmgBonus` 只被 buildCharConfig 抄进 `cfg.lighterMoraleDmgBonus`，后者全仓零读者，包括 JSON、录入档案和展示层。
+  - 昂扬的真实现在 teammate-buffs 1161 的 `lighter.additional_morale_ice_fire_dmg`：来源「额外能力」，公式 `min(75, 25 + floor(max(0, x − 170) / 10) × 5)`，x 取莱特局内冲击力。C2 的 ×1.2 是影画二那一条的 buffModifiers（multiplyResolvedValue）。覆盖它的测试是 `lighterAdditionalGate.test.ts`、`lighterImpactSourceCc77.test.ts`。
+  - 所以 `computeLighterMoraleDmgBonus` 是数据公式在模块里的一份副本，结果写进死字段。块内注释还在讨论早已不存在的「helpers 的 lighter 块」。
+  - r6 §2.4（第 142 轮）对这个函数判过「不做」，指的是它不是属性转化、不迁到 runtime。本轮按死写入删除，与之不冲突；同表 alice 那一行「删死写入」就是先例。
+- **琉音透传字段的读者**
+  - `LiuyinMechanicSource.extraAbilityActive` 在生产代码里只有一个读者：`extraDirectRows` 的「重击附加」块。展示层没有读者。
+  - 测试读者：`liuyin.test.ts` 里 computeLiuyinSource 的入参 3 处、extraDirectRows 的假来源 1 处；`damagePoolNightA.test.ts` 的前置断言 1 处。
+  - `extraDirectRows` 入参里的 `panel` 就是 `panelAt(damagePanels, slot)`，与资源侧的 cfg.panel 出自同一次计算，都是本槽局内面板；按 `typesRows.ts` 的约定，只有缺 cfg 时它才是 undefined。
+- **未纳入的代理判定**：仪玄 `resolveYixuanExtremeAssists`（极限支援换场落雷）拿 `cfg.teamUltimateFlashBonus > 0` 当额外能力门控。teamUltimateFlashBonus 本身是正当的效果值（crossAgentEnergy 读它算队友终结技回闪能），只是这里借它推断额外能力。本轮之后它与面板标记恒等；但改读标记要动 `axisContext.test.ts` 的两条夹具，转入 §26.8。
+
+### 26.2 问题
+
+- 同一条额外能力规则，在面板阶段之外还有两份手写实现（莱特、仪玄）。它们与 spec 是否等价，只能逐条比对条件才知道；spec 一改，手写那份不会跟着变。
+- 席德把标记抄进 cfg 再判一次，名字又是缩写，按名字普查扫不到。
+- 莱特的兜底块看上去在算昂扬，实际产出写进没人读的字段，读代码的人会以为昂扬由模块计算。
+- 琉音的透传字段让 4 个调用点都得传一个只有一处读的值。
+
+### 26.3 改法
+
+- **席德**
+  - 删 `cfg.xideAAActive` 的写入和声明；`patchXideExecutions` 改读 `additionalAbilityActiveOf(cfg.panel)`。
+  - xide.test 两处夹具改经 panel 给值；spec 1461 说明里的门控字段名同步改。
+- **莱特**
+  - 删 applyPanel 的额外能力块（手写兜底加昂扬计算），以及解构里的 team / slot / agent 和 `additionalAbilityActiveOf` 的 import。
+  - 删 `computeLighterMoraleDmgBonus`、`LighterMoraleBuffInput`，和只被它用的 4 个常量（`LIGHTER_MORALE_STACK_BASE`、`LIGHTER_MORALE_STACK_EXTRA_PER_10`、`LIGHTER_MORALE_MAX_STACKS`、`LIGHTER_MORALE_DMG_CAP`）。`LIGHTER_IMPACT_SOFT_CAP` 还被 C6 火焰冲击用，保留并补上注释。
+  - 删 `cfg.lighterMoraleDmgBonus` 的写入，以及 cfg 和 PanelValues 扩充里的两处字段声明。
+  - 删 lighter.test 里只测这份副本的用例和对应 import。
+  - 文件头注明：昂扬数值只由 teammate-buffs 承载。
+- **仪玄**：buildCharConfig 的玄墨暗涌判定改为 `additionalAbilityActiveOf(panel)`，解构里的 team 换成 panel，补上 import。
+- **琉音**
+  - `extraDirectRows` 解构加 `panel`，「重击附加」门控改读 `additionalAbilityActiveOf(panel)`。
+  - 删 `LiuyinSourceInput.extraAbilityActive`、`computeLiuyinSource` 输出里的同名字段、`LiuyinMechanicSource` 的类型字段和 4 处传值。
+  - liuyin.test 删 3 处入参，假来源改为经 panel 给标记。
+  - damagePoolNightA 删掉对透传字段的前置断言，并改正注释：它断言的非轴强特拆分块，门控是「来源存在 + `!isAxis`」，与额外能力无关；专用行计数等于 4 已经证明进了这个块。
+- **@fact 复核**：琉音「强特计划估时」（锚 liuyinExSpecialTime）只少了一行传值，追加「复核@2026-10-09（r761 删 extraAbilityActive 透传，口径不变）」。drift 待复核保持 0。
+- **不加新源码锁**：手写判定没有固定的语法形状，字段名、比较写法、条件组合各不相同，锁写不准。规则已写在 owner 注释里（§25.3）。
+
+### 26.4 行为不变的证据
+
+- **等价**：见 §26.1。
+- **一次性新旧对照**（临时测试，已删）
+  - 基线：开工时的 `d7da5616`。old 模式把 4 个模块换回该提交的版本。
+  - 配置：4 个角色，每人 3 个配置：额外能力触发 C0、触发 C6、未触发 C0。队友按 spec 条件从图鉴里确定性地挑出（id 升序的第一对）。
+  - 快照：总伤害、全部伤害行、失衡次数、面板、resourceResult。被删的键（`xideAAActive`、`lighterMoraleDmgBonus`、`extraAbilityActive`）先剔除。旧版剔除的键数：莱特触发 C0、触发 C6 各 1（面板上的昂扬字段），琉音 3 个配置各 1（资源结果里的透传字段），其余为 0。
+  - 结果：12 个快照新旧逐字节相同。
+
+| 角色 | 触发队（C0 / C6） | 未触发队（C0） | 快照 sha256 前 16 位：触发 C0 / 触发 C6 / 未触发 C0（新 = 旧） |
+|---|---|---|---|
+| 席德（xide，1461） | 1461 / 1011 / 1021 | 1461 / 1011 / 1031 | `b73405067c309570` / `0ea2601489ba9a94` / `6ad896ae4b88553c` |
+| 莱特（lighter，1161） | 1161 / 1011 / 1021 | 1161 / 1011 / 1031 | `c0510ef4f1f1bc4f` / `2b2b2e36ee20a567` / `b30fef4dcb3e486d` |
+| 琉音（liuyin，1481） | 1481 / 1011 / 1021 | 1481 / 1011 / 1031 | `9ad0b3623a44f1c8` / `4a9b389c07fd8f52` / `1c5db5850613d7d5` |
+| 仪玄（yixuan，1371） | 1371 / 1011 / 1021 | 1371 / 1021 / 1041 | `dde1a77995e24e54` / `c0490b46a6b3b1ac` / `1138727f4524ea5c` |
+
+- **zd**
+  - 首轮（还没加仪玄，基线是当时的 HEAD）：DUMP / ROWS 各 105 条差异，正好是含 1481 的 21 个预设 × 5 个变体。总伤逐位相同，只有资源结果哈希变了，原因是 `liuyinMechanicSource` 少了 `extraAbilityActive` 键。
+  - 终版（基线 `d7da5616`，`ZD_DROP=extraAbilityActive`）：DUMP 0 / ROWS 0。覆盖仪玄 3 个、莱特 5 个、席德 3 个、琉音 21 个预设。
+
+### 26.5 反证：逐处单独取反（已还原，cmp 核对）
+
+- **做法**：flip 版在 3 处新读口（X1 / L1 / Y1）外各包一层；另外在莱特旧版（`d7da5616`）applyPanel 的 `if (additionalActive)` 外也包一层（G0）。运行时只把选中的那一处取反，然后对该角色的 3 个配置重算。不取反时，12 个快照与「新」相同。G0 所在的是莱特旧版，所以这一条同时说明：旧块剔除死字段后，与删掉它等价。
+
+| 读口 | 位置 | 变化配置 | 总伤害：触发 C0 / 触发 C6 / 未触发 C0（新 → 取反） |
+|---|---|---|---|
+| X1 | 席德 patchXideExecutions | 3/3 | 34282203 → 31215118 / 50206118 → 42806559 / 14817171 → 17827521 |
+| L1 | 琉音 extraDirectRows（重击附加） | 3/3 | 34541886 → 33460975 / 61020369 → 59398122 / 12359023 → 13073294 |
+| G0 | 莱特旧版（d7da5616）applyPanel 的 if (additionalActive) | 0/3 | 不变 / 不变 / 不变 |
+| Y1 | 仪玄 buildYixuanCharConfig（玄墨暗涌） | 3/3 | 28370485 → 27734268 / 52687740 → 52576665 / 31301153 → 33829611 |
+
+- **结论**：3 处新读口取反后，对应配置都会变。G0 取反后 0 变化：旧块不管取真还是取假，除被删字段外输出都不变，证明整个块是死代码。
+
+### 26.6 验证
+
+- vue-tsc -b --force 0。
+- 相关测试 272 个文件（266 过、6 跳过）、2591 例（2585 过、6 跳过），范围是 mechanics 和 specs 全目录，以及引用这 4 个角色、额外能力或伤害池的测试。
+- check-guards 29（扫 298 个文件）；zc+checkGuards 207；tokens / data / specs / recording 12 / 161 / 462 / 189。
+- vitest 258/2156 + 262/2347 = 520 文件 / 4503 例，比基线少 1 例，就是删掉的死副本单测；跳过 13 / 26 不变。
+- zd：见 §26.4。
+- build index 1592.09 kB（gzip 463.44，比基线少 0.82 kB）。
+- drift 154 / 0 / 0；触发器逾期 0、未到期 10。
+
+### 26.7 不做与回退
+
+- 计数分档类（hugo / phoenix / qianxia / xixifu）和 remielle 的三档状态保留：spec 的布尔条件表达不了人数分档。
+- 各模块 cycle 结果里回显 `additionalActive: input.additionalActive` 供展示文案用，这是纯函数报告自身入参，不改。
+- 仪玄极限支援的代理门控本轮不改，见 §26.8。
+- 不加新源码锁，理由见 §26.3。
+- 历史记录（§24、§25、r6 §2.4 和 §8 等）里出现的字段名、函数名保留原样。
+- 回退：`git revert d5ac9180`。
+
+### 26.8 下一轮候选（未做）
+
+1. **仪玄极限支援的代理门控**
+   - 现状：`resolveYixuanExtremeAssists` 用 `(cfg.teamUltimateFlashBonus ?? 0) <= 0` 判断额外能力未触发。本轮之后 teamUltimateFlashBonus 只在面板标记为真时写入，两者恒等。
+   - 先做：改读 `additionalAbilityActiveOf(cfg.panel)`；`axisContext.test.ts` 里两条用 `teamUltimateFlashBonus: 20` 打开极限支援的夹具改经 panel 给标记，第 829 行的注释同步改。
+2. **琉音 computeLiuyinSource 的 3 处同参调用**
+   - 现状：执行、资源结果、赠大供给三处传给 computeLiuyinSource 的 5 个参数写法逐字相同；估时那处的强特数用 exTotal，不一样。
+   - 先做：参照莱特的 `lighterMoraleOf(cfg, state)`，收成一个本地助手。纯重构。
+3. **失衡内时间线的变种积蓄槽口径**（§25.8 第 2 条，内容不变）
+   - 现状：主池把变种当作独立的积蓄管（`core/anomalyPool.ts:276`）。`core/stunAxis/inStunAnomaly.ts` 却按基础元素归并积蓄槽和同元素刷新，触发 id 也按基础元素生成，存档里的 `suppressedTriggers` 引用的就是这个 id。
+   - 先做：普查哪些队伍会在同一个失衡窗口里同时积蓄基础元素和它的变种，量出差异，再决定要不要统一。
    - 注意：改 id 格式要带存档迁移。
