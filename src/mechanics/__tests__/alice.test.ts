@@ -193,13 +193,13 @@ describe('爱丽丝剑仪外部次数源（全队强击 / 紊乱）', () => {
     const withOn = cfgExternalCountsProbe({
       aliceTeamAssaultCount: 0,
       aliceDisorderCount: 5,
-      aliceAdditionalAbilityActive: true,
+      panel: { additionalAbilityActive: 1 },
     })
     expect(withOn.disorderCount, '门控开启时紊乱次数应当透传（通道活着）').toBe(5)
     const withOff = cfgExternalCountsProbe({
       aliceTeamAssaultCount: 0,
       aliceDisorderCount: 5,
-      aliceAdditionalAbilityActive: false,
+      panel: { additionalAbilityActive: 0 },
     })
     expect(withOff.disorderCount, '门控关闭时应当归零').toBe(0)
   })

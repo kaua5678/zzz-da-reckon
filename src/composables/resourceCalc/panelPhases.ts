@@ -578,7 +578,7 @@ export function computePanelPhases(
   // ★ 原块在本行的位置正是 `applyPanel` 派发点（`:597`）**之后** ⇒ 当时靠「后写覆盖」生效；
   // 迁入模块后由派发点统一调用，顺序天然一致（本处**不得**再留任何简分支，否则双计）。
   // 原 `⟳复核 … 到期 2026-12-31`（「jane.passionCoverage 是否注册」）**已兑现**，标记随块删除。
-  // @fact jane:1261/狂热面板块落点 口径: 简的狂热/精通转攻/痛点/影画1/6 面板区在 `jane.ts#applyJanePanel`（走 `AgentPanelInput.settings` 读 `jane.frenzyActive` 总闸与 `jane.passionCoverage` 覆盖率），**不再**在 panelPhases.ts#computePanelPhases 里保留 agentId 分支 | 据 用户裁决@2026-09-20（R51 「一并注册成 MechanicSetting」）·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/mechanicSettingsEffect.test.ts | 锚 src/mechanics/agents/jane.ts#applyJanePanel | 信 确认
+  // @fact jane:1261/狂热面板块落点 口径: 简的狂热/精通转攻/痛点/影画1/6 面板区在 `jane.ts#applyJanePanel`（走 `AgentPanelInput.settings` 读 `jane.frenzyActive` 总闸与 `jane.passionCoverage` 覆盖率），**不再**在 panelPhases.ts#computePanelPhases 里保留 agentId 分支 | 据 用户裁决@2026-09-20（R51 「一并注册成 MechanicSetting」）·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-09（r760 只换额外能力读口） | 验 src/mechanics/__tests__/mechanicSettingsEffect.test.ts | 锚 src/mechanics/agents/jane.ts#applyJanePanel | 信 确认
   // ⟳复核: 用户在面板上拖 `jane.frenzyActive` / `jane.passionCoverage` 看「物理积蓄/攻击/增伤」是否随之变化；若简块又出现在编排层或两个入口同时出控件（双滑块），说明本落点被回退 | 到期 2027-06-30
 
   // 蕾米强特 Radiant Turn 的“相变时流”：全队增伤，按技能等级 12/14/16 对应 18%/21%/24%。

@@ -88,7 +88,7 @@ describe('琉音强特计划估时（2026-09-06 补）', () => {
       exSpecialComboAlignRatio: 0,
       battleTime: 180,
       liuyinCinemaLevel: 0,
-      liuyinExtraAbilityActive: false,
+      panel: { additionalAbilityActive: 0 },
       liuyinPreviousTeammateSlot: 0,
       liuyinFarewellActionTime: 1.6,
     } as any

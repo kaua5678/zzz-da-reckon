@@ -30,7 +30,7 @@ async function miyabiPanel(team: Array<HarnessTeamSlot | ''>): Promise<PanelValu
   return panel
 }
 
-const aaOf = (panel: PanelValues) => panel.miyabiAdditionalAbilityActive
+const aaOf = (panel: PanelValues) => panel.additionalAbilityActive
 const iceResOf = (panel: PanelValues) => panel.enemyIceResReduction ?? 0
 const basicBonusOf = (panel: PanelValues) => panel['skillDmgBonus__basic'] ?? 0
 

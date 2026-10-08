@@ -12,7 +12,6 @@ import type {
   ExtraNecessaryAction,
   ReadonlyTeam,
 } from '../types'
-import type { Agent } from '@/types/catalog'
 import type {
   CharacterOperationConfig,
   IterationState,
@@ -21,7 +20,7 @@ import type {
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
-import { evalAdditionalAbility } from '@/specs/teamCondition'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { findMoveById } from '@/data/moveTableQueries'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
@@ -65,19 +64,6 @@ const FROST_MOON_2_MOVE_ID = '1091028'
 /** 霜月 #3 合轴锁定时间（秒）：非6命蓄力1秒后即可合轴 */
 const FROST_MOON_3_LOCK_SECONDS = 1.0
 
-/**
- * 额外能力·同沐霜雪：队伍中存在「支援」、与自身**同阵营**或「异常」角色时触发。
- *
- * 判定单源 = spec `1091.json` 的 `additionalAbility.teamConditions`（声明式，经 `evalAdditionalAbility`）。
- * 原手写实现第三臂误写成 `member.agent.id === agent.id`（同**角色 id**）⇒ 与 spec 声明的
- * `sameFactionAsSelf`（同**阵营**）漂移：悠真(1201，第六课·强攻) 在队时额外能力被漏判
- * （面板缺 30 冰抗无视 + 60 基本增伤，2026-09-22 取证复现）。收敛到声明式判定后不再有第二份口径。
- * 返回 `boolean | undefined`（无 spec 声明时 undefined）⇒ 必须 `=== true` 收口。
- */
-function isAdditionalAbilityActive(team: ReadonlyTeam, slot: number, agent: Agent): boolean {
-  return evalAdditionalAbility(team, slot, agent, getAgentSpec(MIYABI_AGENT_ID)?.additionalAbility) === true
-}
-
 /** 队伍中是否有风属性角色（影响霜灼状态覆盖率） */
 function hasWindTeammate(team: ReadonlyTeam, slot: number): boolean {
   return team.some(m => m.slot !== slot && m.agent?.damageElement === 'wind')
@@ -97,10 +83,11 @@ function getFrostFallResource(
 
 // ============ applyPanel ============
 
-function applyMiyabiPanel({ slot, agent, cinemaLevel, team, panel, settings }: AgentPanelInput): void {
-  const aa = isAdditionalAbilityActive(team, slot, agent)
+function applyMiyabiPanel({ slot, cinemaLevel, team, panel, settings }: AgentPanelInput): void {
+  // 额外能力·同沐霜雪（支援 / 同阵营 / 异常任一在队）：面板阶段按 spec 1091 additionalAbility 求值写入面板标记，这里只读标记
+  // （原手写判定把同阵营臂写成同角色 id 的漂移史见 miyabiAdditionalAbility.test.ts）。
+  const aa = additionalAbilityActiveOf(panel)
   const hasWind = hasWindTeammate(team, slot)
-  panel.miyabiAdditionalAbilityActive = aa ? 1 : 0
   // 标记风队伍状态（用于霜灼buff覆盖率）
   panel.miyabiHasWindTeammate = hasWind ? 1 : 0
 
@@ -483,8 +470,6 @@ export interface MiyabiFrostFallSource {
  */
 declare module '@/types/catalog' {
   interface PanelValues {
-    /** 额外能力是否触发（0/1）：本文件写读 */
-    miyabiAdditionalAbilityActive?: number
     /** 队伍里是否有风属性队友（0/1）：霜灼 buff 覆盖率用 */
     miyabiHasWindTeammate?: number
     /** 冰焰覆盖率：与积蓄效率增量同块写入；测试读 */

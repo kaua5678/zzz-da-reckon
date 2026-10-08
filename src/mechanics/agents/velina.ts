@@ -26,7 +26,7 @@ import { CORROSION_CYCLONE_RELEASE_ID_PREFIX } from '@/core/anomalyPool/helpers'
 import { fmt } from '@/utils/format'
 import { enemyResistanceOf } from '@/utils/elementStatKeys'
 import { getAgentSpec } from '@/specs/registry'
-import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
@@ -159,8 +159,8 @@ export function simulateVelinaCorrosionState(
 /** 2 命风化获得风蚀的期望利用率缺省值（与 settings `velina.cinema2CorrosionRate` 的 default 同值） */
 export const VELINA_C2_CORROSION_RATE_DEFAULT = 2 / 3
 
-function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: AgentPanelInput): void {
-  const additionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
+function applyVelinaPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+  const additionalAbilityActive = additionalAbilityActiveOf(panel)
   // 乱流抗性无视（通用面板字段，core/anomalyPool/helpers.ts#calcTurbulenceSettlement 读；CC-36b）
   panel.turbulenceResIgnore = cinemaLevel >= 1 ? 20 : 0
   panel.velinaCinema2 = cinemaLevel >= 2 ? 1 : 0
@@ -169,7 +169,6 @@ function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
   // `resolveVelinaCorrosion`）读回——写读同属本模块。此前该字段零写入、恒回落到编排层穿线传入的
   // `cinema2CorrosionRate`（roundInputs → AnomalyPoolInput → core/corrosion → 能力入参），那条穿线已删。
   panel.velinaCinema2CorrosionRate = settingOf(settings, 'velina.cinema2CorrosionRate')
-  panel.velinaAdditionalAbilityActive = additionalAbilityActive ? 1 : 0
 
   // 一命：风属性异常伤害无视20%风抗；异放继承风底性质，一并吃到
   if (cinemaLevel >= 1) {
@@ -192,21 +191,20 @@ function applyVelinaPanel({ slot, agent, cinemaLevel, team, panel, settings }: A
 }
 
 function buildVelinaCharConfig({
-  slot,
-  agent,
   skills,
   cinemaLevel,
-  team,
+  panel,
   cfg,
   getRowValue,
 }: AgentCharConfigInput): void {
   const velinaEye = findMoveById(skills, VELINA_EYE_MOVE_ID)
   const velinaSweeping1 = findMoveById(skills, VELINA_SWEEPING_CYCLONE_1_MOVE_ID)
   const velinaSweeping2 = findMoveById(skills, VELINA_SWEEPING_CYCLONE_2_MOVE_ID)
-  const additionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
 
   cfg.velinaEnabled = true
-  cfg.velinaAdditionalAbilityActive = additionalAbilityActive
+  // spec 1561 终结技风异放的 enabledField 按名读这个 cfg 字段（specs 层不得 import core 的 additionalAbilityActiveOf，CC-248）
+  // ⇒ 额外能力在 cfg 里唯一保留的投影；取面板标记，不按 spec 重算。
+  cfg.velinaAdditionalAbilityActive = additionalAbilityActiveOf(panel)
   cfg.velinaCinema2 = cinemaLevel >= 2
   cfg.velinaEyeMoveId = velinaEye?.id ?? ''
   cfg.velinaEyeActionTime = velinaEye?.actionTime ?? 0
@@ -315,6 +313,7 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
     agent,
     skills,
     charResult,
+    panel,
     cinemaLevel,
     team,
     dazeCoef,
@@ -324,7 +323,7 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
     normalizeResourceSkillType,
   } = input
   const fallbackElement = agent?.damageElement
-  const additionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
+  const additionalAbilityActive = additionalAbilityActiveOf(panel)
   const velinaCinema2 = cinemaLevel >= 2
   const velinaColorElementValue = velinaColorElement(team, slot)
 
@@ -545,7 +544,7 @@ export const velinaMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 维琳娜额外能力是否触发：队伍中存在其他异常角色或同属性角色 */
+    /** 额外能力是否触发：buildCharConfig 取面板标记写入；唯一读者是 spec 1561.json 的 `enabledField`（按名读 cfg） */
     velinaAdditionalAbilityActive?: boolean
     /** 维琳娜2命：赋彩属性获得同等积蓄 */
     velinaCinema2?: boolean
@@ -605,7 +604,5 @@ declare module '@/types/catalog' {
     velinaCinema6?: number
     /** 2 命风蚀利用率（CC-27）：applyPanel 读滑块写入，`resolveVelinaCorrosion` 读回 */
     velinaCinema2CorrosionRate?: number
-    /** 额外能力是否触发（0/1）：spec 1561.json 的 `enabledField` 按名读 */
-    velinaAdditionalAbilityActive?: number
   }
 }

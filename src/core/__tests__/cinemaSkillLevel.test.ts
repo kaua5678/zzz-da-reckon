@@ -67,7 +67,7 @@ describe('cinema skill level damage', () => {
     config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
 
     const cfgM2 = buildCharConfig(0, config, catalog)!
-    expect(cfgM2.normaAdditionalAbilityActive).toBe(true)
+    expect(cfgM2.panel.additionalAbilityActive).toBe(1)
     expect(cfgM2.normaTechGapStunBonus).toBe(60) // M2: 6%/层 × 10层（3%→6% 翻倍）
 
     config.setCinemaLevel(0, 1)

@@ -25,7 +25,7 @@ import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
 import { isNumberedBasicSegment } from '@/data/basicSegment'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
-import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
@@ -71,8 +71,8 @@ const C6_DAMAGE_RATIO = 33
 
 // ============ applyPanel ============
 
-function applyAlicePanel({ slot, agent, cinemaLevel, team, panel }: AgentPanelInput): void {
-  const aa = specAdditionalAbilityActive(team, slot, agent)
+function applyAlicePanel({ cinemaLevel, panel }: AgentPanelInput): void {
+  const aa = additionalAbilityActiveOf(panel)
   panel.aliceCinema4 = cinemaLevel >= 4 ? 1 : 0
 
   // 畏缩：全局物理异常积蓄效率 +25%（默认覆盖 100%）
@@ -134,15 +134,13 @@ function findExSpecialSwordWill(skills: AgentSkills): number {
 }
 
 function buildAliceCharConfig({
-  slot,
-  agent,
   skills,
   cinemaLevel,
-  team,
+  panel,
   cfg,
   getRowValue,
 }: AgentCharConfigInput): void {
-  const aa = specAdditionalAbilityActive(team, slot, agent)
+  const aa = additionalAbilityActiveOf(panel)
   const sw3 = findMoveById(skills, SWORD_WILL_MOVE_ID)
   const swPerSec = calcSwordWillPerSec(skills)
   const exSw = findExSpecialSwordWill(skills)
@@ -152,7 +150,6 @@ function buildAliceCharConfig({
   const comboAlignRatio = actionTime > 0 ? Math.max(0, 1 - (1 / actionTime)) : 0
 
   cfg.aliceEnabled = true
-  cfg.aliceAdditionalAbilityActive = aa
   cfg.aliceSwordWillPerSec = swPerSec
   cfg.aliceExSpecialSwordWill = exSw
   cfg.aliceInitialSwordWill = aa ? SWORD_WILL_COST : 0
@@ -235,15 +232,15 @@ function buildAliceSwordWillSource(
 export function cfgExternalCountsProbe(cfg: {
   aliceTeamAssaultCount?: number
   aliceDisorderCount?: number
-  aliceAdditionalAbilityActive?: boolean
+  panel: { readonly additionalAbilityActive?: number }
 }): { assaultTriggerCount: number; disorderCount: number } {
   return {
     assaultTriggerCount: Math.max(0, cfg.aliceTeamAssaultCount ?? 0),
     // ⚠ 紊乱那条规则**带额外能力门控**：原文「队伍中存在另一名[异常]或[支援]角色时触发：
     // 队伍中任意角色触发[紊乱]效果时，爱丽丝回复30点[剑仪]」。门控未过 → 该收入为 0
-    // （`aliceAdditionalAbilityActive` 由 buildAliceCharConfig 按 specAdditionalAbilityActive（spec 1401 additionalAbility）写）。
+    // （门控读面板标记 `additionalAbilityActiveOf(cfg.panel)`，面板阶段按 spec 1401 additionalAbility 求值）。
     // 不做这道门会把「单爱丽丝队」的剑仪算多。
-    disorderCount: cfg.aliceAdditionalAbilityActive
+    disorderCount: additionalAbilityActiveOf(cfg.panel)
       ? Math.max(0, cfg.aliceDisorderCount ?? 0)
       : 0,
   }
@@ -687,8 +684,6 @@ export const aliceMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 爱丽丝额外能力是否触发：队伍中存在另一名异常或支援角色 */
-    aliceAdditionalAbilityActive?: boolean
     /** 爱丽丝普攻秒均剑意回复（attack_data[0]/actionTime 平均） */
     aliceSwordWillPerSec?: number
     /** 爱丽丝强特单次剑意回复（attack_data[0]） */

@@ -16,9 +16,11 @@ import { additionalGateBuffTable } from '@/specs/additionalGate'
 
 /**
  * CC-306：角色**额外能力是否触发**的唯一求值入口（按该角色 spec `additionalAbility.teamConditions` 声明式判定，
- * 与面板阶段写 `panel.additionalAbilityActive` 的 `panelPhases.ts` 同一求值器）。模块在拿不到面板标记的钩子
- * （buildCharConfig / teammateBuffGate 等）里用它，**不要再手写「队里有 X 特性或同阵营」**——原先
- * 简 / 琉音 / 诺姆 / 蕾米埃尔各写了一份，与 spec 声明是两套来源（改 spec 不生效）。
+ * 与面板阶段写 `panel.additionalAbilityActive` 的 `panelPhases.ts` 同一求值器）。只给**拿不到本槽面板标记**的钩子用
+ * （teammateBuffGate 这类面板阶段之前的钩子）。applyPanel（派发前已写好标记）、buildCharConfig（入参 `panel`）、
+ * transformSkillExecutions（入参 `panel`）一律读 `additionalAbilityActiveOf(panel)`，不在那里重算（r760 收口）。
+ * 现存唯一调用者 `remielle.ts#computeRemielleAdditionalState`：三档状态同时供 teammateBuffGate 与面板/配置钩子，共用一份求值。
+ * **不要再手写「队里有 X 特性或同阵营」**——原先简 / 琉音 / 诺姆 / 蕾米埃尔各写了一份，与 spec 声明是两套来源（改 spec 不生效）。
  * 未声明 `additionalAbility` 或 agent 为空 ⇒ false。
  */
 export function specAdditionalAbilityActive(team: TeamConditionTeam, slot: number, agent: Agent | null | undefined): boolean {

@@ -8,7 +8,10 @@
  *
  * 住 core：core 只许经 `mechanics/registry` 触达 mechanics（coreRuntimeDeps 锁），反向自由。
  * 模块钩子直接读 `additionalAbilityActiveOf(cfg.panel)`：`cfg.panel` 与 buildCharConfig 入参 `panel` 是同一对象。
- * 不要把判定结果抄进 cfg 字段（r759 删了 16 个这样的镜像，测试夹具改为经 `panel` 给值）。
+ * applyPanel 拿到的 `panel` 派发前已写好标记，transformSkillExecutions 的 `panel` 也是本槽局内面板 ⇒ 同样只读标记，
+ * 不要再调 `specAdditionalAbilityActive` 按 spec 重算（那是给 teammateBuffGate 这类面板之前的钩子用的，r760）。
+ * 不要把判定结果抄进 cfg 字段或面板扩展字段（r759 删 16 个 cfg 镜像，r760 再删 3 个 cfg 镜像、2 个面板镜像；测试夹具经 `panel` 给值）。
+ * 唯一例外 `cfg.velinaAdditionalAbilityActive`：spec 1561.json 的 `enabledField` 按名读 cfg，而 specs 层不得 import core（CC-248）。
  */
 export function additionalAbilityActiveOf(panel: { readonly additionalAbilityActive?: number } | null | undefined): boolean {
   return (panel?.additionalAbilityActive ?? 0) > 0

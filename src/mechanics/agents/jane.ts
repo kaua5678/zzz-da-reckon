@@ -14,7 +14,7 @@ import type { AnomalyEventRecord, CharacterResourceResult, MechanicSetting } fro
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt } from '@/utils/format'
 import { emptyPanel } from '@/core/panel'
-import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { applyAgentAttributeConversions, requireAgentAttributeConversion } from '@/specs/runtime'
 import { clampCritRatePct } from '@/data/critMultiplier'
@@ -111,7 +111,7 @@ export function computeJaneMechanic(input: {
  * 指向自己）⇒ 该臂**当前就 true**，但派发点按 `agent.id` 寻址而等价（自己指向自己）。
  * 删它是语义变更不是清理：将来数据面若把别的角色指向 1261，该角色的面板也要走本块。
  */
-function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, potentialLevel }: AgentPanelInput): void {
+function applyJanePanel({ panel, settings, agent, cinemaLevel, potentialLevel }: AgentPanelInput): void {
   const source = computeJaneMechanic({
     anomalyProficiency: panel.anomalyProficiency,
     // 传 true：本函数的产物只用于**非狂热门控**字段（强击暴击率/暴伤/精通转攻），
@@ -142,8 +142,8 @@ function applyJanePanel({ panel, settings, agent, slot, team, cinemaLevel, poten
 
   // 额外能力：痛点。物理积蓄+20%；敌人处于异常状态时额外+15%（按100%覆盖）。
   // ⚠ 不吃 `frenzy` 总闸（额外能力与狂热状态无关，见函数头注释）。
-  // CC-306：条件 = spec 1261 `additionalAbility`（异常特性或同阵营），不再手写
-  const additionalActive = specAdditionalAbilityActive(team, slot, agent)
+  // CC-306：条件 = spec 1261 `additionalAbility`（异常特性或同阵营），面板阶段求值写入面板标记，这里只读标记
+  const additionalActive = additionalAbilityActiveOf(panel)
   if (additionalActive) {
     panel.physicalAnomalyBuildUpEfficiency = panel.physicalAnomalyBuildUpEfficiency + 20
     panel.physicalAnomalyBuildUpEfficiency = panel.physicalAnomalyBuildUpEfficiency + 15

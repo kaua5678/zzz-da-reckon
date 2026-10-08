@@ -12,7 +12,6 @@ import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower } from '@/data/penetrationPower'
 import { getAgentSpec } from '@/specs/registry'
-import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { specConversionAmount } from '@/specs/runtime'
 import type { AttributeConversionSpec } from '@/specs/types'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
@@ -225,10 +224,8 @@ function applyNormaPanel({ slot: _slot, team: _team, agent, panel, outOfCombatPa
   }
 }
 
-function buildNormaCharConfig({ slot, agent, cinemaLevel, team, skills, cfg }: AgentCharConfigInput): void {
+function buildNormaCharConfig({ cinemaLevel, panel, skills, cfg }: AgentCharConfigInput): void {
   cfg.normaCinemaLevel = cinemaLevel
-  // CC-306 / CC-333：额外能力条件唯一来源 = spec 1571 `additionalAbility`（优先取入参 agent，兼容非定长/稀疏 team）
-  cfg.normaAdditionalAbilityActive = specAdditionalAbilityActive(team, slot, agent)
   cfg.skipGenericExSpecial = true // 嗯呢弹幕由本模块生成 6 段
   // 嗯呢弹幕耗能（用户确认）：40 激活 + 长按 20/s（默认 2s）→ 每次 80 能量；
   // 资源池按此驱动强特次数（长按能量此前漏算 → 次数被高估，2026-08 修复）
@@ -263,8 +260,7 @@ function buildNormaCharConfig({ slot, agent, cinemaLevel, team, skills, cfg }: A
   //   数值由 teammate-buffs.json 承载（additional_technical_gap 30 + cinema_2 额外 30），模块不再重复累加面板。
   // - 攻击提升（44~870）：**嗯呢弹幕期间**生效，按弹幕覆盖率折算。
   // - 失衡持续时间+2 秒：持鸿沟敌人失衡后生效（applyPanel 处理，见上）。
-  const aa = cfg.normaAdditionalAbilityActive
-  if (aa) {
+  if (additionalAbilityActiveOf(panel)) {
     const perStack = cinemaLevel >= 2 ? C2_STUN_EASY_PER_STACK : TECH_GAP_STUN_EASY_PER_STACK
     cfg.normaTechGapStunBonus = perStack * TECH_GAP_MAX_STACKS // 仅展示（teammate-buff 承载失衡易伤数值）
     cfg.normaExtraAbilityAtkBonus = TECH_GAP_ATK_CAP // 满覆盖（用户确认去滑块）
@@ -296,7 +292,7 @@ function normaSourceOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInput
     ultimateCount: state.ultimateCount,
     frontlineTime: state.frontlineTime,
     cinemaLevel: cinemaLevelOf(cfg.normaCinemaLevel),
-    additionalAbilityActive: cfg.normaAdditionalAbilityActive ?? false,
+    additionalAbilityActive: additionalAbilityActiveOf(cfg.panel),
     stunCount: cfg.normaStunCount ?? 0,
     stunCoverage: cfg.normaStunCoverage ?? 0,
     battleTime: cfg.battleTime,
@@ -633,8 +629,6 @@ export const normaMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 诺姆额外能力是否触发（队伍有强攻/命破/同阵营） */
-    normaAdditionalAbilityActive?: boolean
     /** 诺姆技术鸿沟失衡易伤（额外能力触发时，+3%/层×10层） */
     normaTechGapStunBonus?: number
     /** 诺姆额外能力攻击提升（44~870，随等级） */
