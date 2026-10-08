@@ -1,6 +1,6 @@
 # 前台行时长只算一处（r738）
 
-> 代码提交 `ae256a04`（arena-G r738）；arch CC-520；r6 §8 第 738 行。题目来自 `docs/mcp-default-suite-probes.md` §8.5（r737 交接的候选）。r739 续做截断预算的往返减法，见第 9 节（`14046a6c`，CC-521）。r740 续做 kept 由截断结果直接给出，见第 10 节（`1f0e9e1a`，CC-522）。r741 续做截断槽账的契约收口，见第 11 节（`69b4cad8`，CC-523）。
+> 代码提交 `ae256a04`（arena-G r738）；arch CC-520；r6 §8 第 738 行。题目来自 `docs/mcp-default-suite-probes.md` §8.5（r737 交接的候选）。r739 续做截断预算的往返减法，见第 9 节（`14046a6c`，CC-521）。r740 续做 kept 由截断结果直接给出，见第 10 节（`1f0e9e1a`，CC-522）。r741 续做截断槽账的契约收口，见第 11 节（`69b4cad8`，CC-523）。r742 做了 §11.7 的候选（平A池 carve 收口），见 `docs/mcp-basic-pool-carve.md`（`2a162c29` + `78cc9bec`，CC-524）。
 
 ## 1. 问题
 
@@ -271,7 +271,7 @@ vue-tsc 0；check-guards 29；zc.test + checkGuards.test 207；tokens / data / s
 - 不加运行时断言或测试去守「count = 0 ⇒ totalTime = 0」：契约写在注释里，现有产出方都已核实，新产出方照 11.2 遵守。
 - `truncateExecutionsToFrontline` 的 `max(0, available − 前台平A)` 不动：available 含账本平A与 gift 扣减，没量过能不能为负，不属于本轮。
 
-### 11.7 下一轮候选（未做）
+### 11.7 下一轮候选（r742 已做，见 `docs/mcp-basic-pool-carve.md`）
 
 截断这一块（r738–r741）已经收口，下一轮换方向。
 

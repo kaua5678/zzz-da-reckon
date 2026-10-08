@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（91 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（92 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -159,7 +159,8 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-limited-gold.md` | **限定金数只算一处（r734）**：归档 `memberLimitedGold` 与计算器侧 teamGoldOf / baseGoldOf / baseGoldOfTeam 四份公式的对照；收成 teamGoldOf 逐槽交给 memberLimitedGold 的改法（空槽不计、store 音擎别名解析留在 teamGoldOf）；删 isLimitedAgent 别名；不可能输入上的差异；改前 / 改后探针与 goldSteps 普查；不做清单；下一轮候选（下位音擎择优两份实现） |
 | `docs/mcp-downgrade-wengine.md` | **下位音擎择优只留一份实现（r735）**：队伍对比自动下位与自由对比无专武档两份试穿择优的对照；收成 downgradeWEngine.ts（DOWNGRADE_MODS / downgradeCandidateOf / wearBestWEngine）的改法；试算次数改由实际试算返回；行为差异；改前 / 改后探针、反例与下位池普查；不做清单；下一轮候选（一次性探针 freeCompareDowngradeProbe） |
 | `docs/mcp-default-suite-probes.md` | **默认套件只放断言（r736）与门控探针体检（r737）**：普查 25 个名含 probe / diag / debug / repro 的测试文件与 17 个无门控却有打印的测试文件；删 3 个一次性探针（zzz_ysg_probe / diag-stun / freeCompareDowngradeProbe）的依据与结论去向；panelProbe 改 it.runIf；vitest 基线归因；不做清单；r737 门控探针体检（16 个带 env 实跑，删 4 个已烂或已被取代的）与门控探针索引（§8.3） |
-| `docs/mcp-frontline-row-seconds.md` | **前台行时长只算一处（r738）、截断预算不再往返（r739）、kept 由截断结果直接给出（r740）、截断槽账契约收口（r741）**：5 处「Σ前台行 totalTime」与三种负值口径的对照；totalTime 生产方逐个核对 + 插桩实测（全套测试与零差矩阵都没有负行）；收成 `types/resource/execution.ts#frontlineRowSeconds`、删死钳位、slotNetFrontline 去 tally 出参；逐位不变的理由；r739 拆出 truncateMoveRows、rowTimeLimit 契约收紧（§9）；r740 kept 直接给出、cut 去死钳位，两种平A行时长核实为不同的量（§10）；r741 count = 0 行与槽账消费方的不可达分支删掉、契约写到类型（§11）；下一轮候选（平A池 carve 的多份实现） |
+| `docs/mcp-frontline-row-seconds.md` | **前台行时长只算一处（r738）、截断预算不再往返（r739）、kept 由截断结果直接给出（r740）、截断槽账契约收口（r741）**：5 处「Σ前台行 totalTime」与三种负值口径的对照；totalTime 生产方逐个核对 + 插桩实测（全套测试与零差矩阵都没有负行）；收成 `types/resource/execution.ts#frontlineRowSeconds`、删死钳位、slotNetFrontline 去 tally 出参；逐位不变的理由；r739 拆出 truncateMoveRows、rowTimeLimit 契约收紧（§9）；r740 kept 直接给出、cut 去死钳位，两种平A行时长核实为不同的量（§10）；r741 count = 0 行与槽账消费方的不可达分支删掉、契约写到类型（§11）；§11.7 的候选 r742 已做（见 mcp-basic-pool-carve.md） |
+| `docs/mcp-basic-pool-carve.md` | **平A池 carve 只留一份实现（r742）**：7 处手写的「从 basic_attack 聚合行挤时间」收成 `moduleExecRow#carveBasicPool`，回能缩不缩由调用方显式传（纯重构，zd 0/0）；核对回能口径发现艾莲循环行按表回填能量、池能量却不缩，按规则 10 修正（3 支 1191 预设 + 单人 c0–c6 的差异表与归因）；下一轮候选（preModuleExecutions 不是真的派发前快照） |
 | `docs/mcp-liuyin-promote-source.md` | **琉音转大次数唯一来源（W21 阻塞项 lead 设计）**：同轮四读数（floor / 计划值结转 / 池不动点 / 轴声明）的证据表、planned≠pool 的口径根因、单源 = 答案层 `promote` 滞后注入的通道设计、轴模式闸门（待用户）、否决记录与证伪闸门；拆卡 W25/W26 |
 | `docs/mcp-r22d1-batch12-field-census.md` | **R22-D1 批 1-2 裁决不做 + 核心角色字段普查计划（handoff）**：批 1-2（billy/yeshuguang 终局旗标并入通用骨架）判不做理由、核心 `CharacterOperationConfig` 角色字段 census 方案（字段→写入方/读取方） |
 | `docs/mcp-cinema-uplift-multi-metric.md` | **命座提升率多指标栏（R1）口径决策与交接**：失衡栏为什么用 `totalStunBuildUp` 而非被 `stunCountLock` 锁死的 `stunCount`（3 队 × 6 级引擎探针实测表）、方案 A 否决理由、显示口径与「显示位四舍五入为 0 即 `—`」的共同判据、七道闸门 + 两次负控 + 实机 DOM 读回证据、令牌棘轮与守卫 hint 漂移发现、三个回退点 |
@@ -173,6 +174,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/proposals/pull-value-optimization.md` | **抽卡规划价值：思想与口径**（部分落地）：价值如何定义与量纲、期望值口径（用户裁决 2026-09-01，模拟抽卡已删）；本文只谈"怎么想"，实施事实以 `pullValue.ts` / `pullPlannerEngine.ts` / `data/filmEconomy.ts` 为准 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（91 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（92 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。
