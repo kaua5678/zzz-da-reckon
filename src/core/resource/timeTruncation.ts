@@ -13,7 +13,7 @@
 import type { SkillExecution, TruncationCut } from '@/types/resource'
 import { isFrontlineExecution } from '@/types/resource'
 
-// @fact engine:时间线截断 口径: 资源允许的动作量超过可用前台时按时间线截断（实战 180s 到点结算，不管这套连段打没打完），次数必须整数（floor+小数降序加回装包）、平A填充行先占位不参与截断、砍到0次的行整行消失；overflowSeconds 语义=被截断的秒数 | 据 用户@2026-09-05·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-10-07 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/timeTruncation.ts#truncateExecutionsToFrontline | 信 确认
+// @fact engine:时间线截断 口径: 资源允许的动作量超过可用前台时按时间线截断（实战 180s 到点结算，不管这套连段打没打完），次数必须整数（floor+小数降序加回装包）、平A填充行先占位不参与截断、砍到0次的行整行消失；overflowSeconds 语义=被截断的秒数 | 据 用户@2026-09-05·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-10-07·复核@2026-10-08（r739 装包拆进 truncateMoveRows，口径未变） | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/timeTruncation.ts#truncateExecutionsToFrontline + src/core/resource/timeTruncation.ts#truncateMoveRows | 信 确认
 /**
  * 折叠环收敛容差（秒）= 截断入口容差（秒）——**同一个数，只此一处**。
  *
@@ -25,8 +25,8 @@ import { isFrontlineExecution } from '@/types/resource'
  * 这 3 队的「截断」不是资源装不下，是两级容差不一致制造的假截断——它们的账本/行能量落差也随之为假。
  * 结构性溢出（1431 簇，超 4~71s）不受本容差影响。
  */
-// @fact engine:时间线截断/入口容差 口径: 截断入口判「装不下」的容差与折叠环收敛判据同一常量 TIME_FOLD_CONVERGENCE_SECONDS=1e-3（上游放行的残差下游不得再当溢出截断；两级容差不一致曾把 ≤1.3ms 超出放大成砍 0.43~0.91s 整次动作，3/104 队假截断） | 据 债2分诊·R32 实测@2026-09-18·复核@2026-09-25·锚未变@2026-09-27·复核@2026-10-07 | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/timeTruncation.ts#TIME_FOLD_CONVERGENCE_SECONDS + src/core/resource/timeTruncation.ts#truncateExecutionsToFrontline | 信 确认
-// ⟳复核: S2 折叠环收敛判据或本入口容差再动时，复核「假截断队数仍为 0」（R32 实测 3/104 队：auto-1591-1481-1311 / auto-1591-1161-1211 / auto-1461-1521-1031 的 cut 应恒为 0）并按 timeGolden 逐队归因；债 2 批 2-1（rowTimeLimit 外环回灌）**未落地**，停在 runAssemble 抽取前（分支 collab/wip-snapshot-20260919）| 到期 2026-12-31
+// @fact engine:时间线截断/入口容差 口径: 截断入口判「装不下」的容差与折叠环收敛判据同一常量 TIME_FOLD_CONVERGENCE_SECONDS=1e-3（上游放行的残差下游不得再当溢出截断；两级容差不一致曾把 ≤1.3ms 超出放大成砍 0.43~0.91s 整次动作，3/104 队假截断） | 据 债2分诊·R32 实测@2026-09-18·复核@2026-09-25·锚未变@2026-09-27·复核@2026-10-07·锚改指 truncateMoveRows@2026-10-08（r739，入口判据随装包迁过去） | 验 src/composables/__tests__/timeTruncation.test.ts | 锚 src/core/resource/timeTruncation.ts#TIME_FOLD_CONVERGENCE_SECONDS + src/core/resource/timeTruncation.ts#truncateMoveRows | 信 确认
+// ⟳复核: S2 折叠环收敛判据或本入口容差再动时，复核「假截断队数仍为 0」（R32 实测 3/104 队：auto-1591-1481-1311 / auto-1591-1161-1211 / auto-1461-1521-1031 的 cut 应恒为 0）并按 timeGolden 逐队归因；债 2 批 2-1（rowTimeLimit 外环回灌）已落地（`truncationRefold.ts`，R37-J2 / CC-5d），重折环经 `feasibleRows` 直接调 `truncateMoveRows`，同受本容差约束 | 到期 2026-12-31
 export const TIME_FOLD_CONVERGENCE_SECONDS = 1e-3
 /**
  * 按可用前台时间**截断**执行计划（通用资源循环规则，2026-09-05 用户口径）。
@@ -43,25 +43,34 @@ export const TIME_FOLD_CONVERGENCE_SECONDS = 1e-3
  * 模块行——叶瞬光架势段、琉音抱拳——连伤害带失衡整类删光，直接让 calcOutput 返回 null）。
  * 平A行是填充项（占剩余时间），不参与截断；后台行不占前台，自然也不参与。
  *
- * @returns 截断后的行 + 被砍掉的秒数（= 该槽真实的时间压力，供 overflowSeconds/操作难度消费）
- *   + 截断前的招式行秒数（`usedSeconds`，存活率 = 1 − cutSeconds/usedSeconds）
- *   + **逐行明细** `cuts`（Σ cutSeconds == cutSeconds；资源池「被砍招式」清单与难度轴交互缩放的输入）
+ * 分两层（r739）：本函数只做「平A先占位」——可用前台 − 前台平A行 = 招式行能用的秒数，整数装包在 `truncateMoveRows`。
+ * 账本侧 `feasibleRows` 手里本来就是招式行上限（重折环写入的 rowTimeLimit），直接调后者，不再先加上平A、再由这里减回去。
  */
 export function truncateExecutionsToFrontline(
   executions: SkillExecution[],
   availableSeconds: number,
+): ReturnType<typeof truncateMoveRows> {
+  let basicTime = 0
+  for (const e of executions) if (e.moveId === 'basic_attack' && isFrontlineExecution(e)) basicTime += e.totalTime
+  // 平A是填充项先占位：招式行能用的只剩「可用前台 − 平A」
+  return truncateMoveRows(executions, Math.max(0, availableSeconds - basicTime))
+}
+
+/**
+ * 招式行整数装包：把可截断行（占前台、不是平A填充行）装进 `room` 秒，规则见 `truncateExecutionsToFrontline` 头注释。
+ *
+ * @returns 截断后的行 + 被砍掉的秒数（= 该槽真实的时间压力，供 overflowSeconds/操作难度消费）
+ *   + 截断前的招式行秒数（`usedSeconds`，存活率 = 1 − cutSeconds/usedSeconds）
+ *   + **逐行明细** `cuts`（Σ cutSeconds == cutSeconds；资源池「被砍招式」清单与难度轴交互缩放的输入）
+ */
+export function truncateMoveRows(
+  executions: SkillExecution[],
+  room: number,
 ): { executions: SkillExecution[]; cutSeconds: number; usedSeconds: number; cuts: Omit<TruncationCut, 'slot'>[] } {
   /** 可截断行：占前台且不是平A填充行 */
   const isTruncatable = (e: SkillExecution) => isFrontlineExecution(e) && e.moveId !== 'basic_attack'
   let used = 0
-  let basicTime = 0
-  for (const e of executions) {
-    if (!isFrontlineExecution(e)) continue
-    if (e.moveId === 'basic_attack') basicTime += e.totalTime
-    else used += e.totalTime
-  }
-  // 平A是填充项先占位：招式行能用的只剩「可用前台 − 平A」
-  const room = Math.max(0, availableSeconds - basicTime)
+  for (const e of executions) if (isTruncatable(e)) used += e.totalTime
   // 入口容差与折叠环收敛判据同源（见 TIME_FOLD_CONVERGENCE_SECONDS 头注释）：上游已判「自洽」的
   // 毫秒残差在这里不是溢出。真溢出（结构性，秒级）照常进入整数装包。
   if (used <= room + TIME_FOLD_CONVERGENCE_SECONDS) return { executions, cutSeconds: 0, usedSeconds: used, cuts: [] }

@@ -11,7 +11,6 @@
 import type {
   CharacterOperationConfig, SkillExecution, IterationState, AnomalyEventExecution,
 } from '@/types/resource'
-import { isFrontlineExecution } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { resolveExtraExCount } from '@/data/exSpecialPlans'
@@ -19,7 +18,7 @@ import { EVADE_ASSIST_ACTION_TIME_SECONDS, EVADE_ASSIST_MOVE_ID } from '@/data/r
 import {
   applyExecutionUtilization, applyEventUtilization, extraNecessaryActionOf,
 } from './rowAccounting'
-import { truncateExecutionsToFrontline } from './timeTruncation'
+import { truncateMoveRows } from './timeTruncation'
 
 // ============ 招式执行计划 ============
 
@@ -83,10 +82,11 @@ export function materializeRows(
 /**
  * 账本侧「可行行」物化（债 2 批 2-1 截断外环回灌，2026-09-19 R37-J2）。
  *
- * = `materializeRows`（同产行、同 cfg 快照/恢复语义）+ 当 `rowTimeLimit` 是有限非负数时，按装配同一算法
- * `truncateExecutionsToFrontline` 把**招式行**截到 ≤ rowTimeLimit 秒（平A填充行先占位、不参与截断，与 S4 装配同源：
- * 传 available = 平A秒 + rowTimeLimit）。rowTimeLimit 缺省/非有限/负数 ⇒ 原样返回 materializeRows 的数组（默认路径
- * 零分支零 delta，引用同一数组）。
+ * = `materializeRows`（同产行、同 cfg 快照/恢复语义）+ 当 `rowTimeLimit` 有值时，用装配同一套整数装包
+ * `truncateMoveRows` 把**招式行**截到 ≤ rowTimeLimit 秒（平A填充行、后台行不参与；r739 前是把「平A秒 + rowTimeLimit」
+ * 传给装配入口、再由它减回平A）。rowTimeLimit 缺省 ⇒ 原样返回 materializeRows 的数组（默认路径
+ * 零分支零 delta，引用同一数组）。写入方只有重折环，写的是装配 kept（`assembleSlot` 已钳到 ≥ 0），恒有限非负，
+ * 读方不另设守卫（r739 删掉了原来的「非有限 / 负数 ⇒ 不截」）。
  *
  * 为什么放 helpers：与 buildExecutions / materializeRows / truncateExecutionsToFrontline 同族，读写双方都在判据 14 死通道
  * 扫描面内；写入方只有 `core/resource.ts#calcTeamResources` 的重折环（返回前恒删除 cfg.rowTimeLimit）。
@@ -181,12 +181,8 @@ function feasibleRowsUncached(
   rowTimeLimit: number | undefined,
 ): SkillExecution[] {
   const rows = materializeRows(cfg, state, chainCountTotal, teamFrontlineSeconds)
-  if (rowTimeLimit == null || !Number.isFinite(rowTimeLimit) || rowTimeLimit < 0) return rows
-  let basicTime = 0
-  for (const e of rows) {
-    if (e.moveId === 'basic_attack' && isFrontlineExecution(e)) basicTime += e.totalTime
-  }
-  return truncateExecutionsToFrontline(rows, basicTime + rowTimeLimit).executions
+  if (rowTimeLimit === undefined) return rows
+  return truncateMoveRows(rows, rowTimeLimit).executions
 }
 
 /** 构建招式执行记录。`moduleInputRows`（可选出参）：接收**物化钩子派发前**的引擎行快照——

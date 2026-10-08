@@ -130,8 +130,9 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
   // ——截断上限先扣掉它，装配后再追加的赠送行才与账本守恒（见上方 giftTimeOfSlot 注释）。
   const giftTimeThisSlot = giftTimeOfSlot(i)
   // ===== 时间线截断（通用资源循环规则，2026-09-05 用户口径）=====
-  // 本槽物化行超出账本（必要 + 平A）的部分按时间线尾部截断：平A行是填充项永远保留，
-  // 招式行从后往前整行丢、边界行等比缩（伤害/失衡/积蓄/回能线性缩）。iterate 已把必要时间
+  // 本槽物化行超出账本（必要 + 平A）的部分按时间线截断：平A行是填充项，先占位、永远保留；招式行整数装包
+  // （按比例 floor + 小数降序加回，被砍行的回能 / 喧响 / 积蓄按保留比例缩，砍到 0 次的整行消失；见 timeTruncation.ts，
+  // 不是从尾部整行丢）。iterate 已把必要时间
   // 封顶到「预算 − 队友占用」，所以这里的上限就是账本本身。语义 = 实战 180s 到点结算，
   // 资源攒多了也兑现不出来——旧实现没有这层，只能靠虚高账本挤平A池，结果两头都不准。
   const truncated = truncateExecutionsToFrontline(

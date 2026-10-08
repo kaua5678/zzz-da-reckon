@@ -74,7 +74,7 @@ export function runTruncationRefold(
     if (tail.timeTruncatedSeconds <= toleranceSeconds) break
     const keptBySlot = new Map<number, number>()
     for (const e of tail.truncationBySlot) {
-      if (e.cutSeconds > toleranceSeconds) keptBySlot.set(e.slot, Math.max(0, e.kept))
+      if (e.cutSeconds > toleranceSeconds) keptBySlot.set(e.slot, e.kept)
     }
     if (keptBySlot.size === 0) break
     // 不动点：本轮装配 kept 与上一轮写入的 rowTimeLimit 逐槽一致 ⇒ 账本已按真装得下的行计，停
