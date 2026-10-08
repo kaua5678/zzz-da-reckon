@@ -17,7 +17,7 @@ const settingOf = mechanicSettingPanelReader(() => settings)
  * - 快支有单独输入，梦境值不依赖快支。
  * - 追加攻击默认 20 次；全局只需约 500 梦境值覆盖。队友命中触发、CD 8s 全球性（180s/8s≈22 次），
  *   不受失衡轴窗口限制——按 CD 全局消耗接近 500 梦境值不难（用户口径 2026-08，废除「轴模式按轴内时间折算」）。
- *   次数同时受 CD 封顶 = floor(有效战斗时间/8)（有效战斗时间 = 战斗时间 − boss 无敌，core/effectiveTime.ts）：
+ *   次数同时受 CD 封顶 = floor(有效后台时间 / 等效CD)（2026-08-30 相位延后口径，见 additionalAttackCapOf）：
  *   无敌期间队友命中不了 boss、追击也不结算。
  * - 梦境值：开局白送 60；场地外 A5 +40；战斗中 E(+60)+A5(+40)；Q +100。
  * - 默认 Q=2 时：A5×3、E×2、Q×2 → 60+120+120+200=500。
@@ -236,7 +236,7 @@ function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): v
     }))
   }
 
-  // 追加攻击（合唱）：默认 20 次（180s / 9s），由队友命中触发，不占卢西娅前台时间
+  // 追加攻击（合唱）：默认 20 次（≈500 梦境值 ÷ 25/次），由队友命中触发，不占卢西娅前台时间
   if (plan.additionalAttackCount > 0) {
     executions.push(moduleExecRow({
       moveId: ADDITIONAL_ATTACK_MOVE_ID,
@@ -244,7 +244,7 @@ function buildLuciaExecutions({ cfg, state, executions }: AgentResourceInput): v
       category: 'special',
       count: plan.additionalAttackCount,
       ...RECOVERY_OFF,
-      skillTableNote: '追加攻击 1100%/200异常（默认20次，CD 8s 队友命中触发，不受失衡轴窗口限制；次数按有效战斗时间/8 封顶，无敌期间不结算）',
+      skillTableNote: '追加攻击 1100%/200异常（默认20次，CD 8s 队友命中触发，不受失衡轴窗口限制；次数受相位延后 CD 封顶 = 有效后台时间/等效CD，无敌期间不结算）',
     }))
   }
 }
@@ -295,7 +295,7 @@ function computeLuciaSource(
     curtainTeammates,
     c4DecibelPerTrigger: c4PerTrigger,
     c4TeamDecibelPerChar: curtainTriggerCount * c4PerTrigger,
-    note: '追加攻击默认20次（CD 8s 全球性、队友命中触发，不受失衡轴窗口限制；按有效战斗时间/8 封顶，无敌期间不结算）；计划外强特合轴0秒；回血按终结技等级公式（12级12.8%/大）×覆盖滑块折算；4命帷幕触发次数含15s CD封顶。',
+    note: '追加攻击默认20次（CD 8s 全球性、队友命中触发，不受失衡轴窗口限制；受相位延后 CD 封顶 = 有效后台时间/等效CD，无敌期间不结算）；计划外强特合轴0秒；回血按终结技等级公式（12级12.8%/大）×覆盖滑块折算；4命帷幕触发次数含15s CD封顶。',
   }
 }
 
@@ -362,19 +362,15 @@ function buildLuciaResourceSections({ result, agentNames }: AgentResourceSection
  * CD 封顶（2026-08-30 相位延后口径，core/effectiveTime.ts）= floor(有效后台时间 / 等效CD)：
  * 等效CD = 8s + 前台占比×前台块长/2——卢西娅本人被换上前台做动作（A5/强特/终结/合轴）时，
  * 队友命中触发的追击同样会被她自己的前台块延后；无敌期间不结算。
- * state 缺失（estimate/无收敛信息）时回退 有效战斗时间/CD 的旧口径。
  */
 function additionalAttackCapOf(
   cfg: AgentCharConfigInput['cfg'],
-  state?: { backstageTime?: number; frontlineTime?: number },
-  frontActionCount?: number,
+  state: AgentResourceInput['state'],
+  frontActionCount: number,
 ): number {
   const slider = cfgNum(cfg, 'lucia.additionalAttackCount')
   const w = effectiveBattleTime(cfg)
-  if (!state || typeof state.backstageTime !== 'number') {
-    return Math.min(slider, Math.floor(w / ADDITIONAL_ATTACK_CD_SECONDS))
-  }
-  const f = Math.max(0, state.frontlineTime ?? 0)
+  const f = state.frontlineTime
   const b = effectiveBackstageTime(state.backstageTime, cfg)
   const block = frontBlockSeconds(
     f,
