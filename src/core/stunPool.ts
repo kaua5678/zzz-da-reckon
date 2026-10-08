@@ -18,6 +18,7 @@
 import type { PanelValues } from '@/types/catalog'
 import { getStunBuildUpBonus, getTargetedElementStat, getTargetedStat } from './buff'
 import { panelAt, emptyPanel } from './panel'
+import { enemyResistanceOf } from '@/utils/elementStatKeys'
 import type {
   StunPoolResult, StunContribution,
 } from '@/types/resource'
@@ -148,8 +149,8 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
 
     const panel = panelAt(input.panels, exec.slot) ?? emptyPanel()
     const element = exec.element ?? 'physical'
-    // CC-181：原「兼容旧调用」单数 enemyStunResistance（缺省 0）全仓零写入，已删；查不到的元素 = 0 抗性（逐位同旧）
-    const baseStunRes = enemyStunResistances[element] ?? 0
+    // 键与失衡减抗同口径（变种读基础元素、烈霜读冰；查不到 = 0），见 enemyResistanceOf（r757 CC-540）
+    const baseStunRes = enemyResistanceOf(enemyStunResistances, element)
     const perHit = calcPerHitStun(exec.baseDaze, panel, baseStunRes, physicalFlinchCoverageRate, element, exec.skillType, exec.stunBuildUpBonus)
     const total = perHit * exec.count
     // CC-469′（r651）：复合而非取大。逐招 fraction = 该招被轴块排进窗口的份额（轴模式才有，非轴恒 0）；

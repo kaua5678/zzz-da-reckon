@@ -47,3 +47,13 @@ export function panelElementStat(panel: PanelValues, kind: ElementStatKind, elem
   const key = elementStatKey(kind, element)
   return key ? (getPanelStat(panel, key) ?? 0) : 0
 }
+
+/**
+ * 敌人抗性表按元素取值（伤害 / 失衡 / 积蓄三张表同一读法，r757 CC-540）：键与上面的元素减抗字段同口径，先经
+ * `resolveStatElement`——变种读基础元素，烈霜读冰（敌方冰抗属于「元素→数值」查找，用户口径 2026-09-05）。
+ * 表里没有该元素（lumiflux）⇒ 0。此前 8 处读点三种口径：积蓄 / 直伤按 resolveStatElement；紊乱按 getBaseElement
+ * （那是异常身份口径，烈霜不归冰）；失衡 / 乱流 / 蕾米埃尔按原始元素（变种全查不到）——同一结算里抗性与减抗按不同元素取。
+ */
+export function enemyResistanceOf(table: Readonly<Record<string, number>>, element: string | undefined): number {
+  return table[resolveStatElement(element) ?? ''] ?? 0
+}

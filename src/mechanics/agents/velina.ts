@@ -24,6 +24,7 @@ import type {
 import { emptyPanel } from '@/core/panel'
 import { CORROSION_CYCLONE_RELEASE_ID_PREFIX } from '@/core/anomalyPool/helpers'
 import { fmt } from '@/utils/format'
+import { enemyResistanceOf } from '@/utils/elementStatKeys'
 import { getAgentSpec } from '@/specs/registry'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { buildSpecAnomalyEvents } from '@/specs/mechanics'
@@ -285,7 +286,7 @@ function transformVelinaAnomalyPool(input: AgentAnomalyTransformInput): void {
   // 旧写法把广域积蓄记到「第一个风角色」名下，非维琳娜风队会凭空多出风积蓄。
   const velinaSlot = input.self.slot
   const velinaPanel = input.self.panel ?? emptyPanel()
-  const windRes = input.enemyAnomalyResistances['wind'] ?? 0
+  const windRes = enemyResistanceOf(input.enemyAnomalyResistances, 'wind')
   const perHit = input.calcPerHitBuildUp(45, velinaPanel, windRes, 'wind')
   const totalCount = bcCount * 10
   const contrib = {

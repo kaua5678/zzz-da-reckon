@@ -12,7 +12,7 @@
  * **不要**在调用方另拼 core 伤害函数的入参。
  */
 import { calcAnomalyDamage, calcDirectDamage, type AnomalyDamageInput, type DirectDamageInput } from '@/core/damage'
-import { resolveStatElement } from '@/data/anomalyElement'
+import { enemyResistanceOf } from '@/utils/elementStatKeys'
 import type { PanelValues } from '@/types/catalog'
 import { safeElement } from './helpers'
 
@@ -56,7 +56,7 @@ export function calcPoolDirectDamage(env: PoolDamageEnv, row: PoolDirectRow): Re
     // 静默丢弃（直伤整条通道失效，实测 妮可队 -21%、席德+妮可队 -29%）。
     enemyDefReduction: panel.enemyDefReduction + (row.defIgnore ?? 0),
     enemyDefFlatReduction: panel.enemyDefFlatReduction,
-    enemyResistance: env.enemyDamageRes[resolveStatElement(row.element) ?? ''] ?? 0,
+    enemyResistance: enemyResistanceOf(env.enemyDamageRes, row.element),
     enemyResReduction: panel.enemyResReduction + (row.resIgnore ?? 0),
     stunMultiplier: row.stunMultiplier ?? env.enemy.stunVuln,
     stunned: row.stunned,
@@ -100,7 +100,7 @@ export function calcPoolAnomalyDamage(env: PoolDamageEnv, row: PoolAnomalyRow): 
     enemyDefReduction: row.extraDefReduction ?? 0,
     // 面板外的固定减防来源目前没有；面板固定减防由 calcAnomalyDamage 内部读（CC-175 ③）
     enemyDefFlatReduction: 0,
-    enemyResistance: env.enemyDamageRes[resolveStatElement(row.element) ?? ''] ?? 0,
+    enemyResistance: enemyResistanceOf(env.enemyDamageRes, row.element),
     enemyResReduction: row.extraResReduction ?? 0,
     stunned: row.stunned,
     stunMultiplier: env.enemy.stunVuln,

@@ -52,7 +52,7 @@ import type {
 import { panelAt, emptyPanel } from '../panel'
 import { fmt } from '@/utils/format'
 import { getBaseElement, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
-import { panelElementStat } from '@/utils/elementStatKeys'
+import { enemyResistanceOf, panelElementStat } from '@/utils/elementStatKeys'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '../damageMultipliers'
 import { resolveAnomalyCorrosion } from './corrosion'
@@ -782,8 +782,8 @@ function calcDisorderSettlement(
 ): number {
   const p = triggerPanel
 
-  // 1–3. 抗性区（按基础元素查伤害抗性，boss有偏好如火抗冰弱）× 易伤区 × 失衡易伤区
-  const baseRes = enemyResistances[getBaseElement(element)] ?? 0
+  // 1–3. 抗性区（按属性口径元素查伤害抗性：变种读基础、烈霜读冰，与下一行的元素减抗同口径）× 易伤区 × 失衡易伤区
+  const baseRes = enemyResistanceOf(enemyResistances, element)
   const totalResReduction = enemyResReduction + p.enemyResReduction + getElementEnemyResReduction(p, element)
   const enemyMult = calcEnemySideMultiplier(p, baseRes, totalResReduction, stunned, stunMultiplier)
 
@@ -818,8 +818,8 @@ function calcTurbulenceSettlement(
 ): number {
   const p = windPanel
 
-  // 1. 抗性乘区（使用非风元素伤害抗性，boss有偏好如火抗冰弱）
-  const baseRes = enemyResistances[element] ?? 0
+  // 1. 抗性乘区（非风元素的伤害抗性；按属性口径元素取，与元素减抗同口径）
+  const baseRes = enemyResistanceOf(enemyResistances, element)
   // 乱流抗性无视（%）：通用面板字段，由角色模块 applyPanel 写入（现为维琳娜 1 命 20；CC-36b 2026-09-27，原读 velinaCinema1）
   const turbulenceResIgnore = p.turbulenceResIgnore
   const totalResReduction = enemyResReduction + p.enemyResReduction + getElementEnemyResReduction(p, element) + turbulenceResIgnore

@@ -14,7 +14,7 @@ import { resolveAnomalyCorrosion, resolveAnomalyCorrosionEvents } from './anomal
 
 import { panelAt, emptyPanel } from './panel'
 import { TURBULENCE_CD_SECONDS, ANOMALY_DURATION, distributeIntegerByWeight, calcPerSlotAnomalyTriggers, calcPerSlotDisorderTriggers, calcPerSlotAnomalyOwnDecibel, calcPerHitBuildUp, simulateTriggerCount, round, getAnomalyDuration, getMainApplierSlot, calcCoverage, calcDisorderDamage, calcTurbulenceDamage, calcCoweringDot } from './anomalyPool/helpers'
-import { resolveStatElement } from '@/data/anomalyElement'
+import { enemyResistanceOf } from '@/utils/elementStatKeys'
 import type { AnomalyPoolInput } from './anomalyPool/helpers'
 import { withCompanionShare } from '@/data/decibelCompanion'
 import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS, QUICK_ASSIST_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
@@ -48,8 +48,8 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     if (!exec.element) continue
 
     const panel = panelAt(panels, exec.slot) ?? emptyPanel()
-    // 按属性口径元素取抗性（变种与基础共享抗性；frostfire 经 resolveStatElement 按冰）
-    const elementRes = enemyAnomalyResistances[resolveStatElement(exec.element) ?? ''] ?? 0
+    // 按属性口径元素取抗性（变种与基础共享抗性；frostfire 按冰），见 enemyResistanceOf
+    const elementRes = enemyResistanceOf(enemyAnomalyResistances, exec.element)
     const onStunEff = (panel.anomalyBuildUpEfficiencyOnStunBonus
       + (exec.skillType === 'chain' ? panel.anomalyBuildUpEfficiencyOnStunChainBonus : 0)) * stunnedRatio
     const perHit = calcPerHitBuildUp(exec.baseBuildUp, panel, elementRes, exec.element, (exec.buildUpEfficiencyBonusPct ?? 0) + onStunEff)

@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { emptyPanel } from '@/core/panel'
-import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'
+import { elementStatKey, enemyResistanceOf, panelElementStat } from '@/utils/elementStatKeys'
 import { DAMAGE_ELEMENTS } from '@/utils/enemyDebuffStats'
 
 const SRC = join(__dirname, '..', '..')
@@ -48,6 +48,11 @@ describe('元素 → 面板字段名单一来源（CC-224）', () => {
     const p = emptyPanel(); p.etherDmg = 30
     expect(panelElementStat(p, 'dmg', 'ether_ink')).toBe(30)
     expect(panelElementStat(p, 'dmg', '')).toBe(0)
+    const res = { physical: 10, fire: 0, ice: 40, electric: 0, ether: -20, wind: 0 }
+    expect(enemyResistanceOf(res, 'frostfire')).toBe(40)
+    expect(enemyResistanceOf(res, 'ether_ink')).toBe(-20)
+    expect(enemyResistanceOf(res, 'physical_polar_assault')).toBe(10)
+    expect(enemyResistanceOf(res, 'lumiflux')).toBe(0)
   })
   it('源码锁：除 utils/elementStatKeys.ts 外没有「元素 → 字段名」对照表 / switch', () => {
     const RE = /\bphysical\s*:\s*'(?:physical(?:Sheer|Sharp|Crit)?Dmg|enemyPhysical(?:Res|Def)Reduction)'|case\s+'physical'\s*:\s*return\s+'physicalDmg'/
@@ -69,6 +74,21 @@ describe('元素 → 面板字段名单一来源（CC-224）', () => {
         if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return
         const code = line.replace(/\/\/.*$/, '')
         if (CONCAT.test(code) || PREFIX_TABLE.test(code)) hits.push(`${rel}:${i + 1}`)
+      })
+    }
+    expect(hits).toEqual([])
+  })
+  it('源码锁（r757 CC-540）：敌人抗性表只经 enemyResistanceOf 按元素取值（core/impactVars.ts 按六元素读写 store 表除外）', () => {
+    const RE = /(?<!['"`])\b\w*(?:Resistances|DamageRes)\s*\[/
+    const ALLOW = new Set(['utils/elementStatKeys.ts', 'core/impactVars.ts'])
+    const hits: string[] = []
+    for (const p of walk(SRC)) {
+      const rel = relative(SRC, p).replace(/\\/g, '/')
+      if (ALLOW.has(rel) || !rel.endsWith('.ts')) continue
+      readFileSync(p, 'utf8').split('\n').forEach((line, i) => {
+        const t = line.trim()
+        if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return
+        if (RE.test(line.replace(/\/\/.*$/, ''))) hits.push(`${rel}:${i + 1}`)
       })
     }
     expect(hits).toEqual([])

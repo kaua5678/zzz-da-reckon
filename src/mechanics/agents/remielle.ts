@@ -24,7 +24,7 @@ import { fmt } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
 import { calcPanelStunMultiplier } from '@/core/anomalyPool/helpers'
-import { panelElementStat } from '@/utils/elementStatKeys'
+import { enemyResistanceOf, panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { channelMetricsOf, type ChannelMoveInfo, type MoveTableLike } from '@/core/resource/moveLookup'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
@@ -169,7 +169,7 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
   const levelMult = LEVEL_MULT_60
   const mass = baseDmg * dmgMult * profMult * defMult * levelMult
 
-  const baseRes = enemyResistances[element] ?? 0
+  const baseRes = enemyResistanceOf(enemyResistances, element)
   const sourceResReduction = source.enemyResReduction
     + panelElementStat(source, 'enemyRes', element)
     + cinema1ResIgnore
