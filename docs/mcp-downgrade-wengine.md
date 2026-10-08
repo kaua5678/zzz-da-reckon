@@ -81,11 +81,13 @@
 - **`isLimitedWEngine` 不动**：store 里的 id 仍要靠它解析别名；`downgradeCandidateOf` 收的是目录音擎，直接用 `isLimitedSWengineId`。
 - **`substituteAutoEngines` / `countLimitedAutoApplied` 不动**：它们管的是择优结果怎么并进配装态、怎么计金，与择优本身无关。
 
-## 6. 下一轮候选（未做）
+## 6. 下一轮候选（r736 已做）
 
 **一次性探针 `freeCompare/__tests__/freeCompareDowngradeProbe.test.ts` 仍在默认套件里跑。** 它是 2026-09-15 的探针（`b3603215`），共 74 行：加载推荐配装，对柏妮思、菲欧妮、维琳娜三人各算专武本体、三把 A 级异常音擎和裸奔的伤害，再用 console.log 打出来。唯一的断言是 `rows.length > 0`。它的结论（裸奔比专武低 34–41%，三把 A 级之间差 3–8pp）已经写进 `engine.ts#applyCodeToSlot` 的注释；「挑伤害最高的那把」由 `freeCompareEngine.test` 的「★★」用例钉住（见第 4 节反例第二条）。
 
 可以删掉这个文件，或者改成只在设了 env 时才跑；同时把 `engine.ts` 注释里的出处改成「一次性探针（已删，数字见本注释）」。删之前先确认没有别处引用它，并按规矩更新 vitest 基线（少 1 个文件、1 例）。
+
+> r736（`4285fce2`）已做：连同普查出的 `zzz_ysg_probe`、`diag-stun` 一起删掉，`engine.ts` 注释出处改指 `b3603215`。基线归因见 `docs/mcp-default-suite-probes.md`。
 
 ## 7. 回退
 
