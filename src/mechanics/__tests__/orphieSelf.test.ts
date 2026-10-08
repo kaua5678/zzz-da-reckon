@@ -207,7 +207,7 @@ describe('奥菲丝后台自动招式（2026-08-27 口径补录）', () => {
       team: team.map((t, i) => ({ slot: i, agentId: t.agentId, agent: { id: t.agentId, specialty: t.specialty } })),
     })
     const executions: any[] = [...presetExecutions]
-    const state: any = { backstageTime: 150, totalEnergy: Number(cfgOver.totalEnergy ?? 0), basicAttackTime: 8, ...stateOver }
+    const state: any = { backstageTime: 150, frontlineTime: 0, totalEnergy: Number(cfgOver.totalEnergy ?? 0), basicAttackTime: 8, ...stateOver }
     orphieMechanic.buildExecutions!({ cfg, state, executions } as any)
     return executions
   }

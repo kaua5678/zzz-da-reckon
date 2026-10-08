@@ -435,14 +435,14 @@ const JUFUFU_MOVE = {
 
 export interface JufufuCycleInput {
   backstageTime: number
-  /** 本人前台时间（账本，含合轴）：插进虎威 CD 循环造成相位延后（可选，缺省 0 = 不修正） */
-  frontlineTime?: number
-  /** 有效战斗时间（扣无敌）；缺省 = 前台 + 后台 */
-  effectiveTotalTime?: number
-  /** 前台动作次数（非平A 前台行 count 之和）：决定前台块长 t = 前台时间/切上次数；缺省回退块长 ≈ CD */
-  frontActionCount?: number
-  /** 切上前台频率滑块（切上次数/前台动作次数，clamp 0.2~1，默认 1 = 每次切上只做一个动作） */
-  frontSwitchRatio?: number
+  /** 本人前台时间（账本，含合轴）：插进虎威 CD 循环造成相位延后（0 = 不修正） */
+  frontlineTime: number
+  /** 有效战斗时间（扣无敌）：相位延后里前台占比的分母 */
+  effectiveTotalTime: number
+  /** 前台动作次数（非平A 前台行 count 之和）：决定前台块长 t = 前台时间/切上次数；为 0 时回退块长 ≈ CD */
+  frontActionCount: number
+  /** 切上前台频率滑块（切上次数/前台动作次数，clamp 0~1；设置项 jufufu.frontSwitchRatio，默认 0.7） */
+  frontSwitchRatio: number
   exSpecialCount: number
   ultimateCount: number
   /** 支援突击近似（招架次数） */
@@ -502,19 +502,9 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
   const teamUlt = Math.max(0, Math.floor(Number(input.teamUltimateCount ?? ult) || 0))
 
   // 虎威 4s CD 被本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
-  // 前台块长 = 前台时间 / 切上次数（切上频率滑块 × 前台动作次数），动作次数缺省时回退块长 ≈ CD
-  const huweiBlock = frontBlockSeconds(
-    Number(input.frontlineTime) || 0,
-    input.frontActionCount,
-    input.frontSwitchRatio,
-    JUFUFU_HUWEI_INTERVAL,
-  )
-  const huweiInterval = phaseDelayedCooldown(
-    JUFUFU_HUWEI_INTERVAL,
-    input.frontlineTime,
-    input.effectiveTotalTime ?? backstage + Math.max(0, Number(input.frontlineTime) || 0),
-    huweiBlock,
-  )
+  // 前台块长 = 前台时间 / 切上次数（切上频率滑块 × 前台动作次数），动作次数为 0 时回退块长 ≈ CD
+  const huweiBlock = frontBlockSeconds(input.frontlineTime, input.frontActionCount, input.frontSwitchRatio, JUFUFU_HUWEI_INTERVAL)
+  const huweiInterval = phaseDelayedCooldown(JUFUFU_HUWEI_INTERVAL, input.frontlineTime, input.effectiveTotalTime, huweiBlock)
   const huweiHits = Math.floor(backstage / huweiInterval)
   // ⚠ 两条近似项各乘自己的 rate（R51 用户裁决「接线」）；缺省 1 ⇒ 与旧口径逐位相同。
   const assistRate = Number.isFinite(Number(input.assistRate)) ? Math.max(0, Number(input.assistRate)) : 1

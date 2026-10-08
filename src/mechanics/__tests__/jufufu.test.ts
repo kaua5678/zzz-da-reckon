@@ -33,9 +33,12 @@ async function setup(team: Array<{ agentId: string; cinemaLevel: number }>) {
 }
 
 describe('橘福福次数账本 computeJufufuCycle', () => {
+  /** 无前台时间 ⇒ 虎威不受相位延后（四个时间字段必填，只验账本的用例用它） */
+  const noFront = { frontlineTime: 0, effectiveTotalTime: 180, frontActionCount: 0, frontSwitchRatio: 1 }
   it('虎威 floor(后场/4)×20；震煞 floor(威风/100)；旋转=威势', () => {
     const c = computeJufufuCycle({
       backstageTime: 40, // 10 次虎威
+      ...noFront,
       exSpecialCount: 2, // 威势+6 威风+160
       ultimateCount: 1, // 威势+6 威风+100
       parryCount: 2, // 威势+2
@@ -55,6 +58,7 @@ describe('橘福福次数账本 computeJufufuCycle', () => {
   it('影画1 进场威风 100 计入总量；影画6 爆米花=旋转×3', () => {
     const c = computeJufufuCycle({
       backstageTime: 0,
+      ...noFront,
       exSpecialCount: 0,
       ultimateCount: 0,
       parryCount: 0,
@@ -73,7 +77,7 @@ describe('橘福福次数账本 computeJufufuCycle', () => {
   it('虎威相位延后（2026-08-30）：块长 = 前台时间/(切上频率×前台动作次数)，滑块越低块越长、次数越少', () => {
     const base = { exSpecialCount: 0, ultimateCount: 0, parryCount: 0, cinemaLevel: 0, aweInitial: 0, c2WeishiPerUlt: 0 }
     // 无前台时间 → 旧口径 floor(100/4)=25
-    expect(computeJufufuCycle({ backstageTime: 100, frontlineTime: 0, ...base }).huweiHits).toBe(25)
+    expect(computeJufufuCycle({ backstageTime: 100, ...noFront, ...base }).huweiHits).toBe(25)
     // 前台 60s、动作 12 次、100% → 块长 5s；W=160, p=0.375 → c' = 4 + 0.375×2.5 = 4.9375 → 20 次
     const full = computeJufufuCycle({
       backstageTime: 100, frontlineTime: 60, effectiveTotalTime: 160, frontActionCount: 12, frontSwitchRatio: 1, ...base,
@@ -85,8 +89,10 @@ describe('橘福福次数账本 computeJufufuCycle', () => {
     })
     expect(rare.huweiHits).toBe(Math.floor(100 / (4 + 0.375 * 12.5)))
     expect(rare.huweiHits).toBeLessThan(full.huweiHits)
-    // 动作次数缺省 → 回退块长 ≈ CD：c' = 4×1.1875 → floor(100/4.75) = 21
-    expect(computeJufufuCycle({ backstageTime: 100, frontlineTime: 60, effectiveTotalTime: 160, ...base }).huweiHits).toBe(21)
+    // 没有前台动作行（次数 0）→ 回退块长 ≈ CD：c' = 4×1.1875 → floor(100/4.75) = 21
+    expect(computeJufufuCycle({
+      backstageTime: 100, frontlineTime: 60, effectiveTotalTime: 160, frontActionCount: 0, frontSwitchRatio: 1, ...base,
+    }).huweiHits).toBe(21)
   })
 })
 
@@ -164,6 +170,7 @@ describe('橘福福 buildExecutions / 影画6', () => {
     }
     const state: any = {
       backstageTime: 20, // 5 虎威
+      frontlineTime: 0,
       exSpecialCount: 1,
       ultimateCount: 1,
     }
@@ -187,12 +194,14 @@ describe('橘福福 buildExecutions / 影画6', () => {
 
   it('buildResourceResult 账本与 spend 一致', () => {
     const cfg: any = {
+      battleTime: 180,
+      invincibleTime: 0,
       jufufuCinemaLevel: 0,
       jufufuAweInitial: 0,
       jufufuC2WeishiPerUlt: 0,
       parryCount: 0,
     }
-    const state: any = { backstageTime: 40, exSpecialCount: 2, ultimateCount: 1 }
+    const state: any = { backstageTime: 40, frontlineTime: 0, exSpecialCount: 2, ultimateCount: 1 }
     // first build executions to fill cycle
     const executions: any[] = []
     cfg.jufufuMoveDmg = { '1391005': 1, '1391010': 1, '1391013': 1 }

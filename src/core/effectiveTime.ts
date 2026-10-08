@@ -22,7 +22,7 @@
  * 该通道已在 `src/core/resource/helpers.ts`（`shieldBreakGift` / `energyShieldBreakGift`）实现；
  * 削盾量/防御减伤乘区/净除伤害等三通道按用户口径明确不做。**不许复用 `invincibleTime` 承载秽盾**（语义不同）。
  */
-import { isFrontlineExecution, type SkillExecution } from '@/types/resource'
+import { isFrontlineExecution, type IterationState, type SkillExecution } from '@/types/resource'
 
 /** 扣无敌时间只需这一项。cfg（`CharacterOperationConfig`）与 store 的 `enemy` 上它都是必填，直接传即可 */
 interface InvincibleBasis {
@@ -41,9 +41,9 @@ export function effectiveBattleTime(cfg: TimeBasisCfg): number {
 
 // @fact engine:stun/时间守恒 口径: 失衡窗口内的招式吃易伤但不攒条 ⇒ 非轴模式按窗口时间占比折算攒条量，形成「次数↑→占比↑→攒条↓」的负反馈，由不动点自行收敛，不设硬上限 | 据 用户@2026-09-01·复核@2026-09-25·复核@2026-09-30 | 验 src/core/__tests__/stunPool.test.ts | 锚 src/core/effectiveTime.ts#stunWindowFraction | 信 确认
 
-/** 单次失衡窗口时长（秒）= boss 失衡时间 + 4 秒基础延长 + 全队失衡延时加成 */
-export function stunWindowDuration(stunTime: number | undefined, teamStunDurationBonus = 0): number {
-  return Math.max(0, (stunTime ?? 12) + 4 + Math.max(0, teamStunDurationBonus))
+/** 单次失衡窗口时长（秒）= boss 失衡时间 + 4 秒基础延长 + 全队失衡延时加成。失衡时间的缺省 12 只写在 store 的 defaultEnemy */
+export function stunWindowDuration(stunTime: number, teamStunDurationBonus: number): number {
+  return Math.max(0, stunTime + 4 + Math.max(0, teamStunDurationBonus))
 }
 
 /**
@@ -61,13 +61,13 @@ export function stunWindowFraction(stunCount: number, windowDuration: number, ef
 }
 
 /** 有效后台时间（秒）= 后台时间 − boss 无敌时间（下限 0）。后台自动招式按 CD 折算用这个。 */
-export function effectiveBackstageTime(backstageTime: number | undefined, cfg: InvincibleBasis): number {
+export function effectiveBackstageTime(backstageTime: number, cfg: InvincibleBasis): number {
   return minusInvincibleTime(backstageTime, cfg)
 }
 
 /** 从任意秒数扣掉 boss 无敌时间（下限 0）。前台+后台求和等自定义时间基准的通道用这个。 */
-export function minusInvincibleTime(seconds: number | undefined, cfg: InvincibleBasis): number {
-  return Math.max(0, (seconds ?? 0) - cfg.invincibleTime)
+export function minusInvincibleTime(seconds: number, cfg: InvincibleBasis): number {
+  return Math.max(0, seconds - cfg.invincibleTime)
 }
 
 /**
@@ -76,8 +76,8 @@ export function minusInvincibleTime(seconds: number | undefined, cfg: Invincible
  * CC-252 起唯一实现：原 lighter / rina / yaojiayin 各一份私有 `combatTimeOf`、burnice 两处内联（源码锁见
  * `__tests__/effectiveTimeSingleSource.test.ts`）。
  */
-export function effectiveCombatTime(state: { frontlineTime?: number; backstageTime?: number }, cfg: InvincibleBasis): number {
-  return minusInvincibleTime((state.frontlineTime ?? 0) + (state.backstageTime ?? 0), cfg)
+export function effectiveCombatTime(state: Pick<IterationState, 'frontlineTime' | 'backstageTime'>, cfg: InvincibleBasis): number {
+  return minusInvincibleTime(state.frontlineTime + state.backstageTime, cfg)
 }
 
 /**
@@ -95,18 +95,18 @@ export function effectiveCombatTime(state: { frontlineTime?: number; backstageTi
  */
 export function phaseDelayedCooldown(
   cd: number,
-  frontlineTime: number | undefined,
-  effectiveTotalTime: number | undefined,
-  blockSeconds?: number,
+  frontlineTime: number,
+  effectiveTotalTime: number,
+  blockSeconds: number,
 ): number {
   const c = Math.max(0, cd)
-  const w = Math.max(0, effectiveTotalTime ?? 0)
+  const w = Math.max(0, effectiveTotalTime)
   if (c <= 0 || w <= 0) return c
-  const f = Math.min(Math.max(0, frontlineTime ?? 0), w)
+  const f = Math.min(Math.max(0, frontlineTime), w)
   const p = f / w
   if (p <= 0) return c
-  // 块长缺省 = c（旧隐式口径 c' = c·(1+p/2)）；调用方算得出动作次数时传 frontBlockSeconds 的结果
-  const t = Math.max(0, blockSeconds ?? c)
+  // 块长取 frontBlockSeconds 的结果（没有前台动作行时它回退 ≈ CD，即旧隐式口径 c' = c·(1+p/2)）
+  const t = Math.max(0, blockSeconds)
   return c + p * (t / 2)
 }
 
@@ -119,20 +119,20 @@ const FRONT_SWITCH_MIN_RATIO = 0
  * 后台自动招式的前台块长（秒）：t = 前台时间 / 切上前台次数。
  * 切上次数 = frontSwitchRatio（百分比，clamp [0, 1]）× 前台动作次数；
  * 100% = 每次切上前台只做一个动作（t = 平均动作时长），0 = 一次切上做完全部前台。
- * frontActionCount 不可得时回退 fallbackBlockSeconds（≈ CD 的旧隐式口径）。
+ * 没有前台动作行（frontActionCount 为 0）时回退 fallbackBlockSeconds（≈ CD 的旧隐式口径）。
  */
 export function frontBlockSeconds(
-  frontlineTime: number | undefined,
-  frontActionCount: number | undefined,
-  frontSwitchRatio: number | undefined,
+  frontlineTime: number,
+  frontActionCount: number,
+  frontSwitchRatio: number,
   fallbackBlockSeconds: number,
 ): number {
-  const f = Math.max(0, frontlineTime ?? 0)
-  const count = Math.max(0, Math.floor(frontActionCount ?? 0))
+  const f = Math.max(0, frontlineTime)
+  const count = Math.max(0, Math.floor(frontActionCount))
   if (count <= 0) return Math.max(0, fallbackBlockSeconds)
-  const ratio = Math.min(1, Math.max(FRONT_SWITCH_MIN_RATIO, frontSwitchRatio ?? 1))
+  const ratio = Math.min(1, Math.max(FRONT_SWITCH_MIN_RATIO, frontSwitchRatio))
   const switches = Math.max(1, count * ratio)
-  return Math.max(0, f) / switches
+  return f / switches
 }
 
 /**

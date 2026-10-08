@@ -117,9 +117,8 @@ describe('时间守恒：窗口时间不攒条（用户口径 2026-09-01，负�
 
 describe('stunWindowFraction / stunWindowDuration（单一来源）', () => {
   it('窗口时长 = boss 失衡时间 + 4 + 全队延时', () => {
-    expect(stunWindowDuration(12)).toBe(16)
+    expect(stunWindowDuration(12, 0)).toBe(16)
     expect(stunWindowDuration(14, 4)).toBe(22)
-    expect(stunWindowDuration(undefined)).toBe(16)
   })
 
   it('占比 = 次数 × 窗口 / 有效时间，钳在 [0,1]；边界为 0 不炸', () => {
