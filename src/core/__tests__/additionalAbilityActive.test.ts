@@ -25,9 +25,10 @@ describe('additionalAbilityActiveOf（CC-507）', () => {
     expect(additionalAbilityActiveOf(null)).toBe(false)
     expect(additionalAbilityActiveOf(undefined)).toBe(false)
   })
-  it('源码锁：src 下（测试除外）「additionalAbilityActive ?? 0) > 0 / <= 0 / === 1」只出现在 owner', () => {
+  it('源码锁：src 下（测试除外）按数值判定 additionalAbilityActive（带 `?? 0)` 或裸比较 > / <= / ===）只出现在 owner', () => {
     const owner = join(SRC, 'core', 'additionalAbilityActive.ts')
-    const re = /additionalAbilityActive\s*\?\?\s*0\)\s*(>|<=|===)/g
+    // 裸比较也算：r731 删掉 `?? 1` 后，佩洛伊斯留下的 `cfg.panel.additionalAbilityActive > 0` 没被只认 `?? 0)` 的旧式拦住（r758 收口）
+    const re = /additionalAbilityActive(\s*\?\?\s*0\))?\s*(>|<=|===)/g
     for (const f of walk(SRC)) {
       const code = readFileSync(f, 'utf8').split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
       const hits = (code.match(re) ?? []).length

@@ -7,8 +7,7 @@
  * 编排层 `panelPhases.ts:333` 给钩子算 `additionalAbilityActive: boolean` 也是同一式。规则没有名字 ⇒ 第 46 份。
  *
  * 住 core：core 只许经 `mechanics/registry` 触达 mechanics（coreRuntimeDeps 锁），反向自由。
- * 不归这里：`specPanelBuffs.ts:151` 的 `?? 1`（未传 panel 的单测桩默认视为激活，是另一条缺省策略）；
- * `yeshuguang.ts` 把原始数值 `?? 0` 存进 cfg 的透传。
+ * 不归这里：`yeshuguang.ts` 把原始数值透传进 cfg（`yeshuguangAdditionalAbilityActive`）后自行判定。
  */
 export function additionalAbilityActiveOf(panel: { readonly additionalAbilityActive?: number } | null | undefined): boolean {
   return (panel?.additionalAbilityActive ?? 0) > 0

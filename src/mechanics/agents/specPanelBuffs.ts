@@ -2,6 +2,7 @@ import type {
   AgentCharConfigInput,
   AgentMechanicModule,
   AgentPanelInput,
+  AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   AgentTeamConfigInput,
@@ -27,16 +28,6 @@ import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 // transform 的输入面板是 `DeepReadonly`（契约见 `types.ts#AgentSkillTransformInput`）。
 const peiluoSettingOf = mechanicSettingPanelReader(() => peiluoProminenceMechanic.settings)
 const jufufuSetting = mechanicSettingReader(() => jufufuTigerRoarMechanic.settings)
-export const peiluoProminenceMechanic: AgentMechanicModule = {
-  id: 'agent:peiluo_prominence',
-  agentIds: ['1551'],
-  name: '佩洛伊斯·日珥',
-  // CC-65：TeamConfigPage 角色专属计数输入框（展示层）
-  characterCountInputs: [
-    { field: 'perfectBlockCount', label: '强特完美格挡', title: '强化特殊技触发完美格挡的次数：每次回复日珥 10 点（下分支耀斑期间强特完美格挡回日珥）' },
-    { field: 'assaultOrderCount', label: '强袭训令次数', title: '特殊技：强袭训令的发动次数（格挡招式，伤害计入倍率表 166.4% 以太行）' },
-  ],
-}
 
 /* 佩洛伊斯终结技分支模型（用户口径）：
  * - 一个大招消耗 2000 喧响（cfg.ultimateCost）；大招行按上分支 moveId 生成，patchExecutions 拆三分支。
@@ -57,20 +48,6 @@ const PEILUO_FLARE_ENERGY = 15 // 耀斑：能量获得效率 +15%
 const PEILUO_FLARE_DMG = 40 // 耀斑：造成的伤害 +40%
 export const PEILUO_KAGEROU_CRIT = 40 // 阳炎：终结技对失衡敌人暴伤 +40%
 
-// CC-39b：右分支决算结束失衡窗口（原为 convergence / roundInputs 里的字面量判定）
-peiluoProminenceMechanic.endsStunWindow = (moveId) => moveId === PEILUO_ULT_VERDICT
-
-// 决算次数无滑块：轴模式由轴内 1551016 块计数，非轴模式 = 失衡次数（编排层写入 cfg.peiluoVerdictCount）
-peiluoProminenceMechanic.settings = [{
-  id: 'peiluo.kagerouCoverage',
-  label: '佩洛伊斯·阳炎暴伤覆盖率（非轴模式）',
-  description: '非轴模式近似：上分支/决算终结吃阳炎暴伤+40% 的覆盖率。轴模式走 buff 轴扫描，不用此滑块。',
-  default: 1,
-  min: 0,
-  max: 1,
-  step: 0.05,
-}]
-
 /**
  * CC-437（T15-c）：佩洛伊斯阳炎的私有轴窗口 overlay（编排层不透明；两臂互斥，只填其一）。
  * 原 `AgentAxisOverlays.peiluoKagerouMap` → `byMove`，原 `AxisScalarOverlays.peiluoKagerouPct` → `flatPct`；值与门控逐位不变。
@@ -84,118 +61,46 @@ export interface PeiluoOverlay {
 }
 export const peiluoOverlay = axisOverlayChannel<PeiluoOverlay>()
 
-/**
- * 阳炎轴窗口覆盖（规则 6 迁入，棘轮站点 6/8，2026-09-12 #10 真清偿；
- * **非轴折算臂** 2026-09-17 round 21 夜 A 自 `damagePool.ts:540` 迁入）：
- * 原本由 `useResourceCalc` 的 `peiluoKagerouMap` computed 按 agentId '1551' 找槽位后直调。
- * 迁入后槽位/轴/滑块由派发器给。
- *
- * 两臂与门控**逐位保留**（伤害池原式 `charResult.agentId === '1551' ? (isAxis ? 桶 : 折算) : 0`）：
- * - 门控 = **仅「本模块被派发」**（= 1551 在队），**无** `additionalAbilityActive` 门控——
- *   阳炎出自**核心被动**（上分支终结技），不是额外能力（见 `PEILUO_KAGEROU_CRIT` 头注释与
- *   spec §②「阳炎只给大招」）。⚠ 别照抄般岳/可琳那两支的额外能力门控：那两处是额外能力机制。
- * - `isAxis` 真 → 轴内 21s 窗口扫描桶（`computePeiluoKagerouBonus`，值 = 实例加权平均暴伤）。
- * - `isAxis` 假 → **折算标量** `flatPct = PEILUO_KAGEROU_CRIT × 覆盖率滑块`。
- *   ⚠ 原式还要乘一个**行级**配对比例（决算 `1551016` 的 `peiluoKagerouPairRatio`，
- *   由本模块 `patchExecutions` 写在该行上）——那一半**留在行上**由消费端乘，
- *   故本标量只承载「与行无关的那一半」（标量 × 行级比例 = 原式，逐位等价）。
- *
- * 滑块缺省回落 **1**（与 `settings` 表 `peiluo.kagerouCoverage` 的 default 同值，
- * 也与伤害池原式 `getMechanicSetting(…, 1)` 同值）。
- *
- * ⚠ 2026-09-16 round 16：早退判据从 `axes.length === 0` 改成 `!isAxis`（真轴模式布尔）。
- * 派发器不再在非轴时早退（否则别的模块的非轴折算臂物理不可达），故此处必须自己按 `isAxis` 分臂。
+/** 佩洛日珥账本（patchExecutions 写 cfg → buildResourceResult 搬进结果 → resourceSections 展示） */
+export interface PeiluoProminenceLedger {
+  hitGain: number
+  spend: number
+  lowSpend: number
+  a3: number
+  a4: number
+  basicLoops?: number
+}
+
+/* 日珥账本（数据源 catalog attack_data_0=回复 / attack_data_1=消耗，原始值已 ÷100）：
+ * - 回复：余晖/旭日/朝晖/EX日华/快支/支援突击 命中按段回复 + 入场30 + 接战0.5/s(上限60) + 上分支30 + 强特完美格挡10（后四项在 spec 资源规则）
+ * - 消耗：天光 a1-a4 命中消耗（a3/a4 为连段主消耗）
+ * - 口径：账本核对型——倍率表无强化/普通天光差异行，日珥不足不改变伤害，只校验循环是否打得起 a3/a4 连段。
  */
-peiluoProminenceMechanic.axisWindowOverlays = ({ slot, axes, isAxis, settings }) => {
-  if (isAxis) {
-    const map = computePeiluoKagerouBonus(slot, axes)
-    return map.size > 0 ? peiluoOverlay.wrap({ byMove: map }) : null
-  }
-  const cov = Math.max(0, Math.min(1, peiluoSettingOf(settings, 'peiluo.kagerouCoverage')))
-  return peiluoOverlay.wrap({ flatPct: PEILUO_KAGEROU_CRIT * cov })
+const PEILUO_PROMINENCE_GAIN: Record<string, number> = {
+  '1551001': 1.4001, // 普通攻击：余晖 #1
+  '1551002': 1.5321, // 余晖 #2
+  '1551003': 6.2014, // 余晖 #3
+  '1551010': 1.4661, // 冲刺攻击：旭日
+  '1551011': 2.3347, // 闪避反击：朝晖
+  '1551009': 4.9987, // 强化特殊技：日华
+  '1551017': 1.2674, // 快速支援：黄昏禁卫
+  '1551021': 2.1327, // 支援突击：重睹天日
 }
+const PEILUO_PROMINENCE_SPEND: Record<string, number> = {
+  '1551004': 1.5007, // 天光 #1
+  '1551005': 2.0459, // 天光 #2
+  '1551006': 14.6107, // 天光 #3（连段）
+  '1551007': 11.8234, // 天光 #4（连段）
+}
+/** 余晖 #1+#2+#3 一整套的日珥回复（CC-195 普攻汇总行折算） */
+const PEILUO_BASIC_GAIN_PER_LOOP = PEILUO_PROMINENCE_GAIN['1551001'] + PEILUO_PROMINENCE_GAIN['1551002'] + PEILUO_PROMINENCE_GAIN['1551003']
+const PEILUO_CHAIN_COST = PEILUO_PROMINENCE_SPEND['1551006'] + PEILUO_PROMINENCE_SPEND['1551007'] // a3+a4 连段单价 26.4341
+
 /**
- * 阳炎行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
- * 轴模式查**本槽**桶；非轴模式 = 本槽折算标量 × **行级配对比例**（决算 `1551016` 才乘，
- * 其余行恒 1）。算式与 note 模板逐字照原 `damagePoolDirect.ts#emitExecDirect`（阳炎不进 note）。
+ * 终结技三分支拆分（patchExecutions 第一段）：通用大招行改写为剩余上分支次数（无剩余则删行），
+ * 补下分支（固定 1）与决算行，并在决算行写阳炎配对比例 `peiluoKagerouPairRatio`（非轴模式用）。
  */
-peiluoProminenceMechanic.directRowBonus = ({ exec, isAxis, overlay }) => {
-  const o = peiluoOverlay.read(overlay)
-  const moveId = exec.moveId
-  const pair = moveId === PEILUO_ULT_VERDICT ? (exec.peiluoKagerouPairRatio ?? 0) : 1
-  const crit = isAxis
-    ? (o?.byMove?.get(moveId) ?? 0)
-    : (o?.flatPct ?? 0) * pair
-  if (crit <= 0) return null
-  return { critDmgBonus: crit }
-}
-/**
- * converge 阶段（2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1551'` 分支搬入，规则 6）：
- *
- * ① `peiluoVerdictCount` —— **非轴**模式决算次数 = 失衡次数（一次失衡只能决算一次，决算后即出失衡）；
- *    轴模式由 `axisWindowOverlays` 按轴内 1551016 块计数，故此处不写（保持轴路径不回退）。
- *    该字段消费方**只有本模块**（`patchExecutions` 上文），故原 agentId 判断冗余（同 T6 判据）。
- * ② `extraSelfDecibelReward` += 连携总次数 × 300（额外能力：连携回 300 喧响；失衡连携与诺姆赠送连携同算）
- *    + 影画2 开局固定一次 1500（上限不建模）。
- *    ⚠ 该字段是**跨角色共享累加通道**（另有 `remielle.ts`、`promia.ts` 的 converge 钩子与 `orphie.ts` 影画2
- *    各自写入；core `resource/helpers.ts` / `resourceIncome.ts` 汇总；CC-312 起仪玄不再写），故这里必须**累加**
- *    而不是覆盖——原分支写的也是 `(merged.extraSelfDecibelReward ?? 0) + …`。
- *    因为共享，本钩子的 phase 门只按 converge（与其它角色的写入时机一致）。
- */
-peiluoProminenceMechanic.applyTeamConfig = ({ cfg, phase, cinemaLevel, stunCount }: AgentTeamConfigInput) => {
-  if (phase !== 'converge') return
-  const cinema = cinemaLevelOf(cinemaLevel)
-  // 连携总次数：轴模式用轴内加权后的覆盖值（由编排层通用注入 cfg），否则 chainCountPerStun × 失衡次数
-  // CC-335：额外能力·辉煌军势「连携技回复300喧响」与 applyPanel 暴伤+40% 同门控（未传 panel 的单测桩默认视为激活）
-  const chainTotal = chainCountTotalOf(cfg, stunCount)
-  const aaActive = cfg.panel.additionalAbilityActive > 0
-  const chainDecibels = aaActive ? chainTotal * 300 : 0
-  cfg.extraSelfDecibelReward = cfg.extraSelfDecibelReward + chainDecibels + (cinema >= 2 ? 1500 : 0)
-  // ⚠ 必须**无条件**写（含轴模式）——原编排层分支就是 `peiluoVerdictCount: stunCount`、无门控。
-  // 轴模式下决算次数另由 `axisWindowOverlays` 的 1551016 块计数经 `patchExecutions` 消费，
-  // 但该字段本身在轴上也要有值（首轮/无块时回落它）。第一版我擅自加了 `if (!cfg.axisMode)`
-  // 门控 ⇒ 轴模式行为静默改变（timeGolden 未覆盖该路径、不红）——已改回逐位等价。
-  cfg.peiluoVerdictCount = stunCount
-}
-peiluoProminenceMechanic.buildCharConfig = ({ cfg, cinemaLevel, skills }) => {
-  // CC-195：日珥账本折算普攻用——余晖 #1–#3 一整套时长（引擎普攻基准段 = 余晖 #3）
-  cfg.peiluoBasicCycleSeconds = basicComboCycleSeconds(skills, '1551003')
-  // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
-  if (cinemaLevelOf(cinemaLevel) >= 1) {
-    cfg.initialDecibelGift = cfg.initialDecibelGift + 1000
-  }
-  // 大招口径：2000 喧响/次；通用大招行走上分支 moveId（patchExecutions 拆分三分支）
-  cfg.ultimateCost = PEILUO_ULT_COST
-  cfg.ultimateMoveId = PEILUO_ULT_UPPER
-}
-/**
- * 面板阶段机制（规则 6 迁入，2026-09-17 round 20 R20-h1 批次 1 / A10）。
- *
- * 原住在 `helpers.ts#computePanelPhases` 的 `if (agent.id === '1551')` 硬编码块；同槽自身面板，
- * 无覆盖率滑块（纯常量 + `cinemaLevel` + 额外能力标记）。接口 `AgentMechanicModule.applyPanel`
- * 早已声明（`types.ts:443`），本模块此前**没有**该钩子 ⇒ 纯新增，不动契约。
- */
-peiluoProminenceMechanic.applyPanel = ({ panel, cinemaLevel }: AgentPanelInput) => {
-  // 影画1 黄昏旧章：暴击率 +8%（进场喧响 1000 在 buildCharConfig 注入）。
-  if (cinemaLevel >= 1) {
-    panel.critRate = panel.critRate + 8
-  }
-  // 额外能力：队伍存在[击破]/[支援]角色时暴伤 +40%（连携回 300 喧响未建模，见 status pending）。
-  if (additionalAbilityActiveOf(panel)) {
-    panel.critDmg = panel.critDmg + 40
-  }
-  // 影画4 焚昼孽火：持盾期间失衡值 +10%（护盾不建模，用户口径默认全覆盖）。
-  if (cinemaLevel >= 4) {
-    panel.stunBuildUpBonus = panel.stunBuildUpBonus + 10
-  }
-  // 耀斑（下分支开局必打，200s≈全程覆盖）：无条件挂面板。必须在面板阶段——伤害与回能读同一面板。
-  // 2026-09-23 修：原挂在 transformSkillExecutions 里直接 += 缓存的 panels.value[i] 且无幂等守卫，
-  // 单次计算被调 16 次 ⇒ 伤害加成 +640%（应 +40%）且每次重算继续累加；能量效率则从未进资源引擎。
-  panel.energyGainEfficiency = panel.energyGainEfficiency + PEILUO_FLARE_ENERGY
-  panel.dmgBonus = panel.dmgBonus + PEILUO_FLARE_DMG
-}
-// 日珥≥30 暴伤的旧工厂 transform 已由额外能力（applyPanel）取代（d0ecf19）；不挂任何 transform。
-peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }) => {
+function splitPeiluoUltBranches({ cfg, state, executions }: AgentResourceInput): void {
   const ultCount = Math.max(0, Math.floor(state.ultimateCount))
   if (ultCount <= 0) return
   const lower = 1
@@ -242,45 +147,8 @@ peiluoProminenceMechanic.patchExecutions = ({ cfg, state, executions }) => {
   }
 }
 
-/** 佩洛日珥账本（patchExecutions 写 cfg → buildResourceResult 搬进结果 → resourceSections 展示） */
-export interface PeiluoProminenceLedger {
-  hitGain: number
-  spend: number
-  lowSpend: number
-  a3: number
-  a4: number
-  basicLoops?: number
-}
-
-/* 日珥账本（数据源 catalog attack_data_0=回复 / attack_data_1=消耗，原始值已 ÷100）：
- * - 回复：余晖/旭日/朝晖/EX日华/快支/支援突击 命中按段回复 + 入场30 + 接战0.5/s(上限60) + 上分支30 + 强特完美格挡10（后四项在 spec 资源规则）
- * - 消耗：天光 a1-a4 命中消耗（a3/a4 为连段主消耗）
- * - 口径：账本核对型——倍率表无强化/普通天光差异行，日珥不足不改变伤害，只校验循环是否打得起 a3/a4 连段。
- */
-const PEILUO_PROMINENCE_GAIN: Record<string, number> = {
-  '1551001': 1.4001, // 普通攻击：余晖 #1
-  '1551002': 1.5321, // 余晖 #2
-  '1551003': 6.2014, // 余晖 #3
-  '1551010': 1.4661, // 冲刺攻击：旭日
-  '1551011': 2.3347, // 闪避反击：朝晖
-  '1551009': 4.9987, // 强化特殊技：日华
-  '1551017': 1.2674, // 快速支援：黄昏禁卫
-  '1551021': 2.1327, // 支援突击：重睹天日
-}
-const PEILUO_PROMINENCE_SPEND: Record<string, number> = {
-  '1551004': 1.5007, // 天光 #1
-  '1551005': 2.0459, // 天光 #2
-  '1551006': 14.6107, // 天光 #3（连段）
-  '1551007': 11.8234, // 天光 #4（连段）
-}
-/** 余晖 #1+#2+#3 一整套的日珥回复（CC-195 普攻汇总行折算） */
-const PEILUO_BASIC_GAIN_PER_LOOP = PEILUO_PROMINENCE_GAIN['1551001'] + PEILUO_PROMINENCE_GAIN['1551002'] + PEILUO_PROMINENCE_GAIN['1551003']
-const PEILUO_CHAIN_COST = PEILUO_PROMINENCE_SPEND['1551006'] + PEILUO_PROMINENCE_SPEND['1551007'] // a3+a4 连段单价 26.4341
-
-const peiluoUltBranchPatch = peiluoProminenceMechanic.patchExecutions!
-peiluoProminenceMechanic.patchExecutions = (input) => {
-  peiluoUltBranchPatch(input)
-  const { cfg, executions } = input
+/** 日珥账本（patchExecutions 第二段）：按执行行统计命中回复与天光消耗（普攻汇总行按余晖整套折算），写 `cfg.peiluoProminenceLedger` */
+function recordPeiluoProminenceLedger({ cfg, executions }: AgentResourceInput): void {
   let hitGain = 0
   let spend = 0
   let lowSpend = 0
@@ -306,82 +174,217 @@ peiluoProminenceMechanic.patchExecutions = (input) => {
   cfg.peiluoProminenceLedger = { hitGain, spend, lowSpend, a3, a4, basicLoops }
 }
 
-peiluoProminenceMechanic.buildResourceResult = ({ cfg, state }): Partial<CharacterResourceResult> => {
-  const spec = getAgentSpec('1551')
-  const specResources: Record<string, SpecResourceResult> = spec
-    ? Object.fromEntries(computeSpecResources(spec, cfg, state))
-    : {}
-  const prom = specResources['peiluo_prominence']
-  const ledger = cfg.peiluoProminenceLedger ?? { hitGain: 0, spend: 0, lowSpend: 0, a3: 0, a4: 0 }
-  if (prom) {
-    if (ledger.hitGain > 0) {
-      prom.gains['peiluo_hit_gain'] = ledger.hitGain
-      prom.totalGain += ledger.hitGain
-      prom.total += ledger.hitGain
-      prom.remaining += ledger.hitGain
+export const peiluoProminenceMechanic: AgentMechanicModule = {
+  id: 'agent:peiluo_prominence',
+  agentIds: ['1551'],
+  name: '佩洛伊斯·日珥',
+  // CC-65：TeamConfigPage 角色专属计数输入框（展示层）
+  characterCountInputs: [
+    { field: 'perfectBlockCount', label: '强特完美格挡', title: '强化特殊技触发完美格挡的次数：每次回复日珥 10 点（下分支耀斑期间强特完美格挡回日珥）' },
+    { field: 'assaultOrderCount', label: '强袭训令次数', title: '特殊技：强袭训令的发动次数（格挡招式，伤害计入倍率表 166.4% 以太行）' },
+  ],
+  // 决算次数无滑块：轴模式由轴内 1551016 块计数，非轴模式 = 失衡次数（编排层写入 cfg.peiluoVerdictCount）
+  settings: [{
+    id: 'peiluo.kagerouCoverage',
+    label: '佩洛伊斯·阳炎暴伤覆盖率（非轴模式）',
+    description: '非轴模式近似：上分支/决算终结吃阳炎暴伤+40% 的覆盖率。轴模式走 buff 轴扫描，不用此滑块。',
+    default: 1,
+    min: 0,
+    max: 1,
+    step: 0.05,
+  }],
+  // CC-39b：右分支决算结束失衡窗口（原为 convergence / roundInputs 里的字面量判定）
+  endsStunWindow: (moveId) => moveId === PEILUO_ULT_VERDICT,
+  /**
+   * 阳炎轴窗口覆盖（规则 6 迁入，棘轮站点 6/8，2026-09-12 #10 真清偿；
+   * **非轴折算臂** 2026-09-17 round 21 夜 A 自 `damagePool.ts:540` 迁入）：
+   * 原本由 `useResourceCalc` 的 `peiluoKagerouMap` computed 按 agentId '1551' 找槽位后直调。
+   * 迁入后槽位/轴/滑块由派发器给。
+   *
+   * 两臂与门控**逐位保留**（伤害池原式 `charResult.agentId === '1551' ? (isAxis ? 桶 : 折算) : 0`）：
+   * - 门控 = **仅「本模块被派发」**（= 1551 在队），**无** `additionalAbilityActive` 门控——
+   *   阳炎出自**核心被动**（上分支终结技），不是额外能力（见 `PEILUO_KAGEROU_CRIT` 头注释与
+   *   spec §②「阳炎只给大招」）。⚠ 别照抄般岳/可琳那两支的额外能力门控：那两处是额外能力机制。
+   * - `isAxis` 真 → 轴内 21s 窗口扫描桶（`computePeiluoKagerouBonus`，值 = 实例加权平均暴伤）。
+   * - `isAxis` 假 → **折算标量** `flatPct = PEILUO_KAGEROU_CRIT × 覆盖率滑块`。
+   *   ⚠ 原式还要乘一个**行级**配对比例（决算 `1551016` 的 `peiluoKagerouPairRatio`，
+   *   由本模块 `patchExecutions` 写在该行上）——那一半**留在行上**由消费端乘，
+   *   故本标量只承载「与行无关的那一半」（标量 × 行级比例 = 原式，逐位等价）。
+   *
+   * 滑块缺省回落 **1**（与 `settings` 表 `peiluo.kagerouCoverage` 的 default 同值，
+   * 也与伤害池原式 `getMechanicSetting(…, 1)` 同值）。
+   *
+   * ⚠ 2026-09-16 round 16：早退判据从 `axes.length === 0` 改成 `!isAxis`（真轴模式布尔）。
+   * 派发器不再在非轴时早退（否则别的模块的非轴折算臂物理不可达），故此处必须自己按 `isAxis` 分臂。
+   */
+  axisWindowOverlays: ({ slot, axes, isAxis, settings }) => {
+    if (isAxis) {
+      const map = computePeiluoKagerouBonus(slot, axes)
+      return map.size > 0 ? peiluoOverlay.wrap({ byMove: map }) : null
     }
-    if (ledger.spend > 0) {
-      prom.spendCounts['peiluo_tianguang_spend'] = 1
-      prom.spendCosts['peiluo_tianguang_spend'] = ledger.spend
-      prom.remaining -= ledger.spend
+    const cov = Math.max(0, Math.min(1, peiluoSettingOf(settings, 'peiluo.kagerouCoverage')))
+    return peiluoOverlay.wrap({ flatPct: PEILUO_KAGEROU_CRIT * cov })
+  },
+  /**
+   * 阳炎行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
+   * 轴模式查**本槽**桶；非轴模式 = 本槽折算标量 × **行级配对比例**（决算 `1551016` 才乘，
+   * 其余行恒 1）。算式与 note 模板逐字照原 `damagePoolDirect.ts#emitExecDirect`（阳炎不进 note）。
+   */
+  directRowBonus: ({ exec, isAxis, overlay }) => {
+    const o = peiluoOverlay.read(overlay)
+    const moveId = exec.moveId
+    const pair = moveId === PEILUO_ULT_VERDICT ? (exec.peiluoKagerouPairRatio ?? 0) : 1
+    const crit = isAxis
+      ? (o?.byMove?.get(moveId) ?? 0)
+      : (o?.flatPct ?? 0) * pair
+    if (crit <= 0) return null
+    return { critDmgBonus: crit }
+  },
+  /**
+   * converge 阶段（2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1551'` 分支搬入，规则 6）：
+   *
+   * ① `peiluoVerdictCount` —— **非轴**模式决算次数 = 失衡次数（一次失衡只能决算一次，决算后即出失衡）；
+   *    轴模式由 `axisWindowOverlays` 按轴内 1551016 块计数，故此处不写（保持轴路径不回退）。
+   *    该字段消费方**只有本模块**（`patchExecutions` 上文），故原 agentId 判断冗余（同 T6 判据）。
+   * ② `extraSelfDecibelReward` += 连携总次数 × 300（额外能力：连携回 300 喧响；失衡连携与诺姆赠送连携同算）
+   *    + 影画2 开局固定一次 1500（上限不建模）。
+   *    ⚠ 该字段是**跨角色共享累加通道**（另有 `remielle.ts`、`promia.ts` 的 converge 钩子与 `orphie.ts` 影画2
+   *    各自写入；core `resource/helpers.ts` / `resourceIncome.ts` 汇总；CC-312 起仪玄不再写），故这里必须**累加**
+   *    而不是覆盖——原分支写的也是 `(merged.extraSelfDecibelReward ?? 0) + …`。
+   *    因为共享，本钩子的 phase 门只按 converge（与其它角色的写入时机一致）。
+   */
+  applyTeamConfig: ({ cfg, phase, cinemaLevel, stunCount }: AgentTeamConfigInput) => {
+    if (phase !== 'converge') return
+    const cinema = cinemaLevelOf(cinemaLevel)
+    // 连携总次数：轴模式用轴内加权后的覆盖值（由编排层通用注入 cfg），否则 chainCountPerStun × 失衡次数
+    // CC-335：额外能力·辉煌军势「连携技回复300喧响」与 applyPanel 暴伤+40% 同门控（同走 additionalAbilityActiveOf）
+    const chainTotal = chainCountTotalOf(cfg, stunCount)
+    const aaActive = additionalAbilityActiveOf(cfg.panel)
+    const chainDecibels = aaActive ? chainTotal * 300 : 0
+    cfg.extraSelfDecibelReward = cfg.extraSelfDecibelReward + chainDecibels + (cinema >= 2 ? 1500 : 0)
+    // ⚠ 必须**无条件**写（含轴模式）——原编排层分支就是 `peiluoVerdictCount: stunCount`、无门控。
+    // 轴模式下决算次数另由 `axisWindowOverlays` 的 1551016 块计数经 `patchExecutions` 消费，
+    // 但该字段本身在轴上也要有值（首轮/无块时回落它）。第一版我擅自加了 `if (!cfg.axisMode)`
+    // 门控 ⇒ 轴模式行为静默改变（timeGolden 未覆盖该路径、不红）——已改回逐位等价。
+    cfg.peiluoVerdictCount = stunCount
+  },
+  buildCharConfig: ({ cfg, cinemaLevel, skills }) => {
+    // CC-195：日珥账本折算普攻用——余晖 #1–#3 一整套时长（引擎普攻基准段 = 余晖 #3）
+    cfg.peiluoBasicCycleSeconds = basicComboCycleSeconds(skills, '1551003')
+    // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
+    if (cinemaLevelOf(cinemaLevel) >= 1) {
+      cfg.initialDecibelGift = cfg.initialDecibelGift + 1000
     }
-  }
-  return { specResources, peiluoProminenceLedger: ledger }
-}
-
-peiluoProminenceMechanic.resourceSections = (input: AgentResourceSectionsInput) => {
-  const spec = getAgentSpec('1551')
-  const specSections = spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
-  const result = input.result
-  const prom = result.specResources?.['peiluo_prominence']
-  const ledger = result.peiluoProminenceLedger ?? { hitGain: 0, spend: 0, lowSpend: 0, a3: 0, a4: 0 }
-  if (!prom) return specSections
-  const pf = (n: number) => String(Math.round(n * 10) / 10)
-  const entry = prom.initialValue
-  const passive = prom.gains['peiluo_frontline_gain'] ?? 0
-  const upper = prom.gains['peiluo_upper_ult_gain'] ?? 0
-  const block = prom.gains['peiluo_perfect_block_gain'] ?? 0
-  const totalGain = prom.total
-  const surplus = prom.remaining
-  // 连段校验：a3+a4 成对为连段；日珥（含入场）能否支付全部天光消耗
-  const chainPairs = Math.min(ledger.a3, ledger.a4)
-  const affordable = surplus >= -1e-9
-  return [
-    {
-      id: 'peiluo-prominence-ledger',
-      title: '佩洛伊斯·日珥账本',
-      summary: `回复 ${pf(totalGain)} · 消耗 ${pf(ledger.spend)} · ${affordable ? `结余 ${pf(surplus)}` : `缺口 ${pf(-surplus)}`}`,
-      rows: [
-        { label: '回复·入场+被动+大招侧', value: pf(entry + passive + upper + block), detail: `入场30 / 被动固定60 / 上分支×30 / 完美格挡×10` },
-        { label: '回复·技能命中', value: pf(ledger.hitGain), detail: `余晖/旭日/朝晖/EX日华/快支/支援突击 按段回复（attack_data_0）；普攻汇总行按余晖整套折算 ${ledger.basicLoops ?? 0} 套` },
-        { label: '消耗·天光连段', value: pf(ledger.spend - ledger.lowSpend), detail: `a3×${ledger.a3}（14.61）+ a4×${ledger.a4}（11.82），连段 ${chainPairs} 组（单价 ${pf(PEILUO_CHAIN_COST)}）` },
-        { label: '消耗·天光低段', value: pf(ledger.lowSpend), detail: 'a1（1.50）+ a2（2.05）' },
-        { label: '核对结论', value: affordable ? '日珥足够' : '日珥不足', detail: affordable ? '循环打得起当前 a3/a4 配置' : '消耗超出回复，实战需减少天光连段或等待被动回复' },
-      ],
-      footer: '倍率表无强化/普通天光差异行，日珥只校验循环可行性、不影响伤害。消耗/回复数值来自 catalog attack_data 行（原始值÷100）。',
-    },
-    ...specSections,
-  ]
-}
-
-/** 阳炎 buff 轴扫描（参考仪玄凝神模式）：上分支（1551015）发动后 21s 窗口内，
- * [终结技]对失衡敌人的暴伤 +40%。用户口径：触发块自身也享受；受益限定上分支与右分支决算（1551016）。
- * 返回 moveId → 实例加权平均暴伤（0-40），非轴模式由调用方按覆盖率滑块近似。 */
-// 特殊技：强袭训令（1551022，佩洛伊斯格挡招式）：主页交互栏填写次数 → 执行行（倍率表 166.4% 以太）
-peiluoProminenceMechanic.buildExecutions = ({ cfg, executions }) => {
-  const count = Math.max(0, Math.floor(cfg.assaultOrderCount))
-  if (count <= 0) return
-  executions.push(moduleExecRow({
-    moveId: '1551022',
-    moveName: '特殊技：强袭训令',
-    category: 'special',
-    count,
-    ...RECOVERY_OFF,
-    skillTableNote: `特殊技：强袭训令 ×${count}（主页交互栏填写）`,
-  }))
+    // 大招口径：2000 喧响/次；通用大招行走上分支 moveId（patchExecutions 拆分三分支）
+    cfg.ultimateCost = PEILUO_ULT_COST
+    cfg.ultimateMoveId = PEILUO_ULT_UPPER
+  },
+  /**
+   * 面板阶段机制（规则 6 迁入，2026-09-17 round 20 R20-h1 批次 1 / A10）。
+   *
+   * 原住在 `helpers.ts#computePanelPhases` 的 `if (agent.id === '1551')` 硬编码块；同槽自身面板，
+   * 无覆盖率滑块（纯常量 + `cinemaLevel` + 额外能力标记）。接口 `AgentMechanicModule.applyPanel`
+   * 早已声明（`types.ts:443`），本模块此前**没有**该钩子 ⇒ 纯新增，不动契约。
+   */
+  applyPanel: ({ panel, cinemaLevel }: AgentPanelInput) => {
+    // 影画1 黄昏旧章：暴击率 +8%（进场喧响 1000 在 buildCharConfig 注入）。
+    if (cinemaLevel >= 1) {
+      panel.critRate = panel.critRate + 8
+    }
+    // 额外能力：队伍存在[击破]/[支援]角色时暴伤 +40%（连携回 300 喧响未建模，见 status pending）。
+    if (additionalAbilityActiveOf(panel)) {
+      panel.critDmg = panel.critDmg + 40
+    }
+    // 影画4 焚昼孽火：持盾期间失衡值 +10%（护盾不建模，用户口径默认全覆盖）。
+    if (cinemaLevel >= 4) {
+      panel.stunBuildUpBonus = panel.stunBuildUpBonus + 10
+    }
+    // 耀斑（下分支开局必打，200s≈全程覆盖）：无条件挂面板。必须在面板阶段——伤害与回能读同一面板。
+    // 2026-09-23 修：原挂在 transformSkillExecutions 里直接 += 缓存的 panels.value[i] 且无幂等守卫，
+    // 单次计算被调 16 次 ⇒ 伤害加成 +640%（应 +40%）且每次重算继续累加；能量效率则从未进资源引擎。
+    panel.energyGainEfficiency = panel.energyGainEfficiency + PEILUO_FLARE_ENERGY
+    panel.dmgBonus = panel.dmgBonus + PEILUO_FLARE_DMG
+  },
+  // 日珥≥30 暴伤的旧工厂 transform 已由额外能力（applyPanel）取代（d0ecf19）；不挂任何 transform。
+  patchExecutions: (input) => {
+    splitPeiluoUltBranches(input)
+    recordPeiluoProminenceLedger(input)
+  },
+  buildResourceResult: ({ cfg, state }): Partial<CharacterResourceResult> => {
+    const spec = getAgentSpec('1551')
+    const specResources: Record<string, SpecResourceResult> = spec
+      ? Object.fromEntries(computeSpecResources(spec, cfg, state))
+      : {}
+    const prom = specResources['peiluo_prominence']
+    const ledger = cfg.peiluoProminenceLedger ?? { hitGain: 0, spend: 0, lowSpend: 0, a3: 0, a4: 0 }
+    if (prom) {
+      if (ledger.hitGain > 0) {
+        prom.gains['peiluo_hit_gain'] = ledger.hitGain
+        prom.totalGain += ledger.hitGain
+        prom.total += ledger.hitGain
+        prom.remaining += ledger.hitGain
+      }
+      if (ledger.spend > 0) {
+        prom.spendCounts['peiluo_tianguang_spend'] = 1
+        prom.spendCosts['peiluo_tianguang_spend'] = ledger.spend
+        prom.remaining -= ledger.spend
+      }
+    }
+    return { specResources, peiluoProminenceLedger: ledger }
+  },
+  resourceSections: (input: AgentResourceSectionsInput) => {
+    const spec = getAgentSpec('1551')
+    const specSections = spec ? specToMechanicModule(spec).resourceSections?.(input) ?? [] : []
+    const result = input.result
+    const prom = result.specResources?.['peiluo_prominence']
+    const ledger = result.peiluoProminenceLedger ?? { hitGain: 0, spend: 0, lowSpend: 0, a3: 0, a4: 0 }
+    if (!prom) return specSections
+    const pf = (n: number) => String(Math.round(n * 10) / 10)
+    const entry = prom.initialValue
+    const passive = prom.gains['peiluo_frontline_gain'] ?? 0
+    const upper = prom.gains['peiluo_upper_ult_gain'] ?? 0
+    const block = prom.gains['peiluo_perfect_block_gain'] ?? 0
+    const totalGain = prom.total
+    const surplus = prom.remaining
+    // 连段校验：a3+a4 成对为连段；日珥（含入场）能否支付全部天光消耗
+    const chainPairs = Math.min(ledger.a3, ledger.a4)
+    const affordable = surplus >= -1e-9
+    return [
+      {
+        id: 'peiluo-prominence-ledger',
+        title: '佩洛伊斯·日珥账本',
+        summary: `回复 ${pf(totalGain)} · 消耗 ${pf(ledger.spend)} · ${affordable ? `结余 ${pf(surplus)}` : `缺口 ${pf(-surplus)}`}`,
+        rows: [
+          { label: '回复·入场+被动+大招侧', value: pf(entry + passive + upper + block), detail: `入场30 / 被动固定60 / 上分支×30 / 完美格挡×10` },
+          { label: '回复·技能命中', value: pf(ledger.hitGain), detail: `余晖/旭日/朝晖/EX日华/快支/支援突击 按段回复（attack_data_0）；普攻汇总行按余晖整套折算 ${ledger.basicLoops ?? 0} 套` },
+          { label: '消耗·天光连段', value: pf(ledger.spend - ledger.lowSpend), detail: `a3×${ledger.a3}（14.61）+ a4×${ledger.a4}（11.82），连段 ${chainPairs} 组（单价 ${pf(PEILUO_CHAIN_COST)}）` },
+          { label: '消耗·天光低段', value: pf(ledger.lowSpend), detail: 'a1（1.50）+ a2（2.05）' },
+          { label: '核对结论', value: affordable ? '日珥足够' : '日珥不足', detail: affordable ? '循环打得起当前 a3/a4 配置' : '消耗超出回复，实战需减少天光连段或等待被动回复' },
+        ],
+        footer: '倍率表无强化/普通天光差异行，日珥只校验循环可行性、不影响伤害。消耗/回复数值来自 catalog attack_data 行（原始值÷100）。',
+      },
+      ...specSections,
+    ]
+  },
+  // 特殊技：强袭训令（1551022，佩洛伊斯格挡招式）：主页交互栏填写次数 → 执行行（倍率表 166.4% 以太）
+  buildExecutions: ({ cfg, executions }) => {
+    const count = Math.max(0, Math.floor(cfg.assaultOrderCount))
+    if (count <= 0) return
+    executions.push(moduleExecRow({
+      moveId: '1551022',
+      moveName: '特殊技：强袭训令',
+      category: 'special',
+      count,
+      ...RECOVERY_OFF,
+      skillTableNote: `特殊技：强袭训令 ×${count}（主页交互栏填写）`,
+    }))
+  },
 }
 
 export const PEILUO_KAGEROU_SECONDS = 21
+/** 阳炎 buff 轴扫描（参考仪玄凝神模式）：上分支（1551015）发动后 21s 窗口内，
+ * [终结技]对失衡敌人的暴伤 +40%。用户口径：触发块自身也享受；受益限定上分支与右分支决算（1551016）。
+ * 返回 moveId → 实例加权平均暴伤（0-40），非轴模式由调用方按覆盖率滑块近似。 */
 export function computePeiluoKagerouBonus(
   slot: number,
   axes: ReadonlyArray<AxisLike>,
