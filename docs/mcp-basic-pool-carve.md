@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。
 
 ## 1. 问题
 
@@ -215,7 +215,7 @@ zd DUMP 0 / ROWS 0（对 `63947eeb`）。
 
 - `git revert 46a6353a`（3 个文件）。文档另有提交。
 
-### 8.7 下一轮候选（未做）
+### 8.7 下一轮候选（r744 已做，见 §9）
 
 **`backstageAutoRows` 的「不要改它」只写在注释里。** rowBuild 在闪避反击行之前派发这个钩子，传的是正在构建的 `executions` 本体。types.ts 的 `AgentMechanicModule.backstageAutoRows` 注释写着 `input.executions` 是只读快照语义，模块用它数前台动作，**不要**改它，但入参类型是共用的 `AgentResourceInput`，`executions: SkillExecution[]` 可写。
 
@@ -224,3 +224,82 @@ zd DUMP 0 / ROWS 0（对 `63947eeb`）。
 1. 把这个钩子的入参改成只读：`executions` 声明为 `readonly Readonly<SkillExecution>[]`，用类型检查守约束，注释里的「不要改它」随之删掉。
 2. 先看实现方（蕾米埃尔「光辉回转」）和 `countFrontActions` 的形参能不能直接接只读数组。
 3. 只读入参的声明方式要省，类型只声明一次，例如在 `AgentResourceInput` 上加泛型或用 `Omit` 派生。
+
+## 9. r744：钩子入参按契约收窄
+
+> 代码提交 `421b5b88`（zd 0/0）（arena-G r744）；arch CC-526；r6 §8 第 744 行。题目是 §8.7 的候选，范围扩到共用同一个入参类型的另一个钩子。
+
+### 9.1 问题
+
+`AgentResourceInput`（cfg / state / executions / teamFrontlineSeconds）是 4 个物化钩子共用的入参，但各钩子的契约不同：
+
+| 钩子 | 对 executions 的契约 | 实现方 |
+|---|---|---|
+| `buildExecutions` | 追加行，也改 core 行（青衣清零平A行、`carveBasicPool` 换平A行） | 多数角色 |
+| `patchExecutions` | 改行、增删行（佩洛伊斯 splice） | 多数角色 |
+| `backstageAutoRows` | 只数行（`countFrontActions`），新行经返回值交给构建器 | 蕾米埃尔 |
+| `materializePhaseState` | 不用行：记的是本次物化用的 state | 格莉丝、叶瞬光（都只解构 cfg / state） |
+
+- 后两个钩子的入参比契约宽：
+  - `backstageAutoRows` 拿到可写数组，「不要改它」只写在注释里；
+  - `materializePhaseState` 的两处调用点（phaseExecutions、underfillProbe）传了 executions / teamFrontlineSeconds，没有实现方读。
+- `countFrontActions` 只读，形参却是可写的 `Array<…>`。橘福福 `jufufuCycleOf` 手里是只读数组，只好写 `executions as SkillExecution[]` 断言迁就，这是全仓唯一一处 `as SkillExecution[]`。
+
+### 9.2 改法（9 个文件 +27 / −22）
+
+- types.ts 加 `AgentBackstageRowsInput`：字段同 `AgentResourceInput`，executions 为 `readonly Readonly<SkillExecution>[]`，不能增删行，也不能改行字段。`backstageAutoRows` 改用它，注释里的「不要改它」删掉。
+- 蕾米埃尔 `remielleRadiantTurnRows` 的形参改成 `AgentBackstageRowsInput`。顺手把行字面量里缩进错位的 4 行和收尾括号对齐（纯空白）。
+- `countFrontActions` 形参改成只读数组，删掉橘福福的断言。
+- `materializePhaseState` 入参改为 `Pick<AgentResourceInput, 'cfg' | 'state'>`，文档补一句：入参只有 cfg / state，写入记的是本次物化用的 state，与行无关。两处调用点只传 `{ cfg, state }`。
+- 格莉丝的两个测试（mechanicRowValuesT9、idempotentCfgWrite，共 4 处调用）删掉 `executions: []` 和 `as any`。cfg / state 在测试里本来就声明成 any。
+- `@fact engine:欠打回填` 的锚函数 `runUnderfillProbe` 动过（只改了上面那处入参）。复核仍成立，「据」末尾加 `复核@2026-10-08`。
+
+### 9.3 反证
+
+临时文件 `src/zz-r744-probe.ts`（已删）里写三种违约写法，vue-tsc 都报错：
+
+| 写法 | vue-tsc |
+|---|---|
+| `AgentBackstageRowsInput` 的 `executions.push(…)` | TS2339：push 不存在 |
+| `executions[0].count = 1` | TS2540：只读属性 |
+| 在 `materializePhaseState` 的入参上读 executions | TS2339：属性不存在 |
+
+### 9.4 验证
+
+| 项 | `bae8b416` | `421b5b88` |
+|---|---|---|
+| vue-tsc | 0 | 0 |
+| guards | 29 | 29 |
+| zc.test + checkGuards.test | 207 | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 | 12 / 161 / 462 / 189 |
+| vitest | 258/2155 + 262/2348 = 520/4503 | 258/2155 + 262/2348 = 520/4503 |
+| zd | — | DUMP 0 / ROWS 0 |
+| build | 1598.63 kB | 1598.55 kB |
+| zc drift | 154 / 0 / 0 | 154 / 0 / 0（复核 1 条后） |
+
+### 9.5 不做
+
+- **不把 `backstageAutoRows` 改成属性签名。** 钩子是方法签名（`backstageAutoRows?(input): …`），TS 对方法参数双变，单独声明成 `(input: AgentResourceInput)` 的函数仍能挂上去；改成属性签名（`backstageAutoRows?: (input) => …`）才严格。但 `AgentMechanicModule` 的钩子全是方法签名，只改这一个就不一致；实现方只有一个，内联实现和按声明类型写的实现都已受约束。
+- **`AgentResourceInput.teamFrontlineSeconds` 不改必填。** 模块里只有 zhao 读它（`?? 0`）。测试里直接调 buildExecutions / patchExecutions / backstageAutoRows 的有 163 处，同一行里传了 teamFrontlineSeconds 的只有 9 处。改必填要动约 150 处测试，只换掉一个 `?? 0`，量过不做。
+- buildExecutions / patchExecutions 的入参不拆，它们本来就要改行。
+
+### 9.6 回退
+
+- `git revert 421b5b88`（9 个文件）。文档另有提交。
+
+### 9.7 下一轮候选（未做）
+
+**`AgentResourceResultInput` 的两份快照是可选字段，读方各写一份缺省分支。** 唯一的生产调用方 `assembleSlot` 总是传 `preModuleExecutions` / `prePatchExecutions`（r743 起是逐行拷贝）。4 个读方各自兜底：
+
+- 卢西娅 `buildLuciaResourceResult`：缺快照时「退化为无前台动作计数口径」，传 undefined 给 `additionalAttackCapOf`；
+- 青衣：`preModuleExecutions ?? []`；
+- 橘福福：`jufufuCycleOf` 的 `executions ? … : undefined`，形参是 `readonly SkillExecution[] | undefined`；
+- 千夏：`prePatchExecutions ?? []`。
+
+这些分支只为测试直调而存在：`jufufu.test.ts:200` 传 `{ cfg, state } as any`，`luciaElowen.test.ts:123` 只传 cfg / state（`as never`），都走缺省分支。青衣、千夏没有直调的测试。
+
+下一步：
+
+1. 两个字段改必填，删掉 4 个缺省分支。判据 28（dead-nullish）会把漏删的 `??` 报出来。
+2. 先核对传 `[]` 和传 undefined 是否等价：`countFrontActions([])` = 0，`frontBlockSeconds` 对 0 和 undefined 都取回退值；但 `additionalAttackCapOf`、`computeJufufuCycle` 里 frontActionCount 还有没有别的用法，要读代码确认。不等价就让测试传真实行，不留退化口径。
+3. 测试直调处补 `preModuleExecutions: []`（或真实行）。生产路径不变，zd 应为 0/0。
