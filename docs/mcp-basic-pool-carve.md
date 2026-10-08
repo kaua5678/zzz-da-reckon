@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。
 
 ## 1. 问题
 
@@ -452,7 +452,7 @@ zd 覆盖不到决策层、展示层等路径，这部分由全量 vitest 补上
 - 不给这个用例加相位延后的断言：`phaseDelayedCooldown`（11 处）和 `frontBlockSeconds`（7 处）在 `core/__tests__/effectiveTime.test.ts` 里已经锁住，这里不重复。
 - 回退：`git revert e02a75a9`（2 个文件）。文档另有提交。
 
-### 11.8 下一轮候选（未做）
+### 11.8 下一轮候选（r747 已做，见 §12）
 
 **`core/effectiveTime.ts` 的共享时间 helper，形参也比调用方宽，`?? 0` 落在核心里。** 本轮的卢西娅是调用方一侧的例子，helper 自己也是同一个模式：
 
@@ -474,3 +474,114 @@ zd 覆盖不到决策层、展示层等路径，这部分由全量 vitest 补上
 4. 删 effectiveTime.test 里那 5 处只验 undefined 缺省的断言（缺省分支没了，删掉不会漏真实回归）。生产路径不变，zd 应为 0/0。
 
 另记（小，未立题，同 §10.8）：橘福福 `patchExecutions` 的 `e.dmgBonus = (e.dmgBonus ?? 0)`（specPanelBuffs.ts:791）。
+
+## 12. r747：effectiveTime 时间 helper 的形参收窄
+
+> 代码提交 `56465f75`（数值逐位不变，zd 0/0）（arena-G r747）；arch CC-529；r6 §8 第 747 行。题目是 §11.8 的候选。
+
+### 12.1 问题
+
+`core/effectiveTime.ts` 里六个时间 helper 的形参允许 undefined，函数体各自兜底：
+
+| helper | 原形参 | 函数体兜底 |
+|---|---|---|
+| `minusInvincibleTime(seconds, cfg)` | `seconds: number \| undefined` | `?? 0` |
+| `effectiveBackstageTime(backstageTime, cfg)` | `number \| undefined` | 转给 minusInvincibleTime |
+| `effectiveCombatTime(state, cfg)` | `{ frontlineTime?: number; backstageTime?: number }` | 两处 `?? 0` |
+| `phaseDelayedCooldown(cd, frontlineTime, effectiveTotalTime, blockSeconds?)` | 两个时间参数 `number \| undefined`，blockSeconds 可省 | `?? 0` ×2、`blockSeconds ?? c` |
+| `frontBlockSeconds(frontlineTime, frontActionCount, frontSwitchRatio, fallback)` | 前三个 `number \| undefined` | `?? 0` ×2、`?? 1` |
+| `stunWindowDuration(stunTime, teamStunDurationBonus = 0)` | `number \| undefined` | `?? 12` |
+
+- 形参写宽了，判据 28 就查不到这些 `??`。
+- 缺省值多写了一份：失衡时间 12 已经写在 store 的 defaultEnemy；块长 = CD 的回退已经由 frontBlockSeconds 的 fallback 参数承担。
+
+### 12.2 谁在传 undefined
+
+**静态。** 把六个形参改成 number 后跑 vue-tsc，报 15 处：
+
+- 生产代码只有 2 处，都在 `specPanelBuffs.ts` 的 `computeJufufuCycle`：它把 `JufufuCycleInput` 的可选字段转给 frontBlockSeconds / phaseDelayedCooldown。
+- 其余 13 处在测试：effectiveTime.test 12 处、stunPool.test 1 处。
+- 另外 24 处生产调用（还有 effectiveTime.ts 内部 2 处）本来就传 number / IterationState。
+
+**运行时。** vue-tsc 看不穿 `as any` 夹具，所以在 HEAD 版六个 helper 的入口临时打桩：实参不是 number 就记一行调用栈（已还原）。
+
+| 跑了什么 | 命中 |
+|---|---|
+| 全量 vitest（520 文件 / 4503 例） | 50 次，全部来自测试 |
+| zd：全部预设 × 5 变体（dump + rowsnap） | 0 |
+
+50 次按来源分：
+
+| 来源 | 命中 | 收窄后会怎样 | 处理 |
+|---|---|---|---|
+| effectiveTime.test / stunPool.test 直调：传 undefined，或省略 blockSeconds | 14 | vue-tsc 报错 | 删只验缺省的断言，块长 = c 的补第 4 参（§12.3） |
+| jufufu.test 直调 computeJufufuCycle，没传时间字段 | 6 | 字段改必填后 vue-tsc 报错 | 补字段 |
+| jufufu.test 两个钩子用例：state 缺 frontlineTime，经 jufufuCycleOf 传进来 | 3 | buildExecutions 用例的虎威次数变成 NaN，断言失败。buildResourceResult 用例的 cfg 本来就缺 battleTime / invincibleTime，后台时间在 HEAD 上就是 NaN，其中两条断言是 NaN 比 NaN（Object.is 判相等），永远通过 | 前者补 frontlineTime 0；后者补 battleTime 180、invincibleTime 0、frontlineTime 0，让这两条断言真正比较数值 |
+| orphieSelf 的 `build()` 夹具：state 缺 frontlineTime | 6 | 次数变成 NaN，2 例失败（§12.4 实测） | 夹具补 frontlineTime 0 |
+| orphieSelf 滑块用例：state 只有 basicAttackTime，cfg 没有 invincibleTime | 12 | 后台次数在 HEAD 上已经是 NaN；用例只断言火刀衔接行 | 不动 |
+| orphieSelf 的 patchExecutions 用例：传 `state: {}` | 3 | 影画2 的喧响写进 cfg.extraSelfDecibelReward，夹具 cfg 没这个字段，HEAD 上就是 NaN；用例不断言它 | 不动 |
+| vivian.test 的 buildAnomalyEvents：cfg 没有 battleTime | 6 | battleTime 只在 vivianAdditionalActive 为真时给源2 封顶，这些用例都没开 | 不动 |
+
+### 12.3 改法（6 个文件 +59 / −69）
+
+- `effectiveTime.ts`
+  - minusInvincibleTime / effectiveBackstageTime / stunWindowDuration：形参改 `number`，删 `?? 0` / `?? 12`。stunWindowDuration 的 `teamStunDurationBonus = 0` 默认参数也去掉：2 个生产调用方（useResourceCalc、ultimatePromote）都传，只有 stunPool.test 一处直调省略。
+  - effectiveCombatTime：state 改为 `Pick<IterationState, 'frontlineTime' | 'backstageTime'>`，删两处 `?? 0`。
+  - phaseDelayedCooldown：两个时间参数改 `number`，blockSeconds 改必填（4 个调用方都传 frontBlockSeconds 的结果），删 `?? 0` / `?? c`。
+  - frontBlockSeconds：三个参数改 `number`，删 `?? 0` / `?? 0` / `?? 1`。返回值里的 `Math.max(0, f)` 是重复钳制（f 已经钳过），改成 `f / switches`。
+- `specPanelBuffs.ts`
+  - `JufufuCycleInput` 的 frontlineTime / effectiveTotalTime / frontActionCount / frontSwitchRatio 改必填。
+  - computeJufufuCycle 删 `Number(input.frontlineTime) || 0`，也删 effectiveTotalTime 的「前台 + 后台」回退：唯一的生产装配 jufufuCycleOf 一直传 `effectiveBattleTime(cfg)`。
+  - frontSwitchRatio 的注释原来写「clamp 0.2~1，默认 1」，实际下限是 0（`FRONT_SWITCH_MIN_RATIO`），设置项默认 0.7，已改正。
+- 测试
+  - effectiveTime.test：删 5 条只验 undefined 缺省的断言（原 :21、:27、:32、:62、:65）和 1 条块长缺省断言（原 :51）；块长 = c 的 6 条补第 4 参，期望值不变。
+  - stunPool.test：删 `stunWindowDuration(undefined)`，另一条补第 2 参 0。
+  - jufufu.test：账本 describe 里加 `noFront`（四个时间字段，前台时间 0）给只验账本的直调用；「没有前台动作行 → 块长回退 ≈ CD」那条补 frontActionCount 0 / frontSwitchRatio 1，期望仍是 21；两个钩子用例按 §12.2 补字段。
+  - orphieSelf：`build()` 夹具补 frontlineTime 0。
+
+### 12.4 反证
+
+- 收窄后 vue-tsc 报 15 处（测试 13 处传 undefined 或少第 4 参，生产 2 处传可选字段）：新形参确实不收 undefined。
+- 临时写回 `seconds ?? 0`：判据 28 报 `effectiveTime.ts:70  ?? [(局部).seconds: number]`。helper 的函数体重新受判据 28 约束。
+- 临时去掉 orphie `build()` 的 frontlineTime 0：2 例失败（expected NaN to be 2 / 30）。补这个字段是必需的。
+
+以上都已还原。
+
+### 12.5 零差
+
+zd（对 `9f4f07d6`，不丢键）DUMP 0 / ROWS 0。生产实参都是有限的 number，删掉的 `??` 和 `Number(x) || 0` 在生产里一次都不会触发；本轮没有改文案。
+
+### 12.6 验证
+
+| 项 | `9f4f07d6` | `56465f75` |
+|---|---|---|
+| vue-tsc | 0 | 0 |
+| guards | 29 | 29 |
+| zc.test + checkGuards.test | 207 | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 | 12 / 161 / 462 / 189 |
+| vitest | 258/2155 + 262/2348 = 520/4503 | 258/2155 + 262/2348 = 520/4503 |
+| zd | — | 0 / 0 |
+| build | 1598.48 kB | 1598.38 kB |
+| zc drift | 154 / 0 / 0 | 154 / 0 / 0 |
+
+用例数不变：删的是断言，不是用例。
+
+### 12.7 不做与回退
+
+- vivian.test 6 处、orphieSelf 滑块用例和 patchExecutions 用例的夹具不补字段：它们落到的通道这些用例不断言，在 HEAD 上本来就是 NaN 或 0（§12.2）。补了只是噪音。
+- stunWindowFraction 的 `lostSeconds = 0` 保留：5 个生产调用里 difficultyRatio、solveTeam 不传，ultimatePromote ×2、useResourceCalc 传（只有易伤覆盖率要扣），这个默认参数服务生产代码。
+- countFrontActions 不在本轮做，见 §12.8。
+- 回退：`git revert 56465f75`（6 个文件）。文档另有提交。
+
+### 12.8 下一轮候选（未做）
+
+1. **`countFrontActions` 的形参收窄**（effectiveTime.ts 里最后一个形参比调用方宽的 helper）。
+   - 现状：`executions: readonly { category?: string; count?: number; timeBucket?; moveId?: string }[]`，`opts: { fusedMoveIds?: Array<string | undefined | null> } = {}`。函数体有 `e.count ?? 0`、`e.moveId ?? ''`、`opts.fusedMoveIds?.filter(…) ?? []`。
+   - `SkillExecution` 的 category / count / moveId 都是必填（types/resource/execution.ts），`assistFollowUpMoveId` 也是必填 string（types/resource/config.ts:176）。
+   - 5 个生产调用方（luciaElowen ×2、orphie、remielle、specPanelBuffs）全部写 `countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] })`；测试没有直调。
+   - 下一步：先在入口打运行时探针，看有没有测试夹具的行缺 count / moveId；再决定改成 `(executions: readonly SkillExecution[], fusedMoveId: string)` 还是保留数组；filter(Boolean) 要不要保留，取决于 assistFollowUpMoveId 会不会是空串。
+2. **computeJufufuCycle 剩下的数值防御。** specPanelBuffs.ts:495–502 有 7 处 `Number(x) || 0`（字段都是 number）；:510–511 的 assistRate / teamUltRate 是可选字段，用 `Number.isFinite(Number(x)) ? … : 1` 兜底，而 jufufuCycleOf（:630–631）两个都传。jufufu.test 的直调靠「缺省 1」。teamUltimateCount 的 `?? ult` 要先核实 cfg 字段是否可选，再决定去留。
+
+另记（小，未立题）：
+- 橘福福 patchExecutions 的 `e.dmgBonus = (e.dmgBonus ?? 0)`（specPanelBuffs.ts:781，同 §10.8；:790 另有一处 `(e.dmgBonus ?? 0) + …`）。
+- 设置项缺省值写了两处：声明里的 default 和读取处的 `cfgMechanicSettingRaw(cfg, id) ?? D`（例：jufufu.frontSwitchRatio 两处都是 0.7）。全仓这种读法 23 处、11 个文件，还没核实是否都与声明一致。
