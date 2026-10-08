@@ -129,7 +129,7 @@ describe('convergence 夜间批 B · 组 3 保留项：cfg-merge 分支仍在（
    * ② 迁移所需的**契约缺口**是可复现的事实（不是借口）。
    * 这两条一起构成「本批为什么没做」的可检验记录——避免下一批重新侦察一遍。
    */
-  it('① 雨果消费端契约存在：hugo.ts 读 cfg 的 hugoRemainingStunSeconds / hugoAxisExVerdictCount', async () => {
+  it('① 雨果消费端契约存在：hugo.ts 读 cfg 的 hugoAxisRemainingStunSeconds / hugoAxisExVerdictCount', async () => {
     const { catalog } = await ctx([{ agentId: '1291' }, { agentId: '1481' }, { agentId: '1011' }])
     const mod = (await import('@/mechanics')).getAgentMechanic('1291')!
     expect(mod.agentIds).toEqual(['1291'])

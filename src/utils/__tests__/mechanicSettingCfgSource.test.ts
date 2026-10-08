@@ -9,11 +9,14 @@
  * `cfgMechanicSettingRaw(cfg, id)`（原始值，外层 `Number(… ?? d)` 原样保留 ⇒ 零差），并把引号字面量也锁上。
  *
  * CC-532（r749）：那 24 处读法并入模块 reader（默认值只在 settings 声明），`cfgMechanicSettingRaw` 删除。
+ *
+ * CC-534（r751）：钩子拿到的 store 读取器 `getMechanicSetting('a.b', D)` 也手抄过默认值（hugo / alice / liuyin 6 处）；
+ * store 无用户值时直接返回 D ⇒ 这份 D 是生产默认值。改走 `mechanicSettingGetterReader`，并锁上这一形。
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { cfgMechanicSetting, mechanicSettingCfgKey, mechanicSettingPanelReader, mechanicSettingReader } from '../mechanicSettingCfg'
+import { cfgMechanicSetting, mechanicSettingCfgKey, mechanicSettingGetterReader, mechanicSettingPanelReader, mechanicSettingReader } from '../mechanicSettingCfg'
 
 const SRC = resolve(__dirname, '../..')
 const OWNER = 'utils/mechanicSettingCfg.ts'
@@ -83,12 +86,22 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
     expect(() => read({}, 'x.z')).toThrow(/x\.z/)
   })
 
-  it('CC-508/510 源码锁：mechanics/agents 内不再手抄「带点 id + 字面量/常量 fallback」的机制设置读法（调用形与裸索引形；默认值只在 settings 声明）', () => {
+  it('CC-534 getter reader：递给 store 读取器的 fallback 是声明 default；显式 fallback 覆盖；未声明抛错', () => {
+    const read = mechanicSettingGetterReader(() => [{ id: 'x.y', default: 5 }])
+    const store = (vals: Record<string, number>) => (id: string, fallback: number) => vals[id] ?? fallback
+    expect(read(store({}), 'x.y')).toBe(5)
+    expect(read(store({ 'x.y': 0 }), 'x.y')).toBe(0)
+    expect(read(store({}), 'x.y', 2)).toBe(2)
+    expect(() => read(store({}), 'x.z')).toThrow(/x\.z/)
+  })
+
+  it('CC-508/510 源码锁：mechanics/agents 内不再手抄「带点 id + 字面量/常量 fallback」的机制设置读法（调用形、裸索引形与钩子 getMechanicSetting 形；默认值只在 settings 声明）', () => {
     const AGENTS = resolve(SRC, 'mechanics/agents')
     // 调用形（CC-508/508b）：reader(x, 'a.b', <数字|常量>)；裸索引形（CC-510）：settings['a.b'] ?? <数字|常量>。
     // CC-532（r749）：整文件匹配（\s 可跨行——派派曾把裸索引形折成两行漏网）；reader 名带前缀（jufufuSetting / peiluoSettingOf）也算。
+    // CC-534（r751）：钩子形 getMechanicSetting('a.b', D)（派发器递来的 store 读取器，D 是生产默认值）。
     const FB = String.raw`(?:-?[0-9.]+|[A-Z_][A-Z0-9_]*)\b`
-    const re = new RegExp(String.raw`\b(?:\w*[sS]etting(?:Of)?|cfgNum)\(\s*\w+,\s*'\w+\.\w+',\s*${FB}\s*\)|\b(?:settings|settingsMap|values)\??\.?\['\w+\.\w+'\]\s*\?\?\s*${FB}`, 'g')
+    const re = new RegExp(String.raw`\b(?:\w*[sS]etting(?:Of)?|cfgNum)\(\s*\w+,\s*'\w+\.\w+',\s*${FB}\s*\)|\b(?:settings|settingsMap|values)\??\.?\['\w+\.\w+'\]\s*\?\?\s*${FB}|\bgetMechanicSetting\(\s*'\w+\.\w+',\s*${FB}\s*\)`, 'g')
     const hits: string[] = []
     for (const p of walk(AGENTS)) {
       if (!p.endsWith('.ts') || p.includes('__tests__')) continue

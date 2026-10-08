@@ -142,7 +142,7 @@ describe('夜D · 层②-a 雨果 1291（原 convergence.ts:826 块）', () => {
       team: [{ slot: 0, agentId: '1291', cinemaLevel: 0, potentialLevel: 6, agent: null, wEngineId: '', wEngineModLevel: 1 }],
     }))
     // 剩余失衡时间 = 20 − 1.805 = 18.195 → 夹到 **15**（Math.min(15, …)）
-    expect(cfg.hugoRemainingStunSeconds).toBe(15)
+    expect(cfg.hugoAxisRemainingStunSeconds).toBe(15)
     // 决算次数 = 块数 × 窗口数 = 1 × 3
     expect(cfg.hugoAxisExVerdictCount).toBe(3)
     expect(cfg.hugoAxisUltVerdictCount).toBe(0)
@@ -192,7 +192,7 @@ describe('夜D · 层②-a 雨果 1291（原 convergence.ts:826 块）', () => {
       team: [{ slot: 0, agentId: '1291', cinemaLevel: 0, potentialLevel: 6, agent: null, wEngineId: '', wEngineModLevel: 1 }],
     }))
     // ⚠ 恒写 0 会让 `cycleFromInput` 走 override 通路把决算次数压成 0（而不是回落滑块比例）
-    expect(cfg.hugoRemainingStunSeconds).toBeUndefined()
+    expect(cfg.hugoAxisRemainingStunSeconds).toBeUndefined()
     expect(cfg.hugoAxisExVerdictCount).toBeUndefined()
     expect(cfg.hugoAxisUltVerdictCount).toBeUndefined()
   })
@@ -207,7 +207,7 @@ describe('夜D · 层②-a 雨果 1291（原 convergence.ts:826 块）', () => {
       threads: { prevPoolStunCount: 2 } as never,
       team: [{ slot: 0, agentId: '1291', cinemaLevel: 0, potentialLevel: 6, agent: null, wEngineId: '', wEngineModLevel: 1 }],
     }))
-    expect(cfg.hugoRemainingStunSeconds).toBeUndefined()
+    expect(cfg.hugoAxisRemainingStunSeconds).toBeUndefined()
     expect(cfg.hugoAxisExVerdictCount).toBeUndefined()
   })
 
@@ -255,7 +255,7 @@ describe('夜D · 层②-a 雨果 1291（原 convergence.ts:826 块）', () => {
     expect(cfg.hugoAxisUltVerdictCount).toBe(6)
     // 剩余失衡：C0 下 1291018 也结束窗口（actionTime 实测 2.183）⇒
     // maxEnd = max(0 + 1.805, 2 + 2.183) = 4.183；窗口 20 ⇒ 20 − 4.183 = 15.817 → 夹到 15
-    expect(cfg.hugoRemainingStunSeconds).toBe(15)
+    expect(cfg.hugoAxisRemainingStunSeconds).toBe(15)
   })
 
   it('★ 窗口终结时长取 `Math.min(15, …)` 夹取的下界侧（窗口很短 ⇒ 精确非夹取值）', () => {
@@ -272,7 +272,7 @@ describe('夜D · 层②-a 雨果 1291（原 convergence.ts:826 块）', () => {
       team: [{ slot: 0, agentId: '1291', cinemaLevel: 0, potentialLevel: 6, agent: null, wEngineId: '', wEngineModLevel: 1 }],
     }))
     // 精确值（浮点 5 − 4.805 = 0.19500000000000028）
-    expect(cfg.hugoRemainingStunSeconds).toBeCloseTo(0.195, 10)
+    expect(cfg.hugoAxisRemainingStunSeconds).toBeCloseTo(0.195, 10)
   })
 
   it('★ 前导空槽：`team.find(slot===…)` 取到的是**槽位号**对应成员（不是压缩下标）', () => {
@@ -292,7 +292,7 @@ describe('夜D · 层②-a 雨果 1291（原 convergence.ts:826 块）', () => {
         { slot: 1, agentId: '1291', cinemaLevel: 0, potentialLevel: 6, agent: null, wEngineId: '', wEngineModLevel: 1 },
       ],
     }))
-    expect(cfg.hugoRemainingStunSeconds).toBe(15)
+    expect(cfg.hugoAxisRemainingStunSeconds).toBe(15)
     expect(cfg.hugoAxisExVerdictCount).toBe(1)
   })
 })

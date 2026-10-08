@@ -38,6 +38,10 @@ export const YUZUHA_ULT_TEAM_ENERGY = 25
 export const YUZUHA_C1_ENTER_ENERGY = 30
 /** 影画2 强制连携 CD：20 秒最多一次（重击命中非失衡敌） */
 export const YUZUHA_C2_CHAIN_CD = 20
+/** 影画2 强制连携次数 = floor(有效战斗时间 / 20)：每次都有角色入场，全队连携计数（applyTeamConfig）与柚叶甜度点（computeYuzuhaMechanic）同用 */
+function forcedChainCount(cinemaLevel: number, effectiveSeconds: number): number {
+  return cinemaLevel >= 2 ? Math.floor(effectiveSeconds / YUZUHA_C2_CHAIN_CD) : 0
+}
 /**
  * 影画4·恶作剧开始：支援突击（来块曲奇 1411017 / 夹心硬糖射击 1411024）伤害 +30%、属性异常积蓄效率 +20%。
  *
@@ -57,6 +61,7 @@ export const YUZUHA_C4_ASSIST_BUILDUP_PCT = 20
 
 export function computeYuzuhaMechanic(input: {
   initialAtk: number
+  /** 其他角色连携入场次数（设置 yuzuha.chainEntryCount）；影画2 强制连携的入场由本函数按有效战斗时间另加 */
   chainEntryCount: number
   cinemaLevel?: number
   parryCount?: number
@@ -68,7 +73,7 @@ export function computeYuzuhaMechanic(input: {
   const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   const parryCount = Math.max(0, Math.floor(input.parryCount ?? 0))
   const effectiveSeconds = Math.max(0, input.effectiveSeconds ?? 0)
-  const sweetnessFromChain = Math.max(0, input.chainEntryCount)
+  const sweetnessFromChain = Math.max(0, Math.floor(input.chainEntryCount)) + forcedChainCount(cinemaLevel, effectiveSeconds)
   const sweetnessFromParry = cinemaLevel >= 6 ? parryCount * C6_SWEETNESS_PER_PARRY : 0
   const sweetnessTotal = Math.min(SWEETNESS_CAP, SWEETNESS_INITIAL + sweetnessFromChain + sweetnessFromParry)
   // 硬糖射击吃整场终身预算：存量上限 6 只钳瞬时持有，不钳「花掉再进」的终身收入
@@ -111,8 +116,6 @@ function findAssistFollowUpMove(skills: AgentCharConfigInput['skills'], moveId: 
 function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, outOfCombatPanel }: AgentCharConfigInput): void {
   // 原文「40%初始攻击力」⇒ 展示值读局外面板（CC-126，与计算侧 outOfCombatAtk 同源；读取口 `initialStat`，CC-497）
   cfg.yuzuhaInitialAtk = initialStat(outOfCombatPanel, panel, 'atk')
-  // 滑块必须经 buildCharConfig 落到 cfg，buildResourceResult 阶段才读得到（applyPanel 早于 cfg 构建拿不到 settings）
-  cfg.yuzuhaChainEntryCount = Math.max(0, Math.floor(cfgSetting(cfg, 'yuzuha.chainEntryCount')))
   cfg.yuzuhaCinemaLevel = cinemaLevel
   // 影画4：支援突击行的**表值积蓄**在此预存（积蓄会被 enrich 从倍率表回填 ⇒ patchExecutions
   // 阶段读不到；先例：seth.ts:98 预存 daze）。仅在 C4 且该角色确有支援突击行时预存。
@@ -126,11 +129,6 @@ function buildYuzuhaCharConfig({ cinemaLevel, cfg, skills, getRowValue, panel, o
   // 影画1 进场回 30 能量（勘域模式 180s 一次 → 每局一次，克拉蕾锐能/佩洛伊斯喧响同款口径）
   if (cinemaLevelOf(cinemaLevel) >= 1) {
     cfg.initialEnergyGift = cfg.initialEnergyGift + YUZUHA_C1_ENTER_ENERGY
-  }
-  // 影画2 强制连携：每次强制连携也有角色入场 → 甜度点 +1/次（与全队 chainCountTotalExtra 同源近似）
-  if (cinemaLevelOf(cinemaLevel) >= 2) {
-    const effective = effectiveBattleTime(cfg)
-    cfg.yuzuhaChainEntryCount += Math.floor(effective / YUZUHA_C2_CHAIN_CD)
   }
 }
 
@@ -149,13 +147,10 @@ function buildYuzuhaTeamConfig({ slot, characters, team, anomalyBuildupElementBy
   mine.yuzuhaTransferElement = anomalyBuildupElementBySlot?.[targetSlot]
     ?? target?.agent?.damageElement
   // 影画2 强制连携：全队生效（强制连携=正常连携技，阵营全员入场）
-  if (cinemaLevelOf(cinemaLevel) >= 2) {
-    const effective = minusInvincibleTime(combatTime, mine)
-    const forced = Math.floor(effective / YUZUHA_C2_CHAIN_CD)
-    if (forced > 0) {
-      for (const char of characters) {
-        char.chainCountTotalExtra = forced
-      }
+  const forced = forcedChainCount(cinemaLevelOf(cinemaLevel), minusInvincibleTime(combatTime, mine))
+  if (forced > 0) {
+    for (const char of characters) {
+      char.chainCountTotalExtra = forced
     }
   }
 }
@@ -164,7 +159,7 @@ function yuzuhaSourceFromCfg(cfg: AgentResourceInput['cfg']): YuzuhaMechanicSour
   const effectiveSeconds = effectiveBattleTime(cfg)
   return computeYuzuhaMechanic({
     initialAtk: cfg.yuzuhaInitialAtk ?? cfg.panel.atk ?? 0,
-    chainEntryCount: cfg.yuzuhaChainEntryCount ?? 0,
+    chainEntryCount: cfgSetting(cfg, 'yuzuha.chainEntryCount'),
     cinemaLevel: cinemaLevelOf(cfg.yuzuhaCinemaLevel),
     parryCount: cfg.parryCount,
     effectiveSeconds,
@@ -324,8 +319,6 @@ export const yuzuhaMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 柚叶连携入场次数（其他角色连携技入场+1甜度点，滑块 yuzuha.chainEntryCount） */
-    yuzuhaChainEntryCount?: number
     /** 十人十色转积蓄目标元素（applyTeamConfig 定位异常专精队友写入，buildExecutions 行级 element 消费） */
     yuzuhaTransferElement?: string
     /** 柚叶命座等级（影画6） */

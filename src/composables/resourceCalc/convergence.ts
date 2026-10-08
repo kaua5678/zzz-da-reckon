@@ -521,7 +521,7 @@ export function createRunCalcRound(deps: {
       }
       // 2026-09-15 arch 棘轮：norva(1571)/qingyi(1251) 的失衡次数注入已迁进各自模块的
       // applyTeamConfig（converge 阶段读同一组 hook 入参 stunCount/combatTime，规则 6）。
-      // 雨果 1291 的轴内决算反推（`hugoRemainingStunSeconds` / `hugoAxisExVerdictCount` /
+      // 雨果 1291 的轴内决算反推（`hugoAxisRemainingStunSeconds` / `hugoAxisExVerdictCount` /
       // `hugoAxisUltVerdictCount`，含「非轴不写」与「块内 `?? 0` 但整体 `!== undefined` 门控」
       // 两条条件写形态）已于 2026-09-17 round 21 夜D 迁进 `hugo.ts#applyHugoTeamConfig`
       // （converge 相位）：轴本体/窗口数走 `axis` 契约、上一轮失衡池整数次数走

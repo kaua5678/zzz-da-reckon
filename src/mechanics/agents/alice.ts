@@ -31,7 +31,9 @@ import { computeSpecResources } from '@/specs/resources'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { mechanicSettingGetterReader } from '@/utils/mechanicSettingCfg'
 
+const settingVia = mechanicSettingGetterReader(() => aliceMechanic.settings)
 const ALICE_AGENT_ID = '1401'
 const SWORD_WILL_COST = 300
 const SWORD_WILL_MOVE_ID = '1401012'
@@ -454,7 +456,7 @@ function buildAlicePoolSummary({ damagePoolRows, anomalyPoolResult, getMechanicS
     }
   }
   if (!hasDot && polarAssaultDamage <= 0 && cinema6Damage <= 0) return null
-  const perStateCount = getMechanicSetting('alice.cinema6PerStateCount', 5)
+  const perStateCount = settingVia(getMechanicSetting, 'alice.cinema6PerStateCount')
   return {
     title: '爱丽丝伤害汇总',
     stats: [
@@ -595,8 +597,8 @@ export const aliceMechanic: AgentMechanicModule = {
         const ultimateCount = aliceResult.ultimateCount
         const stateEntries = smSrc.sparkCount + ultimateCount
 
-        // 每状态额外攻击次数（默认5次；单轮最多6次，1秒CD）
-        const perStateCount = getMechanicSetting('alice.cinema6PerStateCount', 5)
+        // 每状态额外攻击次数（设置 alice.cinema6PerStateCount；单轮最多6次，1秒CD）
+        const perStateCount = settingVia(getMechanicSetting, 'alice.cinema6PerStateCount')
 
         // 总触发次数 = 状态进入次数 × 每次攻击次数
         const totalTriggers = stateEntries * perStateCount

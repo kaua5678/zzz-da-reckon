@@ -21,7 +21,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
-import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingGetterReader, mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { findMoveById as findMove, getRowValue } from '@/data/moveTableQueries'
 import type { CharacterResourceResult } from '@/types/resource'
@@ -32,6 +32,7 @@ import { clampRatio } from '@/utils/finiteClamp'
 
 const setting = mechanicSettingReader(() => hugoMechanic.settings)
 const settingOf = mechanicSettingPanelReader(() => hugoMechanic.settings)
+const settingVia = mechanicSettingGetterReader(() => hugoMechanic.settings)
 export const HUGO_ID = '1291'
 export const HUGO_EX_OPEN_MOVE_ID = '1291009'
 export const HUGO_CHAIN_MOVE_ID = '1291015'
@@ -168,7 +169,6 @@ function applyHugoPanel({ slot, team, cinemaLevel, panel, settings }: AgentPanel
 
 function buildHugoCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
   cfg.hugoCinemaLevel = cinemaLevel
-  cfg.hugoRemainingStunSeconds = Math.max(0, Math.min(15, setting(cfg, 'hugo.remainingStunSeconds')))
   cfg.hugoAdditionalActive = additionalAbilityActiveOf(panel)
   // CC-408：强特终结 1291010 的 damage 行值由引擎读 catalog 进 cfg.mechanicRowValues（原模块常量
   // HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8 是同一数据的第二份）。缺表为 0，**不回退常量**——缺表要在结果里看得见。
@@ -184,7 +184,8 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     ultimateCount: state.ultimateCount,
     exVerdictRatio: clampRatio(setting(cfg, 'hugo.exVerdictRatio')),
     ultimateVerdictRatio: clampRatio(setting(cfg, 'hugo.ultimateVerdictRatio')),
-    remainingStunSeconds: Number(cfg.hugoRemainingStunSeconds ?? 5),
+    // 轴内反推值优先（applyHugoTeamConfig 只在轴模式写），否则读设置；0–15 的夹取在 computeHugoCycle 里
+    remainingStunSeconds: cfg.hugoAxisRemainingStunSeconds ?? setting(cfg, 'hugo.remainingStunSeconds'),
     echoCoverage: cinemaLevelOf(cfg.hugoCinemaLevel) >= 6 ? 1 : clampRatio(setting(cfg, 'hugo.echoCoverage')),
     exVerdictCountOverride: cfg.hugoAxisExVerdictCount !== undefined
       ? Number(cfg.hugoAxisExVerdictCount)
@@ -353,6 +354,8 @@ function buildHugoResourceResult({ cfg, state }: AgentResourceResultInput): Part
  *   `hugo.ts` 的消费端（`cycleFromInput`）用 `cfg.hugoAxisExVerdictCount !== undefined`
  *   **选通路** ⇒ 「写 0」与「不写」语义不同（恒写 0 会让决算次数被 override 成 0 而不是回落滑块比例）。
  *   故此处门控只认 `maxEnd >= 0`（= 原式给三个标量赋值的那一支），不额外加别的判据。
+ * - r751（CC-534）：剩余失衡秒数原先写回设置的镜像字段 `hugoRemainingStunSeconds`（buildCharConfig 先写设置值、
+ *   本钩子再覆盖，读取处 `?? 5`）；现与两个决算次数同形：只在轴模式写 `hugoAxisRemainingStunSeconds`，读取处「字段 ?? 设置」。
  * - `Math.max(0, Math.min(15, windowDur - maxEnd))` 的夹取逐字保留。
  */
 function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }: AgentTeamConfigInput): void {
@@ -389,11 +392,11 @@ function applyHugoTeamConfig({ cfg, team, phase, axis, threads, getAgentSkills }
     }
   })
   if (maxEnd < 0) return
-  // @fact engine:轴内块数落地 口径: 雨果轴内决算次数 = 轴内决算块数 × **上一轮失衡池整数次数**（prevPoolStunCount 线程，与池/轴栈同源）；外层不动点的连续小数计划次数只作收敛输入，不得用于轴内块数（曾致 0.82 窗被 Math.floor 归零、轴栈说 5 池只落地 1，坑36） | 据 用户@2026-09-10「失衡易伤为什么静默不算」查证 + 引擎日志实测 0.824·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/mechanics/agents/hugo.ts#applyHugoTeamConfig | 信 确认
+  // @fact engine:轴内块数落地 口径: 雨果轴内决算次数 = 轴内决算块数 × **上一轮失衡池整数次数**（prevPoolStunCount 线程，与池/轴栈同源）；外层不动点的连续小数计划次数只作收敛输入，不得用于轴内块数（曾致 0.82 窗被 Math.floor 归零、轴栈说 5 池只落地 1，坑36） | 据 用户@2026-09-10「失衡易伤为什么静默不算」查证 + 引擎日志实测 0.824·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/composables/__tests__/hugoVerdictLanding.test.ts | 锚 src/mechanics/agents/hugo.ts#applyHugoTeamConfig | 信 确认
   // ⟳复核: 轴内决算块数是否仍按「上一轮失衡池整数次数」重算（失衡池投影改为实数 / 引入新池口径时，本式的 `prevPoolStunCount` 输入需重核；坑36 的分叉形态是否复现） | 到期 2026-12-31
-  // 轴模式：决算剩余失衡时间覆盖滑块 `hugo.remainingStunSeconds`、决算次数覆盖滑块
-  // `exVerdictRatio` / `ultimateVerdictRatio`（`cycleFromInput` 按 `!== undefined` 选通路）。
-  cfg.hugoRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))
+  // 轴模式：三个覆盖字段分别顶替设置 `hugo.remainingStunSeconds` / `hugo.exVerdictRatio` / `hugo.ultimateVerdictRatio`
+  // （`cycleFromInput` 字段已写就用字段，否则读设置）。
+  cfg.hugoAxisRemainingStunSeconds = Math.max(0, Math.min(15, windowDur - maxEnd))
   cfg.hugoAxisExVerdictCount = exVerdictBlocks
   cfg.hugoAxisUltVerdictCount = ultVerdictBlocks
 }
@@ -424,9 +427,9 @@ export const hugoMechanic: AgentMechanicModule = {
   // 决算失衡值返还（CC-39a 2026-09-27，原 convergence.ts 内联）：每次失衡结束返还 min(25%, 剩余秒×5%) × bossStunValue
   // 进下一次失衡条。返还只由「结束失衡」的决算产生（C2 的 Q 不结束不返还），恒为每窗 1 次；剩余秒取滑块。
   stunRefundRatio: ({ getMechanicSetting }) => computeHugoStunRefundRatio(
-    getMechanicSetting('hugo.remainingStunSeconds', 5),
-    getMechanicSetting('hugo.exVerdictRatio', 1),
-    getMechanicSetting('hugo.ultimateVerdictRatio', 1),
+    settingVia(getMechanicSetting, 'hugo.remainingStunSeconds'),
+    settingVia(getMechanicSetting, 'hugo.exVerdictRatio'),
+    settingVia(getMechanicSetting, 'hugo.ultimateVerdictRatio'),
   ),
   agentIds: [HUGO_ID],
   // CC-393：强特终结 1291010 由合成行 HUGO_EX_VERDICT_MOVE_ID / HUGO_EX_NORMAL_MOVE_ID 结算（见文件头「本模块补齐终结一击」）；
@@ -496,10 +499,10 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 命座等级：buildCharConfig 写 */
     hugoCinemaLevel?: number
-    /** 决算时剩余失衡秒数：机制设置 hugo.remainingStunSeconds，夹到 0–15，默认 5 */
-    hugoRemainingStunSeconds?: number
     /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
     hugoAdditionalActive?: boolean
+    /** 失衡轴内反推的决算剩余失衡秒数（0–15）：只在轴模式写入，未写时读取处用设置 hugo.remainingStunSeconds */
+    hugoAxisRemainingStunSeconds?: number
     /** 失衡轴内强化特殊技决算块数：只在轴模式写入（非轴不写，读者按 undefined 门控） */
     hugoAxisExVerdictCount?: number
     /** 失衡轴内终结技决算块数：只在轴模式写入 */

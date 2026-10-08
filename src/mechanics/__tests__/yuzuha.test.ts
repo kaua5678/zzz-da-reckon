@@ -53,12 +53,6 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
     expect(computeYuzuhaMechanic({ initialAtk: 4000, chainEntryCount: 0 }).teamAtkBonus).toBe(1200)
   })
 
-  it('连携入场次数滑块经 buildCharConfig 接线生效（此前硬编码0静默失效）', () => {
-    const cfg: any = { 'setting:yuzuha.chainEntryCount': 4 }
-    yuzuhaMechanic.buildCharConfig!({ cfg } as any)
-    expect(cfg.yuzuhaChainEntryCount).toBe(4)
-  })
-
   it('影画1 进场回30能量并入 initialEnergyGift（勘域180s一次→每局一次；低命座不注入）', () => {
     const cfg: any = { initialEnergyGift: 10 }
     yuzuhaMechanic.buildCharConfig!({ cinemaLevel: 1, cfg } as any)
@@ -69,10 +63,10 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
   })
 
   it('影画2 强制连携：甜度点 +floor(有效战斗/20)；全队 chainCountTotalExtra 同源写入（C0 不写）', () => {
-    const cfg: any = { 'setting:yuzuha.chainEntryCount': 4, battleTime: 180, invincibleTime: 0 }
-    yuzuhaMechanic.buildCharConfig!({ cinemaLevel: 2, cfg } as any)
+    const cfg: any = { 'setting:yuzuha.chainEntryCount': 4, yuzuhaCinemaLevel: 2, battleTime: 180, invincibleTime: 0, panel: { atk: 1000 } }
     // 滑块 4 + 强制连携 9（180/20）
-    expect(cfg.yuzuhaChainEntryCount).toBe(4 + Math.floor(180 / YUZUHA_C2_CHAIN_CD))
+    expect(yuzuhaMechanic.buildResourceResult!({ cfg } as any).yuzuhaMechanicSource!.sweetnessFromChain)
+      .toBe(4 + Math.floor(180 / YUZUHA_C2_CHAIN_CD))
 
     const chars: any[] = [{ slot: 0, invincibleTime: 0 }, { slot: 1, invincibleTime: 0 }, { slot: 2, invincibleTime: 0 }]
     yuzuhaMechanic.applyTeamConfig!({
@@ -111,22 +105,22 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
     const cdLimited = computeYuzuhaMechanic({ initialAtk: 1000, chainEntryCount: 5, effectiveSeconds: 60 })
     expect(cdLimited.hardCandyCount).toBe(7)
 
-    // C2：CD 6s → 60/6=10，甜度 3+2=5 钳到 5
+    // C2：CD 6s → 60/6=10；甜度 3 + 连携 2 + 强制连携 floor(60/20)=3 = 8 → 钳到 8
     const c2 = computeYuzuhaMechanic({ initialAtk: 1000, chainEntryCount: 2, cinemaLevel: 2, effectiveSeconds: 60 })
     expect(c2.hardCandyCdSeconds).toBe(6)
-    expect(c2.hardCandyCount).toBe(5)
+    expect(c2.hardCandyCount).toBe(8)
 
-    // 影画6：招架+1甜度进终身预算
+    // 影画6：招架+1甜度进终身预算（影画6 含影画2：强制连携 floor(60/20)=3）
     const c6 = computeYuzuhaMechanic({ initialAtk: 1000, chainEntryCount: 0, cinemaLevel: 6, parryCount: 3, effectiveSeconds: 60 })
     expect(c6.sweetnessFromParry).toBe(3)
-    expect(c6.sweetnessBudget).toBe(6)
-    expect(c6.hardCandyCount).toBe(6)
+    expect(c6.sweetnessBudget).toBe(9)
+    expect(c6.hardCandyCount).toBe(9)
   })
 
   it('彩糖花火：惊吓满覆盖每秒一次；·极 = 硬糖射击 + 夹心硬糖(≈招架) 重击', () => {
     const s = computeYuzuhaMechanic({ initialAtk: 1000, chainEntryCount: 5, cinemaLevel: 6, parryCount: 4, effectiveSeconds: 60 })
     expect(s.fireworkTickCount).toBe(60)
-    // 影画6含影画2 → CD 6s：硬糖 = min(60/6=10, 预算 3+5+4=12) = 10；·极 = 10 + 4 = 14
+    // 影画6含影画2 → CD 6s：硬糖 = min(60/6=10, 预算 3+5+3+4=15) = 10；·极 = 10 + 4 = 14
     expect(s.hardCandyCount).toBe(10)
     expect(s.fireworkExtremeCount).toBe(14)
   })
@@ -139,7 +133,6 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
     const executions: any[] = []
     yuzuhaMechanic.buildExecutions!({
       cfg: {
-        yuzuhaChainEntryCount: 0,
         yuzuhaCinemaLevel: 6,
         parryCount: 3,
         panel: { atk: 1000 },
@@ -150,10 +143,11 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
       state: {},
       executions,
     } as any)
-    // 有效时间 60-10=50：硬糖 min(floor(50/8)=6, 预算 3+3=6)=6；花火 50；·极 6+3=9
+    // 有效时间 60-10=50，影画6 含影画2（CD 6 秒、强制连携 floor(50/20)=2 次入场）：
+    // 硬糖 min(floor(50/6)=8, 预算 3+2+3=8)=8；花火 50；·极 8+3=11
     const hardCandy = executions.find(e => e.moveId === YUZUHA_HARD_CANDY_MOVE_ID)
     expect(hardCandy).toBeTruthy()
-    expect(hardCandy.count).toBe(6)
+    expect(hardCandy.count).toBe(8)
     expect(hardCandy.timeBucket).toBe('backstage')
     expect(hardCandy.totalTime).toBe(0)
     expect(hardCandy.element).toBeUndefined() // 硬糖射击积蓄为0，不参与转属
@@ -163,7 +157,7 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
     expect(firework!.element).toBe('fire') // 十人十色：积蓄转火池
 
     const extreme = executions.find(e => e.moveId === YUZUHA_FIREWORK_EXTREME_MOVE_ID)
-    expect(extreme!.count).toBe(9)
+    expect(extreme!.count).toBe(11)
     expect(extreme!.element).toBe('fire')
   })
 

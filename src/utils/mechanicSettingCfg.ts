@@ -9,6 +9,9 @@
  * 模块在**用到设置的地方**直接调 reader 换算，不要在 buildCharConfig 里换算后写进 cfg 私有字段再给别的钩子读
  * （r750 CC-533 删了 21 个模块的 56 个这类镜像字段：读侧的 `?? 默认` 是默认值的第三份；2026-09-20 安比 / 塞维林
  * 的滑块失效就是读了没人写的镜像字段）。
+ *
+ * 三个读口各有一个「声明即默认值」的 reader，模块不手抄默认值：cfg 袋子 `mechanicSettingReader`、
+ * 面板记录 `mechanicSettingPanelReader`、派发器递给钩子的 store 读取器 `mechanicSettingGetterReader`（r751 CC-534）。
  */
 export function mechanicSettingCfgKey(id: string): string {
   return `setting:${id}`
@@ -56,7 +59,18 @@ export function mechanicSettingPanelReader(
   const defaultOf = declaredDefault(declared)
   return (settings, id, fallback) => mechanicSettingOf(settings, id, defaultOf(id, fallback))
 }
-/** 两个 reader 共用：显式 fallback 优先；否则惰性建「id → 声明 default」表；未声明 ⇒ 抛错 */
+/**
+ * 第三个读口（r751 CC-534）：派发器递给钩子的 store 读取器 `getMechanicSetting(id, fallback)`
+ * （stunRefundRatio / extraDirectRows / poolSummary 等）。store 里没有用户值时它直接返回 fallback，
+ * 所以这里的 fallback 就是**生产默认值**（另两个读口的 fallback 只对手搭输入生效），同样取模块声明。
+ */
+export function mechanicSettingGetterReader(
+  declared: () => ReadonlyArray<{ id: string; default: number }> | undefined,
+): (get: (id: string, fallback: number) => number, id: string, fallback?: number) => number {
+  const defaultOf = declaredDefault(declared)
+  return (get, id, fallback) => get(id, defaultOf(id, fallback))
+}
+/** 三个 reader 共用：显式 fallback 优先；否则惰性建「id → 声明 default」表；未声明 ⇒ 抛错 */
 function declaredDefault(declared: () => ReadonlyArray<{ id: string; default: number }> | undefined): (id: string, fallback?: number) => number {
   let defaults: Map<string, number> | undefined
   return (id, fallback) => {

@@ -76,7 +76,6 @@ describe('雨果（1291）核心与决算', () => {
       cfg: {
         hugoCinemaLevel: 0,
         hugoAdditionalActive: false,
-        hugoRemainingStunSeconds: 5,
         // CC-409：强特终结 1291010 动作时间读 cfg.moveActionTimes（引擎由 catalog 预填；这里手填 = 表值）
         moveActionTimes: { '1291010': 1.805 },
         // CC-408：强特终结 1291010 damage 行值由引擎读表进 cfg.mechanicRowValues（手搭 = 表值）
@@ -318,7 +317,7 @@ describe('雨果滑块生效差分（防守卫冻结，SOP §3.5：改滑块→�
     const mk = (ratio: number) => {
       const executions: any[] = [{ moveId: HUGO_ULT_MOVE_ID, dmgBonus: 0, critRateBonus: 0, critDmgBonus: 0 }]
       hugoMechanic.patchExecutions!({
-        cfg: { hugoCinemaLevel: 1, hugoAdditionalActive: false, 'setting:hugo.ultimateVerdictRatio': ratio, hugoRemainingStunSeconds: 5, 'setting:hugo.c4Coverage': 0 },
+        cfg: { hugoCinemaLevel: 1, hugoAdditionalActive: false, 'setting:hugo.ultimateVerdictRatio': ratio, 'setting:hugo.c4Coverage': 0 },
         state: { exSpecialCount: 4, ultimateCount: 4 },
         executions,
       } as never)
@@ -355,7 +354,7 @@ describe('雨果滑块生效差分（防守卫冻结，SOP §3.5：改滑块→�
     const mk = (coverage: number) => {
       const executions: any[] = [{ moveId: HUGO_EX_OPEN_MOVE_ID, resIgnore: 0 }]
       hugoMechanic.patchExecutions!({
-        cfg: { hugoCinemaLevel: 4, hugoAdditionalActive: false, hugoRemainingStunSeconds: 5, 'setting:hugo.c4Coverage': coverage },
+        cfg: { hugoCinemaLevel: 4, hugoAdditionalActive: false, 'setting:hugo.c4Coverage': coverage },
         state: { exSpecialCount: 2, ultimateCount: 1 },
         executions,
       } as never)

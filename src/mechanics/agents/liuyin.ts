@@ -15,7 +15,7 @@ import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
-import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingGetterReader, mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF, carveBasicPool } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
@@ -23,6 +23,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 const cfgNum = mechanicSettingReader(() => settings)
 const settingOf = mechanicSettingPanelReader(() => settings)
+const settingVia = mechanicSettingGetterReader(() => settings)
 const LIUYIN_AGENT_ID = '1481'
 
 // —— 好评（Good Review）——
@@ -47,7 +48,6 @@ export const CINEMA4_GOOD_REVIEW_ATK = 500
 
 // —— 影画6：余音额外物理伤害 ——
 export const CINEMA6_ECHO_RATIO = 480
-export const CINEMA6_ECHO_MAX = 12
 
 // —— 三个强特（石头→剪刀→布），耗能均 25，按 1→3 顺序连打，越靠后数值越高 ——
 const EX_SPECIAL_ENERGY = 25
@@ -612,7 +612,7 @@ export const liuyinMechanic: AgentMechanicModule = {
     // 琉音影画6·余音：独立直伤，轴模式同样生效（非失衡轴模式下与强特拆分无关，不能包在 !isAxis 内）
     // 2026-09-15 编排层棘轮：同上（字段即角色标识）。
     if (liuyinSrc && liuyinSrc.cinemaLevel >= 6) {
-      const c6EchoMax = Math.max(0, Math.floor(getMechanicSetting('liuyin.c6EchoMax', CINEMA6_ECHO_MAX)))
+      const c6EchoMax = Math.max(0, Math.floor(settingVia(getMechanicSetting, 'liuyin.c6EchoMax')))
       if (promoteCount > 0 && c6EchoMax > 0) {
         const echoCount = promoteCount * c6EchoMax
         rows.push({
