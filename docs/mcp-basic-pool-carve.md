@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。r758 做了 §22.8 的两条候选（佩洛伊斯模块 12 处事后赋值改回对象字面量，额外能力判定收口；getBaseElement 普查后只剩积蓄效率一处数值查找，改走 resolveStatElement；行为不变），见第 23 节（`e1400062` + `dd6c7835`，CC-541）。
 
 ## 1. 问题
 
@@ -1576,9 +1576,124 @@ zd 两套快照都是 0/0，理由：
 - 属性页和 `core/impactVars.ts` 按六元素读写 store 表，不走 `enemyResistanceOf`：键本来就是标准元素，读的是 `ResistanceTable`。
 - 回退：`git revert 8107853a`（单提交；回退后烈霜紊乱恢复为不吃冰抗）。
 
-### 22.8 下一轮候选（未做）
+### 22.8 下一轮候选（r758 两条都做了，见 §23）
 
 1. 沿用 §21.8 第 2 条：佩洛伊斯模块（`mechanics/agents/specPanelBuffs.ts`）靠 12 处事后赋值拼出钩子，其中 `patchExecutions` 先赋值、后被包一层覆盖。可评估改回对象字面量。
 2. `getBaseElement` 还有 20 多处用法，要逐个判断是「身份」还是「数值」查找；数值查找应该走 `resolveStatElement`（本节修的就是这种错）。
    - 起点：`core/anomalyPool/helpers.ts:142 / 401 / 477 / 531 / 666 / 1007 / 1138`、`data/anomalyElement.ts:43`（`elementAnomalyBuildUpEfficiency`）、`core/stunAxis/inStunAnomaly.ts`、`composables/resourceCalc/damagePool.ts:304–326`、`convergence.ts:1119–1142`、`damagePoolRelease.ts:176`。
    - 其中多数是覆盖 / 紊乱 / 持续时间 / 分组，属于身份判断。先普查，再动手。
+
+## 23. 佩洛伊斯模块改回对象字面量（r758，CC-541）
+
+> 代码提交 `e1400062`（纯重构，行为不变）+ `dd6c7835`（口径对齐，取值不变）（arena-G r758）；arch CC-541；r6 §8 第 758 行。题目来自 §22.8：第 1 条照做；第 2 条普查后只剩一处数值查找，顺手改掉。
+
+### 23.1 普查
+
+- **模块定义写法**
+  - src 里 `xxxMechanic.钩子 = …` 这种事后赋值，只出现在 `mechanics/agents/specPanelBuffs.ts` 的佩洛伊斯模块，共 12 处：settings 1 处，11 个钩子 11 处，其中 patchExecutions 赋了两次。
+  - 其余模块都写成对象字面量，包括同一文件里的橘福福。
+- **patchExecutions 的顺序依赖**
+  - 第一次赋值在 :198，负责终结技分支拆分。
+  - :280 用 `const peiluoUltBranchPatch = peiluoProminenceMechanic.patchExecutions!` 把它读回来，:281 再包一层覆盖，加上日珥账本。
+  - 两段的先后只靠语句顺序维持。非空断言把「必须先赋值」这个前提藏了起来。
+- **扫描工具要单独适配这种写法**
+  - CC-291 幂等锁（`mechanics/__tests__/idempotentCfgWrite.test.ts`）专门加了一个分支，识别 `/Mechanic$/` 的赋值。
+  - `scripts/gen-architecture-runtime.mjs` 按 `钩子名\s*[(:,]` 统计钩子实现，没有适配这种写法，漏算了佩洛伊斯独有的 3 个钩子：axisWindowOverlays、directRowBonus、endsStunWindow。用同一算法核对，该文件的计数从 8 变为 11。
+- **内联的额外能力判定**
+  - 同一模块 applyTeamConfig 里的 `cfg.panel.additionalAbilityActive > 0`，是 src 里最后一处内联判定。CC-507 之后，其余判定都走 `additionalAbilityActiveOf`。
+  - r731（`e20d824c`）删掉了它的 `?? 1`，它就成了裸比较。CC-507 源码锁的正则只认 `?? 0)` 包装，所以没有拦住。
+  - owner 注释里「`specPanelBuffs.ts:151` 的 `?? 1`」这条豁免也随之过时。同处模块注释里「未传 panel 的单测桩默认视为激活」同样过时。
+- **`getBaseElement` 普查（§22.8 第 2 条）**：src 非测试代码共 24 处调用，分类如下。
+
+| 类别 | 处数 | 位置 | 判断 |
+|---|---|---|---|
+| 异常身份 / 分组 | 15 | `core/stunAxis/inStunAnomaly.ts` ×6（积蓄槽分组、风判定、同元素刷新）；`resourceCalc/damagePool.ts` ×4（失衡内触发占比按基础元素归并、非风过滤）；`convergence.ts` ×3（时间线摘要按基础元素聚合）；`damagePoolRelease.ts` ×2（紊乱明细按元素筛） | 身份，保留 |
+| 继承公式 | 7 | `core/anomalyPool/helpers.ts`：持续时间表、积蓄上限表、积蓄阈值表、持续时间加成、紊乱基础倍率、乱流基础倍率、强击判定 | 变种继承基础元素的表值，烈霜有独立表项；保留 |
+| resolveStatElement 内部 | 1 | `data/anomalyElement.ts:37` | 定义本身 |
+| 数值查找 | 1 | `data/anomalyElement.ts:43` `elementAnomalyBuildUpEfficiency` | 应走 resolveStatElement |
+
+- **数值查找那一处**
+  - 用户口径 2026-09-05 点名「冰积蓄效率」要随冰读。
+  - 面板目前只有电 / 物理 / 以太三个积蓄效率字段，所以两种解析在所有元素上取值相同。
+- **观察，本轮不改**：失衡内时间线与主池对变种元素的口径不同。
+  - 主池注释（`core/anomalyPool.ts:276`）写明，变种元素有独立的积蓄管，可以与原属性互相紊乱。
+  - `inStunAnomaly.ts` 却把变种并进基础元素的积蓄槽，同元素刷新也按基础元素判断。
+  - 它的触发 id 用的也是基础元素，轴条目的 `suppressedTriggers` 存的就是这个 id。
+  - 后续处理见 §23.8 第 2 条。
+
+### 23.2 问题
+
+- 同一种东西有两种定义写法：
+  - 读代码的人要在 380 行里自己拼出模块全貌；
+  - 扫描工具要为事后赋值单独适配，没适配的就会漏；
+  - patchExecutions 的「先赋值、再读回来包一层」是一个隐藏的顺序依赖。
+- 额外能力的判定规则在 owner 之外还有一份（裸比较），而源码锁看不见它。
+- 数值查找里还有一处没走 resolveStatElement，所以「getBaseElement 只管身份」这条口径还不成立。
+
+### 23.3 改法
+
+- **`specPanelBuffs.ts`：佩洛伊斯改成一个对象字面量**
+  - 常量、PeiluoOverlay、日珥账本的接口和表，挪到字面量之前。
+  - 钩子函数体逐字搬移，`git diff -w` 里只剩挪位和下面两处改动。
+  - 钩子顺序照旧，只把 settings 提到计数输入框后面。
+  - patchExecutions 拆成两个具名函数：`splitPeiluoUltBranches` 负责终结技三分支拆分，`recordPeiluoProminenceLedger` 负责日珥账本。钩子里按原顺序依次调用。
+  - applyTeamConfig 改用 `additionalAbilityActiveOf(cfg.panel)`，并改掉过时注释。
+  - computePeiluoKagerouBonus 的文档注释挪回函数正上方（原先中间隔着 buildExecutions）。
+- **CC-507 源码锁**
+  - `core/__tests__/additionalAbilityActive.test.ts` 的正则放宽为 `additionalAbilityActive(\s*\?\?\s*0\))?\s*(>|<=|===)`，裸比较也算违规。
+  - owner 注释删掉过时的 specPanelBuffs 豁免，yeshuguang 那条按现状改写。
+- **积蓄效率**：`data/anomalyElement.ts#elementAnomalyBuildUpEfficiency` 改经 resolveStatElement 解析。
+
+### 23.4 行为不变的证据
+
+- **一次性新旧对照**
+  - 做法：用临时测试（已删）分别跑新旧两版。「旧」= 把 specPanelBuffs.ts 与 anomalyElement.ts 换回 HEAD，测完用 cmp 核对已还原。
+  - 对比的快照包括总伤害、全部伤害行、失衡次数、面板和 resourceResult（含日珥账本）。
+
+| 配置 | 队伍 | 佩洛伊斯槽位 / 影画 | 出现的佩洛伊斯终结技行 | 快照 sha256 前 16 位（新 = 旧） |
+|---|---|---|---|---|
+| nome-c0 | 1551 / 1571 / 1211 | 0 / C0 | 下分支、决算 | `46649643d7ae41a8` |
+| nome-c6 | 同上，强袭训令 3、完美格挡 5 | 0 / C6 | 上分支、下分支、决算；另有强袭训令行 | `93dcf344ae799bec` |
+| miyabi-slot1-c2 | 1091 / 1551 / 1211 | 1 / C2 | 上分支、下分支、决算 | `652c84b8f7992c8a` |
+| mix-c4 | 1551 / 1481 / 1311，强袭训令 2 | 0 / C4 | 上分支、下分支、决算；另有强袭训令行 | `27fee9ea6730aa8a` |
+
+- **zd DUMP 0 / ROWS 0**：zd 的预设里没有佩洛伊斯，这一项只能佐证积蓄效率那处改动和全局没有副作用。
+- **两处判定改写在所有取值上恒等，所以没有打 HEAD 取值差探针**
+  - `x > 0` 与 `(x ?? 0) > 0` 对数值、undefined、null、NaN 结果都相同；只有 `cfg.panel` 缺失时，旧写法会抛错。
+  - 积蓄效率：面板没有冰 / 火 / 风的积蓄效率字段，两种解析都返回 0。
+
+### 23.5 反证（均已还原，cmp 核对）
+
+- **applyTeamConfig 退回裸比较** → 放宽后的 CC-507 锁报 `specPanelBuffs.ts`。旧正则在 HEAD 上对同一行不报，这正是它当初漏过的原因。
+- **在 recordPeiluoProminenceLedger 里注入 `cfg.peiluoBasicCycleSeconds = cfg.peiluoBasicCycleSeconds + 1`** → CC-291 幂等锁报 `specPanelBuffs.ts:patchExecutions:peiluoBasicCycleSeconds`。这说明扫描能从字面量钩子追进具名函数，改写法没有造成盲区。
+
+### 23.6 验证
+
+- vue-tsc -b --force 0。
+- 相关测试 169 个文件 / 1693 例全过（mechanics 全目录的源码扫描锁，以及引用佩洛伊斯、额外能力、积蓄效率的测试）。
+- check-guards 29（扫 298 个文件）；zc+checkGuards 207；tokens / data / specs / recording 12 / 161 / 462 / 189。
+- vitest 258/2156 + 262/2348 = 520 文件 / 4504 例，与基线相同（锁只改了正则，没有新增用例）。
+- zd DUMP 0 / ROWS 0。
+- build index 1594.47 kB（gzip 463.95，比基线少 0.08 kB）。
+- drift 154 / 0 / 0，触发器逾期 0、未到期 10。
+
+### 23.7 不做与回退
+
+- CC-291 幂等锁里识别事后赋值的分支（`/Mechanic$/`）保留。现在已经没有模块用这种写法，但删掉的话，这种写法回潮时会漏扫。也不为「模块必须写成字面量」另加锁。
+- 钩子上的显式参数类型注解（AgentTeamConfigInput 等）逐字保留。在字面量里可以靠上下文推断，但删不删与本轮无关。
+- `getAnomalyDuration` 的元素加时字段仍按 getBaseElement 取：持续时间属于身份口径（resolveStatElement 注释的原话），面板也没有冰的加时字段。
+- 失衡内时间线的变种归并本轮不改，见 §23.8 第 2 条。
+- 不重跑 `gen-architecture-runtime.mjs`（它不在 verify 里）。
+- 回退：`git revert dd6c7835` 和 `git revert e1400062`。两个提交互不依赖，可以单独回退。
+
+### 23.8 下一轮候选（未做）
+
+1. **叶瞬光的额外能力镜像字段**
+   - 现状：`mechanics/agents/yeshuguang.ts` 的 buildCharConfig 把 `panel.additionalAbilityActive` 原样抄进 `cfg.yeshuguangAdditionalAbilityActive`（:431）；`computeOutsideSwordGain` 再用 `Number(… ?? 0) > 0` 判断（:329）。
+   - 可以怎么改：`anton.ts`、`harumasa.ts`、`nekomata.ts`、`starlightBilly.ts` 和本轮的佩洛伊斯都直接写 `additionalAbilityActiveOf(cfg.panel)`。如果这里也拿得到 `cfg.panel`，就能照此改写，删掉镜像字段。
+   - 连带改动：:889 的类型声明、yeshuguang.test 里 4 处夹具；CC-507 owner 注释的最后一条豁免也随之消失。
+   - 先做：核对 computeOutsideSwordGain 的所有调用方，确认传进来的 cfg 都带 panel。
+2. **失衡内时间线的变种积蓄槽口径**
+   - 现状：主池把变种当作独立积蓄管（`core/anomalyPool.ts:276`）；`core/stunAxis/inStunAnomaly.ts` 却按基础元素归并积蓄槽和同元素刷新，触发 id 也按基础元素生成，存档里的 `suppressedTriggers` 引用的就是它。
+   - 先做：普查哪些队伍会在同一个失衡窗口里同时积蓄基础元素和它的变种（仪玄 + 以太队友、爱丽丝 + 物理队友），量出差异，再决定是否统一。
+   - 注意：改 id 格式要带存档迁移。
