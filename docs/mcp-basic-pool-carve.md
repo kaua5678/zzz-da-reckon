@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。
 
 ## 1. 问题
 
@@ -573,7 +573,7 @@ zd（对 `9f4f07d6`，不丢键）DUMP 0 / ROWS 0。生产实参都是有限的 
 - countFrontActions 不在本轮做，见 §12.8。
 - 回退：`git revert 56465f75`（6 个文件）。文档另有提交。
 
-### 12.8 下一轮候选（未做）
+### 12.8 下一轮候选（r748 已做，见 §13）
 
 1. **`countFrontActions` 的形参收窄**（effectiveTime.ts 里最后一个形参比调用方宽的 helper）。
    - 现状：`executions: readonly { category?: string; count?: number; timeBucket?; moveId?: string }[]`，`opts: { fusedMoveIds?: Array<string | undefined | null> } = {}`。函数体有 `e.count ?? 0`、`e.moveId ?? ''`、`opts.fusedMoveIds?.filter(…) ?? []`。
@@ -585,3 +585,109 @@ zd（对 `9f4f07d6`，不丢键）DUMP 0 / ROWS 0。生产实参都是有限的 
 另记（小，未立题）：
 - 橘福福 patchExecutions 的 `e.dmgBonus = (e.dmgBonus ?? 0)`（specPanelBuffs.ts:781，同 §10.8；:790 另有一处 `(e.dmgBonus ?? 0) + …`）。
 - 设置项缺省值写了两处：声明里的 default 和读取处的 `cfgMechanicSettingRaw(cfg, id) ?? D`（例：jufufu.frontSwitchRatio 两处都是 0.7）。全仓这种读法 23 处、11 个文件，还没核实是否都与声明一致。
+
+## 13. r748：countFrontActions 与 computeJufufuCycle 的入参收窄
+
+> 代码提交 `983c4b10`（countFrontActions）+ `f50f0924`（computeJufufuCycle），两次 zd 都是 0/0（arena-G r748）；arch CC-530、CC-531；r6 §8 第 748 行。题目是 §12.8 的两个候选。
+
+### 13.1 问题
+
+**countFrontActions**（`core/effectiveTime.ts`）
+
+- 行的形参是结构类型 `{ category?: string; count?: number; timeBucket?; moveId?: string }`，4 个字段都可选，函数体为此写了 `e.count ?? 0`、`e.moveId ?? ''`。而 `SkillExecution` 里 category / count / moveId 都是必填。
+- 第 2 参是 `opts: { fusedMoveIds?: Array<string | undefined | null> } = {}`：可以省略，元素可以是空值，函数体为此写了 `new Set(opts.fusedMoveIds?.filter(Boolean) ?? [])`。
+- 5 个生产调用方（luciaElowen ×2、orphie、remielle、specPanelBuffs）全部写 `{ fusedMoveIds: [cfg.assistFollowUpMoveId] }`，数组里从来只有一个元素。克拉蕾反制支援的融合走 `data/moveFusions` 的融合行，不经过这里。
+
+**computeJufufuCycle**（`mechanics/agents/specPanelBuffs.ts`）
+
+- 7 个数值字段逐个包了 `Number(x) || 0`，而这些字段的类型都是 number。对 number 来说，这层兜底只会把 NaN 变成 0（-0 经后面的 `Math.max(0, …)` 本来就是 0）。坏输入不会因此变对，只是被藏起来。
+  - r747 修之前的 jufufu buildResourceResult 用例就是例子：cfg 缺 invincibleTime，`effectiveBackstageTime` 返回 NaN，被这层兜底静默改成了 0。虎威次数最后还是 NaN，是因为有效战斗时间（battleTime 也缺）同样是 NaN，经等效 CD 传了进来（`9f4f07d6` 的 phaseDelayedCooldown 对 NaN 不早返回）。§12.2 只写了「后台时间是 NaN」，这里补上完整链路。
+- 两个 adjustable 比例 assistRate / teamUltRate 是可选字段，函数里写 `Number.isFinite(Number(x)) ? Math.max(0, Number(x)) : 1`。唯一的生产装配 jufufuCycleOf 两个都传 `jufufuAdjustableRate(cfg, id)`，即 `Math.max(0, cfgMechanicSetting(cfg, id, 1))`：默认值 1 和下限 0 已经在那里写过一次。
+
+### 13.2 运行时探针（先核对再删）
+
+两处都在 HEAD 版入口临时打桩（按「标签 + 调用栈」去重写文件，用完已还原），跑全量 vitest（520 文件 / 4503 例）和 zd（全部预设 × 5 变体）。
+
+| 探针 | 全量 vitest | zd |
+|---|---|---|
+| countFrontActions：行缺 count / moveId / category，moveId 为空串，不传 opts，fusedMoveIds 含空串 | 0 | 0 |
+| countFrontActions：fusedMoveIds 含非 string（夹具的 cfg 没给 assistFollowUpMoveId，传进来是 undefined） | 13 条：jufufu.test 3、orphieSelf 9、luciaElowen.test 1 | 0 |
+| computeJufufuCycle：11 个数值字段收到非有限值 | 0 | 0 |
+| computeJufufuCycle：assistRate / teamUltRate 缺省 | 各 8 条，全是 jufufu.test 的直调 | 0 |
+| computeJufufuCycle：比例是非有限值或负数 | 0 | 0 |
+| computeJufufuCycle：teamUltimateCount 缺省 | 61 条 | 4 条 |
+
+结论：
+
+- countFrontActions 收到的行字段都齐。空值只来自测试夹具，传进来的是 undefined。新写法 `e.moveId !== assistFollowUpMoveId` 对 undefined 恒为真，不排除任何行；旧写法经 filter(Boolean) 后同样不排除任何行。所以夹具不用补。
+- computeJufufuCycle 的 `Number(x) || 0` 一次都没改过值。两个比例的缺省只服务 8 处测试直调。teamUltimateCount 在 zd 里也会缺省（编排层没注入时），`?? ult` 服务生产代码，保留。
+
+### 13.3 改法
+
+**`983c4b10`（6 个文件 +16 / −18）**
+
+- `effectiveTime.ts`
+  - 签名改为 `countFrontActions(executions: readonly Pick<SkillExecution, 'category' | 'count' | 'timeBucket' | 'moveId'>[], assistFollowUpMoveId: string)`，与 `types/resource/execution.ts` 里 FrontlineRow 的写法相同。
+  - 函数体只剩一个 filter（`isFrontlineExecution(e) && e.category !== 'basic' && e.moveId !== assistFollowUpMoveId`）和一个 reduce（`Math.max(0, Math.floor(e.count))`），删掉 Set、filter(Boolean) 和三处 `??`。
+  - JSDoc 写明：调用方传 cfg.assistFollowUpMoveId；没有支援突击的角色这里是空串，而行的 moveId 不为空，所以不会误排除。
+- 5 个调用方改成 `countFrontActions(rows, cfg.assistFollowUpMoveId)`。
+- `ENGINE_PIPELINE_GUIDE.md` 三处用法同步（:50、:61、:292）。它随代码一起提交，revert 时一起回退。
+
+**`f50f0924`（2 个文件 +19 / −17）**
+
+- `specPanelBuffs.ts`
+  - 删 7 处 `Number(x) || 0`，`Math.max(0, …)` / `Math.floor` 保留。
+  - JufufuCycleInput 的 assistRate / teamUltRate 改必填，函数里直接乘。字段注释改为「jufufuCycleOf 经 jufufuAdjustableRate 读入，未注入时为 1」。
+  - teamUltimateCount 保持可选。
+- `jufufu.test`：8 处直调补 `assistRate: 1, teamUltRate: 1`（两个用例的字面量，加上两个 describe 的 base），期望值不变。
+
+### 13.4 反证
+
+- countFrontActions：在临时文件里传缺 count 的行、第 2 参传 undefined，vue-tsc 各报 1 处（TS2741 / TS2345）。临时写回 `e.count ?? 0`，判据 28 报 `effectiveTime.ts:154`。
+- computeJufufuCycle：在临时文件里直调不传两个比例、比例传 undefined，vue-tsc 各报 1 处（TS2345 / TS2322）。
+
+以上都已还原。
+
+### 13.5 零差
+
+zd（不丢键）两次都是 DUMP 0 / ROWS 0：`983c4b10` 对 `3166475a`，`f50f0924` 对 `983c4b10`。生产实参都是有限 number，行字段都齐（§13.2），删掉的兜底在生产里一次都不会触发。本轮没有改文案。
+
+### 13.6 验证
+
+| 项 | `3166475a` | `983c4b10` | `f50f0924` |
+|---|---|---|---|
+| vue-tsc | 0 | 0 | 0 |
+| guards | 29 | 29 | 29 |
+| zc.test + checkGuards.test | 207 | 207 | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 | 12 / 161 / 462 / 189 | 12 / 161 / 462 / 189 |
+| vitest | 258/2155 + 262/2348 = 520/4503 | 258/2155 + 262/2348 = 520/4503 | 258/2155 + 262/2348 = 520/4503 |
+| zd | — | 0 / 0 | 0 / 0 |
+| build | 1598.38 kB | 1598.22 kB | 1598.02 kB |
+| zc drift | 154 / 0 / 0 | 154 / 0 / 0 | 154 / 0 / 0 |
+
+用例数不变：两次都没有增删用例。
+
+### 13.7 不做与回退
+
+- countFrontActions 不保留空串特判：行的 moveId 不为空，`e.moveId !== ''` 恒为真，删掉 filter(Boolean) 行为不变；探针也没见过空串 moveId。
+- 不保留数组参数：融合排除只有支援突击这一种用法（克拉蕾反制走 data/moveFusions，奥菲丝的前台块走 timeBucket）。
+- `Math.max(0, Math.floor(e.count))`，以及 computeJufufuCycle 里的 `Math.max(0, …)` / `Math.floor`，都保留：它们管的是负数和小数，与 undefined 无关，删了会改变行为。要删，得先逐个证明上游非负、已取整。
+- 缺 assistFollowUpMoveId 的测试夹具不补：传 undefined 时不排除任何行，与旧写法相同。
+- teamUltimateCount 不改必填：编排层没注入时用自身的终结次数，zd 里就有这种情况。
+- §12.8 另记的 `e.dmgBonus ?? 0`（现在在 specPanelBuffs.ts:779、:788）核实过了：`SkillExecution.dmgBonus` 是可选字段（execution.ts:96），这个 `??` 不是死防御，保留，不再列为候选。
+- 顺带修正 r746 / r747 写坏的表格行：r6 §8 第 746、747 行和 CC-529 的正文里有未转义的 `|`（如 `Pick<…, 'frontlineTime' | 'backstageTime'>`），GFM 会把一行拆成多余的列并丢掉超出的部分。只把正文里的 `|` 改成 `\|`，文字不变。r705 / r723 / r726 / r731 也有同样的问题，一并改了。别的 lane 的行不动。
+- 回退：`git revert f50f0924`、`git revert 983c4b10`。两个提交改的是不同的代码块，可以各自单独回退。文档另有提交。
+
+### 13.8 下一轮候选（未做）
+
+1. **设置项的缺省值写了两处，读法也有两种。**
+   - 声明里有 default，读取处又写一遍 `Number(cfgMechanicSettingRaw(cfg, id) ?? D)`。例：jufufu.frontSwitchRatio 两处都是 0.7。全仓这种读法 23 处、11 个文件（`f50f0924` 复数过）。
+   - 另一种读法是 `cfgMechanicSetting(cfg, id, D)`（例：jufufuAdjustableRate）。
+   - 下一步：
+     - 先普查每处读取的 D 是否等于声明的 default。-1、'auto' 这类哨兵值单独看。
+     - 再查注入层在用户没设置时会不会把声明的 default 写进 cfg。
+     - 有不一致，先记差异、逐条归因（规则 10）；全部一致，再考虑让读取方只认声明里的那一份默认值。
+
+另记（小，未立题）：
+
+- computeJufufuCycle 剩下的 `Math.max(0, …)`：backstageTime 来自 effectiveBackstageTime，已经钳到 ≥ 0；aweInitial / c2WeishiPerUlt 来自 cfg 的 `?? 0`。要删，得先证明每个来源都非负（§13.7）。
