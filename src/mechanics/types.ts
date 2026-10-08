@@ -502,6 +502,7 @@ export interface AgentResourceResultInput {
    * 旧做法是写回 cfg 缓存——那让物化钩子对 cfg 有副作用，试探测量与装配在同一 state 下拿到不同行
    * （卢西娅 `luciaAdditionalAttackCap` 即此）。改成把行基准显式传进来，钩子两处各自用同一纯函数重算，
    * cfg 保持只读。注意基准是**钩子派发前**的行（不含钩子自己 push 的行），与旧写回时的口径逐位一致。
+   * 两份快照都是 rowBuild 逐行拷贝的：钩子之后原地改行改不到它们，读哪个字段都行。
    */
   preModuleExecutions?: SkillExecution[]
   /**
@@ -509,7 +510,6 @@ export interface AgentResourceResultInput {
    * 比 preModuleExecutions 多出 buildExecutions 之后才物化的行：额外强特行（`src/data/exSpecialPlans.ts`，
    * rowBuild 在模块 buildExecutions 之后推入）、backstageAutoRows、闪反/弹刀/反制支援等。
    * 派生量在 patchExecutions 里产行、装配期又要展示的模块读这个（千夏凝视标记供给即此）。
-   * 浅拷贝：数组新建、行对象与最终行共享——只读 moveId / count / 时长，不要读 patch 会改写的字段。
    */
   prePatchExecutions?: SkillExecution[]
 }

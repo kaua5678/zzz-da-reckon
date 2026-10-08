@@ -188,7 +188,8 @@ function feasibleRowsUncached(
 /** 构建招式执行记录。`moduleInputRows`（可选出参）：接收**物化钩子派发前**的引擎行快照——
  *  供 buildResourceResult 复现钩子当时看到的行基准（阶段1 第二刀，见 AgentResourceResultInput）。
  *  `patchInputRows`（可选出参，CC-198）：同理接收 **patchExecutions 派发前**的行快照（含额外强特行、
- *  backstageAutoRows 等 buildExecutions 之后物化的行）。两者都是浅拷贝：数组新建、行对象共享。 */
+ *  backstageAutoRows 等 buildExecutions 之后物化的行）。两者都逐行拷贝（`{ ...e }`，行字段全是标量）：
+ *  钩子之后原地改行，改不到快照。 */
 export function buildExecutions(
   cfg: CharacterOperationConfig,
   state: IterationState,
@@ -316,7 +317,7 @@ export function buildExecutions(
   // 角色机制模块追加专属动作，如维琳娜风华/广域气旋。
   if (moduleInputRows) {
     moduleInputRows.length = 0
-    moduleInputRows.push(...executions)
+    moduleInputRows.push(...executions.map(e => ({ ...e })))
   }
   getAgentMechanic(cfg.agentId)?.buildExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
 
@@ -453,7 +454,7 @@ export function buildExecutions(
     })
   }
 
-  // @fact engine:time/回避支援 口径: 无招架支援的角色，一次黄光交互产「回避支援」行 = 1.166s 必要前台 + 零伤害零失衡（时停＝纯亏时间）；判据用 `!defensiveAssistMoveId`（数据驱动、不列角色名单，真斗 1441 那种「有 moveId 但 actionTime=0」不会被误判）；215 喧响走 calcSpecialActionBonus 的 parry 通道按 parryCount 计、行内 decibel 给 0 不重复计；不套 parryTimeFreeCount 豁免 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，要么只能回避…只是前面弹刀的1.16秒换成了1.16秒的时停效果，纯亏时间」+「按照真实的模拟来，老测试不通过就修改老测试」·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/core/__tests__/evadeAssist.test.ts | 锚 src/core/resource/rowBuild.ts#buildExecutions | 信 确认
+  // @fact engine:time/回避支援 口径: 无招架支援的角色，一次黄光交互产「回避支援」行 = 1.166s 必要前台 + 零伤害零失衡（时停＝纯亏时间）；判据用 `!defensiveAssistMoveId`（数据驱动、不列角色名单，真斗 1441 那种「有 moveId 但 actionTime=0」不会被误判）；215 喧响走 calcSpecialActionBonus 的 parry 通道按 parryCount 计、行内 decibel 给 0 不重复计；不套 parryTimeFreeCount 豁免 | 据 用户@2026-09-15「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，要么只能回避…只是前面弹刀的1.16秒换成了1.16秒的时停效果，纯亏时间」+「按照真实的模拟来，老测试不通过就修改老测试」·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/core/__tests__/evadeAssist.test.ts | 锚 src/core/resource/rowBuild.ts#buildExecutions | 信 确认
   // ⟳复核: raw 里「回避支援」若补出倍率/失衡数据（当前 param 块完全缺失）或弹刀侧 1.166 众数口径变了，须重对 | 到期 2026-12-15
   // 回避支援（Evade Assist）：**没有招架支援的角色**对黄光的那一次交互。
   // 口径（用户 2026-09-15）：「弹刀和回避支援本身都是对黄光的一次交互…一个角色要么只能弹刀，
@@ -541,7 +542,7 @@ export function buildExecutions(
   // 招式执行计划完全构建后，模块可做最终修正（如按招式标签补增伤/暴击/固定附加伤害）。
   if (patchInputRows) {
     patchInputRows.length = 0
-    patchInputRows.push(...executions)
+    patchInputRows.push(...executions.map(e => ({ ...e })))
   }
   getAgentMechanic(cfg.agentId)?.patchExecutions?.({ cfg, state, executions, teamFrontlineSeconds })
 

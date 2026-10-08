@@ -69,7 +69,6 @@ export type BasicPoolRecoveryKey = 'totalDecibelRecovery' | 'totalEnergyRecovery
  * - 挤出量 = min(行时长, seconds)，行时长不会变负。
  * - `scale`：挤出去的行**自己带**哪种回能（表值回填或模块给值），池上那种回能就按剩余时长比例缩，不缩即双计；
  *   挤出行用 `RECOVERY_OFF` 关掉的那种不写——平A回能按整段平A时长记在池上，跟着缩就凭空丢了。
- * - 换新行对象、不原地改：rowBuild 给 `preModuleExecutions` 的是浅拷贝，原地改会改到「钩子派发前」的快照。
  */
 export function carveBasicPool(executions: SkillExecution[], seconds: number, scale: readonly BasicPoolRecoveryKey[] = []): void {
   const i = executions.findIndex(e => e.moveId === 'basic_attack')
