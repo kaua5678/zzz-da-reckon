@@ -27,7 +27,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
@@ -985,12 +985,11 @@ export interface AgentMechanicModule {
    * CC-43c（2026-09-27）：赠大提供者的「好评 → 60/90 转大次数」算法（阈值结转贪心）。
    * 编排层 `resourceCalc/ultimatePromote.ts#promoteHugCountsOf` 按 `ultimateGiftProviderSlot` 找到提供者后取用
    * （promoteFixpoint 非轴路径 + convergence 轴模式「剩余好评默认 90」）。现唯一实现：琉音 `computeLiuyinHugCounts`。
+   * r752 CC-535：60 档上限 = 入参 `hug60Cap`（只有轴模式传：轴声明的 60 抱拳次数）?? 模块自己的设置，经派发器绑定的
+   * store 读取器读。此前编排层按 id 直读 `liuyin.hug60Count` 并手抄 -1 传进来——同一个参数平时是设置值、轴模式是轴声明值。
    */
   promoteHugCounts?(
-    goodReviewTotal: number,
-    stunCount: number,
-    hug60Setting: number,
-    targetChainCountTotal?: number,
+    input: PromoteHugInput & { getMechanicSetting: (id: string, fallback: number) => number },
   ): { hug60: number; hug90: number; remainingGoodReview: number }
   /**
    * 风化（风属性异常）事件倍率加成（CC-36b 2026-09-27）：`resourceCalc/damagePoolAnomaly.ts` 结算风化事件时，
@@ -1332,5 +1331,5 @@ export interface AgentMechanicModule {
 export type { DirectRowAxisSplitInput, DirectRowAxisSplit, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
 export { axisOverlayChannel } from './typesHooks'
-export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput } from './typesHooks'
+export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput } from './typesHooks'
 export type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'

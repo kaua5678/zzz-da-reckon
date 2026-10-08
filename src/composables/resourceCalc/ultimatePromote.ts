@@ -12,7 +12,7 @@ import type { StunSkillExecution } from '@/core/stunPool'
 import { findUltimate, findChainAttack, fusedGroupActionTime } from '@/core/resource/moveLookup'
 import { fusedRowReader, findMoveById, fusedRowValue, getRowValue } from '@/data/moveTableQueries'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
-import type { AgentMechanicModule } from '@/mechanics/types'
+import type { PromoteHugInput } from '@/mechanics/types'
 import type { CharacterOperationConfig, TeamResourceResult, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { ConfigModel } from '@/stores/config'
@@ -24,10 +24,12 @@ import { carveBasicPool } from '@/mechanics/moduleExecRow'
 /** 琉音好评转大不动点迭代上限（好评≥90 开窗次数有界，正反馈单调收敛，8 轮兜底极端情况） */
 const MAX_PROMOTE_ITER = 8
 
-/** 琉音好评转大参数（从某轮资源池结果构建：目标队友、连携/终结技 moveId、好评总量、客诉抱拳数） */
+/**
+ * 琉音好评转大参数（从某轮资源池结果构建：目标队友、连携/终结技 moveId、好评总量、客诉抱拳数）。
+ * 60 档上限不在这里：提供者钩子 `promoteHugCounts` 自己读设置（r752 CC-535）。
+ */
 export interface UltimatePromoteParams {
   goodReviewTotal: number
-  hug60Setting: number
   targetSlot: number
   chainMoveId: string
   ultimateMoveId: string
@@ -169,19 +171,18 @@ export function ultimateGiftProviderSlot(configStore: ConfigModel): number {
   return configStore.team.findIndex(m => !!m.agentId && !!getAgentMechanic(m.agentId)?.ultimateGiftSource)
 }
 
-/** 提供者槽位 + 本轮赠大来源（好评总量）；无提供者或本轮无来源时 null（CC-35d-B3） */
 /**
  * CC-43c（2026-09-27）：赠大提供者模块的转大次数算法（能力 `promoteHugCounts`）；队伍无提供者或提供者未实现时 undefined。
  * 替代原 `computeLiuyinHugCounts` 值导入（判据 23）。
+ * r752 CC-535：这里绑定 store 读取器（派发器递给钩子的读口），60 档上限由模块自己读设置；调用方只在轴模式传覆盖 `hug60Cap`。
  */
-export function promoteHugCountsOf(
-  configStore: ConfigModel,
-): AgentMechanicModule['promoteHugCounts'] {
+export function promoteHugCountsOf(configStore: ConfigModel) {
   const slot = ultimateGiftProviderSlot(configStore)
-  if (slot < 0) return undefined
-  return getAgentMechanic(configStore.team[slot]?.agentId ?? '')?.promoteHugCounts
+  const hook = slot < 0 ? undefined : getAgentMechanic(configStore.team[slot]?.agentId ?? '')?.promoteHugCounts
+  return hook && ((input: PromoteHugInput) => hook({ ...input, getMechanicSetting: (id, fallback) => configStore.getMechanicSetting(id, fallback) }))
 }
 
+/** 提供者槽位 + 本轮赠大来源（好评总量）；无提供者或本轮无来源时 null（CC-35d-B3） */
 export function ultimateGiftSourceOf(
   configStore: ConfigModel,
   rr: TeamResourceResult,
@@ -202,7 +203,6 @@ export function buildPromoteParams(
 ): UltimatePromoteParams | null {
   const gift = ultimateGiftSourceOf(configStore, rr)
   if (!gift) return null
-  const hug60Setting = configStore.getMechanicSetting('liuyin.hug60Count', -1)
   // CC-294：落点与引擎 `gift-chain:ultimate` 预留同一函数、同一份提供者 cfg（原在此直读设置重解）
   const providerCfg = configs.find(c => c.slot === gift.slot)
   const targetSlot = providerCfg ? supplyTargetTeamSlot(providerCfg, configs.map(c => c.slot)) : -1
@@ -218,7 +218,6 @@ export function buildPromoteParams(
   const ultElement = (targetAgentId && catalogStore.agentsMap.get(targetAgentId)?.damageElement) || 'physical'
   return {
     goodReviewTotal: gift.goodReviewTotal,
-    hug60Setting,
     targetSlot,
     chainMoveId: chain?.moveId ?? '',
     ultimateMoveId: ult?.moveId ?? '',
@@ -269,7 +268,7 @@ function adjustStunExecs(
 }
 
 /** 转大不动点：给定基础失衡 execs 与畏缩覆盖率，迭代（失衡次数 ↔ 好评转大次数）至收敛 */
-// @fact engine:失衡次数不动点 口径: 失衡次数 = 时间守恒不动点 floor(N*)——窗口占用 N×窗长，剩余时间才攒条，故「打满 N 次后剩余时间不够一次」自然收敛于 N。**非轴**走连续闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还、x=N×窗长/有效时间），环检测兜底；**轴模式**（有轴内份额提供者且未锁定）**不用**该闭式——池按逐招轴内份额 + 未覆盖窗口份额复合扣除，与闭式不是同一函数（r648 实测闭式 4.46 / 池 3 矛盾），改为对连续 N 二分池自身的不动点 h(N)=continuousStunCount(pool(N))−N（h 单调递减，CC-469′b）；锁定次数（CC-305）时钉在 N 不迭代。**两种模式都必须传时间占比**（轴模式传未被轴块覆盖的窗口份额，CC-469′；旧实现轴模式传 0，只信逐招 fraction：实测 auto-1521-1481-1311 窗口占时间 90% 只扣 4.8% 攒条 → 9 次，而轴栈只填满 3 窗）| 据 用户@2026-09-10「顺序不对：应先攒够再开窗，剩余时间不足则收敛于此」·前身口径 用户@2026-09-08 + 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽（合并原重复「据」槽）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07（r715 订正：轴模式自 CC-469′b（bf308785）起二分池自身不动点，不再轴/非轴统一走闭式） | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#promoteFixpoint | 信 确认
+// @fact engine:失衡次数不动点 口径: 失衡次数 = 时间守恒不动点 floor(N*)——窗口占用 N×窗长，剩余时间才攒条，故「打满 N 次后剩余时间不够一次」自然收敛于 N。**非轴**走连续闭式 N*=(g+gf−r)/((1−r)+g·x)（g=毛失衡/阈值、gf=Boss白送/阈值、r=雨果返还、x=N×窗长/有效时间），环检测兜底；**轴模式**（有轴内份额提供者且未锁定）**不用**该闭式——池按逐招轴内份额 + 未覆盖窗口份额复合扣除，与闭式不是同一函数（r648 实测闭式 4.46 / 池 3 矛盾），改为对连续 N 二分池自身的不动点 h(N)=continuousStunCount(pool(N))−N（h 单调递减，CC-469′b）；锁定次数（CC-305）时钉在 N 不迭代。**两种模式都必须传时间占比**（轴模式传未被轴块覆盖的窗口份额，CC-469′；旧实现轴模式传 0，只信逐招 fraction：实测 auto-1521-1481-1311 窗口占时间 90% 只扣 4.8% 攒条 → 9 次，而轴栈只填满 3 窗）| 据 用户@2026-09-10「顺序不对：应先攒够再开窗，剩余时间不足则收敛于此」·前身口径 用户@2026-09-08 + 用户实测@2026-09-08（实战对比部署 雅/南宫/柚叶 vs 基塔布鲁·滞变畸兽 显示 0 次；同配置冷启动 4/热启动 0）+ 时间守恒不动点自洽（合并原重复「据」槽）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07（r715 订正：轴模式自 CC-469′b（bf308785）起二分池自身不动点，不再轴/非轴统一走闭式）·复核@2026-10-08 | 验 src/composables/resourceCalc/__tests__/liuyinPromote.test.ts + src/composables/__tests__/runArchiveDeploy.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#promoteFixpoint | 信 确认
 /** 轴内失效比例提供者的返回：逐招 `${slot}:${moveId}` → 窗内份额，加上窗口里被轴块占掉的前台秒数（CC-469′）。 */
 export interface InAxisFractionResult { fraction: Record<string, number>; coveredWindowSeconds: number }
 export type InAxisFractionProvider = (stunCount: number, execs: StunSkillExecution[]) => InAxisFractionResult
@@ -335,7 +334,7 @@ export function promoteFixpoint(
     } else if (p) {
       const chainExecCount = baseExecs.find(e => e.slot === p.targetSlot && e.moveId === p.chainMoveId)?.count ?? 0
       const targetChainTotal = Math.min(p.chainCountPerStun * stunCount, chainExecCount)
-      const hug = promoteHugCountsOf(configStore)?.(p.goodReviewTotal, stunCount, p.hug60Setting, targetChainTotal)
+      const hug = promoteHugCountsOf(configStore)?.({ goodReviewTotal: p.goodReviewTotal, stunCount, targetChainCountTotal: targetChainTotal })
         ?? { hug60: 0, hug90: 0 }  // p 非空 ⇒ 必有提供者；兜底仅防提供者未实现该能力
       hug60 = hug.hug60
       hug90 = hug.hug90

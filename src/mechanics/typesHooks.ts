@@ -1,6 +1,6 @@
 /**
  * mechanics 卫星类型：跨槽供给、失衡覆盖、轴 overlay、异常池变换、下一轮反馈、交互补齐、必做动作、异常事件记录、轴编辑标记、次数输入声明；
- * 以及原先只在 `AgentMechanicModule` 里写成字面量的六个钩子形状（r732，见文件末尾）。
+ * 以及原先只在 `AgentMechanicModule` 里写成字面量的六个钩子形状（r732，见文件末尾），`promoteHugCounts` 的入参（r752）。
  * CC-83（2026-09-27，census §5.90）自 `mechanics/types.ts` 逐字拆出；types.ts 原样转出，导入方不用改。
  */
 import type { DeepReadonly } from 'vue'
@@ -534,4 +534,18 @@ export interface AgentFinalAssembleInput {
   totalTime: number
   /** 队友开帷幕原始次数（引擎按 `crossAgentSupply.kind='curtain-open'` 收集；`rawCount > 0` 才入列） */
   curtainOpeners: Array<{ agentId: string; rawCount: number }>
+}
+
+/**
+ * `promoteHugCounts` 的入参（r752 CC-535；原为四个位置参数）：赠大提供者「好评 → 60/90 转大次数」算法。
+ * 不含 store 读取器：`resourceCalc/ultimatePromote.ts#promoteHugCountsOf` 派发时绑定。
+ */
+export interface PromoteHugInput {
+  goodReviewTotal: number
+  /** 失衡次数（不传 `targetChainCountTotal` 时也当连携窗口数） */
+  stunCount: number
+  /** 目标队友连携总数（60 转大吃的是它的连携窗口）；缺省 = 按失衡次数 */
+  targetChainCountTotal?: number
+  /** 60 档上限覆盖：只有轴模式传（轴声明的 60 抱拳次数）；缺省 = 提供者读自己的设置 */
+  hug60Cap?: number
 }

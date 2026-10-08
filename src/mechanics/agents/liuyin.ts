@@ -457,8 +457,10 @@ const settings: MechanicSetting[] = [
 ]
 
 export const liuyinMechanic: AgentMechanicModule = {
-  // CC-43c：好评 → 60/90 转大次数算法，编排层经 promoteHugCountsOf 取用（不再按值导入本函数）
-  promoteHugCounts: computeLiuyinHugCounts,
+  // CC-43c：好评 → 60/90 转大次数算法，编排层经 promoteHugCountsOf 取用（不再按值导入本函数）。
+  // r752 CC-535：60 档上限 = 轴模式覆盖 ?? 本模块设置（编排层不再按 id 读 liuyin.hug60Count、手抄 -1）
+  promoteHugCounts: ({ goodReviewTotal, stunCount, targetChainCountTotal, hug60Cap, getMechanicSetting }) =>
+    computeLiuyinHugCounts(goodReviewTotal, stunCount, hug60Cap ?? settingVia(getMechanicSetting, 'liuyin.hug60Count'), targetChainCountTotal),
   // CC-43e：轴预设 60/90 转大块（promoteVariant）归琉音所有；队里无琉音时编排层跳过这些块
   ownsPromoteVariantAxisBlocks: true,
   id: 'agent:liuyin',

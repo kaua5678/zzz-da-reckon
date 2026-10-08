@@ -12,6 +12,9 @@
  *
  * 三个读口各有一个「声明即默认值」的 reader，模块不手抄默认值：cfg 袋子 `mechanicSettingReader`、
  * 面板记录 `mechanicSettingPanelReader`、派发器递给钩子的 store 读取器 `mechanicSettingGetterReader`（r751 CC-534）。
+ *
+ * 模块设置的 id 只在所属模块里按字面量出现（r752 CC-535 源码锁）：编排层 / 视图要么遍历声明取 `setting.default`，
+ * 要么把 store 读取器递给模块钩子、由模块自己读（例：琉音转大钩子 `promoteHugCounts` 读 60 档上限）。
  */
 export function mechanicSettingCfgKey(id: string): string {
   return `setting:${id}`

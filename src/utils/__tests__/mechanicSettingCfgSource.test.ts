@@ -12,11 +12,15 @@
  *
  * CC-534（r751）：钩子拿到的 store 读取器 `getMechanicSetting('a.b', D)` 也手抄过默认值（hugo / alice / liuyin 6 处）；
  * store 无用户值时直接返回 D ⇒ 这份 D 是生产默认值。改走 `mechanicSettingGetterReader`，并锁上这一形。
+ *
+ * CC-535（r752）：编排层 `ultimatePromote.ts` 按 id 直读琉音设置 `liuyin.hug60Count` 并手抄 -1（模块外唯一一处）；
+ * 改由琉音转大钩子自己读，并锁上「模块设置 id 只在 mechanics/agents 里按字面量出现」。
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { cfgMechanicSetting, mechanicSettingCfgKey, mechanicSettingGetterReader, mechanicSettingPanelReader, mechanicSettingReader } from '../mechanicSettingCfg'
+import { getRegisteredMechanicSettings } from '@/mechanics'
 
 const SRC = resolve(__dirname, '../..')
 const OWNER = 'utils/mechanicSettingCfg.ts'
@@ -109,6 +113,20 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
       // 注释换成等长空白（保留换行 ⇒ 行号不变）再整文件匹配
       const code = readFileSync(p, 'utf-8').replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, m => m.replace(/[^\n]/g, ' '))
       for (const m of code.matchAll(re)) hits.push(`${rel}:${code.slice(0, m.index).split('\n').length}: ${m[0].replace(/\s+/g, ' ')}`)
+    }
+    expect(hits).toEqual([])
+  })
+
+  it('CC-535 源码锁：模块设置 id 只在 mechanics/agents 里按字面量出现（编排层 / 视图遍历声明，或把 store 读取器递给模块钩子、由模块自己读）', () => {
+    const ids = new Set(getRegisteredMechanicSettings().map(s => s.id))
+    const hits: string[] = []
+    for (const p of walk(SRC)) {
+      const rel = relative(SRC, p).split('\\').join('/')
+      if (rel.startsWith('mechanics/agents/')) continue
+      const code = readFileSync(p, 'utf-8').replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, m => m.replace(/[^\n]/g, ' '))
+      for (const m of code.matchAll(/(['"`])(\w+\.[\w.:-]+)\1/g)) {
+        if (ids.has(m[2])) hits.push(`${rel}:${code.slice(0, m.index).split('\n').length}: ${m[2]}`)
+      }
     }
     expect(hits).toEqual([])
   })

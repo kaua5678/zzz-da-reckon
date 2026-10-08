@@ -339,7 +339,7 @@ export function createRunCalcRound(deps: {
        * 直接按 `G − h60×60` 算余额会少扣/多补一次（实测把 1051 的账本残差从 −1.63 翻成 +0.98）。
        * `computeLiuyinHugCounts` 的阈值结转贪心正是这条规则的**唯一实现**：
        * 「每次开窗要求当刻 ≥90，优先用 60 档（受 cap60 = 轴声明的 60 次数上限约束），否则用 90 档」
-       * ⇒ 传 `hug60Setting = floor(轴声明的 h60)`、`stunCount` 给足连携窗口即可。
+       * ⇒ 传 `hug60Cap = floor(轴声明的 h60)`（60 档上限覆盖）、`stunCount` 给足连携窗口即可。
        */
       const declaredBlocks = h60 + h90
       if (declaredBlocks > 0 && prevGoodReview > 0) {
@@ -353,11 +353,11 @@ export function createRunCalcRound(deps: {
          * −1.63 翻成 +0.98（少扣一次 60）再回落到 +0.40，两次都是自造口径的产物。
          */
         // CC-43c：算法经赠大提供者模块能力 `promoteHugCounts` 取用（琉音 = computeLiuyinHugCounts，逐位同一函数）
-        const hug = promoteHugCountsOf(configStore)?.(
-          prevGoodReview,
-          countStun,                 // 连携窗口数（CC-155：计数通道，与核心侧池口径同源）
-          Math.floor(h60),           // 60 档上限 = 轴声明的 60 抱拳计划次数（floor 成整数次）
-        )
+        const hug = promoteHugCountsOf(configStore)?.({
+          goodReviewTotal: prevGoodReview,
+          stunCount: countStun,      // 连携窗口数（CC-155：计数通道，与核心侧池口径同源）
+          hug60Cap: Math.floor(h60), // 60 档上限覆盖 = 轴声明的 60 抱拳计划次数（floor 成整数次）
+        })
         if (hug) {
           h60 = hug.hug60
           h90 = hug.hug90
