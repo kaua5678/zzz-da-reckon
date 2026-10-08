@@ -10,7 +10,6 @@ describe('琉音好评/等效规则（用户确认）', () => {
       ultimateCount: 3,
       combatTime: 100,
       cinemaLevel: 0,
-      extraAbilityActive: true,
       previousTeammateSlot: 1,
     })
     expect(s.goodReviewInitial).toBe(60)
@@ -25,7 +24,6 @@ describe('琉音好评/等效规则（用户确认）', () => {
       ultimateCount: 0,
       combatTime: 100,
       cinemaLevel: 1,
-      extraAbilityActive: true,
       previousTeammateSlot: 1,
     })
     expect(s.goodReviewPerSec).toBeCloseTo(0.6 * 1.16, 6)
@@ -39,7 +37,6 @@ describe('琉音好评/等效规则（用户确认）', () => {
       ultimateCount: 4,
       combatTime: 120,
       cinemaLevel: 0,
-      extraAbilityActive: true,
       previousTeammateSlot: 1,
     })
     // 好评 = 60 + 72 + 75 = 207 → 转大 2 次
@@ -212,7 +209,7 @@ describe('琉音伤害池落地（damagePool 集成，非纯函数）', () => {
   it('额外能力重击附加伤害 = 独立直伤行进池，基底取上一位队友特性', async () => {
     const calc = await setup()
     const row = calc.damagePoolRows.value.find(r => r.id === 'liuyin-ex-direct-2')
-    expect(row, '琉音额外能力直伤行未进伤害池（damagePool 的 extraAbilityActive 分支断了）').toBeTruthy()
+    expect(row, '琉音额外能力直伤行未进伤害池（extraDirectRows 的额外能力门控断了）').toBeTruthy()
     expect((row as any).count, '重击次数应为正').toBeGreaterThan(0)
     expect((row as any).agentId).toBe('1481')
   })
@@ -238,7 +235,6 @@ describe('琉音伤害池落地（damagePool 集成，非纯函数）', () => {
 describe('CC-18b：琉音 extraDirectRows（重击附加 / 非轴强特拆分 / 影画6余音逐字）', () => {
   const liuyinSrc = (overrides: Record<string, unknown> = {}) => ({
     exHeavyCount: 5,
-    extraAbilityActive: true,
     previousTeammateSlot: 2,
     cinemaLevel: 0,
     ...overrides,
@@ -246,7 +242,7 @@ describe('CC-18b：琉音 extraDirectRows（重击附加 / 非轴强特拆分 / 
   const input = (src: Record<string, unknown> | undefined, overrides: Record<string, unknown> = {}) => ({
     charResult: { agentId: '1481', liuyinMechanicSource: src, executions: [] } as never,
     slot: 0,
-    panel: undefined,
+    panel: { additionalAbilityActive: 1 } as never,
     isAxis: false,
     axisStunFor: () => 0,
     teammateAt: () => ({ panel: { atk: 3000, hp: 0, sheerForceFlat: 0 } as never, agent: { name: { zhCN: '队友' }, specialty: 'attack' } as never }),

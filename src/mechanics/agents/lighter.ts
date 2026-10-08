@@ -13,6 +13,8 @@
  * - 喷发中普攻第五段命中叠昂扬，最多 20 层；每层冰火伤 +1.25%，冲击力>170 时每超 10 点每层再 +0.25%；
  *   硬顶 75%。用户口径：第一次快速刺拳实时算层/强度，之后永续 → 默认按冲击力算满层满覆盖。
  * - C2：昂扬增益 ×1.2；溃败失衡易伤 +25%（teammate-buffs）。
+ * - 昂扬数值只由 teammate-buffs 1161「额外能力」条承载（公式读莱特局内冲击力；门控 = spec 1161
+ *   teamConditions；C2 ×1.2 = 影画二 buffModifiers）。r761 删本模块的同式副本（结果只写进无人读的字段）。
  *
  * 影画
  * - C1：溃败 +5s、减抗 +10%、耗尽士气强力终结伤害 +30%（执行级，默认覆盖强力终结行）。
@@ -41,7 +43,6 @@ import type { CharacterOperationConfig, CharacterResourceResult, SkillExecution 
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
-import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 const settingOf = mechanicSettingPanelReader(() => lighterMechanic.settings)
@@ -58,13 +59,8 @@ export const LIGHTER_IMPACT_CAP_PCT = 20
 export const LIGHTER_ROUT_STUN_BONUS = 3
 /** 1 命溃败失衡延长（秒） */
 export const LIGHTER_ROUT_STUN_BONUS_C1 = 5
-/** 昂扬每层基础冰火伤% */
-export const LIGHTER_MORALE_STACK_BASE = 1.25
-/** 冲击力超过 170 时，每 10 点每层额外% */
-export const LIGHTER_MORALE_STACK_EXTRA_PER_10 = 0.25
+/** 冲击力阈值：C6 火焰冲击的超额倍率从这里起算 */
 export const LIGHTER_IMPACT_SOFT_CAP = 170
-export const LIGHTER_MORALE_MAX_STACKS = 20
-export const LIGHTER_MORALE_DMG_CAP = 75
 /** C6 火焰冲击基础倍率% */
 export const LIGHTER_C6_FLAME_BASE = 250
 /** C6 火焰冲击冲击力超额每点 +5% 倍率，最多 +500% */
@@ -99,30 +95,6 @@ export interface LighterMoraleResult {
   burstEntries: number
   /** 耗尽士气打出的强力终结次数（≈ 喷发次数，整局近似） */
   powerFinisherCount: number
-}
-
-export interface LighterMoraleBuffInput {
-  impact: number
-  cinemaLevel: number
-  /** 额外能力是否激活 */
-  additionalActive: boolean
-}
-
-/**
- * 昂扬提供的冰/火伤%（单属性）。
- * 用户口径：第一次快速刺拳实时算，之后永续 → 默认满层。
- * perStack = 1.25 + floor(max(0, impact-170)/10)*0.25
- * total = min(75, perStack * 20)；C2 ×1.2 后再吃硬顶？原文「提升至原本的120%」且昂扬自身有 75% 顶——
- * 采用：先算基础封顶 75，再 ×1.2（C2 可突破到 90），与 teammate-buffs multiplyResolvedValue 一致。
- */
-export function computeLighterMoraleDmgBonus(input: LighterMoraleBuffInput): number {
-  if (!input.additionalActive) return 0
-  const impact = Math.max(0, Number(input.impact) || 0)
-  const overSteps = Math.floor(Math.max(0, impact - LIGHTER_IMPACT_SOFT_CAP) / 10)
-  const perStack = LIGHTER_MORALE_STACK_BASE + overSteps * LIGHTER_MORALE_STACK_EXTRA_PER_10
-  const base = Math.min(LIGHTER_MORALE_DMG_CAP, perStack * LIGHTER_MORALE_MAX_STACKS)
-  const mult = cinemaLevelOf(input.cinemaLevel) >= 2 ? 1.2 : 1
-  return base * mult
 }
 
 /** 满级核心冲击力加成%（喷发耗士气，默认吃满） */
@@ -224,7 +196,7 @@ function cfgNum(cfg: CharacterOperationConfig, key: keyof CharacterOperationConf
   return Number.isFinite(raw) ? raw : fallback
 }
 
-function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput): void {
+function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   // 喷发耗士气冲击力 +20%（默认吃满）
   const impactPct = computeLighterImpactBonusPct(cinema)
@@ -233,37 +205,12 @@ function applyPanel({ cinemaLevel, panel, team, slot, agent }: AgentPanelInput):
   // 溃败：失衡时长延长
   panel.stunDurationBonusSeconds =
     panel.stunDurationBonusSeconds + computeLighterRoutStunBonus(cinema)
-
-  // 昂扬：额外能力门控 + 冲击力实时（面板已含自身冲击加成）
-  const additionalActive = additionalAbilityActiveOf(panel)
-    || (() => {
-      // applyPanel 时 additionalAbilityActive 通常已写入；兜底再判一次
-      const hasAttack = team.some(m => m.slot !== slot && m.agent?.specialty === 'attack')
-      const hasFaction = team.some(
-        m => m.slot !== slot && m.agent?.faction != null && m.agent.faction === agent.faction,
-      )
-      return hasAttack || hasFaction
-    })()
-
-  if (additionalActive) {
-    // 队友增益侧默认 75 会被 C2×1.2；这里若 buff 已启用会双算。
-    // 策略：昂扬改由模块写入，teammate-buffs 额外能力条标记 singleSourced（原字段名 hidden）或由 helpers 过滤。
-    // 实际由 helpers 过滤 lighter.additional_* 后在此统一写入（含本人+通过 teammates 循环？）
-    // applyPanel 只作用于本人面板。全队昂扬在 helpers 的 lighter 块给每个角色加。
-    panel.lighterMoraleDmgBonus = computeLighterMoraleDmgBonus({
-      impact: panel.impact,
-      cinemaLevel: cinema,
-      additionalActive: true,
-    })
-  }
-
 }
 
 function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   cfg.lighterCinemaLevel = cinema
   cfg.lighterImpact = panel.impact
-  cfg.lighterMoraleDmgBonus = Number(panel.lighterMoraleDmgBonus ?? 0) || 0
   if (cinema >= 6) {
     cfg.lighterFlameShockMult = computeLighterFlameShockMultiplier(panel.impact)
   }
@@ -595,24 +542,11 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 莱特冲击力：buildCharConfig 从面板 impact 写入 */
     lighterImpact?: number
-    /** 额外能力「昂扬」增伤：buildCharConfig 从 panel.lighterMoraleDmgBonus 读入 */
-    lighterMoraleDmgBonus?: number
     /** 6 命烈焰冲击倍率：按冲击力算，buildCharConfig 仅 6 命写入 */
     lighterFlameShockMult?: number
     /** 莱特：全队普通能量消耗（士气能量来源；编排注入，不含闪能） */
     lighterTeamEnergyConsumed?: number
     /** 莱特影画等级（模块缓存） */
     lighterCinemaLevel?: number
-  }
-}
-
-/**
- * D2（r402 CC-376，`docs/mcp-panel-fields.md` §4 S2+S4）：本模块私有的面板字段——只有本文件读写（测试读不算引用者），声明随模块走。
- * 仍是 `PanelValues` 的成员（模块扩充，纯类型、零运行时）；出现第二个**生产**引用者时迁回 `types/catalog.ts`。
- */
-declare module '@/types/catalog' {
-  interface PanelValues {
-    /** 额外能力「昂扬」增伤：applyPanel 按冲击力算出写入，buildCharConfig 读回进 cfg */
-    lighterMoraleDmgBonus?: number
   }
 }

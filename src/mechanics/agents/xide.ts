@@ -119,8 +119,6 @@ function buildXideCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfi
   cfg.xideCinemaLevel = cinemaLevel
   // 影画6 激光附加伤害按「局内最终攻击力 × 百分比」进基础区（flatDamageBonus，奥菲丝先例）
   cfg.xideAtk = Math.max(0, panel.atk)
-  // 额外能力门控（patchExecutions 招式限定增伤/电抗无视用）
-  cfg.xideAAActive = additionalAbilityActiveOf(panel) ? 1 : 0
   // 铁萼雨幕耗能：固定 60（每 60 能量释放一次铁萼雨幕 1461009，用户口径 2026-08）
   cfg.exSpecialEnergyConsume = XIDE_EX_ENERGY
 
@@ -277,7 +275,7 @@ function buildXideExecutions({ cfg, state, executions }: AgentResourceInput): vo
 function patchXideExecutions({ cfg, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.xideCinemaLevel)
   const atk = Math.max(0, Number(cfg.xideAtk ?? 0))
-  const aaActive = Number(cfg.xideAAActive ?? 0) > 0
+  const aaActive = additionalAbilityActiveOf(cfg.panel)
   for (const exec of executions) {
     // 额外能力·奇兵轰临（招式限定）：落华·重戮/崩坠/终结技 增伤+30% + 无视25%电抗
     if (aaActive && (
@@ -393,8 +391,6 @@ declare module '@/types/resource/config' {
     xideAtk?: number
     /** 席德正兵槽位（applyTeamConfig build 阶段确定：初始攻击最高的强攻队友；无强攻队友为 -1） */
     xideVanguardSlot?: number
-    /** 席德额外能力门控（buildCharConfig 写入：additionalAbilityActive>0 为 1；patchExecutions 招式限定用） */
-    xideAAActive?: number
     /** 席德钢能平A秒均（四段 attack_data 总和 ÷ 四段 actionTime 总和） */
     xideBasicSteelPerSec?: number
     /** 席德钢能各招式 attack_data 总和（moveId → 钢能点，buildCharConfig 统一对全部倍率页求和） */

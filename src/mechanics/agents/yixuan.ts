@@ -14,6 +14,7 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const cfgNum = mechanicSettingReader(() => settings)
 const settingOf = mechanicSettingPanelReader(() => settings)
@@ -311,7 +312,7 @@ function readAxisEx(cfg: AgentCharConfigInput['cfg']): Record<string, number> {
 }
 
 function buildYixuanCharConfig(input: AgentCharConfigInput): void {
-  const { skills, cinemaLevel, team, cfg, char } = input
+  const { skills, cinemaLevel, panel, cfg, char } = input
   // 进场恢复全部闪能（用户确认 120）
   cfg.initialEnergyGift = ENTRY_FLASH
   // 强特全部由模块生成（墨痕化形链/凝云术链）；exSpecialCount 仅作喧响估算（60 闪能/循环当量）
@@ -336,10 +337,8 @@ function buildYixuanCharConfig(input: AgentCharConfigInput): void {
   cfg.chainDecibelRecovery = rowValue(findMoveById(skills, '1371013'), 'decibel_recovery')
 
   // 额外能力·玄墨暗涌：队伍存在[击破]/[支援]/[防护]角色时触发 → 队友终结技回 20 闪能/次
-  const hasStun = team.some(m => m.agent?.specialty === 'stun')
-  const hasSupport = team.some(m => m.agent?.specialty === 'support')
-  const hasDefense = team.some(m => m.agent?.specialty === 'defense')
-  if (hasStun || hasSupport || hasDefense) {
+  // （r761：判定只读面板标记 = spec 1371 teamConditions，删掉手写的第二份判定）
+  if (additionalAbilityActiveOf(panel)) {
     cfg.teamUltimateFlashBonus = TEAM_ULT_FLASH
   }
 

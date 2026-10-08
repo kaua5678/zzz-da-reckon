@@ -88,7 +88,7 @@ describe('席德自身机制（额外能力/影画4/影画6）', () => {
   })
 
   it('额外能力：落华/崩坠/终结技增伤+30%与无视25%电抗（patchExecutions 招式限定）', () => {
-    const cfg: any = { xideCinemaLevel: 0, xideAAActive: 1 }
+    const cfg: any = { xideCinemaLevel: 0, panel: { additionalAbilityActive: 1 } }
     const moves = ['1461006', '1461007', '1461008', '1461015'].map(moveId => ({ moveId, skillTableNote: '' }) as any)
     const other = { moveId: '1461001', skillTableNote: '' } as any // 霜蕊轮舞#1，不吃
     xideMechanic.patchExecutions!({ cfg, state: {} as any, executions: [...moves, other], teamFrontlineSeconds: 0 } as any)
@@ -100,7 +100,7 @@ describe('席德自身机制（额外能力/影画4/影画6）', () => {
     expect(other.resIgnore ?? 0).toBe(0)
 
     // 负例：additionalAbilityActive=0 不施加
-    const cfgOff: any = { xideCinemaLevel: 0, xideAAActive: 0 }
+    const cfgOff: any = { xideCinemaLevel: 0, panel: { additionalAbilityActive: 0 } }
     const z = { moveId: '1461006', skillTableNote: '' } as any
     xideMechanic.patchExecutions!({ cfg: cfgOff, state: {} as any, executions: [z], teamFrontlineSeconds: 0 } as any)
     expect(z.dmgBonus ?? 0).toBe(0)

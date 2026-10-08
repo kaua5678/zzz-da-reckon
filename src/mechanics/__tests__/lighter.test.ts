@@ -7,7 +7,6 @@ import {
   computeLighterFlameShockCount,
   computeLighterFlameShockMultiplier,
   computeLighterMorale,
-  computeLighterMoraleDmgBonus,
   computeLighterRoutStunBonus,
   estimateTeamNormalEnergyConsumed,
   LIGHTER_IMPACT_CAP_PCT,
@@ -49,15 +48,6 @@ describe('莱特纯函数', () => {
 
     const c6 = computeLighterMorale({ combatTime: 100, teamEnergyConsumed: 400, cinemaLevel: 6 })
     expect(c6.moraleGain).toBeCloseTo(base.moraleGain * 2, 5)
-  })
-
-  it('昂扬：冲击力实时，满层硬顶75，C2×1.2', () => {
-    // impact=170 → perStack 1.25 → 25，未满顶
-    expect(computeLighterMoraleDmgBonus({ impact: 170, cinemaLevel: 0, additionalActive: true })).toBeCloseTo(25, 5)
-    // impact=270 → over 100 → 10 steps → perStack 1.25+2.5=3.75 → 75 封顶
-    expect(computeLighterMoraleDmgBonus({ impact: 270, cinemaLevel: 0, additionalActive: true })).toBeCloseTo(75, 5)
-    expect(computeLighterMoraleDmgBonus({ impact: 270, cinemaLevel: 2, additionalActive: true })).toBeCloseTo(90, 5)
-    expect(computeLighterMoraleDmgBonus({ impact: 999, cinemaLevel: 0, additionalActive: false })).toBe(0)
   })
 
   it('溃败失衡时长 0命+3 / 1命+5', () => {

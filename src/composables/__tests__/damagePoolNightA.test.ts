@@ -33,9 +33,8 @@ type Harness = Awaited<ReturnType<typeof setupHarness>>
 /**
  * 关掉全部全局 buff（含额外能力），让被测量的机制成为唯一变量。
  *
- * ⚠ **琉音那组不能调它**：关掉全局 buff 会把 `panel.additionalAbilityActive` 打成 0，而琉音的
- * 专用块门控正是 `liuyinSrc.extraAbilityActive`（= 该面板字段）⇒ 整个专用块不进，
- * 「零通用行」会因**错误的原因**通过（实测踩过：`extraAbilityActive` 实测 false）。
+ * ⚠ **琉音那组不调它**：关掉全局 buff 会把 `panel.additionalAbilityActive` 打成 0，琉音「重击附加」行
+ * （额外能力门控，r761 起直接读本槽面板标记）随之消失；该组要的是默认口径。
  */
 function isolate(config: Harness['config']) {
   for (const b of config.globalBuffs) b.enabled = false
@@ -98,9 +97,9 @@ describe('R21 夜A 跳① 琉音 1481：非轴态强特只出专用块行（:428
   const EX_IDS = ['1481011', '1481012', '1481013']
 
   it('非轴：三个强特**零通用行**，全部走专用块（id 前缀 liuyin-ex-）', async () => {
-    // ⚠ 队伍必须让琉音的**额外能力触发**（队里有强攻/命破）——否则 `liuyinSrc.extraAbilityActive`
-    // 为 false，下方专用块整体不进（那是**另一条**门控，与本批删掉的 agentId 项无关）。
-    // ⚠ 且**不能调 isolate()**（它关全局 buff ⇒ `additionalAbilityActive` 掉 0 ⇒ 同样把专用块关掉）。
+    // 队里放强攻让琉音额外能力触发、且不调 isolate()，保持默认口径。r761 核对：额外能力只门控「重击附加」行
+    // （读本槽面板标记）；下面断言的非轴强特拆分块门控 = 来源存在 + `!isAxis`，专用行计数 = 4 即自证进块，
+    // 故删去原先对 `liuyinSrc.extraAbilityActive` 的前置断言（该透传字段已删）。
     // ⚠ specialty 别按名字猜（实测踩过）：1021 猫又 = **attack**、1211 丽娜 = support、1181 格莉丝 = anomaly
     // ⇒ 用 `node scripts/resolve.mjs` 口径核对过的组合：1021(强攻) + 1221(异常)。
     const { calc, config, catalog } = await calcOf([{ agentId: '1481' }, { agentId: '1021' }, { agentId: '1221' }], { isolate: false })
@@ -109,8 +108,6 @@ describe('R21 夜A 跳① 琉音 1481：非轴态强特只出专用块行（:428
 
     const src = calc.resourceResult.value!.characters.find(c => c.agentId === '1481')!
     const liuyinSrc = (src as any).liuyinMechanicSource
-    // 先确证门控真开了（否则下面的「零通用行」会因错误的原因通过）
-    expect(liuyinSrc.extraAbilityActive).toBe(true)
     expect(liuyinSrc.exHeavyCount).toBeGreaterThan(0)
 
     const rows = directRowsOf(calc, '1481')

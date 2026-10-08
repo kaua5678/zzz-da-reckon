@@ -126,7 +126,6 @@ interface LiuyinSourceInput {
   /** 接战时长（秒）= 整场战斗时长，不是琉音自己的前线时间（2026-09 用户口径） */
   combatTime: number
   cinemaLevel: number
-  extraAbilityActive: boolean
   previousTeammateSlot: number
 }
 
@@ -159,7 +158,6 @@ export function computeLiuyinSource(input: LiuyinSourceInput): LiuyinMechanicSou
     promoteWindows,
     ownUltimateCount,
     farewellCount,
-    extraAbilityActive: input.extraAbilityActive,
     previousTeammateSlot: input.previousTeammateSlot,
     cinemaLevel,
     note:
@@ -245,7 +243,7 @@ function buildLiuyinCharConfig({ slot, cinemaLevel, team, skills, cfg, getRowVal
  * 配套（同一轮）：折叠环收敛判据从 1e-6 放宽到量化残差容差——精确估时把 excess 压到 ~5e-4s
  * 量级，1e-6 判据 8 轮耗尽 → timeBudgetConverged=false 而 allAgentsSweep 硬断言恒 true。
  */
-// @fact agent:1481/强特计划估时 口径: 琉音必要时间 = 三强特（石头0.617/剪刀0.867/布1.383 × 轮转次数）+ 送客（转大次数+终结技次数 × farewellActionTime），由 estimateExSpecialTime 计账——通用公式只按单段计会漏 剪刀/布/送客 ≈15s，折叠积分器把漏差风卷成必要时间虚高（1591/1481 队 pass0 excess 15.1s 的来源）；强化A（猜拳把戏）从平A池 carve 不进必要时间 | 据 实测@2026-09-06 + sigrid 同款修复·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-09（r760 只换额外能力读口） | 验 src/mechanics/__tests__/liuyin.test.ts#强特计划估时 | 锚 src/mechanics/agents/liuyin.ts#liuyinExSpecialTime | 信 高
+// @fact agent:1481/强特计划估时 口径: 琉音必要时间 = 三强特（石头0.617/剪刀0.867/布1.383 × 轮转次数）+ 送客（转大次数+终结技次数 × farewellActionTime），由 estimateExSpecialTime 计账——通用公式只按单段计会漏 剪刀/布/送客 ≈15s，折叠积分器把漏差风卷成必要时间虚高（1591/1481 队 pass0 excess 15.1s 的来源）；强化A（猜拳把戏）从平A池 carve 不进必要时间 | 据 实测@2026-09-06 + sigrid 同款修复·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-09（r760 只换额外能力读口）·复核@2026-10-09（r761 删 extraAbilityActive 透传，口径不变） | 验 src/mechanics/__tests__/liuyin.test.ts#强特计划估时 | 锚 src/mechanics/agents/liuyin.ts#liuyinExSpecialTime | 信 高
 function liuyinExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   // 轴模式回落：轴模式经 chainCountTotalOverride 注入窗口加权的最终连携次数（engine 口径），
   // 轴内 60/90 转大次数由轴预设 promoteVariant 块决定、不随好评推导——通用公式 + 折叠残差是
@@ -265,7 +263,6 @@ function liuyinExSpecialTime({ cfg, exSpecialCount, ultimateCount }: AgentExSpec
     ultimateCount: Math.max(0, Math.floor(ultimateCount)),
     combatTime: cfg.battleTime,
     cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
-    extraAbilityActive: additionalAbilityActiveOf(cfg.panel),
     previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
   })
   const farewellTime = Math.max(0, Math.floor(source.farewellCount)) * (cfg.liuyinFarewellActionTime ?? 0)
@@ -278,7 +275,6 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
     ultimateCount: state.ultimateCount,
     combatTime: cfg.battleTime,
     cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
-    extraAbilityActive: additionalAbilityActiveOf(cfg.panel),
     previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
   })
 
@@ -360,7 +356,6 @@ function buildLiuyinResourceResult({ cfg, state }: AgentResourceResultInput): Pa
       ultimateCount: state.ultimateCount,
       combatTime: cfg.battleTime,
       cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
-      extraAbilityActive: additionalAbilityActiveOf(cfg.panel),
       previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
     }),
   }
@@ -495,7 +490,6 @@ export const liuyinMechanic: AgentMechanicModule = {
         ultimateCount: state.ultimateCount,
         combatTime: cfg.battleTime,
         cinemaLevel: cinemaLevelOf(cfg.liuyinCinemaLevel),
-        extraAbilityActive: additionalAbilityActiveOf(cfg.panel),
         previousTeammateSlot: cfg.liuyinPreviousTeammateSlot ?? 0,
       })
       // 目标槽的连携总数（60 转大吃掉的是**目标槽的连携窗口**）
@@ -532,7 +526,7 @@ export const liuyinMechanic: AgentMechanicModule = {
    * 逐字迁入，字段与出现顺序照抄（对象键顺序可能进 rowsnap 哈希）；原块注释随代码迁移。
    * 输入面由消费端注入（前一位队友面板与特性、失衡次数、转大次数、机制滑块、终极技轴内占比）。
    */
-  extraDirectRows: ({ charResult, slot, isAxis, teammateAt, stunCount, promoteCount, getMechanicSetting, ultimateInAxisFraction }) => {
+  extraDirectRows: ({ charResult, slot, panel, isAxis, teammateAt, stunCount, promoteCount, getMechanicSetting, ultimateInAxisFraction }) => {
     const liuyinSrc = charResult.liuyinMechanicSource
     const rows: DirectRowInput[] = []
 
@@ -542,7 +536,8 @@ export const liuyinMechanic: AgentMechanicModule = {
     // 2026-09-17 round 21 夜 A：`liuyinSrc` 的声明**上提到槽位循环头**（`damagePool.ts` 的
     // `for (const charResult of …)` 之后）——本块与「跳过通用强特行」那处共用同一个判据，
     // 两处各读一次会掩盖「它们必须同源」这条不变量（见上提处的 ①②③ 论证）。
-    if (liuyinSrc && liuyinSrc.extraAbilityActive && liuyinSrc.exHeavyCount > 0) {
+    // r761：额外能力门控直接读本槽面板标记（入参 panel = 同一次计算的局内面板），不再经 liuyinSrc 透传。
+    if (liuyinSrc && additionalAbilityActiveOf(panel) && liuyinSrc.exHeavyCount > 0) {
       const prevSlot = liuyinSrc.previousTeammateSlot
       const { panel: prevPanel, agent: prevAgent } = teammateAt(prevSlot)
       const isRupture = prevAgent?.specialty === 'rupture'
@@ -701,8 +696,6 @@ export interface LiuyinMechanicSource {
   ownUltimateCount: number
   /** 抱拳次数（送客长按 1481009 执行次数）= 转大次数 + 终结技次数（等效规则） */
   farewellCount: number
-  /** 额外能力是否触发（队伍有强攻或命破队友） */
-  extraAbilityActive: boolean
   /** 专属直伤读取的上一位队友槽位（已按设置解析） */
   previousTeammateSlot: number
   /** 命座等级 */
