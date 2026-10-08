@@ -327,7 +327,7 @@ describe('叶瞬光 buildExecutions', () => {
   })
 
   it('手动指定轴时自动退化完全不介入', () => {
-    for (const manual of [0, 1, 2, 'full', 'short_mie']) {
+    for (const manual of [0, 1, 2]) {
       const cfg = autoCfg({ 'setting:yeshuguang.formAxis': manual, timePressureSeconds: 999 })
       yeshuguangMechanic.estimateExSpecialTime!({ cfg, exSpecialCount: 8, ultimateCount: 1 } as any)!
       expect(cfg.yeshuguangAutoAxis, `手动=${manual}`).toBe('full') // 未被自动改写

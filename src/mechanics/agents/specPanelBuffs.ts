@@ -14,7 +14,7 @@ import { basicSummarySeconds, type SpecResourceResult } from '@/types/resource'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
-import { cfgMechanicSetting, cfgMechanicSettingRaw, mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
+import { cfgMechanicSetting, mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -26,6 +26,7 @@ import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 // 唯一注册的产物佩洛伊斯早已覆写全部钩子并删掉 transform。面板加成一律走 `applyPanel`——
 // transform 的输入面板是 `DeepReadonly`（契约见 `types.ts#AgentSkillTransformInput`）。
 const peiluoSettingOf = mechanicSettingPanelReader(() => peiluoProminenceMechanic.settings)
+const jufufuSetting = mechanicSettingReader(() => jufufuTigerRoarMechanic.settings)
 export const peiluoProminenceMechanic: AgentMechanicModule = {
   id: 'agent:peiluo_prominence',
   agentIds: ['1551'],
@@ -617,7 +618,7 @@ function jufufuCycleOf(
     frontlineTime: state.frontlineTime,
     effectiveTotalTime: effectiveBattleTime(cfg),
     frontActionCount: countFrontActions(executions, cfg.assistFollowUpMoveId),
-    frontSwitchRatio: Number(cfgMechanicSettingRaw(cfg, 'jufufu.frontSwitchRatio') ?? 0.7),
+    frontSwitchRatio: jufufuSetting(cfg, 'jufufu.frontSwitchRatio'),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     parryCount: cfg.parryCount,

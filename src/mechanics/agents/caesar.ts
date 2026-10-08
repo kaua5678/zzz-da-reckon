@@ -22,10 +22,11 @@ import type {
   AgentPanelInput,
   AgentResourceInput,
 } from '../types'
-import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const setting = mechanicSettingReader(() => caesarMechanic.settings)
 export const CAESAR_ID = '1071'
 
 /** 强化特殊技：超强力盾击 */
@@ -62,13 +63,13 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   if (cinema < 4) return
   // 影画4 阿瑞斯攻城锤：连携/终结各 +3 支援点数；能量<20 时消耗1点支援点代替发动超强力盾击（5s ICD）。
   // 能量不足才触发（条件向），总量模型无法判「能量是否吃紧」→ 用可调次数滑杆表达实际代替次数，
-  // 上限 = min(支援点数, floor(战斗时长/5))，默认 0（凯撒为支援，默认不假定能量饥饿）。
+  // 上限 = min(支援点数, floor(战斗时长/5))；次数默认值见 settings 声明。
   const chainTotal = Math.max(0, Math.floor(state.chainCountTotal))
   const ultCount = Math.max(0, Math.floor(state.ultimateCount))
   const supportPoints = CAESAR_C4_SUPPORT_POINTS_PER_CHAIN_ULT * (chainTotal + ultCount)
   const icdCap = Math.max(0, Math.floor(cfg.battleTime / CAESAR_C4_SUBSTITUTE_ICD_SECONDS))
   const maxExtra = Math.min(supportPoints, icdCap)
-  const slider = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'caesar.c4SubstitutionCount') ?? 0)))
+  const slider = Math.max(0, Math.floor(setting(cfg, 'caesar.c4SubstitutionCount')))
   const extraEx = Math.min(maxExtra, slider)
   if (extraEx <= 0) return
   executions.push(moduleExecRow({

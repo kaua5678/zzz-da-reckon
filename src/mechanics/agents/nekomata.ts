@@ -11,11 +11,12 @@ import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions, specToMechanicModule } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { effectiveBattleTime } from '@/core/effectiveTime'
-import { cfgMechanicSettingRaw, mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => nekomataMechanic.settings)
 const settingOf = mechanicSettingPanelReader(() => nekomataMechanic.settings)
 /**
  * 猫又（1021）战斗逻辑（用户口供 2026-08-23 两批）：
@@ -135,8 +136,8 @@ function planWithMap(
   const budget = (purr?.total ?? 0) + Math.max(0, Number(cfg.nekomataHitPurrGain ?? 0))
   const axisMode = Number(cfg.axisInSeconds ?? 0) > 0
   const axisPicks = Number(cfg.axisActionCounts?.[PIERCE_MOVE_ID] ?? 0)
-  const rawSetting = Number(cfgMechanicSettingRaw(cfg, 'nekomata.stunCastShare') ?? -1)
-  const share = Number.isFinite(rawSetting) && rawSetting >= 0 ? rawSetting : Math.max(0, Math.min(1, Number(cfg.teamStunCoverage ?? 0)))
+  const rawSetting = setting(cfg, 'nekomata.stunCastShare')
+  const share = rawSetting >= 0 ? rawSetting : Math.max(0, Math.min(1, Number(cfg.teamStunCoverage ?? 0)))
   const plan = planNekomataPierceCasts(budget, axisMode && axisPicks > 0 ? { axisHoldPicks: axisPicks } : { holdBudgetShare: share })
   // 回写 spendCounts/spendCosts 供资源卡展示（与 spec spendRule id 对齐）
   if (purr) {

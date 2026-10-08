@@ -15,13 +15,14 @@ import { getSkillLevelCoef } from '@/core/skillLevel'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { fmt } from '@/utils/format'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
-import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => yidhariMechanic.settings)
 const YIDHARI_AGENT_ID = '1051'
 
 // 蓄力循环：蓄力1s（烧血）→ 霜寒拥覆#3（下砸）→ 碎惘沉击#4（平A，满蓄+30%）
@@ -104,10 +105,10 @@ function buildYidhariCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInp
   const props = yidhariProps()
   const cinema4Enabled = cinemaLevel >= 4
   const decibelPerHpPct = props.decibelPerHpPct * (cinema4Enabled ? 1 + props.cinema4DecibelBonusPct / 100 : 1)
-  const missingHpPct = Math.max(0, Math.min(1, Number(cfgMechanicSettingRaw(cfg, 'yidhari.exHealMissingHpPct') ?? 75) / 100))
-  const hpBurnPctPerSecond = Math.max(0, Math.min(100, Number(cfgMechanicSettingRaw(cfg, 'yidhari.hpBurnPctPerSecond') ?? 0.15)))
-  const exPerStun = Math.max(1, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'yidhari.exPerStun') ?? (cinemaLevel >= 1 ? 3 : 2))))
-  const tentacleInterval = Math.max(1, Number(cfgMechanicSettingRaw(cfg, 'yidhari.tentacleInterval') ?? 13.5))
+  const missingHpPct = Math.max(0, Math.min(1, setting(cfg, 'yidhari.exHealMissingHpPct') / 100))
+  const hpBurnPctPerSecond = Math.max(0, Math.min(100, setting(cfg, 'yidhari.hpBurnPctPerSecond')))
+  const exPerStun = Math.max(1, Math.floor(setting(cfg, 'yidhari.exPerStun')))
+  const tentacleInterval = Math.max(1, setting(cfg, 'yidhari.tentacleInterval'))
 
   cfg.yidhariCinema4Enabled = cinema4Enabled
   cfg.yidhariDecibelPerHpPct = decibelPerHpPct
@@ -528,7 +529,7 @@ export const yidhariMechanic: AgentMechanicModule = {
   }, {
     id: 'yidhari.exPerStun',
     label: '每次失衡极寒重碾次数',
-    description: '追碾（失衡内）极寒重碾次数：0命默认2次，1命可连续释放默认3次。',
+    description: '追碾（失衡内）极寒重碾次数，默认 2 次；1命可连续释放，请按实际调到 3 次。',
     default: 2,
     min: 1,
     max: 6,

@@ -7,11 +7,13 @@
  * CC-363（r393）：原锁只认模板字面量 `` `setting:${` ``，带引号的硬编码键 `'setting:<id>'` 漏网——
  * 11 个模块 24 处绕过 helper 直接 `(cfg as any)['setting:…']` / `record['setting:…']`。已全部改走
  * `cfgMechanicSettingRaw(cfg, id)`（原始值，外层 `Number(… ?? d)` 原样保留 ⇒ 零差），并把引号字面量也锁上。
+ *
+ * CC-532（r749）：那 24 处读法并入模块 reader（默认值只在 settings 声明），`cfgMechanicSettingRaw` 删除。
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { cfgMechanicSetting, cfgMechanicSettingRaw, mechanicSettingCfgKey, mechanicSettingPanelReader, mechanicSettingReader } from '../mechanicSettingCfg'
+import { cfgMechanicSetting, mechanicSettingCfgKey, mechanicSettingPanelReader, mechanicSettingReader } from '../mechanicSettingCfg'
 
 const SRC = resolve(__dirname, '../..')
 const OWNER = 'utils/mechanicSettingCfg.ts'
@@ -56,14 +58,6 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
     expect(cfgMechanicSetting(undefined, 'x.y', 5)).toBe(5)
   })
 
-  it('cfgMechanicSettingRaw 返回原始值、不转换（字符串轴值兼容）', () => {
-    const key = mechanicSettingCfgKey('x.y')
-    expect(cfgMechanicSettingRaw({ [key]: 0.3 }, 'x.y')).toBe(0.3)
-    expect(cfgMechanicSettingRaw({ [key]: 'full' }, 'x.y')).toBe('full')
-    expect(cfgMechanicSettingRaw({}, 'x.y')).toBeUndefined()
-    expect(cfgMechanicSettingRaw(undefined, 'x.y')).toBeUndefined()
-  })
-
   it('CC-508 reader：未给 fallback 时取模块 settings 声明的 default；显式 fallback 覆盖；未声明且无 fallback 抛错', () => {
     const key = mechanicSettingCfgKey('x.y')
     const read = mechanicSettingReader(() => [{ id: 'x.y', default: 7 }])
@@ -91,17 +85,17 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
 
   it('CC-508/510 源码锁：mechanics/agents 内不再手抄「带点 id + 字面量/常量 fallback」的机制设置读法（调用形与裸索引形；默认值只在 settings 声明）', () => {
     const AGENTS = resolve(SRC, 'mechanics/agents')
-    // 调用形（CC-508/508b）：reader(x, 'a.b', <数字>)；裸索引形（CC-510）：settings['a.b'] ?? <数字|常量>
-    const re = /\b(?:setting|cfgNum|cfgSetting|readSetting|cfgMechanicSetting|settingOf|mechanicSettingOf)\(\s*\w+,\s*'\w+\.\w+',\s*-?[0-9.]+\s*\)|\b(?:settings|settingsMap|values)\??\.?\['\w+\.\w+'\]\s*\?\?\s*(?:-?[0-9.]+|[A-Z_][A-Z0-9_]*)\b/
+    // 调用形（CC-508/508b）：reader(x, 'a.b', <数字|常量>)；裸索引形（CC-510）：settings['a.b'] ?? <数字|常量>。
+    // CC-532（r749）：整文件匹配（\s 可跨行——派派曾把裸索引形折成两行漏网）；reader 名带前缀（jufufuSetting / peiluoSettingOf）也算。
+    const FB = String.raw`(?:-?[0-9.]+|[A-Z_][A-Z0-9_]*)\b`
+    const re = new RegExp(String.raw`\b(?:\w*[sS]etting(?:Of)?|cfgNum)\(\s*\w+,\s*'\w+\.\w+',\s*${FB}\s*\)|\b(?:settings|settingsMap|values)\??\.?\['\w+\.\w+'\]\s*\?\?\s*${FB}`, 'g')
     const hits: string[] = []
     for (const p of walk(AGENTS)) {
       if (!p.endsWith('.ts') || p.includes('__tests__')) continue
       const rel = relative(SRC, p).split('\\').join('/')
-      readFileSync(p, 'utf-8').split('\n').forEach((line, i) => {
-        const code = line.replace(/\/\/.*$/, '').replace(/\/\*.*?\*\//g, '')
-        if (/^\s*(\*|\/\*)/.test(code)) return
-        if (re.test(code)) hits.push(`${rel}:${i + 1}: ${line.trim()}`)
-      })
+      // 注释换成等长空白（保留换行 ⇒ 行号不变）再整文件匹配
+      const code = readFileSync(p, 'utf-8').replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, m => m.replace(/[^\n]/g, ' '))
+      for (const m of code.matchAll(re)) hits.push(`${rel}:${code.slice(0, m.index).split('\n').length}: ${m[0].replace(/\s+/g, ' ')}`)
     }
     expect(hits).toEqual([])
   })

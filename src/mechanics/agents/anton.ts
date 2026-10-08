@@ -8,10 +8,11 @@ import { clampRatio, finiteOr0 } from '@/utils/finiteClamp'
 import type { AgentEventInput, AgentMechanicModule, AgentResourceInput } from '../types'
 import type { AnomalyEventExecution } from '../../types/resource'
 import { execMatchesMove } from '../../types/resource'
-import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => antonMechanic.settings)
 export const ANTON_ID = '1111'
 
 // catalog.json 的实际执行行：full 原始 1111001/2/3/4/5 等不可直接用于消费者匹配。
@@ -84,9 +85,8 @@ function patchExecutions({ cfg, executions }: AgentResourceInput): void {
 /** 额外能力·通力合作：爆发状态内暴击次数 → 感电追加 release 事件（固定 45% 感电倍率）。
  * 暴击次数未知（引擎无逐 hit 暴击计数）→ 用爆发状态执行行的命中次数近似：电钻/打桩行都在爆发状态内。 */
 function buildAntonAnomalyEvents({ cfg, events }: AgentEventInput): void {
-  // CC-192：原 `cfgSetting(...) || 1` 把滑块 0% 读成 100%；缺键（单测直构 cfg）才回落声明 default 1
-  const rawRatio = cfgMechanicSettingRaw(cfg, 'anton.additionalShockRatio')
-  const ratio = clampRatio(typeof rawRatio === 'number' ? rawRatio : 1)
+  // CC-192：原 `cfgSetting(...) || 1` 把滑块 0% 读成 100%；缺键（单测直构 cfg）才回落 settings 声明的 default
+  const ratio = clampRatio(setting(cfg, 'anton.additionalShockRatio'))
   if (ratio <= 0) return
   const additionalActive = additionalAbilityActiveOf(cfg.panel)
   if (!additionalActive) return

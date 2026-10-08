@@ -9,13 +9,14 @@ import type {
 } from '../types'
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds } from '@/types/resource'
-import { cfgMechanicSettingRaw, mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
+const setting = mechanicSettingReader(() => qianxiaMechanic.settings)
 const settingOf = mechanicSettingPanelReader(() => qianxiaMechanic.settings)
 /**
  * 千夏（1491，物理·支援，妄想天使）—— 妄想天使支援拐 + 猫的凝视。
@@ -151,7 +152,7 @@ function buildQianxiaCharConfig({ cfg, cinemaLevel, team, panel, skills }: Agent
   cfg.qianxiaAttackAgents = attackAgents
   cfg.qianxiaAnomalyAgents = anomalyAgents
   // 触发者命中数近似：滑块 0 = 按标记供给同量级（postRound 后标记供给写入）
-  const manualHits = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'qianxia.gazeTriggerHits') ?? 0) || 0))
+  const manualHits = Math.max(0, Math.floor(setting(cfg, 'qianxia.gazeTriggerHits')))
   cfg.qianxiaTriggerHits = manualHits
   if (additionalAbilityActiveOf(panel)) {
     cfg.initialEnergyGift = cfg.initialEnergyGift + QIANXIA_FIELD_ENTRY_ENERGY

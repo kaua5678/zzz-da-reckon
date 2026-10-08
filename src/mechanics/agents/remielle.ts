@@ -28,7 +28,6 @@ import { panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { channelMetricsOf, type ChannelMoveInfo, type MoveTableLike } from '@/core/resource/moveLookup'
 import { specAdditionalAbilityActive } from '@/mechanics/additionalAbilityGates'
-import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
@@ -660,13 +659,12 @@ export function remielleRadiantTurnRows({ cfg, state, executions }: AgentBacksta
   const rows: SkillExecution[] = []
   // 蕾米后台飞行状态：每5秒自动释放一次 Radiant Turn；合轴100%，不占前台时间。
   // 后台时间含无敌秒（先扣）；CD 被蕾米本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
-  // 前台块长 = 前台时间 / 切上次数（切上前台频率 × 非平A前台动作次数；蕾米暂无滑块声明，频率缺省 1，
-  // 可经 cfg['setting:remielle.frontSwitchRatio'] 覆盖）。
+  // 前台块长 = 前台时间 / 切上次数（切上前台频率 × 非平A前台动作次数；蕾米没有切上频率滑块，频率固定 1）。
   if (cfg.remielleEnabled && cfg.remielleRadiantTurnMoveId) {
     const block = frontBlockSeconds(
       state.frontlineTime,
       countFrontActions(executions, cfg.assistFollowUpMoveId),
-      Number(cfgMechanicSettingRaw(cfg, 'remielle.frontSwitchRatio') ?? 1),
+      1,
       5,
     )
     const radiantInterval = phaseDelayedCooldown(5, state.frontlineTime, effectiveBattleTime(cfg), block)

@@ -29,12 +29,13 @@ import type {
   AgentMechanicModule,
   AgentResourceInput,
 } from '../types'
-import { cfgMechanicSettingRaw } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { ultNeighborPerTargetAmounts } from '@/mechanics/ultNeighborEnergy'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
+const setting = mechanicSettingReader(() => soukakuMechanic.settings)
 export const SOUKAKU_ID = '1131'
 
 /** 霜染刃旗强化普攻 #1–#3 + 强化冲刺 */
@@ -73,11 +74,11 @@ export const SOUKAKU_FROST_BASIC3_COMBO_ALIGN = 1
 /** enrich 回填占位：非 0 → 倍率表值优先回填；0 = 显式禁用回填（引擎口径，见 enrichExecutionPlan） */
 const RECOVERY_BACKFILL_PLACEHOLDER = 1
 
-// @fact agent:1131/强特 口径: 强特循环 = 每击扇风(扇子 1131011 525.3%/1.16s + 风团 1131010 204.4%×体型段数 小0/中3/大6, 0.271s摊段, 30能量/击 → cfg.exSpecialEnergyConsume=30×击数, 击数滑块 soukaku.exPressCount 1-2 默认2) + 下砸×1(劈斩关=集合啦#1 1131012 500.9%/1.25s, 开=快速展旗·集合啦#2 1131013 280.9%/0.7s, 滑块 soukaku.chopSlam；集合啦#3 被玩家冲刺打断不录) + 冲刺攻击·霜染(1131016 0.4s)×1 + 打年糕·霜染#3(1131006 2.632s 全合轴 comboAlignRatio=1)×1；强特次数=floor(总能量/30×击数)，打年糕#3次数=展旗(下砸)次数=强特次数，霜染段回能喂回强特=自我能量循环；扇/团段喧响不另计(同艾莲衍生段口径) | 据 用户@2026-09-05·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/soukaku.test.ts | 锚 src/mechanics/agents/soukaku.ts#buildSoukakuExecutions | 信 确认
+// @fact agent:1131/强特 口径: 强特循环 = 每击扇风(扇子 1131011 525.3%/1.16s + 风团 1131010 204.4%×体型段数 小0/中3/大6, 0.271s摊段, 30能量/击 → cfg.exSpecialEnergyConsume=30×击数, 击数滑块 soukaku.exPressCount 1-2 默认2) + 下砸×1(劈斩关=集合啦#1 1131012 500.9%/1.25s, 开=快速展旗·集合啦#2 1131013 280.9%/0.7s, 滑块 soukaku.chopSlam；集合啦#3 被玩家冲刺打断不录) + 冲刺攻击·霜染(1131016 0.4s)×1 + 打年糕·霜染#3(1131006 2.632s 全合轴 comboAlignRatio=1)×1；强特次数=floor(总能量/30×击数)，打年糕#3次数=展旗(下砸)次数=强特次数，霜染段回能喂回强特=自我能量循环；扇/团段喧响不另计(同艾莲衍生段口径) | 据 用户@2026-09-05·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/mechanics/__tests__/soukaku.test.ts | 锚 src/mechanics/agents/soukaku.ts#buildSoukakuExecutions | 信 确认
 
 
 function clampSwings(cfg: unknown): number {
-  const raw = Math.floor(Number(cfgMechanicSettingRaw(cfg, 'soukaku.exPressCount') ?? SOUKAKU_SWINGS_DEFAULT))
+  const raw = Math.floor(setting(cfg, 'soukaku.exPressCount'))
   return Math.min(SOUKAKU_SWINGS_MAX, Math.max(SOUKAKU_SWINGS_MIN, raw))
 }
 
@@ -88,12 +89,12 @@ function clampSwings(cfg: unknown): number {
  * 改产行时同步本函数；`soukakuExTimeCc200.test.ts` 用真队伍断言两边相等。
  */
 export function soukakuPerExExtraTime(cfg: unknown): { necessaryTime: number; comboAlignTime: number } {
-  // 公开签名收 unknown（soukakuExTimeCc200.test 直传带 `setting:` 动态键的字面量；设置走 cfgMechanicSettingRaw 通用通道）。
+  // 公开签名收 unknown（soukakuExTimeCc200.test 直传带 `setting:` 动态键的字面量；设置走模块 reader，读口本就收 unknown）。
   // r405：静态键按 Partial<CharacterOperationConfig> 读——键有类型（拼错会报错），不再经 Record。
   const typed = cfg as Partial<AgentResourceInput['cfg']>
   const swings = clampSwings(cfg)
   const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[String(typed.bodySize ?? 'large')] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
-  const chop = Math.round(Number(cfgMechanicSettingRaw(cfg, 'soukaku.chopSlam') ?? 0)) >= 1
+  const chop = Math.round(setting(cfg, 'soukaku.chopSlam')) >= 1
   // 六段 actionTime 读 cfg.moveActionTimes（catalog，CC-409；原常量与表值逐个相等）
   const fanAt = cfgMoveActionTime(typed, SOUKAKU_FAN_MOVE_ID)
   const ballAt = cfgMoveActionTime(typed, SOUKAKU_WIND_BALL_MOVE_ID)
@@ -116,7 +117,7 @@ function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   // 影画2 满层转回能：涡流满层后再获得涡流 → 回复 1.2 能量。逐帧概率/涡流状态机未建模，
   // 按可调触发次数注入能量池（默认 5 次，用户按实际对局调整）。
   if (cinemaLevelOf(cinemaLevel) >= 2) {
-    const count = Math.max(0, Math.floor(Number(cfgMechanicSettingRaw(cfg, 'soukaku.c2RefundCount') ?? 5)))
+    const count = Math.max(0, Math.floor(setting(cfg, 'soukaku.c2RefundCount')))
     cfg.initialEnergyGift = cfg.initialEnergyGift + SOUKAKU_C2_ENERGY_PER_TRIGGER * count
   }
 }
@@ -127,7 +128,7 @@ function buildSoukakuExecutions({ cfg, state, executions }: AgentResourceInput):
   const swings = clampSwings(cfg)
   const bodySize = String(cfg.bodySize)
   const hits = SOUKAKU_WIND_HITS_BY_BODY_SIZE[bodySize] ?? SOUKAKU_WIND_HITS_BY_BODY_SIZE.large
-  const chop = Math.round(Number(cfgMechanicSettingRaw(cfg, 'soukaku.chopSlam') ?? 0)) >= 1
+  const chop = Math.round(setting(cfg, 'soukaku.chopSlam')) >= 1
   // 六段 actionTime 读 cfg.moveActionTimes（catalog，CC-409）
   const fanAt = cfgMoveActionTime(cfg, SOUKAKU_FAN_MOVE_ID)
   const ballAt = cfgMoveActionTime(cfg, SOUKAKU_WIND_BALL_MOVE_ID)

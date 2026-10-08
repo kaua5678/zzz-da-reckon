@@ -37,7 +37,7 @@ import type {
 } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting, SkillExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { cfgMechanicSettingRaw, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
@@ -125,17 +125,18 @@ const C6_MINGDENG_ENTRY = 2
 const C6_MINGDENG_CAP_NOTE = 4
 
 /** 自动选轴的超支阈值（秒）：timeBudgetExcess 超过此值才退化，避免量化残差（~1s）误触降轴 */
-// @fact agent:1431/自动选轴 口径: 明心境轴**滑块默认打满(0)**——R2C 用户裁决 2026-09-25：能打完的队不该退化（短轴亏灭极段伤害），故默认不自动退化。auto(-1) 的退化判据 = **本槽物化行 − 战斗窗口**（`timePressureSeconds`，**不减队友占用**，同裁决修复：旧口径减队友致满命队误退化 −11%）；仅当用户显式设 -1 且该压力 >5s 时逐级退化 full→short_pair→short_mie，换轴时清零旧轴折叠残差；仍超预算由外层 interactionScale 缩交互兜底 | 据 用户@2026-09-05·复核@2026-09-08·R2C裁决@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#cfgAxis | 信 确认
+// @fact agent:1431/自动选轴 口径: 明心境轴**滑块默认打满(0)**——R2C 用户裁决 2026-09-25：能打完的队不该退化（短轴亏灭极段伤害），故默认不自动退化。auto(-1) 的退化判据 = **本槽物化行 − 战斗窗口**（`timePressureSeconds`，**不减队友占用**，同裁决修复：旧口径减队友致满命队误退化 −11%）；仅当用户显式设 -1 且该压力 >5s 时逐级退化 full→short_pair→short_mie，换轴时清零旧轴折叠残差；仍超预算由外层 interactionScale 缩交互兜底 | 据 用户@2026-09-05·复核@2026-09-08·R2C裁决@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#cfgAxis | 信 确认
 const AUTO_AXIS_DEGRADE_THRESHOLD = 5
 
+/** 明心境轴滑块（声明见 yeshuguangSettings）：0 打满 / 1 灭极短轴 / 2 仅灭短轴；其余（-1）= 自动 */
+function axisSettingOf(cfg: CharacterOperationConfig): YeshuguangFormAxis | 'auto' {
+  const n = cfgNum(cfg, 'yeshuguang.formAxis')
+  return n === 0 ? 'full' : n === 1 ? 'short_pair' : n === 2 ? 'short_mie' : 'auto'
+}
+
 function cfgAxis(cfg: CharacterOperationConfig): YeshuguangFormAxis {
-  const raw = String(cfgMechanicSettingRaw(cfg, 'yeshuguang.formAxis') ?? 'auto')
-  if (raw === 'short_pair' || raw === 'short_mie' || raw === 'full') return raw
-  // 兼容数值滑块：0 full / 1 short_pair / 2 short_mie / -1 auto
-  const n = Number(raw)
-  if (n === 1) return 'short_pair'
-  if (n === 2) return 'short_mie'
-  if (n === 0) return 'full'
+  const axis = axisSettingOf(cfg)
+  if (axis !== 'auto') return axis
   // auto：时间不够时按超支信号逐级退化（estimateExSpecialTime 写 yeshuguangAutoAxis）
   const auto = cfg.yeshuguangAutoAxis
   if (auto === 'short_pair' || auto === 'short_mie') return auto
@@ -512,10 +513,7 @@ function estimateExSpecialTime({ cfg, exSpecialCount, ultimateCount, state }: Ag
   // 巨大值）→ 「其实装得下」的队被误判超支、一路退化到仅灭；② 减了队友账本净占用的相对压力
   // （2026-09-25 前）→ 队友吃掉前台就把满命队顶过阈值、白丢灭极段伤害 −11%。现读「自己行绝对
   // 超窗口」的诚实信号（用户裁决 2026-09-25：只有绝对打不完才退化，能打完不退）。
-  const rawAxis = String(cfgMechanicSettingRaw(cfg, 'yeshuguang.formAxis') ?? 'auto')
-  const isAuto = rawAxis !== 'full' && rawAxis !== 'short_pair' && rawAxis !== 'short_mie'
-    && Number(rawAxis) !== 0 && Number(rawAxis) !== 1 && Number(rawAxis) !== 2
-  if (isAuto) {
+  if (axisSettingOf(cfg) === 'auto') {
     const excess = Number(cfg.timePressureSeconds ?? 0)
     if (excess > AUTO_AXIS_DEGRADE_THRESHOLD) {
       const cur = cfg.yeshuguangAutoAxis ?? 'full'

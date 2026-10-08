@@ -66,7 +66,8 @@ export interface AgentPanelInput {
    * 已解析的机制滑块值（setting id → 当前值，含默认值兜底）。
    *
    * 覆盖率类滑块（怒相增益/双邦布在外/静心…）本就该在面板阶段生效，直接读本字段即可：
-   * `input.settings['banyue.rageGainCoverage'] ?? 1`。
+   * `settingOf(input.settings, 'banyue.rageGainCoverage')`，其中 `settingOf = mechanicSettingPanelReader(() => 模块.settings)`
+   * （默认值只在 settings 声明，CC-508b；`settings['id'] ?? 数字` 的写法有源码锁）。
    * 历史坑：applyPanel 早于 cfg 构建、拿不到 configStore，于是出现两种绕法——
    * ① 在 computePanelPhases 里写按 agentId 分支的硬编码块；② 把滑块值经 panel 字段走私。
    * 走私路径曾静默失效（般岳读 `panel.banyueRageCoverage`，而该字段从未被写入 → 滑块无效），
