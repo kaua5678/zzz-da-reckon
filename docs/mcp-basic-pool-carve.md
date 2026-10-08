@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。
 
 ## 1. 问题
 
@@ -1302,7 +1302,7 @@ zd 两套快照都是 0/0，理由：
   - 漏挂口径字段由逐值对照测试拦（见 19.5）。
 - 回退：`git revert c32e9c09`（单提交，无数据迁移）。
 
-### 19.8 下一轮候选（未做）
+### 19.8 下一轮候选（r755 做了第 1 条，见 §20）
 
 1. `core/impactVars.ts` 的静态变量。现状：
    - `IMPACT_VARIABLES` 表之外，`readImpactVar` / `writeImpactVar` 是两张按同一组 id 写的平行 switch；未知 id 读取走 `default: return 0`，写入什么都不做；
@@ -1316,3 +1316,93 @@ zd 两套快照都是 0/0，理由：
    - `composables/agentMechanicView.ts:24`：teamMechanicSettings；
    - `composables/resourceCalc/helpers.ts:490`：buildCharConfig 遍历模块 settings；
    - 模块里读 `<module>.settings` 的 reader。
+
+## 20. 影响变量表项自带读写（r755，CC-538）
+
+> 代码提交 `6bcd6cc3`（纯重构，zd 0/0，生产读写逐值不变）（arena-G r755）；arch CC-538；r6 §8 第 755 行。题目来自 §19.8 第 1 条。
+
+### 20.1 普查
+
+- 起点：§19.8 第 1 条，`core/impactVars.ts` 的静态变量。
+- 每个静态变量的 id 要在四处手工对齐：
+  - `IMPACT_VARIABLES`（展示字段：标签、区间、后缀）；
+  - `readImpactVar` 的 switch 和 `writeImpactVar` 的 switch；
+  - 抗性另有 `RESISTANCE_VAR_ELEMENTS`（id → 元素）。
+  - 拼错不报：读取落到 `default: return 0`，写入什么都不做（switch 没有 default）。
+- 抗性读取的 `?? 20` 能不能走到。`enemy.damageResistances` 只有四个来源（全量 grep `damageResistances`）：
+  - store 初值 `defaultResistanceTable(0)`，六键；
+  - `applyBossPreset` 整表复制预设阶段：`public/static/boss-presets.json` 的 159 个阶段全部六键齐全；
+  - `setResistance` 改单键；影响变量写入是展开旧表再改一键；
+  - store 不持久化 enemy，生产代码没有 `$patch`。⇒ 生产里缺不了键。
+  - 真缺键时三处口径不一：引擎 `anomalyPool/helpers.ts:786` / `:822` 按 0，属性页 `AttributeConfigPage.vue:371` 按 0，只有影响图按 20。
+- `slot1TimeWeight` 的 `?? 1`：store 队伍初值 3 格（`defaultCharacter`），config.ts 里没有整队替换或删格；唯一的整队赋值是采样场景 `config.team = cloneConfigState(opts.team)`，同样 3 格；`CharacterConfig.basicAttackTimeWeight` 必填。
+- 调用方（全量 grep）：
+  - core 的 `readImpactVar` / `writeImpactVar` 只被 `composables/impactVariables.ts` 和两个 core 测试调用；
+  - 编排层的 `readImpactVariable` 被 `ImpactChart.vue#readVar` 调用（readVar 同时作为 prop 传给 `ResponseSurface3D.vue`），`writeImpactVariable` 被 `impactSampling.ts` 三处调用；另有两个测试文件。
+- 运行时探针（HEAD，只记录，已还原）：
+  - core 读写入口、抗性读取、2 号位读取、未知 id 各记去重行。影响变量相关的 8 个测试文件（41 例全过）共 45 行。
+  - 缺省只被两个测试桩走到：cc337SingleSource.test 的半张抗性表（wind → 20），impactVars.test 用 `undefined as any` 造的空 2 号位（→ 1）。
+  - 未知 id 0 次；走真实 store 的 impactVariables / impactSampling 测试一次都没走到缺省。
+
+### 20.2 问题
+
+- 「变量是什么」和「怎么读写」分在四处，靠 id 字符串对齐，漏一处不报错。
+- 两层分派：编排层 `readImpactVariable` / `writeImpactVariable` 先看 CC-537 的 `setting` / `releaseShare` 字段，都没有再交给 core 按 id switch。两层的根源相同：变量对象不带读写。
+- 两个走不到的默认值，其中 `?? 20` 还和引擎口径（0）矛盾；它们被两个测试锁着（cc337 锁 20，impactVars.test 锁 1）。
+
+### 20.3 改法
+
+- `core/impactVars.ts`：
+  - `ImpactVariable<C = ImpactVarConfig>` 加 `read(config)` / `write(config, value)`，都用展示单位；
+  - 五个 enemy 标量和 `slot1TimeWeight` 逐项写读写；六种抗性由 `resistanceVar(element, name)` 生成，id、标签、区间、读写只写一处；
+  - 删 `readImpactVar`、`writeImpactVar`、`RESISTANCE_VAR_ELEMENTS`、`?? 20`、`?? 1`；
+  - `ImpactVarConfig.team` 改必填、每格权重必填。与 r724 处理 enemy 字段同一原则：默认值只在 store，桩要给全。
+- `composables/impactVariables.ts`：
+  - `TeamImpactVariable = ImpactVariable<ConfigModel>`；
+  - 机制设置变量的闭包捕获声明：读 `getMechanicSetting(id, default)`，`%` ×100；写 `%` ÷100；
+  - 异放占比变量的闭包捕获设置键和建表时的覆盖率：有存值读存值 ×100，未存读覆盖率 ×100；写 ÷100；
+  - 删 `readImpactVariable` / `writeImpactVariable`、CC-537 的 `setting` / `releaseShare` 字段和 `ConfigStore` 别名。
+- 调用方：`impactSampling.ts` 三处改 `v.write(config, x)`；`ImpactChart.vue#readVar` 改 `v.read(configStore)`；`ResponseSurface3D` 的 `readVar` prop 不变。
+- 闭包捕获覆盖率为什么等价：ImpactChart 的 `allVars` 是 `computed(() => buildImpactVariables(…, coverageRate.value))`，覆盖率一变变量表就重建，原先读取时传的也是同一个 `coverageRate.value`；采样侧 `impactVariableView` 每个场景现建。
+- 类型：`C` 只出现在参数位置。静态表项（收 `ImpactVarConfig`）可以放进 `ImpactVariable<ConfigModel>[]`：能收更宽配置面的函数，拿更窄的来调也成立。
+- 测试：
+  - cc337：抗性桩给全六键（store 不会缺键），删「wind 读 20」，改为写入后整表断言（只动 wind）；
+  - impactVars.test：删「槽位为空时回退默认 1」（`undefined as any` 造的不可能输入），其余改 `slot1.read / write`；
+  - impactVariables.test：改调方法；对照基准的静态分支照原组件交给 core，现在就是表项自身（r754 起本来就是同一函数自比）；`inlineAllVars` 的变量类型改 `Omit<ImpactVariable, 'read' | 'write'>`；
+  - impactSampling.test：改调方法，① 删掉用不到的 coverage。
+
+### 20.4 行为
+
+- 生产读写逐值不变：
+  - 一次性新旧对照（HEAD 的 core 存成临时模块，临时测试已删）：12 个静态变量展示字段相同；读值和 6 个写入值后的 enemy / team 快照（JSON 含键序）共 156 次比较全等；
+  - 动态变量：impactVariables.test 的逐值对照（原组件内联写法）全过；
+  - zd DUMP 0 / ROWS 0。
+- 删掉的只有两个测试桩才走得到的默认值，以及锁它们的断言（impactVars.test 少 1 例）。
+
+### 20.5 反证（均已还原，cmp 核对）
+
+- 段 type：core 表项 `anomalyCoeff` 删 `write` → vue-tsc TS2741；异放占比变量删 `write` → TS2345。原先对应的错误（表里有 id、switch 漏 case）静默写不进去。
+- 段 unit：`resistanceVar` 读错键 → cc337 报（undefined ≠ 10）；`slot1` 读 1 号位 → impactVars.test 两例报。
+- 段 pct：机制设置写入不按 `%` 换算 → 逐值对照报（`burnice.flowCountUtilization`）。
+- 段 share：异放占比读取忽略已存值 → 逐值对照报（electric 40 ≠ 30）。
+- 不拦的：静态标量的映射整体写错（读写都指向同一个错字段）没有单测拦，与原 switch 相同；本轮这次改写由新旧对照兜住。
+
+### 20.6 验证
+
+- vue-tsc -b --force 0；check-guards 29（扫 298 个文件）；zc+checkGuards 207；tokens / data / specs / recording 12 / 161 / 462 / 189。
+- vitest 258/2155 + 262/2348 = 520 文件 / 4503 例（基线 4504，删 1 例不可能输入；跳过 13 / 26 不变）。
+- zd DUMP 0 / ROWS 0；build index 1594.54 kB（gzip 464.01）；drift 154 / 0 / 0，触发器逾期 0、未到期 10。
+
+### 20.7 不做与回退
+
+- 不把 `ResponseSurface3D` 的 `readVar` prop 换成组件自己读 store：保持该组件不碰 store。
+- 不给静态标量映射补单测：原先也没有；映射在表里一行一项，改写这一次由新旧对照兜。
+- 机制设置变量的读写键仍用 `setting.id`（与 CC-537 相同），变量 id 用 settingMap 的键。
+- 回退：`git revert 6bcd6cc3`（单提交，无数据迁移）。
+
+### 20.8 下一轮候选（未做）
+
+1. 沿用 §19.8 第 2 条：`registerWithSpecSettings` 在注册时改写 `module.settings`（依赖方见 §19.8）。
+2. 抗性表的键集合只靠约定。`AttributeConfigPage.vue#getResistance` 三类抗性读取都写 `?? 0`，但页面只遍历 `STANDARD_ENEMY_DEBUFF_ELEMENTS`（六元素），三张表在 `defaultEnemy` 和 159 个 Boss 预设阶段里都六键齐全，三处 `?? 0` 走不到。
+   - 可评估：`defaultResistanceTable` 由 `STANDARD_ENEMY_DEBUFF_ELEMENTS` 生成，表类型收窄为按六元素索引，缺键变成类型错误；
+   - 先查引擎按 `getBaseElement(element)` 取抗性时，元素会不会超出六元素（`helpers.ts:786` 的 `?? 0` 可能是真兜底）。
