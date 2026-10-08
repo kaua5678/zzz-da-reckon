@@ -205,7 +205,7 @@ describe('艾莲招式定向与执行行', () => {
     }
   })
 
-  it('循环行占的就是平A池那份时间：从 basic_attack 聚合行挤出（时间守恒、喧响按比例缩、能量不缩）', () => {
+  it('循环行占的就是平A池那份时间：从 basic_attack 聚合行挤出（时间守恒、喧响与能量都按比例缩）', () => {
     // 与 sigrid 平A分段 / 朱鸢以太弹 同款：模块行由 basicAttackTime 解出 ⇒ 聚合行只保留循环行装不下的零头
     const basic = {
       moveId: 'basic_attack', moveName: '普通攻击（平A汇总）', category: 'basic', count: 0, actionTime: 0,
@@ -226,9 +226,9 @@ describe('艾莲招式定向与执行行', () => {
     expect(cycleTime).toBeGreaterThan(20)
     expect(agg.totalTime + cycleTime).toBeCloseTo(30, 6)
     expect(agg.totalTime).toBeGreaterThanOrEqual(0)
-    // 喧响按剩余时间比例缩（循环行按表带每次喧响，不缩即双计）；能量留在聚合行（循环行不带回能）
+    // 喧响与能量都按剩余时间比例缩（循环行按表回填每次喧响与能量，不缩即双计）
     expect(agg.totalDecibelRecovery).toBeCloseTo(60 * agg.totalTime / 30, 6)
-    expect(agg.totalEnergyRecovery).toBe(30)
+    expect(agg.totalEnergyRecovery).toBeCloseTo(30 * agg.totalTime / 30, 6)
     // 循环行时长超过池时封顶（不出负数）：强特多 ⇒ 免费 burst 的行时长可超过 1s 的池
     const tight: any[] = [{ ...basic, totalTime: 1 }]
     ellenMechanic.buildExecutions!({

@@ -388,15 +388,16 @@ function buildEllenExecutions({ cfg, state, executions }: AgentResourceInput): v
   // 急冻修剪法第 1/2 段基本不打）。此前通用 `basic_attack` 聚合行仍 = basicAttackTime，与循环行相加成两份 →
   // 折叠环把虚增折进 necessaryTime → 平A池被挤到约一半、另一半物化成她本不该打的通用平A（实测单人 c0：聚合行 75.8s
   // + 循环行 ~50s；1191/1361/1311 默认口径留白 15.0s、账本虚高 19.9s 全在她身上，1191/1161/1311 同 19.9s）。
-  // 时间从聚合行挤出（总前台占用守恒）；喧响按剩余时间比例缩（循环行按表带每次喧响，不缩即双计）；
-  // 能量**不动**（循环行不带回能——表值 0 落行值 0，回能留在聚合行防丢，同 sigrid 平A分段口径）。
-  // @fact agent:1191/循环行时间占用 口径: 蓄力剪击/急冻修剪法#3/冰刃浪/霜锋挥刀行由 basicAttackTime 解出，占的就是平A池那份时间，必须从通用 basic_attack 聚合行挤出（挤出量 = 循环行总时长，封顶聚合行时长），喧响按比例缩、能量不缩 | 据 模块头注释「循环战场时间由平A池驱动」+ 朱鸢 1241 用户口径 2026-08-26 同构·实测@2026-09-19·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/mechanics/__tests__/ellen.test.ts#循环行占的就是平A池那份时间 | 锚 src/mechanics/agents/ellen.ts#buildEllenExecutions | 信 确认
-  // ⟳复核: 艾莲循环模型（computeEllenCycle 的时间方程）或聚合行回能/喧响载体口径再动时，复核「聚合行 + 循环行时长 == basicAttackTime」守恒（ellen.test）+「1191 系默认口径留白 ≤ 2s」（timeFillRatchet auto-1191-*）+ 循环行喧响不双计（decibelRowParity） | 到期 2026-12-31
+  // 时间从聚合行挤出（总前台占用守恒）；喧响与能量都按剩余时间比例缩：循环行是真实招式 moveId，按表回填每次
+  // 喧响与能量（如 1191006 急冻修剪法#3 = 61.38 / 6.428），不缩即双计。r742 订正：原先能量不缩，依据「循环行
+  // 表值能量 0」不成立（07481b8a 起这些行按表回填能量），池上多记了 挤出秒数 × 平A每秒回能。
+  // @fact agent:1191/循环行时间占用 口径: 蓄力剪击/急冻修剪法#3/冰刃浪/霜锋挥刀行由 basicAttackTime 解出，占的就是平A池那份时间，必须从通用 basic_attack 聚合行挤出（挤出量 = 循环行总时长，封顶聚合行时长），喧响与能量都按比例缩（循环行按表回填两种回能） | 据 模块头注释「循环战场时间由平A池驱动」+ 朱鸢 1241 用户口径 2026-08-26 同构·实测@2026-09-19·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08（r742 订正：能量也按比例缩） | 验 src/mechanics/__tests__/ellen.test.ts#循环行占的就是平A池那份时间 | 锚 src/mechanics/agents/ellen.ts#buildEllenExecutions | 信 确认
+  // ⟳复核: 艾莲循环模型（computeEllenCycle 的时间方程）或聚合行回能/喧响载体口径再动时，复核「聚合行 + 循环行时长 == basicAttackTime」守恒（ellen.test）+「1191 系默认口径留白 ≤ 2s」（timeFillRatchet auto-1191-*）+ 循环行喧响 / 能量不双计（decibelRowParity、ellen.test） | 到期 2026-12-31
   const cycleTime = cycle.frostTrimSegments * ELLEN_FROST_TRIM_ACTION_TIMES[0]
     + cycle.dashChargedCount * ELLEN_DASH_TOTAL_ACTION_TIME
     + cycle.frostEdgeCount * ELLEN_FROST_EDGE_TOTAL_ACTION_TIME
     + cycle.iceWaveCount * ELLEN_ICE_WAVE_TOTAL_ACTION_TIME
-  carveBasicPool(executions, cycleTime, ['totalDecibelRecovery'])
+  carveBasicPool(executions, cycleTime, ['totalDecibelRecovery', 'totalEnergyRecovery'])
 }
 
 function patchEllenExecutions({ cfg, state, executions }: AgentResourceInput): void {

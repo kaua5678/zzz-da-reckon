@@ -140,10 +140,10 @@
   "outerExit": "stable"
  },
  "auto-1191-1481-1311": {
-  "slack": 0.5,
+  "slack": 0,
   "over": 0,
   "stun": 2,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "auto-1201-1361-1211": {
   "slack": 0,

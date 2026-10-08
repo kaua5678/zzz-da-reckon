@@ -160,7 +160,7 @@ export function rowDecibelTotal(cfg: CharacterOperationConfig, row: SkillExecuti
 /**
  * 行级能量收入——与 enrichExecutionPlan 的 energy 分支逐分支同语义（记账层 == 展示层，rowDecibelTotal 同构）：
  * - basic_attack 行：时间通道原值（state.basicAttackTime × basicAttackRegenPerSec 的载体，enrich 不回填
- *   其 energy，模块可改写 total——伊德海莉蓄力置 0、朱鸢以太弹 carve 按比例缩）；
+ *   其 energy，模块可改写 total——伊德海莉蓄力置 0、朱鸢以太弹 / 艾莲循环行 carve 按比例缩，见 carveBasicPool）；
  * - moveId 在 cfg.energyRecoveryByMoveId（倍率表预存，键存在 = 表中找到）：
  *   显式 0 = 模块禁用（衍生行口径保留：回能留在平A聚合行防双计——sigrid 平A分段/liuyin 猜拳/
  *   nangong 地雷/jane 萨霍夫跳/alice 星仪序曲）；缺省 = 表值 || 行值 || 0（模块预计算行——
