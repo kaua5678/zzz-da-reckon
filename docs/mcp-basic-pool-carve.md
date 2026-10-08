@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。
 
 ## 1. 问题
 
@@ -1193,9 +1193,126 @@ zd 两套快照都是 0/0，理由：
 - 两个模块里的 adjustable id 常量保留：id 拼错或 spec 改名时，`specAdjustableRate` 第一次调用就会抛错，洛克茜和橘福福的单测都会走到这里。
 - 回退：`git revert 1fff4c95`（单提交，无数据迁移）。
 
-### 18.8 下一轮候选（未做）
+### 18.8 下一轮候选（r754 做了第 1 条，见 §19）
 
 1. 沿用 §17.9 第 2 条：`impactVariables.ts#readImpactVariable` 的 `meta?.default ?? 1` 是否可达，即换队后已选的 `setting.<id>` 变量会不会残留。
 2. `registerWithSpecSettings`（mechanics/index.ts）在注册时改写 `module.settings`。spec adjustable 的读取已经不经过这条路。
    - 先普查还有谁依赖改写后的列表：UI 列设置、settingDefaults、读 `<module>.settings` 的 reader；
    - 再决定能不能让注册表自己保存合并结果，不改模块对象。
+
+## 19. 影响变量自带读写口径（r754，CC-537）
+
+> 代码提交 `c32e9c09`（重构，zd 0/0；唯一行为差异在界面：失效的选择不显示当前值）（arena-G r754）；arch CC-537；r6 §8 第 754 行。题目来自 §18.8 第 1 条。
+
+### 19.1 普查
+
+- 起点：§18.8 第 1 条，`composables/impactVariables.ts#readImpactVariable` 的 `meta?.default ?? 1` 能不能走到。
+- 读写入口只有两个函数：`readImpactVariable(id, store, settingMap, coverage)` 和 `writeImpactVariable(id, value, store, settingMap)`。
+  - 它们先解析 id 字符串：`setting.` 前缀，以及 `<ns>.releaseShare:<元素>` 形状；
+  - 机制设置变量再回 settingMap 查声明：读取缺省用 `meta?.default ?? 1`，`%` 判断用 `meta?.suffix`。
+- 调用方（全量 grep）：
+  - 读：`ImpactChart.vue#readVar`，`run()` 发车时读当前值；它还作为 prop 传给 `ResponseSurface3D.vue`，后者的 `curValX` / `curValY` 是 computed。另有两个测试文件。
+  - 写：`impactSampling.ts` 三处（曲线一处、响应面两处），都在场景变量表里 find 到变量之后才写。另有两个测试文件。
+- 查不到声明只有一种情况：传进来的 id 不在当前队伍的变量表里。两个组件的下拉选择换队后都不清空：
+  - `ResponseSurface3D` 的 computed 换队后立刻用旧 id 读，徽标显示存储值或 1；
+  - `ImpactChart.run()` 发车时也读一次；主曲线为空（采样函数 find 不到就返回空），快照曲线照常。
+- 运行时探针（HEAD，只记录，已还原）：
+  - 读写六个分支各记去重行。影响变量相关的 6 个测试文件（32 例全过）共记录 44 行，机制设置分支 meta 缺失 0 次。
+  - 测试里唯一的旧 id 读取是 impactVariables.test 第二例的异放占比，走覆盖率分支，不经 meta。
+
+### 19.2 问题
+
+- 变量表是 `buildImpactVariables` 用 settingMap 和异放声明建出来的。读写要的口径（声明、存储键、元素）建表时都在手上，却没随变量对象带出去。
+- 读写只好拿 id 反解字符串，再查一次 settingMap，于是要处理「查不到」。`?? 1` 就是这条分支手抄的默认值，跟声明无关。
+- 调用方得把 settingMap 一路传下去：`impactVariableView` 专门回传 settingMap，给采样写入用。
+- `ResponseSurface3D.vue` 自己声明了一个与 core `ImpactVariable` 逐字段相同的 `ImpactVar`，属于判据 29 说的重述（.vue 不在 guard 的扫描范围）。
+- 两个组件本来就给「没有当前值」留了处理：
+  - 模板里的 `v-if="curValX !== undefined"`；
+  - 绘制时的 `curValX ?? minX`；
+  - ImpactChart 的 `curVal` 也声明为 `number | undefined`。
+
+  但读函数总是返回数字，这些分支从来不生效。
+
+### 19.3 改法
+
+- `impactVariables.ts`：
+  - 新增 `TeamImpactVariable`（继承 core `ImpactVariable`）：机制设置变量带声明 `setting`，异放占比变量带 `releaseShare: { key, element }`，静态变量两者都没有；
+  - `buildImpactVariables` 建表时挂上这两个字段；
+  - `readImpactVariable(v, store, coverage)` 和 `writeImpactVariable(v, value, store)` 按这两个字段分派，静态变量照旧交给 core；
+  - 删 `settingIdOf`、`RELEASE_SHARE_RE`、两处 settingMap 查找和 `meta?.default ?? 1`。
+- `impactSampling.ts`：
+  - `impactVariableView` 只返回变量表；
+  - 三处写入改传变量对象；
+  - 不再 import core 的 `ImpactVariable`。
+- `ImpactChart.vue`：
+  - `readVar` 改收变量对象；
+  - `run()` 只在选择属于当前变量表时读当前值，否则为 `undefined`；
+  - 快照曲线仍按 varId 采样：旧队伍的变量只要快照队伍里有，照样出曲线。
+- `ResponseSurface3D.vue`：
+  - 删本地 `ImpactVar`，props 改用 `TeamImpactVariable`；
+  - `curValX` / `curValY` 只对当前变量表里的选择读值。
+- 测试：
+  - 两个测试文件改按变量对象调用；
+  - 变量表与原组件的对照改用 `toMatchObject`：变量对象多了口径字段，对照的仍是展示字段；
+  - 读写的逐值对照不变；
+  - 删掉 impactVariables.test 第二例里「读取不属于当前队伍的变量」那一行（这种调用已经写不出来），例名去掉「覆盖率缺省也不崩」。
+
+净变化：6 个文件，+70 / −91。
+
+### 19.4 行为
+
+- 变量表、读写、采样结果逐位不变：
+  - 读写逐值对照（与原组件的内联写法比）全过；
+  - zd DUMP 0 / ROWS 0。
+- 唯一的差异在界面，只出现在选择失效（换队后不在当前变量表）时：
+  - 2D 不显示「当前」徽标；
+  - 3D 不显示徽标，当前点标记落在区间起点。
+
+  原先显示的是存储值或 1，对当前队伍没有意义。
+
+### 19.5 反证（均已还原，cmp 核对）
+
+| 临时改动 | 结果 |
+|---|---|
+| `impactSampling` 写入、`ImpactChart` 读取改回传 id 字符串 | vue-tsc 各报一条 TS2345 |
+| 建表时不挂 `releaseShare` | vue-tsc 不报（字段可选）；impactVariables 对照（fire 读到 0，应为 60）、impactSampling ① 曲线（各点总伤相同）和 ① 反例，共 3 例报 |
+| 建表时不挂 `setting` | impactVariables 逐值对照报（singleSpraySeconds 读到 0，应为 1.89） |
+
+### 19.6 验证
+
+| 项 | 结果 |
+|---|---|
+| vue-tsc | 0 |
+| guards | 29 条，扫 298 个文件 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 |
+| zc.test + checkGuards.test | 207 |
+| vitest | 258/2156 + 262/2348 = 520 文件 / 4504 例（与基线相同）；跳过 13 / 26 |
+| zd | DUMP 0 / ROWS 0 |
+| build | index 1594.54 kB（不变，gzip 464.02） |
+| zc drift | 154 / 0 / 0；触发器逾期 0、未到期 10 |
+
+### 19.7 不做与回退
+
+- 换队时不清空下拉选择：
+  - 快照曲线要用旧队伍的变量（快照队伍里有它就能出曲线）；
+  - 清不清空是交互上的取舍，与本题无关。
+- 不改 core 的 `ImpactVariable`：口径字段只属于编排层的队伍变量，静态表用不到。
+- 不加源码锁：
+  - 读写签名收变量对象，传 id 字符串就是 TS2345；
+  - 漏挂口径字段由逐值对照测试拦（见 19.5）。
+- 回退：`git revert c32e9c09`（单提交，无数据迁移）。
+
+### 19.8 下一轮候选（未做）
+
+1. `core/impactVars.ts` 的静态变量。现状：
+   - `IMPACT_VARIABLES` 表之外，`readImpactVar` / `writeImpactVar` 是两张按同一组 id 写的平行 switch；未知 id 读取走 `default: return 0`，写入什么都不做；
+   - 抗性读取有 `?? 20`，而 store 的默认抗性表是 `defaultResistanceTable(0)`；cc337SingleSource.test 第 205 行锁的正是 20。
+
+   做法：
+   - 先查 `?? 20` 和 `slot1TimeWeight` 的 `?? 1` 在生产里能不能走到（存档或预设里的抗性表会不会缺键）；
+   - 再看表项自带读写（与本轮同一方向）能不能消掉两张 switch 和未知 id 分支。
+2. 沿用 §18.8 第 2 条：`registerWithSpecSettings` 在注册时改写 `module.settings`。本轮粗查到的依赖方：
+   - `mechanics/registry.ts:28`：注册时写 settingDefaults；
+   - `composables/agentMechanicView.ts:24`：teamMechanicSettings；
+   - `composables/resourceCalc/helpers.ts:490`：buildCharConfig 遍历模块 settings；
+   - 模块里读 `<module>.settings` 的 reader。
