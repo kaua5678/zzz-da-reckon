@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。
 
 ## 1. 问题
 
@@ -1490,7 +1490,7 @@ zd 两套快照都是 0/0，理由：
 - `defaultResistanceTable` 保留字面量，不改用 `Object.fromEntries(STANDARD_ENEMY_DEBUFF_ELEMENTS…)` 生成：后者需要转型；字面量直接受 `ResistanceTable` 检查，缺键报 TS2741，多键报超额属性。
 - 回退：`git revert 200b30ca`（单提交，无数据迁移）。
 
-### 21.8 下一轮候选（未做）
+### 21.8 下一轮候选（r757 做了第 1 条，见 §22）
 
 1. 引擎按元素查敌人抗性，5 个读点用了 3 种归并口径（见 §21.1 的探针）：
    - 积蓄用 `resolveStatElement`（变种归到基础元素，frostfire 归到冰）；
@@ -1501,3 +1501,84 @@ zd 两套快照都是 0/0，理由：
    - 这会改数值：Boss 预设对应基础元素的抗性非 0 时，紊乱（烈霜）、乱流（玄墨、极性强击）、失衡（玄墨、烈霜）三处结果会变。先在 HEAD 上量 zd 与金样的差异，逐条归因（规则 10）。
    - 钩子入参 `enemyAnomalyResistances`（`mechanics/typesHooks.ts:265`）如果确认只来自 store 表，可以一并收窄为 `ResistanceTable`；收窄后维琳娜的 `['wind'] ?? 0` 就走不到了。
 2. 佩洛伊斯模块（`mechanics/agents/specPanelBuffs.ts`）靠 12 处事后赋值（`peiluoProminenceMechanic.xxx = …`）拼出钩子，其中 `patchExecutions` 先赋值、后被包一层覆盖。可评估改回对象字面量。
+
+## 22. 敌人抗性按元素取值统一口径（r757，CC-540）
+
+> 代码提交 `8107853a`（修正，会改数值，见 §22.4；金样与 zd 不变）（arena-G r757）；arch CC-540；r6 §8 第 757 行。题目来自 §21.8 第 1 条。
+
+### 22.1 普查
+
+- 读点（全量 grep `Resistances[` / `DamageRes[`，src 非测试）共 8 处，用了三种元素口径：
+  - `resolveStatElement`（变种归到基础元素，烈霜归到冰）：积蓄 `core/anomalyPool.ts:52`，直伤 `composables/resourceCalc/poolDamage.ts:59` / `:103`；
+  - `getBaseElement`（异常身份口径，烈霜不归冰）：紊乱 `core/anomalyPool/helpers.ts:786`；
+  - 原始元素：失衡 `core/stunPool.ts:152`，乱流 `helpers.ts:822`，蕾米埃尔 `mechanics/agents/remielle.ts:172`，维琳娜 `velina.ts:288`（字面量 `'wind'`）。
+  - 另有两处按六元素读写 store 表（属性页、`core/impactVars.ts`），不涉及执行行的元素。
+- 同一结算里的元素减抗都经 `elementStatKey`（即 `resolveStatElement`）：紊乱、乱流、蕾米埃尔用 `panelElementStat(p, 'enemyRes', element)`，失衡用 `getTargetedElementStat(panel, 'enemyStunRes', element, …)`。⇒ 基础抗性和减抗是按不同元素取的。
+- 口径依据：
+  - `data/anomalyElement.ts#resolveStatElement` 的注释（用户 2026-09-05）：烈霜在一切「元素→数值」查找里按冰读，包括冰伤、敌方冰抗、冰减抗；只有异常身份判断（覆盖 / 紊乱 / 持续时间 / 阈值）才用 `getBaseElement`。
+  - `VARIANT_ELEMENT_TO_BASE` 的注释：变种继承基础元素的值。
+  - 敌方抗性属于数值查找。
+- CC-224 已经把面板的元素字段（增伤 / 减抗）收进 `utils/elementStatKeys.ts`，按同一口径解析；敌人抗性表的读点没有跟上。
+- HEAD 取值差探针（只记录，已还原）：在 4 个要改口径的读点，旧值与按 `resolveStatElement` 取的值不同时才记一行。
+  - zd 5 个场景：0 行。
+  - 112 个相关测试文件（1168 例通过）：1 行，失衡读点 ether_ink 从 0 变成 20；所在用例的断言不受影响。
+- Boss 预设里基础元素的抗性大多不是 0：159 个相位中，冰的伤害抗性非 0 的有 100 个（取值 −20 / 40），以太 72 个，物理 60 个；失衡抗性同样是 ±20。所以应用 Boss 预设后，这些读点的差别是实打实的。
+
+### 22.2 问题
+
+- 「按元素查敌人抗性」这一件事在 8 处各写了一遍，口径有三种。新读点照哪处抄，就继承哪处的口径。
+- 后果：
+  - 雅的烈霜紊乱结算不吃敌方冰抗；
+  - 玄墨、极性强击的乱流结算，以及玄墨、烈霜的失衡，不吃对应基础元素的抗性；
+  - 而同一结算里的减抗却按基础元素（或冰）算。
+
+### 22.3 改法
+
+- `utils/elementStatKeys.ts` 新增 `enemyResistanceOf(table, element)`，即 `table[resolveStatElement(element) ?? ''] ?? 0`，与元素减抗同口径；表里没有的元素（lumiflux）按 0。
+- 8 处读点都改用它；`anomalyPool.ts`、`poolDamage.ts` 不再直接 import `resolveStatElement`。
+- `elementStatKeys.test`：
+  - 在原有的「变种 / 烈霜 / 未知元素」用例里加 4 条取值断言：frostfire 取冰、ether_ink 取以太、physical_polar_assault 取物理、lumiflux 取 0；
+  - 新增源码锁：src 非测试 `.ts` 里不直接索引 `*Resistances` / `*DamageRes` 表。例外是 `core/impactVars.ts`（按六元素读写 store 表）；字符串里的公式说明不算。
+  - 加锁的理由：这次出现三种口径，正是各读点各抄一份造成的，和 CC-224 给面板字段加锁是同一个道理。
+
+### 22.4 数值影响（规则 10 归因）
+
+- 金样（timeGolden）和 zd 都不变，没有重新生成任何基线。
+- 一次性新旧对照：临时测试，已删；用真 Boss 相位和推荐配装；「旧」是把 7 个源文件换回 HEAD，测完用 cmp 核对还原。
+
+| 队伍 | Boss 相位 | 基础元素的伤害抗 / 失衡抗 | 总伤害 | 变化的行 |
+|---|---|---|---|---|
+| 雅 1091 / 1511 / 1211 | 30033/690431 | 冰 40 / 20 | −4.53% | `disorder-frostfire` −40.00%（抗性区 1 → 0.6） |
+| 雅 | 30007/690441 | 冰 −20 / −20 | +2.61% | `disorder-frostfire` +20.00%（1 → 1.2） |
+| 仪玄 1371 / 1481 / 1451 | 40000/690441、30007/690441 | 以太 40 / 20、−20 / −20 | 0 | 无（队里没有乱流；失衡次数 5 不变） |
+| 爱丽丝 1401 / 1411 / 1031 | 30041/69036、30034/690461 | 物理 40 / 20、−20 / −20 | 0 | 无（失衡次数 2 不变） |
+
+- 归因：变化只来自烈霜的紊乱结算改按敌方冰抗算（此前恒为 0），与口径一致。
+- 对照没覆盖到的：
+  - 乱流（玄墨 / 极性强击）只在队里有风属性异常角色时出现；
+  - 失衡读点只影响元素为 ether_ink / frostfire 的执行行（抗性 ±20 时，这些行的单招失衡值乘 0.8 / 1.2）。对照里失衡次数都没变。
+
+### 22.5 反证（均已还原，cmp 核对）
+
+- `enemyResistanceOf` 改用 `getBaseElement` → 取值断言报错（frostfire 期望 40，实得 0）。
+- 失衡读点退回直接索引 → 源码锁报 `core/stunPool.ts:153`。
+
+### 22.6 验证
+
+- vue-tsc -b --force 0；check-guards 29（扫 298 个文件）；zc+checkGuards 207；tokens / data / specs / recording 12 / 161 / 462 / 189。
+- vitest 258/2156 + 262/2348 = 520 文件 / 4504 例（基线 4503，多出的 1 例是源码锁；跳过 13 / 26 不变）。
+- zd DUMP 0 / ROWS 0；build index 1594.55 kB（gzip 464.02）；drift 154 / 0 / 0，触发器逾期 0、未到期 10。
+
+### 22.7 不做与回退
+
+- 引擎读表的入参类型不收窄，仍是 `Record<string, number>`：键是执行行的元素，可能是 lumiflux；查不到按 0，统一由 `enemyResistanceOf` 处理。
+- 维琳娜的字面量 `'wind'` 也改走 `enemyResistanceOf`。对标准元素来说口径是恒等的，改它只是为了让源码锁没有例外。
+- 属性页和 `core/impactVars.ts` 按六元素读写 store 表，不走 `enemyResistanceOf`：键本来就是标准元素，读的是 `ResistanceTable`。
+- 回退：`git revert 8107853a`（单提交；回退后烈霜紊乱恢复为不吃冰抗）。
+
+### 22.8 下一轮候选（未做）
+
+1. 沿用 §21.8 第 2 条：佩洛伊斯模块（`mechanics/agents/specPanelBuffs.ts`）靠 12 处事后赋值拼出钩子，其中 `patchExecutions` 先赋值、后被包一层覆盖。可评估改回对象字面量。
+2. `getBaseElement` 还有 20 多处用法，要逐个判断是「身份」还是「数值」查找；数值查找应该走 `resolveStatElement`（本节修的就是这种错）。
+   - 起点：`core/anomalyPool/helpers.ts:142 / 401 / 477 / 531 / 666 / 1007 / 1138`、`data/anomalyElement.ts:43`（`elementAnomalyBuildUpEfficiency`）、`core/stunAxis/inStunAnomaly.ts`、`composables/resourceCalc/damagePool.ts:304–326`、`convergence.ts:1119–1142`、`damagePoolRelease.ts:176`。
+   - 其中多数是覆盖 / 紊乱 / 持续时间 / 分组，属于身份判断。先普查，再动手。
