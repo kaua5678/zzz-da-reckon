@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。r758 做了 §22.8 的两条候选（佩洛伊斯模块 12 处事后赋值改回对象字面量，额外能力判定收口；getBaseElement 普查后只剩积蓄效率一处数值查找，改走 resolveStatElement；行为不变），见第 23 节（`e1400062` + `dd6c7835`，CC-541）。r759 做了 §23.8 的第 1 条候选，普查后扩为同一条规则（删 16 个角色模块的额外能力 cfg 镜像字段，钩子一律读 additionalAbilityActiveOf(cfg.panel)；行为不变），见第 24 节（`6967a035`，CC-542）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。r758 做了 §22.8 的两条候选（佩洛伊斯模块 12 处事后赋值改回对象字面量，额外能力判定收口；getBaseElement 普查后只剩积蓄效率一处数值查找，改走 resolveStatElement；行为不变），见第 23 节（`e1400062` + `dd6c7835`，CC-541）。r759 做了 §23.8 的第 1 条候选，普查后扩为同一条规则（删 16 个角色模块的额外能力 cfg 镜像字段，钩子一律读 additionalAbilityActiveOf(cfg.panel)；行为不变），见第 24 节（`6967a035`，CC-542）。r760 做了 §24.8 的第 1 条候选，普查后扩为同一条规则（拿得到面板的钩子不再按 spec 重算额外能力，删 3 个 cfg 镜像与 2 个面板镜像；行为不变），见第 25 节（`5c73ad60`，CC-543）。
 
 ## 1. 问题
 
@@ -1799,7 +1799,7 @@ zd 两套快照都是 0/0，理由：
 - 历史记录（本文 §12、§23.8，r6 §8 第 758 行）里出现的镜像字段名保留原样。
 - 回退：`git revert 6967a035`。
 
-### 24.8 下一轮候选（未做）
+### 24.8 下一轮候选（r760 做了第 1 条并扩为 10 处重算 + 5 个镜像，见 §25；第 2 条未做，转入 §25.8）
 
 1. **spec 求值写进 cfg 的四个额外能力字段**
    - 现状：alice / norma / liuyin / velina 在 buildCharConfig 里用 `specAdditionalAbilityActive(team, slot, agent)` 再求一次，写进 cfg。`mechanics/additionalAbilityGates.ts` 的注释说这个函数给「拿不到面板标记的钩子（buildCharConfig / teammateBuffGate 等）」用，但 buildCharConfig 其实拿得到（入参 `panel` 就是 `cfg.panel`）。norma 在 applyPanel 里也已经读 `additionalAbilityActiveOf(panel)`。
@@ -1808,4 +1808,146 @@ zd 两套快照都是 0/0，理由：
 2. **失衡内时间线的变种积蓄槽口径**（§23.8 第 2 条，内容不变）
    - 现状：主池把变种当作独立积蓄管（`core/anomalyPool.ts:276`）；`core/stunAxis/inStunAnomaly.ts` 却按基础元素归并积蓄槽和同元素刷新，触发 id 也按基础元素生成，存档里的 `suppressedTriggers` 引用的就是它。
    - 先做：普查哪些队伍会在同一个失衡窗口里同时积蓄基础元素和它的变种（仪玄 + 以太队友、爱丽丝 + 物理队友），量出差异，再决定是否统一。
+   - 注意：改 id 格式要带存档迁移。
+
+## 25. 拿得到面板的钩子不再按 spec 重算额外能力（r760，CC-543）
+
+> 代码提交 `5c73ad60`（纯重构，行为不变）（arena-G r760）；arch CC-543；r6 §8 第 760 行。题目来自 §24.8 第 1 条：普查发现问题不止那四个 cfg 字段，而是同一条规则——拿得到本槽面板的钩子不该自己再按 spec 求一遍额外能力，也不该把结果抄进 cfg 或面板扩展字段。按这条规则一起改；第 2 条未做，转入 §25.8。
+
+### 25.1 普查
+
+- **面板阶段与各钩子的求值输入同源**
+  - 面板阶段（`panelPhases.ts#computePanelPhases`）：
+    - 输入：`agent = catalogStore.agentsMap.get(char.agentId)`；`team` 来自 `resolveSlotPanelBuffInputs`，即 `buildMechanicTeamMembers(configStore, catalogStore)`。
+    - 写入：spec 有 `additionalAbility` 时写 `panel.additionalAbilityActive = evalAdditionalAbility(team, slot, agent, aaSpec) ? 1 : 0`，否则保持默认 0（`core/panel.ts`）。
+    - 写完才派发 applyPanel，这里是全仓唯一的派发点。
+  - buildCharConfig（`helpers.ts`，全仓唯一派发点）：
+    - `agent` 取法相同；`team` 同样是 `buildMechanicTeamMembers(configStore, catalogStore)`。
+    - 入参 `panel` 就是同一次 computePanelPhases 的局内面板。面板为 null 时直接 return，不派发。
+  - `specAdditionalAbilityActive(team, slot, agent)` 等于 `evalAdditionalAbility(…, getAgentSpec(agent.id)?.additionalAbility) === true`。evalAdditionalAbility 在没有声明或条件为空时返回 undefined，两条路都得「未触发」。所以在这些钩子里按 spec 重算，结果恒等于面板标记。
+  - velina 的 transformSkillExecutions：
+    - 入参 `panel` 是 `panelAt(panels.value, i)`，即同一个 configStore 下 computePanel 算出的本槽局内面板。
+    - 面板为空只发生在 agent 不在图鉴里的时候，此时按 spec 求值也是 false。
+- **10 处重算，5 个镜像**
+
+| 模块 | 重算处（钩子） | 镜像 | 镜像的读口 |
+|---|---|---|---|
+| alice | applyPanel、buildCharConfig | `cfg.aliceAdditionalAbilityActive` | `cfgExternalCountsProbe`（紊乱剑仪门控，4 个调用点） |
+| norma | buildCharConfig（applyPanel 早已读面板标记） | `cfg.normaAdditionalAbilityActive` | buildCharConfig 自身、`normaSourceOf` |
+| liuyin | applyPanel、buildCharConfig | `cfg.liuyinExtraAbilityActive` | `computeLiuyinSource` 的 4 处入参：估时、执行、资源结果、赠大供给 |
+| velina | applyPanel、buildCharConfig、transformSkillExecutions | `cfg.velinaAdditionalAbilityActive`、`panel.velinaAdditionalAbilityActive` | cfg 字段被 spec 1561 终结技风异放的 `enabledField` 按名读；面板字段零读者（注释说 enabledField 读它，实际读的是 cfg） |
+| jane | applyPanel | — | — |
+| miyabi | applyPanel（私有 `isAdditionalAbilityActive`，直接调 evalAdditionalAbility） | `panel.miyabiAdditionalAbilityActive` | 只有 `miyabiAdditionalAbility.test.ts` 读 |
+
+- **保留的求值点**：这些地方拿不到本槽面板标记，或者同一份求值还要服务面板阶段之前的钩子。
+  - remielle `computeRemielleAdditionalState`：三档状态同时供 teammateBuffGate（面板阶段之前）、applyPanel、buildCharConfig 使用，共用一份求值。
+  - rina `teamAnomalyDurationBonus`：入参里没有面板。
+  - `evalAdditionalAbilityBuffGates`：calcPanel 之前的硬门控。
+- **specs 层读不到面板标记**
+  - `specs/mechanics.ts#isSpecEventEnabled` 经 `readCfgField` 按名读 cfg。
+  - `specsRuntimeDeps` 锁（CC-248）禁止 specs import core，而 `additionalAbilityActiveOf` 住在 core。
+  - 全仓只有 1561.json 一处用 `enabledField`。
+
+### 25.2 问题
+
+- 同一个判定每轮要算 1 + N 遍：面板阶段一遍，各模块的钩子各一遍。
+- 几遍结果恒等，前提是 team 和 agent 同源，这只能去读编排层代码确认。`specAdditionalAbilityActive` 的注释还写反了，说 buildCharConfig 拿不到面板标记。
+- 判定结果抄进 cfg 以后，读口散在估时、执行、资源结果、赠大供给好几处，各写各的 `?? false`。
+- 面板上又多存一份 0/1 扩展字段：velina 那份没人读，注释还写错了读者；miyabi 那份只有测试读。
+- miyabi 留着一份私有求值函数。历史上正是它的手写判定与 spec 漂移过（见 `miyabiAdditionalAbility.test.ts` 头注释）。
+
+### 25.3 改法
+
+- **6 个模块的 10 处重算**，一律改用 `additionalAbilityActiveOf` 读面板标记：
+  - applyPanel、buildCharConfig、velina 的 transformSkillExecutions 读入参 `panel`；
+  - 资源和执行钩子读 `cfg.panel`。
+- **删 3 个 cfg 镜像**（alice / norma / liuyin）及其类型声明。
+  - 8 处读口改读 `cfg.panel`。
+  - alice 的 `cfgExternalCountsProbe` 入参从镜像字段换成 `panel`。
+- **删 2 个面板镜像**（velina / miyabi）及其类型声明；同时删掉 miyabi 的私有函数，以及因此用不到的 import（`Agent`、`evalAdditionalAbility`）。
+- **解构**：去掉不再用到的 slot / agent / team（noUnusedParameters 会报）。
+- **velina 的 cfg 字段保留**：只把写入来源换成面板标记。注释写明这是额外能力在 cfg 里唯一保留的投影，原因是 spec 的 enabledField 按名读 cfg，而 specs 层不得 import core。
+- **注释**
+  - `specAdditionalAbilityActive`：改为「只给拿不到本槽面板标记的钩子用，现存唯一调用者是 remielle」。
+  - owner `additionalAbilityActiveOf`：补上三条——applyPanel / buildCharConfig / transformSkillExecutions 只读标记、不重算；结果不抄进 cfg 或面板扩展字段；唯一例外是 velina 的 cfg 字段。
+- **4 处测试夹具**：断言语义和用例数都不变。
+  - alice.test：调用 `cfgExternalCountsProbe` 时经 panel 给值。
+  - liuyin.test：估时用的 cfg 经 panel 给 0。
+  - cinemaSkillLevel.test：诺姆 C2 改为断言面板标记等于 1。
+  - miyabiAdditionalAbility.test：改读 `panel.additionalAbilityActive`。
+- **@fact 复核**：简「狂热面板块落点」（锚 applyJanePanel）和琉音「强特计划估时」（锚 liuyinExSpecialTime）被本次改动触及。复核后口径不变（只换了额外能力的读口），追加「复核@2026-10-09（r760 只换额外能力读口）」，drift 待复核从 2 回到 0。
+- **不加新源码锁**：理由同 §24.3。重算处已经删光，规则写在两处注释里。
+
+### 25.4 行为不变的证据
+
+- **等价**：理由见 §25.1，两边的输入同源。没有打取值差探针。
+- **一次性新旧对照**（临时测试，已删）
+  - 配置：6 个角色，每人 3 个配置——额外能力触发 C0、触发 C6、未触发 C0。队友按 spec 条件从图鉴里确定性地挑出（id 升序的第一对）。
+  - 快照：总伤害、全部伤害行、失衡次数、面板、resourceResult。
+  - 删掉的 5 个镜像键先从快照里剔除。旧版面板里剔除的键数：维琳娜队 2 / 2 / 1（含星见雅队友那份），简队 1 / 1 / 0，星见雅队 1 / 1 / 1，其余为 0。
+  - 结果：18 个快照新旧逐字节相同。
+
+| 角色 | 触发队（C0 / C6） | 未触发队（C0） | 快照 sha256 前 16 位：触发 C0 / 触发 C6 / 未触发 C0（新 = 旧） |
+|---|---|---|---|
+| 爱丽丝（alice，1401） | 1401 / 1011 / 1031 | 1401 / 1011 / 1021 | `d78fc517fea3cc38` / `90910e27b2d10a01` / `a7c39457bcd80cfc` |
+| 诺姆（norma，1571） | 1571 / 1011 / 1021 | 1571 / 1011 / 1031 | `2f07facfc88cd048` / `f634f8fe51d4c3bd` / `9d8032b330078920` |
+| 琉音（liuyin，1481） | 1481 / 1011 / 1021 | 1481 / 1011 / 1031 | `de52a7b6e117fa32` / `5049322f5dc687ec` / `f9559167b46fa1fb` |
+| 维琳娜（velina，1561） | 1561 / 1011 / 1091 | 1561 / 1011 / 1021 | `a0e94b68ddbe8f39` / `af63a294b3d0455a` / `14b08561fca78a5d` |
+| 简（jane，1261） | 1261 / 1011 / 1091 | 1261 / 1011 / 1021 | `ebad9c5283a93248` / `5661e2cff979644a` / `6c1be1065302ee49` |
+| 星见雅（miyabi，1091） | 1091 / 1011 / 1031 | 1091 / 1011 / 1021 | `a05ce4ca6dfe364c` / `1818b041751495af` / `98ff3b1374013023` |
+
+- **zd DUMP 0 / ROWS 0**：zd 预设没有覆盖这 6 人，只能靠上面的对照兜底。
+
+### 25.5 反证：逐处单独取反（已还原，cmp 核对）
+
+- **做法**：flip 版在 15 处新读口外各包一层，运行时只把选中的那一处取反，然后对该角色的 3 个配置重算。不取反时，18 个快照与「新」相同，说明包装本身没有副作用。
+
+| 读口 | 位置 | 变化配置 | 总伤害：触发 C0 / 触发 C6 / 未触发 C0（新 → 取反；快照变而总伤害不变记「仅快照变」） |
+|---|---|---|---|
+| A1 | 爱丽丝 applyPanel | 3/3 | 25555631 → 22495752 / 56835172 → 51993921 / 21979054 → 22899987 |
+| A2 | 爱丽丝 buildCharConfig | 3/3 | 25555631 → 22391394 / 56835172 → 53192908 / 21979054 → 22912765 |
+| A3 | 爱丽丝 cfgExternalCountsProbe | 3/3 | 25555631 → 22391394 / 56835172 → 48436757 / 21979054 → 22912765 |
+| N1 | 诺姆 buildCharConfig | 2/3 | 仅快照变 / 仅快照变 / 不变 |
+| N2 | 诺姆 normaSourceOf | 3/3 | 仅快照变 / 仅快照变 / 仅快照变 |
+| L1 | 琉音 applyPanel | 3/3 | 34541886 → 33882736 / 61020369 → 58965465 / 12359023 → 12859640 |
+| L2 | 琉音 liuyinExSpecialTime（估时） | 0/3 | 不变 / 不变 / 不变 |
+| L3 | 琉音 buildLiuyinExecutions | 0/3 | 不变 / 不变 / 不变 |
+| L4 | 琉音 buildLiuyinResourceResult | 3/3 | 34541886 → 33460975 / 61020369 → 59398122 / 12359023 → 13073294 |
+| L5 | 琉音 crossAgentSupply（赠大供给） | 0/3 | 不变 / 不变 / 不变 |
+| V1 | 维琳娜 applyPanel | 3/3 | 24448790 → 23302468 / 49349333 → 42574117 / 21715376 → 22405300 |
+| V2 | 维琳娜 buildCharConfig（写 cfg 字段 → spec enabledField） | 3/3 | 24448790 → 23125798 / 49349333 → 47302750 / 21715376 → 22931675 |
+| V3 | 维琳娜 transformSkillExecutions | 3/3 | 24448790 → 23840797 / 49349333 → 45325187 / 21715376 → 22274337 |
+| J1 | 简 applyPanel | 3/3 | 23666318 → 22052671 / 33465257 → 30601895 / 20644574 → 21483827 |
+| M1 | 星见雅 applyPanel | 3/3 | 20614534 → 16617464 / 33779252 → 25622525 / 19980146 → 22273888 |
+
+- **结论**
+  - 12 处读口取反后，对应配置都会变。N1 在未触发配置上不变：取反后 cfg 写进了展示加成，但诺姆机制源仍按 N2 门控。
+  - L2 / L3 / L5 按构造不影响输出。`computeLiuyinSource` 只把 `extraAbilityActive` 原样透传进结果；估时、执行、赠大供给三个调用点只用 farewellCount 等字段，不读它。唯一读它的是 `extraDirectRows`，读的是资源结果那份（L4）。所以这三处换源无论取什么值都不改输出。
+
+### 25.6 验证
+
+- vue-tsc -b --force 0。
+- 相关测试 265 个文件（264 过、1 跳过）、2534 例（2532 过、2 跳过）全过，范围是 mechanics 和 specs 全目录，以及引用这 6 个角色或额外能力的测试。
+- check-guards 29（扫 298 个文件）；zc+checkGuards 207；tokens / data / specs / recording 12 / 161 / 462 / 189。
+- vitest 258/2156 + 262/2348 = 520 文件 / 4504 例，与基线相同。
+- zd DUMP 0 / ROWS 0。
+- build index 1592.91 kB（gzip 463.71，比基线少 0.55 kB）。
+- drift 154 / 0 / 0（复核前待复核 2 条，见 §25.3）；触发器逾期 0、未到期 10。
+
+### 25.7 不做与回退
+
+- remielle、rina、`evalAdditionalAbilityBuffGates` 的求值保留，理由见 §25.1。
+- velina 的 cfg 字段保留。要连它也删，得先让 specs 层能读面板标记：要么把 `additionalAbilityActiveOf` 移到 specs 可以依赖的层（60 多处 import 要跟着改），要么给 spec 事件加一个额外能力门控词条。两条路都比本轮大，先不做。
+- 不加新源码锁，理由见 §25.3。
+- 历史记录（本文 §24、r6 §8 第 759 行等）里出现的字段名保留原样。
+- 回退：`git revert 5c73ad60`。
+
+### 25.8 下一轮候选（未做）
+
+1. **琉音 `computeLiuyinSource` 的 `extraAbilityActive` 透传**
+   - 现状：4 个调用点都得传这个值，但只有资源结果那份会被 `extraDirectRows`（读 `liuyinSrc.extraAbilityActive`）用到；另外三处传了没人读（§25.5，取反后 0 变化）。
+   - 先做：普查 `LiuyinMechanicSource.extraAbilityActive` 的全部读者（含展示层和测试）。如果只有 extraDirectRows，就让它直接读本槽面板标记（入参 `teammateAt(slot)` 能按槽号取面板，需核对是不是同一份局内面板），再从入参和结果类型里删掉这个字段。
+2. **失衡内时间线的变种积蓄槽口径**（§24.8 第 2 条，内容不变）
+   - 现状：主池把变种当作独立的积蓄管（`core/anomalyPool.ts:276`）。`core/stunAxis/inStunAnomaly.ts` 却按基础元素归并积蓄槽和同元素刷新，触发 id 也按基础元素生成，存档里的 `suppressedTriggers` 引用的就是这个 id。
+   - 先做：普查哪些队伍会在同一个失衡窗口里同时积蓄基础元素和它的变种（如仪玄 + 以太队友、爱丽丝 + 物理队友），量出差异，再决定要不要统一。
    - 注意：改 id 格式要带存档迁移。
