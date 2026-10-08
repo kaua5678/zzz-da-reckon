@@ -45,6 +45,8 @@ describe('橘福福次数账本 computeJufufuCycle', () => {
       cinemaLevel: 0,
       aweInitial: 0,
       c2WeishiPerUlt: 0,
+      assistRate: 1,
+      teamUltRate: 1,
     })
     expect(c.huweiHits).toBe(10)
     expect(c.weishiGain).toBe(2 * 3 + 1 * 6 + 2) // 14
@@ -66,6 +68,8 @@ describe('橘福福次数账本 computeJufufuCycle', () => {
       aweInitial: 100,
       c2WeishiPerUlt: 3,
       teamUltimateCount: 4,
+      assistRate: 1,
+      teamUltRate: 1,
     })
     // C2 weishi: cinema>=2 → teamUlt*3；weishi=0+0+0+4*3=12
     expect(c.weishiGain).toBe(12)
@@ -75,7 +79,7 @@ describe('橘福福次数账本 computeJufufuCycle', () => {
   })
 
   it('虎威相位延后（2026-08-30）：块长 = 前台时间/(切上频率×前台动作次数)，滑块越低块越长、次数越少', () => {
-    const base = { exSpecialCount: 0, ultimateCount: 0, parryCount: 0, cinemaLevel: 0, aweInitial: 0, c2WeishiPerUlt: 0 }
+    const base = { exSpecialCount: 0, ultimateCount: 0, parryCount: 0, cinemaLevel: 0, aweInitial: 0, c2WeishiPerUlt: 0, assistRate: 1, teamUltRate: 1 }
     // 无前台时间 → 旧口径 floor(100/4)=25
     expect(computeJufufuCycle({ backstageTime: 100, ...noFront, ...base }).huweiHits).toBe(25)
     // 前台 60s、动作 12 次、100% → 块长 5s；W=160, p=0.375 → c' = 4 + 0.375×2.5 = 4.9375 → 20 次
@@ -230,7 +234,7 @@ describe('橘福福额外能力门控（面板 additionalAbilityActive）', () =
 
 describe('橘福福滑块生效差分（防守卫冻结，SOP §3.5）', () => {
   it('jufufu.frontSwitchRatio → 虎威次数差分（切上频率越高块越短、虎威越多）', () => {
-    const base = { exSpecialCount: 0, ultimateCount: 0, parryCount: 0, cinemaLevel: 0, aweInitial: 0, c2WeishiPerUlt: 0 }
+    const base = { exSpecialCount: 0, ultimateCount: 0, parryCount: 0, cinemaLevel: 0, aweInitial: 0, c2WeishiPerUlt: 0, assistRate: 1, teamUltRate: 1 }
     const dense = computeJufufuCycle({
       backstageTime: 100, frontlineTime: 60, effectiveTotalTime: 160, frontActionCount: 12,
       frontSwitchRatio: 1, ...base,

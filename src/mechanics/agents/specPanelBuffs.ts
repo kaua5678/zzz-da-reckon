@@ -459,7 +459,7 @@ export interface JufufuCycleInput {
    */
   teamUltimateCount?: number
   /**
-   * 两条 `adjustable`（spec 近似项）的比例，缺省 1。
+   * 两条 `adjustable`（spec 近似项）的比例：jufufuCycleOf 经 jufufuAdjustableRate 读入，未注入时为 1。
    *
    * 归属：`1391.jufufu_weishi.jufufu_weishi_assist.rate` ⇒ `assistRate`（支援突击近似项）；
    * `1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate` ⇒ `teamUltRate`（影画2 队伍终结项）。
@@ -467,8 +467,8 @@ export interface JufufuCycleInput {
    * `spinCount` 的唯一来源，而 `spinCount` 驱动威风回填 / 爆米花次数 / 附伤行 ⇒ 只改
    * `buildResourceResult` 的展示值会让滑块「看起来生效但不算数」（R51 实测的假生效面）。
    */
-  assistRate?: number
-  teamUltRate?: number
+  assistRate: number
+  teamUltRate: number
 }
 
 export interface JufufuCycleResult {
@@ -492,28 +492,26 @@ export interface JufufuCycleResult {
  * - 虎釜震煞 = floor(威风总量/100)；虎啸满覆盖
  */
 export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
-  const backstage = Math.max(0, Number(input.backstageTime) || 0)
-  const ex = Math.max(0, Math.floor(Number(input.exSpecialCount) || 0))
-  const ult = Math.max(0, Math.floor(Number(input.ultimateCount) || 0))
-  const parry = Math.max(0, Math.floor(Number(input.parryCount) || 0))
+  const backstage = Math.max(0, input.backstageTime)
+  const ex = Math.max(0, Math.floor(input.exSpecialCount))
+  const ult = Math.max(0, Math.floor(input.ultimateCount))
+  const parry = Math.max(0, Math.floor(input.parryCount))
   const cinema = cinemaLevelOf(input.cinemaLevel)
-  const aweInitial = Math.max(0, Number(input.aweInitial) || 0)
-  const c2Per = Math.max(0, Number(input.c2WeishiPerUlt) || 0)
-  const teamUlt = Math.max(0, Math.floor(Number(input.teamUltimateCount ?? ult) || 0))
+  const aweInitial = Math.max(0, input.aweInitial)
+  const c2Per = Math.max(0, input.c2WeishiPerUlt)
+  const teamUlt = Math.max(0, Math.floor(input.teamUltimateCount ?? ult))
 
   // 虎威 4s CD 被本人前台时间插进循环造成相位延后 → 等效使用 CD（core/effectiveTime.ts）；
   // 前台块长 = 前台时间 / 切上次数（切上频率滑块 × 前台动作次数），动作次数为 0 时回退块长 ≈ CD
   const huweiBlock = frontBlockSeconds(input.frontlineTime, input.frontActionCount, input.frontSwitchRatio, JUFUFU_HUWEI_INTERVAL)
   const huweiInterval = phaseDelayedCooldown(JUFUFU_HUWEI_INTERVAL, input.frontlineTime, input.effectiveTotalTime, huweiBlock)
   const huweiHits = Math.floor(backstage / huweiInterval)
-  // ⚠ 两条近似项各乘自己的 rate（R51 用户裁决「接线」）；缺省 1 ⇒ 与旧口径逐位相同。
-  const assistRate = Number.isFinite(Number(input.assistRate)) ? Math.max(0, Number(input.assistRate)) : 1
-  const teamUltRate = Number.isFinite(Number(input.teamUltRate)) ? Math.max(0, Number(input.teamUltRate)) : 1
+  // ⚠ 两条近似项各乘自己的 rate（R51 用户裁决「接线」）；未注入时 jufufuAdjustableRate 给 1 ⇒ 与旧口径逐位相同。
   const weishiGains: Record<string, number> = {
     jufufu_weishi_ex_special: ex * 3,
     jufufu_weishi_ultimate: ult * 6,
-    jufufu_weishi_assist: parry * 1 * assistRate,
-    jufufu_team_ult_weishi_gain: cinema >= 2 ? teamUlt * c2Per * teamUltRate : 0,
+    jufufu_weishi_assist: parry * 1 * input.assistRate,
+    jufufu_team_ult_weishi_gain: cinema >= 2 ? teamUlt * c2Per * input.teamUltRate : 0,
   }
   const weishiGain = Object.values(weishiGains).reduce((a, b) => a + b, 0)
   // 威势全部投入高速旋转（后台虎釜震煞后进入旋转；整局总量口径）
