@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。
 
 ## 1. 问题
 
@@ -862,10 +862,109 @@ zd 两套快照都是 0/0。理由：写入是无条件的「换算(设置)」�
 - 不加新锁。删掉的字段已不在类型里，读回去 vue-tsc 就报（§15.4）。剩下 10 个从设置写 cfg 的字段都是正当通道，要写精确的源码锁就得带白名单，维护成本高于收益。规则写进了协议单一来源的头注释。
 - 回退：`git revert 0487d921`。单提交，无数据迁移，生产结果不变。
 
-### 15.8 下一轮候选（未做）
+### 15.8 下一轮候选（r751 做了第 1 条，见 §16）
 
 1. 两个带第二写入方的设置字段，读取处还各有一份默认值：
    - 雨果 `hugoRemainingStunSeconds`：buildCharConfig 从设置写（hugo.ts:171），轴内反推再覆盖（:396），读取处 `?? 5`（:187）。可以照 `hugoAxisExVerdictCount` 的做法，让轴路径写自己的覆盖字段，读取处写「覆盖值 ?? 设置换算」。
    - 柚叶 `yuzuhaChainEntryCount`：设置作底数（yuzuha.ts:115），影画2 再 `+=`（:133），读取处 `?? 0`（:167）。可以改成读取处「设置 + 影画2 增量」。
    - 两处都小，可以并成一轮；先确认 convergence.ts:524 注释里提到的轴内反推读法。
+2. （沿用 §14.8 第 2 条）jufufuAdjustableRate 的 1 与 spec adjustable 的 `"default": 1` 重复，难点仍是注册顺序。
+
+## 16. r751：设置默认值只留在声明（收尾：两个带第二写入方的字段与钩子读取器）
+
+> 代码提交 `5d737c73`，zd 0/0（arena-G r751）；arch CC-534；r6 §8 第 751 行。题目是 §15.8 的第 1 条候选，查的时候并入同类的钩子读取器通道。
+
+### 16.1 问题
+
+- r750 删镜像字段时留下两个不是纯镜像的设置字段，读取处各有一份默认值：
+  - 雨果 `hugoRemainingStunSeconds`：buildCharConfig 写夹取后的设置值（hugo.ts:171），轴模式下 applyHugoTeamConfig 改写成轴内反推的剩余秒数（:396），cycleFromInput 读 `Number(cfg.hugoRemainingStunSeconds ?? 5)`（:187）。一个字段两种含义。同模块另外两个轴内量 `hugoAxisExVerdictCount` / `hugoAxisUltVerdictCount` 早就是「只在轴模式写、读取处看写没写选通路」。
+  - 柚叶 `yuzuhaChainEntryCount`：buildCharConfig 以设置为底数（yuzuha.ts:115），影画2 再 `+= floor(有效战斗时间 / 20)`（:133），yuzuhaSourceFromCfg 读 `?? 0`（:167）。同一个影画2 公式在 applyTeamConfig 里又写了一遍（全队 `chainCountTotalExtra`），注释说两者「同源近似」，实际是两份代码。
+- 查这两处时发现第三个读口：派发器递给钩子的 store 读取器 `getMechanicSetting(id, D)`（= `configStore.getMechanicSetting`）。agents 里手抄了 6 处 D：雨果 `stunRefundRatio` 的 5 / 1 / 1，爱丽丝 `alice.cinema6PerStateCount` 的 5（两处），琉音 `liuyin.c6EchoMax` 的 `CINEMA6_ECHO_MAX`。
+  - store 里没有用户值时，这个读取器直接返回 D。所以这份 D 是**生产默认值**，不像 cfg / 面板两个读口的 fallback 只对手搭输入生效。改声明的默认值时，这 6 处会静默不跟。
+  - 目前 6 个 D 都等于声明。
+  - CC-508/510 源码锁只认带 cfg 首参的调用形和裸索引形，这一形漏网。
+
+### 16.2 运行时探针（打在 HEAD 版两个读取点上，已还原）
+
+- 做法：两个读取点在旧读法之外同时算新读法，逐位比较（Object.is）。记「cfg 上有没有引擎预填的 setting 键 × 相同 / 不同」，不同的另记新旧值和调用栈。跑 vitest 两片和 zd。
+  - 雨果的新读法：轴路径写过的值 ?? 夹取(设置)。轴路径的值由探针在 applyHugoTeamConfig 写入处另存一份。
+  - 柚叶的新读法：floor(设置) + 读取时现算的影画2 增量。
+- 结果：
+  - 引擎 cfg 上没有一次不同。按进程去重的首见行：雨果 22 个进程、柚叶 39 个进程；落盘的退出计数共 1276 / 6666 次读取。
+  - 补跑雨果相关测试（15 个文件），把「轴路径写过」单独记：读到轴内值的有 7 个进程，全部相同。
+  - 唯一不同的是 yuzuha.test.ts:140 手搭的影画6 cfg：它写了 `yuzuhaChainEntryCount: 0`，旧 0、新 2。生产里影画6 必带强制连携，到不了这个状态。
+- 道理上也成立：
+  - cfg.battleTime / invincibleTime 只在 helpers.ts 建 cfg 时写一次，所以读取时现算的有效战斗时间与 buildCharConfig 时相同。
+  - convergence 每轮从 base cfg 克隆，再对克隆派发 applyTeamConfig，轴内值写在克隆上。新旧字段的生命周期一样。
+- zd 0/0（探针只记录）。第 1 片 4 例失败都来自探针写法：`(cfg as any)` 触发零 any 锁和 guards。第 2 片全过。
+
+### 16.3 改法（`5d737c73` 11 个文件 +88 / −70）
+
+- 雨果：
+  - 删 buildCharConfig 写设置的那行；applyHugoTeamConfig 改写 `hugoAxisRemainingStunSeconds`。
+  - 读取处写 `cfg.hugoAxisRemainingStunSeconds ?? setting(cfg, 'hugo.remainingStunSeconds')`，不再夹取。0–15 的夹取由 computeHugoCycle 负责：剩余秒展示、决算倍率、失衡返还三个用途对夹取都不变。返还是 min(25%, max(0, 秒) × 5%)，15 秒以上同为 25%。
+  - 增广声明换成新字段，和两个决算次数排在一起。
+- 柚叶：
+  - `forcedChainCount(命座, 有效秒)` 只写一处，applyTeamConfig 与 computeYuzuhaMechanic 共用。
+  - computeYuzuhaMechanic 的 `chainEntryCount` 只表示设置值，在函数内 floor（与 parryCount 同样处理）；影画2 的入场由函数自己加。影画2 的 CD 缩短本来就在这个函数里。
+  - yuzuhaSourceFromCfg 直接传设置。删 cfg 字段、buildCharConfig 里的两段写入和增广声明。
+- 钩子读取器：
+  - `utils/mechanicSettingCfg.ts` 加 `mechanicSettingGetterReader(declared)`，返回 `(get, id, fallback?) => get(id, 声明默认)`，与 cfg 读口、面板读口共用 `declaredDefault`。头注释写明：三个读口各用一个「声明即默认值」的 reader。
+  - 雨果 / 爱丽丝 / 琉音共 6 处改用它。
+  - 琉音的 `CINEMA6_ECHO_MAX` 随之无人用，删除（声明里本来就写着 12）。
+  - 爱丽丝注释里抄的「默认5次」改成设置 id。
+- convergence.ts:524 的迁移注释改用新字段名。
+- 源码锁 mechanicSettingCfgSource.test.ts：CC-508/510 那条的正则加上 `getMechanicSetting('a.b', D)` 一形；补一条 getter reader 的语义用例（声明默认、显式覆盖、未声明抛错）。
+- 单测：
+  - convergenceNightD 6 处断言改读 `hugoAxisRemainingStunSeconds`（「非轴不写」的 toBeUndefined 语义不变）；convergenceNightB 用例名同步。
+  - hugo.test 删 3 处等于默认值的 `hugoRemainingStunSeconds: 5`。
+  - yuzuha.test 删「滑块经 buildCharConfig 落 cfg」用例：底部的完整计算链用例已经覆盖「滑块 → sweetnessFromChain」。
+  - yuzuha.test 影画2 用例改为断言资源结果的 sweetnessFromChain（设置 4 + 强制连携 9）。
+  - yuzuha.test 纯函数的影画2 / 影画6 用例，以及手搭影画6 的 buildExecutions 用例，按「影画≥2 必带强制连携」更新期望：硬糖 5→8、6→9、6→8，·极 9→11，预算 6→9。旧期望对应的状态生产里到不了。
+- hugo.ts 的 `@fact engine:轴内块数落地` 锚在 applyHugoTeamConfig。函数动过，块数逻辑没动，追加 `·复核@2026-10-08`。
+
+### 16.4 反证
+
+在改后的代码上临时改以下几处，已还原并逐字节比对：
+
+- 雨果读回 `cfg.hugoRemainingStunSeconds`、柚叶读回 `cfg.yuzuhaChainEntryCount` → vue-tsc 分别报 TS2551 / TS2339。
+- 雨果 stunRefundRatio 第一项改回 `getMechanicSetting('hugo.remainingStunSeconds', 5)` → 源码锁报。
+- computeYuzuhaMechanic 去掉强制连携 → yuzuha.test 3 例报（影画2 用例、硬糖用例、buildExecutions 用例）。
+- cycleFromInput 忽略轴内覆盖、只读设置 → hugo.test「轴模式：决算倍率由轴内块位置反推」报。
+
+### 16.5 零差
+
+zd 两套快照都是 0/0，理由：
+
+- 雨果：轴模式读到的是同一个轴内值，非轴读到的是同一个设置值（夹取不变的理由见 §16.3）。
+- 柚叶：设置、命座、有效战斗时间三项输入，在 buildCharConfig 和读取时相同（§16.2）。
+- 钩子读取器：6 个 D 都等于声明。
+
+### 16.6 验证
+
+| 项 | 结果 |
+|---|---|
+| vue-tsc | 0 |
+| guards | 29 条全过，扫 298 个文件 |
+| zc.test + checkGuards.test | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 |
+| zd | 0/0 |
+| vitest | 258 / 2155 + 262 / 2347 = 520 文件 / 4502 例（删 1 例、加 1 例，与基线相同；跳过 13 / 26 不变） |
+| build | 1594.31 → 1594.29 kB（index-Z5vJPp2t.js，gzip 463.95） |
+| drift | 154 / 0 / 0；触发器逾期 0、未到期 10 |
+
+### 16.7 不做与回退
+
+- 引擎侧按 id 读模块设置、自带默认值的，本轮不动。例：`ultimatePromote.ts:205` 读 `liuyin.hug60Count` 给 -1，等于声明。
+  - 这是编排层读角色设置。要去掉这份默认值，得让 store 的 `getMechanicSetting` 按注册表回落声明，store 就要依赖 mechanics 注册表，超出本轮，记为候选（§16.8）。
+  - `guarantee.*` 刻意不注册；`boss.*` / `optimizer.*` / `time.*` 等不是模块设置，不在此列。
+- 柚叶不单独保留「设置 → cfg」的用例：完整计算链用例覆盖滑块，影画2 用例覆盖「设置 + 强制连携」。
+- 回退：`git revert 5d737c73`。单提交，无数据迁移，生产结果不变。
+
+### 16.8 下一轮候选（未做）
+
+1. 编排层 / 视图层按 id 读模块设置时自带的默认值（`ultimatePromote.ts:205` 的 `liuyin.hug60Count` -1 等）。
+   - 做法候选：store 的 `getMechanicSetting(id)` 省略 fallback 时，按注册表回落声明。
+   - 先普查 composables / views / stores 里读**模块注册设置**的调用点，以及默认值是否等于声明。
+   - 再看 store → mechanics 注册表的依赖方向能不能接受。现在 helpers.ts / ResourceUtilizationPage 的做法是遍历声明后传 `setting.default`。
 2. （沿用 §14.8 第 2 条）jufufuAdjustableRate 的 1 与 spec adjustable 的 `"default": 1` 重复，难点仍是注册顺序。
