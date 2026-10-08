@@ -53,12 +53,12 @@ describe('伤害影响分析采样（独立场景）', () => {
   it('① 反例：旧实现的「写回原值」恢复会改写现场（未设置 ⇒ 显式值）', async () => {
     const { config } = await source()
     const calc = useResourceCalc()
-    const { settingMap } = impactVariableView({ config, calc })
+    const share = impactVariableView({ config, calc }).find(v => v.id === SHARE_VAR)!
     const coverage = calc.anomalyPoolResult.value?.coverage?.perElementCoverageRate
     const before = JSON.stringify(config.$state)
-    const orig = readImpactVariable(SHARE_VAR, config, settingMap, coverage)
-    writeImpactVariable(SHARE_VAR, 0, config, settingMap)
-    writeImpactVariable(SHARE_VAR, orig, config, settingMap)
+    const orig = readImpactVariable(share, config, coverage)
+    writeImpactVariable(share, 0, config)
+    writeImpactVariable(share, orig, config)
     await tick()
     expect(config.mechanicSettings[SHARE_VAR.slice('setting.'.length)]).toBeDefined()
     expect(JSON.stringify(config.$state)).not.toBe(before)
@@ -69,9 +69,9 @@ describe('伤害影响分析采样（独立场景）', () => {
     const pts = await withAnalysisScenario(s => sampleImpactCurve(s, { varId: 'bossStunValue', points: 3 }))
     expect(pts).toHaveLength(3)
     const calc = useResourceCalc()
-    const { settingMap } = impactVariableView({ config, calc })
+    const stun = impactVariableView({ config, calc }).find(v => v.id === 'bossStunValue')!
     for (const p of pts) {
-      writeImpactVariable('bossStunValue', p.x, config, settingMap)
+      writeImpactVariable(stun, p.x, config)
       await tick()
       expect(calc.teamTotalDamage.value).toBe(p.y)
     }

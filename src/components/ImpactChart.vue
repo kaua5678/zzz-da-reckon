@@ -124,7 +124,7 @@ import { sampleImpactCurve, type ImpactPoint } from '@/composables/impactSamplin
 import { useConfigStore, type CharacterConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
-import { buildImpactVariables, readImpactVariable, type ElementCoverageRate } from '@/composables/impactVariables'
+import { buildImpactVariables, readImpactVariable, type ElementCoverageRate, type TeamImpactVariable } from '@/composables/impactVariables'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
@@ -174,8 +174,8 @@ const errorMsg = ref('')
 const curVal = ref<number | undefined>(undefined)
 const selVar = computed(() => allVars.value.find(v => v.id === selectedVarId.value))
 
-function readVar(id: string): number {
-  return readImpactVariable(id, configStore, settingMap.value, coverageRate.value)
+function readVar(v: TeamImpactVariable): number {
+  return readImpactVariable(v, configStore, coverageRate.value)
 }
 
 
@@ -313,7 +313,8 @@ async function run() {
   const task = owner.start()
   const control = { signal: task.signal }
   computing.value = true; errorMsg.value = ''; hoverIdx.value = -1
-  curVal.value = readVar(varId)
+  // 换队后下拉里可能还留着旧队伍的变量：不在当前变量表 ⇒ 没有当前值（快照曲线照常按 varId 采样，CC-537）
+  curVal.value = selVar.value ? readVar(selVar.value) : undefined
   const N = sampleCount.value
   const optimize = optimizePerPoint.value
   /** 每条曲线一个进度条：label 0/N → label i/N · 预计剩余 */

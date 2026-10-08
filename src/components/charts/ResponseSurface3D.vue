@@ -200,18 +200,12 @@ import { fmt } from '@/utils/format'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { sampleImpactSurface } from '@/composables/impactSampling'
+import type { TeamImpactVariable } from '@/composables/impactVariables'
 import { isLightTheme, SCENE_ROOT_FALLBACK, themeReader, useThemeRedraw, withAlpha, type SceneVar } from '@/utils/canvasTheme'
 
-interface ImpactVar {
-  id: string
-  label: string
-  defaultRange: [number, number]
-  suffix?: string
-}
-
 const props = defineProps<{
-  allVars: ImpactVar[]
-  readVar: (id: string) => number
+  allVars: TeamImpactVariable[]
+  readVar: (v: TeamImpactVariable) => number
   teamTotalDamage: number
   hasTeam: boolean
   varOptions: Array<{ label: string; value: string }>
@@ -240,8 +234,9 @@ const densityOptions = [
 const selVarX = computed(() => props.allVars.find(v => v.id === varXId.value))
 const selVarY = computed(() => props.allVars.find(v => v.id === varYId.value))
 
-const curValX = computed(() => props.readVar(varXId.value))
-const curValY = computed(() => props.readVar(varYId.value))
+// 换队后选择可能已不在当前变量表 ⇒ 没有当前值（徽标不显示，标记落在区间起点；CC-537）
+const curValX = computed(() => selVarX.value ? props.readVar(selVarX.value) : undefined)
+const curValY = computed(() => selVarY.value ? props.readVar(selVarY.value) : undefined)
 
 function isPresetActive(p: { x: string; y: string }) {
   return varXId.value === p.x && varYId.value === p.y

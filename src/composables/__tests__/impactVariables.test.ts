@@ -1,6 +1,7 @@
 /**
  * CC-53：impactVariables 三个函数与原 ImpactChart（789a27e :161–236）内联算法逐值一致。
  * CC-55：柏妮思判断改为模块声明（teamReleaseShares）；下面的 inline* 仍保留原写死 '1171' 的写法当对照基准。
+ * CC-537：读写改收变量对象（动态变量自带声明 / 异放键与元素）；对照基准仍按 id 走原内联写法，变量表只比对展示字段（toMatchObject）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -82,7 +83,7 @@ describe('impactVariables（CC-53）', () => {
     expect(shares).toEqual([{ namespace: 'burnice', label: '柏妮思异放' }])  // CC-55：模块声明替代写死 1171
 
     const vars = buildImpactVariables(settingMap, shares, coverage)
-    expect(vars).toEqual(inlineAllVars(h, settingMap, coverage))
+    expect(vars).toMatchObject(inlineAllVars(h, settingMap, coverage))
     const ids = vars.map(v => v.id)
     expect(ids).toContain('setting.burnice.releaseShare:fire')
     expect(ids).toContain('setting.burnice.releaseShare:electric')
@@ -91,30 +92,30 @@ describe('impactVariables（CC-53）', () => {
     expect(pctSetting, '至少一个 % 机制设置变量').toBeTruthy()
 
     h.config.setMechanicSetting('burnice.releaseShare:electric', 0.3) // 一个已存、一个走自动值
-    for (const id of ids) expect(readImpactVariable(id, h.config, settingMap, coverage), id).toBe(inlineRead(h, settingMap, coverage, id))
-    expect(readImpactVariable('setting.burnice.releaseShare:electric', h.config, settingMap, coverage)).toBeCloseTo(30)
-    expect(readImpactVariable('setting.burnice.releaseShare:fire', h.config, settingMap, coverage)).toBeCloseTo(60)
+    for (const v of vars) expect(readImpactVariable(v, h.config, coverage), v.id).toBe(inlineRead(h, settingMap, coverage, v.id))
+    const byId = (id: string) => vars.find(v => v.id === id)!
+    expect(readImpactVariable(byId('setting.burnice.releaseShare:electric'), h.config, coverage)).toBeCloseTo(30)
+    expect(readImpactVariable(byId('setting.burnice.releaseShare:fire'), h.config, coverage)).toBeCloseTo(60)
 
     for (const v of vars) {
       const target = v.defaultRange[0] + (v.defaultRange[1] - v.defaultRange[0]) * 0.37
       inlineWrite(h, settingMap, v.id, target)
       const a = snap(h)
-      writeImpactVariable(v.id, v.defaultRange[0] + (v.defaultRange[1] - v.defaultRange[0]) * 0.11, h.config, settingMap)
-      writeImpactVariable(v.id, target, h.config, settingMap)
+      writeImpactVariable(v, v.defaultRange[0] + (v.defaultRange[1] - v.defaultRange[0]) * 0.11, h.config)
+      writeImpactVariable(v, target, h.config)
       expect(snap(h), v.id).toEqual(a)
     }
-    writeImpactVariable(pctSetting!.id, 50, h.config, settingMap)
+    writeImpactVariable(pctSetting!, 50, h.config)
     expect(h.config.getMechanicSetting(pctSetting!.id.slice('setting.'.length), -1)).toBeCloseTo(0.5)
   }, 60000)
 
-  it('队伍无柏妮思 ⇒ 不出占比变量；覆盖率缺省也不崩', async () => {
+  it('队伍无柏妮思 ⇒ 不出占比变量', async () => {
     const h = await setupHarness([{ agentId: '1161' }, { agentId: '1311' }, { agentId: '1211' }])
     const settingMap = mapOf(h)
     const shares = teamReleaseShares(h.config.team, id => h.catalog.getAgent(id))
     expect(shares).toEqual([])
     const vars = buildImpactVariables(settingMap, shares, { fire: 1 })
     expect(vars.some(v => v.id.includes('releaseShare'))).toBe(false)
-    expect(vars).toEqual(inlineAllVars(h, settingMap, { fire: 1 }))
-    expect(readImpactVariable('setting.burnice.releaseShare:fire', h.config, settingMap, undefined)).toBe(0)
+    expect(vars).toMatchObject(inlineAllVars(h, settingMap, { fire: 1 }))
   }, 60000)
 })

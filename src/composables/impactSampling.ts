@@ -16,8 +16,7 @@ import type { AnalysisContext } from '@/composables/analysisScenario'
 import { cloneConfigState } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
-import { buildImpactVariables, writeImpactVariable } from '@/composables/impactVariables'
-import type { ImpactVariable } from '@/core/impactVars'
+import { buildImpactVariables, writeImpactVariable, type TeamImpactVariable } from '@/composables/impactVariables'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { useCatalogStore } from '@/stores/catalog'
 import type { CharacterConfig } from '@/stores/config'
@@ -28,15 +27,15 @@ export interface ImpactPoint { x: number; y: number; byType: Record<string, numb
 
 const yieldToMacrotask = () => new Promise<void>(resolve => setTimeout(resolve, 0))
 
-/** 场景当前队伍的机制设置表与可选变量（口径同 ImpactChart 的 settingMap / allVars） */
-export function impactVariableView(scenario: AnalysisContext): { settingMap: Map<string, MechanicSetting>; vars: ImpactVariable[] } {
+/** 场景当前队伍的可选变量（口径同 ImpactChart 的 allVars；读写口径随变量对象携带，CC-537） */
+export function impactVariableView(scenario: AnalysisContext): TeamImpactVariable[] {
   const { config, calc } = scenario
   const catalog = useCatalogStore()
   const settingMap = new Map<string, MechanicSetting>()
   for (const setting of teamMechanicSettings(config.team)) settingMap.set(setting.id, setting)
   const coverageRate = calc.anomalyPoolResult.value?.coverage.perElementCoverageRate
   const releaseShares = teamReleaseShares(config.team, id => catalog.getAgent(id))
-  return { settingMap, vars: buildImpactVariables(settingMap, releaseShares, coverageRate) }
+  return buildImpactVariables(settingMap, releaseShares, coverageRate)
 }
 
 /** 读当前求值结果：总伤 + 按伤害类型分解（只计 totalDamage > 0 的行） */
@@ -69,8 +68,7 @@ export async function sampleImpactCurve(scenario: AnalysisContext, opts: ImpactC
     config.team = cloneConfigState(opts.team)
     await yieldToMacrotask()
   }
-  const { settingMap, vars } = impactVariableView(scenario)
-  const v = vars.find(item => item.id === opts.varId)
+  const v = impactVariableView(scenario).find(item => item.id === opts.varId)
   if (!v) return []
   const catalog = useCatalogStore()
   const [xMin, xMax] = v.defaultRange
@@ -78,7 +76,7 @@ export async function sampleImpactCurve(scenario: AnalysisContext, opts: ImpactC
   for (let i = 0; i < opts.points; i++) {
     if (isBatchAborted(opts.control)) break
     const x = xMin + ((xMax - xMin) / (opts.points - 1)) * i
-    writeImpactVariable(v.id, x, config, settingMap)
+    writeImpactVariable(v, x, config)
     await yieldToMacrotask()
     if (opts.optimizePerPoint) {
       const alloc = computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => calc.teamTotalDamage.value }, calc.effectiveWEngineCoverages.value)
@@ -115,7 +113,7 @@ export interface ImpactSurface {
 
 /** 3D 响应面：两变量各在缺省区间上取 n 点。任一变量不属于场景 ⇒ null。 */
 export async function sampleImpactSurface(scenario: AnalysisContext, opts: ImpactSurfaceOptions): Promise<ImpactSurface | null> {
-  const { settingMap, vars } = impactVariableView(scenario)
+  const vars = impactVariableView(scenario)
   const vx = vars.find(item => item.id === opts.varX)
   const vy = vars.find(item => item.id === opts.varY)
   if (!vx || !vy) return null
@@ -139,8 +137,8 @@ export async function sampleImpactSurface(scenario: AnalysisContext, opts: Impac
     grid[i] = []
     for (let j = 0; j < N; j++) {
       if (isBatchAborted(opts.control)) return { xs, ys, grid, minZ, maxZ, peak, complete: false }
-      writeImpactVariable(vx.id, xs[i]!, scenario.config, settingMap)
-      writeImpactVariable(vy.id, ys[j]!, scenario.config, settingMap)
+      writeImpactVariable(vx, xs[i]!, scenario.config)
+      writeImpactVariable(vy, ys[j]!, scenario.config)
       // 让出主线程的节奏同原组件：每 8 点一次（含第 0 点），其余点同步读数
       if (completed % BATCH_SIZE === 0) await yieldToMacrotask()
       const z = scenario.calc.teamTotalDamage.value
