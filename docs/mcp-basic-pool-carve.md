@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。
 
 ## 1. 问题
 
@@ -1092,10 +1092,110 @@ zd 两套快照都是 0/0，理由：
 - `impactVariables.ts` 的 `meta?.default ?? 1` 本轮不动。meta 来自声明，`?? 1` 只在变量 id 不在当前 settingMap 时生效，见 §17.9。
 - 回退：`git revert c8fa1610 d9c98594`。两个提交互不依赖，可以单独回退。无数据迁移，生产结果不变。
 
-### 17.9 下一轮候选（未做）
+### 17.9 下一轮候选（r753 做了第 1 条，见 §18）
 
 1. 沿用 §14.8 / §16.8 第 2 条：jufufuAdjustableRate 的 1 与 spec adjustable 的 `"default": 1` 重复，难点仍是注册顺序。
 2. `impactVariables.ts#readImpactVariable` 的 `meta?.default ?? 1`：
    - 先查伤害影响页换队后，已选的 `setting.<id>` 变量会不会残留（这时 meta 才会缺）；
    - 不会残留，就删 `?? 1`，让 meta 必有；
    - 会残留，就保留，并在注释里写明这个场景。
+
+## 18. spec adjustable 比例统一按声明读，模块 reader 去掉 fallback 形参（r753，CC-536）
+
+> 代码提交 `1fff4c95`（纯重构，zd 0/0）（arena-G r753）；arch CC-536；r6 §8 第 753 行。题目来自 §17.9 第 1 条；普查后把同类的洛克茜两处一起做了，并收掉 reader 的 fallback 形参。
+
+### 18.1 普查
+
+- 起点：§17.9 第 1 条，橘福福 `jufufuAdjustableRate` 的 1 与 spec 1391 两条 adjustable 的 `"default": 1` 重复。当时记的难点是注册顺序。
+- 注册顺序现在不是障碍：`vite.config.ts` 的 `setupFiles: ['./src/mechanics/index.ts']`（`6db533b9`，09-27）让每个测试文件先跑注册。不过本轮的改法不依赖注册（见 18.3）。
+- spec JSON 共声明 37 条 adjustable，分布在 13 个角色。
+  - 模块源码里按 id 读的只有 4 条：橘福福 2 条（1391）、洛克茜 2 条（1621）。
+  - 其余 33 条只出现在 spec JSON 里，由 spec 解释器 `applyAdjustable` 按规则自带的声明读。
+- 模块 reader（`mechanicSetting*Reader` 造出的函数）在 src 里共 236 次调用。
+  - 生产代码带显式 fallback 的只有洛克茜 `roxyWindEnergySourceOf` 的两次 `cfgSetting(cfg, ROXY_*_RATE_ID, 1)`。
+  - id 是常量，CC-508/510 的正则只认字面量 id，所以没拦住。
+  - 其余带 fallback 的调用都在 mechanicSettingCfgSource.test 里，测的就是这个形参。
+- 橘福福没走 reader：`jufufuAdjustableRate` 是 `Math.max(0, cfgMechanicSetting(cfg, id, 1))`。mechanics/ 下直接用裸读口 `cfgMechanicSetting` / `mechanicSettingOf` 的只有这一处。
+
+### 18.2 问题
+
+同一种声明（spec adjustable：default 1、min 0、max 2）有三种读法：
+
+- 解释器 `specs/resources.ts#applyAdjustable`：取声明 default，再钳到声明区间（CC-511）。
+- 洛克茜：reader 手抄 fallback 1，再用私有 `clampRate` 手抄 [0, 2]，非有限值取 1。注释写着「与 spec 声明的 min/max 同源」，实际上是抄的。
+- 橘福福：裸读口手抄 1，只钳下界 0。
+
+另外，reader 的 fallback 形参只剩这两处在用，它是「默认值只来自声明」（CC-508）仅剩的例外通道。
+
+### 18.3 改法
+
+- `specs/resources.ts`：
+  - 抽出 `adjustableRate(cfg, adjustable)`，作为 spec adjustable 比例的唯一读法，`applyAdjustable` 改为调用它；
+  - 新增 `specAdjustables(spec)`，枚举增益 / 消耗 / 反馈三类规则上的 adjustable。`specToMechanicModule` 改用它，删掉原来的 flatMap + filter 和 `ResourceRuleSpec` 导入；
+  - 新增 `specAdjustableRate(cfg, id)`，按 id 从 `agentSpecs` 惰性建表，id 未声明就抛错。它只读 spec 注册表，与模块注册顺序、`registerWithSpecSettings` 的合并都无关。
+- 洛克茜：
+  - 删 `clampRate`，两处改为 `specAdjustableRate`；
+  - `computeRoxyWindEnergy` 的 `energyRate` / `eyeRate` 未传时取 1（不缩放），钳制只在读取侧做一次；
+  - `@fact agent:1621/风眼时序` 和 `余响时序` 锚在这个函数上。两条口径都未变（eyeRate 的滑块上限仍是 2），各追加复核@2026-10-08。
+- 橘福福：删 `jufufuAdjustableRate` 及其注释，两处改为 `specAdjustableRate`；更新 `JufufuCycleInput`、`computeJufufuCycle` 里提到它的两条注释；不再 import `cfgMechanicSetting`。
+- `utils/mechanicSettingCfg.ts`：
+  - 三个 reader 和 `declaredDefault` 去掉 fallback 形参，删掉「显式 fallback 仍可覆盖」的说明；
+  - 头注释写明：spec adjustable 走 `specAdjustableRate`，模块不直接调裸读口。
+- 源码锁 CC-536（mechanicSettingCfgSource.test）：mechanics/ 下的非测试代码去掉注释后，不得出现 `cfgMechanicSetting` / `mechanicSettingOf`。三个 reader 用例删掉显式 fallback 的断言。
+- resources.test 新增 `specAdjustableRate` 用例：
+  - 未注入时取声明 default；
+  - 钳到声明区间（5 → 2、-1 → 0）；
+  - id 未声明就抛错。
+
+### 18.4 运行时探针
+
+在 HEAD 上打只记录的探针（已还原），比较旧值与新读法（声明 default + 区间）：
+
+- 橘福福两个比例：`jufufuAdjustableRate` 的返回值；
+- 洛克茜读取侧两个比例：`clampRate(cfgSetting(cfg, ID, 1))`；
+- `computeRoxyWindEnergy` 去掉内部钳制后的值：`input.xRate ?? 1` 对比 `clampRate(input.xRate)`；
+- 另在 `declaredDefault` 记录显式 fallback 的实际使用。
+
+结果：
+
+- vitest 两片（2155 + 2347 全过）加 zd，共记录 347 行（按进程去重）：DIFF 0，未声明 0。
+- 四个站点都出现了 0 / 1 / 2 三个取值。
+- 运行时用到显式 fallback 的只有洛克茜两条 id，另有锁测试自造的 x.y / x.z。
+
+行为差异只有一处：橘福福的比例新增上界 2（spec 声明的 max）。存储值超过 2 才会不同，界面滑块最大就是 2，实际到不了。
+
+### 18.5 反证（均已还原，cmp 核对）
+
+| 临时改动 | 结果 |
+|---|---|
+| 洛克茜改回 `cfgSetting(cfg, ROXY_WIND_ENERGY_RATE_ID, 1)` | vue-tsc 报 TS2554；锁测试 8 例全过，两道源码锁都不报。这种写法只有类型能拦 |
+| 橘福福 `assistRate` 改回 `Math.max(0, cfgMechanicSetting(cfg, ID, 1))`（行为零差） | vue-tsc 0，jufufu / adminRulingEffect 全过；只有 CC-536 锁报（import 和调用共 2 处） |
+| `adjustableRate` 去掉上界钳制 | 只有 resources.test 的新用例报（expected 5 to be 2）；adjustableEffect 的 0 / 1 / 2 三点用例不报 |
+
+### 18.6 验证
+
+| 项 | 结果 |
+|---|---|
+| vue-tsc | 0 |
+| guards | 29 条，扫 298 个文件 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 |
+| zc.test + checkGuards.test | 207 |
+| vitest | 258/2156 + 262/2348 = 520 文件 / 4504 例（+2：CC-536 锁、specAdjustableRate 用例）；跳过 13 / 26 |
+| zd | DUMP 0 / ROWS 0 |
+| build | index 1594.50 → 1594.54 kB（gzip 464.02） |
+| zc drift | 154 / 0 / 0；触发器逾期 0、未到期 10 |
+
+### 18.7 不做与回退
+
+- 不改成「模块 reader 读注册后合并过的 `<module>.settings`」：这样也能删掉 fallback，但默认值仍依赖 `registerWithSpecSettings` 在注册期的改写，钳制也还得各模块自己抄。
+- `computeRoxyWindEnergy` 的 `?? 1` 保留：它是纯函数「未传 = 不缩放」的默认值。测试直接调用时不传比例，生产侧总是传读取侧钳过的值。
+- 不把 `cfgMechanicSetting` 改成模块私有：`specs/resources.ts` 还要用它；`mechanicSettingOf` 还被 `panelPhases.ts` 用来按声明预填记录。所以改用源码锁，只限定 mechanics/。
+- 两个模块里的 adjustable id 常量保留：id 拼错或 spec 改名时，`specAdjustableRate` 第一次调用就会抛错，洛克茜和橘福福的单测都会走到这里。
+- 回退：`git revert 1fff4c95`（单提交，无数据迁移）。
+
+### 18.8 下一轮候选（未做）
+
+1. 沿用 §17.9 第 2 条：`impactVariables.ts#readImpactVariable` 的 `meta?.default ?? 1` 是否可达，即换队后已选的 `setting.<id>` 变量会不会残留。
+2. `registerWithSpecSettings`（mechanics/index.ts）在注册时改写 `module.settings`。spec adjustable 的读取已经不经过这条路。
+   - 先普查还有谁依赖改写后的列表：UI 列设置、settingDefaults、读 `<module>.settings` 的 reader；
+   - 再决定能不能让注册表自己保存合并结果，不改模块对象。
