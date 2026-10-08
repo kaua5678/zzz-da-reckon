@@ -288,13 +288,16 @@ function resolveEnergyRegenTotal(panel: PanelValues): number {
   return calcEnergyRegenTotal(panel)
 }
 
+/** 单 / 双喷秒数：设置夹到上限（双喷上限影画4 加长）。buildCharConfig 的耗能与资源结果共用（r750 前经 cfg 镜像字段传递） */
+function singleSpraySecondsOf(cfg: unknown): number {
+  return clamp(cfgSetting(cfg, 'burnice.singleSpraySeconds'), 0, SINGLE_SPRAY_MAX_SECONDS)
+}
+function doubleSpraySecondsOf(cfg: unknown, cinemaLevel: number): number {
+  return clamp(cfgSetting(cfg, 'burnice.doubleSpraySeconds'), 0, DOUBLE_SPRAY_MAX_SECONDS + (cinemaLevel >= 4 ? CINEMA4_DOUBLE_SPRAY_EXTRA_SECONDS : 0))
+}
+
 function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.burniceCinemaLevel = cinemaLevel
-  cfg.burniceSingleSpraySeconds = clamp(cfgSetting(cfg, 'burnice.singleSpraySeconds'), 0, SINGLE_SPRAY_MAX_SECONDS)
-  const doubleSprayMax = DOUBLE_SPRAY_MAX_SECONDS + (cinemaLevel >= 4 ? CINEMA4_DOUBLE_SPRAY_EXTRA_SECONDS : 0)
-  cfg.burniceDoubleSpraySeconds = clamp(cfgSetting(cfg, 'burnice.doubleSpraySeconds'), 0, doubleSprayMax)
-  cfg.burniceStirringCount = Math.max(0, Math.floor(cfgSetting(cfg, 'burnice.stirringCount')))
-  cfg.burniceFlowCountUtilization = clamp(cfgSetting(cfg, 'burnice.flowCountUtilization'), 0, 1)
   // 原始分段倍率（rawRowValue）：默认启用的 spec 行规则 burnice_stirring_fusion（1171007/damage ×1.2689）已在编辑器里
   // 表达同一融合，这里若读带规则值会重复计入（CC-238；CC-237 误并入 getRowValue 的回归）。
   const blend1Damage = rawRowValue(findMoveById(skills, MIXED_FLAME_BLEND_1_MOVE), 'damage') || 250.8
@@ -305,8 +308,8 @@ function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInp
   cfg.burniceTossingActionTimeSeconds = findMoveById(skills, TOSSING_MOVE_ID)?.actionTime ?? 0
   cfg.skipGenericExSpecial = true
   cfg.exSpecialCountFractional = true // 喷射秒数可变 ⇒ 次数取期望值（CC-324 前由 skip 隐式给出）
-  const s1 = cfg.burniceSingleSpraySeconds
-  const s2 = cfg.burniceDoubleSpraySeconds
+  const s1 = singleSpraySecondsOf(cfg)
+  const s2 = doubleSpraySecondsOf(cfg, cinemaLevel)
   const c1 = s1 > 0 ? s1 * SINGLE_SPRAY_PER_SECOND + SINGLE_EXPLOSION_COST : 0
   const c2 = s2 > 0 ? s2 * DOUBLE_SPRAY_PER_SECOND + DOUBLE_EXPLOSION_COST : 0
   cfg.exSpecialEnergyConsume = c1 + c2 > 0 ? (c1 + c2) / 2 : STANDARD_EX_COST
@@ -375,11 +378,11 @@ function burniceMechanicSourceOf(cfg: CharacterOperationConfig, state: Iteration
     potentialLevel: cfg.panel.potentialLevel,
     energyRegen: resolveEnergyRegenTotal(cfg.panel),
     ultimateCount: state.ultimateCount,
-    singleSpraySeconds: cfg.burniceSingleSpraySeconds ?? SINGLE_SPRAY_MAX_SECONDS,
-    doubleSpraySeconds: cfg.burniceDoubleSpraySeconds ?? DOUBLE_SPRAY_MAX_SECONDS,
-    stirringCount: cfg.burniceStirringCount ?? 0,
+    singleSpraySeconds: singleSpraySecondsOf(cfg),
+    doubleSpraySeconds: doubleSpraySecondsOf(cfg, cinemaLevelOf(cfg.burniceCinemaLevel)),
+    stirringCount: Math.max(0, Math.floor(cfgSetting(cfg, 'burnice.stirringCount'))),
     stirringActionTime: cfg.burniceStirringActionTimeSeconds ?? 0,
-    flowCountUtilization: cfg.burniceFlowCountUtilization ?? 1,
+    flowCountUtilization: clamp(cfgSetting(cfg, 'burnice.flowCountUtilization'), 0, 1),
     stirringDamageRatio: cfg.burniceStirringDamageRatio ?? STIRRING_DAMAGE_FALLBACK,
     tossingDamageRatio: cfg.burniceTossingDamageRatio ?? TOSSING_DAMAGE_FALLBACK,
     tossingActionTime: cfg.burniceTossingActionTimeSeconds ?? 0,
@@ -742,16 +745,8 @@ export const burniceMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 柏妮思单喷持续秒数（0 表示不放） */
-    burniceSingleSpraySeconds?: number
-    /** 柏妮思双喷持续秒数（0 表示不放） */
-    burniceDoubleSpraySeconds?: number
-    /** 柏妮思搅拌式次数：0 表示自动按溢出燃点取上限 */
-    burniceStirringCount?: number
     /** 柏妮思搅拌式（1171007 融合）单次动作时长（秒） */
     burniceStirringActionTimeSeconds?: number
-    /** 柏妮思流火计数利用率（0-1），默认 1 */
-    burniceFlowCountUtilization?: number
     /** 搅拌式融合倍率 = Mixed Flame Blend #1×0.5 + #2 */
     burniceStirringDamageRatio?: number
     /** 灼热抛接法伤害倍率（1171026） */

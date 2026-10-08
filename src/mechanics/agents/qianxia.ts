@@ -151,9 +151,6 @@ function buildQianxiaCharConfig({ cfg, cinemaLevel, team, panel, skills }: Agent
   const anomalyAgents = team.filter(m => m.agent?.specialty === 'anomaly').length
   cfg.qianxiaAttackAgents = attackAgents
   cfg.qianxiaAnomalyAgents = anomalyAgents
-  // 触发者命中数近似：滑块 0 = 按标记供给同量级（postRound 后标记供给写入）
-  const manualHits = Math.max(0, Math.floor(setting(cfg, 'qianxia.gazeTriggerHits')))
-  cfg.qianxiaTriggerHits = manualHits
   if (additionalAbilityActiveOf(panel)) {
     cfg.initialEnergyGift = cfg.initialEnergyGift + QIANXIA_FIELD_ENTRY_ENERGY
   }
@@ -210,7 +207,8 @@ function cycleFromCfg(cfg: AgentResourceInput['cfg'], state: AgentResourceInput[
     markSupply,
     attackAgents: whole(Number(cfg.qianxiaAttackAgents ?? 0)),
     anomalyAgents: whole(Number(cfg.qianxiaAnomalyAgents ?? 0)),
-    triggerHits: whole(Number(cfg.qianxiaTriggerHits ?? 0)) || markSupply,
+    // 触发者命中数近似：滑块 0 = 按标记供给同量级（postRound 后标记供给写入）
+    triggerHits: whole(setting(cfg, 'qianxia.gazeTriggerHits')) || markSupply,
     teamVeilCount: whole(Number(cfg.teamVeilCountTotal ?? 0)),
     // 异常施加次数：队内有异常角色时按 10s CD 上限近似（异常队施加远超 CD；爱芮全场应援同款口径）
     anomalyTriggerCount: whole(Number(cfg.qianxiaAnomalyAgents ?? 0)) > 0
@@ -343,8 +341,6 @@ declare module '@/types/resource/config' {
     qianxiaBasicMarkCycleSeconds?: number
     /** 写入：cinemaLevel */
     qianxiaCinemaLevel?: number
-    /** 写入：manualHits */
-    qianxiaTriggerHits?: number
   }
 }
 

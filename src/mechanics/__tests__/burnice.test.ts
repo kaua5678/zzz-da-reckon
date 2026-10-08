@@ -178,8 +178,6 @@ describe('柏妮思面板与执行计划', () => {
     const cfg: any = {}
     burniceMechanic.buildCharConfig!({ skills, cinemaLevel: 0, cfg } as any)
     expect(cfg.skipGenericExSpecial).toBe(true)
-    expect(cfg.burniceSingleSpraySeconds).toBe(1.89)
-    expect(cfg.burniceDoubleSpraySeconds).toBe(2.274)
     for (const moveId of ['1171010', '1171011', '1171012', '1171013']) {
       expect(cfg.mechanicRowValues?.[moveId]).toBeGreaterThan(0)
     }
@@ -191,8 +189,6 @@ describe('柏妮思面板与执行计划', () => {
     burniceMechanic.buildExecutions!({
       cfg: {
         burniceCinemaLevel: 0,
-        burniceSingleSpraySeconds: 1.89,
-        burniceDoubleSpraySeconds: 2.274,
         panel: { atk: 1000, anomalyProficiency: 500 },
         skipGenericExSpecial: true,
         // CC-408：四行倍率只来自这里（buildCharConfig 读 catalog 写入），模块里没有常量兜底
@@ -223,8 +219,7 @@ describe('柏妮思面板与执行计划', () => {
       burniceMechanic.buildExecutions!({
         cfg: {
           burniceCinemaLevel: 0,
-          burniceSingleSpraySeconds: 1.89,
-          burniceDoubleSpraySeconds: 1.137, // 双喷半时长 ⇒ 持续段按 1.137/2.274 等比
+          'setting:burnice.doubleSpraySeconds': 1.137, // 双喷半时长 ⇒ 持续段按 1.137/2.274 等比
           panel: { atk: 1000, anomalyProficiency: 500 },
           skipGenericExSpecial: true,
           mechanicRowValues,

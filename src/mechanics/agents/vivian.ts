@@ -181,7 +181,6 @@ export const VIVIAN_ANOMALY_TRIGGER_CD = 0.5
 
 function buildVivianCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.vivianCinemaLevel = cinemaLevel
-  cfg.vivianC4AtkCoverage = clampRatio(setting(cfg, 'vivian.c4AtkCoverage'))
   cfg.vivianAdditionalActive = additionalAbilityActiveOf(panel)
   // 落羽生花双源由 useResourceCalc 收敛注入（vivianTeamExTotal / vivianAnomalyTriggerTotal），
   // 首轮缺省时 buildExecutions 内回退到 state.exSpecialCount。
@@ -208,7 +207,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     // 发动后进入裙裾浮游（→ 悬落）。旧实现读 `cfg.vivianAssistCount`，全仓零写入恒 0（CC-91 接通）。
     assistCount: Math.max(0, cfg.parryCount),
     additionalActive: cfg.vivianAdditionalActive === true,
-    c4AtkCoverage: Number(cfg.vivianC4AtkCoverage ?? 1),
+    c4AtkCoverage: clampRatio(setting(cfg, 'vivian.c4AtkCoverage')),
   })
 }
 
@@ -500,8 +499,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 薇薇安命座等级（buildCharConfig 写） */
     vivianCinemaLevel?: number
-    /** 薇薇安影画4 攻击覆盖率（机制设置 clamp 到 [0,1]） */
-    vivianC4AtkCoverage?: number
     /** 薇薇安额外能力是否生效（buildCharConfig 由 panel 写） */
     vivianAdditionalActive?: boolean
     /** 薇薇安：队伍强特总数（nextRound 线程化写回；specs/agents/1331.json 按字段名读） */

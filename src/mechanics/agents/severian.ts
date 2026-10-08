@@ -237,26 +237,15 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
   cfg.severianLiexuanMeta = metaOf(SEVERIAN_LIEXUAN_MOVE_ID)
   cfg.severianWindBladeMeta = metaOf(SEVERIAN_WIND_BLADE_MOVE_ID)
   cfg.severianBasicCycle = SEVERIAN_BASIC_SEGMENT_IDS.map(metaOf)
-  // 凭风层数 / 影画4 覆盖率：滑块 → cfg 的**唯一**通道。
-  // ⚠ 历史缺陷（2026-09-20 round 48 管理员AA 分诊实测，与般岳 `rageGainCoverage`、安比
-  // `c2StunCoverage` 同源）：`cycleFromCfg`（:224-225）读的是 `severianFengfengStacks` /
-  // `severianC4Coverage`，而这两个字段**全仓无人写入** ⇒ 永远回落 `?? 1`
-  // ⇒ `buildSeverianResourceResult` 产出的 `severianFlow` 里 `fengfengStacks` 恒 1、
-  // `c4DefIgnore` 恒 = `SEVERIAN_C4_DEF_IGNORE × 1`（实测把 `severian.c4Coverage` 设为 0，
-  // 资源区块仍报 `c4DefIgnore: 16`）。
-  // 注意执行行路径（`patchSeverianExecutions` :333）走的是 `setting(cfg, 'severian.fengfengStacks')`
-  // **正确读法** ⇒ 同一滑块在"执行行"生效、在"资源区块"失效（两路读数不一致，用户看到的区块骗人）。
-  cfg.severianFengfengStacks = whole(setting(cfg, 'severian.fengfengStacks'))
-  cfg.severianC4Coverage = clampRatio(setting(cfg, 'severian.c4Coverage'))
 }
 
 /** `fengfengStacks` 由调用方经 `resolveSeverianFengfengStacks` 给定（需要影猎次数，cfg 上没有） */
-function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'severianCinemaLevel' | 'severianAdditionalActive' | 'severianC4Coverage'>, fengfengStacks: number): SeverianCycle {
+function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'severianCinemaLevel' | 'severianAdditionalActive'>, fengfengStacks: number): SeverianCycle {
   return computeSeverianCycle({
     cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
     additionalActive: cfg.severianAdditionalActive === true,
     fengfengStacks,
-    c4Coverage: Number(cfg.severianC4Coverage ?? 1),
+    c4Coverage: clampRatio(setting(cfg, 'severian.c4Coverage')),
   })
 }
 
@@ -350,20 +339,16 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
 }
 
 function patchSeverianExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  // CC-333：执行行与资源区块共用 computeSeverianCycle（优先读 buildCharConfig 写入的字段，单测直调未跑 buildCharConfig 时回落 setting）
+  // CC-333：执行行与资源区块共用 computeSeverianCycle（两处都直接读设置）
   const cycle = computeSeverianCycle({
     cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
     additionalActive: cfg.severianAdditionalActive === true,
     fengfengStacks: resolveSeverianFengfengStacks({
       cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
       shadowHuntCount: severianShadowHuntCount(cfg, state),
-      sliderStacks: cfg.severianFengfengStacks !== undefined
-        ? Number(cfg.severianFengfengStacks)
-        : setting(cfg, 'severian.fengfengStacks'),
+      sliderStacks: whole(setting(cfg, 'severian.fengfengStacks')),
     }),
-    c4Coverage: cfg.severianC4Coverage !== undefined
-      ? Number(cfg.severianC4Coverage)
-      : setting(cfg, 'severian.c4Coverage'),
+    c4Coverage: clampRatio(setting(cfg, 'severian.c4Coverage')),
   })
   const carrierMeta = cfg.severianCarrierMeta ?? []
   for (const exec of executions) {
@@ -393,7 +378,7 @@ function buildSeverianResourceResult({ cfg, state }: AgentResourceResultInput): 
   const fengfengStacks = resolveSeverianFengfengStacks({
     cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
     shadowHuntCount,
-    sliderStacks: Number(cfg.severianFengfengStacks ?? 1),
+    sliderStacks: whole(setting(cfg, 'severian.fengfengStacks')),
   })
   return {
     severianFlow: {
@@ -516,10 +501,6 @@ declare module '@/types/resource/config' {
     severianWindBladeMeta?: SeverianMoveMeta
     /** 塞维林平A各段元数据 */
     severianBasicCycle?: SeverianMoveMeta[]
-    /** 塞维林锋锋层数（机制设置取整） */
-    severianFengfengStacks?: number
-    /** 塞维林影画4 覆盖率（机制设置 clamp 到 [0,1]） */
-    severianC4Coverage?: number
   }
 }
 

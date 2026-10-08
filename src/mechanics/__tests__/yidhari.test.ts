@@ -14,7 +14,7 @@ async function setup(cinemaLevel = 0, mateId = '1141') {
 
 describe('伊德海莉（1051）生命值/极寒重碾总量', () => {
   it('烧血喧响：每1%生命值10点喧响，影画4提升10%', () => {
-    const cfg: any = { yidhariStunCount: 0, yidhariExPerStun: 2 }
+    const cfg: any = { yidhariStunCount: 0 }
     const state: any = { exSpecialCount: 4, basicAttackTime: 30 }
     // 蓄力循环单轮 = 1s 蓄力 + 下砸 + 平A，actionTime 未存时 chargeCycleTime 只有 1s
     const c0 = computeYidhariHpSource(cfg, state, false)
@@ -24,7 +24,7 @@ describe('伊德海莉（1051）生命值/极寒重碾总量', () => {
   })
 
   it('极寒重碾拆分：失衡内 = 每次失衡次数×失衡次数，非失衡 = 剩余（回15闪能）', () => {
-    const cfg: any = { yidhariStunCount: 2, yidhariExPerStun: 2 }
+    const cfg: any = { yidhariStunCount: 2 }
     const state: any = { exSpecialCount: 6, basicAttackTime: 0 }
     const s = computeYidhariHpSource(cfg, state, false)
     // 失衡内 = min(6, 2×2) = 4，非失衡 = 2
@@ -79,7 +79,6 @@ describe('伊德海莉执行行', () => {
       panel: { additionalAbilityActive: 1, skillLevelBonus: 0 },
       yidhariChargeSlam: { id: '1051007', damage: 100, daze: 10, anomaly: 10, actionTime: 2, decibel: 5, flash: 0 },
       yidhariBasicFollow: { id: '1051003', damage: 50, daze: 5, anomaly: 5, actionTime: 1, decibel: 3, flash: 0 },
-      yidhariTentacleInterval: 13.5,
       yidhariCinemaLevel: 0,
     }
     const state: any = { frontlineTime: 30, backstageTime: 0, exSpecialCount: 2, basicAttackTime: 30 }
@@ -99,7 +98,6 @@ describe('伊德海莉执行行', () => {
       panel: { additionalAbilityActive: 0, skillLevelBonus: 0 },
       yidhariChargeSlam: null,
       yidhariBasicFollow: null,
-      yidhariTentacleInterval: 13.5,
       yidhariCinemaLevel: 0,
     }
     const state: any = { frontlineTime: 30, backstageTime: 0, exSpecialCount: 0, basicAttackTime: 0 }
@@ -120,7 +118,7 @@ describe('伊德海莉执行行', () => {
 describe('伊德海莉滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
   it('yidhari.exHealMissingHpPct → 回血总量差分（回血 = 强特数×33%×已损失比例）', () => {
     const state: any = { exSpecialCount: 4, basicAttackTime: 0 }
-    const cfg: any = { yidhariStunCount: 0, yidhariExPerStun: 2 }
+    const cfg: any = { yidhariStunCount: 0 }
     const a = computeYidhariHpSource(cfg, state, false, 1)
     const b = computeYidhariHpSource(cfg, state, false, 0.5)
     // exHealPct = 4 × 33% × 比例：1 → 132，0.5 → 66；hpHealPct 差分 = 66
@@ -132,7 +130,7 @@ describe('伊德海莉滑块生效差分（防守卫冻结，SOP §3.5：改滑�
 
   it('yidhari.hpBurnPctPerSecond → 逐秒烧血速率差分（hpBurnPctPerSecond 原样入账本）', () => {
     const state: any = { exSpecialCount: 2, basicAttackTime: 0 }
-    const cfg: any = { yidhariStunCount: 0, yidhariExPerStun: 2 }
+    const cfg: any = { yidhariStunCount: 0 }
     const a = computeYidhariHpSource(cfg, state, false, 0.75, 30)
     const b = computeYidhariHpSource(cfg, state, false, 0.75, 15)
     expect(a.hpBurnPctPerSecond).toBe(30)
@@ -142,8 +140,8 @@ describe('伊德海莉滑块生效差分（防守卫冻结，SOP §3.5：改滑�
 
   it('yidhari.exPerStun → 极寒重碾失衡内/外拆分差分', () => {
     const state: any = { exSpecialCount: 6, basicAttackTime: 0 }
-    const cfg2: any = { yidhariStunCount: 2, yidhariExPerStun: 2 }
-    const cfg3: any = { yidhariStunCount: 2, yidhariExPerStun: 3 }
+    const cfg2: any = { yidhariStunCount: 2 }
+    const cfg3: any = { yidhariStunCount: 2, 'setting:yidhari.exPerStun': 3 }
     const s2 = computeYidhariHpSource(cfg2, state, false)
     const s3 = computeYidhariHpSource(cfg3, state, false)
     // 失衡内 = min(6, exPerStun×2)：2→4（外2），3→6（外0）
@@ -160,7 +158,7 @@ describe('伊德海莉滑块生效差分（防守卫冻结，SOP §3.5：改滑�
         panel: { additionalAbilityActive: 1, skillLevelBonus: 0 },
         yidhariChargeSlam: null,
         yidhariBasicFollow: null,
-        yidhariTentacleInterval: interval,
+        'setting:yidhari.tentacleInterval': interval,
         yidhariCinemaLevel: 0,
         battleTime: 180,
         invincibleTime: 0,

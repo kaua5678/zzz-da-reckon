@@ -88,7 +88,6 @@ describe('薇薇安执行行与定向结算', () => {
     panel: { additionalAbilityActive: 1 },
     vivianCinemaLevel: cinema,
     vivianTeamExTotal: 6, vivianAnomalyTriggerTotal: 6,
-    vivianC4AtkCoverage: 1,
     vivianAdditionalActive: true,
     battleTime: 180,
     invincibleTime: 0,

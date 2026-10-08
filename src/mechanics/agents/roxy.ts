@@ -231,14 +231,14 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   cfg.skipGenericExSpecial = true
   cfg.roxyCinemaLevel = cinemaLevelOf(cinemaLevel)
   // v12 moveIds
-  cfg.roxySpinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds'))
+  const spinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds'))
   // CC-109（R5 D28）：一次强特 = 小心风寒启动 + 自旋 spinSeconds 秒，耗能按 catalog 两项合计。
   // 修前沿用通用 findExSpecial 的「Energy Cost」10（只算启动），自旋 30/s 零扣费 ⇒ 强特次数按 能量/10 推，
   // 而风能账本 computeRoxyWindEnergy 按 10 + 30×秒 记耗能，两本账不一致。
   const exCost = roxyExEnergyCost(findMoveById(skills, EX_CHILL_MOVE_ID))
   cfg.roxyExStartEnergy = exCost.start
   cfg.roxySpinEnergyPerSecond = exCost.perSecond
-  cfg.exSpecialEnergyConsume = exCost.start + exCost.perSecond * Number(cfg.roxySpinSeconds)
+  cfg.exSpecialEnergyConsume = exCost.start + exCost.perSecond * spinSeconds
   cfg.roxySpinSecondDamage = getRowValue(findMoveById(skills, SPIN_SECOND_MOVE_ID), 'damage')
   // 自旋喧响表值（1621008 decibel_recovery，每秒口径——与同行 damage 已录的「每秒 × spinSeconds」口径一致；
   // 行值经 decibelRecoveryOverride 跳过表值回填，见 buildRoxyExecutions）
@@ -303,7 +303,7 @@ function roxyWindEnergySourceOf(
     exSpecialCount: state.exSpecialCount,
     exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
     ultimateCount: state.ultimateCount,
-    spinSeconds: Number(cfg.roxySpinSeconds ?? 2.5),
+    spinSeconds: Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds')),
     cinemaLevel: cinemaLevelOf(cfg.roxyCinemaLevel),
     energyRate: cfgSetting(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
     eyeRate: cfgSetting(cfg, ROXY_WIND_EYE_RATE_ID, 1),
@@ -480,8 +480,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 命座等级：buildCharConfig 写 */
     roxyCinemaLevel?: number
-    /** 旋转持续秒数：机制设置 roxy.spinSeconds，默认 2.5 */
-    roxySpinSeconds?: number
     /** 强化特殊技起手耗能（exCost.start） */
     roxyExStartEnergy?: number
     /** 旋转每秒耗能（exCost.perSecond） */

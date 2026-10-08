@@ -475,9 +475,6 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
   cfg.claretNormalDamagePerSec = bench.normalDamage
   cfg.claretInscriptionDamagePerSec = bench.inscriptionDamage
   cfg.claretCinemaLevel = cinemaLevel
-  cfg.claretCleaveCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount')))
-  cfg.claretBloodBurialCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount')))
-  cfg.claretGashCoverage = Math.max(0, Math.min(1, Math.min(100, cfgSetting(cfg, 'claret.gashCoverage')) / 100))
   // 秘血铸锋是锐能强特（costType=resource）：通用引擎不扣能量，强特行由本模块按锐能账本发行
   const exMove = findMoveById(skills, EX_MOVE_ID)
   cfg.claretExActionTime = exMove?.actionTime ?? 0
@@ -667,9 +664,9 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     basicGashPerSec: blended.gash,
     basicAttackTime: Math.max(0, state.basicAttackTime),
     moveGashTotal,
-    cleaveSpecialCount: Number(cfg.claretCleaveCount ?? 0),
-    bloodBurialCount: Number(cfg.claretBloodBurialCount ?? 0),
-    gashCoverage: Number(cfg.claretGashCoverage ?? 1),
+    cleaveSpecialCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount'))),
+    bloodBurialCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount'))),
+    gashCoverage: Math.max(0, Math.min(1, Math.min(100, cfgSetting(cfg, 'claret.gashCoverage')) / 100)),
     cinemaLevel: cinemaLevelOf(cfg.claretCinemaLevel),
     chainCountTotal: state.chainCountTotal,
     ultimateCount,
@@ -742,8 +739,8 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
     cfg,
     state,
     counts: {
-      claretCleaveCount: Math.max(0, Math.floor(Number(cfg.claretCleaveCount ?? 0))),
-      claretBloodBurialCount: Math.max(0, Math.floor(Number(cfg.claretBloodBurialCount ?? 0))),
+      claretCleaveCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount'))),
+      claretBloodBurialCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount'))),
       claretMaimCount: Math.max(0, Math.floor(source.maimCount)),
       claretMaimFromCleave: Math.max(0, Math.floor(source.maimFromCleave)),
       claretMaimFromBurial: Math.max(0, Math.floor(source.maimFromBurial)),
@@ -922,18 +919,12 @@ declare module '@/types/resource/config' {
     claretNormalDamagePerSec?: number
     /** 铭刻态平A伤害倍率/秒 */
     claretInscriptionDamagePerSec?: number
-    /** 克拉蕾斩金断铁使用次数（残痕消耗来源之一） */
-    claretCleaveCount?: number
-    /** 克拉蕾葬血强袭使用次数（消耗个人资源并提升伤害） */
-    claretBloodBurialCount?: number
     /** 克拉蕾秘血铸锋（锐能强特）单次动作时长（秒，倍率表） */
     claretExActionTime?: number
     /** 克拉蕾秘血铸锋（锐能强特）单次喧响回复（倍率表行） */
     claretExDecibelRecovery?: number
     /** 克拉蕾葬血强袭基础伤害倍率（倍率表 1611014 damage 行） */
     claretBloodBurialDamageMultiplier?: number
-    /** 克拉蕾命中残痕状态覆盖率（0-1，默认 1） */
-    claretGashCoverage?: number
     /** 克拉蕾命座等级（用于二命锐能额外回复） */
     claretCinemaLevel?: number
   }

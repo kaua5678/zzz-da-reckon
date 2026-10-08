@@ -134,21 +134,14 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
   // 改为 `buildAnbyExecutions` 按可消费命中数挂**执行级** dmgBonus（见下）。
 }
 
-/* 读机制滑块的 `cfgNum` 自 CC-235 起是 `utils/mechanicSettingCfg#cfgMechanicSetting` 的别名（见 import）。
- *
- * ⚠ 历史缺陷（2026-09-20 round 48 管理员AA 分诊实测，与般岳 `rageGainCoverage` 同源）：
- * `patchAnbyExecutions` 读的是 `cfg.anbyC2StunCoverage`——该字段**全仓无人写入**
- * （`buildAnbyCharConfig` 不写、派发器也不写）⇒ 永远回落 `?? 0.5`，
- * 滑块 `anby.c2StunCoverage` 在 UI 上可拖但**恒等于 0.5**：实测滑块 0 与 1 的
- * 落雷 `dmgBonus` **都是 15**（真管线 `computePanelPhases` 与执行级双证）。
- * 修法按 `evelyn.ts`/`koleda.ts`/`soldier11.ts` 同款：走 `setting:` 前缀读**已注册**的滑块 id。
+/* ⚠ 历史缺陷（2026-09-20 round 48 管理员AA 分诊实测，与般岳 `rageGainCoverage` 同源）：`patchAnbyExecutions` 曾读一个
+ * 全仓无人写入的 cfg 镜像字段 ⇒ 永远回落 `?? 0.5`，滑块 `anby.c2StunCoverage` 可拖但恒等于 0.5。当时补写了镜像字段；
+ * r750（CC-533）起读侧直接用模块 reader `cfgNum` 读设置，镜像字段整类删除。
  */
 function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   cfg.anbyCinemaLevel = cinemaLevelOf(cinemaLevel)
   cfg.anbyAdditionalActive = additionalAbilityActiveOf(panel)
   cfg.anbyEnergyGainEfficiency = panel.energyGainEfficiency
-  // 影画2 失衡覆盖率：滑块 → cfg 的**唯一**通道（读法见 cfgNum 头注释）
-  cfg.anbyC2StunCoverage = cfgNum(cfg, 'anby.c2StunCoverage')
   // 平A循环分段元数据预存（buildExecutions 输入无 skills；单一事实源仍是倍率表）。
   // 元素取 catalog 的 move.damageElement——#1~#3 物理 / #4、落雷 电（原文口径，见文件头②）。
   const basicMoves = skills.categories.find(c => c.id === 'basic')?.moves ?? []
@@ -284,7 +277,7 @@ function pushAnbyBasicSegment(
 /** 波动电压（招式限定失衡+64%）+ 影画2（落雷增伤/强特失衡，同招式限定） */
 function patchAnbyExecutions({ cfg, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.anbyCinemaLevel)
-  const stunCov = clampRatio(Number(cfg.anbyC2StunCoverage ?? 0.5))
+  const stunCov = clampRatio(cfgNum(cfg, 'anby.c2StunCoverage'))
   for (const exec of executions) {
     if (!exec.moveId) continue
     // 波动电压：落雷/特殊技/强特 失衡 +64%（招式限定；平A聚合行不再吃）
@@ -363,8 +356,6 @@ declare module '@/types/resource/config' {
     anbyAdditionalActive?: boolean
     /** 建配置时的能量获得效率快照（面板 energyGainEfficiency） */
     anbyEnergyGainEfficiency?: number
-    /** 影画2 失衡覆盖率：机制设置 anby.c2StunCoverage，默认 0.5 */
-    anbyC2StunCoverage?: number
     /** 普攻分段循环（#1~#4 + 落雷；buildCharConfig 从 catalog 取动作时长 / 元素缓存，buildAnbyExecutions 按它拆平A池） */
     anbyBasicCycle?: AnbyBasicSegment[]
     /** 额外能力给队友的能量总额（本人 cfg，资源钩子写） */

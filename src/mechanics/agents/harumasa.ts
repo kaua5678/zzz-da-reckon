@@ -194,9 +194,7 @@ function applyPanel({ potentialLevel, outOfCombatPanel, panel }: AgentPanelInput
 function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentCharConfigInput): void {
   cfg.harumasaCinemaLevel = cinemaLevel
   cfg.harumasaPotentialLevel = potentialLevelOf(potentialLevel)
-  cfg.harumasaA5Count = whole(setting(cfg, 'harumasa.a5Count'))
   cfg.harumasaStunCoverage = 0.5 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
-  cfg.harumasaAbnormalCoverage = clampRatio(setting(cfg, 'harumasa.abnormalCoverage'))
   cfg.harumasaEdgeAverageStacks = Math.min(HARUMASA_EDGE_MAX,
     Math.max(0, setting(cfg, 'harumasa.edgeAverageStacks')))
 }
@@ -233,12 +231,12 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
   return computeHarumasaCycle({
     cinemaLevel: cinemaLevelOf(cfg.harumasaCinemaLevel),
     potentialLevel: Number(cfg.harumasaPotentialLevel ?? 6),
-    a5Count: Number(cfg.harumasaA5Count ?? 2),
+    a5Count: whole(setting(cfg, 'harumasa.a5Count')),
     chainCount: state.chainCountTotal,
     ultimateCount: state.ultimateCount,
     exSpecialCount: state.exSpecialCount,
     stunCoverage: Number(cfg.harumasaStunCoverage ?? 0.5),
-    abnormalCoverage: Number(cfg.harumasaAbnormalCoverage ?? 1),
+    abnormalCoverage: clampRatio(setting(cfg, 'harumasa.abnormalCoverage')),
     edgeAverageStacks: Number(cfg.harumasaEdgeAverageStacks ?? 6),
     axisActive: cfg.harumasaAxisActive === true,
     axisSlash: Number(cfg.harumasaAxisSlash ?? 0),
@@ -415,10 +413,6 @@ declare module '@/types/catalog' {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：whole(setting(cfg, 'harumasa.a5Count')) */
-    harumasaA5Count?: number
-    /** 写入：clampRatio(setting(cfg, 'harumasa.abnormalCoverage')) */
-    harumasaAbnormalCoverage?: number
     /** 写入：axis.active */
     harumasaAxisActive?: boolean
     /** 写入：axisArrow */

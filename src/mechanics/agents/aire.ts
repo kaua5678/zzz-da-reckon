@@ -122,7 +122,6 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
   cfg.aireCinemaLevel = cinemaLevel
   // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 初始 = 局外面板（CC-125；读取口 `initialStat`，CC-497）
   cfg.aireInitialMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
-  cfg.aireC2DelusionCoverage = clampRatio(setting(cfg, 'aire.c2DelusionCoverage'))
   cfg.aireAdditionalActive = additionalAbilityActiveOf(panel)
   if (cinemaLevel >= 4) {
     // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
@@ -213,7 +212,7 @@ function cycleFromCfg(cfg: AgentResourceResultInput['cfg']): AireCycle {
   return computeAireCycle({
     cinemaLevel: cinemaLevelOf(cfg.aireCinemaLevel),
     additionalActive: cfg.aireAdditionalActive === true,
-    c2DelusionCoverage: Number(cfg.aireC2DelusionCoverage ?? 1),
+    c2DelusionCoverage: clampRatio(setting(cfg, 'aire.c2DelusionCoverage')),
   })
 }
 
@@ -344,8 +343,6 @@ declare module '@/types/resource/config' {
     aireCinemaLevel?: number
     /** 局外异常掌控（无局外面板时取局内）；spec 1501.json 按字段名读 */
     aireInitialMastery?: number
-    /** 影画2「妄想」覆盖率：机制设置 aire.c2DelusionCoverage，夹到 0–1 */
-    aireC2DelusionCoverage?: number
     /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
     aireAdditionalActive?: boolean
     /** 甜蜜普攻四段的循环秒数（basicComboCycleSeconds） */

@@ -182,9 +182,6 @@ describe('「扳机」执行计划与失衡池', () => {
   it('协奏狙杀与冥狱双行以真实moveId进执行计划（后台行、无倍率override走表回填）', () => {
     const cfg: any = {
       triggerCinemaLevel: 4,
-      triggerNormalCountOverride: 0,
-      triggerHellCountOverride: 0,
-      triggerSniperHitOverride: 0,
       triggerMateExCount: 6,
       triggerMateUltimateCount: 2,
       triggerMateAssistCount: 4,

@@ -137,8 +137,6 @@ export const lycaonMechanic: AgentMechanicModule = {
     cfg.exSpecialEnergyConsume = EX_TAP_ENERGY * (1 - holdRatio) + EX_HOLD_ENERGY * holdRatio
     cfg.exSpecialActionTime = EX_TAP_TIME * (1 - holdRatio) + EX_HOLD_TIME * holdRatio
     cfg.skipGenericExSpecial = true
-    // C1 覆盖率（8s CD → 覆盖率滑块，只给有限次强特强化）
-    cfg.lycaonC1Coverage = clampRatio(cfgNum(cfg, 'lycaon.c1Coverage'))
     // C2 回能（5 能量/次；次数 = 失衡次数 + 队伍连携总次数，由 useResourceCalc 注入 lycaonC2Energy）
     cfg.lycaonC2EnergyPerTrigger = cinemaLevel >= 2 ? 5 : 0
   },
@@ -269,7 +267,7 @@ export const lycaonMechanic: AgentMechanicModule = {
     const hold = Math.max(0, exCount - tap)
     // C1 强化次数：8s CD → floor(战斗时间/8) × 覆盖率，封顶强特总数
     const totalTime = cfg.battleTime
-    const c1Coverage = clampRatio(cfg.lycaonC1Coverage ?? 1)
+    const c1Coverage = clampRatio(cfgNum(cfg, 'lycaon.c1Coverage'))
     const strongCount = cinema >= 1
       ? Math.min(exCount, Math.max(0, Math.floor(totalTime / 8)) * c1Coverage)
       : 0
@@ -472,8 +470,6 @@ declare module '@/types/resource/config' {
     lycaonExDecibels?: Record<string, number>
     /** 莱卡恩命座等级（buildCharConfig 写入，buildExecutions 读取） */
     lycaonCinemaLevel?: number
-    /** 莱卡恩影画1强特失衡强化覆盖率（滑块 lycaon.c1Coverage，8s CD 折算） */
-    lycaonC1Coverage?: number
     /** 莱卡恩影画2回能（5 能量/次；次数 = 失衡次数 + 队伍连携总次数，由 useResourceCalc 注入总额） */
     lycaonC2EnergyPerTrigger?: number
     /** 莱卡恩失衡次数（外层不动点传入，围猎次数 = 失衡次数，用户口径） */

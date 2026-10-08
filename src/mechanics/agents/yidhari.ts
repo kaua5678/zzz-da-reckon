@@ -101,19 +101,17 @@ function applyYidhariPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   }
 }
 
+/** 设置 → 循环量，生命值账本 / 收敛期返还上限 / 自身烧血喧响共用（r750 前经 cfg 镜像字段传递，读侧各抄一份 `?? 默认`） */
+const exPerStunOf = (cfg: unknown): number => Math.max(1, Math.floor(setting(cfg, 'yidhari.exPerStun')))
+const exHealMissingHpPctOf = (cfg: unknown): number => Math.max(0, Math.min(1, setting(cfg, 'yidhari.exHealMissingHpPct') / 100))
+
 function buildYidhariCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInput): void {
   const props = yidhariProps()
   const cinema4Enabled = cinemaLevel >= 4
   const decibelPerHpPct = props.decibelPerHpPct * (cinema4Enabled ? 1 + props.cinema4DecibelBonusPct / 100 : 1)
-  const missingHpPct = Math.max(0, Math.min(1, setting(cfg, 'yidhari.exHealMissingHpPct') / 100))
-  const hpBurnPctPerSecond = Math.max(0, Math.min(100, setting(cfg, 'yidhari.hpBurnPctPerSecond')))
-  const exPerStun = Math.max(1, Math.floor(setting(cfg, 'yidhari.exPerStun')))
-  const tentacleInterval = Math.max(1, setting(cfg, 'yidhari.tentacleInterval'))
 
   cfg.yidhariCinema4Enabled = cinema4Enabled
   cfg.yidhariDecibelPerHpPct = decibelPerHpPct
-  cfg.yidhariExHealMissingHpPct = missingHpPct
-  cfg.yidhariHpBurnPctPerSecond = hpBurnPctPerSecond
   cfg.yidhariCinemaLevel = cinemaLevel
 
   // 蓄力循环招式（先提取，用于计算循环时长 → 烧血喧响率）
@@ -139,8 +137,6 @@ function buildYidhariCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInp
     cfg.chainDecibelRecovery = rowValue(chainHeavy, 'decibel_recovery')
   }
 
-  cfg.yidhariExPerStun = exPerStun
-  cfg.yidhariTentacleInterval = tentacleInterval
   cfg.exRefundPerPaid = OUT_STUN_REFUND
   // refund 反馈（每发回 15）是自指方程：迭代期强特次数按实数参与收敛（唯一不动点），
   // 终局才 floor 一次（calcTeamResources 重推 ≤3 轮）——见 resolveExSpecialCount 连续强特分支
@@ -158,7 +154,7 @@ export function computeYidhariHpSource(
   const props = yidhariProps()
   const exSpecialCount = Math.max(0, Math.floor(state.exSpecialCount))
   const stunCount = Math.max(0, Math.floor(Number(cfg.yidhariStunCount ?? 0)))
-  const exPerStun = Math.max(1, Math.floor(Number(cfg.yidhariExPerStun ?? 2)))
+  const exPerStun = exPerStunOf(cfg)
 
   const safeBurnPctPerSecond = Math.max(0, Math.min(100, Number.isFinite(hpBurnPctPerSecond) ? hpBurnPctPerSecond : props.hpBurnPctPerSecond))
   const decibelPerHpPct = props.decibelPerHpPct * (cinema4Enabled ? 1 + props.cinema4DecibelBonusPct / 100 : 1)
@@ -303,7 +299,7 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
   }
   // 寒冰触手（额外能力·完形叙事）：需击破/支援触发，每 13.5s 一次，只有伤害（倍率随强特技能等级，吃3/5命）；
   // 按有效战斗时间折算，无敌期间不结算（core/effectiveTime.ts）
-  const tentacleInterval = Math.max(1, Number(cfg.yidhariTentacleInterval ?? 13.5))
+  const tentacleInterval = Math.max(1, setting(cfg, 'yidhari.tentacleInterval'))
   const tentacleCount = Math.max(0, Math.floor(effectiveBattleTime(cfg) / tentacleInterval))
   const additionalAbilityActive = additionalAbilityActiveOf(cfg.panel)
   if (tentacleCount > 0 && additionalAbilityActive) {
@@ -327,8 +323,8 @@ function buildYidhariResourceResult({ cfg, state }: AgentResourceResultInput): P
     cfg,
     state,
     Boolean(cfg.yidhariCinema4Enabled),
-    Number(cfg.yidhariExHealMissingHpPct ?? 0.75),
-    Number(cfg.yidhariHpBurnPctPerSecond ?? 0.15),
+    exHealMissingHpPctOf(cfg),
+    Math.max(0, Math.min(100, setting(cfg, 'yidhari.hpBurnPctPerSecond'))),
   )
   return { yidhariHpSource: source }
 }
@@ -358,7 +354,7 @@ function buildYidhariResourceSections({ result }: AgentResourceSectionsInput) {
  * 迁入前它们是 `convergence.ts` 的 `merged.agentId === '1051'` 分支 + `:661-681` 的轴内连段反推
  * （2026-09-16 round 13 批次 3，规则 6）。两条路刻意分开：
  *  · `yidhariStunCount` ← `stunCount`（**与轴无关**，轴/非轴恒写——`computeYidhariHpSource` 用它
- *    算「每次失衡 `yidhariExPerStun` 次」的非轴拆分上限）；
+ *    算「每次失衡 `yidhari.exPerStun` 次」的非轴拆分上限）；
  *  · `exReservedCount` / `exReservedEnergyCost` ← `axis`（**轴内连段反推**：单次碾 = 1 重碾 /
  *    50 或 60 闪能，双次碾 = 2 重碾 / 85 闪能，各自 × 块数 × 窗口数）。
  *
@@ -374,9 +370,9 @@ function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, axis }: Ag
   if (phase !== 'converge') return
   cfg.yidhariStunCount = stunCount
   // 连续强特通道：非保留模式（非轴）下不返还的强特次数上限。
-  // 原式 = `n(cfg.yidhariExPerStun ?? 2) * n(cfg.yidhariStunCount ?? 0)`（消费端 resourceIncome 非轴分支），
+  // 原式 = 每次失衡强特数 × `yidhariStunCount`（消费端 resourceIncome 非轴分支），
   // 而 `yidhariStunCount` 的唯一写入方就是上面那行 ⇒ 此处用同一 stunCount 逐位复刻。
-  cfg.exRefundFreeCap = finiteOr0(cfg.yidhariExPerStun ?? 2) * finiteOr0(stunCount)
+  cfg.exRefundFreeCap = exPerStunOf(cfg) * finiteOr0(stunCount)
   if (!axis) return
   let inStunEx = 0
   let inStunEnergy = 0
@@ -412,12 +408,12 @@ function applyYidhariTeamConfig({ cfg, cinemaLevel, phase, stunCount, axis }: Ag
  *    `cfg.yidhariExternalHealPct`，再乘次数会重复计入。
  *
  * 判别用**无默认值**的模块专属字段 `yidhariDecibelPerHpPct`（唯一写入方 = 本模块
- * `buildYidhariCharConfig`，非该角色 cfg 恒 undefined）；带 `?? 默认` 的两个字段对任意 cfg 都有值，
- * 不能做判据（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
+ * `buildYidhariCharConfig`，非该角色 cfg 恒 undefined）；已损失比例（读设置，缺省取声明值）与 `yidhariExternalHealPct ?? 0`
+ * 对任意 cfg 都有值，不能做判据（判据同 T6；规则 6：引擎按能力/字段查询，不按角色名查询）。
  */
 function yidhariSelfBurnDecibel({ cfg, basicAttackTime, exSpecialCount, providerUltCount }: AgentSelfBurnDecibelInput): number {
   if (cfg.yidhariDecibelPerHpPct === undefined) return 0
-  const missing = Math.max(0, Math.min(1, cfg.yidhariExHealMissingHpPct ?? 0.75))
+  const missing = exHealMissingHpPctOf(cfg)
   const decibelPerHp = cfg.yidhariDecibelPerHpPct
   const external = Math.max(0, (cfg.yidhariExternalHealPct ?? 0)
     + (cfg.healPctPerCurtainProviderUlt ?? 0) * providerUltCount)
@@ -554,16 +550,8 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 伊德海莉命座等级（buildCharConfig 写） */
     yidhariCinemaLevel?: number
-    /** 伊德海莉每秒生命燃烧百分比（buildCharConfig 由机制设置 clamp 后写） */
-    yidhariHpBurnPctPerSecond?: number
     /** 伊德海莉 4 命：生命值降低时喧响获得提升 10% */
     yidhariCinema4Enabled?: boolean
-    /** 伊德海莉强特释放时已损失生命值比例（0-1，默认0.75） */
-    yidhariExHealMissingHpPct?: number
-    /** 伊德海莉每次失衡极寒重碾次数（0命2 / 1命3） */
-    yidhariExPerStun?: number
-    /** 伊德海莉寒冰触手触发间隔（秒，默认13.5） */
-    yidhariTentacleInterval?: number
     /** 伊德海莉蓄力循环招式（buildExecutions 消费） */
     yidhariChargeSlam?: YidhariLoopMove
     yidhariBasicFollow?: YidhariLoopMove

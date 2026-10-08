@@ -104,7 +104,7 @@ describe('喧响账本行级 Σ parity（记账层 == 展示层）', () => {
     const roxy = rc.characters.find(c => c.agentId === '1621')!
     const perSec = Number((roxy as unknown as Record<string, unknown>).roxySpinSecondDecibel ?? 0)
     expect(perSec, '自旋每秒喧响表值（catalog 1621008 decibel_recovery=84.343）').toBeGreaterThan(0)
-    const spinSeconds = Number((roxy as unknown as Record<string, unknown>).roxySpinSeconds ?? 0)
+    const spinSeconds = Number((roxy as unknown as Record<string, unknown>)['setting:roxy.spinSeconds'] ?? 0)
     expect(spinSeconds).toBeGreaterThan(0)
     const st = stateOf({ exSpecialCount: 3 })
     const rows = buildExecutions(roxy, st, st.chainCountTotal, 50)
@@ -167,7 +167,6 @@ describe('喧响账本行级 Σ parity（记账层 == 展示层）', () => {
       yidhariChargeSlam: { actionTime: 1.2917 },
       yidhariBasicFollow: { actionTime: 1.55 },
       yidhariDecibelPerHpPct: 10,
-      yidhariExHealMissingHpPct: 0.75,
     } as unknown as CharacterOperationConfig
     const st = stateOf({ basicAttackTime: 20, exSpecialCount: 2, ultimateCount: 1 })
     const parts = calcRawDecibelParts(cfg, st, 0, 2, 1, 180, 30)

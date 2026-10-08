@@ -153,7 +153,6 @@ describe('spec resource interpreter', () => {
       yidhariChargeSlam: { id: '1051007', damage: 692.4, daze: 427.2, anomaly: 258.33, actionTime: 1.2917, decibel: 34.815, flash: 6.317 },
       yidhariBasicFollow: { id: '1051003', damage: 415.7, daze: 256.3, anomaly: 155, actionTime: 1.55, decibel: 20.9, flash: 6.2 },
       yidhariStunCount: 1,
-      yidhariExPerStun: 2,
       yidhariExternalHealPct: 0,
     } as unknown as Record<string, unknown>
     const state = { basicAttackTime: 4, exSpecialCount: 4, ultimateCount: 0 } as unknown as IterationState
@@ -175,7 +174,6 @@ describe('spec resource interpreter', () => {
       initialDecibelGift: 0,
       extraSelfDecibelReward: 0,
       extraSelfDecibelPerUltimate: 0,
-      yidhariExHealMissingHpPct: 0.75,
       yidhariDecibelPerHpPct: 10,
       yidhariExternalHealPct: 0,
       yidhariChargeSlam: { actionTime: 1.2917 },
@@ -206,7 +204,6 @@ describe('spec resource interpreter', () => {
       initialDecibelGift: 0,
       extraSelfDecibelReward: 0,
       extraSelfDecibelPerUltimate: 0,
-      yidhariExHealMissingHpPct: 0.75,
       yidhariDecibelPerHpPct: 10,
       yidhariExternalHealPct: 0,
       healPctPerCurtainProviderUlt: 6.4,

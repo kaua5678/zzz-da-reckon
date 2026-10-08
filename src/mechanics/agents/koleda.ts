@@ -83,9 +83,6 @@ export function computeKoledaCycle(input: {
 
 function buildKoledaCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.koledaCinemaLevel = cinemaLevel
-  cfg.koledaChainStunCoverage = clampRatio(setting(cfg, 'koleda.chainStunCoverage'))
-  cfg.koledaC1Coverage = clampRatio(setting(cfg, 'koleda.c1Coverage'))
-  cfg.koledaC4ChargeStacks = Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks')))
   cfg.koledaAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
@@ -93,9 +90,9 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
   return computeKoledaCycle({
     cinemaLevel: cinemaLevelOf(cfg.koledaCinemaLevel),
     additionalActive: cfg.koledaAdditionalActive === true,
-    chainStunCoverage: Number(cfg.koledaChainStunCoverage ?? 1),
-    c1Coverage: Number(cfg.koledaC1Coverage ?? 1),
-    c4ChargeStacks: Number(cfg.koledaC4ChargeStacks ?? 2),
+    chainStunCoverage: clampRatio(setting(cfg, 'koleda.chainStunCoverage')),
+    c1Coverage: clampRatio(setting(cfg, 'koleda.c1Coverage')),
+    c4ChargeStacks: Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks'))),
     exSpecialCount: state.exSpecialCount,
     chainCount: state.chainCountTotal,
     ultimateCount: state.ultimateCount,
@@ -204,12 +201,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     koledaAdditionalActive?: boolean
-    /** 写入：clampRatio(setting(cfg, 'koleda.c1Coverage')) */
-    koledaC1Coverage?: number
-    /** 写入：Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks'))) */
-    koledaC4ChargeStacks?: number
-    /** 写入：clampRatio(setting(cfg, 'koleda.chainStunCoverage')) */
-    koledaChainStunCoverage?: number
     /** 写入：cinemaLevel */
     koledaCinemaLevel?: number
   }

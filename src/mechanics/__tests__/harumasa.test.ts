@@ -123,7 +123,7 @@ describe('悠真（1201）电壶→电囚→飞弦·斩资源循环', () => {
 
   it('轴模式额外能力 +40%：公共异常部分全部行，失衡独有部分行级直加标记（可琳同款通道）', () => {
     const cfg: any = {
-      harumasaCinemaLevel: 0, harumasaPotentialLevel: 6, harumasaStunCoverage: 0.5, harumasaAbnormalCoverage: 0.2,
+      harumasaCinemaLevel: 0, harumasaPotentialLevel: 6, harumasaStunCoverage: 0.5, 'setting:harumasa.abnormalCoverage': 0.2,
       harumasaAxisActive: true, harumasaAxisSlash: 5, harumasaAxisArrow: 10,
       'setting:harumasa.a5Count': 2, 'setting:harumasa.edgeAverageStacks': 6,
       panel: { additionalAbilityActive: 1 },
@@ -146,7 +146,7 @@ describe('悠真（1201）电壶→电囚→飞弦·斩资源循环', () => {
 
   it('未激活额外能力：轴模式不标记、不增伤', () => {
     const cfg: any = {
-      harumasaCinemaLevel: 0, harumasaPotentialLevel: 6, harumasaStunCoverage: 0.5, harumasaAbnormalCoverage: 0.2,
+      harumasaCinemaLevel: 0, harumasaPotentialLevel: 6, harumasaStunCoverage: 0.5, 'setting:harumasa.abnormalCoverage': 0.2,
       harumasaAxisActive: true, 'setting:harumasa.a5Count': 2, 'setting:harumasa.edgeAverageStacks': 6,
       panel: { additionalAbilityActive: 0 },
     }
@@ -165,9 +165,7 @@ describe('悠真招式定向机制', () => {
         panel: { additionalAbilityActive: 0 },
         harumasaCinemaLevel: 0,
         harumasaPotentialLevel: 6,
-        harumasaA5Count: 2,
         harumasaStunCoverage: 0.5,
-        harumasaAbnormalCoverage: 1,
         harumasaEdgeAverageStacks: 6,
       },
       state: { exSpecialCount: 1, ultimateCount: 0, chainCountTotal: 1 },
@@ -187,9 +185,7 @@ describe('悠真招式定向机制', () => {
       panel: { additionalAbilityActive: 1 },
       harumasaCinemaLevel: 6,
       harumasaPotentialLevel: 6,
-      harumasaA5Count: 2,
       harumasaStunCoverage: 0.5,
-      harumasaAbnormalCoverage: 1,
       harumasaEdgeAverageStacks: 6,
     }
     const state: any = { exSpecialCount: 0, ultimateCount: 1, chainCountTotal: 1 }
@@ -225,9 +221,9 @@ describe('悠真招式定向机制', () => {
         panel: { additionalAbilityActive: 0 },
         harumasaCinemaLevel: 0,
         harumasaPotentialLevel: 6,
-        harumasaA5Count: 0,
+        'setting:harumasa.a5Count': 0,
         harumasaStunCoverage: 0,
-        harumasaAbnormalCoverage: 0,
+        'setting:harumasa.abnormalCoverage': 0,
         harumasaEdgeAverageStacks: 6,
         moveActionTimes: { '1201024': 1.765 }, // CC-409
       },
@@ -246,9 +242,8 @@ describe('悠真招式定向机制', () => {
       panel: { additionalAbilityActive: 0 },
       harumasaCinemaLevel: 6,
       harumasaPotentialLevel: 6,
-      harumasaA5Count: 4,
+      'setting:harumasa.a5Count': 4,
       harumasaStunCoverage: 0.5,
-      harumasaAbnormalCoverage: 1,
       harumasaEdgeAverageStacks: 0,
     }
     const state: any = { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 }

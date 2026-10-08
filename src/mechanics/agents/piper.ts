@@ -91,7 +91,6 @@ export function computePiperMomentum(input: { cinemaLevel: number; buildupCovera
 
 function buildPiperCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.piperCinemaLevel = cinemaLevel
-  cfg.piperMomentumCoverage = cfgSetting(cfg, 'piper.momentumCoverage')
   if (cinemaLevel >= 4) {
     const maxTriggers = Math.max(1, Math.ceil(cfg.battleTime / PIPER_C4_CD))
     const triggers = Math.min(maxTriggers, Math.max(0, Math.floor(cfgSetting(cfg, 'piper.c4AnomalyTriggers'))))
@@ -102,7 +101,7 @@ function buildPiperCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void 
 function cycleFromInput({ cfg }: Pick<AgentResourceInput, 'cfg' | 'state'>): PiperMomentumCycle {
   return computePiperMomentum({
     cinemaLevel: cinemaLevelOf(cfg.piperCinemaLevel),
-    buildupCoverage: Number(cfg.piperMomentumCoverage ?? PIPER_BUILDUP_COVERAGE_DEFAULT),
+    buildupCoverage: cfgSetting(cfg, 'piper.momentumCoverage'),
   })
 }
 
@@ -186,8 +185,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：cinemaLevel */
     piperCinemaLevel?: number
-    /** 写入：cfgSetting(cfg, 'piper.momentumCoverage', PIPER_BUILDUP_COVERAGE_DEFAULT) */
-    piperMomentumCoverage?: number
   }
 }
 

@@ -158,8 +158,6 @@ export function computeAnbyZeroCycle(input: {
 function buildAnbyZeroCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.anbyZeroCinemaLevel = cinemaLevel
   cfg.anbyZeroPotentialLevel = potentialLevel
-  cfg.anbyZeroCangguangCount = whole(setting(cfg, 'anbyZero.cangguangCount'))
-  cfg.anbyZeroSilverStarCoverage = clampRatio(setting(cfg, 'anbyZero.silverStarCoverage'))
   cfg.anbyZeroAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
@@ -167,12 +165,12 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
   return computeAnbyZeroCycle({
     cinemaLevel: cinemaLevelOf(cfg.anbyZeroCinemaLevel),
     potentialLevel: Number(cfg.anbyZeroPotentialLevel ?? 6),
-    cangguangCount: Number(cfg.anbyZeroCangguangCount ?? 6),
+    cangguangCount: whole(setting(cfg, 'anbyZero.cangguangCount')),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     teammateWhiteLightning: Number(cfg.anbyZeroTeammateWhiteLightning ?? 0),
     additionalActive: cfg.anbyZeroAdditionalActive === true,
-    silverStarCoverage: Number(cfg.anbyZeroSilverStarCoverage ?? 1),
+    silverStarCoverage: clampRatio(setting(cfg, 'anbyZero.silverStarCoverage')),
     criticalActionTime: cfgMoveActionTime(cfg, ANBY_ZERO_CRITICAL_MOVE_ID),
   })
 }
@@ -366,14 +364,10 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     anbyZeroAdditionalActive?: boolean
-    /** 写入：whole(setting(cfg, 'anbyZero.cangguangCount')) */
-    anbyZeroCangguangCount?: number
     /** 写入：cinemaLevel */
     anbyZeroCinemaLevel?: number
     /** 写入：potentialLevel */
     anbyZeroPotentialLevel?: number
-    /** 写入：clampRatio(setting(cfg, 'anbyZero.silverStarCoverage')) */
-    anbyZeroSilverStarCoverage?: number
     /** 写入：(threads.moduleFeedback?.anbyZeroTeammateWl ?? 0) */
     anbyZeroTeammateWhiteLightning?: number
   }

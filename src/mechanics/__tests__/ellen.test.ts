@@ -53,12 +53,11 @@ function patchCfg(extra: Record<string, unknown> = {}) {
   return {
     ellenCinemaLevel: 0,
     ellenPotentialLevel: 6,
-    ellenC1CritStacks: 0,
-    ellenC2AvgCharge: 0,
-    ellenStormSurgeStacks: 0,
-    ellenC6PenCoverage: 0,
-    ellenC6FeastCoverage: 0,
-    ellenC4CdRate: 1,
+    'setting:ellen.c1CritStacks': 0,
+    'setting:ellen.c2AvgCharge': 0,
+    'setting:ellen.stormSurgeStacks': 0,
+    'setting:ellen.c6PenCoverage': 0,
+    'setting:ellen.c6FeastCoverage': 0,
     ellenFreezeCount: 0,
     ellenStunCount: 0,
     ellenAdditionalActive: false,
@@ -148,7 +147,7 @@ describe('艾莲招式定向与执行行', () => {
     const ult: any = { moveId: ELLEN_ULT_MOVE_ID, element: 'ice' }
     const ex: any = { moveId: ELLEN_EX_MOVE_IDS[0], element: 'ice' }
     ellenMechanic.patchExecutions!({
-      cfg: patchCfg({ ellenCinemaLevel: 2, ellenC2AvgCharge: 3 }),
+      cfg: patchCfg({ ellenCinemaLevel: 2, 'setting:ellen.c2AvgCharge': 3 }),
       state: { exSpecialCount: 1, ultimateCount: 1, chainCountTotal: 0, basicAttackTime: 0 },
       executions: [trim, dash, ult, ex],
     } as any)
@@ -162,7 +161,7 @@ describe('艾莲招式定向与执行行', () => {
     const charged: any = { moveId: ELLEN_DASH_MOVE_IDS[1], element: 'ice' }
     const spin: any = { moveId: ELLEN_DASH_MOVE_IDS[0], element: 'ice' }
     ellenMechanic.patchExecutions!({
-      cfg: patchCfg({ ellenCinemaLevel: 6, ellenPotentialLevel: 1, ellenC6FeastCoverage: 1 }),
+      cfg: patchCfg({ ellenCinemaLevel: 6, ellenPotentialLevel: 1, 'setting:ellen.c6FeastCoverage': 1 }),
       state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0, basicAttackTime: 0 },
       executions: [charged, spin],
     } as any)
@@ -285,7 +284,7 @@ describe('艾莲招式定向与执行行', () => {
 
   it('影画4回能经applyTeamConfig幂等并入initialEnergyGift（冻结读异常池注入的ellenFreezeCount）', () => {
     const characters: any[] = [
-      { slot: 0, agentId: '1191', initialEnergyGift: 40, ellenFreezeCount: 2, ellenC4CdRate: 1 },
+      { slot: 0, agentId: '1191', initialEnergyGift: 40, ellenFreezeCount: 2 },
     ]
     const input: any = { slot: 0, cfg: characters[0], cinemaLevel: 4, characters, phase: 'converge', stunCount: 3 }
     ellenMechanic.applyTeamConfig!(input)
@@ -397,7 +396,7 @@ describe('艾莲滑块生效差分（防守卫冻结，SOP §3.5：改滑块→�
     const feastOf = (coverage: number) => {
       const executions: any[] = [{ moveId: ELLEN_DASH_MOVE_IDS[1], dmgBonus: 0, critDmgBonus: 0 }]
       ellenMechanic.patchExecutions!({
-        cfg: { ellenCinemaLevel: 6, ellenPotentialLevel: 6, ellenC1CritStacks: 0, ellenC2AvgCharge: 0, ellenStormSurgeStacks: 0, ellenC6PenCoverage: 0, ellenC6FeastCoverage: coverage, ellenC4CdRate: 1, ellenFreezeCount: 0, ellenStunCount: 0, ellenAdditionalActive: false },
+        cfg: { ellenCinemaLevel: 6, ellenPotentialLevel: 6, 'setting:ellen.c1CritStacks': 0, 'setting:ellen.c2AvgCharge': 0, 'setting:ellen.stormSurgeStacks': 0, 'setting:ellen.c6PenCoverage': 0, 'setting:ellen.c6FeastCoverage': coverage, ellenFreezeCount: 0, ellenStunCount: 0, ellenAdditionalActive: false },
         state: { basicAttackTime: 60, exSpecialCount: 2 },
         executions,
       } as never)
@@ -408,9 +407,9 @@ describe('艾莲滑块生效差分（防守卫冻结，SOP §3.5：改滑块→�
     expect(feastOf(1)).toBeGreaterThan(feastOf(0))
   })
 
-  it('ellen.c4CdRate → 影画4充能差分（applyTeamConfig 读 cfg.ellenC4CdRate，随覆盖率线性缩放）', () => {
+  it('ellen.c4CdRate → 影画4充能差分（applyTeamConfig 读设置 ellen.c4CdRate，随覆盖率线性缩放）', () => {
     const mk = (cdRate: number) => {
-      const c: any = { slot: 0, agentId: '1191', cinemaLevel: 4, initialEnergyGift: 40, ellenC4EnergyTotal: 0, ellenC4CdRate: cdRate, ellenFreezeCount: 0 }
+      const c: any = { slot: 0, agentId: '1191', cinemaLevel: 4, initialEnergyGift: 40, ellenC4EnergyTotal: 0, 'setting:ellen.c4CdRate': cdRate, ellenFreezeCount: 0 }
       ellenMechanic.applyTeamConfig!({ slot: 0, cfg: c, cinemaLevel: 4, characters: [c], phase: 'converge', stunCount: 3 } as never)
       return c
     }

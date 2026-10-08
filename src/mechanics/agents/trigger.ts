@@ -217,9 +217,6 @@ function applyTriggerPanel({ panel }: AgentPanelInput): void {
 
 function buildTriggerCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.triggerCinemaLevel = cinemaLevel
-  cfg.triggerNormalCountOverride = whole(cfgSetting(cfg, 'trigger.normalCoordinatedCount'))
-  cfg.triggerHellCountOverride = whole(cfgSetting(cfg, 'trigger.hellCoordinatedCount'))
-  cfg.triggerSniperHitOverride = whole(cfgSetting(cfg, 'trigger.sniperHitCount'))
 }
 
 /** postRound：本轮全队强特/终结已收敛 → 写入冥狱触发源（下一轮 buildExecutions 生效） */
@@ -247,9 +244,9 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     cinemaLevel: cinemaLevelOf(cfg.triggerCinemaLevel),
     // 协奏狙杀/冥狱 CD 折算按有效战斗时间（扣 boss 无敌，core/effectiveTime.ts）
     battleTime: minusInvincibleTime(cfg.battleTime, cfg),
-    normalCountOverride: Number(cfg.triggerNormalCountOverride ?? 0),
-    hellCountOverride: Number(cfg.triggerHellCountOverride ?? 0),
-    sniperHitCountOverride: Number(cfg.triggerSniperHitOverride ?? 0),
+    normalCountOverride: whole(cfgSetting(cfg, 'trigger.normalCoordinatedCount')),
+    hellCountOverride: whole(cfgSetting(cfg, 'trigger.hellCoordinatedCount')),
+    sniperHitCountOverride: whole(cfgSetting(cfg, 'trigger.sniperHitCount')),
     mateExCount: Number(cfg.triggerMateExCount ?? 0),
     mateUltimateCount: Number(cfg.triggerMateUltimateCount ?? 0),
     mateAssistCount: Number(cfg.triggerMateAssistCount ?? 0),
@@ -450,12 +447,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 命座等级：buildCharConfig 写 */
     triggerCinemaLevel?: number
-    /** 机制设置 trigger.normalCoordinatedCount 的取整覆盖值 */
-    triggerNormalCountOverride?: number
-    /** 机制设置 trigger.hellCoordinatedCount 的取整覆盖值 */
-    triggerHellCountOverride?: number
-    /** 机制设置 trigger.sniperHitCount 的取整覆盖值 */
-    triggerSniperHitOverride?: number
     /** 队友强化特殊技次数（协同计数用） */
     triggerMateExCount?: number
     /** 队友终结技次数（协同计数用） */

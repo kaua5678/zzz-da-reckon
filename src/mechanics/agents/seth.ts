@@ -74,9 +74,6 @@ export function computeSethCycle(input: {
 
 function buildSethCharConfig({ cinemaLevel, cfg, panel, skills, getRowValue }: AgentCharConfigInput): void {
   cfg.sethCinemaLevel = cinemaLevel
-  cfg.sethShieldCoverage = clampRatio(setting(cfg, 'seth.shieldCoverage'))
-  cfg.sethAdditionalResCoverage = clampRatio(setting(cfg, 'seth.additionalResCoverage'))
-  cfg.sethC6FinishCount = whole(setting(cfg, 'seth.c6FinishCount'))
   cfg.sethAdditionalActive = additionalAbilityActiveOf(panel)
   // 影画4 招架支援迅雷盾失衡值 +25%：预缩倍率表 daze 值，patchExecutions 经 dazeMultiplierOverride 精确结算。
   if (cinemaLevel >= 4) {
@@ -89,9 +86,9 @@ function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' |
   return computeSethCycle({
     cinemaLevel: cinemaLevelOf(cfg.sethCinemaLevel),
     additionalActive: cfg.sethAdditionalActive === true,
-    shieldCoverage: Number(cfg.sethShieldCoverage ?? 1),
-    additionalResCoverage: Number(cfg.sethAdditionalResCoverage ?? 1),
-    c6FinishCount: Number(cfg.sethC6FinishCount ?? 6),
+    shieldCoverage: clampRatio(setting(cfg, 'seth.shieldCoverage')),
+    additionalResCoverage: clampRatio(setting(cfg, 'seth.additionalResCoverage')),
+    c6FinishCount: whole(setting(cfg, 'seth.c6FinishCount')),
   })
 }
 
@@ -188,16 +185,10 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     sethAdditionalActive?: boolean
-    /** 写入：clampRatio(setting(cfg, 'seth.additionalResCoverage')) */
-    sethAdditionalResCoverage?: number
     /** 写入：baseDaze * (1 + SETH_C4_DEFENSIVE_DAZE_BONUS / 100) */
     sethC4DefensiveDaze?: number
-    /** 写入：whole(setting(cfg, 'seth.c6FinishCount')) */
-    sethC6FinishCount?: number
     /** 写入：cinemaLevel */
     sethCinemaLevel?: number
-    /** 写入：clampRatio(setting(cfg, 'seth.shieldCoverage')) */
-    sethShieldCoverage?: number
   }
 }
 

@@ -135,7 +135,7 @@ describe('千夏猫的凝视触发与磨爪器（2026-08-31 建模）', () => {
     const executions = [mkExec('1491007', 10)]
     const cfg: any = {
       qianxiaCinemaLevel: 0, qianxiaAttackAgents: 1, qianxiaAnomalyAgents: 1,
-      qianxiaTriggerHits: 8, teamVeilCountTotal: 2, battleTime: 180,
+      'setting:qianxia.gazeTriggerHits': 8, teamVeilCountTotal: 2, battleTime: 180,
       panel: {},
     }
     qianxiaMechanic.patchExecutions!({ cfg, state: { ultimateCount: 1 } as any, executions })
@@ -154,7 +154,7 @@ describe('千夏猫的凝视触发与磨爪器（2026-08-31 建模）', () => {
     const executions = [mkExec('1491008', 6)]
     const cfg: any = {
       qianxiaCinemaLevel: 6, qianxiaAttackAgents: 1, qianxiaAnomalyAgents: 0,
-      qianxiaTriggerHits: 6, teamVeilCountTotal: 3, battleTime: 180,
+      'setting:qianxia.gazeTriggerHits': 6, teamVeilCountTotal: 3, battleTime: 180,
       panel: {},
     }
     qianxiaMechanic.patchExecutions!({ cfg, state: { ultimateCount: 2 } as any, executions })
@@ -180,7 +180,7 @@ describe('千夏猫的凝视触发与磨爪器（2026-08-31 建模）', () => {
       const executions = [mkExec('1491007', 10)]
       const cfg: any = {
         qianxiaCinemaLevel: 0, qianxiaAttackAgents: 1, qianxiaAnomalyAgents: 0,
-        qianxiaTriggerHits: settingHits, teamVeilCountTotal: 0, battleTime: 180,
+        'setting:qianxia.gazeTriggerHits': settingHits, teamVeilCountTotal: 0, battleTime: 180,
         panel: {},
       }
       qianxiaMechanic.patchExecutions!({ cfg, state: { ultimateCount: 0 } as any, executions })

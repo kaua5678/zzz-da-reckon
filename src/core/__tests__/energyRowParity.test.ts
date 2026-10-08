@@ -166,7 +166,6 @@ describe('能量账本行级 Σ parity（记账层 == 展示层）', () => {
       yidhariChargeSlam: { actionTime: 1.2917 },
       yidhariBasicFollow: { actionTime: 1.55 },
       yidhariDecibelPerHpPct: 10,
-      yidhariExHealMissingHpPct: 0.75,
     } as unknown as CharacterOperationConfig
     const st = stateOf({ basicAttackTime: 20, exSpecialCount: 2, ultimateCount: 1 })
     const src = energyOf(cfg, st, 30)

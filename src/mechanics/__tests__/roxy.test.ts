@@ -143,7 +143,6 @@ describe('洛克茜风能模型（v12 + 手法）', () => {
 
     const cfg: any = { initialEnergyGift: 0 }
     roxyMechanic.buildCharConfig!({ cinemaLevel: 0, cfg, skills: { categories: [] } as any, getRowValue: () => 0 } as any)
-    expect(cfg.roxySpinSeconds).toBe(2.5)
     expect(cfg.exSpecialEnergyConsume).toBe(10 + 2.5 * 30)
   })
 })

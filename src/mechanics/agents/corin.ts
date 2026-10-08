@@ -138,12 +138,6 @@ export function computeCorinStunBonusMoves(
 
 function buildCorinCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
   cfg.corinCinemaLevel = cinemaLevel
-  cfg.corinCoreSawCoverage = clampRatio(setting(cfg, 'corin.coreSawCoverage'))
-  cfg.corinAdditionalStunCoverage = clampRatio(setting(cfg, 'corin.additionalStunCoverage'))
-  cfg.corinC1Coverage = clampRatio(setting(cfg, 'corin.c1Coverage'))
-  cfg.corinC2ResCoverage = clampRatio(setting(cfg, 'corin.c2ResCoverage'))
-  cfg.corinC6DetonationCount = whole(setting(cfg, 'corin.c6DetonationCount'))
-  cfg.corinC6ChargeStacks = Math.max(0, Math.min(CORIN_C6_MAX_CHARGES, setting(cfg, 'corin.c6ChargeStacks')))
   cfg.corinAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
@@ -176,13 +170,13 @@ function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' |
   return computeCorinCycle({
     cinemaLevel: cinemaLevelOf(cfg.corinCinemaLevel),
     additionalActive: cfg.corinAdditionalActive === true,
-    coreSawCoverage: Number(cfg.corinCoreSawCoverage ?? 1),
-    additionalStunCoverage: Number(cfg.corinAdditionalStunCoverage ?? 0.5),
-    c1Coverage: Number(cfg.corinC1Coverage ?? 1),
-    c2ResCoverage: Number(cfg.corinC2ResCoverage ?? 1),
+    coreSawCoverage: clampRatio(setting(cfg, 'corin.coreSawCoverage')),
+    additionalStunCoverage: clampRatio(setting(cfg, 'corin.additionalStunCoverage')),
+    c1Coverage: clampRatio(setting(cfg, 'corin.c1Coverage')),
+    c2ResCoverage: clampRatio(setting(cfg, 'corin.c2ResCoverage')),
     c4EnergyTotal: Number(cfg.corinC4EnergyTotal ?? 0),
-    c6DetonationCount: Number(cfg.corinC6DetonationCount ?? 8),
-    c6ChargeStacks: Number(cfg.corinC6ChargeStacks ?? 40),
+    c6DetonationCount: whole(setting(cfg, 'corin.c6DetonationCount')),
+    c6ChargeStacks: Math.max(0, Math.min(CORIN_C6_MAX_CHARGES, setting(cfg, 'corin.c6ChargeStacks'))),
   })
 }
 
@@ -354,22 +348,10 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 写入：additionalAbilityActiveOf(panel) */
     corinAdditionalActive?: boolean
-    /** 写入：clampRatio(setting(cfg, 'corin.additionalStunCoverage')) */
-    corinAdditionalStunCoverage?: number
-    /** 写入：clampRatio(setting(cfg, 'corin.c1Coverage')) */
-    corinC1Coverage?: number
-    /** 写入：clampRatio(setting(cfg, 'corin.c2ResCoverage')) */
-    corinC2ResCoverage?: number
     /** 写入：gift */
     corinC4EnergyTotal?: number
-    /** 写入：Math.max(0, Math.min(CORIN_C6_MAX_CHARGES, setting(cfg, 'corin.c6ChargeStacks'))) */
-    corinC6ChargeStacks?: number
-    /** 写入：whole(setting(cfg, 'corin.c6DetonationCount')) */
-    corinC6DetonationCount?: number
     /** 写入：cinemaLevel */
     corinCinemaLevel?: number
-    /** 写入：clampRatio(setting(cfg, 'corin.coreSawCoverage')) */
-    corinCoreSawCoverage?: number
   }
 }
 

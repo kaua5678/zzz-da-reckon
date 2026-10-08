@@ -168,11 +168,7 @@ function applyHugoPanel({ slot, team, cinemaLevel, panel, settings }: AgentPanel
 
 function buildHugoCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
   cfg.hugoCinemaLevel = cinemaLevel
-  cfg.hugoExVerdictRatio = clampRatio(setting(cfg, 'hugo.exVerdictRatio'))
-  cfg.hugoUltimateVerdictRatio = clampRatio(setting(cfg, 'hugo.ultimateVerdictRatio'))
   cfg.hugoRemainingStunSeconds = Math.max(0, Math.min(15, setting(cfg, 'hugo.remainingStunSeconds')))
-  cfg.hugoEchoCoverage = cinemaLevel >= 6 ? 1 : clampRatio(setting(cfg, 'hugo.echoCoverage'))
-  cfg.hugoC4Coverage = cinemaLevel >= 4 ? clampRatio(setting(cfg, 'hugo.c4Coverage')) : 0
   cfg.hugoAdditionalActive = additionalAbilityActiveOf(panel)
   // CC-408：强特终结 1291010 的 damage 行值由引擎读 catalog 进 cfg.mechanicRowValues（原模块常量
   // HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8 是同一数据的第二份）。缺表为 0，**不回退常量**——缺表要在结果里看得见。
@@ -186,10 +182,10 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     cinemaLevel: cinemaLevelOf(cfg.hugoCinemaLevel),
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
-    exVerdictRatio: Number(cfg.hugoExVerdictRatio ?? 1),
-    ultimateVerdictRatio: Number(cfg.hugoUltimateVerdictRatio ?? 1),
+    exVerdictRatio: clampRatio(setting(cfg, 'hugo.exVerdictRatio')),
+    ultimateVerdictRatio: clampRatio(setting(cfg, 'hugo.ultimateVerdictRatio')),
     remainingStunSeconds: Number(cfg.hugoRemainingStunSeconds ?? 5),
-    echoCoverage: Number(cfg.hugoEchoCoverage ?? 1),
+    echoCoverage: cinemaLevelOf(cfg.hugoCinemaLevel) >= 6 ? 1 : clampRatio(setting(cfg, 'hugo.echoCoverage')),
     exVerdictCountOverride: cfg.hugoAxisExVerdictCount !== undefined
       ? Number(cfg.hugoAxisExVerdictCount)
       : undefined,
@@ -288,7 +284,7 @@ function patchHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
   const cycle = cycleFromInput({ cfg, state })
   const cinemaLevel = cinemaLevelOf(cfg.hugoCinemaLevel)
   const additionalActive = cfg.hugoAdditionalActive === true
-  const c4Coverage = Number(cfg.hugoC4Coverage ?? 0)
+  const c4Coverage = cinemaLevel >= 4 ? clampRatio(setting(cfg, 'hugo.c4Coverage')) : 0
   const exOutOfStunRatio = cycle.exSpecialCount > 0
     ? cycle.exNormalCount / cycle.exSpecialCount
     : 0
@@ -500,16 +496,8 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 命座等级：buildCharConfig 写 */
     hugoCinemaLevel?: number
-    /** 强化特殊技决算比例：机制设置 hugo.exVerdictRatio，夹到 0–1 */
-    hugoExVerdictRatio?: number
-    /** 终结技决算比例：机制设置 hugo.ultimateVerdictRatio，夹到 0–1 */
-    hugoUltimateVerdictRatio?: number
     /** 决算时剩余失衡秒数：机制设置 hugo.remainingStunSeconds，夹到 0–15，默认 5 */
     hugoRemainingStunSeconds?: number
-    /** 暗渊回响覆盖率：影画6 恒 1，否则机制设置 hugo.echoCoverage */
-    hugoEchoCoverage?: number
-    /** 影画4 覆盖率：不足 4 命为 0，否则机制设置 hugo.c4Coverage */
-    hugoC4Coverage?: number
     /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
     hugoAdditionalActive?: boolean
     /** 失衡轴内强化特殊技决算块数：只在轴模式写入（非轴不写，读者按 undefined 门控） */

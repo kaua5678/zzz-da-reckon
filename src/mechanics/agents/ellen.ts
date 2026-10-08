@@ -226,12 +226,6 @@ function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: Agent
   // 强化特殊技主招 = 鲨卷风（影画2 全鲨卷风；0命由 buildExecutions 补横扫实现「横扫+鲨卷风」）
   cfg.exSpecialMoveId = ELLEN_EX_MOVE_IDS[1]
   cfg.exSpecialActionTime = cfgMoveActionTime(cfg, ELLEN_EX_MOVE_IDS[1])
-  cfg.ellenC1CritStacks = clamp(setting(cfg, 'ellen.c1CritStacks'), 0, ELLEN_C1_MAX_STACKS)
-  cfg.ellenC2AvgCharge = clamp(setting(cfg, 'ellen.c2AvgCharge'), 0, 3)
-  cfg.ellenStormSurgeStacks = clamp(setting(cfg, 'ellen.stormSurgeStacks'), 0, ELLEN_STORM_SURGE_MAX_STACKS)
-  cfg.ellenC6PenCoverage = clamp(setting(cfg, 'ellen.c6PenCoverage'), 0, 1)
-  cfg.ellenC4CdRate = clamp(setting(cfg, 'ellen.c4CdRate'), 0, 1)
-  cfg.ellenC6FeastCoverage = clamp(setting(cfg, 'ellen.c6FeastCoverage'), 0, 1)
   cfg.ellenFreezeCount = 0 // 由 useResourceCalc 从异常池 ice 触发数注入；失衡次数由 applyTeamConfig converge 写入
   cfg.ellenStunCount = 0
   cfg.ellenAdditionalActive = additionalAbilityActiveOf(panel)
@@ -255,7 +249,7 @@ function applyEllenTeamConfig({ cfg, cinemaLevel, phase, stunCount, threads }: A
   const resolvedStun = Math.max(0, Math.floor(Number(stunCount) || 0))
   cfg.ellenStunCount = resolvedStun
   const freezeCount = Math.max(0, Math.floor(Number(cfg.ellenFreezeCount) || 0))
-  const cdRate = clamp(Number(cfg.ellenC4CdRate ?? 1), 0, 1)
+  const cdRate = clamp(setting(cfg, 'ellen.c4CdRate'), 0, 1)
   const gift = (freezeCount + resolvedStun) * ELLEN_C4_ENERGY_PER_TRIGGER * cdRate
   const prev = Math.max(0, Number(cfg.ellenC4EnergyTotal ?? 0))
   cfg.initialEnergyGift = Math.max(0, cfg.initialEnergyGift - prev) + gift
@@ -270,13 +264,13 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     exSpecialCount: state.exSpecialCount,
     freezeCount: Number(cfg.ellenFreezeCount ?? 0),
     stunCount: Number(cfg.ellenStunCount ?? 0),
-    c4CdRate: Number(cfg.ellenC4CdRate ?? 1),
+    c4CdRate: clamp(setting(cfg, 'ellen.c4CdRate'), 0, 1),
     additionalActive: cfg.ellenAdditionalActive === true,
-    c1CritStacks: Number(cfg.ellenC1CritStacks ?? 6),
-    c2AvgCharge: Number(cfg.ellenC2AvgCharge ?? 3),
-    stormSurgeStacks: Number(cfg.ellenStormSurgeStacks ?? 10),
-    c6PenCoverage: Number(cfg.ellenC6PenCoverage ?? 1),
-    c6FeastCoverage: Number(cfg.ellenC6FeastCoverage ?? 1),
+    c1CritStacks: clamp(setting(cfg, 'ellen.c1CritStacks'), 0, ELLEN_C1_MAX_STACKS),
+    c2AvgCharge: clamp(setting(cfg, 'ellen.c2AvgCharge'), 0, 3),
+    stormSurgeStacks: clamp(setting(cfg, 'ellen.stormSurgeStacks'), 0, ELLEN_STORM_SURGE_MAX_STACKS),
+    c6PenCoverage: clamp(setting(cfg, 'ellen.c6PenCoverage'), 0, 1),
+    c6FeastCoverage: clamp(setting(cfg, 'ellen.c6FeastCoverage'), 0, 1),
   })
 }
 
@@ -533,18 +527,6 @@ declare module '@/types/resource/config' {
     ellenCinemaLevel?: number
     /** 潜能等级：buildCharConfig 写 */
     ellenPotentialLevel?: number
-    /** 影画1 暴击层数：机制设置 ellen.c1CritStacks，夹到 0–ELLEN_C1_MAX_STACKS */
-    ellenC1CritStacks?: number
-    /** 影画2 平均蓄力段数：机制设置 ellen.c2AvgCharge，夹到 0–3 */
-    ellenC2AvgCharge?: number
-    /** 「急冻」层数：机制设置 ellen.stormSurgeStacks，夹到 0–ELLEN_STORM_SURGE_MAX_STACKS */
-    ellenStormSurgeStacks?: number
-    /** 影画6 穿透覆盖率：机制设置 ellen.c6PenCoverage，夹到 0–1 */
-    ellenC6PenCoverage?: number
-    /** 影画4 冷却命中率：机制设置 ellen.c4CdRate，夹到 0–1 */
-    ellenC4CdRate?: number
-    /** 影画6「盛宴」覆盖率：机制设置 ellen.c6FeastCoverage，夹到 0–1 */
-    ellenC6FeastCoverage?: number
     /** 冻结次数：build 置 0，applyTeamConfig converge 从跨轮线程 moduleFeedback.ellenFreezeCount 写入 */
     ellenFreezeCount?: number
     /** 失衡次数：build 置 0，applyTeamConfig converge 写入 */

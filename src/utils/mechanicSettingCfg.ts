@@ -5,6 +5,10 @@
  * 写到 `cfg[mechanicSettingCfgKey(id)]`（恒为数字）。读取方：角色模块、`specs/resources.ts`。
  * 此前键格式 `setting:${id}` 与读取 helper 在 30 多个角色模块里各抄一份（setting / cfgSetting / cfgNum / cfgRate…），
  * 语义还有 4 种变体（Number 强转 / 要求 typeof number / null 取 0 或取 fallback），新模块只能继续抄。
+ *
+ * 模块在**用到设置的地方**直接调 reader 换算，不要在 buildCharConfig 里换算后写进 cfg 私有字段再给别的钩子读
+ * （r750 CC-533 删了 21 个模块的 56 个这类镜像字段：读侧的 `?? 默认` 是默认值的第三份；2026-09-20 安比 / 塞维林
+ * 的滑块失效就是读了没人写的镜像字段）。
  */
 export function mechanicSettingCfgKey(id: string): string {
   return `setting:${id}`
