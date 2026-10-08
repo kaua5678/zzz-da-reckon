@@ -34,7 +34,10 @@ export interface SkillExecution {
   actionTime: number
   /** 合轴时间占比 0-1（0=不合轴，0.5=合轴一半时间） */
   comboAlignRatio: number
-  /** 总时间 = count × actionTime（秒） */
+  /**
+   * 总时间 = count × actionTime（秒）。**≥ 0 由生产方保证**：截断按比例缩，从平A行扣时间的模块在源头钳到 0；
+   * 消费方（`frontlineRowSeconds` 等）直接相加，不再各自钳（r738：插桩跑全套测试 + 零差矩阵，没有负行）。
+   */
   totalTime: number
   /** 总合轴时间 = count × actionTime × comboAlignRatio */
   totalComboAlignTime: number
@@ -134,6 +137,21 @@ export interface SkillExecution {
 /** 行是否占用三人共享前台时间轴（后台行不进超时校验与账本折叠；未打标默认前台） */
 export function isFrontlineExecution(e: { timeBucket?: 'necessary' | 'basic' | 'backstage' }): boolean {
   return e.timeBucket !== 'backstage'
+}
+
+/** 前台求和只读这两个字段（`SkillExecution` 结构兼容；测试可只给这两个字段） */
+export type FrontlineRow = Pick<SkillExecution, 'totalTime' | 'timeBucket'>
+
+/**
+ * 前台行总时长（秒）= Σ 前台行 `totalTime`（r738 单一实现）：展示时间分配（`normalizeDisplayTime`）、
+ * 装配时间账（`assembleSlot`）、折叠环行测量（`foldLoop`）、单槽净占用与占用拆解（`timeOccupation.ts`）都调它。
+ * 行时长 ≥ 0 由生产方保证（见 `SkillExecution.totalTime`），这里直接相加、不钳。
+ * `from`：接着已有累加值往下加——占用拆解跨槽累加毛前台时用，保持逐行累加顺序，结果逐位不变。
+ */
+export function frontlineRowSeconds(rows: ReadonlyArray<FrontlineRow>, from = 0): number {
+  let t = from
+  for (const e of rows) if (isFrontlineExecution(e)) t += e.totalTime
+  return t
 }
 
 /**

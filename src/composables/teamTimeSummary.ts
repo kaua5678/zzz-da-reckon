@@ -120,7 +120,7 @@ export function buildTeamTimeSummary(args: {
     let basicModule = 0
     for (const e of executions) {
       if (!isFrontlineExecution(e)) continue
-      const t = Math.max(0, e.totalTime)
+      const t = e.totalTime
       if (e.moveId === 'basic_attack') basic += t
       else if (e.category === 'basic') basicModule += t
       else nec += t

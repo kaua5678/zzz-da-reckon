@@ -18,7 +18,7 @@
 import type {
   ResourceCalcConfig, CharacterOperationConfig, IterationState, SkillExecution,
 } from '@/types/resource'
-import { isFrontlineExecution } from '@/types/resource'
+import { frontlineRowSeconds } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { calcEnergySource, calcRawDecibelParts, calcDecibelSource } from './resourceIncome'
 import { calcTimeAllocation } from './timeOccupation'
@@ -160,12 +160,12 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
     }))
   }
   const executions = giftRowsHere.length > 0 ? [...truncated.executions, ...giftRowsHere] : truncated.executions
-  // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（后台行不占共享轴，如莱卡恩围猎蓄力；
+  // 显示口径统一：前台时间 = **前台**执行行 ΣtotalTime（`frontlineRowSeconds`；后台行不占共享轴，如莱卡恩围猎蓄力；
   // 含合轴，机制改写行/倍率表行都在内），后台 = 总时间 - 前台。
-  // 装配后追加的赠送行（诺姆赠链/琉音赠大）不在 Σ行里——展示层由 `normalizeDisplayTime`
-  // 在编排层按最终行统一重算（单一口径，新增赠送机制不必各自回扣）。
-  // 赠行已在 `executions` 里（上方物化），故这里不再加 giftTimeThisSlot（否则双计）
-  const execFrontlineTime = executions.reduce((sum, e) => sum + (isFrontlineExecution(e) ? e.totalTime : 0), 0)
+  // 赠送行（诺姆赠链 / 琉音赠大）的占位行已在 `executions` 里（上方物化），故这里不再加 giftTimeThisSlot（否则双计）。
+  // 装配之后编排层（`applyUltimatePromote` / `applyChainGift`）还会按池口径改写或撤掉占位行（轴模式另有 post-hoc carve），
+  // 所以展示层由 `normalizeDisplayTime` 按最终行再算一次——同一个 `frontlineRowSeconds`，新增赠送机制不必各自回扣。
+  const execFrontlineTime = frontlineRowSeconds(executions)
   const timeAlloc = {
     ...calcTimeAllocation(cfg, state, totalTime),
     frontlineTime: execFrontlineTime,

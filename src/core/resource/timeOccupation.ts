@@ -6,10 +6,10 @@
  * `netFrontlineOccupation`，是同一几何口径（合轴抵扣 = 每槽
  * `max(招式合轴抵扣, 轴内合轴节省)`，两种模型不叠加）的单槽 / 全队两级视图。
  * 对 helpers.ts 其它符号**零内部依赖**（闸门实测出度 0：只读 `TeamResourceResult`
- * 与 `isFrontlineExecution` 谓词）。
+ * 与 `frontlineRowSeconds`）。
  */
-import type { CharacterOperationConfig, IterationState, TeamResourceResult, TimeAllocation } from '@/types/resource'
-import { isFrontlineExecution } from '@/types/resource'
+import type { CharacterOperationConfig, FrontlineRow, IterationState, TeamResourceResult, TimeAllocation } from '@/types/resource'
+import { frontlineRowSeconds } from '@/types/resource'
 
 // ============ 时间计算 ============
 
@@ -69,16 +69,17 @@ export interface FrontlineOccupationBreakdown {
  */
 export function frontlineOccupationBreakdown(rr: TeamResourceResult): FrontlineOccupationBreakdown {
   const overlapBySlot = axisOverlapBySlot(rr.axisOverlapByAction)
+  let gross = 0
+  let axisOverlap = 0
   let total = 0
   let totalRowNet = 0
-  const tally = { gross: 0, axisOverlap: 0 }
   for (const ch of rr.characters) {
-    const r = slotNetFrontline(ch.executions, overlapBySlot[ch.slot] ?? 0, ch.timeAllocation.comboAlignCredit, [], tally)
+    gross = frontlineRowSeconds(ch.executions, gross)
+    const r = slotNetFrontline(ch.executions, overlapBySlot[ch.slot] ?? 0, ch.timeAllocation.comboAlignCredit)
+    axisOverlap += r.axisCut
     total += r.net
     totalRowNet += r.rowNet
   }
-  const gross = tally.gross
-  const axisOverlap = tally.axisOverlap
   // CC-178（第 201 轮）：删掉「只有团队级 axisOverlapSeconds、无按块分摊」兜底分支——栈引擎
   // （core/stunAxisStack.ts）逐块同时累加团队总量与按块分摊（Σ 分摊 = 总量），生产中不存在
   // 「总量 > 0 而分摊为空」的状态，该分支只有测试在走；团队总量字段随之删除（按块分摊是唯一表示）。
@@ -111,15 +112,9 @@ export function axisOverlapBySlot(overlap: Readonly<Record<string, number>> | un
   return bySlot
 }
 
-/** `slotNetFrontline` 只读这两个字段（`SkillExecution` 结构兼容）。 */
-export interface FrontlineRowLike {
-  totalTime?: number
-  timeBucket?: 'necessary' | 'basic' | 'backstage'
-}
-
 /**
  * 单槽前台净占用（CC-495，超时判定的几何口径，一份）：
- *   rowNet = Σ_{前台行} max(0, 行时长) − min(该和, 该槽轴内合轴分摊合计 slotOverlap) (+ extraSeconds 逐项追加)
+ *   rowNet = Σ_{前台行} 行时长（`frontlineRowSeconds`）− min(该和, 该槽轴内合轴分摊合计 slotOverlap) (+ extraSeconds 逐项追加)
  *   net    = max(0, rowNet − max(0, 招式合轴抵扣 comboAlignCredit − slotOverlap))
  * 即每槽抵扣 = max(comboAlignCredit, slotOverlap)，与 iterate 平A池 relief（`helpers.ts`）同一份按槽量。
  * r709：轴内分摊原按 `slot:moveId` 逐行匹配——栈键是**轴块** id（连段块 / 赠块 `:gift`），行是展开后的招式 id，
@@ -128,26 +123,19 @@ export interface FrontlineRowLike {
  * 装配后的占用拆解（`frontlineOccupationBreakdown`）与欠打试探的门控测量（`underfillProbe#frontlineRowsOf`，
  * 行 = 试探物化行 + 赠送连携/赠大时间作 extraSeconds）都走它——试探注释原文「与 netFrontlineOccupation 完全同口径，
  * 否则试探门控放行、装配后仍超预算（实测差出 164s）」，现在是同一个函数而不是两份手抄。
- * `tally` 可选：按行顺序累加 gross / axisOverlap（拆解用，保持原累加顺序逐位不变）。
+ * `axisCut` = 本槽实际扣掉的轴内分摊（占用拆解按槽累加成 `axisOverlap`）。r738 前这里另有 `tally` 出参，
+ * 逐行累加未钳的毛前台、同时对 rowSum 钳 `max(0, 行时长)`；行时长恒 ≥ 0 之后两者相同，出参删掉，毛前台改由拆解调 `frontlineRowSeconds`。
  */
 export function slotNetFrontline(
-  rows: ReadonlyArray<FrontlineRowLike>,
+  rows: ReadonlyArray<FrontlineRow>,
   slotOverlap: number,
   comboAlignCredit: number | undefined,
   extraSeconds: readonly number[] = [],
-  tally?: { gross: number; axisOverlap: number },
-): { rowNet: number; net: number } {
-  let rowSum = 0
-  for (const e of rows) {
-    if (!isFrontlineExecution(e)) continue
-    const t = e.totalTime ?? 0
-    if (tally) tally.gross += t
-    rowSum += Math.max(0, t)
-  }
+): { rowNet: number; net: number; axisCut: number } {
+  const rowSum = frontlineRowSeconds(rows)
   const axisCut = Math.min(rowSum, slotOverlap)
-  if (tally) tally.axisOverlap += axisCut
   let rowNet = rowSum - axisCut
   for (const sec of extraSeconds) rowNet += sec
   const extraCredit = Math.max(0, (comboAlignCredit ?? 0) - slotOverlap)
-  return { rowNet, net: Math.max(0, rowNet - extraCredit) }
+  return { rowNet, net: Math.max(0, rowNet - extraCredit), axisCut }
 }

@@ -39,7 +39,7 @@ import type {
   TeamResourceResult,
   SkillExecution,
 } from '@/types/resource'
-import { isFrontlineExecution } from '@/types/resource'
+import { frontlineRowSeconds } from '@/types/resource'
 import type { DamageElement, PanelValues, AgentSkills, SkillMove } from '@/types/catalog'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { SUSTAINED_EX_SPECS, sustainedDamageScale } from '@/data/sustainedEx'
@@ -185,8 +185,7 @@ export function normalizeDisplayTime(rr: TeamResourceResult): TeamResourceResult
   return {
     ...rr,
     characters: rr.characters.map(c => {
-      const front = c.executions.reduce(
-        (s, e) => s + (isFrontlineExecution(e) ? e.totalTime : 0), 0)
+      const front = frontlineRowSeconds(c.executions)
       return {
         ...c,
         timeAllocation: {

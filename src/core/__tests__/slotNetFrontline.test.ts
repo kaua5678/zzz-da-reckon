@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { axisOverlapBySlot, slotNetFrontline } from '@/core/resource/timeOccupation'
+import { frontlineRowSeconds } from '@/types/resource'
 
 const RES = join(__dirname, '..', 'resource')
 const read = (f: string) => readFileSync(join(RES, f), 'utf8')
@@ -21,11 +22,11 @@ describe('slotNetFrontline / axisOverlapBySlot（CC-495）', () => {
       { totalTime: 4, timeBucket: 'backstage' as const },
       { totalTime: 3, timeBucket: 'basic' as const },
     ]
-    const tally = { gross: 0, axisOverlap: 0 }
-    const r = slotNetFrontline(rows, 7, 9, [1, 2], tally)
+    const r = slotNetFrontline(rows, 7, 9, [1, 2])
     expect(r.rowNet).toBe(13 - 7 + 1 + 2)
     expect(r.net).toBe(9 - Math.max(0, 9 - 7))   // = 13 − max(9, 7) + extras
-    expect(tally).toEqual({ gross: 13, axisOverlap: 7 })
+    expect(r.axisCut).toBe(7)
+    expect(frontlineRowSeconds(rows)).toBe(13)   // 后台行不计（r738 单一实现）
     // r709：分摊不再按 `slot:moveId` 匹配行——栈键是轴块 id（连段块），行是展开招式，原先整段漏扣
     expect(slotNetFrontline(rows, 7, undefined).rowNet).toBe(6)
     // 分摊超过前台行合计 ⇒ 扣到 0 为止
@@ -43,6 +44,6 @@ describe('slotNetFrontline / axisOverlapBySlot（CC-495）', () => {
     expect(probe.includes('slotNetFrontline(')).toBe(true)
     expect(probe.includes('comboAlignCredit ?? 0) -')).toBe(false)
     expect(helpers.includes('axisOverlapBySlot(')).toBe(true)
-    expect(occ.split('isFrontlineExecution(').length - 1).toBe(1)
+    expect(occ.includes('isFrontlineExecution(')).toBe(false)   // 前台求和走 frontlineRowSeconds（r738），不再手抄
   })
 })

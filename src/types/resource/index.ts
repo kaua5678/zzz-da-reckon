@@ -15,4 +15,4 @@ export type * from './team'
 export type * from './time'
 
 // 唯一的运行时导出（类型面里夹带的一个判定函数）：值导出不能用 `export type *`，单列一行。
-export { isFrontlineExecution, execMatchesMove, basicSummarySeconds } from './execution'
+export { isFrontlineExecution, frontlineRowSeconds, execMatchesMove, basicSummarySeconds } from './execution'
