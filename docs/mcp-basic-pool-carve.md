@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。
 
 ## 1. 问题
 
@@ -65,7 +65,7 @@ export function carveBasicPool(executions: SkillExecution[], seconds: number, sc
 
 - 聚合行取第一条 `basic_attack`。它是 rowBuild 最先建的前台平A行，只在 basicAttackTime > 0 时存在。
 - 回能缩不缩由调用方显式传：朱鸢传两种；艾莲在本提交里照旧只传喧响；其余 5 处不传。
-- 一律换新行对象。rowBuild 给 `preModuleExecutions` 的是浅拷贝（`moduleInputRows.push(...executions)`），原地改会改到「钩子派发前」的快照。琉音、南宫原来是原地改，它们的 `preModuleExecutions` 没有读方，换成新对象观察不到差别。
+- 一律换新行对象。rowBuild 给 `preModuleExecutions` 的是浅拷贝（`moduleInputRows.push(...executions)`），原地改会改到「钩子派发前」的快照。琉音、南宫原来是原地改，它们的 `preModuleExecutions` 没有读方，换成新对象观察不到差别。（r743 起快照逐行拷贝，这条理由不再成立，见 §8。）
 - 调用处：安比先调 helper，再在一个展开里把伤害 / 失衡 / 积蓄归零，备注里的余量改读挤出后的行时长；艾莲、朱鸢、希格莉德的 `x > 0` 守卫和整块 findIndex 删掉；琉音、南宫各一行。
 - `ultimatePromote`：原来 `basicIdx` / `carve` / `refund` 三个三元式揉在一起，拆成两支——无预留（轴模式）调 `carveBasicPool(patched, promoteTime)`；有预留时只把多留的秒数退回目标平A行（CC-145）。退还不折进 helper：用负秒数表示「退还」会让参数有两种意思。
 - 锚函数动过的 4 条 @fact（engine:实战档位喧响计数、agent:1191/循环行时间占用、agent:1591/影画1溢出、agent:1241/压制以太弹时间）复核后口径不变，据 追加 `复核@2026-10-08`。
@@ -127,7 +127,7 @@ zd DUMP 0 / ROWS 0（对 `63947eeb`）。
 ## 5. 不做
 
 - 青衣、伊德海莉的整池改写不进 helper：它们不是挤出若干秒，而是整行换掉。
-- `preModuleExecutions` 是浅拷贝快照，别的钩子原地改 core 行也会漏进去（见 §7）。本轮只保证 helper 自己不原地改。
+- `preModuleExecutions` 是浅拷贝快照，别的钩子原地改 core 行也会漏进去（见 §7）。本轮只保证 helper 自己不原地改。（r743 已改，见 §8。）
 - ultimatePromote 轴模式下，目标没有前台平A行时，first-match 可能找到莱卡恩的后台 `basic_attack` 行。保持原语义，不改。
 - 不为 `carveBasicPool` 单独写测试：5 个角色各自的测试和 zd 已覆盖；行为改动由 `ellen.test` 守恒用例的能量断言守住。
 
@@ -137,7 +137,7 @@ zd DUMP 0 / ROWS 0（对 `63947eeb`）。
 - 连重构一起撤：先撤 `78cc9bec`，再 `git revert 2a162c29`。
 - 文档另有提交。
 
-## 7. 下一轮候选（未做）
+## 7. 下一轮候选（r743 已做，见 §8）
 
 **`preModuleExecutions` 不是真的「钩子派发前」快照。** `rowBuild.ts` 在调 `buildExecutions` 前 `moduleInputRows.push(...executions)`，存的是同一批行对象。钩子原地改 core 行，快照就跟着变。grep 到的原地改（`src/mechanics/agents/*.ts`，`行.字段 = …`）：青衣 :277–279、伊德海莉 :225–233、克拉蕾 :715–717、莱卡恩 :256–258、雅 :326 / :329、希格莉德 :540–544，以及 evelyn、grace、lighter、nangong :298、nicole、phoenix、roxy、seth、severian、specPanelBuffs、starlightBilly、yixuan、yuzuha 的若干处——其中一部分改的是模块自己建的行，不在快照里，要逐个分。
 
@@ -147,3 +147,80 @@ zd DUMP 0 / ROWS 0（对 `63947eeb`）。
 
 1. 把快照改成逐行浅拷贝（`moduleInputRows.push(...executions.map(e => ({ ...e })))`），跑 zd。0 差就说明没有读方依赖被改过的值，契约从源头成立，`carveBasicPool` 注释里「换新对象」那条可以删掉。
 2. zd 不为 0，就是有读方在读钩子改过的值，逐条归因：是 bug 就按规则 10 修，是有意的就把快照语义写清楚。
+
+## 8. r743：两份「派发前」行快照改为逐行拷贝
+
+> 代码提交 `46a6353a`（zd 0/0）（arena-G r743）；arch CC-525；r6 §8 第 743 行。题目是 §7 的候选。
+
+### 8.1 问题
+
+- `rowBuild#buildExecutions` 有两个出参，各存一份行快照：
+  - `moduleInputRows`：派发模块 `buildExecutions` 钩子之前；
+  - `patchInputRows`：派发 `patchExecutions` 钩子之前。
+- 装配层（`assembleSlot`）把它们当作 `preModuleExecutions` / `prePatchExecutions` 传给本槽模块的 `buildResourceResult`，让它复现钩子当时看到的行。
+- 原实现是 `push(...executions)`：数组新建，行对象和后续行共享。钩子之后原地改行，快照跟着变：
+  - 青衣 `buildExecutions` 把平A聚合行的 totalTime、喧响、能量清零；
+  - 佩洛伊斯 `patchExecutions` 改写通用大招行的 count、totalTime、喧响（两份快照里都有这一行）；
+  - 卢西娅、橘福福 `patchExecutions` 往行上加 flatDamageBonus、dmgBonus、暴击、skillDamageTarget。
+- 「派发前」只靠两条约定撑着：
+  - types.ts 要求 prePatch 的读方「只读 moveId / count / 时长，不要读 patch 会改写的字段」。这条本身不准：佩洛伊斯改的就是 count 和时长。
+  - r742 在 `carveBasicPool` 注释里要求换新行对象（§3.1）。
+- 快照从拍下到被读，中间只有本槽自己的钩子会改行：
+  - `materializePhaseState`（格莉丝、叶瞬光）只写 cfg；
+  - `applyExecutionUtilization` 只在次数变了时返回新对象，否则原样返回；
+  - 截断（`truncateMoveRows`）返回原行或新行，不改原行；
+  - `buildResourceResult` 之后快照数组不再被引用，编排层（`ultimatePromote` 等）后来改行与它无关。
+
+### 8.2 改法（3 个文件 +6 / −6）
+
+- rowBuild 两处改成 `push(...executions.map(e => ({ ...e })))`。`SkillExecution` 的字段全是标量（string、number、boolean、字面量联合），一层拷贝就是完整拷贝。
+- types.ts：契约写一次，放在 `AgentResourceResultInput.preModuleExecutions` 的文档末尾——两份快照都是逐行拷贝的，钩子之后原地改行改不到，读哪个字段都行。删掉 `prePatchExecutions` 上那条读方限制。
+- moduleExecRow.ts：删掉 `carveBasicPool` 注释里「换新行对象……浅拷贝」那条理由，实现不动。
+- `@fact engine:time/回避支援` 的锚函数是 `buildExecutions`，本提交动过它。回避支援行不受影响（zd 0、`evadeAssist.test` 通过），复核仍成立，「据」末尾加 `复核@2026-10-08`。
+
+### 8.3 为什么 0 差
+
+快照有 4 个读方，各自只读本槽钩子不改的字段：
+
+| 读方 | 快照 | 读的字段 | 本槽钩子在快照之后改什么 |
+|---|---|---|---|
+| 卢西娅 1451 | preModule | `countFrontActions`：category、count、timeBucket、moveId | patch：合唱行加 flatDamageBonus、dmgBonus、critRateBonus、critDmgBonus |
+| 青衣 1251 | preModule | 非 `basic_attack` 行的 totalTime | buildExecutions：平A行清零（读方排除了平A行） |
+| 橘福福 1391 | preModule | `countFrontActions` | patch（影画6）：连携行 dmgBonus、skillDamageTarget |
+| 千夏 1491 | prePatch | 标记招式行的 count，平A汇总秒 | patch 只追加行 |
+
+- 钩子只派发给本槽的角色模块，别的角色改不到本槽的行。
+- zd DUMP 0 / ROWS 0（对 `06eed50f`）。zd 里卢西娅 40 条、青衣 10 条、千夏 30 条；橘福福不在 zd 预设里，由全量 vitest 覆盖。
+
+### 8.4 验证
+
+| 项 | `06eed50f` | `46a6353a` |
+|---|---|---|
+| vue-tsc | 0 | 0 |
+| guards | 29 | 29 |
+| zc.test + checkGuards.test | 207 | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 | 12 / 161 / 462 / 189 |
+| vitest | 258/2155 + 262/2348 = 520/4503 | 258/2155 + 262/2348 = 520/4503 |
+| zd | — | DUMP 0 / ROWS 0 |
+| build | 1598.59 kB | 1598.63 kB |
+| zc drift | 154 / 0 / 0 | 154 / 0 / 0（复核 1 条后） |
+
+### 8.5 不做
+
+- 不立「钩子不许原地改行」的规则。快照拷贝之后，原地改只影响最终行，这本来就是钩子的职责：`patchExecutions` 的文档写的就是「对最终执行列表补专属字段」。
+- 不改 `carveBasicPool` 的实现。换新对象和原地改现在等价，没有理由动。
+- 不为快照拷贝单独写测试。读方的数值由 zd 和各角色测试守着；拷贝是两行代码，契约写在类型文档里。
+
+### 8.6 回退
+
+- `git revert 46a6353a`（3 个文件）。文档另有提交。
+
+### 8.7 下一轮候选（未做）
+
+**`backstageAutoRows` 的「不要改它」只写在注释里。** rowBuild 在闪避反击行之前派发这个钩子，传的是正在构建的 `executions` 本体。types.ts 的 `AgentMechanicModule.backstageAutoRows` 注释写着 `input.executions` 是只读快照语义，模块用它数前台动作，**不要**改它，但入参类型是共用的 `AgentResourceInput`，`executions: SkillExecution[]` 可写。
+
+下一步：
+
+1. 把这个钩子的入参改成只读：`executions` 声明为 `readonly Readonly<SkillExecution>[]`，用类型检查守约束，注释里的「不要改它」随之删掉。
+2. 先看实现方（蕾米埃尔「光辉回转」）和 `countFrontActions` 的形参能不能直接接只读数组。
+3. 只读入参的声明方式要省，类型只声明一次，例如在 `AgentResourceInput` 上加泛型或用 `Omit` 派生。
