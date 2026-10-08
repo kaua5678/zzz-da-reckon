@@ -19,13 +19,14 @@ const DOWNSCALED = new Set<string>(DOWNSCALED_INTERACTION_FIELDS)
 /**
  * **交互次数按装配期截断存活率缩**（用户 2026-09-11：「不上升合轴率导致招式截断，
  * 那么对应的资源回复也应该降低，或者交互次数应该降低」）：每槽 `kept / requested`（`convergence.truncationBySlot`）。
+ * 槽账只在该槽真被截断时产出，requested > 0、0 ≤ kept ≤ requested（`SlotTruncation` 契约），因子天然落在 [0, 1]，不钳。
  * 无截断（或没传 rr）⇒ 因子 1 ⇒ 零变化。近似口径与 A 项（截断回灌资源循环）见 `core/resource.ts` 的 debt 标记。
  * （CC-259 删去散点专用的团队聚合版 teamInteractionSurvival / shrinkInteractionsByTruncation：散点改读实打次数后天然按槽。）
  */
 export function interactionSurvivalBySlot(rr?: TeamResourceResult | null): Map<number, number> {
   const out = new Map<number, number>()
   for (const s of rr?.convergence.truncationBySlot ?? []) {
-    out.set(s.slot, s.requested > 0 ? Math.max(0, Math.min(1, s.kept / s.requested)) : 1)
+    out.set(s.slot, s.kept / s.requested)
   }
   return out
 }

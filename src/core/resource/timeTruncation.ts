@@ -77,7 +77,8 @@ export function truncateMoveRows(
   if (used <= room + TIME_FOLD_CONVERGENCE_SECONDS) return { executions, cutSeconds: 0, usedSeconds: used, keptSeconds: used, cuts: [] }
 
   // 每行的「单位时长」：totalTime / count（count=1 但 totalTime 是聚合量的行，如飞光当量，
-  // 也能正确处理）；count=0 的行（纯时间聚合）按整行一个单位处理。
+  // 也能正确处理）。count = 0 的可截断行 totalTime 恒为 0：用时间、不按次数计的只有平A聚合行，而它不参与截断
+  // （r741 审计全部产出方 + zd 实测）。这类行不截、原样保留；perUnit 取 t（= 0）只为避开 0/0。
   const units = executions.filter(isTruncatable).map(e => {
     const t = e.totalTime
     const perUnit = e.count > 0 ? t / e.count : t
@@ -88,8 +89,8 @@ export function truncateMoveRows(
   const scale = room > 0 ? room / used : 0
   for (const u of units) {
     const target = u.count * scale
-    const keep = u.count > 0 ? Math.floor(target) : (target >= 0.5 ? 1 : 0)
-    u.frac = u.count > 0 ? target - keep : 0
+    const keep = Math.floor(target)
+    u.frac = target - keep
     u.count = keep
     remaining -= keep * u.perUnit
   }
@@ -119,8 +120,8 @@ export function truncateMoveRows(
   const out = executions.map(e => {
     if (!isTruncatable(e)) return e
     const u = units[idx.get(e)!]
-    if (u.count === u.e.count) return e
-    const ratio = u.e.count > 0 ? u.count / u.e.count : 0
+    if (u.count === u.e.count) return e // 含 count = 0 的行：第 ① 步后仍是 0 次
+    const ratio = u.count / u.e.count
     if (u.count === 0) return null // 整行不再发生
     return {
       ...e,
@@ -139,7 +140,7 @@ export function truncateMoveRows(
   // 逐行截断明细（Σ cutSeconds == used − kept）：资源池「被砍招式」清单 + 难度轴交互缩放的输入
   // （用户 2026-09-11：截断只报总量时，界面看不出砍了什么、交互还按全量计）。整行砍到 0 的也记。
   const cuts: Omit<TruncationCut, 'slot'>[] = units
-    .filter(u => u.e.count > 0 && u.count < u.e.count)
+    .filter(u => u.count < u.e.count)
     .map(u => {
       const ratio = u.count / u.e.count
       return {

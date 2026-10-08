@@ -10,7 +10,11 @@ import type { TruncationCut } from './execution'
 
 // ============ 队伍资源汇总 ============
 
-/** 单槽截断秒数账：存活率 = kept / requested（难度轴按它缩交互次数） */
+/**
+ * 单槽截断秒数账：存活率 = kept / requested（难度轴按它缩交互次数）。
+ * 只在该槽真被截断时产出（`assembleSlot`：截断明细非空），所以 requested > 0、0 ≤ kept ≤ requested、
+ * cutSeconds = requested − kept。三个数都由 `truncateMoveRows` 一处给出，读方直接用，不钳。
+ */
 export interface SlotTruncation {
   slot: number
   requested: number
