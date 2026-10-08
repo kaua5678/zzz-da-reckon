@@ -1,6 +1,6 @@
 # 默认套件只放断言：一次性探针清理（r736）
 
-> 代码提交 `4285fce2`（arena-G r736）；arch CC-518；r6 §8.0 #33 与 §8 第 736 行。
+> 代码提交 `4285fce2`（arena-G r736）；arch CC-518；r6 §8.0 #33 与 §8 第 736 行。r737 体检与门控探针索引见第 8 节（`0c1da794`，CC-519）。
 > 一句话：默认套件里有 3 个一次性探针每次都跑，却不钉任何行为，重构时还得陪着改。本轮删掉它们；工具型探针 panelProbe 的门控写法改成和其余 16 个探针一样（`it.runIf`）。
 
 ## 1. 起点（origin `6509ce53`）
@@ -69,7 +69,7 @@ r735 在 `mcp-downgrade-wengine.md` §6 留下一个候选：`freeCompareDowngra
 - **excelAxisRepro 的打印不删**。断言是真的，打印是对照 Excel 时看的。
 - **16 个门控探针本轮不动**。它们不在默认套件里跑，另立一题（第 6 节）。
 
-## 6. 下一轮候选（未做）
+## 6. 下一轮候选（r737 已做，见第 8 节）
 
 **有 6 个门控探针找不到入口**。下表 6 个，除了自己的测试文件，仓库里没有任何地方提到它们：没有文档，也没有 npm 脚本。它们照样要跟着重构陪改。
 
@@ -94,3 +94,108 @@ r735 在 `mcp-downgrade-wengine.md` §6 留下一个候选：`freeCompareDowngra
 ## 7. 回退
 
 `git revert 4285fce2`（文档另提交）。
+
+r737：`git revert 0c1da794`，恢复 4 个探针（文档另提交）。
+
+## 8. r737：门控探针体检与索引
+
+> 代码提交 `0c1da794`（arena-G r737）；arch CC-519；r6 §8 第 737 行。接第 6 节的候选。
+
+### 8.1 做法
+
+16 个门控探针各带自己的主 env 实跑一次；有 `*_TOP` 的设成 2，只为缩短用时。每个都记四样：
+
+- rc 和用时；
+- 输出里 `undefined` / `NaN` 的个数。`as any` 读错对象或读到已删字段时会打出 undefined，可选字段缺省时也会，所以要逐个分辨；
+- 打印出来的结论在今天的引擎里还对不对；
+- 在测试文件以外有没有引用。
+
+16 个全部能跑通（rc 0）。结论如下：
+
+| 探针 | 实跑 env | 用时 | 体检结果 | 处理 |
+|---|---|---|---|---|
+| `ysgFormsProbe` | `PROBE_YSG_FORMS=1` | 3 s | 有 4 个字段读错了对象，恒为 undefined / 0；「账本合计」恒打 0.00 | **删** |
+| `stunTimeProbe` | `PROBE_STUN_TIME=1` | 3 s | 三队都误报「前台超有效时间」 | **删** |
+| `specRuleDeadProbe` | `PROBE_SPEC_DEAD=1` | 29 s | 报了 54 条，几乎全是观测通道和预设数据造成的假阳性 | **删** |
+| `difficultyCurveProbe` | `PROBE_DIFF_CURVE=1` | 68 s | 能跑，但方法已被难度阶梯取代 | **删** |
+| `difficultyLadderProbe` | `PROBE_DIFF_LADDER=1` | 35 s | 干净；打印的就是页面上的难度曲线 | 保留，登记（8.3） |
+| `damageAuditProbe` | `PROBE_AUDIT=1 PROBE_AUDIT_TOP=2` | 70 s | 干净；最差两队的模型伤害只有血量的 27% / 36% | 保留，登记（8.3） |
+| 另外 10 个有引用的 | 见 8.3 | 2–71 s | 干净（giftAxisProbe 唯一一处 undefined 是在回显没设的 env） | 保留 |
+
+### 8.2 删掉的 4 个（`0c1da794`，−377 行）
+
+原文可以取回：`git show 0c1da794^:src/composables/__tests__/<名字>.test.ts`。
+
+- **ysgFormsProbe**（`0d1c63e4`，2026-09-21）：它查「叶瞬光 + 琉音 + 照，该队应有 10 次白毛变身」。
+  - 今天照样是 10 次（喧响 2 + 转大 4 + 照影 4）。
+  - 输出里有 18 处 undefined，大半是可选字段本来就缺省：这队没截断，所以 `truncationCuts` 和重折次数为空；普通行也没有 `source` / `truncatedRatio` / `timeBucket`。这些属正常。
+  - 真正烂掉的是 4 个读错对象的字段：
+    - `timeBudgetRefund` 和 `timePressureSeconds` 是输入配置上的字段（`ResourceCalcConfig`、`CharacterOperationConfig`），它却从计算结果上读，恒为 undefined；
+    - `necessaryTime` 和 `basicAttackTime` 在 `timeAllocation` 里，它从角色结果上读，于是「账本合计」恒打 0.00，逐槽打 `?`。
+  - 这些读法都套着 `as any`，所以类型检查拦不住。
+- **stunTimeProbe**（`5bf8a715`，2026-09-01）：
+  - 它把各行 `totalTime` 直接相加当「前台合计」，三队都超过 180 s（209.5 / 201.6 / 204.7 s），于是全部标红。
+  - 引擎按净占用核预算，即 `frontlineOccupationBreakdown`：毛前台减去合轴抵扣。拿 ysgFormsProbe 那支叶瞬光队来看，毛 195.84 − 抵扣 15.84 = 净 180，正好等于预算。
+  - 毛值超过 180 s 本来就正常，所以「前台超有效时间」这个判语不成立。留着它，会让下一个人去追一个不存在的 bug。
+- **specRuleDeadProbe**（`2142a262`，2026-09-15）：
+  - 「声明 implemented 却从未观测到」报了 52 条，分布在 19 个角色上，这 19 个全都有 TS 模块。它只从角色结果的 `specResources` 里观测，而模块角色会在内部消费规则，不一定把账本挂到结果上（比如 `alice.ts` 直接读 `computeSpecResources` 的 gains），所以它看不见。
+  - 「观测到但恒 0」报了 2 条：
+    - 1531 闪反那条取决于预设数据：1531 的 6 个预设都没声明闪反，`dodgeCounterCount` 本来就是 0；
+    - 1551 完美格挡那条只在 2 队里出现过。
+  - 它的交互映射是手抄的，没有走单一实现 `applyPresetInteractions`，漏了专属类型反查和 `tauntCancel`。
+  - 它当初要找的剑仪池缺陷（1401）已经修好，并由 `src/specs/__tests__/resources.test.ts` 钉住。
+  - 要重做这类全库体检，先解决三件事：观测要能看到模块内部的消费；计数源不能取决于预设；交互要走 `applyPresetInteractions`。
+- **difficultyCurveProbe**（`6f1c5f7d`，2026-09-10）：
+  - 这是难度曲线「只看全关 / 全开两端」的草案。当天就被逐目标贪心阶梯取代：`396d2da8` 探针 → `e667b0b6` `difficultyLadder.ts` → `a6ca58bd` `difficultyCurve.ts` 接 UI。
+  - 最后一次实测：104 个预设，全关 7057.6M → 全开 7648.9M，+8.38%（首测 +9.16%）。提升幅度分布：≥30% 2 队；10–30% 35 队；2–10% 53 队；0–2% 13 队；负 1 队；中位数 7.3%。
+
+基线：通过数不变（520 / 4503）；跳过数从 17 / 30 降到 13 / 26；合计从 537 / 4533 降到 533 / 4529。build 哈希与 `e50db007` 相同，zd 0/0。
+
+### 8.3 门控探针索引（以本表为准；增删探针时同步）
+
+都在 `src/composables/__tests__/` 下，跑法统一是 `<env> npx vitest run <文件>`。用时是 r737 实测。
+
+| 探针 | 主 env（可选 env） | 用途 | 用时 | 其他入口 |
+|---|---|---|---|---|
+| `panelProbe`（在 `src/core/__tests__/`） | `PROBE_AGENT=<id> npm run probe:panel`（`PROBE_ENGINE` / `PROBE_MOD` / `PROBE_CINEMA` / `PROBE_FOUR` / `PROBE_TWO` / `PROBE_SUBSTATS`） | 面板事实源：暴击预算、局内外面板 | 秒级 | AGENTS.md |
+| `difficultyLadderProbe` | `PROBE_DIFF_LADDER=1`（`PROBE_DIFF_TEAMS=<预设id,…>` / `PROBE_DIFF_ALL=1` / `PROBE_DIFF_COUNTS_DUMP=1`） | 页面同款难度曲线的文字版：每队阶梯、关键次数跃迁、伤害归因 | 35 s（默认 10 队样本） | 本表 |
+| `damageAuditProbe` | `PROBE_AUDIT=1`（`PROBE_AUDIT_TOP` / `PROBE_AUDIT_GOLDWINDOW`） | 实战前沿里模型伤害对血量比最差的队，逐行审计区值一致性和总倍率吞吐 | 70 s | 本表 |
+| `lowGoldFrontierProbe` | `PROBE_LOWGOLD=1`（`_TOP` / `_GOLDWINDOW`） | 低金前沿按伤害 / 血量比升序 | 69 s | ENGINE_PIPELINE_GUIDE |
+| `damageSplitFrontierProbe` | `PROBE_DMGSPLIT=1`（`_TOP` / `_GOLDWINDOW`） | 前沿队按角色拆直伤 / 异常 | 70 s | ENGINE_PIPELINE_GUIDE |
+| `anomalyFrontierProbe` | `PROBE_ANOMALY=1`（`_TOP` / `_GOLDWINDOW`） | 前沿队的积储 / 紊乱 / 乱流 | 69 s | arch CC 表 |
+| `archiveStunVulnProbe` | `PROBE_ARCHIVE_STUN=1`（`PROBE_ARCHIVE_TOP`） | 实战部署的加权易伤信用和行级分布 | 71 s | mcp-stun-dual-source |
+| `hugoStunVulnMatrixProbe` | `PROBE_HUGO_MATRIX=1` | 雨果非轴白名单 / 0 命轴 / 2 命轴三态逐行易伤 | 3 s | ENGINE_PIPELINE_GUIDE、mcp-stun-dual-source |
+| `nonAxisStunVulnProbe` | `PROBE_NONAXIS=1` | 非轴失衡易伤的生效性和覆盖率折扣 | 2 s | AGENT_ID_BURNDOWN_LOG |
+| `convergenceProbe` | `PROBE_CONV_SCAN=1` 全库（`PROBE_CONV_TEAM=<预设id>` 单队，另有 16 个开关见文件） | 收敛体检 | 11 s / 3 s | ARCHITECTURE、mcp-integer-cycle-stop 等 |
+| `countFractionProbe` | `PROBE_COUNT_FRAC=1`（`PROBE_STUN_PROJ`） | 终局小数次数与失衡计划值投影 | 9 s | `core/stunPlanProjection.ts` |
+| `giftAxisProbe` | `PROBE_GIFT_TEAM=<预设id,…>`（`PROBE_INCLUDE_1591`） | 琉音赠大跨层对账 | 3 s（1 队） | 字段普查文档 |
+| `ysgLoopTraceProbe` | `PROBE_YSG_LOOP=1`（`PROBE_YSG_TEAM` / `PROBE_YSG_AXIS` / `PROBE_YSG_CINEMA` / `PROBE_YSG_PRESET` / `PROBE_YSG_SCALE`） | 叶瞬光循环逐轮打印 | 3 s | arch CC 表 |
+| `moveFusion.test.ts` 内嵌一条 | `PROBE_FUSION=1` | 雅队飞雪 / 春临融合后的倍率与总伤害 | — | — |
+
+`r65j1DeadBuffProbe` 不在表里：它名叫探针，实际是默认运行的锁（见第 5 节）。
+
+### 8.4 不做
+
+- **specRuleDeadProbe 不修，直接删**。要修就得让观测看见模块内部的消费，等于给引擎加埋点。为一个打印工具改引擎不值，坑已记在 8.2。
+- **另外 10 个只体检到「能跑、输出干净」**，打印的结论没逐条复核对错。它们各有文档入口，用到时再核。
+- **4 个前沿探针各抄一份「读实战存档 → 取前沿」的开头，不合并**。它们都是可选工具，合并只省几十行，还会让它们互相牵连。
+
+### 8.5 下一轮候选（未做）
+
+**单槽前台行时长有 5 处各算一遍，负值口径不一致。** 都是「对 `isFrontlineExecution` 的行把 `totalTime` 相加」：
+
+| 位置 | 负值怎么处理 |
+|---|---|
+| `composables/resourceCalc/helpers.ts#normalizeDisplayTime` | 不钳 |
+| `core/resource/assembleSlot.ts`（`execFrontlineTime`） | 不钳 |
+| `core/resource/foldLoop.ts`（`rowTime`） | 钳到 0（`Math.max(0, …)`，另加赠送时间） |
+| `core/resource/timeOccupation.ts`（行求和） | 毛值不钳、净值钳 |
+| `composables/teamTimeSummary.ts#slotRows` | 钳，并按桶拆 |
+
+做法：
+
+1. 先确认 `totalTime` 会不会为负。
+   - 不会 ⇒ 这些 `Math.max(0, …)` 都是死防御，删掉。
+   - 会 ⇒ 各处口径不一致就是 bug，统一成一个。
+2. 再看能不能收成一个「单槽前台行时长」函数，供这 5 处共用。
+3. 改动会碰到 foldLoop / assembleSlot，必须跑 zd 零差。

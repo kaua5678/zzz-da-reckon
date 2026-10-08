@@ -44,7 +44,7 @@
 |---|---|---|
 | `fast` 档 / 一条 `zc done --verifier` 就能交代 | **不开外部环**，走仓库轻闭环（`zc claim` → 改 → `npm run check` → `zc done`） | verifier 绿即闭 |
 | `loop` 档，或跨多轮但完成判据说得清 | `create_goal`（agent 可自主推断长任务，无需用户点名）+ §4 账本 | goal 判据达成 → `update_goal complete` |
-| **排查数值/机制错误**（伤害偏低、失衡次数错这类） | **预测先行**：动手前把「预测值 + 判据」写进账本 `Next`，再跑盘上实测对账（`npx vitest run <相关测试>` / `PROBE_AGENT=<id> npm run probe:panel` / `subagent` 跑一次性探针） | 实测与预测吻合才闭合；**discrepancy 即回炉，不许就地改预测** |
+| **排查数值/机制错误**（伤害偏低、失衡次数错这类） | **预测先行**：动手前把「预测值 + 判据」写进账本 `Next`，再跑盘上实测对账（`npx vitest run <相关测试>` / `PROBE_AGENT=<id> npm run probe:panel` / 现成门控探针见 `docs/mcp-default-suite-probes.md` §8.3 / `subagent` 跑一次性探针） | 实测与预测吻合才闭合；**discrepancy 即回炉，不许就地改预测** |
 | 跨会话、需留痕的大项目 | 多工人派发（§5）+ 每步 `zc done` 落账 | **真人确认**后终验；agent 不得自行宣布验收 |
 
 配套约定：**harness 的 autoStart / writeGate 保持关闭**（本仓库高频小修为主，写闸价值已被 `zc claim` + `check-guards` + 规则 13 覆盖）；**开了闭环不豁免本仓库验收链**——`npm run verify` + `zc done` 仍是交付口径。
