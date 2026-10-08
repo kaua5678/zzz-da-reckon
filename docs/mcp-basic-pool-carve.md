@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。
 
 ## 1. 问题
 
@@ -368,7 +368,7 @@ zd DUMP 0 / ROWS 0（对 `63947eeb`）。
 
 - `git revert dc9748c0`（8 个文件）。文档另有提交。
 
-### 10.8 下一轮候选（未做）
+### 10.8 下一轮候选（r746 已做，见 §11）
 
 **卢西娅 `additionalAttackCapOf` 的形参比两个调用方宽，早返回分支在生产上走不到。**
 
@@ -385,3 +385,92 @@ zd DUMP 0 / ROWS 0（对 `63947eeb`）。
 4. 生产路径不变，zd 应为 0/0。
 
 另记（小，未立题）：橘福福 `patchExecutions`（specPanelBuffs.ts:791）对 tigerChain / tigerChainManual / popcorn 三种行都写 `e.dmgBonus = (e.dmgBonus ?? 0)`，注释说「生成行已设」，实际只给下一行 tigerChainManual 的加法兜底。可以并进 tigerChainManual 分支，但要先看 rowsnap 会不会把 undefined → 0 算成差异。
+
+## 11. r746：卢西娅追加攻击上限的形参收窄
+
+> 代码提交 `e02a75a9`（数值逐位不变，文案差异已归因）（arena-G r746）；arch CC-528；r6 §8 第 746 行。题目是 §10.8 的候选。
+
+### 11.1 问题
+
+- `additionalAttackCapOf` 的形参是 `state?: { backstageTime?: number; frontlineTime?: number }` 和 `frontActionCount?: number`。两个调用方（`buildLuciaExecutions`、`buildLuciaResourceResult`）传的都是 `Readonly<IterationState>`（frontlineTime / backstageTime 都是必填 number）和 `countFrontActions(…)` 的结果。
+- 形参比调用方宽出来的部分只服务测试直调：
+  - 早返回 `if (!state || typeof state.backstageTime !== 'number')`，走旧口径 min(滑块, floor(有效战斗时间 / 8))；
+  - `Math.max(0, state.frontlineTime ?? 0)`。字段声明成可选，判据 28 看不出这个 `?? 0`。
+- 文档注释说「state 缺失（estimate/无收敛信息）时回退」，但 `estimateExSpecialTime` 不调它：估时直接拿滑块值当 cap，而 cap 只影响追加攻击次数，不影响估时要用的强特 / A5 次数。
+- 展示文案还是旧口径：文件头、追加攻击行的 `skillTableNote`、`luciaMechanicSource.note` 三处都写「按有效战斗时间/8 封顶」。生产口径是 2026-08-30 起的相位延后 floor(有效后台时间 / 等效CD)，设置项 `lucia.additionalAttackCount` 的 description 写的才是这个口径。
+
+### 11.2 先确认早返回只服务测试（运行时探针）
+
+在早返回分支里临时加一行，把调用栈里的测试 / perf 帧写进文件（已还原），然后跑：
+
+| 跑了什么 | 命中次数 |
+|---|---|
+| 全量 vitest（520 文件 / 4503 例） | 1，来自 `luciaElowen.test.ts:123` |
+| zd：全部预设 × 5 变体（dump + rowsnap） | 0 |
+
+zd 覆盖不到决策层、展示层等路径，这部分由全量 vitest 补上。
+
+### 11.3 改法（2 个文件 +10 / −13）
+
+- `additionalAttackCapOf`：state 改为 `AgentResourceInput['state']`，frontActionCount 改为 `number`；删掉早返回和那句文档。
+- `Math.max(0, state.frontlineTime ?? 0)` 改为 `state.frontlineTime`：f 只传给 `frontBlockSeconds` 和 `phaseDelayedCooldown`，两者入口都先做 `Math.max(0, …)`。
+- 文案：三处「按有效战斗时间/8 封顶」改成「受相位延后 CD 封顶 = 有效后台时间/等效CD」，与设置项 description 同一说法。追加攻击行上方的注释「默认 20 次（180s / 9s）」改成「≈500 梦境值 ÷ 25/次」，与常量注释一致。
+- `luciaElowen.test.ts` 的「CD 8s 全球性…axisInSeconds 不再折算」用例：state 补 `frontlineTime: 0, backstageTime: 180`。全程后台 ⇒ 没有相位延后，CD 封顶 floor(180/8) = 22，期望仍是 20（梦境值 500 ÷ 25）。用例要测的「72s 轴窗口不折算」不变。
+
+### 11.4 反证
+
+- 临时写回 `state.frontlineTime ?? 0`：判据 28 报 1 处（`luciaElowen.ts:373  ?? [IterationState.frontlineTime: number]`），已还原。形参收窄后，这个函数重新受判据 28 约束。
+
+### 11.5 零差与归因
+
+文案变了，zd 一定有差异。按 AGENTS.md 规则 10 的口径先量差异，再归因：
+
+| zd 比对（对 `2af5245d`） | DUMP | ROWS |
+|---|---|---|
+| `ZD_DROP=note,skillTableNote`（两边都丢掉这两个键） | 0 | 0 |
+| 不丢键 | 125 | 125 |
+
+- 125 = 含卢西娅的 25 个预设 × 5 变体。全部 520 条里名字含 lucia / 1451 的正好 125 条，与差异条目一一对应。
+- 丢掉两个文案键后为 0：差异只来自这两段文案，数值逐位不变。
+- 仓库里的金样基线不含这两段文案：全仓 grep「有效战斗时间/8」只命中 luciaElowen.ts 三处，所以不用重生成任何基线。
+
+### 11.6 验证
+
+| 项 | `2af5245d` | `e02a75a9` |
+|---|---|---|
+| vue-tsc | 0 | 0 |
+| guards | 29 | 29 |
+| zc.test + checkGuards.test | 207 | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 | 12 / 161 / 462 / 189 |
+| vitest | 258/2155 + 262/2348 = 520/4503 | 258/2155 + 262/2348 = 520/4503 |
+| zd | — | 见 §11.5 |
+| build | 1598.53 kB | 1598.48 kB |
+| zc drift | 154 / 0 / 0 | 154 / 0 / 0 |
+
+### 11.7 不做与回退
+
+- 不给这个用例加相位延后的断言：`phaseDelayedCooldown`（11 处）和 `frontBlockSeconds`（7 处）在 `core/__tests__/effectiveTime.test.ts` 里已经锁住，这里不重复。
+- 回退：`git revert e02a75a9`（2 个文件）。文档另有提交。
+
+### 11.8 下一轮候选（未做）
+
+**`core/effectiveTime.ts` 的共享时间 helper，形参也比调用方宽，`?? 0` 落在核心里。** 本轮的卢西娅是调用方一侧的例子，helper 自己也是同一个模式：
+
+| helper | 宽在哪 | 生产调用方 |
+|---|---|---|
+| `effectiveCombatTime(state: { frontlineTime?: number; backstageTime?: number }, cfg)` | state 字段可选，内部 `(state.frontlineTime ?? 0) + (state.backstageTime ?? 0)` | 8 处（burnice、lighter ×3、orphie、rina、yaojiayin ×2），都传钩子的 `state` |
+| `frontBlockSeconds(frontlineTime, frontActionCount, frontSwitchRatio, fallback)` | 前三个参数是 `number \| undefined`，内部各自 `??` | 4 处：luciaElowen、orphie、remielle 传的都是 number；橘福福 `computeJufufuCycle` 传 `JufufuCycleInput` 的可选字段 |
+| `phaseDelayedCooldown(cd, frontlineTime, effectiveTotalTime, blockSeconds?)` | 两个时间参数可 undefined；blockSeconds 缺省 = cd | 同上 4 处，都传了 block |
+| `effectiveBackstageTime` / `minusInvincibleTime(x: number \| undefined, cfg)` | 内部 `?? 0` | effectiveBackstageTime 4 处都传 `state.backstageTime`；minusInvincibleTime 另有 trigger、vivian ×2、yuzuha 共 4 处 |
+
+- 橘福福 `computeJufufuCycle` 是 frontBlockSeconds / phaseDelayedCooldown 收到 undefined 的唯一来源：`JufufuCycleInput` 的 frontlineTime / effectiveTotalTime / frontActionCount / frontSwitchRatio（以及 teamUltimateCount / assistRate）是可选字段。唯一的生产调用方 `jufufuCycleOf` 每个都传，`jufufu.test.ts` 有 8 处直调只传部分字段。函数体里还有一串对 number 字段的 `Number(x) || 0`。
+- `core/__tests__/effectiveTime.test.ts` 直调这些 helper 24 处（minusInvincibleTime 3、effectiveBackstageTime 3、frontBlockSeconds 7、phaseDelayedCooldown 11），其中 5 处传 undefined 验缺省（:21、:27、:32、:62、:65）。
+
+下一步：
+
+1. 逐个 helper 核实调用方实参的静态类型：minusInvincibleTime 的 `cfg.battleTime` / `totalTime` / `combatTime`，effectiveCombatTime 8 处的 state 是否都是 `IterationState`。全是 number 才收窄，否则只收能收的。
+2. `JufufuCycleInput` 的 4 个时间字段改必填，删函数体里对 number 字段的 `Number(x) || 0`；jufufu.test 的直调补字段。
+3. helper 形参改为 `number`，删内部 `??`；`blockSeconds` 4 处都传，可改必填。判据 28 会把调用方漏删的 `??` 报出来。
+4. 删 effectiveTime.test 里那 5 处只验 undefined 缺省的断言（缺省分支没了，删掉不会漏真实回归）。生产路径不变，zd 应为 0/0。
+
+另记（小，未立题，同 §10.8）：橘福福 `patchExecutions` 的 `e.dmgBonus = (e.dmgBonus ?? 0)`（specPanelBuffs.ts:791）。
