@@ -4,7 +4,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { whole } from '@/utils/finiteClamp'
 import { specToMechanicModule } from '@/specs/mechanics'
-import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, carveBasicPool } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
@@ -141,7 +141,7 @@ function computeZhuYuanShellsTotal(cfg: AgentResourceInput['cfg'], state: AgentR
   return whole(shells.total)
 }
 
-// @fact agent:1241/压制以太弹时间 口径: 1 枚霰弹 = 1 段平A（用户 2026-08-26 口径），所以以太弹行占的**就是平A池那份时间**，必须从通用 basic_attack 聚合行里挤出（琉音转大 carve 同款），不能在它之外另占一份；挤出后剩余时间仍归通用平A（总前台占用守恒） | 据 用户@2026-08-26·2026-09-05 复核（此前未挤出→同一段时间计两次）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/zhuYuan.test.ts#压制以太弹的时间占用 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanExecutions | 信 确认
+// @fact agent:1241/压制以太弹时间 口径: 1 枚霰弹 = 1 段平A（用户 2026-08-26 口径），所以以太弹行占的**就是平A池那份时间**，必须从通用 basic_attack 聚合行里挤出（琉音转大 carve 同款），不能在它之外另占一份；挤出后剩余时间仍归通用平A（总前台占用守恒） | 据 用户@2026-08-26·2026-09-05 复核（此前未挤出→同一段时间计两次）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/mechanics/__tests__/zhuYuan.test.ts#压制以太弹的时间占用 | 锚 src/mechanics/agents/zhuYuan.ts#buildZhuYuanExecutions | 信 确认
 function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.zhuyuanCinemaLevel)
   const shellsTotal = computeZhuYuanShellsTotal(cfg, state)
@@ -189,23 +189,8 @@ function buildZhuYuanExecutions({ cfg, state, executions }: AgentResourceInput):
     }))
     etherTime += count * ZHUYUAN_SUPPRESS_ETHER_ACTION_TIMES[i]
   }
-  // 挤出被以太弹占用的平A时间（琉音转大 carve 同款：从目标平A池扣，总前台占用守恒）
-  if (etherTime > 0) {
-    const basicIdx = executions.findIndex(e => e.moveId === 'basic_attack')
-    if (basicIdx >= 0) {
-      const basicTime = executions[basicIdx].totalTime
-      const carve = Math.max(0, Math.min(basicTime, etherTime))
-      executions[basicIdx] = {
-        ...executions[basicIdx],
-        totalTime: basicTime - carve,
-        // 平A聚合行 count=0（按时间汇总），故只缩时间；派生量按同比例缩
-        totalDecibelRecovery: (executions[basicIdx].totalDecibelRecovery ?? 0)
-          * (basicTime > 0 ? (basicTime - carve) / basicTime : 0),
-        totalEnergyRecovery: (executions[basicIdx].totalEnergyRecovery ?? 0)
-          * (basicTime > 0 ? (basicTime - carve) / basicTime : 0),
-      }
-    }
-  }
+  // 挤出被以太弹占用的平A时间（总前台占用守恒）；以太弹行按表回填喧响与能量 ⇒ 池上两种回能都按剩余比例缩
+  carveBasicPool(executions, etherTime, ['totalDecibelRecovery', 'totalEnergyRecovery'])
   if (cinema < 6) return
   const afterglowCount = Math.floor(shellsTotal / ZHUYUAN_C6_AFTERGLOW_COST)
   if (afterglowCount <= 0) return

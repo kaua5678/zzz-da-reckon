@@ -17,7 +17,7 @@ import { applyAgentAttributeConversions } from '@/specs/runtime'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
-import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF, carveBasicPool } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
@@ -349,8 +349,8 @@ function buildLiuyinExecutions({ cfg, state, executions }: AgentResourceInput): 
           skillTableNote: `强化A：布×${paperCount}，平A时间 ${basicTimeTotal.toFixed(2)}s 够打 ${rounds} 轮（整轮截断）`,
         }))
       }
-      // 扣减普通平A时间（强化A占用平A时间，优先打）
-      if (basicExec) basicExec.totalTime = Math.max(0, basicExec.totalTime - usedTime)
+      // 扣减普通平A时间（强化A占用平A时间，优先打）；猜拳行关了回能 ⇒ 平A回能留在池上
+      carveBasicPool(executions, usedTime)
     }
   }
 }

@@ -15,7 +15,7 @@ import { emptyPanel } from '@/core/panel'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
-import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, carveBasicPool } from '@/mechanics/moduleExecRow'
 import { initialStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
@@ -243,7 +243,7 @@ function buildNangongExecutions({ cfg, state, executions }: AgentResourceInput):
   const pairs = computeNangongMinePairs(totalBeat, basicExec.totalTime, pairSeconds)
   if (pairs <= 0) return
   cfg.nangongMinePairs = pairs
-  basicExec.totalTime = Math.max(0, basicExec.totalTime - pairs * pairSeconds)
+  carveBasicPool(executions, pairs * pairSeconds) // 地雷撞行关了回能 ⇒ 平A回能留在池上
   const halfSeconds = pairSeconds / 2
   executions.push(moduleExecRow({
     moveId: MINE2_MOVE_ID,

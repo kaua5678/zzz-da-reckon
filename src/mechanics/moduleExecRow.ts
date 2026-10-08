@@ -57,3 +57,27 @@ export function moduleExecRow(init: ModuleExecRowInit): SkillExecution {
   placeLedger()
   return out as unknown as SkillExecution
 }
+
+/** 平A池挤出时可按剩余比例缩的两个回能总量字段（见 `carveBasicPool`）。 */
+export type BasicPoolRecoveryKey = 'totalDecibelRecovery' | 'totalEnergyRecovery'
+
+/**
+ * 从平A聚合行挤出 `seconds` 秒（r742 收成一处）：模块行是从平A池时长解出来的、占的就是平A那份时间时调用——
+ * 安比 / 希格莉德平A分段、艾莲循环行、朱鸢以太弹、琉音猜拳、南宫地雷撞、琉音转大（轴模式）。
+ * 不挤，同一段时间会算两份：折叠环把虚增折进 necessaryTime，平A池被挤、留白虚高。
+ * - 平A聚合行 = 第一条 `basic_attack` 行（core 最先建的前台平A行）；没有就不动。
+ * - 挤出量 = min(行时长, seconds)，行时长不会变负。
+ * - `scale`：挤出去的行**自己带**哪种回能（表值回填或模块给值），池上那种回能就按剩余时长比例缩，不缩即双计；
+ *   挤出行用 `RECOVERY_OFF` 关掉的那种不写——平A回能按整段平A时长记在池上，跟着缩就凭空丢了。
+ * - 换新行对象、不原地改：rowBuild 给 `preModuleExecutions` 的是浅拷贝，原地改会改到「钩子派发前」的快照。
+ */
+export function carveBasicPool(executions: SkillExecution[], seconds: number, scale: readonly BasicPoolRecoveryKey[] = []): void {
+  const i = executions.findIndex(e => e.moveId === 'basic_attack')
+  if (i < 0) return
+  const row = executions[i]
+  const kept = row.totalTime - Math.min(row.totalTime, seconds)
+  const ratio = row.totalTime > 0 ? kept / row.totalTime : 0
+  const next = { ...row, totalTime: kept }
+  for (const k of scale) next[k] = (row[k] ?? 0) * ratio
+  executions[i] = next
+}

@@ -19,6 +19,7 @@ import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import { buildGiftRow } from '@/core/resource/giftRows'
 import { getAgentMechanic } from '@/mechanics'
+import { carveBasicPool } from '@/mechanics/moduleExecRow'
 
 /** 琉音好评转大不动点迭代上限（好评≥90 开窗次数有界，正反馈单调收敛，8 轮兜底极端情况） */
 const MAX_PROMOTE_ITER = 8
@@ -64,7 +65,7 @@ export interface PromoteFixpointDeps {
  * 倍率表 damage/daze/anomaly_buildup 由目标队友执行计划自然调用。
  * adj 来自 promoteFixpoint 的收敛结果（runCalcRound 的 R0/R1 内层不动点）。
  */
-// @fact engine:实战档位喧响计数 口径: 「实战 N 喧响大」这类档位说法（含「叶释渊 3 例外」）的**口径主体 = 主C 自攒喧响 floor(总/消耗)，不计琉音好评赠大**——赠大只加进展示 `ultimateCount` 并独立成 `source='gift'` 行，是队友产出、不是自己攒的条。实测 Boss 30042（无敌24s/弹刀13）下：叶瞬光自攒 11227 → 3 ✓ 正落该档；仪玄自攒 12087 → 4，超 3 档线仅 87 喧响（边界敏感，**不据此改账**） | 据 用户@2026-09-08（裁决「不计琉音赠大，看自攒 floor」）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/giftConsumption.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#applyUltimatePromote | 信 确认
+// @fact engine:实战档位喧响计数 口径: 「实战 N 喧响大」这类档位说法（含「叶释渊 3 例外」）的**口径主体 = 主C 自攒喧响 floor(总/消耗)，不计琉音好评赠大**——赠大只加进展示 `ultimateCount` 并独立成 `source='gift'` 行，是队友产出、不是自己攒的条。实测 Boss 30042（无敌24s/弹刀13）下：叶瞬光自攒 11227 → 3 ✓ 正落该档；仪玄自攒 12087 → 4，超 3 档线仅 87 喧响（边界敏感，**不据此改账**） | 据 用户@2026-09-08（裁决「不计琉音赠大，看自攒 floor」）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/composables/__tests__/giftConsumption.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#applyUltimatePromote | 信 确认
 export function applyUltimatePromote(
   base: TeamResourceResult,
   adj: { promote: number; hug60: number; targetSlot: number; chainMoveId: string; ultimateMoveId: string } | null,
@@ -123,12 +124,6 @@ export function applyUltimatePromote(
       // （叶瞬光：平A全是模块分段行、`basicAttackTime` = 0）时差额留作空闲（前台 < 账本，行 ≤ 账本照样成立）。
       // 反向（promote > 引擎次数）不在此处理：那会让行超账本，交给截断口径。
       const refundWanted = reserved > 0 ? Math.max(0, reserved - promoteTime) : 0
-      const basicIdx = reserved > 0
-        ? (refundWanted > 1e-9 ? char.executions.findIndex(e => e.moveId === 'basic_attack') : -1)
-        : char.executions.findIndex(e => e.moveId === 'basic_attack')
-      const basicTime = basicIdx >= 0 ? char.executions[basicIdx].totalTime : 0
-      const carve = reserved > 0 ? 0 : Math.max(0, Math.min(basicTime, promoteTime))
-      const refund = reserved > 0 && basicIdx >= 0 ? refundWanted : 0
       if (refundWanted > 1e-9) reservedUsed = reserved - refundWanted
       // 轴即最终次数：连携次数已从轴直接读出（N），60/90 转大只叠加赠送大招，不再「连携-1 大招+1」改写。
       // 转大白送的终结技独立成行（source='gift'），不并入目标原始终结技行——否则赠送归因（击破手对比的 gift 列）会丢失。
@@ -147,11 +142,15 @@ export function applyUltimatePromote(
         skillDamageTarget: ultTarget,
         skillTableNote: '好评转大：赠送队友终结技（白送，不耗喧响/能量）',
       })
-      const patched = char.executions.map((e, i) => {
-        if (i === basicIdx) return { ...e, totalTime: Math.max(0, e.totalTime - carve + refund) }
-        if (i !== giftIdx) return e
-        return { ...e, ...giftRow }
-      })
+      const patched = char.executions.map((e, i) => (i === giftIdx ? { ...e, ...giftRow } : e))
+      // 轴模式（无预留）：转大终结技的时长从目标平A池挤出（赠行不带回能 ⇒ 池上回能不缩）；
+      // 有预留：只把多留的秒数退回目标平A行（CC-145，见上）。
+      if (reserved <= 0) {
+        carveBasicPool(patched, promoteTime)
+      } else if (refundWanted > 1e-9) {
+        const basicIdx = patched.findIndex(e => e.moveId === 'basic_attack')
+        if (basicIdx >= 0) patched[basicIdx] = { ...patched[basicIdx], totalTime: patched[basicIdx].totalTime + refundWanted }
+      }
       return {
         ...char,
         ultimateCount: char.ultimateCount + promote,

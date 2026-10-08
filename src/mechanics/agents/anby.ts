@@ -12,7 +12,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
-import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, carveBasicPool } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
@@ -241,17 +241,16 @@ function buildAnbyExecutions({ cfg, state, executions }: AgentResourceInput): vo
   // 聚合行降级为时间/回能/喧响载体：时间挤掉段行占用（守恒），伤害/失衡/积蓄归零防双算。
   // 回能与喧响**不动**——它们由 core 按 `state.basicAttackTime × cfg.basicAttack*PerSec` 写在
   // 聚合行上（段行 energyRecovery/decibelRecovery 恒 0），缩时间不会丢能量。
+  carveBasicPool(executions, segTime)
   const pool = executions[poolIdx]
-  const poolTime = Math.max(0, pool.totalTime - Math.min(pool.totalTime, segTime))
   executions[poolIdx] = {
     ...pool,
-    totalTime: poolTime,
     damageMultiplier: 0,
     damageMultiplierOverride: true,
     dazeMultiplier: 0,
     dazeMultiplierOverride: true,
     anomalyBuildUp: 0,
-    skillTableNote: `平A分段已物化（${cycle.length} 段 × ${fullCycles} 轮）：伤害/失衡/积蓄由分段行承载，本行只作时间与回能载体（余量 ${poolTime.toFixed(2)}s）。`,
+    skillTableNote: `平A分段已物化（${cycle.length} 段 × ${fullCycles} 轮）：伤害/失衡/积蓄由分段行承载，本行只作时间与回能载体（余量 ${pool.totalTime.toFixed(2)}s）。`,
   }
 }
 

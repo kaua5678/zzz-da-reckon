@@ -17,7 +17,7 @@ import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
-import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, carveBasicPool } from '@/mechanics/moduleExecRow'
 import { forEachSlotAxisAction } from '@/mechanics/stunWindows'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -306,7 +306,7 @@ function sigridPozhenSets(
  * - 破阵：每次失衡送一套三段（免费不耗机会，用户口径），段数 = 失衡次数
  * 两部分合并进同一段行（count 相加）；真实 moveId → enrich 从倍率表回填倍率/失衡/积蓄。
  */
-// @fact agent:1591/影画1溢出 口径: 影画1「机会**溢出时**下一次敛枪式最后一击+100%攻击力」默认**不计算**（`sigrid.c1OverflowCoverage` 缺省 0，只在模块 settings 声明一处——CC-508 起声明即读侧 fallback）——机会上限 1 次而引擎按「立刻打光」建模（实测 spend 42 / 收入 42.7，储存位常年为空）⇒ 溢出条件不成立；模块无逐事件溢出判定（敛枪式段数状态机未建模），要模拟「攒着不打导致溢出」才调高该滑块 | 据 用户@2026-09-07「不溢出那就不计算呗」·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07（r715 订正：代码侧 fallback 已由 CC-508（cfff5020）并入模块 settings 声明）| 验 src/mechanics/__tests__/sigrid.test.ts#影画1溢出 | 锚 src/mechanics/agents/sigrid.ts#buildSigridExecutions | 信 确认
+// @fact agent:1591/影画1溢出 口径: 影画1「机会**溢出时**下一次敛枪式最后一击+100%攻击力」默认**不计算**（`sigrid.c1OverflowCoverage` 缺省 0，只在模块 settings 声明一处——CC-508 起声明即读侧 fallback）——机会上限 1 次而引擎按「立刻打光」建模（实测 spend 42 / 收入 42.7，储存位常年为空）⇒ 溢出条件不成立；模块无逐事件溢出判定（敛枪式段数状态机未建模），要模拟「攒着不打导致溢出」才调高该滑块 | 据 用户@2026-09-07「不溢出那就不计算呗」·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07（r715 订正：代码侧 fallback 已由 CC-508（cfff5020）并入模块 settings 声明）·复核@2026-10-08 | 验 src/mechanics/__tests__/sigrid.test.ts#影画1溢出 | 锚 src/mechanics/agents/sigrid.ts#buildSigridExecutions | 信 确认
 function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const segments = cfg.sigridLanceSegments ?? []
   if (segments.length !== 3) return
@@ -352,16 +352,7 @@ function buildSigridExecutions({ cfg, state, executions }: AgentResourceInput): 
     // 池 8.68s 被计成 8.68 + 7.63）→ 折叠把虚增折进 necessaryTime → 平A池被挤 → 该队留白 20.6s。
     // 只缩**时间**、保留**回能**：平A回能源于整段平A时长，而分段行不带回能（energyRecovery: 0），
     // 按比例一起缩会凭空丢掉她的能量。
-    if (segTime > 0) {
-      const basicIdx = executions.findIndex(e => e.moveId === 'basic_attack')
-      if (basicIdx >= 0) {
-        const basicTime = executions[basicIdx].totalTime
-        executions[basicIdx] = {
-          ...executions[basicIdx],
-          totalTime: Math.max(0, basicTime - Math.min(basicTime, segTime)),
-        }
-      }
-    }
+    carveBasicPool(executions, segTime)
   }
 
   for (let i = 0; i < 3; i++) {
