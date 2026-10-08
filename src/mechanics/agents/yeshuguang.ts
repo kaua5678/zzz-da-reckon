@@ -40,6 +40,7 @@ import { fmt } from '@/utils/format'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById as findMove, getRowValue as rowVal } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const cfgNum = mechanicSettingReader(() => yeshuguangMechanic.settings)
 export const YESHUGUANG_ID = '1431'
@@ -301,8 +302,8 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
   }
 }
 
-// @fact agent:1431/载物 未建模: 载物只是青溟剑势的溢出暂存，而总量计算器天然不做上限截断，溢出本就不丢 ⇒ 建模它没有任何数值意义，不补 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
-// @fact agent:1431/局外连接段 决: **局外**（非明心境）连接段不建执行行——它的占用时间就是平A池（basicAttackTime，按 atk0PerSec 攒青溟剑势）；明心境内的连接段（斩流光灭/极/扶摇）**照常建行**。总量计算器按资源算招式而非按连段顺序 | 据 用户@2026-09-01·复核@2026-09-05（主体加限定词：曾被读成"明心境连接段不建行"并输出错误归因）·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
+// @fact agent:1431/载物 未建模: 载物只是青溟剑势的溢出暂存，而总量计算器天然不做上限截断，溢出本就不丢 ⇒ 建模它没有任何数值意义，不补 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-09（r759 只换额外能力读口） | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
+// @fact agent:1431/局外连接段 决: **局外**（非明心境）连接段不建执行行——它的占用时间就是平A池（basicAttackTime，按 atk0PerSec 攒青溟剑势）；明心境内的连接段（斩流光灭/极/扶摇）**照常建行**。总量计算器按资源算招式而非按连段顺序 | 据 用户@2026-09-01·复核@2026-09-05（主体加限定词：曾被读成"明心境连接段不建行"并输出错误归因）·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-09（r759 只换额外能力读口） | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
 export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   basicAttackTime?: number
   exSpecialCount?: number
@@ -326,7 +327,7 @@ export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   const manualCurtains = Math.max(0, Math.floor(cfgNum(cfg, 'yeshuguang.teamCurtainCount') || 0))
   const autoCurtains = Math.max(0, Math.floor(Number(cfg.teamVeilCountTotal ?? 0) || 0))
   const curtains = manualCurtains > 0 ? manualCurtains : autoCurtains
-  const aa = Number(cfg.yeshuguangAdditionalAbilityActive ?? 0) > 0
+  const aa = additionalAbilityActiveOf(cfg.panel)
   const fromCurtain = aa ? curtains * 3 : 0
   return initial + fromBasic + fromDodge + fromEx + fromChain + fromCurtain
 }
@@ -382,7 +383,7 @@ function resolveCycle(cfg: CharacterOperationConfig, state: {
   })
 }
 
-function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInput): void {
+function buildCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   cfg.yeshuguangCinemaLevel = cinema
   // 自动选轴：初始打满（full），estimateExSpecialTime 按超支信号逐级退化。
@@ -428,7 +429,6 @@ function buildCharConfig({ skills, cinemaLevel, panel, cfg }: AgentCharConfigInp
   cfg.yeshuguangAtk0Dodge = rowVal(findMove(skills, '1431022'), 'attack_data_0')
   cfg.yeshuguangAtk0Ex = rowVal(findMove(skills, '1431016'), 'attack_data_0')
   cfg.yeshuguangAtk0Chain = rowVal(findMove(skills, '1431024'), 'attack_data_0')
-  cfg.yeshuguangAdditionalAbilityActive = panel.additionalAbilityActive
 }
 
 function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
@@ -885,8 +885,6 @@ declare module '@/types/resource/config' {
     yeshuguangAtk0Ex?: number
     /** 连携 attack_data_0（1431024） */
     yeshuguangAtk0Chain?: number
-    /** 额外能力是否生效（面板 additionalAbilityActive） */
-    yeshuguangAdditionalAbilityActive?: number
     /** 本轮循环结算（resolveCycle 结果；换轴时清空） */
     yeshuguangCycle?: YeshuguangCycleResult
     /** 叶瞬光青溟剑势初始（影画1：进场 6 点；未达1命为 0） */

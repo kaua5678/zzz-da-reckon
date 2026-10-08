@@ -251,10 +251,9 @@ function applyYaojiayinTeamPanelEffects({
   }
 }
 
-function buildCharConfig({ skills, cinemaLevel, cfg, panel, team }: AgentCharConfigInput): void {
+function buildCharConfig({ skills, cinemaLevel, cfg, team }: AgentCharConfigInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   cfg.yaojiayinCinemaLevel = cinema
-  cfg.yaojiayinAdditionalActive = additionalAbilityActiveOf(panel) ? 1 : 0
   cfg.yaojiayinTremoloDmg = rowVal(findMove(skills, MOVE_TREMOLO), 'damage')
   cfg.yaojiayinClusterDmg = rowVal(findMove(skills, MOVE_CLUSTER), 'damage')
   cfg.yaojiayinCapriccioDmg = rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage')
@@ -279,7 +278,7 @@ function yaojiayinTremolosOf(
   state: AgentResourceInput['state'],
 ): YaojiayinTremoloResult {
   const cinema = cinemaLevelOf(cfg.yaojiayinCinemaLevel)
-  const additionalActive = Number(cfg.yaojiayinAdditionalActive ?? 0) > 0
+  const additionalActive = additionalAbilityActiveOf(cfg.panel)
   return computeYaojiayinTremolos({
     totalEnergy: Math.max(0, state.totalEnergy),
     entryCount: Math.max(0, Math.floor(Number(cfg.yaojiayinEntryCount ?? 0))),
@@ -455,8 +454,6 @@ declare module '@/types/resource/agentResources' {
 
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：additionalAbilityActiveOf(panel) ? 1 : 0 */
-    yaojiayinAdditionalActive?: number
     /** 写入：rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage') */
     yaojiayinCapriccioDmg?: number
     /** 写入：cinema */

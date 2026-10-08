@@ -64,7 +64,7 @@ describe('珂蕾妲执行行与定向结算', () => {
     chainMoveId: '1101301',
     ultimateMoveId: '1101401',
     koledaCinemaLevel: cinema,
-    koledaAdditionalActive: true,
+    panel: { additionalAbilityActive: 1 },
     ...extra,
   })
 

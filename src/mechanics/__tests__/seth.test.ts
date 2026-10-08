@@ -57,7 +57,7 @@ describe('赛斯执行行', () => {
   it('影画6生成500%必暴合成行，低命座不生成', () => {
     const execs: any[] = []
     sethMechanic.buildExecutions!({
-      cfg: { sethCinemaLevel: 6, sethAdditionalActive: true },
+      cfg: { sethCinemaLevel: 6, panel: { additionalAbilityActive: 1 } },
       state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 },
       executions: execs,
     } as any)
@@ -70,7 +70,7 @@ describe('赛斯执行行', () => {
 
     const execs0: any[] = []
     sethMechanic.buildExecutions!({
-      cfg: { sethCinemaLevel: 5, sethAdditionalActive: true },
+      cfg: { sethCinemaLevel: 5, panel: { additionalAbilityActive: 1 } },
       state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 },
       executions: execs0,
     } as any)

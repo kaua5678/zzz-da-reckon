@@ -155,10 +155,9 @@ export function computeAnbyZeroCycle(input: {
   }
 }
 
-function buildAnbyZeroCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildAnbyZeroCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentCharConfigInput): void {
   cfg.anbyZeroCinemaLevel = cinemaLevel
   cfg.anbyZeroPotentialLevel = potentialLevel
-  cfg.anbyZeroAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): AnbyZeroCycle {
@@ -169,7 +168,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     teammateWhiteLightning: Number(cfg.anbyZeroTeammateWhiteLightning ?? 0),
-    additionalActive: cfg.anbyZeroAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     silverStarCoverage: clampRatio(setting(cfg, 'anbyZero.silverStarCoverage')),
     criticalActionTime: cfgMoveActionTime(cfg, ANBY_ZERO_CRITICAL_MOVE_ID),
   })
@@ -362,8 +361,6 @@ declare module '@/mechanics/types' {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：additionalAbilityActiveOf(panel) */
-    anbyZeroAdditionalActive?: boolean
     /** 写入：cinemaLevel */
     anbyZeroCinemaLevel?: number
     /** 写入：potentialLevel */

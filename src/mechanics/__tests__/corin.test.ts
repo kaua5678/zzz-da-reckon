@@ -123,7 +123,7 @@ describe('可琳执行行与定向结算', () => {
   it('影画6生成物理引爆合成行，低命座不生成', () => {
     const execs: any[] = []
     corinMechanic.buildExecutions!({
-      cfg: { corinCinemaLevel: 6, 'setting:corin.additionalStunCoverage': 1, corinAdditionalActive: true },
+      cfg: { corinCinemaLevel: 6, 'setting:corin.additionalStunCoverage': 1, panel: { additionalAbilityActive: 1 } },
       state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 },
       executions: execs,
     } as any)
@@ -134,7 +134,7 @@ describe('可琳执行行与定向结算', () => {
 
     const execs0: any[] = []
     corinMechanic.buildExecutions!({
-      cfg: { corinCinemaLevel: 5, 'setting:corin.additionalStunCoverage': 1, corinAdditionalActive: true },
+      cfg: { corinCinemaLevel: 5, 'setting:corin.additionalStunCoverage': 1, panel: { additionalAbilityActive: 1 } },
       state: { exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 },
       executions: execs0,
     } as any)

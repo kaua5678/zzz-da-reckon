@@ -122,14 +122,13 @@ export function computeEvelynCycle(input: {
 
 function buildEvelynCharConfig({ cinemaLevel, skills, cfg, panel, getRowValue }: AgentCharConfigInput): void {
   cfg.evelynCinemaLevel = cinemaLevel
-  cfg.evelynAdditionalActive = additionalAbilityActiveOf(panel)
   if (cinemaLevel >= 1) {
     cfg.initialDecibelGift = cfg.initialDecibelGift + EVELYN_C1_DECIBEL_GIFT
   }
   // 额外能力×1.25：预缩倍率表值，patchExecutions 经 damageMultiplierOverride 精确结算。
   // panel.critRate 已含 applyPanel 施加的核心被动暴击（EVELYN_CORE_CRIT_RATE × restraintCoverage），
   // 故直接按总暴击率判定，不再重复 + coreCritRate。
-  const additionalActive = cfg.evelynAdditionalActive === true
+  const additionalActive = additionalAbilityActiveOf(panel)
   const multiplierActive = additionalActive
     && panel.critRate >= EVELYN_CRIT_THRESHOLD
   cfg.evelynMultiplierActive = multiplierActive
@@ -145,7 +144,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     garroteCount: whole(setting(cfg, 'evelyn.garroteCount')),
     ultimateCount: state.ultimateCount,
     baseCritRate: cfg.panel.critRate,
-    additionalActive: cfg.evelynAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     restraintCoverage: clampRatio(setting(cfg, 'evelyn.restraintCoverage')),
     c1DefIgnoreCoverage: clampRatio(setting(cfg, 'evelyn.c1DefIgnoreCoverage')),
     c4ShieldCoverage: clampRatio(setting(cfg, 'evelyn.c4ShieldCoverage')),
@@ -325,8 +324,6 @@ export const evelynMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：additionalAbilityActiveOf(panel) */
-    evelynAdditionalActive?: boolean
     /** 写入：getRowValue(findMove(skills, EVELYN_CHAIN_MOVE_ID), 'damage') * EVELYN_MULTIPLIER */
     evelynChainMultScaled?: number
     /** 写入：cinemaLevel */

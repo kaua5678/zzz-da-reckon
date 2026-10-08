@@ -179,9 +179,8 @@ export function computeVivianCycle(input: {
 /** 队友施加异常触发落羽生花的 0.5s CD（原文：0.5秒内至多触发一次） */
 export const VIVIAN_ANOMALY_TRIGGER_CD = 0.5
 
-function buildVivianCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildVivianCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.vivianCinemaLevel = cinemaLevel
-  cfg.vivianAdditionalActive = additionalAbilityActiveOf(panel)
   // 落羽生花双源由 useResourceCalc 收敛注入（vivianTeamExTotal / vivianAnomalyTriggerTotal），
   // 首轮缺省时 buildExecutions 内回退到 state.exSpecialCount。
 }
@@ -206,7 +205,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     // 与 claret.ts assistFollowUpMoveId × parryCount 同口径）。原文「支援突击：裁决羽刃」回复2点飞羽、
     // 发动后进入裙裾浮游（→ 悬落）。旧实现读 `cfg.vivianAssistCount`，全仓零写入恒 0（CC-91 接通）。
     assistCount: Math.max(0, cfg.parryCount),
-    additionalActive: cfg.vivianAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     c4AtkCoverage: clampRatio(setting(cfg, 'vivian.c4AtkCoverage')),
   })
 }
@@ -499,8 +498,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 薇薇安命座等级（buildCharConfig 写） */
     vivianCinemaLevel?: number
-    /** 薇薇安额外能力是否生效（buildCharConfig 由 panel 写） */
-    vivianAdditionalActive?: boolean
     /** 薇薇安：队伍强特总数（nextRound 线程化写回；specs/agents/1331.json 按字段名读） */
     vivianTeamExTotal?: number
     /** 薇薇安：异常触发总数（nextRound 线程化写回；specs/agents/1331.json 按字段名读） */

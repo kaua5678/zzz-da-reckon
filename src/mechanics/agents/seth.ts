@@ -72,9 +72,8 @@ export function computeSethCycle(input: {
   }
 }
 
-function buildSethCharConfig({ cinemaLevel, cfg, panel, skills, getRowValue }: AgentCharConfigInput): void {
+function buildSethCharConfig({ cinemaLevel, cfg, skills, getRowValue }: AgentCharConfigInput): void {
   cfg.sethCinemaLevel = cinemaLevel
-  cfg.sethAdditionalActive = additionalAbilityActiveOf(panel)
   // 影画4 招架支援迅雷盾失衡值 +25%：预缩倍率表 daze 值，patchExecutions 经 dazeMultiplierOverride 精确结算。
   if (cinemaLevel >= 4) {
     const baseDaze = getRowValue(findMove(skills, cfg.defensiveAssistMoveId), 'daze')
@@ -85,7 +84,7 @@ function buildSethCharConfig({ cinemaLevel, cfg, panel, skills, getRowValue }: A
 function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' | 'state'>): SethCycle {
   return computeSethCycle({
     cinemaLevel: cinemaLevelOf(cfg.sethCinemaLevel),
-    additionalActive: cfg.sethAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     shieldCoverage: clampRatio(setting(cfg, 'seth.shieldCoverage')),
     additionalResCoverage: clampRatio(setting(cfg, 'seth.additionalResCoverage')),
     c6FinishCount: whole(setting(cfg, 'seth.c6FinishCount')),
@@ -183,8 +182,6 @@ export const sethMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：additionalAbilityActiveOf(panel) */
-    sethAdditionalActive?: boolean
     /** 写入：baseDaze * (1 + SETH_C4_DEFENSIVE_DAZE_BONUS / 100) */
     sethC4DefensiveDaze?: number
     /** 写入：cinemaLevel */

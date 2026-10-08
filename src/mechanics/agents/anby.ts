@@ -140,7 +140,6 @@ function applyAnbyPanel({ panel, cinemaLevel, settings }: AgentPanelInput): void
  */
 function buildAnbyCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
   cfg.anbyCinemaLevel = cinemaLevelOf(cinemaLevel)
-  cfg.anbyAdditionalActive = additionalAbilityActiveOf(panel)
   cfg.anbyEnergyGainEfficiency = panel.energyGainEfficiency
   // 平A循环分段元数据预存（buildExecutions 输入无 skills；单一事实源仍是倍率表）。
   // 元素取 catalog 的 move.damageElement——#1~#3 物理 / #4、落雷 电（原文口径，见文件头②）。
@@ -163,7 +162,7 @@ function applyAnbyTeamConfig({ cfg, slot, cinemaLevel, characters, team, phase, 
 
   if (phase === 'converge') {
     // 并联电路：闪反回 7.2 能量/5s（additionalAbility 门控）
-    const active = cfg.anbyAdditionalActive === true
+    const active = additionalAbilityActiveOf(cfg.panel)
     const gift = active
       ? computeAnbyParallelCircuitEnergy(cfg.dodgeCounterCount, combatTime)
       : 0
@@ -352,8 +351,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 命座等级：buildCharConfig 写 */
     anbyCinemaLevel?: number
-    /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
-    anbyAdditionalActive?: boolean
     /** 建配置时的能量获得效率快照（面板 energyGainEfficiency） */
     anbyEnergyGainEfficiency?: number
     /** 普攻分段循环（#1~#4 + 落雷；buildCharConfig 从 catalog 取动作时长 / 元素缓存，buildAnbyExecutions 按它拆平A池） */

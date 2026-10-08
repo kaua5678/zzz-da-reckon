@@ -93,7 +93,7 @@ describe('耀嘉音执行行', () => {
     const cfg: any = {
       invincibleTime: 0,
       yaojiayinCinemaLevel: 6,
-      yaojiayinAdditionalActive: 1,
+      panel: { additionalAbilityActive: 1 },
       yaojiayinEntryCount: 12,
       yaojiayinTremoloDmg: 92.2,
       yaojiayinClusterDmg: 48.2,

@@ -213,9 +213,8 @@ function severianLiexuanCount(cfg: AgentCharConfigInput['cfg']): number {
   return Math.max(0, cfg.dodgeCounterCount)
 }
 
-function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharConfigInput): void {
+function buildSeverianCharConfig({ cfg, cinemaLevel, skills }: AgentCharConfigInput): void {
   cfg.severianCinemaLevel = cinemaLevel
-  cfg.severianAdditionalActive = additionalAbilityActiveOf(panel)
   // 强化特殊技（组合技 1631008）走通用强特通道
   const special = skills.categories.find(c => c.id === 'special')?.moves.find(m => m.id === '1631008')
   if (special) {
@@ -240,10 +239,10 @@ function buildSeverianCharConfig({ cfg, cinemaLevel, panel, skills }: AgentCharC
 }
 
 /** `fengfengStacks` 由调用方经 `resolveSeverianFengfengStacks` 给定（需要影猎次数，cfg 上没有） */
-function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'severianCinemaLevel' | 'severianAdditionalActive'>, fengfengStacks: number): SeverianCycle {
+function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'severianCinemaLevel' | 'panel'>, fengfengStacks: number): SeverianCycle {
   return computeSeverianCycle({
     cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
-    additionalActive: cfg.severianAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     fengfengStacks,
     c4Coverage: clampRatio(setting(cfg, 'severian.c4Coverage')),
   })
@@ -342,7 +341,7 @@ function patchSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
   // CC-333：执行行与资源区块共用 computeSeverianCycle（两处都直接读设置）
   const cycle = computeSeverianCycle({
     cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
-    additionalActive: cfg.severianAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     fengfengStacks: resolveSeverianFengfengStacks({
       cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
       shadowHuntCount: severianShadowHuntCount(cfg, state),
@@ -489,8 +488,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 塞维林命座等级（buildCharConfig 写） */
     severianCinemaLevel?: number
-    /** 塞维林额外能力是否生效（buildCharConfig 由 panel 写） */
-    severianAdditionalActive?: boolean
     /** 塞维林连携/终结/入场载体招式元数据 */
     severianCarrierMeta?: SeverianMoveMeta[]
     /** 塞维林影招式元数据 */

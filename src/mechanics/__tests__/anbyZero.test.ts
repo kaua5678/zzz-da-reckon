@@ -69,7 +69,6 @@ describe('零号·安比执行行', () => {
   const cfgWith = (cinema: number, extra: Record<string, unknown> = {}) => ({
     panel: { additionalAbilityActive: 1 },
     anbyZeroCinemaLevel: cinema,
-    anbyZeroAdditionalActive: true,
     // CC-409：苍光·临界 1381023 动作时间来自 cfg.moveActionTimes（引擎由 catalog 预填；这里手填 = 表值）
     moveActionTimes: { '1381023': 0.867 },
     ...extra,

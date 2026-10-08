@@ -182,7 +182,6 @@ export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: Age
 
 function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: AgentCharConfigInput): void {
   cfg.phoenixCinemaLevel = cinemaLevel
-  cfg.phoenixAdditionalActive = additionalAbilityActiveOf(panel)
   cfg.phoenixAnomalyMastery = panel.anomalyMastery
   const teamAnomalyCount = team ? team.filter(m => m.agent?.specialty === 'anomaly').length : 0
   cfg.phoenixTeamAnomalyCount = teamAnomalyCount > 0 ? teamAnomalyCount : 1
@@ -417,7 +416,7 @@ function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEvent
 
 function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
-  const additionalActive = cfg.phoenixAdditionalActive === true
+  const additionalActive = additionalAbilityActiveOf(cfg.panel)
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
   const teamAnomalyCount = Math.max(1, whole(Number(cfg.phoenixTeamAnomalyCount ?? 2)))
   const weakness = computePhoenixWeaknessCrit({
@@ -532,8 +531,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 菲尼克斯命座等级（buildCharConfig 写） */
     phoenixCinemaLevel?: number
-    /** 菲尼克斯额外能力是否生效（buildCharConfig 由 panel 写） */
-    phoenixAdditionalActive?: boolean
     /** 菲尼克斯异常掌控（buildCharConfig 由 panel 预存） */
     phoenixAnomalyMastery?: number
     /** 菲尼克斯：队伍异常角色数（buildCharConfig 写，最少 1） */

@@ -122,7 +122,6 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
   cfg.aireCinemaLevel = cinemaLevel
   // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 初始 = 局外面板（CC-125；读取口 `initialStat`，CC-497）
   cfg.aireInitialMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
-  cfg.aireAdditionalActive = additionalAbilityActiveOf(panel)
   if (cinemaLevel >= 4) {
     // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
     // 异放次数 = 应援能量/2 + 全场应援；典型整局 ≫ floor(t/10)，故触发次数取 10s CD 上限
@@ -155,7 +154,7 @@ export function aireAbsolutePitchCount(
 ): number {
   const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount')))
   if (manualCount > 0) return manualCount
-  const additionalActive = cfg.aireAdditionalActive === true
+  const additionalActive = additionalAbilityActiveOf(cfg.panel)
   const teamVeilCount = Math.max(0, Math.floor(Number(cfg.teamVeilCountTotal ?? 0) || 0))
   const basicCycle = Number(cfg.aireBasicCheerCycleSeconds ?? 0)
   const basic4Hits = basicCycle > 0 ? Math.floor(Math.max(0, Number(state.basicAttackTime ?? 0)) / basicCycle) : 0
@@ -211,7 +210,7 @@ export function aireExtraNecessaryActions(cfg: AgentResourceInput['cfg'], state?
 function cycleFromCfg(cfg: AgentResourceResultInput['cfg']): AireCycle {
   return computeAireCycle({
     cinemaLevel: cinemaLevelOf(cfg.aireCinemaLevel),
-    additionalActive: cfg.aireAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     c2DelusionCoverage: clampRatio(setting(cfg, 'aire.c2DelusionCoverage')),
   })
 }
@@ -343,8 +342,6 @@ declare module '@/types/resource/config' {
     aireCinemaLevel?: number
     /** 局外异常掌控（无局外面板时取局内）；spec 1501.json 按字段名读 */
     aireInitialMastery?: number
-    /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
-    aireAdditionalActive?: boolean
     /** 甜蜜普攻四段的循环秒数（basicComboCycleSeconds） */
     aireBasicCheerCycleSeconds?: number
     /** 「绝对音高」动作时长（秒，缺省 1） */

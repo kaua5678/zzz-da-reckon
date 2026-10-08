@@ -44,7 +44,7 @@ function cfgWith(cinema: number, extra: Record<string, unknown> = {}) {
     dodgeCounterMoveId: BILLY_MOVE_IDS.dodgeCounter,
     exSpecialMoveId: BILLY_MOVE_IDS.exSpecial,
     billyCinemaLevel: cinema,
-    billyAdditionalActive: true,
+    panel: { additionalAbilityActive: 1 },
     battleTime: 180,
     ...extra,
   }
@@ -95,7 +95,7 @@ describe('比利执行行定向结算', () => {
       { moveId: BILLY_MOVE_IDS.chain },
     ]
     billyMechanic.patchExecutions!({
-      cfg: cfgWith(0, { billyAdditionalActive: false, 'setting:billy.c4ExCrit': 0 }),
+      cfg: cfgWith(0, { panel: { additionalAbilityActive: 0 }, 'setting:billy.c4ExCrit': 0 }),
       state: { chainCountTotal: 0, ultimateCount: 0 } as any,
       executions: rows,
     } as any)

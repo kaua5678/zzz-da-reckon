@@ -136,9 +136,8 @@ export function computeCorinStunBonusMoves(
   return out
 }
 
-function buildCorinCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildCorinCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.corinCinemaLevel = cinemaLevel
-  cfg.corinAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 /**
@@ -169,7 +168,7 @@ function applyCorinTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount }
 function cycleFromInput({ cfg, state: _state }: Pick<AgentResourceInput, 'cfg' | 'state'>): CorinCycle {
   return computeCorinCycle({
     cinemaLevel: cinemaLevelOf(cfg.corinCinemaLevel),
-    additionalActive: cfg.corinAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     coreSawCoverage: clampRatio(setting(cfg, 'corin.coreSawCoverage')),
     additionalStunCoverage: clampRatio(setting(cfg, 'corin.additionalStunCoverage')),
     c1Coverage: clampRatio(setting(cfg, 'corin.c1Coverage')),
@@ -346,8 +345,6 @@ export const corinMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：additionalAbilityActiveOf(panel) */
-    corinAdditionalActive?: boolean
     /** 写入：gift */
     corinC4EnergyTotal?: number
     /** 写入：cinemaLevel */

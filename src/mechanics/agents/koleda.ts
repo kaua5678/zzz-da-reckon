@@ -81,15 +81,14 @@ export function computeKoledaCycle(input: {
   }
 }
 
-function buildKoledaCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildKoledaCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.koledaCinemaLevel = cinemaLevel
-  cfg.koledaAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): KoledaCycle {
   return computeKoledaCycle({
     cinemaLevel: cinemaLevelOf(cfg.koledaCinemaLevel),
-    additionalActive: cfg.koledaAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     chainStunCoverage: clampRatio(setting(cfg, 'koleda.chainStunCoverage')),
     c1Coverage: clampRatio(setting(cfg, 'koleda.c1Coverage')),
     c4ChargeStacks: Math.max(0, Math.min(KOLEDA_C4_MAX_CHARGES, setting(cfg, 'koleda.c4ChargeStacks'))),
@@ -199,8 +198,6 @@ export const koledaMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：additionalAbilityActiveOf(panel) */
-    koledaAdditionalActive?: boolean
     /** 写入：cinemaLevel */
     koledaCinemaLevel?: number
   }

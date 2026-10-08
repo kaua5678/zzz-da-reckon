@@ -167,9 +167,8 @@ function applyHugoPanel({ slot, team, cinemaLevel, panel, settings }: AgentPanel
   panel.hugoEchoCoverage = echoCoverage
 }
 
-function buildHugoCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
+function buildHugoCharConfig({ cinemaLevel, cfg, skills }: AgentCharConfigInput): void {
   cfg.hugoCinemaLevel = cinemaLevel
-  cfg.hugoAdditionalActive = additionalAbilityActiveOf(panel)
   // CC-408：强特终结 1291010 的 damage 行值由引擎读 catalog 进 cfg.mechanicRowValues（原模块常量
   // HUGO_EX_FINAL_BASE_MULTIPLIER = 709.8 是同一数据的第二份）。缺表为 0，**不回退常量**——缺表要在结果里看得见。
   cfg.mechanicRowValues = {
@@ -232,7 +231,7 @@ function pushExecution(executions: AgentResourceInput['executions'], input: {
 
 function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
-  const additionalActive = cfg.hugoAdditionalActive === true
+  const additionalActive = additionalAbilityActiveOf(cfg.panel)
   // CC-408：1291010 damage 行值读表（buildCharConfig 写 cfg.mechanicRowValues）；缺表 = 0，无常量兜底。
   const exFinalBase = (cfg.mechanicRowValues ?? {})['1291010'] ?? 0
   pushExecution(executions, {
@@ -284,7 +283,7 @@ function buildHugoExecutions({ cfg, state, executions }: AgentResourceInput): vo
 function patchHugoExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
   const cinemaLevel = cinemaLevelOf(cfg.hugoCinemaLevel)
-  const additionalActive = cfg.hugoAdditionalActive === true
+  const additionalActive = additionalAbilityActiveOf(cfg.panel)
   const c4Coverage = cinemaLevel >= 4 ? clampRatio(setting(cfg, 'hugo.c4Coverage')) : 0
   const exOutOfStunRatio = cycle.exSpecialCount > 0
     ? cycle.exNormalCount / cycle.exSpecialCount
@@ -499,8 +498,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 命座等级：buildCharConfig 写 */
     hugoCinemaLevel?: number
-    /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
-    hugoAdditionalActive?: boolean
     /** 失衡轴内反推的决算剩余失衡秒数（0–15）：只在轴模式写入，未写时读取处用设置 hugo.remainingStunSeconds */
     hugoAxisRemainingStunSeconds?: number
     /** 失衡轴内强化特殊技决算块数：只在轴模式写入（非轴不写，读者按 undefined 门控） */

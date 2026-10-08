@@ -129,14 +129,13 @@ function buildPromiaCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, char
   cfg.promiaCinemaLevel = cinemaLevel
   // 展示值与面板 / teamBuff 同一读取口：初始（局外）掌控（CC-123 订正 CC-116 遗留的局内口径；CC-497 统一 `initialStat`）
   cfg.promiaAnomalyMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
-  cfg.promiaAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
-function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'promiaCinemaLevel' | 'promiaAnomalyMastery' | 'promiaAdditionalActive'>): PromiaCycle {
+function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'promiaCinemaLevel' | 'promiaAnomalyMastery' | 'panel'>): PromiaCycle {
   return computePromiaCycle({
     cinemaLevel: cinemaLevelOf(cfg.promiaCinemaLevel),
     anomalyMastery: Number(cfg.promiaAnomalyMastery ?? 0),
-    additionalActive: cfg.promiaAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
   })
 }
 
@@ -444,8 +443,6 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 普罗米娅命座等级（buildCharConfig 写） */
     promiaCinemaLevel?: number
-    /** 普罗米娅额外能力是否生效（buildCharConfig 由 panel 写） */
-    promiaAdditionalActive?: boolean
     /** 普罗米娅初始（局外）异常掌控（buildCharConfig 预存） */
     promiaAnomalyMastery?: number
     /** 普罗米娅攻击数据霜值获取（资源阶段写，取整） */

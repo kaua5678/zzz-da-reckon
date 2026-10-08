@@ -7,7 +7,8 @@
  * 编排层 `panelPhases.ts:333` 给钩子算 `additionalAbilityActive: boolean` 也是同一式。规则没有名字 ⇒ 第 46 份。
  *
  * 住 core：core 只许经 `mechanics/registry` 触达 mechanics（coreRuntimeDeps 锁），反向自由。
- * 不归这里：`yeshuguang.ts` 把原始数值透传进 cfg（`yeshuguangAdditionalAbilityActive`）后自行判定。
+ * 模块钩子直接读 `additionalAbilityActiveOf(cfg.panel)`：`cfg.panel` 与 buildCharConfig 入参 `panel` 是同一对象。
+ * 不要把判定结果抄进 cfg 字段（r759 删了 16 个这样的镜像，测试夹具改为经 `panel` 给值）。
  */
 export function additionalAbilityActiveOf(panel: { readonly additionalAbilityActive?: number } | null | undefined): boolean {
   return (panel?.additionalAbilityActive ?? 0) > 0

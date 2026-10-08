@@ -1651,7 +1651,7 @@
       "certainty": "L1",
       "trigger": "安比[闪避反击]命中敌人时",
       "target": "安比自身能量池——converge 阶段并入 cfg.initialEnergyGift（安比槽），账本键 anbyParallelEnergyTotal（幂等：先扣旧值再加新值）",
-      "gate": "额外能力门控 = 队伍中存在与自身属性（电）或阵营（狡兔屋）相同的角色（spec additionalAbility.teamConditions；panel.additionalAbilityActive > 0 → cfg.anbyAdditionalActive）",
+      "gate": "额外能力门控 = 队伍中存在与自身属性（电）或阵营（狡兔屋）相同的角色（spec additionalAbility.teamConditions；panel.additionalAbilityActive > 0，applyTeamConfig 经 additionalAbilityActiveOf(cfg.panel) 读取）",
       "formula": "整局能量 = min(闪避反击次数, floor(战斗时间 / 5)) × 7.2",
       "field": "cfg.initialEnergyGift（安比槽；经 energySource 账本进入能量总账）",
       "countSource": "cfg.dodgeCounterCount（面板交互次数，单一事实源 interactionBaselineFor）与 combatTime（秒）",

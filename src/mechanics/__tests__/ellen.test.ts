@@ -60,7 +60,6 @@ function patchCfg(extra: Record<string, unknown> = {}) {
     'setting:ellen.c6FeastCoverage': 0,
     ellenFreezeCount: 0,
     ellenStunCount: 0,
-    ellenAdditionalActive: false,
     ...extra,
   }
 }
@@ -396,7 +395,7 @@ describe('艾莲滑块生效差分（防守卫冻结，SOP §3.5：改滑块→�
     const feastOf = (coverage: number) => {
       const executions: any[] = [{ moveId: ELLEN_DASH_MOVE_IDS[1], dmgBonus: 0, critDmgBonus: 0 }]
       ellenMechanic.patchExecutions!({
-        cfg: { ellenCinemaLevel: 6, ellenPotentialLevel: 6, 'setting:ellen.c1CritStacks': 0, 'setting:ellen.c2AvgCharge': 0, 'setting:ellen.stormSurgeStacks': 0, 'setting:ellen.c6PenCoverage': 0, 'setting:ellen.c6FeastCoverage': coverage, ellenFreezeCount: 0, ellenStunCount: 0, ellenAdditionalActive: false },
+        cfg: { ellenCinemaLevel: 6, ellenPotentialLevel: 6, 'setting:ellen.c1CritStacks': 0, 'setting:ellen.c2AvgCharge': 0, 'setting:ellen.stormSurgeStacks': 0, 'setting:ellen.c6PenCoverage': 0, 'setting:ellen.c6FeastCoverage': coverage, ellenFreezeCount: 0, ellenStunCount: 0 },
         state: { basicAttackTime: 60, exSpecialCount: 2 },
         executions,
       } as never)

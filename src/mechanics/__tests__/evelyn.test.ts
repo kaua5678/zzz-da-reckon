@@ -105,7 +105,6 @@ describe('伊芙琳执行行与定向结算', () => {
     panel: { critRate: 60, additionalAbilityActive: 1 },
     battleTime: 0,
     evelynCinemaLevel: cinema,
-    evelynAdditionalActive: true,
     evelynMultiplierActive: false,
     ...extra,
   })

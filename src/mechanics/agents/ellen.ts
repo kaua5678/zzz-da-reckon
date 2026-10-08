@@ -220,7 +220,7 @@ export function computeEllenCycle(input: {
   }
 }
 
-function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentCharConfigInput): void {
   cfg.ellenCinemaLevel = cinemaLevel
   cfg.ellenPotentialLevel = potentialLevel
   // 强化特殊技主招 = 鲨卷风（影画2 全鲨卷风；0命由 buildExecutions 补横扫实现「横扫+鲨卷风」）
@@ -228,7 +228,6 @@ function buildEllenCharConfig({ cinemaLevel, potentialLevel, cfg, panel }: Agent
   cfg.exSpecialActionTime = cfgMoveActionTime(cfg, ELLEN_EX_MOVE_IDS[1])
   cfg.ellenFreezeCount = 0 // 由 useResourceCalc 从异常池 ice 触发数注入；失衡次数由 applyTeamConfig converge 写入
   cfg.ellenStunCount = 0
-  cfg.ellenAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 /**
@@ -265,7 +264,7 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
     freezeCount: Number(cfg.ellenFreezeCount ?? 0),
     stunCount: Number(cfg.ellenStunCount ?? 0),
     c4CdRate: clamp(setting(cfg, 'ellen.c4CdRate'), 0, 1),
-    additionalActive: cfg.ellenAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     c1CritStacks: clamp(setting(cfg, 'ellen.c1CritStacks'), 0, ELLEN_C1_MAX_STACKS),
     c2AvgCharge: clamp(setting(cfg, 'ellen.c2AvgCharge'), 0, 3),
     stormSurgeStacks: clamp(setting(cfg, 'ellen.stormSurgeStacks'), 0, ELLEN_STORM_SURGE_MAX_STACKS),
@@ -531,8 +530,6 @@ declare module '@/types/resource/config' {
     ellenFreezeCount?: number
     /** 失衡次数：build 置 0，applyTeamConfig converge 写入 */
     ellenStunCount?: number
-    /** 额外能力是否触发：由面板 additionalAbilityActive 推出 */
-    ellenAdditionalActive?: boolean
     /** 影画4 回能总额（资源钩子写） */
     ellenC4EnergyTotal?: number
   }

@@ -97,19 +97,18 @@ export function computeBillyCycle(input: {
   }
 }
 
-function buildBillyCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildBillyCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.billyCinemaLevel = cinemaLevel
   const battleTime = Math.max(0, cfg.battleTime)
   cfg.billyC1Energy = cinemaLevel >= 1
     ? resolveBillyC1TriggerCount(battleTime) * BILLY_C1_ENERGY
     : 0
-  cfg.billyAdditionalActive = additionalAbilityActiveOf(panel)
 }
 
 function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'>): BillyCycle {
   return computeBillyCycle({
     cinemaLevel: cinemaLevelOf(cfg.billyCinemaLevel),
-    additionalActive: cfg.billyAdditionalActive === true,
+    additionalActive: additionalAbilityActiveOf(cfg.panel),
     coreCrouchCoverage: clampRatio(setting(cfg, 'billy.coreCrouchCoverage')),
     chainCountTotal: state.chainCountTotal,
     ultimateCount: state.ultimateCount,
@@ -195,8 +194,6 @@ export const billyMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 写入：additionalAbilityActiveOf(panel) */
-    billyAdditionalActive?: boolean
     /** 比利影画1：冲刺/闪反额外回能总额（模块按原始次数与5秒冷却计算） */
     billyC1Energy?: number
   }

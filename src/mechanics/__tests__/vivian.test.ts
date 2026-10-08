@@ -88,7 +88,6 @@ describe('薇薇安执行行与定向结算', () => {
     panel: { additionalAbilityActive: 1 },
     vivianCinemaLevel: cinema,
     vivianTeamExTotal: 6, vivianAnomalyTriggerTotal: 6,
-    vivianAdditionalActive: true,
     battleTime: 180,
     invincibleTime: 0,
     chainCountTotal: 2,
@@ -114,7 +113,7 @@ describe('薇薇安执行行与定向结算', () => {
     // 源1 = 全队强化特殊技命中触发（技能自带，同一招式至多一次），无额外能力也生效
     const executions: any[] = []
     vivianMechanic.buildExecutions!({
-      cfg: cfgWith(0, { vivianAdditionalActive: false }),
+      cfg: cfgWith(0, { panel: { additionalAbilityActive: 0 } }),
       state: { exSpecialCount: 6, ultimateCount: 1, chainCountTotal: 2 },
       executions,
     } as any)

@@ -128,7 +128,7 @@ describe('爱芮完整计算链', () => {
   })
 
   it('异放次数自动推导 = 应援能量/2 + 全场应援（非C6=终结×3；C6=floor(t/6)+3）；帷幕按次数（4个/次×teamVeilCountTotal）', () => {
-    const cfg = { aireCinemaLevel: 0, aireAdditionalActive: true, teamVeilCountTotal: 3 } as any
+    const cfg = { aireCinemaLevel: 0, panel: { additionalAbilityActive: 1 }, teamVeilCountTotal: 3 } as any
     const state = { exSpecialCount: 4, chainCountTotal: 5, ultimateCount: 2 } as any
     const events: any[] = []
     aireMechanic.buildAnomalyEvents!({ cfg, state, events, totalTime: 180 })
@@ -140,7 +140,7 @@ describe('爱芮完整计算链', () => {
     aireMechanic.buildAnomalyEvents!({ cfg: { ...cfg, aireCinemaLevel: 6 }, state, events: events6, totalTime: 180 })
     expect(events6[0].count).toBe(55)
     // 生效断言：帷幕次数翻倍 → 应援能量 +3×4 → 异放 +6
-    const cfg2 = { aireCinemaLevel: 0, aireAdditionalActive: true, teamVeilCountTotal: 6 } as any
+    const cfg2 = { aireCinemaLevel: 0, panel: { additionalAbilityActive: 1 }, teamVeilCountTotal: 6 } as any
     const events2: any[] = []
     aireMechanic.buildAnomalyEvents!({ cfg: cfg2, state, events: events2, totalTime: 180 })
     expect(events2[0].count).toBe(34)
