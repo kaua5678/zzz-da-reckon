@@ -301,13 +301,10 @@ function computeLuciaSource(
 
 function buildLuciaResourceResult({ cfg, state, preModuleExecutions }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   // cap 与 buildExecutions 同口径：同一纯函数 + **同一行基准**（物化钩子派发前的引擎行）。
-  // 缺 preModuleExecutions（外部直调）时退化为无前台动作计数口径（frontBlockSeconds 取 CD 回退值）。
   const cap = additionalAttackCapOf(
     cfg,
     state,
-    preModuleExecutions
-      ? countFrontActions(preModuleExecutions, { fusedMoveIds: [cfg.assistFollowUpMoveId] })
-      : undefined,
+    countFrontActions(preModuleExecutions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
   )
   return {
     luciaMechanicSource: computeLuciaSource(

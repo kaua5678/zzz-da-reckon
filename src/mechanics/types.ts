@@ -508,15 +508,16 @@ export interface AgentResourceResultInput {
    * （卢西娅 `luciaAdditionalAttackCap` 即此）。改成把行基准显式传进来，钩子两处各自用同一纯函数重算，
    * cfg 保持只读。注意基准是**钩子派发前**的行（不含钩子自己 push 的行），与旧写回时的口径逐位一致。
    * 两份快照都是 rowBuild 逐行拷贝的：钩子之后原地改行改不到它们，读哪个字段都行。
+   * 两份都必填：唯一调用方 assembleSlot 每次都传；测试直调没有引擎行就传 []。
    */
-  preModuleExecutions?: SkillExecution[]
+  preModuleExecutions: SkillExecution[]
   /**
    * **patchExecutions 派发前**的执行行（= `patchExecutions` 钩子当时看到的同一批行，CC-198）。
    * 比 preModuleExecutions 多出 buildExecutions 之后才物化的行：额外强特行（`src/data/exSpecialPlans.ts`，
    * rowBuild 在模块 buildExecutions 之后推入）、backstageAutoRows、闪反/弹刀/反制支援等。
    * 派生量在 patchExecutions 里产行、装配期又要展示的模块读这个（千夏凝视标记供给即此）。
    */
-  prePatchExecutions?: SkillExecution[]
+  prePatchExecutions: SkillExecution[]
 }
 
 export interface AgentSkillTransformInput {

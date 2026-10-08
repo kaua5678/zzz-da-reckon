@@ -259,7 +259,7 @@ function buildQianxiaExecutions({ cfg, state, executions }: AgentResourceInput):
 }
 
 function buildQianxiaResourceResult({ cfg, state, prePatchExecutions }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  return { qianxiaGaze: cycleFromCfg(cfg, state, markSupplyOf(cfg, prePatchExecutions ?? [])) }
+  return { qianxiaGaze: cycleFromCfg(cfg, state, markSupplyOf(cfg, prePatchExecutions)) }
 }
 
 function buildQianxiaResourceSections({ result }: AgentResourceSectionsInput) {

@@ -339,7 +339,7 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
 }
 
 function buildQingyiResourceResult({ cfg, state, preModuleExecutions }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  return { qingyiMechanicSource: computeQingyiSource(cfg, state, qingyiGenericRowsTimeOf(preModuleExecutions ?? [])) }
+  return { qingyiMechanicSource: computeQingyiSource(cfg, state, qingyiGenericRowsTimeOf(preModuleExecutions)) }
 }
 
 function buildQingyiResourceSections({ result }: AgentResourceSectionsInput) {

@@ -615,13 +615,12 @@ function jufufuCinemaOf(cfg: AgentResourceResultInput['cfg']): number {
  * 「cfg + state + 行基准 → 虎釜循环」的唯一装配（CC-283；与卢西娅 additionalAttackCapOf 同一模式）。
  * buildExecutions 传钩子当时的行，buildResourceResult 传 `preModuleExecutions`（= 物化钩子派发前的同一批行），
  * 两处各自用同一纯函数重算，不再经 `cfg.jufufuCycle` 缓存（CC-283 前的写法是 cfg 副作用，回退分支还漏了
- * frontActionCount / frontSwitchRatio 两个字段）。缺行基准（外部直调）时 frontActionCount 缺省 ⇒
- * frontBlockSeconds 回退块长 ≈ CD，frontSwitchRatio 不参与。
+ * frontActionCount / frontSwitchRatio 两个字段）。
  */
 function jufufuCycleOf(
   cfg: AgentResourceResultInput['cfg'],
   state: AgentResourceResultInput['state'],
-  executions: readonly SkillExecution[] | undefined,
+  executions: readonly SkillExecution[],
 ): JufufuCycleResult {
   const cinema = jufufuCinemaOf(cfg)
   return computeJufufuCycle({
@@ -629,11 +628,9 @@ function jufufuCycleOf(
     backstageTime: effectiveBackstageTime(state.backstageTime, cfg),
     frontlineTime: state.frontlineTime,
     effectiveTotalTime: effectiveBattleTime(cfg),
-    frontActionCount: executions
-      ? countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] })
-      : undefined,
+    frontActionCount: countFrontActions(executions, { fusedMoveIds: [cfg.assistFollowUpMoveId] }),
     frontSwitchRatio: Number(cfgMechanicSettingRaw(cfg, 'jufufu.frontSwitchRatio') ?? 0.7),
-      exSpecialCount: state.exSpecialCount,
+    exSpecialCount: state.exSpecialCount,
     ultimateCount: state.ultimateCount,
     parryCount: cfg.parryCount,
     cinemaLevel: cinema,

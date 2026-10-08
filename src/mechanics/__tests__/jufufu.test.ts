@@ -197,7 +197,7 @@ describe('橘福福 buildExecutions / 影画6', () => {
     const executions: any[] = []
     cfg.jufufuMoveDmg = { '1391005': 1, '1391010': 1, '1391013': 1 }
     jufufuTigerRoarMechanic.buildExecutions!({ cfg, state, executions } as any)
-    const out: any = jufufuTigerRoarMechanic.buildResourceResult!({ cfg, state } as any)
+    const out: any = jufufuTigerRoarMechanic.buildResourceResult!({ cfg, state, preModuleExecutions: [] } as any)
     const cycle = out.jufufuCycle
     expect(out.specResources.jufufu_awe.spendCounts.jufufu_tiger_chain_spend).toBe(cycle.tigerChainCount)
     expect(out.specResources.jufufu_weishi.spendCounts.jufufu_spin_spend).toBe(cycle.spinCount)

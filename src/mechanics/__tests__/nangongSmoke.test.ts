@@ -300,7 +300,7 @@ describe('CC-288 / CC-333 地雷撞套数不残留与资源卡片单源', () => 
       battleTime: 180,
       panel: { anomalyMastery: 150 },
     } as any
-    const res = nangongMechanic.buildResourceResult!({ cfg, state: { frontlineTime: 60 } as any })
+    const res = nangongMechanic.buildResourceResult!({ cfg, state: { frontlineTime: 60 } } as any)
     expect(res.nangongMechanicSource?.vibratoStacks).toBe(2)
     expect(res.nangongMechanicSource?.vibratoStackPct).toBe(35)
     expect(res.nangongMechanicSource?.minePairs).toBe(3)

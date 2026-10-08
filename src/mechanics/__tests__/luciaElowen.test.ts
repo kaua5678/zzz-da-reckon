@@ -123,6 +123,7 @@ describe('computeLuciaDreamPlan', () => {
     const out = luciaElowenMechanic.buildResourceResult!({
       cfg: { axisInSeconds: 72, battleTime: 180, invincibleTime: 0, panel: { skillLevelBonus: 0 } } as never,
       state: { exSpecialCount: 7, ultimateCount: 3 } as never,
+      preModuleExecutions: [],
     } as never)
     expect(out.luciaMechanicSource!.additionalAttackCount).toBe(20)
   })
