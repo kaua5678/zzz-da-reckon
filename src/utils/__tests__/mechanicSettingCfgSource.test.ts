@@ -2,7 +2,7 @@
  * CC-235 源码锁：机制设置「引擎写 cfg、模块读」的键格式只在 `utils/mechanicSettingCfg.ts` 定义。
  *
  * 此前 `setting:${id}` 与读取 helper 在 30 多个角色模块各抄一份，语义有 4 种变体。
- * 新代码请用 `mechanicSettingCfgKey(id)`（写/取键）或 `cfgMechanicSetting(cfg, id, fallback)`（读值）。
+ * 新代码请用 `mechanicSettingCfgKey(id)`（写/取键）；模块读值用声明 reader（CC-508）或 `specAdjustableRate`（spec adjustable，CC-536）。
  *
  * CC-363（r393）：原锁只认模板字面量 `` `setting:${` ``，带引号的硬编码键 `'setting:<id>'` 漏网——
  * 11 个模块 24 处绕过 helper 直接 `(cfg as any)['setting:…']` / `record['setting:…']`。已全部改走
@@ -15,6 +15,10 @@
  *
  * CC-535（r752）：编排层 `ultimatePromote.ts` 按 id 直读琉音设置 `liuyin.hug60Count` 并手抄 -1（模块外唯一一处）；
  * 改由琉音转大钩子自己读，并锁上「模块设置 id 只在 mechanics/agents 里按字面量出现」。
+ *
+ * CC-536（r753）：reader 的显式 fallback 只剩洛克茜两处（spec `adjustable`，常量 id 绕过了 CC-508 正则），
+ * 橘福福另用裸 `cfgMechanicSetting(cfg, id, 1)` 包了一层；两者都改走 `specs/resources.ts#specAdjustableRate`
+ * （spec 声明的 default 与区间）。三个 reader 去掉 fallback 形参（多传即 TS2554），并锁上「mechanics/ 不直接调裸读口」。
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -65,14 +69,12 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
     expect(cfgMechanicSetting(undefined, 'x.y', 5)).toBe(5)
   })
 
-  it('CC-508 reader：未给 fallback 时取模块 settings 声明的 default；显式 fallback 覆盖；未声明且无 fallback 抛错', () => {
+  it('CC-508 reader：取模块 settings 声明的 default；未声明抛错（CC-536 起不收 fallback）', () => {
     const key = mechanicSettingCfgKey('x.y')
     const read = mechanicSettingReader(() => [{ id: 'x.y', default: 7 }])
     expect(read({}, 'x.y')).toBe(7)
     expect(read({ [key]: 0 }, 'x.y')).toBe(0)
     expect(read({ [key]: null }, 'x.y')).toBe(7)
-    expect(read({}, 'x.y', 3)).toBe(3)
-    expect(read({}, 'x.z', 3)).toBe(3)
     expect(() => read({}, 'x.z')).toThrow(/x\.z/)
     // 惰性：声明在 reader 构造之后才可用也行（模块常量在文件底部）
     let late: Array<{ id: string; default: number }> | undefined
@@ -81,21 +83,20 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
     expect(lazy({}, 'a.b')).toBe(2)
   })
 
-  it('CC-508b panel reader：记录读口同样以声明 default 为准；显式 fallback 覆盖；未声明抛错', () => {
+  it('CC-508b panel reader：记录读口同样以声明 default 为准；未声明抛错', () => {
     const read = mechanicSettingPanelReader(() => [{ id: 'x.y', default: 0.5 }])
     expect(read({}, 'x.y')).toBe(0.5)
     expect(read({ 'x.y': 0 }, 'x.y')).toBe(0)
     expect(read({ 'x.y': NaN }, 'x.y')).toBe(0.5)
-    expect(read(undefined, 'x.y', 2)).toBe(2)
+    expect(read(undefined, 'x.y')).toBe(0.5)
     expect(() => read({}, 'x.z')).toThrow(/x\.z/)
   })
 
-  it('CC-534 getter reader：递给 store 读取器的 fallback 是声明 default；显式 fallback 覆盖；未声明抛错', () => {
+  it('CC-534 getter reader：递给 store 读取器的 fallback 是声明 default；未声明抛错', () => {
     const read = mechanicSettingGetterReader(() => [{ id: 'x.y', default: 5 }])
     const store = (vals: Record<string, number>) => (id: string, fallback: number) => vals[id] ?? fallback
     expect(read(store({}), 'x.y')).toBe(5)
     expect(read(store({ 'x.y': 0 }), 'x.y')).toBe(0)
-    expect(read(store({}), 'x.y', 2)).toBe(2)
     expect(() => read(store({}), 'x.z')).toThrow(/x\.z/)
   })
 
@@ -127,6 +128,16 @@ describe('CC-235 机制设置 cfg 键单一来源', () => {
       for (const m of code.matchAll(/(['"`])(\w+\.[\w.:-]+)\1/g)) {
         if (ids.has(m[2])) hits.push(`${rel}:${code.slice(0, m.index).split('\n').length}: ${m[2]}`)
       }
+    }
+    expect(hits).toEqual([])
+  })
+
+  it('CC-536 源码锁：mechanics/ 不直接调裸读口 cfgMechanicSetting / mechanicSettingOf（模块设置走声明 reader，spec adjustable 走 specAdjustableRate）', () => {
+    const hits: string[] = []
+    for (const p of walk(resolve(SRC, 'mechanics'))) {
+      const rel = relative(SRC, p).split('\\').join('/')
+      const code = readFileSync(p, 'utf-8').replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, m => m.replace(/[^\n]/g, ' '))
+      for (const m of code.matchAll(/\b(?:cfgMechanicSetting|mechanicSettingOf)\b/g)) hits.push(`${rel}:${code.slice(0, m.index).split('\n').length}: ${m[0]}`)
     }
     expect(hits).toEqual([])
   })

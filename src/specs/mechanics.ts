@@ -14,10 +14,10 @@ import type {
 } from '@/types/resource'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { applySpecAttributeConversions } from './runtime'
-import { computeSpecResources } from './resources'
+import { computeSpecResources, specAdjustables } from './resources'
 import { readCfgField } from './cfgField'
 import { fmt } from '@/utils/format'
-import type { AgentMechanicSpec, EventSpec, ResourceRuleSpec } from './types'
+import type { AgentMechanicSpec, EventSpec } from './types'
 
 export interface SpecEventCounts {
   [key: string]: number | undefined
@@ -123,13 +123,7 @@ export function buildSpecEventExecutions(
 export function specToMechanicModule(spec: AgentMechanicSpec): AgentMechanicModule {
   const hasResources = spec.resources.length > 0
   const hasEvents = spec.events.length > 0
-  const settings = spec.resources.flatMap(resource => [
-    ...resource.gainRules,
-    ...resource.spendRules,
-    ...(resource.feedbackGainRules ?? []),
-  ])
-    .filter((rule): rule is ResourceRuleSpec & { adjustable: NonNullable<ResourceRuleSpec['adjustable']> } => Boolean(rule.adjustable))
-    .map(rule => ({ ...rule.adjustable }))
+  const settings = specAdjustables(spec).map(setting => ({ ...setting }))
 
   return {
     id: spec.id,

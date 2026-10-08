@@ -12,6 +12,8 @@
  *
  * 三个读口各有一个「声明即默认值」的 reader，模块不手抄默认值：cfg 袋子 `mechanicSettingReader`、
  * 面板记录 `mechanicSettingPanelReader`、派发器递给钩子的 store 读取器 `mechanicSettingGetterReader`（r751 CC-534）。
+ * reader 不收 fallback 形参（r753 CC-536）：默认值只能来自声明。spec `adjustable` 比例（声明在 spec JSON、带区间）
+ * 由 `specs/resources.ts#specAdjustableRate` 读；模块不直接调本文件的 `cfgMechanicSetting` / `mechanicSettingOf`（源码锁）。
  *
  * 模块设置的 id 只在所属模块里按字面量出现（r752 CC-535 源码锁）：编排层 / 视图要么遍历声明取 `setting.default`，
  * 要么把 store 读取器递给模块钩子、由模块自己读（例：琉音转大钩子 `promoteHugCounts` 读 60 档上限）。
@@ -43,24 +45,23 @@ export function mechanicSettingOf(settings: Readonly<Record<string, number>> | n
  * 以**模块自身的 `settings` 声明**为唯一默认值来源的读口（CC-508）。
  * 此前每个模块在 `settings: [{ id, default: N }]` 声明一次 N，又在 `cfgMechanicSetting(cfg, id, N)` 手抄一次
  * （28 个模块 / 74 处逐字相同；引擎 `buildCharConfig` 已按声明 default 预填 cfg，读侧 fallback 只对手搭 cfg 的单测生效）。
- * `declared` 用惰性 getter：模块常量通常在文件底部，调用期才解引用。未声明且未给 fallback ⇒ 抛错（拼错 id 立刻暴露）。
- * 显式 `fallback` 仍可覆盖（动态 id 或策略性不同于声明的场合）。
+ * `declared` 用惰性 getter：模块常量通常在文件底部，调用期才解引用。未声明 ⇒ 抛错（拼错 id 立刻暴露）。
  */
 export function mechanicSettingReader(
   declared: () => ReadonlyArray<{ id: string; default: number }> | undefined,
-): (cfg: unknown, id: string, fallback?: number) => number {
+): (cfg: unknown, id: string) => number {
   const defaultOf = declaredDefault(declared)
-  return (cfg, id, fallback) => cfgMechanicSetting(cfg, id, defaultOf(id, fallback))
+  return (cfg, id) => cfgMechanicSetting(cfg, id, defaultOf(id))
 }
 /**
  * 同一协议的 `applyPanel` 侧读口（记录键 = 设置 id；见 `mechanicSettingOf`）的「声明即默认值」版本（CC-508b）。
- * 引擎 `panelPhases.ts` 用 `setting.default` 预填记录，读侧 fallback 同样只对手搭记录的单测生效。
+ * 引擎 `panelPhases.ts` 用 `setting.default` 预填记录，读侧的声明 default 同样只对手搭记录的单测生效。
  */
 export function mechanicSettingPanelReader(
   declared: () => ReadonlyArray<{ id: string; default: number }> | undefined,
-): (settings: Readonly<Record<string, number>> | null | undefined, id: string, fallback?: number) => number {
+): (settings: Readonly<Record<string, number>> | null | undefined, id: string) => number {
   const defaultOf = declaredDefault(declared)
-  return (settings, id, fallback) => mechanicSettingOf(settings, id, defaultOf(id, fallback))
+  return (settings, id) => mechanicSettingOf(settings, id, defaultOf(id))
 }
 /**
  * 第三个读口（r751 CC-534）：派发器递给钩子的 store 读取器 `getMechanicSetting(id, fallback)`
@@ -69,18 +70,17 @@ export function mechanicSettingPanelReader(
  */
 export function mechanicSettingGetterReader(
   declared: () => ReadonlyArray<{ id: string; default: number }> | undefined,
-): (get: (id: string, fallback: number) => number, id: string, fallback?: number) => number {
+): (get: (id: string, fallback: number) => number, id: string) => number {
   const defaultOf = declaredDefault(declared)
-  return (get, id, fallback) => get(id, defaultOf(id, fallback))
+  return (get, id) => get(id, defaultOf(id))
 }
-/** 三个 reader 共用：显式 fallback 优先；否则惰性建「id → 声明 default」表；未声明 ⇒ 抛错 */
-function declaredDefault(declared: () => ReadonlyArray<{ id: string; default: number }> | undefined): (id: string, fallback?: number) => number {
+/** 三个 reader 共用：惰性建「id → 声明 default」表；未声明 ⇒ 抛错 */
+function declaredDefault(declared: () => ReadonlyArray<{ id: string; default: number }> | undefined): (id: string) => number {
   let defaults: Map<string, number> | undefined
-  return (id, fallback) => {
-    if (fallback !== undefined) return fallback
+  return id => {
     defaults ??= new Map((declared() ?? []).map(s => [s.id, s.default]))
     const d = defaults.get(id)
-    if (d === undefined) throw new Error(`[mechanicSetting] ${id} 未在模块 settings 声明且未给 fallback`)
+    if (d === undefined) throw new Error(`[mechanicSetting] ${id} 未在模块 settings 声明`)
     return d
   }
 }

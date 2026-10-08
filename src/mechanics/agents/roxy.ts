@@ -12,6 +12,7 @@ import type { CharacterResourceResult} from '@/types/resource'
 import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
+import { specAdjustableRate } from '@/specs/resources'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -95,13 +96,7 @@ export function roxyExEnergyCost(move: SkillMove | null | undefined): { start: n
   return { start: num('Energy Cost', 10), perSecond: num('Energy Cost Per Second', 30) }
 }
 
-/** spec `adjustable` 的比例统一钳到 `[0, 2]`（与 spec 声明的 min/max 同源；缺省 1 = 旧口径） */
-function clampRate(value: unknown): number {
-  const num = Number(value)
-  return Number.isFinite(num) ? Math.max(0, Math.min(2, num)) : 1
-}
-
-/** 两条 `adjustable` 的 id（spec 声明与本模块消费同源引用，规则 11 单一事实源） */
+/** 两条 `adjustable` 的 id（spec 声明与本模块消费同源引用，规则 11 单一事实源）；比例由 `specAdjustableRate` 按 spec 声明读（缺省值与区间） */
 export const ROXY_WIND_ENERGY_RATE_ID = '1621.roxy_wind_energy.wind_energy_per_30_energy.rate'
 export const ROXY_WIND_EYE_RATE_ID = '1621.roxy_wind_eye.wind_eye_from_cannon.rate'
 
@@ -118,16 +113,16 @@ export function computeRoxyWindEnergy(input: {
   ultimateCount?: number
   spinSeconds?: number
   cinemaLevel?: number
-  /** 风能转化率（spec `adjustable`，缺省 1）——缩放「每轮耗能」这一侧，见下 */
+  /** 风能转化率（spec `adjustable`，生产侧已按声明钳到区间；未传 = 1 不缩放）——缩放「每轮耗能」这一侧，见下 */
   energyRate?: number
-  /** 风眼转化率（spec `adjustable`，缺省 1）——缩放「风能 → 风眼」的生成数，见下 */
+  /** 风眼转化率（spec `adjustable`，生产侧已按声明钳到区间；未传 = 1 不缩放）——缩放「风能 → 风眼」的生成数，见下 */
   eyeRate?: number
 }): RoxyWindEnergySource {
   const exCount = Math.max(0, Math.floor(input.exSpecialCount))
   const spinSeconds = Math.max(0, Number(input.spinSeconds ?? 2.5))
   const cinema = cinemaLevelOf(input.cinemaLevel)
-  const energyRate = clampRate(input.energyRate)
-  const eyeRate = clampRate(input.eyeRate)
+  const energyRate = input.energyRate ?? 1
+  const eyeRate = input.eyeRate ?? 1
   // 每轮自旋耗能 = 自旋秒 × 30/s（+ 10 启动）；风能 = 每 25 能量 +1，手法按 3 点/轮攒满
   // ⚠ `ENERGY_PER_WIND_ENERGY = 25` 是**原文口径**（nanoka 3.2 raw 的 passive Lv.1~7 逐字 7 处
   // 「每消耗25点能量，获得1点[风能]」，3.3.3 构建同样 25）。spec `1621.json` 曾写「30」= 2026-08-04
@@ -173,7 +168,7 @@ export function computeRoxyWindEnergy(input: {
   // 未建模假设写进伤害数（R52 侦察的实测证据，见 `.claude/PROMPT-handoff-round52.md` §3）。
   // ⚠ 同样刻意**不**把 `WIND_EYE_MAX` 当总量上限用：那是「同时存在」上限，按总量钳会让
   // `sendOffCount` 从 38 塌成 3（R51 侦察实测）——属把时序约束误当总量约束，比不建模更错。
-  // @fact agent:1621/风眼时序 近似: 「同时存量≤9 / 30s 自然引爆」在默认手法下**结构性不可达**（单发风眼 ≤ WIND_ENERGY_MAX=3 < 9，且每发恕不远送清空队列）⇒ `sendOffCount = floor(windEyeGenerated/SEND_OFF_BURST_MAX)` 是精确解而非近似；天花板 = 滑块域 `eyeRate>4/3`（单发>3 ⇒ 9 上限咬合，本式高估）与 `spinSeconds<65/30`（局末余留眼被本式计成小旋风） | 据 nanoka 3.2 raw special.description[4]@2026-09-20·R52 全库 5702 次引擎求值零 delta@2026-09-20·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/roxyWindEyeTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 确认
+  // @fact agent:1621/风眼时序 近似: 「同时存量≤9 / 30s 自然引爆」在默认手法下**结构性不可达**（单发风眼 ≤ WIND_ENERGY_MAX=3 < 9，且每发恕不远送清空队列）⇒ `sendOffCount = floor(windEyeGenerated/SEND_OFF_BURST_MAX)` 是精确解而非近似；天花板 = 滑块域 `eyeRate>4/3`（单发>3 ⇒ 9 上限咬合，本式高估）与 `spinSeconds<65/30`（局末余留眼被本式计成小旋风） | 据 nanoka 3.2 raw special.description[4]@2026-09-20·R52 全库 5702 次引擎求值零 delta@2026-09-20·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/mechanics/__tests__/roxyWindEyeTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 确认
   // ⟳复核: 引擎若获得「逐发绝对时刻」通道（或在 eyeRate>1 滑块域落地真 FIFO 队列）时复核本近似边界 | 到期 2027-03-31
   const sendOffCount = Math.floor(windEyeGenerated / SEND_OFF_BURST_MAX)
   // ── 影画6 [余响]：**方向可证 / 幅度不可定**（R53 收口，取代 R52 的「方向未定」）────────────
@@ -201,7 +196,7 @@ export function computeRoxyWindEnergy(input: {
   //     留着有界近似更坏）⇒ 正解 = **保留上界 + 把幅度登记为 debt + 挂 ⟳复核**。
   //   ⚠ 与 R52 风眼那条的区别：风眼是**证明到不了**（结构性不可达 ⇒ 销号）；本条是**到得了但算不准**
   //     （有界高估 ⇒ 登记 debt）。**两者结论不同，别互相照抄。**
-  // @fact agent:1621/余响时序 近似: [余响] 每次恕不远送至多追加 2 次巨型风旋（原文「共额外生成2次」）⇒ `megaTornadoCount = sendOffCount × (1 + 2)` 是**所有自洽读法的共同上界**（4 读法 × 7 时长 × 全网格 4224 次求值零越界）⇒ 本式**单向高估、不可能低估**（纠正 R52-J1 的「方向未定」）；天花板 = 精确值需 [余响] 持续秒数 D 与「3s 节拍归属」（每实例 vs 单状态），二者**原文与全部可达外部源均未给出**（nanoka 中英双语、noun_3.2.3.json、fandom/prydwen/game8/hakush 全查不到）⇒ 合法区间实测 [17, 86]（默认夹具 n=43），落精确值必须编造 D | 据 nanoka 3.2 raw talent.6.desc@2026-09-20·R53 全库对账+4 读法穷举@2026-09-20·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/roxyEchoTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 高
+  // @fact agent:1621/余响时序 近似: [余响] 每次恕不远送至多追加 2 次巨型风旋（原文「共额外生成2次」）⇒ `megaTornadoCount = sendOffCount × (1 + 2)` 是**所有自洽读法的共同上界**（4 读法 × 7 时长 × 全网格 4224 次求值零越界）⇒ 本式**单向高估、不可能低估**（纠正 R52-J1 的「方向未定」）；天花板 = 精确值需 [余响] 持续秒数 D 与「3s 节拍归属」（每实例 vs 单状态），二者**原文与全部可达外部源均未给出**（nanoka 中英双语、noun_3.2.3.json、fandom/prydwen/game8/hakush 全查不到）⇒ 合法区间实测 [17, 86]（默认夹具 n=43），落精确值必须编造 D | 据 nanoka 3.2 raw talent.6.desc@2026-09-20·R53 全库对账+4 读法穷举@2026-09-20·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/mechanics/__tests__/roxyEchoTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 高
   // ⟳复核: 官方若补充 [余响] 持续秒数或 buff 表（可裁决「3s 节拍归属」）时，用真逐事件时间轴替换本上界并销 debt | 到期 2027-03-31
   // debt: 余响总量口径天花板 「每间隔3秒生成一次 / 共额外生成2次 / 次数叠加且刷新持续时间」是时序约束，
   // 总量口径只能给出**共同上界** `2×引爆数`（单向高估，已证不可能低估）；精确值需原文未给出的
@@ -305,8 +300,8 @@ function roxyWindEnergySourceOf(
     ultimateCount: state.ultimateCount,
     spinSeconds: Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds')),
     cinemaLevel: cinemaLevelOf(cfg.roxyCinemaLevel),
-    energyRate: cfgSetting(cfg, ROXY_WIND_ENERGY_RATE_ID, 1),
-    eyeRate: cfgSetting(cfg, ROXY_WIND_EYE_RATE_ID, 1),
+    energyRate: specAdjustableRate(cfg, ROXY_WIND_ENERGY_RATE_ID),
+    eyeRate: specAdjustableRate(cfg, ROXY_WIND_EYE_RATE_ID),
   })
 }
 

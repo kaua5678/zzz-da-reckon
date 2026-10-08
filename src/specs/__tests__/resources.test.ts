@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getAgentSpec } from '@/specs/registry'
-import { computeSpecResources } from '@/specs/resources'
+import { computeSpecResources, specAdjustableRate } from '@/specs/resources'
 import { calcDecibelSource } from '@/core/resource/resourceIncome'
 import { emptyPanel } from '@/core/panel'
 import { computeYidhariHpSource } from '@/mechanics/agents/yidhari'
@@ -105,6 +105,15 @@ describe('spec resource interpreter', () => {
     const purr = computeSpecResources(spec, cfg, state).get('nekomata_purr')!
     // 固定总量 60 × 倍率 2 = 120（不再随前台时间变化）
     expect(purr.gains['nekomata_frontline_gain']).toBe(120)
+  })
+
+  it('specAdjustableRate（CC-536）：手写模块按 id 读 spec adjustable——默认值与区间取声明，未声明抛错', () => {
+    const id = '1391.jufufu_weishi.jufufu_weishi_assist.rate'
+    expect(specAdjustableRate({}, id)).toBe(1)
+    expect(specAdjustableRate({ [`setting:${id}`]: 0.5 }, id)).toBe(0.5)
+    expect(specAdjustableRate({ [`setting:${id}`]: 5 }, id)).toBe(2)
+    expect(specAdjustableRate({ [`setting:${id}`]: -1 }, id)).toBe(0)
+    expect(() => specAdjustableRate({}, '1391.jufufu_weishi.nope.rate')).toThrow(/nope/)
   })
 
   it('猫又呼噜能量分配（2026-08-23 口供）：自动覆盖率 0 → 全 30 档，门控不建模', () => {

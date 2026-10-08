@@ -11,10 +11,10 @@ import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds, type SpecResourceResult } from '@/types/resource'
-import { computeSpecResources } from '@/specs/resources'
+import { computeSpecResources, specAdjustableRate } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
-import { cfgMechanicSetting, mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -460,7 +460,7 @@ export interface JufufuCycleInput {
    */
   teamUltimateCount?: number
   /**
-   * 两条 `adjustable`（spec 近似项）的比例：jufufuCycleOf 经 jufufuAdjustableRate 读入，未注入时为 1。
+   * 两条 `adjustable`（spec 近似项）的比例：jufufuCycleOf 经 `specAdjustableRate` 按 spec 声明读入（未注入 = 声明 default 1，钳到声明区间）。
    *
    * 归属：`1391.jufufu_weishi.jufufu_weishi_assist.rate` ⇒ `assistRate`（支援突击近似项）；
    * `1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate` ⇒ `teamUltRate`（影画2 队伍终结项）。
@@ -507,7 +507,7 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
   const huweiBlock = frontBlockSeconds(input.frontlineTime, input.frontActionCount, input.frontSwitchRatio, JUFUFU_HUWEI_INTERVAL)
   const huweiInterval = phaseDelayedCooldown(JUFUFU_HUWEI_INTERVAL, input.frontlineTime, input.effectiveTotalTime, huweiBlock)
   const huweiHits = Math.floor(backstage / huweiInterval)
-  // ⚠ 两条近似项各乘自己的 rate（R51 用户裁决「接线」）；未注入时 jufufuAdjustableRate 给 1 ⇒ 与旧口径逐位相同。
+  // ⚠ 两条近似项各乘自己的 rate（R51 用户裁决「接线」）；未注入时取 spec 声明 default 1 ⇒ 与旧口径逐位相同。
   const weishiGains: Record<string, number> = {
     jufufu_weishi_ex_special: ex * 3,
     jufufu_weishi_ultimate: ult * 6,
@@ -546,16 +546,7 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
   }
 }
 
-/**
- * 读 spec `adjustable` 注入的 `setting:<id>` 比例（`helpers.ts:630-633` 是唯一注入点）。
- *
- * ⚠ 非有限值 ⇒ 回退 `1`（= 旧口径），勿回退 0：0 会让「未注入」静默变成「整项归零」。
- */
-function jufufuAdjustableRate(cfg: unknown, id: string): number {
-  return Math.max(0, cfgMechanicSetting(cfg, id, 1))
-}
-
-/** 两条 `adjustable` 的 id（单一事实源：spec 声明与本模块消费同源引用，规则 11） */
+/** 两条 `adjustable` 的 id（单一事实源：spec 声明与本模块消费同源引用，规则 11）；比例由 `specAdjustableRate` 按 spec 声明读 */
 const JUFUFU_WEISHI_ASSIST_RATE = '1391.jufufu_weishi.jufufu_weishi_assist.rate'
 const JUFUFU_WEISHI_TEAM_ULT_RATE = '1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate'
 
@@ -626,8 +617,8 @@ function jufufuCycleOf(
     aweInitial: cfg.jufufuAweInitial ?? 0,
     c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
     teamUltimateCount: cfg.jufufuTeamUltimateCount,
-    assistRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
-    teamUltRate: jufufuAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
+    assistRate: specAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
+    teamUltRate: specAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
   })
 }
 

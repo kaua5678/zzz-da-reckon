@@ -1,11 +1,13 @@
 import type {
   CharacterOperationConfig,
   IterationState,
+  MechanicSetting,
   SpecResourceResult,
 } from '@/types/resource'
 import type { AgentMechanicSpec, ResourceRuleSpec, ResourceSpec } from './types'
 import { cfgMechanicSetting } from '@/utils/mechanicSettingCfg'
 import { readCfgField } from './cfgField'
+import { agentSpecs } from './registry'
 
 export interface SpecResourceContext {
   broadCycloneCount?: number
@@ -130,12 +132,36 @@ function applyAdjustable(
   cfg: CharacterOperationConfig,
   amount: number,
 ): number {
-  const adjustable = rule.adjustable
-  if (!adjustable) return amount
-  // 读口走协议单一来源（CC-511）：缺省 / 非有限取声明 default，再钳到声明区间——与此前私写的 Number(raw ?? default) 三元同值（null 不可达：写入侧恒为数字）
+  return rule.adjustable ? amount * adjustableRate(cfg, rule.adjustable) : amount
+}
+
+/**
+ * spec `adjustable` 比例的唯一读法（CC-511）：缺省 / 非有限取声明 default，再钳到声明区间
+ * （null 不可达：写入侧恒为数字）。解释器按规则自带的声明读；手写模块按 id 读，见 `specAdjustableRate`。
+ */
+function adjustableRate(cfg: unknown, adjustable: MechanicSetting): number {
   const raw = cfgMechanicSetting(cfg, adjustable.id, adjustable.default)
-  const rate = Math.max(adjustable.min ?? 0, Math.min(adjustable.max ?? Infinity, raw))
-  return amount * rate
+  return Math.max(adjustable.min ?? 0, Math.min(adjustable.max ?? Infinity, raw))
+}
+
+/** spec 声明的全部 `adjustable`（增益 / 消耗 / 反馈规则）；`specToMechanicModule` 把它们摊进模块 settings */
+export function specAdjustables(spec: AgentMechanicSpec): MechanicSetting[] {
+  return spec.resources
+    .flatMap(resource => [...resource.gainRules, ...resource.spendRules, ...(resource.feedbackGainRules ?? [])])
+    .flatMap(rule => (rule.adjustable ? [rule.adjustable] : []))
+}
+
+let adjustableById: Map<string, MechanicSetting> | undefined
+/**
+ * 手写模块自己算 spec 资源时按 id 读 `adjustable` 比例（洛克茜风能 / 风眼、橘福福威势；r753 CC-536）：
+ * 默认值与区间都取 spec 声明，与解释器同一读法；id 未在 spec 声明 ⇒ 抛错。
+ * 此前两处各手抄一份：橘福福 fallback 1 + 只钳下界，洛克茜 fallback 1 + 私有 `clampRate` 钳 [0, 2]。
+ */
+export function specAdjustableRate(cfg: unknown, id: string): number {
+  adjustableById ??= new Map(agentSpecs.flatMap(spec => specAdjustables(spec)).map(adjustable => [adjustable.id, adjustable]))
+  const adjustable = adjustableById.get(id)
+  if (!adjustable) throw new Error(`[specAdjustableRate] ${id} 未在 spec 声明`)
+  return adjustableRate(cfg, adjustable)
 }
 
 function resolveGainCount(
