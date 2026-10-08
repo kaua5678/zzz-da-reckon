@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。r758 做了 §22.8 的两条候选（佩洛伊斯模块 12 处事后赋值改回对象字面量，额外能力判定收口；getBaseElement 普查后只剩积蓄效率一处数值查找，改走 resolveStatElement；行为不变），见第 23 节（`e1400062` + `dd6c7835`，CC-541）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。r758 做了 §22.8 的两条候选（佩洛伊斯模块 12 处事后赋值改回对象字面量，额外能力判定收口；getBaseElement 普查后只剩积蓄效率一处数值查找，改走 resolveStatElement；行为不变），见第 23 节（`e1400062` + `dd6c7835`，CC-541）。r759 做了 §23.8 的第 1 条候选，普查后扩为同一条规则（删 16 个角色模块的额外能力 cfg 镜像字段，钩子一律读 additionalAbilityActiveOf(cfg.panel)；行为不变），见第 24 节（`6967a035`，CC-542）。
 
 ## 1. 问题
 
@@ -1686,7 +1686,7 @@ zd 两套快照都是 0/0，理由：
 - 不重跑 `gen-architecture-runtime.mjs`（它不在 verify 里）。
 - 回退：`git revert dd6c7835` 和 `git revert e1400062`。两个提交互不依赖，可以单独回退。
 
-### 23.8 下一轮候选（未做）
+### 23.8 下一轮候选（r759 做了第 1 条并扩为 16 个镜像字段，见 §24；第 2 条未做，转入 §24.8）
 
 1. **叶瞬光的额外能力镜像字段**
    - 现状：`mechanics/agents/yeshuguang.ts` 的 buildCharConfig 把 `panel.additionalAbilityActive` 原样抄进 `cfg.yeshuguangAdditionalAbilityActive`（:431）；`computeOutsideSwordGain` 再用 `Number(… ?? 0) > 0` 判断（:329）。
@@ -1694,6 +1694,118 @@ zd 两套快照都是 0/0，理由：
    - 连带改动：:889 的类型声明、yeshuguang.test 里 4 处夹具；CC-507 owner 注释的最后一条豁免也随之消失。
    - 先做：核对 computeOutsideSwordGain 的所有调用方，确认传进来的 cfg 都带 panel。
 2. **失衡内时间线的变种积蓄槽口径**
+   - 现状：主池把变种当作独立积蓄管（`core/anomalyPool.ts:276`）；`core/stunAxis/inStunAnomaly.ts` 却按基础元素归并积蓄槽和同元素刷新，触发 id 也按基础元素生成，存档里的 `suppressedTriggers` 引用的就是它。
+   - 先做：普查哪些队伍会在同一个失衡窗口里同时积蓄基础元素和它的变种（仪玄 + 以太队友、爱丽丝 + 物理队友），量出差异，再决定是否统一。
+   - 注意：改 id 格式要带存档迁移。
+
+## 24. 删额外能力的 cfg 镜像字段（r759，CC-542）
+
+> 代码提交 `6967a035`（纯重构，行为不变）（arena-G r759）；arch CC-542；r6 §8 第 759 行。题目来自 §23.8 第 1 条：普查发现叶瞬光只是 16 个同类镜像里的一个，按同一条规则一起删；第 2 条未做，转入 §24.8。
+
+### 24.1 普查
+
+- **面板标记与读口**
+  - `panel.additionalAbilityActive` 只在 `composables/resourceCalc/panelPhases.ts` 写一次（`evalAdditionalAbility(...) ? 1 : 0`），之后不再变；判定只有一个读口 `additionalAbilityActiveOf`（CC-507）。
+  - `cfg.panel` 与 buildCharConfig 的入参 `panel` 是同一个对象：`helpers.ts#buildCharConfig` 把同一个变量既写进 cfg 字面量，又传给模块的 buildCharConfig。src 里（测试除外）没有任何地方给 `.panel` 重新赋值；`convergence.ts`、`sigrid.ts` 的 `{ ...cfg }` 拷贝带着同一个引用。
+  - 所以模块抄进 cfg 的副本，在生产里恒等于面板标记。
+- **16 个镜像字段，20 处读口**
+
+| 写法 | 模块 | 读处 |
+|---|---|---|
+| 布尔：`cfg.xxxAdditionalActive = additionalAbilityActiveOf(panel)`，读 `=== true` | aire、anby、anbyZero、billy、corin、ellen、evelyn、hugo、koleda、phoenix、promia、seth、severian、vivian（14 个） | 18 处：cycleFromInput / cycleFromCfg、buildXxxExecutions / patchXxxExecutions、buildResourceResult、aireAbsolutePitchCount、anby 的 applyTeamConfig、evelyn 的 buildCharConfig |
+| 0 / 1：`additionalAbilityActiveOf(panel) ? 1 : 0`，读时再判 `Number(… ?? 0) > 0` | yaojiayin | yaojiayinTremolosOf |
+| 原始数值：`= panel.additionalAbilityActive`，自己判 `Number(… ?? 0) > 0` | yeshuguang | computeOutsideSwordGain（CC-507 owner 注释里最后一条豁免） |
+
+- **已经直接读 `cfg.panel` 的模块**：anton、harumasa、yidhari、佩洛伊斯（r758）。evelyn 的 cycleFromInput 在同一个对象字面量里，critRate 读 `cfg.panel`，额外能力却读副本。
+- **测试夹具**：12 个测试文件 26 处直接给副本。其中 anbyZero / evelyn / vivian 的夹具同时给 panel 和副本，两份要手工保持一致；其余只给副本、不给 panel，造的是生产里不会出现的状态。
+- **其他引用**：`data/recordings/1011.json` 安比并联电路条目的 gate 说明文字里写着 `cfg.anbyAdditionalActive`。docs 里只在历史记录中出现（本文 §12、§23.8，r6 §8 第 758 行）。
+- **不在本轮范围：spec 求值写进 cfg 的四个字段**
+  - alice、norma、liuyin、velina 在 buildCharConfig 里用 `specAdditionalAbilityActive(team, slot, agent)` 重新求值，结果写进 cfg（`aliceAdditionalAbilityActive`、`normaAdditionalAbilityActive`、`liuyinExtraAbilityActive`、`velinaAdditionalAbilityActive`）。
+  - 它们不是面板标记的副本。求值器与 panelPhases 是同一个（`evalAdditionalAbility` + spec `additionalAbility`），但 team 入参不同（`buildMechanicTeamMembers` 与面板阶段各建一份），两者是否恒等本轮没核。
+  - velina 的字段还被 `src/specs/agents/1561.json` 的 `enabledField` 按字段名从 cfg 读。
+
+### 24.2 问题
+
+- 同一个事实存了两份：面板标记一份，模块 cfg 一份。两者恒等的前提（同一个对象、标记写完不再变）没有写在任何地方，读代码的人得自己确认。
+- 规则不统一：4 个模块直接读 `cfg.panel`，16 个读副本；evelyn 同一个对象字面量里两种都有。
+- 每个副本都要单独声明类型（16 条 module augmentation）。新模块照抄现有模块，就会再多一条。
+- 测试夹具可以只给副本、不给面板，测的是生产里不可能的状态；两份都给的夹具要手工对齐。
+- yeshuguang 抄原始数值后自己判 `> 0`，yaojiayin 写成 0 / 1 后再判一次：判定规则在 owner 之外又多了两份。
+
+### 24.3 改法
+
+- **16 个模块**
+  - 删写入行和类型声明，20 处读口改为 `additionalAbilityActiveOf(cfg.panel)`。evelyn 的 buildCharConfig 内部直接用入参 `panel`。
+  - promia / severian 的 cycleFromCfg 入参 `Pick<…>` 里，把镜像字段换成 `'panel'`。
+  - 11 个 buildCharConfig 不再用到 `panel`，从解构里去掉（anbyZero、billy、corin、ellen、hugo、koleda、seth、severian、vivian、yaojiayin、yeshuguang）；yeshuguang 补 import。
+- **owner 注释**（`core/additionalAbilityActive.ts`）：删掉 yeshuguang 豁免，改写为「钩子直接读 `cfg.panel`（与入参 `panel` 是同一对象），不要把判定结果抄进 cfg」。
+- **12 个测试文件的夹具**
+  - 真值改为 `panel: { additionalAbilityActive: 1 }`；anbyZero / evelyn / vivian 原本就带 panel，只删副本。
+  - 原来显式写 false 的直接删掉（缺 panel ⇒ 未触发）。基座带 panel 的 billy / vivian，用覆盖 panel 的方式关掉。
+  - 断言一条没动，用例数不变。
+- **`data/recordings/1011.json`**：gate 说明改成现在的读口。只改说明文字，原文证据包不变。
+- **@fact 复核**：yeshuguang.ts 有两条 @fact（载物 / 局外连接段）锚在 computeOutsideSwordGain 上，本次改动触及了这个函数，zc drift 报待复核 2 条。逐条复核后口径不变（只换了额外能力的读口），追加「复核@2026-10-09（r759 只换额外能力读口）」，drift 回到 0。
+- **不加新源码锁**：cfg 副本已经删光，新模块照抄现有模块不会再带出这种写法；规则写在 owner 注释里。
+
+### 24.4 行为不变的证据
+
+- **等价**：每处读口换源前后读的是同一个对象的同一个字段（见 §24.1），所以没有打 HEAD 取值差探针。
+- **一次性新旧对照**
+  - 做法：用临时测试（已删）分别跑新旧两版。「旧」= 16 个模块换回 HEAD，测完用 cmp 核对已还原。
+  - 每个角色 3 个配置：额外能力触发 C0、触发 C6、未触发 C0。队友按 spec 条件从图鉴里确定性地挑出（id 升序的第一对），快照里核对了面板标记分别是 1 / 1 / 0。
+  - 对比的快照包括总伤害、全部伤害行、失衡次数、面板和 resourceResult。48 个快照新旧逐字节相同。
+
+| 角色 | 触发队（C0 / C6） | 未触发队（C0） | 快照 sha256 前 16 位：触发 C0 / 触发 C6 / 未触发 C0（新 = 旧） |
+|---|---|---|---|
+| 爱芮（aire，1501） | 1501 / 1011 / 1021 | 1501 / 1021 / 1041 | `d294593f92c2f1f2` / `9eb55b76c17706f5` / `bdda7d65e1b5f597` |
+| 安比（anby，1011） | 1011 / 1021 / 1031 | 1011 / 1041 / 1051 | `51a2ca67fa013c6c` / `7bc9bbc84ff79090` / `8bd6a291464e9522` |
+| 零号·安比（anbyZero，1381） | 1381 / 1011 / 1021 | 1381 / 1021 / 1041 | `8ffd2eea50cd0c02` / `7eddcac07a933472` / `b6a6d2b4bd0107e0` |
+| 比利（billy，1081） | 1081 / 1011 / 1021 | 1081 / 1041 / 1051 | `d7b521a6e77edbef` / `2e9bb2f245a0e24d` / `dff95fba1bedd672` |
+| 可琳（corin，1061） | 1061 / 1011 / 1021 | 1061 / 1011 / 1031 | `4918da908badfd29` / `87d309ba1d774763` / `244ed29f810c43d1` |
+| 艾莲（ellen，1191） | 1191 / 1011 / 1021 | 1191 / 1021 / 1031 | `69faa562907eb166` / `b17febe11a034b00` / `bdfaf67bb85833ea` |
+| 伊芙琳（evelyn，1321） | 1321 / 1011 / 1021 | 1321 / 1021 / 1041 | `afaa868519c616cb` / `12702a205cdcc5ee` / `6c40dd08499be3c6` |
+| 雨果（hugo，1291） | 1291 / 1011 / 1021 | 1291 / 1021 / 1031 | `f6f6ade1c4637398` / `b969771f535bfa43` / `43641fc8200258a7` |
+| 珂蕾妲（koleda，1101） | 1101 / 1011 / 1041 | 1101 / 1011 / 1021 | `14ce05293d66170f` / `e007c810b82674b4` / `720bb2698171ef06` |
+| 菲尼克斯（phoenix，1641） | 1641 / 1011 / 1091 | 1641 / 1011 / 1021 | `ded47f7ef39b9062` / `0f4b9e5eedd66b8d` / `31aeb35b9a2e53bd` |
+| 普罗米娅（promia，1541） | 1541 / 1011 / 1031 | 1541 / 1011 / 1021 | `dcafe37af036a65d` / `48cbad4904743e94` / `11f2dc786d530f20` |
+| 赛斯（seth，1271） | 1271 / 1011 / 1021 | 1271 / 1021 / 1031 | `0d79c4a9230424f2` / `26fde7eb5cbc2908` / `b384839f785830f1` |
+| 塞维林（severian，1631） | 1631 / 1011 / 1021 | 1631 / 1021 / 1041 | `ffec37f8af0948d1` / `0b643ce1e9a78b46` / `a264757e740ece20` |
+| 薇薇安（vivian，1331） | 1331 / 1011 / 1031 | 1331 / 1011 / 1021 | `320a7e429bec88c0` / `f59157a4c998ed5e` / `949250a0ca5bd03d` |
+| 耀嘉音（yaojiayin，1311） | 1311 / 1011 / 1021 | 1311 / 1011 / 1031 | `03663b286e39759d` / `083bbd5c296999ef` / `bb314819d56c51e3` |
+| 叶瞬光（yeshuguang，1431） | 1431 / 1011 / 1031 | 1431 / 1011 / 1021 | `7ad9e597cc97d972` / `0df76d73a0c5e376` / `9cb43116fce97700` |
+
+- **zd DUMP 0 / ROWS 0**：zd 预设覆盖了其中 8 人（aire、anbyZero、ellen、evelyn、promia、vivian、yaojiayin、yeshuguang）；另外 8 人只靠上面的对照。
+
+### 24.5 反证（已还原，cmp 核对）
+
+- **20 处新读口全部取反**，再跑同一组对照：48 个快照全部变化。其中 4 个未触发配置（1381、1191、1271、1631）总伤害不变，但伤害行或资源结果变了。这说明对照覆盖到了每一处读口。
+- 夹具改走 panel 后，测试仍分别断言了触发与未触发两侧（如叶瞬光局外剑势：帷幕 2 次，触发时计 +6，未触发时计 0），说明测试也是经 panel 驱动门控的。
+
+### 24.6 验证
+
+- vue-tsc -b --force 0。
+- 相关测试 267 个文件 / 2472 例全过（mechanics 全目录，以及引用这 16 个角色、额外能力、录入档案的测试）。
+- check-guards 29（扫 298 个文件）；zc+checkGuards 207；tokens / data / specs / recording 12 / 161 / 462 / 189。
+- vitest 258/2156 + 262/2348 = 520 文件 / 4504 例，与基线相同。
+- zd DUMP 0 / ROWS 0。
+- build index 1593.46 kB（gzip 463.80，比基线少 1.01 kB）。
+- drift 154 / 0 / 0（复核前待复核 2 条，见 §24.3），触发器逾期 0、未到期 10。
+
+### 24.7 不做与回退
+
+- spec 求值写进 cfg 的四个字段（alice / norma / liuyin / velina）不动，见 §24.1，转 §24.8。
+- 面板上另有两个模块自己写的扩展字段（`panel.velinaAdditionalAbilityActive`、`panel.miyabiAdditionalAbilityActive`），不是面板标记的副本，本轮没有普查。
+- 不加新源码锁，理由见 §24.3。
+- 历史记录（本文 §12、§23.8，r6 §8 第 758 行）里出现的镜像字段名保留原样。
+- 回退：`git revert 6967a035`。
+
+### 24.8 下一轮候选（未做）
+
+1. **spec 求值写进 cfg 的四个额外能力字段**
+   - 现状：alice / norma / liuyin / velina 在 buildCharConfig 里用 `specAdditionalAbilityActive(team, slot, agent)` 再求一次，写进 cfg。`mechanics/additionalAbilityGates.ts` 的注释说这个函数给「拿不到面板标记的钩子（buildCharConfig / teammateBuffGate 等）」用，但 buildCharConfig 其实拿得到（入参 `panel` 就是 `cfg.panel`）。norma 在 applyPanel 里也已经读 `additionalAbilityActiveOf(panel)`。
+   - 先做：核对 `buildMechanicTeamMembers` 与面板阶段的 team，在 evalAdditionalAbility 用到的字段（slot、agentId、agent 的 specialty / faction / attribute）上是否恒等。恒等就改读 `additionalAbilityActiveOf(cfg.panel)` 并删字段，同时改正那条注释。
+   - 注意：velina 的字段被 `src/specs/agents/1561.json` 的 `enabledField` 按字段名从 cfg 读，要和 spec 一起改，或者保留字段、只换写入来源。
+2. **失衡内时间线的变种积蓄槽口径**（§23.8 第 2 条，内容不变）
    - 现状：主池把变种当作独立积蓄管（`core/anomalyPool.ts:276`）；`core/stunAxis/inStunAnomaly.ts` 却按基础元素归并积蓄槽和同元素刷新，触发 id 也按基础元素生成，存档里的 `suppressedTriggers` 引用的就是它。
    - 先做：普查哪些队伍会在同一个失衡窗口里同时积蓄基础元素和它的变种（仪玄 + 以太队友、爱丽丝 + 物理队友），量出差异，再决定是否统一。
    - 注意：改 id 格式要带存档迁移。
