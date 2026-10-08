@@ -117,8 +117,8 @@ export function signatureWEngineId(catalog: ReturnType<typeof useCatalogStore>, 
  * 队伍对比防的是同一个坑：`computeAutoEnginePicks` 与 `computeOptimalGoldAllocations` 的基础音擎
  * 只认 `preset.wEngines`、不回读 store。
  *
- * ⚠ **也不能裸奔**：空音擎实测比专武本体低 **34–41%**（探针 `freeCompareDowngradeProbe.test.ts`
- * 三角色实测：柏妮思 −39.4% / 菲欧妮 −34.4% / 维琳娜 −41.2%）—— 那不是「没抽专武」，
+ * ⚠ **也不能裸奔**：空音擎实测比专武本体低 **34–41%**（一次性探针三角色实测：柏妮思 −39.4% /
+ * 菲欧妮 −34.4% / 维琳娜 −41.2%；探针 r736 已删，原文见 `b3603215`）—— 那不是「没抽专武」，
  * 那是「没带武器」，两者差着一个量级，混起来读会让整个无专武档失真。
  * ⇒ 用户口径 2026-09-15「右位 0 = 用了下位武器，比如 A 级武器」= 必须穿一件下位。
  *

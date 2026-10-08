@@ -12,7 +12,7 @@
  *   PROBE_AGENT=1371 PROBE_ENGINE=14132 PROBE_MOD=5 PROBE_CINEMA=6 PROBE_FOUR=32700 PROBE_TWO=31000 npm run probe:panel
  *
  * 默认口径：音擎=专武(ownerAgentId 反查) 精炼1 · 命座0 · 主词条/套装=配装推荐 · 副词条空。
- * 未设 PROBE_AGENT 时空跑（普通 vitest run 不输出、不污染测试结果）。
+ * 未设 PROBE_AGENT 时跳过（`it.runIf`，与其余探针同一写法；普通 vitest run 不输出、不污染测试结果）。
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -72,8 +72,7 @@ function buildProbeInput() {
 }
 
 describe('引擎探针：面板事实源', () => {
-  it(probing ? `probe ${probeAgent}` : '未设 PROBE_AGENT 时空跑（用法见文件头注释）', () => {
-    if (!probing) return
+  it.runIf(probing)('按 PROBE_AGENT 打印面板（用法见文件头注释）', () => {
     const { agent, wEngine, driveDiscConfig } = buildProbeInput()
     const setsMap = new Map(catalog.driveDiscSets.map(s => [s.id, s]))
     const result = calcPanel(agent, wEngine, driveDiscConfig, setsMap, [], catalog.statRules, {
