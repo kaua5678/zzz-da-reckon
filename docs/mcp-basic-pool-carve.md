@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。
 
 ## 1. 问题
 
@@ -678,7 +678,7 @@ zd（不丢键）两次都是 DUMP 0 / ROWS 0：`983c4b10` 对 `3166475a`，`f50
 - 顺带修正 r746 / r747 写坏的表格行：r6 §8 第 746、747 行和 CC-529 的正文里有未转义的 `|`（如 `Pick<…, 'frontlineTime' | 'backstageTime'>`），GFM 会把一行拆成多余的列并丢掉超出的部分。只把正文里的 `|` 改成 `\|`，文字不变。r705 / r723 / r726 / r731 也有同样的问题，一并改了。别的 lane 的行不动。
 - 回退：`git revert f50f0924`、`git revert 983c4b10`。两个提交改的是不同的代码块，可以各自单独回退。文档另有提交。
 
-### 13.8 下一轮候选（未做）
+### 13.8 下一轮候选（r749 已做，见 §14）
 
 1. **设置项的缺省值写了两处，读法也有两种。**
    - 声明里有 default，读取处又写一遍 `Number(cfgMechanicSettingRaw(cfg, id) ?? D)`。例：jufufu.frontSwitchRatio 两处都是 0.7。全仓这种读法 23 处、11 个文件（`f50f0924` 复数过）。
@@ -691,3 +691,100 @@ zd（不丢键）两次都是 DUMP 0 / ROWS 0：`983c4b10` 对 `3166475a`，`f50
 另记（小，未立题）：
 
 - computeJufufuCycle 剩下的 `Math.max(0, …)`：backstageTime 来自 effectiveBackstageTime，已经钳到 ≥ 0；aweInitial / c2WeishiPerUlt 来自 cfg 的 `?? 0`。要删，得先证明每个来源都非负（§13.7）。
+
+## 14. r749：设置项缺省值只留在声明（删 cfgMechanicSettingRaw）
+
+> 代码提交 `1c8b10d3` + `0532dc80`（trigger），两次 zd 都是 0/0（arena-G r749）；arch CC-532；r6 §8 第 749 行。题目是 §13.8 的候选。
+
+### 14.1 问题
+
+- CC-508 / CC-510 已把「settings 声明 default，读取处再手抄一遍」收进模块 reader（`mechanicSettingReader` / `mechanicSettingPanelReader`），并加了源码锁。锁只认两种写法：`reader(x, 'a.b', 数字)` 和 `settings['a.b'] ?? 数字或常量`。
+- CC-363（r393）为收口 `'setting:…'` 字面量，把 24 处读法改成 `Number(cfgMechanicSettingRaw(cfg, id) ?? D)`（当时为零差，外层原样保留）。这种写法不在锁里，默认值仍写两处。按 cfgMechanicSettingRaw 的调用点数，实为 24 处、12 个模块（§13.8 记的「23 处、11 个文件」少了一处）。
+- 普查（`look-a.py`，0e07fc8d）：20 处 D 与声明相同；另有 4 处不同——
+
+| 设置项 | 读取处的 D | 声明 | 说明 |
+|---|---|---|---|
+| caesar.c4SubstitutionCount | 0 | 5 | 99e666b0（08-28「凯撒C4默认5次」）只改了声明和描述，读取处和「默认 0」的注释没跟着改 |
+| yidhari.exPerStun | 影画 ≥ 1 取 3，否则 2 | 2 | 描述写「1命可连续释放默认3次」，实际一直按 2 算 |
+| yeshuguang.formAxis | 缺键当 'auto'，另兼容 'full' 等字符串 | 0（打满） | R2C 裁决（09-25）：默认打满，只有用户显式设 -1 才自动退化 |
+| remielle.frontSwitchRatio | 1 | 无声明 | 用户没有滑块可调，生产里恒为 1 |
+
+- 为什么生产结果不受影响：引擎 `buildCharConfig`（`resourceCalc/helpers.ts:488–492`）对 `getAgentMechanic(agent.id).settings` 逐项调用 `writeMechanicSettingCfg(cfg, id, configStore.getMechanicSetting(id, default))`，先于模块的 buildCharConfig。store 的 `mechanicSettingOf` 只放行有限数字，否则给声明的 default。所以读取处的 D 只对手搭 cfg 的单测生效，叶瞬光的字符串分支在生产里走不到。
+
+### 14.2 运行时探针（打在 HEAD 版 cfgMechanicSettingRaw 上，已还原）
+
+记录读到「不是有限数字」的值：设置项 id、读到的值、前两帧调用栈，按进程去重。跑全量 vitest 两片和 zd。
+
+- zd：只有 `remielle.frontSwitchRatio = undefined`（没有声明，生产里恒为 1，改成常量后等价）。
+- vitest（去重后 65 条）：
+  - 缺键的站点：remielle 24 条，soukaku.chopSlam 8 条，vivian 两项各 5 条，soukaku.exPressCount 3 条，qianxia / nekomata / jufufu / anton / orphie.frontSwitchRatio 各 2 条，orphie 另两项各 1 条。这些站点的 D 都等于声明值，改走 reader 后结果不变。
+  - 那 4 个不一致的 id 里：caesar 只有 `caesar.test:61` 缺键（断言「默认滑杆 0 → 不生成」，靠的就是读取处那个过时的 0）；yeshuguang 只有 `yeshuguang.test:331` 传了字符串 'full' / 'short_mie'（「手动指定轴时自动退化不介入」那个循环）；yidhari 一条都没有（单测里读到的都是已预填的数字）。
+  - 另 3 条来自锁测试自己的 Raw 语义用例。
+
+### 14.3 改法（`1c8b10d3` 18 个文件 +78 / −89；`0532dc80` 1 个文件 +2 / −5）
+
+- 11 个模块改用模块 reader（vivian、yeshuguang 复用已有的；新建的统一叫 `setting`；specPanelBuffs 同一文件里有两个模块，叫 `jufufuSetting`）。随之删掉 reader 已经保证过的东西：`Number()` 包裹、qianxia 的 `|| 0`、anton 的 typeof 分支、nekomata 和 miyabi 的 `Number.isFinite` 兜底（miyabi 那处兜底又写了一遍默认值 1）。
+- remielle：直接传 1，注释改成「蕾米没有切上频率滑块，频率固定 1」。将来要做成可调，就在 settings 里声明再改用 reader——那是新功能，本轮不做。
+- yeshuguang：两处各自解析滑块值（cfgAxis 和 estimateExSpecialTime 的 isAuto），合成一个 `axisSettingOf`：0 / 1 / 2 分别是打满 / 灭极短轴 / 仅灭短轴，其余（-1）是自动。删掉字符串兼容。
+- yidhari：exPerStun 的描述改成「默认 2 次；1命可连续释放，请按实际调到 3 次」，与实际计算一致。
+- caesar：「默认 0（凯撒为支援，默认不假定能量饥饿）」的注释改为「次数默认值见 settings 声明」。
+- piper：applyPanel 里 `Number(settings['piper.momentumCoverage']` 换行 `?? PIPER_BUILDUP_COVERAGE_DEFAULT)` 是 CC-510 的裸索引写法，只因折成两行，逐行匹配的锁没扫到（`look-b.py` 普查全 agents，只有这一处）。改走 panel reader。
+- utils：删 `cfgMechanicSettingRaw`。`mechanics/types.ts` 里 `AgentPanelInput.settings` 的注释示例原来教的正是被锁的 `settings['banyue.rageGainCoverage'] ?? 1`，改成 reader 写法。
+- 锁（CC-508/510 那条）：
+  - 改为整文件匹配：注释先换成等长空白，行号不变，`\s` 可以跨行；
+  - fallback 写常量也算（原来调用形只认数字）；
+  - reader 名带前缀也算（`\w*[sS]etting(?:Of)?`，覆盖 jufufuSetting / peiluoSettingOf）。
+- 单测：
+  - caesar.test「滑杆 0 → 不生成」改为显式设 0；用例名去掉「默认 0」。
+  - yeshuguang.test 的手动轴循环删掉两个字符串值。
+  - 锁测试删掉 cfgMechanicSettingRaw 的语义用例（−1 例）。
+- trigger（`0532dc80`）：本地 `cfgSetting(cfg, id)` 包装对所有 id 统一 fallback 0，换成模块 reader。CC-508 当时把它当「动态 id 读口」保留，其实三个调用点（:223–225）都是字面 id，声明的 default 也都是 0，行为不变。
+- 两条 @fact（agent:1131/强特、agent:1431/自动选轴）的锚函数这次动过，drift 报「待复核 2」。逐条核对：击数滑块默认 2、默认打满且只有显式设 -1 才退化，都仍成立；「据」追加 复核@2026-10-08，drift 回到 154/0/0。
+
+### 14.4 反证
+
+在改后的代码上临时写回三种写法，跑锁测试，三处全报：
+
+- piper 的两行裸索引形 → `piper.ts:118`；
+- `jufufuSetting(cfg, 'jufufu.frontSwitchRatio', 0.7)` → `specPanelBuffs.ts:621`；
+- `setting(cfg, 'soukaku.exPressCount', SOUKAKU_SWINGS_DEFAULT)` → `soukaku.ts:81`。
+
+已还原并逐字节比对。旧锁在 HEAD 上是绿的，而 HEAD 里就有 piper 那处两行写法，说明逐行匹配确实漏了它。
+
+### 14.5 零差
+
+zd 两套快照都是 0/0。yidhari 描述文案不在 zd 输出里，不加 ZD_DROP 也是 0/0。生产里每个设置都由引擎预填成数字，读取处的 D 从来用不上（§14.2）。
+
+### 14.6 验证
+
+| 项 | 结果 |
+|---|---|
+| vue-tsc | 0 |
+| guards | 29 条全过，扫 298 个文件 |
+| zc.test + checkGuards.test | 207 |
+| tokens / data / specs / recording | 12 / 161 / 462 / 189 |
+| zd | 两次都是 0/0（第二次以 `1c8b10d3` 为基准） |
+| vitest | 258 / 2155 + 262 / 2347 = 520 文件 / 4502 例（比基线少 1 例，就是删掉的 Raw 语义用例；跳过 13 / 26 不变） |
+| build | 1598.02 → 1597.70 → 1597.69 kB（index-CQTHSbb6.js，gzip 464.59） |
+| drift | 154 / 0 / 0；触发器逾期 0、未到期 10 |
+
+### 14.7 不做、口径待定与回退
+
+- 不给蕾米加切上频率滑块：属于新功能，没人提过。
+- yidhari「1 命默认 3 次」只记为口径待定，本轮不实现。要实现，协议得支持随影画变化的默认值，或者给「用户没设」留一个哨兵值；severian.ts:139 也写过协议分不出「用户设了」和「默认值」。本轮只把描述改成和实际计算一致。触发条件：用户提出 1 命应默认 3 次。
+- specs/resources.ts:136 保留显式 fallback：id 来自遍历 spec 的 adjustable，fallback 就是 `adjustable.default`，没有重复。
+- jufufuAdjustableRate 的 `cfgMechanicSetting(cfg, id, 1)` 保留：这两条比例在 spec 的 adjustable 里声明，只有经过 `mechanics/index.ts` 的 registerWithSpecSettings 注册后才会并进 `jufufuTigerRoarMechanic.settings`。直接 import 模块的单测没有注册，换成 reader 会抛「未声明」。
+- 回退：`git revert 0532dc80`、`git revert 1c8b10d3` 可以各自单独回退，生产结果不变。
+
+### 14.8 下一轮候选（未做）
+
+1. **设置的镜像字段把默认值又写了第三份。**
+   - 有些模块在 buildCharConfig 里把设置值写进 cfg 字段，别的钩子再用 `cfg.字段 ?? D` 读。例：
+     - yidhari 写 `cfg.yidhariExPerStun`，`yidhari.ts:161` 和 `:379` 两处读 `cfg.yidhariExPerStun ?? 2`；
+     - piper 写 `cfg.piperMomentumCoverage`，`piper.ts:105` 读 `?? PIPER_BUILDUP_COVERAGE_DEFAULT`。
+   - 生产里 buildCharConfig 总是先跑，这个 D 和 §14.1 的情况一样，只对手搭 cfg 的单测生效。
+   - 下一步：
+     - 普查 agents 里「由设置值写入、别处带 `?? D` 读取」的字段，以及 D 是否等于声明；
+     - 在 HEAD 版打探针，确认生产里读取时字段总是已写入；
+     - 再决定是改成必填字段，还是读取处直接用 reader。
+2. （小）jufufuAdjustableRate 的 1 与 spec adjustable 的 `"default": 1` 重复（§14.7）。要去掉，得先有一个不依赖注册顺序、也能拿到 spec 声明的读法。只有一处，单独不立题，可以并进第 1 条一起看。
