@@ -88,8 +88,6 @@ function applyMiyabiPanel({ slot, cinemaLevel, team, panel, settings }: AgentPan
   // （原手写判定把同阵营臂写成同角色 id 的漂移史见 miyabiAdditionalAbility.test.ts）。
   const aa = additionalAbilityActiveOf(panel)
   const hasWind = hasWindTeammate(team, slot)
-  // 标记风队伍状态（用于霜灼buff覆盖率）
-  panel.miyabiHasWindTeammate = hasWind ? 1 : 0
 
   // 面板级机制全部在 applyPanel 静态算（2026-09-01 架构修复：面板静态、循环只算招式/资源；
   // 曾由 transformSkillExecutions 每轮写面板 → 收敛轮间累积成 anomalyBuildUpEfficiency 600）。
@@ -135,8 +133,7 @@ function applyMiyabiPanel({ slot, cinemaLevel, team, panel, settings }: AgentPan
     panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + iceFlameBonus
   }
   // 核心被动「霜灼状态：所有单位积蓄 +20%」已迁到 `teamPanelEffects`（F2 裁决 2026-09-25：
-  // 原文「所有单位」= 全队，不是只写雅本人）。本槽的 `miyabiHasWindTeammate` 标记在此已写好，
-  // 供 teamPanelEffects 复用门控。
+  // 原文「所有单位」= 全队，不是只写雅本人）；风队门控在那里直接调 `hasWindTeammate`。
 }
 
 // ============ buildCharConfig ============
@@ -377,17 +374,16 @@ export const miyabiMechanic: AgentMechanicModule = {
    * F2 用户裁决 2026-09-25：原文「所有单位」= 全队，不是只写雅本人——从 `applyPanel`
    * （只写雅面板）迁入本钩子，对全队每个槽位统一 +20%（含雅本人：雅在 `team` 里，
    * 派发到自己槽位时同吃）。风队门控沿用（风化状态不被覆盖，霜灼无法触发 ⇒ 覆盖率为 0），
-   * 读目标槽面板上的 `miyabiHasWindTeammate` 标记——该标记由本模块 `applyPanel` 写入，
-   * 本钩子在其后跑（契约：先自己的、再别人的）。
+   * 与 `applyPanel` 同源调 `hasWindTeammate(team, slot)`（`slot` 是雅自己的槽位，见下方 CC-335 注）。
    *
    * 与 spec teamBuff `miyabi_c1_team_buildup`（影画一 +20%）是**两条独立 +20%**，可叠加：
    * 无风队里 C1 激活时每名队友与雅本人各 +40%（F1 裁决：核心被动与影画一在雅身上叠加为 +40）。
    * 契约见 `AgentTeamPanelEffectInput`（本钩子只允许可交换的加法 `+=`）。
    */
   teamPanelEffects: ({ slot, team, panel }: AgentTeamPanelEffectInput): void => {
-    // CC-335：panel 是 targetSlot 的面板，而 applyMiyabiPanel 只把 miyabiHasWindTeammate 写在雅自己的面板上
-    // ⇒ 队友槽 panel.miyabiHasWindTeammate 恒为 undefined，有风队时队友误吃 +20%。直接与 applyMiyabiPanel 同源调 hasWindTeammate(team, slot)。
-    if (hasWindTeammate(team, slot) || (panel.miyabiHasWindTeammate ?? 0) === 1) return
+    // CC-335：panel 是 targetSlot 的面板，原先读的风队标记只写在雅自己的面板上 ⇒ 有风队时队友误吃 +20%。
+    // 改为与 applyMiyabiPanel 同源调 hasWindTeammate(team, slot)。r762 删掉那个面板标记：它只剩这里一个读者，且恒被前一条蕴含。
+    if (hasWindTeammate(team, slot)) return
     panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + FROSTBURN_TEAM_BUILDUP_BONUS
   },
   buildCharConfig: buildMiyabiCharConfig,
@@ -470,8 +466,6 @@ export interface MiyabiFrostFallSource {
  */
 declare module '@/types/catalog' {
   interface PanelValues {
-    /** 队伍里是否有风属性队友（0/1）：霜灼 buff 覆盖率用 */
-    miyabiHasWindTeammate?: number
     /** 冰焰覆盖率：与积蓄效率增量同块写入；测试读 */
     miyabiIceFlameCoverage?: number
   }

@@ -52,7 +52,7 @@ describe('星见雅滑块生效差分（防守卫冻结，SOP §3.5：改滑块�
     // 核心被动「所有单位 +20%」已迁到 teamPanelEffects（F2 裁决 2026-09-25 改全队），
     // 直接调 applyPanel 不再含这 +20；该条由 C1 全队用例与霜灼全队行为另行覆盖。
     const efficiencyFor = (coverage: number, critRate = 20) => {
-      const panel: any = { critRate, anomalyBuildUpEfficiency: 0, miyabiHasWindTeammate: 0 }
+      const panel: any = { critRate, anomalyBuildUpEfficiency: 0 }
       miyabiMechanic.applyPanel!({
         slot: 0, agent: null, cinemaLevel: 0, team: [],
         panel, settings: { 'miyabi.iceFlameCoverage': coverage },
@@ -66,7 +66,7 @@ describe('星见雅滑块生效差分（防守卫冻结，SOP §3.5：改滑块�
     expect(off).toBeCloseTo(20 * 0.2, 1)
     expect(on - off).toBeCloseTo(20 * 0.6, 1)
     // 面板链路原点：setting 经 resolveMechanicSettings → applyPanel 静态算 coverage
-    const p2: any = { critRate: 20, anomalyBuildUpEfficiency: 0, miyabiHasWindTeammate: 0 }
+    const p2: any = { critRate: 20, anomalyBuildUpEfficiency: 0 }
     miyabiMechanic.applyPanel!({
       slot: 0, agent: null, cinemaLevel: 0, team: [],
       panel: p2, settings: { 'miyabi.iceFlameCoverage': 0.8 },

@@ -695,8 +695,8 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
   })
 
   it('★ yixuanFlashBonus 是 `+=`：在 buildCharConfig 已写值之上累加（不是覆盖）', () => {
-    // ⚠ `teamUltimateFlashBonus` 读的是**本槽 cfg**（buildCharConfig 按队伍职业写），不是 characters
-    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60, invincibleTime: 0, teamUltimateFlashBonus: 20 }
+    // ⚠ 极限支援的门控读**本槽 cfg.panel** 的额外能力标记（面板阶段按 spec 1371 写），不是 characters
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 70, battleTime: 60, invincibleTime: 0, panel: { additionalAbilityActive: 1 } }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       axis: axisOf({ axes: [], windows: [] }),          // 轴内时间 0 ⇒ 非轴臂
       threads: { moduleFeedback: { auricInkTriggers: 4 } } as never,
@@ -709,7 +709,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
   })
 
   it('★ yixuanFlashBonus 的轴/非轴两臂：轴内时间 vs 有效战斗时间（60/6=10 ⇒ 轴内 24/6=4）', () => {
-    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 0, battleTime: 60, invincibleTime: 12, teamUltimateFlashBonus: 20 }
+    const cfg: Cfg = { slot: 0, agentId: '1371', yixuanCinemaLevel: 1, yixuanFlashBonus: 0, battleTime: 60, invincibleTime: 12, panel: { additionalAbilityActive: 1 } }
     getAgentMechanic('1371')!.applyTeamConfig!(hookInput(cfg, {
       // 轴内时间 = Σwindows(2) × windowSeconds(12) = 24 ⇒ floor(24/6) = 4
       axis: axisOf({ axes: [], windows: [2], windowSeconds: 12 }),
@@ -826,7 +826,7 @@ describe('1371 仪玄：8 字段（axis 4 + threads 2 + interactions 1 + interac
     expect(cfg.yixuanAxisCloudSeconds).toBeUndefined()
     expect(cfg.yixuanAxisActive).toBeUndefined()
     expect(cfg.yixuanAnomalyTriggerFlash).toBeUndefined()
-    // 缺 threads ⇒ 玄墨项按 0 计（`?? 0`）；本槽未设 `teamUltimateFlashBonus` ⇒ 极限支援恒 0。
+    // 缺 threads ⇒ 玄墨项按 0 计（`?? 0`）；本槽面板没有额外能力标记 ⇒ 极限支援恒 0。
     // ⇒ flashBonus = 70(基线) + 0(玄墨) + 0(极限支援) + floor(60/6)×5(C1 非轴臂) = 70 + 50 = 120
     expect(cfg.yixuanC1LightningCount, '缺 axis ⇒ 非轴臂 floor(有效战斗时间/6)').toBe(10)
     expect(cfg.yixuanFlashBonus).toBe(120)

@@ -543,7 +543,8 @@ function resolveYixuanExtremeAssists(
   assistCap: number,
   rawInput: unknown,
 ): number {
-  if ((cfg.teamUltimateFlashBonus ?? 0) <= 0) return 0
+  // 额外能力未触发 ⇒ 没有极限支援落雷。只读面板标记（r762 前借效果值 teamUltimateFlashBonus 推断，它只在标记为真时写入）
+  if (!additionalAbilityActiveOf(cfg.panel)) return 0
   const cap = Math.max(0, Math.floor(assistCap))
   const assistInput = Math.max(-1, Math.floor(Number(rawInput ?? -1)))
   return Math.min(assistInput >= 0 ? assistInput : cap, cap)
