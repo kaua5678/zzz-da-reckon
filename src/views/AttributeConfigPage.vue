@@ -313,7 +313,7 @@ import { useStatLabel } from '@/composables/useStatLabel'
 import { getGlobalBuffStatOptions } from '@/utils/statMeta'
 import { localized } from '@/utils/format'
 import { damageElementLabel } from '@/utils/agentLabelMaps'
-import { STANDARD_ENEMY_DEBUFF_ELEMENTS } from '@/utils/enemyDebuffStats'
+import { STANDARD_ENEMY_DEBUFF_ELEMENTS, type StandardEnemyDebuffElement } from '@/utils/enemyDebuffStats'
 import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import { isTeammateBuffInteractive, declaredOnlyReason } from '@/utils/teammateBuffRows'
 import { phaseBuffCondLabel } from '@/utils/phaseBuff'
@@ -366,11 +366,12 @@ const resistanceGroups = [
   { key: 'anomaly' as const, label: '积蓄抗性' },
 ]
 
-function getResistance(kind: 'damage' | 'stun' | 'anomaly', element: string): number {
+// 三张表都是 ResistanceTable（六键齐全，r756 CC-539），按 6 元素读不兜底
+function getResistance(kind: 'damage' | 'stun' | 'anomaly', element: StandardEnemyDebuffElement): number {
   const enemy = configStore.enemy
-  if (kind === 'damage') return enemy.damageResistances[element] ?? 0
-  if (kind === 'stun') return enemy.stunResistances[element] ?? 0
-  return enemy.anomalyResistances[element] ?? 0
+  if (kind === 'damage') return enemy.damageResistances[element]
+  if (kind === 'stun') return enemy.stunResistances[element]
+  return enemy.anomalyResistances[element]
 }
 
 const statOptions = computed(() => getGlobalBuffStatOptions(catalogStore.statRules?.statDisplay))

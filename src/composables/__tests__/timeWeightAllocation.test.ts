@@ -338,11 +338,12 @@ describe('平A池权重·分配策略', () => {
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     // 合成一个 boss 预设：13 次正常弹刀（同叶释渊 defaults.parryTotal）
+    const zeroRes = { physical: 0, fire: 0, ice: 0, electric: 0, ether: 0, wind: 0 }
     config.applyBossPreset(
       { id: 'test-boss' },
       {
         phaseId: 'p1', hp: 1e6, stunValue: 15000, defense: 0, level: 60,
-        bossAnomalyCoeff: 1, damageResistances: {}, stunResistances: {}, anomalyResistances: {},
+        bossAnomalyCoeff: 1, damageResistances: zeroRes, stunResistances: zeroRes, anomalyResistances: zeroRes,
       },
       { stunVuln: 1, stunTime: 16 },
       { battleTime: 180, shieldCount: 0, energyShield: 0, parryTotal: 13 },

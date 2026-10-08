@@ -308,20 +308,13 @@ check('character-mechanics has no cinemaImplementation(s) mirror (single source 
   cinemaMirrors.length === 0,
   `命座镜像字段（应删，单源 = character-constellations.json#characters.<id>.cinemas）: ${cinemaMirrors.join(', ')}`)
 
-// Boss 预设（r724 起 applyBossPreset 写进 EnemyConfig 的字段读点不兜底）：字段与类型由上面的 JSON 契约校验（BossPresetFile）；
-// 这里只查类型表达不了的——每个预设至少一个相位；三张抗性表声明为 Record<string, number>，六个元素须给全。
+// Boss 预设（r724 起 applyBossPreset 写进 EnemyConfig 的字段读点不兜底）：字段与类型由上面的 JSON 契约校验（BossPresetFile）。
+// 三张抗性表的类型是 ResistanceTable（标准 6 元素各一项），缺键由契约报——r756 起这里不再另抄一份元素清单。
+// 这里只查类型表达不了的：每个预设至少一个相位。
 {
   const presets = load('public/static/boss-presets.json').bosses ?? []
-  const ELEMENTS = ['physical', 'fire', 'ice', 'electric', 'ether', 'wind']
-  const bad = []
-  for (const b of presets) {
-    if (!(b.phases?.length > 0)) bad.push(`${b.id}: phases`)
-    for (const p of b.phases ?? []) {
-      const pm = ['damageResistances', 'stunResistances', 'anomalyResistances'].filter(k => !ELEMENTS.every(e => typeof p[k]?.[e] === 'number'))
-      if (pm.length) bad.push(`${b.id}/${p.phaseId}: ${pm.join(',')}`)
-    }
-  }
-  check(`boss-presets: every preset has phases; resistance tables cover all 6 elements (${presets.length} presets)`,
+  const bad = presets.filter(b => !(b.phases?.length > 0)).map(b => `${b.id}: phases`)
+  check(`boss-presets: every preset has phases (${presets.length} presets)`,
     presets.length > 0 && bad.length === 0, bad.slice(0, 8).join('; '))
 }
 

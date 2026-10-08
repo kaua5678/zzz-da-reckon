@@ -97,7 +97,7 @@ describe('CC-175 异常 / 异放结算区减防减抗只计一次', () => {
     const { catalog, config } = await setupHarness([{ agentId: '1511' }, { agentId: '1411' }, { agentId: '1091' }])
     await catalog.loadBuildRecommendations()
     for (let i = 0; i < 3; i++) config.applyBuildRecommendationForSlot(i)
-    for (const k of Object.keys(config.enemy.damageResistances)) config.enemy.damageResistances[k] = 0
+    config.setEnemy({ damageResistances: { physical: 0, fire: 0, ice: 0, electric: 0, ether: 0, wind: 0 } })
     const calc = useResourceCalc()
     const anomalyOf = () => calc.damagePoolRows.value.filter(r => r.id.startsWith('anomaly-damage-')).reduce((s, r) => s + r.totalDamage, 0)
     const releaseOf = () => calc.damagePoolRows.value.filter(r => r.type === '异放').reduce((s, r) => s + r.totalDamage, 0)

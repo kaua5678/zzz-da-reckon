@@ -1,4 +1,5 @@
 /** Boss 预设（public/static/boss-presets.json，由 scripts/import-nanoka-bosses.mjs 生成） */
+import type { ResistanceTable } from '@/utils/enemyDebuffStats'
 
 export interface BossPresetPhase {
   /** nanoka 期数 id（如 690471） */
@@ -31,9 +32,9 @@ export interface BossPresetPhase {
   defense: number
   /** 异常条系数 = 1 + attribute_infliction/100（危局 = 1.1） */
   bossAnomalyCoeff: number
-  damageResistances: Record<string, number>
-  stunResistances: Record<string, number>
-  anomalyResistances: Record<string, number>
+  damageResistances: ResistanceTable
+  stunResistances: ResistanceTable
+  anomalyResistances: ResistanceTable
   /** 弱点/抗性元素中文标签 */
   weakness: string[]
   resistance: string[]

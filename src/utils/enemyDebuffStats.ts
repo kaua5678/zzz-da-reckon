@@ -4,6 +4,15 @@ export type EnemyDebuffKind = 'def' | 'res' | 'stunRes' | 'anomalyRes'
 
 export const DAMAGE_ELEMENTS = ['physical', 'fire', 'ice', 'electric', 'ether', 'wind', 'lumiflux'] as const
 export const STANDARD_ENEMY_DEBUFF_ELEMENTS = ['physical', 'fire', 'ice', 'electric', 'ether', 'wind'] as const
+/** 敌人抗性 / 减抗认的标准 6 元素 */
+export type StandardEnemyDebuffElement = typeof STANDARD_ENEMY_DEBUFF_ELEMENTS[number]
+/**
+ * 敌人抗性表（伤害 / 失衡 / 积蓄三张同形）：标准 6 元素各一项，缺键是类型错误（r756 CC-539）。
+ * 表只从这几处来：store 默认表、Boss 预设相位（validate:data 的 JSON 契约按本类型校验 boss-presets.json）、
+ * 属性页与影响变量的单元素写入——所以按 6 元素读表不写兜底。
+ * 引擎读表的入参仍是 `Record<string, number>`、缺键按 0：引擎按执行行 / 异常的元素取键，键可能不在这 6 个里（r756 探针：lumiflux；失衡 / 紊乱 / 乱流三个读点各有没归到基础元素的变种，如 frostfire、ether_ink）。
+ */
+export type ResistanceTable = Record<StandardEnemyDebuffElement, number>
 
 export const ELEMENT_FIELD_PREFIX: Record<string, string> = {
   physical: 'Physical',

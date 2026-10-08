@@ -24,6 +24,7 @@ import type { AppliedBossPreset, BossParryTotals, BossPresetDefaults, PhaseBuffE
 import { counterAssistOf } from '@/data/counterAssists'
 import { localized } from '@/utils/format'
 import { elementStatKey } from '@/utils/elementStatKeys'
+import type { ResistanceTable, StandardEnemyDebuffElement } from '@/utils/enemyDebuffStats'
 import {
   discEffectCoverageOf,
   mechanicSettingOf,
@@ -110,11 +111,11 @@ export interface EnemyConfig {
   /** 敌方体型：影响体型相关招式倍率（如艾莲霜锋剑气 0/3/6 段） */
   bodySize: 'small' | 'medium' | 'large'
   /** 伤害抗性：用于直伤、异常伤害、紊乱/乱流结算 */
-  damageResistances: Record<string, number>
+  damageResistances: ResistanceTable
   /** 失衡抗性：用于失衡值计算 */
-  stunResistances: Record<string, number>
+  stunResistances: ResistanceTable
   /** 积蓄抗性：用于异常积蓄值计算 */
-  anomalyResistances: Record<string, number>
+  anomalyResistances: ResistanceTable
   /**
    * 当前敌人弱点（中文，与 Boss 预设 phase.weakness 同口径）。
    * 缺省或空 = 未声明，音擎 attributeCounter 不拦截。
@@ -277,7 +278,7 @@ export const REC_MAIN_STAT_MAP: Record<string, string> = {
   '风属性伤害加成': 'windDmg',
 }
 
-function defaultResistanceTable(value: number): Record<string, number> {
+function defaultResistanceTable(value: number): ResistanceTable {
   return {
     physical: value,
     fire: value,
@@ -1016,7 +1017,7 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     Object.assign(enemy.value, patch)
   }
 
-  function setResistance(kind: 'damage' | 'stun' | 'anomaly', element: string, value: number) {
+  function setResistance(kind: 'damage' | 'stun' | 'anomaly', element: StandardEnemyDebuffElement, value: number) {
     const key = kind === 'damage' ? 'damageResistances' : kind === 'stun' ? 'stunResistances' : 'anomalyResistances'
     enemy.value[key][element] = value
   }
@@ -1112,9 +1113,9 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     defense: number
     level: number
     bossAnomalyCoeff: number
-    damageResistances: Record<string, number>
-    stunResistances: Record<string, number>
-    anomalyResistances: Record<string, number>
+    damageResistances: ResistanceTable
+    stunResistances: ResistanceTable
+    anomalyResistances: ResistanceTable
     weakness?: string[]
   }, monster: {
     stunVuln: number

@@ -9,6 +9,7 @@
  * 一份默认值——store 默认抗性表与 159 个 Boss 预设阶段都六键齐全（引擎缺键按 0）、store 队伍恒为 3 格，这两处只有测试桩走得到。
  * 现在每个变量只在表里定义一次，默认值只在 store（defaultEnemy / defaultCharacter）。
  */
+import type { ResistanceTable, StandardEnemyDebuffElement } from '@/utils/enemyDebuffStats'
 
 /**
  * r407：读写影响变量所需的最小配置面（**结构类型**；Pinia configStore 天然满足，测试可传最小桩）。
@@ -23,10 +24,10 @@ export interface ImpactVarConfig {
     battleTime: number
     stunVuln: number
     anomalyCoeff: number
-    damageResistances: Record<string, number>
+    damageResistances: ResistanceTable
   }
   team: ReadonlyArray<{ basicAttackTimeWeight: number }>
-  setEnemy(patch: { stunValue?: number; invincibleTime?: number; battleTime?: number; stunVuln?: number; anomalyCoeff?: number; damageResistances?: Record<string, number> }): void
+  setEnemy(patch: { stunValue?: number; invincibleTime?: number; battleTime?: number; stunVuln?: number; anomalyCoeff?: number; damageResistances?: ResistanceTable }): void
   setActionCount(slot: number, field: 'basicAttackTimeWeight', count: number): void
 }
 
@@ -47,7 +48,7 @@ export interface ImpactVariable<C = ImpactVarConfig> {
 }
 
 /** 伤害抗性变量：读写 enemy.damageResistances 的一个元素（写入经 setEnemy 换整张表，同原 writeImpactVar） */
-function resistanceVar(element: string, name: string): ImpactVariable {
+function resistanceVar(element: StandardEnemyDebuffElement, name: string): ImpactVariable {
   return {
     id: `${element}Resistance`,
     label: `${name}伤害抗性`,
