@@ -94,7 +94,8 @@ describe('zc 收工归属：工作树快照不是所有权', () => {
       { path: 'mine.ts', lane: 'mine', at: time, ttlMs: 60000 },
       { path: 'src', lane: 'mine', at: time, ttlMs: 60000 },
       { path: 'held.ts', lane: 'other', at: time, ttlMs: 60000 },
-      { path: 'expired.ts', lane: 'mine', at: time - 2000, ttlMs: 1000 },
+      // 过期留足一小时：CLI 子进程重新取 Date.now()，WSL 高负载下墙钟会回拨；原先 time - 2000 只差 1 秒，全量分片里偶发被当成活跃租约
+      { path: 'expired.ts', lane: 'mine', at: time - 3_600_000, ttlMs: 1000 },
     ]
     f.write('.zc/leases.json', JSON.stringify(leases))
     const result = JSON.parse(f.exec(process.execPath, [join(f.root, 'scripts/zc.mjs'), 'done',
