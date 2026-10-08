@@ -1,6 +1,6 @@
 # 平A池 carve 只留一份实现（r742）
 
-> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。r758 做了 §22.8 的两条候选（佩洛伊斯模块 12 处事后赋值改回对象字面量，额外能力判定收口；getBaseElement 普查后只剩积蓄效率一处数值查找，改走 resolveStatElement；行为不变），见第 23 节（`e1400062` + `dd6c7835`，CC-541）。r759 做了 §23.8 的第 1 条候选，普查后扩为同一条规则（删 16 个角色模块的额外能力 cfg 镜像字段，钩子一律读 additionalAbilityActiveOf(cfg.panel)；行为不变），见第 24 节（`6967a035`，CC-542）。r760 做了 §24.8 的第 1 条候选，普查后扩为同一条规则（拿得到面板的钩子不再按 spec 重算额外能力，删 3 个 cfg 镜像与 2 个面板镜像；行为不变），见第 25 节（`5c73ad60`，CC-543）。r761 做了 §25.8 的第 1 条候选；普查改为按语义找，连带收掉 r759、r760 漏网的三处（席德 cfg 镜像、莱特手写兜底与死块、仪玄手写判定；行为不变），见第 26 节（`d5ac9180`，CC-544）。
+> 代码提交 `2a162c29`（纯重构，zd 0/0）+ `78cc9bec`（艾莲池能量双计修正，规则 10）（arena-G r742）；arch CC-524；r6 §8 第 742 行。题目来自 `docs/mcp-frontline-row-seconds.md` §11.7（r741 交接的候选）。r743 做了 §7 的候选（两份派发前行快照改为逐行拷贝），见第 8 节（`46a6353a`，CC-525）。r744 做了 §8.7 的候选（钩子入参按契约收窄），见第 9 节（`421b5b88`，CC-526）。r745 做了 §9.7 的候选（结果钩子的两份快照改必填），见第 10 节（`dc9748c0`，CC-527）。r746 做了 §10.8 的候选（卢西娅追加攻击上限的形参收窄），见第 11 节（`e02a75a9`，CC-528）。r747 做了 §11.8 的候选（effectiveTime 时间 helper 的形参收窄），见第 12 节（`56465f75`，CC-529）。r748 做了 §12.8 的两个候选（countFrontActions 与 computeJufufuCycle 的入参收窄），见第 13 节（`983c4b10` / `f50f0924`，CC-530 / CC-531）。r749 做了 §13.8 的候选（设置项缺省值只留在声明，删 cfgMechanicSettingRaw），见第 14 节（`1c8b10d3` / `0532dc80`，CC-532）。r750 做了 §14.8 的第 1 条候选（删机制设置的 cfg 镜像字段），见第 15 节（`0487d921`，CC-533）。r751 做了 §15.8 的第 1 条候选（并入钩子读取器通道），见第 16 节（`5d737c73`，CC-534）。r752 做了 §16.8 的第 1 条候选（普查后模块外只剩一处，挪进模块钩子；未采用按注册表回落），见第 17 节（`d9c98594`，CC-535）。r753 做了 §17.9 的第 1 条候选（扩到洛克茜两处，并去掉 reader 的 fallback 形参），见第 18 节（`1fff4c95`，CC-536）。r754 做了 §18.8 的第 1 条候选（读写口径随变量对象携带，`meta?.default ?? 1` 随之删除），见第 19 节（`c32e9c09`，CC-537）。r755 做了 §19.8 的第 1 条候选（影响变量表项自带读写，core 两张平行 switch、抗性 `?? 20` 与 2 号位 `?? 1` 随之删除），见第 20 节（`6bcd6cc3`，CC-538）。r756 做了 §20.8 的第 2 条候选（抗性表六键入类型 `ResistanceTable`，属性页三处 `?? 0` 与 validate-data 的手写六键校验随之删除；第 1 条普查后判不做），见第 21 节（`200b30ca`，CC-539）。r757 做了 §21.8 的第 1 条候选（敌人抗性按元素取值统一口径 `enemyResistanceOf`，烈霜紊乱改按敌方冰抗，会改数值），见第 22 节（`8107853a`，CC-540）。r758 做了 §22.8 的两条候选（佩洛伊斯模块 12 处事后赋值改回对象字面量，额外能力判定收口；getBaseElement 普查后只剩积蓄效率一处数值查找，改走 resolveStatElement；行为不变），见第 23 节（`e1400062` + `dd6c7835`，CC-541）。r759 做了 §23.8 的第 1 条候选，普查后扩为同一条规则（删 16 个角色模块的额外能力 cfg 镜像字段，钩子一律读 additionalAbilityActiveOf(cfg.panel)；行为不变），见第 24 节（`6967a035`，CC-542）。r760 做了 §24.8 的第 1 条候选，普查后扩为同一条规则（拿得到面板的钩子不再按 spec 重算额外能力，删 3 个 cfg 镜像与 2 个面板镜像；行为不变），见第 25 节（`5c73ad60`，CC-543）。r761 做了 §25.8 的第 1 条候选；普查改为按语义找，连带收掉 r759、r760 漏网的三处（席德 cfg 镜像、莱特手写兜底与死块、仪玄手写判定；行为不变），见第 26 节（`d5ac9180`，CC-544）。r762 做了 §26.8 的第 1、2 条候选，并收掉普查新找到的雅风队面板镜像（同一事实只留一个来源；行为不变），见第 27 节（`09b55e65`，CC-545）。
 
 ## 1. 问题
 
@@ -2069,7 +2069,7 @@ zd 两套快照都是 0/0，理由：
 - 历史记录（§24、§25、r6 §2.4 和 §8 等）里出现的字段名、函数名保留原样。
 - 回退：`git revert d5ac9180`。
 
-### 26.8 下一轮候选（未做）
+### 26.8 下一轮候选（r762 做了第 1、2 条，见 §27；第 3 条未做，转入 §27.8）
 
 1. **仪玄极限支援的代理门控**
    - 现状：`resolveYixuanExtremeAssists` 用 `(cfg.teamUltimateFlashBonus ?? 0) <= 0` 判断额外能力未触发。本轮之后 teamUltimateFlashBonus 只在面板标记为真时写入，两者恒等。
@@ -2081,3 +2081,100 @@ zd 两套快照都是 0/0，理由：
    - 现状：主池把变种当作独立的积蓄管（`core/anomalyPool.ts:276`）。`core/stunAxis/inStunAnomaly.ts` 却按基础元素归并积蓄槽和同元素刷新，触发 id 也按基础元素生成，存档里的 `suppressedTriggers` 引用的就是这个 id。
    - 先做：普查哪些队伍会在同一个失衡窗口里同时积蓄基础元素和它的变种，量出差异，再决定要不要统一。
    - 注意：改 id 格式要带存档迁移。
+
+## 27. 同一事实只留一个来源：仪玄极限支援门控、雅风队面板镜像、琉音好评来源装配（r762，CC-545）
+
+> 代码提交 `09b55e65`（纯重构，行为不变）（arena-G r762）；arch CC-545；r6 §8 第 762 行。题目来自 §26.8 第 1、2 条；雅那一处是本轮沿用 §26.1 的语义普查新找到的。§26.8 第 3 条未做，转入 §27.8。
+
+### 27.1 普查
+
+- **方法**：沿用 §26.1，按语义找两类。
+  1. 写进 cfg / 面板的 0/1 标记，以及额外能力门控块里写下的 cfg / 面板字段，逐个查读者。
+  2. 拿效果值当条件读：某个效果值只在某条件下写入，别处再用它 `> 0` / `<= 0` 反推这个条件。
+
+| 位置 | 写什么 | 读者 | 结论 |
+|---|---|---|---|
+| yixuan buildCharConfig | 额外能力为真时写 `cfg.teamUltimateFlashBonus = 20` | crossAgentEnergy（效果：队友终结技给仪玄回闪能）；resolveYixuanExtremeAssists（用它 `<= 0` 反推额外能力没触发） | 后者是代理判定，改读标记 |
+| miyabi applyPanel | `panel.miyabiHasWindTeammate = hasWind ? 1 : 0` | 只有 teamPanelEffects 风队门控的第二条 | 第二条恒被第一条蕴含，删字段 |
+| yaojiayin buildCharConfig | `cfg.yaojiayinTeamHasAttack`（影画4：队友里有没有强攻） | buildExecutions（资源阶段，入参里没有 team） | 正当的跨阶段载体，保留 |
+| evelyn buildCharConfig | `cfg.evelynMultiplierActive`（额外能力触发且暴击率达阈值） | patchExecutions | 两个条件合成的派生量，不是副本，保留 |
+| norma buildCharConfig | `cfg.normaExtraAbilityAtkBonus`、`cfg.normaTechGapStunBonus` | computeNormaSource（资源结果展示） | 效果值，不当条件读，保留 |
+| velina buildCharConfig | `cfg.velinaAdditionalAbilityActive` | spec 1561 的 enabledField | 已登记的例外（specs 层不得 import core，CC-248），保留 |
+
+- **琉音**：估时（liuyinExSpecialTime）、执行（buildLiuyinExecutions）、资源结果（buildLiuyinResourceResult）、赠大供给（crossAgentSupply.supply）四处调 computeLiuyinSource。接战时长、命座、上一位队友三项写法逐字相同，只有强特数和终结技数随调用点不同。估时那处还在外面先对两个次数做一次 `max(0, floor(·))`，而 computeLiuyinSource 内部对这两个入参本来就这样取整。
+
+### 27.2 问题
+
+- **仪玄**：极限支援换场落雷的门控借效果值反推额外能力。读代码的人得知道「teamUltimateFlashBonus 只在额外能力触发时才写」这层间接关系；以后写入条件一变（比如按影画调数值，或者某条路径写 0），落雷门控会跟着悄悄变。
+- **雅**：CC-335 修跨槽误吃时，风队门控已改为直接调 `hasWindTeammate(team, slot)`（`slot` 是来源角色、即雅自己的槽位）。第二条 `(panel.miyabiHasWindTeammate ?? 0) === 1` 当时只为兼容直传面板标记的单测才留下（`mcp-stun-dual-source.md` 相应条目），这类单测现在已经没有了。目标是雅本人时，第二条和第一条同值；目标是队友时，面板上没有这个字段。所以第二条恒被第一条蕴含，面板字段也就没有别的读者。两段注释还在描述「读目标槽面板标记、依赖钩子先后顺序」，与实际做法不符。
+- **琉音**：同一组参数抄了四遍。「估时与执行用同一求解」只靠注释保证，哪天改了其中一处，四处就会悄悄分叉。
+
+### 27.3 改法
+
+- **仪玄**：resolveYixuanExtremeAssists 改为 `if (!additionalAbilityActiveOf(cfg.panel)) return 0`，两个调用点（applyTeamConfig 收敛相、buildExecutions）都经它。axisContext 里两条用 `teamUltimateFlashBonus: 20` 打开极限支援的夹具，改成经 `panel: { additionalAbilityActive: 1 }` 给标记；两处注释同步改。`teamUltimateFlashBonus` 字段保留，crossAgentEnergy 还在读。
+- **雅**：删 applyPanel 里的写入、teamPanelEffects 门控的第二条、PanelValues 扩充里的声明，以及 miyabiCinema 两处 applyPanel 夹具里的这个键。两段注释改成实际做法。`hasWind` 局部量保留，冰焰覆盖率的自动默认还在用。
+- **琉音**：新增本地助手 `liuyinSourceOf(cfg, 强特数, 终结技数)`，四处都经它。估时那处去掉外面那次重复取整。computeLiuyinSource 仍然导出，liuyin.test 直接测它。@fact「强特计划估时」的锚（liuyinExSpecialTime）因此有改动，口径不变，追加「复核@2026-10-09（r762 改经 liuyinSourceOf 装配，口径不变）」。
+- **不加锁**：三处都没有能用语法稳定识别的形状（效果值反推条件、被蕴含的析取项、重复的参数装配）。规则已写在 `core/additionalAbilityActive.ts` 的 owner 注释里（r760）。
+
+### 27.4 行为不变的证据
+
+- **等价**
+  - 仪玄：teamUltimateFlashBonus 只有 buildYixuanCharConfig 一处写入，条件就是 `additionalAbilityActiveOf(panel)`，而 cfg.panel 与该入参是同一对象（`core/additionalAbilityActive.ts` 头注释）。所以 `teamUltimateFlashBonus > 0` 恒等于面板标记。
+  - 雅：见 §27.2，第二条恒被第一条蕴含。
+  - 琉音：max(0, floor(max(0, floor(x)))) = max(0, floor(x))，对 NaN 和 ±∞ 也成立；其余参数逐字相同。
+- **一次性新旧对照**（临时测试，已删）
+  - 基线：开工时的 `f4a00f36`。old 模式把 3 个模块换回该提交的版本。
+  - 配置：仪玄、琉音各 3 个（额外能力触发 C0、触发 C6、未触发 C0）；雅 3 个（有风队 C0、无风队 C0、无风队 C6）。队友都按条件从图鉴里确定性挑出（id 升序的第一对）。
+  - 快照：总伤害、全部伤害行、失衡次数、面板、resourceResult。被删的键 `miyabiHasWindTeammate` 先剔除；旧版雅的 3 个配置各剔除 1 处，其余为 0。
+  - 结果：9 个快照新旧逐字节相同。仪玄、琉音的 6 个快照与 §26.4 表里的「新」逐位相同，可以互相印证。
+
+| 角色 | 配置 | 队伍 | 快照 sha256 前 16 位（新 = 旧） | 总伤害 |
+|---|---|---|---|---|
+| 仪玄（yixuan，1371） | 额外能力触发 C0 | 1371 / 1011 / 1021 | `dde1a77995e24e54` | 28370485 |
+| 仪玄（yixuan，1371） | 额外能力触发 C6 | 1371 / 1011 / 1021 | `c0490b46a6b3b1ac` | 52687740 |
+| 仪玄（yixuan，1371） | 额外能力未触发 C0 | 1371 / 1021 / 1041 | `1138727f4524ea5c` | 31301153 |
+| 琉音（liuyin，1481） | 额外能力触发 C0 | 1481 / 1011 / 1021 | `9ad0b3623a44f1c8` | 34541886 |
+| 琉音（liuyin，1481） | 额外能力触发 C6 | 1481 / 1011 / 1021 | `4a9b389c07fd8f52` | 61020369 |
+| 琉音（liuyin，1481） | 额外能力未触发 C0 | 1481 / 1011 / 1031 | `1c5db5850613d7d5` | 12359023 |
+| 雅（miyabi，1091） | 有风队 C0 | 1091 / 1011 / 1561 | `9b997acc27d5a187` | 24419991 |
+| 雅（miyabi，1091） | 无风队 C0 | 1091 / 1011 / 1021 | `bd6e2c9dc9998814` | 19980146 |
+| 雅（miyabi，1091） | 无风队 C6 | 1091 / 1011 / 1021 | `97d852b170d22458` | 25683839 |
+
+- **zd**：DUMP 0 / ROWS 0（基线 HEAD `f4a00f36`）。dump 哈希不含面板字段，所以雅删面板字段不需要 ZD_DROP。
+
+### 27.5 反证（已还原，cmp 核对）
+
+| 点位 | 位置 | 做法 | 结果 |
+|---|---|---|---|
+| Y2 | 仪玄 resolveYixuanExtremeAssists 的新门控 | 单独取反，重算仪玄 3 个配置 | 3/3 变化；总伤害（触发 C0 / 触发 C6 / 未触发 C0，新 → 取反）：28370485 → 27993985 / 52687740 → 51406833 / 31301153 → 32388419 |
+| M0 | 雅旧版（f4a00f36）teamPanelEffects 门控的第二条 `(panel.miyabiHasWindTeammate ?? 0) === 1` | 只计数、不改值，统计它被求值和为真的次数 | 有风队 C0：求值 0 次；无风队 C0：求值 6 次、为真 0 次；无风队 C6：求值 6 次、为真 0 次 |
+
+- **夹具锁得住新门控**：把仪玄换回旧门控、保留新夹具，axisContext 恰好两条极限支援用例变红（`yixuanFlashBonus 是 +=`、`轴/非轴两臂`）。
+- **结论**：仪玄新门控确实在起作用，而且未触发配置取反后落雷出现、总伤上升，说明门控两个方向都被覆盖。雅旧版的第二条只在第一条为假时才求值，求值 12 次、为真 0 次；有风队时第一条已为真，第二条根本不会求值。
+
+### 27.6 验证
+
+- vue-tsc -b --force 0。
+- 相关测试 283 个文件（277 过、6 跳过）、2722 例（2715 过、7 跳过）。范围是 mechanics 和 specs 全目录，以及引用这 3 个角色、额外能力、伤害池、队伍面板效果或赠链供给的测试。
+- check-guards 29（扫 298 个文件）；zc+checkGuards 207；tokens / data / specs / recording 12 / 161 / 462 / 189。
+- vitest 258/2156 + 262/2347 = 520 文件 / 4503 例，与基线相同；跳过 13 / 26 不变。
+- zd：见 §27.4。
+- build index 1591.60 kB（gzip 463.42，比基线少 0.49 kB）。
+- drift 154 / 0 / 0；触发器逾期 0、未到期 10。
+
+### 27.7 不做、已知坑与回退
+
+- yaojiayin、evelyn、norma、velina 四处 cfg 字段保留，理由见 §27.1 表。
+- 不加新源码锁，理由见 §27.3。
+- **drift 的日粒度盲区**（本轮实测）：zc drift 以「据」里最后一个日期的 UTC 23:59:59 为界，界前对锚的改动不进复核队列。琉音这条当天已有 r760、r761 两个戳，本轮改了 liuyinExSpecialTime，drift 仍报待复核 0。所以当天已盖过戳的事实，当天再改它的锚时，要由改动者自己复核并追加戳。已记入 `mcp-drift-triage.md` §7.4；不改工具。
+- 历史记录（§24–§26、r6 §8、`mcp-panel-fields.md` §3 的字段清单、`mcp-stun-dual-source.md`）里出现的字段名保留原样。
+- 回退：`git revert 09b55e65`。三项改的文件互不相交，只回退其中一项时用 `git checkout 09b55e65^ -- <文件>`：仪玄是 yixuan.ts 和 axisContext.test.ts，雅是 miyabi.ts 和 miyabiCinema.test.ts，琉音是 liuyin.ts。
+
+### 27.8 下一轮候选（未做）
+
+1. **失衡内时间线的变种积蓄槽口径**（§25.8 第 2 条、§26.8 第 3 条，本轮补了范围）
+   - 现状：主池把变种当作独立的积蓄管（`core/anomalyPool.ts` 第 4 步「计算异常覆盖率」的注释）。`core/stunAxis/inStunAnomaly.ts` 却在 6 处（约 :140、:154、:159、:289、:303、:315）按 `getBaseElement` 归并积蓄槽和同元素刷新，触发 id 也按基础元素生成；存档里的 `suppressedTriggers` 引用的就是这个 id。
+   - 范围：变种登记表 `data/anomalyElement.ts` 的 `VARIANT_ELEMENT_TO_BASE` 只有两项：`physical_polar_assault → physical`（爱丽丝）、`ether_ink → ether`（仪玄的玄墨）。雅的烈霜 frostfire 不在表里（只在 resolveStatElement 里按冰读数值），不受影响。
+   - 先做：普查哪些预设会在同一个失衡窗口里同时积蓄基础元素和它的变种。先看含仪玄的队（她自己的以太命中与玄墨是否同窗积蓄），再看爱丽丝与物理积蓄队友同队的情形。量出差异后再决定要不要统一。
+   - 注意：改 id 格式要带存档迁移。
+2. 本轮普查（§27.1）之后，没有找到新的「同一事实两个来源」。再有新发现，按 §26.1 和 §27.1 的两类方法逐个查读者。
