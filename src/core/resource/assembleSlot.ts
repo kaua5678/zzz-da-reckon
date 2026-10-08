@@ -211,7 +211,7 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
     bySlotEntry: truncated.cuts.length > 0 ? {
       slot: cfg.slot,
       requested: truncated.usedSeconds,
-      kept: Math.max(0, truncated.usedSeconds - truncated.cutSeconds),
+      kept: truncated.keptSeconds,
       cutSeconds: truncated.cutSeconds,
     } : null,
   }

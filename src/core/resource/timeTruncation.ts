@@ -61,19 +61,20 @@ export function truncateExecutionsToFrontline(
  *
  * @returns 截断后的行 + 被砍掉的秒数（= 该槽真实的时间压力，供 overflowSeconds/操作难度消费）
  *   + 截断前的招式行秒数（`usedSeconds`，存活率 = 1 − cutSeconds/usedSeconds）
+ *   + 截断后保住的招式行秒数（`keptSeconds` = Σ 截断后招式行；重折环写进 rowTimeLimit 的就是它，r740 前由装配用 used − cut 反推）
  *   + **逐行明细** `cuts`（Σ cutSeconds == cutSeconds；资源池「被砍招式」清单与难度轴交互缩放的输入）
  */
 export function truncateMoveRows(
   executions: SkillExecution[],
   room: number,
-): { executions: SkillExecution[]; cutSeconds: number; usedSeconds: number; cuts: Omit<TruncationCut, 'slot'>[] } {
+): { executions: SkillExecution[]; cutSeconds: number; usedSeconds: number; keptSeconds: number; cuts: Omit<TruncationCut, 'slot'>[] } {
   /** 可截断行：占前台且不是平A填充行 */
   const isTruncatable = (e: SkillExecution) => isFrontlineExecution(e) && e.moveId !== 'basic_attack'
   let used = 0
   for (const e of executions) if (isTruncatable(e)) used += e.totalTime
   // 入口容差与折叠环收敛判据同源（见 TIME_FOLD_CONVERGENCE_SECONDS 头注释）：上游已判「自洽」的
   // 毫秒残差在这里不是溢出。真溢出（结构性，秒级）照常进入整数装包。
-  if (used <= room + TIME_FOLD_CONVERGENCE_SECONDS) return { executions, cutSeconds: 0, usedSeconds: used, cuts: [] }
+  if (used <= room + TIME_FOLD_CONVERGENCE_SECONDS) return { executions, cutSeconds: 0, usedSeconds: used, keptSeconds: used, cuts: [] }
 
   // 每行的「单位时长」：totalTime / count（count=1 但 totalTime 是聚合量的行，如飞光当量，
   // 也能正确处理）；count=0 的行（纯时间聚合）按整行一个单位处理。
@@ -151,7 +152,9 @@ export function truncateMoveRows(
         cutDecibelRecovery: (u.e.totalDecibelRecovery ?? 0) * (1 - ratio),
       }
     })
+  // kept ≤ used 不用钳：没改的行原样返回，改过的行次数严格变少（② 加回不越原次数），丢掉的行少一项；
+  // 两个和按同一顺序累加，浮点加法单调 ⇒ used − kept ≥ +0（r740 插桩：zd 矩阵内负值 0 次）。
   let kept = 0
   for (const e of out) if (isTruncatable(e)) kept += e.totalTime
-  return { executions: out, cutSeconds: Math.max(0, used - kept), usedSeconds: used, cuts }
+  return { executions: out, cutSeconds: used - kept, usedSeconds: used, keptSeconds: kept, cuts }
 }
