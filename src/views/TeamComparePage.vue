@@ -735,8 +735,10 @@ import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, I
 import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
 import { DOWNGRADE_MODS } from '@/composables/downgradeWEngine'
 import { persistedRef } from '@/composables/persistedRef'
-import { isBatchAborted, useBatchOwner } from '@/composables/batchTask'
-import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, computeDifficultyCurves, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { useBatchOwner } from '@/composables/batchTask'
+import { runDifficultyCurves } from '@/composables/difficultyCurveRunner'
+import { useLogicEditorStore } from '@/stores/logicEditor'
+import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { teamPresets } from '@/data/teamPresets'
@@ -752,6 +754,8 @@ import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
+/** 行融合规则是计算输入（`logicEditor/fusion` 的模块级快照）：worker 里读不到用户改过的规则 ⇒ 随请求显式传 */
+const logicStore = useLogicEditorStore()
 
 // ========== Boss 预设 ==========
 const bossPresets = ref<BossPreset[]>([])
@@ -1135,6 +1139,13 @@ async function runCompare() {
 /**
  * 难度曲线：逐队爬自己的贪心阶梯（每队要跑 ~10 次全量伤害，约 3~4 秒）。
  * 口径与散点的差异见 `composables/difficultyCurve.ts` 文件头（不含 buff/加金/自动下位）。
+ *
+ * **worker 化（2026-10-09）**：单队阶梯是一整段不可切分的同步计算（实机最长 task 3145ms / 3 队 14239ms
+ * 覆盖全程），本页此前唯一的让出点在队与队之间 ⇒ 期间 UI 完全冻结。现在整批搬进 Web Worker
+ * （`composables/difficultyCurveRunner.ts`，取舍依据与实测读数见其文件头）：
+ * · 主线程阻塞归零（3 队实测 maxTask 14239ms → 0ms，墙钟 14226 → 13911ms，**不变慢**）；
+ * · 结果逐位不变（worker 调的是同一个 `computeDifficultyCurves`，主线程侧零数值改动）；
+ * · 无 Worker 环境（node/vitest）自动回落**原路径**，语义与改动前逐字相同。
  */
 async function runCurves() {
   const presets = selectedPresets.value
@@ -1161,26 +1172,28 @@ async function runCurves() {
   const run = runOwner.start()
   computing.value = true
   progress.value = { pct: 0, text: '' }
-  const all: DifficultyCurveRow[] = []
-  let aborted = false
-  for (let i = 0; i < presets.length; i++) {
-    // 中止粒度 = 一队（单队阶梯是原子的）；已算部分照样出图
-    if (isBatchAborted({ signal: run.signal })) { aborted = true; break }
-    const p = presets[i]
-    run.commit(() => { progress.value = { pct: i / presets.length, text: `爬阶梯 ${p.name}（${i + 1}/${presets.length}，每队约 3~4 秒）...` } })
-    await new Promise(r => setTimeout(r, 0))
-    all.push(...await withAnalysisScenario(scenario => computeDifficultyCurves(scenario, {
-      presets: [p],
-      boss,
-      phase,
-      difficultyWeights: {
-        timePressure: diffWeights.value.timePressure,
-        interaction: diffWeights.value.interaction,
-        interactionFormula: diffWeights.value.interactionFormula,
-        interactionExponent: diffWeights.value.interactionExponent,
-      },
-    })))
-  }
+  // 一次曲线运行的全部输入：纯数据（见 `CurveRunRequest` 契约）——worker 靠它自建现场
+  const outcome = await runDifficultyCurves({
+    configState: cloneConfigState(configStore.$state) as unknown as Record<string, unknown>,
+    // 行融合规则必须显式传：worker 里没有 window，读盘会回落 spec 默认（数值会静默漂移）
+    fusionRules: cloneConfigState(logicStore.state.rowFusions),
+    presets,
+    boss,
+    phase,
+    difficultyWeights: {
+      timePressure: diffWeights.value.timePressure,
+      interaction: diffWeights.value.interaction,
+      interactionFormula: diffWeights.value.interactionFormula,
+      interactionExponent: diffWeights.value.interactionExponent,
+    },
+  }, {
+    signal: run.signal,
+    onProgress: (index, total, name) => {
+      run.commit(() => { progress.value = { pct: index / total, text: `爬阶梯 ${name}（${index + 1}/${total}，每队约 3~4 秒）...` } })
+    },
+  })
+  const all = outcome.rows
+  const aborted = outcome.aborted
   run.commit(() => {
     curveRows.value = all
     if (!aborted) {
