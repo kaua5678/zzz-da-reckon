@@ -18,7 +18,7 @@
   改前跑一次存 A、改后跑 B，**0 差异才算等价**；A 自身重跑 0 差异（dump 确定）。
 - **profile**：`.zc/perf/engine.perf.ts`（`PERF_PROFILE=1`，带调用者归因）。
 - **纯度探针**：先量「重复」是否真是重复，再做记忆（例：`feasibleRows` 同参数重复 35%、行 0 次不同、结果 0 次被改写）。
-- 仓内测试：`calcOutputMemo` / `feasibleRowsMemo`（记忆开/关 A/B 逐位）+ timeGolden / seedInvariance / warmStart。
+- 仓内测试：`calcOutputMemo`（记忆开/关 A/B 逐位）+ timeGolden / `landingPointUniqueness`（同输入落点唯一）。
 - **全角色护栏** `src/core/__tests__/allAgentsGuards.test.ts`：catalog 枚举全部角色（新角色零配置纳入）× 命座 0/6 × 交互加码，
   验 ① 同配置重算幂等 ② 行物化快路径开/关逐位相同。**dump 只覆盖预设里出现的角色**（首例：1551 不在任何预设，漏检），新快路径一律接进这里。
 
@@ -40,7 +40,7 @@
 - `materializeRows` 值快照改 `Object.values`：慢 ~5×（105 键对象 4 万次 map 130–155ms vs 790–820ms），dump 52.6→63.8s。
 - `fmt` 缓存 `Intl.NumberFormat`：116 vs 112ms，无收益。
 - 快照改 `for-in` / 手写循环 / push：2021 vs 1528ms、三者无差（微基准），不改。
-- 跨档热启动 / 降配扫描提前终止或成本闸门 / 缩放配置去重：破 seedInvariance、可行集非下闭、`cfgUniq` 8/8（GUIDE 判据⑤）。
+- 跨档热启动 / 降配扫描提前终止或成本闸门 / 缩放配置去重：破落点唯一性、可行集非下闭、`cfgUniq` 8/8（GUIDE 判据⑤）。
 
 ## 模块写法红线（护栏抓到过的真 bug）
 
@@ -65,4 +65,4 @@
 ## 剩余热点（第 2 轮后，自耗时 / 14.2s profile；第 3 轮已处理前两项的主要部分）
 
 `materializeRows` 1.53s（约 1/3 走「键集变化」慢路径：模块往 cfg **新增**同调用缓存键、恢复时 delete ⇒ cfg 变形）·
-`runInnerLoop` 0.73s · GC 0.63s · `iterateBody` 0.57s · `buildExecutions` 0.49s · `enrichExecutionPlan` 包含 0.55s · `warmStartExactKey` 0.23s。
+`runInnerLoop` 0.73s · GC 0.63s · `iterateBody` 0.57s · `buildExecutions` 0.49s · `enrichExecutionPlan` 包含 0.55s。
