@@ -86,6 +86,13 @@ import {
 } from '../../../scripts/check-guards.mjs'
 // parseFactLine 的单一实现在 zc.mjs（规则 11）——判据 15 的「行尾追加不破坏解析」断言要直接用它
 import { auditAuthoredFacts, parseFactLine } from '../../../scripts/zc.mjs'
+import {
+  DOCS_READING_TESTS,
+  DOCS_READING_MIN_TESTS,
+  DOCS_READING_MIN_SCANNED,
+  scanDocsReadingTests,
+  isDocsOnlyChange,
+} from '../../../scripts/lib/docs-reading-tests.mjs'
 
 describe('detectFetchStub（直接操纵全局 fetch 的写法）', () => {
   it('抓全部四种 stub 形态', () => {
@@ -736,6 +743,49 @@ describe('仓库级自洽（真实扫描）', () => {
     expect(pkg.scripts['check'], 'check 不得用 test:fast 代替验收').not.toContain('test:fast')
     expect(pkg.scripts['verify'], 'verify 不得用 test:fast 代替验收').not.toContain('test:fast')
     expect(pkg.scripts['verify']).toContain('npm test')
+    // ③bis docs-only 快路（test:docs）同规矩：它是**可选的收尾提速**，不许变成验收面
+    expect(pkg.scripts['check'], 'check 不得用 test:docs 代替验收').not.toContain('test:docs')
+    expect(pkg.scripts['verify'], 'verify 不得用 test:docs 代替验收').not.toContain('test:docs')
+    expect(pkg.scripts['test:docs'], 'test:docs 必须存在且走单一来源脚本').toBe('node scripts/test-docs.mjs')
+  })
+
+  // 「读 docs 的测试」显式清单 + docs-only 判定器的棘轮（T114，2026-10-09）。
+  //
+  // 为什么需要：流程文档 §6 选项②「只改文档的提交跳过 vitest、只跑 check-guards」此前只有一句
+  // 散文理由（「读取 docs 的测试会红」）。T114 实测把它变成数字（同一改动：check-guards CLI **17.4s 绿**、
+  // checkGuards.test **36.7s 红** `728 > 727`），并造出可实施的护栏：
+  //   ① 清单必须逐字等于派生集（`--changed` 在本仓库实测**不可用**：改 docs 选中 **0** 个文件，
+  //      改 `catalog.json` 也选中 **0** 个，而仓库有 52 个测试文件读该数据 ⇒ 只能靠显式清单）；
+  //   ② 清单条目必须真实存在（改名后清单会静默退化成空集）；
+  //   ③ 读 docs 且被测试覆盖的源文件必须在某条清单条目的闭包内（防新写扫描器没人挂）；
+  //   ④ 反空洞下限（扫描面 998 / 清单 34）。
+  // ⚠ 红线：本条**不许**让 `check`/`verify` 引用这条快路——上方 ③ 的断言与 `test:fast` 同规矩。
+  it('★ 「读 docs 的测试」清单不许腐坏，且 docs-only 判定器只认 docs/ 前缀', () => {
+    const r = scanDocsReadingTests(process.cwd())
+    // ① 清单 == 派生集（逐字；加/删都要显式改清单常量 ⇒ 强制复核，而不是顺手放宽）
+    expect(
+      r.derived,
+      '「读 docs 的测试」清单与派生集不一致：加/删条目必须同时改 scripts/lib/docs-reading-tests.mjs 的'
+      + 'DOCS_READING_TESTS（它是防"docs-only 快路漏测"的棘轮）。派生口径见该文件头注释。',
+    ).toEqual([...DOCS_READING_TESTS].sort())
+    // ② 每个条目必须真实存在
+    expect(r.missing, `清单里有不存在的文件：${r.missing.join(', ')}（改名后快路静默漏测）`).toEqual([])
+    // ③ 读 docs 且被测试覆盖的源文件必须被某条清单条目的闭包覆盖
+    expect(
+      r.uncoveredReaders,
+      `这些源文件读 docs 且在测试闭包内，却没有任何清单条目覆盖它们：${r.uncoveredReaders.join(', ')}`
+      + '（新写读 docs 的扫描器/守卫要把它的测试挂进 DOCS_READING_TESTS）',
+    ).toEqual([])
+    // ④ 反空洞下限：扫描面塌陷 / 清单被清空 ⇒ 上面的「零命中」不可采信
+    expect(r.scanned, `扫描面 ${r.scanned} < 下限 ${DOCS_READING_MIN_SCANNED}：扫描器失明，不是清单变干净`).toBeGreaterThanOrEqual(DOCS_READING_MIN_SCANNED)
+    expect(DOCS_READING_TESTS.length).toBeGreaterThanOrEqual(DOCS_READING_MIN_TESTS)
+    expect(r.ok).toBe(true)
+    // docs-only 判定器：全部落在 docs/ 前缀内才为真；空输入与混入源码都为假（防"没改动"被当绿灯）
+    expect(isDocsOnlyChange('docs/a.md\ndocs/b.md')).toBe(true)
+    expect(isDocsOnlyChange('docs/a.md\nsrc/x.ts')).toBe(false)
+    expect(isDocsOnlyChange('src/x.ts')).toBe(false)
+    expect(isDocsOnlyChange('')).toBe(false)
+    expect(isDocsOnlyChange('  \n ')).toBe(false)
   })
 })
 

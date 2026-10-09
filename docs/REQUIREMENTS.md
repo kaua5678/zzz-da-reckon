@@ -122,10 +122,16 @@
   - `zd.sh` 在工作区与 HEAD 相同时 DIFF 0，注入改动后 DIFF 1；
   - verify116b 339 files / 3714 tests EXIT 0。
 - 详情：`docs/mcp-dev-process-speed.md`；流程：`docs/mcp-worker-task-queue.md` §0.R2。
-- **待用户裁决**：流程文档 §6 列了 4 个会削弱保证的选项（`vitest --related`、只改文档时跳过 vitest、只跑 dump、纯搬迁卡跳过零差），每条都写了「会漏掉什么错误」。**未采用**。
-  **2026-10-09 更新：用户裁决立项** ⇒ 提示词 `.claude/PROMPT-process-speed.md`（开新对话执行）。
-  侦察结论 = **四条里没有一条能直接采用**：① 已有实测反例（`src/scripts/__tests__/checkGuards.test.ts:710-712` 记「本仓库 `--changed` 不可用…实测 `--changed HEAD` 只选中 1 个文件」）；② 有实测反例但可修（须先建「读 docs 的测试」显式清单 + 棘轮）；③ 省 ~0 秒，且 `rowsnap.perf.ts:92-98` 还多 4 个预设的失衡轴变体（文档只记了「行分布」）；④ 零机器判据（`pureMove` 全仓零命中）+ 有实测反例。
-  ⇒ 该任务的有效交付是**造出能安全实施的护栏**或**逐条给出带实测数字的否决记录**，详见提示词 §0。
+- **判定结论（2026-10-09 T114 已闭合，无需用户裁决）**：流程文档 §6 的 4 个选项逐条判定完毕——
+  **② 采用**（建成带护栏的可选快路 `npm run test:docs`，实测省 **208.9 秒**：248.2 → 39.3 秒，
+  失败集与全量逐条相同）；**①③④ 否决**，各带实测数字（①`--changed` 三组反例：改 docs 选 0 个文件、
+  改 `catalog.json` 选 0 个、改核心源文件选 222 个跑 204.9 秒而全量 242.7 秒且漏 27 个引用者；
+  ③ 省 1.2 秒却丢 13 个预设的轴态覆盖；④ 零机器判据 + 有实测反例）。
+  判定依据、命令与读数：`docs/mcp-dev-process-speed.md` §6 + §9。
+  护栏：`scripts/lib/docs-reading-tests.mjs`（34 条显式清单）+ `src/scripts/__tests__/checkGuards.test.ts` 棘轮
+  （清单逐字相等 / 条目存在 / 读 docs 源文件被覆盖 / 反空洞下限 / `check`·`verify` 不得引用快路）。
+  **四条都不许接进 `check` / `verify`**；`verify` 仍是交付口径。
+  立项提示词：`.claude/PROMPT-process-speed.md`。
 
 
 ---

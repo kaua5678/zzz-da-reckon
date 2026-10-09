@@ -59,7 +59,8 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 - ② 触及计算路径时，跑 `bash .zc/perf/zd.sh <tag>`（基线 = HEAD 的 worktree，改后 = 工作区，四路并行约 50 秒；原来顺序执行约 176 秒）。要求 DIFF 0；不为 0 就逐条解释。**本卡改动先不要提交**。
 - ③ 全量 verify **只跑一次**，放后台；等待期间在本地起草文档，**verify 结束前不要落盘**，因为 check-guards 会扫描 docs。用轮询 `grep -q '^EXIT'` 等待，不要用固定 sleep。
 - ④ verify EXIT 0 后，依次：提交代码 → 落盘并提交文档 → **重跑 `node scripts/check-guards.mjs`（必须）**。
-- **不要做**（会削弱保证，已列入流程文档 §6 等用户裁决）：用 `vitest --changed/--related` 代替全量；只改文档时跳过 vitest（本轮就实测到「手册 §4 行数」测试被文档打红）；纯搬迁卡跳过零差。
+- ⑤ **纯文档批次（`git diff --name-only HEAD` 全部落在 `docs/`）可走快路**：`npm run test:docs`（= `node scripts/test-docs.mjs`，34 条「读 docs 的测试」清单，实测 39.3 秒 vs 全量 248.2 秒，**失败集逐条相同**）。非 docs-only 时它**拒绝并退出 2**（要人工确认才 `--force`）。⚠ 它只替代那一次全量 vitest，**不替代** `check-guards` / `docs:status` /（动了源码时的）`vue-tsc -b`；`verify` 仍是交付口径。
+- **不要做**（2026-10-09 T114 逐条判定完毕，见流程文档 §6/§9）：用 `vitest --changed/--related` 代替全量（实测三组反例：改 docs / 改 `catalog.json` 各选中 **0** 个文件、改核心源文件选 222 个却漏 27 个引用者）；**只跑 check-guards 就算完**（同一 docs 改动下它 29 项全绿 17.4 秒，而 §4 行数棘轮只在 vitest 里红）；零差只跑 dump 不跑 rowsnap（省 1.2 秒却丢 13 个预设的轴态覆盖）；纯搬迁卡跳过零差（零机器判据）。
 
 ## 1. 长期规则（从 2026-09-27 以前的逐轮交接里提炼，压缩时逐条保留）
 

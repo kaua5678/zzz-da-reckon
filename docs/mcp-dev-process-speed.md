@@ -100,14 +100,78 @@ z63 / z78 / z80 / z81 / z82 这五张卡，每路 42–48 秒、四路顺序执�
   - 真正能缩墙钟的是**长尾文件**：当某个文件单独耗时接近墙钟时，它就是关键路径，要先确认。
 - **vite build**（9–14 秒）：verify 需要它来证明能构建，不砍。
 
-## 6. 会削弱保证的选项（**未采用，交用户裁决**）
+## 6. 会削弱保证的选项（**2026-10-09 T114 逐条判定：③④ 否决，② 已建成带护栏的可选快路，① 否决**）
 
-| 选项 | 能省多少 | 会让什么类型的错误漏过去 |
+> 判定依据 = 实测数字，命令逐条可复现。**四条都不许接进 `check` / `verify`**（棘轮在
+> `src/scripts/__tests__/checkGuards.test.ts`「快速环的排除集不许腐坏」用例，含 `test:fast` 与 `test:docs`）。
+
+| 选项 | 能省多少（实测） | 会让什么类型的错误漏过去 | T114 判定 |
+|---|---|---|---|
+| ① 收尾用 `vitest --changed` / `--related` 代替全量 | **省 0 秒**（见下） | ① 通过数据文件（JSON / docs）而不是 import 产生依赖的测试；② 读仓库现状的守卫类测试；③ 动态 import / `import.meta.glob` 的依赖 | **否决**（实测反例 ×3，见 §9.1） |
+| ② 只改文档的提交跳过 vitest，只跑 check-guards | **省 208.9 秒**（248.2 → 39.3 秒） | 读取 docs 的测试（手册密度 / §4 行数棘轮、@fact 相关测试） | **采用**（护栏 + `npm run test:docs`，见 §9.2） |
+| ③ 零差只跑 dump、不跑 rowsnap | **省 ≈0 秒**（42.8 → 41.6 秒） | 行级差异在总量上抵消的情况（总伤不变、行分布变了）；**外加 13 个 `*/axis` 预设的轴态覆盖**（原表只记了「行分布」，漏记这一项） | **否决**（见 §9.3） |
+| ④ 纯改名 / 纯搬迁卡跳过零差 | 约 50 秒 | 「看起来是纯搬运」实际带出行为变化（例如搬迁时丢了副作用顺序）；判断「纯搬运」本身就没有机器依据 | **否决**（零机器判据；AST 判据立项成本见 §9.4） |
+
+### 6.1 ① 的实测反例（三组，隔离 worktree @ `0b81c1df`，vitest 4.1.10）
+
+| 改动 | `vitest list --changed HEAD` 选中 | 实际后果 |
 |---|---|---|
-| 收尾用 `vitest --changed` / `--related` 代替全量 | 视改动而定，小卡可能省 60–90 秒 | ① 通过数据文件（JSON / docs）而不是 import 产生依赖的测试，例如本轮的「手册 §4 行数」测试读的是 docs，related 图里没有它；② 读仓库现状的守卫类测试；③ 动态 import / `import.meta.glob` 的依赖 |
-| 只改文档的提交跳过 vitest，只跑 check-guards | 约 105 秒 | 读取 docs 的测试（手册密度 / 行数棘轮、@fact 相关测试），本轮已实测会红 |
-| 零差只跑 dump、不跑 rowsnap | 并行后几乎不省（四路同时跑） | 行级差异在总量上抵消的情况（总伤不变、行分布变了） |
-| 纯改名 / 纯搬迁卡跳过零差 | 约 50 秒 | 「看起来是纯搬运」实际带出行为变化（例如搬迁时丢了副作用顺序）；判断「纯搬运」本身就没有机器依据 |
+| `docs/**` 加一行 | **0 个文件** | 同一改动**实测会红**：`checkGuards.test.ts` 报 `expected 728 to be less than or equal to 727`（§4 行数棘轮） |
+| `public/static/catalog.json` | **0 个文件** | 仓库有 **52** 个测试文件读该数据（`grep -rl "catalog.json\|static/catalog" src --include=*.test.ts` = 52；经 `mockStaticFetch` 读的 = 64） |
+| `useResourceCalc.ts` + `core/resource/helpers.ts` | **222 个文件 / 204.9 秒** | 同机同时段全量 = **242.7 秒** ⇒ 只省 37.8 秒；且**漏掉 27 个**引用 `useResourceCalc` 的测试文件（严格 import 闭包算出 254 个，`--changed` 少选 32 个） |
+
+⇒ 三组都指向同一结论：本仓库的测试经 `setupHarness` 走全管线、不 import 被测源码，`--changed` 的 import 图**不成立**。
+「造显式依赖清单」的成本已量：严格闭包口径下需维护 254 条映射（含 13 条 grep 面都看不见的传递依赖），
+换来的是比全量只省 37.8 秒 —— **维护成本 > 收益**，判**不做**（提示词 §3 任务 A 末段授权此结论）。
+
+### 6.2 ② 的护栏与快路（已落地）
+
+- **清单**：`scripts/lib/docs-reading-tests.mjs` 的 `DOCS_READING_TESTS`（**31 条**，T114 实测派生）；
+- **棘轮**：`src/scripts/__tests__/checkGuards.test.ts`（① 清单逐字等于派生集；② 条目必须真实存在；
+  ③ 读 docs 且被测试覆盖的源文件必须在某条清单条目的闭包内；④ 反空洞下限：扫描面 ≥ 800、清单 ≥ 28）；
+- **判定器**：`isDocsOnlyChange()`（`git diff --name-only HEAD` 全部落在 `docs/` 前缀内才为真；
+  空输入判假 —— 防「没改动」被当绿灯）；
+- **快路**：`npm run test:docs`（= `node scripts/test-docs.mjs`；非 docs-only 时**拒绝并退出 2**，
+  要人工确认才 `--force`）；
+- **红线**：`check` / `verify` 不得引用它（棘轮断言，与 `test:fast` 同规矩）。
+
+⚠ **口径是「宁多勿漏」，不是「人工精选真读者」**：集合 = ①「import 闭包命中 docs 信号」
+∪ ②「测试**自身**起子进程 / 写 `scripts/**.mjs` 路径字面量」∪ ③「测试**自身**跑仓库级扫描（`git ls-files`/`grep -r`）」。
+②③ 是必要的——`child_process` 的目标与仓库级扫描对静态 import 图**不可见**，而这些测试读的正是 docs / 仓库现状。
+⚠ **踩过的坑（如实记录）**：初版把 ② 写成「闭包触及 `scripts/**`」，实测把 `difficultyCurveWorker.test.ts`
+只因传递 import 了纯数据模块 `presetCategories.mjs`（零 docs 引用）就捞了进来，且集合会随 `scripts/lib/`
+新增数据模块**无界增长**（并行会话加一个测试文件即红）。收窄为「只认测试自身」后 35 → **31 条**，
+① 仍覆盖全部直接读 docs 的测试，实测仍抓住 §4 行数红（见 §9.2）。
+
+### 6.3 ③ 的实测数字（为什么省 ~0 秒）
+
+`zd.sh` 四路并行（`.zc/perf/zd.sh:36`：`dump base & rowsnap base & dump after & rowsnap after &`），
+WALL ≈ 最慢那一路。用已归档的 r762 四份产物读**每路自身耗时**（`__ms`）：
+
+| 路 | 键数 | 自身耗时 |
+|---|---|---|
+| `dump`（base / after） | 520 | 41.6 s |
+| `rowsnap`（base / after） | 533 | 42.8 s |
+
+⇒ 砍掉 rowsnap 后 WALL = `max(2 个 dump)` = **41.6 s**，现在 = `max(4 路)` = **42.8 s** ⇒ **省 1.2 秒（2.8%）**。
+代价有两项，原表只记了第一项：
+1. `rowsnap.perf.ts:75` 比 `dump.perf.ts:78` 多哈希一项 `h(calc.damagePoolRows.value)`（行分布）；
+2. **`rowsnap.perf.ts:92-98` 另有 dump 完全没有的失衡轴变体**——对 `1171/1261/1401/1581` 预设追加 `snap('${p.id}/axis')`，
+   实测 **13 个** `*/axis` 键只存在于 rowsnap（r762 产物：dump 520 键 / rowsnap 533 键，差集 13 条全是 `auto-…/axis`）。
+⇒ 1.2 秒换掉 13 个预设的轴态覆盖，**否决**。
+
+### 6.4 ④ 的立项成本（若日后要走 AST 判据）
+
+零机器判据属实：`git grep pureMove` **零命中**（唯一命中是本行所在的 REQUIREMENTS 自述）；
+「纯搬迁」仅 3 处散文（`AGENTS.md` 无关，实际在 `docs/mcp-debt2-blade1-feasibility-v4.md` 等）。
+且已有实测反例（`docs/ENGINE_PIPELINE_GUIDE.md` §4 判据①bis）：「让 materialize 直接产出行」**实测不是纯搬运**——
+池提取把赠行与 `adjustStunExecs` 双计失衡、enrich 凭空补上生产侧刻意留空的字段（琉音赠行 daze 398.9 /
+诺姆 skillDamageTarget）、目标槽推导 core 用 `configs.length` vs 编排层用队长。
+最小 AST 判据 = 「导出符号集合 + 调用图不变」，仓库已有 `typescript`（`~5.7.3`）与先例
+（`scripts/lib/dead-channel-ls.mjs` 用 `ts.createLanguageService`）。**成本估算**：语言服务全仓 program 建一次
+约 20–30 秒（同文件内 `⑦`+`⑫` 合计约 43 秒量级），加符号集合 diff 与调用图比较 ≈ 1 个工人日；
+而它只覆盖「纯搬迁」这一种卡（历史上不常见）。⇒ **判「待立项」，不排期**。
+
 
 ## 7. 本轮落地的改动与回退点
 
@@ -182,3 +246,74 @@ z63 / z78 / z80 / z81 / z82 这五张卡，每路 42–48 秒、四路顺序执�
 - 任一片在**干净**机器上的墙钟超过 220 秒（离单次调用上限 285 秒不到 65 秒），或全量 CPU 超过 1400 秒：按 §8.3 的表从上往下做，并按 §8.1 的测法重排名次。
 - 有人要新写「全预设 / 全角色」扫描：先看 §8.3 第 2 条那 4 份能不能复用，再决定要不要另起一份。
 - 除此之外，只在改到这些文件时顺手做。
+
+## 9. T114 逐条判定的实测记录（2026-10-09，可复现）
+
+> 环境：隔离 worktree（`git worktree add --detach /tmp/t114-wt 0b81c1df`，软链 `node_modules`），
+> 16 核，vitest 4.1.10，worker 上限 4。**全量基线同机同时段实测 = 535 文件 / 4547 tests / 242.7 秒**
+> （跨轮波动 96–148 秒是历史口径，本轮 4 工人并行下的读数为 242.7 秒，故下表一律用**同批次对照**，
+> 不跨时段比较绝对值）。
+
+### 9.1 ① `--changed`：三组实测（命令与读数）
+
+```bash
+# 组 1：docs-only
+printf '\n<!-- probe -->\n' >> docs/mcp-dev-process-speed.md
+npx vitest list --changed HEAD | sed 's/ > .*//' | sort -u | wc -l     # → 0
+# 同改动的真实后果（快路清单里就抓住）：
+npx vitest run src/scripts/__tests__/checkGuards.test.ts               # → 1 failed：expected 728 to be less than or equal to 727
+
+# 组 2：数据文件
+printf '\n' >> public/static/catalog.json
+npx vitest list --changed HEAD | sed 's/ > .*//' | sort -u | wc -l     # → 0
+
+# 组 3：两个核心源文件（各加一行注释）
+npx vitest run --changed HEAD    # → 222 文件 / 2198 passed / 204.91 s（对照：全量 242.66 s）
+```
+
+严格 import 闭包（自建脚本，反向依赖图传递闭包）与 `--changed` 的对账：
+`--changed` 选中 **222** ⊂ 闭包 **254**（仅 `--changed` 有的 = 0，闭包有而它漏的 = **32**）；
+grep 面（`useResourceCalc` 字面引用）**242**，其中 `--changed` 漏 **27**、闭包漏 **13**
+（那 13 条是经别处间接依赖的：`slotSweep` / `luciaElowen` / `configMemory` 等）。
+
+### 9.2 ② docs-only 快路：负控与收益（同一改动，两组对照）
+
+| 组 | 命令 | 文件 / 用例 | 墙钟 | 失败文件 |
+|---|---|---|---|---|
+| 全量 | `npx vitest run` | 535 / 4547 | **248.2 s** | 1（`checkGuards.test.ts`） |
+| 快路 | `npm run test:docs`（31 条清单） | 31 / 551 | **≈40 s** | **1（同一条）** |
+
+⇒ **失败集逐条相同**（`diff` 两侧 `FAIL` 行 = 空），**省 208.9 秒（84.2%）**。
+撤销该 docs 改动后快路恢复 `EXIT=0`（32 passed / 2 skipped）。
+判定器负控：混入一个 `.ts` 改动 ⇒ `isDocsOnlyChange` = **false**（`git diff --name-only` 见 `src/composables/useResourceCalc.ts`）。
+
+**为什么 `check-guards` 单独跑不够**（选项②原文的"只跑 check-guards"）：同一 docs 改动下
+`node scripts/check-guards.mjs` = **EXIT 0 / 29 项全绿 / 17.4 秒**，而 vitest 里那条 **红**。
+根因：§4 行数 burn-down 判据**只在 `checkGuards.test.ts` 里断言**（`scripts/check-guards.mjs` 只导出
+`countGuideSection4Lines`，`runAllChecks` 不含它，`zc status` 只报不红）⇒ 这就是「只跑 check-guards」会漏的那类错误。
+
+### 9.3 ③ dump/rowsnap 差异（用已归档产物读，不重复跑）
+
+`.zc/perf/zd.sh:36` 四路并行；WALL ≈ 最慢一路。r762 归档产物（`/home/kaua/calc-arch/zd-r762-*.json`）读 `__ms`：
+dump 41.6 s / 520 键，rowsnap 42.8 s / 533 键；差集 **13** 条全是 `auto-…/axis`（失衡轴变体）。
+⇒ 砍 rowsnap 省 `42.8 − 41.6 = 1.2 秒`，丢 13 个预设的轴态覆盖。
+
+### 9.4 与提示词 §2 的事实核对（发现的偏差，如实记录）
+
+| 提示词原文 | 实测 | 处置 |
+|---|---|---|
+| `package.json:31` 是 verify 那行 | verify 在 **`:31`**（`check` 在 `:29`、`test:fast` 在 `:13`） | 无偏差 |
+| `checkGuards.test.ts:710-712` 记 `--changed` 教训 | 逐字命中（`:710-712`） | 无偏差 |
+| `docs/mcp-dev-process-speed.md:81` 第 115 轮反例 | 逐字命中 | 无偏差 |
+| `docs/mcp-worker-task-queue.md:72` | 该行是「长期规则」段，**r709 那条在 `:64`** | 记偏差（不影响结论） |
+| `docs/REQUIREMENTS.md:125` 登记处 | 逐字命中（`:125` 起） | 无偏差 |
+| `grep -rl "docs/" src --include=*.test.ts` = **53** | 实测 **54**（`docs/` 含注释；去注释后真读者 **8**，加闭包 = **12**） | 记偏差；口径纠正为「去注释 + 闭包」 |
+| `dump.perf.ts:78` / `rowsnap.perf.ts:75` / `rowsnap.perf.ts:92-98` | 逐字命中 | 无偏差 |
+| `.zc/perf/zd.sh:36-40` | 逐字命中（`run` 在 `:36`、`wait` `:37`、`WALL` `:38`、`DUMP` `:39`、`ROWS` `:40`） | 无偏差 |
+| `scripts/check-guards.mjs:108-109` FETCH_STUB_ALLOWLIST 已清空 | 逐字命中（`[]`） | 无偏差 |
+| `check-guards.mjs` 里 `changed`/`related` 计数为 0 | 命中（`grep -c` = 0） | 无偏差 |
+| `ENGINE_PIPELINE_GUIDE.md` §4 上限 **717→719** | 现为 **727**（2026-10-09 由并行会话结算上调） | 记偏差；本轮未改 §4（`countGuideSection4Lines()` 前后均 = 727） |
+| `pureMove` 全仓零命中 | 命中（唯一命中是 REQUIREMENTS 自述） | 无偏差 |
+
+⚠ **对提示词 §2.1 的一处口径提醒**：`docs:status` 不在 verify 链里（提示词已记），但**它也不在本轮快路里**——
+`test:docs` 只替代那一次全量 vitest；文档批次仍须跑 `check-guards` + `npx vue-tsc -b`（若动了源码）+ `docs:status`。
