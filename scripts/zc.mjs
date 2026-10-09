@@ -38,6 +38,10 @@ import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createRequire } from 'node:module'
 
+// 日期工具（status 的「棘轮临近到期还剩几天」用它；check-guards.mjs 也从这里取，
+// 见 scripts/lib/date-utils.mjs 头注释——不能再从 check-guards import，那会成环）
+import { daysBetween } from './lib/date-utils.mjs'
+
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 export const STATE_DIR = join(ROOT, '.zc')
 export const LEASES_FILE = join(STATE_DIR, 'leases.json')

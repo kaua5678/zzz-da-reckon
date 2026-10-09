@@ -32,6 +32,8 @@ import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 // 语言层（事实语法/锚点解析）的单一实现在 zc.mjs，护栏只调用不复制（规则 11）
 import { auditAuthoredFacts, resolveAnchor, scanAuthoredFacts } from './zc.mjs'
+// 日期工具（zc.mjs 的 status 与本文件的 dueSoon 共用一份，规则 11）
+import { daysBetween } from './lib/date-utils.mjs'
 // level60 字段映射规则表（审计/修复/导入脚本三方共用，规则 11）
 import { FIELD_RULES } from './lib/level60-rules.mjs'
 import {
@@ -185,10 +187,11 @@ export function computeBurndown(measure, today = new Date().toISOString().slice(
   })
 }
 
-/** 两个 ISO 日期之间的天数（b - a） */
-export function daysBetween(a, b) {
-  return Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
-}
+// daysBetween 已提取到 scripts/lib/date-utils.mjs（2026-10-09）：zc.mjs 的 status 也要用它，
+// 而本文件已 import zc.mjs ⇒ zc 反向 import 会成环。此处 import 后转出，既供本文件上方
+// 使用（dueSoon 计算），也保持本文件公开 API 与 check-guards.d.mts 声明不变
+// （src/scripts/__tests__/checkGuards.test.ts 仍从这里 import）。
+export { daysBetween }
 
 // ---- 判据 9：README 文档表 == docs/ 实际文件（防文档清单漂移） ----
 //
