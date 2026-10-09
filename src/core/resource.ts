@@ -306,15 +306,17 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 溢出 = **被时间线截断掉的秒数**（装配阶段实测）：为了塞进战斗时间砍掉了多少动作。
   // 截断后 Σ物化净占用恒 ≤ 预算，所以"账本超预算"（iterate 那份中间值）与"物化超预算"
   // 都不再是溢出——只有真被砍掉的时间才是。消费方：TeamComparePage 操作难度横轴（1秒=1难度点）。
-  // debt: 截断不回灌资源循环（A 项，2026-09-11 用户立项）——被砍招式的行级回能/喧响仍按**未截断**的
-  //       `state` 计进账本（`calcEnergySource` 走 `materializeRows(state)`），于是资源池总量/次数
-  //       （如强特 40 次）比 180s 计划实际兑现的高（实测般+诺+卢全关档：槽0 回能账本 200 vs 截断后行 Σ 140）。
-  //       修法（用户给定语义）：先按预算重分配平A池、交互只取「达成目标的最少要求」，装不下就重收敛，
-  //       直到截断为 0（A 项 = 截断后行重收敛）。due: A 项落地（含全库 delta 归因）时销号。
-  //       进度（2026-09-19 R37-J2，批 2-1）：上方 rowTimeLimit 重折环已落地「装不下就重收敛」的外环形态（只接受 Σcut 严格变小，
-  //       ≤3 轮）；刀 1 后全库仅 1431 簇两队有初装截断，其余 103 队默认路径逐位 0 delta。**未销号**：结构性溢出队重折后
-  //       仍可能残留截断（如实上报），「直到截断为 0」要等实数化专项 + 用户终验。
-  // @fact engine:资源账本/截断 口径: 资源池能量/喧响收入按 feasibleRows 计（cfg.rowTimeLimit 缺省 = 未截断行；初装截断 > 容差时重折环按每槽装配 kept 注入、从 S2 入口重跑到装配，Σcut **不增**即接受（相等也接受——那正是「账本按真装得下的行计」的不动点态，接受后不动点即停机；实现 `src/core/resource/truncationRefold.ts`）、≤3 轮、拒绝即整体回滚、返回前删键），装配期截断只削招式行（伤害/失衡随之降）；残留截断如实上报（overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 · 债2批2-1@2026-09-19 R37·复核@2026-09-25·实测@2026-09-27（接受判据按 e4d970a「严格变小→不增」与 truncationRefold.ts 现状改写）·复核@2026-09-30·复核@2026-10-07 | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
+  // ✅ 债 2「截断不回灌资源循环（A 项）」**已于 2026-10-09 由用户裁决销号**（销号口径改写，非「截断为 0」）：
+  //    ① 被砍招式的行级回能/喧响按未截断 state 计账这件事**仍存在**，但它已被 `cfg.rowTimeLimit` 重折环
+  //       （`truncationRefold.ts`，只接受 Σcut 严格变小、≤3 轮、拒绝即整体回滚）从「静默失真」降级为
+  //       **如实上报**：残留截断逐槽进 `overflowSeconds` / `truncationCuts`，难度轴交互按存活率缩。
+  //    ② 原销号条件「结构性溢出队重折后截断为 0」**被本仓自己的测试判定为口径上不可达**——
+  //       `src/core/__tests__/truncationRefold.test.ts:90` 原文：「结构性溢出（必要行 > 预算），
+  //       重折不可能清零；**清零 = 口径变了**，去看 golden」；`:151` 仍钉着一条真残差
+  //       （`auto-1431-1341-1481` 槽2 +83.5175 dB，三态逐位相同 ⇒ 与任何近期改动无关）。
+  //    ③ ⇒ 销号口径**改写为**：`Σcut 只减不增且如实上报`（现状已达成，重折环 + 棘轮 + 逐槽清单三重保证）。
+  //       若日后要真做到「截断为 0」，那是**换口径**（= 立项实数化专项），须用户重新裁决，不是本条遗留。
+  // @fact engine:资源账本/截断 口径: 资源池能量/喧响收入按 feasibleRows 计（cfg.rowTimeLimit 缺省 = 未截断行；初装截断 > 容差时重折环按每槽装配 kept 注入、从 S2 入口重跑到装配，Σcut **不增**即接受（相等也接受——那正是「账本按真装得下的行计」的不动点态，接受后不动点即停机；实现 `src/core/resource/truncationRefold.ts`）、≤3 轮、拒绝即整体回滚、返回前删键），装配期截断只削招式行（伤害/失衡随之降）；残留截断如实上报（overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 · 债2批2-1@2026-09-19 R37·复核@2026-09-25·实测@2026-09-27（接受判据按 e4d970a「严格变小→不增」与 truncationRefold.ts 现状改写）·复核@2026-09-30·复核@2026-10-07·销号裁决@2026-10-09（口径改「Σcut 只减不增且如实上报」，原文「直到截断为 0」判为不可达） | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
   // ⟳复核: 重折环上限 / 接受判据 / kept 口径再动时，复核「默认路径（cut ≤ 1s 队）逐位 0 delta」+「1431 簇两队 Σcut 只减不增、cfg 无 rowTimeLimit 残留」（truncationRefold.test.ts + timeGolden） | 到期 2026-12-31
   config.overflowSeconds = timeTruncatedSeconds
 

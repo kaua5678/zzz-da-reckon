@@ -123,6 +123,9 @@
   - verify116b 339 files / 3714 tests EXIT 0。
 - 详情：`docs/mcp-dev-process-speed.md`；流程：`docs/mcp-worker-task-queue.md` §0.R2。
 - **待用户裁决**：流程文档 §6 列了 4 个会削弱保证的选项（`vitest --related`、只改文档时跳过 vitest、只跑 dump、纯搬迁卡跳过零差），每条都写了「会漏掉什么错误」。**未采用**。
+  **2026-10-09 更新：用户裁决立项** ⇒ 提示词 `.claude/PROMPT-process-speed.md`（开新对话执行）。
+  侦察结论 = **四条里没有一条能直接采用**：① 已有实测反例（`src/scripts/__tests__/checkGuards.test.ts:710-712` 记「本仓库 `--changed` 不可用…实测 `--changed HEAD` 只选中 1 个文件」）；② 有实测反例但可修（须先建「读 docs 的测试」显式清单 + 棘轮）；③ 省 ~0 秒，且 `rowsnap.perf.ts:92-98` 还多 4 个预设的失衡轴变体（文档只记了「行分布」）；④ 零机器判据（`pureMove` 全仓零命中）+ 有实测反例。
+  ⇒ 该任务的有效交付是**造出能安全实施的护栏**或**逐条给出带实测数字的否决记录**，详见提示词 §0。
 
 
 ---

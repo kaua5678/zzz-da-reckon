@@ -107,6 +107,12 @@ vue-tsc 一次过（**说明 38 处里没有拼错**——这正是现在能被�
 
 **r398（CC-372 `1259abd5` / `468d0e05`）——结构问题 ③（phoenix 借 panel 夹带）已解**：根因是 `releaseModifier` 契约缺「我是谁」，于是补上 `self {slot, cinemaLevel, panel}`，同类 hack（phoenix / promia / vivian）一并删除，详见 `docs/mcp-nextround-writeback.md` §6。TYPED 24。**剩余：非测试源码 `as unknown as Record` 114 行（含非 cfg 对象）**；结构问题只剩 ② yidhari 导出签名收 Record。
 
+> **⏹ 2026-10-09 沿革（本句已过期，勿按字面继承）**：上面 r397/r398 的「剩余 115 / 114 行」是**当时点旧数**。
+> 收尾复测（2026-10-09）现读数 = **8 处**，其中 **7 处不是角色 cfg 字段**（`analysisScenario.ts:75/81` store `$state` /
+> `probeTrace.ts:23` `globalThis` 探针槽 / `truncationRefold.ts:68` 与 `rowBuild.ts:43` 的 `Object.keys` 通用键快照 /
+> `cfgField.ts:6/11` spec 按字段名动态读 cfg 的唯一入口 / `config.ts:217` 注释）⇒ **D2 债已清，用户 2026-10-09 裁决销号**
+> （判据与现场复核见 `.claude/archive/OPEN-ITEMS-closed-2026-10-09.md` 的 `D2` 条）。剩余 8 处是**通用动态键通道**，不是 D2 债，**不要再按「114 行」立项**。
+
 ### 执行卡（每个模块一张，机械活，可派执行模型）
 
 1. （r405 起骨架注释自带「写入 L<n>: 语句；模块内读 N；外部: …」，读 0 且无外部生产读者标 **DEAD?** ⇒ 先查死写再补声明；r405 的注释口径是把它改写成「写入：<语句>」，去掉行号）`python3 scripts/d2-record-keys.py . <模块名> <声明骨架文件>`（r394 CC-366 起三种强转 `as unknown as Record` / `as Record` / `as any` 都统计，并把未声明键写成声明骨架——**骨架里的类型是按用法猜的、注释是 TODO**：先查每个键的全部读写点（`grep -rn <键> src`，**含 `src/data` 的 JSON**——spec 资源会按字段名读 cfg），写清含义与写入方再用）：列出每个强转变量的来源、用到的键、哪些**未声明**（扩充是全局的，脚本已算上所有模块的扩充块）。
