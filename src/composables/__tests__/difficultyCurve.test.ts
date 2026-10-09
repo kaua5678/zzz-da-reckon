@@ -295,9 +295,12 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
-    // 构造「可包容溢出」前置（见上方夹具沿革）：主 C 弹刀 / 闪反各 +10 ⇒ r=0 溢出 3.666s
-    config.team[0]!.parryCount = (config.team[0]!.parryCount ?? 0) + 10
-    config.team[0]!.dodgeCounterCount = (config.team[0]!.dodgeCounterCount ?? 0) + 10
+    // 构造「可包容溢出」前置（见上方夹具沿革）：主 C 弹刀 / 闪反各 +N ⇒ r=0 溢出。
+    // ⚠ 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 叶瞬光需求↓ ⇒ +10 次交互已**不再溢出**（r=0 overflow=0），
+    //    夹具前置失效。实测重新标定：+40 次 ⇒ r=0 溢出 19.08s、`containRatioOf`=0.060（远 ≠ cap/2=0.2，
+    //    「刚好包容」语义干净，且构造对「并行会话 ultimatePromote 口径」两态逐位相同）。
+    config.team[0]!.parryCount = (config.team[0]!.parryCount ?? 0) + 40
+    config.team[0]!.dodgeCounterCount = (config.team[0]!.dodgeCounterCount ?? 0) + 40
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
     expect(calc.resourceResult.value!.overflowSeconds).toBeGreaterThan(1) // 确有溢出（前置条件）
 

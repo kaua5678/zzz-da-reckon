@@ -85,19 +85,24 @@ import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
  * 另两支（`-1481-1491` / `-1341-1491`）与该并发修复**无关**，两态逐位相同。
  */
 const CASES = [
+  // ⚠ 2026-10-09 溯影惊鸿排除自己（yeshuguang.ts#computeOutsideSwordGain）：剑势 −18 ⇒ 照影轮↓ ⇒ 叶瞬光需求↓
+  //   ⇒ 团队预算重分配 ⇒ 三队 ledger/dmg 落点都变（本测试核心判据 = acc 残差与 converged，两者实测**不变**：
+  //   acc 9.27/21.70/21.70、converged 恒 true ⇒ 折叠环未受剑势修复影响，落点变化纯属「修正 bug 后资源重排」）。
   {
-    id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [135.009, 43.692, 31.294], dmg: 104.6832,
+    id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [135.478, 42.103, 32.100], dmg: 111.3180,
     desc: '残差塌回地板（修前 62.57s）且落点不变',
   },
-  // 旧 auto-1431-1481-1341：新槽序下 scale 0.375（封顶激活）、落点 [113.861,37.169,56.002]/92.4959M。
+  // 旧 auto-1431-1481-1341：新槽序下 scale 0.375（封顶激活）。
   // ⚠ 本条**不再是 acc 判别器**：新槽序 + 在飞赠行时长修复下 acc 修前/修后同为 21.70（旧槽序是 45.40→21.70）。
   //   它现在的职责 = 钉住 `necessaryUncappedTime` 路径（`feasibleScale < 1`）的**落点**，不是度量残差塌陷。
+  //   2026-10-09 剑势修复后落点 [117.328,38.085,59.918]/99.2892M（并发 ultimatePromote.ts 修复 + 剑势排除自己叠加）。
   {
-    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [113.861, 37.169, 56.002], dmg: 92.4959,
+    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [117.328, 38.085, 59.918], dmg: 99.2892,
     desc: '封顶队（scale<1，走 necessaryUncappedTime 路径）落点不变；acc 修前/修后同为 21.70 ⇒ 本条不度量残差塌陷',
   },
-  // 旧 auto-1431-1491-1341：槽序互换（照↔千夏）⇒ 账本槽1/槽2 对调，伤害不变（99.1970M）。
-  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [146.252, 26.551, 28.795], dmg: 99.1970, desc: '残差塌回地板（修前 22.74s）且落点不变' },
+  // 旧 auto-1431-1491-1341：槽序互换（照↔千夏）⇒ 账本槽1/槽2 对调。
+  // 2026-10-09 剑势修复后落点 [145.904,26.551,28.795]/93.6084M。
+  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [145.904, 26.551, 28.795], dmg: 93.6084, desc: '残差塌回地板（修前 22.74s）且落点不变' },
 ] as const
 
 describe('折叠残差不与团队封顶构成正反馈', () => {
@@ -253,14 +258,14 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
        *   是**旧槽序修前**的读数（实测旧槽序修前 0.75 / 188.681s / 111.221M），套到新槽序上是错的——已按实测改写。
        *   保留本用例 = 钉住该队的降配落点（数值一漂即红），不声称档位迁移。
        */
-      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.0625, 6)
+      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
       expect(
         Math.abs((rr!.overflowSeconds ?? 0) - 0),
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 90.215),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 90.215M`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 98.1679),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 98.1679M`,
       ).toBeLessThan(0.01)
       // 残差仍在量化地板（本修法的目的）
       expect(rr!.convergence?.timeBudgetAccumulatedSeconds ?? 0).toBeLessThan(35)
@@ -314,14 +319,15 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0)
       const rr = calc.resourceResult.value
       expect(rr, '资源池未产出结果').toBeTruthy()
-      // 现状：档位 0.125、截断 12.10s、伤害 86.0752M
+      // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 照影轮↓ ⇒ 真实溢出减轻 ⇒ 截断 12.10→0.00（改善）；
+      // dmg 86.0752→81.9685（降：ratio=0 无合轴吸收，叶瞬光轮数减少的损失大于队友多打的收益——那 18 剑势本不该有）。
       expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
       expect(
-        Math.abs((rr!.overflowSeconds ?? 0) - 12.10),
-        `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 12.10s`,
+        Math.abs((rr!.overflowSeconds ?? 0) - 0),
+        `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s（剑势修正后截断归零）`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 86.0752),
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 81.9685),
         `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 86.0752M`,
       ).toBeLessThan(0.01)
     }, 200_000)

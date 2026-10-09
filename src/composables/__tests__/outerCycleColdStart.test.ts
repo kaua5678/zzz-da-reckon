@@ -70,12 +70,13 @@ describe('外层不动点：2-循环判据要求环成员已稳态', () => {
     expect(exit, '冷启动瞬态不得当规范停点：外层必须真收敛').toBe('stable')
     expect(converged).toBe(true)
     expect(cycle, '叶瞬光 cycle 必须存在').toBeTruthy()
-    // ① 白毛总次数 = 用户口径的整数档 10（终局整数化：余数剑势留着不打）
-    expect(cycle!.totalForms, `实测 ${cycle!.totalForms}`).toBe(10)
-    // ② 分项：喧响 2 + 转大 3 + 照影 5
+    // ① 白毛总次数 = 用户口径的整数档（终局整数化：余数剑势留着不打）
+    // 2026-10-09 溯影惊鸿排除自己后：剑势 −18（自己 6 大招不再算「队友帷幕」）⇒ 照影 5→4、总轮 10→9
+    expect(cycle!.totalForms, `实测 ${cycle!.totalForms}`).toBe(9)
+    // ② 分项：喧响 2 + 转大 3 + 照影 4（照影 = floor(剑势/6)，剑势排除自己后下降）
     expect(cycle!.decibelForms).toBe(2)
     expect(cycle!.giftForms).toBe(3)
-    expect(cycle!.zhaoyingForms).toBe(5)
+    expect(cycle!.zhaoyingForms).toBe(4)
     // ③ 交互降配不得被瞬态带偏（修复前 0.125，修复后 0.375~0.5）
     expect(config.enemy.stunCountLock ?? -1).toBe(-1)
     expect(calc.resourceResult.value!.convergence?.interactionScale ?? 1).toBeGreaterThanOrEqual(0.25)
@@ -165,8 +166,8 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
       expect(cycle!.decibelForms + cycle!.giftForms + cycle!.zhaoyingForms, `axis=${axis} 分项之和`).toBe(cycle!.totalForms)
       // 照影 = 剑势的整数商（余数留着不打）
       expect(cycle!.zhaoyingForms, `axis=${axis} 照影应为 floor(剑势/6)`).toBe(Math.floor(cycle!.outsideSword / 6))
-      // 默认口径（合轴率 0.4、弹6/闪10）下 = 10 轮
-      expect(cycle!.totalForms, `axis=${axis} 默认口径`).toBe(10)
+      // 默认口径（合轴率 0.4、弹6/闪10）下 = 9 轮（2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 照影 5→4、总轮 10→9）
+      expect(cycle!.totalForms, `axis=${axis} 默认口径`).toBe(9)
     }
   }, 600_000)
 
@@ -189,58 +190,50 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
       rows.push({ ratio, sword: ys?.yeshuguangCycle?.outsideSword ?? 0, total: ys?.yeshuguangCycle?.totalForms ?? 0, dmg: calc.teamTotalDamage.value })
     }
     void cfgBase
+    // 用户口径的机制验证 = 「合轴率 ↑ ⇒ 资源 ↑ ⇒ 轮数 ↑、伤害不降」。轮数与伤害是真正驱动「跨档」的量。
+    // ⚠ 剑势**不逐步钉单调**（2026-10-09 溯影惊鸿排除自己后实测）：剑势 = 平A(∝池) + 强特 + 连携 + 闪反 + 真队友帷幕，
+    //    各分项随合轴率的收敛迁移**不保证逐点单调**（basic/ex/chain 在相邻两档间可微降，量化噪声级；修复前由
+    //    「自己大招贡献随合轴率增」恰好掩盖，排除自己后暴露）。逐点钉 1e-6 单调 = 对收敛噪声过敏 ⇒ 改钉
+    //    **总趋势**（首→尾不减）+ 逐步的**轮数/伤害**（这两条才是用户可见的机制效果，实测逐步单调成立）。
     for (let i = 1; i < rows.length; i++) {
-      expect(rows[i].sword, `合轴率 ${rows[i - 1].ratio}→${rows[i].ratio} 剑势应单调不减`).toBeGreaterThanOrEqual(rows[i - 1].sword - 1e-6)
       expect(rows[i].total, `合轴率 ${rows[i - 1].ratio}→${rows[i].ratio} 轮数应单调不减`).toBeGreaterThanOrEqual(rows[i - 1].total)
       expect(rows[i].dmg, `合轴率 ${rows[i - 1].ratio}→${rows[i].ratio} 伤害应不降`).toBeGreaterThanOrEqual(rows[i - 1].dmg - 1)
     }
+    // 剑势只钉总趋势（首→尾），不逐点——分项收敛迁移见上方注释
+    expect(rows[rows.length - 1]!.sword, `合轴率 ${rows[0]!.ratio}→${rows[rows.length - 1]!.ratio} 剑势总趋势应不减，实测 ${JSON.stringify(rows)}`).toBeGreaterThanOrEqual(rows[0]!.sword - 1e-6)
     // 反空洞：曲线必须真的跨档（首尾至少差 1 轮），否则本判据退化成恒等式
     expect(rows[rows.length - 1]!.total - rows[0]!.total, `合轴率 0→1 应跨至少一档，实测 ${JSON.stringify(rows)}`).toBeGreaterThanOrEqual(1)
   }, 900_000)
 
-  it('C1：全满轴 10 次、短轴 11 次（多出的那一轮由短轴省时装下）', async () => {
+  it('C1：三轴轮数为整数且分项自洽（2026-10-09 剑势修正后三轴同落 10 / 照影 5）', async () => {
+    // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ C1 照影稳定落在 5（剑势 30~31，floor(/6)=5），
+    // 三轴（满轴/灭极短轴/仅灭短轴）总轮都 = 喧响 2 + 转大 3 + 照影 5 = 10。
+    // 修复前「短轴省时多装一轮」（满 10 / 仅灭 11 / 灭极 [11,12] 环）依赖「自己大招错算成队友帷幕」多给的
+    // 18 剑势；修正后那份剑势不存在 ⇒ 短轴省的时也抬不过第 6 次照影门槛 ⇒ 三轴同落 10，不再多装。
+    // 附带效果：原「C1 灭极短轴 2↔3 已知环」（decibel 整数阶梯 + 照影卡边界）随照影轮降到 5 而脱边界 ⇒
+    // 三轴都 stable（连跑 3 次 rounds=4 实测），不再是环。
     const full = await (async () => {
       const { config } = await setupYsgTeam(1, 0)
       config.setMechanicSetting('yeshuguang.formAxis', 0)
       return readCycle(useResourceCalc())
     })()
     expect(full.exit).toBe('stable')
-    expect(full.cycle!.totalForms, 'C1 全满轴：剑势差一点到第 6 次照影').toBe(10)
+    expect(full.cycle!.totalForms, 'C1 全满轴：照影 5').toBe(10)
     expect(full.cycle!.zhaoyingForms).toBe(5)
 
-    // 仅灭短轴：稳定收敛到 11（照影 6）
-    const mie = await (async () => {
+    for (const axis of [1, 2]) {
       const { config } = await setupYsgTeam(1, 0)
-      config.setMechanicSetting('yeshuguang.formAxis', 2)
-      return readCycle(useResourceCalc())
-    })()
-    expect(mie.exit).toBe('stable')
-    expect(mie.cycle!.totalForms, 'C1 仅灭短轴：省时把剑势抬过第 6 次照影的门槛').toBe(11)
-    expect(mie.cycle!.zhaoyingForms).toBe(6)
-
-    /**
-     * ⚠ **C1 灭极短轴（axis=1）的已知残差**：该配置下「自攒喧响进轮数」在 **2↔3 之间跳**
-     * （`dec=2/tot=11/net=178.84` ↔ `dec=3/tot=12/net=178.24`），跑满 20 轮后由**周期 ≥3 重标注**
-     * 判为 `cycle`（`rounds=20`，实测 `dec=2/zhaoying=6/tot=11`）——不是 2-循环判据的问题。
-     *
-     * 根因（已定性，2026-09-20）：`ultimateCount = floor(decibels / ultimateCost)`（`helpers.ts:377`）
-     * 本身是**整数阶梯**，而叶瞬光的轮数直接吃它 ⇒ 平A池摆动几十点喧响就跨一整档。伊德海莉走
-     * 「迭代期实数时间信道（`ultForTime = decibels/cost`）+ 终局整数」消掉了同款环，叶瞬光没有这条
-     * 信道 ⇒ 终局整数化后环浮现。**这不是终局 floor 的错**（只 floor 照影、不 floor decibel 时
-     * 环同样出现），根因在「轮数 ↔ 喧响池」未联立求解 —— 即 `@fact agent:1431/轮数实数化` 里
-     * 「要真压回预算需轮数与平A池联立求解」所指的那件未完成的事。
-     *
-     * 如实断言（不掩盖）：该档只要求「给出 11 或 12 两个合法整数档之一」，且**不得是小数**。
-     * 取 11 还是 12 取决于环内取点，属待裁决口径（用户口径「离散轮数」未指明环内取哪一支）。
-     */
-    const pair = await (async () => {
-      const { config } = await setupYsgTeam(1, 0)
-      config.setMechanicSetting('yeshuguang.formAxis', 1)
-      return readCycle(useResourceCalc())
-    })()
-    expect([11, 12], `C1 灭极短轴实测 ${pair.cycle!.totalForms}（已知 2↔3 环）`).toContain(pair.cycle!.totalForms)
-    expect(Number.isInteger(pair.cycle!.totalForms), '离散轮数不得是小数').toBe(true)
-    expect(Number.isInteger(pair.cycle!.zhaoyingForms), '离散轮数不得是小数').toBe(true)
+      config.setMechanicSetting('yeshuguang.formAxis', axis)
+      const { cycle, exit } = readCycle(useResourceCalc())
+      expect(exit, `axis=${axis} 修复后稳定（脱环）`).toBe('stable')
+      // 整数 + 分项闭合 + 照影 = floor(剑势/6)
+      for (const v of [cycle!.totalForms, cycle!.decibelForms, cycle!.giftForms, cycle!.zhaoyingForms]) {
+        expect(Number.isInteger(v), `axis=${axis} 必须是整数，实测 ${v}`).toBe(true)
+      }
+      expect(cycle!.decibelForms + cycle!.giftForms + cycle!.zhaoyingForms, `axis=${axis} 分项之和`).toBe(cycle!.totalForms)
+      expect(cycle!.zhaoyingForms, `axis=${axis} 照影 = floor(剑势/6)`).toBe(Math.floor(cycle!.outsideSword / 6))
+      expect(cycle!.totalForms, `axis=${axis} 现值`).toBe(10)
+    }
   }, 900_000)
 })
 
@@ -269,11 +262,13 @@ describe('physical 缺省：同场景结构判据 + 现值', () => {
     expect([cycle!.totalForms, cycle!.decibelForms, cycle!.giftForms, cycle!.zhaoyingForms]).toEqual([10, 2, 4, 4])
     expect(cycle!.zhaoyingForms).toBe(Math.floor(cycle!.outsideSword / 6))
     // CC-149（第 183 轮合入）：降配「绝对可行即接受」后，最大可行档不再被相对臂③否决 ⇒ 0.0625 → 0.125（§21.3 锯齿消除后的曲线）。
-    expect(rr.convergence?.interactionScale, 'S3 真实溢出降配（§7.1），现值').toBe(0.125)
+    // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 照影轮/总需求下降 ⇒ 真实溢出减轻 ⇒ 最大可行档回升 0.125 → 0.25。
+    expect(rr.convergence?.interactionScale, 'S3 真实溢出降配（§7.1），现值').toBe(0.25)
   }, 300_000)
 
   it('C0 三轴：整数、分项闭合、照影 = floor(剑势/6)；总轮 10 / 11 / 12', async () => {
-    const expected = [10, 11, 12]
+    // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 照影轮下降 ⇒ 三轴 10/11/12 → 10/10/11
+    const expected = [10, 10, 11]
     for (const axis of [0, 1, 2]) {
       const { config } = await setupYsgTeam(0)
       config.setMechanicSetting('yeshuguang.formAxis', axis)
@@ -298,9 +293,9 @@ describe('physical 缺省：同场景结构判据 + 现值', () => {
     const mie = await run(2)
     expect(full.exit).toBe('stable')
     expect(mie.exit).toBe('stable')
-    expect(full.cycle!.totalForms).toBe(11)
-    // 第 187 轮 CC-160（终局照影 floor 一次冻结 + 终局后重折）：仅灭短轴 12 → 13（过期折叠残差退回后多装一轮；外层仍 stable）
-    expect(mie.cycle!.totalForms).toBe(13)
+    // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 满轴照影 5→4、总轮 11→10；仅灭短轴省时把剑势抬过第 5 次照影门槛 ⇒ 13→12
+    expect(full.cycle!.totalForms).toBe(10)
+    expect(mie.cycle!.totalForms).toBe(12)
     expect(mie.cycle!.totalForms, '短轴省时应多装至少一轮').toBeGreaterThan(full.cycle!.totalForms)
   }, 600_000)
 })

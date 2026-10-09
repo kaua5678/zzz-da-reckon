@@ -304,6 +304,8 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
 
 // @fact agent:1431/载物 未建模: 载物只是青溟剑势的溢出暂存，而总量计算器天然不做上限截断，溢出本就不丢 ⇒ 建模它没有任何数值意义，不补 | 据 用户@2026-09-01·复核@2026-09-04·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-09（r759 只换额外能力读口） | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
 // @fact agent:1431/局外连接段 决: **局外**（非明心境）连接段不建执行行——它的占用时间就是平A池（basicAttackTime，按 atk0PerSec 攒青溟剑势）；明心境内的连接段（斩流光灭/极/扶摇）**照常建行**。总量计算器按资源算招式而非按连段顺序 | 据 用户@2026-09-01·复核@2026-09-05（主体加限定词：曾被读成"明心境连接段不建行"并输出错误归因）·复核@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-09（r759 只换额外能力读口） | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
+// @fact agent:1431/溯影惊鸿排除自己 口径: 溯影惊鸿原文「队友开帷幕 +3 局外剑势」（spec 1431.json）只算**真队友**开的帷幕——teamVeilCountTotal 是全队求和（含自己 teamVeilCount=大招1:1），自动注入的次数须减去自己贡献的 veil（=自己大招次数）才乘 3；自己开帷幕（含强化状态产生的易伤帷幕）不回自己剑气；手动滑块 teamCurtainCount 是用户显式指定的队友帷幕数，不减 | 据 用户@2026-10-09「排除自己就行，自己开的帷幕不能用来给自己恢复剑气」 | 验 src/mechanics/__tests__/yeshuguang.test.ts | 锚 src/mechanics/agents/yeshuguang.ts#computeOutsideSwordGain | 信 确认
+// ⟳复核: 叶瞬光原文改版（溯影惊鸿触发条件/剑势数值变动）或 teamVeil 通道（computeTeamVeilCountTotal / 各模块 teamVeilCount 声明）改动时，复核「fromCurtain 只算真队友、自动次数减自己 veil」恒等式（yeshuguang.test 反证锁）+ 1431 簇预设截断量（timeGolden over 字段） | 到期 2026-12-31
 export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   basicAttackTime?: number
   exSpecialCount?: number
@@ -324,8 +326,16 @@ export function computeOutsideSwordGain(cfg: CharacterOperationConfig, state: {
   const fromChain = (state.chainCountTotal ?? 0) * perChain
   // 额外能力·溯影惊鸿：队友开帷幕 +3 局外剑势/次。手动滑块 >0 优先；否则自动用全队帷幕次数
   //（useResourceCalc 收敛注入 teamVeilCountTotal：照 veilCount + 爱芮/叶瞬光大招 + 千夏强特，2026-08-31）。
+  // ⚠ 原文是「**队友**开帷幕」（spec 1431.json），而 `teamVeilCountTotal` 是**全队**求和——含叶瞬光自己
+  //（`teamVeilCount: ({ultimateCount}) => ultimateCount`，1:1）。2026-10-09 用户裁决「排除自己就行，自己开的
+  // 帷幕不能用来给自己恢复剑气（强化状态产生的易伤帷幕是另一回事，不回剑气）」⇒ 自动注入的次数要**减去自己
+  // 贡献的 veil（= 自己大招次数）**，只留真队友开的帷幕。修复前这队（琉音/耀嘉音无 teamVeilCount）teamVeilCountTotal=6
+  // 全是她自己 ⇒ 白吃 18 剑势 ≈ 3 次照影轮 ≈ 39s 前台（排除后 151.82→~113s）。手动滑块是用户显式指定的
+  // 「队友帷幕次数」，本就不含自己，不减。
   const manualCurtains = Math.max(0, Math.floor(cfgNum(cfg, 'yeshuguang.teamCurtainCount') || 0))
-  const autoCurtains = Math.max(0, Math.floor(Number(cfg.teamVeilCountTotal ?? 0) || 0))
+  const autoCurtainsTotal = Math.max(0, Math.floor(Number(cfg.teamVeilCountTotal ?? 0) || 0))
+  const selfVeilCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0) || 0))
+  const autoCurtains = Math.max(0, autoCurtainsTotal - selfVeilCount)
   const curtains = manualCurtains > 0 ? manualCurtains : autoCurtains
   const aa = additionalAbilityActiveOf(cfg.panel)
   const fromCurtain = aa ? curtains * 3 : 0

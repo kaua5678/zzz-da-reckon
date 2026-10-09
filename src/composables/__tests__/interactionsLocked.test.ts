@@ -106,12 +106,13 @@ describe('手动锁定交互（用户口径 2026-10-06）', () => {
     const off = await evalPreset(DOWNSCALE_TEAM)
     const on = await evalPreset(DOWNSCALE_TEAM, { locked: true })
 
-    // 未勾选 = 现状（降配生效，交互被砍到 3/8）
-    expect(off.scale, '缺省须处于降配态（本断言锁的是「不勾选 = 现状」）').toBeCloseTo(0.375, 6)
+    // 未勾选 = 现状（降配生效，交互被砍）
+    // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 叶瞬光需求↓ ⇒ 缺省降配档 0.375 → 0.125（实打弹刀 2→1）。
+    expect(off.scale, '缺省须处于降配态（本断言锁的是「不勾选 = 现状」）').toBeCloseTo(0.125, 6)
     const rawParry = off.config.team[0]!.parryCount
     const rawDodge = off.config.team[0]!.dodgeCounterCount
     expect([rawParry, rawDodge], 'store 原值（夹具基准）').toEqual([6, 10])
-    expect(off.perSlotParry[0], '未勾选：实打弹刀 = round(6 × 0.375)').toBe(2)
+    expect(off.perSlotParry[0], '未勾选：实打弹刀 = round(6 × 0.125)').toBe(1)
 
     // 勾选 = 用户明确意图 ⇒ 不缩交互（同一读数回到 store 原值）
     expect(on.scale, '勾选后不得采纳任何降配档').toBeUndefined()
@@ -166,9 +167,11 @@ describe('手动锁定交互（用户口径 2026-10-06）', () => {
       expect(r.perSlotParry[1], `${name} 锁定态实打弹刀（队友）= store 原值`).toBe(6)
     }
     // 吸收比 ↑ ⇒ 队友被并行吸收的时间 ↑、截断 ↓（单调，实测值见 describe 头注释）
+    // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 落点变化 ⇒ 各档吸收量/截断迁移（单调性不变）：
+    // cut 88.93→56.38→17.72 改为 76.87→55.62→0.00；琉音吸收 0.4 档 22.15→22.22、1 档 70.78→66.94。
     expect(r0.dyn[1]!, 'ratio=0 无吸收').toBeCloseTo(0, 3)
-    expect(rDefault.dyn[1]!, '缺省 0.4：琉音被吸收 ~22.15s').toBeGreaterThan(20)
-    expect(r1.dyn[1]!, 'ratio=1：琉音被吸收 ~70.78s').toBeGreaterThan(70)
+    expect(rDefault.dyn[1]!, '缺省 0.4：琉音被吸收 ~22.22s').toBeGreaterThan(20)
+    expect(r1.dyn[1]!, 'ratio=1：琉音被吸收 ~66.94s').toBeGreaterThan(60)
     expect(r1.cut, '全额吸收把截断从 88.9s 压到 17.7s').toBeLessThan(r0.cut - 50)
     expect(rDefault.cut, '缺省 0.4 介于两者之间（本队容量不足以吸收全部溢出）').toBeLessThanOrEqual(r0.cut)
     // 伤害同向：兜住的交互越多 ⇒ 打出的伤害越高

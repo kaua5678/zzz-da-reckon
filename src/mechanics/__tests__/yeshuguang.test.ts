@@ -382,6 +382,31 @@ describe('局外剑势', () => {
     }
     expect(computeOutsideSwordGain(cfg, { basicAttackTime: 0, exSpecialCount: 3, chainCountTotal: 0 })).toBe(3)
   })
+
+  // 溯影惊鸿原文 = 「队友开帷幕 +3 局外剑势」（spec 1431.json），而 teamVeilCountTotal 是全队求和（含自己）。
+  // 2026-10-09 用户裁决「排除自己就行，自己开的帷幕不能用来给自己恢复剑气」⇒ 自动注入的次数减去自己贡献的 veil
+  //（= 自己大招次数，teamVeilCount 1:1），只留真队友开的帷幕。手动滑块是用户显式指定的队友帷幕数，不减。
+  it('溯影惊鸿只算队友：自己开帷幕（大招）不计入自己的剑势（反证锁）', () => {
+    // teamVeilCountTotal=6 全是自己（ult=6、队友无 teamVeilCount）⇒ 真队友 0 ⇒ fromCurtain=0
+    const selfOnly: any = {
+      yeshuguangSwordInitial: 0, yeshuguangAtk0PerSec: 0,
+      teamVeilCountTotal: 6, panel: { additionalAbilityActive: 1 }, dodgeCounterCount: 0,
+    }
+    expect(computeOutsideSwordGain(selfOnly, { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0, ultimateCount: 6 })).toBe(0)
+    // teamVeilCountTotal=8 = 自己6 + 队友2 ⇒ 只算队友 2 ⇒ 2×3=6
+    const withTeammate: any = {
+      yeshuguangSwordInitial: 0, yeshuguangAtk0PerSec: 0,
+      teamVeilCountTotal: 8, panel: { additionalAbilityActive: 1 }, dodgeCounterCount: 0,
+    }
+    expect(computeOutsideSwordGain(withTeammate, { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0, ultimateCount: 6 })).toBe(6)
+    // 手动滑块显式指定队友帷幕数 ⇒ 不减自己（用户指定的不含自己）
+    const manual: any = {
+      yeshuguangSwordInitial: 0, yeshuguangAtk0PerSec: 0,
+      teamVeilCountTotal: 6, panel: { additionalAbilityActive: 1 }, dodgeCounterCount: 0,
+      'setting:yeshuguang.teamCurtainCount': 3,
+    }
+    expect(computeOutsideSwordGain(manual, { basicAttackTime: 0, exSpecialCount: 0, chainCountTotal: 0, ultimateCount: 6 })).toBe(9)
+  })
 })
 
 describe('帷幕易伤封顶（用户 2026-09-01 裁决：吃满基础+易伤buff，再按影画封顶）', () => {
