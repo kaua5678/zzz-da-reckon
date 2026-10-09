@@ -6,6 +6,10 @@
  * - 期/房间/基底队规模合理；账号分 ≤ 180000（3 房 × 60000 伤害分上限，操作分已剔除）
  * - 卡增量语义：卢西娅（1451，命破专拐）累计 > 0 且「禁用后被替代队顶上」至少出现一次
  *
+ * 两个用例**共享同一次全量 pass**（2026-10-09，memo 而非 beforeAll；理由见 `fullPassOnce`）：
+ * 同一队、同 runs、同 rooms 的全量求值原先各跑一遍（实测各 ~15s CPU），
+ * 共享结果后本文件 CPU 约减半，而性能判据的负载本体与 r369 隔离断言都保持不变。
+ *
  * 超时：**不写 per-test 绝对超时**（2026-09-14 实测：两个用例原先各钉 `90000`，而本文件单跑 41s / 29s、
  * 满套件并发下必然 `Test timed out in 90000ms` ⇒ 那是「机器/并发」的第二个副本，与已废除的绝对墙钟线同族）。
  * 基础设施超时统一由 `vite.config.ts` 的 `testTimeout: 180_000` 承担（本仓重负载用例的既定做法）。
@@ -16,6 +20,7 @@ import { setupHarness } from '@/test/harness'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useConfigStore } from '@/stores/config'
 import { computeAllCardTotals, computeCardIncrements, computeIncrementPass } from '@/composables/charIncrement'
+import type { IncrementPassResult } from '@/composables/charIncrement'
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 import type { ArchiveRoom } from '@/composables/runArchiveImport'
 
@@ -54,18 +59,61 @@ function machineYardMs(): number {
 }
 
 describe('charIncrement · 真实归档集成', () => {
-  it('全量 pass：秒级完成、期规模合理、账号分不超上限、调用方 store 全程不变', async () => {
-    await setupHarness([{ agentId: '1021' }, { agentId: '1031' }, { agentId: '1131' }])
-    const configStore = useConfigStore()
-    // r369 独立场景：分析器只改场景里的副本——不止跑完后相等（旧判据只比队伍 id），每次进度回报（紧接 yield）
-    // 时整份 $state 都必须与开跑前逐字相同，即 UI 在任何时刻都看不到中间态。
-    const before = JSON.stringify(configStore.$state)
-    let midRunChecks = 0
-    let midRunDiffs = 0
-    const watchStore = () => {
-      midRunChecks++
-      if (JSON.stringify(configStore.$state) !== before) midRunDiffs++
+  /**
+   * 全量 pass 的**单次求值 + 结果共享**（2026-10-09）。
+   *
+   * 为什么：两个用例原先各跑一遍**同队、同 runs、同 rooms** 的全量 `computeIncrementPass`
+   * （实测各 ~15s CPU，全量套件里本文件因此占 ~32s）。`docs/mcp-dev-process-speed.md` §8.3
+   * 早已把「同一全量跑两遍」列为顺手项（估省 14s CPU），触发条件写明「改到这些文件时做」。
+   *
+   * ⚠ 为什么是 memo 而不是 `beforeAll`：本次求值实测 ~15s，而 vitest 的 `hookTimeout` 默认 **10s**
+   * （本仓 `vite.config.ts` 只配了 `testTimeout: 180_000`）⇒ 放进 `beforeAll` 会在慢机/并发下
+   * `Hook timed out`，那正是本文件反复否决的「机器/并发第二个副本」。memo 挂在**首个调用它的用例**
+   * 上，走 `testTimeout`（180s），且与用例顺序无关（谁先调谁付这笔）。
+   *
+   * ⚠ 为什么不能省掉第二次求值本身：本用例组里**只有这一次全量**带 `onProgress`，即
+   * 「调用方 store 全程不变」那条隔离断言（r369）依赖它逐次回报；而那 84 次引擎求值同时是
+   * 性能判据的负载本体。共享的是**结果**，不是把负载删掉——两个用例仍跑满同一份工作量一次。
+   */
+  let sharedPass: Promise<{ res: IncrementPassResult; midRunChecks: number; midRunDiffs: number; storeBefore: string; yardMs: number }> | null = null
+
+  /** 跑（或复用）那次带 store 监视的全量 pass */
+  function fullPassOnce() {
+    if (!sharedPass) {
+      sharedPass = (async () => {
+        await setupHarness([{ agentId: '1021' }, { agentId: '1031' }, { agentId: '1131' }])
+        const configStore = useConfigStore()
+        const storeBefore = JSON.stringify(configStore.$state)
+        let midRunChecks = 0
+        let midRunDiffs = 0
+        const watchStore = () => {
+          midRunChecks++
+          if (JSON.stringify(configStore.$state) !== storeBefore) midRunDiffs++
+        }
+        // 热身 pass（2 个 run ≈0.1s）：把引擎热路径的 JIT 编译与模块懒初始化成本挤出被测区间——
+        // 那是**一次性**成本、不随工作量增长，计入「单位工作量」会系统性虚高（旧口径的参照 pass 恰好
+        // 顺带起了这个作用；换尺后必须显式保留，否则本判据会因冷启动而漂移）。测量对象 = 稳态单位工作量。
+        await withAnalysisScenario(scenario => computeIncrementPass({
+          scenario,
+          bosses: bossData.bosses as BossPreset[],
+          runs: raw.runs.slice(0, 2),
+          rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
+        }))
+        const yardMs = machineYardMs()
+        const res = await withAnalysisScenario(scenario => computeIncrementPass({
+          scenario,
+          bosses: bossData.bosses as BossPreset[],
+          runs: raw.runs,
+          rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
+          onProgress: watchStore,
+        }))
+        return { res, midRunChecks, midRunDiffs, storeBefore, yardMs }
+      })()
     }
+    return sharedPass
+  }
+
+  it('全量 pass：秒级完成、期规模合理、账号分不超上限、调用方 store 全程不变', async () => {
     // ===== 性能判据：单位工作量 ÷ 同进程机器速度标尺（2026-10-09 口径纠正）=====
     // 判据 = (stats.durationMs / stats.evaluations) / machineYardMs() ≤ RATIO_MAX
     //   「单位工作量」= 每次引擎求值（基底队）的平均耗时 —— 引擎求值正是本 pass 里唯一随规模增长的项；
@@ -95,23 +143,7 @@ describe('charIncrement · 真实归档集成', () => {
     // @fact engine:charIncrement/性能判据 口径: 性能回归判据 = (stats.durationMs/stats.evaluations) ÷ 同进程固定工作量标尺（测试侧零引擎代码、3 次中位数），线 1.0×；禁用「引擎比引擎」自参照（回归时同比例膨胀 ⇒ 比值不动）与绝对墙钟线（测机器不测回归） | 据 用户@2026-09-11（废绝对墙钟线，改比值方向）·口径纠正@2026-10-09（实测旧尺对负载敏感且对回归反向：88.7→46.5 而新尺 0.409→1.761） | 验 src/composables/__tests__/charIncrementInt.test.ts | 锚 src/composables/__tests__/charIncrementInt.test.ts#machineYardMs | 信 确认
     // ⟳复核: 标尺常数 YARD_ITERS 与线 1.0× 是否仍匹配当时机器——看空闲/并发噪声上界是否仍 ≤0.63（超了就重标定，别只调线） | 到期 2027-04-09
     const RATIO_MAX = 1.0
-    // 热身 pass（2 个 run ≈0.1s）：把引擎热路径的 JIT 编译与模块懒初始化成本挤出被测区间——
-    // 那是**一次性**成本、不随工作量增长，计入「单位工作量」会系统性虚高（旧口径的参照 pass 恰好
-    // 顺带起了这个作用；换尺后必须显式保留，否则本判据会因冷启动而漂移）。测量对象 = 稳态单位工作量。
-    await withAnalysisScenario(scenario => computeIncrementPass({
-      scenario,
-      bosses: bossData.bosses as BossPreset[],
-      runs: raw.runs.slice(0, 2),
-      rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
-    }))
-    const yardMs = machineYardMs()
-    const res = await withAnalysisScenario(scenario => computeIncrementPass({
-      scenario,
-      bosses: bossData.bosses as BossPreset[],
-      runs: raw.runs,
-      rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
-      onProgress: watchStore,
-    }))
+    const { res, midRunChecks, midRunDiffs, storeBefore, yardMs } = await fullPassOnce()
     const unitMs = res.stats.durationMs / Math.max(1, res.stats.evaluations)
     const ratio = unitMs / yardMs
     // eslint-disable-next-line no-console
@@ -135,17 +167,11 @@ describe('charIncrement · 真实归档集成', () => {
     // 调用方 store：中途（每次进度回报）与跑完都与开跑前逐字相同
     expect(midRunChecks).toBeGreaterThan(5)
     expect(midRunDiffs).toBe(0)
-    expect(JSON.stringify(configStore.$state)).toBe(before)
+    expect(JSON.stringify(useConfigStore().$state)).toBe(storeBefore)
   })
 
   it('卢西娅增量：累计 > 0；被禁后存在「替代队顶上」的期（潘引壶/其他队）', async () => {
-    await setupHarness([{ agentId: '1021' }, { agentId: '1031' }, { agentId: '1131' }])
-    const res = await withAnalysisScenario(scenario => computeIncrementPass({
-      scenario,
-      bosses: bossData.bosses as BossPreset[],
-      runs: raw.runs,
-      rooms: raw.rooms as Record<string, ArchiveRoom & { seasonStart?: string }>,
-    }))
+    const { res } = await fullPassOnce()
     const inc = computeCardIncrements(res.periods, '1451', '2025-12-17')
     expect(inc.total).toBeGreaterThan(0)
     // 至少一期「被禁后账号分下降但非塌零」（替代结构存在）

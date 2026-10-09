@@ -170,7 +170,7 @@ z63 / z78 / z80 / z81 / z82 这五张卡，每路 42–48 秒、四路顺序执�
 
 | 项 | 估计省 | 改法与前提 |
 |---|---|---|
-| `charIncrementInt`：两个用例各跑一遍同一个全量 `computeIncrementPass`（同一队、同一输入，独立场景求值） | 干净约 14 秒 CPU，约 3.5 秒墙钟 | 文件内只跑一次全量，中途 store 检查的记录交给用例 1 断言，用例 2 只读结果 |
+| ~~`charIncrementInt`：两个用例各跑一遍同一个全量 `computeIncrementPass`~~ **✅ 已做 2026-10-09** | 实测 tests 32.0s → 15.7s（本机单跑；用例 2 从 ~15s 降到 3ms） | 已按本行改法落地：`fullPassOnce()` memo（**不是 `beforeAll`**——本次求值 ~15s 而 vitest `hookTimeout` 默认 10s，本仓只配了 `testTimeout`；memo 走 `testTimeout` 且与用例顺序无关，`-t` 单跑用例 2 已验证）。负载本体与 r369 隔离断言不变，负控复验仍红（1.847× > 1.0×） |
 | `axisFallbackReportCc457`：每个预设等 `setTimeout(40)`，3 档 × 104 个 = 312 次，约 12.5 秒纯等待（占着一个 worker） | 约 3 秒墙钟 | 先证明 `resourceResult` 能同步读（`timeLedgerInvariants` 同类读法不等待），再改成不等待或 `nextTick` |
 | `zcDeadChannels`「真实 CLI」用例：起两次 CLI，各扫一遍全仓；连同 `deadChannelLs` ⑦，同一个全仓扫描每次跑 3 遍 | 约 7 秒 CPU | 文件头已写明「扫描口径由 deadChannelLs 守护，这里只验入口」⇒ 只起一次 `--json`，文本一致性用进程内的 `formatDeadChannelReport` 验 |
 | setupFiles 让每个文件都导入全部机制模块（setup 占 15%） | 只能省掉不需要引擎的那些文件，估计不超过 30 秒 CPU | 要按需注册就得改 `mechanics/index.ts` 的副作用注册架构；收益不够，不做 |
