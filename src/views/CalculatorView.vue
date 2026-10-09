@@ -26,6 +26,14 @@
         </template>
       </n-spin>
     </div>
+
+    <!--
+      便携记录小窗：**渲染在 pageMap 之外** ⇒ 切页签不重挂（用户口径「操作页改、小窗实时看」）。
+      读数来源 = 本视图的应用级 calc 实例（经 props 传入）。⚠ 小窗内**不得**再调 useResourceCalc()：
+      每次调用新建一整套 computed 图，r705 事故实测让页面每次状态变化整条管线跑两遍（重队 430–506ms）。
+      引擎级最贵的 calcOutput 自 r707 起跨实例共享记忆化 ⇒ 这里多出的实例不额外求值外层不动点。
+    -->
+    <RecordWindow v-if="startupStatus === 'ready'" :calc="calc" :hp="enemyHp" />
   </div>
 </template>
 
@@ -33,14 +41,27 @@
 import { computed, onMounted, defineAsyncComponent, h, type AsyncComponentLoader, type Component } from 'vue'
 import { NSpin, NAlert, NButton } from 'naive-ui'
 import { useUiStore } from '@/stores/ui'
+import { useConfigStore } from '@/stores/config'
+import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useTimeWeightAutoAllocation } from '@/composables/timeWeightAllocation'
 import { useCalculatorStartup } from '@/composables/calculatorStartup'
 import AppHeader from '@/components/AppHeader.vue'
+import RecordWindow from '@/components/RecordWindow.vue'
 // 默认页保持 eager（首屏即时渲染）；其余 13 页懒加载按需拆 chunk，降低首包 JS（原全量打进 index ~1.6MB）。
 import TeamConfigPage from '@/views/TeamConfigPage.vue'
 
 const uiStore = useUiStore()
+const configStore = useConfigStore()
 const { status: startupStatus, error: startupError, start } = useCalculatorStartup()
+
+/**
+ * 应用级资源计算实例：记录小窗的读数来源（经 props 传给小窗）。
+ * ⚠ 小窗**不自己调** `useResourceCalc()`（r705：自建第二个实例 ⇒ 整条管线跑两遍）。
+ * 最贵的 calcOutput 自 r707 起跨实例共享记忆化 ⇒ 页面各自的实例不额外付外层不动点。
+ */
+const calc = useResourceCalc()
+/** Boss 血量比指标的入参（引擎里没有这个量，见 freeCompare/metrics.ts#MetricEnv） */
+const enemyHp = computed(() => configStore.enemy.hp)
 
 // 平A池权重·分配策略**三态**（用户裁决）：'static' 不跑（静态/手填权重）/ 'balanced' 默认＝边际均衡（B，
 // ≈3 倍求值）/ 'joint' ＝多杠杆联合（C，更慢）。必须在「计算外侧」——策略要读伤害做有限差分，

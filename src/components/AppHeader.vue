@@ -84,7 +84,31 @@
     <div class="header-right">
       <n-tooltip trigger="hover">
         <template #trigger>
-          <n-button quaternary circle size="small" class="theme-toggle" @click="themeStore.toggle()">
+          <n-button
+            quaternary
+            circle
+            size="small"
+            class="header-icon-btn"
+            aria-label="设置"
+            @click="openSettings()"
+          >
+            <template #icon>
+              <n-icon><SettingsOutline /></n-icon>
+            </template>
+          </n-button>
+        </template>
+        设置（记录小窗 / 用户记忆）
+      </n-tooltip>
+      <n-tooltip trigger="hover">
+        <template #trigger>
+          <n-button
+            quaternary
+            circle
+            size="small"
+            class="header-icon-btn theme-toggle"
+            :aria-label="themeStore.mode === 'dark' ? '切换到明亮模式' : '切换到夜间模式'"
+            @click="themeStore.toggle()"
+          >
             <template #icon>
               <n-icon>
                 <SunnyOutline v-if="themeStore.mode === 'dark'" />
@@ -96,18 +120,27 @@
         {{ themeStore.mode === 'dark' ? '切换到明亮模式' : '切换到夜间模式' }}
       </n-tooltip>
     </div>
+
+    <SettingsDialog v-model:show="showSettings" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { NButton, NIcon, NTabs, NTabPane, NTooltip } from 'naive-ui'
-import { MoonOutline, SunnyOutline } from '@vicons/ionicons5'
+import { MoonOutline, SettingsOutline, SunnyOutline } from '@vicons/ionicons5'
 import { useUiStore } from '@/stores/ui'
 import { useThemeStore } from '@/stores/theme'
+import SettingsDialog from '@/components/SettingsDialog.vue'
 
 const uiStore = useUiStore()
 const themeStore = useThemeStore()
+
+/** 设置弹层开关（**唯一入口**：原仓无设置入口，用户口径「小窗开关放设置里」） */
+const showSettings = ref(false)
+function openSettings() {
+  showSettings.value = true
+}
 
 const setupTabs = ['team', 'attribute', 'resource']
 const analyzeTabs = ['result', 'resourceUtilization', 'stunAxis', 'timeline']
@@ -264,28 +297,29 @@ function onTabChange(tab: string) {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  gap: var(--space-2);
 }
 
-.theme-toggle {
+.header-icon-btn {
   color: var(--fg-2);
   /* 图标按钮的悬停反馈：原本只有 naive 默认的底色变化，太弱。
      加一层旋转——日/月图标切换时有「天体运行」的暗示。 */
   transition: color var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
 
-.theme-toggle:hover {
+.header-icon-btn:hover {
   color: var(--app-accent-gold);
   transform: rotate(-18deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .theme-toggle:hover {
+  .header-icon-btn:hover {
     transform: none;
   }
 }
 
 /* 键盘可达性：顶栏是纯图标按钮密集区，原本 Tab 过去完全没有视觉反馈 */
-.theme-toggle:focus-visible {
+.header-icon-btn:focus-visible {
   outline: none;
   box-shadow: var(--ring-focus);
 }

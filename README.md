@@ -88,7 +88,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/MECHANIC_PATTERNS.md` | **机制模式目录**：游戏文本 → 计算逻辑的翻译词典——九个计算维度、确定性四级（L0 直读/L1 直译/L2 近似/L3 凹分拍板）、凹分思想提炼路径（录新角色先做模式匹配） |
 | `docs/GAME_TERM_TO_CODE_FIELD.md` | 中文游戏术语 → 计算器字段映射（AI 录入时查字段用） |
 | `docs/MECHANICS_IMPLEMENTATION.md` | **逐角色机制档案**（录角色前先 grep 该角色段）：当前实现状态行 + 只有档案知道的用户裁决与未建模项 + 实现指针；§0 特化中英映射表、§3.05 名词缺口挂账。机制细节以 `src/specs/agents/<id>.json` notes 与模块头注释为唯一事实源，档案不复述它们 |
-| `docs/FEATURES_GUIDE.md` | **Boss 选择 + 队伍对比功能手册**：操作方式、数据管道命令、修改入口表、口径与验证命令（新功能必更新） |
+| `docs/FEATURES_GUIDE.md` | **Boss 选择 + 队伍对比 + 记录小窗/用户记忆功能手册**：操作方式、数据管道命令、修改入口表、口径与验证命令（新功能必更新） |
 | `docs/UI_THEME_GUIDE.md` | **UI 主题系统指南**：明暗双主题三层颜色体系（--app-*/--wa-* 色阶）、切换机制、SVG 填坑、ZZZ 品牌色板、改 UI 前必读 |
 | `docs/mcp-ui-shell-polish.md` | **UI 外壳美术打磨记录**：顶栏纹理/霓虹导轨/品牌高光、分段导航胶囊化、全局焦点环与卡片层次；新增 `--shell-*`/`--brand-*`/`--dev-*` 令牌与三条基线的棘轮归因 |
 | `docs/mcp-ui-number-format-sweep.md` | **界面长浮点普查 + ui-check「未格式化数值」闸门**（r716–r718）：页头页签 + 页内子页签普查方法、源头表与 fmt 口径、闸门阈值（≥7 位小数，依据 src/data 字面量实测）与防线测试、月城柳 `as` 断言漏 fields 的根因、zd 逐叶归因 |

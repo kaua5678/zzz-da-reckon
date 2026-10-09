@@ -193,8 +193,15 @@ export function inPageLabel(el) {
  */
 export async function performClick(sel, text, inner = false, expectActivate = false) {
   const els = [...document.querySelectorAll(sel)]
-  const el = els.find(e => (e.textContent || '').replace(/\s+/g, '').includes(text))
-  if (!el) return { ok: false, reason: `未命中目标 NOT_FOUND(n=${els.length})：${sel} 里没有含「${text}」的元素` }
+  const text$ = text.replace(/\s+/g, '')
+  // 命中判据 = **可见文本** 或 **无障碍名**（`aria-label` / `title`）。
+  // 为什么收 aria-label：纯图标按钮（如顶栏的齿轮「设置」）没有文本节点，只靠 textContent
+  // 永远点不到 —— 实测 `--step "click:设置"` 报 NOT_FOUND(n=45)，而那个按钮就在页面上。
+  // 图标按钮的无障碍名是它**唯一**的可读标识，本来也该被读屏与工具消费。
+  const el = els.find(e => (e.textContent || '').replace(/\s+/g, '').includes(text$)
+    || (e.getAttribute('aria-label') || '').includes(text)
+    || (e.getAttribute('title') || '').includes(text))
+  if (!el) return { ok: false, reason: `未命中目标 NOT_FOUND(n=${els.length})：${sel} 里没有含「${text}」的元素（文本或 aria-label/title）` }
   const target = inner ? (el.querySelector('input') || el) : el
   const disabled = inPageDisabled(el) || inPageDisabled(target)
   if (disabled) return { ok: false, reason: `目标已禁用(${disabled})：${inPageLabel(el)}`, found: true, disabled }

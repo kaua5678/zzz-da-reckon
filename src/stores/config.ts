@@ -31,6 +31,8 @@ import {
   teammateBuffCoverageOf,
   teammateBuffEnabledOf,
 } from './selectionReads'
+import { teamKeyOf, teamLabelOf } from '@/composables/memoryFile'
+import { useMemoryStore, type ConfigMemoryPort } from './memory'
 
 // ========== 类型定义 ==========
 
@@ -436,7 +438,18 @@ export type ConfigCatalogReader = Readonly<Pick<ReturnType<typeof useCatalogStor
  * 独占的深拷贝（`composables/analysisScenario#createAnalysisScenario` 负责拷贝）。它在任何依赖 state 的
  * watcher 注册之前写入（见下方「独立场景出生态」段），watcher 只见出生之后的修改。UI store 不传，行为不变。
  */
-export function createConfigModel(catalogStore: ConfigCatalogReader, initialState?: Readonly<Record<string, unknown>>) {
+export function createConfigModel(
+  catalogStore: ConfigCatalogReader,
+  initialState?: Readonly<Record<string, unknown>>,
+  /**
+   * 用户记忆端口（可选，注入式；2026-10-09）。缺省 = **无记忆**：派生值说了算（= 本改动前的行为）。
+   * UI store 由 `useConfigStore` 注入 `stores/memory.ts` 的端口；独立分析场景（`analysisScenario`）
+   * **刻意不注入**——场景必须与 UI 现场隔离，读记忆会让分析结果取决于用户的持久偏好。
+   * 端口只被两处消费：`syncTeammateBuffsFromTeam`（读，记忆优先于派生）与
+   * `toggleTeammateBuff` / `setTeammateBuffCoverage`（写，记忆模式关闭时端口自己不落盘）。
+   */
+  memoryPort?: () => ConfigMemoryPort | null,
+) {
 
   // 3人队伍
   const team = ref<CharacterConfig[]>([
@@ -840,13 +853,49 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     } else {
       teammateBuffSelections.value[buffId].enabled = enabled
     }
+    // 记进用户记忆（自动分层：开关 → 队伍层；记忆模式关闭时端口不落盘）。
+    // 队伍身份 = 成员 agentId 集合、顺序无关（memoryFile#teamKeyOf）。
+    memoryPort?.()?.recordEnabled(teamKeyOf(team.value), teamLabelOf(team.value, aid => catalogStore.getAgent(aid)?.name.zhCN || aid), buffId, enabled)
   }
 
   function setTeammateBuffCoverage(buffId: string, coverage: number) {
+    const clamped = Math.max(0, Math.min(100, coverage))
     if (!teammateBuffSelections.value[buffId]) {
-      teammateBuffSelections.value[buffId] = { enabled: false, coverage }
+      teammateBuffSelections.value[buffId] = { enabled: false, coverage: clamped }
     } else {
-      teammateBuffSelections.value[buffId].coverage = Math.max(0, Math.min(100, coverage))
+      teammateBuffSelections.value[buffId].coverage = clamped
+    }
+    // 记进用户记忆（自动分层：覆盖率 → 全局层，跨队通用）
+    memoryPort?.()?.recordCoverage(buffId, clamped)
+  }
+
+  /**
+   * 让记忆在**当前配置**上生效（导入记忆 / 加载具名槽 / 恢复出厂之后调用）。
+   * 做法 = 清掉队友 buff 选择表再重跑一次 `syncTeammateBuffsFromTeam()`：
+   * 派生值重新算「默认该启用吗」，记忆层再覆盖上去 ⇒ 两层语义一条路径，
+   * 不会出现「有的条走记忆、有的条走陈旧缓存」的半新半旧状态。
+   *
+   * 开关与覆盖率都要落地（两者是**不同层**的记忆：开关在队伍层、覆盖率在全局层）：
+   * - `enabled`：sync 逐条按 `resolveEnabled(队伍层 → 全局层) ?? 派生值` 写；
+   * - `coverage`：sync 只在**建新条目**时写 100（覆盖率是用户手调值、不是派生值，sync 刻意不碰已有条目）
+   *   ⇒ 这里在 sync 之后对**有记忆的条**补写一次，否则「恢复出厂后再加载备份」会丢掉覆盖率（实测抓到）。
+   *
+   * ⚠ 只重刷**队友 buff 选择表**，不碰队伍/配装/敌人等任何其它配置
+   * （用户裁决：恢复出厂 = 清记忆，不是重置整个 store）。
+   */
+  function applyMemoryReset() {
+    teammateBuffSelections.value = {}
+    syncTeammateBuffsFromTeam()
+    const port = memoryPort?.()
+    if (!port) return
+    const teamKey = teamKeyOf(team.value)
+    for (const group of catalogStore.teammateBuffGroups) {
+      for (const buff of group.buffs) {
+        const coverage = port.resolveCoverage(teamKey, buff.id)
+        if (coverage === undefined) continue
+        const entry = teammateBuffSelections.value[buff.id]
+        if (entry) entry.coverage = coverage
+      }
     }
   }
 
@@ -1000,13 +1049,24 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     const groups = catalogStore.teammateBuffGroups
     if (!groups.length) return
     // 派生口径在模块级纯函数里（可单测）；此处只做「合并进选择表」——
-    // 保留用户覆盖率、仅在变化时改 enabled，与抽取前逐条一致。
+    // 保留用户覆盖率、仅在变化时改 enabled。
+    //
+    // ★ 2026-10-09 口径变更（用户裁决）：**记忆优先于派生**。
+    // 派生值回答「按队伍与影画门槛，应该启用吗」；用户手关过的条若已记进记忆（队伍层或全局层），
+    // 它**不再被队伍变化覆盖**（用户原话：「他觉得某个角色玩的不好，就把这个角色某些数值调低，
+    // 这个应该持久记忆」）。两层都没有记录 = **临时改动**，照旧被派生值覆盖
+    // （用户明示：「如果都没有记忆，那他就是临时修改，被默认值覆盖也无所谓」）。
+    // 判定实现 = `memoryPort`（**注入式端口**：独立分析场景不注入 ⇒ 行为与本改动前逐位相同）。
+    // 判据：teammateBuffSelection.characterization.test.ts（★ 断言已按本次口径显式改写）
+    //       + src/stores/__tests__/configMemory.test.ts（记忆粘性 / 换队隔离 / 记忆关闭时不计入）。
+    const teamKey = teamKeyOf(team.value)
     for (const { id, enabled } of deriveTeammateBuffEnabled(team.value, groups, aid => catalogStore.getAgent(aid))) {
       const current = teammateBuffSelections.value[id]
+      const effective = memoryPort?.()?.resolveEnabled(teamKey, id) ?? enabled
       if (!current) {
-        teammateBuffSelections.value[id] = { enabled, coverage: 100 }
-      } else if (current.enabled !== enabled) {
-        current.enabled = enabled
+        teammateBuffSelections.value[id] = { enabled: effective, coverage: 100 }
+      } else if (current.enabled !== effective) {
+        current.enabled = effective
       }
     }
   }
@@ -1326,6 +1386,8 @@ export function createConfigModel(catalogStore: ConfigCatalogReader, initialStat
     isTeammateBuffEnabled,
     getTeammateBuffCoverage,
     syncTeammateBuffsFromTeam,
+    /** 记忆在配置上生效（导入记忆/加载具名槽/恢复出厂后调用；只重刷队友 buff 选择表） */
+    applyMemoryReset,
     setEnemy,
     setResistance,
     appliedBoss,
@@ -1359,7 +1421,10 @@ export type EvalConfig = ConfigModel & { readonly $state: ReturnType<typeof useC
  * 预填会在批量求值中途按调度时序写进场景 ⇒ 分析结果依赖时序。
  */
 export const useConfigStore = defineStore('config', () => {
-  const model = createConfigModel(useCatalogStore())
+  // 用户记忆端口（2026-10-09）：UI store 注入；独立分析场景不注入 ⇒ 场景内无记忆、行为不变。
+  // 经 getter 惰性取 store：`useMemoryStore()` 在 pinia 激活后调用（本函数体内），且避免模块级循环导入。
+  const memory = useMemoryStore()
+  const model = createConfigModel(useCatalogStore(), undefined, () => memory.port())
   installUiSessionEffects(model)
   return model
 })

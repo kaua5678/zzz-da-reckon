@@ -11,6 +11,20 @@
  * 这条正是需要用户裁决的点（要粘性 = 方案 A；保持现状 = 方案 B）。
  * 将来若按 A 改，本文件对应断言应**显式改写并注明口径变更**，而不是删掉了事。
  *
+ * ============================ ★ 口径变更（2026-10-09，方案 A 落地） ============================
+ * **用户裁决**（原话）：「我希望每个用户有自己的记忆文件……他觉得他的某个角色玩的不好，就把这个角色
+ * 某些数值调低，这个应该持久记忆」＋「如果都没有记忆，那他就是临时修改，被默认值覆盖也无所谓」。
+ *
+ * 新语义（**本文件的 ★ 断言已按此显式改写**，不是删除）：
+ *   - **记忆模式打开 + 该条已记进记忆** ⇒ 手关**粘**：队伍变化触发的 sync 不再覆盖它
+ *     （记忆优先于派生值）。承载 = `stores/memory.ts` 的两层记忆（开关记队伍层、覆盖率记全局层），
+ *     经 `stores/config.ts#createConfigModel` 的 `memoryPort` 注入（独立分析场景不注入 ⇒ 无记忆）。
+ *   - **记忆模式关闭，或该条没有记忆记录** ⇒ 语义**与改写前逐位相同**：手关仍被派生值覆盖
+ *     （用户明示「临时修改被覆盖也无所谓」）——下面标 ★ 的用例保留并断言这条**现状仍在**。
+ *
+ * 两条断言成对：只留新语义会掩盖「记忆关闭时行为被顺手改坏」，只留旧语义则等于没做这个功能。
+ * ==============================================================================================
+ *
  * 数据用真实 catalog（setupHarness），因为影画门槛解析与额外能力门控都依赖真实数据形状。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -18,6 +32,8 @@ import { nextTick } from 'vue'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
+import { useMemoryStore } from '@/stores/memory'
+import { teamKeyOf } from '@/composables/memoryFile'
 
 /** 丽娜(1211)：核心被动无影画门槛；影画一/影画六分别要求 1/6 命座 */
 const RINA = '1211'
@@ -62,8 +78,11 @@ describe('队友 buff 选择：用户手动开关（现状语义）', () => {
     expect(config.isTeammateBuffEnabled(B_CORE)).toBe(true)
   })
 
-  it('★ 现状：手关后**只要队伍变化触发 sync，手关就被派生值覆盖**（开关不粘性）', async () => {
+  it('★ 现状（记忆关闭时）：手关后**只要队伍变化触发 sync，手关就被派生值覆盖**（无记忆 = 临时改动）', async () => {
     const { config } = await setupHarness([{ agentId: RINA }, '', ''])
+    const memory = useMemoryStore()
+    expect(memory.recording).toBe(false)   // 记忆模式关闭 = 改动不计入记忆
+
     config.toggleTeammateBuff(B_CORE, false)
     expect(config.isTeammateBuffEnabled(B_CORE)).toBe(false)
 
@@ -71,8 +90,34 @@ describe('队友 buff 选择：用户手动开关（现状语义）', () => {
     config.setCinemaLevel(0, 2)
     config.syncTeammateBuffsFromTeam()
 
-    // 现状行为：手关丢失，回到派生值 true。← #9 方案 A（粘性）会把它改成 false
+    // 无记忆 ⇒ 行为与 2026-10-09 之前逐位相同：手关丢失，回到派生值 true
     expect(config.isTeammateBuffEnabled(B_CORE)).toBe(true)
+  })
+
+  it('★ 新语义（记忆打开时）：手关记进队伍记忆 ⇒ 队伍变化触发的 sync 不再覆盖（口径变更 2026-10-09）', async () => {
+    const { config } = await setupHarness([{ agentId: RINA }, '', ''])
+    const memory = useMemoryStore()
+    memory.recording = true   // 打开记忆模式：改动立刻计入
+
+    config.toggleTeammateBuff(B_CORE, false)
+    expect(config.isTeammateBuffEnabled(B_CORE)).toBe(false)
+    expect(memory.resolveEnabled(teamKeyOf(config.team), B_CORE)).toBe(false)
+
+    config.setCinemaLevel(0, 2)
+    config.syncTeammateBuffsFromTeam()
+
+    // 记忆优先于派生值：手关粘住（这是本次口径变更的判据）
+    expect(config.isTeammateBuffEnabled(B_CORE)).toBe(false)
+  })
+
+  it('★ 新语义边界：记忆里记的是「开」时，派生「关」也压不动它', async () => {
+    const { config } = await setupHarness([{ agentId: RINA }, '', ''])
+    const memory = useMemoryStore()
+    memory.recording = true
+
+    config.toggleTeammateBuff(B_C6, true)   // 命座 0 时派生值是 false，用户手动打开并记忆
+    config.syncTeammateBuffsFromTeam()
+    expect(config.isTeammateBuffEnabled(B_C6)).toBe(true)
   })
 
   it('手关后**离队** → 派生值也是 false（此路径与手关不可区分）', async () => {
