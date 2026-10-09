@@ -8,10 +8,15 @@ import { withGitFixture, type GitFixture } from '@/test/gitHarness'
 function withZcFixture(run: (fixture: GitFixture) => void) {
   withGitFixture(f => {
     f.write('scripts/zc.mjs', readFileSync(new URL('../../../scripts/zc.mjs', import.meta.url), 'utf8'))
+    // zc.mjs 的 import 闭包必须一起复制：只拷 zc.mjs 会让它 import 到不存在的
+    // scripts/lib/*.mjs（ERR_MODULE_NOT_FOUND）。新增 zc 的 lib 依赖时同步加这里。
+    for (const lib of ['date-utils.mjs']) {
+      f.write(`scripts/lib/${lib}`, readFileSync(new URL(`../../../scripts/lib/${lib}`, import.meta.url), 'utf8'))
+    }
     f.write('README.md', 'committed\n')
     f.write('.gitignore', '.zc/\n')
     f.git('init', '--quiet')
-    f.git('add', '--', 'scripts/zc.mjs', 'README.md', '.gitignore')
+    f.git('add', '--', 'scripts/zc.mjs', 'scripts/lib', 'README.md', '.gitignore')
     f.git('commit', '--quiet', '-m', 'workspace fixture')
     run(f)
   })
