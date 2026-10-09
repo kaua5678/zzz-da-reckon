@@ -135,6 +135,20 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
   // 不是从尾部整行丢）。iterate 已把必要时间
   // 封顶到「预算 − 队友占用」，所以这里的上限就是账本本身。语义 = 实战 180s 到点结算，
   // 资源攒多了也兑现不出来——旧实现没有这层，只能靠虚高账本挤平A池，结果两头都不准。
+  //
+  // ⚠ **合轴吸收已经在本上限里了**（R37-J5c 定性，2026-10-09 实测；**别再给本上限扣 credit**）：
+  // `state.necessaryTime` 是 `helpers.ts#iterate` 的**净**账本 `cappedNecessary = absorbedNet × scale + credit`
+  // ⇒ credit（含动态吸收）**已加回**，本上限不是「未扣 credit 的 gross」。全库实测恒等式：
+  // `Σcut == Σ(netNecessary) − 预算 − Σdyn + 整数装包`，其中 `netNecessary = Σ[(nec−credit)/scale] + Σdyn`
+  // 是**吸收前**净必要 —— 即截断砍的正是「吸收比 0.4 兜不住的残余溢出」，吸收**已经在截断之前生效**。
+  // 该队（`auto-1431-1481-1491`，全库唯一 cut > 1s）实测：ratio 0 / 0.4 / 0.7 / 1 ⇒
+  // cut 34.25 / 19.80 / 0.00 / 0.00、伤害 98.73 / 104.68 / 124.39 / 124.89M（单调、非零收益）。
+  // 反证（两条都实测红 `comboAbsorbBeforeTruncation.test.ts`）：① 本上限再减 `comboAlignCredit`
+  // ⇒ 16 支新截断队 + 本队 cut 反涨 19.80→30.75（credit 是**团队**预算抵扣、含队友被吸收的量，
+  // 与本槽物理时间轴无关，硬塞进本槽会改 iterate 收敛不动点 ⇒ 自锁到更糟吸引子）；
+  // ② 把上限按「队友让出的秒数」放宽 ⇒ 净占用 209.43 > 预算 180（破超时判定硬不变量）。
+  // @fact engine:时间线截断/合轴吸收位置 口径: 动态合轴吸收在截断**之前**生效（用户裁决「截断需要在吸收之后…合轴不能被截断成 0 收益」）——实现 = `iterate` 的净账本 `necessaryTime`（= absorbedNet×scale + credit）就是本上限，**不得**再对本上限扣 comboAlignCredit（那是团队预算抵扣、含队友量，扣了会自锁出 16 支新截断队）；吸收比缺省 0.4 兜不住的残余溢出被截断属设计内行为，消截断的杠杆是机制参数 comboAlignAbsorbRatio（该队 ratio≥0.7 时 cut=0），不是改本上限 | 据 用户@2026-10-09「截断需要在吸收之后，队友已经合轴让出了前台时间…如果还是被截断，那么合轴就是 0 收益，不正常」·实测@2026-10-09（全库 97 队恒等式 + ratio sweep） | 验 src/core/__tests__/comboAbsorbBeforeTruncation.test.ts | 锚 src/core/resource/assembleSlot.ts#assembleSlot + src/core/resource/helpers.ts#iterate | 信 确认
+  // ⟳复核: 截断上限口径、`cappedNecessary` 算式或 `comboAlignAbsorbRatio` 缺省再动时，复核「全库 cut > 1s 的队仍只有 auto-1431-1481-1491」+「ratio 0→0.4→1 单调且伤害递增」 | 到期 2027-03-31
   const truncated = truncateExecutionsToFrontline(
     builtExecutions, Math.max(0, state.necessaryTime + state.basicAttackTime - giftTimeThisSlot))
   // 赠行由**引擎**物化（阶段1 ②）：仍追加在截断之后（永不被截），截断上限仍先扣赠行时间
